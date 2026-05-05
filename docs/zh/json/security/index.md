@@ -1,0 +1,198 @@
+---
+title: 安全概述 - CyberGo JSON | 安全最佳实践
+description: "CyberGo JSON 安全最佳实践指南：涵盖输入验证与清洗、MaxNestingDepthSecurity/MaxMemory 资源限制防护、路径遍历攻击防御、JSON 注入防护、敏感数据过滤和审计日志配置，帮助开发者保障生产环境 JSON 数据安全。"
+---
+
+# 安全概述
+
+处理 JSON 数据时的安全考虑和最佳实践。
+
+## 常见安全风险
+
+### 1. 资源耗尽攻击
+
+恶意构造的 JSON 可能导致内存耗尽或 CPU 过载。
+
+**防护措施：**
+
+```go
+cfg := json.DefaultConfig()
+cfg.MaxNestingDepthSecurity = 50                       // 限制嵌套深度
+cfg.MaxJSONSize = 10 * 1024 * 1024             // 限制 JSON 大小 (10MB)
+cfg.MaxSecurityValidationSize = 100 * 1024 * 1024 // 增大安全验证限制到 100MB（默认 10MB）
+```
+
+### 2. 路径遍历攻击
+
+恶意路径可能访问非预期数据。
+
+**防护措施：**
+
+```go
+// 验证用户输入的路径
+func safePath(path string) bool {
+    // 禁止特殊字符
+    if strings.ContainsAny(path, `<>:"|\`) {
+        return false
+    }
+    return true
+}
+```
+
+### 3. JSON 注入
+
+恶意数据可能破坏 JSON 结构。
+
+**防护措施：**
+
+```go
+// 始终使用库函数序列化，不要拼接字符串
+data := map[string]any{
+    "user": userInput, // 库会自动转义
+}
+bytes, _ := json.Marshal(data)
+```
+
+### 4. 敏感数据泄露
+
+日志或错误信息可能暴露敏感数据。
+
+**防护措施：**
+
+```go
+// 使用自定义 Hook 过滤敏感字段
+type FilterFieldsHook struct {
+    fields map[string]bool
+}
+
+func (h *FilterFieldsHook) Before(ctx json.HookContext) error {
+    return nil
+}
+
+func (h *FilterFieldsHook) After(ctx json.HookContext, result any, err error) (any, error) {
+    if m, ok := result.(map[string]any); ok {
+        for field := range h.fields {
+            delete(m, field)
+        }
+    }
+    return result, err
+}
+
+cfg := json.DefaultConfig()
+cfg.AddHook(&FilterFieldsHook{fields: map[string]bool{
+    "password": true,
+    "token":    true,
+    "secret":   true,
+}})
+```
+
+## 安全配置建议
+
+### 生产环境配置
+
+```go
+func ProductionConfig() json.Config {
+    cfg := json.SecurityConfig()
+    cfg.AddHook(&AuditHook{logger: prodLogger})
+    return cfg
+}
+```
+
+### 开发环境配置
+
+```go
+func DevelopmentConfig() json.Config {
+    cfg := json.DefaultConfig()
+    cfg.MaxNestingDepthSecurity = 100
+    cfg.AddHook(json.LoggingHook(devLogger))
+    return cfg
+}
+```
+
+## 输入验证
+
+### 自定义验证器
+
+实现 `Validator` 接口（`Validate(jsonStr string) error`）进行输入验证：
+
+```go
+// 实现自定义验证器
+type EmailValidator struct{}
+
+func (v *EmailValidator) Validate(jsonStr string) error {
+    // 验证 JSON 字符串内容
+    var data map[string]any
+    if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+        return err
+    }
+    email, ok := data["email"].(string)
+    if !ok {
+        return nil
+    }
+    if !strings.Contains(email, "@") {
+        return errors.New("invalid email format")
+    }
+    return nil
+}
+
+// 使用自定义验证器
+cfg := json.DefaultConfig()
+cfg.CustomValidators = []json.Validator{&EmailValidator{}}
+```
+
+### Schema 验证
+
+Schema 是结构体类型，可用于验证 JSON 结构：
+
+```go
+schema := &json.Schema{
+    Type:     "object",
+    Required: []string{"id", "name", "email"},
+    Properties: map[string]*json.Schema{
+        "id":    {Type: "string", Pattern: `^[a-zA-Z0-9]+$`},
+        "name":  {Type: "string", MinLength: 1},
+        "email": {Type: "string", Format: "email"},
+        "age":   {Type: "number", Minimum: 0, Maximum: 150},
+    },
+}
+```
+
+## 错误处理
+
+### 安全的错误消息
+
+```go
+val, err := json.Get(data, path)
+if err != nil {
+    // 不要暴露内部错误细节
+    return errors.New("数据格式无效")
+}
+```
+
+## 审计日志
+
+### 记录关键操作
+
+使用 `Hook` 接口（`Before` 返回 `error`，`After` 接收 `(HookContext, any, error)` 并返回 `(any, error)`）记录审计日志：
+
+```go
+type AuditHook struct {
+    logger *slog.Logger
+}
+
+func (h *AuditHook) Before(ctx json.HookContext) error {
+    h.logger.Info("JSON 操作开始", "op", ctx.Operation, "path", ctx.Path)
+    return nil
+}
+
+func (h *AuditHook) After(ctx json.HookContext, result any, err error) (any, error) {
+    h.logger.Info("JSON 操作完成", "op", ctx.Operation)
+    return result, err
+}
+```
+
+## 相关
+
+- [生产检查清单](./production-checklist)
+- [Config 配置](../api-reference/config)
+- [Validator](../api-reference/validator)

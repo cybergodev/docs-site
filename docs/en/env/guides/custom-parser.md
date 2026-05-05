@@ -1,0 +1,590 @@
+---
+title: Custom Parser - CyberGo env | Format Extension
+description: Guide for developing custom parsers for the env library, implementing the EnvParser interface and registering custom format parsers
+---
+
+# Custom Parser
+
+This guide explains how to create and register custom file format parsers to extend the configuration formats supported by the env library.
+
+## Parser Interface
+
+### EnvParser
+
+All parsers must implement this interface:
+
+```go
+type EnvParser interface {
+    Parse(r io.Reader, filename string) (map[string]string, error)
+}
+```
+
+**Parameters:**
+- `r` - File content reader
+- `filename` - Filename (for error messages)
+
+**Returns:**
+- `map[string]string` - Parsed key-value pairs
+- `error` - Parse error
+
+---
+
+## Creating a Custom Parser
+
+### Basic Structure
+
+```go
+package myparser
+
+import (
+    "io"
+    "github.com/cybergodev/env"
+)
+
+// Custom parser
+type CustomParser struct {
+    cfg       env.Config
+    validator env.Validator
+    auditor   env.FullAuditLogger
+}
+
+// Implement EnvParser interface
+func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+    result := make(map[string]string)
+
+    // 1. Read content (note size limits)
+    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize))
+    if err != nil {
+        return nil, err
+    }
+
+    // 2. Parse content into key-value pairs
+    // ... parsing logic
+
+    // 3. Validate results
+    for key := range result {
+        if err := p.validator.ValidateKey(key); err != nil {
+            return nil, err
+        }
+    }
+
+    // 4. Return results
+    return result, nil
+}
+```
+
+### TOML Parser Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "io"
+    "strings"
+    "time"
+
+    "github.com/cybergodev/env"
+)
+
+// TOMLParser parses TOML format
+type TOMLParser struct {
+    cfg       env.Config
+    validator env.Validator
+    auditor   env.FullAuditLogger
+}
+
+func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+    start := time.Now()
+
+    // Limit read size
+    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
+    if err != nil {
+        return nil, err
+    }
+    if int64(len(content)) > p.cfg.MaxFileSize {
+        return nil, fmt.Errorf("file exceeds size limit")
+    }
+
+    result := make(map[string]string)
+    lines := strings.Split(string(content), "\n")
+
+    var currentSection string
+
+    for lineNum, line := range lines {
+        line = strings.TrimSpace(line)
+
+        // Skip empty lines and comments
+        if line == "" || strings.HasPrefix(line, "#") {
+            continue
+        }
+
+        // Parse section [section]
+        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+            currentSection = strings.Trim(line, "[]")
+            continue
+        }
+
+        // Parse key = value
+        parts := strings.SplitN(line, "=", 2)
+        if len(parts) != 2 {
+            continue // or return error
+        }
+
+        key := strings.TrimSpace(parts[0])
+        value := strings.TrimSpace(parts[1])
+
+        // Add section prefix
+        if currentSection != "" {
+            key = currentSection + "_" + key
+        }
+
+        // Remove quotes
+        value = strings.Trim(value, "\"'")
+
+        // Convert to uppercase
+        key = strings.ToUpper(key)
+
+        // Validate key
+        if err := p.validator.ValidateKey(key); err != nil {
+            _ = p.auditor.LogError(env.ActionParse, key, err.Error())
+            return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
+        }
+
+        result[key] = value
+    }
+
+    // Check variable count
+    if len(result) > p.cfg.MaxVariables {
+        return nil, fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
+    }
+
+    _ = p.auditor.LogWithDuration(env.ActionParse, "", "parsed TOML: "+filename, true, time.Since(start))
+    return result, nil
+}
+```
+
+### INI Parser Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "io"
+    "strings"
+
+    "github.com/cybergodev/env"
+)
+
+// INIParser parses INI format
+type INIParser struct {
+    cfg       env.Config
+    validator env.Validator
+    auditor   env.FullAuditLogger
+}
+
+func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
+    if err != nil {
+        return nil, err
+    }
+
+    result := make(map[string]string)
+    lines := strings.Split(string(content), "\n")
+
+    var currentSection string
+
+    for lineNum, line := range lines {
+        line = strings.TrimSpace(line)
+
+        // Skip empty lines and comments
+        if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+            continue
+        }
+
+        // Section
+        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+            currentSection = strings.Trim(line, "[]")
+            continue
+        }
+
+        // Key=Value
+        if idx := strings.Index(line, "="); idx > 0 {
+            key := strings.TrimSpace(line[:idx])
+            value := strings.TrimSpace(line[idx+1:])
+
+            if currentSection != "" {
+                key = currentSection + "_" + key
+            }
+
+            // Validate
+            if err := p.validator.ValidateKey(strings.ToUpper(key)); err != nil {
+                return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
+            }
+
+            result[strings.ToUpper(key)] = value
+        }
+    }
+
+    return result, nil
+}
+```
+
+---
+
+## Registering a Parser
+
+### ParserFactory Type
+
+```go
+type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error)
+```
+
+The factory function receives Config and ComponentFactory, returning a parser instance.
+
+**Parameter descriptions:**
+- `cfg` - Configuration object containing all limits and security settings
+- `factory` - Component factory providing access to Validator, Auditor, etc.
+
+### RegisterParser Function
+
+```go
+func RegisterParser(format FileFormat, factory ParserFactory) error
+```
+
+Registers a custom format parser.
+
+**Parameters:**
+- `format` - File format constant (recommend using values of 100+ to avoid conflicts)
+- `factory` - Parser factory function
+
+**Returns:**
+- `error` - Error if registration fails
+
+**Error cases:**
+- Built-in formats (FormatEnv, FormatJSON, FormatYAML) cannot be overridden
+- Format already registered
+
+**Notes:**
+- Must register before calling `env.New()`
+- Recommend registering in an `init()` function
+
+### Using ComponentFactory
+
+Get validators and auditors through ComponentFactory:
+
+```go
+type SecureParser struct {
+    cfg       env.Config
+    validator env.Validator
+    auditor   env.FullAuditLogger
+}
+
+func NewSecureParser(cfg env.Config, factory *env.ComponentFactory) (env.EnvParser, error) {
+    return &SecureParser{
+        cfg:       cfg,
+        validator: factory.Validator(),
+        auditor:   factory.Auditor(),
+    }, nil
+}
+
+func (p *SecureParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+    result := make(map[string]string)
+
+    // ... parsing logic
+
+    // Use validator to validate keys
+    for key := range result {
+        if err := p.validator.ValidateKey(key); err != nil {
+            _ = p.auditor.Log(env.ActionParse, key, "invalid key", false)
+            return nil, err
+        }
+    }
+
+    _ = p.auditor.Log(env.ActionParse, "", "parse completed", true)
+    return result, nil
+}
+```
+
+### Complete Registration Example
+
+```go
+package main
+
+import (
+    "github.com/cybergodev/env"
+)
+
+// 1. Define format constants (recommend using values of 100+)
+const (
+    FormatTOML env.FileFormat = 100
+    FormatINI  env.FileFormat = 101
+    FormatXML  env.FileFormat = 102
+)
+
+// 2. Register in init
+func init() {
+    // Register TOML parser
+    err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &TOMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err) // Format already registered or other error
+    }
+
+    // Register INI parser
+    env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &INIParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+}
+
+func main() {
+    // Registration must be done before New (already done in init)
+
+    cfg := env.DefaultConfig()
+    loader, _ := env.New(cfg)
+    defer loader.Close()
+
+    // Now .toml files can be loaded
+    loader.LoadFiles("config.toml")
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Respect Configuration Limits
+
+```go
+func (p *CustomParser) checkLimits(result map[string]string) error {
+    // Check variable count
+    if len(result) > p.cfg.MaxVariables {
+        return fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
+    }
+
+    // Check key and value lengths
+    for key, value := range result {
+        if len(key) > p.cfg.MaxKeyLength {
+            return fmt.Errorf("key too long: %s", key)
+        }
+        if len(value) > p.cfg.MaxValueLength {
+            return fmt.Errorf("value too long for: %s", key)
+        }
+    }
+
+    return nil
+}
+```
+
+### 2. Use the Validator
+
+```go
+func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+    result := make(map[string]string)
+
+    // ... parsing logic
+
+    // Validate all keys
+    for key := range result {
+        if err := p.validator.ValidateKey(key); err != nil {
+            return nil, fmt.Errorf("invalid key %q: %w", key, err)
+        }
+    }
+
+    // Validate all values (if enabled)
+    if p.cfg.ValidateValues {
+        for key, value := range result {
+            if err := p.validator.ValidateValue(value); err != nil {
+                return nil, fmt.Errorf("invalid value for %q: %w", key, err)
+            }
+        }
+    }
+
+    return result, nil
+}
+```
+
+### 3. Provide Meaningful Errors
+
+```go
+type CustomParseError struct {
+    File    string
+    Line    int
+    Content string
+    Err     error
+}
+
+func (e *CustomParseError) Error() string {
+    if e.Line > 0 {
+        return fmt.Sprintf("%s:%d: %s: %v", e.File, e.Line, e.Content, e.Err)
+    }
+    return fmt.Sprintf("%s: %s: %v", e.File, e.Content, e.Err)
+}
+
+func (e *CustomParseError) Unwrap() error {
+    return e.Err
+}
+```
+
+### 4. Record Audit Logs
+
+```go
+func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+    start := time.Now()
+    result := make(map[string]string)
+
+    // ... parsing logic
+
+    // Record success
+    _ = p.auditor.LogWithDuration(
+        env.ActionParse,
+        "",
+        fmt.Sprintf("parsed %d variables", len(result)),
+        true,
+        time.Since(start),
+    )
+
+    return result, nil
+}
+```
+
+---
+
+## Complete Example
+
+### Implementing an XML Parser
+
+```go
+package main
+
+import (
+    "encoding/xml"
+    "fmt"
+    "io"
+    "strings"
+    "time"
+
+    "github.com/cybergodev/env"
+)
+
+// XML configuration structure
+type XMLConfig struct {
+    XMLName xml.Name   `xml:"config"`
+    Entries []XMLEntry `xml:"entry"`
+}
+
+type XMLEntry struct {
+    Key   string `xml:"key,attr"`
+    Value string `xml:",chardata"`
+}
+
+// XMLParser parses XML format
+type XMLParser struct {
+    cfg       env.Config
+    validator env.Validator
+    auditor   env.FullAuditLogger
+}
+
+func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+    start := time.Now()
+
+    // Limit read size
+    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
+    if err != nil {
+        return nil, err
+    }
+    if int64(len(content)) > p.cfg.MaxFileSize {
+        _ = p.auditor.LogError(env.ActionParse, "", "file exceeds size limit")
+        return nil, fmt.Errorf("file exceeds size limit: %d > %d", len(content), p.cfg.MaxFileSize)
+    }
+
+    var xmlConfig XMLConfig
+    if err := xml.Unmarshal(content, &xmlConfig); err != nil {
+        _ = p.auditor.LogError(env.ActionParse, "", "xml parse error: "+err.Error())
+        return nil, fmt.Errorf("xml parse error: %w", err)
+    }
+
+    result := make(map[string]string)
+
+    for _, entry := range xmlConfig.Entries {
+        key := strings.ToUpper(entry.Key)
+
+        // Validate key length
+        if len(key) > p.cfg.MaxKeyLength {
+            return nil, fmt.Errorf("key too long: %s", key)
+        }
+
+        // Validate key format
+        if err := p.validator.ValidateKey(key); err != nil {
+            return nil, fmt.Errorf("invalid key %q: %w", key, err)
+        }
+
+        // Validate value length
+        if len(entry.Value) > p.cfg.MaxValueLength {
+            return nil, fmt.Errorf("value too long for key: %s", key)
+        }
+
+        result[key] = entry.Value
+    }
+
+    // Check variable count
+    if len(result) > p.cfg.MaxVariables {
+        return nil, fmt.Errorf("too many variables: %d > %d", len(result), p.cfg.MaxVariables)
+    }
+
+    _ = p.auditor.LogWithDuration(env.ActionParse, "", "parsed XML: "+filename, true, time.Since(start))
+    return result, nil
+}
+
+// Define XML format constant
+const FormatXML env.FileFormat = 102
+
+func init() {
+    // Register XML parser
+    env.RegisterParser(FormatXML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &XMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+}
+
+func main() {
+    cfg := env.DefaultConfig()
+    loader, _ := env.New(cfg)
+    defer loader.Close()
+
+    // Load XML configuration
+    /*
+    <?xml version="1.0"?>
+    <config>
+        <entry key="DATABASE_HOST">localhost</entry>
+        <entry key="DATABASE_PORT">5432</entry>
+    </config>
+    */
+    loader.LoadFiles("config.xml")
+
+    fmt.Println(loader.GetString("DATABASE_HOST"))  // localhost
+    fmt.Println(loader.GetInt("DATABASE_PORT"))     // 5432
+}
+```
+
+---
+
+## Related Documentation
+
+- [ComponentFactory API](/en/env/api-reference/factory) - ComponentFactory and RegisterParser
+- [Interface Definitions](/en/env/api-reference/interfaces) - EnvParser interface definition
+- [Config API](/en/env/api-reference/config) - Configuration options
+- [Multi-format Configuration](/en/env/guides/multi-format) - JSON/YAML format details

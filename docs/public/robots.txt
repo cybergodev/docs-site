@@ -1,0 +1,10 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://www.cybergo.dev/sitemap.xml
+
+# Disallow common non-content paths
+Disallow: /node_modules/
+Disallow: /.vitepress/

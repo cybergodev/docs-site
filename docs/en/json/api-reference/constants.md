@@ -1,0 +1,295 @@
+---
+title: Constants and Errors - CyberGo JSON | API Reference
+description: "CyberGo JSON constants and error definitions complete reference: including DefaultMaxJSONSize/DefaultMaxNestingDepth default limit constants, ErrPathNotFound/ErrTypeMismatch error variables, and MergeMode merge mode enumeration, providing configuration presets and error handling support."
+---
+
+# Constants and Errors
+
+## Error Variables
+
+### Primary Errors
+
+```go
+var (
+    // Basic errors
+    ErrInvalidJSON     = errors.New("invalid JSON format")
+    ErrPathNotFound    = errors.New("path not found")
+    ErrTypeMismatch    = errors.New("type mismatch")
+    ErrInvalidPath     = errors.New("invalid path format")
+    ErrProcessorClosed = errors.New("processor is closed")
+
+    // Limit errors
+    ErrSizeLimit        = errors.New("size limit exceeded")
+    ErrDepthLimit       = errors.New("depth limit exceeded")
+    ErrConcurrencyLimit = errors.New("concurrency limit exceeded")
+
+    // Security and validation errors
+    ErrSecurityViolation = errors.New("security violation detected")
+    ErrUnsupportedPath   = errors.New("unsupported path operation")
+
+    // Resource and performance errors
+    ErrOperationTimeout  = errors.New("operation timeout")
+    ErrResourceExhausted = errors.New("system resources exhausted")
+)
+```
+
+### Error Checking
+
+Use `errors.Is` to check error types:
+
+```go
+val, err := json.Get(data, "user.name")
+if err != nil {
+    if errors.Is(err, json.ErrPathNotFound) {
+        // Path not found
+        fmt.Println("Path not found")
+    } else if errors.Is(err, json.ErrTypeMismatch) {
+        // Type mismatch
+        fmt.Println("Type mismatch")
+    } else if errors.Is(err, json.ErrInvalidJSON) {
+        // JSON format error
+        fmt.Println("Invalid JSON")
+    }
+}
+```
+
+## JsonsError Type
+
+### Struct Definition
+
+```go
+type JsonsError struct {
+    Op      string `json:"op"`      // Operation name
+    Path    string `json:"path"`    // Path where the error occurred
+    Message string `json:"message"` // Human-readable error message
+    Err     error  `json:"err"`     // Underlying error
+}
+```
+
+### Methods
+
+```go
+func (e *JsonsError) Error() string
+func (e *JsonsError) Unwrap() error
+func (e *JsonsError) Is(target error) bool
+```
+
+### Usage Example
+
+```go
+val, err := json.Get(data, "complex.path[0]")
+if err != nil {
+    var jsonErr *json.JsonsError
+    if errors.As(err, &jsonErr) {
+        fmt.Printf("Operation: %s\n", jsonErr.Op)
+        fmt.Printf("Path: %s\n", jsonErr.Path)
+        fmt.Printf("Message: %s\n", jsonErr.Message)
+        if jsonErr.Err != nil {
+            fmt.Printf("Cause: %v\n", jsonErr.Err)
+        }
+    }
+}
+```
+
+## Configuration Presets
+
+### Default Value Constants
+
+```go
+const (
+    // Size limits
+    DefaultMaxJSONSize     = 100 * 1024 * 1024  // 100MB
+    DefaultMaxNestingDepth = 200
+    DefaultMaxPathDepth    = 50
+    DefaultMaxConcurrency  = 50
+
+    // Security limits
+    DefaultMaxSecuritySize   = 10 * 1024 * 1024  // 10MB
+    DefaultMaxObjectKeys     = 100000
+    DefaultMaxArrayElements  = 100000
+    DefaultMaxBatchSize      = 2000
+    DefaultParallelThreshold = 10
+
+    // Cache
+    DefaultCacheTTL = 5 * time.Minute
+)
+```
+
+## Configuration Preset Functions
+
+### DefaultConfig
+
+Signature: `func DefaultConfig() Config`
+
+Returns the default configuration.
+
+```go
+cfg := json.DefaultConfig()
+processor, err := json.New(cfg)
+if err != nil {
+    panic(err)
+}
+defer processor.Close()
+```
+
+### SecurityConfig
+
+Signature: `func SecurityConfig() Config`
+
+Returns a security configuration suitable for processing untrusted input.
+
+```go
+// Recommended for:
+// - Public APIs and web services
+// - User-submitted data
+// - External webhooks
+// - Authentication endpoints
+// - Financial data processing
+cfg := json.SecurityConfig()
+processor, err := json.New(cfg)
+if err != nil {
+    panic(err)
+}
+defer processor.Close()
+```
+
+**Security Configuration Features:**
+
+- Full security scanning
+- Strict mode
+- Conservative limit values
+- Caching enabled
+
+### PrettyConfig
+
+Signature: `func PrettyConfig() Config`
+
+Returns a formatted output configuration.
+
+```go
+result, err := json.EncodeWithConfig(data, json.PrettyConfig())
+```
+
+## Merge Mode Constants
+
+```go
+// MergeMode is the merge mode type (exported from internal package)
+type MergeMode = internal.MergeMode
+
+const (
+    // MergeUnion - Union merge (default)
+    // Objects: merge all keys, conflicting values take the override value
+    // Arrays: merge all elements and deduplicate
+    MergeUnion = internal.MergeUnion
+
+    // MergeIntersection - Intersection merge
+    // Objects: only keep common keys
+    // Arrays: only keep common elements
+    MergeIntersection = internal.MergeIntersection
+
+    // MergeDifference - Difference merge
+    // Objects: only keep keys present in base but not in override
+    // Arrays: only keep elements present in base but not in override
+    MergeDifference = internal.MergeDifference
+)
+```
+
+## Path Segment Type
+
+`PathSegment` is a path segment type exported from the `internal` package, used to represent parsed path components.
+
+```go
+type PathSegment = internal.PathSegment
+```
+
+### PathSegment Structure
+
+```go
+type PathSegment struct {
+    Type  PathSegmentType  // Segment type
+
+    // Different fields based on type
+    Key   string // Property name (Property/Extract type)
+    Index int    // Array index (ArrayIndex type) or slice start
+    End   int    // Slice end (ArraySlice type)
+    Step  int    // Slice step (ArraySlice type)
+    Flags PathSegmentFlags // Segment flags
+}
+```
+
+### PathSegment Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `HasStart` | `func (s *PathSegment) HasStart() bool` | Whether the slice has a start value |
+| `HasEnd` | `func (s *PathSegment) HasEnd() bool` | Whether the slice has an end value |
+| `HasStep` | `func (s *PathSegment) HasStep() bool` | Whether the slice has a step value |
+| `IsNegativeIndex` | `func (s *PathSegment) IsNegativeIndex() bool` | Whether it is a negative index |
+| `IsWildcardSegment` | `func (s *PathSegment) IsWildcardSegment() bool` | Whether it is a wildcard |
+| `IsFlatExtract` | `func (s *PathSegment) IsFlatExtract() bool` | Whether it is a flat pattern |
+
+## Security Pattern Level
+
+```go
+type PatternLevel int
+
+const (
+    // PatternLevelCritical - Critical risk, always blocks operation
+    PatternLevelCritical PatternLevel = iota
+
+    // PatternLevelWarning - Warning level, blocks in strict mode
+    PatternLevelWarning
+
+    // PatternLevelInfo - Info level, only logs
+    PatternLevelInfo
+)
+```
+
+### DangerousPattern Structure
+
+```go
+type DangerousPattern struct {
+    Pattern string       // Substring to detect in input
+    Name    string       // Human-readable security risk description
+    Level   PatternLevel // Handling level
+}
+```
+
+## Error Handling Best Practices
+
+### Use errors.Is to Check Types
+
+```go
+result, err := json.Get(data, path)
+if errors.Is(err, json.ErrPathNotFound) {
+    return defaultValue
+}
+if errors.Is(err, json.ErrTypeMismatch) {
+    return defaultValue
+}
+```
+
+### Use errors.As to Get Details
+
+```go
+var jsonErr *json.JsonsError
+if errors.As(err, &jsonErr) {
+    log.Printf("Operation %s failed at path %s: %s",
+        jsonErr.Op, jsonErr.Path, jsonErr.Message)
+}
+```
+
+### Error Wrapping
+
+```go
+val := json.GetString(data, path)
+if val == "" {
+    return fmt.Errorf("getting config %s returned empty value", path)
+}
+```
+
+## See Also
+
+- [Error Handling](../advanced/error-handling) - Advanced error handling guide
+- [Config](./config) - Configuration options
+- [Security Overview](../security/) - Security best practices

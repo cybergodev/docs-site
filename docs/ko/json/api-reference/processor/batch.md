@@ -1,0 +1,128 @@
+---
+title: Processor 배치 작업 - CyberGo JSON | API 참조
+description: "CyberGo JSON Processor 배치 작업 메서드 완전 참조: ProcessBatch 여러 작업 배치 처리, BatchOperation 작업 정의(get/set/delete 타입), BatchResult 결과 타입, 오류 처리 전략 및 ContinueOnError 설정을 지원하며 트랜잭션 배치 작업과 성능 최적화를 지원합니다."
+---
+
+# 배치 작업 메서드
+
+Processor는 배치 작업 기능을 제공하여 여러 JSON 작업을 한 번에 처리합니다.
+
+## ProcessBatch
+
+시그니처: `func (p *Processor) ProcessBatch(operations []BatchOperation, cfg ...Config) ([]BatchResult, error)`
+
+여러 JSON 작업을 배치로 처리합니다.
+
+```go
+operations := []json.BatchOperation{
+    {Type: "get", JSONStr: data, Path: "user.name", ID: "1"},
+    {Type: "set", JSONStr: data, Path: "user.age", Value: 30, ID: "2"},
+    {Type: "delete", JSONStr: data, Path: "user.temporary", ID: "3"},
+}
+
+results, err := processor.ProcessBatch(operations)
+if err != nil {
+    panic(err)
+}
+
+for _, result := range results {
+    fmt.Printf("ID: %s, 결과: %v\n", result.ID, result.Result)
+}
+```
+
+## BatchOperation 구조체
+
+```go
+type BatchOperation struct {
+    Type    string  // 작업 타입: "get", "set", "delete", "validate"
+    JSONStr string  // JSON 문자열
+    Path    string  // 대상 경로
+    Value   any     // Set 작업의 값
+    ID      string  // 작업 식별자
+}
+```
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `Type` | `string` | 작업 타입: `get`, `set`, `delete`, `validate` |
+| `JSONStr` | `string` | 작업할 JSON 문자열 |
+| `Path` | `string` | 대상 경로 |
+| `Value` | `any` | Set 작업 시 설정할 값 |
+| `ID` | `string` | 결과 매칭에 사용되는 작업 식별자 |
+
+## BatchResult 구조체
+
+```go
+type BatchResult struct {
+    ID     string  // 해당 작업의 ID
+    Result any     // 작업 결과
+    Error  error   // 오류 (있는 경우)
+}
+```
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `ID` | `string` | BatchOperation의 ID |
+| `Result` | `any` | 작업 결과 (Get은 값 반환, Set/Delete는 새 JSON 반환) |
+| `Error` | `error` | 개별 작업의 오류 (다른 작업에 영향 없음) |
+
+## 사용 예제
+
+### 배치 읽기
+
+```go
+operations := []json.BatchOperation{
+    {Type: "get", JSONStr: data, Path: "user.name", ID: "name"},
+    {Type: "get", JSONStr: data, Path: "user.email", ID: "email"},
+    {Type: "get", JSONStr: data, Path: "user.age", ID: "age"},
+}
+
+results, _ := processor.ProcessBatch(operations)
+for _, r := range results {
+    fmt.Printf("%s: %v\n", r.ID, r.Result)
+}
+```
+
+### 배치 수정
+
+```go
+operations := []json.BatchOperation{
+    {Type: "set", JSONStr: data, Path: "status", Value: "active", ID: "1"},
+    {Type: "set", JSONStr: data, Path: "updated_at", Value: time.Now().Unix(), ID: "2"},
+    {Type: "delete", JSONStr: data, Path: "temp_field", ID: "3"},
+}
+
+results, _ := processor.ProcessBatch(operations)
+```
+
+### 혼합 작업
+
+```go
+operations := []json.BatchOperation{
+    {Type: "validate", JSONStr: data, ID: "check"},
+    {Type: "get", JSONStr: data, Path: "user.name", ID: "name"},
+    {Type: "set", JSONStr: data, Path: "processed", Value: true, ID: "mark"},
+}
+
+results, _ := processor.ProcessBatch(operations)
+
+// 검증 결과 확인
+for _, r := range results {
+    if r.ID == "check" {
+        if m, ok := r.Result.(map[string]any); ok {
+            fmt.Printf("검증 결과: %v\n", m["valid"])
+        }
+    }
+}
+```
+
+## 주의사항
+
+1. 각 작업은 독립적으로 실행되며, 하나의 실패가 다른 작업에 영향을 주지 않습니다
+2. 결과 순서는 작업 순서와 일치합니다
+3. ID로 작업과 결과를 매칭합니다
+
+## 관련 문서
+
+- [경로 조회](./query) - Get 계열 메서드
+- [데이터 수정](./modify) - Set/Delete 메서드

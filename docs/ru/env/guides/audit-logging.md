@@ -1,0 +1,375 @@
+---
+title: Аудитный журнал - CyberGo env | Конфигурация безопасности аудита
+description: CyberGo env библиотека полное руководство по конфигурации и использованию аудитного журнала, включая встроенные обработчики JSON, стандартного логгера и Channel, а также разработку пользовательского обработчика AuditHandler, запись всех операций с переменными окружения для проверок безопасности и устранения неполадок.
+---
+
+# Аудитный журнал
+
+Функция аудитного журнала записывает все операции с переменными окружения для проведения аудита безопасности, проверок соответствия и устранения неполадок.
+
+## Включение аудита
+
+### Включение через конфигурацию
+
+```go
+cfg := env.ProductionConfig()
+cfg.AuditEnabled = true
+cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+
+loader, _ := env.New(cfg)
+```
+
+### Предустановки конфигурации
+
+| Предустановка | Состояние аудита |
+|---------------|-----------------|
+| `DefaultConfig()` | Отключён |
+| `DevelopmentConfig()` | Отключён |
+| `TestingConfig()` | Отключён |
+| `ProductionConfig()` | Включён |
+
+---
+
+## Обработчики аудита
+
+### JSONAuditHandler
+
+Выводит журналы в формате JSON:
+
+```go
+import (
+    "os"
+    "github.com/cybergodev/env"
+)
+
+cfg := env.ProductionConfig()
+cfg.AuditEnabled = true
+cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+```
+
+**Пример вывода:**
+
+```json
+{"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration":1234567}
+{"timestamp":"2024-01-15T10:30:01Z","action":"get","key":"API_KEY","success":true,"masked":true}
+{"timestamp":"2024-01-15T10:30:02Z","action":"set","key":"CUSTOM_VAR","success":true}
+```
+
+---
+
+### LogAuditHandler
+
+Выводит с использованием стандартного пакета log:
+
+```go
+import (
+    "log"
+    "os"
+    "github.com/cybergodev/env"
+)
+
+logger := log.New(os.Stderr, "[AUDIT] ", log.LstdFlags)
+cfg.AuditHandler = env.NewLogAuditHandler(logger)
+```
+
+**Пример вывода:**
+
+```text
+[AUDIT] 2024/01/15 10:30:00 load .env (1.23ms)
+[AUDIT] 2024/01/15 10:30:01 get API_KEY (masked)
+[AUDIT] 2024/01/15 10:30:02 set CUSTOM_VAR
+```
+
+---
+
+### ChannelAuditHandler
+
+Отправляет в канал для асинхронной обработки:
+
+```go
+ch := make(chan env.AuditEvent, 100)
+cfg.AuditHandler = env.NewChannelAuditHandler(ch)
+
+// Асинхронная обработка событий аудита
+go func() {
+    for event := range ch {
+        processAuditEvent(event)
+    }
+}()
+```
+
+**Сценарии использования:**
+- Отправка в удалённый сервис журналов
+- Запись в базу данных
+- Мониторинг в реальном времени с оповещениями
+
+---
+
+### NopAuditHandler
+
+Обработчик без операций, отбрасывающий все события:
+
+```go
+cfg.AuditHandler = env.NewNopAuditHandler()
+```
+
+**Сценарии использования:**
+- Временное отключение аудита
+- Тестовая среда
+
+---
+
+## События аудита
+
+### Структура AuditEvent
+
+```go
+type AuditEvent struct {
+    Timestamp time.Time   // Временная метка
+    Action    AuditAction // Тип действия
+    Key       string      // Имя ключа
+    File      string      // Имя файла
+    Reason    string      // Причина
+    Success   bool        // Успешность
+    Masked    bool        // Маскировано ли
+    Details   string      // Подробности
+    Duration  int64       // Длительность (наносекунды)
+}
+```
+
+### Типы действий AuditAction
+
+| Константа | Значение | Описание |
+|-----------|----------|----------|
+| `ActionLoad` | `load` | Загрузка файла |
+| `ActionParse` | `parse` | Операция парсинга |
+| `ActionGet` | `get` | Чтение переменной |
+| `ActionSet` | `set` | Установка переменной |
+| `ActionDelete` | `delete` | Удаление переменной |
+| `ActionValidate` | `validate` | Операция валидации |
+| `ActionExpand` | `expand` | Подстановка переменной |
+| `ActionSecurity` | `security` | Событие безопасности |
+| `ActionError` | `error` | Событие ошибки |
+| `ActionFileAccess` | `file_access` | Доступ к файлу |
+
+---
+
+## Пользовательский обработчик
+
+### Реализация интерфейса FullAuditLogger
+
+`FullAuditLogger` - это полный интерфейс аудитного журнала, расширяющий минимальный интерфейс `AuditLogger` (содержит только метод `LogError`):
+
+```go
+type FullAuditLogger interface {
+    AuditLogger  // Встраивает минимальный интерфейс (LogError)
+    Log(action AuditAction, key, reason string, success bool) error
+    LogWithFile(action AuditAction, key, file, reason string, success bool) error
+    LogWithDuration(action AuditAction, key, reason string, success bool, duration time.Duration) error
+    Close() error
+}
+```
+
+### Пример: обработчик аудита с базой данных
+
+```go
+package main
+
+import (
+    "database/sql"
+    "time"
+    "github.com/cybergodev/env"
+)
+
+type DatabaseAuditHandler struct {
+    db *sql.DB
+}
+
+func NewDatabaseAuditHandler(db *sql.DB) *DatabaseAuditHandler {
+    return &DatabaseAuditHandler{db: db}
+}
+
+func (h *DatabaseAuditHandler) Log(action env.AuditAction, key, reason string, success bool) error {
+    _, err := h.db.Exec(`
+        INSERT INTO audit_log (timestamp, action, key, reason, success)
+        VALUES (?, ?, ?, ?, ?)
+    `, time.Now(), string(action), key, reason, success)
+    return err
+}
+
+func (h *DatabaseAuditHandler) LogError(action env.AuditAction, key, errMsg string) error {
+    return h.Log(action, key, errMsg, false)
+}
+
+func (h *DatabaseAuditHandler) LogWithFile(action env.AuditAction, key, file, reason string, success bool) error {
+    _, err := h.db.Exec(`
+        INSERT INTO audit_log (timestamp, action, key, file, reason, success)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `, time.Now(), string(action), key, file, reason, success)
+    return err
+}
+
+func (h *DatabaseAuditHandler) LogWithDuration(action env.AuditAction, key, reason string, success bool, duration time.Duration) error {
+    _, err := h.db.Exec(`
+        INSERT INTO audit_log (timestamp, action, key, reason, success, duration_ms)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `, time.Now(), string(action), key, reason, success, duration.Milliseconds())
+    return err
+}
+
+func (h *DatabaseAuditHandler) Close() error {
+    return nil
+}
+```
+
+---
+
+## Полный пример
+
+### Конфигурация продакшена
+
+```go
+package main
+
+import (
+    "log"
+    "os"
+    "github.com/cybergodev/env"
+)
+
+func main() {
+    // Создать файл аудитного журнала
+    auditFile, err := os.OpenFile("/var/log/app/env-audit.log",
+        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer auditFile.Close()
+
+    // Конфигурация
+    cfg := env.ProductionConfig()
+    cfg.AuditEnabled = true
+    cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
+    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+
+    // Создать загрузчик
+    loader, err := env.New(cfg)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer loader.Close()
+
+    // Загрузить конфигурацию
+    err = loader.LoadFiles(".env")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Валидация
+    err = loader.Validate()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Использовать конфигурацию
+    log.Println("Конфигурация успешно загружена")
+}
+```
+
+### Асинхронная обработка аудита
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "log"
+    "os"
+    "github.com/cybergodev/env"
+)
+
+func main() {
+    // Создать канал событий аудита
+    auditChan := make(chan env.AuditEvent, 1000)
+
+    // Запустить асинхронный обработчик
+    go processAuditEvents(auditChan)
+
+    // Конфигурация
+    cfg := env.ProductionConfig()
+    cfg.AuditEnabled = true
+    cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
+
+    loader, _ := env.New(cfg)
+    defer loader.Close()
+
+    // Обычное использование...
+}
+
+func processAuditEvents(ch chan env.AuditEvent) {
+    file, _ := os.OpenFile("/var/log/app/audit.log",
+        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+    defer file.Close()
+
+    encoder := json.NewEncoder(file)
+
+    for event := range ch {
+        // Можно добавить фильтрацию, агрегацию и другую логику
+        if event.Action == env.ActionError {
+            log.Printf("Audit error: %+v", event)
+        }
+
+        encoder.Encode(event)
+    }
+}
+```
+
+---
+
+## Замечания по безопасности
+
+### Автоматическое маскирование конфиденциальных значений
+
+Аудитный журнал автоматически маскирует значения конфиденциальных ключей:
+
+```go
+// При получении конфиденциального значения автоматическое маскирование
+secret := loader.GetSecure("API_KEY")
+// Запись аудита: {"action":"get","key":"API_KEY","masked":true}
+```
+
+### Права доступа к журналу аудита
+
+```bash
+# Установить права доступа к файлу аудитного журнала
+chmod 600 /var/log/app/env-audit.log
+
+# Убедиться, что только пользователь приложения имеет доступ на чтение/запись
+chown app:app /var/log/app/env-audit.log
+```
+
+### Ротация журналов
+
+Рекомендуется использовать logrotate для управления журналами аудита:
+
+```bash
+# /etc/logrotate.d/app-env-audit
+/var/log/app/env-audit.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0600 app app
+}
+```
+
+---
+
+## Связанная документация
+
+- [Обзор безопасности](/ru/env/security/) - Архитектура безопасности и основные возможности
+- [Чеклист для продакшена](/ru/env/security/production-checklist) - Проверка конфигурации аудита
+- [Определения интерфейсов](/ru/env/api-reference/interfaces) - Интерфейс AuditLogger
+- [Фабрика компонентов](/ru/env/api-reference/factory) - Фабрики обработчиков аудита

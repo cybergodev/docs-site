@@ -1,0 +1,894 @@
+---
+title: ComponentFactory API - CyberGo env | Component Factory
+description: "CyberGo env ComponentFactory API: audit handler registration, file system backends, parser configuration, and factory methods."
+---
+
+# ComponentFactory API
+
+`ComponentFactory` creates and manages components shared between Loader and Parser, providing clear lifecycle management.
+
+## Type Definition
+
+```go
+type ComponentFactory struct {
+    // Contains private fields
+}
+```
+
+**Core responsibilities:**
+- Create shared validators, auditors, and variable expanders
+- Manage component lifecycle
+- Support custom parser access to internal components
+
+**Thread Safety:** All ComponentFactory methods are thread-safe.
+
+---
+
+## Methods
+
+### Validator
+
+```go
+func (f *ComponentFactory) Validator() Validator
+```
+
+Returns the validator component for key name and value validation.
+
+```go
+// Use in a custom parser
+validator := factory.Validator()
+
+if err := validator.ValidateKey("MY_KEY"); err != nil {
+    // Invalid key
+}
+
+if err := validator.ValidateValue("some value"); err != nil {
+    // Value contains illegal content (e.g., null bytes, control characters)
+}
+```
+
+---
+
+### Auditor
+
+```go
+func (f *ComponentFactory) Auditor() FullAuditLogger
+```
+
+Returns the audit logger component with full audit logging capabilities.
+
+```go
+auditor := factory.Auditor()
+_ = auditor.Log(env.ActionSet, "KEY", "value set", true)
+_ = auditor.LogError(env.ActionSet, "KEY", "validation failed")
+_ = auditor.LogWithFile(env.ActionLoad, "KEY", ".env", "loaded", true)
+_ = auditor.LogWithDuration(env.ActionParse, "", "parsed", true, time.Since(start))
+```
+
+---
+
+### Expander
+
+```go
+func (f *ComponentFactory) Expander() VariableExpander
+```
+
+Returns the variable expander component for `${VAR}` syntax expansion.
+
+```go
+expander := factory.Expander()
+expanded, err := expander.Expand("${BASE_URL}/api")
+```
+
+---
+
+### Close
+
+```go
+func (f *ComponentFactory) Close() error
+```
+
+Releases resources held by the factory. After closing, the factory and components created through it should not be used.
+
+**Behavior:**
+- Safe to close, multiple calls return nil
+- Releases auditor resources
+- Uses atomic operations for thread safety
+
+```go
+// Usually managed automatically by Loader
+loader, _ := env.New(cfg)
+defer loader.Close()  // Automatically closes ComponentFactory
+```
+
+---
+
+### IsClosed
+
+```go
+func (f *ComponentFactory) IsClosed() bool
+```
+
+Checks if the factory is closed.
+
+```go
+if factory.IsClosed() {
+    // Factory is closed, cannot use
+}
+```
+
+---
+
+## Creation
+
+### Automatic Creation (Recommended)
+
+ComponentFactory is automatically created and managed when a Loader is created:
+
+```go
+cfg := env.DefaultConfig()
+loader, _ := env.New(cfg)
+// Loader internally creates ComponentFactory
+defer loader.Close()  // Automatically closes factory
+```
+
+### Using in Custom Parsers
+
+When registering a custom parser, use ComponentFactory to get validators and auditors:
+
+```go
+type CustomParser struct {
+    cfg       env.Config
+    validator env.Validator
+    auditor   env.FullAuditLogger
+}
+
+func newCustomParser(cfg env.Config, factory *env.ComponentFactory) *CustomParser {
+    return &CustomParser{
+        cfg:       cfg,
+        validator: factory.Validator(),
+        auditor:   factory.Auditor(),
+    }
+}
+
+// Define custom format constant (recommend using values of 100+ to avoid conflicts)
+const FormatCustom env.FileFormat = 100
+
+// Register parser
+env.RegisterParser(FormatCustom, func(cfg env.Config, factory *env.ComponentFactory) (env.EnvParser, error) {
+    return newCustomParser(cfg, factory), nil
+})
+```
+
+---
+
+## Lifecycle Management
+
+```text
+Config created
+     ↓
+env.New(cfg)
+     ↓
+ComponentFactory created automatically
+     ↓
+    ┌───────┼───────┐
+    ↓       ↓       ↓
+Validator  Auditor  Expander
+    ↓       ↓       ↓
+    └───────┼───────┘
+            ↓
+      Loader/Parser
+            ↓
+      Close() released
+```
+
+::: warning Note
+- Each Loader typically owns its own ComponentFactory
+- After calling Close(), all components created through the factory should not be used
+- The factory is thread-safe for concurrent access
+:::
+
+---
+
+## Audit Handler Factories
+
+### NewJSONAuditHandler
+
+```go
+func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
+```
+
+Creates a JSON format audit handler that outputs structured logs.
+
+**Parameters:**
+- `w` - Output destination (e.g., `os.Stdout`, file)
+
+```go
+cfg := env.ProductionConfig()
+cfg.AuditEnabled = true
+cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+```
+
+**Output example:**
+```json
+{"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration":1234567}
+```
+
+---
+
+### NewLogAuditHandler
+
+```go
+func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
+```
+
+Creates a standard log format audit handler.
+
+**Parameters:**
+- `logger` - Standard log.Logger instance
+
+```go
+import "log"
+
+logger := log.New(os.Stderr, "[AUDIT] ", log.LstdFlags)
+cfg.AuditHandler = env.NewLogAuditHandler(logger)
+```
+
+**Output example:**
+```text
+[AUDIT] 2024/01/15 10:30:00 load .env success (1.23ms)
+```
+
+---
+
+### NewChannelAuditHandler
+
+```go
+func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
+```
+
+Creates a channel audit handler for asynchronous audit event processing.
+
+**Parameters:**
+- `ch` - Audit event channel
+
+```go
+ch := make(chan env.AuditEvent, 100)
+cfg.AuditHandler = env.NewChannelAuditHandler(ch)
+
+// Process audit events asynchronously
+go func() {
+    for event := range ch {
+        fmt.Printf("Audit: %+v\n", event)
+    }
+}()
+```
+
+---
+
+### NewNopAuditHandler
+
+```go
+func NewNopAuditHandler() *NopAuditHandler
+```
+
+Creates a no-op audit handler that discards all events.
+
+```go
+cfg.AuditEnabled = true
+cfg.AuditHandler = env.NewNopAuditHandler() // No logs recorded
+```
+
+---
+
+## File System
+
+### OSFileSystem
+
+Default file system implementation wrapping OS file operations:
+
+```go
+type OSFileSystem struct{}
+```
+
+**Implements:** `FileSystem`
+
+```go
+// Method list
+func (fs OSFileSystem) Open(name string) (File, error)
+func (fs OSFileSystem) OpenFile(name string, flag int, perm os.FileMode) (File, error)
+func (fs OSFileSystem) Stat(name string) (os.FileInfo, error)
+func (fs OSFileSystem) MkdirAll(path string, perm os.FileMode) error
+func (fs OSFileSystem) Remove(name string) error
+func (fs OSFileSystem) Rename(oldpath, newpath string) error
+func (fs OSFileSystem) Getenv(key string) string
+func (fs OSFileSystem) Setenv(key, value string) error
+func (fs OSFileSystem) Unsetenv(key string) error
+func (fs OSFileSystem) LookupEnv(key string) (string, bool)
+```
+
+---
+
+### DefaultFileSystem
+
+```go
+var DefaultFileSystem FileSystem = OSFileSystem{}
+```
+
+Global default file system instance.
+
+---
+
+### Using a Custom File System
+
+Mock file system for testing:
+
+```go
+type MockFileSystem struct {
+    files map[string]string
+    env   map[string]string
+}
+
+// MockFile implements env.File for testing
+type MockFile struct {
+    reader *strings.Reader
+}
+
+func (f *MockFile) Read(p []byte) (n int, err error)   { return f.reader.Read(p) }
+func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, os.ErrUnsupported }
+func (f *MockFile) Close() error                       { return nil }
+func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, os.ErrUnsupported }
+func (f *MockFile) Sync() error                        { return nil }
+
+func (m *MockFileSystem) Open(name string) (env.File, error) {
+    content, ok := m.files[name]
+    if !ok {
+        return nil, os.ErrNotExist
+    }
+    return &MockFile{reader: strings.NewReader(content)}, nil
+}
+
+func (m *MockFileSystem) Getenv(key string) string {
+    return m.env[key]
+}
+
+func (m *MockFileSystem) Setenv(key, value string) error {
+    m.env[key] = value
+    return nil
+}
+
+func (m *MockFileSystem) Unsetenv(key string) error {
+    delete(m.env, key)
+    return nil
+}
+
+func (m *MockFileSystem) LookupEnv(key string) (string, bool) {
+    val, ok := m.env[key]
+    return val, ok
+}
+
+func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
+    return m.Open(name)
+}
+
+func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
+    if _, ok := m.files[name]; !ok {
+        return nil, os.ErrNotExist
+    }
+    return nil, nil
+}
+
+func (m *MockFileSystem) MkdirAll(path string, perm os.FileMode) error {
+    return nil
+}
+
+func (m *MockFileSystem) Remove(name string) error {
+    delete(m.files, name)
+    return nil
+}
+
+func (m *MockFileSystem) Rename(oldpath, newpath string) error {
+    m.files[newpath] = m.files[oldpath]
+    delete(m.files, oldpath)
+    return nil
+}
+
+// Usage
+cfg := env.TestingConfig()
+cfg.FileSystem = &MockFileSystem{
+    files: map[string]string{".env": "KEY=value"},
+    env:   make(map[string]string),
+}
+```
+
+---
+
+## Format Detection
+
+### DetectFormat
+
+```go
+func DetectFormat(filename string) FileFormat
+```
+
+Detects format by file extension.
+
+**Parameters:**
+- `filename` - File name or path
+
+**Returns:**
+- `FileFormat` - Detected format
+
+**Detection rules:**
+
+| Extension | Returns |
+|-----------|---------|
+| `.env` | `FormatEnv` |
+| `.json` | `FormatJSON` |
+| `.yaml`, `.yml` | `FormatYAML` |
+| Other | `FormatAuto` |
+
+```go
+format := env.DetectFormat("config.json")   // FormatJSON
+format := env.DetectFormat("settings.yaml") // FormatYAML
+format := env.DetectFormat("app.yml")       // FormatYAML
+format := env.DetectFormat(".env")          // FormatEnv
+format := env.DetectFormat(".env.local")    // FormatAuto (actually processed as .env)
+format := env.DetectFormat("unknown.txt")   // FormatAuto
+```
+
+**Usage in LoadFiles:**
+
+```go
+loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
+// Auto-detects format for each file and uses the corresponding parser
+```
+
+---
+
+### FileFormat Constants
+
+```go
+const (
+    FormatAuto  FileFormat = iota  // Auto-detect
+    FormatEnv                      // .env format
+    FormatJSON                     // JSON format
+    FormatYAML                     // YAML format
+)
+```
+
+**Custom format:**
+
+```go
+// Define custom format constants (recommend using values of 100+ to avoid conflicts)
+const (
+    FormatTOML  env.FileFormat = 100
+    FormatINI   env.FileFormat = 101
+    FormatXML   env.FileFormat = 102
+)
+```
+
+---
+
+### FileFormat.String
+
+```go
+func (f FileFormat) String() string
+```
+
+Returns string representation of the format.
+
+```go
+fmt.Println(env.FormatJSON.String())  // "json"
+fmt.Println(env.FormatYAML.String())  // "yaml"
+fmt.Println(env.FormatEnv.String())   // "dotenv"
+fmt.Println(env.FormatAuto.String())  // "auto"
+fmt.Println(env.FileFormat(999).String())  // "unknown"
+```
+
+---
+
+## Parser Registration
+
+### RegisterParser
+
+```go
+func RegisterParser(format FileFormat, factory ParserFactory) error
+```
+
+Registers a custom format parser.
+
+**Parameters:**
+- `format` - File format constant
+- `factory` - Parser factory function
+
+**Returns:**
+- `error` - Error on registration failure
+
+**Error cases:**
+- Built-in formats (FormatEnv, FormatJSON, FormatYAML) cannot be overridden
+- Format already registered
+
+**Notes:**
+- Must register before calling `env.New()`
+- Recommend using format values of 100+ to avoid conflicts with built-in formats
+- Factory function should return thread-safe parsers
+
+```go
+// 1. Define custom format constant
+const FormatTOML env.FileFormat = 100
+
+// 2. Implement parser interface
+type TOMLParser struct {
+    cfg       env.Config
+    validator env.Validator
+    auditor   env.FullAuditLogger
+}
+
+func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+    // Implement TOML parsing logic
+    result := make(map[string]string)
+    // ... parsing code
+    return result, nil
+}
+
+// 3. Register parser
+err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+    return &TOMLParser{
+        cfg:       cfg,
+        validator: f.Validator(),
+        auditor:   f.Auditor(),
+    }, nil
+})
+if err != nil {
+    panic(err)
+}
+
+// 4. Use custom format
+func main() {
+    // Registration must complete before New
+    loader, _ := env.New(env.DefaultConfig())
+    defer loader.Close()
+
+    // Now .toml files can be loaded
+    loader.LoadFiles("config.toml")
+}
+```
+
+---
+
+### ForceRegisterParser
+
+```go
+func ForceRegisterParser(format FileFormat, factory ParserFactory) error
+```
+
+Force-registers a parser, allowing override of built-in parsers.
+
+**Parameters:**
+- `format` - File format constant
+- `factory` - Parser factory function
+
+**Returns:**
+- `error` - Error on registration failure (when `factory` is nil)
+
+::: danger Warning
+Use with caution. Overriding built-in parsers may introduce security vulnerabilities if the replacement parser doesn't implement the same security checks (key validation, value validation, size limits, etc.).
+
+Suitable for the following advanced scenarios:
+- Adding custom security checks to built-in parsers
+- Implementing format extensions (e.g., HEREDOC, multi-line values)
+- Using mock parsers for testing
+:::
+
+```go
+// Override default .env parser (advanced use case)
+err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+    return &MyCustomEnvParser{
+        validator: f.Validator(),
+        auditor:   f.Auditor(),
+    }, nil
+})
+```
+
+---
+
+### ParserFactory Type
+
+```go
+type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error)
+```
+
+Parser factory function signature.
+
+**Parameters:**
+- `cfg` - Configuration object with limits and security settings
+- `factory` - Component factory to get validators and auditors
+
+**Returns:**
+- `EnvParser` - Parser instance
+- `error` - Creation error
+
+---
+
+### EnvParser Interface
+
+```go
+type EnvParser interface {
+    Parse(r io.Reader, filename string) (map[string]string, error)
+}
+```
+
+Interface that all parsers must implement.
+
+**Parameters:**
+- `r` - File content reader
+- `filename` - Filename (for error messages)
+
+**Returns:**
+- `map[string]string` - Parsed key-value pairs
+- `error` - Parse error
+
+---
+
+## Built-in Parsers
+
+The library includes three built-in format parsers:
+
+### DotEnv Parser
+
+`.env` format parser supporting:
+- `KEY=value` syntax
+- `export KEY=value` syntax
+- Single quotes `'value'` and double quotes `"value"`
+- Variable expansion `${VAR}` and `${VAR:-default}`
+- Comments `#`
+
+### JSON Parser
+
+JSON format parser supporting:
+- Key-value objects
+- Nested structures (flattened)
+- Number, string, boolean conversion
+- Arrays (flattened to `KEY_0`, `KEY_1`...)
+
+### YAML Parser
+
+YAML format parser supporting:
+- Key-value pairs
+- Nested structures (flattened)
+- Multiple scalar types
+- Lists (flattened to indexed keys)
+
+---
+
+## Complete Example
+
+### Register Custom Parser
+
+```go
+package main
+
+import (
+    "fmt"
+    "io"
+    "strings"
+
+    "github.com/cybergodev/env"
+)
+
+// Custom INI parser
+type INIParser struct {
+    cfg       env.Config
+    validator env.Validator
+    auditor   env.FullAuditLogger
+}
+
+func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+    content, err := io.ReadAll(r)
+    if err != nil {
+        return nil, err
+    }
+
+    result := make(map[string]string)
+    lines := strings.Split(string(content), "\n")
+    var section string
+
+    for lineNum, line := range lines {
+        line = strings.TrimSpace(line)
+
+        // Skip empty lines and comments
+        if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+            continue
+        }
+
+        // Section [section]
+        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+            section = strings.Trim(line, "[]")
+            continue
+        }
+
+        // Key=Value
+        if idx := strings.Index(line, "="); idx > 0 {
+            key := strings.TrimSpace(line[:idx])
+            value := strings.TrimSpace(line[idx+1:])
+
+            // Add section prefix
+            if section != "" {
+                key = section + "_" + key
+            }
+
+            // Validate key
+            if err := p.validator.ValidateKey(key); err != nil {
+                _ = p.auditor.LogError(env.ActionParse, key, err.Error())
+                return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
+            }
+
+            result[strings.ToUpper(key)] = value
+        }
+    }
+
+    _ = p.auditor.Log(env.ActionParse, "", fmt.Sprintf("parsed %d variables from %s", len(result), filename), true)
+    return result, nil
+}
+
+func main() {
+    // Define custom format
+    const FormatINI env.FileFormat = 101
+
+    // Register parser
+    err := env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &INIParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    // Use custom format
+    cfg := env.DefaultConfig()
+    loader, _ := env.New(cfg)
+    defer loader.Close()
+
+    // Now .ini files can be loaded
+    // loader.LoadFiles("config.ini")
+
+    fmt.Println("INI parser registered")
+}
+```
+
+### Custom File System
+
+```go
+package main
+
+import (
+    "fmt"
+    "os"
+    "strings"
+    "time"
+
+    "github.com/cybergodev/env"
+)
+
+// In-memory file system (for testing)
+type MemoryFileSystem struct {
+    files map[string]string
+    env   map[string]string
+}
+
+func NewMemoryFileSystem() *MemoryFileSystem {
+    return &MemoryFileSystem{
+        files: make(map[string]string),
+        env:   make(map[string]string),
+    }
+}
+
+func (m *MemoryFileSystem) Open(name string) (env.File, error) {
+    content, ok := m.files[name]
+    if !ok {
+        return nil, os.ErrNotExist
+    }
+    return &MemoryFile{reader: strings.NewReader(content)}, nil
+}
+
+func (m *MemoryFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
+    return m.Open(name)
+}
+
+func (m *MemoryFileSystem) Stat(name string) (os.FileInfo, error) {
+    content, ok := m.files[name]
+    if !ok {
+        return nil, os.ErrNotExist
+    }
+    return &MemoryFileInfo{name: name, size: int64(len(content))}, nil
+}
+
+func (m *MemoryFileSystem) MkdirAll(path string, perm os.FileMode) error {
+    return nil
+}
+
+func (m *MemoryFileSystem) Remove(name string) error {
+    delete(m.files, name)
+    return nil
+}
+
+func (m *MemoryFileSystem) Rename(oldpath, newpath string) error {
+    m.files[newpath] = m.files[oldpath]
+    delete(m.files, oldpath)
+    return nil
+}
+
+func (m *MemoryFileSystem) Getenv(key string) string {
+    return m.env[key]
+}
+
+func (m *MemoryFileSystem) Setenv(key, value string) error {
+    m.env[key] = value
+    return nil
+}
+
+func (m *MemoryFileSystem) Unsetenv(key string) error {
+    delete(m.env, key)
+    return nil
+}
+
+func (m *MemoryFileSystem) LookupEnv(key string) (string, bool) {
+    val, ok := m.env[key]
+    return val, ok
+}
+
+// MemoryFile implements env.File
+type MemoryFile struct {
+    reader *strings.Reader
+}
+
+func (f *MemoryFile) Read(p []byte) (n int, err error)  { return f.reader.Read(p) }
+func (f *MemoryFile) Write(p []byte) (n int, err error) { return 0, os.ErrUnsupported }
+func (f *MemoryFile) Close() error                      { return nil }
+func (f *MemoryFile) Stat() (os.FileInfo, error)        { return nil, os.ErrUnsupported }
+func (f *MemoryFile) Sync() error                       { return nil }
+
+// MemoryFileInfo implements os.FileInfo
+type MemoryFileInfo struct {
+    name string
+    size int64
+}
+
+func (i *MemoryFileInfo) Name() string       { return i.name }
+func (i *MemoryFileInfo) Size() int64        { return i.size }
+func (i *MemoryFileInfo) Mode() os.FileMode  { return 0644 }
+func (i *MemoryFileInfo) ModTime() time.Time { return time.Time{} }
+func (i *MemoryFileInfo) IsDir() bool        { return false }
+func (i *MemoryFileInfo) Sys() interface{}   { return nil }
+
+// Usage example
+func main() {
+    // Create in-memory file system
+    fs := NewMemoryFileSystem()
+    fs.files[".env"] = "APP_NAME=myapp\nPORT=8080\n"
+
+    // Configure to use custom file system
+    cfg := env.TestingConfig()
+    cfg.FileSystem = fs
+
+    loader, _ := env.New(cfg)
+    defer loader.Close()
+
+    loader.LoadFiles(".env")
+
+    fmt.Println(loader.GetString("APP_NAME"))  // myapp
+    fmt.Println(loader.GetInt("PORT"))         // 8080
+}
+```
+
+---
+
+## Related Documentation
+
+- [Interfaces](/en/env/api-reference/interfaces) - All interface definitions
+- [Custom Parser](/en/env/guides/custom-parser) - Custom parser guide
+- [Testing Scenarios](/en/env/guides/testing) - Using custom file systems for testing

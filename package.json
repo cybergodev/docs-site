@@ -1,0 +1,27 @@
+{
+  "name": "cybergodev-docs",
+  "version": "1.0.0",
+  "description": "CyberGo project documentation website",
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev docs",
+    "build": "node --max-old-space-size=8192 ./node_modules/vitepress/bin/vitepress.js build docs",
+    "preview": "vitepress preview docs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [
+    "go",
+    "golang",
+    "docs",
+    "vitepress"
+  ],
+  "author": "CyberGo",
+  "license": "MIT",
+  "devDependencies": {
+    "png-to-ico": "^3.0.1",
+    "prettier": "^3.4.2",
+    "sharp": "^0.34.5",
+    "vitepress": "^1.6.4"
+  }
+}

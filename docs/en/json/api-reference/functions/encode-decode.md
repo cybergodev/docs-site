@@ -1,0 +1,327 @@
+---
+title: Encode and Decode Functions - CyberGo JSON | API Reference
+description: "CyberGo JSON encode and decode functions reference: Marshal/Unmarshal serialization, Compact/Indent/HTMLEscape formatting, Encode/EncodePretty/EncodeWithConfig/Prettify configured encoding, 100% compatible with encoding/json."
+---
+
+# Encode and Decode Functions
+
+The json package provides encoding and decoding functions, including serialization, deserialization, formatting, and configured encoding.
+
+## Serialization Functions
+
+### Marshal
+
+Signature: `func Marshal(value any) ([]byte, error)`
+
+Serializes a Go value to a JSON byte slice. 100% compatible with `encoding/json.Marshal`.
+
+```go
+data, err := json.Marshal(map[string]any{"name": "test"})
+if err != nil {
+    panic(err)
+}
+fmt.Println(string(data)) // {"name":"test"}
+```
+
+:::tip
+`Marshal` does not accept configuration parameters. For configured encoding, use [EncodeWithConfig](#encodewithconfig).
+:::
+
+### Unmarshal
+
+Signature: `func Unmarshal(data []byte, value any) error`
+
+Deserializes a JSON byte slice into a Go value. 100% compatible with `encoding/json.Unmarshal`.
+
+```go
+var result struct {
+    Name string `json:"name"`
+}
+err := json.Unmarshal([]byte(`{"name":"test"}`), &result)
+```
+
+### MarshalIndent
+
+Signature: `func MarshalIndent(v any, prefix, indent string) ([]byte, error)`
+
+Serialization with indentation. 100% compatible with `encoding/json.MarshalIndent`.
+
+```go
+data, err := json.MarshalIndent(user, "", "  ")
+if err != nil {
+    panic(err)
+}
+fmt.Println(string(data))
+```
+
+:::tip
+`MarshalIndent` does not accept configuration parameters. For configured encoding, use [EncodeWithConfig](#encodewithconfig).
+:::
+
+## Formatting Functions
+
+### Compact
+
+Signature: `func Compact(dst *bytes.Buffer, src []byte, cfg ...Config) error`
+
+Compacts JSON by removing unnecessary whitespace and writes the result to `dst`. Compatible with `encoding/json.Compact`.
+
+```go
+var buf bytes.Buffer
+err := json.Compact(&buf, []byte(`{"name": "test"}`))
+if err != nil {
+    panic(err)
+}
+fmt.Println(buf.String()) // {"name":"test"}
+```
+
+### Indent
+
+Signature: `func Indent(dst *bytes.Buffer, src []byte, prefix, indent string, cfg ...Config) error`
+
+Formats JSON with indentation and writes the result to `dst`. Compatible with `encoding/json.Indent`.
+
+```go
+var buf bytes.Buffer
+err := json.Indent(&buf, []byte(`{"name":"test"}`), "", "  ")
+if err != nil {
+    panic(err)
+}
+fmt.Println(buf.String())
+// {
+//   "name": "test"
+// }
+```
+
+### HTMLEscape
+
+Signature: `func HTMLEscape(dst *bytes.Buffer, src []byte, cfg ...Config)`
+
+HTML-escapes JSON content, replacing special characters (`&`, `<`, `>`) with Unicode escape sequences, writing the result to `dst`. No return value.
+
+```go
+var buf bytes.Buffer
+json.HTMLEscape(&buf, []byte(`{"html":"<script>alert(1)</script>"}`))
+fmt.Println(buf.String())
+// {"html":"<script>alert(1)</script>"}
+```
+
+### Prettify
+
+Signature: `func Prettify(jsonStr string, cfg ...Config) (string, error)`
+
+Formats a JSON string using default pretty-print indentation, returning the formatted string.
+
+```go
+pretty, err := json.Prettify(`{"name":"Alice","age":30}`)
+if err != nil {
+    panic(err)
+}
+fmt.Println(pretty)
+// {
+//   "name": "Alice",
+//   "age": 30
+// }
+```
+
+## Configured Encoding Functions
+
+### Encode
+
+Signature: `func Encode(value any, cfg ...Config) (string, error)`
+
+Encodes a Go value to a JSON string with optional configuration parameters.
+
+```go
+result, err := json.Encode(user)
+if err != nil {
+    panic(err)
+}
+fmt.Println(result)
+```
+
+**With Configuration**
+
+```go
+result, err := json.Encode(user, json.SecurityConfig())
+```
+
+### EncodePretty
+
+Signature: `func EncodePretty(value any, cfg ...Config) (string, error)`
+
+Encodes a Go value to a formatted JSON string (with indentation) with optional configuration parameters.
+
+```go
+result, err := json.EncodePretty(user)
+if err != nil {
+    panic(err)
+}
+fmt.Println(result)
+```
+
+**With Configuration**
+
+```go
+result, err := json.EncodePretty(user, json.PrettyConfig())
+```
+
+### EncodeWithConfig
+
+Signature: `func EncodeWithConfig(value any, cfg ...Config) (string, error)`
+
+Encodes a Go value to a JSON string using the specified configuration. Suitable for scenarios requiring fine-grained control over encoding behavior.
+
+```go
+// Using pretty-print configuration
+result, err := json.EncodeWithConfig(data, json.PrettyConfig())
+if err != nil {
+    panic(err)
+}
+fmt.Println(result)
+```
+
+**Using Security Configuration**
+
+```go
+result, err := json.EncodeWithConfig(data, json.SecurityConfig())
+```
+
+## Batch Encoding Functions
+
+### EncodeBatch
+
+Signature: `func EncodeBatch(pairs map[string]any, cfg ...Config) (string, error)`
+
+Batch encodes key-value pairs into a JSON object string.
+
+```go
+result, err := json.EncodeBatch(map[string]any{
+    "name":  "Alice",
+    "age":   30,
+    "email": "alice@example.com",
+})
+if err != nil {
+    panic(err)
+}
+fmt.Println(result) // {"age":30,"email":"alice@example.com","name":"Alice"}
+```
+
+### EncodeFields
+
+Signature: `func EncodeFields(value any, fields []string, cfg ...Config) (string, error)`
+
+Encodes only specified fields for selective field output.
+
+```go
+user := struct {
+    Name     string `json:"name"`
+    Email    string `json:"email"`
+    Password string `json:"password"`
+}{
+    Name: "Alice", Email: "a@b.com", Password: "secret",
+}
+
+// Only output public fields
+result, err := json.EncodeFields(user, []string{"name", "email"})
+if err != nil {
+    panic(err)
+}
+fmt.Println(result) // {"name":"Alice","email":"a@b.com"}
+```
+
+### EncodeStream
+
+Signature: `func EncodeStream(values any, cfg ...Config) (string, error)`
+
+Stream encoding that encodes a value to a JSON string. Suitable for scenarios requiring a unified encoding interface.
+
+```go
+values := []map[string]any{
+    {"id": 1, "name": "Alice"},
+    {"id": 2, "name": "Bob"},
+}
+
+result, err := json.EncodeStream(values)
+if err != nil {
+    panic(err)
+}
+fmt.Println(result)
+```
+
+## Processor Formatting Methods
+
+The `Processor` type provides additional formatting methods. Create a Processor using `json.New()` (returns `(*Processor, error)`):
+
+```go
+p, err := json.New()
+if err != nil {
+    panic(err)
+}
+defer p.Close()
+```
+
+### Processor.CompactBuffer
+
+Signature: `func (p *Processor) CompactBuffer(dst *bytes.Buffer, src []byte, cfg ...Config) error`
+
+Compacts JSON bytes and writes to the `dst` buffer. Delegates to the package-level `Compact` function.
+
+```go
+var buf bytes.Buffer
+err := p.CompactBuffer(&buf, []byte(`{"name": "Alice"}`))
+// buf.String() => {"name":"Alice"}
+```
+
+### Processor.Indent
+
+Signature: `func (p *Processor) Indent(dst *bytes.Buffer, src []byte, prefix, indent string, cfg ...Config) error`
+
+Writes indented JSON to the `dst` buffer. Compatible with `encoding/json.Indent`.
+
+```go
+var buf bytes.Buffer
+err := p.Indent(&buf, []byte(`{"name":"Alice"}`), "", "  ")
+```
+
+### Processor.HTMLEscape
+
+Signature: `func (p *Processor) HTMLEscape(dst *bytes.Buffer, src []byte, cfg ...Config)`
+
+Writes HTML-escaped JSON to the `dst` buffer with no return value. Compatible with `encoding/json.HTMLEscape`.
+
+```go
+var buf bytes.Buffer
+p.HTMLEscape(&buf, []byte(`{"html":"<script>"}`))
+```
+
+:::tip
+For complete Processor documentation, see [Processor](../interfaces).
+:::
+
+## Configuration Presets
+
+The following helper functions return pre-configured `Config` values that can be passed to any function accepting `...Config`:
+
+```go
+// Default configuration
+cfg := json.DefaultConfig()
+
+// Pretty-print configuration
+cfg := json.PrettyConfig()
+
+// Security configuration
+cfg := json.SecurityConfig()
+```
+
+:::tip
+For complete Config field documentation, see [Configuration](../config).
+:::
+
+## See Also
+
+- [Query and Get Functions](./get) - Get, GetString and other query operations
+- [Modify Functions](./modify) - Set, Delete and other modify operations
+- [File Operations](./file-io) - LoadFromFile, SaveToFile and other file operations
+- [Configuration](../config) - Config type and options
+- [Interfaces](../interfaces) - Processor, Encoder, Decoder types

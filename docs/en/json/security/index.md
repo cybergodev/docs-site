@@ -1,0 +1,198 @@
+---
+title: Security Overview - CyberGo JSON | Security Best Practices
+description: "CyberGo JSON security best practices guide: covering input validation and sanitization, MaxNestingDepthSecurity/MaxMemory resource limit protection, path traversal attack prevention, JSON injection prevention, sensitive data filtering, and audit logging configuration for secure JSON data processing in production."
+---
+
+# Security Overview
+
+Security considerations and best practices when processing JSON data.
+
+## Common Security Risks
+
+### 1. Resource Exhaustion Attacks
+
+Maliciously crafted JSON can cause memory exhaustion or CPU overload.
+
+**Protection Measures:**
+
+```go
+cfg := json.DefaultConfig()
+cfg.MaxNestingDepthSecurity = 50                       // Limit nesting depth
+cfg.MaxJSONSize = 10 * 1024 * 1024             // Limit JSON size (10MB)
+cfg.MaxSecurityValidationSize = 100 * 1024 * 1024 // Increase security validation limit to 100MB (default 10MB)
+```
+
+### 2. Path Traversal Attacks
+
+Malicious paths may access unintended data.
+
+**Protection Measures:**
+
+```go
+// Validate user-provided paths
+func safePath(path string) bool {
+    // Disallow special characters
+    if strings.ContainsAny(path, `<>:"|\`) {
+        return false
+    }
+    return true
+}
+```
+
+### 3. JSON Injection
+
+Malicious data may break JSON structure.
+
+**Protection Measures:**
+
+```go
+// Always use library functions for serialization, never concatenate strings
+data := map[string]any{
+    "user": userInput, // The library handles escaping automatically
+}
+bytes, _ := json.Marshal(data)
+```
+
+### 4. Sensitive Data Leakage
+
+Logs or error messages may expose sensitive data.
+
+**Protection Measures:**
+
+```go
+// Use a custom Hook to filter sensitive fields
+type FilterFieldsHook struct {
+    fields map[string]bool
+}
+
+func (h *FilterFieldsHook) Before(ctx json.HookContext) error {
+    return nil
+}
+
+func (h *FilterFieldsHook) After(ctx json.HookContext, result any, err error) (any, error) {
+    if m, ok := result.(map[string]any); ok {
+        for field := range h.fields {
+            delete(m, field)
+        }
+    }
+    return result, err
+}
+
+cfg := json.DefaultConfig()
+cfg.AddHook(&FilterFieldsHook{fields: map[string]bool{
+    "password": true,
+    "token":    true,
+    "secret":   true,
+}})
+```
+
+## Security Configuration Recommendations
+
+### Production Configuration
+
+```go
+func ProductionConfig() json.Config {
+    cfg := json.SecurityConfig()
+    cfg.AddHook(&AuditHook{logger: prodLogger})
+    return cfg
+}
+```
+
+### Development Configuration
+
+```go
+func DevelopmentConfig() json.Config {
+    cfg := json.DefaultConfig()
+    cfg.MaxNestingDepthSecurity = 100
+    cfg.AddHook(json.LoggingHook(devLogger))
+    return cfg
+}
+```
+
+## Input Validation
+
+### Custom Validators
+
+Implement the `Validator` interface (`Validate(jsonStr string) error`) for input validation:
+
+```go
+// Implement a custom validator
+type EmailValidator struct{}
+
+func (v *EmailValidator) Validate(jsonStr string) error {
+    // Validate JSON string content
+    var data map[string]any
+    if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+        return err
+    }
+    email, ok := data["email"].(string)
+    if !ok {
+        return nil
+    }
+    if !strings.Contains(email, "@") {
+        return errors.New("invalid email format")
+    }
+    return nil
+}
+
+// Use custom validator
+cfg := json.DefaultConfig()
+cfg.CustomValidators = []json.Validator{&EmailValidator{}}
+```
+
+### Schema Validation
+
+Schema is a struct type that can be used to validate JSON structure:
+
+```go
+schema := &json.Schema{
+    Type:     "object",
+    Required: []string{"id", "name", "email"},
+    Properties: map[string]*json.Schema{
+        "id":    {Type: "string", Pattern: `^[a-zA-Z0-9]+$`},
+        "name":  {Type: "string", MinLength: 1},
+        "email": {Type: "string", Format: "email"},
+        "age":   {Type: "number", Minimum: 0, Maximum: 150},
+    },
+}
+```
+
+## Error Handling
+
+### Safe Error Messages
+
+```go
+val, err := json.Get(data, path)
+if err != nil {
+    // Do not expose internal error details
+    return errors.New("invalid data format")
+}
+```
+
+## Audit Logging
+
+### Log Critical Operations
+
+Use the `Hook` interface (`Before` returns `error`, `After` receives `(HookContext, any, error)` and returns `(any, error)`) to record audit logs:
+
+```go
+type AuditHook struct {
+    logger *slog.Logger
+}
+
+func (h *AuditHook) Before(ctx json.HookContext) error {
+    h.logger.Info("JSON operation started", "op", ctx.Operation, "path", ctx.Path)
+    return nil
+}
+
+func (h *AuditHook) After(ctx json.HookContext, result any, err error) (any, error) {
+    h.logger.Info("JSON operation completed", "op", ctx.Operation)
+    return result, err
+}
+```
+
+## See Also
+
+- [Production Checklist](./production-checklist)
+- [Config Configuration](../api-reference/config)
+- [Validator](../api-reference/validator)

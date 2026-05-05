@@ -1,0 +1,130 @@
+---
+title: Processor - Изменение данных - CyberGo JSON | Справочник API
+description: "Полный справочник методов изменения данных CyberGo JSON Processor: Set для установки значения по пути, SetMultiple для пакетной установки, Delete для удаления пути, CreatePaths для автоматического создания промежуточных путей. Все методы возвращают изменённую строку JSON, поддерживают цепочечные вызовы и параметр конфигурации CreatePaths для автоматического создания путей."
+---
+
+# Методы изменения данных
+
+Processor предоставляет методы изменения данных, все методы возвращают изменённую строку JSON.
+
+## Set
+
+Сигнатура: `func (p *Processor) Set(jsonStr, path string, value any, cfg ...Config) (string, error)`
+
+Устанавливает значение по указанному пути, возвращает изменённую строку JSON.
+
+```go
+result, err := p.Set(data, "user.name", "NewName")
+```
+
+Поддерживает установку значений различных типов:
+
+```go
+// Строка
+result, _ := p.Set(data, "user.name", "CyberGo")
+
+// Число
+result, _ := p.Set(data, "user.age", 25)
+
+// Логическое значение
+result, _ := p.Set(data, "user.active", true)
+
+// Объект
+result, _ := p.Set(data, "user.profile", map[string]any{
+    "bio": "Developer",
+    "location": "China",
+})
+
+// Массив
+result, _ := p.Set(data, "items", []any{"a", "b", "c"})
+```
+
+## Delete
+
+Сигнатура: `func (p *Processor) Delete(jsonStr, path string, cfg ...Config) (string, error)`
+
+Удаляет значение по указанному пути, возвращает изменённую строку JSON.
+
+```go
+result, err := p.Delete(data, "user.temporary")
+```
+
+## DeleteClean
+
+Сигнатура: `func (p *Processor) DeleteClean(jsonStr, path string, cfg ...Config) (string, error)`
+
+Удаляет значение по указанному пути и автоматически очищает пустые значения и пустые массивы.
+
+```go
+result, err := p.DeleteClean(data, "user.temporary")
+// После удаления будут очищены null и пустые массивы
+```
+
+**Разница между Delete и DeleteClean**:
+
+```go
+// Исходные данные: {"user": {"temp": "value", "name": "test"}}
+
+// После Delete: {"user": {"name": "test"}}
+result, _ := p.Delete(data, "user.temp")
+
+// Если после удаления родительский объект пуст, DeleteClean продолжит очистку
+// {"user": {}} -> {}
+result, _ := p.DeleteClean(data, "user.temp")
+```
+
+## SetMultiple
+
+Сигнатура: `func (p *Processor) SetMultiple(jsonStr string, updates map[string]any, cfg ...Config) (string, error)`
+
+Пакетная установка значений нескольких путей, возвращает изменённую строку JSON.
+
+```go
+result, err := p.SetMultiple(data, map[string]any{
+    "user.name": "CyberGo",
+    "user.age":  25,
+    "user.active": true,
+})
+```
+
+## SetCreate
+
+Сигнатура: `func (p *Processor) SetCreate(jsonStr, path string, value any, cfg ...Config) (string, error)`
+
+Устанавливает значение и автоматически создаёт несуществующие промежуточные пути. Эквивалентно `Set` с `Config.CreatePaths = true`.
+
+```go
+// Промежуточный путь user.profile будет создан автоматически, если не существует
+result, err := p.SetCreate(data, "user.profile.bio", "Developer")
+// {"user":{"profile":{"bio":"Developer"}}}
+```
+
+## SetMultipleCreate
+
+Сигнатура: `func (p *Processor) SetMultipleCreate(jsonStr string, updates map[string]any, cfg ...Config) (string, error)`
+
+Пакетная установка нескольких значений с автоматическим созданием промежуточных путей.
+
+```go
+result, err := p.SetMultipleCreate(data, map[string]any{
+    "user.profile.bio":      "Developer",
+    "user.profile.location": "China",
+})
+```
+
+## Цепочечные изменения
+
+Методы изменения поддерживают цепочечные вызовы:
+
+```go
+processor, _ := json.New()
+
+result1, _ := processor.Set(data, "user.name", "CyberGo")
+result2, _ := processor.Set(result1, "user.version", "1.0.0")
+finalResult, _ := processor.Delete(result2, "user.temporary")
+```
+
+## См. также
+
+- [Запросы по пути](./query) - семейство методов Get
+- [Пакетные операции](./batch) - пакетная обработка ProcessBatch
