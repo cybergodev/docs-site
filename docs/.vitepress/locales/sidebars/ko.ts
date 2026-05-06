@@ -346,6 +346,7 @@ export const koSidebars: Record<string, DefaultTheme.SidebarItem[]> = {
       ]
     }
   ],
+
   '/ko/dd/': [
     {
       text: '시작하기',

@@ -46,26 +46,6 @@ export const ruConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
     sidebarMenuLabel: 'Меню',
     darkModeSwitchLabel: 'Тема',
     lightModeSwitchTitle: 'Переключить на светлую тему',
-    darkModeSwitchTitle: 'Переключить на тёмную тему',
-
-    search: {
-      options: {
-        translations: {
-          button: {
-            buttonText: 'Поиск по документации',
-            buttonAriaLabel: 'Поиск по документации'
-          },
-          modal: {
-            noResultsText: 'Результатов не найдено',
-            resetButtonTitle: 'Очистить запрос',
-            footer: {
-              selectText: 'Выбрать',
-              navigateText: 'Перейти',
-              closeText: 'Закрыть'
-            }
-          }
-        }
-      }
-    }
+    darkModeSwitchTitle: 'Переключить на тёмную тему'
   }
 }

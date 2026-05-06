@@ -4,7 +4,7 @@ import {
   STORAGE_KEYS,
   type LanguageConfig
 } from '../../locales/languages'
-import { PROJECTS } from './useProjectPath'
+import { PROJECTS } from '../../shared'
 
 /**
  * Find the best matching locale for a browser language string
@@ -110,8 +110,10 @@ export function detectAndRedirectLanguage(): void {
     return
   }
 
-  if (sessionStorage.getItem(STORAGE_KEYS.detected)) return
-  sessionStorage.setItem(STORAGE_KEYS.detected, 'true')
+  try {
+    if (sessionStorage.getItem(STORAGE_KEYS.detected)) return
+    sessionStorage.setItem(STORAGE_KEYS.detected, 'true')
+  } catch {}
 
   const browserLang = navigator.language || ''
   const matchedLang = findMatchingLanguage(browserLang)
@@ -171,6 +173,8 @@ export function redirectFromRoot(): void {
     if (targetPath !== defaultLanguagePath) break
   }
 
-  sessionStorage.setItem(STORAGE_KEYS.detected, 'true')
+  try {
+    sessionStorage.setItem(STORAGE_KEYS.detected, 'true')
+  } catch {}
   window.location.replace(targetPath)
 }

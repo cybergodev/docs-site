@@ -4,12 +4,11 @@ import { useData, useRouter } from 'vitepress'
 import './custom.css'
 import GitHubIcon from './components/GitHubIcon.vue'
 import NotFound from './components/NotFound.vue'
-import ProjectSearch from './components/ProjectSearch.vue'
 import SiteFooter from './components/SiteFooter.vue'
 import DocFeedback from './components/DocFeedback.vue'
 import { STORAGE_KEYS } from '../locales/languages'
 import { detectAndRedirectLanguage } from './composables/useLanguageDetect'
-import { PROJECTS } from './composables/useProjectPath'
+import { PROJECTS } from '../shared'
 
 const GITHUB_ORG = 'https://github.com/cybergodev'
 const DEFAULT_SITE_TITLE = 'CyberGo'
@@ -62,7 +61,9 @@ function updateProjectSiteTitle() {
     if (project) {
       el.setAttribute('data-project', project)
       if (textSpan) {
-        textSpan.innerHTML = `<span>cybergodev/</span>${project}`
+        const orgSpan = document.createElement('span')
+        orgSpan.textContent = 'cybergodev/'
+        textSpan.replaceChildren(orgSpan, document.createTextNode(project))
       }
     } else {
       el.removeAttribute('data-project')
@@ -79,7 +80,6 @@ export default {
   Layout: () => {
     return h(DefaultTheme.Layout, null, {
       'not-found': () => h(NotFound),
-      'nav-bar-content-before': () => h(ProjectSearch),
       'doc-footer-before': () => h(DocFeedback),
       'layout-bottom': () => h(SiteFooter)
     })
@@ -103,7 +103,7 @@ export default {
       watch(lang, (newLang) => {
         if (typeof window !== 'undefined') {
           localStorage.setItem(STORAGE_KEYS.preference, newLang)
-          document.cookie = `${STORAGE_KEYS.preference}=${newLang};path=/;max-age=31536000;samesite=lax`
+          document.cookie = `${STORAGE_KEYS.preference}=${newLang};path=/;max-age=31536000;samesite=lax;secure`
         }
       })
     })

@@ -79,12 +79,7 @@ export default defineConfig({
 
   // Build optimization
   vite: {
-    plugins: [localeRedirectPlugin()],
-    build: {
-      // Search indexes are lazy-loaded by VitePress, large size is expected
-      // ru index ~1.8MB, others 1.4-1.7MB — all loaded on-demand only when user searches
-      chunkSizeWarningLimit: 2000
-    }
+    plugins: [localeRedirectPlugin()]
   },
 
   // Per-page SEO: canonical, hreflang, dynamic OG/Twitter
@@ -106,13 +101,12 @@ export default defineConfig({
       const subPath = langMatch[2] || ''
       const allLangs = ['zh', 'en', 'ko', 'ja', 'ru']
 
-      head.push(['link', { rel: 'alternate', hreflang: currentLang, href: canonical }])
       for (const altLang of allLangs) {
         if (altLang !== currentLang) {
           head.push(['link', { rel: 'alternate', hreflang: altLang, href: `https://www.cybergo.dev/${altLang}${subPath}` }])
         }
       }
-      head.push(['link', { rel: 'alternate', hreflang: 'x-default', href: 'https://www.cybergo.dev/en/' }])
+      head.push(['link', { rel: 'alternate', hreflang: 'x-default', href: `https://www.cybergo.dev/en${subPath}` }])
     }
 
     // Dynamic og:locale based on page language
@@ -194,9 +188,20 @@ export default defineConfig({
     logo: '/logo.svg',
     siteTitle: 'CyberGo',
 
-    // Local search - generates index consumed by ProjectSearch component
     search: {
-      provider: 'local'
+      provider: 'algolia',
+      options: {
+        appId: 'PUYX7GZEVJ',
+        apiKey: '656dcbb6d9a79cca32ee743ed2523ada',
+        indexName: 'cybergo.dev',
+        locales: {
+          zh: { placeholder: '搜索文档...' },
+          en: { placeholder: 'Search docs...' },
+          ko: { placeholder: '문서 검색...' },
+          ja: { placeholder: 'ドキュメントを検索...' },
+          ru: { placeholder: 'Поиск в документации...' }
+        }
+      }
     },
 
     // Social links

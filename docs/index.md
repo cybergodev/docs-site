@@ -1,6 +1,7 @@
 ---
 layout: page
 title: Redirecting...
+description: CyberGo - High-Performance Go Open Source Libraries
 meta:
   - name: robots
     content: noindex
@@ -18,10 +19,6 @@ onMounted(() => {
 <div class="redirect-container">
   <div class="redirect-message">
     <p>Detecting your language preference...</p>
-    <p>正在检测您的语言偏好...</p>
-    <p>언어 기본 설정을 감지하는 중...</p>
-    <p>言語設定を検出中...</p>
-    <p>Определение языковых предпочтений...</p>
   </div>
 </div>
 

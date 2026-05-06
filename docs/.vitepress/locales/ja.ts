@@ -46,26 +46,6 @@ export const jaConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
     sidebarMenuLabel: 'メニュー',
     darkModeSwitchLabel: 'テーマ',
     lightModeSwitchTitle: 'ライトモードに切り替え',
-    darkModeSwitchTitle: 'ダークモードに切り替え',
-
-    search: {
-      options: {
-        translations: {
-          button: {
-            buttonText: 'ドキュメントを検索',
-            buttonAriaLabel: 'ドキュメントを検索'
-          },
-          modal: {
-            noResultsText: '結果が見つかりませんでした',
-            resetButtonTitle: '検索条件をクリア',
-            footer: {
-              selectText: '選択',
-              navigateText: '移動',
-              closeText: '閉じる'
-            }
-          }
-        }
-      }
-    }
+    darkModeSwitchTitle: 'ダークモードに切り替え'
   }
 }

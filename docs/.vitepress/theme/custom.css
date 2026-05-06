@@ -382,10 +382,6 @@ body.VPApp,
   padding-top: 0;
 }
 
-.Layout.has-sidebar .VPContent {
-  padding-top: 0;
-}
-
 .VPDoc {
   padding-top: 32px;
 }
@@ -476,14 +472,6 @@ body.VPApp,
 
 .VPNavBarTitle[data-project] .nav-title-org {
   opacity: 0.5;
-}
-
-/* ============================================
-   Hide default VitePress search (replaced by ProjectSearch)
-   ============================================ */
-
-.VPNavBarSearch {
-  display: none;
 }
 
 /* ============================================
@@ -615,11 +603,6 @@ body.VPApp,
   display: none;
 }
 
-/* Hide custom site footer on doc pages (sidebar present) to prevent sidebar overlap */
-.Layout.has-sidebar .site-footer {
-  display: none;
-}
-
 /* Responsive: Tablet */
 @media (max-width: 960px) {
   .site-footer .footer-grid {
@@ -703,4 +686,20 @@ body.VPApp,
   color: var(--vp-c-brand-1);
   font-size: 0.9rem;
   font-weight: 500;
+}
+
+/* ============================================
+   Screen Reader Only Utility
+   ============================================ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

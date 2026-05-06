@@ -46,26 +46,6 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
     sidebarMenuLabel: 'Menu',
     darkModeSwitchLabel: 'Theme',
     lightModeSwitchTitle: 'Switch to light theme',
-    darkModeSwitchTitle: 'Switch to dark theme',
-
-    search: {
-      options: {
-        translations: {
-          button: {
-            buttonText: 'Search docs',
-            buttonAriaLabel: 'Search docs'
-          },
-          modal: {
-            noResultsText: 'No results found',
-            resetButtonTitle: 'Clear search query',
-            footer: {
-              selectText: 'Select',
-              navigateText: 'Navigate',
-              closeText: 'Close'
-            }
-          }
-        }
-      }
-    }
+    darkModeSwitchTitle: 'Switch to dark theme'
   }
 }

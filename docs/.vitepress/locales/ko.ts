@@ -46,26 +46,6 @@ export const koConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
     sidebarMenuLabel: '메뉴',
     darkModeSwitchLabel: '테마',
     lightModeSwitchTitle: '라이트 테마로 전환',
-    darkModeSwitchTitle: '다크 테마로 전환',
-
-    search: {
-      options: {
-        translations: {
-          button: {
-            buttonText: '문서 검색',
-            buttonAriaLabel: '문서 검색'
-          },
-          modal: {
-            noResultsText: '결과를 찾을 수 없습니다',
-            resetButtonTitle: '검색어 지우기',
-            footer: {
-              selectText: '선택',
-              navigateText: '탐색',
-              closeText: '닫기'
-            }
-          }
-        }
-      }
-    }
+    darkModeSwitchTitle: '다크 테마로 전환'
   }
 }

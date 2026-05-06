@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useData } from 'vitepress'
-import { PROJECTS } from '../composables/useProjectPath'
+import { PROJECTS } from '../../shared'
 import { STORAGE_KEYS } from '../../locales/languages'
 import { findMatchingLanguage, getPreferencePath } from '../composables/useLanguageDetect'
 
@@ -77,10 +77,10 @@ const goBack = () => {
         {{ t.desc }}
       </p>
       <div class="not-found-actions">
-        <button class="btn-primary" @click="goHome">
+        <button type="button" class="btn-primary" @click="goHome">
           {{ t.goHome }}
         </button>
-        <button class="btn-secondary" @click="goBack">
+        <button type="button" class="btn-secondary" @click="goBack">
           {{ t.goBack }}
         </button>
       </div>
