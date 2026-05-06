@@ -462,6 +462,30 @@ func (l *Loader) Validate() error
 
 Проверяет наличие всех обязательных ключей, указанных в `Config.RequiredKeys`.
 
+**Возвращает:**
+- `error` - ошибка валидации
+
+**Поведение:**
+- Проверяет наличие всех ключей, указанных в `Config.RequiredKeys`
+
+```go
+cfg := env.DefaultConfig()
+cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+
+loader, _ := env.New(cfg)
+loader.LoadFiles(".env")
+
+if err := loader.Validate(); err != nil {
+    // Отсутствует обязательный ключ
+    var missingErr *env.ValidationError
+    if errors.As(err, &missingErr) {
+        fmt.Printf("Отсутствует: %s\n", missingErr.Field)
+    }
+}
+```
+
+---
+
 ### ParseInto
 
 ```go
@@ -470,11 +494,33 @@ func (l *Loader) ParseInto(v interface{}) error
 
 Отображает переменные окружения в структуру.
 
+**Параметры:**
+- `v` - указатель на структуру
+
+**Возвращает:**
+- `error` - ошибка отображения
+
 **Поддерживаемые теги:**
 - `env:"KEY"` - указывает имя переменной окружения
 - `env:"-"` - игнорировать это поле
 - `envDefault:"value"` - указывает значение по умолчанию
 - `envSeparator:","` - указывает разделитель для срезов
+
+```go
+type Config struct {
+    Host    string   `env:"HOST" envDefault:"localhost"`
+    Port    int64    `env:"PORT" envDefault:"8080"`
+    Debug   bool     `env:"DEBUG" envDefault:"false"`
+    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Ignored string   `env:"-"`
+}
+
+var cfg Config
+err := loader.ParseInto(&cfg)
+if err != nil {
+    panic(err)
+}
+```
 
 ---
 
@@ -488,12 +534,22 @@ func (l *Loader) Close() error
 
 Освобождает ресурсы и очищает хранилище.
 
+**Возвращает:**
+- `error` - ошибка закрытия
+
 **Поведение:**
 - Безопасно обнуляет все хранимые конфиденциальные данные
 - Если загрузчик владеет ComponentFactory, также закрывает фабрику
 - Безопасное закрытие, многократный вызов возвращает nil
 
-::: warning Внимание Поведение после закрытия
+```go
+loader, _ := env.New(cfg)
+defer loader.Close()
+
+// Использование загрузчика...
+```
+
+::: warning Поведение после закрытия
 После закрытия все операции возвращают ошибки или нулевые значения:
 - `LoadFiles` → `ErrClosed`
 - `GetString` → возвращает пустое значение
@@ -502,6 +558,8 @@ func (l *Loader) Close() error
 - `Len` → возвращает 0
 :::
 
+---
+
 ### IsClosed
 
 ```go
@@ -509,6 +567,15 @@ func (l *Loader) IsClosed() bool
 ```
 
 Проверяет, закрыт ли загрузчик.
+
+**Возвращает:**
+- `bool` - закрыт ли загрузчик
+
+```go
+if loader.IsClosed() {
+    // Загрузчик закрыт
+}
+```
 
 ---
 

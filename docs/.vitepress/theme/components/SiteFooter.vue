@@ -44,19 +44,22 @@
             <li>
               <a href="https://github.com/cybergodev" target="_blank" rel="noopener">
                 GitHub
-                <svg class="external-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="external-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
                 </svg>
+                <span class="sr-only">{{ t.opensInNewWindow }}</span>
               </a>
             </li>
             <li>
               <a href="https://github.com/cybergodev/docs-site/issues/new?template=doc-issue.md" target="_blank" rel="noopener">
                 {{ t.reportIssue }}
+                <span class="sr-only">{{ t.opensInNewWindow }}</span>
               </a>
             </li>
             <li>
               <a href="https://github.com/cybergodev/docs-site" target="_blank" rel="noopener">
                 {{ t.editDocs }}
+                <span class="sr-only">{{ t.opensInNewWindow }}</span>
               </a>
             </li>
           </ul>
@@ -70,6 +73,7 @@
             <li>
               <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">
                 MIT {{ t.license }}
+                <span class="sr-only">{{ t.opensInNewWindow }}</span>
               </a>
             </li>
           </ul>
@@ -77,7 +81,7 @@
       </div>
 
       <div class="footer-bottom">
-        <span>Copyright &copy; 2026 CyberGo (cybergo.dev)</span>
+        <span>{{ t.copyright }}</span>
       </div>
     </div>
   </footer>
@@ -89,7 +93,7 @@ import { useData, useRouter } from 'vitepress'
 
 const { lang: vpLang, frontmatter } = useData()
 const router = useRouter()
-const show = ref(true)
+const show = ref(false)
 
 function updateVisibility() {
   const layout = frontmatter.value.layout
@@ -122,6 +126,8 @@ type Translations = {
   reportIssue: string
   editDocs: string
   license: string
+  copyright: string
+  opensInNewWindow: string
 }
 
 const i18n: Record<string, Translations> = {
@@ -133,7 +139,9 @@ const i18n: Record<string, Translations> = {
     aboutSite: '关于本站',
     reportIssue: '报告文档问题',
     editDocs: '编辑文档',
-    license: '许可证'
+    license: '许可证',
+    copyright: '版权所有 © 2026 CyberGo (cybergo.dev)',
+    opensInNewWindow: '（在新窗口打开）'
   },
   en: {
     brandDesc: 'High-performance Go open-source library collection: JSON, JWT, HTTP client, HTML extraction, logging, and environment management.',
@@ -143,7 +151,9 @@ const i18n: Record<string, Translations> = {
     aboutSite: 'About This Site',
     reportIssue: 'Report a Doc Issue',
     editDocs: 'Edit Docs',
-    license: 'License'
+    license: 'License',
+    copyright: 'Copyright © 2026 CyberGo (cybergo.dev)',
+    opensInNewWindow: '(opens in new window)'
   },
   ko: {
     brandDesc: 'Go 언어를 위한 고성능 오픈소스 라이브러리 컬렉션: JSON, JWT, HTTP 클라이언트, HTML 추출, 로깅, 환경 변수 관리.',
@@ -153,7 +163,9 @@ const i18n: Record<string, Translations> = {
     aboutSite: '이 사이트에 대하여',
     reportIssue: '문서 문제 보고',
     editDocs: '문서 편집',
-    license: '라이선스'
+    license: '라이선스',
+    copyright: '저작권 © 2026 CyberGo (cybergo.dev)',
+    opensInNewWindow: '(새 창에서 열림)'
   },
   ja: {
     brandDesc: 'Go 言語のための高性能オープンソースライブラリコレクション：JSON、JWT、HTTPクライアント、HTML抽出、ロギング、環境変数管理。',
@@ -163,7 +175,9 @@ const i18n: Record<string, Translations> = {
     aboutSite: 'このサイトについて',
     reportIssue: 'ドキュメントの問題を報告',
     editDocs: 'ドキュメントを編集',
-    license: 'ライセンス'
+    license: 'ライセンス',
+    copyright: 'Copyright © 2026 CyberGo (cybergo.dev)',
+    opensInNewWindow: '（新しいウィンドウで開く）'
   },
   ru: {
     brandDesc: 'Коллекция высокопроизводительных библиотек Go: JSON, JWT, HTTP-клиент, извлечение HTML, логирование и управление переменными окружения.',
@@ -173,7 +187,9 @@ const i18n: Record<string, Translations> = {
     aboutSite: 'О сайте',
     reportIssue: 'Сообщить о проблеме',
     editDocs: 'Редактировать документацию',
-    license: 'Лицензия'
+    license: 'Лицензия',
+    copyright: '© 2026 CyberGo (cybergo.dev)',
+    opensInNewWindow: '(откроется в новом окне)'
   }
 }
 
