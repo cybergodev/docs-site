@@ -142,6 +142,7 @@ export const jaSidebars: Record<string, DefaultTheme.SidebarItem[]> = {
       ]
     }
   ],
+
   '/ja/httpc/': [
     {
       text: 'はじめに',
@@ -236,6 +237,7 @@ export const jaSidebars: Record<string, DefaultTheme.SidebarItem[]> = {
       ]
     }
   ],
+
   '/ja/html/': [
     {
       text: 'はじめに',
@@ -344,6 +346,7 @@ export const jaSidebars: Record<string, DefaultTheme.SidebarItem[]> = {
       ]
     }
   ],
+
   '/ja/dd/': [
     {
       text: 'はじめに',
@@ -450,6 +453,7 @@ export const jaSidebars: Record<string, DefaultTheme.SidebarItem[]> = {
       ]
     }
   ],
+
   '/ja/env/': [
     {
       text: 'はじめに',

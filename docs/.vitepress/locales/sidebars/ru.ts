@@ -237,6 +237,7 @@ export const ruSidebars: Record<string, DefaultTheme.SidebarItem[]> = {
       ]
     }
   ],
+
   '/ru/html/': [
     {
       text: 'Начало работы',
@@ -345,6 +346,7 @@ export const ruSidebars: Record<string, DefaultTheme.SidebarItem[]> = {
       ]
     }
   ],
+
   '/ru/dd/': [
     {
       text: 'Начало работы',
@@ -451,6 +453,7 @@ export const ruSidebars: Record<string, DefaultTheme.SidebarItem[]> = {
       ]
     }
   ],
+
   '/ru/env/': [
     {
       text: 'Начало работы',

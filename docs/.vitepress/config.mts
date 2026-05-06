@@ -101,13 +101,12 @@ export default defineConfig({
       const subPath = langMatch[2] || ''
       const allLangs = ['zh', 'en', 'ko', 'ja', 'ru']
 
-      head.push(['link', { rel: 'alternate', hreflang: currentLang, href: canonical }])
       for (const altLang of allLangs) {
         if (altLang !== currentLang) {
           head.push(['link', { rel: 'alternate', hreflang: altLang, href: `https://www.cybergo.dev/${altLang}${subPath}` }])
         }
       }
-      head.push(['link', { rel: 'alternate', hreflang: 'x-default', href: 'https://www.cybergo.dev/en/' }])
+      head.push(['link', { rel: 'alternate', hreflang: 'x-default', href: `https://www.cybergo.dev/en${subPath}` }])
     }
 
     // Dynamic og:locale based on page language
