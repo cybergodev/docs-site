@@ -24,19 +24,6 @@
           </div>
         </div>
 
-        <!-- Docs Column -->
-        <div class="footer-col">
-          <h4 class="col-title">{{ t.docs }}</h4>
-          <ul class="col-links">
-            <li><a :href="`/${lang}/json/`">JSON</a></li>
-            <li><a :href="`/${lang}/jwt/`">JWT</a></li>
-            <li><a :href="`/${lang}/httpc/`">HTTPC</a></li>
-            <li><a :href="`/${lang}/html/`">HTML</a></li>
-            <li><a :href="`/${lang}/dd/`">DD</a></li>
-            <li><a :href="`/${lang}/env/`">ENV</a></li>
-          </ul>
-        </div>
-
         <!-- Community Column -->
         <div class="footer-col">
           <h4 class="col-title">{{ t.community }}</h4>
@@ -119,7 +106,6 @@ const lang = computed(() => {
 
 type Translations = {
   brandDesc: string
-  docs: string
   community: string
   about: string
   aboutSite: string
@@ -133,7 +119,6 @@ type Translations = {
 const i18n: Record<string, Translations> = {
   zh: {
     brandDesc: '专为 Go 语言打造的高性能开源库集合，涵盖 JSON、JWT、HTTP 客户端、HTML 提取、日志和环境变量管理。',
-    docs: '文档',
     community: '社区',
     about: '关于',
     aboutSite: '关于本站',
@@ -145,7 +130,6 @@ const i18n: Record<string, Translations> = {
   },
   en: {
     brandDesc: 'High-performance Go open-source library collection: JSON, JWT, HTTP client, HTML extraction, logging, and environment management.',
-    docs: 'Docs',
     community: 'Community',
     about: 'About',
     aboutSite: 'About This Site',
@@ -157,7 +141,6 @@ const i18n: Record<string, Translations> = {
   },
   ko: {
     brandDesc: 'Go 언어를 위한 고성능 오픈소스 라이브러리 컬렉션: JSON, JWT, HTTP 클라이언트, HTML 추출, 로깅, 환경 변수 관리.',
-    docs: '문서',
     community: '커뮤니티',
     about: '소개',
     aboutSite: '이 사이트에 대하여',
@@ -169,7 +152,6 @@ const i18n: Record<string, Translations> = {
   },
   ja: {
     brandDesc: 'Go 言語のための高性能オープンソースライブラリコレクション：JSON、JWT、HTTPクライアント、HTML抽出、ロギング、環境変数管理。',
-    docs: 'ドキュメント',
     community: 'コミュニティ',
     about: '概要',
     aboutSite: 'このサイトについて',
@@ -181,7 +163,6 @@ const i18n: Record<string, Translations> = {
   },
   ru: {
     brandDesc: 'Коллекция высокопроизводительных библиотек Go: JSON, JWT, HTTP-клиент, извлечение HTML, логирование и управление переменными окружения.',
-    docs: 'Документация',
     community: 'Сообщество',
     about: 'О проекте',
     aboutSite: 'О сайте',

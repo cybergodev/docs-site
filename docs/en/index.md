@@ -8,14 +8,6 @@ hero:
   name: CyberGo
   text: Production-Ready with Ultimate Performance
   tagline: Lightweight Design / Ready to Use / Minimal Dependencies / High Performance / Built for High Concurrency
-  actions:
-    - theme: brand
-      text: Get Started
-      link: /en/json/
-    - theme: alt
-      text: GitHub
-      link: https://github.com/cybergodev
-
 ---
 
 <!-- Project List -->

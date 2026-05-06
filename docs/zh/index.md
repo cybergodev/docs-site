@@ -8,14 +8,6 @@ hero:
   name: CyberGo
   text: 生产就绪与极致性能
   tagline: 轻量设计 / 开箱即用 / 最小依赖 / 高性能 / 为高并发场景打造
-  actions:
-    - theme: brand
-      text: 快速开始
-      link: /zh/json/
-    - theme: alt
-      text: GitHub
-      link: https://github.com/cybergodev
-
 ---
 
 <!-- 项目列表 -->

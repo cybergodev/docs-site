@@ -8,14 +8,6 @@ hero:
   name: CyberGo
   text: 本番対応と極限のパフォーマンス
   tagline: 軽量設計 / すぐに使える / 最小限の依存関係 / 高性能 / 高並行性シナリオ向け
-  actions:
-    - theme: brand
-      text: クイックスタート
-      link: /ja/json/
-    - theme: alt
-      text: GitHub
-      link: https://github.com/cybergodev
-
 ---
 
 <!-- プロジェクト一覧 -->

@@ -8,14 +8,6 @@ hero:
   name: CyberGo
   text: 프로덕션 준비 완료 및 극한의 성능
   tagline: 가벼운 설계 / 즉시 사용 가능 / 최소 의존성 / 고성능 / 고동시성 시나리오를 위해
-  actions:
-    - theme: brand
-      text: 빠른 시작
-      link: /ko/json/
-    - theme: alt
-      text: GitHub
-      link: https://github.com/cybergodev
-
 ---
 
 <!-- 프로젝트 목록 -->
