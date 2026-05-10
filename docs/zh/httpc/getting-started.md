@@ -1,6 +1,6 @@
 ---
 title: 快速开始 - HTTPC
-description: 五分钟快速上手 CyberGo HTTPC 安全 HTTP 客户端库，完整涵盖 Go 模块安装、GET 与 POST 请求发送、客户端创建与配置、JSON 响应处理、全部请求选项函数的用法和 ClientError 错误处理的基础入门指南。
+description: 五分钟快速上手 HTTPC 安全 HTTP 客户端库，涵盖模块安装、GET/POST 请求、客户端配置、JSON 解析与错误处理。
 ---
 
 # 快速开始

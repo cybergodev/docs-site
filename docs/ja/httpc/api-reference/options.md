@@ -1,6 +1,6 @@
 ---
 title: リクエストオプション - HTTPC
-description: HTTPC の 26 個のリクエストオプション関数の完全 API リファレンス。リクエストヘッダー設定、Bearer/Basic 認証、JSON/フォームなどの各種リクエストボディ形式、URL クエリパラメータ構築、Cookie 管理、OnRequest/OnResponse コールバック関数をカテゴリ別に解説します。
+description: HTTPC 27 個のリクエストオプション関数 API リファレンス。カテゴリ別にリクエストヘッダー、認証、複数のリクエストボディ形式、クエリパラメータ、Cookie 管理、コールバック関数。
 ---
 
 # リクエストオプション
@@ -268,6 +268,25 @@ func WithCookie(cookie http.Cookie) RequestOption
 ```go
 result, err := client.Get(url,
     httpc.WithCookie(http.Cookie{Name: "session", Value: "abc123"}),
+)
+```
+
+### WithCookies
+
+```go
+func WithCookies(cookies []http.Cookie) RequestOption
+```
+
+Cookie を一括追加。`WithCookie` を複数回呼び出すより効率的 -- 容量を事前割り当てし、単一の走査ですべての Cookie を検証します。
+
+```go
+cookies := []http.Cookie{
+    {Name: "session_id", Value: "abc123"},
+    {Name: "user_pref", Value: "dark_mode"},
+    {Name: "lang", Value: "en"},
+}
+result, err := client.Get("https://api.example.com",
+    httpc.WithCookies(cookies),
 )
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: 인터페이스 정의 - HTTPC
-description: HTTPC 핵심 인터페이스의 전체 API 레퍼런스로, Client 전체 기능 클라이언트 인터페이스의 모든 메서드 시그니처, Doer 기본 실행 인터페이스, DomainClienter 도메인 클라이언트 인터페이스, RetryPolicy 재시도 정책 인터페이스 및 MiddlewareFunc 미들웨어 함수 타입의 상세 정의를 포함합니다.
+description: HTTPC 핵심 인터페이스 API 참조, Client 전체 기능 인터페이스, Doer 실행 인터페이스, DomainClienter 도메인 인터페이스, RetryPolicy와 MiddlewareFunc 정의 포함.
 ---
 
 # 인터페이스 정의
@@ -26,12 +26,12 @@ type Client interface {
     DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
     DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 
-    // 수명 주기
+    // 라이프사이클
     Close() error
 }
 ```
 
-메인 클라이언트 인터페이스로, `New()`로 생성합니다. 자세한 내용은 [패키지 함수](./functions)를 참고하세요.
+기본 클라이언트 인터페이스로, `New()`로 생성합니다. 자세한 내용은 [패키지 함수](./functions)를 참조하십시오.
 
 ## Doer
 
@@ -82,7 +82,7 @@ type DomainClienter interface {
 }
 ```
 
-도메인 범위 클라이언트로, Cookie와 요청 헤더를 자동으로 관리합니다. 자세한 내용은 [도메인 클라이언트](./domain-client)와 [세션 관리](./session)를 참고하세요.
+도메인 범위 클라이언트로, Cookie와 요청 헤더를 자동으로 관리합니다. 자세한 내용은 [도메인 클라이언트](./domain-client)와 [세션 관리](./session)를 참조하십시오.
 
 ## RetryPolicy
 
@@ -94,7 +94,7 @@ type RetryPolicy interface {
 }
 ```
 
-사용자 정의 재시도 정책 인터페이스.
+사용자 정의 재시도 전략 인터페이스.
 
 | 메서드 | 설명 |
 |------|------|
@@ -102,16 +102,16 @@ type RetryPolicy interface {
 | `GetDelay(attempt)` | 다음 재시도 전 대기 시간 반환 |
 | `MaxRetries()` | 최대 재시도 횟수 반환 |
 
-:::warning 내부 타입 제한
-`ShouldRetry`의 `resp` 매개변수 타입인 `ResponseReader`는 내부 인터페이스(`internal/types` 패키지에 위치)이므로 외부 코드에서 직접 참조할 수 없습니다. 따라서 `RetryPolicy`는 동일 모듈 내에서만 구현할 수 있습니다. 대부분의 시나리오는 `RetryConfig` 설정과 `WithMaxRetries` 옵션으로 재시도 요구를 충족할 수 있습니다. 사용자 정의 정책이 필요한 경우 프로젝트 내부 패키지에서 `RetryPolicy` 인터페이스를 구현하세요.
+:::warning 주의 내부 유형 제한
+`ShouldRetry`의 `resp` 매개변수 유형 `ResponseReader`는 내부 인터페이스(`internal/types` 패키지에 위치)이므로 외부 코드에서 직접 참조할 수 없습니다. 따라서 `RetryPolicy`는 같은 모듈 내에서만 구현할 수 있습니다. 대부분의 시나리오는 `RetryConfig` 구성과 `WithMaxRetries` 옵션으로 재시도 요구를 충족할 수 있습니다. 사용자 정의 전략이 필요한 경우 프로젝트 내부 패키지에서 `RetryPolicy` 인터페이스를 구현하십시오.
 :::
 
-다음 예제는 `RetryPolicy`의 구현 패턴을 보여줍니다. `ResponseReader`는 내부 타입이므로 이 코드는 `httpc` 모듈 내부에서만 컴파일됩니다:
+아래 예제는 `RetryPolicy`의 구현 패턴을 보여줍니다. `ResponseReader`는 내부 유형임에 유의하십시오 -- 이 코드는 `httpc` 모듈 내부에서만 컴파일할 수 있습니다:
 
 ```go
-// 참고: ResponseReader는 내부 타입 (internal/types 패키지)입니다.
+// 참고: ResponseReader는 내부 유형(internal/types 패키지)입니다.
 // 이 코드는 httpc 모듈 외부에서 컴파일할 수 없습니다.
-// 대부분의 사용자는 RetryConfig와 WithMaxRetries로 재시도를 설정해야 합니다.
+// 대부분의 사용자는 RetryConfig와 WithMaxRetries로 재시도를 구성해야 합니다.
 
 type MyRetryPolicy struct {
     maxRetries int
@@ -136,7 +136,7 @@ func (p *MyRetryPolicy) MaxRetries() int {
 }
 ```
 
-## 핵심 타입
+## 핵심 유형
 
 ### RequestMutator
 
@@ -173,7 +173,7 @@ type RequestMutator interface {
 }
 ```
 
-미들웨어에서 사용되며, 요청에 대한 읽기/쓰기 접근을 제공합니다. 내부 인터페이스 `RequestReader`와 `RequestWriter`로 구성됩니다.
+미들웨어에서 사용하며, 요청에 대한 읽기/쓰기 접근을 제공합니다. 내부 인터페이스 `RequestReader`와 `RequestWriter`로 구성됩니다.
 
 ### ResponseMutator
 
@@ -216,7 +216,7 @@ type ResponseMutator interface {
 }
 ```
 
-미들웨어에서 사용되며, 응답에 대한 읽기/쓰기 접근을 제공합니다. 내부 인터페이스 `ResponseReader`와 `ResponseWriter`로 구성됩니다.
+미들웨어에서 사용하며, 응답에 대한 읽기/쓰기 접근을 제공합니다. 내부 인터페이스 `ResponseReader`와 `ResponseWriter`로 구성됩니다.
 
 ### Handler
 
@@ -224,7 +224,7 @@ type ResponseMutator interface {
 type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, error)
 ```
 
-요청 처리 함수 시그니처.
+요청 처리 함수 서명.
 
 ### MiddlewareFunc
 
@@ -232,15 +232,15 @@ type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, err
 type MiddlewareFunc func(Handler) Handler
 ```
 
-미들웨어 함수 시그니처로, 다음 Handler를 받아 래핑된 Handler를 반환합니다.
+미들웨어 함수 서명으로, 다음 Handler를 받아 래핑된 Handler를 반환합니다.
 
 ## 관련 페이지
 
-| 타입 | 상세 레퍼런스 |
+| 유형 | 상세 참조 |
 |------|----------|
 | `Result` / `RequestInfo` / `ResponseInfo` / `RequestMeta` | [Result](./result) |
 | `SessionManager` 메서드 | [세션 관리](./session) |
 | `DomainClient` 구현 | [도메인 클라이언트](./domain-client) |
 | `DownloadConfig` / `DownloadResult` | [파일 다운로드](./download) |
-| `ClientError` / `ErrorType` / 오류 변수 | [오류 타입](./errors) |
-| `FormData` / `FileData` / `BodyKind` | [상수와 타입](./constants) |
+| `ClientError` / `ErrorType` / 오류 변수 | [오류 유형](./errors) |
+| `FormData` / `FileData` / `BodyKind` | [상수와 유형](./constants) |

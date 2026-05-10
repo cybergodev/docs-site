@@ -1,15 +1,15 @@
 ---
 title: 요청과 응답 - HTTPC
-description: HTTPC 요청과 응답 처리 완전 가이드, 커스텀 요청 헤더 설정, JSON과 폼 등 다양한 요청 본문 형식, URL 쿼리 매개변수 생성 방법, Bearer와 Basic 인증 방식 상세 설명, Cookie 자동 관리, 단일 요청 타임아웃 제어 및 스트리밍 응답 읽기의 자세한 사용법과 코드 예제를 다룹니다.
+description: HTTPC 요청과 응답 처리 가이드, 요청 헤더 설정, 다양한 요청 본문 형식, 쿼리 매개변수, 인증 방식, Cookie 관리 및 스트리밍 응답의 코드 예제 포함.
 ---
 
 # 요청과 응답
 
 ## 요청 전송
 
-### 패키지 수준 함수
+### 패키지 함수
 
-클라이언트를 생성하지 않고 직접 요청을 전송합니다:
+클라이언트를 생성할 필요 없이 직접 요청을 전송합니다:
 
 ```go
 result, err := httpc.Get("https://api.example.com/data")
@@ -22,7 +22,7 @@ fmt.Println(result.StatusCode())
 fmt.Println(result.Body())
 ```
 
-지원하는 HTTP 메서드: `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Options`.
+지원되는 HTTP 메서드: `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Options`.
 
 ### 클라이언트 인스턴스
 
@@ -78,18 +78,18 @@ result, err := client.Post(url, httpc.WithForm(map[string]string{
     "password": "secret",
 }))
 
-// 바이너리 (기본값 application/octet-stream)
+// 바이너리 (기본 application/octet-stream)
 result, err := client.Post(url, httpc.WithBinary(data))
-// 타입 지정
+// 유형 지정
 result, err := client.Post(url, httpc.WithBinary(data, "image/png"))
 
-// 자동 타입 감지
+// 자동 감지 유형
 result, err := client.Post(url, httpc.WithBody(data))
 // string → text/plain; charset=utf-8, []byte → application/octet-stream,
 // map[string]string → application/x-www-form-urlencoded,
-// *FormData → multipart/form-data, io.Reader → passed through,
+// *FormData → multipart/form-data, io.Reader → 그대로 전달,
 // 기타 → application/json
-// 선택적으로 명시적 지정: httpc.WithBody(data, httpc.BodyJSON)
+// 명시적 지정 가능: httpc.WithBody(data, httpc.BodyJSON)
 ```
 
 ### 쿼리 매개변수
@@ -140,7 +140,7 @@ result, err := client.Get(url, httpc.WithMaxRetries(5))
 
 // 리다이렉트
 result, err := client.Get(url,
-    httpc.WithFollowRedirects(false),    // 리다이렉트 비활성화
+    httpc.WithFollowRedirects(false),    // 리다이렉트 금지
     httpc.WithMaxRedirects(3),           // 최대 3회 리다이렉트
 )
 ```
@@ -218,13 +218,13 @@ result, err := httpc.Request(ctx, "GET", url)
 
 ## 스트리밍 응답
 
-`WithStreamBody(true)`는 내부 메커니즘으로, 파일 다운로드 시 전체 응답 본문을 메모리에 캐시하지 않도록 합니다. 활성화하면 응답 본문이 `Result`에 읽히지 않습니다 (`Body()`와 `RawBody()`가 빈 값을 반환).
+`WithStreamBody(true)`는 내부 메커니즘으로, 파일 다운로드 시 전체 응답 본문이 메모리에 캐시되는 것을 방지하는 데 사용됩니다. 활성화하면 응답 본문이 `Result`에 읽히지 않습니다 (`Body()` 및 `RawBody()`가 빈 값을 반환).
 
-:::warning
-`WithStreamBody(true)`는 파일 다운로드 API 내부에서 사용됩니다 (`DownloadFile`, `DownloadWithOptions`). 스트리밍 방식으로 응답 내용을 가져오려면 [파일 다운로드 API](./file-transfer)를 사용하세요.
+:::warning 주의
+`WithStreamBody(true)`는 파일 다운로드 API(`DownloadFile`, `DownloadWithOptions`)에서 내부적으로 사용됩니다. 스트리밍 방식으로 응답 내용을 가져오려면 [파일 다운로드 API](./file-transfer)를 사용하십시오.
 :::
 
-대용량 파일을 다운로드하려면 다운로드 API를 사용하세요:
+대용량 파일을 다운로드하려면 다운로드 API를 사용하십시오:
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -234,24 +234,24 @@ result, err := client.DownloadWithOptions(url, cfg)
 
 ## 응답 압축 해제
 
-HTTPC는 gzip, deflate 등의 콘텐츠 인코딩 압축 해제를 자동으로 처리합니다. 보안 설정을 통해 압축 해제 후 크기를 제한하여 압축 폭탄 공격을 방지할 수 있습니다:
+HTTPC는 gzip, deflate 등 콘텐츠 인코딩의 압축 해제를 자동으로 처리합니다. 보안 구성을 통해 압축 해제 후 크기를 제한하여 압축 폭탄 공격을 방지할 수 있습니다:
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // 압축된 본문 최대 10MB
+cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // 압축 본문 최대 10MB
 cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // 압축 해제 후 최대 100MB
 ```
 
-| 설정 항목 | 기본값 | 설명 |
+| 구성 항목 | 기본값 | 설명 |
 |--------|--------|------|
 | `MaxResponseBodySize` | 10MB | 원본 응답 본문 크기 상한 |
 | `MaxDecompressedBodySize` | 100MB | 압축 해제 후 응답 본문 크기 상한 |
 
-한도를 초과하면 `"exceeds limit"` 메시지가 포함된 오류가 반환되며, `ClientError` 타입으로 확인할 수 있습니다. `ErrResponseBodyTooLarge`는 `Result.Unmarshal()`에서 50MB JSON 크기 제한을 초과하는 응답 본문을 파싱할 때 반환됩니다 (`MaxResponseBodySize`와 별개).
+한도를 초과하면 `"exceeds limit"` 정보가 포함된 오류가 반환되며, `ClientError` 유형으로 확인할 수 있습니다. `ErrResponseBodyTooLarge`는 `Result.Unmarshal()`에서 50MB JSON 크기 제한을 초과하는 응답 본문을 파싱할 때 반환됩니다(`MaxResponseBodySize`와 별개).
 
 ## 다음 단계
 
 - [파일 업로드와 다운로드](./file-transfer) - 파일 전송 가이드
 - [도메인 클라이언트와 세션](./domain-session) - 세션 관리
-- [요청 옵션 API](../api-reference/options) - 전체 옵션 참조
+- [요청 옵션 API](../api-reference/options) - 완전한 옵션 참조
 - [Result API](../api-reference/result) - 응답 처리 참조

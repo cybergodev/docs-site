@@ -1,17 +1,17 @@
 ---
-title: Цепочки промежуточного ПО - HTTPC
-description: "Глубокое руководство по цепочкам промежуточного ПО HTTPC, подробно описывающее принцип выполнения луковой модели и полный процесс обработки запросов, функциональность и настройку восьми встроенных промежуточных модулей (Recovery, Logging, RequestID, Timeout, Header, Metrics, Audit, Retry), паттерн цепочечной композиции Chain и методы написания пользовательского промежуточного ПО"
+title: Цепочка промежуточного ПО - HTTPC
+description: Руководство по цепочке промежуточного ПО HTTPC, подробно описывающее принцип выполнения луковой модели, функциональность восьми встроенных промежуточных ПО, паттерн композиции Chain и методы написания пользовательского промежуточного ПО.
 ---
 
-# Цепочки промежуточного ПО
+# Цепочка промежуточного ПО
 
 ## Луковая модель
 
-Промежуточное ПО HTTPC использует луковую модель: запрос проходит снаружи внутрь, ответ — изнутри наружу:
+Промежуточное ПО HTTPC использует луковую модель: запросы идут снаружи внутрь, ответы — изнутри наружу:
 
 ```text
 Запрос →  Recovery  →  Logging  →  RequestID  → Handler
-                                                           ↓
+                                                          ↓
 Ответ  ←  Recovery  ←  Logging  ←  RequestID  ← Response
 ```
 
@@ -20,7 +20,7 @@ cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
     httpc.RecoveryMiddleware(),    // Внешний слой: восстановление после panic
     httpc.LoggingMiddleware(log.Printf), // Второй слой: логирование
-    httpc.RequestIDMiddleware("X-Request-ID", nil), // Внутренний слой: Request ID
+    httpc.RequestIDMiddleware("X-Request-ID", nil), // Внутренний слой: ID запроса
 }
 
 client, _ := httpc.New(cfg)
@@ -30,7 +30,7 @@ client, _ := httpc.New(cfg)
 
 ### RecoveryMiddleware
 
-Восстановление после panic, предотвращает крах процесса:
+Восстановление после panic, предотвращает падение процесса:
 
 ```go
 httpc.RecoveryMiddleware()
@@ -38,7 +38,7 @@ httpc.RecoveryMiddleware()
 
 ### LoggingMiddleware
 
-Логирование запросов/ответов с автоматической маскировкой URL:
+Логирование запросов/ответов, URL автоматически маскируются:
 
 ```go
 httpc.LoggingMiddleware(func(format string, args ...any) {
@@ -49,7 +49,7 @@ httpc.LoggingMiddleware(func(format string, args ...any) {
 
 ### RequestIDMiddleware
 
-Добавляет уникальный ID каждому запросу, генерируемый через `crypto/rand`:
+Добавляет уникальный ID к каждому запросу, генерируется с использованием `crypto/rand`:
 
 ```go
 httpc.RequestIDMiddleware("X-Request-ID", nil) // по умолчанию 32-символьный hex
@@ -62,7 +62,7 @@ httpc.RequestIDMiddleware("X-Request-ID", func() string {
 
 ### TimeoutMiddleware
 
-Таймаут на уровне промежуточного ПО, принудительно срабатывающий до таймаута клиента:
+Тайм-аут на уровне промежуточного ПО, принудительно выполняется до тайм-аута клиента:
 
 ```go
 httpc.TimeoutMiddleware(30 * time.Second)
@@ -95,7 +95,7 @@ httpc.MetricsMiddleware(func(method, url string, statusCode int, duration time.D
 
 ### AuditMiddleware
 
-Аудит безопасности для сценарии финансового, медицинского и другого соответствия:
+Аудит безопасности для сценариев соответствия в финансах, медицине и других областях:
 
 ```go
 httpc.AuditMiddleware(func(event httpc.AuditEvent) {
@@ -195,7 +195,7 @@ func CircuitBreakerMiddleware(threshold int) httpc.MiddlewareFunc {
 }
 ```
 
-## Настройка промежуточного ПО
+## Конфигурация промежуточного ПО
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -215,6 +215,6 @@ client, _ := httpc.New(cfg)
 
 ## Что дальше
 
-- [API промежуточного ПО](../api-reference/middleware) — полный справочник промежуточного ПО
-- [Повторные попытки и отказоустойчивость](./retry-fault-tolerance) — руководство по стратегиям повторов
-- [Обзор безопасности](../security/) — практики безопасности промежуточного ПО аудита
+- [Промежуточное ПО API](../api-reference/middleware) - полный справочник промежуточного ПО
+- [Повторные попытки и отказоустойчивость](./retry-fault-tolerance) - руководство по стратегиям повторных попыток
+- [Обзор безопасности](../security/) - практики безопасности с промежуточным ПО аудита

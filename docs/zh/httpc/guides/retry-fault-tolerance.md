@@ -1,6 +1,6 @@
 ---
 title: 重试与容错 - HTTPC
-description: HTTPC 重试与容错机制完整指南，详解默认重试策略与指数退避加抖动算法原理、RetryPolicy 自定义接口实现方法、Retry-After 响应头自动解析机制和结合 ClientError 错误分类判断的重试最佳实践与常见配置优化示例。
+description: HTTPC 重试与容错指南，详解默认重试策略与退避算法原理、RetryPolicy 自定义接口、Retry-After 解析与最佳实践示例。
 ---
 
 # 重试与容错

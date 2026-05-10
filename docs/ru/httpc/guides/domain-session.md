@@ -1,11 +1,11 @@
 ---
 title: Доменный клиент и сессии - HTTPC
-description: "Полное руководство по доменному клиенту HTTPC и управлению сессиями, подробно описывающее создание клиента с областью видимости домена через NewDomain, правила автоматической склейки URL и объединения путей, автоматическое обслуживание заголовков сессии и Cookie, потокобезопасное хранение SessionManager и рекомендации по настройке безопасности"
+description: Руководство по доменному клиенту и управлению сессиями HTTPC, подробно описывающее создание NewDomain, автоматическую сборку URL, управление заголовками сессии и Cookie, а также настройку безопасности.
 ---
 
 # Доменный клиент и сессии
 
-Доменный клиент (DomainClient) — это клиент для управления сессиями в рамках одного домена, автоматически поддерживающий Cookie и заголовки.
+Доменный клиент (DomainClient) — это клиент управления сессиями для определённого домена, автоматически поддерживающий Cookie и заголовки запросов.
 
 ## Создание доменного клиента
 
@@ -23,7 +23,7 @@ dc.SetHeader("Authorization", "Bearer "+token)
 result, err := dc.Get("/users")
 ```
 
-:::tip
+:::tip Совет
 `NewDomain` автоматически включает управление Cookie (`EnableCookies = true`), ручная настройка не требуется.
 :::
 
@@ -34,7 +34,7 @@ result, err := dc.Get("/users")
 dc.SetHeader("Authorization", "Bearer "+token)
 dc.SetHeader("Accept", "application/json")
 
-// Пакетная установка
+// Массовая установка
 dc.SetHeaders(map[string]string{
     "Authorization": "Bearer " + token,
     "Accept":        "application/json",
@@ -55,15 +55,15 @@ headers := dc.GetHeaders()
 // Установка Cookie
 dc.SetCookie(&http.Cookie{Name: "session", Value: "abc123"})
 
-// Пакетная установка
+// Массовая установка
 dc.SetCookies([]*http.Cookie{
     {Name: "session", Value: "abc123"},
-    {Name: "lang", Value: "ru"},
+    {Name: "lang", Value: "zh"},
 })
 
 // Автоматический захват Cookie из ответа
 result, _ := dc.Get("/login")
-// Set-Cookie от сервера автоматически сохраняется в сессию
+// Cookie, возвращённые сервером через Set-Cookie, автоматически сохраняются в сессию
 
 // Получение
 cookie := dc.GetCookie("session")
@@ -74,11 +74,11 @@ dc.DeleteCookie("session")
 dc.ClearCookies()
 ```
 
-:::tip
-После каждого запроса Cookie, возвращённые сервером, автоматически обновляются в сессии — ручная обработка не требуется.
+:::tip Совет
+После каждого запроса Cookie, возвращённые сервером, автоматически обновляются в сессии, ручная обработка не требуется.
 :::
 
-## Способы отправки запросов
+## Методы запросов
 
 ```go
 // Относительные пути
@@ -93,7 +93,7 @@ result, _ := dc.Options("/users")
 // С контекстом
 result, _ := dc.Request(ctx, "GET", "/users")
 
-// Абсолютный URL (обходит склейку base URL)
+// Абсолютный URL (обходит сборку базового URL)
 result, _ := dc.Get("https://other-api.com/data")
 ```
 
@@ -121,7 +121,7 @@ dc, _ := httpc.NewDomain("https://api.example.com")
 // Установка строгой безопасности Cookie
 session := dc.Session()
 session.SetCookieSecurity(httpc.StrictCookieSecurityConfig())
-// Требования: Secure=true, HttpOnly=true, SameSite=Strict
+// Требуется: Secure=true, HttpOnly=true, SameSite=Strict
 
 // Cookie, не соответствующие требованиям безопасности, вызовут ошибку SetCookie
 if err := dc.SetCookie(&http.Cookie{
@@ -194,6 +194,6 @@ func main() {
 
 ## Что дальше
 
-- [API доменного клиента](../api-reference/domain-client) — полный справочник API
-- [API управления сессиями](../api-reference/session) — справочник SessionManager
-- [Запросы и ответы](./request-response) — базовое руководство по запросам
+- [Доменный клиент API](../api-reference/domain-client) - полный справочник API
+- [Управление сессиями API](../api-reference/session) - справочник по SessionManager
+- [Запросы и ответы](./request-response) - руководство по базовым запросам

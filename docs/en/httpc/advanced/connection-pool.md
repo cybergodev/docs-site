@@ -1,13 +1,13 @@
 ---
 title: Connection Pool and Proxy - HTTPC
-description: Complete guide to HTTPC connection pool and proxy configuration, covering ConnectionConfig connection pool parameter tuning, HTTP forward proxy and SOCKS5 proxy setup, DNS-over-HTTPS custom resolver, connection leak troubleshooting, and IdleConnTimeout idle connection management strategies.
+description: Guide to HTTPC connection pool and proxy configuration, covering connection pool parameter tuning, HTTP and SOCKS5 proxy, custom DoH resolvers, and idle connection management strategies.
 ---
 
 # Connection Pool and Proxy
 
 ## Connection Pool Configuration
 
-The connection pool is a critical factor for HTTP client performance. HTTPC uses `ConnectionConfig` to manage the connection pool.
+The connection pool is a critical factor in HTTP client performance. HTTPC uses `ConnectionConfig` to manage the connection pool.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -108,7 +108,7 @@ Default DoH providers (in priority order):
 | AliDNS | `223.5.5.5/resolve` | Optimized for China region |
 
 :::tip
-When DoH is enabled, DNS resolution results are cached for the `DoHCacheTTL` duration. If all DoH providers are unavailable, the system DNS is used as fallback.
+When DoH is enabled, DNS resolution results are cached for the `DoHCacheTTL` duration. If all DoH providers are unavailable, it falls back to system DNS.
 :::
 
 ## HTTP/2

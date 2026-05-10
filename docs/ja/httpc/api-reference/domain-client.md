@@ -1,6 +1,6 @@
 ---
 title: ドメインクライアント - HTTPC
-description: HTTPC ドメインクライアント完全 API リファレンス。NewDomain によるドメインスコープクライアントの作成、Get や Post など 7 種類の HTTP メソッド、Download シリーズ 4 種類のダウンロードメソッド、URL 自動結合ルール、セッションヘッダー管理、Cookie 维持、DomainClienter インターフェース定義を含みます。
+description: HTTPC ドメインクライアント API リファレンス。NewDomain 作成、7 種類の HTTP メソッド、4 種類のダウンロードメソッド、URL 自動結合、セッションヘッダーと Cookie 管理。
 ---
 
 # ドメインクライアント
@@ -16,23 +16,13 @@ func NewDomain(baseURL string, config ...*Config) (DomainClienter, error)
 ドメインスコープクライアントを作成します。Cookie は自動的に有効になります。
 
 ```go
-dc, err := httpc.NewDomain("https://api.example.com")
-if err != nil {
-    log.Fatal(err)
-}
-defer dc.Close()
-```
-
-```go
 // デフォルト設定を使用
 dc, err := httpc.NewDomain("https://api.example.com")
 if err != nil {
     log.Fatal(err)
 }
 defer dc.Close()
-```
 
-```go
 // カスタム設定を使用
 cfg := httpc.DefaultConfig()
 cfg.Timeouts.Request = 60 * time.Second

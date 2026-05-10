@@ -1,9 +1,9 @@
 ---
-title: 상수와 타입 - HTTPC
-description: HTTPC 상수와 보조 타입의 전체 API 레퍼런스로, BodyKind 6가지 요청 본문 타입 열거형 상수 및 자동 감지 규칙, FormData와 FileData 다중 파트 폼 업로드 보조 타입, AuditEvent 감사 이벤트 구조체 및 SourceIPKey와 UserIDKey 컨텍스트 키 정의를 포함합니다.
+title: 상수와 유형 - HTTPC
+description: HTTPC 상수와 보조 유형 API 참조, BodyKind 요청 본문 열거형, FormData/FileData 업로드 유형, AuditEvent 감사 구조체와 컨텍스트 키 정의 포함.
 ---
 
-# 상수와 타입
+# 상수와 유형
 
 ## BodyKind
 
@@ -11,11 +11,11 @@ description: HTTPC 상수와 보조 타입의 전체 API 레퍼런스로, BodyKi
 type BodyKind int
 ```
 
-요청 본문 타입으로, `WithBody`에서 요청 본문 형식을 지정하는 데 사용됩니다.
+요청 본문 유형으로, `WithBody`에서 요청 본문 형식을 지정하는 데 사용합니다.
 
 | 상수 | 값 | 설명 | Content-Type |
 |------|-----|------|-------------|
-| `BodyAuto` | 0 | 자동 감지 | 타입에 따라 추론 |
+| `BodyAuto` | 0 | 자동 감지 | 유형에 따라 추론 |
 | `BodyJSON` | 1 | JSON 강제 | application/json |
 | `BodyXML` | 2 | XML 강제 | application/xml |
 | `BodyForm` | 3 | 폼 | application/x-www-form-urlencoded |
@@ -24,17 +24,17 @@ type BodyKind int
 
 ### BodyAuto 감지 규칙
 
-| 입력 타입 | Content-Type |
+| 입력 유형 | Content-Type |
 |----------|-------------|
 | `string` | text/plain; charset=utf-8 |
 | `[]byte` | application/octet-stream |
 | `*FormData` | multipart/form-data |
 | `io.Reader` | 설정하지 않음 |
 | `map[string]string` | application/x-www-form-urlencoded |
-| 기타 타입 | application/json |
+| 기타 유형 | application/json |
 
 ```go
-// 자동 감지 (기본값)
+// 자동 감지 (기본)
 result, _ := client.Post(url, httpc.WithBody(data))
 
 // JSON 강제
@@ -61,7 +61,7 @@ type FormData struct {
 type FileData struct {
     Filename    string
     Content     []byte
-    ContentType string  // MIME 타입, 예: "image/png", "application/pdf"
+    ContentType string  // MIME 유형, 예: "image/png", "application/pdf"
 }
 ```
 
@@ -109,17 +109,17 @@ type AuditMiddlewareConfig struct {
 
 ## 컨텍스트 키
 
-| 상수 | 타입 | 설명 |
+| 상수 | 유형 | 설명 |
 |------|------|------|
-| `SourceIPKey` | `auditContextKey` | 감사 이벤트의 출발 IP |
+| `SourceIPKey` | `auditContextKey` | 감사 이벤트의 출발지 IP |
 | `UserIDKey` | `auditContextKey` | 감사 이벤트의 사용자 ID |
 
 ```go
-// context를 통해 감사 정보 전달
+// 컨텍스트를 통해 감사 정보 전달
 ctx := context.WithValue(context.Background(), httpc.SourceIPKey, "192.168.1.1")
 ctx = context.WithValue(ctx, httpc.UserIDKey, "user-123")
 
-// Config에서 감사 미들웨어 설정
+// Config에서 감사 미들웨어 구성
 cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
     httpc.AuditMiddleware(func(event httpc.AuditEvent) {
@@ -129,12 +129,12 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
 }
 client, _ := httpc.New(cfg)
 
-// 요청 전송 시 context의 값이 미들웨어에서 읽힘
+// 요청 시 컨텍스트의 값이 미들웨어에서 읽힘
 result, err := client.Request(ctx, "GET", url)
 ```
 
 ## 참고
 
-- [오류 타입](./errors) - ClientError, ErrorType 및 오류 변수의 전체 레퍼런스
-- [요청 옵션](./options) - WithBody에서 BodyKind 사용
-- [미들웨어](./middleware) - AuditMiddleware와 감사 설정
+- [오류 유형](./errors) - ClientError, ErrorType 및 오류 변수의 완전한 참조
+- [요청 옵션](./options) - BodyKind의 WithBody 사용
+- [미들웨어](./middleware) - AuditMiddleware 및 감사 구성

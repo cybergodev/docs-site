@@ -1,22 +1,22 @@
 ---
 title: HTTP Client - HTTPC
-description: CyberGo HTTPC is a secure, high-performance HTTP client library for Go, designed with secure defaults, built-in TLS 1.2+ enforcement, SSRF protection, smart retries, onion-model middleware chaining, and object pool recycling for microservice architectures and security-sensitive HTTP communication.
+description: CyberGo HTTPC is a secure, high-performance HTTP client library for Go, featuring built-in TLS encryption, SSRF protection, smart retries, and middleware chains for microservice scenarios.
 ---
 
 # HTTPC
 
-A secure HTTP client library with secure defaults, built-in smart retries, middleware chaining, and object pool recycling.
+A secure HTTP client library that is secure by default, with built-in smart retries, middleware chains, and object pool reuse.
 
 ## Features
 
-- **TLS 1.2+** - Enforces minimum TLS version, defaults to TLS 1.2-1.3
-- **SSRF Protection** - Blocks private IP connections by default, configurable CIDR exemptions
+- **TLS 1.2+** - Enforces minimum TLS version, defaulting to TLS 1.2-1.3
+- **SSRF Protection** - Blocks private IP connections by default, with configurable CIDR exemptions
 - **Smart Retries** - Exponential backoff with jitter, customizable retry strategies
 - **Connection Pool Management** - High-performance connection reuse with HTTP/2 support
-- **Middleware Chain** - Built-in middleware for logging, auditing, metrics, recovery, request ID, and more
-- **File Downloads** - Supports resuming downloads, progress callbacks, and checksum verification
+- **Middleware Chain** - Built-in middleware for logging, auditing, metrics, recovery, request IDs, and more
+- **File Downloads** - Supports resumable downloads, progress callbacks, and checksum verification
 - **DNS-over-HTTPS** - Built-in DoH resolution to reduce DNS hijacking risks
-- **Object Pool Recycling** - Built-in sync.Pool reduces memory allocations and GC pressure
+- **Object Pool Reuse** - Built-in sync.Pool to reduce memory allocations and lower GC pressure
 
 ## Installation
 
@@ -24,7 +24,7 @@ A secure HTTP client library with secure defaults, built-in smart retries, middl
 go get github.com/cybergodev/httpc
 ```
 
-## Quick Start in 30 Seconds
+## 30-Second Quickstart
 
 ```go
 package main
@@ -53,26 +53,26 @@ Choose your reading path based on your goal:
 |------|-------------|
 | Get started in 5 minutes | [Getting Started](./getting-started) |
 | Hands-on tutorial in 30 minutes | [Tutorial](./guides/tutorial) |
-| Look up a specific usage | [Cheat Sheet](./cheatsheet) |
+| Look up a specific usage | [Cheatsheet](./cheatsheet) |
 | Learn about security features | [Security Overview](./security/) |
 | Look up API signatures | [API Reference](./api-reference/) |
 
 ## Core Concepts
 
-HTTPC provides three usage modes, from simple to flexible:
+HTTPC provides three usage patterns, from simple to flexible:
 
 ```text
-Package-level functions    Client instance               Domain client
+Package-level functions    Client instance                Domain client
 httpc.Get()  →  client, _ := httpc.New()  →  dc, _ := httpc.NewDomain(url)
-One-off requests       Custom config/middleware     Session management/Auto Cookie
+One-off requests     Custom config/middleware    Session management/Auto Cookie
 ```
 
 ### Configuration Presets
 
 | Preset | Use Case |
 |--------|----------|
-| `DefaultConfig()` | General purpose with secure defaults |
-| `SecureConfig()` | Security-sensitive scenarios with strict timeouts |
-| `PerformanceConfig()` | High throughput with large connection pools |
-| `TestingConfig()` | Testing environments with security checks disabled |
-| `MinimalConfig()` | Lightweight scripts with no retries or redirects |
+| `DefaultConfig()` | General use, secure defaults |
+| `SecureConfig()` | Security-sensitive scenarios, strict timeouts |
+| `PerformanceConfig()` | High throughput, large connection pool |
+| `TestingConfig()` | Test environments, security checks disabled |
+| `MinimalConfig()` | Lightweight scripts, no retries or redirects |

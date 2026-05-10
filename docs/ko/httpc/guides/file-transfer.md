@@ -1,6 +1,6 @@
 ---
 title: 파일 업로드와 다운로드 - HTTPC
-description: HTTPC 파일 업로드와 다운로드 완전 가이드, Multipart 폼 다중 파일 업로드와 폼 필드 조합, 진행 콜백이 포함된 대용량 파일 청크 다운로드, 이어받기 복구 메커니즘, SHA-256 체크섬 자동 검증, 다층 디렉토리 순회 방지와 파일 경로 보안 검사로 모든 파일 전송 시나리오의 보안 요구를 충족합니다.
+description: HTTPC 파일 업로드와 다운로드 가이드, Multipart 다중 파일 업로드, 진행률 콜백이 포함된 대용량 파일 다운로드, 이어받기, SHA-256 체크섬 및 경로 보안 방어 포함.
 ---
 
 # 파일 업로드와 다운로드
@@ -86,7 +86,7 @@ fmt.Printf("다운로드 완료: %s\n", httpc.FormatBytes(result.BytesWritten))
 fmt.Printf("소요 시간: %v\n", result.Duration)
 ```
 
-### 진행 콜백 포함
+### 진행률 콜백 포함
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -121,12 +121,12 @@ if err != nil {
 }
 
 if result.Resumed {
-    fmt.Printf("이어받기 완료: 중단 시점에서 복구됨\n")
+    fmt.Printf("이어받기 완료: 중단 지점에서 복구\n")
 }
 ```
 
-:::tip
-이어받기는 서버에서 `Range` 요청 헤더를 지원해야 합니다. 서버가 지원하지 않는 경우 (206 대신 200을 반환), 이미 다운로드된 부분 파일을 보호하기 위해 오류가 반환됩니다.
+:::tip 사용 팁
+이어받기는 서버가 `Range` 요청 헤더를 지원해야 합니다. 서버가 지원하지 않는 경우(206 대신 200 반환), 이미 다운로드한 부분 파일을 보호하기 위해 오류를 반환합니다.
 :::
 
 ### 컨텍스트 제어 포함
@@ -144,7 +144,7 @@ if err != nil {
 }
 ```
 
-## 보안防护
+## 보안 방어
 
 파일 다운로드에는 다층 보안 보호가 내장되어 있습니다:
 
@@ -153,7 +153,7 @@ if err != nil {
 | 경로 검증 | UNC 경로, 제어 문자, 경로 순회 차단 |
 | 시스템 경로 보호 | `/etc/`, `C:\Windows\` 등 시스템 디렉토리 쓰기 금지 |
 | 심볼릭 링크 감지 | 심볼릭 링크 공격 방지 |
-| 파일 크기 제한 | `MaxResponseBodySize`에 의해 제한됨 |
+| 파일 크기 제한 | `MaxResponseBodySize`로 제한 |
 
 ## 도메인 클라이언트 다운로드
 
@@ -165,12 +165,12 @@ defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
 
-// 다운로드 및 세션 자동 관리
+// 다운로드 및 자동 세션 관리
 result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
 ```
 
 ## 다음 단계
 
-- [파일 다운로드 API](../api-reference/download) - 전체 다운로드 API 레퍼런스
+- [파일 다운로드 API](../api-reference/download) - 완전한 다운로드 API 참조
 - [도메인 클라이언트와 세션](./domain-session) - 세션 관리
 - [요청과 응답](./request-response) - 기본 요청 가이드

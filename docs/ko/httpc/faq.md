@@ -1,13 +1,13 @@
 ---
 title: 자주 묻는 질문 - HTTPC
-description: HTTPC 자주 묻는 질문 모음. 패키지 레벨 함수와 클라이언트 선택 가이드, 5가지 구성 프리셋 비교 분석, HTTP 및 SOCKS5 프록시 설정 방법, ClientError 오류 분류 및 매칭, 객체 풀 리소스 관리 전략, 타임아웃 구성 튜닝 및 연결 풀 최적화 등 빈번한 질문에 대한 상세 답변과 코드 예제를 제공합니다.
+description: HTTPC 자주 묻는 질문 답변, 패키지 함수 선택, 구성 프리셋 비교, 프록시 설정, 오류 매칭, 객체 풀 관리 및 타임아웃 튜닝 등 빈번한 질문 포함.
 ---
 
 # 자주 묻는 질문
 
-## 언제 패키지 레벨 함수를 쓰고 언제 클라이언트를 생성해야 하나요?
+## 언제 패키지 함수를 쓰고 언제 클라이언트를 생성해야 하나요?
 
-**패키지 레벨 함수**는 간단한 시나리오에 적합합니다: 일회성 요청, 스크립트, 도구.
+**패키지 함수**는 간단한 시나리오에 적합합니다: 일회성 요청, 스크립트, 도구.
 
 ```go
 result, _ := httpc.Get("https://api.example.com/data")
@@ -24,9 +24,9 @@ defer client.Close()
 
 | 프리셋 | 적용 시나리오 |
 |------|----------|
-| `DefaultConfig()` | 일반 시나리오, 안전한 기본값 |
+| `DefaultConfig()` | 범용 시나리오, 보안 기본값 |
 | `SecureConfig()` | 사용자 제공 URL 처리, 금융/의료 시나리오 |
-| `PerformanceConfig()` | 내부 마이크로서비스 통신, 고동시성 API |
+| `PerformanceConfig()` | 내부 마이크로서비스 통신, 높은 동시성 API |
 | `TestingConfig()` | 단위 테스트, 로컬 개발 |
 | `MinimalConfig()` | 일회성 스크립트, 간단한 HTTP 호출 |
 
@@ -38,7 +38,7 @@ defer client.Close()
 cfg := httpc.DefaultConfig()
 cfg.Security.AllowPrivateIPs = true // 모든 사설 IP 허용
 
-// 또는 정밀하게 면제 지정
+// 또는 정확한 면제
 cfg.Security.SSRFExemptCIDRs = []string{"10.0.0.0/8"}
 ```
 
@@ -78,15 +78,15 @@ case result.IsServerError():
 
 ## 왜 ReleaseResult를 호출해야 하나요?
 
-`ReleaseResult`는 Result를 객체 풀로 반환하여 GC 부하를 줄입니다. 반환 시 응답 본문의 민감한 데이터(처음 64KB)를 삭제하여 객체 풀에서 정보 유출을 방지합니다. 높은 동시성 시나리오에서 성능 향상이 현저합니다.
+`ReleaseResult`는 Result를 객체 풀로 반환하여 GC 부하를 줄입니다. 반환 시 응답 본문의 민감한 데이터(앞 64KB)가 삭제되어 정보가 객체 풀에서 유출되는 것을 방지합니다. 높은 동시성 시나리오에서 성능 향상이 뚜렷합니다.
 
 ```go
 result, _ := client.Get(url)
 defer httpc.ReleaseResult(result)
-// 이후에는 result에 접근하지 마세요
+// 이후에는 result에 접근하지 마십시오
 ```
 
-## 재시도를 비활성화하려면 어떻게 하나요?
+## 재시도는 어떻게 비활성화하나요?
 
 ```go
 // 전역 비활성화
@@ -96,13 +96,13 @@ cfg.Retry.MaxRetries = 0
 // 또는 MinimalConfig 사용
 client, _ := httpc.New(httpc.MinimalConfig())
 
-// 단일 요청에 대해 비활성화
+// 단일 요청 비활성화
 result, _ := client.Get(url, httpc.WithMaxRetries(0))
 ```
 
 ## 요청 타임아웃은 어떻게 설정하나요?
 
-네 가지 방법이 있으며, 우선순위가 높은 것부터 낮은 것 순입니다:
+네 가지 방법이 있으며, 우선순위는 높은 것부터 낮은 것 순입니다:
 
 ```go
 // 1. 컨텍스트 타임아웃 (권장)
@@ -131,15 +131,15 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
 client, _ := httpc.New(cfg)
 ```
 
-## TestingConfig는 왜 경고를 출력하나요?
+## TestingConfig에서 경고가 출력되는 이유는?
 
-`TestingConfig`는 보안 기능(TLS 검증, SSRF 방어)을 비활성화하므로 비테스트 환경에서 사용하면 보안 위험이 있습니다. 비테스트 환경이 감지되면 경고를 출력합니다.
+`TestingConfig`는 보안 기능(TLS 검증, SSRF 방어)을 비활성화하므로 테스트 환경이 아닌 곳에서 사용하면 보안 위험이 있습니다. 테스트 환경이 아닌 것으로 감지되면 경고를 출력합니다.
 
-`*_test.go` 파일이나 로컬 개발 환경에서만 사용하세요.
+`*_test.go` 파일이나 로컬 개발에만 사용하십시오.
 
 ## DNS-over-HTTPS를 어떻게 활성화하나요?
 
-DoH는 DNS 리졸루션 지연을 줄이고 DNS 하이재킹을 방지할 수 있습니다:
+DoH는 DNS 해석 지연을 줄이고 DNS 하이재킹을 방지할 수 있습니다:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -149,8 +149,8 @@ cfg.Connection.DoHCacheTTL = 5 * time.Minute
 
 기본적으로 Cloudflare, Google, AliDNS 세 가지 제공자를 사용합니다(우선순위에 따라 폴백). 모든 DoH 제공자를 사용할 수 없는 경우 시스템 DNS로 자동 폴백합니다.
 
-:::tip
-DoH는 DNS 리졸루션 보안이 요구되는 시나리오에 적합합니다. 일반적인 API 호출에는 활성화할 필요가 없으며, 기본 DNS로 충분합니다.
+:::tip 사용 팁
+DoH는 DNS 해석 보안이 요구되는 시나리오에 적합합니다. 일반적인 API 호출에서는 활성화할 필요가 없으며, 기본 DNS로 충분합니다.
 :::
 
 ## 더 많은 자료

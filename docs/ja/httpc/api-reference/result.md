@@ -1,6 +1,6 @@
 ---
 title: Result - HTTPC
-description: HTTPC Result レスポンスタイプの完全 API リファレンス。Body と RawBody のレスポンスボディアクセス、StatusCode ステータスコード取得、IsSuccess などのステータス判定メソッド、Cookie 操作、Unmarshal JSON 自動パース、SaveToFile ファイル保存メソッドの詳細解説。
+description: HTTPC Result レスポンスタイプ API リファレンス。レスポンスボディアクセス、ステータスコード取得、ステータス判定、Cookie 操作、JSON パース、ファイル保存メソッド。
 ---
 
 # Result

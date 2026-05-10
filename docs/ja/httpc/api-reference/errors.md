@@ -1,6 +1,6 @@
 ---
 title: エラータイプ - HTTPC
-description: HTTPC エラータイプの完全 API リファレンス。ClientError 分類エラー構造体の全フィールドとメソッド、12 種類の ErrorType 列挙定数定義、センチネルエラー変数リスト、errors.Is と errors.As パターンマッチング判定のコード使用例を詳解します。
+description: HTTPC エラータイプ API リファレンス。ClientError 構造体フィールドメソッド、12 種類の ErrorType 列挙、センチネルエラー変数と errors.Is/As マッチング例。
 ---
 
 # エラータイプ

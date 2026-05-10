@@ -1,6 +1,6 @@
 ---
 title: チートシート - HTTPC
-description: HTTPC チートシートは Go 開発者向けに、クライアントの作成と終了、7 種類の HTTP メソッド呼び出し、全 26 個のリクエストオプション関数、Result レスポンス処理とステータス判定、5 種類の設定プリセットパラメータ比較、ミドルウェアチェーン設定、エラータイプ判定、ファイルダウンロード API のクイックリファレンスカードとよく使うコードスニペットを提供します。
+description: HTTPC チートシート。クライアント作成、7 種の HTTP メソッド、リクエストオプション、レスポンス処理、設定プリセット、ミドルウェア、エラータイプのクイックリファレンス。
 ---
 
 # チートシート
@@ -59,7 +59,7 @@ httpc.WithFormData(formData)            // multipart/form-data
 httpc.WithFile("file", "doc.pdf", data) // ファイルアップロード
 httpc.WithBinary([]byte{...})           // application/octet-stream
 httpc.WithBinary([]byte{...}, "image/png") // タイプ指定
-httpc.WithBody(data)                    // タイプ自動検出
+httpc.WithBody(data)                    // 自動検出
 httpc.WithBody(data, httpc.BodyJSON)    // 明示指定：BodyJSON/BodyXML/BodyForm/BodyBinary/BodyMultipart
 ```
 
@@ -81,6 +81,7 @@ httpc.WithBasicAuth("user", "pass")
 
 ```go
 httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"})
+httpc.WithCookies([]http.Cookie{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}})
 httpc.WithCookieMap(map[string]string{"session": "abc"})
 httpc.WithCookieString("session=abc; token=xyz")
 httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig())
@@ -122,14 +123,14 @@ result.IsRedirect()                    // 3xx
 result.IsClientError()                 // 4xx
 result.IsServerError()                 // 5xx
 result.Unmarshal(&data)                // JSON パース
-result.GetCookie("name")               // レスポンス Cookie を取得
-result.HasCookie("name")               // レスポンス Cookie を確認
+result.GetCookie("name")               // レスポンス Cookie 取得
+result.HasCookie("name")               // レスポンス Cookie 確認
 result.ResponseCookies()               // 全レスポンス Cookie
 result.RequestCookies()                // 全リクエスト Cookie
-result.GetRequestCookie("name")        // リクエスト Cookie を取得
-result.HasRequestCookie("name")        // リクエスト Cookie を確認
+result.GetRequestCookie("name")        // リクエスト Cookie 取得
+result.HasRequestCookie("name")        // リクエスト Cookie 確認
 result.SaveToFile("/path/to/file")     // ファイルに保存
-result.String()                        // 人間が読める形式（機密ヘッダーはマスク）
+result.String()                        // 人間可読表現（機密ヘッダーはマスク）
 httpc.ReleaseResult(result)            // オブジェクトプールに返却
 ```
 
@@ -202,13 +203,13 @@ if err != nil {
         case httpc.ErrorTypeContextCanceled:
             // コンテキストキャンセル
         case httpc.ErrorTypeRetryExhausted:
-            // リトライ上限到達
+            // リトライ枯渇
         case httpc.ErrorTypeValidation:
             // リクエスト検証エラー
         case httpc.ErrorTypeHTTP:
             // HTTP 層エラー
         // その他: ErrorTypeUnknown, ErrorTypeResponseRead,
-        //         ErrorTypeTransport, ErrorTypeCertificate
+        //       ErrorTypeTransport, ErrorTypeCertificate
         }
         if clientErr.IsRetryable() {
             // リトライ可能

@@ -1,6 +1,6 @@
 ---
 title: パッケージ関数 - HTTPC
-description: HTTPC パッケージ関数とクライアントメソッドの完全 API リファレンス。Get、Post、Put、Patch、Delete、Head、Options の 7 種類の HTTP メソッド、New クライアント作成関数、Download シリーズのダウンロード関数、ReleaseResult オブジェクトプール再利用メソッドを網羅します。
+description: HTTPC パッケージ関数とクライアントメソッド API リファレンス。7 種類の HTTP メソッド、New 作成関数、Download シリーズと ReleaseResult オブジェクトプール再利用メソッド。
 ---
 
 # パッケージ関数

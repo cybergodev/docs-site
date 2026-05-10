@@ -1,6 +1,6 @@
 ---
 title: 会话管理 - HTTPC
-description: HTTPC SessionManager 会话管理完整 API 参考，涵盖 NewSessionManager 创建函数与参数说明、SessionConfig 全部配置选项、SetHeader 与 DeleteHeader 等会话头管理方法、Cookie 安全验证和 UpdateFromResult 响应同步方法。
+description: HTTPC SessionManager 会话管理 API 参考，涵盖创建函数、SessionConfig 配置、会话头管理方法、Cookie 安全验证与响应同步。
 ---
 
 # 会话管理

@@ -1,6 +1,6 @@
 ---
 title: 速查表 - HTTPC
-description: HTTPC 速查表为 Go 开发者提供客户端创建与关闭、七种 HTTP 方法调用、全部二十六个请求选项函数、Result 响应处理与状态判断、五种配置预设参数对比、中间件链配置、错误类型判断和文件下载 API 的快速参考卡片与常用代码片段。
+description: HTTPC 速查表，涵盖客户端创建、七种 HTTP 方法、请求选项、响应处理、配置预设、中间件与错误类型的快速参考。
 ---
 
 # 速查表
@@ -81,6 +81,7 @@ httpc.WithBasicAuth("user", "pass")
 
 ```go
 httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"})
+httpc.WithCookies([]http.Cookie{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}})
 httpc.WithCookieMap(map[string]string{"session": "abc"})
 httpc.WithCookieString("session=abc; token=xyz")
 httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig())

@@ -1,6 +1,6 @@
 ---
 title: 包函数 - HTTPC
-description: HTTPC 包级函数与客户端方法完整 API 参考，涵盖 Get、Post、Put、Patch、Delete、Head、Options 七种 HTTP 方法、New 客户端创建函数、Download 系列下载函数和 ReleaseResult 对象池复用方法。
+description: HTTPC 包级函数与客户端方法 API 参考，涵盖七种 HTTP 方法、New 创建函数、Download 系列与 ReleaseResult 对象池复用方法。
 ---
 
 # 包函数

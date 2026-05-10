@@ -1,13 +1,13 @@
 ---
 title: Функции пакета - HTTPC
-description: "Полный справочник API функций пакета HTTPC и методов клиента, охватывающий семь HTTP-методов (Get, Post, Put, Patch, Delete, Head, Options), функцию создания клиента New, серию функций Download для скачивания файлов и метод ReleaseResult для пула объектов"
+description: Справочник API функций пакета и методов клиента HTTPC, охватывающий семь HTTP-методов, функцию создания New, серию Download и метод повторного использования объектов ReleaseResult.
 ---
 
 # Функции пакета
 
 ## HTTP-методы уровня пакета
 
-Отправляйте запросы напрямую без создания клиента. Внутри используется лениво инициализируемый клиент по умолчанию.
+Отправляйте запросы напрямую без создания клиента. Внутри используется лениво инициализированный клиент по умолчанию.
 
 ### Get
 
@@ -15,7 +15,7 @@ description: "Полный справочник API функций пакета 
 func Get(url string, options ...RequestOption) (*Result, error)
 ```
 
-Отправка GET-запроса.
+Отправляет GET-запрос.
 
 ```go
 result, err := httpc.Get("https://api.example.com/data",
@@ -30,7 +30,7 @@ result, err := httpc.Get("https://api.example.com/data",
 func Post(url string, options ...RequestOption) (*Result, error)
 ```
 
-Отправка POST-запроса.
+Отправляет POST-запрос.
 
 ```go
 result, err := httpc.Post("https://api.example.com/users",
@@ -54,7 +54,7 @@ func Options(url string, options ...RequestOption) (*Result, error)
 func Request(ctx context.Context, method, url string, options ...RequestOption) (*Result, error)
 ```
 
-Универсальный метод запроса с контекстом, поддерживающий управление таймаутом и отменой.
+Универсальный метод запроса с контекстом, поддерживает управление тайм-аутом и отменой.
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -65,7 +65,7 @@ result, err := httpc.Request(ctx, "GET", "https://api.example.com/data")
 
 ## Методы клиента
 
-Интерфейс Client предоставляет те же HTTP-методы, что и функции пакета, плюс метод `Request` с контекстом.
+Интерфейс Client предоставляет те же HTTP-методы, что и функции уровня пакета, а также метод `Request` с контекстом.
 
 ### New
 
@@ -73,7 +73,7 @@ result, err := httpc.Request(ctx, "GET", "https://api.example.com/data")
 func New(config ...*Config) (Client, error)
 ```
 
-Создание нового HTTP-клиента. Без передачи конфигурации или с `nil` используется `DefaultConfig()`.
+Создаёт новый HTTP-клиент. Без передачи конфигурации или при передаче `nil` используется `DefaultConfig()`.
 
 ```go
 client, err := httpc.New()
@@ -100,7 +100,7 @@ result, err := client.Request(ctx, "GET", url, options...)
 
 ### Close
 
-Метод интерфейса Client, освобождающий ресурсы клиента (пул соединений, Transport). После вызова клиент использовать нельзя.
+Метод интерфейса Client, освобождающий ресурсы, удерживаемые клиентом (пул соединений, Transport). После вызова клиент нельзя использовать.
 
 ```go
 // Метод интерфейса Client
@@ -120,7 +120,7 @@ defer client.Close()
 func SetDefaultClient(client Client) error
 ```
 
-Устанавливает пользовательский клиент в качестве клиента по умолчанию для функций пакета. Прежний клиент по умолчанию будет автоматически закрыт.
+Устанавливает пользовательский клиент в качестве клиента по умолчанию для использования функциями уровня пакета. Старый клиент по умолчанию будет автоматически закрыт.
 
 :::warning Ограничение
 Принимает только клиентов, созданных через `httpc.New()`. Нельзя установить уже закрытый клиент.
@@ -130,7 +130,7 @@ func SetDefaultClient(client Client) error
 client, _ := httpc.New(httpc.PerformanceConfig())
 httpc.SetDefaultClient(client)
 
-// Последующие функции пакета используют PerformanceConfig
+// Последующие функции уровня пакета используют PerformanceConfig
 result, _ := httpc.Get(url)
 ```
 
@@ -140,7 +140,7 @@ result, _ := httpc.Get(url)
 func CloseDefaultClient() error
 ```
 
-Закрывает клиент по умолчанию и сбрасывает его. При следующем вызове функции пакета будет создан новый клиент.
+Закрывает клиент по умолчанию и сбрасывает его. При следующем вызове функции уровня пакета будет создан новый клиент.
 
 ## Управление результатами
 
@@ -150,20 +150,20 @@ func CloseDefaultClient() error
 func ReleaseResult(r *Result)
 ```
 
-Возвращает Result в пул объектов для снижения нагрузки на GC. После вызова Result использовать нельзя.
+Возвращает Result в пул объектов для снижения нагрузки на GC. После вызова Result нельзя использовать.
 
 ```go
 result, _ := httpc.Get(url)
 defer httpc.ReleaseResult(result)
 ```
 
-:::warning
-Не обращайтесь к Result после вызова `ReleaseResult` — внутренние данные будут обнулены.
+:::warning Предупреждение
+После вызова `ReleaseResult` не обращайтесь к Result — его внутренние данные будут обнулены.
 :::
 
-## Функции скачивания
+## Функции загрузки
 
-Функции скачивания уровня пакета используют клиент по умолчанию. Интерфейс Client также предоставляет одноимённые методы.
+Функции загрузки уровня пакета используют клиент по умолчанию. Интерфейс Client также предоставляет одноимённые методы.
 
 ### DownloadFile
 
@@ -171,10 +171,10 @@ defer httpc.ReleaseResult(result)
 func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Скачивание файла по указанному пути с использованием клиента по умолчанию.
+Загружает файл по указанному пути с использованием клиента по умолчанию.
 
 ```go
-// Функция пакета
+// Функция уровня пакета
 result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
 
 // Метод интерфейса Client
@@ -187,7 +187,7 @@ result, err := client.DownloadFile("https://example.com/file.zip", "/tmp/file.zi
 func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Скачивание файла с конфигурацией, поддержкой возобновления загрузки и обратного вызова прогресса.
+Загрузка файла с конфигурацией, поддерживает докачку и обратный вызов прогресса.
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -198,7 +198,7 @@ cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r%.1f%%", float64(downloaded)/float64(total)*100)
 }
 
-// Функция пакета
+// Функция уровня пакета
 result, err := httpc.DownloadWithOptions(url, cfg)
 // Метод интерфейса Client
 result, err = client.DownloadWithOptions(url, cfg)
@@ -210,10 +210,10 @@ result, err = client.DownloadWithOptions(url, cfg)
 func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Скачивание файла с управлением контекстом, поддержкой таймаута и отмены.
+Загрузка файла с управлением контекстом, поддерживает тайм-аут и отмену.
 
 ```go
-// Функция пакета
+// Функция уровня пакета
 result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
 // Метод интерфейса Client
 result, err = client.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
@@ -225,10 +225,10 @@ result, err = client.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
 func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Скачивание файла с конфигурацией и управлением контекстом.
+Загрузка файла с конфигурацией и управлением контекстом.
 
 ```go
-// Функция пакета
+// Функция уровня пакета
 result, err := httpc.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
 // Метод интерфейса Client
 result, err = client.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
@@ -242,7 +242,7 @@ result, err = client.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
 func FormatBytes(bytes int64) string
 ```
 
-Форматирование количества байт в читаемую строку.
+Форматирует количество байт в читаемую строку.
 
 ```go
 httpc.FormatBytes(1536)      // "1.50 KB"
@@ -255,7 +255,7 @@ httpc.FormatBytes(1048576)   // "1.00 MB"
 func FormatSpeed(bytesPerSecond float64) string
 ```
 
-Форматирование скорости передачи в читаемую строку.
+Форматирует скорость передачи в читаемую строку.
 
 ```go
 httpc.FormatSpeed(1536.0)    // "1.50 KB/s"
@@ -270,7 +270,7 @@ httpc.FormatSpeed(1048576.0) // "1.00 MB/s"
 func NewDomain(baseURL string, config ...*Config) (DomainClienter, error)
 ```
 
-Создание клиента с областью видимости домена, автоматически управляющего Cookie и заголовками.
+Создаёт клиент с областью видимости домена, автоматически управляющий Cookie и заголовками.
 
 ```go
 dc, err := httpc.NewDomain("https://api.example.com")
@@ -280,9 +280,9 @@ dc.SetHeader("Authorization", "Bearer "+token)
 result, err := dc.Get("/users")
 ```
 
-## Смотрите также
+## См. также
 
-- [Result](./result) — тип результата ответа и методы
-- [Параметры запроса](./options) — параметры конфигурации запроса
-- [Доменный клиент](./domain-client) — клиент с областью видимости домена
-- [Скачивание файлов](./download) — функции и типы для скачивания
+- [Result](./result) - тип результата ответа и методы
+- [Параметры запросов](./options) - параметры конфигурации запросов
+- [Доменный клиент](./domain-client) - клиент с областью видимости домена
+- [Загрузка файлов](./download) - функции и типы загрузки

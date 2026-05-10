@@ -1,6 +1,6 @@
 ---
 title: Request and Response - HTTPC
-description: Complete guide to HTTPC request and response handling, covering custom request headers, JSON and form request body formats, URL query parameter construction, Bearer and Basic authentication, automatic cookie management, per-request timeout control, and streaming response reading with detailed usage examples.
+description: Guide to HTTPC request and response handling covering headers, multiple body formats, query parameters, authentication, cookies, and streaming responses.
 ---
 
 # Request and Response

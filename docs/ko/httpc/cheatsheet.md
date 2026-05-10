@@ -1,6 +1,6 @@
 ---
 title: 치트시트 - HTTPC
-description: HTTPC 치트시트는 Go 개발자를 위한 클라이언트 생성 및 종료, 7가지 HTTP 메서드 호출, 26개 요청 옵션 함수, Result 응답 처리 및 상태 판별, 5가지 구성 프리셋 매개변수 비교, 미들웨어 체인 구성, 오류 유형 판별 및 파일 다운로드 API의 빠른 참조 카드와 자주 사용하는 코드 조각을 제공합니다.
+description: HTTPC 치트시트, 클라이언트 생성, 7가지 HTTP 메서드, 요청 옵션, 응답 처리, 구성 프리셋, 미들웨어 및 오류 유형 빠른 참조.
 ---
 
 # 치트시트
@@ -22,7 +22,7 @@ client, _ = httpc.New(cfg)
 ## HTTP 메서드
 
 ```go
-// 패키지 레벨 함수 (기본 클라이언트 사용)
+// 패키지 함수 (기본 클라이언트 사용)
 result, _ := httpc.Get(url)
 result, _ := httpc.Post(url)
 result, _ := httpc.Put(url)
@@ -59,7 +59,7 @@ httpc.WithFormData(formData)            // multipart/form-data
 httpc.WithFile("file", "doc.pdf", data) // 파일 업로드
 httpc.WithBinary([]byte{...})           // application/octet-stream
 httpc.WithBinary([]byte{...}, "image/png") // 유형 지정
-httpc.WithBody(data)                    // 자동 유형 감지
+httpc.WithBody(data)                    // 자동 감지 유형
 httpc.WithBody(data, httpc.BodyJSON)    // 명시적 지정: BodyJSON/BodyXML/BodyForm/BodyBinary/BodyMultipart
 ```
 
@@ -77,10 +77,11 @@ httpc.WithBearerToken(token)
 httpc.WithBasicAuth("user", "pass")
 ```
 
-### 쿠키
+### Cookie
 
 ```go
 httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"})
+httpc.WithCookies([]http.Cookie{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}})
 httpc.WithCookieMap(map[string]string{"session": "abc"})
 httpc.WithCookieString("session=abc; token=xyz")
 httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig())
@@ -122,12 +123,12 @@ result.IsRedirect()                    // 3xx
 result.IsClientError()                 // 4xx
 result.IsServerError()                 // 5xx
 result.Unmarshal(&data)                // JSON 파싱
-result.GetCookie("name")               // 응답 쿠키 가져오기
-result.HasCookie("name")               // 응답 쿠키 확인
-result.ResponseCookies()               // 모든 응답 쿠키
-result.RequestCookies()                // 모든 요청 쿠키
-result.GetRequestCookie("name")        // 요청 쿠키 가져오기
-result.HasRequestCookie("name")        // 요청 쿠키 확인
+result.GetCookie("name")               // 응답 Cookie 가져오기
+result.HasCookie("name")               // 응답 Cookie 확인
+result.ResponseCookies()               // 모든 응답 Cookie
+result.RequestCookies()                // 모든 요청 Cookie
+result.GetRequestCookie("name")        // 요청 Cookie 가져오기
+result.HasRequestCookie("name")        // 요청 Cookie 확인
 result.SaveToFile("/path/to/file")     // 파일로 저장
 result.String()                        // 사람이 읽을 수 있는 표현 (민감한 헤더 마스킹)
 httpc.ReleaseResult(result)            // 객체 풀로 반환
@@ -198,7 +199,7 @@ if err != nil {
         case httpc.ErrorTypeTLS:
             // TLS 오류
         case httpc.ErrorTypeDNS:
-            // DNS 리졸루션 오류
+            // DNS 해석 오류
         case httpc.ErrorTypeContextCanceled:
             // 컨텍스트 취소
         case httpc.ErrorTypeRetryExhausted:
@@ -232,7 +233,7 @@ dlCfg.ProgressCallback = func(downloaded, total int64, speed float64) {
 }
 dlResult, err := client.DownloadWithOptions(url, dlCfg)
 
-// dlResult 타입은 *DownloadResult (*Result가 아님)
+// dlResult 유형은 *DownloadResult (*Result가 아님)
 // 필드: FilePath, BytesWritten, Duration, AverageSpeed, StatusCode, ContentLength, Resumed, ResponseCookies, ActualChecksum
 ```
 

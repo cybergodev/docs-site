@@ -1,6 +1,6 @@
 ---
 title: 接続プールとプロキシ - HTTPC
-description: HTTPC 接続プールとプロキシ設定の完全ガイド。ConnectionConfig 接続プールパラメータのチューニング方法、HTTP フォワードプロキシと SOCKS5 プロキシの設定、DNS-over-HTTPS カスタムリゾルバー、接続リーク問題のトラブルシューティング、IdleConnTimeout アイドル接続管理戦略を詳解。
+description: HTTPC 接続プールとプロキシ設定ガイド。接続プールパラメータチューニング、HTTP と SOCKS5 プロキシ、DoH カスタムリゾルバー、アイドル接続管理戦略。
 ---
 
 # 接続プールとプロキシ

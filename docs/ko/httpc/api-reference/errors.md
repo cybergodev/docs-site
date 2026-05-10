@@ -1,9 +1,9 @@
 ---
-title: 오류 타입 - HTTPC
-description: HTTPC 오류 타입의 전체 API 레퍼런스로, ClientError 분류 오류 구조체의 모든 필드와 메서드, 12가지 ErrorType 열거형 상수 정의, 센티넬 오류 변수 목록, errors.Is와 errors.As 패턴 매칭 판단의 코드 사용 예제를 상세히 설명합니다.
+title: 오류 유형 - HTTPC
+description: HTTPC 오류 유형 API 참조, ClientError 구조체 필드 메서드, 12가지 ErrorType 열거형, 센티넬 오류 변수 및 errors.Is/As 매칭 예제 상세 설명.
 ---
 
-# 오류 타입
+# 오류 유형
 
 ## ClientError
 
@@ -19,44 +19,44 @@ type ClientError = engine.ClientError
 type ClientError struct {
     Type       ErrorType  // 오류 분류
     Message    string     // 오류 설명
-    Cause      error      // 내부 오류
+    Cause      error      // 기저 오류
     URL        string     // 요청 URL (마스킹됨)
     Method     string     // HTTP 메서드
     Attempts   int        // 시도한 횟수
     StatusCode int        // HTTP 상태 코드 (해당하는 경우)
-    Host       string     // 호스트명 (서킷 브레이커용)
+    Host       string     // 호스트 이름 (서킷 브레이커용)
 }
 ```
 
-| 필드 | 타입 | 설명 |
+| 필드 | 유형 | 설명 |
 |------|------|------|
 | `Type` | `ErrorType` | 오류 분류, switch 판단에 사용 |
-| `Message` | `string` | 오류 설명 메시지 |
-| `Cause` | `error` | 내부 오류, `Unwrap()`으로 가져올 수 있음 |
+| `Message` | `string` | 오류 설명 정보 |
+| `Cause` | `error` | 기저 오류, `Unwrap()`으로 가져올 수 있음 |
 | `URL` | `string` | 요청 URL (자격 증명 마스킹됨) |
 | `Method` | `string` | HTTP 메서드 (GET, POST 등) |
 | `Attempts` | `int` | 재시도한 횟수 |
 | `StatusCode` | `int` | HTTP 상태 코드 (HTTP 오류가 아닌 경우 0) |
-| `Host` | `string` | 요청 호스트명 |
+| `Host` | `string` | 요청 호스트 이름 |
 
 ### 메서드
 
 | 메서드 | 반환값 | 설명 |
 |------|--------|------|
-| `Error()` | `string` | `METHOD URL: Message: Cause (attempt N)` 형식으로 포맷 |
-| `Code()` | `string` | 읽기 가능한 오류 코드, 예: `"NETWORK_ERROR"`, `"TIMEOUT"` |
+| `Error()` | `string` | `METHOD URL: Message: Cause (attempt N)` 형식 |
+| `Code()` | `string` | 읽을 수 있는 오류 코드, 예: `"NETWORK_ERROR"`, `"TIMEOUT"` |
 | `IsRetryable()` | `bool` | 재시도 가능 여부 |
-| `Unwrap()` | `error` | 내부 오류 언래핑 |
-| `WithType(t ErrorType)` | `*ClientError` | 오류 타입이 설정된 복사본 반환 (원본 수정하지 않음) |
+| `Unwrap()` | `error` | 기저 오류 언래핑 |
+| `WithType(t ErrorType)` | `*ClientError` | 오류 유형이 설정된 사본 반환 (원본 수정 없음) |
 
 ```go
 var clientErr *httpc.ClientError
 if errors.As(err, &clientErr) {
-    fmt.Println("오류 타입:", clientErr.Code())
+    fmt.Println("오류 유형:", clientErr.Code())
     fmt.Println("요청 URL:", clientErr.URL)
     fmt.Println("재시도 횟수:", clientErr.Attempts)
     fmt.Println("재시도 가능:", clientErr.IsRetryable())
-    fmt.Println("내부 오류:", clientErr.Unwrap())
+    fmt.Println("기저 오류:", clientErr.Unwrap())
 }
 ```
 
@@ -72,7 +72,7 @@ type ErrorType = engine.ErrorType
 |------|------|--------|
 | `ErrorTypeUnknown` | 알 수 없음/미분류 오류 | 아니요 |
 | `ErrorTypeNetwork` | 네트워크 오류 (연결 거부, DNS 실패 등) | 상황에 따라 |
-| `ErrorTypeTimeout` | 요청 타임아웃 | 예 |
+| `ErrorTypeTimeout` | 요청 시간 초과 | 예 |
 | `ErrorTypeContextCanceled` | 컨텍스트 취소 | 아니요 |
 | `ErrorTypeResponseRead` | 응답 본문 읽기 오류 | 상황에 따라 |
 | `ErrorTypeTransport` | 전송 계층 오류 | 예 |
@@ -83,7 +83,7 @@ type ErrorType = engine.ErrorType
 | `ErrorTypeValidation` | 요청 검증 오류 | 아니요 |
 | `ErrorTypeHTTP` | HTTP 계층 오류 | 상황에 따라 |
 
-### 타입 판단
+### 유형 판단
 
 ```go
 result, err := client.Get(url)
@@ -92,7 +92,7 @@ if err != nil {
     if errors.As(err, &clientErr) {
         switch clientErr.Type {
         case httpc.ErrorTypeTimeout:
-            log.Println("요청 타임아웃")
+            log.Println("요청 시간 초과")
         case httpc.ErrorTypeNetwork:
             log.Println("네트워크 오류")
         case httpc.ErrorTypeTLS:
@@ -114,16 +114,16 @@ if err != nil {
 
 ## 오류 변수
 
-### 설정 오류
+### 구성 오류
 
 | 변수 | 설명 |
 |------|------|
-| `ErrNilConfig` | 설정이 nil임 |
+| `ErrNilConfig` | 구성이 nil |
 | `ErrInvalidTimeout` | 타임아웃 값이 유효하지 않음 |
-| `ErrInvalidRetry` | 재시도 설정이 유효하지 않음 |
-| `ErrInvalidConnection` | 연결 설정이 유효하지 않음 |
-| `ErrInvalidSecurity` | 보안 설정이 유효하지 않음 |
-| `ErrInvalidMiddleware` | 미들웨어 설정이 유효하지 않음 |
+| `ErrInvalidRetry` | 재시도 구성이 유효하지 않음 |
+| `ErrInvalidConnection` | 연결 구성이 유효하지 않음 |
+| `ErrInvalidSecurity` | 보안 구성이 유효하지 않음 |
+| `ErrInvalidMiddleware` | 미들웨어 구성이 유효하지 않음 |
 
 ### 요청 오류
 
@@ -137,7 +137,7 @@ if err != nil {
 | 변수 | 설명 |
 |------|------|
 | `ErrResponseBodyEmpty` | 응답 본문이 비어 있음 |
-| `ErrResponseBodyTooLarge` | 응답 본문이 크기 제한을 초과함 |
+| `ErrResponseBodyTooLarge` | 응답 본문이 크기 제한 초과 |
 
 ### 파일 오류
 
@@ -156,7 +156,7 @@ if err != nil {
 
 ```go
 if errors.Is(err, httpc.ErrClientClosed) {
-    // 클라이언트가 닫힘
+    // 클라이언트가 이미 닫힘
 }
 if errors.Is(err, httpc.ErrResponseBodyEmpty) {
     // 응답 본문이 비어 있음
@@ -165,6 +165,6 @@ if errors.Is(err, httpc.ErrResponseBodyEmpty) {
 
 ## 참고
 
-- [오류 처리](../advanced/error-handling) - 전체 오류 처리 가이드
-- [상수와 열거형](./constants) - BodyKind 등 상수 레퍼런스
-- [재시도와 내결함성](../guides/retry-fault-tolerance) - 재시도 정책 가이드
+- [오류 처리](../advanced/error-handling) - 완전한 오류 처리 가이드
+- [상수와 열거형](./constants) - BodyKind 등 상수 참조
+- [재시도와 장애 허용](../guides/retry-fault-tolerance) - 재시도 전략 가이드

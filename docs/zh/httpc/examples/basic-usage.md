@@ -1,6 +1,6 @@
 ---
 title: 基础用法 - HTTPC
-description: HTTPC 基础用法完整示例集，涵盖 GET 与 POST 请求发送与 JSON 响应解析、Multipart 文件上传、客户端配置预设选择、中间件链添加和大文件带进度回调下载等常见开发场景的完整可运行 Go 代码示例与详细使用说明和注释。
+description: HTTPC 基础用法示例集，涵盖 GET/POST 请求与 JSON 解析、文件上传、配置预设、中间件添加与带进度下载的完整代码示例。
 ---
 
 # 基础用法

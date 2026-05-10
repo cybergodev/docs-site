@@ -1,6 +1,6 @@
 ---
 title: Performance Optimization - HTTPC
-description: HTTPC performance optimization guide with detailed comparison of Default, Secure, Performance, and Minimal preset configurations, covering ConnectionConfig connection pool tuning, Result object pool reuse strategies, and identification and solutions for common performance anti-patterns.
+description: Guide to HTTPC performance optimization, comparing four preset configurations, covering connection pool tuning, Result object pool reuse strategies, and common performance anti-pattern solutions.
 ---
 
 # Performance Optimization
@@ -68,6 +68,6 @@ In high-concurrency scenarios, `ReleaseResult` can significantly reduce GC press
 
 ## Next Steps
 
-- [Connection Pool and Proxy](./connection-pool) — Connection pool parameter selection, proxy, and DoH configuration
-- [Error Handling](./error-handling) — Layered timeout strategies
-- [Security Overview](../security/) — Balancing security and performance
+- [Connection Pool and Proxy](./connection-pool) -- Connection pool parameter selection, proxy, and DoH configuration
+- [Error Handling](./error-handling) -- Layered timeout strategies
+- [Security Overview](../security/) -- Balancing security and performance

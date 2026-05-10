@@ -1,6 +1,6 @@
 ---
 title: Configuration - HTTPC
-description: HTTPC configuration system complete API reference, covering the Config main configuration struct and all fields of its five sub-configuration groups Timeouts, Connection, Security, Retry, and Middleware with detailed descriptions, five preset configuration functions, and the Validate validation method.
+description: HTTPC configuration system API reference, covering the Config main struct and its five sub-configuration groups, five preset configuration functions, and the Validate method.
 ---
 
 # Configuration
@@ -17,7 +17,7 @@ type Config struct {
 }
 ```
 
-Main configuration struct. Obtain secure defaults via `DefaultConfig()`.
+Main configuration struct. Obtain secure defaults through `DefaultConfig()`.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -33,8 +33,8 @@ type TimeoutConfig struct {
     Request        time.Duration // Total request timeout (including retries), default 30s
     Dial           time.Duration // TCP connection timeout, default 10s
     TLSHandshake   time.Duration // TLS handshake timeout, default 10s
-    ResponseHeader time.Duration // Response header wait timeout, default 30s
-    IdleConn       time.Duration // Idle connection keep-alive time, default 90s
+    ResponseHeader time.Duration // Wait for response header timeout, default 30s
+    IdleConn       time.Duration // Idle connection keep-alive duration, default 90s
 }
 ```
 
@@ -46,7 +46,7 @@ type TimeoutConfig struct {
 | ResponseHeader | 30s | 30min |
 | IdleConn | 90s | 30min |
 
-Set to 0 for no timeout (not recommended for production).
+Setting to 0 means no timeout (not recommended for production).
 
 ## ConnectionConfig
 
@@ -74,7 +74,7 @@ cfg.Connection.EnableDoH = true
 cfg.Connection.DoHCacheTTL = 5 * time.Minute
 ```
 
-Default DoH providers (by priority): Cloudflare -> Google -> AliDNS. See [Connection Pool and Proxy](../advanced/connection-pool) for details.
+Default DoH providers (in priority order): Cloudflare → Google → AliDNS. See [Connection Pool and Proxy](../advanced/connection-pool) for details.
 
 ## SecurityConfig
 
@@ -85,8 +85,8 @@ type SecurityConfig struct {
     MaxTLSVersion           uint16         // Maximum TLS version, default TLS 1.3
     InsecureSkipVerify      bool           // Skip certificate verification (testing only)
     MaxResponseBodySize     int64          // Response body size limit, default 10MB
-    MaxRequestBodySize      int64          // Request body size limit, default 0 (uses MaxResponseBodySize)
-    MaxDecompressedBodySize int64          // Decompressed body size limit, default 100MB
+    MaxRequestBodySize      int64          // Request body size limit, default 0 (uses MaxResponseBodySize value)
+    MaxDecompressedBodySize int64          // Decompressed size limit, default 100MB
     AllowPrivateIPs         bool           // Allow private IPs, default false
     SSRFExemptCIDRs         []string       // SSRF exempt CIDRs
     ValidateURL             bool           // URL validation, default true
@@ -159,10 +159,10 @@ Secure default configuration. SSRF protection is enabled by default.
 func SecureConfig() *Config
 ```
 
-Security-first configuration. Shorter timeouts, disabled auto-redirects, strict SSRF protection.
+Security-first configuration. Shorter timeouts, auto-redirects disabled, strict SSRF protection.
 
-| Setting | Value |
-|---------|-------|
+| Configuration | Value |
+|---------------|-------|
 | Request timeout | 15s |
 | Dial timeout | 5s |
 | TLSHandshake timeout | 5s |
@@ -182,14 +182,14 @@ Security-first configuration. Shorter timeouts, disabled auto-redirects, strict 
 func PerformanceConfig() *Config
 ```
 
-High-throughput configuration. Larger connection pool, longer timeouts, while maintaining security validation.
+High throughput configuration. Larger connection pool, longer timeouts, maintains security validation.
 
 :::tip
-PerformanceConfig keeps `ValidateURL` and `ValidateHeaders` enabled for security. For maximum performance in trusted environments, you can manually disable them: `cfg.Security.ValidateURL = false`, but be aware of security risks (injection attacks, SSRF).
+PerformanceConfig keeps `ValidateURL` and `ValidateHeaders` enabled for security. In trusted environments, you can manually disable them: `cfg.Security.ValidateURL = false`, but be aware of security risks (injection attacks, SSRF).
 :::
 
-| Setting | Value |
-|---------|-------|
+| Configuration | Value |
+|---------------|-------|
 | Request timeout | 60s |
 | Dial timeout | 15s |
 | TLSHandshake timeout | 15s |
@@ -212,10 +212,10 @@ PerformanceConfig keeps `ValidateURL` and `ValidateHeaders` enabled for security
 func TestingConfig() *Config
 ```
 
-Test environment configuration. Security checks disabled, short timeouts.
+Test environment configuration. Disables security checks, short timeouts.
 
-| Setting | Value |
-|---------|-------|
+| Configuration | Value |
+|---------------|-------|
 | Dial timeout | 5s |
 | TLSHandshake timeout | 5s |
 | ResponseHeader timeout | 10s |
@@ -234,7 +234,7 @@ Test environment configuration. Security checks disabled, short timeouts.
 | UserAgent | httpc-test/1.0 |
 
 :::danger
-This configuration disables TLS verification and SSRF protection. **For testing only**. Using it in non-test environments will print security warnings.
+This configuration disables TLS verification and SSRF protection. **Only use it for testing.** A security warning is printed when used in non-test environments.
 :::
 
 ### MinimalConfig
@@ -243,10 +243,10 @@ This configuration disables TLS verification and SSRF protection. **For testing 
 func MinimalConfig() *Config
 ```
 
-Lightweight configuration. Retries and redirects disabled, minimal connection pool.
+Lightweight configuration. Disables retries and redirects, minimal connection pool.
 
-| Setting | Value |
-|---------|-------|
+| Configuration | Value |
+|---------------|-------|
 | Dial timeout | 5s |
 | TLSHandshake timeout | 5s |
 | ResponseHeader timeout | 10s |
@@ -268,7 +268,7 @@ Lightweight configuration. Retries and redirects disabled, minimal connection po
 func ValidateConfig(cfg *Config) error
 ```
 
-Validate configuration. `New()` calls this internally, but it can also be called explicitly.
+Validates configuration. Called automatically by `New()`, but can also be called explicitly.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -285,7 +285,7 @@ if err := httpc.ValidateConfig(cfg); err != nil {
 func (c *Config) String() string
 ```
 
-Returns a safe string representation. ProxyURL credentials are redacted, TLSConfig displays as `<configured>` or `<default>`, and Headers are not output.
+Returns a safe string representation. ProxyURL credentials are sanitized, TLSConfig displays as `<configured>` or `<default>`, and Headers are not output.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -323,7 +323,7 @@ Cookie security attribute validation configuration.
 func DefaultCookieSecurityConfig() *CookieSecurityConfig
 ```
 
-Default cookie security configuration. Does not require Secure/HttpOnly/SameSite attributes, but enforces that cookies with SameSite=None must set Secure.
+Default cookie security configuration. Does not require Secure/HttpOnly/SameSite attributes, but enforces that cookies with SameSite=None must have Secure.
 
 ### StrictCookieSecurityConfig
 

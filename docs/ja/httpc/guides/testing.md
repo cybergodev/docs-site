@@ -1,6 +1,6 @@
 ---
 title: テストガイド - HTTPC
-description: HTTPC テストガイドでは、TestingConfig を使用したテスト環境の迅速な設定、net/http/httptest.Server との統合による HTTP レスポンスのシミュレーション、テーブル駆動テストケースの作成、ネットワークエラーシナリオのシミュレーション、クライアントリソースの適切なクリーンアップについて詳しく解説し、テストカバレッジと効率を向上させます。
+description: HTTPC テストガイド。TestingConfig 設定、httptest.Server シミュレーション、テーブル駆動テスト、ネットワークエラーシミュレーションとクライアントリソースクリーンアップ。
 ---
 
 # テストガイド

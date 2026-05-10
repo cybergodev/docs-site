@@ -1,6 +1,6 @@
 ---
 title: ミドルウェア - HTTPC
-description: HTTPC ミドルウェアシステムの完全 API リファレンス。Chain チェーンコンビネーション関数、Recovery、Logging、RequestID、Timeout、Header、Metrics、Audit の 8 つの組み込みミドルウェアファクトリ関数、AuditMiddlewareWithConfig 設定型監査、AuditEvent 監査イベントタイプ定義を解説します。
+description: HTTPC ミドルウェアシステム API リファレンス。Chain 組み合わせ関数、8 つの組み込みミドルウェアファクトリ関数、設定型監査と AuditEvent 監査イベントタイプ定義。
 ---
 
 # ミドルウェア

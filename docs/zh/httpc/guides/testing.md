@@ -1,6 +1,6 @@
 ---
 title: 测试指南 - HTTPC
-description: HTTPC 测试指南详解如何使用 TestingConfig 快速配置测试环境、集成 net/http/httptest.Server 模拟 HTTP 响应、编写表格驱动测试用例、模拟网络错误场景和正确执行客户端资源清理，提升测试覆盖率与效率。
+description: HTTPC 测试指南，详解 TestingConfig 配置、httptest.Server 模拟响应、表格驱动测试、网络错误模拟与客户端资源清理。
 ---
 
 # 测试指南

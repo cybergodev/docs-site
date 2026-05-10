@@ -1,13 +1,13 @@
 ---
 title: Обработка ошибок - HTTPC
-description: "Полное руководство по обработке ошибок HTTPC. Подробное описание системы классификации ошибок с двенадцатью типами ErrorType, все поля и применение структуры ClientError, сопоставление сигнальных ошибок через errors.Is и лучшие практики обработки сетевых таймаутов, сертификатов TLS и ошибок разрешения DNS"
+description: Руководство по обработке ошибок HTTPC, подробно описывающее двенадцать типов ErrorType, поля структуры ClientError, сопоставление предопределённых ошибок и лучшие практики для различных сетевых ошибок.
 ---
 
 # Обработка ошибок
 
 ## Классификация ошибок
 
-HTTPC использует `ClientError` для классификации ошибок, поддерживая `errors.As` и `errors.Is`.
+HTTPC использует `ClientError` для классификации ошибок, поддерживает `errors.As` и `errors.Is`.
 
 ### Определение типа ошибки
 
@@ -18,17 +18,17 @@ if err != nil {
     if errors.As(err, &clientErr) {
         switch clientErr.Type {
         case httpc.ErrorTypeTimeout:
-            log.Printf("Таймаут запроса: %v", err)
+            log.Printf("Тайм-аут запроса: %v", err)
         case httpc.ErrorTypeNetwork:
             log.Printf("Сетевая ошибка: %v", err)
         case httpc.ErrorTypeDNS:
-            log.Printf("Ошибка разрешения DNS: %v", err)
+            log.Printf("Сбой разрешения DNS: %v", err)
         case httpc.ErrorTypeTLS:
             log.Printf("Ошибка TLS: %v", err)
         case httpc.ErrorTypeCertificate:
             log.Printf("Ошибка проверки сертификата: %v", err)
         case httpc.ErrorTypeRetryExhausted:
-            log.Printf("Повторные попытки исчерпаны: %v", err)
+            log.Printf("Исчерпаны повторные попытки: %v", err)
         case httpc.ErrorTypeValidation:
             log.Printf("Ошибка валидации запроса: %v", err)
         case httpc.ErrorTypeContextCanceled:
@@ -38,17 +38,17 @@ if err != nil {
 }
 ```
 
-### Проверка возможности повторной попытки
+### Определение возможности повторной попытки
 
 ```go
 var clientErr *httpc.ClientError
 if errors.As(err, &clientErr) && clientErr.IsRetryable() {
     // Ошибку можно повторить
-    log.Println("Ошибка с возможностью повторной попытки, повторяем позже")
+    log.Println("Ошибка доступна для повторной попытки")
 }
 ```
 
-## Ожидаемые ошибки
+## Предопределённые ошибки
 
 ### Сопоставление переменных ошибок
 
@@ -72,7 +72,7 @@ if errors.Is(err, httpc.ErrInvalidHeader) {
 
 ## Повторные попытки и ошибки
 
-Подробнее о конфигурации повторных попыток см. в [Повторные попытки и отказоустойчивость](../guides/retry-fault-tolerance). Здесь рассматривается обработка ошибок после исчерпания повторных попыток:
+Подробнее о конфигурации повторных попыток в [Повторных попытках и отказоустойчивости](../guides/retry-fault-tolerance). Здесь рассматривается обработка ошибок после исчерпания повторных попыток:
 
 ```go
 result, err := client.Get(url)
@@ -80,7 +80,7 @@ if err != nil {
     var clientErr *httpc.ClientError
     if errors.As(err, &clientErr) {
         if clientErr.Type == httpc.ErrorTypeRetryExhausted {
-            log.Printf("Ошибка после %d попыток", clientErr.Attempts)
+            log.Printf("Не удалось после %d повторных попыток", clientErr.Attempts)
         }
     }
     return err
@@ -98,7 +98,7 @@ if err != nil {
     var clientErr *httpc.ClientError
     if errors.As(err, &clientErr) {
         if clientErr.Type == httpc.ErrorTypeContextCanceled {
-            log.Println("Запрос отменён (таймаут или ручная отмена)")
+            log.Println("Запрос отменён (тайм-аут или ручная отмена)")
         }
     }
 }
@@ -106,7 +106,7 @@ if err != nil {
 
 ## Лучшие практики обработки ошибок
 
-### 1. Различайте клиентские и серверные ошибки
+### 1. Разделяйте ошибки клиента и ошибки сервера
 
 ```go
 result, err := client.Get(url)
@@ -117,11 +117,11 @@ if err != nil {
 }
 
 if result.IsClientError() {
-    // 4xx - Ошибка в запросе клиента
-    log.Printf("Клиентская ошибка: %d", result.StatusCode())
+    // 4xx - ошибка в запросе клиента
+    log.Printf("Ошибка клиента: %d", result.StatusCode())
 } else if result.IsServerError() {
-    // 5xx - Сбой на стороне сервера
-    log.Printf("Серверная ошибка: %d", result.StatusCode())
+    // 5xx - сбой сервера
+    log.Printf("Ошибка сервера: %d", result.StatusCode())
 }
 ```
 
@@ -141,25 +141,25 @@ metricsMiddleware := httpc.MetricsMiddleware(func(method, url string, statusCode
 })
 ```
 
-### 3. Многоуровневые таймауты
+### 3. Многоуровневые тайм-ауты
 
 ```go
-// Таймаут клиента по умолчанию
+// Тайм-аут клиента по умолчанию
 cfg.Timeouts.Request = 30 * time.Second
 
-// Принудительный таймаут через промежуточное ПО
+// Принудительный тайм-аут через промежуточное ПО
 timeoutMiddleware := httpc.TimeoutMiddleware(30 * time.Second)
 
 // Переопределение для отдельного запроса
 result, err := client.Get(url, httpc.WithTimeout(10 * time.Second))
 
-// Таймаут контекста (наиболее точный)
+// Тайм-аут контекста (наиболее точный)
 ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 result, err := client.Request(ctx, "GET", url)
 ```
 
 ## Что дальше
 
-- [Типы ошибок API](../api-reference/errors) - справочник типов ошибок и переменных
-- [Повторные попытки и отказоустойчивость](../guides/retry-fault-tolerance) - конфигурация стратегий повторных попыток
-- [Цепочка промежуточного ПО](../guides/middleware-chain) - использование промежуточного ПО для унифицированной обработки ошибок
+- [Типы ошибок API](../api-reference/errors) - справочник типов и переменных ошибок
+- [Повторные попытки и отказоустойчивость](../guides/retry-fault-tolerance) - конфигурация стратегии повторных попыток
+- [Цепочка промежуточного ПО](../guides/middleware-chain) - унифицированная обработка ошибок через промежуточное ПО

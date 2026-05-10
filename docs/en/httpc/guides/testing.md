@@ -1,13 +1,13 @@
 ---
 title: Testing Guide - HTTPC
-description: HTTPC testing guide covering how to use TestingConfig for quick test environment setup, integrate net/http/httptest.Server for mocking HTTP responses, write table-driven test cases, simulate network error scenarios, and properly clean up client resources to improve test coverage and efficiency.
+description: Guide to HTTPC testing, covering TestingConfig setup, httptest.Server mock responses, table-driven tests, network error simulation, and client resource cleanup.
 ---
 
 # Testing Guide
 
 ## TestingConfig
 
-`TestingConfig()` is designed specifically for test environments. It disables security checks and shortens timeouts to speed up test execution:
+`TestingConfig()` is designed for test environments, disabling security checks and shortening timeouts to speed up test execution:
 
 ```go
 func TestAPI(t *testing.T) {
@@ -23,12 +23,12 @@ func TestAPI(t *testing.T) {
 ```
 
 :::danger
-`TestingConfig` disables TLS verification, SSRF protection, and other security features. **Use only in test environments.** A security warning is printed when used outside of test environments.
+`TestingConfig` disables TLS verification, SSRF protection, and other security features. **Only use it in test environments.** A security warning is printed when used in non-test environments.
 :::
 
 ## httptest.Server Integration
 
-Use the standard library `net/http/httptest` to create mock servers for integration testing without a real backend:
+Use the standard library `net/http/httptest` to create a mock server for integration testing without a real backend:
 
 ```go
 package main
@@ -94,9 +94,9 @@ func TestGetUser(t *testing.T) {
 }
 ```
 
-## Mocking Different Scenarios
+## Simulating Different Scenarios
 
-### Mock Error Responses
+### Simulating Error Responses
 
 ```go
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +108,7 @@ server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *htt
 defer server.Close()
 ```
 
-### Mock Delays
+### Simulating Delays
 
 ```go
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +127,7 @@ if err == nil {
 }
 ```
 
-### Mock Redirects
+### Simulating Redirects
 
 ```go
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -142,7 +142,7 @@ server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *htt
 defer server.Close()
 ```
 
-### Mock File Upload
+### Simulating File Uploads
 
 ```go
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -211,11 +211,11 @@ func TestHTTPMethods(t *testing.T) {
 
 | Practice | Description |
 |----------|-------------|
-| Use `httptest.Server` | Mock real HTTP behavior without network dependencies |
-| Use `TestingConfig()` | Disable security checks to prevent local connections from being blocked |
-| Call `ReleaseResult()` | Return to the object pool to maintain test performance |
-| Use `defer` | Ensure resource cleanup even when tests fail |
-| Table-driven | Cover multiple inputs with concise code |
+| Use `httptest.Server` | Simulates real HTTP behavior without network dependencies |
+| Use `TestingConfig()` | Disables security checks, preventing local connections from being blocked |
+| Call `ReleaseResult()` | Returns to object pool, maintaining test performance |
+| Use `defer` | Ensures resource cleanup even if tests fail |
+| Table-driven tests | Covers multiple inputs with concise code |
 
 ## Next Steps
 

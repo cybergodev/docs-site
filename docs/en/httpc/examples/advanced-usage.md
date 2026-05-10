@@ -1,6 +1,6 @@
 ---
 title: Advanced Examples - HTTPC
-description: Complete collection of advanced HTTPC usage examples, including custom RetryPolicy retry strategy implementation, full onion-model middleware chain configuration, RESTful API wrapper pattern, concurrent file download management, HMAC signing authentication middleware, and advanced domain client practical Go code examples with detailed explanations.
+description: Advanced HTTPC examples covering custom retry policies, middleware chaining, RESTful API wrappers, concurrent downloads, and HMAC signature authentication.
 ---
 
 # Advanced Examples

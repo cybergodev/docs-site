@@ -1,6 +1,6 @@
 ---
 title: エラー処理 - HTTPC
-description: HTTPC エラー処理の完全ガイド。12 種類の ErrorType エラー分類体系と判定方法、ClientError 構造体の全フィールドと使い方、センチネルエラー変数の errors.Is マッチングパターン、ネットワークタイムアウト、TLS 証明書、DNS 解決エラーの処理ベストプラクティスを詳解。
+description: HTTPC エラー処理ガイド。12 種類の ErrorType エラー分類、ClientError 構造体フィールド、センチネルエラーマッチングと各種ネットワークエラーのベストプラクティス。
 ---
 
 # エラー処理

@@ -1,13 +1,13 @@
 ---
 title: Руководство по тестированию - HTTPC
-description: "Руководство по тестированию HTTPC подробно описывает использование TestingConfig для быстрой настройки тестовой среды, интеграцию с net/http/httptest.Server для имитации HTTP-ответов, написание табличных тестов, имитацию сценариев сетевых ошибок и правильную очистку ресурсов клиента для повышения покрытия и эффективности тестирования"
+description: Руководство по тестированию HTTPC, подробно описывающее конфигурацию TestingConfig, моделирование ответов httptest.Server, табличные тесты, моделирование сетевых ошибок и очистку ресурсов клиента.
 ---
 
 # Руководство по тестированию
 
 ## TestingConfig
 
-`TestingConfig()` предназначена для тестовой среды: отключает проверки безопасности, сокращает таймауты, ускоряет выполнение тестов:
+`TestingConfig()` предназначена для тестовой среды: отключает проверки безопасности, сокращает тайм-ауты для ускорения выполнения тестов:
 
 ```go
 func TestAPI(t *testing.T) {
@@ -22,13 +22,13 @@ func TestAPI(t *testing.T) {
 }
 ```
 
-:::danger
-`TestingConfig` отключает проверку TLS, защиту от SSRF и другие функции безопасности — **используйте только в тестовой среде**. При использовании в не-тестовой среде выводится предупреждение безопасности.
+:::danger Опасность
+`TestingConfig` отключает проверку TLS, защиту от SSRF и другие функции безопасности. **Используйте только в тестовой среде.** При использовании вне тестовой среды выводится предупреждение безопасности.
 :::
 
 ## Интеграция с httptest.Server
 
-Используйте стандартную библиотеку `net/http/httptest` для создания имитационного сервера и интеграционного тестирования без реального бэкенда:
+Используйте стандартную библиотеку `net/http/httptest` для создания сервера-заглушки, обеспечивающего интеграционное тестирование без реального бэкенда:
 
 ```go
 package main
@@ -43,13 +43,13 @@ import (
 )
 
 func TestGetUser(t *testing.T) {
-    // Создание имитационного сервера
+    // Создание сервера-заглушки
     server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         if r.URL.Path != "/users/1" {
-            t.Errorf("неожиданный путь: %s", r.URL.Path)
+            t.Errorf("unexpected path: %s", r.URL.Path)
         }
         if r.Header.Get("Authorization") != "Bearer test-token" {
-            t.Errorf("отсутствует заголовок авторизации")
+            t.Errorf("missing auth header")
         }
 
         w.Header().Set("Content-Type", "application/json")
@@ -67,7 +67,7 @@ func TestGetUser(t *testing.T) {
     }
     defer client.Close()
 
-    // Отправка запроса к имитационному серверу
+    // Отправка запроса к серверу-заглушке
     result, err := client.Get(server.URL+"/users/1",
         httpc.WithBearerToken("test-token"),
     )
@@ -77,7 +77,7 @@ func TestGetUser(t *testing.T) {
     defer httpc.ReleaseResult(result)
 
     if !result.IsSuccess() {
-        t.Fatalf("ожидается успех, получено %d", result.StatusCode())
+        t.Fatalf("expected success, got %d", result.StatusCode())
     }
 
     var user struct {
@@ -89,14 +89,14 @@ func TestGetUser(t *testing.T) {
     }
 
     if user.Name != "Test User" {
-        t.Errorf("ожидается Test User, получено %s", user.Name)
+        t.Errorf("expected Test User, got %s", user.Name)
     }
 }
 ```
 
-## Имитация различных сценариев
+## Моделирование различных сценариев
 
-### Имитация ошибочных ответов
+### Моделирование ошибочных ответов
 
 ```go
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +108,7 @@ server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *htt
 defer server.Close()
 ```
 
-### Имитация задержки
+### Моделирование задержки
 
 ```go
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -117,17 +117,17 @@ server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *htt
 }))
 defer server.Close()
 
-// Тестирование обработки таймаута
+// Тестирование обработки тайм-аута
 ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 defer cancel()
 
 _, err := httpc.Request(ctx, "GET", server.URL)
 if err == nil {
-    t.Fatal("ожидается ошибка таймаута")
+    t.Fatal("expected timeout error")
 }
 ```
 
-### Имитация редиректа
+### Моделирование перенаправления
 
 ```go
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -142,12 +142,12 @@ server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *htt
 defer server.Close()
 ```
 
-### Имитация загрузки файлов
+### Моделирование загрузки файла
 
 ```go
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     if r.Method != "POST" {
-        t.Errorf("ожидается POST, получено %s", r.Method)
+        t.Errorf("expected POST, got %s", r.Method)
     }
 
     // Разбор multipart-формы
@@ -159,7 +159,7 @@ server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *htt
     defer file.Close()
 
     if header.Filename != "test.txt" {
-        t.Errorf("ожидается test.txt, получено %s", header.Filename)
+        t.Errorf("expected test.txt, got %s", header.Filename)
     }
 
     w.WriteHeader(http.StatusOK)
@@ -200,7 +200,7 @@ func TestHTTPMethods(t *testing.T) {
             defer httpc.ReleaseResult(result)
 
             if result.Body() != tt.name {
-                t.Errorf("ожидается %s, получено %s", tt.name, result.Body())
+                t.Errorf("expected %s, got %s", tt.name, result.Body())
             }
         })
     }
@@ -211,14 +211,14 @@ func TestHTTPMethods(t *testing.T) {
 
 | Практика | Описание |
 |----------|----------|
-| Используйте `httptest.Server` | Имитация реального HTTP-поведения без сетевых зависимостей |
-| Используйте `TestingConfig()` | Отключает проверки безопасности, предотвращает блокировку локальных соединений |
-| Вызывайте `ReleaseResult()` | Возврат в пул объектов для поддержания производительности тестов |
-| Используйте `defer` | Гарантирует освобождение ресурсов даже при неудачных тестах |
-| Табличные тесты | Покрытие множества вариантов входных данных с лаконичным кодом |
+| Используйте `httptest.Server` | Моделируйте реальное HTTP-поведение без сетевых зависимостей |
+| Используйте `TestingConfig()` | Отключите проверки безопасности, чтобы локальные подключения не блокировались |
+| Вызывайте `ReleaseResult()` | Возвращайте в пул объектов, сохраняйте производительность тестов |
+| Используйте `defer` | Обеспечьте освобождение ресурсов даже при неудачных тестах |
+| Табличные тесты | Покрывайте различные входные данные с лаконичным кодом |
 
 ## Что дальше
 
-- [API конфигурации](../api-reference/config) — подробные параметры TestingConfig
-- [Типы ошибок](../api-reference/errors) — справочник по утверждению ошибок
-- [Цепочки промежуточного ПО](./middleware-chain) — паттерны тестирования промежуточного ПО
+- [Конфигурация API](../api-reference/config) - подробные параметры TestingConfig
+- [Типы ошибок](../api-reference/errors) - справочник по утверждению ошибок
+- [Цепочка промежуточного ПО](./middleware-chain) - паттерны тестирования промежуточного ПО

@@ -1,6 +1,6 @@
 ---
 title: TLS と証明書ピンニング - HTTPC
-description: HTTPC TLS セキュリティと証明書ピンニングの完全ガイド。TLS バージョン管理とデフォルト設定パラメータ、カスタム CA 証明書の読み込み方法、双方向 mTLS 認証設定、SPKI 公開鍵ハッシュ証明書ピンニングの実装、HTTP/2 プロトコルネゴシエーション、InsecureSkipVerify のリスク説明を詳解。
+description: HTTPC TLS と証明書ピンニングガイド。TLS バージョン管理、カスタム CA 読み込み、mTLS 双方向認証、SPKI 公開鍵ピンニングと HTTP/2 ネゴシエーション。
 ---
 
 # TLS と証明書ピンニング

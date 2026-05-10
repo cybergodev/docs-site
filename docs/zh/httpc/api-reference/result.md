@@ -1,6 +1,6 @@
 ---
 title: Result - HTTPC
-description: HTTPC Result 响应类型完整 API 参考，提供 Body 与 RawBody 响应体访问、StatusCode 状态码获取、IsSuccess 等状态判断方法、Cookie 操作、Unmarshal JSON 自动解析和 SaveToFile 文件保存方法详解。
+description: HTTPC Result 响应类型 API 参考，提供响应体访问、状态码获取、状态判断、Cookie 操作、JSON 解析与文件保存方法详解。
 ---
 
 # Result

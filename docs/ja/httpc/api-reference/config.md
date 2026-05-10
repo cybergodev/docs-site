@@ -1,6 +1,6 @@
 ---
 title: 設定 - HTTPC
-description: HTTPC 設定システムの完全 API リファレンス。Config メイン設定構造体と Timeouts、Connection、Security、Retry、Middleware の 5 つのサブ設定グループの全フィールド詳細、5 種類のプリセット設定関数、Validate 検証メソッドを解説します。
+description: HTTPC 設定システム API リファレンス。Config 構造体と 5 つのサブ設定グループの全フィールド説明、5 種類のプリセット設定関数と Validate 検証メソッド。
 ---
 
 # 設定

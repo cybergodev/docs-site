@@ -1,6 +1,6 @@
 ---
 title: ミドルウェアチェーン - HTTPC
-description: HTTPC ミドルウェアチェーンの詳細ガイド。オニオンモデルの実行原理とリクエスト処理の完全なフロー、8つの組み込みミドルウェア（Recovery、Logging、RequestID、Timeout、Header、Metrics、Audit、Retry）の機能と設定、Chain チェーン組み合わせパターン、カスタムミドルウェアの作成方法とベストプラクティスを詳しく解説します。
+description: HTTPC ミドルウェアチェーンガイド。オニオンモデルの実行原理、8つの組み込みミドルウェアの機能設定、Chain 組み合わせパターン、カスタムミドルウェアの作成方法。
 ---
 
 # ミドルウェアチェーン

@@ -1,6 +1,6 @@
 ---
 title: Package Functions - HTTPC
-description: HTTPC package-level functions and client methods complete API reference, covering Get, Post, Put, Patch, Delete, Head, Options HTTP methods, New client creation function, Download series functions, and ReleaseResult object pool reuse method.
+description: HTTPC package-level functions and client methods API reference, covering seven HTTP methods, New creation function, Download series, and ReleaseResult object pool reuse method.
 ---
 
 # Package Functions
@@ -15,7 +15,7 @@ Send requests directly without creating a client. Internally uses a lazily initi
 func Get(url string, options ...RequestOption) (*Result, error)
 ```
 
-Send a GET request.
+Sends a GET request.
 
 ```go
 result, err := httpc.Get("https://api.example.com/data",
@@ -30,7 +30,7 @@ result, err := httpc.Get("https://api.example.com/data",
 func Post(url string, options ...RequestOption) (*Result, error)
 ```
 
-Send a POST request.
+Sends a POST request.
 
 ```go
 result, err := httpc.Post("https://api.example.com/users",
@@ -65,7 +65,7 @@ result, err := httpc.Request(ctx, "GET", "https://api.example.com/data")
 
 ## Client Methods
 
-The Client interface provides the same HTTP methods as package-level functions, plus a `Request` method with context.
+The Client interface provides the same HTTP methods as package-level functions, plus the context-aware `Request` method.
 
 ### New
 
@@ -73,7 +73,7 @@ The Client interface provides the same HTTP methods as package-level functions, 
 func New(config ...*Config) (Client, error)
 ```
 
-Create a new HTTP client. Passing no config or `nil` uses `DefaultConfig()`.
+Creates a new HTTP client. Passing no config or `nil` uses `DefaultConfig()`.
 
 ```go
 client, err := httpc.New()
@@ -100,7 +100,7 @@ result, err := client.Request(ctx, "GET", url, options...)
 
 ### Close
 
-Client interface method that releases resources held by the client (connection pool, Transport). Must not be used after calling.
+Client interface method that releases resources held by the client (connection pool, Transport). Cannot be used after calling.
 
 ```go
 // Client interface method
@@ -120,7 +120,7 @@ defer client.Close()
 func SetDefaultClient(client Client) error
 ```
 
-Set a custom client as the default client for package-level functions. The old default client is automatically closed.
+Sets a custom client as the default client for package-level functions. The old default client is automatically closed.
 
 :::warning Limitation
 Only accepts clients created via `httpc.New()`. Cannot set a closed client.
@@ -140,7 +140,7 @@ result, _ := httpc.Get(url)
 func CloseDefaultClient() error
 ```
 
-Close the default client and reset it. A new client will be created on the next package-level function call.
+Closes the default client and resets it. A new client will be created on the next package-level function call.
 
 ## Result Management
 
@@ -150,7 +150,7 @@ Close the default client and reset it. A new client will be created on the next 
 func ReleaseResult(r *Result)
 ```
 
-Return a Result to the object pool to reduce GC pressure. Must not access the Result after calling.
+Returns the Result to the object pool to reduce GC pressure. Cannot use the Result after calling.
 
 ```go
 result, _ := httpc.Get(url)
@@ -158,7 +158,7 @@ defer httpc.ReleaseResult(result)
 ```
 
 :::warning
-Do not access a Result after calling `ReleaseResult`. Its internal data will be zeroed.
+Do not access the Result after calling `ReleaseResult`, as its internal data is zeroed.
 :::
 
 ## Download Functions
@@ -171,7 +171,7 @@ Package-level download functions use the default client. The Client interface al
 func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Download a file to the specified path using the default client.
+Downloads a file to the specified path using the default client.
 
 ```go
 // Package-level function
@@ -187,7 +187,7 @@ result, err := client.DownloadFile("https://example.com/file.zip", "/tmp/file.zi
 func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Download with configuration, supporting resume and progress callback.
+File download with configuration, supporting resumable downloads and progress callbacks.
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -210,7 +210,7 @@ result, err = client.DownloadWithOptions(url, cfg)
 func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Download with context control, supporting timeout and cancellation.
+File download with context control, supporting timeout and cancellation.
 
 ```go
 // Package-level function
@@ -225,7 +225,7 @@ result, err = client.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
 func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Download with configuration and context control.
+File download with configuration and context control.
 
 ```go
 // Package-level function
@@ -242,7 +242,7 @@ result, err = client.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
 func FormatBytes(bytes int64) string
 ```
 
-Format bytes into a human-readable string.
+Formats bytes into a human-readable string.
 
 ```go
 httpc.FormatBytes(1536)      // "1.50 KB"
@@ -255,7 +255,7 @@ httpc.FormatBytes(1048576)   // "1.00 MB"
 func FormatSpeed(bytesPerSecond float64) string
 ```
 
-Format transfer speed into a human-readable string.
+Formats transfer speed into a human-readable string.
 
 ```go
 httpc.FormatSpeed(1536.0)    // "1.50 KB/s"
@@ -270,7 +270,7 @@ httpc.FormatSpeed(1048576.0) // "1.00 MB/s"
 func NewDomain(baseURL string, config ...*Config) (DomainClienter, error)
 ```
 
-Create a domain-scoped client that automatically manages cookies and headers.
+Creates a domain-scoped client that automatically manages cookies and request headers.
 
 ```go
 dc, err := httpc.NewDomain("https://api.example.com")

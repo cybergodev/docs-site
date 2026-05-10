@@ -1,6 +1,6 @@
 ---
 title: Retry and Fault Tolerance - HTTPC
-description: Complete guide to HTTPC retry and fault tolerance mechanisms, covering the default retry strategy with exponential backoff and jitter, custom RetryPolicy interface implementation, automatic Retry-After response header parsing, and retry best practices combining ClientError classification for common configuration optimization.
+description: Guide to HTTPC retry and fault tolerance covering default retry strategy with exponential backoff, custom RetryPolicy interface, Retry-After parsing, and best practices.
 ---
 
 # Retry and Fault Tolerance

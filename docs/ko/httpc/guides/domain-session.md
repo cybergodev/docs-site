@@ -1,6 +1,6 @@
 ---
 title: 도메인 클라이언트와 세션 - HTTPC
-description: HTTPC 도메인 클라이언트와 세션 관리 완전 가이드, NewDomain으로 도메인 범위 클라이언트 생성, URL 자동 조합과 경로 병합 규칙, 세션 요청 헤더와 Cookie 자동 유지, SessionManager 스레드 안전 저장 및 보안 설정의 전체 사용법과 모범 사례를 정리합니다.
+description: HTTPC 도메인 클라이언트와 세션 관리 가이드, NewDomain 생성, URL 자동 조합, 세션 헤더와 Cookie 자동 유지 및 보안 구성 사용법 상세 설명.
 ---
 
 # 도메인 클라이언트와 세션
@@ -16,21 +16,21 @@ if err != nil {
 }
 defer dc.Close()
 
-// Cookie가 자동으로 활성화됨
+// Cookie 자동 활성화
 dc.SetHeader("Authorization", "Bearer "+token)
 
 // 상대 경로로 요청 전송
 result, err := dc.Get("/users")
 ```
 
-:::tip
-`NewDomain`은 자동으로 Cookie 관리를 활성화합니다 (`EnableCookies = true`), 수동 설정이 필요 없습니다.
+:::tip 사용 팁
+`NewDomain`은 자동으로 Cookie 관리를 활성화합니다(`EnableCookies = true`), 수동 구성이 필요 없습니다.
 :::
 
 ## 세션 헤더 관리
 
 ```go
-// 세션 헤더 설정 (이후의 모든 요청에 자동으로 포함)
+// 세션 헤더 설정 (모든 후속 요청에 자동 포함)
 dc.SetHeader("Authorization", "Bearer "+token)
 dc.SetHeader("Accept", "application/json")
 
@@ -41,7 +41,7 @@ dc.SetHeaders(map[string]string{
     "X-Version":     "2.0",
 })
 
-// 삭제 및 초기화
+// 삭제 및 비우기
 dc.DeleteHeader("X-Version")
 dc.ClearHeaders()
 
@@ -63,19 +63,19 @@ dc.SetCookies([]*http.Cookie{
 
 // 응답 Cookie 자동 캡처
 result, _ := dc.Get("/login")
-// 서버가 반환한 Set-Cookie가 세션에 자동 저장됨
+// 서버가 반환한 Set-Cookie가 자동으로 세션에 저장됩니다
 
 // 조회
 cookie := dc.GetCookie("session")
 cookies := dc.GetCookies()
 
-// 삭제 및 초기화
+// 삭제 및 비우기
 dc.DeleteCookie("session")
 dc.ClearCookies()
 ```
 
-:::tip
-매 요청 후 서버가 반환한 Cookie가 세션에 자동으로 업데이트되므로 수동 처리가 필요 없습니다.
+:::tip 사용 팁
+매 요청 후 서버가 반환한 Cookie가 자동으로 세션에 업데이트되므로 수동 처리가 필요 없습니다.
 :::
 
 ## 요청 방식
@@ -93,7 +93,7 @@ result, _ := dc.Options("/users")
 // 컨텍스트 포함
 result, _ := dc.Request(ctx, "GET", "/users")
 
-// 절대 URL (base URL 조합 건너뜀)
+// 절대 URL (base URL 조합 건너뛰기)
 result, _ := dc.Get("https://other-api.com/data")
 ```
 
@@ -104,7 +104,7 @@ result, _ := dc.Get("https://other-api.com/data")
 dc.URL()     // "https://api.example.com"
 dc.Domain()  // "api.example.com"
 
-// 내부 SessionManager 접근
+// 기본 SessionManager 접근
 session := dc.Session()
 if err := session.SetHeader("X-Trace-ID", traceID); err != nil {
     log.Fatal(err)
@@ -113,7 +113,7 @@ if err := session.SetHeader("X-Trace-ID", traceID); err != nil {
 
 ## Cookie 보안 검증
 
-Cookie 보안 정책을 설정하여 보안 기준을 충족하는 Cookie만 허용할 수 있습니다:
+Cookie 보안 정책을 구성하여 보안 기준을 충족하는 Cookie만 수락할 수 있습니다:
 
 ```go
 dc, _ := httpc.NewDomain("https://api.example.com")
@@ -129,7 +129,7 @@ if err := dc.SetCookie(&http.Cookie{
     Value: "test",
     // Secure, HttpOnly 누락 → 거부됨
 }); err != nil {
-    log.Println("Cookie가 거부됨:", err)
+    log.Println("Cookie 거부됨:", err)
 }
 ```
 
@@ -178,7 +178,7 @@ func main() {
         log.Fatal(err)
     }
 
-    // 이후 요청에는 Token과 Cookie가 자동으로 포함됨
+    // 후속 요청은 Token과 Cookie를 자동으로 포함
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     defer cancel()
 
@@ -194,6 +194,6 @@ func main() {
 
 ## 다음 단계
 
-- [도메인 클라이언트 API](../api-reference/domain-client) - 전체 API 레퍼런스
+- [도메인 클라이언트 API](../api-reference/domain-client) - 완전한 API 참조
 - [세션 관리 API](../api-reference/session) - SessionManager 참조
 - [요청과 응답](./request-response) - 기본 요청 가이드

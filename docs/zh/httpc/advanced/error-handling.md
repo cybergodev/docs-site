@@ -1,6 +1,6 @@
 ---
 title: 错误处理 - HTTPC
-description: HTTPC 错误处理完整指南，详解十二种 ErrorType 错误分类体系与判断方法、ClientError 结构体的全部字段与用法、哨兵错误变量的 errors.Is 匹配模式和针对网络超时、TLS 证书与 DNS 解析错误的处理最佳实践。
+description: HTTPC 错误处理指南，详解十二种 ErrorType 错误分类、ClientError 结构体字段、哨兵错误匹配与各类网络错误的最佳实践。
 ---
 
 # 错误处理

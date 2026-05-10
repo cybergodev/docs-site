@@ -1,6 +1,6 @@
 ---
 title: ファイルダウンロード - HTTPC
-description: HTTPC ファイルダウンロード API 完全リファレンス。DownloadFile など 4 つのダウンロード関数のシグネチャとパラメータ説明、DownloadConfig 設定オプション詳細、DownloadProgressCallback 進捗コールバック、ChecksumAlgorithm チェックサム列挙型、多層パストラバーサル防护メカニズムを含みます。
+description: HTTPC ファイルダウンロード API リファレンス。4 つのダウンロード関数シグネチャ、DownloadConfig 設定、プログレスコールバック、チェックサム列挙型とパストラバーサル防護メカニズム。
 ---
 
 # ファイルダウンロード

@@ -1,26 +1,26 @@
 ---
 title: 미들웨어 체인 - HTTPC
-description: HTTPC 미들웨어 체인 심층 가이드, 양파 모델 실행 원리와 요청 처리 전체 흐름, 8개 내장 미들웨어(Recovery, Logging, RequestID, Timeout, Header, Metrics, Audit, Retry)의 기능과 설정, Chain 체인 조합 모드와 커스텀 미들웨어 작성 방법 및 모범 사례를 상세히 설명합니다.
+description: HTTPC 미들웨어 체인 가이드, 양파 모델 실행 원리, 8개 내장 미들웨어 기능 구성, Chain 조합 모드 및 사용자 정의 미들웨어 작성 방법 상세 설명.
 ---
 
 # 미들웨어 체인
 
 ## 양파 모델
 
-HTTPC 미들웨어는 양파 모델을 채택합니다. 요청은 바깥에서 안쪽으로, 응답은 안쪽에서 바깥쪽으로 흐릅니다:
+HTTPC 미들웨어는 양파 모델을 채택하며, 요청은 외부에서 내부로, 응답은 내부에서 외부로 흐릅니다:
 
 ```text
 요청 →  Recovery  →  Logging  →  RequestID  → Handler
-                                                          ↓
+                                                      ↓
 응답 ←  Recovery  ←  Logging  ←  RequestID  ← Response
 ```
 
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-    httpc.RecoveryMiddleware(),    // 가장 바깥: panic 복구
+    httpc.RecoveryMiddleware(),    // 최외각: panic 복구
     httpc.LoggingMiddleware(log.Printf), // 두 번째: 로그 기록
-    httpc.RequestIDMiddleware("X-Request-ID", nil), // 가장 안쪽: 요청 ID
+    httpc.RequestIDMiddleware("X-Request-ID", nil), // 최내각: 요청 ID
 }
 
 client, _ := httpc.New(cfg)
@@ -30,7 +30,7 @@ client, _ := httpc.New(cfg)
 
 ### RecoveryMiddleware
 
-panic 복구로 프로세스 크래시를 방지합니다:
+panic 복구, 프로세스 충돌 방지:
 
 ```go
 httpc.RecoveryMiddleware()
@@ -49,12 +49,12 @@ httpc.LoggingMiddleware(func(format string, args ...any) {
 
 ### RequestIDMiddleware
 
-각 요청에 고유 ID를 추가합니다. `crypto/rand`를 사용하여 생성합니다:
+각 요청에 고유 ID를 추가하며, `crypto/rand`로 생성합니다:
 
 ```go
 httpc.RequestIDMiddleware("X-Request-ID", nil) // 기본 32자 hex
 
-// 커스텀 생성기
+// 사용자 정의 생성기
 httpc.RequestIDMiddleware("X-Request-ID", func() string {
     return uuid.New().String()
 })
@@ -70,7 +70,7 @@ httpc.TimeoutMiddleware(30 * time.Second)
 
 ### HeaderMiddleware
 
-모든 요청에 정적 헤더를 추가합니다:
+모든 요청에 정적 헤더 추가:
 
 ```go
 httpc.HeaderMiddleware(map[string]string{
@@ -81,7 +81,7 @@ httpc.HeaderMiddleware(map[string]string{
 
 ### MetricsMiddleware
 
-요청 메트릭을 수집합니다:
+요청 메트릭 수집:
 
 ```go
 httpc.MetricsMiddleware(func(method, url string, statusCode int, duration time.Duration, err error) {
@@ -95,7 +95,7 @@ httpc.MetricsMiddleware(func(method, url string, statusCode int, duration time.D
 
 ### AuditMiddleware
 
-보안 감사, 금융, 의료 등 규제 준수 시나리오에 사용:
+보안 감사, 금융, 의료 등 규정 준수 시나리오에 적합:
 
 ```go
 httpc.AuditMiddleware(func(event httpc.AuditEvent) {
@@ -106,7 +106,7 @@ httpc.AuditMiddleware(func(event httpc.AuditEvent) {
 
 ### AuditMiddlewareWithConfig
 
-설정 가능한 감사 미들웨어:
+구성 가능한 감사 미들웨어:
 
 ```go
 auditCfg := &httpc.AuditMiddlewareConfig{
@@ -122,7 +122,7 @@ httpc.AuditMiddlewareWithConfig(func(event httpc.AuditEvent) {
 }, auditCfg)
 ```
 
-감사 이벤트는 컨텍스트에서 SourceIP와 UserID를 추출할 수 있습니다:
+감사 이벤트는 컨텍스트에서 SourceIP와 UserID 추출을 지원합니다:
 
 ```go
 ctx := context.WithValue(context.Background(), httpc.SourceIPKey, "192.168.1.1")
@@ -131,7 +131,7 @@ ctx = context.WithValue(ctx, httpc.UserIDKey, "user-123")
 
 ## 수동 체인 조합
 
-`Chain` 함수로 미들웨어를 조합합니다:
+`Chain` 함수를 사용하여 미들웨어를 조합합니다:
 
 ```go
 middleware := httpc.Chain(
@@ -144,7 +144,7 @@ cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{middleware}
 ```
 
-## 커스텀 미들웨어
+## 사용자 정의 미들웨어
 
 ```go
 func CORSMiddleware(origin string) httpc.MiddlewareFunc {
@@ -156,7 +156,7 @@ func CORSMiddleware(origin string) httpc.MiddlewareFunc {
             // 다음 핸들러 호출
             resp, err := next(ctx, req)
 
-            // 응답 단계: 응답 기록 또는 수정
+            // 응답 단계: 기록 또는 응답 수정
             if resp != nil {
                 log.Printf("응답 상태: %d", resp.StatusCode())
             }
@@ -195,7 +195,7 @@ func CircuitBreakerMiddleware(threshold int) httpc.MiddlewareFunc {
 }
 ```
 
-## 미들웨어 설정
+## 미들웨어 구성
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -215,6 +215,6 @@ client, _ := httpc.New(cfg)
 
 ## 다음 단계
 
-- [미들웨어 API](../api-reference/middleware) - 전체 미들웨어 참조
+- [미들웨어 API](../api-reference/middleware) - 완전한 미들웨어 참조
 - [재시도와 장애 허용](./retry-fault-tolerance) - 재시도 전략 가이드
-- [보안 개요](../security/) - 감사 미들웨어 보안 실무
+- [보안 개요](../security/) - 감사 미들웨어 보안 실천

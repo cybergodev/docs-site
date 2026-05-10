@@ -1,11 +1,11 @@
 ---
 title: 파일 다운로드 - HTTPC
-description: HTTPC 파일 다운로드 API의 전체 레퍼런스로, DownloadFile 등 4가지 다운로드 함수 시그니처와 매개변수 설명, DownloadConfig 설정 옵션 상세, DownloadProgressCallback 진행률 콜백, ChecksumAlgorithm 체크섬 열거형 및 다층 경로 순회 방지 메커니즘을 다룹니다.
+description: HTTPC 파일 다운로드 API 참조, 4가지 다운로드 함수 서명, DownloadConfig 구성, 진행률 콜백, 체크섬 열거형과 경로 순회 방어 메커니즘 포함.
 ---
 
 # 파일 다운로드
 
-## 패키지 레벨 다운로드 함수
+## 패키지 다운로드 함수
 
 ### DownloadFile
 
@@ -25,7 +25,7 @@ result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip
 func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-설정이 포함된 다운로드로, 이어받기와 진행률 콜백을 지원합니다.
+구성이 포함된 다운로드로, 이어받기와 진행률 콜백을 지원합니다.
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -50,7 +50,7 @@ func DownloadFileWithContext(ctx context.Context, url string, filePath string, o
 func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-설정과 컨텍스트 제어가 포함된 파일 다운로드입니다.
+구성과 컨텍스트 제어가 포함된 파일 다운로드입니다.
 
 ## DownloadConfig
 
@@ -67,8 +67,8 @@ type DownloadConfig struct {
 func DefaultDownloadConfig() *DownloadConfig
 ```
 
-| 필드 | 타입 | 기본값 | 설명 |
-|------|------|--------|------|
+| 필드 | 유형 | 기본값 | 설명 |
+|------|------|------|------|
 | `FilePath` | `string` | - | 저장 경로 (필수) |
 | `ProgressCallback` | `DownloadProgressCallback` | `nil` | 진행률 콜백 함수 |
 | `Overwrite` | `bool` | `false` | 기존 파일 덮어쓰기 |
@@ -82,7 +82,7 @@ func DefaultDownloadConfig() *DownloadConfig
 type DownloadProgressCallback func(downloaded, total int64, speed float64)
 ```
 
-| 매개변수 | 타입 | 설명 |
+| 매개변수 | 유형 | 설명 |
 |------|------|------|
 | `downloaded` | `int64` | 다운로드된 바이트 수 |
 | `total` | `int64` | 전체 바이트 수 (-1은 알 수 없음) |
@@ -111,7 +111,7 @@ type DownloadResult struct {
 }
 ```
 
-| 필드 | 타입 | 설명 |
+| 필드 | 유형 | 설명 |
 |------|------|------|
 | `FilePath` | `string` | 파일 저장 경로 |
 | `BytesWritten` | `int64` | 기록된 바이트 수 |
@@ -119,7 +119,7 @@ type DownloadResult struct {
 | `AverageSpeed` | `float64` | 평균 속도 (바이트/초) |
 | `StatusCode` | `int` | HTTP 상태 코드 |
 | `ContentLength` | `int64` | Content-Length 헤더 값 |
-| `Resumed` | `bool` | 이어받기로 완료되었는지 여부 |
+| `Resumed` | `bool` | 이어받기 완료 여부 |
 | `ResponseCookies` | `[]*http.Cookie` | 응답 Cookie |
 | `ActualChecksum` | `string` | 실제 계산된 체크섬 |
 
@@ -155,14 +155,14 @@ cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 
 result, err := httpc.DownloadWithOptions(url, cfg)
 if err != nil {
-    // 체크섬이 일치하지 않으면 자동으로 오류를 반환하고 다운로드된 파일을 삭제
+    // 체크섬 불일치 시 자동으로 오류를 반환하고 다운로드된 파일을 삭제
     log.Fatal(err)
 }
 fmt.Println("체크섬:", result.ActualChecksum)
 ```
 
-:::tip
-`Checksum`을 설정하면 다운로드 완료 시 자동으로 파일 무결성을 검증합니다. 검증 실패 시 파일이 자동으로 삭제되고 오류가 반환되므로 수동 비교가 필요하지 않습니다.
+:::tip 사용 팁
+`Checksum`을 설정하면 다운로드 완료 시 자동으로 파일 무결성을 검증합니다. 검증 실패 시 파일을 자동으로 삭제하고 오류를 반환하므로 수동 비교가 필요 없습니다.
 :::
 
 ## 보안 보호
@@ -171,12 +171,12 @@ fmt.Println("체크섬:", result.ActualChecksum)
 
 | 보호 | 설명 |
 |------|------|
-| UNC 경로 차단 | `\\server\share` 형식 경로 금지 |
-| 제어 문자 필터링 | 경로 내 제어 문자 금지 |
+| UNC 경로 차단 | `\\server\share` 형식의 경로 금지 |
+| 제어 문자 필터링 | 경로의 제어 문자 금지 |
 | 시스템 경로 보호 | 시스템 디렉토리에 쓰기 금지 |
 | 경로 순회 감지 | `../` 경로 순회 감지 |
 | 심볼릭 링크 감지 | 심볼릭 링크 공격 방지 |
-| 상위 디렉토리 검사 | 상위 디렉토리 심볼릭 링크 재귀 검사 |
+| 부모 디렉토리 감지 | 부모 디렉토리 심볼릭 링크 재귀 검사 |
 
 ## 이어받기
 
@@ -192,13 +192,13 @@ if result.Resumed {
 ```
 
 이어받기 메커니즘:
-1. 로컬 파일 크기 확인 -> `Range` 요청 오프셋으로 사용
-2. 서버가 206 (Partial Content) 반환 -> 이어서 기록
-3. 서버가 416 (Range Not Satisfiable) 반환 -> 오류 반환
-4. 서버가 200 반환 (Range 미지원) -> 오류 반환 (로컬 부분 파일 덮어쓰기 방지)
+1. 로컬 파일 크기 확인 → `Range` 요청 오프셋으로 사용
+2. 서버가 206 (Partial Content) 반환 → 이어서 기록
+3. 서버가 416 (Range Not Satisfiable) 반환 → 오류 반환
+4. 서버가 200 반환 (Range 미지원) → 오류 반환 (로컬 부분 파일 덮어쓰기 방지)
 
 ## 참고
 
 - [파일 업로드와 다운로드](../guides/file-transfer) - 사용 가이드
-- [패키지 함수](./functions) - 보조 함수 레퍼런스
+- [패키지 함수](./functions) - 보조 함수 참조
 - [도메인 클라이언트](./domain-client) - 도메인 클라이언트 다운로드 메서드

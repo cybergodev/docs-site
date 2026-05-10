@@ -1,6 +1,6 @@
 ---
 title: 性能优化 - HTTPC
-description: HTTPC 性能优化指南，详细对比 Default、Secure、Performance、Minimal 四种预设配置的性能特征差异，涵盖 ConnectionConfig 连接池参数调优、Result 对象池复用策略和常见性能反模式的识别与解决方案。
+description: HTTPC 性能优化指南，对比四种预设配置性能差异，涵盖连接池调优、Result 对象池复用策略与常见性能反模式解决方案。
 ---
 
 # 性能优化

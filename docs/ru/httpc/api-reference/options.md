@@ -1,11 +1,11 @@
 ---
-title: Параметры запроса - HTTPC
-description: "Полный справочник API двадцати шести функций параметров запроса HTTPC, сгруппированных по категориям: настройка заголовков, аутентификация Bearer и Basic, форматы тела запроса (JSON, форма и др.), формирование параметров URL-запроса, управление Cookie и обратные вызовы OnRequest и OnResponse"
+title: Параметры запросов - HTTPC
+description: "Справочник API двадцати семи функций параметров запросов HTTPC, сгруппированных по категориям: заголовки запросов, аутентификация, различные форматы тела запроса, параметры запроса, управление Cookie и функции обратного вызова."
 ---
 
-# Параметры запроса
+# Параметры запросов
 
-Параметры запроса — это функциональные элементы конфигурации, передаваемые в методы запроса через тип `RequestOption` для точного управления запросами.
+Параметры запросов — это функциональные элементы конфигурации, передаваемые методам запросов через тип `RequestOption` для точного управления запросами.
 
 ```go
 result, err := client.Post(url,
@@ -15,7 +15,7 @@ result, err := client.Post(url,
 )
 ```
 
-Все параметры можно свободно комбинировать, они применяются в порядке передачи.
+Все параметры можно свободно комбинировать, они применяются последовательно в порядке передачи.
 
 ## Заголовки запроса
 
@@ -25,7 +25,7 @@ result, err := client.Post(url,
 func WithHeader(key, value string) RequestOption
 ```
 
-Установка одного заголовка запроса. Ключ и значение проходят проверку безопасности (защита от CRLF-инъекции).
+Устанавливает один заголовок запроса. Ключ и значение проходят проверку безопасности (защита от инъекции CRLF).
 
 ```go
 result, err := client.Get(url,
@@ -39,7 +39,7 @@ result, err := client.Get(url,
 func WithHeaderMap(headers map[string]string) RequestOption
 ```
 
-Пакетная установка заголовков запроса.
+Массовая установка заголовков запроса.
 
 ```go
 result, err := client.Get(url,
@@ -56,7 +56,7 @@ result, err := client.Get(url,
 func WithUserAgent(userAgent string) RequestOption
 ```
 
-Установка заголовка User-Agent. Удобная обёртка для `WithHeader("User-Agent", ...)`.
+Устанавливает заголовок User-Agent. Является удобной обёрткой для `WithHeader("User-Agent", ...)`.
 
 ## Аутентификация
 
@@ -66,7 +66,7 @@ func WithUserAgent(userAgent string) RequestOption
 func WithBasicAuth(username, password string) RequestOption
 ```
 
-Установка HTTP Basic аутентификации. Имя пользователя не может быть пустым, длина учётных данных ограничена.
+Устанавливает HTTP Basic аутентификацию. Имя пользователя не может быть пустым, длина учётных данных ограничена.
 
 ```go
 result, err := client.Get(url,
@@ -80,7 +80,7 @@ result, err := client.Get(url,
 func WithBearerToken(token string) RequestOption
 ```
 
-Установка заголовка `Authorization: Bearer <token>`. Token не может быть пустым.
+Устанавливает заголовок `Authorization: Bearer <token>`. Token не может быть пустым.
 
 ```go
 result, err := client.Get(url,
@@ -96,7 +96,7 @@ result, err := client.Get(url,
 func WithJSON(data any) RequestOption
 ```
 
-Установка JSON-тела запроса, автоматически добавляет `Content-Type: application/json`.
+Устанавливает тело запроса в формате JSON, автоматически добавляет `Content-Type: application/json`.
 
 ```go
 result, err := client.Post(url,
@@ -113,7 +113,7 @@ result, err := client.Post(url,
 func WithXML(data any) RequestOption
 ```
 
-Установка XML-тела запроса, автоматически добавляет `Content-Type: application/xml`.
+Устанавливает тело запроса в формате XML, автоматически добавляет `Content-Type: application/xml`.
 
 ### WithForm
 
@@ -121,7 +121,7 @@ func WithXML(data any) RequestOption
 func WithForm(data map[string]string) RequestOption
 ```
 
-Установка URL-кодированного тела формы, автоматически добавляет `Content-Type: application/x-www-form-urlencoded`.
+Устанавливает тело запроса в формате URL-кодированной формы, автоматически добавляет `Content-Type: application/x-www-form-urlencoded`.
 
 ```go
 result, err := client.Post(url,
@@ -138,7 +138,7 @@ result, err := client.Post(url,
 func WithFormData(data *FormData) RequestOption
 ```
 
-Установка тела запроса `multipart/form-data`, поддерживает одновременную загрузку файлов и полей.
+Устанавливает тело запроса в формате `multipart/form-data`, поддерживает смешанную загрузку файлов и полей.
 
 ```go
 result, err := client.Post(url,
@@ -157,7 +157,7 @@ result, err := client.Post(url,
 func WithFile(fieldName, filename string, content []byte) RequestOption
 ```
 
-Удобная загрузка файла. Автоматически создаёт multipart-тело запроса, имя файла проходит проверку защиты от обхода каталогов.
+Удобная загрузка файла. Автоматически создаёт тело запроса multipart, имя файла обрабатывается для защиты от обхода пути.
 
 ```go
 result, err := client.Post(url,
@@ -171,7 +171,7 @@ result, err := client.Post(url,
 func WithBinary(data []byte, contentType ...string) RequestOption
 ```
 
-Установка бинарного тела запроса. По умолчанию Content-Type `application/octet-stream`, можно настроить.
+Устанавливает бинарное тело запроса. По умолчанию Content-Type: `application/octet-stream`, можно настроить.
 
 ```go
 result, err := client.Post(url,
@@ -190,7 +190,7 @@ func WithBody(data any, kind ...BodyKind) RequestOption
 **Правила автоопределения** (по умолчанию `BodyAuto`):
 
 | Тип входных данных | Content-Type |
-|--------------------|--------------|
+|-------------------|-------------|
 | `string` | text/plain; charset=utf-8 |
 | `[]byte` | application/octet-stream |
 | `map[string]string` | application/x-www-form-urlencoded |
@@ -204,21 +204,21 @@ func WithBody(data any, kind ...BodyKind) RequestOption
 // Автоопределение (по умолчанию)
 result, _ := client.Post(url, httpc.WithBody(data))
 
-// Принудительно JSON
+// Принудительный JSON
 result, _ := client.Post(url, httpc.WithBody(data, httpc.BodyJSON))
 
-// Принудительно XML
+// Принудительный XML
 result, _ := client.Post(url, httpc.WithBody(data, httpc.BodyXML))
 ```
 
 | Константа | Значение |
-|-----------|----------|
+|-----------|---------|
 | `BodyAuto` | Автоопределение (по умолчанию) |
-| `BodyJSON` | Принудительно JSON |
-| `BodyXML` | Принудительно XML |
-| `BodyForm` | Принудительно форма |
-| `BodyBinary` | Принудительно бинарные данные |
-| `BodyMultipart` | Принудительно multipart (требуется `*FormData`) |
+| `BodyJSON` | Принудительный JSON |
+| `BodyXML` | Принудительный XML |
+| `BodyForm` | Принудительная форма |
+| `BodyBinary` | Принудительные бинарные данные |
+| `BodyMultipart` | Принудительный multipart (требуется `*FormData`) |
 
 ## Параметры запроса
 
@@ -228,7 +228,7 @@ result, _ := client.Post(url, httpc.WithBody(data, httpc.BodyXML))
 func WithQuery(key string, value any) RequestOption
 ```
 
-Установка одного параметра запроса.
+Устанавливает один параметр запроса.
 
 ```go
 result, err := client.Get(url,
@@ -243,7 +243,7 @@ result, err := client.Get(url,
 func WithQueryMap(params map[string]any) RequestOption
 ```
 
-Пакетная установка параметров запроса.
+Массовая установка параметров запроса.
 
 ```go
 result, err := client.Get(url,
@@ -263,11 +263,30 @@ result, err := client.Get(url,
 func WithCookie(cookie http.Cookie) RequestOption
 ```
 
-Добавление одного Cookie с проверкой безопасности.
+Добавляет один Cookie, проходит проверку безопасности.
 
 ```go
 result, err := client.Get(url,
     httpc.WithCookie(http.Cookie{Name: "session", Value: "abc123"}),
+)
+```
+
+### WithCookies
+
+```go
+func WithCookies(cookies []http.Cookie) RequestOption
+```
+
+Массовое добавление Cookie, эффективнее нескольких вызовов `WithCookie` — предварительно выделяет ёмкость и проверяет все Cookie за один проход.
+
+```go
+cookies := []http.Cookie{
+    {Name: "session_id", Value: "abc123"},
+    {Name: "user_pref", Value: "dark_mode"},
+    {Name: "lang", Value: "en"},
+}
+result, err := client.Get("https://api.example.com",
+    httpc.WithCookies(cookies),
 )
 ```
 
@@ -277,13 +296,13 @@ result, err := client.Get(url,
 func WithCookieMap(cookies map[string]string) RequestOption
 ```
 
-Пакетное добавление простых Cookie. Подходит для сценариев, где нужны только name-value.
+Массовое добавление простых Cookie. Подходит для сценариев, где нужны только name-value.
 
 ```go
 result, err := client.Get(url,
     httpc.WithCookieMap(map[string]string{
         "session_id": "abc123",
-        "lang":       "ru",
+        "lang":       "zh",
     }),
 )
 ```
@@ -294,11 +313,11 @@ result, err := client.Get(url,
 func WithCookieString(cookieString string) RequestOption
 ```
 
-Добавление Cookie из исходной строки заголовка Cookie.
+Добавляет Cookie из исходной строки заголовка Cookie.
 
 ```go
 result, err := client.Get(url,
-    httpc.WithCookieString("session=abc123; lang=ru"),
+    httpc.WithCookieString("session=abc123; lang=zh"),
 )
 ```
 
@@ -324,7 +343,7 @@ result, err := client.Get(url,
 func WithContext(ctx context.Context) RequestOption
 ```
 
-Установка контекста запроса, поддерживающего таймаут и отмену. Контекст не может быть nil.
+Устанавливает контекст запроса, поддерживает тайм-аут и отмену. Контекст не может быть nil.
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -339,7 +358,7 @@ result, err := client.Get(url, httpc.WithContext(ctx))
 func WithTimeout(timeout time.Duration) RequestOption
 ```
 
-Установка таймаута для одного запроса, переопределяет таймаут клиента по умолчанию. Диапазон: от 0 до 30 минут.
+Устанавливает тайм-аут для одного запроса, переопределяет тайм-аут клиента по умолчанию. Диапазон: от 0 до 30 минут.
 
 ```go
 result, err := client.Get(url, httpc.WithTimeout(5*time.Second))
@@ -351,7 +370,7 @@ result, err := client.Get(url, httpc.WithTimeout(5*time.Second))
 func WithMaxRetries(maxRetries int) RequestOption
 ```
 
-Установка максимального количества повторных попыток для одного запроса, переопределяет конфигурацию клиента. Диапазон: 0-10.
+Устанавливает максимальное количество повторных попыток для одного запроса, переопределяет конфигурацию клиента. Диапазон: 0-10.
 
 ```go
 result, err := client.Get(url, httpc.WithMaxRetries(3))
@@ -363,10 +382,10 @@ result, err := client.Get(url, httpc.WithMaxRetries(3))
 func WithFollowRedirects(follow bool) RequestOption
 ```
 
-Управление следованием редиректам.
+Управляет следованием перенаправлениям.
 
 ```go
-// Запретить следование редиректам
+// Запретить следование перенаправлениям
 result, err := client.Get(url, httpc.WithFollowRedirects(false))
 ```
 
@@ -376,7 +395,7 @@ result, err := client.Get(url, httpc.WithFollowRedirects(false))
 func WithMaxRedirects(maxRedirects int) RequestOption
 ```
 
-Установка максимального количества редиректов для одного запроса. Диапазон: 0-50.
+Устанавливает максимальное количество перенаправлений для одного запроса. Диапазон: 0-50.
 
 ### WithStreamBody
 
@@ -384,7 +403,7 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 func WithStreamBody(stream bool) RequestOption
 ```
 
-Включение потокового режима — тело ответа не кэшируется в памяти. Используется внутри для скачивания файлов, чтобы избежать потребления памяти большими файлами.
+Включает потоковый режим, тело ответа не кэшируется в памяти. Используется внутри для загрузки файлов, предотвращает потребление памяти большими файлами.
 
 ```go
 result, err := client.Get(url, httpc.WithStreamBody(true))
@@ -398,7 +417,7 @@ result, err := client.Get(url, httpc.WithStreamBody(true))
 func WithOnRequest(callback func(req RequestMutator) error) RequestOption
 ```
 
-Регистрация обратного вызова перед отправкой запроса. Можно зарегистрировать несколько цепочкой, выполняются в порядке добавления. Возврат ошибки прерывает запрос.
+Регистрирует обратный вызов перед отправкой запроса. Можно регистрировать несколько, выполняются в порядке добавления. Возврат ошибки из обратного вызова прерывает запрос.
 
 ```go
 result, err := client.Get(url,
@@ -415,7 +434,7 @@ result, err := client.Get(url,
 func WithOnResponse(callback func(resp ResponseMutator) error) RequestOption
 ```
 
-Регистрация обратного вызова после получения ответа. Можно зарегистрировать несколько цепочкой, выполняются в порядке добавления.
+Регистрирует обратный вызов после получения ответа. Можно регистрировать несколько, выполняются в порядке добавления.
 
 ```go
 result, err := client.Get(url,
@@ -426,8 +445,8 @@ result, err := client.Get(url,
 )
 ```
 
-## Смотрите также
+## См. также
 
-- [Константы и типы](./constants) — константы BodyKind и псевдонимы типов
-- [Определения интерфейсов](./interfaces) — интерфейсы RequestMutator, ResponseMutator
-- [Запросы и ответы](../guides/request-response) — руководство по использованию параметров запроса
+- [Константы и типы](./constants) - константы BodyKind и псевдонимы типов
+- [Определения интерфейсов](./interfaces) - интерфейсы RequestMutator, ResponseMutator
+- [Запросы и ответы](../guides/request-response) - руководство по использованию параметров запросов

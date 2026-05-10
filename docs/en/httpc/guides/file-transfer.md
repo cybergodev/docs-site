@@ -1,6 +1,6 @@
 ---
 title: File Upload and Download - HTTPC
-description: Complete guide to HTTPC file upload and download, covering Multipart form multi-file upload with form fields, large file chunked download with progress callbacks, resumable download recovery, SHA-256 checksum automatic verification, multi-layer directory traversal protection, and file path security inspection for all file transfer scenarios.
+description: Guide to HTTPC file upload and download, covering Multipart multi-file upload, large file download with progress callbacks, resumable downloads, SHA-256 checksums, and path security protection.
 ---
 
 # File Upload and Download
@@ -43,7 +43,7 @@ result, err := httpc.Post("https://api.example.com/upload",
 )
 ```
 
-### Multiple File Upload
+### Multi-File Upload
 
 ```go
 form := &httpc.FormData{
@@ -121,12 +121,12 @@ if err != nil {
 }
 
 if result.Resumed {
-    fmt.Printf("Resumed: recovered from breakpoint\n")
+    fmt.Printf("Resumed download: recovered from breakpoint\n")
 }
 ```
 
 :::tip
-Resumable download relies on server support for the `Range` request header. If the server does not support it (returns 200 instead of 206), an error is returned to protect the existing partial file.
+Resumable downloads require server support for the `Range` request header. If the server does not support it (returns 200 instead of 206), an error will be returned to protect the partially downloaded file.
 :::
 
 ### With Context Control
@@ -146,18 +146,18 @@ if err != nil {
 
 ## Security Protection
 
-File downloads include multiple layers of built-in security protection:
+File downloads include multiple layers of built-in security:
 
 | Protection Layer | Description |
 |------------------|-------------|
 | Path validation | Blocks UNC paths, control characters, path traversal |
 | System path protection | Prevents writing to `/etc/`, `C:\Windows\`, and other system directories |
-| Symlink detection | Prevents symlink attacks |
-| File size limit | Limited by `MaxResponseBodySize` |
+| Symlink detection | Prevents symbolic link attacks |
+| File size limits | Limited by `MaxResponseBodySize` |
 
-## Domain Client Download
+## Domain Client Downloads
 
-Downloads from domain clients automatically capture response cookies into the session:
+Domain client downloads automatically capture response cookies to the session:
 
 ```go
 dc, _ := httpc.NewDomain("https://api.example.com")

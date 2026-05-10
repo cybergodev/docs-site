@@ -1,6 +1,6 @@
 ---
 title: SSRF 防护 - HTTPC
-description: HTTPC SSRF 服务端请求伪造防护详解，涵盖默认私有 IP 与保留地址阻止机制的工作原理、SSRFExemptCIDRs 豁免 CIDR 配置方法、DNS 重绑定攻击防护原理、重定向白名单控制和云环境元数据端点保护的完整安全防护策略。
+description: HTTPC SSRF 防护详解，涵盖私有 IP 阻止机制、豁免 CIDR 配置、DNS 重绑定防护、重定向白名单与云元数据端点保护。
 ---
 
 # SSRF 防护

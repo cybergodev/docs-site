@@ -1,6 +1,6 @@
 ---
 title: 常量与类型 - HTTPC
-description: HTTPC 常量与辅助类型完整 API 参考，包含 BodyKind 六种请求体类型枚举常量及自动检测规则、FormData 与 FileData 多部分表单上传辅助类型、AuditEvent 审计事件结构和 SourceIPKey 与 UserIDKey 上下文键定义。
+description: HTTPC 常量与辅助类型 API 参考，包含 BodyKind 请求体枚举、FormData/FileData 上传类型、AuditEvent 审计结构与上下文键定义。
 ---
 
 # 常量与类型

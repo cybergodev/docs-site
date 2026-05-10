@@ -1,11 +1,11 @@
 ---
 title: API Reference - HTTPC
-description: HTTPC API reference index page, organized by functional modules with links to all public package-level functions, Client interface methods, twenty-six request option functions, built-in middleware system, error types, configuration structs, and constant definitions, helping Go developers quickly locate interface definitions and complete usage instructions.
+description: HTTPC API reference index, organized by functional modules covering package-level functions, Client interface, request options, middleware, error types, configuration, and constants.
 ---
 
 # API Reference
 
-HTTPC provides 26 request option functions, 5 configuration presets, 8 built-in middlewares, and complete download support.
+HTTPC provides 27 request option functions, 5 configuration presets, 8 built-in middleware, and complete download support.
 
 ## Core Architecture
 
@@ -14,7 +14,7 @@ httpc package
 ├── Client interface - Main client, supports all HTTP methods
 ├── DomainClienter interface - Domain-scoped client with built-in session management
 ├── Config - Configuration system (timeout/connection/security/retry/middleware)
-├── RequestOption - 26 request option functions
+├── RequestOption - 27 request option functions
 ├── MiddlewareFunc - Middleware chain
 ├── Result - Response result (includes request metadata)
 └── Package-level functions - Use without creating a client
@@ -35,7 +35,7 @@ httpc package
 
 | Module | Description |
 |--------|-------------|
-| [Request Options](./options) | 26 WithXxx request option functions (headers, body, auth, cookies, callbacks, etc.) |
+| [Request Options](./options) | 27 WithXxx request option functions (headers, body, auth, cookies, callbacks, etc.) |
 | [Middleware](./middleware) | Chain composition, 8 built-in middleware factories, and audit event types |
 | [Error Types](./errors) | ClientError, 12 ErrorType enums, and 13 error variables |
 

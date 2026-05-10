@@ -1,6 +1,6 @@
 ---
 title: 请求选项 - HTTPC
-description: HTTPC 二十六个请求选项函数的完整 API 参考文档，按类别涵盖请求头设置、Bearer 与 Basic 认证、JSON 和表单等多种请求体格式、URL 查询参数构造、Cookie 管理以及 OnRequest 与 OnResponse 回调函数。
+description: HTTPC 二十七个请求选项函数 API 参考，按类别涵盖请求头、认证、多种请求体格式、查询参数、Cookie 管理与回调函数。
 ---
 
 # 请求选项
@@ -268,6 +268,25 @@ func WithCookie(cookie http.Cookie) RequestOption
 ```go
 result, err := client.Get(url,
     httpc.WithCookie(http.Cookie{Name: "session", Value: "abc123"}),
+)
+```
+
+### WithCookies
+
+```go
+func WithCookies(cookies []http.Cookie) RequestOption
+```
+
+批量添加 Cookie，比多次调用 `WithCookie` 更高效——预分配容量并在单次遍历中验证所有 Cookie。
+
+```go
+cookies := []http.Cookie{
+    {Name: "session_id", Value: "abc123"},
+    {Name: "user_pref", Value: "dark_mode"},
+    {Name: "lang", Value: "en"},
+}
+result, err := client.Get("https://api.example.com",
+    httpc.WithCookies(cookies),
 )
 ```
 

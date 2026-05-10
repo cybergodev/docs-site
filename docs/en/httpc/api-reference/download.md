@@ -1,6 +1,6 @@
 ---
 title: File Download - HTTPC
-description: HTTPC file download API complete reference, covering DownloadFile and other four download function signatures with parameter descriptions, DownloadConfig configuration options details, DownloadProgressCallback progress callback, ChecksumAlgorithm checksum enumeration, and multi-layer path traversal protection mechanisms.
+description: HTTPC file download API reference, covering four download function signatures, DownloadConfig configuration, progress callbacks, checksum enums, and path traversal protection mechanisms.
 ---
 
 # File Download
@@ -13,7 +13,7 @@ description: HTTPC file download API complete reference, covering DownloadFile a
 func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Download a file to the specified path using the default client.
+Downloads a file to the specified path using the default client.
 
 ```go
 result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
@@ -25,7 +25,7 @@ result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip
 func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Download with configuration, supporting resume and progress callback.
+Download with configuration, supporting resumable downloads and progress callbacks.
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -42,7 +42,7 @@ result, err := httpc.DownloadWithOptions(url, cfg)
 func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Download with context control.
+File download with context control.
 
 ### DownloadWithOptionsWithContext
 
@@ -50,7 +50,7 @@ Download with context control.
 func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Download with configuration and context control.
+File download with configuration and context control.
 
 ## DownloadConfig
 
@@ -72,7 +72,7 @@ func DefaultDownloadConfig() *DownloadConfig
 | `FilePath` | `string` | - | Save path (required) |
 | `ProgressCallback` | `DownloadProgressCallback` | `nil` | Progress callback function |
 | `Overwrite` | `bool` | `false` | Overwrite existing file |
-| `ResumeDownload` | `bool` | `false` | Enable resume download |
+| `ResumeDownload` | `bool` | `false` | Enable resumable download |
 | `Checksum` | `string` | `""` | Expected checksum value |
 | `ChecksumAlgorithm` | `ChecksumAlgorithm` | `"sha256"` | Checksum algorithm |
 
@@ -84,7 +84,7 @@ type DownloadProgressCallback func(downloaded, total int64, speed float64)
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `downloaded` | `int64` | Bytes downloaded so far |
+| `downloaded` | `int64` | Bytes downloaded |
 | `total` | `int64` | Total bytes (-1 if unknown) |
 | `speed` | `float64` | Current speed (bytes/second) |
 
@@ -119,9 +119,9 @@ type DownloadResult struct {
 | `AverageSpeed` | `float64` | Average speed (bytes/second) |
 | `StatusCode` | `int` | HTTP status code |
 | `ContentLength` | `int64` | Content-Length header value |
-| `Resumed` | `bool` | Whether completed via resume |
+| `Resumed` | `bool` | Whether resumed from breakpoint |
 | `ResponseCookies` | `[]*http.Cookie` | Response cookies |
-| `ActualChecksum` | `string` | Actual computed checksum |
+| `ActualChecksum` | `string` | Actually computed checksum |
 
 ```go
 fmt.Printf("Download complete: %s, duration %v, average speed %s\n",
@@ -139,7 +139,7 @@ fmt.Printf("Download complete: %s, duration %v, average speed %s\n",
 type ChecksumAlgorithm string
 ```
 
-Download file integrity verification algorithm.
+File integrity verification algorithm for downloads.
 
 | Constant | Value | Description |
 |----------|-------|-------------|
@@ -155,30 +155,30 @@ cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 
 result, err := httpc.DownloadWithOptions(url, cfg)
 if err != nil {
-    // Returns error and deletes downloaded file on checksum mismatch
+    // Checksum mismatch automatically returns an error and deletes the downloaded file
     log.Fatal(err)
 }
 fmt.Println("Checksum:", result.ActualChecksum)
 ```
 
 :::tip
-When `Checksum` is set, file integrity is automatically verified upon download completion. If verification fails, the file is automatically deleted and an error is returned. No manual comparison is needed.
+When `Checksum` is set, file integrity is automatically verified upon download completion. If verification fails, the file is automatically deleted and an error is returned -- no manual comparison needed.
 :::
 
-## Security Protections
+## Security Protection
 
-File downloads include multiple layers of security protection:
+File downloads include multiple layers of built-in security:
 
 | Protection | Description |
 |------------|-------------|
 | UNC path blocking | Blocks `\\server\share` format paths |
 | Control character filtering | Blocks control characters in paths |
-| System path protection | Blocks writes to system directories |
+| System path protection | Prevents writing to system directories |
 | Path traversal detection | Detects `../` path traversal |
 | Symlink detection | Prevents symlink attacks |
 | Parent directory detection | Recursively checks parent directory symlinks |
 
-## Resume Download
+## Resumable Downloads
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -187,18 +187,18 @@ cfg.ResumeDownload = true
 
 result, err := httpc.DownloadWithOptions(url, cfg)
 if result.Resumed {
-    fmt.Println("Resume completed")
+    fmt.Println("Resumed download complete")
 }
 ```
 
 Resume mechanism:
-1. Check local file size -> use as `Range` request offset
-2. Server returns 206 (Partial Content) -> append write
-3. Server returns 416 (Range Not Satisfiable) -> return error
-4. Server returns 200 (Range not supported) -> return error (protect local partial file from being overwritten)
+1. Check local file size → use as `Range` request offset
+2. Server returns 206 (Partial Content) → append write
+3. Server returns 416 (Range Not Satisfiable) → return error
+4. Server returns 200 (Range not supported) → return error (protects local partial file from being overwritten)
 
 ## See Also
 
 - [File Upload and Download](../guides/file-transfer) - Usage guide
-- [Package Functions](./functions) - Helper function reference
+- [Package Functions](./functions) - Helper functions reference
 - [Domain Client](./domain-client) - Domain client download methods

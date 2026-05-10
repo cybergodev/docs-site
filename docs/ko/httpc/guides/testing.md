@@ -1,6 +1,6 @@
 ---
 title: 테스트 가이드 - HTTPC
-description: HTTPC 테스트 가이드, TestingConfig를 사용한 빠른 테스트 환경 설정, net/http/httptest.Server와 통합하여 HTTP 응답 시뮬레이션, 테이블 기반 테스트 케이스 작성, 네트워크 오류 시나리오 시뮬레이션 및 클라이언트 리소스 정확한 정리로 테스트 커버리지와 효율성을 향상시키는 방법을 상세히 설명합니다.
+description: HTTPC 테스트 가이드, TestingConfig 구성, httptest.Server 응답 시뮬레이션, 테이블 기반 테스트, 네트워크 오류 시뮬레이션 및 클라이언트 리소스 정리 상세 설명.
 ---
 
 # 테스트 가이드
@@ -22,8 +22,8 @@ func TestAPI(t *testing.T) {
 }
 ```
 
-:::danger
-`TestingConfig`는 TLS 검증, SSRF 방어 등의 보안 기능을 비활성화합니다. **테스트 환경에서만 사용하세요**. 테스트 외 환경에서 사용하면 보안 경고가 출력됩니다.
+:::danger 위험
+`TestingConfig`는 TLS 검증, SSRF 방어 등 보안 기능을 비활성화하므로 **테스트 환경에서만 사용**하십시오. 테스트 환경이 아닌 곳에서 사용하면 보안 경고가 출력됩니다.
 :::
 
 ## httptest.Server 통합
@@ -67,7 +67,7 @@ func TestGetUser(t *testing.T) {
     }
     defer client.Close()
 
-    // 모의 서버로 요청 전송
+    // 모의 서버에 요청 전송
     result, err := client.Get(server.URL+"/users/1",
         httpc.WithBearerToken("test-token"),
     )
@@ -209,16 +209,16 @@ func TestHTTPMethods(t *testing.T) {
 
 ## 모범 사례
 
-| 실천 항목 | 설명 |
+| 실천 사항 | 설명 |
 |------|------|
 | `httptest.Server` 사용 | 실제 HTTP 동작 시뮬레이션, 네트워크 의존성 불필요 |
 | `TestingConfig()` 사용 | 보안 검사 비활성화, 로컬 연결 차단 방지 |
-| `ReleaseResult()` 호출 | 객체 풀 반환, 테스트 성능 유지 |
+| `ReleaseResult()` 호출 | 객체 풀로 반환, 테스트 성능 유지 |
 | `defer` 사용 | 테스트 실패 시에도 리소스 해제 보장 |
-| 테이블 기반 | 다양한 입력 커버, 코드 간결 |
+| 테이블 기반 | 다양한 입력을 커버하고 코드가 간결함 |
 
 ## 다음 단계
 
-- [설정 API](../api-reference/config) - TestingConfig 상세 매개변수
-- [오류 타입](../api-reference/errors) - 오류 어서션 참조
+- [구성 API](../api-reference/config) - TestingConfig 상세 매개변수
+- [오류 유형](../api-reference/errors) - 오류 단언 참조
 - [미들웨어 체인](./middleware-chain) - 미들웨어 테스트 패턴

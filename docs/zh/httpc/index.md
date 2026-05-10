@@ -1,6 +1,6 @@
 ---
 title: HTTP 客户端 - HTTPC
-description: CyberGo HTTPC 是面向 Go 语言的安全高性能 HTTP 客户端库，默认安全设计，内置 TLS 1.2+ 强制加密、SSRF 防护、智能重试机制、洋葱模型中间件链和对象池复用，适用于微服务架构与安全敏感场景的 HTTP 通信需求。
+description: CyberGo HTTPC 是 Go 语言安全高性能 HTTP 客户端库，内置 TLS 加密、SSRF 防护、智能重试与中间件链，适用于微服务场景。
 ---
 
 # HTTPC

@@ -1,22 +1,22 @@
 ---
-title: Продвинутые примеры - HTTPC
-description: "Полный набор продвинутых примеров HTTPC, включающих реализацию пользовательской стратегии повторных попыток RetryPolicy, полную конфигурацию цепочки промежуточного ПО по модели луковицы, паттерн обёртки RESTful API, менеджер параллельного скачивания файлов, промежуточное ПО аутентификации с подписью HMAC и продвинутые практические примеры кода на Go с детальным разбором и комментариями"
+title: Расширенные примеры - HTTPC
+description: Набор расширенных примеров HTTPC, включая пользовательскую стратегию повторных попыток, конфигурацию цепочки промежуточного ПО, обёртку RESTful API, параллельную загрузку и аутентификацию с подписью HMAC.
 ---
 
-# Продвинутые примеры
+# Расширенные примеры
 
 ## Пользовательская стратегия повторных попыток
 
-Повторять только для 502/503/504 с фиксированной задержкой:
+Повторные попытки только для 502/503/504 с фиксированной задержкой:
 
-:::warning Предупреждение
-Тип параметра `resp` в `RetryPolicy.ShouldRetry` — `ResponseReader` является внутренним интерфейсом (определён в пакете `internal/types`), поэтому внешние пакеты не могут напрямую на него ссылаться. Пользовательский `RetryPolicy` должен быть реализован в пакете внутри того же модуля, что и `httpc`. В большинстве случаев достаточно настройки через `RetryConfig`. Ниже приведён пример реализации, но фактический код должен компилироваться внутри модуля `httpc`.
+:::warning Внутренний тип
+Параметр `resp` типа `ResponseReader` в `RetryPolicy.ShouldRetry` является внутренним интерфейсом (определён в пакете `internal/types`), на который нельзя ссылаться из внешних пакетов. Пользовательский `RetryPolicy` должен быть реализован в том же модуле, что и `httpc`. Большинство сценариев можно удовлетворить через конфигурацию `RetryConfig`. Ниже показан паттерн реализации, фактический код должен компилироваться внутри модуля `httpc`.
 :::
 
 ```go
-// Внимание: ResponseReader — внутренний тип (пакет internal/types).
-// Этот код может компилироваться только внутри модуля github.com/cybergodev/httpc.
-// Большинству пользователей следует настраивать повторные попытки через RetryConfig и WithMaxRetries.
+// Примечание: ResponseReader — внутренний тип (пакет internal/types).
+// Этот код компилируется только внутри модуля github.com/cybergodev/httpc.
+// Большинство пользователей должны настраивать повторные попытки через RetryConfig и WithMaxRetries.
 
 type selectiveRetry struct {
     maxAttempts int
@@ -29,7 +29,7 @@ func (p *selectiveRetry) ShouldRetry(resp ResponseReader, err error, attempt int
         return false
     }
     if err != nil {
-        return true // Повторять при сетевой ошибке
+        return true // Повторная попытка при сетевой ошибке
     }
     return resp.StatusCode() == 502 || resp.StatusCode() == 503 || resp.StatusCode() == 504
 }
@@ -109,7 +109,7 @@ func main() {
         },
     )
 
-    // Аудит-журнал (формат JSON)
+    // Журнал аудита (формат JSON)
     auditCfg := &httpc.AuditMiddlewareConfig{
         Format:         "json",
         IncludeHeaders: true,
@@ -124,8 +124,8 @@ func main() {
     cfg := httpc.DefaultConfig()
     cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
         httpc.RecoveryMiddleware(),                              // восстановление после panic
-        httpc.TimeoutMiddleware(30 * time.Second),              // принудительный таймаут
-        httpc.RequestIDMiddleware("X-Request-ID", nil),         // идентификатор запроса
+        httpc.TimeoutMiddleware(30 * time.Second),              // принудительный тайм-аут
+        httpc.RequestIDMiddleware("X-Request-ID", nil),         // ID запроса
         httpc.LoggingMiddleware(func(format string, args ...any) {
             log.Printf("[HTTP] "+format, args...)
         }),
@@ -149,7 +149,7 @@ func main() {
 }
 ```
 
-## Обёртка REST API клиента
+## Обёртка клиента REST API
 
 ```go
 package main
@@ -253,7 +253,7 @@ func main() {
 }
 ```
 
-## Параллельное скачивание
+## Параллельная загрузка
 
 ```go
 package main
@@ -297,7 +297,7 @@ func main() {
 
             result, err := client.DownloadWithOptions(u, cfg)
             if err != nil {
-                log.Printf("%s ошибка скачивания: %v", name, err)
+                log.Printf("%s ошибка загрузки: %v", name, err)
                 return
             }
 
@@ -308,7 +308,7 @@ func main() {
     }
 
     wg.Wait()
-    fmt.Printf("\nСкачивание завершено: %d/%d, всего %s\n",
+    fmt.Printf("\nЗагрузка завершена: %d/%d, всего %s\n",
         successCount, len(urls), httpc.FormatBytes(totalBytes))
 }
 ```
@@ -370,6 +370,6 @@ func main() {
 
 ## Что дальше
 
-- [Цепочка промежуточного ПО](../guides/middleware-chain) - подробный разбор архитектуры промежуточного ПО
-- [Повторные попытки и отказоустойчивость](../guides/retry-fault-tolerance) - пользовательская стратегия повторных попыток
+- [Цепочка промежуточного ПО](../guides/middleware-chain) - архитектура промежуточного ПО
+- [Повторные попытки и отказоустойчивость](../guides/retry-fault-tolerance) - пользовательские стратегии повторных попыток
 - [Оптимизация производительности](../advanced/performance) - рекомендации по настройке производительности

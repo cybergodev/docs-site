@@ -1,15 +1,15 @@
 ---
 title: 오류 처리 - HTTPC
-description: HTTPC 오류 처리 완전 가이드로, 12가지 ErrorType 오류 분류 체계와 판별 방법, ClientError 구조체의 모든 필드와 사용법, 센티넬 오류 변수의 errors.Is 매칭 패턴 및 네트워크 타임아웃, TLS 인증서, DNS 해석 오류에 대한 처리 모범 사례를 다룹니다.
+description: HTTPC 오류 처리 가이드, 12가지 ErrorType 오류 분류, ClientError 구조체 필드, 센티넬 오류 매칭과 다양한 네트워크 오류 모범 사례 상세 설명.
 ---
 
 # 오류 처리
 
 ## 오류 분류
 
-HTTPC는 `ClientError`를 사용하여 오류를 분류하며, `errors.As`와 `errors.Is`를 지원합니다.
+HTTPC는 `ClientError`로 오류를 분류하며, `errors.As`와 `errors.Is`를 지원합니다.
 
-### 오류 유형 판별
+### 오류 유형 판단
 
 ```go
 result, err := client.Get("https://api.example.com/data")
@@ -18,7 +18,7 @@ if err != nil {
     if errors.As(err, &clientErr) {
         switch clientErr.Type {
         case httpc.ErrorTypeTimeout:
-            log.Printf("요청 타임아웃: %v", err)
+            log.Printf("요청 시간 초과: %v", err)
         case httpc.ErrorTypeNetwork:
             log.Printf("네트워크 오류: %v", err)
         case httpc.ErrorTypeDNS:
@@ -38,12 +38,12 @@ if err != nil {
 }
 ```
 
-### 재시도 가능 여부 판별
+### 재시도 가능 여부 판단
 
 ```go
 var clientErr *httpc.ClientError
 if errors.As(err, &clientErr) && clientErr.IsRetryable() {
-    // 오류 재시도 가능
+    // 오류를 재시도할 수 있음
     log.Println("재시도 가능한 오류, 나중에 재시도합니다")
 }
 ```
@@ -54,7 +54,7 @@ if errors.As(err, &clientErr) && clientErr.IsRetryable() {
 
 ```go
 if errors.Is(err, httpc.ErrClientClosed) {
-    // 클라이언트가 종료됨
+    // 클라이언트가 이미 닫힘
 }
 
 if errors.Is(err, httpc.ErrResponseBodyEmpty) {
@@ -72,7 +72,7 @@ if errors.Is(err, httpc.ErrInvalidHeader) {
 
 ## 재시도와 오류
 
-재시도 구성에 대한 자세한 내용은 [재시도와 장애 허용](../guides/retry-fault-tolerance)을 참조하세요. 여기서는 재시도 소진 후의 오류 처리에 집중합니다:
+재시도 구성에 대한 자세한 내용은 [재시도와 장애 허용](../guides/retry-fault-tolerance)을 참조하고, 여기서는 재시도 소진 후의 오류 처리에 집중합니다:
 
 ```go
 result, err := client.Get(url)
@@ -125,7 +125,7 @@ if result.IsClientError() {
 }
 ```
 
-### 2. 미들웨어를 사용한 통합 처리
+### 2. 미들웨어로 통합 처리
 
 ```go
 recoveryMiddleware := httpc.RecoveryMiddleware()
@@ -150,7 +150,7 @@ cfg.Timeouts.Request = 30 * time.Second
 // 미들웨어 강제 타임아웃
 timeoutMiddleware := httpc.TimeoutMiddleware(30 * time.Second)
 
-// 개별 요청 오버라이드
+// 단일 요청으로 덮어쓰기
 result, err := client.Get(url, httpc.WithTimeout(10 * time.Second))
 
 // 컨텍스트 타임아웃 (가장 정확)
@@ -160,6 +160,6 @@ result, err := client.Request(ctx, "GET", url)
 
 ## 다음 단계
 
-- [오류 유형 API](../api-reference/errors) - 오류 유형 및 변수 참조
+- [오류 유형 API](../api-reference/errors) - 오류 유형과 변수 참조
 - [재시도와 장애 허용](../guides/retry-fault-tolerance) - 재시도 전략 구성
-- [미들웨어 체인](../guides/middleware-chain) - 미들웨어를 사용한 오류 통합 처리
+- [미들웨어 체인](../guides/middleware-chain) - 미들웨어로 통합 오류 처리

@@ -1,9 +1,9 @@
 ---
-title: Hands-on Tutorial - HTTPC
-description: Build a complete GitHub REST API client in this 30-minute hands-on tutorial, progressively learning HTTPC core features including client creation with configuration presets, flexible request option composition, domain client API management, middleware chain setup, and ClientError handling.
+title: Tutorial - HTTPC
+description: Build a GitHub REST API client in this hands-on tutorial, learning HTTPC configuration presets, request options, domain clients, middleware, and error handling in 30 minutes.
 ---
 
-# Hands-on Tutorial: Building a GitHub API Client
+# Tutorial: Building a GitHub API Client
 
 Build a GitHub API client to connect the core concepts of HTTPC. Takes about 30 minutes.
 
@@ -385,8 +385,8 @@ func main() {
 
 ## Next Steps
 
-- [Request and Response](./request-response) — Complete request options reference
-- [Middleware Chain](./middleware-chain) — Custom middleware development
-- [Retry and Fault Tolerance](./retry-fault-tolerance) — Advanced retry strategies
-- [Performance Optimization](../advanced/performance) — Production tuning
-- [Production Checklist](../security/production-checklist) — Security best practices
+- [Request and Response](./request-response) - Complete request options reference
+- [Middleware Chain](./middleware-chain) - Custom middleware development
+- [Retry and Fault Tolerance](./retry-fault-tolerance) - Advanced retry strategies
+- [Performance Optimization](../advanced/performance) - Production tuning
+- [Production Checklist](../security/production-checklist) - Security best practices

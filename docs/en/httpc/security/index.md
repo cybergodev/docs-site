@@ -1,11 +1,11 @@
 ---
 title: Security Overview - HTTPC
-description: Comprehensive overview of HTTPC security features, covering TLS 1.2+ mandatory version control and default cipher suite configuration, SSRF private IP blocking protection mechanism, request header injection validation, cookie security attributes, redirect destination whitelist control, and response body size limits, with detailed configuration methods for all default security mechanisms.
+description: Overview of HTTPC security features, covering TLS version enforcement, SSRF protection, header injection validation, cookie security attributes, redirect whitelisting, and response body size limits.
 ---
 
 # Security Overview
 
-HTTPC is secure by default — all security features work out of the box.
+HTTPC is secure by default -- all security features work out of the box.
 
 ## Security Features Overview
 

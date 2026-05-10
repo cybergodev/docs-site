@@ -1,6 +1,6 @@
 ---
 title: 配置 - HTTPC
-description: HTTPC 配置系统完整 API 参考，涵盖 Config 主配置结构体及其 Timeouts、Connection、Security、Retry、Middleware 五个子配置组的全部字段详细说明、五种预设配置函数和 Validate 验证方法。
+description: HTTPC 配置系统 API 参考，涵盖 Config 主结构体及其五个子配置组的全部字段说明、五种预设配置函数与 Validate 验证方法。
 ---
 
 # 配置

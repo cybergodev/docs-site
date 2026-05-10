@@ -1,11 +1,11 @@
 ---
 title: Result - HTTPC
-description: HTTPC Result response type complete API reference, providing Body and RawBody response body access, StatusCode retrieval, IsSuccess and other status check methods, Cookie operations, Unmarshal JSON auto-parsing, and SaveToFile file saving method details.
+description: HTTPC Result response type API reference, providing response body access, status code retrieval, status checks, cookie operations, JSON parsing, and file saving methods.
 ---
 
 # Result
 
-Result wraps the HTTP response and request metadata, providing convenient access methods. Obtain it via `Client.Request()` or package-level functions.
+Result wraps the HTTP response and request metadata, providing convenient access methods. Obtained via `Client.Request()` or package-level functions.
 
 ```go
 type Result struct {
@@ -27,7 +27,7 @@ fmt.Println(result.Body())       // {"id":1,"name":"test"}
 ```
 
 :::warning
-You must call `ReleaseResult(result)` to return the Result to the object pool after use. Do not access the Result after calling this.
+You must call `ReleaseResult(result)` after use to return it to the object pool. Do not access the Result after calling this.
 :::
 
 ## Basic Methods
@@ -46,7 +46,7 @@ Returns the HTTP status code. Nil-safe, returns 0.
 func (r *Result) Body() string
 ```
 
-Returns the response body as a string. Nil-safe, returns an empty string.
+Returns the response body as a string. Nil-safe, returns empty string.
 
 ### RawBody
 
@@ -62,7 +62,7 @@ Returns the raw response body bytes. Nil-safe, returns nil.
 func (r *Result) Proto() string
 ```
 
-Returns the HTTP protocol version, such as `"HTTP/1.1"`, `"HTTP/2.0"`.
+Returns the HTTP protocol version, e.g. `"HTTP/1.1"`, `"HTTP/2.0"`.
 
 ## Status Checks
 
@@ -126,7 +126,7 @@ Returns all cookies from the response.
 func (r *Result) GetCookie(name string) *http.Cookie
 ```
 
-Get a response cookie by name. Returns nil if not found.
+Gets a response cookie by name; returns nil if not found.
 
 ```go
 cookie := result.GetCookie("session")
@@ -141,7 +141,7 @@ if cookie != nil {
 func (r *Result) HasCookie(name string) bool
 ```
 
-Check if a cookie with the specified name exists in the response.
+Checks whether a cookie with the specified name exists in the response.
 
 ### RequestCookies
 
@@ -149,7 +149,7 @@ Check if a cookie with the specified name exists in the response.
 func (r *Result) RequestCookies() []*http.Cookie
 ```
 
-Returns all cookies sent in the request.
+Returns all cookies sent with the request.
 
 ### GetRequestCookie
 
@@ -157,7 +157,7 @@ Returns all cookies sent in the request.
 func (r *Result) GetRequestCookie(name string) *http.Cookie
 ```
 
-Get a request cookie by name.
+Gets a request cookie by name.
 
 ### HasRequestCookie
 
@@ -165,7 +165,7 @@ Get a request cookie by name.
 func (r *Result) HasRequestCookie(name string) bool
 ```
 
-Check if a cookie with the specified name exists in the request.
+Checks whether a cookie with the specified name exists in the request.
 
 ## JSON Parsing
 
@@ -175,7 +175,7 @@ Check if a cookie with the specified name exists in the request.
 func (r *Result) Unmarshal(v any) error
 ```
 
-Parse the JSON response body into the target variable. Follows `json.Unmarshal` conventions.
+Parses the JSON response body into the target variable. Follows `json.Unmarshal` conventions.
 
 | Error | Trigger Condition |
 |-------|-------------------|
@@ -198,7 +198,7 @@ fmt.Println(user.Name)
 func (r *Result) SaveToFile(filePath string) error
 ```
 
-Save the response body to a file. The file path is validated for security (path traversal protection, symlink checking, system path protection).
+Saves the response body to a file. The file path undergoes security validation (path traversal prevention, symlink checking, system path protection).
 
 | Error | Trigger Condition |
 |-------|-------------------|
@@ -221,7 +221,7 @@ if err := result.SaveToFile("/tmp/data.csv"); err != nil {
 func (r *Result) String() string
 ```
 
-Returns a human-readable string representation. Sensitive headers are automatically redacted, and the response body is truncated to 200 characters.
+Returns a human-readable string representation. Sensitive headers are automatically sanitized and the response body is truncated to 200 characters.
 
 ```go
 result, _ := client.Get(url)
@@ -242,7 +242,7 @@ type RequestInfo struct {
 }
 ```
 
-Request details. Access via `result.Request`.
+Request details. Accessed via `result.Request`.
 
 ### ResponseInfo
 
@@ -259,7 +259,7 @@ type ResponseInfo struct {
 }
 ```
 
-Response data. Access via `result.Response`.
+Response data. Accessed via `result.Response`.
 
 ### RequestMeta
 
@@ -272,7 +272,7 @@ type RequestMeta struct {
 }
 ```
 
-Request execution metadata. Access via `result.Meta`.
+Request execution metadata. Accessed via `result.Meta`.
 
 ```go
 result, _ := client.Get(url)
@@ -288,16 +288,16 @@ fmt.Println(result.Meta.RedirectCount)  // 1 (followed one redirect)
 func ReleaseResult(r *Result)
 ```
 
-Return a Result to the object pool. The first 64KB of the response body is securely cleared, all internal data is zeroed, and no fields or methods of the Result may be accessed after calling.
+Returns the Result to the object pool. The first 64KB of response body is securely cleared, all internal data is zeroed, and no fields or methods of the Result can be accessed after calling.
 
 ```go
 result, _ := httpc.Get(url)
 defer httpc.ReleaseResult(result)
-// use result...
+// Use result...
 ```
 
 ## See Also
 
 - [Package Functions](./functions) - Request methods that return Result
 - [Request Options](./options) - Configure request behavior
-- [File Download](./download) - Download result type DownloadResult
+- [File Download](./download) - DownloadResult type for downloads

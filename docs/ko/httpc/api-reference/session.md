@@ -1,11 +1,11 @@
 ---
 title: 세션 관리 - HTTPC
-description: HTTPC SessionManager 세션 관리의 전체 API 레퍼런스로, NewSessionManager 생성 함수와 매개변수 설명, SessionConfig 전체 설정 옵션, SetHeader와 DeleteHeader 등 세션 헤더 관리 메서드, Cookie 보안 검증 및 UpdateFromResult 응답 동기화 메서드를 다룹니다.
+description: HTTPC SessionManager 세션 관리 API 참조, 생성 함수, SessionConfig 구성, 세션 헤더 관리 메서드, Cookie 보안 검증과 응답 동기화 포함.
 ---
 
 # 세션 관리
 
-SessionManager는 스레드 안전한 Cookie와 요청 헤더 저장소를 제공하며, DomainClient 내부에서 사용됩니다.
+SessionManager는 스레드 안전한 Cookie와 요청 헤더 저장소를 제공하며, DomainClient가 내부적으로 사용합니다.
 
 ## NewSessionManager
 
@@ -18,7 +18,7 @@ func NewSessionManager(config ...*SessionConfig) (*SessionManager, error)
 ```go
 sm, err := httpc.NewSessionManager()
 
-// 설정 포함
+// 구성 포함
 cfg := httpc.DefaultSessionConfig()
 cfg.CookieSecurity = httpc.StrictCookieSecurityConfig()
 sm, err := httpc.NewSessionManager(cfg)
@@ -32,15 +32,15 @@ type SessionConfig struct {
 }
 ```
 
-| 필드 | 타입 | 설명 |
+| 필드 | 유형 | 설명 |
 |------|------|------|
-| `CookieSecurity` | `*CookieSecurityConfig` | Cookie 보안 검증 설정, nil이면 검증하지 않음 |
+| `CookieSecurity` | `*CookieSecurityConfig` | Cookie 보안 검증 구성, nil이면 검증하지 않음 |
 
 ```go
 func DefaultSessionConfig() *SessionConfig
 ```
 
-기본 설정을 반환합니다 (Cookie 보안 검증 수행하지 않음).
+기본 구성을 반환합니다 (Cookie 보안 검증 수행 안함).
 
 ## 헤더 관리
 
@@ -50,7 +50,7 @@ func DefaultSessionConfig() *SessionConfig
 func (s *SessionManager) SetHeader(key, value string) error
 ```
 
-세션 헤더를 설정합니다. 이후 모든 요청에 자동으로 포함됩니다. 헤더의 키와 값 유효성을 검증합니다.
+세션 헤더를 설정합니다. 모든 후속 요청에 자동으로 포함됩니다. 헤더의 키와 값 유효성을 검증합니다.
 
 ```go
 err := sm.SetHeader("Authorization", "Bearer "+token)
@@ -62,7 +62,7 @@ err := sm.SetHeader("Authorization", "Bearer "+token)
 func (s *SessionManager) SetHeaders(headers map[string]string) error
 ```
 
-여러 세션 헤더를 일괄 설정합니다.
+세션 헤더를 일괄 설정합니다.
 
 ```go
 err := sm.SetHeaders(map[string]string{
@@ -93,7 +93,7 @@ func (s *SessionManager) ClearHeaders()
 func (s *SessionManager) GetHeaders() map[string]string
 ```
 
-모든 세션 헤더의 복사본을 반환합니다.
+모든 세션 헤더의 사본을 반환합니다.
 
 ## Cookie 관리
 
@@ -103,7 +103,7 @@ func (s *SessionManager) GetHeaders() map[string]string
 func (s *SessionManager) SetCookie(cookie *http.Cookie) error
 ```
 
-세션 Cookie를 설정합니다. Cookie 유효성을 검증하며, CookieSecurity가 설정된 경우 보안 속성도 함께 검증합니다.
+세션 Cookie를 설정합니다. Cookie 유효성을 검증하며, CookieSecurity가 구성된 경우 보안 속성도 검증합니다.
 
 ```go
 err := sm.SetCookie(&http.Cookie{
@@ -120,7 +120,7 @@ err := sm.SetCookie(&http.Cookie{
 func (s *SessionManager) SetCookies(cookies []*http.Cookie) error
 ```
 
-여러 Cookie를 일괄 설정합니다.
+Cookie를 일괄 설정합니다.
 
 ### DeleteCookie
 
@@ -144,7 +144,7 @@ func (s *SessionManager) ClearCookies()
 func (s *SessionManager) GetCookies() []*http.Cookie
 ```
 
-모든 Cookie의 복사본을 반환합니다.
+모든 Cookie의 사본을 반환합니다.
 
 ### GetCookie
 
@@ -152,7 +152,7 @@ func (s *SessionManager) GetCookies() []*http.Cookie
 func (s *SessionManager) GetCookie(name string) *http.Cookie
 ```
 
-이름으로 Cookie 복사본을 가져옵니다. 존재하지 않으면 nil을 반환합니다.
+이름으로 Cookie 사본을 가져오며, 존재하지 않으면 nil을 반환합니다.
 
 ## Cookie 보안
 
@@ -162,7 +162,7 @@ func (s *SessionManager) GetCookie(name string) *http.Cookie
 func (s *SessionManager) SetCookieSecurity(config *CookieSecurityConfig)
 ```
 
-Cookie 보안 검증 설정을 업데이트합니다. 이후 모든 SetCookie 호출에 영향을 미칩니다.
+Cookie 보안 검증 구성을 업데이트합니다. 이후 모든 SetCookie 호출에 영향을 미칩니다.
 
 ```go
 sm.SetCookieSecurity(httpc.StrictCookieSecurityConfig())
@@ -186,6 +186,6 @@ Cookie 슬라이스에서 세션 Cookie를 업데이트합니다.
 
 ## 참고
 
-- [도메인 클라이언트](./domain-client) - DomainClient 레퍼런스
+- [도메인 클라이언트](./domain-client) - DomainClient 참조
 - [도메인 클라이언트와 세션](../guides/domain-session) - 사용 가이드
-- [인터페이스 정의](./interfaces) - DomainClienter 인터페이스 레퍼런스
+- [인터페이스 정의](./interfaces) - DomainClienter 인터페이스 참조

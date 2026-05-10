@@ -1,6 +1,6 @@
 ---
 title: Error Handling - HTTPC
-description: Complete guide to HTTPC error handling, covering the twelve ErrorType classification system and detection methods, all fields and usage of the ClientError struct, sentinel error variable matching with errors.Is, and best practices for handling network timeouts, TLS certificate, and DNS resolution errors.
+description: Guide to HTTPC error handling, covering twelve ErrorType classifications, ClientError struct fields, sentinel error matching, and best practices for various network errors.
 ---
 
 # Error Handling

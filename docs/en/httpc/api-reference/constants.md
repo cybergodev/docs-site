@@ -1,6 +1,6 @@
 ---
 title: Constants and Types - HTTPC
-description: HTTPC constants and helper types complete API reference, including BodyKind six request body type enum constants and auto-detection rules, FormData and FileData multipart form upload helper types, AuditEvent audit event structure, and SourceIPKey and UserIDKey context key definitions.
+description: HTTPC constants and helper types API reference, covering BodyKind request body enum, FormData/FileData upload types, AuditEvent audit struct, and context key definitions.
 ---
 
 # Constants and Types
@@ -11,7 +11,7 @@ description: HTTPC constants and helper types complete API reference, including 
 type BodyKind int
 ```
 
-Request body type, used with `WithBody` to specify the body format.
+Request body type, used with `WithBody` to specify the request body format.
 
 | Constant | Value | Description | Content-Type |
 |----------|-------|-------------|-------------|
@@ -75,7 +75,7 @@ form := &httpc.FormData{
 result, err := client.Post(url, httpc.WithFormData(form))
 ```
 
-## Audit Events
+## Audit Event
 
 ### AuditEvent
 
@@ -102,8 +102,8 @@ type AuditEvent struct {
 type AuditMiddlewareConfig struct {
     Format         string   // "text" or "json"
     IncludeHeaders bool     // Include request/response headers
-    MaskHeaders    []string // Header names to redact
-    SanitizeError  bool     // Redact error messages
+    MaskHeaders    []string // Header names to sanitize
+    SanitizeError  bool     // Sanitize error messages
 }
 ```
 
@@ -115,7 +115,7 @@ type AuditMiddlewareConfig struct {
 | `UserIDKey` | `auditContextKey` | User ID in audit events |
 
 ```go
-// Pass audit information via context
+// Pass audit information through context
 ctx := context.WithValue(context.Background(), httpc.SourceIPKey, "192.168.1.1")
 ctx = context.WithValue(ctx, httpc.UserIDKey, "user-123")
 
@@ -129,12 +129,12 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
 }
 client, _ := httpc.New(cfg)
 
-// Values from context are read by the middleware when sending requests
+// Values from context are read by middleware when sending requests
 result, err := client.Request(ctx, "GET", url)
 ```
 
 ## See Also
 
-- [Error Types](./errors) - ClientError, ErrorType, and error variables complete reference
+- [Error Types](./errors) - Complete reference for ClientError, ErrorType, and error variables
 - [Request Options](./options) - BodyKind usage in WithBody
 - [Middleware](./middleware) - AuditMiddleware and audit configuration

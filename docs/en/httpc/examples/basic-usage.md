@@ -1,6 +1,6 @@
 ---
 title: Basic Usage - HTTPC
-description: Complete collection of basic HTTPC usage examples, covering GET and POST request sending with JSON response parsing, multipart file uploads, client configuration preset selection, middleware chain setup, and large file downloads with progress callbacks, with complete runnable Go code examples and detailed explanations.
+description: Basic HTTPC examples covering GET/POST requests with JSON parsing, file uploads, configuration presets, middleware setup, and file downloads with progress callbacks.
 ---
 
 # Basic Usage
@@ -212,7 +212,7 @@ if err != nil {
 }
 defer dc.Close()
 
-// Set session headers
+// Set session info
 dc.SetHeader("Authorization", "Bearer "+token)
 dc.SetHeader("Accept", "application/json")
 

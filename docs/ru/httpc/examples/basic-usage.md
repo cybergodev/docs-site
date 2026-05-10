@@ -1,13 +1,13 @@
 ---
 title: Базовые примеры - HTTPC
-description: "Полный набор базовых примеров HTTPC, охватывающих отправку GET и POST-запросов с разбором JSON-ответов, загрузку файлов через Multipart, выбор пресетов конфигурации клиента, добавление цепочек промежуточного ПО и скачивание больших файлов с обратным вызовом прогресса — полные runnable примеры кода на Go с подробными пояснениями и комментариями"
+description: Набор базовых примеров HTTPC, охватывающих запросы GET/POST с разбором JSON, загрузку файлов, предустановки конфигурации, добавление промежуточного ПО и загрузку с обратным вызовом прогресса.
 ---
 
 # Базовые примеры
 
-## GET-запрос
+## GET-запросы
 
-### Простой GET
+### Базовый GET
 
 ```go
 package main
@@ -52,7 +52,7 @@ result, err := httpc.Get("https://api.example.com/me",
 )
 ```
 
-## POST-запрос
+## POST-запросы
 
 ### Тело запроса JSON
 
@@ -89,7 +89,7 @@ result, err := httpc.Post("https://httpbin.org/post",
 )
 ```
 
-### Загрузка файлов
+### Загрузка файла
 
 ```go
 fileContent, _ := os.ReadFile("document.pdf")
@@ -99,7 +99,7 @@ result, err := httpc.Post("https://httpbin.org/post",
 )
 ```
 
-### Многополевая форма
+### Многочастная форма
 
 ```go
 form := &httpc.FormData{
@@ -139,7 +139,7 @@ if err != nil {
 defer client.Close()
 ```
 
-### Конфигурация прокси
+### Настройка прокси
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -163,7 +163,7 @@ cfg.Middleware.UserAgent = "my-app/1.0"
 client, _ := httpc.New(cfg)
 ```
 
-### Идентификатор запроса + метрики
+### ID запроса + метрики
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -177,7 +177,7 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
 client, _ := httpc.New(cfg)
 ```
 
-## Скачивание файлов
+## Загрузка файлов
 
 ```go
 client, _ := httpc.New()
@@ -188,7 +188,7 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\rСкачивание: %.1f%% (%s/s)", pct, httpc.FormatSpeed(speed))
+    fmt.Printf("\rЗагрузка: %.1f%% (%s/s)", pct, httpc.FormatSpeed(speed))
 }
 
 result, err := client.DownloadWithOptions("https://example.com/file.zip", cfg)
@@ -196,7 +196,7 @@ if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("\nСкачивание завершено: %s, время %v, средняя скорость %s\n",
+fmt.Printf("\nЗагрузка завершена: %s, время %v, средняя скорость %s\n",
     httpc.FormatBytes(result.BytesWritten),
     result.Duration,
     httpc.FormatSpeed(result.AverageSpeed),
@@ -225,6 +225,6 @@ fmt.Println(users.StatusCode()) // 200
 
 ## Что дальше
 
-- [Продвинутые примеры](./advanced-usage) - пользовательская стратегия повторных попыток, цепочки промежуточного ПО, параллельное скачивание
-- [Запросы и ответы](../guides/request-response) - подробный обзор параметров запроса
+- [Расширенные примеры](./advanced-usage) - пользовательские повторные попытки, цепочка промежуточного ПО, параллельная загрузка
+- [Запросы и ответы](../guides/request-response) - подробное описание параметров запросов
 - [Доменный клиент и сессии](../guides/domain-session) - управление сессиями

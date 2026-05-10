@@ -1,9 +1,9 @@
 ---
-title: 기본 예제 - HTTPC
-description: HTTPC 기본 사용법 완전 예제 모음으로, GET과 POST 요청 전송 및 JSON 응답 파싱, Multipart 파일 업로드, 클라이언트 구성 사전 설정 선택, 미들웨어 체인 추가 및 대용량 파일 진행률 콜백 다운로드 등 일반적인 개발 시나리오의 완전한 실행 가능한 Go 코드 예제와 상세한 사용법 및 주석을 다룹니다.
+title: 기본 사용법 - HTTPC
+description: HTTPC 기본 사용법 예제 모음, GET/POST 요청과 JSON 파싱, 파일 업로드, 구성 프리셋, 미들웨어 추가와 진행률 콜백 다운로드 포함 완전한 코드 예제.
 ---
 
-# 기본 예제
+# 기본 사용법
 
 ## GET 요청
 
@@ -216,7 +216,7 @@ defer dc.Close()
 dc.SetHeader("Authorization", "Bearer "+token)
 dc.SetHeader("Accept", "application/json")
 
-// 요청이 자동으로 세션 헤더와 쿠키를 전달
+// 요청은 자동으로 세션 헤더와 Cookie를 포함
 users, _ := dc.Get("/users")
 user, _ := dc.Get("/users/1")
 
@@ -226,5 +226,5 @@ fmt.Println(users.StatusCode()) // 200
 ## 다음 단계
 
 - [고급 예제](./advanced-usage) - 사용자 정의 재시도, 미들웨어 체인, 동시성 다운로드
-- [요청과 응답](../guides/request-response) - 요청 옵션 상세
+- [요청과 응답](../guides/request-response) - 요청 옵션 상세 설명
 - [도메인 클라이언트와 세션](../guides/domain-session) - 세션 관리

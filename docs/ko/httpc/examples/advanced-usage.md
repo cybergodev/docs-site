@@ -1,20 +1,20 @@
 ---
 title: 고급 예제 - HTTPC
-description: HTTPC 고급 사용법 완전 예제 모음으로, 사용자 정의 RetryPolicy 재시도 전략 구현, 완전한 양파 모델 미들웨어 체인 구성, RESTful API 래핑 패턴, 동시성 파일 다운로드 관리, HMAC 서명 인증 미들웨어 및 도메인 클라이언트의 고급 실전 Go 코드 예제와 상세한 해석 및 주석을 다룹니다.
+description: HTTPC 고급 사용법 예제 모음, 사용자 정의 재시도 전략, 미들웨어 체인 구성, RESTful API 래핑, 동시성 다운로드와 HMAC 서명 인증 고급 예제 포함.
 ---
 
 # 고급 예제
 
 ## 사용자 정의 재시도 전략
 
-502/503/504에 대해서만 재시도하고, 고정 지연 사용:
+502/503/504에만 재시도하고 고정 지연 사용:
 
-:::warning 내부 타입
-`RetryPolicy.ShouldRetry`의 `resp` 매개변수 타입인 `ResponseReader`는 내부 인터페이스(`internal/types` 패키지에 정의)로, 외부 패키지에서 직접 참조할 수 없습니다. 사용자 정의 `RetryPolicy`는 `httpc`와 같은 모듈 내의 패키지에서 구현해야 합니다. 대부분의 시나리오는 `RetryConfig` 구성으로 충분합니다. 다음 예제는 구현 패턴을 보여주며, 실제 코드는 `httpc` 모듈 내부에서 컴파일해야 합니다.
+:::warning 주의 내부 유형
+`RetryPolicy.ShouldRetry`의 `resp` 매개변수 유형 `ResponseReader`는 내부 인터페이스(`internal/types` 패키지에 정의)이며, 외부 패키지에서 직접 참조할 수 없습니다. 사용자 정의 `RetryPolicy`는 `httpc`와 같은 모듈 내의 패키지에서 구현해야 합니다. 대부분의 시나리오는 `RetryConfig` 구성으로 충분합니다. 아래 예제는 구현 패턴을 보여주며, 실제 코드는 `httpc` 모듈 내부에서 컴파일해야 합니다.
 :::
 
 ```go
-// 참고: ResponseReader는 내부 타입입니다 (internal/types 패키지).
+// 참고: ResponseReader는 내부 유형(internal/types 패키지)입니다.
 // 이 코드는 github.com/cybergodev/httpc 모듈 내부에서만 컴파일할 수 있습니다.
 // 대부분의 사용자는 RetryConfig와 WithMaxRetries로 재시도를 구성해야 합니다.
 
@@ -23,13 +23,13 @@ type selectiveRetry struct {
     baseDelay   time.Duration
 }
 
-// 재시도 여부 판별
+// 재시도 여부 판단
 func (p *selectiveRetry) ShouldRetry(resp ResponseReader, err error, attempt int) bool {
     if attempt >= p.maxAttempts {
         return false
     }
     if err != nil {
-        return true // 네트워크 오류 재시도
+        return true // 네트워크 오류 시 재시도
     }
     return resp.StatusCode() == 502 || resp.StatusCode() == 503 || resp.StatusCode() == 504
 }
@@ -47,7 +47,7 @@ cfg := httpc.DefaultConfig()
 cfg.Retry.CustomPolicy = &selectiveRetry{maxAttempts: 5, baseDelay: time.Second}
 ```
 
-외부 프로젝트의 대안 — `RetryConfig` 구성 사용:
+외부 프로젝트의 대안 -- `RetryConfig` 구성 사용:
 
 ```go
 package main
@@ -370,6 +370,6 @@ func main() {
 
 ## 다음 단계
 
-- [미들웨어 체인](../guides/middleware-chain) - 미들웨어 아키텍처 상세
+- [미들웨어 체인](../guides/middleware-chain) - 미들웨어 아키텍처 상세 설명
 - [재시도와 장애 허용](../guides/retry-fault-tolerance) - 사용자 정의 재시도 전략
 - [성능 최적화](../advanced/performance) - 성능 튜닝 제안

@@ -1,6 +1,6 @@
 ---
 title: 中间件链 - HTTPC
-description: HTTPC 中间件链深入指南，详解洋葱模型执行原理与请求处理完整流程、八个内置中间件（Recovery、Logging、RequestID、Timeout、Header、Metrics、Audit、Retry）的功能与配置、Chain 链式组合模式和自定义中间件的编写方法与最佳实践。
+description: HTTPC 中间件链指南，详解洋葱模型执行原理、八个内置中间件的功能配置、Chain 组合模式与自定义中间件编写方法。
 ---
 
 # 中间件链

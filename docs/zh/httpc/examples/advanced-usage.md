@@ -1,6 +1,6 @@
 ---
 title: 高级示例 - HTTPC
-description: HTTPC 高级用法完整示例集，包含自定义 RetryPolicy 重试策略实现、完整洋葱模型中间件链配置、RESTful API 封装模式、并发文件下载管理、HMAC 签名认证中间件和域名客户端的进阶实战 Go 代码示例与详细解析和注释。
+description: HTTPC 高级用法示例集，包含自定义重试策略、中间件链配置、RESTful API 封装、并发下载与 HMAC 签名认证进阶示例。
 ---
 
 # 高级示例

@@ -1,6 +1,6 @@
 ---
 title: セッション管理 - HTTPC
-description: HTTPC SessionManager セッション管理完全 API リファレンス。NewSessionManager 作成関数とパラメータ説明、SessionConfig 全設定オプション、SetHeader や DeleteHeader などのセッションヘッダー管理メソッド、Cookie セキュリティ検証、UpdateFromResult レスポンス同期メソッドを含みます。
+description: HTTPC SessionManager セッション管理 API リファレンス。作成関数、SessionConfig 設定、セッションヘッダー管理メソッド、Cookie セキュリティ検証とレスポンス同期。
 ---
 
 # セッション管理

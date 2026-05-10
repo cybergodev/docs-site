@@ -1,6 +1,6 @@
 ---
 title: Session Management - HTTPC
-description: HTTPC SessionManager session management complete API reference, covering NewSessionManager creation function and parameter description, all SessionConfig configuration options, SetHeader and DeleteHeader session header management methods, Cookie security validation, and UpdateFromResult response synchronization method.
+description: HTTPC SessionManager session management API reference, covering creation functions, SessionConfig configuration, session header management methods, cookie security validation, and response synchronization.
 ---
 
 # Session Management
@@ -13,7 +13,7 @@ SessionManager provides thread-safe cookie and header storage, used internally b
 func NewSessionManager(config ...*SessionConfig) (*SessionManager, error)
 ```
 
-Create a session manager.
+Creates a session manager.
 
 ```go
 sm, err := httpc.NewSessionManager()
@@ -50,7 +50,7 @@ Returns default configuration (no cookie security validation).
 func (s *SessionManager) SetHeader(key, value string) error
 ```
 
-Set a session header. All subsequent requests will include it automatically. Validates header key-value validity.
+Sets a session header. Automatically included with all subsequent requests. Validates header key-value validity.
 
 ```go
 err := sm.SetHeader("Authorization", "Bearer "+token)
@@ -62,7 +62,7 @@ err := sm.SetHeader("Authorization", "Bearer "+token)
 func (s *SessionManager) SetHeaders(headers map[string]string) error
 ```
 
-Set multiple session headers at once.
+Sets multiple session headers at once.
 
 ```go
 err := sm.SetHeaders(map[string]string{
@@ -77,7 +77,7 @@ err := sm.SetHeaders(map[string]string{
 func (s *SessionManager) DeleteHeader(key string)
 ```
 
-Delete a specific session header.
+Deletes the specified session header.
 
 ### ClearHeaders
 
@@ -85,7 +85,7 @@ Delete a specific session header.
 func (s *SessionManager) ClearHeaders()
 ```
 
-Clear all session headers.
+Clears all session headers.
 
 ### GetHeaders
 
@@ -103,7 +103,7 @@ Returns a copy of all session headers.
 func (s *SessionManager) SetCookie(cookie *http.Cookie) error
 ```
 
-Set a session cookie. Validates cookie validity and, if CookieSecurity is configured, also validates security attributes.
+Sets a session cookie. Validates cookie validity and, if CookieSecurity is configured, also validates security attributes.
 
 ```go
 err := sm.SetCookie(&http.Cookie{
@@ -120,7 +120,7 @@ err := sm.SetCookie(&http.Cookie{
 func (s *SessionManager) SetCookies(cookies []*http.Cookie) error
 ```
 
-Set multiple cookies at once.
+Sets multiple cookies at once.
 
 ### DeleteCookie
 
@@ -128,7 +128,7 @@ Set multiple cookies at once.
 func (s *SessionManager) DeleteCookie(name string)
 ```
 
-Delete a cookie by name.
+Deletes a cookie by name.
 
 ### ClearCookies
 
@@ -136,7 +136,7 @@ Delete a cookie by name.
 func (s *SessionManager) ClearCookies()
 ```
 
-Clear all cookies.
+Clears all cookies.
 
 ### GetCookies
 
@@ -152,7 +152,7 @@ Returns a copy of all cookies.
 func (s *SessionManager) GetCookie(name string) *http.Cookie
 ```
 
-Get a cookie copy by name. Returns nil if not found.
+Gets a copy of a cookie by name; returns nil if not found.
 
 ## Cookie Security
 
@@ -162,7 +162,7 @@ Get a cookie copy by name. Returns nil if not found.
 func (s *SessionManager) SetCookieSecurity(config *CookieSecurityConfig)
 ```
 
-Update the cookie security validation configuration. Affects all subsequent SetCookie calls.
+Updates the cookie security validation configuration. Affects all subsequent SetCookie calls.
 
 ```go
 sm.SetCookieSecurity(httpc.StrictCookieSecurityConfig())
@@ -174,7 +174,7 @@ sm.SetCookieSecurity(httpc.StrictCookieSecurityConfig())
 func (s *SessionManager) UpdateFromResult(result *Result)
 ```
 
-Update session cookies from a request result. Insecure cookies are silently skipped.
+Updates session cookies from a request result. Insecure cookies are silently skipped.
 
 ### UpdateFromCookies
 
@@ -182,10 +182,10 @@ Update session cookies from a request result. Insecure cookies are silently skip
 func (s *SessionManager) UpdateFromCookies(cookies []*http.Cookie)
 ```
 
-Update session cookies from a cookie slice.
+Updates session cookies from a cookie slice.
 
 ## See Also
 
 - [Domain Client](./domain-client) - DomainClient reference
 - [Domain Client and Sessions](../guides/domain-session) - Usage guide
-- [Interfaces](./interfaces) - DomainClienter interface reference
+- [Interface Definitions](./interfaces) - DomainClienter interface reference

@@ -1,6 +1,6 @@
 ---
 title: Getting Started - HTTPC
-description: Get started with the CyberGo HTTPC secure HTTP client library for Go in five minutes. This beginner's guide covers Go module installation, sending GET and POST requests, creating and configuring clients, handling JSON responses, all request option functions, and ClientError error handling.
+description: Get started with the HTTPC secure HTTP client library in five minutes, covering module installation, GET/POST requests, client configuration, JSON parsing, and error handling.
 ---
 
 # Getting Started
@@ -13,7 +13,7 @@ go get github.com/cybergodev/httpc
 
 ## Basic Requests
 
-No need to create a client — use package-level functions directly:
+No need to create a client. Use package-level functions directly:
 
 ```go
 package main
@@ -41,7 +41,7 @@ Supported HTTP methods: `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Option
 
 ## Creating a Client
 
-When you need custom configuration, create a client instance:
+Create a client instance when you need custom configuration:
 
 ```go
 client, err := httpc.New()
@@ -55,12 +55,12 @@ result, err := client.Get("https://httpbin.org/get")
 
 ### Configuration Presets
 
-| Config | Purpose | Characteristics |
-|--------|---------|-----------------|
-| `DefaultConfig()` | General purpose | Secure defaults, SSRF protection enabled |
+| Preset | Use Case | Characteristics |
+|--------|----------|-----------------|
+| `DefaultConfig()` | General use | Secure defaults, SSRF protection enabled |
 | `SecureConfig()` | Security-sensitive scenarios | Disables auto-redirect, strict timeouts |
 | `PerformanceConfig()` | High throughput | Large connection pool, longer timeouts, cookies enabled |
-| `TestingConfig()` | Testing environments | Disables security checks and HTTP/2, short timeouts |
+| `TestingConfig()` | Test environments | Disables security checks and HTTP/2, short timeouts |
 | `MinimalConfig()` | Lightweight requests | No retries, no redirects |
 
 ```go
@@ -142,13 +142,13 @@ case result.IsServerError():
 ```
 
 :::tip
-4xx/5xx responses are not returned as `error` values. Check them using `result.IsSuccess()` and similar methods. See [Error Handling](./advanced/error-handling) for details.
+4xx/5xx responses are not returned as `error`. Check them using methods like `result.IsSuccess()`. See [Error Handling](./advanced/error-handling) for details.
 :::
 
 ## Next Steps
 
 - **[Tutorial](./guides/tutorial)** - Build a GitHub API client in 30 minutes
-- **[Request & Response](./guides/request-response)** - Complete request options and response handling
-- **[Basic Examples](./examples/basic-usage)** - Practical examples for GET/POST/middleware
-- **[Cheat Sheet](./cheatsheet)** - Quick reference for common operations
+- **[Request and Response](./guides/request-response)** - Complete request options and response handling
+- **[Basic Usage](./examples/basic-usage)** - Practical examples for GET/POST/middleware
+- **[Cheatsheet](./cheatsheet)** - Quick reference for common operations
 - **[Security](./security/)** - Security best practices

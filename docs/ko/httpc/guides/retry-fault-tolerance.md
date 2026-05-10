@@ -1,6 +1,6 @@
 ---
 title: 재시도와 장애 허용 - HTTPC
-description: HTTPC 재시도와 장애 허용 메커니즘 완전 가이드, 기본 재시도 전략과 지수 백오프 및 지터 알고리즘 원리, RetryPolicy 커스텀 인터페이스 구현 방법, Retry-After 응답 헤더 자동 파싱 메커니즘 및 ClientError 오류 분류와 결합한 재시도 모범 사례와 일반적인 설정 최적화 예제를 상세히 설명합니다.
+description: HTTPC 재시도와 장애 허용 가이드, 기본 재시도 전략과 백오프 알고리즘 원리, RetryPolicy 사용자 정의 인터페이스, Retry-After 해석과 모범 사례 예제 상세 설명.
 ---
 
 # 재시도와 장애 허용
@@ -21,7 +21,7 @@ client, _ := httpc.New(cfg)
 
 ### 재시도 조건
 
-기본적으로 다음 오류가 재시도를 트리거합니다:
+기본적으로 다음 오류는 재시도를 트리거합니다:
 
 | 조건 | 재시도 |
 |------|------|
@@ -29,22 +29,22 @@ client, _ := httpc.New(cfg)
 | 타임아웃 오류 | 예 |
 | 5xx 서버 오류 (500/502/503/504) | 예 |
 | 408 Request Timeout / 429 Too Many Requests | 예 |
-| 기타 4xx 클라이언트 오류 | 아니오 |
-| 컨텍스트 취소 | 아니오 |
-| 설정 검증 오류 | 아니오 |
+| 기타 4xx 클라이언트 오류 | 아니요 |
+| 컨텍스트 취소 | 아니요 |
+| 구성 검증 오류 | 아니요 |
 
-## 커스텀 재시도 전략
+## 사용자 정의 재시도 전략
 
 `RetryPolicy` 인터페이스를 구현하여 재시도 동작을 완전히 제어합니다:
 
-:::warning 내부 타입
-`RetryPolicy.ShouldRetry`의 `resp` 매개변수 타입 `ResponseReader`는 내부 인터페이스 (`internal/types` 패키지에 정의)이므로 외부 패키지에서 직접 참조할 수 없습니다. 커스텀 `RetryPolicy`는 `httpc`와 동일한 모듈 내의 패키지에서 구현해야 합니다. 대부분의 시나리오는 `RetryConfig` 필드 설정으로 충분합니다.
+:::warning 주의 내부 유형
+`RetryPolicy.ShouldRetry`의 `resp` 매개변수 유형 `ResponseReader`는 내부 인터페이스(`internal/types` 패키지에 정의)이며, 외부 패키지에서 직접 참조할 수 없습니다. 사용자 정의 `RetryPolicy`는 `httpc`와 같은 모듈 내의 패키지에서 구현해야 합니다. 대부분의 시나리오는 `RetryConfig` 필드 구성으로 충분합니다.
 :::
 
 ```go
-// 참고: ResponseReader는 내부 타입입니다 (internal/types 패키지).
-// 이 코드는 github.com/cybergodev/httpc 모듈 내부에서만 컴파일됩니다.
-// 대부분의 사용자는 RetryConfig와 WithMaxRetries를 통해 재시도를 설정해야 합니다.
+// 참고: ResponseReader는 내부 유형(internal/types 패키지)입니다.
+// 이 코드는 github.com/cybergodev/httpc 모듈 내부에서만 컴파일할 수 있습니다.
+// 대부분의 사용자는 RetryConfig와 WithMaxRetries로 재시도를 구성해야 합니다.
 
 type MyRetryPolicy struct {
     maxAttempts int
@@ -73,7 +73,7 @@ func (p *MyRetryPolicy) MaxRetries() int {
     return p.maxAttempts
 }
 
-// 커스텀 전략 적용
+// 사용자 정의 전략 적용
 cfg := httpc.DefaultConfig()
 cfg.Retry.CustomPolicy = &MyRetryPolicy{maxAttempts: 5}
 ```
@@ -81,7 +81,7 @@ cfg.Retry.CustomPolicy = &MyRetryPolicy{maxAttempts: 5}
 ## 요청별 제어
 
 ```go
-// 단일 요청에 대해 5회 재시도
+// 단일 요청 5회 재시도
 result, err := client.Get(url, httpc.WithMaxRetries(5))
 
 // 재시도 비활성화
@@ -95,18 +95,18 @@ result, err := client.Request(ctx, "GET", url, httpc.WithMaxRetries(3))
 
 ## Retry-After 지원
 
-HTTPC는 서버가 반환한 `Retry-After` 응답 헤더를 자동으로 파싱합니다:
+HTTPC는 서버가 반환한 `Retry-After` 응답 헤더를 자동으로 해석합니다:
 
 ```go
 // 서버 반환: Retry-After: 120
-// HTTPC는 지수 백오프 지연 대신 120초를 대기한 후 재시도합니다
+// HTTPC는 지수 백오프 지연 대신 120초 대기 후 재시도
 
 // 서버 반환: Retry-After: Fri, 25 Apr 2026 12:00:00 GMT
-// HTTPC는 지정된 시간까지 대기한 후 재시도합니다
+// HTTPC는 지정된 시간까지 대기 후 재시도
 ```
 
-:::tip
-`Retry-After`는 재시도 가능한 모든 응답에 적용됩니다 (408, 429, 500, 502, 503, 504), 지수 백오프 지연보다 우선순위가 높습니다.
+:::tip 사용 팁
+`Retry-After`는 재시도 가능한 모든 응답(408, 429, 500, 502, 503, 504)에서 적용되며, 지수 백오프 지연보다 우선순위가 높습니다.
 :::
 
 ## 백오프 전략
@@ -128,18 +128,18 @@ cfg.Retry.BackoffFactor = 1.0
 ### 선형 증가
 
 ```go
-// 커스텀 RetryPolicy 구현 필요:
+// 사용자 정의 RetryPolicy 구현 필요:
 // delay * (attempt + 1)
-// 고급 예제의 커스텀 재시도 전략 참조
+// 고급 예제의 사용자 정의 재시도 전략 참조
 ```
 
 ### 무작위 지터
 
-"스태드 혼(Thundering Herd)" 현상을 방지하기 위해 지터를 활성화합니다:
+지터를 활성화하면 "천둥 무리 효과"를 방지합니다:
 
 ```go
 cfg.Retry.EnableJitter = true
-// 기본 지연에 무작위 오프셋을 추가하여 모든 클라이언트가 동시에 재시도하는 것을 방지합니다
+// 기본 지연에 무작위 오프셋을 추가하여 모든 클라이언트가 동시에 재시도하는 것을 방지
 ```
 
 ## 오류 처리와 재시도
@@ -150,7 +150,7 @@ if err != nil {
     var clientErr *httpc.ClientError
     if errors.As(err, &clientErr) {
         if clientErr.Type == httpc.ErrorTypeRetryExhausted {
-            log.Printf("재시도 %d회 후에도 실패", clientErr.Attempts)
+            log.Printf("%d회 재시도 후에도 실패", clientErr.Attempts)
         }
     }
     return err
@@ -167,12 +167,12 @@ if err != nil {
 | 멱등성 작업 | 안심하고 재시도 가능 |
 | 비멱등성 작업 (POST) | 네트워크 오류 시에만 재시도 |
 
-:::warning
-비멱등성 POST 요청도 기본적으로 재시도됩니다. 정밀한 제어가 필요한 경우 커스텀 `RetryPolicy`를 구현하세요.
+:::warning 주의
+비멱등성 POST 요청도 기본적으로 재시도됩니다. 정확한 제어가 필요한 경우 사용자 정의 `RetryPolicy`를 구현하십시오.
 :::
 
 ## 다음 단계
 
-- [오류 처리](../advanced/error-handling) - 전체 오류 처리 가이드
-- [설정 API](../api-reference/config) - 재시도 설정 참조
+- [오류 처리](../advanced/error-handling) - 완전한 오류 처리 가이드
+- [구성 API](../api-reference/config) - 재시도 구성 참조
 - [인터페이스 정의](../api-reference/interfaces) - RetryPolicy 인터페이스 참조

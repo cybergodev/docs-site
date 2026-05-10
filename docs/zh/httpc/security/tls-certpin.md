@@ -1,6 +1,6 @@
 ---
 title: TLS 与证书固定 - HTTPC
-description: HTTPC TLS 安全与证书固定完整指南，详解 TLS 版本控制与默认配置参数、自定义 CA 证书加载方法、双向 mTLS 认证配置、SPKI 公钥哈希证书固定实现、HTTP/2 协议协商和 InsecureSkipVerify 风险说明。
+description: HTTPC TLS 与证书固定指南，详解 TLS 版本控制、自定义 CA 加载、mTLS 双向认证、SPKI 公钥固定与 HTTP/2 协商。
 ---
 
 # TLS 与证书固定

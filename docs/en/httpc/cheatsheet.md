@@ -1,18 +1,18 @@
 ---
-title: Cheat Sheet - HTTPC
-description: HTTPC cheat sheet for Go developers provides a quick reference card and common code snippets covering client creation and teardown, seven HTTP methods, all twenty-six request option functions, Result response handling and status checks, five configuration preset comparisons, middleware chain setup, error type matching, and file download APIs.
+title: Cheatsheet - HTTPC
+description: HTTPC cheatsheet covering client creation, seven HTTP methods, request options, response handling, configuration presets, middleware, and error types quick reference.
 ---
 
-# Cheat Sheet
+# Cheatsheet
 
 ## Creating a Client
 
 ```go
-// Default config
+// Default configuration
 client, _ := httpc.New()
 defer client.Close()
 
-// Custom config
+// Custom configuration
 cfg := httpc.DefaultConfig()
 cfg.Timeouts.Request = 60 * time.Second
 cfg.Retry.MaxRetries = 5
@@ -58,7 +58,7 @@ httpc.WithForm(map[string]string{...})  // x-www-form-urlencoded
 httpc.WithFormData(formData)            // multipart/form-data
 httpc.WithFile("file", "doc.pdf", data) // File upload
 httpc.WithBinary([]byte{...})           // application/octet-stream
-httpc.WithBinary([]byte{...}, "image/png") // Specify content type
+httpc.WithBinary([]byte{...}, "image/png") // Specify type
 httpc.WithBody(data)                    // Auto-detect type
 httpc.WithBody(data, httpc.BodyJSON)    // Explicit: BodyJSON/BodyXML/BodyForm/BodyBinary/BodyMultipart
 ```
@@ -81,6 +81,7 @@ httpc.WithBasicAuth("user", "pass")
 
 ```go
 httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"})
+httpc.WithCookies([]http.Cookie{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}})
 httpc.WithCookieMap(map[string]string{"session": "abc"})
 httpc.WithCookieString("session=abc; token=xyz")
 httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig())
@@ -129,7 +130,7 @@ result.RequestCookies()                // All request cookies
 result.GetRequestCookie("name")        // Get request cookie
 result.HasRequestCookie("name")        // Check request cookie
 result.SaveToFile("/path/to/file")     // Save to file
-result.String()                        // Human-readable representation (sensitive headers redacted)
+result.String()                        // Human-readable representation (sensitive headers masked)
 httpc.ReleaseResult(result)            // Release to object pool
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: 实战教程 - HTTPC
-description: 通过三十分钟实战教程构建完整的 GitHub REST API 客户端项目，循序渐进学习 HTTPC 客户端创建与配置预设选择、请求选项函数灵活组合、域名客户端管理 API、中间件链添加和 ClientError 错误处理等核心功能的开发流程。
+description: 三十分钟实战教程构建 GitHub REST API 客户端，学习 HTTPC 客户端配置、请求选项、域名客户端、中间件与错误处理。
 ---
 
 # 实战教程：构建 GitHub API 客户端

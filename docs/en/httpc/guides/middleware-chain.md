@@ -1,13 +1,13 @@
 ---
 title: Middleware Chain - HTTPC
-description: In-depth guide to the HTTPC middleware chain, covering the onion model execution principle and complete request processing flow, eight built-in middleware (Recovery, Logging, RequestID, Timeout, Header, Metrics, Audit, Retry) features and configuration, Chain composition pattern, and custom middleware development best practices.
+description: In-depth guide to HTTPC middleware chain covering onion model execution, eight built-in middleware functions, Chain composition, and custom middleware development.
 ---
 
 # Middleware Chain
 
 ## Onion Model
 
-HTTPC middleware follows the onion model — requests go from outside in, responses go from inside out:
+HTTPC middleware follows the onion model -- requests go from outside in, responses go from inside out:
 
 ```text
 Request →  Recovery  →  Logging  →  RequestID  → Handler

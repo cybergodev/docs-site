@@ -1,6 +1,6 @@
 ---
 title: インターフェース定義 - HTTPC
-description: HTTPC コアインターフェースの完全 API リファレンス。Client フル機能クライアントインターフェースの全メソッド署名、Doer 基本実行インターフェース、DomainClienter ドメインクライアントインターフェース、RetryPolicy リトライポリシーインターフェース、MiddlewareFunc ミドルウェア関数タイプの詳細定義。
+description: HTTPC コアインターフェース API リファレンス。Client 全機能インターフェース、Doer 実行インターフェース、DomainClienter ドメインインターフェース、RetryPolicy と MiddlewareFunc 定義。
 ---
 
 # インターフェース定義

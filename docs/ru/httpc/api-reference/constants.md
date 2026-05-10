@@ -1,6 +1,6 @@
 ---
 title: Константы и типы - HTTPC
-description: "Полный справочник API констант и вспомогательных типов HTTPC, включая перечисление BodyKind с шестью типами тела запроса и правилами автоматического определения, вспомогательные типы FormData и FileData для многочастной загрузки форм, структуру события аудита AuditEvent и определения ключей контекста SourceIPKey и UserIDKey"
+description: Справочник API констант и вспомогательных типов HTTPC, включая перечисление тела запроса BodyKind, типы загрузки FormData/FileData, структуру аудита AuditEvent и определения ключей контекста.
 ---
 
 # Константы и типы
@@ -14,27 +14,27 @@ type BodyKind int
 Тип тела запроса, используется в `WithBody` для указания формата тела запроса.
 
 | Константа | Значение | Описание | Content-Type |
-|-----------|----------|----------|-------------|
-| `BodyAuto` | 0 | Автоматическое определение | Определяется по типу |
+|-----------|---------|----------|-------------|
+| `BodyAuto` | 0 | Автоопределение | Определяется по типу |
 | `BodyJSON` | 1 | Принудительный JSON | application/json |
 | `BodyXML` | 2 | Принудительный XML | application/xml |
 | `BodyForm` | 3 | Форма | application/x-www-form-urlencoded |
 | `BodyBinary` | 4 | Бинарные данные | application/octet-stream |
-| `BodyMultipart` | 5 | Многочастные данные | multipart/form-data |
+| `BodyMultipart` | 5 | Multipart | multipart/form-data |
 
-### Правила определения BodyAuto
+### Правила автоопределения BodyAuto
 
 | Тип входных данных | Content-Type |
-|--------------------|-------------|
+|-------------------|-------------|
 | `string` | text/plain; charset=utf-8 |
 | `[]byte` | application/octet-stream |
 | `*FormData` | multipart/form-data |
-| `io.Reader` | Не устанавливается |
+| `io.Reader` | не устанавливается |
 | `map[string]string` | application/x-www-form-urlencoded |
 | Другие типы | application/json |
 
 ```go
-// Автоматическое определение (по умолчанию)
+// Автоопределение (по умолчанию)
 result, _ := client.Post(url, httpc.WithBody(data))
 
 // Принудительный JSON
@@ -83,7 +83,7 @@ result, err := client.Post(url, httpc.WithFormData(form))
 type AuditEvent struct {
     Timestamp     time.Time           `json:"timestamp"`
     Method        string              `json:"method"`
-    URL           string              `json:"url"`           // Маскировано (учётные данные удалены)
+    URL           string              `json:"url"`           // маскировано (учётные данные удалены)
     StatusCode    int                 `json:"statusCode"`
     Duration      time.Duration       `json:"duration"`
     Attempts      int                 `json:"attempts"`
@@ -101,9 +101,9 @@ type AuditEvent struct {
 ```go
 type AuditMiddlewareConfig struct {
     Format         string   // "text" или "json"
-    IncludeHeaders bool     // Включать заголовки запроса/ответа
+    IncludeHeaders bool     // Включать ли заголовки запроса/ответа
     MaskHeaders    []string // Имена заголовков для маскирования
-    SanitizeError  bool     // Маскировать информацию об ошибках
+    SanitizeError  bool     // Маскировать ли информацию об ошибках
 }
 ```
 
@@ -129,12 +129,12 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
 }
 client, _ := httpc.New(cfg)
 
-// Значения из context будут прочитаны промежуточным ПО при отправке запроса
+// При отправке запроса значения из context будут прочитаны промежуточным ПО
 result, err := client.Request(ctx, "GET", url)
 ```
 
-## Смотрите также
+## См. также
 
-- [Типы ошибок](./errors) - Полный справочник ClientError, ErrorType и переменных ошибок
-- [Параметры запроса](./options) - Использование BodyKind в WithBody
+- [Типы ошибок](./errors) - полный справочник ClientError, ErrorType и переменных ошибок
+- [Параметры запросов](./options) - использование BodyKind в WithBody
 - [Промежуточное ПО](./middleware) - AuditMiddleware и конфигурация аудита

@@ -1,20 +1,20 @@
 ---
 title: Практическое руководство - HTTPC
-description: "Тридцатиминутное практическое руководство по созданию полноценного клиента GitHub REST API, последовательно изучающее создание клиента HTTPC и выбор предустановок конфигурации, гибкую комбинацию функций параметров запроса, управление API через доменный клиент, добавление цепочек промежуточного ПО и обработку ошибок ClientError"
+description: Тридцатиминутное практическое руководство по созданию клиента GitHub REST API, изучение конфигурации HTTPC, параметров запросов, доменного клиента, промежуточного ПО и обработки ошибок.
 ---
 
 # Практическое руководство: создание клиента GitHub API
 
-Постройте клиент GitHub API, чтобы освоить ключевые концепции HTTPC. Занимает около 30 минут.
+Создайте клиент GitHub API, чтобы связать основные концепции HTTPC. Приблизительное время выполнения — 30 минут.
 
 **Вы научитесь:**
 
-- Создавать клиент и выбирать предустановки конфигурации
+- Создавать клиент и использовать предустановки конфигурации
 - Отправлять GET/POST запросы и обрабатывать JSON-ответы
 - Использовать доменный клиент для управления базовым URL API
 - Добавлять промежуточное ПО для логирования и метрик
-- Обрабатывать ошибки и настраивать повторные попытки
-- Оптимизировать производительность через пул объектов
+- Обрабатывать ошибки и повторные попытки
+- Оптимизировать производительность через повторное использование пула объектов
 
 ## Шаг 1: Базовый запрос
 
@@ -47,7 +47,7 @@ func main() {
 ```
 
 Ключевые моменты:
-- Функция пакета `httpc.Get` не требует создания клиента — подходит для быстрой проверки
+- Функция уровня пакета `httpc.Get` не требует создания клиента, подходит для быстрой проверки
 - `defer httpc.ReleaseResult(result)` возвращает результат в пул объектов
 
 ## Шаг 2: Разбор JSON-ответа
@@ -77,12 +77,12 @@ fmt.Printf("Описание: %s\n", repo.Description)
 ```
 
 Ключевые моменты:
-- `result.Unmarshal(&v)` разбирает JSON-ответ непосредственно в структуру
-- Определите Go-структуру, соответствующую ответу API
+- `result.Unmarshal(&v)` напрямую разбирает JSON-ответ в структуру
+- Определите структуру Go, соответствующую ответу API
 
 ## Шаг 3: Создание доменного клиента
 
-Все эндпоинты GitHub API находятся под `https://api.github.com` — используйте доменный клиент, чтобы не повторять URL:
+Все эндпоинты GitHub API находятся в `https://api.github.com`. Используйте доменный клиент, чтобы избежать повторения URL:
 
 ```go
 client, err := httpc.NewDomain("https://api.github.com")
@@ -95,7 +95,7 @@ if err := client.SetHeader("Authorization", "Bearer "+os.Getenv("GITHUB_TOKEN"))
     log.Fatal(err)
 }
 
-// Пути запросов относительно baseURL
+// Путь запроса относительно baseURL
 result, err := client.Get("/repos/golang/go",
     httpc.WithHeader("Accept", "application/vnd.github+json"),
 )
@@ -106,9 +106,9 @@ defer httpc.ReleaseResult(result)
 ```
 
 Ключевые моменты:
-- `NewDomain` создаёт клиента с областью видимости, пути относительны к baseURL
-- `SetHeader` устанавливает постоянные заголовки, добавляемые к каждому запросу
-- `WithHeader` передаётся как параметр запроса — действует только на текущий запрос
+- `NewDomain` создаёт клиент с областью видимости, пути относительно baseURL
+- `SetHeader` устанавливает постоянные заголовки, автоматически добавляемые к каждому запросу
+- `WithHeader` передаётся как параметр запроса и действует только для текущего запроса
 - Доменный клиент автоматически управляет Cookie
 
 ## Шаг 4: Отправка данных (создание Issue)
@@ -133,7 +133,7 @@ if err != nil {
 defer httpc.ReleaseResult(result)
 
 if !result.IsSuccess() {
-    log.Fatalf("Ошибка создания: %d %s", result.StatusCode(), result.Body())
+    log.Fatalf("Создание не удалось: %d %s", result.StatusCode(), result.Body())
 }
 
 var created struct {
@@ -150,7 +150,7 @@ fmt.Printf("Issue #%d создан: %s\n", created.Number, created.URL)
 
 ## Шаг 5: Добавление промежуточного ПО
 
-Добавьте логирование и Request ID к клиенту:
+Добавьте логирование и ID запроса к клиенту:
 
 ```go
 // Настройка промежуточного ПО
@@ -163,7 +163,7 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
     httpc.RequestIDMiddleware("X-Request-ID", nil),
 }
 
-// Передаём конфигурацию в NewDomain для создания доменного клиента с промежуточным ПО
+// Передайте конфигурацию в NewDomain для создания доменного клиента с промежуточным ПО
 client, err := httpc.NewDomain("https://api.github.com", cfg)
 if err != nil {
     log.Fatal(err)
@@ -190,7 +190,7 @@ fmt.Printf("%s: ⭐ %d\n", repo.FullName, repo.Stars)
 Ключевые моменты:
 - Промежуточное ПО настраивается в `Config.Middleware.Middlewares`
 - `LoggingMiddleware` записывает логи запросов
-- `RecoveryMiddleware` предотвращает крах при panic
+- `RecoveryMiddleware` предотвращает падение процесса при panic
 - `RequestIDMiddleware` генерирует уникальный ID для каждого запроса
 
 ## Шаг 6: Обработка ошибок и повторные попытки
@@ -202,13 +202,13 @@ if err != nil {
     if errors.As(err, &clientErr) {
         switch clientErr.Type {
         case httpc.ErrorTypeTimeout:
-            log.Println("Таймаут запроса, повторите позже")
+            log.Println("Тайм-аут запроса, повторите позже")
         case httpc.ErrorTypeNetwork:
             log.Println("Сетевая ошибка")
         case httpc.ErrorTypeTLS:
             log.Println("Ошибка TLS")
         default:
-            log.Printf("HTTP-ошибка: %s", clientErr.Error())
+            log.Printf("HTTP ошибка: %s", clientErr.Error())
         }
 
         if clientErr.IsRetryable() {
@@ -222,9 +222,9 @@ defer httpc.ReleaseResult(result)
 // Обработка HTTP-кодов состояния
 switch {
 case result.IsSuccess():
-    // 2xx — успех
+    // 2xx успех
 case result.StatusCode() == 401:
-    log.Println("Token истёк или недействителен")
+    log.Println("Токен истёк или недействителен")
 case result.IsClientError():
     log.Printf("Ошибка клиента: %d", result.StatusCode())
 case result.IsServerError():
@@ -244,11 +244,11 @@ cfg.Retry.EnableJitter = true
 ```
 
 Ключевые моменты:
-- HTTPC разделяет обработку сетевых ошибок и HTTP-кодов состояния
-- `ClientError` предоставляет классификацию ошибок и информацию о возможности повтора
-- По умолчанию автоматически повторяются коды 408, 429, 500, 502, 503, 504
+- HTTPC разделяет сетевые ошибки и HTTP-коды состояния
+- `ClientError` предоставляет классификацию ошибок и информацию о возможности повторной попытки
+- По умолчанию автоматически повторяются ошибки 408, 429, 500, 502, 503, 504
 
-## Шаг 7: Загрузка файлов (скачивание релиза)
+## Шаг 7: Загрузка файла (скачивание релиза)
 
 ```go
 dlCfg := httpc.DefaultDownloadConfig()
@@ -311,13 +311,13 @@ func fetchRepos(ctx context.Context, repos []string) error {
 }
 ```
 
-:::tip
-`PerformanceConfig()` предоставляет конфигурацию с большим пулом соединений, подходящую для высокопараллельных сценариев. Не забывайте правильно использовать `ReleaseResult` при параллельной работе.
+:::tip Совет
+`PerformanceConfig()` предоставляет конфигурацию с большим пулом соединений, подходящую для высоконагруженных сценариев. Не забывайте правильно использовать `ReleaseResult` при параллельных запросах.
 :::
 
 ## Полный пример
 
-Интегрированный код всех шагов:
+Полный код, объединяющий все шаги выше:
 
 ```go
 package main
@@ -365,7 +365,7 @@ func main() {
     if err != nil {
         var clientErr *httpc.ClientError
         if errors.As(err, &clientErr) && clientErr.IsRetryable() {
-            log.Fatal("Запрос не удался (после повторов):", err)
+            log.Fatal("Запрос не удался (после повторных попыток):", err)
         }
         log.Fatal(err)
     }
@@ -377,7 +377,7 @@ func main() {
         fmt.Printf("✅ %s\n", repo.FullName)
         fmt.Printf("   ⭐ %d | Язык: %s\n", repo.Stars, repo.Language)
         fmt.Printf("   %s\n", repo.Description)
-        fmt.Printf("   Время: %s (повторов %d)\n",
+        fmt.Printf("   Время: %s (повторных попыток: %d)\n",
             result.Meta.Duration, result.Meta.Attempts)
     }
 }
@@ -385,8 +385,8 @@ func main() {
 
 ## Что дальше
 
-- [Запросы и ответы](./request-response) — полный справочник параметров запроса
-- [Цепочки промежуточного ПО](./middleware-chain) — разработка пользовательского промежуточного ПО
+- [Запросы и ответы](./request-response) — полный справочник параметров запросов
+- [Цепочка промежуточного ПО](./middleware-chain) — разработка пользовательского промежуточного ПО
 - [Повторные попытки и отказоустойчивость](./retry-fault-tolerance) — продвинутые стратегии повторов
-- [Оптимизация производительности](../advanced/performance) — настройка для продакшена
-- [Контрольный список для продакшена](../security/production-checklist) — лучшие практики безопасности
+- [Оптимизация производительности](../advanced/performance) — настройка для production
+- [Контрольный список для production](../security/production-checklist) — лучшие практики безопасности

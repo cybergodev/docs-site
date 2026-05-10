@@ -1,6 +1,6 @@
 ---
 title: 빠른 시작 - HTTPC
-description: CyberGo HTTPC 보안 HTTP 클라이언트 라이브러리 5분 빠른 시작 가이드. Go 모듈 설치, GET 및 POST 요청 전송, 클라이언트 생성과 구성, JSON 응답 처리, 모든 요청 옵션 함수 사용법 및 ClientError 오류 처리를 다루는 기초 입문 가이드입니다.
+description: 5분 안에 HTTPC 보안 HTTP 클라이언트 라이브러리 빠르게 시작하기. 모듈 설치, GET/POST 요청, 클라이언트 구성, JSON 파싱 및 오류 처리 포함.
 ---
 
 # 빠른 시작
@@ -13,7 +13,7 @@ go get github.com/cybergodev/httpc
 
 ## 기본 요청
 
-클라이언트를 생성할 필요 없이 패키지 레벨 함수를 직접 사용하세요:
+클라이언트를 생성할 필요 없이 패키지 함수를 직접 사용합니다:
 
 ```go
 package main
@@ -41,7 +41,7 @@ func main() {
 
 ## 클라이언트 생성
 
-사용자 정의 구성이 필요할 때 클라이언트 인스턴스를 생성하세요:
+사용자 정의 구성이 필요할 때 클라이언트 인스턴스를 생성합니다:
 
 ```go
 client, err := httpc.New()
@@ -57,7 +57,7 @@ result, err := client.Get("https://httpbin.org/get")
 
 | 구성 | 용도 | 특징 |
 |------|------|------|
-| `DefaultConfig()` | 일반 시나리오 | 안전한 기본값, SSRF 방어 활성화 |
+| `DefaultConfig()` | 범용 시나리오 | 보안 기본값, SSRF 방어 활성화 |
 | `SecureConfig()` | 보안 민감 시나리오 | 자동 리다이렉트 비활성화, 엄격한 타임아웃 |
 | `PerformanceConfig()` | 높은 처리량 시나리오 | 대형 연결 풀, 긴 타임아웃, Cookie 활성화 |
 | `TestingConfig()` | 테스트 환경 | 보안 검사 및 HTTP/2 비활성화, 짧은 타임아웃 |
@@ -141,14 +141,14 @@ case result.IsServerError():
 }
 ```
 
-:::tip
-4xx/5xx는 `error`로 반환되지 않으며, `result.IsSuccess()` 등의 메서드로 확인해야 합니다. 자세한 내용은 [오류 처리](./advanced/error-handling)를 참조하세요.
+:::tip 사용 팁
+4xx/5xx는 `error`로 반환되지 않으며, `result.IsSuccess()` 등의 메서드로 확인해야 합니다. 자세한 내용은 [오류 처리](./advanced/error-handling)를 참조하십시오.
 :::
 
 ## 다음 단계
 
 - **[실전 튜토리얼](./guides/tutorial)** - 30분 만에 GitHub API 클라이언트 구축
-- **[요청과 응답](./guides/request-response)** - 완전한 요청 옵션 및 응답 처리
+- **[요청과 응답](./guides/request-response)** - 완전한 요청 옵션과 응답 처리
 - **[기본 예제](./examples/basic-usage)** - GET/POST/미들웨어 등 실제 사용 예
 - **[치트시트](./cheatsheet)** - 자주 사용하는 작업 빠른 참조
 - **[보안](./security/)** - 보안 모범 사례

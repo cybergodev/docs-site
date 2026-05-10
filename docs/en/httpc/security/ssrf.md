@@ -1,6 +1,6 @@
 ---
 title: SSRF Protection - HTTPC
-description: Detailed guide to HTTPC SSRF (Server-Side Request Forgery) protection, covering the default private IP and reserved address blocking mechanism, SSRFExemptCIDRs exempt CIDR configuration, DNS rebinding attack prevention, redirect whitelist control, and cloud environment metadata endpoint protection strategies.
+description: Detailed guide to HTTPC SSRF protection, covering private IP blocking mechanisms, exempt CIDR configuration, DNS rebinding prevention, redirect whitelisting, and cloud metadata endpoint protection.
 ---
 
 # SSRF Protection

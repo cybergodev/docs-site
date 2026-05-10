@@ -1,11 +1,11 @@
 ---
 title: Result - HTTPC
-description: "Полный справочник API типа ответа Result HTTPC, предоставляющий доступ к телу ответа через Body и RawBody, получение кода состояния через StatusCode, методы определения статуса IsSuccess и др., операции с Cookie, автоматический разбор JSON через Unmarshal и сохранение в файл через SaveToFile"
+description: Справочник API типа ответа Result HTTPC, предоставляющий доступ к телу ответа, получение кода состояния, определение статуса, операции с Cookie, разбор JSON и методы сохранения в файл.
 ---
 
 # Result
 
-Result инкапсулирует HTTP-ответ и метаданные запроса, предоставляя удобные методы доступа. Получается через `Client.Request()` или функции пакета.
+Result инкапсулирует HTTP-ответ и метаданные запроса, предоставляя удобные методы доступа. Получается через `Client.Request()` или функции уровня пакета.
 
 ```go
 type Result struct {
@@ -26,8 +26,8 @@ fmt.Println(result.StatusCode()) // 200
 fmt.Println(result.Body())       // {"id":1,"name":"test"}
 ```
 
-:::warning
-После использования необходимо вызвать `ReleaseResult(result)` для возврата в пул объектов. После вызова доступ к Result запрещён.
+:::warning Предупреждение
+После использования необходимо вызвать `ReleaseResult(result)` для возврата в пул объектов. После вызова нельзя обращаться к Result.
 :::
 
 ## Базовые методы
@@ -38,7 +38,7 @@ fmt.Println(result.Body())       // {"id":1,"name":"test"}
 func (r *Result) StatusCode() int
 ```
 
-Возвращает HTTP-код состояния. Nil-безопасен, возвращает 0.
+Возвращает HTTP-код состояния. Безопасен для nil, возвращает 0.
 
 ### Body
 
@@ -46,7 +46,7 @@ func (r *Result) StatusCode() int
 func (r *Result) Body() string
 ```
 
-Возвращает тело ответа в виде строки. Nil-безопасен, возвращает пустую строку.
+Возвращает тело ответа в виде строки. Безопасен для nil, возвращает пустую строку.
 
 ### RawBody
 
@@ -54,7 +54,7 @@ func (r *Result) Body() string
 func (r *Result) RawBody() []byte
 ```
 
-Возвращает тело ответа в виде исходных байт. Nil-безопасен, возвращает nil.
+Возвращает тело ответа в виде байтов. Безопасен для nil, возвращает nil.
 
 ### Proto
 
@@ -126,7 +126,7 @@ func (r *Result) ResponseCookies() []*http.Cookie
 func (r *Result) GetCookie(name string) *http.Cookie
 ```
 
-Получение Cookie ответа по имени. Если не найден — возвращает nil.
+Получает Cookie из ответа по имени, возвращает nil, если не найден.
 
 ```go
 cookie := result.GetCookie("session")
@@ -141,7 +141,7 @@ if cookie != nil {
 func (r *Result) HasCookie(name string) bool
 ```
 
-Проверка наличия Cookie с указанным именем в ответе.
+Проверяет наличие Cookie с указанным именем в ответе.
 
 ### RequestCookies
 
@@ -157,7 +157,7 @@ func (r *Result) RequestCookies() []*http.Cookie
 func (r *Result) GetRequestCookie(name string) *http.Cookie
 ```
 
-Получение Cookie запроса по имени.
+Получает Cookie запроса по имени.
 
 ### HasRequestCookie
 
@@ -165,7 +165,7 @@ func (r *Result) GetRequestCookie(name string) *http.Cookie
 func (r *Result) HasRequestCookie(name string) bool
 ```
 
-Проверка наличия Cookie с указанным именем в запросе.
+Проверяет наличие Cookie с указанным именем в запросе.
 
 ## Разбор JSON
 
@@ -175,12 +175,12 @@ func (r *Result) HasRequestCookie(name string) bool
 func (r *Result) Unmarshal(v any) error
 ```
 
-Разбор JSON-тела ответа в целевую переменную. Следует соглашениям `json.Unmarshal`.
+Разбирает тело JSON-ответа в целевую переменную. Следует соглашениям `json.Unmarshal`.
 
 | Ошибка | Условие возникновения |
-|--------|------------------------|
+|--------|---------------------|
 | `ErrResponseBodyEmpty` | Тело ответа пустое |
-| `ErrResponseBodyTooLarge` | Тело ответа превышает лимит разбора JSON в 50МБ |
+| `ErrResponseBodyTooLarge` | Тело ответа превышает лимит разбора JSON в 50 МБ |
 
 ```go
 var user User
@@ -198,10 +198,10 @@ fmt.Println(user.Name)
 func (r *Result) SaveToFile(filePath string) error
 ```
 
-Сохранение тела ответа в файл. Путь к файлу проходит проверку безопасности (защита от обхода каталогов, проверка символических ссылок, защита системных путей).
+Сохраняет тело ответа в файл. Путь к файлу проходит проверку безопасности (защита от обхода пути, проверка символических ссылок, защита системных путей).
 
 | Ошибка | Условие возникновения |
-|--------|------------------------|
+|--------|---------------------|
 | `ErrResponseBodyEmpty` | Тело ответа пустое |
 
 ```go
@@ -221,7 +221,7 @@ if err := result.SaveToFile("/tmp/data.csv"); err != nil {
 func (r *Result) String() string
 ```
 
-Возвращает читаемое строковое представление. Сенситивные заголовки автоматически маскируются, тело ответа обрезается до 200 символов.
+Возвращает читаемое строковое представление. Конфиденциальные заголовки автоматически маскируются, тело ответа обрезается до 200 символов.
 
 ```go
 result, _ := client.Get(url)
@@ -279,7 +279,7 @@ result, _ := client.Get(url)
 
 fmt.Println(result.Meta.Duration)      // 125ms
 fmt.Println(result.Meta.Attempts)       // 2 (1 повторная попытка)
-fmt.Println(result.Meta.RedirectCount)  // 1 (1 редирект)
+fmt.Println(result.Meta.RedirectCount)  // 1 (1 перенаправление)
 ```
 
 ## ReleaseResult
@@ -288,16 +288,16 @@ fmt.Println(result.Meta.RedirectCount)  // 1 (1 редирект)
 func ReleaseResult(r *Result)
 ```
 
-Возвращает Result в пул объектов. Первые 64КБ тела ответа безопасно очищаются, все внутренние данные обнуляются. После вызова доступ к любым полям или методам Result запрещён.
+Возвращает Result в пул объектов. Первые 64 КБ тела ответа безопасно очищаются, все внутренние данные обнуляются. После вызова нельзя обращаться к полям или методам Result.
 
 ```go
 result, _ := httpc.Get(url)
 defer httpc.ReleaseResult(result)
-// Использование result...
+// используйте result...
 ```
 
-## Смотрите также
+## См. также
 
-- [Функции пакета](./functions) — методы запросов для получения Result
-- [Параметры запроса](./options) — настройка поведения запросов
-- [Скачивание файлов](./download) — тип результата скачивания DownloadResult
+- [Функции пакета](./functions) - методы запросов для получения Result
+- [Параметры запросов](./options) - конфигурация поведения запросов
+- [Загрузка файлов](./download) - тип результата загрузки DownloadResult

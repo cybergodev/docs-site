@@ -1,9 +1,9 @@
 ---
-title: Interfaces - HTTPC
-description: HTTPC core interfaces complete API reference, including all method signatures of the Client full-featured client interface, the Doer basic execution interface, the DomainClienter domain client interface, the RetryPolicy retry strategy interface, and the MiddlewareFunc middleware function type definitions.
+title: Interface Definitions - HTTPC
+description: HTTPC core interface API reference, covering the Client full-featured interface, Doer execution interface, DomainClienter domain interface, RetryPolicy, and MiddlewareFunc definitions.
 ---
 
-# Interfaces
+# Interface Definitions
 
 ## Client
 
@@ -20,7 +20,7 @@ type Client interface {
     Head(url string, options ...RequestOption) (*Result, error)
     Options(url string, options ...RequestOption) (*Result, error)
 
-    // File download
+    // File downloads
     DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
     DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
     DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
@@ -82,7 +82,7 @@ type DomainClienter interface {
 }
 ```
 
-Domain-scoped client that automatically manages cookies and headers. See [Domain Client](./domain-client) and [Session Management](./session) for details.
+Domain-scoped client that automatically manages cookies and request headers. See [Domain Client](./domain-client) and [Session Management](./session) for details.
 
 ## RetryPolicy
 
@@ -94,19 +94,19 @@ type RetryPolicy interface {
 }
 ```
 
-Custom retry strategy interface.
+Custom retry policy interface.
 
 | Method | Description |
 |--------|-------------|
 | `ShouldRetry(resp, err, attempt)` | Determine whether to retry; `attempt` starts from 0 |
-| `GetDelay(attempt)` | Return the wait time before the next retry |
-| `MaxRetries()` | Return the maximum retry count |
+| `GetDelay(attempt)` | Returns the wait time before the next retry |
+| `MaxRetries()` | Returns the maximum retry count |
 
 :::warning Internal Type Limitation
-The `resp` parameter type `ResponseReader` in `ShouldRetry` is an internal interface (located in the `internal/types` package) and cannot be directly referenced by external code. Therefore, `RetryPolicy` can only be implemented within the same module. Most scenarios can be satisfied through `RetryConfig` configuration and the `WithMaxRetries` option. If you need a custom policy, implement the `RetryPolicy` interface within your project's internal package.
+The `resp` parameter type `ResponseReader` in `ShouldRetry` is an internal interface (located in the `internal/types` package) and cannot be directly referenced from external code. Therefore, `RetryPolicy` can only be implemented within the same module. Most scenarios can be satisfied through `RetryConfig` configuration and the `WithMaxRetries` option. If you need a custom policy, implement the `RetryPolicy` interface in an internal package within your project.
 :::
 
-The following example demonstrates the implementation pattern for `RetryPolicy`. Note that `ResponseReader` is an internal type -- this code can only compile within the `httpc` module:
+The following example demonstrates the `RetryPolicy` implementation pattern. Note that `ResponseReader` is an internal type -- this code can only compile within the `httpc` module:
 
 ```go
 // Note: ResponseReader is an internal type (internal/types package).
@@ -173,7 +173,7 @@ type RequestMutator interface {
 }
 ```
 
-Used in middleware, providing read-write access to the request. Composed from the internal interfaces `RequestReader` and `RequestWriter`.
+Used in middleware, providing read/write access to the request. Composed from internal interfaces `RequestReader` and `RequestWriter`.
 
 ### ResponseMutator
 
@@ -216,7 +216,7 @@ type ResponseMutator interface {
 }
 ```
 
-Used in middleware, providing read-write access to the response. Composed from the internal interfaces `ResponseReader` and `ResponseWriter`.
+Used in middleware, providing read/write access to the response. Composed from internal interfaces `ResponseReader` and `ResponseWriter`.
 
 ### Handler
 
@@ -232,12 +232,12 @@ Request handler function signature.
 type MiddlewareFunc func(Handler) Handler
 ```
 
-Middleware function signature, receiving the next Handler and returning a wrapped Handler.
+Middleware function signature that receives the next Handler and returns a wrapped Handler.
 
 ## Related Pages
 
 | Type | Detailed Reference |
-|------|--------------------|
+|------|-------------------|
 | `Result` / `RequestInfo` / `ResponseInfo` / `RequestMeta` | [Result](./result) |
 | `SessionManager` methods | [Session Management](./session) |
 | `DomainClient` implementation | [Domain Client](./domain-client) |

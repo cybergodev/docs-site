@@ -1,6 +1,6 @@
 ---
 title: パフォーマンス最適化 - HTTPC
-description: HTTPC パフォーマンス最適化ガイド。Default、Secure、Performance、Minimal の 4 つのプリセット設定のパフォーマンス特性の詳細な比較。ConnectionConfig 接続プールパラメータのチューニング、Result オブジェクトプール再利用戦略、一般的なパフォーマンスアンチパターンの識別と解決策を解説。
+description: HTTPC パフォーマンス最適化ガイド。4 種類のプリセット設定パフォーマンス比較、接続プールチューニング、Result オブジェクトプール再利用戦略とパフォーマンスアンチパターン解決策。
 ---
 
 # パフォーマンス最適化

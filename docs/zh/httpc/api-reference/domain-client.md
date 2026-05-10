@@ -1,6 +1,6 @@
 ---
 title: 域名客户端 - HTTPC
-description: HTTPC 域名客户端完整 API 参考，包含 NewDomain 创建域名作用域客户端、Get 与 Post 等七种 HTTP 方法、Download 系列四种下载方法、URL 自动拼接规则、会话头管理、Cookie 维护和 DomainClienter 接口定义。
+description: HTTPC 域名客户端 API 参考，包含 NewDomain 创建、七种 HTTP 方法、四种下载方法、URL 自动拼接、会话头与 Cookie 管理。
 ---
 
 # 域名客户端
@@ -16,23 +16,13 @@ func NewDomain(baseURL string, config ...*Config) (DomainClienter, error)
 创建域名作用域客户端。Cookie 自动启用。
 
 ```go
-dc, err := httpc.NewDomain("https://api.example.com")
-if err != nil {
-    log.Fatal(err)
-}
-defer dc.Close()
-```
-
-```go
 // 使用默认配置
 dc, err := httpc.NewDomain("https://api.example.com")
 if err != nil {
     log.Fatal(err)
 }
 defer dc.Close()
-```
 
-```go
 // 使用自定义配置
 cfg := httpc.DefaultConfig()
 cfg.Timeouts.Request = 60 * time.Second

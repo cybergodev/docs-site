@@ -1,6 +1,6 @@
 ---
 title: 中间件 - HTTPC
-description: HTTPC 中间件系统完整 API 参考，包含 Chain 链式组合函数、Recovery、Logging、RequestID、Timeout、Header、Metrics、Audit 八个内置中间件工厂函数、AuditMiddlewareWithConfig 配置化审计和 AuditEvent 审计事件类型定义。
+description: HTTPC 中间件系统 API 参考，包含 Chain 组合函数、八个内置中间件工厂函数、配置化审计与 AuditEvent 审计事件类型定义。
 ---
 
 # 中间件

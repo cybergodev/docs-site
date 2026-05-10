@@ -1,6 +1,6 @@
 ---
 title: Production Checklist - HTTPC
-description: HTTPC production deployment security checklist covering TLS version and certificate configuration review, SSRF protection policy verification, timeout and response body size limit settings, retry strategy selection and optimization, defer Close resource management, and connection pool metrics monitoring for comprehensive pre-launch security auditing.
+description: Production environment security checklist for HTTPC, covering TLS configuration verification, SSRF protection confirmation, timeout and size limits, retry strategies, resource cleanup, and monitoring auditing.
 ---
 
 # Production Checklist

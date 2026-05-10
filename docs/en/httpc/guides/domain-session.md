@@ -1,11 +1,11 @@
 ---
 title: Domain Client and Sessions - HTTPC
-description: Complete guide to HTTPC domain clients and session management, covering NewDomain for creating domain-scoped clients, automatic URL joining and path merging, session header and cookie auto-maintenance, thread-safe SessionManager storage, and security configuration best practices.
+description: Guide to HTTPC domain client and session management, covering NewDomain creation, URL auto-concatenation, session headers, automatic Cookie management, and security configuration.
 ---
 
 # Domain Client and Sessions
 
-A DomainClient is a session management client for a specific domain that automatically maintains cookies and request headers.
+The domain client (DomainClient) is a session management client for a specific domain, automatically maintaining cookies and request headers.
 
 ## Creating a Domain Client
 
@@ -16,7 +16,7 @@ if err != nil {
 }
 defer dc.Close()
 
-// Cookies are automatically enabled
+// Cookies automatically enabled
 dc.SetHeader("Authorization", "Bearer "+token)
 
 // Send requests using relative paths
@@ -30,7 +30,7 @@ result, err := dc.Get("/users")
 ## Session Header Management
 
 ```go
-// Set session headers (automatically included in all subsequent requests)
+// Set session headers (automatically included with all subsequent requests)
 dc.SetHeader("Authorization", "Bearer "+token)
 dc.SetHeader("Accept", "application/json")
 
@@ -52,13 +52,13 @@ headers := dc.GetHeaders()
 ## Cookie Management
 
 ```go
-// Set Cookie
+// Set cookie
 dc.SetCookie(&http.Cookie{Name: "session", Value: "abc123"})
 
 // Batch set
 dc.SetCookies([]*http.Cookie{
     {Name: "session", Value: "abc123"},
-    {Name: "lang", Value: "zh"},
+    {Name: "lang", Value: "en"},
 })
 
 // Response cookies are automatically captured
@@ -93,18 +93,18 @@ result, _ := dc.Options("/users")
 // With context
 result, _ := dc.Request(ctx, "GET", "/users")
 
-// Absolute URL (skips base URL joining)
+// Absolute URL (skips base URL concatenation)
 result, _ := dc.Get("https://other-api.com/data")
 ```
 
 ## Session Access
 
 ```go
-// Get basic information
+// Get basic info
 dc.URL()     // "https://api.example.com"
 dc.Domain()  // "api.example.com"
 
-// Access the underlying SessionManager
+// Access underlying SessionManager
 session := dc.Session()
 if err := session.SetHeader("X-Trace-ID", traceID); err != nil {
     log.Fatal(err)
@@ -113,7 +113,7 @@ if err := session.SetHeader("X-Trace-ID", traceID); err != nil {
 
 ## Cookie Security Validation
 
-You can configure a cookie security policy to only accept cookies that meet security standards:
+You can configure cookie security policies to only accept cookies that meet security standards:
 
 ```go
 dc, _ := httpc.NewDomain("https://api.example.com")
@@ -123,7 +123,7 @@ session := dc.Session()
 session.SetCookieSecurity(httpc.StrictCookieSecurityConfig())
 // Requires: Secure=true, HttpOnly=true, SameSite=Strict
 
-// Cookies that don't meet security requirements cause SetCookie to return an error
+// Cookies that don't meet security requirements will cause SetCookie to return an error
 if err := dc.SetCookie(&http.Cookie{
     Name:  "insecure",
     Value: "test",

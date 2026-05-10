@@ -1,6 +1,6 @@
 ---
 title: 文件下载 - HTTPC
-description: HTTPC 文件下载 API 完整参考，涵盖 DownloadFile 等四个下载函数签名与参数说明、DownloadConfig 配置选项详解、DownloadProgressCallback 进度回调、ChecksumAlgorithm 校验枚举和多层路径遍历防护机制。
+description: HTTPC 文件下载 API 参考，涵盖四个下载函数签名、DownloadConfig 配置、进度回调、校验枚举与路径遍历防护机制。
 ---
 
 # 文件下载

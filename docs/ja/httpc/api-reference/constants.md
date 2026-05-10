@@ -1,6 +1,6 @@
 ---
 title: 定数と型 - HTTPC
-description: HTTPC 定数と補助型の完全 API リファレンス。BodyKind の 6 種類のリクエストボディ型列挙定数と自動検出ルール、FormData と FileData マルチパートフォームアップロード補助型、AuditEvent 監査イベント構造体、SourceIPKey と UserIDKey コンテキストキー定義を含みます。
+description: HTTPC 定数と補助型 API リファレンス。BodyKind リクエストボディ列挙、FormData/FileData アップロード型、AuditEvent 監査構造体とコンテキストキー定義。
 ---
 
 # 定数と型
