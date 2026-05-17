@@ -288,7 +288,7 @@ fmt.Println(result.Meta.RedirectCount)  // 1（跟随了 1 次重定向）
 func ReleaseResult(r *Result)
 ```
 
-将 Result 归还对象池。响应体前 64KB 会被安全清除，所有内部数据清零，调用后不可再访问 Result 的任何字段或方法。
+将 Result 归还对象池。响应体数据会被安全清除（整块清零防止敏感数据残留），所有内部数据清零，调用后不可再访问 Result 的任何字段或方法。
 
 ```go
 result, _ := httpc.Get(url)

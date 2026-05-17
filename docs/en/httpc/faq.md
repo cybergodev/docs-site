@@ -78,7 +78,7 @@ case result.IsServerError():
 
 ## Why do I need to call ReleaseResult?
 
-`ReleaseResult` returns the Result to the object pool, reducing GC pressure. It also clears sensitive data (first 64KB) from the response body, preventing information leakage in the object pool. The performance improvement is significant in high-concurrency scenarios.
+`ReleaseResult` returns the Result to the object pool, reducing GC pressure. It zeroes the entire response body backing array to prevent sensitive data leakage in the object pool. The performance improvement is significant in high-concurrency scenarios.
 
 ```go
 result, _ := client.Get(url)

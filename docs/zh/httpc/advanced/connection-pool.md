@@ -27,7 +27,7 @@ cfg.Timeouts.IdleConn = 120 * time.Second // 空闲连接保持时间
 | `IdleConn` | 90s | 空闲连接超时，超时后关闭 |
 | `Dial` | 10s | 建立连接超时 |
 | `TLSHandshake` | 10s | TLS 握手超时 |
-| `ResponseHeader` | 30s | 等待响应头超时 |
+| `ResponseHeader` | 0 | 禁用（使用 Request 超时） |
 
 ### 场景推荐
 

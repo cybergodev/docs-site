@@ -1,6 +1,6 @@
 ---
 title: Result - HTTPC
-description: HTTPC Result response type API reference, providing response body access, status code retrieval, status checks, cookie operations, JSON parsing, and file saving methods.
+description: HTTPC Result response type API reference covering body access, status checks, cookie operations, JSON parsing, and file saving methods.
 ---
 
 # Result
@@ -288,7 +288,7 @@ fmt.Println(result.Meta.RedirectCount)  // 1 (followed one redirect)
 func ReleaseResult(r *Result)
 ```
 
-Returns the Result to the object pool. The first 64KB of response body is securely cleared, all internal data is zeroed, and no fields or methods of the Result can be accessed after calling.
+Returns the Result to the object pool. Response body data is securely cleared (entire backing array zeroed to prevent sensitive data leakage), all internal data is zeroed, and no fields or methods of the Result can be accessed after calling.
 
 ```go
 result, _ := httpc.Get(url)

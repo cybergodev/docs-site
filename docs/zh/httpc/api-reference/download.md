@@ -108,6 +108,11 @@ type DownloadResult struct {
     Resumed         bool
     ResponseCookies []*http.Cookie
     ActualChecksum  string
+    Proto           string
+    ResponseHeaders http.Header
+    RequestURL      string
+    RequestMethod   string
+    RequestHeaders  http.Header
 }
 ```
 
@@ -122,6 +127,11 @@ type DownloadResult struct {
 | `Resumed` | `bool` | 是否为续传完成 |
 | `ResponseCookies` | `[]*http.Cookie` | 响应 Cookie |
 | `ActualChecksum` | `string` | 实际计算的校验和 |
+| `Proto` | `string` | HTTP 协议版本（如 `"HTTP/1.1"`、`"HTTP/2.0"`） |
+| `ResponseHeaders` | `http.Header` | 响应头 |
+| `RequestURL` | `string` | 实际请求 URL |
+| `RequestMethod` | `string` | 请求 HTTP 方法 |
+| `RequestHeaders` | `http.Header` | 请求头 |
 
 ```go
 fmt.Printf("下载完成: %s, 耗时 %v, 平均速度 %s\n",

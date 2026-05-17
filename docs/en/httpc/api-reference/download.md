@@ -1,6 +1,6 @@
 ---
 title: File Download - HTTPC
-description: HTTPC file download API reference, covering four download function signatures, DownloadConfig configuration, progress callbacks, checksum enums, and path traversal protection mechanisms.
+description: HTTPC file download API reference covering download functions, DownloadConfig, progress callbacks, checksum verification, and path security.
 ---
 
 # File Download
@@ -108,6 +108,11 @@ type DownloadResult struct {
     Resumed         bool
     ResponseCookies []*http.Cookie
     ActualChecksum  string
+    Proto           string
+    ResponseHeaders http.Header
+    RequestURL      string
+    RequestMethod   string
+    RequestHeaders  http.Header
 }
 ```
 
@@ -122,6 +127,11 @@ type DownloadResult struct {
 | `Resumed` | `bool` | Whether resumed from breakpoint |
 | `ResponseCookies` | `[]*http.Cookie` | Response cookies |
 | `ActualChecksum` | `string` | Actually computed checksum |
+| `Proto` | `string` | HTTP protocol version (e.g. `"HTTP/1.1"`, `"HTTP/2.0"`) |
+| `ResponseHeaders` | `http.Header` | Response headers |
+| `RequestURL` | `string` | Actual request URL |
+| `RequestMethod` | `string` | Request HTTP method |
+| `RequestHeaders` | `http.Header` | Request headers |
 
 ```go
 fmt.Printf("Download complete: %s, duration %v, average speed %s\n",

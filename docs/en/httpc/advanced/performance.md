@@ -9,7 +9,7 @@ description: Guide to HTTPC performance optimization, comparing four preset conf
 
 | Metric | Default | Secure | Performance | Minimal |
 |--------|---------|--------|-------------|---------|
-| Request timeout | 30s | 15s | 60s | 30s |
+| Request timeout | 180s | 15s | 60s | 180s |
 | MaxIdleConns | 50 | 20 | 100 | 10 |
 | MaxConnsPerHost | 10 | 5 | 20 | 2 |
 | MaxRetries | 3 | 1 | 3 | 0 |

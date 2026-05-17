@@ -27,7 +27,7 @@ cfg.Timeouts.IdleConn = 120 * time.Second // Idle connection keep-alive duration
 | `IdleConn` | 90s | Idle connection timeout, closed after expiry |
 | `Dial` | 10s | Connection establishment timeout |
 | `TLSHandshake` | 10s | TLS handshake timeout |
-| `ResponseHeader` | 30s | Response header wait timeout |
+| `ResponseHeader` | 0 | Disabled (uses Request timeout) |
 
 ### Scenario Recommendations
 

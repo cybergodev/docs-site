@@ -1,6 +1,6 @@
 ---
 title: Configuration - HTTPC
-description: HTTPC configuration system API reference, covering the Config main struct and its five sub-configuration groups, five preset configuration functions, and the Validate method.
+description: HTTPC configuration API reference covering the Config struct, five sub-config groups, five preset functions, and the Validate method.
 ---
 
 # Configuration
@@ -30,23 +30,27 @@ client, err := httpc.New(cfg)
 
 ```go
 type TimeoutConfig struct {
-    Request        time.Duration // Total request timeout (including retries), default 30s
+    Request        time.Duration // Total request timeout (including retries), default 180s
     Dial           time.Duration // TCP connection timeout, default 10s
     TLSHandshake   time.Duration // TLS handshake timeout, default 10s
-    ResponseHeader time.Duration // Wait for response header timeout, default 30s
+    ResponseHeader time.Duration // Wait for response header timeout, default 0 (disabled, uses context timeout)
     IdleConn       time.Duration // Idle connection keep-alive duration, default 90s
 }
 ```
 
 | Field | Default | Maximum |
 |-------|---------|---------|
-| Request | 30s | 30min |
+| Request | 180s | 30min |
 | Dial | 10s | 30min |
 | TLSHandshake | 10s | 30min |
-| ResponseHeader | 30s | 30min |
+| ResponseHeader | 0 | 30min |
 | IdleConn | 90s | 30min |
 
 Setting to 0 means no timeout (not recommended for production).
+
+:::tip ResponseHeader Design
+`ResponseHeader` defaults to 0 (disabled). In this case, `Timeouts.Request` or `WithTimeout()` serves as the sole timeout mechanism, ensuring `WithTimeout()` has full control over request duration. This design is essential for AI APIs and long-polling endpoints. Only set to a positive value when you need a hard transport-level cap (e.g., defense-in-depth against Slowloris attacks), but be aware this will override `WithTimeout`.
+:::
 
 ## ConnectionConfig
 
@@ -119,6 +123,7 @@ type RetryConfig struct {
     Delay         time.Duration // Initial retry delay, default 1s
     BackoffFactor float64       // Backoff multiplier, default 2.0
     EnableJitter  bool          // Enable jitter, default true
+    MaxRetryDelay time.Duration // Max retry delay cap, default 30s
     CustomPolicy  RetryPolicy   // Custom retry policy
 }
 ```
@@ -128,8 +133,9 @@ type RetryConfig struct {
 | MaxRetries | 3 | 0-10 |
 | Delay | 1s | 0-30min |
 | BackoffFactor | 2.0 | 1.0-10.0 |
+| MaxRetryDelay | 30s | 0-30min |
 
-Retry delay formula: `Delay * BackoffFactor^attempt + jitter`
+Retry delay formula: `min(Delay * BackoffFactor^attempt + jitter, MaxRetryDelay)`
 
 ## MiddlewareConfig
 
@@ -166,7 +172,7 @@ Security-first configuration. Shorter timeouts, auto-redirects disabled, strict 
 | Request timeout | 15s |
 | Dial timeout | 5s |
 | TLSHandshake timeout | 5s |
-| ResponseHeader timeout | 10s |
+| ResponseHeader timeout | 10s (Slowloris defense) |
 | IdleConn timeout | 30s |
 | MaxIdleConns | 20 |
 | MaxConnsPerHost | 5 |
@@ -193,7 +199,7 @@ PerformanceConfig keeps `ValidateURL` and `ValidateHeaders` enabled for security
 | Request timeout | 60s |
 | Dial timeout | 15s |
 | TLSHandshake timeout | 15s |
-| ResponseHeader timeout | 60s |
+| ResponseHeader timeout | 0 (disabled, uses Request timeout) |
 | IdleConn timeout | 120s |
 | MaxIdleConns | 100 |
 | MaxConnsPerHost | 20 |
@@ -218,7 +224,7 @@ Test environment configuration. Disables security checks, short timeouts.
 |---------------|-------|
 | Dial timeout | 5s |
 | TLSHandshake timeout | 5s |
-| ResponseHeader timeout | 10s |
+| ResponseHeader timeout | 0 (disabled, uses Request timeout) |
 | IdleConn timeout | 30s |
 | MaxIdleConns | 10 |
 | MaxConnsPerHost | 5 |
@@ -249,7 +255,7 @@ Lightweight configuration. Disables retries and redirects, minimal connection po
 |---------------|-------|
 | Dial timeout | 5s |
 | TLSHandshake timeout | 5s |
-| ResponseHeader timeout | 10s |
+| ResponseHeader timeout | 0 (disabled, uses Request timeout) |
 | IdleConn timeout | 30s |
 | MaxIdleConns | 10 |
 | MaxConnsPerHost | 2 |
@@ -290,7 +296,7 @@ Returns a safe string representation. ProxyURL credentials are sanitized, TLSCon
 ```go
 cfg := httpc.DefaultConfig()
 fmt.Println(cfg.String())
-// Config{Timeouts:{Request: 30s, ...}, Security:{TLSConfig: <default>, ...}}
+// Config{Timeouts:{Request: 3m0s, ...}, Security:{TLSConfig: <default>, ...}}
 ```
 
 ## Cookie Security

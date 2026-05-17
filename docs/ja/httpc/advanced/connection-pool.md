@@ -1,45 +1,45 @@
 ---
-title: 接続プールとプロキシ - HTTPC
-description: HTTPC 接続プールとプロキシ設定ガイド。接続プールパラメータチューニング、HTTP と SOCKS5 プロキシ、DoH カスタムリゾルバー、アイドル接続管理戦略。
+title: コネクションプールとプロキシ - HTTPC
+description: HTTPC コネクションプールとプロキシ設定ガイド。コネクションプールパラメータのチューニング、HTTP・SOCKS5 プロキシ、DoH カスタムリゾルバー、アイドル接続管理戦略を詳解。
 ---
 
-# 接続プールとプロキシ
+# コネクションプールとプロキシ
 
-## 接続プール設定
+## コネクションプール設定
 
-接続プールは HTTP クライアントのパフォーマンスにおける重要な要素です。HTTPC は `ConnectionConfig` で接続プールを管理します。
+コネクションプールは HTTP クライアントのパフォーマンスにおける重要な要素です。HTTPC は `ConnectionConfig` を使用してコネクションプールを管理します。
 
 ```go
 cfg := httpc.DefaultConfig()
 
-// 接続プールパラメータ
+// コネクションプールパラメータ
 cfg.Connection.MaxIdleConns = 100         // グローバル最大アイドル接続数
-cfg.Connection.MaxConnsPerHost = 20       // ホストあたりの最大接続数
+cfg.Connection.MaxConnsPerHost = 20       // ホストごとの最大接続数
 cfg.Timeouts.IdleConn = 120 * time.Second // アイドル接続の保持時間
 ```
 
-### パラメータの説明
+### パラメータ説明
 
 | パラメータ | デフォルト | 説明 |
 |------|------|------|
 | `MaxIdleConns` | 50 | グローバル最大アイドル接続数 |
-| `MaxConnsPerHost` | 10 | ホストあたりの最大接続数（アクティブ+アイドル含む） |
+| `MaxConnsPerHost` | 10 | ホストごとの最大接続数（アクティブ+アイドル） |
 | `IdleConn` | 90s | アイドル接続タイムアウト、超過すると閉じられる |
 | `Dial` | 10s | 接続確立タイムアウト |
 | `TLSHandshake` | 10s | TLS ハンドシェイクタイムアウト |
-| `ResponseHeader` | 30s | レスポンスヘッダー待機タイムアウト |
+| `ResponseHeader` | 0 | 無効（Request タイムアウトを使用） |
 
-### シナリオ別の推奨
+### シナリオ別おすすめ設定
 
 | シナリオ | MaxIdleConns | MaxConnsPerHost | IdleConn |
 |------|-------------|-----------------|----------|
-| 高同時 API | 100 | 20 | 120s |
-| 通常のサービス | 50 | 10 | 90s |
+| 高並行 API | 100 | 20 | 120s |
+| 一般サービス | 50 | 10 | 90s |
 | 低頻度リクエスト | 10 | 2 | 30s |
 | マイクロサービス内部 | 50 | 10 | 60s |
 
-:::tip ヒント
-`MaxConnsPerHost` はアクティブ接続とアイドル接続の両方を含みます。この制限を超える新しいリクエストは、接続が解放されるまでキューで待機します。
+:::tip
+`MaxConnsPerHost` にはアクティブ接続とアイドル接続が含まれます。この制限を超える新しいリクエストは、接続が解放されるまでキューで待機します。
 :::
 
 ## プロキシ設定
@@ -60,8 +60,8 @@ cfg := httpc.DefaultConfig()
 cfg.Connection.ProxyURL = "http://user:password@proxy.example.com:8080"
 ```
 
-:::tip ヒント
-`Config.String()` メソッドは、プロキシ URL 内のユーザー名とパスワードを自動的にマスクします。
+:::tip
+`Config.String()` メソッドは、プロキシ URL 内のユーザー名とパスワードを自動的にマスキングします。
 :::
 
 ### SOCKS5 プロキシ
@@ -71,7 +71,7 @@ cfg := httpc.DefaultConfig()
 cfg.Connection.ProxyURL = "socks5://proxy.example.com:1080"
 ```
 
-### システムプロキシの自動検出
+### システムプロキシ自動検出
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -79,19 +79,19 @@ cfg.Connection.EnableSystemProxy = true
 
 // 自動検出:
 // - Windows: レジストリ Internet Settings
-// - macOS: システム環境設定のネットワークプロキシ
+// - macOS: システム環境設定ネットワークプロキシ
 // - Linux: 環境変数 HTTP_PROXY / HTTPS_PROXY
 ```
 
-プロキシの優先順位：
+プロキシ優先度：
 
 1. `ProxyURL`（手動指定、最優先）
 2. `EnableSystemProxy`（システムプロキシ検出）
-3. 直接接続（プロキシなし）
+3. ダイレクト接続（プロキシなし）
 
 ## DNS-over-HTTPS
 
-DoH を有効にすると、DNS 解決遅延の削減と DNS ハイジャックの防止ができます：
+DoH を有効にすると、DNS 解析遅延の削減と DNS ハイジャック防止に効果があります：
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -99,29 +99,29 @@ cfg.Connection.EnableDoH = true
 cfg.Connection.DoHCacheTTL = 5 * time.Minute
 ```
 
-デフォルトの DoH プロバイダー（優先順位順）：
+デフォルト DoH プロバイダー（優先度順）：
 
 | プロバイダー | アドレス | 説明 |
 |--------|------|------|
-| Cloudflare | `1.1.1.1/dns-query` | 最速、プライバシー重視 |
+| Cloudflare | `1.1.1.1/dns-query` | 最速、プライバシー優先 |
 | Google | `8.8.8.8/resolve` | グローバルカバレッジ |
 | AliDNS | `223.5.5.5/resolve` | 中国地域最適化 |
 
-:::tip ヒント
-DoH を有効にすると、DNS 解決結果は `DoHCacheTTL` の間キャッシュされます。すべての DoH プロバイダーが利用できない場合、システム DNS にフォールバックします。
+:::tip
+DoH 有効時、DNS 解析結果は `DoHCacheTTL` の間キャッシュされます。すべての DoH プロバイダーが利用できない場合、システム DNS にフォールバックします。
 :::
 
 ## HTTP/2
 
-デフォルトで HTTP/2 が有効（TLS が必要）：
+デフォルトで HTTP/2 が有効です（TLS が必要）：
 
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Connection.EnableHTTP2 = false // HTTP/2 を無効化
 ```
 
-HTTP/2 の機能：
-- 多重化：単一接続で複数の同時リクエストを処理
+HTTP/2 の特徴：
+- 多重化：単一接続で複数の並行リクエストを処理
 - ヘッダー圧縮：重複ヘッダーの転送を削減
 - サーバープッシュ
 
@@ -135,9 +135,9 @@ if err != nil {
 defer httpc.ReleaseResult(result) // オブジェクトプールに返却
 ```
 
-高同時接続シナリオでは、`ReleaseResult` によって GC 負荷を大幅に軽減できます。
+高並行シナリオでは、`ReleaseResult` により GC 負荷を大幅に軽減できます。
 
-## 同時リクエストパターン
+## 並行リクエストパターン
 
 ```go
 func fetchAll(ctx context.Context, urls []string) ([]*httpc.Result, error) {
@@ -165,15 +165,15 @@ func fetchAll(ctx context.Context, urls []string) ([]*httpc.Result, error) {
 }
 ```
 
-## 接続プールのよくある問題
+## コネクションプールのよくある問題
 
 | 問題 | 原因 | 解決策 |
 |------|------|----------|
-| 大量の TIME_WAIT | アイドル接続タイムアウトが短すぎる | `IdleConn` タイムアウトを増加 |
-| 接続拒否 | ホストあたりの接続数が不足 | `MaxConnsPerHost` を増加 |
-| リクエストがキューで待機 | 接続プールが小さすぎる | `MaxIdleConns` を増加 |
+| 大量の TIME_WAIT | アイドル接続タイムアウトが短すぎる | `IdleConn` タイムアウトを増やす |
+| 接続拒否 | ホストごとの接続数が不足 | `MaxConnsPerHost` を増やす |
+| リクエストがキューで待機 | コネクションプールが小さすぎる | `MaxIdleConns` を増やす |
 
-完全なパフォーマンスアンチパターンと最適化の提案は[パフォーマンス最適化](./performance)を参照してください。
+パフォーマンスのアンチパターンと最適化の提案の詳細は [パフォーマンス最適化](./performance) をご覧ください。
 
 ## 次のステップ
 

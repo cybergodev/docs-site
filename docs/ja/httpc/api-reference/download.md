@@ -1,6 +1,6 @@
 ---
 title: ファイルダウンロード - HTTPC
-description: HTTPC ファイルダウンロード API リファレンス。4 つのダウンロード関数シグネチャ、DownloadConfig 設定、プログレスコールバック、チェックサム列挙型とパストラバーサル防護メカニズム。
+description: HTTPC ファイルダウンロード API リファレンス。4 つのダウンロード関数シグネチャ、DownloadConfig 設定、プログレスコールバック、チェックサム列挙型、パストラバーサル防護メカニズムを解説。
 ---
 
 # ファイルダウンロード
@@ -25,7 +25,7 @@ result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip
 func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-設定付きダウンロード。レジュームダウンロードと進捗コールバックをサポートします。
+設定付きダウンロード。レジュームダウンロードとプログレスコールバックをサポートします。
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -70,10 +70,10 @@ func DefaultDownloadConfig() *DownloadConfig
 | フィールド | 型 | デフォルト | 説明 |
 |------|------|------|------|
 | `FilePath` | `string` | - | 保存パス（必須） |
-| `ProgressCallback` | `DownloadProgressCallback` | `nil` | 進捗コールバック関数 |
+| `ProgressCallback` | `DownloadProgressCallback` | `nil` | プログレスコールバック関数 |
 | `Overwrite` | `bool` | `false` | 既存ファイルを上書き |
 | `ResumeDownload` | `bool` | `false` | レジュームダウンロードを有効化 |
-| `Checksum` | `string` | `""` | 期待されるチェックサム値 |
+| `Checksum` | `string` | `""` | 期待するチェックサム値 |
 | `ChecksumAlgorithm` | `ChecksumAlgorithm` | `"sha256"` | チェックサムアルゴリズム |
 
 ### DownloadProgressCallback
@@ -108,6 +108,11 @@ type DownloadResult struct {
     Resumed         bool
     ResponseCookies []*http.Cookie
     ActualChecksum  string
+    Proto           string
+    ResponseHeaders http.Header
+    RequestURL      string
+    RequestMethod   string
+    RequestHeaders  http.Header
 }
 ```
 
@@ -122,6 +127,11 @@ type DownloadResult struct {
 | `Resumed` | `bool` | レジューム完了かどうか |
 | `ResponseCookies` | `[]*http.Cookie` | レスポンス Cookie |
 | `ActualChecksum` | `string` | 実際に計算されたチェックサム |
+| `Proto` | `string` | HTTP プロトコルバージョン（例：`"HTTP/1.1"`、`"HTTP/2.0"`） |
+| `ResponseHeaders` | `http.Header` | レスポンスヘッダー |
+| `RequestURL` | `string` | 実際のリクエスト URL |
+| `RequestMethod` | `string` | リクエスト HTTP メソッド |
+| `RequestHeaders` | `http.Header` | リクエストヘッダー |
 
 ```go
 fmt.Printf("ダウンロード完了: %s, 所要時間 %v, 平均速度 %s\n",
@@ -155,19 +165,19 @@ cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 
 result, err := httpc.DownloadWithOptions(url, cfg)
 if err != nil {
-    // チェックサム不一致時、エラーを返しダウンロード済みファイルを自動削除
+    // チェックサムが一致しない場合、エラーを返しダウンロード済みファイルを自動削除
     log.Fatal(err)
 }
 fmt.Println("チェックサム:", result.ActualChecksum)
 ```
 
 :::tip
-`Checksum` を設定すると、ダウンロード完了時に自動的にファイルの整合性が検証されます。検証失敗時はファイルが自動削除されエラーが返されるため、手動での比較は不要です。
+`Checksum` を設定すると、ダウンロード完了時に自動的にファイルの整合性を検証します。検証失敗時はファイルを自動削除してエラーを返すため、手動での比較は不要です。
 :::
 
 ## セキュリティ保護
 
-ファイルダウンロードには多層セキュリティ保護が組み込まれています：
+ファイルダウンロードには多層的なセキュリティ保護が組み込まれています：
 
 | 保護 | 説明 |
 |------|------|
@@ -191,11 +201,11 @@ if result.Resumed {
 }
 ```
 
-レジュームメカニズム：
+レジュームの仕組み：
 1. ローカルファイルサイズを確認 → `Range` リクエストのオフセットとして使用
 2. サーバーが 206 (Partial Content) を返す → 追記書き込み
 3. サーバーが 416 (Range Not Satisfiable) を返す → エラーを返す
-4. サーバーが 200 を返す（Range 非対応）→ エラーを返す（ローカルの部分ファイルが上書きされるのを防止）
+4. サーバーが 200 を返す（Range 非対応） → エラーを返す（ローカルの部分ファイルが上書きされるのを保護）
 
 ## 関連項目
 

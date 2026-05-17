@@ -1,6 +1,6 @@
 ---
 title: Конфигурация - HTTPC
-description: Справочник API системы конфигурации HTTPC, охватывающий основную структуру Config и все поля пяти подгрупп конфигурации, пять функций предустановок и метод валидации Validate.
+description: Справочник API системы конфигурации HTTPC — описание всех полей основной структуры Config и её пяти подгрупп конфигурации, пяти функций предустановленных конфигураций и метода валидации Validate.
 ---
 
 # Конфигурация
@@ -17,7 +17,7 @@ type Config struct {
 }
 ```
 
-Основная структура конфигурации. Получите безопасные значения по умолчанию через `DefaultConfig()`.
+Основная структура конфигурации. Безопасные значения по умолчанию можно получить через `DefaultConfig()`.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -30,43 +30,47 @@ client, err := httpc.New(cfg)
 
 ```go
 type TimeoutConfig struct {
-    Request        time.Duration // Общий тайм-аут запроса (включая повторы), по умолчанию 30с
-    Dial           time.Duration // Тайм-аут TCP-соединения, по умолчанию 10с
-    TLSHandshake   time.Duration // Тайм-аут TLS-рукопожатия, по умолчанию 10с
-    ResponseHeader time.Duration // Тайм-аут ожидания заголовков ответа, по умолчанию 30с
-    IdleConn       time.Duration // Время удержания простаивающих соединений, по умолчанию 90с
+    Request        time.Duration // Общий таймаут запроса (включая повторные попытки), по умолчанию 180s
+    Dial           time.Duration // Таймаут TCP-соединения, по умолчанию 10s
+    TLSHandshake   time.Duration // Таймаут TLS-рукопожатия, по умолчанию 10s
+    ResponseHeader time.Duration // Таймаут ожидания заголовков ответа, по умолчанию 0 (отключено, зависит от таймаута контекста)
+    IdleConn       time.Duration // Время жизни простаивающего соединения, по умолчанию 90s
 }
 ```
 
-| Поле | Значение по умолчанию | Максимум |
-|------|---------------------|----------|
-| Request | 30с | 30 мин |
-| Dial | 10с | 30 мин |
-| TLSHandshake | 10с | 30 мин |
-| ResponseHeader | 30с | 30 мин |
-| IdleConn | 90с | 30 мин |
+| Поле | По умолчанию | Максимум |
+|------|--------|--------|
+| Request | 180s | 30min |
+| Dial | 10s | 30min |
+| TLSHandshake | 10s | 30min |
+| ResponseHeader | 0 | 30min |
+| IdleConn | 90s | 30min |
 
-Установка 0 означает отсутствие тайм-аута (не рекомендуется для production).
+Установка значения 0 означает отсутствие таймаута (не рекомендуется для production).
+
+:::tip Совет Проектирование ResponseHeader
+`ResponseHeader` по умолчанию равен 0 (отключено). В этом случае используется `Timeouts.Request` или `WithTimeout()` как единственный механизм таймаута, что обеспечивает `WithTimeout()` полный контроль над длительностью запроса. Такая схема подходит для сценариев, требующих увеличенного времени ожидания ответа, таких как AI API и long polling. Устанавливайте положительное значение только при необходимости жёсткого ограничения на транспортном уровне (например, для защиты от атак Slowloris), но учтите, что это переопределит `WithTimeout`.
+:::
 
 ## ConnectionConfig
 
 ```go
 type ConnectionConfig struct {
-    MaxIdleConns           int           // Глобальное макс. простаивающих соединений, по умолчанию 50
-    MaxConnsPerHost        int           // Макс. соединений на хост, по умолчанию 10
+    MaxIdleConns           int           // Глобальный максимум простаивающих соединений, по умолчанию 50
+    MaxConnsPerHost        int           // Максимум соединений на хост, по умолчанию 10
     ProxyURL               string        // Адрес прокси, например "http://proxy:8080"
-    EnableSystemProxy      bool          // Автоопределение системного прокси, по умолчанию false
+    EnableSystemProxy      bool          // Автоматическое определение системного прокси, по умолчанию false
     EnableHTTP2            bool          // Включить HTTP/2, по умолчанию true
     EnableCookies          bool          // Включить управление Cookie, по умолчанию false
     EnableDoH              bool          // Включить DNS-over-HTTPS, по умолчанию false
-    DoHCacheTTL            time.Duration // TTL кэша DoH, по умолчанию 5 мин
-    MaxResponseHeaderBytes int64         // Макс. байт заголовков ответа, по умолчанию 0 (используется стандартная библиотека Go — 10 МБ)
+    DoHCacheTTL            time.Duration // TTL кэша DoH, по умолчанию 5min
+    MaxResponseHeaderBytes int64         // Максимальный размер заголовков ответа в байтах, по умолчанию 0 (используется стандартное значение Go 10MB)
 }
 ```
 
 ### DNS-over-HTTPS
 
-Включите DoH для снижения задержки разрешения DNS и предотвращения перехвата DNS:
+Включение DoH снижает задержку DNS-резолвинга и предотвращает перехват DNS:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -74,7 +78,7 @@ cfg.Connection.EnableDoH = true
 cfg.Connection.DoHCacheTTL = 5 * time.Minute
 ```
 
-Провайдеры DoH по умолчанию (по приоритету): Cloudflare → Google → AliDNS. Подробнее в [Пуле соединений и прокси](../advanced/connection-pool).
+Провайдеры DoH по умолчанию (в порядке приоритета): Cloudflare → Google → AliDNS. Подробнее в [Пул соединений и прокси](../advanced/connection-pool).
 
 ## SecurityConfig
 
@@ -83,22 +87,22 @@ type SecurityConfig struct {
     TLSConfig               *tls.Config    // Пользовательская конфигурация TLS
     MinTLSVersion           uint16         // Минимальная версия TLS, по умолчанию TLS 1.2
     MaxTLSVersion           uint16         // Максимальная версия TLS, по умолчанию TLS 1.3
-    InsecureSkipVerify      bool           // Пропустить проверку сертификата (только для тестов)
-    MaxResponseBodySize     int64          // Лимит размера тела ответа, по умолчанию 10 МБ
+    InsecureSkipVerify      bool           // Пропустить проверку сертификата (только для тестирования)
+    MaxResponseBodySize     int64          // Лимит размера тела ответа, по умолчанию 10MB
     MaxRequestBodySize      int64          // Лимит размера тела запроса, по умолчанию 0 (используется значение MaxResponseBodySize)
-    MaxDecompressedBodySize int64          // Лимит размера распакованного тела, по умолчанию 100 МБ
+    MaxDecompressedBodySize int64          // Лимит размера после распаковки, по умолчанию 100MB
     AllowPrivateIPs         bool           // Разрешить приватные IP, по умолчанию false
-    SSRFExemptCIDRs         []string       // Исключения CIDR для SSRF
+    SSRFExemptCIDRs         []string       // Исключения SSRF (CIDR)
     ValidateURL             bool           // Валидация URL, по умолчанию true
     ValidateHeaders         bool           // Валидация заголовков запроса, по умолчанию true
     StrictContentLength     bool           // Строгий Content-Length, по умолчанию true
     CookieSecurity          *CookieSecurityConfig // Проверка безопасности Cookie
-    RedirectWhitelist       []string       // Белый список доменов для перенаправлений
+    RedirectWhitelist       []string       // Домены белого списка для перенаправлений
 }
 ```
 
-:::warning Защита от SSRF
-`AllowPrivateIPs` по умолчанию `false`, блокирует подключения к приватным/зарезервированным IP (127.0.0.1, 10.x, 192.168.x и др.). Устанавливайте `true` только при подключении к внутренним сервисам.
+:::warning Предупреждение Защита от SSRF
+`AllowPrivateIPs` по умолчанию равен `false`, что блокирует подключение к приватным/зарезервированным IP (127.0.0.1, 10.x, 192.168.x и т.д.). Устанавливайте `true` только при подключении к внутренним сервисам.
 :::
 
 ### Пример исключений SSRF
@@ -116,28 +120,30 @@ cfg.Security.SSRFExemptCIDRs = []string{
 ```go
 type RetryConfig struct {
     MaxRetries    int           // Максимальное количество повторных попыток, по умолчанию 3
-    Delay         time.Duration // Начальная задержка повтора, по умолчанию 1с
-    BackoffFactor float64       // Множитель отката, по умолчанию 2.0
+    Delay         time.Duration // Начальная задержка повторной попытки, по умолчанию 1s
+    BackoffFactor float64       // Множитель экспоненциальной задержки, по умолчанию 2.0
     EnableJitter  bool          // Включить джиттер, по умолчанию true
-    CustomPolicy  RetryPolicy   // Пользовательская стратегия повторных попыток
+    MaxRetryDelay time.Duration // Максимальный предел задержки повторной попытки, по умолчанию 30s
+    CustomPolicy  RetryPolicy   // Пользовательская политика повторных попыток
 }
 ```
 
-| Поле | Значение по умолчанию | Диапазон |
-|------|---------------------|----------|
+| Поле | По умолчанию | Диапазон |
+|------|--------|------|
 | MaxRetries | 3 | 0-10 |
-| Delay | 1с | 0-30 мин |
+| Delay | 1s | 0-30min |
 | BackoffFactor | 2.0 | 1.0-10.0 |
+| MaxRetryDelay | 30s | 0-30min |
 
-Формула задержки повтора: `Delay * BackoffFactor^attempt + jitter`
+Формула задержки повторной попытки: `min(Delay * BackoffFactor^attempt + jitter, MaxRetryDelay)`
 
 ## MiddlewareConfig
 
 ```go
 type MiddlewareConfig struct {
-    Middlewares     []MiddlewareFunc // Список промежуточного ПО
+    Middlewares     []MiddlewareFunc // Список middleware
     UserAgent       string           // User-Agent, по умолчанию "httpc/1.0"
-    Headers         map[string]string // Заголовки по умолчанию
+    Headers         map[string]string // Заголовки запроса по умолчанию
     FollowRedirects bool             // Следовать перенаправлениям, по умолчанию true
     MaxRedirects    int              // Максимальное количество перенаправлений, по умолчанию 10
 }
@@ -159,20 +165,20 @@ func DefaultConfig() *Config
 func SecureConfig() *Config
 ```
 
-Конфигурация с приоритетом безопасности. Более короткие тайм-ауты, отключены автоматические перенаправления, строгая защита от SSRF.
+Конфигурация с приоритетом безопасности. Более короткие таймауты, отключено автоматическое перенаправление, строгая защита от SSRF.
 
 | Параметр | Значение |
-|----------|---------|
-| Тайм-аут Request | 15с |
-| Тайм-аут Dial | 5с |
-| Тайм-аут TLSHandshake | 5с |
-| Тайм-аут ResponseHeader | 10с |
-| Тайм-аут IdleConn | 30с |
+|--------|-----|
+| Таймаут Request | 15s |
+| Таймаут Dial | 5s |
+| Таймаут TLSHandshake | 5s |
+| Таймаут ResponseHeader | 10s (защита от Slowloris) |
+| Таймаут IdleConn | 30s |
 | MaxIdleConns | 20 |
 | MaxConnsPerHost | 5 |
-| MaxResponseBodySize | 5 МБ |
+| MaxResponseBodySize | 5MB |
 | MaxRetries | 1 |
-| Delay | 2с |
+| Delay | 2s |
 | EnableJitter | true |
 | FollowRedirects | false |
 
@@ -182,27 +188,27 @@ func SecureConfig() *Config
 func PerformanceConfig() *Config
 ```
 
-Высокопроизводительная конфигурация. Больший пул соединений, более длинные тайм-ауты, сохраняет проверки безопасности.
+Конфигурация для высокой пропускной способности. Более крупный пул соединений, увеличенные таймауты, с сохранением проверок безопасности.
 
 :::tip Совет
-PerformanceConfig сохраняет включёнными `ValidateURL` и `ValidateHeaders` для обеспечения безопасности. Для максимальной производительности в доверенной среде можно отключить вручную: `cfg.Security.ValidateURL = false`, но учтите риски безопасности (инъекции, SSRF).
+PerformanceConfig оставляет `ValidateURL` и `ValidateHeaders` включёнными для обеспечения безопасности. В доверенной среде для максимальной производительности их можно отключить вручную: `cfg.Security.ValidateURL = false`, но учитывайте риски безопасности (инъекции, SSRF).
 :::
 
 | Параметр | Значение |
-|----------|---------|
-| Тайм-аут Request | 60с |
-| Тайм-аут Dial | 15с |
-| Тайм-аут TLSHandshake | 15с |
-| Тайм-аут ResponseHeader | 60с |
-| Тайм-аут IdleConn | 120с |
+|--------|-----|
+| Таймаут Request | 60s |
+| Таймаут Dial | 15s |
+| Таймаут TLSHandshake | 15s |
+| Таймаут ResponseHeader | 0 (отключено, используется таймаут Request) |
+| Таймаут IdleConn | 120s |
 | MaxIdleConns | 100 |
 | MaxConnsPerHost | 20 |
 | EnableCookies | true |
-| MaxResponseBodySize | 50 МБ |
+| MaxResponseBodySize | 50MB |
 | StrictContentLength | false |
 | ValidateURL | true |
 | ValidateHeaders | true |
-| Delay | 500мс |
+| Delay | 500ms |
 | BackoffFactor | 1.5 |
 | EnableJitter | true |
 
@@ -212,14 +218,14 @@ PerformanceConfig сохраняет включёнными `ValidateURL` и `Va
 func TestingConfig() *Config
 ```
 
-Конфигурация для тестовой среды. Отключены проверки безопасности, короткие тайм-ауты.
+Конфигурация для тестовой среды. Отключены проверки безопасности, короткие таймауты.
 
 | Параметр | Значение |
-|----------|---------|
-| Тайм-аут Dial | 5с |
-| Тайм-аут TLSHandshake | 5с |
-| Тайм-аут ResponseHeader | 10с |
-| Тайм-аут IdleConn | 30с |
+|--------|-----|
+| Таймаут Dial | 5s |
+| Таймаут TLSHandshake | 5s |
+| Таймаут ResponseHeader | 0 (отключено, используется таймаут Request) |
+| Таймаут IdleConn | 30s |
 | MaxIdleConns | 10 |
 | MaxConnsPerHost | 5 |
 | EnableHTTP2 | false |
@@ -229,12 +235,12 @@ func TestingConfig() *Config
 | ValidateURL | false |
 | ValidateHeaders | false |
 | MaxRetries | 1 |
-| Delay | 100мс |
+| Delay | 100ms |
 | EnableJitter | false |
 | UserAgent | httpc-test/1.0 |
 
 :::danger Опасность
-Эта конфигурация отключает проверку TLS и защиту от SSRF, **используйте только для тестирования**. При использовании вне тестовой среды выводится предупреждение безопасности.
+Эта конфигурация отключает проверку TLS и защиту от SSRF. **Используйте только для тестирования**. Использование в не-тестовой среде вызовет вывод предупреждения о безопасности.
 :::
 
 ### MinimalConfig
@@ -246,14 +252,14 @@ func MinimalConfig() *Config
 Лёгкая конфигурация. Отключены повторные попытки и перенаправления, минимальный пул соединений.
 
 | Параметр | Значение |
-|----------|---------|
-| Тайм-аут Dial | 5с |
-| Тайм-аут TLSHandshake | 5с |
-| Тайм-аут ResponseHeader | 10с |
-| Тайм-аут IdleConn | 30с |
+|--------|-----|
+| Таймаут Dial | 5s |
+| Таймаут TLSHandshake | 5s |
+| Таймаут ResponseHeader | 0 (отключено, используется таймаут Request) |
+| Таймаут IdleConn | 30s |
 | MaxIdleConns | 10 |
 | MaxConnsPerHost | 2 |
-| MaxResponseBodySize | 1 МБ |
+| MaxResponseBodySize | 1MB |
 | MaxRetries | 0 |
 | Delay | 0 |
 | BackoffFactor | 1.0 |
@@ -268,11 +274,11 @@ func MinimalConfig() *Config
 func ValidateConfig(cfg *Config) error
 ```
 
-Проверяет корректность конфигурации. Автоматически вызывается внутри `New()`, также можно вызвать явно.
+Проверяет корректность конфигурации. Автоматически вызывается внутри `New()`, также может вызываться явно.
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Retry.MaxRetries = 100 // вне диапазона
+cfg.Retry.MaxRetries = 100 // Превышение диапазона
 
 if err := httpc.ValidateConfig(cfg); err != nil {
     log.Fatal(err) // invalid retry configuration: Retry.MaxRetries must be 0-10, got 100
@@ -290,7 +296,7 @@ func (c *Config) String() string
 ```go
 cfg := httpc.DefaultConfig()
 fmt.Println(cfg.String())
-// Config{Timeouts:{Request: 30s, ...}, Security:{TLSConfig: <default>, ...}}
+// Config{Timeouts:{Request: 3m0s, ...}, Security:{TLSConfig: <default>, ...}}
 ```
 
 ## Безопасность Cookie
@@ -310,12 +316,12 @@ type CookieSecurityConfig struct {
 Конфигурация проверки атрибутов безопасности Cookie.
 
 | Поле | Тип | Описание |
-|------|-----|----------|
-| `RequireSecure` | `bool` | Требовать установки атрибута Secure у Cookie |
-| `RequireHttpOnly` | `bool` | Требовать установки атрибута HttpOnly у Cookie |
+|------|------|------|
+| `RequireSecure` | `bool` | Требовать наличие у Cookie атрибута Secure |
+| `RequireHttpOnly` | `bool` | Требовать наличие у Cookie атрибута HttpOnly |
 | `RequireSameSite` | `string` | Требуемое значение SameSite, например `"Strict"`, `"Lax"`; пустая строка — не проверять |
 | `AllowSameSiteNone` | `bool` | Разрешать ли SameSite=None |
-| `RequireSecureForSameSiteNone` | `bool` | Требовать атрибут Secure при SameSite=None (по умолчанию `true`) |
+| `RequireSecureForSameSiteNone` | `bool` | При SameSite=None требовать атрибут Secure (по умолчанию `true`) |
 
 ### DefaultCookieSecurityConfig
 
@@ -323,7 +329,7 @@ type CookieSecurityConfig struct {
 func DefaultCookieSecurityConfig() *CookieSecurityConfig
 ```
 
-Конфигурация безопасности Cookie по умолчанию. Не требует атрибутов Secure/HttpOnly/SameSite, но принудительно требует Secure для Cookie с SameSite=None.
+Конфигурация безопасности Cookie по умолчанию. Не требует атрибутов Secure/HttpOnly/SameSite, но принудительно требует наличия Secure для Cookie с SameSite=None.
 
 ### StrictCookieSecurityConfig
 

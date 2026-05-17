@@ -78,7 +78,7 @@ case result.IsServerError():
 
 ## 为什么需要调用 ReleaseResult？
 
-`ReleaseResult` 将 Result 归还到对象池，减少 GC 压力。归还会清除响应体中的敏感数据（前 64KB），防止信息在对象池中泄漏。高并发场景中性能提升显著。
+`ReleaseResult` 将 Result 归还到对象池，减少 GC 压力。归还会对响应体整块清零以防止敏感数据残留，避免信息在对象池中泄漏。高并发场景中性能提升显著。
 
 ```go
 result, _ := client.Get(url)
