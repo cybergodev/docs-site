@@ -1,11 +1,11 @@
 ---
-title: Сериализация - CyberGo env | Многоформатное преобразование
-description: CyberGo env библиотека полное руководство по сериализации и десериализации, поддержка взаимного преобразования между Map и структурами Go в форматах .env, JSON, YAML, включая пользовательские параметры формата сериализации, поддержку тегов env, маскирование конфиденциальных полей, примеры операций массового экспорта и импорта.
+title: Сериализация - CyberGo env | Мультиформатное преобразование
+description: Полное руководство по сериализации и десериализации библиотеки CyberGo env — преобразование Map и Go-структур между форматами .env, JSON, YAML, семейство функций Marshal/Unmarshal, реализация пользовательских интерфейсов Marshaler/Unmarshaler, поддержка тегов env, маскирование чувствительных полей и примеры конвертации форматов.
 ---
 
 # Сериализация
 
-Используйте функции Marshal и Unmarshal для сериализации/десериализации переменных окружения с поддержкой форматов `.env`, JSON и YAML.
+Сериализация и десериализация переменных окружения с помощью функций Marshal и Unmarshal с поддержкой преобразования между форматами `.env`, JSON и YAML.
 
 ## Базовая сериализация
 
@@ -181,14 +181,14 @@ func main() {
 
 ### Функция MarshalStruct
 
-Преобразует структуру в `map[string]string`:
+Преобразование структуры в `map[string]string`:
 
 ```go
 func MarshalStruct(v interface{}) (map[string]string, error)
 ```
 
 **Параметры:**
-- `v` - указатель на структуру или значение
+- `v` - указатель или значение структуры
 
 **Возвращает:**
 - `map[string]string` - отображение переменных окружения
@@ -215,7 +215,7 @@ func main() {
         Debug: true,
     }
 
-    // Преобразовать в map
+    // Преобразование в map
     data, err := env.MarshalStruct(cfg)
     if err != nil {
         panic(err)
@@ -313,7 +313,7 @@ DATABASE_USER: postgres
 }
 ```
 
-## Десериализация в структуру
+## Десериализация структур
 
 ### Из Map
 
@@ -454,7 +454,7 @@ func main() {
 
 ## Определение формата
 
-### Автоматическое определение формата
+### Автоматическое определение
 
 ```go
 package main
@@ -475,7 +475,7 @@ func main() {
     format = env.DetectFormat(".env")
     fmt.Println(format.String()) // dotenv
 
-    // Использование FormatAuto для автоматического определения
+    // Автоопределение с FormatAuto
     data := `{"KEY": "value"}`
     result, _ := env.UnmarshalMap(data, env.FormatAuto)
     fmt.Println(result)
@@ -528,10 +528,10 @@ import (
 func main() {
     env.Load(".env")
 
-    // Получить все переменные окружения
+    // Получение всех переменных окружения
     all := env.All()
 
-    // Экспортировать в JSON
+    // Экспорт в JSON
     content, err := env.Marshal(all, env.FormatJSON)
     if err != nil {
         panic(err)
@@ -539,7 +539,7 @@ func main() {
 
     fmt.Println(content)
 
-    // Или записать в файл
+    // Или запись в файл
     os.WriteFile("env-export.json", []byte(content), 0644)
 }
 ```
@@ -556,22 +556,22 @@ import (
 )
 
 func main() {
-    // Прочитать JSON конфигурацию
+    // Чтение JSON-конфигурации
     jsonContent, _ := os.ReadFile("config.json")
 
-    // Разобрать JSON
+    // Парсинг JSON
     data, err := env.UnmarshalMap(string(jsonContent), env.FormatJSON)
     if err != nil {
         panic(err)
     }
 
-    // Преобразовать в формат .env
+    // Преобразование в формат .env
     envContent, err := env.Marshal(data, env.FormatEnv)
     if err != nil {
         panic(err)
     }
 
-    // Сохранить как файл .env
+    // Сохранение как файл .env
     os.WriteFile(".env", []byte(envContent), 0644)
 
     fmt.Println("Config migrated from JSON to .env")
@@ -580,6 +580,6 @@ func main() {
 
 ## Связанная документация
 
-- [Пакетные функции](/ru/env/api-reference/functions) - Справка по функциям Marshal, UnmarshalMap и др.
-- [Многоформатная конфигурация](/ru/env/guides/multi-format) - Руководство по загрузке нескольких форматов
-- [Отображение в структуру](/ru/env/guides/struct-mapping) - Руководство по отображению в структуру
+- [Функции пакета](/ru/env/api-reference/functions) - Справка по функциям Marshal, UnmarshalMap и др.
+- [Мультиформатная конфигурация](/ru/env/guides/multi-format) - Руководство по загрузке нескольких форматов
+- [Маппинг структур](/ru/env/guides/struct-mapping) - Руководство по маппингу структур

@@ -1,6 +1,6 @@
 ---
 title: Loader API - CyberGo env | 加载器详解
-description: CyberGo env 库 Loader 加载器类型完整 API 参考文档，Loader 是核心类型，提供多格式文件加载、类型安全读取、键值集合操作、变量展开处理、序列化导出和生命周期管理等全部方法，所有方法均为线程安全，适合 Go 高并发环境稳定使用。
+description: CyberGo env 库 Loader 加载器 API 完整参考文档，Loader 是核心类型，提供 LoadFiles 多格式文件加载、GetString 类型安全读取、Set 和 Delete 键值操作、Validate 验证、ParseInto 序列化导出和 Close 生命周期管理等方法，所有方法线程安全。
 ---
 
 # Loader API
@@ -218,6 +218,56 @@ cacheEnabled := loader.GetBool("cache.enabled", true)
 
 // 无默认值时返回 false
 value := loader.GetBool("NON_EXISTENT")  // false
+```
+
+---
+
+### GetUint64
+
+```go
+func (l *Loader) GetUint64(key string, defaultValue ...uint64) uint64
+```
+
+获取无符号整数值。支持点号路径解析。
+
+**参数：**
+- `key` - 键名（支持点号路径）
+- `defaultValue` - 可选默认值，类型为 `uint64`
+
+**返回：**
+- `uint64` - 值或默认值（未找到且无默认值时返回 0）
+
+```go
+port := loader.GetUint64("PORT", 8080)
+maxSize := loader.GetUint64("MAX_SIZE", 1024)
+
+// 无默认值时返回 0
+value := loader.GetUint64("NON_EXISTENT")  // 0
+```
+
+---
+
+### GetFloat64
+
+```go
+func (l *Loader) GetFloat64(key string, defaultValue ...float64) float64
+```
+
+获取浮点数值。支持点号路径解析。
+
+**参数：**
+- `key` - 键名（支持点号路径）
+- `defaultValue` - 可选默认值，类型为 `float64`
+
+**返回：**
+- `float64` - 值或默认值（未找到且无默认值时返回 0）
+
+```go
+rate := loader.GetFloat64("RATE", 0.5)
+threshold := loader.GetFloat64("THRESHOLD")
+
+// 无默认值时返回 0
+value := loader.GetFloat64("NON_EXISTENT")  // 0
 ```
 
 ---
@@ -594,7 +644,7 @@ if err := loader.Validate(); err != nil {
 ### ParseInto
 
 ```go
-func (l *Loader) ParseInto(v interface{}) error
+func (l *Loader) ParseInto(v any) error
 ```
 
 将环境变量映射到结构体。

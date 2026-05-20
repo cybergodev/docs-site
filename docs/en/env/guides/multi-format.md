@@ -1,15 +1,15 @@
 ---
-title: Multi-format Config - CyberGo env | .env JSON YAML
-description: Guide for loading configuration from multiple formats with the env library, supporting .env, JSON, YAML auto-detection and mixed loading
+title: Multi-format Config - CyberGo env | .env/JSON/YAML
+description: Complete guide for CyberGo env multi-format configuration file loading, supporting .env, JSON, and YAML formats with auto-detection and mixed loading, covering key-value merge priority rules, format conversion utilities, JSON and YAML specific configuration options for Go developers in microservice and containerized scenarios.
 ---
 
-# Multi-format Configuration
+# Multi-format Config
 
-The env library supports three configuration formats: `.env`, JSON, and YAML, with automatic format detection and loading.
+The env library supports `.env`, JSON, and YAML configuration formats with automatic format detection and loading.
 
 ## Format Detection
 
-### Auto-Detection Rules
+### Auto-detection Rules
 
 | Extension | Format | Constant |
 |-----------|--------|----------|
@@ -43,13 +43,13 @@ loader.LoadFiles("secrets.yaml")
 ### Mixed Formats
 
 ```go
-// Auto-detect format for each file
+// Auto-detect each file's format
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 ```
 
 ### Override Order
 
-Later files override earlier ones:
+Files loaded later override earlier ones:
 
 ```go
 // Order: base -> env -> json -> yaml
@@ -102,23 +102,23 @@ port := loader.GetInt("database.port")      // 5432
 host := loader.GetString("DATABASE.HOST")   // localhost
 ```
 
-**Resolution rules:**
+**Resolution Rules:**
 
 | Input Key | Converted To |
 |-----------|-------------|
 | `"DATABASE_HOST"` | `"DATABASE_HOST"` (exact match) |
-| `"database.host"` | `"DATABASE_HOST"` (dots to underscores) |
+| `"database.host"` | `"DATABASE_HOST"` (dot to underscore) |
 | `"app.config.name"` | `"APP_CONFIG_NAME"` |
 | `"servers.0.host"` | `"SERVERS_0_HOST"` (array index) |
 
 ::: tip Recommended Usage
 - **Use flattened key names in code**: `GetString("DATABASE_HOST")` - clear and efficient
-- **Readable paths in config files**: JSON/YAML use natural nested structures
+- **Readable paths in config files**: JSON/YAML uses natural nested structures
 :::
 
-**Flattening rules:**
+**Flattening Rules:**
 
-| JSON Path | Stored Key |
+| JSON Path | Storage Key |
 |-----------|------------|
 | `database.host` | `DATABASE_HOST` |
 | `database.port` | `DATABASE_PORT` |
@@ -144,7 +144,7 @@ host0 := loader.GetString("SERVERS_0_HOST")  // server1.example.com
 port0 := loader.GetInt("SERVERS_0_PORT")     // 8080
 host1 := loader.GetString("SERVERS_1_HOST")  // server2.example.com
 
-// Get all hosts using a loop
+// Use a loop to get all hosts
 var hosts []string
 for i := 0; ; i++ {
     h := loader.GetString(fmt.Sprintf("SERVERS_%d_HOST", i))
@@ -156,25 +156,25 @@ for i := 0; ; i++ {
 // hosts = ["server1.example.com", "server2.example.com"]
 ```
 
-### JSON Parse Configuration
+### JSON Parsing Configuration
 
 ```go
 cfg := env.DefaultConfig()
 
-// null values to empty string (default true)
+// Convert null values to empty strings (default: true)
 cfg.JSONNullAsEmpty = true
 
-// Numbers to strings (default true)
+// Convert numbers to strings (default: true)
 cfg.JSONNumberAsString = true
 
-// Booleans to strings (default true)
+// Convert booleans to strings (default: true)
 cfg.JSONBoolAsString = true
 
-// Maximum nesting depth (default 10)
+// Maximum nesting depth (default: 10)
 cfg.JSONMaxDepth = 20
 ```
 
-### Type Conversion Example
+### Type Conversion Examples
 
 ```json
 {
@@ -248,29 +248,29 @@ host0 := loader.GetString("SERVERS_0_HOST")  // server1.example.com
 port0 := loader.GetInt("SERVERS_0_PORT")     // 8080
 host1 := loader.GetString("SERVERS_1_HOST")  // server2.example.com
 
-// Get entire list
+// Get the entire list
 hosts := env.GetSliceFrom[string](loader, "ALLOWED_HOSTS") // ["localhost", "example.com"]
 ```
 
-### YAML Parse Configuration
+### YAML Parsing Configuration
 
 ```go
 cfg := env.DefaultConfig()
 
-// null/~ values to empty string (default true)
+// Convert null/~ values to empty strings (default: true)
 cfg.YAMLNullAsEmpty = true
 
-// Numbers to strings (default true)
+// Convert numbers to strings (default: true)
 cfg.YAMLNumberAsString = true
 
-// Booleans to strings (default true)
+// Convert booleans to strings (default: true)
 cfg.YAMLBoolAsString = true
 
-// Maximum nesting depth (default 10)
+// Maximum nesting depth (default: 10)
 cfg.YAMLMaxDepth = 15
 ```
 
-### Type Conversion Example
+### Type Conversion Examples
 
 ```yaml
 PORT: 8080
@@ -305,7 +305,7 @@ APP_NAME=myapp
 APP_PORT=8080
 DEBUG=true
 
-# Quoting
+# Quotes
 MESSAGE="Hello World"
 LITERAL='literal ${noexpand}'
 
@@ -339,7 +339,7 @@ apiURL := loader.GetString("API_URL")
 | Syntax | Description |
 |--------|-------------|
 | `${VAR}` | Reference variable |
-| `${VAR:-default}` | Use default when variable is missing |
+| `${VAR:-default}` | Use default value when variable does not exist |
 
 ```bash
 # Expansion examples
@@ -366,11 +366,11 @@ export DATABASE_PORT=5432
 
 ```go
 cfg := env.DefaultConfig()
-cfg.AllowYamlSyntax = true  // Enable YAML-style
+cfg.AllowYamlSyntax = true  // Enable YAML-style syntax
 ```
 
 ```bash
-# YAML-style key-value pairs supported
+# Supports YAML-style key-value pairs
 KEY: value
 ANOTHER_KEY: "quoted value"
 ```
@@ -422,14 +422,14 @@ func loadConfig(loader *env.Loader) error {
 }
 ```
 
-### Separation by Feature
+### Separation by Function
 
 ```text
 config/
 ├── app.json       # Application configuration
 ├── database.yaml  # Database configuration
 ├── redis.env      # Redis configuration
-└── secrets.json   # Secrets configuration
+└── secrets.json   # Secret configuration
 ```
 
 ```go
@@ -444,7 +444,7 @@ loader.LoadFiles(
 ### Configuration Priority
 
 ```text
-CLI arguments > Environment variables > local config > environment config > base config
+CLI flags > Environment variables > Local config > Environment config > Base config
 ```
 
 ## Serialization
@@ -539,13 +539,13 @@ env.UnmarshalStruct("HOST: localhost\nPORT: \"8080\"", &cfg, env.FormatYAML)
 
 ## Custom Formats
 
-### Registering a Parser
+### Register a Parser
 
 ```go
 // Define format constant
 const FormatTOML env.FileFormat = 100
 
-// Implement EnvParser interface
+// Implement the EnvParser interface
 type TOMLParser struct {
     cfg       env.Config
     validator env.Validator
@@ -559,7 +559,7 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
     return result, nil
 }
 
-// Register parser
+// Register the parser
 func init() {
     env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
         return &TOMLParser{
@@ -571,7 +571,7 @@ func init() {
 }
 ```
 
-See [Custom Parser](/en/env/guides/custom-parser).
+See [Custom Parser](/en/env/guides/custom-parser) for details.
 
 ## Complete Example
 
@@ -625,4 +625,4 @@ func main() {
 - [Serialization](/en/env/guides/serialization) - Serialization/deserialization details
 - [ComponentFactory API](/en/env/api-reference/factory) - Format detection and parser registration
 - [Custom Parser](/en/env/guides/custom-parser) - Adding custom formats
-- [Config API](/en/env/api-reference/config) - JSON/YAML parse configuration
+- [Config API](/en/env/api-reference/config) - JSON/YAML parsing configuration

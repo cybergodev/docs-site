@@ -1,6 +1,6 @@
 ---
 title: クイックスタート - CyberGo env | 5分で始める入門ガイド
-description: 5 分で CyberGo env 環境変数管理ライブラリを素早く使い始めるための完全な入門チュートリアルガイド。go get インストールから最初のプログラム実行まで、.env 設定ファイルの読み込み、型安全な読み取り、構造体タグマッピング、マルチ環境設定管理、変数展開構文などのコア機能の詳細な使用メソッドと完全なコード例を含み、Go 環境変数管理を素早く習得できます。
+description: 5 分で CyberGo env 環境変数管理ライブラリを素早く使い始めるための完全な入門ガイド。go get インストールから最初のプログラム実行まで、.env ファイル読み込み、型安全な読み取り、構造体マッピング、マルチ環境設定、変数展開などコア機能の使用メソッドと完全なコード例を含みます。
 ---
 
 # クイックスタート
@@ -97,7 +97,7 @@ timeout := env.GetDuration("TIMEOUT")
 ```
 
 ::: tip キー名の解決
-ライブラリは複数のキー名アクセス方式をサポートしています：
+ライブラリは複数のキー名アクセスメソッドをサポートしています：
 
 ```go
 // JSON: {"app": {"name": "myapp"}}
@@ -197,6 +197,15 @@ if secret != nil {
 タグを使用して環境変数を構造体にマッピングします：
 
 ```go
+package main
+
+import (
+    "fmt"
+    "time"
+
+    "github.com/cybergodev/env"
+)
+
 type Config struct {
     Host     string        `env:"DB_HOST" envDefault:"localhost"`
     Port     int64         `env:"DB_PORT" envDefault:"5432"`

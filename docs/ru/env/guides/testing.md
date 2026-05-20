@@ -1,17 +1,17 @@
 ---
 title: Сценарии тестирования - CyberGo env | Лучшие практики модульного тестирования
-description: CyberGo env библиотека полное руководство по шаблонам тестирования, включая параметры конфигурации для тестирования, имитацию файловой системы в памяти, шаблоны написания табличных тестов, примеры бенчмарков, лучшие практики изоляции среды и очистки состояния.
+description: Полное руководство по шаблонам тестирования и лучшим практикам библиотеки CyberGo env — специализированная конфигурация TestingConfig, имитация интерфейса FileSystem в памяти, табличные тесты, бенчмарки, изоляция переменных окружения и стратегия очистки состояния через ResetDefaultLoader для обеспечения стабильных и воспроизводимых результатов модульных тестов.
 ---
 
 # Сценарии тестирования
 
-В этом руководстве описывается, как использовать библиотеку env в тестах, включая изоляцию тестовой среды, имитацию файловой системы и очистку состояния.
+В этом руководстве описано использование библиотеки env в тестах, включая изоляцию тестовой среды, имитацию файловой системы и очистку состояния.
 
 ## Тестовая конфигурация
 
 ### Использование TestingConfig
 
-`TestingConfig` перезаписывает существующие переменные окружения, подходит для изоляции тестов:
+`TestingConfig` перекрывает существующие переменные окружения, что подходит для изоляции тестов:
 
 ```go
 func TestWithTestingConfig(t *testing.T) {
@@ -22,16 +22,16 @@ func TestWithTestingConfig(t *testing.T) {
     require.NoError(t, err)
     defer loader.Close()
 
-    // Использовать тестовую конфигурацию
+    // Использование тестовой конфигурации
     host := loader.GetString("DB_HOST")
 }
 ```
 
 ::: tip Примечание
-`TestingConfig` устанавливает `OverwriteExisting: true`, обеспечивая изоляцию тестов. Если нужно сохранить существующие переменные, установите `cfg.OverwriteExisting = false` вручную.
+`TestingConfig` устанавливает `OverwriteExisting: true`, обеспечивая изоляцию тестов. Если нужно сохранить существующие переменные, можно вручную установить `cfg.OverwriteExisting = false`.
 :::
 
-### Отдельный загрузчик для каждого теста
+### Независимый загрузчик для каждого теста
 
 ```go
 func TestDatabase(t *testing.T) {
@@ -39,19 +39,19 @@ func TestDatabase(t *testing.T) {
     require.NoError(t, err)
     defer loader.Close()
 
-    // Установить тестовые значения
+    // Установка тестовых значений
     loader.Set("DB_HOST", "localhost")
     loader.Set("DB_PORT", "5432")
 
-    // Выполнить тесты...
+    // Выполнение тестов...
 }
 ```
 
 ## Имитация файловой системы
 
-### Пользовательская FileSystem
+### Пользовательский FileSystem
 
-Используйте интерфейс `FileSystem` для имитации файлов:
+Использование интерфейса `FileSystem` для имитации файлов:
 
 ```go
 type MockFileSystem struct {
@@ -124,17 +124,17 @@ func TestWithMockFS(t *testing.T) {
 
 ```go
 func TestMain(m *testing.M) {
-    // Сбросить перед запуском тестов
+    // Сброс перед запуском тестов
     env.ResetDefaultLoader()
 
     os.Exit(m.Run())
 }
 
 func TestExample(t *testing.T) {
-    // Каждый тест также может выполнить сброс
+    // Каждый тест также может выполнять сброс
     env.ResetDefaultLoader()
 
-    // Использовать пакетные функции
+    // Использование функций уровня пакета
     env.Load(".env.test")
 }
 ```
@@ -143,13 +143,13 @@ func TestExample(t *testing.T) {
 
 ```go
 func TestWithCleanup(t *testing.T) {
-    // Сохранить исходное значение
+    // Сохранение оригинального значения
     originalHost := os.Getenv("TEST_HOST")
 
-    // Установить тестовое значение
+    // Установка тестового значения
     os.Setenv("TEST_HOST", "test-value")
 
-    // Восстановить после завершения теста
+    // Восстановление после завершения теста
     t.Cleanup(func() {
         if originalHost == "" {
             os.Unsetenv("TEST_HOST")
@@ -158,7 +158,7 @@ func TestWithCleanup(t *testing.T) {
         }
     })
 
-    // Выполнить тесты...
+    // Выполнение тестов...
 }
 ```
 
@@ -249,7 +249,7 @@ func TestValidation(t *testing.T) {
 
 ```go
 func TestConfigLoading(t *testing.T) {
-    // Создать временный .env файл
+    // Создание временного .env файла
     tmpDir := t.TempDir()
     envFile := filepath.Join(tmpDir, ".env")
 
@@ -261,7 +261,7 @@ DEBUG=true
     err := os.WriteFile(envFile, []byte(content), 0644)
     require.NoError(t, err)
 
-    // Загрузить конфигурацию
+    // Загрузка конфигурации
     cfg := env.TestingConfig()
     loader, err := env.New(cfg)
     require.NoError(t, err)
@@ -270,14 +270,14 @@ DEBUG=true
     err = loader.LoadFiles(envFile)
     require.NoError(t, err)
 
-    // Валидация
+    // Проверка
     assert.Equal(t, "test-app", loader.GetString("APP_NAME"))
     assert.Equal(t, "1.0.0", loader.GetString("APP_VERSION"))
     assert.True(t, loader.GetBool("DEBUG"))
 }
 ```
 
-### Тестирование отображения в структуру
+### Тестирование маппинга структур
 
 ```go
 func TestStructMapping(t *testing.T) {
@@ -301,7 +301,7 @@ func TestStructMapping(t *testing.T) {
 }
 ```
 
-## Параллельные тесты
+## Конкурентные тесты
 
 ```go
 func TestConcurrentAccess(t *testing.T) {
@@ -356,7 +356,7 @@ func BenchmarkGetString(b *testing.B) {
 
 ```go
 func BenchmarkLoadFile(b *testing.B) {
-    // Создать временный файл
+    // Создание временного файла
     tmpDir := b.TempDir()
     envFile := filepath.Join(tmpDir, ".env")
 
@@ -375,9 +375,9 @@ func BenchmarkLoadFile(b *testing.B) {
 }
 ```
 
-## Служебные функции для тестирования
+## Вспомогательные функции тестирования
 
-Создайте вспомогательные функции для тестов:
+Создание вспомогательных функций для тестов:
 
 ```go
 // testutil/env.go
@@ -434,7 +434,7 @@ func TestWithHelper(t *testing.T) {
         "DB_PORT": "5432",
     })
 
-    // loader будет автоматически закрыт после завершения теста
+    // Загрузчик будет автоматически закрыт после завершения теста
     assert.Equal(t, "localhost", loader.GetString("DB_HOST"))
 }
 ```
@@ -443,5 +443,5 @@ func TestWithHelper(t *testing.T) {
 
 - [Config API - TestingConfig](/ru/env/api-reference/config#testingconfig) - Справка по тестовой конфигурации
 - [Loader API](/ru/env/api-reference/loader) - Полный список методов Loader
-- [Определения интерфейсов - FileSystem](/ru/env/api-reference/interfaces) - Интерфейс пользовательской файловой системы
+- [Определение интерфейсов - FileSystem](/ru/env/api-reference/interfaces) - Интерфейс пользовательской файловой системы
 - [Оптимизация производительности](/ru/env/advanced/performance) - Данные бенчмарков

@@ -1,11 +1,11 @@
 ---
 title: テストシナリオ - CyberGo env | ユニットテストベストプラクティス
-description: CyberGo env ライブラリのテストパターン完全使用ガイド。テスト専用設定オプション、メモリファイルシステムモック、テーブル駆動テストの書き方、ベンチマークテスト例、環境隔離と状態クリーンアップのベストプラクティスを含み、Go 開発者がユニットテストとインテグレーションテストで env ライブラリを正しく使用し、テスト結果の安定した再現性を確保できるようにします。
+description: CyberGo env ライブラリのテストパターンとベストプラクティス完全ガイド。TestingConfig 専用設定、インメモリファイルシステムの FileSystem インターフェースモック、テーブル駆動テストの記述パターン、ベンチマーク例、環境変数の分離と ResetDefaultLoader の状態クリーニング戦略を詳しく解説し、各ユニットテストの結果が安定して再現可能であることを保証します。
 ---
 
 # テストシナリオ
 
-このガイドでは、テストで env ライブラリを使用する方法について説明します。テスト環境の分離、モックファイルシステム、状態のクリーンアップを含みます。
+このガイドでは、テストで env ライブラリを使用する方法について説明します。テスト環境の分離、ファイルシステムのモック、状態のクリーンアップなどを含みます。
 
 ## テスト設定
 
@@ -28,10 +28,10 @@ func TestWithTestingConfig(t *testing.T) {
 ```
 
 ::: tip 注意
-`TestingConfig` は `OverwriteExisting: true` に設定し、テストの分離を確保します。既存の変数を保持する必要がある場合は、手動で `cfg.OverwriteExisting = false` に設定できます。
+`TestingConfig` は `OverwriteExisting: true` を設定し、テストの分離を保証します。既存の変数を保持する必要がある場合は、手動で `cfg.OverwriteExisting = false` に設定できます。
 :::
 
-### 各テストで独立したローダー
+### テストごとに独立したローダー
 
 ```go
 func TestDatabase(t *testing.T) {
@@ -47,7 +47,7 @@ func TestDatabase(t *testing.T) {
 }
 ```
 
-## モックファイルシステム
+## ファイルシステムのモック
 
 ### カスタム FileSystem
 
@@ -196,7 +196,7 @@ func TestTypeConversion(t *testing.T) {
 }
 ```
 
-### バリデーションテスト
+### 検証テスト
 
 ```go
 func TestValidation(t *testing.T) {
@@ -243,7 +243,7 @@ func TestValidation(t *testing.T) {
 }
 ```
 
-## インテグレーションテスト
+## 統合テスト
 
 ### 設定読み込みのテスト
 
@@ -261,7 +261,7 @@ DEBUG=true
     err := os.WriteFile(envFile, []byte(content), 0644)
     require.NoError(t, err)
 
-    // 設定を読み込む
+    // 設定を読み込み
     cfg := env.TestingConfig()
     loader, err := env.New(cfg)
     require.NoError(t, err)
@@ -444,4 +444,4 @@ func TestWithHelper(t *testing.T) {
 - [Config API - TestingConfig](/ja/env/api-reference/config#testingconfig) - テスト設定リファレンス
 - [Loader API](/ja/env/api-reference/loader) - Loader の完全なメソッド
 - [インターフェース定義 - FileSystem](/ja/env/api-reference/interfaces) - カスタムファイルシステムインターフェース
-- [パフォーマンス最適化](/ja/env/advanced/performance) - ベンチマークテストデータ
+- [パフォーマンス最適化](/ja/env/advanced/performance) - ベンチマークデータ

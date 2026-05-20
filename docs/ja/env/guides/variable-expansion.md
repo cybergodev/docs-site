@@ -1,11 +1,11 @@
 ---
 title: 変数展開 - CyberGo env 変数構文
-description: CyberGo env ライブラリの変数展開構文完全使用ガイド。${VAR} と ${VAR:-default} 変数参照構文、ネストされたデフォルト値設定、条件付き展開制御、循環参照の自動検出、再帰深度制限をサポートし、.env 設定ファイルでの変数再利用と動的値置換を実現し、Go プロジェクトの重複設定項目を効果的に削減します。
+description: CyberGo env ライブラリ変数展開構文ガイド。${VAR} と ${VAR:-default} 参照構文、ネストされたデフォルト値、:= 代入と :? エラー出力などの条件付き展開モード、循環参照検出、MaxExpansionDepth 深度制限と ExpandVariables スイッチ制御を詳しく解説し、.env ファイルでの変数再利用と動的値置換を実現します。
 ---
 
 # 変数展開
 
-env ライブラリは設定ファイルでの変数参照をサポートしており、設定の再利用と動的な値の置換を実現します。
+env ライブラリは設定ファイル内での変数参照をサポートし、設定の再利用と動的値置換を実現します。
 
 ## 変数展開の有効化
 
@@ -25,21 +25,21 @@ loader.LoadFiles(".env")
 # 他の変数を参照
 BASE_URL=https://api.example.com
 API_URL=${BASE_URL}/v1
-# API_URL の展開結果: https://api.example.com/v1
+# API_URL は展開後: https://api.example.com/v1
 
-# 省略構文
+# 簡略構文
 HOST=localhost
 URL=$HOST:8080
-# URL の展開結果: localhost:8080
+# URL は展開後: localhost:8080
 ```
 
-### デフォルト値の構文
+### デフォルト値構文
 
 | 構文 | 説明 |
 |------|------|
 | `${VAR:-default}` | VAR が存在しない場合、default を使用 |
-| `${VAR:=default}` | VAR が存在しない場合、default を使用（`:-` と同等） |
-| `${VAR:?error}` | VAR が存在しないか空の場合、エラーを返す |
+| `${VAR:=default}` | VAR が存在しない場合、default を使用（`:-` と同じ） |
+| `${VAR:?error}` | VAR が存在しないまたは空の場合、エラーを返す |
 
 ---
 
@@ -47,7 +47,7 @@ URL=$HOST:8080
 
 ### `${VAR:-default}` - デフォルト値の使用
 
-最も一般的なデフォルト値の構文です。変数が存在しない時にデフォルト値を使用し、変数が存在する場合（値が空でも）は元の値を使用します：
+最も一般的なデフォルト値構文です。変数が存在しない場合にデフォルト値を使用し、変数が存在する場合（値が空でも）は元の値を使用します：
 
 ```bash
 # LOG_LEVEL が存在しない場合、"info" を使用
@@ -60,7 +60,7 @@ TIMEOUT=${TIMEOUT:-30s}
 DB_HOST=${DB_HOST:-localhost}
 DB_URL=${DB_HOST}:${DB_PORT:-5432}
 # DB_HOST=localhost で DB_PORT が存在しない場合
-# DB_URL の展開結果: localhost:5432
+# DB_URL は展開後: localhost:5432
 ```
 
 **使用シーン：**
@@ -71,25 +71,25 @@ DB_URL=${DB_HOST}:${DB_PORT:-5432}
 
 ### `${VAR:=default}` - デフォルト値の使用
 
-動作は `${VAR:-default}` と同じで、変数が存在しない時にデフォルト値を使用します：
+`${VAR:-default}` と同じ動作で、変数が存在しない場合にデフォルト値を使用します：
 
 ```bash
 # DEBUG が存在しない場合、"false" を使用
 DEBUG=${DEBUG:=false}
 
-# 存在しない場合、デフォルト値を使用
+# 存在しない場合はデフォルト値を使用
 CACHE_TTL=${CACHE_TTL:=3600}
 ```
 
-::: info `:-` との関係
-`${VAR:=default}` は本ライブラリでは `${VAR:-default}` と動作が完全に同じです。変数が存在しない場合、デフォルト値を展開結果として使用します。`:=` はデフォルト値を変数ストレージに書き戻すことはありません。
+:::info と :- の関係
+`${VAR:=default}` はこのライブラリでは `${VAR:-default}` と全く同じ動作です。変数が存在しない場合、デフォルト値を展開結果として使用します。`:=` はデフォルト値を変数ストアに書き戻しません。
 :::
 
 ---
 
-### `${VAR:?error}` - エラー通知
+### `${VAR:?error}` - エラープロンプト
 
-変数が存在しないか空の場合にエラーを返します：
+変数が存在しないまたは空の場合、エラーを返します：
 
 ```bash
 # DATABASE_URL が存在しない場合、読み込み失敗しエラーを表示
@@ -101,7 +101,7 @@ API_KEY=${API_KEY:?API_KEY must be set}
 
 **使用シーン：**
 - 必須設定項目の検証
-- 早期発見によるランタイムエラーの回避
+- 早期フェイル、ランタイムエラーの回避
 
 ---
 
@@ -114,11 +114,11 @@ API_KEY=${API_KEY:?API_KEY must be set}
 ```bash
 # 価格設定
 PRICE=$$99.99
-# 展開結果: $99.99
+# 展開後: $99.99
 
 # $ を含む文字列
 MESSAGE=Price is $$100
-# 展開結果: Price is $100
+# 展開後: Price is $100
 ```
 
 ### シングルクォート
@@ -148,10 +148,10 @@ ENV=production
 
 # ネストされた参照
 DB_HOST=db.${ENV}.example.com
-# 展開結果: db.production.example.com
+# 展開後: db.production.example.com
 
 API_URL=https://${APP_NAME}.${ENV}.api.example.com
-# 展開結果: https://myapp.production.api.example.com
+# 展開後: https://myapp.production.api.example.com
 ```
 
 ---
@@ -170,7 +170,7 @@ B=${A}
 
 ---
 
-## 展開深度の制限
+## 展開深度制限
 
 デフォルトの最大展開深度は 5、ハードリミットは 20 です：
 
@@ -183,13 +183,13 @@ cfg.MaxExpansionDepth = 10  // カスタム深度
 |------|---|------|
 | `DefaultMaxExpansionDepth` | 5 | デフォルト値（公開 API） |
 
-::: info ヒント
+:::info ヒント
 ハードリミットは 20（内部制限）です。設定の `MaxExpansionDepth` はこの制限を超えることはできません。
 :::
 
 ---
 
-## 完全なサンプル
+## 完全な例
 
 ```bash
 # .env ファイル

@@ -1,6 +1,6 @@
 ---
 title: 测试场景 - CyberGo env | 单元测试最佳实践
-description: CyberGo env 库测试模式完整使用指南，包括测试专用配置选项、内存文件系统模拟、表驱动测试编写模式、基准测试示例、环境隔离与状态清理最佳实践，帮助 Go 开发者在单元测试和集成测试中正确使用 env 库并确保每次测试结果的稳定可重复性。
+description: CyberGo env 库测试模式与最佳实践完整指南，详解 TestingConfig 专用配置、内存文件系统 FileSystem 接口模拟、表驱动测试编写模式、基准测试示例、环境变量隔离与 ResetDefaultLoader 状态清理策略，确保每次单元测试结果稳定可重复。
 ---
 
 # 测试场景

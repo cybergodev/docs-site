@@ -1,17 +1,17 @@
 ---
 title: 테스트 시나리오 - CyberGo env | 단위 테스트 모범 사례
-description: CyberGo env 라이브러리 테스트 패턴 완전 사용 가이드입니다. 테스트 전용 설정 옵션, 메모리 파일 시스템 모의, 테이블 기반 테스트 작성 패턴, 벤치마크 테스트 예제, 환경 격리 및 상태 정리 모범 사례를 다루어 Go 개발자가 단위 테스트와 통합 테스트에서 env 라이브러리를 올바르게 사용하고 매번 테스트 결과의 안정적인 재현성을 보장할 수 있도록 돕습니다.
+description: CyberGo env 라이브러리 테스트 패턴 및 모범 사례 완전 가이드, TestingConfig 전용 구성, 메모리 파일 시스템 FileSystem 인터페이스 모킹, 테이블 기반 테스트 작성 패턴, 벤치마크 테스트 예시, 환경 변수 격리 및 ResetDefaultLoader 상태 정리 전략을 상세히 설명하여 매번 단위 테스트 결과가 안정적이고 재현 가능하도록 보장합니다.
 ---
 
 # 테스트 시나리오
 
-이 가이드는 테스트에서 env 라이브러리를 사용하는 방법을 소개합니다. 테스트 환경 격리, 파일 시스템 모의 및 상태 정리를 다룹니다.
+이 가이드는 테스트에서 env 라이브러리를 사용하는 방법을 소개하며, 테스트 환경 격리, 파일 시스템 모킹 및 상태 정리를 다룹니다.
 
-## 테스트 설정
+## 테스트 구성
 
 ### TestingConfig 사용
 
-`TestingConfig`는 이미 존재하는 환경 변수를 덮어쓰며, 테스트 격리에 적합합니다:
+`TestingConfig`는 기존 환경 변수를 덮어쓰므로 테스트 격리에 적합합니다:
 
 ```go
 func TestWithTestingConfig(t *testing.T) {
@@ -22,7 +22,7 @@ func TestWithTestingConfig(t *testing.T) {
     require.NoError(t, err)
     defer loader.Close()
 
-    // 테스트 설정 사용
+    // 테스트 구성 사용
     host := loader.GetString("DB_HOST")
 }
 ```
@@ -31,7 +31,7 @@ func TestWithTestingConfig(t *testing.T) {
 `TestingConfig`는 `OverwriteExisting: true`를 설정하여 테스트 격리를 보장합니다. 기존 변수를 유지해야 하는 경우 `cfg.OverwriteExisting = false`로 수동 설정할 수 있습니다.
 :::
 
-### 각 테스트별 독립 로더
+### 각 테스트마다 독립적인 로더
 
 ```go
 func TestDatabase(t *testing.T) {
@@ -47,11 +47,11 @@ func TestDatabase(t *testing.T) {
 }
 ```
 
-## 파일 시스템 모의
+## 파일 시스템 모킹
 
 ### 커스텀 FileSystem
 
-`FileSystem` 인터페이스로 파일 모의:
+`FileSystem` 인터페이스를 사용하여 파일을 모킹합니다:
 
 ```go
 type MockFileSystem struct {
@@ -120,18 +120,18 @@ func TestWithMockFS(t *testing.T) {
 
 ## 테스트 상태 정리
 
-### 기본 로더 초기화
+### 기본 로더 재설정
 
 ```go
 func TestMain(m *testing.M) {
-    // 테스트 실행 전 초기화
+    // 테스트 실행 전 재설정
     env.ResetDefaultLoader()
 
     os.Exit(m.Run())
 }
 
 func TestExample(t *testing.T) {
-    // 각 테스트에서도 초기화 가능
+    // 각 테스트에서도 재설정 가능
     env.ResetDefaultLoader()
 
     // 패키지 수준 함수 사용
@@ -164,7 +164,7 @@ func TestWithCleanup(t *testing.T) {
 
 ## 테이블 기반 테스트
 
-### 설정 테스트
+### 구성 테스트
 
 ```go
 func TestTypeConversion(t *testing.T) {
@@ -245,7 +245,7 @@ func TestValidation(t *testing.T) {
 
 ## 통합 테스트
 
-### 테스트 설정로드
+### 설정 로딩 테스트
 
 ```go
 func TestConfigLoading(t *testing.T) {
@@ -261,7 +261,7 @@ DEBUG=true
     err := os.WriteFile(envFile, []byte(content), 0644)
     require.NoError(t, err)
 
-    // 설정 로드
+    // 설정 로딩
     cfg := env.TestingConfig()
     loader, err := env.New(cfg)
     require.NoError(t, err)
@@ -352,7 +352,7 @@ func BenchmarkGetString(b *testing.B) {
 }
 ```
 
-### 로드 성능
+### 로딩 성능
 
 ```go
 func BenchmarkLoadFile(b *testing.B) {
@@ -377,7 +377,7 @@ func BenchmarkLoadFile(b *testing.B) {
 
 ## 테스트 유틸리티 함수
 
-테스트 보조 함수 생성:
+테스트 보조 함수를 만듭니다:
 
 ```go
 // testutil/env.go
@@ -425,7 +425,7 @@ func SetTestEnv(t *testing.T, key, value string) {
 }
 ```
 
-사용 예제:
+사용 예시:
 
 ```go
 func TestWithHelper(t *testing.T) {
@@ -434,14 +434,14 @@ func TestWithHelper(t *testing.T) {
         "DB_PORT": "5432",
     })
 
-    // loader는 테스트 종료 후 자동으로 닫힘
+    // 로더는 테스트 종료 후 자동으로 닫힘
     assert.Equal(t, "localhost", loader.GetString("DB_HOST"))
 }
 ```
 
 ## 관련 문서
 
-- [Config API - TestingConfig](/ko/env/api-reference/config#testingconfig) - 테스트설정참조
-- [Loader API](/ko/env/api-reference/loader) - Loader 완전메서드
-- [인터페이스정의 - FileSystem](/ko/env/api-reference/interfaces) - 커스텀 파일 시스템 인터페이스
-- [성능 최적화](/ko/env/advanced/performance) - 벤치마크 데이터
+- [Config API - TestingConfig](/ko/env/api-reference/config#testingconfig) - 테스트 구성 참조
+- [Loader API](/ko/env/api-reference/loader) - Loader 전체 메서드
+- [인터페이스 정의 - FileSystem](/ko/env/api-reference/interfaces) - 커스텀 파일 시스템 인터페이스
+- [성능 최적화](/ko/env/advanced/performance) - 벤치마크 테스트 데이터

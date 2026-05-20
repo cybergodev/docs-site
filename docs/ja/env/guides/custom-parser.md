@@ -1,11 +1,11 @@
 ---
-title: カスタムパーサー - CyberGo env | ファイルフォーマット拡張
-description: CyberGo env ライブラリのカスタムパーサー開発完全ガイド。EnvParser インターフェースを実装してカスタムファイルフォーマットパーサーを作成し、ComponentFactory に登録して読み込みフローに統合する方法を紹介。env ライブラリがサポートする設定ファイルフォーマットを拡張し、TOML パーサーの完全な Go サンプルとベストプラクティスを含みます。
+title: カスタムパーサー - CyberGo env | ファイルフォーマットの拡張
+description: CyberGo env ライブラリのカスタムパーサー開発完全ガイド。EnvParser インターフェースの実装によるカスタムフォーマットパーサーの作成方法を詳解。RegisterParser で ComponentFactory に登録し、読み込みフローに統合する方法を説明。TOML および INI パーサーの完全な実装例、エラー処理パターン、本番環境のベストプラクティスを含みます。
 ---
 
 # カスタムパーサー
 
-このガイドでは、カスタムファイルフォーマットパーサーを作成・登録し、env ライブラリがサポートする設定フォーマットを拡張する方法を紹介します。
+このガイドでは、カスタムファイルフォーマットパーサーの作成と登録方法を説明し、env ライブラリがサポートする設定フォーマットを拡張します。
 
 ## パーサーインターフェース
 
@@ -20,12 +20,12 @@ type EnvParser interface {
 ```
 
 **パラメータ：**
-- `r` - ファイル内容のリーダー
-- `filename` - ファイル名（エラーメッセージに使用）
+- `r` - ファイルコンテンツリーダー
+- `filename` - ファイル名（エラー情報用）
 
 **戻り値：**
-- `map[string]string` - パース後のキーと値のペア
-- `error` - パースエラー
+- `map[string]string` - 解析されたキーと値のペア
+- `error` - 解析エラー
 
 ---
 
@@ -48,7 +48,7 @@ type CustomParser struct {
     auditor   env.FullAuditLogger
 }
 
-// EnvParser インターフェースを実装
+// EnvParser インターフェースの実装
 func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     result := make(map[string]string)
 
@@ -58,8 +58,8 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
         return nil, err
     }
 
-    // 2. 内容をキーと値のペアにパース
-    // ... パースロジック
+    // 2. 内容をキー・バリューペアに解析
+    // ... 解析ロジック
 
     // 3. 結果を検証
     for key := range result {
@@ -76,7 +76,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 ### TOML パーサーの例
 
 ```go
-package main
+package tomlparser
 
 import (
     "fmt"
@@ -87,7 +87,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// TOMLParser は TOML フォーマットをパースします
+// TOMLParser TOML フォーマットを解析
 type TOMLParser struct {
     cfg       env.Config
     validator env.Validator
@@ -119,13 +119,13 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
             continue
         }
 
-        // セクション [section] をパース
+        // section を解析 [section]
         if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
             currentSection = strings.Trim(line, "[]")
             continue
         }
 
-        // key = value をパース
+        // キーと値を解析 key = value
         parts := strings.SplitN(line, "=", 2)
         if len(parts) != 2 {
             continue // またはエラーを返す
@@ -134,12 +134,12 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
         key := strings.TrimSpace(parts[0])
         value := strings.TrimSpace(parts[1])
 
-        // セクションプレフィックスを追加
+        // section プレフィックスを追加
         if currentSection != "" {
             key = currentSection + "_" + key
         }
 
-        // クォートを除去
+        // 引用符を除去
         value = strings.Trim(value, "\"'")
 
         // 大文字に変換
@@ -154,7 +154,7 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
         result[key] = value
     }
 
-    // 変数の数をチェック
+    // 変数の数を確認
     if len(result) > p.cfg.MaxVariables {
         return nil, fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
     }
@@ -167,7 +167,7 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
 ### INI パーサーの例
 
 ```go
-package main
+package iniparser
 
 import (
     "fmt"
@@ -177,7 +177,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// INIParser は INI フォーマットをパースします
+// INIParser INI フォーマットを解析
 type INIParser struct {
     cfg       env.Config
     validator env.Validator
@@ -203,7 +203,7 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
             continue
         }
 
-        // セクション
+        // Section
         if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
             currentSection = strings.Trim(line, "[]")
             continue
@@ -218,7 +218,7 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
                 key = currentSection + "_" + key
             }
 
-            // 検証
+            // 検証（バリデーション）
             if err := p.validator.ValidateKey(strings.ToUpper(key)); err != nil {
                 return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
             }
@@ -241,7 +241,7 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
 type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error)
 ```
 
-ファクトリ関数は Config と ComponentFactory を受け取り、パーサーインスタンスを返します。
+ファクトリー関数は Config と ComponentFactory を受け取り、パーサーインスタンスを返します。
 
 **パラメータの説明：**
 - `cfg` - 設定オブジェクト。すべての制限とセキュリティ設定を含む
@@ -256,19 +256,19 @@ func RegisterParser(format FileFormat, factory ParserFactory) error
 カスタムフォーマットパーサーを登録します。
 
 **パラメータ：**
-- `format` - ファイルフォーマット定数（100 以上の値の使用を推奨し、競合を回避）
-- `factory` - パーサーファクトリ関数
+- `format` - ファイルフォーマット定数（衝突を避けるため 100 以上の値の使用を推奨）
+- `factory` - パーサーファクトリー関数
 
 **戻り値：**
-- `error` - 登録に失敗した場合にエラーを返す
+- `error` - 登録失敗時にエラーを返す
 
-**エラーが発生するケース：**
-- 組み込みフォーマット（FormatEnv、FormatJSON、FormatYAML）はオーバーライドできません
-- フォーマットが既に登録済みの場合
+**エラーケース：**
+- 組み込みフォーマット（FormatEnv、FormatJSON、FormatYAML）は上書き不可
+- フォーマットが既に登録済み
 
 **注意事項：**
-- `env.New()` の呼び出し前に登録する必要があります
-- `init()` 関数での登録を推奨します
+- `env.New()` を呼び出す前に登録する必要がある
+- `init()` 関数内での登録を推奨
 
 ### ComponentFactory の使用
 
@@ -292,7 +292,7 @@ func NewSecureParser(cfg env.Config, factory *env.ComponentFactory) (env.EnvPars
 func (p *SecureParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     result := make(map[string]string)
 
-    // ... パースロジック
+    // ... 解析ロジック
 
     // バリデーターを使用してキー名を検証
     for key := range result {
@@ -316,7 +316,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// 1. フォーマット定数を定義（100 以上の値を推奨）
+// 1. フォーマット定数の定義（衝突を避けるため 100 以上の値を推奨）
 const (
     FormatTOML env.FileFormat = 100
     FormatINI  env.FileFormat = 101
@@ -334,7 +334,7 @@ func init() {
         }, nil
     })
     if err != nil {
-        panic(err) // フォーマット登録済みまたはその他のエラー
+        panic(err) // フォーマットが既に登録済みまたはその他のエラー
     }
 
     // INI パーサーを登録
@@ -348,13 +348,13 @@ func init() {
 }
 
 func main() {
-    // 登録は New の前に完了している必要がある（init で完了済み）
+    // 登録は New の前に完了する必要がある（init で完了済み）
 
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // .toml ファイルを読み込み可能
+    // .toml ファイルを読み込めるようになります
     loader.LoadFiles("config.toml")
 }
 ```
@@ -363,16 +363,16 @@ func main() {
 
 ## ベストプラクティス
 
-### 1. 設定制限を遵守する
+### 1. 設定制限を遵守
 
 ```go
 func (p *CustomParser) checkLimits(result map[string]string) error {
-    // 変数の数をチェック
+    // 変数の数を確認
     if len(result) > p.cfg.MaxVariables {
         return fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
     }
 
-    // キーと値の長さをチェック
+    // キーと値の長さを確認
     for key, value := range result {
         if len(key) > p.cfg.MaxKeyLength {
             return fmt.Errorf("key too long: %s", key)
@@ -386,13 +386,13 @@ func (p *CustomParser) checkLimits(result map[string]string) error {
 }
 ```
 
-### 2. バリデーターを使用する
+### 2. バリデーターを使用
 
 ```go
 func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     result := make(map[string]string)
 
-    // ... パースロジック
+    // ... 解析ロジック
 
     // すべてのキーを検証
     for key := range result {
@@ -414,7 +414,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 }
 ```
 
-### 3. 意味のあるエラーを提供する
+### 3. 有意義なエラーを提供
 
 ```go
 type CustomParseError struct {
@@ -443,7 +443,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
     start := time.Now()
     result := make(map[string]string)
 
-    // ... パースロジック
+    // ... 解析ロジック
 
     // 成功を記録
     _ = p.auditor.LogWithDuration(
@@ -460,7 +460,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 
 ---
 
-## 完全なサンプル
+## 完全な例
 
 ### XML パーサーの実装
 
@@ -488,7 +488,7 @@ type XMLEntry struct {
     Value string `xml:",chardata"`
 }
 
-// XMLParser は XML フォーマットをパースします
+// XMLParser は XML フォーマットを解析
 type XMLParser struct {
     cfg       env.Config
     validator env.Validator
@@ -504,13 +504,13 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
         return nil, err
     }
     if int64(len(content)) > p.cfg.MaxFileSize {
-        _ = p.auditor.LogError(env.ActionParse, "", "file exceeds size limit")
+        _ = p.auditor.LogError(env.ActionParse, "", "file size limit exceeded")
         return nil, fmt.Errorf("file exceeds size limit: %d > %d", len(content), p.cfg.MaxFileSize)
     }
 
     var xmlConfig XMLConfig
     if err := xml.Unmarshal(content, &xmlConfig); err != nil {
-        _ = p.auditor.LogError(env.ActionParse, "", "xml parse error: "+err.Error())
+        _ = p.auditor.LogError(env.ActionParse, "", "XML parse error: "+err.Error())
         return nil, fmt.Errorf("xml parse error: %w", err)
     }
 
@@ -519,12 +519,12 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
     for _, entry := range xmlConfig.Entries {
         key := strings.ToUpper(entry.Key)
 
-        // キーの長さを検証
+        // キー長を検証
         if len(key) > p.cfg.MaxKeyLength {
             return nil, fmt.Errorf("key too long: %s", key)
         }
 
-        // キーのフォーマットを検証
+        // キー形式を検証
         if err := p.validator.ValidateKey(key); err != nil {
             return nil, fmt.Errorf("invalid key %q: %w", key, err)
         }
@@ -537,7 +537,7 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
         result[key] = entry.Value
     }
 
-    // 変数の数をチェック
+    // 変数の数を確認
     if len(result) > p.cfg.MaxVariables {
         return nil, fmt.Errorf("too many variables: %d > %d", len(result), p.cfg.MaxVariables)
     }
@@ -586,5 +586,5 @@ func main() {
 
 - [ComponentFactory API](/ja/env/api-reference/factory) - ComponentFactory と RegisterParser
 - [インターフェース定義](/ja/env/api-reference/interfaces) - EnvParser インターフェース定義
-- [Config API](/ja/env/api-reference/config) - 設定オプションの詳細
-- [マルチフォーマット設定](/ja/env/guides/multi-format) - JSON/YAML フォーマットの詳細
+- [Config API](/ja/env/api-reference/config) - 設定オプション詳解
+- [多フォーマット設定](/ja/env/guides/multi-format) - JSON/YAML フォーマットの詳細

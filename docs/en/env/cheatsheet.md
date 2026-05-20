@@ -1,11 +1,11 @@
 ---
-title: Cheat Sheet - CyberGo env | API Quick Reference
-description: "Quick reference for CyberGo env APIs: loading, reading, validation, security, type conversion, serialization, and common configuration patterns."
+title: Cheat Sheet - CyberGo env | Common API Quick Reference
+description: CyberGo env environment variable management library common API cheat sheet, a single-page summary of core code snippets for configuration file loading, type-safe reading, variable validation, secure value storage, serialization, struct mapping, and audit logging, designed for Go developers to quickly reference and copy during daily development.
 ---
 
 # Cheat Sheet
 
-Assuming basic familiarity with the library, here are frequently used code snippets for quick reference.
+A quick reference for frequently used code snippets, assuming you are already familiar with the library.
 
 ## Loading Configuration
 
@@ -14,7 +14,7 @@ Assuming basic familiarity with the library, here are frequently used code snipp
 env.Load(".env")                                        // Load .env file
 env.Load(".env", ".env.local", "config.json")          // Multiple files
 
-// Loader-based loading
+// Loader-level loading
 loader, _ := env.New()
 loader.LoadFiles("config.json")                         // JSON
 loader.LoadFiles("config.yaml")                         // YAML
@@ -36,11 +36,11 @@ env.GetSlice[int64]("PORTS", []int64{80})
 env.GetSlice[int]("PORTS", []int{80})          // Also supports int
 env.GetSlice[float64]("RATES", []float64{0.1})
 
-// Get slices from a Loader
+// Get slices from Loader
 env.GetSliceFrom[string](loader, "HOSTS")
 env.GetSliceFrom[int64](loader, "PORTS")
 
-// Query
+// Lookup
 val, ok := env.Lookup("KEY")
 keys := env.Keys()
 all := env.All()
@@ -51,7 +51,7 @@ secret := env.GetSecure("PASSWORD")
 if secret != nil {
     defer secret.Release()  // or secret.Close()
     value := secret.String()
-    masked := secret.Masked()  // e.g. [SECURE:8 bytes locked]
+    masked := secret.Masked()
 }
 ```
 
@@ -61,8 +61,8 @@ if secret != nil {
 // JSON: {"app": {"name": "myapp"}}
 // Stored as: APP_NAME=myapp
 
-// All of these access the value
-env.GetString("APP_NAME")      // Flat key (recommended)
+// All of the following can access the value
+env.GetString("APP_NAME")      // Flat key name (recommended)
 env.GetString("app.name")      // Dot path
 env.GetString("APP.NAME")      // Uppercase dot path
 
@@ -70,7 +70,7 @@ env.GetString("APP.NAME")      // Uppercase dot path
 env.GetString("servers.0.host")  // SERVERS_0_HOST
 ```
 
-| Input | Converted to |
+| Input | Converts To |
 |-------|-------------|
 | `"database.host"` | `"DATABASE_HOST"` |
 | `"servers.0.host"` | `"SERVERS_0_HOST"` |
@@ -96,9 +96,9 @@ env.ParseInto(&cfg)
 | Preset | Use Case | Features |
 |--------|----------|----------|
 | `DefaultConfig()` | General | Safe defaults |
-| `DevelopmentConfig()` | Development | Relaxed limits, YAML syntax support, 10MB file limit |
-| `TestingConfig()` | Testing | Overwrite existing, test isolation, 64KB file limit |
-| `ProductionConfig()` | Production | Strict validation + audit, no overwrite, 64KB file limit |
+| `DevelopmentConfig()` | Development | Relaxed restrictions, YAML syntax support, 10MB file limit |
+| `TestingConfig()` | Testing | Override existing variables, test isolation, 64KB file limit |
+| `ProductionConfig()` | Production | Strict validation + audit, no override, 64KB file limit |
 
 ```go
 cfg := env.ProductionConfig()
@@ -164,6 +164,7 @@ if secret != nil {
 }
 
 // Masking
+log.Printf("Key: %s", secret.Masked())
 log.Printf("Key: %s", env.MaskValue("API_KEY", "secret"))
 
 // Detection
@@ -192,7 +193,7 @@ env.Load(".env", ".env."+goEnv, ".env.local")  // Single call, later overrides e
 // Loading
 loader.LoadFiles("config.env", "config.json", "config.yaml")
 
-// Format detection
+// Detect format
 format := env.DetectFormat("config.json")  // FormatJSON
 
 // Serialization
@@ -208,15 +209,15 @@ env.UnmarshalMap(data, env.FormatAuto)  // Auto-detect
 ## .env Syntax
 
 ```bash
-# Comments
+# Comment
 KEY=value
 KEY="value with spaces"
 KEY='literal ${noexpand}'
 KEY=${OTHER_KEY}           # Variable reference
-KEY=${MISSING:-default}    # Default value (use when variable is not set)
-KEY=${MISSING:=default}    # Default value (use when variable is not set, same as :-)
-KEY=${MISSING:?error}      # Error message (error when variable is not set or empty)
-export KEY=value           # Bash style
+KEY=${MISSING:-default}    # Default value (used when variable does not exist)
+KEY=${MISSING:=default}    # Default value (used when variable does not exist, same as :-)
+KEY=${MISSING:?error}      # Error message (errors when variable does not exist or is empty)
+export KEY=value           # bash style
 KEY=$$                     # Escaped dollar sign
 ```
 
@@ -226,7 +227,7 @@ KEY=$$                     # Escaped dollar sign
 |--------|-------|
 | `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
 
-## Duration Format
+## Time Format
 
 ```bash
 TIMEOUT=30s
@@ -236,13 +237,13 @@ DURATION=1h30m
 
 ## Limit Constants
 
-| Limit | Default | Hard Maximum |
-|-------|---------|-------------|
+| Limit | Default | Hard Cap |
+|-------|---------|----------|
 | File size | 2 MB | 100 MB |
 | Line length | 1 KB | 64 KB |
 | Key length | 64 | 1024 |
 | Value length | 4 KB | 1 MB |
-| Variables | 500 | 10000 |
+| Variable count | 500 | 10000 |
 | Expansion depth | 5 | 20 |
 
 ## Testing
@@ -254,7 +255,7 @@ func TestExample(t *testing.T) {
     defer loader.Close()
 
     loader.Set("KEY", "value")
-    // Test...
+    // Tests...
 }
 
 func TestMain(m *testing.M) {
@@ -267,7 +268,7 @@ func TestMain(m *testing.M) {
 
 ## Built-in Forbidden Keys
 
-The following keys are forbidden by default:
+The following key names are forbidden by default:
 
 | Category | Keys |
 |----------|------|
@@ -293,7 +294,7 @@ The following keys are forbidden by default:
 
 ## Related Documentation
 
-- [Quick Start](/en/env/getting-started) - Complete tutorial
+- [Getting Started](/en/env/getting-started) - Full tutorial
 - [Package Functions](/en/env/api-reference/functions) - Detailed API
 - [Loader API](/en/env/api-reference/loader) - Loader methods
 - [Config API](/en/env/api-reference/config) - Configuration options

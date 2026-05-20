@@ -1,6 +1,6 @@
 ---
 title: インターフェース定義 - CyberGo env | コアインターフェース階層
-description: CyberGo env 環境変数管理ライブラリのすべてのインターフェース型定義リファレンスドキュメント。細粒度インターフェース設計により依存性注入と柔軟な組み合わせをサポート。キーと値の検証器 Validator、監査プロセッサ AuditHandler、ファイルパーサー EnvParser、セキュアストレージ、ファイルシステムアダプターなどコア Go インターフェースの詳細な説明と使用方法を含みます。
+description: CyberGo env ライブラリのインターフェース型定義完全リファレンス。細粒度インターフェース設計による依存性注入と柔軟な組み合わせをサポート。Validator 検証器、FullAuditLogger 監査ハンドラー、EnvParser パーサー、EnvStorage 安全ストレージ、FileSystem ファイルシステムアダプターなどコアインターフェースの詳細な説明と使用法。
 ---
 
 # インターフェース定義
@@ -35,7 +35,7 @@ type EnvFileLoader interface {
 }
 ```
 
-**用途：** ファイル読み込み機能のみが必要なシーン。
+**用途：** ファイル読み込み機能のみが必要な場面。
 
 ```go
 func loadConfig(loader env.EnvFileLoader) error {
@@ -58,7 +58,7 @@ type EnvGetter interface {
 }
 ```
 
-**用途：** 読み取り専用の設定アクセス（最小インターフェース）。
+**用途：** 読み取り専用設定アクセス（最小インターフェース）。
 
 ```go
 func readConfig(getter env.EnvGetter) {
@@ -72,13 +72,13 @@ func readConfig(getter env.EnvGetter) {
 `GetInt`、`GetBool`、`GetDuration`、`GetSecure`、`Len` は `EnvGetter` インターフェースの一部では**ありません**。
 これらのメソッドは `*Loader` 型に実装されていますが、最小インターフェースには含まれていません。
 
-完全な読み取り機能が必要な場合は、直接 `*Loader` 型を使用してください：
+完全な読み取り機能が必要な場合は、`*Loader` 型を直接使用してください：
 
 ```go
 func readFullConfig(loader *env.Loader) {
-    port := loader.GetInt("PORT", 8080)      // ✓ 利用可能
-    debug := loader.GetBool("DEBUG", false)  // ✓ 利用可能
-    count := loader.Len()                     // ✓ 利用可能
+    port := loader.GetInt("PORT", 8080)      // ✓ 可用
+    debug := loader.GetBool("DEBUG", false)  // ✓ 可用
+    count := loader.Len()                     // ✓ 可用
 }
 ```
 :::
@@ -96,7 +96,7 @@ type EnvSetter interface {
 }
 ```
 
-**用途：** 設定/削除機能のみが必要なシーン。
+**用途：** 設定/削除機能のみが必要な場面。
 
 ```go
 func updateConfig(setter env.EnvSetter) error {
@@ -143,11 +143,11 @@ type EnvCloser interface {
 
 ---
 
-## バリデーションインターフェース
+## 検証インターフェース
 
 ### Validator
 
-バリデーションを組み合わせたインターフェース：
+複合検証インターフェース：
 
 ```go
 type Validator interface {
@@ -158,7 +158,7 @@ type Validator interface {
 ```
 
 ::: tip 注意
-`Validator` は `RequiredValidator` を埋め込むことで `ValidateRequired` メソッドを提供します。`KeyValidator` のみを実装したカスタム検証器は、`ValidateRequired` 呼び出し時に `ErrValidateRequiredUnsupported` を返します。
+`Validator` は `RequiredValidator` を埋め込むことで `ValidateRequired` メソッドを提供します。`KeyValidator` のみを実装したカスタムバリデーターは、`ValidateRequired` を呼び出すと `ErrValidateRequiredUnsupported` を返します。
 :::
 
 ---
@@ -173,7 +173,7 @@ type RequiredValidator interface {
 }
 ```
 
-すべての必須キーが存在するか検証します。
+すべての必須キーが存在するかどうかを検証します。
 
 ---
 
@@ -187,7 +187,7 @@ type KeyValidator interface {
 }
 ```
 
-キー名がルールに準拠しているか検証します（長さ、形式、禁止キーなど）。
+キー名がルールに準拠しているか（長さ、フォーマット、禁止キーなど）を検証します。
 
 ---
 
@@ -201,7 +201,7 @@ type ValueValidator interface {
 }
 ```
 
-値が安全かどうか検証します（ヌルバイト、制御文字の有無など）。
+値が安全かどうか（ヌルバイト、制御文字なし等）を検証します。
 
 ---
 
@@ -217,13 +217,13 @@ type AuditLogger interface {
 }
 ```
 
-**用途：** 最小インターフェースで、カスタム監査ロガーの実装が容易。完全な監査機能が必要な場合は `FullAuditLogger` を使用してください。
+**用途：** カスタム監査ロガーの実装に便利な最小インターフェース。完全な監査機能が必要な場合は `FullAuditLogger` を使用してください。
 
 ---
 
 ### FullAuditLogger
 
-監査ログインターフェースを拡張し、完全な監査ログ機能を提供します：
+拡張監査ログインターフェース、完全な監査ログ機能を提供：
 
 ```go
 type FullAuditLogger interface {
@@ -237,21 +237,21 @@ type FullAuditLogger interface {
 
 **用途：** 完全な監査ログ機能。`ComponentFactory.Auditor()` はこのインターフェースを返します。
 
-**メソッド説明：**
+**方法说明：**
 
-| メソッド | 用途 |
+| 方法 | 用途 |
 |------|------|
-| `LogError` | エラーイベントの記録（AuditLogger から継承） |
-| `Log` | 一般的な監査イベントの記録 |
-| `LogWithFile` | ファイル情報を含むイベントの記録 |
-| `LogWithDuration` | 処理時間を含むイベントの記録 |
-| `Close` | 監査ログのクローズ |
+| `LogError` | エラーイベントを記録（AuditLogger から継承） |
+| `Log` | 一般的な監査イベントを記録 |
+| `LogWithFile` | ファイル情報を含むイベントを記録 |
+| `LogWithDuration` | 所要時間を含むイベントを記録 |
+| `Close` | 監査ログをクローズ |
 
 ---
 
 ### AuditHandler
 
-監査プロセッサインターフェース（Config.AuditHandler の設定に使用）：
+監査ハンドラーインターフェース（Config.AuditHandler の設定に使用）：
 
 ```go
 type AuditHandler interface {
@@ -260,13 +260,14 @@ type AuditHandler interface {
 }
 ```
 
-**用途：** このインターフェースを実装することで、監査イベントの処理方法をカスタマイズできます。`AuditLogger` インターフェースとは異なり、`AuditHandler` は `Log` と `Close` の 2 つのメソッドが必要で、監査イベントの受信処理とリソース解放に使用されます。
+**用途：** このインターフェースを実装すると監査イベントの処理方法をカスタマイズできます。`AuditLogger` インターフェースとは異なり、`AuditHandler` は `Log` と `Close` の2つのメソッドを必要とし、監査イベントの受信処理とリソース解放に使用します。
 
 **組み込み実装：**
-- `JSONAuditHandler` - JSON 形式ログを出力
+- `JSONAuditHandler` - JSON フォーマットのログを出力
 - `LogAuditHandler` - 標準 log パッケージを使用して出力
 - `ChannelAuditHandler` - チャネルに送信
-- `NopAuditHandler` - 何もしないプロセッサ
+- `CloseableChannelHandler` - 独自のバッファチャネルを持つクローズ可能ハンドラー
+- `NopAuditHandler` - 何もしないハンドラー
 
 ---
 
@@ -282,16 +283,15 @@ type VariableExpander interface {
 }
 ```
 
-**用途：** カスタム変数展開ロジック。
+**用途：** カスタム変数展開ロジック。`${VAR}`、`${VAR:-default}` などの構文をサポート。
 
 ```go
-// ${VAR} と ${VAR:-default} の展開ロジックを実装
 expanded, err := expander.Expand("${BASE_URL}/api")
 ```
 
 ---
 
-## パースインターフェース
+## 解析インターフェース
 
 ### EnvParser
 
@@ -304,14 +304,14 @@ type EnvParser interface {
 ```
 
 **パラメータ：**
-- `r` - ファイル内容のリーダー
-- `filename` - ファイル名（エラーメッセージに使用）
+- `r` - ファイルコンテンツリーダー
+- `filename` - ファイル名（エラー情報用）
 
 **戻り値：**
-- `map[string]string` - 解析後のキーと値のペア
+- `map[string]string` - 解析されたキーと値のペア
 - `error` - 解析エラー
 
-**用途：** カスタムファイル形式パーサー。
+**用途：** カスタムファイルフォーマットパーサー。
 
 ---
 
@@ -335,11 +335,11 @@ type EnvStorage interface {
 
 **用途：** カスタムストレージバックエンド。
 
-**メソッド説明：**
+**方法说明：**
 
-| メソッド | 用途 |
+| 方法 | 用途 |
 |------|------|
-| `Get` | 値を取得。値と存在するかどうかを返す |
+| `Get` | 値の取得、値と存在有無を返す |
 | `Set` | キーと値のペアを設定 |
 | `Delete` | キーを削除 |
 | `Keys` | すべてのキー名を返す |
@@ -372,7 +372,7 @@ func (l LogLevel) MarshalEnv() ([]byte, error) {
 
 // 使用
 level := LogLevel("debug")
-env.Marshal(level)  // MarshalEnv を呼び出し
+env.Marshal(level)  // 调用 MarshalEnv
 ```
 
 ---
@@ -404,7 +404,7 @@ func (c *Config) UnmarshalEnv(data map[string]string) error {
 
 // 使用
 var cfg Config
-env.UnmarshalInto(data, &cfg)  // UnmarshalEnv を呼び出し
+env.UnmarshalInto(data, &cfg)  // 调用 UnmarshalEnv
 ```
 
 ---
@@ -430,7 +430,7 @@ type FileSystem interface {
 }
 ```
 
-**用途：** テスト時にファイルシステムをモック化。
+**用途：** テスト時にファイルシステムをモック。
 
 ```go
 type MockFileSystem struct {
@@ -438,12 +438,23 @@ type MockFileSystem struct {
     env   map[string]string
 }
 
+// MockFile 实现 env.File 接口（テスト用）
+type MockFile struct {
+    reader *strings.Reader
+}
+
+func (f *MockFile) Read(p []byte) (n int, err error)   { return f.reader.Read(p) }
+func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, os.ErrUnsupported }
+func (f *MockFile) Close() error                       { return nil }
+func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, os.ErrUnsupported }
+func (f *MockFile) Sync() error                        { return nil }
+
 func (m *MockFileSystem) Open(name string) (env.File, error) {
     content, ok := m.files[name]
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{content: content}, nil
+    return &MockFile{reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
@@ -482,7 +493,7 @@ cfg.FileSystem = &MockFileSystem{
 
 ### File
 
-ファイルインターフェース：
+文件接口：
 
 ```go
 type File interface {
@@ -494,27 +505,27 @@ type File interface {
 }
 ```
 
-**メソッド説明：**
+**方法说明：**
 
-| メソッド | 用途 |
+| 方法 | 用途 |
 |------|------|
 | `Read` | データの読み取り |
 | `Write` | データの書き込み |
-| `Close` | ファイルのクローズ |
+| `Close` | ファイルをクローズ |
 | `Stat` | ファイル情報の取得 |
-| `Sync` | ディスクへの同期 |
+| `Sync` | ディスクに同期 |
 
 ---
 
 ### DefaultFileSystem
 
-デフォルトのファイルシステム実装：
+デフォルトファイルシステム実装：
 
 ```go
 var DefaultFileSystem FileSystem = OSFileSystem{}
 ```
 
-実際のオペレーティングシステムのファイルシステムと環境変数を使用します：
+実際のオペレーティングシステムのファイルシステムと環境変数を使用：
 
 ```go
 cfg := env.DefaultConfig()
@@ -527,14 +538,14 @@ cfg.FileSystem = env.DefaultFileSystem  // デフォルト値
 
 ### JSONAuditHandler
 
-JSON 形式の監査ログを出力します：
+JSON フォーマットの監査ログを出力：
 
 ```go
 func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
 ```
 
 **パラメータ：**
-- `w` - 出力先（例：`os.Stdout`、ファイル）
+- `w` - 出力先（`os.Stdout`、ファイルなど）
 
 ```go
 handler := env.NewJSONAuditHandler(os.Stdout)
@@ -549,7 +560,7 @@ handler := env.NewJSONAuditHandler(os.Stdout)
 
 ### LogAuditHandler
 
-標準 log パッケージを使用して出力します：
+標準 log パッケージを使用して出力：
 
 ```go
 func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
@@ -574,7 +585,7 @@ handler := env.NewLogAuditHandler(logger)
 
 ### ChannelAuditHandler
 
-チャネルに送信します：
+チャネルに送信：
 
 ```go
 func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
@@ -599,7 +610,7 @@ go func() {
 
 ### NopAuditHandler
 
-何もしないプロセッサ（すべてのイベントを破棄）：
+空操作ハンドラー（すべてのイベントを破棄）：
 
 ```go
 func NewNopAuditHandler() *NopAuditHandler
@@ -623,9 +634,9 @@ type AuditAction = internal.Action
 const (
     ActionLoad       AuditAction = "load"        // ファイル読み込み
     ActionParse      AuditAction = "parse"       // 解析操作
-    ActionGet        AuditAction = "get"         // 変数の読み取り
-    ActionSet        AuditAction = "set"         // 変数の設定
-    ActionDelete     AuditAction = "delete"      // 変数の削除
+    ActionGet        AuditAction = "get"         // 変数読み取り
+    ActionSet        AuditAction = "set"         // 変数設定
+    ActionDelete     AuditAction = "delete"      // 変数削除
     ActionValidate   AuditAction = "validate"    // 検証操作
     ActionExpand     AuditAction = "expand"      // 変数展開
     ActionSecurity   AuditAction = "security"    // セキュリティイベント
@@ -646,7 +657,7 @@ type AuditEvent = internal.Event
 
 **フィールド：**
 
-| フィールド | 型 | 説明 |
+| 字段 | 类型 | 说明 |
 |------|------|------|
 | `Timestamp` | `time.Time` | タイムスタンプ |
 | `Action` | `AuditAction` | 操作タイプ |
@@ -656,13 +667,13 @@ type AuditEvent = internal.Event
 | `Success` | `bool` | 成功したかどうか |
 | `Masked` | `bool` | マスク済みかどうか |
 | `Details` | `string` | 詳細 |
-| `Duration` | `int64` | 処理時間（ナノ秒） |
+| `Duration` | `int64` | 所要時間（ナノ秒） |
 
 ---
 
 ## ComponentFactory
 
-コンポーネントファクトリー。共有コンポーネントを管理します：
+コンポーネントファクトリー、共有コンポーネントを管理：
 
 ```go
 type ComponentFactory struct {
@@ -670,7 +681,7 @@ type ComponentFactory struct {
 }
 ```
 
-### メソッド
+### 方法
 
 ```go
 func (f *ComponentFactory) Validator() Validator
@@ -680,13 +691,13 @@ func (f *ComponentFactory) Close() error
 func (f *ComponentFactory) IsClosed() bool
 ```
 
-**用途：** 内部使用。Loader 作成時に自動的に管理されます。詳細は [ComponentFactory API](/ja/env/api-reference/factory) を参照してください。
+**用途：** 内部使用、Loader 作成時に自動管理。詳細は [ComponentFactory API](/ja/env/api-reference/factory) を参照。
 
 ---
 
-## 完全なサンプル
+## 完全な例
 
-### カスタム監査プロセッサの実装
+### カスタム監査ハンドラーの実装
 
 ```go
 package main
@@ -698,7 +709,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// カスタム監査プロセッサ
+// カスタム監査ハンドラー
 type CustomAuditHandler struct {
     events []env.AuditEvent
 }
@@ -720,9 +731,9 @@ func main() {
 
     loader, _ := env.New(cfg)
     defer loader.Close()
-    // loader を使用...
+    // 使用 loader...
 
-    // 監査イベントを確認
+    // 查看監査イベント
     for _, event := range handler.events {
         fmt.Printf("%s: %s - %s\n", event.Action, event.Key, event.Reason)
     }
@@ -762,7 +773,7 @@ func main() {
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // 細粒度インターフェースを使用
+    // 細粒度インターフェースの使用
     loadConfig(loader)
     setDefaults(loader)
     printConfig(loader)

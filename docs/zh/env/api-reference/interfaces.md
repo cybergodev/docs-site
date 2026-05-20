@@ -1,6 +1,6 @@
 ---
 title: 接口定义 - CyberGo env | 核心接口层次
-description: CyberGo env 环境变量管理库所有接口类型定义参考文档，采用细粒度接口设计支持依赖注入和灵活组合，包括键值验证器 Validator、审计处理器 AuditHandler、文件解析器 EnvParser、安全存储和文件系统适配器等核心 Go 接口的详细说明与用法。
+description: CyberGo env 库接口类型定义完整参考文档，采用细粒度接口设计支持依赖注入和灵活组合，包括 Validator 验证器、FullAuditLogger 审计处理器、EnvParser 解析器、EnvStorage 安全存储和 FileSystem 文件系统适配器等核心接口的详细说明与用法。
 ---
 
 # 接口定义
@@ -266,6 +266,7 @@ type AuditHandler interface {
 - `JSONAuditHandler` - 输出 JSON 格式日志
 - `LogAuditHandler` - 使用标准 log 包输出
 - `ChannelAuditHandler` - 发送到通道
+- `CloseableChannelHandler` - 拥有自有缓冲通道的可关闭处理器
 - `NopAuditHandler` - 空操作处理器
 
 ---
@@ -282,10 +283,9 @@ type VariableExpander interface {
 }
 ```
 
-**用途：** 自定义变量展开逻辑。
+**用途：** 自定义变量展开逻辑，支持 `${VAR}`、`${VAR:-default}` 等语法。
 
 ```go
-// 实现 ${VAR} 和 ${VAR:-default} 展开逻辑
 expanded, err := expander.Expand("${BASE_URL}/api")
 ```
 
@@ -438,12 +438,23 @@ type MockFileSystem struct {
     env   map[string]string
 }
 
+// MockFile 实现 env.File 接口（用于测试）
+type MockFile struct {
+    reader *strings.Reader
+}
+
+func (f *MockFile) Read(p []byte) (n int, err error)   { return f.reader.Read(p) }
+func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, os.ErrUnsupported }
+func (f *MockFile) Close() error                       { return nil }
+func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, os.ErrUnsupported }
+func (f *MockFile) Sync() error                        { return nil }
+
 func (m *MockFileSystem) Open(name string) (env.File, error) {
     content, ok := m.files[name]
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{content: content}, nil
+    return &MockFile{reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {

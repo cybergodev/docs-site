@@ -1,6 +1,6 @@
 ---
 title: ComponentFactory API - CyberGo env | 组件工厂
-description: CyberGo env 库 ComponentFactory 组件工厂 API 参考文档，用于创建和管理 Loader 与 Parser 共享的组件实例，包括审计处理器、文件系统适配器和自定义解析器的注册管理，提供组件生命周期控制和依赖注入支持，支持多实例隔离和线程安全并发访问。
+description: CyberGo env 库 ComponentFactory 组件工厂 API 完整参考，创建和管理 Loader 与 Parser 共享的组件实例，包括审计处理器、验证器、文件系统适配器和 RegisterParser 自定义解析器注册，提供组件生命周期控制 Close 和线程安全并发访问。
 ---
 
 # ComponentFactory API
@@ -277,6 +277,30 @@ func NewNopAuditHandler() *NopAuditHandler
 ```go
 cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewNopAuditHandler() // 不记录任何日志
+```
+
+---
+
+### NewCloseableChannelHandler
+
+```go
+func NewCloseableChannelHandler(bufferSize int) *CloseableChannelHandler
+```
+
+创建拥有自有缓冲通道的可关闭审计处理器。与 `ChannelAuditHandler` 接受外部通道不同，`CloseableChannelHandler` 创建并拥有自己的缓冲通道。调用 `Close()` 关闭处理器并关闭通道。使用 `Channel()` 接收事件。
+
+**参数：**
+- `bufferSize` - 缓冲通道大小
+
+```go
+handler := env.NewCloseableChannelHandler(64)
+defer handler.Close()
+
+go func() {
+    for event := range handler.Channel() {
+        fmt.Printf("Audit: %+v\n", event)
+    }
+}()
 ```
 
 ---

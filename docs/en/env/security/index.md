@@ -1,27 +1,27 @@
 ---
-title: Security - CyberGo env | Security Architecture
-description: env library security architecture overview including SecureValue memory protection, key-value validation, forbidden keys, and configuration security levels
+title: Security Overview - CyberGo env | Security Architecture
+description: Comprehensive security architecture overview for CyberGo env, covering SecureValue memory locking with mlock syscall, key-value validation rules, DefaultForbiddenKeys list, IsSensitiveKey auto-detection, security level presets, and audit logging for production deployments.
 ---
 
 # Security Overview
 
-Environment variables often store sensitive information, making secure handling critical. This document outlines the env library's security architecture and core features.
+Environment variables often store sensitive information, making secure handling critical. This document provides an overview of the env library's security architecture and core features.
 
 ## Security Architecture
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│                        Application Layer                      │
+│                        Application Layer                     │
 ├──────────────────────────────────────────────────────────────┤
-│   SecureValue   │   Masking   │   Zeroing   │  Memory Lock   │
+│   SecureValue   │   Masking   │   Zeroing   │  Memory Lock  │
 ├──────────────────────────────────────────────────────────────┤
-│                          Loader Layer                         │
+│                          Loader Layer                        │
 ├──────────────────────────────────────────────────────────────┤
-│    Key Validation  │  Value Validation  │  Forbidden Keys  │  Size Limits  │
+│   Key Validation │  Value Validation │  Forbidden Keys │ Size Limits │
 ├──────────────────────────────────────────────────────────────┤
-│                          Parser Layer                         │
+│                         Parsing Layer                        │
 ├──────────────────────────────────────────────────────────────┤
-│    Format Detection  │  Expansion Check  │   Path Validation │
+│  Format Detection │  Expansion Check │    Path Validation   │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -29,11 +29,11 @@ Environment variables often store sensitive information, making secure handling 
 
 | Feature | Description | Documentation |
 |---------|-------------|---------------|
-| **SecureValue** | Memory-protected sensitive values with auto-zeroing | [SecureValue API](/en/env/api-reference/secure-value) |
-| **Forbidden Keys** | Prevents modification of critical system variables | [Constants & Errors](/en/env/api-reference/constants#defaultforbiddenkeys) |
-| **Sensitive Key Detection** | Auto-identifies sensitive configuration keys | [Constants & Errors](/en/env/api-reference/constants#sensitivekeypatterns) |
-| **Value Validation** | Detects control characters, null bytes, etc. | [Config API](/en/env/api-reference/config) |
-| **Audit Logging** | Complete operation tracking | [Component Factory](/en/env/api-reference/factory#audit-handler-factories) |
+| **SecureValue** | Sensitive value memory protection, auto-zeroing | [SecureValue API](/en/env/api-reference/secure-value) |
+| **Forbidden Keys** | Prevent modification of critical system variables | [Constants & Errors](/en/env/api-reference/constants#defaultforbiddenkeys) |
+| **Sensitive Key Detection** | Automatic identification of sensitive config keys | [Constants & Errors](/en/env/api-reference/constants#sensitivekeypatterns) |
+| **Value Validation** | Detect control characters, null bytes, etc. | [Config API](/en/env/api-reference/config) |
+| **Audit Logging** | Complete operation tracking | [Component Factory](/en/env/api-reference/factory#audit-handler-factory) |
 
 ## SecureValue Overview
 
@@ -55,8 +55,8 @@ password := secret.String()
 - **Masked Display** - `Masked()` for log output
 - **Thread Safety** - Supports concurrent reads
 
-::: tip Full API
-See [SecureValue API](/en/env/api-reference/secure-value).
+:::tip Full API
+See [SecureValue API](/en/env/api-reference/secure-value) for details.
 :::
 
 ## Key/Value Validation
@@ -67,7 +67,7 @@ Default key name rule: `^[A-Za-z][A-Za-z0-9_]*$`
 
 - Must start with a letter
 - Only letters, digits, and underscores
-- Length must not exceed `MaxKeyLength`
+- Maximum length of `MaxKeyLength`
 
 ### Forbidden Keys
 
@@ -75,12 +75,12 @@ Built-in forbidden keys prevent modification of critical system variables:
 
 | Category | Examples | Risk |
 |----------|----------|------|
-| System path | `PATH`, `LD_LIBRARY_PATH` | Command/library hijacking |
-| Dynamic linking | `LD_PRELOAD`, `DYLD_INSERT_LIBRARIES` | Malicious library injection |
+| System Paths | `PATH`, `LD_LIBRARY_PATH` | Command/library hijacking |
+| Dynamic Linking | `LD_PRELOAD`, `DYLD_INSERT_LIBRARIES` | Malicious library injection |
 | Shell | `SHELL`, `IFS`, `BASH_ENV` | Shell hijacking |
-| Language runtimes | `PYTHONPATH`, `NODE_PATH` | Module hijacking |
+| Language Runtimes | `PYTHONPATH`, `NODE_PATH` | Module hijacking |
 
-::: tip Full List
+:::tip Full List
 See [DefaultForbiddenKeys](/en/env/api-reference/constants#defaultforbiddenkeys) for the complete forbidden keys list.
 :::
 
@@ -98,7 +98,7 @@ cfg.ValidateValues = true  // Detect control characters, null bytes, etc.
 ### File Permissions
 
 ```bash
-# Owner read/write only
+# Read/write for owner only
 chmod 600 .env
 
 # Or stricter (read-only)
@@ -117,11 +117,11 @@ chmod 400 .env
 
 ## Configuration Security Levels
 
-| Preset | Use Case | Features |
-|--------|----------|----------|
-| `DevelopmentConfig()` | Development | Relaxed limits, YAML syntax support |
-| `TestingConfig()` | Testing | Overwrite existing, test isolation |
-| `ProductionConfig()` | Production | Strict validation + audit logging, no overwrite |
+| Preset | Use Case | Characteristics |
+|--------|----------|-----------------|
+| `DevelopmentConfig()` | Development | Relaxed restrictions, YAML syntax support |
+| `TestingConfig()` | Testing | Override existing variables, test isolation |
+| `ProductionConfig()` | Production | Strict validation + audit logging, no override of existing variables |
 
 ```go
 // Recommended production configuration
@@ -132,6 +132,6 @@ cfg.AllowedKeys = []string{"APP_NAME", "PORT", "DB_HOST", "API_KEY"}
 
 ## Related Documentation
 
-- [SecureValue API](/en/env/api-reference/secure-value) - Complete secure value handling API
-- [Constants & Errors](/en/env/api-reference/constants) - Full forbidden keys list, sensitive key patterns
+- [SecureValue API](/en/env/api-reference/secure-value) - Complete API for secure value handling
+- [Constants & Errors](/en/env/api-reference/constants) - Forbidden keys list, sensitive key patterns
 - [Production Checklist](/en/env/security/production-checklist) - Pre-deployment security checks

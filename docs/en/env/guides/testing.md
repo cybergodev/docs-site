@@ -1,6 +1,6 @@
 ---
-title: Testing - CyberGo env | Unit Test Best Practices
-description: Guide for testing patterns with the env library, including test configuration, mock file systems, table-driven tests, and benchmarks
+title: Testing Scenarios - CyberGo env | Unit Testing Best Practices
+description: Complete guide for CyberGo env testing patterns and best practices, covering TestingConfig dedicated configuration, in-memory FileSystem interface mocking, table-driven test patterns, benchmark examples, environment variable isolation, and ResetDefaultLoader state cleanup strategies for stable and reproducible unit tests.
 ---
 
 # Testing Scenarios
@@ -11,7 +11,7 @@ This guide covers how to use the env library in tests, including isolated test e
 
 ### Using TestingConfig
 
-`TestingConfig` overwrites existing environment variables, suitable for test isolation:
+`TestingConfig` overrides existing environment variables, suitable for test isolation:
 
 ```go
 func TestWithTestingConfig(t *testing.T) {
@@ -28,10 +28,10 @@ func TestWithTestingConfig(t *testing.T) {
 ```
 
 ::: tip Note
-`TestingConfig` sets `OverwriteExisting: true` to ensure test isolation. To preserve existing variables, manually set `cfg.OverwriteExisting = false`.
+`TestingConfig` sets `OverwriteExisting: true` to ensure test isolation. If you need to preserve existing variables, manually set `cfg.OverwriteExisting = false`.
 :::
 
-### Per-Test Independent Loader
+### Independent Loader per Test
 
 ```go
 func TestDatabase(t *testing.T) {
@@ -59,23 +59,12 @@ type MockFileSystem struct {
     env   map[string]string
 }
 
-// MockFile implements env.File for testing
-type MockFile struct {
-    reader *strings.Reader
-}
-
-func (f *MockFile) Read(p []byte) (n int, err error)   { return f.reader.Read(p) }
-func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, os.ErrUnsupported }
-func (f *MockFile) Close() error                       { return nil }
-func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, os.ErrUnsupported }
-func (f *MockFile) Sync() error                        { return nil }
-
 func (m *MockFileSystem) Open(name string) (env.File, error) {
     content, ok := m.files[name]
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{reader: strings.NewReader(content)}, nil
+    return &MockFile{content: content}, nil
 }
 
 func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
@@ -129,32 +118,28 @@ func TestWithMockFS(t *testing.T) {
 }
 ```
 
-## Cleaning Test State
+## Cleaning Up Test State
 
 ### Resetting the Default Loader
 
 ```go
 func TestMain(m *testing.M) {
     // Reset before running tests
-    if err := env.ResetDefaultLoader(); err != nil {
-        log.Printf("warning: %v", err)
-    }
+    env.ResetDefaultLoader()
 
     os.Exit(m.Run())
 }
 
 func TestExample(t *testing.T) {
     // Each test can also reset
-    if err := env.ResetDefaultLoader(); err != nil {
-        t.Logf("warning: %v", err)
-    }
+    env.ResetDefaultLoader()
 
     // Use package-level functions
     env.Load(".env.test")
 }
 ```
 
-### Cleaning Environment Variables
+### Cleaning Up Environment Variables
 
 ```go
 func TestWithCleanup(t *testing.T) {
@@ -164,7 +149,7 @@ func TestWithCleanup(t *testing.T) {
     // Set test value
     os.Setenv("TEST_HOST", "test-value")
 
-    // Restore after test
+    // Restore after test completes
     t.Cleanup(func() {
         if originalHost == "" {
             os.Unsetenv("TEST_HOST")
@@ -449,14 +434,14 @@ func TestWithHelper(t *testing.T) {
         "DB_PORT": "5432",
     })
 
-    // Loader is automatically closed after the test
+    // loader is automatically closed after the test
     assert.Equal(t, "localhost", loader.GetString("DB_HOST"))
 }
 ```
 
 ## Related Documentation
 
-- [Config API - TestingConfig](/en/env/api-reference/config#testingconfig) - Testing configuration reference
-- [Loader API](/en/env/api-reference/loader) - Loader complete methods
-- [Interface Definitions - FileSystem](/en/env/api-reference/interfaces) - Custom file system interface
+- [Config API - TestingConfig](/en/env/api-reference/config#testingconfig) - Test configuration reference
+- [Loader API](/en/env/api-reference/loader) - Complete Loader methods
+- [Interfaces - FileSystem](/en/env/api-reference/interfaces) - Custom file system interface
 - [Performance Optimization](/en/env/advanced/performance) - Benchmark data

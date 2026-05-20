@@ -1,6 +1,6 @@
 ---
 title: 多格式配置 - CyberGo env | .env/JSON/YAML
-description: CyberGo env 库多格式配置文件加载完整使用指南，支持 .env、JSON、YAML 三种配置格式的自动检测识别、混合加载与键值合并、文件优先级控制、目录递归扫描加载和格式互相转换功能，帮助 Go 开发者在不同项目中灵活地管理和切换环境配置。
+description: CyberGo env 库多格式配置文件加载完整指南，支持 .env、JSON、YAML 三种格式自动检测与混合加载，详解键值合并优先级规则、格式互转工具函数、JSON 和 YAML 专用配置选项，帮助 Go 开发者在微服务和容器化场景中灵活管理与切换环境配置。
 ---
 
 # 多格式配置

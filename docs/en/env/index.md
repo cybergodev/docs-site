@@ -1,37 +1,37 @@
 ---
-title: env - Environment Variable Management
-description: CyberGo env is a highly secure Go environment variable management library with multi-format loading, type-safe conversion, secure storage, and audit logging.
+title: CyberGo env - Environment Variable Management Library
+description: CyberGo env is a highly secure Go environment variable management library that supports loading .env, JSON, and YAML multi-format files with automatic format detection, providing a Loader interface, type-safe conversion, thread-safe concurrent access, SecureValue memory protection, and complete audit logging with built-in configuration presets for web services and containerized deployments.
 ---
 
 # env
 
-A highly secure Go environment variable management library supporting `.env`, JSON, and YAML formats, with thread safety, audit logging, and secure storage.
+A highly secure Go environment variable management library with support for `.env`, JSON, and YAML formats, providing thread safety, audit logging, and secure storage.
 
 ## Core Features
 
-- **Multi-Format Support** - `.env`, JSON, YAML auto-detection
+- **Multi-format Support** - Automatic detection of `.env`, JSON, YAML
 - **Type Safety** - Automatic type conversion and validation
-- **Thread Safety** - Thread-safe concurrent access with sharded locking
+- **Thread Safety** - Thread-safe concurrent access with sharded locks
 - **Secure Storage** - Memory locking and auto-zeroing for sensitive values
 - **Audit Logging** - Complete operation tracking
 - **Variable Expansion** - `${VAR}` syntax support
 - **Struct Mapping** - Tag-driven configuration binding
 
-## Key Features Overview
+## Feature Overview
 
 | Feature | Description |
 |---------|-------------|
 | [Type Conversion](/en/env/getting-started) | GetString, GetInt, GetBool, GetDuration, GetSlice |
 | [Struct Mapping](/en/env/guides/struct-mapping) | Tag-driven configuration binding |
-| [Secure Storage](/en/env/api-reference/secure-value) | Memory-protected sensitive values |
-| [Multi-Format Loading](/en/env/guides/multi-format) | .env, JSON, YAML |
+| [Secure Storage](/en/env/api-reference/secure-value) | Sensitive value memory protection |
+| [Multi-format Loading](/en/env/guides/multi-format) | .env, JSON, YAML |
 
 ## Quick Navigation
 
 <div class="vp-features">
 
 ### Getting Started
-- [Quick Start](/en/env/getting-started) - 5-minute tutorial
+- [Getting Started](/en/env/getting-started) - 5-minute tutorial
 - [Cheat Sheet](/en/env/cheatsheet) - Common code snippets
 
 ### API Reference

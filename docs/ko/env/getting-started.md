@@ -1,6 +1,6 @@
 ---
 title: 빠른 시작 - CyberGo env | 5분 입문 가이드
-description: CyberGo env 환경 변수 관리 라이브러리를 5분 안에 빠르게 시작하는 완전한 입문 튜토리얼 가이드로, go get 설치부터 첫 번째 프로그램 실행까지, .env 설정 파일 로드, 타입 안전 읽기, 구조체 태그 매핑, 다중 환경 설정 관리 및 변수 확장 문법 등 핵심 기능의 자세한 사용 방법과 완전한 코드 예제를 제공합니다.
+description: CyberGo env 환경 변수 관리 라이브러리 5분 빠른 시작 가이드로, go get 설치부터 첫 번째 프로그램 실행까지, .env 파일 로딩, 타입 안전 읽기, 구조체 매핑, 다중 환경 설정 및 변수 전개 등 핵심 기능의 사용 방법과 완전한 코드 예제를 제공하여 Go 환경 변수 관리를 빠르게 익힐 수 있습니다.
 ---
 
 # 빠른 시작
@@ -13,7 +13,7 @@ description: CyberGo env 환경 변수 관리 라이브러리를 5분 안에 빠
 go get github.com/cybergodev/env
 ```
 
-::: tip 요구 사항
+:::tip 요구 사항
 Go 1.24+
 :::
 
@@ -96,7 +96,7 @@ debug := env.GetBool("DEBUG")
 timeout := env.GetDuration("TIMEOUT")
 ```
 
-::: tip 키 이름 해석
+:::tip 키 이름 해석
 라이브러리는 다양한 키 이름 접근 방식을 지원합니다:
 
 ```go
@@ -197,6 +197,15 @@ if secret != nil {
 태그를 사용하여 환경 변수를 구조체에 매핑합니다:
 
 ```go
+package main
+
+import (
+    "fmt"
+    "time"
+
+    "github.com/cybergodev/env"
+)
+
 type Config struct {
     Host     string        `env:"DB_HOST" envDefault:"localhost"`
     Port     int64         `env:"DB_PORT" envDefault:"5432"`
@@ -218,7 +227,7 @@ func main() {
 }
 ```
 
-::: details 자세히
+:::details 자세히
 [구조체 매핑](/ko/env/guides/struct-mapping) 가이드를 참조하세요.
 :::
 
@@ -251,13 +260,13 @@ cfg := env.ProductionConfig()
 | 기존 변수 덮어쓰기 | ✗ | ✓ | ✓ | ✗ |
 | 파일 없을 시 오류 | ✗ | ✗ | ✗ | ✓ |
 | 감사 로그 | ✗ | ✗ | ✗ | ✓ |
-| YAML 문법 | ✗ | ✓ | ✗ | ✗ |
+| YAML 구문 | ✗ | ✓ | ✗ | ✗ |
 | 파일 크기 제한 | 2MB | 10MB | 64KB | 64KB |
 | 최대 변수 수 | 500 | 500 | 50 | 50 |
 | 금지 키 검사 | ✓ | ✓ | ✓ | ✓ |
 | 값 검증 | ✓ | ✓ | ✓ | ✓ |
 
-::: tip 선택 가이드
+:::tip 선택 가이드
 - **개발 환경**: `DevelopmentConfig()` 사용, 느슨한 제한으로 빠른 반복 가능
 - **테스트 환경**: `TestingConfig()` 사용, 덮어쓰기 허용으로 테스트 격리 용이
 - **프로덕션 환경**: `ProductionConfig()` 사용, 감사 및 엄격한 검증 활성화
@@ -318,7 +327,7 @@ func main() {
 }
 ```
 
-## 다중 파일 및 다중 포맷
+## 다중 파일 및 다중 형식
 
 ### 다중 파일 로드
 
@@ -332,16 +341,16 @@ env.Load(".env", "config.json", "config.yaml")
 loader.LoadFiles(".env", ".env.local")
 ```
 
-### 다중 포맷 지원
+### 다중 형식 지원
 
-파일 포맷을 자동으로 감지합니다:
+파일 형식을 자동으로 감지합니다:
 
 ```go
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 ```
 
-::: details 지원 포맷
-| 포맷 | 확장자 | 감지 방식 |
+:::details 지원 형식
+| 형식 | 확장자 | 감지 방식 |
 |------|--------|----------|
 | .env | `.env` | 파일 확장자 |
 | JSON | `.json` | 파일 확장자 |
@@ -370,7 +379,7 @@ if err != nil {
 }
 ```
 
-::: details 상세 오류 정보 가져오기
+:::details 상세 오류 정보 가져오기
 ```go
 // 파싱 오류 상세 정보
 var parseErr *env.ParseError
@@ -399,10 +408,10 @@ if errors.As(err, &secErr) {
 ### 심화 학습
 - [구조체 매핑](/ko/env/guides/struct-mapping) - 자세한 설정 바인딩
 - [직렬화](/ko/env/guides/serialization) - 설정 직렬화 및 역직렬화
-- [다중 포맷 설정](/ko/env/guides/multi-format) - JSON/YAML 상세 설명
+- [다중 형식 설정](/ko/env/guides/multi-format) - JSON/YAML 상세 설명
 - [테스트 시나리오](/ko/env/guides/testing) - 테스트에서의 사용 방법
 
-### API 레퍼런스
+### API 참조
 - [패키지 함수](/ko/env/api-reference/functions) - 패키지 수준 함수 전체 목록
 - [Loader API](/ko/env/api-reference/loader) - 로더 메서드
 - [Config API](/ko/env/api-reference/config) - 설정 옵션

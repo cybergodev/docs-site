@@ -1,6 +1,6 @@
 ---
 title: 包函数 - CyberGo env | 全局便捷函数
-description: CyberGo env 库包级便捷函数完整 API 参考文档，提供加载配置文件、按类型读取值、查询键名列表、序列化导出和实用工具函数等简洁 API，所有函数基于全局默认 Loader 实现，采用懒加载初始化和线程安全设计，适合大多数 Go 常规使用场景。
+description: CyberGo env 库包级便捷函数 API 完整参考文档，提供 Load 加载文件、GetString 和 GetInt 按类型读取值、Keys 查询键名、Marshal 序列化导出和 ParseInto 结构体映射等简洁 API，基于全局默认 Loader 实现，采用懒加载初始化和线程安全设计。
 ---
 
 # 包函数
@@ -190,6 +190,56 @@ cacheEnabled := env.GetBool("cache.enabled", true)
 
 // 无默认值时返回 false
 value := env.GetBool("NON_EXISTENT")  // false
+```
+
+---
+
+### GetUint64
+
+```go
+func GetUint64(key string, defaultValue ...uint64) uint64
+```
+
+获取无符号整数值。支持点号路径解析。
+
+**参数：**
+- `key` - 键名（支持点号路径）
+- `defaultValue` - 可选默认值，类型为 `uint64`
+
+**返回：**
+- `uint64` - 值或默认值（未找到且无默认值时返回 0）
+
+```go
+port := env.GetUint64("PORT", 8080)
+maxSize := env.GetUint64("MAX_SIZE", 1024)
+
+// 无默认值时返回 0
+value := env.GetUint64("NON_EXISTENT")  // 0
+```
+
+---
+
+### GetFloat64
+
+```go
+func GetFloat64(key string, defaultValue ...float64) float64
+```
+
+获取浮点数值。支持点号路径解析。
+
+**参数：**
+- `key` - 键名（支持点号路径）
+- `defaultValue` - 可选默认值，类型为 `float64`
+
+**返回：**
+- `float64` - 值或默认值（未找到且无默认值时返回 0）
+
+```go
+rate := env.GetFloat64("RATE", 0.5)
+threshold := env.GetFloat64("THRESHOLD")
+
+// 无默认值时返回 0
+value := env.GetFloat64("NON_EXISTENT")  // 0
 ```
 
 ---
@@ -526,7 +576,7 @@ if err := loader.Validate(); err != nil {
 ### ParseInto
 
 ```go
-func ParseInto(v interface{}) error
+func ParseInto(v any) error
 ```
 
 将环境变量映射到结构体。
@@ -649,7 +699,7 @@ port := env.GetInt("PORT", 8080)
 ### Marshal
 
 ```go
-func Marshal(data interface{}, format ...FileFormat) (string, error)
+func Marshal(data any, format ...FileFormat) (string, error)
 ```
 
 将数据序列化为指定格式的字符串。支持 `map[string]string` 或结构体作为输入。
@@ -723,7 +773,7 @@ m, _ := env.UnmarshalMap(jsonString, env.FormatAuto)
 ### UnmarshalStruct
 
 ```go
-func UnmarshalStruct(data string, v interface{}, format ...FileFormat) error
+func UnmarshalStruct(data string, v any, format ...FileFormat) error
 ```
 
 将格式化字符串解析并填充到结构体。
@@ -755,7 +805,7 @@ err = env.UnmarshalStruct(`{"server": {"host": "localhost"}}`, &cfg, env.FormatJ
 ### UnmarshalInto
 
 ```go
-func UnmarshalInto(data map[string]string, v interface{}) error
+func UnmarshalInto(data map[string]string, v any) error
 ```
 
 将 map 填充到结构体。支持 `env` 和 `envDefault` 标签。
@@ -786,7 +836,7 @@ err := env.UnmarshalInto(data, &cfg)
 ### MarshalStruct
 
 ```go
-func MarshalStruct(v interface{}) (map[string]string, error)
+func MarshalStruct(v any) (map[string]string, error)
 ```
 
 将结构体转换为 map。支持 `env` 标签指定键名。

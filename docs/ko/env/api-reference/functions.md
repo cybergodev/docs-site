@@ -1,14 +1,14 @@
 ---
 title: 패키지 함수 - CyberGo env | 전역 편의 함수
-description: CyberGo env 라이브러리 패키지 수준 편의 함수 완전한 API 레퍼런스 문서로, 설정 파일 로드, 타입별 값 읽기, 키 이름 목록 조회, 직렬화 내보내기 및 유틸리티 함수 등 간결한 API를 제공하며, 모든 함수는 전역 기본 Loader를 기반으로 구현되어 지연 로드 초기화와 스레드 안전 설계를 채택하여 대부분의 Go 일반 사용 시나리오에 적합합니다.
+description: CyberGo env 라이브러리 패키지 수준 편의 함수 API 전체 참조 문서로, Load 파일 로드, GetString 및 GetInt 유형별 값 읽기, Keys 키 이름 조회, Marshal 직렬화 내보내기, ParseInto 구조체 매핑 등 간결한 API를 제공하며, 전역 기본 로더를 기반으로 지연 초기화 및 스레드 안전 설계를 사용합니다.
 ---
 
 # 패키지 함수
 
-패키지 수준 편의 함수는 간결한 API를 제공하여 대부분의 사용 시나리오에 적합합니다. 이 함수들은 전역 기본 로더를 사용하며, 모든 함수는 스레드 안전합니다.
+패키지 수준 편의 함수는 간결한 API를 제공하며, 대부분의 사용 사례에 적합합니다. 이 함수들은 전역 기본 로더를 사용하며, 모든 함수는 스레드 안전합니다.
 
-::: tip 지연 로드
-전역 기본 로더는 지연 로드 메커니즘을 사용하여 첫 번째 호출 시 자동으로 생성됩니다.
+:::tip 지연 로딩
+전역 기본 로더는 지연 로딩 메커니즘을 사용하며, 최초 호출 시 자동으로 생성됩니다.
 :::
 
 ## 로드 함수
@@ -22,7 +22,7 @@ func Load(filenames ...string) error
 환경 변수 파일을 로드하고 시스템 환경에 적용합니다.
 
 **매개변수:**
-- `filenames` - 파일 경로 목록. 제공하지 않으면 아무 파일도 로드하지 않으며, `".env"`를 명시적으로 전달해야 기본 파일을 로드합니다.
+- `filenames` - 파일 경로 목록. 제공하지 않으면 아무 파일도 로드하지 않으며, 기본 파일을 로드하려면 명시적으로 `".env"`를 전달해야 합니다.
 
 **반환값:**
 - `error` - 로드 오류
@@ -30,9 +30,9 @@ func Load(filenames ...string) error
 **동작:**
 - 새로운 Loader 인스턴스를 생성하고 기본 로더로 설정
 - 시스템 환경(`os.Environ`)에 자동 적용
-- 나중에 로드된 파일이 먼저 로드된 파일을 덮어씀
+- 나중에 로드한 파일이 먼저 로드한 파일을 덮어씀
 - 기본 로더가 이미 초기화된 경우 `ErrAlreadyInitialized` 반환
-- 다중 포맷 지원 (.env, JSON, YAML)
+- 다중 형식 지원(.env, JSON, YAML)
 
 ```go
 // .env 파일 로드
@@ -40,12 +40,12 @@ if err := env.Load(".env"); err != nil {
     log.Fatal(err)
 }
 
-// 지정된 파일 로드 (순서대로, 나중 것이 앞의 것을 덮어씀)
+// 지정된 파일 로드 (순서대로, 나중 것이 앞선 것을 덮어씀)
 if err := env.Load(".env", ".env.local", "config.json"); err != nil {
     log.Fatal(err)
 }
 
-// JSON/YAML 중첩 구조에서 점 접근 지원
+// JSON/YAML 중첩 구조 점 접근 지원
 // config.json: {"database": {"host": "localhost", "port": 5432}}
 env.Load("config.json")
 host := env.GetString("database.host") // "localhost"
@@ -68,7 +68,7 @@ name := env.GetString("APP_NAME")  // "myapp"
 
 **2. 대문자 변환 (단순 키)**
 ```go
-// 점이 없는 키는 대문자 버전을 자동으로 시도
+// 점이 없는 키의 경우 자동으로 대문자 버전을 시도
 name := env.GetString("app_name")  // app_name -> APP_NAME 검색
 ```
 
@@ -77,8 +77,8 @@ name := env.GetString("app_name")  // app_name -> APP_NAME 검색
 // JSON: {"app": {"name": "myapp"}}
 // 저장됨: APP_NAME=myapp
 
-// 다음 방식 모두 값에 접근할 수 있습니다
-name := env.GetString("APP_NAME")   // 평탄화 키 이름 (권장)
+// 다음 방법 모두 해당 값에 접근 가능
+name := env.GetString("APP_NAME")   // 평면화된 키 이름 (권장)
 name := env.GetString("app.name")   // 점 경로 (자동 변환)
 name := env.GetString("APP.NAME")   // 대문자 점 경로
 ```
@@ -94,7 +94,7 @@ name := env.GetString("APP.NAME")   // 대문자 점 경로
 
 ### 인덱스 접근
 
-배열 요소는 인덱스로 접근하거나 쉼표로 구분된 값으로 대체할 수 있습니다:
+배열 요소는 인덱스로 접근하거나 쉼표로 구분된 값으로 폴백할 수 있습니다:
 
 ```go
 // JSON: {"servers": [{"host": "a.com"}, {"host": "b.com"}]}
@@ -105,7 +105,7 @@ host1 := env.GetString("servers.1.host")  // "b.com"
 
 // 키가 존재하지 않지만 쉼표로 구분된 기본 값이 있는 경우
 // HOSTS=localhost,example.com
-host0 := env.GetString("hosts.0")  // "localhost" (쉼표 구분 값에서 파싱)
+host0 := env.GetString("hosts.0")  // "localhost" (쉼표로 구분된 값에서 파싱)
 ```
 
 ---
@@ -125,7 +125,7 @@ func GetString(key string, defaultValue ...string) string
 - `defaultValue` - 선택적 기본값
 
 **반환값:**
-- `string` - 값 또는 기본값 (찾지 못하고 기본값이 없으면 빈 문자열 반환)
+- `string` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 빈 문자열 반환)
 
 ```go
 // 기본 사용법
@@ -151,10 +151,10 @@ func GetInt(key string, defaultValue ...int64) int64
 
 **매개변수:**
 - `key` - 키 이름 (점 경로 지원)
-- `defaultValue` - 선택적 기본값, 타입은 `int64`
+- `defaultValue` - 선택적 기본값, `int64` 유형
 
 **반환값:**
-- `int64` - 값 또는 기본값 (찾지 못하고 기본값이 없으면 0 반환)
+- `int64` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 0 반환)
 
 ```go
 port := env.GetInt("PORT", 8080)
@@ -172,7 +172,7 @@ value := env.GetInt("NON_EXISTENT")  // 0
 func GetBool(key string, defaultValue ...bool) bool
 ```
 
-불리언 값을 가져옵니다. 점 경로 해석을 지원합니다.
+부울 값을 가져옵니다. 점 경로 해석을 지원합니다.
 
 - **참 값 (대소문자 구분 없음):** `true`, `1`, `yes`, `on`, `enabled`
 - **거짓 값 (대소문자 구분 없음):** `false`, `0`, `no`, `off`, `disabled`
@@ -182,7 +182,7 @@ func GetBool(key string, defaultValue ...bool) bool
 - `defaultValue` - 선택적 기본값
 
 **반환값:**
-- `bool` - 값 또는 기본값 (찾지 못하고 기본값이 없으면 false 반환)
+- `bool` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 false 반환)
 
 ```go
 debug := env.GetBool("DEBUG", false)
@@ -190,6 +190,56 @@ cacheEnabled := env.GetBool("cache.enabled", true)
 
 // 기본값이 없으면 false 반환
 value := env.GetBool("NON_EXISTENT")  // false
+```
+
+---
+
+### GetUint64
+
+```go
+func GetUint64(key string, defaultValue ...uint64) uint64
+```
+
+부호 없는 정수 값을 가져옵니다. 점 경로 해석을 지원합니다.
+
+**매개변수:**
+- `key` - 키 이름 (점 경로 지원)
+- `defaultValue` - 선택적 기본값, `uint64` 유형
+
+**반환값:**
+- `uint64` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 0 반환)
+
+```go
+port := env.GetUint64("PORT", 8080)
+maxSize := env.GetUint64("MAX_SIZE", 1024)
+
+// 기본값이 없으면 0 반환
+value := env.GetUint64("NON_EXISTENT")  // 0
+```
+
+---
+
+### GetFloat64
+
+```go
+func GetFloat64(key string, defaultValue ...float64) float64
+```
+
+부동소수점 값을 가져옵니다. 점 경로 해석을 지원합니다.
+
+**매개변수:**
+- `key` - 키 이름 (점 경로 지원)
+- `defaultValue` - 선택적 기본값, `float64` 유형
+
+**반환값:**
+- `float64` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 0 반환)
+
+```go
+rate := env.GetFloat64("RATE", 0.5)
+threshold := env.GetFloat64("THRESHOLD")
+
+// 기본값이 없으면 0 반환
+value := env.GetFloat64("NON_EXISTENT")  // 0
 ```
 
 ---
@@ -213,7 +263,7 @@ func GetDuration(key string, defaultValue ...time.Duration) time.Duration
 - `defaultValue` - 선택적 기본값
 
 **반환값:**
-- `time.Duration` - 값 또는 기본값 (찾지 못하고 기본값이 없으면 0 반환)
+- `time.Duration` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 0 반환)
 
 ```go
 timeout := env.GetDuration("TIMEOUT", 30*time.Second)
@@ -231,7 +281,7 @@ value := env.GetDuration("NON_EXISTENT")  // 0
 func GetSecure(key string) *SecureValue
 ```
 
-보안 값을 가져옵니다 (민감 데이터용).
+보안 값을 가져옵니다 (민감한 데이터용).
 
 **매개변수:**
 - `key` - 키 이름
@@ -245,16 +295,16 @@ if secret != nil {
     defer secret.Release()
 
     value := secret.String()
-    masked := secret.Masked()  // 로그용: [SECURE:32 bytes]
+    masked := secret.Masked()  // 로깅용: [SECURE:32 bytes]
 }
 ```
 
-::: warning 중요
+:::warning 중요
 사용 후 반드시 `Release()` 또는 `Close()`를 호출하여 리소스를 해제해야 합니다. `defer`를 사용하여 해제를 보장하는 것을 권장합니다.
 :::
 
-::: tip 자세히
-[SecureValue API](/ko/env/api-reference/secure-value)에서 완전한 API 문서를 확인하세요.
+:::tip 자세히
+[SecureValue API](/ko/env/api-reference/secure-value)에서 전체 API 문서를 확인하세요.
 :::
 
 ---
@@ -267,13 +317,13 @@ func GetSlice[T sliceElement](key string, defaultValue ...[]T) []T
 
 제네릭 함수, 슬라이스 값을 가져옵니다.
 
-**지원 타입:** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
+**지원 유형:** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
 
-**참고:** 이것은 제네릭 함수이며 Loader의 메서드가 아닙니다. 지정된 Loader 인스턴스에서 슬라이스를 가져오려면 `GetSliceFrom[T]`를 사용하세요.
+**참고:** 이 함수는 제네릭 함수이며 Loader의 메서드가 아닙니다. 특정 Loader 인스턴스에서 슬라이스를 가져오려면 `GetSliceFrom[T]`를 사용하세요.
 
-**해석 순서:**
-1. 인덱스 키 `KEY_0`, `KEY_1`, `KEY_2`...를 우선 검색
-2. 인덱스 키가 없으면 `KEY`의 값을 쉼표로 구분하여 해석
+**파싱 순서:**
+1. 인덱스 키 `KEY_0`, `KEY_1`, `KEY_2`...를 먼저 검색
+2. 인덱스 키가 없으면 `KEY`의 값을 쉼표로 구분하여 파싱
 3. 점 경로 해석 지원
 
 **매개변수:**
@@ -296,7 +346,7 @@ ports := env.GetSlice[int64]("PORTS", []int64{80})  // [80, 443, 8080]
 // 부동소수점 슬라이스
 rates := env.GetSlice[float64]("RATES", []float64{0.1, 0.2})
 
-// 불리언 슬라이스
+// 부울 슬라이스
 flags := env.GetSlice[bool]("FLAGS")
 
 // Duration 슬라이스
@@ -306,7 +356,7 @@ timeouts := env.GetSlice[time.Duration]("TIMEOUTS")
 ports := env.GetSlice[uint]("PORTS")
 port64s := env.GetSlice[uint64]("PORTS")
 
-// int 타입
+// int 유형
 portInts := env.GetSlice[int]("PORTS")
 
 // 기본값이 없으면 nil 반환
@@ -331,7 +381,7 @@ func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]
 **반환값:**
 - `[]T` - 슬라이스 값
 
-**지원 타입:** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
+**지원 유형:** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
 
 ```go
 loader, _ := env.New(cfg)
@@ -341,13 +391,13 @@ defer loader.Close()
 hosts := env.GetSliceFrom[string](loader, "HOSTS")
 ports := env.GetSliceFrom[int64](loader, "PORTS", []int64{80})
 
-// int, uint, uint64 타입도 지원
+// int, uint, uint64 유형도 지원
 portsInt := env.GetSliceFrom[int](loader, "PORTS")
 portsUint := env.GetSliceFrom[uint](loader, "PORTS")
 portsUint64 := env.GetSliceFrom[uint64](loader, "PORTS")
 ```
 
-::: tip 차이점
+:::tip 차이점
 - `GetSlice[T]` - 기본 로더를 사용하는 패키지 수준 함수
 - `GetSliceFrom[T]` - 지정된 Loader 인스턴스의 제네릭 함수 (Go는 제네릭 메서드를 지원하지 않음)
 :::
@@ -460,8 +510,8 @@ func Set(key, value string) error
 **반환값:**
 - `error` - 설정 오류
 
-**오류 타입:**
-- `ErrInvalidKey` - 잘못된 키 이름
+**오류 유형:**
+- `ErrInvalidKey` - 키 이름이 유효하지 않음
 - `ErrForbiddenKey` - 금지된 키
 - `ErrClosed` - 로더가 닫힘
 
@@ -509,7 +559,7 @@ func Validate() error
 - `error` - 검증 오류
 
 ```go
-// RequiredKeys를 먼저 설정해야 함 (커스텀 로더를 통해)
+// RequiredKeys를 먼저 구성해야 함 (커스텀 로더를 통해)
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
@@ -526,7 +576,7 @@ if err := loader.Validate(); err != nil {
 ### ParseInto
 
 ```go
-func ParseInto(v interface{}) error
+func ParseInto(v any) error
 ```
 
 환경 변수를 구조체에 매핑합니다.
@@ -557,8 +607,8 @@ if err := env.ParseInto(&cfg); err != nil {
 | `envDefault:"value"` | 기본값 |
 | `envSeparator:","` | 슬라이스 구분자 |
 
-::: tip 자세히
-[구조체 매핑](/ko/env/guides/struct-mapping)에서 완전한 가이드를 확인하세요.
+:::tip 자세히
+[구조체 매핑](/ko/env/guides/struct-mapping)에서 전체 가이드를 확인하세요.
 :::
 
 ---
@@ -571,15 +621,15 @@ if err := env.ParseInto(&cfg); err != nil {
 func ResetDefaultLoader() error
 ```
 
-전역 기본 로더를 초기화합니다. 주로 테스트 시나리오에서 사용합니다.
+전역 기본 로더를 재설정합니다. 주로 테스트 시나리오에서 사용합니다.
 
 **반환값:**
-- `error` - 이전 로더를 닫는 오류 (존재하는 경우); 이전에 로더가 없었거나 닫기에 성공하면 nil
+- `error` - 이전 로더 닫기 오류 (있는 경우); 이전에 로더가 없거나 닫기에 성공하면 nil 반환
 
 **동작:**
 - 기본 로더를 원자적으로 nil로 교체
-- 이전 로더를 닫음 (락 외부에서 실행하여 차단 방지)
-- 새로운 기본 로더 생성을 허용
+- 이전 로더 닫기 (락 외부에서 실행하여 차단 방지)
+- 새로운 기본 로더 생성 허용
 
 ```go
 func TestMain(m *testing.M) {
@@ -598,8 +648,8 @@ func TestSomething(t *testing.T) {
 }
 ```
 
-::: warning 참고
-이 함수는 동시성에 안전하지만, 예기치 않은 동작을 방지하기 위해 테스트 또는 시작 시에만 호출하세요.
+:::warning 참고
+이 함수는 동시성에 안전하지만, 예기치 않은 동작을 방지하기 위해 테스트나 시작 시에만 호출하세요.
 :::
 
 ---
@@ -610,22 +660,22 @@ func TestSomething(t *testing.T) {
 func LoadWithConfig(cfg Config) error
 ```
 
-커스텀 설정으로 기본 로더를 초기화합니다.
+사용자 정의 설정으로 기본 로더를 초기화합니다.
 
 **매개변수:**
-- `cfg` - 커스텀 설정
+- `cfg` - 사용자 정의 설정
 
 **반환값:**
 - `error` - 초기화 오류
 
 **동작:**
 - 패키지 수준 기본 로더 설정 (`GetString`, `GetInt` 등의 함수가 사용)
-- `AutoApply = true`를 **강제** 설정 (cfg의 설정과 무관하게)
+- cfg의 설정에 관계없이 `AutoApply = true`를 **강제** 적용
 - 기본 로더가 이미 초기화된 경우 `ErrAlreadyInitialized` 반환
 
-**Load과의 차이점:**
+**Load와의 차이점:**
 - `Load()` - 파일 이름 목록만 허용, 기본 설정 사용
-- `LoadWithConfig()` - 완전한 Config를 허용, 모든 설정 옵션 지원
+- `LoadWithConfig()` - 전체 Config 허용, 모든 설정 옵션 지원
 
 ```go
 cfg := env.DefaultConfig()
@@ -638,7 +688,7 @@ if err := env.LoadWithConfig(cfg); err != nil {
 port := env.GetInt("PORT", 8080)
 ```
 
-::: warning 참고
+:::warning 참고
 이 함수는 `cfg.AutoApply`를 `true`로 강제 설정하여 변수가 시스템 환경에 적용되도록 합니다. 적용 시점을 제어하려면 `New()`를 사용하여 독립 인스턴스를 생성하세요.
 :::
 
@@ -649,12 +699,12 @@ port := env.GetInt("PORT", 8080)
 ### Marshal
 
 ```go
-func Marshal(data interface{}, format ...FileFormat) (string, error)
+func Marshal(data any, format ...FileFormat) (string, error)
 ```
 
 데이터를 지정된 형식의 문자열로 직렬화합니다. `map[string]string` 또는 구조체를 입력으로 지원합니다.
 
-**인터페이스 통합:** 입력 타입이 `Marshaler` 인터페이스를 구현한 경우, `MarshalEnv()` 메서드를 우선 호출하여 직렬화합니다.
+**인터페이스 통합:** 입력 유형이 `Marshaler` 인터페이스를 구현한 경우, `MarshalEnv()` 메서드를 우선 호출하여 직렬화합니다.
 
 **매개변수:**
 - `data` - 직렬화할 데이터 (map 또는 구조체)
@@ -670,17 +720,17 @@ func Marshal(data interface{}, format ...FileFormat) (string, error)
 - `FormatYAML` - YAML 형식
 
 ```go
-// map을 .env 형식으로
+// map을 .env 형식으로 변환
 mapData := map[string]string{"HOST": "localhost", "PORT": "8080"}
 envStr, _ := env.Marshal(mapData)
 // HOST=localhost
 // PORT=8080
 
-// map을 JSON 형식으로
+// map을 JSON 형식으로 변환
 jsonStr, _ := env.Marshal(mapData, env.FormatJSON)
 // {"HOST":"localhost","PORT":"8080"}
 
-// 구조체를 .env 형식으로
+// 구조체를 .env 형식으로 변환
 type Config struct {
     Host string `env:"HOST"`
     Port string `env:"PORT"`
@@ -710,7 +760,7 @@ func UnmarshalMap(data string, format ...FileFormat) (map[string]string, error)
 // .env 형식
 m, _ := env.UnmarshalMap("HOST=localhost\nPORT=8080")
 
-// JSON 형식 (중첩 구조는 평탄화됨)
+// JSON 형식 (중첩 구조는 평면화됨)
 m, _ := env.UnmarshalMap(`{"database": {"host": "localhost"}}`, env.FormatJSON)
 // m["DATABASE_HOST"] = "localhost"
 
@@ -723,7 +773,7 @@ m, _ := env.UnmarshalMap(jsonString, env.FormatAuto)
 ### UnmarshalStruct
 
 ```go
-func UnmarshalStruct(data string, v interface{}, format ...FileFormat) error
+func UnmarshalStruct(data string, v any, format ...FileFormat) error
 ```
 
 형식화된 문자열을 파싱하여 구조체에 채웁니다.
@@ -755,12 +805,12 @@ err = env.UnmarshalStruct(`{"server": {"host": "localhost"}}`, &cfg, env.FormatJ
 ### UnmarshalInto
 
 ```go
-func UnmarshalInto(data map[string]string, v interface{}) error
+func UnmarshalInto(data map[string]string, v any) error
 ```
 
 map을 구조체에 채웁니다. `env` 및 `envDefault` 태그를 지원합니다.
 
-**인터페이스 통합:** 대상 타입이 `Unmarshaler` 인터페이스를 구현한 경우, `UnmarshalEnv(data)` 메서드를 우선 호출합니다.
+**인터페이스 통합:** 대상 유형이 `Unmarshaler` 인터페이스를 구현한 경우, `UnmarshalEnv(data)` 메서드를 우선 호출합니다.
 
 **매개변수:**
 - `data` - 키-값 쌍 매핑
@@ -786,12 +836,12 @@ err := env.UnmarshalInto(data, &cfg)
 ### MarshalStruct
 
 ```go
-func MarshalStruct(v interface{}) (map[string]string, error)
+func MarshalStruct(v any) (map[string]string, error)
 ```
 
 구조체를 map으로 변환합니다. `env` 태그로 키 이름을 지정할 수 있습니다.
 
-**인터페이스 통합:** 입력 타입이 `Marshaler` 인터페이스를 구현한 경우, `MarshalEnv()` 메서드를 우선 호출합니다.
+**인터페이스 통합:** 입력 유형이 `Marshaler` 인터페이스를 구현한 경우, `MarshalEnv()` 메서드를 우선 호출합니다.
 
 **매개변수:**
 - `v` - 구조체 또는 구조체 포인터
@@ -826,7 +876,7 @@ func IsMarshalError(err error) bool
 - `err` - 확인할 오류
 
 **반환값:**
-- `bool` - MarshalError 타입인지 여부
+- `bool` - MarshalError 유형인지 여부
 
 ```go
 _, err := env.MarshalStruct(invalidData)
@@ -837,7 +887,7 @@ if env.IsMarshalError(err) {
 
 ---
 
-## 완전한 예제
+## 전체 예제
 
 ```go
 package main
@@ -873,7 +923,7 @@ func main() {
     fmt.Printf("Server: %s:%d\n", host, port)
     fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
 
-    // 민감 데이터
+    // 민감한 데이터
     secret := env.GetSecure("API_KEY")
     if secret != nil {
         defer secret.Release()

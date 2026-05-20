@@ -1,6 +1,6 @@
 ---
 title: SecureValue API - CyberGo env | 安全值存储
-description: CyberGo env 库 SecureValue 安全值类型完整 API 参考文档，SecureValue 提供内存锁定保护防止交换到磁盘、自动清零销毁、数据掩码处理、敏感键名自动检测和安全工具函数，用于安全存储密码、API 密钥和访问令牌等 Go 应用敏感数据。
+description: CyberGo env 库 SecureValue 安全值 API 完整参考，详解 NewSecureValueStrict 安全创建、mlock 内存锁定、Release 清零销毁、Masked 掩码处理、IsSensitiveKey 敏感键检测和 ClearBytes 工具函数，用于安全存储密码和令牌等敏感数据。
 ---
 
 # SecureValue API
@@ -125,18 +125,49 @@ if secret != nil {
 func (sv *SecureValue) String() string
 ```
 
-返回值的字符串副本。
+返回掩码表示，安全用于日志和格式化。实现了 `fmt.Stringer` 接口，防止通过 `fmt.Printf`、`log.Println` 或错误包装意外泄露密钥。
 
 **返回：**
-- `string` - 值的副本，已关闭返回空字符串
+- `string` - 掩码表示（如 `[SECURE:32 bytes locked]`），nil 时返回 `[NIL]`
 
 ```go
 secret := env.GetSecure("PASSWORD")
 if secret != nil {
-    value := secret.String()  // 创建副本
-    // 使用 value
+    log.Printf("Password: %s", secret)  // 安全，输出掩码表示
+    // 等效于 log.Printf("Password: %s", secret.Masked())
 }
 ```
+
+::: warning 注意
+`String()` 返回的是**掩码表示**，不是明文值。如需获取明文值，请使用 `Reveal()`。
+:::
+
+---
+
+### Reveal
+
+```go
+func (sv *SecureValue) Reveal() string
+```
+
+返回明文值。调用者负责安全处理返回的字符串 —— 避免日志记录、序列化或存储到持久化位置。仅在需要实际值用于加密操作、API 调用或类似安全处理时使用。
+
+**返回：**
+- `string` - 明文值，已关闭或 nil 时返回空字符串
+
+```go
+secret := env.GetSecure("API_KEY")
+if secret != nil {
+    defer secret.Release()
+    plaintext := secret.Reveal()  // 获取明文值
+    // 使用 plaintext 进行 API 调用等安全操作
+    _ = plaintext
+}
+```
+
+::: danger 安全警告
+`Reveal()` 返回的是**明文字符串**。Go 字符串不可变，无法手动清零。仅在必要时使用，并避免将返回值记录到日志或存储。
+:::
 
 ---
 
@@ -627,7 +658,7 @@ func main() {
     }
 
     // 传递给其他函数
-    connectAPI(apiKey.String())
+    connectAPI(apiKey.Reveal())
 
     // 使用安全工具函数
     logMessage := "Processing with API_KEY=secret"

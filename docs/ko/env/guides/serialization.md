@@ -1,11 +1,11 @@
 ---
-title: 직렬화 - CyberGo env | 다중 포맷 변환
-description: CyberGo env 라이브러리 직렬화 및 역직렬화 완전 사용 가이드입니다. .env, JSON, YAML 형식 간의 Map 매핑과 Go 구조체 상호 변환을 지원하며, 커스텀 직렬화 형식 옵션, env 태그 지원, 민감 필드 마스크 처리, 대량 내보내기/가져오기 작업 예제 및 다중 형식 상호 변환 Go 실전 시나리오를 포함합니다.
+title: 직렬화 - CyberGo env | 다중 형식 변환
+description: CyberGo env 라이브러리 직렬화 및 역직렬화 완전 가이드, .env, JSON, YAML 형식 간 Map 매핑과 Go 구조체 변환 방법을 상세히 설명하며, Marshal 및 Unmarshal 함수군, 커스텀 Marshaler/Unmarshaler 인터페이스 구현, env 태그 지원, 민감 필드 마스킹 처리 및 다중 형식 변환 실전 예제를 다룹니다.
 ---
 
 # 직렬화
 
-Marshal 및 Unmarshal 기능을 사용하여 환경 변수를 직렬화/역직렬화하며, `.env`, JSON, YAML 형식 변환을 지원합니다.
+Marshal 및 Unmarshal 기능으로 환경 변수를 직렬화/역직렬화하며, `.env`, JSON, YAML 형식 변환을 지원합니다.
 
 ## 기본 직렬화
 
@@ -40,7 +40,7 @@ func main() {
 }
 ```
 
-### JSON 포맷
+### JSON 형식
 
 ```go
 package main
@@ -71,7 +71,7 @@ func main() {
 }
 ```
 
-### YAML 포맷
+### YAML 형식
 
 ```go
 package main
@@ -187,12 +187,12 @@ func main() {
 func MarshalStruct(v interface{}) (map[string]string, error)
 ```
 
-**매개변수：**
-- `v` - 구조체포인터 또는 값
+**매개변수:**
+- `v` - 구조체 포인터 또는 값
 
-**반환：**
-- `map[string]string` - 환경변수매핑
-- `error` - 직렬화잘못됨
+**반환값:**
+- `map[string]string` - 환경 변수 매핑
+- `error` - 직렬화 오류
 
 ```go
 package main
@@ -243,7 +243,7 @@ import (
 )
 
 func main() {
-    // .env 형식문자열
+    // .env 형식 문자열
     data := `
 HOST=localhost
 PORT=8080
@@ -452,9 +452,9 @@ func main() {
 }
 ```
 
-## 포맷 감지
+## 형식 감지
 
-### 포맷 자동 감지
+### 자동 형식 감지
 
 ```go
 package main
@@ -465,7 +465,7 @@ import (
 )
 
 func main() {
-    // 형식 자동 감지
+    // 자동 형식 감지
     format := env.DetectFormat("config.json")
     fmt.Println(format.String()) // json
 
@@ -475,7 +475,7 @@ func main() {
     format = env.DetectFormat(".env")
     fmt.Println(format.String()) // dotenv
 
-    // FormatAuto를 사용한 자동 감지
+    // FormatAuto로 자동 감지
     data := `{"KEY": "value"}`
     result, _ := env.UnmarshalMap(data, env.FormatAuto)
     fmt.Println(result)
@@ -484,7 +484,7 @@ func main() {
 
 ## 실용 시나리오
 
-### 파일에 설정 저장
+### 설정을 파일로 저장
 
 ```go
 package main
@@ -581,5 +581,5 @@ func main() {
 ## 관련 문서
 
 - [패키지 함수](/ko/env/api-reference/functions) - Marshal, UnmarshalMap 등 함수 참조
-- [다중 형식 설정](/ko/env/guides/multi-format) - 다중 형식 로드 가이드
-- [구조체매핑](/ko/env/guides/struct-mapping) - 구조체매핑가이드
+- [다중 형식 구성](/ko/env/guides/multi-format) - 다중 형식 로딩 가이드
+- [구조체 매핑](/ko/env/guides/struct-mapping) - 구조체 매핑 가이드

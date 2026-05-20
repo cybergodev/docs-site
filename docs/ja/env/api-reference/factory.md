@@ -1,11 +1,11 @@
 ---
 title: ComponentFactory API - CyberGo env | コンポーネントファクトリー
-description: CyberGo env ライブラリ ComponentFactory コンポーネントファクトリーの API リファレンスドキュメント。Loader と Parser で共有されるコンポーネントインスタンスの作成と管理に使用します。監査プロセッサ、ファイルシステムアダプター、カスタムパーサーの登録管理を含み、コンポーネントのライフサイクル制御と依存性注入をサポートし、複数インスタンスの分離とスレッドセーフな並行アクセスを実現します。
+description: CyberGo env ライブラリ ComponentFactory コンポーネントファクトリー API 完全リファレンス。Loader と Parser が共有するコンポーネントインスタンスの作成と管理、監査ハンドラー、検証器、ファイルシステムアダプター、RegisterParser カスタムパーサー登録を含む。コンポーネントライフサイクル制御 Close とスレッドセーフな並発アクセスを提供。
 ---
 
 # ComponentFactory API
 
-`ComponentFactory` は Loader と Parser で共有されるコンポーネントを作成・管理し、明確なライフサイクル管理を提供します。
+`ComponentFactory` は Loader と Parser が共有するコンポーネントを作成・管理し、明確なライフサイクル管理を提供します。
 
 ## 型定義
 
@@ -15,16 +15,16 @@ type ComponentFactory struct {
 }
 ```
 
-**コアの責任：**
-- 共有の検証器、監査ロガー、変数展開器を作成
-- コンポーネントのライフサイクルを管理
-- カスタムパーサーから内部コンポーネントへのアクセスをサポート
+**コアとなる責務：**
+- 検証器、監査ロガー、変数エキスパンダーの共有インスタンスを作成
+- コンポーネントライフサイクルを管理
+- カスタムパーサーからの内部コンポーネントへのアクセスをサポート
 
 **スレッドセーフ：** ComponentFactory のすべてのメソッドはスレッドセーフです。
 
 ---
 
-## メソッド
+## 方法
 
 ### Validator
 
@@ -43,7 +43,7 @@ if err := validator.ValidateKey("MY_KEY"); err != nil {
 }
 
 if err := validator.ValidateValue("some value"); err != nil {
-    // 値に不正な内容が含まれる（ヌルバイト、制御文字など）
+    // 値に不正な内容が含まれている（ヌルバイト、制御文字など）
 }
 ```
 
@@ -73,7 +73,7 @@ _ = auditor.LogWithDuration(env.ActionParse, "", "parsed", true, time.Since(star
 func (f *ComponentFactory) Expander() VariableExpander
 ```
 
-変数展開器コンポーネントを返します。`${VAR}` 構文の変数展開に使用します。
+変数エキスパンダーコンポーネントを返します。`${VAR}` 構文の変数展開に使用します。
 
 ```go
 expander := factory.Expander()
@@ -88,17 +88,17 @@ expanded, err := expander.Expand("${BASE_URL}/api")
 func (f *ComponentFactory) Close() error
 ```
 
-ファクトリーが保持するリソースを解放します。クローズ後はファクトリーおよびそれを通じて作成されたコンポーネントを使用しないでください。
+ファクトリーが保持するリソースを解放します。クローズ後はファクトリーおよびそれを通じて作成されたコンポーネントは使用しないでください。
 
 **動作：**
-- 安全にクローズ。複数回呼び出しは nil を返す
+- 安全にクローズ、複数回呼び出しでも nil を返す
 - 監査ロガーのリソースを解放
 - アトミック操作でスレッドセーフを保証
 
 ```go
-// 通常は Loader が自動的に管理
+// 通常、Loader が自動的に管理
 loader, _ := env.New(cfg)
-defer loader.Close()  // ComponentFactory も自動的にクローズ
+defer loader.Close()  // 自動的に ComponentFactory をクローズ
 ```
 
 ---
@@ -109,11 +109,11 @@ defer loader.Close()  // ComponentFactory も自動的にクローズ
 func (f *ComponentFactory) IsClosed() bool
 ```
 
-ファクトリーがクローズ済みかどうかを確認します。
+ファクトリーがクローズ済みか確認。
 
 ```go
 if factory.IsClosed() {
-    // ファクトリーはクローズ済み、使用不可
+    // ファクトリークローズ済み、使用不可
 }
 ```
 
@@ -123,18 +123,18 @@ if factory.IsClosed() {
 
 ### 自動作成（推奨）
 
-Loader 作成時に ComponentFactory が自動的に作成・管理されます：
+Loader 作成時に ComponentFactory は自動的に作成・管理されます：
 
 ```go
 cfg := env.DefaultConfig()
 loader, _ := env.New(cfg)
-// Loader 内部で ComponentFactory を自動作成
-defer loader.Close()  // ファクトリーも自動的にクローズ
+// Loader 内部で自動的に ComponentFactory を作成
+defer loader.Close()  // ファクトリーを自動クローズ
 ```
 
-### カスタムパーサーでの使用
+### カスタムパーサー内での使用
 
-カスタムパーサーの登録時、ComponentFactory から検証器と監査ロガーを取得します：
+カスタムパーサーの登録時、ComponentFactory を通じて検証器と監査ロガーを取得：
 
 ```go
 type CustomParser struct {
@@ -151,10 +151,10 @@ func newCustomParser(cfg env.Config, factory *env.ComponentFactory) *CustomParse
     }
 }
 
-// カスタム形式定数を定義（衝突を避けるため 100+ の使用を推奨）
+// カスタムフォーマット定数の定義（100以上の値を使用して衝突を回避することを推奨）
 const FormatCustom env.FileFormat = 100
 
-// パーサーを登録
+// パーサーの登録
 env.RegisterParser(FormatCustom, func(cfg env.Config, factory *env.ComponentFactory) (env.EnvParser, error) {
     return newCustomParser(cfg, factory), nil
 })
@@ -169,7 +169,7 @@ Config 作成
      ↓
 env.New(cfg)
      ↓
-ComponentFactory を自動作成
+自动作成 ComponentFactory
      ↓
     ┌───────┼───────┐
     ↓       ↓       ↓
@@ -179,13 +179,13 @@ Validator  Auditor  Expander
             ↓
       Loader/Parser
             ↓
-      Close() で解放
+      Close() 释放
 ```
 
 ::: warning 注意
-- 各 Loader は通常、独自の ComponentFactory を持ちます
-- Close() 呼び出し後、そのファクトリーで作成されたすべてのコンポーネントは使用しないでください
-- ファクトリーはスレッドセーフで、並行アクセスが可能です
+- 各 Loader は通常独自の ComponentFactory を所有
+- Close() 呼び出し後、そのファクトリーを通じて作成されたすべてのコンポーネントは使用しないでください
+- ファクトリーはスレッドセーフで、並行アクセス可能
 :::
 
 ---
@@ -198,10 +198,10 @@ Validator  Auditor  Expander
 func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
 ```
 
-JSON 形式の監査プロセッサーを作成します。構造化ログを出力します。
+JSON フォーマットの監査ハンドラーを作成し、構造化ログを出力します。
 
 **パラメータ：**
-- `w` - 出力先（例：`os.Stdout`、ファイル）
+- `w` - 出力先（`os.Stdout`、ファイルなど）
 
 ```go
 cfg := env.ProductionConfig()
@@ -222,7 +222,7 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
 ```
 
-標準ログ形式の監査プロセッサーを作成します。
+標準ログフォーマットの監査ハンドラーを作成します。
 
 **パラメータ：**
 - `logger` - 標準 log.Logger インスタンス
@@ -247,7 +247,7 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 ```
 
-チャネル監査プロセッサーを作成します。監査イベントの非同期処理に使用します。
+チャネル監査ハンドラーを作成し、監査イベントの非同期処理に使用します。
 
 **パラメータ：**
 - `ch` - 監査イベントチャネル
@@ -256,7 +256,7 @@ func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 ch := make(chan env.AuditEvent, 100)
 cfg.AuditHandler = env.NewChannelAuditHandler(ch)
 
-// 監査イベントを非同期処理
+// 非同期処理監査イベント
 go func() {
     for event := range ch {
         fmt.Printf("Audit: %+v\n", event)
@@ -272,7 +272,7 @@ go func() {
 func NewNopAuditHandler() *NopAuditHandler
 ```
 
-何もしない監査プロセッサーを作成します。監査ログを無効化する場合に使用します。
+空操作監査ハンドラーを作成し、監査ログを無効化します。
 
 ```go
 cfg.AuditEnabled = true
@@ -281,11 +281,35 @@ cfg.AuditHandler = env.NewNopAuditHandler() // ログを記録しない
 
 ---
 
+### NewCloseableChannelHandler
+
+```go
+func NewCloseableChannelHandler(bufferSize int) *CloseableChannelHandler
+```
+
+独自のバッファチャネルを持つクローズ可能な監査ハンドラーを作成します。`ChannelAuditHandler` が外部チャネルを受け取るのに対し、`CloseableChannelHandler` は独自のバッファチャネルを作成・所有します。`Close()` を呼び出すとハンドラーをクローズしチャネルを閉じます。`Channel()` でイベントを受信します。
+
+**パラメータ：**
+- `bufferSize` - バッファチャネルのサイズ
+
+```go
+handler := env.NewCloseableChannelHandler(64)
+defer handler.Close()
+
+go func() {
+    for event := range handler.Channel() {
+        fmt.Printf("Audit: %+v\n", event)
+    }
+}()
+```
+
+---
+
 ## ファイルシステム
 
 ### OSFileSystem
 
-デフォルトのファイルシステム実装。OS のファイル操作をカプセル化します：
+デフォルトのファイルシステム実装、オペレーティングシステムのファイル操作をラップ：
 
 ```go
 type OSFileSystem struct{}
@@ -294,7 +318,7 @@ type OSFileSystem struct{}
 **実装インターフェース：** `FileSystem`
 
 ```go
-// メソッド一覧
+// 方法列表
 func (fs OSFileSystem) Open(name string) (File, error)
 func (fs OSFileSystem) OpenFile(name string, flag int, perm os.FileMode) (File, error)
 func (fs OSFileSystem) Stat(name string) (os.FileInfo, error)
@@ -319,9 +343,9 @@ var DefaultFileSystem FileSystem = OSFileSystem{}
 
 ---
 
-### カスタムファイルシステムの使用
+### 使用カスタムファイルシステム
 
-テストでファイルシステムをモック化：
+テスト時にファイルシステムをモック：
 
 ```go
 type MockFileSystem struct {
@@ -400,17 +424,17 @@ cfg.FileSystem = &MockFileSystem{
 func DetectFormat(filename string) FileFormat
 ```
 
-ファイル拡張子に基づいて形式を検出します。
+ファイル拡張子によりフォーマットを検出。
 
 **パラメータ：**
 - `filename` - ファイル名またはパス
 
 **戻り値：**
-- `FileFormat` - 検出された形式
+- `FileFormat` - 検出されたフォーマット
 
 **検出ルール：**
 
-| 拡張子 | 戻り値の形式 |
+| 拡張子 | 返されるフォーマット |
 |--------|----------|
 | `.env` | `FormatEnv` |
 | `.json` | `FormatJSON` |
@@ -422,15 +446,15 @@ format := env.DetectFormat("config.json")   // FormatJSON
 format := env.DetectFormat("settings.yaml") // FormatYAML
 format := env.DetectFormat("app.yml")       // FormatYAML
 format := env.DetectFormat(".env")          // FormatEnv
-format := env.DetectFormat(".env.local")    // FormatAuto（実際は .env として処理）
+format := env.DetectFormat(".env.local")    // FormatAuto (実際は .env として処理)
 format := env.DetectFormat("unknown.txt")   // FormatAuto
 ```
 
-**LoadFiles での活用：**
+**LoadFiles での使用：**
 
 ```go
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
-// 各ファイルの形式を自動検出し、対応するパーサーを使用
+// 各ファイルのフォーマットを自動検出対応するパーサーを使用
 ```
 
 ---
@@ -440,16 +464,16 @@ loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 ```go
 const (
     FormatAuto  FileFormat = iota  // 自動検出
-    FormatEnv                      // .env 形式
-    FormatJSON                     // JSON 形式
-    FormatYAML                     // YAML 形式
+    FormatEnv                      // .env フォーマット
+    FormatJSON                     // JSON フォーマット
+    FormatYAML                     // YAML フォーマット
 )
 ```
 
-**カスタム形式：**
+**カスタムフォーマット：**
 
 ```go
-// カスタム形式定数を定義（衝突を避けるため 100+ の値の使用を推奨）
+// カスタムフォーマット定数の定義（100以上の値を使用して衝突を回避することを推奨）
 const (
     FormatTOML  env.FileFormat = 100
     FormatINI   env.FileFormat = 101
@@ -465,7 +489,7 @@ const (
 func (f FileFormat) String() string
 ```
 
-形式の文字列表現を返します。
+フォーマットの文字列表現を返します。
 
 ```go
 fmt.Println(env.FormatJSON.String())  // "json"
@@ -485,26 +509,26 @@ fmt.Println(env.FileFormat(999).String())  // "unknown"
 func RegisterParser(format FileFormat, factory ParserFactory) error
 ```
 
-カスタム形式パーサーを登録します。
+カスタムフォーマット解析器を登録します。
 
 **パラメータ：**
-- `format` - ファイル形式定数
+- `format` - ファイルフォーマット定数
 - `factory` - パーサーファクトリー関数
 
 **戻り値：**
 - `error` - 登録失敗時にエラーを返す
 
-**エラー発生条件：**
-- 組み込み形式（FormatEnv、FormatJSON、FormatYAML）はオーバーライド不可
-- 形式が既に登録済み
+**エラーケース：**
+- 組み込みフォーマット（FormatEnv、FormatJSON、FormatYAML）は上書き不可
+- フォーマットが既に登録済み
 
 **注意事項：**
-- `env.New()` 呼び出し前に登録する必要があります
-- 衝突を避けるため 100+ の形式値の使用を推奨
-- ファクトリー関数はスレッドセーフなパーサーを返す必要があります
+- `env.New()` を呼び出す前に登録する必要がある
+- 組み込みフォーマットとの衝突を避けるため100以上の値を使用することを推奨
+- ファクトリー関数はスレッドセーフなパーサーを返すべき
 
 ```go
-// 1. カスタム形式定数を定義
+// 1. カスタムフォーマット定数を定義
 const FormatTOML env.FileFormat = 100
 
 // 2. パーサーインターフェースを実装
@@ -515,13 +539,13 @@ type TOMLParser struct {
 }
 
 func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    // TOML 解析ロジックを実装
+    // TOML 解析ロジックの実装
     result := make(map[string]string)
     // ... 解析コード
     return result, nil
 }
 
-// 3. パーサーを登録
+// 3. パーサーの登録
 err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
     return &TOMLParser{
         cfg:       cfg,
@@ -533,13 +557,13 @@ if err != nil {
     panic(err)
 }
 
-// 4. カスタム形式を使用
+// 4. カスタムフォーマットを使用
 func main() {
-    // 登録は New の前に完了している必要がある
+    // 登録は New の前に完了する必要がある
     loader, _ := env.New(env.DefaultConfig())
     defer loader.Close()
 
-    // .toml ファイルを読み込み可能
+    // .toml ファイルが読み込めるようになります
     loader.LoadFiles("config.toml")
 }
 ```
@@ -552,26 +576,26 @@ func main() {
 func ForceRegisterParser(format FileFormat, factory ParserFactory) error
 ```
 
-パーサーを強制登録します。組み込みパーサーのオーバーライドを許可します。
+強制パーサー登録。組み込みパーサーの上書きを許可します。
 
 **パラメータ：**
-- `format` - ファイル形式定数
+- `format` - ファイルフォーマット定数
 - `factory` - パーサーファクトリー関数
 
 **戻り値：**
 - `error` - 登録失敗時にエラーを返す（`factory` が nil の場合）
 
 ::: danger 警告
-慎重に使用してください。置き換えパーサーが同じセキュリティチェック（キー検証、値検証、サイズ制限など）を実装していない場合、組み込みパーサーのオーバーライドはセキュリティ脆弱性を招く可能性があります。
+慎重に使用してください。置き換えるパーサーが同じセキュリティチェック（キー検証、値検証、サイズ制限など）を実装していない場合、組み込みパーサーの上書きはセキュリティ脆弱性を招く可能性があります。
 
-以下の高度なシーンに適用：
-- 組み込みパーサーへのカスタムセキュリティチェックの追加
-- 形式拡張の実装（HEREDOC、複数行値など）
-- テストでのモックパーサーの使用
+以下の高度なユースケースに適しています：
+- 組み込みパーサーにカスタムセキュリティチェックを追加
+- フォーマット拡張の実装（HEREDOC、複数行値など）
+- モックパーサーを使用したテスト
 :::
 
 ```go
-// デフォルト .env パーサーをオーバーライド（高度な用途）
+// デフォルト .env パーサーを上書き（高度な用途）
 err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
     return &MyCustomEnvParser{
         validator: f.Validator(),
@@ -588,11 +612,11 @@ err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.Compon
 type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error)
 ```
 
-パーサーファクトリー関数のシグネチャ。
+パーサーファクトリー関数シグネチャ。
 
 **パラメータ：**
-- `cfg` - 設定オブジェクト。制限とセキュリティ設定を含む
-- `factory` - コンポーネントファクトリー。検証器と監査ロガーを取得可能
+- `cfg` - 設定オブジェクト、制限とセキュリティ設定を含む
+- `factory` - コンポーネントファクトリー、検証器と監査ロガーを取得可能
 
 **戻り値：**
 - `EnvParser` - パーサーインスタンス
@@ -600,7 +624,7 @@ type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error
 
 ---
 
-### EnvParser インターフェース
+### EnvParser 接口
 
 ```go
 type EnvParser interface {
@@ -608,50 +632,50 @@ type EnvParser interface {
 }
 ```
 
-パーサーが実装すべきインターフェース。
+パーサーが実装しなければならないインターフェース。
 
 **パラメータ：**
-- `r` - ファイル内容のリーダー
-- `filename` - ファイル名（エラーメッセージに使用）
+- `r` - ファイルコンテンツリーダー
+- `filename` - ファイル名（エラー情報用）
 
 **戻り値：**
-- `map[string]string` - 解析後のキーと値のペア
+- `map[string]string` - 解析されたキーと値のペア
 - `error` - 解析エラー
 
 ---
 
 ## 組み込みパーサー
 
-ライブラリは 3 種類の形式パーサーを組み込みで提供：
+ライブラリは3種類のフォーマットパーサーを組み込みで提供：
 
 ### DotEnv Parser
 
-`.env` 形式パーサー。サポート：
+`.env` フォーマットパーサー、サポート：
 - `KEY=value` 構文
 - `export KEY=value` 構文
-- 単一引用符 `'value'` と二重引用符 `"value"`
-- 変数展開 `${VAR}` と `${VAR:-default}`
-- コメント `#`
+- 单引号 `'value'` 和双引号 `"value"`
+- 変数展開 `${VAR}` および `${VAR:-default}`
+- 注释 `#`
 
 ### JSON Parser
 
-JSON 形式パーサー。サポート：
-- キー値ペアのオブジェクト
+JSON フォーマットパーサー、サポート：
+- キーと値のペアオブジェクト
 - ネストされた構造（フラット化処理）
-- 数値、文字列、ブール値の変換
+- 数値、文字列、真偽値の変換
 - 配列（`KEY_0`, `KEY_1`... にフラット化）
 
 ### YAML Parser
 
-YAML 形式パーサー。サポート：
-- キー値ペア
+YAML フォーマットパーサー、サポート：
+- 键值对
 - ネストされた構造（フラット化処理）
-- 多様なスカラー型
+- 複数のスカラータイプ
 - リスト（インデックスキーにフラット化）
 
 ---
 
-## 完全なサンプル
+## 完全な例
 
 ### カスタムパーサーの登録
 
@@ -722,10 +746,10 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
 }
 
 func main() {
-    // カスタム形式を定義
+    // カスタムフォーマットを定義
     const FormatINI env.FileFormat = 101
 
-    // パーサーを登録
+    // パーサーの登録
     err := env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
         return &INIParser{
             cfg:       cfg,
@@ -737,12 +761,12 @@ func main() {
         panic(err)
     }
 
-    // カスタム形式を使用
+    // カスタムフォーマットを使用
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // .ini ファイルを読み込み可能
+    // .ini ファイルが読み込めるようになりました
     // loader.LoadFiles("config.ini")
 
     fmt.Println("INI parser registered")
@@ -830,7 +854,7 @@ func (m *MemoryFileSystem) LookupEnv(key string) (string, bool) {
     return val, ok
 }
 
-// MemoryFile は env.File を実装
+// MemoryFile 实现 env.File
 type MemoryFile struct {
     reader *strings.Reader
 }
@@ -841,7 +865,7 @@ func (f *MemoryFile) Close() error                      { return nil }
 func (f *MemoryFile) Stat() (os.FileInfo, error)        { return nil, os.ErrUnsupported }
 func (f *MemoryFile) Sync() error                       { return nil }
 
-// MemoryFileInfo は os.FileInfo を実装
+// MemoryFileInfo 实现 os.FileInfo
 type MemoryFileInfo struct {
     name string
     size int64
@@ -854,13 +878,13 @@ func (i *MemoryFileInfo) ModTime() time.Time { return time.Time{} }
 func (i *MemoryFileInfo) IsDir() bool        { return false }
 func (i *MemoryFileInfo) Sys() interface{}   { return nil }
 
-// 使用例
+// 使用示例
 func main() {
     // メモリファイルシステムを作成
     fs := NewMemoryFileSystem()
     fs.files[".env"] = "APP_NAME=myapp\nPORT=8080\n"
 
-    // カスタムファイルシステムを使用する設定
+    // カスタムファイルシステムを使用するよう設定
     cfg := env.TestingConfig()
     cfg.FileSystem = fs
 
@@ -880,4 +904,4 @@ func main() {
 
 - [インターフェース定義](/ja/env/api-reference/interfaces) - すべてのインターフェース定義
 - [カスタムパーサー](/ja/env/guides/custom-parser) - カスタムパーサーガイド
-- [テストシーン](/ja/env/guides/testing) - カスタムファイルシステムでのテスト
+- [テストシナリオ](/ja/env/guides/testing) - カスタムファイルシステムを使用したテスト

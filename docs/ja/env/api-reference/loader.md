@@ -1,6 +1,6 @@
 ---
-title: Loader API - CyberGo env | ローダー詳解
-description: CyberGo env ライブラリ Loader ローダー型の完全 API リファレンスドキュメント。Loader はコアとなる型で、複数フォーマットのファイル読み込み、型安全な値の取得、キーと値のコレクション操作、変数展開処理、シリアライズエクスポート、ライフサイクル管理などすべてのメソッドを提供します。すべてのメソッドはスレッドセーフで、Go の高並行環境での安定した使用に適しています。
+title: Loader API - CyberGo env | ローダー詳細
+description: CyberGo env ライブラリ Loader ローダー API 完全リファレンス。Loader はコアとなる型で、LoadFiles マルチフォーマットファイル読み込み、GetString 型安全読み取り、Set と Delete キー値操作、Validate 検証、ParseInto シリアライズエクスポートと Close ライフサイクル管理等方法，すべてのメソッドはスレッドセーフです。
 ---
 
 # Loader API
@@ -8,7 +8,7 @@ description: CyberGo env ライブラリ Loader ローダー型の完全 API リ
 `Loader` 型の完全なメソッドリファレンス。Loader は env ライブラリのコアとなる型で、環境変数の読み込み、保存、アクセス機能を提供します。
 
 ::: tip スレッドセーフ
-Loader のすべてのメソッドはスレッドセーフで、複数の goroutine から並行して呼び出すことができます。
+Loader のすべてのメソッドはスレッドセーフで、複数の goroutine から並行して呼び出し可能です。
 :::
 
 ## 型定義
@@ -18,7 +18,7 @@ type Loader struct {
     // プライベートフィールドを含む
 }
 
-// コンパイル時のインターフェース実装チェック
+// コンパイル時インターフェース実装チェック
 var _ EnvLoader = (*Loader)(nil)
 var _ io.Closer = (*Loader)(nil)
 ```
@@ -33,10 +33,10 @@ var _ io.Closer = (*Loader)(nil)
 func New(cfg ...Config) (*Loader, error)
 ```
 
-新しいローダーインスタンスを作成します。
+新しいローダーインスタンスを作成。
 
 **パラメータ：**
-- `cfg` - オプションの設定。指定しないかゼロ値の Config を渡した場合、自動的に `DefaultConfig()` を使用します。
+- `cfg` - オプションの設定。指定しない場合やゼロ値の Config を渡した場合、自動的に `DefaultConfig()` を使用
 
 **戻り値：**
 - `*Loader` - ローダーインスタンス
@@ -44,9 +44,9 @@ func New(cfg ...Config) (*Loader, error)
 
 **動作：**
 - 設定の有効性を検証
-- 内部コンポーネント（検証器、監査ロガー、展開器）を作成
-- `cfg.Filenames` が空でない場合、自動的にファイルを読み込む
-- `cfg.AutoApply` が true の場合、自動的にシステム環境に適用
+- 内部コンポーネントを作成（検証器、監査ロガー、変数エキスパンダー）
+- `cfg.Filenames` が空でない場合、ファイルを自動読み込み
+- `cfg.AutoApply` が true の場合、システム環境に自動適用
 
 ```go
 // デフォルト設定を使用
@@ -74,42 +74,42 @@ defer loader.Close()
 func (l *Loader) LoadFiles(filenames ...string) error
 ```
 
-1 つ以上の設定ファイルを読み込みます。
+1つ以上の設定ファイルを読み込み。
 
 **パラメータ：**
-- `filenames` - ファイルパスのリスト。空の場合はデフォルトで `.env` を読み込む
+- `filenames` - ファイルパスのリスト、空の場合はデフォルトで `.env` を読み込み
 
 **戻り値：**
 - `error` - 読み込みエラー
 
 **動作：**
-- 順番に読み込み、後から読み込んだものが先のものを上書き（`OverwriteExisting` 設定で制御）
-- ファイル形式を自動検出（.env、JSON、YAML）
-- `FailOnMissingFile` 設定に基づいてファイルが存在しない時の動作を決定
+- 順番に読み込み，後から読み込んだものが前のものを上書き（`OverwriteExisting` 設定に制御される）
+- ファイルフォーマットを自動検出（.env、JSON、YAML）
+- `FailOnMissingFile` 設定に基づいてファイルが存在しない場合の動作を決定
 - `AutoApply` が true の場合、読み込み後に自動適用
 
 ```go
 // デフォルトの .env ファイルを読み込み
 err := loader.LoadFiles()
 
-// 指定ファイルを読み込み
+// 指定されたファイルを読み込み
 err := loader.LoadFiles(".env", ".env.local")
 
-// 複数フォーマットの混在
+// ミックスフォーマット
 err := loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 ```
 
 **エラー型：**
 - `ErrFileNotFound` - ファイルが存在しない（`FailOnMissingFile=true` の場合）
-- `ErrFileTooLarge` - ファイルがサイズ制限を超過
-- `ErrClosed` - ローダーがクローズ済み
+- `ErrFileTooLarge` - ファイルサイズが制限を超過
+- `ErrClosed` - ローダークローズ済み
 - `*ParseError` - 解析エラー
 - `*JSONError` - JSON 解析エラー
 - `*YAMLError` - YAML 解析エラー
 
-**形式検出ルール：**
+**フォーマット検出ルール：**
 
-| 拡張子 | 形式 |
+| 拡張子 | フォーマット |
 |--------|------|
 | `.env` | FormatEnv |
 | `.json` | FormatJSON |
@@ -122,7 +122,7 @@ err := loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 
 ### キー名の解決
 
-すべての取得メソッドはインテリジェントなキー名解決をサポートします：
+すべての取得メソッドがスマートキー名解決をサポート：
 
 | 入力キー名 | 解決結果 |
 |----------|----------|
@@ -133,7 +133,7 @@ err := loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 
 **解決順序：**
 1. 完全一致 - キー名を直接検索
-2. 大文字変換 - 単純キーで大文字版を試行
+2. 大文字変換 - 単純キーの大文字バージョンを試行
 3. パス解決 - ドットパスをアンダースコア形式に変換
 4. インデックスフォールバック - インデックスアクセス時にカンマ区切り値にフォールバック
 
@@ -145,20 +145,20 @@ err := loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 func (l *Loader) GetString(key string, defaultValue ...string) string
 ```
 
-文字列値を取得します。ドットパスの解決をサポートします。
+文字列値の取得。ドットパス解決をサポート。
 
 **パラメータ：**
 - `key` - キー名（完全一致、大文字変換、ドットパスをサポート）
 - `defaultValue` - オプションのデフォルト値
 
 **戻り値：**
-- `string` - 値またはデフォルト値（見つからずデフォルト値もない場合は空文字列）
+- `string` - 値またはデフォルト値（未検出かつデフォルト値がない場合は空文字列を返す）
 
 ```go
-// 基本的な使用方法
+// 基本用法
 host := loader.GetString("HOST", "localhost")
 
-// ドットパスアクセス（JSON/YAML のネスト構造）
+// ドットパスアクセス（JSON/YAML ネスト構造）
 dbHost := loader.GetString("database.host", "localhost")
 appName := loader.GetString("app.name")
 
@@ -174,14 +174,14 @@ value := loader.GetString("NON_EXISTENT")  // ""
 func (l *Loader) GetInt(key string, defaultValue ...int64) int64
 ```
 
-整数値を取得します。ドットパスの解決をサポートします。
+整数値の取得。ドットパス解決をサポート。
 
 **パラメータ：**
 - `key` - キー名（ドットパスをサポート）
-- `defaultValue` - オプションのデフォルト値、型は `int64`
+- `defaultValue` - オプションのデフォルト値、`int64` 型
 
 **戻り値：**
-- `int64` - 値またはデフォルト値（見つからずデフォルト値もない場合は 0）
+- `int64` - 値またはデフォルト値（未検出かつデフォルト値がない場合は 0 を返す）
 
 ```go
 port := loader.GetInt("PORT", 8080)
@@ -199,18 +199,18 @@ value := loader.GetInt("NON_EXISTENT")  // 0
 func (l *Loader) GetBool(key string, defaultValue ...bool) bool
 ```
 
-ブール値を取得します。ドットパスの解決をサポートします。
+ブール値の取得。ドットパス解決をサポート。
 
 **パラメータ：**
 - `key` - キー名（ドットパスをサポート）
 - `defaultValue` - オプションのデフォルト値
 
 **戻り値：**
-- `bool` - 値またはデフォルト値（見つからずデフォルト値もない場合は false）
+- `bool` - 値またはデフォルト値（未検出かつデフォルト値がない場合は false を返す）
 
 **サポートされる値：**
-- 真の値：`true`, `1`, `yes`, `on`, `enabled`
-- 偽の値：`false`, `0`, `no`, `off`, `disabled`
+- 真值：`true`, `1`, `yes`, `on`, `enabled`
+- 假值：`false`, `0`, `no`, `off`, `disabled`
 
 ```go
 debug := loader.GetBool("DEBUG", false)
@@ -222,22 +222,72 @@ value := loader.GetBool("NON_EXISTENT")  // false
 
 ---
 
+### GetUint64
+
+```go
+func (l *Loader) GetUint64(key string, defaultValue ...uint64) uint64
+```
+
+符号なし整数値の取得。ドットパス解決をサポート。
+
+**パラメータ：**
+- `key` - キー名（ドットパスをサポート）
+- `defaultValue` - オプションのデフォルト値、`uint64` 型
+
+**戻り値：**
+- `uint64` - 値またはデフォルト値（未検出かつデフォルト値がない場合は 0 を返す）
+
+```go
+port := loader.GetUint64("PORT", 8080)
+maxSize := loader.GetUint64("MAX_SIZE", 1024)
+
+// デフォルト値がない場合は 0 を返す
+value := loader.GetUint64("NON_EXISTENT")  // 0
+```
+
+---
+
+### GetFloat64
+
+```go
+func (l *Loader) GetFloat64(key string, defaultValue ...float64) float64
+```
+
+浮動小数点数値の取得。ドットパス解決をサポート。
+
+**パラメータ：**
+- `key` - キー名（ドットパスをサポート）
+- `defaultValue` - オプションのデフォルト値、`float64` 型
+
+**戻り値：**
+- `float64` - 値またはデフォルト値（未検出かつデフォルト値がない場合は 0 を返す）
+
+```go
+rate := loader.GetFloat64("RATE", 0.5)
+threshold := loader.GetFloat64("THRESHOLD")
+
+// デフォルト値がない場合は 0 を返す
+value := loader.GetFloat64("NON_EXISTENT")  // 0
+```
+
+---
+
 ### GetDuration
 
 ```go
 func (l *Loader) GetDuration(key string, defaultValue ...time.Duration) time.Duration
 ```
 
-時間間隔値を取得します。ドットパスの解決をサポートします。
+時間間隔値の取得。ドットパス解決をサポート。
 
 **パラメータ：**
 - `key` - キー名（ドットパスをサポート）
 - `defaultValue` - オプションのデフォルト値
 
 **戻り値：**
-- `time.Duration` - 値またはデフォルト値（見つからずデフォルト値もない場合は 0）
+- `time.Duration` - 値またはデフォルト値（未検出かつデフォルト値がない場合は 0 を返す）
 
-**サポートされる形式：** `ns`, `us`, `ms`, `s`, `m`, `h`（例：`30s`, `5m`, `1h30m`）
+**サポートフォーマット：** `ns`, `us`, `ms`, `s`, `m`, `h`（例：`30s`, `5m`, `1h30m`）
 
 ```go
 timeout := loader.GetDuration("TIMEOUT", 30*time.Second)
@@ -255,13 +305,13 @@ value := loader.GetDuration("NON_EXISTENT")  // 0
 func (l *Loader) GetSecure(key string) *SecureValue
 ```
 
-セキュア値（機密データ保護）を取得します。
+セキュア値を取得します（機密データ保護）。
 
 **パラメータ：**
 - `key` - キー名
 
 **戻り値：**
-- `*SecureValue` - セキュア値の**防御的コピー**。呼び出し側が解放に責任を持ちます。キーが存在しないかローダーがクローズ済みの場合は nil
+- `*SecureValue` - セキュア値の**防御的コピー**、呼び出し側が解放に責任を持つ。キーが存在しない、またはローダーがクローズ済みの場合は nil を返す
 
 ```go
 secret := loader.GetSecure("API_SECRET")
@@ -274,34 +324,34 @@ if secret != nil {
 ```
 
 ::: warning 重要
-使用後は必ず `Release()` または `Close()` を呼び出してリソースを解放してください。
+使用後にリソースを解放するため、必ず `Release()` または `Close()` を呼び出す必要があります。
 :::
 
 ::: tip 防御的コピー
-`GetSecure` は元の値のコピーを返します。親 Loader から独立しています。呼び出し側は `Release()` または `Close()` を呼び出して解放する責任があります。
+`GetSecure` が返すのは元の値のコピーで、親 Loader から独立しています。呼び出し側は `Release()` または `Close()` を呼び出して解放する責任があります。
 :::
 
-::: tip 詳細
-[SecureValue API](/ja/env/api-reference/secure-value) で完全なドキュメントを参照してください。
+::: tip 詳細は
+[SecureValue API](/ja/env/api-reference/secure-value) 完全なドキュメントを取得。
 :::
 
 ---
 
 ### スライス値の取得
 
-Loader にはスライス取得メソッドがありません（Go はジェネリックメソッドをサポートしていないため）。独立したジェネリック関数 `GetSliceFrom[T]` を使用して Loader インスタンスからスライスを取得してください：
+Loader にはスライス取得メソッドがありません（Go はジェネリックメソッドをサポートしていません）。独立したジェネリック関数 `GetSliceFrom[T]` を使用して Loader インスタンスからスライスを取得してください：
 
 ```go
-// 独立したジェネリック関数を使用
+// 使用独立泛型函数
 hosts := env.GetSliceFrom[string](loader, "HOSTS")
 ports := env.GetSliceFrom[int64](loader, "PORTS", []int64{80})
-portsInt := env.GetSliceFrom[int](loader, "PORTS")  // int 型もサポート
+portsInt := env.GetSliceFrom[int](loader, "PORTS")  // int もサポート
 ```
 
 **サポートされる型：** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
 
-::: tip 詳細
-[パッケージ関数 - GetSliceFrom](/ja/env/api-reference/functions#getslicefrom-t) で完全なドキュメントを参照してください。
+::: tip 詳細は
+[パッケージ関数 - GetSliceFrom](/ja/env/api-reference/functions#getslicefrom-t) で完全なドキュメントを確認。
 :::
 
 ---
@@ -312,22 +362,22 @@ portsInt := env.GetSliceFrom[int](loader, "PORTS")  // int 型もサポート
 func (l *Loader) Lookup(key string) (string, bool)
 ```
 
-キーが存在するか確認し、値を取得します。ドットパスの解決をサポートします。
+キーが存在するか確認して値を取得。ドットパス解決をサポート。
 
 **パラメータ：**
 - `key` - キー名（ドットパスをサポート）
 
 **戻り値：**
-- `string` - 値（前後の空白は除去済み）
+- `string` - 値（先頭と末尾の空白は削除される）
 - `bool` - 存在するかどうか
 
 ```go
 value, exists := loader.Lookup("API_KEY")
 if !exists {
-    // キーが存在しない
+    // 键不存在
 }
 
-// ドットパス
+// 点号路径
 if value, exists := loader.Lookup("database.host"); exists {
     fmt.Println(value)
 }
@@ -349,32 +399,32 @@ if value, exists := loader.Lookup("hosts.0"); exists {
 func (l *Loader) Set(key, value string) error
 ```
 
-環境変数を設定します。
+環境変数の設定。
 
 **パラメータ：**
 - `key` - キー名
-- `value` - 値
+- `value` - 值
 
 **戻り値：**
 - `error` - 設定エラー
 
 **動作：**
 - キー名の有効性を検証
-- `ValidateValues` が true の場合、値の安全性を検証
+- 如果 `ValidateValues` 为 true，値の安全性を検証
 - `OverwriteExisting` が false でキーが既に存在する場合、スキップ（nil を返す）
-- `AutoApply` が true の場合、システム環境にも同時に設定
+- 如果 `AutoApply` 为 true，同時にシステム環境に設定
 
 ```go
 err := loader.Set("CUSTOM_KEY", "value")
 if err != nil {
-    // エラー処理
+    // 处理错误
 }
 ```
 
 **エラー型：**
-- `ErrInvalidKey` - キー名が無効
-- `ErrForbiddenKey` - 禁止キー
-- `ErrClosed` - ローダーがクローズ済み
+- `ErrInvalidKey` - 键名无效
+- `ErrForbiddenKey` - キーが禁止されています
+- `ErrClosed` - ローダークローズ済み
 
 ---
 
@@ -384,7 +434,7 @@ if err != nil {
 func (l *Loader) Delete(key string) error
 ```
 
-環境変数を削除します。
+環境変数の削除。
 
 **パラメータ：**
 - `key` - キー名
@@ -393,7 +443,7 @@ func (l *Loader) Delete(key string) error
 - `error` - 削除エラー
 
 **動作：**
-- 変数がシステム環境に適用済みの場合、システム環境からも削除
+- 変数がシステム環境に適用済みの場合，同時にシステム環境から削除
 
 ```go
 err := loader.Delete("TEMP_KEY")
@@ -412,10 +462,10 @@ if err != nil {
 func (l *Loader) Keys() []string
 ```
 
-すべてのキー名を取得します。
+すべてのキー名を取得。
 
 **戻り値：**
-- `[]string` - キー名のリスト。ローダーがクローズ済みの場合は nil
+- `[]string` - キー名リスト、ローダークローズ済みの場合は nil を返す
 
 ```go
 keys := loader.Keys()
@@ -432,10 +482,10 @@ for _, key := range keys {
 func (l *Loader) All() map[string]string
 ```
 
-すべてのキーと値のペアを取得します。
+すべてのキーと値のペアを取得。
 
 **戻り値：**
-- `map[string]string` - キーと値のマッピング。ローダーがクローズ済みの場合は nil
+- `map[string]string` - キーと値のマッピング、ローダークローズ済みの場合は nil を返す
 
 ```go
 all := loader.All()
@@ -452,14 +502,14 @@ for key, value := range all {
 func (l *Loader) Len() int
 ```
 
-変数の数を取得します。
+変数の数を取得。
 
 **戻り値：**
-- `int` - 変数の数。ローダーがクローズ済みの場合は 0
+- `int` - 変数の数、ローダークローズ済みの場合は 0 を返す
 
 ```go
 count := loader.Len()
-fmt.Printf("%d 個の変数が読み込まれました\n", count)
+fmt.Printf("已加载 %d 个变量\n", count)
 ```
 
 ---
@@ -472,13 +522,13 @@ fmt.Printf("%d 個の変数が読み込まれました\n", count)
 func (l *Loader) Apply() error
 ```
 
-変数をシステム環境（`os.Environ`）に適用します。
+変数をシステム環境に適用（`os.Environ`）。
 
 **戻り値：**
 - `error` - 適用エラー
 
 **動作：**
-- 読み込み済みのすべての変数を走査
+- 読み込まれたすべての変数を反復処理
 - `OverwriteExisting` 設定に基づいて既存のシステム環境変数を上書きするかどうかを決定
 - 適用後は `os.Getenv()` でアクセス可能
 
@@ -488,7 +538,7 @@ if err != nil {
     panic(err)
 }
 
-// その後 os.Getenv() でもアクセス可能
+// 之后 os.Getenv() 也能访问
 host := os.Getenv("HOST")
 ```
 
@@ -500,20 +550,20 @@ host := os.Getenv("HOST")
 func (l *Loader) IsApplied() bool
 ```
 
-変数がシステム環境に適用済みかどうかを確認します。
+変数がシステム環境に適用済みか確認。
 
 **戻り値：**
-- `bool` - 適用済みかどうか
+- `bool` - 是否已应用
 
 ```go
 if loader.IsApplied() {
-    // 変数が os.Environ に適用済み
+    // 变量已应用到 os.Environ
 }
 ```
 
 ---
 
-## ステータス照会
+## ステータスクエリ
 
 ### LoadTime
 
@@ -521,15 +571,15 @@ if loader.IsApplied() {
 func (l *Loader) LoadTime() time.Time
 ```
 
-最後にファイルを読み込んだ時刻を返します。
+最後にファイルを読み込んだ時間を返す。
 
 **戻り値：**
-- `time.Time` - 読み込み時刻。未読み込みの場合はゼロ値
+- `time.Time` - 加载时间，未読み込みの場合はゼロ値を返す
 
 ```go
 loadTime := loader.LoadTime()
 if !loadTime.IsZero() {
-    fmt.Printf("最終読み込み時刻: %v\n", loadTime)
+    fmt.Printf("最后加载时间: %v\n", loadTime)
 }
 ```
 
@@ -541,23 +591,23 @@ if !loadTime.IsZero() {
 func (l *Loader) Config() Config
 ```
 
-ローダーの設定を返します。
+ローダーの設定を返す。
 
 **戻り値：**
-- `Config` - 設定（読み取り専用として扱うべき）
+- `Config` - 配置（应视为只读）
 
 ::: warning 注意
-返される Config は読み取り専用として扱ってください。`KeyPattern`、`AllowedKeys`、`ForbiddenKeys`、`RequiredKeys` などのフィールドを変更すると、ローダーの動作に影響する可能性があります。安全な変更用コピーが必要な場合は、必要なフィールドを手動でコピーしてください。
+返された Config は読み取り専用と見なすべきです。`KeyPattern`、`AllowedKeys`、`ForbiddenKeys`、`RequiredKeys` などのフィールドを変更するとローダーの動作に影響する可能性があります。安全に変更可能なコピーが必要な場合は、必要なフィールドを手動でコピーしてください。
 :::
 
 ```go
 cfg := loader.Config()
-fmt.Printf("最大ファイルサイズ: %d\n", cfg.MaxFileSize)
+fmt.Printf("最大文件大小: %d\n", cfg.MaxFileSize)
 ```
 
 ---
 
-## バリデーションとマッピング
+## 検証とマッピング
 
 ### Validate
 
@@ -565,13 +615,13 @@ fmt.Printf("最大ファイルサイズ: %d\n", cfg.MaxFileSize)
 func (l *Loader) Validate() error
 ```
 
-必須キーが存在するか検証します。
+検証必需键存在するかどうか。
 
 **戻り値：**
 - `error` - 検証エラー
 
 **動作：**
-- `Config.RequiredKeys` に指定されたすべてのキーが存在するかチェック
+- `Config.RequiredKeys` で指定されたすべてのキーが存在するかどうかをチェック
 
 ```go
 cfg := env.DefaultConfig()
@@ -584,7 +634,7 @@ if err := loader.Validate(); err != nil {
     // 必須キーが不足
     var missingErr *env.ValidationError
     if errors.As(err, &missingErr) {
-        fmt.Printf("不足: %s\n", missingErr.Field)
+        fmt.Printf("缺少: %s\n", missingErr.Field)
     }
 }
 ```
@@ -594,10 +644,10 @@ if err := loader.Validate(); err != nil {
 ### ParseInto
 
 ```go
-func (l *Loader) ParseInto(v interface{}) error
+func (l *Loader) ParseInto(v any) error
 ```
 
-環境変数を構造体にマッピングします。
+環境変数を構造体にマッピング。
 
 **パラメータ：**
 - `v` - 構造体ポインタ
@@ -606,7 +656,7 @@ func (l *Loader) ParseInto(v interface{}) error
 - `error` - マッピングエラー
 
 **サポートされるタグ：**
-- `env:"KEY"` - 環境変数名を指定
+- `env:"KEY"` - 指定環境変数名
 - `env:"-"` - このフィールドを無視
 - `envDefault:"value"` - デフォルト値を指定
 - `envSeparator:","` - スライスのセパレータを指定
@@ -629,7 +679,7 @@ if err != nil {
 
 ---
 
-## リソース解放
+## リソースの解放
 
 ### Close
 
@@ -637,30 +687,30 @@ if err != nil {
 func (l *Loader) Close() error
 ```
 
-リソースを解放し、ストレージをクリアします。
+リソースを解放しストレージをクリア。
 
 **戻り値：**
 - `error` - クローズエラー
 
 **動作：**
 - 保存されたすべての機密データを安全にゼロクリア
-- ローダーが ComponentFactory を所有している場合、ファクトリーもクローズ
-- 安全にクローズ。複数回呼び出しは nil を返す
+- ローダーが所有している場合 ComponentFactory，同時にファクトリーをクローズ
+- 安全にクローズ、複数回呼び出しでも nil を返す
 
 ```go
 loader, _ := env.New(cfg)
 defer loader.Close()
 
-// loader を使用...
+// 使用 loader...
 ```
 
 ::: warning クローズ後の動作
-クローズ後、すべての操作はエラーまたはゼロ値を返します：
+クローズ後のすべての操作はエラーまたはゼロ値を返します：
 - `LoadFiles` → `ErrClosed`
-- `GetString` → 空の値を返す
+- `GetString` → 返回空值
 - `Set` → `ErrClosed`
-- `Keys` → nil を返す
-- `Len` → 0 を返す
+- `Keys` → 返回 nil
+- `Len` → 返回 0
 :::
 
 ---
@@ -671,20 +721,20 @@ defer loader.Close()
 func (l *Loader) IsClosed() bool
 ```
 
-ローダーがクローズ済みかどうかを確認します。
+ローダーがクローズ済みか確認。
 
 **戻り値：**
-- `bool` - クローズ済みかどうか
+- `bool` - 是否クローズ済み
 
 ```go
 if loader.IsClosed() {
-    // ローダーはクローズ済み
+    // 加载器クローズ済み
 }
 ```
 
 ---
 
-## 完全なサンプル
+## 完全な例
 
 ```go
 package main
@@ -700,12 +750,12 @@ import (
 )
 
 func main() {
-    // 本番環境設定を作成
+    // 作成本番環境設定
     cfg := env.ProductionConfig()
     cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
     cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 
-    // ローダーを作成
+    // ローダーの作成
     loader, err := env.New(cfg)
     if err != nil {
         log.Fatal(err)
@@ -725,7 +775,7 @@ func main() {
         log.Fatal("必須設定が不足:", err)
     }
 
-    // 設定を読み取り
+    // 設定の読み取り
     host := loader.GetString("DB_HOST")
     port := loader.GetInt("DB_PORT", 5432)
     debug := loader.GetBool("DEBUG", false)
@@ -756,5 +806,5 @@ func main() {
 
 - [パッケージ関数](/ja/env/api-reference/functions) - パッケージレベル便利関数
 - [Config API](/ja/env/api-reference/config) - 設定オプション
-- [SecureValue API](/ja/env/api-reference/secure-value) - セキュア値の処理
+- [SecureValue API](/ja/env/api-reference/secure-value) - セキュア値処理
 - [インターフェース定義](/ja/env/api-reference/interfaces) - すべてのインターフェース定義

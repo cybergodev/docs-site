@@ -1,6 +1,6 @@
 ---
 title: 错误处理 - CyberGo env | 哨兵错误与恢复策略
-description: CyberGo env 库错误处理模式与最佳实践完整指南，包括哨兵错误 errors.Is 检查、结构化错误类型 errors.As 提取、错误恢复与降级策略、自定义错误包装和错误链追踪，帮助 Go 开发者编写健壮的环境变量管理代码并实现优雅的错误处理与故障恢复。
+description: CyberGo env 库错误处理与最佳实践完整指南，详解 15 个哨兵错误的 errors.Is 精确匹配检查、8 种结构化错误类型的 errors.As 上下文提取、错误恢复与降级策略、自定义错误包装模式和错误链 Unwrap 追踪方法，帮助编写健壮的生产级 Go 代码。
 ---
 
 # 错误处理
@@ -46,8 +46,6 @@ var (
 var (
     ErrForbiddenKey      = errors.New("key is forbidden for security reasons")
     ErrSecurityViolation = errors.New("security policy violation")
-    ErrNullByte          = errors.New("null byte detected in input")
-    ErrControlChar       = errors.New("control character detected in input")
     ErrInvalidValue      = errors.New("invalid value content")
 )
 ```
@@ -74,9 +72,58 @@ var (
     ErrClosed             = errors.New("loader has been closed")
     ErrInvalidConfig      = errors.New("invalid configuration")
     ErrAlreadyInitialized = errors.New("default loader already initialized")
+    ErrNotInitialized     = errors.New("default loader not initialized; call Load() first")
     ErrMissingRequired    = errors.New("required key is missing")
 )
 ```
+
+**检查方式：**
+
+```go
+// 检查加载器是否已关闭
+if errors.Is(err, env.ErrClosed) {
+    // 加载器已关闭
+}
+
+// 检查默认加载器是否已初始化
+if errors.Is(err, env.ErrAlreadyInitialized) {
+    // 默认加载器已存在，无法重复调用 Load()
+}
+
+// 检查默认加载器是否未初始化
+if errors.Is(err, env.ErrNotInitialized) {
+    // 需要先调用 env.Load() 或 env.LoadWithConfig()
+}
+
+// 检查必需键是否缺失
+if errors.Is(err, env.ErrMissingRequired) {
+    // 缺少必需键
+}
+```
+
+### 适配器错误
+
+```go
+var ErrValidateRequiredUnsupported = errors.New(
+    "custom validator does not implement ValidateRequired; " +
+    "implement Validator interface for required key validation",
+)
+```
+
+当自定义验证器仅实现 `KeyValidator` 接口而未实现完整 `Validator` 接口时，调用 `ValidateRequired` 会返回此错误。
+
+**检查方式：**
+
+```go
+if errors.Is(err, env.ErrValidateRequiredUnsupported) {
+    // 自定义验证器不支持必需键验证
+    // 需要实现完整的 Validator 接口
+}
+```
+
+::: tip 解决方法
+实现 `Validator` 接口（包含 `ValidateKey`、`ValidateValue`、`ValidateRequired` 三个方法）而非仅实现 `KeyValidator`。
+:::
 
 ## 结构化错误类型
 
@@ -199,26 +246,71 @@ if errors.As(err, &expErr) {
 }
 ```
 
-### 格式错误
+### JSONError
+
+JSON 解析错误：
 
 ```go
 type JSONError struct {
-    Path    string
-    Message string
-    Err     error
+    Path    string  // 文件路径
+    Message string  // 错误消息
+    Err     error   // 原始错误
 }
+```
 
+**使用示例：**
+
+```go
+var jsonErr *env.JSONError
+if errors.As(err, &jsonErr) {
+    log.Printf("JSON 错误 %s: %s\n", jsonErr.Path, jsonErr.Message)
+}
+```
+
+### YAMLError
+
+YAML 解析错误：
+
+```go
 type YAMLError struct {
-    Path    string
-    Line    int
-    Column  int
-    Message string
-    Err     error
+    Path    string  // 文件路径
+    Line    int     // 行号
+    Column  int     // 列号
+    Message string  // 错误消息
+    Err     error   // 原始错误
 }
+```
 
+**使用示例：**
+
+```go
+var yamlErr *env.YAMLError
+if errors.As(err, &yamlErr) {
+    log.Printf("YAML 错误 %s:%d:%d - %s\n",
+        yamlErr.Path, yamlErr.Line, yamlErr.Column, yamlErr.Message)
+}
+```
+
+### MarshalError
+
+序列化/反序列化错误：
+
+```go
 type MarshalError struct {
-    Field   string
-    Message string
+    Field   string  // 字段名
+    Message string  // 错误消息
+}
+```
+
+**使用示例：**
+
+```go
+_, err := env.MarshalStruct(invalidData)
+if err != nil && env.IsMarshalError(err) {
+    var marshalErr *env.MarshalError
+    if errors.As(err, &marshalErr) {
+        log.Printf("序列化错误: 字段 %s - %s\n", marshalErr.Field, marshalErr.Message)
+    }
 }
 ```
 

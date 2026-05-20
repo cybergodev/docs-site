@@ -1,6 +1,6 @@
 ---
 title: Error Handling - CyberGo env | Sentinel Errors & Recovery
-description: Error handling patterns for the env library including sentinel error checking, structured error extraction, and recovery strategies
+description: Complete error handling guide for CyberGo env, covering 15 sentinel errors with errors.Is matching, 8 structured error types with errors.As context extraction, error recovery and degradation strategies, custom error wrapping patterns, and error chain unwrapping for robust production-grade Go code.
 ---
 
 # Error Handling
@@ -18,7 +18,7 @@ var (
 )
 ```
 
-**Usage:**
+**Usage example:**
 
 ```go
 err := loader.LoadFiles(".env")
@@ -26,7 +26,7 @@ if errors.Is(err, env.ErrFileNotFound) {
     log.Println("Configuration file not found")
 }
 if errors.Is(err, env.ErrFileTooLarge) {
-    log.Println("Configuration file too large")
+    log.Println("Configuration file is too large")
 }
 ```
 
@@ -46,8 +46,6 @@ var (
 var (
     ErrForbiddenKey      = errors.New("key is forbidden for security reasons")
     ErrSecurityViolation = errors.New("security policy violation")
-    ErrNullByte          = errors.New("null byte detected in input")
-    ErrControlChar       = errors.New("control character detected in input")
     ErrInvalidValue      = errors.New("invalid value content")
 )
 ```
@@ -74,26 +72,75 @@ var (
     ErrClosed             = errors.New("loader has been closed")
     ErrInvalidConfig      = errors.New("invalid configuration")
     ErrAlreadyInitialized = errors.New("default loader already initialized")
+    ErrNotInitialized     = errors.New("default loader not initialized; call Load() first")
     ErrMissingRequired    = errors.New("required key is missing")
 )
 ```
+
+**Checking:**
+
+```go
+// Check if the loader is closed
+if errors.Is(err, env.ErrClosed) {
+    // Loader is closed
+}
+
+// Check if the default loader is already initialized
+if errors.Is(err, env.ErrAlreadyInitialized) {
+    // Default loader already exists, cannot call Load() again
+}
+
+// Check if the default loader is not initialized
+if errors.Is(err, env.ErrNotInitialized) {
+    // Need to call env.Load() or env.LoadWithConfig() first
+}
+
+// Check if a required key is missing
+if errors.Is(err, env.ErrMissingRequired) {
+    // Required key is missing
+}
+```
+
+### Adapter Errors
+
+```go
+var ErrValidateRequiredUnsupported = errors.New(
+    "custom validator does not implement ValidateRequired; " +
+    "implement Validator interface for required key validation",
+)
+```
+
+When a custom validator only implements the `KeyValidator` interface but not the full `Validator` interface, calling `ValidateRequired` returns this error.
+
+**Checking:**
+
+```go
+if errors.Is(err, env.ErrValidateRequiredUnsupported) {
+    // Custom validator does not support required key validation
+    // Need to implement the full Validator interface
+}
+```
+
+:::tip Resolution
+Implement the `Validator` interface (which includes `ValidateKey`, `ValidateValue`, and `ValidateRequired` methods) rather than only implementing `KeyValidator`.
+:::
 
 ## Structured Error Types
 
 ### ParseError
 
-Parse error with position information:
+Parse error with location information:
 
 ```go
 type ParseError struct {
     File    string  // File name
     Line    int     // Line number
-    Content string  // Error content (masked)
+    Content string  // Error content
     Err     error   // Original error
 }
 ```
 
-**Usage:**
+**Usage example:**
 
 ```go
 err := loader.LoadFiles(".env")
@@ -120,7 +167,7 @@ type FileError struct {
 }
 ```
 
-**Usage:**
+**Usage example:**
 
 ```go
 var fileErr *env.FileError
@@ -141,11 +188,11 @@ type SecurityError struct {
     Action  string  // Action
     Reason  string  // Reason
     Key     string  // Key name
-    Details string  // Additional details
+    Details string  // Details
 }
 ```
 
-**Usage:**
+**Usage example:**
 
 ```go
 var secErr *env.SecurityError
@@ -168,7 +215,7 @@ type ValidationError struct {
 }
 ```
 
-**Usage:**
+**Usage example:**
 
 ```go
 var valErr *env.ValidationError
@@ -190,7 +237,7 @@ type ExpansionError struct {
 }
 ```
 
-**Usage:**
+**Usage example:**
 
 ```go
 var expErr *env.ExpansionError
@@ -199,26 +246,71 @@ if errors.As(err, &expErr) {
 }
 ```
 
-### Format Errors
+### JSONError
+
+JSON parse error:
 
 ```go
 type JSONError struct {
-    Path    string
-    Message string
-    Err     error
+    Path    string  // File path
+    Message string  // Error message
+    Err     error   // Original error
 }
+```
 
+**Usage example:**
+
+```go
+var jsonErr *env.JSONError
+if errors.As(err, &jsonErr) {
+    log.Printf("JSON error %s: %s\n", jsonErr.Path, jsonErr.Message)
+}
+```
+
+### YAMLError
+
+YAML parse error:
+
+```go
 type YAMLError struct {
-    Path    string
-    Line    int
-    Column  int
-    Message string
-    Err     error
+    Path    string  // File path
+    Line    int     // Line number
+    Column  int     // Column number
+    Message string  // Error message
+    Err     error   // Original error
 }
+```
 
+**Usage example:**
+
+```go
+var yamlErr *env.YAMLError
+if errors.As(err, &yamlErr) {
+    log.Printf("YAML error %s:%d:%d - %s\n",
+        yamlErr.Path, yamlErr.Line, yamlErr.Column, yamlErr.Message)
+}
+```
+
+### MarshalError
+
+Serialization/deserialization error:
+
+```go
 type MarshalError struct {
-    Field   string
-    Message string
+    Field   string  // Field name
+    Message string  // Error message
+}
+```
+
+**Usage example:**
+
+```go
+_, err := env.MarshalStruct(invalidData)
+if err != nil && env.IsMarshalError(err) {
+    var marshalErr *env.MarshalError
+    if errors.As(err, &marshalErr) {
+        log.Printf("Marshal error: field %s - %s\n", marshalErr.Field, marshalErr.Message)
+    }
 }
 ```
 
@@ -226,7 +318,7 @@ type MarshalError struct {
 
 ### errors.Is Pattern
 
-Checking sentinel errors:
+Check for sentinel errors:
 
 ```go
 err := loader.LoadFiles(".env")
@@ -238,7 +330,7 @@ case errors.Is(err, env.ErrFileNotFound):
 
 case errors.Is(err, env.ErrFileTooLarge):
     // File too large
-    log.Fatal("Configuration file too large")
+    log.Fatal("Configuration file is too large")
 
 case errors.Is(err, env.ErrForbiddenKey):
     // Forbidden key
@@ -249,14 +341,14 @@ case errors.Is(err, env.ErrInvalidKey):
     log.Fatal("Invalid key detected")
 
 case err != nil:
-    // Other errors
+    // Other error
     log.Fatalf("Load failed: %v", err)
 }
 ```
 
 ### errors.As Pattern
 
-Extracting detailed error information:
+Extract detailed error information:
 
 ```go
 err := loader.LoadFiles(".env")
@@ -267,7 +359,7 @@ if err == nil {
 // Try to extract parse error
 var parseErr *env.ParseError
 if errors.As(err, &parseErr) {
-    log.Fatalf("Parse error at %s line %d: %v",
+    log.Fatalf("Parse error in %s at line %d: %v",
         parseErr.File, parseErr.Line, parseErr.Err)
 }
 
@@ -283,7 +375,7 @@ if errors.As(err, &secErr) {
     log.Fatalf("Security error: %s - %s", secErr.Action, secErr.Reason)
 }
 
-// Other errors
+// Other error
 log.Fatalf("Unknown error: %v", err)
 ```
 
@@ -295,10 +387,10 @@ func handleLoadError(err error) {
         return
     }
 
-    // Check sentinel errors first
+    // First check sentinel errors
     switch {
     case errors.Is(err, env.ErrFileNotFound):
-        log.Println("Warning: Configuration file not found")
+        log.Println("Warning: configuration file not found")
         return
 
     case errors.Is(err, env.ErrFileTooLarge):
@@ -460,7 +552,7 @@ func handleValidationError(err error) {
     }
 
     if errors.Is(err, env.ErrMissingRequired) {
-        log.Fatal("Missing required key")
+        log.Fatal("Required key is missing")
     }
 
     log.Fatalf("Validation failed: %v", err)

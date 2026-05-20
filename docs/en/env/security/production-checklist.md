@@ -1,14 +1,14 @@
 ---
-title: Production Checklist - CyberGo env | Security Launch
-description: Pre-deployment security checklist for the env library covering file security, configuration validation, audit logging, and sensitive data handling
+title: Production Checklist - CyberGo env | Pre-Deployment Security
+description: Pre-deployment security checklist for CyberGo env production environments, covering .env file permissions and directory protection, RequiredKeys and AllowedKeys validation, AuditEnabled audit logging, SecureValue sensitive data handling, sentinel error strategies, and LimitsConfig performance tuning.
 ---
 
 # Production Checklist
 
 A checklist to review before deploying your application to production.
 
-::: tip Security Concepts
-See [Security Overview](/en/env/security/) for security architecture and core features.
+:::tip Security Concepts
+For the security architecture and core features, see [Security Overview](/en/env/security/).
 :::
 
 ## Pre-Deployment Checks
@@ -17,8 +17,8 @@ See [Security Overview](/en/env/security/) for security architecture and core fe
 
 - [ ] `.env.production` file exists
 - [ ] File permissions are `600` or stricter
-- [ ] Sensitive files are in `.gitignore`
-- [ ] Configuration files contain no placeholders (e.g., `change-me`, `xxx`)
+- [ ] Sensitive files are listed in `.gitignore`
+- [ ] Config files contain no placeholders (e.g., `change-me`, `xxx`)
 
 ```bash
 # Check permissions
@@ -63,8 +63,8 @@ cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ### Sensitive Data Handling
 
 - [ ] Sensitive values are retrieved with `GetSecure`
-- [ ] Resources are released with `Close()` promptly
-- [ ] Logs do not output raw sensitive values
+- [ ] `Close()` is called promptly to release resources
+- [ ] Raw sensitive values are not logged
 
 ```go
 secret := loader.GetSecure("DB_PASSWORD")
@@ -76,7 +76,7 @@ log.Printf("Password length: %d", secret.Length())
 
 - [ ] `AllowedKeys` whitelist is set (recommended)
 - [ ] `ValidateValues` is enabled
-- [ ] Size limits are set appropriately
+- [ ] Size limits are configured appropriately
 
 ```go
 cfg.AllowedKeys = []string{"APP_NAME", "DB_HOST", "API_KEY"}
@@ -84,19 +84,19 @@ cfg.ValidateValues = true
 cfg.MaxVariables = 100
 ```
 
-## Deployment Checks
+## Deployment-Time Checks
 
-- [ ] Configuration files are loaded from a secure location
+- [ ] Config files are loaded from a secure location
 - [ ] Application validates configuration on startup
 - [ ] Application refuses to start on configuration errors
-- [ ] Sensitive information is not output to logs
+- [ ] Sensitive information is not written to logs
 
 ## Post-Deployment Checks
 
 - [ ] Application is running normally
 - [ ] Audit logs are being written
-- [ ] No sensitive information is leaked
-- [ ] Monitoring for configuration-related errors
+- [ ] No sensitive information is leaking
+- [ ] Monitoring is set up for configuration-related errors
 
 ## Quick Check Script
 
@@ -108,7 +108,7 @@ set -e
 
 echo "=== Pre-deployment Config Check ==="
 
-# Check file existence
+# Check file exists
 [ -f ".env.production" ] || { echo "ERROR: .env.production not found"; exit 1; }
 
 # Check permissions

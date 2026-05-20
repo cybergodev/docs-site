@@ -1,11 +1,11 @@
 ---
-title: 커스텀 파서 - CyberGo env | 파일 포맷 확장
-description: CyberGo env 라이브러리 커스텀 파서 개발 완전 가이드입니다. EnvParser 인터페이스를 구현하여 커스텀 파일 형식 파서를 생성하고, ComponentFactory를 통해 등록 및 로드 프로세스에 통합하며, env 라이브러리가 지원하는 설정 파일 형식을 확장하는 방법을 설명합니다. TOML 파서의 완전한 Go 예제와 모범 사례를 포함합니다.
+title: 커스텀 파서 - CyberGo env | 파일 형식 확장
+description: CyberGo env 라이브러리 커스텀 파서 개발 완전 가이드, EnvParser 인터페이스를 구현하여 커스텀 형식 파서를 생성하는 방법을 상세히 설명하고, RegisterParser로 ComponentFactory에 등록하여 로딩 흐름에 통합하며, TOML 및 INI 파서의 완전한 구현 예제, 오류 처리 패턴 및 프로덕션 환경 모범 사례를 포함합니다.
 ---
 
 # 커스텀 파서
 
-이 가이드는 커스텀 파일 형식 파서를 생성하고 등록하여 env 라이브러리가 지원하는 설정 형식을 확장하는 방법을 소개합니다.
+이 가이드는 커스텀 파일 형식 파서를 생성하고 등록하여 env 라이브러리가 지원하는 구성 형식을 확장하는 방법을 소개합니다.
 
 ## 파서 인터페이스
 
@@ -19,11 +19,11 @@ type EnvParser interface {
 }
 ```
 
-**매개변수：**
-- `r` - 파일 콘텐츠 읽기기
-- `filename` - 파일 이름 (오류 정보에 사용)
+**매개변수:**
+- `r` - 파일 내용 리더
+- `filename` - 파일 이름 (오류 메시지에 사용)
 
-**반환：**
+**반환값:**
 - `map[string]string` - 파싱된 키-값 쌍
 - `error` - 파싱 오류
 
@@ -52,31 +52,31 @@ type CustomParser struct {
 func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     result := make(map[string]string)
 
-    // 1. 내용 읽기 (크기 제한 참고)
+    // 1. 내용 읽기 (크기 제한 주의)
     content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize))
     if err != nil {
         return nil, err
     }
 
     // 2. 내용을 키-값 쌍으로 파싱
-    // ... 파싱 논리
+    // ... 파싱 로직
 
-    // 3. 검증결과
+    // 3. 결과 검증
     for key := range result {
         if err := p.validator.ValidateKey(key); err != nil {
             return nil, err
         }
     }
 
-    // 4. 반환결과
+    // 4. 결과 반환
     return result, nil
 }
 ```
 
-### TOML 파서 예제
+### TOML 파서 예시
 
 ```go
-package main
+package tomlparser
 
 import (
     "fmt"
@@ -87,7 +87,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// TOMLParser 파싱 TOML 형식
+// TOMLParser는 TOML 형식을 파싱합니다
 type TOMLParser struct {
     cfg       env.Config
     validator env.Validator
@@ -97,7 +97,7 @@ type TOMLParser struct {
 func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     start := time.Now()
 
-    // 제한읽기크기
+    // 읽기 크기 제한
     content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
     if err != nil {
         return nil, err
@@ -114,21 +114,21 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
     for lineNum, line := range lines {
         line = strings.TrimSpace(line)
 
-        // 빈 줄과 주석 건너뛰기
+        // 빈 줄 및 주석 건너뛰기
         if line == "" || strings.HasPrefix(line, "#") {
             continue
         }
 
-        // 파싱 section [section]
+        // section [section] 파싱
         if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
             currentSection = strings.Trim(line, "[]")
             continue
         }
 
-        // 파싱 key = value
+        // key = value 파싱
         parts := strings.SplitN(line, "=", 2)
         if len(parts) != 2 {
-            continue // 또는반환잘못됨
+            continue // 또는 오류 반환
         }
 
         key := strings.TrimSpace(parts[0])
@@ -145,7 +145,7 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
         // 대문자로 변환
         key = strings.ToUpper(key)
 
-        // 검증키
+        // 키 검증
         if err := p.validator.ValidateKey(key); err != nil {
             _ = p.auditor.LogError(env.ActionParse, key, err.Error())
             return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
@@ -154,7 +154,7 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
         result[key] = value
     }
 
-    // 변수 수 검사
+    // 변수 수량 확인
     if len(result) > p.cfg.MaxVariables {
         return nil, fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
     }
@@ -164,10 +164,10 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
 }
 ```
 
-### INI 파서 예제
+### INI 파서 예시
 
 ```go
-package main
+package iniparser
 
 import (
     "fmt"
@@ -177,7 +177,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// INIParser 파싱 INI 형식
+// INIParser는 INI 형식을 파싱합니다
 type INIParser struct {
     cfg       env.Config
     validator env.Validator
@@ -198,7 +198,7 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
     for lineNum, line := range lines {
         line = strings.TrimSpace(line)
 
-        // 빈 줄과 주석 건너뛰기
+        // 빈 줄 및 주석 건너뛰기
         if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
             continue
         }
@@ -244,8 +244,8 @@ type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error
 팩토리 함수는 Config와 ComponentFactory를 받아 파서 인스턴스를 반환합니다.
 
 **매개변수 설명:**
-- `cfg` - 모든 제한 및 보안 설정이 포함된 설정 객체
-- `factory` - Validator, Auditor 등의 컴포넌트를 가져올 수 있는 컴포넌트 팩토리
+- `cfg` - 구성 객체, 모든 제한 및 보안 설정 포함
+- `factory` - 컴포넌트 팩토리, Validator, Auditor 등의 컴포넌트 접근 가능
 
 ### RegisterParser 함수
 
@@ -255,24 +255,24 @@ func RegisterParser(format FileFormat, factory ParserFactory) error
 
 커스텀 형식 파서를 등록합니다.
 
-**매개변수：**
-- `format` - 파일형식상수（충돌을 피하기 위해 100+ 값을 사용하는 것이 좋음）
+**매개변수:**
+- `format` - 파일 형식 상수 (충돌을 피하기 위해 100+ 값 사용 권장)
 - `factory` - 파서 팩토리 함수
 
-**반환：**
+**반환값:**
 - `error` - 등록 실패 시 오류 반환
 
 **오류 상황:**
-- 내장형식（FormatEnv、FormatJSON、FormatYAML）덮어쓸 수 없음
+- 내장 형식 (FormatEnv, FormatJSON, FormatYAML)은 덮어쓸 수 없음
 - 형식이 이미 등록됨
 
 **주의 사항:**
 - `env.New()` 호출 전에 등록해야 함
-- `init()` 함수에서 등록하는 것이 좋음
+- `init()` 함수에서 등록하는 것을 권장
 
 ### ComponentFactory 사용
 
-ComponentFactory를 통해 검증기와 감사기 가져오기:
+ComponentFactory를 통해 검증기와 감사기를 가져옵니다:
 
 ```go
 type SecureParser struct {
@@ -292,7 +292,7 @@ func NewSecureParser(cfg env.Config, factory *env.ComponentFactory) (env.EnvPars
 func (p *SecureParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     result := make(map[string]string)
 
-    // ... 파싱 논리
+    // ... 파싱 로직
 
     // 검증기로 키 이름 검증
     for key := range result {
@@ -307,7 +307,7 @@ func (p *SecureParser) Parse(r io.Reader, filename string) (map[string]string, e
 }
 ```
 
-### 완전한 등록 예제
+### 완전한 등록 예시
 
 ```go
 package main
@@ -316,7 +316,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// 1. 형식 상수 정의（권장사용 100+ 의값）
+// 1. 형식 상수 정의 (100+ 값 사용 권장)
 const (
     FormatTOML env.FileFormat = 100
     FormatINI  env.FileFormat = 101
@@ -325,7 +325,7 @@ const (
 
 // 2. init에서 등록
 func init() {
-    // 등록 TOML 파서
+    // TOML 파서 등록
     err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
         return &TOMLParser{
             cfg:       cfg,
@@ -337,7 +337,7 @@ func init() {
         panic(err) // 형식이 이미 등록되었거나 기타 오류
     }
 
-    // 등록 INI 파서
+    // INI 파서 등록
     env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
         return &INIParser{
             cfg:       cfg,
@@ -348,13 +348,13 @@ func init() {
 }
 
 func main() {
-    // 등록은 New 이전에 완료되어야 함 (init에서 이미 완료)
+    // 등록은 New 전에 완료되어야 함 (init에서 이미 완료)
 
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // 이제 .toml 파일을 로드할 수 있음
+    // 이제 .toml 파일을 로딩할 수 있음
     loader.LoadFiles("config.toml")
 }
 ```
@@ -363,16 +363,16 @@ func main() {
 
 ## 모범 사례
 
-### 1. 설정 제한 준수
+### 1. 구성 제한 준수
 
 ```go
 func (p *CustomParser) checkLimits(result map[string]string) error {
-    // 변수 수 검사
+    // 변수 수량 확인
     if len(result) > p.cfg.MaxVariables {
         return fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
     }
 
-    // 키와 값 길이 검사
+    // 키 및 값 길이 확인
     for key, value := range result {
         if len(key) > p.cfg.MaxKeyLength {
             return fmt.Errorf("key too long: %s", key)
@@ -392,7 +392,7 @@ func (p *CustomParser) checkLimits(result map[string]string) error {
 func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     result := make(map[string]string)
 
-    // ... 파싱 논리
+    // ... 파싱 로직
 
     // 모든 키 검증
     for key := range result {
@@ -443,7 +443,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
     start := time.Now()
     result := make(map[string]string)
 
-    // ... 파싱 논리
+    // ... 파싱 로직
 
     // 성공 기록
     _ = p.auditor.LogWithDuration(
@@ -460,7 +460,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 
 ---
 
-## 완전한 예제
+## 전체 예시
 
 ### XML 파서 구현
 
@@ -477,7 +477,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// XML 설정구조
+// XML 구성 구조체
 type XMLConfig struct {
     XMLName xml.Name   `xml:"config"`
     Entries []XMLEntry `xml:"entry"`
@@ -488,7 +488,7 @@ type XMLEntry struct {
     Value string `xml:",chardata"`
 }
 
-// XMLParser 파싱 XML 형식
+// XMLParser는 XML 형식을 파싱합니다
 type XMLParser struct {
     cfg       env.Config
     validator env.Validator
@@ -498,7 +498,7 @@ type XMLParser struct {
 func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     start := time.Now()
 
-    // 제한읽기크기
+    // 읽기 크기 제한
     content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
     if err != nil {
         return nil, err
@@ -519,17 +519,17 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
     for _, entry := range xmlConfig.Entries {
         key := strings.ToUpper(entry.Key)
 
-        // 검증키길이
+        // 키 길이 검증
         if len(key) > p.cfg.MaxKeyLength {
             return nil, fmt.Errorf("key too long: %s", key)
         }
 
-        // 검증키형식
+        // 키 형식 검증
         if err := p.validator.ValidateKey(key); err != nil {
             return nil, fmt.Errorf("invalid key %q: %w", key, err)
         }
 
-        // 검증값길이
+        // 값 길이 검증
         if len(entry.Value) > p.cfg.MaxValueLength {
             return nil, fmt.Errorf("value too long for key: %s", key)
         }
@@ -537,7 +537,7 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
         result[key] = entry.Value
     }
 
-    // 변수 수 검사
+    // 변수 수량 확인
     if len(result) > p.cfg.MaxVariables {
         return nil, fmt.Errorf("too many variables: %d > %d", len(result), p.cfg.MaxVariables)
     }
@@ -546,7 +546,7 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
     return result, nil
 }
 
-// 정의 XML 형식상수
+// XML 형식 상수 정의
 const FormatXML env.FileFormat = 102
 
 func init() {
@@ -565,7 +565,7 @@ func main() {
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // XML 설정 로드
+    // XML 설정 로딩
     /*
     <?xml version="1.0"?>
     <config>
@@ -585,6 +585,6 @@ func main() {
 ## 관련 문서
 
 - [ComponentFactory API](/ko/env/api-reference/factory) - ComponentFactory 및 RegisterParser
-- [인터페이스정의](/ko/env/api-reference/interfaces) - EnvParser 인터페이스정의
-- [Config API](/ko/env/api-reference/config) - 설정 옵션 상세
-- [다중 형식 설정](/ko/env/guides/multi-format) - JSON/YAML 형식 상세
+- [인터페이스 정의](/ko/env/api-reference/interfaces) - EnvParser 인터페이스 정의
+- [Config API](/ko/env/api-reference/config) - 구성 옵션 상세
+- [다중 형식 구성](/ko/env/guides/multi-format) - JSON/YAML 형식 상세

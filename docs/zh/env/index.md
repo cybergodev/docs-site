@@ -1,6 +1,6 @@
 ---
-title: env - 环境变量管理
-description: CyberGo env 是高安全性的 Go 环境变量管理库，支持 .env、JSON、YAML 多格式文件加载与自动检测，提供类型安全转换、线程安全并发访问、内存安全存储保护和完整审计日志功能，适用于 Web 服务、CLI 工具和容器化部署等 Go 应用场景。
+title: CyberGo env - 环境变量管理库
+description: CyberGo env 是高安全性的 Go 环境变量管理库，支持 .env、JSON、YAML 多格式文件加载与自动格式检测，提供 Loader 接口、类型安全转换、线程安全并发访问、SecureValue 内存保护与完整审计日志功能，内置多种配置预设模板，适用于 Web 服务和容器化部署等场景。
 ---
 
 # env
