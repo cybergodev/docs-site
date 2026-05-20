@@ -1,24 +1,24 @@
 ---
-title: Loader API - CyberGo env | 로더 상세 설명
-description: CyberGo env 라이브러리 Loader 로더 타입 완전한 API 레퍼런스 문서로, Loader는 핵심 타입으로 다중 포맷 파일 로드, 타입 안전 읽기, 키-값 집합 작업, 변수 확장 처리, 직렬화 내보내기 및 라이프사이클 관리 등 모든 메서드를 제공하며, 모든 메서드는 스레드 안전하여 Go 고동시성 환경에서 안정적으로 사용할 수 있습니다.
+title: Loader API - CyberGo env | 로더 상세
+description: CyberGo env 라이브러리 Loader 로더 API 전체 참조 문서로, Loader는 핵심 유형으로 LoadFiles 다중 형식 파일 로드, GetString 유형 안전 읽기, Set 및 Delete 키-값 조작, Validate 검증, ParseInto 직렬화 내보내기, Close 수명 주기 관리 등의 메서드를 제공하며, 모든 메서드는 스레드 안전합니다.
 ---
 
 # Loader API
 
-`Loader` 타입의 완전한 메서드 레퍼런스입니다. Loader는 env 라이브러리의 핵심 타입으로, 환경 변수의 로드, 저장 및 접근 기능을 제공합니다.
+`Loader` 유형의 전체 메서드 참조입니다. Loader는 env 라이브러리의 핵심 유형으로, 환경 변수의 로드, 저장 및 접근 기능을 제공합니다.
 
-::: tip 스레드 안전
+:::tip 스레드 안전
 Loader의 모든 메서드는 스레드 안전하며, 여러 goroutine에서 동시에 호출할 수 있습니다.
 :::
 
-## 타입 정의
+## 유형 정의
 
 ```go
 type Loader struct {
-    // private 필드 포함
+    // 개인 필드 포함
 }
 
-// 컴파일 타임에 인터페이스 구현 확인
+// 컴파일 타임 인터페이스 구현 확인
 var _ EnvLoader = (*Loader)(nil)
 var _ io.Closer = (*Loader)(nil)
 ```
@@ -36,7 +36,7 @@ func New(cfg ...Config) (*Loader, error)
 새로운 로더 인스턴스를 생성합니다.
 
 **매개변수:**
-- `cfg` - 선택적 설정 옵션. 제공하지 않거나영값 Config을 전달하면 자동으로 `DefaultConfig()` 사용
+- `cfg` - 선택적 설정 옵션. 제공하지 않거나 제로값 Config를 전달하면 자동으로 `DefaultConfig()` 사용
 
 **반환값:**
 - `*Loader` - 로더 인스턴스
@@ -45,14 +45,14 @@ func New(cfg ...Config) (*Loader, error)
 **동작:**
 - 설정 유효성 검증
 - 내부 컴포넌트 생성 (검증기, 감사기, 확장기)
-- `cfg.Filenames`이 비어 있지 않으면 자동으로 파일 로드
+- `cfg.Filenames`가 비어 있지 않으면 자동으로 파일 로드
 - `cfg.AutoApply`가 true이면 시스템 환경에 자동 적용
 
 ```go
 // 기본 설정 사용
 loader, err := env.New()
 
-// 커스텀 설정 사용
+// 사용자 정의 설정 사용
 cfg := env.DefaultConfig()
 cfg.Filenames = []string{".env"}
 cfg.AutoApply = true
@@ -83,9 +83,9 @@ func (l *Loader) LoadFiles(filenames ...string) error
 - `error` - 로드 오류
 
 **동작:**
-- 순서대로 로드하며, 나중에 로드된 것이 먼저 로드된 것을 덮어씀 (`OverwriteExisting` 설정으로 제어)
-- 파일 포맷 자동 감지 (.env, JSON, YAML)
-- `FailOnMissingFile` 설정에 따라 파일이 없을 때의 동작 결정
+- 순서대로 로드, 나중에 로드한 것이 먼저 로드한 것을 덮어씀 (`OverwriteExisting` 설정에 의해 제어)
+- 파일 형식 자동 감지 (.env, JSON, YAML)
+- `FailOnMissingFile` 설정에 따라 파일이 존재하지 않을 때의 동작 결정
 - `AutoApply`가 true이면 로드 후 자동 적용
 
 ```go
@@ -95,21 +95,21 @@ err := loader.LoadFiles()
 // 지정된 파일 로드
 err := loader.LoadFiles(".env", ".env.local")
 
-// 혼합 포맷
+// 혼합 형식
 err := loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 ```
 
-**오류 타입:**
-- `ErrFileNotFound` - 파일 없음 (`FailOnMissingFile=true`인 경우)
+**오류 유형:**
+- `ErrFileNotFound` - 파일이 존재하지 않음 (`FailOnMissingFile=true`인 경우)
 - `ErrFileTooLarge` - 파일 크기 제한 초과
 - `ErrClosed` - 로더가 닫힘
 - `*ParseError` - 파싱 오류
 - `*JSONError` - JSON 파싱 오류
 - `*YAMLError` - YAML 파싱 오류
 
-**포맷 감지 규칙:**
+**형식 감지 규칙:**
 
-| 확장자 | 포맷 |
+| 확장자 | 형식 |
 |--------|------|
 | `.env` | FormatEnv |
 | `.json` | FormatJSON |
@@ -132,10 +132,10 @@ err := loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 | `"servers.0.host"` | `"SERVERS_0_HOST"` (배열 인덱스) |
 
 **해석 순서:**
-1. 정확한 일치 - 키 이름을 직접 검색
-2. 대문자 변환 - 단순 키는 대문자 버전을 시도
+1. 정확한 일치 - 키 이름 직접 검색
+2. 대문자 변환 - 단순 키에 대해 대문자 버전 시도
 3. 경로 해석 - 점 경로를 밑줄 형식으로 변환
-4. 인덱스 대체 - 인덱스 접근 시 쉼표 구분 값으로 대체
+4. 인덱스 폴백 - 인덱스 접근 시 쉼표로 구분된 값으로 폴백
 
 ---
 
@@ -152,7 +152,7 @@ func (l *Loader) GetString(key string, defaultValue ...string) string
 - `defaultValue` - 선택적 기본값
 
 **반환값:**
-- `string` - 값 또는 기본값 (찾지 못하고 기본값이 없으면 빈 문자열 반환)
+- `string` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 빈 문자열 반환)
 
 ```go
 // 기본 사용법
@@ -178,10 +178,10 @@ func (l *Loader) GetInt(key string, defaultValue ...int64) int64
 
 **매개변수:**
 - `key` - 키 이름 (점 경로 지원)
-- `defaultValue` - 선택적 기본값, 타입은 `int64`
+- `defaultValue` - 선택적 기본값, `int64` 유형
 
 **반환값:**
-- `int64` - 값 또는 기본값 (찾지 못하고 기본값이 없으면 0 반환)
+- `int64` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 0 반환)
 
 ```go
 port := loader.GetInt("PORT", 8080)
@@ -199,16 +199,16 @@ value := loader.GetInt("NON_EXISTENT")  // 0
 func (l *Loader) GetBool(key string, defaultValue ...bool) bool
 ```
 
-불리언 값을 가져옵니다. 점 경로 해석을 지원합니다.
+부울 값을 가져옵니다. 점 경로 해석을 지원합니다.
 
 **매개변수:**
 - `key` - 키 이름 (점 경로 지원)
 - `defaultValue` - 선택적 기본값
 
 **반환값:**
-- `bool` - 값 또는 기본값 (찾지 못하고 기본값이 없으면 false 반환)
+- `bool` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 false 반환)
 
-**지원 값:**
+**지원되는 값:**
 - 참 값: `true`, `1`, `yes`, `on`, `enabled`
 - 거짓 값: `false`, `0`, `no`, `off`, `disabled`
 
@@ -218,6 +218,56 @@ cacheEnabled := loader.GetBool("cache.enabled", true)
 
 // 기본값이 없으면 false 반환
 value := loader.GetBool("NON_EXISTENT")  // false
+```
+
+---
+
+### GetUint64
+
+```go
+func (l *Loader) GetUint64(key string, defaultValue ...uint64) uint64
+```
+
+부호 없는 정수 값을 가져옵니다. 점 경로 해석을 지원합니다.
+
+**매개변수:**
+- `key` - 키 이름 (점 경로 지원)
+- `defaultValue` - 선택적 기본값, `uint64` 유형
+
+**반환값:**
+- `uint64` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 0 반환)
+
+```go
+port := loader.GetUint64("PORT", 8080)
+maxSize := loader.GetUint64("MAX_SIZE", 1024)
+
+// 기본값이 없으면 0 반환
+value := loader.GetUint64("NON_EXISTENT")  // 0
+```
+
+---
+
+### GetFloat64
+
+```go
+func (l *Loader) GetFloat64(key string, defaultValue ...float64) float64
+```
+
+부동소수점 값을 가져옵니다. 점 경로 해석을 지원합니다.
+
+**매개변수:**
+- `key` - 키 이름 (점 경로 지원)
+- `defaultValue` - 선택적 기본값, `float64` 유형
+
+**반환값:**
+- `float64` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 0 반환)
+
+```go
+rate := loader.GetFloat64("RATE", 0.5)
+threshold := loader.GetFloat64("THRESHOLD")
+
+// 기본값이 없으면 0 반환
+value := loader.GetFloat64("NON_EXISTENT")  // 0
 ```
 
 ---
@@ -235,7 +285,7 @@ func (l *Loader) GetDuration(key string, defaultValue ...time.Duration) time.Dur
 - `defaultValue` - 선택적 기본값
 
 **반환값:**
-- `time.Duration` - 값 또는 기본값 (찾지 못하고 기본값이 없으면 0 반환)
+- `time.Duration` - 값 또는 기본값 (찾지 못하고 기본값도 없으면 0 반환)
 
 **지원 형식:** `ns`, `us`, `ms`, `s`, `m`, `h` (예: `30s`, `5m`, `1h30m`)
 
@@ -255,7 +305,7 @@ value := loader.GetDuration("NON_EXISTENT")  // 0
 func (l *Loader) GetSecure(key string) *SecureValue
 ```
 
-보안 값을 가져옵니다 (민감 데이터 보호).
+보안 값을 가져옵니다 (민감한 데이터 보호).
 
 **매개변수:**
 - `key` - 키 이름
@@ -273,23 +323,23 @@ if secret != nil {
 }
 ```
 
-::: warning 중요
+:::warning 중요
 사용 후 반드시 `Release()` 또는 `Close()`를 호출하여 리소스를 해제해야 합니다.
 :::
 
-::: tip 방어적 복사본
-`GetSecure`는 원래 값의 복사본을 반환하며, 부모 Loader와 독립적입니다. 호출자가 `Release()` 또는 `Close()`를 호출하여 해제할 책임이 있습니다.
+:::tip 방어적 복사본
+`GetSecure`는 원본 값의 복사본을 반환하며, 부모 Loader와 독립적입니다. 호출자가 `Release()` 또는 `Close()`를 호출하여 해제할 책임이 있습니다.
 :::
 
-::: tip 자세히
-[SecureValue API](/ko/env/api-reference/secure-value)에서 완전한 문서를 확인하세요.
+:::tip 자세히
+[SecureValue API](/ko/env/api-reference/secure-value)에서 전체 문서를 확인하세요.
 :::
 
 ---
 
 ### 슬라이스 값 가져오기
 
-Loader는 슬라이스 가져오기 메서드를 제공하지 않습니다 (Go는 제네릭 메서드를 지원하지 않음). 독립적인 제네릭 함수 `GetSliceFrom[T]`를 사용하여 Loader 인스턴스에서 슬라이스를 가져옵니다:
+Loader는 슬라이스 가져오기 메서드를 제공하지 않습니다 (Go는 제네릭 메서드를 지원하지 않음). 독립적인 제네릭 함수 `GetSliceFrom[T]`를 사용하여 Loader 인스턴스에서 슬라이스를 가져오세요:
 
 ```go
 // 독립 제네릭 함수 사용
@@ -298,10 +348,10 @@ ports := env.GetSliceFrom[int64](loader, "PORTS", []int64{80})
 portsInt := env.GetSliceFrom[int](loader, "PORTS")  // int도 지원
 ```
 
-**지원 타입:** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
+**지원 유형:** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
 
-::: tip 자세히
-[패키지 함수 - GetSliceFrom](/ko/env/api-reference/functions#getslicefrom-t)에서 완전한 문서를 확인하세요.
+:::tip 자세히
+[패키지 함수 - GetSliceFrom](/ko/env/api-reference/functions#getslicefrom-t)에서 전체 문서를 확인하세요.
 :::
 
 ---
@@ -332,7 +382,7 @@ if value, exists := loader.Lookup("database.host"); exists {
     fmt.Println(value)
 }
 
-// 인덱스 접근 (쉼표 구분 값으로 대체)
+// 인덱스 접근 (쉼표로 구분된 값으로 폴백)
 // HOSTS=localhost,example.com
 if value, exists := loader.Lookup("hosts.0"); exists {
     fmt.Println(value)  // "localhost"
@@ -362,7 +412,7 @@ func (l *Loader) Set(key, value string) error
 - 키 이름 유효성 검증
 - `ValidateValues`가 true이면 값의 안전성 검증
 - `OverwriteExisting`이 false이고 키가 이미 존재하면 건너뜀 (nil 반환)
-- `AutoApply`가 true이면 시스템 환경에도 동시에 설정
+- `AutoApply`가 true이면 시스템 환경에도 동시 설정
 
 ```go
 err := loader.Set("CUSTOM_KEY", "value")
@@ -371,8 +421,8 @@ if err != nil {
 }
 ```
 
-**오류 타입:**
-- `ErrInvalidKey` - 잘못된 키 이름
+**오류 유형:**
+- `ErrInvalidKey` - 키 이름이 유효하지 않음
 - `ErrForbiddenKey` - 금지된 키
 - `ErrClosed` - 로더가 닫힘
 
@@ -393,7 +443,7 @@ func (l *Loader) Delete(key string) error
 - `error` - 삭제 오류
 
 **동작:**
-- 변수가 시스템 환경에 적용된 경우, 시스템 환경에서도 동시에 삭제
+- 변수가 시스템 환경에 이미 적용된 경우 시스템 환경에서도 동시 삭제
 
 ```go
 err := loader.Delete("TEMP_KEY")
@@ -404,7 +454,7 @@ if err != nil {
 
 ---
 
-## 집합 작업
+## 컬렉션 조작
 
 ### Keys
 
@@ -479,7 +529,7 @@ func (l *Loader) Apply() error
 
 **동작:**
 - 로드된 모든 변수를 순회
-- `OverwriteExisting` 설정에 따라 기존 시스템 환경 변수 덮어쓰기 여부 결정
+- `OverwriteExisting` 설정에 따라 이미 존재하는 시스템 환경 변수를 덮어쓸지 결정
 - 적용 후 `os.Getenv()`로 접근 가능
 
 ```go
@@ -524,7 +574,7 @@ func (l *Loader) LoadTime() time.Time
 마지막으로 파일을 로드한 시간을 반환합니다.
 
 **반환값:**
-- `time.Time` - 로드 시간, 로드하지 않은 경우영값 반환
+- `time.Time` - 로드 시간, 로드하지 않은 경우 제로값 반환
 
 ```go
 loadTime := loader.LoadTime()
@@ -546,8 +596,8 @@ func (l *Loader) Config() Config
 **반환값:**
 - `Config` - 설정 (읽기 전용으로 간주해야 함)
 
-::: warning 참고
-반환된 Config는 읽기 전용으로 간주해야 합니다. `KeyPattern`, `AllowedKeys`, `ForbiddenKeys`, `RequiredKeys` 등의 필드를 수정하면 로더의 동작에 영향을 줄 수 있습니다. 안전한 가변 복사본이 필요하면 필요한 필드를 수동으로 복사하세요.
+:::warning 참고
+반환된 Config는 읽기 전용으로 간주해야 합니다. `KeyPattern`, `AllowedKeys`, `ForbiddenKeys`, `RequiredKeys` 등의 필드를 수정하면 로더 동작에 영향을 줄 수 있습니다. 안전한 가변 복사본이 필요한 경우 필요한 필드를 수동으로 복사하세요.
 :::
 
 ```go
@@ -594,7 +644,7 @@ if err := loader.Validate(); err != nil {
 ### ParseInto
 
 ```go
-func (l *Loader) ParseInto(v interface{}) error
+func (l *Loader) ParseInto(v any) error
 ```
 
 환경 변수를 구조체에 매핑합니다.
@@ -605,7 +655,7 @@ func (l *Loader) ParseInto(v interface{}) error
 **반환값:**
 - `error` - 매핑 오류
 
-**지원 태그:**
+**지원되는 태그:**
 - `env:"KEY"` - 환경 변수 이름 지정
 - `env:"-"` - 이 필드 무시
 - `envDefault:"value"` - 기본값 지정
@@ -644,7 +694,7 @@ func (l *Loader) Close() error
 
 **동작:**
 - 저장된 모든 민감 데이터를 안전하게 초기화
-- 로더가 ComponentFactory를 소유한 경우 팩토리도 함께 닫음
+- Loader가 ComponentFactory를 소유한 경우 팩토리도 동시에 닫기
 - 안전한 닫기, 여러 번 호출해도 nil 반환
 
 ```go
@@ -654,8 +704,8 @@ defer loader.Close()
 // loader 사용...
 ```
 
-::: warning 닫은 후 동작
-닫은 후 모든 작업은 오류 또는영값 반환:
+:::warning 닫은 후 동작
+닫은 후 모든 작업은 오류 또는 제로값을 반환합니다:
 - `LoadFiles` → `ErrClosed`
 - `GetString` → 빈 값 반환
 - `Set` → `ErrClosed`
@@ -684,7 +734,7 @@ if loader.IsClosed() {
 
 ---
 
-## 완전한 예제
+## 전체 예제
 
 ```go
 package main
@@ -734,7 +784,7 @@ func main() {
     fmt.Printf("Server: %s:%d\n", host, port)
     fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
 
-    // 민감 데이터
+    // 민감한 데이터
     secret := loader.GetSecure("API_KEY")
     if secret != nil {
         defer secret.Release()

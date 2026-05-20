@@ -1,18 +1,18 @@
 ---
-title: Многоформатная конфигурация - CyberGo env | .env/JSON/YAML
-description: CyberGo env библиотека полное руководство по загрузке многоформатных конфигурационных файлов, поддержка автоматического обнаружения и загрузки трёх форматов конфигурации .env, JSON, YAML, смешанная загрузка и объединение ключей, управление приоритетом файлов и взаимное преобразование форматов.
+title: Мультиформатная конфигурация - CyberGo env | .env/JSON/YAML
+description: Полное руководство по загрузке конфигурационных файлов нескольких форматов библиотекой CyberGo env — автоматическое определение и смешанная загрузка форматов .env, JSON и YAML, приоритет слияния ключей, утилиты конвертации форматов, параметры конфигурации JSON и YAML для управления микросервисами и контейнеризированными приложениями.
 ---
 
-# Многоформатная конфигурация
+# Мультиформатная конфигурация
 
-Библиотека env поддерживает три формата конфигурации: `.env`, JSON и YAML, с автоматическим определением формата и загрузкой.
+Библиотека env поддерживает три формата конфигурации: `.env`, JSON и YAML с автоматическим определением формата при загрузке.
 
 ## Определение формата
 
 ### Правила автоматического определения
 
 | Расширение | Формат | Константа |
-|------------|--------|-----------|
+|--------|------|------|
 | `.env` | Формат .env | `FormatEnv` |
 | `.json` | JSON | `FormatJSON` |
 | `.yaml`, `.yml` | YAML | `FormatYAML` |
@@ -47,16 +47,16 @@ loader.LoadFiles("secrets.yaml")
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 ```
 
-### Порядок перезаписи
+### Порядок перекрытия
 
-Файлы, загруженные позже, перезаписывают загруженные ранее:
+Загруженные позже файлы перекрывают загруженные ранее:
 
 ```go
 // Порядок: base -> env -> json -> yaml
 loader.LoadFiles(
     ".env",           // Базовая конфигурация
-    "config.json",    // Перезаписывает .env
-    "secrets.yaml",   // Перезаписывает config.json
+    "config.json",    // Перекрывает .env
+    "secrets.yaml",   // Перекрывает config.json
 )
 ```
 
@@ -77,12 +77,12 @@ loader.LoadFiles(
 ```
 
 ::: tip Примечание
-Вложенные объекты преобразуются в плоский вид: `DATABASE_HOST`, `DATABASE_PORT`.
+Вложенные объекты будут преобразованы в плоский вид: `DATABASE_HOST`, `DATABASE_PORT`.
 :::
 
 ### Разрешение имён ключей
 
-Вложенные структуры JSON/YAML преобразуются в плоский вид. Библиотека поддерживает несколько способов доступа к ключам:
+Вложенные структуры JSON/YAML преобразуются в плоское хранилище. Библиотека поддерживает несколько способов доступа к ключам:
 
 ```go
 loader.LoadFiles("config.json")
@@ -90,36 +90,36 @@ loader.LoadFiles("config.json")
 // JSON: {"database": {"host": "localhost", "port": 5432}}
 // Хранится как: DATABASE_HOST=localhost, DATABASE_PORT=5432
 
-// Способ 1: Плоское имя ключа (рекомендуется)
+// Способ 1: Плоские ключи (рекомендуется)
 host := loader.GetString("DATABASE_HOST")   // localhost
 port := loader.GetInt("DATABASE_PORT")      // 5432
 
-// Способ 2: Путь через точку (автоматическое преобразование)
+// Способ 2: Путь через точку (автопреобразование)
 host := loader.GetString("database.host")   // localhost
 port := loader.GetInt("database.port")      // 5432
 
-// Способ 3: Путь через точку в верхнем регистре
+// Способ 3: Верхний регистр с точкой
 host := loader.GetString("DATABASE.HOST")   // localhost
 ```
 
 **Правила разрешения:**
 
 | Входной ключ | Преобразуется в |
-|--------------|----------------|
+|----------|--------|
 | `"DATABASE_HOST"` | `"DATABASE_HOST"` (точное совпадение) |
 | `"database.host"` | `"DATABASE_HOST"` (точка в подчёркивание) |
 | `"app.config.name"` | `"APP_CONFIG_NAME"` |
 | `"servers.0.host"` | `"SERVERS_0_HOST"` (индекс массива) |
 
 ::: tip Рекомендуемое использование
-- **В коде используйте плоские имена ключей**: `GetString("DATABASE_HOST")` - явно и эффективно
-- **В конфигурационных файлах читаемые пути**: JSON/YAML используют естественную вложенную структуру
+- **В коде используйте плоские ключи**: `GetString("DATABASE_HOST")` - явно и эффективно
+- **В конфигурационных файлах - читаемые пути**: JSON/YAML используют естественную вложенную структуру
 :::
 
 **Правила преобразования в плоский вид:**
 
-| Путь JSON | Ключ хранения |
-|-----------|---------------|
+| JSON-путь | Ключ хранения |
+|-----------|--------|
 | `database.host` | `DATABASE_HOST` |
 | `database.port` | `DATABASE_PORT` |
 | `app.server.name` | `APP_SERVER_NAME` |
@@ -127,7 +127,7 @@ host := loader.GetString("DATABASE.HOST")   // localhost
 
 ### Доступ к массивам
 
-Массивы JSON преобразуются в ключи с индексами:
+Массивы JSON преобразуются в ключи с индексом:
 
 ```json
 {
@@ -144,7 +144,7 @@ host0 := loader.GetString("SERVERS_0_HOST")  // server1.example.com
 port0 := loader.GetInt("SERVERS_0_PORT")     // 8080
 host1 := loader.GetString("SERVERS_1_HOST")  // server2.example.com
 
-// Получить все хосты через цикл
+// Получение всех хостов через цикл
 var hosts []string
 for i := 0; ; i++ {
     h := loader.GetString(fmt.Sprintf("SERVERS_%d_HOST", i))
@@ -161,13 +161,13 @@ for i := 0; ; i++ {
 ```go
 cfg := env.DefaultConfig()
 
-// null преобразуется в пустую строку (по умолчанию true)
+// Значение null преобразуется в пустую строку (по умолчанию true)
 cfg.JSONNullAsEmpty = true
 
 // Числа преобразуются в строки (по умолчанию true)
 cfg.JSONNumberAsString = true
 
-// Булевы значения преобразуются в строки (по умолчанию true)
+// Логические значения преобразуются в строки (по умолчанию true)
 cfg.JSONBoolAsString = true
 
 // Максимальная глубина вложенности (по умолчанию 10)
@@ -188,11 +188,11 @@ cfg.JSONMaxDepth = 20
 ```go
 // JSONNumberAsString = true (по умолчанию)
 port := loader.GetString("PORT")  // "8080" (строка)
-port := loader.GetInt("PORT")     // 8080 (целое число)
+port := loader.GetInt("PORT")     // 8080 (целое)
 
 // JSONBoolAsString = true (по умолчанию)
 debug := loader.GetString("DEBUG")  // "true" (строка)
-debug := loader.GetBool("DEBUG")    // true (булево)
+debug := loader.GetBool("DEBUG")    // true (логическое)
 ```
 
 ## Формат YAML
@@ -225,14 +225,14 @@ ALLOWED_HOSTS:
 ```go
 loader.LoadFiles("config.yaml")
 
-// Доступ через плоские имена ключей
+// Доступ через плоские ключи
 host := loader.GetString("DATABASE_HOST")        // localhost
 user := loader.GetString("DATABASE_USER")        // postgres
 ```
 
 ### Доступ к массивам
 
-Списки YAML преобразуются в ключи с индексами:
+Списки YAML преобразуются в ключи с индексом:
 
 ```yaml
 servers:
@@ -243,12 +243,12 @@ servers:
 ```
 
 ```go
-// Доступ через плоские имена ключей
+// Доступ через плоские ключи
 host0 := loader.GetString("SERVERS_0_HOST")  // server1.example.com
 port0 := loader.GetInt("SERVERS_0_PORT")     // 8080
 host1 := loader.GetString("SERVERS_1_HOST")  // server2.example.com
 
-// Получить весь список
+// Получение всего списка
 hosts := env.GetSliceFrom[string](loader, "ALLOWED_HOSTS") // ["localhost", "example.com"]
 ```
 
@@ -257,13 +257,13 @@ hosts := env.GetSliceFrom[string](loader, "ALLOWED_HOSTS") // ["localhost", "exa
 ```go
 cfg := env.DefaultConfig()
 
-// null/~ преобразуется в пустую строку (по умолчанию true)
+// Значение null/~ преобразуется в пустую строку (по умолчанию true)
 cfg.YAMLNullAsEmpty = true
 
 // Числа преобразуются в строки (по умолчанию true)
 cfg.YAMLNumberAsString = true
 
-// Булевы значения преобразуются в строки (по умолчанию true)
+// Логические значения преобразуются в строки (по умолчанию true)
 cfg.YAMLBoolAsString = true
 
 // Максимальная глубина вложенности (по умолчанию 10)
@@ -285,11 +285,11 @@ RATES:
 ```go
 // YAMLNumberAsString = true (по умолчанию)
 port := loader.GetString("PORT")  // "8080" (строка)
-port := loader.GetInt("PORT")     // 8080 (целое число)
+port := loader.GetInt("PORT")     // 8080 (целое)
 
 // YAMLBoolAsString = true (по умолчанию)
 debug := loader.GetString("DEBUG")  // "true" (строка)
-debug := loader.GetBool("DEBUG")    // true (булево)
+debug := loader.GetBool("DEBUG")    // true (логическое)
 
 // Доступ к списку
 rates := env.GetSliceFrom[float64](loader, "RATES")  // [0.1, 0.2, 0.3]
@@ -300,7 +300,7 @@ rates := env.GetSliceFrom[float64](loader, "RATES")  // [0.1, 0.2, 0.3]
 ### Структура файла
 
 ```bash
-# Комментарий
+# Комментарии
 APP_NAME=myapp
 APP_PORT=8080
 DEBUG=true
@@ -313,7 +313,7 @@ LITERAL='literal ${noexpand}'
 BASE_URL=https://api.example.com
 API_URL=${BASE_URL}/v1
 
-# Значение по умолчанию
+# Значения по умолчанию
 LOG_LEVEL=${LOG_LEVEL:-info}
 ```
 
@@ -337,7 +337,7 @@ apiURL := loader.GetString("API_URL")
 ### Синтаксис подстановки
 
 | Синтаксис | Описание |
-|-----------|----------|
+|------|------|
 | `${VAR}` | Ссылка на переменную |
 | `${VAR:-default}` | Использовать значение по умолчанию, если переменная не существует |
 
@@ -349,7 +349,7 @@ PORT=8080
 # Ссылка на другие переменные
 URL=http://${HOST}:${PORT}
 
-# Значение по умолчанию
+# Значения по умолчанию
 TIMEOUT=${TIMEOUT:-30s}
 DEBUG=${DEBUG:-false}
 ```
@@ -366,7 +366,7 @@ export DATABASE_PORT=5432
 
 ```go
 cfg := env.DefaultConfig()
-cfg.AllowYamlSyntax = true  // Включить стиль YAML
+cfg.AllowYamlSyntax = true  // Включить YAML-стиль
 ```
 
 ```bash
@@ -375,7 +375,7 @@ KEY: value
 ANOTHER_KEY: "quoted value"
 ```
 
-## Шаблоны смешанной конфигурации
+## Паттерны смешанной конфигурации
 
 ### Разделение разработки/продакшена
 
@@ -384,7 +384,7 @@ config/
 ├── base.json          # Базовая конфигурация
 ├── development.env    # Переопределения для разработки
 ├── production.yaml    # Переопределения для продакшена
-└── local.env          # Локальные переопределения (не коммитируется)
+└── local.env          # Локальные переопределения (не коммитить)
 ```
 
 ```go
@@ -394,7 +394,7 @@ func loadConfig(loader *env.Loader) error {
         return err
     }
 
-    // 2. Конфигурация среды
+    // 2. Конфигурация окружения
     env := os.Getenv("APP_ENV")
     if env == "" {
         env = "development"
@@ -422,7 +422,7 @@ func loadConfig(loader *env.Loader) error {
 }
 ```
 
-### Разделение по функциям
+### Разделение по функциональности
 
 ```text
 config/
@@ -444,7 +444,7 @@ loader.LoadFiles(
 ### Приоритет конфигурации
 
 ```text
-Аргументы командной строки > Переменные окружения > локальная конфигурация > конфигурация среды > базовая конфигурация
+Аргументы командной строки > Переменные окружения > local конфигурация > конфигурация окружения > base конфигурация
 ```
 
 ## Сериализация
@@ -511,7 +511,7 @@ data, _ := env.UnmarshalMap(jsonData, env.FormatJSON)
 yamlData := "HOST: localhost\nPORT: \"8080\""
 data, _ := env.UnmarshalMap(yamlData, env.FormatYAML)
 
-// Автоматическое определение формата
+// Автоопределение формата
 data, _ := env.UnmarshalMap(jsonData, env.FormatAuto)
 ```
 
@@ -542,10 +542,10 @@ env.UnmarshalStruct("HOST: localhost\nPORT: \"8080\"", &cfg, env.FormatYAML)
 ### Регистрация парсера
 
 ```go
-// Определить константу формата
+// Определение константы формата
 const FormatTOML env.FileFormat = 100
 
-// Реализовать интерфейс EnvParser
+// Реализация интерфейса EnvParser
 type TOMLParser struct {
     cfg       env.Config
     validator env.Validator
@@ -553,13 +553,13 @@ type TOMLParser struct {
 }
 
 func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    // Реализовать парсинг TOML
+    // Реализация парсинга TOML
     result := make(map[string]string)
     // ...
     return result, nil
 }
 
-// Зарегистрировать парсер
+// Регистрация парсера
 func init() {
     env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
         return &TOMLParser{
@@ -587,7 +587,7 @@ import (
 )
 
 func main() {
-    // Создать загрузчик
+    // Создание загрузчика
     cfg := env.DefaultConfig()
     cfg.ExpandVariables = true
 
@@ -597,22 +597,22 @@ func main() {
     }
     defer loader.Close()
 
-    // Загрузить смешанную конфигурацию
+    // Загрузка смешанной конфигурации
     err = loader.LoadFiles(
         "config/base.json",       // JSON базовая конфигурация
-        "config/database.yaml",   // YAML конфигурация базы данных
+        "config/database.yaml",   // YAML конфигурация БД
         "config/app.env",         // .env конфигурация приложения
     )
     if err != nil {
         log.Fatal(err)
     }
 
-    // Прочитать конфигурацию
+    // Чтение конфигурации
     fmt.Printf("App: %s\n", loader.GetString("APP_NAME"))
     fmt.Printf("DB Host: %s\n", loader.GetString("DATABASE_HOST"))
     fmt.Printf("DB Port: %d\n", loader.GetInt("DATABASE_PORT"))
 
-    // Экспортировать текущую конфигурацию
+    // Экспорт текущей конфигурации
     all := loader.All()
     exported, _ := env.Marshal(all, env.FormatEnv)
     fmt.Println("\nExported config:")
@@ -624,5 +624,5 @@ func main() {
 
 - [Сериализация](/ru/env/guides/serialization) - Подробно о сериализации/десериализации
 - [ComponentFactory API](/ru/env/api-reference/factory) - Определение формата и регистрация парсеров
-- [Пользовательский парсер](/ru/env/guides/custom-parser) - Добавление пользовательского формата
-- [Config API](/ru/env/api-reference/config) - Параметры парсинга JSON/YAML
+- [Пользовательский парсер](/ru/env/guides/custom-parser) - Добавление пользовательских форматов
+- [Config API](/ru/env/api-reference/config) - Конфигурация парсинга JSON/YAML

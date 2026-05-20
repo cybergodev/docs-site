@@ -1,6 +1,6 @@
 ---
-title: Config API - CyberGo env | Configuration Options
-description: Complete reference for the env library Config struct including file handling, security limits, validation options, and preset configurations
+title: Config API - CyberGo env | Configuration Details
+description: CyberGo env library Config configuration struct API complete reference documentation, including file search paths, security limit parameters, key-value validation options, variable expansion settings, audit logging configuration, and predefined configuration presets for Development and Production environments.
 ---
 
 # Config API
@@ -23,10 +23,10 @@ type Config struct {
 }
 ```
 
-**Two access methods:**
+**Two Access Methods:**
 
 ```go
-// Old way (via field promotion, still works)
+// Old way (via field promotion, still valid)
 cfg.Filenames = []string{".env"}
 cfg.MaxFileSize = 1024
 
@@ -41,16 +41,16 @@ cfg.LimitsConfig.MaxFileSize = 1024
 // FileConfig controls file loading behavior
 type FileConfig struct {
     Filenames         []string // List of files to load
-    FailOnMissingFile bool     // Whether to error on missing files
+    FailOnMissingFile bool     // Whether to error when file not found
     OverwriteExisting bool     // Whether to overwrite existing environment variables
-    AutoApply         bool     // Whether to auto-apply to os.Environ
+    AutoApply         bool     // Whether to automatically apply to os.Environ
 }
 
 // ValidationConfig controls key and value validation
 type ValidationConfig struct {
     RequiredKeys   []string       // List of required key names
-    AllowedKeys    []string       // Allowed key names whitelist
-    ForbiddenKeys  []string       // Additional forbidden keys list
+    AllowedKeys    []string       // Allowed key name whitelist
+    ForbiddenKeys  []string       // Additional forbidden key list
     KeyPattern     *regexp.Regexp // Key name matching pattern
     ValidateValues bool           // Whether to validate value safety
     ValidateUTF8   bool           // Whether to validate values as valid UTF-8
@@ -58,28 +58,28 @@ type ValidationConfig struct {
 
 // LimitsConfig controls size and count limits
 type LimitsConfig struct {
-    MaxFileSize       int64 // Maximum bytes per file
-    MaxVariables      int   // Maximum variables per file
-    MaxLineLength     int   // Maximum length per line
-    MaxKeyLength      int   // Maximum key name length
-    MaxValueLength    int   // Maximum value length
-    MaxExpansionDepth int   // Maximum variable expansion depth
+    MaxFileSize       int64 // Max bytes per file
+    MaxVariables      int   // Max variables per file
+    MaxLineLength     int   // Max length per line
+    MaxKeyLength      int   // Max key name length
+    MaxValueLength    int   // Max value length
+    MaxExpansionDepth int   // Max variable expansion depth
 }
 
 // JSONConfig controls JSON parsing behavior
 type JSONConfig struct {
-    JSONNullAsEmpty    bool // null to empty string
-    JSONNumberAsString bool // Numbers to strings
-    JSONBoolAsString   bool // Booleans to strings
-    JSONMaxDepth       int  // Maximum nesting depth
+    JSONNullAsEmpty    bool // Convert null to empty string
+    JSONNumberAsString bool // Convert numbers to strings
+    JSONBoolAsString   bool // Convert booleans to strings
+    JSONMaxDepth       int  // Max nesting depth
 }
 
 // YAMLConfig controls YAML parsing behavior
 type YAMLConfig struct {
-    YAMLNullAsEmpty    bool // null/~ to empty string
-    YAMLNumberAsString bool // Numbers to strings
-    YAMLBoolAsString   bool // Booleans to strings
-    YAMLMaxDepth       int  // Maximum nesting depth
+    YAMLNullAsEmpty    bool // Convert null/~ to empty string
+    YAMLNumberAsString bool // Convert numbers to strings
+    YAMLBoolAsString   bool // Convert booleans to strings
+    YAMLMaxDepth       int  // Max nesting depth
 }
 
 // ParsingConfig controls general parsing behavior
@@ -119,10 +119,10 @@ cfg.Filenames = []string{".env", ".env.local"}
 
 #### `FailOnMissingFile` bool
 
-Whether to return an error when a file doesn't exist. **Default `false`** (silently skip).
+Whether to return an error when a file is not found. **Default `false`** (silently skip).
 
 ```go
-cfg.FailOnMissingFile = true  // Error on missing file
+cfg.FailOnMissingFile = true  // Error when file not found
 ```
 
 ---
@@ -132,20 +132,20 @@ cfg.FailOnMissingFile = true  // Error on missing file
 Whether to overwrite existing environment variables. **Default `false`**.
 
 ```go
-cfg.OverwriteExisting = true  // Allow overwriting
+cfg.OverwriteExisting = true  // Allow overwrite
 ```
 
 ---
 
 #### `AutoApply` bool
 
-Automatically apply to system environment (`os.Environ`) after loading. **Default `false`**.
+Automatically apply to the system environment (`os.Environ`) after loading. **Default `false`**.
 
 ```go
 cfg.AutoApply = true  // Auto-apply after loading
 ```
 
-::: tip Note
+:::tip Note
 The package-level `Load()` function automatically sets `AutoApply = true`. When using `New()` to create a Loader, you must set it manually.
 :::
 
@@ -163,10 +163,10 @@ Supported expansion syntax:
 
 | Syntax | Description |
 |--------|-------------|
-| `${VAR}` | Reference variable |
-| `${VAR:-default}` | Use default when variable is empty or missing |
-| `${VAR:=default}` | Set default when variable is empty or missing |
-| `${VAR:?error}` | Error when variable is empty or missing |
+| `${VAR}` | Reference a variable |
+| `${VAR:-default}` | Use default value when variable doesn't exist or is empty |
+| `${VAR:=default}` | Set default value when variable doesn't exist or is empty |
+| `${VAR:?error}` | Error when variable doesn't exist or is empty |
 
 ### Security Limits
 
@@ -178,8 +178,8 @@ Maximum bytes per file. **Default 2MB**, hard maximum 100MB.
 cfg.MaxFileSize = 10 * 1024 * 1024 // 10 MB
 ```
 
-| Setting | Default | Hard Maximum |
-|---------|---------|-------------|
+| Config | Default | Hard Maximum |
+|--------|---------|--------------|
 | `MaxFileSize` | 2MB (2097152) | 100MB |
 
 ---
@@ -192,8 +192,8 @@ Maximum length per line. **Default 1024**, hard maximum 64KB.
 cfg.MaxLineLength = 2048
 ```
 
-| Setting | Default | Hard Maximum |
-|---------|---------|-------------|
+| Config | Default | Hard Maximum |
+|--------|---------|--------------|
 | `MaxLineLength` | 1024 | 65536 (64KB) |
 
 ---
@@ -206,8 +206,8 @@ Maximum key name length. **Default 64**, hard maximum 1024.
 cfg.MaxKeyLength = 128
 ```
 
-| Setting | Default | Hard Maximum |
-|---------|---------|-------------|
+| Config | Default | Hard Maximum |
+|--------|---------|--------------|
 | `MaxKeyLength` | 64 | 1024 |
 
 ---
@@ -220,8 +220,8 @@ Maximum value length. **Default 4096**, hard maximum 1MB.
 cfg.MaxValueLength = 8192
 ```
 
-| Setting | Default | Hard Maximum |
-|---------|---------|-------------|
+| Config | Default | Hard Maximum |
+|--------|---------|--------------|
 | `MaxValueLength` | 4096 | 1048576 (1MB) |
 
 ---
@@ -234,8 +234,8 @@ Maximum variables per file. **Default 500**, hard maximum 10000.
 cfg.MaxVariables = 1000
 ```
 
-| Setting | Default | Hard Maximum |
-|---------|---------|-------------|
+| Config | Default | Hard Maximum |
+|--------|---------|--------------|
 | `MaxVariables` | 500 | 10000 |
 
 ---
@@ -248,8 +248,8 @@ Maximum variable expansion depth. **Default 5**, hard maximum 20.
 cfg.MaxExpansionDepth = 10
 ```
 
-| Setting | Default | Hard Maximum |
-|---------|---------|-------------|
+| Config | Default | Hard Maximum |
+|--------|---------|--------------|
 | `MaxExpansionDepth` | 5 | 20 |
 
 ### Key Validation
@@ -258,8 +258,8 @@ cfg.MaxExpansionDepth = 10
 
 Custom key name matching pattern. **Default `nil`** (uses fast byte-level validation).
 
-::: tip Performance
-`nil` enables fast byte-level validation (~10x performance improvement). Default validation rule: starts with a letter, contains only letters, digits, and underscores.
+:::tip Performance Optimization
+A `nil` value enables fast byte-level validation (~10x performance improvement). Default validation rules: starts with a letter, contains only letters, digits, and underscores.
 :::
 
 ```go
@@ -273,7 +273,7 @@ cfg.KeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 
 #### `AllowedKeys` []string
 
-Allowed key names whitelist. When empty, all keys are allowed (except forbidden keys).
+Allowed key name whitelist. When empty, all keys are allowed (except forbidden keys).
 
 ```go
 cfg.AllowedKeys = []string{"APP_NAME", "APP_VERSION", "PORT"}
@@ -283,14 +283,14 @@ cfg.AllowedKeys = []string{"APP_NAME", "APP_VERSION", "PORT"}
 
 #### `ForbiddenKeys` []string
 
-Additional forbidden keys list (added to built-in forbidden keys).
+Additional forbidden key list (added on top of built-in forbidden keys).
 
 ```go
 cfg.ForbiddenKeys = []string{"CUSTOM_DANGEROUS_VAR"}
 ```
 
-::: tip Built-in Forbidden Keys
-The library built-in forbids `PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES`, and other critical system variables. See [Constants & Errors](/en/env/api-reference/constants#defaultforbiddenkeys).
+:::tip Built-in Forbidden Keys
+The library built-in forbids system-critical variables like `PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES`, etc. See [Constants & Errors](/en/env/api-reference/constants#defaultforbiddenkeys).
 :::
 
 ---
@@ -307,10 +307,10 @@ cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
 #### `ValidateValues` bool
 
-Validate value safety (control characters, null bytes, etc.). **Default `true`**.
+Validates value safety (control characters, null bytes, etc.). **Default `true`**.
 
-::: warning Security Recommendation
-Recommend keeping this enabled. Only disable in special scenarios (e.g., when you need to store values containing control characters).
+:::warning Security Recommendation
+It is recommended to keep this enabled at all times. Only disable in special scenarios (e.g., when you need to store values containing control characters).
 :::
 
 ```go
@@ -321,7 +321,7 @@ cfg.ValidateValues = true  // Enabled by default
 
 #### `ValidateUTF8` bool
 
-Validate that values are valid UTF-8 encoded. **Default `false`**.
+Validates whether values are valid UTF-8 encoded. **Default `false`**.
 
 ```go
 cfg.ValidateUTF8 = true  // Enable UTF-8 validation
@@ -351,7 +351,7 @@ cfg.AllowYamlSyntax = true
 
 #### `JSONNullAsEmpty` bool
 
-JSON `null` values are converted to empty strings. **Default `true`**.
+Convert JSON `null` values to empty strings. **Default `true`**.
 
 ```go
 cfg.JSONNullAsEmpty = true
@@ -361,7 +361,7 @@ cfg.JSONNullAsEmpty = true
 
 #### `JSONNumberAsString` bool
 
-JSON numbers are converted to strings. **Default `true`**.
+Convert JSON numbers to strings. **Default `true`**.
 
 ```go
 cfg.JSONNumberAsString = true
@@ -371,7 +371,7 @@ cfg.JSONNumberAsString = true
 
 #### `JSONBoolAsString` bool
 
-JSON booleans are converted to strings. **Default `true`**.
+Convert JSON booleans to strings. **Default `true`**.
 
 ```go
 cfg.JSONBoolAsString = true
@@ -391,7 +391,7 @@ cfg.JSONMaxDepth = 20
 
 #### `YAMLNullAsEmpty` bool
 
-YAML `null`/`~` values are converted to empty strings. **Default `true`**.
+Convert YAML `null`/`~` values to empty strings. **Default `true`**.
 
 ```go
 cfg.YAMLNullAsEmpty = true
@@ -401,7 +401,7 @@ cfg.YAMLNullAsEmpty = true
 
 #### `YAMLNumberAsString` bool
 
-YAML numbers are converted to strings. **Default `true`**.
+Convert YAML numbers to strings. **Default `true`**.
 
 ```go
 cfg.YAMLNumberAsString = true
@@ -411,7 +411,7 @@ cfg.YAMLNumberAsString = true
 
 #### `YAMLBoolAsString` bool
 
-YAML booleans are converted to strings. **Default `true`**.
+Convert YAML booleans to strings. **Default `true`**.
 
 ```go
 cfg.YAMLBoolAsString = true
@@ -447,7 +447,7 @@ Custom audit handler.
 cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
-::: tip See also
+:::tip See Also
 [Audit Logging](/en/env/guides/audit-logging) for complete audit configuration details.
 :::
 
@@ -511,9 +511,9 @@ cfg.CustomAuditor = &MyAuditLogger{}
 func DefaultConfig() Config
 ```
 
-Returns safe default configuration.
+Returns a safe default configuration.
 
-**Default values:**
+**Default Values:**
 
 | Field | Value |
 |-------|-------|
@@ -554,13 +554,13 @@ func DevelopmentConfig() Config
 
 Returns development environment configuration (relaxed limits).
 
-**Differences from default:**
+**Differences from Default:**
 - `OverwriteExisting`: `true`
 - `AllowYamlSyntax`: `true`
 - `MaxFileSize`: 10MB
 
-::: tip Security Guarantee
-`ValidateValues` remains `true` across all presets (same as default), ensuring security is never compromised regardless of environment.
+:::tip Security Guarantee
+`ValidateValues` remains `true` across all preset configurations (consistent with the default value), ensuring security regardless of environment.
 :::
 
 ```go
@@ -579,7 +579,7 @@ func TestingConfig() Config
 
 Returns testing environment configuration.
 
-**Differences from default:**
+**Differences from Default:**
 - `OverwriteExisting`: `true`
 - `MaxFileSize`: 64KB
 - `MaxVariables`: 50
@@ -603,7 +603,7 @@ func ProductionConfig() Config
 
 Returns production environment configuration (strict validation + audit).
 
-**Differences from default:**
+**Differences from Default:**
 - `FailOnMissingFile`: `true`
 - `AuditEnabled`: `true`
 - `MaxFileSize`: 64KB
@@ -618,23 +618,23 @@ loader, _ := env.New(cfg)
 
 ---
 
-### Preset Comparison
+### Detailed Preset Comparison
 
 | Feature | Default | Development | Testing | Production |
 |---------|---------|-------------|---------|------------|
-| Overwrite existing | ✗ | ✓ | ✓ | ✗ |
-| Error on missing file | ✗ | ✗ | ✗ | ✓ |
-| Audit logging | ✗ | ✗ | ✗ | ✓ |
-| YAML syntax | ✗ | ✓ | ✗ | ✗ |
+| Overwrite existing variables | No | Yes | Yes | No |
+| Error on file not found | No | No | No | Yes |
+| Audit logging | No | No | No | Yes |
+| YAML syntax | No | Yes | No | No |
 | File size limit | 2MB | 10MB | 64KB | 64KB |
 | Max variables | 500 | 500 | 50 | 50 |
-| Forbidden key check | ✓ | ✓ | ✓ | ✓ |
-| Value validation | ✓ | ✓ | ✓ | ✓ |
+| Forbidden key check | Yes | Yes | Yes | Yes |
+| Value validation | Yes | Yes | Yes | Yes |
 
-::: tip Selection Guide
+:::tip Selection Guide
 - **Development**: Use `DevelopmentConfig()` with relaxed limits for rapid iteration
-- **Testing**: Use `TestingConfig()` with overwriting for test isolation
-- **Production**: Use `ProductionConfig()` with audit and strict validation
+- **Testing**: Use `TestingConfig()` with overwrite enabled for test isolation
+- **Production**: Use `ProductionConfig()` with audit and strict validation enabled
 :::
 
 ---
@@ -647,7 +647,7 @@ loader, _ := env.New(cfg)
 func (c *Config) Validate() error
 ```
 
-Validates configuration effectiveness. Checks that all limit values are within valid ranges.
+Validates configuration validity. Checks whether all limit values are within valid ranges.
 
 ```go
 cfg := env.DefaultConfig()
@@ -658,10 +658,10 @@ if err := cfg.Validate(); err != nil {
 }
 ```
 
-**Validation rules:**
+**Validation Rules:**
 - All limit values must be positive
 - All limit values must not exceed hard maximums
-- `KeyPattern` if non-nil must match valid keys (e.g., `TEST_KEY`), not match empty strings, and not match keys starting with digits
+- `KeyPattern` if non-nil must match valid key names (e.g., `TEST_KEY`), must not match empty strings, and must not match key names starting with digits
 - `JSONMaxDepth` and `YAMLMaxDepth` must be between 1-100
 
 ---
@@ -672,19 +672,19 @@ if err := cfg.Validate(); err != nil {
 func (c *Config) IsZero() bool
 ```
 
-Checks if Config is an uninitialized zero value. Used to determine if `DefaultConfig()` should be used.
+Checks whether the Config is an uninitialized zero value. Used to determine whether `DefaultConfig()` should be used instead.
 
 **Returns:**
-- `bool` - Whether it's a zero-value configuration
+- `bool` - Whether this is a zero-value configuration
 
-**Detection scope:**
+**Detection Scope:**
 - Numeric limits (MaxFileSize, MaxVariables, etc.)
 - Boolean fields (ValidateValues, AutoApply, etc.)
 - Pointer/interface fields (KeyPattern, FileSystem, etc.)
 - Slice fields (Filenames, RequiredKeys, etc.)
 
-::: warning Note
-A partially initialized Config may not be detected as zero value. Recommend always starting from `DefaultConfig()`:
+:::warning Note
+A partially initialized Config may not be detected as zero value. It is recommended to always start from `DefaultConfig()` for custom configuration:
 
 ```go
 // Recommended
@@ -737,7 +737,7 @@ if err := loader.Validate(); err != nil {
 }
 ```
 
-### Using Prefix Filtering
+### Prefix Filtering
 
 ```go
 cfg := env.DefaultConfig()
@@ -745,7 +745,7 @@ cfg.Prefix = "MYAPP_"  // Only load MYAPP_KEY1, MYAPP_KEY2, etc.
 cfg.Filenames = []string{".env"}
 
 loader, _ := env.New(cfg)
-// Loader only contains variables starting with MYAPP_
+// loader contains only variables starting with MYAPP_
 ```
 
 ### Custom Validation
@@ -754,7 +754,7 @@ loader, _ := env.New(cfg)
 import "regexp"
 
 cfg := env.DefaultConfig()
-// Only allow uppercase letters starting
+// Only allow uppercase letters at the start
 cfg.KeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 // Add custom forbidden keys
 cfg.ForbiddenKeys = []string{"DEBUG", "TRACE"}

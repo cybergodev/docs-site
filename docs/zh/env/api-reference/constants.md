@@ -1,6 +1,6 @@
 ---
 title: 常量与错误 - CyberGo env | 哨兵错误与安全常量
-description: CyberGo env 环境变量管理库的常量与错误完整参考文档，包括安全限制常量、哨兵错误定义、结构化错误类型、预定义变量和安全工具函数的详细说明，配合 errors.Is 和 errors.As 标准模式帮助 Go 开发者正确识别和处理各类错误场景与异常情况。
+description: CyberGo env 库常量与错误完整参考，涵盖 DefaultMaxFileSize 安全限制、ErrFileNotFound 哨兵错误、ParseError 结构化错误类型、IsSensitiveKey 和 MaskValue 工具函数，配合 errors.Is 和 errors.As 帮助处理各类错误场景。
 ---
 
 # 常量与错误
@@ -93,8 +93,6 @@ var ErrDuplicateKey = errors.New("duplicate key encountered")
 ```go
 var ErrForbiddenKey = errors.New("key is forbidden for security reasons")
 var ErrSecurityViolation = errors.New("security policy violation")
-var ErrNullByte = errors.New("null byte detected in input")
-var ErrControlChar = errors.New("control character detected in input")
 var ErrInvalidValue = errors.New("invalid value content")
 ```
 
@@ -125,6 +123,7 @@ var ErrMaxVariables = errors.New("maximum number of variables exceeded")
 var ErrClosed = errors.New("loader has been closed")
 var ErrInvalidConfig = errors.New("invalid configuration")
 var ErrAlreadyInitialized = errors.New("default loader already initialized")
+var ErrNotInitialized = errors.New("default loader not initialized; call Load() first")
 var ErrMissingRequired = errors.New("required key is missing")
 ```
 
@@ -139,6 +138,11 @@ if errors.Is(err, env.ErrClosed) {
 // 检查默认加载器是否已初始化
 if errors.Is(err, env.ErrAlreadyInitialized) {
     // 默认加载器已存在，无法重复调用 Load()
+}
+
+// 检查默认加载器是否未初始化
+if errors.Is(err, env.ErrNotInitialized) {
+    // 需要先调用 env.Load() 或 env.LoadWithConfig()
 }
 
 // 检查必需键是否缺失
@@ -323,6 +327,7 @@ func IsMarshalError(err error) bool  // 检查函数
 | 系统路径 | `PATH` |
 | 动态链接器 (Linux) | `LD_PRELOAD`, `LD_PRELOAD_32`, `LD_PRELOAD_64`, `LD_LIBRARY_PATH`, `LD_LIBRARY_PATH_32`, `LD_LIBRARY_PATH_64`, `LD_AUDIT`, `LD_DEBUG` |
 | macOS | `DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH` |
+| Windows | `COMSPEC`, `PATHEXT`, `SYSTEMROOT`, `WINDIR` |
 | Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS` |
 | 语言运行时 | `PYTHONPATH`, `NODE_PATH`, `PERL5OPT`, `RUBYLIB` |
 
@@ -334,6 +339,10 @@ func IsMarshalError(err error) bool  // 检查函数
 | `LD_PRELOAD` | 库注入 | 预加载恶意动态库 |
 | `LD_LIBRARY_PATH` | 库劫持 | 修改库搜索路径 |
 | `DYLD_INSERT_LIBRARIES` | 库注入 | macOS 库注入 |
+| `COMSPEC` | 命令劫持 | Windows 命令解释器路径覆盖 |
+| `PATHEXT` | 命令劫持 | Windows 可执行文件扩展名篡改 |
+| `SYSTEMROOT` | 系统破坏 | Windows 系统根目录篡改 |
+| `WINDIR` | 系统破坏 | Windows 目录篡改 |
 | `PYTHONPATH` | 模块劫持 | Python 模块搜索路径 |
 | `IFS` | 解析攻击 | 修改字段分隔符 |
 

@@ -1,6 +1,6 @@
 ---
 title: 安全概述 - CyberGo env | 安全架构
-description: CyberGo env 环境变量管理库安全架构全面概览，包括 SecureValue 内存锁定保护机制、键值内容验证与过滤规则、禁止键名列表、配置安全级别设置、敏感数据自动检测和审计日志追踪等核心安全特性，确保 Go 应用环境变量在整个生命周期中的安全性。
+description: CyberGo env 库安全架构全面概览，详解 SecureValue 内存锁定保护与 mlock 系统调用机制、键值验证与过滤规则配置、DefaultForbiddenKeys 禁止键名列表、敏感数据 IsSensitiveKey 自动检测、安全级别预设配置和审计日志追踪等核心安全特性。
 ---
 
 # 安全概述

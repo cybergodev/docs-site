@@ -1,11 +1,11 @@
 ---
-title: Custom Parser - CyberGo env | Format Extension
-description: Guide for developing custom parsers for the env library, implementing the EnvParser interface and registering custom format parsers
+title: Custom Parser - CyberGo env | Extending File Formats
+description: Complete guide for CyberGo env custom parser development, covering how to implement the EnvParser interface to create custom format parsers, register them via RegisterParser with ComponentFactory integration, including full TOML and INI parser implementation examples, error handling patterns, and production best practices.
 ---
 
 # Custom Parser
 
-This guide explains how to create and register custom file format parsers to extend the configuration formats supported by the env library.
+This guide covers how to create and register custom file format parsers to extend the configuration formats supported by the env library.
 
 ## Parser Interface
 
@@ -21,7 +21,7 @@ type EnvParser interface {
 
 **Parameters:**
 - `r` - File content reader
-- `filename` - Filename (for error messages)
+- `filename` - File name (for error messages)
 
 **Returns:**
 - `map[string]string` - Parsed key-value pairs
@@ -48,11 +48,11 @@ type CustomParser struct {
     auditor   env.FullAuditLogger
 }
 
-// Implement EnvParser interface
+// Implement the EnvParser interface
 func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     result := make(map[string]string)
 
-    // 1. Read content (note size limits)
+    // 1. Read content (note size limit)
     content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize))
     if err != nil {
         return nil, err
@@ -76,7 +76,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 ### TOML Parser Example
 
 ```go
-package main
+package tomlparser
 
 import (
     "fmt"
@@ -167,7 +167,7 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
 ### INI Parser Example
 
 ```go
-package main
+package iniparser
 
 import (
     "fmt"
@@ -241,11 +241,11 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
 type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error)
 ```
 
-The factory function receives Config and ComponentFactory, returning a parser instance.
+The factory function receives a Config and ComponentFactory, and returns a parser instance.
 
 **Parameter descriptions:**
-- `cfg` - Configuration object containing all limits and security settings
-- `factory` - Component factory providing access to Validator, Auditor, etc.
+- `cfg` - Configuration object with all limits and security settings
+- `factory` - Component factory for obtaining Validator, Auditor, and other components
 
 ### RegisterParser Function
 
@@ -253,26 +253,26 @@ The factory function receives Config and ComponentFactory, returning a parser in
 func RegisterParser(format FileFormat, factory ParserFactory) error
 ```
 
-Registers a custom format parser.
+Register a custom format parser.
 
 **Parameters:**
-- `format` - File format constant (recommend using values of 100+ to avoid conflicts)
+- `format` - File format constant (use values 100+ to avoid conflicts)
 - `factory` - Parser factory function
 
 **Returns:**
 - `error` - Error if registration fails
 
-**Error cases:**
+**Error conditions:**
 - Built-in formats (FormatEnv, FormatJSON, FormatYAML) cannot be overridden
 - Format already registered
 
 **Notes:**
-- Must register before calling `env.New()`
-- Recommend registering in an `init()` function
+- Must be registered before calling `env.New()`
+- Registration in an `init()` function is recommended
 
 ### Using ComponentFactory
 
-Get validators and auditors through ComponentFactory:
+Obtain the validator and auditor through ComponentFactory:
 
 ```go
 type SecureParser struct {
@@ -294,7 +294,7 @@ func (p *SecureParser) Parse(r io.Reader, filename string) (map[string]string, e
 
     // ... parsing logic
 
-    // Use validator to validate keys
+    // Use validator to validate key names
     for key := range result {
         if err := p.validator.ValidateKey(key); err != nil {
             _ = p.auditor.Log(env.ActionParse, key, "invalid key", false)
@@ -316,7 +316,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// 1. Define format constants (recommend using values of 100+)
+// 1. Define format constants (use values 100+ recommended)
 const (
     FormatTOML env.FileFormat = 100
     FormatINI  env.FileFormat = 101
@@ -348,7 +348,7 @@ func init() {
 }
 
 func main() {
-    // Registration must be done before New (already done in init)
+    // Registration must complete before New (done in init)
 
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
@@ -436,7 +436,7 @@ func (e *CustomParseError) Unwrap() error {
 }
 ```
 
-### 4. Record Audit Logs
+### 4. Log Audit Events
 
 ```go
 func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
@@ -445,7 +445,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 
     // ... parsing logic
 
-    // Record success
+    // Log success
     _ = p.auditor.LogWithDuration(
         env.ActionParse,
         "",
@@ -585,6 +585,6 @@ func main() {
 ## Related Documentation
 
 - [ComponentFactory API](/en/env/api-reference/factory) - ComponentFactory and RegisterParser
-- [Interface Definitions](/en/env/api-reference/interfaces) - EnvParser interface definition
-- [Config API](/en/env/api-reference/config) - Configuration options
-- [Multi-format Configuration](/en/env/guides/multi-format) - JSON/YAML format details
+- [Interfaces](/en/env/api-reference/interfaces) - EnvParser interface definition
+- [Config API](/en/env/api-reference/config) - Configuration options details
+- [Multi-format Config](/en/env/guides/multi-format) - JSON/YAML format details

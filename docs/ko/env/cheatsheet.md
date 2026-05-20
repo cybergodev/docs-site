@@ -1,11 +1,11 @@
 ---
 title: 치트시트 - CyberGo env | 자주 사용하는 API 빠른 참조
-description: CyberGo env 환경 변수 관리 라이브러리 자주 사용하는 API 치트시트로, 설정 파일 로드, 타입 안전 읽기, 변수 검증 필터링, 보안 값 SecureValue 저장, 직렬화 역직렬화, 구조체 매핑 및 감사 로그 등 고빈도 작업의 핵심 코드 조각을 한 페이지에 정리하여 Go 개발자가 일상 개발 시 빠르게 참조하고 복사하여 사용할 수 있습니다.
+description: CyberGo env 환경 변수 관리 라이브러리 자주 사용하는 API 치트시트로, 설정 파일 로딩, 타입 안전 읽기, 변수 검증 필터링, 보안 값 SecureValue 저장, 직렬화 역직렬화, 구조체 매핑 및 감사 로그 등 고빈도 작업의 핵심 코드 스니펫을 한 페이지에 정리하여 Go 개발자가 일상 개발 시 빠르게 조회하고 복사할 수 있습니다.
 ---
 
 # 치트시트
 
-이 라이브러리에 이미 익숙한 상태에서, 고빈도 사용 코드 조각을 빠르게 참조하세요.
+이 라이브러리에 이미 익숙한 상태에서, 고빈도 사용 코드 스니펫을 빠르게 참조하세요.
 
 ## 설정 로드
 
@@ -96,7 +96,7 @@ env.ParseInto(&cfg)
 | 프리셋 | 용도 | 특징 |
 |------|------|------|
 | `DefaultConfig()` | 일반 | 안전한 기본값 |
-| `DevelopmentConfig()` | 개발 | 느슨한 제한, YAML 문법 지원, 10MB 파일 상한 |
+| `DevelopmentConfig()` | 개발 | 느슨한 제한, YAML 구문 지원, 10MB 파일 상한 |
 | `TestingConfig()` | 테스트 | 기존 변수 덮어쓰기, 테스트 격리, 64KB 파일 상한 |
 | `ProductionConfig()` | 프로덕션 | 엄격한 검증 + 감사, 기존 변수 덮어쓰지 않음, 64KB 파일 상한 |
 
@@ -187,13 +187,13 @@ if goEnv == "" { goEnv = "development" }
 env.Load(".env", ".env."+goEnv, ".env.local")  // 단일 호출, 나중 것이 앞의 것을 덮어씀
 ```
 
-## 다중 포맷
+## 다중 형식
 
 ```go
 // 로드
 loader.LoadFiles("config.env", "config.json", "config.yaml")
 
-// 포맷 감지
+// 형식 감지
 format := env.DetectFormat("config.json")  // FormatJSON
 
 // 직렬화
@@ -206,7 +206,7 @@ env.UnmarshalMap(data, env.FormatEnv)
 env.UnmarshalMap(data, env.FormatAuto)  // 자동 감지
 ```
 
-## .env 문법
+## .env 구문
 
 ```bash
 # 주석
@@ -244,7 +244,7 @@ DURATION=1h30m
 | 키 길이 | 64 | 1024 |
 | 값 길이 | 4 KB | 1 MB |
 | 변수 수 | 500 | 10000 |
-| 확장 깊이 | 5 | 20 |
+| 전개 깊이 | 5 | 20 |
 
 ## 테스트
 

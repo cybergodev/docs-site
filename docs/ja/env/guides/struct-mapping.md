@@ -1,15 +1,15 @@
 ---
 title: 構造体マッピング - CyberGo env | 環境変数から構造体へ
-description: CyberGo env ライブラリの構造体マッピング完全使用ガイド。env 構造体タグを使用して環境変数を Go 構造体フィールドに自動マッピングし、ネストされた構造体、ポインタとスライス型、カスタム型変換、デフォルト値設定、必須フィールド検証、マッピングフック関数をサポートし、型安全で便利な Go アプリケーション設定管理を実現します。
+description: CyberGo env ライブラリの構造体マッピング完全ガイド。env タグを使用して環境変数を Go 構造体フィールドに自動マッピングします。ネストされた構造体、ポインタとスライス型の処理、カスタム型コンバーターの実装、envDefault によるデフォルト値の設定、必須フィールドの検証ルール、マッピングフック関数のカスタム拡張方法を詳しく解説します。
 ---
 
 # 構造体マッピング
 
-構造体タグを使用して環境変数を Go 構造体に自動的にマッピングし、型安全な設定管理を実現します。
+構造体タグを使用して環境変数を Go 構造体に自動マッピングし、型安全な設定管理を実現します。
 
 ## 基本的なマッピング
 
-### 簡単な例
+### シンプルな例
 
 ```go
 package main
@@ -82,7 +82,7 @@ type Config struct {
 ```go
 type Config struct {
     Host    string `env:"HOST"`
-    Ignored string `env:"-"`  // 値は代入されない
+    Ignored string `env:"-"`  // 値は設定されない
 }
 ```
 
@@ -117,7 +117,7 @@ type Config struct {
 }
 ```
 
-サポートされる形式：
+サポートされるフォーマット：
 - `30s` - 30 秒
 - `5m` - 5 分
 - `1h30m` - 1 時間 30 分
@@ -139,9 +139,9 @@ HOSTS=localhost,example.com,api.example.com
 PORTS=80,443,8080
 ```
 
-### カスタム区切り文字
+### カスタムセパレータ
 
-`envSeparator` タグを使用してカスタム区切り文字を指定します：
+`envSeparator` タグを使用してカスタムセパレータを指定します：
 
 ```go
 type Config struct {
@@ -165,9 +165,9 @@ WORDS=hello world go lang
 ```
 
 **注意事項：**
-- デフォルトの区切り文字はカンマ `,` です
-- `envSeparator` はスライス型にのみ有効です
-- 区切り文字の前後の空白は自動的に除去されます
+- デフォルトのセパレータはカンマ `,`
+- `envSeparator` はスライス型にのみ有効
+- セパレータ前後の空白は自動的に削除される
 
 ## ネストされた構造体
 
@@ -269,9 +269,9 @@ func (p *Port) UnmarshalEnv(data map[string]string) error {
 }
 ```
 
-## 設定のバリデーション
+## 設定の検証
 
-### 構造体のバリデーション
+### 構造体の検証
 
 ```go
 type ServerConfig struct {
@@ -298,7 +298,7 @@ func main() {
 }
 ```
 
-### 必須フィールドのバリデーション
+### 必須フィールドの検証
 
 ```go
 type Config struct {
@@ -355,7 +355,7 @@ func Load() (*Config, error) {
 }
 ```
 
-### 環境の切り分け
+### 環境の区別
 
 ```go
 type BaseConfig struct {
@@ -391,7 +391,7 @@ func LoadConfig() interface{} {
 
 ## エラー処理
 
-### パースエラー
+### 解析エラー
 
 ```go
 cfg := Config{}
@@ -413,11 +413,11 @@ type Config struct {
 
 cfg := Config{}
 if err := env.ParseInto(&cfg); err != nil {
-    // 型変換に失敗するとエラーが返される
+    // 型変換の失敗はエラーを返す
 }
 ```
 
-## 完全なサンプル
+## 完全な例
 
 ```go
 package main
@@ -510,4 +510,4 @@ func main() {
 
 - [パッケージ関数 - ParseInto](/ja/env/api-reference/functions#parseinto) - ParseInto 関数リファレンス
 - [Loader API - ParseInto](/ja/env/api-reference/loader#parseinto) - Loader メソッドリファレンス
-- [クイックスタート](/ja/env/getting-started) - 基本的な使用方法
+- [クイックスタート](/ja/env/getting-started) - 基本的な使い方

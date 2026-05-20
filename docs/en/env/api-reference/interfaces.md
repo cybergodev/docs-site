@@ -1,9 +1,9 @@
 ---
-title: Interface Definitions - CyberGo env | Core Interfaces
-description: All interface type definitions for the env library including validation, audit, parsing, storage, serialization, and file system interfaces
+title: Interfaces - CyberGo env | Core Interface Hierarchy
+description: CyberGo env library interface type definitions complete reference documentation, using fine-grained interface design supporting dependency injection and flexible composition, including Validator, FullAuditLogger, EnvParser, EnvStorage, and FileSystem adapter core interfaces with detailed descriptions and usage.
 ---
 
-# Interface Definitions
+# Interfaces
 
 The env library uses fine-grained interface design, supporting dependency injection and flexible composition.
 
@@ -11,7 +11,7 @@ The env library uses fine-grained interface design, supporting dependency inject
 
 ### EnvLoader
 
-Complete loader interface combining all sub-interfaces:
+Complete loader interface, combining all sub-interfaces:
 
 ```go
 type EnvLoader interface {
@@ -35,7 +35,7 @@ type EnvFileLoader interface {
 }
 ```
 
-**Use case:** Scenarios requiring only file loading capability.
+**Use case:** Scenarios where only file loading capability is needed.
 
 ```go
 func loadConfig(loader env.EnvFileLoader) error {
@@ -68,17 +68,17 @@ func readConfig(getter env.EnvGetter) {
 }
 ```
 
-::: warning Note
+:::warning Note
 `GetInt`, `GetBool`, `GetDuration`, `GetSecure`, `Len` are **not** part of the `EnvGetter` interface.
-These methods are implemented on `*Loader` but not in the minimal interface.
+These methods are implemented on the `*Loader` type but not in the minimal interface.
 
-For full read capability, use the `*Loader` type directly:
+For complete read capability, use the `*Loader` type directly:
 
 ```go
 func readFullConfig(loader *env.Loader) {
-    port := loader.GetInt("PORT", 8080)      // ✓ Available
-    debug := loader.GetBool("DEBUG", false)  // ✓ Available
-    count := loader.Len()                     // ✓ Available
+    port := loader.GetInt("PORT", 8080)      // Available
+    debug := loader.GetBool("DEBUG", false)  // Available
+    count := loader.Len()                     // Available
 }
 ```
 :::
@@ -96,7 +96,7 @@ type EnvSetter interface {
 }
 ```
 
-**Use case:** Scenarios requiring only set/delete capability.
+**Use case:** Scenarios where only set/delete capability is needed.
 
 ```go
 func updateConfig(setter env.EnvSetter) error {
@@ -119,7 +119,7 @@ type EnvApplicator interface {
 }
 ```
 
-**Use case:** Apply loaded variables to `os.Environ`.
+**Use case:** Applying loaded variables to `os.Environ`.
 
 ```go
 func applyToSystem(applicator env.EnvApplicator) error {
@@ -139,7 +139,7 @@ type EnvCloser interface {
 }
 ```
 
-**Use case:** Release loader resources.
+**Use case:** Releasing loader resources.
 
 ---
 
@@ -157,8 +157,8 @@ type Validator interface {
 }
 ```
 
-::: tip Note
-`Validator` provides the `ValidateRequired` method through embedding `RequiredValidator`. Custom validators that only implement `KeyValidator` will return `ErrValidateRequiredUnsupported` when `ValidateRequired` is called.
+:::tip Note
+`Validator` provides the `ValidateRequired` method by embedding `RequiredValidator`. Custom validators that only implement `KeyValidator` will return `ErrValidateRequiredUnsupported` when `ValidateRequired` is called.
 :::
 
 ---
@@ -173,7 +173,7 @@ type RequiredValidator interface {
 }
 ```
 
-Validates that all required keys exist.
+Validates whether all required keys exist.
 
 ---
 
@@ -187,7 +187,7 @@ type KeyValidator interface {
 }
 ```
 
-Validates key names against rules (length, format, forbidden keys, etc.).
+Validates whether key names conform to rules (length, format, forbidden keys, etc.).
 
 ---
 
@@ -201,7 +201,7 @@ type ValueValidator interface {
 }
 ```
 
-Validates value safety (no null bytes, control characters, etc.).
+Validates whether values are safe (no null bytes, control characters, etc.).
 
 ---
 
@@ -209,7 +209,7 @@ Validates value safety (no null bytes, control characters, etc.).
 
 ### AuditLogger
 
-Minimal audit logger interface (alias for `internal.AuditLogger`):
+Minimal audit log interface (alias for `internal.AuditLogger`):
 
 ```go
 type AuditLogger interface {
@@ -217,13 +217,13 @@ type AuditLogger interface {
 }
 ```
 
-**Use case:** Minimal interface for implementing custom audit loggers. For full audit capability, use `FullAuditLogger`.
+**Use case:** Minimal interface for implementing custom audit loggers. For complete audit capability, use `FullAuditLogger`.
 
 ---
 
 ### FullAuditLogger
 
-Extended audit logger interface providing full audit logging functionality:
+Extended audit log interface providing complete audit logging:
 
 ```go
 type FullAuditLogger interface {
@@ -235,9 +235,9 @@ type FullAuditLogger interface {
 }
 ```
 
-**Use case:** Full audit logging capability. `ComponentFactory.Auditor()` returns this interface.
+**Use case:** Complete audit logging capability. `ComponentFactory.Auditor()` returns this interface.
 
-**Method descriptions:**
+**Method Description:**
 
 | Method | Purpose |
 |--------|---------|
@@ -245,7 +245,7 @@ type FullAuditLogger interface {
 | `Log` | Log general audit events |
 | `LogWithFile` | Log events with file information |
 | `LogWithDuration` | Log events with duration |
-| `Close` | Close audit logger |
+| `Close` | Close audit logging |
 
 ---
 
@@ -260,12 +260,13 @@ type AuditHandler interface {
 }
 ```
 
-**Use case:** Implement this interface to customize audit event handling. Unlike the `AuditLogger` interface, `AuditHandler` requires `Log` and `Close` methods for receiving audit events and releasing resources.
+**Use case:** Implement this interface to customize audit event handling. Unlike the `AuditLogger` interface, `AuditHandler` requires both `Log` and `Close` methods for receiving and processing audit events and releasing resources.
 
 **Built-in implementations:**
 - `JSONAuditHandler` - Outputs JSON format logs
-- `LogAuditHandler` - Uses standard log package
+- `LogAuditHandler` - Outputs using standard log package
 - `ChannelAuditHandler` - Sends to channel
+- `CloseableChannelHandler` - Closeable handler with own buffered channel
 - `NopAuditHandler` - No-op handler
 
 ---
@@ -282,16 +283,15 @@ type VariableExpander interface {
 }
 ```
 
-**Use case:** Custom variable expansion logic.
+**Use case:** Custom variable expansion logic, supporting `${VAR}`, `${VAR:-default}` and similar syntax.
 
 ```go
-// Implement ${VAR} and ${VAR:-default} expansion logic
 expanded, err := expander.Expand("${BASE_URL}/api")
 ```
 
 ---
 
-## Parsing Interface
+## Parser Interfaces
 
 ### EnvParser
 
@@ -305,7 +305,7 @@ type EnvParser interface {
 
 **Parameters:**
 - `r` - File content reader
-- `filename` - Filename (for error messages)
+- `filename` - File name (for error messages)
 
 **Returns:**
 - `map[string]string` - Parsed key-value pairs
@@ -315,7 +315,7 @@ type EnvParser interface {
 
 ---
 
-## Storage Interface
+## Storage Interfaces
 
 ### EnvStorage
 
@@ -335,7 +335,7 @@ type EnvStorage interface {
 
 **Use case:** Custom storage backend.
 
-**Method descriptions:**
+**Method Description:**
 
 | Method | Purpose |
 |--------|---------|
@@ -438,7 +438,7 @@ type MockFileSystem struct {
     env   map[string]string
 }
 
-// MockFile implements env.File for testing
+// MockFile implements env.File interface (for testing)
 type MockFile struct {
     reader *strings.Reader
 }
@@ -505,14 +505,14 @@ type File interface {
 }
 ```
 
-**Method descriptions:**
+**Method Description:**
 
 | Method | Purpose |
 |--------|---------|
 | `Read` | Read data |
 | `Write` | Write data |
 | `Close` | Close file |
-| `Stat` | Get file info |
+| `Stat` | Get file information |
 | `Sync` | Sync to disk |
 
 ---
@@ -525,7 +525,7 @@ Default file system implementation:
 var DefaultFileSystem FileSystem = OSFileSystem{}
 ```
 
-Uses real OS file system and environment variables:
+Uses the real OS file system and environment variables:
 
 ```go
 cfg := env.DefaultConfig()
@@ -538,20 +538,20 @@ cfg.FileSystem = env.DefaultFileSystem  // Default value
 
 ### JSONAuditHandler
 
-Outputs JSON format audit logs:
+Output JSON format audit log:
 
 ```go
 func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
 ```
 
 **Parameters:**
-- `w` - Output destination (e.g., `os.Stdout`, file)
+- `w` - Output target (e.g., `os.Stdout`, file)
 
 ```go
 handler := env.NewJSONAuditHandler(os.Stdout)
 ```
 
-**Output example:**
+**Example Output:**
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","key":"API_KEY","success":true}
 ```
@@ -560,7 +560,7 @@ handler := env.NewJSONAuditHandler(os.Stdout)
 
 ### LogAuditHandler
 
-Uses standard log package output:
+Output using standard log package:
 
 ```go
 func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
@@ -576,7 +576,7 @@ logger := log.New(os.Stderr, "[AUDIT] ", log.LstdFlags)
 handler := env.NewLogAuditHandler(logger)
 ```
 
-**Output example:**
+**Example Output:**
 ```text
 [AUDIT] 2024/01/15 10:30:00 load .env success
 ```
@@ -585,7 +585,7 @@ handler := env.NewLogAuditHandler(logger)
 
 ### ChannelAuditHandler
 
-Sends to channel:
+Send to channel:
 
 ```go
 func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
@@ -598,7 +598,7 @@ func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 ch := make(chan env.AuditEvent, 100)
 handler := env.NewChannelAuditHandler(ch)
 
-// Asynchronous processing
+// Process asynchronously
 go func() {
     for event := range ch {
         processAuditEvent(event)
@@ -633,7 +633,7 @@ type AuditAction = internal.Action
 
 const (
     ActionLoad       AuditAction = "load"        // File loading
-    ActionParse      AuditAction = "parse"       // Parse operation
+    ActionParse      AuditAction = "parse"       // Parsing operation
     ActionGet        AuditAction = "get"         // Variable read
     ActionSet        AuditAction = "set"         // Variable set
     ActionDelete     AuditAction = "delete"      // Variable delete
@@ -662,18 +662,18 @@ type AuditEvent = internal.Event
 | `Timestamp` | `time.Time` | Timestamp |
 | `Action` | `AuditAction` | Operation type |
 | `Key` | `string` | Key name (masked) |
-| `File` | `string` | Filename |
+| `File` | `string` | File name |
 | `Reason` | `string` | Reason/description |
 | `Success` | `bool` | Whether successful |
-| `Masked` | `bool` | Whether the key was masked |
+| `Masked` | `bool` | Whether masked |
 | `Details` | `string` | Details |
-| `Duration` | `int64` | Duration in nanoseconds |
+| `Duration` | `int64` | Duration (nanoseconds) |
 
 ---
 
 ## ComponentFactory
 
-Component factory managing shared components:
+Component factory, managing shared components:
 
 ```go
 type ComponentFactory struct {
@@ -691,13 +691,13 @@ func (f *ComponentFactory) Close() error
 func (f *ComponentFactory) IsClosed() bool
 ```
 
-**Use case:** Used internally, automatically managed when creating a Loader. See [ComponentFactory API](/en/env/api-reference/factory) for details.
+**Use case:** Internal use, automatically managed during Loader creation. See [ComponentFactory API](/en/env/api-reference/factory).
 
 ---
 
 ## Complete Example
 
-### Implement Custom Audit Handler
+### Implementing Custom Audit Handler
 
 ```go
 package main
@@ -763,7 +763,7 @@ func setDefaults(setter env.EnvSetter) error {
     return setter.Set("DEFAULT_KEY", "default_value")
 }
 
-// Only need load capability
+// Only need loading capability
 func loadConfig(loader env.EnvFileLoader) error {
     return loader.LoadFiles(".env")
 }
@@ -773,7 +773,7 @@ func main() {
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // Use fine-grained interfaces
+    // Using fine-grained interfaces
     loadConfig(loader)
     setDefaults(loader)
     printConfig(loader)

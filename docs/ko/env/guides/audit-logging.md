@@ -1,6 +1,6 @@
 ---
-title: 감사 로그 - CyberGo env | 보안 감사 설정
-description: CyberGo env 라이브러리 감사 로그 설정 및 사용 완전 가이드입니다. 내장 JSON 파일 처리기, 표준 로그 처리기 및 Channel 처리기의 구성 방법과 커스텀 AuditHandler 감사 처리기 확장 개발을 다루며, 모든 환경 변수 작업을 기록하여 Go 애플리케이션 보안 규정 준수 검사 및 실행 문제 해결에 활용합니다.
+title: 감사 로그 - CyberGo env | 보안 감사 구성
+description: CyberGo env 라이브러리 감사 로그 완전 구성 가이드, JSON 파일 핸들러, 표준 로그 핸들러 및 채널 핸들러의 생성과 구성 방법을 다루며, 커스텀 AuditHandler 인터페이스를 구현하여 감사 로직을 확장하는 방법을 소개하고, 모든 환경 변수의 로딩, 읽기, 수정, 삭제 작업을 기록하여 보안 규정 준수 검사 및 프로덕션 환경 문제 해결 요구를 충족합니다.
 ---
 
 # 감사 로그
@@ -9,7 +9,7 @@ description: CyberGo env 라이브러리 감사 로그 설정 및 사용 완전 
 
 ## 감사 활성화
 
-### 설정 활성화
+### 구성으로 활성화
 
 ```go
 cfg := env.ProductionConfig()
@@ -19,7 +19,7 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 loader, _ := env.New(cfg)
 ```
 
-### 설정 프리셋
+### 구성 프리셋
 
 | 프리셋 | 감사 상태 |
 |------|----------|
@@ -30,7 +30,7 @@ loader, _ := env.New(cfg)
 
 ---
 
-## 감사 처리기
+## 감사 핸들러
 
 ### JSONAuditHandler
 
@@ -47,7 +47,7 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
-**출력예제：**
+**출력 예시:**
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration":1234567}
@@ -59,7 +59,7 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 
 ### LogAuditHandler
 
-표준 log 패키지로 출력:
+표준 log 패키지 사용 출력:
 
 ```go
 import (
@@ -72,7 +72,7 @@ logger := log.New(os.Stderr, "[AUDIT] ", log.LstdFlags)
 cfg.AuditHandler = env.NewLogAuditHandler(logger)
 ```
 
-**출력예제：**
+**출력 예시:**
 
 ```text
 [AUDIT] 2024/01/15 10:30:00 load .env (1.23ms)
@@ -84,13 +84,13 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 
 ### ChannelAuditHandler
 
-채널로 비동기 처리를 위해 전송:
+채널로 비동기 처리:
 
 ```go
 ch := make(chan env.AuditEvent, 100)
 cfg.AuditHandler = env.NewChannelAuditHandler(ch)
 
-// 비동기 처리감사이벤트
+// 비동기 감사 이벤트 처리
 go func() {
     for event := range ch {
         processAuditEvent(event)
@@ -98,71 +98,71 @@ go func() {
 }()
 ```
 
-**사용 시나리오：**
-- 원격 로그 서비스로 전송
-- 데이터베이스에 기록
+**사용 시나리오:**
+- 원격 로그 서비스 전송
+- 데이터베이스 기록
 - 실시간 모니터링 알림
 
 ---
 
 ### NopAuditHandler
 
-빈 작업 처리기, 모든 이벤트 폐기:
+아무 작업도 수행하지 않는 핸들러, 모든 이벤트 폐기:
 
 ```go
 cfg.AuditHandler = env.NewNopAuditHandler()
 ```
 
-**사용 시나리오：**
-- 임시로 감사 비활성화
+**사용 시나리오:**
+- 일시적으로 감사 비활성화
 - 테스트 환경
 
 ---
 
-## 감사이벤트
+## 감사 이벤트
 
-### AuditEvent 구조
+### AuditEvent 구조체
 
 ```go
 type AuditEvent struct {
     Timestamp time.Time   // 타임스탬프
-    Action    AuditAction // 작업타입
+    Action    AuditAction // 작업 유형
     Key       string      // 키 이름
     File      string      // 파일 이름
-    Reason    string      // 원인
+    Reason    string      // 사유
     Success   bool        // 성공 여부
-    Masked    bool        // 마스크 여부
+    Masked    bool        // 마스킹 여부
     Details   string      // 상세 정보
     Duration  int64       // 소요 시간 (나노초)
 }
 ```
 
-### AuditAction 작업타입
+### AuditAction 작업 유형
 
 | 상수 | 값 | 설명 |
 |------|---|------|
-| `ActionLoad` | `load` | 파일로드 |
-| `ActionParse` | `parse` | 파싱작업 |
-| `ActionGet` | `get` | 변수읽기 |
-| `ActionSet` | `set` | 변수설정 |
-| `ActionDelete` | `delete` | 변수삭제 |
-| `ActionValidate` | `validate` | 검증작업 |
-| `ActionExpand` | `expand` | 변수확장 |
-| `ActionSecurity` | `security` | 안전이벤트 |
-| `ActionError` | `error` | 잘못됨이벤트 |
-| `ActionFileAccess` | `file_access` | 파일접근 |
+| `ActionLoad` | `load` | 파일 로딩 |
+| `ActionParse` | `parse` | 파싱 작업 |
+| `ActionGet` | `get` | 변수 읽기 |
+| `ActionSet` | `set` | 변수 설정 |
+| `ActionDelete` | `delete` | 변수 삭제 |
+| `ActionValidate` | `validate` | 검증 작업 |
+| `ActionExpand` | `expand` | 변수 확장 |
+| `ActionSecurity` | `security` | 보안 이벤트 |
+| `ActionError` | `error` | 오류 이벤트 |
+| `ActionFileAccess` | `file_access` | 파일 접근 |
 
 ---
 
-## 커스텀 처리기
+## 커스텀 핸들러
 
-### 구현 FullAuditLogger 인터페이스
+### FullAuditLogger 인터페이스 구현
 
-`FullAuditLogger`는 완전한 감사 로그 인터페이스로, 최소 인터페이스 `AuditLogger`(`LogError` 메서드만 포함)를 확장합니다:
+`FullAuditLogger`는 최소 인터페이스 `AuditLogger`(`LogError` 메서드만 포함)를 확장한 완전한 감사 로그 인터페이스입니다:
 
 ```go
 type FullAuditLogger interface {
-    AuditLogger  // 최소 인터페이스 포함 (LogError)
+    AuditLogger  // 최소 인터페이스 임베딩 (LogError)
     Log(action AuditAction, key, reason string, success bool) error
     LogWithFile(action AuditAction, key, file, reason string, success bool) error
     LogWithDuration(action AuditAction, key, reason string, success bool, duration time.Duration) error
@@ -170,10 +170,10 @@ type FullAuditLogger interface {
 }
 ```
 
-### 예제: 데이터베이스 감사 처리기
+### 예시: 데이터베이스 감사 핸들러
 
 ```go
-package main
+package myhandler
 
 import (
     "database/sql"
@@ -224,9 +224,9 @@ func (h *DatabaseAuditHandler) Close() error {
 
 ---
 
-## 완전한 예제
+## 전체 예시
 
-### 프로덕션 환경 설정
+### 프로덕션 환경 구성
 
 ```go
 package main
@@ -246,7 +246,7 @@ func main() {
     }
     defer auditFile.Close()
 
-    // 설정
+    // 구성
     cfg := env.ProductionConfig()
     cfg.AuditEnabled = true
     cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
@@ -259,7 +259,7 @@ func main() {
     }
     defer loader.Close()
 
-    // 설정 로드
+    // 설정 로딩
     err = loader.LoadFiles(".env")
     if err != nil {
         log.Fatal(err)
@@ -289,13 +289,13 @@ import (
 )
 
 func main() {
-    // 생성감사이벤트채널
+    // 감사 이벤트 채널 생성
     auditChan := make(chan env.AuditEvent, 1000)
 
-    // 비동기 처리기 시작
+    // 비동기 프로세서 시작
     go processAuditEvents(auditChan)
 
-    // 설정
+    // 구성
     cfg := env.ProductionConfig()
     cfg.AuditEnabled = true
     cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
@@ -314,7 +314,7 @@ func processAuditEvents(ch chan env.AuditEvent) {
     encoder := json.NewEncoder(file)
 
     for event := range ch {
-        // 필터, 집계 등 논리를 추가할 수 있음
+        // 필터링, 집계 등 로직 추가 가능
         if event.Action == env.ActionError {
             log.Printf("Audit error: %+v", event)
         }
@@ -326,25 +326,25 @@ func processAuditEvents(ch chan env.AuditEvent) {
 
 ---
 
-## 보안 주의사항
+## 보안 주의 사항
 
-### 민감 값 자동 마스크
+### 민감 값 자동 마스킹
 
-감사 로그는 민감 키의 값을 자동으로 마스크합니다:
+감사 로그는 민감한 키의 값을 자동으로 마스킹합니다:
 
 ```go
-// 민감 값 가져올 때 자동 마스크
+// 민감 값 가져오기 시 자동 마스킹
 secret := loader.GetSecure("API_KEY")
-// 감사기록: {"action":"get","key":"API_KEY","masked":true}
+// 감사 기록: {"action":"get","key":"API_KEY","masked":true}
 ```
 
-### 감사 로그권한
+### 감사 로그 권한
 
 ```bash
 # 감사 로그 파일 권한 설정
 chmod 600 /var/log/app/env-audit.log
 
-# 애플리케이션 사용자만 읽기/쓰기 가능한지 확인
+# 애플리케이션 사용자만 읽기/쓰기 가능하도록 설정
 chown app:app /var/log/app/env-audit.log
 ```
 
@@ -369,7 +369,7 @@ logrotate를 사용하여 감사 로그를 관리하는 것이 좋습니다:
 
 ## 관련 문서
 
-- [보안 개요](/ko/env/security/) - 보안 아키텍처와 핵심 기능
-- [프로덕션검사체크리스트](/ko/env/security/production-checklist) - 감사설정검사
-- [인터페이스정의](/ko/env/api-reference/interfaces) - AuditLogger 인터페이스
-- [컴포넌트 팩토리](/ko/env/api-reference/factory) - 감사 처리기 팩토리
+- [보안 개요](/ko/env/security/) - 보안 아키텍처 및 핵심 기능
+- [프로덕션 체크리스트](/ko/env/security/production-checklist) - 감사 구성 확인
+- [인터페이스 정의](/ko/env/api-reference/interfaces) - AuditLogger 인터페이스
+- [컴포넌트 팩토리](/ko/env/api-reference/factory) - 감사 핸들러 팩토리

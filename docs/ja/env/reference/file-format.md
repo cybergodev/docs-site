@@ -1,6 +1,6 @@
 ---
 title: ファイルフォーマット - CyberGo env | .env/JSON/YAML 構文
-description: CyberGo env 環境変数管理ライブラリがサポートする設定ファイルフォーマットの完全なリファレンスドキュメント。.env キーと値のペアフォーマット、JSON オブジェクトフォーマット、YAML 階層フォーマットの構文ルール、コメント方式、データ型サポート、エンコーディング処理、自動フォーマット検出メカニズムの詳細解説を含みます。
+description: CyberGo env ライブラリがサポートする設定ファイルフォーマットの完全なリファレンスドキュメント。.env キー・バリューペアフォーマット、JSON オブジェクトフォーマット、YAML 階層フォーマットの構文ルールとコメント方法を詳解。データ型サポート、UTF-8 エンコーディング処理、DetectFormat 自動フォーマット検出メカニズム、JSONConfig および YAMLConfig フォーマット専用設定オプションを網羅します。
 ---
 
 # ファイルフォーマット
@@ -20,21 +20,21 @@ URL=https://example.com?foo=bar
 
 # 空行は無視される
 
-# 無効：キーにスペースは使用不可
+# 無効：キーに空白を含めることはできない
 # MY KEY=value
 ```
 
-### クォート
+### 引用符
 
 ```bash
-# ダブルクォート：スペースを保持、エスケープをサポート
+# ダブルクォート：空白を保持、エスケープをサポート
 MESSAGE="Hello World"
 PATH="/usr/local/bin"
 
 # シングルクォート：そのまま保持、エスケープなし
 LITERAL='no ${expansion} here'
 
-# クォートなし
+# 引用符なし
 SIMPLE=value
 
 # 空の値
@@ -45,7 +45,7 @@ EMPTY=''
 
 ### エスケープ文字
 
-ダブルクォート内でエスケープをサポートします：
+ダブルクォート内でエスケープをサポート：
 
 ```bash
 # 改行
@@ -54,7 +54,7 @@ MULTILINE="line1\nline2"
 # タブ
 TABBED="col1\tcol2"
 
-# クォート
+# 引用符
 QUOTED="He said \"Hello\""
 
 # バックスラッシュ
@@ -66,14 +66,14 @@ PRICE="Price: \$100"
 
 ### 変数展開
 
-`ExpandVariables` を有効にするとサポートされます：
+`ExpandVariables` を有効にするとサポート：
 
 ```bash
 # 他の変数を参照
 BASE_URL=https://api.example.com
 API_URL=${BASE_URL}/v1
 
-# 省略構文
+# 簡略構文
 URL=$BASE_URL/path
 
 # デフォルト値
@@ -86,7 +86,7 @@ SERVICE=${CLUSTER:-default}-${REGION:-us-east}
 
 ### export 構文
 
-`AllowExportPrefix` を有効にするとサポートされます：
+`AllowExportPrefix` を有効にするとサポート：
 
 ```bash
 # Bash スタイルのエクスポート
@@ -96,7 +96,7 @@ export ANOTHER="quoted value"
 
 ### YAML スタイル
 
-`AllowYamlSyntax` を有効にするとサポートされます：
+`AllowYamlSyntax` を有効にするとサポート：
 
 ```bash
 # YAML スタイルのキーと値のペア
@@ -151,7 +151,7 @@ DATABASE_PORT=5432
 
 ### 配列
 
-配列はインデックス付きキーにフラット化されます：
+配列はインデックスキーにフラット化されます：
 
 ```json
 {
@@ -171,12 +171,12 @@ PORTS_2=8080
 ```
 
 ::: tip 配列要素へのアクセス
-`GetSlice[T]` 関数またはドットパスを使用してインデックス付きキーにアクセスします：
+`GetSlice[T]` 関数またはドットパスを使用してインデックスキーにアクセスします：
 ```go
 hosts := env.GetSlice[string]("ALLOWED_HOSTS")
 port0 := env.GetInt("PORTS_0")  // 80
 ```
-詳細は [GetSlice ドキュメント](/ja/env/api-reference/functions#getslice-t) を参照してください。
+詳細は [GetSlice ドキュメント](/ja/env/api-reference/functions#getslice-t)を参照してください。
 :::
 
 ### 型変換オプション
@@ -194,7 +194,7 @@ cfg.JSONNumberAsString = true
 cfg.JSONBoolAsString = true
 ```
 
-### 深度制限
+### 深さ制限
 
 ```go
 cfg.JSONMaxDepth = 10  // 最大ネスト深度
@@ -233,7 +233,7 @@ DATABASE_CREDENTIALS_PASSWORD=secret
 
 ### リスト
 
-リストはインデックス付きキーにフラット化されます：
+リストはインデックスキーにフラット化されます：
 
 ```yaml
 allowed_hosts:
@@ -259,7 +259,7 @@ description: |
   Line 2
   Line 3
 
-# 折りたたみブロック（改行がスペースになる）
+# フォールドブロック（改行をスペースに変換）
 summary: >
   This is a long
   summary that will
@@ -282,7 +282,7 @@ cfg.YAMLMaxDepth = 10
 ### 自動検出
 
 ```go
-// 拡張子に基づく検出
+// 拡張子に基づいて検出
 format := env.DetectFormat("config.json")   // FormatJSON
 format = env.DetectFormat("settings.yaml")  // FormatYAML
 format = env.DetectFormat(".env")           // FormatEnv
@@ -313,26 +313,26 @@ fmt.Println(format.String())  // 出力: json
 
 ### フォーマットの選択
 
-| シーン | 推奨フォーマット |
+| シナリオ | 推奨フォーマット |
 |------|----------|
 | シンプルな設定 | `.env` |
 | 複雑なネスト設定 | JSON または YAML |
-| 他のツールとの共有 | JSON |
+| 他のツールと共有 | JSON |
 | 人間の可読性を優先 | YAML |
 | Docker/K8s 環境 | `.env` |
 
-### ファイルの命名
+### ファイル命名
 
 ```bash
 .env              # デフォルト設定
-.env.local        # ローカル上書き（コミットしない）
+.env.local        # ローカルオーバーライド（コミットしない）
 .env.development  # 開発環境
 .env.staging      # ステージング環境
 .env.production   # 本番環境
 .env.test         # テスト環境
 ```
 
-### 混合使用
+### 組み合わせて使用
 
 ```go
 // 異なるフォーマットを混合して使用可能
@@ -340,25 +340,25 @@ loader.LoadFiles(
     "base.env",           // 基本設定
     "database.json",      // データベース設定
     "secrets.yaml",       // 機密設定
-    ".env.local",         // ローカル上書き
+    ".env.local",         // ローカルオーバーライド
 )
 ```
 
-### Git で除外
+### Git で無視
 
 ```bash
-# 機密設定を除外
+# 機密設定を無視
 .env.local
 .env.*.local
 .env.production
 secrets.yaml
 
-# テンプレートは保持
+# テンプレートを保持
 !.env.example
 ```
 
 ## 関連ドキュメント
 
-- [マルチフォーマット設定](/ja/env/guides/multi-format) - マルチフォーマット読み込みガイド
+- [多フォーマット設定](/ja/env/guides/multi-format) - 多フォーマット読み込みガイド
 - [ComponentFactory API](/ja/env/api-reference/factory) - DetectFormat 関数リファレンス
-- [Config API](/ja/env/api-reference/config) - JSON/YAML パースオプション
+- [Config API](/ja/env/api-reference/config) - JSON/YAML 解析オプション

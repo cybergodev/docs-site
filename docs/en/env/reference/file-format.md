@@ -1,9 +1,9 @@
 ---
-title: File Format - CyberGo env | .env JSON YAML Syntax
-description: Comprehensive file format reference for the env library covering .env, JSON, and YAML syntax rules, format detection, and best practices
+title: File Format - CyberGo env | .env/JSON/YAML Syntax
+description: Complete reference for CyberGo env supported configuration file formats, covering .env key-value syntax, JSON object format, and YAML hierarchical format with comment rules, data type support, UTF-8 encoding, DetectFormat auto-detection, and JSONConfig/YAMLConfig format-specific options.
 ---
 
-# File Format Reference
+# File Format
 
 The env library supports multiple configuration file formats: `.env`, JSON, and YAML.
 
@@ -12,29 +12,29 @@ The env library supports multiple configuration file formats: `.env`, JSON, and 
 ### Basic Syntax
 
 ```bash
-# Comments
+# Comment
 KEY=value
 
 # Equals sign in value
 URL=https://example.com?foo=bar
 
-# Empty lines are ignored
+# Blank lines are ignored
 
-# Invalid: key cannot have spaces
+# Invalid: key cannot contain spaces
 # MY KEY=value
 ```
 
 ### Quoting
 
 ```bash
-# Double quotes: preserves spaces, supports escaping
+# Double quotes: preserve spaces, support escaping
 MESSAGE="Hello World"
 PATH="/usr/local/bin"
 
 # Single quotes: literal, no escaping
 LITERAL='no ${expansion} here'
 
-# No quotes
+# Unquoted
 SIMPLE=value
 
 # Empty values
@@ -45,7 +45,7 @@ EMPTY=''
 
 ### Escape Characters
 
-Double-quoted strings support escaping:
+Escaping is supported within double quotes:
 
 ```bash
 # Newline
@@ -94,7 +94,7 @@ export KEY=value
 export ANOTHER="quoted value"
 ```
 
-### YAML Style
+### YAML-Style Syntax
 
 Supported when `AllowYamlSyntax` is enabled:
 
@@ -104,7 +104,7 @@ KEY: value
 ANOTHER: "quoted value"
 ```
 
-### Multi-line Values
+### Multiline Values
 
 ```bash
 # Newlines inside double quotes
@@ -112,7 +112,7 @@ PRIVATE_KEY="-----BEGIN KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
 -----END KEY-----"
 
-# Using \n escape
+# Using \n escapes
 LINES="line1\nline2\nline3"
 ```
 
@@ -151,7 +151,7 @@ DATABASE_PORT=5432
 
 ### Arrays
 
-Arrays are flattened to indexed keys:
+Arrays are flattened into indexed keys:
 
 ```json
 {
@@ -170,13 +170,13 @@ PORTS_1=443
 PORTS_2=8080
 ```
 
-::: tip Accessing Array Elements
-Use the `GetSlice[T]` function or dot-notation path to access indexed keys:
+:::tip Accessing Array Elements
+Use the `GetSlice[T]` function or dot-notation paths to access indexed keys:
 ```go
 hosts := env.GetSlice[string]("ALLOWED_HOSTS")
 port0 := env.GetInt("PORTS_0")  // 80
 ```
-See [GetSlice documentation](/en/env/api-reference/functions#getslice-t).
+See [GetSlice documentation](/en/env/api-reference/functions#getslice-t) for details.
 :::
 
 ### Type Conversion Options
@@ -184,13 +184,13 @@ See [GetSlice documentation](/en/env/api-reference/functions#getslice-t).
 ```go
 cfg := env.DefaultConfig()
 
-// null to empty string
+// Convert null to empty string
 cfg.JSONNullAsEmpty = true
 
-// Numbers to strings
+// Convert numbers to strings
 cfg.JSONNumberAsString = true
 
-// Booleans to strings
+// Convert booleans to strings
 cfg.JSONBoolAsString = true
 ```
 
@@ -233,7 +233,7 @@ DATABASE_CREDENTIALS_PASSWORD=secret
 
 ### Lists
 
-Lists are flattened to indexed keys:
+Lists are flattened into indexed keys:
 
 ```yaml
 allowed_hosts:
@@ -250,7 +250,7 @@ ALLOWED_HOSTS_1=example.com
 ALLOWED_HOSTS_2=api.example.com
 ```
 
-### Multi-line Strings
+### Multiline Strings
 
 ```yaml
 # Literal block (preserves newlines)
@@ -287,7 +287,7 @@ format := env.DetectFormat("config.json")   // FormatJSON
 format = env.DetectFormat("settings.yaml")  // FormatYAML
 format = env.DetectFormat(".env")           // FormatEnv
 
-// No matching extension returns FormatAuto (defaults to .env parser)
+// Returns FormatAuto when no matching extension (defaults to .env parser)
 format = env.DetectFormat("config")  // FormatAuto
 ```
 
@@ -314,11 +314,11 @@ fmt.Println(format.String())  // Output: json
 ### Choosing a Format
 
 | Scenario | Recommended Format |
-|----------|-------------------|
+|----------|--------------------|
 | Simple configuration | `.env` |
-| Complex nested config | JSON or YAML |
-| Shared with other tools | JSON |
-| Human-readable priority | YAML |
+| Complex nested configuration | JSON or YAML |
+| Sharing with other tools | JSON |
+| Human readability priority | YAML |
 | Docker/K8s environments | `.env` |
 
 ### File Naming
@@ -359,6 +359,6 @@ secrets.yaml
 
 ## Related Documentation
 
-- [Multi-format Configuration](/en/env/guides/multi-format) - Multi-format loading guide
+- [Multi-Format Configuration](/en/env/guides/multi-format) - Multi-format loading guide
 - [ComponentFactory API](/en/env/api-reference/factory) - DetectFormat function reference
 - [Config API](/en/env/api-reference/config) - JSON/YAML parsing options

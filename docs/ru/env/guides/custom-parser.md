@@ -1,17 +1,17 @@
 ---
 title: Пользовательский парсер - CyberGo env | Расширение форматов файлов
-description: CyberGo env библиотека полное руководство по разработке пользовательских парсеров, описание реализации интерфейса EnvParser для создания парсеров пользовательских форматов файлов, регистрация через ComponentFactory и интеграция в процесс загрузки, расширение поддерживаемых библиотекой env форматов конфигурационных файлов.
+description: Полное руководство по разработке пользовательских парсеров библиотеки CyberGo env — реализация интерфейса EnvParser для создания парсеров пользовательских форматов, регистрация через RegisterParser в ComponentFactory и интеграция в процесс загрузки, полные примеры реализации парсеров TOML и INI, шаблоны обработки ошибок и лучшие практики для производственной среды.
 ---
 
 # Пользовательский парсер
 
-В этом руководстве описывается создание и регистрация пользовательских парсеров форматов файлов для расширения поддерживаемых библиотекой env форматов конфигурации.
+В этом руководстве описано создание и регистрация пользовательских парсеров файловых форматов для расширения поддерживаемых библиотекой env конфигурационных форматов.
 
 ## Интерфейс парсера
 
 ### EnvParser
 
-Все парсеры должны реализовать этот интерфейс:
+Все парсеры должны реализовывать этот интерфейс:
 
 ```go
 type EnvParser interface {
@@ -20,12 +20,12 @@ type EnvParser interface {
 ```
 
 **Параметры:**
-- `r` - читатель содержимого файла
-- `filename` - имя файла (для сообщений об ошибках)
+- `r` - Читатель содержимого файла
+- `filename` - Имя файла (используется в сообщениях об ошибках)
 
 **Возвращает:**
-- `map[string]string` - разобранные пары ключ-значение
-- `error` - ошибка парсинга
+- `map[string]string` - Разобранные пары ключ-значение
+- `error` - Ошибка парсинга
 
 ---
 
@@ -52,13 +52,13 @@ type CustomParser struct {
 func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     result := make(map[string]string)
 
-    // 1. Прочитать содержимое (учитывая ограничения размера)
+    // 1. Чтение содержимого (учитывая ограничение размера)
     content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize))
     if err != nil {
         return nil, err
     }
 
-    // 2. Разобрать содержимое в пары ключ-значение
+    // 2. Разбор содержимого в пары ключ-значение
     // ... логика парсинга
 
     // 3. Валидация результатов
@@ -68,7 +68,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
         }
     }
 
-    // 4. Вернуть результат
+    // 4. Возврат результатов
     return result, nil
 }
 ```
@@ -76,7 +76,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 ### Пример парсера TOML
 
 ```go
-package main
+package tomlparser
 
 import (
     "fmt"
@@ -97,7 +97,7 @@ type TOMLParser struct {
 func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     start := time.Now()
 
-    // Ограничить размер чтения
+    // Ограничение размера чтения
     content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
     if err != nil {
         return nil, err
@@ -114,35 +114,35 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
     for lineNum, line := range lines {
         line = strings.TrimSpace(line)
 
-        // Пропустить пустые строки и комментарии
+        // Пропуск пустых строк и комментариев
         if line == "" || strings.HasPrefix(line, "#") {
             continue
         }
 
-        // Разобрать section [section]
+        // Разбор section [section]
         if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
             currentSection = strings.Trim(line, "[]")
             continue
         }
 
-        // Разобрать key = value
+        // Разбор key = value
         parts := strings.SplitN(line, "=", 2)
         if len(parts) != 2 {
-            continue // или вернуть ошибку
+            continue // или возврат ошибки
         }
 
         key := strings.TrimSpace(parts[0])
         value := strings.TrimSpace(parts[1])
 
-        // Добавить префикс section
+        // Добавление префикса section
         if currentSection != "" {
             key = currentSection + "_" + key
         }
 
-        // Удалить кавычки
+        // Удаление кавычек
         value = strings.Trim(value, "\"'")
 
-        // Преобразовать в верхний регистр
+        // Преобразование в верхний регистр
         key = strings.ToUpper(key)
 
         // Валидация ключа
@@ -154,7 +154,7 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
         result[key] = value
     }
 
-    // Проверить количество переменных
+    // Проверка количества переменных
     if len(result) > p.cfg.MaxVariables {
         return nil, fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
     }
@@ -167,7 +167,7 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
 ### Пример парсера INI
 
 ```go
-package main
+package iniparser
 
 import (
     "fmt"
@@ -198,7 +198,7 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
     for lineNum, line := range lines {
         line = strings.TrimSpace(line)
 
-        // Пропустить пустые строки и комментарии
+        // Пропуск пустых строк и комментариев
         if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
             continue
         }
@@ -241,11 +241,11 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
 type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error)
 ```
 
-Фабричная функция получает Config и ComponentFactory, возвращает экземпляр парсера.
+Фабричная функция принимает Config и ComponentFactory, возвращая экземпляр парсера.
 
 **Описание параметров:**
-- `cfg` - объект конфигурации, содержащий все ограничения и настройки безопасности
-- `factory` - фабрика компонентов, можно получить Validator, Auditor и другие компоненты
+- `cfg` - Объект конфигурации, содержащий все ограничения и настройки безопасности
+- `factory` - Фабрика компонентов, позволяющая получить Validator, Auditor и другие компоненты
 
 ### Функция RegisterParser
 
@@ -253,14 +253,14 @@ type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error
 func RegisterParser(format FileFormat, factory ParserFactory) error
 ```
 
-Регистрирует парсер пользовательского формата.
+Регистрация парсера пользовательского формата.
 
 **Параметры:**
-- `format` - константа формата файла (рекомендуется использовать значения 100+ для предотвращения конфликтов)
-- `factory` - фабричная функция парсера
+- `format` - Константа файлового формата (рекомендуется использовать значения 100+ для предотвращения конфликтов)
+- `factory` - Фабричная функция парсера
 
 **Возвращает:**
-- `error` - ошибка при неудачной регистрации
+- `error` - Ошибка при неудачной регистрации
 
 **Случаи ошибок:**
 - Встроенные форматы (FormatEnv, FormatJSON, FormatYAML) не могут быть переопределены
@@ -294,7 +294,7 @@ func (p *SecureParser) Parse(r io.Reader, filename string) (map[string]string, e
 
     // ... логика парсинга
 
-    // Использовать валидатор для проверки имён ключей
+    // Использование валидатора для проверки имён ключей
     for key := range result {
         if err := p.validator.ValidateKey(key); err != nil {
             _ = p.auditor.Log(env.ActionParse, key, "invalid key", false)
@@ -316,16 +316,16 @@ import (
     "github.com/cybergodev/env"
 )
 
-// 1. Определить константы формата (рекомендуется использовать значения 100+)
+// 1. Определение констант формата (рекомендуются значения 100+)
 const (
     FormatTOML env.FileFormat = 100
     FormatINI  env.FileFormat = 101
     FormatXML  env.FileFormat = 102
 )
 
-// 2. Зарегистрировать в init
+// 2. Регистрация в init
 func init() {
-    // Зарегистрировать TOML парсер
+    // Регистрация парсера TOML
     err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
         return &TOMLParser{
             cfg:       cfg,
@@ -337,7 +337,7 @@ func init() {
         panic(err) // Формат уже зарегистрирован или другая ошибка
     }
 
-    // Зарегистрировать INI парсер
+    // Регистрация парсера INI
     env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
         return &INIParser{
             cfg:       cfg,
@@ -348,13 +348,13 @@ func init() {
 }
 
 func main() {
-    // Регистрация должна быть завершена до New (уже выполнена в init)
+    // Регистрация должна быть завершена до вызова New (выполнено в init)
 
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // Теперь можно загружать .toml файлы
+    // Теперь можно загружать файлы .toml
     loader.LoadFiles("config.toml")
 }
 ```
@@ -367,12 +367,12 @@ func main() {
 
 ```go
 func (p *CustomParser) checkLimits(result map[string]string) error {
-    // Проверить количество переменных
+    // Проверка количества переменных
     if len(result) > p.cfg.MaxVariables {
         return fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
     }
 
-    // Проверить длину ключей и значений
+    // Проверка длины ключей и значений
     for key, value := range result {
         if len(key) > p.cfg.MaxKeyLength {
             return fmt.Errorf("key too long: %s", key)
@@ -414,7 +414,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 }
 ```
 
-### 3. Информативные ошибки
+### 3. Информативные сообщения об ошибках
 
 ```go
 type CustomParseError struct {
@@ -445,7 +445,7 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 
     // ... логика парсинга
 
-    // Записать успешный результат
+    // Запись об успешном парсинге
     _ = p.auditor.LogWithDuration(
         env.ActionParse,
         "",
@@ -477,7 +477,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// Структура XML конфигурации
+// Структура XML-конфигурации
 type XMLConfig struct {
     XMLName xml.Name   `xml:"config"`
     Entries []XMLEntry `xml:"entry"`
@@ -498,7 +498,7 @@ type XMLParser struct {
 func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
     start := time.Now()
 
-    // Ограничить размер чтения
+    // Ограничение размера чтения
     content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
     if err != nil {
         return nil, err
@@ -519,7 +519,7 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
     for _, entry := range xmlConfig.Entries {
         key := strings.ToUpper(entry.Key)
 
-        // Валидация длины ключа
+        // Проверка длины ключа
         if len(key) > p.cfg.MaxKeyLength {
             return nil, fmt.Errorf("key too long: %s", key)
         }
@@ -529,7 +529,7 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
             return nil, fmt.Errorf("invalid key %q: %w", key, err)
         }
 
-        // Валидация длины значения
+        // Проверка длины значения
         if len(entry.Value) > p.cfg.MaxValueLength {
             return nil, fmt.Errorf("value too long for key: %s", key)
         }
@@ -537,7 +537,7 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
         result[key] = entry.Value
     }
 
-    // Проверить количество переменных
+    // Проверка количества переменных
     if len(result) > p.cfg.MaxVariables {
         return nil, fmt.Errorf("too many variables: %d > %d", len(result), p.cfg.MaxVariables)
     }
@@ -546,11 +546,11 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
     return result, nil
 }
 
-// Определить константу формата XML
+// Определение константы формата XML
 const FormatXML env.FileFormat = 102
 
 func init() {
-    // Зарегистрировать XML парсер
+    // Регистрация парсера XML
     env.RegisterParser(FormatXML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
         return &XMLParser{
             cfg:       cfg,
@@ -565,7 +565,7 @@ func main() {
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // Загрузить XML конфигурацию
+    // Загрузка XML-конфигурации
     /*
     <?xml version="1.0"?>
     <config>
@@ -585,6 +585,6 @@ func main() {
 ## Связанная документация
 
 - [ComponentFactory API](/ru/env/api-reference/factory) - ComponentFactory и RegisterParser
-- [Определения интерфейсов](/ru/env/api-reference/interfaces) - Определение интерфейса EnvParser
-- [Config API](/ru/env/api-reference/config) - Подробное описание параметров конфигурации
-- [Многоформатная конфигурация](/ru/env/guides/multi-format) - Подробно о форматах JSON/YAML
+- [Определение интерфейсов](/ru/env/api-reference/interfaces) - Определение интерфейса EnvParser
+- [Config API](/ru/env/api-reference/config) - Подробно о параметрах конфигурации
+- [Мультиформатная конфигурация](/ru/env/guides/multi-format) - Подробно о форматах JSON/YAML

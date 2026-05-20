@@ -1,15 +1,15 @@
 ---
-title: シリアライズ - CyberGo env | マルチフォーマット変換
-description: CyberGo env ライブラリのシリアライズとデシリアライズ完全使用ガイド。.env、JSON、YAML 形式間の Map マッピングと Go 構造体の相互変換をサポートし、カスタムシリアライズ形式オプション、env タグサポート、機密フィールドのマスキング処理、一括エクスポート/インポート操作例とマルチフォーマット相互変換の Go 実践シーンを含みます。
+title: シリアライズ - CyberGo env | 多フォーマット変換
+description: CyberGo env ライブラリのシリアライズ/デシリアライズ完全ガイド。.env、JSON、YAML フォーマット間の Map マッピングと Go 構造体変換方法を詳しく解説。Marshal と Unmarshal 関数群、カスタム Marshaler/Unmarshaler インターフェース実装、env タグサポート、機密フィールドマスク処理、多フォーマット相互変換の実践例を網羅します。
 ---
 
 # シリアライズ
 
-Marshal と Unmarshal 機能を使用して環境変数をシリアライズ/デシリアライズし、`.env`、JSON、YAML 形式の変換をサポートします。
+Marshal と Unmarshal 機能を使用して環境変数のシリアライズ/デシリアライズを行い、`.env`、JSON、YAML フォーマットの変換をサポートします。
 
 ## 基本的なシリアライズ
 
-### Map のシリアライズ
+### Map シリアライズ
 
 ```go
 package main
@@ -26,7 +26,7 @@ func main() {
         "DEBUG":       "true",
     }
 
-    // .env 形式にシリアライズ
+    // .env フォーマットにシリアライズ
     result, err := env.Marshal(data, env.FormatEnv)
     if err != nil {
         panic(err)
@@ -102,7 +102,7 @@ func main() {
 }
 ```
 
-## 構造体のシリアライズ
+## 構造体シリアライズ
 
 ### 基本的なシリアライズ
 
@@ -127,7 +127,7 @@ func main() {
         Debug: true,
     }
 
-    // 構造体を .env 形式にシリアライズ
+    // 構造体を .env フォーマットにシリアライズ
     result, err := env.Marshal(cfg, env.FormatEnv)
     if err != nil {
         panic(err)
@@ -224,7 +224,7 @@ func main() {
     fmt.Printf("%+v\n", data)
     // 出力: map[DEBUG:true HOST:localhost PORT:8080]
 
-    // ファイルへのエクスポートに利用可能
+    // ファイルへのエクスポートに使用可能
     content, _ := env.Marshal(data, env.FormatEnv)
     fmt.Println(content)
 }
@@ -232,7 +232,7 @@ func main() {
 
 ## デシリアライズ
 
-### Map のデシリアライズ
+### Map デシリアライズ
 
 ```go
 package main
@@ -243,7 +243,7 @@ import (
 )
 
 func main() {
-    // .env 形式の文字列
+    // .env フォーマット文字列
     data := `
 HOST=localhost
 PORT=8080
@@ -261,7 +261,7 @@ DEBUG=true
 }
 ```
 
-### JSON のデシリアライズ
+### JSON デシリアライズ
 
 ```go
 package main
@@ -287,7 +287,7 @@ func main() {
 }
 ```
 
-### YAML のデシリアライズ
+### YAML デシリアライズ
 
 ```go
 package main
@@ -313,7 +313,7 @@ DATABASE_USER: postgres
 }
 ```
 
-## 構造体のデシリアライズ
+## 構造体デシリアライズ
 
 ### Map からのデシリアライズ
 
@@ -465,7 +465,7 @@ import (
 )
 
 func main() {
-    // フォーマットの自動検出
+    // 自動フォーマット検出
     format := env.DetectFormat("config.json")
     fmt.Println(format.String()) // json
 
@@ -475,14 +475,14 @@ func main() {
     format = env.DetectFormat(".env")
     fmt.Println(format.String()) // dotenv
 
-    // FormatAuto による自動検出
+    // FormatAuto で自動検出
     data := `{"KEY": "value"}`
     result, _ := env.UnmarshalMap(data, env.FormatAuto)
     fmt.Println(result)
 }
 ```
 
-## 実用的なシーン
+## 実用シナリオ
 
 ### 設定をファイルに保存
 
@@ -544,7 +544,7 @@ func main() {
 }
 ```
 
-### 設定の移行
+### 設定移行
 
 ```go
 package main
@@ -559,13 +559,13 @@ func main() {
     // JSON 設定を読み込み
     jsonContent, _ := os.ReadFile("config.json")
 
-    // JSON をパース
+    // JSON を解析
     data, err := env.UnmarshalMap(string(jsonContent), env.FormatJSON)
     if err != nil {
         panic(err)
     }
 
-    // .env 形式に変換
+    // .env フォーマットに変換
     envContent, err := env.Marshal(data, env.FormatEnv)
     if err != nil {
         panic(err)
@@ -580,6 +580,6 @@ func main() {
 
 ## 関連ドキュメント
 
-- [パッケージ関数](/ja/env/api-reference/functions) - Marshal、UnmarshalMap 等の関数リファレンス
-- [マルチフォーマット設定](/ja/env/guides/multi-format) - マルチフォーマット読み込みガイド
+- [パッケージ関数](/ja/env/api-reference/functions) - Marshal、UnmarshalMap 等関数リファレンス
+- [多フォーマット設定](/ja/env/guides/multi-format) - 多フォーマット読み込みガイド
 - [構造体マッピング](/ja/env/guides/struct-mapping) - 構造体マッピングガイド

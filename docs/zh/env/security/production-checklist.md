@@ -1,6 +1,6 @@
 ---
 title: 生产检查清单 - CyberGo env | 安全上线检查
-description: CyberGo env 库生产环境部署前安全检查完整清单，涵盖配置文件权限管理、键值验证规则配置、审计日志启用确认、敏感数据安全处理方式、错误处理策略和性能安全参数调优等关键安全检查项目，确保 Go 应用程序在生产环境中持续安全、稳定地运行。
+description: CyberGo env 库生产环境部署前安全检查清单，涵盖 .env 文件权限与目录保护、RequiredKeys 和 AllowedKeys 键值验证、AuditEnabled 审计日志启用配置、SecureValue 敏感数据安全处理、哨兵错误处理策略和 LimitsConfig 性能安全参数调优等关键安全检查项。
 ---
 
 # 生产检查清单

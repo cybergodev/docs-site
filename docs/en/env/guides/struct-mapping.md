@@ -1,6 +1,6 @@
 ---
-title: Struct Mapping - CyberGo env | Env to Struct
-description: Map environment variables to Go structs using env tags, supporting nested structs, pointers, custom types, and field validation rules
+title: Struct Mapping - CyberGo env | Environment Variables to Struct
+description: Complete guide for CyberGo env struct mapping, automatically mapping environment variables to Go struct fields via env tags, covering nested structs, pointer and slice types, custom type converters, envDefault defaults, required field validation rules, and mapping hook function extensions.
 ---
 
 # Struct Mapping
@@ -75,9 +75,9 @@ type Config struct {
 }
 ```
 
-### Ignore Fields
+### Ignoring Fields
 
-Use `env:"-"` to skip fields:
+Use `env:"-"` to skip a field:
 
 ```go
 type Config struct {
@@ -99,9 +99,6 @@ type Config struct {
     Int32   int32   `env:"INT32_VALUE"`
     Int64   int64   `env:"INT64_VALUE"`
     Uint    uint    `env:"UINT_VALUE"`
-    Uint8   uint8   `env:"UINT8_VALUE"`
-    Uint16  uint16  `env:"UINT16_VALUE"`
-    Uint32  uint32  `env:"UINT32_VALUE"`
     Uint64  uint64  `env:"UINT64_VALUE"`
     Float32 float32 `env:"FLOAT32_VALUE"`
     Float64 float64 `env:"FLOAT64_VALUE"`
@@ -168,9 +165,9 @@ WORDS=hello world go lang
 ```
 
 **Notes:**
-- Default separator is comma `,`
+- The default separator is a comma `,`
 - `envSeparator` only works with slice types
-- Leading/trailing whitespace around separators is automatically trimmed
+- Whitespace around separators is automatically trimmed
 
 ## Nested Structs
 
@@ -513,4 +510,4 @@ func main() {
 
 - [Package Functions - ParseInto](/en/env/api-reference/functions#parseinto) - ParseInto function reference
 - [Loader API - ParseInto](/en/env/api-reference/loader#parseinto) - Loader method reference
-- [Quick Start](/en/env/getting-started) - Basic usage
+- [Getting Started](/en/env/getting-started) - Basic usage

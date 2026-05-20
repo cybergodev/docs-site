@@ -1,6 +1,6 @@
 ---
-title: Config API - CyberGo env | 設定詳解
-description: CyberGo env ライブラリ Config 設定構造体の完全 API リファレンスドキュメント。Config は Loader のすべての動作を制御します。ファイル検索パス、セキュリティ制限パラメータ、キーと値の検証オプション、変数展開設定、監査ログ設定、定義済み設定テンプレートを含み、Development と Production のプリセットを提供し、異なる環境の設定ニーズに対応します。
+title: Config API - CyberGo env | 設定詳細
+description: CyberGo env ライブラリ Config 設定構造体 API リファレンス。ファイル検索パス、セキュリティ制限パラメータ、キー値検証オプション、変数展開設定、監査ログ設定、および定義済み設定テンプレートを含む。Development と Production プリセットを提供し、異なる環境要件に対応。
 ---
 
 # Config API
@@ -9,28 +9,28 @@ description: CyberGo env ライブラリ Config 設定構造体の完全 API リ
 
 ## 構造体定義
 
-Config はネストされた構造体で設定を整理し、Go のフィールド昇格により後方互換性を維持します：
+Config 使用ネストされた構造体组织配置，同時に Go のフィールド昇格により後方互換性を維持：
 
 ```go
 type Config struct {
-    FileConfig       // ファイル読み込み動作
-    ValidationConfig // キーと値の検証
-    LimitsConfig     // サイズと数量の制限
-    JSONConfig       // JSON 解析オプション
-    YAMLConfig       // YAML 解析オプション
-    ParsingConfig    // 共通解析動作
-    ComponentConfig  // カスタムコンポーネントと高度なオプション
+    FileConfig       // ファイル読み込み行为
+    ValidationConfig // 键和值検証
+    LimitsConfig     // 大小和数量限制
+    JSONConfig       // JSON 解析选项
+    YAMLConfig       // YAML 解析选项
+    ParsingConfig    // 通用解析行为
+    ComponentConfig  // 自定义组件和高级选项
 }
 ```
 
-**2 つのアクセス方法：**
+**两种访问方式：**
 
 ```go
-// 旧方式（フィールド昇格による、引き続き有効）
+// 旧方式（通过字段提升，仍然有效）
 cfg.Filenames = []string{".env"}
 cfg.MaxFileSize = 1024
 
-// 新方式（推奨、より明確）
+// 新方式（推荐，更清晰）
 cfg.FileConfig.Filenames = []string{".env"}
 cfg.LimitsConfig.MaxFileSize = 1024
 ```
@@ -38,78 +38,78 @@ cfg.LimitsConfig.MaxFileSize = 1024
 ### ネストされた構造体
 
 ```go
-// FileConfig はファイル読み込み動作を制御
+// FileConfig 控制ファイル読み込み行为
 type FileConfig struct {
-    Filenames         []string // 読み込むファイルのリスト
-    FailOnMissingFile bool     // ファイルが存在しない時にエラーを返すか
-    OverwriteExisting bool     // 既存の環境変数を上書きするか
-    AutoApply         bool     // os.Environ に自動的に適用するか
+    Filenames         []string // 要加载的文件列表
+    FailOnMissingFile bool     // 文件不存在时是否报错
+    OverwriteExisting bool     // 既存の環境変数を上書きするかどうか
+    AutoApply         bool     // 是否自动应用到 os.Environ
 }
 
-// ValidationConfig はキーと値の検証を制御
+// ValidationConfig 控制键和值検証
 type ValidationConfig struct {
     RequiredKeys   []string       // 必須キー名のリスト
-    AllowedKeys    []string       // 許可されたキー名のホワイトリスト
+    AllowedKeys    []string       // 許可キー名のホワイトリスト
     ForbiddenKeys  []string       // 追加の禁止キーリスト
-    KeyPattern     *regexp.Regexp // キー名マッチングパターン
-    ValidateValues bool           // 値の安全性を検証するか
-    ValidateUTF8   bool           // 値が有効な UTF-8 か検証するか
+    KeyPattern     *regexp.Regexp // キー名マッチパターン
+    ValidateValues bool           // 是否値の安全性を検証
+    ValidateUTF8   bool           // 是否検証值为有效 UTF-8
 }
 
-// LimitsConfig はサイズと数量の制限を制御
+// LimitsConfig 控制大小和数量限制
 type LimitsConfig struct {
     MaxFileSize       int64 // 単一ファイルの最大バイト数
     MaxVariables      int   // ファイルごとの最大変数数
-    MaxLineLength     int   // 1 行の最大長
+    MaxLineLength     int   // 単一行の最大長
     MaxKeyLength      int   // キー名の最大長
     MaxValueLength    int   // 値の最大長
     MaxExpansionDepth int   // 変数展開の最大深度
 }
 
-// JSONConfig は JSON 解析動作を制御
+// JSONConfig 控制 JSON 解析行为
 type JSONConfig struct {
-    JSONNullAsEmpty    bool // null を空文字列に変換
-    JSONNumberAsString bool // 数値を文字列に変換
-    JSONBoolAsString   bool // ブール値を文字列に変換
-    JSONMaxDepth       int  // 最大ネスト深度
+    JSONNullAsEmpty    bool // null 转为空字符串
+    JSONNumberAsString bool // 数字转为字符串
+    JSONBoolAsString   bool // 布尔值转为字符串
+    JSONMaxDepth       int  // 最大嵌套深度
 }
 
-// YAMLConfig は YAML 解析動作を制御
+// YAMLConfig 控制 YAML 解析行为
 type YAMLConfig struct {
-    YAMLNullAsEmpty    bool // null/~ を空文字列に変換
-    YAMLNumberAsString bool // 数値を文字列に変換
-    YAMLBoolAsString   bool // ブール値を文字列に変換
-    YAMLMaxDepth       int  // 最大ネスト深度
+    YAMLNullAsEmpty    bool // null/~ 转为空字符串
+    YAMLNumberAsString bool // 数字转为字符串
+    YAMLBoolAsString   bool // 布尔值转为字符串
+    YAMLMaxDepth       int  // 最大嵌套深度
 }
 
-// ParsingConfig は共通の解析動作を制御
+// ParsingConfig 控制通用解析行为
 type ParsingConfig struct {
     AllowExportPrefix bool // export KEY=value 構文を許可
-    AllowYamlSyntax   bool // YAML スタイルの値を許可
-    ExpandVariables   bool // ${VAR} 参照を展開するか
+    AllowYamlSyntax   bool // 允许 YAML 风格值
+    ExpandVariables   bool // 是否展开 ${VAR} 引用
 }
 
-// ComponentConfig はカスタムコンポーネントと高度なオプション
+// ComponentConfig 自定义组件和高级选项
 type ComponentConfig struct {
-    CustomValidator Validator        // カスタムキー/値検証器
-    CustomExpander  VariableExpander // カスタム変数展開器
+    CustomValidator Validator        // カスタムキー/値バリデーター
+    CustomExpander  VariableExpander // カスタム変数エキスパンダー
     CustomAuditor   AuditLogger      // カスタム監査ロガー
     FileSystem      FileSystem       // カスタムファイルシステム（テスト用）
-    AuditHandler    AuditHandler     // カスタム監査プロセッサ
+    AuditHandler    AuditHandler     // カスタム監査ハンドラー
     AuditEnabled    bool             // 監査ログを有効化
     Prefix          string           // このプレフィックスを持つ変数のみ処理
 }
 ```
 
-## 設定フィールド
+## 配置字段
 
-### ファイル処理
+### 文件处理
 
-これらのフィールドはファイル読み込み動作を制御します。
+これらのフィールドはファイル読み込みの動作を制御します。
 
 #### `Filenames` []string
 
-読み込むファイルパスのリスト。**デフォルト `[".env"]`**。
+要加载的ファイルパスのリスト。**默认 `[".env"]`**。
 
 ```go
 cfg.Filenames = []string{".env", ".env.local"}
@@ -119,41 +119,41 @@ cfg.Filenames = []string{".env", ".env.local"}
 
 #### `FailOnMissingFile` bool
 
-ファイルが存在しない時にエラーを返すかどうか。**デフォルト `false`**（サイレントスキップ）。
+ファイルが存在しない場合にエラーを返すかどうか。**デフォルト `false`**（サイレントにスキップ）。
 
 ```go
-cfg.FailOnMissingFile = true  // ファイルが存在しない時にエラー
+cfg.FailOnMissingFile = true  // 文件不存在时报错
 ```
 
 ---
 
 #### `OverwriteExisting` bool
 
-既存の環境変数を上書きするかどうか。**デフォルト `false`**。
+既存の環境変数を上書きするかどうか。**默认 `false`**。
 
 ```go
-cfg.OverwriteExisting = true  // 上書きを許可
+cfg.OverwriteExisting = true  // 允许覆盖
 ```
 
 ---
 
 #### `AutoApply` bool
 
-読み込み後にシステム環境に自動適用（`os.Environ`）。**デフォルト `false`**。
+加载后システム環境に自動適用（`os.Environ`）。**默认 `false`**。
 
 ```go
-cfg.AutoApply = true  // 読み込み後に自動適用
+cfg.AutoApply = true  // 加载后自动应用
 ```
 
 ::: tip 注意
 パッケージレベルの `Load()` 関数は自動的に `AutoApply = true` を設定します。`New()` で Loader を作成する場合は手動で設定する必要があります。
 :::
 
-### 変数展開
+### 变量展开
 
 #### `ExpandVariables` bool
 
-`${VAR}` 構文の変数展開を有効化。**デフォルト `true`**。
+启用 `${VAR}` 语法变量展开。**默认 `true`**。
 
 ```go
 cfg.ExpandVariables = true
@@ -161,24 +161,24 @@ cfg.ExpandVariables = true
 
 サポートされる展開構文：
 
-| 構文 | 説明 |
+| 语法 | 说明 |
 |------|------|
-| `${VAR}` | 変数の参照 |
-| `${VAR:-default}` | 変数が存在しないか空の場合にデフォルト値を使用 |
-| `${VAR:=default}` | 変数が存在しないか空の場合にデフォルト値を設定 |
-| `${VAR:?error}` | 変数が存在しないか空の場合にエラーを返す |
+| `${VAR}` | 引用变量 |
+| `${VAR:-default}` | 変数が存在しない、または空の場合にデフォルト値を使用 |
+| `${VAR:=default}` | 変数が存在しない、または空の場合にデフォルト値を設定 |
+| `${VAR:?error}` | 変数が存在しない、または空の場合にエラーを報告 |
 
-### セキュリティ制限
+### 安全限制
 
 #### `MaxFileSize` int64
 
-単一ファイルの最大バイト数。**デフォルト 2MB**、ハードリミット 100MB。
+単一ファイルの最大バイト数。**默认 2MB**，ハードリミット 100MB。
 
 ```go
 cfg.MaxFileSize = 10 * 1024 * 1024 // 10 MB
 ```
 
-| 設定 | デフォルト値 | ハードリミット |
+| 配置 | 默认值 | ハードリミット |
 |------|--------|----------|
 | `MaxFileSize` | 2MB (2097152) | 100MB |
 
@@ -186,13 +186,13 @@ cfg.MaxFileSize = 10 * 1024 * 1024 // 10 MB
 
 #### `MaxLineLength` int
 
-1 行の最大長。**デフォルト 1024**、ハードリミット 64KB。
+単一行の最大長。**默认 1024**，ハードリミット 64KB。
 
 ```go
 cfg.MaxLineLength = 2048
 ```
 
-| 設定 | デフォルト値 | ハードリミット |
+| 配置 | 默认值 | ハードリミット |
 |------|--------|----------|
 | `MaxLineLength` | 1024 | 65536 (64KB) |
 
@@ -200,13 +200,13 @@ cfg.MaxLineLength = 2048
 
 #### `MaxKeyLength` int
 
-キー名の最大長。**デフォルト 64**、ハードリミット 1024。
+キー名の最大長。**默认 64**，ハードリミット 1024。
 
 ```go
 cfg.MaxKeyLength = 128
 ```
 
-| 設定 | デフォルト値 | ハードリミット |
+| 配置 | 默认值 | ハードリミット |
 |------|--------|----------|
 | `MaxKeyLength` | 64 | 1024 |
 
@@ -214,13 +214,13 @@ cfg.MaxKeyLength = 128
 
 #### `MaxValueLength` int
 
-値の最大長。**デフォルト 4096**、ハードリミット 1MB。
+値の最大長。**默认 4096**，ハードリミット 1MB。
 
 ```go
 cfg.MaxValueLength = 8192
 ```
 
-| 設定 | デフォルト値 | ハードリミット |
+| 配置 | 默认值 | ハードリミット |
 |------|--------|----------|
 | `MaxValueLength` | 4096 | 1048576 (1MB) |
 
@@ -228,13 +228,13 @@ cfg.MaxValueLength = 8192
 
 #### `MaxVariables` int
 
-ファイルごとの最大変数数。**デフォルト 500**、ハードリミット 10000。
+ファイルごとの最大変数数。**默认 500**，ハードリミット 10000。
 
 ```go
 cfg.MaxVariables = 1000
 ```
 
-| 設定 | デフォルト値 | ハードリミット |
+| 配置 | 默认值 | ハードリミット |
 |------|--------|----------|
 | `MaxVariables` | 500 | 10000 |
 
@@ -242,30 +242,30 @@ cfg.MaxVariables = 1000
 
 #### `MaxExpansionDepth` int
 
-変数展開の最大深度。**デフォルト 5**、ハードリミット 20。
+変数展開の最大深度。**默认 5**，ハードリミット 20。
 
 ```go
 cfg.MaxExpansionDepth = 10
 ```
 
-| 設定 | デフォルト値 | ハードリミット |
+| 配置 | 默认值 | ハードリミット |
 |------|--------|----------|
 | `MaxExpansionDepth` | 5 | 20 |
 
-### キーのバリデーション
+### 键検証
 
 #### `KeyPattern` *regexp.Regexp
 
-カスタムキー名マッチングパターン。**デフォルト `nil`**（高速バイトレベル検証を使用）。
+自定义キー名マッチパターン。**默认 `nil`**（使用快速字节级検証）。
 
-::: tip パフォーマンス最適化
-`nil` 値で高速バイトレベル検証を有効化（約 10 倍のパフォーマンス向上）。デフォルト検証ルール：文字で始まり、文字・数字・アンダースコアのみを含む。
+::: tip 性能优化
+`nil` 值启用快速字节级検証（约 10 倍性能提升）。默认検証规则：以字母开头，只包含字母、数字、下划线。
 :::
 
 ```go
 import "regexp"
 
-// カスタムパターン
+// 自定义模式
 cfg.KeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 ```
 
@@ -273,7 +273,7 @@ cfg.KeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 
 #### `AllowedKeys` []string
 
-許可されたキー名のホワイトリスト。空の場合、すべてのキーを許可（禁止キーを除く）。
+許可キー名のホワイトリスト。空の場合はすべてのキーを許可（禁止キーを除く）。
 
 ```go
 cfg.AllowedKeys = []string{"APP_NAME", "APP_VERSION", "PORT"}
@@ -290,7 +290,7 @@ cfg.ForbiddenKeys = []string{"CUSTOM_DANGEROUS_VAR"}
 ```
 
 ::: tip 組み込み禁止キー
-ライブラリは `PATH`、`LD_PRELOAD`、`LD_LIBRARY_PATH`、`DYLD_INSERT_LIBRARIES` などのシステム重要変数を組み込みで禁止しています。詳細は [定数とエラー](/ja/env/api-reference/constants#defaultforbiddenkeys) を参照してください。
+库内置禁止 `PATH`、`LD_PRELOAD`、`LD_LIBRARY_PATH`、`DYLD_INSERT_LIBRARIES` 等系统关键变量。詳細は [常量与错误](/ja/env/api-reference/constants#defaultforbiddenkeys)。
 :::
 
 ---
@@ -307,51 +307,51 @@ cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
 #### `ValidateValues` bool
 
-値の安全性を検証（制御文字、ヌルバイトなど）。**デフォルト `true`**。
+値の安全性を検証（制御文字、ヌルバイトなど）。**默认 `true`**。
 
-::: warning セキュリティの推奨
-常に有効にすることを推奨します。特殊なシナリオ（制御文字を含む値を保存する必要がある場合）でのみ無効化してください。
+::: warning 安全建议
+常に有効にすることを推奨，仅在特殊场景（制御文字を含む値を保存する必要がある場合）时禁用。
 :::
 
 ```go
-cfg.ValidateValues = true  // デフォルトで有効
+cfg.ValidateValues = true  // 默认已启用
 ```
 
 ---
 
 #### `ValidateUTF8` bool
 
-値が有効な UTF-8 エンコーディングか検証。**デフォルト `false`**。
+値が有効な UTF-8 エンコーディングか検証します。**デフォルト `false`**。
 
 ```go
-cfg.ValidateUTF8 = true  // UTF-8 検証を有効化
+cfg.ValidateUTF8 = true  // 启用 UTF-8 検証
 ```
 
-### パースオプション
+### 解析选项
 
 #### `AllowExportPrefix` bool
 
-`export KEY=value` 構文を許可。**デフォルト `true`**。
+允许 `export KEY=value` 语法。**默认 `true`**。
 
 ```go
-cfg.AllowExportPrefix = false  // export プレフィックスを禁止
+cfg.AllowExportPrefix = false  // 禁止 export 前缀
 ```
 
 ---
 
 #### `AllowYamlSyntax` bool
 
-YAML スタイル構文（`KEY: value`）を許可。**デフォルト `false`**。
+YAML スタイル構文を許可（`KEY: value`）。**默认 `false`**。
 
 ```go
 cfg.AllowYamlSyntax = true
 ```
 
-### JSON オプション
+### JSON 选项
 
 #### `JSONNullAsEmpty` bool
 
-JSON `null` 値を空文字列に変換。**デフォルト `true`**。
+JSON `null` 值转为空字符串。**默认 `true`**。
 
 ```go
 cfg.JSONNullAsEmpty = true
@@ -361,7 +361,7 @@ cfg.JSONNullAsEmpty = true
 
 #### `JSONNumberAsString` bool
 
-JSON 数値を文字列に変換。**デフォルト `true`**。
+JSON 数字转为字符串。**默认 `true`**。
 
 ```go
 cfg.JSONNumberAsString = true
@@ -371,7 +371,7 @@ cfg.JSONNumberAsString = true
 
 #### `JSONBoolAsString` bool
 
-JSON ブール値を文字列に変換。**デフォルト `true`**。
+JSON 布尔值转为字符串。**默认 `true`**。
 
 ```go
 cfg.JSONBoolAsString = true
@@ -381,17 +381,17 @@ cfg.JSONBoolAsString = true
 
 #### `JSONMaxDepth` int
 
-JSON 最大ネスト深度。**デフォルト 10**。
+JSON 最大嵌套深度。**默认 10**。
 
 ```go
 cfg.JSONMaxDepth = 20
 ```
 
-### YAML オプション
+### YAML 选项
 
 #### `YAMLNullAsEmpty` bool
 
-YAML `null`/`~` 値を空文字列に変換。**デフォルト `true`**。
+YAML `null`/`~` 值转为空字符串。**默认 `true`**。
 
 ```go
 cfg.YAMLNullAsEmpty = true
@@ -401,7 +401,7 @@ cfg.YAMLNullAsEmpty = true
 
 #### `YAMLNumberAsString` bool
 
-YAML 数値を文字列に変換。**デフォルト `true`**。
+YAML 数字转为字符串。**默认 `true`**。
 
 ```go
 cfg.YAMLNumberAsString = true
@@ -411,7 +411,7 @@ cfg.YAMLNumberAsString = true
 
 #### `YAMLBoolAsString` bool
 
-YAML ブール値を文字列に変換。**デフォルト `true`**。
+YAML 布尔值转为字符串。**默认 `true`**。
 
 ```go
 cfg.YAMLBoolAsString = true
@@ -421,17 +421,17 @@ cfg.YAMLBoolAsString = true
 
 #### `YAMLMaxDepth` int
 
-YAML 最大ネスト深度。**デフォルト 10**。
+YAML 最大嵌套深度。**默认 10**。
 
 ```go
 cfg.YAMLMaxDepth = 15
 ```
 
-### 監査
+### 审计
 
 #### `AuditEnabled` bool
 
-監査ログを有効化。**デフォルト `false`**。
+監査ログを有効化します。**デフォルト `false`**。
 
 ```go
 cfg.AuditEnabled = true
@@ -441,24 +441,24 @@ cfg.AuditEnabled = true
 
 #### `AuditHandler` AuditHandler
 
-カスタム監査プロセッサ。
+カスタム監査ハンドラー。
 
 ```go
 cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
-::: tip 詳細
-[監査ログ](/ja/env/guides/audit-logging) で完全な監査設定の説明を参照してください。
+::: tip 詳細は
+[审计日志](/ja/env/guides/audit-logging) 完全な監査設定の説明を取得。
 :::
 
-### 高度なオプション
+### 高级选项
 
 #### `Prefix` string
 
-このプレフィックスを持つ変数のみ処理。**デフォルト `""`**（すべての変数を処理）。
+このプレフィックスを持つ変数のみ処理。**默认 `""`**（すべての変数を処理）。
 
 ```go
-cfg.Prefix = "MYAPP_"  // MYAPP_ で始まる変数のみ読み込む
+cfg.Prefix = "MYAPP_"  // MYAPP_ で始まる変数のみ読み込み
 ```
 
 ---
@@ -475,7 +475,7 @@ cfg.FileSystem = &MockFileSystem{}
 
 #### `CustomValidator` Validator
 
-カスタムキー/値検証器。組み込み検証器をオーバーライドします。
+カスタムキー/値バリデーター。組み込みバリデーターを上書き。
 
 ```go
 cfg.CustomValidator = &MyValidator{}
@@ -485,7 +485,7 @@ cfg.CustomValidator = &MyValidator{}
 
 #### `CustomExpander` VariableExpander
 
-カスタム変数展開器。組み込み展開器をオーバーライドします。
+カスタム変数エキスパンダー。組み込みエキスパンダーを上書き。
 
 ```go
 cfg.CustomExpander = &MyExpander{}
@@ -495,7 +495,7 @@ cfg.CustomExpander = &MyExpander{}
 
 #### `CustomAuditor` AuditLogger
 
-カスタム監査ロガー。組み込み監査ロガーをオーバーライドします。
+カスタム監査ロガー。組み込み監査ロガーを上書き。
 
 ```go
 cfg.CustomAuditor = &MyAuditLogger{}
@@ -503,7 +503,7 @@ cfg.CustomAuditor = &MyAuditLogger{}
 
 ---
 
-## ファクトリ関数
+## 工厂函数
 
 ### DefaultConfig
 
@@ -511,11 +511,11 @@ cfg.CustomAuditor = &MyAuditLogger{}
 func DefaultConfig() Config
 ```
 
-安全なデフォルト設定を返します。
+安全なデフォルト設定を返す。
 
-**デフォルト値：**
+**默认值：**
 
-| フィールド | 値 |
+| 字段 | 值 |
 |------|-----|
 | `Filenames` | `[".env"]` |
 | `FailOnMissingFile` | `false` |
@@ -529,7 +529,7 @@ func DefaultConfig() Config
 | `MaxVariables` | 500 |
 | `MaxExpansionDepth` | 5 |
 | `ValidateValues` | `true` |
-| `KeyPattern` | `nil`（高速検証） |
+| `KeyPattern` | `nil` (快速検証) |
 | `AllowExportPrefix` | `true` |
 | `AllowYamlSyntax` | `false` |
 | `JSONNullAsEmpty` | `true` |
@@ -552,15 +552,15 @@ func DefaultConfig() Config
 func DevelopmentConfig() Config
 ```
 
-開発環境設定を返します（緩やかな制限）。
+開発環境設定を返す（緩やかな制限）。
 
-**デフォルト設定との違い：**
+**デフォルト設定との差分：**
 - `OverwriteExisting`: `true`
 - `AllowYamlSyntax`: `true`
 - `MaxFileSize`: 10MB
 
 ::: tip セキュリティ保証
-`ValidateValues` はすべてのプリセット設定で常に `true`（デフォルト値と同じ）で、セキュリティが環境の影響を受けないことを保証します。
+`ValidateValues` すべてのプリセット設定で常に維持 `true`（デフォルト値と同じ），セキュリティが環境の影響を受けないことを保証。
 :::
 
 ```go
@@ -577,9 +577,9 @@ loader, _ := env.New(cfg)
 func TestingConfig() Config
 ```
 
-テスト環境設定を返します。
+テスト環境設定を返す。
 
-**デフォルト設定との違い：**
+**デフォルト設定との差分：**
 - `OverwriteExisting`: `true`
 - `MaxFileSize`: 64KB
 - `MaxVariables`: 50
@@ -601,9 +601,9 @@ func TestSomething(t *testing.T) {
 func ProductionConfig() Config
 ```
 
-本番環境設定を返します（厳格な検証 + 監査）。
+本番環境設定を返す（厳格な検証 + 監査）。
 
-**デフォルト設定との違い：**
+**デフォルト設定との差分：**
 - `FailOnMissingFile`: `true`
 - `AuditEnabled`: `true`
 - `MaxFileSize`: 64KB
@@ -620,26 +620,26 @@ loader, _ := env.New(cfg)
 
 ### プリセットの詳細比較
 
-| 機能 | Default | Development | Testing | Production |
+| 功能 | Default | Development | Testing | Production |
 |------|---------|-------------|---------|------------|
 | 既存変数の上書き | ✗ | ✓ | ✓ | ✗ |
-| ファイル不在時にエラー | ✗ | ✗ | ✗ | ✓ |
-| 監査ログ | ✗ | ✗ | ✗ | ✓ |
-| YAML 構文 | ✗ | ✓ | ✗ | ✗ |
+| ファイル不存在時にエラー | ✗ | ✗ | ✗ | ✓ |
+| 审计日志 | ✗ | ✗ | ✗ | ✓ |
+| YAML 语法 | ✗ | ✓ | ✗ | ✗ |
 | ファイルサイズ制限 | 2MB | 10MB | 64KB | 64KB |
-| 最大変数数 | 500 | 500 | 50 | 50 |
-| 禁止キーチェック | ✓ | ✓ | ✓ | ✓ |
-| 値の検証 | ✓ | ✓ | ✓ | ✓ |
+| 最大变量数 | 500 | 500 | 50 | 50 |
+| 禁止键检查 | ✓ | ✓ | ✓ | ✓ |
+| 值検証 | ✓ | ✓ | ✓ | ✓ |
 
 ::: tip 選択のヒント
-- **開発環境**：`DevelopmentConfig()` を使用。緩やかな制限で迅速なイテレーションが可能
-- **テスト環境**：`TestingConfig()` を使用。上書きを許可しテスト分離が可能
-- **本番環境**：`ProductionConfig()` を使用。監査と厳格な検証を有効化
+- **开发环境**：使用 `DevelopmentConfig()`，緩やかな制限で迅速なイテレーションが可能
+- **测试环境**：使用 `TestingConfig()`，上書きを許可しテスト分離が可能
+- **本番環境**：`ProductionConfig()` を使用、監査と厳格な検証を有効化
 :::
 
 ---
 
-## メソッド
+## 方法
 
 ### Validate
 
@@ -647,22 +647,22 @@ loader, _ := env.New(cfg)
 func (c *Config) Validate() error
 ```
 
-設定の有効性を検証します。すべての制限値が有効範囲内かチェックします。
+設定の有効性を検証。すべての制限値が有効範囲内にあるか確認。
 
 ```go
 cfg := env.DefaultConfig()
 cfg.MaxFileSize = 1000
 
 if err := cfg.Validate(); err != nil {
-    // 設定が無効
+    // 配置无效
 }
 ```
 
-**バリデーションルール：**
-- すべての制限値は正の数である必要があります
-- すべての制限値はハードリミットを超えてはいけません
-- `KeyPattern` が nil でない場合、有効なキー名（例：`TEST_KEY`）にマッチし、空文字列にマッチせず、数字で始まるキー名にマッチしない必要があります
-- `JSONMaxDepth` と `YAMLMaxDepth` は 1-100 の範囲内である必要があります
+**検証规则：**
+- すべての制限値は正の数である必要がある
+- すべての制限値はハードリミットを超えることはできない
+- `KeyPattern` nil でない場合，有効なキー名にマッチする必要がある（如 `TEST_KEY`）、空文字列にマッチしてはならない、数字で始まるキー名にマッチしてはならない
+- `JSONMaxDepth` 和 `YAMLMaxDepth` 1-100 の範囲内である必要がある
 
 ---
 
@@ -672,26 +672,26 @@ if err := cfg.Validate(); err != nil {
 func (c *Config) IsZero() bool
 ```
 
-Config が未初期化のゼロ値かどうかをチェックします。`DefaultConfig()` を使用すべきかどうかの判断に使用します。
+Config が未初期化のゼロ値かどうかを確認。用于判断是否应使用 `DefaultConfig()`。
 
 **戻り値：**
 - `bool` - ゼロ値設定かどうか
 
-**検出範囲：**
-- 数値制限（MaxFileSize、MaxVariables など）
-- ブールフィールド（ValidateValues、AutoApply など）
-- ポインタ/インターフェースフィールド（KeyPattern、FileSystem など）
-- スライスフィールド（Filenames、RequiredKeys など）
+**检测范围：**
+- 数值限制（MaxFileSize、MaxVariables 等）
+- 布尔字段（ValidateValues、AutoApply 等）
+- 指针/接口字段（KeyPattern、FileSystem 等）
+- 切片字段（Filenames、RequiredKeys 等）
 
 ::: warning 注意
-部分的に初期化された Config はゼロ値として検出されない場合があります。常に `DefaultConfig()` からカスタム設定を開始することを推奨します：
+部分的に初期化された Config はゼロ値として検出されない場合があります。建议始终从 `DefaultConfig()` 开始カスタム設定：
 
 ```go
-// 推奨
+// 推荐
 cfg := env.DefaultConfig()
 cfg.Filenames = []string{".env.production"}
 
-// 非推奨（一部フィールドがゼロ値）
+// 不推荐（部分字段为零值）
 var cfg env.Config
 cfg.Filenames = []string{".env.production"}
 ```
@@ -699,7 +699,7 @@ cfg.Filenames = []string{".env.production"}
 
 ---
 
-## 使用例
+## 使用示例
 
 ### 基本設定
 
@@ -741,14 +741,14 @@ if err := loader.Validate(); err != nil {
 
 ```go
 cfg := env.DefaultConfig()
-cfg.Prefix = "MYAPP_"  // MYAPP_KEY1, MYAPP_KEY2 などのみ読み込む
+cfg.Prefix = "MYAPP_"  // 只加载 MYAPP_KEY1, MYAPP_KEY2 等
 cfg.Filenames = []string{".env"}
 
 loader, _ := env.New(cfg)
-// loader 内には MYAPP_ で始まる変数のみ含まれる
+// loader 中只有 MYAPP_ 开头的变量
 ```
 
-### カスタムバリデーション
+### カスタム検証
 
 ```go
 import "regexp"
@@ -767,5 +767,5 @@ loader, _ := env.New(cfg)
 ## 関連ドキュメント
 
 - [Loader API](/ja/env/api-reference/loader) - ローダーメソッド
-- [定数とエラー](/ja/env/api-reference/constants) - 制限定数とエラータイプ
-- [監査ログ](/ja/env/guides/audit-logging) - 監査設定ガイド
+- [常量与错误](/ja/env/api-reference/constants) - 制限定数とエラー型
+- [审计日志](/ja/env/guides/audit-logging) - 監査設定ガイド

@@ -1,6 +1,6 @@
 ---
-title: Variable Expansion - CyberGo env Variable Syntax
-description: Guide for env library variable expansion syntax, supporting ${VAR} references, defaults, conditional expansion, and cycle detection
+title: Variable Expansion - CyberGo env | Variable Syntax
+description: Complete guide for CyberGo env variable expansion syntax, covering ${VAR} and ${VAR:-default} reference syntax, nested default values, := assignment and :? error output conditional expansion modes, circular reference detection, MaxExpansionDepth limits, and ExpandVariables toggle control for variable reuse and dynamic value substitution in .env files.
 ---
 
 # Variable Expansion
@@ -37,9 +37,9 @@ URL=$HOST:8080
 
 | Syntax | Description |
 |--------|-------------|
-| `${VAR:-default}` | Use default if VAR is not set |
-| `${VAR:=default}` | Use default if VAR is not set (same as `:-`) |
-| `${VAR:?error}` | Return error if VAR is not set or empty |
+| `${VAR:-default}` | Use default if VAR does not exist |
+| `${VAR:=default}` | Use default if VAR does not exist (same as `:-`) |
+| `${VAR:?error}` | Return error if VAR does not exist or is empty |
 
 ---
 
@@ -47,19 +47,19 @@ URL=$HOST:8080
 
 ### `${VAR:-default}` - Use Default Value
 
-The most common default value syntax. The default is used when the variable is not set; if the variable exists (even with an empty value), the original value is used:
+The most common default value syntax. When the variable does not exist, the default value is used; when the variable exists (even if empty), the original value is used:
 
 ```bash
-# If LOG_LEVEL doesn't exist, use "info"
+# If LOG_LEVEL does not exist, use "info"
 LOG_LEVEL=${LOG_LEVEL:-info}
 
-# If TIMEOUT doesn't exist, use "30s"
+# If TIMEOUT does not exist, use "30s"
 TIMEOUT=${TIMEOUT:-30s}
 
 # Nested defaults
 DB_HOST=${DB_HOST:-localhost}
 DB_URL=${DB_HOST}:${DB_PORT:-5432}
-# If DB_HOST=localhost and DB_PORT doesn't exist
+# If DB_HOST=localhost and DB_PORT does not exist
 # DB_URL expands to: localhost:5432
 ```
 
@@ -71,31 +71,31 @@ DB_URL=${DB_HOST}:${DB_PORT:-5432}
 
 ### `${VAR:=default}` - Use Default Value
 
-Behaves identically to `${VAR:-default}`, using the default value when the variable is not set:
+Behaves identically to `${VAR:-default}`, using the default value when the variable does not exist:
 
 ```bash
-# If DEBUG doesn't exist, use "false"
+# If DEBUG does not exist, use "false"
 DEBUG=${DEBUG:=false}
 
-# Use default if not present
+# Use default value if not present
 CACHE_TTL=${CACHE_TTL:=3600}
 ```
 
-::: info Relationship to `:-`
-`${VAR:=default}` behaves identically to `${VAR:-default}` in this library. When the variable is not set, the default value is used as the expansion result. `:=` does not write the default value back to the variable store.
+::: info Relationship with `:-`
+`${VAR:=default}` behaves identically to `${VAR:-default}` in this library. When the variable does not exist, the default value is used as the expansion result. `:=` does not write the default value back to variable storage.
 :::
 
 ---
 
 ### `${VAR:?error}` - Error Message
 
-Returns an error if the variable is not set or empty:
+Returns an error if the variable does not exist or is empty:
 
 ```bash
-# If DATABASE_URL doesn't exist, loading fails with an error message
+# If DATABASE_URL does not exist, loading fails with an error message
 DATABASE_URL=${DATABASE_URL:?Database URL is required}
 
-# If API_KEY doesn't exist, error
+# If API_KEY does not exist, raise error
 API_KEY=${API_KEY:?API_KEY must be set}
 ```
 
@@ -107,7 +107,7 @@ API_KEY=${API_KEY:?API_KEY must be set}
 
 ## Escaping
 
-### Escaping Dollar Signs
+### Escaping the Dollar Sign
 
 Use `$$` for a literal `$`:
 
@@ -126,9 +126,9 @@ MESSAGE=Price is $$100
 Variables inside single quotes are not expanded:
 
 ```bash
-# No expansion
+# Not expanded
 LITERAL='${NO_EXPANSION}'
-# Value is: ${NO_EXPANSION}
+# Value: ${NO_EXPANSION}
 
 # Compare with double quotes
 EXPANDED="${WILL_EXPAND}"
@@ -139,7 +139,7 @@ EXPANDED="${WILL_EXPAND}"
 
 ## Nested Expansion
 
-Variables can reference each other:
+Variables can reference each other with nesting:
 
 ```bash
 # Base configuration
@@ -156,7 +156,7 @@ API_URL=https://${APP_NAME}.${ENV}.api.example.com
 
 ---
 
-## Cycle Detection
+## Circular Detection
 
 The library automatically detects circular references and returns an error:
 
@@ -165,14 +165,14 @@ The library automatically detects circular references and returns an error:
 A=${B}
 B=${A}
 
-# Loading returns ErrExpansionDepth error
+# Loading returns an ErrExpansionDepth error
 ```
 
 ---
 
 ## Expansion Depth Limit
 
-Default maximum expansion depth is 5, with a hard maximum of 20:
+The default maximum expansion depth is 5, with a hard upper limit of 20:
 
 ```go
 cfg := env.DefaultConfig()
@@ -184,7 +184,7 @@ cfg.MaxExpansionDepth = 10  // Custom depth
 | `DefaultMaxExpansionDepth` | 5 | Default value (public API) |
 
 ::: info Note
-The hard maximum expansion depth is 20 (internal limit). Configured `MaxExpansionDepth` values cannot exceed this limit.
+The hard upper limit is 20 (internal restriction). The configured `MaxExpansionDepth` cannot exceed this limit.
 :::
 
 ---
@@ -210,7 +210,7 @@ API_BASE=https://api.${ENV}.example.com
 API_URL=${API_BASE}/v1
 API_KEY=${API_KEY:?API_KEY is required}
 
-# Log configuration
+# Logging configuration
 LOG_LEVEL=${LOG_LEVEL:-info}
 
 # Price (escaped)

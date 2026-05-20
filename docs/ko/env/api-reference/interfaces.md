@@ -1,17 +1,17 @@
 ---
 title: 인터페이스 정의 - CyberGo env | 핵심 인터페이스 계층
-description: CyberGo env 환경 변수 관리 라이브러리의 모든 인터페이스 타입 정의 참조 문서입니다. 세분화된 인터페이스 설계로 종속성 주입과 유연한 조합을 지원하며, 키-값 검증기 Validator, 감사 처리기 AuditHandler, 파일 파서 EnvParser, 보안 저장소 및 파일 시스템 어댑터 등 핵심 Go 인터페이스의 상세 설명과 사용법을 제공합니다.
+description: CyberGo env 라이브러리 인터페이스 유형 정의 전체 참조 문서로, 세분화된 인터페이스 설계로 의존성 주입과 유연한 조합을 지원하며, Validator 검증기, FullAuditLogger 감사 핸들러, EnvParser 파서, EnvStorage 보안 저장소 및 FileSystem 파일 시스템 어댑터 등 핵심 인터페이스의 상세 설명과 사용법을 포함합니다.
 ---
 
 # 인터페이스 정의
 
-env 라이브러리는 세분화된 인터페이스 설계를 사용하여 종속성 주입과 유연한 조합을 지원합니다.
+env 라이브러리는 세분화된 인터페이스 설계를 사용하여 의존성 주입과 유연한 조합을 지원합니다.
 
 ## 핵심 인터페이스
 
 ### EnvLoader
 
-모든 하위 인터페이스를 조합한 완전한 로더 인터페이스:
+완전한 로더 인터페이스로, 모든 하위 인터페이스를 조합합니다:
 
 ```go
 type EnvLoader interface {
@@ -35,7 +35,7 @@ type EnvFileLoader interface {
 }
 ```
 
-**용도:** 파일 로드 기능만 필요한 시나리오.
+**용도:** 파일 로드 기능만 필요한 경우.
 
 ```go
 func loadConfig(loader env.EnvFileLoader) error {
@@ -68,11 +68,11 @@ func readConfig(getter env.EnvGetter) {
 }
 ```
 
-::: warning 참고
+:::warning 참고
 `GetInt`, `GetBool`, `GetDuration`, `GetSecure`, `Len`은 `EnvGetter` 인터페이스의 일부가 **아닙니다**.
-이 메서드들은 `*Loader` 타입에 구현되어 있지만 최소 인터페이스에는 포함되지 않습니다.
+이 메서드들은 `*Loader` 유형에 구현되어 있지만 최소 인터페이스에는 포함되지 않습니다.
 
-완전한 읽기 기능이 필요하면 `*Loader` 타입을 직접 사용하세요:
+전체 읽기 기능이 필요한 경우 `*Loader` 유형을 직접 사용하세요:
 
 ```go
 func readFullConfig(loader *env.Loader) {
@@ -96,7 +96,7 @@ type EnvSetter interface {
 }
 ```
 
-**용도:** 설정/삭제 기능만 필요한 시나리오.
+**용도:** 설정/삭제 기능만 필요한 경우.
 
 ```go
 func updateConfig(setter env.EnvSetter) error {
@@ -119,7 +119,7 @@ type EnvApplicator interface {
 }
 ```
 
-**용도:** 로드된 변수를 `os.Environ`에 적용합니다.
+**용도:** 로드된 변수를 `os.Environ`에 적용.
 
 ```go
 func applyToSystem(applicator env.EnvApplicator) error {
@@ -139,7 +139,7 @@ type EnvCloser interface {
 }
 ```
 
-**용도:** 로더 리소스를 해제합니다.
+**용도:** 로더 리소스 해제.
 
 ---
 
@@ -157,8 +157,8 @@ type Validator interface {
 }
 ```
 
-::: tip 참고
-`Validator`는 `RequiredValidator`를 포함하여 `ValidateRequired` 메서드를 제공합니다. `KeyValidator`만 구현한 커스텀 검증기는 `ValidateRequired` 호출 시 `ErrValidateRequiredUnsupported`를 반환합니다.
+:::tip 참고
+`Validator`는 `RequiredValidator`를 임베딩하여 `ValidateRequired` 메서드를 제공합니다. `KeyValidator`만 구현한 사용자 정의 검증기는 `ValidateRequired`를 호출할 때 `ErrValidateRequiredUnsupported`를 반환합니다.
 :::
 
 ---
@@ -201,7 +201,7 @@ type ValueValidator interface {
 }
 ```
 
-값이 안전한지 검증합니다 (널 바이트, 제어 문자 없음 등).
+값이 안전한지 검증합니다 (널 바이트, 제어 문자 등 없음).
 
 ---
 
@@ -217,13 +217,13 @@ type AuditLogger interface {
 }
 ```
 
-**용도:** 최소화된 인터페이스로 커스텀 감사 로거를 쉽게 구현할 수 있습니다. 완전한 감사 기능이 필요하면 `FullAuditLogger`를 사용하세요.
+**용도:** 최소화된 인터페이스로 사용자 정의 감사 로거를 쉽게 구현할 수 있습니다. 전체 감사 기능이 필요한 경우 `FullAuditLogger`를 사용하세요.
 
 ---
 
 ### FullAuditLogger
 
-확장 감사 로그 인터페이스로, 완전한 감사 로그 기능을 제공합니다:
+확장 감사 로그 인터페이스로, 전체 감사 로그 기능을 제공합니다:
 
 ```go
 type FullAuditLogger interface {
@@ -235,23 +235,23 @@ type FullAuditLogger interface {
 }
 ```
 
-**용도:** 완전한 감사 로그 기능. `ComponentFactory.Auditor()`가 이 인터페이스를 반환합니다.
+**용도:** 전체 감사 로그 기능. `ComponentFactory.Auditor()`가 이 인터페이스를 반환합니다.
 
-**메서드설명：**
+**메서드 설명:**
 
 | 메서드 | 용도 |
 |------|------|
-| `LogError` | 오류 이벤트 기록（AuditLogger에서 상속） |
+| `LogError` | 오류 이벤트 기록 (AuditLogger에서 상속) |
 | `Log` | 일반 감사 이벤트 기록 |
 | `LogWithFile` | 파일 정보가 포함된 이벤트 기록 |
 | `LogWithDuration` | 소요 시간이 포함된 이벤트 기록 |
-| `Close` | 닫기감사 로그 |
+| `Close` | 감사 로그 닫기 |
 
 ---
 
 ### AuditHandler
 
-감사 처리기 인터페이스 (Config.AuditHandler 설정에 사용):
+감사 핸들러 인터페이스 (Config.AuditHandler 설정용):
 
 ```go
 type AuditHandler interface {
@@ -260,17 +260,18 @@ type AuditHandler interface {
 }
 ```
 
-**용도:** 이 인터페이스를 구현하면 감사 이벤트 처리 방식을 커스터마이즈할 수 있습니다. `AuditLogger` 인터페이스와 달리 `AuditHandler`는 `Log`와 `Close` 두 메서드가 필요하며, 감사 이벤트 수신 처리 및 리소스 해제에 사용됩니다.
+**용도:** 이 인터페이스를 구현하면 감사 이벤트 처리 방식을 사용자 정의할 수 있습니다. `AuditLogger` 인터페이스와 달리 `AuditHandler`는 `Log`와 `Close` 두 메서드가 필요하며, 감사 이벤트 수신 처리 및 리소스 해제에 사용됩니다.
 
-**내장구현：**
-- `JSONAuditHandler` - 출력 JSON 형식로그
-- `LogAuditHandler` - 사용표준 log 패키지출력
+**내장 구현:**
+- `JSONAuditHandler` - JSON 형식 로그 출력
+- `LogAuditHandler` - 표준 log 패키지 사용 출력
 - `ChannelAuditHandler` - 채널로 전송
-- `NopAuditHandler` - 빈 작업 처리기
+- `CloseableChannelHandler` - 자체 버퍼 채널을 가진 닫기 가능한 핸들러
+- `NopAuditHandler` - 아무 작업도 수행하지 않는 핸들러
 
 ---
 
-## 변수 확장인터페이스
+## 변수 확장 인터페이스
 
 ### VariableExpander
 
@@ -282,10 +283,9 @@ type VariableExpander interface {
 }
 ```
 
-**용도:** 커스텀 변수 확장 로직.
+**용도:** 사용자 정의 변수 확장 로직, `${VAR}`, `${VAR:-default}` 등의 구문 지원.
 
 ```go
-// ${VAR} 및 ${VAR:-default} 확장 로직 구현
 expanded, err := expander.Expand("${BASE_URL}/api")
 ```
 
@@ -303,15 +303,15 @@ type EnvParser interface {
 }
 ```
 
-**매개변수：**
-- `r` - 파일 콘텐츠 읽기기
-- `filename` - 파일 이름 (오류 정보에 사용)
+**매개변수:**
+- `r` - 파일 내용 리더
+- `filename` - 파일 이름 (오류 메시지용)
 
-**반환：**
+**반환값:**
 - `map[string]string` - 파싱된 키-값 쌍
 - `error` - 파싱 오류
 
-**용도:** 커스텀 파일 형식 파서.
+**용도:** 사용자 정의 파일 형식 파서.
 
 ---
 
@@ -333,27 +333,27 @@ type EnvStorage interface {
 }
 ```
 
-**용도:** 커스텀 저장소 백엔드.
+**용도:** 사용자 정의 저장소 백엔드.
 
-**메서드설명：**
+**메서드 설명:**
 
 | 메서드 | 용도 |
 |------|------|
 | `Get` | 값 가져오기, 값과 존재 여부 반환 |
-| `Set` | 설정키-값 쌍 |
-| `Delete` | 삭제키 |
+| `Set` | 키-값 쌍 설정 |
+| `Delete` | 키 삭제 |
 | `Keys` | 모든 키 이름 반환 |
-| `Len` | 반환키-값 쌍수량 |
-| `ToMap` | 반환모든키-값 쌍의복제본 |
+| `Len` | 키-값 쌍 수 반환 |
+| `ToMap` | 모든 키-값 쌍의 복사본 반환 |
 | `Clear` | 모든 데이터 비우기 |
 
 ---
 
-## 직렬화인터페이스
+## 직렬화 인터페이스
 
 ### Marshaler
 
-커스텀 직렬화 인터페이스:
+사용자 정의 직렬화 인터페이스:
 
 ```go
 type Marshaler interface {
@@ -361,7 +361,7 @@ type Marshaler interface {
 }
 ```
 
-**용도:** 커스텀 타입의 직렬화.
+**용도:** 사용자 정의 유형의 직렬화.
 
 ```go
 type LogLevel string
@@ -372,14 +372,14 @@ func (l LogLevel) MarshalEnv() ([]byte, error) {
 
 // 사용
 level := LogLevel("debug")
-env.Marshal(level)  // 호출 MarshalEnv
+env.Marshal(level)  // MarshalEnv 호출
 ```
 
 ---
 
 ### Unmarshaler
 
-커스텀 역직렬화 인터페이스:
+사용자 정의 역직렬화 인터페이스:
 
 ```go
 type Unmarshaler interface {
@@ -387,7 +387,7 @@ type Unmarshaler interface {
 }
 ```
 
-**용도:** 커스텀 타입의 역직렬화.
+**용도:** 사용자 정의 유형의 역직렬화.
 
 ```go
 type Config struct {
@@ -404,7 +404,7 @@ func (c *Config) UnmarshalEnv(data map[string]string) error {
 
 // 사용
 var cfg Config
-env.UnmarshalInto(data, &cfg)  // 호출 UnmarshalEnv
+env.UnmarshalInto(data, &cfg)  // UnmarshalEnv 호출
 ```
 
 ---
@@ -430,7 +430,7 @@ type FileSystem interface {
 }
 ```
 
-**용도:** 테스트 시 파일 시스템 모의.
+**용도:** 테스트 시 파일 시스템 모킹.
 
 ```go
 type MockFileSystem struct {
@@ -438,12 +438,23 @@ type MockFileSystem struct {
     env   map[string]string
 }
 
+// MockFile은 env.File 인터페이스 구현 (테스트용)
+type MockFile struct {
+    reader *strings.Reader
+}
+
+func (f *MockFile) Read(p []byte) (n int, err error)   { return f.reader.Read(p) }
+func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, os.ErrUnsupported }
+func (f *MockFile) Close() error                       { return nil }
+func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, os.ErrUnsupported }
+func (f *MockFile) Sync() error                        { return nil }
+
 func (m *MockFileSystem) Open(name string) (env.File, error) {
     content, ok := m.files[name]
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{content: content}, nil
+    return &MockFile{reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
@@ -494,13 +505,13 @@ type File interface {
 }
 ```
 
-**메서드설명：**
+**메서드 설명:**
 
 | 메서드 | 용도 |
 |------|------|
 | `Read` | 데이터 읽기 |
 | `Write` | 데이터 쓰기 |
-| `Close` | 닫기파일 |
+| `Close` | 파일 닫기 |
 | `Stat` | 파일 정보 가져오기 |
 | `Sync` | 디스크에 동기화 |
 
@@ -514,7 +525,7 @@ type File interface {
 var DefaultFileSystem FileSystem = OSFileSystem{}
 ```
 
-실제 운영 체제 파일 시스템 및 환경 변수 사용:
+실제 운영 체제 파일 시스템 및 환경 변수를 사용합니다:
 
 ```go
 cfg := env.DefaultConfig()
@@ -523,24 +534,24 @@ cfg.FileSystem = env.DefaultFileSystem  // 기본값
 
 ---
 
-## 감사 처리기
+## 감사 핸들러
 
 ### JSONAuditHandler
 
-출력 JSON 형식감사 로그：
+JSON 형식 감사 로그 출력:
 
 ```go
 func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
 ```
 
-**매개변수：**
+**매개변수:**
 - `w` - 출력 대상 (예: `os.Stdout`, 파일)
 
 ```go
 handler := env.NewJSONAuditHandler(os.Stdout)
 ```
 
-**출력예제：**
+**출력 예:**
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","key":"API_KEY","success":true}
 ```
@@ -549,13 +560,13 @@ handler := env.NewJSONAuditHandler(os.Stdout)
 
 ### LogAuditHandler
 
-표준 log 패키지로 출력:
+표준 log 패키지를 사용한 출력:
 
 ```go
 func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
 ```
 
-**매개변수：**
+**매개변수:**
 - `logger` - 표준 log.Logger 인스턴스
 
 ```go
@@ -565,7 +576,7 @@ logger := log.New(os.Stderr, "[AUDIT] ", log.LstdFlags)
 handler := env.NewLogAuditHandler(logger)
 ```
 
-**출력예제：**
+**출력 예:**
 ```text
 [AUDIT] 2024/01/15 10:30:00 load .env success
 ```
@@ -580,8 +591,8 @@ handler := env.NewLogAuditHandler(logger)
 func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 ```
 
-**매개변수：**
-- `ch` - 감사이벤트채널
+**매개변수:**
+- `ch` - 감사 이벤트 채널
 
 ```go
 ch := make(chan env.AuditEvent, 100)
@@ -599,7 +610,7 @@ go func() {
 
 ### NopAuditHandler
 
-빈 작업 처리기 (모든 이벤트 폐기):
+아무 작업도 수행하지 않는 핸들러 (모든 이벤트 무시):
 
 ```go
 func NewNopAuditHandler() *NopAuditHandler
@@ -611,26 +622,26 @@ handler := env.NewNopAuditHandler()
 
 ---
 
-## 감사 타입
+## 감사 유형
 
 ### AuditAction
 
-작업 타입 상수:
+작업 유형 상수:
 
 ```go
 type AuditAction = internal.Action
 
 const (
-    ActionLoad       AuditAction = "load"        // 파일로드
-    ActionParse      AuditAction = "parse"       // 파싱작업
-    ActionGet        AuditAction = "get"         // 변수읽기
-    ActionSet        AuditAction = "set"         // 변수설정
-    ActionDelete     AuditAction = "delete"      // 변수삭제
-    ActionValidate   AuditAction = "validate"    // 검증작업
-    ActionExpand     AuditAction = "expand"      // 변수확장
-    ActionSecurity   AuditAction = "security"    // 안전이벤트
-    ActionError      AuditAction = "error"       // 잘못됨이벤트
-    ActionFileAccess AuditAction = "file_access" // 파일접근
+    ActionLoad       AuditAction = "load"        // 파일 로드
+    ActionParse      AuditAction = "parse"       // 파싱 작업
+    ActionGet        AuditAction = "get"         // 변수 읽기
+    ActionSet        AuditAction = "set"         // 변수 설정
+    ActionDelete     AuditAction = "delete"      // 변수 삭제
+    ActionValidate   AuditAction = "validate"    // 검증 작업
+    ActionExpand     AuditAction = "expand"      // 변수 확장
+    ActionSecurity   AuditAction = "security"    // 보안 이벤트
+    ActionError      AuditAction = "error"       // 오류 이벤트
+    ActionFileAccess AuditAction = "file_access" // 파일 접근
 )
 ```
 
@@ -644,17 +655,17 @@ const (
 type AuditEvent = internal.Event
 ```
 
-**필드：**
+**필드:**
 
-| 필드 | 타입 | 설명 |
+| 필드 | 유형 | 설명 |
 |------|------|------|
 | `Timestamp` | `time.Time` | 타임스탬프 |
-| `Action` | `AuditAction` | 작업타입 |
-| `Key` | `string` | 키 이름 (마스크됨) |
+| `Action` | `AuditAction` | 작업 유형 |
+| `Key` | `string` | 키 이름 (마스킹됨) |
 | `File` | `string` | 파일 이름 |
-| `Reason` | `string` | 원인/설명 |
+| `Reason` | `string` | 사유/설명 |
 | `Success` | `bool` | 성공 여부 |
-| `Masked` | `bool` | 마스크 여부 |
+| `Masked` | `bool` | 마스킹 여부 |
 | `Details` | `string` | 상세 정보 |
 | `Duration` | `int64` | 소요 시간 (나노초) |
 
@@ -662,11 +673,11 @@ type AuditEvent = internal.Event
 
 ## ComponentFactory
 
-공유 컴포넌트를 관리하는 컴포넌트 팩토리:
+컴포넌트 팩토리, 공유 컴포넌트 관리:
 
 ```go
 type ComponentFactory struct {
-    // 포함된 개인 필드
+    // 개인 필드 포함
 }
 ```
 
@@ -680,13 +691,13 @@ func (f *ComponentFactory) Close() error
 func (f *ComponentFactory) IsClosed() bool
 ```
 
-**용도:** 내부적으로 사용되며 Loader 생성 시 자동 관리됩니다. 자세한 내용은 [ComponentFactory API](/ko/env/api-reference/factory)。
+**용도:** 내부 사용, Loader 생성 시 자동 관리. 자세한 내용은 [ComponentFactory API](/ko/env/api-reference/factory)를 참조하세요.
 
 ---
 
-## 완전한 예제
+## 전체 예제
 
-### 커스텀 감사 처리기 구현
+### 사용자 정의 감사 핸들러 구현
 
 ```go
 package main
@@ -698,7 +709,7 @@ import (
     "github.com/cybergodev/env"
 )
 
-// 커스텀 감사 처리기
+// 사용자 정의 감사 핸들러
 type CustomAuditHandler struct {
     events []env.AuditEvent
 }
@@ -720,7 +731,7 @@ func main() {
 
     loader, _ := env.New(cfg)
     defer loader.Close()
-    // 사용 loader...
+    // loader 사용...
 
     // 감사 이벤트 확인
     for _, event := range handler.events {
@@ -771,6 +782,6 @@ func main() {
 
 ## 관련 문서
 
-- [Loader API](/ko/env/api-reference/loader) - Loader 인스턴스메서드
+- [Loader API](/ko/env/api-reference/loader) - Loader 인스턴스 메서드
 - [ComponentFactory API](/ko/env/api-reference/factory) - 컴포넌트 팩토리
-- [커스텀 파서](/ko/env/guides/custom-parser) - 커스텀 파서가이드
+- [사용자 정의 파서](/ko/env/guides/custom-parser) - 사용자 정의 파서 가이드

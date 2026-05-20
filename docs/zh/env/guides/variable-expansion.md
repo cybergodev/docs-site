@@ -1,6 +1,6 @@
 ---
 title: 变量展开 - CyberGo env 变量语法
-description: CyberGo env 库变量展开语法完整使用指南，支持 ${VAR} 和 ${VAR:-default} 变量引用语法、嵌套默认值设置、条件展开控制、循环引用自动检测和递归深度限制，帮助在 .env 配置文件中实现变量复用与动态值替换，有效减少 Go 项目重复配置项。
+description: CyberGo env 库变量展开语法指南，详解 ${VAR} 和 ${VAR:-default} 引用语法，涵盖嵌套默认值、:=赋值和 :?错误输出等条件展开模式，介绍循环引用检测、MaxExpansionDepth 深度限制与 ExpandVariables 开关控制，在 .env 文件中实现变量复用与动态值替换。
 ---
 
 # 变量展开

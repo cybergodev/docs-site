@@ -1,6 +1,6 @@
 ---
 title: 序列化 - CyberGo env | 多格式转换
-description: CyberGo env 库序列化与反序列化完整使用指南，支持 .env、JSON、YAML 格式之间的 Map 映射和 Go 结构体相互转换，包含自定义序列化格式选项、env 标签支持、敏感字段掩码处理、批量导出导入操作示例和多格式互转 Go 实战场景。
+description: CyberGo env 库序列化与反序列化完整指南，详解 .env、JSON、YAML 格式间的 Map 映射与 Go 结构体转换方法，涵盖 Marshal 和 Unmarshal 函数族、自定义 Marshaler/Unmarshaler 接口实现、env 标签支持、敏感字段掩码处理和多格式互转实战示例。
 ---
 
 # 序列化

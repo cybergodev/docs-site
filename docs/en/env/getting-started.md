@@ -1,9 +1,9 @@
 ---
-title: Quick Start - CyberGo env | 5-Minute Guide
-description: Get started with the env library in 5 minutes - from installation to type-safe reading, struct mapping, and multi-environment configuration
+title: Getting Started - CyberGo env | 5-Minute Guide
+description: Get started with CyberGo env environment variable management library in 5 minutes, from go get installation to your first program. Covers .env file loading, type-safe reading, struct mapping, multi-environment configuration, and variable expansion with complete code examples to help you quickly master Go environment variable management.
 ---
 
-# Quick Start
+# Getting Started
 
 Get started with the env library in 5 minutes, from installation to practical usage.
 
@@ -19,7 +19,7 @@ Go 1.24+
 
 ## Create a .env File
 
-Create a `.env` file in your project root:
+Create a `.env` file in your project root directory:
 
 ```bash
 # Database configuration
@@ -33,7 +33,7 @@ DEBUG=true
 APP_NAME=myapp
 LOG_LEVEL=info
 
-# Multi-value (comma-separated)
+# Multiple values (comma-separated)
 ALLOWED_HOSTS=localhost,example.com,api.example.com
 ```
 
@@ -83,7 +83,7 @@ timeout := env.GetDuration("TIMEOUT", 30*time.Second)
 
 // === Without default values ===
 
-// String - returns "" if not found
+// String - returns empty string "" if not found
 host := env.GetString("HOST")
 
 // Integer (int64) - returns 0 if not found
@@ -103,16 +103,16 @@ The library supports multiple key access methods:
 // JSON: {"app": {"name": "myapp"}}
 // Stored as: APP_NAME=myapp
 
-// All of these access the same value
-name := env.GetString("APP_NAME")      // Flat key (recommended)
+// All of the following can access the value
+name := env.GetString("APP_NAME")      // Flat key name (recommended)
 name := env.GetString("app.name")      // Dot path (auto-converted)
 name := env.GetString("APP.NAME")      // Uppercase dot path
 ```
 
 **Resolution rules:**
-1. **Exact match**: Look for the exact key name first `KEY`
-2. **Uppercase conversion**: Try uppercase version for lowercase keys `key` → `KEY`
-3. **Path resolution**: Convert dot paths to underscores `app.name` → `APP_NAME`
+1. **Exact match**: Exact key name `KEY` is looked up first
+2. **Uppercase conversion**: Lowercase key tries uppercase version `key` -> `KEY`
+3. **Path resolution**: Dot path converts to underscore `app.name` -> `APP_NAME`
 :::
 
 ### Boolean Values
@@ -129,23 +129,23 @@ name := env.GetString("APP.NAME")      // Uppercase dot path
 // String slice
 hosts := env.GetSlice[string]("HOSTS", []string{"localhost"})
 
-// Integer slices (supports int, int64, uint, uint64)
+// Integer slice (supports int, int64, uint, uint64)
 ports := env.GetSlice[int64]("PORTS", []int64{80, 443})
-portsInt := env.GetSlice[int]("PORTS")  // Also supports int type
+portsInt := env.GetSlice[int]("PORTS")  // also supports int type
 
-// Float slices
+// Float slice
 rates := env.GetSlice[float64]("RATES", []float64{0.1, 0.2})
 
-// Boolean slices
+// Boolean slice
 flags := env.GetSlice[bool]("FLAGS", []bool{true, false})
 
-// Duration slices
+// Duration slice
 timeouts := env.GetSlice[time.Duration]("TIMEOUTS")
 ```
 
-**Parsing order:**
-1. First look for indexed keys `KEY_0`, `KEY_1`, `KEY_2`...
-2. If no indexed keys, parse by comma-separated value of `KEY`
+**Resolution order:**
+1. Indexed keys `KEY_0`, `KEY_1`, `KEY_2`... are looked up first
+2. If no indexed keys exist, the value of `KEY` is parsed by comma separation
 
 ```go
 // Method 1: Indexed keys (recommended)
@@ -158,7 +158,7 @@ hosts := env.GetSlice[string]("HOSTS")  // ["localhost", "example.com"]
 ports := env.GetSlice[int64]("PORTS")  // [80, 443, 8080]
 ```
 
-### Lookup and Query
+### Checking and Lookup
 
 ```go
 // Check if a key exists
@@ -187,16 +187,25 @@ if secret != nil {
     // Get the raw value
     value := secret.String()
 
-    // Use masked value for logging (prevents leakage)
-    log.Printf("API Key: %s", secret.Masked())  // e.g. [SECURE:32 bytes]
+    // Log with masking (prevent leakage)
+    log.Printf("API Key: %s", secret.Masked())  // Output: [SECURE:32 bytes]
 }
 ```
 
 ## Struct Mapping
 
-Use struct tags to map environment variables to a struct:
+Map environment variables to a struct using tags:
 
 ```go
+package main
+
+import (
+    "fmt"
+    "time"
+
+    "github.com/cybergodev/env"
+)
+
 type Config struct {
     Host     string        `env:"DB_HOST" envDefault:"localhost"`
     Port     int64         `env:"DB_PORT" envDefault:"5432"`
@@ -218,7 +227,7 @@ func main() {
 }
 ```
 
-::: details See also
+::: details See Also
 [Struct Mapping](/en/env/guides/struct-mapping) guide.
 :::
 
@@ -228,39 +237,39 @@ The library provides four preset configurations for different scenarios:
 
 | Preset | Use Case | Features |
 |--------|----------|----------|
-| `DefaultConfig()` | General | Safe defaults, suitable for most cases |
-| `DevelopmentConfig()` | Development | Relaxed limits, allows overwriting |
-| `TestingConfig()` | Testing | Compact limits, allows overwriting, ideal for unit tests |
+| `DefaultConfig()` | General use | Safe defaults, suitable for most cases |
+| `DevelopmentConfig()` | Development | Relaxed restrictions, allows override |
+| `TestingConfig()` | Testing | Tight restrictions, allows override, suitable for unit tests |
 | `ProductionConfig()` | Production | Strict validation + audit logging |
 
 ```go
-// Development - relaxed limits
+// Development - relaxed restrictions
 cfg := env.DevelopmentConfig()
 
-// Testing - compact limits
+// Testing - tight restrictions
 cfg := env.TestingConfig()
 
 // Production - strict validation + audit logging
 cfg := env.ProductionConfig()
 ```
 
-### Preset Comparison
+### Detailed Preset Comparison
 
 | Feature | Default | Development | Testing | Production |
 |---------|---------|-------------|---------|------------|
-| Overwrite existing | ✗ | ✓ | ✓ | ✗ |
-| Error on missing file | ✗ | ✗ | ✗ | ✓ |
-| Audit logging | ✗ | ✗ | ✗ | ✓ |
-| YAML syntax | ✗ | ✓ | ✗ | ✗ |
+| Override existing variables | No | Yes | Yes | No |
+| Error on missing file | No | No | No | Yes |
+| Audit logging | No | No | No | Yes |
+| YAML syntax | No | Yes | No | No |
 | File size limit | 2MB | 10MB | 64KB | 64KB |
 | Max variables | 500 | 500 | 50 | 50 |
-| Forbidden key check | ✓ | ✓ | ✓ | ✓ |
-| Value validation | ✓ | ✓ | ✓ | ✓ |
+| Forbidden key check | Yes | Yes | Yes | Yes |
+| Value validation | Yes | Yes | Yes | Yes |
 
 ::: tip Selection Guide
-- **Development**: Use `DevelopmentConfig()` with relaxed limits for rapid iteration
-- **Testing**: Use `TestingConfig()` with overwriting enabled for test isolation
-- **Production**: Use `ProductionConfig()` with audit and strict validation enabled
+- **Development**: Use `DevelopmentConfig()` with relaxed restrictions for rapid iteration
+- **Testing**: Use `TestingConfig()` with override support for test isolation
+- **Production**: Use `ProductionConfig()` with audit logging and strict validation
 :::
 
 ## Multi-Environment Configuration
@@ -268,19 +277,19 @@ cfg := env.ProductionConfig()
 ### Loading by Environment
 
 ```go
-// Determine environment
+// Determine config file based on environment
 goEnv := os.Getenv("GO_ENV")
 if goEnv == "" {
     goEnv = "development"
 }
 
-// Load all config files in one call (in order, later files override earlier ones)
+// Load all config files in a single call (in order, later files override earlier ones)
 env.Load(".env", ".env."+goEnv, ".env.local")
 ```
 
 ### Using a Loader Instance
 
-When you need more control, use a Loader instance:
+For more control, use a Loader instance:
 
 ```go
 package main
@@ -312,37 +321,37 @@ func main() {
         panic(err)
     }
 
-    // Use the loader
+    // Usage
     host := loader.GetString("DB_HOST")
     fmt.Println("Host:", host)
 }
 ```
 
-## Multi-File and Multi-Format
+## Multiple Files and Formats
 
-### Multi-File Loading
+### Multiple File Loading
 
-Files are loaded in order, with later files overriding earlier ones:
+Files are loaded in order; later files override earlier ones:
 
 ```go
-// Package-level functions
+// Package-level function
 env.Load(".env", "config.json", "config.yaml")
 
 // Loader instance
 loader.LoadFiles(".env", ".env.local")
 ```
 
-### Multi-Format Support
+### Multi-format Support
 
-File format is auto-detected:
+File format is automatically detected:
 
 ```go
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 ```
 
-::: details Supported formats
-| Format | Extension | Detection |
-|--------|-----------|-----------|
+::: details Supported Formats
+| Format | Extension | Detection Method |
+|--------|-----------|------------------|
 | .env | `.env` | File extension |
 | JSON | `.json` | File extension |
 | YAML | `.yaml`, `.yml` | File extension |
@@ -370,7 +379,7 @@ if err != nil {
 }
 ```
 
-::: details Getting detailed error information
+::: details Getting Detailed Error Information
 ```go
 // Parse error details
 var parseErr *env.ParseError
@@ -399,7 +408,7 @@ if errors.As(err, &secErr) {
 ### Deep Dive
 - [Struct Mapping](/en/env/guides/struct-mapping) - Detailed configuration binding
 - [Serialization](/en/env/guides/serialization) - Configuration serialization and deserialization
-- [Multi-Format Configuration](/en/env/guides/multi-format) - JSON/YAML details
+- [Multi-format Configuration](/en/env/guides/multi-format) - JSON/YAML in depth
 - [Testing Scenarios](/en/env/guides/testing) - Usage in tests
 
 ### API Reference

@@ -1,13 +1,13 @@
 ---
-title: Audit Logging - CyberGo env | Security Audit
-description: Guide for configuring and using env library audit logging including JSON, Log, and Channel handlers with custom extensions for compliance
+title: Audit Logging - CyberGo env | Security Audit Configuration
+description: Complete configuration guide for CyberGo env audit logging, covering JSON file handler, standard log handler, and Channel handler creation and configuration, custom AuditHandler interface implementation, recording all environment variable load, read, modify, and delete operations for security compliance checks and production troubleshooting.
 ---
 
 # Audit Logging
 
-The audit logging feature records all environment variable operations for security auditing, compliance checking, and troubleshooting.
+The audit logging feature records all environment variable operations for security auditing, compliance checks, and troubleshooting.
 
-## Enabling Auditing
+## Enabling Audit
 
 ### Configuration
 
@@ -34,7 +34,7 @@ loader, _ := env.New(cfg)
 
 ### JSONAuditHandler
 
-Outputs JSON format logs:
+Outputs JSON formatted logs:
 
 ```go
 import (
@@ -47,7 +47,7 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
-**Output example:**
+**Output Example:**
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration":1234567}
@@ -72,7 +72,7 @@ logger := log.New(os.Stderr, "[AUDIT] ", log.LstdFlags)
 cfg.AuditHandler = env.NewLogAuditHandler(logger)
 ```
 
-**Output example:**
+**Output Example:**
 
 ```text
 [AUDIT] 2024/01/15 10:30:00 load .env (1.23ms)
@@ -84,7 +84,7 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 
 ### ChannelAuditHandler
 
-Sends to a channel for asynchronous processing:
+Sends to a channel for async processing:
 
 ```go
 ch := make(chan env.AuditEvent, 100)
@@ -99,15 +99,15 @@ go func() {
 ```
 
 **Use cases:**
-- Send to remote logging service
-- Write to database
-- Real-time monitoring alerts
+- Send to remote logging services
+- Write to databases
+- Real-time monitoring and alerting
 
 ---
 
 ### NopAuditHandler
 
-No-op handler that discards all events:
+A no-op handler that discards all events:
 
 ```go
 cfg.AuditHandler = env.NewNopAuditHandler()
@@ -115,7 +115,7 @@ cfg.AuditHandler = env.NewNopAuditHandler()
 
 **Use cases:**
 - Temporarily disable auditing
-- Test environments
+- Testing environments
 
 ---
 
@@ -125,19 +125,19 @@ cfg.AuditHandler = env.NewNopAuditHandler()
 
 ```go
 type AuditEvent struct {
-    Timestamp time.Time     // Timestamp
-    Action    AuditAction   // Operation type
-    Key       string        // Key name
-    File      string        // Filename
-    Reason    string        // Reason
-    Success   bool          // Whether successful
-    Masked    bool          // Whether masked
-    Details   string        // Details
-    Duration  int64 // Duration in nanoseconds
+    Timestamp time.Time   // Timestamp
+    Action    AuditAction // Action type
+    Key       string      // Key name
+    File      string      // File name
+    Reason    string      // Reason
+    Success   bool        // Whether successful
+    Masked    bool        // Whether masked
+    Details   string      // Details
+    Duration  int64       // Duration (nanoseconds)
 }
 ```
 
-### AuditAction Operation Types
+### AuditAction Types
 
 | Constant | Value | Description |
 |----------|-------|-------------|
@@ -154,11 +154,11 @@ type AuditEvent struct {
 
 ---
 
-## Custom Handler
+## Custom Handlers
 
 ### Implementing the FullAuditLogger Interface
 
-`FullAuditLogger` is the full audit logging interface, extending the minimal `AuditLogger` interface (which only includes `LogError`):
+`FullAuditLogger` is the complete audit logging interface, extending the minimal `AuditLogger` interface (which only contains the `LogError` method):
 
 ```go
 type FullAuditLogger interface {
@@ -173,7 +173,7 @@ type FullAuditLogger interface {
 ### Example: Database Audit Handler
 
 ```go
-package main
+package myhandler
 
 import (
     "database/sql"
@@ -224,7 +224,7 @@ func (h *DatabaseAuditHandler) Close() error {
 
 ---
 
-## Complete Example
+## Complete Examples
 
 ### Production Configuration
 
@@ -276,7 +276,7 @@ func main() {
 }
 ```
 
-### Asynchronous Audit Processing
+### Async Audit Processing
 
 ```go
 package main
@@ -314,7 +314,7 @@ func processAuditEvents(ch chan env.AuditEvent) {
     encoder := json.NewEncoder(file)
 
     for event := range ch {
-        // Can add filtering, aggregation, etc.
+        // Add filtering, aggregation, etc.
         if event.Action == env.ActionError {
             log.Printf("Audit error: %+v", event)
         }
@@ -333,7 +333,7 @@ func processAuditEvents(ch chan env.AuditEvent) {
 Audit logs automatically mask values of sensitive keys:
 
 ```go
-// Automatically masked when getting sensitive values
+// Sensitive values are automatically masked when retrieved
 secret := loader.GetSecure("API_KEY")
 // Audit record: {"action":"get","key":"API_KEY","masked":true}
 ```
@@ -350,7 +350,7 @@ chown app:app /var/log/app/env-audit.log
 
 ### Log Rotation
 
-Recommend using logrotate to manage audit logs:
+Using logrotate to manage audit logs is recommended:
 
 ```bash
 # /etc/logrotate.d/app-env-audit
@@ -370,6 +370,6 @@ Recommend using logrotate to manage audit logs:
 ## Related Documentation
 
 - [Security Overview](/en/env/security/) - Security architecture and core features
-- [Production Checklist](/en/env/security/production-checklist) - Audit configuration checks
-- [Interface Definitions](/en/env/api-reference/interfaces) - AuditLogger interface
-- [ComponentFactory API](/en/env/api-reference/factory) - Audit handler factories
+- [Production Checklist](/en/env/security/production-checklist) - Audit configuration checklist
+- [Interfaces](/en/env/api-reference/interfaces) - AuditLogger interface
+- [Component Factory](/en/env/api-reference/factory) - Audit handler factory

@@ -1,9 +1,9 @@
 ---
-title: Performance - CyberGo env | Concurrency & Tuning
-description: Performance optimization guide for the env library covering concurrency safety, object pooling, memory locking usage patterns, and benchmark data
+title: Performance - CyberGo env | High-Concurrency Tuning
+description: Performance optimization and high-concurrency tuning guide for CyberGo env, covering sync.RWMutex-based thread-safe access, sync.Pool object reuse strategies, mlock memory locking patterns and overhead, large file streaming techniques, benchmark comparisons, and LimitsConfig tuning recommendations.
 ---
 
-# Performance Optimization
+# Performance
 
 The env library is optimized for high-performance scenarios. This document covers concurrency safety, object pooling, memory management, and other performance-related features.
 
@@ -11,7 +11,7 @@ The env library is optimized for high-performance scenarios. This document cover
 
 ### Thread Safety Guarantees
 
-All `Loader` methods are thread-safe:
+All methods on `Loader` are thread-safe:
 
 ```go
 loader, _ := env.New(env.DefaultConfig())
@@ -64,7 +64,7 @@ The library uses sharded storage to reduce lock contention:
 
 ```text
 ┌─────────────────────────────────────────┐
-│              Loader (8 Shards)           │
+│          Loader (8 shards)              │
 ├─────────────────────────────────────────┤
 │  ┌─────────┐ ┌─────────┐    ┌────────┐ │
 │  │ Shard 0 │ │ Shard 1 │... │ Shard 7│ │
@@ -74,27 +74,27 @@ The library uses sharded storage to reduce lock contention:
 └─────────────────────────────────────────┘
 ```
 
-- Keys are distributed to different shards based on hash values
+- Keys are assigned to different shards based on hash value
 - Each shard has its own lock
-- Reduces lock contention and improves concurrent performance
+- Reduces lock contention and improves concurrency performance
 
-## Object Pooling
+## Object Pool
 
-### Why Object Pooling
+### Why Use an Object Pool
 
 Frequent object creation and destruction increases GC pressure:
 
 ```text
-Without pooling:
-Create object → Use → GC collect → Create object → Use → GC collect ...
+Without object pool:
+Create → Use → GC Collect → Create → Use → GC Collect ...
 
-With pooling:
-Create object → Use → Return to pool → Get → Use → Return to pool ...
+With object pool:
+Create → Use → Return to Pool → Get → Use → Return to Pool ...
 ```
 
 ### SecureValue Pool
 
-`SecureValue` objects use pool management:
+`SecureValue` objects use pooled management:
 
 ```go
 // Get a SecureValue (may be reused from pool)
@@ -107,23 +107,20 @@ value := secret.String()
 secret.Close()  // or secret.Release()
 ```
 
-### Using Object Pools Correctly
+### Using the Object Pool Correctly
 
 **Release promptly:**
 
 ```go
 func processData() {
     secret := env.GetSecure("SECRET")
-    if secret == nil {
-        return
-    }
-    defer secret.Release()  // Return to pool
+    defer secret.Close()  // Ensure release
 
     // Use secret...
 }
 ```
 
-**Don't hold references:**
+**Do not hold references:**
 
 ```go
 // Wrong: holding a reference to a released object
@@ -131,7 +128,7 @@ var globalSecret *env.SecureValue
 
 func init() {
     globalSecret = env.GetSecure("KEY")
-    globalSecret.Release()  // After release, object may be reused
+    globalSecret.Close()  // After release, the object may be reused
 }
 
 func later() {
@@ -139,13 +136,10 @@ func later() {
     globalSecret.String()
 }
 
-// Correct: get fresh instance each time
+// Correct: acquire each time you need it
 func getSecret() string {
     secret := env.GetSecure("KEY")
-    if secret == nil {
-        return ""
-    }
-    defer secret.Release()
+    defer secret.Close()
     return secret.String()
 }
 ```
@@ -154,20 +148,16 @@ func getSecret() string {
 
 ```go
 secret := env.GetSecure("KEY")
-if secret == nil {
-    // Key does not exist
-    return
-}
 
 // Check before use
 if secret.IsClosed() {
     // Object is closed, cannot be used
 }
 
-// Release after use (returns to pool)
-secret.Release()
+// Close after use
+secret.Close()
 
-// Check after releasing
+// Check after closing
 if secret.IsClosed() {
     // Already closed
 }
@@ -190,19 +180,19 @@ if env.IsMemoryLockSupported() {
 
 | Platform | Supported |
 |----------|-----------|
-| Linux | ✅ |
-| macOS | ✅ |
-| Windows | ✅ |
-| FreeBSD | ✅ |
-| wasm | ❌ |
+| Linux | Yes |
+| macOS | Yes |
+| Windows | Yes |
+| FreeBSD | Yes |
+| wasm | No |
 
-::: tip See also
-[SecureValue API - Memory Locking Configuration](/en/env/api-reference/secure-value#memory-locking-configuration) for complete configuration details.
+:::tip See Also
+See [SecureValue API - Memory Lock Configuration](/en/env/api-reference/secure-value#memory-lock-configuration) for complete configuration details.
 :::
 
 ### Strict Mode
 
-In strict mode, memory locking failure causes an error:
+In strict mode, memory locking failure returns an error:
 
 ```go
 env.SetMemoryLockStrict(true)
@@ -215,7 +205,7 @@ if err != nil {
 
 ### Secure Zeroing
 
-`SecureValue` automatically zeroes memory on close:
+`SecureValue` automatically zeros memory when closed:
 
 ```go
 secret := env.GetSecure("PASSWORD")
@@ -225,7 +215,7 @@ secret.Close()
 // Internal storage: [0, 0, 0, 0, ...]
 ```
 
-Manually zero byte slices:
+Manually zero a byte slice:
 
 ```go
 sensitiveBytes := []byte("secret")
@@ -257,7 +247,7 @@ func getValue() string {
 
 ### Dynamic Configuration Refresh
 
-Pattern for when dynamic configuration updates are needed:
+Pattern for dynamic configuration updates:
 
 ```go
 type ConfigManager struct {
@@ -283,16 +273,16 @@ func (m *ConfigManager) Get(key string) string {
 ### Reduce Lock Hold Time
 
 ```go
-// Not recommended: perform expensive operations inside lock
+// Not recommended: performing expensive operations inside the lock
 func (l *Loader) ProcessValue(key string) {
     value := l.GetString(key)
     // Expensive operation...
     processValue(value)
 }
 
-// Recommended: read quickly, process outside lock
+// Recommended: quick read, process outside the lock
 func ProcessValue(key string) {
-    value := loader.GetString(key)  // Quick read
+    value := loader.GetString(key)  // Quick acquisition
     go processValue(value)          // Async processing
 }
 ```
@@ -314,7 +304,7 @@ func LoadAllConfig(loader *env.Loader) *Config {
 ### Avoid Frequent Calls
 
 ```go
-// Not recommended: read on every request
+// Not recommended: reading on every request
 func Handler(w http.ResponseWriter, r *http.Request) {
     apiKey := env.GetString("API_KEY")  // Locks on every request
     // ...
@@ -329,7 +319,7 @@ func init() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-    // Use cached value directly
+    // Use the cached value directly
     // ...
 }
 ```
@@ -348,7 +338,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 | Operation | Without Lock | With Lock |
 |-----------|-------------|-----------|
-| Create | ~100ns | ~1μs |
+| Create | ~100ns | ~1us |
 | Read | ~10ns | ~10ns |
 
 ## Benchmarks
@@ -405,14 +395,14 @@ func BenchmarkMixedReadWrite(b *testing.B) {
 }
 ```
 
-## Important Notes
+## Caveats
 
 ### Avoid Blocking Inside Locks
 
 ```go
 // Dangerous: may cause deadlock
 func (l *Loader) BadMethod() {
-    // Calling potentially blocking operations inside lock
+    // Calling potentially blocking operations inside the lock
     l.Set("KEY", computeValue())  // computeValue may be slow
 }
 
@@ -443,7 +433,7 @@ loader.Close()  // Main goroutine closes
 // Not concurrency-safe: do not call at runtime
 env.ResetDefaultLoader()
 
-// Safe: only call during tests or startup
+// Safe: call only during tests or startup
 func init() {
     env.ResetDefaultLoader()
     env.Load(".env")

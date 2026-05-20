@@ -1,14 +1,14 @@
 ---
-title: Package Functions - CyberGo env | Global Helpers
-description: Complete reference for env library package-level convenience functions including loading, typed getters, queries, serialization, and utility functions
+title: Package Functions - CyberGo env | Global Convenience Functions
+description: CyberGo env library package-level convenience functions API complete reference documentation, providing Load for file loading, GetString and GetInt for type-safe value reading, Keys for querying key names, Marshal for serialization export, and ParseInto for struct mapping with concise APIs, based on a global default Loader with lazy initialization and thread-safe design.
 ---
 
 # Package Functions
 
-Package-level convenience functions provide a concise API suitable for most use cases. These functions use a global default loader and are all thread-safe.
+Package-level convenience functions provide a concise API suitable for most use cases. These functions use the global default loader, and all functions are thread-safe.
 
-::: tip Lazy Loading
-The global default loader uses lazy initialization — it is automatically created on first call.
+:::tip Lazy Loading
+The global default loader uses a lazy initialization mechanism and is automatically created on the first call.
 :::
 
 ## Loading Functions
@@ -22,15 +22,15 @@ func Load(filenames ...string) error
 Loads environment variable files and applies them to the system environment.
 
 **Parameters:**
-- `filenames` - File path list. When not provided, no files are loaded. Pass `".env"` explicitly to load the default file.
+- `filenames` - List of file paths. When not provided, no files are loaded; you must explicitly pass `".env"` to load the default file.
 
 **Returns:**
 - `error` - Loading error
 
 **Behavior:**
 - Creates a new Loader instance and sets it as the default loader
-- Automatically applies to system environment (`os.Environ`)
-- Later files overwrite earlier ones
+- Automatically applies to the system environment (`os.Environ`)
+- Files loaded later override earlier ones
 - Returns `ErrAlreadyInitialized` if the default loader is already initialized
 - Supports multiple formats (.env, JSON, YAML)
 
@@ -40,12 +40,12 @@ if err := env.Load(".env"); err != nil {
     log.Fatal(err)
 }
 
-// Load specific files (in order, later overwrites earlier)
+// Load specified files (in order, later overrides earlier)
 if err := env.Load(".env", ".env.local", "config.json"); err != nil {
     log.Fatal(err)
 }
 
-// JSON/YAML nested structures support dot notation access
+// JSON/YAML nested structure supports dot notation access
 // config.json: {"database": {"host": "localhost", "port": 5432}}
 env.Load("config.json")
 host := env.GetString("database.host") // "localhost"
@@ -68,7 +68,7 @@ name := env.GetString("APP_NAME")  // "myapp"
 
 **2. Uppercase Conversion (Simple Keys)**
 ```go
-// For keys without dots, automatically tries uppercase version
+// For keys without dots, automatically tries the uppercase version
 name := env.GetString("app_name")  // Looks up app_name -> APP_NAME
 ```
 
@@ -103,7 +103,7 @@ Array elements can be accessed by index, or fall back to comma-separated values:
 host0 := env.GetString("servers.0.host")  // "a.com"
 host1 := env.GetString("servers.1.host")  // "b.com"
 
-// If key doesn't exist but comma-separated base value exists
+// If the key doesn't exist but a comma-separated base value exists
 // HOSTS=localhost,example.com
 host0 := env.GetString("hosts.0")  // "localhost" (parsed from comma-separated value)
 ```
@@ -135,7 +135,7 @@ host := env.GetString("HOST", "localhost")
 dbHost := env.GetString("database.host", "localhost")
 appName := env.GetString("app.name")
 
-// Returns empty string without default
+// Returns empty string when no default value
 value := env.GetString("NON_EXISTENT")  // ""
 ```
 
@@ -147,11 +147,11 @@ value := env.GetString("NON_EXISTENT")  // ""
 func GetInt(key string, defaultValue ...int64) int64
 ```
 
-Gets an integer value. Automatically converts strings to integers. Supports dot path resolution.
+Gets an integer value. Automatically converts string to integer. Supports dot path resolution.
 
 **Parameters:**
 - `key` - Key name (supports dot path)
-- `defaultValue` - Optional default value, type is `int64`
+- `defaultValue` - Optional default value, type `int64`
 
 **Returns:**
 - `int64` - Value or default value (returns 0 if not found and no default)
@@ -160,7 +160,7 @@ Gets an integer value. Automatically converts strings to integers. Supports dot 
 port := env.GetInt("PORT", 8080)
 maxConn := env.GetInt("database.max_connections", 10)
 
-// Returns 0 without default
+// Returns 0 when no default value
 value := env.GetInt("NON_EXISTENT")  // 0
 ```
 
@@ -188,8 +188,58 @@ Gets a boolean value. Supports dot path resolution.
 debug := env.GetBool("DEBUG", false)
 cacheEnabled := env.GetBool("cache.enabled", true)
 
-// Returns false without default
+// Returns false when no default value
 value := env.GetBool("NON_EXISTENT")  // false
+```
+
+---
+
+### GetUint64
+
+```go
+func GetUint64(key string, defaultValue ...uint64) uint64
+```
+
+Gets an unsigned integer value. Supports dot path resolution.
+
+**Parameters:**
+- `key` - Key name (supports dot path)
+- `defaultValue` - Optional default value, type `uint64`
+
+**Returns:**
+- `uint64` - Value or default value (returns 0 if not found and no default)
+
+```go
+port := env.GetUint64("PORT", 8080)
+maxSize := env.GetUint64("MAX_SIZE", 1024)
+
+// Returns 0 when no default value
+value := env.GetUint64("NON_EXISTENT")  // 0
+```
+
+---
+
+### GetFloat64
+
+```go
+func GetFloat64(key string, defaultValue ...float64) float64
+```
+
+Gets a floating-point value. Supports dot path resolution.
+
+**Parameters:**
+- `key` - Key name (supports dot path)
+- `defaultValue` - Optional default value, type `float64`
+
+**Returns:**
+- `float64` - Value or default value (returns 0 if not found and no default)
+
+```go
+rate := env.GetFloat64("RATE", 0.5)
+threshold := env.GetFloat64("THRESHOLD")
+
+// Returns 0 when no default value
+value := env.GetFloat64("NON_EXISTENT")  // 0
 ```
 
 ---
@@ -205,8 +255,8 @@ Gets a time duration value. Supports dot path resolution.
 **Supported formats:**
 - `300ms` - Milliseconds
 - `1.5s` - Seconds
-- `2m30s` - Minutes + seconds
-- `1h30m` - Hours + minutes
+- `2m30s` - Minutes + Seconds
+- `1h30m` - Hours + Minutes
 
 **Parameters:**
 - `key` - Key name (supports dot path)
@@ -219,7 +269,7 @@ Gets a time duration value. Supports dot path resolution.
 timeout := env.GetDuration("TIMEOUT", 30*time.Second)
 interval := env.GetDuration("INTERVAL", 5*time.Minute)
 
-// Returns 0 without default
+// Returns 0 when no default value
 value := env.GetDuration("NON_EXISTENT")  // 0
 ```
 
@@ -237,7 +287,7 @@ Gets a secure value (for sensitive data).
 - `key` - Key name
 
 **Returns:**
-- `*SecureValue` - Secure value wrapper, returns nil if key doesn't exist or loader is unavailable
+- `*SecureValue` - Secure value wrapper; returns nil if the key does not exist or the loader is unavailable
 
 ```go
 secret := env.GetSecure("API_KEY")
@@ -245,15 +295,15 @@ if secret != nil {
     defer secret.Release()
 
     value := secret.String()
-    masked := secret.Masked()  // e.g. [SECURE:32 bytes]
+    masked := secret.Masked()  // For logging: [SECURE:32 bytes]
 }
 ```
 
-::: warning Important
-You must call `Release()` or `Close()` after use to release resources. Recommend using `defer` to ensure cleanup.
+:::warning Important
+You must call `Release()` or `Close()` after use to free resources. Use `defer` to ensure release.
 :::
 
-::: tip See Also
+:::tip See Also
 [SecureValue API](/en/env/api-reference/secure-value) for complete API documentation.
 :::
 
@@ -269,11 +319,11 @@ Generic function to get a slice value.
 
 **Supported types:** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
 
-**Note:** This is a generic function, not a Loader method. To get slices from a specific Loader instance, use `GetSliceFrom[T]`.
+**Note:** This is a generic function, not a Loader method. To get a slice from a specific Loader instance, use `GetSliceFrom[T]`.
 
-**Resolution order:**
-1. First look for indexed keys `KEY_0`, `KEY_1`, `KEY_2`...
-2. If no indexed keys, parse the value of `KEY` by comma separation
+**Resolution Order:**
+1. First looks for indexed keys `KEY_0`, `KEY_1`, `KEY_2`...
+2. If no indexed keys, parses the value of `KEY` by comma separation
 3. Supports dot path resolution
 
 **Parameters:**
@@ -296,20 +346,20 @@ ports := env.GetSlice[int64]("PORTS", []int64{80})  // [80, 443, 8080]
 // Float slice
 rates := env.GetSlice[float64]("RATES", []float64{0.1, 0.2})
 
-// Bool slice
+// Boolean slice
 flags := env.GetSlice[bool]("FLAGS")
 
 // Duration slice
 timeouts := env.GetSlice[time.Duration]("TIMEOUTS")
 
-// Unsigned integer slices
+// Unsigned integer slice
 ports := env.GetSlice[uint]("PORTS")
 port64s := env.GetSlice[uint64]("PORTS")
 
 // int type
 portInts := env.GetSlice[int]("PORTS")
 
-// Returns nil without default
+// Returns nil when no default value
 value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ```
 
@@ -347,9 +397,9 @@ portsUint := env.GetSliceFrom[uint](loader, "PORTS")
 portsUint64 := env.GetSliceFrom[uint64](loader, "PORTS")
 ```
 
-::: tip Difference
+:::tip Difference
 - `GetSlice[T]` - Package-level function using the default loader
-- `GetSliceFrom[T]` - Generic function specifying a Loader instance (Go doesn't support generic methods)
+- `GetSliceFrom[T]` - Generic function specifying a Loader instance (Go does not support generic methods)
 :::
 
 ---
@@ -368,7 +418,7 @@ Checks if a key exists and gets its value. Supports dot path resolution.
 - `key` - Key name (supports dot path)
 
 **Returns:**
-- `string` - Value (leading/trailing whitespace trimmed)
+- `string` - Value (leading and trailing whitespace removed)
 - `bool` - Whether the key exists
 
 ```go
@@ -394,7 +444,7 @@ func Keys() []string
 Gets all key names.
 
 **Returns:**
-- `[]string` - Key name list, returns nil if loader is unavailable
+- `[]string` - List of key names; returns nil if the loader is unavailable
 
 ```go
 keys := env.Keys()
@@ -414,7 +464,7 @@ func All() map[string]string
 Gets all key-value pairs.
 
 **Returns:**
-- `map[string]string` - Key-value mapping, returns nil if loader is unavailable
+- `map[string]string` - Key-value mapping; returns nil if the loader is unavailable
 
 ```go
 all := env.All()
@@ -434,7 +484,7 @@ func Len() int
 Gets the number of variables.
 
 **Returns:**
-- `int` - Variable count, returns 0 if loader is unavailable
+- `int` - Number of variables; returns 0 if the loader is unavailable
 
 ```go
 count := env.Len()
@@ -458,11 +508,11 @@ Sets an environment variable.
 - `value` - Value
 
 **Returns:**
-- `error` - Set error
+- `error` - Setting error
 
-**Error types:**
+**Error Types:**
 - `ErrInvalidKey` - Invalid key name
-- `ErrForbiddenKey` - Key is forbidden
+- `ErrForbiddenKey` - Forbidden key
 - `ErrClosed` - Loader is closed
 
 ```go
@@ -485,7 +535,7 @@ Deletes an environment variable.
 - `key` - Key name
 
 **Returns:**
-- `error` - Delete error
+- `error` - Deletion error
 
 ```go
 if err := env.Delete("TEMP_KEY"); err != nil {
@@ -509,7 +559,7 @@ Validates that required keys exist. Requires `RequiredKeys` to be set in Config.
 - `error` - Validation error
 
 ```go
-// Requires RequiredKeys configuration (via custom loader)
+// Need to configure RequiredKeys first (via custom loader)
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
@@ -517,7 +567,7 @@ loader, _ := env.New(cfg)
 loader.LoadFiles(".env")
 
 if err := loader.Validate(); err != nil {
-    // Missing required key
+    // Missing required keys
 }
 ```
 
@@ -526,13 +576,13 @@ if err := loader.Validate(); err != nil {
 ### ParseInto
 
 ```go
-func ParseInto(v interface{}) error
+func ParseInto(v any) error
 ```
 
 Maps environment variables to a struct.
 
 **Parameters:**
-- `v` - Struct pointer
+- `v` - Pointer to a struct
 
 **Returns:**
 - `error` - Mapping error
@@ -549,15 +599,15 @@ if err := env.ParseInto(&cfg); err != nil {
 }
 ```
 
-**Struct tags:**
+**Struct Tags:**
 | Tag | Description |
 |-----|-------------|
-| `env:"KEY"` | Map to specified key |
-| `env:"-"` | Ignore this field |
+| `env:"KEY"` | Maps to specified key |
+| `env:"-"` | Ignores this field |
 | `envDefault:"value"` | Default value |
 | `envSeparator:","` | Slice separator |
 
-::: tip See Also
+:::tip See Also
 [Struct Mapping](/en/env/guides/struct-mapping) for a complete guide.
 :::
 
@@ -574,12 +624,12 @@ func ResetDefaultLoader() error
 Resets the global default loader. Primarily used in testing scenarios.
 
 **Returns:**
-- `error` - Error from closing the old loader (if it exists); returns nil if there was no loader or closing succeeded
+- `error` - Error from closing the old loader (if one exists); returns nil if there was no previous loader or if closing succeeded
 
 **Behavior:**
-- Atomically swaps the default loader to nil
+- Atomically swaps the default loader with nil
 - Closes the old loader (executed outside the lock to avoid blocking)
-- Allows creating a new default loader
+- Allows a new default loader to be created
 
 ```go
 func TestMain(m *testing.M) {
@@ -598,8 +648,8 @@ func TestSomething(t *testing.T) {
 }
 ```
 
-::: warning Note
-This function is thread-safe but should only be called during testing or startup to avoid unexpected behavior.
+:::warning Note
+This function is concurrency-safe but should only be called in tests or during startup to avoid unexpected behavior.
 :::
 
 ---
@@ -610,7 +660,7 @@ This function is thread-safe but should only be called during testing or startup
 func LoadWithConfig(cfg Config) error
 ```
 
-Initializes the default loader with custom configuration.
+Initializes the default loader with a custom configuration.
 
 **Parameters:**
 - `cfg` - Custom configuration
@@ -620,7 +670,7 @@ Initializes the default loader with custom configuration.
 
 **Behavior:**
 - Sets the package-level default loader (used by `GetString`, `GetInt`, etc.)
-- **Forces** `AutoApply = true` (regardless of cfg setting)
+- **Forces** `AutoApply = true` (regardless of the cfg setting)
 - Returns `ErrAlreadyInitialized` if the default loader is already initialized
 
 **Difference from Load:**
@@ -638,8 +688,8 @@ if err := env.LoadWithConfig(cfg); err != nil {
 port := env.GetInt("PORT", 8080)
 ```
 
-::: warning Note
-This function forces `cfg.AutoApply` to `true`, ensuring variables are applied to the system environment. To control application timing, use `New()` to create a standalone instance.
+:::warning Note
+This function forces `cfg.AutoApply` to `true`, ensuring variables are applied to the system environment. To control application timing, use `New()` to create an independent instance.
 :::
 
 ---
@@ -649,12 +699,12 @@ This function forces `cfg.AutoApply` to `true`, ensuring variables are applied t
 ### Marshal
 
 ```go
-func Marshal(data interface{}, format ...FileFormat) (string, error)
+func Marshal(data any, format ...FileFormat) (string, error)
 ```
 
-Serializes data to a string in the specified format. Supports `map[string]string` or structs as input.
+Serializes data to a string in the specified format. Supports `map[string]string` or struct as input.
 
-**Interface Integration:** If the input type implements the `Marshaler` interface, `MarshalEnv()` is called first for serialization.
+**Interface Integration:** If the input type implements the `Marshaler` interface, the `MarshalEnv()` method is called first for serialization.
 
 **Parameters:**
 - `data` - Data to serialize (map or struct)
@@ -664,23 +714,23 @@ Serializes data to a string in the specified format. Supports `map[string]string
 - `string` - Serialized string (keys are sorted)
 - `error` - Serialization error
 
-**Supported formats:**
+**Supported Formats:**
 - `FormatEnv` (default) - .env format
 - `FormatJSON` - JSON format
 - `FormatYAML` - YAML format
 
 ```go
-// map to .env format
+// Map to .env format
 mapData := map[string]string{"HOST": "localhost", "PORT": "8080"}
 envStr, _ := env.Marshal(mapData)
 // HOST=localhost
 // PORT=8080
 
-// map to JSON format
+// Map to JSON format
 jsonStr, _ := env.Marshal(mapData, env.FormatJSON)
 // {"HOST":"localhost","PORT":"8080"}
 
-// struct to .env format
+// Struct to .env format
 type Config struct {
     Host string `env:"HOST"`
     Port string `env:"PORT"`
@@ -704,7 +754,7 @@ Parses a formatted string into a map. Supports automatic format detection.
 
 **Returns:**
 - `map[string]string` - Parsed key-value pairs
-- `error` - Parse error
+- `error` - Parsing error
 
 ```go
 // .env format
@@ -723,18 +773,18 @@ m, _ := env.UnmarshalMap(jsonString, env.FormatAuto)
 ### UnmarshalStruct
 
 ```go
-func UnmarshalStruct(data string, v interface{}, format ...FileFormat) error
+func UnmarshalStruct(data string, v any, format ...FileFormat) error
 ```
 
 Parses a formatted string and populates a struct.
 
 **Parameters:**
 - `data` - Formatted string
-- `v` - Struct pointer
+- `v` - Pointer to a struct
 - `format` - Optional format, defaults to `FormatEnv`
 
 **Returns:**
-- `error` - Parse error
+- `error` - Parsing error
 
 ```go
 type Config struct {
@@ -746,7 +796,7 @@ var cfg Config
 err := env.UnmarshalStruct("SERVER_HOST=localhost\nSERVER_PORT=8080", &cfg)
 // cfg.Host = "localhost", cfg.Port = 8080
 
-// From JSON
+// Parse from JSON
 err = env.UnmarshalStruct(`{"server": {"host": "localhost"}}`, &cfg, env.FormatJSON)
 ```
 
@@ -755,16 +805,16 @@ err = env.UnmarshalStruct(`{"server": {"host": "localhost"}}`, &cfg, env.FormatJ
 ### UnmarshalInto
 
 ```go
-func UnmarshalInto(data map[string]string, v interface{}) error
+func UnmarshalInto(data map[string]string, v any) error
 ```
 
 Populates a struct from a map. Supports `env` and `envDefault` tags.
 
-**Interface Integration:** If the target type implements the `Unmarshaler` interface, `UnmarshalEnv(data)` is called directly.
+**Interface Integration:** If the target type implements the `Unmarshaler` interface, the `UnmarshalEnv(data)` method is called first.
 
 **Parameters:**
 - `data` - Key-value mapping
-- `v` - Struct pointer
+- `v` - Pointer to a struct
 
 **Returns:**
 - `error` - Population error
@@ -778,7 +828,7 @@ type Config struct {
 data := map[string]string{"HOST": "example.com"}
 var cfg Config
 err := env.UnmarshalInto(data, &cfg)
-// cfg.Host = "example.com", cfg.Port = 8080 (uses default)
+// cfg.Host = "example.com", cfg.Port = 8080 (uses default value)
 ```
 
 ---
@@ -786,15 +836,15 @@ err := env.UnmarshalInto(data, &cfg)
 ### MarshalStruct
 
 ```go
-func MarshalStruct(v interface{}) (map[string]string, error)
+func MarshalStruct(v any) (map[string]string, error)
 ```
 
-Converts a struct to a map. Supports `env` tags for key name mapping.
+Converts a struct to a map. Supports `env` tag for specifying key names.
 
-**Interface Integration:** If the input type implements the `Marshaler` interface, `MarshalEnv()` is called first.
+**Interface Integration:** If the input type implements the `Marshaler` interface, the `MarshalEnv()` method is called first.
 
 **Parameters:**
-- `v` - Struct or struct pointer
+- `v` - Struct or pointer to a struct
 
 **Returns:**
 - `map[string]string` - Key-value mapping
@@ -826,7 +876,7 @@ Checks if an error is a serialization/deserialization error.
 - `err` - Error to check
 
 **Returns:**
-- `bool` - Whether it's a MarshalError type
+- `bool` - Whether the error is of type MarshalError
 
 ```go
 _, err := env.MarshalStruct(invalidData)
