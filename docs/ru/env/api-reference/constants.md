@@ -1,6 +1,6 @@
 ---
 title: Константы и ошибки - CyberGo env | Сторожевые ошибки и константы безопасности
-description: Полный справочник констант и ошибок библиотеки CyberGo env: ограничения безопасности DefaultMaxFileSize, сторожевые ошибки ErrFileNotFound, структурированные типы ошибок ParseError, функции инструментов IsSensitiveKey и MaskValue, с использованием errors.Is и errors.As для обработки различных сценариев ошибок.
+description: "Полный справочник констант и ошибок библиотеки CyberGo env: ограничения безопасности DefaultMaxFileSize, сторожевые ошибки ErrFileNotFound, структурированные типы ошибок ParseError, функции инструментов IsSensitiveKey и MaskValue, с использованием errors.Is и errors.As для обработки различных сценариев ошибок."
 ---
 
 # Константы и ошибки
