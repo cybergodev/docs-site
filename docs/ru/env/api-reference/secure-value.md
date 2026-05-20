@@ -1,6 +1,6 @@
 ---
 title: SecureValue API - CyberGo env | Безопасное хранение значений
-description: Полный справочник API SecureValue библиотеки CyberGo env: безопасное создание через NewSecureValueStrict, блокировка памяти mlock, уничтожение с обнулением Release, маскирование Masked, обнаружение конфиденциальных ключей IsSensitiveKey и функции инструментов ClearBytes для безопасного хранения паролей и токенов.
+description: "Полный справочник API SecureValue библиотеки CyberGo env: безопасное создание через NewSecureValueStrict, блокировка памяти mlock, уничтожение с обнулением Release, маскирование Masked, обнаружение конфиденциальных ключей IsSensitiveKey и функции инструментов ClearBytes для безопасного хранения паролей и токенов."
 ---
 
 # SecureValue API
