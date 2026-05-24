@@ -1,6 +1,6 @@
 ---
-title: 프로덕션 체크리스트 - HTTPC
-description: HTTPC 프로덕션 환경 보안 체크리스트, TLS 구성 확인, SSRF 방어 점검, 타임아웃과 크기 제한, 재시도 전략, 리소스 해제와 모니터링 감사 포함.
+title: "프로덕션 체크리스트 - HTTPC"
+description: "HTTPC 프로덕션 환경 보안 체크리스트: TLS 확인, SSRF AllowPrivateIPs 확인과 CIDR 감사, Timeouts 타임아웃 설정, MaxResponseBodySize 크기 제한, MaxRetries 재시도 전략, 리소스 해제와 AuditMiddleware 모니터링 감사."
 ---
 
 # 프로덕션 체크리스트

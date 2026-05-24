@@ -1,6 +1,6 @@
 ---
-title: Request and Response - HTTPC
-description: Guide to HTTPC request and response handling covering headers, multiple body formats, query parameters, authentication, cookies, and streaming responses.
+title: "Request and Response - HTTPC"
+description: "Guide to HTTPC request and response handling covering headers, multiple body formats, query parameters, authentication, cookies, and streaming responses."
 ---
 
 # Request and Response

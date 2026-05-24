@@ -1,5 +1,5 @@
 ---
-title: Определения интерфейсов - Справочник JWT API
+title: "Определения интерфейсов - Справочник JWT API"
 description: "Справочник интерфейсов CyberGo JWT: TokenManager, CustomClaims, BlacklistStore, RateLimitProvider, ClockProvider и RateLimitKeyer."
 ---
 

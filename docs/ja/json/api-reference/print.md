@@ -1,5 +1,5 @@
 ---
-title: 出力関数 - CyberGo JSON | API リファレンス
+title: "出力関数 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON 出力とフォーマットリファレンス：Encode、EncodePretty、Prettify 関数と標準 fmt パッケージを使用して JSON フォーマット出力を実現。非公開化された Print/PrintPretty 系関数の代替。カスタムインデントとプレフィックスをサポート。"
 ---
 

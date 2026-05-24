@@ -1,6 +1,6 @@
 ---
-title: 错误处理 - CyberGo env | 哨兵错误与恢复策略
-description: CyberGo env 库错误处理与最佳实践完整指南，详解 15 个哨兵错误的 errors.Is 精确匹配检查、8 种结构化错误类型的 errors.As 上下文提取、错误恢复与降级策略、自定义错误包装模式和错误链 Unwrap 追踪方法，帮助编写健壮的生产级 Go 代码。
+title: "错误处理 - CyberGo env | 哨兵错误与恢复策略"
+description: "CyberGo env 库错误处理与最佳实践完整指南，详解 15 个哨兵错误的 errors.Is 精确匹配检查、8 种结构化错误类型的 errors.As 上下文提取、错误恢复与降级策略、自定义错误包装模式和错误链 Unwrap 追踪方法，帮助编写健壮的生产级 Go 代码。"
 ---
 
 # 错误处理

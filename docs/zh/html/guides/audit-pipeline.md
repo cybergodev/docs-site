@@ -1,6 +1,6 @@
 ---
-title: 审计系统实战 - HTML
-description: CyberGo HTML 审计系统实战指南，从基础启用到构建多层级审计管道，涵盖审计事件类型详解、内置 Sink 选择对比、LevelFilteredSink 级别过滤、自定义 Sink 实现、FilteredSink 事件过滤，以及生产环境审计监控最佳实践，帮助建立完善的安全审计体系。
+title: "审计系统实战 - HTML"
+description: "CyberGo HTML 审计系统实战指南，从基础启用到构建多层级审计管道，涵盖审计事件类型详解、内置 Sink 选择对比、LevelFilteredSink 级别过滤、自定义 Sink 实现、FilteredSink 事件过滤，以及生产环境审计监控最佳实践，帮助建立完善的安全审计体系。"
 ---
 
 # 审计系统实战

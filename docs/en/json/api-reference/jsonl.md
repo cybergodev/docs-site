@@ -1,5 +1,5 @@
 ---
-title: JSONL Processor - CyberGo JSON | API Reference
+title: "JSONL Processor - CyberGo JSON | API Reference"
 description: "CyberGo JSON JSONL/NDJSON processor reference: including StreamJSONL stream processing, JSONLWriter writing, StreamLinesInto[T] generic streaming, ParseJSONL parsing, ToJSONL conversion and configuration options, supporting JSON Lines format read/write operations."
 ---
 

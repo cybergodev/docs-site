@@ -1,9 +1,9 @@
 ---
-title: 오류 유형 - HTTPC
-description: HTTPC 오류 유형 API 참조, ClientError 구조체 필드 메서드, 12가지 ErrorType 열거형, 센티넬 오류 변수 및 errors.Is/As 매칭 예제 상세 설명.
+title: "오류 타입 - HTTPC"
+description: "HTTPC 오류 타입 API 레퍼런스: ClientError 구조체 8개 필드 및 Code, IsRetryable, Unwrap 등 5개 메서드, ErrorTypeNetwork 등 12가지 ErrorType 열거형, ErrNilConfig 등 13개 센티넬 오류 변수와 errors.Is/As 매칭 예제."
 ---
 
-# 오류 유형
+# 오류 타입
 
 ## ClientError
 
@@ -28,7 +28,7 @@ type ClientError struct {
 }
 ```
 
-| 필드 | 유형 | 설명 |
+| 필드 | 타입 | 설명 |
 |------|------|------|
 | `Type` | `ErrorType` | 오류 분류, switch 판단에 사용 |
 | `Message` | `string` | 오류 설명 정보 |
@@ -47,12 +47,12 @@ type ClientError struct {
 | `Code()` | `string` | 읽을 수 있는 오류 코드, 예: `"NETWORK_ERROR"`, `"TIMEOUT"` |
 | `IsRetryable()` | `bool` | 재시도 가능 여부 |
 | `Unwrap()` | `error` | 기저 오류 언래핑 |
-| `WithType(t ErrorType)` | `*ClientError` | 오류 유형이 설정된 사본 반환 (원본 수정 없음) |
+| `WithType(t ErrorType)` | `*ClientError` | 오류 타입이 설정된 사본 반환 (원본 수정 없음) |
 
 ```go
 var clientErr *httpc.ClientError
 if errors.As(err, &clientErr) {
-    fmt.Println("오류 유형:", clientErr.Code())
+    fmt.Println("오류 코드:", clientErr.Code())
     fmt.Println("요청 URL:", clientErr.URL)
     fmt.Println("재시도 횟수:", clientErr.Attempts)
     fmt.Println("재시도 가능:", clientErr.IsRetryable())
@@ -83,7 +83,7 @@ type ErrorType = engine.ErrorType
 | `ErrorTypeValidation` | 요청 검증 오류 | 아니요 |
 | `ErrorTypeHTTP` | HTTP 계층 오류 | 상황에 따라 |
 
-### 유형 판단
+### 타입 판별
 
 ```go
 result, err := client.Get(url)

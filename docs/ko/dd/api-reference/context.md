@@ -1,6 +1,6 @@
 ---
-title: 컨텍스트 통합 - CyberGo DD | Context 통합
-description: CyberGo DD 컨텍스트 통합 전체 API 문서. TraceID, SpanID, RequestID 자동 전파와 추출을 지원하며, 커스텀 ContextExtractor 인터페이스 구현, Context 전파 설정 옵션 및 WithContext 바인딩 메서드를 제공하여 OpenTelemetry 등 분산 추적 시스템과의 원활한 통합을 구현합니다.
+title: "컨텍스트 통합 - CyberGo DD | Context 통합"
+description: "CyberGo DD 컨텍스트 통합 전체 API 문서. TraceID, SpanID, RequestID 자동 전파와 추출을 지원하며, 커스텀 ContextExtractor 인터페이스 구현, Context 전파 설정 옵션 및 WithContext 바인딩 메서드를 제공하여 OpenTelemetry 등 분산 추적 시스템과의 원활한 통합을 구현합니다."
 ---
 
 # 컨텍스트 통합

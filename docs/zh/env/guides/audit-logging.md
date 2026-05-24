@@ -1,6 +1,6 @@
 ---
-title: 审计日志 - CyberGo env | 安全审计配置
-description: CyberGo env 库审计日志完整配置指南，涵盖 JSON 文件处理器、标准日志处理器和 Channel 处理器的创建与配置方法，介绍如何自定义 AuditHandler 接口实现扩展审计逻辑，记录所有环境变量的加载、读取、修改和删除操作，满足安全合规检查与生产环境问题排查需求。
+title: "审计日志 - CyberGo env | 安全审计配置"
+description: "CyberGo env 库审计日志完整配置指南，涵盖 JSON 文件处理器、标准日志处理器和 Channel 处理器的创建与配置方法，介绍如何自定义 AuditHandler 接口实现扩展审计逻辑，记录所有环境变量的加载、读取、修改和删除操作，满足安全合规检查与生产环境问题排查需求。"
 ---
 
 # 审计日志

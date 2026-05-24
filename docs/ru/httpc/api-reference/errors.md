@@ -1,6 +1,6 @@
 ---
-title: Типы ошибок - HTTPC
-description: Справочник API типов ошибок HTTPC, подробно описывающий поля и методы структуры ClientError, перечисление из двенадцати ErrorType, предопределённые переменные ошибок и примеры сопоставления errors.Is/As.
+title: "Типы ошибок — HTTPC"
+description: "Справочник API типов ошибок HTTPC: структура ClientError с восемью полями и пятью методами Code/IsRetryable/Unwrap, перечисление ErrorType с двенадцатью категориями ошибок ErrorTypeNetwork и др., тринадцать переменных-сигналов ErrNilConfig и примеры сопоставления errors.Is/As."
 ---
 
 # Типы ошибок
@@ -20,7 +20,7 @@ type ClientError struct {
     Type       ErrorType  // Классификация ошибки
     Message    string     // Описание ошибки
     Cause      error      // Базовая ошибка
-    URL        string     // URL запроса (маскировано)
+    URL        string     // URL запроса (маскированный)
     Method     string     // HTTP-метод
     Attempts   int        // Количество попыток
     StatusCode int        // HTTP-код состояния (если применимо)
@@ -30,7 +30,7 @@ type ClientError struct {
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `Type` | `ErrorType` | Классификация ошибки для switch |
+| `Type` | `ErrorType` | Классификация ошибки для switch-проверки |
 | `Message` | `string` | Описание ошибки |
 | `Cause` | `error` | Базовая ошибка, доступна через `Unwrap()` |
 | `URL` | `string` | URL запроса (учётные данные маскированы) |
@@ -42,10 +42,10 @@ type ClientError struct {
 ### Методы
 
 | Метод | Возвращаемое значение | Описание |
-|-------|---------------------|----------|
-| `Error()` | `string` | Форматированная строка `METHOD URL: Message: Cause (attempt N)` |
+|-------|----------------------|----------|
+| `Error()` | `string` | Формат `METHOD URL: Message: Cause (attempt N)` |
 | `Code()` | `string` | Читаемый код ошибки, например `"NETWORK_ERROR"`, `"TIMEOUT"` |
-| `IsRetryable()` | `bool` | Можно ли повторить попытку |
+| `IsRetryable()` | `bool` | Можно ли повторить запрос |
 | `Unwrap()` | `error` | Распаковка базовой ошибки |
 | `WithType(t ErrorType)` | `*ClientError` | Возвращает копию с установленным типом ошибки (не изменяет оригинал) |
 
@@ -54,7 +54,7 @@ var clientErr *httpc.ClientError
 if errors.As(err, &clientErr) {
     fmt.Println("Тип ошибки:", clientErr.Code())
     fmt.Println("URL запроса:", clientErr.URL)
-    fmt.Println("Количество повторных попыток:", clientErr.Attempts)
+    fmt.Println("Количество повторов:", clientErr.Attempts)
     fmt.Println("Можно повторить:", clientErr.IsRetryable())
     fmt.Println("Базовая ошибка:", clientErr.Unwrap())
 }
@@ -68,12 +68,12 @@ type ErrorType = engine.ErrorType
 
 Перечисление классификации ошибок.
 
-| Константа | Описание | Повторная попытка |
-|-----------|----------|-----------------|
+| Константа | Описание | Повторяемая |
+|-----------|----------|-------------|
 | `ErrorTypeUnknown` | Неизвестная/неклассифицированная ошибка | Нет |
 | `ErrorTypeNetwork` | Сетевая ошибка (отказ соединения, сбой DNS и др.) | По обстоятельствам |
-| `ErrorTypeTimeout` | Тайм-аут запроса | Да |
-| `ErrorTypeContextCanceled` | Отмена контекста | Нет |
+| `ErrorTypeTimeout` | Таймаут запроса | Да |
+| `ErrorTypeContextCanceled` | Контекст отменён | Нет |
 | `ErrorTypeResponseRead` | Ошибка чтения тела ответа | По обстоятельствам |
 | `ErrorTypeTransport` | Ошибка транспортного уровня | Да |
 | `ErrorTypeRetryExhausted` | Исчерпаны повторные попытки | Нет |
@@ -81,7 +81,7 @@ type ErrorType = engine.ErrorType
 | `ErrorTypeCertificate` | Ошибка проверки сертификата | Нет |
 | `ErrorTypeDNS` | Ошибка разрешения DNS | По обстоятельствам |
 | `ErrorTypeValidation` | Ошибка валидации запроса | Нет |
-| `ErrorTypeHTTP` | Ошибка на уровне HTTP | По обстоятельствам |
+| `ErrorTypeHTTP` | Ошибка уровня HTTP | По обстоятельствам |
 
 ### Определение типа
 
@@ -92,7 +92,7 @@ if err != nil {
     if errors.As(err, &clientErr) {
         switch clientErr.Type {
         case httpc.ErrorTypeTimeout:
-            log.Println("Тайм-аут запроса")
+            log.Println("Таймаут запроса")
         case httpc.ErrorTypeNetwork:
             log.Println("Сетевая ошибка")
         case httpc.ErrorTypeTLS:
@@ -119,20 +119,20 @@ if err != nil {
 | Переменная | Описание |
 |------------|----------|
 | `ErrNilConfig` | Конфигурация равна nil |
-| `ErrInvalidTimeout` | Неверное значение тайм-аута |
-| `ErrInvalidRetry` | Неверная конфигурация повторных попыток |
-| `ErrInvalidConnection` | Неверная конфигурация соединений |
-| `ErrInvalidSecurity` | Неверная конфигурация безопасности |
-| `ErrInvalidMiddleware` | Неверная конфигурация промежуточного ПО |
+| `ErrInvalidTimeout` | Недопустимое значение таймаута |
+| `ErrInvalidRetry` | Недопустимая конфигурация повторов |
+| `ErrInvalidConnection` | Недопустимая конфигурация соединений |
+| `ErrInvalidSecurity` | Недопустимая конфигурация безопасности |
+| `ErrInvalidMiddleware` | Недопустимая конфигурация промежуточного ПО |
 
-### Ошибки запроса
+### Ошибки запросов
 
 | Переменная | Описание |
 |------------|----------|
 | `ErrInvalidURL` | Ошибка валидации URL |
 | `ErrInvalidHeader` | Ошибка валидации заголовков запроса |
 
-### Ошибки ответа
+### Ошибки ответов
 
 | Переменная | Описание |
 |------------|----------|
@@ -165,6 +165,6 @@ if errors.Is(err, httpc.ErrResponseBodyEmpty) {
 
 ## См. также
 
-- [Обработка ошибок](../advanced/error-handling) - полное руководство по обработке ошибок
-- [Константы и перечисления](./constants) - справочник констант BodyKind и др.
-- [Повторные попытки и отказоустойчивость](../guides/retry-fault-tolerance) - руководство по стратегии повторных попыток
+- [Обработка ошибок](../advanced/error-handling) — полное руководство по обработке ошибок
+- [Константы и перечисления](./constants) — справочник констант BodyKind и др.
+- [Повторные попытки и отказоустойчивость](../guides/retry-fault-tolerance) — руководство по настройке повторных попыток

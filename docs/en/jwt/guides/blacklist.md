@@ -1,6 +1,6 @@
 ---
-title: Token Blacklist - JWT
-description: CyberGo JWT token blacklist guide covering built-in memory storage configuration, BlacklistStore custom backends (Redis), revocation mechanism, auto-cleanup, and production best practices.
+title: "Token Blacklist - JWT"
+description: "CyberGo JWT token blacklist guide covering built-in memory storage configuration, BlacklistStore custom backends (Redis), revocation mechanism, auto-cleanup, and production best practices."
 ---
 
 # Token Blacklist

@@ -1,6 +1,6 @@
 ---
-title: 출력 대상 - CyberGo DD | FileWriter, BufferedWriter, MultiWriter
-description: CyberGo DD 출력 대상 전체 API 문서. FileWriter 파일 자동 순환 (크기 및 시간 순환 지원), BufferedWriter 고성능 버퍼 쓰기 (버퍼 크기와 새로고침 간격 설정 가능) 및 MultiWriter 다중 대상 병렬 출력을 포함하여 개발 디버그부터 프로덕션 배포까지 다양한 로그 출력 시나리오 요구를 충족합니다.
+title: "출력 대상 - CyberGo DD | FileWriter, BufferedWriter, MultiWriter"
+description: "CyberGo DD 출력 대상 전체 API 문서. FileWriter 파일 자동 순환 (크기 및 시간 순환 지원), BufferedWriter 고성능 버퍼 쓰기 (버퍼 크기와 새로고침 간격 설정 가능) 및 MultiWriter 다중 대상 병렬 출력을 포함하여 개발 디버그부터 프로덕션 배포까지 다양한 로그 출력 시나리오 요구를 충족합니다."
 ---
 
 # 출력 대상

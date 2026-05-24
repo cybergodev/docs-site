@@ -1,6 +1,6 @@
 ---
-title: 기본 사용법 - HTTPC
-description: HTTPC 기본 사용법 예제 모음, GET/POST 요청과 JSON 파싱, 파일 업로드, 구성 프리셋, 미들웨어 추가와 진행률 콜백 다운로드 포함 완전한 코드 예제.
+title: "기본 사용법 - HTTPC"
+description: "HTTPC 기본 사용법 예제 모음: 쿼리 매개변수와 인증 포함 GET 요청, JSON/폼/파일 업로드 POST 요청, FormData 다중 필드 폼, DefaultConfig 사용자 정의 설정, ProxyURL 프록시, Recovery/Logging 미들웨어, RequestID/Metrics 메트릭 수집과 진행률 콜백 파일 다운로드 완전한 코드."
 ---
 
 # 기본 사용법

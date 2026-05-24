@@ -1,6 +1,6 @@
 ---
-title: 훅 시스템 - CyberGo DD | HookRegistry
-description: CyberGo DD 라이프사이클 훅 시스템 전체 API 문서. 로그 기록 전후 (BeforeLog/AfterLog), 파일 순환 (OnRotate), 오류 발생 (OnError) 등 핵심 이벤트에 커스텀 콜백 함수를 등록하는 것을 지원하며, HookRegistry 레지스트리와 유연한 로그 처리 확장 메커니즘을 제공합니다.
+title: "훅 시스템 - CyberGo DD | HookRegistry"
+description: "CyberGo DD 라이프사이클 훅 시스템 전체 API 문서. 로그 기록 전후 (BeforeLog/AfterLog), 파일 순환 (OnRotate), 오류 발생 (OnError) 등 핵심 이벤트에 커스텀 콜백 함수를 등록하는 것을 지원하며, HookRegistry 레지스트리와 유연한 로그 처리 확장 메커니즘을 제공합니다."
 ---
 
 # 훅 시스템

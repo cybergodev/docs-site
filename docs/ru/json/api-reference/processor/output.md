@@ -1,5 +1,5 @@
 ---
-title: Processor - Методы вывода - CyberGo JSON | Справочник API
+title: "Processor - Методы вывода - CyberGo JSON | Справочник API"
 description: "Справочник методов вывода Processor: Encode, EncodePretty, EncodeWithConfig, EncodeBatch, EncodeFields, Compact, Indent, HTMLEscape."
 ---
 

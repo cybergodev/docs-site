@@ -1,6 +1,6 @@
 ---
-title: 速率限制 - JWT
-description: CyberGo JWT 速率限制指南：令牌桶限流配置、内置 RateLimiter、RateLimitProvider 自定义实现、限流 Key 优先级与最佳实践。
+title: "速率限制 - JWT"
+description: "CyberGo JWT 速率限制指南：令牌桶限流配置、内置 RateLimiter、RateLimitProvider 自定义实现、限流 Key 优先级与最佳实践。"
 ---
 
 # 速率限制

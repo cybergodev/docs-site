@@ -1,6 +1,6 @@
 ---
-title: 파일 형식 - CyberGo env | .env/JSON/YAML 구문
-description: CyberGo env 라이브러리가 지원하는 구성 파일 형식 완전 참조 문서, .env 키값 쌍 형식, JSON 객체 형식 및 YAML 계층 형식의 구문 규칙과 주석 방식을 상세히 설명하며, 데이터 타입 지원, UTF-8 인코딩 처리, DetectFormat 자동 형식 감지 메커니즘, JSONConfig 및 YAMLConfig 형식 전용 구성 옵션을 포함합니다.
+title: "파일 형식 - CyberGo env | .env/JSON/YAML 구문"
+description: "CyberGo env 라이브러리가 지원하는 구성 파일 형식 완전 참조 문서, .env 키값 쌍 형식, JSON 객체 형식 및 YAML 계층 형식의 구문 규칙과 주석 방식을 상세히 설명하며, 데이터 타입 지원, UTF-8 인코딩 처리, DetectFormat 자동 형식 감지 메커니즘, JSONConfig 및 YAMLConfig 형식 전용 구성 옵션을 포함합니다."
 ---
 
 # 파일 형식

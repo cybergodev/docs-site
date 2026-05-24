@@ -1,6 +1,6 @@
 ---
-title: 输出目标 - CyberGo DD | FileWriter、BufferedWriter、MultiWriter
-description: CyberGo DD 输出目标完整 API 文档，包括 FileWriter 文件自动轮换（支持按大小和时间轮换）、BufferedWriter 高性能缓冲写入（可配置缓冲区大小和刷新间隔）和 MultiWriter 多目标并行输出，满足从开发调试到生产部署的各类日志输出场景需求。
+title: "输出目标 - CyberGo DD | FileWriter、BufferedWriter、MultiWriter"
+description: "CyberGo DD 输出目标完整 API 文档，包括 FileWriter 文件自动轮换（支持按大小和时间轮换）、BufferedWriter 高性能缓冲写入（可配置缓冲区大小和刷新间隔）和 MultiWriter 多目标并行输出，满足从开发调试到生产部署的各类日志输出场景需求。"
 ---
 
 # 输出目标

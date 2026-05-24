@@ -1,5 +1,5 @@
 ---
-title: Функции запросов и получения - CyberGo JSON | Справочник API
+title: "Функции запросов и получения - CyberGo JSON | Справочник API"
 description: "Полный справочник функций запросов CyberGo JSON: Get/GetString/GetInt/GetFloat/GetBool типобезопасное получение, GetTyped[T] обобщённое получение и Parse/ParseAny парсинг, полная поддержка JSONPath."
 ---
 

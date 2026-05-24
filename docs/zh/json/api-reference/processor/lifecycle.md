@@ -1,5 +1,5 @@
 ---
-title: Processor 生命周期 - CyberGo JSON | API 参考
+title: "Processor 生命周期 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor 生命周期管理完整参考：包括 New 创建实例、Close 关闭释放资源、IsClosed 状态检查、Stats 统计信息、HealthCheck 健康监控，以及并发安全关闭和资源防护的最佳实践指南，确保生产环境稳定运行。"
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: 大規模ファイル処理 - CyberGo JSON | API リファレンス
+title: "大規模ファイル処理 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON 大規模ファイル処理 API 完全リファレンス：ForeachFile ストリーム処理、ForeachFileChunked バッチ処理、ForeachFileWithPath パス指定処理、ForeachFileNested ネストされたイテレーション、メモリ制御設定、パフォーマンス最適化のベストプラクティスガイドを含む。"
 ---
 

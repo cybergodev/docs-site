@@ -1,5 +1,5 @@
 ---
-title: Ошибки - Справочник JWT API
+title: "Ошибки - Справочник JWT API"
 description: "Справочник ошибок CyberGo JWT: 17 сигнальных ошибок (ErrTokenExpired, ErrTokenRevoked и другие), тип ValidationError и шаблон сопоставления ошибок errors.Is()."
 ---
 

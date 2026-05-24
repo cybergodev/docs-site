@@ -1,6 +1,6 @@
 ---
-title: Config API - CyberGo env | 설정 상세
-description: CyberGo env 라이브러리 Config 설정 구조체 API 참조 문서로, 파일 검색 경로, 보안 제한 매개변수, 키-값 검증 옵션, 변수 확장 설정, 감사 로그 설정 및 사전 정의된 설정 템플릿을 포함하며, Development 및 Production 프리셋을 제공하여 다양한 환경 요구 사항을 충족합니다.
+title: "Config API - CyberGo env | 설정 상세"
+description: "CyberGo env 라이브러리 Config 설정 구조체 API 참조 문서로, 파일 검색 경로, 보안 제한 매개변수, 키-값 검증 옵션, 변수 확장 설정, 감사 로그 설정 및 사전 정의된 설정 템플릿을 포함하며, Development 및 Production 프리셋을 제공하여 다양한 환경 요구 사항을 충족합니다."
 ---
 
 # Config API

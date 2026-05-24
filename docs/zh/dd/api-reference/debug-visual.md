@@ -1,6 +1,6 @@
 ---
-title: 调试输出 - CyberGo DD | Print/JSON/Text/Exit
-description: CyberGo DD 调试可视化输出函数完整 API 文档，包括 Print 格式化打印、JSON 结构化输出、Text 纯文本输出和 Exit 致命退出等快速调试函数，支持直接通过包级函数调用，无需创建 Logger 实例即可使用，大幅简化开发调试流程。
+title: "调试输出 - CyberGo DD | Print/JSON/Text/Exit"
+description: "CyberGo DD 调试可视化输出函数完整 API 文档，包括 Print 格式化打印、JSON 结构化输出、Text 纯文本输出和 Exit 致命退出等快速调试函数，支持直接通过包级函数调用，无需创建 Logger 实例即可使用，大幅简化开发调试流程。"
 ---
 
 # 调试输出

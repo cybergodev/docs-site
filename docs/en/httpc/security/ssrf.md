@@ -1,6 +1,6 @@
 ---
-title: SSRF Protection - HTTPC
-description: Detailed guide to HTTPC SSRF protection, covering private IP blocking mechanisms, exempt CIDR configuration, DNS rebinding prevention, redirect whitelisting, and cloud metadata endpoint protection.
+title: "SSRF Protection - HTTPC"
+description: "HTTPC SSRF protection: private IP blocking, CIDR exemption, DNS rebinding prevention, redirect whitelisting, and cloud metadata endpoint security."
 ---
 
 # SSRF Protection

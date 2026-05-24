@@ -1,6 +1,6 @@
 ---
-title: Промежуточное ПО - HTTPC
-description: Справочник API системы промежуточного ПО HTTPC, включая функцию композиции Chain, восемь встроенных функций фабрики промежуточного ПО, настраиваемый аудит и определение типа события аудита AuditEvent.
+title: "Промежуточное ПО — HTTPC"
+description: "Справочник API системы промежуточного ПО HTTPC: композиция Chain на основе луковой модели, восемь встроенных фабрик Recovery/Logging/RequestID/Timeout/Header/Metrics/Audit, настраиваемый аудит AuditMiddlewareWithConfig и структура события аудита AuditEvent."
 ---
 
 # Промежуточное ПО
@@ -49,7 +49,7 @@ combined := httpc.Chain(
 func RecoveryMiddleware() MiddlewareFunc
 ```
 
-Промежуточное ПО восстановления после panic. Перехватывает panic в цепочке обработки и преобразует его в error с информацией о стеке вызовов.
+Промежуточное ПО восстановления после panic. Перехватывает panic в цепочке обработки и преобразует его в error со стек-трейсом.
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -67,7 +67,7 @@ client, _ := httpc.New(&httpc.Config{
 func LoggingMiddleware(log func(format string, args ...any)) MiddlewareFunc
 ```
 
-Промежуточное ПО логирования запросов. Записывает метод, URL, код состояния и время выполнения. URL автоматически маскируются (удаляются учётные данные).
+Промежуточное ПО логирования запросов. Записывает метод, URL, код состояния и время выполнения. URL автоматически маскируется (удаляются учётные данные).
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -91,7 +91,7 @@ func RequestIDMiddleware(headerName string, generator func() string) MiddlewareF
 | Параметр | Описание |
 |----------|----------|
 | `headerName` | Имя заголовка, например `"X-Request-ID"` |
-| `generator` | Пользовательская функция генерации ID, передайте `nil` для использования криптографически безопасного генератора по умолчанию |
+| `generator` | Пользовательская функция генерации ID, при `nil` используется генератор по умолчанию на основе криптографии |
 
 ```go
 // Использование генератора по умолчанию
@@ -104,7 +104,7 @@ middleware := httpc.RequestIDMiddleware("X-Request-ID", func() string {
 ```
 
 :::tip Совет
-Генератор по умолчанию использует `crypto/rand`, генерируемые ID непредсказуемы и подходят для сценариев, чувствительных к безопасности.
+Генератор по умолчанию использует `crypto/rand`, генерируя непредсказуемые ID, подходящие для сценариев с высокими требованиями к безопасности.
 :::
 
 ### TimeoutMiddleware
@@ -113,7 +113,7 @@ middleware := httpc.RequestIDMiddleware("X-Request-ID", func() string {
 func TimeoutMiddleware(timeout time.Duration) MiddlewareFunc
 ```
 
-Управление тайм-аутом на уровне промежуточного ПО. Действует до встроенного тайм-аута клиента, при превышении отменяет контекст и возвращает ошибку.
+Управление таймаутом на уровне промежуточного ПО. Срабатывает до встроенных таймаутов клиента, при истечении отменяет контекст и возвращает ошибку.
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -131,7 +131,7 @@ client, _ := httpc.New(&httpc.Config{
 func HeaderMiddleware(headers map[string]string) MiddlewareFunc
 ```
 
-Добавляет статические заголовки к каждому запросу. Проверяет безопасность заголовков при создании (защита от инъекции CRLF).
+Добавляет статические заголовки к каждому запросу. Безопасность заголовков проверяется при создании (защита от инъекции CRLF).
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -152,7 +152,7 @@ client, _ := httpc.New(&httpc.Config{
 func MetricsMiddleware(onMetrics func(method, url string, statusCode int, duration time.Duration, err error)) MiddlewareFunc
 ```
 
-Промежуточное ПО сбора метрик. Вызывает обратный вызов после завершения каждого запроса, передаёт метод, URL, код состояния, время выполнения и информацию об ошибке.
+Промежуточное ПО для сбора метрик. Вызывает обратный вызов после завершения каждого запроса, передавая метод, URL, код состояния, время выполнения и информацию об ошибке.
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -172,7 +172,7 @@ client, _ := httpc.New(&httpc.Config{
 func AuditMiddleware(onAudit func(event AuditEvent)) MiddlewareFunc
 ```
 
-Промежуточное ПО аудита безопасности, подходит для сценариев соответствия в финансах, медицине, государственных учреждениях. Записывает полную информацию о запросе/ответе, URL автоматически маскируются.
+Промежуточное ПО безопасности для аудита, подходит для финансовых, медицинских, государственных и других сценариев соответствия. Записывает полную информацию о запросе/ответе, URL автоматически маскируется.
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -194,7 +194,7 @@ client, _ := httpc.New(&httpc.Config{
 func AuditMiddlewareWithConfig(onAudit func(event AuditEvent), config *AuditMiddlewareConfig) MiddlewareFunc
 ```
 
-Настраиваемое промежуточное ПО аудита безопасности.
+Настраиваемое промежуточное ПО безопасности для аудита.
 
 ```go
 config := &httpc.AuditMiddlewareConfig{
@@ -224,7 +224,7 @@ client, _ := httpc.New(&httpc.Config{
 type AuditEvent struct {
     Timestamp     time.Time           `json:"timestamp"`
     Method        string              `json:"method"`
-    URL           string              `json:"url"`              // маскировано (учётные данные удалены)
+    URL           string              `json:"url"`              // Маскированный (учётные данные удалены)
     StatusCode    int                 `json:"statusCode"`
     Duration      time.Duration       `json:"duration"`
     Attempts      int                 `json:"attempts"`
@@ -237,7 +237,7 @@ type AuditEvent struct {
 }
 ```
 
-Событие аудита безопасности.
+Событие безопасности аудита.
 
 #### MarshalJSON
 
@@ -245,12 +245,12 @@ type AuditEvent struct {
 func (e AuditEvent) MarshalJSON() ([]byte, error)
 ```
 
-Пользовательская сериализация JSON, обрабатывает два специальных поля:
+Пользовательская JSON-сериализация, обрабатывает два специальных поля:
 
 | Поле | Правило преобразования |
-|------|----------------------|
+|------|------------------------|
 | `Duration` | Добавляется `durationMs` (целое число миллисекунд), исходное поле `duration` сохраняется (наносекунды) |
-| `Error` | Преобразуется в `error` (строка сообщения об ошибке), nil — опускается |
+| `Error` | Преобразуется в `error` (строка сообщения об ошибке), при nil пропускается |
 
 ```go
 event := httpc.AuditEvent{
@@ -269,17 +269,17 @@ data, _ := json.Marshal(event)
 type AuditMiddlewareConfig struct {
     Format         string   // "text" (по умолчанию) или "json"
     IncludeHeaders bool     // Включать ли заголовки запроса/ответа
-    MaskHeaders    []string // Имена заголовков для маскирования
+    MaskHeaders    []string // Имена заголовков для маскировки
     SanitizeError  bool     // Маскировать ли информацию об ошибках
 }
 ```
 
 | Поле | Значение по умолчанию | Описание |
-|------|---------------------|----------|
+|------|----------------------|----------|
 | Format | `"text"` | Формат вывода |
 | IncludeHeaders | `false` | Записывать ли заголовки |
-| MaskHeaders | `["Authorization", "Cookie", ...]` | Стандартный список конфиденциальных заголовков |
-| SanitizeError | `true` | Замена информации об ошибке на `[sanitized]` |
+| MaskHeaders | `["Authorization", "Cookie", ...]` | Стандартный список чувствительных заголовков |
+| SanitizeError | `true` | Замена информации об ошибках на `[sanitized]` |
 
 ### DefaultAuditMiddlewareConfig
 
@@ -310,6 +310,6 @@ result, err := client.Request(ctx, "GET", url)
 
 ## См. также
 
-- [Определения интерфейсов](./interfaces) - определения типов MiddlewareFunc, Handler
-- [Цепочка промежуточного ПО](../guides/middleware-chain) - руководство по использованию промежуточного ПО
-- [Константы и типы](./constants) - типы AuditEvent, AuditMiddlewareConfig
+- [Определения интерфейсов](./interfaces) — определения типов MiddlewareFunc, Handler
+- [Цепочка промежуточного ПО](../guides/middleware-chain) — руководство по использованию промежуточного ПО
+- [Константы и типы](./constants) — типы AuditEvent, AuditMiddlewareConfig

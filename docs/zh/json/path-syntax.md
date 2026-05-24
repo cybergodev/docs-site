@@ -1,5 +1,5 @@
 ---
-title: 路径表达式语法 - CyberGo JSON | JSONPath 查询指南
+title: "路径表达式语法 - CyberGo JSON | JSONPath 查询指南"
 description: "CyberGo JSON 路径表达式语法完整参考指南，包括属性访问 user.name、数组索引 items[0]、切片 [start:end:step]、通配符 [*]、多字段提取 {name,email} 等语法，支持灵活精确地定位和操作 JSON 数据中的任意节点。"
 ---
 

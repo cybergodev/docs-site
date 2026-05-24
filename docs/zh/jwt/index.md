@@ -1,6 +1,6 @@
 ---
-title: JWT - 生产级 JWT 认证库
-description: CyberGo JWT 生产级认证库，支持 HMAC/RSA/ECDSA 多算法签名、令牌黑名单、限流保护、自定义 Claims 和时钟注入，所有方法并发安全。
+title: "JWT - 生产级 JWT 认证库"
+description: "CyberGo JWT 生产级认证库，支持 HMAC/RSA/ECDSA 多算法签名、令牌黑名单、限流保护、自定义 Claims 和时钟注入，所有方法并发安全。"
 ---
 
 # JWT - 生产级 JWT 认证库

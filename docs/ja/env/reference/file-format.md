@@ -1,6 +1,6 @@
 ---
-title: ファイルフォーマット - CyberGo env | .env/JSON/YAML 構文
-description: CyberGo env ライブラリがサポートする設定ファイルフォーマットの完全なリファレンスドキュメント。.env キー・バリューペアフォーマット、JSON オブジェクトフォーマット、YAML 階層フォーマットの構文ルールとコメント方法を詳解。データ型サポート、UTF-8 エンコーディング処理、DetectFormat 自動フォーマット検出メカニズム、JSONConfig および YAMLConfig フォーマット専用設定オプションを網羅します。
+title: "ファイルフォーマット - CyberGo env | .env/JSON/YAML 構文"
+description: "CyberGo env ライブラリがサポートする設定ファイルフォーマットの完全なリファレンスドキュメント。.env キー・バリューペアフォーマット、JSON オブジェクトフォーマット、YAML 階層フォーマットの構文ルールとコメント方法を詳解。データ型サポート、UTF-8 エンコーディング処理、DetectFormat 自動フォーマット検出メカニズム、JSONConfig および YAMLConfig フォーマット専用設定オプションを網羅します。"
 ---
 
 # ファイルフォーマット

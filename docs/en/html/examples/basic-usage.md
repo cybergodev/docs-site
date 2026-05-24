@@ -1,6 +1,6 @@
 ---
-title: Basic Usage - HTML
-description: Basic usage examples for CyberGo HTML, demonstrating content extraction, file processing, Markdown output, link extraction, and batch processing.
+title: "Basic Usage - HTML"
+description: "Basic usage examples for CyberGo HTML, demonstrating content extraction, file processing, Markdown output, link extraction, and batch processing."
 ---
 
 # Basic Usage

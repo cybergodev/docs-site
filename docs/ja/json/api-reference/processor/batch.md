@@ -1,5 +1,5 @@
 ---
-title: Processor バッチ操作 - CyberGo JSON | API リファレンス
+title: "Processor バッチ操作 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor バッチ操作メソッド完全リファレンス：ProcessBatch バッチ処理による複数操作の一括実行、BatchOperation 操作定義（get/set/delete 型）、BatchResult 結果型、エラー処理戦略と ContinueOnError 設定。トランザクション性のあるバッチ操作とパフォーマンス最適化をサポート。"
 ---
 

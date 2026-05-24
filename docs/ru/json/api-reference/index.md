@@ -1,5 +1,5 @@
 ---
-title: Справочник API - CyberGo JSON
+title: "Справочник API - CyberGo JSON"
 description: "Полный справочник API библиотеки CyberGo JSON: GetString/GetInt запросы по пути, Set/Delete модификация, Marshal/Unmarshal сериализация, Processor, Schema валидация, Hook перехватчики и безопасная конфигурация, 100% совместимость с encoding/json."
 ---
 

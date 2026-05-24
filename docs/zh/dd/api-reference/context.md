@@ -1,6 +1,6 @@
 ---
-title: 上下文集成 - CyberGo DD | Context 集成
-description: CyberGo DD 上下文集成完整 API 文档，支持 TraceID、SpanID、RequestID 自动传播与提取，提供自定义 ContextExtractor 接口实现、Context 传播配置选项和 WithContext 绑定方法，实现与 OpenTelemetry 等分布式追踪系统的无缝集成。
+title: "上下文集成 - CyberGo DD | Context 集成"
+description: "CyberGo DD 上下文集成完整 API 文档，支持 TraceID、SpanID、RequestID 自动传播与提取，提供自定义 ContextExtractor 接口实现、Context 传播配置选项和 WithContext 绑定方法，实现与 OpenTelemetry 等分布式追踪系统的无缝集成。"
 ---
 
 # 上下文集成

@@ -1,6 +1,6 @@
 ---
-title: 타입 정의 - HTML
-description: CyberGo HTML 라이브러리 데이터 타입 API 레퍼런스, Result(커스텀 JSON 직렬화 포함), ImageInfo, LinkInfo, VideoInfo, AudioInfo, LinkResource, Statistics, BatchResult 및 NodeAttr 등 핵심 데이터 타입의 필드 설명을 포함합니다.
+title: "타입 정의 - HTML"
+description: "CyberGo HTML 라이브러리 데이터 타입 API 레퍼런스, Result(커스텀 JSON 직렬화 포함), ImageInfo, LinkInfo, VideoInfo, AudioInfo, LinkResource, Statistics, BatchResult 및 NodeAttr 등 핵심 데이터 타입의 필드 설명을 포함합니다."
 ---
 
 # 타입 정의

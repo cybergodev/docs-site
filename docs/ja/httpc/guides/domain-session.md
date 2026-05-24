@@ -1,11 +1,11 @@
 ---
-title: ドメインクライアントとセッション - HTTPC
-description: HTTPC ドメインクライアントとセッション管理ガイド。NewDomain 作成、URL 自動結合、セッションヘッダーと Cookie の自動維持、セキュリティ設定の使用方法。
+title: "ドメインクライアントとセッション - HTTPC"
+description: "HTTPCドメインクライアントとセッション管理ガイド：NewDomain作成、URL自動結合、セッションヘッダーとCookieの自動維持、セキュリティ設定の使用方法。"
 ---
 
 # ドメインクライアントとセッション
 
-ドメインクライアント（DomainClient）は、同じドメインに対するセッション管理クライアントであり、Cookie とリクエストヘッダーを自動的に維持します。
+ドメインクライアント（DomainClient）は同じドメインに対するセッション管理クライアントで、Cookieとヘッダーを自動的に維持します。
 
 ## ドメインクライアントの作成
 
@@ -16,7 +16,7 @@ if err != nil {
 }
 defer dc.Close()
 
-// Cookie は自動的に有効化される
+// Cookieは自動的に有効化
 dc.SetHeader("Authorization", "Bearer "+token)
 
 // 相対パスでリクエストを送信
@@ -24,13 +24,13 @@ result, err := dc.Get("/users")
 ```
 
 :::tip ヒント
-`NewDomain` は自動的に Cookie 管理を有効にします（`EnableCookies = true`）。手動設定は不要です。
+`NewDomain`は自動的にCookie管理を有効にします（`EnableCookies = true`）。手動設定は不要です。
 :::
 
 ## セッションヘッダー管理
 
 ```go
-// セッションヘッダーの設定（以降のすべてのリクエストに自動的に付与される）
+// セッションヘッダーの設定（以降の全リクエストに自動付与）
 dc.SetHeader("Authorization", "Bearer "+token)
 dc.SetHeader("Accept", "application/json")
 
@@ -49,21 +49,21 @@ dc.ClearHeaders()
 headers := dc.GetHeaders()
 ```
 
-## Cookie 管理
+## Cookie管理
 
 ```go
-// Cookie の設定
+// Cookieの設定
 dc.SetCookie(&http.Cookie{Name: "session", Value: "abc123"})
 
 // 一括設定
 dc.SetCookies([]*http.Cookie{
     {Name: "session", Value: "abc123"},
-    {Name: "lang", Value: "zh"},
+    {Name: "lang", Value: "ja"},
 })
 
-// レスポンス Cookie の自動キャプチャ
+// レスポンスCookieの自動キャプチャ
 result, _ := dc.Get("/login")
-// サーバーから返された Set-Cookie は自動的にセッションに保存される
+// サーバーが返すSet-Cookieは自動的にセッションに保存
 
 // 照会
 cookie := dc.GetCookie("session")
@@ -75,7 +75,7 @@ dc.ClearCookies()
 ```
 
 :::tip ヒント
-リクエストごとに、サーバーから返された Cookie は自動的にセッションに更新されるため、手動で処理する必要はありません。
+各リクエスト後、サーバーが返すCookieは自動的にセッションに更新されるため、手動処理は不要です。
 :::
 
 ## リクエスト方法
@@ -93,7 +93,7 @@ result, _ := dc.Options("/users")
 // コンテキスト付き
 result, _ := dc.Request(ctx, "GET", "/users")
 
-// 絶対 URL（ベース URL の結合をスキップ）
+// 絶対URL（ベースURLの結合をスキップ）
 result, _ := dc.Get("https://other-api.com/data")
 ```
 
@@ -104,36 +104,36 @@ result, _ := dc.Get("https://other-api.com/data")
 dc.URL()     // "https://api.example.com"
 dc.Domain()  // "api.example.com"
 
-// 基底の SessionManager へのアクセス
+// 内部SessionManagerへのアクセス
 session := dc.Session()
 if err := session.SetHeader("X-Trace-ID", traceID); err != nil {
     log.Fatal(err)
 }
 ```
 
-## Cookie セキュリティ検証
+## Cookieセキュリティ検証
 
-Cookie セキュリティポリシーを設定し、セキュリティ基準を満たす Cookie のみを受け付けるようにできます：
+Cookieセキュリティポリシーを設定し、セキュリティ基準に準拠するCookieのみ受け付けます：
 
 ```go
 dc, _ := httpc.NewDomain("https://api.example.com")
 
-// 厳格な Cookie セキュリティの設定
+// 厳格なCookieセキュリティを設定
 session := dc.Session()
 session.SetCookieSecurity(httpc.StrictCookieSecurityConfig())
-// 要件: Secure=true, HttpOnly=true, SameSite=Strict
+// 要求: Secure=true, HttpOnly=true, SameSite=Strict
 
-// セキュリティ要件を満たさない Cookie は SetCookie でエラーを返す
+// セキュリティ要件を満たさないCookieはSetCookieでエラーが返される
 if err := dc.SetCookie(&http.Cookie{
     Name:  "insecure",
     Value: "test",
-    // Secure, HttpOnly が不足 → 拒否される
+    // Secure, HttpOnlyが不足 → 拒否される
 }); err != nil {
-    log.Println("Cookie が拒否されました:", err)
+    log.Println("Cookieが拒否されました:", err)
 }
 ```
 
-## 完全なサンプル：REST API クライアント
+## 完全な例：REST APIクライアント
 
 ```go
 package main
@@ -148,14 +148,14 @@ import (
 )
 
 func main() {
-    // ドメインクライアントの作成
+    // ドメインクライアントを作成
     dc, err := httpc.NewDomain("https://api.example.com")
     if err != nil {
         log.Fatal(err)
     }
     defer dc.Close()
 
-    // ログインして Token を取得
+    // ログインしてTokenを取得
     loginResult, err := dc.Post("/auth/login", httpc.WithJSON(map[string]string{
         "username": "admin",
         "password": "secret",
@@ -164,7 +164,7 @@ func main() {
         log.Fatal(err)
     }
 
-    // レスポンスから Token を解析
+    // レスポンスからTokenを解析
     var loginResp struct {
         Token string `json:"token"`
     }
@@ -173,12 +173,12 @@ func main() {
     }
     httpc.ReleaseResult(loginResult)
 
-    // セッションヘッダーの設定
+    // セッションヘッダーを設定
     if err := dc.SetHeader("Authorization", "Bearer "+loginResp.Token); err != nil {
         log.Fatal(err)
     }
 
-    // 以降のリクエストには Token と Cookie が自動的に付与される
+    // 以降のリクエストには自動的にTokenとCookieが付与される
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     defer cancel()
 
@@ -194,6 +194,6 @@ func main() {
 
 ## 次のステップ
 
-- [ドメインクライアント API](../api-reference/domain-client) - 完全な API リファレンス
-- [セッション管理 API](../api-reference/session) - SessionManager リファレンス
-- [リクエストとレスポンス](./request-response) - 基本リクエストガイド
+- [ドメインクライアントAPI](../api-reference/domain-client) - 完全なAPIリファレンス
+- [セッション管理API](../api-reference/session) - SessionManagerリファレンス
+- [リクエストとレスポンス](./request-response) - 基本的なリクエストガイド

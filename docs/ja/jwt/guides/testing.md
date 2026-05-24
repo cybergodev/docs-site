@@ -1,6 +1,6 @@
 ---
-title: テストとクロック注入 - JWT
-description: CyberGo JWT テストとクロック注入ガイド：ClockProvider インターフェース、FixedClock 固定クロックの使用、およびユニットテストでのトークン有効期限、リフレッシュ、カスタム Claims 検証。
+title: "テストとクロック注入 - JWT"
+description: "CyberGo JWT テストとクロック注入ガイド：ClockProvider インターフェース、FixedClock 固定クロックの使用、およびユニットテストでのトークン有効期限、リフレッシュ、カスタム Claims 検証。"
 ---
 
 # テストとクロック注入

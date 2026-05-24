@@ -1,6 +1,6 @@
 ---
-title: 令牌黑名单 - JWT
-description: CyberGo JWT 令牌黑名单指南：内置内存存储配置、BlacklistStore 自定义后端（Redis）、吊销机制、自动清理与生产环境最佳实践。
+title: "令牌黑名单 - JWT"
+description: "CyberGo JWT 令牌黑名单指南：内置内存存储配置、BlacklistStore 自定义后端（Redis）、吊销机制、自动清理与生产环境最佳实践。"
 ---
 
 # 令牌黑名单

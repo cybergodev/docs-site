@@ -1,5 +1,5 @@
 ---
-title: Processor - Справочник JWT API
+title: "Processor - Справочник JWT API"
 description: "Справочник основного API CyberGo JWT Processor: Create, Validate, Refresh, Revoke, ValidateInto, RefreshInto, ParseUnverified — все сигнатуры и примеры использования методов."
 ---
 

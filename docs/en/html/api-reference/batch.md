@@ -1,6 +1,6 @@
 ---
-title: Batch Processing - HTML
-description: Concurrent batch extraction API for CyberGo HTML, including ExtractBatch, ExtractBatchFiles, WorkerPoolSize concurrency control, and BatchResult statistics.
+title: "Batch Processing - HTML"
+description: "Concurrent batch extraction API for CyberGo HTML, including ExtractBatch, ExtractBatchFiles, WorkerPoolSize concurrency control, and BatchResult statistics."
 ---
 
 # Batch Processing

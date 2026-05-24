@@ -1,6 +1,6 @@
 ---
-title: FAQ - HTML
-description: FAQ for the CyberGo HTML library, covering package functions vs Processor, encoding detection, size limits, batch processing, and audit setup.
+title: "FAQ - HTML"
+description: "FAQ for the CyberGo HTML library, covering package functions vs Processor, encoding detection, size limits, batch processing, and audit setup."
 ---
 
 # FAQ

@@ -1,5 +1,5 @@
 ---
-title: Interface Definitions - CyberGo JSON | API Reference
+title: "Interface Definitions - CyberGo JSON | API Reference"
 description: "CyberGo JSON extension interface definitions complete reference: including CustomEncoder, TypeEncoder, Validator, Hook interfaces, PathParser, and DangerousPattern, supporting flexible extension of encoding, validation, and security capabilities, meeting custom serialization and security policy requirements."
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: HTTP 集成 - HTML
-description: CyberGo HTML 库与 HTTP 客户端集成实战指南，涵盖使用标准库 net/http 实现单页面抓取提取与错误处理、并发批量处理优化与资源管理、上下文超时控制、Web 服务集成模式、Processor 单例复用模式和生产环境部署的最佳实践。
+title: "HTTP 集成 - HTML"
+description: "CyberGo HTML 库与 HTTP 客户端集成实战指南，涵盖使用标准库 net/http 实现单页面抓取提取与错误处理、并发批量处理优化与资源管理、上下文超时控制、Web 服务集成模式、Processor 单例复用模式和生产环境部署的最佳实践。"
 ---
 
 # HTTP 集成

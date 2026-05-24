@@ -1,5 +1,5 @@
 ---
-title: クエリと取得関数 - CyberGo JSON | API リファレンス
+title: "クエリと取得関数 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON クエリと取得関数の完全リファレンス：Get/GetString/GetInt/GetFloat/GetBool などの型安全な取得、GetTyped[T] ジェネリック取得、Parse/ParseAny パース関数を含み、JSONPath パス式を全面的にサポートします。"
 ---
 

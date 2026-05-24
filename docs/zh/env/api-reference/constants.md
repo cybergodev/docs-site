@@ -1,6 +1,6 @@
 ---
-title: 常量与错误 - CyberGo env | 哨兵错误与安全常量
-description: CyberGo env 库常量与错误完整参考，涵盖 DefaultMaxFileSize 安全限制、ErrFileNotFound 哨兵错误、ParseError 结构化错误类型、IsSensitiveKey 和 MaskValue 工具函数，配合 errors.Is 和 errors.As 帮助处理各类错误场景。
+title: "常量与错误 - CyberGo env | 哨兵错误与安全常量"
+description: "CyberGo env 库常量与错误完整参考，涵盖 DefaultMaxFileSize 安全限制、ErrFileNotFound 哨兵错误、ParseError 结构化错误类型、IsSensitiveKey 和 MaskValue 工具函数，配合 errors.Is 和 errors.As 帮助处理各类错误场景。"
 ---
 
 # 常量与错误

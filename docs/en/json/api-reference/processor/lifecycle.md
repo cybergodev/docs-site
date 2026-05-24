@@ -1,5 +1,5 @@
 ---
-title: Processor Lifecycle - CyberGo JSON | API Reference
+title: "Processor Lifecycle - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor lifecycle management reference: including New instance creation, Close resource release, IsClosed state checking, Stats statistics, HealthCheck health monitoring, and best practices for concurrent-safe shutdown and resource protection."
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Configuration - CyberGo DD | Config Details
+title: "Configuration - CyberGo DD | Config Details"
 description: "CyberGo DD Config API: preset configs (Default/Development/JSON), OutputTarget settings, field validation, sampling, and type-safe logger customization."
 ---
 

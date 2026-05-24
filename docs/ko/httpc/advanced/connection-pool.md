@@ -1,6 +1,6 @@
 ---
-title: 연결 풀과 프록시 - HTTPC
-description: HTTPC 연결 풀과 프록시 설정 가이드. 연결 풀 매개변수 튜닝, HTTP 및 SOCKS5 프록시, DoH 커스텀 리졸버, 유휴 연결 관리 전략을 상세히 다룹니다.
+title: "연결 풀과 프록시 - HTTPC"
+description: "HTTPC 연결 풀과 프록시 설정 가이드: MaxIdleConns 등 매개변수 튜닝과 시나리오별 추천, ProxyURL 수동 프록시와 시스템 프록시 감지, SOCKS5 프록시, DoH 세 제공자 대체, HTTP/2 설정, ReleaseResult 객체 풀 재사용과 동시성 요청 패턴."
 ---
 
 # 연결 풀과 프록시
@@ -38,7 +38,7 @@ cfg.Timeouts.IdleConn = 120 * time.Second // 유휴 연결 유지 시간
 | 저빈도 요청 | 10 | 2 | 30s |
 | 마이크로서비스 내부 | 50 | 10 | 60s |
 
-:::tip 팁
+:::tip
 `MaxConnsPerHost`는 활성 연결과 유휴 연결을 모두 포함합니다. 이 제한을 초과하는 새 요청은 연결이 해제될 때까지 대기열에서 대기합니다.
 :::
 
@@ -60,7 +60,7 @@ cfg := httpc.DefaultConfig()
 cfg.Connection.ProxyURL = "http://user:password@proxy.example.com:8080"
 ```
 
-:::tip 팁
+:::tip
 `Config.String()` 메서드는 프록시 URL의 사용자 이름과 비밀번호를 자동으로 마스킹합니다.
 :::
 
@@ -91,7 +91,7 @@ cfg.Connection.EnableSystemProxy = true
 
 ## DNS-over-HTTPS
 
-DoH를 활성화하면 DNS 해석 지연을 줄이고 DNS 하이재킹을 방지할 수 있습니다:
+DoH를 활성화하면 DNS 리졸브 지연을 줄이고 DNS 하이재킹을 방지할 수 있습니다:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -107,8 +107,8 @@ cfg.Connection.DoHCacheTTL = 5 * time.Minute
 | Google | `8.8.8.8/resolve` | 전 세계적 범위 |
 | AliDNS | `223.5.5.5/resolve` | 중국 지역 최적화 |
 
-:::tip 팁
-DoH가 활성화되면 DNS 해석 결과가 `DoHCacheTTL` 시간 동안 캐시됩니다. 모든 DoH 제공자를 사용할 수 없는 경우 시스템 DNS로 대체됩니다.
+:::tip
+DoH가 활성화되면 DNS 리졸브 결과가 `DoHCacheTTL` 시간 동안 캐시됩니다. 모든 DoH 제공자를 사용할 수 없는 경우 시스템 DNS로 대체됩니다.
 :::
 
 ## HTTP/2

@@ -1,5 +1,5 @@
 ---
-title: Validator - CyberGo JSON | Schema Validator
+title: "Validator - CyberGo JSON | Schema Validator"
 description: "CyberGo JSON validator complete reference: includes Validator interface definition, Schema validation structure, ValidationError type, SchemaConfig options, and custom validator implementation guide for comprehensive JSON data structure and content validation."
 ---
 

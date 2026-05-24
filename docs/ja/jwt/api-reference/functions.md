@@ -1,6 +1,6 @@
 ---
-title: パッケージ関数 - JWT API リファレンス
-description: CyberGo JWT パッケージレベル関数リファレンス：New で Processor 作成、DefaultConfig デフォルト設定、DefaultBlacklistConfig ブラックリスト設定、NewNumericDate、NewRateLimiter。
+title: "パッケージ関数 - JWT API リファレンス"
+description: "CyberGo JWT パッケージレベル関数リファレンス：New で Processor 作成、DefaultConfig デフォルト設定、DefaultBlacklistConfig ブラックリスト設定、NewNumericDate、NewRateLimiter。"
 ---
 
 # パッケージ関数

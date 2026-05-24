@@ -1,6 +1,6 @@
 ---
-title: Domain Client - HTTPC
-description: HTTPC domain client API reference, covering NewDomain creation, seven HTTP methods, four download methods, URL auto-concatenation, session headers, and cookie management.
+title: "Domain Client - HTTPC"
+description: "HTTPC domain client API: NewDomain, seven HTTP methods, four downloads, URL concatenation, DomainClienter interface, and session management."
 ---
 
 # Domain Client

@@ -1,6 +1,6 @@
 ---
-title: 审计日志 - CyberGo DD | AuditLogger
-description: CyberGo DD 审计日志完整 API 文档，包括 AuditLogger 异步审计事件记录器、AuditConfig 配置选项（输出目标、格式、签名）和审计条目结构化格式化，支持安全相关事件追踪记录，满足企业级合规审计和数据安全监管的各类需求。
+title: "审计日志 - CyberGo DD | AuditLogger"
+description: "CyberGo DD 审计日志完整 API 文档，包括 AuditLogger 异步审计事件记录器、AuditConfig 配置选项（输出目标、格式、签名）和审计条目结构化格式化，支持安全相关事件追踪记录，满足企业级合规审计和数据安全监管的各类需求。"
 ---
 
 # 审计日志

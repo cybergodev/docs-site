@@ -1,13 +1,13 @@
 ---
-title: テストガイド - HTTPC
-description: HTTPC テストガイド。TestingConfig 設定、httptest.Server シミュレーション、テーブル駆動テスト、ネットワークエラーシミュレーションとクライアントリソースクリーンアップ。
+title: "テストガイド - HTTPC"
+description: "HTTPCテストガイド：TestingConfigテスト専用設定、net/http/httptestモックサーバー統合、エラーレスポンス/遅延/リダイレクト/ファイルアップロードのシミュレーション、テーブル駆動テストパターン、コンテキストタイムアウトテストとReleaseResultリソースクリーンアップのベストプラクティス。"
 ---
 
 # テストガイド
 
 ## TestingConfig
 
-`TestingConfig()` はテスト環境向けに設計されており、セキュリティチェックを無効化し、タイムアウトを短縮してテストの実行を高速化します：
+`TestingConfig()`はテスト環境専用に設計されており、セキュリティチェックを無効にし、タイムアウトを短縮してテスト実行を高速化します：
 
 ```go
 func TestAPI(t *testing.T) {
@@ -23,12 +23,12 @@ func TestAPI(t *testing.T) {
 ```
 
 :::danger 危険
-`TestingConfig` は TLS 検証、SSRF 防護などのセキュリティ機能を無効にします。**テスト環境でのみ使用してください**。テスト以外の環境で使用すると、セキュリティ警告が表示されます。
+`TestingConfig`はTLS検証、SSRF防御などのセキュリティ機能を無効にします。**テスト環境でのみ使用してください**。テスト以外の環境で使用するとセキュリティ警告が表示されます。
 :::
 
-## httptest.Server との統合
+## httptest.Serverとの統合
 
-標準ライブラリ `net/http/httptest` を使用してモックサーバーを作成し、実際のバックエンドなしでインテグレーションテストを実行します：
+標準ライブラリ`net/http/httptest`でモックサーバーを作成し、実際のバックエンド不要の結合テストを実現：
 
 ```go
 package main
@@ -43,7 +43,7 @@ import (
 )
 
 func TestGetUser(t *testing.T) {
-    // モックサーバーの作成
+    // モックサーバーを作成
     server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         if r.URL.Path != "/users/1" {
             t.Errorf("unexpected path: %s", r.URL.Path)
@@ -60,7 +60,7 @@ func TestGetUser(t *testing.T) {
     }))
     defer server.Close()
 
-    // TestingConfig を使用してクライアントを作成
+    // TestingConfigでクライアントを作成
     client, err := httpc.New(httpc.TestingConfig())
     if err != nil {
         t.Fatal(err)
@@ -94,7 +94,7 @@ func TestGetUser(t *testing.T) {
 }
 ```
 
-## 様々なシナリオのシミュレーション
+## 各種シナリオのシミュレーション
 
 ### エラーレスポンスのシミュレーション
 
@@ -150,7 +150,7 @@ server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *htt
         t.Errorf("expected POST, got %s", r.Method)
     }
 
-    // multipart フォームの解析
+    // multipartフォームの解析
     r.ParseMultipartForm(10 << 20)
     file, header, err := r.FormFile("upload")
     if err != nil {
@@ -210,15 +210,15 @@ func TestHTTPMethods(t *testing.T) {
 ## ベストプラクティス
 
 | プラクティス | 説明 |
-|-------------|------|
-| `httptest.Server` の使用 | 実際の HTTP 動作をシミュレートし、ネットワーク依存なし |
-| `TestingConfig()` の使用 | セキュリティチェックを無効化し、ローカル接続がブロックされるのを防止 |
-| `ReleaseResult()` の呼び出し | オブジェクトプールに返却し、テストパフォーマンスを維持 |
-| `defer` の使用 | テストが失敗してもリソースが確実に解放されるようにする |
+|--------------|------|
+| `httptest.Server`を使用 | 実際のHTTP動作をシミュレート。ネットワーク依存なし |
+| `TestingConfig()`を使用 | セキュリティチェックを無効化し、ローカル接続のブロックを回避 |
+| `ReleaseResult()`を呼び出す | オブジェクトプールに返却し、テストパフォーマンスを維持 |
+| `defer`を使用 | テスト失敗時もリソース解放を確実に実行 |
 | テーブル駆動 | 複数の入力をカバーし、コードを簡潔に保つ |
 
 ## 次のステップ
 
-- [設定 API](../api-reference/config) - TestingConfig の詳細パラメータ
+- [設定API](../api-reference/config) - TestingConfigの詳細パラメータ
 - [エラータイプ](../api-reference/errors) - エラーアサーションリファレンス
 - [ミドルウェアチェーン](./middleware-chain) - ミドルウェアのテストパターン

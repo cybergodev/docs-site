@@ -1,5 +1,5 @@
 ---
-title: 타입 정의 - CyberGo JSON | API 레퍼런스
+title: "타입 정의 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 핵심 타입 정의 완전 레퍼런스: Result[T] 제네릭 결과, AccessResult 동적 접근 결과, BatchOperation, BatchResult, Schema 검증 모델, Stats, HealthStatus, IterableValue 및 인코딩 오류 타입을 포함하여 완전한 타입 시스템을 제공합니다."
 ---
 

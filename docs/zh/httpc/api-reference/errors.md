@@ -1,6 +1,6 @@
 ---
-title: 错误类型 - HTTPC
-description: HTTPC 错误类型 API 参考，详解 ClientError 结构体字段方法、十二种 ErrorType 枚举、哨兵错误变量及 errors.Is/As 匹配示例。
+title: "错误类型 - HTTPC"
+description: "HTTPC 错误类型 API 参考：ClientError 结构体八字段及 Code、IsRetryable、Unwrap 等五个方法、ErrorTypeNetwork 等十二种错误分类枚举、ErrNilConfig 等十三个哨兵错误变量与 errors.Is/As 匹配示例。"
 ---
 
 # 错误类型

@@ -1,5 +1,5 @@
 ---
-title: FAQ - CyberGo DD | Frequently Asked Questions
+title: "FAQ - CyberGo DD | Frequently Asked Questions"
 description: "CyberGo DD FAQ: configuration tuning, performance optimization, sensitive data filtering, audit logging, file rotation, error handling, and hook usage."
 ---
 

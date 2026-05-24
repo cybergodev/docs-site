@@ -1,5 +1,5 @@
 ---
-title: API リファレンス - CyberGo JSON | 完全関数ドキュメント
+title: "API リファレンス - CyberGo JSON | 完全関数ドキュメント"
 description: "CyberGo JSON 完全 API リファレンスマニュアル：GetString/GetInt パスクエリ、Set/Delete 変更操作、Marshal/Unmarshal シリアライズ、Processor プロセッサ、Schema 検証、Hook フックとセキュリティ設定を網羅し、encoding/json 標準ライブラリと100%互換。"
 ---
 

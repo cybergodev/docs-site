@@ -1,6 +1,6 @@
 ---
-title: Multi-format Config - CyberGo env | .env/JSON/YAML
-description: Complete guide for CyberGo env multi-format configuration file loading, supporting .env, JSON, and YAML formats with auto-detection and mixed loading, covering key-value merge priority rules, format conversion utilities, JSON and YAML specific configuration options for Go developers in microservice and containerized scenarios.
+title: "Multi-format Config - CyberGo env | .env/JSON/YAML"
+description: "Complete guide for CyberGo env multi-format configuration file loading, supporting .env, JSON, and YAML formats with auto-detection and mixed loading, covering key-value merge priority rules, format conversion utilities, JSON and YAML specific configuration options for Go developers in microservice and containerized scenarios."
 ---
 
 # Multi-format Config

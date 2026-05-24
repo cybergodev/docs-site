@@ -1,5 +1,5 @@
 ---
-title: Quick Start - CyberGo DD | 5-Minute Guide
+title: "Quick Start - CyberGo DD | 5-Minute Guide"
 description: "Get started with CyberGo DD: install, first log output, create loggers, configure rotation, structured fields, and hook system in 5 minutes."
 ---
 

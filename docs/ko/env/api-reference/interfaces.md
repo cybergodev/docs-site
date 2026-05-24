@@ -1,6 +1,6 @@
 ---
-title: 인터페이스 정의 - CyberGo env | 핵심 인터페이스 계층
-description: CyberGo env 라이브러리 인터페이스 유형 정의 전체 참조 문서로, 세분화된 인터페이스 설계로 의존성 주입과 유연한 조합을 지원하며, Validator 검증기, FullAuditLogger 감사 핸들러, EnvParser 파서, EnvStorage 보안 저장소 및 FileSystem 파일 시스템 어댑터 등 핵심 인터페이스의 상세 설명과 사용법을 포함합니다.
+title: "인터페이스 정의 - CyberGo env | 핵심 인터페이스 계층"
+description: "CyberGo env 라이브러리 인터페이스 유형 정의 전체 참조 문서로, 세분화된 인터페이스 설계로 의존성 주입과 유연한 조합을 지원하며, Validator 검증기, FullAuditLogger 감사 핸들러, EnvParser 파서, EnvStorage 보안 저장소 및 FileSystem 파일 시스템 어댑터 등 핵심 인터페이스의 상세 설명과 사용법을 포함합니다."
 ---
 
 # 인터페이스 정의

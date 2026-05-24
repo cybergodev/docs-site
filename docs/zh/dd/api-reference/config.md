@@ -1,6 +1,6 @@
 ---
-title: 配置 - CyberGo DD | Config 详解
-description: CyberGo DD Config 结构体完整 API 文档，包含 DefaultConfig/DevelopmentConfig/JSONConfig 预设配置函数、OutputTarget 输出目标配置、字段验证规则、采样控制、格式化选项和 Validate 验证方法，提供灵活且类型安全的日志记录器行为定制能力。
+title: "配置 - CyberGo DD | Config 详解"
+description: "CyberGo DD Config 结构体完整 API 文档，包含 DefaultConfig/DevelopmentConfig/JSONConfig 预设配置函数、OutputTarget 输出目标配置、字段验证规则、采样控制、格式化选项和 Validate 验证方法，提供灵活且类型安全的日志记录器行为定制能力。"
 ---
 
 # 配置

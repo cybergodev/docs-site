@@ -1,5 +1,5 @@
 ---
-title: セキュリティ概要 - CyberGo JSON | セキュリティベストプラクティス
+title: "セキュリティ概要 - CyberGo JSON | セキュリティベストプラクティス"
 description: "CyberGo JSON セキュリティベストプラクティスガイド：入力バリデーションとサニタイズ、MaxNestingDepthSecurity/MaxMemory リソース制限防御、パストラバーサル攻撃対策、JSON インジェクション対策、機密データフィルタリング、監査ログ設定を網羅し、開発者がプロダクション環境での JSON データセキュリティを確保できるよう支援します。"
 ---
 

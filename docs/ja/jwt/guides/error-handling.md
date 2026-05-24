@@ -1,6 +1,6 @@
 ---
-title: エラー処理 - JWT
-description: CyberGo JWT エラー処理ガイド：17 個のセンチネルエラーの分類、errors.Is() マッチングパターン、ValidationError 型および Web サービスでのエラー処理ベストプラクティス。
+title: "エラー処理 - JWT"
+description: "CyberGo JWT エラー処理ガイド：17 個のセンチネルエラーの分類、errors.Is() マッチングパターン、ValidationError 型および Web サービスでのエラー処理ベストプラクティス。"
 ---
 
 # エラー処理

@@ -1,5 +1,5 @@
 ---
-title: Getting Started - CyberGo JSON | 5-Minute Guide
+title: "Getting Started - CyberGo JSON | 5-Minute Guide"
 description: "CyberGo JSON quick start guide: installation, path queries GetString/GetInt, encoding/decoding Marshal/Unmarshal, file I/O operations. Master Go JSON best practices in 5 minutes with JSONPath queries and type-safe getters, 100% compatible with encoding/json."
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: JSON 处理库 - CyberGo JSON | 高性能 Go 库
+title: "JSON 处理库 - CyberGo JSON | 高性能 Go 库"
 description: "CyberGo JSON 是高性能、线程安全的 Go 语言 JSON 处理库，支持 JSONPath 路径查询、流式处理、泛型 API 和 Schema 验证。100% 兼容 encoding/json，提供安全防护、智能缓存、JSONL 处理和 Hook 系统，适用于高并发生产环境。"
 ---
 

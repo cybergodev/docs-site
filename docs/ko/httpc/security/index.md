@@ -1,6 +1,6 @@
 ---
-title: 보안 개요 - HTTPC
-description: HTTPC 보안 기능 개요, TLS 강제 버전 관리, SSRF 방어, 요청 헤더 주입 검증, Cookie 보안 속성, 리다이렉트 허용 목록과 응답 본문 크기 제한 포함.
+title: "보안 개요 - HTTPC"
+description: "HTTPC 보안 기능 개요: TLS 1.2+ 버전 제어, SSRF 사설 IP 차단과 CIDR 면제, CRLF 주입 방지, StrictCookieSecurityConfig Cookie 보안, RedirectWhitelist 리다이렉트 허용 목록과 응답 본문 크기 제한."
 ---
 
 # 보안 개요

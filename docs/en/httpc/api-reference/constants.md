@@ -1,6 +1,6 @@
 ---
-title: Constants and Types - HTTPC
-description: HTTPC constants and helper types API reference, covering BodyKind request body enum, FormData/FileData upload types, AuditEvent audit struct, and context key definitions.
+title: "Constants and Types - HTTPC"
+description: "HTTPC constants and types: BodyKind enum, FormData/FileData upload, AuditEvent struct, and SourceIPKey/UserIDKey context keys."
 ---
 
 # Constants and Types

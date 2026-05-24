@@ -1,6 +1,6 @@
 ---
-title: Signing Algorithms - JWT
-description: CyberGo JWT signing algorithm guide covering HMAC, RSA, RSA-PSS, and ECDSA with 12 algorithms, key requirements, usage methods, scenario selection, and performance comparison.
+title: "Signing Algorithms - JWT"
+description: "CyberGo JWT signing algorithm guide covering HMAC, RSA, RSA-PSS, and ECDSA with 12 algorithms, key requirements, usage methods, scenario selection, and performance comparison."
 ---
 
 # Signing Algorithms

@@ -1,6 +1,6 @@
 ---
-title: CyberGo env - 환경 변수 관리 라이브러리
-description: CyberGo env는 고보안 Go 환경 변수 관리 라이브러리로, .env, JSON, YAML 다중 형식 파일 로딩과 자동 형식 감지를 지원하며, Loader 인터페이스, 타입 안전 변환, 스레드 안전 동시 접근, SecureValue 메모리 보호와 완전한 감사 로그 기능을 제공하고, 다양한 설정 프리셋 템플릿을 내장하여 웹 서비스 및 컨테이너 배포 등의 시나리오에 적합합니다.
+title: "CyberGo env - 환경 변수 관리 라이브러리"
+description: "CyberGo env는 고보안 Go 환경 변수 관리 라이브러리로, .env, JSON, YAML 다중 형식 파일 로딩과 자동 형식 감지를 지원하며, Loader 인터페이스, 타입 안전 변환, 스레드 안전 동시 접근, SecureValue 메모리 보호와 완전한 감사 로그 기능을 제공하고, 다양한 설정 프리셋 템플릿을 내장하여 웹 서비스 및 컨테이너 배포 등의 시나리오에 적합합니다."
 ---
 
 # env

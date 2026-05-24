@@ -1,6 +1,6 @@
 ---
-title: 安全概述 - CyberGo env | 安全架构
-description: CyberGo env 库安全架构全面概览，详解 SecureValue 内存锁定保护与 mlock 系统调用机制、键值验证与过滤规则配置、DefaultForbiddenKeys 禁止键名列表、敏感数据 IsSensitiveKey 自动检测、安全级别预设配置和审计日志追踪等核心安全特性。
+title: "安全概述 - CyberGo env | 安全架构"
+description: "CyberGo env 库安全架构全面概览，详解 SecureValue 内存锁定保护与 mlock 系统调用机制、键值验证与过滤规则配置、DefaultForbiddenKeys 禁止键名列表、敏感数据 IsSensitiveKey 自动检测、安全级别预设配置和审计日志追踪等核心安全特性。"
 ---
 
 # 安全概述

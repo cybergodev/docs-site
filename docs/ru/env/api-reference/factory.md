@@ -1,5 +1,5 @@
 ---
-title: ComponentFactory API - CyberGo env | Фабрика компонентов
+title: "ComponentFactory API - CyberGo env | Фабрика компонентов"
 description: "Полный справочник API ComponentFactory библиотеки CyberGo env: создание и управление общими компонентами Loader и Parser, включая обработчики аудита, валидаторы, адаптеры файловой системы и регистрацию пользовательских парсеров через RegisterParser, управление жизненным циклом компонентов через Close и потокобезопасный параллельный доступ."
 ---
 

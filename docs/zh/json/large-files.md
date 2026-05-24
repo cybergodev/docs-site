@@ -1,5 +1,5 @@
 ---
-title: 大文件处理 - CyberGo JSON | 指南
+title: "大文件处理 - CyberGo JSON | 指南"
 description: "CyberGo JSON 大文件处理完整指南：详细介绍 ForeachFile 结构化迭代、ForeachFileChunked 批量处理、内存控制配置、缓冲区大小优化、JSONL 批量处理和 NDJSONProcessor 真正流式处理，适用于日志分析、数据导出和 ETL 场景。"
 ---
 

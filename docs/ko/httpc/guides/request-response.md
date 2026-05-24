@@ -1,6 +1,6 @@
 ---
-title: 요청과 응답 - HTTPC
-description: HTTPC 요청과 응답 처리 가이드, 요청 헤더 설정, 다양한 요청 본문 형식, 쿼리 매개변수, 인증 방식, Cookie 관리 및 스트리밍 응답의 코드 예제 포함.
+title: "요청과 응답 - HTTPC"
+description: "HTTPC 요청과 응답 처리 가이드: 패키지 레벨 함수와 클라이언트 요청, WithHeader/WithJSON/WithForm 등 요청 옵션, WithBearerToken 인증, WithQuery 쿼리 매개변수, Cookie 관리, 컨텍스트 제어, 스트리밍 응답과 압축 해제 크기 제한 구성."
 ---
 
 # 요청과 응답

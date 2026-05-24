@@ -1,6 +1,6 @@
 ---
-title: 미들웨어 - HTTPC
-description: HTTPC 미들웨어 시스템 API 참조, Chain 조합 함수, 8개 내장 미들웨어 팩토리 함수, 구성형 감사와 AuditEvent 감사 이벤트 유형 정의 포함.
+title: "미들웨어 - HTTPC"
+description: "HTTPC 미들웨어 시스템 API 레퍼런스: Chain 양파 모델 조합, Recovery/Logging/RequestID/Timeout/Header/Metrics/Audit 8개 내장 미들웨어, AuditMiddlewareWithConfig 구성형 감사와 AuditEvent 감사 이벤트 구조체."
 ---
 
 # 미들웨어
@@ -103,7 +103,7 @@ middleware := httpc.RequestIDMiddleware("X-Request-ID", func() string {
 })
 ```
 
-:::tip 사용 팁
+:::tip
 기본 생성기는 `crypto/rand`를 사용하여 예측 불가능한 ID를 생성하므로 보안 민감 시나리오에 적합합니다.
 :::
 
@@ -216,7 +216,7 @@ client, _ := httpc.New(&httpc.Config{
 })
 ```
 
-## 감사 유형
+## 감사 타입
 
 ### AuditEvent
 
@@ -303,13 +303,13 @@ ctx = context.WithValue(ctx, httpc.UserIDKey, "user-123")
 result, err := client.Request(ctx, "GET", url)
 ```
 
-| 상수 | 유형 | 설명 |
+| 상수 | 타입 | 설명 |
 |------|------|------|
 | `SourceIPKey` | `auditContextKey` | 출발지 IP 컨텍스트 키 |
 | `UserIDKey` | `auditContextKey` | 사용자 식별자 컨텍스트 키 |
 
 ## 참고
 
-- [인터페이스 정의](./interfaces) - MiddlewareFunc, Handler 유형 정의
+- [인터페이스 정의](./interfaces) - MiddlewareFunc, Handler 타입 정의
 - [미들웨어 체인](../guides/middleware-chain) - 미들웨어 사용 가이드
-- [상수와 유형](./constants) - AuditEvent, AuditMiddlewareConfig 유형
+- [상수와 타입](./constants) - AuditEvent, AuditMiddlewareConfig 타입

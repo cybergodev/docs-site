@@ -1,6 +1,6 @@
 ---
-title: Domain Client and Sessions - HTTPC
-description: Guide to HTTPC domain client and session management, covering NewDomain creation, URL auto-concatenation, session headers, automatic Cookie management, and security configuration.
+title: "Domain Client and Sessions - HTTPC"
+description: "HTTPC domain client and sessions: NewDomain creation, URL concatenation, session headers, auto Cookie management, and CookieSecurity validation."
 ---
 
 # Domain Client and Sessions

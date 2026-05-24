@@ -1,6 +1,6 @@
 ---
-title: 빠른 시작 - HTML
-description: CyberGo HTML 라이브러리 빠른 시작 튜토리얼, 5분 안에 설치, 기본 콘텐츠 추출, 네 가지 Config 프리셋(기본, 순수 텍스트, Markdown, 고보안), 순수 텍스트와 Markdown 및 JSON 세 가지 출력 형식, 컨텍스트 타임아웃 제어 및 동시성 안전 사용 패턴을 익혀 HTML 콘텐츠 추출 도구에 빠르게 입문합니다.
+title: "빠른 시작 - HTML"
+description: "CyberGo HTML 라이브러리 빠른 시작 튜토리얼, 5분 안에 설치, 기본 콘텐츠 추출, 네 가지 Config 프리셋(기본, 순수 텍스트, Markdown, 고보안), 순수 텍스트와 Markdown 및 JSON 세 가지 출력 형식, 컨텍스트 타임아웃 제어 및 동시성 안전 사용 패턴을 익혀 HTML 콘텐츠 추출 도구에 빠르게 입문합니다."
 ---
 
 # 빠른 시작

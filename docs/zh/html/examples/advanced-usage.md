@@ -1,6 +1,6 @@
 ---
-title: 高级示例 - HTML
-description: CyberGo HTML 库高级示例集合，展示自定义 Scorer 评分器实现、多 Sink 审计管道构建、批量文件处理与并发控制、Processor 池化模式和 ChannelAuditSink 实时监控等进阶用法与完整的可运行代码示例，帮助掌握生产级进阶使用技巧。
+title: "高级示例 - HTML"
+description: "CyberGo HTML 库高级示例集合，展示自定义 Scorer 评分器实现、多 Sink 审计管道构建、批量文件处理与并发控制、Processor 池化模式和 ChannelAuditSink 实时监控等进阶用法与完整的可运行代码示例，帮助掌握生产级进阶使用技巧。"
 ---
 
 # 高级示例

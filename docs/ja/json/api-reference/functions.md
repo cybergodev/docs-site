@@ -1,5 +1,5 @@
 ---
-title: パッケージ関数 - CyberGo JSON | API リファレンス
+title: "パッケージ関数 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON パッケージレベル関数リファレンス：Get/GetString/GetInt/GetTyped パスクエリ、Set/Delete/MergeJSON 変更、Marshal/Unmarshal エンコード・デコード、LoadFromFile/SaveToFile ファイル操作を含み、Processor インスタンスを作成せずに直接呼び出し可能。"
 ---
 

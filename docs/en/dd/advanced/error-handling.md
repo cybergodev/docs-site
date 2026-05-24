@@ -1,5 +1,5 @@
 ---
-title: Error Handling - CyberGo DD | Log Error Management
+title: "Error Handling - CyberGo DD | Log Error Management"
 description: "CyberGo DD error handling guide: structured error types, sentinel errors, errors.Is/As wrapping, custom strategies, recovery, and error hook callbacks."
 ---
 

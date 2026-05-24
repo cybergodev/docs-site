@@ -1,6 +1,6 @@
 ---
-title: Logger - CyberGo DD | コアロガー
-description: CyberGo DD Logger コアロガー完全 API ドキュメント。ログ出力メソッド（Info/Warn/Error/Fatal）、レベル動的管理、Writer 動的追加と置き換え、ライフサイクル制御（Close/Flush）、グローバルログ関数とチェーンフィールド設定をカバー。DD ログライブラリを使用するためのコアエントリタイプです。
+title: "Logger - CyberGo DD | コアロガー"
+description: "CyberGo DD Logger コアロガー完全 API ドキュメント。ログ出力メソッド（Info/Warn/Error/Fatal）、レベル動的管理、Writer 動的追加と置き換え、ライフサイクル制御（Close/Flush）、グローバルログ関数とチェーンフィールド設定をカバー。DD ログライブラリを使用するためのコアエントリタイプです。"
 ---
 
 # Logger

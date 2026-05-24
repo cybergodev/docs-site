@@ -1,6 +1,6 @@
 ---
-title: Basic Examples - JWT
-description: CyberGo JWT basic examples covering HMAC symmetric signing, access and refresh token pair creation, token revocation with blacklist, and rate limiting protection.
+title: "Basic Examples - JWT"
+description: "CyberGo JWT basic examples covering HMAC symmetric signing, access and refresh token pair creation, token revocation with blacklist, and rate limiting protection."
 ---
 
 # Basic Examples

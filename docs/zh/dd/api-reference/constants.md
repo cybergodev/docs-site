@@ -1,6 +1,6 @@
 ---
-title: 常量与错误 - CyberGo DD | LogLevel、Format、SentinelErrors
-description: CyberGo DD 常量定义与错误类型完整文档，包括 LogLevel 日志级别常量（Debug/Info/Warn/Error/Fatal）、Format 输出格式常量和 SentinelErrors 哨兵错误定义，用于精确控制日志行为和错误处理，是理解 DD 日志库配置体系的核心基础。
+title: "常量与错误 - CyberGo DD | LogLevel、Format、SentinelErrors"
+description: "CyberGo DD 常量定义与错误类型完整文档，包括 LogLevel 日志级别常量（Debug/Info/Warn/Error/Fatal）、Format 输出格式常量和 SentinelErrors 哨兵错误定义，用于精确控制日志行为和错误处理，是理解 DD 日志库配置体系的核心基础。"
 ---
 
 # 常量与错误

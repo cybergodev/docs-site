@@ -1,6 +1,6 @@
 ---
-title: Middleware Chain - HTTPC
-description: In-depth guide to HTTPC middleware chain covering onion model execution, eight built-in middleware functions, Chain composition, and custom middleware development.
+title: "Middleware Chain - HTTPC"
+description: "HTTPC middleware chain: onion model, eight built-in middleware, Chain composition, and custom MiddlewareFunc development with examples."
 ---
 
 # Middleware Chain

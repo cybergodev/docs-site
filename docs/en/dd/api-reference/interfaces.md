@@ -1,5 +1,5 @@
 ---
-title: Interface Definitions - CyberGo DD | Logger Hierarchy
+title: "Interface Definitions - CyberGo DD | Logger Hierarchy"
 description: "CyberGo DD interface hierarchy: CoreLogger, LevelLogger, ConfigurableLogger, and LogProvider for multi-level abstraction and dependency injection."
 ---
 

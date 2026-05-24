@@ -1,6 +1,6 @@
 ---
-title: 配置 - HTML
-description: CyberGo HTML 库 Config 配置详解，包括资源管理（MaxInputSize、缓存、超时）、安全（清洗、深度限制、审计）、内容提取（文章识别、媒体保留）、输出格式（图片、链接、表格）、链接过滤（Include*、ResolveRelativeURLs）和 Validate 验证方法。
+title: "配置 - HTML"
+description: "CyberGo HTML 库 Config 配置详解，包括资源管理（MaxInputSize、缓存、超时）、安全（清洗、深度限制、审计）、内容提取（文章识别、媒体保留）、输出格式（图片、链接、表格）、链接过滤（Include*、ResolveRelativeURLs）和 Validate 验证方法。"
 ---
 
 # 配置

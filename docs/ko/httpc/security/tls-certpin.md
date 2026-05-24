@@ -1,6 +1,6 @@
 ---
-title: TLS와 인증서 고정 - HTTPC
-description: HTTPC TLS와 인증서 고정 가이드, TLS 버전 관리, 사용자 정의 CA 로드, mTLS 상호 인증, SPKI 공개 키 고정과 HTTP/2 협상 상세 설명.
+title: "TLS와 인증서 고정 - HTTPC"
+description: "HTTPC TLS와 인증서 고정 가이드: TLS 1.2-1.3 버전 제어와 암호 스위트, 사용자 정의 CA 인증서 로드, mTLS 상호 인증, VerifyPeerCertificate SPKI 공개 키 고정 전략, InsecureSkipVerify 경고와 HTTP/2 협상."
 ---
 
 # TLS와 인증서 고정

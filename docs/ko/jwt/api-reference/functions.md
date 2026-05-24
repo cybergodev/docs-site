@@ -1,5 +1,5 @@
 ---
-title: 패키지 함수 - JWT API 레퍼런스
+title: "패키지 함수 - JWT API 레퍼런스"
 description: "CyberGo JWT 패키지 수준 함수 레퍼런스: New Processor 생성, DefaultConfig 기본 설정, DefaultBlacklistConfig 블랙리스트 설정, NewNumericDate, NewRateLimiter."
 ---
 

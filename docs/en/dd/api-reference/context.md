@@ -1,5 +1,5 @@
 ---
-title: Context Integration - CyberGo DD | Context Integration
+title: "Context Integration - CyberGo DD | Context Integration"
 description: "CyberGo DD context API: TraceID, SpanID, RequestID propagation, ContextExtractor interface, and OpenTelemetry integration for distributed tracing."
 ---
 

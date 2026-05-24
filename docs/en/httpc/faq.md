@@ -1,6 +1,6 @@
 ---
-title: FAQ - HTTPC
-description: HTTPC frequently asked questions covering package-level function usage, configuration preset comparison, proxy setup, error matching, object pool management, and timeout tuning.
+title: "FAQ - HTTPC"
+description: "HTTPC FAQ: package-level vs client usage, five config presets, proxy/DoH setup, errors.Is/As matching, ReleaseResult pool reuse, and timeout tuning."
 ---
 
 # FAQ

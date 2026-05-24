@@ -1,6 +1,6 @@
 ---
-title: Security Overview - HTTPC
-description: Overview of HTTPC security features, covering TLS version enforcement, SSRF protection, header injection validation, cookie security attributes, redirect whitelisting, and response body size limits.
+title: "Security Overview - HTTPC"
+description: "HTTPC security: TLS 1.2+ enforcement, SSRF protection, CRLF prevention, cookie security, redirect whitelisting, and response size limits."
 ---
 
 # Security Overview

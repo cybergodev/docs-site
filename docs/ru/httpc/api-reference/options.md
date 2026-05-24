@@ -1,11 +1,11 @@
 ---
-title: Параметры запросов - HTTPC
-description: "Справочник API двадцати семи функций параметров запросов HTTPC, сгруппированных по категориям: заголовки запросов, аутентификация, различные форматы тела запроса, параметры запроса, управление Cookie и функции обратного вызова."
+title: "Параметры запросов — HTTPC"
+description: "Справочник API 27 функций параметров запросов HTTPC: WithHeader для заголовков, WithBearerToken для аутентификации, WithJSON/WithXML/WithForm/WithBinary для тела запроса, WithQuery для параметров запроса, пять функций Cookie и обратные вызовы WithOnRequest/WithOnResponse."
 ---
 
 # Параметры запросов
 
-Параметры запросов — это функциональные элементы конфигурации, передаваемые методам запросов через тип `RequestOption` для точного управления запросами.
+Параметры запросов — это функциональные конфигурации, передаваемые в методы запросов через тип `RequestOption` для точного управления запросами.
 
 ```go
 result, err := client.Post(url,
@@ -121,7 +121,7 @@ func WithXML(data any) RequestOption
 func WithForm(data map[string]string) RequestOption
 ```
 
-Устанавливает тело запроса в формате URL-кодированной формы, автоматически добавляет `Content-Type: application/x-www-form-urlencoded`.
+Устанавливает тело запроса в формате URL-encoded формы, автоматически добавляет `Content-Type: application/x-www-form-urlencoded`.
 
 ```go
 result, err := client.Post(url,
@@ -138,7 +138,7 @@ result, err := client.Post(url,
 func WithFormData(data *FormData) RequestOption
 ```
 
-Устанавливает тело запроса в формате `multipart/form-data`, поддерживает смешанную загрузку файлов и полей.
+Устанавливает тело запроса в формате `multipart/form-data`, поддерживает одновременную загрузку файлов и полей.
 
 ```go
 result, err := client.Post(url,
@@ -157,7 +157,7 @@ result, err := client.Post(url,
 func WithFile(fieldName, filename string, content []byte) RequestOption
 ```
 
-Удобная загрузка файла. Автоматически создаёт тело запроса multipart, имя файла обрабатывается для защиты от обхода пути.
+Удобная загрузка файла. Автоматически создаёт multipart-тело запроса, имя файла проходит обработку для защиты от обхода пути.
 
 ```go
 result, err := client.Post(url,
@@ -171,7 +171,7 @@ result, err := client.Post(url,
 func WithBinary(data []byte, contentType ...string) RequestOption
 ```
 
-Устанавливает бинарное тело запроса. По умолчанию Content-Type: `application/octet-stream`, можно настроить.
+Устанавливает бинарное тело запроса. По умолчанию Content-Type: `application/octet-stream`, можно указать другой.
 
 ```go
 result, err := client.Post(url,
@@ -190,15 +190,15 @@ func WithBody(data any, kind ...BodyKind) RequestOption
 **Правила автоопределения** (по умолчанию `BodyAuto`):
 
 | Тип входных данных | Content-Type |
-|-------------------|-------------|
+|--------------------|-------------|
 | `string` | text/plain; charset=utf-8 |
 | `[]byte` | application/octet-stream |
 | `map[string]string` | application/x-www-form-urlencoded |
 | `*FormData` | multipart/form-data |
-| `io.Reader` | не устанавливается (обрабатывается вызывающей стороной) |
+| `io.Reader` | Не устанавливается (обрабатывается вызывающей стороной) |
 | Другие типы | application/json |
 
-**Явное указание типа**:
+**Явное указание типа:**
 
 ```go
 // Автоопределение (по умолчанию)
@@ -212,7 +212,7 @@ result, _ := client.Post(url, httpc.WithBody(data, httpc.BodyXML))
 ```
 
 | Константа | Значение |
-|-----------|---------|
+|-----------|----------|
 | `BodyAuto` | Автоопределение (по умолчанию) |
 | `BodyJSON` | Принудительный JSON |
 | `BodyXML` | Принудительный XML |
@@ -263,7 +263,7 @@ result, err := client.Get(url,
 func WithCookie(cookie http.Cookie) RequestOption
 ```
 
-Добавляет один Cookie, проходит проверку безопасности.
+Добавляет один Cookie с проверкой безопасности.
 
 ```go
 result, err := client.Get(url,
@@ -277,7 +277,7 @@ result, err := client.Get(url,
 func WithCookies(cookies []http.Cookie) RequestOption
 ```
 
-Массовое добавление Cookie, эффективнее нескольких вызовов `WithCookie` — предварительно выделяет ёмкость и проверяет все Cookie за один проход.
+Массовое добавление Cookie. Эффективнее нескольких вызовов `WithCookie` — предварительно выделяет ёмкость и проверяет все Cookie за один проход.
 
 ```go
 cookies := []http.Cookie{
@@ -302,7 +302,7 @@ func WithCookieMap(cookies map[string]string) RequestOption
 result, err := client.Get(url,
     httpc.WithCookieMap(map[string]string{
         "session_id": "abc123",
-        "lang":       "zh",
+        "lang":       "ru",
     }),
 )
 ```
@@ -317,7 +317,7 @@ func WithCookieString(cookieString string) RequestOption
 
 ```go
 result, err := client.Get(url,
-    httpc.WithCookieString("session=abc123; lang=zh"),
+    httpc.WithCookieString("session=abc123; lang=ru"),
 )
 ```
 
@@ -335,7 +335,7 @@ result, err := client.Get(url,
 )
 ```
 
-## Управление запросом
+## Управление запросами
 
 ### WithContext
 
@@ -343,7 +343,7 @@ result, err := client.Get(url,
 func WithContext(ctx context.Context) RequestOption
 ```
 
-Устанавливает контекст запроса, поддерживает тайм-аут и отмену. Контекст не может быть nil.
+Устанавливает контекст запроса, поддерживает таймауты и отмену. Контекст не может быть nil.
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -358,7 +358,7 @@ result, err := client.Get(url, httpc.WithContext(ctx))
 func WithTimeout(timeout time.Duration) RequestOption
 ```
 
-Устанавливает тайм-аут для одного запроса, переопределяет тайм-аут клиента по умолчанию. Диапазон: от 0 до 30 минут.
+Устанавливает таймаут для отдельного запроса, переопределяя таймаут клиента по умолчанию. Диапазон: от 0 до 30 минут.
 
 ```go
 result, err := client.Get(url, httpc.WithTimeout(5*time.Second))
@@ -370,7 +370,7 @@ result, err := client.Get(url, httpc.WithTimeout(5*time.Second))
 func WithMaxRetries(maxRetries int) RequestOption
 ```
 
-Устанавливает максимальное количество повторных попыток для одного запроса, переопределяет конфигурацию клиента. Диапазон: 0-10.
+Устанавливает максимальное количество повторных попыток для отдельного запроса, переопределяя конфигурацию клиента. Диапазон: 0–10.
 
 ```go
 result, err := client.Get(url, httpc.WithMaxRetries(3))
@@ -385,7 +385,7 @@ func WithFollowRedirects(follow bool) RequestOption
 Управляет следованием перенаправлениям.
 
 ```go
-// Запретить следование перенаправлениям
+// Запретить перенаправления
 result, err := client.Get(url, httpc.WithFollowRedirects(false))
 ```
 
@@ -395,7 +395,7 @@ result, err := client.Get(url, httpc.WithFollowRedirects(false))
 func WithMaxRedirects(maxRedirects int) RequestOption
 ```
 
-Устанавливает максимальное количество перенаправлений для одного запроса. Диапазон: 0-50.
+Устанавливает максимальное количество перенаправлений для отдельного запроса. Диапазон: 0–50.
 
 ### WithStreamBody
 
@@ -403,7 +403,7 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 func WithStreamBody(stream bool) RequestOption
 ```
 
-Включает потоковый режим, тело ответа не кэшируется в памяти. Используется внутри для загрузки файлов, предотвращает потребление памяти большими файлами.
+Включает потоковый режим, тело ответа не кэшируется в памяти. Используется внутри для загрузки файлов, предотвращая загрузку больших файлов в память.
 
 ```go
 result, err := client.Get(url, httpc.WithStreamBody(true))
@@ -417,12 +417,12 @@ result, err := client.Get(url, httpc.WithStreamBody(true))
 func WithOnRequest(callback func(req RequestMutator) error) RequestOption
 ```
 
-Регистрирует обратный вызов перед отправкой запроса. Можно регистрировать несколько, выполняются в порядке добавления. Возврат ошибки из обратного вызова прерывает запрос.
+Регистрирует обратный вызов перед отправкой запроса. Можно зарегистрировать несколько, выполняются в порядке добавления. Возврат ошибки прерывает запрос.
 
 ```go
 result, err := client.Get(url,
     httpc.WithOnRequest(func(req httpc.RequestMutator) error {
-        log.Printf("Отправка %s %s", req.Method(), req.URL())
+        log.Printf("отправка %s %s", req.Method(), req.URL())
         return nil
     }),
 )
@@ -434,12 +434,12 @@ result, err := client.Get(url,
 func WithOnResponse(callback func(resp ResponseMutator) error) RequestOption
 ```
 
-Регистрирует обратный вызов после получения ответа. Можно регистрировать несколько, выполняются в порядке добавления.
+Регистрирует обратный вызов после получения ответа. Можно зарегистрировать несколько, выполняются в порядке добавления.
 
 ```go
 result, err := client.Get(url,
     httpc.WithOnResponse(func(resp httpc.ResponseMutator) error {
-        log.Printf("Получен ответ: %d %s", resp.StatusCode(), resp.Status())
+        log.Printf("получен ответ: %d %s", resp.StatusCode(), resp.Status())
         return nil
     }),
 )
@@ -447,6 +447,6 @@ result, err := client.Get(url,
 
 ## См. также
 
-- [Константы и типы](./constants) - константы BodyKind и псевдонимы типов
-- [Определения интерфейсов](./interfaces) - интерфейсы RequestMutator, ResponseMutator
-- [Запросы и ответы](../guides/request-response) - руководство по использованию параметров запросов
+- [Константы и типы](./constants) — константы BodyKind и псевдонимы типов
+- [Определения интерфейсов](./interfaces) — интерфейсы RequestMutator, ResponseMutator
+- [Запросы и ответы](../guides/request-response) — руководство по использованию параметров запросов

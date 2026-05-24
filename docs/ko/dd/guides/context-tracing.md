@@ -1,6 +1,6 @@
 ---
-title: 분산 추적 통합 - CyberGo DD | Context와 추적 가이드
-description: CyberGo DD 분산 추적 통합 가이드. TraceID, SpanID, RequestID 컨텍스트 전파, ContextExtractor 커스텀 추출기, HTTP 미들웨어 통합 패턴, 요청 범위 로그 및 OpenTelemetry 등 추적 시스템과의 통합 방식을 다루어 개발자가 마이크로서비스 아키텍처에서 엔드투엔드 로그 추적을 구현할 수 있도록 돕습니다.
+title: "분산 추적 통합 - CyberGo DD | Context와 추적 가이드"
+description: "CyberGo DD 분산 추적 통합 가이드. TraceID, SpanID, RequestID 컨텍스트 전파, ContextExtractor 커스텀 추출기, HTTP 미들웨어 통합 패턴, 요청 범위 로그 및 OpenTelemetry 등 추적 시스템과의 통합 방식을 다루어 개발자가 마이크로서비스 아키텍처에서 엔드투엔드 로그 추적을 구현할 수 있도록 돕습니다."
 ---
 
 # 분산 추적 통합

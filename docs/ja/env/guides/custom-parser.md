@@ -1,6 +1,6 @@
 ---
-title: カスタムパーサー - CyberGo env | ファイルフォーマットの拡張
-description: CyberGo env ライブラリのカスタムパーサー開発完全ガイド。EnvParser インターフェースの実装によるカスタムフォーマットパーサーの作成方法を詳解。RegisterParser で ComponentFactory に登録し、読み込みフローに統合する方法を説明。TOML および INI パーサーの完全な実装例、エラー処理パターン、本番環境のベストプラクティスを含みます。
+title: "カスタムパーサー - CyberGo env | ファイルフォーマットの拡張"
+description: "CyberGo env ライブラリのカスタムパーサー開発完全ガイド。EnvParser インターフェースの実装によるカスタムフォーマットパーサーの作成方法を詳解。RegisterParser で ComponentFactory に登録し、読み込みフローに統合する方法を説明。TOML および INI パーサーの完全な実装例、エラー処理パターン、本番環境のベストプラクティスを含みます。"
 ---
 
 # カスタムパーサー

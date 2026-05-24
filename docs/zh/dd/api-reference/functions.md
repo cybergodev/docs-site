@@ -1,6 +1,6 @@
 ---
-title: 包函数 - CyberGo DD | 全局函数和构造器
-description: CyberGo DD 包级函数完整 API 文档，包括 New 日志记录器创建函数、Default/SetDefault/InitDefault 全局日志管理函数、DefaultConfig/DevelopmentConfig/JSONConfig 配置预设函数以及所有构造器工厂函数，支持通过 dd. 前缀直接调用。
+title: "包函数 - CyberGo DD | 全局函数和构造器"
+description: "CyberGo DD 包级函数完整 API 文档，包括 New 日志记录器创建函数、Default/SetDefault/InitDefault 全局日志管理函数、DefaultConfig/DevelopmentConfig/JSONConfig 配置预设函数以及所有构造器工厂函数，支持通过 dd. 前缀直接调用。"
 ---
 
 # 包函数

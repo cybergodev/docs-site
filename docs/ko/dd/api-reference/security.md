@@ -1,6 +1,6 @@
 ---
-title: 보안 필터 - CyberGo DD | 민감 데이터 필터링
-description: CyberGo DD 민감 데이터 필터링 전체 API 문서. SensitiveDataFilter 필터링 규칙 설정, SecurityConfig 보안 정책 옵션 및 사전 설정 보안 설정 방안을 포함하여, 로그의 비밀번호, API 키, Token, 휴대전화 번호 및 신분증 번호 등 민감 정보를 자동으로 감지하고 마스킹하여 로그 유출 위험을 효과적으로 방지합니다.
+title: "보안 필터 - CyberGo DD | 민감 데이터 필터링"
+description: "CyberGo DD 민감 데이터 필터링 전체 API 문서. SensitiveDataFilter 필터링 규칙 설정, SecurityConfig 보안 정책 옵션 및 사전 설정 보안 설정 방안을 포함하여, 로그의 비밀번호, API 키, Token, 휴대전화 번호 및 신분증 번호 등 민감 정보를 자동으로 감지하고 마스킹하여 로그 유출 위험을 효과적으로 방지합니다."
 ---
 
 # 보안 필터

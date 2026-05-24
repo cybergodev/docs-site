@@ -1,6 +1,6 @@
 ---
-title: TLS and Certificate Pinning - HTTPC
-description: Guide to HTTPC TLS security and certificate pinning, covering TLS version control, custom CA loading, mTLS mutual authentication, SPKI public key pinning, and HTTP/2 negotiation.
+title: "TLS and Certificate Pinning - HTTPC"
+description: "HTTPC TLS and certificate pinning: version control, cipher suites, custom CA, mTLS, SPKI pinning strategies, and HTTP/2 configuration."
 ---
 
 # TLS and Certificate Pinning

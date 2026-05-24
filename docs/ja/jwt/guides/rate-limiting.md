@@ -1,6 +1,6 @@
 ---
-title: レート制限 - JWT
-description: CyberGo JWT レート制限ガイド：トークンバケットレート制限の設定、内蔵 RateLimiter、RateLimitProvider カスタム実装、レート制限キーの優先順位とベストプラクティス。
+title: "レート制限 - JWT"
+description: "CyberGo JWT レート制限ガイド：トークンバケットレート制限の設定、内蔵 RateLimiter、RateLimitProvider カスタム実装、レート制限キーの優先順位とベストプラクティス。"
 ---
 
 # レート制限

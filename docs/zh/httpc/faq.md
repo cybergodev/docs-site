@@ -1,6 +1,6 @@
 ---
-title: 常见问题 - HTTPC
-description: HTTPC 常见问题解答，涵盖包级函数选择、配置预设对比、代理设置、错误匹配、对象池管理与超时调优等高频问题。
+title: "常见问题 - HTTPC"
+description: "HTTPC 常见问题解答：包级函数与客户端实例选择依据、五种配置预设对比、HTTP/SOCKS5 代理与 DoH 设置、errors.Is/As 错误匹配、ReleaseResult 对象池管理与四级超时调优。"
 ---
 
 # 常见问题

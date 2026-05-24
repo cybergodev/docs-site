@@ -1,5 +1,5 @@
 ---
-title: Package Functions - CyberGo JSON | API Reference
+title: "Package Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON package-level function reference: including Get/GetString/GetInt/GetTyped path queries, Set/Delete/MergeJSON modifications, Marshal/Unmarshal encoding/decoding, and LoadFromFile/SaveToFile file operations, callable directly without creating a Processor instance."
 ---
 

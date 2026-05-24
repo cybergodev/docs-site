@@ -1,6 +1,6 @@
 ---
-title: Migration Guide - CyberGo DD | Library Migration
-description: Migrate to CyberGo DD from log/slog, zap, logrus, or zerolog with API mapping tables, config comparisons, and progressive migration strategies.
+title: "Migration Guide - CyberGo DD | Library Migration"
+description: "Migrate to CyberGo DD from log/slog, zap, logrus, or zerolog with API mapping tables, config comparisons, and progressive migration strategies."
 ---
 
 # Migration Guide

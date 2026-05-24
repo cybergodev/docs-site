@@ -1,11 +1,11 @@
 ---
-title: ドメインクライアント - HTTPC
-description: HTTPC ドメインクライアント API リファレンス。NewDomain 作成、7 種類の HTTP メソッド、4 種類のダウンロードメソッド、URL 自動結合、セッションヘッダーと Cookie 管理。
+title: "ドメインクライアント - HTTPC"
+description: "HTTPCドメインクライアントAPIリファレンス：NewDomain作成関数、Get/Postなど7種類のHTTPメソッドとRequest汎用メソッド、4種類のダウンロードメソッド、URL自動結合ルール、DomainClienterインターフェースのSetHeader/SetCookieセッション管理とCloseライフサイクル。"
 ---
 
 # ドメインクライアント
 
-ドメインクライアントは、特定ドメインに対するリクエスト管理を提供し、Cookie とリクエストヘッダーを自動的に維持します。
+ドメインクライアントは特定のドメインに対するリクエスト管理を提供し、Cookieとヘッダーを自動的に維持します。
 
 ## NewDomain
 
@@ -13,7 +13,7 @@ description: HTTPC ドメインクライアント API リファレンス。NewDo
 func NewDomain(baseURL string, config ...*Config) (DomainClienter, error)
 ```
 
-ドメインスコープクライアントを作成します。Cookie は自動的に有効になります。
+ドメインスコープのクライアントを作成します。Cookieは自動的に有効になります。
 
 ```go
 // デフォルト設定を使用
@@ -33,21 +33,21 @@ if err != nil {
 defer dc.Close()
 ```
 
-**パラメータ説明：**
+**パラメータの説明：**
 
-| パラメータ | 型 | 説明 |
-|------|------|------|
-| `baseURL` | `string` | ベース URL（scheme と host を含める必要があります） |
-| `config` | `...*Config` | オプション設定。省略時は DefaultConfig() を使用 |
+| パラメータ | タイプ | 説明 |
+|------------|--------|------|
+| `baseURL` | `string` | ベースURL（schemeとhostを含める必要があります） |
+| `config` | `...*Config` | オプション設定。省略時はDefaultConfig()を使用 |
 
-**戻り値：** `DomainClienter` インターフェース（具象型 `*DomainClient` ではありません）。
+**戻り値：** `DomainClienter`インターフェース（具象タイプ`*DomainClient`ではありません）。
 
-## HTTP メソッド
+## HTTPメソッド
 
-すべてのメソッドは相対パスまたは絶対 URL を受け付けます：
+すべてのメソッドは相対パスまたは絶対URLを受け付けます：
 
 ```go
-// 相対パス：baseURL に自動結合
+// 相対パス：baseURLと自動結合
 result, err := dc.Get("/users")
 result, err := dc.Post("/users", httpc.WithJSON(data))
 result, err := dc.Put("/users/1", httpc.WithJSON(data))
@@ -56,7 +56,7 @@ result, err := dc.Delete("/users/1")
 result, err := dc.Head("/users/1")
 result, err := dc.Options("/users")
 
-// 絶対 URL：そのまま使用
+// 絶対URL：そのまま使用
 result, err := dc.Get("https://other-api.com/data")
 ```
 
@@ -82,31 +82,31 @@ result, err := dc.DownloadFileWithContext(ctx, "/files/report.pdf", "/tmp/report
 result, err := dc.DownloadWithOptionsWithContext(ctx, "/files/report.pdf", downloadOpts)
 ```
 
-ダウンロード時のレスポンス Cookie はセッションに自動的にキャプチャされます。
+ダウンロードのレスポンスCookieは自動的にセッションにキャプチャされます。
 
 ## アクセスメソッド
 
 ```go
-dc.URL()      // string - ベース URL
-dc.Domain()   // string - ドメイン（ポート番号なし）
+dc.URL()      // string - ベースURL
+dc.Domain()   // string - ドメイン（ポートを含まない）
 dc.Session()  // *SessionManager - 内部セッションマネージャー
 dc.Close()    // error - クライアントを閉じてリソースを解放
 ```
 
-## URL 結合ルール
+## URL結合ルール
 
 | 入力パス | 結合結果（baseURL = `https://api.example.com/v1`） |
 |----------|------|
 | `/users` | `https://api.example.com/v1/users` |
 | `users` | `https://api.example.com/v1/users` |
 | `/users?page=1` | `https://api.example.com/v1/users?page=1` |
-| `https://other.com/api` | `https://other.com/api`（絶対 URL） |
+| `https://other.com/api` | `https://other.com/api`（絶対URL） |
 
-:::warning
-`http://` と `https://` プロトコルの絶対 URL のみ許可されます。その他のプロトコルは拒否されます（SSRF 攻撃を防止）。
+:::warning 警告
+`http://`と`https://`プロトコルの絶対URLのみ許可されます。その他のプロトコルは拒否されます（SSRF防止）。
 :::
 
-## DomainClienter インターフェース
+## DomainClienterインターフェース
 
 ```go
 type DomainClienter interface {
@@ -132,10 +132,10 @@ type DomainClienter interface {
 }
 ```
 
-テストや実装の差し替えに便利なため、具象型ではなくインターフェース型の使用を推奨します。
+テストや実装の差し替えに便利なインターフェースタイプの使用をお勧めします。
 
 ## 関連項目
 
-- [セッション管理](./session) - SessionManager 詳細リファレンス
+- [セッション管理](./session) - SessionManagerの詳細リファレンス
 - [ドメインクライアントとセッション](../guides/domain-session) - 使用ガイド
-- [インターフェース定義](./interfaces) - Client、Doer インターフェースリファレンス
+- [インターフェース定義](./interfaces) - Client、Doerインターフェースリファレンス

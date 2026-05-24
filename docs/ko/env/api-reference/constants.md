@@ -1,6 +1,6 @@
 ---
-title: 상수 및 오류 - CyberGo env | 센티넬 오류와 보안 상수
-description: CyberGo env 라이브러리 상수 및 오류 전체 참조로, DefaultMaxFileSize 보안 제한, ErrFileNotFound 센티넬 오류, ParseError 구조화된 오류 유형, IsSensitiveKey 및 MaskValue 유틸리티 함수를 포함하며, errors.Is 및 errors.As와 함께 다양한 오류 시나리오 처리를 지원합니다.
+title: "상수 및 오류 - CyberGo env | 센티넬 오류와 보안 상수"
+description: "CyberGo env 라이브러리 상수 및 오류 전체 참조로, DefaultMaxFileSize 보안 제한, ErrFileNotFound 센티넬 오류, ParseError 구조화된 오류 유형, IsSensitiveKey 및 MaskValue 유틸리티 함수를 포함하며, errors.Is 및 errors.As와 함께 다양한 오류 시나리오 처리를 지원합니다."
 ---
 
 # 상수 및 오류

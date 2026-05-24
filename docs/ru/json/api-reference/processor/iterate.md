@@ -1,5 +1,5 @@
 ---
-title: Processor - Методы итерации - CyberGo JSON | Справочник API
+title: "Processor - Методы итерации - CyberGo JSON | Справочник API"
 description: "Справочник методов итерации Processor: Foreach, ForeachWithPath, ForeachNested, ForeachWithError, IterableValue и методы файловой итерации."
 ---
 

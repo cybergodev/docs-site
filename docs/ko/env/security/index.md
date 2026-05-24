@@ -1,6 +1,6 @@
 ---
-title: 보안 개요 - CyberGo env | 보안 아키텍처
-description: CyberGo env 라이브러리 보안 아키텍처 전면 개요, SecureValue 메모리 잠금 보호와 mlock 시스템 호출 메커니즘, 키값 검증과 필터링 규칙 구성, DefaultForbiddenKeys 금지 키 이름 목록, 민감 데이터 IsSensitiveKey 자동 감지, 보안 수준 프리셋 구성 및 감사 로그 추적 등 핵심 보안 기능을 상세히 설명합니다.
+title: "보안 개요 - CyberGo env | 보안 아키텍처"
+description: "CyberGo env 라이브러리 보안 아키텍처 전면 개요, SecureValue 메모리 잠금 보호와 mlock 시스템 호출 메커니즘, 키값 검증과 필터링 규칙 구성, DefaultForbiddenKeys 금지 키 이름 목록, 민감 데이터 IsSensitiveKey 자동 감지, 보안 수준 프리셋 구성 및 감사 로그 추적 등 핵심 보안 기능을 상세히 설명합니다."
 ---
 
 # 보안 개요

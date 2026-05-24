@@ -1,6 +1,6 @@
 ---
-title: 出力先 - CyberGo DD | FileWriter、BufferedWriter、MultiWriter
-description: CyberGo DD 出力先完全 API ドキュメント。FileWriter ファイル自動ローテーション（サイズと時間によるローテーション対応）、BufferedWriter 高性能バッファ書き込み（バッファサイズとフラッシュ間隔を設定可能）、MultiWriter マルチ出力先並列出力を含み、開発デバッグから本番デプロイまでの各種ログ出力シナリオに対応。
+title: "出力先 - CyberGo DD | FileWriter、BufferedWriter、MultiWriter"
+description: "CyberGo DD 出力先完全 API ドキュメント。FileWriter ファイル自動ローテーション（サイズと時間によるローテーション対応）、BufferedWriter 高性能バッファ書き込み（バッファサイズとフラッシュ間隔を設定可能）、MultiWriter マルチ出力先並列出力を含み、開発デバッグから本番デプロイまでの各種ログ出力シナリオに対応。"
 ---
 
 # 出力先

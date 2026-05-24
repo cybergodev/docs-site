@@ -1,5 +1,5 @@
 ---
-title: Processor - Массовые операции - CyberGo JSON | Справочник API
+title: "Processor - Массовые операции - CyberGo JSON | Справочник API"
 description: "Справочник массовых операций Processor: ProcessBatch, BatchOperation, BatchResult и примеры массового чтения, модификации и смешанных операций."
 ---
 

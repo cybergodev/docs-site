@@ -1,5 +1,5 @@
 ---
-title: JWT - 프로덕션급 JWT 인증 라이브러리
+title: "JWT - 프로덕션급 JWT 인증 라이브러리"
 description: "CyberGo JWT 프로덕션급 인증 라이브러리, HMAC/RSA/ECDSA 다중 알고리즘 서명, 토큰 블랙리스트, 속도 제한, 커스텀 Claims 및 클럭 인젝션을 지원하며 모든 메서드는 동시성에 안전합니다."
 ---
 

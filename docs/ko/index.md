@@ -1,8 +1,8 @@
 ---
 layout: home
-title: CyberGo
+title: "CyberGo"
 titleTemplate: 고성능 Go 오픈소스 라이브러리 컬렉션
-description: CyberGo는 Go 언어를 위한 고성능 오픈소스 라이브러리 컬렉션입니다. JSON 처리, JWT 인증, 보안 HTTP 클라이언트, HTML 콘텐츠 추출, 구조화된 로깅, 환경 변수 관리의 6가지 핵심 라이브러리를 제공합니다. 가벼운 설계, 즉시 사용 가능, 최소 의존성으로 고동시성 프로덕션 환경에 신뢰할 수 있는 기반 컴포넌트를 제공합니다.
+description: "CyberGo는 Go 언어를 위한 고성능 오픈소스 라이브러리 컬렉션입니다. JSON 처리, JWT 인증, 보안 HTTP 클라이언트, HTML 콘텐츠 추출, 구조화된 로깅, 환경 변수 관리의 6가지 핵심 라이브러리를 제공합니다. 가벼운 설계, 즉시 사용 가능, 최소 의존성으로 고동시성 프로덕션 환경에 신뢰할 수 있는 기반 컴포넌트를 제공합니다."
 
 hero:
   name: CyberGo

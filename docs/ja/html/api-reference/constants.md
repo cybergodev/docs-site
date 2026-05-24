@@ -1,6 +1,6 @@
 ---
-title: 定数とエラー - HTML
-description: CyberGo HTML ライブラリの定数とエラータイプ API リファレンス。DefaultMaxInputSize（50MB）などのデフォルト値定数、ErrInputTooLarge などのセンチネルエラー、InputError、ConfigError、FileError の構造化エラータイプを含み、すべて errors.Is/As による判定に対応し、ランタイム異常の正確な特定と処理に役立ちます。
+title: "定数とエラー - HTML"
+description: "CyberGo HTML ライブラリの定数とエラータイプ API リファレンス。DefaultMaxInputSize（50MB）などのデフォルト値定数、ErrInputTooLarge などのセンチネルエラー、InputError、ConfigError、FileError の構造化エラータイプを含み、すべて errors.Is/As による判定に対応し、ランタイム異常の正確な特定と処理に役立ちます。"
 ---
 
 # 定数とエラー

@@ -1,6 +1,6 @@
 ---
-title: 무결성 서명 - CyberGo DD | IntegritySigner
-description: CyberGo DD 무결성 서명 전체 API 문서. HMAC-SHA256 알고리즘 서명과 일련번호 증분 추적 메커니즘을 지원하여 각 로그 항목이 변조되지 않았음을 보장하며, IntegritySigner 서명기와 Verify 검증기를 제공하여 보안 감사와 로그 변조 방지 등 다양한 준수 요구 사항을 충족합니다.
+title: "무결성 서명 - CyberGo DD | IntegritySigner"
+description: "CyberGo DD 무결성 서명 전체 API 문서. HMAC-SHA256 알고리즘 서명과 일련번호 증분 추적 메커니즘을 지원하여 각 로그 항목이 변조되지 않았음을 보장하며, IntegritySigner 서명기와 Verify 검증기를 제공하여 보안 감사와 로그 변조 방지 등 다양한 준수 요구 사항을 충족합니다."
 ---
 
 # 무결성 서명

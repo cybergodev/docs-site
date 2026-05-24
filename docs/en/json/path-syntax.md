@@ -1,5 +1,5 @@
 ---
-title: Path Expression Syntax - CyberGo JSON | JSONPath Query Guide
+title: "Path Expression Syntax - CyberGo JSON | JSONPath Query Guide"
 description: "CyberGo JSON path expression syntax complete reference guide, including property access user.name, array indexing items[0], slicing [start:end:step], wildcards [*], multi-field extraction {name,email}, and more syntax for flexibly and precisely locating and manipulating any node in JSON data."
 ---
 

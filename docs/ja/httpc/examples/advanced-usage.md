@@ -1,22 +1,22 @@
 ---
-title: 高度な例 - HTTPC
-description: HTTPC 高度な使用例。カスタムリトライ戦略、ミドルウェアチェーン設定、RESTful API ラッパー、並行ダウンロードと HMAC 署名認証の高度な例。
+title: "高度な使用例 - HTTPC"
+description: "HTTPC高度な使用例：カスタムRetryPolicyリトライ戦略（502/503/504のみ）、Recovery/Timeout/Logging/Metrics/Auditを含む完全なミドルウェアチェーン設定、RESTful APIクライアントラッパー、sync.WaitGroup並行ダウンロードとHMAC-SHA256リクエスト署名カスタムミドルウェア。"
 ---
 
-# 高度な例
+# 高度な使用例
 
-## カスタムリトライ戦略
+## カスタムリトライポリシー
 
-502/503/504 のみリトライし、固定遅延を使用：
+502/503/504のみリトライし、固定遅延を使用：
 
-:::warning 内部型
-`RetryPolicy.ShouldRetry` の `resp` パラメータの型 `ResponseReader` は内部インターフェース（`internal/types` パッケージで定義）であり、外部パッケージからは直接参照できません。カスタム `RetryPolicy` は `httpc` と同じモジュール内のパッケージで実装する必要があります。ほとんどのシナリオでは `RetryConfig` の設定で十分です。以下の例は実装パターンを示すもので、実際のコードは `httpc` モジュール内部でコンパイルする必要があります。
+:::warning 警告 内部タイプ
+`RetryPolicy.ShouldRetry`の`resp`パラメータタイプ`ResponseReader`は内部インターフェース（`internal/types`パッケージで定義）であり、外部パッケージからは直接参照できません。カスタム`RetryPolicy`は`httpc`と同じモジュール内のパッケージでのみ実装可能です。ほとんどのシナリオでは`RetryConfig`設定で要件を満たせます。以下の例は実装パターンを示すもので、実際のコードは`httpc`モジュール内でコンパイルする必要があります。
 :::
 
 ```go
-// 注意：ResponseReader は内部型（internal/types パッケージ）。
-// このコードは github.com/cybergodev/httpc モジュール内部でのみコンパイル可能。
-// ほとんどのユーザーは RetryConfig と WithMaxRetries でリトライを設定すべき。
+// 注意：ResponseReaderは内部タイプ（internal/typesパッケージ）です。
+// このコードはgithub.com/cybergodev/httpcモジュール内でのみコンパイル可能です。
+// ほとんどのユーザーはRetryConfigとWithMaxRetriesでリトライを設定してください。
 
 type selectiveRetry struct {
     maxAttempts int
@@ -42,12 +42,12 @@ func (p *selectiveRetry) MaxRetries() int {
     return p.maxAttempts
 }
 
-// カスタム戦略を適用
+// カスタムポリシーを適用
 cfg := httpc.DefaultConfig()
 cfg.Retry.CustomPolicy = &selectiveRetry{maxAttempts: 5, baseDelay: time.Second}
 ```
 
-外部プロジェクトでの代替案 — `RetryConfig` を使用した設定：
+外部プロジェクトでの代替アプローチ - `RetryConfig`設定を使用：
 
 ```go
 package main
@@ -109,7 +109,7 @@ func main() {
         },
     )
 
-    // 監査ログ（JSON 形式）
+    // 監査ログ（JSON形式）
     auditCfg := &httpc.AuditMiddlewareConfig{
         Format:         "json",
         IncludeHeaders: true,
@@ -123,9 +123,9 @@ func main() {
 
     cfg := httpc.DefaultConfig()
     cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-        httpc.RecoveryMiddleware(),                              // panic リカバリー
+        httpc.RecoveryMiddleware(),                              // panicリカバリ
         httpc.TimeoutMiddleware(30 * time.Second),              // 強制タイムアウト
-        httpc.RequestIDMiddleware("X-Request-ID", nil),         // リクエスト ID
+        httpc.RequestIDMiddleware("X-Request-ID", nil),         // リクエストID
         httpc.LoggingMiddleware(func(format string, args ...any) {
             log.Printf("[HTTP] "+format, args...)
         }),
@@ -149,7 +149,7 @@ func main() {
 }
 ```
 
-## REST API クライアントラッパー
+## REST APIクライアントラッパー
 
 ```go
 package main
@@ -297,7 +297,7 @@ func main() {
 
             result, err := client.DownloadWithOptions(u, cfg)
             if err != nil {
-                log.Printf("%s のダウンロード失敗: %v", name, err)
+                log.Printf("%s ダウンロード失敗: %v", name, err)
                 return
             }
 

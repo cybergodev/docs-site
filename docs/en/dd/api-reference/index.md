@@ -1,6 +1,6 @@
 ---
-title: API Reference - CyberGo DD | Overview
-description: CyberGo DD API reference overview covering Logger, Config, Writers, Security filtering, Audit logging, Hooks, and Integrity signing modules.
+title: "API Reference - CyberGo DD | Overview"
+description: "CyberGo DD API reference overview covering Logger, Config, Writers, Security filtering, Audit logging, Hooks, and Integrity signing modules."
 ---
 
 # API Reference

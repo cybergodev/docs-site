@@ -1,6 +1,6 @@
 ---
-title: 構造化フィールド - CyberGo DD | Field コンストラクタ
-description: CyberGo DD 構造化フィールドコンストラクタ完全 API ドキュメント。20+ 種類の型安全なフィールド作成をサポート。String/Int/Float/Bool などの基本フィールド、Time/Duration 時間フィールド、Error エラーフィールド、Any オブジェクトフィールド、カスタムフィールドを含み、便利なチェーン呼び出し組み合わせ方法を提供。
+title: "構造化フィールド - CyberGo DD | Field コンストラクタ"
+description: "CyberGo DD 構造化フィールドコンストラクタ完全 API ドキュメント。20+ 種類の型安全なフィールド作成をサポート。String/Int/Float/Bool などの基本フィールド、Time/Duration 時間フィールド、Error エラーフィールド、Any オブジェクトフィールド、カスタムフィールドを含み、便利なチェーン呼び出し組み合わせ方法を提供。"
 ---
 
 # 構造化フィールド

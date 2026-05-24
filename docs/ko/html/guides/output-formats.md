@@ -1,6 +1,6 @@
 ---
-title: 출력 형식 선택 - HTML
-description: CyberGo HTML 출력 형식 선택 가이드, 순수 텍스트, Markdown, JSON 세 가지 출력 형식의 특징과 적용 시나리오를 상세히 비교하고, 형식 옵션 설정(InlineImageFormat, InlineLinkFormat), 컨텍스트 지원과 파일 읽기를 포함합니다.
+title: "출력 형식 선택 - HTML"
+description: "CyberGo HTML 출력 형식 선택 가이드, 순수 텍스트, Markdown, JSON 세 가지 출력 형식의 특징과 적용 시나리오를 상세히 비교하고, 형식 옵션 설정(InlineImageFormat, InlineLinkFormat), 컨텍스트 지원과 파일 읽기를 포함합니다."
 ---
 
 # 출력 형식 선택

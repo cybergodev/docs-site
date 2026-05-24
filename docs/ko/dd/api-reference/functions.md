@@ -1,6 +1,6 @@
 ---
-title: 패키지 함수 - CyberGo DD | 전역 함수와 생성자
-description: CyberGo DD 패키지 수준 함수 전체 API 문서. New 로거 생성 함수, Default/SetDefault/InitDefault 전역 로그 관리 함수, DefaultConfig/DevelopmentConfig/JSONConfig 설정 사전 설정 함수 및 모든 생성자 팩토리 함수를 포함하며, dd. 접두사로 직접 호출할 수 있습니다.
+title: "패키지 함수 - CyberGo DD | 전역 함수와 생성자"
+description: "CyberGo DD 패키지 수준 함수 전체 API 문서. New 로거 생성 함수, Default/SetDefault/InitDefault 전역 로그 관리 함수, DefaultConfig/DevelopmentConfig/JSONConfig 설정 사전 설정 함수 및 모든 생성자 팩토리 함수를 포함하며, dd. 접두사로 직접 호출할 수 있습니다."
 ---
 
 # 패키지 함수

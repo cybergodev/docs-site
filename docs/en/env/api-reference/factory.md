@@ -1,6 +1,6 @@
 ---
-title: ComponentFactory API - CyberGo env | Component Factory
-description: CyberGo env library ComponentFactory API complete reference, creating and managing shared component instances for Loader and Parser, including audit handler, validator, file system adapter, and RegisterParser for custom parser registration, providing component lifecycle control with Close and thread-safe concurrent access.
+title: "ComponentFactory API - CyberGo env | Component Factory"
+description: "CyberGo env library ComponentFactory API complete reference, creating and managing shared component instances for Loader and Parser, including audit handler, validator, file system adapter, and RegisterParser for custom parser registration, providing component lifecycle control with Close and thread-safe concurrent access."
 ---
 
 # ComponentFactory API

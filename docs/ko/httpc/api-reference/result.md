@@ -1,11 +1,11 @@
 ---
-title: Result - HTTPC
-description: HTTPC Result 응답 타입 API 참조. 응답 본문 접근, 상태 코드 조회, 상태 판별, Cookie 조작, JSON 파싱 및 파일 저장 메서드를 상세히 설명합니다.
+title: "Result - HTTPC"
+description: "HTTPC Result 응답 타입 API 레퍼런스: StatusCode/Body/RawBody 기본 메서드, IsSuccess/IsClientError 상태 판별, Cookie 조작, Unmarshal JSON 파싱, SaveToFile 파일 저장과 RequestInfo/ResponseInfo/RequestMeta 하위 타입."
 ---
 
 # Result
 
-Result는 HTTP 응답과 요청 메타데이터를 래핑하며, 편리한 접근 메서드를 제공합니다. `Client.Request()` 또는 패키지 수준 함수를 통해 얻을 수 있습니다.
+Result는 HTTP 응답과 요청 메타데이터를 래핑하며, 편리한 접근 메서드를 제공합니다. `Client.Request()` 또는 패키지 레벨 함수를 통해 얻을 수 있습니다.
 
 ```go
 type Result struct {
@@ -198,7 +198,7 @@ fmt.Println(user.Name)
 func (r *Result) SaveToFile(filePath string) error
 ```
 
-응답 본문을 파일로 저장합니다. 파일 경로는 보안 검증을 거칩니다 (경로 순회 방어, 심볼릭 링크 검사, 시스템 경로 보호).
+응답 본문을 파일로 저장합니다. 파일 경로는 보안 검증을 거칩니다 (경로 순회 방지, 심볼릭 링크 검사, 시스템 경로 보호).
 
 | 오류 | 발생 조건 |
 |------|-----------|
@@ -221,7 +221,7 @@ if err := result.SaveToFile("/tmp/data.csv"); err != nil {
 func (r *Result) String() string
 ```
 
-사용자가 읽을 수 있는 문자열 표현을 반환합니다. 민감한 헤더는 자동으로 마스킹되며, 응답 본문은 200자로 잘립니다.
+사람이 읽을 수 있는 문자열 표현을 반환합니다. 민감한 헤더는 자동으로 마스킹되며, 응답 본문은 200자로 잘립니다.
 
 ```go
 result, _ := client.Get(url)
@@ -296,7 +296,7 @@ defer httpc.ReleaseResult(result)
 // result 사용...
 ```
 
-## 함께 보기
+## 참고
 
 - [패키지 함수](./functions) - Result를 얻는 요청 메서드
 - [요청 옵션](./options) - 요청 동작 설정

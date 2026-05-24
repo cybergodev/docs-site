@@ -1,6 +1,6 @@
 ---
-title: 安全概述 - HTTPC
-description: HTTPC 安全特性概述，涵盖 TLS 强制版本控制、SSRF 防护、请求头注入验证、Cookie 安全属性、重定向白名单与响应体限制。
+title: "安全概述 - HTTPC"
+description: "HTTPC 安全特性概述：TLS 1.2+ 版本控制、SSRF 私有 IP 阻止与 CIDR 豁免、CRLF 注入防护、StrictCookieSecurityConfig Cookie 安全、RedirectWhitelist 重定向白名单与响应体大小限制。"
 ---
 
 # 安全概述

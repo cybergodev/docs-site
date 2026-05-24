@@ -1,5 +1,5 @@
 ---
-title: 빠른 시작 - JWT
+title: "빠른 시작 - JWT"
 description: "CyberGo JWT 빠른 시작 가이드: 설치 설정, 토큰 발급 및 검증, 갱신 및 취소, HMAC/RSA/ECDSA 알고리즘 선택, 커스텀 Claims, 블랙리스트 및 속도 제한 설정."
 ---
 

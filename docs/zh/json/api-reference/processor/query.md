@@ -1,5 +1,5 @@
 ---
-title: Processor 路径查询 - CyberGo JSON | API 参考
+title: "Processor 路径查询 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor 路径查询方法完整参考：包括 Get/GetString/GetInt 等类型安全获取、GetMultiple 批量查询、SafeGet 安全获取返回 AccessResult、GetTyped[T] 泛型获取，支持 JSONPath 表达式和缓存优化。"
 ---
 

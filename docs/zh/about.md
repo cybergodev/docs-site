@@ -1,6 +1,6 @@
 ---
-title: 关于 - CyberGo 文档 | 文档站点介绍
-description: 了解 CyberGo 文档站点，涵盖文档覆盖范围、贡献方式、技术栈和联系方式等信息。
+title: "关于 - CyberGo 文档 | 文档站点介绍"
+description: "了解 CyberGo 文档站点，涵盖文档覆盖范围、贡献方式、技术栈和联系方式等信息。"
 ---
 
 # 关于 CyberGo 文档

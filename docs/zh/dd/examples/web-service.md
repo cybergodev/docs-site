@@ -1,6 +1,6 @@
 ---
-title: Web 服务集成 - CyberGo DD | HTTP 服务日志示例
-description: CyberGo DD 在 Web 服务中的完整集成示例，包括 HTTP 中间件日志记录、请求链路追踪与 TraceID 传递、多路由分层日志配置、优雅关闭与日志刷新以及生产级日志配置方案，帮助开发者将 DD 日志库快速集成到 HTTP 服务项目中。
+title: "Web 服务集成 - CyberGo DD | HTTP 服务日志示例"
+description: "CyberGo DD 在 Web 服务中的完整集成示例，包括 HTTP 中间件日志记录、请求链路追踪与 TraceID 传递、多路由分层日志配置、优雅关闭与日志刷新以及生产级日志配置方案，帮助开发者将 DD 日志库快速集成到 HTTP 服务项目中。"
 ---
 
 # Web 服务集成

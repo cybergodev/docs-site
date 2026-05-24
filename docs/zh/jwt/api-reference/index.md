@@ -1,6 +1,6 @@
 ---
-title: API 参考 - JWT
-description: CyberGo JWT API 参考索引：包级函数、Processor 核心方法、Config 配置、Claims 声明、接口定义、类型常量与错误处理的完整文档导航。
+title: "API 参考 - JWT"
+description: "CyberGo JWT API 参考索引：包级函数、Processor 核心方法、Config 配置、Claims 声明、接口定义、类型常量与错误处理的完整文档导航。"
 ---
 
 # API 参考

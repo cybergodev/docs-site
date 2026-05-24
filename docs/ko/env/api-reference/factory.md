@@ -1,6 +1,6 @@
 ---
-title: ComponentFactory API - CyberGo env | 컴포넌트 팩토리
-description: CyberGo env 라이브러리 ComponentFactory 컴포넌트 팩토리 API 전체 참조로, Loader와 Parser가 공유하는 컴포넌트 인스턴스를 생성하고 관리하며, 감사 핸들러, 검증기, 파일 시스템 어댑터 및 RegisterParser 사용자 정의 파서 등록을 포함하고, 컴포넌트 수명 주기 제어를 위한 Close 및 스레드 안전한 동시성 접근을 제공합니다.
+title: "ComponentFactory API - CyberGo env | 컴포넌트 팩토리"
+description: "CyberGo env 라이브러리 ComponentFactory 컴포넌트 팩토리 API 전체 참조로, Loader와 Parser가 공유하는 컴포넌트 인스턴스를 생성하고 관리하며, 감사 핸들러, 검증기, 파일 시스템 어댑터 및 RegisterParser 사용자 정의 파서 등록을 포함하고, 컴포넌트 수명 주기 제어를 위한 Close 및 스레드 안전한 동시성 접근을 제공합니다."
 ---
 
 # ComponentFactory API

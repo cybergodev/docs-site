@@ -1,6 +1,6 @@
 ---
-title: Processor - HTML
-description: CyberGo HTML 라이브러리 Processor 프로세서 전체 API 레퍼런스, New 생성, Extract 추출 메서드 패밀리, GetStatistics 통계 조회, GetAuditLog 감사 로그, ClearCache 캐시 관리, ResetStatistics 리셋 및 Close 라이프사이클 관리를 포함하여 고빈도 호출 시나리오에서 리소스 재사용에 적합합니다.
+title: "Processor - HTML"
+description: "CyberGo HTML 라이브러리 Processor 프로세서 전체 API 레퍼런스, New 생성, Extract 추출 메서드 패밀리, GetStatistics 통계 조회, GetAuditLog 감사 로그, ClearCache 캐시 관리, ResetStatistics 리셋 및 Close 라이프사이클 관리를 포함하여 고빈도 호출 시나리오에서 리소스 재사용에 적합합니다."
 ---
 
 # Processor

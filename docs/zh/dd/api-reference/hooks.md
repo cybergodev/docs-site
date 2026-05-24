@@ -1,6 +1,6 @@
 ---
-title: 钩子系统 - CyberGo DD | HookRegistry
-description: CyberGo DD 生命周期钩子系统完整 API 文档，支持在日志写入前后（BeforeLog/AfterLog）、文件轮换（OnRotate）、错误发生（OnError）等关键事件上注册自定义回调函数，提供 HookRegistry 注册表和灵活的日志处理扩展机制。
+title: "钩子系统 - CyberGo DD | HookRegistry"
+description: "CyberGo DD 生命周期钩子系统完整 API 文档，支持在日志写入前后（BeforeLog/AfterLog）、文件轮换（OnRotate）、错误发生（OnError）等关键事件上注册自定义回调函数，提供 HookRegistry 注册表和灵活的日志处理扩展机制。"
 ---
 
 # 钩子系统

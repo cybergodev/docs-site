@@ -1,6 +1,6 @@
 ---
-title: Getting Started - HTTPC
-description: Get started with the HTTPC secure HTTP client library in five minutes, covering module installation, GET/POST requests, client configuration, JSON parsing, and error handling.
+title: "Getting Started - HTTPC"
+description: "Get started with HTTPC in five minutes: install the module, make GET/POST requests, configure the client, parse JSON, and handle errors with ClientError."
 ---
 
 # Getting Started

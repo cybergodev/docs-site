@@ -1,5 +1,5 @@
 ---
-title: Logger - CyberGo DD | Core Logger
+title: "Logger - CyberGo DD | Core Logger"
 description: "CyberGo DD Logger API: log output methods (Info/Warn/Error/Fatal), dynamic level and Writer management, lifecycle control, and chained field setup."
 ---
 

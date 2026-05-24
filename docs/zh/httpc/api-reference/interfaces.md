@@ -1,6 +1,6 @@
 ---
-title: 接口定义 - HTTPC
-description: HTTPC 核心接口 API 参考，包含 Client 全功能接口、Doer 执行接口、DomainClienter 域名接口、RetryPolicy 与 MiddlewareFunc 定义。
+title: "接口定义 - HTTPC"
+description: "HTTPC 核心接口 API 参考：Client 全功能接口含七种 HTTP 方法与四种下载、Doer 最小执行接口、DomainClienter 域名客户端含会话管理、RetryPolicy 重试策略、RequestMutator/ResponseMutator 中间件接口与 Handler/MiddlewareFunc 定义。"
 ---
 
 # 接口定义

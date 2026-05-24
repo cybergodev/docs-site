@@ -1,6 +1,6 @@
 ---
-title: LoggerEntry - CyberGo DD | 사전 설정 필드 로그
-description: CyberGo DD LoggerEntry 타입 전체 API 문서. 사전 설정 필드가 있는 체인식 로거를 생성하는 데 사용되며, 매번 WithFields 호출 시 새로운 불변 Entry 인스턴스를 반환합니다. 필드 누적 조합, 컨텍스트 바인딩 전파 및 레벨 상속 메커니즘을 지원하여 요청 수준 로그 추적과 컨텍스트 연관 등 시나리오에 적합합니다.
+title: "LoggerEntry - CyberGo DD | 사전 설정 필드 로그"
+description: "CyberGo DD LoggerEntry 타입 전체 API 문서. 사전 설정 필드가 있는 체인식 로거를 생성하는 데 사용되며, 매번 WithFields 호출 시 새로운 불변 Entry 인스턴스를 반환합니다. 필드 누적 조합, 컨텍스트 바인딩 전파 및 레벨 상속 메커니즘을 지원하여 요청 수준 로그 추적과 컨텍스트 연관 등 시나리오에 적합합니다."
 ---
 
 # LoggerEntry

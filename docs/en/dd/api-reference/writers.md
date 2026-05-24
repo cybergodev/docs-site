@@ -1,5 +1,5 @@
 ---
-title: Output Targets - CyberGo DD | FileWriter & Buffer
+title: "Output Targets - CyberGo DD | FileWriter & Buffer"
 description: "CyberGo DD writers API: FileWriter rotation (size and time-based), BufferedWriter performance tuning, and MultiWriter parallel output targets."
 ---
 

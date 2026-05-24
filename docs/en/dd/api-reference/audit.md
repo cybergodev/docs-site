@@ -1,5 +1,5 @@
 ---
-title: Audit Logging - CyberGo DD | AuditLogger
+title: "Audit Logging - CyberGo DD | AuditLogger"
 description: "CyberGo DD audit logging API: AuditLogger async event recorder, AuditConfig options, structured entries, and enterprise compliance audit support."
 ---
 

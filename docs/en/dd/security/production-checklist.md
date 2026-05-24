@@ -1,5 +1,5 @@
 ---
-title: Production Checklist - CyberGo DD | Security Launch
+title: "Production Checklist - CyberGo DD | Security Launch"
 description: "Pre-deployment security checklist for CyberGo DD in production: config verification, sensitive data filtering, audit logging, rotation, and HMAC signing."
 ---
 

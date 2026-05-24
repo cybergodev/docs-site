@@ -1,6 +1,6 @@
 ---
-title: シリアライズ - CyberGo env | 多フォーマット変換
-description: CyberGo env ライブラリのシリアライズ/デシリアライズ完全ガイド。.env、JSON、YAML フォーマット間の Map マッピングと Go 構造体変換方法を詳しく解説。Marshal と Unmarshal 関数群、カスタム Marshaler/Unmarshaler インターフェース実装、env タグサポート、機密フィールドマスク処理、多フォーマット相互変換の実践例を網羅します。
+title: "シリアライズ - CyberGo env | 多フォーマット変換"
+description: "CyberGo env ライブラリのシリアライズ/デシリアライズ完全ガイド。.env、JSON、YAML フォーマット間の Map マッピングと Go 構造体変換方法を詳しく解説。Marshal と Unmarshal 関数群、カスタム Marshaler/Unmarshaler インターフェース実装、env タグサポート、機密フィールドマスク処理、多フォーマット相互変換の実践例を網羅します。"
 ---
 
 # シリアライズ

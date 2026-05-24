@@ -1,6 +1,6 @@
 ---
-title: 패키지 함수 - HTML
-description: CyberGo HTML 라이브러리 패키지 수준 편의 함수 전체 API 레퍼런스, Extract, ExtractFromFile, ExtractText, ExtractFromFileWithContext 등 콘텐츠 추출 함수와 컨텍스트 버전을 포함하며, 내부적으로 sync.Pool로 Processor 인스턴스를 재사용하여 효율적인 일회성 호출을 구현합니다.
+title: "패키지 함수 - HTML"
+description: "CyberGo HTML 라이브러리 패키지 수준 편의 함수 전체 API 레퍼런스, Extract, ExtractFromFile, ExtractText, ExtractFromFileWithContext 등 콘텐츠 추출 함수와 컨텍스트 버전을 포함하며, 내부적으로 sync.Pool로 Processor 인스턴스를 재사용하여 효율적인 일회성 호출을 구현합니다."
 ---
 
 # 패키지 함수

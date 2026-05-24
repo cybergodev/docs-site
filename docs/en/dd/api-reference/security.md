@@ -1,5 +1,5 @@
 ---
-title: Security Filtering - CyberGo DD | Sensitive Data Filtering
+title: "Security Filtering - CyberGo DD | Sensitive Data Filtering"
 description: "CyberGo DD security filtering API: SensitiveDataFilter rules, SecurityConfig policies, auto-masking passwords, tokens, and API keys in logs."
 ---
 

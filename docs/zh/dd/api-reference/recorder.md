@@ -1,6 +1,6 @@
 ---
-title: 测试辅助 - CyberGo DD | LoggerRecorder
-description: CyberGo DD 测试辅助工具 LoggerRecorder 完整 API 文档，专为单元测试场景设计，用于捕获和断言日志输出内容，支持按级别过滤日志条目、结构化字段值验证、条目计数统计和按序断言，显著提升日志相关单元测试的编写效率和可读性。
+title: "测试辅助 - CyberGo DD | LoggerRecorder"
+description: "CyberGo DD 测试辅助工具 LoggerRecorder 完整 API 文档，专为单元测试场景设计，用于捕获和断言日志输出内容，支持按级别过滤日志条目、结构化字段值验证、条目计数统计和按序断言，显著提升日志相关单元测试的编写效率和可读性。"
 ---
 
 # 测试辅助

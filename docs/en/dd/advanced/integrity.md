@@ -1,5 +1,5 @@
 ---
-title: HMAC Signing - CyberGo DD | Integrity Protection
+title: "HMAC Signing - CyberGo DD | Integrity Protection"
 description: "CyberGo DD HMAC-SHA256 integrity signing: IntegritySigner setup, signing and verification workflow, tamper detection, and production best practices."
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: 中间件链 - HTTPC
-description: HTTPC 中间件链指南，详解洋葱模型执行原理、八个内置中间件的功能配置、Chain 组合模式与自定义中间件编写方法。
+title: "中间件链 - HTTPC"
+description: "HTTPC 中间件链指南：洋葱模型执行原理与请求/响应双向处理、Recovery/Logging/RequestID/Timeout/Header/Metrics/Audit 八个内置中间件配置、Chain 手动组合模式、自定义 MiddlewareFunc 编写方法与断路器短路中间件示例。"
 ---
 
 # 中间件链

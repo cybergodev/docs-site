@@ -1,6 +1,6 @@
 ---
-title: 核心概念 - CyberGo DD | 架构与设计理念
-description: 深入理解 CyberGo DD 日志库的核心架构与设计理念，包括 Logger 与 LoggerEntry 的关系与生命周期、结构化字段 Field 的类型安全使用模式、日志处理管道的完整处理流程、四层递进式接口设计以及线程安全并发模型，帮助开发者建立对 DD 库的系统性认知。
+title: "核心概念 - CyberGo DD | 架构与设计理念"
+description: "深入理解 CyberGo DD 日志库的核心架构与设计理念，包括 Logger 与 LoggerEntry 的关系与生命周期、结构化字段 Field 的类型安全使用模式、日志处理管道的完整处理流程、四层递进式接口设计以及线程安全并发模型，帮助开发者建立对 DD 库的系统性认知。"
 ---
 
 # 核心概念

@@ -1,5 +1,5 @@
 ---
-title: 打印函数 - CyberGo JSON | API 参考
+title: "打印函数 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 打印与格式化输出参考：使用 Encode、EncodePretty、Prettify 函数和标准 fmt 包实现 JSON 格式化输出，替代已私有化的 Print/PrintPretty 系列函数，支持自定义缩进和前缀。"
 ---
 

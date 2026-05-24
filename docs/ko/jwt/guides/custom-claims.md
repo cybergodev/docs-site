@@ -1,5 +1,5 @@
 ---
-title: 커스텀 Claims - JWT
+title: "커스텀 Claims - JWT"
 description: "CyberGo JWT 커스텀 Claims 가이드: CustomClaims 인터페이스 구현, 내장과 커스텀 검증 차이, ValidateInto/RefreshInto 사용법과 코드 예제."
 ---
 

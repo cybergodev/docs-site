@@ -1,5 +1,5 @@
 ---
-title: Processor プロセッサ - CyberGo JSON | API リファレンス
+title: "Processor プロセッサ - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor プロセッサ完全リファレンス：New によるインスタンス作成、GetString/Set/Delete によるデータ操作、Foreach 反復、Encode エンコード、Close ライフサイクル管理、Stats 統計、キャッシュ設定など、高頻度 JSON 操作やデータ処理の再利用に最適です。"
 ---
 

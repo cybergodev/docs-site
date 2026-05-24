@@ -1,6 +1,6 @@
 ---
-title: 상수와 오류 - CyberGo DD | LogLevel, Format, SentinelErrors
-description: CyberGo DD 상수 정의와 오류 타입 전체 문서. LogLevel 로그 레벨 상수 (Debug/Info/Warn/Error/Fatal), Format 출력 형식 상수 및 SentinelErrors 센티넬 오류 정의를 포함하여, 로그 동작과 오류 처리를 정밀하게 제어하는 데 사용되며, DD 로그 라이브러리 설정 체계를 이해하는 핵심 기초입니다.
+title: "상수와 오류 - CyberGo DD | LogLevel, Format, SentinelErrors"
+description: "CyberGo DD 상수 정의와 오류 타입 전체 문서. LogLevel 로그 레벨 상수 (Debug/Info/Warn/Error/Fatal), Format 출력 형식 상수 및 SentinelErrors 센티넬 오류 정의를 포함하여, 로그 동작과 오류 처리를 정밀하게 제어하는 데 사용되며, DD 로그 라이브러리 설정 체계를 이해하는 핵심 기초입니다."
 ---
 
 # 상수와 오류

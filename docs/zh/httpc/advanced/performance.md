@@ -1,6 +1,6 @@
 ---
-title: 性能优化 - HTTPC
-description: HTTPC 性能优化指南，对比四种预设配置性能差异，涵盖连接池调优、Result 对象池复用策略与常见性能反模式解决方案。
+title: "性能优化 - HTTPC"
+description: "HTTPC 性能优化指南：Default/Secure/Performance/Minimal 四种预设对比与场景选型、基于预设微调连接池与超时、ReleaseResult 对象池复用减少 GC 压力与常见性能反模式。"
 ---
 
 # 性能优化

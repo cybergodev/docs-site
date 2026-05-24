@@ -1,11 +1,11 @@
 ---
-title: Доменный клиент и сессии - HTTPC
-description: Руководство по доменному клиенту и управлению сессиями HTTPC, подробно описывающее создание NewDomain, автоматическую сборку URL, управление заголовками сессии и Cookie, а также настройку безопасности.
+title: "Доменный клиент и сессии — HTTPC"
+description: "Руководство по доменному клиенту и управлению сессиями HTTPC: создание через NewDomain, автоматическая сборка URL, управление заголовками сессии SetHeader, автоматическое управление и захват Cookie, стратегия проверки безопасности CookieSecurity и пример обёртки клиента REST API."
 ---
 
 # Доменный клиент и сессии
 
-Доменный клиент (DomainClient) — это клиент управления сессиями для определённого домена, автоматически поддерживающий Cookie и заголовки запросов.
+Доменный клиент (DomainClient) — это клиент управления сессиями для определённого домена с автоматическим поддержанием Cookie и заголовков.
 
 ## Создание доменного клиента
 
@@ -19,7 +19,7 @@ defer dc.Close()
 // Cookie автоматически включены
 dc.SetHeader("Authorization", "Bearer "+token)
 
-// Отправка запросов с относительными путями
+// Использование относительных путей для запросов
 result, err := dc.Get("/users")
 ```
 
@@ -45,7 +45,7 @@ dc.SetHeaders(map[string]string{
 dc.DeleteHeader("X-Version")
 dc.ClearHeaders()
 
-// Получение
+// Запрос
 headers := dc.GetHeaders()
 ```
 
@@ -58,14 +58,14 @@ dc.SetCookie(&http.Cookie{Name: "session", Value: "abc123"})
 // Массовая установка
 dc.SetCookies([]*http.Cookie{
     {Name: "session", Value: "abc123"},
-    {Name: "lang", Value: "zh"},
+    {Name: "lang", Value: "ru"},
 })
 
-// Автоматический захват Cookie из ответа
+// Автоматический захват Cookie из ответов
 result, _ := dc.Get("/login")
-// Cookie, возвращённые сервером через Set-Cookie, автоматически сохраняются в сессию
+// Set-Cookie от сервера автоматически сохраняются в сессию
 
-// Получение
+// Запрос
 cookie := dc.GetCookie("session")
 cookies := dc.GetCookies()
 
@@ -75,10 +75,10 @@ dc.ClearCookies()
 ```
 
 :::tip Совет
-После каждого запроса Cookie, возвращённые сервером, автоматически обновляются в сессии, ручная обработка не требуется.
+После каждого запроса Cookie, возвращённые сервером, автоматически обновляются в сессии — ручная обработка не требуется.
 :::
 
-## Методы запросов
+## Способы выполнения запросов
 
 ```go
 // Относительные пути
@@ -93,7 +93,7 @@ result, _ := dc.Options("/users")
 // С контекстом
 result, _ := dc.Request(ctx, "GET", "/users")
 
-// Абсолютный URL (обходит сборку базового URL)
+// Абсолютный URL (пропускает сборку с base URL)
 result, _ := dc.Get("https://other-api.com/data")
 ```
 
@@ -104,7 +104,7 @@ result, _ := dc.Get("https://other-api.com/data")
 dc.URL()     // "https://api.example.com"
 dc.Domain()  // "api.example.com"
 
-// Доступ к базовому SessionManager
+// Доступ к底层 SessionManager
 session := dc.Session()
 if err := session.SetHeader("X-Trace-ID", traceID); err != nil {
     log.Fatal(err)
@@ -113,7 +113,7 @@ if err := session.SetHeader("X-Trace-ID", traceID); err != nil {
 
 ## Проверка безопасности Cookie
 
-Можно настроить политику безопасности Cookie, чтобы принимать только Cookie, соответствующие стандартам безопасности:
+Можно настроить политику безопасности Cookie для принятия только тех, которые соответствуют стандартам безопасности:
 
 ```go
 dc, _ := httpc.NewDomain("https://api.example.com")
@@ -127,7 +127,7 @@ session.SetCookieSecurity(httpc.StrictCookieSecurityConfig())
 if err := dc.SetCookie(&http.Cookie{
     Name:  "insecure",
     Value: "test",
-    // Отсутствует Secure, HttpOnly → отклонено
+    // Отсутствуют Secure, HttpOnly → отклонено
 }); err != nil {
     log.Println("Cookie отклонён:", err)
 }
@@ -164,7 +164,7 @@ func main() {
         log.Fatal(err)
     }
 
-    // Разбор Token из ответа
+    // Парсинг Token из ответа
     var loginResp struct {
         Token string `json:"token"`
     }
@@ -194,6 +194,6 @@ func main() {
 
 ## Что дальше
 
-- [Доменный клиент API](../api-reference/domain-client) - полный справочник API
-- [Управление сессиями API](../api-reference/session) - справочник по SessionManager
-- [Запросы и ответы](./request-response) - руководство по базовым запросам
+- [Доменный клиент API](../api-reference/domain-client) — полный справочник API
+- [Управление сессиями API](../api-reference/session) — справочник SessionManager
+- [Запросы и ответы](./request-response) — руководство по базовым запросам

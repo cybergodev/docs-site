@@ -1,6 +1,6 @@
 ---
-title: Processor - JWT API Reference
-description: CyberGo JWT Processor core API reference covering Create, Validate, CreateRefresh, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked, ParseUnverified, Close, and IsClosed methods.
+title: "Processor - JWT API Reference"
+description: "CyberGo JWT Processor core API reference covering Create, Validate, CreateRefresh, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked, ParseUnverified, Close, and IsClosed methods."
 ---
 
 # Processor

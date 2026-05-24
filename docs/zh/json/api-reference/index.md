@@ -1,5 +1,5 @@
 ---
-title: API 参考 - CyberGo JSON | 完整函数文档
+title: "API 参考 - CyberGo JSON | 完整函数文档"
 description: "CyberGo JSON 完整 API 参考手册：涵盖 GetString/GetInt 路径查询、Set/Delete 修改操作、Marshal/Unmarshal 序列化、Processor 处理器、Schema 验证、Hook 钩子和安全配置，100% 兼容 encoding/json 标准库。"
 ---
 

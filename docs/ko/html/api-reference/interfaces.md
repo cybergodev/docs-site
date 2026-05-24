@@ -1,6 +1,6 @@
 ---
-title: 인터페이스 정의 - HTML
-description: CyberGo HTML 라이브러리 핵심 인터페이스 정의 API 레퍼런스, Extractor(전체 추출 인터페이스), StatsProvider(통계 및 캐시 관리), ContentNode(HTML 노드 추상화), Scorer(커스텀 평가 전략) 및 AuditSink(감사 출력)를 포함합니다.
+title: "인터페이스 정의 - HTML"
+description: "CyberGo HTML 라이브러리 핵심 인터페이스 정의 API 레퍼런스, Extractor(전체 추출 인터페이스), StatsProvider(통계 및 캐시 관리), ContentNode(HTML 노드 추상화), Scorer(커스텀 평가 전략) 및 AuditSink(감사 출력)를 포함합니다."
 ---
 
 # 인터페이스 정의

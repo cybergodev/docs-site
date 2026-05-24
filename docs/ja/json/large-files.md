@@ -1,5 +1,5 @@
 ---
-title: 大ファイル処理 - CyberGo JSON | ガイド
+title: "大ファイル処理 - CyberGo JSON | ガイド"
 description: "CyberGo JSON 大ファイル処理の完全ガイド：ForeachFile 構造化イテレーション、ForeachFileChunked バッチ処理、メモリ制御設定、バッファサイズ最適化、JSONL バッチ処理、NDJSONProcessor による真のストリーム処理について詳しく解説。ログ分析、データエクスポート、ETL シナリオに適しています。"
 ---
 

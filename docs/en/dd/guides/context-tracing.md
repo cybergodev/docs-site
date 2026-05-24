@@ -1,5 +1,5 @@
 ---
-title: Distributed Tracing - CyberGo DD | Context Guide
+title: "Distributed Tracing - CyberGo DD | Context Guide"
 description: "CyberGo DD distributed tracing: TraceID, SpanID, RequestID propagation, ContextExtractor, HTTP middleware, and OpenTelemetry integration."
 ---
 

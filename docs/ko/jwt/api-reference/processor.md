@@ -1,5 +1,5 @@
 ---
-title: Processor - JWT API 레퍼런스
+title: "Processor - JWT API 레퍼런스"
 description: "CyberGo JWT Processor 핵심 API 레퍼런스: Create, Validate, Refresh, Revoke, ValidateInto, RefreshInto, ParseUnverified 등 전체 메서드 시그니처와 사용법."
 ---
 

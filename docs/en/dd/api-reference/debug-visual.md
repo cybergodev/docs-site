@@ -1,5 +1,5 @@
 ---
-title: Debug Output - CyberGo DD | Print/JSON/Text/Exit
+title: "Debug Output - CyberGo DD | Print/JSON/Text/Exit"
 description: "CyberGo DD debug output API: Print, JSON, Text, and Exit functions for quick debugging via package-level calls without creating a Logger instance."
 ---
 

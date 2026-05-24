@@ -1,6 +1,6 @@
 ---
-title: 接口定义 - CyberGo env | 核心接口层次
-description: CyberGo env 库接口类型定义完整参考文档，采用细粒度接口设计支持依赖注入和灵活组合，包括 Validator 验证器、FullAuditLogger 审计处理器、EnvParser 解析器、EnvStorage 安全存储和 FileSystem 文件系统适配器等核心接口的详细说明与用法。
+title: "接口定义 - CyberGo env | 核心接口层次"
+description: "CyberGo env 库接口类型定义完整参考文档，采用细粒度接口设计支持依赖注入和灵活组合，包括 Validator 验证器、FullAuditLogger 审计处理器、EnvParser 解析器、EnvStorage 安全存储和 FileSystem 文件系统适配器等核心接口的详细说明与用法。"
 ---
 
 # 接口定义

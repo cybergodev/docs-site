@@ -1,6 +1,6 @@
 ---
-title: About - CyberGo Docs | Documentation Site
-description: Learn about the CyberGo documentation site, including coverage, contribution guide, tech stack, and contact information.
+title: "About - CyberGo Docs | Documentation Site"
+description: "Learn about the CyberGo documentation site, including coverage, contribution guide, tech stack, and contact information."
 ---
 
 # About CyberGo Docs

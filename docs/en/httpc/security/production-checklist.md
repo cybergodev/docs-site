@@ -1,6 +1,6 @@
 ---
-title: Production Checklist - HTTPC
-description: Production environment security checklist for HTTPC, covering TLS configuration verification, SSRF protection confirmation, timeout and size limits, retry strategies, resource cleanup, and monitoring auditing.
+title: "Production Checklist - HTTPC"
+description: "HTTPC production checklist: TLS verification, SSRF confirmation, timeout and size limits, retry strategies, resource cleanup, and audit middleware setup."
 ---
 
 # Production Checklist

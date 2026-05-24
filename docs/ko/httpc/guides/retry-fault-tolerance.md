@@ -1,6 +1,6 @@
 ---
-title: 재시도와 장애 허용 - HTTPC
-description: HTTPC 재시도와 장애 허용 가이드, 기본 재시도 전략과 백오프 알고리즘 원리, RetryPolicy 사용자 정의 인터페이스, Retry-After 해석과 모범 사례 예제 상세 설명.
+title: "재시도와 장애 허용 - HTTPC"
+description: "HTTPC 재시도와 장애 허용 가이드: 기본 지수 백오프 재시도 전략과 RetryConfig 구성, 408/429/5xx 자동 재시도 조건, RetryPolicy 사용자 정의 인터페이스(내부 타입 제한 설명 포함), Retry-After 응답 헤더 자동 파싱, 백오프 전략 선택과 요청별 WithMaxRetries 제어 및 모범 사례."
 ---
 
 # 재시도와 장애 허용

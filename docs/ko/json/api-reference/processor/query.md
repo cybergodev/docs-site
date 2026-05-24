@@ -1,5 +1,5 @@
 ---
-title: Processor 경로 쿼리 - CyberGo JSON | API 레퍼런스
+title: "Processor 경로 쿼리 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor 경로 쿼리 메서드 완전 레퍼런스: Get/GetString/GetInt 등 타입 안전 가져오기, GetMultiple 배치 쿼리, SafeGet 안전 가져오기 (AccessResult 반환), GetTyped[T] 제네릭 가져오기를 포함하며, JSONPath 표현식과 캐시 최적화를 지원합니다."
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Security & Audit - CyberGo DD | Logging Examples
+title: "Security & Audit - CyberGo DD | Logging Examples"
 description: "CyberGo DD security filtering and audit logging examples: sensitive data redaction, HMAC signing, audit events, and HIPAA/PCI-DSS compliance setups."
 ---
 

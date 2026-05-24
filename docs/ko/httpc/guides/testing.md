@@ -1,6 +1,6 @@
 ---
-title: 테스트 가이드 - HTTPC
-description: HTTPC 테스트 가이드, TestingConfig 구성, httptest.Server 응답 시뮬레이션, 테이블 기반 테스트, 네트워크 오류 시뮬레이션 및 클라이언트 리소스 정리 상세 설명.
+title: "테스트 가이드 - HTTPC"
+description: "HTTPC 테스트 가이드: TestingConfig 테스트 전용 구성, net/http/httptest 모의 서버 통합, 오류 응답/지연/리다이렉트/파일 업로드 시나리오 모의, 테이블 기반 테스트 패턴, 컨텍스트 타임아웃 테스트와 ReleaseResult 리소스 정리 모범 사례."
 ---
 
 # 테스트 가이드

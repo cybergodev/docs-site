@@ -1,6 +1,6 @@
 ---
-title: Middleware - HTTPC
-description: HTTPC middleware system API reference, covering Chain composition function, eight built-in middleware factory functions, configurable audit, and AuditEvent audit event type definitions.
+title: "Middleware - HTTPC"
+description: "HTTPC middleware: Chain composition, eight built-in middleware factories, AuditMiddlewareWithConfig, and AuditEvent type definitions."
 ---
 
 # Middleware

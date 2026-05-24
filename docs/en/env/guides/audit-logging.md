@@ -1,6 +1,6 @@
 ---
-title: Audit Logging - CyberGo env | Security Audit Configuration
-description: Complete configuration guide for CyberGo env audit logging, covering JSON file handler, standard log handler, and Channel handler creation and configuration, custom AuditHandler interface implementation, recording all environment variable load, read, modify, and delete operations for security compliance checks and production troubleshooting.
+title: "Audit Logging - CyberGo env | Security Audit Configuration"
+description: "Complete configuration guide for CyberGo env audit logging, covering JSON file handler, standard log handler, and Channel handler creation and configuration, custom AuditHandler interface implementation, recording all environment variable load, read, modify, and delete operations for security compliance checks and production troubleshooting."
 ---
 
 # Audit Logging

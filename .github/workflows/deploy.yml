@@ -44,5 +44,3 @@ jobs:
           local-dir: docs/.vitepress/dist/
           server-dir: ${{ secrets.FTP_REMOTE_DIR }}
           protocol: ftps
-          exclude: |
-            .htaccess

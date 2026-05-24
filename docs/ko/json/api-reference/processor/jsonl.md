@@ -1,5 +1,5 @@
 ---
-title: Processor JSONL 메서드 - CyberGo JSON | API 레퍼런스
+title: "Processor JSONL 메서드 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor JSONL 메서드: StreamJSONL/StreamJSONLParallel/StreamJSONLChunked 스트림 처리, ForeachJSONL 반복, MapJSONL 매핑, ReduceJSONL 리덕션, FilterJSONL 필터링, CollectJSONL 수집, FirstJSONL 검색을 지원합니다."
 ---
 

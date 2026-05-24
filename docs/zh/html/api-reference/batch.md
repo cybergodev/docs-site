@@ -1,6 +1,6 @@
 ---
-title: 批量处理 - HTML
-description: CyberGo HTML 库并发批量提取 API 参考，包括 ExtractBatch 和 ExtractBatchFiles 系列函数及其带上下文版本，支持 WorkerPoolSize 并发控制，单批次最多 10000 个项目，BatchResult 包含成功、失败和取消计数，适合大规模 HTML 内容并发提取场景。
+title: "批量处理 - HTML"
+description: "CyberGo HTML 库并发批量提取 API 参考，包括 ExtractBatch 和 ExtractBatchFiles 系列函数及其带上下文版本，支持 WorkerPoolSize 并发控制，单批次最多 10000 个项目，BatchResult 包含成功、失败和取消计数，适合大规模 HTML 内容并发提取场景。"
 ---
 
 # 批量处理

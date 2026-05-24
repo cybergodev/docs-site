@@ -1,5 +1,5 @@
 ---
-title: 查询与获取函数 - CyberGo JSON | API 参考
+title: "查询与获取函数 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 查询与获取函数完整参考：包括 Get/GetString/GetInt/GetFloat/GetBool 等类型安全获取、GetTyped[T] 泛型获取和 Parse/ParseAny 解析函数，全面支持 JSONPath 路径表达式，提供带默认值的零错误获取模式。"
 ---
 

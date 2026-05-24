@@ -1,6 +1,6 @@
 ---
-title: Interface Definitions - HTTPC
-description: HTTPC core interface API reference, covering the Client full-featured interface, Doer execution interface, DomainClienter domain interface, RetryPolicy, and MiddlewareFunc definitions.
+title: "Interface Definitions - HTTPC"
+description: "HTTPC core interfaces: Client, Doer, DomainClienter with session, RetryPolicy, and RequestMutator/ResponseMutator types."
 ---
 
 # Interface Definitions

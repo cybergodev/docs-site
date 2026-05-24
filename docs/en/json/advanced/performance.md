@@ -1,5 +1,5 @@
 ---
-title: Performance Optimization - CyberGo JSON | High Performance Guide
+title: "Performance Optimization - CyberGo JSON | High Performance Guide"
 description: "CyberGo JSON performance optimization guide: detailed coverage of caching strategies EnableCache/CacheTTL, parallel processing ParallelThreshold/MaxConcurrency, PreParse pre-parsing, WarmupCache warm-up, object pool reuse, and benchmark analysis for comprehensively improving high-frequency JSON processing performance."
 ---
 

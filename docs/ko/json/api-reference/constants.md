@@ -1,5 +1,5 @@
 ---
-title: 상수와 오류 - CyberGo JSON | API 레퍼런스
+title: "상수와 오류 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 상수와 오류 정의 완전 참조: DefaultMaxJSONSize/DefaultMaxNestingDepth 기본 제한 상수, ErrPathNotFound/ErrTypeMismatch 등 오류 변수 및 MergeMode 병합 모드 열거형을 포함하며, 설정 프리셋과 오류 처리를 지원합니다."
 ---
 

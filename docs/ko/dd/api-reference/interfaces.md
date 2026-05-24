@@ -1,6 +1,6 @@
 ---
-title: 인터페이스 정의 - CyberGo DD | Logger 인터페이스 계층
-description: CyberGo DD 로그 라이브러리 인터페이스 계층 정의 전체 문서. CoreLogger 기본 로그 인터페이스, LevelLogger 레벨 로그 인터페이스, ConfigurableLogger 설정 가능 로그 인터페이스 및 LogProvider 로그 제공자 인터페이스를 포함하여, 간단한 것부터 복잡한 것까지 다계층 로그 추상화 요구를 지원하며 커스텀 구현과 의존성 주입에 편리합니다.
+title: "인터페이스 정의 - CyberGo DD | Logger 인터페이스 계층"
+description: "CyberGo DD 로그 라이브러리 인터페이스 계층 정의 전체 문서. CoreLogger 기본 로그 인터페이스, LevelLogger 레벨 로그 인터페이스, ConfigurableLogger 설정 가능 로그 인터페이스 및 LogProvider 로그 제공자 인터페이스를 포함하여, 간단한 것부터 복잡한 것까지 다계층 로그 추상화 요구를 지원하며 커스텀 구현과 의존성 주입에 편리합니다."
 ---
 
 # 인터페이스 정의

@@ -1,5 +1,5 @@
 ---
-title: Core Concepts - CyberGo DD | Architecture Design
+title: "Core Concepts - CyberGo DD | Architecture Design"
 description: "CyberGo DD core architecture: Logger and LoggerEntry lifecycle, structured Field patterns, processing pipeline, interfaces, and concurrency model."
 ---
 

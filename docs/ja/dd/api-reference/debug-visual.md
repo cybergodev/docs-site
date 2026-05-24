@@ -1,6 +1,6 @@
 ---
-title: デバッグ出力 - CyberGo DD | Print/JSON/Text/Exit
-description: CyberGo DD デバッグビジュアライゼーション出力関数完全 API ドキュメント。Print フォーマット印刷、JSON 構造化出力、Text プレーンテキスト出力、Exit 致命的終了などクイックデバッグ関数を含み、パッケージレベル関数で直接呼び出し可能。Logger インスタンスを作成せずに使用でき、開発デバッグプロセスを大幅に簡素化。
+title: "デバッグ出力 - CyberGo DD | Print/JSON/Text/Exit"
+description: "CyberGo DD デバッグビジュアライゼーション出力関数完全 API ドキュメント。Print フォーマット印刷、JSON 構造化出力、Text プレーンテキスト出力、Exit 致命的終了などクイックデバッグ関数を含み、パッケージレベル関数で直接呼び出し可能。Logger インスタンスを作成せずに使用でき、開発デバッグプロセスを大幅に簡素化。"
 ---
 
 # デバッグ出力

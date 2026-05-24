@@ -1,5 +1,5 @@
 ---
-title: エンコード・デコード関数 - CyberGo JSON | API リファレンス
+title: "エンコード・デコード関数 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON エンコード・デコード関数リファレンス：Marshal/Unmarshal シリアライズ、Compact/Indent/HTMLEscape フォーマット、Encode/EncodePretty/EncodeWithConfig/Prettify 設定可能エンコード、encoding/json と 100% 互換。"
 ---
 

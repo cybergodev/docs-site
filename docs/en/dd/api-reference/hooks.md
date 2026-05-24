@@ -1,5 +1,5 @@
 ---
-title: Hook System - CyberGo DD | HookRegistry
+title: "Hook System - CyberGo DD | HookRegistry"
 description: "CyberGo DD lifecycle hooks API: custom callbacks for BeforeLog, AfterLog, OnRotate, OnError events via HookRegistry for log processing extensions."
 ---
 

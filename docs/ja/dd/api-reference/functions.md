@@ -1,6 +1,6 @@
 ---
-title: パッケージ関数 - CyberGo DD | グローバル関数とコンストラクタ
-description: CyberGo DD パッケージレベル関数完全 API ドキュメント。New ロガー作成関数、Default/SetDefault/InitDefault グローバルログ管理関数、DefaultConfig/DevelopmentConfig/JSONConfig 設定プリセット関数、全コンストラクタファクトリ関数を含み、dd. プレフィックスで直接呼び出し可能。
+title: "パッケージ関数 - CyberGo DD | グローバル関数とコンストラクタ"
+description: "CyberGo DD パッケージレベル関数完全 API ドキュメント。New ロガー作成関数、Default/SetDefault/InitDefault グローバルログ管理関数、DefaultConfig/DevelopmentConfig/JSONConfig 設定プリセット関数、全コンストラクタファクトリ関数を含み、dd. プレフィックスで直接呼び出し可能。"
 ---
 
 # パッケージ関数

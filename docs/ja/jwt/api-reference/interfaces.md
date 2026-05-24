@@ -1,6 +1,6 @@
 ---
-title: インターフェース定義 - JWT API リファレンス
-description: CyberGo JWT インターフェース定義リファレンス：TokenManager、CustomClaims、BlacklistStore、RateLimitProvider、ClockProvider および RateLimitKeyer インターフェース。
+title: "インターフェース定義 - JWT API リファレンス"
+description: "CyberGo JWT インターフェース定義リファレンス：TokenManager、CustomClaims、BlacklistStore、RateLimitProvider、ClockProvider および RateLimitKeyer インターフェース。"
 ---
 
 # インターフェース定義

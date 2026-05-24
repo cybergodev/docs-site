@@ -1,6 +1,6 @@
 ---
-title: 快速开始 - JWT
-description: CyberGo JWT 快速开始指南：安装配置、令牌签发与验证、刷新与吊销、HMAC/RSA/ECDSA 算法选择、自定义 Claims、黑名单与限流配置。
+title: "快速开始 - JWT"
+description: "CyberGo JWT 快速开始指南：安装配置、令牌签发与验证、刷新与吊销、HMAC/RSA/ECDSA 算法选择、自定义 Claims、黑名单与限流配置。"
 ---
 
 # 快速开始

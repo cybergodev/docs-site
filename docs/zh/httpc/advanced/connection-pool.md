@@ -1,6 +1,6 @@
 ---
-title: 连接池与代理 - HTTPC
-description: HTTPC 连接池与代理配置指南，详解连接池参数调优、HTTP 与 SOCKS5 代理、DoH 自定义解析器与空闲连接管理策略。
+title: "连接池与代理 - HTTPC"
+description: "HTTPC 连接池与代理配置指南：MaxIdleConns 等参数调优与场景推荐、ProxyURL 手动代理与系统代理检测、SOCKS5 代理、DoH 三提供商回退、HTTP/2 配置、ReleaseResult 对象池复用与并发请求模式。"
 ---
 
 # 连接池与代理

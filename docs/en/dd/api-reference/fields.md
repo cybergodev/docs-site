@@ -1,5 +1,5 @@
 ---
-title: Structured Fields - CyberGo DD | Field Constructors
+title: "Structured Fields - CyberGo DD | Field Constructors"
 description: "CyberGo DD field constructors API: 20+ type-safe fields (String, Int, Float, Bool, Time, Duration, Error, Any) for structured logging composition."
 ---
 

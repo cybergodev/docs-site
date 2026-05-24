@@ -1,6 +1,6 @@
 ---
-title: 输出格式选择 - HTML
-description: CyberGo HTML 输出格式选择指南，详细对比纯文本、Markdown、JSON 三种输出格式的特点与适用场景，包括格式选项配置（InlineImageFormat、InlineLinkFormat）、上下文支持和文件读取，帮助开发者选择最佳输出格式，满足不同下游处理的需求。
+title: "输出格式选择 - HTML"
+description: "CyberGo HTML 输出格式选择指南，详细对比纯文本、Markdown、JSON 三种输出格式的特点与适用场景，包括格式选项配置（InlineImageFormat、InlineLinkFormat）、上下文支持和文件读取，帮助开发者选择最佳输出格式，满足不同下游处理的需求。"
 ---
 
 # 输出格式选择

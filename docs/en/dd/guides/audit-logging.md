@@ -1,5 +1,5 @@
 ---
-title: Audit Logging - CyberGo DD | Security Audit Practical Guide
+title: "Audit Logging - CyberGo DD | Security Audit Practical Guide"
 description: "CyberGo DD audit logging guide: AuditLogger async events, 11 event types, severity filtering, HMAC signing, monitoring, and compliance strategies."
 ---
 

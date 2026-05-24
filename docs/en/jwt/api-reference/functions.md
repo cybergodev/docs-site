@@ -1,6 +1,6 @@
 ---
-title: Package Functions - JWT API Reference
-description: CyberGo JWT package functions reference covering New for creating Processor, DefaultConfig for defaults, DefaultBlacklistConfig, NewNumericDate, and NewRateLimiter.
+title: "Package Functions - JWT API Reference"
+description: "CyberGo JWT package functions reference covering New for creating Processor, DefaultConfig for defaults, DefaultBlacklistConfig, NewNumericDate, and NewRateLimiter."
 ---
 
 # Package Functions

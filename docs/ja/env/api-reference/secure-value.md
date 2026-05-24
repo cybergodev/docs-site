@@ -1,6 +1,6 @@
 ---
-title: SecureValue API - CyberGo env | セキュア値ストレージ
-description: CyberGo env ライブラリ SecureValue セキュア値 API 完全リファレンス。NewSecureValueStrict 安全作成、mlock メモリロック、Release ゼロクリア破棄、Masked マスク処理、IsSensitiveKey 機密キー検出、ClearBytes ユーティリティ関数を詳解。パスワードやトークンなどの機密データの安全な保存に使用。
+title: "SecureValue API - CyberGo env | セキュア値ストレージ"
+description: "CyberGo env ライブラリ SecureValue セキュア値 API 完全リファレンス。NewSecureValueStrict 安全作成、mlock メモリロック、Release ゼロクリア破棄、Masked マスク処理、IsSensitiveKey 機密キー検出、ClearBytes ユーティリティ関数を詳解。パスワードやトークンなどの機密データの安全な保存に使用。"
 ---
 
 # SecureValue API

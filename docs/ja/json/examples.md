@@ -1,5 +1,5 @@
 ---
-title: 使用例 - CyberGo JSON | 実践コード例
+title: "使用例 - CyberGo JSON | 実践コード例"
 description: "CyberGo JSON の実践的なコード例コレクション。パスクエリ GetString/GetTyped、構造体のエンコード・デコード Marshal/Unmarshal、JSONL ストリーム処理、Hook フック関数、Schema スキーマバリデーション、エラー処理など、完全に実行可能な例を含み、日常開発で最も一般的で実用的な JSON 操作シナリオを網羅しています。"
 ---
 

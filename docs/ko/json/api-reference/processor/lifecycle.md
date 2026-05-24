@@ -1,5 +1,5 @@
 ---
-title: Processor 수명 주기 - CyberGo JSON | API 레퍼런스
+title: "Processor 수명 주기 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor 수명 주기 관리 완전 레퍼런스: New 인스턴스 생성, Close 닫기 및 리소스 해제, IsClosed 상태 확인, Stats 통계 정보, HealthCheck 상태 모니터링, 동시성 안전 종료 및 리소스 보호의 모범 사례 가이드를 포함하여 프로덕션 환경의 안정적인 운영을 보장합니다."
 ---
 

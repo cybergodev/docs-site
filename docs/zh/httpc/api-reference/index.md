@@ -1,6 +1,6 @@
 ---
-title: API 参考 - HTTPC
-description: HTTPC API 参考索引，按功能分类组织包级函数、Client 接口、请求选项、中间件、错误类型、配置与常量的详细文档链接。
+title: "API 参考 - HTTPC"
+description: "HTTPC API 参考索引：按核心、请求响应、高级功能三组分类导航包级函数、27 个 WithXxx 请求选项函数、Config 配置系统、8 个内置中间件工厂、域名客户端、会话管理、文件下载与错误类型的详细文档链接。"
 ---
 
 # API 参考

@@ -1,5 +1,5 @@
 ---
-title: 사용 예제 - CyberGo JSON | 실전 코드 예제
+title: "사용 예제 - CyberGo JSON | 실전 코드 예제"
 description: "CyberGo JSON 실전 코드 예제 모음으로, 경로 쿼리 GetString/GetTyped, 구조체 인코딩/디코딩 Marshal/Unmarshal, JSONL 스트림 처리, Hook 훅 함수, Schema 스키마 검증 및 오류 처리 등 완전히 실행 가능한 예제를 제공하여 일상 개발에서 가장 흔하고 실용적인 JSON 작업 시나리오를 포괄합니다."
 ---
 

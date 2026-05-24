@@ -1,5 +1,5 @@
 ---
-title: Config - CyberGo JSON | API Reference
+title: "Config - CyberGo JSON | API Reference"
 description: "CyberGo JSON Config configuration options reference: detailed DefaultConfig default configuration, SecurityConfig security configuration, PrettyConfig formatting configuration, cache settings, size limits, security options, and encoding options to customize Processor and all JSON operation behavior."
 ---
 

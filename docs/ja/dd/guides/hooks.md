@@ -1,6 +1,6 @@
 ---
-title: フックシステム - CyberGo DD | ライフサイクルフック実践ガイド
-description: CyberGo DD フックシステム実践ガイド。6 種類のライフサイクルフックイベント（BeforeLog、AfterLog、OnFilter、OnRotate、OnClose、OnError）、HookRegistry 登録と管理、HookContext コンテキストデータ、エラー処理戦略、一般的なフック使用シナリオを詳細に紹介し、ログライブラリの動作を拡張できます。
+title: "フックシステム - CyberGo DD | ライフサイクルフック実践ガイド"
+description: "CyberGo DD フックシステム実践ガイド。6 種類のライフサイクルフックイベント（BeforeLog、AfterLog、OnFilter、OnRotate、OnClose、OnError）、HookRegistry 登録と管理、HookContext コンテキストデータ、エラー処理戦略、一般的なフック使用シナリオを詳細に紹介し、ログライブラリの動作を拡張できます。"
 ---
 
 # フックシステム

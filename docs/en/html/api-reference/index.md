@@ -1,6 +1,6 @@
 ---
-title: API Reference - HTML
-description: Complete API reference index for CyberGo HTML, covering package functions, Processor methods, batch processing, configuration, and audit logging.
+title: "API Reference - HTML"
+description: "Complete API reference index for CyberGo HTML, covering package functions, Processor methods, batch processing, configuration, and audit logging."
 ---
 
 # API Reference

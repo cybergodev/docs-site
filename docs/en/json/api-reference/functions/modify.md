@@ -1,5 +1,5 @@
 ---
-title: Modify Functions - CyberGo JSON | API Reference
+title: "Modify Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON modify functions complete reference: including Set/SetMultiple value setting, Delete key deletion, MergeJSON/MergeMany JSON merging, supporting automatic path creation, atomic operations, and multiple MergeMode merge strategies for various JSON data modification needs."
 ---
 

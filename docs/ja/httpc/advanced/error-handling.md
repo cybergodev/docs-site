@@ -1,13 +1,13 @@
 ---
-title: エラー処理 - HTTPC
-description: HTTPC エラー処理ガイド。12 種類の ErrorType エラー分類、ClientError 構造体フィールド、センチネルエラーマッチングと各種ネットワークエラーのベストプラクティス。
+title: "エラー処理 - HTTPC"
+description: "HTTPCエラー処理ガイド：ErrorType 12種類のエラー分類、ClientErrorフィールドとIsRetryable判定、errors.Is/Asセンチネルエラーマッチング、リトライ枯渇処理、コンテキストタイムアウトとキャンセル、ミドルウェアによる統一エラー処理とタイムアウト階層化のベストプラクティス。"
 ---
 
 # エラー処理
 
 ## エラー分類
 
-HTTPC は `ClientError` を使用してエラーを分類し、`errors.As` と `errors.Is` をサポートします。
+HTTPCは`ClientError`でエラーを分類し、`errors.As`と`errors.Is`をサポートします。
 
 ### エラータイプの判定
 
@@ -22,9 +22,9 @@ if err != nil {
         case httpc.ErrorTypeNetwork:
             log.Printf("ネットワークエラー: %v", err)
         case httpc.ErrorTypeDNS:
-            log.Printf("DNS 解決失敗: %v", err)
+            log.Printf("DNS解決失敗: %v", err)
         case httpc.ErrorTypeTLS:
-            log.Printf("TLS エラー: %v", err)
+            log.Printf("TLSエラー: %v", err)
         case httpc.ErrorTypeCertificate:
             log.Printf("証明書検証失敗: %v", err)
         case httpc.ErrorTypeRetryExhausted:
@@ -38,7 +38,7 @@ if err != nil {
 }
 ```
 
-### リトライ可能かどうかの判定
+### リトライ可否の判定
 
 ```go
 var clientErr *httpc.ClientError
@@ -50,11 +50,11 @@ if errors.As(err, &clientErr) && clientErr.IsRetryable() {
 
 ## センチネルエラー
 
-### エラー変数のマッチング
+### エラー変数マッチング
 
 ```go
 if errors.Is(err, httpc.ErrClientClosed) {
-    // クライアントは閉じられている
+    // クライアントが閉じられている
 }
 
 if errors.Is(err, httpc.ErrResponseBodyEmpty) {
@@ -62,7 +62,7 @@ if errors.Is(err, httpc.ErrResponseBodyEmpty) {
 }
 
 if errors.Is(err, httpc.ErrInvalidURL) {
-    // URL 形式が無効
+    // URL形式が無効
 }
 
 if errors.Is(err, httpc.ErrInvalidHeader) {
@@ -72,7 +72,7 @@ if errors.Is(err, httpc.ErrInvalidHeader) {
 
 ## リトライとエラー
 
-リトライ設定の詳細は[リトライとフォールトトレランス](../guides/retry-fault-tolerance)を参照してください。ここではリトライ枯渇後のエラー処理に焦点を当てます：
+リトライ設定の詳細は[リトライとフォールトトレランス](../guides/retry-fault-tolerance)を参照。ここではリトライ枯渇後のエラー処理に焦点を当てます：
 
 ```go
 result, err := client.Get(url)
@@ -80,14 +80,14 @@ if err != nil {
     var clientErr *httpc.ClientError
     if errors.As(err, &clientErr) {
         if clientErr.Type == httpc.ErrorTypeRetryExhausted {
-            log.Printf("%d 回リトライ後も失敗", clientErr.Attempts)
+            log.Printf("%d回リトライ後も失敗", clientErr.Attempts)
         }
     }
     return err
 }
 ```
 
-## コンテキストのキャンセル
+## コンテキストキャンセル
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -106,12 +106,12 @@ if err != nil {
 
 ## エラー処理のベストプラクティス
 
-### 1. クライアントエラーとサーバーエラーを区別する
+### 1. クライアントエラーとサーバーエラーの区別
 
 ```go
 result, err := client.Get(url)
 if err != nil {
-    // ネットワーク層のエラー
+    // ネットワーク層エラー
     handleNetworkError(err)
     return
 }
@@ -125,7 +125,7 @@ if result.IsClientError() {
 }
 ```
 
-### 2. ミドルウェアで統一的に処理する
+### 2. ミドルウェアによる統一処理
 
 ```go
 recoveryMiddleware := httpc.RecoveryMiddleware()
@@ -144,13 +144,13 @@ metricsMiddleware := httpc.MetricsMiddleware(func(method, url string, statusCode
 ### 3. タイムアウトの階層化
 
 ```go
-// クライアントのデフォルトタイムアウト
+// クライアントデフォルトタイムアウト
 cfg.Timeouts.Request = 30 * time.Second
 
-// ミドルウェアによる強制タイムアウト
+// ミドルウェア強制タイムアウト
 timeoutMiddleware := httpc.TimeoutMiddleware(30 * time.Second)
 
-// 個別リクエストでの上書き
+// 個別リクエストで上書き
 result, err := client.Get(url, httpc.WithTimeout(10 * time.Second))
 
 // コンテキストタイムアウト（最も精密）
@@ -160,6 +160,6 @@ result, err := client.Request(ctx, "GET", url)
 
 ## 次のステップ
 
-- [エラータイプ API](../api-reference/errors) - エラータイプと変数のリファレンス
+- [エラータイプAPI](../api-reference/errors) - エラータイプと変数のリファレンス
 - [リトライとフォールトトレランス](../guides/retry-fault-tolerance) - リトライ戦略の設定
-- [ミドルウェアチェーン](../guides/middleware-chain) - ミドルウェアによるエラーの統一処理
+- [ミドルウェアチェーン](../guides/middleware-chain) - ミドルウェアによる統一エラー処理

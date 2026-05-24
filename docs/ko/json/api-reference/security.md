@@ -1,5 +1,5 @@
 ---
-title: 보안 모드 - CyberGo JSON | API 레퍼런스
+title: "보안 모드 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 보안 API 완전 참조: 보안 설정, AddDangerousPattern 위험 패턴 설정 및 입력 검증 메커니즘을 포함하여 JSON 인젝션, 깊은 중첩 공격 및 자원 고갈 등 보안 위협을 방어하며, 커스텀 보안 정책과 방어 규칙 설정을 지원하여 Go 애플리케이션의 보안을 보장합니다."
 ---
 

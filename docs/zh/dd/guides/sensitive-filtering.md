@@ -1,6 +1,6 @@
 ---
-title: 敏感数据过滤 - CyberGo DD | 自动脱敏配置指南
-description: CyberGo DD 敏感数据过滤配置指南，涵盖内置过滤模式（密码、API Key、信用卡、SSN、JWT 等）、自定义正则模式、五级安全等级、行业合规预设（HIPAA、PCI-DSS、政府标准）以及过滤统计与监控，帮助开发者构建合规的日志脱敏方案。
+title: "敏感数据过滤 - CyberGo DD | 自动脱敏配置指南"
+description: "CyberGo DD 敏感数据过滤配置指南，涵盖内置过滤模式（密码、API Key、信用卡、SSN、JWT 等）、自定义正则模式、五级安全等级、行业合规预设（HIPAA、PCI-DSS、政府标准）以及过滤统计与监控，帮助开发者构建合规的日志脱敏方案。"
 ---
 
 # 敏感数据过滤

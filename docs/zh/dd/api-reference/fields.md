@@ -1,6 +1,6 @@
 ---
-title: 结构化字段 - CyberGo DD | Field 构造器
-description: CyberGo DD 结构化字段构造器完整 API 文档，支持 20 余种类型的类型安全字段创建，包括 String/Int/Float/Bool 等基础字段、Time/Duration 时间字段、Error 错误字段、Any 对象字段和自定义字段，提供便捷的链式调用组合方式。
+title: "结构化字段 - CyberGo DD | Field 构造器"
+description: "CyberGo DD 结构化字段构造器完整 API 文档，支持 20 余种类型的类型安全字段创建，包括 String/Int/Float/Bool 等基础字段、Time/Duration 时间字段、Error 错误字段、Any 对象字段和自定义字段，提供便捷的链式调用组合方式。"
 ---
 
 # 结构化字段

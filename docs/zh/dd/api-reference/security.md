@@ -1,6 +1,6 @@
 ---
-title: 安全过滤 - CyberGo DD | 敏感数据过滤
-description: CyberGo DD 敏感数据过滤完整 API 文档，包括 SensitiveDataFilter 过滤规则配置、SecurityConfig 安全策略选项和预设安全配置方案，自动检测和脱敏日志中的密码、API 密钥、Token、手机号和身份证号等敏感信息，有效防止日志泄露风险。
+title: "安全过滤 - CyberGo DD | 敏感数据过滤"
+description: "CyberGo DD 敏感数据过滤完整 API 文档，包括 SensitiveDataFilter 过滤规则配置、SecurityConfig 安全策略选项和预设安全配置方案，自动检测和脱敏日志中的密码、API 密钥、Token、手机号和身份证号等敏感信息，有效防止日志泄露风险。"
 ---
 
 # 安全过滤

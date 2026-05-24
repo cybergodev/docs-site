@@ -1,6 +1,6 @@
 ---
-title: Constants & Errors - CyberGo env | Sentinel Errors and Security Constants
-description: CyberGo env library constants and errors complete reference, covering DefaultMaxFileSize security limits, ErrFileNotFound sentinel errors, ParseError structured error types, IsSensitiveKey and MaskValue utility functions, paired with errors.Is and errors.As for handling various error scenarios.
+title: "Constants & Errors - CyberGo env | Sentinel Errors and Security Constants"
+description: "CyberGo env library constants and errors complete reference, covering DefaultMaxFileSize security limits, ErrFileNotFound sentinel errors, ParseError structured error types, IsSensitiveKey and MaskValue utility functions, paired with errors.Is and errors.As for handling various error scenarios."
 ---
 
 # Constants & Errors

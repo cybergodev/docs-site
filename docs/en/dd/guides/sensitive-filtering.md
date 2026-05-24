@@ -1,5 +1,5 @@
 ---
-title: Sensitive Data Filtering - CyberGo DD | Redaction
+title: "Sensitive Data Filtering - CyberGo DD | Redaction"
 description: "CyberGo DD sensitive data filtering: built-in patterns, custom regex, five security levels, HIPAA/PCI-DSS presets, and redaction statistics."
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: SecureValue API - CyberGo env | 安全值存储
-description: CyberGo env 库 SecureValue 安全值 API 完整参考，详解 NewSecureValueStrict 安全创建、mlock 内存锁定、Release 清零销毁、Masked 掩码处理、IsSensitiveKey 敏感键检测和 ClearBytes 工具函数，用于安全存储密码和令牌等敏感数据。
+title: "SecureValue API - CyberGo env | 安全值存储"
+description: "CyberGo env 库 SecureValue 安全值 API 完整参考，详解 NewSecureValueStrict 安全创建、mlock 内存锁定、Release 清零销毁、Masked 掩码处理、IsSensitiveKey 敏感键检测和 ClearBytes 工具函数，用于安全存储密码和令牌等敏感数据。"
 ---
 
 # SecureValue API

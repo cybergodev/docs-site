@@ -1,6 +1,6 @@
 ---
-title: 監査ログ - CyberGo DD | AuditLogger
-description: CyberGo DD 監査ログ完全 API ドキュメント。AuditLogger 非同期監査イベントレコーダー、AuditConfig 設定オプション（出力先、フォーマット、署名）と監査エントリ構造化フォーマットを含み、セキュリティ関連イベントの追跡記録をサポートし、エンタープライズグレードのコンプライアンス監査とデータセキュリティ規制の各種ニーズに対応。
+title: "監査ログ - CyberGo DD | AuditLogger"
+description: "CyberGo DD 監査ログ完全 API ドキュメント。AuditLogger 非同期監査イベントレコーダー、AuditConfig 設定オプション（出力先、フォーマット、署名）と監査エントリ構造化フォーマットを含み、セキュリティ関連イベントの追跡記録をサポートし、エンタープライズグレードのコンプライアンス監査とデータセキュリティ規制の各種ニーズに対応。"
 ---
 
 # 監査ログ

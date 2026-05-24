@@ -1,6 +1,6 @@
 ---
-title: Output Formats - HTML
-description: Output format selection guide for CyberGo HTML, comparing plain text, Markdown, and JSON formats with configuration options and use case recommendations.
+title: "Output Formats - HTML"
+description: "Output format selection guide for CyberGo HTML, comparing plain text, Markdown, and JSON formats with configuration options and use case recommendations."
 ---
 
 # Output Formats

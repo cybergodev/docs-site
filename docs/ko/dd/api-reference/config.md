@@ -1,6 +1,6 @@
 ---
-title: 설정 - CyberGo DD | Config 상세 가이드
-description: CyberGo DD Config 구조체 전체 API 문서. DefaultConfig/DevelopmentConfig/JSONConfig 사전 설정 함수, OutputTarget 출력 대상 설정, 필드 검증 규칙, 샘플링 제어, 포맷팅 옵션 및 Validate 검증 메서드를 포함하여 유연하고 타입 안전한 로거 동작 커스터마이징 기능을 제공합니다.
+title: "설정 - CyberGo DD | Config 상세 가이드"
+description: "CyberGo DD Config 구조체 전체 API 문서. DefaultConfig/DevelopmentConfig/JSONConfig 사전 설정 함수, OutputTarget 출력 대상 설정, 필드 검증 규칙, 샘플링 제어, 포맷팅 옵션 및 Validate 검증 메서드를 포함하여 유연하고 타입 안전한 로거 동작 커스터마이징 기능을 제공합니다."
 ---
 
 # 설정

@@ -1,6 +1,6 @@
 ---
-title: Запросы и ответы - HTTPC
-description: Руководство по обработке запросов и ответов HTTPC, включая установку заголовков, различные форматы тела запроса, параметры запроса, методы аутентификации, управление Cookie и потоковые ответы.
+title: "Запросы и ответы — HTTPC"
+description: "Руководство по обработке запросов и ответов HTTPC: функции уровня пакета и клиентские запросы, параметры WithHeader/WithJSON/WithForm, аутентификация WithBearerToken, параметры запроса WithQuery, управление Cookie, управление контекстом, потоковые ответы и настройка лимитов распаковки."
 ---
 
 # Запросы и ответы
@@ -9,7 +9,7 @@ description: Руководство по обработке запросов и 
 
 ### Функции уровня пакета
 
-Отправляйте запросы напрямую без создания клиента:
+Нет необходимости создавать клиент — отправляйте запросы напрямую:
 
 ```go
 result, err := httpc.Get("https://api.example.com/data")
@@ -87,7 +87,7 @@ result, err := client.Post(url, httpc.WithBinary(data, "image/png"))
 result, err := client.Post(url, httpc.WithBody(data))
 // string → text/plain; charset=utf-8, []byte → application/octet-stream,
 // map[string]string → application/x-www-form-urlencoded,
-// *FormData → multipart/form-data, io.Reader → passed through,
+// *FormData → multipart/form-data, io.Reader → передаётся как есть,
 // другие → application/json
 // Явное указание: httpc.WithBody(data, httpc.BodyJSON)
 ```
@@ -100,7 +100,7 @@ result, err := client.Get(url,
     httpc.WithQuery("limit", 10),
 )
 
-// Или используя Map
+// Или с использованием Map
 result, err := client.Get(url,
     httpc.WithQueryMap(map[string]any{
         "page":  1,
@@ -124,15 +124,15 @@ result, err := client.Get(url, httpc.WithBasicAuth("user", "pass"))
 ```go
 result, err := client.Get(url,
     httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"}),
-    httpc.WithCookieMap(map[string]string{"session": "abc", "lang": "zh"}),
-    httpc.WithCookieString("session=abc; lang=zh"),
+    httpc.WithCookieMap(map[string]string{"session": "abc", "lang": "ru"}),
+    httpc.WithCookieString("session=abc; lang=ru"),
 )
 ```
 
-### Управление запросом
+### Управление запросами
 
 ```go
-// Тайм-аут
+// Таймаут
 result, err := client.Get(url, httpc.WithTimeout(10*time.Second))
 
 // Повторные попытки
@@ -150,11 +150,11 @@ result, err := client.Get(url,
 ```go
 result, err := client.Get(url,
     httpc.WithOnRequest(func(req httpc.RequestMutator) error {
-        log.Printf("Отправка запроса: %s %s", req.Method(), req.URL())
+        log.Printf("отправка запроса: %s %s", req.Method(), req.URL())
         return nil
     }),
     httpc.WithOnResponse(func(resp httpc.ResponseMutator) error {
-        log.Printf("Получен ответ: %d", resp.StatusCode())
+        log.Printf("получен ответ: %d", resp.StatusCode())
         return nil
     }),
 )
@@ -181,7 +181,7 @@ result.Body()           // строка
 result.RawBody()        // []byte
 result.Proto()          // "HTTP/1.1"
 
-// Разбор JSON
+// Парсинг JSON
 var user User
 if err := result.Unmarshal(&user); err != nil {
     log.Fatal(err)
@@ -202,7 +202,7 @@ fmt.Println(result.Meta.RedirectCount)  // количество перенапр
 ## Управление контекстом
 
 ```go
-// Управление тайм-аутом
+// Управление таймаутом
 ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 defer cancel()
 result, err := httpc.Request(ctx, "GET", url)
@@ -211,14 +211,14 @@ result, err := httpc.Request(ctx, "GET", url)
 ctx, cancel := context.WithCancel(context.Background())
 go func() {
     time.Sleep(5 * time.Second)
-    cancel() // отмена через 5 секунд
+    cancel() // Отмена через 5 секунд
 }()
 result, err := httpc.Request(ctx, "GET", url)
 ```
 
 ## Потоковые ответы
 
-`WithStreamBody(true)` — это внутренний механизм, используемый при загрузке файлов для предотвращения кэширования полного тела ответа в памяти. При включении тело ответа не считывается в `Result` (`Body()` и `RawBody()` возвращают пустые значения).
+`WithStreamBody(true)` — внутренний механизм, используемый при загрузке файлов для предотвращения кэширования полного тела ответа в памяти. При включении тело ответа не считывается в `Result` (`Body()` и `RawBody()` возвращают пустые значения).
 
 :::warning Предупреждение
 `WithStreamBody(true)` используется внутри API загрузки файлов (`DownloadFile`, `DownloadWithOptions`). Для потокового получения содержимого ответа используйте [API загрузки файлов](./file-transfer).
@@ -234,24 +234,24 @@ result, err := client.DownloadWithOptions(url, cfg)
 
 ## Распаковка ответов
 
-HTTPC автоматически обрабатывает распаковку содержимого с кодировкой gzip, deflate и другими. Можно ограничить размер распакованного содержимого через настройки безопасности для предотвращения атак с помощью распакованных бомб:
+HTTPC автоматически обрабатывает распаковку контент-кодировок gzip, deflate и др. Через конфигурацию безопасности можно ограничить размер распакованных данных для предотвращения атак распаковки-бомбы:
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // максимальный размер сжатого тела 10 МБ
-cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // максимальный размер распакованного тела 100 МБ
+cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // сжатое тело максимум 10MB
+cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // распакованное тело максимум 100MB
 ```
 
 | Параметр | Значение по умолчанию | Описание |
-|----------|---------------------|----------|
-| `MaxResponseBodySize` | 10 МБ | Максимальный размер исходного тела ответа |
-| `MaxDecompressedBodySize` | 100 МБ | Максимальный размер распакованного тела ответа |
+|----------|----------------------|----------|
+| `MaxResponseBodySize` | 10MB | Верхний предел размера исходного тела ответа |
+| `MaxDecompressedBodySize` | 100MB | Верхний предел размера распакованного тела ответа |
 
-При превышении лимита возвращается ошибка с сообщением `"exceeds limit"`, которую можно обработать через тип `ClientError`. `ErrResponseBodyTooLarge` возвращается при разборе `Result.Unmarshal()` тел ответов, превышающих лимит в 50 МБ для JSON (независимо от `MaxResponseBodySize`).
+При превышении лимита возвращается ошибка с сообщением `"exceeds limit"`, которую можно обработать через тип `ClientError`. `ErrResponseBodyTooLarge` возвращается при парсинге `Result.Unmarshal()` тела JSON, превышающего лимит в 50MB (независимо от `MaxResponseBodySize`).
 
 ## Что дальше
 
-- [Загрузка и выгрузка файлов](./file-transfer) - руководство по передаче файлов
-- [Доменный клиент и сессии](./domain-session) - управление сессиями
-- [Параметры запросов API](../api-reference/options) - полный справочник параметров
-- [Result API](../api-reference/result) - справочник по обработке ответов
+- [Загрузка и выгрузка файлов](./file-transfer) — руководство по передаче файлов
+- [Доменный клиент и сессии](./domain-session) — управление сессиями
+- [Параметры запросов API](../api-reference/options) — полный справочник параметров
+- [Result API](../api-reference/result) — справочник обработки ответов

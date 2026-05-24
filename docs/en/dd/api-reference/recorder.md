@@ -1,5 +1,5 @@
 ---
-title: Testing Helper - CyberGo DD | LoggerRecorder
+title: "Testing Helper - CyberGo DD | LoggerRecorder"
 description: "CyberGo DD LoggerRecorder testing API: capture and assert log output, filter by level, validate fields, and count entries in unit tests."
 ---
 

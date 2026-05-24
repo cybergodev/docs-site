@@ -1,5 +1,5 @@
 ---
-title: Performance - CyberGo DD | Optimization Guide
+title: "Performance - CyberGo DD | Optimization Guide"
 description: "CyberGo DD performance optimization: zero-allocation techniques, BufferedWriter, log sampling, level checking, sync.Pool reuse, and benchmarking."
 ---
 

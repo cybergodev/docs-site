@@ -1,5 +1,5 @@
 ---
-title: JSONL 프로세서 - CyberGo JSON | API 레퍼런스
+title: "JSONL 프로세서 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON JSONL 프로세서 레퍼런스: StreamJSONL 스트리밍 처리, JSONLWriter 쓰기, StreamLinesInto[T] 제네릭 스트림, ParseJSONL 파싱, ToJSONL 변환 및 설정 옵션을 포함하며, JSON Lines 형식 읽기/쓰기 작업을 지원합니다."
 ---
 

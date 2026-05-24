@@ -1,5 +1,5 @@
 ---
-title: Config - Справочник JWT API
+title: "Config - Справочник JWT API"
 description: "Справочник CyberGo JWT Config API: унифицированные параметры Config (ключи подписи, алгоритмы, TTL, Issuer) и поля BlacklistConfig с описанием, значениями по умолчанию и методами валидации."
 ---
 

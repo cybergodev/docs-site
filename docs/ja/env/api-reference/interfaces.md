@@ -1,6 +1,6 @@
 ---
-title: インターフェース定義 - CyberGo env | コアインターフェース階層
-description: CyberGo env ライブラリのインターフェース型定義完全リファレンス。細粒度インターフェース設計による依存性注入と柔軟な組み合わせをサポート。Validator 検証器、FullAuditLogger 監査ハンドラー、EnvParser パーサー、EnvStorage 安全ストレージ、FileSystem ファイルシステムアダプターなどコアインターフェースの詳細な説明と使用法。
+title: "インターフェース定義 - CyberGo env | コアインターフェース階層"
+description: "CyberGo env ライブラリのインターフェース型定義完全リファレンス。細粒度インターフェース設計による依存性注入と柔軟な組み合わせをサポート。Validator 検証器、FullAuditLogger 監査ハンドラー、EnvParser パーサー、EnvStorage 安全ストレージ、FileSystem ファイルシステムアダプターなどコアインターフェースの詳細な説明と使用法。"
 ---
 
 # インターフェース定義

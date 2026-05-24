@@ -1,6 +1,6 @@
 ---
-title: 設定 - CyberGo DD | Config 詳解
-description: CyberGo DD Config 構造体完全 API ドキュメント。DefaultConfig/DevelopmentConfig/JSONConfig プリセット設定関数、OutputTarget 出力先設定、フィールド検証ルール、サンプリング制御、フォーマットオプション、Validate 検証メソッドを含み、柔軟で型安全なロガーの動作カスタマイズ機能を提供。
+title: "設定 - CyberGo DD | Config 詳解"
+description: "CyberGo DD Config 構造体完全 API ドキュメント。DefaultConfig/DevelopmentConfig/JSONConfig プリセット設定関数、OutputTarget 出力先設定、フィールド検証ルール、サンプリング制御、フォーマットオプション、Validate 検証メソッドを含み、柔軟で型安全なロガーの動作カスタマイズ機能を提供。"
 ---
 
 # 設定

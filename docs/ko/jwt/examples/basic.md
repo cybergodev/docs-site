@@ -1,5 +1,5 @@
 ---
-title: 기본 예제 - JWT
+title: "기본 예제 - JWT"
 description: "CyberGo JWT 기본 예제: HMAC 서명 토큰 생성 및 검증, 액세스 토큰과 리프레시 토큰, 토큰 취소 및 블랙리스트 관리, 속도 제한 보호의 전체 실행 가능 코드."
 ---
 

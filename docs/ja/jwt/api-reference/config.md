@@ -1,6 +1,6 @@
 ---
-title: Config - JWT API リファレンス
-description: CyberGo JWT Config API リファレンス：Config 統一設定項目（署名鍵、アルゴリズム、TTL、Issuer）と BlacklistConfig ブラックリスト設定のフィールド説明、デフォルト値および検証メソッド。
+title: "Config - JWT API リファレンス"
+description: "CyberGo JWT Config API リファレンス：Config 統一設定項目（署名鍵、アルゴリズム、TTL、Issuer）と BlacklistConfig ブラックリスト設定のフィールド説明、デフォルト値および検証メソッド。"
 ---
 
 # Config

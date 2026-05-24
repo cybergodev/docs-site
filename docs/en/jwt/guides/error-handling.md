@@ -1,6 +1,6 @@
 ---
-title: Error Handling - JWT
-description: CyberGo JWT error handling guide covering 17 sentinel error categories, errors.Is() matching patterns, ValidationError type, and web service error handling best practices.
+title: "Error Handling - JWT"
+description: "CyberGo JWT error handling guide covering 17 sentinel error categories, errors.Is() matching patterns, ValidationError type, and web service error handling best practices."
 ---
 
 # Error Handling

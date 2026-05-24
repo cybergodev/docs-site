@@ -1,6 +1,6 @@
 ---
-title: Tutorial - HTTPC
-description: Build a GitHub REST API client in this hands-on tutorial, learning HTTPC configuration presets, request options, domain clients, middleware, and error handling in 30 minutes.
+title: "Tutorial - HTTPC"
+description: "Build a GitHub API client in 30 minutes: requests, JSON parsing, domain client, middleware, error handling, file download, and concurrency."
 ---
 
 # Tutorial: Building a GitHub API Client

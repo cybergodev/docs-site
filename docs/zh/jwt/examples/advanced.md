@@ -1,6 +1,6 @@
 ---
-title: 高级示例 - JWT
-description: CyberGo JWT 高级示例：RSA/ECDSA 非对称签名、自定义 Claims、Redis 黑名单后端、时钟注入测试、未验证解析与 Web 服务集成。
+title: "高级示例 - JWT"
+description: "CyberGo JWT 高级示例：RSA/ECDSA 非对称签名、自定义 Claims、Redis 黑名单后端、时钟注入测试、未验证解析与 Web 服务集成。"
 ---
 
 # 高级示例

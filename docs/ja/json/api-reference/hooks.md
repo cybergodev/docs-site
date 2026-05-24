@@ -1,5 +1,5 @@
 ---
-title: Hook フックシステム - CyberGo JSON | API リファレンス
+title: "Hook フックシステム - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON フックシステム完全リファレンス：Hook インターフェース定義、LoggingHook ログ記録、TimingHook パフォーマンスタイミング、ValidationHook データバリデーション、ErrorHook エラー処理、カスタムフック実装の詳細解説。JSON 操作の前後にカスタムロジックを挿入可能。"
 ---
 

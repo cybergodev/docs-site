@@ -1,6 +1,6 @@
 ---
-title: 설정 - HTML
-description: CyberGo HTML 라이브러리 Config 설정 상세 설명, 리소스 관리(MaxInputSize, 캐시, 타임아웃), 보안(정제, 깊이 제한, 감사), 콘텐츠 추출(문서 인식, 미디어 보존), 출력 형식(이미지, 링크, 테이블), 링크 필터링(Include*, ResolveRelativeURLs) 및 Validate 검증 메서드를 포함합니다.
+title: "설정 - HTML"
+description: "CyberGo HTML 라이브러리 Config 설정 상세 설명, 리소스 관리(MaxInputSize, 캐시, 타임아웃), 보안(정제, 깊이 제한, 감사), 콘텐츠 추출(문서 인식, 미디어 보존), 출력 형식(이미지, 링크, 테이블), 링크 필터링(Include*, ResolveRelativeURLs) 및 Validate 검증 메서드를 포함합니다."
 ---
 
 # 설정

@@ -1,6 +1,6 @@
 ---
-title: 도메인 클라이언트 - HTTPC
-description: HTTPC 도메인 클라이언트 API 참조, NewDomain 생성, 7가지 HTTP 메서드, 4가지 다운로드 메서드, URL 자동 조합, 세션 헤더와 Cookie 관리 포함.
+title: "도메인 클라이언트 - HTTPC"
+description: "HTTPC 도메인 클라이언트 API 레퍼런스: NewDomain 생성 함수, Get/Post 등 7가지 HTTP 메서드와 Request 범용 메서드, 4가지 다운로드 메서드, URL 자동 조합 규칙, DomainClienter 인터페이스의 SetHeader/SetCookie 세션 관리와 Close 수명 주기."
 ---
 
 # 도메인 클라이언트
@@ -35,12 +35,12 @@ defer dc.Close()
 
 **매개변수 설명:**
 
-| 매개변수 | 유형 | 설명 |
+| 매개변수 | 타입 | 설명 |
 |------|------|------|
 | `baseURL` | `string` | 기본 URL (scheme과 host 포함 필수) |
 | `config` | `...*Config` | 선택적 구성, 전달하지 않으면 DefaultConfig() 사용 |
 
-**반환:** `DomainClienter` 인터페이스 (구체적 유형 `*DomainClient`가 아님).
+**반환값:** `DomainClienter` 인터페이스 (구체적 타입 `*DomainClient`가 아님).
 
 ## HTTP 메서드
 
@@ -102,7 +102,7 @@ dc.Close()    // error - 클라이언트 닫기 및 리소스 해제
 | `/users?page=1` | `https://api.example.com/v1/users?page=1` |
 | `https://other.com/api` | `https://other.com/api` (절대 URL) |
 
-:::warning 주의
+:::warning
 `http://`와 `https://` 프로토콜의 절대 URL만 허용되며, 다른 프로토콜은 거부됩니다 (SSRF 방지).
 :::
 
@@ -132,7 +132,7 @@ type DomainClienter interface {
 }
 ```
 
-테스트와 구현 교체를 쉽게 하기 위해 인터페이스 유형을 사용하는 것을 권장합니다.
+테스트와 구현 교체를 쉽게 하기 위해 인터페이스 타입을 사용하는 것을 권장합니다.
 
 ## 참고
 

@@ -1,6 +1,6 @@
 ---
-title: 请求选项 - HTTPC
-description: HTTPC 二十七个请求选项函数 API 参考，按类别涵盖请求头、认证、多种请求体格式、查询参数、Cookie 管理与回调函数。
+title: "请求选项 - HTTPC"
+description: "HTTPC 27 个请求选项函数 API 参考：WithHeader 请求头、WithBearerToken 认证、WithJSON/WithXML/WithForm/WithBinary 多种请求体、WithQuery 查询参数、五种 Cookie 选项与 WithOnRequest/WithOnResponse 回调。"
 ---
 
 # 请求选项

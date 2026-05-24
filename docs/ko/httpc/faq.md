@@ -1,13 +1,13 @@
 ---
-title: 자주 묻는 질문 - HTTPC
-description: HTTPC 자주 묻는 질문과 답변. 패키지 수준 함수 선택, 설정 사전 설정 비교, 프록시 설정, 오류 매칭, 객체 풀 관리 및 타임아웃 튜닝 등 빈번한 질문을 다룹니다.
+title: "자주 묻는 질문 - HTTPC"
+description: "HTTPC 자주 묻는 질문과 답변: 패키지 레벨 함수와 클라이언트 인스턴스 선택 기준, 다섯 가지 설정 프리셋 비교, HTTP/SOCKS5 프록시 및 DoH 설정, errors.Is/As 오류 매칭, ReleaseResult 객체 풀 관리와 4단계 타임아웃 튜닝."
 ---
 
 # 자주 묻는 질문
 
-## 언제 패키지 수준 함수를 쓰고 언제 클라이언트를 생성하나요?
+## 언제 패키지 레벨 함수를 쓰고 언제 클라이언트를 생성하나요?
 
-**패키지 수준 함수**는 간단한 시나리오에 적합합니다: 일회성 요청, 스크립트, 도구.
+**패키지 레벨 함수**는 간단한 시나리오에 적합합니다: 일회성 요청, 스크립트, 도구.
 
 ```go
 result, _ := httpc.Get("https://api.example.com/data")
@@ -20,10 +20,10 @@ client, _ := httpc.New(httpc.PerformanceConfig())
 defer client.Close()
 ```
 
-## 설정 사전 설정은 어떻게 선택하나요?
+## 설정 프리셋은 어떻게 선택하나요?
 
-| 사전 설정 | 적용 시나리오 |
-|-----------|---------------|
+| 프리셋 | 적용 시나리오 |
+|--------|---------------|
 | `DefaultConfig()` | 일반 시나리오, 안전한 기본값 |
 | `SecureConfig()` | 사용자 제공 URL 처리, 금융/의료 시나리오 |
 | `PerformanceConfig()` | 내부 마이크로서비스 통신, 고동시성 API |
@@ -38,7 +38,7 @@ defer client.Close()
 cfg := httpc.DefaultConfig()
 cfg.Security.AllowPrivateIPs = true // 모든 사설 IP 허용
 
-// 또는 정확한 면제
+// 또는 정확한 면제 설정
 cfg.Security.SSRFExemptCIDRs = []string{"10.0.0.0/8"}
 ```
 
@@ -139,7 +139,7 @@ client, _ := httpc.New(cfg)
 
 ## DNS-over-HTTPS는 어떻게 활성화하나요?
 
-DoH는 DNS 해석 지연을 줄이고 DNS 하이재킹을 방지할 수 있습니다:
+DoH는 DNS 리졸브 지연을 줄이고 DNS 하이재킹을 방지할 수 있습니다:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -147,10 +147,10 @@ cfg.Connection.EnableDoH = true
 cfg.Connection.DoHCacheTTL = 5 * time.Minute
 ```
 
-기본적으로 Cloudflare, Google, AliDNS 세 가지 제공자를 사용합니다 (우선순위 순으로 대체). 모든 DoH 제공자를 사용할 수 없는 경우 시스템 DNS로 자동 대체됩니다.
+기본적으로 Cloudflare, Google, AliDNS 세 가지 제공자를 사용합니다(우선순위 순으로 대체). 모든 DoH 제공자를 사용할 수 없는 경우 시스템 DNS로 자동 대체됩니다.
 
-:::tip 팁
-DoH는 DNS 해석 보안이 요구되는 시나리오에 적합합니다. 일반적인 API 호출에서는 활성화할 필요가 없으며, 기본 DNS로 충분합니다.
+:::tip
+DoH는 DNS 리졸브 보안이 요구되는 시나리오에 적합합니다. 일반적인 API 호출에서는 활성화할 필요가 없으며, 기본 DNS로 충분합니다.
 :::
 
 ## 더 많은 자료

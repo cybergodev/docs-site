@@ -1,5 +1,5 @@
 ---
-title: Claims - Справочник JWT API
+title: "Claims - Справочник JWT API"
 description: "Справочник CyberGo JWT Claims API: встроенные бизнес-утверждения Claims (UserID, Username, Role и другие), стандартные утверждения RegisteredClaims RFC 7519 и ограничения глубокой валидации."
 ---
 

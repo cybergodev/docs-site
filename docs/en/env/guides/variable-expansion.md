@@ -1,6 +1,6 @@
 ---
-title: Variable Expansion - CyberGo env | Variable Syntax
-description: Complete guide for CyberGo env variable expansion syntax, covering ${VAR} and ${VAR:-default} reference syntax, nested default values, := assignment and :? error output conditional expansion modes, circular reference detection, MaxExpansionDepth limits, and ExpandVariables toggle control for variable reuse and dynamic value substitution in .env files.
+title: "Variable Expansion - CyberGo env | Variable Syntax"
+description: "Complete guide for CyberGo env variable expansion syntax, covering ${VAR} and ${VAR:-default} reference syntax, nested default values, := assignment and :? error output conditional expansion modes, circular reference detection, MaxExpansionDepth limits, and ExpandVariables toggle control for variable reuse and dynamic value substitution in .env files."
 ---
 
 # Variable Expansion

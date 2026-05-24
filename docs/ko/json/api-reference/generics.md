@@ -1,5 +1,5 @@
 ---
-title: 제네릭 작업 - CyberGo JSON | API 레퍼런스
+title: "제네릭 작업 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 제네릭 API 완전 레퍼런스: GetTyped[T] 제네릭 가져오기 함수, Result[T] 제네릭 결과 타입, AccessResult 동적 타입 접근과 타입 안전 작업 가이드를 자세히 설명하며 Go 1.18+ 제네릭 기능을 활용하여 컴파일 타임 타입 안전 검사를 구현하고 런타임 오류를 줄입니다."
 ---
 

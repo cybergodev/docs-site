@@ -1,5 +1,5 @@
 ---
-title: Testing Patterns - CyberGo DD | LoggerRecorder Examples
+title: "Testing Patterns - CyberGo DD | LoggerRecorder Examples"
 description: "CyberGo DD testing patterns: LoggerRecorder in unit tests, message assertions, level filtering, field inspection, isolation, and concurrent safety."
 ---
 

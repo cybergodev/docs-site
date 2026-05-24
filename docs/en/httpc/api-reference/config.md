@@ -1,6 +1,6 @@
 ---
-title: Configuration - HTTPC
-description: HTTPC configuration API reference covering the Config struct, five sub-config groups, five preset functions, and the Validate method.
+title: "Configuration - HTTPC"
+description: "HTTPC configuration API reference covering the Config struct, five sub-config groups, five preset functions, and the Validate method."
 ---
 
 # Configuration
@@ -64,6 +64,7 @@ type ConnectionConfig struct {
     EnableCookies          bool          // Enable cookie management, default false
     EnableDoH              bool          // Enable DNS-over-HTTPS, default false
     DoHCacheTTL            time.Duration // DoH cache TTL, default 5min
+    BrowserFingerprint     string        // TLS fingerprint spoofing, default "" (uses standard Go TLS)
     MaxResponseHeaderBytes int64         // Max response header bytes, default 0 (uses Go standard library default 10MB)
 }
 ```
@@ -79,6 +80,23 @@ cfg.Connection.DoHCacheTTL = 5 * time.Minute
 ```
 
 Default DoH providers (in priority order): Cloudflare → Google → AliDNS. See [Connection Pool and Proxy](../advanced/connection-pool) for details.
+
+### TLS Fingerprint Spoofing
+
+Enable `BrowserFingerprint` to mimic real browser TLS ClientHello handshakes, bypassing TLS fingerprint-based anti-bot detection. When set, connections use utls instead of Go's standard `crypto/tls`:
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Connection.BrowserFingerprint = "chrome" // Options: "chrome", "firefox", "safari", "ios"
+```
+
+| Value | Emulated Browser |
+|-------|-----------------|
+| `"chrome"` | Google Chrome |
+| `"firefox"` | Mozilla Firefox |
+| `"safari"` | Apple Safari |
+| `"ios"` | iOS Safari |
+| `""` (default) | Uses standard Go TLS |
 
 ## SecurityConfig
 

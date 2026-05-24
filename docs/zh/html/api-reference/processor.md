@@ -1,6 +1,6 @@
 ---
-title: Processor - HTML
-description: CyberGo HTML 库 Processor 处理器完整 API 参考，包括 New 创建、Extract 提取方法族、GetStatistics 统计查询、GetAuditLog 审计日志、ClearCache 缓存管理、ResetStatistics 重置和 Close 生命周期管理，适合高频调用场景复用资源，是生产环境高性能处理的核心组件。
+title: "Processor - HTML"
+description: "CyberGo HTML 库 Processor 处理器完整 API 参考，包括 New 创建、Extract 提取方法族、GetStatistics 统计查询、GetAuditLog 审计日志、ClearCache 缓存管理、ResetStatistics 重置和 Close 生命周期管理，适合高频调用场景复用资源，是生产环境高性能处理的核心组件。"
 ---
 
 # Processor

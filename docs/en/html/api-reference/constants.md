@@ -1,6 +1,6 @@
 ---
-title: Constants & Errors - HTML
-description: Constants and error types for CyberGo HTML, including default limits, sentinel errors, and structured error types with errors.Is/errors.As support.
+title: "Constants & Errors - HTML"
+description: "Constants and error types for CyberGo HTML, including default limits, sentinel errors, and structured error types with errors.Is/errors.As support."
 ---
 
 # Constants & Errors

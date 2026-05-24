@@ -1,6 +1,6 @@
 ---
-title: 生产检查清单 - CyberGo env | 安全上线检查
-description: CyberGo env 库生产环境部署前安全检查清单，涵盖 .env 文件权限与目录保护、RequiredKeys 和 AllowedKeys 键值验证、AuditEnabled 审计日志启用配置、SecureValue 敏感数据安全处理、哨兵错误处理策略和 LimitsConfig 性能安全参数调优等关键安全检查项。
+title: "生产检查清单 - CyberGo env | 安全上线检查"
+description: "CyberGo env 库生产环境部署前安全检查清单，涵盖 .env 文件权限与目录保护、RequiredKeys 和 AllowedKeys 键值验证、AuditEnabled 审计日志启用配置、SecureValue 敏感数据安全处理、哨兵错误处理策略和 LimitsConfig 性能安全参数调优等关键安全检查项。"
 ---
 
 # 生产检查清单

@@ -1,5 +1,5 @@
 ---
-title: Compliance Config - CyberGo DD | HIPAA & PCI-DSS
+title: "Compliance Config - CyberGo DD | HIPAA & PCI-DSS"
 description: "CyberGo DD compliance config: HIPAA healthcare, PCI-DSS payment, and government standards for filtering, audit, retention, and rotation policies."
 ---
 

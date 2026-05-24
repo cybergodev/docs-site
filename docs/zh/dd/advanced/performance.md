@@ -1,6 +1,6 @@
 ---
-title: 性能优化 - CyberGo DD | 高性能日志
-description: CyberGo DD 日志库性能优化完整指南，详解零分配优化技巧、BufferedWriter 缓冲写入配置、日志采样策略与频率控制、级别提前检查避免无用分配、sync.Pool 对象池复用和基准测试分析方法，帮助开发者在高并发场景下获得极致日志性能。
+title: "性能优化 - CyberGo DD | 高性能日志"
+description: "CyberGo DD 日志库性能优化完整指南，详解零分配优化技巧、BufferedWriter 缓冲写入配置、日志采样策略与频率控制、级别提前检查避免无用分配、sync.Pool 对象池复用和基准测试分析方法，帮助开发者在高并发场景下获得极致日志性能。"
 ---
 
 # 性能优化

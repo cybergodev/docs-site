@@ -1,6 +1,6 @@
 ---
-title: 인터페이스 정의 - HTTPC
-description: HTTPC 핵심 인터페이스 API 참조, Client 전체 기능 인터페이스, Doer 실행 인터페이스, DomainClienter 도메인 인터페이스, RetryPolicy와 MiddlewareFunc 정의 포함.
+title: "인터페이스 정의 - HTTPC"
+description: "HTTPC 핵심 인터페이스 API 레퍼런스: Client 전체 기능 인터페이스(7가지 HTTP 메서드와 4가지 다운로드), Doer 최소 실행 인터페이스, DomainClienter 도메인 클라이언트(세션 관리 포함), RetryPolicy 재시도 전략, RequestMutator/ResponseMutator 미들웨어 인터페이스와 Handler/MiddlewareFunc 정의."
 ---
 
 # 인터페이스 정의
@@ -26,12 +26,12 @@ type Client interface {
     DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
     DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 
-    // 라이프사이클
+    // 수명 주기
     Close() error
 }
 ```
 
-기본 클라이언트 인터페이스로, `New()`로 생성합니다. 자세한 내용은 [패키지 함수](./functions)를 참조하십시오.
+기본 클라이언트 인터페이스로, `New()`로 생성합니다. 자세한 내용은 [패키지 함수](./functions)를 참조하세요.
 
 ## Doer
 
@@ -82,7 +82,7 @@ type DomainClienter interface {
 }
 ```
 
-도메인 범위 클라이언트로, Cookie와 요청 헤더를 자동으로 관리합니다. 자세한 내용은 [도메인 클라이언트](./domain-client)와 [세션 관리](./session)를 참조하십시오.
+도메인 범위 클라이언트로, Cookie와 요청 헤더를 자동으로 관리합니다. 자세한 내용은 [도메인 클라이언트](./domain-client)와 [세션 관리](./session)를 참조하세요.
 
 ## RetryPolicy
 
@@ -102,14 +102,14 @@ type RetryPolicy interface {
 | `GetDelay(attempt)` | 다음 재시도 전 대기 시간 반환 |
 | `MaxRetries()` | 최대 재시도 횟수 반환 |
 
-:::warning 주의 내부 유형 제한
-`ShouldRetry`의 `resp` 매개변수 유형 `ResponseReader`는 내부 인터페이스(`internal/types` 패키지에 위치)이므로 외부 코드에서 직접 참조할 수 없습니다. 따라서 `RetryPolicy`는 같은 모듈 내에서만 구현할 수 있습니다. 대부분의 시나리오는 `RetryConfig` 구성과 `WithMaxRetries` 옵션으로 재시도 요구를 충족할 수 있습니다. 사용자 정의 전략이 필요한 경우 프로젝트 내부 패키지에서 `RetryPolicy` 인터페이스를 구현하십시오.
+:::warning 내부 타입 제한
+`ShouldRetry`의 `resp` 매개변수 타입 `ResponseReader`는 내부 인터페이스(`internal/types` 패키지에 위치)이므로 외부 코드에서 직접 참조할 수 없습니다. 따라서 `RetryPolicy`는 같은 모듈 내에서만 구현할 수 있습니다. 대부분의 시나리오는 `RetryConfig` 구성과 `WithMaxRetries` 옵션으로 재시도 요구를 충족할 수 있습니다. 사용자 정의 전략이 필요한 경우 프로젝트 내부 패키지에서 `RetryPolicy` 인터페이스를 구현하세요.
 :::
 
-아래 예제는 `RetryPolicy`의 구현 패턴을 보여줍니다. `ResponseReader`는 내부 유형임에 유의하십시오 -- 이 코드는 `httpc` 모듈 내부에서만 컴파일할 수 있습니다:
+아래 예제는 `RetryPolicy`의 구현 패턴을 보여줍니다. `ResponseReader`는 내부 타입임에 유의하세요 -- 이 코드는 `httpc` 모듈 내부에서만 컴파일할 수 있습니다:
 
 ```go
-// 참고: ResponseReader는 내부 유형(internal/types 패키지)입니다.
+// 참고: ResponseReader는 내부 타입(internal/types 패키지)입니다.
 // 이 코드는 httpc 모듈 외부에서 컴파일할 수 없습니다.
 // 대부분의 사용자는 RetryConfig와 WithMaxRetries로 재시도를 구성해야 합니다.
 
@@ -136,7 +136,7 @@ func (p *MyRetryPolicy) MaxRetries() int {
 }
 ```
 
-## 핵심 유형
+## 핵심 타입
 
 ### RequestMutator
 
@@ -236,11 +236,11 @@ type MiddlewareFunc func(Handler) Handler
 
 ## 관련 페이지
 
-| 유형 | 상세 참조 |
+| 타입 | 상세 참조 |
 |------|----------|
 | `Result` / `RequestInfo` / `ResponseInfo` / `RequestMeta` | [Result](./result) |
 | `SessionManager` 메서드 | [세션 관리](./session) |
 | `DomainClient` 구현 | [도메인 클라이언트](./domain-client) |
 | `DownloadConfig` / `DownloadResult` | [파일 다운로드](./download) |
-| `ClientError` / `ErrorType` / 오류 변수 | [오류 유형](./errors) |
-| `FormData` / `FileData` / `BodyKind` | [상수와 유형](./constants) |
+| `ClientError` / `ErrorType` / 오류 변수 | [오류 타입](./errors) |
+| `FormData` / `FileData` / `BodyKind` | [상수와 타입](./constants) |

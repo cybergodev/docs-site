@@ -1,6 +1,6 @@
 ---
-title: Package Functions - HTTPC
-description: HTTPC package-level functions and client methods API reference, covering seven HTTP methods, New creation function, Download series, and ReleaseResult object pool reuse method.
+title: "Package Functions - HTTPC"
+description: "HTTPC package functions: seven HTTP verbs, New creation, SetDefaultClient, four download functions, ReleaseResult pool reuse, and helpers."
 ---
 
 # Package Functions

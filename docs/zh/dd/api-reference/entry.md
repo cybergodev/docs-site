@@ -1,6 +1,6 @@
 ---
-title: LoggerEntry - CyberGo DD | 预设字段日志
-description: CyberGo DD LoggerEntry 类型完整 API 文档，用于创建带预设字段的链式日志记录器，每次 WithFields 调用返回新的不可变 Entry 实例，支持字段累积组合、上下文绑定传播和级别继承机制，适用于请求级日志追踪和上下文关联等场景。
+title: "LoggerEntry - CyberGo DD | 预设字段日志"
+description: "CyberGo DD LoggerEntry 类型完整 API 文档，用于创建带预设字段的链式日志记录器，每次 WithFields 调用返回新的不可变 Entry 实例，支持字段累积组合、上下文绑定传播和级别继承机制，适用于请求级日志追踪和上下文关联等场景。"
 ---
 
 # LoggerEntry

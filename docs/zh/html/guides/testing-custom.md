@@ -1,6 +1,6 @@
 ---
-title: 测试与自定义扩展 - HTML
-description: CyberGo HTML 测试与自定义扩展指南，详解自定义 Scorer 评分器实现、ContentNode 接口遍历、测试模式配置、mock HTML 数据准备和 Extractor 接口 mock，以及常见扩展场景的完整可运行代码示例，帮助构建可靠的测试体系与扩展能力。
+title: "测试与自定义扩展 - HTML"
+description: "CyberGo HTML 测试与自定义扩展指南，详解自定义 Scorer 评分器实现、ContentNode 接口遍历、测试模式配置、mock HTML 数据准备和 Extractor 接口 mock，以及常见扩展场景的完整可运行代码示例，帮助构建可靠的测试体系与扩展能力。"
 ---
 
 # 测试与自定义扩展

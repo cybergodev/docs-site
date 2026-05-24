@@ -1,6 +1,6 @@
 ---
-title: 包函数 - CyberGo env | 全局便捷函数
-description: CyberGo env 库包级便捷函数 API 完整参考文档，提供 Load 加载文件、GetString 和 GetInt 按类型读取值、Keys 查询键名、Marshal 序列化导出和 ParseInto 结构体映射等简洁 API，基于全局默认 Loader 实现，采用懒加载初始化和线程安全设计。
+title: "包函数 - CyberGo env | 全局便捷函数"
+description: "CyberGo env 库包级便捷函数 API 完整参考文档，提供 Load 加载文件、GetString 和 GetInt 按类型读取值、Keys 查询键名、Marshal 序列化导出和 ParseInto 结构体映射等简洁 API，基于全局默认 Loader 实现，采用懒加载初始化和线程安全设计。"
 ---
 
 # 包函数

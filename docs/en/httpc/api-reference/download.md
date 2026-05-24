@@ -1,6 +1,6 @@
 ---
-title: File Download - HTTPC
-description: HTTPC file download API reference covering download functions, DownloadConfig, progress callbacks, checksum verification, and path security.
+title: "File Download - HTTPC"
+description: "HTTPC file download API reference covering download functions, DownloadConfig, progress callbacks, checksum verification, and path security."
 ---
 
 # File Download

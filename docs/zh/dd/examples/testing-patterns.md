@@ -1,6 +1,6 @@
 ---
-title: 测试模式 - CyberGo DD | LoggerRecorder 测试示例
-description: CyberGo DD 测试模式示例，详细介绍 LoggerRecorder 在单元测试与集成测试中的完整使用方法，包括日志消息断言、级别过滤测试、字段值检查、多测试用例隔离、并发安全测试以及提升测试覆盖率的完整技巧与最佳实践经验总结。适用于各类 Go 项目的日志测试。
+title: "测试模式 - CyberGo DD | LoggerRecorder 测试示例"
+description: "CyberGo DD 测试模式示例，详细介绍 LoggerRecorder 在单元测试与集成测试中的完整使用方法，包括日志消息断言、级别过滤测试、字段值检查、多测试用例隔离、并发安全测试以及提升测试覆盖率的完整技巧与最佳实践经验总结。适用于各类 Go 项目的日志测试。"
 ---
 
 # 测试模式

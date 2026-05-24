@@ -1,6 +1,6 @@
 ---
-title: 链接提取 - HTML
-description: CyberGo HTML 库独立链接提取 API 参考，包括 ExtractAllLinks 系列函数和 GroupLinksByType 分组工具，支持从 HTML 提取所有链接资源（CSS、JS、图片、视频、音频）并按类型分组，可通过 Config 控制链接过滤，满足爬虫和资源收集等常见使用场景。
+title: "链接提取 - HTML"
+description: "CyberGo HTML 库独立链接提取 API 参考，包括 ExtractAllLinks 系列函数和 GroupLinksByType 分组工具，支持从 HTML 提取所有链接资源（CSS、JS、图片、视频、音频）并按类型分组，可通过 Config 控制链接过滤，满足爬虫和资源收集等常见使用场景。"
 ---
 
 # 链接提取

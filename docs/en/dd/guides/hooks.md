@@ -1,5 +1,5 @@
 ---
-title: Hook System - CyberGo DD | Lifecycle Hooks Practical Guide
+title: "Hook System - CyberGo DD | Lifecycle Hooks Practical Guide"
 description: "CyberGo DD hook system guide: 6 lifecycle events (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), HookRegistry, and usage patterns."
 ---
 

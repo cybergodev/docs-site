@@ -1,6 +1,6 @@
 ---
-title: 错误处理 - HTTPC
-description: HTTPC 错误处理指南，详解十二种 ErrorType 错误分类、ClientError 结构体字段、哨兵错误匹配与各类网络错误的最佳实践。
+title: "错误处理 - HTTPC"
+description: "HTTPC 错误处理指南：ErrorType 十二种错误分类、ClientError 字段及 IsRetryable 判断、errors.Is/As 哨兵错误匹配、重试耗尽处理、context 超时与取消、中间件统一错误处理与超时分层最佳实践。"
 ---
 
 # 错误处理

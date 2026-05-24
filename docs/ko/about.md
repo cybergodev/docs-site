@@ -1,6 +1,6 @@
 ---
-title: 소개 - CyberGo 문서 | 문서 사이트
-description: CyberGo 문서 사이트에 대해 알아보세요. 문서 범위, 기여 방법, 기술 스택 및 연락처 정보를 제공합니다.
+title: "소개 - CyberGo 문서 | 문서 사이트"
+description: "CyberGo 문서 사이트에 대해 알아보세요. 문서 범위, 기여 방법, 기술 스택 및 연락처 정보를 제공합니다."
 ---
 
 # CyberGo 문서 소개

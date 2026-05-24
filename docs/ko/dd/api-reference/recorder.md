@@ -1,6 +1,6 @@
 ---
-title: 테스트 보조 - CyberGo DD | LoggerRecorder
-description: CyberGo DD 테스트 보조 도구 LoggerRecorder 전체 API 문서. 단위 테스트 시나리오를 위해 설계되었으며, 로그 출력 내용을 캡처하고 단언하는 데 사용됩니다. 레벨별 로그 항목 필터링, 구조화된 필드 값 검증, 항목 수 통계 및 순차적 단언을 지원하여 로그 관련 단위 테스트 작성 효율성과 가독성을 크게 향상시킵니다.
+title: "테스트 보조 - CyberGo DD | LoggerRecorder"
+description: "CyberGo DD 테스트 보조 도구 LoggerRecorder 전체 API 문서. 단위 테스트 시나리오를 위해 설계되었으며, 로그 출력 내용을 캡처하고 단언하는 데 사용됩니다. 레벨별 로그 항목 필터링, 구조화된 필드 값 검증, 항목 수 통계 및 순차적 단언을 지원하여 로그 관련 단위 테스트 작성 효율성과 가독성을 크게 향상시킵니다."
 ---
 
 # 테스트 보조

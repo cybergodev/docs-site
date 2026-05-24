@@ -1,6 +1,6 @@
 ---
-title: 오류 처리 - HTTPC
-description: HTTPC 오류 처리 가이드, 12가지 ErrorType 오류 분류, ClientError 구조체 필드, 센티넬 오류 매칭과 다양한 네트워크 오류 모범 사례 상세 설명.
+title: "오류 처리 - HTTPC"
+description: "HTTPC 오류 처리 가이드: ErrorType 12가지 오류 분류, ClientError 필드 및 IsRetryable 판단, errors.Is/As 센티넬 오류 매칭, 재시도 소진 처리, 컨텍스트 타임아웃과 취소, 미들웨어 통합 오류 처리와 타임아웃 계층화 모범 사례."
 ---
 
 # 오류 처리
@@ -22,7 +22,7 @@ if err != nil {
         case httpc.ErrorTypeNetwork:
             log.Printf("네트워크 오류: %v", err)
         case httpc.ErrorTypeDNS:
-            log.Printf("DNS 해석 실패: %v", err)
+            log.Printf("DNS 리졸브 실패: %v", err)
         case httpc.ErrorTypeTLS:
             log.Printf("TLS 오류: %v", err)
         case httpc.ErrorTypeCertificate:

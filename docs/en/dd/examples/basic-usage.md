@@ -1,5 +1,5 @@
 ---
-title: Basic Usage - CyberGo DD | Practical Examples
+title: "Basic Usage - CyberGo DD | Practical Examples"
 description: "CyberGo DD practical examples: Gin/Echo request logging, gRPC interceptors, database logging, middleware chaining, and distributed tracing integration."
 ---
 

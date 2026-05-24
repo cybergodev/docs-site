@@ -1,6 +1,6 @@
 ---
-title: Цепочка промежуточного ПО - HTTPC
-description: Руководство по цепочке промежуточного ПО HTTPC, подробно описывающее принцип выполнения луковой модели, функциональность восьми встроенных промежуточных ПО, паттерн композиции Chain и методы написания пользовательского промежуточного ПО.
+title: "Цепочка промежуточного ПО — HTTPC"
+description: "Руководство по цепочке промежуточного ПО HTTPC: принцип выполнения луковой модели с двунаправленной обработкой запросов/ответов, конфигурация восьми встроенных промежуточных ПО Recovery/Logging/RequestID/Timeout/Header/Metrics/Audit, паттерн композиции Chain и методы написания пользовательского MiddlewareFunc, включая пример промежуточного ПО с размыкателем цепи."
 ---
 
 # Цепочка промежуточного ПО
@@ -11,7 +11,7 @@ description: Руководство по цепочке промежуточно
 
 ```text
 Запрос →  Recovery  →  Logging  →  RequestID  → Handler
-                                                          ↓
+                                                        ↓
 Ответ  ←  Recovery  ←  Logging  ←  RequestID  ← Response
 ```
 
@@ -38,7 +38,7 @@ httpc.RecoveryMiddleware()
 
 ### LoggingMiddleware
 
-Логирование запросов/ответов, URL автоматически маскируются:
+Логирование запросов/ответов, URL автоматически маскируется:
 
 ```go
 httpc.LoggingMiddleware(func(format string, args ...any) {
@@ -49,10 +49,10 @@ httpc.LoggingMiddleware(func(format string, args ...any) {
 
 ### RequestIDMiddleware
 
-Добавляет уникальный ID к каждому запросу, генерируется с использованием `crypto/rand`:
+Добавляет уникальный ID к каждому запросу, генерируется через `crypto/rand`:
 
 ```go
-httpc.RequestIDMiddleware("X-Request-ID", nil) // по умолчанию 32-символьный hex
+httpc.RequestIDMiddleware("X-Request-ID", nil) // По умолчанию 32 символа hex
 
 // Пользовательский генератор
 httpc.RequestIDMiddleware("X-Request-ID", func() string {
@@ -62,7 +62,7 @@ httpc.RequestIDMiddleware("X-Request-ID", func() string {
 
 ### TimeoutMiddleware
 
-Тайм-аут на уровне промежуточного ПО, принудительно выполняется до тайм-аута клиента:
+Таймаут на уровне промежуточного ПО, принудительно срабатывает до таймаута клиента:
 
 ```go
 httpc.TimeoutMiddleware(30 * time.Second)
@@ -95,7 +95,7 @@ httpc.MetricsMiddleware(func(method, url string, statusCode int, duration time.D
 
 ### AuditMiddleware
 
-Аудит безопасности для сценариев соответствия в финансах, медицине и других областях:
+Аудит безопасности для финансовых, медицинских и других сценариев соответствия:
 
 ```go
 httpc.AuditMiddleware(func(event httpc.AuditEvent) {
@@ -156,7 +156,7 @@ func CORSMiddleware(origin string) httpc.MiddlewareFunc {
             // Вызов следующего обработчика
             resp, err := next(ctx, req)
 
-            // Фаза ответа: запись или модификация ответа
+            // Фаза ответа: логирование или модификация ответа
             if resp != nil {
                 log.Printf("Статус ответа: %d", resp.StatusCode())
             }
@@ -167,7 +167,7 @@ func CORSMiddleware(origin string) httpc.MiddlewareFunc {
 }
 ```
 
-### Промежуточное ПО с коротким замыканием
+### Промежуточное ПО с размыкателем цепи
 
 ```go
 func CircuitBreakerMiddleware(threshold int) httpc.MiddlewareFunc {
@@ -215,6 +215,6 @@ client, _ := httpc.New(cfg)
 
 ## Что дальше
 
-- [Промежуточное ПО API](../api-reference/middleware) - полный справочник промежуточного ПО
-- [Повторные попытки и отказоустойчивость](./retry-fault-tolerance) - руководство по стратегиям повторных попыток
-- [Обзор безопасности](../security/) - практики безопасности с промежуточным ПО аудита
+- [Промежуточное ПО API](../api-reference/middleware) — полный справочник промежуточного ПО
+- [Повторные попытки и отказоустойчивость](./retry-fault-tolerance) — руководство по настройке повторных попыток
+- [Обзор безопасности](../security/) — практики безопасности с промежуточным ПО аудита

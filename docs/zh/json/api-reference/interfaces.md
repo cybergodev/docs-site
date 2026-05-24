@@ -1,5 +1,5 @@
 ---
-title: 接口定义 - CyberGo JSON | API 参考
+title: "接口定义 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 扩展接口定义完整参考：包括 CustomEncoder、TypeEncoder、Validator、Hook 接口、PathParser 和 DangerousPattern，支持灵活扩展库的编码、验证和安全防护等核心功能，满足自定义序列化和安全策略需求。"
 ---
 

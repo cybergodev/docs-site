@@ -1,5 +1,5 @@
 ---
-title: 包函数 - CyberGo JSON | API 参考
+title: "包函数 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 包级函数参考：包括 Get/GetString/GetInt/GetTyped 路径查询、Set/Delete/MergeJSON 修改、Marshal/Unmarshal 编解码和 LoadFromFile/SaveToFile 文件操作，无需创建 Processor 实例即可直接调用。"
 ---
 

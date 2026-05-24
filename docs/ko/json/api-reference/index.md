@@ -1,5 +1,5 @@
 ---
-title: API 레퍼런스 - CyberGo JSON | 전체 함수 문서
+title: "API 레퍼런스 - CyberGo JSON | 전체 함수 문서"
 description: "CyberGo JSON 전체 API 참조 매뉴얼: GetString/GetInt 경로 쿼리, Set/Delete 수정 작업, Marshal/Unmarshal 직렬화, Processor 프로세서, Schema 검증, Hook 훅 및 보안 설정을 포함하며 encoding/json 표준 라이브러리와 100% 호환됩니다."
 ---
 

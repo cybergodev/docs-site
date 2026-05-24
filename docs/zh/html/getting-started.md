@@ -1,6 +1,6 @@
 ---
-title: 快速开始 - HTML
-description: CyberGo HTML 库快速入门教程，5 分钟掌握安装、基本内容提取、四种 Config 预设配置（默认、纯文本、Markdown、高安全）、纯文本与 Markdown 及 JSON 三种输出格式、上下文超时控制和并发安全使用模式，快速上手 HTML 内容提取工具。
+title: "快速开始 - HTML"
+description: "CyberGo HTML 库快速入门教程，5 分钟掌握安装、基本内容提取、四种 Config 预设配置（默认、纯文本、Markdown、高安全）、纯文本与 Markdown 及 JSON 三种输出格式、上下文超时控制和并发安全使用模式，快速上手 HTML 内容提取工具。"
 ---
 
 # 快速开始

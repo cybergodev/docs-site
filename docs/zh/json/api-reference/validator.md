@@ -1,5 +1,5 @@
 ---
-title: Validator - CyberGo JSON | Schema 验证器
+title: "Validator - CyberGo JSON | Schema 验证器"
 description: "CyberGo JSON 验证器完整参考：包括 Validator 接口定义、Schema 验证结构、ValidationError 验证错误类型、SchemaConfig 配置选项和自定义验证器实现指南，提供完整的 JSON 数据结构和内容验证能力。"
 ---
 

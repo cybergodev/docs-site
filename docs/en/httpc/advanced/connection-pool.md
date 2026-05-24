@@ -1,6 +1,6 @@
 ---
-title: Connection Pool and Proxy - HTTPC
-description: Guide to HTTPC connection pool and proxy configuration, covering connection pool parameter tuning, HTTP and SOCKS5 proxy, custom DoH resolvers, and idle connection management strategies.
+title: "Connection Pool and Proxy - HTTPC"
+description: "HTTPC connection pool and proxy: pool tuning, HTTP/SOCKS5 proxy, system proxy detection, DNS-over-HTTPS, HTTP/2, object pool reuse, and concurrent patterns."
 ---
 
 # Connection Pool and Proxy

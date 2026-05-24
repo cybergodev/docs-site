@@ -1,6 +1,6 @@
 ---
-title: Rate Limiting - JWT
-description: CyberGo JWT rate limiting guide covering token bucket configuration, built-in RateLimiter, RateLimitProvider custom implementations, rate limit key priority lookup, and best practices.
+title: "Rate Limiting - JWT"
+description: "CyberGo JWT rate limiting guide covering token bucket configuration, built-in RateLimiter, RateLimitProvider custom implementations, rate limit key priority lookup, and best practices."
 ---
 
 # Rate Limiting

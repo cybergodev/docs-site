@@ -1,6 +1,6 @@
 ---
-title: Cheat Sheet - HTML
-description: Quick reference cheat sheet for CyberGo HTML, covering package functions, Processor methods, configuration presets, error matching, and audit setup.
+title: "Cheat Sheet - HTML"
+description: "Quick reference cheat sheet for CyberGo HTML, covering package functions, Processor methods, configuration presets, error matching, and audit setup."
 ---
 
 # Cheat Sheet

@@ -1,6 +1,6 @@
 ---
-title: クイックスタート - HTTPC
-description: 5 分で HTTPC 安全 HTTP クライアントライブラリに素早く習得。モジュールのインストール、GET/POST リクエスト、クライアント設定、JSON 解析、エラー処理を網羅。
+title: "クイックスタート - HTTPC"
+description: "5分でHTTPCセキュアHTTPクライアントライブラリを始めましょう。go getインストール、GET/POSTリクエスト、5つの設定プリセット、JSON解析、Bearer Token認証、ClientErrorエラー分類処理をカバーします。"
 ---
 
 # クイックスタート
@@ -33,11 +33,11 @@ func main() {
     defer httpc.ReleaseResult(result)
 
     fmt.Println(result.StatusCode()) // 200
-    fmt.Println(result.Body())       // レスポンス本文
+    fmt.Println(result.Body())       // レスポンス内容
 }
 ```
 
-対応 HTTP メソッド：`Get`、`Post`、`Put`、`Patch`、`Delete`、`Head`、`Options`。
+対応HTTPメソッド：`Get`、`Post`、`Put`、`Patch`、`Delete`、`Head`、`Options`。
 
 ## クライアントの作成
 
@@ -57,10 +57,10 @@ result, err := client.Get("https://httpbin.org/get")
 
 | 設定 | 用途 | 特徴 |
 |------|------|------|
-| `DefaultConfig()` | 汎用シナリオ | セキュアなデフォルト値、SSRF 防護有効 |
-| `SecureConfig()` | セキュリティ重要シナリオ | 自動リダイレクト無効、厳格なタイムアウト |
-| `PerformanceConfig()` | 高スループット | 大規模コネクションプール、長いタイムアウト、Cookie 有効 |
-| `TestingConfig()` | テスト環境 | セキュリティチェックと HTTP/2 無効、短いタイムアウト |
+| `DefaultConfig()` | 汎用シナリオ | 安全なデフォルト値、SSRF防御有効 |
+| `SecureConfig()` | セキュリティ重視 | 自動リダイレクト無効、厳格なタイムアウト |
+| `PerformanceConfig()` | 高スループット | 大規模接続プール、長いタイムアウト、Cookie有効 |
+| `TestingConfig()` | テスト環境 | セキュリティチェックとHTTP/2無効、短いタイムアウト |
 | `MinimalConfig()` | 軽量リクエスト | リトライなし、リダイレクトなし |
 
 ```go
@@ -85,7 +85,7 @@ result.IsSuccess()      // true (2xx)
 result.IsClientError()  // false (4xx)
 result.IsServerError()  // false (5xx)
 
-// JSON パース
+// JSON解析
 var data map[string]any
 if err := result.Unmarshal(&data); err != nil {
     log.Fatal(err)
@@ -117,7 +117,7 @@ result, err := client.Get("https://api.example.com/data",
 
 ## エラー処理
 
-HTTPC は**ネットワーク層エラー**と **HTTP ステータスコード**を区別します：
+HTTPCは**ネットワーク層エラー**と**HTTPステータスコード**を区別します：
 
 ```go
 result, err := client.Get("https://api.example.com/data")
@@ -130,7 +130,7 @@ if err != nil {
 }
 defer httpc.ReleaseResult(result)
 
-// HTTP ステータスコードは手動で確認
+// HTTPステータスコードは手動で確認
 switch {
 case result.IsSuccess():
     // 2xx 成功
@@ -142,13 +142,13 @@ case result.IsServerError():
 ```
 
 :::tip ヒント
-4xx/5xx は `error` として返されません。`result.IsSuccess()` などのメソッドで確認してください。詳しくは[エラー処理](./advanced/error-handling)を参照してください。
+4xx/5xxは`error`として返されません。`result.IsSuccess()`などのメソッドで確認します。詳しくは[エラー処理](./advanced/error-handling)をご覧ください。
 :::
 
 ## 次のステップ
 
-- **[チュートリアル](./guides/tutorial)** - 30 分で GitHub API クライアントを構築
+- **[チュートリアル](./guides/tutorial)** - 30分でGitHub APIクライアントを構築
 - **[リクエストとレスポンス](./guides/request-response)** - 完全なリクエストオプションとレスポンス処理
-- **[基本サンプル](./examples/basic-usage)** - GET/POST/ミドルウェアなどの実用例
+- **[基本例](./examples/basic-usage)** - GET/POST/ミドルウェアなどの実例
 - **[チートシート](./cheatsheet)** - よく使う操作のクイックリファレンス
 - **[セキュリティ](./security/)** - セキュリティベストプラクティス

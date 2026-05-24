@@ -1,5 +1,5 @@
 ---
-title: Processor Path Query - CyberGo JSON | API Reference
+title: "Processor Path Query - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor path query methods complete reference: including Get/GetString/GetInt type-safe getters, GetMultiple batch query, SafeGet safe access returning AccessResult, GetTyped[T] generic getter, supporting JSONPath expressions and cache optimization."
 ---
 

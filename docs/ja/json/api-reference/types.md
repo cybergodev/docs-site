@@ -1,5 +1,5 @@
 ---
-title: 型定義 - CyberGo JSON | API リファレンス
+title: "型定義 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON コア型定義完全リファレンス：Result[T] ジェネリック結果、AccessResult 動的アクセス結果、BatchOperation、BatchResult、Schema バリデーションスキーマ、Stats、HealthStatus、IterableValue、エンコードエラー型を含む完全な型システム。"
 ---
 

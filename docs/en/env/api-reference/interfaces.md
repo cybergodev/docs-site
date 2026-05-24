@@ -1,6 +1,6 @@
 ---
-title: Interfaces - CyberGo env | Core Interface Hierarchy
-description: CyberGo env library interface type definitions complete reference documentation, using fine-grained interface design supporting dependency injection and flexible composition, including Validator, FullAuditLogger, EnvParser, EnvStorage, and FileSystem adapter core interfaces with detailed descriptions and usage.
+title: "Interfaces - CyberGo env | Core Interface Hierarchy"
+description: "CyberGo env library interface type definitions complete reference documentation, using fine-grained interface design supporting dependency injection and flexible composition, including Validator, FullAuditLogger, EnvParser, EnvStorage, and FileSystem adapter core interfaces with detailed descriptions and usage."
 ---
 
 # Interfaces

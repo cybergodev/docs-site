@@ -1,5 +1,5 @@
 ---
-title: チートシート - CyberGo JSON | API クイックリファレンス
+title: "チートシート - CyberGo JSON | API クイックリファレンス"
 description: "CyberGo JSON API チートシート：パスクエリ GetString/GetInt、変更操作 Set/Delete、シリアライズ Marshal/Unmarshal、設定オプション、イテレータ、セーフティ関数などよく使う API のクイックリファレンス。開発者が必要な関数シグネチャと使い方を効率よく検索できます。"
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: Configuration - HTML
-description: Config reference for CyberGo HTML, covering resource management, security settings, content extraction, output formats, link filtering, and validation.
+title: "Configuration - HTML"
+description: "Config reference for CyberGo HTML, covering resource management, security settings, content extraction, output formats, link filtering, and validation."
 ---
 
 # Configuration

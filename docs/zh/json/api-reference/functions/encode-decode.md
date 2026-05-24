@@ -1,5 +1,5 @@
 ---
-title: 编码解码函数 - CyberGo JSON | API 参考
+title: "编码解码函数 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 编码解码函数参考：Marshal/Unmarshal 序列化、Compact/Indent/HTMLEscape 格式化、Encode/EncodePretty/EncodeWithConfig/Prettify 配置化编码，100% 兼容 encoding/json。"
 ---
 

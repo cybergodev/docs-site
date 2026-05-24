@@ -1,6 +1,6 @@
 ---
-title: Performance - HTML
-description: Performance optimization guide for CyberGo HTML, covering Processor reuse, cache configuration, batch concurrency, input size limits, and timeout tuning.
+title: "Performance - HTML"
+description: "Performance optimization guide for CyberGo HTML, covering Processor reuse, cache configuration, batch concurrency, input size limits, and timeout tuning."
 ---
 
 # Performance

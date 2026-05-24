@@ -1,6 +1,6 @@
 ---
-title: File Upload and Download - HTTPC
-description: Guide to HTTPC file upload and download, covering Multipart multi-file upload, large file download with progress callbacks, resumable downloads, SHA-256 checksums, and path security protection.
+title: "File Upload and Download - HTTPC"
+description: "HTTPC file transfer: Multipart upload, download with progress callbacks, resumable downloads, SHA-256 checksums, and path security protection."
 ---
 
 # File Upload and Download

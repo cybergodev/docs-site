@@ -1,6 +1,6 @@
 ---
-title: 定数とエラー - CyberGo DD | LogLevel、Format、SentinelErrors
-description: CyberGo DD 定数定義とエラータイプ完全ドキュメント。LogLevel ログレベル定数（Debug/Info/Warn/Error/Fatal）、Format 出力フォーマット定数、SentinelErrors センチネルエラー定義を含み、ログ動作とエラー処理を正確に制御。DD ログライブラリの設定体系を理解するためのコア基盤。
+title: "定数とエラー - CyberGo DD | LogLevel、Format、SentinelErrors"
+description: "CyberGo DD 定数定義とエラータイプ完全ドキュメント。LogLevel ログレベル定数（Debug/Info/Warn/Error/Fatal）、Format 出力フォーマット定数、SentinelErrors センチネルエラー定義を含み、ログ動作とエラー処理を正確に制御。DD ログライブラリの設定体系を理解するためのコア基盤。"
 ---
 
 # 定数とエラー

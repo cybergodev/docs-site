@@ -1,6 +1,6 @@
 ---
-title: HTTP Integration - HTML
-description: HTTP client integration guide for CyberGo HTML, covering fetch-and-extract with net/http, batch processing, timeout control, and production deployment.
+title: "HTTP Integration - HTML"
+description: "HTTP client integration guide for CyberGo HTML, covering fetch-and-extract with net/http, batch processing, timeout control, and production deployment."
 ---
 
 # HTTP Integration

@@ -1,6 +1,6 @@
 ---
-title: 型定義 - HTML
-description: CyberGo HTML ライブラリのデータ型 API リファレンス。Result（カスタム JSON シリアライズ付き）、ImageInfo、LinkInfo、VideoInfo、AudioInfo、LinkResource、Statistics、BatchResult、NodeAttr などコアデータ型のフィールド説明を含み、抽出結果と統計データの構造を全面的に理解できます。
+title: "型定義 - HTML"
+description: "CyberGo HTML ライブラリのデータ型 API リファレンス。Result（カスタム JSON シリアライズ付き）、ImageInfo、LinkInfo、VideoInfo、AudioInfo、LinkResource、Statistics、BatchResult、NodeAttr などコアデータ型のフィールド説明を含み、抽出結果と統計データの構造を全面的に理解できます。"
 ---
 
 # 型定義

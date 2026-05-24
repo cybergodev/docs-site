@@ -1,6 +1,6 @@
 ---
-title: クイックスタート - JWT
-description: CyberGo JWT クイックスタートガイド：インストール設定、トークンの発行と検証、リフレッシュと失効、HMAC/RSA/ECDSA アルゴリズム選択、カスタム Claims、ブラックリストとレート制限の設定。
+title: "クイックスタート - JWT"
+description: "CyberGo JWT クイックスタートガイド：インストール設定、トークンの発行と検証、リフレッシュと失効、HMAC/RSA/ECDSA アルゴリズム選択、カスタム Claims、ブラックリストとレート制限の設定。"
 ---
 
 # クイックスタート

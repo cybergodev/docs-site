@@ -1,6 +1,6 @@
 ---
-title: ComponentFactory API - CyberGo env | 组件工厂
-description: CyberGo env 库 ComponentFactory 组件工厂 API 完整参考，创建和管理 Loader 与 Parser 共享的组件实例，包括审计处理器、验证器、文件系统适配器和 RegisterParser 自定义解析器注册，提供组件生命周期控制 Close 和线程安全并发访问。
+title: "ComponentFactory API - CyberGo env | 组件工厂"
+description: "CyberGo env 库 ComponentFactory 组件工厂 API 完整参考，创建和管理 Loader 与 Parser 共享的组件实例，包括审计处理器、验证器、文件系统适配器和 RegisterParser 自定义解析器注册，提供组件生命周期控制 Close 和线程安全并发访问。"
 ---
 
 # ComponentFactory API

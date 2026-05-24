@@ -1,5 +1,5 @@
 ---
-title: LoggerEntry - CyberGo DD | Preset Field Logger
+title: "LoggerEntry - CyberGo DD | Preset Field Logger"
 description: "CyberGo DD LoggerEntry API: create chained loggers with preset fields, immutable WithFields composition, context binding, and level inheritance for tracing."
 ---
 

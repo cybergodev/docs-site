@@ -1,5 +1,5 @@
 ---
-title: 인터페이스 정의 - CyberGo JSON | API 레퍼런스
+title: "인터페이스 정의 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 확장 인터페이스 정의 완전 레퍼런스: CustomEncoder, TypeEncoder, Validator, Hook 인터페이스, PathParser 및 DangerousPattern을 포함하여 라이브러리의 인코딩, 검증 및 보안 방어 등 핵심 기능을 유연하게 확장할 수 있으며 커스텀 직렬화와 보안 전략 요구를 충족합니다."
 ---
 

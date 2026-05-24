@@ -1,6 +1,6 @@
 ---
-title: 文件上传与下载 - HTTPC
-description: HTTPC 文件上传与下载指南，涵盖 Multipart 多文件上传、带进度回调的大文件下载、断点续传、SHA-256 校验与路径安全防护。
+title: "文件上传与下载 - HTTPC"
+description: "HTTPC 文件上传与下载指南：WithFile 简单上传、WithFormData Multipart 多文件上传、DownloadFile 基本下载、DownloadWithOptions 带进度回调、断点续传 ResumeDownload、SHA-256 校验与 UNC 路径等安全防护。"
 ---
 
 # 文件上传与下载

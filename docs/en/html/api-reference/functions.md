@@ -1,6 +1,6 @@
 ---
-title: Package Functions - HTML
-description: API reference for CyberGo HTML package-level functions including Extract, ExtractText, and context variants, using sync.Pool for efficient content extraction.
+title: "Package Functions - HTML"
+description: "API reference for CyberGo HTML package-level functions including Extract, ExtractText, and context variants, using sync.Pool for efficient content extraction."
 ---
 
 # Package Functions

@@ -1,6 +1,6 @@
 ---
-title: Advanced Examples - JWT
-description: CyberGo JWT advanced examples covering RSA/ECDSA asymmetric signing, custom Claims, Redis blacklist backend, clock injection testing, unverified parsing, and web service integration.
+title: "Advanced Examples - JWT"
+description: "CyberGo JWT advanced examples covering RSA/ECDSA asymmetric signing, custom Claims, Redis blacklist backend, clock injection testing, unverified parsing, and web service integration."
 ---
 
 # Advanced Examples

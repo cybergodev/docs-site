@@ -1,6 +1,6 @@
 ---
-title: 基础示例 - JWT
-description: CyberGo JWT 基础示例：HMAC 签名令牌创建与验证、访问令牌与刷新令牌、令牌吊销与黑名单管理、限流保护的完整可运行代码。
+title: "基础示例 - JWT"
+description: "CyberGo JWT 基础示例：HMAC 签名令牌创建与验证、访问令牌与刷新令牌、令牌吊销与黑名单管理、限流保护的完整可运行代码。"
 ---
 
 # 基础示例

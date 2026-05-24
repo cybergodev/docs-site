@@ -41,12 +41,6 @@ export function findMatchingLanguage(browserLang: string): LanguageConfig | null
   return null
 }
 
-/** Check if the current URL is the site root */
-function isRootPath(): boolean {
-  const pathname = window.location.pathname
-  return pathname === '/' || pathname === '/index.html'
-}
-
 /** Find the language path for a saved preference string (e.g., 'zh-CN') */
 export function getPreferencePath(preference: string): string | null {
   const lower = preference.toLowerCase()
@@ -81,9 +75,50 @@ function getCurrentLanguagePath(): string {
   return ''
 }
 
-/** Redirect root or mismatched visitors to the correct locale */
+/** Detect preferred language code from storage, cookie, or browser settings */
+function detectPreferredLanguage(): string {
+  const savedPreference = localStorage.getItem(STORAGE_KEYS.preference)
+  if (savedPreference) {
+    const prefPath = getPreferencePath(savedPreference)
+    if (prefPath) return prefPath.split('/')[1]
+  }
+
+  const cookies = document.cookie.split(';').reduce((acc: Record<string, string>, c: string) => {
+    const [k, ...v] = c.trim().split('=')
+    if (k) acc[k] = v.join('=')
+    return acc
+  }, {} as Record<string, string>)
+  if (cookies[STORAGE_KEYS.preference]) {
+    const prefPath = getPreferencePath(cookies[STORAGE_KEYS.preference])
+    if (prefPath) return prefPath.split('/')[1]
+  }
+
+  const browserLang = navigator.language.toLowerCase()
+  const matchedLang = findMatchingLanguage(browserLang)
+  if (matchedLang) return matchedLang.path.split('/')[1]
+  return 'en'
+}
+
+/**
+ * Detect language and redirect.
+ *
+ * Root path (/): redirect is handled by inline <script> in <head> (config.mts)
+ * for zero-flash UX. This function is a fallback in case the inline script
+ * didn't run (e.g. JS disabled in <head>, or edge-case).
+ */
 export function detectAndRedirectLanguage(): void {
   if (typeof window === 'undefined') return
+
+  const pathname = window.location.pathname
+
+  // Root path: fallback — inline head script should have handled this already
+  if (pathname === '/' || pathname === '/index.html') {
+    const detectedLang = detectPreferredLanguage()
+    if (detectedLang !== 'en') {
+      window.location.replace(`/${detectedLang}/`)
+    }
+    return
+  }
 
   // Handle bare project paths (e.g., /httpc, /json/getting-started)
   if (isBareProjectPath()) {
@@ -101,14 +136,9 @@ export function detectAndRedirectLanguage(): void {
     return
   }
 
+  // Already on a language path: detect and store preference
   const savedPreference = localStorage.getItem(STORAGE_KEYS.preference)
-  if (savedPreference) {
-    if (isRootPath()) {
-      const prefPath = getPreferencePath(savedPreference)
-      window.location.replace(prefPath || '/en/')
-    }
-    return
-  }
+  if (savedPreference) return
 
   try {
     if (sessionStorage.getItem(STORAGE_KEYS.detected)) return
@@ -117,15 +147,13 @@ export function detectAndRedirectLanguage(): void {
 
   const browserLang = navigator.language || ''
   const matchedLang = findMatchingLanguage(browserLang)
-  const targetPath = matchedLang?.path ?? defaultLanguagePath
+  const targetPath = matchedLang?.path ?? '/en/'
 
   const currentPath = getCurrentLanguagePath()
 
-  if (isRootPath() || currentPath !== targetPath) {
-    const pathname = window.location.pathname
+  if (currentPath !== targetPath && currentPath !== '') {
     let newPath = pathname
 
-    // Strip existing locale prefix
     for (const lang of supportedLanguages) {
       if (newPath.startsWith(lang.path)) {
         newPath = newPath.slice(lang.path.length - 1)
@@ -141,40 +169,4 @@ export function detectAndRedirectLanguage(): void {
     newPath = targetPath.slice(0, -1) + newPath
     window.location.replace(newPath || targetPath)
   }
-}
-
-/** Redirect from root index.md — lightweight version for SSR page */
-export function redirectFromRoot(): void {
-  if (typeof window === 'undefined') return
-
-  const savedPreference = localStorage.getItem(STORAGE_KEYS.preference)
-
-  if (savedPreference) {
-    const prefPath = getPreferencePath(savedPreference)
-    window.location.replace(prefPath || '/en/')
-    return
-  }
-
-  const browserLang = navigator.language.toLowerCase()
-
-  let targetPath = defaultLanguagePath
-
-  for (const langConfig of supportedLanguages) {
-    for (const code of langConfig.browserCodes) {
-      if (
-        browserLang === code ||
-        browserLang.startsWith(code + '-') ||
-        code.startsWith(browserLang + '-')
-      ) {
-        targetPath = langConfig.path
-        break
-      }
-    }
-    if (targetPath !== defaultLanguagePath) break
-  }
-
-  try {
-    sessionStorage.setItem(STORAGE_KEYS.detected, 'true')
-  } catch {}
-  window.location.replace(targetPath)
 }

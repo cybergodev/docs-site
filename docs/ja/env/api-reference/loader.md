@@ -1,6 +1,6 @@
 ---
-title: Loader API - CyberGo env | ローダー詳細
-description: CyberGo env ライブラリ Loader ローダー API 完全リファレンス。Loader はコアとなる型で、LoadFiles マルチフォーマットファイル読み込み、GetString 型安全読み取り、Set と Delete キー値操作、Validate 検証、ParseInto シリアライズエクスポートと Close ライフサイクル管理等方法，すべてのメソッドはスレッドセーフです。
+title: "Loader API - CyberGo env | ローダー詳細"
+description: "CyberGo env ライブラリ Loader ローダー API 完全リファレンス。Loader はコアとなる型で、LoadFiles マルチフォーマットファイル読み込み、GetString 型安全読み取り、Set と Delete キー値操作、Validate 検証、ParseInto シリアライズエクスポートと Close ライフサイクル管理等方法，すべてのメソッドはスレッドセーフです。"
 ---
 
 # Loader API

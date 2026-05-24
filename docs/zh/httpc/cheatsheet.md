@@ -1,6 +1,6 @@
 ---
-title: 速查表 - HTTPC
-description: HTTPC 速查表，涵盖客户端创建、七种 HTTP 方法、请求选项、响应处理、配置预设、中间件与错误类型的快速参考。
+title: "速查表 - HTTPC"
+description: "HTTPC 速查表：客户端创建与五种预设配置、Get/Post 等七种方法、27 个 WithXxx 请求选项、Result 响应处理、中间件链、ClientError 错误类型与文件下载完整代码片段。"
 ---
 
 # 速查表

@@ -1,5 +1,5 @@
 ---
-title: Processor 解析と読み込み - CyberGo JSON | API リファレンス
+title: "Processor 解析と読み込み - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor 解析と検証メソッド完全リファレンス：Valid 検証、Parse 変数への解析、ParseAny 任意型返却、PreParse 事前解析最適化、GetFromParsed 高速値取得、AllowComments コメントサポートと StrictMode 厳格モード設定。"
 ---
 

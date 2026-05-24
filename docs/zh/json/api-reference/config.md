@@ -1,5 +1,5 @@
 ---
-title: Config 配置 - CyberGo JSON | API 参考
+title: "Config 配置 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Config 配置选项完整参考：详解 DefaultConfig 默认配置、SecurityConfig 安全配置、PrettyConfig 格式化配置、缓存设置、大小限制、安全选项和编码选项，自定义 Processor 和所有 JSON 操作的行为。"
 ---
 

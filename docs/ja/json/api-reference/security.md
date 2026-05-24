@@ -1,5 +1,5 @@
 ---
-title: セキュリティモード - CyberGo JSON | API リファレンス
+title: "セキュリティモード - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON セキュリティ API 完全リファレンス：セキュリティ設定、AddDangerousPattern 危険パターン設定、入力バリデーション機構を含み、JSON インジェクション、深いネスト攻撃、リソース枯渇などのセキュリティ脅威を防御。カスタムセキュリティポリシーとプロテクションルール設定をサポートし、Go アプリケーションのセキュリティを保障。"
 ---
 

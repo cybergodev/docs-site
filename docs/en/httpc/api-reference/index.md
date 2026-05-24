@@ -1,6 +1,6 @@
 ---
-title: API Reference - HTTPC
-description: HTTPC API reference index, organized by functional modules covering package-level functions, Client interface, request options, middleware, error types, configuration, and constants.
+title: "API Reference - HTTPC"
+description: "HTTPC API reference index: package functions, 27 request options, Config presets, middleware, domain client, session, download, and error types."
 ---
 
 # API Reference

@@ -1,6 +1,6 @@
 ---
-title: SSRF 防护 - HTTPC
-description: HTTPC SSRF 防护详解，涵盖私有 IP 阻止机制、豁免 CIDR 配置、DNS 重绑定防护、重定向白名单与云元数据端点保护。
+title: "SSRF 防护 - HTTPC"
+description: "HTTPC SSRF 防护详解：默认阻止 IPv4/IPv6 私有 IP、SSRFExemptCIDRs 精确豁免、DNS 重绑定防护、RedirectWhitelist 重定向白名单、AWS/GCP/Azure 云元数据保护与 AllowPrivateIPs 注意事项。"
 ---
 
 # SSRF 防护

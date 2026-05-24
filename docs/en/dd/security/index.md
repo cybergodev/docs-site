@@ -1,5 +1,5 @@
 ---
-title: Security Overview - CyberGo DD | Log Security
+title: "Security Overview - CyberGo DD | Log Security"
 description: "CyberGo DD security features overview: sensitive data filtering, audit logging, HMAC integrity signing, and compliance best practices for Go logging."
 ---
 

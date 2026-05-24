@@ -1,6 +1,6 @@
 ---
-title: Errors - JWT API Reference
-description: CyberGo JWT Errors API reference covering 17 sentinel errors (ErrTokenExpired, ErrTokenRevoked, etc.), ValidationError type, and errors.Is() matching patterns.
+title: "Errors - JWT API Reference"
+description: "CyberGo JWT Errors API reference covering 17 sentinel errors (ErrTokenExpired, ErrTokenRevoked, etc.), ValidationError type, and errors.Is() matching patterns."
 ---
 
 # Errors

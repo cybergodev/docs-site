@@ -1,15 +1,15 @@
 ---
-title: リクエストとレスポンス - HTTPC
-description: HTTPC リクエストとレスポンス処理ガイド。リクエストヘッダー設定、複数のリクエストボディ形式、クエリパラメータ、認証方式、Cookie 管理、ストリーミングレスポンスのコード例。
+title: "リクエストとレスポンス - HTTPC"
+description: "HTTPCリクエストとレスポンス処理ガイド：パッケージ関数とクライアントリクエスト、WithHeader/WithJSON/WithFormなどのリクエストオプション、WithBearerToken認証、WithQueryクエリパラメータ、Cookie管理、コンテキスト制御、ストリーミングレスポンスと解凍サイズ制限設定。"
 ---
 
 # リクエストとレスポンス
 
 ## リクエストの送信
 
-### パッケージレベル関数
+### パッケージ関数
 
-クライアントを作成せずに、直接リクエストを送信します：
+クライアントを作成せずにリクエストを直接送信：
 
 ```go
 result, err := httpc.Get("https://api.example.com/data")
@@ -22,7 +22,7 @@ fmt.Println(result.StatusCode())
 fmt.Println(result.Body())
 ```
 
-サポートされる HTTP メソッド：`Get`、`Post`、`Put`、`Patch`、`Delete`、`Head`、`Options`。
+対応HTTPメソッド：`Get`、`Post`、`Put`、`Patch`、`Delete`、`Head`、`Options`。
 
 ### クライアントインスタンス
 
@@ -83,13 +83,13 @@ result, err := client.Post(url, httpc.WithBinary(data))
 // タイプ指定
 result, err := client.Post(url, httpc.WithBinary(data, "image/png"))
 
-// タイプ自動検出
+// 自動タイプ検出
 result, err := client.Post(url, httpc.WithBody(data))
 // string → text/plain; charset=utf-8, []byte → application/octet-stream,
 // map[string]string → application/x-www-form-urlencoded,
-// *FormData → multipart/form-data, io.Reader → そのまま渡される,
+// *FormData → multipart/form-data, io.Reader → passed through,
 // その他 → application/json
-// 明示的な指定も可能: httpc.WithBody(data, httpc.BodyJSON)
+// 明示指定も可能: httpc.WithBody(data, httpc.BodyJSON)
 ```
 
 ### クエリパラメータ
@@ -100,7 +100,7 @@ result, err := client.Get(url,
     httpc.WithQuery("limit", 10),
 )
 
-// Map を使用する場合
+// またはMapを使用
 result, err := client.Get(url,
     httpc.WithQueryMap(map[string]any{
         "page":  1,
@@ -124,8 +124,8 @@ result, err := client.Get(url, httpc.WithBasicAuth("user", "pass"))
 ```go
 result, err := client.Get(url,
     httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"}),
-    httpc.WithCookieMap(map[string]string{"session": "abc", "lang": "zh"}),
-    httpc.WithCookieString("session=abc; lang=zh"),
+    httpc.WithCookieMap(map[string]string{"session": "abc", "lang": "ja"}),
+    httpc.WithCookieString("session=abc; lang=ja"),
 )
 ```
 
@@ -140,8 +140,8 @@ result, err := client.Get(url, httpc.WithMaxRetries(5))
 
 // リダイレクト
 result, err := client.Get(url,
-    httpc.WithFollowRedirects(false),    // リダイレクトを禁止
-    httpc.WithMaxRedirects(3),           // 最大 3 回リダイレクト
+    httpc.WithFollowRedirects(false),    // リダイレクト追従を禁止
+    httpc.WithMaxRedirects(3),           // 最大3回リダイレクト
 )
 ```
 
@@ -181,7 +181,7 @@ result.Body()           // 文字列
 result.RawBody()        // []byte
 result.Proto()          // "HTTP/1.1"
 
-// JSON 解析
+// JSON解析
 var user User
 if err := result.Unmarshal(&user); err != nil {
     log.Fatal(err)
@@ -211,20 +211,20 @@ result, err := httpc.Request(ctx, "GET", url)
 ctx, cancel := context.WithCancel(context.Background())
 go func() {
     time.Sleep(5 * time.Second)
-    cancel() // 5 秒後にキャンセル
+    cancel() // 5秒後にキャンセル
 }()
 result, err := httpc.Request(ctx, "GET", url)
 ```
 
 ## ストリーミングレスポンス
 
-`WithStreamBody(true)` は内部メカニズムであり、ファイルダウンロード時に完全なレスポンスボディをメモリにキャッシュしないようにするためのものです。有効にすると、レスポンスボディは `Result` に読み込まれません（`Body()` と `RawBody()` は空の値を返します）。
+`WithStreamBody(true)`は内部メカニズムであり、ファイルダウンロード時に完全なレスポンスボディがメモリにキャッシュされるのを防ぎます。有効にすると、レスポンスボディは`Result`に読み込まれません（`Body()`と`RawBody()`は空の値を返します）。
 
 :::warning 警告
-`WithStreamBody(true)` はファイルダウンロード API（`DownloadFile`、`DownloadWithOptions`）が内部で使用します。レスポンスの内容をストリーミングで取得する必要がある場合は、[ファイルダウンロード API](./file-transfer) を使用してください。
+`WithStreamBody(true)`はファイルダウンロードAPI（`DownloadFile`、`DownloadWithOptions`）が内部的に使用します。ストリーミングでレスポンス内容を取得する必要がある場合は、[ファイルダウンロードAPI](./file-transfer)を使用してください。
 :::
 
-大きなファイルをダウンロードする場合は、ダウンロード API を使用してください：
+大きなファイルをダウンロードする場合は、ダウンロードAPIを使用してください：
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -234,24 +234,24 @@ result, err := client.DownloadWithOptions(url, cfg)
 
 ## レスポンス解凍
 
-HTTPC は gzip、deflate などのコンテンツエンコーディングの解凍を自動的に処理します。セキュリティ設定で解凍後のサイズを制限し、解凍爆弾攻撃を防ぐことができます：
+HTTPCはgzip、deflateなどのコンテンツエンコーディングの解凍を自動的に処理します。セキュリティ設定で解凍後のサイズを制限し、解凍爆弾攻撃を防止できます：
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // 圧縮ボディ最大 10MB
-cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // 解凍後最大 100MB
+cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // 圧縮ボディ最大10MB
+cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // 解凍後最大100MB
 ```
 
 | 設定項目 | デフォルト値 | 説明 |
-|----------|-------------|------|
-| `MaxResponseBodySize` | 10MB | 元のレスポンスボディサイズの上限 |
-| `MaxDecompressedBodySize` | 100MB | 解凍後のレスポンスボディサイズの上限 |
+|----------|--------------|------|
+| `MaxResponseBodySize` | 10MB | 元のレスポンスボディサイズ上限 |
+| `MaxDecompressedBodySize` | 100MB | 解凍後レスポンスボディサイズ上限 |
 
-制限を超えると `"exceeds limit"` メッセージを含むエラーが返されます。`ClientError` タイプで確認して処理できます。`ErrResponseBodyTooLarge` は `Result.Unmarshal()` で 50MB の JSON サイズ制限を超えるレスポンスボディを解析する際に返されます（`MaxResponseBodySize` とは独立しています）。
+制限を超えると`"exceeds limit"`メッセージを含むエラーが返されます。`ClientError`タイプで確認処理できます。`ErrResponseBodyTooLarge`は`Result.Unmarshal()`で50MB JSON解析サイズ制限を超えるレスポンスボディを解析する際に返されます（`MaxResponseBodySize`とは独立）。
 
 ## 次のステップ
 
 - [ファイルアップロードとダウンロード](./file-transfer) - ファイル転送ガイド
 - [ドメインクライアントとセッション](./domain-session) - セッション管理
-- [リクエストオプション API](../api-reference/options) - 完全なオプションリファレンス
+- [リクエストオプションAPI](../api-reference/options) - 完全なオプションリファレンス
 - [Result API](../api-reference/result) - レスポンス処理リファレンス

@@ -1,6 +1,6 @@
 ---
-title: ファイル出力とローテーション - CyberGo DD | ファイルログ設定ガイド
-description: CyberGo DD ファイル出力とログローテーション設定ガイド。FileWriter のサイズローテーションと時間クリーンアップポリシー、BufferedWriter バッファ書き込み最適化、MultiWriter マルチ出力先ディスパッチ、動的 Writer 管理、本番環境のベストプラクティスをカバーし、高信頼性のファイルログシステムを構築できます。
+title: "ファイル出力とローテーション - CyberGo DD | ファイルログ設定ガイド"
+description: "CyberGo DD ファイル出力とログローテーション設定ガイド。FileWriter のサイズローテーションと時間クリーンアップポリシー、BufferedWriter バッファ書き込み最適化、MultiWriter マルチ出力先ディスパッチ、動的 Writer 管理、本番環境のベストプラクティスをカバーし、高信頼性のファイルログシステムを構築できます。"
 ---
 
 # ファイル出力とローテーション

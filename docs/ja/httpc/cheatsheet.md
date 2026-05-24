@@ -1,6 +1,6 @@
 ---
-title: チートシート - HTTPC
-description: HTTPC チートシート。クライアント作成、7 種の HTTP メソッド、リクエストオプション、レスポンス処理、設定プリセット、ミドルウェア、エラータイプのクイックリファレンス。
+title: "チートシート - HTTPC"
+description: "HTTPCチートシート：クライアント作成と5種のプリセット設定、Get/Postなど7種のHTTPメソッド、27個のWithXxxリクエストオプション、Resultレスポンス処理、ミドルウェアチェーン、ClientErrorエラータイプ、ファイルダウンロードの完全なコードスニペット。"
 ---
 
 # チートシート
@@ -19,7 +19,7 @@ cfg.Retry.MaxRetries = 5
 client, _ = httpc.New(cfg)
 ```
 
-## HTTP メソッド
+## HTTPメソッド
 
 ```go
 // パッケージ関数（デフォルトクライアントを使用）
@@ -122,15 +122,15 @@ result.IsSuccess()                     // 2xx
 result.IsRedirect()                    // 3xx
 result.IsClientError()                 // 4xx
 result.IsServerError()                 // 5xx
-result.Unmarshal(&data)                // JSON パース
-result.GetCookie("name")               // レスポンス Cookie 取得
-result.HasCookie("name")               // レスポンス Cookie 確認
-result.ResponseCookies()               // 全レスポンス Cookie
-result.RequestCookies()                // 全リクエスト Cookie
-result.GetRequestCookie("name")        // リクエスト Cookie 取得
-result.HasRequestCookie("name")        // リクエスト Cookie 確認
+result.Unmarshal(&data)                // JSON解析
+result.GetCookie("name")               // レスポンスCookieの取得
+result.HasCookie("name")               // レスポンスCookieの確認
+result.ResponseCookies()               // 全レスポンスCookie
+result.RequestCookies()                // 全リクエストCookie
+result.GetRequestCookie("name")        // リクエストCookieの取得
+result.HasRequestCookie("name")        // リクエストCookieの確認
 result.SaveToFile("/path/to/file")     // ファイルに保存
-result.String()                        // 人間可読表現（機密ヘッダーはマスク）
+result.String()                        // 人間可読表現（機密ヘッダーはマスク済み）
 httpc.ReleaseResult(result)            // オブジェクトプールに返却
 ```
 
@@ -146,7 +146,7 @@ cfg.Timeouts.TLSHandshake = 10 * time.Second
 cfg.Timeouts.ResponseHeader = 30 * time.Second
 cfg.Timeouts.IdleConn = 90 * time.Second
 
-// コネクション
+// 接続
 cfg.Connection.MaxIdleConns = 50
 cfg.Connection.MaxConnsPerHost = 10
 cfg.Connection.ProxyURL = "http://proxy:8080"
@@ -197,9 +197,9 @@ if err != nil {
         case httpc.ErrorTypeNetwork:
             // ネットワークエラー
         case httpc.ErrorTypeTLS:
-            // TLS エラー
+            // TLSエラー
         case httpc.ErrorTypeDNS:
-            // DNS 解決エラー
+            // DNS解決エラー
         case httpc.ErrorTypeContextCanceled:
             // コンテキストキャンセル
         case httpc.ErrorTypeRetryExhausted:
@@ -207,7 +207,7 @@ if err != nil {
         case httpc.ErrorTypeValidation:
             // リクエスト検証エラー
         case httpc.ErrorTypeHTTP:
-            // HTTP 層エラー
+            // HTTP層エラー
         // その他: ErrorTypeUnknown, ErrorTypeResponseRead,
         //       ErrorTypeTransport, ErrorTypeCertificate
         }
@@ -233,7 +233,7 @@ dlCfg.ProgressCallback = func(downloaded, total int64, speed float64) {
 }
 dlResult, err := client.DownloadWithOptions(url, dlCfg)
 
-// dlResult の型は *DownloadResult（*Result ではない）
+// dlResultのタイプは*DownloadResult（*Resultではない）
 // フィールド: FilePath, BytesWritten, Duration, AverageSpeed, StatusCode, ContentLength, Resumed, ResponseCookies, ActualChecksum
 ```
 
@@ -245,4 +245,4 @@ defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
 result, _ := dc.Get("/users")
-```
+``

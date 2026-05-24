@@ -1,6 +1,6 @@
 ---
-title: Базовые примеры - HTTPC
-description: Набор базовых примеров HTTPC, охватывающих запросы GET/POST с разбором JSON, загрузку файлов, предустановки конфигурации, добавление промежуточного ПО и загрузку с обратным вызовом прогресса.
+title: "Базовые примеры — HTTPC"
+description: "Набор базовых примеров HTTPC: запросы GET с параметрами и аутентификацией, POST-запросы с JSON/формой/загрузкой файлов, FormData с несколькими полями, выбор DefaultConfig и других предустановок, настройка прокси ProxyURL, добавление промежуточного ПО Recovery/Logging, сбор метрик RequestID/Metrics и загрузка файлов с обратным вызовом прогресса."
 ---
 
 # Базовые примеры
@@ -54,7 +54,7 @@ result, err := httpc.Get("https://api.example.com/me",
 
 ## POST-запросы
 
-### Тело запроса JSON
+### Тело запроса в формате JSON
 
 ```go
 data := map[string]any{
@@ -70,7 +70,7 @@ if err != nil {
 }
 defer httpc.ReleaseResult(result)
 
-// Разбор JSON-ответа
+// Парсинг JSON-ответа
 var response map[string]any
 if err := result.Unmarshal(&response); err != nil {
     log.Fatal(err)
@@ -99,7 +99,7 @@ result, err := httpc.Post("https://httpbin.org/post",
 )
 ```
 
-### Многочастная форма
+### Форма с несколькими полями
 
 ```go
 form := &httpc.FormData{
@@ -212,7 +212,7 @@ if err != nil {
 }
 defer dc.Close()
 
-// Установка информации сессии
+// Установка данных сессии
 dc.SetHeader("Authorization", "Bearer "+token)
 dc.SetHeader("Accept", "application/json")
 
@@ -225,6 +225,6 @@ fmt.Println(users.StatusCode()) // 200
 
 ## Что дальше
 
-- [Расширенные примеры](./advanced-usage) - пользовательские повторные попытки, цепочка промежуточного ПО, параллельная загрузка
-- [Запросы и ответы](../guides/request-response) - подробное описание параметров запросов
-- [Доменный клиент и сессии](../guides/domain-session) - управление сессиями
+- [Расширенные примеры](./advanced-usage) — пользовательские повторные попытки, цепочка промежуточного ПО, параллельные загрузки
+- [Запросы и ответы](../guides/request-response) — подробное описание параметров запросов
+- [Доменный клиент и сессии](../guides/domain-session) — управление сессиями

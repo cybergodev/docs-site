@@ -1,5 +1,5 @@
 ---
-title: API 레퍼런스 - JWT
+title: "API 레퍼런스 - JWT"
 description: "CyberGo JWT API 레퍼런스 색인: 패키지 함수, Processor 핵심 메서드, Config 설정, Claims 선언, 인터페이스 정의, 타입 상수 및 오류 처리의 전체 문서 내비게이션."
 ---
 

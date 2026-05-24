@@ -1,5 +1,5 @@
 ---
-title: CustomEncoder - CyberGo JSON | カスタムエンコーダ
+title: "CustomEncoder - CyberGo JSON | カスタムエンコーダ"
 description: "CyberGo JSON カスタムエンコーダガイド：CustomEncoder インターフェースと TypeEncoder 型エンコーダの定義、設定方法、実装例の詳細解説。カスタム Go 構造体や非標準型に専用の JSON シリアライズ・デシリアライズロジックを登録し、エンコード・デコード動作を柔軟に制御可能。"
 ---
 

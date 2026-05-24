@@ -1,6 +1,6 @@
 ---
-title: 类型与常量 - JWT API 参考
-description: CyberGo JWT 类型与常量参考：NumericDate、StringOrSlice、SigningMethod、ValidationError、RateLimiter、SystemClock、FixedClock 及 12 种签名算法常量。
+title: "类型与常量 - JWT API 参考"
+description: "CyberGo JWT 类型与常量参考：NumericDate、StringOrSlice、SigningMethod、ValidationError、RateLimiter、SystemClock、FixedClock 及 12 种签名算法常量。"
 ---
 
 # 类型与常量

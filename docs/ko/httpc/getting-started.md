@@ -1,6 +1,6 @@
 ---
-title: 빠른 시작 - HTTPC
-description: 5분 안에 HTTPC 보안 HTTP 클라이언트 라이브러리 빠르게 시작하기. 모듈 설치, GET/POST 요청, 클라이언트 구성, JSON 파싱 및 오류 처리 포함.
+title: "빠른 시작 - HTTPC"
+description: "5분 만에 HTTPC 안전한 HTTP 클라이언트 라이브러리 빠르게 시작하기: go get 설치, GET/POST 요청, 다섯 가지 설정 프리셋, JSON 파싱, Bearer Token 인증과 ClientError 오류 분류 처리를 다룹니다."
 ---
 
 # 빠른 시작
@@ -13,7 +13,7 @@ go get github.com/cybergodev/httpc
 
 ## 기본 요청
 
-클라이언트를 생성할 필요 없이 패키지 함수를 직접 사용합니다:
+클라이언트를 생성할 필요 없이 패키지 레벨 함수를 직접 사용하세요:
 
 ```go
 package main
@@ -37,11 +37,11 @@ func main() {
 }
 ```
 
-지원되는 HTTP 메서드: `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Options`.
+지원하는 HTTP 메서드: `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Options`.
 
 ## 클라이언트 생성
 
-사용자 정의 구성이 필요할 때 클라이언트 인스턴스를 생성합니다:
+커스텀 설정이 필요한 경우 클라이언트 인스턴스를 생성하세요:
 
 ```go
 client, err := httpc.New()
@@ -53,13 +53,13 @@ defer client.Close()
 result, err := client.Get("https://httpbin.org/get")
 ```
 
-### 프리셋 구성
+### 프리셋 설정
 
-| 구성 | 용도 | 특징 |
+| 설정 | 용도 | 특징 |
 |------|------|------|
-| `DefaultConfig()` | 범용 시나리오 | 보안 기본값, SSRF 방어 활성화 |
+| `DefaultConfig()` | 일반 시나리오 | 안전한 기본값, SSRF 방어 활성화 |
 | `SecureConfig()` | 보안 민감 시나리오 | 자동 리다이렉트 비활성화, 엄격한 타임아웃 |
-| `PerformanceConfig()` | 높은 처리량 시나리오 | 대형 연결 풀, 긴 타임아웃, Cookie 활성화 |
+| `PerformanceConfig()` | 높은 처리량 시나리오 | 대규모 연결 풀, 긴 타임아웃, Cookie 활성화 |
 | `TestingConfig()` | 테스트 환경 | 보안 검사 및 HTTP/2 비활성화, 짧은 타임아웃 |
 | `MinimalConfig()` | 경량 요청 | 재시도 없음, 리다이렉트 없음 |
 
@@ -117,7 +117,7 @@ result, err := client.Get("https://api.example.com/data",
 
 ## 오류 처리
 
-HTTPC는 **네트워크 계층 오류**와 **HTTP 상태 코드**를 구분합니다:
+HTTPC은 **네트워크 계층 오류**와 **HTTP 상태 코드**를 구분합니다:
 
 ```go
 result, err := client.Get("https://api.example.com/data")
@@ -130,7 +130,7 @@ if err != nil {
 }
 defer httpc.ReleaseResult(result)
 
-// HTTP 상태 코드는 수동으로 확인해야 합니다
+// HTTP 상태 코드는 수동으로 확인 필요
 switch {
 case result.IsSuccess():
     // 2xx 성공
@@ -141,14 +141,14 @@ case result.IsServerError():
 }
 ```
 
-:::tip 사용 팁
-4xx/5xx는 `error`로 반환되지 않으며, `result.IsSuccess()` 등의 메서드로 확인해야 합니다. 자세한 내용은 [오류 처리](./advanced/error-handling)를 참조하십시오.
+:::tip
+4xx/5xx는 `error`로 반환되지 않으며, `result.IsSuccess()` 등의 메서드로 확인해야 합니다. 자세한 내용은 [오류 처리](./advanced/error-handling)를 참조하세요.
 :::
 
 ## 다음 단계
 
 - **[실전 튜토리얼](./guides/tutorial)** - 30분 만에 GitHub API 클라이언트 구축
-- **[요청과 응답](./guides/request-response)** - 완전한 요청 옵션과 응답 처리
+- **[요청과 응답](./guides/request-response)** - 전체 요청 옵션 및 응답 처리
 - **[기본 예제](./examples/basic-usage)** - GET/POST/미들웨어 등 실제 사용 예
 - **[치트시트](./cheatsheet)** - 자주 사용하는 작업 빠른 참조
 - **[보안](./security/)** - 보안 모범 사례

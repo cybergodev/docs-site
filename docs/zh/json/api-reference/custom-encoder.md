@@ -1,5 +1,5 @@
 ---
-title: CustomEncoder - CyberGo JSON | 自定义编码器
+title: "CustomEncoder - CyberGo JSON | 自定义编码器"
 description: "CyberGo JSON 自定义编码器完整指南：详解 CustomEncoder 接口和 TypeEncoder 类型编码器的定义、配置方式与实现示例，支持为自定义 Go 结构体和非标准类型注册专用 JSON 序列化逻辑，灵活控制编码输出行为。"
 ---
 

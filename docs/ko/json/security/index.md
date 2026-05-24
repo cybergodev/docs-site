@@ -1,5 +1,5 @@
 ---
-title: 보안 개요 - CyberGo JSON | 보안 모범 사례
+title: "보안 개요 - CyberGo JSON | 보안 모범 사례"
 description: "CyberGo JSON 보안 모범 사례 가이드: 입력 검증 및 정제, MaxNestingDepthSecurity/MaxMemory 리소스 제한 방어, 경로 순회 공격 방어, JSON 인젝션 방지, 민감 데이터 필터링 및 감사 로그 설정을 다루며, 개발자가 프로덕션 환경의 JSON 데이터 처리 보안을 전면적으로 보장할 수 있도록 돕습니다."
 ---
 

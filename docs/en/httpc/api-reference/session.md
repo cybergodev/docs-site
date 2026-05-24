@@ -1,6 +1,6 @@
 ---
-title: Session Management - HTTPC
-description: HTTPC SessionManager session management API reference, covering creation functions, SessionConfig configuration, session header management methods, cookie security validation, and response synchronization.
+title: "Session Management - HTTPC"
+description: "HTTPC SessionManager API: NewSessionManager, SessionConfig, header/cookie CRUD, CookieSecurity validation, and UpdateFromResult sync."
 ---
 
 # Session Management

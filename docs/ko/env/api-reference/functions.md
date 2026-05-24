@@ -1,6 +1,6 @@
 ---
-title: 패키지 함수 - CyberGo env | 전역 편의 함수
-description: CyberGo env 라이브러리 패키지 수준 편의 함수 API 전체 참조 문서로, Load 파일 로드, GetString 및 GetInt 유형별 값 읽기, Keys 키 이름 조회, Marshal 직렬화 내보내기, ParseInto 구조체 매핑 등 간결한 API를 제공하며, 전역 기본 로더를 기반으로 지연 초기화 및 스레드 안전 설계를 사용합니다.
+title: "패키지 함수 - CyberGo env | 전역 편의 함수"
+description: "CyberGo env 라이브러리 패키지 수준 편의 함수 API 전체 참조 문서로, Load 파일 로드, GetString 및 GetInt 유형별 값 읽기, Keys 키 이름 조회, Marshal 직렬화 내보내기, ParseInto 구조체 매핑 등 간결한 API를 제공하며, 전역 기본 로더를 기반으로 지연 초기화 및 스레드 안전 설계를 사용합니다."
 ---
 
 # 패키지 함수

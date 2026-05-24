@@ -1,6 +1,6 @@
 ---
-title: 실전 튜토리얼 - HTTPC
-description: 30분 실전 튜토리얼로 GitHub REST API 클라이언트를 구축하며, HTTPC 클라이언트 구성, 요청 옵션, 도메인 클라이언트, 미들웨어 및 오류 처리를 학습합니다.
+title: "실전 튜토리얼 - HTTPC"
+description: "30분 실전 튜토리얼: httpc.Get에서 시작하여 GitHub REST API 클라이언트를 점진적으로 구축하며, JSON 파싱, NewDomain 도메인 클라이언트, WithJSON 데이터 전송, 미들웨어 체인, ClientError 오류 처리와 파일 다운로드를 다룹니다."
 ---
 
 # 실전 튜토리얼: GitHub API 클라이언트 구축

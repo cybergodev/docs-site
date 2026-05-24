@@ -1,5 +1,5 @@
 ---
-title: CustomEncoder - CyberGo JSON | Пользовательский кодировщик
+title: "CustomEncoder - CyberGo JSON | Пользовательский кодировщик"
 description: "Полное руководство по пользовательскому кодировщику CyberGo JSON: подробное описание интерфейсов CustomEncoder и TypeEncoder, способы настройки и примеры реализации для пользовательских типов Go."
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Constants & Errors - CyberGo DD | LogLevel Sentinel
+title: "Constants & Errors - CyberGo DD | LogLevel Sentinel"
 description: "CyberGo DD constants and errors: LogLevel (Debug/Info/Warn/Error/Fatal), Format constants, and SentinelErrors for precise log behavior control."
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Integrity Signing - CyberGo DD | IntegritySigner
+title: "Integrity Signing - CyberGo DD | IntegritySigner"
 description: "CyberGo DD integrity signing API: HMAC-SHA256 signing, sequence tracking, IntegritySigner, and Verify for tamper-proof audit log compliance."
 ---
 

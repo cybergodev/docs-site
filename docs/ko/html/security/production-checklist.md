@@ -1,6 +1,6 @@
 ---
-title: 프로덕션 체크리스트 - HTML
-description: CyberGo HTML 라이브러리 프로덕션 환경 배포 보안 체크리스트, 기본 보안 설정 항목(HighSecurityConfig 프리셋), Processor 라이프사이클 관리, 감사와 모니터링 설정, 컨텍스트 타임아웃 제어, 오류 처리 모범 사례, 리소스 관리와 파일 처리 보안 주의사항을 포함합니다.
+title: "프로덕션 체크리스트 - HTML"
+description: "CyberGo HTML 라이브러리 프로덕션 환경 배포 보안 체크리스트, 기본 보안 설정 항목(HighSecurityConfig 프리셋), Processor 라이프사이클 관리, 감사와 모니터링 설정, 컨텍스트 타임아웃 제어, 오류 처리 모범 사례, 리소스 관리와 파일 처리 보안 주의사항을 포함합니다."
 ---
 
 # 프로덕션 체크리스트

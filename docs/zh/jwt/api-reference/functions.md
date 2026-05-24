@@ -1,6 +1,6 @@
 ---
-title: 包函数 - JWT API 参考
-description: CyberGo JWT 包级函数参考：New 创建 Processor、DefaultConfig 默认配置、DefaultBlacklistConfig 黑名单配置、NewNumericDate、NewRateLimiter。
+title: "包函数 - JWT API 参考"
+description: "CyberGo JWT 包级函数参考：New 创建 Processor、DefaultConfig 默认配置、DefaultBlacklistConfig 黑名单配置、NewNumericDate、NewRateLimiter。"
 ---
 
 # 包函数

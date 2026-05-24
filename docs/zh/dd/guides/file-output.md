@@ -1,6 +1,6 @@
 ---
-title: 文件输出与轮换 - CyberGo DD | 文件日志配置指南
-description: CyberGo DD 文件输出与日志轮换配置指南，涵盖 FileWriter 大小轮换与时间清理策略、BufferedWriter 缓冲写入优化、MultiWriter 多目标分发、动态 Writer 管理以及生产环境最佳实践，帮助开发者构建高可靠性的文件日志系统。
+title: "文件输出与轮换 - CyberGo DD | 文件日志配置指南"
+description: "CyberGo DD 文件输出与日志轮换配置指南，涵盖 FileWriter 大小轮换与时间清理策略、BufferedWriter 缓冲写入优化、MultiWriter 多目标分发、动态 Writer 管理以及生产环境最佳实践，帮助开发者构建高可靠性的文件日志系统。"
 ---
 
 # 文件输出与轮换

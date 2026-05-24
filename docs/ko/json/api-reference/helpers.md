@@ -1,5 +1,5 @@
 ---
-title: 보조 함수 - CyberGo JSON | API 레퍼런스
+title: "보조 함수 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 보조 도구 함수 완전 레퍼런스: CompareJSON으로 두 JSON이 동등한지 비교 검증, ClearCache/GetStats 캐시 관리와 통계, 전역 프로세서 관리 및 보안 패턴 보조 함수를 포함하여 일상 개발에서 편리한 JSON 도구 함수 모음을 제공합니다."
 ---
 

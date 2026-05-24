@@ -1,6 +1,6 @@
 ---
-title: 디버그 출력 - CyberGo DD | Print/JSON/Text/Exit
-description: CyberGo DD 디버그 시각화 출력 함수 전체 API 문서. Print 포맷팅 인쇄, JSON 구조화된 출력, Text 일반 텍스트 출력, Exit 치명적 종료 등 빠른 디버그 함수를 포함하며, Logger 인스턴스를 생성할 필요 없이 패키지 수준 함수로 직접 호출할 수 있어 개발 디버그 과정을 크게 간소화합니다.
+title: "디버그 출력 - CyberGo DD | Print/JSON/Text/Exit"
+description: "CyberGo DD 디버그 시각화 출력 함수 전체 API 문서. Print 포맷팅 인쇄, JSON 구조화된 출력, Text 일반 텍스트 출력, Exit 치명적 종료 등 빠른 디버그 함수를 포함하며, Logger 인스턴스를 생성할 필요 없이 패키지 수준 함수로 직접 호출할 수 있어 개발 디버그 과정을 크게 간소화합니다."
 ---
 
 # 디버그 출력

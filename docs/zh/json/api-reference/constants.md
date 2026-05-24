@@ -1,5 +1,5 @@
 ---
-title: 常量与错误 - CyberGo JSON | API 参考
+title: "常量与错误 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 常量与错误定义完整参考：包括 DefaultMaxJSONSize/DefaultMaxNestingDepth 默认限制常量、ErrPathNotFound/ErrTypeMismatch 等错误变量和 MergeMode 合并模式枚举，提供配置预设和错误处理支持。"
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Claims - JWT API 레퍼런스
+title: "Claims - JWT API 레퍼런스"
 description: "CyberGo JWT Claims API 레퍼런스: Claims 내장 비즈니스 선언(UserID, Username, Role 등), RegisteredClaims RFC 7519 표준 선언 및 심층 검증 제약사항."
 ---
 

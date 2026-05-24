@@ -1,6 +1,6 @@
 ---
-title: 测试与时钟注入 - JWT
-description: CyberGo JWT 测试与时钟注入指南：ClockProvider 接口、FixedClock 固定时钟使用，以及单元测试中令牌过期、刷新和自定义 Claims 验证。
+title: "测试与时钟注入 - JWT"
+description: "CyberGo JWT 测试与时钟注入指南：ClockProvider 接口、FixedClock 固定时钟使用，以及单元测试中令牌过期、刷新和自定义 Claims 验证。"
 ---
 
 # 测试与时钟注入

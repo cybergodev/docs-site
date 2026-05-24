@@ -1,6 +1,6 @@
 ---
-title: カスタム Claims - JWT
-description: CyberGo JWT カスタム Claims ガイド：CustomClaims インターフェースの実装、内蔵とカスタム検証の違い、ValidateInto/RefreshInto の使用方法とコード例。
+title: "カスタム Claims - JWT"
+description: "CyberGo JWT カスタム Claims ガイド：CustomClaims インターフェースの実装、内蔵とカスタム検証の違い、ValidateInto/RefreshInto の使用方法とコード例。"
 ---
 
 # カスタム Claims

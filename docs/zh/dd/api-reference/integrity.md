@@ -1,6 +1,6 @@
 ---
-title: 完整性签名 - CyberGo DD | IntegritySigner
-description: CyberGo DD 完整性签名完整 API 文档，支持 HMAC-SHA256 算法签名和序列号递增追踪机制，确保每条日志条目未被篡改，提供 IntegritySigner 签名器和 Verify 验证器，满足安全审计和日志防篡改等各类合规要求。
+title: "完整性签名 - CyberGo DD | IntegritySigner"
+description: "CyberGo DD 完整性签名完整 API 文档，支持 HMAC-SHA256 算法签名和序列号递增追踪机制，确保每条日志条目未被篡改，提供 IntegritySigner 签名器和 Verify 验证器，满足安全审计和日志防篡改等各类合规要求。"
 ---
 
 # 完整性签名

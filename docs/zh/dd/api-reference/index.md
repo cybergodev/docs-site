@@ -1,6 +1,6 @@
 ---
-title: API 参考 - CyberGo DD | 概览
-description: CyberGo DD 结构化日志库完整 API 参考文档概览，全面涵盖 Logger 核心记录器、Config 配置选项、Writers 输出目标、Security 安全过滤、Audit 审计日志、Hooks 钩子系统和 Integrity 完整性签名等核心功能模块。
+title: "API 参考 - CyberGo DD | 概览"
+description: "CyberGo DD 结构化日志库完整 API 参考文档概览，全面涵盖 Logger 核心记录器、Config 配置选项、Writers 输出目标、Security 安全过滤、Audit 审计日志、Hooks 钩子系统和 Integrity 完整性签名等核心功能模块。"
 ---
 
 # API 参考

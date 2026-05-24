@@ -1,6 +1,6 @@
 ---
-title: フックシステム - CyberGo DD | HookRegistry
-description: CyberGo DD ライフサイクルフックシステム完全 API ドキュメント。ログ書き込み前後（BeforeLog/AfterLog）、ファイルローテーション（OnRotate）、エラー発生（OnError）などの重要イベントでカスタムコールバック関数を登録可能。HookRegistry レジストリと柔軟なログ処理拡張メカニズムを提供。
+title: "フックシステム - CyberGo DD | HookRegistry"
+description: "CyberGo DD ライフサイクルフックシステム完全 API ドキュメント。ログ書き込み前後（BeforeLog/AfterLog）、ファイルローテーション（OnRotate）、エラー発生（OnError）などの重要イベントでカスタムコールバック関数を登録可能。HookRegistry レジストリと柔軟なログ処理拡張メカニズムを提供。"
 ---
 
 # フックシステム

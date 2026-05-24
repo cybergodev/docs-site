@@ -1,6 +1,6 @@
 ---
-title: HTML - 生产级 HTML 内容提取工具
-description: CyberGo HTML 是 Go 语言的高性能 HTML 内容提取与清洗工具库，提供智能文章识别、自动编码检测（15+ 种编码）、独立链接提取、并发批量处理和可插拔审计管道，支持纯文本、Markdown、JSON 多格式输出，适用于 Web 内容抓取、数据清洗和文档分析等生产级应用场景。
+title: "HTML - 生产级 HTML 内容提取工具"
+description: "CyberGo HTML 是 Go 语言的高性能 HTML 内容提取与清洗工具库，提供智能文章识别、自动编码检测（15+ 种编码）、独立链接提取、并发批量处理和可插拔审计管道，支持纯文本、Markdown、JSON 多格式输出，适用于 Web 内容抓取、数据清洗和文档分析等生产级应用场景。"
 ---
 
 # HTML

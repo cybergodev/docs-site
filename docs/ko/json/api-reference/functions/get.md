@@ -1,5 +1,5 @@
 ---
-title: 쿼리/가져오기 함수 - CyberGo JSON | API 레퍼런스
+title: "쿼리/가져오기 함수 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 조회와 가져오기 함수 완전 레퍼런스: Get/GetString/GetInt/GetFloat/GetBool 등 타입 안전 가져오기, GetTyped[T] 제네릭 가져오기 및 Parse/ParseAny 파싱 함수를 포함하며, JSONPath 경로 표현식을 완전히 지원하고 기본값이 있는 제로 오류 가져오기 모드를 제공합니다."
 ---
 

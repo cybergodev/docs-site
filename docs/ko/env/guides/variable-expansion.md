@@ -1,6 +1,6 @@
 ---
-title: 변수 확장 - CyberGo env 변수 구문
-description: CyberGo env 라이브러리 변수 확장 구문 가이드, ${VAR} 및 ${VAR:-default} 참조 구문을 상세히 설명하며, 중첩 기본값, := 할당 및 :? 오류 출력 등 조건부 확장 모드를 다루고, 순환 참조 감지, MaxExpansionDepth 깊이 제한 및 ExpandVariables 스위치 제어를 소개하여 .env 파일에서 변수 재사용과 동적 값 치환을 구현합니다.
+title: "변수 확장 - CyberGo env 변수 구문"
+description: "CyberGo env 라이브러리 변수 확장 구문 가이드, ${VAR} 및 ${VAR:-default} 참조 구문을 상세히 설명하며, 중첩 기본값, := 할당 및 :? 오류 출력 등 조건부 확장 모드를 다루고, 순환 참조 감지, MaxExpansionDepth 깊이 제한 및 ExpandVariables 스위치 제어를 소개하여 .env 파일에서 변수 재사용과 동적 값 치환을 구현합니다."
 ---
 
 # 변수 확장

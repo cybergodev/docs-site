@@ -1,6 +1,6 @@
 ---
-title: Testing & Custom Extensions - HTML
-description: Testing and custom extension guide for CyberGo HTML, covering custom Scorer, ContentNode traversal, test mode configuration, and runnable code examples.
+title: "Testing & Custom Extensions - HTML"
+description: "Testing and custom extension guide for CyberGo HTML, covering custom Scorer, ContentNode traversal, test mode configuration, and runnable code examples."
 ---
 
 # Testing & Custom Extensions

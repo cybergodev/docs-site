@@ -1,5 +1,5 @@
 ---
-title: 토큰 블랙리스트 - JWT
+title: "토큰 블랙리스트 - JWT"
 description: "CyberGo JWT 토큰 블랙리스트 가이드: 내장 메모리 저장소 설정, BlacklistStore 커스텀 백엔드(Redis), 취소 메커니즘, 자동 정리 및 프로덕션 환경 모범 사례."
 ---
 

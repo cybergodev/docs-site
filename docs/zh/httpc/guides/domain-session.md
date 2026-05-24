@@ -1,6 +1,6 @@
 ---
-title: 域名客户端与会话 - HTTPC
-description: HTTPC 域名客户端与会话管理指南，详解 NewDomain 创建、URL 自动拼接、会话头与 Cookie 自动维护及安全配置的使用方法。
+title: "域名客户端与会话 - HTTPC"
+description: "HTTPC 域名客户端与会话管理指南：NewDomain 创建、URL 自动拼接、SetHeader 会话头维护、Cookie 自动管理与捕获、CookieSecurity 安全验证策略与 REST API 客户端封装示例。"
 ---
 
 # 域名客户端与会话

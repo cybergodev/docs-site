@@ -1,6 +1,6 @@
 ---
-title: 接口定义 - JWT API 参考
-description: CyberGo JWT 接口定义参考：TokenManager、CustomClaims、BlacklistStore、RateLimitProvider、ClockProvider 和 RateLimitKeyer 接口。
+title: "接口定义 - JWT API 参考"
+description: "CyberGo JWT 接口定义参考：TokenManager、CustomClaims、BlacklistStore、RateLimitProvider、ClockProvider 和 RateLimitKeyer 接口。"
 ---
 
 # 接口定义

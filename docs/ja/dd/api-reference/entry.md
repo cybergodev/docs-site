@@ -1,6 +1,6 @@
 ---
-title: LoggerEntry - CyberGo DD | プリセットフィールドログ
-description: CyberGo DD LoggerEntry タイプ完全 API ドキュメント。プリセットフィールド付きのチェーンログレコーダーの作成に使用。WithFields の各呼び出しで新しい不変 Entry インスタンスを返し、フィールドの蓄積・組み合わせ、コンテキストバインディング伝播、レベル継承メカニズムをサポート。リクエストレベルのログトレーシングやコンテキスト関連付けに適しています。
+title: "LoggerEntry - CyberGo DD | プリセットフィールドログ"
+description: "CyberGo DD LoggerEntry タイプ完全 API ドキュメント。プリセットフィールド付きのチェーンログレコーダーの作成に使用。WithFields の各呼び出しで新しい不変 Entry インスタンスを返し、フィールドの蓄積・組み合わせ、コンテキストバインディング伝播、レベル継承メカニズムをサポート。リクエストレベルのログトレーシングやコンテキスト関連付けに適しています。"
 ---
 
 # LoggerEntry

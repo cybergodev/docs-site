@@ -1,5 +1,5 @@
 ---
-title: File Output & Rotation - CyberGo DD | Config
+title: "File Output & Rotation - CyberGo DD | Config"
 description: "CyberGo DD file output and rotation: FileWriter size and time-based rotation, BufferedWriter optimization, MultiWriter, and production best practices."
 ---
 

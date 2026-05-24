@@ -1,5 +1,5 @@
 ---
-title: イテレータ - CyberGo JSON | API リファレンス
+title: "イテレータ - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON 反復走査 API 完全リファレンス：Foreach 基本反復、ForeachWithPath パス付き反復、ForeachNested 再帰反復、IterableValue 反復可能値型、IteratorControl 反復制御、ParallelForeach 並列反復のベストプラクティス。"
 ---
 

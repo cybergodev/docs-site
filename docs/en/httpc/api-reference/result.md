@@ -1,6 +1,6 @@
 ---
-title: Result - HTTPC
-description: HTTPC Result response type API reference covering body access, status checks, cookie operations, JSON parsing, and file saving methods.
+title: "Result - HTTPC"
+description: "HTTPC Result response type API reference covering body access, status checks, cookie operations, JSON parsing, and file saving methods."
 ---
 
 # Result

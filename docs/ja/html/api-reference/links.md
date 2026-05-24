@@ -1,6 +1,6 @@
 ---
-title: リンク抽出 - HTML
-description: CyberGo HTML ライブラリの独立したリンク抽出 API リファレンス。ExtractAllLinks シリーズ関数と GroupLinksByType グループ化ツールを含み、HTML からすべてのリンクリソース（CSS、JS、画像、動画、音声）を抽出してタイプ別にグループ化できます。Config によるリンクフィルタリングもサポートし、クローラーやリソース収集のユースケースに適しています。
+title: "リンク抽出 - HTML"
+description: "CyberGo HTML ライブラリの独立したリンク抽出 API リファレンス。ExtractAllLinks シリーズ関数と GroupLinksByType グループ化ツールを含み、HTML からすべてのリンクリソース（CSS、JS、画像、動画、音声）を抽出してタイプ別にグループ化できます。Config によるリンクフィルタリングもサポートし、クローラーやリソース収集のユースケースに適しています。"
 ---
 
 # リンク抽出

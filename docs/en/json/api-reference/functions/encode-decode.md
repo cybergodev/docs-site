@@ -1,5 +1,5 @@
 ---
-title: Encode and Decode Functions - CyberGo JSON | API Reference
+title: "Encode and Decode Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON encode and decode functions reference: Marshal/Unmarshal serialization, Compact/Indent/HTMLEscape formatting, Encode/EncodePretty/EncodeWithConfig/Prettify configured encoding, 100% compatible with encoding/json."
 ---
 

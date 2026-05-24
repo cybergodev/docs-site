@@ -1,6 +1,6 @@
 ---
-title: 错误处理 - JWT
-description: CyberGo JWT 错误处理指南：17 个哨兵错误分类、errors.Is() 匹配模式、ValidationError 类型及 Web 服务错误处理最佳实践。
+title: "错误处理 - JWT"
+description: "CyberGo JWT 错误处理指南：17 个哨兵错误分类、errors.Is() 匹配模式、ValidationError 类型及 Web 服务错误处理最佳实践。"
 ---
 
 # 错误处理

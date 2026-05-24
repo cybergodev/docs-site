@@ -1,6 +1,6 @@
 ---
-title: 自定义 Claims - JWT
-description: CyberGo JWT 自定义 Claims 指南：CustomClaims 接口实现、内置与自定义验证差异、ValidateInto/RefreshInto 使用方法与代码示例。
+title: "自定义 Claims - JWT"
+description: "CyberGo JWT 自定义 Claims 指南：CustomClaims 接口实现、内置与自定义验证差异、ValidateInto/RefreshInto 使用方法与代码示例。"
 ---
 
 # 自定义 Claims

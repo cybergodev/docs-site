@@ -1,6 +1,6 @@
 ---
-title: 接口定义 - CyberGo DD | Logger 接口层次
-description: CyberGo DD 日志库接口层次定义完整文档，包括 CoreLogger 基础日志接口、LevelLogger 级别日志接口、ConfigurableLogger 可配置日志接口和 LogProvider 日志提供者接口，支持从简单到复杂的多层次日志抽象需求，便于自定义实现和依赖注入。
+title: "接口定义 - CyberGo DD | Logger 接口层次"
+description: "CyberGo DD 日志库接口层次定义完整文档，包括 CoreLogger 基础日志接口、LevelLogger 级别日志接口、ConfigurableLogger 可配置日志接口和 LogProvider 日志提供者接口，支持从简单到复杂的多层次日志抽象需求，便于自定义实现和依赖注入。"
 ---
 
 # 接口定义

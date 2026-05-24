@@ -1,6 +1,6 @@
 ---
-title: Getting Started - CyberGo env | 5-Minute Guide
-description: Get started with CyberGo env environment variable management library in 5 minutes, from go get installation to your first program. Covers .env file loading, type-safe reading, struct mapping, multi-environment configuration, and variable expansion with complete code examples to help you quickly master Go environment variable management.
+title: "Getting Started - CyberGo env | 5-Minute Guide"
+description: "Get started with CyberGo env environment variable management library in 5 minutes, from go get installation to your first program. Covers .env file loading, type-safe reading, struct mapping, multi-environment configuration, and variable expansion with complete code examples to help you quickly master Go environment variable management."
 ---
 
 # Getting Started

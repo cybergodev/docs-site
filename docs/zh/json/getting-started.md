@@ -1,5 +1,5 @@
 ---
-title: 快速开始 - CyberGo JSON | 5分钟上手指南
+title: "快速开始 - CyberGo JSON | 5分钟上手指南"
 description: "CyberGo JSON 快速入门指南：安装配置、路径查询 GetString/GetInt、编解码 Marshal/Unmarshal、文件读写操作，5 分钟掌握 Go JSON 处理最佳实践，支持 JSONPath 查询和类型安全获取，100% 兼容 encoding/json 标准库。"
 ---
 

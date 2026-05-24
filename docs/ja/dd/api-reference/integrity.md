@@ -1,6 +1,6 @@
 ---
-title: 整合性署名 - CyberGo DD | IntegritySigner
-description: CyberGo DD 整合性署名完全 API ドキュメント。HMAC-SHA256 アルゴリズム署名とシリアル番号インクリメント追跡メカニズムをサポートし、各ログエントリが改ざんされていないことを保証。IntegritySigner 署名器と Verify 検証器を提供し、セキュリティ監査やログ改ざん防止など各種コンプライアンス要件に対応。
+title: "整合性署名 - CyberGo DD | IntegritySigner"
+description: "CyberGo DD 整合性署名完全 API ドキュメント。HMAC-SHA256 アルゴリズム署名とシリアル番号インクリメント追跡メカニズムをサポートし、各ログエントリが改ざんされていないことを保証。IntegritySigner 署名器と Verify 検証器を提供し、セキュリティ監査やログ改ざん防止など各種コンプライアンス要件に対応。"
 ---
 
 # 整合性署名

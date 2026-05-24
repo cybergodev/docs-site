@@ -1,5 +1,5 @@
 ---
-title: Structured Logging - CyberGo DD | Fields and Chaining
+title: "Structured Logging - CyberGo DD | Fields and Chaining"
 description: "CyberGo DD structured logging guide: type-safe field constructors, Field chaining, LoggerEntry immutability, naming conventions, and best practices."
 ---
 

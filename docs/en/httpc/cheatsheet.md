@@ -1,6 +1,6 @@
 ---
-title: Cheatsheet - HTTPC
-description: HTTPC cheatsheet covering client creation, seven HTTP methods, request options, response handling, configuration presets, middleware, and error types quick reference.
+title: "Cheatsheet - HTTPC"
+description: "HTTPC cheatsheet: client creation, seven HTTP methods, request options, response handling, config presets, middleware, and error types."
 ---
 
 # Cheatsheet

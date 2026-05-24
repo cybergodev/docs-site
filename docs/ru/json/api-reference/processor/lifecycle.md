@@ -1,5 +1,5 @@
 ---
-title: Processor - Жизненный цикл - CyberGo JSON | Справочник API
+title: "Processor - Жизненный цикл - CyberGo JSON | Справочник API"
 description: "Справочник управления жизненным циклом Processor: New, Close, IsClosed, ClearCache, WarmupCache, GetStats, GetHealthStatus, AddHook, SetLogger, GetConfig."
 ---
 

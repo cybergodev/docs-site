@@ -1,5 +1,5 @@
 ---
-title: 대용량 파일 처리 - CyberGo JSON | 가이드
+title: "대용량 파일 처리 - CyberGo JSON | 가이드"
 description: "CyberGo JSON 대용량 파일 처리 완전 가이드: ForeachFile 구조화된 반복, ForeachFileChunked 배치 처리, 메모리 제어 설정, 버퍼 크기 최적화, JSONL 배치 처리 및 NDJSONProcessor 진정한 스트림 처리를 자세히 소개하며, 로그 분석, 데이터 내보내기 및 ETL 시나리오에 적합합니다."
 ---
 

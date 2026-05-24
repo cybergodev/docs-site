@@ -1,6 +1,6 @@
 ---
-title: 감사 로그 - CyberGo DD | AuditLogger
-description: CyberGo DD 감사 로그 전체 API 문서. AuditLogger 비동기 감사 이벤트 레코더, AuditConfig 설정 옵션 (출력 대상, 형식, 서명) 및 감사 항목 구조화된 포맷팅을 포함하여, 보안 관련 이벤트 추적 기록을 지원하며 엔터프라이즈급 준수 감사 및 데이터 보안 감독의 다양한 요구를 충족합니다.
+title: "감사 로그 - CyberGo DD | AuditLogger"
+description: "CyberGo DD 감사 로그 전체 API 문서. AuditLogger 비동기 감사 이벤트 레코더, AuditConfig 설정 옵션 (출력 대상, 형식, 서명) 및 감사 항목 구조화된 포맷팅을 포함하여, 보안 관련 이벤트 추적 기록을 지원하며 엔터프라이즈급 준수 감사 및 데이터 보안 감독의 다양한 요구를 충족합니다."
 ---
 
 # 감사 로그

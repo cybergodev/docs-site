@@ -1,5 +1,5 @@
 ---
-title: 출력 함수 - CyberGo JSON | API 레퍼런스
+title: "출력 함수 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 출력과 포맷 출력 참조: Encode, EncodePretty, Prettify 함수와 표준 fmt 패키지를 사용하여 JSON 포맷 출력을 구현합니다. 비공개로 전환된 Print/PrintPretty 계열 함수를 대체하며, 커스텀 들여쓰기와 접두사를 지원합니다."
 ---
 

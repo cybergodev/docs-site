@@ -1,5 +1,5 @@
 ---
-title: 경로 표현식 문법 - CyberGo JSON | JSONPath 가이드
+title: "경로 표현식 문법 - CyberGo JSON | JSONPath 가이드"
 description: "CyberGo JSON 경로 표현식 문법 완전 참조 가이드입니다. 속성 접근 user.name, 배열 인덱스 items[0], 슬라이스 [start:end:step], 와일드카드 [*], 다중 필드 추출 {name,email} 등의 문법을 지원하여 JSON 데이터의 모든 노드를 유연하고 정확하게 찾고 조작할 수 있습니다."
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: HTTP Client - HTTPC
-description: CyberGo HTTPC is a secure, high-performance HTTP client library for Go, featuring built-in TLS encryption, SSRF protection, smart retries, and middleware chains for microservice scenarios.
+title: "HTTP Client - HTTPC"
+description: "CyberGo HTTPC is a secure Go HTTP client with TLS 1.2+, SSRF protection, smart retry, middleware chains, and object pool reuse for microservices."
 ---
 
 # HTTPC

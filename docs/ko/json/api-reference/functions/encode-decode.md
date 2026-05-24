@@ -1,5 +1,5 @@
 ---
-title: 인코딩 디코딩 함수 - CyberGo JSON | API 레퍼런스
+title: "인코딩 디코딩 함수 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 인코딩 디코딩 함수 참조: Marshal/Unmarshal 직렬화, Compact/Indent/HTMLEscape 포맷, Encode/EncodePretty/EncodeWithConfig/Prettify 설정형 인코딩을 포함하며, encoding/json과 100% 호환됩니다."
 ---
 

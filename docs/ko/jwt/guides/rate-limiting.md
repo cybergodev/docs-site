@@ -1,5 +1,5 @@
 ---
-title: 속도 제한 - JWT
+title: "속도 제한 - JWT"
 description: "CyberGo JWT 속도 제한 가이드: 토큰 버킷 속도 제한 설정, 내장 RateLimiter, RateLimitProvider 커스텀 구현, 속도 제한 키 우선순위 및 모범 사례."
 ---
 

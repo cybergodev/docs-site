@@ -1,6 +1,6 @@
 ---
-title: Claims - JWT API 参考
-description: CyberGo JWT Claims API 参考：Claims 内置业务声明（UserID、Username、Role 等）、RegisteredClaims RFC 7519 标准声明及深度验证约束。
+title: "Claims - JWT API 参考"
+description: "CyberGo JWT Claims API 参考：Claims 内置业务声明（UserID、Username、Role 等）、RegisteredClaims RFC 7519 标准声明及深度验证约束。"
 ---
 
 # Claims

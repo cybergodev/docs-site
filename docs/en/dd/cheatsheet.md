@@ -1,5 +1,5 @@
 ---
-title: Cheat Sheet - CyberGo DD | Common API Quick Reference
+title: "Cheat Sheet - CyberGo DD | Common API Quick Reference"
 description: "CyberGo DD cheat sheet: logger creation, level control, field constructors, file rotation, sensitive data filtering, hooks, audit, and integrity signing."
 ---
 

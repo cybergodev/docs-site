@@ -1,5 +1,5 @@
 ---
-title: Функции пакета - Справочник JWT API
+title: "Функции пакета - Справочник JWT API"
 description: "Справочник функций уровня пакета CyberGo JWT: New для создания Processor, DefaultConfig для конфигурации по умолчанию, DefaultBlacklistConfig для чёрного списка, NewNumericDate, NewRateLimiter."
 ---
 

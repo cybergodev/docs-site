@@ -1,6 +1,6 @@
 ---
-title: Performance Optimization - HTTPC
-description: Guide to HTTPC performance optimization, comparing four preset configurations, covering connection pool tuning, Result object pool reuse strategies, and common performance anti-pattern solutions.
+title: "Performance Optimization - HTTPC"
+description: "HTTPC performance optimization: four preset comparison, scenario selection, pool tuning tips, ReleaseResult reuse, and common anti-patterns to avoid."
 ---
 
 # Performance Optimization

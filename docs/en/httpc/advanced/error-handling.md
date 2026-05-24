@@ -1,6 +1,6 @@
 ---
-title: Error Handling - HTTPC
-description: Guide to HTTPC error handling, covering twelve ErrorType classifications, ClientError struct fields, sentinel error matching, and best practices for various network errors.
+title: "Error Handling - HTTPC"
+description: "HTTPC error handling: twelve ErrorType classifications, ClientError with IsRetryable, sentinel error matching with errors.Is/As, and layered timeout strategies."
 ---
 
 # Error Handling

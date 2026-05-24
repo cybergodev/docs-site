@@ -1,11 +1,11 @@
 ---
-title: 패키지 함수 - HTTPC
-description: HTTPC 패키지 함수와 클라이언트 메서드 API 참조, 7가지 HTTP 메서드, New 생성 함수, Download 시리즈와 ReleaseResult 객체 풀 재사용 메서드 포함.
+title: "패키지 함수 - HTTPC"
+description: "HTTPC 패키지 레벨 함수와 클라이언트 메서드 API 레퍼런스: Get/Post 등 7가지 HTTP 패키지 레벨 함수, New 클라이언트 생성, SetDefaultClient 기본 클라이언트 관리, DownloadFile 등 4개의 다운로드 함수, ReleaseResult 객체 풀 재사용, FormatBytes 보조 함수와 NewDomain 도메인 클라이언트."
 ---
 
 # 패키지 함수
 
-## 패키지 HTTP 메서드
+## 패키지 레벨 HTTP 메서드
 
 클라이언트를 생성할 필요 없이 직접 요청을 전송합니다. 내부적으로 지연 초기화된 기본 클라이언트를 사용합니다.
 
@@ -65,7 +65,7 @@ result, err := httpc.Request(ctx, "GET", "https://api.example.com/data")
 
 ## 클라이언트 메서드
 
-Client 인터페이스는 패키지 함수와 동일한 HTTP 메서드와 컨텍스트가 포함된 `Request` 메서드를 제공합니다.
+Client 인터페이스는 패키지 레벨 함수와 동일한 HTTP 메서드와 컨텍스트가 포함된 `Request` 메서드를 제공합니다.
 
 ### New
 
@@ -120,9 +120,9 @@ defer client.Close()
 func SetDefaultClient(client Client) error
 ```
 
-사용자 정의 클라이언트를 기본 클라이언트로 설정하여 패키지 함수에서 사용합니다. 이전 기본 클라이언트는 자동으로 닫힙니다.
+사용자 정의 클라이언트를 기본 클라이언트로 설정하여 패키지 레벨 함수에서 사용합니다. 이전 기본 클라이언트는 자동으로 닫힙니다.
 
-:::warning 주의 제한 사항
+:::warning 제한
 `httpc.New()`로 생성된 클라이언트만 허용하며, 이미 닫힌 클라이언트는 설정할 수 없습니다.
 :::
 
@@ -130,7 +130,7 @@ func SetDefaultClient(client Client) error
 client, _ := httpc.New(httpc.PerformanceConfig())
 httpc.SetDefaultClient(client)
 
-// 이후 패키지 함수는 PerformanceConfig를 사용
+// 이후 패키지 레벨 함수는 PerformanceConfig 사용
 result, _ := httpc.Get(url)
 ```
 
@@ -140,7 +140,7 @@ result, _ := httpc.Get(url)
 func CloseDefaultClient() error
 ```
 
-기본 클라이언트를 닫고 초기화합니다. 다음에 패키지 함수를 호출하면 새 클라이언트가 생성됩니다.
+기본 클라이언트를 닫고 초기화합니다. 다음에 패키지 레벨 함수를 호출하면 새 클라이언트가 생성됩니다.
 
 ## 결과 관리
 
@@ -158,7 +158,7 @@ defer httpc.ReleaseResult(result)
 ```
 
 :::warning 주의
-`ReleaseResult` 호출 후 Result에 접근하지 마십시오. 내부 데이터가 초기화됩니다.
+`ReleaseResult` 호출 후 Result에 접근하지 마세요. 내부 데이터가 초기화됩니다.
 :::
 
 ## 다운로드 함수
@@ -174,7 +174,7 @@ func DownloadFile(url string, filePath string, options ...RequestOption) (*Downl
 기본 클라이언트를 사용하여 파일을 지정된 경로에 다운로드합니다.
 
 ```go
-// 패키지 함수
+// 패키지 레벨 함수
 result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
 
 // Client 인터페이스 메서드
@@ -198,7 +198,7 @@ cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r%.1f%%", float64(downloaded)/float64(total)*100)
 }
 
-// 패키지 함수
+// 패키지 레벨 함수
 result, err := httpc.DownloadWithOptions(url, cfg)
 // Client 인터페이스 메서드
 result, err = client.DownloadWithOptions(url, cfg)
@@ -213,7 +213,7 @@ func DownloadFileWithContext(ctx context.Context, url string, filePath string, o
 컨텍스트 제어가 포함된 파일 다운로드로, 타임아웃과 취소를 지원합니다.
 
 ```go
-// 패키지 함수
+// 패키지 레벨 함수
 result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
 // Client 인터페이스 메서드
 result, err = client.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
@@ -228,7 +228,7 @@ func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpt
 구성과 컨텍스트 제어가 포함된 파일 다운로드입니다.
 
 ```go
-// 패키지 함수
+// 패키지 레벨 함수
 result, err := httpc.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
 // Client 인터페이스 메서드
 result, err = client.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
@@ -282,7 +282,7 @@ result, err := dc.Get("/users")
 
 ## 참고
 
-- [Result](./result) - 응답 결과 유형과 메서드
+- [Result](./result) - 응답 결과 타입과 메서드
 - [요청 옵션](./options) - 요청 구성 옵션
 - [도메인 클라이언트](./domain-client) - 도메인 범위 클라이언트
-- [파일 다운로드](./download) - 다운로드 함수와 유형
+- [파일 다운로드](./download) - 다운로드 함수와 타입

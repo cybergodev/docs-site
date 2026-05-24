@@ -1,85 +1,85 @@
 ---
-title: セキュリティ概要 - HTTPC
-description: HTTPC セキュリティ機能概要。TLS 強制バージョン管理、SSRF 防護、リクエストヘッダーインジェクション検証、Cookie セキュリティ属性、リダイレクトホワイトリストとレスポンスボディ制限。
+title: "セキュリティ概要 - HTTPC"
+description: "HTTPCセキュリティ機能概要：TLS 1.2+バージョン制御、SSRFプライベートIPブロックとCIDR免除、CRLFインジェクション防止、StrictCookieSecurityConfig Cookieセキュリティ、RedirectWhitelistリダイレクトホワイトリストとレスポンスボディサイズ制限。"
 ---
 
 # セキュリティ概要
 
-HTTPC はデフォルトで安全（Secure by Default）であり、すべてのセキュリティ機能がすぐに利用可能です。
+HTTPCはデフォルトで安全（Secure by Default）に設計されており、すべてのセキュリティ機能がすぐに使用できます。
 
 ## セキュリティ機能一覧
 
 | 機能 | デフォルト | 説明 |
-|------|------|------|
-| TLS 最低バージョン | TLS 1.2 | TLS 1.0/1.1 を拒否 |
-| SSRF 防護 | 有効 | プライベート IP 接続をブロック |
-| URL 検証 | 有効 | URL 形式とプロトコルを検証 |
-| リクエストヘッダー検証 | 有効 | CRLF インジェクションを防止 |
-| Content-Length 厳密チェック | 有効 | レスポンススマグリングを防止 |
-| Cookie セキュリティ検証 | オプション | Cookie セキュリティ属性を検証 |
+|------|------------|------|
+| TLS最低バージョン | TLS 1.2 | TLS 1.0/1.1を拒否 |
+| SSRF防御 | 有効 | プライベートIP接続をブロック |
+| URL検証 | 有効 | URL形式とプロトコルを検証 |
+| リクエストヘッダー検証 | 有効 | CRLFインジェクションを防止 |
+| Content-Length厳格チェック | 有効 | レスポンススマグリングを防止 |
+| Cookieセキュリティ検証 | オプション | Cookieセキュリティ属性を検証 |
 | レスポンスボディサイズ制限 | 10MB | メモリ枯渇を防止 |
-| 展開ボディサイズ制限 | 100MB | 展開爆弾を防止 |
-| リダイレクト制限 | 10 回 | 無限リダイレクトを防止 |
+| 解凍ボディサイズ制限 | 100MB | 解凍爆弾を防止 |
+| リダイレクト制限 | 10回 | 無限リダイレクトを防止 |
 
-## TLS セキュリティ
+## TLSセキュリティ
 
 ```go
 cfg := httpc.DefaultConfig()
-// デフォルト TLS 1.2-1.3
+// デフォルトTLS 1.2-1.3
 cfg.Security.MinTLSVersion = tls.VersionTLS12
 cfg.Security.MaxTLSVersion = tls.VersionTLS13
 ```
 
 :::danger 危険
-`InsecureSkipVerify` はテスト用途のみです。本番環境では絶対に `true` に設定しないでください。
+`InsecureSkipVerify`はテストのみに使用してください。本番環境では絶対に`true`にしないでください。
 :::
 
-## SSRF 防護
+## SSRF防御
 
-SSRF（サーバーサイドリクエストフォージェリ）は、攻撃者がサーバーを利用して内部ネットワークにリクエストを送信させる攻撃手法です。
+SSRF（Server-Side Request Forgery）は、攻撃者がサーバーを利用して内部ネットワークにリクエストを送信させる攻撃手法です。
 
 ```go
-// デフォルト：プライベート IP をブロック
+// デフォルト：プライベートIPをブロック
 cfg := httpc.DefaultConfig()
-// AllowPrivateIPs = false → 127.0.0.1, 10.x, 192.168.x などをブロック
+// AllowPrivateIPs = false → 127.0.0.1, 10.x, 192.168.xなどをブロック
 
-// 特定の CIDR を除外（VPN、VPC など）
+// 特定CIDRを免除（VPN、VPCなど）
 cfg.Security.SSRFExemptCIDRs = []string{
-    "10.0.0.0/8",       // VPC 内部
+    "10.0.0.0/8",       // VPC内部
     "100.64.0.0/10",    // Tailscale
 }
 
-// セキュリティプリセット：最強の SSRF 防護
+// セキュアプリセット：最強のSSRF防御
 client, _ := httpc.New(httpc.SecureConfig())
 ```
 
-### ブロックされる IP 範囲
+### ブロックされるIP範囲
 
 | 範囲 | 説明 |
 |------|------|
 | 127.0.0.0/8 | ループバックアドレス |
-| 10.0.0.0/8 | A クラスプライベート |
-| 172.16.0.0/12 | B クラスプライベート |
-| 192.168.0.0/16 | C クラスプライベート |
+| 10.0.0.0/8 | クラスAプライベート |
+| 172.16.0.0/12 | クラスBプライベート |
+| 192.168.0.0/16 | クラスCプライベート |
 | 169.254.0.0/16 | リンクローカル |
-| ::1/128 | IPv6 ループバック |
-| fc00::/7 | IPv6 ユニークローカル |
-| fe80::/10 | IPv6 リンクローカル |
+| ::1/128 | IPv6ループバック |
+| fc00::/7 | IPv6ユニークローカル |
+| fe80::/10 | IPv6リンクローカル |
 
 ## リクエストヘッダー検証
 
-CRLF インジェクションとリクエストヘッダースマグリングを自動的に防止します：
+CRLFインジェクションとリクエストヘッダースマグリングを自動的に防止：
 
 ```go
 // 以下のヘッダーは拒否されます
-httpc.WithHeader("X-Custom", "value\r\nInjected: header") // CRLF インジェクション
+httpc.WithHeader("X-Custom", "value\r\nInjected: header") // CRLFインジェクション
 httpc.WithHeader("X-Bad", "value\x00null")                // 制御文字
 ```
 
-## Cookie セキュリティ
+## Cookieセキュリティ
 
 ```go
-// 厳格な Cookie セキュリティ
+// 厳格なCookieセキュリティ
 cfg := httpc.DefaultConfig()
 cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
 // 要求: Secure, HttpOnly, SameSite=Strict
@@ -88,10 +88,10 @@ cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
 ## リダイレクトセキュリティ
 
 ```go
-// リダイレクト禁止（セキュリティ機密シナリオ）
+// リダイレクト禁止（セキュリティ重視シナリオ）
 cfg := httpc.SecureConfig() // FollowRedirects = false
 
-// リダイレクトドメインを制限
+// リダイレクトドメインの制限
 cfg := httpc.DefaultConfig()
 cfg.Security.RedirectWhitelist = []string{
     "api.example.com",
@@ -103,7 +103,7 @@ cfg.Security.RedirectWhitelist = []string{
 
 ```go
 auditMiddleware := httpc.AuditMiddleware(func(event httpc.AuditEvent) {
-    // URL はサニタイズ済み（認証情報は削除済み）
+    // URLはマスク済み（認証情報は削除済み）
     log.Printf("[AUDIT] %s %s -> %d (%v)",
         event.Method, event.URL, event.StatusCode, event.Duration)
 })
@@ -129,6 +129,6 @@ auditMiddleware := httpc.AuditMiddlewareWithConfig(func(event httpc.AuditEvent) 
 
 ## 次のステップ
 
-- [SSRF 防護](./ssrf) - SSRF 防護の詳細と設定
-- [TLS と証明書ピンニング](./tls-certpin) - TLS 設定と証明書ピンニング
+- [SSRF防御](./ssrf) - SSRF防御の詳細と設定
+- [TLSと証明書ピンニング](./tls-certpin) - TLS設定と証明書ピンニング
 - [本番チェックリスト](./production-checklist) - リリース前の必須確認項目

@@ -1,6 +1,6 @@
 ---
-title: コンテキスト統合 - CyberGo DD | Context 統合
-description: CyberGo DD コンテキスト統合完全 API ドキュメント。TraceID、SpanID、RequestID の自動伝播と抽出をサポート。カスタム ContextExtractor インターフェース実装、Context 伝播設定オプションと WithContext バインドメソッドを提供し、OpenTelemetry などの分散トレーシングシステムとシームレスに統合。
+title: "コンテキスト統合 - CyberGo DD | Context 統合"
+description: "CyberGo DD コンテキスト統合完全 API ドキュメント。TraceID、SpanID、RequestID の自動伝播と抽出をサポート。カスタム ContextExtractor インターフェース実装、Context 伝播設定オプションと WithContext バインドメソッドを提供し、OpenTelemetry などの分散トレーシングシステムとシームレスに統合。"
 ---
 
 # コンテキスト統合

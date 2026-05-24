@@ -1,5 +1,5 @@
 ---
-title: Hook System - CyberGo JSON | API Reference
+title: "Hook System - CyberGo JSON | API Reference"
 description: "CyberGo JSON hook system complete reference: Hook interface definition, LoggingHook logging, TimingHook performance timing, ValidationHook data validation, ErrorHook error handling, and custom hook implementation, supporting custom logic insertion before and after JSON operations."
 ---
 

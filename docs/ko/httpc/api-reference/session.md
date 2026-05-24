@@ -1,6 +1,6 @@
 ---
-title: 세션 관리 - HTTPC
-description: HTTPC SessionManager 세션 관리 API 참조, 생성 함수, SessionConfig 구성, 세션 헤더 관리 메서드, Cookie 보안 검증과 응답 동기화 포함.
+title: "세션 관리 - HTTPC"
+description: "HTTPC SessionManager 세션 관리 API 레퍼런스: NewSessionManager 생성, SessionConfig 구성, SetHeader/SetHeaders 세션 헤더 CRUD, SetCookie/SetCookies Cookie 메서드, SetCookieSecurity 보안 검증과 UpdateFromResult 응답 동기화."
 ---
 
 # 세션 관리
@@ -32,7 +32,7 @@ type SessionConfig struct {
 }
 ```
 
-| 필드 | 유형 | 설명 |
+| 필드 | 타입 | 설명 |
 |------|------|------|
 | `CookieSecurity` | `*CookieSecurityConfig` | Cookie 보안 검증 구성, nil이면 검증하지 않음 |
 

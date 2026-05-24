@@ -1,6 +1,6 @@
 ---
-title: 치트시트 - HTML
-description: CyberGo HTML 라이브러리 자주 사용하는 API 치트시트, 모든 패키지 함수(Extract, ExtractText, ExtractToMarkdown 등), Processor 메서드, 네 가지 설정 프리셋, 자주 사용하는 설정 항목, 오류 타입 판별 및 감사 시스템 설정을 한 페이지에 정리하여 일상 개발에서 빠르게 참조할 수 있습니다.
+title: "치트시트 - HTML"
+description: "CyberGo HTML 라이브러리 자주 사용하는 API 치트시트, 모든 패키지 함수(Extract, ExtractText, ExtractToMarkdown 등), Processor 메서드, 네 가지 설정 프리셋, 자주 사용하는 설정 항목, 오류 타입 판별 및 감사 시스템 설정을 한 페이지에 정리하여 일상 개발에서 빠르게 참조할 수 있습니다."
 ---
 
 # 치트시트

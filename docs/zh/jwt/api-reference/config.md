@@ -1,6 +1,6 @@
 ---
-title: Config - JWT API 参考
-description: CyberGo JWT Config API 参考：Config 统一配置项（签名密钥、算法、TTL、Issuer）与 BlacklistConfig 黑名单配置的字段说明、默认值及验证方法。
+title: "Config - JWT API 参考"
+description: "CyberGo JWT Config API 参考：Config 统一配置项（签名密钥、算法、TTL、Issuer）与 BlacklistConfig 黑名单配置的字段说明、默认值及验证方法。"
 ---
 
 # Config

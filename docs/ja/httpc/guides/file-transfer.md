@@ -1,13 +1,13 @@
 ---
-title: ファイルアップロードとダウンロード - HTTPC
-description: HTTPC ファイルアップロードとダウンロードガイド。Multipart マルチファイルアップロード、プログレスコールバック付き大容量ファイルダウンロード、レジュームダウンロード、SHA-256 チェックサム検証とパスセキュリティ防護。
+title: "ファイルアップロードとダウンロード - HTTPC"
+description: "HTTPCファイルアップロードとダウンロードガイド：WithFile簡単アップロード、WithFormData Multipartマルチファイルアップロード、DownloadFile基本ダウンロード、DownloadWithOptionsプログレスコールバック付き、レジュームダウンロードResumeDownload、SHA-256チェックサムとUNCパスなどのセキュリティ防護。"
 ---
 
 # ファイルアップロードとダウンロード
 
 ## ファイルアップロード
 
-### シンプルなファイルアップロード
+### 簡単ファイルアップロード
 
 ```go
 fileContent, err := os.ReadFile("document.pdf")
@@ -20,9 +20,9 @@ result, err := httpc.Post("https://api.example.com/upload",
 )
 ```
 
-### Multipart フォーム
+### Multipartフォーム
 
-ファイルのアップロードと同時にフォームフィールドを付与します：
+ファイルのアップロードと同時にフォームフィールドを送信：
 
 ```go
 form := &httpc.FormData{
@@ -43,7 +43,7 @@ result, err := httpc.Post("https://api.example.com/upload",
 )
 ```
 
-### 複数ファイルアップロード
+### マルチファイルアップロード
 
 ```go
 form := &httpc.FormData{
@@ -126,7 +126,7 @@ if result.Resumed {
 ```
 
 :::tip ヒント
-レジュームダウンロードは、サーバーが `Range` リクエストヘッダーをサポートしている必要があります。サーバーがサポートしていない場合（206 ではなく 200 を返す場合）、既にダウンロード済みの部分ファイルを保護するためにエラーが返されます。
+レジュームダウンロードはサーバーが`Range`リクエストヘッダーをサポートしている必要があります。サーバーがサポートしていない場合（206ではなく200を返す）、ダウンロード済みの部分ファイルを保護するためにエラーが返されます。
 :::
 
 ### コンテキスト制御付き
@@ -138,7 +138,7 @@ defer cancel()
 result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
 if err != nil {
     if errors.Is(err, context.DeadlineExceeded) {
-        log.Println("ダウンロードがタイムアウトしました")
+        log.Println("ダウンロードタイムアウト")
     }
     log.Fatal(err)
 }
@@ -146,18 +146,18 @@ if err != nil {
 
 ## セキュリティ保護
 
-ファイルダウンロードには多層セキュリティ保護が組み込まれています：
+ファイルダウンロードには多層セキュリティ保護が内蔵されています：
 
 | 保護層 | 説明 |
 |--------|------|
-| パス検証 | UNC パス、制御文字、パストラバーサルをブロック |
-| システムパス保護 | `/etc/`、`C:\Windows\` などのシステムディレクトリへの書き込みを禁止 |
+| パス検証 | UNCパス、制御文字、パストラバーサルをブロック |
+| システムパス保護 | `/etc/`、`C:\Windows\`などのシステムディレクトリへの書き込みを禁止 |
 | シンボリックリンク検出 | シンボリックリンク攻撃を防止 |
-| ファイルサイズ制限 | `MaxResponseBodySize` による制限 |
+| ファイルサイズ制限 | `MaxResponseBodySize`による制限 |
 
 ## ドメインクライアントでのダウンロード
 
-ドメインクライアントのダウンロードでは、レスポンス Cookie が自動的にセッションにキャプチャされます：
+ドメインクライアントのダウンロードでは、レスポンスCookieが自動的にセッションにキャプチャされます：
 
 ```go
 dc, _ := httpc.NewDomain("https://api.example.com")
@@ -165,12 +165,12 @@ defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
 
-// ダウンロードとセッションの自動管理
+// ダウンロードしつつセッションを自動管理
 result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
 ```
 
 ## 次のステップ
 
-- [ファイルダウンロード API](../api-reference/download) - 完全なダウンロード API リファレンス
+- [ファイルダウンロードAPI](../api-reference/download) - 完全なダウンロードAPIリファレンス
 - [ドメインクライアントとセッション](./domain-session) - セッション管理
-- [リクエストとレスポンス](./request-response) - 基本リクエストガイド
+- [リクエストとレスポンス](./request-response) - 基本的なリクエストガイド

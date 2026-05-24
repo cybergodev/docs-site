@@ -1,6 +1,6 @@
 ---
-title: CyberGo env - Environment Variable Management Library
-description: CyberGo env is a highly secure Go environment variable management library that supports loading .env, JSON, and YAML multi-format files with automatic format detection, providing a Loader interface, type-safe conversion, thread-safe concurrent access, SecureValue memory protection, and complete audit logging with built-in configuration presets for web services and containerized deployments.
+title: "CyberGo env - Environment Variable Management Library"
+description: "CyberGo env is a highly secure Go environment variable management library that supports loading .env, JSON, and YAML multi-format files with automatic format detection, providing a Loader interface, type-safe conversion, thread-safe concurrent access, SecureValue memory protection, and complete audit logging with built-in configuration presets for web services and containerized deployments."
 ---
 
 # env

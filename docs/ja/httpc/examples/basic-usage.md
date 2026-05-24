@@ -1,13 +1,13 @@
 ---
-title: 基本的な使い方 - HTTPC
-description: HTTPC 基本的な使用例。GET/POST リクエストと JSON 解析、ファイルアップロード、設定プリセット、ミドルウェア追加とプログレス付きダウンロードの完全なコード例。
+title: "基本的な使い方 - HTTPC"
+description: "HTTPC基本的な使用例：クエリパラメータと認証付きGETリクエスト、JSON/フォーム/ファイルアップロードPOSTリクエスト、FormDataマルチフィールドフォーム、DefaultConfigカスタム設定、ProxyURLプロキシ、Recovery/Loggingミドルウェア、RequestID/Metricsメトリクス収集とプログレスコールバック付きファイルダウンロードの完全なコード。"
 ---
 
 # 基本的な使い方
 
-## GET リクエスト
+## GETリクエスト
 
-### 基本 GET
+### 基本的なGET
 
 ```go
 package main
@@ -52,9 +52,9 @@ result, err := httpc.Get("https://api.example.com/me",
 )
 ```
 
-## POST リクエスト
+## POSTリクエスト
 
-### JSON リクエストボディ
+### JSONリクエストボディ
 
 ```go
 data := map[string]any{
@@ -70,7 +70,7 @@ if err != nil {
 }
 defer httpc.ReleaseResult(result)
 
-// JSON レスポンスを解析
+// JSONレスポンスの解析
 var response map[string]any
 if err := result.Unmarshal(&response); err != nil {
     log.Fatal(err)
@@ -150,7 +150,7 @@ client, _ := httpc.New(cfg)
 
 ## ミドルウェア
 
-### ログ + リカバリー
+### ログ + リカバリ
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -163,7 +163,7 @@ cfg.Middleware.UserAgent = "my-app/1.0"
 client, _ := httpc.New(cfg)
 ```
 
-### リクエスト ID + メトリクス
+### リクエストID + メトリクス
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -216,7 +216,7 @@ defer dc.Close()
 dc.SetHeader("Authorization", "Bearer "+token)
 dc.SetHeader("Accept", "application/json")
 
-// リクエストは自動的にセッションヘッダーと Cookie を携帯
+// リクエストに自動的にセッションヘッダーとCookieが付与される
 users, _ := dc.Get("/users")
 user, _ := dc.Get("/users/1")
 
@@ -225,6 +225,6 @@ fmt.Println(users.StatusCode()) // 200
 
 ## 次のステップ
 
-- [高度な例](./advanced-usage) - カスタムリトライ、ミドルウェアチェーン、並行ダウンロード
+- [高度な使用例](./advanced-usage) - カスタムリトライ、ミドルウェアチェーン、並行ダウンロード
 - [リクエストとレスポンス](../guides/request-response) - リクエストオプションの詳細
 - [ドメインクライアントとセッション](../guides/domain-session) - セッション管理

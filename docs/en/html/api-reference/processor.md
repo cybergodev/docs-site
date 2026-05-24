@@ -1,6 +1,6 @@
 ---
-title: Processor - HTML
-description: Processor API reference for CyberGo HTML, including New constructor, Extract methods, statistics, cache management, and lifecycle control for repeated use.
+title: "Processor - HTML"
+description: "Processor API reference for CyberGo HTML, including New constructor, Extract methods, statistics, cache management, and lifecycle control for repeated use."
 ---
 
 # Processor

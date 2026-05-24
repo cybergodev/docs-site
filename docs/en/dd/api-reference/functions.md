@@ -1,5 +1,5 @@
 ---
-title: Package Functions - CyberGo DD | Global Helpers
+title: "Package Functions - CyberGo DD | Global Helpers"
 description: "CyberGo DD package functions API: New logger creation, Default/SetDefault global management, config presets, and constructors callable via dd. prefix."
 ---
 

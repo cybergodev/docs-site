@@ -1,6 +1,6 @@
 ---
-title: DD - Structured Logging Library
-description: CyberGo DD is a high-performance Go structured logging library with thread-safe recording, file rotation, sensitive data filtering, and audit logging.
+title: "DD - Structured Logging Library"
+description: "CyberGo DD is a high-performance Go structured logging library with thread-safe recording, file rotation, sensitive data filtering, and audit logging."
 ---
 
 # DD

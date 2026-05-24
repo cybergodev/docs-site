@@ -1,6 +1,6 @@
 ---
-title: パッケージ関数 - CyberGo env | グローバル便利関数
-description: CyberGo env ライブラリのパッケージレベル便利関数 API 完全リファレンス。Load でファイル読み込み、GetString や GetInt で型ごとの値読み取り、Keys でキー名クエリ、Marshal でシリアライズエクスポート、ParseInto で構造体マッピングなどのシンプルな API を提供。グローバルデフォルト Loader に基づき、遅延初期化とスレッドセーフ設計を採用。
+title: "パッケージ関数 - CyberGo env | グローバル便利関数"
+description: "CyberGo env ライブラリのパッケージレベル便利関数 API 完全リファレンス。Load でファイル読み込み、GetString や GetInt で型ごとの値読み取り、Keys でキー名クエリ、Marshal でシリアライズエクスポート、ParseInto で構造体マッピングなどのシンプルな API を提供。グローバルデフォルト Loader に基づき、遅延初期化とスレッドセーフ設計を採用。"
 ---
 
 # パッケージ関数

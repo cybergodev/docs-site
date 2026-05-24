@@ -1,6 +1,6 @@
 ---
-title: Error Handling - CyberGo env | Sentinel Errors & Recovery
-description: Complete error handling guide for CyberGo env, covering 15 sentinel errors with errors.Is matching, 8 structured error types with errors.As context extraction, error recovery and degradation strategies, custom error wrapping patterns, and error chain unwrapping for robust production-grade Go code.
+title: "Error Handling - CyberGo env | Sentinel Errors & Recovery"
+description: "Complete error handling guide for CyberGo env, covering 15 sentinel errors with errors.Is matching, 8 structured error types with errors.As context extraction, error recovery and degradation strategies, custom error wrapping patterns, and error chain unwrapping for robust production-grade Go code."
 ---
 
 # Error Handling

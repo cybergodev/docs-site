@@ -1,6 +1,6 @@
 ---
-title: 署名アルゴリズム - JWT
-description: CyberGo JWT 署名アルゴリズムガイド：HMAC、RSA、RSA-PSS、ECDSA の 4 種類 12 のアルゴリズムの使用方法、鍵要件、シーン選択とパフォーマンス比較。
+title: "署名アルゴリズム - JWT"
+description: "CyberGo JWT 署名アルゴリズムガイド：HMAC、RSA、RSA-PSS、ECDSA の 4 種類 12 のアルゴリズムの使用方法、鍵要件、シーン選択とパフォーマンス比較。"
 ---
 
 # 署名アルゴリズム

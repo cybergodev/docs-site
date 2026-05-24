@@ -1,6 +1,6 @@
 ---
-title: エラー - JWT API リファレンス
-description: CyberGo JWT エラー API リファレンス：17 個のセンチネルエラー（ErrTokenExpired、ErrTokenRevoked など）、ValidationError 型および errors.Is() エラーマッチングパターン。
+title: "エラー - JWT API リファレンス"
+description: "CyberGo JWT エラー API リファレンス：17 個のセンチネルエラー（ErrTokenExpired、ErrTokenRevoked など）、ValidationError 型および errors.Is() エラーマッチングパターン。"
 ---
 
 # エラー

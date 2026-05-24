@@ -1,6 +1,6 @@
 ---
-title: SSRF 방어 - HTTPC
-description: HTTPC SSRF 방어 상세 설명, 사설 IP 차단 메커니즘, 면제 CIDR 구성, DNS 리바인딩 방어, 리다이렉트 허용 목록과 클라우드 메타데이터 엔드포인트 보호 포함.
+title: "SSRF 방어 - HTTPC"
+description: "HTTPC SSRF 방어 상세 설명: 기본 IPv4/IPv6 사설 IP 차단, SSRFExemptCIDRs 정확한 면제, DNS 리바인딩 방어, RedirectWhitelist 리다이렉트 허용 목록, AWS/GCP/Azure 클라우드 메타데이터 보호와 AllowPrivateIPs 주의 사항."
 ---
 
 # SSRF 방어

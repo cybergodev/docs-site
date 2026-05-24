@@ -1,6 +1,6 @@
 ---
-title: 基础用法 - HTML
-description: CyberGo HTML 库基础用法示例集合，展示基本内容提取、从文件提取、纯文本提取、Markdown 格式输出、链接提取与分组、Processor 实例复用、带超时控制的上下文提取、并发批量处理和 JSON 序列化输出等多种常见开发场景，所有示例均可直接复制运行。
+title: "基础用法 - HTML"
+description: "CyberGo HTML 库基础用法示例集合，展示基本内容提取、从文件提取、纯文本提取、Markdown 格式输出、链接提取与分组、Processor 实例复用、带超时控制的上下文提取、并发批量处理和 JSON 序列化输出等多种常见开发场景，所有示例均可直接复制运行。"
 ---
 
 # 基础用法

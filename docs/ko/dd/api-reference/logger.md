@@ -1,6 +1,6 @@
 ---
-title: Logger - CyberGo DD | 핵심 로거
-description: CyberGo DD Logger 핵심 로거 전체 API 문서. 로그 출력 메서드 (Info/Warn/Error/Fatal), 레벨 동적 관리, Writer 동적 추가 및 교체, 라이프사이클 제어 (Close/Flush), 전역 로그 함수 및 체인 필드 설정을 다루며 DD 로그 라이브러리 사용의 핵심 진입 타입입니다.
+title: "Logger - CyberGo DD | 핵심 로거"
+description: "CyberGo DD Logger 핵심 로거 전체 API 문서. 로그 출력 메서드 (Info/Warn/Error/Fatal), 레벨 동적 관리, Writer 동적 추가 및 교체, 라이프사이클 제어 (Close/Flush), 전역 로그 함수 및 체인 필드 설정을 다루며 DD 로그 라이브러리 사용의 핵심 진입 타입입니다."
 ---
 
 # Logger

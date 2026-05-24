@@ -1,5 +1,5 @@
 ---
-title: Обобщённые операции - CyberGo JSON | Справочник API
+title: "Обобщённые операции - CyberGo JSON | Справочник API"
 description: "Полный справочник обобщённых API CyberGo JSON: GetTyped[T], Result[T], AccessResult для динамического доступа к типам и руководство по типобезопасным операциям с обобщениями Go 1.18+."
 ---
 

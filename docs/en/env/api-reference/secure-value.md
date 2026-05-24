@@ -1,6 +1,6 @@
 ---
-title: SecureValue API - CyberGo env | Secure Value Storage
-description: CyberGo env library SecureValue API complete reference, covering NewSecureValueStrict for secure creation, mlock memory locking, Release for zeroing and destruction, Masked for mask processing, IsSensitiveKey for sensitive key detection, and ClearBytes utility functions for securely storing passwords, tokens, and other sensitive data.
+title: "SecureValue API - CyberGo env | Secure Value Storage"
+description: "CyberGo env library SecureValue API complete reference, covering NewSecureValueStrict for secure creation, mlock memory locking, Release for zeroing and destruction, Masked for mask processing, IsSensitiveKey for sensitive key detection, and ClearBytes utility functions for securely storing passwords, tokens, and other sensitive data."
 ---
 
 # SecureValue API

@@ -1,5 +1,5 @@
 ---
-title: Processor ライフサイクル - CyberGo JSON | API リファレンス
+title: "Processor ライフサイクル - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor ライフサイクル管理完全リファレンス：New によるインスタンス作成、Close によるリソース解放、IsClosed 状態確認、Stats 統計情報、HealthCheck ヘルスモニタリング、並列安全なクローズとリソース保護のベストプラクティスガイド。"
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: 接口定义 - HTML
-description: CyberGo HTML 库核心接口定义 API 参考，包括 Extractor（完整提取接口）、StatsProvider（统计与缓存管理）、ContentNode（HTML 节点抽象）、Scorer（自定义评分策略）和 AuditSink（审计输出），用于功能扩展和集成测试，帮助深入理解库的架构设计与扩展机制。
+title: "接口定义 - HTML"
+description: "CyberGo HTML 库核心接口定义 API 参考，包括 Extractor（完整提取接口）、StatsProvider（统计与缓存管理）、ContentNode（HTML 节点抽象）、Scorer（自定义评分策略）和 AuditSink（审计输出），用于功能扩展和集成测试，帮助深入理解库的架构设计与扩展机制。"
 ---
 
 # 接口定义

@@ -1,5 +1,5 @@
 ---
-title: Processor 배치 작업 - CyberGo JSON | API 레퍼런스
+title: "Processor 배치 작업 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor 배치 작업 레퍼런스: ProcessBatch 다중 작업 처리, BatchOperation 정의(get/set/delete), BatchResult 결과 타입, ContinueOnError 설정 및 성능 최적화 전략을 포함합니다."
 ---
 

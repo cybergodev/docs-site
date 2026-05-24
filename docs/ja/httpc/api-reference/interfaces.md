@@ -1,6 +1,6 @@
 ---
-title: インターフェース定義 - HTTPC
-description: HTTPC コアインターフェース API リファレンス。Client 全機能インターフェース、Doer 実行インターフェース、DomainClienter ドメインインターフェース、RetryPolicy と MiddlewareFunc 定義。
+title: "インターフェース定義 - HTTPC"
+description: "HTTPCコアインターフェースAPIリファレンス：Client全機能インターフェース（7種類のHTTPメソッドと4種類のダウンロード付き）、Doer最小実行インターフェース、DomainClienterドメインクライアント（セッション管理付き）、RetryPolicyリトライポリシー、RequestMutator/ResponseMutatorミドルウェアインターフェースとHandler/MiddlewareFunc定義。"
 ---
 
 # インターフェース定義
@@ -11,7 +11,7 @@ description: HTTPC コアインターフェース API リファレンス。Clien
 type Client interface {
     Doer
 
-    // HTTP メソッド
+    // HTTPメソッド
     Get(url string, options ...RequestOption) (*Result, error)
     Post(url string, options ...RequestOption) (*Result, error)
     Put(url string, options ...RequestOption) (*Result, error)
@@ -31,7 +31,7 @@ type Client interface {
 }
 ```
 
-メインクライアントインターフェース。`New()` で作成。詳しくは[パッケージ関数](./functions)を参照。
+メインクライアントインターフェース。`New()`で作成します。詳しくは[パッケージ関数](./functions)をご覧ください。
 
 ## Doer
 
@@ -41,7 +41,7 @@ type Doer interface {
 }
 ```
 
-最小インターフェース。コアの `Request` メソッドのみを含みます。カスタム実装に適しています。
+最小インターフェース。コアの`Request`メソッドのみを含みます。カスタム実装に適しています。
 
 ```go
 type MyDoer struct{}
@@ -58,7 +58,7 @@ func (d *MyDoer) Request(ctx context.Context, method, url string, options ...htt
 type DomainClienter interface {
     Client
 
-    // URL アクセス
+    // URLアクセス
     URL() string
     Domain() string
 
@@ -69,7 +69,7 @@ type DomainClienter interface {
     ClearHeaders()
     GetHeaders() map[string]string
 
-    // セッション Cookie 管理
+    // セッションCookie管理
     SetCookie(cookie *http.Cookie) error
     SetCookies(cookies []*http.Cookie) error
     DeleteCookie(name string)
@@ -82,7 +82,7 @@ type DomainClienter interface {
 }
 ```
 
-ドメインスコープクライアント。Cookie とリクエストヘッダーを自動管理。詳しくは[ドメインクライアント](./domain-client)と[セッション管理](./session)を参照。
+ドメインスコープのクライアント。Cookieとヘッダーを自動的に管理します。詳しくは[ドメインクライアント](./domain-client)と[セッション管理](./session)をご覧ください。
 
 ## RetryPolicy
 
@@ -98,20 +98,20 @@ type RetryPolicy interface {
 
 | メソッド | 説明 |
 |----------|------|
-| `ShouldRetry(resp, err, attempt)` | リトライするかどうかを判定。`attempt` は 0 から開始 |
+| `ShouldRetry(resp, err, attempt)` | リトライするかどうかを判定。`attempt`は0から開始 |
 | `GetDelay(attempt)` | 次回リトライまでの待機時間を返す |
 | `MaxRetries()` | 最大リトライ回数を返す |
 
-:::warning 内部タイプ制限
-`ShouldRetry` の `resp` パラメータタイプ `ResponseReader` は内部インターフェース（`internal/types` パッケージ）であり、外部コードからは直接参照できません。そのため `RetryPolicy` は同じモジュール内でのみ実装可能です。ほとんどのシナリオでは `RetryConfig` 設定と `WithMaxRetries` オプションでリトライ要件を満たせます。カスタムポリシーが必要な場合は、プロジェクト内部パッケージで `RetryPolicy` インターフェースを実装してください。
+:::warning 警告 内部タイプの制限
+`ShouldRetry`の`resp`パラメータタイプ`ResponseReader`は内部インターフェース（`internal/types`パッケージにあります）であり、外部コードからは直接参照できません。そのため、`RetryPolicy`は同じモジュール内でのみ実装可能です。ほとんどのシナリオでは`RetryConfig`設定と`WithMaxRetries`オプションでリトライ要件を満たせます。カスタムポリシーが必要な場合は、プロジェクト内部パッケージで`RetryPolicy`インターフェースを実装してください。
 :::
 
-以下の例は `RetryPolicy` の実装パターンを示しています。なお、`ResponseReader` は内部タイプであるため、このコードは `httpc` モジュール内部でのみコンパイル可能です：
+以下の例は`RetryPolicy`の実装パターンを示しています。`ResponseReader`は内部タイプであるため、このコードは`httpc`モジュール内でのみコンパイル可能です：
 
 ```go
-// 注意：ResponseReader は内部タイプ（internal/types パッケージ）。
-// このコードは httpc モジュール外部ではコンパイルできません。
-// ほとんどのユーザーは RetryConfig と WithMaxRetries でリトライを設定してください。
+// 注意：ResponseReaderは内部タイプ（internal/typesパッケージ）です。
+// このコードはhttpcモジュール外部ではコンパイルできません。
+// ほとんどのユーザーはRetryConfigとWithMaxRetriesでリトライを設定してください。
 
 type MyRetryPolicy struct {
     maxRetries int
@@ -173,7 +173,7 @@ type RequestMutator interface {
 }
 ```
 
-ミドルウェアで使用。リクエストの読み書きアクセスを提供。内部インターフェース `RequestReader` と `RequestWriter` で構成。
+ミドルウェアで使用する、リクエストの読み書きアクセスを提供します。内部インターフェース`RequestReader`と`RequestWriter`で構成されています。
 
 ### ResponseMutator
 
@@ -216,7 +216,7 @@ type ResponseMutator interface {
 }
 ```
 
-ミドルウェアで使用。レスポンスの読み書きアクセスを提供。内部インターフェース `ResponseReader` と `ResponseWriter` で構成。
+ミドルウェアで使用する、レスポンスの読み書きアクセスを提供します。内部インターフェース`ResponseReader`と`ResponseWriter`で構成されています。
 
 ### Handler
 
@@ -224,7 +224,7 @@ type ResponseMutator interface {
 type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, error)
 ```
 
-リクエスト処理関数の署名。
+リクエスト処理関数のシグネチャ。
 
 ### MiddlewareFunc
 
@@ -232,7 +232,7 @@ type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, err
 type MiddlewareFunc func(Handler) Handler
 ```
 
-ミドルウェア関数の署名。次の Handler を受け取り、ラップした Handler を返します。
+ミドルウェア関数のシグネチャ。次のHandlerを受け取り、ラップしたHandlerを返します。
 
 ## 関連ページ
 

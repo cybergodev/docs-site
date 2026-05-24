@@ -1,6 +1,6 @@
 ---
-title: 类型定义 - HTML
-description: CyberGo HTML 库数据类型 API 参考，包括 Result（含自定义 JSON 序列化）、ImageInfo、LinkInfo、VideoInfo、AudioInfo、LinkResource、Statistics、BatchResult 和 NodeAttr 等核心数据类型的字段说明，帮助全面理解提取结果和统计数据的结构。
+title: "类型定义 - HTML"
+description: "CyberGo HTML 库数据类型 API 参考，包括 Result（含自定义 JSON 序列化）、ImageInfo、LinkInfo、VideoInfo、AudioInfo、LinkResource、Statistics、BatchResult 和 NodeAttr 等核心数据类型的字段说明，帮助全面理解提取结果和统计数据的结构。"
 ---
 
 # 类型定义

@@ -1,6 +1,6 @@
 ---
-title: Request Options - HTTPC
-description: HTTPC twenty-seven request option functions API reference, organized by category covering headers, authentication, multiple body formats, query parameters, cookies, and callback functions.
+title: "Request Options - HTTPC"
+description: "HTTPC 27 request options: headers, auth, body formats (JSON/XML/form/binary/multipart), query params, cookies, timeout/retry/redirect, and callbacks."
 ---
 
 # Request Options

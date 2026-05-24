@@ -1,5 +1,5 @@
 ---
-title: Web Service Integration - CyberGo DD | HTTP Service Logging
+title: "Web Service Integration - CyberGo DD | HTTP Service Logging"
 description: "CyberGo DD web service integration: HTTP middleware logging, TraceID propagation, layered config, graceful shutdown, and production-grade setup."
 ---
 

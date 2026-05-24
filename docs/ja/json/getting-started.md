@@ -1,5 +1,5 @@
 ---
-title: クイックスタート - CyberGo JSON | 5分で始めるガイド
+title: "クイックスタート - CyberGo JSON | 5分で始めるガイド"
 description: "CyberGo JSON クイックスタートガイド：インストール設定、パスクエリ GetString/GetInt、エンコード・デコード Marshal/Unmarshal、ファイル読み書き操作を5分で習得。JSONPath クエリと型安全な取得をサポートし、encoding/json 標準ライブラリと100%互換。"
 ---
 

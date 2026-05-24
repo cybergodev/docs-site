@@ -1,6 +1,6 @@
 ---
-title: Processor - JWT API リファレンス
-description: CyberGo JWT Processor コア API リファレンス：Create、Validate、Refresh、Revoke、ValidateInto、RefreshInto、ParseUnverified など全メソッドのシグネチャと使い方。
+title: "Processor - JWT API リファレンス"
+description: "CyberGo JWT Processor コア API リファレンス：Create、Validate、Refresh、Revoke、ValidateInto、RefreshInto、ParseUnverified など全メソッドのシグネチャと使い方。"
 ---
 
 # Processor

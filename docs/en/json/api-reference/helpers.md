@@ -1,5 +1,5 @@
 ---
-title: Helper Functions - CyberGo JSON | API Reference
+title: "Helper Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON helper utility functions reference: including CompareJSON for comparing whether two JSON strings are equivalent, ClearCache/GetStats for cache management and statistics, global processor management and security pattern helper functions, providing a convenient JSON utility function collection for everyday development."
 ---
 

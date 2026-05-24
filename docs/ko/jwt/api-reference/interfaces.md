@@ -1,5 +1,5 @@
 ---
-title: 인터페이스 정의 - JWT API 레퍼런스
+title: "인터페이스 정의 - JWT API 레퍼런스"
 description: "CyberGo JWT 인터페이스 정의 레퍼런스: TokenManager, CustomClaims, BlacklistStore, RateLimitProvider, ClockProvider 및 RateLimitKeyer 인터페이스."
 ---
 

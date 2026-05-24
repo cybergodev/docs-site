@@ -1,24 +1,24 @@
 ---
-title: 実践チュートリアル - HTTPC
-description: 三十分のチュートリアルで GitHub REST API クライアントを構築し、HTTPC クライアント設定、リクエストオプション、ドメインクライアント、ミドルウェア、エラー処理を学習。
+title: "チュートリアル - HTTPC"
+description: "30分の実践チュートリアル：httpc.Getから段階的にGitHub REST APIクライアントを構築し、JSON解析、NewDomainドメインクライアント、WithJSONデータ送信、ミドルウェアチェーン、ClientErrorエラー処理、ファイルダウンロードをカバーします。"
 ---
 
-# 実践チュートリアル：GitHub API クライアントの構築
+# チュートリアル：GitHub APIクライアントの構築
 
-GitHub API クライアントを構築しながら、HTTPC のコア概念を学びます。約30分で完了します。
+GitHub APIクライアントを構築しながら、HTTPCのコア概念を学びます。約30分で完了します。
 
-**学習内容：**
+**学べる内容：**
 
 - クライアントの作成と設定プリセット
-- GET/POST リクエストの送信と JSON レスポンスの処理
-- ドメインクライアントを使用した API ベース URL の管理
+- GET/POSTリクエストの送信とJSONレスポンスの処理
+- ドメインクライアントによるAPIベースURLの管理
 - ミドルウェアによるログとメトリクスの追加
 - エラー処理とリトライ
-- オブジェクトプールの再利用によるパフォーマンス最適化
+- オブジェクトプール再利用によるパフォーマンス最適化
 
-## ステップ 1：基本リクエスト
+## ステップ1：基本的なリクエスト
 
-依存関係をインストールし、`main.go` を作成します：
+依存関係をインストールし、`main.go`を作成：
 
 ```bash
 go get github.com/cybergodev/httpc
@@ -42,15 +42,15 @@ func main() {
     defer httpc.ReleaseResult(result)
 
     fmt.Println(result.StatusCode()) // 200
-    fmt.Println(result.Body())       // JSON レスポンス
+    fmt.Println(result.Body())       // JSONレスポンス
 }
 ```
 
 ポイント：
-- パッケージレベル関数 `httpc.Get` はクライアントの作成不要で、素早く検証できます
-- `defer httpc.ReleaseResult(result)` は結果をオブジェクトプールに返却します
+- パッケージ関数`httpc.Get`はクライアントの作成不要。素早い検証に適しています
+- `defer httpc.ReleaseResult(result)`で結果をオブジェクトプールに返却
 
-## ステップ 2：JSON レスポンスの解析
+## ステップ2：JSONレスポンスの解析
 
 ```go
 type Repo struct {
@@ -77,12 +77,12 @@ fmt.Printf("説明: %s\n", repo.Description)
 ```
 
 ポイント：
-- `result.Unmarshal(&v)` は JSON レスポンスを直接構造体に解析します
-- API レスポンスに対応する Go 構造体を定義します
+- `result.Unmarshal(&v)`でJSONレスポンスを直接構造体に解析
+- APIレスポンスに対応するGo構造体を定義
 
-## ステップ 3：ドメインクライアントの作成
+## ステップ3：ドメインクライアントの作成
 
-GitHub API のすべてのエンドポイントは `https://api.github.com` 配下にあるため、ドメインクライアントを使用して URL の重複を回避します：
+GitHub APIのすべてのエンドポイントは`https://api.github.com`以下にあるため、ドメインクライアントを使えばURLの重複記述を避けられます：
 
 ```go
 client, err := httpc.NewDomain("https://api.github.com")
@@ -95,7 +95,7 @@ if err := client.SetHeader("Authorization", "Bearer "+os.Getenv("GITHUB_TOKEN"))
     log.Fatal(err)
 }
 
-// リクエストパスは baseURL からの相対パス
+// パスはbaseURLからの相対パス
 result, err := client.Get("/repos/golang/go",
     httpc.WithHeader("Accept", "application/vnd.github+json"),
 )
@@ -106,12 +106,12 @@ defer httpc.ReleaseResult(result)
 ```
 
 ポイント：
-- `NewDomain` はスコープ付きクライアントを作成し、パスは baseURL からの相対パスになります
-- `SetHeader` は永続的なリクエストヘッダーを設定し、すべてのリクエストに自動的に付与されます
-- `WithHeader` はリクエストオプションとして渡され、現在のリクエストのみに適用されます
-- ドメインクライアントは Cookie を自動管理します
+- `NewDomain`でスコープ付きクライアントを作成。パスはbaseURLからの相対パス
+- `SetHeader`で永続ヘッダーを設定。毎回のリクエストに自動的に付与
+- `WithHeader`はリクエストオプションとして渡し、そのリクエストのみに適用
+- ドメインクライアントはCookieを自動的に管理
 
-## ステップ 4：データの送信（Issue の作成）
+## ステップ4：データの送信（Issueの作成）
 
 ```go
 type CreateIssueRequest struct {
@@ -145,15 +145,15 @@ fmt.Printf("Issue #%d が作成されました: %s\n", created.Number, created.U
 ```
 
 ポイント：
-- `WithJSON(data)` は自動的にシリアライズし Content-Type を設定します
-- `result.IsSuccess()` は 2xx ステータスコードを確認します
+- `WithJSON(data)`が自動的にシリアライズし、Content-Typeを設定
+- `result.IsSuccess()`で2xxステータスコードを確認
 
-## ステップ 5：ミドルウェアの追加
+## ステップ5：ミドルウェアの追加
 
-クライアントにログとリクエスト ID を追加します：
+クライアントにログとリクエストIDを追加：
 
 ```go
-// ミドルウェアの設定
+// ミドルウェアを設定
 cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
     httpc.LoggingMiddleware(func(format string, args ...any) {
@@ -163,7 +163,7 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
     httpc.RequestIDMiddleware("X-Request-ID", nil),
 }
 
-// 設定を NewDomain に渡して、ミドルウェア付きドメインクライアントを作成
+// 設定をNewDomainに渡し、ミドルウェア付きドメインクライアントを作成
 client, err := httpc.NewDomain("https://api.github.com", cfg)
 if err != nil {
     log.Fatal(err)
@@ -188,12 +188,12 @@ fmt.Printf("%s: ⭐ %d\n", repo.FullName, repo.Stars)
 ```
 
 ポイント：
-- ミドルウェアは `Config.Middleware.Middlewares` で設定します
-- `LoggingMiddleware` はリクエストログを記録します
-- `RecoveryMiddleware` は panic によるクラッシュを防ぎます
-- `RequestIDMiddleware` は各リクエストに一意の ID を生成します
+- ミドルウェアは`Config.Middleware.Middlewares`で設定
+- `LoggingMiddleware`がリクエストログを記録
+- `RecoveryMiddleware`がpanicによるクラッシュを防止
+- `RequestIDMiddleware`が各リクエストにユニークIDを生成
 
-## ステップ 6：エラー処理とリトライ
+## ステップ6：エラー処理とリトライ
 
 ```go
 result, err := client.Get("/repos/golang/go")
@@ -202,13 +202,13 @@ if err != nil {
     if errors.As(err, &clientErr) {
         switch clientErr.Type {
         case httpc.ErrorTypeTimeout:
-            log.Println("リクエストがタイムアウトしました。後で再試行してください")
+            log.Println("リクエストタイムアウト、後で再試行してください")
         case httpc.ErrorTypeNetwork:
             log.Println("ネットワークエラー")
         case httpc.ErrorTypeTLS:
-            log.Println("TLS エラー")
+            log.Println("TLSエラー")
         default:
-            log.Printf("HTTP エラー: %s", clientErr.Error())
+            log.Printf("HTTPエラー: %s", clientErr.Error())
         }
 
         if clientErr.IsRetryable() {
@@ -219,12 +219,12 @@ if err != nil {
 }
 defer httpc.ReleaseResult(result)
 
-// HTTP ステータスコードの処理
+// HTTPステータスコードの処理
 switch {
 case result.IsSuccess():
     // 2xx 成功
 case result.StatusCode() == 401:
-    log.Println("Token が期限切れまたは無効です")
+    log.Println("Tokenの有効期限切れまたは無効")
 case result.IsClientError():
     log.Printf("クライアントエラー: %d", result.StatusCode())
 case result.IsServerError():
@@ -244,11 +244,11 @@ cfg.Retry.EnableJitter = true
 ```
 
 ポイント：
-- HTTPC はネットワークエラーと HTTP ステータスコードを分離して処理します
-- `ClientError` はエラーの分類とリトライ可否の判定を提供します
-- デフォルトでは 408, 429, 500, 502, 503, 504 に対して自動リトライします
+- HTTPCはネットワークエラーとHTTPステータスコードを分離して処理
+- `ClientError`がエラー分類とリトライ可否の判定を提供
+- デフォルトで408, 429, 500, 502, 503, 504を自動リトライ
 
-## ステップ 7：ファイルダウンロード（リリースパッケージのダウンロード）
+## ステップ7：ファイルダウンロード（リリースパッケージのダウンロード）
 
 ```go
 dlCfg := httpc.DefaultDownloadConfig()
@@ -273,9 +273,9 @@ fmt.Printf("\nダウンロード完了: %s (%s)\n",
 )
 ```
 
-## ステップ 8：並行リクエスト
+## ステップ8：並行リクエスト
 
-複数のリポジトリ情報を同時に取得します：
+複数のリポジトリ情報を同時に取得：
 
 ```go
 func fetchRepos(ctx context.Context, repos []string) error {
@@ -312,10 +312,10 @@ func fetchRepos(ctx context.Context, repos []string) error {
 ```
 
 :::tip ヒント
-`PerformanceConfig()` は大規模な接続プール設定を提供し、高並行シナリオに適しています。並行処理では `ReleaseResult` を正しく使用してください。
+`PerformanceConfig()`は大規模接続プール設定を提供し、高並行シナリオに適しています。並行処理で`ReleaseResult`を正しく使用してください。
 :::
 
-## 完全なサンプル
+## 完全な例
 
 上記のステップを統合した完全なコード：
 

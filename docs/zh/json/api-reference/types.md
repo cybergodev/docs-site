@@ -1,5 +1,5 @@
 ---
-title: 类型定义 - CyberGo JSON | API 参考
+title: "类型定义 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 核心类型定义完整参考：包括 Result[T] 泛型结果、AccessResult 动态访问结果、BatchOperation、BatchResult、Schema 验证模式、Stats、HealthStatus、IterableValue 和编码错误类型，提供完整的类型系统支撑。"
 ---
 

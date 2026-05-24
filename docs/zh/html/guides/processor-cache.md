@@ -1,6 +1,6 @@
 ---
-title: Processor 复用与缓存 - HTML
-description: CyberGo HTML Processor 复用与缓存优化指南，详解包级函数与 Processor 实例的区别、sync.Pool 内部机制、缓存策略配置（TTL、容量、清理间隔）、命中率监控统计，以及 Web 服务单例和爬虫批量处理的最佳实践，帮助实现高性能资源复用。
+title: "Processor 复用与缓存 - HTML"
+description: "CyberGo HTML Processor 复用与缓存优化指南，详解包级函数与 Processor 实例的区别、sync.Pool 内部机制、缓存策略配置（TTL、容量、清理间隔）、命中率监控统计，以及 Web 服务单例和爬虫批量处理的最佳实践，帮助实现高性能资源复用。"
 ---
 
 # Processor 复用与缓存

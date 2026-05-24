@@ -1,6 +1,6 @@
 ---
-title: 速查表 - HTML
-description: CyberGo HTML 库常用 API 速查表，一页涵盖所有包函数（Extract、ExtractText、ExtractToMarkdown 等）、Processor 方法、四种配置预设、常用配置项、错误类型判断和审计系统配置，方便开发者快速查找所需的函数签名和用法，适用于日常开发快速查阅。
+title: "速查表 - HTML"
+description: "CyberGo HTML 库常用 API 速查表，一页涵盖所有包函数（Extract、ExtractText、ExtractToMarkdown 等）、Processor 方法、四种配置预设、常用配置项、错误类型判断和审计系统配置，方便开发者快速查找所需的函数签名和用法，适用于日常开发快速查阅。"
 ---
 
 # 速查表
