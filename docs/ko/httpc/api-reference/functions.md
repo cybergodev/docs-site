@@ -1,6 +1,6 @@
 ---
 title: "패키지 함수 - HTTPC"
-description: "HTTPC 패키지 레벨 함수와 클라이언트 메서드 API 레퍼런스: Get/Post 등 일곱 가지 HTTP 메서드, New 클라이언트 생성, 네 개 다운로드 함수, SetSecurityWarnOutput 보안 경고와 NewDomain 도메인 클라이언트 생성을 다룹니다."
+description: "HTTPC 패키지 레벨 함수와 클라이언트 메서드 API 레퍼런스: Get/Post 등 일곱 가지 HTTP 메서드, New 클라이언트 생성, Download 통합 다운로드 진입점, SetSecurityWarnOutput 보안 경고, FormatBytes/FormatSpeed 포맷 도구와 NewDomain 도메인 클라이언트 생성을 다룹니다."
 ---
 
 # 패키지 함수
@@ -144,31 +144,17 @@ func CloseDefaultClient() error
 
 ## 다운로드 함수
 
-패키지 다운로드 함수는 기본 클라이언트를 사용하며, Client 인터페이스도 동일한 이름의 메서드를 제공합니다.
+패키지 다운로드 함수는 기본 클라이언트를 사용하며, Client 인터페이스와 DomainClient도 동일한 이름의 메서드를 제공하고 세 곳 모두 시그니처가 동일합니다.
 
-### DownloadFile
-
-```go
-func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-기본 클라이언트를 사용하여 파일을 지정된 경로에 다운로드합니다.
+### Download
 
 ```go
-// 패키지 함수
-result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
-
-// Client 인터페이스 메서드
-result, err := client.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
+func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-### DownloadWithOptions
+`Download`는 패키지 수준 함수, `Client` 인터페이스, `DomainClient`에 걸친 **유일한 정규 다운로드 진입점**입니다 — 이전의 `{config}` × `{context}` 변형 매트릭스를 단일 시그니처로 대체합니다.
 
-```go
-func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-설정이 포함된 파일 다운로드로, 이어받기와 진행률 콜백을 지원합니다.
+`cfg`는 nil일 수 없으며, `cfg.FilePath`를 반드시 설정해야 합니다(그렇지 않으면 `ErrEmptyFilePath` 반환). 취소나 타임아웃 제어가 필요 없을 때는 `context.Background()`를 전달하고, 요청 옵션은 요청 헤더, 인증, 쿼리 매개변수 등을 설정하는 데 사용합니다.
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -179,41 +165,19 @@ cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r%.1f%%", float64(downloaded)/float64(total)*100)
 }
 
-// 패키지 함수
-result, err := httpc.DownloadWithOptions(url, cfg)
+// 패키지 함수 (기본 클라이언트 사용)
+result, err := httpc.Download(context.Background(), url, cfg)
+
 // Client 인터페이스 메서드
-result, err = client.DownloadWithOptions(url, cfg)
+result, err = client.Download(ctx, url, cfg)
+
+// DomainClient 메서드 (path는 baseURL에 상대적, 응답 Cookie 자동 캡처)
+result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
-### DownloadFileWithContext
-
-```go
-func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-컨텍스트 제어가 포함된 파일 다운로드로, 타임아웃과 취소를 지원합니다.
-
-```go
-// 패키지 함수
-result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
-// Client 인터페이스 메서드
-result, err = client.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
-```
-
-### DownloadWithOptionsWithContext
-
-```go
-func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-설정과 컨텍스트 제어가 포함된 파일 다운로드입니다.
-
-```go
-// 패키지 함수
-result, err := httpc.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
-// Client 인터페이스 메서드
-result, err = client.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
-```
+:::tip 마이그레이션 안내
+기존의 `DownloadFile`, `DownloadWithOptions`, `DownloadFileWithContext`, `DownloadWithOptionsWithContext`는 v1.5.2에서 제거되었습니다. `Download(ctx, url, cfg, options...)`로 통일하여 사용하고, 경로, 덮어쓰기, 이어받기, 검증은 `DownloadConfig`로 설정하세요.
+:::
 
 ## 보조 함수
 
@@ -235,6 +199,62 @@ httpc.SetSecurityWarnOutput(log.Writer())
 
 :::warning
 이 함수는 주로 테스트용입니다. 프로덕션 환경에서는 경고를 억제하기보다 `SecureConfig()` 또는 `DefaultConfig()`를 사용하세요.
+:::
+
+## 포맷 도구
+
+### FormatBytes
+
+```go
+func FormatBytes(bytes int64) string
+```
+
+바이트 수를 사람이 읽을 수 있는 문자열로 포맷합니다(예: `"1.50 KB"`, `"500 B"`). 다운로드 결과 표시와 로그 출력에 자주 사용됩니다.
+
+```go
+result, _ := httpc.Download(context.Background(), url, cfg)
+fmt.Printf("다운로드 완료 %s\n", httpc.FormatBytes(result.BytesWritten))
+// 다운로드 완료 12.34 MB
+```
+
+| 입력 | 출력 |
+|------|------|
+| `500` | `500 B` |
+| `1536` | `1.50 KB` |
+| `1048576` | `1.00 MB` |
+| `1073741824` | `1.00 GB` |
+
+### FormatSpeed
+
+```go
+func FormatSpeed(bytesPerSecond float64) string
+```
+
+바이트/초 속도를 사람이 읽을 수 있는 문자열로 포맷합니다(예: `"1.50 MB/s"`). `DownloadResult.AverageSpeed`나 `DownloadProgressCallback`의 `speed` 매개변수와 함께 자주 사용됩니다.
+
+```go
+result, _ := httpc.Download(context.Background(), url, cfg)
+fmt.Printf("평균 속도 %s\n", httpc.FormatSpeed(result.AverageSpeed))
+// 평균 속도 5.67 MB/s
+
+// 진행률 콜백에서 사용
+cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
+    fmt.Printf("\r%s / %s (%s)",
+        httpc.FormatBytes(downloaded),
+        httpc.FormatBytes(total),
+        httpc.FormatSpeed(speed),
+    )
+}
+```
+
+| 입력 (바이트/초) | 출력 |
+|----------------|------|
+| `500` | `500 B/s` |
+| `1536` | `1.50 KB/s` |
+| `1048576` | `1.00 MB/s` |
+
+:::tip
+두 함수 모두 이진 단위(1024 진수)를 사용하며, 단위 순서는 `B → KB → MB → GB → TB → PB → EB`입니다.
 :::
 
 ## 도메인 클라이언트

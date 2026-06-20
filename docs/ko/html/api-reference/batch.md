@@ -1,6 +1,6 @@
 ---
 title: "배치 처리 - HTML"
-description: "CyberGo HTML 라이브러리 동시성 배치 추출 API 레퍼런스, ExtractBatch 및 ExtractBatchFiles 시리즈 함수와 컨텍스트 버전을 포함하며 WorkerPoolSize 동시성 제어를 지원하고 단일 배치당 최대 10000개 항목을 처리할 수 있습니다."
+description: "CyberGo HTML 동시 배치 추출 API 참조. ExtractBatch, ExtractBatchFiles 계열과 컨텍스트 버전을 다루고, WorkerPoolSize 동시성 제어, 배치당 최대 10000개 항목, BatchResult에 성공/실패/취소 카운트를 포함해 대규모 동시 HTML 추출에 적합합니다."
 ---
 
 # 배치 처리
@@ -29,11 +29,11 @@ func (p *Processor) ExtractBatchFilesWithContext(ctx context.Context, filePaths 
 
 ```go
 type BatchResult struct {
-    Results   []*Result  // 성공한 추출 결과
-    Errors    []error    // 실패한 오류
+    Results   []*Result  // 각 입력 항목의 결과, 입력 순서대로 인덱싱됨; 실패 또는 취소 시 nil
+    Errors    []error    // 각 입력 항목의 오류, 인덱스가 Results와 일대일 대응
     Success   int        // 성공 수량
     Failed    int        // 실패 수량
-    Cancelled int        // 컨텍스트 취소로 인한 수량
+    Cancelled int        // 컨텍스트 취소로 인해 처리되지 않은 항목 수
 }
 ```
 

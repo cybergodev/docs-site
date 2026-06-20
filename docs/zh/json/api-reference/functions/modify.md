@@ -108,7 +108,7 @@ updates := map[string]any{"a": 1, "b": 2, "c": 3}
 result, err := json.SetMultiple(data, updates)
 
 // 不推荐：多次调用
-result, err := json.Set(data, "a", 1)
+result, err = json.Set(data, "a", 1)
 result, err = json.Set(result, "b", 2)
 result, err = json.Set(result, "c", 3)
 ```
@@ -337,8 +337,8 @@ Processor 提供了对应的修改方法，签名与包级函数一致：
 p, err := json.New()
 
 result, err := p.Set(jsonStr, "user.name", "Alice")
-result, err := p.Delete(jsonStr, "user.temp")
-result, err := p.SetCreate(jsonStr, "user.email", "test@example.com")
+result, err = p.Delete(jsonStr, "user.temp")
+result, err = p.SetCreate(jsonStr, "user.email", "test@example.com")
 ```
 
 ## 相关

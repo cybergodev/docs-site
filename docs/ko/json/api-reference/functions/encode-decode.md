@@ -103,7 +103,7 @@ JSON 내용을 HTML 이스케이프하여 특수 문자(`&`, `<`, `>`)를 유니
 var buf bytes.Buffer
 json.HTMLEscape(&buf, []byte(`{"html":"<script>alert(1)</script>"}`))
 fmt.Println(buf.String())
-// {"html":"<script>alert(1)</script>"}
+// {"html":"\u003cscript\u003ealert(1)\u003c/script\u003e"}
 ```
 
 ### Prettify
@@ -265,7 +265,7 @@ defer p.Close()
 
 시그니처: `func (p *Processor) CompactBuffer(dst *bytes.Buffer, src []byte, cfg ...Config) error`
 
-JSON 바이트를 압축하여 `dst` 버퍼에 씁니다. 패키지 레벨 `Compact` 함수에 위임합니다.
+JSON 바이트를 압축하여 `dst` 버퍼에 씁니다. 패키지 레벨 `Compact` 함수가 이 메서드에 위임합니다.
 
 ```go
 var buf bytes.Buffer
@@ -308,10 +308,10 @@ p.HTMLEscape(&buf, []byte(`{"html":"<script>"}`))
 cfg := json.DefaultConfig()
 
 // 포맷 인쇄 설정
-cfg := json.PrettyConfig()
+cfg = json.PrettyConfig()
 
 // 보안 설정
-cfg := json.SecurityConfig()
+cfg = json.SecurityConfig()
 ```
 
 :::tip

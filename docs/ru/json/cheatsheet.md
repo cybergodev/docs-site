@@ -52,7 +52,7 @@ result, err = json.Set(data, "user.name", "Bob")
 result, err = json.Set(result, "user.age", 25)
 
 // Удаление
-result, err := json.Delete(data, "user.temporary")
+result, err = json.Delete(data, "user.temporary")
 ```
 
 ## Сериализация
@@ -82,7 +82,7 @@ err = json.Parse(`{"name": "test"}`, &result)
 parsed, err := json.ParseAny(`{"name": "test"}`)
 
 // Форматирование JSON строки
-pretty, err := json.Prettify(`{"name":"Alice","age":30}`)
+pretty, err = json.Prettify(`{"name":"Alice","age":30}`)
 ```
 
 ## Валидация
@@ -167,12 +167,12 @@ age, err := accessResult.AsInt()
 processor, err := json.New(json.DefaultConfig())
 
 // Безопасная конфигурация (для обработки недоверенных входных данных)
-processor, err := json.New(json.SecurityConfig())
+processor, err = json.New(json.SecurityConfig())
 
 // Пользовательская конфигурация
 cfg := json.DefaultConfig()
 cfg.CreatePaths = true
-processor, err := json.New(cfg)
+processor, err = json.New(cfg)
 ```
 
 ## Потоковая обработка
@@ -232,10 +232,10 @@ cfg.FullSecurityScan = true          // Включить полный скани
 cfg := json.DefaultConfig()
 
 // Безопасная конфигурация (для обработки недоверенных входных данных)
-cfg := json.SecurityConfig()
+// cfg = json.SecurityConfig()
 
 // Конфигурация форматирования
-cfg := json.PrettyConfig()
+// cfg = json.PrettyConfig()
 ```
 
 ## Синтаксис путей

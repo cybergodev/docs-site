@@ -530,7 +530,7 @@ func (r AccessResult) AsBool() (bool, error)              // 엄격한 변환
 | `AsStringConverted()` | 포맷팅 | fmt.Sprintf로 임의의 값을 문자열 표현으로 변환 |
 | `AsInt()` | 엄격 | bool을 int로 변환하지 않음, 정수와 파싱 가능한 숫자만 허용 |
 | `AsFloat64()` | 엄격 | bool을 float로 변환하지 않음, 부동소수점과 파싱 가능한 숫자만 허용 |
-| `AsBool()` | 엄격 | bool과 파싱 가능한 문자열만 허용 ("true"/"false"/"yes"/"no" 등) |
+| `AsBool()` | 엄격 | bool과 `strconv.ParseBool`이 허용하는 문자열만 허용 ("1"/"t"/"T"/"TRUE"/"true"/"True", "0"/"f"/"F"/"FALSE"/"false"/"False") |
 
 ```go
 result := p.SafeGet(data, "user.age")
@@ -627,7 +627,8 @@ type SchemaConfig struct {
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
-cfg.AdditionalProperties = ptrBool(false)
+additionalProperties := false
+cfg.AdditionalProperties = &additionalProperties
 schema := json.NewSchemaWithConfig(cfg)
 ```
 
@@ -637,8 +638,8 @@ Schema 검증 오류입니다.
 
 ```go
 type ValidationError struct {
-    Path    string // 오류 경로
-    Message string // 오류 메시지
+    Path    string `json:"path"`    // 오류 경로
+    Message string `json:"message"` // 오류 메시지
 }
 
 func (ve *ValidationError) Error() string

@@ -1,31 +1,19 @@
 ---
 title: "ファイルダウンロード - HTTPC"
-description: "HTTPC ファイルダウンロード API リファレンス：DownloadFile など 4 つのパッケージレベルダウンロード関数、DownloadConfig 設定構造体、DownloadProgressCallback 進捗コールバック、DownloadResult 結果タイプ、SHA-256 チェックサム検証と UNC パス防護などの 6 層セキュリティ保護。"
+description: "HTTPC ファイルダウンロード API リファレンス：Download 統合ダウンロードエントリ関数、DownloadConfig 設定構造体、DownloadProgressCallback 進捗コールバック、DownloadResult 結果タイプ、SHA-256 チェックサム検証と UNC パス防護などの 6 層セキュリティ保護。"
 ---
 
 # ファイルダウンロード
 
 ## パッケージレベルダウンロード関数
 
-### DownloadFile
+### Download
 
 ```go
-func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
+func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-デフォルトクライアントを使用してファイルを指定パスにダウンロードします。
-
-```go
-result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
-```
-
-### DownloadWithOptions
-
-```go
-func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-設定付きのダウンロード。レジュームと進捗コールバックに対応します。
+デフォルトクライアントを使用してファイルをダウンロードします。`Download` はパッケージレベル関数、`Client` インターフェース、`DomainClient` を貫く**唯一の正規ダウンロードエントリ**であり、これまでのバリアント群を単一のシグネチャに置き換えます。`cfg` を nil にすることはできず、`cfg.FilePath` の設定が必須です（未設定の場合は `ErrEmptyFilePath` を返します）。
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -33,24 +21,8 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 ```
-
-### DownloadFileWithContext
-
-```go
-func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-コンテキスト制御付きのファイルダウンロード。
-
-### DownloadWithOptionsWithContext
-
-```go
-func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-設定とコンテキスト制御付きのファイルダウンロード。
 
 ## DownloadConfig
 
@@ -91,7 +63,7 @@ type DownloadProgressCallback func(downloaded, total int64, speed float64)
 ```go
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\r%.1f%% (%.1f bytes/s)", pct, speed)
+    fmt.Printf("\r%.1f%% (%s)", pct, httpc.FormatSpeed(speed))
 }
 ```
 
@@ -134,12 +106,16 @@ type DownloadResult struct {
 | `RequestHeaders` | `http.Header` | リクエストヘッダー |
 
 ```go
-fmt.Printf("ダウンロード完了: %d bytes, 所要時間 %v, 平均速度 %.1f bytes/s\n",
-    result.BytesWritten,
+fmt.Printf("ダウンロード完了: %s, 所要時間 %v, 平均速度 %s\n",
+    httpc.FormatBytes(result.BytesWritten),
     result.Duration,
-    result.AverageSpeed,
+    httpc.FormatSpeed(result.AverageSpeed),
 )
 ```
+
+:::tip
+[FormatBytes](./functions#formatbytes) と [FormatSpeed](./functions#formatspeed) を使用すると、人間が読めるバイト数と速度の文字列が得られ、`1024` 倍換算の手動計算を省けます。
+:::
 
 ## チェックサム検証
 
@@ -163,7 +139,7 @@ cfg.FilePath = "/tmp/package.tar.gz"
 cfg.Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if err != nil {
     // チェックサムが一致しない場合、自動的にエラーを返し、ダウンロード済みファイルを削除
     log.Fatal(err)
@@ -195,7 +171,7 @@ cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/large-file.zip"
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if result.Resumed {
     fmt.Println("レジューム完了")
 }

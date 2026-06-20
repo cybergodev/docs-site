@@ -74,6 +74,7 @@ type RegisteredClaims struct {
     NotBefore NumericDate   `json:"nbf"`
     IssuedAt  NumericDate   `json:"iat"`
     ID        string        `json:"jti,omitempty"`
+    TokenType string        `json:"token_type,omitempty"`
 }
 ```
 
@@ -92,3 +93,4 @@ type RegisteredClaims struct {
 | `NotBefore` | `NumericDate` | `nbf` | 有効開始時刻 |
 | `IssuedAt` | `NumericDate` | `iat` | 発行時刻 |
 | `ID` | `string` | `jti` | トークン ID |
+| `TokenType` | `string` | `token_type` | トークンタイプ（`access` または `refresh`、[トークンタイプ定数](./types#トークンタイプ定数)を参照） |

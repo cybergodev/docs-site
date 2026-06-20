@@ -1,6 +1,6 @@
 ---
 title: "오류 타입 - HTTPC"
-description: "HTTPC 오류 타입 API 레퍼런스: ClientError 구조체 8개 필드와 Code, IsRetryable, Unwrap 등 5개 메서드, ErrorTypeNetwork 등 12가지 오류 분류 열거, ErrNilConfig 등 13개 센티넬 오류 변수와 errors.Is/As 매칭 예제를 다룹니다."
+description: "HTTPC 오류 타입 API 레퍼런스: ClientError 구조체 8개 필드와 Code, IsRetryable, Unwrap 등 5개 메서드, ErrorTypeNetwork 등 12가지 오류 분류 열거, ErrNilConfig 등 12개 센티넬 오류 변수와 errors.Is/As 매칭 예제를 다룹니다."
 ---
 
 # 오류 타입
@@ -129,7 +129,6 @@ if err != nil {
 
 | 변수 | 설명 |
 |------|------|
-| `ErrInvalidURL` | URL 검증 실패 |
 | `ErrInvalidHeader` | 요청 헤더 검증 실패 |
 
 ### 응답 오류

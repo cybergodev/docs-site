@@ -530,7 +530,7 @@ func (r AccessResult) AsBool() (bool, error)              // 严格转换
 | `AsStringConverted()` | 格式化 | 使用 fmt.Sprintf 将任意值转为字符串表示 |
 | `AsInt()` | 严格 | 不转换 bool 到 int，仅接受整数和可解析的数字 |
 | `AsFloat64()` | 严格 | 不转换 bool 到 float，仅接受浮点数和可解析的数字 |
-| `AsBool()` | 严格 | 仅接受 bool 和可解析的字符串（"true"/"false"/"yes"/"no" 等） |
+| `AsBool()` | 严格 | 仅接受 bool 和可解析的字符串（`strconv.ParseBool` 规则：`1/t/true/True/TRUE`、`0/f/false/False/FALSE`） |
 
 ```go
 result := p.SafeGet(data, "user.age")
@@ -627,7 +627,8 @@ type SchemaConfig struct {
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
-cfg.AdditionalProperties = ptrBool(false)
+additionalProperties := false
+cfg.AdditionalProperties = &additionalProperties
 schema := json.NewSchemaWithConfig(cfg)
 ```
 
@@ -637,8 +638,8 @@ Schema 验证错误。
 
 ```go
 type ValidationError struct {
-    Path    string // 错误路径
-    Message string // 错误消息
+    Path    string `json:"path"`    // 错误路径
+    Message string `json:"message"` // 错误消息
 }
 
 func (ve *ValidationError) Error() string

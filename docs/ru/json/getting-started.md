@@ -232,13 +232,13 @@ func main() {
 cfg := json.DefaultConfig()
 
 // Конфигурация с усиленной безопасностью (для недоверенного ввода)
-cfg = json.SecurityConfig()
+// cfg = json.SecurityConfig()
 
 // Конфигурация с форматированным выводом
-cfg = json.PrettyConfig()
+// cfg = json.PrettyConfig()
 
 // Пользовательская конфигурация
-cfg := json.DefaultConfig()
+cfg = json.DefaultConfig()
 cfg.MaxJSONSize = 50 * 1024 * 1024 // 50МБ
 cfg.EnableCache = true
 cfg.CacheTTL = 5 * time.Minute

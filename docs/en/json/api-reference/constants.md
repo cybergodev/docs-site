@@ -91,6 +91,15 @@ if err != nil {
 }
 ```
 
+## Error Helper Functions
+
+In addition to the error types above, the library provides two error-handling helper functions (see [Helper Utilities](./helpers#safeerror) for full details):
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `SafeError` | `func SafeError(err error) string` | Returns a client-safe error message, omitting internal details such as path names (CWE-209) |
+| `RedactedPath` | `func RedactedPath(path string) string` | Returns a redacted path (non-empty paths are masked as `"***"`) for use in logs and error responses |
+
 ## Configuration Presets
 
 ### Default Value Constants
@@ -101,6 +110,7 @@ const (
     DefaultMaxJSONSize     = 100 * 1024 * 1024  // 100MB
     DefaultMaxNestingDepth = 200
     DefaultMaxPathDepth    = 50
+    DefaultMaxDepth        = 100                 // Default encoding/decoding nesting depth (Config.MaxDepth)
     DefaultMaxConcurrency  = 50
 
     // Security limits

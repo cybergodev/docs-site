@@ -1,6 +1,6 @@
 ---
 title: "バッチ処理 - HTML"
-description: "CyberGo HTML ライブラリの並列バッチ抽出 API リファレンス。ExtractBatch と ExtractBatchFiles シリーズ関数およびそのコンテキスト付きバージョンを含み、WorkerPoolSize による並列制御、1 バッチ最大 10000 件に対応。BatchResult には成功、失敗、キャンセルのカウントが含まれ、大規模 HTML コンテンツの並列抽出に適しています。"
+description: "CyberGo HTML の並行バッチ抽出 API リファレンス。ExtractBatch、ExtractBatchFiles 系とコンテキスト版を扱い、WorkerPoolSize による並行制御、バッチあたり最大 10000 項目、BatchResult に成功/失敗/キャンセル数を含み、大規模な並行 HTML 抽出に適しています。"
 ---
 
 # バッチ処理
@@ -29,11 +29,11 @@ func (p *Processor) ExtractBatchFilesWithContext(ctx context.Context, filePaths 
 
 ```go
 type BatchResult struct {
-    Results   []*Result  // 成功した抽出結果
-    Errors    []error    // 失敗したエラー
+    Results   []*Result  // 各入力項目の結果、入力順でインデックス付け; 失敗またはキャンセル時は nil
+    Errors    []error    // 各入力項目のエラー、インデックスは Results と 1 対 1 で対応
     Success   int        // 成功数
     Failed    int        // 失敗数
-    Cancelled int        // コンテキストキャンセルによる数
+    Cancelled int        // コンテキストのキャンセルにより未処理のまま残った項目数
 }
 ```
 

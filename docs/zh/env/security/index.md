@@ -46,7 +46,7 @@ password := env.GetString("DB_PASSWORD")
 // 推荐
 secret := env.GetSecure("DB_PASSWORD")
 defer secret.Close()
-password := secret.String()
+password := secret.Reveal()  // 仅在需要明文时调用
 ```
 
 **核心功能：**

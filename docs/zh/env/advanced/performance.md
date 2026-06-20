@@ -100,8 +100,8 @@ wg.Wait()
 // 获取 SecureValue（可能从池中复用）
 secret := env.GetSecure("API_KEY")
 
-// 使用
-value := secret.String()
+// 使用（Reveal 返回明文，String/Masked 返回掩码）
+value := secret.Reveal()
 
 // 释放回池
 secret.Close()  // 或 secret.Release()
@@ -140,7 +140,7 @@ func later() {
 func getSecret() string {
     secret := env.GetSecure("KEY")
     defer secret.Close()
-    return secret.String()
+    return secret.Reveal()
 }
 ```
 
@@ -421,7 +421,7 @@ loader, _ := env.New(cfg)
 // 启动 goroutine
 go func() {
     time.Sleep(1 * time.Second)
-    loader.GetString("KEY")  // 可能返回 ErrClosed
+    loader.GetString("KEY")  // 返回空字符串（GetString 不返回 error）
 }()
 
 loader.Close()  // 主 goroutine 关闭

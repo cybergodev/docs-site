@@ -33,7 +33,7 @@ description: "CyberGo env 라이브러리 보안 아키텍처 전면 개요, Sec
 | **금지 키** | 시스템 핵심 변수 수정 방지 | [상수 및 오류](/ko/env/api-reference/constants#defaultforbiddenkeys) |
 | **민감 키 감지** | 민감 설정 키 자동 식별 | [상수 및 오류](/ko/env/api-reference/constants#sensitivekeypatterns) |
 | **값 검증** | 제어 문자, 널 바이트 등 감지 | [Config API](/ko/env/api-reference/config) |
-| **감사 로그** | 전체 작업 추적 | [컴포넌트 팩토리](/ko/env/api-reference/factory#audit-handler-factory) |
+| **감사 로그** | 전체 작업 추적 | [컴포넌트 팩토리](/ko/env/api-reference/factory) |
 
 ## SecureValue 소개
 
@@ -46,7 +46,7 @@ password := env.GetString("DB_PASSWORD")
 // 권장
 secret := env.GetSecure("DB_PASSWORD")
 defer secret.Close()
-password := secret.String()
+password := secret.Reveal()  // 평문이 필요할 때만 호출
 ```
 
 **핵심 기능:**

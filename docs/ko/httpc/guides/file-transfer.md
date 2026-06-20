@@ -1,6 +1,6 @@
 ---
 title: "파일 업로드와 다운로드 - HTTPC"
-description: "HTTPC 파일 업로드와 다운로드 가이드: WithFile 간단 업로드, WithFormData Multipart 다중 파일 업로드, DownloadFile 기본 다운로드, DownloadWithOptions 진행률 콜백 포함, ResumeDownload 이어받기, SHA-256 체크섬과 UNC 경로 등 보안 방어를 다룹니다."
+description: "HTTPC 파일 업로드와 다운로드 가이드: WithFile 간단 업로드, WithFormData Multipart 다중 파일 업로드, Download 통합 다운로드, 진행률 콜백 포함, ResumeDownload 이어받기, SHA-256 체크섬과 UNC 경로 등 보안 방어를 다룹니다."
 ---
 
 # 파일 업로드와 다운로드
@@ -71,18 +71,20 @@ result, err := httpc.Post(url,
 
 ## 파일 다운로드
 
+`Download(ctx, url, cfg, options...)`는 패키지 수준 함수, `Client`, `DomainClient`에 걸친 유일한 정규 다운로드 진입점입니다.
+
 ### 기본 다운로드
 
 ```go
-result, err := httpc.DownloadFile(
-    "https://example.com/file.zip",
-    "/tmp/file.zip",
-)
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/file.zip"
+
+result, err := httpc.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("다운로드 완료: %d bytes\n", result.BytesWritten)
+fmt.Printf("다운로드 완료: %s\n", httpc.FormatBytes(result.BytesWritten))
 fmt.Printf("소요 시간: %v\n", result.Duration)
 ```
 
@@ -94,17 +96,17 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\r다운로드 중: %.1f%% (%.2f MB/s)", pct, float64(speed)/1024/1024)
+    fmt.Printf("\r다운로드 중: %.1f%% (%s)", pct, httpc.FormatSpeed(speed))
 }
 
-result, err := httpc.DownloadWithOptions("https://example.com/file.zip", cfg)
+result, err := httpc.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("\n다운로드 완료: %d bytes, 평균 속도 %.2f MB/s\n",
-    result.BytesWritten,
-    float64(result.AverageSpeed)/1024/1024,
+fmt.Printf("\n다운로드 완료: %s, 평균 속도 %s\n",
+    httpc.FormatBytes(result.BytesWritten),
+    httpc.FormatSpeed(result.AverageSpeed),
 )
 ```
 
@@ -115,7 +117,7 @@ cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/large-file.zip"
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -135,7 +137,10 @@ if result.Resumed {
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 defer cancel()
 
-result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/file.zip"
+
+result, err := httpc.Download(ctx, url, cfg)
 if err != nil {
     if errors.Is(err, context.DeadlineExceeded) {
         log.Println("다운로드 타임아웃")
@@ -165,8 +170,11 @@ defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
 
-// 다운로드 및 세션 자동 관리
-result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
+// 다운로드 및 세션 자동 관리 (path는 baseURL에 상대적)
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/report.pdf"
+
+result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
 ```
 
 ## 다음 단계

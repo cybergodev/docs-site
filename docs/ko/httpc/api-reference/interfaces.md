@@ -21,10 +21,7 @@ type Client interface {
     Options(url string, options ...RequestOption) (*Result, error)
 
     // 파일 다운로드
-    DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-    DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-    DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-    DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
+    Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 
     // 수명 주기
     Close() error

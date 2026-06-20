@@ -71,15 +71,17 @@ result, err := dc.Request(ctx, "GET", "/users", options...)
 ## ダウンロードメソッド
 
 ```go
-// 基本ダウンロード
-result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
+func (dc *DomainClient) Download(ctx context.Context, path string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
+```
 
-// 設定付きダウンロード
-result, err := dc.DownloadWithOptions("/files/report.pdf", downloadOpts)
+ファイルを `cfg.FilePath` にダウンロードします。`path` は `baseURL` に対して相対的に結合されます。パッケージレベルの `Download` および `Client.Download` とシグネチャが同一であり、`Download` はこれら 3 つを貫く唯一の正規ダウンロードエントリです。`cfg` を nil にすることはできず、`cfg.FilePath` の設定が必須です（未設定の場合は `ErrEmptyFilePath` を返します）。
 
-// コンテキスト付き
-result, err := dc.DownloadFileWithContext(ctx, "/files/report.pdf", "/tmp/report.pdf")
-result, err := dc.DownloadWithOptionsWithContext(ctx, "/files/report.pdf", downloadOpts)
+```go
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/report.pdf"
+cfg.Overwrite = true
+
+result, err := dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
 ダウンロードのレスポンス Cookie はセッションに自動的にキャプチャされます。

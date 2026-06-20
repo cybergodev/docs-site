@@ -1,6 +1,6 @@
 ---
 title: "File Upload and Download - HTTPC"
-description: "HTTPC file upload and download guide: WithFile simple upload, WithFormData multipart multi-file upload, DownloadFile basic download, DownloadWithOptions with progress callbacks, resumable downloads with ResumeDownload, SHA-256 checksums, and UNC path security protection."
+description: "HTTPC file upload and download guide: WithFile simple upload, WithFormData multipart multi-file upload, the unified Download entry point, progress callbacks, resumable downloads with ResumeDownload, SHA-256 checksums, and UNC path security protection."
 ---
 
 # File Upload and Download
@@ -71,18 +71,20 @@ result, err := httpc.Post(url,
 
 ## File Download
 
+`Download(ctx, url, cfg, options...)` is the single canonical download entry point shared across the package-level function, `Client`, and `DomainClient`.
+
 ### Basic Download
 
 ```go
-result, err := httpc.DownloadFile(
-    "https://example.com/file.zip",
-    "/tmp/file.zip",
-)
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/file.zip"
+
+result, err := httpc.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("Download complete: %d bytes\n", result.BytesWritten)
+fmt.Printf("Download complete: %s\n", httpc.FormatBytes(result.BytesWritten))
 fmt.Printf("Duration: %v\n", result.Duration)
 ```
 
@@ -94,17 +96,17 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\rDownloading: %.1f%% (%.2f MB/s)", pct, float64(speed)/1024/1024)
+    fmt.Printf("\rDownloading: %.1f%% (%s)", pct, httpc.FormatSpeed(speed))
 }
 
-result, err := httpc.DownloadWithOptions("https://example.com/file.zip", cfg)
+result, err := httpc.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("\nDownload complete: %d bytes, average speed %.2f MB/s\n",
-    result.BytesWritten,
-    float64(result.AverageSpeed)/1024/1024,
+fmt.Printf("\nDownload complete: %s, average speed %s\n",
+    httpc.FormatBytes(result.BytesWritten),
+    httpc.FormatSpeed(result.AverageSpeed),
 )
 ```
 
@@ -115,7 +117,7 @@ cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/large-file.zip"
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -135,7 +137,10 @@ Resumable downloads depend on server support for the `Range` request header. If 
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 defer cancel()
 
-result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/file.zip"
+
+result, err := httpc.Download(ctx, url, cfg)
 if err != nil {
     if errors.Is(err, context.DeadlineExceeded) {
         log.Println("Download timed out")
@@ -165,8 +170,11 @@ defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
 
-// Download with automatic session management
-result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/report.pdf"
+
+// Download with automatic session management (path is relative to baseURL)
+result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
 ```
 
 ## Next Steps

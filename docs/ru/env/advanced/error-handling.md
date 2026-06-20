@@ -486,7 +486,6 @@ package main
 
 import (
     "errors"
-    "fmt"
     "log"
 
     "github.com/cybergodev/env"

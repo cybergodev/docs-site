@@ -1,11 +1,11 @@
 ---
 title: "API 参考 - HTTPC"
-description: "HTTPC API 参考索引：按核心、请求响应、高级功能三组分类导航，涵盖包级 HTTP 函数、27 个 WithXxx 请求选项、Config 配置系统与五种预设、8 个内置中间件工厂、域名客户端与会话管理、文件下载与断点续传、错误类型与常量枚举。"
+description: "HTTPC API 参考索引：按核心、请求响应、高级功能三组分类导航，涵盖包级 HTTP 函数、28 个 WithXxx 请求选项、Config 配置系统与五种预设、8 个内置中间件工厂、域名客户端与会话管理、文件下载与断点续传、错误类型与常量枚举。"
 ---
 
 # API 参考
 
-HTTPC 提供 27 个请求选项函数、5 个配置预设、8 个内置中间件和完整的下载支持。
+HTTPC 提供 28 个请求选项函数、5 个配置预设、8 个内置中间件和完整的下载支持。
 
 ## 核心架构
 
@@ -14,7 +14,7 @@ httpc 包
 ├── Client 接口 - 主客户端，支持所有 HTTP 方法
 ├── DomainClienter 接口 - 域名作用域客户端，内置会话管理
 ├── Config - 配置系统（超时/连接/安全/重试/中间件）
-├── RequestOption - 27 个请求选项函数
+├── RequestOption - 28 个请求选项函数
 ├── MiddlewareFunc - 中间件链
 ├── Result - 响应结果（含请求元数据）
 └── 包级函数 - 无需创建客户端即可使用
@@ -35,9 +35,9 @@ httpc 包
 
 | 模块 | 说明 |
 |------|------|
-| [请求选项](./options) | 27 个 WithXxx 请求选项函数（请求头、请求体、认证、Cookie、回调等） |
+| [请求选项](./options) | 28 个 WithXxx 请求选项函数（请求头、请求体、认证、Cookie、回调等） |
 | [中间件](./middleware) | Chain 组合、8 个内置中间件工厂和审计事件类型 |
-| [错误类型](./errors) | ClientError、12 种 ErrorType 枚举和 13 个错误变量 |
+| [错误类型](./errors) | ClientError、12 种 ErrorType 枚举和 12 个错误变量 |
 
 ### 高级功能
 

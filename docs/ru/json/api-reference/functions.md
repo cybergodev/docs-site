@@ -23,7 +23,7 @@ description: "Справочник функций уровня пакета Cybe
 
 Функции сериализации, десериализации и потокового кодирования/декодирования.
 
-**Основные функции**: [`Marshal`](./functions/encode-decode#marshal) · [`Unmarshal`](./functions/encode-decode#unmarshal) · [`MarshalIndent`](./functions/encode-decode#marshalindent) · [`Encode`](./functions/encode-decode#encode) · [`EncodePretty`](./functions/encode-decode#encodepretty) · [`EncodeWithConfig`](./functions/encode-decode#encodewithconfig) · [`Prettify`](./functions/encode-decode#prettify) · [`Compact`](./functions/encode-decode#compact) · [`Indent`](./functions/encode-decode#indent) · [`HTMLEscape`](./functions/encode-decode#htmlescape) · [`NewEncoder`](./types#encoder-кодировщик-json) · [`NewDecoder`](./types#decoder-декодировщик-json) · [`EncodeBatch`](./processor/output#encodebatch) · [`EncodeFields`](./processor/output#encodefields) · [`EncodeStream`](./processor/output#encodestream) · [`SaveToWriter`](./functions/file-io#savetowriter)
+**Основные функции**: [`Marshal`](./functions/encode-decode#marshal) · [`Unmarshal`](./functions/encode-decode#unmarshal) · [`MarshalIndent`](./functions/encode-decode#marshalindent) · [`Encode`](./functions/encode-decode#encode) · [`EncodePretty`](./functions/encode-decode#encodepretty) · [`EncodeWithConfig`](./functions/encode-decode#encodewithconfig) · [`Prettify`](./functions/encode-decode#prettify) · [`Compact`](./functions/encode-decode#compact) · [`Indent`](./functions/encode-decode#indent) · [`HTMLEscape`](./functions/encode-decode#htmlescape) · [`NewEncoder`](./types#encoder-json-кодировщик) · [`NewDecoder`](./types#decoder-json-декодер) · [`EncodeBatch`](./processor/output#encodebatch) · [`EncodeFields`](./processor/output#encodefields) · [`EncodeStream`](./processor/output#encodestream) · [`SaveToWriter`](./functions/file-io#savetowriter)
 
 ## [Файловые операции](./functions/file-io)
 
@@ -35,13 +35,13 @@ description: "Справочник функций уровня пакета Cybe
 
 Функции потоковой итерации файлов (функции уровня пакета, не требуют создания Processor).
 
-**Основные функции**: [`ForeachFile`](./large-file#foreachfile-функция-пакета) · [`ForeachFileWithPath`](./large-file#foreachfilewithpath-функция-пакета) · [`ForeachFileChunked`](./large-file#foreachfilechunked-функция-пакета) · [`ForeachFileNested`](./large-file#foreachfilenested-функция-пакета)
+**Основные функции**: [`ForeachFile`](./large-file#foreachfile-функция-уровня-пакета) · [`ForeachFileWithPath`](./large-file#foreachfilewithpath-функция-уровня-пакета) · [`ForeachFileChunked`](./large-file#foreachfilechunked-функция-уровня-пакета) · [`ForeachFileNested`](./large-file#foreachfilenested-функция-уровня-пакета)
 
 ## [Вспомогательные утилиты](./helpers)
 
 Функции для преобразования типов, сравнения, управления кэшем и обработки ошибок.
 
-**Основные функции**: [`CompareJSON`](./helpers#comparejson) · [`MergeJSON`](./helpers#mergejson) · [`MergeMany`](./helpers#mergemany) · [`ClearCache`](./helpers#clearcache-функция-пакета) · [`GetStats`](./helpers#getstats-функция-пакета) · [`GetHealthStatus`](./helpers#gethealthstatus-функция-пакета) · [`SetGlobalProcessor`](./helpers#setglobalprocessor) · [`ShutdownGlobalProcessor`](./helpers#shutdownglobalprocessor) · [`SafeError`](./helpers#safeerror) · [`RedactedPath`](./helpers#redactedpath) · [`WarmupCache`](./helpers#warmupcache)
+**Основные функции**: [`CompareJSON`](./helpers#comparejson) · [`MergeJSON`](./helpers#mergejson) · [`MergeMany`](./helpers#mergemany) · [`ClearCache`](./helpers#clearcache-функция-уровня-пакета) · [`GetStats`](./helpers#getstats-функция-уровня-пакета) · [`GetHealthStatus`](./helpers#gethealthstatus-функция-уровня-пакета) · [`SetGlobalProcessor`](./helpers#setglobalprocessor) · [`ShutdownGlobalProcessor`](./helpers#shutdownglobalprocessor) · [`SafeError`](./helpers#safeerror) · [`RedactedPath`](./helpers#redactedpath) · [`WarmupCache`](./helpers#warmupcache)
 
 ---
 
@@ -59,12 +59,12 @@ description: "Справочник функций уровня пакета Cybe
 | Десериализация | `Unmarshal`, `Parse` | [Кодирование/декодирование](./functions/encode-decode#функции-сериализации) · [Запросы и получение](./functions/get#функции-парсинга) |
 | Форматирование | `Prettify`, `Processor.Compact` | [Кодирование/декодирование](./functions/encode-decode#функции-сериализации) |
 | Печать вывода | `Encode` + `fmt.Println`, `EncodePretty` | [Функции вывода](./print) |
-| Массовое кодирование | `EncodeBatch`, `EncodeFields`, `EncodeStream` | [Массовое кодирование](./functions/encode-decode#функции-массового-кодирования) · [Вывод процессора](./processor/output) |
+| Массовое кодирование | `EncodeBatch`, `EncodeFields`, `EncodeStream` | [Массовое кодирование](./functions/encode-decode#функции-пакетного-кодирования) · [Вывод процессора](./processor/output) |
 | Валидация | `Valid` | [Запросы и получение](./functions/get#функции-валидации) |
 | Чтение/запись файлов | `LoadFromFile`, `SaveToFile` | [Файловые операции](./functions/file-io#функции-чтения-файлов) |
 | Обработка JSONL | `ParseJSONL`, `ToJSONL` | [Файловые операции](./functions/file-io#функции-обработки-jsonl) |
 | Сравнение | `CompareJSON` | [Вспомогательные утилиты](./helpers#функции-сравнения-json) |
-| Объединение | `MergeJSON`, `MergeMany` | [Операции модификации](./functions/modify#функции-объединения) |
+| Объединение | `MergeJSON`, `MergeMany` | [Операции модификации](./functions/modify#функции-слияния) |
 | Преобразование типов | Методы преобразования типа `AccessResult` | [Вспомогательные утилиты](./helpers#методы-преобразования-типов-accessresult) |
 | Обработка ошибок | `JsonsError`, `errors.Is` | [Константы ошибок](./constants#переменные-ошибок) |
 

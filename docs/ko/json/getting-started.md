@@ -232,13 +232,13 @@ func main() {
 cfg := json.DefaultConfig()
 
 // 보안 강화 설정 (신뢰할 수 없는 입력 처리)
-cfg = json.SecurityConfig()
+// cfg = json.SecurityConfig()
 
 // 포맷팅 출력 설정
-cfg = json.PrettyConfig()
+// cfg = json.PrettyConfig()
 
 // 커스텀 설정
-cfg := json.DefaultConfig()
+cfg = json.DefaultConfig()
 cfg.MaxJSONSize = 50 * 1024 * 1024 // 50MB
 cfg.EnableCache = true
 cfg.CacheTTL = 5 * time.Minute

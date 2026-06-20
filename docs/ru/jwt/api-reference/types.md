@@ -32,7 +32,7 @@ type NumericDate struct {
 type StringOrSlice []string
 ```
 
-Тип, десериализуемый из JSON-строки или массива строк, соответствует RFC 7519 §4.1.3.
+Хранит `[]string`, который десериализуется как из JSON-строки, так и из JSON-массива; срез из одного элемента сериализуется как JSON-строка, а из нескольких — как массив, согласно RFC 7519 §4.1.3.
 
 <Badge type="info" text="type" />
 
@@ -40,7 +40,8 @@ type StringOrSlice []string
 
 | Метод | Сигнатура | Описание |
 |-------|-----------|----------|
-| `UnmarshalJSON` | `func (s *StringOrSlice) UnmarshalJSON(b []byte) error` | Парсит из строки или массива |
+| `MarshalJSON` | `func (s StringOrSlice) MarshalJSON() ([]byte, error)` | Срез из одного элемента сериализуется как JSON-строка, из нескольких — как массив (RFC 7519 §4.1.3) |
+| `UnmarshalJSON` | `func (s *StringOrSlice) UnmarshalJSON(b []byte) error` | Парсит из JSON-строки или массива |
 
 ---
 
@@ -180,3 +181,25 @@ const (
 | `SigningMethodES256` | `"ES256"` | ECDSA-SHA256 | Асимметричный |
 | `SigningMethodES384` | `"ES384"` | ECDSA-SHA384 | Асимметричный |
 | `SigningMethodES512` | `"ES512"` | ECDSA-SHA512 | Асимметричный |
+
+---
+
+## Константы типа токена
+
+```go
+const (
+    TokenTypeAccess  = "access"
+    TokenTypeRefresh = "refresh"
+)
+```
+
+Константы типа токена, записываемые в поле [`RegisteredClaims.TokenType`](./claims#registeredclaims).
+
+- Токены доступа создаются методом [`Processor.Create`](./processor#create)
+- Токены обновления создаются методом [`Processor.CreateRefresh`](./processor#createrefresh)
+- [`Processor.Refresh`](./processor#refresh) и [`Processor.RefreshInto`](./processor#refreshinto) отклоняют токены с `TokenTypeAccess`
+
+| Константа | Значение | Описание |
+|-----------|----------|----------|
+| `TokenTypeAccess` | `"access"` | Токен доступа |
+| `TokenTypeRefresh` | `"refresh"` | Токен обновления |

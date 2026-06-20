@@ -1,31 +1,19 @@
 ---
 title: "파일 다운로드 - HTTPC"
-description: "HTTPC 파일 다운로드 API 레퍼런스: DownloadFile 등 네 개 패키지 다운로드 함수 서명, DownloadConfig 설정 구조체, DownloadProgressCallback 진행률 콜백, DownloadResult 결과 타입, SHA-256 체크섬 검증과 UNC 경로 방어 등 6계층 보안을 다룹니다."
+description: "HTTPC 파일 다운로드 API 레퍼런스: Download 통합 다운로드 진입점 함수 서명, DownloadConfig 설정 구조체, DownloadProgressCallback 진행률 콜백, DownloadResult 결과 타입, SHA-256 체크섬 검증과 UNC 경로 방어 등 6계층 보안을 다룹니다."
 ---
 
 # 파일 다운로드
 
 ## 패키지 다운로드 함수
 
-### DownloadFile
+### Download
 
 ```go
-func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
+func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-기본 클라이언트를 사용하여 파일을 지정된 경로에 다운로드합니다.
-
-```go
-result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
-```
-
-### DownloadWithOptions
-
-```go
-func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-설정이 포함된 다운로드로, 이어받기와 진행률 콜백을 지원합니다.
+기본 클라이언트를 사용하여 파일을 다운로드합니다. `Download`는 패키지 수준 함수, `Client` 인터페이스, `DomainClient`에 걸친 **유일한 정규 다운로드 진입점**으로, 이전의 변형 매트릭스를 단일 시그니처로 대체합니다. `cfg`는 nil일 수 없으며, `cfg.FilePath`를 반드시 설정해야 합니다(그렇지 않으면 `ErrEmptyFilePath` 반환).
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -33,24 +21,8 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 ```
-
-### DownloadFileWithContext
-
-```go
-func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-컨텍스트 제어가 포함된 파일 다운로드입니다.
-
-### DownloadWithOptionsWithContext
-
-```go
-func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-설정과 컨텍스트 제어가 포함된 파일 다운로드입니다.
 
 ## DownloadConfig
 
@@ -91,7 +63,7 @@ type DownloadProgressCallback func(downloaded, total int64, speed float64)
 ```go
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\r%.1f%% (%.1f bytes/s)", pct, speed)
+    fmt.Printf("\r%.1f%% (%s)", pct, httpc.FormatSpeed(speed))
 }
 ```
 
@@ -134,12 +106,16 @@ type DownloadResult struct {
 | `RequestHeaders` | `http.Header` | 요청 헤더 |
 
 ```go
-fmt.Printf("다운로드 완료: %d bytes, 소요 시간 %v, 평균 속도 %.1f bytes/s\n",
-    result.BytesWritten,
+fmt.Printf("다운로드 완료: %s, 소요 시간 %v, 평균 속도 %s\n",
+    httpc.FormatBytes(result.BytesWritten),
     result.Duration,
-    result.AverageSpeed,
+    httpc.FormatSpeed(result.AverageSpeed),
 )
 ```
+
+:::tip
+[FormatBytes](./functions#formatbytes)와 [FormatSpeed](./functions#formatspeed)를 사용하면 사람이 읽을 수 있는 바이트와 속도 문자열을 얻을 수 있어 `1024` 단위 환산을 수동으로 할 필요가 없습니다.
+:::
 
 ## 체크섬 검증
 
@@ -163,7 +139,7 @@ cfg.FilePath = "/tmp/package.tar.gz"
 cfg.Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if err != nil {
     // 체크섬 불일치 시 자동으로 오류 반환 및 다운로드된 파일 삭제
     log.Fatal(err)
@@ -195,7 +171,7 @@ cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/large-file.zip"
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if result.Resumed {
     fmt.Println("이어받기 완료")
 }

@@ -1,6 +1,6 @@
 ---
 title: "インターフェース定義 - HTML"
-description: "CyberGo HTML ライブラリのコアインターフェース定義 API リファレンス。Extractor（完全な抽出インターフェース）、StatsProvider（統計とキャッシュ管理）、ContentNode（HTML ノード抽象化）、Scorer（カスタムスコアリング戦略）、AuditSink（監査出力）を含み、機能拡張や統合テストに活用でき、ライブラリのアーキテクチャ設計と拡張メカニズムの理解に役立ちます。"
+description: "CyberGo HTML コアインターフェース API：Extractor（完全抽出）、StatsProvider（統計・キャッシュ）、ContentNode（ノード抽象化）、Scorer（評価戦略）、AuditSink（監査出力）で拡張とテストを支援します。"
 ---
 
 # インターフェース定義

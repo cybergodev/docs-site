@@ -38,6 +38,8 @@ package myparser
 
 import (
     "io"
+    "strings"
+
     "github.com/cybergodev/env"
 )
 
@@ -59,7 +61,17 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
     }
 
     // 2. 내용을 키-값 쌍으로 파싱
-    // ... 파싱 로직
+    for _, line := range strings.Split(string(content), "\n") {
+        line = strings.TrimSpace(line)
+        if line == "" || strings.HasPrefix(line, "#") {
+            continue
+        }
+        idx := strings.Index(line, "=")
+        if idx <= 0 {
+            continue
+        }
+        result[strings.TrimSpace(line[:idx])] = strings.TrimSpace(line[idx+1:])
+    }
 
     // 3. 결과 검증
     for key := range result {

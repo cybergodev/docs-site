@@ -126,6 +126,9 @@ defer processor.Close()
 | MaxJSONSize | 100MB | Ограничение размера JSON |
 | MaxNestingDepthSecurity | 200 | Глубина вложенности |
 | MaxPathDepth | 50 | Глубина пути |
+| MaxSecurityValidationSize | 10MB | Максимальный размер проверки безопасности |
+| MaxObjectKeys | 100000 | Максимальное количество ключей объекта |
+| MaxArrayElements | 100000 | Максимальное количество элементов массива |
 | MaxConcurrency | 50 | Уровень параллелизма |
 | MaxBatchSize | 2000 | Количество пакетных операций |
 | CacheTTL | 5 минут | Время жизни кэша |
@@ -133,6 +136,8 @@ defer processor.Close()
 | EnableCache | true | Включить кэширование |
 | CacheResults | true | Кэшировать результаты операций |
 | EnableValidation | true | Включить валидацию |
+| StrictMode | false | Нестрогий режим |
+| FullSecurityScan | false | Выборочное сканирование безопасности (не полное) |
 | ValidateInput | true | Валидация ввода |
 | ValidateFilePath | true | Валидация пути к файлу |
 | CreatePaths | true | Автоматическое создание путей |

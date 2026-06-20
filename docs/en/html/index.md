@@ -1,6 +1,6 @@
 ---
 title: "HTML - Production-Grade HTML Content Extraction"
-description: "Production-grade HTML extraction library for Go with article recognition, encoding detection, link extraction, batch processing, and multi-format output."
+description: "Production-grade Go HTML extraction library: article recognition, 15+ encoding detection, link extraction, batch processing, pluggable audit, and text/Markdown/JSON output."
 ---
 
 # HTML

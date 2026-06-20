@@ -1,6 +1,6 @@
 ---
 title: "Result - HTTPC"
-description: "HTTPC Result 响应类型 API 参考：StatusCode/Body/RawBody 基础方法、状态判断、Cookie 操作、Unmarshal JSON 解析、SaveToFile 文件保存与 RequestInfo/ResponseInfo/RequestMeta 子类型。Result 自动池化，GC 自动回收。"
+description: "HTTPC Result 响应类型 API 参考：StatusCode/Body/RawBody 基础方法、状态判断、Cookie 操作、Unmarshal JSON 解析、SaveToFile 文件保存与 RequestInfo/ResponseInfo/RequestMeta 子类型。"
 ---
 
 # Result

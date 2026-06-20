@@ -7,6 +7,14 @@ description: "Link extraction API for CyberGo HTML, including ExtractAllLinks an
 
 Standalone link extraction API that can extract all link resources from HTML and group them by type.
 
+:::tip Key difference from Extract
+`ExtractAllLinks` does **not** apply HTML sanitization (`EnableSanitization` has no effect here), so resource links inside tags such as `<script src>`, `<iframe>`, `<link>`, and `<embed>` are extracted in full. This lets those resource links be enumerated — in the `Extract` path they are normally removed during sanitization.
+:::
+
+:::info Result ordering and deduplication
+`ExtractAllLinks` returns results **sorted by URL ascending** and deduplicated by URL. Calling it repeatedly on the same input therefore yields identical output (since v1.4.2), which eases result comparison, cache reuse, and reproducible downstream processing. When the same URL appears in multiple tags, only one record is kept.
+:::
+
 ## Package Functions
 
 ```go

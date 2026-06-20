@@ -337,8 +337,8 @@ case errors.Is(err, env.ErrForbiddenKey):
     log.Fatal("禁止キーを検出")
 
 case errors.Is(err, env.ErrInvalidKey):
-    // 无效键格式
-    log.Fatal("检测到无效键")
+    // 無効なキーフォーマット
+    log.Fatal("無効なキーを検出")
 
 case err != nil:
     // その他のエラー
@@ -486,7 +486,6 @@ package main
 
 import (
     "errors"
-    "fmt"
     "log"
 
     "github.com/cybergodev/env"

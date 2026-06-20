@@ -1,6 +1,6 @@
 ---
 title: "Production Checklist - HTML"
-description: "Production security checklist for CyberGo HTML, covering HighSecurityConfig preset, Processor lifecycle, audit configuration, and timeout control."
+description: "CyberGo HTML production security checklist: HighSecurityConfig preset, Processor lifecycle, audit and monitoring, context timeouts, error handling, and resource/file safety."
 ---
 
 # Production Checklist

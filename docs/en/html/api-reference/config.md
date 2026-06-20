@@ -26,6 +26,7 @@ description: "Config reference for CyberGo HTML, covering resource management, s
 |-------|------|---------|-------------|
 | `EnableSanitization` | `bool` | `true` | Enable content sanitization; can be disabled only for trusted input |
 | `MaxDepth` | `int` | `500` | Maximum DOM depth |
+| `AllowedBaseDir` | `string` | `""` | Restricts file operations to this directory; empty (default) means no restriction. Use it when accepting untrusted file-path input |
 | `Audit` | `AuditConfig` | `DefaultAuditConfig()` | Audit configuration |
 
 ### Content Extraction

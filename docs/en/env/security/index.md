@@ -46,7 +46,7 @@ password := env.GetString("DB_PASSWORD")
 // Recommended
 secret := env.GetSecure("DB_PASSWORD")
 defer secret.Close()
-password := secret.String()
+password := secret.Reveal()  // Call only when plaintext is needed
 ```
 
 **Core capabilities:**

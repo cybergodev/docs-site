@@ -1,6 +1,6 @@
 ---
 title: "テストとカスタム拡張 - HTML"
-description: "CyberGo HTML テストとカスタム拡張ガイド。カスタム Scorer スコアラーの実装、ContentNode インターフェースの走査、テストモードの設定、mock HTML データの準備、Extractor インターフェースのモック、一般的な拡張シナリオの完全な実行可能コード例を含み、信頼性の高いテスト体制と拡張機能の構築をサポートします。"
+description: "CyberGo HTML テスト・拡張ガイド：カスタム Scorer 実装、ContentNode 走査、テストモード、mock HTML データ、Extractor モック、一般的な拡張シナリオの完全な実行可能コード例を詳しく説明します。"
 ---
 
 # テストとカスタム拡張

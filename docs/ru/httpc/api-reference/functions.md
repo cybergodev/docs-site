@@ -1,6 +1,6 @@
 ---
 title: "Функции пакета - HTTPC"
-description: "Справочник API функций пакета и методов клиента HTTPC: семь HTTP-методов Get/Post, создание клиента New, четыре функции загрузки, SetSecurityWarnOutput для предупреждений безопасности и NewDomain для создания доменного клиента."
+description: "Справочник API функций пакета и методов клиента HTTPC: семь HTTP-методов Get/Post, создание клиента New, единый вход загрузки Download, SetSecurityWarnOutput для предупреждений безопасности, инструменты форматирования FormatBytes/FormatSpeed и NewDomain для создания доменного клиента."
 ---
 
 # Функции пакета
@@ -144,31 +144,17 @@ func CloseDefaultClient() error
 
 ## Функции загрузки
 
-Функции загрузки уровня пакета используют клиент по умолчанию. Интерфейс Client также предоставляет одноимённые методы.
+Функции загрузки уровня пакета используют клиент по умолчанию. Интерфейс Client и DomainClient также предоставляют одноимённые методы с идентичной сигнатурой.
 
-### DownloadFile
-
-```go
-func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-Загружает файл по указанному пути с использованием клиента по умолчанию.
+### Download
 
 ```go
-// Функция пакета
-result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
-
-// Метод интерфейса Client
-result, err := client.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
+func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-### DownloadWithOptions
+`Download` — **единый канонический вход для загрузки** на уровне пакета, интерфейса `Client` и `DomainClient`, заменяющий прежнюю матрицу вариантов `{config}` × `{context}` одной сигнатурой.
 
-```go
-func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-Загрузка файла с конфигурацией, поддерживающая докачку и обратный вызов прогресса.
+`cfg` не может быть nil, и `cfg.FilePath` должен быть задан (иначе возвращается `ErrEmptyFilePath`). Если управление отменой или таймаутом не требуется, передавайте `context.Background()`; параметры запроса служат для установки заголовков, аутентификации, параметров запроса и т. п.
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -179,41 +165,19 @@ cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r%.1f%%", float64(downloaded)/float64(total)*100)
 }
 
-// Функция пакета
-result, err := httpc.DownloadWithOptions(url, cfg)
+// Функция пакета (использует клиент по умолчанию)
+result, err := httpc.Download(context.Background(), url, cfg)
+
 // Метод интерфейса Client
-result, err = client.DownloadWithOptions(url, cfg)
+result, err = client.Download(ctx, url, cfg)
+
+// Метод DomainClient (path относительно baseURL, Cookie ответа фиксируется автоматически)
+result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
-### DownloadFileWithContext
-
-```go
-func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-Загрузка файла с управлением контекстом, поддерживающая таймаут и отмену.
-
-```go
-// Функция пакета
-result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
-// Метод интерфейса Client
-result, err = client.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
-```
-
-### DownloadWithOptionsWithContext
-
-```go
-func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-Загрузка файла с конфигурацией и управлением контекстом.
-
-```go
-// Функция пакета
-result, err := httpc.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
-// Метод интерфейса Client
-result, err = client.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
-```
+:::tip Замечание о миграции
+Старые `DownloadFile`, `DownloadWithOptions`, `DownloadFileWithContext` и `DownloadWithOptionsWithContext` удалены в v1.5.2. Используйте единый `Download(ctx, url, cfg, options...)`, настраивая путь, перезапись, возобновление и контрольную сумму через `DownloadConfig`.
+:::
 
 ## Вспомогательные функции
 
@@ -235,6 +199,62 @@ httpc.SetSecurityWarnOutput(log.Writer())
 
 :::warning
 Эта функция в основном предназначена для тестирования. В продакшене следует использовать `SecureConfig()` или `DefaultConfig()`, а не подавлять предупреждения.
+:::
+
+## Инструменты форматирования
+
+### FormatBytes
+
+```go
+func FormatBytes(bytes int64) string
+```
+
+Форматирует количество байт в человекочитаемую строку (например, `"1.50 KB"`, `"500 B"`). Часто используется для отображения результатов загрузки и в логах.
+
+```go
+result, _ := httpc.Download(context.Background(), url, cfg)
+fmt.Printf("Загружено %s\n", httpc.FormatBytes(result.BytesWritten))
+// Загружено 12.34 MB
+```
+
+| Ввод | Вывод |
+|------|-------|
+| `500` | `500 B` |
+| `1536` | `1.50 KB` |
+| `1048576` | `1.00 MB` |
+| `1073741824` | `1.00 GB` |
+
+### FormatSpeed
+
+```go
+func FormatSpeed(bytesPerSecond float64) string
+```
+
+Форматирует скорость байт/сек в человекочитаемую строку (например, `"1.50 MB/s"`). Часто используется совместно с `DownloadResult.AverageSpeed` или параметром `speed` из `DownloadProgressCallback`.
+
+```go
+result, _ := httpc.Download(context.Background(), url, cfg)
+fmt.Printf("Средняя скорость %s\n", httpc.FormatSpeed(result.AverageSpeed))
+// Средняя скорость 5.67 MB/s
+
+// Использование в обратном вызове прогресса
+cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
+    fmt.Printf("\r%s / %s (%s)",
+        httpc.FormatBytes(downloaded),
+        httpc.FormatBytes(total),
+        httpc.FormatSpeed(speed),
+    )
+}
+```
+
+| Ввод (байт/сек) | Вывод |
+|-----------------|-------|
+| `500` | `500 B/s` |
+| `1536` | `1.50 KB/s` |
+| `1048576` | `1.00 MB/s` |
+
+:::tip
+Обе функции используют двоичные единицы (основание 1024), последовательность единиц: `B → KB → MB → GB → TB → PB → EB`.
 :::
 
 ## Доменный клиент

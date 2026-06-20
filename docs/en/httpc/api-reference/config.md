@@ -9,15 +9,19 @@ description: "HTTPC configuration system API reference: Config main struct and a
 
 ```go
 type Config struct {
-    Timeouts   TimeoutConfig
-    Connection ConnectionConfig
-    Security   SecurityConfig
-    Retry      RetryConfig
-    Middleware MiddlewareConfig
+    Timeouts   *TimeoutConfig
+    Connection *ConnectionConfig
+    Security   *SecurityConfig
+    Retry      *RetryConfig
+    Middleware *MiddlewareConfig
 }
 ```
 
 Main configuration struct. Use `DefaultConfig()` to get secure defaults.
+
+:::tip Sub-configs are pointers
+Since v1.5.1, the five sub-configs are all **pointer types**. `DefaultConfig()` and all preset functions (`SecureConfig`, `PerformanceConfig`, etc.) automatically initialize these pointers to non-nil structs, so field accesses like `cfg.Timeouts.Request` and `cfg.Security.AllowPrivateIPs` can be used directly. If you construct a `Config{}` literal manually, assign values using the `&httpc.TimeoutConfig{...}` form, and ensure the pointer is non-nil before use.
+:::
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -84,22 +88,51 @@ Default DoH providers (by priority): Cloudflare -> Google -> AliDNS. See [Connec
 
 ```go
 type SecurityConfig struct {
-    TLSConfig               *tls.Config    // Custom TLS configuration
-    MinTLSVersion           uint16         // Minimum TLS version, default TLS 1.2
-    MaxTLSVersion           uint16         // Maximum TLS version, default TLS 1.3
-    InsecureSkipVerify      bool           // Skip certificate verification (testing only)
-    MaxResponseBodySize     int64          // Response body size limit, default 10MB
-    MaxRequestBodySize      int64          // Request body size limit, default 0 (uses MaxResponseBodySize value)
-    MaxDecompressedBodySize int64          // Decompressed body size limit, default 100MB
-    AllowPrivateIPs         bool           // Allow private IPs, default false
-    SSRFExemptCIDRs         []string       // SSRF exempt CIDRs
-    ValidateURL             bool           // URL validation, default true
-    ValidateHeaders         bool           // Header validation, default true
-    StrictContentLength     bool           // Strict Content-Length, default true
+    TLSConfig               *tls.Config           // Custom TLS configuration
+    MinTLSVersion           uint16                // Minimum TLS version, default TLS 1.2
+    MaxTLSVersion           uint16                // Maximum TLS version, default TLS 1.3
+    InsecureSkipVerify      bool                  // Skip certificate verification (testing only)
+    MaxResponseBodySize     int64                 // Response body size limit, default 10MB
+    MaxRequestBodySize      int64                 // Request body size limit, default 0 (no limit on request body size; unlike MaxResponseBodySize, no automatic fallback)
+    MaxDecompressedBodySize int64                 // Decompressed body size limit, default 100MB
+    AllowPrivateIPs         bool                  // Allow private IPs, default false
+    SSRFExemptCIDRs         []string              // SSRF exempt CIDRs
+    ValidateURL             bool                  // URL validation, default true
+    ValidateHeaders         bool                  // Header validation, default true
+    StrictContentLength     bool                  // Strict Content-Length, default true
     CookieSecurity          *CookieSecurityConfig // Cookie security validation
-    RedirectWhitelist       []string       // Redirect whitelist domains
+    CertificatePinner       CertificatePinner     // Certificate pinning (SPKI hash/public key), default nil (disabled)
+    RedirectWhitelist       []string              // Redirect whitelist domains
 }
 ```
+
+### Certificate Pinning (CertificatePinner)
+
+`CertificatePinner` enables certificate pinning: the TLS handshake is rejected when the server does not present a pinned key/certificate, defending against man-in-the-middle attacks even if a trusted CA is compromised. Defaults to `nil` (disabled). Create one with the following constructors:
+
+| Constructor | Description |
+|-------------|-------------|
+| `NewSPKIHashPinner(hashes ...string) (CertificatePinner, error)` | Create from one or more base64-encoded SPKI SHA-256 hashes (most common; supports key rotation) |
+| `NewPublicKeyPinner(publicKeys ...[]byte) (CertificatePinner, error)` | Create from DER-encoded PKIX public keys (SHA-256 computed internally) |
+| `NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner` | Combine multiple pinners; accepts if any passes |
+
+```go
+pinner, err := httpc.NewSPKIHashPinner(
+    "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2fuihg=", // current key
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // backup key (rotation)
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+cfg := httpc.DefaultConfig()
+cfg.Security.CertificatePinner = pinner
+client, err := httpc.New(cfg)
+```
+
+:::warning Maintenance cost
+Certificate pinning requires the pinned value to be updated in sync when the server rotates its certificate (e.g. Let's Encrypt renewal). Pin multiple hashes (current + backup) and establish an update workflow to avoid connection outages caused by key rotation.
+:::
 
 :::warning SSRF Protection
 `AllowPrivateIPs` defaults to `false`, blocking connections to private/reserved IPs (127.0.0.1, 10.x, 192.168.x, etc.). Only set to `true` when connecting to internal services.

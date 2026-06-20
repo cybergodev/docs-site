@@ -160,7 +160,7 @@ fmt.Println("Тип:", result.Type)
 | `AsInt()` | `(int, error)` | Преобразует в целое число (bool не преобразуется) |
 | `AsFloat64()` | `(float64, error)` | Преобразует в float64 (bool не преобразуется) |
 | `AsBool()` | `(bool, error)` | Преобразует в логическое значение |
-| `Ok()` | `bool` | Проверяет, действителен ли результат (путь существует и нет ошибок) |
+| `Ok()` | `bool` | Проверяет, существует ли значение (возвращает `Exists`) |
 
 ::: warning Примечание
 Методы `AsInt64()`, `AsArray()`, `AsObject()` удалены. Используйте `GetTyped[T]` для получения этих типов.
@@ -289,6 +289,36 @@ schema := json.NewSchemaWithConfig(cfg)
 schema := json.DefaultSchema()
 schema.Type = "object"
 schema.Required = []string{"id"}
+```
+
+### Структура SchemaConfig
+
+```go
+type SchemaConfig struct {
+    Type                 string
+    Properties           map[string]*Schema
+    Items                *Schema
+    Required             []string
+    MinLength            *int
+    MaxLength            *int
+    Minimum              *float64
+    Maximum              *float64
+    Pattern              string
+    Format               string
+    AdditionalProperties *bool
+    MinItems             *int
+    MaxItems             *int
+    UniqueItems          bool
+    Enum                 []any
+    Const                any
+    MultipleOf           *float64
+    ExclusiveMinimum     *bool
+    ExclusiveMaximum     *bool
+    Title                string
+    Description          string
+    Default              any
+    Examples             []any
+}
 ```
 
 ### Пример использования
@@ -469,6 +499,18 @@ if err != nil {
 name, _ := processor.GetFromParsed(parsed, "user.name")
 age, _ := processor.GetFromParsed(parsed, "user.age")
 ```
+
+### Сценарии использования
+
+| Сценарий | Описание |
+|------|------|
+| Высокочастотные запросы | Избегание повторного разбора при многократных запросах к одному JSON |
+| Пакетное получение путей | Использование `GetMultiple` для пакетного получения нескольких путей |
+| Оптимизация производительности | Значительный рост производительности запросов после предварительного разбора |
+
+::: tip Подсказка по производительности
+Для сценариев, требующих многократных запросов к одной строке JSON, использование `PreParse` для предварительного разбора может значительно повысить производительность, избегая накладных расходов на повторный разбор.
+:::
 
 ---
 

@@ -581,7 +581,6 @@ package main
 import (
     "fmt"
     "log"
-    "os"
 
     "github.com/cybergodev/env"
 )

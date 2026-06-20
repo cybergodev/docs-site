@@ -121,8 +121,8 @@ Schema 验证错误。
 
 ```go
 type ValidationError struct {
-    Path       string // 错误路径
-    Message    string // 错误消息
+    Path       string `json:"path"`    // 错误路径
+    Message    string `json:"message"` // 错误消息
 }
 
 func (ve *ValidationError) Error() string

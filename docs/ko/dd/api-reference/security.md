@@ -54,11 +54,16 @@ filter, _ := dd.NewCustomSensitiveDataFilter(
 
 ```go
 type SecurityConfig struct {
-    MaxMessageSize  int                  // 메시지 크기 상한 (바이트, 0은 제한 없음, 사전 설정 기본값 5MB)
-    MaxWriters      int                  // 최대 Writer 수 (사전 설정 기본값 100)
-    SensitiveFilter *SensitiveDataFilter // 민감 데이터 필터
+    MaxMessageSize  int                       // 메시지 크기 상한 (바이트, 0은 제한 없음, 사전 설정 기본값 5MB)
+    MaxWriters      int                       // 최대 Writer 수 (사전 설정 기본값 100)
+    SensitiveFilter *SensitiveDataFilter      // 민감 데이터 필터
+    RateLimitConfig *internal.RateLimitConfig // 속도 제한 설정 (내부 타입, 사전 설정으로 자동 채움, nil은 속도 제한 비활성화)
 }
 ```
+
+:::info RateLimitConfig 정보
+`RateLimitConfig`는 로그 속도 제한을 관리하여 로그 홍수(DoS)를 방지하고 고부하 상황에서 시스템 안정성을 유지합니다. 이 필드는 내부 타입(`*internal.RateLimitConfig`)이므로 직접 생성할 수 없으며, 일반적으로 `SecurityConfigForLevel`, `DefaultSecureConfig` 등의 사전 설정에 의해 자동으로 채워집니다. 속도 제한을 비활성화하려면 `nil`로 설정하세요.
+:::
 
 ### FilterStats
 

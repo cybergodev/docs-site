@@ -71,15 +71,17 @@ result, err := dc.Request(ctx, "GET", "/users", options...)
 ## Методы загрузки
 
 ```go
-// Базовая загрузка
-result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
+func (dc *DomainClient) Download(ctx context.Context, path string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
+```
 
-// Загрузка с конфигурацией
-result, err := dc.DownloadWithOptions("/files/report.pdf", downloadOpts)
+Загружает файл в `cfg.FilePath`, при этом `path` присоединяется к `baseURL`. Сигнатура совпадает с пакетной `Download` и `Client.Download` — `Download` является единым каноническим входом для загрузки во всех трёх случаях. `cfg` не может быть nil, `cfg.FilePath` должен быть задан (иначе возвращается `ErrEmptyFilePath`).
 
-// С контекстом
-result, err := dc.DownloadFileWithContext(ctx, "/files/report.pdf", "/tmp/report.pdf")
-result, err := dc.DownloadWithOptionsWithContext(ctx, "/files/report.pdf", downloadOpts)
+```go
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/report.pdf"
+cfg.Overwrite = true
+
+result, err := dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
 Cookie ответа при загрузке автоматически фиксируются в сессии.

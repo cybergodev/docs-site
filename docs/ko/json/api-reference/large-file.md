@@ -256,6 +256,13 @@ import (
     "github.com/cybergodev/json"
 )
 
+// User는 사용자 레코드를 나타냅니다 (샘플 데이터 모델)
+type User struct {
+    ID    int
+    Name  string
+    Email string
+}
+
 func main() {
     p, err := json.New()
     if err != nil {

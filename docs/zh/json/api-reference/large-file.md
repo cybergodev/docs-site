@@ -256,6 +256,13 @@ import (
     "github.com/cybergodev/json"
 )
 
+// User 表示用户记录（示例数据模型）
+type User struct {
+    ID    int
+    Name  string
+    Email string
+}
+
 func main() {
     p, err := json.New()
     if err != nil {

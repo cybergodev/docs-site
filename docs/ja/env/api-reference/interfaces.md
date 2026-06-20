@@ -76,9 +76,9 @@ func readConfig(getter env.EnvGetter) {
 
 ```go
 func readFullConfig(loader *env.Loader) {
-    port := loader.GetInt("PORT", 8080)      // ✓ 可用
-    debug := loader.GetBool("DEBUG", false)  // ✓ 可用
-    count := loader.Len()                     // ✓ 可用
+    port := loader.GetInt("PORT", 8080)      // ✓ 利用可能
+    debug := loader.GetBool("DEBUG", false)  // ✓ 利用可能
+    count := loader.Len()                     // ✓ 利用可能
 }
 ```
 :::
@@ -237,7 +237,7 @@ type FullAuditLogger interface {
 
 **用途：** 完全な監査ログ機能。`ComponentFactory.Auditor()` はこのインターフェースを返します。
 
-**方法说明：**
+**メソッド詳細：**
 
 | 方法 | 用途 |
 |------|------|
@@ -335,7 +335,7 @@ type EnvStorage interface {
 
 **用途：** カスタムストレージバックエンド。
 
-**方法说明：**
+**メソッド詳細：**
 
 | 方法 | 用途 |
 |------|------|
@@ -372,7 +372,7 @@ func (l LogLevel) MarshalEnv() ([]byte, error) {
 
 // 使用
 level := LogLevel("debug")
-env.Marshal(level)  // 调用 MarshalEnv
+env.Marshal(level)  // MarshalEnv を呼び出し
 ```
 
 ---
@@ -404,7 +404,7 @@ func (c *Config) UnmarshalEnv(data map[string]string) error {
 
 // 使用
 var cfg Config
-env.UnmarshalInto(data, &cfg)  // 调用 UnmarshalEnv
+env.UnmarshalInto(data, &cfg)  // UnmarshalEnv を呼び出し
 ```
 
 ---
@@ -438,15 +438,15 @@ type MockFileSystem struct {
     env   map[string]string
 }
 
-// MockFile 实现 env.File 接口（テスト用）
+// MockFile は env.File インターフェースを実装（テスト用）
 type MockFile struct {
     reader *strings.Reader
 }
 
 func (f *MockFile) Read(p []byte) (n int, err error)   { return f.reader.Read(p) }
-func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, os.ErrUnsupported }
+func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, errors.ErrUnsupported }
 func (f *MockFile) Close() error                       { return nil }
-func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, os.ErrUnsupported }
+func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, errors.ErrUnsupported }
 func (f *MockFile) Sync() error                        { return nil }
 
 func (m *MockFileSystem) Open(name string) (env.File, error) {
@@ -493,7 +493,7 @@ cfg.FileSystem = &MockFileSystem{
 
 ### File
 
-文件接口：
+ファイルインターフェース：
 
 ```go
 type File interface {
@@ -505,7 +505,7 @@ type File interface {
 }
 ```
 
-**方法说明：**
+**メソッド詳細：**
 
 | 方法 | 用途 |
 |------|------|
@@ -657,7 +657,7 @@ type AuditEvent = internal.Event
 
 **フィールド：**
 
-| 字段 | 类型 | 说明 |
+| フィールド | 型 | 説明 |
 |------|------|------|
 | `Timestamp` | `time.Time` | タイムスタンプ |
 | `Action` | `AuditAction` | 操作タイプ |
@@ -704,7 +704,6 @@ package main
 
 import (
     "fmt"
-    "time"
 
     "github.com/cybergodev/env"
 )

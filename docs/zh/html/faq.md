@@ -64,9 +64,13 @@ md, _ := p.ExtractToMarkdown(data)
 可能的原因：
 
 1. **HTML 结构问题** - 内容在 `<script>` 或 `<style>` 标签中
-2. **深度超出** - DOM 嵌套超过 `MaxDepth` 限制
-3. **输入为空** - 检查输入字节数组是否为空
+2. **清洗后内容为空** - 若正文仅存在于被清洗移除的标签（如 `<iframe>`、`<object>`）中，结果可能为空；可对可信输入临时设置 `EnableSanitization = false` 排查
+3. **输入为空** - 检查输入字节数组是否为空（空白内容会返回空 `Result`）
 4. **文章识别** - 尝试关闭 `ExtractArticle` 看是否能提取
+
+:::tip 注意区分错误与空结果
+DOM 嵌套超过 `MaxDepth` 不会产生空文本，而是返回 `ErrMaxDepthExceeded` 错误。若调用返回了 `error`，请优先用 `errors.Is` 判断错误类型，而非检查文本是否为空。
+:::
 
 ```go
 cfg := html.DefaultConfig()

@@ -1,6 +1,6 @@
 ---
 title: "よくある質問 - HTTPC"
-description: "HTTPC よくある質問：パッケージ関数とクライアントインスタンスの選び方、5 つの設定プリセットの比較と適用シナリオ、HTTP/SOCKS5 プロキシと DoH の設定方法、errors.Is/As エラーマッチングパターンと 4 段階タイムアウト体系のチューニング戦略を詳しく解説します。"
+description: "HTTPC よくある質問：パッケージ関数とクライアントインスタンスの選び方、5 つの設定プリセットの比較と適用シナリオ、HTTP/SOCKS5 プロキシと DoH の設定方法、Cookie セッション管理とリトライ設定、ファイルダウンロードのレジューム、errors.Is/As エラーマッチングパターンと 4 段階タイムアウト体系のチューニング戦略を詳しく解説します。"
 ---
 
 # よくある質問
@@ -38,7 +38,7 @@ defer client.Close()
 cfg := httpc.DefaultConfig()
 cfg.Security.AllowPrivateIPs = true // 全プライベート IP を許可
 
-// または精密な豁免
+// または精密な免除
 cfg.Security.SSRFExemptCIDRs = []string{"10.0.0.0/8"}
 ```
 

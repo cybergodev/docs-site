@@ -54,11 +54,16 @@ filter, _ := dd.NewCustomSensitiveDataFilter(
 
 ```go
 type SecurityConfig struct {
-    MaxMessageSize  int                  // 消息大小上限（字节，0 表示不限制，预设配置默认 5MB）
-    MaxWriters      int                  // 最大 Writer 数量（预设配置默认 100）
-    SensitiveFilter *SensitiveDataFilter // 敏感数据过滤器
+    MaxMessageSize  int                       // 消息大小上限（字节，0 表示不限制，预设配置默认 5MB）
+    MaxWriters      int                       // 最大 Writer 数量（预设配置默认 100）
+    SensitiveFilter *SensitiveDataFilter      // 敏感数据过滤器
+    RateLimitConfig *internal.RateLimitConfig // 速率限制配置（内部类型，由预设配置自动填充，nil 表示禁用限流）
 }
 ```
+
+:::info 关于 RateLimitConfig
+`RateLimitConfig` 控制日志速率限制，用于防止日志洪泛（DoS）并维持系统在高负载下的稳定性。该字段为内部类型（`*internal.RateLimitConfig`），无法直接构造，通常由 `SecurityConfigForLevel`、`DefaultSecureConfig` 等预设配置自动填充。如需关闭限流，将其置为 `nil` 即可。
+:::
 
 ### FilterStats
 

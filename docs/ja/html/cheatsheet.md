@@ -1,6 +1,6 @@
 ---
 title: "チートシート - HTML"
-description: "CyberGo HTML ライブラリのよく使う API チートシート。パッケージ関数（Extract、ExtractText、ExtractToMarkdown など）、Processor メソッド、4 種類の設定プリセット、よく使う設定項目、エラータイプ判定、監査システム設定を 1 ページで網羅し、日々の開発で素早く必要な関数シグネチャと使い方を検索できます。"
+description: "CyberGo HTML API チートシート：パッケージ関数（Extract など）、Processor メソッド、4 種の設定プリセット、主要設定項目、エラー判定、監査設定を 1 ページにまとめ、シグネチャと使い方を素早く検索できます。"
 ---
 
 # チートシート

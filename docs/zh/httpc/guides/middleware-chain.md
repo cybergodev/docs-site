@@ -199,7 +199,7 @@ func CircuitBreakerMiddleware(threshold int) httpc.MiddlewareFunc {
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Middleware = httpc.MiddlewareConfig{
+cfg.Middleware = &httpc.MiddlewareConfig{
     Middlewares: []httpc.MiddlewareFunc{
         httpc.RecoveryMiddleware(),
         httpc.LoggingMiddleware(log.Printf),

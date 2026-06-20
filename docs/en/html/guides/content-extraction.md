@@ -12,9 +12,11 @@ This guide helps you understand how HTML content extraction works and best pract
 When you call `Extract`, the library performs the following steps:
 
 ```text
-HTML Input → Encoding Detection (auto-convert to UTF-8) → Sanitization → DOM Parsing → Depth Validation
-    → Article Recognition (optional) → Content Extraction → Formatting → Return Result
+HTML input → input validation → encoding detection (auto-convert to UTF-8) → DOM parsing → depth validation
+    → safe sanitization (optional) → article detection (optional) → content extraction → formatting → return Result
 ```
+
+Depth validation runs **before** sanitization: it first validates the DOM depth iteratively (avoiding stack overflow from recursive traversal), then performs safe sanitization on the parsed DOM tree. Both operate on the parsed node tree, so DOM parsing always precedes both of them.
 
 Each step can be customized via [Configuration](../api-reference/config).
 

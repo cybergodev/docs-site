@@ -143,29 +143,37 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 - グローバル context または goroutine-local ストレージから静的フィールドを抽出
 - HTTP ミドルウェアと組み合わせてトレーシングフィールドを `WithFields` に手動渡し
 
-### 推奨パターン：ミドルウェア + WithFields
+### カスタムエクストラクタの例
 
 ```go
-// HTTP ミドルウェアでトレーシングフィールドを手動渡し
-func TracingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
-    return func(next http.Handler) http.Handler {
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            traceID := r.Header.Get("X-Trace-ID")
-            if traceID == "" {
-                traceID = uuid.New().String()
-            }
-
-            // トレーシングフィールドをリクエストスコープログに注入
-            reqLog := logger.WithFields(
-                dd.String("trace_id", traceID),
-                dd.String("path", r.URL.Path),
-            )
-
-            next.ServeHTTP(w, r)
-            reqLog.Info("リクエスト完了")
-        })
+// カスタムエクストラクタ：すべてのログに静的/グローバルメタデータを付与
+func tenantExtractor(ctx context.Context) []dd.Field {
+    return []dd.Field{
+        dd.String("service", "order-service"),
+        dd.String("env", os.Getenv("APP_ENV")),
     }
 }
+
+// エクストラクタを登録
+logger.AddContextExtractor(tenantExtractor)
+```
+
+:::warning コンテキストの制限
+`ContextExtractor` 関数はリクエストスコープの context ではなく `context.Background()` を受け取ります。リクエストごとのトレース ID を付与するには、上記の `WithFields()` パターンを使用してリクエストスコープの `LoggerEntry` を作成してください。
+:::
+
+### 複数エクストラクタの組み合わせ
+
+```go
+// 異なるグローバルメタデータを収集するため複数のエクストラクタを登録
+logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
+    return []dd.Field{
+        dd.String("hostname", getHostname()),
+        dd.String("version", buildVersion),
+    }
+})
+
+logger.AddContextExtractor(tenantExtractor)
 ```
 
 ## マイクロサービス間伝播

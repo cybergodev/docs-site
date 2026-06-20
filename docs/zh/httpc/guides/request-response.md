@@ -219,7 +219,7 @@ result, err := httpc.Request(ctx, "GET", url)
 `WithStreamBody(true)` 是内部机制，用于文件下载时避免将完整响应体缓存到内存。启用后响应体不会被读取到 `Result` 中（`Body()` 和 `RawBody()` 返回空值）。
 
 :::warning
-`WithStreamBody(true)` 由文件下载 API 内部使用（`DownloadFile`、`DownloadWithOptions`）。如需流式获取响应内容，请使用[文件下载 API](./file-transfer)。
+`WithStreamBody(true)` 由文件下载 API 内部使用。如需流式获取响应内容，请使用[文件下载 API](./file-transfer)。
 :::
 
 如需下载大文件，请使用下载 API：
@@ -227,7 +227,7 @@ result, err := httpc.Request(ctx, "GET", url)
 ```go
 cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/path/to/file"
-result, err := client.DownloadWithOptions(url, cfg)
+result, err := client.Download(context.Background(), url, cfg)
 ```
 
 ## 响应解压

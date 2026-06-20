@@ -160,7 +160,7 @@ fmt.Println("型:", result.Type)
 | `AsInt()` | `(int, error)` | 整数に変換（bool は変換しない） |
 | `AsFloat64()` | `(float64, error)` | float64 に変換（bool は変換しない） |
 | `AsBool()` | `(bool, error)` | ブーリアンに変換 |
-| `Ok()` | `bool` | 結果が有効かチェック（パスが存在し、エラーがない場合） |
+| `Ok()` | `bool` | 値が存在するか確認（`Exists` を返す） |
 
 ::: warning 注意
 `AsInt64()`, `AsArray()`, `AsObject()` メソッドは削除されました。これらの型を取得するには `GetTyped[T]` を使用してください。

@@ -143,29 +143,37 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 - 从全局 context 或 goroutine-local 存储提取静态字段
 - 结合 HTTP 中间件手动将追踪字段传递给 `WithFields`
 
-### 推荐模式：中间件 + WithFields
+### 自定义提取器示例
 
 ```go
-// HTTP 中间件中手动传递追踪字段
-func TracingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
-    return func(next http.Handler) http.Handler {
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            traceID := r.Header.Get("X-Trace-ID")
-            if traceID == "" {
-                traceID = uuid.New().String()
-            }
-
-            // 将追踪字段注入请求作用域日志
-            reqLog := logger.WithFields(
-                dd.String("trace_id", traceID),
-                dd.String("path", r.URL.Path),
-            )
-
-            next.ServeHTTP(w, r)
-            reqLog.Info("请求完成")
-        })
+// 自定义提取器：为每条日志附加静态/全局元数据
+func tenantExtractor(ctx context.Context) []dd.Field {
+    return []dd.Field{
+        dd.String("service", "order-service"),
+        dd.String("env", os.Getenv("APP_ENV")),
     }
 }
+
+// 注册提取器
+logger.AddContextExtractor(tenantExtractor)
+```
+
+:::warning 上下文限制
+`ContextExtractor` 函数接收的是 `context.Background()`，而非请求作用域的 context。如需附加每次请求的追踪 ID，请使用上文 `WithFields()` 模式创建请求作用域的 `LoggerEntry`。
+:::
+
+### 组合多个提取器
+
+```go
+// 注册多个提取器以收集不同的全局元数据
+logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
+    return []dd.Field{
+        dd.String("hostname", getHostname()),
+        dd.String("version", buildVersion),
+    }
+})
+
+logger.AddContextExtractor(tenantExtractor)
 ```
 
 ## 微服务间传播

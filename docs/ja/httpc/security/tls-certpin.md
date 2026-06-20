@@ -1,6 +1,6 @@
 ---
 title: "TLS と証明書ピンニング - HTTPC"
-description: "HTTPC TLS と証明書ピンニングガイド：TLS 1.2-1.3 バージョン制御と暗号スイート、カスタム CA 証明書の読み込み、mTLS 双方向認証、VerifyPeerCertificate SPKI 公開鍵ピンニング戦略、InsecureSkipVerify 警告と HTTP/2 ネゴシエーション。"
+description: "HTTPC TLS と証明書ピンニングガイド：TLS 1.2-1.3 バージョン制御と暗号スイート、カスタム CA 証明書の読み込み、mTLS 双方向認証、CertificatePinner 証明書ピンニング API（SPKI ハッシュ/公開鍵/チェイン）、VerifyPeerCertificate カスタム検証と HTTP/2 ネゴシエーション。"
 ---
 
 # TLS と証明書ピンニング
@@ -81,32 +81,74 @@ client, _ := httpc.New(cfg)
 
 証明書ピンニング（Certificate Pinning）は、サーバー証明書の公開鍵ハッシュを検証することで中間者攻撃を防止します。
 
-### SPKI ハッシュピンニング
+### SPKI ハッシュピンニング（推奨）
 
-最も一般的なピンニング方式で、証明書チェーン内の任意の証明書の SPKI ハッシュを検証します：
+最も一般的なピンニング方式です。`NewSPKIHashPinner` を使い、サーバー証明書チェーン内のいずれかの証明書の SPKI（SubjectPublicKeyInfo）SHA-256 ハッシュを検証します。複数のハッシュを指定すれば鍵のローテーションに対応でき、いずれかが一致すれば通過します。
+
+SPKI ハッシュの生成：
+
+```bash
+openssl x509 -in cert.pem -pubkey -noout | \
+  openssl pkey -pubin -outform der | \
+  openssl dgst -sha256 -binary | \
+  openssl enc -base64
+```
+
+Let's Encrypt 中間証明書をピンニング（中間証明書の固定が、セキュリティと運用コストのバランスが良く推奨されます）：
 
 ```go
-// SPKI ハッシュの生成：
-// openssl x509 -in cert.pem -pubkey -noout | \
-//   openssl pkey -pubin -outform der | \
-//   openssl dgst -sha256 -binary | \
-//   openssl enc -base64
+pinner, err := httpc.NewSPKIHashPinner(
+    "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2fuihg=", // 現在の中間証明書
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // バックアップ（鍵のローテーション用）
+)
+if err != nil {
+    log.Fatal(err)
+}
 
-// Let's Encrypt 中間証明書をピンニング
+cfg := httpc.DefaultConfig()
+cfg.Security.CertificatePinner = pinner
+client, err := httpc.New(cfg)
+```
+
+:::tip
+`CertificatePinner` は標準の TLS チェーン検証**の上に**ピンニング検証を重ねるものであり、`InsecureSkipVerify` を設定する必要はありません。検証は証明書チェーンのどの階層の証明書にも有効なため、中間証明書を固定すればリーフ証明書の更新後も引き続き有効です。
+:::
+
+:::warning
+証明書ピンニングは運用コストを増加させます。サーバーが証明書を更新した場合（例：Let's Encrypt の更新）、クライアントもピンニング値を更新する必要があります。
+複数の証明書（リーフ証明書 + 中間証明書など）を同時にピンニングし、更新メカニズムを設けることをお勧めします。
+:::
+
+### その他のピンニングコンストラクタ
+
+SPKI ハッシュに加え、HTTPC は以下も提供します：
+
+```go
+// DER エンコードされた PKIX 公開鍵から直接作成（内部で SHA-256 を計算）
+pubPinner, err := httpc.NewPublicKeyPinner(pubKeyDER1, pubKeyDER2)
+
+// 複数の pinner を組み合わせ、いずれかが通過すれば受け入れ（混在固定戦略やローテーション鍵向け）
+chainPinner := httpc.NewCertificatePinnerChain(spkiPinner, pubPinner)
+cfg.Security.CertificatePinner = chainPinner
+```
+
+### 高度：カスタム TLS 検証コールバック
+
+TLS 検証ロジックを完全に制御したい場合（例：公開鍵ではなく完全な証明書を固定する場合）は、`TLSConfig` で独自に実装できます。この場合、標準のチェーン検証は `InsecureSkipVerify` でスキップされるため、`VerifyPeerCertificate` で**必ず**すべての検証を行う必要があります：
+
+```go
 cfg := httpc.DefaultConfig()
 cfg.Security.TLSConfig = &tls.Config{
-    InsecureSkipVerify: true, // 標準検証を完全に置き換える。VerifyPeerCertificate で全検証を自行実施する必要がある
+    InsecureSkipVerify: true, // 標準のチェーン検証をスキップ。コールバック内で全検証を自行実施する必要がある
     VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-        // ここで証明書ピンニングロジックを実装
-        // 注意: InsecureSkipVerify=true の場合、標準のチェーン検証はスキップされるため、
-        // ここで完全な証明書検証を行う必要がある
+        // ここで完全な証明書検証 + ピンニングロジックを実装
         return nil
     },
 }
 ```
 
 :::warning
-証明書ピンニングは運用コストを増加させます。サーバーが証明書を更新した場合（例：Let's Encrypt の更新）、クライアントもピンニング値を更新する必要があります。複数の証明書（リーフ証明書 + 中間証明書など）を同時にピンニングし、更新メカニズムを設けることをお勧めします。
+`InsecureSkipVerify = true` は標準の証明書チェーン検証を完全にスキップします。本当にカスタム検証ロジックが必要な場合にのみ使用し、コールバック内で必要な検証をすべて完了させてください。ほとんどのピンニングシナリオでは `CertificatePinner` を優先してください。
 :::
 
 ### ピンニング戦略

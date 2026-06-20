@@ -1,6 +1,6 @@
 ---
 title: "出力フォーマット - HTML"
-description: "CyberGo HTML ライブラリの出力フォーマット API リファレンス。ExtractToMarkdown と ExtractToJSON のパッケージ関数と Processor メソッドを含み、バイトまたはファイルからの抽出および Markdown または JSON フォーマットへの変換に対応。コンテキスト付きバージョンと Result のカスタム MarshalJSON シリアライズも含みます。"
+description: "CyberGo HTML の出力フォーマット API リファレンス。ExtractToMarkdown、ExtractToJSON のパッケージ関数と Processor メソッドを扱い、バイトまたはファイルから Markdown/JSON への変換、コンテキスト版、Result のカスタム MarshalJSON シリアライズをサポートします。"
 ---
 
 # 出力フォーマット

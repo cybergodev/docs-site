@@ -1,6 +1,6 @@
 ---
 title: "错误类型 - HTTPC"
-description: "HTTPC 错误类型 API 参考：ClientError 结构体八字段及 Code、IsRetryable、Unwrap 等五个方法、ErrorTypeNetwork 等十二种错误分类枚举、ErrNilConfig 等十三个哨兵错误变量与 errors.Is/As 匹配示例。"
+description: "HTTPC 错误类型 API 参考：ClientError 结构体八字段及 Code、IsRetryable、Unwrap 等五个方法、ErrorTypeNetwork 等十二种错误分类枚举、ErrNilConfig 等十二个哨兵错误变量与 errors.Is/As 匹配示例。"
 ---
 
 # 错误类型
@@ -129,7 +129,6 @@ if err != nil {
 
 | 变量 | 说明 |
 |------|------|
-| `ErrInvalidURL` | URL 验证失败 |
 | `ErrInvalidHeader` | 请求头验证失败 |
 
 ### 响应错误

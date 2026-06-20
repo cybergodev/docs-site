@@ -67,8 +67,15 @@ type Config struct {
     ContextExtractors []ContextExtractor // コンテキストエクストラクタリスト
     Hooks             *HookRegistry      // フックレジストリ
     Sampling          *SamplingConfig    // サンプリング設定
+
+    // 監査設定
+    Audit             *AuditConfig       // 監査ログ設定（セキュリティイベント）
 }
 ```
+
+:::tip Audit フィールド
+`Audit` を設定すると、機密データのマスキング、レート制限イベント、セキュリティ違反が [AuditLogger](./audit) 経由で監査イベントとして記録されます。[監査ログ](./audit) を参照してください。
+:::
 
 ### Clone
 
@@ -357,3 +364,4 @@ logger, _ := dd.New(dd.Config{
 - [出力先](./writers) -- FileWriter、BufferedWriter、MultiWriter
 - [セキュリティフィルタ](./security) -- SecurityConfig 詳解
 - [フックシステム](./hooks) -- HooksConfig 詳解
+- [監査ログ](./audit) -- AuditConfig 詳解

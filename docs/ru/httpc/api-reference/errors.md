@@ -1,6 +1,6 @@
 ---
 title: "Типы ошибок - HTTPC"
-description: "Справочник API типов ошибок HTTPC: структура ClientError с восемью полями и пятью методами Code/IsRetryable/Unwrap, перечисление ErrorType с двенадцатью категориями, тринадцать переменных-сигналов от ErrNilConfig и примеры сопоставления errors.Is/As."
+description: "Справочник API типов ошибок HTTPC: структура ClientError с восемью полями и пятью методами Code/IsRetryable/Unwrap, перечисление ErrorType с двенадцатью категориями, двенадцать переменных-сигналов от ErrNilConfig и примеры сопоставления errors.Is/As."
 ---
 
 # Типы ошибок
@@ -129,7 +129,6 @@ if err != nil {
 
 | Переменная | Описание |
 |------------|----------|
-| `ErrInvalidURL` | Ошибка валидации URL |
 | `ErrInvalidHeader` | Ошибка валидации заголовков запроса |
 
 ### Ошибки ответа

@@ -1,6 +1,6 @@
 ---
 title: "Определения типов - HTML"
-description: "Справочник API типов данных библиотеки CyberGo HTML, включая Result (с пользовательской JSON-сериализацией), ImageInfo, LinkInfo, VideoInfo, AudioInfo, LinkResource, Statistics, BatchResult и NodeAttr с описанием полей, помогает получить полное представление о структуре результатов извлечения и статистических данных."
+description: "Справочник API типов данных CyberGo HTML: описывает поля ключевых типов — Result (с пользовательской JSON-сериализацией), ImageInfo, LinkInfo, VideoInfo, AudioInfo, LinkResource, Statistics, BatchResult и NodeAttr."
 ---
 
 # Определения типов

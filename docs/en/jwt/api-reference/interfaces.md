@@ -126,13 +126,16 @@ Blacklist storage backend interface.
 ```go
 type RateLimitProvider interface {
     Allow(key string) bool
-    AllowN(key string, n int) bool
     Reset(key string)
     Close()
 }
 ```
 
-Rate limiting interface.
+Rate limiting interface. The Processor calls `Allow(key)` for a single check during token creation.
+
+:::tip About AllowN
+The interface itself only defines `Allow` for single-request checks. The batch method `AllowN(key string, n int) bool` is an extension method on the concrete type [`*RateLimiter`](./types#ratelimiter) and is not part of this interface.
+:::
 
 <Badge type="info" text="interface" />
 
@@ -141,7 +144,6 @@ Rate limiting interface.
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `Allow` | `Allow(key string) bool` | Check if single request is allowed |
-| `AllowN` | `AllowN(key string, n int) bool` | Check if n requests are allowed |
 | `Reset` | `Reset(key string)` | Reset rate limit state for key |
 | `Close` | `Close()` | Release resources |
 

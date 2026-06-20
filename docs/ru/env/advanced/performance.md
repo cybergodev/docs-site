@@ -100,8 +100,8 @@ wg.Wait()
 // Получение SecureValue (возможно повторное использование из пула)
 secret := env.GetSecure("API_KEY")
 
-// Использование
-value := secret.String()
+// Использование (Reveal возвращает открытое значение, String/Masked — маску)
+value := secret.Reveal()
 
 // Возврат в пул
 secret.Close()  // или secret.Release()
@@ -140,7 +140,7 @@ func later() {
 func getSecret() string {
     secret := env.GetSecure("KEY")
     defer secret.Close()
-    return secret.String()
+    return secret.Reveal()
 }
 ```
 
@@ -187,7 +187,7 @@ if env.IsMemoryLockSupported() {
 | wasm | ❌ |
 
 ::: tip Подробнее
-Полное описание конфигурации см. в [SecureValue API - Конфигурация блокировки памяти](/ru/env/api-reference/secure-value#memory-lock-configuration).
+Полное описание конфигурации см. в [SecureValue API - Конфигурация блокировки памяти](/ru/env/api-reference/secure-value#конфигурация-блокировки-памяти).
 :::
 
 ### Строгий режим
@@ -421,7 +421,7 @@ loader, _ := env.New(cfg)
 // Запуск горутины
 go func() {
     time.Sleep(1 * time.Second)
-    loader.GetString("KEY")  // Может вернуть ErrClosed
+    loader.GetString("KEY")  // Возвращает пустую строку (GetString не возвращает error)
 }()
 
 loader.Close()  // Закрытие в основной горутине

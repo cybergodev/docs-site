@@ -61,10 +61,6 @@ if errors.Is(err, httpc.ErrResponseBodyEmpty) {
     // Response body is empty
 }
 
-if errors.Is(err, httpc.ErrInvalidURL) {
-    // URL format is invalid
-}
-
 if errors.Is(err, httpc.ErrInvalidHeader) {
     // Header is invalid
 }

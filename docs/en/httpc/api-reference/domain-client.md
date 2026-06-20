@@ -71,15 +71,17 @@ Generic request method with context support for timeout and cancellation control
 ## Download Methods
 
 ```go
-// Basic download
-result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
+func (dc *DomainClient) Download(ctx context.Context, path string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
+```
 
-// Download with configuration
-result, err := dc.DownloadWithOptions("/files/report.pdf", downloadOpts)
+Downloads a file to `cfg.FilePath`; `path` is resolved relative to `baseURL`. The signature matches the package-level `Download` and `Client.Download` — `Download` is the single canonical download entry point across all three. `cfg` must not be nil, and `cfg.FilePath` must be set (otherwise `ErrEmptyFilePath` is returned).
 
-// With context
-result, err := dc.DownloadFileWithContext(ctx, "/files/report.pdf", "/tmp/report.pdf")
-result, err := dc.DownloadWithOptionsWithContext(ctx, "/files/report.pdf", downloadOpts)
+```go
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/report.pdf"
+cfg.Overwrite = true
+
+result, err := dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
 Download response cookies are automatically captured into the session.

@@ -33,10 +33,10 @@ defer processor.Close()
 // Использование пользовательской конфигурации
 cfg := json.DefaultConfig()
 cfg.StrictMode = true
-processor, err := json.New(cfg)
+processor, err = json.New(cfg)
 
 // Использование безопасной конфигурации
-processor, err := json.New(json.SecurityConfig())
+processor, err = json.New(json.SecurityConfig())
 ```
 
 ## Цепочечные вызовы

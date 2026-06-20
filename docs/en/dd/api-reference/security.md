@@ -54,11 +54,16 @@ Security configuration struct, controlling filter behavior and security level.
 
 ```go
 type SecurityConfig struct {
-    MaxMessageSize  int                  // Message size limit in bytes (0 means no limit, default 5MB in preset configs)
-    MaxWriters      int                  // Maximum Writer count (default 100)
-    SensitiveFilter *SensitiveDataFilter // Sensitive data filter
+    MaxMessageSize  int                       // Message size limit in bytes (0 means no limit, default 5MB in preset configs)
+    MaxWriters      int                       // Maximum Writer count (default 100)
+    SensitiveFilter *SensitiveDataFilter      // Sensitive data filter
+    RateLimitConfig *internal.RateLimitConfig // Rate limiting config (internal type, auto-filled by preset configs; nil disables rate limiting)
 }
 ```
+
+:::info About RateLimitConfig
+`RateLimitConfig` controls log rate limiting to prevent log flooding (DoS) and maintain system stability under load. This field is an internal type (`*internal.RateLimitConfig`) and cannot be constructed directly; it is typically auto-filled by preset configs such as `SecurityConfigForLevel` or `DefaultSecureConfig`. Set it to `nil` to disable rate limiting.
+:::
 
 ### FilterStats
 

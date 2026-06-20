@@ -79,7 +79,7 @@ p.ForeachNested(data, func(key any, item *json.IterableValue) {
 
 签名：`func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue)) (string, error)`
 
-迭代并返回原始 JSON（只读操作）。
+迭代 JSON 数据并返回重新序列化后的 JSON 字符串。回调为只读访问。
 
 ```go
 result, err := p.ForeachReturn(data, func(key any, item *json.IterableValue) {

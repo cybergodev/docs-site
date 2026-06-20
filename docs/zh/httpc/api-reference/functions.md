@@ -1,6 +1,6 @@
 ---
 title: "包函数 - HTTPC"
-description: "HTTPC 包级函数与客户端方法 API 参考：Get/Post 等七种 HTTP 方法、New 客户端创建、四个下载函数、SetSecurityWarnOutput 安全警告与 NewDomain 域名客户端创建。"
+description: "HTTPC 包级函数与客户端方法 API 参考：Get/Post 等七种 HTTP 方法、New 客户端创建、Download 统一下载入口、SetSecurityWarnOutput 安全警告、FormatBytes/FormatSpeed 格式化工具与 NewDomain 域名客户端创建。"
 ---
 
 # 包函数
@@ -144,31 +144,17 @@ func CloseDefaultClient() error
 
 ## 下载函数
 
-包级下载函数使用默认客户端，Client 接口也提供同名方法。
+包级下载函数使用默认客户端，Client 接口与 DomainClient 也提供同名方法，三者签名一致。
 
-### DownloadFile
-
-```go
-func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-使用默认客户端下载文件到指定路径。
+### Download
 
 ```go
-// 包级函数
-result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
-
-// Client 接口方法
-result, err := client.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
+func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-### DownloadWithOptions
+`Download` 是贯穿包级函数、`Client` 接口和 `DomainClient` 的**唯一规范下载入口**——用单一签名取代了以往的 `{config}` × `{context}` 变体矩阵。
 
-```go
-func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-带配置的文件下载，支持断点续传和进度回调。
+`cfg` 不能为 nil，且 `cfg.FilePath` 必须设置（否则返回 `ErrEmptyFilePath`）。无需取消或超时控制时传入 `context.Background()`，请求选项用于设置请求头、认证、查询参数等。
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -179,41 +165,19 @@ cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r%.1f%%", float64(downloaded)/float64(total)*100)
 }
 
-// 包级函数
-result, err := httpc.DownloadWithOptions(url, cfg)
+// 包级函数（使用默认客户端）
+result, err := httpc.Download(context.Background(), url, cfg)
+
 // Client 接口方法
-result, err = client.DownloadWithOptions(url, cfg)
+result, err = client.Download(ctx, url, cfg)
+
+// DomainClient 方法（path 相对于 baseURL，自动捕获响应 Cookie）
+result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
-### DownloadFileWithContext
-
-```go
-func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-带上下文控制的文件下载，支持超时和取消。
-
-```go
-// 包级函数
-result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
-// Client 接口方法
-result, err = client.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
-```
-
-### DownloadWithOptionsWithContext
-
-```go
-func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-带配置和上下文控制的文件下载。
-
-```go
-// 包级函数
-result, err := httpc.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
-// Client 接口方法
-result, err = client.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
-```
+:::tip 迁移说明
+旧的 `DownloadFile`、`DownloadWithOptions`、`DownloadFileWithContext`、`DownloadWithOptionsWithContext` 已在 v1.5.2 移除。统一改用 `Download(ctx, url, cfg, options...)`，并通过 `DownloadConfig` 配置路径、覆盖、续传与校验。
+:::
 
 ## 辅助函数
 
@@ -235,6 +199,62 @@ httpc.SetSecurityWarnOutput(log.Writer())
 
 :::warning
 此函数主要用于测试。生产环境应使用 `SecureConfig()` 或 `DefaultConfig()`，而非抑制警告。
+:::
+
+## 格式化工具
+
+### FormatBytes
+
+```go
+func FormatBytes(bytes int64) string
+```
+
+将字节数格式化为人类可读的字符串（如 `"1.50 KB"`、`"500 B"`）。常用于下载结果展示与日志输出。
+
+```go
+result, _ := httpc.Download(context.Background(), url, cfg)
+fmt.Printf("已下载 %s\n", httpc.FormatBytes(result.BytesWritten))
+// 已下载 12.34 MB
+```
+
+| 输入 | 输出 |
+|------|------|
+| `500` | `500 B` |
+| `1536` | `1.50 KB` |
+| `1048576` | `1.00 MB` |
+| `1073741824` | `1.00 GB` |
+
+### FormatSpeed
+
+```go
+func FormatSpeed(bytesPerSecond float64) string
+```
+
+将字节/秒速率格式化为人类可读的字符串（如 `"1.50 MB/s"`）。常配合 `DownloadResult.AverageSpeed` 或 `DownloadProgressCallback` 的 `speed` 参数使用。
+
+```go
+result, _ := httpc.Download(context.Background(), url, cfg)
+fmt.Printf("平均速度 %s\n", httpc.FormatSpeed(result.AverageSpeed))
+// 平均速度 5.67 MB/s
+
+// 进度回调中使用
+cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
+    fmt.Printf("\r%s / %s (%s)",
+        httpc.FormatBytes(downloaded),
+        httpc.FormatBytes(total),
+        httpc.FormatSpeed(speed),
+    )
+}
+```
+
+| 输入（字节/秒） | 输出 |
+|----------------|------|
+| `500` | `500 B/s` |
+| `1536` | `1.50 KB/s` |
+| `1048576` | `1.00 MB/s` |
+
+:::tip
+两者采用二进制单位（1024 进位），单位序列为 `B → KB → MB → GB → TB → PB → EB`。
 :::
 
 ## 域名客户端

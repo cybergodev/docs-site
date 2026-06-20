@@ -383,6 +383,7 @@ func main() {
 package main
 
 import (
+    "fmt"
     "os"
     "sync/atomic"
     "github.com/cybergodev/json"
@@ -401,8 +402,8 @@ func main() {
     var processed int64
 
     err := processor.StreamJSONLParallel(file, 16, func(lineNum int, item *json.IterableValue) error {
-        // CPU-intensive processing
-        processItem(item)
+        // CPU-intensive processing (replace with your business logic)
+        _ = item
         atomic.AddInt64(&processed, 1)
         return nil
     })

@@ -50,8 +50,8 @@ count := env.Len()
 secret := env.GetSecure("PASSWORD")
 if secret != nil {
     defer secret.Release()  // or secret.Close()
-    value := secret.String()
-    masked := secret.Masked()
+    value := secret.Reveal()   // plaintext (use only when needed)
+    masked := secret.Masked()  // masked (for logging)
 }
 ```
 

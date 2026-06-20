@@ -1,6 +1,6 @@
 ---
 title: "Processor - HTML"
-description: "CyberGo HTML ライブラリの Processor プロセッサの完全な API リファレンス。New での作成、Extract 抽出メソッドファミリー、GetStatistics 統計照会、GetAuditLog 監査ログ、ClearCache キャッシュ管理、ResetStatistics リセット、Close ライフサイクル管理を含み、高頻度呼び出しでのリソース再利用に適したプロダクション環境の高性能処理のコアコンポーネントです。"
+description: "CyberGo HTML の Processor API リファレンス。New による生成、Extract メソッド群、GetStatistics、GetAuditLog、ClearCache、ResetStatistics、Close のライフサイクル管理を扱い、高頻度の再利用に適し、プロダクション環境での高性能処理の中核です。"
 ---
 
 # Processor

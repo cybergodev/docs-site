@@ -86,6 +86,7 @@ JWT 액세스 토큰을 검증하고 파싱된 Claims를 반환합니다.
 | `ErrEmptyToken` | 토큰이 비어있음 |
 | `ErrInvalidToken` | 서명이 무효함 |
 | `ErrAlgorithmMismatch` | 토큰 알고리즘이 설정과 불일치 |
+| `ErrExpirationRequired` | `RequireExpiration`이 활성화되었으나 토큰에 `exp` 클레임이 없음 |
 | `ErrTokenExpired` | 토큰이 만료됨 |
 | `ErrTokenNotValidYet` | 토큰이 아직 활성화되지 않음 |
 | `ErrTokenInvalidIssuer` | 발급자가 불일치함 |
@@ -147,7 +148,12 @@ func (p *Processor) CreateRefresh(claims CustomClaims) (string, error)
 func (p *Processor) Refresh(refreshTokenString string) (string, error)
 ```
 
-기존 리프레시 토큰을 갱신하여 새로운 액세스 토큰을 반환합니다.
+기존 리프레시 토큰을 갱신하여 새로운 액세스 토큰을 반환합니다. 새로운 액세스 토큰을 발급하기 전에 리프레시 토큰의 서명, 만료, 블랙리스트를 모두 검증하며, 원본 토큰의 `IssuedAt`, `ExpiresAt`, `ID`는 재설정 및 재생성됩니다.
+
+:::info 토큰 타입 및 로테이션
+- **토큰 타입 검사**: `token_type=access`인 토큰은 거부됩니다 ([`ErrTokenTypeMismatch`](./errors#센티넬-오류) 반환). 액세스 토큰이 새 토큰을 얻는 데 사용되는 것을 방지; 하위 호환성을 위해 `token_type`이 없는 구형 토큰은 여전히 허용됩니다.
+- **원본 토큰을 자동으로 취소하지 않음**: `Refresh`는 전달된 리프레시 토큰을 취소하지 않습니다. 원본 토큰은 만료되거나 명시적으로 [`Revoke()`](#revoke)될 때까지 유효합니다. 일회용 의미를 위해 `Refresh` 성공 후 `Revoke(refreshTokenString)`를 호출하세요.
+:::
 
 :::warning 보안 안내
 갱신 시 표준 JWT 필드(exp, nbf, iss, aud, 블랙리스트)와 기본 구조 유효성(UserID 또는 Username 필수)만 검증합니다. 심층 필드 제약(길이 제한, 인젝션 패턴)은 생성 시 이미 검증되었으므로 재검사하지 않습니다.
@@ -176,12 +182,14 @@ func (p *Processor) Refresh(refreshTokenString string) (string, error)
 | `ErrEmptyToken` | 토큰이 비어있음 |
 | `ErrInvalidToken` | 서명이 무효함 |
 | `ErrAlgorithmMismatch` | 토큰 알고리즘이 설정과 불일치 |
+| `ErrExpirationRequired` | `RequireExpiration`이 활성화되었으나 토큰에 `exp` 클레임이 없음 |
 | `ErrTokenExpired` | 토큰이 만료됨 |
 | `ErrTokenNotValidYet` | 토큰이 아직 활성화되지 않음 |
 | `ErrTokenInvalidIssuer` | 발급자가 불일치함 |
 | `ErrTokenInvalidAudience` | 수신자가 불일치함 |
 | `ErrTokenRevoked` | 토큰이 취소됨 |
 | `ErrInvalidClaims` | Claims 검증 실패 |
+| `ErrTokenTypeMismatch` | 액세스 토큰(`token_type=access`)으로 갱신 시도 |
 | `ErrRateLimitExceeded` | 속도 제한 임계값 초과 |
 
 ---
@@ -229,6 +237,7 @@ if valid {
 | `ErrEmptyToken` | 토큰이 비어있음 |
 | `ErrInvalidToken` | 서명이 무효함 |
 | `ErrAlgorithmMismatch` | 토큰 알고리즘이 설정과 불일치 |
+| `ErrExpirationRequired` | `RequireExpiration`이 활성화되었으나 토큰에 `exp` 클레임이 없음 |
 | `ErrTokenExpired` | 토큰이 만료됨 |
 | `ErrTokenNotValidYet` | 토큰이 아직 활성화되지 않음 |
 | `ErrTokenInvalidIssuer` | 발급자가 불일치함 |
@@ -245,6 +254,10 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 ```
 
 커스텀 Claims로 토큰을 갱신합니다. Claims 객체의 시간 필드(`IssuedAt`, `ExpiresAt`, `ID`)는 작업 후 자동으로 복원되며, 오류나 panic이 발생해도 복원이 보장됩니다.
+
+:::info 토큰 타입 검사
+`token_type=access`인 토큰은 거부됩니다 ([`ErrTokenTypeMismatch`](./errors#센티넬-오류) 반환). 액세스 토큰이 새 토큰을 얻는 데 사용되는 것을 방지; 하위 호환성을 위해 `token_type`이 없는 구형 토큰은 여전히 허용됩니다.
+:::
 
 :::warning 보안 안내
 갱신 시 표준 JWT 필드와 기본 구조 유효성만 검증합니다. 심층 필드 제약은 생성 시 이미 검증되었으므로 재검사하지 않습니다.
@@ -274,12 +287,14 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 | `ErrEmptyToken` | 토큰이 비어있음 |
 | `ErrInvalidToken` | 서명이 무효함 |
 | `ErrAlgorithmMismatch` | 토큰 알고리즘이 설정과 불일치 |
+| `ErrExpirationRequired` | `RequireExpiration`이 활성화되었으나 토큰에 `exp` 클레임이 없음 |
 | `ErrTokenExpired` | 토큰이 만료됨 |
 | `ErrTokenNotValidYet` | 토큰이 아직 활성화되지 않음 |
 | `ErrTokenInvalidIssuer` | 발급자가 불일치함 |
 | `ErrTokenInvalidAudience` | 수신자가 불일치함 |
 | `ErrTokenRevoked` | 토큰이 취소됨 |
 | `ErrInvalidClaims` | Claims 검증 실패 |
+| `ErrTokenTypeMismatch` | 액세스 토큰(`token_type=access`)으로 갱신 시도 |
 | `ErrRateLimitExceeded` | 속도 제한 임계값 초과 |
 
 ---
@@ -313,6 +328,10 @@ func (p *Processor) Revoke(tokenString string) error
 | `ErrProcessorClosed` | Processor가 종료됨 |
 | `ErrEmptyToken` | 토큰이 비어있음 |
 | `ErrBlacklistNotConfigured` | 블랙리스트가 설정되지 않음 |
+| `ErrInvalidToken` | 서명이 무효하거나 토큰이 잘못됨 |
+| `ErrTokenInvalidIssuer` | 발급자가 불일치함 |
+| `ErrTokenInvalidAudience` | 수신자가 불일치함 |
+| `ErrTokenMissingID` | 토큰에 `jti` 클레임이 없음 |
 
 ---
 
@@ -345,7 +364,10 @@ func (p *Processor) IsRevoked(tokenString string) (bool, error)
 |------|----------|
 | `ErrProcessorClosed` | Processor가 종료됨 |
 | `ErrEmptyToken` | 토큰이 비어있음 |
-| `ErrTokenMissingID` | 토큰에 ID가 없음 |
+| `ErrInvalidToken` | 서명이 무효하거나 토큰이 잘못됨 |
+| `ErrTokenInvalidIssuer` | 발급자가 불일치함 |
+| `ErrTokenInvalidAudience` | 수신자가 불일치함 |
+| `ErrTokenMissingID` | 토큰에 `jti` 클레임이 없음 |
 
 ---
 
@@ -375,6 +397,14 @@ func (p *Processor) ParseUnverified(tokenString string, claims any) error
 | 반환 | 타입 | 설명 |
 |------|------|------|
 | `err` | `error` | 파싱 실패 시 오류 반환 |
+
+### 오류
+
+| 오류 | 발생 조건 |
+|------|----------|
+| `ErrProcessorClosed` | Processor가 종료됨 |
+| `ErrEmptyToken` | 토큰이 비어있음 |
+| 래핑된 오류 | 잘못된 형식의 토큰에 대해 래핑된 파싱 오류 반환 (센티넬 오류가 아님; `errors.Is`로 매치할 수 없음) |
 
 ---
 

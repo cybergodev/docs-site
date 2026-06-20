@@ -9,15 +9,19 @@ description: "HTTPC 設定システム API リファレンス：Config メイン
 
 ```go
 type Config struct {
-    Timeouts   TimeoutConfig
-    Connection ConnectionConfig
-    Security   SecurityConfig
-    Retry      RetryConfig
-    Middleware MiddlewareConfig
+    Timeouts   *TimeoutConfig
+    Connection *ConnectionConfig
+    Security   *SecurityConfig
+    Retry      *RetryConfig
+    Middleware *MiddlewareConfig
 }
 ```
 
 メイン設定構造体。`DefaultConfig()` で安全なデフォルト値を取得します。
+
+:::tip サブ設定はポインタ
+v1.5.1 以降、5 つのサブ設定はすべて**ポインタ型**です。`DefaultConfig()` およびすべてのプリセット関数（`SecureConfig`、`PerformanceConfig` など）はこれらのポインタを非 nil の構造体に自動初期化するため、`cfg.Timeouts.Request`、`cfg.Security.AllowPrivateIPs` などのフィールドアクセスはそのまま使用できます。手動で `Config{}` リテラルを構築する場合は `&httpc.TimeoutConfig{...}` の形式で代入し、使用前にポインタが非 nil であることを確認してください。
+:::
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -84,28 +88,57 @@ cfg.Connection.DoHCacheTTL = 5 * time.Minute
 
 ```go
 type SecurityConfig struct {
-    TLSConfig               *tls.Config    // カスタム TLS 設定
-    MinTLSVersion           uint16         // 最低 TLS バージョン。デフォルト TLS 1.2
-    MaxTLSVersion           uint16         // 最高 TLS バージョン。デフォルト TLS 1.3
-    InsecureSkipVerify      bool           // 証明書検証をスキップ（テストのみ）
-    MaxResponseBodySize     int64          // レスポンスボディサイズ制限。デフォルト 10MB
-    MaxRequestBodySize      int64          // リクエストボディサイズ制限。デフォルト 0（MaxResponseBodySize の値を使用）
-    MaxDecompressedBodySize int64          // 展開後サイズ制限。デフォルト 100MB
-    AllowPrivateIPs         bool           // プライベート IP を許可。デフォルト false
-    SSRFExemptCIDRs         []string       // SSRF 豁免 CIDR
-    ValidateURL             bool           // URL 検証。デフォルト true
-    ValidateHeaders         bool           // リクエストヘッダー検証。デフォルト true
-    StrictContentLength     bool           // 厳格な Content-Length。デフォルト true
+    TLSConfig               *tls.Config           // カスタム TLS 設定
+    MinTLSVersion           uint16                // 最低 TLS バージョン。デフォルト TLS 1.2
+    MaxTLSVersion           uint16                // 最高 TLS バージョン。デフォルト TLS 1.3
+    InsecureSkipVerify      bool                  // 証明書検証をスキップ（テストのみ）
+    MaxResponseBodySize     int64                 // レスポンスボディサイズ制限。デフォルト 10MB
+    MaxRequestBodySize      int64                 // リクエストボディサイズ制限。デフォルト 0（リクエストボディサイズを制限しない。MaxResponseBodySize とは異なり自動フォールバックなし）
+    MaxDecompressedBodySize int64                 // 展開後サイズ制限。デフォルト 100MB
+    AllowPrivateIPs         bool                  // プライベート IP を許可。デフォルト false
+    SSRFExemptCIDRs         []string              // SSRF 免除 CIDR
+    ValidateURL             bool                  // URL 検証。デフォルト true
+    ValidateHeaders         bool                  // リクエストヘッダー検証。デフォルト true
+    StrictContentLength     bool                  // 厳格な Content-Length。デフォルト true
     CookieSecurity          *CookieSecurityConfig // Cookie セキュリティ検証
-    RedirectWhitelist       []string       // リダイレクトホワイトリストドメイン
+    CertificatePinner       CertificatePinner     // 証明書固定（SPKI ハッシュ/公開鍵）。デフォルト nil（無効）
+    RedirectWhitelist       []string              // リダイレクトホワイトリストドメイン
 }
 ```
+
+### 証明書固定（CertificatePinner）
+
+`CertificatePinner` は証明書固定を有効にします。サーバーが固定された鍵/証明書を提示しない場合、TLS ハンドシェイクが拒否され、信頼された CA が侵害されていても中間者攻撃を防げます。デフォルトは `nil`（無効）。以下のコンストラクタで作成します。
+
+| コンストラクタ | 説明 |
+|----------------|------|
+| `NewSPKIHashPinner(hashes ...string) (CertificatePinner, error)` | 1 つ以上の base64 エンコードされた SPKI SHA-256 ハッシュから作成（最も一般的、鍵のローテーションに対応） |
+| `NewPublicKeyPinner(publicKeys ...[]byte) (CertificatePinner, error)` | DER エンコードされた PKIX 公開鍵から作成（内部で SHA-256 を計算） |
+| `NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner` | 複数の pinner を組み合わせ、いずれかが通過すれば受け入れ |
+
+```go
+pinner, err := httpc.NewSPKIHashPinner(
+    "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2fuihg=", // 現在の鍵
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // バックアップ鍵（ローテーション用）
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+cfg := httpc.DefaultConfig()
+cfg.Security.CertificatePinner = pinner
+client, err := httpc.New(cfg)
+```
+
+:::warning メンテナンスコスト
+証明書固定は、サーバーが証明書を更新した際（Let's Encrypt の更新など）に固定値を同期更新する必要があります。複数のハッシュ（現在用 + バックアップ用）を固定し、更新の仕組みを整えることで、鍵のローテーションによる接続断を防ぐことを推奨します。
+:::
 
 :::warning SSRF 防護
 `AllowPrivateIPs` のデフォルトは `false` で、プライベート/予約済み IP（127.0.0.1、10.x、192.168.x など）への接続をブロックします。内部サービスに接続する場合のみ `true` に設定してください。
 :::
 
-### SSRF 豁免の例
+### SSRF 免除の例
 
 ```go
 cfg := httpc.DefaultConfig()

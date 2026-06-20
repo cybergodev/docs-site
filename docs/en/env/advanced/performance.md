@@ -100,8 +100,8 @@ Create → Use → Return to Pool → Get → Use → Return to Pool ...
 // Get a SecureValue (may be reused from pool)
 secret := env.GetSecure("API_KEY")
 
-// Use it
-value := secret.String()
+// Use it (Reveal returns plaintext, String/Masked return mask)
+value := secret.Reveal()
 
 // Release back to pool
 secret.Close()  // or secret.Release()
@@ -140,7 +140,7 @@ func later() {
 func getSecret() string {
     secret := env.GetSecure("KEY")
     defer secret.Close()
-    return secret.String()
+    return secret.Reveal()
 }
 ```
 
@@ -421,7 +421,7 @@ loader, _ := env.New(cfg)
 // Start goroutine
 go func() {
     time.Sleep(1 * time.Second)
-    loader.GetString("KEY")  // May return ErrClosed
+    loader.GetString("KEY")  // Returns empty string (GetString does not return an error)
 }()
 
 loader.Close()  // Main goroutine closes

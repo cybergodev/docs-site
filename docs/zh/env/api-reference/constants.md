@@ -266,10 +266,46 @@ if errors.As(err, &fileErr) {
 
 ```go
 type ExpansionError struct {
-    Key   string  // 键名
-    Depth int     // 当前深度
-    Limit int     // 限制
-    Chain string  // 展开链
+    Key   string             // 键名
+    Depth int                // 当前深度
+    Limit int                // 限制
+    Chain string             // 展开链（已脱敏）
+    Kind  ExpansionErrorKind // 错误原因类别（零值 = 深度/循环）
+}
+```
+
+**错误分类（`Kind` 字段）：**
+
+```go
+type ExpansionErrorKind int
+
+const (
+    // ExpansionDepthKind 表示展开触达递归深度限制或检测到变量循环。
+    // 这是零值，因此常见的深度/循环错误无需显式分类。
+    // errors.Is(err, ErrExpansionDepth) 可匹配此类错误。
+    ExpansionDepthKind ExpansionErrorKind = iota
+
+    // ExpansionRequiredKind 表示必需变量（${VAR:?message}）未设置或为空。
+    // 这不属于深度溢出，因此不会匹配 ErrExpansionDepth。
+    ExpansionRequiredKind
+)
+```
+
+**`errors.Is` 行为：** `*ExpansionError` 仅在 `Kind != ExpansionRequiredKind` 时匹配 `ErrExpansionDepth`。必需变量错误属于独立的失败模式，不通过 `ErrExpansionDepth` 匹配。
+
+使用示例：
+
+```go
+var expErr *env.ExpansionError
+if errors.As(err, &expErr) {
+    switch expErr.Kind {
+    case env.ExpansionDepthKind:
+        // 深度溢出或循环：errors.Is(err, env.ErrExpansionDepth) == true
+        fmt.Printf("深度 %d/%d，链：%s\n", expErr.Depth, expErr.Limit, expErr.Chain)
+    case env.ExpansionRequiredKind:
+        // 必需变量未设置：errors.Is(err, env.ErrExpansionDepth) == false
+        fmt.Printf("必需变量 %s 未设置\n", expErr.Key)
+    }
 }
 ```
 
@@ -634,9 +670,7 @@ package main
 
 import (
     "errors"
-    "fmt"
     "log"
-    "os"
 
     "github.com/cybergodev/env"
 )

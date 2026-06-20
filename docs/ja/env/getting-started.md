@@ -14,7 +14,7 @@ go get github.com/cybergodev/env
 ```
 
 ::: tip 要件
-Go 1.24+
+Go 1.25+
 :::
 
 ## .env ファイルの作成
@@ -184,8 +184,8 @@ secret := env.GetSecure("API_KEY")
 if secret != nil {
     defer secret.Release()
 
-    // 元の値を取得
-    value := secret.String()
+    // 元の値を取得（平文が必要な場合のみ呼び出し、例: 暗号化、API呼び出し）
+    value := secret.Reveal()
 
     // ログ用マスク（漏洩防止）
     log.Printf("API Key: %s", secret.Masked())  // 出力: [SECURE:32 bytes]

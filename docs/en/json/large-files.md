@@ -44,7 +44,6 @@ type Config struct {
 package main
 
 import (
-    "fmt"
     "log"
     "github.com/cybergodev/json"
 )
@@ -72,7 +71,8 @@ func main() {
         interests := item.GetArray("profile.interests")
 
         if count%10000 == 0 {
-            log.Printf("Processed %d records", count)
+            log.Printf("Processed %d records, sample: id=%d name=%s email=%s city=%s interests=%d",
+                count, id, name, email, city, len(interests))
         }
         return nil
     })
@@ -212,7 +212,6 @@ For tasks that can be parallelized, you can use multiple goroutines:
 package main
 
 import (
-    "fmt"
     "sync"
     "github.com/cybergodev/json"
 )
@@ -235,8 +234,8 @@ func main() {
         go func(id int) {
             defer wg.Done()
             for item := range items {
-                // Process item
-                processItem(item)
+                // Process item (replace with your business logic)
+                _ = item
             }
         }(i)
     }

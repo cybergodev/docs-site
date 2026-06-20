@@ -126,13 +126,16 @@ type BlacklistStore interface {
 ```go
 type RateLimitProvider interface {
     Allow(key string) bool
-    AllowN(key string, n int) bool
     Reset(key string)
     Close()
 }
 ```
 
-レート制限インターフェース。
+レート制限インターフェース。Processor はトークン作成時に `Allow(key)` を呼び出して単一チェックを行います。
+
+:::tip AllowN について
+このインターフェース自体は単一リクエストのチェックとして `Allow` のみを定義します。バッチメソッド `AllowN(key string, n int) bool` は具象型 [`*RateLimiter`](./types#ratelimiter) の拡張メソッドであり、このインターフェースの一部ではありません。
+:::
 
 <Badge type="info" text="interface" />
 
@@ -141,7 +144,6 @@ type RateLimitProvider interface {
 | メソッド | シグネチャ | 説明 |
 |---------|-----------|------|
 | `Allow` | `Allow(key string) bool` | 単一リクエストが許可されるか確認 |
-| `AllowN` | `AllowN(key string, n int) bool` | n 回のリクエストが許可されるか確認 |
 | `Reset` | `Reset(key string)` | 指定したキーのレート制限状態をリセット |
 | `Close` | `Close()` | リソースを解放 |
 

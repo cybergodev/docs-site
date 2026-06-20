@@ -52,7 +52,7 @@ result, err = json.Set(data, "user.name", "Bob")
 result, err = json.Set(result, "user.age", 25)
 
 // Delete
-result, err := json.Delete(data, "user.temporary")
+result, err = json.Delete(data, "user.temporary")
 ```
 
 ## Serialization
@@ -82,7 +82,7 @@ err = json.Parse(`{"name": "test"}`, &result)
 parsed, err := json.ParseAny(`{"name": "test"}`)
 
 // Format JSON string
-pretty, err := json.Prettify(`{"name":"Alice","age":30}`)
+pretty, err = json.Prettify(`{"name":"Alice","age":30}`)
 ```
 
 ## Validation
@@ -167,12 +167,12 @@ age, err := accessResult.AsInt()
 processor, err := json.New(json.DefaultConfig())
 
 // Security configuration (for untrusted input)
-processor, err := json.New(json.SecurityConfig())
+processor, err = json.New(json.SecurityConfig())
 
 // Custom configuration
 cfg := json.DefaultConfig()
 cfg.CreatePaths = true
-processor, err := json.New(cfg)
+processor, err = json.New(cfg)
 ```
 
 ## Stream Processing
@@ -232,10 +232,10 @@ cfg.FullSecurityScan = true          // Enable full security scan
 cfg := json.DefaultConfig()
 
 // Security configuration (for untrusted input)
-cfg := json.SecurityConfig()
+// cfg = json.SecurityConfig()
 
 // Pretty-print configuration
-cfg := json.PrettyConfig()
+// cfg = json.PrettyConfig()
 ```
 
 ## Path Syntax

@@ -86,6 +86,7 @@ func (p *Processor) Validate(tokenString string) (Claims, bool, error)
 | `ErrEmptyToken` | Токен пуст |
 | `ErrInvalidToken` | Подпись недействительна |
 | `ErrAlgorithmMismatch` | Алгоритм токена не совпадает с конфигурацией |
+| `ErrExpirationRequired` | `RequireExpiration` включён, но в токене отсутствует утверждение `exp` |
 | `ErrTokenExpired` | Токен истёк |
 | `ErrTokenNotValidYet` | Токен ещё не действителен |
 | `ErrTokenInvalidIssuer` | Издатель не совпадает |
@@ -147,7 +148,12 @@ func (p *Processor) CreateRefresh(claims CustomClaims) (string, error)
 func (p *Processor) Refresh(refreshTokenString string) (string, error)
 ```
 
-Обновляет существующий токен обновления и возвращает новый токен доступа.
+Обновляет существующий токен обновления и возвращает новый токен доступа. Токен обновления полностью проверяется (подпись, срок действия, чёрный список) перед выдачей нового токена доступа; поля `IssuedAt`, `ExpiresAt` и `ID` исходного токена сбрасываются и генерируются заново.
+
+:::info Тип токена и ротация
+- **Проверка типа токена**: Токены с `token_type=access` отклоняются (возвращается [`ErrTokenTypeMismatch`](./errors#сигнальные-ошибки)), чтобы предотвратить использование токенов доступа для получения новых токенов; старые токены без `token_type` по-прежнему принимаются для обратной совместимости.
+- **Не отзывает исходный токен автоматически**: `Refresh` не отзывает переданный токен обновления. Исходный токен остаётся действительным до истечения срока или явного отзыва через [`Revoke()`](#revoke). Для семантики одноразового использования вызовите `Revoke(refreshTokenString)` после успешного `Refresh`.
+:::
 
 :::warning Замечание по безопасности
 При обновлении проверяются только стандартные JWT-поля (exp, nbf, iss, aud, чёрный список) и базовая структурная валидность (наличие UserID или Username). Глубокие ограничения полей (лимит длины, инъекционные паттерны) не перепроверяются, так как они уже были проверены при создании.
@@ -176,12 +182,14 @@ func (p *Processor) Refresh(refreshTokenString string) (string, error)
 | `ErrEmptyToken` | Токен пуст |
 | `ErrInvalidToken` | Подпись недействительна |
 | `ErrAlgorithmMismatch` | Алгоритм токена не совпадает с конфигурацией |
+| `ErrExpirationRequired` | `RequireExpiration` включён, но в токене отсутствует утверждение `exp` |
 | `ErrTokenExpired` | Токен истёк |
 | `ErrTokenNotValidYet` | Токен ещё не действителен |
 | `ErrTokenInvalidIssuer` | Издатель не совпадает |
 | `ErrTokenInvalidAudience` | Аудитория не совпадает |
 | `ErrTokenRevoked` | Токен отозван |
 | `ErrInvalidClaims` | Валидация Claims не удалась |
+| `ErrTokenTypeMismatch` | Обновление токеном доступа (`token_type=access`) |
 | `ErrRateLimitExceeded` | Превышен порог ограничения скорости |
 
 ---
@@ -229,6 +237,7 @@ if valid {
 | `ErrEmptyToken` | Токен пуст |
 | `ErrInvalidToken` | Подпись недействительна |
 | `ErrAlgorithmMismatch` | Алгоритм токена не совпадает с конфигурацией |
+| `ErrExpirationRequired` | `RequireExpiration` включён, но в токене отсутствует утверждение `exp` |
 | `ErrTokenExpired` | Токен истёк |
 | `ErrTokenNotValidYet` | Токен ещё не действителен |
 | `ErrTokenInvalidIssuer` | Издатель не совпадает |
@@ -245,6 +254,10 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 ```
 
 Обновляет токен с использованием пользовательских Claims. Временные поля объекта Claims (`IssuedAt`, `ExpiresAt`, `ID`) автоматически восстанавливаются после операции, даже в случае ошибки или panic.
+
+:::info Проверка типа токена
+Токены с `token_type=access` отклоняются (возвращается [`ErrTokenTypeMismatch`](./errors#сигнальные-ошибки)), чтобы предотвратить использование токенов доступа для получения новых токенов; старые токены без `token_type` по-прежнему принимаются для обратной совместимости.
+:::
 
 :::warning Замечание по безопасности
 При обновлении проверяются только стандартные JWT-поля (exp, nbf, iss, aud, чёрный список) и базовая структурная валидность. Глубокие ограничения полей (лимит длины, инъекционные паттерны) не перепроверяются, так как они уже были проверены при создании.
@@ -274,12 +287,14 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 | `ErrEmptyToken` | Токен пуст |
 | `ErrInvalidToken` | Подпись недействительна |
 | `ErrAlgorithmMismatch` | Алгоритм токена не совпадает с конфигурацией |
+| `ErrExpirationRequired` | `RequireExpiration` включён, но в токене отсутствует утверждение `exp` |
 | `ErrTokenExpired` | Токен истёк |
 | `ErrTokenNotValidYet` | Токен ещё не действителен |
 | `ErrTokenInvalidIssuer` | Издатель не совпадает |
 | `ErrTokenInvalidAudience` | Аудитория не совпадает |
 | `ErrTokenRevoked` | Токен отозван |
 | `ErrInvalidClaims` | Валидация Claims не удалась |
+| `ErrTokenTypeMismatch` | Обновление токеном доступа (`token_type=access`) |
 | `ErrRateLimitExceeded` | Превышен порог ограничения скорости |
 
 ---
@@ -313,6 +328,10 @@ func (p *Processor) Revoke(tokenString string) error
 | `ErrProcessorClosed` | Processor закрыт |
 | `ErrEmptyToken` | Токен пуст |
 | `ErrBlacklistNotConfigured` | Чёрный список не настроен |
+| `ErrInvalidToken` | Недействительная подпись или некорректный токен |
+| `ErrTokenInvalidIssuer` | Издатель не совпадает |
+| `ErrTokenInvalidAudience` | Аудитория не совпадает |
+| `ErrTokenMissingID` | В токене отсутствует утверждение `jti` |
 
 ---
 
@@ -345,7 +364,10 @@ func (p *Processor) IsRevoked(tokenString string) (bool, error)
 |--------|----------------------|
 | `ErrProcessorClosed` | Processor закрыт |
 | `ErrEmptyToken` | Токен пуст |
-| `ErrTokenMissingID` | В токене отсутствует ID |
+| `ErrInvalidToken` | Недействительная подпись или некорректный токен |
+| `ErrTokenInvalidIssuer` | Издатель не совпадает |
+| `ErrTokenInvalidAudience` | Аудитория не совпадает |
+| `ErrTokenMissingID` | В токене отсутствует утверждение `jti` |
 
 ---
 
@@ -375,6 +397,14 @@ func (p *Processor) ParseUnverified(tokenString string, claims any) error
 | Возврат | Тип | Описание |
 |---------|-----|----------|
 | `err` | `error` | Ошибка при неудачном разборе |
+
+### Ошибки
+
+| Ошибка | Условие |
+|--------|---------|
+| `ErrProcessorClosed` | Processor закрыт |
+| `ErrEmptyToken` | Токен пуст |
+| Обёрнутая ошибка | Возвращает обёрнутую ошибку разбора для некорректных токенов (не является сигнальной ошибкой; не может быть сопоставлена через `errors.Is`) |
 
 ---
 

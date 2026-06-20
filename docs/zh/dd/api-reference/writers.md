@@ -61,7 +61,32 @@ func (c FileWriterConfig) Validate() error
 | 方法 | 签名 | 说明 |
 |------|------|------|
 | `Write` | `(p []byte) (int, error)` | 写入数据（实现 io.Writer） |
+| `SetOnRotateCallback` | `(fn func(path string))` | 设置文件轮换成功后的回调 |
 | `Close` | `() error` | 关闭文件写入器 |
+
+### 轮换回调
+
+```go
+func (fw *FileWriter) SetOnRotateCallback(fn func(path string))
+```
+
+设置一个在文件轮换**成功后**调用的回调函数。回调参数 `path` 为当前日志文件的基准路径（即传给 [`NewFileWriter`](#创建) 的 `path`）：此时旧日志已被归档为备份文件，新文件已在该路径重新打开。
+
+:::info 内部用途
+该方法主要供 `Logger` 内部使用——当 `FileWriter` 作为 Logger 的输出目标时，Logger 通过它触发 `HookOnRotate` 钩子事件（详见[钩子系统](./hooks)）。普通用户通常无需手动调用；若需自定义轮换后的行为，也可直接设置。
+:::
+
+```go
+fw, _ := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
+
+// 设置轮换回调：每次轮换后打印当前文件路径
+fw.SetOnRotateCallback(func(path string) {
+    fmt.Println("日志已轮换，当前文件：", path)
+})
+
+// 当文件超过大小/年龄/备份数限制并触发轮换时，回调被调用
+fw.Write([]byte("日志内容\n"))
+```
 
 ### 文件轮换
 

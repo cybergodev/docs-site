@@ -21,7 +21,7 @@ json 包提供丰富的迭代器功能，支持多种遍历方式：包级函数
 json.Foreach(`{"name": "Alice", "age": 30}`, func(key any, item *json.IterableValue) {
     fmt.Printf("键: %v, 值: %v\n", key, item.GetData())
 })
-// 输出:
+// 输出（对象键的遍历顺序不保证，每次运行可能不同）:
 // 键: name, 值: Alice
 // 键: age, 值: 30
 ```
@@ -111,7 +111,7 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 
 // 场景2：找到第一个符合条件的元素后退出
 var found any
-err := json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
+err = json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
     if obj, ok := value.(map[string]any); ok {
         if obj["admin"] == true {
             found = obj
@@ -123,7 +123,7 @@ err := json.ForeachWithPathAndControl(data, "users", func(key any, value any) js
 
 // 场景3：验证数据完整性
 var hasError bool
-err := json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
+err = json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
     if !validateRecord(value) {
         hasError = true
         return json.IteratorBreak // 数据不完整，停止验证
@@ -257,7 +257,7 @@ IterableValue 封装了迭代过程中的当前元素，提供便捷的值访问
 
 ```go
 val := iv.Get("user.address.city")
-val := iv.Get("users[0].name")
+val = iv.Get("users[0].name")
 ```
 
 #### GetString
@@ -449,13 +449,16 @@ if item.IsEmpty("tags") {
 返回停止迭代的信号。在迭代回调中调用可提前终止遍历。
 
 ```go
-json.Foreach(data, func(key any, item *json.IterableValue) {
+// 注意：Break() 仅在回调返回 error 的迭代函数中生效（如 ForeachWithError、
+// ForeachNestedWithError 等）。普通的 Foreach 回调不返回 error，
+// 在其中调用 item.Break() 不会停止迭代。
+err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
     if item.GetString("status") == "stop" {
         // 找到目标后停止迭代
-        item.Break()
-        return
+        return item.Break()
     }
     // 继续处理
+    return nil
 })
 ```
 
@@ -747,7 +750,7 @@ p.Foreach(`{"name": "Alice", "age": 30}`, func(key any, item *json.IterableValue
 
 签名：`func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue)) (string, error)`
 
-迭代并返回原始 JSON（只读操作）。
+迭代数组或对象并返回重新序列化后的 JSON 字符串。回调为只读访问；序列化失败时返回原始输入。
 
 ### ForeachWithPathAndControl
 
@@ -907,7 +910,7 @@ func main() {
         // 逐元素处理，内存友好
         count++
         if count%1000 == 0 {
-            fmt.Printf("已处理 %d 个元素\n", count)
+            fmt.Printf("已处理 %d 个元素，当前值: %v\n", count, val)
         }
     }
     

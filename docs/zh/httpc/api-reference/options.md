@@ -397,6 +397,27 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 
 设置单次请求最大重定向次数。范围：0-50。
 
+### WithAllowPrivateIPs
+
+```go
+func WithAllowPrivateIPs(allow bool) RequestOption
+```
+
+为单次请求覆盖客户端的 SSRF 策略。当 `allow` 为 `true` 时，该请求可访问 localhost 和私有/保留 IP 段（127.0.0.0/8、10.0.0.0/8、192.168.0.0/16、169.254.0.0/16 等），并可跟随到此类地址的重定向；为 `false` 时，即使客户端配置了 `Security.AllowPrivateIPs=true`，本次请求仍强制启用 SSRF 防护。
+
+:::warning 安全提示
+这是 SSRF 防护的**单次请求逃生舱**，适用于默认安全的客户端（`AllowPrivateIPs=false`）偶尔需要访问内部服务、回环地址或本地开发服务器的场景。
+
+仅在请求 URL 可信且**非**来自不受信任的用户输入时启用。若需整客户端访问内部服务，应直接在 `Config` 上设置 `Security.AllowPrivateIPs=true`。
+:::
+
+```go
+// 默认客户端阻止私有 IP；本次调用逐请求放行
+result, err := httpc.Get("http://localhost:8080/health",
+    httpc.WithAllowPrivateIPs(true),
+)
+```
+
 ### WithStreamBody
 
 ```go

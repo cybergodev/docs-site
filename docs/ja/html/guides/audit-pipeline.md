@@ -1,6 +1,6 @@
 ---
 title: "監査システム実践 - HTML"
-description: "CyberGo HTML 監査システム実践ガイド。基本的な有効化から多層監査パイプラインの構築まで、監査イベントタイプの詳細、組み込み Sink の選択と比較、LevelFilteredSink レベルフィルタリング、カスタム Sink 実装、FilteredSink イベントフィルタリング、プロダクション環境での監査モニタリングのベストプラクティスを含み、完全なセキュリティ監査体制の構築をサポートします。"
+description: "CyberGo HTML 監査実践ガイド：基本有効化から多層パイプラインまで、イベントタイプ、組み込み Sink 比較、LevelFilteredSink・FilteredSink フィルタ、カスタム Sink、本番監視のベストプラクティスを扱います。"
 ---
 
 # 監査システム実践

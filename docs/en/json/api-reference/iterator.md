@@ -111,7 +111,7 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 
 // Scenario 2: Exit after finding the first matching element
 var found any
-err := json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
+err = json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
     if obj, ok := value.(map[string]any); ok {
         if obj["admin"] == true {
             found = obj
@@ -123,7 +123,7 @@ err := json.ForeachWithPathAndControl(data, "users", func(key any, value any) js
 
 // Scenario 3: Validate data integrity
 var hasError bool
-err := json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
+err = json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
     if !validateRecord(value) {
         hasError = true
         return json.IteratorBreak // Data incomplete, stop validation
@@ -257,7 +257,7 @@ Gets a value by path (supports dot notation and array indexing).
 
 ```go
 val := iv.Get("user.address.city")
-val := iv.Get("users[0].name")
+val = iv.Get("users[0].name")
 ```
 
 #### GetString
@@ -449,13 +449,16 @@ Signature: `func (iv *IterableValue) Break() error`
 Returns a signal to stop iteration. Calling this within an iteration callback terminates the traversal early.
 
 ```go
-json.Foreach(data, func(key any, item *json.IterableValue) {
+// Note: Break() only takes effect in iteration functions whose callback returns an error
+// (such as ForeachWithError, ForeachNestedWithError, etc.). Regular Foreach callbacks do
+// not return an error, so calling item.Break() inside them does not stop iteration.
+err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
     if item.GetString("status") == "stop" {
         // Stop iteration after finding the target
-        item.Break()
-        return
+        return item.Break()
     }
     // Continue processing
+    return nil
 })
 ```
 
@@ -747,7 +750,7 @@ Recursively iterates through all nested levels.
 
 Signature: `func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue)) (string, error)`
 
-Iterates and returns the original JSON (read-only operation).
+Iterates over arrays or objects and returns the re-serialized JSON string. The callback is read-only; on serialization failure it returns the original input.
 
 ### ForeachWithPathAndControl
 
@@ -907,7 +910,7 @@ func main() {
         // Process element by element, memory-friendly
         count++
         if count%1000 == 0 {
-            fmt.Printf("Processed %d elements\n", count)
+            fmt.Printf("Processed %d elements, current value: %v\n", count, val)
         }
     }
 

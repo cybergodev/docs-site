@@ -16,7 +16,7 @@ type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, err
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.RecoveryMiddleware(),
             httpc.LoggingMiddleware(log.Printf),
@@ -53,7 +53,7 @@ func RecoveryMiddleware() MiddlewareFunc
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.RecoveryMiddleware(),
         },
@@ -71,7 +71,7 @@ func LoggingMiddleware(log func(format string, args ...any)) MiddlewareFunc
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.LoggingMiddleware(log.Printf),
         },
@@ -117,7 +117,7 @@ func TimeoutMiddleware(timeout time.Duration) MiddlewareFunc
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.TimeoutMiddleware(10 * time.Second),
         },
@@ -135,7 +135,7 @@ func HeaderMiddleware(headers map[string]string) MiddlewareFunc
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.HeaderMiddleware(map[string]string{
                 "X-API-Version": "v2",
@@ -156,7 +156,7 @@ func MetricsMiddleware(onMetrics func(method, url string, statusCode int, durati
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.MetricsMiddleware(func(method, url string, status int, d time.Duration, err error) {
                 metrics.Record(method, status, d, err)
@@ -176,7 +176,7 @@ func AuditMiddleware(onAudit func(event AuditEvent)) MiddlewareFunc
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.AuditMiddleware(func(event httpc.AuditEvent) {
                 log.Printf("[AUDIT] %s %s -> %d (%v) user=%s ip=%s",
@@ -205,7 +205,7 @@ config := &httpc.AuditMiddlewareConfig{
 }
 
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.AuditMiddlewareWithConfig(func(event httpc.AuditEvent) {
                 data, _ := json.Marshal(event)

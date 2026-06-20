@@ -91,6 +91,15 @@ if err != nil {
 }
 ```
 
+## エラーヘルパー関数
+
+上記のエラー型に加え、ライブラリは2つのエラー処理ヘルパー関数を提供します（詳細は [ヘルパーユーティリティ](./helpers#safeerror) を参照）：
+
+| 関数 | シグネチャ | 説明 |
+|------|-----------|------|
+| `SafeError` | `func SafeError(err error) string` | クライアントに安全なエラーメッセージを返し、パス名などの内部詳細を省略します（CWE-209） |
+| `RedactedPath` | `func RedactedPath(path string) string` | マスク済みのパスを返します（空でないパスは `"***"` にマスクされます）。ログとエラーレスポンスに使用 |
+
 ## 設定プリセット
 
 ### デフォルト値定数
@@ -101,6 +110,7 @@ const (
     DefaultMaxJSONSize     = 100 * 1024 * 1024  // 100MB
     DefaultMaxNestingDepth = 200
     DefaultMaxPathDepth    = 50
+    DefaultMaxDepth        = 100                 // エンコード/デコードのデフォルトネスト深度 (Config.MaxDepth)
     DefaultMaxConcurrency  = 50
 
     // セキュリティ制限

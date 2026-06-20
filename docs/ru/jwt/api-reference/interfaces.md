@@ -126,13 +126,16 @@ type BlacklistStore interface {
 ```go
 type RateLimitProvider interface {
     Allow(key string) bool
-    AllowN(key string, n int) bool
     Reset(key string)
     Close()
 }
 ```
 
-Интерфейс ограничения скорости.
+Интерфейс ограничения скорости. Processor вызывает `Allow(key)` для единичной проверки при создании токена.
+
+:::tip Об AllowN
+Сам интерфейс определяет только `Allow` для проверки одного запроса. Пакетный метод `AllowN(key string, n int) bool` — это метод-расширение конкретного типа [`*RateLimiter`](./types#ratelimiter) и не входит в этот интерфейс.
+:::
 
 <Badge type="info" text="interface" />
 
@@ -141,7 +144,6 @@ type RateLimitProvider interface {
 | Метод | Сигнатура | Описание |
 |-------|-----------|----------|
 | `Allow` | `Allow(key string) bool` | Проверяет, разрешён ли один запрос |
-| `AllowN` | `AllowN(key string, n int) bool` | Проверяет, разрешены ли n запросов |
 | `Reset` | `Reset(key string)` | Сбрасывает состояние ограничения для указанного key |
 | `Close` | `Close()` | Освобождает ресурсы |
 

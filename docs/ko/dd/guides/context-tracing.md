@@ -143,29 +143,37 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 - 글로벌 context 또는 goroutine-local 저장소에서 정적 필드 추출
 - HTTP 미들웨어와 결합하여 추적 필드를 수동으로 `WithFields`에 전달
 
-### 권장 패턴: 미들웨어 + WithFields
+### 커스텀 추출기 예시
 
 ```go
-// HTTP 미들웨어에서 추적 필드를 수동으로 전달
-func TracingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
-    return func(next http.Handler) http.Handler {
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            traceID := r.Header.Get("X-Trace-ID")
-            if traceID == "" {
-                traceID = uuid.New().String()
-            }
-
-            // 추적 필드를 요청 범위 로그에 주입
-            reqLog := logger.WithFields(
-                dd.String("trace_id", traceID),
-                dd.String("path", r.URL.Path),
-            )
-
-            next.ServeHTTP(w, r)
-            reqLog.Info("요청 완료")
-        })
+// 커스텀 추출기: 모든 로그에 정적/글로벌 메타데이터 추가
+func tenantExtractor(ctx context.Context) []dd.Field {
+    return []dd.Field{
+        dd.String("service", "order-service"),
+        dd.String("env", os.Getenv("APP_ENV")),
     }
 }
+
+// 추출기 등록
+logger.AddContextExtractor(tenantExtractor)
+```
+
+:::warning 컨텍스트 제한
+`ContextExtractor` 함수는 요청 범위의 context가 아닌 `context.Background()`를 받습니다. 요청마다 추적 ID를 추가하려면 위의 `WithFields()` 패턴을 사용하여 요청 범위의 `LoggerEntry`를 생성하세요.
+:::
+
+### 여러 추출기 조합
+
+```go
+// 서로 다른 글로벌 메타데이터를 수집하기 위해 여러 추출기 등록
+logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
+    return []dd.Field{
+        dd.String("hostname", getHostname()),
+        dd.String("version", buildVersion),
+    }
+})
+
+logger.AddContextExtractor(tenantExtractor)
 ```
 
 ## 마이크로서비스 간 전파

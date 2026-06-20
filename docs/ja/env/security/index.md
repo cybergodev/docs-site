@@ -33,7 +33,7 @@ description: "CyberGo env セキュリティアーキテクチャの包括的な
 | **禁止キー** | システム重要変数の変更を防止 | [定数とエラー](/ja/env/api-reference/constants#defaultforbiddenkeys) |
 | **機密キー検出** | 機密設定キーの自動識別 | [定数とエラー](/ja/env/api-reference/constants#sensitivekeypatterns) |
 | **値検証** | 制御文字、ヌルバイトなどの検出 | [Config API](/ja/env/api-reference/config) |
-| **監査ログ** | 完全な操作追跡 | [コンポーネントファクトリー](/ja/env/api-reference/factory#オーディットプロセッサーファクトリー) |
+| **監査ログ** | 完全な操作追跡 | [コンポーネントファクトリー](/ja/env/api-reference/factory) |
 
 ## SecureValue の紹介
 
@@ -46,7 +46,7 @@ password := env.GetString("DB_PASSWORD")
 // 推奨
 secret := env.GetSecure("DB_PASSWORD")
 defer secret.Close()
-password := secret.String()
+password := secret.Reveal()  // 平文が必要な場合のみ呼び出し
 ```
 
 **コア機能：**

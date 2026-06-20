@@ -160,7 +160,7 @@ fmt.Println("Type:", result.Type)
 | `AsInt()` | `(int, error)` | Convert to integer (bool not converted) |
 | `AsFloat64()` | `(float64, error)` | Convert to float64 (bool not converted) |
 | `AsBool()` | `(bool, error)` | Convert to boolean |
-| `Ok()` | `bool` | Check if result is valid (path exists and no error) |
+| `Ok()` | `bool` | Check if the value exists (returns `Exists`) |
 
 ::: warning Note
 `AsInt64()`, `AsArray()`, `AsObject()` methods have been removed. Please use `GetTyped[T]` to get these types.
@@ -600,8 +600,13 @@ Iterator value wrapper.
 |------|------|
 | `Exists(path)` | Check if field exists |
 | `IsNull(path)` | Check if the specified path is null |
+| `IsNullData()` | Check if the underlying value is null |
 | `IsEmpty(path)` | Check if the specified path is empty |
+| `IsEmptyData()` | Check if the underlying value is empty |
+| `GetData()` | Get the underlying raw data |
 | `Break()` | Return break signal, stop iteration |
+| `ForeachNested(path, fn)` | Iterate over nested structures |
+| `Release()` | Release resources |
 
 See the [Iterator](./iterator) documentation for details.
 

@@ -253,7 +253,8 @@ dlCfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r下载进度: %.1f%% (%.2f MB/s)", pct, float64(speed)/1024/1024)
 }
 
-result, err := client.DownloadWithOptions(
+result, err := client.Download(
+    context.Background(),
     "https://go.dev/dl/go1.22.0.linux-amd64.tar.gz",
     dlCfg,
 )

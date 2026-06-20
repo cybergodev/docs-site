@@ -126,6 +126,9 @@ defer processor.Close()
 | MaxJSONSize | 100MB | JSON 크기 제한 |
 | MaxNestingDepthSecurity | 200 | 중첩 깊이 |
 | MaxPathDepth | 50 | 경로 깊이 |
+| MaxSecurityValidationSize | 10MB | 보안 검증 크기 상한 |
+| MaxObjectKeys | 100000 | 객체 최대 키 수 |
+| MaxArrayElements | 100000 | 배열 최대 요소 수 |
 | MaxConcurrency | 50 | 동시성 수 |
 | MaxBatchSize | 2000 | 배치 작업 수 |
 | CacheTTL | 5분 | 캐시 만료 |
@@ -133,6 +136,8 @@ defer processor.Close()
 | EnableCache | true | 캐시 활성화 |
 | CacheResults | true | 작업 결과 캐시 |
 | EnableValidation | true | 유효성 검사 활성화 |
+| StrictMode | false | 비엄격 모드 |
+| FullSecurityScan | false | 샘플링 보안 스캔 (전체 아님) |
 | ValidateInput | true | 입력 검증 |
 | ValidateFilePath | true | 파일 경로 검증 |
 | CreatePaths | true | 경로 자동 생성 |

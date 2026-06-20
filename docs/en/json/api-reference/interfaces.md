@@ -530,7 +530,7 @@ func (r AccessResult) AsBool() (bool, error)              // Strict conversion
 | `AsStringConverted()` | Format | Uses fmt.Sprintf to convert any value to string representation |
 | `AsInt()` | Strict | Does not convert bool to int, only accepts integers and parseable numbers |
 | `AsFloat64()` | Strict | Does not convert bool to float, only accepts floats and parseable numbers |
-| `AsBool()` | Strict | Only accepts bool and parseable strings ("true"/"false"/"yes"/"no", etc.) |
+| `AsBool()` | Strict | Only accepts bool and strings accepted by `strconv.ParseBool` ("1"/"t"/"T"/"TRUE"/"true"/"True", "0"/"f"/"F"/"FALSE"/"false"/"False") |
 
 ```go
 result := p.SafeGet(data, "user.age")
@@ -627,7 +627,8 @@ type SchemaConfig struct {
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
-cfg.AdditionalProperties = ptrBool(false)
+additionalProperties := false
+cfg.AdditionalProperties = &additionalProperties
 schema := json.NewSchemaWithConfig(cfg)
 ```
 
@@ -637,8 +638,8 @@ Schema validation error.
 
 ```go
 type ValidationError struct {
-    Path    string // Error path
-    Message string // Error message
+    Path    string `json:"path"`    // Error path
+    Message string `json:"message"` // Error message
 }
 
 func (ve *ValidationError) Error() string

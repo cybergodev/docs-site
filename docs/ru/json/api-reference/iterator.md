@@ -111,7 +111,7 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 
 // Сценарий 2: Выход после нахождения первого подходящего элемента
 var found any
-err := json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
+err = json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
     if obj, ok := value.(map[string]any); ok {
         if obj["admin"] == true {
             found = obj
@@ -123,7 +123,7 @@ err := json.ForeachWithPathAndControl(data, "users", func(key any, value any) js
 
 // Сценарий 3: Проверка целостности данных
 var hasError bool
-err := json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
+err = json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
     if !validateRecord(value) {
         hasError = true
         return json.IteratorBreak // Данные неполные, остановить проверку
@@ -257,7 +257,7 @@ IterableValue инкапсулирует текущий элемент в про
 
 ```go
 val := iv.Get("user.address.city")
-val := iv.Get("users[0].name")
+val = iv.Get("users[0].name")
 ```
 
 #### GetString
@@ -449,13 +449,16 @@ if item.IsEmpty("tags") {
 Возвращает сигнал остановки итерации. Вызов в обратном вызове итерации позволяет досрочно прекратить обход.
 
 ```go
-json.Foreach(data, func(key any, item *json.IterableValue) {
+// Примечание: Break() действует только в функциях итерации, обратный вызов которых
+// возвращает error (например, ForeachWithError, ForeachNestedWithError и т. д.). Обычные
+// обратные вызовы Foreach не возвращают error, поэтому item.Break() не останавливает их.
+err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
     if item.GetString("status") == "stop" {
         // Остановить итерацию после нахождения цели
-        item.Break()
-        return
+        return item.Break()
     }
     // Продолжить обработку
+    return nil
 })
 ```
 

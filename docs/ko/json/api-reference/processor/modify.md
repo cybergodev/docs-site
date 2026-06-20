@@ -24,19 +24,19 @@ result, err := p.Set(data, "user.name", "NewName")
 result, _ := p.Set(data, "user.name", "CyberGo")
 
 // 숫자
-result, _ := p.Set(data, "user.age", 25)
+result, _ = p.Set(data, "user.age", 25)
 
 // 불리언
-result, _ := p.Set(data, "user.active", true)
+result, _ = p.Set(data, "user.active", true)
 
 // 객체
-result, _ := p.Set(data, "user.profile", map[string]any{
+result, _ = p.Set(data, "user.profile", map[string]any{
     "bio": "Developer",
     "location": "China",
 })
 
 // 배열
-result, _ := p.Set(data, "items", []any{"a", "b", "c"})
+result, _ = p.Set(data, "items", []any{"a", "b", "c"})
 ```
 
 ## Delete
@@ -70,7 +70,7 @@ result, _ := p.Delete(data, "user.temp")
 
 // 삭제 후 부모 객체가 비어있으면 DeleteClean은 계속 정리
 // {"user": {}} -> {}
-result, _ := p.DeleteClean(data, "user.temp")
+result, _ = p.DeleteClean(data, "user.temp")
 ```
 
 ## SetMultiple

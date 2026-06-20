@@ -409,8 +409,6 @@ The library internally parses paths into different types of segments (these are 
 | Array index | `items[0]` | Access array elements |
 | Array slice | `items[1:5]` | Slice range access |
 | Wildcard | `items[*]` | Match all elements |
-| Recursive descent | `..name` | Recursively search all levels |
-| Filter | `[?active]` | Conditional filtering |
 | Field extraction | `{name,email}` | Extract multiple fields |
 | Flat extraction | `{flat:tags}` | Extract and recursively flatten nested arrays |
 | Append operation | `items[+]` | Append to array |

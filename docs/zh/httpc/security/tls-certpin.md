@@ -1,6 +1,6 @@
 ---
 title: "TLS 与证书固定 - HTTPC"
-description: "HTTPC TLS 与证书固定指南：TLS 1.2-1.3 版本控制与密码套件、自定义 CA 证书加载、mTLS 双向认证、VerifyPeerCertificate SPKI 公钥固定策略、InsecureSkipVerify 警告与 HTTP/2 协商。"
+description: "HTTPC TLS 与证书固定指南：TLS 1.2-1.3 版本控制与密码套件、自定义 CA 证书加载、mTLS 双向认证、CertificatePinner 证书固定 API（SPKI 哈希/公钥/链式）、VerifyPeerCertificate 自定义验证与 HTTP/2 协商。"
 ---
 
 # TLS 与证书固定
@@ -81,32 +81,74 @@ client, _ := httpc.New(cfg)
 
 证书固定（Certificate Pinning）通过验证服务端证书的公钥哈希来防止中间人攻击。
 
-### SPKI 哈希固定
+### SPKI 哈希固定（推荐）
 
-最常见的固定方式，验证证书链中任意证书的 SPKI 哈希：
+最常见的固定方式。通过 `NewSPKIHashPinner` 校验服务端证书链中任一证书的 SPKI（SubjectPublicKeyInfo）SHA-256 哈希。提供多个哈希可支持密钥轮换——任一匹配即通过。
+
+生成 SPKI 哈希：
+
+```bash
+openssl x509 -in cert.pem -pubkey -noout | \
+  openssl pkey -pubin -outform der | \
+  openssl dgst -sha256 -binary | \
+  openssl enc -base64
+```
+
+固定 Let's Encrypt 中间证书（推荐固定中间证书，兼顾安全与维护成本）：
 
 ```go
-// 生成 SPKI 哈希：
-// openssl x509 -in cert.pem -pubkey -noout | \
-//   openssl pkey -pubin -outform der | \
-//   openssl dgst -sha256 -binary | \
-//   openssl enc -base64
+pinner, err := httpc.NewSPKIHashPinner(
+    "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2fuihg=", // 当前中间证书
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // 备用（密钥轮换）
+)
+if err != nil {
+    log.Fatal(err)
+}
 
-// 固定 Let's Encrypt 中间证书
+cfg := httpc.DefaultConfig()
+cfg.Security.CertificatePinner = pinner
+client, err := httpc.New(cfg)
+```
+
+:::tip
+`CertificatePinner` 在标准 TLS 链验证**之上**叠加固定校验，无需设置 `InsecureSkipVerify`。校验对证书链中任意一层证书生效，因此固定中间证书可在叶子证书续期后继续生效。
+:::
+
+:::warning
+证书固定会增加维护成本。如果服务端更换证书（如 Let's Encrypt 续期），客户端需要同步更新固定值。
+建议同时固定多个证书（如叶子证书 + 中间证书），并设置更新机制。
+:::
+
+### 其他固定构造函数
+
+除 SPKI 哈希外，HTTPC 还提供：
+
+```go
+// 由 DER 编码的 PKIX 公钥直接创建（内部计算 SHA-256）
+pubPinner, err := httpc.NewPublicKeyPinner(pubKeyDER1, pubKeyDER2)
+
+// 组合多个 pinner，任一通过即接受（混合固定策略或轮换密钥）
+chainPinner := httpc.NewCertificatePinnerChain(spkiPinner, pubPinner)
+cfg.Security.CertificatePinner = chainPinner
+```
+
+### 高级：自定义 TLS 验证回调
+
+如需完全控制 TLS 验证逻辑（例如固定完整证书而非公钥），可通过 `TLSConfig` 自行实现。此时标准链验证由 `InsecureSkipVerify` 跳过，**必须**在 `VerifyPeerCertificate` 中完成全部校验：
+
+```go
 cfg := httpc.DefaultConfig()
 cfg.Security.TLSConfig = &tls.Config{
-    InsecureSkipVerify: true, // 完全替换标准验证，需在 VerifyPeerCertificate 中自行完成全部校验
+    InsecureSkipVerify: true, // 跳过标准链验证，需在回调中自行完成全部校验
     VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-        // 在这里实现证书固定逻辑
-        // 注意: InsecureSkipVerify=true 时标准链验证已跳过，必须在此完成完整的证书验证
+        // 在这里实现完整的证书验证 + 固定逻辑
         return nil
     },
 }
 ```
 
 :::warning
-证书固定会增加维护成本。如果服务端更换证书（如 Let's Encrypt 续期），客户端需要同步更新固定值。
-建议同时固定多个证书（如叶子证书 + 中间证书），并设置更新机制。
+`InsecureSkipVerify = true` 会完全跳过标准证书链验证。仅在确实需要自定义验证逻辑时使用，并确保回调中完成全部必要校验。绝大多数固定场景应优先使用 `CertificatePinner`。
 :::
 
 ### 固定策略

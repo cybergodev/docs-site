@@ -1,6 +1,6 @@
 ---
 title: "Result - HTTPC"
-description: "HTTPC Result レスポンスタイプ API リファレンス：StatusCode/Body/RawBody 基本メソッド、ステータス判定、Cookie 操作、Unmarshal JSON 解析、SaveToFile ファイル保存と RequestInfo/ResponseInfo/RequestMeta サブタイプ。Result は自動プール管理され、GC が自動的にクリーンアップします。"
+description: "HTTPC Result レスポンスタイプ API リファレンス：StatusCode/Body/RawBody 基本メソッド、ステータス判定、Cookie 操作、Unmarshal JSON 解析、SaveToFile ファイル保存と RequestInfo/ResponseInfo/RequestMeta サブタイプ。"
 ---
 
 # Result

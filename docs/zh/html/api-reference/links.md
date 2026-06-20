@@ -7,6 +7,14 @@ description: "CyberGo HTML 库独立链接提取 API 参考，包括 ExtractAllL
 
 独立的链接提取 API，可从 HTML 中提取所有链接资源并按类型分组。
 
+:::tip 与 Extract 的关键区别
+`ExtractAllLinks` **不会应用 HTML 清洗**（`EnableSanitization` 在此无效），因此位于 `<script src>`、`<iframe>`、`<link>`、`<embed>` 等标签中的资源链接也会被完整提取。这是为了让这些资源链接能够被枚举出来——它们在 `Extract` 路径中通常会被清洗过程移除。
+:::
+
+:::info 结果排序与去重
+`ExtractAllLinks` 返回的结果**按 URL 升序排列**，并按 URL 去重。因此对相同输入多次调用会得到完全一致的输出（自 v1.4.2 起），便于结果比较、缓存复用与可重现的下游处理。同一 URL 出现在多个标签中时仅保留一条记录。
+:::
+
 ## 包函数
 
 ```go

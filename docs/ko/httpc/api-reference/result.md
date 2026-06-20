@@ -1,6 +1,6 @@
 ---
 title: "Result - HTTPC"
-description: "HTTPC Result 응답 타입 API 레퍼런스: StatusCode/Body/RawBody 기본 메서드, 상태 판단, Cookie 조작, Unmarshal JSON 파싱, SaveToFile 파일 저장과 RequestInfo/ResponseInfo/RequestMeta 하위 타입을 다룹니다. Result는 자동으로 풀링되며, GC가 자동으로 회수합니다."
+description: "HTTPC Result 응답 타입 API 레퍼런스: StatusCode/Body/RawBody 기본 메서드, 상태 판단, Cookie 조작, Unmarshal JSON 파싱, SaveToFile 파일 저장과 RequestInfo/ResponseInfo/RequestMeta 하위 타입을 다룹니다."
 ---
 
 # Result

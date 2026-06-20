@@ -1,6 +1,6 @@
 ---
 title: "性能优化 - HTTPC"
-description: "HTTPC 性能优化指南：Default/Secure/Performance/Minimal 四种预设对比与场景选型、基于预设微调连接池与超时参数、内置对象池自动管理减少 GC 压力、并发请求模式与常见性能反模式分析。"
+description: "HTTPC 性能优化指南：Default/Secure/Performance/Minimal 四种预设对比与场景选型、基于预设微调连接池与超时参数、内置对象池自动管理减少 GC 压力、高并发请求模式、性能基准测试方法与常见性能反模式分析。"
 ---
 
 # 性能优化

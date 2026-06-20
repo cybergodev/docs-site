@@ -126,13 +126,16 @@ type BlacklistStore interface {
 ```go
 type RateLimitProvider interface {
     Allow(key string) bool
-    AllowN(key string, n int) bool
     Reset(key string)
     Close()
 }
 ```
 
-限流接口。
+限流接口。Processor 在创建令牌时调用 `Allow(key)` 做单次判断。
+
+:::tip 关于 AllowN
+接口本身只定义单次判断的 `Allow`。批量判断方法 `AllowN(key string, n int) bool` 是具体类型 [`*RateLimiter`](./types#ratelimiter) 的扩展方法，不属于此接口。
+:::
 
 <Badge type="info" text="interface" />
 
@@ -141,7 +144,6 @@ type RateLimitProvider interface {
 | 方法 | 签名 | 说明 |
 |------|------|------|
 | `Allow` | `Allow(key string) bool` | 检查单次请求是否允许 |
-| `AllowN` | `AllowN(key string, n int) bool` | 检查 n 次请求是否允许 |
 | `Reset` | `Reset(key string)` | 重置指定 key 的限流状态 |
 | `Close` | `Close()` | 释放资源 |
 

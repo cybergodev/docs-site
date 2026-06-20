@@ -87,6 +87,8 @@ cfg.AddHook(&FilterFieldsHook{fields: map[string]bool{
 ```
 
 
+## Security Configuration Recommendations
+
 ### Dangerous Pattern Management
 
 The library includes built-in default dangerous pattern detection and supports custom pattern registration, unregistration, and querying.
@@ -152,8 +154,6 @@ cfg.DisableDefaultPatterns = true // Disable default warning-level patterns
 ::: warning Note
 `DisableDefaultPatterns` only disables default warning-level (`PatternLevelWarning`) patterns. Default critical-level (`PatternLevelCritical`) patterns are not affected.
 :::
-
-## Security Configuration Recommendations
 
 ### Production Configuration
 

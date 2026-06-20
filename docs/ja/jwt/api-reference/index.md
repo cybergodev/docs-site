@@ -17,7 +17,7 @@ CyberGo JWT ライブラリは完全な JWT トークンライフサイクル管
 | [Claims](./claims) | `Claims`、`RegisteredClaims` クレーム型 | トークンクレーム |
 | [インターフェース定義](./interfaces) | `TokenManager`、`CustomClaims`、`BlacklistStore` など | 拡張インターフェース |
 | [型と定数](./types) | 署名アルゴリズム定数、`NumericDate`、`StringOrSlice` など | 補助型 |
-| [エラー](./errors) | 17 個のセンチネルエラー、`ValidationError` | エラー処理 |
+| [エラー](./errors) | 19 個のセンチネルエラー、`ValidationError` | エラー処理 |
 
 ## クイック検索
 

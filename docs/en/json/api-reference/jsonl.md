@@ -449,6 +449,60 @@ err := np.ProcessReader(file, func(lineNum int, obj map[string]any) error {
 
 ## Package-Level Functions
 
+All JSONL processing functions provide package-level convenience versions with signatures identical to the corresponding [Processor methods](./processor/jsonl). They use the default global Processor internally, so no manual instance creation is required.
+
+::: tip Tip
+Package-level functions are suitable for one-off processing. If you need to call them repeatedly in a loop or share configuration, create a dedicated `Processor` ([`json.New()`](./processor/)) to reuse the cache.
+:::
+
+### StreamJSONL
+
+Signature: `func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+
+Stream-processes JSONL line by line, parsing each line into an `IterableValue` before invoking the callback.
+
+### StreamJSONLParallel
+
+Signature: `func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+
+Processes JSONL using `workers` parallel goroutines.
+
+### StreamJSONLParallelWithContext
+
+Signature: `func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+
+Parallel JSONL processing with context cancellation support.
+
+### StreamJSONLChunked
+
+Signature: `func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error) error`
+
+Processes JSONL in batches of `chunkSize`, passing each batch as `[]*IterableValue` to the callback.
+
+### ForeachJSONL
+
+Signature: `func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+
+Iterates over JSONL, invoking the callback for each line.
+
+### MapJSONL
+
+Signature: `func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error)) ([]any, error)`
+
+Maps each line to a new value and returns a slice of results.
+
+### ReduceJSONL
+
+Signature: `func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any) (any, error)`
+
+Reduces JSONL; `initial` is the accumulator's initial value.
+
+### FilterJSONL
+
+Signature: `func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool) ([]*IterableValue, error)`
+
+Filters JSONL by predicate, returning the matching items.
+
 ### StreamJSONLFile
 
 Signature: `func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error) error`
@@ -461,6 +515,18 @@ err := json.StreamJSONLFile("data.jsonl", func(lineNum int, item *json.IterableV
     return nil
 })
 ```
+
+### CollectJSONL
+
+Signature: `func CollectJSONL(reader io.Reader) ([]*IterableValue, error)`
+
+Reads all JSONL lines and collects them into a slice.
+
+### FirstJSONL
+
+Signature: `func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool) (*IterableValue, bool, error)`
+
+Returns the first element satisfying the predicate; the second return value indicates whether a match was found.
 
 ### StreamLinesInto[T]
 
@@ -607,6 +673,7 @@ func main() {
 package main
 
 import (
+    "fmt"
     "os"
     "sync/atomic"
     "github.com/cybergodev/json"

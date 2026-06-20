@@ -67,8 +67,15 @@ type Config struct {
     ContextExtractors []ContextExtractor // Context extractor list
     Hooks             *HookRegistry      // Hook registry
     Sampling          *SamplingConfig    // Sampling config
+
+    // Audit configuration
+    Audit             *AuditConfig       // Audit logging config (security events)
 }
 ```
+
+:::tip Audit Field
+When `Audit` is set, sensitive data redactions, rate limit events, and security violations are emitted as audit events via the [AuditLogger](./audit). See [Audit Logging](./audit).
+:::
 
 ### Clone
 
@@ -357,3 +364,4 @@ logger, _ := dd.New(dd.Config{
 - [Output Targets](./writers) -- FileWriter, BufferedWriter, MultiWriter
 - [Security Filtering](./security) -- SecurityConfig in detail
 - [Hook System](./hooks) -- HooksConfig in detail
+- [Audit Logging](./audit) -- AuditConfig in detail

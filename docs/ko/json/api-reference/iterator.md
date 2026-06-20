@@ -111,7 +111,7 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 
 // 시나리오 2: 첫 번째로 조건을 만족하는 요소를 찾은 후 종료
 var found any
-err := json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
+err = json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
     if obj, ok := value.(map[string]any); ok {
         if obj["admin"] == true {
             found = obj
@@ -123,7 +123,7 @@ err := json.ForeachWithPathAndControl(data, "users", func(key any, value any) js
 
 // 시나리오 3: 데이터 무결성 검증
 var hasError bool
-err := json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
+err = json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
     if !validateRecord(value) {
         hasError = true
         return json.IteratorBreak // 데이터가 불완전하면 검증 중단
@@ -257,7 +257,7 @@ IterableValue는 반복 과정의 현재 요소를 캡슐화하여 편리한 값
 
 ```go
 val := iv.Get("user.address.city")
-val := iv.Get("users[0].name")
+val = iv.Get("users[0].name")
 ```
 
 #### GetString
@@ -449,13 +449,16 @@ if item.IsEmpty("tags") {
 반복 중단 신호를 반환합니다. 반복 콜백에서 호출하면 순회를 조기에 종료할 수 있습니다.
 
 ```go
-json.Foreach(data, func(key any, item *json.IterableValue) {
+// 주의: Break()는 콜백이 error를 반환하는 반복 함수(ForeachWithError,
+// ForeachNestedWithError 등)에서만 적용됩니다. 일반 Foreach 콜백은 error를
+// 반환하지 않으므로, 그 안에서 item.Break()를 호출해도 반복이 중지되지 않습니다.
+err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
     if item.GetString("status") == "stop" {
         // 대상을 찾은 후 반복 중단
-        item.Break()
-        return
+        return item.Break()
     }
     // 계속 처리
+    return nil
 })
 ```
 

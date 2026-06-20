@@ -44,7 +44,6 @@ type Config struct {
 package main
 
 import (
-    "fmt"
     "log"
     "github.com/cybergodev/json"
 )
@@ -72,7 +71,8 @@ func main() {
         interests := item.GetArray("profile.interests")
 
         if count%10000 == 0 {
-            log.Printf("%d건 레코드 처리 완료", count)
+            log.Printf("처리한 레코드 %d건, 예시: id=%d name=%s email=%s city=%s 관심사=%d",
+                count, id, name, email, city, len(interests))
         }
         return nil
     })
@@ -216,7 +216,6 @@ _, err := json.StreamLinesInto[User](file, func(lineNum int, user User) error {
 package main
 
 import (
-    "fmt"
     "sync"
     "github.com/cybergodev/json"
 )
@@ -240,7 +239,7 @@ func main() {
             defer wg.Done()
             for item := range items {
                 // item 처리
-                processItem(item)
+                _ = item
             }
         }(i)
     }

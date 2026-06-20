@@ -16,7 +16,7 @@ Middleware is configured in `Config.Middleware.Middlewares` and executes in orde
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.RecoveryMiddleware(),
             httpc.LoggingMiddleware(log.Printf),
@@ -53,7 +53,7 @@ Panic recovery middleware. Catches panics in the processing chain and converts t
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.RecoveryMiddleware(),
         },
@@ -71,7 +71,7 @@ Request logging middleware. Logs method, URL, status code, and duration. URLs ar
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.LoggingMiddleware(log.Printf),
         },
@@ -117,7 +117,7 @@ Middleware-level timeout control. Takes effect before the client's built-in time
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.TimeoutMiddleware(10 * time.Second),
         },
@@ -135,7 +135,7 @@ Adds static headers to every request. Header security is validated at creation t
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.HeaderMiddleware(map[string]string{
                 "X-API-Version": "v2",
@@ -156,7 +156,7 @@ Metrics collection middleware. Invokes the callback after each request completes
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.MetricsMiddleware(func(method, url string, status int, d time.Duration, err error) {
                 metrics.Record(method, status, d, err)
@@ -176,7 +176,7 @@ Security audit middleware, suitable for financial, medical, government, and othe
 
 ```go
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.AuditMiddleware(func(event httpc.AuditEvent) {
                 log.Printf("[AUDIT] %s %s -> %d (%v) user=%s ip=%s",
@@ -205,7 +205,7 @@ config := &httpc.AuditMiddlewareConfig{
 }
 
 client, _ := httpc.New(&httpc.Config{
-    Middleware: httpc.MiddlewareConfig{
+    Middleware: &httpc.MiddlewareConfig{
         Middlewares: []httpc.MiddlewareFunc{
             httpc.AuditMiddlewareWithConfig(func(event httpc.AuditEvent) {
                 data, _ := json.Marshal(event)

@@ -1,6 +1,6 @@
 ---
 title: "오류 처리 - HTML"
-description: "CyberGo HTML 라이브러리 오류 처리 전체 가이드, 5가지 오류 분류(입력 오류, 설정 오류, 파일 오류, 처리 오류, 시스템 오류), errors.Is 센티넬 오류 판별 패턴, errors.As 구조화된 오류 정보 추출 상세 설명, context 컨텍스트 취소 처리와 배치 처리 부분 실패 처리 패턴을 포함합니다."
+description: "CyberGo HTML 오류 처리 가이드: 5가지 오류 분류, errors.Is 센티넬 판별, errors.As 구조화 정보 추출, context 취소 처리, 배치 부분 실패 패턴으로 견고한 오류 로직을 구축합니다."
 ---
 
 # 오류 처리

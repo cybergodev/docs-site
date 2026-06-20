@@ -24,19 +24,19 @@ result, err := p.Set(data, "user.name", "NewName")
 result, _ := p.Set(data, "user.name", "CyberGo")
 
 // 数字
-result, _ := p.Set(data, "user.age", 25)
+result, _ = p.Set(data, "user.age", 25)
 
 // 布尔值
-result, _ := p.Set(data, "user.active", true)
+result, _ = p.Set(data, "user.active", true)
 
 // 对象
-result, _ := p.Set(data, "user.profile", map[string]any{
+result, _ = p.Set(data, "user.profile", map[string]any{
     "bio": "Developer",
     "location": "China",
 })
 
 // 数组
-result, _ := p.Set(data, "items", []any{"a", "b", "c"})
+result, _ = p.Set(data, "items", []any{"a", "b", "c"})
 ```
 
 ## Delete
@@ -70,7 +70,7 @@ result, _ := p.Delete(data, "user.temp")
 
 // 如果删除后父对象为空，DeleteClean 会继续清理
 // {"user": {}} -> {}
-result, _ := p.DeleteClean(data, "user.temp")
+result, _ = p.DeleteClean(data, "user.temp")
 ```
 
 ## SetMultiple

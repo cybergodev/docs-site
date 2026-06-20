@@ -160,7 +160,7 @@ fmt.Println("타입:", result.Type)
 | `AsInt()` | `(int, error)` | 정수로 변환 (bool은 변환 안 함) |
 | `AsFloat64()` | `(float64, error)` | float64로 변환 (bool은 변환 안 함) |
 | `AsBool()` | `(bool, error)` | 불리언으로 변환 |
-| `Ok()` | `bool` | 결과 유효성 확인 (경로가 존재하고 오류 없음) |
+| `Ok()` | `bool` | 값 존재 여부 확인 (`Exists` 반환) |
 
 :::warning 주의
 `AsInt64()`, `AsArray()`, `AsObject()` 메서드는 제거되었습니다. 이러한 타입을 가져오려면 `GetTyped[T]`를 사용하세요.

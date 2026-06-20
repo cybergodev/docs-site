@@ -54,11 +54,16 @@ filter, _ := dd.NewCustomSensitiveDataFilter(
 
 ```go
 type SecurityConfig struct {
-    MaxMessageSize  int                  // Макс. размер сообщения (байт, 0 = без ограничения, по умолчанию 5МБ в предустановках)
-    MaxWriters      int                  // Макс. количество Writer (по умолчанию 100 в предустановках)
-    SensitiveFilter *SensitiveDataFilter // Фильтр конфиденциальных данных
+    MaxMessageSize  int                       // Макс. размер сообщения (байт, 0 = без ограничения, по умолчанию 5МБ в предустановках)
+    MaxWriters      int                       // Макс. количество Writer (по умолчанию 100 в предустановках)
+    SensitiveFilter *SensitiveDataFilter      // Фильтр конфиденциальных данных
+    RateLimitConfig *internal.RateLimitConfig // Конфигурация ограничения частоты (внутренний тип, заполняется предустановками автоматически; nil отключает ограничение)
 }
 ```
+
+:::info О RateLimitConfig
+`RateLimitConfig` управляет ограничением частоты логирования для предотвращения флуда логов (DoS) и поддержания стабильности системы под нагрузкой. Это поле — внутренний тип (`*internal.RateLimitConfig`), его нельзя создать напрямую; обычно оно заполняется автоматически предустановками, такими как `SecurityConfigForLevel` или `DefaultSecureConfig`. Чтобы отключить ограничение частоты, установите его в `nil`.
+:::
 
 ### FilterStats
 

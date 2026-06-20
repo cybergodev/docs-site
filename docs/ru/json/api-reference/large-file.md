@@ -256,6 +256,13 @@ import (
     "github.com/cybergodev/json"
 )
 
+// User представляет запись пользователя (пример модели данных)
+type User struct {
+    ID    int
+    Name  string
+    Email string
+}
+
 func main() {
     p, err := json.New()
     if err != nil {

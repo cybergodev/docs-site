@@ -33,10 +33,10 @@ defer processor.Close()
 // 使用自定义配置
 cfg := json.DefaultConfig()
 cfg.StrictMode = true
-processor, err := json.New(cfg)
+processor, err = json.New(cfg)
 
 // 使用安全配置
-processor, err := json.New(json.SecurityConfig())
+processor, err = json.New(json.SecurityConfig())
 ```
 
 ## 链式调用

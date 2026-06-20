@@ -1,6 +1,6 @@
 ---
 title: "Testing Guide - HTTPC"
-description: "HTTPC testing guide: TestingConfig for test-specific configuration, net/http/httptest mock server integration, mock error responses/delays/redirects/file uploads, table-driven test patterns, and context timeout testing best practices."
+description: "HTTPC testing guide: covering TestingConfig for test-specific configuration, net/http/httptest mock server integration, mock error responses/delays/redirects/file uploads, table-driven tests, Cookie session assertion patterns, and context timeout testing best practices."
 ---
 
 # Testing Guide

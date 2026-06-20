@@ -9,15 +9,19 @@ description: "HTTPC 配置系统 API 参考：Config 主结构体及 Timeouts、
 
 ```go
 type Config struct {
-    Timeouts   TimeoutConfig
-    Connection ConnectionConfig
-    Security   SecurityConfig
-    Retry      RetryConfig
-    Middleware MiddlewareConfig
+    Timeouts   *TimeoutConfig
+    Connection *ConnectionConfig
+    Security   *SecurityConfig
+    Retry      *RetryConfig
+    Middleware *MiddlewareConfig
 }
 ```
 
 主配置结构体，通过 `DefaultConfig()` 获取安全默认值。
+
+:::tip 子配置为指针
+自 v1.5.1 起，五个子配置均为**指针类型**。`DefaultConfig()` 及所有预设函数（`SecureConfig`、`PerformanceConfig` 等）会自动初始化这些指针为非空结构体，因此 `cfg.Timeouts.Request`、`cfg.Security.AllowPrivateIPs` 等字段访问可直接使用。若手动构造 `Config{}` 字面量，需用 `&httpc.TimeoutConfig{...}` 形式赋值，且使用前应确保指针非空。
+:::
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -84,22 +88,51 @@ cfg.Connection.DoHCacheTTL = 5 * time.Minute
 
 ```go
 type SecurityConfig struct {
-    TLSConfig               *tls.Config    // 自定义 TLS 配置
-    MinTLSVersion           uint16         // 最低 TLS 版本，默认 TLS 1.2
-    MaxTLSVersion           uint16         // 最高 TLS 版本，默认 TLS 1.3
-    InsecureSkipVerify      bool           // 跳过证书验证（仅测试用）
-    MaxResponseBodySize     int64          // 响应体大小限制，默认 10MB
-    MaxRequestBodySize      int64          // 请求体大小限制，默认 0（使用 MaxResponseBodySize 的值）
-    MaxDecompressedBodySize int64          // 解压后大小限制，默认 100MB
-    AllowPrivateIPs         bool           // 允许私有 IP，默认 false
-    SSRFExemptCIDRs         []string       // SSRF 豁免 CIDR
-    ValidateURL             bool           // URL 验证，默认 true
-    ValidateHeaders         bool           // 请求头验证，默认 true
-    StrictContentLength     bool           // 严格 Content-Length，默认 true
+    TLSConfig               *tls.Config           // 自定义 TLS 配置
+    MinTLSVersion           uint16                // 最低 TLS 版本，默认 TLS 1.2
+    MaxTLSVersion           uint16                // 最高 TLS 版本，默认 TLS 1.3
+    InsecureSkipVerify      bool                  // 跳过证书验证（仅测试用）
+    MaxResponseBodySize     int64                 // 响应体大小限制，默认 10MB
+    MaxRequestBodySize      int64                 // 请求体大小限制，默认 0（不限制请求体大小；与 MaxResponseBodySize 不同，无自动回退）
+    MaxDecompressedBodySize int64                 // 解压后大小限制，默认 100MB
+    AllowPrivateIPs         bool                  // 允许私有 IP，默认 false
+    SSRFExemptCIDRs         []string              // SSRF 豁免 CIDR
+    ValidateURL             bool                  // URL 验证，默认 true
+    ValidateHeaders         bool                  // 请求头验证，默认 true
+    StrictContentLength     bool                  // 严格 Content-Length，默认 true
     CookieSecurity          *CookieSecurityConfig // Cookie 安全验证
-    RedirectWhitelist       []string       // 重定向白名单域名
+    CertificatePinner       CertificatePinner     // 证书固定（SPKI 哈希/公钥），默认 nil（禁用）
+    RedirectWhitelist       []string              // 重定向白名单域名
 }
 ```
+
+### 证书固定（CertificatePinner）
+
+`CertificatePinner` 启用证书固定：TLS 握手在服务端未提供已固定密钥/证书时将被拒绝，即便受信任 CA 被攻破也可防御中间人攻击。默认 `nil`（禁用）。通过以下构造函数创建：
+
+| 构造函数 | 说明 |
+|----------|------|
+| `NewSPKIHashPinner(hashes ...string) (CertificatePinner, error)` | 由一个或多个 base64 编码的 SPKI SHA-256 哈希创建（最常用，支持密钥轮换） |
+| `NewPublicKeyPinner(publicKeys ...[]byte) (CertificatePinner, error)` | 由 DER 编码的 PKIX 公钥创建（内部计算 SHA-256） |
+| `NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner` | 组合多个 pinner，任一通过即接受 |
+
+```go
+pinner, err := httpc.NewSPKIHashPinner(
+    "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2fuihg=", // 当前密钥
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // 备用密钥（轮换）
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+cfg := httpc.DefaultConfig()
+cfg.Security.CertificatePinner = pinner
+client, err := httpc.New(cfg)
+```
+
+:::warning 维护成本
+证书固定要求在服务端更换证书（如 Let's Encrypt 续期）时同步更新固定值。建议固定多个哈希（当前 + 备用）并建立更新机制，避免因密钥轮换导致连接中断。
+:::
 
 :::warning SSRF 防护
 `AllowPrivateIPs` 默认为 `false`，阻止连接到私有/保留 IP（127.0.0.1、10.x、192.168.x 等）。仅在连接内部服务时设为 `true`。

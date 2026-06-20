@@ -56,14 +56,14 @@ if err != nil {
 result, err := p.EncodeWithConfig(data, json.PrettyConfig())
 
 // 使用 SecurityConfig
-result, err := p.EncodeWithConfig(data, json.SecurityConfig())
+result, err = p.EncodeWithConfig(data, json.SecurityConfig())
 
 // 使用自定义配置
 cfg := json.DefaultConfig()
 cfg.Pretty = true
 cfg.SortKeys = true
 cfg.EscapeHTML = true
-result, err := p.EncodeWithConfig(data, cfg)
+result, err = p.EncodeWithConfig(data, cfg)
 ```
 
 ### EncodeBatch

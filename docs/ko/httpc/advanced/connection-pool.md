@@ -1,6 +1,6 @@
 ---
 title: "연결 풀과 프록시 - HTTPC"
-description: "HTTPC 연결 풀과 프록시 설정 가이드: MaxIdleConns 등 매개변수 튜닝과 시나리오별 추천, ProxyURL 수동 프록시와 시스템 프록시 감지, SOCKS5 프록시, DoH 세 제공자 폴백, HTTP/2 설정, 내장 객체 풀 자동 관리와 동시성 요청 패턴을 다룹니다."
+description: "HTTPC 연결 풀과 프록시 설정 가이드: MaxIdleConns 등 연결 풀 매개변수 튜닝과 시나리오별 추천, ProxyURL 수동 프록시와 시스템 프록시 감지, SOCKS5와 HTTP 프록시, DoH 세 제공자 폴백, HTTP/2 설정, 연결 재사용과 내장 객체 풀 자동 관리의 실무 요점을 다룹니다."
 ---
 
 # 연결 풀과 프록시

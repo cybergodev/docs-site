@@ -21,10 +21,7 @@ type Client interface {
     Options(url string, options ...RequestOption) (*Result, error)
 
     // ファイルダウンロード
-    DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-    DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-    DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-    DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
+    Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 
     // ライフサイクル
     Close() error

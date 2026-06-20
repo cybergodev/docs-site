@@ -1,6 +1,6 @@
 ---
 title: "TLS and Certificate Pinning - HTTPC"
-description: "HTTPC TLS and certificate pinning guide: TLS 1.2-1.3 version control and cipher suites, custom CA certificate loading, mTLS mutual authentication, VerifyPeerCertificate SPKI public key pinning strategy, InsecureSkipVerify warning, and HTTP/2 negotiation."
+description: "HTTPC TLS and certificate pinning guide: TLS 1.2-1.3 version control and cipher suites, custom CA certificate loading, mTLS mutual authentication, the CertificatePinner pinning API (SPKI hash/public key/chain), custom VerifyPeerCertificate validation, and HTTP/2 negotiation."
 ---
 
 # TLS and Certificate Pinning
@@ -81,32 +81,74 @@ client, _ := httpc.New(cfg)
 
 Certificate pinning prevents man-in-the-middle attacks by verifying the public key hash of the server certificate.
 
-### SPKI Hash Pinning
+### SPKI Hash Pinning (Recommended)
 
-The most common pinning method, verifying the SPKI hash of any certificate in the chain:
+The most common pinning method. Use `NewSPKIHashPinner` to verify the SPKI (SubjectPublicKeyInfo) SHA-256 hash of any certificate in the server's certificate chain. Providing multiple hashes supports key rotation -- any match passes.
+
+Generate the SPKI hash:
+
+```bash
+openssl x509 -in cert.pem -pubkey -noout | \
+  openssl pkey -pubin -outform der | \
+  openssl dgst -sha256 -binary | \
+  openssl enc -base64
+```
+
+Pin the Let's Encrypt intermediate certificate (pinning the intermediate is recommended, balancing security and maintenance cost):
 
 ```go
-// Generate SPKI hash:
-// openssl x509 -in cert.pem -pubkey -noout | \
-//   openssl pkey -pubin -outform der | \
-//   openssl dgst -sha256 -binary | \
-//   openssl enc -base64
+pinner, err := httpc.NewSPKIHashPinner(
+    "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2fuihg=", // current intermediate
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // backup (key rotation)
+)
+if err != nil {
+    log.Fatal(err)
+}
 
-// Pin Let's Encrypt intermediate certificate
+cfg := httpc.DefaultConfig()
+cfg.Security.CertificatePinner = pinner
+client, err := httpc.New(cfg)
+```
+
+:::tip
+`CertificatePinner` layers pinning verification **on top of** standard TLS chain validation; no need to set `InsecureSkipVerify`. Verification applies to any layer of the certificate chain, so pinning the intermediate remains valid after the leaf certificate is renewed.
+:::
+
+:::warning
+Certificate pinning increases maintenance costs. If the server rotates its certificate (e.g., Let's Encrypt renewal), the client must update the pinned value accordingly.
+It is recommended to pin multiple certificates simultaneously (e.g., leaf certificate + intermediate certificate) and set up an update mechanism.
+:::
+
+### Other Pinning Constructors
+
+In addition to SPKI hashes, HTTPC provides:
+
+```go
+// Create directly from DER-encoded PKIX public keys (SHA-256 computed internally)
+pubPinner, err := httpc.NewPublicKeyPinner(pubKeyDER1, pubKeyDER2)
+
+// Combine multiple pinners; accepts if any passes (mixed pinning strategies or rotating keys)
+chainPinner := httpc.NewCertificatePinnerChain(spkiPinner, pubPinner)
+cfg.Security.CertificatePinner = chainPinner
+```
+
+### Advanced: Custom TLS Verification Callback
+
+If you need full control over TLS verification logic (for example, pinning the full certificate rather than its public key), implement it yourself via `TLSConfig`. Standard chain validation is then skipped via `InsecureSkipVerify`, and you **must** perform all validation in `VerifyPeerCertificate`:
+
+```go
 cfg := httpc.DefaultConfig()
 cfg.Security.TLSConfig = &tls.Config{
-    InsecureSkipVerify: true, // Fully replaces standard validation, must perform all checks in VerifyPeerCertificate
+    InsecureSkipVerify: true, // Skip standard chain validation; all checks must be done in the callback
     VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-        // Implement certificate pinning logic here
-        // Note: With InsecureSkipVerify=true, standard chain validation is skipped; complete certificate validation must be done here
+        // Implement complete certificate validation + pinning logic here
         return nil
     },
 }
 ```
 
 :::warning
-Certificate pinning increases maintenance costs. If the server changes certificates (e.g., Let's Encrypt renewal), the client needs to update pinned values accordingly.
-It is recommended to pin multiple certificates simultaneously (e.g., leaf certificate + intermediate certificate) and set up an update mechanism.
+`InsecureSkipVerify = true` fully skips standard certificate chain validation. Use it only when you genuinely need custom verification logic, and ensure the callback performs all necessary checks. For most pinning scenarios, prefer `CertificatePinner`.
 :::
 
 ### Pinning Strategies

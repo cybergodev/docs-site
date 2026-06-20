@@ -61,7 +61,32 @@ Validates the file writer configuration.
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `Write` | `(p []byte) (int, error)` | Write data (implements io.Writer) |
+| `SetOnRotateCallback` | `(fn func(path string))` | Set callback invoked after successful rotation |
 | `Close` | `() error` | Close file writer |
+
+### Rotation Callback
+
+```go
+func (fw *FileWriter) SetOnRotateCallback(fn func(path string))
+```
+
+Sets a callback invoked **after a successful file rotation**. The callback receives `path` — the base path of the current log file (the `path` passed to [`NewFileWriter`](#creation)): at this point the old log has been archived as a backup and a fresh file has been reopened at that path.
+
+:::info Internal Use
+This method is primarily used internally by `Logger` — when `FileWriter` is a Logger output target, Logger uses it to trigger the `HookOnRotate` hook event (see [Hooks](./hooks)). Regular users usually do not need to call it manually; if you need custom post-rotation behavior, you may set it directly.
+:::
+
+```go
+fw, _ := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
+
+// Set rotation callback: print the current file path after each rotation
+fw.SetOnRotateCallback(func(path string) {
+    fmt.Println("log rotated, current file:", path)
+})
+
+// The callback is invoked when the file exceeds the size/age/backup limit and rotates
+fw.Write([]byte("log content\n"))
+```
 
 ### File Rotation
 

@@ -21,13 +21,13 @@ var (
     // 限制错误
     ErrSizeLimit        = errors.New("size limit exceeded")
     ErrDepthLimit       = errors.New("depth limit exceeded")
-    ErrConcurrencyLimit = errors.New("concurrency limit exceeded")
+    ErrConcurrencyLimit = errors.New("concurrency limit exceeded") // Deprecated: 当前未被任何操作返回，保留供未来使用
 
     // 安全和验证错误
     ErrSecurityViolation = errors.New("security violation detected")
     ErrUnsupportedPath   = errors.New("unsupported path operation")
 
-    // 资源和性能错误
+    // 资源和性能错误（均 Deprecated：当前未被任何操作返回，保留供未来使用）
     ErrOperationTimeout  = errors.New("operation timeout")
     ErrResourceExhausted = errors.New("system resources exhausted")
 )
@@ -91,6 +91,15 @@ if err != nil {
 }
 ```
 
+## 错误辅助函数
+
+除上述错误类型外，库还提供两个错误处理辅助函数（完整说明见 [辅助工具](./helpers#safeerror)）：
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `SafeError` | `func SafeError(err error) string` | 返回对客户端安全的错误消息，省略路径名等内部细节（CWE-209） |
+| `RedactedPath` | `func RedactedPath(path string) string` | 返回脱敏后的路径（非空路径掩码为 `"***"`），用于日志和错误响应 |
+
 ## 配置预设
 
 ### 默认值常量
@@ -101,6 +110,7 @@ const (
     DefaultMaxJSONSize     = 100 * 1024 * 1024  // 100MB
     DefaultMaxNestingDepth = 200
     DefaultMaxPathDepth    = 50
+    DefaultMaxDepth        = 100                 // 编解码默认嵌套深度（Config.MaxDepth）
     DefaultMaxConcurrency  = 50
 
     // 安全限制

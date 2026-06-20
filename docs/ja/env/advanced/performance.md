@@ -5,13 +5,13 @@ description: "CyberGo env ライブラリのパフォーマンス最適化と高
 
 # パフォーマンス最適化
 
-env ライブラリは高パフォーマンスシナリオ向けに最適化されています。このドキュメントでは並発安全、オブジェクトプール、メモリ管理などのパフォーマンス関連機能について説明します。
+env ライブラリは高パフォーマンスシナリオ向けに最適化されています。このドキュメントではスレッドセーフ、オブジェクトプール、メモリ管理などのパフォーマンス関連機能について説明します。
 
-## 並発安全
+## スレッドセーフ
 
 ### スレッドセーフの保証
 
-`Loader` 的すべてのメソッドはスレッドセーフ：
+`Loader` のすべてのメソッドはスレッドセーフ：
 
 ```go
 loader, _ := env.New(env.DefaultConfig())
@@ -64,7 +64,7 @@ wg.Wait()
 
 ```text
 ┌─────────────────────────────────────────┐
-│          Loader（8 个分片）               │
+│          Loader（8 シャード）             │
 ├─────────────────────────────────────────┤
 │  ┌─────────┐ ┌─────────┐    ┌────────┐ │
 │  │ Shard 0 │ │ Shard 1 │... │ Shard 7│ │
@@ -92,7 +92,7 @@ wg.Wait()
 オブジェクト作成 → 使用 → プールに返却 → 取得 → 使用 → プールに返却 ...
 ```
 
-### SecureValue 池
+### SecureValue プール
 
 `SecureValue` オブジェクトはプール化管理されています：
 
@@ -100,11 +100,11 @@ wg.Wait()
 // SecureValue を取得（プールから再利用される場合がある）
 secret := env.GetSecure("API_KEY")
 
-// 使用
-value := secret.String()
+// 使用（Revealは平文を返し、String/Maskedはマスクを返す）
+value := secret.Reveal()
 
 // プールに返却
-secret.Close()  // 或 secret.Release()
+secret.Close()  // または secret.Release()
 ```
 
 ### オブジェクトプールの正しい使用方法
@@ -140,7 +140,7 @@ func later() {
 func getSecret() string {
     secret := env.GetSecure("KEY")
     defer secret.Close()
-    return secret.String()
+    return secret.Reveal()
 }
 ```
 
@@ -209,10 +209,10 @@ if err != nil {
 
 ```go
 secret := env.GetSecure("PASSWORD")
-// 内部存储: ['p', 'a', 's', 's', ...]
+// 内部状態: ['p', 'a', 's', 's', ...]
 
 secret.Close()
-// 内部存储: [0, 0, 0, 0, ...]
+// 内部状態: [0, 0, 0, 0, ...]
 ```
 
 バイトスライスの手動ゼロクリア：
@@ -276,7 +276,7 @@ func (m *ConfigManager) Get(key string) string {
 // 非推奨：ロック内で時間のかかる操作を実行
 func (l *Loader) ProcessValue(key string) {
     value := l.GetString(key)
-    // 耗时操作...
+    // 時間のかかる操作...
     processValue(value)
 }
 
@@ -330,7 +330,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 | 操作 | プールなし | プールあり |
 |------|------|------|
-| 割り当て回数 | N | ~常数 |
+| 割り当て回数 | N | ~定数 |
 | GC 負荷 | 高 | 低 |
 | レイテンシ | 不安定 | 安定 |
 
@@ -421,7 +421,7 @@ loader, _ := env.New(cfg)
 // goroutine を起動
 go func() {
     time.Sleep(1 * time.Second)
-    loader.GetString("KEY")  // ErrClosed が返される可能性がある
+    loader.GetString("KEY")  // 空文字列を返す（GetStringはerrorを返さない）
 }()
 
 loader.Close()  // メイン goroutine がクローズ

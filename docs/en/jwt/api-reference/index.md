@@ -17,7 +17,7 @@ CyberGo JWT provides a complete JWT token lifecycle management API.
 | [Claims](./claims) | `Claims`, `RegisteredClaims` claim types | Token Claims |
 | [Interfaces](./interfaces) | `TokenManager`, `CustomClaims`, `BlacklistStore`, etc. | Extension Interfaces |
 | [Types & Constants](./types) | Signing method constants, `NumericDate`, `StringOrSlice`, etc. | Auxiliary Types |
-| [Errors](./errors) | 17 sentinel errors, `ValidationError` | Error Handling |
+| [Errors](./errors) | **19** sentinel errors, `ValidationError` | Error Handling |
 
 ## Quick Lookup
 

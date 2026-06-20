@@ -13,7 +13,7 @@ description: "CyberGo env ライブラリ SecureValue セキュア値 API 完全
 
 - **読み取りメソッド**（`String()`、`Bytes()`、`Length()`、`Masked()`）は読み取りロックを使用、並発読み取りをサポート
 - **クローズメソッド**（`Close()`、`Release()`）は書き込みロックを使用、安全なゼロクリアを保証
-- **状态检查**（`IsClosed()`、`IsMemoryLocked()`）使用原子操作
+- **状態チェック**（`IsClosed()`、`IsMemoryLocked()`）はアトミック操作を使用
 
 ```go
 secret := env.GetSecure("API_KEY")
@@ -53,7 +53,7 @@ func NewSecureValue(value string) *SecureValue
 
 ```go
 secret := env.NewSecureValue("my-secret-password")
-defer secret.Release()  // 或 Close()
+defer secret.Release()  // または Close()
 ```
 
 ---
@@ -134,7 +134,7 @@ func (sv *SecureValue) String() string
 secret := env.GetSecure("PASSWORD")
 if secret != nil {
     log.Printf("Password: %s", secret)  // 安全、マスク表現を出力
-    // 等效于 log.Printf("Password: %s", secret.Masked())
+    // log.Printf("Password: %s", secret.Masked()) と同等
 }
 ```
 
@@ -160,12 +160,12 @@ secret := env.GetSecure("API_KEY")
 if secret != nil {
     defer secret.Release()
     plaintext := secret.Reveal()  // 平文の値を取得
-    // 使用 plaintext 进行 API 调用等安全操作
+    // plaintext を使用して API 呼び出しなどの安全な操作を行う
     _ = plaintext
 }
 ```
 
-::: danger 安全警告
+::: danger セキュリティ警告
 `Reveal()` が返すのは**平文の文字列**です。Go の文字列は不変であるため、手動でゼロクリアすることはできません。必要な場合にのみ使用し、返された値をログに記録したり保存したりしないでください。
 :::
 
@@ -226,7 +226,7 @@ func (sv *SecureValue) Masked() string
 
 **出力フォーマット：**
 - クローズ済み：`[CLOSED]`
-- 空值：`[SECURE:0 bytes]`
+- 空：`[SECURE:0 bytes]`
 - 正常：`[SECURE:N bytes]` 或 `[SECURE:N bytes locked]` 或 `[SECURE:N bytes lock-failed]` 或 `[SECURE:N bytes unlocked]`
 
 ```go
@@ -248,12 +248,12 @@ func (sv *SecureValue) Close() error
 メモリを安全にゼロクリアしてオブジェクトをクローズ。
 
 **戻り値：**
-- `error` - 总是返回 nil
+- `error` - 常に nil を返す
 
 **動作：**
 - 安全内部データをゼロクリア
 - クローズ済みとしてマーク
-- **不**归还到对象池
+- オブジェクトプールに**返却されない**
 
 ```go
 secret := env.GetSecure("TOKEN")
@@ -288,7 +288,7 @@ if secret != nil {
 
 ::: tip Close vs Release
 - `Close()` - ゼロクリアのみ、プールに返却しない
-- `Release()` - ゼロクリアしてプールに返却（推荐用于高频场景）
+- `Release()` - ゼロクリアしてプールに返却（高頻度ケースに推奨）
 :::
 
 ---
@@ -321,7 +321,7 @@ func (sv *SecureValue) IsMemoryLocked() bool
 メモリがロックされているか確認（ディスクへのスワップを防止）。
 
 **戻り値：**
-- `bool` - 是否已锁定
+- `bool` - ロックされているかどうか
 
 ```go
 if secret.IsMemoryLocked() {
@@ -340,7 +340,7 @@ func (sv *SecureValue) MemoryLockError() error
 メモリロック試行時のエラーを返します（存在する場合）。
 
 **戻り値：**
-- `error` - 锁定错误，成功或未尝试返回 nil
+- `error` - ロックエラー、成功または未試行の場合は nil を返す
 
 ```go
 if err := secret.MemoryLockError(); err != nil {
@@ -350,7 +350,7 @@ if err := secret.MemoryLockError(); err != nil {
 
 ---
 
-## 内存锁定配置
+## メモリロック設定
 
 ### SetMemoryLockEnabled
 
@@ -361,14 +361,14 @@ func SetMemoryLockEnabled(enabled bool)
 メモリロックをグローバルに有効/無効にします。新しく作成されるすべての SecureValue に影響します。
 
 **パラメータ：**
-- `enabled` - 是否启用
+- `enabled` - 有効かどうか
 
 ```go
 func main() {
-    // 应用启动时启用
+    // アプリ起動時に有効化
     env.SetMemoryLockEnabled(true)
 
-    // 后续所有 SecureValue 都会尝试锁定
+    // 以降のすべての SecureValue がロックを試行
 }
 ```
 
@@ -380,14 +380,14 @@ func main() {
 func IsMemoryLockEnabled() bool
 ```
 
-检查内存锁定是否启用。
+メモリロックが有効かどうかを確認します。
 
 **戻り値：**
-- `bool` - 是否启用
+- `bool` - 有効かどうか
 
 ```go
 if env.IsMemoryLockEnabled() {
-    // 内存锁定已启用
+    // メモリロックが有効
 }
 ```
 
@@ -402,7 +402,7 @@ func SetMemoryLockStrict(strict bool)
 ストリクトモードを設定します。有効にすると、`NewSecureValueStrict` はロック失敗時にエラーを返します。
 
 **パラメータ：**
-- `strict` - 是否启用严格模式
+- `strict` - 厳格モードが有効かどうか
 
 ```go
 env.SetMemoryLockEnabled(true)
@@ -410,7 +410,7 @@ env.SetMemoryLockStrict(true)
 
 secret, err := env.NewSecureValueStrict("sensitive-data")
 if err != nil {
-    // 锁定失败
+    // ロック失敗
 }
 ```
 
@@ -422,10 +422,10 @@ if err != nil {
 func IsMemoryLockStrict() bool
 ```
 
-检查是否为严格模式。
+厳格モードかどうかを確認します。
 
 **戻り値：**
-- `bool` - 是否启用
+- `bool` - 有効かどうか
 
 ```go
 strict := env.IsMemoryLockStrict()
@@ -439,12 +439,12 @@ strict := env.IsMemoryLockStrict()
 func IsMemoryLockSupported() bool
 ```
 
-检查当前平台是否支持内存锁定。
+現在のプラットフォームがメモリロックをサポートしているか確認します。
 
 **戻り値：**
-- `bool` - 是否支持
+- `bool` - サポートしているかどうか
 
-| 平台 | 支持 |
+| プラットフォーム | サポート |
 |------|------|
 | Linux | ✅ |
 | macOS | ✅ |
@@ -498,7 +498,7 @@ func IsSensitiveKey(key string) bool
 - `key` - キー名
 
 **戻り値：**
-- `bool` - 是否敏感
+- `bool` - 機密かどうか
 
 ```go
 if env.IsSensitiveKey("DB_PASSWORD") {
@@ -510,7 +510,7 @@ if env.IsSensitiveKey("DB_PASSWORD") {
 }
 ```
 
-**敏感模式：** password, secret, token, key, api_key, credential 等
+**機密モード：** password, secret, token, key, api_key, credential など
 
 ---
 
@@ -532,11 +532,11 @@ func MaskValue(key, value string) string
 ```go
 // 機密キー - [MASKED:N chars] フォーマットを返す
 masked := env.MaskValue("API_KEY", "secret123")
-// 返回: [MASKED:9 chars]
+// 戻り値: [MASKED:9 chars]
 
 // 非機密キー - 元の値を返す（20文字を超える場合は切り詰め）
 masked := env.MaskValue("APP_NAME", "myapp")
-// 返回: myapp
+// 戻り値: myapp
 ```
 
 ---
@@ -557,7 +557,7 @@ func MaskKey(key string) string
 
 ```go
 masked := env.MaskKey("DB_PASSWORD")
-// 返回: DB***
+// 戻り値: DB***
 ```
 
 ---
@@ -580,7 +580,7 @@ func SanitizeForLog(s string) string
 // 機密キーと値のペアを自動マスク
 msg := "Connected with password=secret123 api_key=abc123"
 clean := env.SanitizeForLog(msg)
-// 返回: "Connected with password=[MASKED] api_key=[MASKED]"
+// 戻り値: "Connected with password=[MASKED] api_key=[MASKED]"
 ```
 
 ---
@@ -603,10 +603,10 @@ func MaskSensitiveInString(s string) string
 // 長い文字列は切り詰められます
 long := "This is a very long string that exceeds 50 characters"
 clean := env.MaskSensitiveInString(long)
-// 返回: "This is a very long string that exceeds 50..."
+// 戻り値: "This is a very long string that exceeds 50..."
 ```
 
-::: tip 使用场景
+::: tip 使用例
 機密データを含む可能性のある長い文字列の切り詰めに使用します。機密キーと値のペアを自動マスクする必要がある場合は、`SanitizeForLog` を使用してください。
 :::
 

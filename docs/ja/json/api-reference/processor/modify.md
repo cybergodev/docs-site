@@ -24,19 +24,19 @@ result, err := p.Set(data, "user.name", "NewName")
 result, _ := p.Set(data, "user.name", "CyberGo")
 
 // 数値
-result, _ := p.Set(data, "user.age", 25)
+result, _ = p.Set(data, "user.age", 25)
 
 // ブール値
-result, _ := p.Set(data, "user.active", true)
+result, _ = p.Set(data, "user.active", true)
 
 // オブジェクト
-result, _ := p.Set(data, "user.profile", map[string]any{
+result, _ = p.Set(data, "user.profile", map[string]any{
     "bio": "Developer",
     "location": "China",
 })
 
 // 配列
-result, _ := p.Set(data, "items", []any{"a", "b", "c"})
+result, _ = p.Set(data, "items", []any{"a", "b", "c"})
 ```
 
 ## Delete
@@ -70,7 +70,7 @@ result, _ := p.Delete(data, "user.temp")
 
 // 削除後に親オブジェクトが空になった場合、DeleteClean はさらにクリーンアップ
 // {"user": {}} -> {}
-result, _ := p.DeleteClean(data, "user.temp")
+result, _ = p.DeleteClean(data, "user.temp")
 ```
 
 ## SetMultiple

@@ -1,6 +1,6 @@
 ---
 title: "常见问题 - HTTPC"
-description: "HTTPC 常见问题解答：包级函数与客户端实例选择依据、五种配置预设对比与适用场景、HTTP/SOCKS5 代理与 DoH 设置方法、errors.Is/As 错误匹配模式与四级超时体系调优策略详解。"
+description: "HTTPC 常见问题解答：包级函数与客户端实例的选择依据、五种配置预设对比与适用场景、HTTP/SOCKS5 代理与 DoH 设置方法、Cookie 会话管理与重试配置、文件下载断点续传、errors.Is/As 错误匹配模式与四级超时体系调优策略详解。"
 ---
 
 # 常见问题

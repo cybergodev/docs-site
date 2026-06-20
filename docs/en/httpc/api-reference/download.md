@@ -1,31 +1,19 @@
 ---
 title: "File Download - HTTPC"
-description: "HTTPC file download API reference: four package-level download functions including DownloadFile, DownloadConfig configuration struct, DownloadProgressCallback progress callback, DownloadResult result type, SHA-256 checksum verification, UNC path prevention, and six-layer security protection."
+description: "HTTPC file download API reference: the unified Download entry point, DownloadConfig configuration struct, DownloadProgressCallback progress callback, DownloadResult result type, SHA-256 checksum verification, UNC path prevention, and six-layer security protection."
 ---
 
 # File Download
 
 ## Package-Level Download Functions
 
-### DownloadFile
+### Download
 
 ```go
-func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
+func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Downloads a file to the specified path using the default client.
-
-```go
-result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
-```
-
-### DownloadWithOptions
-
-```go
-func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-Configurable download with resumable support and progress callbacks.
+Downloads a file using the default client. `Download` is the **single canonical download entry point** shared across the package-level function, the `Client` interface, and `DomainClient`, replacing the previous variant matrix with a single signature. `cfg` must not be nil, and `cfg.FilePath` must be set (otherwise `ErrEmptyFilePath` is returned).
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -33,24 +21,8 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 ```
-
-### DownloadFileWithContext
-
-```go
-func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-File download with context control.
-
-### DownloadWithOptionsWithContext
-
-```go
-func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-File download with configuration and context control.
 
 ## DownloadConfig
 
@@ -91,7 +63,7 @@ type DownloadProgressCallback func(downloaded, total int64, speed float64)
 ```go
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\r%.1f%% (%.1f bytes/s)", pct, speed)
+    fmt.Printf("\r%.1f%% (%s)", pct, httpc.FormatSpeed(speed))
 }
 ```
 
@@ -134,12 +106,16 @@ type DownloadResult struct {
 | `RequestHeaders` | `http.Header` | Request headers |
 
 ```go
-fmt.Printf("Download complete: %d bytes, duration %v, average speed %.1f bytes/s\n",
-    result.BytesWritten,
+fmt.Printf("Download complete: %s, duration %v, average speed %s\n",
+    httpc.FormatBytes(result.BytesWritten),
     result.Duration,
-    result.AverageSpeed,
+    httpc.FormatSpeed(result.AverageSpeed),
 )
 ```
+
+:::tip
+Use [FormatBytes](./functions#formatbytes) and [FormatSpeed](./functions#formatspeed) for human-readable byte and speed strings, avoiding manual `1024`-step unit conversion.
+:::
 
 ## Checksum Verification
 
@@ -163,7 +139,7 @@ cfg.FilePath = "/tmp/package.tar.gz"
 cfg.Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if err != nil {
     // Automatically returns error and deletes downloaded file on checksum mismatch
     log.Fatal(err)
@@ -195,7 +171,7 @@ cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/large-file.zip"
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if result.Resumed {
     fmt.Println("Resumed download complete")
 }

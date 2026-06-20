@@ -1,11 +1,11 @@
 ---
 title: "API Reference - HTTPC"
-description: "HTTPC API reference index: categorized navigation across three groups -- core, request/response, and advanced features -- covering package-level HTTP functions, 27 WithXxx request options, Config configuration system with five presets, 8 built-in middleware factories, domain client with session management, file download with resumable support, and error types with constant enums."
+description: "HTTPC API reference index: categorized navigation across three groups -- core, request/response, and advanced features -- covering package-level HTTP functions, 28 WithXxx request options, Config configuration system with five presets, 8 built-in middleware factories, domain client with session management, file download with resumable support, and error types with constant enums."
 ---
 
 # API Reference
 
-HTTPC provides 27 request option functions, 5 configuration presets, 8 built-in middleware, and complete download support.
+HTTPC provides 28 request option functions, 5 configuration presets, 8 built-in middleware, and complete download support.
 
 ## Core Architecture
 
@@ -14,7 +14,7 @@ httpc package
 ├── Client interface - Main client, supports all HTTP methods
 ├── DomainClienter interface - Domain-scoped client with built-in session management
 ├── Config - Configuration system (timeouts/connection/security/retry/middleware)
-├── RequestOption - 27 request option functions
+├── RequestOption - 28 request option functions
 ├── MiddlewareFunc - Middleware chain
 ├── Result - Response result (includes request metadata)
 └── Package-level functions - Use without creating a client
@@ -35,9 +35,9 @@ httpc package
 
 | Module | Description |
 |--------|-------------|
-| [Request Options](./options) | 27 WithXxx request option functions (headers, body, authentication, cookies, callbacks, etc.) |
+| [Request Options](./options) | 28 WithXxx request option functions (headers, body, authentication, cookies, callbacks, etc.) |
 | [Middleware](./middleware) | Chain composition, 8 built-in middleware factories, and audit event types |
-| [Error Types](./errors) | ClientError, 12 ErrorType enums, and 13 error variables |
+| [Error Types](./errors) | ClientError, 12 ErrorType enums, and 12 error variables |
 
 ### Advanced Features
 

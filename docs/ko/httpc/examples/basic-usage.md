@@ -189,7 +189,7 @@ cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r다운로드 중: %.1f%% (%.2f MB/s)", pct, float64(speed)/1024/1024)
 }
 
-result, err := client.DownloadWithOptions("https://example.com/file.zip", cfg)
+result, err := client.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }

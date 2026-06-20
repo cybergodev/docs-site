@@ -1,6 +1,6 @@
 ---
 title: "Errors - JWT API Reference"
-description: "CyberGo JWT Errors API reference covering 17 sentinel errors (ErrTokenExpired, ErrTokenRevoked, etc.), ValidationError type, and errors.Is() matching patterns."
+description: "CyberGo JWT Errors API reference covering 19 sentinel errors (ErrTokenExpired, ErrTokenRevoked, etc.), ValidationError type, and errors.Is() matching patterns."
 ---
 
 # Errors
@@ -20,10 +20,12 @@ var (
     ErrAlgorithmMismatch     = errors.New("token algorithm does not match configured signing method")
     ErrTokenRevoked          = errors.New("token revoked")
     ErrTokenMissingID        = errors.New("token missing ID")
+    ErrTokenTypeMismatch     = errors.New("token type mismatch")
     ErrTokenExpired          = errors.New("token expired")
     ErrTokenNotValidYet      = errors.New("token not valid yet")
     ErrTokenInvalidIssuer    = errors.New("token invalid issuer")
     ErrTokenInvalidAudience  = errors.New("token invalid audience")
+    ErrExpirationRequired    = errors.New("token missing expiration claim")
 
     ErrInvalidClaims = errors.New("invalid claims")
 
@@ -40,18 +42,20 @@ var (
 
 | Error | Description | Check with `errors.Is()` |
 |-------|-------------|--------------------------|
-| `ErrInvalidConfig` | Invalid configuration | `Config.Validate()` |
+| `ErrInvalidConfig` | Invalid configuration | `New()`, `Config.Validate()` |
 | `ErrInvalidSecretKey` | Invalid secret key | `New()` |
 | `ErrInvalidSigningMethod` | Invalid signing method | `New()` |
-| `ErrInvalidToken` | Invalid token (signature error, etc.) | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
+| `ErrInvalidToken` | Invalid token (signature error, etc.) | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` |
 | `ErrEmptyToken` | Empty token | All token operation methods |
 | `ErrAlgorithmMismatch` | Token algorithm doesn't match configuration | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrTokenRevoked` | Token has been revoked | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
-| `ErrTokenMissingID` | Token is missing ID | `IsRevoked()` |
+| `ErrTokenMissingID` | Token is missing ID | `Revoke()`, `IsRevoked()` |
+| `ErrTokenTypeMismatch` | Token type mismatch (refreshing with an access token) | `Refresh()`, `RefreshInto()` |
 | `ErrTokenExpired` | Token has expired | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrTokenNotValidYet` | Token is not yet valid | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
-| `ErrTokenInvalidIssuer` | Issuer mismatch | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
-| `ErrTokenInvalidAudience` | Audience mismatch | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
+| `ErrTokenInvalidIssuer` | Issuer mismatch | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` |
+| `ErrTokenInvalidAudience` | Audience mismatch | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` |
+| `ErrExpirationRequired` | `RequireExpiration` is enabled but the token lacks `exp` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrInvalidClaims` | Claims validation failed | `Create()`, `CreateRefresh()`, `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrRateLimitExceeded` | Rate limit exceeded | `Create()`, `CreateRefresh()`, `Refresh()`, `RefreshInto()` |
 | `ErrBlacklistNotConfigured` | Blacklist not configured | `Revoke()` |
@@ -73,15 +77,17 @@ var (
 | Error | Trigger Method | Typical Cause |
 |-------|----------------|---------------|
 | `ErrEmptyToken` | All token operation methods | Empty string passed |
-| `ErrInvalidToken` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Signature mismatch or format error |
+| `ErrInvalidToken` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` | Signature mismatch or format error |
 | `ErrAlgorithmMismatch` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Token header algorithm doesn't match configuration |
+| `ErrExpirationRequired` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | `RequireExpiration` is enabled but the token lacks an `exp` claim |
 | `ErrTokenExpired` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Past `exp` time |
 | `ErrTokenNotValidYet` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Not yet at `nbf` time |
-| `ErrTokenInvalidIssuer` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | `iss` doesn't match `Config.Issuer` |
-| `ErrTokenInvalidAudience` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | `aud` doesn't match `Config.ExpectedAudience` |
+| `ErrTokenInvalidIssuer` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` | `iss` doesn't match `Config.Issuer` |
+| `ErrTokenInvalidAudience` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` | `aud` doesn't match `Config.ExpectedAudience` |
 | `ErrTokenRevoked` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Token is in the blacklist |
+| `ErrTokenTypeMismatch` | `Refresh()`, `RefreshInto()` | Refreshing with an access token (`token_type=access`) |
 | `ErrInvalidClaims` | `Create()`, `CreateRefresh()`, `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Business validation failed |
-| `ErrTokenMissingID` | `IsRevoked()` | Token is missing `jti` field |
+| `ErrTokenMissingID` | `Revoke()`, `IsRevoked()` | Token is missing `jti` field |
 
 #### Rate Limiting & Blacklist
 
@@ -89,7 +95,7 @@ var (
 |-------|----------------|---------------|
 | `ErrRateLimitExceeded` | `Create()`, `CreateRefresh()`, `Refresh()`, `RefreshInto()` | Exceeded window request limit |
 | `ErrBlacklistNotConfigured` | `Revoke()` | Blacklist store not configured |
-| `ErrTokenMissingID` | `IsRevoked()` | Token is missing `jti` field |
+| `ErrTokenMissingID` | `Revoke()`, `IsRevoked()` | Token is missing `jti` field |
 
 #### Lifecycle
 

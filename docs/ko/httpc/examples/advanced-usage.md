@@ -255,6 +255,7 @@ func main() {
 package main
 
 import (
+    "context"
     "fmt"
     "log"
     "sync"
@@ -291,7 +292,7 @@ func main() {
                     float64(speed)/1024/1024)
             }
 
-            result, err := client.DownloadWithOptions(u, cfg)
+            result, err := client.Download(context.Background(), u, cfg)
             if err != nil {
                 log.Printf("%s 다운로드 실패: %v", name, err)
                 return
@@ -299,12 +300,12 @@ func main() {
 
             atomic.AddInt64(&successCount, 1)
             atomic.AddInt64(&totalBytes, result.BytesWritten)
-            fmt.Printf("\n%s 완료: %s\n", name, result.BytesWritten)
+            fmt.Printf("\n%s 완료: %d\n", name, result.BytesWritten)
         }(filename, url)
     }
 
     wg.Wait()
-    fmt.Printf("\n다운로드 완료: %d/%d, 총 %s\n",
+    fmt.Printf("\n다운로드 완료: %d/%d, 총 %d\n",
         successCount, len(urls), totalBytes)
 }
 ```

@@ -44,6 +44,21 @@ cfg.Security.SSRFExemptCIDRs = []string{
 면제 CIDR은 최대한 정밀하게 지정하세요. 너무 큰 범위(예: `0.0.0.0/0`)를 사용하면 SSRF 방어가 사실상 비활성화됩니다.
 :::
 
+### 요청별 사설 IP 면제
+
+개별 요청에만 사설 IP를 허용하면 되는 경우(예: `localhost` 헬스 체크 엔드포인트 호출)에는 전역으로 `AllowPrivateIPs`를 켤 필요 없이 `WithAllowPrivateIPs` 요청 옵션으로 해당 요청에만 허용할 수 있습니다:
+
+```go
+// 기본 클라이언트는 사설 IP를 차단; 이 호출은 요청별로 허용
+result, err := httpc.Get("http://localhost:8080/health",
+    httpc.WithAllowPrivateIPs(true),
+)
+```
+
+:::warning
+이 옵션은 **신뢰할 수 있고 사용자 입력이 아닌** URL에만 활성화하세요. SSRF 방어의 목적은 공격자가 귀하의 프로세스를 유도해 내부망 엔드포인트에 접근하는 것을 막는 것이며, 요청별로 비활성화하면 해당 호출에 이 위험이 다시 발생합니다. 클라이언트 전체가 내부 서비스에 접근해야 한다면 Config에서 `Security.AllowPrivateIPs = true`를 설정하세요.
+:::
+
 ## DNS 리바인딩 방어
 
 HTTPC은 "해석-검증-직접 연결" 모드로 DNS 리바인딩 공격을 방지합니다:

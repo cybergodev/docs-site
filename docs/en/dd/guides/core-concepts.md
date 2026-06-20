@@ -157,34 +157,34 @@ User calls logger.InfoWith("msg", fields...)
 The level check (step 1) uses atomic operations without locking, resulting in nearly zero overhead. Security filtering (step 2) processes small inputs synchronously and uses independent goroutines with timeout protection for large inputs, without blocking the main flow.
 :::
 
-## Logger Type
+## Interface Hierarchy
 
-The `Logger` type provides the full set of logging capabilities:
+DD defines four interfaces that support precise dependency injection:
+
+```text
+CoreLogger                    ← Basic logging: Debug/Info/Warn/Error/Fatal + WithFields
+    │
+    ├── LevelLogger           ← Level management: GetLevel/SetLevel/IsLevelEnabled (embeds CoreLogger)
+    │
+    └── ConfigurableLogger    ← Configuration management: Writer/security/context/hooks (embeds CoreLogger)
+
+LogProvider                   ← Full functionality: standalone flat interface containing all methods
+```
 
 ```go
-// Basic logging
-logger.Info("message")
-logger.InfoWith("message", dd.String("key", "value"))
+// Only need basic logging? Inject CoreLogger
+type Service struct {
+    log dd.CoreLogger
+}
 
-// Level management
-logger.GetLevel()
-logger.SetLevel(dd.LevelDebug)
-logger.IsDebugEnabled()
-
-// Configuration management
-logger.AddWriter(w)
-logger.SetSecurityConfig(cfg)
-logger.AddContextExtractor(ext)
-logger.AddHook(dd.HookBeforeLog, hook)
-
-// Lifecycle
-logger.Close()
-logger.Shutdown(ctx)
-logger.Flush()
+// Need dynamic level adjustment? Inject LevelLogger
+type Handler struct {
+    log dd.LevelLogger
+}
 ```
 
 :::tip Best Practice
-Share a single `*dd.Logger` across your application. All methods are safe for concurrent use. Use `WithFields()` to create request-scoped `LoggerEntry` instances with contextual fields.
+Accept the minimal required interface in your constructors rather than concrete types. This makes your code easier to test and more flexible.
 :::
 
 ## Thread Safety Model

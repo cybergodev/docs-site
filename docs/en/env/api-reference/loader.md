@@ -318,7 +318,7 @@ secret := loader.GetSecure("API_SECRET")
 if secret != nil {
     defer secret.Release()
 
-    value := secret.String()
+    value := secret.Reveal()   // plaintext
     masked := secret.Masked()  // [SECURE:32 bytes]
 }
 ```

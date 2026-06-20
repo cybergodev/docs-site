@@ -61,10 +61,6 @@ if errors.Is(err, httpc.ErrResponseBodyEmpty) {
     // 响应体为空
 }
 
-if errors.Is(err, httpc.ErrInvalidURL) {
-    // URL 格式无效
-}
-
 if errors.Is(err, httpc.ErrInvalidHeader) {
     // 请求头无效
 }

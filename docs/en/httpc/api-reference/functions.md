@@ -1,6 +1,6 @@
 ---
 title: "Package Functions - HTTPC"
-description: "HTTPC package-level functions and client methods API reference: seven HTTP methods including Get/Post, New client creation, four download functions, SetSecurityWarnOutput helper function, and NewDomain domain client creation."
+description: "HTTPC package-level functions and client methods API reference: seven HTTP methods including Get/Post, New client creation, the unified Download entry point, SetSecurityWarnOutput helper function, FormatBytes/FormatSpeed formatting tools, and NewDomain domain client creation."
 ---
 
 # Package Functions
@@ -144,31 +144,17 @@ Closes the default client and resets it. A new client will be created on the nex
 
 ## Download Functions
 
-Package-level download functions use the default client. The Client interface also provides methods with the same names.
+Package-level download functions use the default client. The Client interface and DomainClient also provide methods with the same name, all sharing an identical signature.
 
-### DownloadFile
-
-```go
-func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-Downloads a file to the specified path using the default client.
+### Download
 
 ```go
-// Package-level function
-result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
-
-// Client interface method
-result, err := client.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
+func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-### DownloadWithOptions
+`Download` is the **single canonical download entry point** shared across the package-level function, the `Client` interface, and `DomainClient` — replacing the previous `{config}` x `{context}` variant matrix with a single signature.
 
-```go
-func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-File download with configuration, supporting resumable downloads and progress callbacks.
+`cfg` must not be nil, and `cfg.FilePath` must be set (otherwise `ErrEmptyFilePath` is returned). Pass `context.Background()` when no cancellation or timeout control is needed; request options are used to set headers, authentication, query parameters, and more.
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -179,41 +165,19 @@ cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r%.1f%%", float64(downloaded)/float64(total)*100)
 }
 
-// Package-level function
-result, err := httpc.DownloadWithOptions(url, cfg)
+// Package-level function (uses the default client)
+result, err := httpc.Download(context.Background(), url, cfg)
+
 // Client interface method
-result, err = client.DownloadWithOptions(url, cfg)
+result, err = client.Download(ctx, url, cfg)
+
+// DomainClient method (path is relative to baseURL; response cookies are auto-captured)
+result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
-### DownloadFileWithContext
-
-```go
-func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-File download with context control, supporting timeout and cancellation.
-
-```go
-// Package-level function
-result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
-// Client interface method
-result, err = client.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
-```
-
-### DownloadWithOptionsWithContext
-
-```go
-func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-File download with configuration and context control.
-
-```go
-// Package-level function
-result, err := httpc.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
-// Client interface method
-result, err = client.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
-```
+:::tip Migration note
+The old `DownloadFile`, `DownloadWithOptions`, `DownloadFileWithContext`, and `DownloadWithOptionsWithContext` were removed in v1.5.2. Migrate to the unified `Download(ctx, url, cfg, options...)` and configure path, overwrite, resume, and checksum via `DownloadConfig`.
+:::
 
 ## Helper Functions
 
@@ -235,6 +199,62 @@ httpc.SetSecurityWarnOutput(log.Writer())
 
 :::warning
 This function is primarily for testing. Production environments should use `SecureConfig()` or `DefaultConfig()` rather than suppressing warnings.
+:::
+
+## Formatting Tools
+
+### FormatBytes
+
+```go
+func FormatBytes(bytes int64) string
+```
+
+Formats a byte count as a human-readable string (e.g. `"1.50 KB"`, `"500 B"`). Commonly used for displaying download results and in log output.
+
+```go
+result, _ := httpc.Download(context.Background(), url, cfg)
+fmt.Printf("Downloaded %s\n", httpc.FormatBytes(result.BytesWritten))
+// Downloaded 12.34 MB
+```
+
+| Input | Output |
+|-------|--------|
+| `500` | `500 B` |
+| `1536` | `1.50 KB` |
+| `1048576` | `1.00 MB` |
+| `1073741824` | `1.00 GB` |
+
+### FormatSpeed
+
+```go
+func FormatSpeed(bytesPerSecond float64) string
+```
+
+Formats a bytes-per-second rate as a human-readable string (e.g. `"1.50 MB/s"`). Commonly paired with `DownloadResult.AverageSpeed` or the `speed` parameter of `DownloadProgressCallback`.
+
+```go
+result, _ := httpc.Download(context.Background(), url, cfg)
+fmt.Printf("Average speed %s\n", httpc.FormatSpeed(result.AverageSpeed))
+// Average speed 5.67 MB/s
+
+// Used inside a progress callback
+cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
+    fmt.Printf("\r%s / %s (%s)",
+        httpc.FormatBytes(downloaded),
+        httpc.FormatBytes(total),
+        httpc.FormatSpeed(speed),
+    )
+}
+```
+
+| Input (bytes/s) | Output |
+|-----------------|--------|
+| `500` | `500 B/s` |
+| `1536` | `1.50 KB/s` |
+| `1048576` | `1.00 MB/s` |
+
+:::tip
+Both use binary units (1024-step) with the unit sequence `B -> KB -> MB -> GB -> TB -> PB -> EB`.
 :::
 
 ## Domain Client

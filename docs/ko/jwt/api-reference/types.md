@@ -32,7 +32,7 @@ JWT 숫자 날짜 값 (Unix 타임스탬프). 유효 범위는 0부터 253402300
 type StringOrSlice []string
 ```
 
-JSON 문자열 또는 문자열 배열에서 역직렬화 가능한 타입, RFC 7519 §4.1.3 준수.
+JSON 문자열 또는 JSON 배열에서 역직렬화되는 `[]string`을 보관; 단일 요소 슬라이스는 JSON 문자열로, 다중 요소 슬라이스는 배열로 직렬화, RFC 7519 §4.1.3 준수.
 
 <Badge type="info" text="type" />
 
@@ -40,7 +40,8 @@ JSON 문자열 또는 문자열 배열에서 역직렬화 가능한 타입, RFC 
 
 | 메서드 | 시그니처 | 설명 |
 |------|------|------|
-| `UnmarshalJSON` | `func (s *StringOrSlice) UnmarshalJSON(b []byte) error` | 문자열 또는 배열에서 파싱 |
+| `MarshalJSON` | `func (s StringOrSlice) MarshalJSON() ([]byte, error)` | 단일 요소 슬라이스는 JSON 문자열로, 다중 요소는 배열로 직렬화 (RFC 7519 §4.1.3) |
+| `UnmarshalJSON` | `func (s *StringOrSlice) UnmarshalJSON(b []byte) error` | JSON 문자열 또는 배열에서 파싱 |
 
 ---
 
@@ -180,3 +181,25 @@ const (
 | `SigningMethodES256` | `"ES256"` | ECDSA-SHA256 | 비대칭 |
 | `SigningMethodES384` | `"ES384"` | ECDSA-SHA384 | 비대칭 |
 | `SigningMethodES512` | `"ES512"` | ECDSA-SHA512 | 비대칭 |
+
+---
+
+## 토큰 타입 상수
+
+```go
+const (
+    TokenTypeAccess  = "access"
+    TokenTypeRefresh = "refresh"
+)
+```
+
+[`RegisteredClaims.TokenType`](./claims#registeredclaims) 필드에 기록되는 토큰 타입 상수.
+
+- 액세스 토큰은 [`Processor.Create`](./processor#create)가 생성
+- 리프레시 토큰은 [`Processor.CreateRefresh`](./processor#createrefresh)가 생성
+- [`Processor.Refresh`](./processor#refresh)와 [`Processor.RefreshInto`](./processor#refreshinto)는 `TokenTypeAccess` 토큰을 거부
+
+| 상수 | 값 | 설명 |
+|------|-----|------|
+| `TokenTypeAccess` | `"access"` | 액세스 토큰 |
+| `TokenTypeRefresh` | `"refresh"` | 리프레시 토큰 |

@@ -1,11 +1,19 @@
 ---
 title: "リンク抽出 - HTML"
-description: "CyberGo HTML ライブラリの独立したリンク抽出 API リファレンス。ExtractAllLinks シリーズ関数と GroupLinksByType グループ化ツールを含み、HTML からすべてのリンクリソース（CSS、JS、画像、動画、音声）を抽出してタイプ別にグループ化できます。Config によるリンクフィルタリングもサポートし、クローラーやリソース収集のユースケースに適しています。"
+description: "CyberGo HTML リンク抽出 API：ExtractAllLinks シリーズと GroupLinksByType で HTML から全リンクリソース（CSS・JS・画像・動画・音声）を抽出・グループ化し、Config でフィルタできます。"
 ---
 
 # リンク抽出
 
 独立したリンク抽出 API で、HTML からすべてのリンクリソースを抽出し、タイプ別にグループ化できます。
+
+:::tip Extract との主な違い
+`ExtractAllLinks` は **HTML サニタイズを適用しません**(ここでは `EnableSanitization` は無効です)。そのため `<script src>`、`<iframe>`、`<link>`、`<embed>` などのタグ内のリソースリンクもすべて抽出されます。これはこれらのリソースリンクを列挙できるようにするためであり、`Extract` の経路では通常サニタイズで除去されます。
+:::
+
+:::info 結果の並べ替えと重複排除
+`ExtractAllLinks` の結果は **URL の昇順でソート**され、URL で重複排除されます。そのため同じ入力に対して複数回呼び出しても完全に同一の出力が得られます(v1.4.2 以降)。結果の比較、キャッシュ再利用、再現可能な下流処理に役立ちます。同じ URL が複数のタグに現れる場合は 1 件だけ保持されます。
+:::
 
 ## パッケージ関数
 

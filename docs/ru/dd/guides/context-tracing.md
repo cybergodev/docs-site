@@ -143,29 +143,37 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 - Извлечение статических полей из глобального контекста или goroutine-local хранилища
 - Комбинирование с HTTP-посредником для ручной передачи полей трассировки в `WithFields`
 
-### Рекомендуемый паттерн: посредник + WithFields
+### Пример пользовательского экстрактора
 
 ```go
-// Ручная передача полей трассировки в HTTP-посреднике
-func TracingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
-    return func(next http.Handler) http.Handler {
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            traceID := r.Header.Get("X-Trace-ID")
-            if traceID == "" {
-                traceID = uuid.New().String()
-            }
-
-            // Инъекция полей трассировки в лог области видимости запроса
-            reqLog := logger.WithFields(
-                dd.String("trace_id", traceID),
-                dd.String("path", r.URL.Path),
-            )
-
-            next.ServeHTTP(w, r)
-            reqLog.Info("Запрос завершён")
-        })
+// Пользовательский экстрактор: добавляет статические/глобальные метаданные к каждой записи лога
+func tenantExtractor(ctx context.Context) []dd.Field {
+    return []dd.Field{
+        dd.String("service", "order-service"),
+        dd.String("env", os.Getenv("APP_ENV")),
     }
 }
+
+// Регистрация экстрактора
+logger.AddContextExtractor(tenantExtractor)
+```
+
+:::warning Ограничение контекста
+Функции `ContextExtractor` получают `context.Background()`, а не контекст области видимости запроса. Для добавления идентификаторов трассировки на каждый запрос используйте показанный выше паттерн `WithFields()` для создания `LoggerEntry` с областью видимости запроса.
+:::
+
+### Комбинирование нескольких экстракторов
+
+```go
+// Регистрация нескольких экстракторов для сбора различных глобальных метаданных
+logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
+    return []dd.Field{
+        dd.String("hostname", getHostname()),
+        dd.String("version", buildVersion),
+    }
+})
+
+logger.AddContextExtractor(tenantExtractor)
 ```
 
 ## Межсервисное распространение

@@ -103,7 +103,7 @@ JSON コンテンツの HTML エスケープを行い、特殊文字（`&`、`<`
 var buf bytes.Buffer
 json.HTMLEscape(&buf, []byte(`{"html":"<script>alert(1)</script>"}`))
 fmt.Println(buf.String())
-// {"html":"<script>alert(1)</script>"}
+// {"html":"\u003cscript\u003ealert(1)\u003c/script\u003e"}
 ```
 
 ### Prettify
@@ -265,7 +265,7 @@ defer p.Close()
 
 シグネチャ：`func (p *Processor) CompactBuffer(dst *bytes.Buffer, src []byte, cfg ...Config) error`
 
-JSON バイトを圧縮し `dst` バッファに書き込みます。パッケージレベルの `Compact` 関数に委譲します。
+JSON バイトを圧縮し `dst` バッファに書き込みます。パッケージレベルの `Compact` 関数はこのメソッドに委譲します。
 
 ```go
 var buf bytes.Buffer
@@ -308,10 +308,10 @@ p.HTMLEscape(&buf, []byte(`{"html":"<script>"}`))
 cfg := json.DefaultConfig()
 
 // プリティプリント設定
-cfg := json.PrettyConfig()
+cfg = json.PrettyConfig()
 
 // セキュリティ設定
-cfg := json.SecurityConfig()
+cfg = json.SecurityConfig()
 ```
 
 ::: tip

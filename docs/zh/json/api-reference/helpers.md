@@ -21,11 +21,11 @@ equal, _ := json.CompareJSON(`{"a":1,"b":2}`, `{"b":2,"a":1}`)
 fmt.Println(equal) // true
 
 // 数字精度不同但值相同
-equal, _ := json.CompareJSON(`{"num":1}`, `{"num":1.0}`)
+equal, _ = json.CompareJSON(`{"num":1}`, `{"num":1.0}`)
 fmt.Println(equal) // true
 
 // 内容不同
-equal, _ := json.CompareJSON(`{"a":1}`, `{"a":2}`)
+equal, _ = json.CompareJSON(`{"a":1}`, `{"a":2}`)
 fmt.Println(equal) // false
 ```
 
@@ -195,6 +195,12 @@ val := json.GetString(data, "user.name")
 关闭全局处理器并释放资源。
 
 ```go
+package main
+
+import (
+    "github.com/cybergodev/json"
+)
+
 func main() {
     cfg := json.DefaultConfig()
     p, err := json.New(cfg)
@@ -340,7 +346,7 @@ if err != nil {
 
 ```go
 path := "users[0].ssn"
-fmt.Println(json.RedactedPath(path)) // 安全的路径表示
+fmt.Println(json.RedactedPath(path)) // 输出: ***（非空路径统一返回 ***，空路径返回空字符串）
 ```
 
 ---

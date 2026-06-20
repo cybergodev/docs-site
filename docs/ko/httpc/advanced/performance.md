@@ -1,6 +1,6 @@
 ---
 title: "성능 최적화 - HTTPC"
-description: "HTTPC 성능 최적화 가이드: Default/Secure/Performance/Minimal 네 가지 프리셋 비교와 시나리오별 선택, 프리셋 기반 미세 조정 연결 풀과 타임아웃 매개변수, 내장 객체 풀 자동 관리로 GC 부하 감소, 동시성 요청 패턴과 일반적인 성능 안티패턴 분석을 다룹니다."
+description: "HTTPC 성능 최적화 가이드: Default/Secure/Performance/Minimal 네 가지 프리셋 비교와 시나리오별 선택, 프리셋 기반 미세 조정 연결 풀과 타임아웃 매개변수, 내장 객체 풀 자동 관리로 GC 부하 감소, 고동시성 요청 패턴, 성능 벤치마크 방법과 일반적인 성능 안티패턴 분석을 다룹니다."
 ---
 
 # 성능 최적화

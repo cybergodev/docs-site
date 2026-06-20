@@ -61,7 +61,32 @@ func (c FileWriterConfig) Validate() error
 | メソッド | シグネチャ | 説明 |
 |------|------|------|
 | `Write` | `(p []byte) (int, error)` | データを書き込み（io.Writer を実装） |
+| `SetOnRotateCallback` | `(fn func(path string))` | ローテーション成功後に呼ばれるコールバックを設定 |
 | `Close` | `() error` | ファイルライターを閉じる |
+
+### ローテーションコールバック
+
+```go
+func (fw *FileWriter) SetOnRotateCallback(fn func(path string))
+```
+
+ファイルローテーション**が成功した後**に呼び出されるコールバック関数を設定します。コールバック引数 `path` は現在のログファイルのベースパス（[`NewFileWriter`](#作成)に渡した `path`）です。この時点で古いログはバックアップファイルとしてアーカイブされ、同じパスに新しいファイルが再オープンされています。
+
+:::info 内部利用
+このメソッドは主に `Logger` が内部で使用します。`FileWriter` が Logger の出力先である場合、Logger はこれを通じて `HookOnRotate` フックイベントをトリガーします（詳細は[フックシステム](./hooks)を参照）。通常のユーザーが手動で呼び出す必要はありませんが、ローテーション後のカスタム動作が必要な場合は直接設定できます。
+:::
+
+```go
+fw, _ := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
+
+// ローテーションコールバックを設定：ローテーション後に現在のファイルパスを出力
+fw.SetOnRotateCallback(func(path string) {
+    fmt.Println("ログがローテーションされました、現在のファイル:", path)
+})
+
+// ファイルがサイズ/保持日数/バックアップ数の制限を超えてローテーションされると、コールバックが呼び出されます
+fw.Write([]byte("ログ内容\n"))
+```
 
 ### ファイルローテーション
 

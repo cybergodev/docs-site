@@ -1,6 +1,6 @@
 ---
 title: "SSRF 防護 - HTTPC"
-description: "HTTPC SSRF 防護の詳細：デフォルトで IPv4/IPv6 プライベート IP をブロック、SSRFExemptCIDRs 精密豁免、DNS リバインディング防護、RedirectWhitelist リダイレクトホワイトリスト、AWS/GCP/Azure クラウドメタデータ保護と AllowPrivateIPs の注意事項。"
+description: "HTTPC SSRF 防護の詳細：デフォルトで IPv4/IPv6 プライベート IP をブロック、SSRFExemptCIDRs 精密免除、DNS リバインディング防護、RedirectWhitelist リダイレクトホワイトリスト、AWS/GCP/Azure クラウドメタデータ保護と AllowPrivateIPs の注意事項。"
 ---
 
 # SSRF 防護
@@ -27,7 +27,7 @@ cfg := httpc.DefaultConfig()
 | IPv6 ローカル | `fc00::/7` | ユニークローカルアドレス |
 | IPv6 リンクローカル | `fe80::/10` | リンクローカル |
 
-## CIDR 豁免
+## CIDR 免除
 
 マイクロサービス環境では、内部サービスにアクセスする必要がある場合があります：
 
@@ -41,7 +41,22 @@ cfg.Security.SSRFExemptCIDRs = []string{
 ```
 
 :::warning
-豁免 CIDR はできる限り精密に指定してください。大きすぎる範囲（例：`0.0.0.0/0`）は SSRF 防護を無効にするのと同じです。
+免除 CIDR はできる限り精密に指定してください。大きすぎる範囲（例：`0.0.0.0/0`）は SSRF 防護を無効にするのと同じです。
+:::
+
+### リクエスト単位でのプライベート IP の免除
+
+個別のリクエストに対してのみプライベート IP を許可したい場合（例：`localhost` のヘルスチェックエンドポイントの呼び出し）は、`AllowPrivateIPs` をグローバルに有効化する必要はありません。`WithAllowPrivateIPs` リクエストオプションを使えば、そのリクエストに対してのみ許可できます。
+
+```go
+// デフォルトクライアントはプライベート IP をブロック。この呼び出しではリクエスト単位で許可
+result, err := httpc.Get("http://localhost:8080/health",
+    httpc.WithAllowPrivateIPs(true),
+)
+```
+
+:::warning
+このオプションは**信頼でき、かつユーザー入力に由来しない** URL に対してのみ有効にしてください。SSRF 防護の目的は、攻撃者があなたのプロセスを誘導して内部ネットワークのエンドポイントにアクセスするのを防ぐことです。リクエスト単位で無効化すると、その呼び出しにおいてこのリスクが再び生じます。クライアント全体が内部サービスにアクセスする必要がある場合は、Config で `Security.AllowPrivateIPs = true` を設定してください。
 :::
 
 ## DNS リバインディング防護
@@ -120,7 +135,7 @@ cfg.Security.AllowPrivateIPs = true
 ## ベストプラクティス
 
 1. `SecureConfig()` をセキュリティベースラインとして使用
-2. 必要な CIDR 範囲のみを豁免
+2. 必要な CIDR 範囲のみを免除
 3. `RedirectWhitelist` を設定してリダイレクト先を制限
 4. `SSRFExemptCIDRs` 設定を定期的に監査
 5. 監査ミドルウェアですべてのリクエストを記録

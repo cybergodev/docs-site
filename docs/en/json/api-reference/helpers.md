@@ -21,11 +21,11 @@ equal, _ := json.CompareJSON(`{"a":1,"b":2}`, `{"b":2,"a":1}`)
 fmt.Println(equal) // true
 
 // Different numeric precision but same value
-equal, _ := json.CompareJSON(`{"num":1}`, `{"num":1.0}`)
+equal, _ = json.CompareJSON(`{"num":1}`, `{"num":1.0}`)
 fmt.Println(equal) // true
 
 // Different content
-equal, _ := json.CompareJSON(`{"a":1}`, `{"a":2}`)
+equal, _ = json.CompareJSON(`{"a":1}`, `{"a":2}`)
 fmt.Println(equal) // false
 ```
 
@@ -195,6 +195,12 @@ Signature: `func ShutdownGlobalProcessor()`
 Shuts down the global processor and releases resources.
 
 ```go
+package main
+
+import (
+    "github.com/cybergodev/json"
+)
+
 func main() {
     cfg := json.DefaultConfig()
     p, err := json.New(cfg)

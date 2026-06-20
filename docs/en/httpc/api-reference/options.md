@@ -397,6 +397,27 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 
 Sets the per-request maximum redirect count. Range: 0-50.
 
+### WithAllowPrivateIPs
+
+```go
+func WithAllowPrivateIPs(allow bool) RequestOption
+```
+
+Overrides the client's SSRF policy for a single request. When `allow` is `true`, the request may access localhost and private/reserved IP ranges (127.0.0.0/8, 10.0.0.0/8, 192.168.0.0/16, 169.254.0.0/16, etc.) and follow redirects to such addresses; when `false`, SSRF protection is enforced for this request even if the client is configured with `Security.AllowPrivateIPs=true`.
+
+:::warning Security note
+This is a **per-request escape hatch** from SSRF protection, suited for cases where a default-secure client (`AllowPrivateIPs=false`) occasionally needs to reach internal services, loopback addresses, or a local dev server.
+
+Enable it only when the request URL is trusted and **not** derived from untrusted user input. To allow internal access for an entire client, set `Security.AllowPrivateIPs=true` on `Config` directly.
+:::
+
+```go
+// Default client blocks private IPs; this call allows it per request
+result, err := httpc.Get("http://localhost:8080/health",
+    httpc.WithAllowPrivateIPs(true),
+)
+```
+
 ### WithStreamBody
 
 ```go

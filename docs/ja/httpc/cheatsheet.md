@@ -1,6 +1,6 @@
 ---
 title: "チートシート - HTTPC"
-description: "HTTPC チートシート：クライアント作成と 5 つのプリセット設定、Get/Post など 7 種類のリクエストメソッド、27 個の WithXxx リクエストオプション、Result レスポンス処理、ミドルウェアチェーンの組み合わせ、ClientError エラー分類、ファイルダウンロードとドメインクライアント操作の完全なコードスニペットを提供します。"
+description: "HTTPC チートシート：クライアント作成と 5 つのプリセット設定、Get/Post など 7 種類のリクエストメソッド、28 個の WithXxx リクエストオプション、Result レスポンス処理、ミドルウェアチェーンの組み合わせ、ClientError エラー分類、ファイルダウンロード、レジュームとドメインクライアント操作の完全なコードスニペットを提供します。"
 ---
 
 # チートシート
@@ -220,9 +220,12 @@ if err != nil {
 ## ファイルダウンロード
 
 ```go
-dlResult, err := client.DownloadFile(url, "/path/to/file")
+// 基本ダウンロード（ctx は context.Context、例えば context.Background()）
+dlCfg := httpc.DefaultDownloadConfig()
+dlCfg.FilePath = "/path/to/file"
+dlResult, err := client.Download(ctx, url, dlCfg)
 
-// オプション付き
+// オプション付き（上書き、レジューム、進捗）
 dlCfg := httpc.DefaultDownloadConfig()
 dlCfg.FilePath = "/path/to/file"
 dlCfg.Overwrite = true
@@ -230,7 +233,7 @@ dlCfg.ResumeDownload = true
 dlCfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r%.1f%% (%.2f MB/s)", float64(downloaded)/float64(total)*100, float64(speed)/1024/1024)
 }
-dlResult, err := client.DownloadWithOptions(url, dlCfg)
+dlResult, err := client.Download(ctx, url, dlCfg)
 
 // dlResult の型は *DownloadResult（*Result ではない）
 // フィールド: FilePath, BytesWritten, Duration, AverageSpeed, StatusCode, ContentLength, Resumed, ResponseCookies, ActualChecksum

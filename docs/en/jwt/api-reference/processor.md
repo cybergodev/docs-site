@@ -1,6 +1,6 @@
 ---
 title: "Processor - JWT API Reference"
-description: "CyberGo JWT Processor core API reference covering Create, Validate, CreateRefresh, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked, ParseUnverified, Close, and IsClosed methods."
+description: "CyberGo JWT Processor core API reference: signatures and usage of all methods including Create, Validate, Refresh, Revoke, ValidateInto, RefreshInto, ParseUnverified, and more."
 ---
 
 # Processor
@@ -86,6 +86,7 @@ Validates a JWT access token and returns the parsed Claims.
 | `ErrEmptyToken` | Token is empty |
 | `ErrInvalidToken` | Invalid signature |
 | `ErrAlgorithmMismatch` | Token algorithm does not match config |
+| `ErrExpirationRequired` | `RequireExpiration` is enabled but the token lacks an `exp` claim |
 | `ErrTokenExpired` | Token expired |
 | `ErrTokenNotValidYet` | Token not yet valid |
 | `ErrTokenInvalidIssuer` | Issuer mismatch |
@@ -147,7 +148,12 @@ Creates a refresh token using `RefreshTokenTTL` instead of `AccessTokenTTL`.
 func (p *Processor) Refresh(refreshTokenString string) (string, error)
 ```
 
-Refreshes an existing refresh token and returns a new access token.
+Refreshes an existing refresh token and returns a new access token. The refresh token is fully validated (signature, expiration, blacklist) before a new access token is issued; the original token's `IssuedAt`, `ExpiresAt`, and `ID` are reset and regenerated.
+
+:::info Token Type & Rotation
+- **Token type check**: Tokens with `token_type=access` are rejected (returns [`ErrTokenTypeMismatch`](./errors#sentinel-errors)) to prevent access tokens from being used to obtain new tokens; older tokens without a `token_type` are still accepted for backward compatibility.
+- **Does not auto-revoke the original token**: `Refresh` does not revoke the supplied refresh token. The original token remains valid until it expires or is explicitly [`Revoke()`](#revoke)d. For one-time-use semantics, call `Revoke(refreshTokenString)` after a successful `Refresh`.
+:::
 
 :::warning Security Note
 Refresh only validates standard JWT fields (exp, nbf, iss, aud, blacklist) and basic structural validity (UserID or Username must exist). Deep field constraints (length limits, injection patterns) are not re-checked since they were validated at creation time.
@@ -176,12 +182,14 @@ Refresh only validates standard JWT fields (exp, nbf, iss, aud, blacklist) and b
 | `ErrEmptyToken` | Token is empty |
 | `ErrInvalidToken` | Invalid signature |
 | `ErrAlgorithmMismatch` | Token algorithm does not match config |
+| `ErrExpirationRequired` | `RequireExpiration` is enabled but the token lacks an `exp` claim |
 | `ErrTokenExpired` | Token expired |
 | `ErrTokenNotValidYet` | Token not yet valid |
 | `ErrTokenInvalidIssuer` | Issuer mismatch |
 | `ErrTokenInvalidAudience` | Audience mismatch |
 | `ErrTokenRevoked` | Token revoked |
 | `ErrInvalidClaims` | Claims validation failed |
+| `ErrTokenTypeMismatch` | Refreshing with an access token (`token_type=access`) |
 | `ErrRateLimitExceeded` | Rate limit threshold exceeded |
 
 ---
@@ -229,6 +237,7 @@ if valid {
 | `ErrEmptyToken` | Token is empty |
 | `ErrInvalidToken` | Invalid signature |
 | `ErrAlgorithmMismatch` | Token algorithm does not match config |
+| `ErrExpirationRequired` | `RequireExpiration` is enabled but the token lacks an `exp` claim |
 | `ErrTokenExpired` | Token expired |
 | `ErrTokenNotValidYet` | Token not yet valid |
 | `ErrTokenInvalidIssuer` | Issuer mismatch |
@@ -245,6 +254,10 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 ```
 
 Refreshes a token using custom Claims. Timing fields (`IssuedAt`, `ExpiresAt`, `ID`) are automatically restored after the operation, even if an error or panic occurs.
+
+:::info Token Type Check
+Tokens with `token_type=access` are rejected (returns [`ErrTokenTypeMismatch`](./errors#sentinel-errors)) to prevent access tokens from being used to obtain new tokens; older tokens without a `token_type` are still accepted for backward compatibility.
+:::
 
 :::warning Security Note
 Refresh only validates standard JWT fields and basic structural validity. Deep field constraints are not re-checked since they were validated at creation time.
@@ -274,12 +287,14 @@ Refresh only validates standard JWT fields and basic structural validity. Deep f
 | `ErrEmptyToken` | Token is empty |
 | `ErrInvalidToken` | Invalid signature |
 | `ErrAlgorithmMismatch` | Token algorithm does not match config |
+| `ErrExpirationRequired` | `RequireExpiration` is enabled but the token lacks an `exp` claim |
 | `ErrTokenExpired` | Token expired |
 | `ErrTokenNotValidYet` | Token not yet valid |
 | `ErrTokenInvalidIssuer` | Issuer mismatch |
 | `ErrTokenInvalidAudience` | Audience mismatch |
 | `ErrTokenRevoked` | Token revoked |
 | `ErrInvalidClaims` | Claims validation failed |
+| `ErrTokenTypeMismatch` | Refreshing with an access token (`token_type=access`) |
 | `ErrRateLimitExceeded` | Rate limit threshold exceeded |
 
 ---
@@ -313,6 +328,10 @@ Adds a token to the blacklist.
 | `ErrProcessorClosed` | Processor is closed |
 | `ErrEmptyToken` | Token is empty |
 | `ErrBlacklistNotConfigured` | Blacklist not configured |
+| `ErrInvalidToken` | Invalid signature or malformed token |
+| `ErrTokenInvalidIssuer` | Issuer mismatch |
+| `ErrTokenInvalidAudience` | Audience mismatch |
+| `ErrTokenMissingID` | Token missing `jti` field |
 
 ---
 
@@ -345,7 +364,10 @@ Checks if a token has been revoked.
 |-------|-------------------|
 | `ErrProcessorClosed` | Processor is closed |
 | `ErrEmptyToken` | Token is empty |
-| `ErrTokenMissingID` | Token missing ID |
+| `ErrInvalidToken` | Invalid signature or malformed token |
+| `ErrTokenInvalidIssuer` | Issuer mismatch |
+| `ErrTokenInvalidAudience` | Audience mismatch |
+| `ErrTokenMissingID` | Token missing `jti` field |
 
 ---
 
@@ -375,6 +397,14 @@ The returned Claims are **not verified** and must not be trusted. Only use for d
 | Return | Type | Description |
 |--------|------|-------------|
 | `err` | `error` | Error on parse failure |
+
+### Errors
+
+| Error | Condition |
+|-------|-----------|
+| `ErrProcessorClosed` | Processor has been closed |
+| `ErrEmptyToken` | Token is empty |
+| Wrapped error | Returns a wrapped parse error on malformed tokens (not a sentinel error; cannot be matched with `errors.Is`) |
 
 ---
 

@@ -111,7 +111,7 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 
 // シナリオ2：最初の条件一致要素を見つけたら終了
 var found any
-err := json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
+err = json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
     if obj, ok := value.(map[string]any); ok {
         if obj["admin"] == true {
             found = obj
@@ -123,7 +123,7 @@ err := json.ForeachWithPathAndControl(data, "users", func(key any, value any) js
 
 // シナリオ3：データ整合性の検証
 var hasError bool
-err := json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
+err = json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
     if !validateRecord(value) {
         hasError = true
         return json.IteratorBreak // データが不完全、検証を停止
@@ -257,7 +257,7 @@ IterableValue は反復プロセス中の現在の要素をラップし、便利
 
 ```go
 val := iv.Get("user.address.city")
-val := iv.Get("users[0].name")
+val = iv.Get("users[0].name")
 ```
 
 #### GetString
@@ -449,13 +449,16 @@ if item.IsEmpty("tags") {
 反復停止のシグナルを返します。反復コールバック内で呼び出すと走査を早期終了できます。
 
 ```go
-json.Foreach(data, func(key any, item *json.IterableValue) {
+// 注意: Break() は、コールバックが error を返す反復関数（ForeachWithError、
+// ForeachNestedWithError など）でのみ有効です。通常の Foreach コールバックは
+// error を返さないため、その中で item.Break() を呼び出しても反復は停止しません。
+err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
     if item.GetString("status") == "stop" {
         // ターゲットを見つけたら反復を停止
-        item.Break()
-        return
+        return item.Break()
     }
     // 処理を継続
+    return nil
 })
 ```
 

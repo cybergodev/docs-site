@@ -17,7 +17,7 @@ CyberGo JWT 库提供完整的 JWT 令牌生命周期管理 API。
 | [Claims](./claims) | `Claims`、`RegisteredClaims` 声明类型 | 令牌声明 |
 | [接口定义](./interfaces) | `TokenManager`、`CustomClaims`、`BlacklistStore` 等 | 扩展接口 |
 | [类型与常量](./types) | 签名算法常量、`NumericDate`、`StringOrSlice` 等 | 辅助类型 |
-| [错误](./errors) | 17 个哨兵错误、`ValidationError` | 错误处理 |
+| [错误](./errors) | 19 个哨兵错误、`ValidationError` | 错误处理 |
 
 ## 快速查找
 

@@ -1,6 +1,6 @@
 ---
 title: "상수와 오류 - HTML"
-description: "CyberGo HTML 라이브러리 상수와 오류 타입 API 레퍼런스, DefaultMaxInputSize(50MB) 등 기본값 상수, ErrInputTooLarge 등 센티넬 오류, 그리고 InputError, ConfigError, FileError 구조화된 오류 타입을 포함하며 모두 errors.Is/As 판별을 지원합니다."
+description: "CyberGo HTML 상수와 오류 타입 API 참조. DefaultMaxInputSize 등 기본값 상수, ErrInputTooLarge 등 센티넬 오류, 그리고 InputError·ConfigError·FileError 구조화된 오류를 포함하며, 모두 errors.Is/As를 지원해 런타임 예외를 정확히 처리합니다."
 ---
 
 # 상수와 오류
@@ -106,6 +106,7 @@ type FileError struct {
 func (e *FileError) Error() string        // 안전한 출력(경로 잘라냄)
 func (e *FileError) SafePath() string     // 파일명만 반환
 func (e *FileError) Unwrap() error        // → ErrFileNotFound | 원래 오류 | ErrInvalidFilePath
+func (e *FileError) MarshalJSON() ([]byte, error) // JSON 직렬화 시에도 경로를 잘라냄 (API 응답으로의 유출 방지)
 ```
 
 :::tip 안전한 경로

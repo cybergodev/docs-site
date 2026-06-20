@@ -24,19 +24,19 @@ Supports setting values of various types:
 result, _ := p.Set(data, "user.name", "CyberGo")
 
 // Number
-result, _ := p.Set(data, "user.age", 25)
+result, _ = p.Set(data, "user.age", 25)
 
 // Boolean
-result, _ := p.Set(data, "user.active", true)
+result, _ = p.Set(data, "user.active", true)
 
 // Object
-result, _ := p.Set(data, "user.profile", map[string]any{
+result, _ = p.Set(data, "user.profile", map[string]any{
     "bio": "Developer",
     "location": "China",
 })
 
 // Array
-result, _ := p.Set(data, "items", []any{"a", "b", "c"})
+result, _ = p.Set(data, "items", []any{"a", "b", "c"})
 ```
 
 ## Delete
@@ -70,7 +70,7 @@ result, _ := p.Delete(data, "user.temp")
 
 // If the parent object becomes empty after deletion, DeleteClean continues cleanup
 // {"user": {}} -> {}
-result, _ := p.DeleteClean(data, "user.temp")
+result, _ = p.DeleteClean(data, "user.temp")
 ```
 
 ## SetMultiple

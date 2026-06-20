@@ -18,6 +18,8 @@ type Config struct {
     RefreshTokenTTL   time.Duration
     Issuer            string
     ExpectedAudience  string
+    RequireExpiration bool
+    ClockSkew         time.Duration
 
     Blacklist BlacklistConfig
 
@@ -52,6 +54,8 @@ JWT Processor 的统一配置。零值字段会在 `New()` 中自动填充默认
 | `RefreshTokenTTL` | `time.Duration` | `168h` | 刷新令牌有效期 |
 | `Issuer` | `string` | `"jwt-service"` | 签发者 |
 | `ExpectedAudience` | `string` | — | 期望的受众（可选） |
+| `RequireExpiration` | `bool` | `false` | 为 `true` 时拒绝缺少 `exp` 声明的令牌（返回 [`ErrExpirationRequired`](./errors#哨兵错误)） |
+| `ClockSkew` | `time.Duration` | `0` | exp/nbf 的时钟偏移容忍度（容忍签发方与验证方的时钟漂移）；负值会被 `Validate()` 拒绝 |
 | `Blacklist` | `BlacklistConfig` | — | 黑名单配置 |
 | `EnableRateLimit` | `bool` | `false` | 启用限流 |
 | `RateLimitRate` | `int` | `100` | 窗口内最大请求数 |
@@ -72,6 +76,7 @@ JWT Processor 的统一配置。零值字段会在 `New()` 中自动填充默认
 | 签名密钥 | HMAC 需 SecretKey ≥32 字节且非弱密钥；RSA/ECDSA 需正确类型的 SigningKey；ECDSA 需曲线匹配；VerificationKey 需匹配算法公钥类型 |
 | TTL 有效性 | `AccessTokenTTL` 和 `RefreshTokenTTL` 必须为正数 |
 | TTL 顺序 | `AccessTokenTTL` 必须小于 `RefreshTokenTTL` |
+| ClockSkew | `ClockSkew` 不可为负值 |
 | 签名算法 | 必须为内置支持的 12 种算法之一 |
 | 黑名单 | 内置存储时 MaxSize 和 CleanupInterval 必须为正数 |
 

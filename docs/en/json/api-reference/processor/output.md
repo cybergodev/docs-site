@@ -56,14 +56,14 @@ Encodes a value to a JSON string using the specified configuration.
 result, err := p.EncodeWithConfig(data, json.PrettyConfig())
 
 // Using SecurityConfig
-result, err := p.EncodeWithConfig(data, json.SecurityConfig())
+result, err = p.EncodeWithConfig(data, json.SecurityConfig())
 
 // Using custom configuration
 cfg := json.DefaultConfig()
 cfg.Pretty = true
 cfg.SortKeys = true
 cfg.EscapeHTML = true
-result, err := p.EncodeWithConfig(data, cfg)
+result, err = p.EncodeWithConfig(data, cfg)
 ```
 
 ### EncodeBatch

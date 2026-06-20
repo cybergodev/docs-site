@@ -1,14 +1,19 @@
 ---
 title: "패키지 함수 - CyberGo env | 전역 편의 함수"
-description: "CyberGo env 라이브러리 패키지 수준 편의 함수 API 전체 참조 문서로, Load 파일 로드, GetString 및 GetInt 유형별 값 읽기, Keys 키 이름 조회, Marshal 직렬화 내보내기, ParseInto 구조체 매핑 등 간결한 API를 제공하며, 전역 기본 로더를 기반으로 지연 초기화 및 스레드 안전 설계를 사용합니다."
+description: "CyberGo env 라이브러리 패키지 수준 편의 함수 API 전체 참조 문서로, Load 파일 로드, GetString 및 GetInt 유형별 값 읽기, Keys 키 이름 조회, Marshal 직렬화 내보내기, ParseInto 구조체 매핑 등 간결한 API를 제공하며, 전역 기본 로더를 기반으로 Load()를 통한 명시적 초기화가 필요하며 스레드 안전합니다."
 ---
 
 # 패키지 함수
 
 패키지 수준 편의 함수는 간결한 API를 제공하며, 대부분의 사용 사례에 적합합니다. 이 함수들은 전역 기본 로더를 사용하며, 모든 함수는 스레드 안전합니다.
 
-:::tip 지연 로딩
-전역 기본 로더는 지연 로딩 메커니즘을 사용하며, 최초 호출 시 자동으로 생성됩니다.
+:::info 초기화 필요
+전역 기본 로더는 `Load()` 또는 `LoadWithConfig()`로 명시적으로 초기화해야 하며, 최초 호출 시 자동으로 생성되지 **않습니다**. 초기화되지 않은 경우 함수 동작은 다음과 같습니다:
+
+- `Get*` 함수 (`GetString`, `GetInt`, `GetBool` 등): 전달된 기본값(또는 제로값) 반환
+- `Lookup`: `("", false)` 반환
+- `Keys`/`All`/`Len`/`GetSecure`: `nil`/`0` 반환
+- `Set`/`Delete`/`Validate`/`ParseInto`: `ErrNotInitialized` 반환
 :::
 
 ## 로드 함수
@@ -294,7 +299,7 @@ secret := env.GetSecure("API_KEY")
 if secret != nil {
     defer secret.Release()
 
-    value := secret.String()
+    value := secret.Reveal()   // 평문 값 (필요할 때만 호출)
     masked := secret.Masked()  // 로깅용: [SECURE:32 bytes]
 }
 ```

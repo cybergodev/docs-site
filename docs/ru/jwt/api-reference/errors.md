@@ -1,6 +1,6 @@
 ---
 title: "Ошибки - Справочник JWT API"
-description: "Справочник ошибок CyberGo JWT: 17 сигнальных ошибок (ErrTokenExpired, ErrTokenRevoked и другие), тип ValidationError и шаблон сопоставления ошибок errors.Is()."
+description: "Справочник ошибок CyberGo JWT: 19 сигнальных ошибок (ErrTokenExpired, ErrTokenRevoked и другие), тип ValidationError и шаблон сопоставления ошибок errors.Is()."
 ---
 
 # Ошибки
@@ -20,10 +20,12 @@ var (
     ErrAlgorithmMismatch     = errors.New("token algorithm does not match configured signing method")
     ErrTokenRevoked          = errors.New("token revoked")
     ErrTokenMissingID        = errors.New("token missing ID")
+    ErrTokenTypeMismatch     = errors.New("token type mismatch")
     ErrTokenExpired          = errors.New("token expired")
     ErrTokenNotValidYet      = errors.New("token not valid yet")
     ErrTokenInvalidIssuer    = errors.New("token invalid issuer")
     ErrTokenInvalidAudience  = errors.New("token invalid audience")
+    ErrExpirationRequired    = errors.New("token missing expiration claim")
 
     ErrInvalidClaims = errors.New("invalid claims")
 
@@ -40,18 +42,20 @@ var (
 
 | Ошибка | Описание | Проверка через `errors.Is()` |
 |--------|----------|------------------------------|
-| `ErrInvalidConfig` | Недопустимая конфигурация | `Config.Validate()` |
+| `ErrInvalidConfig` | Недопустимая конфигурация | `New()`, `Config.Validate()` |
 | `ErrInvalidSecretKey` | Недействительный ключ | `New()` |
 | `ErrInvalidSigningMethod` | Недействительный метод подписи | `New()` |
-| `ErrInvalidToken` | Недействительный токен (ошибка подписи и т.д.) | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
+| `ErrInvalidToken` | Недействительный токен (ошибка подписи и т.д.) | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` |
 | `ErrEmptyToken` | Пустой токен | Все методы операций с токенами |
 | `ErrAlgorithmMismatch` | Алгоритм токена не совпадает с конфигурацией | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrTokenRevoked` | Токен отозван | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
-| `ErrTokenMissingID` | В токене отсутствует ID | `IsRevoked()` |
+| `ErrTokenMissingID` | В токене отсутствует ID | `Revoke()`, `IsRevoked()` |
+| `ErrTokenTypeMismatch` | Несоответствие типа токена (обновление токеном доступа) | `Refresh()`, `RefreshInto()` |
 | `ErrTokenExpired` | Токен истёк | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrTokenNotValidYet` | Токен ещё не действителен | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
-| `ErrTokenInvalidIssuer` | Издатель не совпадает | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
-| `ErrTokenInvalidAudience` | Аудитория не совпадает | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
+| `ErrTokenInvalidIssuer` | Издатель не совпадает | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` |
+| `ErrTokenInvalidAudience` | Аудитория не совпадает | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` |
+| `ErrExpirationRequired` | `RequireExpiration` включён, но в токене отсутствует `exp` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrInvalidClaims` | Валидация Claims не удалась | `Create()`, `CreateRefresh()`, `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrRateLimitExceeded` | Превышено ограничение скорости | `Create()`, `CreateRefresh()`, `Refresh()`, `RefreshInto()` |
 | `ErrBlacklistNotConfigured` | Чёрный список не настроен | `Revoke()` |
@@ -73,15 +77,17 @@ var (
 | Ошибка | Вызывающий метод | Типичная причина |
 |--------|-----------------|------------------|
 | `ErrEmptyToken` | Все методы операций с токенами | Передана пустая строка |
-| `ErrInvalidToken` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Подпись не совпадает или формат ошибочен |
+| `ErrInvalidToken` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` | Подпись не совпадает или формат ошибочен |
 | `ErrAlgorithmMismatch` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Алгоритм в заголовке токена не совпадает с конфигурацией |
+| `ErrExpirationRequired` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | `RequireExpiration` включён, но в токене отсутствует утверждение `exp` |
 | `ErrTokenExpired` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Превышено время `exp` |
 | `ErrTokenNotValidYet` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Ещё не наступило время `nbf` |
-| `ErrTokenInvalidIssuer` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | `iss` не совпадает с `Config.Issuer` |
-| `ErrTokenInvalidAudience` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | `aud` не совпадает с `Config.ExpectedAudience` |
+| `ErrTokenInvalidIssuer` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` | `iss` не совпадает с `Config.Issuer` |
+| `ErrTokenInvalidAudience` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` | `aud` не совпадает с `Config.ExpectedAudience` |
 | `ErrTokenRevoked` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Токен находится в чёрном списке |
+| `ErrTokenTypeMismatch` | `Refresh()`, `RefreshInto()` | Обновление токеном доступа (`token_type=access`) |
 | `ErrInvalidClaims` | `Create()`, `CreateRefresh()`, `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | Бизнес-валидация не удалась |
-| `ErrTokenMissingID` | `IsRevoked()` | В токене отсутствует поле `jti` |
+| `ErrTokenMissingID` | `Revoke()`, `IsRevoked()` | В токене отсутствует поле `jti` |
 
 #### Ограничение скорости и чёрный список
 
@@ -89,7 +95,7 @@ var (
 |--------|-----------------|------------------|
 | `ErrRateLimitExceeded` | `Create()`, `CreateRefresh()`, `Refresh()`, `RefreshInto()` | Превышен лимит запросов в окне |
 | `ErrBlacklistNotConfigured` | `Revoke()` | Хранилище чёрного списка не настроено |
-| `ErrTokenMissingID` | `IsRevoked()` | В токене отсутствует поле `jti` |
+| `ErrTokenMissingID` | `Revoke()`, `IsRevoked()` | В токене отсутствует поле `jti` |
 
 #### Жизненный цикл
 

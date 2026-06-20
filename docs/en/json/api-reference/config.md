@@ -126,6 +126,9 @@ defer processor.Close()
 | MaxJSONSize | 100MB | JSON size limit |
 | MaxNestingDepthSecurity | 200 | Nesting depth |
 | MaxPathDepth | 50 | Path depth |
+| MaxSecurityValidationSize | 10MB | Security validation size limit |
+| MaxObjectKeys | 100000 | Maximum object keys |
+| MaxArrayElements | 100000 | Maximum array elements |
 | MaxConcurrency | 50 | Concurrency limit |
 | MaxBatchSize | 2000 | Batch operation count |
 | CacheTTL | 5 minutes | Cache expiration |
@@ -133,6 +136,8 @@ defer processor.Close()
 | EnableCache | true | Enable cache |
 | CacheResults | true | Cache operation results |
 | EnableValidation | true | Enable validation |
+| StrictMode | false | Non-strict mode |
+| FullSecurityScan | false | Sampled security scan (not full) |
 | ValidateInput | true | Validate input |
 | ValidateFilePath | true | Validate file paths |
 | CreatePaths | true | Auto-create paths |

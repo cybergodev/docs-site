@@ -103,7 +103,7 @@ HTML-escapes JSON content, replacing special characters (`&`, `<`, `>`) with Uni
 var buf bytes.Buffer
 json.HTMLEscape(&buf, []byte(`{"html":"<script>alert(1)</script>"}`))
 fmt.Println(buf.String())
-// {"html":"<script>alert(1)</script>"}
+// {"html":"\u003cscript\u003ealert(1)\u003c/script\u003e"}
 ```
 
 ### Prettify
@@ -265,7 +265,7 @@ defer p.Close()
 
 Signature: `func (p *Processor) CompactBuffer(dst *bytes.Buffer, src []byte, cfg ...Config) error`
 
-Compacts JSON bytes and writes to the `dst` buffer. Delegates to the package-level `Compact` function.
+Compacts JSON bytes and writes to the `dst` buffer. The package-level `Compact` function delegates to this method.
 
 ```go
 var buf bytes.Buffer
@@ -308,10 +308,10 @@ The following helper functions return pre-configured `Config` values that can be
 cfg := json.DefaultConfig()
 
 // Pretty-print configuration
-cfg := json.PrettyConfig()
+cfg = json.PrettyConfig()
 
 // Security configuration
-cfg := json.SecurityConfig()
+cfg = json.SecurityConfig()
 ```
 
 :::tip

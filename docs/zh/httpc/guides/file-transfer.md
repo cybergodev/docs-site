@@ -1,6 +1,6 @@
 ---
 title: "文件上传与下载 - HTTPC"
-description: "HTTPC 文件上传与下载指南：WithFile 简单上传、WithFormData Multipart 多文件上传、DownloadFile 基本下载、DownloadWithOptions 带进度回调、断点续传 ResumeDownload、SHA-256 校验与 UNC 路径等安全防护。"
+description: "HTTPC 文件上传与下载指南：WithFile 简单上传、WithFormData Multipart 多文件上传、Download 统一下载、带进度回调、断点续传 ResumeDownload、SHA-256 校验与 UNC 路径等安全防护。"
 ---
 
 # 文件上传与下载
@@ -71,18 +71,20 @@ result, err := httpc.Post(url,
 
 ## 文件下载
 
+`Download(ctx, url, cfg, options...)` 是贯穿包级函数、`Client` 和 `DomainClient` 的唯一规范下载入口。
+
 ### 基本下载
 
 ```go
-result, err := httpc.DownloadFile(
-    "https://example.com/file.zip",
-    "/tmp/file.zip",
-)
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/file.zip"
+
+result, err := httpc.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("下载完成: %d bytes\n", result.BytesWritten)
+fmt.Printf("下载完成: %s\n", httpc.FormatBytes(result.BytesWritten))
 fmt.Printf("耗时: %v\n", result.Duration)
 ```
 
@@ -94,17 +96,17 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\r下载中: %.1f%% (%.2f MB/s)", pct, float64(speed)/1024/1024)
+    fmt.Printf("\r下载中: %.1f%% (%s)", pct, httpc.FormatSpeed(speed))
 }
 
-result, err := httpc.DownloadWithOptions("https://example.com/file.zip", cfg)
+result, err := httpc.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("\n下载完成: %d bytes, 平均速度 %.2f MB/s\n",
-    result.BytesWritten,
-    float64(result.AverageSpeed)/1024/1024,
+fmt.Printf("\n下载完成: %s, 平均速度 %s\n",
+    httpc.FormatBytes(result.BytesWritten),
+    httpc.FormatSpeed(result.AverageSpeed),
 )
 ```
 
@@ -115,7 +117,7 @@ cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/large-file.zip"
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -135,7 +137,10 @@ if result.Resumed {
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 defer cancel()
 
-result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/file.zip"
+
+result, err := httpc.Download(ctx, url, cfg)
 if err != nil {
     if errors.Is(err, context.DeadlineExceeded) {
         log.Println("下载超时")
@@ -165,8 +170,11 @@ defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
 
-// 下载并自动管理会话
-result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/report.pdf"
+
+// 下载并自动管理会话（path 相对于 baseURL）
+result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
 ```
 
 ## 下一步

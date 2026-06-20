@@ -18,6 +18,8 @@ type Config struct {
     RefreshTokenTTL   time.Duration
     Issuer            string
     ExpectedAudience  string
+    RequireExpiration bool
+    ClockSkew         time.Duration
 
     Blacklist BlacklistConfig
 
@@ -52,6 +54,8 @@ type Config struct {
 | `RefreshTokenTTL` | `time.Duration` | `168h` | Срок действия токена обновления |
 | `Issuer` | `string` | `"jwt-service"` | Издатель |
 | `ExpectedAudience` | `string` | — | Ожидаемая аудитория (необязательно) |
+| `RequireExpiration` | `bool` | `false` | При `true` отклоняет токены без утверждения `exp` во время валидации (возвращает [`ErrExpirationRequired`](./errors#сигнальные-ошибки)) |
+| `ClockSkew` | `time.Duration` | `0` | Допуск рассинхронизации часов, применяемый к exp/nbf при валидации (компенсирует расхождения часов между издателем и проверяющим); отрицательные значения отклоняются методом `Validate()` |
 | `Blacklist` | `BlacklistConfig` | — | Конфигурация чёрного списка |
 | `EnableRateLimit` | `bool` | `false` | Включить ограничение скорости |
 | `RateLimitRate` | `int` | `100` | Максимальное количество запросов в окне |
@@ -72,6 +76,7 @@ type Config struct {
 | Ключ подписи | HMAC требует SecretKey ≥32 байта и не слабый ключ; RSA/ECDSA требует корректный тип SigningKey; ECDSA требует совпадение кривой; VerificationKey должен соответствовать типу публичного ключа алгоритма |
 | Валидность TTL | `AccessTokenTTL` и `RefreshTokenTTL` должны быть положительными |
 | Порядок TTL | `AccessTokenTTL` должен быть меньше `RefreshTokenTTL` |
+| ClockSkew | `ClockSkew` не должен быть отрицательным |
 | Алгоритм подписи | Должен быть одним из 12 встроенных алгоритмов |
 | Чёрный список | При использовании встроенного хранилища MaxSize и CleanupInterval должны быть положительными |
 

@@ -448,24 +448,84 @@ err := np.ProcessReader(file, func(lineNum int, obj map[string]any) error {
 
 ## Функции уровня пакета
 
-::: warning Примечание
-`StreamJSONLFile` — это метод Processor, а не функция уровня пакета. Перед использованием необходимо создать экземпляр Processor:
+Все функции обработки JSONL предоставляют версии уровня пакета с сигнатурами, идентичными соответствующим [методам Processor](./processor/jsonl). Внутри они используют глобальный Processor по умолчанию, поэтому вручную создавать экземпляр не требуется.
+
+::: tip Подсказка
+Функции уровня пакета подходят для однократной обработки. Если требуется вызывать их многократно в цикле или совместно использовать конфигурацию, рекомендуется создать выделенный `Processor` ([`json.New()`](./processor/)) для повторного использования кэша.
+:::
+
+### StreamJSONL
+
+Сигнатура: `func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+
+Потоковая построчная обработка JSONL: каждая строка разбирается в `IterableValue`, после чего вызывается callback.
+
+### StreamJSONLParallel
+
+Сигнатура: `func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+
+Обработка JSONL с использованием `workers` параллельных горутин.
+
+### StreamJSONLParallelWithContext
+
+Сигнатура: `func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+
+Параллельная обработка JSONL с поддержкой отмены контекста.
+
+### StreamJSONLChunked
+
+Сигнатура: `func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error) error`
+
+Пакетная обработка JSONL порциями по `chunkSize`; каждая порция передаётся в callback как `[]*IterableValue`.
+
+### ForeachJSONL
+
+Сигнатура: `func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+
+Перебор JSONL с вызовом callback для каждой строки.
+
+### MapJSONL
+
+Сигнатура: `func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error)) ([]any, error)`
+
+Преобразование каждой строки в новое значение и возврат среза результатов.
+
+### ReduceJSONL
+
+Сигнатура: `func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any) (any, error)`
+
+Свёртка JSONL; `initial` — начальное значение аккумулятора.
+
+### FilterJSONL
+
+Сигнатура: `func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool) ([]*IterableValue, error)`
+
+Фильтрация JSONL по предикату; возвращает совпадающие элементы.
+
+### StreamJSONLFile
+
+Сигнатура: `func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error) error`
+
+Потоковая обработка всего файла JSONL.
 
 ```go
-p, err := json.New()
-if err != nil {
-    panic(err)
-}
-defer p.Close()
-
-err = p.StreamJSONLFile("data.jsonl", func(lineNum int, item *json.IterableValue) error {
+err := json.StreamJSONLFile("data.jsonl", func(lineNum int, item *json.IterableValue) error {
     fmt.Printf("Строка %d: %v\n", lineNum, item.GetData())
     return nil
 })
 ```
 
-Подробнее в разделе [Методы Processor JSONL](./processor/jsonl#streamjsonlfile).
-:::
+### CollectJSONL
+
+Сигнатура: `func CollectJSONL(reader io.Reader) ([]*IterableValue, error)`
+
+Чтение всех строк JSONL и сборка их в срез.
+
+### FirstJSONL
+
+Сигнатура: `func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool) (*IterableValue, bool, error)`
+
+Возвращает первый элемент, удовлетворяющий предикату; второе возвращаемое значение указывает, было ли найдено совпадение.
 
 ### StreamLinesInto[T]
 
@@ -612,6 +672,7 @@ func main() {
 package main
 
 import (
+    "fmt"
     "os"
     "sync/atomic"
     "github.com/cybergodev/json"

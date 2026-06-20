@@ -1,6 +1,6 @@
 ---
 title: "パッケージ関数 - HTML"
-description: "CyberGo HTML ライブラリのパッケージレベル便利関数の完全な API リファレンス。Extract、ExtractFromFile、ExtractText、ExtractFromFileWithContext などのコンテンツ抽出関数とそのコンテキスト付きバージョンを含み、内部で sync.Pool を使って Processor インスタンスを再利用し、効率的な一回限りの呼び出しに最適です。"
+description: "CyberGo HTML のパッケージレベル便利関数 API リファレンス。Extract、ExtractFromFile、ExtractText、ExtractFromFileWithContext などの抽出関数とコンテキスト版を扱い、内部で sync.Pool により Processor を再利用するため、単発呼び出しや迅速な統合に適しています。"
 ---
 
 # パッケージ関数

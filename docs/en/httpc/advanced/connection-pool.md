@@ -1,6 +1,6 @@
 ---
 title: "Connection Pool and Proxy - HTTPC"
-description: "HTTPC connection pool and proxy configuration guide: MaxIdleConns parameter tuning with scenario recommendations, ProxyURL manual proxy and system proxy detection, SOCKS5 proxy, DoH three-provider fallback, HTTP/2 configuration, built-in object pool automatic management, and concurrent request patterns."
+description: "HTTPC connection pool and proxy configuration guide: MaxIdleConns connection-pool parameter tuning with scenario recommendations, ProxyURL manual proxy and system proxy detection, SOCKS5 and HTTP proxies, DoH three-provider fallback, HTTP/2 configuration, and best practices for connection reuse and built-in object pool auto-management."
 ---
 
 # Connection Pool and Proxy

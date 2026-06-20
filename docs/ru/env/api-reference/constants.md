@@ -266,10 +266,46 @@ if errors.As(err, &fileErr) {
 
 ```go
 type ExpansionError struct {
-    Key   string  // Имя ключа
-    Depth int     // Текущая глубина
-    Limit int     // Ограничение
-    Chain string  // Цепочка раскрытия
+    Key   string             // Имя ключа
+    Depth int                // Текущая глубина
+    Limit int                // Ограничение
+    Chain string             // Цепочка раскрытия (санитизирована)
+    Kind  ExpansionErrorKind // Категория причины (нулевое значение = глубина/цикл)
+}
+```
+
+**Классификация ошибок (поле `Kind`):**
+
+```go
+type ExpansionErrorKind int
+
+const (
+    // ExpansionDepthKind указывает, что подстановка достигла лимита рекурсивной глубины
+    // или обнаружила цикл переменных. Это нулевое значение, поэтому обычные ошибки
+    // глубины/цикла не требуют явной классификации. errors.Is(err, ErrExpansionDepth) их находит.
+    ExpansionDepthKind ExpansionErrorKind = iota
+
+    // ExpansionRequiredKind указывает, что обязательная переменная (${VAR:?message})
+    // не задана или пуста. Это не переполнение глубины, поэтому ErrExpansionDepth не соответствует.
+    ExpansionRequiredKind
+)
+```
+
+**Поведение `errors.Is`:** `*ExpansionError` соответствует `ErrExpansionDepth` только если `Kind != ExpansionRequiredKind`. Ошибки обязательной переменной — это отдельный режим сбоя и не соответствуют `ErrExpansionDepth`.
+
+Пример использования:
+
+```go
+var expErr *env.ExpansionError
+if errors.As(err, &expErr) {
+    switch expErr.Kind {
+    case env.ExpansionDepthKind:
+        // Переполнение глубины или цикл: errors.Is(err, env.ErrExpansionDepth) == true
+        fmt.Printf("глубина %d/%d, цепочка: %s\n", expErr.Depth, expErr.Limit, expErr.Chain)
+    case env.ExpansionRequiredKind:
+        // Обязательная переменная не задана: errors.Is(err, env.ErrExpansionDepth) == false
+        fmt.Printf("обязательная переменная %s не задана\n", expErr.Key)
+    }
 }
 ```
 
@@ -634,9 +670,7 @@ package main
 
 import (
     "errors"
-    "fmt"
     "log"
-    "os"
 
     "github.com/cybergodev/env"
 )

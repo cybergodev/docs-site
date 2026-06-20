@@ -266,10 +266,46 @@ if errors.As(err, &fileErr) {
 
 ```go
 type ExpansionError struct {
-    Key   string  // 키 이름
-    Depth int     // 현재 깊이
-    Limit int     // 제한
-    Chain string  // 확장 체인
+    Key   string             // 키 이름
+    Depth int                // 현재 깊이
+    Limit int                // 제한
+    Chain string             // 확장 체인 (민감정보 제거됨)
+    Kind  ExpansionErrorKind // 오류 원인 범주 (기본값 = 깊이/순환)
+}
+```
+
+**오류 분류 (`Kind` 필드):**
+
+```go
+type ExpansionErrorKind int
+
+const (
+    // ExpansionDepthKind는 확장이 재귀 깊이 제한에 도달했거나 변수 순환을 감지했음을 나타냅니다.
+    // 기본값이므로 일반적인 깊이/순환 오류는 명시적 분류가 필요 없습니다.
+    // errors.Is(err, ErrExpansionDepth)로 일치 여부를 확인할 수 있습니다.
+    ExpansionDepthKind ExpansionErrorKind = iota
+
+    // ExpansionRequiredKind는 필수 변수(${VAR:?message})가 설정되지 않았거나 비어 있음을 나타냅니다.
+    // 깊이 초과가 아니므로 ErrExpansionDepth와 일치하지 않습니다.
+    ExpansionRequiredKind
+)
+```
+
+**`errors.Is` 동작:** `*ExpansionError`는 `Kind != ExpansionRequiredKind`일 때만 `ErrExpansionDepth`와 일치합니다. 필수 변수 오류는 별도의 실패 모드이며 `ErrExpansionDepth`와 일치하지 않습니다.
+
+사용 예:
+
+```go
+var expErr *env.ExpansionError
+if errors.As(err, &expErr) {
+    switch expErr.Kind {
+    case env.ExpansionDepthKind:
+        // 깊이 초과 또는 순환: errors.Is(err, env.ErrExpansionDepth) == true
+        fmt.Printf("깊이 %d/%d, 체인: %s\n", expErr.Depth, expErr.Limit, expErr.Chain)
+    case env.ExpansionRequiredKind:
+        // 필수 변수 미설정: errors.Is(err, env.ErrExpansionDepth) == false
+        fmt.Printf("필수 변수 %s가 설정되지 않음\n", expErr.Key)
+    }
 }
 ```
 
@@ -634,9 +670,7 @@ package main
 
 import (
     "errors"
-    "fmt"
     "log"
-    "os"
 
     "github.com/cybergodev/env"
 )

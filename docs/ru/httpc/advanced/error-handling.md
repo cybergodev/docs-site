@@ -61,10 +61,6 @@ if errors.Is(err, httpc.ErrResponseBodyEmpty) {
     // Тело ответа пустое
 }
 
-if errors.Is(err, httpc.ErrInvalidURL) {
-    // Некорректный формат URL
-}
-
 if errors.Is(err, httpc.ErrInvalidHeader) {
     // Некорректный заголовок запроса
 }

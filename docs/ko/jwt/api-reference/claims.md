@@ -74,6 +74,7 @@ type RegisteredClaims struct {
     NotBefore NumericDate   `json:"nbf"`
     IssuedAt  NumericDate   `json:"iat"`
     ID        string        `json:"jti,omitempty"`
+    TokenType string        `json:"token_type,omitempty"`
 }
 ```
 
@@ -92,3 +93,4 @@ type RegisteredClaims struct {
 | `NotBefore` | `NumericDate` | `nbf` | 활성화 시간 |
 | `IssuedAt` | `NumericDate` | `iat` | 발급 시간 |
 | `ID` | `string` | `jti` | 토큰 ID |
+| `TokenType` | `string` | `token_type` | 토큰 타입 (`access` 또는 `refresh`; [토큰 타입 상수](./types#토큰-타입-상수) 참조) |

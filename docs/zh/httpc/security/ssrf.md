@@ -44,6 +44,21 @@ cfg.Security.SSRFExemptCIDRs = []string{
 豁免 CIDR 应尽量精确。避免使用过大的范围（如 `0.0.0.0/0`），否则等于禁用 SSRF 防护。
 :::
 
+### 按请求豁免私有 IP
+
+如果仅需对个别请求放行私有 IP（例如调用 `localhost` 健康检查端点），无需全局启用 `AllowPrivateIPs`，可使用 `WithAllowPrivateIPs` 请求选项仅对该次请求放行：
+
+```go
+// 默认客户端阻止私有 IP；此调用按请求放行
+result, err := httpc.Get("http://localhost:8080/health",
+    httpc.WithAllowPrivateIPs(true),
+)
+```
+
+:::warning
+仅对**可信且非来自用户输入**的 URL 启用此选项。SSRF 防护的目的是防止攻击者诱导你的进程访问内网端点，按请求禁用会为该次调用重新引入此风险。若整个客户端都需要访问内部服务，请在 Config 上设置 `Security.AllowPrivateIPs = true`。
+:::
+
 ## DNS 重绑定防护
 
 HTTPC 采用"解析-验证-直连"模式防止 DNS 重绑定攻击：

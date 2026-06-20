@@ -1,6 +1,6 @@
 ---
 title: "Interfaces - HTML"
-description: "Core interface definitions for CyberGo HTML, including Extractor, StatsProvider, ContentNode, Scorer, and AuditSink for extension and integration testing."
+description: "CyberGo HTML core interface API reference: Extractor, StatsProvider, ContentNode, Scorer, and AuditSink for extension, integration, and testing."
 ---
 
 # Interfaces

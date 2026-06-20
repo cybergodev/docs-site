@@ -1,14 +1,19 @@
 ---
 title: "Package Functions - CyberGo env | Global Convenience Functions"
-description: "CyberGo env library package-level convenience functions API complete reference documentation, providing Load for file loading, GetString and GetInt for type-safe value reading, Keys for querying key names, Marshal for serialization export, and ParseInto for struct mapping with concise APIs, based on a global default Loader with lazy initialization and thread-safe design."
+description: "CyberGo env library package-level convenience functions API complete reference documentation, providing Load for file loading, GetString and GetInt for type-safe value reading, Keys for querying key names, Marshal for serialization export, and ParseInto for struct mapping with concise APIs, based on a global default Loader that must be explicitly initialized via Load() and is thread-safe."
 ---
 
 # Package Functions
 
 Package-level convenience functions provide a concise API suitable for most use cases. These functions use the global default loader, and all functions are thread-safe.
 
-:::tip Lazy Loading
-The global default loader uses a lazy initialization mechanism and is automatically created on the first call.
+:::info Initialization Required
+The global default loader must be explicitly initialized via `Load()` or `LoadWithConfig()` and is **not** automatically created on the first call. If uninitialized, the functions behave as follows:
+
+- `Get*` functions (`GetString`, `GetInt`, `GetBool`, etc.): return the provided default value (or the zero value)
+- `Lookup`: returns `("", false)`
+- `Keys`/`All`/`Len`/`GetSecure`: return `nil`/`0`
+- `Set`/`Delete`/`Validate`/`ParseInto`: return `ErrNotInitialized`
 :::
 
 ## Loading Functions
@@ -294,7 +299,7 @@ secret := env.GetSecure("API_KEY")
 if secret != nil {
     defer secret.Release()
 
-    value := secret.String()
+    value := secret.Reveal()   // plaintext (call only when needed)
     masked := secret.Masked()  // For logging: [SECURE:32 bytes]
 }
 ```

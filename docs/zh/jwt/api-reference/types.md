@@ -32,7 +32,7 @@ JWT 数字日期值（Unix 时间戳）。有效范围为 0 至 253402300799（9
 type StringOrSlice []string
 ```
 
-可从 JSON 字符串或字符串数组反序列化的类型，符合 RFC 7519 §4.1.3。
+持有 `[]string`，可从 JSON 字符串或字符串数组反序列化；单元素切片序列化为 JSON 字符串，多元素序列化为数组，符合 RFC 7519 §4.1.3。
 
 <Badge type="info" text="type" />
 
@@ -40,7 +40,8 @@ type StringOrSlice []string
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `UnmarshalJSON` | `func (s *StringOrSlice) UnmarshalJSON(b []byte) error` | 从字符串或数组解析 |
+| `MarshalJSON` | `func (s StringOrSlice) MarshalJSON() ([]byte, error)` | 单元素切片序列化为 JSON 字符串，多元素序列化为数组（符合 RFC 7519 §4.1.3） |
+| `UnmarshalJSON` | `func (s *StringOrSlice) UnmarshalJSON(b []byte) error` | 从 JSON 字符串或数组解析 |
 
 ---
 
@@ -180,3 +181,25 @@ const (
 | `SigningMethodES256` | `"ES256"` | ECDSA-SHA256 | 非对称 |
 | `SigningMethodES384` | `"ES384"` | ECDSA-SHA384 | 非对称 |
 | `SigningMethodES512` | `"ES512"` | ECDSA-SHA512 | 非对称 |
+
+---
+
+## 令牌类型常量
+
+```go
+const (
+    TokenTypeAccess  = "access"
+    TokenTypeRefresh = "refresh"
+)
+```
+
+写入 [`RegisteredClaims.TokenType`](./claims#registeredclaims) 字段的令牌类型常量。
+
+- 访问令牌由 [`Processor.Create`](./processor#create) 创建
+- 刷新令牌由 [`Processor.CreateRefresh`](./processor#createrefresh) 创建
+- [`Processor.Refresh`](./processor#refresh) 与 [`Processor.RefreshInto`](./processor#refreshinto) 会拒绝 `TokenTypeAccess` 的令牌
+
+| 常量 | 值 | 说明 |
+|------|-----|------|
+| `TokenTypeAccess` | `"access"` | 访问令牌 |
+| `TokenTypeRefresh` | `"refresh"` | 刷新令牌 |

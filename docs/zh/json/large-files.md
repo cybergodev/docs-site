@@ -44,7 +44,6 @@ type Config struct {
 package main
 
 import (
-    "fmt"
     "log"
     "github.com/cybergodev/json"
 )
@@ -72,7 +71,8 @@ func main() {
         interests := item.GetArray("profile.interests")
 
         if count%10000 == 0 {
-            log.Printf("已处理 %d 条记录", count)
+            log.Printf("已处理 %d 条记录，示例: id=%d name=%s email=%s city=%s 兴趣数=%d",
+                count, id, name, email, city, len(interests))
         }
         return nil
     })
@@ -212,7 +212,6 @@ _, err := json.StreamLinesInto[User](file, func(lineNum int, user User) error {
 package main
 
 import (
-    "fmt"
     "sync"
     "github.com/cybergodev/json"
 )
@@ -235,8 +234,8 @@ func main() {
         go func(id int) {
             defer wg.Done()
             for item := range items {
-                // 处理 item
-                processItem(item)
+                // 处理 item（替换为你的业务逻辑）
+                _ = item
             }
         }(i)
     }

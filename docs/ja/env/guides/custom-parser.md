@@ -38,6 +38,8 @@ package myparser
 
 import (
     "io"
+    "strings"
+
     "github.com/cybergodev/env"
 )
 
@@ -59,7 +61,17 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
     }
 
     // 2. 内容をキー・バリューペアに解析
-    // ... 解析ロジック
+    for _, line := range strings.Split(string(content), "\n") {
+        line = strings.TrimSpace(line)
+        if line == "" || strings.HasPrefix(line, "#") {
+            continue
+        }
+        idx := strings.Index(line, "=")
+        if idx <= 0 {
+            continue
+        }
+        result[strings.TrimSpace(line[:idx])] = strings.TrimSpace(line[idx+1:])
+    }
 
     // 3. 結果を検証
     for key := range result {

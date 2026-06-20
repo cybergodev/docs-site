@@ -26,6 +26,7 @@ description: "CyberGo HTML 库 Config 配置详解，包括资源管理（MaxInp
 |------|------|--------|------|
 | `EnableSanitization` | `bool` | `true` | 启用内容清洗，仅对可信输入可禁用 |
 | `MaxDepth` | `int` | `500` | 最大 DOM 深度 |
+| `AllowedBaseDir` | `string` | `""` | 限制文件操作到此目录，留空（默认）表示不限制；接收不可信输入的文件路径时使用 |
 | `Audit` | `AuditConfig` | `DefaultAuditConfig()` | 审计配置 |
 
 ### 内容提取

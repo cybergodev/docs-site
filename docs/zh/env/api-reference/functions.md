@@ -1,14 +1,19 @@
 ---
 title: "包函数 - CyberGo env | 全局便捷函数"
-description: "CyberGo env 库包级便捷函数 API 完整参考文档，提供 Load 加载文件、GetString 和 GetInt 按类型读取值、Keys 查询键名、Marshal 序列化导出和 ParseInto 结构体映射等简洁 API，基于全局默认 Loader 实现，采用懒加载初始化和线程安全设计。"
+description: "CyberGo env 库包级便捷函数 API 完整参考文档，提供 Load 加载文件、GetString 和 GetInt 按类型读取值、Keys 查询键名、Marshal 序列化导出和 ParseInto 结构体映射等简洁 API，基于全局默认 Loader 实现，需通过 Load 显式初始化且线程安全。"
 ---
 
 # 包函数
 
 包级便捷函数提供简洁的 API，适合大多数使用场景。这些函数使用全局默认加载器，所有函数都是线程安全的。
 
-::: tip 懒加载
-全局默认加载器采用懒加载机制，首次调用时自动创建。
+::: info 初始化要求
+全局默认加载器必须通过 `Load()` 或 `LoadWithConfig()` 显式初始化，**不会**在首次调用时自动创建。若未初始化，函数行为如下：
+
+- `Get*` 函数（`GetString`、`GetInt`、`GetBool` 等）：返回传入的默认值（或零值）
+- `Lookup`：返回 `("", false)`
+- `Keys`/`All`/`Len`/`GetSecure`：返回 `nil`/`0`
+- `Set`/`Delete`/`Validate`/`ParseInto`：返回 `ErrNotInitialized`
 :::
 
 ## 加载函数
@@ -294,7 +299,7 @@ secret := env.GetSecure("API_KEY")
 if secret != nil {
     defer secret.Release()
 
-    value := secret.String()
+    value := secret.Reveal()   // 明文值（仅在需要时调用）
     masked := secret.Masked()  // 用于日志: [SECURE:32 bytes]
 }
 ```

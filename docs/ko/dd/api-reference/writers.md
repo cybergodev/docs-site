@@ -61,7 +61,32 @@ func (c FileWriterConfig) Validate() error
 | 메서드 | 서명 | 설명 |
 |------|------|------|
 | `Write` | `(p []byte) (int, error)` | 데이터 쓰기 (io.Writer 구현) |
+| `SetOnRotateCallback` | `(fn func(path string))` | 파일 순환 성공 후 호출되는 콜백 설정 |
 | `Close` | `() error` | 파일 Writer 종료 |
+
+### 순환 콜백
+
+```go
+func (fw *FileWriter) SetOnRotateCallback(fn func(path string))
+```
+
+파일 순환**이 성공한 후** 호출되는 콜백 함수를 설정합니다. 콜백 매개변수 `path`는 현재 로그 파일의 기준 경로([`NewFileWriter`](#생성)에 전달한 `path`)입니다. 이 시점에서 이전 로그는 백업 파일로 보관되었고, 해당 경로에 새 파일이 다시 열립니다.
+
+:::info 내부 용도
+이 메서드는 주로 `Logger`가 내부적으로 사용합니다. `FileWriter`가 Logger의 출력 대상일 때, Logger는 이를 통해 `HookOnRotate` 훅 이벤트를 트리거합니다(자세한 내용은 [훅 시스템](./hooks) 참조). 일반 사용자가 직접 호출할 필요는 없으며, 순환 후 사용자 정의 동작이 필요할 때 설정할 수 있습니다.
+:::
+
+```go
+fw, _ := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
+
+// 순환 콜백 설정: 순환 후 현재 파일 경로 출력
+fw.SetOnRotateCallback(func(path string) {
+    fmt.Println("로그가 순환되었습니다, 현재 파일:", path)
+})
+
+// 파일이 크기/보존기간/백업 수 제한을 초과하여 순환될 때 콜백이 호출됩니다
+fw.Write([]byte("로그 내용\n"))
+```
 
 ### 파일 순환
 

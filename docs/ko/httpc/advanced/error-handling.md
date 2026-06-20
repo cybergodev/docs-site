@@ -61,10 +61,6 @@ if errors.Is(err, httpc.ErrResponseBodyEmpty) {
     // 응답 본문이 비어 있음
 }
 
-if errors.Is(err, httpc.ErrInvalidURL) {
-    // URL 형식이 무효
-}
-
 if errors.Is(err, httpc.ErrInvalidHeader) {
     // 요청 헤더가 무효
 }

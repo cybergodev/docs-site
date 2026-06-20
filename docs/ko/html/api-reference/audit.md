@@ -1,6 +1,6 @@
 ---
 title: "감사 시스템 - HTML"
-description: "CyberGo HTML 라이브러리 플러그형 감사 시스템 API 레퍼런스, AuditConfig 설정, 8가지 감사 이벤트 유형, 3개 감사 레벨과 AuditEntry 로그 항목을 포함하며, Logger, Channel, Writer, Multi, Filtered, LevelFiltered 6가지 Sink 구현을 내장합니다."
+description: "CyberGo HTML 플러그 가능한 감사(audit) 시스템 API 참조. AuditConfig, 8가지 감사 이벤트, 3가지 수준, AuditEntry를 다루며, Logger·Channel·Writer·Multi·Filtered·LevelFiltered 6개의 내장 Sink를 제공해 보안 컴플라이언스와 행위 감사 요구를 충족합니다."
 ---
 
 # 감사 시스템

@@ -91,6 +91,15 @@ if err != nil {
 }
 ```
 
+## 오류 헬퍼 함수
+
+위의 오류 유형 외에도 라이브러리는 두 가지 오류 처리 헬퍼 함수를 제공합니다 (자세한 내용은 [헬퍼 유틸리티](./helpers#safeerror) 참조):
+
+| 함수 | 시그니처 | 설명 |
+|------|---------|------|
+| `SafeError` | `func SafeError(err error) string` | 클라이언트에 안전한 오류 메시지를 반환하며, 경로명 등 내부 세부 정보를 생략합니다 (CWE-209) |
+| `RedactedPath` | `func RedactedPath(path string) string` | 마스킹된 경로를 반환합니다 (비어 있지 않은 경로는 `"***"`로 마스킹됨). 로그 및 오류 응답에 사용 |
+
 ## 설정 프리셋
 
 ### 기본값 상수
@@ -101,6 +110,7 @@ const (
     DefaultMaxJSONSize     = 100 * 1024 * 1024  // 100MB
     DefaultMaxNestingDepth = 200
     DefaultMaxPathDepth    = 50
+    DefaultMaxDepth        = 100                 // 인코딩/디코딩 기본 중첩 깊이 (Config.MaxDepth)
     DefaultMaxConcurrency  = 50
 
     // 보안 제한

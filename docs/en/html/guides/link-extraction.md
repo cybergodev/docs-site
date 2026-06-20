@@ -1,6 +1,6 @@
 ---
 title: "Link Extraction & Grouping - HTML"
-description: "Guide to extracting and grouping HTML resource links with CyberGo, covering ExtractAllLinks, type-based grouping, filters, and crawler best practices."
+description: "CyberGo HTML link extraction and grouping: ExtractAllLinks for CSS, JS, images, video, and audio; Include filters, relative-URL resolution, and crawler practices."
 ---
 
 # Link Extraction & Grouping

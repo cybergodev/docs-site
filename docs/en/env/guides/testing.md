@@ -384,7 +384,9 @@ Create test helper functions:
 package testutil
 
 import (
+    "os"
     "testing"
+
     "github.com/cybergodev/env"
 )
 

@@ -108,7 +108,7 @@ updates := map[string]any{"a": 1, "b": 2, "c": 3}
 result, err := json.SetMultiple(data, updates)
 
 // Не рекомендуется: многократные вызовы
-result, err := json.Set(data, "a", 1)
+result, err = json.Set(data, "a", 1)
 result, err = json.Set(result, "b", 2)
 result, err = json.Set(result, "c", 3)
 ```
@@ -337,8 +337,8 @@ Processor предоставляет соответствующие методы
 p, err := json.New()
 
 result, err := p.Set(jsonStr, "user.name", "Alice")
-result, err := p.Delete(jsonStr, "user.temp")
-result, err := p.SetCreate(jsonStr, "user.email", "test@example.com")
+result, err = p.Delete(jsonStr, "user.temp")
+result, err = p.SetCreate(jsonStr, "user.email", "test@example.com")
 ```
 
 ## Смотрите также

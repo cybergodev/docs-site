@@ -86,6 +86,7 @@ func (p *Processor) Validate(tokenString string) (Claims, bool, error)
 | `ErrEmptyToken` | 令牌为空 |
 | `ErrInvalidToken` | 签名无效 |
 | `ErrAlgorithmMismatch` | 令牌算法与配置不匹配 |
+| `ErrExpirationRequired` | 启用 `RequireExpiration` 但令牌缺少 `exp` 声明 |
 | `ErrTokenExpired` | 令牌过期 |
 | `ErrTokenNotValidYet` | 令牌尚未生效 |
 | `ErrTokenInvalidIssuer` | 签发者不匹配 |
@@ -147,7 +148,12 @@ func (p *Processor) CreateRefresh(claims CustomClaims) (string, error)
 func (p *Processor) Refresh(refreshTokenString string) (string, error)
 ```
 
-刷新现有的刷新令牌，返回新的访问令牌。
+刷新现有的刷新令牌，返回新的访问令牌。刷新令牌会先经过完整验证（签名、过期、黑名单），通过后签发新的访问令牌；原令牌的 `IssuedAt`、`ExpiresAt`、`ID` 会被重置并重新生成。
+
+:::info 令牌类型与轮换
+- **令牌类型校验**：`token_type=access` 的令牌会被拒绝（返回 [`ErrTokenTypeMismatch`](./errors#哨兵错误)），防止用访问令牌换取新令牌；未携带 `token_type` 的旧令牌出于向后兼容仍被接受。
+- **不会自动吊销原令牌**：`Refresh` 不会吊销传入的刷新令牌，原令牌在过期或被显式 [`Revoke()`](#revoke) 之前始终有效。如需"一次性使用"语义，请在 `Refresh` 成功后调用 `Revoke(refreshTokenString)`。
+:::
 
 :::warning 安全说明
 刷新时仅验证标准 JWT 字段（exp、nbf、iss、aud、黑名单）和基本结构有效性（UserID 或 Username 必须存在）。深度字段约束（长度限制、注入模式）不会重新检查，因为它们在创建时已验证。
@@ -176,12 +182,14 @@ func (p *Processor) Refresh(refreshTokenString string) (string, error)
 | `ErrEmptyToken` | 令牌为空 |
 | `ErrInvalidToken` | 签名无效 |
 | `ErrAlgorithmMismatch` | 令牌算法与配置不匹配 |
+| `ErrExpirationRequired` | 启用 `RequireExpiration` 但令牌缺少 `exp` 声明 |
 | `ErrTokenExpired` | 令牌过期 |
 | `ErrTokenNotValidYet` | 令牌尚未生效 |
 | `ErrTokenInvalidIssuer` | 签发者不匹配 |
 | `ErrTokenInvalidAudience` | 受众不匹配 |
 | `ErrTokenRevoked` | 令牌已吊销 |
 | `ErrInvalidClaims` | Claims 验证失败 |
+| `ErrTokenTypeMismatch` | 用访问令牌（`token_type=access`）尝试刷新 |
 | `ErrRateLimitExceeded` | 超出限流阈值 |
 
 ---
@@ -229,6 +237,7 @@ if valid {
 | `ErrEmptyToken` | 令牌为空 |
 | `ErrInvalidToken` | 签名无效 |
 | `ErrAlgorithmMismatch` | 令牌算法与配置不匹配 |
+| `ErrExpirationRequired` | 启用 `RequireExpiration` 但令牌缺少 `exp` 声明 |
 | `ErrTokenExpired` | 令牌过期 |
 | `ErrTokenNotValidYet` | 令牌尚未生效 |
 | `ErrTokenInvalidIssuer` | 签发者不匹配 |
@@ -245,6 +254,10 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 ```
 
 使用自定义 Claims 刷新令牌。Claims 对象的时序字段（`IssuedAt`、`ExpiresAt`、`ID`）在操作后自动恢复，即使发生错误或 panic 也能保证恢复。
+
+:::info 令牌类型校验
+`token_type=access` 的令牌会被拒绝（返回 [`ErrTokenTypeMismatch`](./errors#哨兵错误)），防止用访问令牌换取新令牌；未携带 `token_type` 的旧令牌出于向后兼容仍被接受。
+:::
 
 :::warning 安全说明
 刷新时仅验证标准 JWT 字段（exp、nbf、iss、aud、黑名单）和基本结构有效性。深度字段约束（长度限制、注入模式）不会重新检查，因为它们在创建时已验证。
@@ -274,12 +287,14 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 | `ErrEmptyToken` | 令牌为空 |
 | `ErrInvalidToken` | 签名无效 |
 | `ErrAlgorithmMismatch` | 令牌算法与配置不匹配 |
+| `ErrExpirationRequired` | 启用 `RequireExpiration` 但令牌缺少 `exp` 声明 |
 | `ErrTokenExpired` | 令牌过期 |
 | `ErrTokenNotValidYet` | 令牌尚未生效 |
 | `ErrTokenInvalidIssuer` | 签发者不匹配 |
 | `ErrTokenInvalidAudience` | 受众不匹配 |
 | `ErrTokenRevoked` | 令牌已吊销 |
 | `ErrInvalidClaims` | Claims 验证失败 |
+| `ErrTokenTypeMismatch` | 用访问令牌（`token_type=access`）尝试刷新 |
 | `ErrRateLimitExceeded` | 超出限流阈值 |
 
 ---
@@ -313,6 +328,10 @@ func (p *Processor) Revoke(tokenString string) error
 | `ErrProcessorClosed` | Processor 已关闭 |
 | `ErrEmptyToken` | 令牌为空 |
 | `ErrBlacklistNotConfigured` | 黑名单未配置 |
+| `ErrInvalidToken` | 签名无效或令牌格式错误 |
+| `ErrTokenInvalidIssuer` | 签发者不匹配 |
+| `ErrTokenInvalidAudience` | 受众不匹配 |
+| `ErrTokenMissingID` | 令牌缺少 `jti` 字段 |
 
 ---
 
@@ -345,7 +364,10 @@ func (p *Processor) IsRevoked(tokenString string) (bool, error)
 |------|----------|
 | `ErrProcessorClosed` | Processor 已关闭 |
 | `ErrEmptyToken` | 令牌为空 |
-| `ErrTokenMissingID` | 令牌缺少 ID |
+| `ErrInvalidToken` | 签名无效或令牌格式错误 |
+| `ErrTokenInvalidIssuer` | 签发者不匹配 |
+| `ErrTokenInvalidAudience` | 受众不匹配 |
+| `ErrTokenMissingID` | 令牌缺少 `jti` 字段 |
 
 ---
 
@@ -375,6 +397,14 @@ func (p *Processor) ParseUnverified(tokenString string, claims any) error
 | 返回 | 类型 | 说明 |
 |------|------|------|
 | `err` | `error` | 解析失败时返回错误 |
+
+### 错误
+
+| 错误 | 触发条件 |
+|------|----------|
+| `ErrProcessorClosed` | Processor 已关闭 |
+| `ErrEmptyToken` | 令牌为空 |
+| 包装错误 | 令牌格式错误时返回包装的解析错误（非哨兵错误，无法用 `errors.Is` 匹配） |
 
 ---
 

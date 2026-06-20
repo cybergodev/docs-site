@@ -33,10 +33,10 @@ defer processor.Close()
 // カスタム設定で使用
 cfg := json.DefaultConfig()
 cfg.StrictMode = true
-processor, err := json.New(cfg)
+processor, err = json.New(cfg)
 
 // セキュリティ設定で使用
-processor, err := json.New(json.SecurityConfig())
+processor, err = json.New(json.SecurityConfig())
 ```
 
 ## メソッドチェーン

@@ -1,6 +1,6 @@
 ---
 title: "치트시트 - HTTPC"
-description: "HTTPC 치트시트: 클라이언트 생성과 다섯 가지 프리셋 설정, Get/Post 등 일곱 가지 요청 메서드, 27개 WithXxx 요청 옵션, Result 응답 처리, 미들웨어 체인 조합, ClientError 오류 분류, 파일 다운로드와 도메인 클라이언트 작업의 완전한 코드 조각을 제공합니다."
+description: "HTTPC 치트시트: 클라이언트 생성과 다섯 가지 프리셋 설정, Get/Post 등 일곱 가지 요청 메서드, 28개 WithXxx 요청 옵션, Result 응답 처리, 미들웨어 체인 조합, ClientError 오류 분류, 파일 다운로드, 이어받기와 도메인 클라이언트 작업의 완전한 코드 조각을 제공합니다."
 ---
 
 # 치트시트
@@ -220,9 +220,12 @@ if err != nil {
 ## 파일 다운로드
 
 ```go
-dlResult, err := client.DownloadFile(url, "/path/to/file")
+// 기본 다운로드 (ctx는 context.Context, 예: context.Background())
+dlCfg := httpc.DefaultDownloadConfig()
+dlCfg.FilePath = "/path/to/file"
+dlResult, err := client.Download(ctx, url, dlCfg)
 
-// 옵션 포함
+// 옵션 포함 (덮어쓰기, 이어받기, 진행률)
 dlCfg := httpc.DefaultDownloadConfig()
 dlCfg.FilePath = "/path/to/file"
 dlCfg.Overwrite = true
@@ -230,7 +233,7 @@ dlCfg.ResumeDownload = true
 dlCfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r%.1f%% (%.2f MB/s)", float64(downloaded)/float64(total)*100, float64(speed)/1024/1024)
 }
-dlResult, err := client.DownloadWithOptions(url, dlCfg)
+dlResult, err := client.Download(ctx, url, dlCfg)
 
 // dlResult 타입은 *DownloadResult (*Result가 아님)
 // 필드: FilePath, BytesWritten, Duration, AverageSpeed, StatusCode, ContentLength, Resumed, ResponseCookies, ActualChecksum

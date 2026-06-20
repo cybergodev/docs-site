@@ -1,31 +1,19 @@
 ---
 title: "文件下载 - HTTPC"
-description: "HTTPC 文件下载 API 参考：DownloadFile 等四个包级下载函数签名、DownloadConfig 配置结构体、DownloadProgressCallback 进度回调、DownloadResult 结果类型、SHA-256 校验和验证与 UNC 路径防护等六层安全保护。"
+description: "HTTPC 文件下载 API 参考：Download 统一下载入口函数签名、DownloadConfig 配置结构体、DownloadProgressCallback 进度回调、DownloadResult 结果类型、SHA-256 校验和验证与 UNC 路径防护等六层安全保护。"
 ---
 
 # 文件下载
 
 ## 包级下载函数
 
-### DownloadFile
+### Download
 
 ```go
-func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
+func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-使用默认客户端下载文件到指定路径。
-
-```go
-result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
-```
-
-### DownloadWithOptions
-
-```go
-func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-带配置的下载，支持断点续传和进度回调。
+使用默认客户端下载文件。`Download` 是贯穿包级函数、`Client` 接口和 `DomainClient` 的**唯一规范下载入口**，用单一签名取代了以往的变体矩阵。`cfg` 不能为 nil，且 `cfg.FilePath` 必须设置（否则返回 `ErrEmptyFilePath`）。
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -33,24 +21,8 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 ```
-
-### DownloadFileWithContext
-
-```go
-func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-带上下文控制的文件下载。
-
-### DownloadWithOptionsWithContext
-
-```go
-func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-带配置和上下文控制的文件下载。
 
 ## DownloadConfig
 
@@ -91,7 +63,7 @@ type DownloadProgressCallback func(downloaded, total int64, speed float64)
 ```go
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\r%.1f%% (%.1f bytes/s)", pct, speed)
+    fmt.Printf("\r%.1f%% (%s)", pct, httpc.FormatSpeed(speed))
 }
 ```
 
@@ -134,12 +106,16 @@ type DownloadResult struct {
 | `RequestHeaders` | `http.Header` | 请求头 |
 
 ```go
-fmt.Printf("下载完成: %d bytes, 耗时 %v, 平均速度 %.1f bytes/s\n",
-    result.BytesWritten,
+fmt.Printf("下载完成: %s, 耗时 %v, 平均速度 %s\n",
+    httpc.FormatBytes(result.BytesWritten),
     result.Duration,
-    result.AverageSpeed,
+    httpc.FormatSpeed(result.AverageSpeed),
 )
 ```
+
+:::tip
+使用 [FormatBytes](./functions#formatbytes) 与 [FormatSpeed](./functions#formatspeed) 可获得人类可读的字节与速率字符串，避免手动换算 `1024` 进位。
+:::
 
 ## 校验和验证
 
@@ -163,7 +139,7 @@ cfg.FilePath = "/tmp/package.tar.gz"
 cfg.Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if err != nil {
     // 校验和不匹配时自动返回错误并删除已下载文件
     log.Fatal(err)
@@ -195,7 +171,7 @@ cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/large-file.zip"
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if result.Resumed {
     fmt.Println("续传完成")
 }

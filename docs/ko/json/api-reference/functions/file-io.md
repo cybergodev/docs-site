@@ -114,7 +114,7 @@ defer resp.Body.Close()
 data, err := json.LoadFromReader(resp.Body)
 
 // 문자열에서 읽기
-data, err := json.LoadFromReader(strings.NewReader(`{"name":"test"}`))
+data, err = json.LoadFromReader(strings.NewReader(`{"name":"test"}`))
 ```
 
 ### SaveToWriter

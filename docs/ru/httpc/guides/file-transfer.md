@@ -1,6 +1,6 @@
 ---
 title: "Загрузка и выгрузка файлов - HTTPC"
-description: "Руководство по загрузке и выгрузке файлов HTTPC: простая выгрузка через WithFile, Multipart-выгрузка нескольких файлов через WithFormData, базовая загрузка через DownloadFile, загрузка с обратным вызовом прогресса через DownloadWithOptions, возобновление загрузки ResumeDownload, проверка SHA-256 и защита от UNC-путей."
+description: "Руководство по загрузке и выгрузке файлов HTTPC: простая выгрузка через WithFile, Multipart-выгрузка нескольких файлов через WithFormData, унифицированная загрузка через Download, загрузка с обратным вызовом прогресса, возобновление загрузки ResumeDownload, проверка SHA-256 и защита от UNC-путей."
 ---
 
 # Загрузка и выгрузка файлов
@@ -71,18 +71,20 @@ result, err := httpc.Post(url,
 
 ## Загрузка файлов
 
+`Download(ctx, url, cfg, options...)` — единый канонический вход для загрузки на уровне пакета, `Client` и `DomainClient`.
+
 ### Базовая загрузка
 
 ```go
-result, err := httpc.DownloadFile(
-    "https://example.com/file.zip",
-    "/tmp/file.zip",
-)
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/file.zip"
+
+result, err := httpc.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("Загрузка завершена: %d bytes\n", result.BytesWritten)
+fmt.Printf("Загрузка завершена: %s\n", httpc.FormatBytes(result.BytesWritten))
 fmt.Printf("Время: %v\n", result.Duration)
 ```
 
@@ -94,17 +96,17 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\rЗагрузка: %.1f%% (%.2f MB/s)", pct, float64(speed)/1024/1024)
+    fmt.Printf("\rЗагрузка: %.1f%% (%s)", pct, httpc.FormatSpeed(speed))
 }
 
-result, err := httpc.DownloadWithOptions("https://example.com/file.zip", cfg)
+result, err := httpc.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("\nЗагрузка завершена: %d bytes, средняя скорость %.2f MB/s\n",
-    result.BytesWritten,
-    float64(result.AverageSpeed)/1024/1024,
+fmt.Printf("\nЗагрузка завершена: %s, средняя скорость %s\n",
+    httpc.FormatBytes(result.BytesWritten),
+    httpc.FormatSpeed(result.AverageSpeed),
 )
 ```
 
@@ -115,7 +117,7 @@ cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/large-file.zip"
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -135,7 +137,10 @@ if result.Resumed {
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 defer cancel()
 
-result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/file.zip"
+
+result, err := httpc.Download(ctx, url, cfg)
 if err != nil {
     if errors.Is(err, context.DeadlineExceeded) {
         log.Println("Таймаут загрузки")
@@ -165,8 +170,11 @@ defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
 
-// Загрузка с автоматическим управлением сессией
-result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
+// Загрузка с автоматическим управлением сессией (path относительно baseURL)
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/report.pdf"
+
+result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
 ```
 
 ## Что дальше

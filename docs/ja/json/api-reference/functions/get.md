@@ -434,7 +434,7 @@ defer p.Close()
 data, err := p.ParseAny(`{"name": "test"}`)
 ```
 
-詳しくは [Processor パースメソッド](../processor/parse.md#パースメソッド) を参照してください。
+詳しくは [Processor パースメソッド](../processor/parse.md#解析メソッド) を参照してください。
 
 ## 検証関数
 

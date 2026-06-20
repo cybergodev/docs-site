@@ -71,15 +71,17 @@ result, err := dc.Request(ctx, "GET", "/users", options...)
 ## 下载方法
 
 ```go
-// 基本下载
-result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
+func (dc *DomainClient) Download(ctx context.Context, path string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
+```
 
-// 带配置下载
-result, err := dc.DownloadWithOptions("/files/report.pdf", downloadOpts)
+下载文件到 `cfg.FilePath`，`path` 相对于 `baseURL` 拼接。与包级 `Download` 和 `Client.Download` 签名一致——`Download` 是贯穿三者的唯一规范下载入口。`cfg` 不能为 nil，`cfg.FilePath` 必须设置（否则返回 `ErrEmptyFilePath`）。
 
-// 带上下文
-result, err := dc.DownloadFileWithContext(ctx, "/files/report.pdf", "/tmp/report.pdf")
-result, err := dc.DownloadWithOptionsWithContext(ctx, "/files/report.pdf", downloadOpts)
+```go
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/report.pdf"
+cfg.Overwrite = true
+
+result, err := dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
 下载的响应 Cookie 会自动捕获到会话中。

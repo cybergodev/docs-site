@@ -166,20 +166,19 @@ env.RegisterParser(FormatCustom, func(cfg env.Config, factory *env.ComponentFact
 
 ```text
 Создание Config
-     |
+     ↓
 env.New(cfg)
-     |
+     ↓
 Автоматическое создание ComponentFactory
-     |
-    +-------+-------+
-    |       |       |
-    v       v       v
+     ↓
+    ┌───────┼───────┐
+    ↓       ↓       ↓
 Validator  Auditor  Expander
-    |       |       |
-    +-------+-------+
-            |
+    ↓       ↓       ↓
+    └───────┼───────┘
+            ↓
       Loader/Parser
-            |
+            ↓
       Close() освобождает
 ```
 
@@ -212,7 +211,7 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 
 **Пример вывода:**
 ```json
-{"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration":1234567}
+{"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
 ```
 
 ---
@@ -780,6 +779,7 @@ func main() {
 package main
 
 import (
+    "errors"
     "fmt"
     "os"
     "strings"
@@ -861,9 +861,9 @@ type MemoryFile struct {
 }
 
 func (f *MemoryFile) Read(p []byte) (n int, err error)  { return f.reader.Read(p) }
-func (f *MemoryFile) Write(p []byte) (n int, err error) { return 0, os.ErrUnsupported }
+func (f *MemoryFile) Write(p []byte) (n int, err error) { return 0, errors.ErrUnsupported }
 func (f *MemoryFile) Close() error                      { return nil }
-func (f *MemoryFile) Stat() (os.FileInfo, error)        { return nil, os.ErrUnsupported }
+func (f *MemoryFile) Stat() (os.FileInfo, error)        { return nil, errors.ErrUnsupported }
 func (f *MemoryFile) Sync() error                       { return nil }
 
 // MemoryFileInfo реализует os.FileInfo

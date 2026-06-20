@@ -256,6 +256,13 @@ import (
     "github.com/cybergodev/json"
 )
 
+// User represents a user record (sample data model)
+type User struct {
+    ID    int
+    Name  string
+    Email string
+}
+
 func main() {
     p, err := json.New()
     if err != nil {

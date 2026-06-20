@@ -1,6 +1,6 @@
 ---
 title: "Performance Optimization - HTTPC"
-description: "HTTPC performance optimization guide: four preset comparison (Default/Secure/Performance/Minimal) and scenario selection, fine-tuning connection pool and timeout parameters based on presets, automatic Result object pooling to reduce GC pressure, concurrent request patterns, and common performance anti-pattern analysis."
+description: "HTTPC performance optimization guide: four preset comparison (Default/Secure/Performance/Minimal) and scenario selection, fine-tuning connection pool and timeout parameters based on presets, automatic Result object pooling to reduce GC pressure, high-concurrency request patterns, performance benchmarking methods, and common performance anti-pattern analysis."
 ---
 
 # Performance Optimization

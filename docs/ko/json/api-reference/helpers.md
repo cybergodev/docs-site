@@ -21,11 +21,11 @@ equal, _ := json.CompareJSON(`{"a":1,"b":2}`, `{"b":2,"a":1}`)
 fmt.Println(equal) // true
 
 // 숫자 정밀도가 다르지만 값이 같음
-equal, _ := json.CompareJSON(`{"num":1}`, `{"num":1.0}`)
+equal, _ = json.CompareJSON(`{"num":1}`, `{"num":1.0}`)
 fmt.Println(equal) // true
 
 // 내용이 다름
-equal, _ := json.CompareJSON(`{"a":1}`, `{"a":2}`)
+equal, _ = json.CompareJSON(`{"a":1}`, `{"a":2}`)
 fmt.Println(equal) // false
 ```
 
@@ -195,6 +195,12 @@ val := json.GetString(data, "user.name")
 전역 프로세서를 종료하고 리소스를 해제합니다.
 
 ```go
+package main
+
+import (
+    "github.com/cybergodev/json"
+)
+
 func main() {
     cfg := json.DefaultConfig()
     p, err := json.New(cfg)

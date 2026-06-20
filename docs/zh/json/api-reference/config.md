@@ -126,6 +126,9 @@ defer processor.Close()
 | MaxJSONSize | 100MB | JSON 大小限制 |
 | MaxNestingDepthSecurity | 200 | 嵌套深度 |
 | MaxPathDepth | 50 | 路径深度 |
+| MaxSecurityValidationSize | 10MB | 安全验证大小上限 |
+| MaxObjectKeys | 100000 | 对象最大键数 |
+| MaxArrayElements | 100000 | 数组最大元素数 |
 | MaxConcurrency | 50 | 并发数 |
 | MaxBatchSize | 2000 | 批量操作数 |
 | CacheTTL | 5 分钟 | 缓存过期 |
@@ -133,6 +136,8 @@ defer processor.Close()
 | EnableCache | true | 启用缓存 |
 | CacheResults | true | 缓存操作结果 |
 | EnableValidation | true | 启用验证 |
+| StrictMode | false | 非严格模式 |
+| FullSecurityScan | false | 采样安全扫描（非全量） |
 | ValidateInput | true | 验证输入 |
 | ValidateFilePath | true | 验证文件路径 |
 | CreatePaths | true | 自动创建路径 |

@@ -32,7 +32,7 @@ JWT numeric date value (Unix timestamp). Valid range: 0 to 253402300799 (9999-12
 type StringOrSlice []string
 ```
 
-Type that deserializes from either a JSON string or string array, conforming to RFC 7519 §4.1.3.
+Holds a `[]string` that unmarshals from either a JSON string or a JSON array; a single-element slice marshals as a JSON string and a multi-element slice as an array, conforming to RFC 7519 §4.1.3.
 
 <Badge type="info" text="type" />
 
@@ -40,7 +40,8 @@ Type that deserializes from either a JSON string or string array, conforming to 
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `UnmarshalJSON` | `func (s *StringOrSlice) UnmarshalJSON(b []byte) error` | Parse from string or array |
+| `MarshalJSON` | `func (s StringOrSlice) MarshalJSON() ([]byte, error)` | Single-element slice marshals as a JSON string, multi-element as an array (RFC 7519 §4.1.3) |
+| `UnmarshalJSON` | `func (s *StringOrSlice) UnmarshalJSON(b []byte) error` | Parse from a JSON string or array |
 
 ---
 
@@ -180,3 +181,25 @@ const (
 | `SigningMethodES256` | `"ES256"` | ECDSA-SHA256 | Asymmetric |
 | `SigningMethodES384` | `"ES384"` | ECDSA-SHA384 | Asymmetric |
 | `SigningMethodES512` | `"ES512"` | ECDSA-SHA512 | Asymmetric |
+
+---
+
+## Token Type Constants
+
+```go
+const (
+    TokenTypeAccess  = "access"
+    TokenTypeRefresh = "refresh"
+)
+```
+
+Token type constants written to the [`RegisteredClaims.TokenType`](./claims#registeredclaims) field.
+
+- Access tokens are created by [`Processor.Create`](./processor#create)
+- Refresh tokens are created by [`Processor.CreateRefresh`](./processor#createrefresh)
+- [`Processor.Refresh`](./processor#refresh) and [`Processor.RefreshInto`](./processor#refreshinto) reject tokens with `TokenTypeAccess`
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `TokenTypeAccess` | `"access"` | Access token |
+| `TokenTypeRefresh` | `"refresh"` | Refresh token |

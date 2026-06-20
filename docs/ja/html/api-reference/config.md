@@ -1,6 +1,6 @@
 ---
 title: "設定 - HTML"
-description: "CyberGo HTML ライブラリの Config 設定の詳細解説。リソース管理（MaxInputSize、キャッシュ、タイムアウト）、セキュリティ（クリーニング、深度制限、監査）、コンテンツ抽出（記事認識、メディア保持）、出力フォーマット（画像、リンク、テーブル）、リンクフィルタリング（Include*、ResolveRelativeURLs）と Validate 検証メソッドを含みます。"
+description: "CyberGo HTML Config 詳解：リソース管理（MaxInputSize・キャッシュ・タイムアウト）、セキュリティ、コンテンツ抽出、出力フォーマット、リンクフィルタ（Include*・ResolveRelativeURLs）、Validate 検証を含みます。"
 ---
 
 # 設定
@@ -26,6 +26,7 @@ description: "CyberGo HTML ライブラリの Config 設定の詳細解説。リ
 |------|------|--------|------|
 | `EnableSanitization` | `bool` | `true` | コンテンツクリーニングを有効化、信頼できる入力に対してのみ無効化可能 |
 | `MaxDepth` | `int` | `500` | 最大 DOM 深度 |
+| `AllowedBaseDir` | `string` | `""` | ファイル操作をこのディレクトリに制限します。空(既定値)は制限なしを意味します。信頼できないファイルパスの入力を受け取る場合に使用してください |
 | `Audit` | `AuditConfig` | `DefaultAuditConfig()` | 監査設定 |
 
 ### コンテンツ抽出

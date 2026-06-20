@@ -1,6 +1,6 @@
 ---
 title: "批量处理 - HTML"
-description: "CyberGo HTML 库并发批量提取 API 参考，包括 ExtractBatch 和 ExtractBatchFiles 系列函数及其带上下文版本，支持 WorkerPoolSize 并发控制，单批次最多 10000 个项目，BatchResult 包含成功、失败和取消计数，适合大规模 HTML 内容并发提取场景。"
+description: "CyberGo HTML 并发批量提取 API 参考，涵盖 ExtractBatch、ExtractBatchFiles 系列及上下文版本，支持 WorkerPoolSize 并发，单批最多 10000 项，BatchResult 含成功、失败、取消计数，适合大规模并发提取。"
 ---
 
 # 批量处理
@@ -29,11 +29,11 @@ func (p *Processor) ExtractBatchFilesWithContext(ctx context.Context, filePaths 
 
 ```go
 type BatchResult struct {
-    Results   []*Result  // 成功的提取结果
-    Errors    []error    // 失败的错误
+    Results   []*Result  // 每个输入项的结果，按输入顺序索引；失败或取消时为 nil
+    Errors    []error    // 每个输入项的错误，索引与 Results 一一对应
     Success   int        // 成功数量
     Failed    int        // 失败数量
-    Cancelled int        // 因上下文取消的数量
+    Cancelled int        // 因上下文取消而未处理的数量
 }
 ```
 

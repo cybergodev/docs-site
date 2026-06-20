@@ -1,11 +1,20 @@
 ---
 title: "パッケージ関数 - CyberGo env | グローバル便利関数"
-description: "CyberGo env ライブラリのパッケージレベル便利関数 API 完全リファレンス。Load でファイル読み込み、GetString や GetInt で型ごとの値読み取り、Keys でキー名クエリ、Marshal でシリアライズエクスポート、ParseInto で構造体マッピングなどのシンプルな API を提供。グローバルデフォルト Loader に基づき、遅延初期化とスレッドセーフ設計を採用。"
+description: "CyberGo env ライブラリのパッケージレベル便利関数 API 完全リファレンス。Load でファイル読み込み、GetString や GetInt で型ごとの値読み取り、Keys でキー名クエリ、Marshal でシリアライズエクスポート、ParseInto で構造体マッピングなどのシンプルな API を提供。グローバルデフォルト Loader に基づき、Load() による明示的な初期化が必要で、スレッドセーフ設計を採用。"
 ---
 
 # パッケージ関数
 
 パッケージレベル便利関数はシンプルな API を提供し、ほとんどのユースケースに適しています。これらの関数はグローバルデフォルトローダーを使用し、すべての関数はスレッドセーフです。
+
+:::info 初期化の必要性
+グローバルデフォルトローダーは `Load()` または `LoadWithConfig()` で明示的に初期化する必要があり、初回呼び出し時に自動生成され**ません**。未初期化時の関数の挙動は以下の通りです:
+
+- `Get*` 関数（`GetString`、`GetInt`、`GetBool` など）: 指定されたデフォルト値（またはゼロ値）を返す
+- `Lookup`: `("", false)` を返す
+- `Keys`/`All`/`Len`/`GetSecure`: `nil`/`0` を返す
+- `Set`/`Delete`/`Validate`/`ParseInto`: `ErrNotInitialized` を返す
+:::
 
 ## ファイル読み込み
 
@@ -94,7 +103,7 @@ name := env.GetString("APP.NAME")   // 大文字ドットパス
 
 ```go
 // JSON: {"servers": [{"host": "a.com"}, {"host": "b.com"}]}
-// 存储为: SERVERS_0_HOST=a.com, SERVERS_1_HOST=b.com
+// 格納結果: SERVERS_0_HOST=a.com, SERVERS_1_HOST=b.com
 
 host0 := env.GetString("servers.0.host")  // "a.com"
 host1 := env.GetString("servers.1.host")  // "b.com"
@@ -290,7 +299,7 @@ secret := env.GetSecure("API_KEY")
 if secret != nil {
     defer secret.Release()
 
-    value := secret.String()
+    value := secret.Reveal()   // 平文の値（必要な場合のみ呼び出し）
     masked := secret.Masked()  // ログ用: [SECURE:32 bytes]
 }
 ```
@@ -345,7 +354,7 @@ rates := env.GetSlice[float64]("RATES", []float64{0.1, 0.2})
 // 真偽値スライス
 flags := env.GetSlice[bool]("FLAGS")
 
-// Duration 切片
+// Duration スライス
 timeouts := env.GetSlice[time.Duration]("TIMEOUTS")
 
 // 符号なし整数スライス
@@ -370,7 +379,7 @@ func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]
 指定の Loader インスタンスからスライス値を取得します。これは独立したジェネリック関数です（Loader メソッドではありません）。
 
 **パラメータ：**
-- `loader` - Loader 实例指针（如果为 nil，返回默认值）
+- `loader` - Loader インスタンスへのポインタ（nil の場合はデフォルト値を返します）
 - `key` - キー名
 - `defaultValue` - オプションのデフォルト値
 
@@ -383,17 +392,17 @@ func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]
 loader, _ := env.New(cfg)
 defer loader.Close()
 
-// 从 loader 实例获取切片
+// loader インスタンスからスライスを取得
 hosts := env.GetSliceFrom[string](loader, "HOSTS")
 ports := env.GetSliceFrom[int64](loader, "PORTS", []int64{80})
 
-// 也支持 int、uint、uint64 类型
+// int、uint、uint64 型もサポート
 portsInt := env.GetSliceFrom[int](loader, "PORTS")
 portsUint := env.GetSliceFrom[uint](loader, "PORTS")
 portsUint64 := env.GetSliceFrom[uint64](loader, "PORTS")
 ```
 
-::: tip 区别
+::: tip 違い
 - `GetSlice[T]` - デフォルトローダーを使用するパッケージレベル関数
 - `GetSliceFrom[T]` - 指定の Loader インスタンスのジェネリック関数（Go はジェネリックメソッドをサポートしていないため）
 :::
@@ -501,19 +510,19 @@ func Set(key, value string) error
 
 **パラメータ：**
 - `key` - キー名
-- `value` - 值
+- `value` - 値
 
 **戻り値：**
 - `error` - 設定エラー
 
 **エラー型：**
-- `ErrInvalidKey` - 键名无效
+- `ErrInvalidKey` - キー名が無効
 - `ErrForbiddenKey` - キーが禁止されています
 - `ErrClosed` - ローダークローズ済み
 
 ```go
 if err := env.Set("CUSTOM_KEY", "value"); err != nil {
-    // 可能是 ErrForbiddenKey 或 ErrInvalidKey
+    // ErrForbiddenKey または ErrInvalidKey の可能性
 }
 ```
 
@@ -620,7 +629,7 @@ func ResetDefaultLoader() error
 グローバルデフォルトローダーをリセット。主にテストシナリオで使用。
 
 **戻り値：**
-- `error` - 旧ローダーをクローズする際のエラー（如果存在）；以前にローダーがない場合、またはクローズが成功した場合は nil を返す
+- `error` - 旧ローダーをクローズする際のエラー（存在する場合）；以前にローダーがない場合、またはクローズが成功した場合は nil を返す
 
 **動作：**
 - アトミックにデフォルトローダーを nil と交換
@@ -640,7 +649,7 @@ func TestSomething(t *testing.T) {
         t.Logf("warning: %v", err)
     }
     defer env.ResetDefaultLoader()
-    // ... 测试代码
+    // ... テストコード
 }
 ```
 
@@ -685,7 +694,7 @@ port := env.GetInt("PORT", 8080)
 ```
 
 ::: warning 注意
-此函数会强制将 `cfg.AutoApply` 设为 `true`，変数がシステム環境に適用されることを保証。適用タイミングを制御したい場合，请使用 `New()` 作成独立实例。
+この関数は `cfg.AutoApply` を強制的に `true` に設定し、変数がシステム環境に適用されることを保証します。適用タイミングを制御したい場合は、`New()` で独立したインスタンスを作成してください。
 :::
 
 ---
@@ -710,7 +719,7 @@ func Marshal(data any, format ...FileFormat) (string, error)
 - `string` - シリアライズされた文字列（キーはソート済み）
 - `error` - シリアライズエラー
 
-**支持格式：**
+**サポート形式：**
 - `FormatEnv` (デフォルト) - .env フォーマット
 - `FormatJSON` - JSON フォーマット
 - `FormatYAML` - YAML フォーマット
@@ -746,7 +755,7 @@ func UnmarshalMap(data string, format ...FileFormat) (map[string]string, error)
 
 **パラメータ：**
 - `data` - フォーマットされた文字列
-- `format` - オプションのフォーマット、デフォルト `FormatEnv`；使用 `FormatAuto` 自动检测
+- `format` - オプションのフォーマット、デフォルト `FormatEnv`；`FormatAuto` で自動検出
 
 **戻り値：**
 - `map[string]string` - 解析されたキーと値のペア
@@ -824,7 +833,7 @@ type Config struct {
 data := map[string]string{"HOST": "example.com"}
 var cfg Config
 err := env.UnmarshalInto(data, &cfg)
-// cfg.Host = "example.com", cfg.Port = 8080 (使用默认值)
+// cfg.Host = "example.com", cfg.Port = 8080 (デフォルト値を使用)
 ```
 
 ---

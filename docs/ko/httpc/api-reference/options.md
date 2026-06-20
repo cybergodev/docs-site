@@ -397,6 +397,27 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 
 단일 요청의 최대 리다이렉트 횟수를 설정합니다. 범위: 0-50.
 
+### WithAllowPrivateIPs
+
+```go
+func WithAllowPrivateIPs(allow bool) RequestOption
+```
+
+단일 요청에 대해 클라이언트의 SSRF 정책을 재정의합니다. `allow`가 `true`이면 해당 요청은 localhost와 사설/예약 IP 대역(127.0.0.0/8, 10.0.0.0/8, 192.168.0.0/16, 169.254.0.0/16 등)에 접근할 수 있으며, 이러한 주소로의 리다이렉트를 따를 수 있습니다. `false`이면 클라이언트가 `Security.AllowPrivateIPs=true`로 설정되어 있더라도 이 요청에 대해서는 SSRF 방어를 강제로 활성화합니다.
+
+:::warning 보안 안내
+이것은 SSRF 방어의 **단일 요청 이스케이프 해치**로, 기본적으로 안전한 클라이언트(`AllowPrivateIPs=false`)가 드물게 내부 서비스, 루프백 주소 또는 로컬 개발 서버에 접근해야 하는 시나리오를 위한 것입니다.
+
+요청 URL이 신뢰할 수 있고 신뢰할 수 없는 사용자 입력에서 오지 **않은** 경우에만 활성화하세요. 클라이언트 전체가 내부 서비스에 접근해야 한다면 `Config`에서 직접 `Security.AllowPrivateIPs=true`를 설정하세요.
+:::
+
+```go
+// 기본 클라이언트는 사설 IP를 차단; 이 호출은 요청별로 허용
+result, err := httpc.Get("http://localhost:8080/health",
+    httpc.WithAllowPrivateIPs(true),
+)
+```
+
 ### WithStreamBody
 
 ```go

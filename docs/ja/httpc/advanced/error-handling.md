@@ -61,10 +61,6 @@ if errors.Is(err, httpc.ErrResponseBodyEmpty) {
     // レスポンスボディが空
 }
 
-if errors.Is(err, httpc.ErrInvalidURL) {
-    // URL 形式が無効
-}
-
 if errors.Is(err, httpc.ErrInvalidHeader) {
     // リクエストヘッダーが無効
 }

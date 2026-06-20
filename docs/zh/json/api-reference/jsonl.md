@@ -448,24 +448,84 @@ err := np.ProcessReader(file, func(lineNum int, obj map[string]any) error {
 
 ## 包级函数
 
-::: warning 注意
-`StreamJSONLFile` 是 Processor 方法而非包级函数。使用前需要创建 Processor 实例：
+所有 JSONL 处理函数均提供包级便捷版本，签名与对应 [Processor 方法](./processor/jsonl) 一致，内部使用默认全局 Processor，无需手动创建实例。
+
+::: tip 提示
+包级函数适用于一次性处理。若需在循环中多次调用或共享配置，建议创建专用 `Processor`（[`json.New()`](./processor/)）以复用缓存。
+:::
+
+### StreamJSONL
+
+签名：`func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+
+流式逐行处理 JSONL，每行解析为 `IterableValue` 后调用回调。
+
+### StreamJSONLParallel
+
+签名：`func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+
+使用 `workers` 个并行 goroutine 处理 JSONL。
+
+### StreamJSONLParallelWithContext
+
+签名：`func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+
+支持上下文取消的并行 JSONL 处理。
+
+### StreamJSONLChunked
+
+签名：`func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error) error`
+
+按 `chunkSize` 分批处理 JSONL，每批以 `[]*IterableValue` 传入回调。
+
+### ForeachJSONL
+
+签名：`func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+
+遍历处理 JSONL，每行调用回调。
+
+### MapJSONL
+
+签名：`func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error)) ([]any, error)`
+
+将每行映射为新值，返回结果切片。
+
+### ReduceJSONL
+
+签名：`func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any) (any, error)`
+
+归约 JSONL，`initial` 为累加器初值。
+
+### FilterJSONL
+
+签名：`func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool) ([]*IterableValue, error)`
+
+按谓词过滤 JSONL，返回匹配项。
+
+### StreamJSONLFile
+
+签名：`func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error) error`
+
+流式处理整个 JSONL 文件。
 
 ```go
-p, err := json.New()
-if err != nil {
-    panic(err)
-}
-defer p.Close()
-
-err = p.StreamJSONLFile("data.jsonl", func(lineNum int, item *json.IterableValue) error {
+err := json.StreamJSONLFile("data.jsonl", func(lineNum int, item *json.IterableValue) error {
     fmt.Printf("行 %d: %v\n", lineNum, item.GetData())
     return nil
 })
 ```
 
-详见 [Processor JSONL 方法](./processor/jsonl#streamjsonlfile)。
-:::
+### CollectJSONL
+
+签名：`func CollectJSONL(reader io.Reader) ([]*IterableValue, error)`
+
+读取全部 JSONL 行并收集为切片。
+
+### FirstJSONL
+
+签名：`func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool) (*IterableValue, bool, error)`
+
+返回第一个满足谓词的元素；第二个返回值表示是否找到。
 
 ### StreamLinesInto[T]
 
@@ -612,6 +672,7 @@ func main() {
 package main
 
 import (
+    "fmt"
     "os"
     "sync/atomic"
     "github.com/cybergodev/json"

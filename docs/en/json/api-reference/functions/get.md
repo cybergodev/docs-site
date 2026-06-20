@@ -487,6 +487,45 @@ func main() {
 }
 ```
 
+### ValidateSchema
+
+Signature: `func ValidateSchema(jsonStr string, schema *Schema, cfg ...Config) ([]ValidationError, error)`
+
+Validates JSON data against a JSON Schema. Returns a list of all validation errors.
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/cybergodev/json"
+)
+
+func main() {
+    schema := &json.Schema{
+        Type:     "object",
+        Required: []string{"name", "email"},
+        Properties: map[string]*json.Schema{
+            "name":  {Type: "string", MinLength: 1},
+            "email": {Type: "string", Format: "email"},
+            "age":   {Type: "integer", Minimum: 0},
+        },
+    }
+
+    errors, err := json.ValidateSchema(`{"name":"Alice","email":"alice@example.com","age":25}`, schema)
+    if err != nil {
+        panic(err)
+    }
+    for _, e := range errors {
+        fmt.Printf("Path %s: %s\n", e.Path, e.Message)
+    }
+}
+```
+
+::: tip See Also
+For the full Schema type definition and validator usage, see [Validator](../validator).
+:::
+
 ## Safe Get Functions
 
 ### SafeGet (Package-Level Function)
@@ -635,7 +674,7 @@ for _, r := range results {
 
 **Methods**: `Ok()` · `Unwrap()` · `UnwrapOr()` · `AsString()` · `AsStringConverted()` · `AsInt()` · `AsFloat64()` · `AsBool()`
 
-See [AccessResult Type](../types#accessresult---property-access-result) for details.
+See [AccessResult Type](../types#accessresult-property-access-result) for details.
 
 ### Result[T]
 

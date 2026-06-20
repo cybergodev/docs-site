@@ -18,6 +18,8 @@ type Config struct {
     RefreshTokenTTL   time.Duration
     Issuer            string
     ExpectedAudience  string
+    RequireExpiration bool
+    ClockSkew         time.Duration
 
     Blacklist BlacklistConfig
 
@@ -52,6 +54,8 @@ Unified configuration for the JWT Processor. Zero-value fields are automatically
 | `RefreshTokenTTL` | `time.Duration` | `168h` | Refresh token time-to-live |
 | `Issuer` | `string` | `"jwt-service"` | Issuer |
 | `ExpectedAudience` | `string` | — | Expected audience (optional) |
+| `RequireExpiration` | `bool` | `false` | When `true`, rejects tokens lacking an `exp` claim during validation (returns [`ErrExpirationRequired`](./errors#sentinel-errors)) |
+| `ClockSkew` | `time.Duration` | `0` | Clock skew leeway applied to exp/nbf during validation (tolerates clock drift between issuer and validator); negative values are rejected by `Validate()` |
 | `Blacklist` | `BlacklistConfig` | — | Blacklist configuration |
 | `EnableRateLimit` | `bool` | `false` | Enable rate limiting |
 | `RateLimitRate` | `int` | `100` | Max requests per window |
@@ -72,6 +76,7 @@ Unified configuration for the JWT Processor. Zero-value fields are automatically
 | Signing keys | HMAC requires SecretKey ≥32 bytes and non-weak; RSA/ECDSA requires correct SigningKey type; ECDSA requires curve match; VerificationKey must match algorithm public key type |
 | TTL validity | `AccessTokenTTL` and `RefreshTokenTTL` must be positive |
 | TTL ordering | `AccessTokenTTL` must be less than `RefreshTokenTTL` |
+| ClockSkew | `ClockSkew` must not be negative |
 | Signing algorithm | Must be one of the 12 built-in algorithms |
 | Blacklist | Built-in store requires positive MaxSize and CleanupInterval |
 

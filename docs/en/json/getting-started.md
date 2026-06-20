@@ -232,13 +232,13 @@ func main() {
 cfg := json.DefaultConfig()
 
 // Security-enhanced configuration (for untrusted input)
-cfg = json.SecurityConfig()
+// cfg = json.SecurityConfig()
 
 // Pretty-print configuration
-cfg = json.PrettyConfig()
+// cfg = json.PrettyConfig()
 
 // Custom configuration
-cfg := json.DefaultConfig()
+cfg = json.DefaultConfig()
 cfg.MaxJSONSize = 50 * 1024 * 1024 // 50MB
 cfg.EnableCache = true
 cfg.CacheTTL = 5 * time.Minute

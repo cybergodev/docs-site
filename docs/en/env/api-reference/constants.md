@@ -266,10 +266,46 @@ Variable expansion error:
 
 ```go
 type ExpansionError struct {
-    Key   string  // Key name
-    Depth int     // Current depth
-    Limit int     // Limit
-    Chain string  // Expansion chain
+    Key   string             // Key name
+    Depth int                // Current expansion depth
+    Limit int                // Maximum allowed depth
+    Chain string             // Expansion chain (sanitized)
+    Kind  ExpansionErrorKind // Cause category (zero value = depth/cycle)
+}
+```
+
+**Error classification (`Kind` field):**
+
+```go
+type ExpansionErrorKind int
+
+const (
+    // ExpansionDepthKind indicates the expansion hit a recursion-depth limit or cycle.
+    // This is the zero value, so common depth/cycle errors need no explicit classification.
+    // errors.Is(err, ErrExpansionDepth) matches them.
+    ExpansionDepthKind ExpansionErrorKind = iota
+
+    // ExpansionRequiredKind indicates a required variable (${VAR:?message}) was unset or empty.
+    // This is not a depth overflow, so it does not match ErrExpansionDepth.
+    ExpansionRequiredKind
+)
+```
+
+**`errors.Is` behavior:** A `*ExpansionError` matches `ErrExpansionDepth` only when `Kind != ExpansionRequiredKind`. Required-variable errors are a distinct failure mode and do not match `ErrExpansionDepth`.
+
+Usage example:
+
+```go
+var expErr *env.ExpansionError
+if errors.As(err, &expErr) {
+    switch expErr.Kind {
+    case env.ExpansionDepthKind:
+        // Depth overflow or cycle: errors.Is(err, env.ErrExpansionDepth) == true
+        fmt.Printf("depth %d/%d, chain: %s\n", expErr.Depth, expErr.Limit, expErr.Chain)
+    case env.ExpansionRequiredKind:
+        // Required variable unset: errors.Is(err, env.ErrExpansionDepth) == false
+        fmt.Printf("required variable %s not set\n", expErr.Key)
+    }
 }
 ```
 
@@ -634,9 +670,7 @@ package main
 
 import (
     "errors"
-    "fmt"
     "log"
-    "os"
 
     "github.com/cybergodev/env"
 )

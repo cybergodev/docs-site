@@ -9,15 +9,19 @@ description: "Справочник API системы конфигурации H
 
 ```go
 type Config struct {
-    Timeouts   TimeoutConfig
-    Connection ConnectionConfig
-    Security   SecurityConfig
-    Retry      RetryConfig
-    Middleware MiddlewareConfig
+    Timeouts   *TimeoutConfig
+    Connection *ConnectionConfig
+    Security   *SecurityConfig
+    Retry      *RetryConfig
+    Middleware *MiddlewareConfig
 }
 ```
 
 Основная структура конфигурации. Получите безопасные значения по умолчанию через `DefaultConfig()`.
+
+:::tip Подконфигурации как указатели
+Начиная с v1.5.1 все пять подконфигураций являются **типами-указателями**. `DefaultConfig()` и все функции предустановок (`SecureConfig`, `PerformanceConfig` и др.) автоматически инициализируют эти указатели непустыми структурами, поэтому обращения к полям вида `cfg.Timeouts.Request`, `cfg.Security.AllowPrivateIPs` и т. п. можно использовать напрямую. При ручном конструировании литерала `Config{}` значения нужно присваивать в виде `&httpc.TimeoutConfig{...}`, а перед использованием убедиться, что указатель не равен nil.
+:::
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -85,21 +89,50 @@ cfg.Connection.DoHCacheTTL = 5 * time.Minute
 ```go
 type SecurityConfig struct {
     TLSConfig               *tls.Config    // Пользовательская конфигурация TLS
-    MinTLSVersion           uint16         // Минимальная версия TLS, по умолчанию TLS 1.2
-    MaxTLSVersion           uint16         // Максимальная версия TLS, по умолчанию TLS 1.3
-    InsecureSkipVerify      bool           // Пропуск проверки сертификата (только для тестов)
-    MaxResponseBodySize     int64          // Лимит размера тела ответа, по умолчанию 10MB
-    MaxRequestBodySize      int64          // Лимит размера тела запроса, по умолчанию 0 (используется значение MaxResponseBodySize)
-    MaxDecompressedBodySize int64          // Лимит размера после распаковки, по умолчанию 100MB
-    AllowPrivateIPs         bool           // Разрешить приватные IP, по умолчанию false
-    SSRFExemptCIDRs         []string       // Исключения CIDR для SSRF
-    ValidateURL             bool           // Валидация URL, по умолчанию true
-    ValidateHeaders         bool           // Валидация заголовков запроса, по умолчанию true
-    StrictContentLength     bool           // Строгий Content-Length, по умолчанию true
+    MinTLSVersion           uint16                // Минимальная версия TLS, по умолчанию TLS 1.2
+    MaxTLSVersion           uint16                // Максимальная версия TLS, по умолчанию TLS 1.3
+    InsecureSkipVerify      bool                  // Пропуск проверки сертификата (только для тестов)
+    MaxResponseBodySize     int64                 // Лимит размера тела ответа, по умолчанию 10MB
+    MaxRequestBodySize      int64                 // Лимит размера тела запроса, по умолчанию 0 (без ограничения размера тела запроса; в отличие от MaxResponseBodySize автоматического отката нет)
+    MaxDecompressedBodySize int64                 // Лимит размера после распаковки, по умолчанию 100MB
+    AllowPrivateIPs         bool                  // Разрешить приватные IP, по умолчанию false
+    SSRFExemptCIDRs         []string              // Исключения CIDR для SSRF
+    ValidateURL             bool                  // Валидация URL, по умолчанию true
+    ValidateHeaders         bool                  // Валидация заголовков запроса, по умолчанию true
+    StrictContentLength     bool                  // Строгий Content-Length, по умолчанию true
     CookieSecurity          *CookieSecurityConfig // Проверка безопасности Cookie
-    RedirectWhitelist       []string       // Белый список доменов для перенаправлений
+    CertificatePinner       CertificatePinner     // Пиннинг сертификатов (SPKI-хэш/публичный ключ), по умолчанию nil (отключено)
+    RedirectWhitelist       []string              // Белый список доменов для перенаправлений
 }
 ```
+
+### Пиннинг сертификатов (CertificatePinner)
+
+`CertificatePinner` включает пиннинг сертификатов: TLS-рукопожатие отклоняется, если сервер не предоставил закреплённый ключ/сертификат, что защищает от атак типа «человек посередине» даже при компрометации доверенного УЦ. По умолчанию `nil` (отключено). Создаётся следующими конструкторами:
+
+| Конструктор | Описание |
+|-------------|----------|
+| `NewSPKIHashPinner(hashes ...string) (CertificatePinner, error)` | Создаётся из одного или нескольких base64-кодированных SPKI SHA-256-хэшей (наиболее распространён, поддерживает ротацию ключей) |
+| `NewPublicKeyPinner(publicKeys ...[]byte) (CertificatePinner, error)` | Создаётся из DER-кодированных публичных ключей PKIX (внутренне вычисляется SHA-256) |
+| `NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner` | Объединяет несколько pinner; принимается, если проходит хотя бы один |
+
+```go
+pinner, err := httpc.NewSPKIHashPinner(
+    "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2fuihg=", // Текущий ключ
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // Резервный ключ (ротация)
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+cfg := httpc.DefaultConfig()
+cfg.Security.CertificatePinner = pinner
+client, err := httpc.New(cfg)
+```
+
+:::warning Стоимость поддержки
+Пиннинг сертификатов требует синхронного обновления закреплённых значений при смене серверного сертификата (например, при продлении Let's Encrypt). Рекомендуется закреплять несколько хэшей (текущий + резервный) и завести механизм обновления, чтобы ротация ключей не приводила к разрыву соединений.
+:::
 
 :::warning Защита от SSRF
 `AllowPrivateIPs` по умолчанию `false`, блокирует подключение к приватным/зарезервированным IP (127.0.0.1, 10.x, 192.168.x и др.). Устанавливайте `true` только при подключении к внутренним сервисам.

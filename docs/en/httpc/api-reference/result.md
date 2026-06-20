@@ -1,6 +1,6 @@
 ---
 title: "Result - HTTPC"
-description: "HTTPC Result response type API reference: StatusCode/Body/RawBody basic methods, status checks, cookie operations, Unmarshal JSON parsing, SaveToFile file saving, automatic object pooling, and RequestInfo/ResponseInfo/RequestMeta sub-types."
+description: "HTTPC Result response type API reference: StatusCode/Body/RawBody basic methods, status checks, cookie operations, Unmarshal JSON parsing, SaveToFile file saving, and RequestInfo/ResponseInfo/RequestMeta sub-types."
 ---
 
 # Result

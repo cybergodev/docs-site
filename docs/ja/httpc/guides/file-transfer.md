@@ -1,6 +1,6 @@
 ---
 title: "ファイルアップロードとダウンロード - HTTPC"
-description: "HTTPC ファイルアップロードとダウンロードガイド：WithFile で簡単アップロード、WithFormData Multipart マルチファイルアップロード、DownloadFile 基本ダウンロード、DownloadWithOptions プログレス付きダウンロード、レジューム ResumeDownload、SHA-256 チェックサムと UNC パスなどのセキュリティ防護。"
+description: "HTTPC ファイルアップロードとダウンロードガイド：WithFile で簡単アップロード、WithFormData Multipart マルチファイルアップロード、Download 統合ダウンロード、プログレスコールバック付きダウンロード、レジューム ResumeDownload、SHA-256 チェックサムと UNC パスなどのセキュリティ防護。"
 ---
 
 # ファイルアップロードとダウンロード
@@ -71,18 +71,20 @@ result, err := httpc.Post(url,
 
 ## ファイルダウンロード
 
+`Download(ctx, url, cfg, options...)` は、パッケージレベル関数、`Client`、`DomainClient` を貫く唯一の正規ダウンロードエントリです。
+
 ### 基本ダウンロード
 
 ```go
-result, err := httpc.DownloadFile(
-    "https://example.com/file.zip",
-    "/tmp/file.zip",
-)
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/file.zip"
+
+result, err := httpc.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("ダウンロード完了: %d bytes\n", result.BytesWritten)
+fmt.Printf("ダウンロード完了: %s\n", httpc.FormatBytes(result.BytesWritten))
 fmt.Printf("所要時間: %v\n", result.Duration)
 ```
 
@@ -94,17 +96,17 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\rダウンロード中: %.1f%% (%.2f MB/s)", pct, float64(speed)/1024/1024)
+    fmt.Printf("\rダウンロード中: %.1f%% (%s)", pct, httpc.FormatSpeed(speed))
 }
 
-result, err := httpc.DownloadWithOptions("https://example.com/file.zip", cfg)
+result, err := httpc.Download(context.Background(), "https://example.com/file.zip", cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("\nダウンロード完了: %d bytes, 平均速度 %.2f MB/s\n",
-    result.BytesWritten,
-    float64(result.AverageSpeed)/1024/1024,
+fmt.Printf("\nダウンロード完了: %s, 平均速度 %s\n",
+    httpc.FormatBytes(result.BytesWritten),
+    httpc.FormatSpeed(result.AverageSpeed),
 )
 ```
 
@@ -115,7 +117,7 @@ cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/large-file.zip"
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -135,7 +137,10 @@ if result.Resumed {
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 defer cancel()
 
-result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/file.zip"
+
+result, err := httpc.Download(ctx, url, cfg)
 if err != nil {
     if errors.Is(err, context.DeadlineExceeded) {
         log.Println("ダウンロードタイムアウト")
@@ -165,8 +170,11 @@ defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
 
-// ダウンロードしながらセッションを自動管理
-result, err := dc.DownloadFile("/files/report.pdf", "/tmp/report.pdf")
+cfg := httpc.DefaultDownloadConfig()
+cfg.FilePath = "/tmp/report.pdf"
+
+// ダウンロードしながらセッションを自動管理（path は baseURL に対して相対）
+result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
 ```
 
 ## 次のステップ

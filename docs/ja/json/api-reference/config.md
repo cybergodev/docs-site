@@ -126,6 +126,9 @@ defer processor.Close()
 | MaxJSONSize | 100MB | JSON サイズ制限 |
 | MaxNestingDepthSecurity | 200 | ネスト深度 |
 | MaxPathDepth | 50 | パス深度 |
+| MaxSecurityValidationSize | 10MB | セキュリティ検証サイズ上限 |
+| MaxObjectKeys | 100000 | オブジェクト最大キー数 |
+| MaxArrayElements | 100000 | 配列最大要素数 |
 | MaxConcurrency | 50 | 並行数 |
 | MaxBatchSize | 2000 | 一括操作数 |
 | CacheTTL | 5 分 | キャッシュ有効期限 |
@@ -133,6 +136,8 @@ defer processor.Close()
 | EnableCache | true | キャッシュ有効 |
 | CacheResults | true | 操作結果をキャッシュ |
 | EnableValidation | true | 検証有効 |
+| StrictMode | false | 非厳格モード |
+| FullSecurityScan | false | サンプリングセキュリティスキャン（全量ではない） |
 | ValidateInput | true | 入力検証 |
 | ValidateFilePath | true | ファイルパス検証 |
 | CreatePaths | true | パス自動作成 |

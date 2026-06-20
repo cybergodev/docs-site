@@ -384,7 +384,9 @@ func BenchmarkLoadFile(b *testing.B) {
 package testutil
 
 import (
+    "os"
     "testing"
+
     "github.com/cybergodev/env"
 )
 

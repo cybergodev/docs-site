@@ -103,7 +103,7 @@ HTML-экранирование содержимого JSON, замена спе
 var buf bytes.Buffer
 json.HTMLEscape(&buf, []byte(`{"html":"<script>alert(1)</script>"}`))
 fmt.Println(buf.String())
-// {"html":"<script>alert(1)</script>"}
+// {"html":"\u003cscript\u003ealert(1)\u003c/script\u003e"}
 ```
 
 ### Prettify
@@ -265,7 +265,7 @@ defer p.Close()
 
 Сигнатура: `func (p *Processor) CompactBuffer(dst *bytes.Buffer, src []byte, cfg ...Config) error`
 
-Сжатие байт JSON и запись в буфер `dst`. Делегирует функции `Compact` уровня пакета.
+Сжатие байт JSON и запись в буфер `dst`. Функция `Compact` уровня пакета делегирует этому методу.
 
 ```go
 var buf bytes.Buffer
@@ -308,10 +308,10 @@ p.HTMLEscape(&buf, []byte(`{"html":"<script>"}`))
 cfg := json.DefaultConfig()
 
 // Конфигурация красивой печати
-cfg := json.PrettyConfig()
+cfg = json.PrettyConfig()
 
 // Конфигурация безопасности
-cfg := json.SecurityConfig()
+cfg = json.SecurityConfig()
 ```
 
 :::tip

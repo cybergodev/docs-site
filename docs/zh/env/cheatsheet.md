@@ -50,8 +50,8 @@ count := env.Len()
 secret := env.GetSecure("PASSWORD")
 if secret != nil {
     defer secret.Release()  // 或 secret.Close()
-    value := secret.String()
-    masked := secret.Masked()
+    value := secret.Reveal()   // 明文值（仅在需要时使用）
+    masked := secret.Masked()  // 掩码（用于日志）
 }
 ```
 

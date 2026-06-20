@@ -33,10 +33,10 @@ defer processor.Close()
 // Use custom configuration
 cfg := json.DefaultConfig()
 cfg.StrictMode = true
-processor, err := json.New(cfg)
+processor, err = json.New(cfg)
 
 // Use security configuration
-processor, err := json.New(json.SecurityConfig())
+processor, err = json.New(json.SecurityConfig())
 ```
 
 ## Chained Calls

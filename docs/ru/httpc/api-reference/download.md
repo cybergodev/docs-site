@@ -1,31 +1,19 @@
 ---
 title: "Загрузка файлов - HTTPC"
-description: "Справочник API загрузки файлов HTTPC: четыре функции загрузки уровня пакета, структура конфигурации DownloadConfig, обратный вызов прогресса DownloadProgressCallback, тип результата DownloadResult, проверка контрольной суммы SHA-256 и шестисторонняя защита от UNC-путей."
+description: "Справочник API загрузки файлов HTTPC: единый вход загрузки Download, структура конфигурации DownloadConfig, обратный вызов прогресса DownloadProgressCallback, тип результата DownloadResult, проверка контрольной суммы SHA-256 и шестисторонняя защита от UNC-путей."
 ---
 
 # Загрузка файлов
 
 ## Функции загрузки уровня пакета
 
-### DownloadFile
+### Download
 
 ```go
-func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
+func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Загружает файл по указанному пути с использованием клиента по умолчанию.
-
-```go
-result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
-```
-
-### DownloadWithOptions
-
-```go
-func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-Загрузка с конфигурацией, поддерживающая докачку и обратный вызов прогресса.
+Загружает файл с использованием клиента по умолчанию. `Download` — **единый канонический вход для загрузки** на уровне пакета, интерфейса `Client` и `DomainClient`, заменяющий прежнюю матрицу вариантов одной сигнатурой. `cfg` не может быть nil, и `cfg.FilePath` должен быть задан (иначе возвращается `ErrEmptyFilePath`).
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -33,24 +21,8 @@ cfg.FilePath = "/tmp/file.zip"
 cfg.Overwrite = true
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 ```
-
-### DownloadFileWithContext
-
-```go
-func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-Загрузка файла с управлением контекстом.
-
-### DownloadWithOptionsWithContext
-
-```go
-func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-Загрузка файла с конфигурацией и управлением контекстом.
 
 ## DownloadConfig
 
@@ -91,7 +63,7 @@ type DownloadProgressCallback func(downloaded, total int64, speed float64)
 ```go
 cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     pct := float64(downloaded) / float64(total) * 100
-    fmt.Printf("\r%.1f%% (%.1f bytes/s)", pct, speed)
+    fmt.Printf("\r%.1f%% (%s)", pct, httpc.FormatSpeed(speed))
 }
 ```
 
@@ -134,12 +106,16 @@ type DownloadResult struct {
 | `RequestHeaders` | `http.Header` | Заголовки запроса |
 
 ```go
-fmt.Printf("Загрузка завершена: %d bytes, время %v, средняя скорость %.1f bytes/s\n",
-    result.BytesWritten,
+fmt.Printf("Загрузка завершена: %s, время %v, средняя скорость %s\n",
+    httpc.FormatBytes(result.BytesWritten),
     result.Duration,
-    result.AverageSpeed,
+    httpc.FormatSpeed(result.AverageSpeed),
 )
 ```
+
+:::tip
+Используйте [FormatBytes](./functions#formatbytes) и [FormatSpeed](./functions#formatspeed), чтобы получить человекочитаемые строки байт и скорости и не выполнять вручную пересчёт по основанию `1024`.
+:::
 
 ## Проверка контрольной суммы
 
@@ -163,7 +139,7 @@ cfg.FilePath = "/tmp/package.tar.gz"
 cfg.Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if err != nil {
     // При несовпадении контрольной суммы автоматически возвращается ошибка и удаляется загруженный файл
     log.Fatal(err)
@@ -195,7 +171,7 @@ cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/large-file.zip"
 cfg.ResumeDownload = true
 
-result, err := httpc.DownloadWithOptions(url, cfg)
+result, err := httpc.Download(context.Background(), url, cfg)
 if result.Resumed {
     fmt.Println("Докачка завершена")
 }

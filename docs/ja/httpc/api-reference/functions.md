@@ -1,6 +1,6 @@
 ---
 title: "パッケージ関数 - HTTPC"
-description: "HTTPC パッケージレベル関数とクライアントメソッド API リファレンス：Get/Post など 7 種類の HTTP メソッド、New クライアント作成、4 つのダウンロード関数、SetSecurityWarnOutput セキュリティ警告と NewDomain ドメインクライアント作成。"
+description: "HTTPC パッケージレベル関数とクライアントメソッド API リファレンス：Get/Post など 7 種類の HTTP メソッド、New クライアント作成、Download 統合ダウンロードエントリ、SetSecurityWarnOutput セキュリティ警告、FormatBytes/FormatSpeed フォーマットツールと NewDomain ドメインクライアント作成。"
 ---
 
 # パッケージ関数
@@ -144,31 +144,17 @@ func CloseDefaultClient() error
 
 ## ダウンロード関数
 
-パッケージレベルのダウンロード関数はデフォルトクライアントを使用します。Client インターフェースも同名のメソッドを提供します。
+パッケージレベルのダウンロード関数はデフォルトクライアントを使用します。Client インターフェースと DomainClient も同名のメソッドを提供し、3 つのシグネチャは同一です。
 
-### DownloadFile
-
-```go
-func DownloadFile(url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-デフォルトクライアントを使用してファイルを指定パスにダウンロードします。
+### Download
 
 ```go
-// パッケージ関数
-result, err := httpc.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
-
-// Client インターフェースメソッド
-result, err := client.DownloadFile("https://example.com/file.zip", "/tmp/file.zip")
+func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-### DownloadWithOptions
+`Download` はパッケージレベル関数、`Client` インターフェース、`DomainClient` を貫く**唯一の正規ダウンロードエントリ**であり、これまでの `{config}` × `{context}` のバリアント群を単一のシグネチャに置き換えます。
 
-```go
-func DownloadWithOptions(url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-設定付きのファイルダウンロード。レジュームと進捗コールバックに対応します。
+`cfg` を nil にすることはできず、`cfg.FilePath` の設定が必須です（未設定の場合は `ErrEmptyFilePath` を返します）。キャンセルやタイムアウト制御が不要な場合は `context.Background()` を渡します。リクエストオプションはリクエストヘッダー、認証、クエリパラメータなどの設定に使用します。
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -179,41 +165,19 @@ cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r%.1f%%", float64(downloaded)/float64(total)*100)
 }
 
-// パッケージ関数
-result, err := httpc.DownloadWithOptions(url, cfg)
+// パッケージレベル関数（デフォルトクライアントを使用）
+result, err := httpc.Download(context.Background(), url, cfg)
+
 // Client インターフェースメソッド
-result, err = client.DownloadWithOptions(url, cfg)
+result, err = client.Download(ctx, url, cfg)
+
+// DomainClient メソッド（path は baseURL に対して相対、レスポンス Cookie を自動キャプチャ）
+result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
-### DownloadFileWithContext
-
-```go
-func DownloadFileWithContext(ctx context.Context, url string, filePath string, options ...RequestOption) (*DownloadResult, error)
-```
-
-コンテキスト制御付きのファイルダウンロード。タイムアウトとキャンセルに対応します。
-
-```go
-// パッケージ関数
-result, err := httpc.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
-// Client インターフェースメソッド
-result, err = client.DownloadFileWithContext(ctx, url, "/tmp/file.zip")
-```
-
-### DownloadWithOptionsWithContext
-
-```go
-func DownloadWithOptionsWithContext(ctx context.Context, url string, downloadOpts *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
-```
-
-設定とコンテキスト制御付きのファイルダウンロード。
-
-```go
-// パッケージ関数
-result, err := httpc.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
-// Client インターフェースメソッド
-result, err = client.DownloadWithOptionsWithContext(ctx, url, downloadOpts)
-```
+:::tip 移行に関する注意
+古い `DownloadFile`、`DownloadWithOptions`、`DownloadFileWithContext`、`DownloadWithOptionsWithContext` は v1.5.2 で削除されました。统一的に `Download(ctx, url, cfg, options...)` を使用し、パス、上書き、レジューム、チェックサムは `DownloadConfig` で設定してください。
+:::
 
 ## ヘルパー関数
 
@@ -235,6 +199,62 @@ httpc.SetSecurityWarnOutput(log.Writer())
 
 :::warning
 この関数は主にテスト用です。本番環境では警告を抑制するのではなく、`SecureConfig()` または `DefaultConfig()` を使用してください。
+:::
+
+## フォーマットツール
+
+### FormatBytes
+
+```go
+func FormatBytes(bytes int64) string
+```
+
+バイト数を人間が読める文字列にフォーマットします（例：`"1.50 KB"`、`"500 B"`）。ダウンロード結果の表示やログ出力でよく使用します。
+
+```go
+result, _ := httpc.Download(context.Background(), url, cfg)
+fmt.Printf("ダウンロード済み %s\n", httpc.FormatBytes(result.BytesWritten))
+// ダウンロード済み 12.34 MB
+```
+
+| 入力 | 出力 |
+|------|------|
+| `500` | `500 B` |
+| `1536` | `1.50 KB` |
+| `1048576` | `1.00 MB` |
+| `1073741824` | `1.00 GB` |
+
+### FormatSpeed
+
+```go
+func FormatSpeed(bytesPerSecond float64) string
+```
+
+バイト/秒の速度を人間が読める文字列にフォーマットします（例：`"1.50 MB/s"`）。`DownloadResult.AverageSpeed` や `DownloadProgressCallback` の `speed` 引数と組み合わせてよく使用します。
+
+```go
+result, _ := httpc.Download(context.Background(), url, cfg)
+fmt.Printf("平均速度 %s\n", httpc.FormatSpeed(result.AverageSpeed))
+// 平均速度 5.67 MB/s
+
+// 進捗コールバック内で使用
+cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
+    fmt.Printf("\r%s / %s (%s)",
+        httpc.FormatBytes(downloaded),
+        httpc.FormatBytes(total),
+        httpc.FormatSpeed(speed),
+    )
+}
+```
+
+| 入力（バイト/秒） | 出力 |
+|------------------|------|
+| `500` | `500 B/s` |
+| `1536` | `1.50 KB/s` |
+| `1048576` | `1.00 MB/s` |
+
+:::tip
+両者ともバイナリ単位（1024 倍）を採用し、単位の並びは `B → KB → MB → GB → TB → PB → EB` です。
 :::
 
 ## ドメインクライアント

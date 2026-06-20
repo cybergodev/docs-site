@@ -1,6 +1,6 @@
 ---
 title: "Система аудита - HTML"
-description: "Справочник API подключаемой системы аудита библиотеки CyberGo HTML, включая конфигурацию AuditConfig, 8 типов событий аудита, 3 уровня аудита и записи журнала AuditEntry, встроенные реализации Sink: Logger, Channel, Writer, Multi, Filtered и LevelFiltered, для соответствия требованиям безопасности и аудита действий в производственной среде."
+description: "Справочник API подключаемой системы аудита CyberGo HTML: охватывает AuditConfig, 8 типов событий аудита, 3 уровня и AuditEntry, со встроенными Sink-реализациями Logger, Channel, Writer, Multi, Filtered и LevelFiltered — для обеспечения соответствия требованиям безопасности и аудита поведения."
 ---
 
 # Система аудита

@@ -1,6 +1,6 @@
 ---
 title: "Cheat Sheet - HTTPC"
-description: "HTTPC cheat sheet: client creation with five configuration presets, seven HTTP request methods including Get/Post, 27 WithXxx request options, Result response handling, middleware chain composition, ClientError error classification, file download, and domain client operations with complete code snippets."
+description: "HTTPC cheat sheet: client creation with five configuration presets, seven HTTP request methods including Get/Post, 28 WithXxx request options, Result response handling, middleware chain composition, ClientError error classification, file download, resumable downloads, and domain client operations with complete code snippets."
 ---
 
 # Cheat Sheet
@@ -220,9 +220,12 @@ if err != nil {
 ## File Download
 
 ```go
-dlResult, err := client.DownloadFile(url, "/path/to/file")
+// Basic download (ctx is a context.Context, e.g. context.Background())
+dlCfg := httpc.DefaultDownloadConfig()
+dlCfg.FilePath = "/path/to/file"
+dlResult, err := client.Download(ctx, url, dlCfg)
 
-// With options
+// With options (overwrite, resume, progress)
 dlCfg := httpc.DefaultDownloadConfig()
 dlCfg.FilePath = "/path/to/file"
 dlCfg.Overwrite = true
@@ -230,7 +233,7 @@ dlCfg.ResumeDownload = true
 dlCfg.ProgressCallback = func(downloaded, total int64, speed float64) {
     fmt.Printf("\r%.1f%% (%.2f MB/s)", float64(downloaded)/float64(total)*100, float64(speed)/1024/1024)
 }
-dlResult, err := client.DownloadWithOptions(url, dlCfg)
+dlResult, err := client.Download(ctx, url, dlCfg)
 
 // dlResult is of type *DownloadResult (not *Result)
 // Fields: FilePath, BytesWritten, Duration, AverageSpeed, StatusCode, ContentLength, Resumed, ResponseCookies, ActualChecksum

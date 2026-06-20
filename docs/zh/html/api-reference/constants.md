@@ -1,6 +1,6 @@
 ---
 title: "常量与错误 - HTML"
-description: "CyberGo HTML 库常量和错误类型 API 参考，包括 DefaultMaxInputSize（50MB）等默认值常量、ErrInputTooLarge 等哨兵错误，以及 InputError、ConfigError、FileError 结构化错误类型，均支持 errors.Is/As 判断，便于精准定位和处理各类运行时异常情况。"
+description: "CyberGo HTML 常量与错误类型 API 参考，包括 DefaultMaxInputSize 等默认值常量、ErrInputTooLarge 等哨兵错误，以及 InputError、ConfigError、FileError 结构化错误，均支持 errors.Is/As 判断，便于精准定位运行时异常。"
 ---
 
 # 常量与错误
@@ -106,6 +106,7 @@ type FileError struct {
 func (e *FileError) Error() string        // 安全输出（截断路径）
 func (e *FileError) SafePath() string     // 仅返回文件名
 func (e *FileError) Unwrap() error        // → ErrFileNotFound | 原始错误 | ErrInvalidFilePath
+func (e *FileError) MarshalJSON() ([]byte, error) // JSON 序列化时同样截断路径（防止 API 响应泄露）
 ```
 
 :::tip 安全路径

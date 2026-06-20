@@ -251,7 +251,6 @@ package main
 
 import (
     "fmt"
-    "log"
     "github.com/cybergodev/json"
 )
 

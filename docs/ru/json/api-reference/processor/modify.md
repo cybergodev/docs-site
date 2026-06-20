@@ -24,19 +24,19 @@ result, err := p.Set(data, "user.name", "NewName")
 result, _ := p.Set(data, "user.name", "CyberGo")
 
 // Число
-result, _ := p.Set(data, "user.age", 25)
+result, _ = p.Set(data, "user.age", 25)
 
 // Логическое значение
-result, _ := p.Set(data, "user.active", true)
+result, _ = p.Set(data, "user.active", true)
 
 // Объект
-result, _ := p.Set(data, "user.profile", map[string]any{
+result, _ = p.Set(data, "user.profile", map[string]any{
     "bio": "Developer",
     "location": "China",
 })
 
 // Массив
-result, _ := p.Set(data, "items", []any{"a", "b", "c"})
+result, _ = p.Set(data, "items", []any{"a", "b", "c"})
 ```
 
 ## Delete
@@ -70,7 +70,7 @@ result, _ := p.Delete(data, "user.temp")
 
 // Если после удаления родительский объект пуст, DeleteClean продолжит очистку
 // {"user": {}} -> {}
-result, _ := p.DeleteClean(data, "user.temp")
+result, _ = p.DeleteClean(data, "user.temp")
 ```
 
 ## SetMultiple

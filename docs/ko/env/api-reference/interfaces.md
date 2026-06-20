@@ -444,9 +444,9 @@ type MockFile struct {
 }
 
 func (f *MockFile) Read(p []byte) (n int, err error)   { return f.reader.Read(p) }
-func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, os.ErrUnsupported }
+func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, errors.ErrUnsupported }
 func (f *MockFile) Close() error                       { return nil }
-func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, os.ErrUnsupported }
+func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, errors.ErrUnsupported }
 func (f *MockFile) Sync() error                        { return nil }
 
 func (m *MockFileSystem) Open(name string) (env.File, error) {
@@ -704,7 +704,6 @@ package main
 
 import (
     "fmt"
-    "time"
 
     "github.com/cybergodev/env"
 )

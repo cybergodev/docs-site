@@ -1,6 +1,6 @@
 ---
 title: "リンク抽出とグループ化 - HTML"
-description: "CyberGo HTML リンク抽出とグループ化の実践ガイド。ExtractAllLinks でページのすべてのリソースリンク（CSS、JS、画像、動画、音声など）を抽出し、タイプ別にグループ化する方法を詳しく解説。Include フィルタルールの設定、相対 URL の自動解決、クローラーでのリソース収集のベストプラクティスを含みます。"
+description: "CyberGo HTML リンク抽出・グループ化実践：ExtractAllLinks で CSS・JS・画像・動画・音声リンクを抽出・グループ化、Include フィルタ、相対 URL 自動解決、クローラー収集のベストプラクティスを解説します。"
 ---
 
 # リンク抽出とグループ化

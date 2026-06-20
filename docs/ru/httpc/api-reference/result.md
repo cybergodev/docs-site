@@ -1,6 +1,6 @@
 ---
 title: "Result - HTTPC"
-description: "Справочник API типа ответа Result HTTPC: базовые методы StatusCode/Body/RawBody, проверка состояния, операции Cookie, парсинг JSON Unmarshal, сохранение файлов SaveToFile и подтипы RequestInfo/ResponseInfo/RequestMeta. Result автоматически пулируется и утилизируется GC."
+description: "Справочник API типа ответа Result HTTPC: базовые методы StatusCode/Body/RawBody, проверка состояния, операции Cookie, парсинг JSON Unmarshal, сохранение файлов SaveToFile и подтипы RequestInfo/ResponseInfo/RequestMeta."
 ---
 
 # Result

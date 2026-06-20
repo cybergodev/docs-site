@@ -33,10 +33,10 @@ defer processor.Close()
 // 커스텀 설정 사용
 cfg := json.DefaultConfig()
 cfg.StrictMode = true
-processor, err := json.New(cfg)
+processor, err = json.New(cfg)
 
 // 보안 설정 사용
-processor, err := json.New(json.SecurityConfig())
+processor, err = json.New(json.SecurityConfig())
 ```
 
 ## 체인 호출

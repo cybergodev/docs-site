@@ -209,8 +209,8 @@ func (l *Loader) GetBool(key string, defaultValue ...bool) bool
 - `bool` - 値またはデフォルト値（未検出かつデフォルト値がない場合は false を返す）
 
 **サポートされる値：**
-- 真值：`true`, `1`, `yes`, `on`, `enabled`
-- 假值：`false`, `0`, `no`, `off`, `disabled`
+- 真の値：`true`, `1`, `yes`, `on`, `enabled`
+- 偽の値：`false`, `0`, `no`, `off`, `disabled`
 
 ```go
 debug := loader.GetBool("DEBUG", false)
@@ -318,7 +318,7 @@ secret := loader.GetSecure("API_SECRET")
 if secret != nil {
     defer secret.Release()
 
-    value := secret.String()
+    value := secret.Reveal()
     masked := secret.Masked()  // [SECURE:32 bytes]
 }
 ```
@@ -342,7 +342,7 @@ if secret != nil {
 Loader にはスライス取得メソッドがありません（Go はジェネリックメソッドをサポートしていません）。独立したジェネリック関数 `GetSliceFrom[T]` を使用して Loader インスタンスからスライスを取得してください：
 
 ```go
-// 使用独立泛型函数
+// 独立したジェネリック関数を使用
 hosts := env.GetSliceFrom[string](loader, "HOSTS")
 ports := env.GetSliceFrom[int64](loader, "PORTS", []int64{80})
 portsInt := env.GetSliceFrom[int](loader, "PORTS")  // int もサポート
@@ -374,10 +374,10 @@ func (l *Loader) Lookup(key string) (string, bool)
 ```go
 value, exists := loader.Lookup("API_KEY")
 if !exists {
-    // 键不存在
+    // キーが存在しない
 }
 
-// 点号路径
+// ドット表記パス
 if value, exists := loader.Lookup("database.host"); exists {
     fmt.Println(value)
 }
@@ -403,26 +403,26 @@ func (l *Loader) Set(key, value string) error
 
 **パラメータ：**
 - `key` - キー名
-- `value` - 值
+- `value` - 値
 
 **戻り値：**
 - `error` - 設定エラー
 
 **動作：**
 - キー名の有効性を検証
-- 如果 `ValidateValues` 为 true，値の安全性を検証
+- `ValidateValues` が true の場合、値の安全性を検証
 - `OverwriteExisting` が false でキーが既に存在する場合、スキップ（nil を返す）
-- 如果 `AutoApply` 为 true，同時にシステム環境に設定
+- `AutoApply` が true の場合、同時にシステム環境に設定
 
 ```go
 err := loader.Set("CUSTOM_KEY", "value")
 if err != nil {
-    // 处理错误
+    // エラーを処理
 }
 ```
 
 **エラー型：**
-- `ErrInvalidKey` - 键名无效
+- `ErrInvalidKey` - キー名が無効
 - `ErrForbiddenKey` - キーが禁止されています
 - `ErrClosed` - ローダークローズ済み
 
@@ -509,7 +509,7 @@ func (l *Loader) Len() int
 
 ```go
 count := loader.Len()
-fmt.Printf("已加载 %d 个变量\n", count)
+fmt.Printf("%d 個の変数をロードしました\n", count)
 ```
 
 ---
@@ -538,7 +538,7 @@ if err != nil {
     panic(err)
 }
 
-// 之后 os.Getenv() 也能访问
+// その後 os.Getenv() でもアクセス可能
 host := os.Getenv("HOST")
 ```
 
@@ -553,11 +553,11 @@ func (l *Loader) IsApplied() bool
 変数がシステム環境に適用済みか確認。
 
 **戻り値：**
-- `bool` - 是否已应用
+- `bool` - 適用済みかどうか
 
 ```go
 if loader.IsApplied() {
-    // 变量已应用到 os.Environ
+    // 変数は os.Environ に適用済み
 }
 ```
 
@@ -574,12 +574,12 @@ func (l *Loader) LoadTime() time.Time
 最後にファイルを読み込んだ時間を返す。
 
 **戻り値：**
-- `time.Time` - 加载时间，未読み込みの場合はゼロ値を返す
+- `time.Time` - 読み込み時刻、未読み込みの場合はゼロ値を返す
 
 ```go
 loadTime := loader.LoadTime()
 if !loadTime.IsZero() {
-    fmt.Printf("最后加载时间: %v\n", loadTime)
+    fmt.Printf("最終読み込み時刻: %v\n", loadTime)
 }
 ```
 
@@ -594,7 +594,7 @@ func (l *Loader) Config() Config
 ローダーの設定を返す。
 
 **戻り値：**
-- `Config` - 配置（应视为只读）
+- `Config` - 設定（読み取り専用として扱うこと）
 
 ::: warning 注意
 返された Config は読み取り専用と見なすべきです。`KeyPattern`、`AllowedKeys`、`ForbiddenKeys`、`RequiredKeys` などのフィールドを変更するとローダーの動作に影響する可能性があります。安全に変更可能なコピーが必要な場合は、必要なフィールドを手動でコピーしてください。
@@ -602,7 +602,7 @@ func (l *Loader) Config() Config
 
 ```go
 cfg := loader.Config()
-fmt.Printf("最大文件大小: %d\n", cfg.MaxFileSize)
+fmt.Printf("最大ファイルサイズ: %d\n", cfg.MaxFileSize)
 ```
 
 ---
@@ -634,7 +634,7 @@ if err := loader.Validate(); err != nil {
     // 必須キーが不足
     var missingErr *env.ValidationError
     if errors.As(err, &missingErr) {
-        fmt.Printf("缺少: %s\n", missingErr.Field)
+        fmt.Printf("不足: %s\n", missingErr.Field)
     }
 }
 ```
@@ -707,10 +707,10 @@ defer loader.Close()
 ::: warning クローズ後の動作
 クローズ後のすべての操作はエラーまたはゼロ値を返します：
 - `LoadFiles` → `ErrClosed`
-- `GetString` → 返回空值
+- `GetString` → 空の値を返す
 - `Set` → `ErrClosed`
-- `Keys` → 返回 nil
-- `Len` → 返回 0
+- `Keys` → nil を返す
+- `Len` → 0 を返す
 :::
 
 ---
@@ -728,7 +728,7 @@ func (l *Loader) IsClosed() bool
 
 ```go
 if loader.IsClosed() {
-    // 加载器クローズ済み
+    // ローダーはクローズ済み
 }
 ```
 

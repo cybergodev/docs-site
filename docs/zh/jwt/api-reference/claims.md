@@ -74,6 +74,7 @@ type RegisteredClaims struct {
     NotBefore NumericDate   `json:"nbf"`
     IssuedAt  NumericDate   `json:"iat"`
     ID        string        `json:"jti,omitempty"`
+    TokenType string        `json:"token_type,omitempty"`
 }
 ```
 
@@ -92,3 +93,4 @@ type RegisteredClaims struct {
 | `NotBefore` | `NumericDate` | `nbf` | 生效时间 |
 | `IssuedAt` | `NumericDate` | `iat` | 签发时间 |
 | `ID` | `string` | `jti` | 令牌 ID |
+| `TokenType` | `string` | `token_type` | 令牌类型（`access` 或 `refresh`，见 [TokenType 常量](./types#令牌类型常量)） |

@@ -21,11 +21,11 @@ equal, _ := json.CompareJSON(`{"a":1,"b":2}`, `{"b":2,"a":1}`)
 fmt.Println(equal) // true
 
 // Разная точность числа, но одинаковое значение
-equal, _ := json.CompareJSON(`{"num":1}`, `{"num":1.0}`)
+equal, _ = json.CompareJSON(`{"num":1}`, `{"num":1.0}`)
 fmt.Println(equal) // true
 
 // Разное содержимое
-equal, _ := json.CompareJSON(`{"a":1}`, `{"a":2}`)
+equal, _ = json.CompareJSON(`{"a":1}`, `{"a":2}`)
 fmt.Println(equal) // false
 ```
 
@@ -195,6 +195,12 @@ val := json.GetString(data, "user.name")
 Завершает работу глобального процессора и освобождает ресурсы.
 
 ```go
+package main
+
+import (
+    "github.com/cybergodev/json"
+)
+
 func main() {
     cfg := json.DefaultConfig()
     p, err := json.New(cfg)

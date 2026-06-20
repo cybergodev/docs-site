@@ -219,7 +219,7 @@ result, err := httpc.Request(ctx, "GET", url)
 `WithStreamBody(true)`는 내부 메커니즘으로, 파일 다운로드 시 전체 응답 본문을 메모리에 캐시하지 않기 위해 사용됩니다. 활성화하면 응답 본문이 `Result`에 읽히지 않습니다(`Body()`와 `RawBody()`가 빈 값을 반환).
 
 :::warning
-`WithStreamBody(true)`는 파일 다운로드 API(`DownloadFile`, `DownloadWithOptions`)에서 내부적으로 사용됩니다. 응답 내용을 스트리밍으로 가져오려면 [파일 다운로드 API](./file-transfer)를 사용하세요.
+`WithStreamBody(true)`는 파일 다운로드 API에서 내부적으로 사용됩니다. 응답 내용을 스트리밍으로 가져오려면 [파일 다운로드 API](./file-transfer)를 사용하세요.
 :::
 
 대용량 파일을 다운로드하려면 다운로드 API를 사용하세요:
@@ -227,7 +227,7 @@ result, err := httpc.Request(ctx, "GET", url)
 ```go
 cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/path/to/file"
-result, err := client.DownloadWithOptions(url, cfg)
+result, err := client.Download(context.Background(), url, cfg)
 ```
 
 ## 응답 압축 해제

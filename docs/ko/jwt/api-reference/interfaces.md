@@ -126,13 +126,16 @@ type BlacklistStore interface {
 ```go
 type RateLimitProvider interface {
     Allow(key string) bool
-    AllowN(key string, n int) bool
     Reset(key string)
     Close()
 }
 ```
 
-속도 제한 인터페이스.
+속도 제한 인터페이스. Processor는 토큰 생성 중 단일 검사를 위해 `Allow(key)`를 호출합니다.
+
+:::tip AllowN에 대하여
+인터페이스 자체는 단일 요청 검사를 위한 `Allow`만 정의합니다. 배치 메서드 `AllowN(key string, n int) bool`은 구체 타입 [`*RateLimiter`](./types#ratelimiter)의 확장 메서드이며 이 인터페이스의 일부가 아닙니다.
+:::
 
 <Badge type="info" text="interface" />
 
@@ -141,7 +144,6 @@ type RateLimitProvider interface {
 | 메서드 | 시그니처 | 설명 |
 |------|------|------|
 | `Allow` | `Allow(key string) bool` | 단일 요청 허용 여부 확인 |
-| `AllowN` | `AllowN(key string, n int) bool` | n회 요청 허용 여부 확인 |
 | `Reset` | `Reset(key string)` | 지정된 키의 속도 제한 상태 초기화 |
 | `Close` | `Close()` | 리소스 해제 |
 

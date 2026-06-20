@@ -79,7 +79,7 @@ Key: tags, Value: []any{...}
 
 Signature: `func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue)) (string, error)`
 
-Iterates and returns the original JSON (read-only operation).
+Iterates the JSON data and returns the re-serialized JSON string. The callback is read-only.
 
 ```go
 result, err := p.ForeachReturn(data, func(key any, item *json.IterableValue) {

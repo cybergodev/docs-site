@@ -67,8 +67,15 @@ type Config struct {
     ContextExtractors []ContextExtractor // 컨텍스트 추출기 목록
     Hooks             *HookRegistry      // 훅 레지스트리
     Sampling          *SamplingConfig    // 샘플링 설정
+
+    // 감사 설정
+    Audit             *AuditConfig       // 감사 로그 설정 (보안 이벤트)
 }
 ```
+
+:::tip Audit 필드
+`Audit`를 설정하면 민감 데이터 마스킹, 속도 제한 이벤트, 보안 위반이 [AuditLogger](./audit)를 통해 감사 이벤트로 기록됩니다. [감사 로그](./audit)를 참조하세요.
+:::
 
 ### Clone
 
@@ -357,3 +364,4 @@ logger, _ := dd.New(dd.Config{
 - [출력 대상](./writers) -- FileWriter, BufferedWriter, MultiWriter
 - [보안 필터](./security) -- SecurityConfig 상세 가이드
 - [훅 시스템](./hooks) -- HooksConfig 상세 가이드
+- [감사 로그](./audit) -- AuditConfig 상세 가이드

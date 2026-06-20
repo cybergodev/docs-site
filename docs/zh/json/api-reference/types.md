@@ -160,7 +160,7 @@ fmt.Println("类型:", result.Type)
 | `AsInt()` | `(int, error)` | 转换为整数（bool 不转换） |
 | `AsFloat64()` | `(float64, error)` | 转换为 float64（bool 不转换） |
 | `AsBool()` | `(bool, error)` | 转换为布尔值 |
-| `Ok()` | `bool` | 检查结果是否有效（路径存在且无错误） |
+| `Ok()` | `bool` | 检查路径是否存在 |
 
 ::: warning 注意
 `AsInt64()`, `AsArray()`, `AsObject()` 方法已移除。请使用 `GetTyped[T]` 获取这些类型。

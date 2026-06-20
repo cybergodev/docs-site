@@ -1,6 +1,6 @@
 ---
 title: "エラータイプ - HTTPC"
-description: "HTTPC エラータイプ API リファレンス：ClientError 構造体の 8 フィールドと Code、IsRetryable、Unwrap などの 5 メソッド、ErrorTypeNetwork など 12 種類のエラー分類列挙、ErrNilConfig など 13 個のセンチネルエラー変数と errors.Is/As マッチング例。"
+description: "HTTPC エラータイプ API リファレンス：ClientError 構造体の 8 フィールドと Code、IsRetryable、Unwrap などの 5 メソッド、ErrorTypeNetwork など 12 種類のエラー分類列挙、ErrNilConfig など 12 個のセンチネルエラー変数と errors.Is/As マッチング例。"
 ---
 
 # エラータイプ
@@ -129,7 +129,6 @@ if err != nil {
 
 | 変数 | 説明 |
 |------|------|
-| `ErrInvalidURL` | URL 検証失敗 |
 | `ErrInvalidHeader` | リクエストヘッダー検証失敗 |
 
 ### レスポンスエラー

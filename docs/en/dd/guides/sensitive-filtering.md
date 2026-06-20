@@ -133,10 +133,13 @@ logger, _ := dd.New(dd.Config{
     },
 })
 
-// Patient MRN and ICD-10 codes automatically redacted
-logger.InfoWith("Patient visit record",
-    dd.String("patient_mrn", "MRN-123456"),  // → [REDACTED]
-    dd.String("icd_code", "J18.9"),           // → [REDACTED]
+// Log messages containing sensitive info are automatically redacted
+logger.Info("Patient record mrn=MRN-123456 diagnosis=J18.9 updated")
+// MRN and ICD-10 code patterns in the message are redacted
+
+// Structured fields are filtered by key-name sensitivity
+logger.InfoWith("User login",
+    dd.String("password", "s3cr3t123"),  // → [REDACTED] (sensitive key)
     dd.String("department", "Internal Medicine"), // Normal output
 )
 ```

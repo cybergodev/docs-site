@@ -74,6 +74,7 @@ type RegisteredClaims struct {
     NotBefore NumericDate   `json:"nbf"`
     IssuedAt  NumericDate   `json:"iat"`
     ID        string        `json:"jti,omitempty"`
+    TokenType string        `json:"token_type,omitempty"`
 }
 ```
 
@@ -92,3 +93,4 @@ type RegisteredClaims struct {
 | `NotBefore` | `NumericDate` | `nbf` | Время начала действия |
 | `IssuedAt` | `NumericDate` | `iat` | Время выдачи |
 | `ID` | `string` | `jti` | ID токена |
+| `TokenType` | `string` | `token_type` | Тип токена (`access` или `refresh`; см. [Константы типа токена](./types#константы-типа-токена)) |

@@ -1,6 +1,6 @@
 ---
 title: "エラー - JWT API リファレンス"
-description: "CyberGo JWT エラー API リファレンス：17 個のセンチネルエラー（ErrTokenExpired、ErrTokenRevoked など）、ValidationError 型および errors.Is() エラーマッチングパターン。"
+description: "CyberGo JWT エラー API リファレンス：19 個のセンチネルエラー（ErrTokenExpired、ErrTokenRevoked など）、ValidationError 型および errors.Is() エラーマッチングパターン。"
 ---
 
 # エラー
@@ -20,10 +20,12 @@ var (
     ErrAlgorithmMismatch     = errors.New("token algorithm does not match configured signing method")
     ErrTokenRevoked          = errors.New("token revoked")
     ErrTokenMissingID        = errors.New("token missing ID")
+    ErrTokenTypeMismatch     = errors.New("token type mismatch")
     ErrTokenExpired          = errors.New("token expired")
     ErrTokenNotValidYet      = errors.New("token not valid yet")
     ErrTokenInvalidIssuer    = errors.New("token invalid issuer")
     ErrTokenInvalidAudience  = errors.New("token invalid audience")
+    ErrExpirationRequired    = errors.New("token missing expiration claim")
 
     ErrInvalidClaims = errors.New("invalid claims")
 
@@ -40,18 +42,20 @@ var (
 
 | エラー | 説明 | `errors.Is()` での確認 |
 |--------|------|----------------------|
-| `ErrInvalidConfig` | 設定が無効 | `Config.Validate()` |
+| `ErrInvalidConfig` | 設定が無効 | `New()`、`Config.Validate()` |
 | `ErrInvalidSecretKey` | 秘密鍵が無効 | `New()` |
 | `ErrInvalidSigningMethod` | 署名メソッドが無効 | `New()` |
-| `ErrInvalidToken` | トークンが無効（署名エラーなど） | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
+| `ErrInvalidToken` | トークンが無効（署名エラーなど） | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` |
 | `ErrEmptyToken` | トークンが空 | すべてのトークン操作メソッド |
 | `ErrAlgorithmMismatch` | トークンのアルゴリズムが設定と一致しない | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
 | `ErrTokenRevoked` | トークンが失効済み | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
-| `ErrTokenMissingID` | トークンに ID がない | `IsRevoked()` |
+| `ErrTokenMissingID` | トークンに ID がない | `Revoke()`、`IsRevoked()` |
+| `ErrTokenTypeMismatch` | トークンタイプの不一致（アクセストークンでリフレッシュを試行） | `Refresh()`、`RefreshInto()` |
 | `ErrTokenExpired` | トークンの有効期限切れ | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
 | `ErrTokenNotValidYet` | トークンがまだ有効ではない | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
-| `ErrTokenInvalidIssuer` | 発行者が一致しない | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
-| `ErrTokenInvalidAudience` | オーディエンスが一致しない | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
+| `ErrTokenInvalidIssuer` | 発行者が一致しない | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` |
+| `ErrTokenInvalidAudience` | オーディエンスが一致しない | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` |
+| `ErrExpirationRequired` | `RequireExpiration` が有効だがトークンに `exp` クレームがない | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
 | `ErrInvalidClaims` | Claims の検証に失敗 | `Create()`、`CreateRefresh()`、`Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
 | `ErrRateLimitExceeded` | レート制限を超過 | `Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()` |
 | `ErrBlacklistNotConfigured` | ブラックリストが未設定 | `Revoke()` |
@@ -73,15 +77,17 @@ var (
 | エラー | 発生メソッド | 典型的な原因 |
 |--------|------------|------------|
 | `ErrEmptyToken` | すべてのトークン操作メソッド | 空文字列の渡し |
-| `ErrInvalidToken` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | 署名の不一致またはフォーマットエラー |
+| `ErrInvalidToken` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` | 署名の不一致またはフォーマットエラー |
 | `ErrAlgorithmMismatch` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | トークンヘッダーのアルゴリズムが設定と一致しない |
+| `ErrExpirationRequired` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | `RequireExpiration` が有効だがトークンに `exp` クレームがない |
 | `ErrTokenExpired` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | `exp` 時刻を超過 |
 | `ErrTokenNotValidYet` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | `nbf` 時刻にまだ達していない |
-| `ErrTokenInvalidIssuer` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | `iss` が `Config.Issuer` と一致しない |
-| `ErrTokenInvalidAudience` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | `aud` が `Config.ExpectedAudience` と一致しない |
+| `ErrTokenInvalidIssuer` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` | `iss` が `Config.Issuer` と一致しない |
+| `ErrTokenInvalidAudience` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` | `aud` が `Config.ExpectedAudience` と一致しない |
 | `ErrTokenRevoked` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | トークンがブラックリストにある |
+| `ErrTokenTypeMismatch` | `Refresh()`、`RefreshInto()` | アクセストークン（`token_type=access`）でリフレッシュを試行 |
 | `ErrInvalidClaims` | `Create()`、`CreateRefresh()`、`Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | ビジネス検証の失敗 |
-| `ErrTokenMissingID` | `IsRevoked()` | トークンに `jti` フィールドがない |
+| `ErrTokenMissingID` | `Revoke()`、`IsRevoked()` | トークンに `jti` フィールドがない |
 
 #### レート制限とブラックリスト
 
@@ -89,7 +95,7 @@ var (
 |--------|------------|------------|
 | `ErrRateLimitExceeded` | `Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()` | ウィンドウ内のリクエスト上限を超過 |
 | `ErrBlacklistNotConfigured` | `Revoke()` | ブラックリストストアが未設定 |
-| `ErrTokenMissingID` | `IsRevoked()` | トークンに `jti` フィールドがない |
+| `ErrTokenMissingID` | `Revoke()`、`IsRevoked()` | トークンに `jti` フィールドがない |
 
 #### ライフサイクル
 

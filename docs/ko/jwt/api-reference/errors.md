@@ -1,6 +1,6 @@
 ---
 title: "오류 - JWT API 레퍼런스"
-description: "CyberGo JWT 오류 API 레퍼런스: 17개 센티넬 오류(ErrTokenExpired, ErrTokenRevoked 등), ValidationError 타입 및 errors.Is() 오류 매칭 패턴."
+description: "CyberGo JWT 오류 API 레퍼런스: 19개 센티넬 오류(ErrTokenExpired, ErrTokenRevoked 등), ValidationError 타입 및 errors.Is() 오류 매칭 패턴."
 ---
 
 # 오류
@@ -20,10 +20,12 @@ var (
     ErrAlgorithmMismatch     = errors.New("token algorithm does not match configured signing method")
     ErrTokenRevoked          = errors.New("token revoked")
     ErrTokenMissingID        = errors.New("token missing ID")
+    ErrTokenTypeMismatch     = errors.New("token type mismatch")
     ErrTokenExpired          = errors.New("token expired")
     ErrTokenNotValidYet      = errors.New("token not valid yet")
     ErrTokenInvalidIssuer    = errors.New("token invalid issuer")
     ErrTokenInvalidAudience  = errors.New("token invalid audience")
+    ErrExpirationRequired    = errors.New("token missing expiration claim")
 
     ErrInvalidClaims = errors.New("invalid claims")
 
@@ -40,18 +42,20 @@ var (
 
 | 오류 | 설명 | `errors.Is()` 확인 |
 |------|------|------------------------|
-| `ErrInvalidConfig` | 설정이 유효하지 않음 | `Config.Validate()` |
+| `ErrInvalidConfig` | 설정이 유효하지 않음 | `New()`, `Config.Validate()` |
 | `ErrInvalidSecretKey` | 키가 유효하지 않음 | `New()` |
 | `ErrInvalidSigningMethod` | 서명 방식이 유효하지 않음 | `New()` |
-| `ErrInvalidToken` | 토큰이 유효하지 않음 (서명 오류 등) | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
+| `ErrInvalidToken` | 토큰이 유효하지 않음 (서명 오류 등) | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` |
 | `ErrEmptyToken` | 토큰이 비어있음 | 모든 토큰 작업 메서드 |
 | `ErrAlgorithmMismatch` | 토큰 알고리즘이 설정과 불일치 | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrTokenRevoked` | 토큰이 취소됨 | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
-| `ErrTokenMissingID` | 토큰에 ID가 없음 | `IsRevoked()` |
+| `ErrTokenMissingID` | 토큰에 ID가 없음 | `Revoke()`, `IsRevoked()` |
+| `ErrTokenTypeMismatch` | 토큰 타입 불일치 (액세스 토큰으로 갱신 시도) | `Refresh()`, `RefreshInto()` |
 | `ErrTokenExpired` | 토큰이 만료됨 | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrTokenNotValidYet` | 토큰이 아직 활성화되지 않음 | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
-| `ErrTokenInvalidIssuer` | 발급자가 불일치함 | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
-| `ErrTokenInvalidAudience` | 수신자가 불일치함 | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
+| `ErrTokenInvalidIssuer` | 발급자가 불일치함 | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` |
+| `ErrTokenInvalidAudience` | 수신자가 불일치함 | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` |
+| `ErrExpirationRequired` | `RequireExpiration`이 활성화되었으나 토큰에 `exp`가 없음 | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrInvalidClaims` | Claims 검증 실패 | `Create()`, `CreateRefresh()`, `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` |
 | `ErrRateLimitExceeded` | 속도 제한 초과 | `Create()`, `CreateRefresh()`, `Refresh()`, `RefreshInto()` |
 | `ErrBlacklistNotConfigured` | 블랙리스트가 설정되지 않음 | `Revoke()` |
@@ -73,15 +77,17 @@ var (
 | 오류 | 발생 메서드 | 일반적인 원인 |
 |------|----------|----------|
 | `ErrEmptyToken` | 모든 토큰 작업 메서드 | 빈 문자열 전달 |
-| `ErrInvalidToken` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | 서명 불일치 또는 형식 오류 |
+| `ErrInvalidToken` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` | 서명 불일치 또는 형식 오류 |
 | `ErrAlgorithmMismatch` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | 토큰 헤더의 알고리즘이 설정과 불일치 |
+| `ErrExpirationRequired` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | `RequireExpiration`이 활성화되었으나 토큰에 `exp` 클레임이 없음 |
 | `ErrTokenExpired` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | `exp` 시간 초과 |
 | `ErrTokenNotValidYet` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | 아직 `nbf` 시간에 도달하지 않음 |
-| `ErrTokenInvalidIssuer` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | `iss`가 `Config.Issuer`와 불일치 |
-| `ErrTokenInvalidAudience` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | `aud`가 `Config.ExpectedAudience`와 불일치 |
+| `ErrTokenInvalidIssuer` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` | `iss`가 `Config.Issuer`와 불일치 |
+| `ErrTokenInvalidAudience` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` | `aud`가 `Config.ExpectedAudience`와 불일치 |
 | `ErrTokenRevoked` | `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | 토큰이 블랙리스트에 있음 |
+| `ErrTokenTypeMismatch` | `Refresh()`, `RefreshInto()` | 액세스 토큰(`token_type=access`)으로 갱신 시도 |
 | `ErrInvalidClaims` | `Create()`, `CreateRefresh()`, `Validate()`, `Refresh()`, `ValidateInto()`, `RefreshInto()` | 비즈니스 검증 실패 |
-| `ErrTokenMissingID` | `IsRevoked()` | 토큰에 `jti` 필드가 없음 |
+| `ErrTokenMissingID` | `Revoke()`, `IsRevoked()` | 토큰에 `jti` 필드가 없음 |
 
 #### 속도 제한 및 블랙리스트
 
@@ -89,7 +95,7 @@ var (
 |------|----------|----------|
 | `ErrRateLimitExceeded` | `Create()`, `CreateRefresh()`, `Refresh()`, `RefreshInto()` | 윈도우 내 요청 한도 초과 |
 | `ErrBlacklistNotConfigured` | `Revoke()` | 블랙리스트 저장소가 설정되지 않음 |
-| `ErrTokenMissingID` | `IsRevoked()` | 토큰에 `jti` 필드가 없음 |
+| `ErrTokenMissingID` | `Revoke()`, `IsRevoked()` | 토큰에 `jti` 필드가 없음 |
 
 #### 라이프사이클
 
