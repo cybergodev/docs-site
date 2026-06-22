@@ -1,5 +1,5 @@
 ---
-title: "오류 타입 - HTTPC"
+title: "오류 타입 - CyberGo HTTPC | ClientError 상세"
 description: "HTTPC 오류 타입 API 레퍼런스: ClientError 구조체 필드와 메서드, ErrorType 12가지 오류 분류 열거, 센티널 오류 변수와 errors.Is/As 매칭 예제의 완전한 설명과 사용법을 제공합니다."
 ---
 

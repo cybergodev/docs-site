@@ -1,5 +1,5 @@
 ---
-title: "Middleware - HTTPC"
+title: "Middleware - CyberGo HTTPC | Built-in Middleware"
 description: "HTTPC middleware API reference: Chain onion-model composition and eight built-in middleware (Recovery, Logging, Timeout, Metrics, Audit) plus audit config."
 ---
 

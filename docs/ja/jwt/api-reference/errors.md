@@ -1,6 +1,6 @@
 ---
-title: "エラー - JWT API リファレンス"
-description: "CyberGo JWT エラー API リファレンス：19 個のセンチネルエラー（ErrTokenExpired、ErrTokenRevoked など）、ValidationError 型および errors.Is() エラーマッチングパターン。"
+title: "エラー参考 - CyberGo JWT | センチネルエラー一覧"
+description: "エラー参考：CyberGo JWT は 19 個のセンチネルエラーを定義し、設定検証・トークン検証・署名アルゴリズム・有効期限・発行者と Audience・ブラックリスト・レート制限・ライフサイクル場面を網羅し、全て errors.Is で照合できる。"
 ---
 
 # エラー
@@ -34,7 +34,7 @@ var (
     ErrBlacklistNotConfigured = errors.New("blacklist not configured")
 
     ErrProcessorClosed = errors.New("processor closed")
-    ErrStoreClosed     = errors.New("store closed")
+    ErrStoreClosed     = errors.New("blacklist store is closed")
 )
 ```
 

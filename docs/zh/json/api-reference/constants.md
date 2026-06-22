@@ -1,6 +1,6 @@
 ---
 title: "常量与错误 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 常量与错误定义完整参考：包括 DefaultMaxJSONSize/DefaultMaxNestingDepth 默认限制常量、ErrPathNotFound/ErrTypeMismatch 等错误变量和 MergeMode 合并模式枚举，提供 Go 配置预设与错误处理支持。"
+description: "CyberGo JSON 常量与错误参考：DefaultMaxJSONSize、DefaultMaxNestingDepth 默认限制、ErrPathNotFound 等错误变量与 MergeMode 合并模式，支撑 Go 配置与错误处理。"
 ---
 
 # 常量与错误
@@ -212,31 +212,12 @@ const (
 type PathSegment = internal.PathSegment
 ```
 
-### PathSegment 结构
+::: warning 内部实现别名
+`PathSegment` 是 `internal.PathSegment` 的类型别名。其具体字段、字段类型（如 `PathSegmentType`、`PathSegmentFlags`）及方法均属于 `internal` 包，**未作为公开 API 导出**，可能随版本变化，请勿在业务代码中直接依赖其内部结构。
 
-```go
-type PathSegment struct {
-    Type  PathSegmentType  // 段类型
-
-    // 根据类型使用不同字段
-    Key   string // 属性名（Property/Extract 类型）
-    Index int    // 数组索引（ArrayIndex 类型）或切片起始
-    End   int    // 切片结束（ArraySlice 类型）
-    Step  int    // 切片步长（ArraySlice 类型）
-    Flags PathSegmentFlags // 段标志
-}
-```
-
-### PathSegment 方法
-
-| 方法 | 签名 | 说明 |
-|------|------|------|
-| `HasStart` | `func (s *PathSegment) HasStart() bool` | 切片是否有起始值 |
-| `HasEnd` | `func (s *PathSegment) HasEnd() bool` | 切片是否有结束值 |
-| `HasStep` | `func (s *PathSegment) HasStep() bool` | 切片是否有步长值 |
-| `IsNegativeIndex` | `func (s *PathSegment) IsNegativeIndex() bool` | 是否为负索引 |
-| `IsWildcardSegment` | `func (s *PathSegment) IsWildcardSegment() bool` | 是否为通配符 |
-| `IsFlatExtract` | `func (s *PathSegment) IsFlatExtract() bool` | 是否为扁平模式 |
+- 实现自定义路径语法时，通过 [`PathParser`](./interfaces#pathparser) 接口的 `ParsePath` 方法返回 `[]PathSegment`。
+- 预编译路径请使用 [`Processor.CompilePath`](./processor/query#compilepath)，返回 `*CompiledPath`。
+:::
 
 ## 安全模式级别
 

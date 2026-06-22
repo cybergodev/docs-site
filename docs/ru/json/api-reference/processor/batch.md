@@ -1,6 +1,6 @@
 ---
-title: "Processor - Массовые операции - CyberGo JSON | Справочник API"
-description: "Справочник массовых операций Processor: ProcessBatch, BatchOperation, BatchResult и примеры массового чтения, модификации и смешанных операций, подходящие для пакетной обработки данных в Go."
+title: "Processor Массовые операции - CyberGo JSON | API"
+description: "Пакетные операции Processor CyberGo JSON: ProcessBatch, BatchOperation, BatchResult, ContinueOnError и оптимизация для пакетной обработки данных."
 ---
 
 # Методы массовых операций
@@ -34,11 +34,11 @@ for _, result := range results {
 
 ```go
 type BatchOperation struct {
-    Type    string  // Тип операции: "get", "set", "delete", "validate"
-    JSONStr string  // Строка JSON
-    Path    string  // Целевой путь
-    Value   any     // Значение для операции Set
-    ID      string  // Идентификатор операции
+    Type    string `json:"type"`     // Тип операции: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // Строка JSON
+    Path    string `json:"path"`     // Целевой путь
+    Value   any    `json:"value"`    // Значение для операции Set
+    ID      string `json:"id"`       // Идентификатор операции
 }
 ```
 
@@ -54,9 +54,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string  // Соответствующий ID операции
-    Result any     // Результат операции
-    Error  error   // Ошибка (если есть)
+    ID     string `json:"id"`     // Соответствующий ID операции
+    Result any    `json:"result"` // Результат операции
+    Error  error  `json:"error"`  // Ошибка (если есть)
 }
 ```
 

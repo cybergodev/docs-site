@@ -1,6 +1,6 @@
 ---
-title: "Testing & Clock Injection - JWT"
-description: "CyberGo JWT testing guide: ClockProvider interface, FixedClock usage, and unit tests for expiration, refresh flows, and custom Claims validation."
+title: "Testing & Clock - CyberGo JWT | Fixed-Clock"
+description: "Inject FixedClock via ClockProvider to control time in unit tests, validating token expiration, refresh, custom Claims, and revocation for repeatable runs."
 ---
 
 # Testing & Clock Injection

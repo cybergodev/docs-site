@@ -1,5 +1,5 @@
 ---
-title: "Конфигурация - HTTPC"
+title: "Конфигурация - CyberGo HTTPC | Конфиг и пресеты"
 description: "Справочник API конфигурации HTTPC: структура Config с подконфигурациями Timeouts, Connection, Security, Retry, Middleware, пять пресетов и ValidateConfig."
 ---
 

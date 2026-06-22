@@ -1,5 +1,5 @@
 ---
-title: "API Reference - HTML"
+title: "API Reference - CyberGo HTML | Full Module Index"
 description: "CyberGo HTML full API index: content and text extraction, format output, links, batch processing, configuration, audit, and types overview."
 ---
 

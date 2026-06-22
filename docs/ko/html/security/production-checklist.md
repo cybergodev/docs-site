@@ -1,6 +1,6 @@
 ---
-title: "프로덕션 체크리스트 - HTML"
-description: "CyberGo HTML 프로덕션 보안 체크리스트: HighSecurityConfig 프리셋, Processor 생명주기, 감사·모니터링, 컨텍스트 타임아웃, 오류 처리, 리소스·파일 처리 보안 주의사항을 정리합니다."
+title: "프로덕션 체크리스트 - CyberGo HTML | 런칭 점검"
+description: "CyberGo HTML 프로덕션 보안 체크리스트: HighSecurityConfig 프리셋, Processor 생명주기, 감사·모니터링, 컨텍스트 타임아웃, 오류 처리, 리소스·파일 보안 주의사항입니다."
 ---
 
 # 프로덕션 체크리스트

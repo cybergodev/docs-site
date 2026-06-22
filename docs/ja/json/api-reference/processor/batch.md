@@ -1,6 +1,6 @@
 ---
 title: "Processor バッチ操作 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON Processor バッチ操作メソッド完全リファレンス：ProcessBatch バッチ処理による複数操作の一括実行、BatchOperation 操作定義（get/set/delete 型）、BatchResult 結果型、エラー処理戦略と ContinueOnError 設定。トランザクション性のあるバッチ操作とパフォーマンス最適化をサポートし、Go のバッチデータ処理に適しています。"
+description: "CyberGo JSON Processor バッチ操作：ProcessBatch、BatchOperation、BatchResult、ContinueOnError 設定とパフォーマンス最適化でバッチデータ処理に対応します。"
 ---
 
 # バッチ操作メソッド
@@ -34,11 +34,11 @@ for _, result := range results {
 
 ```go
 type BatchOperation struct {
-    Type    string  // 操作タイプ: "get", "set", "delete", "validate"
-    JSONStr string  // JSON 文字列
-    Path    string  // ターゲットパス
-    Value   any     // Set 操作の値
-    ID      string  // 操作識別子
+    Type    string `json:"type"`     // 操作タイプ: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // JSON 文字列
+    Path    string `json:"path"`     // ターゲットパス
+    Value   any    `json:"value"`    // Set 操作の値
+    ID      string `json:"id"`       // 操作識別子
 }
 ```
 
@@ -54,9 +54,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string  // 対応する操作の ID
-    Result any     // 操作結果
-    Error  error   // エラー（ある場合）
+    ID     string `json:"id"`     // 対応する操作の ID
+    Result any    `json:"result"` // 操作結果
+    Error  error  `json:"error"`  // エラー（ある場合）
 }
 ```
 

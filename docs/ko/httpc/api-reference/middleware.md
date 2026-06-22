@@ -1,5 +1,5 @@
 ---
-title: "미들웨어 - HTTPC"
+title: "미들웨어 - CyberGo HTTPC | 내장 미들웨어"
 description: "HTTPC 미들웨어 API 레퍼런스: Chain 양파 모델 조합과 Recovery, Logging, RequestID, Timeout, Metrics, Audit 등 여덟 개 내장 미들웨어 및 감사 설정의 완전한 설명을 제공합니다."
 ---
 

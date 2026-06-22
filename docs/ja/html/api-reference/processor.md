@@ -1,6 +1,6 @@
 ---
-title: "Processor - HTML"
-description: "CyberGo HTML の Processor API リファレンス。New による生成、Extract メソッド群、GetStatistics、GetAuditLog、ClearCache、ResetStatistics、Close のライフサイクル管理を扱い高頻度再利用に適しています。"
+title: "Processor - CyberGo HTML | コア Processor API"
+description: "CyberGo HTML Processor API：New 生成、Extract メソッド群と GetStatistics、GetAuditLog、ClearCache、Close のライフサイクル管理で高頻度再利用に適しています。"
 ---
 
 # Processor

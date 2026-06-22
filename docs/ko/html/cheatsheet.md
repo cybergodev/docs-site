@@ -1,6 +1,6 @@
 ---
-title: "치트시트 - HTML"
-description: "CyberGo HTML API 치트시트: 패키지 함수(Extract·ExtractText·ExtractToMarkdown), Processor 메서드, 4종 설정 프리셋, 주요 설정, 오류 판별, 감사 설정을 한 페이지에 정리해 빠른 참조에 활용합니다."
+title: "치트시트 - CyberGo HTML | API 한눈에"
+description: "CyberGo HTML API 치트시트: 패키지 함수, Processor 메서드, 4종 설정 프리셋, 주요 설정, 오류 판별, 감사 설정을 한 페이지에 정리합니다."
 ---
 
 # 치트시트

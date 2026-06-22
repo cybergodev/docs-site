@@ -1,5 +1,5 @@
 ---
-title: "Audit Pipeline - HTML"
+title: "Audit Pipeline - CyberGo HTML | Pipeline Guide"
 description: "CyberGo HTML audit in practice: from basic enablement to multi-layer pipelines — event types, built-in Sinks, LevelFilteredSink, FilteredSink, and custom Sinks."
 ---
 

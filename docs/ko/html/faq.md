@@ -1,6 +1,6 @@
 ---
-title: "자주 묻는 질문 - HTML"
-description: "CyberGo HTML 자주 묻는 질문: 패키지 함수와 Processor 차이, 인코딩 감지, 입력 크기 제한, Markdown 출력, 배치 상한, 빈 텍스트 진단, 통계 모니터링, 감사 설정, 커스텀 스코어러 구현 등에 답합니다."
+title: "자주 묻는 질문 - CyberGo HTML | 주요 답변"
+description: "CyberGo HTML 자주 묻는 질문: 패키지 함수와 Processor 선택, 인코딩 감지, 입력 제한, 배치 상한, 빈 텍스트 진단, 통계 모니터링, 감사와 커스텀 스코어러를 다룹니다."
 ---
 
 # 자주 묻는 질문

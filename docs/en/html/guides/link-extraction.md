@@ -1,5 +1,5 @@
 ---
-title: "Link Extraction & Grouping - HTML"
+title: "Link Extraction & Grouping - CyberGo HTML | Crawler Tips"
 description: "CyberGo HTML link extraction and grouping: ExtractAllLinks for CSS, JS, images, video, audio; Include filters, relative-URL resolution, and crawler practices."
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "Loader API - CyberGo env | 加载器详解"
-description: "CyberGo env 库 Loader 加载器 API 完整参考文档，Loader 是核心类型，提供 LoadFiles 多格式文件加载、GetString 类型安全读取、Set 和 Delete 键值操作、Validate 验证、ParseInto 序列化导出和 Close 生命周期管理等方法，所有方法线程安全。"
+description: "CyberGo env 的 Loader 加载器 API 参考，核心类型提供多格式文件加载、类型安全读取、键值增删改、验证、序列化导出与生命周期管理，所有方法线程安全。"
 ---
 
 # Loader API

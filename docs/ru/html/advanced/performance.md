@@ -1,6 +1,6 @@
 ---
-title: "Оптимизация производительности - HTML"
-description: "Оптимизация CyberGo HTML: повторное использование Processor, кэш (MaxCacheEntries, CacheTTL, CacheCleanup), параллелизм (WorkerPoolSize), тайм-ауты."
+title: "Производительность - CyberGo HTML | кэш и пулы"
+description: "Оптимизация CyberGo HTML: повторное использование Processor, стратегия кэша, параллелизм пакетов, размеры ввода и тайм-ауты для роста пропускной способности."
 ---
 
 # Оптимизация производительности

@@ -1,5 +1,5 @@
 ---
-title: "ミドルウェア - HTTPC"
+title: "ミドルウェア - CyberGo HTTPC | 内蔵ミドルウェア"
 description: "HTTPC ミドルウェア API リファレンス: Chain オニオンモデル組み合わせと Recovery、Logging、RequestID、Timeout、Metrics、Audit など 8 つの内蔵ミドルウェア、監査設定の完全な説明を提供します。"
 ---
 

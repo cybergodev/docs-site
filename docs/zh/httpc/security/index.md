@@ -1,5 +1,5 @@
 ---
-title: "安全概述 - HTTPC"
+title: "安全概述 - CyberGo HTTPC | 安全特性总览"
 description: "HTTPC 安全特性概述：TLS 1.2+ 版本控制、SSRF 私有 IP 阻止与 CIDR 豁免、CRLF 注入防护、StrictCookieSecurityConfig Cookie 安全、RedirectWhitelist 重定向白名单与响应体大小限制。"
 ---
 

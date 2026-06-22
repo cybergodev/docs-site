@@ -1,6 +1,6 @@
 ---
 title: "Processor 出力メソッド - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON Processor 出力メソッドリファレンス：Encode エンコード、EncodePretty フォーマット、EncodeWithConfig カスタム設定、EncodeBatch/EncodeFields バッチエンコード、Compact/Indent/HTMLEscape フォーマット操作など、Go の多様な JSON 出力ニーズに対応。"
+description: "CyberGo JSON Processor 出力メソッド：Encode、EncodePretty、EncodeWithConfig、EncodeBatch/EncodeFields、Compact/Indent/HTMLEscape で多様な出力に対応します。"
 ---
 
 # 出力メソッド
@@ -101,7 +101,7 @@ result, err := p.EncodeFields(user, []string{"name", "email"})
 
 シグネチャ：`func (p *Processor) EncodeStream(values any, cfg ...Config) (string, error)`
 
-任意の値を JSON 文字列にエンコードします。`EncodeWithConfig` の Processor メソッド形式と同等です。
+複数の値を JSON 配列ストリーム（array stream）としてエンコードします。`values` は通常スライスまたは列挙可能なコレクションで、`[v1,v2,...]` 形式の JSON 配列文字列を出力します。
 
 ```go
 values := []any{"item1", "item2", "item3"}

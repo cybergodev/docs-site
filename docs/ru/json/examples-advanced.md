@@ -1,6 +1,6 @@
 ---
-title: "Примеры расширенных функций - CyberGo JSON | Продвинутые приёмы"
-description: "Коллекция практических примеров расширенных функций CyberGo JSON, включая массовое кодирование EncodeBatch, выборочную кодировку полей EncodeFields, предварительный разбор PreParse, безопасное получение SafeGet, прогрев кэша WarmupCache и оптимизацию с пулом памяти -- демонстрация продвинутых методов и стратегий производительности промышленного уровня для Go."
+title: "Примеры расширенных функций - CyberGo JSON | Гайд"
+description: "Продвинутые примеры CyberGo JSON: EncodeBatch, EncodeFields, PreParse, SafeGet, WarmupCache и пулы памяти для производительной Go-обработки в продакшене."
 ---
 
 # Примеры расширенных функций
@@ -276,12 +276,12 @@ import (
 func main() {
     data := `{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}`
 
-    // Определение пакетных операций
+    // Определение пакетных операций (ID идентифицирует каждую операцию в результатах)
     operations := []json.BatchOperation{
-        {Type: "get", Path: "users.0.name", JSONStr: data},
-        {Type: "get", Path: "users", JSONStr: data},
-        {Type: "set", Path: "users.0.name", Value: "Updated", JSONStr: data},
-        {Type: "delete", Path: "users.0.id", JSONStr: data},
+        {ID: "get-name", Type: "get", Path: "users.0.name", JSONStr: data},
+        {ID: "get-users", Type: "get", Path: "users", JSONStr: data},
+        {ID: "set-name", Type: "set", Path: "users.0.name", Value: "Updated", JSONStr: data},
+        {ID: "del-id", Type: "delete", Path: "users.0.id", JSONStr: data},
     }
 
     // Выполнение пакетных операций

@@ -1,6 +1,6 @@
 ---
-title: "チートシート - HTML"
-description: "CyberGo HTML API チートシート：パッケージ関数（Extract など）、Processor メソッド、4 種の設定プリセット、主要設定項目、エラー判定、監査設定を 1 ページにまとめ、シグネチャと使い方を素早く検索できます。"
+title: "チートシート - CyberGo HTML | API 一覧"
+description: "CyberGo HTML API チートシート：パッケージ関数、Processor メソッド、4 種の設定プリセット、主要設定、エラー判定、監査設定を 1 ページにまとめます。"
 ---
 
 # チートシート

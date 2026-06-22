@@ -1,6 +1,6 @@
 ---
-title: "Processor - HTML"
-description: "CyberGo HTML Processor 处理器 API 参考，涵盖 New 创建、Extract 提取方法族、GetStatistics、GetAuditLog、ClearCache、ResetStatistics、Close 生命周期管理，适合高频复用，是生产环境高性能处理核心。"
+title: "Processor - CyberGo HTML | 核心处理器 API"
+description: "CyberGo HTML Processor API：New 创建、Extract 方法族与 GetStatistics、GetAuditLog、ClearCache、Close 等生命周期管理，适合高频复用。"
 ---
 
 # Processor

@@ -1,6 +1,6 @@
 ---
 title: "Hook 钩子系统 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 钩子系统参考：详解 Hook 接口、LoggingHook 日志、TimingHook 计时、ValidationHook 验证、ErrorHook 错误处理和自定义钩子，支持在 Go JSON 操作前后插入自定义逻辑。"
+description: "CyberGo JSON Hook 钩子系统：Hook 接口、LoggingHook、TimingHook、ValidationHook、ErrorHook 与自定义钩子，在 JSON 操作前后插入自定义逻辑。"
 ---
 
 # Hook 钩子系统
@@ -32,7 +32,7 @@ HookContext 提供操作的上下文信息。
 ```go
 type HookContext struct {
     Operation string      // 操作类型："get", "set", "delete", "marshal", "unmarshal"
-    JSONStr   string      // 输入 JSON 字符串（marshal 时可能为空）
+    JSONStr   string      // 输入 JSON 字符串（marshal 时可能为空）。安全警告：可能包含敏感数据
     Path      string      // 目标路径（marshal/unmarshal 时可能为空）
     Value     any         // set 操作的值
     Config    *Config     // 活动配置
@@ -45,7 +45,7 @@ type HookContext struct {
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `Operation` | `string` | 操作类型，值为 `get`、`set`、`delete`、`marshal`、`unmarshal` |
-| `JSONStr` | `string` | 输入 JSON 字符串 |
+| `JSONStr` | `string` | 输入 JSON 字符串（**安全警告：可能包含敏感数据**） |
 | `Path` | `string` | 目标路径表达式 |
 | `Value` | `any` | set 操作的值 |
 | `Config` | `*Config` | 当前使用的配置 |

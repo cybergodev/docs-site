@@ -1,6 +1,6 @@
 ---
-title: "パフォーマンス最適化 - HTML"
-description: "CyberGo HTML パフォーマンス最適化ガイド：Processor 再利用（sync.Pool 回避）、キャッシュ戦略（MaxCacheEntries・CacheTTL・CacheCleanup）、バッチ並列制御（WorkerPoolSize）、入力サイズ・タイムアウト制御を扱います。"
+title: "パフォーマンス最適化 - CyberGo HTML | スループット向上"
+description: "CyberGo HTML パフォーマンス最適化：Processor 再利用、キャッシュ戦略、バッチ並列制御、入力サイズ・タイムアウト設定で大規模処理のスループットを向上します。"
 ---
 
 # パフォーマンス最適化

@@ -1,6 +1,6 @@
 ---
-title: "HTTP 集成 - HTML"
-description: "CyberGo HTML 库与 HTTP 客户端集成实战指南，涵盖使用标准库 net/http 实现单页面抓取提取与错误处理、并发批量处理优化与资源管理、上下文超时控制、Web 服务集成模式、Processor 单例复用模式和生产环境部署的最佳实践。"
+title: "HTTP 集成 - CyberGo HTML | Web 服务实战"
+description: "CyberGo HTML 与 HTTP 集成实战：net/http 单页抓取、并发批量优化、上下文超时、Web 服务集成、Processor 单例复用与生产部署实践。"
 ---
 
 # HTTP 集成
@@ -84,6 +84,19 @@ client := &http.Client{
 在 Web 服务中，复用单个 Processor 实例处理所有请求：
 
 ```go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "io"
+    "log"
+    "net/http"
+    "time"
+
+    "github.com/cybergodev/html"
+)
+
 var processor *html.Processor
 
 func init() {

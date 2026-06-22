@@ -1,6 +1,6 @@
 ---
-title: "타입과 상수 - JWT API 레퍼런스"
-description: "CyberGo JWT 타입과 상수 레퍼런스: NumericDate, StringOrSlice, SigningMethod, ValidationError, RateLimiter, SystemClock, FixedClock 및 12종 서명 알고리즘 상수."
+title: "타입과 상수 - CyberGo JWT | 직렬화와 클럭 타입"
+description: "타입과 상수 레퍼런스: NumericDate·StringOrSlice 직렬화, SigningMethod 알고리즘, ValidationError 필드 오류, RateLimiter, SystemClock·FixedClock 클럭, 12 알고리즘 상수."
 ---
 
 # 타입과 상수

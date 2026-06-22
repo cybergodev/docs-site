@@ -1,6 +1,6 @@
 ---
-title: "トークンブラックリスト - JWT"
-description: "CyberGo JWT トークンブラックリストガイド：内蔵メモリストアの設定と有効期限の自動クリーンアップ、Revoke・IsRevoked による失効と後続検証のブロック、BlacklistStore インターフェースで Redis バックエンドを実装、マルチインスタンス運用のベストプラクティス。"
+title: "トークンブラックリスト - CyberGo JWT | 失効と外部ストア"
+description: "トークンブラックリストガイド：内蔵メモリストアの設定と期限切れクリーンアップ機構、Revoke と IsRevoked でトークンを失効させ、BlacklistStore インターフェースで Redis など外部ストアへ接続、複数インスタンス運用のベストプラクティス。"
 ---
 
 # トークンブラックリスト

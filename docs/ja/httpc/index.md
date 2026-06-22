@@ -1,6 +1,6 @@
 ---
-title: "HTTP クライアント - HTTPC"
-description: "CyberGo HTTPC は Go 言語向けの安全で高性能な HTTP クライアントライブラリです。TLS 1.2+ 強制暗号化、SSRF 防護、指数バックオフリトライ、オニオンモデルミドルウェアチェーン、接続プール管理を内蔵し、マイクロサービス通信や高並列 API 呼び出しに適しています。"
+title: "HTTP クライアント - CyberGo HTTPC | 安全なGoクライアント"
+description: "CyberGo HTTPC は Go 向けの安全で高性能な HTTP クライアントライブラリ。TLS 1.2+ 強制暗号化、SSRF 防護、指数バックオフリトライ、オニオンモデルミドルウェア、接続プール管理を内蔵し、マイクロサービス通信に適しています。"
 ---
 
 # HTTPC

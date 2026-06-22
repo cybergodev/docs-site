@@ -1,5 +1,5 @@
 ---
-title: "Типы ошибок - HTTPC"
+title: "Типы ошибок - CyberGo HTTPC | Детали ClientError"
 description: "Справочник API типов ошибок HTTPC: поля и методы ClientError, двенадцать категорий ErrorType, переменные-сигналы и примеры сопоставления errors.Is/As."
 ---
 

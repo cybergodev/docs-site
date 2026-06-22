@@ -1,6 +1,6 @@
 ---
 title: "Encode and Decode Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON encode and decode functions reference: Marshal/Unmarshal serialization, Compact/Indent/HTMLEscape formatting, Encode/EncodePretty/EncodeWithConfig/Prettify configured encoding, 100% compatible with Go's standard encoding/json."
+description: "CyberGo JSON encode/decode: Marshal/Unmarshal, Compact/Indent/HTMLEscape, and Encode/EncodePretty/Prettify configurable encoding, stdlib compatible."
 ---
 
 # Encode and Decode Functions
@@ -234,7 +234,7 @@ fmt.Println(result) // {"name":"Alice","email":"a@b.com"}
 
 Signature: `func EncodeStream(values any, cfg ...Config) (string, error)`
 
-Stream encoding that encodes a value to a JSON string. Suitable for scenarios requiring a unified encoding interface.
+Encodes multiple values into a JSON array stream. `values` is typically a slice or enumerable collection, outputting a JSON array string like `[v1,v2,...]`.
 
 ```go
 values := []map[string]any{

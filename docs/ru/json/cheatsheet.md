@@ -1,6 +1,6 @@
 ---
 title: "Шпаргалка - CyberGo JSON | Быстрый справочник по API"
-description: "CyberGo JSON шпаргалка по API: охватывает запросы по пути GetString/GetInt, операции изменения Set/Delete, сериализацию Marshal/Unmarshal, параметры конфигурации, итераторы и безопасные функции -- быстрый справочник для Go-разработчиков."
+description: "Шпаргалка по API CyberGo JSON: GetString/GetInt, Set/Delete, Marshal/Unmarshal, конфигурация, итераторы и безопасность для быстрого поиска в Go."
 ---
 
 # Шпаргалка

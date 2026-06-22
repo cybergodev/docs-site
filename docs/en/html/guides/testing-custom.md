@@ -1,5 +1,5 @@
 ---
-title: "Testing & Custom Extensions - HTML"
+title: "Testing & Custom Extensions - CyberGo HTML | Testing Guide"
 description: "CyberGo HTML testing and extension guide: custom Scorer, ContentNode traversal, test mode, mock HTML data, and Extractor mocking with runnable examples."
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: "本番チェックリスト - HTML"
-description: "CyberGo HTML 本番セキュリティチェックリスト：HighSecurityConfig プリセット、Processor ライフサイクル、監査・モニタリング、コンテキストタイムアウト、エラー処理、リソース・ファイル処理のセキュリティ注意点をまとめます。"
+title: "本番チェックリスト - CyberGo HTML | 本番前点検"
+description: "CyberGo HTML 本番セキュリティチェックリスト：HighSecurityConfig プリセット、Processor ライフサイクル、監査・モニタリング、タイムアウト、エラー処理、リソース・ファイルの注意点です。"
 ---
 
 # 本番チェックリスト

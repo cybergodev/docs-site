@@ -1,5 +1,5 @@
 ---
-title: "Доменный клиент - HTTPC"
+title: "Доменный клиент - CyberGo HTTPC | NewDomain и сессии"
 description: "Справочник API доменного клиента HTTPC: NewDomain, семь HTTP-методов, метод Request, авто-сборка URL и управление сессиями SetHeader/SetCookie."
 ---
 

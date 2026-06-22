@@ -1,6 +1,6 @@
 ---
 title: "定数とエラー - CyberGo env | センチネルエラーとセキュリティ定数"
-description: "CyberGo env ライブラリの定数とエラー完全リファレンス。DefaultMaxFileSize 安全制限、ErrFileNotFound センチネルエラー、ParseError 構造化エラー型、IsSensitiveKey や MaskValue ユーティリティ関数を網羅。errors.Is と errors.As と組み合わせて各種エラーシーンの処理に役立つ。"
+description: "CyberGo env の定数とエラーリファレンス。DefaultMaxFileSize 制限、ErrFileNotFound センチネルエラー、ParseError 型、IsSensitiveKey と MaskValue ユーティリティを提供します。"
 ---
 
 # 定数とエラー

@@ -1,6 +1,6 @@
 ---
 title: "Advanced Examples - CyberGo JSON | Advanced Usage"
-description: "CyberGo JSON advanced feature practical example collection, including batch encoding EncodeBatch, field selection EncodeFields, pre-parsing PreParse, safe access SafeGet, cache warmup WarmupCache, and memory pool optimization techniques, demonstrating advanced usage and Go production-grade performance optimization strategies."
+description: "CyberGo JSON advanced examples: EncodeBatch, EncodeFields, PreParse, SafeGet, WarmupCache, and memory-pool techniques for production-grade Go performance."
 ---
 
 # Advanced Examples
@@ -276,12 +276,12 @@ import (
 func main() {
     data := `{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}`
 
-    // Define batch operations
+    // Define batch operations (ID identifies each operation in the results)
     operations := []json.BatchOperation{
-        {Type: "get", Path: "users.0.name", JSONStr: data},
-        {Type: "get", Path: "users", JSONStr: data},
-        {Type: "set", Path: "users.0.name", Value: "Updated", JSONStr: data},
-        {Type: "delete", Path: "users.0.id", JSONStr: data},
+        {ID: "get-name", Type: "get", Path: "users.0.name", JSONStr: data},
+        {ID: "get-users", Type: "get", Path: "users", JSONStr: data},
+        {ID: "set-name", Type: "set", Path: "users.0.name", Value: "Updated", JSONStr: data},
+        {ID: "del-id", Type: "delete", Path: "users.0.id", JSONStr: data},
     }
 
     // Execute batch operations

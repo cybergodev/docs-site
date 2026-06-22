@@ -1,6 +1,6 @@
 ---
 title: "Функции изменения - CyberGo JSON | Справочник API"
-description: "Полный справочник функций изменения CyberGo JSON: включая Set/SetMultiple для установки значений, Delete для удаления ключей, MergeJSON/MergeMany для слияния JSON с поддержкой автоматического создания путей, атомарных операций и различных стратегий слияния MergeMode для любых задач модификации JSON-данных в Go."
+description: "Функции изменения CyberGo JSON: Set/SetMultiple, Delete, MergeJSON/MergeMany с авто-созданием путей, атомарными операциями и стратегиями MergeMode."
 ---
 
 # Функции изменения
@@ -309,11 +309,11 @@ for _, r := range results {
 
 ```go
 type BatchOperation struct {
-    Type    string  // Тип операции: "get", "set", "delete", "validate"
-    JSONStr string  // Целевая JSON-строка
-    Path    string  // Выражение пути
-    Value   any     // Значение операции (используется для set)
-    ID      string  // Идентификатор операции
+    Type    string `json:"type"`     // Тип операции: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // Целевая JSON-строка
+    Path    string `json:"path"`     // Выражение пути
+    Value   any    `json:"value"`    // Значение операции (используется для set)
+    ID      string `json:"id"`       // Идентификатор операции
 }
 ```
 
@@ -323,9 +323,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string  // Идентификатор операции
-    Result any     // Результат операции
-    Error  error   // Информация об ошибке
+    ID     string `json:"id"`     // Идентификатор операции
+    Result any    `json:"result"` // Результат операции
+    Error  error  `json:"error"`  // Информация об ошибке
 }
 ```
 

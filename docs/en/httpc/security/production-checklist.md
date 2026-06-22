@@ -1,5 +1,5 @@
 ---
-title: "Production Checklist - HTTPC"
+title: "Production Checklist - CyberGo HTTPC | Pre-Deploy Audit"
 description: "HTTPC production security checklist: TLS verification, SSRF and CIDR audit, timeout configuration, response size limits, retry strategy, and audit monitoring."
 ---
 

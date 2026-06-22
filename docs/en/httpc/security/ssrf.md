@@ -1,5 +1,5 @@
 ---
-title: "SSRF Protection - HTTPC"
+title: "SSRF Protection - CyberGo HTTPC | Private IP & Metadata"
 description: "HTTPC SSRF protection: default private-IP blocking, SSRFExemptCIDRs exemptions, DNS rebinding prevention, redirect whitelisting, and metadata protection."
 ---
 

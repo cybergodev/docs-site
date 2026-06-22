@@ -1,5 +1,5 @@
 ---
-title: "配置 - HTTPC"
+title: "配置 - CyberGo HTTPC | Config 与预设"
 description: "HTTPC 配置系统 API 参考：Config 结构体及 Timeouts、Connection、Security、Retry、Middleware 子配置、DefaultConfig 等五种预设与 ValidateConfig 验证的完整字段说明。"
 ---
 

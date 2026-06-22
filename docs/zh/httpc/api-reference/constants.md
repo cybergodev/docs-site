@@ -1,5 +1,5 @@
 ---
-title: "常量与类型 - HTTPC"
+title: "常量与类型 - CyberGo HTTPC | 常量与辅助类型"
 description: "HTTPC 常量与辅助类型 API 参考：BodyKind 六种请求体枚举及自动检测规则、FormData 与 FileData 文件上传类型、AuditEvent 审计事件结构体、AuditMiddlewareConfig 审计配置与 SourceIPKey 等上下文键定义。"
 ---
 

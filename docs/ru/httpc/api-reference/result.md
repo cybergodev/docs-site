@@ -1,5 +1,5 @@
 ---
-title: "Result - HTTPC"
+title: "Result - CyberGo HTTPC | Тип Result"
 description: "Справочник API типа ответа Result HTTPC: методы StatusCode/Body, проверка состояния, операции Cookie, парсинг JSON и сохранение файлов SaveToFile."
 ---
 

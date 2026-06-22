@@ -21,6 +21,8 @@ type LogLevel int8 // 로그 레벨 타입
 | `LevelError` | 3 | 오류 레벨 |
 | `LevelFatal` | 4 | 치명적 레벨 |
 
+`LogLevel`은 `String() string` 메서드(`"DEBUG"`/`"INFO"`/`"WARN"`/`"ERROR"`/`"FATAL"`을 반환하며, 알 수 없는 값은 `"UNKNOWN"` 반환)와 `IsValid() bool` 메서드(레벨이 `LevelDebug`~`LevelFatal` 유효 범위 내에 있는지 판단)를 구현합니다.
+
 ## 로그 형식
 
 ```go
@@ -31,6 +33,8 @@ type LogFormat int8 // 출력 형식 타입
 |------|------|
 | `FormatText` | 텍스트 형식 |
 | `FormatJSON` | JSON 형식 |
+
+`LogFormat`은 `String() string` 메서드(`"text"`/`"json"`을 반환하며, 알 수 없는 값은 `"unknown"` 반환)를 구현합니다.
 
 ## 필드 검증 모드
 

@@ -1,5 +1,5 @@
 ---
-title: "TLS и пиннинг сертификатов - HTTPC"
+title: "TLS и пиннинг сертификатов - CyberGo HTTPC | Шифры и пиннинг"
 description: "Руководство по TLS и закреплению сертификатов HTTPC: версии TLS 1.2-1.3 и шифры, пользовательские CA, mTLS, API закрепления CertificatePinner и HTTP/2."
 ---
 

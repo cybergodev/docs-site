@@ -1,5 +1,5 @@
 ---
-title: "Расширенные примеры - HTTPC"
+title: "Расширенные примеры - CyberGo HTTPC | Production-код"
 description: "Расширенные примеры HTTPC: пользовательский RetryPolicy, полная цепочка middleware, обёртка RESTful-клиента, параллельные загрузки и подпись HMAC-SHA256."
 ---
 

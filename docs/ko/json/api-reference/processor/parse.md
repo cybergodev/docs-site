@@ -1,6 +1,6 @@
 ---
 title: "Processor 파싱/로드 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor 파싱 및 검증 메서드 완전 레퍼런스: Valid JSON 형식 검증, Parse 대상 변수로 파싱, ParseAny 임의 타입 반환, PreParse 사전 파싱 최적화 및 GetFromParsed 빠른 쿼리, Go 설정 기반 파싱을 지원합니다."
+description: "CyberGo JSON Processor 파싱 메서드: Valid 검증, Parse, ParseAny, PreParse 최적화, GetFromParsed로 설정 기반 파싱을 지원합니다."
 ---
 
 # 파싱 및 로드 메서드
@@ -11,7 +11,7 @@ Processor는 JSON 파싱 및 데이터 로드 기능을 제공합니다.
 
 ### Valid
 
-시그니처: `func (p *Processor) valid(jsonStr string, cfg ...Config) (bool, error)`
+시그니처: `func (p *Processor) Valid(jsonStr string, cfg ...Config) (bool, error)`
 
 JSON 문자열이 유효한지 검증합니다.
 

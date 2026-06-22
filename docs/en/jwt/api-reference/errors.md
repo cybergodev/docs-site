@@ -1,6 +1,6 @@
 ---
-title: "Errors - JWT API Reference"
-description: "CyberGo JWT Errors API reference covering 19 sentinel errors (ErrTokenExpired, ErrTokenRevoked, etc.), ValidationError type, and errors.Is() matching patterns."
+title: "Errors - CyberGo JWT | Sentinel Errors"
+description: "CyberGo JWT defines 19 sentinel errors for config validation, token verification, signing, expiration, issuer, audience, blacklist, and lifecycle via errors.Is."
 ---
 
 # Errors
@@ -34,7 +34,7 @@ var (
     ErrBlacklistNotConfigured = errors.New("blacklist not configured")
 
     ErrProcessorClosed = errors.New("processor closed")
-    ErrStoreClosed     = errors.New("store closed")
+    ErrStoreClosed     = errors.New("blacklist store is closed")
 )
 ```
 

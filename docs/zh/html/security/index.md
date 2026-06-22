@@ -1,6 +1,6 @@
 ---
-title: "安全概述 - HTML"
-description: "CyberGo HTML 库安全防护概述，包括输入大小限制（默认 50MB）、DOM 深度限制（默认 500）、路径遍历防护、恐慌恢复机制、处理超时控制、内容清洗功能和可插拔审计系统，所有安全违规支持 errors.Is 和 errors.As 错误判断，确保生产环境的安全运行。"
+title: "安全概述 - CyberGo HTML | 安全防护总览"
+description: "CyberGo HTML 安全概述：输入大小限制、DOM 深度限制、路径遍历防护、恐慌恢复、处理超时、内容清洗与可插拔审计，违规支持 errors.Is/As 判断。"
 ---
 
 # 安全概述

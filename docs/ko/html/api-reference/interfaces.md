@@ -1,6 +1,6 @@
 ---
-title: "인터페이스 정의 - HTML"
-description: "CyberGo HTML 핵심 인터페이스 API: Extractor(전체 추출), StatsProvider(통계·캐시), ContentNode(노드 추상화), Scorer(평가 전략), AuditSink(감사 출력)로 확장과 통합 테스트를 지원합니다."
+title: "인터페이스 정의 - CyberGo HTML | 핵심 인터페이스"
+description: "CyberGo HTML 핵심 인터페이스: Extractor, StatsProvider, ContentNode, Scorer, AuditSink로 확장, 통합 테스트, 아키텍처 이해를 지원합니다."
 ---
 
 # 인터페이스 정의

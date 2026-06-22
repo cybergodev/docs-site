@@ -21,6 +21,8 @@ type LogLevel int8 // Тип уровня логирования
 | `LevelError` | 3 | Уровень ошибки |
 | `LevelFatal` | 4 | Фатальный уровень |
 
+`LogLevel` реализует метод `String() string` (возвращает `"DEBUG"`/`"INFO"`/`"WARN"`/`"ERROR"`/`"FATAL"`, для неизвестных значений — `"UNKNOWN"`) и метод `IsValid() bool` (проверяет, находится ли уровень в допустимом диапазоне от `LevelDebug` до `LevelFatal`).
+
 ## Форматы логирования
 
 ```go
@@ -31,6 +33,8 @@ type LogFormat int8 // Тип формата вывода
 |-----------|----------|
 | `FormatText` | Текстовый формат |
 | `FormatJSON` | Формат JSON |
+
+`LogFormat` реализует метод `String() string` (возвращает `"text"`/`"json"`, для неизвестных значений — `"unknown"`).
 
 ## Режимы валидации полей
 

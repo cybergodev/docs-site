@@ -1,6 +1,6 @@
 ---
-title: "Тестирование и пользовательские расширения - HTML"
-description: "Тестирование и расширения CyberGo HTML: свой Scorer, обход ContentNode, режим тестирования, mock HTML, mock Extractor и примеры кода для сценариев."
+title: "Тестирование и расширения - CyberGo HTML | руководство"
+description: "Тестирование и расширения CyberGo HTML: свой Scorer, обход ContentNode, тестовый режим, mock-данные, mock Extractor и примеры кода для типичных сценариев."
 ---
 
 # Тестирование и пользовательские расширения

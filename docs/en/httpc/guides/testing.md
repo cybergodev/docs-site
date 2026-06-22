@@ -1,5 +1,5 @@
 ---
-title: "Testing Guide - HTTPC"
+title: "Testing Guide - CyberGo HTTPC | httptest & Mocks"
 description: "HTTPC testing guide: TestingConfig for tests, net/http/httptest mock servers, error and redirect simulation, table-driven tests, and Cookie assertions."
 ---
 

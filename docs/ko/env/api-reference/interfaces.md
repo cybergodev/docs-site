@@ -1,6 +1,6 @@
 ---
 title: "인터페이스 정의 - CyberGo env | 핵심 인터페이스 계층"
-description: "CyberGo env 라이브러리 인터페이스 유형 정의 전체 참조 문서로, 세분화된 인터페이스 설계로 의존성 주입과 유연한 조합을 지원하며, Validator 검증기, FullAuditLogger 감사 핸들러, EnvParser 파서, EnvStorage 보안 저장소 및 FileSystem 파일 시스템 어댑터 등 핵심 인터페이스의 상세 설명과 사용법을 포함합니다."
+description: "CyberGo env 핵심 인터페이스 참조로 의존성 주입을 지원하는 세분화 설계의 Validator, FullAuditLogger, EnvParser, EnvStorage, FileSystem 인터페이스를 설명합니다."
 ---
 
 # 인터페이스 정의
@@ -69,7 +69,7 @@ func readConfig(getter env.EnvGetter) {
 ```
 
 :::warning 참고
-`GetInt`, `GetBool`, `GetDuration`, `GetSecure`, `Len`은 `EnvGetter` 인터페이스의 일부가 **아닙니다**.
+`GetInt`, `GetBool`, `GetUint64`, `GetFloat64`, `GetDuration`, `GetSecure`, `Len`은 `EnvGetter` 인터페이스의 일부가 **아닙니다**.
 이 메서드들은 `*Loader` 유형에 구현되어 있지만 최소 인터페이스에는 포함되지 않습니다.
 
 전체 읽기 기능이 필요한 경우 `*Loader` 유형을 직접 사용하세요:

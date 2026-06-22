@@ -21,6 +21,8 @@ type LogLevel int8 // ログレベル型
 | `LevelError` | 3 | エラーレベル |
 | `LevelFatal` | 4 | 致命的レベル |
 
+`LogLevel` は `String() string` メソッド（`"DEBUG"`/`"INFO"`/`"WARN"`/`"ERROR"`/`"FATAL"` を返し、未知の値には `"UNKNOWN"` を返す）と `IsValid() bool` メソッド（レベルが `LevelDebug`～`LevelFatal` の有効範囲内にあるかを判定）を実装しています。
+
 ## ログフォーマット
 
 ```go
@@ -31,6 +33,8 @@ type LogFormat int8 // 出力フォーマット型
 |------|------|
 | `FormatText` | テキストフォーマット |
 | `FormatJSON` | JSON フォーマット |
+
+`LogFormat` は `String() string` メソッド（`"text"`/`"json"` を返し、未知の値には `"unknown"` を返す）を実装しています。
 
 ## フィールド検証モード
 

@@ -1,5 +1,5 @@
 ---
-title: "재시도와 장애 허용 - HTTPC"
+title: "재시도와 장애 허용 - CyberGo HTTPC | 백오프와 재시도"
 description: "HTTPC 재시도와 장애 허용 가이드: 기본 지수 백오프 재시도 전략과 RetryConfig 설정, 408/429/5xx 자동 재시도, 커스텀 RetryPolicy, Retry-After 파싱과 요청별 재시도 제어를 다룹니다."
 ---
 

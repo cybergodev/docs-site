@@ -1,6 +1,6 @@
 ---
 title: "Processor 数据修改 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 数据修改方法完整参考：Set 路径设置值、SetMultiple 批量设置、SetCreate 自动创建中间路径、Delete 删除路径和 DeleteClean 清理删除，所有方法支持 Go 链式调用。"
+description: "CyberGo JSON Processor 修改方法：Set 设置、SetMultiple 批量、SetCreate 自动创建路径、Delete 删除与 DeleteClean 清理，所有方法支持链式调用。"
 ---
 
 # 数据修改方法

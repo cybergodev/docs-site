@@ -1,6 +1,6 @@
 ---
 title: "パフォーマンス最適化 - CyberGo JSON | 高パフォーマンスガイド"
-description: "CyberGo JSON パフォーマンス最適化ガイド：キャッシュ戦略 EnableCache/CacheTTL、並列処理 ParallelThreshold/MaxConcurrency、PreParse 事前パース、WarmupCache ウォームアップ、オブジェクトプール再利用、ベンチマーク分析について詳しく解説し、Go の高頻度 JSON 処理のパフォーマンスを全面的に向上させます。"
+description: "CyberGo JSON パフォーマンスガイド：EnableCache/CacheTTL、ParallelThreshold 並列、PreParse、WarmupCache、オブジェクトプール再利用で高頻度 JSON 処理を高速化します。"
 ---
 
 # パフォーマンス最適化

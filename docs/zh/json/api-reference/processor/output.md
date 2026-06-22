@@ -1,6 +1,6 @@
 ---
 title: "Processor 输出方法 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 输出方法参考：Encode 编码、EncodePretty 格式化、EncodeWithConfig 自定义配置、EncodeBatch/EncodeFields 批量编码、Compact/Indent/HTMLEscape 格式化，满足 Go 多种 JSON 输出需求。"
+description: "CyberGo JSON Processor 输出方法：Encode、EncodePretty、EncodeWithConfig、EncodeBatch/EncodeFields 批量与 Compact/Indent/HTMLEscape 格式化，满足多种输出需求。"
 ---
 
 # 输出方法
@@ -101,7 +101,7 @@ result, err := p.EncodeFields(user, []string{"name", "email"})
 
 签名：`func (p *Processor) EncodeStream(values any, cfg ...Config) (string, error)`
 
-将任意值编码为 JSON 字符串。等同于 `EncodeWithConfig` 的 Processor 方法形式。
+将多个值编码为 JSON 数组流（array stream）。`values` 通常是切片或可枚举集合，输出形如 `[v1,v2,...]` 的 JSON 数组字符串。
 
 ```go
 values := []any{"item1", "item2", "item3"}

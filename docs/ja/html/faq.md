@@ -1,6 +1,6 @@
 ---
-title: "よくある質問 - HTML"
-description: "CyberGo HTML よくある質問集：パッケージ関数と Processor の違いと選び方、エンコーディング検出、入力サイズ制限、Markdown 出力、バッチ上限、空テキスト診断、統計、監査、カスタムスコアラー実装まで詳しく答えます。"
+title: "よくある質問 - CyberGo HTML | 質問と回答"
+description: "CyberGo HTML よくある質問：パッケージ関数と Processor の選択、エンコーディング検出、入力制限、バッチ上限、空テキスト診断、統計、監査、カスタムスコアラーに答えます。"
 ---
 
 # よくある質問

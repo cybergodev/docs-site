@@ -1,6 +1,6 @@
 ---
 title: "Итераторы - CyberGo JSON | Справочник API"
-description: "Полный справочник API итераторов CyberGo JSON: включает базовую итерацию Foreach, итерацию с путём ForeachWithPath, рекурсивную итерацию ForeachNested, тип IterableValue, управление итерацией IteratorControl и ParallelForeach — лучшие практики параллельной итерации в Go."
+description: "API итераторов CyberGo JSON: Foreach, ForeachWithPath, рекурсивный ForeachNested, IterableValue и ParallelForeach для различных сценариев обхода JSON."
 ---
 
 # Итераторы

@@ -1,6 +1,6 @@
 ---
-title: "Processor - Справочник JWT API"
-description: "CyberGo JWT Processor API: сигнатуры и примеры методов Create, Validate, Refresh, Revoke, ValidateInto, RefreshInto, ParseUnverified."
+title: "Processor - CyberGo JWT | Операции с токенами"
+description: "Processor — основной тип CyberGo JWT: методы Create, Validate, Refresh, Revoke, IsRevoked, ParseUnverified и Close с сигнатурами, параметрами и примерами."
 ---
 
 # Processor

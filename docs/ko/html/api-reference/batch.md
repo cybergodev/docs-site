@@ -1,6 +1,6 @@
 ---
-title: "배치 처리 - HTML"
-description: "CyberGo HTML 동시 배치 추출 API 참조. ExtractBatch, ExtractBatchFiles 계열과 컨텍스트 버전, WorkerPoolSize 동시성 제어, 배치당 최대 10000개, BatchResult 성공/실패/취소 카운트를 다룹니다."
+title: "배치 처리 - CyberGo HTML | 동시 배치 API"
+description: "CyberGo HTML 동시 배치 API: ExtractBatch, ExtractBatchFiles 계열과 컨텍스트 버전. WorkerPoolSize 동시성, 배치당 최대 10000개, BatchResult 카운트를 제공합니다."
 ---
 
 # 배치 처리

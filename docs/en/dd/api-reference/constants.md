@@ -21,6 +21,8 @@ type LogLevel int8 // Log level type
 | `LevelError` | 3 | Error level |
 | `LevelFatal` | 4 | Fatal level |
 
+`LogLevel` implements a `String() string` method (returning `"DEBUG"`/`"INFO"`/`"WARN"`/`"ERROR"`/`"FATAL"`, and `"UNKNOWN"` for unrecognized values) and an `IsValid() bool` method (checks whether the level is within the valid range from `LevelDebug` to `LevelFatal`).
+
 ## Log Formats
 
 ```go
@@ -31,6 +33,8 @@ type LogFormat int8 // Output format type
 |----------|-------------|
 | `FormatText` | Text format |
 | `FormatJSON` | JSON format |
+
+`LogFormat` implements a `String() string` method (returning `"text"`/`"json"`, and `"unknown"` for unrecognized values).
 
 ## Field Validation Modes
 

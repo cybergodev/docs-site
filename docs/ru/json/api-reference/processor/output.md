@@ -1,6 +1,6 @@
 ---
 title: "Processor - Методы вывода - CyberGo JSON | Справочник API"
-description: "Справочник методов вывода Processor: Encode, EncodePretty, EncodeWithConfig, EncodeBatch, EncodeFields, Compact, Indent, HTMLEscape — для различных задач вывода JSON в Go."
+description: "Методы вывода Processor CyberGo JSON: Encode, EncodePretty, EncodeWithConfig, EncodeBatch/EncodeFields и Compact/Indent/HTMLEscape для разных форматов вывода."
 ---
 
 # Методы вывода
@@ -101,7 +101,7 @@ result, err := p.EncodeFields(user, []string{"name", "email"})
 
 Сигнатура: `func (p *Processor) EncodeStream(values any, cfg ...Config) (string, error)`
 
-Кодирует любое значение в строку JSON. Эквивалентно методу Processor формы `EncodeWithConfig`.
+Кодирует несколько значений в поток JSON-массива (array stream). `values` обычно представляет собой срез или перечислимую коллекцию, выводя строку JSON-массива вида `[v1,v2,...]`.
 
 ```go
 values := []any{"item1", "item2", "item3"}

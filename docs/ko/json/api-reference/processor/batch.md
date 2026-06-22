@@ -1,6 +1,6 @@
 ---
 title: "Processor 배치 작업 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor 배치 작업 레퍼런스: ProcessBatch 다중 작업 처리, BatchOperation 정의(get/set/delete), BatchResult 결과 타입, ContinueOnError 설정과 성능 최적화 전략으로 Go 배치 데이터 처리에 적합합니다."
+description: "CyberGo JSON Processor 배치 작업: ProcessBatch, BatchOperation, BatchResult, ContinueOnError 설정과 성능 최적화로 배치 데이터 처리에 적합합니다."
 ---
 
 # 배치 작업 메서드
@@ -34,11 +34,11 @@ for _, result := range results {
 
 ```go
 type BatchOperation struct {
-    Type    string  // 작업 타입: "get", "set", "delete", "validate"
-    JSONStr string  // JSON 문자열
-    Path    string  // 대상 경로
-    Value   any     // Set 작업의 값
-    ID      string  // 작업 식별자
+    Type    string `json:"type"`     // 작업 타입: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // JSON 문자열
+    Path    string `json:"path"`     // 대상 경로
+    Value   any    `json:"value"`    // Set 작업의 값
+    ID      string `json:"id"`       // 작업 식별자
 }
 ```
 
@@ -54,9 +54,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string  // 해당 작업의 ID
-    Result any     // 작업 결과
-    Error  error   // 오류 (있는 경우)
+    ID     string `json:"id"`     // 해당 작업의 ID
+    Result any    `json:"result"` // 작업 결과
+    Error  error  `json:"error"`  // 오류 (있는 경우)
 }
 ```
 

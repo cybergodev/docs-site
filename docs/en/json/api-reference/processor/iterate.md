@@ -1,6 +1,6 @@
 ---
 title: "Processor Iteration Methods - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor iteration methods reference: including Foreach/ForeachWithPath/ForeachWithError/ForeachNested iteration functions, IterableValue data access, IteratorControl flow control and batch iteration best practices for Go."
+description: "CyberGo JSON Processor iteration: Foreach, ForeachWithPath, ForeachNested, IterableValue data access, and IteratorControl flow for batch iteration."
 ---
 
 # Iteration Methods

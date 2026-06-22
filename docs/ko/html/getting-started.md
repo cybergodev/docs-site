@@ -1,6 +1,6 @@
 ---
-title: "빠른 시작 - HTML"
-description: "CyberGo HTML 빠른 시작: 5분 안에 설치와 기본 추출, 4종 Config 프리셋, 텍스트·Markdown·JSON 출력, 컨텍스트 타임아웃과 동시성 안전 패턴을 익혀 HTML 추출 도구에 빠르게 입문합니다."
+title: "빠른 시작 - CyberGo HTML | 5분 가이드"
+description: "CyberGo HTML 빠른 시작: 설치, 기본 추출, 4종 Config 프리셋, 텍스트·Markdown·JSON 출력, 컨텍스트 타임아웃과 동시성 안전 패턴으로 5분 만에 입문합니다."
 ---
 
 # 빠른 시작

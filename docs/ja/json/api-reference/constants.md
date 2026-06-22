@@ -1,6 +1,6 @@
 ---
 title: "定数とエラー - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON 定数とエラー定義完全リファレンス：DefaultMaxJSONSize/DefaultMaxNestingDepth デフォルト制限定数、ErrPathNotFound/ErrTypeMismatch エラー変数、MergeMode マージモード列挙型を含み、Go の設定プリセットとエラー処理をサポート。"
+description: "CyberGo JSON 定数とエラー：DefaultMaxJSONSize、DefaultMaxNestingDepth、ErrPathNotFound などのエラー変数と MergeMode 列挙型で Go の設定とエラー処理を支えます。"
 ---
 
 # 定数とエラー
@@ -212,31 +212,12 @@ const (
 type PathSegment = internal.PathSegment
 ```
 
-### PathSegment 構造体
+::: warning 内部実装のエイリアス
+`PathSegment` は `internal.PathSegment` の型エイリアスです。具体的なフィールド、フィールド型（`PathSegmentType`、`PathSegmentFlags` など）およびメソッドは `internal` パッケージに属し、**公開 API としてはエクスポートされていません**。バージョン間で変更される可能性があるため、ビジネスコードで内部構造に直接依存しないでください。
 
-```go
-type PathSegment struct {
-    Type  PathSegmentType  // セグメントタイプ
-
-    // 型に応じて異なるフィールドを使用
-    Key   string // プロパティ名（Property/Extract 型）
-    Index int    // 配列インデックス（ArrayIndex 型）またはスライス開始
-    End   int    // スライス終了（ArraySlice 型）
-    Step  int    // スライスステップ（ArraySlice 型）
-    Flags PathSegmentFlags // セグメントフラグ
-}
-```
-
-### PathSegment メソッド
-
-| メソッド | シグネチャ | 説明 |
-|------|------|------|
-| `HasStart` | `func (s *PathSegment) HasStart() bool` | スライスに開始値があるか |
-| `HasEnd` | `func (s *PathSegment) HasEnd() bool` | スライスに終了値があるか |
-| `HasStep` | `func (s *PathSegment) HasStep() bool` | スライスにステップ値があるか |
-| `IsNegativeIndex` | `func (s *PathSegment) IsNegativeIndex() bool` | 負のインデックスか |
-| `IsWildcardSegment` | `func (s *PathSegment) IsWildcardSegment() bool` | ワイルドカードか |
-| `IsFlatExtract` | `func (s *PathSegment) IsFlatExtract() bool` | フラットパターンか |
+- カスタムパス構文を実装する際は、[`PathParser`](./interfaces#pathparser) インターフェースの `ParsePath` メソッドで `[]PathSegment` を返します。
+- プリコンパイル済みパスには [`Processor.CompilePath`](./processor/query#compilepath) を使用し、`*CompiledPath` を返します。
+:::
 
 ## セキュリティパターンレベル
 

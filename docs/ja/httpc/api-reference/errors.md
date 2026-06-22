@@ -1,5 +1,5 @@
 ---
-title: "エラータイプ - HTTPC"
+title: "エラータイプ - CyberGo HTTPC | ClientError詳細"
 description: "HTTPC エラータイプ API リファレンス: ClientError 構造体のフィールドとメソッド、ErrorType 12 種類のエラー分類列挙、センチネルエラー変数と errors.Is/As マッチング例の完全な説明を提供します。"
 ---
 

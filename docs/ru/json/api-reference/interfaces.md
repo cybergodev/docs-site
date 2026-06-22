@@ -1,6 +1,6 @@
 ---
 title: "Определения интерфейсов - CyberGo JSON | Справочник API"
-description: "Полный справочник расширяемых интерфейсов CyberGo JSON: включает CustomEncoder, TypeEncoder, Validator, Hook интерфейсы, PathParser и DangerousPattern для гибкого расширения функций кодирования, валидации и защиты безопасности библиотеки под задачи пользовательской сериализации и политик безопасности в Go."
+description: "Интерфейсы CyberGo JSON: CustomEncoder, TypeEncoder, Validator, Hook, PathParser и DangerousPattern для расширения кодирования, валидации и безопасности."
 ---
 
 # Определения интерфейсов
@@ -149,7 +149,7 @@ type Hook interface {
 ```go
 type HookContext struct {
     Operation string        // Тип операции: "get", "set", "delete", "marshal", "unmarshal"
-    JSONStr   string        // Входная JSON строка (может быть пустой при marshal)
+    JSONStr   string        // Входная JSON строка (может быть пустой при marshal). Предупреждение безопасности: может содержать конфиденциальные данные
     Path      string        // Целевой путь (может быть пустым при marshal/unmarshal)
     Value     any           // Значение операции set
     Config    *Config       // Активная конфигурация

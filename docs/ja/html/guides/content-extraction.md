@@ -1,6 +1,6 @@
 ---
-title: "コンテンツ抽出実践 - HTML"
-description: "CyberGo HTML コンテンツ抽出実践：抽出フロー、記事認識アルゴリズム、テキスト・ファイル抽出、Result フィールド解説、カスタム Scorer 実装、非 UTF-8 エンコーディング検出・指定のベストプラクティスを説明します。"
+title: "コンテンツ抽出実践 - CyberGo HTML | 核心使い方"
+description: "CyberGo HTML コンテンツ抽出実践：抽出フロー、記事認識、基本・ファイル抽出、Result フィールド解説、カスタム Scorer、非 UTF-8 エンコーディング検出処理を説明します。"
 ---
 
 # コンテンツ抽出実践

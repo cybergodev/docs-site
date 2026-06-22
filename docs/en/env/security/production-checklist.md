@@ -1,6 +1,6 @@
 ---
 title: "Production Checklist - CyberGo env | Pre-Deployment Security"
-description: "Pre-deployment security checklist for CyberGo env production environments, covering .env file permissions and directory protection, RequiredKeys and AllowedKeys validation, AuditEnabled audit logging, SecureValue sensitive data handling, sentinel error strategies, and LimitsConfig performance tuning."
+description: "CyberGo env production security checklist: .env permissions, RequiredKeys and AllowedKeys validation, audit enabling, SecureValue handling and perf tuning."
 ---
 
 # Production Checklist

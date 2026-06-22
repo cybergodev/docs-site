@@ -1,6 +1,6 @@
 ---
 title: "高级功能示例 - CyberGo JSON | 进阶用法"
-description: "CyberGo JSON 高级功能实战示例集合，包括批量编码 EncodeBatch、字段选择 EncodeFields、预解析 PreParse、安全获取 SafeGet、缓存预热 WarmupCache 和内存池优化等技巧，展示库的高级用法和 Go 生产级性能优化策略与最佳实践。"
+description: "CyberGo JSON 高级示例：EncodeBatch 批量编码、EncodeFields 字段选择、PreParse 预解析、SafeGet 安全获取、WarmupCache 缓存预热与内存池优化，展示生产级性能技巧。"
 ---
 
 # 高级功能示例
@@ -276,12 +276,12 @@ import (
 func main() {
     data := `{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}`
 
-    // 定义批量操作
+    // 定义批量操作（ID 用于在结果中标识每条操作）
     operations := []json.BatchOperation{
-        {Type: "get", Path: "users.0.name", JSONStr: data},
-        {Type: "get", Path: "users", JSONStr: data},
-        {Type: "set", Path: "users.0.name", Value: "Updated", JSONStr: data},
-        {Type: "delete", Path: "users.0.id", JSONStr: data},
+        {ID: "get-name", Type: "get", Path: "users.0.name", JSONStr: data},
+        {ID: "get-users", Type: "get", Path: "users", JSONStr: data},
+        {ID: "set-name", Type: "set", Path: "users.0.name", Value: "Updated", JSONStr: data},
+        {ID: "del-id", Type: "delete", Path: "users.0.id", JSONStr: data},
     }
 
     // 执行批量操作

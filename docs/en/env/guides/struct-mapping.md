@@ -1,6 +1,6 @@
 ---
-title: "Struct Mapping - CyberGo env | Environment Variables to Struct"
-description: "Complete guide for CyberGo env struct mapping, automatically mapping environment variables to Go struct fields via env tags, covering nested structs, pointer and slice types, custom type converters, envDefault defaults, required field validation rules, and mapping hook function extensions."
+title: "Struct Mapping - CyberGo env | Env Vars to Struct"
+description: "CyberGo env struct mapping guide: map env vars to Go struct fields via env tags, covering nesting, pointers, slices, converters, defaults and validation."
 ---
 
 # Struct Mapping

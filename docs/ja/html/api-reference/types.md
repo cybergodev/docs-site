@@ -1,6 +1,6 @@
 ---
-title: "型定義 - HTML"
-description: "CyberGo HTML のデータ型 API リファレンス。Result(カスタム JSON シリアライズ付き)、ImageInfo、LinkInfo、VideoInfo、AudioInfo、LinkResource、Statistics、BatchResult、NodeAttr など主要型のフィールドを説明します。"
+title: "型定義 - CyberGo HTML | データ型リファレンス"
+description: "CyberGo HTML データ型：Result（カスタム JSON シリアライズ）、ImageInfo、LinkInfo、LinkResource、Statistics、BatchResult など主要型のフィールドを説明します。"
 ---
 
 # 型定義

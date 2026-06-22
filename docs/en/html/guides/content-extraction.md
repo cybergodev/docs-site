@@ -1,5 +1,5 @@
 ---
-title: "Content Extraction Guide - HTML"
+title: "Content Extraction - CyberGo HTML | Core Usage Guide"
 description: "Content extraction guide for CyberGo HTML, covering extraction flow, article recognition, file extraction, Result fields, custom Scorer, and encoding detection."
 ---
 

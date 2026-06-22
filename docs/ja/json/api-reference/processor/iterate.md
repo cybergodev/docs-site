@@ -1,6 +1,6 @@
 ---
 title: "Processor 反復メソッド - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON Processor 反復メソッドリファレンス：Foreach/ForeachWithPath/ForeachWithError/ForeachNested 反復関数、IterableValue データアクセス、IteratorControl 制御と Go のバッチ反復のベストプラクティス。柔軟な JSON データ構造の走査をサポート。"
+description: "CyberGo JSON Processor 反復メソッド：Foreach、ForeachWithPath、ForeachNested、IterableValue、IteratorControl でバッチ反復の実践を支えます。"
 ---
 
 # 反復メソッド

@@ -1,6 +1,6 @@
 ---
 title: "타입 정의 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 핵심 타입 정의 완전 레퍼런스: Result[T] 제네릭 결과, AccessResult 동적 접근 결과, BatchOperation, BatchResult, Schema 검증 모델, Stats, HealthStatus, IterableValue 및 인코딩 오류 타입을 포함하여 Go의 완전한 타입 시스템을 제공합니다."
+description: "CyberGo JSON 핵심 타입: Result[T], AccessResult, BatchOperation, BatchResult, Schema, Stats, HealthStatus, IterableValue로 전체 타입 시스템을 구성합니다."
 ---
 
 # 타입 정의
@@ -382,8 +382,8 @@ Schema 검증 오류 타입입니다.
 
 ```go
 type ValidationError struct {
-    Path    string // 오류가 발생한 경로
-    Message string // 오류 메시지
+    Path    string `json:"path"`    // 오류가 발생한 경로
+    Message string `json:"message"` // 오류 메시지
 }
 ```
 
@@ -411,11 +411,11 @@ for _, e := range errors {
 
 ```go
 type BatchOperation struct {
-    Type    string // 작업 타입: "get", "set", "delete", "validate"
-    JSONStr string // JSON 데이터 문자열
-    Path    string // 대상 경로
-    Value   any    // Set 작업의 값
-    ID      string // 작업 식별자
+    Type    string `json:"type"`     // 작업 타입: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // JSON 데이터 문자열
+    Path    string `json:"path"`     // 대상 경로
+    Value   any    `json:"value"`    // Set 작업의 값
+    ID      string `json:"id"`       // 작업 식별자
 }
 ```
 
@@ -429,9 +429,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string // 작업 식별자 (BatchOperation.ID에 해당)
-    Result any    // 작업 결과
-    Error  error  // 오류 (있는 경우)
+    ID     string `json:"id"`     // 작업 식별자 (BatchOperation.ID에 해당)
+    Result any    `json:"result"` // 작업 결과
+    Error  error  `json:"error"`  // 오류 (있는 경우)
 }
 ```
 
@@ -445,11 +445,11 @@ type BatchResult struct {
 
 ```go
 type WarmupResult struct {
-    TotalPaths  int      // 전체 경로 수
-    Successful  int      // 웜업 성공 수
-    Failed      int      // 실패 수
-    SuccessRate float64  // 성공률
-    FailedPaths []string // 실패한 경로 목록
+    TotalPaths  int      `json:"total_paths"`            // 전체 경로 수
+    Successful  int      `json:"successful"`             // 웜업 성공 수
+    Failed      int      `json:"failed"`                 // 실패 수
+    SuccessRate float64  `json:"success_rate"`           // 성공률
+    FailedPaths []string `json:"failed_paths,omitempty"` // 실패한 경로 목록
 }
 ```
 
@@ -522,18 +522,18 @@ age, _ := processor.GetFromParsed(parsed, "user.age")
 
 ```go
 type Stats struct {
-    CacheSize        int64         // 현재 캐시 크기
-    CacheMemory      int64         // 캐시 메모리 점유 (바이트)
-    MaxCacheSize     int           // 최대 캐시 크기
-    HitCount         int64         // 캐시 적중 수
-    MissCount        int64         // 캐시 미적중 수
-    HitRatio         float64       // 캐시 적중률
-    CacheTTL         time.Duration // 캐시 만료 시간
-    CacheEnabled     bool          // 캐시 활성화 여부
-    IsClosed         bool          // 프로세서 닫힘 여부
-    MemoryEfficiency float64       // 메모리 효율성
-    OperationCount   int64         // 총 작업 수
-    ErrorCount       int64         // 총 오류 수
+    CacheSize        int64         `json:"cache_size"`        // 현재 캐시 크기
+    CacheMemory      int64         `json:"cache_memory"`      // 캐시 메모리 점유 (바이트)
+    MaxCacheSize     int           `json:"max_cache_size"`    // 최대 캐시 크기
+    HitCount         int64         `json:"hit_count"`         // 캐시 적중 수
+    MissCount        int64         `json:"miss_count"`        // 캐시 미적중 수
+    HitRatio         float64       `json:"hit_ratio"`         // 캐시 적중률
+    CacheTTL         time.Duration `json:"cache_ttl"`         // 캐시 만료 시간
+    CacheEnabled     bool          `json:"cache_enabled"`     // 캐시 활성화 여부
+    IsClosed         bool          `json:"is_closed"`         // 프로세서 닫힘 여부
+    MemoryEfficiency float64       `json:"memory_efficiency"` // 메모리 효율성
+    OperationCount   int64         `json:"operation_count"`   // 총 작업 수
+    ErrorCount       int64         `json:"error_count"`       // 총 오류 수
 }
 ```
 
@@ -547,9 +547,9 @@ type Stats struct {
 
 ```go
 type HealthStatus struct {
-    Timestamp time.Time              // 확인 타임스탬프
-    Healthy   bool                   // 정상 여부
-    Checks    map[string]CheckResult // 각 확인 항목 결과
+    Timestamp time.Time              `json:"timestamp"` // 확인 타임스탬프
+    Healthy   bool                   `json:"healthy"`   // 정상 여부
+    Checks    map[string]CheckResult `json:"checks"`    // 각 확인 항목 결과
 }
 ```
 
@@ -557,8 +557,8 @@ type HealthStatus struct {
 
 ```go
 type CheckResult struct {
-    Healthy bool   // 해당 확인 항목이 정상인지 여부
-    Message string // 확인 메시지
+    Healthy bool   `json:"healthy"` // 해당 확인 항목이 정상인지 여부
+    Message string `json:"message"` // 확인 메시지
 }
 ```
 

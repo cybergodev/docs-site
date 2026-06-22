@@ -1,6 +1,6 @@
 ---
-title: "JWT - プロダクションレディ JWT 認証ライブラリ"
-description: "CyberGo JWT はプロダクションレディな Go 認証ライブラリで、HMAC・RSA・RSA-PSS・ECDSA 4 種 12 アルゴリズムをサポートし、トークン発行・検証・リフレッシュ・失効、ブラックリスト、レート制限、カスタム Claims、クロック注入を提供。全メソッドが並行安全。"
+title: "JWT 認証ライブラリ - CyberGo JWT | 本番級トークン発行と検証"
+description: "CyberGo JWT は Go 向け本番級認証ライブラリで、HMAC・RSA・RSA-PSS・ECDSA 4 種 12 アルゴリズムを提供し、発行・検証・リフレッシュ・失効・ブラックリスト・レート制限を備え、全メソッドが並行安全。"
 ---
 
 # JWT - プロダクションレディ JWT 認証ライブラリ

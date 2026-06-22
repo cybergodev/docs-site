@@ -1,6 +1,6 @@
 ---
 title: "Функции пакета - CyberGo JSON | Справочник API"
-description: "Справочник функций уровня пакета CyberGo JSON: Get/GetString/GetInt/GetTyped запросы по пути, Set/Delete/MergeJSON модификация, Marshal/Unmarshal кодирование/декодирование и LoadFromFile/SaveToFile файловые операции, вызываемые напрямую без создания Processor в Go-разработке."
+description: "Функции пакета CyberGo JSON: запросы Get/GetString/GetInt, изменения Set/Delete/MergeJSON, Marshal/Unmarshal и файловые операции без создания Processor."
 ---
 
 # Функции пакета

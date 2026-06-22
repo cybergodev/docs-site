@@ -1,5 +1,5 @@
 ---
-title: "Result - HTTPC"
+title: "Result - CyberGo HTTPC | Result応答タイプ"
 description: "HTTPC Result レスポンスタイプ API リファレンス: StatusCode/Body 基本メソッド、ステータス判定、Cookie 操作、Unmarshal JSON 解析、SaveToFile ファイル保存の完全な使い方を提供します。"
 ---
 

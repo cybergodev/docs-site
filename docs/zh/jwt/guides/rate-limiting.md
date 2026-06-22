@@ -1,6 +1,6 @@
 ---
-title: "速率限制 - JWT"
-description: "速率限制指南：基于令牌桶算法配置令牌签发接口的每窗口最大请求数，讲解限流键的 Subject、UserID 与 RateLimitKeyer 优先级查找规则，支持内置 RateLimiter 与自定义 RateLimitProvider 分布式限流实现。"
+title: "速率限制 - CyberGo JWT | 令牌桶限流"
+description: "速率限制指南：基于令牌桶配置签发接口每窗口最大请求数，讲解限流键的 Subject、UserID 与 RateLimitKeyer 优先级查找，支持内置与自定义分布式限流实现。"
 ---
 
 # 速率限制

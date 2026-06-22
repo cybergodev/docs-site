@@ -1,6 +1,6 @@
 ---
 title: "수정 함수 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 수정 함수 완전 참조: Set/SetMultiple 값 설정, Delete 키 삭제, MergeJSON/MergeMany JSON 병합을 포함하며, 자동 경로 생성, 원자적 작업 및 다양한 MergeMode 병합 전략을 지원하여 Go의 모든 JSON 데이터 수정 요구를 충족합니다."
+description: "CyberGo JSON 수정 함수: Set/SetMultiple, Delete, MergeJSON/MergeMany로 자동 경로 생성, 원자적 작업, 다양한 MergeMode 전략을 지원합니다."
 ---
 
 # 수정 함수
@@ -309,11 +309,11 @@ for _, r := range results {
 
 ```go
 type BatchOperation struct {
-    Type    string  // 작업 유형: "get", "set", "delete", "validate"
-    JSONStr string  // 대상 JSON 문자열
-    Path    string  // 경로 표현식
-    Value   any     // 작업 값 (set 작업에서 사용)
-    ID      string  // 작업 식별자
+    Type    string `json:"type"`     // 작업 유형: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // 대상 JSON 문자열
+    Path    string `json:"path"`     // 경로 표현식
+    Value   any    `json:"value"`    // 작업 값 (set 작업에서 사용)
+    ID      string `json:"id"`       // 작업 식별자
 }
 ```
 
@@ -323,9 +323,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string  // 작업 식별자
-    Result any     // 작업 결과
-    Error  error   // 오류 정보
+    ID     string `json:"id"`     // 작업 식별자
+    Result any    `json:"result"` // 작업 결과
+    Error  error  `json:"error"`  // 오류 정보
 }
 ```
 

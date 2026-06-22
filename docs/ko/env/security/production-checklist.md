@@ -1,6 +1,6 @@
 ---
 title: "프로덕션 체크리스트 - CyberGo env | 보안 배포 검사"
-description: "CyberGo env 라이브러리 프로덕션 환경 배포 전 보안 검사 목록, .env 파일 권한과 디렉토리 보호, RequiredKeys 및 AllowedKeys 키값 검증, AuditEnabled 감사 로그 활성화 구성, SecureValue 민감 데이터 보안 처리, 센티넬 오류 처리 전략과 LimitsConfig 성능 보안 매개변수 튜닝 등 핵심 보안 검사 항목을 다룹니다."
+description: "CyberGo env 프로덕션 배포 보안 체크리스트로 .env 권한, RequiredKeys/AllowedKeys 검증, 감사 활성화, SecureValue 처리, 성능 매개변수 튜닝을 다룹니다."
 ---
 
 # 프로덕션 체크리스트

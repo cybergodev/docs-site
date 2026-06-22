@@ -1,6 +1,6 @@
 ---
 title: "Constants and Errors - CyberGo JSON | API Reference"
-description: "CyberGo JSON constants and error definitions complete reference: including DefaultMaxJSONSize/DefaultMaxNestingDepth default limit constants, ErrPathNotFound/ErrTypeMismatch error variables, and MergeMode merge mode enumeration, providing Go configuration presets and error handling support."
+description: "CyberGo JSON constants and errors: DefaultMaxJSONSize, DefaultMaxNestingDepth, ErrPathNotFound variables, and MergeMode enums for Go error handling."
 ---
 
 # Constants and Errors
@@ -212,31 +212,12 @@ const (
 type PathSegment = internal.PathSegment
 ```
 
-### PathSegment Structure
+::: warning Internal implementation alias
+`PathSegment` is a type alias for `internal.PathSegment`. Its specific fields, field types (such as `PathSegmentType`, `PathSegmentFlags`) and methods belong to the `internal` package, are **not exported as public API**, and may change between versions — do not rely on its internal structure directly in your business code.
 
-```go
-type PathSegment struct {
-    Type  PathSegmentType  // Segment type
-
-    // Different fields based on type
-    Key   string // Property name (Property/Extract type)
-    Index int    // Array index (ArrayIndex type) or slice start
-    End   int    // Slice end (ArraySlice type)
-    Step  int    // Slice step (ArraySlice type)
-    Flags PathSegmentFlags // Segment flags
-}
-```
-
-### PathSegment Methods
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `HasStart` | `func (s *PathSegment) HasStart() bool` | Whether the slice has a start value |
-| `HasEnd` | `func (s *PathSegment) HasEnd() bool` | Whether the slice has an end value |
-| `HasStep` | `func (s *PathSegment) HasStep() bool` | Whether the slice has a step value |
-| `IsNegativeIndex` | `func (s *PathSegment) IsNegativeIndex() bool` | Whether it is a negative index |
-| `IsWildcardSegment` | `func (s *PathSegment) IsWildcardSegment() bool` | Whether it is a wildcard |
-| `IsFlatExtract` | `func (s *PathSegment) IsFlatExtract() bool` | Whether it is a flat pattern |
+- When implementing custom path syntax, return `[]PathSegment` via the `ParsePath` method of the [`PathParser`](./interfaces#pathparser) interface.
+- For precompiled paths, use [`Processor.CompilePath`](./processor/query#compilepath), which returns `*CompiledPath`.
+:::
 
 ## Security Pattern Level
 

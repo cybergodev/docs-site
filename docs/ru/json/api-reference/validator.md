@@ -1,6 +1,6 @@
 ---
 title: "Validator - CyberGo JSON | Валидатор схем"
-description: "Полный справочник валидатора CyberGo JSON: включает определение интерфейса Validator, структуру Schema для валидации, тип ValidationError для ошибок валидации, параметры конфигурации SchemaConfig и руководство по реализации пользовательских валидаторов, предоставляющих полную возможность проверки структуры и содержимого JSON-данных в Go."
+description: "Валидатор CyberGo JSON: интерфейс Validator, структура Schema, ValidationError, SchemaConfig и руководство по пользовательским валидаторам для проверки JSON."
 ---
 
 # Validator

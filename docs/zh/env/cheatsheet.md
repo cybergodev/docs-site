@@ -1,6 +1,6 @@
 ---
 title: "速查表 - CyberGo env | 常用 API 速查"
-description: "CyberGo env 环境变量管理库常用 API 速查表，一页汇总配置文件加载、类型安全读取、变量验证过滤、安全值 SecureValue 存储、序列化反序列化、结构体映射和审计日志等高频操作的核心代码片段，方便 Go 开发者日常开发时快速查阅和复制使用。"
+description: "CyberGo env 常用 API 速查表，一页汇总文件加载、类型读取、验证、SecureValue 存储、序列化与审计日志等高频操作的核心代码片段，方便日常查阅。"
 ---
 
 # 速查表

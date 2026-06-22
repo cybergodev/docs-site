@@ -1,6 +1,6 @@
 ---
 title: "Query and Get Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON query and get functions complete reference: including Get/GetString/GetInt/GetFloat/GetBool type-safe getters, GetTyped[T] generic getter, Parse/ParseAny parsing functions, with full JSONPath expression support, providing a zero-error getter mode for Go development with default values."
+description: "CyberGo JSON query and get: Get/GetString/GetInt/GetFloat/GetBool type-safe getters, GetTyped[T] generics, and Parse/ParseAny with full JSONPath."
 ---
 
 # Query and Get Functions

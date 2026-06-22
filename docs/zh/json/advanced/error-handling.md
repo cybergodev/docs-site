@@ -1,6 +1,6 @@
 ---
 title: "错误处理 - CyberGo JSON | 最佳实践"
-description: "CyberGo JSON 错误处理最佳实践：涵盖 JsonsError 结构化错误类型判断、errors.Is/As 错误匹配、标准错误变量、恢复策略、SafeError 安全输出和 RedactedPath 路径脱敏日志记录，构建 Go 应用的健壮异常处理机制。"
+description: "CyberGo JSON 错误处理最佳实践：JsonsError 类型判断、errors.Is/As 匹配、标准错误变量、恢复策略、SafeError 安全输出与 RedactedPath 脱敏日志，构建健壮异常机制。"
 ---
 
 # 错误处理

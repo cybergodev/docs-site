@@ -1,6 +1,6 @@
 ---
-title: "콘텐츠 추출 실전 - HTML"
-description: "CyberGo HTML 콘텐츠 추출 실전: 추출 프로세스, 문서 스마트 인식 원리, 텍스트·파일 추출, Result 필드 해석, 커스텀 Scorer 구현, 비 UTF-8 인코딩 자동 감지·수동 지정 모범 사례를 설명합니다."
+title: "콘텐츠 추출 실전 - CyberGo HTML | 핵심 활용 가이드"
+description: "CyberGo HTML 콘텐츠 추출 실전: 추출 프로세스, 문서 인식 원리, 기본·파일 추출, Result 필드 해석, 커스텀 Scorer, 비 UTF-8 인코딩 감지 처리를 설명합니다."
 ---
 
 # 콘텐츠 추출 실전

@@ -1,6 +1,6 @@
 ---
 title: "Обработка больших файлов - CyberGo JSON | Справочник API"
-description: "Справочник API обработки больших файлов CyberGo JSON: ForeachFile потоковая обработка, ForeachFileChunked пакетная обработка, ForeachFileWithPath обработка по пути, ForeachFileNested вложенная итерация и лучшие практики конфигурации управления памятью в Go."
+description: "API больших файлов CyberGo JSON: ForeachFile, пакетная ForeachFileChunked, ForeachFileWithPath, ForeachNested и настройка управления памятью в Go."
 ---
 
 # Обработка больших файлов

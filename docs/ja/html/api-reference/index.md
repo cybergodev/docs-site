@@ -1,6 +1,6 @@
 ---
-title: "API リファレンス - HTML"
-description: "CyberGo HTML 全 API リファレンス総索引：パッケージ関数と Processor の二つの呼び出し方法で、コンテンツ・テキスト抽出、フォーマット出力、リンク抽出、バッチ、設定、監査、型定義など全モジュールの詳細説明とガイドを提供します。"
+title: "API リファレンス - CyberGo HTML | 全モジュール索引"
+description: "CyberGo HTML 全 API 索引：パッケージ関数と Processor の二つの呼び出し方式で、抽出、出力、リンク、バッチ、設定、監査、型など全モジュールを案内します。"
 ---
 
 # API リファレンス

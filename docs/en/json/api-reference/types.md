@@ -1,6 +1,6 @@
 ---
 title: "Type Definitions - CyberGo JSON | API Reference"
-description: "CyberGo JSON core type definitions reference: including Result[T] generic result, AccessResult dynamic access result, BatchOperation, BatchResult, Schema validation schema, Stats, HealthStatus, IterableValue, and encoding error types, providing a complete type system foundation for Go."
+description: "CyberGo JSON core types: Result[T], AccessResult, BatchOperation, BatchResult, Schema, Stats, HealthStatus and IterableValue forming the complete type system."
 ---
 
 # Type Definitions
@@ -383,8 +383,8 @@ Schema validation error type.
 
 ```go
 type ValidationError struct {
-    Path    string // Path where the error occurred
-    Message string // Error message
+    Path    string `json:"path"`    // Path where the error occurred
+    Message string `json:"message"` // Error message
 }
 ```
 
@@ -412,11 +412,11 @@ Batch operation definition.
 
 ```go
 type BatchOperation struct {
-    Type    string // Operation type: "get", "set", "delete", "validate"
-    JSONStr string // JSON data string
-    Path    string // Target path
-    Value   any    // Value for Set operation
-    ID      string // Operation identifier
+    Type    string `json:"type"`     // Operation type: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // JSON data string
+    Path    string `json:"path"`     // Target path
+    Value   any    `json:"value"`    // Value for Set operation
+    ID      string `json:"id"`       // Operation identifier
 }
 ```
 
@@ -430,9 +430,9 @@ Batch operation result.
 
 ```go
 type BatchResult struct {
-    ID     string // Operation identifier (corresponds to BatchOperation.ID)
-    Result any    // Operation result
-    Error  error  // Error (if any)
+    ID     string `json:"id"`     // Operation identifier (corresponds to BatchOperation.ID)
+    Result any    `json:"result"` // Operation result
+    Error  error  `json:"error"`  // Error (if any)
 }
 ```
 
@@ -446,11 +446,11 @@ Cache warmup result.
 
 ```go
 type WarmupResult struct {
-    TotalPaths  int      // Total path count
-    Successful  int      // Successful warmup count
-    Failed      int      // Failed count
-    SuccessRate float64  // Success rate
-    FailedPaths []string // List of failed paths
+    TotalPaths  int      `json:"total_paths"`            // Total path count
+    Successful  int      `json:"successful"`             // Successful warmup count
+    Failed      int      `json:"failed"`                 // Failed count
+    SuccessRate float64  `json:"success_rate"`           // Success rate
+    FailedPaths []string `json:"failed_paths,omitempty"` // List of failed paths
 }
 ```
 
@@ -524,18 +524,18 @@ Processor statistics.
 
 ```go
 type Stats struct {
-    CacheSize        int64         // Current cache size
-    CacheMemory      int64         // Cache memory usage (bytes)
-    MaxCacheSize     int           // Maximum cache size
-    HitCount         int64         // Cache hit count
-    MissCount        int64         // Cache miss count
-    HitRatio         float64       // Cache hit ratio
-    CacheTTL         time.Duration // Cache expiration time
-    CacheEnabled     bool          // Whether cache is enabled
-    IsClosed         bool          // Whether the processor is closed
-    MemoryEfficiency float64       // Memory efficiency
-    OperationCount   int64         // Total operation count
-    ErrorCount       int64         // Total error count
+    CacheSize        int64         `json:"cache_size"`        // Current cache size
+    CacheMemory      int64         `json:"cache_memory"`      // Cache memory usage (bytes)
+    MaxCacheSize     int           `json:"max_cache_size"`    // Maximum cache size
+    HitCount         int64         `json:"hit_count"`         // Cache hit count
+    MissCount        int64         `json:"miss_count"`        // Cache miss count
+    HitRatio         float64       `json:"hit_ratio"`         // Cache hit ratio
+    CacheTTL         time.Duration `json:"cache_ttl"`         // Cache expiration time
+    CacheEnabled     bool          `json:"cache_enabled"`     // Whether cache is enabled
+    IsClosed         bool          `json:"is_closed"`         // Whether the processor is closed
+    MemoryEfficiency float64       `json:"memory_efficiency"` // Memory efficiency
+    OperationCount   int64         `json:"operation_count"`   // Total operation count
+    ErrorCount       int64         `json:"error_count"`       // Total error count
 }
 ```
 
@@ -549,9 +549,9 @@ Health status information.
 
 ```go
 type HealthStatus struct {
-    Timestamp time.Time              // Check timestamp
-    Healthy   bool                   // Whether healthy
-    Checks    map[string]CheckResult // Results of each check
+    Timestamp time.Time              `json:"timestamp"` // Check timestamp
+    Healthy   bool                   `json:"healthy"`   // Whether healthy
+    Checks    map[string]CheckResult `json:"checks"`    // Results of each check
 }
 ```
 
@@ -559,8 +559,8 @@ type HealthStatus struct {
 
 ```go
 type CheckResult struct {
-    Healthy bool   // Whether this check is healthy
-    Message string // Check message
+    Healthy bool   `json:"healthy"` // Whether this check is healthy
+    Message string `json:"message"` // Check message
 }
 ```
 

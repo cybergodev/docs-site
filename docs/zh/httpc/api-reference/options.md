@@ -1,6 +1,6 @@
 ---
-title: "请求选项 - HTTPC"
-description: "HTTPC 请求选项 API 参考：WithHeader 请求头、WithBearerToken 认证、WithJSON/WithXML/WithForm/WithBinary 请求体、WithQuery 查询参数、五种 Cookie 选项与 WithOnRequest/WithOnResponse 回调函数。"
+title: "请求选项 - CyberGo HTTPC | WithXxx 选项"
+description: "HTTPC 请求选项 API 参考：WithHeader 请求头、WithBearerToken 认证、WithJSON/WithForm 请求体、WithQuery 查询参数、Cookie 选项与 WithOnRequest/WithOnResponse 回调函数。"
 ---
 
 # 请求选项

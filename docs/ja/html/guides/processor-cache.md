@@ -1,6 +1,6 @@
 ---
-title: "Processor 再利用とキャッシュ - HTML"
-description: "CyberGo HTML Processor 再利用・キャッシュガイド：パッケージ関数と Processor の違い、sync.Pool 機構、キャッシュ戦略（TTL・容量・クリーンアップ）、ヒット率統計、シングルトン・バッチのベストプラクティスを扱います。"
+title: "Processor 再利用とキャッシュ - CyberGo HTML | 高性能ガイド"
+description: "CyberGo HTML Processor 再利用とキャッシュ：パッケージ関数との違い、sync.Pool、キャッシュ戦略（TTL・容量・クリーンアップ）、ヒット率統計とシングルトン実践を扱います。"
 ---
 
 # Processor 再利用とキャッシュ

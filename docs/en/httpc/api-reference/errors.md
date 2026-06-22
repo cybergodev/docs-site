@@ -1,5 +1,5 @@
 ---
-title: "Error Types - HTTPC"
+title: "Error Types - CyberGo HTTPC | ClientError Details"
 description: "HTTPC error types API reference: ClientError struct fields and methods, twelve ErrorType classifications, sentinel errors, and errors.Is/As matching."
 ---
 

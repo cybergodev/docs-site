@@ -1,6 +1,6 @@
 ---
 title: "Processor 출력 메서드 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor 출력 메서드 레퍼런스: Encode 인코딩, EncodePretty 포맷팅, EncodeWithConfig 커스텀 설정, EncodeBatch/EncodeFields 배치 인코딩, Compact/Indent/HTMLEscape 포맷팅 작업으로 Go의 다양한 JSON 출력 요구를 충족합니다."
+description: "CyberGo JSON Processor 출력 메서드: Encode, EncodePretty, EncodeWithConfig, EncodeBatch/EncodeFields, Compact/Indent/HTMLEscape로 다양한 출력을 지원합니다."
 ---
 
 # 출력 메서드
@@ -101,7 +101,7 @@ result, err := p.EncodeFields(user, []string{"name", "email"})
 
 시그니처: `func (p *Processor) EncodeStream(values any, cfg ...Config) (string, error)`
 
-임의의 값을 JSON 문자열로 인코딩합니다. `EncodeWithConfig`의 Processor 메서드 형태와 동일합니다.
+여러 값을 JSON 배열 스트림(array stream)으로 인코딩합니다. `values`는 일반적으로 슬라이스나 열거 가능한 컬렉션이며, `[v1,v2,...]` 형태의 JSON 배열 문자열을 출력합니다.
 
 ```go
 values := []any{"item1", "item2", "item3"}

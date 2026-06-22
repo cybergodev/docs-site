@@ -1,6 +1,6 @@
 ---
 title: "编码解码函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 编码解码函数参考：Marshal/Unmarshal 序列化、Compact/Indent/HTMLEscape 格式化、Encode/EncodePretty/EncodeWithConfig/Prettify 配置化编码，100% 兼容 Go 标准 encoding/json。"
+description: "CyberGo JSON 编码解码函数：Marshal/Unmarshal 序列化、Compact/Indent/HTMLEscape 格式化与 Encode/EncodePretty/Prettify 配置化编码，100% 兼容标准库。"
 ---
 
 # 编码解码函数
@@ -234,7 +234,7 @@ fmt.Println(result) // {"name":"Alice","email":"a@b.com"}
 
 签名：`func EncodeStream(values any, cfg ...Config) (string, error)`
 
-流式编码，将值编码为 JSON 字符串。适用于需要统一编码接口的场景。
+将多个值编码为 JSON 数组流（array stream）。`values` 通常是切片或可枚举集合，输出形如 `[v1,v2,...]` 的 JSON 数组字符串。
 
 ```go
 values := []map[string]any{

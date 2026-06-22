@@ -1,6 +1,6 @@
 ---
-title: "生产检查清单 - HTML"
-description: "CyberGo HTML 库生产环境部署安全检查清单，涵盖基础安全配置项（HighSecurityConfig 预设）、Processor 生命周期管理、审计与监控配置、上下文超时控制、错误处理最佳实践、资源管理和文件处理安全注意事项汇总，帮助确保上线前的安全合规。"
+title: "生产检查清单 - CyberGo HTML | 上线安全核对"
+description: "CyberGo HTML 生产部署安全清单：HighSecurityConfig 预设、Processor 生命周期、审计监控、上下文超时、错误处理、资源与文件处理安全要点。"
 ---
 
 # 生产检查清单

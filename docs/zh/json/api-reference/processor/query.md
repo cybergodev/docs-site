@@ -1,6 +1,6 @@
 ---
 title: "Processor 路径查询 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 路径查询方法完整参考：包括 Get/GetString/GetInt 等类型安全获取、GetMultiple 批量查询、SafeGet 安全获取返回 AccessResult、GetTyped[T] 泛型获取，支持 JSONPath 表达式与 Go 缓存优化。"
+description: "CyberGo JSON Processor 路径查询：Get/GetString/GetInt 类型安全获取、GetMultiple 批量、SafeGet 安全返回 AccessResult 与 GetTyped[T] 泛型，支持 JSONPath 与缓存。"
 ---
 
 # 路径查询方法
@@ -11,7 +11,7 @@ Processor 提供多种类型安全的路径查询方法。
 
 ### Get
 
-签名：`func (p *Processor) Get(jsonStr, path string, cfg ...Config) (any, error)`
+签名：`func (p *Processor) Get(jsonStr, path string, cfg ...Config) (result any, err error)`
 
 从指定路径获取任意类型的值。
 

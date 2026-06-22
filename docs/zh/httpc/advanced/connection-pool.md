@@ -1,5 +1,5 @@
 ---
-title: "连接池与代理 - HTTPC"
+title: "连接池与代理 - CyberGo HTTPC | 池调优与代理"
 description: "HTTPC 连接池与代理配置指南：MaxIdleConns 等连接池参数调优与场景推荐、ProxyURL 手动代理与系统代理检测、SOCKS5 与 HTTP 代理、DoH 三提供商回退、HTTP/2 配置与连接复用实践要点与最佳实践建议示例。"
 ---
 

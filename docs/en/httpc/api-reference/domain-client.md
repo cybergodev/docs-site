@@ -1,5 +1,5 @@
 ---
-title: "Domain Client - HTTPC"
+title: "Domain Client - CyberGo HTTPC | NewDomain & Sessions"
 description: "HTTPC domain client API reference: NewDomain, seven HTTP methods, the Request method, URL auto-concatenation, and SetHeader/SetCookie session management."
 ---
 

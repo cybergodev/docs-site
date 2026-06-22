@@ -1,6 +1,6 @@
 ---
 title: "エンコード・デコード関数 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON エンコード・デコード関数リファレンス：Marshal/Unmarshal シリアライズ、Compact/Indent/HTMLEscape フォーマット、Encode/EncodePretty/EncodeWithConfig/Prettify 設定可能エンコード、Go 標準の encoding/json と 100% 互換。"
+description: "CyberGo JSON エンコード・デコード関数：Marshal/Unmarshal、Compact/Indent/HTMLEscape、Encode/EncodePretty/Prettify で標準ライブラリ互換の柔軟なエンコードを実現します。"
 ---
 
 # エンコード・デコード関数
@@ -234,7 +234,7 @@ fmt.Println(result) // {"name":"Alice","email":"a@b.com"}
 
 シグネチャ：`func EncodeStream(values any, cfg ...Config) (string, error)`
 
-ストリーミングエンコードで、値を JSON 文字列にエンコードします。統一されたエンコードインターフェースが必要な場面に適しています。
+複数の値を JSON 配列ストリーム（array stream）としてエンコードします。`values` は通常スライスまたは列挙可能なコレクションで、`[v1,v2,...]` 形式の JSON 配列文字列を出力します。
 
 ```go
 values := []map[string]any{

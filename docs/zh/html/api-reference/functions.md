@@ -1,6 +1,6 @@
 ---
-title: "包函数 - HTML"
-description: "CyberGo HTML 包级便捷函数 API 参考，涵盖 Extract、ExtractFromFile、ExtractText、ExtractFromFileWithContext 等提取函数及上下文版本，内部用 sync.Pool 复用 Processor，适合一次性调用与快速集成。"
+title: "包函数 - CyberGo HTML | 便捷提取 API"
+description: "CyberGo HTML 包级便捷函数：Extract、ExtractText、ExtractToMarkdown 等，内部用 sync.Pool 复用 Processor，适合一次性调用与快速集成。"
 ---
 
 # 包函数

@@ -1,5 +1,5 @@
 ---
-title: "FAQ - HTTPC"
+title: "FAQ - CyberGo HTTPC | Common Q&A"
 description: "HTTPC FAQ: package functions vs clients, configuration presets, proxy and DoH, Cookie sessions, retry and timeout tuning, and errors.Is/As matching."
 ---
 

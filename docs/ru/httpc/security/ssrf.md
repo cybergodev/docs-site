@@ -1,5 +1,5 @@
 ---
-title: "Защита от SSRF - HTTPC"
+title: "Защита от SSRF - CyberGo HTTPC | Приватные IP"
 description: "Подробно о защите от SSRF в HTTPC: блокировка приватных IP, исключения SSRFExemptCIDRs, защита от перепривязки DNS, белые списки и защита метаданных."
 ---
 

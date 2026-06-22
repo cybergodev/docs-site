@@ -1,6 +1,6 @@
 ---
 title: "Определения типов - CyberGo JSON | Справочник API"
-description: "Полный справочник основных типов CyberGo JSON: включает Result[T] обобщённый результат, AccessResult результат динамического доступа, BatchOperation, BatchResult, Schema схема валидации, Stats, HealthStatus, IterableValue и типы ошибок кодирования — полная поддержка системы типов в Go."
+description: "Основные типы CyberGo JSON: Result[T], AccessResult, BatchOperation, BatchResult, Schema, Stats, HealthStatus и IterableValue, формирующие систему типов."
 ---
 
 # Определения типов
@@ -382,8 +382,8 @@ func main() {
 
 ```go
 type ValidationError struct {
-    Path    string // Путь, где произошла ошибка
-    Message string // Сообщение об ошибке
+    Path    string `json:"path"`    // Путь, где произошла ошибка
+    Message string `json:"message"` // Сообщение об ошибке
 }
 ```
 
@@ -411,11 +411,11 @@ for _, e := range errors {
 
 ```go
 type BatchOperation struct {
-    Type    string // Тип операции: "get", "set", "delete", "validate"
-    JSONStr string // Строка JSON данных
-    Path    string // Целевой путь
-    Value   any    // Значение для операции Set
-    ID      string // Идентификатор операции
+    Type    string `json:"type"`     // Тип операции: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // Строка JSON данных
+    Path    string `json:"path"`     // Целевой путь
+    Value   any    `json:"value"`    // Значение для операции Set
+    ID      string `json:"id"`       // Идентификатор операции
 }
 ```
 
@@ -429,9 +429,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string // Идентификатор операции (соответствует BatchOperation.ID)
-    Result any    // Результат операции
-    Error  error  // Ошибка (если есть)
+    ID     string `json:"id"`     // Идентификатор операции (соответствует BatchOperation.ID)
+    Result any    `json:"result"` // Результат операции
+    Error  error  `json:"error"`  // Ошибка (если есть)
 }
 ```
 
@@ -445,11 +445,11 @@ type BatchResult struct {
 
 ```go
 type WarmupResult struct {
-    TotalPaths  int      // Общее количество путей
-    Successful  int      // Количество успешно прогретых
-    Failed      int      // Количество неудачных
-    SuccessRate float64  // Процент успешных
-    FailedPaths []string // Список неудавшихся путей
+    TotalPaths  int      `json:"total_paths"`            // Общее количество путей
+    Successful  int      `json:"successful"`             // Количество успешно прогретых
+    Failed      int      `json:"failed"`                 // Количество неудачных
+    SuccessRate float64  `json:"success_rate"`           // Процент успешных
+    FailedPaths []string `json:"failed_paths,omitempty"` // Список неудавшихся путей
 }
 ```
 
@@ -522,18 +522,18 @@ age, _ := processor.GetFromParsed(parsed, "user.age")
 
 ```go
 type Stats struct {
-    CacheSize        int64         // Текущий размер кэша
-    CacheMemory      int64         // Использование памяти кэшем (байты)
-    MaxCacheSize     int           // Максимальный размер кэша
-    HitCount         int64         // Количество попаданий в кэш
-    MissCount        int64         // Количество промахов кэша
-    HitRatio         float64       // Коэффициент попадания в кэш
-    CacheTTL         time.Duration // Время жизни кэша
-    CacheEnabled     bool          // Включён ли кэш
-    IsClosed         bool          // Закрыт ли процессор
-    MemoryEfficiency float64       // Эффективность памяти
-    OperationCount   int64         // Общее количество операций
-    ErrorCount       int64         // Общее количество ошибок
+    CacheSize        int64         `json:"cache_size"`        // Текущий размер кэша
+    CacheMemory      int64         `json:"cache_memory"`      // Использование памяти кэшем (байты)
+    MaxCacheSize     int           `json:"max_cache_size"`    // Максимальный размер кэша
+    HitCount         int64         `json:"hit_count"`         // Количество попаданий в кэш
+    MissCount        int64         `json:"miss_count"`        // Количество промахов кэша
+    HitRatio         float64       `json:"hit_ratio"`         // Коэффициент попадания в кэш
+    CacheTTL         time.Duration `json:"cache_ttl"`         // Время жизни кэша
+    CacheEnabled     bool          `json:"cache_enabled"`     // Включён ли кэш
+    IsClosed         bool          `json:"is_closed"`         // Закрыт ли процессор
+    MemoryEfficiency float64       `json:"memory_efficiency"` // Эффективность памяти
+    OperationCount   int64         `json:"operation_count"`   // Общее количество операций
+    ErrorCount       int64         `json:"error_count"`       // Общее количество ошибок
 }
 ```
 
@@ -547,9 +547,9 @@ type Stats struct {
 
 ```go
 type HealthStatus struct {
-    Timestamp time.Time              // Временная метка проверки
-    Healthy   bool                   // Здоров ли
-    Checks    map[string]CheckResult // Результаты отдельных проверок
+    Timestamp time.Time              `json:"timestamp"` // Временная метка проверки
+    Healthy   bool                   `json:"healthy"`   // Здоров ли
+    Checks    map[string]CheckResult `json:"checks"`    // Результаты отдельных проверок
 }
 ```
 
@@ -557,8 +557,8 @@ type HealthStatus struct {
 
 ```go
 type CheckResult struct {
-    Healthy bool   // Здорова ли эта проверка
-    Message string // Сообщение проверки
+    Healthy bool   `json:"healthy"` // Здорова ли эта проверка
+    Message string `json:"message"` // Сообщение проверки
 }
 ```
 

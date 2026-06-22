@@ -1,6 +1,6 @@
 ---
 title: "Cheatsheet - CyberGo JSON | API Quick Reference"
-description: "CyberGo JSON API cheatsheet: covering path queries GetString/GetInt, modify operations Set/Delete, serialization Marshal/Unmarshal, configuration options, iterators, and security functions as a quick reference manual for Go developers."
+description: "CyberGo JSON API cheatsheet: GetString/GetInt queries, Set/Delete, Marshal/Unmarshal, config, iterators, and security functions for quick Go lookup."
 ---
 
 # Cheatsheet

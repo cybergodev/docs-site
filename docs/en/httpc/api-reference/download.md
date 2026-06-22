@@ -1,5 +1,5 @@
 ---
-title: "File Download - HTTPC"
+title: "File Download - CyberGo HTTPC | Download & Verify"
 description: "HTTPC file download API reference: the unified Download entry, DownloadConfig, progress callbacks, DownloadResult, SHA-256 checksums, and UNC path protection."
 ---
 

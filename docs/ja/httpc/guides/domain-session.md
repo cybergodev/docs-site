@@ -1,5 +1,5 @@
 ---
-title: "ドメインクライアントとセッション - HTTPC"
+title: "ドメインクライアントとセッション - CyberGo HTTPC | セッションとドメイン"
 description: "HTTPC ドメインクライアントとセッションガイド: NewDomain によるドメインスコープクライアント作成、URL 自動結合、SetHeader ヘッダー維持、Cookie セキュリティ検証、REST API クライアントラッパーの実践例を解説します。"
 ---
 

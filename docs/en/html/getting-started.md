@@ -1,5 +1,5 @@
 ---
-title: "Quick Start - HTML"
+title: "Quick Start - CyberGo HTML | 5-Minute Guide"
 description: "Quick start with CyberGo HTML: install, basic extraction, Config presets, output formats (text, Markdown, JSON), timeouts, and concurrency-safe patterns."
 ---
 

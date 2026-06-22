@@ -1,6 +1,6 @@
 ---
 title: "Функции печати - CyberGo JSON | Справочник API"
-description: "Справочник по печати и форматированному выводу CyberGo JSON: использование функций Encode, EncodePretty, Prettify вместе со стандартным пакетом fmt для форматированного вывода JSON, замена удалённых функций Print/PrintPretty, поддержка пользовательских отступов и префиксов в Go."
+description: "Печать и форматирование CyberGo JSON: Encode, EncodePretty, Prettify и стандартный fmt для вывода JSON, заменяя удалённые функции Print."
 ---
 
 # Функции печати

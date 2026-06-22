@@ -1,6 +1,6 @@
 ---
-title: "Testing Scenarios - CyberGo env | Unit Testing Best Practices"
-description: "Complete guide for CyberGo env testing patterns and best practices, covering TestingConfig dedicated configuration, in-memory FileSystem interface mocking, table-driven test patterns, benchmark examples, environment variable isolation, and ResetDefaultLoader state cleanup strategies for stable and reproducible unit tests."
+title: "Testing - CyberGo env | Unit Test Practices"
+description: "CyberGo env testing guide: TestingConfig, in-memory FileSystem mocking, table-driven tests, benchmarks and ResetDefaultLoader cleanup for stable results."
 ---
 
 # Testing Scenarios

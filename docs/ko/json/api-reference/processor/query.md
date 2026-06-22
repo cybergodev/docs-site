@@ -1,6 +1,6 @@
 ---
 title: "Processor 경로 쿼리 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor 경로 쿼리 메서드 완전 레퍼런스: Get/GetString/GetInt 등 타입 안전 가져오기, GetMultiple 배치 쿼리, SafeGet 안전 가져오기 (AccessResult 반환), GetTyped[T] 제네릭 가져오기를 포함하며, JSONPath 표현식과 Go 캐시 최적화를 지원합니다."
+description: "CyberGo JSON Processor 경로 쿼리: Get/GetString/GetInt, GetMultiple 배치, SafeGet(AccessResult), GetTyped[T]로 JSONPath와 캐시를 지원합니다."
 ---
 
 # 경로 쿼리 메서드
@@ -11,7 +11,7 @@ Processor는 다양한 타입 안전 경로 쿼리 메서드를 제공합니다.
 
 ### Get
 
-시그니처: `func (p *Processor) Get(jsonStr, path string, cfg ...Config) (any, error)`
+시그니처: `func (p *Processor) Get(jsonStr, path string, cfg ...Config) (result any, err error)`
 
 지정된 경로에서 임의 타입의 값을 가져옵니다.
 

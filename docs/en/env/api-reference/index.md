@@ -1,6 +1,6 @@
 ---
-title: "API Reference - CyberGo env | Complete Interface Documentation"
-description: "CyberGo env environment variable management library complete API reference documentation navigation index page, covering package-level convenience functions, Config configuration struct, core interface definitions, Loader, ComponentFactory, SecureValue, and constants and errors modules with detailed Go API documentation entry and quick lookup."
+title: "API Reference - CyberGo env | Interface Docs"
+description: "CyberGo env API reference index linking package functions, Config, interfaces, Loader, ComponentFactory, SecureValue, constants and errors for quick lookup."
 ---
 
 # API Reference

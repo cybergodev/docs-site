@@ -1,6 +1,6 @@
 ---
-title: "常见问题 - HTML"
-description: "CyberGo HTML 库常见问题解答汇总，详细解答包函数与 Processor 的区别与选择、编码自动检测与手动指定、输入大小限制配置、Markdown 输出方法、批量处理上限、空文本排查步骤、统计监控使用、审计配置方式和自定义评分器实现等高频问题，帮助开发者快速解决实际使用中的常见疑惑。"
+title: "常见问题 - CyberGo HTML | 高频问题解答"
+description: "CyberGo HTML 常见问题解答：包函数与 Processor 选择、编码检测、输入限制、批量上限、空文本排查、统计监控、审计与自定义评分器。"
 ---
 
 # 常见问题

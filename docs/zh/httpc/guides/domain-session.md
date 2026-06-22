@@ -1,5 +1,5 @@
 ---
-title: "域名客户端与会话 - HTTPC"
+title: "域名客户端与会话 - CyberGo HTTPC | 会话与域名管理"
 description: "HTTPC 域名客户端与会话管理指南：NewDomain 创建域名作用域客户端、URL 自动拼接规则、SetHeader 会话头维护、Cookie 自动管理与响应捕获、CookieSecurity 安全验证策略与 REST API 客户端封装实战示例。"
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "JSON 処理ライブラリ - CyberGo JSON | 高性能 Go ライブラリ"
-description: "CyberGo JSON は高性能でスレッドセーフな Go 言語 JSON 処理ライブラリです。JSONPath パスクエリ、ストリーミング処理、ジェネリック API、Schema 検証をサポートし、encoding/json と 100% 互換。セキュリティ保護、スマートキャッシュ、JSONL 処理、Hook システムを備え、高並行本番環境に適しています。"
+description: "CyberGo JSON は高性能でスレッドセーフな Go 向け JSON ライブラリです。JSONPath クエリ、ストリーミング、ジェネリック API、Schema 検証を提供し、encoding/json と 100% 互換の高並行プロダクション環境向けです。"
 ---
 
 # JSON 処理ライブラリ

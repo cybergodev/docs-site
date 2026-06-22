@@ -1,6 +1,6 @@
 ---
-title: "高度なサンプル - HTML"
-description: "CyberGo HTML 高度なサンプル集：カスタム Scorer、マルチ Sink 監査パイプライン、バッチファイル処理・並列制御、Processor プーリング、ChannelAuditSink 監視の完全な実行可能コード例を含みます。"
+title: "高度なサンプル - CyberGo HTML | 応用シナリオ"
+description: "CyberGo HTML 高度なサンプル：カスタム Scorer、マルチ Sink 監査パイプライン、バッチファイルと並列制御、Processor プーリング、ChannelAuditSink 監視の実行可能例です。"
 ---
 
 # 高度なサンプル

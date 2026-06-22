@@ -1,6 +1,6 @@
 ---
 title: "Config API - CyberGo env | 配置详解"
-description: "CyberGo env 库 Config 配置结构体 API 参考文档，包括文件搜索路径、安全限制参数、键值验证选项、变量展开设置、审计日志配置和预定义配置模板，提供 Development 和 Production 预设满足不同环境需求。"
+description: "CyberGo env 的 Config 配置结构体 API 参考，含文件搜索路径、安全限制、键值验证、变量展开、审计配置及 Development/Production 预设模板。"
 ---
 
 # Config API

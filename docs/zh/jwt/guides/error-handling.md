@@ -1,6 +1,6 @@
 ---
-title: "错误处理 - JWT"
-description: "错误处理指南：分类讲解 CyberGo JWT 全部 19 个哨兵错误在配置、令牌验证、限流与生命周期各阶段的触发条件，演示 errors.Is 匹配模式、ValidationError 字段级错误与 Web 服务中的标准化错误响应最佳实践。"
+title: "错误处理 - CyberGo JWT | 哨兵错误匹配"
+description: "错误处理指南：分类讲解 CyberGo JWT 全部 19 个哨兵错误在配置、令牌验证、限流与生命周期阶段的触发条件，演示 errors.Is 匹配、ValidationError 字段错误与标准化响应实践。"
 ---
 
 # 错误处理
@@ -52,15 +52,15 @@ if err != nil {
 | 错误 | 方法 | 处理建议 |
 |------|------|----------|
 | `ErrEmptyToken` | 所有令牌操作方法 | 检查请求头 |
-| `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto | 签名不匹配，拒绝访问 |
+| `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 签名不匹配，拒绝访问 |
 | `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | 令牌算法与配置不匹配，拒绝访问 |
 | `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | 引导用户刷新令牌 |
 | `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | 检查时钟同步 |
-| `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto | 签发者不匹配 |
-| `ErrTokenInvalidAudience` | Validate, Refresh, ValidateInto, RefreshInto | 受众不匹配 |
+| `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 签发者不匹配 |
+| `ErrTokenInvalidAudience` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 受众不匹配 |
 | `ErrTokenRevoked` | Validate, Refresh, ValidateInto, RefreshInto | 令牌已吊销，拒绝访问 |
 | `ErrInvalidClaims` | Create, CreateRefresh, Validate, Refresh, ValidateInto, RefreshInto | 业务验证失败 |
-| `ErrTokenMissingID` | IsRevoked | 令牌缺少 jti |
+| `ErrTokenMissingID` | Revoke, IsRevoked | 令牌缺少 jti |
 
 ### 限流与黑名单
 

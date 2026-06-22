@@ -1,6 +1,6 @@
 ---
 title: "速查表 - CyberGo JSON | API 快速参考"
-description: "CyberGo JSON API 速查表：涵盖路径查询 GetString/GetInt、修改操作 Set/Delete、序列化 Marshal/Unmarshal、配置选项、迭代器和安全函数等常用 API 的快速参考手册，便于 Go 开发者高效查找所需函数签名和用法。"
+description: "CyberGo JSON API 速查表：覆盖 GetString/GetInt 路径查询、Set/Delete 修改、Marshal/Unmarshal 序列化、配置选项、迭代器与安全函数，便于 Go 开发者快速查阅。"
 ---
 
 # 速查表

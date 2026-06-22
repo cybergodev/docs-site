@@ -1,6 +1,6 @@
 ---
 title: "Generic Operations - CyberGo JSON | API Reference"
-description: "CyberGo JSON generic API complete reference: detailed coverage of GetTyped[T] generic getter function, Result[T] generic result type, AccessResult dynamic type access, and type-safe operation guide, leveraging Go 1.18+ generics for compile-time type safety and reduced runtime type errors."
+description: "CyberGo JSON generic API: GetTyped[T] getter, Result[T] result type, and AccessResult dynamic access using Go 1.18+ generics for compile-time type safety."
 ---
 
 # Generic Operations

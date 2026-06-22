@@ -1,5 +1,5 @@
 ---
-title: "파일 업로드와 다운로드 - HTTPC"
+title: "파일 업로드와 다운로드 - CyberGo HTTPC | 업로드와 다운로드"
 description: "HTTPC 파일 업로드와 다운로드 가이드: WithFile 간단 업로드, WithFormData 다중 파일 업로드, Download 통합 다운로드, 이어받기 ResumeDownload와 SHA-256 체크섬 등 보안 방어를 다룹니다."
 ---
 

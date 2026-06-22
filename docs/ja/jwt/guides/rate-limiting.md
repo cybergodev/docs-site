@@ -1,6 +1,6 @@
 ---
-title: "レート制限 - JWT"
-description: "CyberGo JWT レート制限ガイド：トークンバケットアルゴリズムでトークン発行インターフェースのウィンドウあたり最大要求数を設定、Subject・UserID・RateLimitKeyer の優先順位ルール、内蔵 RateLimiter とカスタム RateLimitProvider の分散実装。"
+title: "レート制限 - CyberGo JWT | トークンバケット制限"
+description: "レート制限ガイド：トークンバケットで発行インターフェースのウィンドウ毎最大要求数を設定、制限鍵の Subject・UserID・RateLimitKeyer 優先順位検索を解説、内蔵とカスタム分散制限の実装を支持。"
 ---
 
 # レート制限
@@ -83,11 +83,14 @@ defer limiter.Close()
 ```go
 type RateLimitProvider interface {
     Allow(key string) bool
-    AllowN(key string, n int) bool
     Reset(key string)
     Close()
 }
 ```
+
+:::tip AllowN について
+インターフェース自体は単一判定の `Allow` のみを定義します。バッチ判定メソッド `AllowN(key string, n int) bool` は具象型 [`*RateLimiter`](../api-reference/types#ratelimiter) の拡張メソッドであり、このインターフェースには属しません。
+:::
 
 例えば Redis を使用した分散レート制限の実装：
 

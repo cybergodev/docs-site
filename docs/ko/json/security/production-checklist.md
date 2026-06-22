@@ -1,6 +1,6 @@
 ---
 title: "프로덕션 체크리스트 - CyberGo JSON | 보안 배포"
-description: "CyberGo JSON 프로덕션 환경 보안 배포 체크리스트: 보안 설정 SecurityConfig, MaxNestingDepthSecurity 리소스 제한, 입력 검증 전략, 오류 처리 메커니즘, 모니터링 알림 설정 및 성능과 보안 균형의 모범 사례를 다루어 Go 프로덕션 환경의 안전성과 신뢰성을 보장합니다."
+description: "CyberGo JSON 프로덕션 보안 체크리스트: SecurityConfig, 자원 제한, 입력 검증, 오류 처리, 모니터링 알림, 성능-보안 균형으로 프로덕션 신뢰성을 보장합니다."
 ---
 
 # 프로덕션 체크리스트

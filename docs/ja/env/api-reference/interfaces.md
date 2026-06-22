@@ -1,6 +1,6 @@
 ---
 title: "インターフェース定義 - CyberGo env | コアインターフェース階層"
-description: "CyberGo env ライブラリのインターフェース型定義完全リファレンス。細粒度インターフェース設計による依存性注入と柔軟な組み合わせをサポート。Validator 検証器、FullAuditLogger 監査ハンドラー、EnvParser パーサー、EnvStorage 安全ストレージ、FileSystem ファイルシステムアダプターなどコアインターフェースの詳細な説明と使用法。"
+description: "CyberGo env のコアインターフェース参照。依存性注入を支える細粒度設計の Validator、FullAuditLogger、EnvParser、EnvStorage、FileSystem インターフェースを説明します。"
 ---
 
 # インターフェース定義
@@ -69,7 +69,7 @@ func readConfig(getter env.EnvGetter) {
 ```
 
 ::: warning 注意
-`GetInt`、`GetBool`、`GetDuration`、`GetSecure`、`Len` は `EnvGetter` インターフェースの一部では**ありません**。
+`GetInt`、`GetBool`、`GetUint64`、`GetFloat64`、`GetDuration`、`GetSecure`、`Len` は `EnvGetter` インターフェースの一部では**ありません**。
 これらのメソッドは `*Loader` 型に実装されていますが、最小インターフェースには含まれていません。
 
 完全な読み取り機能が必要な場合は、`*Loader` 型を直接使用してください：

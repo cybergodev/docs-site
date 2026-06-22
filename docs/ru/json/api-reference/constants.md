@@ -1,6 +1,6 @@
 ---
 title: "Константы и ошибки - CyberGo JSON | Справочник API"
-description: "Полный справочник констант и ошибок CyberGo JSON: включает константы ограничений по умолчанию DefaultMaxJSONSize/DefaultMaxNestingDepth, переменные ошибок ErrPathNotFound/ErrTypeMismatch и перечисление режимов слияния MergeMode для поддержки предустановок конфигурации и обработки ошибок в Go."
+description: "Константы и ошибки CyberGo JSON: DefaultMaxJSONSize, DefaultMaxNestingDepth, переменные ErrPathNotFound и MergeMode для настройки и обработки ошибок в Go."
 ---
 
 # Константы и ошибки
@@ -212,31 +212,12 @@ const (
 type PathSegment = internal.PathSegment
 ```
 
-### Структура PathSegment
+::: warning Псевдоним внутренней реализации
+`PathSegment` — это псевдоним типа `internal.PathSegment`. Его конкретные поля, типы полей (например, `PathSegmentType`, `PathSegmentFlags`) и методы принадлежат пакету `internal`, **не экспортируются как публичный API** и могут меняться между версиями — не полагайтесь на его внутреннюю структуру напрямую в бизнес-коде.
 
-```go
-type PathSegment struct {
-    Type  PathSegmentType  // Тип сегмента
-
-    // Различные поля используются в зависимости от типа
-    Key   string // Имя свойства (тип Property/Extract)
-    Index int    // Индекс массива (тип ArrayIndex) или начало среза
-    End   int    // Конец среза (тип ArraySlice)
-    Step  int    // Шаг среза (тип ArraySlice)
-    Flags PathSegmentFlags // Флаги сегмента
-}
-```
-
-### Методы PathSegment
-
-| Метод | Сигнатура | Описание |
-|-------|-----------|----------|
-| `HasStart` | `func (s *PathSegment) HasStart() bool` | Имеет ли срез начальное значение |
-| `HasEnd` | `func (s *PathSegment) HasEnd() bool` | Имеет ли срез конечное значение |
-| `HasStep` | `func (s *PathSegment) HasStep() bool` | Имеет ли срез значение шага |
-| `IsNegativeIndex` | `func (s *PathSegment) IsNegativeIndex() bool` | Является ли отрицательным индексом |
-| `IsWildcardSegment` | `func (s *PathSegment) IsWildcardSegment() bool` | Является ли шаблоном подстановки |
-| `IsFlatExtract` | `func (s *PathSegment) IsFlatExtract() bool` | Является ли плоским шаблоном |
+- При реализации пользовательского синтаксиса путей возвращайте `[]PathSegment` через метод `ParsePath` интерфейса [`PathParser`](./interfaces#pathparser).
+- Для предкомпилированных путей используйте [`Processor.CompilePath`](./processor/query#compilepath), который возвращает `*CompiledPath`.
+:::
 
 ## Уровни шаблонов безопасности
 

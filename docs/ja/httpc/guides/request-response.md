@@ -1,5 +1,5 @@
 ---
-title: "リクエストとレスポンス - HTTPC"
+title: "リクエストとレスポンス - CyberGo HTTPC | オプションと応答"
 description: "HTTPC リクエストとレスポンスガイド: パッケージレベル関数とクライアントリクエスト、WithHeader/WithJSON などのリクエストオプション、Bearer 認証、クエリパラメータ、Cookie 管理、コンテキスト制御のベストプラクティスを解説します。"
 ---
 

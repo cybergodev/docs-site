@@ -1,6 +1,6 @@
 ---
-title: "中间件 - HTTPC"
-description: "HTTPC 中间件系统 API 参考：Chain 洋葱模型组合、Recovery/Logging/RequestID/Timeout/Header/Metrics/Audit 八个内置中间件、AuditMiddlewareWithConfig 配置化审计与 AuditEvent 审计事件结构。"
+title: "中间件 - CyberGo HTTPC | 八大内置中间件"
+description: "HTTPC 中间件系统 API 参考：Chain 洋葱模型组合、八个内置中间件（Recovery/Logging/Timeout/Metrics/Audit 等）、AuditMiddlewareWithConfig 配置化审计与 AuditEvent 事件结构。"
 ---
 
 # 中间件

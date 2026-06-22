@@ -1,6 +1,6 @@
 ---
-title: "설정 - HTML"
-description: "CyberGo HTML Config 상세: 리소스(MaxInputSize·캐시·타임아웃), 보안(정제·깊이 제한·감사), 콘텐츠(문서 인식·미디어 보존), 출력(이미지·링크·테이블), 링크 필터와 Validate 검증을 다룹니다."
+title: "설정 - CyberGo HTML | Config 필드 상세"
+description: "CyberGo HTML Config 상세: 리소스(MaxInputSize·캐시·타임아웃), 보안, 콘텐츠 추출, 출력 형식, 링크 필터와 Validate 검증 메서드를 다룹니다."
 ---
 
 # 설정

@@ -1,5 +1,5 @@
 ---
-title: "HTML - Production-Grade HTML Content Extraction"
+title: "HTML Library - CyberGo HTML | Production-Grade Go Library"
 description: "Production-grade Go HTML extraction library: article recognition, 15+ encoding detection, links, batch processing, pluggable audit, and multi-format output."
 ---
 

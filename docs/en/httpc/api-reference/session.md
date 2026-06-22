@@ -1,5 +1,5 @@
 ---
-title: "Session Management - HTTPC"
+title: "Session Management - CyberGo HTTPC | SessionManager"
 description: "HTTPC SessionManager API reference: NewSessionManager, SessionConfig, SetHeader header management, SetCookie methods, and SetCookieSecurity validation."
 ---
 

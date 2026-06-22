@@ -1,5 +1,5 @@
 ---
-title: "Error Handling - HTTPC"
+title: "Error Handling - CyberGo HTTPC | Types & Sentinels"
 description: "HTTPC error handling guide: twelve ErrorType classifications, ClientError and IsRetryable, errors.Is/As matching, retry exhaustion, and context timeouts."
 ---
 

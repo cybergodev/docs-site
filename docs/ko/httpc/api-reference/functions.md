@@ -1,5 +1,5 @@
 ---
-title: "패키지 함수 - HTTPC"
+title: "패키지 함수 - CyberGo HTTPC | 패키지 함수"
 description: "HTTPC 패키지 레벨 함수 API 레퍼런스: Get/Post 등 일곱 가지 HTTP 메서드, New 클라이언트 생성, Download 진입점, FormatBytes 포맷 도구와 NewDomain 도메인 클라이언트 생성의 완전한 사용법을 제공합니다."
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: "输出格式 - HTML"
-description: "CyberGo HTML 输出格式 API 参考，涵盖 ExtractToMarkdown、ExtractToJSON 的包函数与 Processor 方法，支持字节或文件转 Markdown/JSON，含上下文版本与 Result 自定义 MarshalJSON 序列化。"
+title: "输出格式 - CyberGo HTML | Markdown 与 JSON API"
+description: "CyberGo HTML 输出格式 API：ExtractToMarkdown、ExtractToJSON 包函数与 Processor 方法，支持字节或文件转 Markdown/JSON，含上下文版本与 Result 自定义序列化。"
 ---
 
 # 输出格式

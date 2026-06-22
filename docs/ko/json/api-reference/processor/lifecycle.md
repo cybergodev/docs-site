@@ -1,6 +1,6 @@
 ---
 title: "Processor 수명 주기 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor 수명 주기 관리 완전 레퍼런스: New 인스턴스 생성, Close 닫기 및 리소스 해제, IsClosed 상태 확인, GetStats 통계 정보, GetHealthStatus 상태 모니터링, 동시성 안전 종료 및 리소스 보호의 모범 사례 가이드를 포함하여 Go 프로덕션 환경의 안정적인 운영을 보장합니다."
+description: "CyberGo JSON Processor 수명 주기: New 생성, Close 해제, IsClosed 확인, GetStats 통계, GetHealthStatus 모니터링으로 동시 안전 종료를 보장합니다."
 ---
 
 # 수명 주기와 통계
@@ -68,11 +68,11 @@ fmt.Printf("%d개의 경로를 성공적으로 예열했습니다\n", result.Suc
 
 ```go
 type WarmupResult struct {
-    TotalPaths   int      // 전체 경로 수
-    Successful   int      // 성공적으로 예열된 경로 수
-    Failed       int      // 실패한 경로 수
-    SuccessRate  float64  // 성공률 (퍼센트)
-    FailedPaths  []string // 실패한 경로 목록
+    TotalPaths  int      `json:"total_paths"`            // 전체 경로 수
+    Successful  int      `json:"successful"`             // 성공적으로 예열된 경로 수
+    Failed      int      `json:"failed"`                 // 실패한 경로 수
+    SuccessRate float64  `json:"success_rate"`           // 성공률 (퍼센트)
+    FailedPaths []string `json:"failed_paths,omitempty"` // 실패한 경로 목록
 }
 ```
 
@@ -102,18 +102,18 @@ fmt.Printf("캐시 크기: %d\n", stats.CacheSize)
 
 ```go
 type Stats struct {
-    CacheSize        int64         // 캐시 항목 수
-    CacheMemory      int64         // 캐시 메모리 사용량 (바이트)
-    MaxCacheSize     int           // 최대 캐시 크기
-    HitCount         int64         // 캐시 적중 횟수
-    MissCount        int64         // 캐시 미적중 횟수
-    HitRatio         float64       // 캐시 적중률
-    CacheTTL         time.Duration // 캐시 TTL
-    CacheEnabled     bool          // 캐시 활성화 여부
-    IsClosed         bool          // 프로세서 닫힘 여부
-    MemoryEfficiency float64       // 메모리 효율성
-    OperationCount   int64         // 총 작업 수
-    ErrorCount       int64         // 총 오류 수
+    CacheSize        int64         `json:"cache_size"`        // 캐시 항목 수
+    CacheMemory      int64         `json:"cache_memory"`      // 캐시 메모리 사용량 (바이트)
+    MaxCacheSize     int           `json:"max_cache_size"`    // 최대 캐시 크기
+    HitCount         int64         `json:"hit_count"`         // 캐시 적중 횟수
+    MissCount        int64         `json:"miss_count"`        // 캐시 미적중 횟수
+    HitRatio         float64       `json:"hit_ratio"`         // 캐시 적중률
+    CacheTTL         time.Duration `json:"cache_ttl"`         // 캐시 TTL
+    CacheEnabled     bool          `json:"cache_enabled"`     // 캐시 활성화 여부
+    IsClosed         bool          `json:"is_closed"`         // 프로세서 닫힘 여부
+    MemoryEfficiency float64       `json:"memory_efficiency"` // 메모리 효율성
+    OperationCount   int64         `json:"operation_count"`   // 총 작업 수
+    ErrorCount       int64         `json:"error_count"`       // 총 오류 수
 }
 ```
 
@@ -157,14 +157,14 @@ if status.Healthy {
 
 ```go
 type HealthStatus struct {
-    Timestamp time.Time              // 확인 시간
-    Healthy   bool                   // 전체 상태
-    Checks    map[string]CheckResult // 각 항목 확인 결과
+    Timestamp time.Time              `json:"timestamp"` // 확인 시간
+    Healthy   bool                   `json:"healthy"`   // 전체 상태
+    Checks    map[string]CheckResult `json:"checks"`    // 각 항목 확인 결과
 }
 
 type CheckResult struct {
-    Healthy  bool   // 정상 여부
-    Message  string // 상태 메시지
+    Healthy bool   `json:"healthy"` // 정상 여부
+    Message string `json:"message"` // 상태 메시지
 }
 ```
 

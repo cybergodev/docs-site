@@ -1,5 +1,5 @@
 ---
-title: "Middleware Chain - HTTPC"
+title: "Middleware Chain - CyberGo HTTPC | Onion-Model Chains"
 description: "HTTPC middleware chain guide: onion-model execution, eight built-in middleware, Chain composition, custom MiddlewareFunc, and a circuit-breaker example."
 ---
 

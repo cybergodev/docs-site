@@ -1,5 +1,5 @@
 ---
-title: "성능 최적화 - HTTPC"
+title: "성능 최적화 - CyberGo HTTPC | 프리셋과 동시성"
 description: "HTTPC 성능 최적화 가이드: Default/Secure/Performance/Minimal 네 가지 프리셋 비교와 시나리오 선택, 연결 풀과 타임아웃 미세 조정, Result 수명 주기 관리와 고동시성 요청 패턴을 다룹니다."
 ---
 

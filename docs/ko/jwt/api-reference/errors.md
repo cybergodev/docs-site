@@ -1,6 +1,6 @@
 ---
-title: "오류 - JWT API 레퍼런스"
-description: "CyberGo JWT 오류 API 레퍼런스: 구성 검증·토큰 검증·서명 알고리즘·만료·발급자·청중·블랙리스트·속도 제한·수명주기를 다루는 19개 센티넬 오류, ValidationError 타입과 errors.Is() 매칭 패턴."
+title: "오류 레퍼런스 - CyberGo JWT | 센티넬 오류 목록"
+description: "오류 레퍼런스: CyberGo JWT는 구성 검증, 토큰 검증, 서명 알고리즘, 만료, 발급자·청중, 블랙리스트, 속도 제한과 수명주기의 19 에러를 정의하며 모두 errors.Is 매칭을 지원합니다."
 ---
 
 # 오류
@@ -34,7 +34,7 @@ var (
     ErrBlacklistNotConfigured = errors.New("blacklist not configured")
 
     ErrProcessorClosed = errors.New("processor closed")
-    ErrStoreClosed     = errors.New("store closed")
+    ErrStoreClosed     = errors.New("blacklist store is closed")
 )
 ```
 

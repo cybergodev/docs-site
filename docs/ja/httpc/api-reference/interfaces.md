@@ -1,5 +1,5 @@
 ---
-title: "インターフェース定義 - HTTPC"
+title: "インターフェース定義 - CyberGo HTTPC | コアインターフェース"
 description: "HTTPC コアインターフェース API リファレンス: Client 全機能インターフェース、Doer 最小実行インターフェース、DomainClienter、RetryPolicy リトライポリシー、ミドルウェアインターフェース定義の完全な説明を提供します。"
 ---
 

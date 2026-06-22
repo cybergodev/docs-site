@@ -1,5 +1,5 @@
 ---
-title: "Production Checklist - HTML"
+title: "Production Checklist - CyberGo HTML | Launch Checklist"
 description: "CyberGo HTML production security checklist: HighSecurityConfig preset, Processor lifecycle, audit and monitoring, context timeouts, error handling, file safety."
 ---
 

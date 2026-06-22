@@ -1,6 +1,6 @@
 ---
 title: "Processor Path Query - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor path query methods complete reference: including Get/GetString/GetInt type-safe getters, GetMultiple batch query, SafeGet safe access returning AccessResult, GetTyped[T] generic getter, supporting JSONPath expressions and Go cache optimization."
+description: "CyberGo JSON Processor path queries: Get/GetString/GetInt getters, GetMultiple batching, SafeGet with AccessResult, and GetTyped[T] with JSONPath."
 ---
 
 # Path Query Methods
@@ -11,7 +11,7 @@ Processor provides multiple type-safe path query methods.
 
 ### Get
 
-Signature: `func (p *Processor) Get(jsonStr, path string, cfg ...Config) (any, error)`
+Signature: `func (p *Processor) Get(jsonStr, path string, cfg ...Config) (result any, err error)`
 
 Gets a value of any type from the specified path.
 

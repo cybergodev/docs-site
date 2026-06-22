@@ -1,6 +1,6 @@
 ---
-title: "Пакетная обработка - HTML"
-description: "Справочник API пакетного извлечения CyberGo HTML: ExtractBatch, ExtractBatchFiles, WorkerPoolSize, до 10000 элементов и BatchResult со счётчиками."
+title: "Пакетная обработка - CyberGo HTML | параллельные пакеты"
+description: "Пакетное извлечение CyberGo HTML: ExtractBatch и ExtractBatchFiles с контекстом, параллелизм WorkerPoolSize, до 10000 элементов и BatchResult со счётчиками."
 ---
 
 # Пакетная обработка

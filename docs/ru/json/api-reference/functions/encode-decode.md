@@ -1,6 +1,6 @@
 ---
-title: "Функции кодирования и декодирования - CyberGo JSON | Справочник API"
-description: "Справочник функций кодирования и декодирования CyberGo JSON: сериализация Marshal/Unmarshal, форматирование Compact/Indent/HTMLEscape, настраиваемое кодирование Encode/EncodePretty/EncodeWithConfig/Prettify, 100% совместимость со стандартным Go encoding/json."
+title: "Кодирование и декодирование - CyberGo JSON | API"
+description: "Кодирование/декодирование CyberGo JSON: Marshal/Unmarshal, Compact/Indent/HTMLEscape и Encode/EncodePretty/Prettify, совместимые со стандартной библиотекой."
 ---
 
 # Функции кодирования и декодирования
@@ -234,7 +234,7 @@ fmt.Println(result) // {"name":"Alice","email":"a@b.com"}
 
 Сигнатура: `func EncodeStream(values any, cfg ...Config) (string, error)`
 
-Потоковое кодирование значения в JSON-строку. Подходит для сценариев, требующих унифицированного интерфейса кодирования.
+Кодирует несколько значений в поток JSON-массива (array stream). `values` обычно представляет собой срез или перечислимую коллекцию, выводя строку JSON-массива вида `[v1,v2,...]`.
 
 ```go
 values := []map[string]any{

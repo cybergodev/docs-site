@@ -1,6 +1,6 @@
 ---
 title: "Print Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON print and format output reference: use Encode, EncodePretty, Prettify functions and the standard fmt package for JSON formatted output, replacing the removed Print/PrintPretty series functions, supporting custom indentation and prefixes."
+description: "CyberGo JSON print and formatting: Encode, EncodePretty, Prettify, and the standard fmt package for JSON output, replacing the removed Print functions."
 ---
 
 # Print Functions

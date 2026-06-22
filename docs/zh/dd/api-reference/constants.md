@@ -21,6 +21,8 @@ type LogLevel int8 // 日志级别类型
 | `LevelError` | 3 | 错误级别 |
 | `LevelFatal` | 4 | 致命级别 |
 
+`LogLevel` 实现了 `String() string` 方法（返回 `"DEBUG"`/`"INFO"`/`"WARN"`/`"ERROR"`/`"FATAL"`，未知值返回 `"UNKNOWN"`）与 `IsValid() bool` 方法（判断级别是否在 `LevelDebug`~`LevelFatal` 有效范围内）。
+
 ## 日志格式
 
 ```go
@@ -31,6 +33,8 @@ type LogFormat int8 // 输出格式类型
 |------|----|------|
 | `FormatText` | 0 | 文本格式 |
 | `FormatJSON` | 1 | JSON 格式 |
+
+`LogFormat` 实现了 `String() string` 方法（返回 `"text"`/`"json"`，未知值返回 `"unknown"`）。
 
 ## 字段验证模式
 

@@ -1,5 +1,5 @@
 ---
-title: "Cheat Sheet - HTTPC"
+title: "Cheat Sheet - CyberGo HTTPC | Quick Reference"
 description: "HTTPC cheat sheet: client creation, seven request methods, WithXxx options, Result handling, middleware chains, and file download code snippets."
 ---
 

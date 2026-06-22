@@ -1,6 +1,6 @@
 ---
 title: "Processor 반복 메서드 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor 반복 메서드 레퍼런스: Foreach/ForeachWithPath/ForeachNested 반복, IterableValue 데이터 접근, IteratorControl 제어 흐름과 Go 배치 반복 실습을 포함합니다."
+description: "CyberGo JSON Processor 반복 메서드: Foreach, ForeachWithPath, ForeachNested, IterableValue, IteratorControl로 배치 반복 실무를 지원합니다."
 ---
 
 # 반복 메서드

@@ -1,6 +1,6 @@
 ---
-title: "Processor - Парсинг и загрузка - CyberGo JSON | Справочник API"
-description: "Справочник методов парсинга и загрузки Processor: Valid, ValidBytes, Parse, ParseAny, PreParse, GetFromParsed, LoadFromFile, SaveToFile, MarshalToFile с поддержкой настраиваемого парсинга в Go."
+title: "Processor Парсинг и загрузка - CyberGo JSON | API"
+description: "Методы парсинга Processor CyberGo JSON: Valid, Parse, ParseAny, оптимизация PreParse и GetFromParsed с настраиваемым парсингом в Go."
 ---
 
 # Методы парсинга и загрузки

@@ -1,5 +1,5 @@
 ---
-title: "测试指南 - HTTPC"
+title: "测试指南 - CyberGo HTTPC | httptest 与断言"
 description: "HTTPC 测试指南：覆盖 TestingConfig 测试专用配置、net/http/httptest 模拟服务器集成、模拟错误响应/延迟/重定向/文件上传场景、表格驱动测试、Cookie 会话断言模式与 context 超时测试最佳实践。"
 ---
 

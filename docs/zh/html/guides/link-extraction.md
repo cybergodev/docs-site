@@ -1,6 +1,6 @@
 ---
-title: "链接提取与分组 - HTML"
-description: "CyberGo HTML 链接提取与分组实战指南，详解如何使用 ExtractAllLinks 提取页面所有资源链接（CSS、JS、图片、视频、音频等），按类型分组，配置 Include 过滤规则、相对 URL 自动解析，以及爬虫场景下收集资源的最佳实践，适合资源收集和站点分析场景。"
+title: "链接提取与分组 - CyberGo HTML | 资源收集指南"
+description: "CyberGo HTML 链接提取与分组：ExtractAllLinks 提取各类资源链接、按类型分组、Include 过滤、相对 URL 解析与爬虫场景最佳实践。"
 ---
 
 # 链接提取与分组

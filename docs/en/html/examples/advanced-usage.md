@@ -1,5 +1,5 @@
 ---
-title: "Advanced Usage - HTML"
+title: "Advanced Usage - CyberGo HTML | Advanced Scenarios"
 description: "CyberGo HTML advanced examples: custom Scorer, multi-Sink audit pipeline, batch file processing, Processor pooling, and ChannelAuditSink monitoring."
 ---
 

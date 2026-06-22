@@ -1,5 +1,5 @@
 ---
-title: "Configuration - HTTPC"
+title: "Configuration - CyberGo HTTPC | Config & Presets"
 description: "HTTPC configuration API reference: the Config struct with Timeouts, Connection, Security, Retry, and Middleware sub-configs, five presets, and ValidateConfig."
 ---
 

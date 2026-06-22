@@ -1,5 +1,5 @@
 ---
-title: "Чек-лист для production - HTTPC"
+title: "Чек-лист для production - CyberGo HTTPC | Аудит релиза"
 description: "Контрольный список безопасности production HTTPC: проверка TLS, аудит SSRF и CIDR, настройка таймаутов, лимиты размера ответов и аудит-мониторинг."
 ---
 

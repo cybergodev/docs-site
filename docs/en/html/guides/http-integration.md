@@ -1,5 +1,5 @@
 ---
-title: "HTTP Integration - HTML"
+title: "HTTP Integration - CyberGo HTML | Web Service Guide"
 description: "Integrate CyberGo HTML with HTTP: single-page scraping via net/http, batch processing, context timeouts, web services, and Processor singletons."
 ---
 

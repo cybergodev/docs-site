@@ -1,5 +1,5 @@
 ---
-title: "SSRF 防护 - HTTPC"
+title: "SSRF 防护 - CyberGo HTTPC | 私有 IP 与元数据"
 description: "HTTPC SSRF 防护详解：默认阻止 IPv4/IPv6 私有 IP、SSRFExemptCIDRs 精确豁免、DNS 重绑定防护、RedirectWhitelist 重定向白名单、AWS/GCP/Azure 云元数据保护与 AllowPrivateIPs 注意事项。"
 ---
 

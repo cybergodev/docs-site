@@ -1,6 +1,6 @@
 ---
 title: "Hook 훅 시스템 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 훅 시스템 레퍼런스: Hook 인터페이스, LoggingHook 로그, TimingHook 타이밍, ValidationHook 검증, ErrorHook 오류 처리 및 커스텀 훅을 자세히 설명하며 Go JSON 작업 전후에 커스텀 로직을 삽입할 수 있습니다."
+description: "CyberGo JSON Hook 시스템: Hook 인터페이스, LoggingHook, TimingHook, ValidationHook, ErrorHook과 커스텀 훅으로 JSON 작업 전후에 커스텀 로직을 삽입합니다."
 ---
 
 # Hook 훅 시스템
@@ -32,7 +32,7 @@ HookContext는 작업의 컨텍스트 정보를 제공합니다.
 ```go
 type HookContext struct {
     Operation string      // 작업 타입: "get", "set", "delete", "marshal", "unmarshal"
-    JSONStr   string      // 입력 JSON 문자열 (marshal 시 비어있을 수 있음)
+    JSONStr   string      // 입력 JSON 문자열 (marshal 시 비어있을 수 있음). 보안 경고: 민감한 데이터가 포함될 수 있음
     Path      string      // 대상 경로 (marshal/unmarshal 시 비어있을 수 있음)
     Value     any         // set 작업의 값
     Config    *Config     // 활성 설정
@@ -45,7 +45,7 @@ type HookContext struct {
 | 필드 | 타입 | 설명 |
 |------|------|------|
 | `Operation` | `string` | 작업 타입, 값: `get`, `set`, `delete`, `marshal`, `unmarshal` |
-| `JSONStr` | `string` | 입력 JSON 문자열 |
+| `JSONStr` | `string` | 입력 JSON 문자열 (**보안 경고: 민감한 데이터가 포함될 수 있음**) |
 | `Path` | `string` | 대상 경로 표현식 |
 | `Value` | `any` | set 작업의 값 |
 | `Config` | `*Config` | 현재 사용 중인 설정 |

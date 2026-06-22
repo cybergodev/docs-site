@@ -1,5 +1,5 @@
 ---
-title: "Практическое руководство - HTTPC"
+title: "Практическое руководство - CyberGo HTTPC | GitHub API Tour"
 description: "Практическое руководство HTTPC: пошаговое построение клиента GitHub REST API от httpc.Get с парсингом JSON, доменным клиентом, middleware и загрузкой файлов."
 ---
 

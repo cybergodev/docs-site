@@ -1,6 +1,6 @@
 ---
-title: "自定义 Claims - JWT"
-description: "自定义 Claims 指南：实现 CustomClaims 接口定义业务专属声明字段，对比内置 Claims 与自定义类型的验证差异，演示 ValidateInto 与 RefreshInto 的解析刷新用法，并介绍可选的 RateLimitKeyer 限流键接口。"
+title: "自定义 Claims - CyberGo JWT | 业务声明接口"
+description: "自定义 Claims 指南：实现 CustomClaims 接口定义业务专属声明字段，对比内置 Claims 与自定义类型的验证差异，演示 ValidateInto 与 RefreshInto 解析刷新用法。"
 ---
 
 # 自定义 Claims

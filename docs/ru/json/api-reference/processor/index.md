@@ -1,6 +1,6 @@
 ---
 title: "Processor - CyberGo JSON | Справочник API"
-description: "Полный справочник Processor CyberGo JSON: создание через New, GetString/Set/Delete для операций с данными, Foreach для итерации, Encode для кодирования, Close для управления жизненным циклом, Stats для статистики и конфигурация кэша — для высокочастотных JSON-операций и повторного использования в обработке данных в Go."
+description: "Processor CyberGo JSON: создание New, GetString/Set/Delete, итерация Foreach, Encode, жизненный цикл Close, Stats и кэш для частого повторного использования."
 ---
 
 # Processor
@@ -60,9 +60,9 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [Модификация данных](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/Delete/DeleteClean |
 | [Методы вывода](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
 | [Парсинг и загрузка](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal/LoadFromFile/LoadFromReader/SaveToFile/MarshalToFile/SaveToWriter/UnmarshalFromFile |
-| [Методы итерации](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
+| [Методы итерации](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachReturn/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachWithPathAndControl/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
 | [Массовые операции](./batch) | ProcessBatch/WarmupCache |
-| [Обработка JSONL](./jsonl) | StreamJSONL/Parallel/Chunked/Map/Reduce/Filter |
+| [Обработка JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |
 | [Жизненный цикл](./lifecycle) | Close/IsClosed/GetConfig/AddHook/ClearCache/GetStats/GetHealthStatus |
 
 ---

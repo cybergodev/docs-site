@@ -1,5 +1,5 @@
 ---
-title: "세션 관리 - HTTPC"
+title: "세션 관리 - CyberGo HTTPC | SessionManager"
 description: "HTTPC SessionManager API 레퍼런스: NewSessionManager 생성, SessionConfig 설정, SetHeader 헤더 관리, SetCookie 메서드와 SetCookieSecurity 검증의 완전한 사용법을 제공합니다."
 ---
 

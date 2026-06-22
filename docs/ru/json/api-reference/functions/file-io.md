@@ -1,6 +1,6 @@
 ---
 title: "Функции файловых операций - CyberGo JSON | Справочник API"
-description: "Полный справочник файловых операций CyberGo JSON: LoadFromReader чтение из потока, ParseJSONL/ToJSONL обработка JSONL, StreamLinesInto[T] обобщённая потоковая обработка, NewJSONLWriter писатель и конфигурация JSONL для сценариев потоковой обработки больших файлов в Go."
+description: "Файловые функции CyberGo JSON: LoadFromReader, ParseJSONL/ToJSONL, StreamLinesInto[T] и NewJSONLWriter для потоковой обработки больших файлов в Go."
 ---
 
 # Функции файловых операций

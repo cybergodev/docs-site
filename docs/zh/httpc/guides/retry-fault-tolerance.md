@@ -1,5 +1,5 @@
 ---
-title: "重试与容错 - HTTPC"
+title: "重试与容错 - CyberGo HTTPC | 退避与自动重试"
 description: "HTTPC 重试与容错指南：默认指数退避重试策略与 RetryConfig 配置、408/429/5xx 自动重试条件、RetryPolicy 自定义接口、Retry-After 响应头自动解析、退避策略选择与按请求 WithMaxRetries 控制最佳实践。"
 ---
 

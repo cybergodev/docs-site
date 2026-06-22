@@ -1,6 +1,6 @@
 ---
-title: "링크 추출 - HTML"
-description: "CyberGo HTML 라이브러리 독립 링크 추출 API 레퍼런스, ExtractAllLinks 시리즈 함수와 GroupLinksByType 그룹화 도구를 포함하며, HTML에서 모든 링크 리소스(CSS, JS, 이미지, 비디오, 오디오)를 추출하고 유형별로 그룹화하는 것을 지원합니다."
+title: "링크 추출 - CyberGo HTML | 리소스 링크 API"
+description: "CyberGo HTML 링크 추출 API: ExtractAllLinks 계열과 GroupLinksByType으로 리소스 링크를 추출·그룹화하며 Config로 필터링을 제어합니다."
 ---
 
 # 링크 추출

@@ -1,6 +1,6 @@
 ---
 title: "ファイル操作関数 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON ファイル操作関数の完全リファレンス：LoadFromReader によるストリーム読み込み、ParseJSONL/ToJSONL による JSONL 処理、StreamLinesInto[T] ジェネリックストリーム処理、NewJSONLWriter ライター、JSONL 設定の詳細解説を含み、Go の大ファイルストリーミング処理シナリオをサポートします。"
+description: "CyberGo JSON ファイル操作関数：LoadFromReader、ParseJSONL/ToJSONL、StreamLinesInto[T]、NewJSONLWriter で大ファイルのストリーミング処理に対応します。"
 ---
 
 # ファイル操作関数

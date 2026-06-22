@@ -1,6 +1,6 @@
 ---
-title: "Processor - HTML"
-description: "CyberGo HTML Processor API 참조. New 생성, Extract 메서드 계열, GetStatistics, GetAuditLog, ClearCache, ResetStatistics, Close 수명 주기 관리를 다루며 고빈도 재사용에 적합합니다."
+title: "Processor - CyberGo HTML | 핵심 Processor API"
+description: "CyberGo HTML Processor API: New 생성, Extract 메서드 계열과 GetStatistics, GetAuditLog, ClearCache, Close 등 수명 주기 관리로 고빈도 재사용에 적합합니다."
 ---
 
 # Processor

@@ -1,5 +1,5 @@
 ---
-title: "SSRF 방어 - HTTPC"
+title: "SSRF 방어 - CyberGo HTTPC | 사설 IP와 메타데이터"
 description: "HTTPC SSRF 방어 상세: 기본 IPv4/IPv6 사설 IP 차단, SSRFExemptCIDRs 정밀 면제, DNS 리바인딩 방어, 리다이렉트 허용 목록과 AWS/GCP/Azure 클라우드 메타데이터 보호를 다룹니다."
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: "常量与错误 - HTML"
-description: "CyberGo HTML 常量与错误类型 API 参考，包括 DefaultMaxInputSize 等默认值常量、ErrInputTooLarge 等哨兵错误，以及 InputError、ConfigError、FileError 结构化错误，均支持 errors.Is/As 判断，便于精准定位运行时异常。"
+title: "常量与错误 - CyberGo HTML | 默认值与错误类型"
+description: "CyberGo HTML 常量与错误类型：默认值常量、哨兵错误及 InputError、ConfigError、FileError 结构化错误，均支持 errors.Is/As 判断。"
 ---
 
 # 常量与错误

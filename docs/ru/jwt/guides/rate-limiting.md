@@ -1,6 +1,6 @@
 ---
-title: "Ограничение скорости - JWT"
-description: "CyberGo JWT — ограничение скорости: корзина токенов, встроенный RateLimiter, RateLimitProvider, приоритет ключей и лучшие практики."
+title: "Лимит запросов - CyberGo JWT | Корзина токенов"
+description: "Лимиты запросов CyberGo JWT: настройка корзины токенов для ограничения запросов, приоритет ключей Subject, UserID и RateLimitKeyer, свой RateLimitProvider."
 ---
 
 # Ограничение скорости
@@ -83,11 +83,14 @@ defer limiter.Close()
 ```go
 type RateLimitProvider interface {
     Allow(key string) bool
-    AllowN(key string, n int) bool
     Reset(key string)
     Close()
 }
 ```
+
+:::tip Об AllowN
+Сам интерфейс определяет только единичную проверку `Allow`. Метод пакетной проверки `AllowN(key string, n int) bool` — метод расширения конкретного типа [`*RateLimiter`](../api-reference/types#ratelimiter), не входящий в этот интерфейс.
+:::
 
 Например, подключение к Redis для распределённого ограничения:
 

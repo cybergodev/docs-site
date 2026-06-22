@@ -1,6 +1,6 @@
 ---
-title: "패키지 함수 - JWT API 레퍼런스"
-description: "CyberGo JWT 패키지 수준 함수 레퍼런스: New Processor 생성, DefaultConfig 기본 설정, DefaultBlacklistConfig 블랙리스트 설정, NewNumericDate, NewRateLimiter."
+title: "패키지 함수 - CyberGo JWT | 팩토리 함수와 기본값"
+description: "패키지 함수 레퍼런스: New로 Processor를 생성·검증, DefaultConfig와 DefaultBlacklistConfig로 기본 설정 반환, NewNumericDate로 타임스탬프 생성, NewRateLimiter로 토큰 버킷을 만듭니다."
 ---
 
 # 패키지 함수

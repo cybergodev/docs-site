@@ -1,5 +1,5 @@
 ---
-title: "Промежуточное ПО - HTTPC"
+title: "Промежуточное ПО - CyberGo HTTPC | Встроенное ПО"
 description: "Справочник API middleware HTTPC: композиция Chain по луковой модели и восемь встроенных middleware (Recovery, Logging, Timeout, Metrics, Audit)."
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "Interface Definitions - CyberGo JSON | API Reference"
-description: "CyberGo JSON extension interface definitions complete reference: including CustomEncoder, TypeEncoder, Validator, Hook interfaces, PathParser, and DangerousPattern, supporting flexible extension of encoding, validation, and security capabilities, meeting custom serialization and security policy requirements in Go."
+description: "CyberGo JSON extension interfaces: CustomEncoder, TypeEncoder, Validator, Hook, PathParser, and DangerousPattern to extend encoding, validation, and security."
 ---
 
 # Interface Definitions
@@ -149,7 +149,7 @@ Hook context, providing operation information.
 ```go
 type HookContext struct {
     Operation string        // Operation type: "get", "set", "delete", "marshal", "unmarshal"
-    JSONStr   string        // Input JSON string (may be empty during marshal)
+    JSONStr   string        // Input JSON string (may be empty during marshal). Security warning: may contain sensitive data
     Path      string        // Target path (may be empty during marshal/unmarshal)
     Value     any           // Value for set operations
     Config    *Config       // Active configuration

@@ -1,5 +1,5 @@
 ---
-title: "错误类型 - HTTPC"
+title: "错误类型 - CyberGo HTTPC | ClientError 详解"
 description: "HTTPC 错误类型 API 参考：ClientError 结构体八字段及 Code、IsRetryable、Unwrap 等方法、ErrorTypeNetwork 等十二种错误分类枚举、ErrNilConfig 等哨兵错误变量与 errors.Is/As 匹配示例。"
 ---
 

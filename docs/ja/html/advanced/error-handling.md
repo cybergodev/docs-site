@@ -1,6 +1,6 @@
 ---
-title: "エラー処理 - HTML"
-description: "CyberGo HTML エラー処理ガイド：5 種のエラー分類、errors.Is センチネル判定、errors.As 構造化情報抽出、context キャンセル処理、バッチ部分失敗パターンを含み、堅牢なエラー処理ロジックの構築を支援します。"
+title: "エラー処理 - CyberGo HTML | 堅牢なエラーガイド"
+description: "CyberGo HTML エラー処理ガイド：5 種のエラー分類、errors.Is センチネル判定、errors.As 構造化抽出、context キャンセルとバッチ部分失敗処理で堅牢なロジックを構築します。"
 ---
 
 # エラー処理

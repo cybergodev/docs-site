@@ -1,5 +1,5 @@
 ---
-title: "Output Formats - HTML"
+title: "Output Format Guide - CyberGo HTML | Format Comparison"
 description: "CyberGo HTML output format guide: comparing text, Markdown, and JSON — features, use cases, InlineImageFormat, InlineLinkFormat, context, and file input."
 ---
 

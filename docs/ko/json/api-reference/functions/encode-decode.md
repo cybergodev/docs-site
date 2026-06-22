@@ -1,6 +1,6 @@
 ---
 title: "인코딩 디코딩 함수 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 인코딩 디코딩 함수 참조: Marshal/Unmarshal 직렬화, Compact/Indent/HTMLEscape 포맷, Encode/EncodePretty/EncodeWithConfig/Prettify 설정형 인코딩을 포함하며, Go 표준 encoding/json과 100% 호환됩니다."
+description: "CyberGo JSON 인코딩/디코딩 함수: Marshal/Unmarshal, Compact/Indent/HTMLEscape, Encode/EncodePretty/Prettify로 표준 라이브러리 호환 인코딩을 제공합니다."
 ---
 
 # 인코딩 디코딩 함수
@@ -234,7 +234,7 @@ fmt.Println(result) // {"name":"Alice","email":"a@b.com"}
 
 시그니처: `func EncodeStream(values any, cfg ...Config) (string, error)`
 
-스트림 인코딩으로, 값을 JSON 문자열로 인코딩합니다. 통합된 인코딩 인터페이스가 필요한 시나리오에 적합합니다.
+여러 값을 JSON 배열 스트림(array stream)으로 인코딩합니다. `values`는 일반적으로 슬라이스나 열거 가능한 컬렉션이며, `[v1,v2,...]` 형태의 JSON 배열 문자열을 출력합니다.
 
 ```go
 values := []map[string]any{

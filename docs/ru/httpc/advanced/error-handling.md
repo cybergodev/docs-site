@@ -1,5 +1,5 @@
 ---
-title: "Обработка ошибок - HTTPC"
+title: "Обработка ошибок - CyberGo HTTPC | Типы и сигналы"
 description: "Руководство по обработке ошибок HTTPC: классы ErrorType, ClientError и IsRetryable, сопоставление сигналов errors.Is/As, исчерпание повторов и таймауты."
 ---
 

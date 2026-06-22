@@ -1,6 +1,6 @@
 ---
-title: "테스트와 커스텀 확장 - HTML"
-description: "CyberGo HTML 테스트·확장 가이드: 커스텀 Scorer 구현, ContentNode 순회, 테스트 모드, mock HTML 데이터, Extractor 모킹 등 확장 시나리오의 실행 가능 코드 예시를 설명합니다."
+title: "테스트와 커스텀 확장 - CyberGo HTML | 테스트 가이드"
+description: "CyberGo HTML 테스트와 확장: 커스텀 Scorer 구현, ContentNode 순회, 테스트 모드, mock 데이터, Extractor 모킹과 실행 가능 예시를 설명합니다."
 ---
 
 # 테스트와 커스텀 확장

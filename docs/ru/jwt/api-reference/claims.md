@@ -1,6 +1,6 @@
 ---
-title: "Claims - Справочник JWT API"
-description: "CyberGo JWT Claims API: встроенные поля Claims (UserID, Username, Role), стандартные RegisteredClaims RFC 7519 и глубокие ограничения валидации."
+title: "Claims - CyberGo JWT | Встроенные утверждения"
+description: "Claims — встроенная структура утверждений CyberGo JWT с UserID, Username, Role, правами, scope и RegisteredClaims RFC 7519 плюс ограничения длины и валидация."
 ---
 
 # Claims

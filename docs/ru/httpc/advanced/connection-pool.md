@@ -1,5 +1,5 @@
 ---
-title: "Пул соединений и прокси - HTTPC"
+title: "Пул соединений и прокси - CyberGo HTTPC | Пул и прокси"
 description: "Руководство по пулу и прокси HTTPC: тюнинг MaxIdleConns, ручной и системный прокси ProxyURL, SOCKS5/HTTP-прокси, откат DoH и настройка HTTP/2."
 ---
 

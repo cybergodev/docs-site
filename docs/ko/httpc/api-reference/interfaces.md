@@ -1,5 +1,5 @@
 ---
-title: "인터페이스 정의 - HTTPC"
+title: "인터페이스 정의 - CyberGo HTTPC | 핵심 인터페이스"
 description: "HTTPC 핵심 인터페이스 API 레퍼런스: Client 전체 기능 인터페이스, Doer 최소 실행 인터페이스, DomainClienter, RetryPolicy 재시도 전략과 미들웨어 인터페이스 정의의 완전한 설명을 제공합니다."
 ---
 

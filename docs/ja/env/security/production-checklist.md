@@ -1,6 +1,6 @@
 ---
 title: "本番チェックリスト - CyberGo env | セキュリティリリースチェック"
-description: "CyberGo env ライブラリの本番環境デプロイ前セキュリティチェックリスト。.env ファイル権限とディレクトリ保護、RequiredKeys と AllowedKeys のキー値検証、AuditEnabled 監査ログ有効化設定、SecureValue 機密データの安全な処理、センチネルエラー処理戦略、LimitsConfig パフォーマンスセキュリティパラメータチューニングなど主要なセキュリティチェック項目を網羅します。"
+description: "CyberGo env 本番デプロイのセキュリティチェックリスト。.env 権限、RequiredKeys/AllowedKeys 検証、監査有効化、SecureValue 処理、性能パラメータチューニングを扱います。"
 ---
 
 # 本番チェックリスト

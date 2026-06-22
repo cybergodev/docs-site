@@ -1,6 +1,6 @@
 ---
 title: "Serialization - CyberGo env | Multi-format Conversion"
-description: "Complete guide for CyberGo env serialization and deserialization, covering Map and Go struct conversion between .env, JSON, and YAML formats, Marshal and Unmarshal function families, custom Marshaler/Unmarshaler interfaces, env tag support, sensitive field masking, and multi-format conversion examples."
+description: "CyberGo env serialization guide: Map and struct conversion across .env, JSON and YAML, Marshal/Unmarshal families, custom interfaces, env tags and masking."
 ---
 
 # Serialization

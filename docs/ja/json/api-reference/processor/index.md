@@ -1,6 +1,6 @@
 ---
 title: "Processor プロセッサ - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON Processor プロセッサ完全リファレンス：New によるインスタンス作成、GetString/Set/Delete によるデータ操作、Foreach 反復、Encode エンコード、Close ライフサイクル管理、Stats 統計、キャッシュ設定など、Go の高頻度 JSON 操作やデータ処理の再利用に最適です。"
+description: "CyberGo JSON Processor：New 作成、GetString/Set/Delete、Foreach 反復、Encode、Close ライフサイクル、Stats 統計、キャッシュ設定で高頻度再利用に適します。"
 ---
 
 # Processor
@@ -60,9 +60,9 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [データ変更](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/Delete/DeleteClean |
 | [出力メソッド](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
 | [解析と読み込み](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal/LoadFromFile/LoadFromReader/SaveToFile/MarshalToFile/SaveToWriter/UnmarshalFromFile |
-| [反復メソッド](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
+| [反復メソッド](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachReturn/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachWithPathAndControl/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
 | [バッチ操作](./batch) | ProcessBatch/WarmupCache |
-| [JSONL 処理](./jsonl) | StreamJSONL/Parallel/Chunked/Map/Reduce/Filter |
+| [JSONL 処理](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |
 | [ライフサイクル](./lifecycle) | Close/IsClosed/GetConfig/AddHook/ClearCache/GetStats/GetHealthStatus |
 
 ---

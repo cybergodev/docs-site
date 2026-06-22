@@ -1,6 +1,6 @@
 ---
-title: "出力フォーマットの選択 - HTML"
-description: "CyberGo HTML 出力フォーマット選択ガイド：テキスト・Markdown・JSON 三形式の特徴と適用シーンを比較、InlineImageFormat・InlineLinkFormat 設定、コンテキスト、ファイル読み込みを含みます。"
+title: "出力フォーマットの選択 - CyberGo HTML | 比較ガイド"
+description: "CyberGo HTML 出力フォーマット選択：テキスト・Markdown・JSON の三形式の特徴と適用シーンを比較し、フォーマットオプションとファイル読み込みを扱います。"
 ---
 
 # 出力フォーマットの選択

@@ -1,5 +1,5 @@
 ---
-title: "미들웨어 체인 - HTTPC"
+title: "미들웨어 체인 - CyberGo HTTPC | 양파 모델 체인"
 description: "HTTPC 미들웨어 체인 가이드: 양파 모델 실행 원리와 요청/응답 양방향 처리, 여덟 개 내장 미들웨어 설정, Chain 수동 조합, 커스텀 MiddlewareFunc 작성법과 서킷 브레이커 단락 예제를 다룹니다."
 ---
 

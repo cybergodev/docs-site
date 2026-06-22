@@ -1,6 +1,6 @@
 ---
-title: "Processor 재사용과 캐시 - HTML"
-description: "CyberGo HTML Processor 재사용·캐시 가이드: 패키지 함수와 Processor 차이, sync.Pool 메커니즘, 캐시 전략(TTL·용량·정리), 적중률 통계, 웹 서비스 싱글톤·크롤러 배치 모범 사례를 설명합니다."
+title: "Processor 재사용과 캐시 - CyberGo HTML | 재사용 가이드"
+description: "CyberGo HTML Processor 재사용과 캐시: 패키지 함수와 Processor 차이, sync.Pool, 캐시 전략(TTL·용량·정리), 적중률 통계와 웹 서비스 싱글톤 실전을 다룹니다."
 ---
 
 # Processor 재사용과 캐시

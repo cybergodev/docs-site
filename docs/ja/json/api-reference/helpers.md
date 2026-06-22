@@ -1,6 +1,6 @@
 ---
 title: "ヘルパー関数 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON ヘルパーユーティリティ関数完全リファレンス：CompareJSON で 2 つの JSON の等価性比較検証、ClearCache/GetStats キャッシュ管理と統計、グローバルプロセッサ管理、セキュリティパターンヘルパーなど、日常的な Go 開発で便利な JSON ツール関数セットを提供し、一般的な操作を効果的に簡素化。"
+description: "CyberGo JSON ヘルパー関数：CompareJSON 比較、ClearCache/GetStats キャッシュ管理、グローバルプロセッサ、セキュリティヘルパーで Go の日常的な JSON 操作を簡素化します。"
 ---
 
 # ヘルパー関数

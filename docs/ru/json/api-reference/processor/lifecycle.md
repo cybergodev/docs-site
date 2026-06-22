@@ -1,6 +1,6 @@
 ---
 title: "Processor - Жизненный цикл - CyberGo JSON | Справочник API"
-description: "Справочник управления жизненным циклом Processor: New, Close, IsClosed, ClearCache, WarmupCache, GetStats, GetHealthStatus, AddHook, SetLogger, GetConfig — для стабильной работы в production на Go."
+description: "Жизненный цикл Processor CyberGo JSON: New, Close, IsClosed, GetStats и GetHealthStatus для безопасного завершения в многопоточной среде."
 ---
 
 # Жизненный цикл и статистика
@@ -68,11 +68,11 @@ fmt.Printf("Успешно прогрето %d путей\n", result.Successful)
 
 ```go
 type WarmupResult struct {
-    TotalPaths   int      // Общее количество путей
-    Successful   int      // Количество успешно прогретых путей
-    Failed       int      // Количество путей с ошибками
-    SuccessRate  float64  // Процент успешности
-    FailedPaths  []string // Список путей с ошибками
+    TotalPaths  int      `json:"total_paths"`            // Общее количество путей
+    Successful  int      `json:"successful"`             // Количество успешно прогретых путей
+    Failed      int      `json:"failed"`                 // Количество путей с ошибками
+    SuccessRate float64  `json:"success_rate"`           // Процент успешности
+    FailedPaths []string `json:"failed_paths,omitempty"` // Список путей с ошибками
 }
 ```
 
@@ -102,18 +102,18 @@ fmt.Printf("Размер кэша: %d\n", stats.CacheSize)
 
 ```go
 type Stats struct {
-    CacheSize        int64         // Количество записей в кэше
-    CacheMemory      int64         // Использование памяти кэшем (байты)
-    MaxCacheSize     int           // Максимальный размер кэша
-    HitCount         int64         // Количество попаданий в кэш
-    MissCount        int64         // Количество промахов кэша
-    HitRatio         float64       // Процент попаданий в кэш
-    CacheTTL         time.Duration // TTL кэша
-    CacheEnabled     bool          // Включён ли кэш
-    IsClosed         bool          // Закрыт ли процессор
-    MemoryEfficiency float64       // Эффективность памяти
-    OperationCount   int64         // Общее количество операций
-    ErrorCount       int64         // Общее количество ошибок
+    CacheSize        int64         `json:"cache_size"`        // Количество записей в кэше
+    CacheMemory      int64         `json:"cache_memory"`      // Использование памяти кэшем (байты)
+    MaxCacheSize     int           `json:"max_cache_size"`    // Максимальный размер кэша
+    HitCount         int64         `json:"hit_count"`         // Количество попаданий в кэш
+    MissCount        int64         `json:"miss_count"`        // Количество промахов кэша
+    HitRatio         float64       `json:"hit_ratio"`         // Процент попаданий в кэш
+    CacheTTL         time.Duration `json:"cache_ttl"`         // TTL кэша
+    CacheEnabled     bool          `json:"cache_enabled"`     // Включён ли кэш
+    IsClosed         bool          `json:"is_closed"`         // Закрыт ли процессор
+    MemoryEfficiency float64       `json:"memory_efficiency"` // Эффективность памяти
+    OperationCount   int64         `json:"operation_count"`   // Общее количество операций
+    ErrorCount       int64         `json:"error_count"`       // Общее количество ошибок
 }
 ```
 
@@ -157,14 +157,14 @@ if status.Healthy {
 
 ```go
 type HealthStatus struct {
-    Timestamp time.Time              // Время проверки
-    Healthy   bool                   // Общее состояние работоспособности
-    Checks    map[string]CheckResult // Результаты отдельных проверок
+    Timestamp time.Time              `json:"timestamp"` // Время проверки
+    Healthy   bool                   `json:"healthy"`   // Общее состояние работоспособности
+    Checks    map[string]CheckResult `json:"checks"`    // Результаты отдельных проверок
 }
 
 type CheckResult struct {
-    Healthy  bool   // Работоспособен ли
-    Message  string // Сообщение о состоянии
+    Healthy bool   `json:"healthy"` // Работоспособен ли
+    Message string `json:"message"` // Сообщение о состоянии
 }
 ```
 

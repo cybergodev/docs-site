@@ -1,6 +1,6 @@
 ---
-title: "API 参考 - HTML"
-description: "CyberGo HTML 库完整 API 参考文档总索引，包括包函数（便捷模式）和 Processor（实例模式）两种调用方式，涵盖内容提取、文本提取、格式化输出、链接提取、批量处理、配置管理、审计日志和类型定义等全部模块的详细说明与使用指引，提供清晰的模块导航。"
+title: "API 参考 - CyberGo HTML | 完整模块索引"
+description: "CyberGo HTML 完整 API 索引：包函数与 Processor 两种调用方式，涵盖内容提取、格式输出、链接、批量、配置、审计与类型等全部模块。"
 ---
 
 # API 参考

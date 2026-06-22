@@ -1,6 +1,6 @@
 ---
 title: "Processor 解析と読み込み - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON Processor 解析と検証メソッド完全リファレンス：Valid 検証、Parse 変数への解析、ParseAny 任意型返却、PreParse 事前解析最適化、GetFromParsed 高速値取得、AllowComments コメントサポートと StrictMode 厳格モード設定、Go の設定ベースの解析をサポート。"
+description: "CyberGo JSON Processor 解析メソッド：Valid 検証、Parse、ParseAny、PreParse 最適化、GetFromParsed で設定ベースの解析をサポートします。"
 ---
 
 # 解析と読み込みメソッド
@@ -11,7 +11,7 @@ Processor は JSON 解析とデータ読み込み機能を提供します。
 
 ### Valid
 
-シグネチャ：`func (p *Processor) valid(jsonStr string, cfg ...Config) (bool, error)`
+シグネチャ：`func (p *Processor) Valid(jsonStr string, cfg ...Config) (bool, error)`
 
 JSON 文字列が有効かどうかを検証します。
 

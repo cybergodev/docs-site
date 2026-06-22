@@ -1,5 +1,5 @@
 ---
-title: "HTTP-клиент - HTTPC"
+title: "HTTP-клиент - CyberGo HTTPC | Быстрый и безопасный"
 description: "CyberGo HTTPC — безопасный HTTP-клиент Go со встроенными TLS 1.2+, защитой от SSRF, экспоненциальной задержкой повторов, цепочкой middleware и пулом соединений."
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "Config API - CyberGo env | Configuration Details"
-description: "CyberGo env library Config configuration struct API complete reference documentation, including file search paths, security limit parameters, key-value validation options, variable expansion settings, audit logging configuration, and predefined configuration presets for Development and Production environments."
+description: "CyberGo env Config struct API reference: file search paths, security limits, key validation, variable expansion, audit and Development/Production presets."
 ---
 
 # Config API

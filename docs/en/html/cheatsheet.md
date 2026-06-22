@@ -1,5 +1,5 @@
 ---
-title: "Cheat Sheet - HTML"
+title: "Cheat Sheet - CyberGo HTML | API at a Glance"
 description: "CyberGo HTML API cheat sheet on one page: package functions, Processor methods, config presets, key options, error matching, and audit setup."
 ---
 

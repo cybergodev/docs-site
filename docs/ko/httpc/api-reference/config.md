@@ -1,6 +1,6 @@
 ---
-title: "설정 - HTTPC"
-description: "HTTPC 설정 시스템 API 레퍼런스: Config 구조체와 Timeouts, Connection, Security, Retry, Middleware 하위 설정, DefaultConfig 등 다섯 가지 프리셋, ValidateConfig 검증의 완전한 필드 설명을 제공합니다."
+title: "설정 - CyberGo HTTPC | Config와 프리셋"
+description: "HTTPC 설정 시스템 API 레퍼런스: Config 구조체와 Timeouts, Connection, Security, Retry, Middleware 하위 설정, 다섯 가지 프리셋, ValidateConfig 검증의 완전한 필드 설명을 제공합니다."
 ---
 
 # 설정

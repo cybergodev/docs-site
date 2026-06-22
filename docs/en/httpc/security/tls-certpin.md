@@ -1,5 +1,5 @@
 ---
-title: "TLS and Certificate Pinning - HTTPC"
+title: "TLS and Certificate Pinning - CyberGo HTTPC | Crypto & Pins"
 description: "HTTPC TLS and certificate pinning guide: TLS 1.2-1.3 and cipher suites, custom CA loading, mTLS, the CertificatePinner API, and HTTP/2 negotiation."
 ---
 

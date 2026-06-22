@@ -1,5 +1,5 @@
 ---
-title: "Request and Response - HTTPC"
+title: "Request and Response - CyberGo HTTPC | Options & Responses"
 description: "HTTPC request and response guide: package functions and client requests, WithHeader/WithJSON options, Bearer auth, query parameters, and context control."
 ---
 

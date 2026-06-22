@@ -1,6 +1,6 @@
 ---
-title: "Обработка ошибок - JWT"
-description: "CyberGo JWT — обработка ошибок: 19 сигнальных ошибок, шаблон errors.Is(), тип ValidationError и лучшие практики для веб-сервисов."
+title: "Ошибки - CyberGo JWT | Сопоставление errors.Is"
+description: "Обработка ошибок CyberGo JWT: условия срабатывания 19 сигнальных ошибок в конфигурации, проверке, лимитах и lifecycle, errors.Is и ValidationError."
 ---
 
 # Обработка ошибок
@@ -52,15 +52,15 @@ if err != nil {
 | Ошибка | Методы | Рекомендации по обработке |
 |--------|--------|--------------------------|
 | `ErrEmptyToken` | Все методы операций с токенами | Проверьте заголовок запроса |
-| `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto | Подпись не совпадает, отказать в доступе |
+| `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Подпись не совпадает, отказать в доступе |
 | `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | Алгоритм токена не совпадает с конфигурацией, отказать в доступе |
 | `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | Направить пользователя на обновление токена |
 | `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | Проверьте синхронизацию часов |
-| `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto | Издатель не совпадает |
-| `ErrTokenInvalidAudience` | Validate, Refresh, ValidateInto, RefreshInto | Аудитория не совпадает |
+| `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Издатель не совпадает |
+| `ErrTokenInvalidAudience` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Аудитория не совпадает |
 | `ErrTokenRevoked` | Validate, Refresh, ValidateInto, RefreshInto | Токен отозван, отказать в доступе |
 | `ErrInvalidClaims` | Create, CreateRefresh, Validate, Refresh, ValidateInto, RefreshInto | Бизнес-валидация не удалась |
-| `ErrTokenMissingID` | IsRevoked | В токене отсутствует jti |
+| `ErrTokenMissingID` | Revoke, IsRevoked | В токене отсутствует jti |
 
 ### Ограничение скорости и чёрный список
 

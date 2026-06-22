@@ -1,6 +1,6 @@
 ---
 title: "Processor 프로세서 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor 프로세서 완전 레퍼런스: New 인스턴스 생성, GetString/Set/Delete 데이터 작업, Foreach 반복, Encode 인코딩, Close 수명 주기 관리, Stats 통계 및 캐시 설정을 포함하며, Go 고빈도 JSON 작업 및 데이터 처리 재사용 시나리오에 적합합니다."
+description: "CyberGo JSON Processor: New 생성, GetString/Set/Delete, Foreach 반복, Encode, Close 수명 주기, Stats 통계, 캐시 설정으로 고빈도 재사용에 적합합니다."
 ---
 
 # Processor
@@ -60,9 +60,9 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [데이터 수정](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/Delete/DeleteClean |
 | [출력 메서드](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
 | [파싱 및 로드](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal/LoadFromFile/LoadFromReader/SaveToFile/MarshalToFile/SaveToWriter/UnmarshalFromFile |
-| [반복 메서드](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
+| [반복 메서드](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachReturn/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachWithPathAndControl/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
 | [배치 작업](./batch) | ProcessBatch/WarmupCache |
-| [JSONL 처리](./jsonl) | StreamJSONL/Parallel/Chunked/Map/Reduce/Filter |
+| [JSONL 처리](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |
 | [수명 주기](./lifecycle) | Close/IsClosed/GetConfig/AddHook/ClearCache/GetStats/GetHealthStatus |
 
 ---

@@ -1,6 +1,6 @@
 ---
 title: "高度な機能の例 - CyberGo JSON | 応用編"
-description: "CyberGo JSON 高度な機能の実践的なサンプル集。バッチエンコード EncodeBatch、フィールド選択 EncodeFields、事前パース PreParse、セーフティ取得 SafeGet、キャッシュウォームアップ WarmupCache とメモリプール最適化などのテクニックを紹介し、ライブラリの高度な使い方と Go のプロダクションレベルのパフォーマンス最適化戦略とベストプラクティスを示します。"
+description: "CyberGo JSON 高度な例：EncodeBatch、EncodeFields、PreParse、SafeGet、WarmupCache、メモリプール最適化など、プロダクション級の Go パフォーマンス手法を紹介します。"
 ---
 
 # 高度な機能の例
@@ -276,12 +276,12 @@ import (
 func main() {
     data := `{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}`
 
-    // バッチ操作を定義
+    // バッチ操作を定義（ID は結果内の各操作を識別するために使用）
     operations := []json.BatchOperation{
-        {Type: "get", Path: "users.0.name", JSONStr: data},
-        {Type: "get", Path: "users", JSONStr: data},
-        {Type: "set", Path: "users.0.name", Value: "Updated", JSONStr: data},
-        {Type: "delete", Path: "users.0.id", JSONStr: data},
+        {ID: "get-name", Type: "get", Path: "users.0.name", JSONStr: data},
+        {ID: "get-users", Type: "get", Path: "users", JSONStr: data},
+        {ID: "set-name", Type: "set", Path: "users.0.name", Value: "Updated", JSONStr: data},
+        {ID: "del-id", Type: "delete", Path: "users.0.id", JSONStr: data},
     }
 
     // バッチ操作を実行

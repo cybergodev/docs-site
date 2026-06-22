@@ -1,6 +1,6 @@
 ---
 title: "JSON Library - CyberGo JSON | High-Performance Go Library"
-description: "CyberGo JSON is a high-performance, thread-safe Go JSON library with JSONPath queries, streaming processing, generic APIs, and Schema validation. 100% compatible with encoding/json, providing security protection, smart caching, JSONL processing, and a Hook system for high-concurrency production environments."
+description: "CyberGo JSON: a fast, thread-safe Go JSON library with JSONPath queries, streaming, generic APIs, and Schema validation, compatible with encoding/json."
 ---
 
 # JSON Library

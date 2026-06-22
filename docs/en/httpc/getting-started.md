@@ -1,5 +1,5 @@
 ---
-title: "Quick Start - HTTPC"
+title: "Quick Start - CyberGo HTTPC | 5-Minute Guide"
 description: "HTTPC quick start: install, send GET/POST requests, handle responses, pick a preset, parse JSON, and authenticate with Bearer Token in five minutes."
 ---
 

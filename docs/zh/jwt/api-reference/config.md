@@ -1,6 +1,6 @@
 ---
-title: "Config - JWT API 参考"
-description: "Config 是 CyberGo JWT 的统一配置：详细说明签名密钥与算法、访问与刷新令牌 TTL、签发者、期望受众、时钟偏移容忍度、黑名单与速率限制等全部字段、默认值、自动填充规则，以及 Validate 方法的完整校验逻辑与错误返回。"
+title: "Config - CyberGo JWT | 统一配置说明"
+description: "Config 是 CyberGo JWT 统一配置：签名密钥与算法、访问与刷新令牌 TTL、签发者、期望受众、时钟偏移、黑名单与速率限制等全部字段、默认值、自动填充规则与 Validate 校验逻辑。"
 ---
 
 # Config

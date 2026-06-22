@@ -1,5 +1,5 @@
 ---
-title: "테스트 가이드 - HTTPC"
+title: "테스트 가이드 - CyberGo HTTPC | httptest와 목"
 description: "HTTPC 테스트 가이드: TestingConfig 테스트 전용 설정, net/http/httptest 모의 서버 통합, 오류 응답과 리다이렉트 시뮬레이션, 테이블 기반 테스트와 Cookie 세션 단언 모범 사례를 다룹니다."
 ---
 

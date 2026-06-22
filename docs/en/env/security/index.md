@@ -1,6 +1,6 @@
 ---
 title: "Security Overview - CyberGo env | Security Architecture"
-description: "Comprehensive security architecture overview for CyberGo env, covering SecureValue memory locking with mlock syscall, key-value validation rules, DefaultForbiddenKeys list, IsSensitiveKey auto-detection, security level presets, and audit logging for production deployments."
+description: "CyberGo env security overview: SecureValue memory locking, key validation, forbidden keys, IsSensitiveKey auto-detection, presets and audit tracing."
 ---
 
 # Security Overview

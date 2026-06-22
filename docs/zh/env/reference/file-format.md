@@ -1,6 +1,6 @@
 ---
 title: "文件格式 - CyberGo env | .env/JSON/YAML 语法"
-description: "CyberGo env 库支持的配置文件格式完整参考文档，详解 .env 键值对格式、JSON 对象格式和 YAML 层级格式的语法规则与注释方式，涵盖数据类型支持、UTF-8 编码处理、DetectFormat 自动格式检测机制、JSONConfig 和 YAMLConfig 格式专用配置选项。"
+description: "CyberGo env 配置文件格式参考，详解 .env、JSON、YAML 的语法规则、注释方式、数据类型、UTF-8 编码与 DetectFormat 自动检测。"
 ---
 
 # 文件格式

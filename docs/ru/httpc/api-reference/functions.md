@@ -1,5 +1,5 @@
 ---
-title: "Функции пакета - HTTPC"
+title: "Функции пакета - CyberGo HTTPC | Функции пакета"
 description: "Справочник API функций пакета HTTPC: семь HTTP-методов Get/Post, создание клиента New, вход загрузки Download, инструменты форматирования и NewDomain."
 ---
 

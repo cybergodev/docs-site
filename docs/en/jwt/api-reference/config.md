@@ -1,6 +1,6 @@
 ---
-title: "Config - JWT API Reference"
-description: "CyberGo JWT Config API reference: unified signing keys, algorithms, TTL, Issuer, ClockSkew, and BlacklistConfig fields, defaults, and Validate logic."
+title: "Config - CyberGo JWT | Configuration"
+description: "Unified CyberGo JWT Config spanning signing keys, algorithms, token TTL, issuer, audiences, clock skew, blacklist, and rate limiting with Validate logic."
 ---
 
 # Config

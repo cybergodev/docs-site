@@ -1,6 +1,6 @@
 ---
 title: "Конфигурация Config - CyberGo JSON | Справочник API"
-description: "Полный справочник параметров конфигурации CyberGo JSON Config: подробное описание DefaultConfig по умолчанию, SecurityConfig настроек безопасности, PrettyConfig форматирования, настроек кэша, ограничений размеров, параметров безопасности и кодирования для настройки поведения всех JSON-операций в Go-приложениях."
+description: "Справочник Config CyberGo JSON: DefaultConfig, SecurityConfig, PrettyConfig, кэш, лимиты размеров и кодирование для настройки поведения JSON в Go."
 ---
 
 # Config
@@ -12,93 +12,93 @@ Config используется для настройки поведения Pro
 ```go
 type Config struct {
     // ===== Настройки кэша =====
-    MaxCacheSize int           // Максимальное количество записей в кэше
-    CacheTTL     time.Duration // Время жизни кэша
-    EnableCache  bool          // Включить ли кэширование
-    CacheResults bool          // Кэшировать ли результаты операций
+    MaxCacheSize int           `json:"max_cache_size"` // Максимальное количество записей в кэше
+    CacheTTL     time.Duration `json:"cache_ttl"`      // Время жизни кэша
+    EnableCache  bool          `json:"enable_cache"`   // Включить ли кэширование
+    CacheResults bool          `json:"cache_results"`  // Кэшировать ли результаты операций
 
     // ===== Ограничения размеров =====
-    MaxJSONSize  int64 // Максимальный размер JSON (байты)
-    MaxPathDepth int   // Максимальная глубина пути
-    MaxBatchSize int   // Максимальное количество пакетных операций
+    MaxJSONSize  int64 `json:"max_json_size"`  // Максимальный размер JSON (байты)
+    MaxPathDepth int   `json:"max_path_depth"` // Максимальная глубина пути
+    MaxBatchSize int   `json:"max_batch_size"` // Максимальное количество пакетных операций
 
     // ===== Ограничения безопасности =====
-    MaxNestingDepthSecurity   int   // Максимальная глубина вложенности
-    MaxSecurityValidationSize int64 // Максимальный размер для проверки безопасности
-    MaxObjectKeys             int   // Максимальное количество ключей в объекте
-    MaxArrayElements          int   // Максимальное количество элементов в массиве
-    FullSecurityScan          bool  // Включить полный сканирование безопасности
+    MaxNestingDepthSecurity   int   `json:"max_nesting_depth"`           // Максимальная глубина вложенности
+    MaxSecurityValidationSize int64 `json:"max_security_validation_size"` // Максимальный размер для проверки безопасности
+    MaxObjectKeys             int   `json:"max_object_keys"`             // Максимальное количество ключей в объекте
+    MaxArrayElements          int   `json:"max_array_elements"`          // Максимальное количество элементов в массиве
+    FullSecurityScan          bool  `json:"full_security_scan"`          // Включить полный сканирование безопасности
 
     // ===== Параллелизм =====
-    MaxConcurrency    int // Максимальный уровень параллелизма
-    ParallelThreshold int // Порог параллельной обработки
+    MaxConcurrency    int `json:"max_concurrency"`    // Максимальный уровень параллелизма
+    ParallelThreshold int `json:"parallel_threshold"` // Порог параллельной обработки
 
     // ===== Параметры обработки =====
-    EnableValidation bool // Включить валидацию
-    StrictMode       bool // Строгий режим
-    CreatePaths      bool // Автоматическое создание путей
-    CleanupNulls     bool // Очистка null значений
-    CompactArrays    bool // Сжатие массивов
-    ContinueOnError  bool // Продолжать при ошибке в пакетных операциях
+    EnableValidation bool `json:"enable_validation"` // Включить валидацию
+    StrictMode       bool `json:"strict_mode"`       // Строгий режим
+    CreatePaths      bool `json:"create_paths"`      // Автоматическое создание путей
+    CleanupNulls     bool `json:"cleanup_nulls"`     // Очистка null значений
+    CompactArrays    bool `json:"compact_arrays"`    // Сжатие массивов
+    ContinueOnError  bool `json:"continue_on_error"` // Продолжать при ошибке в пакетных операциях
 
     // ===== Параметры ввода/вывода =====
-    AllowComments    bool // Разрешить комментарии
-    PreserveNumbers  bool // Сохранить точность чисел
-    ValidateInput    bool // Валидация ввода
-    ValidateFilePath bool // Валидация пути к файлу
-    SkipValidation   bool // Пропустить валидацию (для доверенных входных данных)
+    AllowComments    bool `json:"allow_comments"`     // Разрешить комментарии
+    PreserveNumbers  bool `json:"preserve_numbers"`   // Сохранить точность чисел
+    ValidateInput    bool `json:"validate_input"`     // Валидация ввода
+    ValidateFilePath bool `json:"validate_file_path"` // Валидация пути к файлу
+    SkipValidation   bool `json:"skip_validation"`    // Пропустить валидацию (для доверенных входных данных)
 
     // ===== Параметры кодирования =====
-    Pretty          bool            // Форматированный вывод
-    Indent          string          // Строка отступа
-    Prefix          string          // Префикс
-    EscapeHTML      bool            // Экранирование HTML
-    SortKeys        bool            // Сортировка ключей
-    ValidateUTF8    bool            // Проверка UTF-8
-    MaxDepth        int             // Максимальная глубина кодирования
-    DisallowUnknown bool            // Запретить неизвестные поля
-    FloatPrecision  int             // Точность чисел с плавающей точкой (-1 для авто)
-    FloatTruncate   bool            // Усечение чисел с плавающей точкой
-    DisableEscaping bool            // Отключить экранирование
-    EscapeUnicode   bool            // Экранирование Unicode
-    EscapeSlash     bool            // Экранирование слешей
-    EscapeNewlines  bool            // Экранирование переносов строк
-    EscapeTabs      bool            // Экранирование табуляций
-    IncludeNulls    bool            // Включать null значения
-    CustomEscapes   map[rune]string // Пользовательские правила экранирования
+    Pretty          bool            `json:"pretty"`           // Форматированный вывод
+    Indent          string          `json:"indent"`           // Строка отступа
+    Prefix          string          `json:"prefix"`           // Префикс
+    EscapeHTML      bool            `json:"escape_html"`      // Экранирование HTML
+    SortKeys        bool            `json:"sort_keys"`        // Сортировка ключей
+    ValidateUTF8    bool            `json:"validate_utf8"`    // Проверка UTF-8
+    MaxDepth        int             `json:"max_depth"`        // Максимальная глубина кодирования
+    DisallowUnknown bool            `json:"disallow_unknown"` // Запретить неизвестные поля
+    FloatPrecision  int             `json:"float_precision"`  // Точность чисел с плавающей точкой (-1 для авто)
+    FloatTruncate   bool            `json:"float_truncate"`   // Усечение чисел с плавающей точкой
+    DisableEscaping bool            `json:"disable_escaping"` // Отключить экранирование
+    EscapeUnicode   bool            `json:"escape_unicode"`   // Экранирование Unicode
+    EscapeSlash     bool            `json:"escape_slash"`     // Экранирование слешей
+    EscapeNewlines  bool            `json:"escape_newlines"`  // Экранирование переносов строк
+    EscapeTabs      bool            `json:"escape_tabs"`      // Экранирование табуляций
+    IncludeNulls    bool            `json:"include_nulls"`    // Включать null значения
+    CustomEscapes   map[rune]string `json:"custom_escapes,omitempty"` // Пользовательские правила экранирования
 
     // ===== Наблюдаемость =====
-    EnableMetrics     bool // Включить сбор метрик
-    EnableHealthCheck bool // Включить проверку здоровья
+    EnableMetrics     bool `json:"enable_metrics"`      // Включить сбор метрик
+    EnableHealthCheck bool `json:"enable_health_check"` // Включить проверку здоровья
 
     // ===== Обработка больших файлов =====
-    ChunkSize       int64 // Размер чанка
-    MaxMemory       int64 // Максимальное использование памяти
-    BufferSize      int   // Размер буфера
-    SamplingEnabled bool  // Включить выборку
-    SampleSize      int   // Количество выборок
+    ChunkSize       int64 `json:"chunk_size"`       // Размер чанка
+    MaxMemory       int64 `json:"max_memory"`       // Максимальное использование памяти
+    BufferSize      int   `json:"buffer_size"`      // Размер буфера
+    SamplingEnabled bool  `json:"sampling_enabled"` // Включить выборку
+    SampleSize      int   `json:"sample_size"`      // Количество выборок
 
     // ===== Конфигурация JSONL =====
-    JSONLBufferSize    int   // Размер буфера JSONL
-    JSONLMaxLineSize   int   // Максимальный размер строки JSONL
-    JSONLSkipEmpty     bool  // Пропускать пустые строки
-    JSONLSkipComments  bool  // Пропускать строки с комментариями
-    JSONLContinueOnErr bool  // Продолжать при ошибке
-    JSONLWorkers       int   // Количество параллельных обработчиков JSONL
-    JSONLChunkSize     int   // Размер чанка JSONL
-    JSONLMaxMemory     int64 // Максимальная память JSONL
+    JSONLBufferSize    int   `json:"jsonl_buffer_size"`     // Размер буфера JSONL
+    JSONLMaxLineSize   int   `json:"jsonl_max_line_size"`   // Максимальный размер строки JSONL
+    JSONLSkipEmpty     bool  `json:"jsonl_skip_empty"`      // Пропускать пустые строки
+    JSONLSkipComments  bool  `json:"jsonl_skip_comments"`   // Пропускать строки с комментариями
+    JSONLContinueOnErr bool  `json:"jsonl_continue_on_err"` // Продолжать при ошибке
+    JSONLWorkers       int   `json:"jsonl_workers"`         // Количество параллельных обработчиков JSONL
+    JSONLChunkSize     int   `json:"jsonl_chunk_size"`      // Размер чанка JSONL
+    JSONLMaxMemory     int64 `json:"jsonl_max_memory"`      // Максимальная память JSONL
 
     // ===== Параметры слияния =====
-    MergeMode MergeMode // Стратегия слияния
+    MergeMode MergeMode `json:"merge_mode"` // Стратегия слияния
 
-    // ===== Точки расширения =====
-    CustomEncoder              CustomEncoder                // Пользовательский кодировщик
-    CustomTypeEncoders         map[reflect.Type]TypeEncoder // Кодировщики пользовательских типов
-    CustomValidators           []Validator                  // Пользовательские валидаторы
+    // ===== Точки расширения (без JSON-тега, не сериализуются) =====
+    CustomEncoder               CustomEncoder                // Пользовательский кодировщик
+    CustomTypeEncoders          map[reflect.Type]TypeEncoder // Кодировщики пользовательских типов
+    CustomValidators            []Validator                  // Пользовательские валидаторы
     AdditionalDangerousPatterns []DangerousPattern           // Дополнительные опасные паттерны
-    DisableDefaultPatterns     bool                         // Отключить стандартные паттерны предупреждений
-    Hooks                      []Hook                       // Перехватчики операций
-    CustomPathParser           PathParser                   // Пользовательский парсер путей
+    DisableDefaultPatterns      bool                         // Отключить стандартные паттерны предупреждений
+    Hooks                       []Hook                       // Перехватчики операций
+    CustomPathParser            PathParser                   // Пользовательский парсер путей
 }
 ```
 
@@ -400,6 +400,7 @@ const (
     DefaultMaxJSONSize       = 100 * 1024 * 1024  // 100MB
     DefaultMaxNestingDepth   = 200
     DefaultMaxPathDepth      = 50
+    DefaultMaxDepth          = 100                 // Глубина вложенности по умолчанию для кодирования/декодирования (Config.MaxDepth)
     DefaultMaxConcurrency    = 50
     DefaultMaxBatchSize      = 2000
     DefaultMaxSecuritySize   = 10 * 1024 * 1024   // 10MB

@@ -1,6 +1,6 @@
 ---
-title: "Claims - JWT API Reference"
-description: "CyberGo JWT Claims API reference: built-in business fields (UserID, Role, etc.), RFC 7519 RegisteredClaims, and deep validation constraints."
+title: "Claims - CyberGo JWT | Claim Structs"
+description: "The built-in CyberGo JWT Claims struct holds UserID, Username, Role, permissions, and scope plus RFC 7519 RegisteredClaims with validation constraints."
 ---
 
 # Claims

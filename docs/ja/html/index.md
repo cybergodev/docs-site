@@ -1,6 +1,6 @@
 ---
-title: "HTML - プロダクション向け HTML コンテンツ抽出ツール"
-description: "CyberGo HTML は Go 製の高性能 HTML 抽出・クリーニングライブラリで、記事認識、15+ 種のエンコーディング自動検出、リンク抽出、並列バッチ、プラグイン可能な監査を提供し、テキスト・Markdown・JSON 出力をサポートします。"
+title: "HTML 抽出ライブラリ - CyberGo HTML | 高性能 Go ライブラリ"
+description: "CyberGo HTML は高性能な Go 製 HTML 抽出・クリーニングライブラリで、記事認識、エンコーディング自動検出、並列バッチ、プラグイン可能な監査を提供し、テキスト・Markdown・JSON 出力をサポートします。"
 ---
 
 # HTML

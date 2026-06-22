@@ -1,5 +1,5 @@
 ---
-title: "エラー処理 - HTTPC"
+title: "エラー処理 - CyberGo HTTPC | 分類とセンチネル"
 description: "HTTPC エラー処理ガイド: ErrorType 12 種類のエラー分類、ClientError フィールドと IsRetryable、errors.Is/As センチネルマッチング、リトライ枯渇、コンテキストタイムアウト、ミドルウェア統合処理のベストプラクティスを解説します。"
 ---
 

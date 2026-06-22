@@ -1,6 +1,6 @@
 ---
-title: "Конфигурация - HTML"
-description: "Описание Config CyberGo HTML: ресурсы (MaxInputSize, кэш, тайм-аут), безопасность, контент, форматы вывода, фильтры (Include*, ResolveRelativeURLs), Validate."
+title: "Конфигурация - CyberGo HTML | поля Config"
+description: "Подробно о Config CyberGo HTML: ресурсы (MaxInputSize, кэш, тайм-аут), безопасность, извлечение контента, форматы вывода, фильтры ссылок и метод Validate."
 ---
 
 # Конфигурация

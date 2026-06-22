@@ -1,6 +1,6 @@
 ---
-title: "HTTP 통합 - HTML"
-description: "CyberGo HTML HTTP 통합 가이드: net/http 단일 페이지 스크래핑·오류 처리, 동시성 배치 최적화·리소스 관리, 컨텍스트 타임아웃, 웹 서비스 통합, Processor 싱글톤 재사용, 프로덕션 배포 모범 사례를 다룹니다."
+title: "HTTP 통합 - CyberGo HTML | 웹 서비스 실전"
+description: "CyberGo HTML HTTP 통합 실전: net/http 단일 페이지 스크래핑, 동시성 배치 최적화, 컨텍스트 타임아웃, 웹 서비스 통합, Processor 싱글톤, 프로덕션 배포 모범 사례입니다."
 ---
 
 # HTTP 통합

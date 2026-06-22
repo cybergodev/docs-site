@@ -1,5 +1,5 @@
 ---
-title: "Package Functions - HTML"
+title: "Package Functions - CyberGo HTML | Convenience API"
 description: "CyberGo HTML package functions API: Extract, ExtractFromFile, ExtractText and context variants. Reuses Processor via sync.Pool for one-shot calls."
 ---
 

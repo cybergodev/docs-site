@@ -1,5 +1,5 @@
 ---
-title: "Result - HTTPC"
+title: "Result - CyberGo HTTPC | Result 응답 타입"
 description: "HTTPC Result 응답 타입 API 레퍼런스: StatusCode/Body 기본 메서드, 상태 판단, Cookie 조작, Unmarshal JSON 파싱과 SaveToFile 파일 저장의 완전한 사용법을 제공합니다."
 ---
 

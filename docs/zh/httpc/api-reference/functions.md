@@ -1,6 +1,6 @@
 ---
-title: "包函数 - HTTPC"
-description: "HTTPC 包级函数与客户端方法 API 参考：Get/Post 等七种 HTTP 方法、New 客户端创建、Download 统一下载入口、SetSecurityWarnOutput 安全警告、FormatBytes/FormatSpeed 格式化工具与 NewDomain 域名客户端创建。"
+title: "包函数 - CyberGo HTTPC | 包级函数"
+description: "HTTPC 包级函数与客户端方法 API 参考：Get/Post 等七种 HTTP 方法、New 客户端创建、Download 统一下载入口、FormatBytes/FormatSpeed 工具与 NewDomain 域名客户端创建。"
 ---
 
 # 包函数

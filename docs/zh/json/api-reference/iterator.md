@@ -1,6 +1,6 @@
 ---
 title: "迭代器 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 迭代遍历 API 完整参考：包括 Foreach 基础迭代、ForeachWithPath 带路径迭代、ForeachNested 递归迭代、IterableValue 可迭代值类型、IteratorControl 迭代控制和 ParallelForeach 并行迭代的 Go 最佳实践。"
+description: "CyberGo JSON 迭代 API：Foreach 基础迭代、ForeachWithPath 带路径、ForeachNested 递归、IterableValue 与 ParallelForeach 并行迭代，覆盖各类遍历场景。"
 ---
 
 # 迭代器

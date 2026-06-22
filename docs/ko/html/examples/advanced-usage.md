@@ -1,6 +1,6 @@
 ---
-title: "고급 예제 - HTML"
-description: "CyberGo HTML 고급 예제: 커스텀 Scorer, 다중 Sink 감사 파이프라인, 배치 파일 처리와 동시성 제어, Processor 풀링, ChannelAuditSink 실시간 모니터링 등 실행 가능 코드를 보여줍니다."
+title: "고급 예제 - CyberGo HTML | 심화 시나리오"
+description: "CyberGo HTML 고급 예제: 커스텀 Scorer, 다중 Sink 감사 파이프라인, 배치 파일과 동시성 제어, Processor 풀링, ChannelAuditSink 모니터링 등 실행 가능 예시입니다."
 ---
 
 # 고급 예제

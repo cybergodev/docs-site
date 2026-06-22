@@ -1,6 +1,6 @@
 ---
 title: "セキュリティ概要 - CyberGo env | セキュリティアーキテクチャ"
-description: "CyberGo env セキュリティアーキテクチャの包括的な概要。SecureValue メモリロック保護と mlock システムコールメカニズム、キーと値の検証フィルタリングルール設定、DefaultForbiddenKeys 禁止キー名リスト、機密データ IsSensitiveKey 自動検出、セキュリティレベルプリセット設定、監査ログ追跡などのコアセキュリティ機能を解説します。"
+description: "CyberGo env セキュリティアーキテクチャ概要。SecureValue メモリロック、キー検証、禁止キーリスト、IsSensitiveKey 自動検出、セキュリティプリセット、監査追跡を説明します。"
 ---
 
 # セキュリティ概要

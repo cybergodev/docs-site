@@ -1,5 +1,5 @@
 ---
-title: "コネクションプールとプロキシ - HTTPC"
+title: "コネクションプールとプロキシ - CyberGo HTTPC | プールとプロキシ"
 description: "HTTPC コネクションプールとプロキシガイド: MaxIdleConns チューニングとシナリオ推奨、ProxyURL 手動とシステムプロキシ、SOCKS5 と HTTP プロキシ、DoH フェイルバック、HTTP/2 設定の実践ポイントを解説します。"
 ---
 

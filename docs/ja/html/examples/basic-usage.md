@@ -1,6 +1,6 @@
 ---
-title: "基本サンプル - HTML"
-description: "CyberGo HTML 基本サンプル集：基本抽出、ファイル抽出、テキスト抽出、Markdown 出力、リンク抽出・グループ化、Processor 再利用、タイムアウト付き抽出、並列バッチ、JSON 出力まで、よくある開発シーンの例を含みます。"
+title: "基本サンプル - CyberGo HTML | 実行可能サンプル"
+description: "CyberGo HTML 基本サンプル：基本抽出、ファイル抽出、テキスト、Markdown 出力、リンクグループ化、Processor 再利用、タイムアウト、並列バッチ、JSON 直列化の実行可能例です。"
 ---
 
 # 基本サンプル

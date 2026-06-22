@@ -192,6 +192,8 @@ type JSONFieldNames struct {
 }
 ```
 
+Implements a pointer-receiver method `(*JSONFieldNames).IsComplete() bool`: returns `true` when all 5 field names are non-empty, useful for checking whether all field names have been fully customized.
+
 Usage example:
 
 ```go

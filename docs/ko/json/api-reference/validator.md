@@ -1,6 +1,6 @@
 ---
 title: "Validator - CyberGo JSON | Schema 검증기"
-description: "CyberGo JSON 검증기 완전 참조: Validator 인터페이스 정의, Schema 검증 구조, ValidationError 검증 오류 타입, SchemaConfig 설정 옵션 및 커스텀 검증기 구현 가이드를 포함하여 Go의 완전한 JSON 데이터 구조와 내용 검증 기능을 제공합니다."
+description: "CyberGo JSON 검증기: Validator 인터페이스, Schema 구조, ValidationError, SchemaConfig 옵션, 커스텀 검증기 구현 가이드로 완전한 JSON 데이터 검증을 제공합니다."
 ---
 
 # Validator

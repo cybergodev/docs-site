@@ -1,6 +1,6 @@
 ---
 title: "変更関数 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON 変更関数の完全リファレンス：Set/SetMultiple による値の設定、Delete によるキーの削除、MergeJSON/MergeMany による JSON のマージを含み、自動パス作成、アトミック操作、複数の MergeMode マージ戦略をサポートし、Go の様々な JSON データ変更ニーズに対応します。"
+description: "CyberGo JSON 変更関数：Set/SetMultiple、Delete、MergeJSON/MergeMany で自動パス作成、アトミック操作、複数の MergeMode 戦略をサポートします。"
 ---
 
 # 変更関数
@@ -309,11 +309,11 @@ for _, r := range results {
 
 ```go
 type BatchOperation struct {
-    Type    string  // 操作タイプ："get", "set", "delete", "validate"
-    JSONStr string  // 対象 JSON 文字列
-    Path    string  // パス式
-    Value   any     // 操作値（set 操作で使用）
-    ID      string  // 操作識別子
+    Type    string `json:"type"`     // 操作タイプ："get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // 対象 JSON 文字列
+    Path    string `json:"path"`     // パス式
+    Value   any    `json:"value"`    // 操作値（set 操作で使用）
+    ID      string `json:"id"`       // 操作識別子
 }
 ```
 
@@ -323,9 +323,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string  // 操作識別子
-    Result any     // 操作結果
-    Error  error   // エラー情報
+    ID     string `json:"id"`     // 操作識別子
+    Result any    `json:"result"` // 操作結果
+    Error  error  `json:"error"`  // エラー情報
 }
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: "Processor ライフサイクル - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON Processor ライフサイクル管理完全リファレンス：New によるインスタンス作成、Close によるリソース解放、IsClosed 状態確認、GetStats 統計情報、GetHealthStatus ヘルスモニタリング、並列安全なクローズとリソース保護のベストプラクティスガイド。Go プロダクション環境の安定稼働を確保します。"
+description: "CyberGo JSON Processor ライフサイクル：New 作成、Close 解放、IsClosed 確認、GetStats 統計、GetHealthStatus 監視で並行安全な終了を保証します。"
 ---
 
 # ライフサイクルと統計
@@ -68,11 +68,11 @@ fmt.Printf("%d 個のパスのウォームアップに成功\n", result.Successf
 
 ```go
 type WarmupResult struct {
-    TotalPaths   int      // 総パス数
-    Successful   int      // ウォームアップ成功したパス数
-    Failed       int      // 失敗したパス数
-    SuccessRate  float64  // 成功率（パーセント）
-    FailedPaths  []string // 失敗したパスのリスト
+    TotalPaths  int      `json:"total_paths"`            // 総パス数
+    Successful  int      `json:"successful"`             // ウォームアップ成功したパス数
+    Failed      int      `json:"failed"`                 // 失敗したパス数
+    SuccessRate float64  `json:"success_rate"`           // 成功率（パーセント）
+    FailedPaths []string `json:"failed_paths,omitempty"` // 失敗したパスのリスト
 }
 ```
 
@@ -102,18 +102,18 @@ fmt.Printf("キャッシュサイズ: %d\n", stats.CacheSize)
 
 ```go
 type Stats struct {
-    CacheSize        int64         // キャッシュエントリ数
-    CacheMemory      int64         // キャッシュメモリ使用量（バイト）
-    MaxCacheSize     int           // 最大キャッシュサイズ
-    HitCount         int64         // キャッシュヒット回数
-    MissCount        int64         // キャッシュミス回数
-    HitRatio         float64       // キャッシュヒット率
-    CacheTTL         time.Duration // キャッシュ TTL
-    CacheEnabled     bool          // キャッシュが有効かどうか
-    IsClosed         bool          // プロセッサが閉じられているかどうか
-    MemoryEfficiency float64       // メモリ効率
-    OperationCount   int64         // 総操作回数
-    ErrorCount       int64         // 総エラー回数
+    CacheSize        int64         `json:"cache_size"`        // キャッシュエントリ数
+    CacheMemory      int64         `json:"cache_memory"`      // キャッシュメモリ使用量（バイト）
+    MaxCacheSize     int           `json:"max_cache_size"`    // 最大キャッシュサイズ
+    HitCount         int64         `json:"hit_count"`         // キャッシュヒット回数
+    MissCount        int64         `json:"miss_count"`        // キャッシュミス回数
+    HitRatio         float64       `json:"hit_ratio"`         // キャッシュヒット率
+    CacheTTL         time.Duration `json:"cache_ttl"`         // キャッシュ TTL
+    CacheEnabled     bool          `json:"cache_enabled"`     // キャッシュが有効かどうか
+    IsClosed         bool          `json:"is_closed"`         // プロセッサが閉じられているかどうか
+    MemoryEfficiency float64       `json:"memory_efficiency"` // メモリ効率
+    OperationCount   int64         `json:"operation_count"`   // 総操作回数
+    ErrorCount       int64         `json:"error_count"`       // 総エラー回数
 }
 ```
 
@@ -157,14 +157,14 @@ if status.Healthy {
 
 ```go
 type HealthStatus struct {
-    Timestamp time.Time              // チェック時刻
-    Healthy   bool                   // 全体的なヘルス状態
-    Checks    map[string]CheckResult // 各チェックの結果
+    Timestamp time.Time              `json:"timestamp"` // チェック時刻
+    Healthy   bool                   `json:"healthy"`   // 全体的なヘルス状態
+    Checks    map[string]CheckResult `json:"checks"`    // 各チェックの結果
 }
 
 type CheckResult struct {
-    Healthy  bool   // 正常かどうか
-    Message  string // ステータスメッセージ
+    Healthy bool   `json:"healthy"` // 正常かどうか
+    Message string `json:"message"` // ステータスメッセージ
 }
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: "Usage Examples - CyberGo JSON | Practical Code Examples"
-description: "CyberGo JSON practical code example collection, including path queries GetString/GetTyped, struct encoding/decoding Marshal/Unmarshal, JSONL stream processing, Hook functions, Schema validation, and error handling with complete runnable examples covering the most common and practical JSON operations in daily Go development."
+description: "CyberGo JSON examples: path queries, struct Marshal/Unmarshal, JSONL streaming, Hook callbacks, Schema validation, and error handling with runnable Go code."
 ---
 
 # Usage Examples

@@ -1,6 +1,6 @@
 ---
-title: "类型定义 - HTML"
-description: "CyberGo HTML 数据类型 API 参考，涵盖 Result（含自定义 JSON 序列化）、ImageInfo、LinkInfo、VideoInfo、AudioInfo、LinkResource、Statistics、BatchResult、NodeAttr 等核心类型的字段说明。"
+title: "类型定义 - CyberGo HTML | 数据类型参考"
+description: "CyberGo HTML 数据类型：Result（自定义 JSON 序列化）、ImageInfo、LinkInfo、LinkResource、Statistics、BatchResult 等核心类型字段说明。"
 ---
 
 # 类型定义
@@ -107,10 +107,10 @@ type LinkResource struct {
 
 ```go
 type Statistics struct {
-    TotalProcessed    int64         // 总处理数
-    CacheHits         int64         // 缓存命中数
-    CacheMisses       int64         // 缓存未命中数
-    ErrorCount        int64         // 错误数
+    TotalProcessed     int64         // 总处理数
+    CacheHits          int64         // 缓存命中数
+    CacheMisses        int64         // 缓存未命中数
+    ErrorCount         int64         // 错误数
     AverageProcessTime time.Duration // 平均处理时间
 }
 ```

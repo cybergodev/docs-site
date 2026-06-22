@@ -1,5 +1,5 @@
 ---
-title: "Connection Pool and Proxy - HTTPC"
+title: "Connection Pool and Proxy - CyberGo HTTPC | Pool & Proxy"
 description: "HTTPC connection pool and proxy guide: MaxIdleConns tuning, ProxyURL manual and system proxy, SOCKS5/HTTP proxies, DoH fallback, and HTTP/2 configuration."
 ---
 

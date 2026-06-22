@@ -1,5 +1,5 @@
 ---
-title: "会话管理 - HTTPC"
+title: "会话管理 - CyberGo HTTPC | SessionManager"
 description: "HTTPC SessionManager API 参考：NewSessionManager 创建、SessionConfig 配置、SetHeader 头管理、SetCookie 方法与 SetCookieSecurity 验证的完整用法。"
 ---
 

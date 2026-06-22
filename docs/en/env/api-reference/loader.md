@@ -1,6 +1,6 @@
 ---
 title: "Loader API - CyberGo env | Loader Details"
-description: "CyberGo env library Loader API complete reference documentation. Loader is the core type, providing LoadFiles for multi-format file loading, GetString for type-safe reading, Set and Delete for key-value operations, Validate for validation, ParseInto for serialization export, and Close for lifecycle management. All methods are thread-safe."
+description: "CyberGo env Loader API reference: multi-format file loading, type-safe reading, key set/delete, validation, serialization and Close — all thread-safe."
 ---
 
 # Loader API

@@ -1,5 +1,5 @@
 ---
-title: "快速开始 - HTTPC"
+title: "快速开始 - CyberGo HTTPC | 5分钟上手"
 description: "HTTPC 快速开始指南：go get 安装与项目初始化、GET/POST 请求发送与响应处理、五种配置预设选型、JSON 解析与类型绑定、Bearer Token 认证与 ClientError 错误分类处理，五分钟上手安全 HTTP 客户端库。"
 ---
 

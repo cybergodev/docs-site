@@ -192,6 +192,8 @@ type JSONFieldNames struct {
 }
 ```
 
+实现了指针接收者方法 `(*JSONFieldNames).IsComplete() bool`：当 5 个字段名均非空时返回 `true`，可用于校验是否已完整自定义全部字段名。
+
 使用示例：
 
 ```go

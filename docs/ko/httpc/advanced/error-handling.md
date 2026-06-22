@@ -1,5 +1,5 @@
 ---
-title: "오류 처리 - HTTPC"
+title: "오류 처리 - CyberGo HTTPC | 분류와 센티널"
 description: "HTTPC 오류 처리 가이드: ErrorType 12가지 오류 분류, ClientError 필드와 IsRetryable, errors.Is/As 센티넬 매칭, 재시도 소진, 컨텍스트 타임아웃과 미들웨어 통합 처리 모범 사례를 다룹니다."
 ---
 

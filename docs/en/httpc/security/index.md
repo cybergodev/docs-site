@@ -1,5 +1,5 @@
 ---
-title: "Security Overview - HTTPC"
+title: "Security Overview - CyberGo HTTPC | Security Features"
 description: "HTTPC security overview: TLS 1.2+ version control, SSRF private-IP blocking, CRLF prevention, cookie security, and redirect whitelisting."
 ---
 

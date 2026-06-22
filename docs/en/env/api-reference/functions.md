@@ -1,6 +1,6 @@
 ---
-title: "Package Functions - CyberGo env | Global Convenience Functions"
-description: "CyberGo env library package-level convenience functions API complete reference documentation, providing Load for file loading, GetString and GetInt for type-safe value reading, Keys for querying key names, Marshal for serialization export, and ParseInto for struct mapping with concise APIs, based on a global default Loader that must be explicitly initialized via Load() and is thread-safe."
+title: "Package Functions - CyberGo env | Global Helpers"
+description: "CyberGo env package function API reference: Load, GetString, GetInt, Keys, Marshal and ParseInto over a thread-safe global default Loader."
 ---
 
 # Package Functions

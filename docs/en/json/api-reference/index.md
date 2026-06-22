@@ -1,6 +1,6 @@
 ---
 title: "API Reference - CyberGo JSON | Complete Function Reference"
-description: "CyberGo JSON complete API reference manual: covering GetString/GetInt path queries, Set/Delete modify operations, Marshal/Unmarshal serialization, Processor, Schema validation, Hook system, and security configuration, 100% compatible with Go's encoding/json standard library."
+description: "CyberGo JSON API reference: GetString/GetInt queries, Set/Delete, Marshal/Unmarshal, Processor, Schema validation, Hook, and security config."
 ---
 
 # API Reference

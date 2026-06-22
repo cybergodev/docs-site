@@ -1,5 +1,5 @@
 ---
-title: "Загрузка и выгрузка файлов - HTTPC"
+title: "Загрузка и выгрузка файлов - CyberGo HTTPC | Resume & Hash"
 description: "Руководство по загрузке файлов HTTPC: выгрузка WithFile, мультизагрузка WithFormData, единый Download, возобновляемая загрузка и защита SHA-256."
 ---
 

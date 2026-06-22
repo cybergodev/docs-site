@@ -1,5 +1,5 @@
 ---
-title: "生产检查清单 - HTTPC"
+title: "生产检查清单 - CyberGo HTTPC | 上线前核查"
 description: "HTTPC 生产环境安全检查清单：TLS 核查、SSRF AllowPrivateIPs 确认与 CIDR 审计、Timeouts 超时配置、MaxResponseBodySize 大小限制、MaxRetries 重试策略、资源释放与 AuditMiddleware 监控审计。"
 ---
 

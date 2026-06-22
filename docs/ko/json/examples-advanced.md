@@ -1,6 +1,6 @@
 ---
 title: "고급 기능 예제 - CyberGo JSON | 심화 사용법"
-description: "CyberGo JSON 고급 기능 실전 예제 모음으로, 배치 인코딩 EncodeBatch, 필드 선택 EncodeFields, 사전 파싱 PreParse, 안전 가져오기 SafeGet, 캐시 웜업 WarmupCache 및 메모리 풀 최적화 등의 기법을 다루며, 라이브러리의 고급 사용법과 Go 프로덕션급 성능 최적화 전략과 모범 사례를 보여줍니다."
+description: "CyberGo JSON 고급 예제: EncodeBatch, EncodeFields, PreParse, SafeGet, WarmupCache, 메모리 풀 최적화로 프로덕션급 Go 성능 기법을 보여줍니다."
 ---
 
 # 고급 기능 예제
@@ -276,12 +276,12 @@ import (
 func main() {
     data := `{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}`
 
-    // 배치 작업 정의
+    // 배치 작업 정의 (ID는 결과에서 각 작업을 식별하는 데 사용)
     operations := []json.BatchOperation{
-        {Type: "get", Path: "users.0.name", JSONStr: data},
-        {Type: "get", Path: "users", JSONStr: data},
-        {Type: "set", Path: "users.0.name", Value: "Updated", JSONStr: data},
-        {Type: "delete", Path: "users.0.id", JSONStr: data},
+        {ID: "get-name", Type: "get", Path: "users.0.name", JSONStr: data},
+        {ID: "get-users", Type: "get", Path: "users", JSONStr: data},
+        {ID: "set-name", Type: "set", Path: "users.0.name", Value: "Updated", JSONStr: data},
+        {ID: "del-id", Type: "delete", Path: "users.0.id", JSONStr: data},
     }
 
     // 배치 작업 실행

@@ -1,6 +1,6 @@
 ---
-title: "Продвинутые примеры - HTML"
-description: "Продвинутые примеры CyberGo HTML: свой Scorer, конвейер аудита с несколькими Sink, пакетная обработка файлов, пул Processor и мониторинг ChannelAuditSink."
+title: "Продвинутые примеры - CyberGo HTML | сценарии"
+description: "Продвинутые примеры CyberGo HTML: свой Scorer, конвейер аудита с несколькими Sink, пакетная обработка, пул Processor и мониторинг через ChannelAuditSink."
 ---
 
 # Продвинутые примеры

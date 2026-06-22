@@ -1,6 +1,6 @@
 ---
 title: "接口定义 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 扩展接口定义完整参考：包括 CustomEncoder、TypeEncoder、Validator、Hook 接口、PathParser 和 DangerousPattern，支持灵活扩展库的编码、验证和安全防护等核心功能，满足 Go 自定义序列化与安全策略需求。"
+description: "CyberGo JSON 扩展接口：CustomEncoder、TypeEncoder、Validator、Hook、PathParser 与 DangerousPattern，灵活扩展编码、验证与安全防护能力。"
 ---
 
 # 接口定义
@@ -149,7 +149,7 @@ type Hook interface {
 ```go
 type HookContext struct {
     Operation string        // 操作类型: "get", "set", "delete", "marshal", "unmarshal"
-    JSONStr   string        // 输入 JSON 字符串（marshal 时可能为空）
+    JSONStr   string        // 输入 JSON 字符串（marshal 时可能为空）。安全警告：可能包含敏感数据
     Path      string        // 目标路径（marshal/unmarshal 时可能为空）
     Value     any           // set 操作的值
     Config    *Config       // 活动配置

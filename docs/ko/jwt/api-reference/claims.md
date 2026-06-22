@@ -1,6 +1,6 @@
 ---
-title: "Claims - JWT API 레퍼런스"
-description: "CyberGo JWT Claims API 레퍼런스: UserID·Username·Role·권한·스코프·확장 필드 등 비즈니스 선언과 RFC 7519 표준 RegisteredClaims, 필드 길이와 배열 크기 등 심층 검증 제약사항."
+title: "Claims - CyberGo JWT | 내장 선언 구조"
+description: "CyberGo JWT Claims는 UserID·Username·Role·권한·스코프 등 비즈니스 필드와 RFC 7519 RegisteredClaims를 포함하며 필드 길이, 배열 크기, 주입 모드 검증 제약을 제공합니다."
 ---
 
 # Claims

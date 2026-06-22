@@ -1,6 +1,6 @@
 ---
 title: "상수와 오류 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 상수와 오류 정의 완전 참조: DefaultMaxJSONSize/DefaultMaxNestingDepth 기본 제한 상수, ErrPathNotFound/ErrTypeMismatch 등 오류 변수 및 MergeMode 병합 모드 열거형을 포함하며, Go 설정 프리셋과 오류 처리를 지원합니다."
+description: "CyberGo JSON 상수와 오류: DefaultMaxJSONSize, DefaultMaxNestingDepth, ErrPathNotFound 오류 변수, MergeMode 열거형으로 Go 설정과 오류 처리를 지원합니다."
 ---
 
 # 상수와 오류
@@ -212,31 +212,12 @@ const (
 type PathSegment = internal.PathSegment
 ```
 
-### PathSegment 구조
+::: warning 내부 구현 별칭
+`PathSegment`는 `internal.PathSegment`의 타입 별칭입니다. 구체적인 필드, 필드 타입(예: `PathSegmentType`, `PathSegmentFlags`) 및 메서드는 `internal` 패키지에 속하며 **공개 API로 내보내지지 않습니다**. 버전에 따라 변경될 수 있으므로 비즈니스 코드에서 내부 구조에 직접 의존하지 마세요.
 
-```go
-type PathSegment struct {
-    Type  PathSegmentType  // 세그먼트 타입
-
-    // 타입에 따라 다른 필드 사용
-    Key   string // 속성명 (Property/Extract 타입)
-    Index int    // 배열 인덱스 (ArrayIndex 타입) 또는 슬라이스 시작
-    End   int    // 슬라이스 끝 (ArraySlice 타입)
-    Step  int    // 슬라이스 간격 (ArraySlice 타입)
-    Flags PathSegmentFlags // 세그먼트 플래그
-}
-```
-
-### PathSegment 메서드
-
-| 메서드 | 시그니처 | 설명 |
-|------|------|------|
-| `HasStart` | `func (s *PathSegment) HasStart() bool` | 슬라이스에 시작값이 있는지 |
-| `HasEnd` | `func (s *PathSegment) HasEnd() bool` | 슬라이스에 끝값이 있는지 |
-| `HasStep` | `func (s *PathSegment) HasStep() bool` | 슬라이스에 간격값이 있는지 |
-| `IsNegativeIndex` | `func (s *PathSegment) IsNegativeIndex() bool` | 음수 인덱스인지 |
-| `IsWildcardSegment` | `func (s *PathSegment) IsWildcardSegment() bool` | 와일드카드인지 |
-| `IsFlatExtract` | `func (s *PathSegment) IsFlatExtract() bool` | 플랫 패턴인지 |
+- 커스텀 경로 문법을 구현할 때는 [`PathParser`](./interfaces#pathparser) 인터페이스의 `ParsePath` 메서드를 통해 `[]PathSegment`를 반환합니다.
+- 사전 컴파일된 경로는 [`Processor.CompilePath`](./processor/query#compilepath)를 사용하며, `*CompiledPath`를 반환합니다.
+:::
 
 ## 보안 패턴 수준
 

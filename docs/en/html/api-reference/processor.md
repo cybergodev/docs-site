@@ -1,5 +1,5 @@
 ---
-title: "Processor - HTML"
+title: "Processor - CyberGo HTML | Core Processor API"
 description: "CyberGo HTML Processor API: New creation, Extract method family, GetStatistics, GetAuditLog, ClearCache, ResetStatistics, and Close lifecycle management."
 ---
 

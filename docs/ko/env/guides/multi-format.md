@@ -1,6 +1,6 @@
 ---
 title: "다중 형식 구성 - CyberGo env | .env/JSON/YAML"
-description: "CyberGo env 라이브러리 다중 형식 구성 파일 로딩 완전 가이드, .env, JSON, YAML 세 가지 형식의 자동 감지 및 혼합 로딩을 지원하며, 키값 병합 우선순위 규칙, 형식 변환 유틸리티 함수, JSON 및 YAML 전용 구성 옵션을 상세히 설명하여 Go 개발자가 마이크로서비스 및 컨테이너 환경에서 유연하게 환경 설정을 관리하고 전환할 수 있도록 돕습니다."
+description: "CyberGo env 다중 형식 로딩 가이드로 .env·JSON·YAML 자동 감지와 혼합 로딩, 병합 우선순위 규칙과 형식 변환을 마이크로서비스·컨테이너 환경에 제공합니다."
 ---
 
 # 다중 형식 구성

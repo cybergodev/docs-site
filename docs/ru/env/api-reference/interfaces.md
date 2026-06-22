@@ -1,6 +1,6 @@
 ---
 title: "Определения интерфейсов - CyberGo env | Иерархия интерфейсов"
-description: "Полный справочник определений интерфейсов библиотеки CyberGo env с детализированным дизайном интерфейсов, поддерживающим внедрение зависимостей и гибкую композицию. Включает подробное описание и использование основных интерфейсов: Validator, FullAuditLogger, EnvParser, EnvStorage и FileSystem."
+description: "Справочник интерфейсов CyberGo env для внедрения зависимостей: Validator, FullAuditLogger, EnvParser, EnvStorage и адаптер FileSystem."
 ---
 
 # Определения интерфейсов
@@ -69,7 +69,7 @@ func readConfig(getter env.EnvGetter) {
 ```
 
 :::warning Внимание
-`GetInt`, `GetBool`, `GetDuration`, `GetSecure`, `Len` **не являются** частью интерфейса `EnvGetter`.
+`GetInt`, `GetBool`, `GetUint64`, `GetFloat64`, `GetDuration`, `GetSecure`, `Len` **не являются** частью интерфейса `EnvGetter`.
 Эти методы реализованы на типе `*Loader`, но не входят в минимальный интерфейс.
 
 Для полного доступа на чтение используйте непосредственно тип `*Loader`:

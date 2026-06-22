@@ -1,6 +1,6 @@
 ---
 title: "生产检查清单 - CyberGo JSON | 安全部署"
-description: "CyberGo JSON 生产环境安全部署检查清单：涵盖安全配置 SecurityConfig、MaxNestingDepthSecurity 资源限制、输入验证策略、错误处理机制、监控告警配置和性能与安全平衡的最佳实践，确保 Go 生产环境安全可靠。"
+description: "CyberGo JSON 生产部署安全清单：SecurityConfig 配置、资源限制、输入验证、错误处理、监控告警与性能安全平衡，确保生产环境可靠运行。"
 ---
 
 # 生产检查清单

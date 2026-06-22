@@ -1,5 +1,5 @@
 ---
-title: "Link Extraction - HTML"
+title: "Link Extraction - CyberGo HTML | Resource Link API"
 description: "Link extraction API for CyberGo HTML, including ExtractAllLinks and GroupLinksByType for extracting and grouping HTML resource links with filtering."
 ---
 

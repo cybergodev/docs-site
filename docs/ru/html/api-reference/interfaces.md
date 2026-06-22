@@ -1,6 +1,6 @@
 ---
-title: "Определение интерфейсов - HTML"
-description: "Справочник API интерфейсов CyberGo HTML: Extractor, StatsProvider, ContentNode, Scorer, AuditSink — для расширения, тестирования и понимания архитектуры."
+title: "Интерфейсы - CyberGo HTML | ключевые интерфейсы"
+description: "Ключевые интерфейсы CyberGo HTML: Extractor, StatsProvider, ContentNode, Scorer и AuditSink — для расширения, тестирования и понимания архитектуры."
 ---
 
 # Определение интерфейсов

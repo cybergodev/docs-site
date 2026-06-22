@@ -1,5 +1,5 @@
 ---
-title: "API Reference - HTTPC"
+title: "API Reference - CyberGo HTTPC | Full API Index"
 description: "HTTPC API reference index: navigate core, request/response, and advanced features — functions, options, presets, middleware, downloads, and error types."
 ---
 

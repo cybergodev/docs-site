@@ -1,6 +1,6 @@
 ---
 title: "File Format - CyberGo env | .env/JSON/YAML Syntax"
-description: "Complete reference for CyberGo env supported configuration file formats, covering .env key-value syntax, JSON object format, and YAML hierarchical format with comment rules, data type support, UTF-8 encoding, DetectFormat auto-detection, and JSONConfig/YAMLConfig format-specific options."
+description: "CyberGo env file format reference: .env, JSON and YAML syntax, comments, data types, UTF-8 handling and DetectFormat auto-detection."
 ---
 
 # File Format

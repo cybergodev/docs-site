@@ -1,6 +1,6 @@
 ---
 title: "Processor 生命周期 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 生命周期管理完整参考：包括 New 创建实例、Close 关闭释放资源、IsClosed 状态检查、GetStats 统计信息、GetHealthStatus 健康监控，以及并发安全关闭和资源防护的最佳实践指南，确保 Go 生产环境稳定运行。"
+description: "CyberGo JSON Processor 生命周期：New 创建、Close 释放资源、IsClosed 状态检查、GetStats 统计与 GetHealthStatus 健康监控，保障并发安全关闭。"
 ---
 
 # 生命周期与统计
@@ -68,11 +68,11 @@ fmt.Printf("成功预热 %d 个路径\n", result.Successful)
 
 ```go
 type WarmupResult struct {
-    TotalPaths   int      // 总路径数
-    Successful   int      // 成功预热的路径数
-    Failed       int      // 失败的路径数
-    SuccessRate  float64  // 成功率（百分比）
-    FailedPaths  []string // 失败的路径列表
+    TotalPaths  int      `json:"total_paths"`            // 总路径数
+    Successful  int      `json:"successful"`             // 成功预热的路径数
+    Failed      int      `json:"failed"`                 // 失败的路径数
+    SuccessRate float64  `json:"success_rate"`           // 成功率（百分比）
+    FailedPaths []string `json:"failed_paths,omitempty"` // 失败的路径列表
 }
 ```
 
@@ -102,18 +102,18 @@ fmt.Printf("缓存大小: %d\n", stats.CacheSize)
 
 ```go
 type Stats struct {
-    CacheSize        int64         // 缓存条目数
-    CacheMemory      int64         // 缓存内存使用（字节）
-    MaxCacheSize     int           // 最大缓存大小
-    HitCount         int64         // 缓存命中次数
-    MissCount        int64         // 缓存未命中次数
-    HitRatio         float64       // 缓存命中率
-    CacheTTL         time.Duration // 缓存 TTL
-    CacheEnabled     bool          // 缓存是否启用
-    IsClosed         bool          // 处理器是否已关闭
-    MemoryEfficiency float64       // 内存效率
-    OperationCount   int64         // 操作总数
-    ErrorCount       int64         // 错误总数
+    CacheSize        int64         `json:"cache_size"`        // 缓存条目数
+    CacheMemory      int64         `json:"cache_memory"`      // 缓存内存使用（字节）
+    MaxCacheSize     int           `json:"max_cache_size"`    // 最大缓存大小
+    HitCount         int64         `json:"hit_count"`         // 缓存命中次数
+    MissCount        int64         `json:"miss_count"`        // 缓存未命中次数
+    HitRatio         float64       `json:"hit_ratio"`         // 缓存命中率
+    CacheTTL         time.Duration `json:"cache_ttl"`         // 缓存 TTL
+    CacheEnabled     bool          `json:"cache_enabled"`     // 缓存是否启用
+    IsClosed         bool          `json:"is_closed"`         // 处理器是否已关闭
+    MemoryEfficiency float64       `json:"memory_efficiency"` // 内存效率
+    OperationCount   int64         `json:"operation_count"`   // 操作总数
+    ErrorCount       int64         `json:"error_count"`       // 错误总数
 }
 ```
 
@@ -157,14 +157,14 @@ if status.Healthy {
 
 ```go
 type HealthStatus struct {
-    Timestamp time.Time              // 检查时间
-    Healthy   bool                   // 总体健康状态
-    Checks    map[string]CheckResult // 各项检查结果
+    Timestamp time.Time              `json:"timestamp"` // 检查时间
+    Healthy   bool                   `json:"healthy"`   // 总体健康状态
+    Checks    map[string]CheckResult `json:"checks"`    // 各项检查结果
 }
 
 type CheckResult struct {
-    Healthy  bool   // 是否健康
-    Message  string // 状态消息
+    Healthy bool   `json:"healthy"` // 是否健康
+    Message string `json:"message"` // 状态消息
 }
 ```
 

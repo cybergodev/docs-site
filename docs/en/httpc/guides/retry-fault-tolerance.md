@@ -1,5 +1,5 @@
 ---
-title: "Retry and Fault Tolerance - HTTPC"
+title: "Retry and Fault Tolerance - CyberGo HTTPC | Backoff & Retry"
 description: "HTTPC retry and fault tolerance guide: default exponential backoff and RetryConfig, 408/429/5xx auto-retry, custom RetryPolicy, and per-request control."
 ---
 

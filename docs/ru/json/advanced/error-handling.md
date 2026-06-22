@@ -1,6 +1,6 @@
 ---
 title: "Обработка ошибок - CyberGo JSON | Лучшие практики"
-description: "Лучшие практики обработки ошибок CyberGo JSON: JsonsError, errors.Is/As, стандартные ошибки, значения по умолчанию, SafeError, RedactedPath и стратегии восстановления для построения надёжной обработки ошибок в Go-приложениях."
+description: "Лучшие практики обработки ошибок CyberGo JSON: проверки JsonsError, errors.Is/As, стандартные ошибки, восстановление, SafeError и логирование RedactedPath."
 ---
 
 # Обработка ошибок

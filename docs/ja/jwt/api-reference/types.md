@@ -1,6 +1,6 @@
 ---
-title: "型と定数 - JWT API リファレンス"
-description: "CyberGo JWT 型と定数リファレンス：NumericDate、StringOrSlice、SigningMethod、ValidationError、RateLimiter、SystemClock、FixedClock および 12 種の署名アルゴリズム定数。"
+title: "型と定数 - CyberGo JWT | 直列化と時計型"
+description: "型と定数参考：NumericDate と StringOrSlice 直列化型、SigningMethod アルゴリズム型、ValidationError 項目級エラー、RateLimiter・SystemClock・FixedClock 時計と 12 種アルゴリズム定数。"
 ---
 
 # 型と定数

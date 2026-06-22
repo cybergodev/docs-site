@@ -1,6 +1,6 @@
 ---
-title: "Извлечение ссылок - HTML"
-description: "Справочник API извлечения ссылок CyberGo HTML: ExtractAllLinks и GroupLinksByType для всех ресурсов (CSS, JS, изображения, видео, аудио) и группировки."
+title: "Извлечение ссылок - CyberGo HTML | ссылки ресурсов"
+description: "API извлечения ссылок CyberGo HTML: ExtractAllLinks и GroupLinksByType для сбора и группировки ссылок на ресурсы с фильтрацией через Config."
 ---
 
 # Извлечение ссылок

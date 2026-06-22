@@ -1,6 +1,6 @@
 ---
 title: "Error Handling - CyberGo JSON | Best Practices"
-description: "CyberGo JSON error handling best practices: covering JsonsError error type checking, errors.Is/As error matching, 12 standard error variables, recovery strategies, SafeError safe output, and logging to help Go developers build robust JSON processing applications."
+description: "CyberGo JSON error handling: JsonsError checks, errors.Is/As matching, standard errors, recovery strategies, SafeError, and RedactedPath logging."
 ---
 
 # Error Handling

@@ -1,5 +1,5 @@
 ---
-title: "Output Formats - HTML"
+title: "Output Formats - CyberGo HTML | Markdown & JSON API"
 description: "CyberGo HTML output API: ExtractToMarkdown and ExtractToJSON package functions and Processor methods for Markdown/JSON output with Result MarshalJSON."
 ---
 

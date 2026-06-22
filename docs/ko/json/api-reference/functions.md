@@ -1,6 +1,6 @@
 ---
 title: "패키지 함수 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 패키지 레벨 함수 레퍼런스: Get/GetString/GetInt/GetTyped 경로 쿼리, Set/Delete/MergeJSON 수정, Marshal/Unmarshal 인코딩/디코딩, LoadFromFile/SaveToFile 파일 작업을 포함하며, Go 개발 시 Processor를 생성하지 않고 직접 호출할 수 있습니다."
+description: "CyberGo JSON 패키지 함수: Get/GetString/GetInt 쿼리, Set/Delete/MergeJSON 수정, Marshal/Unmarshal, LoadFromFile/SaveToFile을 Processor 없이 호출 가능합니다."
 ---
 
 # 패키지 함수

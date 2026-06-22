@@ -1,6 +1,6 @@
 ---
-title: "HTML - 프로덕션급 HTML 콘텐츠 추출 도구"
-description: "CyberGo HTML은 Go 기반 고성능 HTML 콘텐츠 추출·정제 라이브러리로, 문서 인식, 15+ 인코딩 자동 감지, 링크 추출, 동시성 배치, 플러그형 감사를 제공하며 텍스트·Markdown·JSON 출력을 지원합니다."
+title: "HTML 추출 라이브러리 - CyberGo HTML | 고성능 Go 라이브러리"
+description: "CyberGo HTML은 고성능 Go HTML 콘텐츠 추출·정제 라이브러리로, 문서 인식, 인코딩 자동 감지, 동시성 배치, 플러그형 감사를 제공하며 텍스트·Markdown·JSON 출력을 지원합니다."
 ---
 
 # HTML

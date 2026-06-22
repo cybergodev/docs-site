@@ -1,5 +1,5 @@
 ---
-title: "Константы и типы - HTTPC"
+title: "Константы и типы - CyberGo HTTPC | Константы и типы"
 description: "Справочник API констант и типов HTTPC: перечисление BodyKind с автоопределением, типы FormData и FileData, события AuditEvent и ключи контекста."
 ---
 

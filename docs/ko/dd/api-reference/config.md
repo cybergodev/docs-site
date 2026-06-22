@@ -192,6 +192,8 @@ type JSONFieldNames struct {
 }
 ```
 
+포인터 리시버 메서드 `(*JSONFieldNames).IsComplete() bool`를 구현합니다. 5개 필드명이 모두 비어 있지 않을 때 `true`를 반환하며, 모든 필드명이 완전히 커스터마이즈되었는지 확인하는 데 사용할 수 있습니다.
+
 사용 예시:
 
 ```go

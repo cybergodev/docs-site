@@ -1,5 +1,5 @@
 ---
-title: "Параметры запроса - HTTPC"
+title: "Параметры запроса - CyberGo HTTPC | Опции WithXxx"
 description: "Справочник API параметров запроса HTTPC: заголовки WithHeader, аутентификация WithBearerToken, тело WithJSON/WithForm, параметры WithQuery и колбэки."
 ---
 

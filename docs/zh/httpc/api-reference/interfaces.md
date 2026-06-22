@@ -1,6 +1,6 @@
 ---
-title: "接口定义 - HTTPC"
-description: "HTTPC 核心接口 API 参考：Client 全功能接口含七种 HTTP 方法、Doer 最小执行接口、DomainClienter 域名客户端、RetryPolicy 重试策略、RequestMutator/ResponseMutator 中间件接口与 Handler/MiddlewareFunc 定义。"
+title: "接口定义 - CyberGo HTTPC | 核心接口"
+description: "HTTPC 核心接口 API 参考：Client 全功能接口、Doer 最小执行接口、DomainClienter 域名客户端、RetryPolicy 重试策略与 RequestMutator/ResponseMutator 中间件接口定义。"
 ---
 
 # 接口定义

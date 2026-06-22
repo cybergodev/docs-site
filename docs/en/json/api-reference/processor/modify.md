@@ -1,6 +1,6 @@
 ---
 title: "Processor Data Modification - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor data modification methods complete reference: Set path values, SetMultiple batch setting, Delete path removal, CreatePaths automatic intermediate path creation, all methods return modified JSON strings, supporting chained calls in Go and CreatePaths configuration for automatic path creation."
+description: "CyberGo JSON Processor modify methods: Set, SetMultiple batching, SetCreate auto-path creation, Delete, and DeleteClean cleanup, all supporting chained calls."
 ---
 
 # Data Modification Methods

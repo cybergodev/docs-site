@@ -1,6 +1,6 @@
 ---
-title: "クイックスタート - HTML"
-description: "CyberGo HTML クイックスタート：5 分でインストールと基本抽出、4 種の Config プリセット、テキスト・Markdown・JSON 出力、コンテキストタイムアウト、並列安全パターンを習得し、HTML 抽出をすぐに始められます。"
+title: "クイックスタート - CyberGo HTML | 5分ガイド"
+description: "CyberGo HTML クイックスタート：インストール、基本抽出、4 種の Config プリセット、テキスト・Markdown・JSON 出力、コンテキストタイムアウトと並列安全パターンで 5 分で始められます。"
 ---
 
 # クイックスタート

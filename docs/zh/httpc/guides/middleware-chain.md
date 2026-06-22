@@ -1,6 +1,6 @@
 ---
-title: "中间件链 - HTTPC"
-description: "HTTPC 中间件链指南：洋葱模型执行原理与请求/响应双向处理、Recovery/Logging/RequestID/Timeout/Header/Metrics/Audit 八个内置中间件配置、Chain 手动组合模式、自定义 MiddlewareFunc 编写与断路器短路中间件示例。"
+title: "中间件链 - CyberGo HTTPC | 洋葱模型与链组合"
+description: "HTTPC 中间件链指南：洋葱模型执行原理与请求/响应双向处理、八个内置中间件配置、Chain 手动组合、自定义 MiddlewareFunc 编写与断路器短路示例。"
 ---
 
 # 中间件链

@@ -1,5 +1,5 @@
 ---
-title: "FAQ - HTML"
+title: "FAQ - CyberGo HTML | Common Answers"
 description: "FAQ for the CyberGo HTML library, covering package functions vs Processor, encoding detection, size limits, batch processing, and audit setup."
 ---
 

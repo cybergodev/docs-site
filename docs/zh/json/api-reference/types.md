@@ -1,6 +1,6 @@
 ---
 title: "类型定义 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 核心类型定义完整参考：包括 Result[T] 泛型结果、AccessResult 动态访问结果、BatchOperation、BatchResult、Schema 验证模式、Stats、HealthStatus、IterableValue 和编码错误类型，提供 Go 完整的类型系统支撑。"
+description: "CyberGo JSON 核心类型：Result[T] 泛型结果、AccessResult 动态访问、BatchOperation、BatchResult、Schema、Stats、HealthStatus 与 IterableValue，构成完整类型系统。"
 ---
 
 # 类型定义
@@ -382,8 +382,8 @@ Schema 验证错误类型。
 
 ```go
 type ValidationError struct {
-    Path    string // 错误发生的路径
-    Message string // 错误消息
+    Path    string `json:"path"`    // 错误发生的路径
+    Message string `json:"message"` // 错误消息
 }
 ```
 
@@ -411,11 +411,11 @@ for _, e := range errors {
 
 ```go
 type BatchOperation struct {
-    Type    string // 操作类型: "get", "set", "delete", "validate"
-    JSONStr string // JSON 数据字符串
-    Path    string // 目标路径
-    Value   any    // Set 操作的值
-    ID      string // 操作标识
+    Type    string `json:"type"`     // 操作类型: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // JSON 数据字符串
+    Path    string `json:"path"`     // 目标路径
+    Value   any    `json:"value"`    // Set 操作的值
+    ID      string `json:"id"`       // 操作标识
 }
 ```
 
@@ -429,9 +429,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string // 操作标识（对应 BatchOperation.ID）
-    Result any    // 操作结果
-    Error  error  // 错误（如有）
+    ID     string `json:"id"`     // 操作标识（对应 BatchOperation.ID）
+    Result any    `json:"result"` // 操作结果
+    Error  error  `json:"error"`  // 错误（如有）
 }
 ```
 
@@ -445,11 +445,11 @@ type BatchResult struct {
 
 ```go
 type WarmupResult struct {
-    TotalPaths  int      // 总路径数
-    Successful  int      // 成功预热数
-    Failed      int      // 失败数
-    SuccessRate float64  // 成功率
-    FailedPaths []string // 失败路径列表
+    TotalPaths  int      `json:"total_paths"`            // 总路径数
+    Successful  int      `json:"successful"`             // 成功预热数
+    Failed      int      `json:"failed"`                 // 失败数
+    SuccessRate float64  `json:"success_rate"`           // 成功率
+    FailedPaths []string `json:"failed_paths,omitempty"` // 失败路径列表
 }
 ```
 
@@ -522,18 +522,18 @@ age, _ := processor.GetFromParsed(parsed, "user.age")
 
 ```go
 type Stats struct {
-    CacheSize        int64         // 当前缓存大小
-    CacheMemory      int64         // 缓存内存占用（字节）
-    MaxCacheSize     int           // 最大缓存大小
-    HitCount         int64         // 缓存命中数
-    MissCount        int64         // 缓存未命中数
-    HitRatio         float64       // 缓存命中率
-    CacheTTL         time.Duration // 缓存过期时间
-    CacheEnabled     bool          // 缓存是否启用
-    IsClosed         bool          // 处理器是否已关闭
-    MemoryEfficiency float64       // 内存效率
-    OperationCount   int64         // 操作总数
-    ErrorCount       int64         // 错误总数
+    CacheSize        int64         `json:"cache_size"`        // 当前缓存大小
+    CacheMemory      int64         `json:"cache_memory"`      // 缓存内存占用（字节）
+    MaxCacheSize     int           `json:"max_cache_size"`    // 最大缓存大小
+    HitCount         int64         `json:"hit_count"`         // 缓存命中数
+    MissCount        int64         `json:"miss_count"`        // 缓存未命中数
+    HitRatio         float64       `json:"hit_ratio"`         // 缓存命中率
+    CacheTTL         time.Duration `json:"cache_ttl"`         // 缓存过期时间
+    CacheEnabled     bool          `json:"cache_enabled"`     // 缓存是否启用
+    IsClosed         bool          `json:"is_closed"`         // 处理器是否已关闭
+    MemoryEfficiency float64       `json:"memory_efficiency"` // 内存效率
+    OperationCount   int64         `json:"operation_count"`   // 操作总数
+    ErrorCount       int64         `json:"error_count"`       // 错误总数
 }
 ```
 
@@ -547,9 +547,9 @@ type Stats struct {
 
 ```go
 type HealthStatus struct {
-    Timestamp time.Time              // 检查时间戳
-    Healthy   bool                   // 是否健康
-    Checks    map[string]CheckResult // 各检查项结果
+    Timestamp time.Time              `json:"timestamp"` // 检查时间戳
+    Healthy   bool                   `json:"healthy"`   // 是否健康
+    Checks    map[string]CheckResult `json:"checks"`    // 各检查项结果
 }
 ```
 
@@ -557,8 +557,8 @@ type HealthStatus struct {
 
 ```go
 type CheckResult struct {
-    Healthy bool   // 该检查项是否健康
-    Message string // 检查消息
+    Healthy bool   `json:"healthy"` // 该检查项是否健康
+    Message string `json:"message"` // 检查消息
 }
 ```
 

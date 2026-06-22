@@ -1,6 +1,6 @@
 ---
 title: "API リファレンス - CyberGo env | 完全インターフェースドキュメント"
-description: "CyberGo env 環境変数管理ライブラリの完全 API リファレンスドキュメントのナビゲーションインデックスページ。パッケージレベル便利関数、Config 設定構造体、コアインターフェース定義、Loader ローダー、ComponentFactory コンポーネントファクトリー、SecureValue セキュア値、定数・エラーなど全モジュールの詳細な Go API ドキュメントの入口とクイックリファレンスを提供します。"
+description: "CyberGo env の完全 API リファレンス索引。パッケージ関数、Config、コアインターフェース、Loader、ComponentFactory、SecureValue、定数とエラーの入口をすばやく検索できます。"
 ---
 
 # API リファレンス

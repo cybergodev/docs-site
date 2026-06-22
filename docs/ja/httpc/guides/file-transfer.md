@@ -1,6 +1,6 @@
 ---
-title: "ファイルアップロードとダウンロード - HTTPC"
-description: "HTTPC ファイルアップロードとダウンロードガイド: WithFile 簡単アップロード、WithFormData マルチファイルアップロード、Download 統合ダウンロード、レジューム ResumeDownload、SHA-256 チェックサムなどのセキュリティ防護を解説します。"
+title: "ファイルアップロードとダウンロード - CyberGo HTTPC | アップロードと取得"
+description: "HTTPC ファイルアップロードとダウンロードガイド: WithFile アップロード、WithFormData マルチファイル、Download 統合ダウンロード、レジューム ResumeDownload、SHA-256 チェックサムなどセキュリティ防護を解説します。"
 ---
 
 # ファイルアップロードとダウンロード

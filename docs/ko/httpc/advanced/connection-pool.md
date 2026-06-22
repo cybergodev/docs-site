@@ -1,5 +1,5 @@
 ---
-title: "연결 풀과 프록시 - HTTPC"
+title: "연결 풀과 프록시 - CyberGo HTTPC | 풀과 프록시"
 description: "HTTPC 연결 풀과 프록시 가이드: MaxIdleConns 튜닝과 시나리오 추천, ProxyURL 수동과 시스템 프록시, SOCKS5와 HTTP 프록시, DoH 폴백, HTTP/2 설정과 연결 재사용 실무 요점을 다룹니다."
 ---
 

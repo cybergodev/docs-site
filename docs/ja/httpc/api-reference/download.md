@@ -1,5 +1,5 @@
 ---
-title: "ファイルダウンロード - HTTPC"
+title: "ファイルダウンロード - CyberGo HTTPC | Downloadと検証"
 description: "HTTPC ファイルダウンロード API リファレンス: Download 統合エントリ、DownloadConfig 設定、進捗コールバック、DownloadResult タイプ、SHA-256 チェックサム検証、UNC パス防護など 6 層のセキュリティ保護を提供します。"
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: "バッチ処理 - HTML"
-description: "CyberGo HTML の並行バッチ抽出 API リファレンス。ExtractBatch、ExtractBatchFiles 系とコンテキスト版、WorkerPoolSize による並行制御、バッチ最大 10000 項目、BatchResult の成功/失敗/キャンセル数を扱います。"
+title: "バッチ処理 - CyberGo HTML | 並行バッチ API"
+description: "CyberGo HTML 並行バッチ API：ExtractBatch、ExtractBatchFiles 系とコンテキスト版。WorkerPoolSize 並行、バッチ最大 10000 項目、BatchResult カウントを提供します。"
 ---
 
 # バッチ処理

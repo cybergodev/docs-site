@@ -1,6 +1,6 @@
 ---
-title: "Processor - JWT API Reference"
-description: "CyberGo JWT Processor core API: signatures and usage of Create, Validate, Refresh, Revoke, ValidateInto, RefreshInto, and ParseUnverified methods."
+title: "Processor - CyberGo JWT | Core Type"
+description: "The core CyberGo JWT Processor type exposes Create, Validate, Refresh, Revoke, IsRevoked, ParseUnverified, and Close methods with their signatures and examples."
 ---
 
 # Processor

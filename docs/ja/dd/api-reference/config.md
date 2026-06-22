@@ -192,6 +192,8 @@ type JSONFieldNames struct {
 }
 ```
 
+ポインタレシーバメソッド `(*JSONFieldNames).IsComplete() bool` を実装しています。5つのフィールド名がすべて空でない場合に `true` を返し、すべてのフィールド名が完全にカスタマイズされているかを検証するために使用できます。
+
 使用例：
 
 ```go

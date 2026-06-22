@@ -1,6 +1,6 @@
 ---
 title: "Performance - CyberGo env | High-Concurrency Tuning"
-description: "Performance optimization and high-concurrency tuning guide for CyberGo env, covering sync.RWMutex-based thread-safe access, sync.Pool object reuse strategies, mlock memory locking patterns and overhead, large file streaming techniques, benchmark comparisons, and LimitsConfig tuning recommendations."
+description: "CyberGo env performance guide: RWMutex concurrency, object-pool reuse, mlock memory locking and large-file streaming, with benchmarks and tuning tips."
 ---
 
 # Performance

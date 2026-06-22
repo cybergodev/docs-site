@@ -1,6 +1,6 @@
 ---
-title: "Types & Constants - JWT API Reference"
-description: "CyberGo JWT types and constants: NumericDate, StringOrSlice, SigningMethod, ValidationError, RateLimiter, clocks, and 12 signing algorithm constants."
+title: "Types - CyberGo JWT | Types & Constants"
+description: "Types and constants: NumericDate, StringOrSlice serialization, SigningMethod, ValidationError, RateLimiter, SystemClock, FixedClock, and 12 algorithm constants."
 ---
 
 # Types & Constants

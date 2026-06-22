@@ -1,6 +1,6 @@
 ---
-title: "快速开始 - HTML"
-description: "CyberGo HTML 库快速入门教程，5 分钟掌握安装、基本内容提取、四种 Config 预设配置（默认、纯文本、Markdown、高安全）、纯文本与 Markdown 及 JSON 三种输出格式、上下文超时控制和并发安全使用模式，快速上手 HTML 内容提取工具。"
+title: "快速开始 - CyberGo HTML | 5分钟上手指南"
+description: "CyberGo HTML 快速入门：安装、基本内容提取、四种 Config 预设、文本/Markdown/JSON 输出、上下文超时与并发安全模式，5 分钟上手 HTML 提取。"
 ---
 
 # 快速开始
@@ -162,7 +162,7 @@ cfg := html.DefaultConfig()
 cfg.Encoding = "gbk"
 ```
 
-支持 UTF-8、GBK、GB18030、Shift_JIS、EUC-JP、Windows-1252 等 15+ 编码。
+支持 UTF-8、GBK、Shift_JIS、EUC-JP、Windows-1252 等 15+ 编码。
 
 ## 下一步
 

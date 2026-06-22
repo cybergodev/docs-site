@@ -1,5 +1,5 @@
 ---
-title: "상수와 타입 - HTTPC"
+title: "상수와 타입 - CyberGo HTTPC | 상수와 타입"
 description: "HTTPC 상수와 타입 API 레퍼런스: BodyKind 요청 본문 열거와 자동 감지, FormData와 FileData 업로드 타입, AuditEvent 감사 이벤트 구조와 컨텍스트 키 정의의 완전한 설명을 제공합니다."
 ---
 

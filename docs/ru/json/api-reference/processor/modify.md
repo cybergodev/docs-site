@@ -1,6 +1,6 @@
 ---
-title: "Processor - Модификация данных - CyberGo JSON | Справочник API"
-description: "Справочник методов модификации данных Processor: Set, SetMultiple, SetCreate, SetMultipleCreate, Delete, DeleteClean. Все методы поддерживают цепочечные вызовы в Go."
+title: "Processor Модификация данных - CyberGo JSON | API"
+description: "Методы изменения Processor CyberGo JSON: Set, SetMultiple, SetCreate, Delete и DeleteClean с поддержкой цепочечных вызовов в Go."
 ---
 
 # Методы модификации данных

@@ -1,6 +1,6 @@
 ---
 title: "Processor JSONL 메서드 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor JSONL 메서드: StreamJSONL/StreamJSONLParallel/StreamJSONLChunked 스트림 처리, ForeachJSONL 반복, MapJSONL 매핑, ReduceJSONL 리덕션, FilterJSONL 필터링으로 Go 스트리밍 데이터 처리에 적합합니다."
+description: "CyberGo JSON Processor JSONL 메서드: StreamJSONL, ForeachJSONL, MapJSONL, ReduceJSONL, FilterJSONL로 스트림 데이터 처리에 적합합니다."
 ---
 
 # Processor JSONL 메서드

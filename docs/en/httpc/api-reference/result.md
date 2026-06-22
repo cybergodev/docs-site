@@ -1,5 +1,5 @@
 ---
-title: "Result - HTTPC"
+title: "Result - CyberGo HTTPC | Result Response Type"
 description: "HTTPC Result response type API reference: StatusCode/Body basic methods, status checks, cookie operations, Unmarshal JSON parsing, and SaveToFile file saving."
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: "Constants and Types - HTTPC"
+title: "Constants and Types - CyberGo HTTPC | Constants & Types"
 description: "HTTPC constants and types API reference: BodyKind body enums with auto-detection, FormData and FileData upload types, AuditEvent, and context keys."
 ---
 

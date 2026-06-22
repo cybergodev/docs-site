@@ -1,6 +1,6 @@
 ---
-title: "性能优化 - HTML"
-description: "CyberGo HTML 库性能优化指南，包括 Processor 实例复用（避免 sync.Pool 开销）、缓存策略配置（MaxCacheEntries、CacheTTL、CacheCleanup）、批量处理并发控制（WorkerPoolSize）、输入大小控制和超时设置等实用技巧，帮助提升大规模内容处理的吞吐量。"
+title: "性能优化 - CyberGo HTML | 吞吐量提升指南"
+description: "CyberGo HTML 性能优化：Processor 实例复用、缓存策略、批量并发控制、输入大小与超时设置等技巧，提升大规模处理吞吐量。"
 ---
 
 # 性能优化

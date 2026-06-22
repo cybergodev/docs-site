@@ -1,6 +1,6 @@
 ---
-title: "配置 - HTML"
-description: "CyberGo HTML 库 Config 配置详解，包括资源管理（MaxInputSize、缓存、超时）、安全（清洗、深度限制、审计）、内容提取（文章识别、媒体保留）、输出格式（图片、链接、表格）、链接过滤（Include*、ResolveRelativeURLs）和 Validate 验证方法。"
+title: "配置 - CyberGo HTML | Config 字段详解"
+description: "CyberGo HTML Config 配置详解：资源管理（MaxInputSize、缓存、超时）、安全、内容提取、输出格式、链接过滤与 Validate 验证方法。"
 ---
 
 # 配置
@@ -13,19 +13,23 @@ description: "CyberGo HTML 库 Config 配置详解，包括资源管理（MaxInp
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `MaxInputSize` | `int` | `52428800` (50MB) | 最大输入大小（字节） |
-| `MaxCacheEntries` | `int` | `2000` | 缓存最大条目数 |
-| `CacheTTL` | `time.Duration` | `1h` | 缓存过期时间 |
-| `CacheCleanup` | `time.Duration` | `5m` | 缓存清理间隔 |
-| `WorkerPoolSize` | `int` | `4` | 工作池大小 |
-| `ProcessingTimeout` | `time.Duration` | `30s` | 处理超时时间 |
+| `MaxInputSize` | `int` | `52428800` (50MB) | 最大输入大小（字节），取值范围 `1`–`52428800` |
+| `MaxCacheEntries` | `int` | `2000` | 缓存最大条目数，设为 `0` 禁用缓存（上限 `100000`） |
+| `CacheTTL` | `time.Duration` | `1h` | 缓存过期时间，不能为负 |
+| `CacheCleanup` | `time.Duration` | `5m` | 过期缓存的后台清理间隔，设为 `0` 禁用后台清理 |
+| `WorkerPoolSize` | `int` | `4` | 批量处理的工作池大小，取值范围 `1`–`256` |
+| `ProcessingTimeout` | `time.Duration` | `30s` | 单文档处理超时，设为 `0` 表示不限时 |
+
+:::tip 零值语义
+`MaxCacheEntries`、`CacheCleanup`、`ProcessingTimeout` 设为 `0` 不是错误，而是有明确语义（分别表示禁用缓存、禁用后台清理、不限时）。`MaxInputSize`、`WorkerPoolSize`、`MaxDepth` 则必须为正数，否则触发 `ConfigError`。
+:::
 
 ### 安全
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `EnableSanitization` | `bool` | `true` | 启用内容清洗，仅对可信输入可禁用 |
-| `MaxDepth` | `int` | `500` | 最大 DOM 深度 |
+| `MaxDepth` | `int` | `500` | 最大 DOM 深度，取值范围 `1`–`500` |
 | `AllowedBaseDir` | `string` | `""` | 限制文件操作到此目录，留空（默认）表示不限制；接收不可信输入的文件路径时使用 |
 | `Audit` | `AuditConfig` | `DefaultAuditConfig()` | 审计配置 |
 
@@ -129,3 +133,22 @@ cfg := html.DefaultConfig()
 cfg.MaxInputSize = -1
 err := cfg.Validate() // 返回 ConfigError
 ```
+
+### 验证约束
+
+`Validate()` 对数值字段强制的取值范围（违反时返回 `ConfigError`，可经 `errors.Is(err, html.ErrInvalidConfig)` 判断）：
+
+| 字段 | 约束 | 非法示例 |
+|------|------|----------|
+| `MaxInputSize` | 正数且 ≤ `52428800`（50MB） | `0`、`-1`、`100000000` |
+| `MaxCacheEntries` | ≥ `0` 且 ≤ `100000` | `-1`、`200000` |
+| `CacheTTL` | ≥ `0` | `-1 * time.Second` |
+| `CacheCleanup` | ≥ `0` | `-1 * time.Minute` |
+| `WorkerPoolSize` | 正数且 ≤ `256` | `0`、`512` |
+| `MaxDepth` | 正数且 ≤ `500` | `0`、`1000` |
+| `ProcessingTimeout` | ≥ `0` | `-1 * time.Second` |
+| `InlineImageFormat` | 空 / `none` / `markdown` / `html` / `placeholder` | `"pdf"` |
+| `InlineLinkFormat` | 空 / `none` / `markdown` / `html` | `"pdf"` |
+| `TableFormat` | 空 / `markdown` / `html` | `"csv"` |
+
+格式字符串大小写不敏感且空值视为默认（`InlineImageFormat`/`InlineLinkFormat` → `none`，`TableFormat` → `markdown`）。`New()` 在创建 Processor 前会先调用 `Validate()`，因此无效配置不会产出可用的 Processor。

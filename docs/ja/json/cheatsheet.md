@@ -1,6 +1,6 @@
 ---
 title: "チートシート - CyberGo JSON | API クイックリファレンス"
-description: "CyberGo JSON API チートシート：パスクエリ GetString/GetInt、変更操作 Set/Delete、シリアライズ Marshal/Unmarshal、設定オプション、イテレータ、セーフティ関数などよく使う API のクイックリファレンス。Go 開発者が必要な関数シグネチャと使い方を効率よく検索できます。"
+description: "CyberGo JSON API チートシート：GetString/GetInt クエリ、Set/Delete 変更、Marshal/Unmarshal シリアライズ、設定、イテレータ、セキュリティ関数を素早く参照できる Go 開発向けリファレンスです。"
 ---
 
 # チートシート

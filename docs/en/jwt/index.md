@@ -1,6 +1,6 @@
 ---
-title: "JWT - Production-Grade JWT Authentication Library"
-description: "CyberGo JWT: production-grade Go JWT library — HMAC/RSA/RSA-PSS/ECDSA (12 algorithms); blacklist, rate limiting, custom Claims, clock injection; concurrency-safe."
+title: "JWT Auth - CyberGo JWT | Token Sign & Verify"
+description: "Production-grade Go JWT library with 12 HMAC, RSA, RSA-PSS, and ECDSA algorithms plus token validation, refresh, revocation, blacklist, and rate limiting."
 ---
 
 # JWT - Production-Grade JWT Authentication Library

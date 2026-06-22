@@ -1,6 +1,6 @@
 ---
-title: "Processor - HTML"
-description: "Справочник API процессора CyberGo HTML: New, методы Extract, GetStatistics, GetAuditLog, ClearCache, ResetStatistics, Close — ядро обработки."
+title: "Processor - CyberGo HTML | ядро обработки"
+description: "API Processor CyberGo HTML: New, семейство Extract, GetStatistics, GetAuditLog, ClearCache, Close — управление жизненным циклом для частого переиспользования."
 ---
 
 # Processor

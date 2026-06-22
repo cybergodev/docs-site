@@ -1,5 +1,5 @@
 ---
-title: "Package Functions - HTTPC"
+title: "Package Functions - CyberGo HTTPC | Package Functions"
 description: "HTTPC package functions API reference: seven HTTP methods like Get/Post, New client creation, the Download entry, helpers, and NewDomain creation."
 ---
 

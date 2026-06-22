@@ -1,6 +1,6 @@
 ---
 title: "Hook フックシステム - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON フックシステム完全リファレンス：Hook インターフェース定義、LoggingHook ログ記録、TimingHook パフォーマンスタイミング、ValidationHook データバリデーション、ErrorHook エラー処理、カスタムフック実装の詳細解説。Go の JSON 操作の前後にカスタムロジックを挿入可能。"
+description: "CyberGo JSON Hook システム：Hook インターフェース、LoggingHook、TimingHook、ValidationHook、ErrorHook とカスタムフックで JSON 操作の前後に独自ロジックを挟めます。"
 ---
 
 # Hook フックシステム
@@ -32,7 +32,7 @@ HookContext は操作のコンテキスト情報を提供します。
 ```go
 type HookContext struct {
     Operation string      // 操作タイプ："get", "set", "delete", "marshal", "unmarshal"
-    JSONStr   string      // 入力 JSON 文字列（marshal の場合は空の可能性あり）
+    JSONStr   string      // 入力 JSON 文字列（marshal の場合は空の可能性あり）。セキュリティ警告：機密データが含まれる可能性があります
     Path      string      // 対象パス（marshal/unmarshal の場合は空の可能性あり）
     Value     any         // set 操作の値
     Config    *Config     // アクティブな設定
@@ -45,7 +45,7 @@ type HookContext struct {
 | フィールド | 型 | 説明 |
 |------|------|------|
 | `Operation` | `string` | 操作タイプ。値は `get`、`set`、`delete`、`marshal`、`unmarshal` |
-| `JSONStr` | `string` | 入力 JSON 文字列 |
+| `JSONStr` | `string` | 入力 JSON 文字列（**セキュリティ警告：機密データが含まれる可能性があります**） |
 | `Path` | `string` | 対象パス式 |
 | `Value` | `any` | set 操作の値 |
 | `Config` | `*Config` | 現在使用中の設定 |

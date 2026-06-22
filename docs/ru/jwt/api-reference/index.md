@@ -1,6 +1,6 @@
 ---
-title: "Справочник API - JWT"
-description: "CyberGo JWT — индекс API: функции пакета, методы Processor, Config, Claims, интерфейсы, типы, константы и обработка ошибок."
+title: "Справочник API - CyberGo JWT | Полная документация"
+description: "Обзор API CyberGo JWT: навигация по функциям пакета, методам Processor, Config, Claims, RegisteredClaims, интерфейсам, типам и 19 ошибкам."
 ---
 
 # Справочник API

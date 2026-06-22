@@ -1,6 +1,6 @@
 ---
 title: "Обработчик JSONL - CyberGo JSON | Справочник API"
-description: "Справочник обработчика JSONL CyberGo JSON: StreamJSONL потоковая обработка, JSONLWriter запись, StreamLinesInto[T] обобщённые потоки, ParseJSONL разбор, ToJSONL преобразование и параметры конфигурации для чтения и записи JSON Lines в Go."
+description: "Обработчик JSONL CyberGo JSON: StreamJSONL, JSONLWriter, StreamLinesInto[T], ParseJSONL и ToJSONL для чтения и записи JSON Lines в Go."
 ---
 
 # Обработчик JSONL

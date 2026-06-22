@@ -1,6 +1,6 @@
 ---
-title: "Error Handling - JWT"
-description: "CyberGo JWT error handling guide: 19 sentinel errors across config, validation, rate limiting, and lifecycle, with errors.Is() patterns and best practices."
+title: "Error Handling - CyberGo JWT | Sentinels"
+description: "Categorize all 19 CyberGo JWT sentinel errors across config, token validation, rate limiting, and lifecycle with errors.Is matching and response practices."
 ---
 
 # Error Handling
@@ -52,15 +52,15 @@ Don't use `err == jwt.ErrTokenExpired` or string matching. `errors.Is()` correct
 | Error | Method | Suggestion |
 |-------|--------|------------|
 | `ErrEmptyToken` | All token operation methods | Check request header |
-| `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto | Signature mismatch, deny access |
+| `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Signature mismatch, deny access |
 | `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | Token algorithm doesn't match config, deny access |
 | `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | Prompt user to refresh token |
 | `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | Check clock synchronization |
-| `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto | Issuer mismatch |
-| `ErrTokenInvalidAudience` | Validate, Refresh, ValidateInto, RefreshInto | Audience mismatch |
+| `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Issuer mismatch |
+| `ErrTokenInvalidAudience` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Audience mismatch |
 | `ErrTokenRevoked` | Validate, Refresh, ValidateInto, RefreshInto | Token revoked, deny access |
 | `ErrInvalidClaims` | Create, CreateRefresh, Validate, Refresh, ValidateInto, RefreshInto | Business validation failed |
-| `ErrTokenMissingID` | IsRevoked | Token missing jti |
+| `ErrTokenMissingID` | Revoke, IsRevoked | Token missing jti |
 
 ### Rate Limiting & Blacklist
 

@@ -1,6 +1,6 @@
 ---
 title: "安全模式 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 安全 API 完整参考：包括安全配置、AddDangerousPattern 危险模式配置和输入验证机制，防御 JSON 注入、深度嵌套攻击和资源耗尽等安全威胁，支持自定义安全策略与防护规则配置，保障 Go 应用安全。"
+description: "CyberGo JSON 安全 API：安全配置、AddDangerousPattern 危险模式与输入验证，防御 JSON 注入、深度嵌套与资源耗尽等威胁。"
 ---
 
 # 安全模式

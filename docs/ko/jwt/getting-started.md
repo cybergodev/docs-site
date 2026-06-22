@@ -1,6 +1,6 @@
 ---
-title: "빠른 시작 - JWT"
-description: "CyberGo JWT 빠른 시작 가이드: 라이브러리 설치와 Processor 생성, 접근·갱신 토큰 발급·검증·갱신·취소, HMAC·RSA·RSA-PSS·ECDSA 알고리즘 선택, 커스텀 Claims, 블랙리스트와 토큰 버킷 속도 제한 설정."
+title: "빠른 시작 - CyberGo JWT | 5분 입문 가이드"
+description: "CyberGo JWT 빠른 시작 가이드: 라이브러리 설치와 Processor 생성, 접근·갱신 토큰 발급·검증·갱신·취소, 4종 알고리즘 선택, 커스텀 Claims, 블랙리스트와 토큰 버킷 속도 제한 설정 등 핵심 사용법."
 ---
 
 # 빠른 시작

@@ -1,6 +1,6 @@
 ---
-title: "Ошибки - Справочник JWT API"
-description: "Справочник ошибок CyberGo JWT: 19 сигнальных ошибок (ErrTokenExpired, ErrTokenRevoked и другие), тип ValidationError и шаблон сопоставления ошибок errors.Is()."
+title: "Ошибки - CyberGo JWT | Сигнальные ошибки"
+description: "Справочник ошибок CyberGo JWT: 19 сигнальных ошибок для конфигурации, проверки токенов, срока, Issuer, аудитории, чёрного списка и лимитов, все errors.Is."
 ---
 
 # Ошибки
@@ -34,7 +34,7 @@ var (
     ErrBlacklistNotConfigured = errors.New("blacklist not configured")
 
     ErrProcessorClosed = errors.New("processor closed")
-    ErrStoreClosed     = errors.New("store closed")
+    ErrStoreClosed     = errors.New("blacklist store is closed")
 )
 ```
 

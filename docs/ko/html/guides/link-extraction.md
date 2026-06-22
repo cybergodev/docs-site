@@ -1,6 +1,6 @@
 ---
-title: "링크 추출과 그룹화 - HTML"
-description: "CyberGo HTML 링크 추출·그룹화 실전: ExtractAllLinks로 CSS·JS·이미지·비디오·오디오 리소스를 추출·그룹화하고 Include 필터, 상대 URL 자동 해석, 크롤러 수집 모범 사례를 설명합니다."
+title: "링크 추출과 그룹화 - CyberGo HTML | 수집 가이드"
+description: "CyberGo HTML 링크 추출과 그룹화: ExtractAllLinks로 리소스 링크 추출·그룹화, Include 필터, 상대 URL 해석, 크롤러 수집 모범 사례를 설명합니다."
 ---
 
 # 링크 추출과 그룹화

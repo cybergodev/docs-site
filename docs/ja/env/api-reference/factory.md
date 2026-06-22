@@ -1,6 +1,6 @@
 ---
 title: "ComponentFactory API - CyberGo env | コンポーネントファクトリー"
-description: "CyberGo env ライブラリ ComponentFactory コンポーネントファクトリー API 完全リファレンス。Loader と Parser が共有するコンポーネントインスタンスの作成と管理、監査ハンドラー、検証器、ファイルシステムアダプター、RegisterParser カスタムパーサー登録を含む。コンポーネントライフサイクル制御 Close とスレッドセーフな並発アクセスを提供。"
+description: "CyberGo env の ComponentFactory API リファレンス。監査ハンドラー、検証器、ファイルシステムアダプターの生成とカスタムパーサー登録を Close ライフサイクル管理と共に提供します。"
 ---
 
 # ComponentFactory API

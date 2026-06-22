@@ -1,6 +1,6 @@
 ---
 title: "修改函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 修改函数完整参考：包括 Set/SetMultiple 设置值、Delete 删除键、MergeJSON/MergeMany 合并 JSON，支持自动路径创建、原子操作和多种 MergeMode 合并策略，满足 Go 各类 JSON 数据修改需求。"
+description: "CyberGo JSON 修改函数：Set/SetMultiple 设置、Delete 删除、MergeJSON/MergeMany 合并，支持自动路径创建、原子操作与多种 MergeMode 策略。"
 ---
 
 # 修改函数
@@ -309,11 +309,11 @@ for _, r := range results {
 
 ```go
 type BatchOperation struct {
-    Type    string  // 操作类型："get", "set", "delete", "validate"
-    JSONStr string  // 目标 JSON 字符串
-    Path    string  // 路径表达式
-    Value   any     // 操作值（set 操作使用）
-    ID      string  // 操作标识
+    Type    string `json:"type"`     // 操作类型："get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // 目标 JSON 字符串
+    Path    string `json:"path"`     // 路径表达式
+    Value   any    `json:"value"`    // 操作值（set 操作使用）
+    ID      string `json:"id"`       // 操作标识
 }
 ```
 
@@ -323,9 +323,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string  // 操作标识
-    Result any     // 操作结果
-    Error  error   // 错误信息
+    ID     string `json:"id"`     // 操作标识
+    Result any    `json:"result"` // 操作结果
+    Error  error  `json:"error"`  // 错误信息
 }
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: "Система перехватчиков Hook - CyberGo JSON | Справочник API"
-description: "Полный справочник системы перехватчиков CyberGo JSON: подробное описание интерфейса Hook, LoggingHook для логирования, TimingHook для замеров производительности, ValidationHook для валидации данных, ErrorHook для обработки ошибок и реализации пользовательских перехватчиков, поддерживающих вставку пользовательской логики до и после JSON-операций в Go."
+description: "Система Hook CyberGo JSON: интерфейс Hook, LoggingHook, TimingHook, ValidationHook, ErrorHook и пользовательские перехватчики для операций с JSON."
 ---
 
 # Система перехватчиков Hook
@@ -32,7 +32,7 @@ HookContext предоставляет контекстную информаци
 ```go
 type HookContext struct {
     Operation string      // Тип операции: "get", "set", "delete", "marshal", "unmarshal"
-    JSONStr   string      // Входная JSON строка (может быть пустой при marshal)
+    JSONStr   string      // Входная JSON строка (может быть пустой при marshal). Предупреждение безопасности: может содержать конфиденциальные данные
     Path      string      // Целевой путь (может быть пустым при marshal/unmarshal)
     Value     any         // Значение операции set
     Config    *Config     // Активная конфигурация
@@ -45,7 +45,7 @@ type HookContext struct {
 | Поле | Тип | Описание |
 |------|------|------|
 | `Operation` | `string` | Тип операции, значения: `get`, `set`, `delete`, `marshal`, `unmarshal` |
-| `JSONStr` | `string` | Входная JSON строка |
+| `JSONStr` | `string` | Входная JSON строка (**Предупреждение безопасности: может содержать конфиденциальные данные**) |
 | `Path` | `string` | Целевое выражение пути |
 | `Value` | `any` | Значение операции set |
 | `Config` | `*Config` | Текущая конфигурация |

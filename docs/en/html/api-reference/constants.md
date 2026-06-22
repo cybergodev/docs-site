@@ -1,5 +1,5 @@
 ---
-title: "Constants & Errors - HTML"
+title: "Constants & Errors - CyberGo HTML | Defaults & Error Types"
 description: "CyberGo HTML constants and errors: DefaultMaxInputSize and defaults, sentinel errors like ErrInputTooLarge, plus InputError, ConfigError, and FileError."
 ---
 

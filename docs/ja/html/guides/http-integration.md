@@ -1,6 +1,6 @@
 ---
-title: "HTTP 統合 - HTML"
-description: "CyberGo HTML HTTP 統合ガイド：net/http の単一ページスクレイピング・エラー処理、並列バッチ最適化・リソース管理、コンテキストタイムアウト、Web サービス統合、Processor シングルトン、本番デプロイを扱います。"
+title: "HTTP 統合 - CyberGo HTML | Webサービス実践"
+description: "CyberGo HTML HTTP 統合実践：net/http の単一ページスクレイピング、並列バッチ最適化、コンテキストタイムアウト、Web サービス統合、シングルトン、本番デプロイのベストプラクティスです。"
 ---
 
 # HTTP 統合

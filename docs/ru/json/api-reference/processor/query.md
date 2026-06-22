@@ -1,6 +1,6 @@
 ---
-title: "Processor - Запросы по пути - CyberGo JSON | Справочник API"
-description: "Справочник методов запросов по пути Processor: Get/GetString/GetInt, GetMultiple, SafeGet с AccessResult, GetTyped[T], CompilePath и GetCompiled с поддержкой JSONPath и оптимизацией кэша в Go."
+title: "Processor - Запросы по пути - CyberGo JSON | API"
+description: "Запросы по пути Processor CyberGo JSON: Get/GetString/GetInt, пакетный GetMultiple, SafeGet с AccessResult и обобщённый GetTyped[T] с JSONPath и кэшем."
 ---
 
 # Методы запросов по пути
@@ -11,7 +11,7 @@ Processor предоставляет различные типобезопасн
 
 ### Get
 
-Сигнатура: `func (p *Processor) Get(jsonStr, path string, cfg ...Config) (any, error)`
+Сигнатура: `func (p *Processor) Get(jsonStr, path string, cfg ...Config) (result any, err error)`
 
 Получает значение любого типа из указанного пути.
 

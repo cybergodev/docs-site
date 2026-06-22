@@ -1,6 +1,6 @@
 ---
-title: "高度なサンプル - JWT"
-description: "CyberGo JWT 高度なサンプル：RSA・ECDSA 非対称署名の検証、CustomClaims ビジネス宣言構造体、Redis ブラックリストバックエンド、FixedClock クロック注入テスト、未検証パースと完全な Web サービス統合。"
+title: "高度なサンプル - CyberGo JWT | 非対称署名とカスタムストア"
+description: "高度なサンプル集：RSA と ECDSA 非対称署名の検証、CustomClaims でカスタムビジネス宣言を実装、Redis カスタムブラックリストバックエンドへの接続、FixedClock 時計注入テストと完全な Web サービス統合。"
 ---
 
 # 高度なサンプル

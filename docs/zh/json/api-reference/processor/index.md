@@ -1,6 +1,6 @@
 ---
 title: "Processor 处理器 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 处理器完整参考：包括 New 创建实例、GetString/Set/Delete 数据操作、Foreach 迭代、Encode 编码、Close 生命周期管理、Stats 统计和缓存配置，适合 Go 高频 JSON 操作和数据处理复用场景。"
+description: "CyberGo JSON Processor 处理器：New 创建、GetString/Set/Delete 操作、Foreach 迭代、Encode 编码、Close 生命周期、Stats 统计与缓存配置，适合高频复用场景。"
 ---
 
 # Processor
@@ -60,9 +60,9 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [数据修改](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/Delete/DeleteClean |
 | [输出方法](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
 | [解析与加载](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal/LoadFromFile/LoadFromReader/SaveToFile/MarshalToFile/SaveToWriter/UnmarshalFromFile |
-| [迭代方法](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
+| [迭代方法](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachReturn/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachWithPathAndControl/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
 | [批量操作](./batch) | ProcessBatch/WarmupCache |
-| [JSONL 处理](./jsonl) | StreamJSONL/Parallel/Chunked/Map/Reduce/Filter |
+| [JSONL 处理](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |
 | [生命周期](./lifecycle) | Close/IsClosed/GetConfig/AddHook/ClearCache/GetStats/GetHealthStatus |
 
 ---

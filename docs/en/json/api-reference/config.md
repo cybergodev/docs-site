@@ -1,6 +1,6 @@
 ---
 title: "Config - CyberGo JSON | API Reference"
-description: "CyberGo JSON Config configuration options reference: detailed DefaultConfig default configuration, SecurityConfig security configuration, PrettyConfig formatting configuration, cache settings, size limits, security options, and encoding options to customize all JSON operation behavior for Go applications."
+description: "CyberGo JSON Config reference: DefaultConfig, SecurityConfig, PrettyConfig, caching, size limits, and encoding options to customize JSON behavior in Go."
 ---
 
 # Config
@@ -12,93 +12,93 @@ Config is used to customize the behavior of the Processor and all JSON operation
 ```go
 type Config struct {
     // ===== Cache Settings =====
-    MaxCacheSize int           // Maximum cache entries
-    CacheTTL     time.Duration // Cache expiration time
-    EnableCache  bool          // Whether to enable cache
-    CacheResults bool          // Whether to cache operation results
+    MaxCacheSize int           `json:"max_cache_size"` // Maximum cache entries
+    CacheTTL     time.Duration `json:"cache_ttl"`      // Cache expiration time
+    EnableCache  bool          `json:"enable_cache"`   // Whether to enable cache
+    CacheResults bool          `json:"cache_results"`  // Whether to cache operation results
 
     // ===== Size Limits =====
-    MaxJSONSize  int64 // Maximum JSON size (bytes)
-    MaxPathDepth int   // Maximum path depth
-    MaxBatchSize int   // Maximum batch operation count
+    MaxJSONSize  int64 `json:"max_json_size"`  // Maximum JSON size (bytes)
+    MaxPathDepth int   `json:"max_path_depth"` // Maximum path depth
+    MaxBatchSize int   `json:"max_batch_size"` // Maximum batch operation count
 
     // ===== Security Limits =====
-    MaxNestingDepthSecurity   int   // Maximum nesting depth
-    MaxSecurityValidationSize int64 // Maximum security validation size
-    MaxObjectKeys             int   // Maximum object key count
-    MaxArrayElements          int   // Maximum array element count
-    FullSecurityScan          bool  // Enable full security scan
+    MaxNestingDepthSecurity   int   `json:"max_nesting_depth"`           // Maximum nesting depth
+    MaxSecurityValidationSize int64 `json:"max_security_validation_size"` // Maximum security validation size
+    MaxObjectKeys             int   `json:"max_object_keys"`             // Maximum object key count
+    MaxArrayElements          int   `json:"max_array_elements"`          // Maximum array element count
+    FullSecurityScan          bool  `json:"full_security_scan"`          // Enable full security scan
 
     // ===== Concurrency =====
-    MaxConcurrency    int // Maximum concurrency
-    ParallelThreshold int // Parallel processing threshold
+    MaxConcurrency    int `json:"max_concurrency"`    // Maximum concurrency
+    ParallelThreshold int `json:"parallel_threshold"` // Parallel processing threshold
 
     // ===== Processing Options =====
-    EnableValidation bool // Enable validation
-    StrictMode       bool // Strict mode
-    CreatePaths      bool // Auto-create paths
-    CleanupNulls     bool // Cleanup null values
-    CompactArrays    bool // Compact arrays
-    ContinueOnError  bool // Continue on batch operation error
+    EnableValidation bool `json:"enable_validation"` // Enable validation
+    StrictMode       bool `json:"strict_mode"`       // Strict mode
+    CreatePaths      bool `json:"create_paths"`      // Auto-create paths
+    CleanupNulls     bool `json:"cleanup_nulls"`     // Cleanup null values
+    CompactArrays    bool `json:"compact_arrays"`    // Compact arrays
+    ContinueOnError  bool `json:"continue_on_error"` // Continue on batch operation error
 
     // ===== Input/Output Options =====
-    AllowComments    bool // Allow comments
-    PreserveNumbers  bool // Preserve number precision
-    ValidateInput    bool // Validate input
-    ValidateFilePath bool // Validate file paths
-    SkipValidation   bool // Skip validation (trusted input)
+    AllowComments    bool `json:"allow_comments"`     // Allow comments
+    PreserveNumbers  bool `json:"preserve_numbers"`   // Preserve number precision
+    ValidateInput    bool `json:"validate_input"`     // Validate input
+    ValidateFilePath bool `json:"validate_file_path"` // Validate file paths
+    SkipValidation   bool `json:"skip_validation"`    // Skip validation (trusted input)
 
     // ===== Encoding Options =====
-    Pretty          bool            // Pretty-print output
-    Indent          string          // Indentation string
-    Prefix          string          // Prefix
-    EscapeHTML      bool            // HTML escaping
-    SortKeys        bool            // Sort keys
-    ValidateUTF8    bool            // UTF-8 validation
-    MaxDepth        int             // Maximum encoding depth
-    DisallowUnknown bool            // Disallow unknown fields
-    FloatPrecision  int             // Float precision (-1 for auto)
-    FloatTruncate   bool            // Truncate floats
-    DisableEscaping bool            // Disable escaping
-    EscapeUnicode   bool            // Unicode escaping
-    EscapeSlash     bool            // Slash escaping
-    EscapeNewlines  bool            // Newline escaping
-    EscapeTabs      bool            // Tab escaping
-    IncludeNulls    bool            // Include null values
-    CustomEscapes   map[rune]string // Custom escape mapping
+    Pretty          bool            `json:"pretty"`           // Pretty-print output
+    Indent          string          `json:"indent"`           // Indentation string
+    Prefix          string          `json:"prefix"`           // Prefix
+    EscapeHTML      bool            `json:"escape_html"`      // HTML escaping
+    SortKeys        bool            `json:"sort_keys"`        // Sort keys
+    ValidateUTF8    bool            `json:"validate_utf8"`    // UTF-8 validation
+    MaxDepth        int             `json:"max_depth"`        // Maximum encoding depth
+    DisallowUnknown bool            `json:"disallow_unknown"` // Disallow unknown fields
+    FloatPrecision  int             `json:"float_precision"`  // Float precision (-1 for auto)
+    FloatTruncate   bool            `json:"float_truncate"`   // Truncate floats
+    DisableEscaping bool            `json:"disable_escaping"` // Disable escaping
+    EscapeUnicode   bool            `json:"escape_unicode"`   // Unicode escaping
+    EscapeSlash     bool            `json:"escape_slash"`     // Slash escaping
+    EscapeNewlines  bool            `json:"escape_newlines"`  // Newline escaping
+    EscapeTabs      bool            `json:"escape_tabs"`      // Tab escaping
+    IncludeNulls    bool            `json:"include_nulls"`    // Include null values
+    CustomEscapes   map[rune]string `json:"custom_escapes,omitempty"` // Custom escape mapping
 
     // ===== Observability =====
-    EnableMetrics     bool // Enable metrics collection
-    EnableHealthCheck bool // Enable health check
+    EnableMetrics     bool `json:"enable_metrics"`      // Enable metrics collection
+    EnableHealthCheck bool `json:"enable_health_check"` // Enable health check
 
     // ===== Large File Processing =====
-    ChunkSize       int64 // Chunk size
-    MaxMemory       int64 // Maximum memory usage
-    BufferSize      int   // Buffer size
-    SamplingEnabled bool  // Enable sampling
-    SampleSize      int   // Sample count
+    ChunkSize       int64 `json:"chunk_size"`       // Chunk size
+    MaxMemory       int64 `json:"max_memory"`       // Maximum memory usage
+    BufferSize      int   `json:"buffer_size"`      // Buffer size
+    SamplingEnabled bool  `json:"sampling_enabled"` // Enable sampling
+    SampleSize      int   `json:"sample_size"`      // Sample count
 
     // ===== JSONL Configuration =====
-    JSONLBufferSize    int   // JSONL buffer size
-    JSONLMaxLineSize   int   // JSONL maximum line size
-    JSONLSkipEmpty     bool  // Skip empty lines
-    JSONLSkipComments  bool  // Skip comment lines
-    JSONLContinueOnErr bool  // Continue on error
-    JSONLWorkers       int   // JSONL parallel worker count
-    JSONLChunkSize     int   // JSONL chunk size
-    JSONLMaxMemory     int64 // JSONL maximum memory
+    JSONLBufferSize    int   `json:"jsonl_buffer_size"`     // JSONL buffer size
+    JSONLMaxLineSize   int   `json:"jsonl_max_line_size"`   // JSONL maximum line size
+    JSONLSkipEmpty     bool  `json:"jsonl_skip_empty"`      // Skip empty lines
+    JSONLSkipComments  bool  `json:"jsonl_skip_comments"`   // Skip comment lines
+    JSONLContinueOnErr bool  `json:"jsonl_continue_on_err"` // Continue on error
+    JSONLWorkers       int   `json:"jsonl_workers"`         // JSONL parallel worker count
+    JSONLChunkSize     int   `json:"jsonl_chunk_size"`      // JSONL chunk size
+    JSONLMaxMemory     int64 `json:"jsonl_max_memory"`      // JSONL maximum memory
 
     // ===== Merge Options =====
-    MergeMode MergeMode // Merge strategy
+    MergeMode MergeMode `json:"merge_mode"` // Merge strategy
 
-    // ===== Extension Points =====
-    CustomEncoder              CustomEncoder                // Custom encoder
-    CustomTypeEncoders         map[reflect.Type]TypeEncoder // Custom type encoders
-    CustomValidators           []Validator                  // Custom validators
+    // ===== Extension Points (no JSON tag, not serialized) =====
+    CustomEncoder               CustomEncoder                // Custom encoder
+    CustomTypeEncoders          map[reflect.Type]TypeEncoder // Custom type encoders
+    CustomValidators            []Validator                  // Custom validators
     AdditionalDangerousPatterns []DangerousPattern           // Additional dangerous patterns
-    DisableDefaultPatterns     bool                         // Disable default warning-level patterns
-    Hooks                      []Hook                       // Operation hooks
-    CustomPathParser           PathParser                   // Custom path parser
+    DisableDefaultPatterns      bool                         // Disable default warning-level patterns
+    Hooks                       []Hook                       // Operation hooks
+    CustomPathParser            PathParser                   // Custom path parser
 }
 ```
 
@@ -401,6 +401,7 @@ const (
     DefaultMaxJSONSize       = 100 * 1024 * 1024  // 100MB
     DefaultMaxNestingDepth   = 200
     DefaultMaxPathDepth      = 50
+    DefaultMaxDepth          = 100                 // Default nesting depth for encoding/decoding (Config.MaxDepth)
     DefaultMaxConcurrency    = 50
     DefaultMaxBatchSize      = 2000
     DefaultMaxSecuritySize   = 10 * 1024 * 1024   // 10MB

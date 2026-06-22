@@ -1,5 +1,5 @@
 ---
-title: "API 参考 - HTTPC"
+title: "API 参考 - CyberGo HTTPC | API 总索引"
 description: "HTTPC API 参考索引：按核心、请求响应、高级功能三组分类导航，涵盖包级 HTTP 函数、28 个 WithXxx 请求选项、Config 配置系统与五种预设、八个内置中间件、域名客户端、文件下载与错误类型的完整查阅入口，帮助快速定位所需 API。"
 ---
 

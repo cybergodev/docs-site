@@ -1,6 +1,6 @@
 ---
-title: "Выбор формата вывода - HTML"
-description: "Выбор формата вывода CyberGo HTML: сравнение текста, Markdown и JSON, особенности, сценарии, InlineImageFormat, InlineLinkFormat, контекст и файлы."
+title: "Выбор формата вывода - CyberGo HTML | сравнение"
+description: "Выбор формата вывода CyberGo HTML: сравнение текста, Markdown и JSON — особенности, сценарии, параметры форматов и чтение из файлов."
 ---
 
 # Выбор формата вывода

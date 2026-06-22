@@ -1,6 +1,6 @@
 ---
 title: "Processor Lifecycle - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor lifecycle management reference: including New instance creation, Close resource release, IsClosed state checking, GetStats statistics, GetHealthStatus health monitoring, and best practices for concurrent-safe shutdown and resource protection to ensure stable operation in Go production."
+description: "CyberGo JSON Processor lifecycle: New, Close resource release, IsClosed state, GetStats statistics, and GetHealthStatus for safe concurrent shutdown."
 ---
 
 # Lifecycle & Statistics
@@ -68,11 +68,11 @@ fmt.Printf("Successfully warmed up %d paths\n", result.Successful)
 
 ```go
 type WarmupResult struct {
-    TotalPaths   int      // Total path count
-    Successful   int      // Successfully warmed up path count
-    Failed       int      // Failed path count
-    SuccessRate  float64  // Success rate (percentage)
-    FailedPaths  []string // List of failed paths
+    TotalPaths  int      `json:"total_paths"`            // Total path count
+    Successful  int      `json:"successful"`             // Successfully warmed up path count
+    Failed      int      `json:"failed"`                 // Failed path count
+    SuccessRate float64  `json:"success_rate"`           // Success rate (percentage)
+    FailedPaths []string `json:"failed_paths,omitempty"` // List of failed paths
 }
 ```
 
@@ -102,18 +102,18 @@ fmt.Printf("Cache size: %d\n", stats.CacheSize)
 
 ```go
 type Stats struct {
-    CacheSize        int64         // Cache entry count
-    CacheMemory      int64         // Cache memory usage (bytes)
-    MaxCacheSize     int           // Maximum cache size
-    HitCount         int64         // Cache hit count
-    MissCount        int64         // Cache miss count
-    HitRatio         float64       // Cache hit ratio
-    CacheTTL         time.Duration // Cache TTL
-    CacheEnabled     bool          // Whether cache is enabled
-    IsClosed         bool          // Whether the processor is closed
-    MemoryEfficiency float64       // Memory efficiency
-    OperationCount   int64         // Total operation count
-    ErrorCount       int64         // Total error count
+    CacheSize        int64         `json:"cache_size"`        // Cache entry count
+    CacheMemory      int64         `json:"cache_memory"`      // Cache memory usage (bytes)
+    MaxCacheSize     int           `json:"max_cache_size"`    // Maximum cache size
+    HitCount         int64         `json:"hit_count"`         // Cache hit count
+    MissCount        int64         `json:"miss_count"`        // Cache miss count
+    HitRatio         float64       `json:"hit_ratio"`         // Cache hit ratio
+    CacheTTL         time.Duration `json:"cache_ttl"`         // Cache TTL
+    CacheEnabled     bool          `json:"cache_enabled"`     // Whether cache is enabled
+    IsClosed         bool          `json:"is_closed"`         // Whether the processor is closed
+    MemoryEfficiency float64       `json:"memory_efficiency"` // Memory efficiency
+    OperationCount   int64         `json:"operation_count"`   // Total operation count
+    ErrorCount       int64         `json:"error_count"`       // Total error count
 }
 ```
 
@@ -157,14 +157,14 @@ if status.Healthy {
 
 ```go
 type HealthStatus struct {
-    Timestamp time.Time              // Check time
-    Healthy   bool                   // Overall health status
-    Checks    map[string]CheckResult // Results of each check
+    Timestamp time.Time              `json:"timestamp"` // Check time
+    Healthy   bool                   `json:"healthy"`   // Overall health status
+    Checks    map[string]CheckResult `json:"checks"`    // Results of each check
 }
 
 type CheckResult struct {
-    Healthy  bool   // Whether healthy
-    Message  string // Status message
+    Healthy bool   `json:"healthy"` // Whether healthy
+    Message string `json:"message"` // Status message
 }
 ```
 

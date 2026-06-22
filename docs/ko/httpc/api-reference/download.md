@@ -1,5 +1,5 @@
 ---
-title: "파일 다운로드 - HTTPC"
+title: "파일 다운로드 - CyberGo HTTPC | Download과 검증"
 description: "HTTPC 파일 다운로드 API 레퍼런스: Download 통합 진입점, DownloadConfig 설정, 진행률 콜백, DownloadResult 타입, SHA-256 체크섬 검증과 UNC 경로 방어 등 6계층 보안을 제공합니다."
 ---
 

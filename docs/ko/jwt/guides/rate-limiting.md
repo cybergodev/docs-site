@@ -1,6 +1,6 @@
 ---
-title: "속도 제한 - JWT"
-description: "CyberGo JWT 속도 제한 가이드: 토큰 버킷 알고리즘으로 토큰 발급 인터페이스의 윈도우당 최대 요청 수 설정, Subject·UserID·RateLimitKeyer 우선순위 규칙, 내장 RateLimiter와 커스텀 RateLimitProvider 분산 구현."
+title: "속도 제한 - CyberGo JWT | 토큰 버킷 속도 제한"
+description: "속도 제한 가이드: 토큰 버킷으로 발급 인터페이스의 윈도우당 최대 요청 수를 설정하고, Subject·UserID·RateLimitKeyer 우선순위 조회, 내장과 커스텀 분산 속도 제한 구현을 지원합니다."
 ---
 
 # 속도 제한
@@ -83,11 +83,14 @@ defer limiter.Close()
 ```go
 type RateLimitProvider interface {
     Allow(key string) bool
-    AllowN(key string, n int) bool
     Reset(key string)
     Close()
 }
 ```
+
+:::tip AllowN에 대하여
+인터페이스 자체는 단일 판단 `Allow`만 정의합니다. 배치 판단 메서드 `AllowN(key string, n int) bool`는 구체 타입 [`*RateLimiter`](../api-reference/types#ratelimiter)의 확장 메서드로, 이 인터페이스에 속하지 않습니다.
+:::
 
 예를 들어 Redis를 연동하여 분산 속도 제한을 구현:
 

@@ -1,6 +1,6 @@
 ---
-title: "审计系统 - HTML"
-description: "CyberGo HTML 可插拔审计系统 API 参考，涵盖 AuditConfig、8 种审计事件、3 个级别和 AuditEntry，内置 Logger、Channel、Writer、Multi、Filtered、LevelFiltered 六种 Sink，满足安全合规与行为审计需求。"
+title: "审计系统 - CyberGo HTML | 可插拔审计 API"
+description: "CyberGo HTML 可插拔审计 API：AuditConfig 配置、8 种审计事件、3 个级别、AuditEntry 结构与六种内置 Sink，满足安全合规需求。"
 ---
 
 # 审计系统

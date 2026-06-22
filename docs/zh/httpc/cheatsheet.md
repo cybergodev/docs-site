@@ -1,5 +1,5 @@
 ---
-title: "速查表 - HTTPC"
+title: "速查表 - CyberGo HTTPC | 常用代码速查"
 description: "HTTPC 速查表：客户端创建与五种配置预设、Get/Post 等七种请求方法、28 个常用 WithXxx 请求选项、Result 响应处理、中间件链组合、ClientError 错误分类、文件下载与域名客户端操作的完整可复用代码片段，方便开发者快速查阅。"
 ---
 

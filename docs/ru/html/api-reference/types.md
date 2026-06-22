@@ -1,6 +1,6 @@
 ---
-title: "Определения типов - HTML"
-description: "Справочник API типов CyberGo HTML: поля Result (с MarshalJSON), ImageInfo, LinkInfo, VideoInfo, AudioInfo, LinkResource, Statistics, BatchResult, NodeAttr."
+title: "Типы - CyberGo HTML | структуры данных"
+description: "Типы данных CyberGo HTML: поля Result (с MarshalJSON), ImageInfo, LinkInfo, LinkResource, Statistics, BatchResult и других ключевых структур."
 ---
 
 # Определения типов

@@ -1,6 +1,6 @@
 ---
 title: "Hook System - CyberGo JSON | API Reference"
-description: "CyberGo JSON hook system complete reference: Hook interface definition, LoggingHook logging, TimingHook performance timing, ValidationHook data validation, ErrorHook error handling, and custom hook implementation, supporting custom logic insertion before and after JSON operations in Go."
+description: "CyberGo JSON Hook system: Hook interface, LoggingHook, TimingHook, ValidationHook, ErrorHook, and custom hooks for logic around JSON operations."
 ---
 
 # Hook System
@@ -32,7 +32,7 @@ HookContext provides context information about the operation.
 ```go
 type HookContext struct {
     Operation string      // Operation type: "get", "set", "delete", "marshal", "unmarshal"
-    JSONStr   string      // Input JSON string (may be empty during marshal)
+    JSONStr   string      // Input JSON string (may be empty during marshal). Security warning: may contain sensitive data
     Path      string      // Target path (may be empty during marshal/unmarshal)
     Value     any         // Value for set operations
     Config    *Config     // Active configuration
@@ -45,7 +45,7 @@ type HookContext struct {
 | Field | Type | Description |
 |-------|------|-------------|
 | `Operation` | `string` | Operation type, values: `get`, `set`, `delete`, `marshal`, `unmarshal` |
-| `JSONStr` | `string` | Input JSON string |
+| `JSONStr` | `string` | Input JSON string (**Security warning: may contain sensitive data**) |
 | `Path` | `string` | Target path expression |
 | `Value` | `any` | Value for set operations |
 | `Config` | `*Config` | Currently used configuration |

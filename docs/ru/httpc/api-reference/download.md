@@ -1,5 +1,5 @@
 ---
-title: "Загрузка файлов - HTTPC"
+title: "Загрузка файлов - CyberGo HTTPC | Download и проверка"
 description: "Справочник API загрузки файлов HTTPC: единый вход Download, конфигурация DownloadConfig, обратные вызовы прогресса, проверка SHA-256 и защита UNC."
 ---
 

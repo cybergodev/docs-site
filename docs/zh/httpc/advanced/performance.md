@@ -1,5 +1,5 @@
 ---
-title: "性能优化 - HTTPC"
+title: "性能优化 - CyberGo HTTPC | 预设与并发"
 description: "HTTPC 性能优化指南：Default/Secure/Performance/Minimal 四种预设对比与场景选型、基于预设微调连接池与超时参数、Result 生命周期自动管理减少 GC 压力、高并发请求模式与性能反模式分析与优化建议。"
 ---
 

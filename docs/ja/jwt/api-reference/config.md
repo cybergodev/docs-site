@@ -1,6 +1,6 @@
 ---
-title: "Config - JWT API リファレンス"
-description: "CyberGo JWT Config API リファレンス：署名鍵・アルゴリズム・アクセス/リフレッシュトークン TTL・Issuer・Audience・クロックスキュー・ブラックリスト・レート制限の全フィールド、デフォルト値、自動補充ルールと Validate 検証ロジック。"
+title: "Config - CyberGo JWT | 統一設定の説明"
+description: "Config は CyberGo JWT の統一設定で、署名鍵・アルゴリズム・アクセス/リフレッシュ TTL・発行者・期待 Audience・時計ずれ・ブラックリスト・レート制限の全項目、デフォルト値、自動補充ルールと Validate 検証ロジック。"
 ---
 
 # Config

@@ -1,5 +1,5 @@
 ---
-title: "Domain Client and Sessions - HTTPC"
+title: "Domain Client and Sessions - CyberGo HTTPC | Cookie Mgmt"
 description: "HTTPC domain client and session guide: NewDomain domain-scoped client, URL auto-concatenation, SetHeader headers, Cookie validation, and a REST wrapper."
 ---
 

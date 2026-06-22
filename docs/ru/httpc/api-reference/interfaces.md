@@ -1,5 +1,5 @@
 ---
-title: "Интерфейсы - HTTPC"
+title: "Интерфейсы - CyberGo HTTPC | Основные интерфейсы"
 description: "Справочник API интерфейсов HTTPC: полнофункциональный Client, интерфейс выполнения Doer, DomainClienter, стратегия RetryPolicy и интерфейсы middleware."
 ---
 

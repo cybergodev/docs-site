@@ -1,5 +1,5 @@
 ---
-title: "Interface Definitions - HTTPC"
+title: "Interface Definitions - CyberGo HTTPC | Core Interfaces"
 description: "HTTPC core interfaces API reference: the Client interface, Doer, DomainClienter, RetryPolicy, and middleware interface definitions."
 ---
 

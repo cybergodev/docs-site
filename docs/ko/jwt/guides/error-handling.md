@@ -1,6 +1,6 @@
 ---
-title: "오류 처리 - JWT"
-description: "CyberGo JWT 오류 처리 가이드: 구성·토큰 검증·속도 제한·수명주기 각 단계에서 19개 센티넬 오류가 트리거되는 조건을 분류하고 errors.Is() 매칭, ValidationError 필드 오류와 웹 서비스 표준 응답 모범 사례."
+title: "오류 처리 - CyberGo JWT | 센티넬 오류 매칭"
+description: "오류 처리 가이드: CyberGo JWT 19 에러가 구성, 토큰 검증, 속도 제한, 수명주기 단계에서 트리거되는 조건을 분류하고 errors.Is 매칭, ValidationError 필드 오류와 표준 응답 실무를 안내합니다."
 ---
 
 # 오류 처리
@@ -52,15 +52,15 @@ if err != nil {
 | 오류 | 메서드 | 처리 제안 |
 |------|------|----------|
 | `ErrEmptyToken` | 모든 토큰 작업 메서드 | 요청 헤더 확인 |
-| `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto | 서명 불일치, 접근 거부 |
+| `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 서명 불일치, 접근 거부 |
 | `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | 토큰 알고리즘이 설정과 불일치, 접근 거부 |
 | `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | 사용자에게 토큰 갱신 안내 |
 | `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | 시계 동기화 확인 |
-| `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto | 발급자 불일치 |
-| `ErrTokenInvalidAudience` | Validate, Refresh, ValidateInto, RefreshInto | 수신자 불일치 |
+| `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 발급자 불일치 |
+| `ErrTokenInvalidAudience` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 수신자 불일치 |
 | `ErrTokenRevoked` | Validate, Refresh, ValidateInto, RefreshInto | 토큰이 취소됨, 접근 거부 |
 | `ErrInvalidClaims` | Create, CreateRefresh, Validate, Refresh, ValidateInto, RefreshInto | 비즈니스 검증 실패 |
-| `ErrTokenMissingID` | IsRevoked | 토큰에 jti가 없음 |
+| `ErrTokenMissingID` | Revoke, IsRevoked | 토큰에 jti가 없음 |
 
 ### 속도 제한 및 블랙리스트
 

@@ -1,6 +1,6 @@
 ---
 title: "型定義 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON コア型定義完全リファレンス：Result[T] ジェネリック結果、AccessResult 動的アクセス結果、BatchOperation、BatchResult、Schema バリデーションスキーマ、Stats、HealthStatus、IterableValue、エンコードエラー型を含む Go の完全な型システム。"
+description: "CyberGo JSON コア型：Result[T]、AccessResult、BatchOperation、BatchResult、Schema、Stats、HealthStatus、IterableValue で完全な型システムを構成します。"
 ---
 
 # 型定義
@@ -382,8 +382,8 @@ Schema バリデーションエラー型。
 
 ```go
 type ValidationError struct {
-    Path    string // エラーが発生したパス
-    Message string // エラーメッセージ
+    Path    string `json:"path"`    // エラーが発生したパス
+    Message string `json:"message"` // エラーメッセージ
 }
 ```
 
@@ -411,11 +411,11 @@ for _, e := range errors {
 
 ```go
 type BatchOperation struct {
-    Type    string // 操作タイプ: "get", "set", "delete", "validate"
-    JSONStr string // JSON データ文字列
-    Path    string // 対象パス
-    Value   any    // Set 操作の値
-    ID      string // 操作識別子
+    Type    string `json:"type"`     // 操作タイプ: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // JSON データ文字列
+    Path    string `json:"path"`     // 対象パス
+    Value   any    `json:"value"`    // Set 操作の値
+    ID      string `json:"id"`       // 操作識別子
 }
 ```
 
@@ -429,9 +429,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string // 操作識別子（BatchOperation.ID に対応）
-    Result any    // 操作結果
-    Error  error  // エラー（ある場合）
+    ID     string `json:"id"`     // 操作識別子（BatchOperation.ID に対応）
+    Result any    `json:"result"` // 操作結果
+    Error  error  `json:"error"`  // エラー（ある場合）
 }
 ```
 
@@ -445,11 +445,11 @@ type BatchResult struct {
 
 ```go
 type WarmupResult struct {
-    TotalPaths  int      // 合計パス数
-    Successful  int      // ウォームアップ成功数
-    Failed      int      // 失敗数
-    SuccessRate float64  // 成功率
-    FailedPaths []string // 失敗パスリスト
+    TotalPaths  int      `json:"total_paths"`            // 合計パス数
+    Successful  int      `json:"successful"`             // ウォームアップ成功数
+    Failed      int      `json:"failed"`                 // 失敗数
+    SuccessRate float64  `json:"success_rate"`           // 成功率
+    FailedPaths []string `json:"failed_paths,omitempty"` // 失敗パスリスト
 }
 ```
 
@@ -522,18 +522,18 @@ age, _ := processor.GetFromParsed(parsed, "user.age")
 
 ```go
 type Stats struct {
-    CacheSize        int64         // 現在のキャッシュサイズ
-    CacheMemory      int64         // キャッシュメモリ使用量（バイト）
-    MaxCacheSize     int           // キャッシュ最大サイズ
-    HitCount         int64         // キャッシュヒット数
-    MissCount        int64         // キャッシュミス数
-    HitRatio         float64       // キャッシュヒット率
-    CacheTTL         time.Duration // キャッシュ有効期限
-    CacheEnabled     bool          // キャッシュが有効か
-    IsClosed         bool          // プロセッサがクローズされているか
-    MemoryEfficiency float64       // メモリ効率
-    OperationCount   int64         // 操作総数
-    ErrorCount       int64         // エラー総数
+    CacheSize        int64         `json:"cache_size"`        // 現在のキャッシュサイズ
+    CacheMemory      int64         `json:"cache_memory"`      // キャッシュメモリ使用量（バイト）
+    MaxCacheSize     int           `json:"max_cache_size"`    // キャッシュ最大サイズ
+    HitCount         int64         `json:"hit_count"`         // キャッシュヒット数
+    MissCount        int64         `json:"miss_count"`        // キャッシュミス数
+    HitRatio         float64       `json:"hit_ratio"`         // キャッシュヒット率
+    CacheTTL         time.Duration `json:"cache_ttl"`         // キャッシュ有効期限
+    CacheEnabled     bool          `json:"cache_enabled"`     // キャッシュが有効か
+    IsClosed         bool          `json:"is_closed"`         // プロセッサがクローズされているか
+    MemoryEfficiency float64       `json:"memory_efficiency"` // メモリ効率
+    OperationCount   int64         `json:"operation_count"`   // 操作総数
+    ErrorCount       int64         `json:"error_count"`       // エラー総数
 }
 ```
 
@@ -547,9 +547,9 @@ type Stats struct {
 
 ```go
 type HealthStatus struct {
-    Timestamp time.Time              // チェックのタイムスタンプ
-    Healthy   bool                   // 健康かどうか
-    Checks    map[string]CheckResult // 各チェック項目の結果
+    Timestamp time.Time              `json:"timestamp"` // チェックのタイムスタンプ
+    Healthy   bool                   `json:"healthy"`   // 健康かどうか
+    Checks    map[string]CheckResult `json:"checks"`    // 各チェック項目の結果
 }
 ```
 
@@ -557,8 +557,8 @@ type HealthStatus struct {
 
 ```go
 type CheckResult struct {
-    Healthy bool   // このチェック項目が健康か
-    Message string // チェックメッセージ
+    Healthy bool   `json:"healthy"` // このチェック項目が健康か
+    Message string `json:"message"` // チェックメッセージ
 }
 ```
 

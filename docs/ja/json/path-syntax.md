@@ -1,6 +1,6 @@
 ---
 title: "パス式構文 - CyberGo JSON | JSONPath クエリガイド"
-description: "CyberGo JSON パス式構文の完全リファレンスガイド。プロパティアクセス user.name、配列インデックス items[0]、スライス [start:end:step]、ワイルドカード [*]、複数フィールド抽出 {name,email} などの構文をサポートし、Go JSON データ内の任意のノードを柔軟かつ正確に特定・操作できます。"
+description: "CyberGo JSON パス式構文ガイド：プロパティアクセス user.name、配列インデックス items[0]、スライス、ワイルドカード、複数フィールド抽出で JSON の任意ノードを指定します。"
 ---
 
 # パス式構文

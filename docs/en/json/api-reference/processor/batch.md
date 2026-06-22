@@ -1,6 +1,6 @@
 ---
 title: "Processor Batch Operations - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor batch operation methods complete reference: ProcessBatch batch processing, BatchOperation definitions, BatchResult type, error handling strategies and ContinueOnError configuration, suitable for Go batch data processing."
+description: "CyberGo JSON Processor batch: ProcessBatch, BatchOperation definitions, BatchResult type, ContinueOnError config, and tips for batch data processing."
 ---
 
 # Batch Operation Methods
@@ -34,11 +34,11 @@ for _, result := range results {
 
 ```go
 type BatchOperation struct {
-    Type    string  // Operation type: "get", "set", "delete", "validate"
-    JSONStr string  // JSON string
-    Path    string  // Target path
-    Value   any     // Value for set operations
-    ID      string  // Operation identifier
+    Type    string `json:"type"`     // Operation type: "get", "set", "delete", "validate"
+    JSONStr string `json:"json_str"` // JSON string
+    Path    string `json:"path"`     // Target path
+    Value   any    `json:"value"`    // Value for set operations
+    ID      string `json:"id"`       // Operation identifier
 }
 ```
 
@@ -54,9 +54,9 @@ type BatchOperation struct {
 
 ```go
 type BatchResult struct {
-    ID     string  // Corresponding operation ID
-    Result any     // Operation result
-    Error  error   // Error (if any)
+    ID     string `json:"id"`     // Corresponding operation ID
+    Result any    `json:"result"` // Operation result
+    Error  error  `json:"error"`  // Error (if any)
 }
 ```
 

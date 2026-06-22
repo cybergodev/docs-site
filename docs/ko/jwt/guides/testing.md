@@ -1,6 +1,6 @@
 ---
-title: "테스트와 클럭 인젝션 - JWT"
-description: "CyberGo JWT 테스트와 클럭 인젝션 가이드: ClockProvider 인터페이스로 FixedClock 고정 클럭을 주입해 단위 테스트에서 시간 흐름을 정밀 제어, 만료·갱신·커스텀 Claims·취소 로직을 반복 가능하고 독립적으로 검증."
+title: "테스트와 클럭 인젝션 - CyberGo JWT | 고정 클럭 반복 테스트"
+description: "테스트와 클럭 인젝션 가이드: ClockProvider로 FixedClock 고정 클럭을 주입해 단위 테스트에서 시간 흐름을 정밀 제어, 만료·갱신·커스텀 Claims·취소 로직을 반복 가능하게 검증합니다."
 ---
 
 # 테스트와 클럭 인젝션

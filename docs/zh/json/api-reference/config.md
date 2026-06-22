@@ -1,6 +1,6 @@
 ---
 title: "Config 配置 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Config 配置选项完整参考：详解 DefaultConfig 默认配置、SecurityConfig 安全配置、PrettyConfig 格式化配置、缓存设置、大小限制、安全选项和编码选项，自定义 Go 应用所有 JSON 操作行为。"
+description: "CyberGo JSON Config 配置参考：DefaultConfig 默认配置、SecurityConfig 安全、PrettyConfig 格式化、缓存、大小限制与编码选项，自定义 Go 应用的全部 JSON 行为。"
 ---
 
 # Config
@@ -12,93 +12,93 @@ Config 用于自定义 Processor 和所有 JSON 操作的行为。
 ```go
 type Config struct {
     // ===== 缓存设置 =====
-    MaxCacheSize int           // 最大缓存条目数
-    CacheTTL     time.Duration // 缓存过期时间
-    EnableCache  bool          // 是否启用缓存
-    CacheResults bool          // 是否缓存操作结果
+    MaxCacheSize int           `json:"max_cache_size"` // 最大缓存条目数
+    CacheTTL     time.Duration `json:"cache_ttl"`      // 缓存过期时间
+    EnableCache  bool          `json:"enable_cache"`   // 是否启用缓存
+    CacheResults bool          `json:"cache_results"`  // 是否缓存操作结果
 
     // ===== 大小限制 =====
-    MaxJSONSize  int64 // 最大 JSON 大小（字节）
-    MaxPathDepth int   // 最大路径深度
-    MaxBatchSize int   // 最大批量操作数
+    MaxJSONSize  int64 `json:"max_json_size"`  // 最大 JSON 大小（字节）
+    MaxPathDepth int   `json:"max_path_depth"` // 最大路径深度
+    MaxBatchSize int   `json:"max_batch_size"` // 最大批量操作数
 
     // ===== 安全限制 =====
-    MaxNestingDepthSecurity   int   // 最大嵌套深度
-    MaxSecurityValidationSize int64 // 安全验证最大大小
-    MaxObjectKeys             int   // 对象最大键数
-    MaxArrayElements          int   // 数组最大元素数
-    FullSecurityScan          bool  // 启用完整安全扫描
+    MaxNestingDepthSecurity   int   `json:"max_nesting_depth"`           // 最大嵌套深度
+    MaxSecurityValidationSize int64 `json:"max_security_validation_size"` // 安全验证最大大小
+    MaxObjectKeys             int   `json:"max_object_keys"`             // 对象最大键数
+    MaxArrayElements          int   `json:"max_array_elements"`          // 数组最大元素数
+    FullSecurityScan          bool  `json:"full_security_scan"`          // 启用完整安全扫描
 
     // ===== 并发 =====
-    MaxConcurrency    int // 最大并发数
-    ParallelThreshold int // 并行处理阈值
+    MaxConcurrency    int `json:"max_concurrency"`    // 最大并发数
+    ParallelThreshold int `json:"parallel_threshold"` // 并行处理阈值
 
     // ===== 处理选项 =====
-    EnableValidation bool // 启用验证
-    StrictMode       bool // 严格模式
-    CreatePaths      bool // 自动创建路径
-    CleanupNulls     bool // 清理 null 值
-    CompactArrays    bool // 压缩数组
-    ContinueOnError  bool // 批量操作出错时继续
+    EnableValidation bool `json:"enable_validation"` // 启用验证
+    StrictMode       bool `json:"strict_mode"`       // 严格模式
+    CreatePaths      bool `json:"create_paths"`      // 自动创建路径
+    CleanupNulls     bool `json:"cleanup_nulls"`     // 清理 null 值
+    CompactArrays    bool `json:"compact_arrays"`    // 压缩数组
+    ContinueOnError  bool `json:"continue_on_error"` // 批量操作出错时继续
 
     // ===== 输入/输出选项 =====
-    AllowComments    bool // 允许注释
-    PreserveNumbers  bool // 保留数字精度
-    ValidateInput    bool // 验证输入
-    ValidateFilePath bool // 验证文件路径
-    SkipValidation   bool // 跳过验证（受信任输入）
+    AllowComments    bool `json:"allow_comments"`     // 允许注释
+    PreserveNumbers  bool `json:"preserve_numbers"`   // 保留数字精度
+    ValidateInput    bool `json:"validate_input"`     // 验证输入
+    ValidateFilePath bool `json:"validate_file_path"` // 验证文件路径
+    SkipValidation   bool `json:"skip_validation"`    // 跳过验证（受信任输入）
 
     // ===== 编码选项 =====
-    Pretty          bool            // 格式化输出
-    Indent          string          // 缩进字符串
-    Prefix          string          // 前缀
-    EscapeHTML      bool            // HTML 转义
-    SortKeys        bool            // 键排序
-    ValidateUTF8    bool            // UTF-8 验证
-    MaxDepth        int             // 最大编码深度
-    DisallowUnknown bool            // 禁止未知字段
-    FloatPrecision  int             // 浮点精度（-1 为自动）
-    FloatTruncate   bool            // 截断浮点数
-    DisableEscaping bool            // 禁用转义
-    EscapeUnicode   bool            // Unicode 转义
-    EscapeSlash     bool            // 斜杠转义
-    EscapeNewlines  bool            // 换行符转义
-    EscapeTabs      bool            // 制表符转义
-    IncludeNulls    bool            // 包含 null 值
-    CustomEscapes   map[rune]string // 自定义转义映射
+    Pretty          bool            `json:"pretty"`           // 格式化输出
+    Indent          string          `json:"indent"`           // 缩进字符串
+    Prefix          string          `json:"prefix"`           // 前缀
+    EscapeHTML      bool            `json:"escape_html"`      // HTML 转义
+    SortKeys        bool            `json:"sort_keys"`        // 键排序
+    ValidateUTF8    bool            `json:"validate_utf8"`    // UTF-8 验证
+    MaxDepth        int             `json:"max_depth"`        // 最大编码深度
+    DisallowUnknown bool            `json:"disallow_unknown"` // 禁止未知字段
+    FloatPrecision  int             `json:"float_precision"`  // 浮点精度（-1 为自动）
+    FloatTruncate   bool            `json:"float_truncate"`   // 截断浮点数
+    DisableEscaping bool            `json:"disable_escaping"` // 禁用转义
+    EscapeUnicode   bool            `json:"escape_unicode"`   // Unicode 转义
+    EscapeSlash     bool            `json:"escape_slash"`     // 斜杠转义
+    EscapeNewlines  bool            `json:"escape_newlines"`  // 换行符转义
+    EscapeTabs      bool            `json:"escape_tabs"`      // 制表符转义
+    IncludeNulls    bool            `json:"include_nulls"`    // 包含 null 值
+    CustomEscapes   map[rune]string `json:"custom_escapes,omitempty"` // 自定义转义映射
 
     // ===== 可观测性 =====
-    EnableMetrics     bool // 启用指标收集
-    EnableHealthCheck bool // 启用健康检查
+    EnableMetrics     bool `json:"enable_metrics"`      // 启用指标收集
+    EnableHealthCheck bool `json:"enable_health_check"` // 启用健康检查
 
     // ===== 大文件处理 =====
-    ChunkSize       int64 // 分块大小
-    MaxMemory       int64 // 最大内存使用
-    BufferSize      int   // 缓冲区大小
-    SamplingEnabled bool  // 启用采样
-    SampleSize      int   // 采样数量
+    ChunkSize       int64 `json:"chunk_size"`       // 分块大小
+    MaxMemory       int64 `json:"max_memory"`       // 最大内存使用
+    BufferSize      int   `json:"buffer_size"`      // 缓冲区大小
+    SamplingEnabled bool  `json:"sampling_enabled"` // 启用采样
+    SampleSize      int   `json:"sample_size"`      // 采样数量
 
     // ===== JSONL 配置 =====
-    JSONLBufferSize    int   // JSONL 缓冲区大小
-    JSONLMaxLineSize   int   // JSONL 最大行大小
-    JSONLSkipEmpty     bool  // 跳过空行
-    JSONLSkipComments  bool  // 跳过注释行
-    JSONLContinueOnErr bool  // 出错时继续
-    JSONLWorkers       int   // JSONL 并行工作数
-    JSONLChunkSize     int   // JSONL 分块大小
-    JSONLMaxMemory     int64 // JSONL 最大内存
+    JSONLBufferSize    int   `json:"jsonl_buffer_size"`     // JSONL 缓冲区大小
+    JSONLMaxLineSize   int   `json:"jsonl_max_line_size"`   // JSONL 最大行大小
+    JSONLSkipEmpty     bool  `json:"jsonl_skip_empty"`      // 跳过空行
+    JSONLSkipComments  bool  `json:"jsonl_skip_comments"`   // 跳过注释行
+    JSONLContinueOnErr bool  `json:"jsonl_continue_on_err"` // 出错时继续
+    JSONLWorkers       int   `json:"jsonl_workers"`         // JSONL 并行工作数
+    JSONLChunkSize     int   `json:"jsonl_chunk_size"`      // JSONL 分块大小
+    JSONLMaxMemory     int64 `json:"jsonl_max_memory"`      // JSONL 最大内存
 
     // ===== 合并选项 =====
-    MergeMode MergeMode // 合并策略
+    MergeMode MergeMode `json:"merge_mode"` // 合并策略
 
-    // ===== 扩展点 =====
-    CustomEncoder              CustomEncoder                // 自定义编码器
-    CustomTypeEncoders         map[reflect.Type]TypeEncoder // 自定义类型编码器
-    CustomValidators           []Validator                  // 自定义验证器
+    // ===== 扩展点（无 JSON tag，不参与序列化） =====
+    CustomEncoder               CustomEncoder                // 自定义编码器
+    CustomTypeEncoders          map[reflect.Type]TypeEncoder // 自定义类型编码器
+    CustomValidators            []Validator                  // 自定义验证器
     AdditionalDangerousPatterns []DangerousPattern           // 额外危险模式
-    DisableDefaultPatterns     bool                         // 禁用默认警告级模式
-    Hooks                      []Hook                       // 操作钩子
-    CustomPathParser           PathParser                   // 自定义路径解析器
+    DisableDefaultPatterns      bool                         // 禁用默认警告级模式
+    Hooks                       []Hook                       // 操作钩子
+    CustomPathParser            PathParser                   // 自定义路径解析器
 }
 ```
 
@@ -400,6 +400,7 @@ const (
     DefaultMaxJSONSize       = 100 * 1024 * 1024  // 100MB
     DefaultMaxNestingDepth   = 200
     DefaultMaxPathDepth      = 50
+    DefaultMaxDepth          = 100                 // 编解码默认嵌套深度（Config.MaxDepth）
     DefaultMaxConcurrency    = 50
     DefaultMaxBatchSize      = 2000
     DefaultMaxSecuritySize   = 10 * 1024 * 1024   // 10MB

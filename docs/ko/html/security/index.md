@@ -1,6 +1,6 @@
 ---
-title: "보안 개요 - HTML"
-description: "CyberGo HTML 보안 개요: 입력 크기 제한(기본 50MB), DOM 깊이 제한(500), 경로 순회 방지, 패닉 복구, 타임아웃 제어, 콘텐츠 정제, 플러그형 감사로 모든 위반을 errors.Is/As로 판별합니다."
+title: "보안 개요 - CyberGo HTML | 보호 기능 총람"
+description: "CyberGo HTML 보안 개요: 입력 크기 제한, DOM 깊이 제한, 경로 순회 방지, 패닉 복구, 타임아웃, 콘텐츠 정제, 플러그형 감사로 모든 위반을 errors.Is/As로 판별합니다."
 ---
 
 # 보안 개요

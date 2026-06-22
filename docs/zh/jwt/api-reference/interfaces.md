@@ -1,6 +1,6 @@
 ---
-title: "接口定义 - JWT API 参考"
-description: "接口定义参考：TokenManager 令牌操作核心接口、CustomClaims 自定义声明接口、BlacklistStore 黑名单存储后端、RateLimitProvider 限流器、ClockProvider 时钟注入与可选的 RateLimitKeyer 限流键接口。"
+title: "接口定义 - CyberGo JWT | 核心扩展接口"
+description: "接口定义参考：TokenManager 令牌操作核心接口、CustomClaims 自定义声明、BlacklistStore 黑名单后端、RateLimitProvider 限流器、ClockProvider 时钟注入与可选 RateLimitKeyer 限流键。"
 ---
 
 # 接口定义

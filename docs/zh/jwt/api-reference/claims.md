@@ -1,6 +1,6 @@
 ---
-title: "Claims - JWT API 参考"
-description: "Claims 是 CyberGo JWT 的内置声明结构，包含 UserID、Username、Role、权限、作用域、扩展字段等业务字段，以及 RFC 7519 标准的 RegisteredClaims，附带字段长度、数组大小与注入模式等深度验证约束。"
+title: "Claims - CyberGo JWT | 内置声明结构"
+description: "Claims 是 CyberGo JWT 内置声明结构，含 UserID、Username、Role、权限、作用域等业务字段与 RFC 7519 RegisteredClaims，附带字段长度、数组大小与注入模式验证约束。"
 ---
 
 # Claims

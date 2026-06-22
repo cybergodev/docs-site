@@ -1,6 +1,6 @@
 ---
 title: "Interfaces - CyberGo env | Core Interface Hierarchy"
-description: "CyberGo env library interface type definitions complete reference documentation, using fine-grained interface design supporting dependency injection and flexible composition, including Validator, FullAuditLogger, EnvParser, EnvStorage, and FileSystem adapter core interfaces with detailed descriptions and usage."
+description: "CyberGo env core interface reference with fine-grained design for dependency injection: Validator, FullAuditLogger, EnvParser, EnvStorage and FileSystem."
 ---
 
 # Interfaces
@@ -69,7 +69,7 @@ func readConfig(getter env.EnvGetter) {
 ```
 
 :::warning Note
-`GetInt`, `GetBool`, `GetDuration`, `GetSecure`, `Len` are **not** part of the `EnvGetter` interface.
+`GetInt`, `GetBool`, `GetUint64`, `GetFloat64`, `GetDuration`, `GetSecure`, `Len` are **not** part of the `EnvGetter` interface.
 These methods are implemented on the `*Loader` type but not in the minimal interface.
 
 For complete read capability, use the `*Loader` type directly:

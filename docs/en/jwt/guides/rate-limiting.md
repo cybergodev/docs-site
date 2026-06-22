@@ -1,6 +1,6 @@
 ---
-title: "Rate Limiting - JWT"
-description: "CyberGo JWT rate limiting guide: token bucket config, built-in RateLimiter, RateLimitProvider backends, rate limit key priority, and best practices."
+title: "Rate Limiting - CyberGo JWT | Token Bucket"
+description: "Configure token-bucket max requests per window for signing endpoints with Subject, UserID, and RateLimitKeyer priority lookup supporting distributed limiting."
 ---
 
 # Rate Limiting
@@ -83,11 +83,14 @@ Implement the [`RateLimitProvider`](../api-reference/interfaces#ratelimitprovide
 ```go
 type RateLimitProvider interface {
     Allow(key string) bool
-    AllowN(key string, n int) bool
     Reset(key string)
     Close()
 }
 ```
+
+:::tip About AllowN
+The interface itself only defines the single-shot `Allow`. The batch method `AllowN(key string, n int) bool` is an extension method of the concrete type [`*RateLimiter`](../api-reference/types#ratelimiter), not part of this interface.
+:::
 
 For example, connect to Redis for distributed rate limiting:
 

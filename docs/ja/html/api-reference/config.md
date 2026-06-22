@@ -1,6 +1,6 @@
 ---
-title: "設定 - HTML"
-description: "CyberGo HTML Config 詳解：リソース管理（MaxInputSize・キャッシュ・タイムアウト）、セキュリティ、コンテンツ抽出、出力フォーマット、リンクフィルタ（Include*・ResolveRelativeURLs）、Validate 検証を含みます。"
+title: "設定 - CyberGo HTML | Config フィールド詳解"
+description: "CyberGo HTML Config 詳解：リソース管理（MaxInputSize・キャッシュ・タイムアウト）、セキュリティ、コンテンツ抽出、出力フォーマット、リンクフィルタ、Validate 検証を扱います。"
 ---
 
 # 設定

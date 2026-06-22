@@ -1,5 +1,5 @@
 ---
-title: "ドメインクライアント - HTTPC"
+title: "ドメインクライアント - CyberGo HTTPC | NewDomainとセッション"
 description: "HTTPC ドメインクライアント API リファレンス: NewDomain 作成、7 種類の HTTP メソッドと Request メソッド、URL 自動結合、SetHeader/SetCookie セッション管理、Close ライフサイクルの完全な使い方を提供します。"
 ---
 

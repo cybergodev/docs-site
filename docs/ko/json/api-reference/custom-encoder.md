@@ -1,6 +1,6 @@
 ---
 title: "CustomEncoder - CyberGo JSON | 커스텀 인코더"
-description: "CyberGo JSON 커스텀 인코더 완전 가이드: CustomEncoder 인터페이스와 TypeEncoder 타입 인코더의 정의, 설정 방식과 구현 예제를 자세히 설명하며 커스텀 Go 구조체와 비표준 타입에 전용 JSON 직렬화 로직을 등록하고 인코딩 출력 동작을 유연하게 제어합니다."
+description: "CyberGo JSON 커스텀 인코더 가이드: CustomEncoder 인터페이스와 TypeEncoder 정의, 설정, 구현 예제로 커스텀 Go 타입에 전용 JSON 직렬화를 등록합니다."
 ---
 
 # CustomEncoder

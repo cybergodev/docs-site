@@ -1,6 +1,6 @@
 ---
 title: "Config 설정 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Config 설정 옵션 완전 참조: DefaultConfig 기본 설정, SecurityConfig 보안 설정, PrettyConfig 포맷 설정, 캐시 설정, 크기 제한, 보안 옵션, 인코딩 옵션을 자세히 설명하며 Go 애플리케이션의 모든 JSON 작업 동작을 커스터마이즈합니다."
+description: "CyberGo JSON Config 레퍼런스: DefaultConfig, SecurityConfig, PrettyConfig, 캐시, 크기 제한, 인코딩 옵션으로 Go 앱의 모든 JSON 동작을 맞춤 설정합니다."
 ---
 
 # Config
@@ -12,93 +12,93 @@ Config는 Processor와 모든 JSON 작업의 동작을 커스터마이즈하는 
 ```go
 type Config struct {
     // ===== 캐시 설정 =====
-    MaxCacheSize int           // 최대 캐시 항목 수
-    CacheTTL     time.Duration // 캐시 만료 시간
-    EnableCache  bool          // 캐시 활성화 여부
-    CacheResults bool          // 작업 결과 캐시 여부
+    MaxCacheSize int           `json:"max_cache_size"` // 최대 캐시 항목 수
+    CacheTTL     time.Duration `json:"cache_ttl"`      // 캐시 만료 시간
+    EnableCache  bool          `json:"enable_cache"`   // 캐시 활성화 여부
+    CacheResults bool          `json:"cache_results"`  // 작업 결과 캐시 여부
 
     // ===== 크기 제한 =====
-    MaxJSONSize  int64 // 최대 JSON 크기 (바이트)
-    MaxPathDepth int   // 최대 경로 깊이
-    MaxBatchSize int   // 최대 배치 작업 수
+    MaxJSONSize  int64 `json:"max_json_size"`  // 최대 JSON 크기 (바이트)
+    MaxPathDepth int   `json:"max_path_depth"` // 최대 경로 깊이
+    MaxBatchSize int   `json:"max_batch_size"` // 최대 배치 작업 수
 
     // ===== 보안 제한 =====
-    MaxNestingDepthSecurity   int   // 최대 중첩 깊이
-    MaxSecurityValidationSize int64 // 보안 검증 최대 크기
-    MaxObjectKeys             int   // 객체 최대 키 수
-    MaxArrayElements          int   // 배열 최대 요소 수
-    FullSecurityScan          bool  // 전체 보안 스캔 활성화
+    MaxNestingDepthSecurity   int   `json:"max_nesting_depth"`           // 최대 중첩 깊이
+    MaxSecurityValidationSize int64 `json:"max_security_validation_size"` // 보안 검증 최대 크기
+    MaxObjectKeys             int   `json:"max_object_keys"`             // 객체 최대 키 수
+    MaxArrayElements          int   `json:"max_array_elements"`          // 배열 최대 요소 수
+    FullSecurityScan          bool  `json:"full_security_scan"`          // 전체 보안 스캔 활성화
 
     // ===== 동시성 =====
-    MaxConcurrency    int // 최대 동시성 수
-    ParallelThreshold int // 병렬 처리 임계값
+    MaxConcurrency    int `json:"max_concurrency"`    // 최대 동시성 수
+    ParallelThreshold int `json:"parallel_threshold"` // 병렬 처리 임계값
 
     // ===== 처리 옵션 =====
-    EnableValidation bool // 유효성 검사 활성화
-    StrictMode       bool // 엄격 모드
-    CreatePaths      bool // 경로 자동 생성
-    CleanupNulls     bool // null 값 정리
-    CompactArrays    bool // 배열 압축
-    ContinueOnError  bool // 배치 작업 오류 시 계속
+    EnableValidation bool `json:"enable_validation"` // 유효성 검사 활성화
+    StrictMode       bool `json:"strict_mode"`       // 엄격 모드
+    CreatePaths      bool `json:"create_paths"`      // 경로 자동 생성
+    CleanupNulls     bool `json:"cleanup_nulls"`     // null 값 정리
+    CompactArrays    bool `json:"compact_arrays"`    // 배열 압축
+    ContinueOnError  bool `json:"continue_on_error"` // 배치 작업 오류 시 계속
 
     // ===== 입력/출력 옵션 =====
-    AllowComments    bool // 주석 허용
-    PreserveNumbers  bool // 숫자 정밀도 유지
-    ValidateInput    bool // 입력 검증
-    ValidateFilePath bool // 파일 경로 검증
-    SkipValidation   bool // 검증 건너뛰기 (신뢰된 입력)
+    AllowComments    bool `json:"allow_comments"`     // 주석 허용
+    PreserveNumbers  bool `json:"preserve_numbers"`   // 숫자 정밀도 유지
+    ValidateInput    bool `json:"validate_input"`     // 입력 검증
+    ValidateFilePath bool `json:"validate_file_path"` // 파일 경로 검증
+    SkipValidation   bool `json:"skip_validation"`    // 검증 건너뛰기 (신뢰된 입력)
 
     // ===== 인코딩 옵션 =====
-    Pretty          bool            // 포맷팅 출력
-    Indent          string          // 들여쓰기 문자열
-    Prefix          string          // 접두사
-    EscapeHTML      bool            // HTML 이스케이프
-    SortKeys        bool            // 키 정렬
-    ValidateUTF8    bool            // UTF-8 검증
-    MaxDepth        int             // 최대 인코딩 깊이
-    DisallowUnknown bool            // 알 수 없는 필드 금지
-    FloatPrecision  int             // 부동소수점 정밀도 (-1은 자동)
-    FloatTruncate   bool            // 부동소수점 자르기
-    DisableEscaping bool            // 이스케이프 비활성화
-    EscapeUnicode   bool            // 유니코드 이스케이프
-    EscapeSlash     bool            // 슬래시 이스케이프
-    EscapeNewlines  bool            // 줄바꿈 이스케이프
-    EscapeTabs      bool            // 탭 이스케이프
-    IncludeNulls    bool            // null 값 포함
-    CustomEscapes   map[rune]string // 커스텀 이스케이프 매핑
+    Pretty          bool            `json:"pretty"`           // 포맷팅 출력
+    Indent          string          `json:"indent"`           // 들여쓰기 문자열
+    Prefix          string          `json:"prefix"`           // 접두사
+    EscapeHTML      bool            `json:"escape_html"`      // HTML 이스케이프
+    SortKeys        bool            `json:"sort_keys"`        // 키 정렬
+    ValidateUTF8    bool            `json:"validate_utf8"`    // UTF-8 검증
+    MaxDepth        int             `json:"max_depth"`        // 최대 인코딩 깊이
+    DisallowUnknown bool            `json:"disallow_unknown"` // 알 수 없는 필드 금지
+    FloatPrecision  int             `json:"float_precision"`  // 부동소수점 정밀도 (-1은 자동)
+    FloatTruncate   bool            `json:"float_truncate"`   // 부동소수점 자르기
+    DisableEscaping bool            `json:"disable_escaping"` // 이스케이프 비활성화
+    EscapeUnicode   bool            `json:"escape_unicode"`   // 유니코드 이스케이프
+    EscapeSlash     bool            `json:"escape_slash"`     // 슬래시 이스케이프
+    EscapeNewlines  bool            `json:"escape_newlines"`  // 줄바꿈 이스케이프
+    EscapeTabs      bool            `json:"escape_tabs"`      // 탭 이스케이프
+    IncludeNulls    bool            `json:"include_nulls"`    // null 값 포함
+    CustomEscapes   map[rune]string `json:"custom_escapes,omitempty"` // 커스텀 이스케이프 매핑
 
     // ===== 관측 가능성 =====
-    EnableMetrics     bool // 메트릭 수집 활성화
-    EnableHealthCheck bool // 상태 확인 활성화
+    EnableMetrics     bool `json:"enable_metrics"`      // 메트릭 수집 활성화
+    EnableHealthCheck bool `json:"enable_health_check"` // 상태 확인 활성화
 
     // ===== 대용량 파일 처리 =====
-    ChunkSize       int64 // 청크 크기
-    MaxMemory       int64 // 최대 메모리 사용량
-    BufferSize      int   // 버퍼 크기
-    SamplingEnabled bool  // 샘플링 활성화
-    SampleSize      int   // 샘플 수
+    ChunkSize       int64 `json:"chunk_size"`       // 청크 크기
+    MaxMemory       int64 `json:"max_memory"`       // 최대 메모리 사용량
+    BufferSize      int   `json:"buffer_size"`      // 버퍼 크기
+    SamplingEnabled bool  `json:"sampling_enabled"` // 샘플링 활성화
+    SampleSize      int   `json:"sample_size"`      // 샘플 수
 
     // ===== JSONL 설정 =====
-    JSONLBufferSize    int   // JSONL 버퍼 크기
-    JSONLMaxLineSize   int   // JSONL 최대 줄 크기
-    JSONLSkipEmpty     bool  // 빈 줄 건너뛰기
-    JSONLSkipComments  bool  // 주석 줄 건너뛰기
-    JSONLContinueOnErr bool  // 오류 시 계속
-    JSONLWorkers       int   // JSONL 병렬 작업 수
-    JSONLChunkSize     int   // JSONL 청크 크기
-    JSONLMaxMemory     int64 // JSONL 최대 메모리
+    JSONLBufferSize    int   `json:"jsonl_buffer_size"`     // JSONL 버퍼 크기
+    JSONLMaxLineSize   int   `json:"jsonl_max_line_size"`   // JSONL 최대 줄 크기
+    JSONLSkipEmpty     bool  `json:"jsonl_skip_empty"`      // 빈 줄 건너뛰기
+    JSONLSkipComments  bool  `json:"jsonl_skip_comments"`   // 주석 줄 건너뛰기
+    JSONLContinueOnErr bool  `json:"jsonl_continue_on_err"` // 오류 시 계속
+    JSONLWorkers       int   `json:"jsonl_workers"`         // JSONL 병렬 작업 수
+    JSONLChunkSize     int   `json:"jsonl_chunk_size"`      // JSONL 청크 크기
+    JSONLMaxMemory     int64 `json:"jsonl_max_memory"`      // JSONL 최대 메모리
 
     // ===== 병합 옵션 =====
-    MergeMode MergeMode // 병합 전략
+    MergeMode MergeMode `json:"merge_mode"` // 병합 전략
 
-    // ===== 확장 포인트 =====
-    CustomEncoder              CustomEncoder                // 커스텀 인코더
-    CustomTypeEncoders         map[reflect.Type]TypeEncoder // 커스텀 타입 인코더
-    CustomValidators           []Validator                  // 커스텀 검증기
+    // ===== 확장 포인트 (JSON 태그 없음, 직렬화되지 않음) =====
+    CustomEncoder               CustomEncoder                // 커스텀 인코더
+    CustomTypeEncoders          map[reflect.Type]TypeEncoder // 커스텀 타입 인코더
+    CustomValidators            []Validator                  // 커스텀 검증기
     AdditionalDangerousPatterns []DangerousPattern           // 추가 위험 패턴
-    DisableDefaultPatterns     bool                         // 기본 경고 수준 패턴 비활성화
-    Hooks                      []Hook                       // 작업 훅
-    CustomPathParser           PathParser                   // 커스텀 경로 파서
+    DisableDefaultPatterns      bool                         // 기본 경고 수준 패턴 비활성화
+    Hooks                       []Hook                       // 작업 훅
+    CustomPathParser            PathParser                   // 커스텀 경로 파서
 }
 ```
 
@@ -400,6 +400,7 @@ const (
     DefaultMaxJSONSize       = 100 * 1024 * 1024  // 100MB
     DefaultMaxNestingDepth   = 200
     DefaultMaxPathDepth      = 50
+    DefaultMaxDepth          = 100                 // 인코딩/디코딩 기본 중첩 깊이 (Config.MaxDepth)
     DefaultMaxConcurrency    = 50
     DefaultMaxBatchSize      = 2000
     DefaultMaxSecuritySize   = 10 * 1024 * 1024   // 10MB

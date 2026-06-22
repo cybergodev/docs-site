@@ -1,5 +1,5 @@
 ---
-title: "Request Options - HTTPC"
+title: "Request Options - CyberGo HTTPC | WithXxx Options"
 description: "HTTPC request options API reference: WithHeader, WithBearerToken authentication, WithJSON/WithForm bodies, WithQuery parameters, and callback functions."
 ---
 

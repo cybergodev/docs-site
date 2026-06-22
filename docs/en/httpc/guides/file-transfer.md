@@ -1,5 +1,5 @@
 ---
-title: "File Upload and Download - HTTPC"
+title: "File Upload and Download - CyberGo HTTPC | Upload & Get"
 description: "HTTPC file upload and download guide: WithFile upload, WithFormData multi-file upload, unified Download, resumable ResumeDownload, and SHA-256 checksums."
 ---
 

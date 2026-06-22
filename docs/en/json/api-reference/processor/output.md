@@ -1,6 +1,6 @@
 ---
 title: "Processor Output Methods - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor output methods reference: Encode encoding, EncodePretty formatting, EncodeWithConfig custom configuration, EncodeBatch/EncodeFields batch encoding, Compact/Indent/HTMLEscape formatting for various JSON output needs in Go."
+description: "CyberGo JSON Processor output: Encode, EncodePretty, EncodeWithConfig, EncodeBatch/EncodeFields, and Compact/Indent/HTMLEscape for varied output."
 ---
 
 # Output Methods
@@ -101,7 +101,7 @@ result, err := p.EncodeFields(user, []string{"name", "email"})
 
 Signature: `func (p *Processor) EncodeStream(values any, cfg ...Config) (string, error)`
 
-Encodes any value to a JSON string. Equivalent to the Processor method form of `EncodeWithConfig`.
+Encodes multiple values into a JSON array stream. `values` is typically a slice or enumerable collection, outputting a JSON array string like `[v1,v2,...]`.
 
 ```go
 values := []any{"item1", "item2", "item3"}

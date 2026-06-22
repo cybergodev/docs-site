@@ -1,6 +1,6 @@
 ---
 title: "Custom Parser - CyberGo env | Extending File Formats"
-description: "Complete guide for CyberGo env custom parser development, covering how to implement the EnvParser interface to create custom format parsers, register them via RegisterParser with ComponentFactory integration, including full TOML and INI parser implementation examples, error handling patterns, and production best practices."
+description: "CyberGo env custom parser guide: implement EnvParser and register via RegisterParser, with complete TOML and INI parser examples and best practices."
 ---
 
 # Custom Parser

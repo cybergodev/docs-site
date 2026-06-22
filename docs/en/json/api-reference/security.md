@@ -1,6 +1,6 @@
 ---
 title: "Security - CyberGo JSON | API Reference"
-description: "CyberGo JSON security API reference: including security configuration, AddDangerousPattern dangerous pattern configuration and input validation mechanisms, defending against JSON injection, deeply nested attacks and resource exhaustion threats, supporting custom security policies and protection rule configuration for Go applications."
+description: "CyberGo JSON security API: security config, AddDangerousPattern dangerous patterns, and input validation against JSON injection and resource exhaustion."
 ---
 
 # Security

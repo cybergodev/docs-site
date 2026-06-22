@@ -1,6 +1,6 @@
 ---
 title: "CustomEncoder - CyberGo JSON | Custom Encoder"
-description: "CyberGo JSON custom encoder guide: detailed explanation of CustomEncoder interface and TypeEncoder type encoder definitions, configuration methods and implementation examples, supporting registration of custom JSON serialization and deserialization logic for custom Go structs and non-standard types."
+description: "CyberGo JSON custom encoder: CustomEncoder and TypeEncoder definitions, configuration, and examples to register JSON serialization for custom Go types."
 ---
 
 # CustomEncoder

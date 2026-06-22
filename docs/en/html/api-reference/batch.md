@@ -1,5 +1,5 @@
 ---
-title: "Batch Processing - HTML"
+title: "Batch Processing - CyberGo HTML | Concurrent Batch API"
 description: "CyberGo HTML batch API: ExtractBatch and ExtractBatchFiles families with context variants, WorkerPoolSize concurrency, 10000-item batches, and BatchResult."
 ---
 
