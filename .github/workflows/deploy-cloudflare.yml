@@ -1,0 +1,61 @@
+name: Deploy to Cloudflare Pages
+
+# Migrate from FTP (deploy.yml) to Cloudflare Pages for: atomic deploys,
+# global edge caching (see public/_headers), and per-PR preview deploys.
+#
+# This ships MANUAL-ONLY (workflow_dispatch) so it does NOT double-deploy
+# alongside the existing FTP workflow while you verify it. Once the first
+# deploy looks good:
+#   1. Uncomment the `push:` block below.
+#   2. Disable/delete deploy.yml (FTP) so only one path runs on push to main.
+# See DEPLOY.md for the full migration + DNS + secrets walkthrough.
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'docs/**'
+  #     - 'docs/.vitepress/**'
+  #     - 'package.json'
+  #     - 'package-lock.json'
+  #     - 'public/_headers'
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: cf-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with VitePress
+        run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=7168
+
+      # "production" deployment (serves the production branch). For PR preview
+      # deploys, prefer connecting the repo in the Cloudflare dashboard (auto
+      # builds a preview per PR) — see DEPLOY.md §PR previews.
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy docs/.vitepress/dist --project-name=cybergo-docs --branch=main

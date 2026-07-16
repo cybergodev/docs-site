@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vitepress dev docs",
-    "build": "node --max-old-space-size=8192 ./node_modules/vitepress/bin/vitepress.js build docs && tsx scripts/fix-clean-urls.ts && tsx scripts/generate-project-redirects.ts && tsx scripts/generate-moved-redirects.ts && tsx scripts/generate-llms.ts",
+    "build": "node --max-old-space-size=8192 ./node_modules/vitepress/bin/vitepress.js build docs && tsx scripts/fix-clean-urls.ts && tsx scripts/generate-project-redirects.ts && tsx scripts/generate-moved-redirects.ts && tsx scripts/generate-llms.ts && tsx scripts/generate-md-mirror.ts",
     "preview": "vitepress preview docs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "vue-tsc --noEmit",
     "audit": "tsx scripts/audit-locales.ts",
+    "audit:api": "tsx scripts/audit-api.ts",
     "lint:autocorrect": "autocorrect --lint",
     "fix:autocorrect": "autocorrect --fix"
   },

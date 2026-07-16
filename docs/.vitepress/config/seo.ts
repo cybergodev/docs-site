@@ -45,6 +45,14 @@ export function transformHead(ctx: TransformContext) {
   const canonical = zhHome ? `${HOST}/` : `${HOST}${path}`
   head.push(['link', { rel: 'canonical', href: canonical }])
 
+  // AI/agent discovery: the raw Markdown source for this page (mirrored to
+  // dist/ by scripts/generate-md-mirror.ts). Complementary to /llms.txt —
+  // per-page precision instead of a site-wide dump.
+  head.push([
+    'link',
+    { rel: 'alternate', type: 'text/markdown', href: `${HOST}/${relativePath}` }
+  ])
+
   // Any homepage (root `/` or a `/{lang}/` landing page): the Chinese
   // counterpart is the canonical root `/`, and x-default → `/`. Inner pages
   // map each language at the same sub-path instead.

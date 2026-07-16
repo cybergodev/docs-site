@@ -105,8 +105,10 @@ access_token.json
 # GitHub Copilot
 .copilot/
 
-# Claude Code
-.claude/
+# Claude Code — ignore local Claude state, but share the role-specialized
+# subagents (checked in so the whole team / every AI session uses them).
+.claude/*
+!.claude/agents/
 
 # Codeium
 .codeium/

@@ -39,6 +39,12 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=7168
 
+      # Locale parity gate: every non-primary language's page set must match zh.
+      # Catches missing/extra pages across the 5 language trees before merge.
+      # Local: `npm run audit` → report/locale-parity.md.
+      - name: Locale parity audit
+        run: npm run audit
+
   # CJK typography gate (half/full-width punctuation, CJK–Latin spacing).
   # Chinese is the primary language, so this is near-zero-cost polish.
   # Local: `npm run lint:autocorrect` / `npm run fix:autocorrect`.

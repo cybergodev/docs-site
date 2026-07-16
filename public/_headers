@@ -1,0 +1,32 @@
+# Cloudflare Pages headers — per-asset-type caching.
+# (VitePress copies public/* to the dist root, so this lands at /_headers and
+# Cloudflare Pages reads it on deploy.)
+#
+# Strategy: default to "always revalidate" (safe for HTML / the mirrored .md /
+# llms.txt, which change every deploy), then override long-lived assets:
+#   - /assets/*  — Vite content-hashed JS/CSS → immutable, 1 year
+#   - images/ico — stable binaries → 1 week
+
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=604800
+
+/*.png
+  Cache-Control: public, max-age=604800
+/*.jpg
+  Cache-Control: public, max-age=604800
+/*.jpeg
+  Cache-Control: public, max-age=604800
+/*.webp
+  Cache-Control: public, max-age=604800
+/*.svg
+  Cache-Control: public, max-age=604800
+/*.ico
+  Cache-Control: public, max-age=604800
