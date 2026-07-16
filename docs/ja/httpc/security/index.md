@@ -1,6 +1,8 @@
 ---
+sidebar_label: "セキュリティ概要"
 title: "セキュリティ概要 - CyberGo HTTPC | セキュリティ機能"
 description: "HTTPC セキュリティ機能概要: TLS 1.2+ バージョン制御、SSRF プライベート IP ブロックと CIDR 免除、CRLF インジェクション防止、Cookie セキュリティ、リダイレクトホワイトリストを解説します。"
+sidebar_position: 1
 ---
 
 # セキュリティ概要

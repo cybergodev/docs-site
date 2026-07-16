@@ -1,6 +1,8 @@
 ---
+sidebar_label: "File Output & Rotation"
 title: "File Output & Rotation - CyberGo DD | Config"
 description: "CyberGo DD file output and rotation: FileWriter size and time-based rotation, BufferedWriter optimization, MultiWriter, and production best practices."
+sidebar_position: 3
 ---
 
 # File Output and Rotation
@@ -224,5 +226,5 @@ func NewProductionLogger() (*dd.Logger, error) {
 
 - [Structured Logging](./structured-logging) -- Fields and chaining
 - [Sensitive Data Filtering](./sensitive-filtering) -- Automatic redaction
-- [API Reference - Writers](../api-reference/writers) -- Writer complete API
+- [API Reference - Writers](../api-reference/output-integration/writers) -- Writer complete API
 - [Performance Optimization](../advanced/performance) -- Performance tuning tips

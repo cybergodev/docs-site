@@ -1,6 +1,8 @@
 ---
+sidebar_label: "개요"
 title: "보안 개요 - CyberGo DD | 로그 보안"
 description: "CyberGo DD 로그 라이브러리 보안 기능에 대한 포괄적인 개요. 민감 데이터 자동 감지와 마스킹 필터링 메커니즘, 파일 경로 보안 검증과 보호 전략, 비동기 감사 이벤트 기록과 체인 추적 능력, HMAC 무결성 서명 변조 방지 기술 및 준수 설정 모범 사례 가이드를 포함하여, 데이터 필터링부터 감사 추적까지 로그 시스템의 전면적인 보안 운영을 보장합니다."
+sidebar_position: 1
 ---
 
 # 보안 개요
@@ -43,7 +45,7 @@ filter, _ := dd.NewCustomSensitiveDataFilter(
 )
 ```
 
-자세한 내용은 [보안 필터 API](../api-reference/security)를 참조하세요.
+자세한 내용은 [보안 필터 API](../api-reference/security-audit/security)를 참조하세요.
 
 ## 경로 보안
 
@@ -94,7 +96,7 @@ audit.LogSecurityViolation("sql_injection", "SQL 주입", map[string]any{
 })
 ```
 
-자세한 내용은 [감사 로그 API](../api-reference/audit)를 참조하세요.
+자세한 내용은 [감사 로그 API](../api-reference/security-audit/audit)를 참조하세요.
 
 ## 로그 무결성
 
@@ -107,10 +109,10 @@ signature := signer.Sign(logMessage)
 // 검증 시: signer.Verify(signedEntry)
 ```
 
-자세한 내용은 [무결성 서명 API](../api-reference/integrity)를 참조하세요.
+자세한 내용은 [무결성 서명 API](../api-reference/security-audit/integrity)를 참조하세요.
 
 ## 다음 단계
 
 - [프로덕션 체크리스트](./production-checklist) -- 출시 전 보안 체크리스트
-- [보안 필터 API](../api-reference/security) -- SensitiveDataFilter 상세 가이드
-- [감사 로그 API](../api-reference/audit) -- AuditLogger 상세 가이드
+- [보안 필터 API](../api-reference/security-audit/security) -- SensitiveDataFilter 상세 가이드
+- [감사 로그 API](../api-reference/security-audit/audit) -- AuditLogger 상세 가이드

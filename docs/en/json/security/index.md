@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Security Overview"
 title: "Security Overview - CyberGo JSON | Security Best Practices"
 description: "CyberGo JSON security best practices: input validation, MaxNestingDepthSecurity/MaxMemory limits, injection defense, data filtering, and audit logging."
+sidebar_position: 1
 ---
 
 # Security Overview
@@ -262,4 +264,4 @@ func (h *AuditHook) After(ctx json.HookContext, result any, err error) (any, err
 
 - [Production Checklist](./production-checklist)
 - [Config Configuration](../api-reference/config)
-- [Validator](../api-reference/validator)
+- [Validator](../extensions/validator)

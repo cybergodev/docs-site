@@ -1,6 +1,8 @@
 ---
+sidebar_label: "반복자"
 title: "반복자 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 반복 API: Foreach, ForeachWithPath, ForeachNested 재귀, IterableValue, ParallelForeach로 다양한 순회 시나리오를 지원합니다."
+sidebar_position: 9
 ---
 
 # 반복자
@@ -1011,6 +1013,6 @@ func main() {
 ## 관련 문서
 
 - [Processor](./processor/) - 프로세서 메서드
-- [대용량 파일 처리](./large-file) - 스트림 프로세서
-- [NDJSON 처리기](./jsonl) - JSONL 처리
-- [대용량 파일 처리 가이드](../large-files) - 대용량 파일 처리 가이드
+- [대용량 파일 처리](../streaming/large-file) - 스트림 프로세서
+- [NDJSON 처리기](../streaming/jsonl) - JSONL 처리
+- [대용량 파일 처리 가이드](../streaming/large-files) - 대용량 파일 처리 가이드

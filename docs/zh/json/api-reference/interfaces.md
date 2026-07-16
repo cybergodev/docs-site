@@ -1,6 +1,8 @@
 ---
+sidebar_label: "接口定义"
 title: "接口定义 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 扩展接口：CustomEncoder、TypeEncoder、Validator、Hook、PathParser 与 DangerousPattern，灵活扩展编码、验证与安全防护能力。"
+sidebar_position: 6
 ---
 
 # 接口定义
@@ -647,6 +649,6 @@ func (ve *ValidationError) Error() string
 
 ## 相关
 
-- [Hook 钩子系统](./hooks) - 钩子详细使用指南
-- [Validator 验证器](./validator) - 验证器详细使用指南
-- [CustomEncoder](./custom-encoder) - 自定义编码器指南
+- [Hook 钩子系统](../extensions/hooks) - 钩子详细使用指南
+- [Validator 验证器](../extensions/validator) - 验证器详细使用指南
+- [CustomEncoder](../extensions/custom-encoder) - 自定义编码器指南

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "安全概述"
 title: "安全概述 - CyberGo JSON | 安全最佳实践"
 description: "CyberGo JSON 安全最佳实践：输入验证与清洗、MaxNestingDepthSecurity/MaxMemory 资源限制、路径遍历与 JSON 注入防御、敏感数据过滤与审计日志，保障生产安全。"
+sidebar_position: 1
 ---
 
 # 安全概述
@@ -261,4 +263,4 @@ func (h *AuditHook) After(ctx json.HookContext, result any, err error) (any, err
 
 - [生产检查清单](./production-checklist)
 - [Config 配置](../api-reference/config)
-- [Validator](../api-reference/validator)
+- [Validator](../extensions/validator)

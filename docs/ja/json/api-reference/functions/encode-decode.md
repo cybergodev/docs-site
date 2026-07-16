@@ -1,6 +1,8 @@
 ---
+sidebar_label: "エンコード・デコード"
 title: "エンコード・デコード関数 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON エンコード・デコード関数：Marshal/Unmarshal、Compact/Indent/HTMLEscape、Encode/EncodePretty/Prettify で標準ライブラリ互換の柔軟なエンコードを実現します。"
+sidebar_position: 4
 ---
 
 # エンコード・デコード関数

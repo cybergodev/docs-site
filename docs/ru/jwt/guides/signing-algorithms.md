@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Алгоритмы подписи"
 title: "Алгоритмы - CyberGo JWT | Сравнение и выбор"
 description: "Алгоритмы CyberGo JWT: сравнение HMAC, RSA, RSA-PSS и ECDSA (12 алгоритмов) по ключам, производительности, длине подписи и coupling, выбор и безопасность."
+sidebar_position: 1
 ---
 
 # Алгоритмы подписи

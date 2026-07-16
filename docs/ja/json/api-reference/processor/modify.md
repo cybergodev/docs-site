@@ -1,6 +1,8 @@
 ---
+sidebar_label: "データ変更"
 title: "Processor データ変更 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor 変更メソッド：Set、SetMultiple、SetCreate 自動パス作成、Delete、DeleteClean でメソッドチェーンをサポートします。"
+sidebar_position: 3
 ---
 
 # データ変更メソッド

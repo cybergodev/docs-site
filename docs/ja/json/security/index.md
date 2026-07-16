@@ -1,6 +1,8 @@
 ---
+sidebar_label: "セキュリティ概要"
 title: "セキュリティ概要 - CyberGo JSON | セキュリティベストプラクティス"
 description: "CyberGo JSON セキュリティベストプラクティス：入力バリデーション、MaxNestingDepthSecurity/MaxMemory 制限、パストラバーサルと JSON インジェクション対策、機密データフィルタ、監査ログで本番安全を支えます。"
+sidebar_position: 1
 ---
 
 # セキュリティ概要
@@ -261,4 +263,4 @@ func (h *AuditHook) After(ctx json.HookContext, result any, err error) (any, err
 
 - [プロダクションチェックリスト](./production-checklist)
 - [Config 設定](../api-reference/config)
-- [Validator](../api-reference/validator)
+- [Validator](../extensions/validator)

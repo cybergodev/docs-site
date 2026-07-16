@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Обработка ошибок"
 title: "Обработка ошибок - CyberGo HTTPC | Типы и сигналы"
 description: "Руководство по обработке ошибок HTTPC: классы ErrorType, ClientError и IsRetryable, сопоставление сигналов errors.Is/As, исчерпание повторов и таймауты."
+sidebar_position: 2
 ---
 
 # Обработка ошибок
@@ -156,6 +158,6 @@ result, err := client.Request(ctx, "GET", url)
 
 ## Что дальше
 
-- [Типы ошибок API](../api-reference/errors) - справочник типов и переменных ошибок
+- [Типы ошибок API](../api-reference/types/errors) - справочник типов и переменных ошибок
 - [Повторные попытки и отказоустойчивость](../guides/retry-fault-tolerance) - конфигурация стратегии повторов
 - [Цепочки промежуточного ПО](../guides/middleware-chain) - единая обработка ошибок через промежуточное ПО

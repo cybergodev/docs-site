@@ -1,6 +1,8 @@
 ---
+sidebar_label: "テスト"
 title: "テストシナリオ - CyberGo env | ユニットテストベストプラクティス"
 description: "CyberGo env テストベストプラクティスガイド。TestingConfig、メモリファイルシステムモック、テーブル駆動テスト、ベンチマーク、ResetDefaultLoader クリーンアップで安定した結果を保証します。"
+sidebar_position: 6
 ---
 
 # テストシナリオ

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "常量与错误"
 title: "常量与错误 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 常量与错误参考：DefaultMaxJSONSize、DefaultMaxNestingDepth 默认限制、ErrPathNotFound 等错误变量与 MergeMode 合并模式，支撑 Go 配置与错误处理。"
+sidebar_position: 7
 ---
 
 # 常量与错误

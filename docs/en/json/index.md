@@ -1,4 +1,5 @@
 ---
+sidebar_label: "Overview"
 title: "JSON Library - CyberGo JSON | High-Performance Go Library"
 description: "CyberGo JSON: a fast, thread-safe Go JSON library with JSONPath queries, streaming, generic APIs, and Schema validation, compatible with encoding/json."
 ---
@@ -100,12 +101,12 @@ func main() {
 
 | Module | Description |
 |--------|-------------|
-| [Getting Started](./getting-started) | Installation, basic usage, core concepts |
-| [Path Expression Syntax](./path-syntax) | Path queries, slicing, wildcards, field extraction |
+| [Getting Started](./getting-started/) | Installation, basic usage, core concepts |
+| [Path Expression Syntax](./getting-started/path-syntax) | Path queries, slicing, wildcards, field extraction |
 | [API Reference](./api-reference/) | Complete API reference |
-| [Large File Processing](./large-files) | Stream processing, chunked read/write, memory optimization |
-| [Usage Examples](./examples) | Practical code examples |
-| [Advanced Examples](./examples-advanced) | Batch encoding, pre-parsing, hook system |
+| [Large File Processing](./streaming/large-files) | Stream processing, chunked read/write, memory optimization |
+| [Usage Examples](./examples/) | Practical code examples |
+| [Advanced Examples](./examples/examples-advanced) | Batch encoding, pre-parsing, hook system |
 
 ## Performance Features
 
@@ -141,6 +142,6 @@ func main() {
 
 ## Next Steps
 
-- [Getting Started](./getting-started) — Get up and running in 5 minutes
-- [Path Expression Syntax](./path-syntax) — Complete path syntax reference
-- [Usage Examples](./examples) — More practical examples
+- [Getting Started](./getting-started/) — Get up and running in 5 minutes
+- [Path Expression Syntax](./getting-started/path-syntax) — Complete path syntax reference
+- [Usage Examples](./examples/) — More practical examples

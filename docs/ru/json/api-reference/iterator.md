@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Итератор"
 title: "Итераторы - CyberGo JSON | Справочник API"
 description: "API итераторов CyberGo JSON: Foreach, ForeachWithPath, рекурсивный ForeachNested, IterableValue и ParallelForeach для различных сценариев обхода JSON."
+sidebar_position: 9
 ---
 
 # Итераторы
@@ -1011,6 +1013,6 @@ func main() {
 ## Связанные разделы
 
 - [Processor](./processor/) - Методы процессора
-- [Обработка больших файлов](./large-file) - Потоковые процессоры
-- [Процессор NDJSON](./jsonl) - Обработка JSONL
-- [Руководство по обработке больших файлов](../large-files) - Руководство по обработке больших файлов
+- [Обработка больших файлов](../streaming/large-file) - Потоковые процессоры
+- [Процессор NDJSON](../streaming/jsonl) - Обработка JSONL
+- [Руководство по обработке больших файлов](../streaming/large-files) - Руководство по обработке больших файлов

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Hook System"
 title: "Hook System - CyberGo DD | Lifecycle Hooks Practical Guide"
 description: "CyberGo DD hook system guide: 6 lifecycle events (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), HookRegistry, and usage patterns."
+sidebar_position: 6
 ---
 
 # Hook System
@@ -195,4 +197,4 @@ registry.Add(dd.HookAfterLog, newHookFunc)
 
 - [Audit Logging](./audit-logging) -- Security audit integration
 - [Distributed Tracing](./context-tracing) -- Context integration
-- [API Reference - Hooks](../api-reference/hooks) -- Hooks complete API
+- [API Reference - Hooks](../api-reference/security-audit/hooks) -- Hooks complete API

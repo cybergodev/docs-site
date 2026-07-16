@@ -1,6 +1,8 @@
 ---
+sidebar_label: "패키지 함수"
 title: "패키지 함수 - CyberGo env | 전역 편의 함수"
 description: "CyberGo env 패키지 함수 API 참조로 Load, GetString, GetInt, Keys, Marshal, ParseInto 등 스레드 안전한 전역 기본 로더 기반의 간결한 API를 제공합니다."
+sidebar_position: 2
 ---
 
 # 패키지 함수
@@ -373,7 +375,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ### GetSliceFrom[T]
 
 ```go
-func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
+func GetSliceFrom[T sliceElement](./loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
 지정된 Loader 인스턴스에서 슬라이스 값을 가져옵니다. 독립적인 제네릭 함수입니다 (Loader 메서드가 아님).

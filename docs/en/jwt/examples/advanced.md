@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Advanced Examples"
 title: "Advanced Examples - CyberGo JWT | Asymmetric"
 description: "Advanced examples: RSA and ECDSA asymmetric signing, CustomClaims business claims, Redis blacklist backends, FixedClock testing, and full web integration."
+sidebar_position: 2
 ---
 
 # Advanced Examples

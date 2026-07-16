@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Config API"
 title: "Config API - CyberGo env | Подробно о конфигурации"
 description: "Справочник Config в CyberGo env: пути поиска, лимиты безопасности, валидация ключей, подстановка переменных, аудит и пресеты Development и Production."
+sidebar_position: 4
 ---
 
 # Config API

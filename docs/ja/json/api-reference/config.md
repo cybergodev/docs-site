@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Config"
 title: "Config 設定 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Config リファレンス：DefaultConfig、SecurityConfig、PrettyConfig、キャッシュ、サイズ制限、エンコード設定で Go アプリの JSON 挙動を完全にカスタマイズします。"
+sidebar_position: 4
 ---
 
 # Config

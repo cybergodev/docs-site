@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Interfaces"
 title: "Interfaces - CyberGo JWT | Interfaces"
 description: "Interfaces: TokenManager core operations, CustomClaims, BlacklistStore backend, RateLimitProvider limiter, ClockProvider, and optional RateLimitKeyer key."
+sidebar_position: 6
 ---
 
 # Interfaces

@@ -1,4 +1,5 @@
 ---
+sidebar_label: "概述"
 title: "JWT 认证库 - CyberGo JWT | 生产级令牌签发与验证"
 description: "CyberGo JWT 是面向 Go 的生产级 JWT 认证库，覆盖 HMAC、RSA、RSA-PSS、ECDSA 四类 12 种签名算法，提供令牌生成、验证、刷新、吊销、黑名单与速率限制，所有方法并发安全。"
 ---
@@ -91,7 +92,7 @@ func main() {
 
 ## 下一步
 
-- [快速开始](./getting-started) — 详细的安装和配置指南
+- [快速开始](./getting-started/) — 详细的安装和配置指南
 - [签名算法](./guides/signing-algorithms) — HMAC、RSA、ECDSA 选择指南
 - [自定义 Claims](./guides/custom-claims) — 定义业务字段
 - [API 参考](./api-reference/) — 完整 API 参考文档

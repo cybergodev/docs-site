@@ -1,4 +1,5 @@
 ---
+sidebar_label: "Overview"
 title: "CyberGo env - Environment Variable Management Library"
 description: "CyberGo env is a secure Go library for environment variables, loading .env, JSON and YAML with type-safe reads, SecureValue memory protection and audit logging."
 ---
@@ -21,7 +22,7 @@ A highly secure Go environment variable management library with support for `.en
 
 | Feature | Description |
 |---------|-------------|
-| [Type Conversion](/en/env/getting-started) | GetString, GetInt, GetBool, GetDuration, GetSlice |
+| [Type Conversion](/en/env/getting-started/) | GetString, GetInt, GetBool, GetDuration, GetSlice |
 | [Struct Mapping](/en/env/guides/struct-mapping) | Tag-driven configuration binding |
 | [Secure Storage](/en/env/api-reference/secure-value) | Sensitive value memory protection |
 | [Multi-format Loading](/en/env/guides/multi-format) | .env, JSON, YAML |
@@ -31,8 +32,8 @@ A highly secure Go environment variable management library with support for `.en
 <div class="vp-features">
 
 ### Getting Started
-- [Getting Started](/en/env/getting-started) - 5-minute tutorial
-- [Cheat Sheet](/en/env/cheatsheet) - Common code snippets
+- [Getting Started](/en/env/getting-started/) - 5-minute tutorial
+- [Cheat Sheet](/en/env/getting-started/cheatsheet) - Common code snippets
 
 ### API Reference
 - [Package Functions](/en/env/api-reference/functions) - Complete API documentation

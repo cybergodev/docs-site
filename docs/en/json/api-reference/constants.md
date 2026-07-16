@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Constants & Errors"
 title: "Constants and Errors - CyberGo JSON | API Reference"
 description: "CyberGo JSON constants and errors: DefaultMaxJSONSize, DefaultMaxNestingDepth, ErrPathNotFound variables, and MergeMode enums for Go error handling."
+sidebar_position: 7
 ---
 
 # Constants and Errors

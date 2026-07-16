@@ -1,6 +1,8 @@
 ---
+sidebar_label: "多格式配置"
 title: "多格式配置 - CyberGo env | .env/JSON/YAML"
 description: "CyberGo env 多格式配置加载指南，支持 .env、JSON、YAML 自动检测与混合加载，详解键值合并优先级规则与格式互转工具，适配微服务与容器化场景。"
+sidebar_position: 3
 ---
 
 # 多格式配置

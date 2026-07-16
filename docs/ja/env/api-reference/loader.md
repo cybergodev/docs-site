@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Loader API"
 title: "Loader API - CyberGo env | ローダー詳細"
 description: "CyberGo env の Loader API リファレンス。コア型が多フォーマット読み込み、型安全読み取り、キー操作、検証、シリアライズ、Close ライフサイクルを提供し、すべてスレッドセーフです。"
+sidebar_position: 3
 ---
 
 # Loader API

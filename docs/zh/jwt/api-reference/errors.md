@@ -1,6 +1,8 @@
 ---
+sidebar_label: "错误"
 title: "错误参考 - CyberGo JWT | 哨兵错误清单"
 description: "错误参考：CyberGo JWT 定义 19 个哨兵错误，覆盖配置校验、令牌验证、签名算法、过期、签发者与受众、黑名单、速率限制与生命周期场景，全部支持 errors.Is 匹配。"
+sidebar_position: 8
 ---
 
 # 错误

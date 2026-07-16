@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Loader API"
 title: "Loader API - CyberGo env | Подробно о загрузчике"
 description: "Справочник API Loader в CyberGo env: загрузка файлов, типобезопасное чтение, операции с ключами, валидация, сериализация и Close — всё потокобезопасно."
+sidebar_position: 3
 ---
 
 # Loader API

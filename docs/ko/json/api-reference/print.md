@@ -1,6 +1,8 @@
 ---
+sidebar_label: "출력 함수"
 title: "출력 함수 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 출력과 포맷: Encode, EncodePretty, Prettify와 표준 fmt 패키지로 커스텀 들여쓰기 JSON 출력을 구현하고 제거된 Print 계열을 대체합니다."
+sidebar_position: 11
 ---
 
 # 출력 함수
@@ -118,4 +120,4 @@ func main() {
 ## 관련 문서
 
 - [인코딩 디코딩 함수](./functions/encode-decode) - Encode, EncodePretty, Prettify
-- [패키지 함수](./functions) - 패키지 레벨 함수 개요
+- [패키지 함수](./functions/) - 패키지 레벨 함수 개요

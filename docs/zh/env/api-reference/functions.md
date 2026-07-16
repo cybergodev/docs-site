@@ -1,6 +1,8 @@
 ---
+sidebar_label: "包函数"
 title: "包函数 - CyberGo env | 全局便捷函数"
 description: "CyberGo env 包级便捷函数 API 参考，提供 Load、GetString、GetInt、Keys、Marshal、ParseInto 等基于全局默认 Loader 的线程安全接口。"
+sidebar_position: 2
 ---
 
 # 包函数
@@ -373,7 +375,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ### GetSliceFrom[T]
 
 ```go
-func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
+func GetSliceFrom[T sliceElement](./loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
 从指定 Loader 实例获取切片值。这是独立的泛型函数（不是 Loader 方法）。

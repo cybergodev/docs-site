@@ -1,6 +1,8 @@
 ---
+sidebar_label: "エラー処理"
 title: "エラー処理 - CyberGo JWT | センチネルエラー照合"
 description: "エラー処理ガイド：CyberGo JWT 全 19 個のセンチネルエラーが設定・トークン検証・レート制限・ライフサイクル各段階で発動する条件を分類、errors.Is 照合・ValidationError 項目エラー・標準化応答の実務を示す。"
+sidebar_position: 5
 ---
 
 # エラー処理

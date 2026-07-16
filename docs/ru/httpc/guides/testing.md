@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Руководство по тестированию"
 title: "Руководство по тестированию - CyberGo HTTPC | Mock-серверы"
 description: "Руководство по тестированию HTTPC: конфигурация TestingConfig, имитационные серверы net/http/httptest, моделирование ошибок, табличные тесты и проверка Cookie."
+sidebar_position: 7
 ---
 
 # Руководство по тестированию
@@ -216,6 +218,6 @@ func TestHTTPMethods(t *testing.T) {
 
 ## Что дальше
 
-- [Конфигурация API](../api-reference/config) - подробные параметры TestingConfig
-- [Типы ошибок](../api-reference/errors) - справочник утверждений ошибок
+- [Конфигурация API](../api-reference/client-config/config) - подробные параметры TestingConfig
+- [Типы ошибок](../api-reference/types/errors) - справочник утверждений ошибок
 - [Цепочки промежуточного ПО](./middleware-chain) - паттерны тестирования промежуточного ПО

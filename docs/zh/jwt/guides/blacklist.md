@@ -1,6 +1,8 @@
 ---
+sidebar_label: "令牌黑名单"
 title: "令牌黑名单 - CyberGo JWT | 吊销与外部存储"
 description: "令牌黑名单指南：讲解内置内存存储配置与过期清理机制，用 Revoke 与 IsRevoked 吊销令牌，并实现 BlacklistStore 接口对接 Redis 等外部存储，附带多实例部署最佳实践。"
+sidebar_position: 3
 ---
 
 # 令牌黑名单

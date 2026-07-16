@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Loader"
 title: "Loader API - CyberGo env | Loader Details"
 description: "CyberGo env Loader API reference: multi-format file loading, type-safe reading, key set/delete, validation, serialization and Close — all thread-safe."
+sidebar_position: 3
 ---
 
 # Loader API

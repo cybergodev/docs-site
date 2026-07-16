@@ -1,6 +1,8 @@
 ---
+sidebar_label: "生命周期"
 title: "Processor 生命周期 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor 生命周期：New 创建、Close 释放资源、IsClosed 状态检查、GetStats 统计与 GetHealthStatus 健康监控，保障并发安全关闭。"
+sidebar_position: 9
 ---
 
 # 生命周期与统计
@@ -267,5 +269,5 @@ go func() {
 ## 相关
 
 - [Config](../config) - 配置选项（缓存大小、TTL 等）
-- [Hook 钩子系统](../hooks) - 钩子详细使用指南
+- [Hook 钩子系统](../../extensions/hooks) - 钩子详细使用指南
 - [接口定义](../interfaces) - Hook 接口

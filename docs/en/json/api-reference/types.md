@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Types"
 title: "Type Definitions - CyberGo JSON | API Reference"
 description: "CyberGo JSON core types: Result[T], AccessResult, BatchOperation, BatchResult, Schema, Stats, HealthStatus and IterableValue forming the complete type system."
+sidebar_position: 5
 ---
 
 # Type Definitions
@@ -1052,7 +1054,7 @@ if delim, ok := token.(json.Delim); ok {
 
 ## Related
 
-- [Package Functions](./functions) - Package-level function reference
+- [Package Functions](./functions/) - Package-level function reference
 - [Config](./config) - Configuration options
 - [Processor](./processor/) - Processor methods
 - [Interface Definitions](./interfaces) - Extension interfaces

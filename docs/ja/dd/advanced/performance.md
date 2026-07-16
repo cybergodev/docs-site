@@ -1,6 +1,8 @@
 ---
+sidebar_label: "パフォーマンス"
 title: "パフォーマンス最適化 - CyberGo DD | 高性能ログ"
 description: "CyberGo DD ログライブラリのパフォーマンス最適化完全ガイド。ゼロアロケーション最適化のヒント、BufferedWriter バッファ書き込み設定、ログサンプリング戦略と頻度制御、レベル事前チェックで不要なアロケーションを回避、sync.Pool オブジェクトプール再利用、ベンチマークテスト分析方法を詳解し、高並行シナリオで極限のログパフォーマンスを獲得。"
+sidebar_position: 1
 ---
 
 # パフォーマンス最適化
@@ -147,6 +149,6 @@ logger.Shutdown(ctx)
 
 ## 次のステップ
 
-- [出力先](../api-reference/writers) -- FileWriter、BufferedWriter API
-- [設定](../api-reference/config) -- パフォーマンス関連の設定項目
+- [出力先](../api-reference/output-integration/writers) -- FileWriter、BufferedWriter API
+- [設定](../api-reference/core/config) -- パフォーマンス関連の設定項目
 - [本番チェックリスト](../security/production-checklist) -- リリース前チェック

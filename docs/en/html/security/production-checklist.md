@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo HTML | Launch Checklist"
 description: "CyberGo HTML production security checklist: HighSecurityConfig preset, Processor lifecycle, audit and monitoring, context timeouts, error handling, file safety."
+sidebar_position: 2
 ---
 
 # Production Checklist

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Обзор"
 title: "Processor - CyberGo JSON | Справочник API"
 description: "Processor CyberGo JSON: создание New, GetString/Set/Delete, итерация Foreach, Encode, жизненный цикл Close, Stats и кэш для частого повторного использования."
+sidebar_position: 1
 ---
 
 # Processor
@@ -151,7 +153,7 @@ func main() {
 
 ## Связанные разделы
 
-- [Функции пакета](../functions) - Справочник функций верхнего уровня
+- [Функции пакета](../functions/) - Справочник функций верхнего уровня
 - [Config](../config) - Параметры конфигурации
 - [Определения интерфейсов](../interfaces) - Интерфейсы Hook
-- [Система хуков](../hooks) - Подробное руководство по использованию хуков
+- [Система хуков](../../extensions/hooks) - Подробное руководство по использованию хуков

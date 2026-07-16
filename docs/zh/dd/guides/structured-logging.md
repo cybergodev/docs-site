@@ -1,6 +1,8 @@
 ---
+sidebar_label: "结构化日志"
 title: "结构化日志 - CyberGo DD | 字段与链式调用"
 description: "CyberGo DD 结构化日志使用指南，详细介绍 20+ 类型安全的字段构造器、Field 链式传递模式、LoggerEntry 不可变设计原理、字段命名规范与验证规则，以及结构化日志的最佳实践和常见使用模式，帮助开发者在项目中有效使用高性能的结构化日志记录方案。"
+sidebar_position: 2
 ---
 
 # 结构化日志
@@ -247,5 +249,5 @@ logger.InfoWith("请求完成",
 
 - [文件输出与轮换](./file-output) -- 将日志写入文件
 - [敏感数据过滤](./sensitive-filtering) -- 自动脱敏敏感信息
-- [API 参考 - 字段](../api-reference/fields) -- 所有字段构造器
-- [API 参考 - LoggerEntry](../api-reference/entry) -- Entry 完整方法
+- [API 参考 - 字段](../api-reference/output-integration/fields) -- 所有字段构造器
+- [API 参考 - LoggerEntry](../api-reference/core/entry) -- Entry 完整方法

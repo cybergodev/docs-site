@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Generics"
 title: "Generic Operations - CyberGo JSON | API Reference"
 description: "CyberGo JSON generic API: GetTyped[T] getter, Result[T] result type, and AccessResult dynamic access using Go 1.18+ generics for compile-time type safety."
+sidebar_position: 10
 ---
 
 # Generic Operations
@@ -416,6 +418,6 @@ func main() {
 
 ## See Also
 
-- [Package Functions](./functions) - Type-specific getter functions
+- [Package Functions](./functions/) - Type-specific getter functions
 - [Type Definitions](./types) - AccessResult detailed definition
 - [Configuration](./config) - Config configuration options

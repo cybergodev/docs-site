@@ -1,6 +1,8 @@
 ---
+sidebar_label: "조회 및 가져오기"
 title: "쿼리/가져오기 함수 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 조회와 가져오기 함수: Get/GetString/GetInt/GetFloat/GetBool 타입 안전 가져오기, GetTyped[T], Parse/ParseAny로 JSONPath를 완전히 지원합니다."
+sidebar_position: 2
 ---
 
 # 조회와 가져오기 함수
@@ -522,7 +524,7 @@ func main() {
 ```
 
 :::tip 자세한 내용
-완전한 Schema 타입 정의와 검증기 사용법은 [검증기](../validator)를 참조하세요.
+완전한 Schema 타입 정의와 검증기 사용법은 [검증기](../../extensions/validator)를 참조하세요.
 :::
 
 ## 안전한 가져오기 함수

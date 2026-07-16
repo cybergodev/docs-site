@@ -1,6 +1,8 @@
 ---
+sidebar_label: "File I/O"
 title: "File Operation Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON file I/O: LoadFromReader streaming, ParseJSONL/ToJSONL, StreamLinesInto[T] generic streams, and NewJSONLWriter for large-file scenarios."
+sidebar_position: 5
 ---
 
 # File Operation Functions
@@ -324,5 +326,5 @@ if err := jw.Err(); err != nil {
 ## See Also
 
 - [Encode and Decode Functions](./encode-decode) - Marshal, Unmarshal and other serialization operations
-- [Stream Processing](../../large-files) - Stream processor details
+- [Stream Processing](../../streaming/large-files) - Stream processor details
 - [Processor JSONL Methods](../processor/jsonl) - Processor-level JSONL method details

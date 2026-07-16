@@ -1,6 +1,8 @@
 ---
+sidebar_label: "보안과 감사 실전"
 title: "보안과 감사 실전 - CyberGo DD | 보안 로그 예제"
 description: "CyberGo DD 보안 필터링과 감사 로그의 전체 실전 예제 모음. 민감 데이터 필터링 규칙 설정, HMAC 무결성 서명과 검증, 감사 이벤트 기록과 일괄 검증, 업계 준수 설정 방안 (HIPAA/PCI-DSS) 및 프로덕션 환경 보안 로그 아키텍처 설계와 배포 모범 사례와 주의 사항을 다룹니다."
+sidebar_position: 3
 ---
 
 # 보안과 감사 실전
@@ -225,7 +227,7 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
 
 ## 다음 단계
 
-- [API 레퍼런스 - Security](../api-reference/security) -- 보안 필터링 전체 API
-- [API 레퍼런스 - Audit](../api-reference/audit) -- 감사 로그 전체 API
-- [API 레퍼런스 - Integrity](../api-reference/integrity) -- 무결성 서명 API
+- [API 레퍼런스 - Security](../api-reference/security-audit/security) -- 보안 필터링 전체 API
+- [API 레퍼런스 - Audit](../api-reference/security-audit/audit) -- 감사 로그 전체 API
+- [API 레퍼런스 - Integrity](../api-reference/security-audit/integrity) -- 무결성 서명 API
 - [프로덕션 체크리스트](../security/production-checklist) -- 출시 보안 체크리스트

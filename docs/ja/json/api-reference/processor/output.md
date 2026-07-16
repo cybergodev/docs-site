@@ -1,6 +1,8 @@
 ---
+sidebar_label: "出力メソッド"
 title: "Processor 出力メソッド - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor 出力メソッド：Encode、EncodePretty、EncodeWithConfig、EncodeBatch/EncodeFields、Compact/Indent/HTMLEscape で多様な出力に対応します。"
+sidebar_position: 4
 ---
 
 # 出力メソッド

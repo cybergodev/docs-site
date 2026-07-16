@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Connection Pool & Proxy"
 title: "Connection Pool and Proxy - CyberGo HTTPC | Pool & Proxy"
 description: "HTTPC connection pool and proxy guide: MaxIdleConns tuning, ProxyURL manual and system proxy, SOCKS5/HTTP proxies, DoH fallback, and HTTP/2 configuration."
+sidebar_position: 3
 ---
 
 # Connection Pool and Proxy
@@ -180,5 +182,5 @@ For complete performance anti-patterns and optimization recommendations, see [Pe
 ## Next Steps
 
 - [Performance Optimization](./performance) - Performance tuning guide
-- [Configuration API](../api-reference/config) - Connection configuration reference
+- [Configuration API](../api-reference/client-config/config) - Connection configuration reference
 - [Security Overview](../security/) - SSRF and TLS security

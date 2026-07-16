@@ -1,6 +1,8 @@
 ---
+sidebar_label: "安全概述"
 title: "安全概述 - CyberGo HTML | 安全防护总览"
 description: "CyberGo HTML 安全概述：输入大小限制、DOM 深度限制、路径遍历防护、恐慌恢复、处理超时、内容清洗与可插拔审计，违规支持 errors.Is/As 判断。"
+sidebar_position: 1
 ---
 
 # 安全概述
@@ -52,7 +54,7 @@ cfg.EnableSanitization = true
 
 ## 审计系统
 
-详细的安全审计配置请参考 [审计系统](../api-reference/audit)。
+详细的安全审计配置请参考 [审计系统](../api-reference/modules/audit)。
 
 审计系统可记录以下安全事件：
 

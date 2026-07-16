@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Variable Expansion"
 title: "Variable Expansion - CyberGo env | Variable Syntax"
 description: "CyberGo env variable expansion guide: ${VAR} and ${VAR:-default} references, conditional expansion, circular-reference detection and MaxExpansionDepth limits."
+sidebar_position: 4
 ---
 
 # Variable Expansion
@@ -252,6 +254,6 @@ func main() {
 
 ## Related Documentation
 
-- [Getting Started](/en/env/getting-started) - Basic usage
+- [Getting Started](/en/env/getting-started/) - Basic usage
 - [Config API](/en/env/api-reference/config) - ExpandVariables configuration
 - [Constants & Errors](/en/env/api-reference/constants) - Expansion depth limits

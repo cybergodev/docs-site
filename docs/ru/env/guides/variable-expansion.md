@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Подстановка переменных"
 title: "Подстановка переменных - CyberGo env | Синтаксис переменных"
 description: "Руководство по подстановке переменных CyberGo env: синтаксис ${VAR} и ${VAR:-default}, условная подстановка, циклы и лимит MaxExpansionDepth."
+sidebar_position: 4
 ---
 
 # Подстановка переменных
@@ -252,6 +254,6 @@ func main() {
 
 ## Связанная документация
 
-- [Быстрый старт](/ru/env/getting-started) - Базовое использование
+- [Быстрый старт](/ru/env/getting-started/) - Базовое использование
 - [Config API](/ru/env/api-reference/config) - Конфигурация ExpandVariables
 - [Константы и ошибки](/ru/env/api-reference/constants) - Ограничения глубины подстановки

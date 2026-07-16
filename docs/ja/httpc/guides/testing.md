@@ -1,6 +1,8 @@
 ---
+sidebar_label: "テストガイド"
 title: "テストガイド - CyberGo HTTPC | httptestとモック"
 description: "HTTPC テストガイド: TestingConfig テスト専用設定、net/http/httptest モックサーバー統合、エラー応答とリダイレクトのシミュレーション、テーブル駆動テスト、Cookie セッションアサーションのベストプラクティスを解説します。"
+sidebar_position: 7
 ---
 
 # テストガイド
@@ -216,6 +218,6 @@ func TestHTTPMethods(t *testing.T) {
 
 ## 次のステップ
 
-- [設定 API](../api-reference/config) - TestingConfig の詳細パラメータ
-- [エラータイプ](../api-reference/errors) - エラーアサーションリファレンス
+- [設定 API](../api-reference/client-config/config) - TestingConfig の詳細パラメータ
+- [エラータイプ](../api-reference/types/errors) - エラーアサーションリファレンス
 - [ミドルウェアチェーン](./middleware-chain) - ミドルウェアのテストパターン

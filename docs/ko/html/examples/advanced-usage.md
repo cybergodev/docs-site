@@ -1,13 +1,15 @@
 ---
+sidebar_label: "고급 예제"
 title: "고급 예제 - CyberGo HTML | 심화 시나리오"
 description: "CyberGo HTML 고급 예제: 커스텀 Scorer, 다중 Sink 감사 파이프라인, 배치 파일과 동시성 제어, Processor 풀링, ChannelAuditSink 모니터링 등 실행 가능 예시입니다."
+sidebar_position: 2
 ---
 
 # 고급 예제
 
 ## 커스텀 Scorer
 
-특정 웹사이트 구조에 맞게 콘텐츠 식별 로직을 커스터마이즈합니다. 전체 구현은 [테스트와 커스텀 확장](../guides/testing-custom)을 참조하고, 아래는 핵심 사용법을 보여줍니다:
+특정 웹사이트 구조에 맞게 콘텐츠 식별 로직을 커스터마이즈합니다. 전체 구현은 [테스트와 커스텀 확장](../guides/integration/testing-custom)을 참조하고, 아래는 핵심 사용법을 보여줍니다:
 
 ```go
 package main

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "安全概述"
 title: "安全概述 - CyberGo env | 安全架构"
 description: "CyberGo env 安全架构概览，详解 SecureValue 内存锁定、键值验证过滤、禁止键名列表、IsSensitiveKey 自动检测、安全预设与审计追踪。"
+sidebar_position: 1
 ---
 
 # 安全概述

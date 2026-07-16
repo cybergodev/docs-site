@@ -1,6 +1,8 @@
 ---
+sidebar_label: "文件格式"
 title: "文件格式 - CyberGo env | .env/JSON/YAML 语法"
 description: "CyberGo env 配置文件格式参考，详解 .env、JSON、YAML 的语法规则、注释方式、数据类型、UTF-8 编码与 DetectFormat 自动检测。"
+sidebar_position: 1
 ---
 
 # 文件格式

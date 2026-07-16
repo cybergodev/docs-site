@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Core Concepts"
 title: "Core Concepts - CyberGo DD | Architecture Design"
 description: "CyberGo DD core architecture: Logger and LoggerEntry lifecycle, structured Field patterns, processing pipeline, interfaces, and concurrency model."
+sidebar_position: 1
 ---
 
 # Core Concepts

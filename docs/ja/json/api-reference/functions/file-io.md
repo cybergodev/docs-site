@@ -1,6 +1,8 @@
 ---
+sidebar_label: "ファイル I/O"
 title: "ファイル操作関数 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON ファイル操作関数：LoadFromReader、ParseJSONL/ToJSONL、StreamLinesInto[T]、NewJSONLWriter で大ファイルのストリーミング処理に対応します。"
+sidebar_position: 5
 ---
 
 # ファイル操作関数
@@ -324,5 +326,5 @@ if err := jw.Err(); err != nil {
 ## 関連
 
 - [エンコード・デコード関数](./encode-decode) - Marshal、Unmarshal などのシリアライズ操作
-- [ストリーミング処理](../../large-files) - ストリーミングプロセッサの詳細
+- [ストリーミング処理](../../streaming/large-files) - ストリーミングプロセッサの詳細
 - [Processor JSONL メソッド](../processor/jsonl) - Processor レベルの JSONL メソッドの詳細

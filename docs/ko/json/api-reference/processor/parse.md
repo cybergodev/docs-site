@@ -1,6 +1,8 @@
 ---
+sidebar_label: "파싱 및 로딩"
 title: "Processor 파싱/로드 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor 파싱 메서드: Valid 검증, Parse, ParseAny, PreParse 최적화, GetFromParsed로 설정 기반 파싱을 지원합니다."
+sidebar_position: 5
 ---
 
 # 파싱 및 로드 메서드

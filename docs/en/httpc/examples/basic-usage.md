@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Basic Usage"
 title: "Basic Usage - CyberGo HTTPC | Runnable Examples"
 description: "HTTPC basic usage examples: authenticated GET requests, JSON/form/file POST, custom configuration, proxy, middleware, metrics, and file download code."
+sidebar_position: 1
 ---
 
 # Basic Usage

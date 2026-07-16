@@ -1,6 +1,8 @@
 ---
+sidebar_label: "概要"
 title: "API リファレンス - CyberGo HTML | 全モジュール索引"
 description: "CyberGo HTML 全 API 索引：パッケージ関数と Processor の二つの呼び出し方式で、抽出、出力、リンク、バッチ、設定、監査、型など全モジュールを案内します。"
+sidebar_position: 1
 ---
 
 # API リファレンス
@@ -9,16 +11,16 @@ HTML ライブラリは以下のコアコンポーネントを提供します：
 
 | コンポーネント | 説明 | ドキュメント |
 |------|------|------|
-| パッケージ関数 | 一回限りの呼び出しに適した便利関数 | [パッケージ関数](./functions) |
-| Processor | リソースとキャッシュを再利用するプロセッサインスタンス | [Processor](./processor) |
-| Config | 設定構造体とプリセット | [設定](./config) |
-| 出力フォーマット | Markdown、JSON 出力 | [出力フォーマット](./output) |
-| リンク抽出 | 独立したリンク抽出 API | [リンク抽出](./links) |
-| バッチ処理 | 並列バッチ抽出 | [バッチ処理](./batch) |
-| インターフェース | Extractor、StatsProvider など | [インターフェース定義](./interfaces) |
-| 型 | Result、ImageInfo など | [型定義](./types) |
-| 定数とエラー | デフォルト値、センチネルエラー | [定数とエラー](./constants) |
-| 監査システム | 監査パイプラインと Sink | [監査システム](./audit) |
+| パッケージ関数 | 一回限りの呼び出しに適した便利関数 | [パッケージ関数](./core/functions) |
+| Processor | リソースとキャッシュを再利用するプロセッサインスタンス | [Processor](./core/processor) |
+| Config | 設定構造体とプリセット | [設定](./core/config) |
+| 出力フォーマット | Markdown、JSON 出力 | [出力フォーマット](./modules/output) |
+| リンク抽出 | 独立したリンク抽出 API | [リンク抽出](./modules/links) |
+| バッチ処理 | 並列バッチ抽出 | [バッチ処理](./modules/batch) |
+| インターフェース | Extractor、StatsProvider など | [インターフェース定義](./types/interfaces) |
+| 型 | Result、ImageInfo など | [型定義](./types/type-defs) |
+| 定数とエラー | デフォルト値、センチネルエラー | [定数とエラー](./types/constants) |
+| 監査システム | 監査パイプラインと Sink | [監査システム](./modules/audit) |
 
 ## API 概要
 

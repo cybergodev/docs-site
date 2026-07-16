@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Вспомогательные функции"
 title: "Вспомогательные функции - CyberGo JSON | Справочник API"
 description: "Вспомогательные функции CyberGo JSON: CompareJSON, ClearCache/GetStats, управление глобальным Processor и помощники безопасности для работы с JSON в Go."
+sidebar_position: 8
 ---
 
 # Вспомогательные функции

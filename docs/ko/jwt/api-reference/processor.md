@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Processor"
 title: "Processor - CyberGo JWT | 핵심 토큰 조작 타입"
 description: "Processor는 CyberGo JWT 핵심 타입으로 Create·Validate·Refresh·Revoke·IsRevoked·ParseUnverified·Close 등 토큰 조작 메서드의 시그니처·매개변수·반환값·오류와 예시를 제공합니다."
+sidebar_position: 3
 ---
 
 # Processor

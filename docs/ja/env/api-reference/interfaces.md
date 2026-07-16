@@ -1,6 +1,8 @@
 ---
+sidebar_label: "インターフェース定義"
 title: "インターフェース定義 - CyberGo env | コアインターフェース階層"
 description: "CyberGo env のコアインターフェース参照。依存性注入を支える細粒度設計の Validator、FullAuditLogger、EnvParser、EnvStorage、FileSystem インターフェースを説明します。"
+sidebar_position: 6
 ---
 
 # インターフェース定義

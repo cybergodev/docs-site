@@ -1,6 +1,8 @@
 ---
+sidebar_label: "概要"
 title: "API リファレンス - CyberGo env | 完全インターフェースドキュメント"
 description: "CyberGo env の完全 API リファレンス索引。パッケージ関数、Config、コアインターフェース、Loader、ComponentFactory、SecureValue、定数とエラーの入口をすばやく検索できます。"
+sidebar_position: 1
 ---
 
 # API リファレンス

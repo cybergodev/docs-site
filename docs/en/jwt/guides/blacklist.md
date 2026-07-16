@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Token Blacklist"
 title: "Token Blacklist - CyberGo JWT | Revocation"
 description: "Configure the built-in memory store with cleanup, revoke tokens via Revoke and IsRevoked, and implement BlacklistStore for Redis and external stores."
+sidebar_position: 3
 ---
 
 # Token Blacklist

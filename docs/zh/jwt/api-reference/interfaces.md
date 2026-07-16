@@ -1,6 +1,8 @@
 ---
+sidebar_label: "接口定义"
 title: "接口定义 - CyberGo JWT | 核心扩展接口"
 description: "接口定义参考：TokenManager 令牌操作核心接口、CustomClaims 自定义声明、BlacklistStore 黑名单后端、RateLimitProvider 限流器、ClockProvider 时钟注入与可选 RateLimitKeyer 限流键。"
+sidebar_position: 6
 ---
 
 # 接口定义

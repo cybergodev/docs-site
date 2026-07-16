@@ -1,6 +1,8 @@
 ---
+sidebar_label: "中间件链"
 title: "中间件链 - CyberGo HTTPC | 洋葱模型与链组合"
 description: "HTTPC 中间件链指南：洋葱模型执行原理与请求/响应双向处理、八个内置中间件配置、Chain 手动组合、自定义 MiddlewareFunc 编写与断路器短路示例。"
+sidebar_position: 6
 ---
 
 # 中间件链
@@ -215,6 +217,6 @@ client, _ := httpc.New(cfg)
 
 ## 下一步
 
-- [中间件 API](../api-reference/middleware) - 完整中间件参考
+- [中间件 API](../api-reference/client-config/middleware) - 完整中间件参考
 - [重试与容错](./retry-fault-tolerance) - 重试策略指南
 - [安全概述](../security/) - 审计中间件安全实践

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Обзор безопасности"
 title: "Обзор безопасности - CyberGo JSON | Лучшие практики"
 description: "Лучшие практики безопасности CyberGo JSON: валидация, лимиты MaxNestingDepthSecurity/MaxMemory, защита от инъекций, фильтрация данных и аудит."
+sidebar_position: 1
 ---
 
 # Обзор безопасности
@@ -261,4 +263,4 @@ func (h *AuditHook) After(ctx json.HookContext, result any, err error) (any, err
 
 - [Контрольный список для продакшена](./production-checklist)
 - [Конфигурация Config](../api-reference/config)
-- [Валидатор](../api-reference/validator)
+- [Валидатор](../extensions/validator)

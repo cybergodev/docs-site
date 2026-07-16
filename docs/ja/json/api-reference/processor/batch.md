@@ -1,6 +1,8 @@
 ---
+sidebar_label: "バッチ操作"
 title: "Processor バッチ操作 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor バッチ操作：ProcessBatch、BatchOperation、BatchResult、ContinueOnError 設定とパフォーマンス最適化でバッチデータ処理に対応します。"
+sidebar_position: 7
 ---
 
 # バッチ操作メソッド

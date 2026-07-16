@@ -1,0 +1,217 @@
+/**
+ * Page components: custom site footer + doc feedback widget.
+ */
+
+/* ============================================
+   Custom Site Footer
+   ============================================ */
+
+.site-footer {
+  border-top: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  padding: 48px 24px 24px;
+  margin-top: 0;
+}
+
+.site-footer .footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.site-footer .footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+/* Brand Column */
+.site-footer .footer-brand .brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.site-footer .footer-brand .brand-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.site-footer .footer-brand .brand-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--vp-c-text-1);
+}
+
+.site-footer .footer-brand .brand-desc {
+  color: var(--vp-c-text-2);
+  font-size: 0.88rem;
+  line-height: 1.65;
+  margin: 0 0 18px;
+}
+
+.site-footer .social-links {
+  display: flex;
+  gap: 12px;
+}
+
+.site-footer .social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  color: var(--vp-c-text-2);
+  background: var(--vp-c-default-soft);
+  transition: all 0.2s ease;
+}
+
+.site-footer .social-link:hover {
+  color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+}
+
+/* Column Titles */
+.site-footer .col-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  margin: 0 0 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Column Links */
+.site-footer .col-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.site-footer .col-links li {
+  margin-bottom: 8px;
+}
+
+.site-footer .col-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--vp-c-text-2);
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.site-footer .col-links a:hover {
+  color: var(--vp-c-brand-1);
+}
+
+.site-footer .col-links .external-icon {
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.site-footer .col-links a:hover .external-icon {
+  opacity: 1;
+}
+
+/* Footer Bottom */
+.site-footer .footer-bottom {
+  border-top: 1px solid var(--vp-c-divider);
+  padding-top: 20px;
+  text-align: center;
+  color: var(--vp-c-text-3);
+  font-size: 0.82rem;
+}
+
+/* Hide default VitePress footer when custom footer is present */
+.Layout > .VPFooter {
+  display: none;
+}
+
+/* Responsive: Tablet */
+@media (max-width: 960px) {
+  .site-footer .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+}
+
+/* Responsive: Mobile */
+@media (max-width: 640px) {
+  .site-footer {
+    padding: 32px 16px 20px;
+  }
+
+  .site-footer .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+
+/* ============================================
+   Doc Feedback Component
+   ============================================ */
+
+.doc-feedback {
+  margin: 32px 0 16px;
+  padding: 20px 24px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  background: var(--vp-c-bg-soft);
+}
+
+.doc-feedback .feedback-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.doc-feedback .feedback-text {
+  font-size: 0.92rem;
+  color: var(--vp-c-text-2);
+  font-weight: 500;
+}
+
+.doc-feedback .feedback-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.doc-feedback .feedback-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-2);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.doc-feedback .feedback-btn:hover {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+
+.doc-feedback .feedback-btn.active {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+}
+
+.doc-feedback .feedback-thanks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vp-c-brand-1);
+  font-size: 0.9rem;
+  font-weight: 500;
+}

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Config"
 title: "Config API - CyberGo env | 配置详解"
 description: "CyberGo env 的 Config 配置结构体 API 参考，含文件搜索路径、安全限制、键值验证、变量展开、审计配置及 Development/Production 预设模板。"
+sidebar_position: 4
 ---
 
 # Config API

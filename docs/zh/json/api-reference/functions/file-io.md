@@ -1,6 +1,8 @@
 ---
+sidebar_label: "文件操作"
 title: "文件操作函数 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 文件操作函数：LoadFromReader 流读取、ParseJSONL/ToJSONL 处理、StreamLinesInto[T] 泛型流与 NewJSONLWriter，支持大文件流式场景。"
+sidebar_position: 5
 ---
 
 # 文件操作函数
@@ -324,5 +326,5 @@ if err := jw.Err(); err != nil {
 ## 相关
 
 - [编码解码函数](./encode-decode) - Marshal, Unmarshal 等序列化操作
-- [流式处理](../../large-files) - 流式处理器详解
+- [流式处理](../../streaming/large-files) - 流式处理器详解
 - [Processor JSONL 方法](../processor/jsonl) - Processor 级 JSONL 方法详解

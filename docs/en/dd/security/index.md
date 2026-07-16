@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Overview"
 title: "Security Overview - CyberGo DD | Log Security"
 description: "CyberGo DD security features overview: sensitive data filtering, audit logging, HMAC integrity signing, and compliance best practices for Go logging."
+sidebar_position: 1
 ---
 
 # Security Overview
@@ -43,7 +45,7 @@ filter, _ := dd.NewCustomSensitiveDataFilter(
 )
 ```
 
-See [Security Filtering API](../api-reference/security).
+See [Security Filtering API](../api-reference/security-audit/security).
 
 ## Path Security
 
@@ -94,7 +96,7 @@ audit.LogSecurityViolation("sql_injection", "SQL injection", map[string]any{
 })
 ```
 
-See [Audit Logging API](../api-reference/audit).
+See [Audit Logging API](../api-reference/security-audit/audit).
 
 ## Log Integrity
 
@@ -107,10 +109,10 @@ signature := signer.Sign(logMessage)
 // For verification: signer.Verify(signedEntry)
 ```
 
-See [Integrity Signing API](../api-reference/integrity).
+See [Integrity Signing API](../api-reference/security-audit/integrity).
 
 ## Next Steps
 
 - [Production Checklist](./production-checklist) -- Pre-launch security checks
-- [Security Filtering API](../api-reference/security) -- SensitiveDataFilter details
-- [Audit Logging API](../api-reference/audit) -- AuditLogger details
+- [Security Filtering API](../api-reference/security-audit/security) -- SensitiveDataFilter details
+- [Audit Logging API](../api-reference/security-audit/audit) -- AuditLogger details

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "프로덕션 체크리스트"
 title: "프로덕션 체크리스트 - CyberGo env | 보안 배포 검사"
 description: "CyberGo env 프로덕션 배포 보안 체크리스트로 .env 권한, RequiredKeys/AllowedKeys 검증, 감사 활성화, SecureValue 처리, 성능 매개변수 튜닝을 다룹니다."
+sidebar_position: 2
 ---
 
 # 프로덕션 체크리스트

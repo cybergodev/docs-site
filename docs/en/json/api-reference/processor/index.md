@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Overview"
 title: "Processor - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor: New, GetString/Set/Delete, Foreach iteration, Encode, Close lifecycle, Stats, and cache config for high-frequency reuse."
+sidebar_position: 1
 ---
 
 # Processor
@@ -151,7 +153,7 @@ func main() {
 
 ## See Also
 
-- [Package Functions](../functions) - Top-level function reference
+- [Package Functions](../functions/) - Top-level function reference
 - [Config](../config) - Configuration options
 - [Interface Definitions](../interfaces) - Hook interface
-- [Hook System](../hooks) - Detailed hook usage guide
+- [Hook System](../../extensions/hooks) - Detailed hook usage guide

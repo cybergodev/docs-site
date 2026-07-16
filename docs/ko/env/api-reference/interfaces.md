@@ -1,6 +1,8 @@
 ---
+sidebar_label: "인터페이스 정의"
 title: "인터페이스 정의 - CyberGo env | 핵심 인터페이스 계층"
 description: "CyberGo env 핵심 인터페이스 참조로 의존성 주입을 지원하는 세분화 설계의 Validator, FullAuditLogger, EnvParser, EnvStorage, FileSystem 인터페이스를 설명합니다."
+sidebar_position: 6
 ---
 
 # 인터페이스 정의

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "マイグレーションガイド"
 title: "マイグレーションガイド - CyberGo DD | 他のログライブラリからの移行"
 description: "CyberGo DD 標準ライブラリ log/slog および主要サードパーティログライブラリ（zap、logrus、zerolog）からの完全な比較移行ガイド。詳細な API マッピングテーブル、設定パラメータの比較、一般的な移行パターン、段階的移行戦略を提供し、既存のログシステムを DD ログライブラリに低リスクでスムーズに切り替えられます。"
+sidebar_position: 8
 ---
 
 # マイグレーションガイド
@@ -197,4 +199,4 @@ dd.WithFields(
 
 - [コア概念](./core-concepts) -- DD アーキテクチャ概要
 - [構造化ログ](./structured-logging) -- フィールド使用詳解
-- [チートシート](../cheatsheet) -- API クイックリファレンス
+- [チートシート](../getting-started/cheatsheet) -- API クイックリファレンス

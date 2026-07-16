@@ -1,6 +1,8 @@
 ---
+sidebar_label: "本番チェックリスト"
 title: "本番チェックリスト - CyberGo HTTPC | デプロイ前チェック"
 description: "HTTPC 本番環境セキュリティチェックリスト: TLS 確認、SSRF と CIDR 監査、タイムアウト設定、レスポンスサイズ制限、リトライ戦略、リソース解放と AuditMiddleware 監査監視のベストプラクティスを解説します。本番運用に役立つ実践的な内容です。"
+sidebar_position: 4
 ---
 
 # 本番チェックリスト
@@ -134,4 +136,4 @@ grep -r "AllowPrivateIPs.*true" --include="*.go" | grep -v "_test.go"
 
 - [セキュリティ概要](./) - セキュリティ機能一覧
 - [SSRF 防護](./ssrf) - SSRF 防護の詳細
-- [設定 API](../api-reference/config) - 完全な設定リファレンス
+- [設定 API](../api-reference/client-config/config) - 完全な設定リファレンス

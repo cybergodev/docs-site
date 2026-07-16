@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Security & Audit"
 title: "Security & Audit - CyberGo DD | Logging Examples"
 description: "CyberGo DD security filtering and audit logging examples: sensitive data redaction, HMAC signing, audit events, and HIPAA/PCI-DSS compliance setups."
+sidebar_position: 3
 ---
 
 # Security & Audit in Practice
@@ -225,7 +227,7 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
 
 ## Next Steps
 
-- [API Reference - Security](../api-reference/security) -- Security filtering complete API
-- [API Reference - Audit](../api-reference/audit) -- Audit logging complete API
-- [API Reference - Integrity](../api-reference/integrity) -- Integrity signing API
+- [API Reference - Security](../api-reference/security-audit/security) -- Security filtering complete API
+- [API Reference - Audit](../api-reference/security-audit/audit) -- Audit logging complete API
+- [API Reference - Integrity](../api-reference/security-audit/integrity) -- Integrity signing API
 - [Production Checklist](../security/production-checklist) -- Pre-launch security check

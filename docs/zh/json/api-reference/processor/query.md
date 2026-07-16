@@ -1,6 +1,8 @@
 ---
+sidebar_label: "路径查询"
 title: "Processor 路径查询 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor 路径查询：Get/GetString/GetInt 类型安全获取、GetMultiple 批量、SafeGet 安全返回 AccessResult 与 GetTyped[T] 泛型，支持 JSONPath 与缓存。"
+sidebar_position: 2
 ---
 
 # 路径查询方法

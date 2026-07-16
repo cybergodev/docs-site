@@ -1,6 +1,8 @@
 ---
+sidebar_label: "SecureValue API"
 title: "SecureValue API - CyberGo env | Безопасное хранение значений"
 description: "Справочник SecureValue в CyberGo env для секретов: блокировка памяти mlock, обнуление Release, маска Masked, IsSensitiveKey и утилиты ClearBytes."
+sidebar_position: 5
 ---
 
 # SecureValue API

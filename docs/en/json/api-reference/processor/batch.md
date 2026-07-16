@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Batch"
 title: "Processor Batch Operations - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor batch: ProcessBatch, BatchOperation definitions, BatchResult type, ContinueOnError config, and tips for batch data processing."
+sidebar_position: 7
 ---
 
 # Batch Operation Methods

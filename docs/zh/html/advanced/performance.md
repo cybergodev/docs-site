@@ -1,6 +1,8 @@
 ---
+sidebar_label: "性能优化"
 title: "性能优化 - CyberGo HTML | 吞吐量提升指南"
 description: "CyberGo HTML 性能优化：Processor 实例复用、缓存策略、批量并发控制、输入大小与超时设置等技巧，提升大规模处理吞吐量。"
+sidebar_position: 1
 ---
 
 # 性能优化

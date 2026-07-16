@@ -1,6 +1,8 @@
 ---
+sidebar_label: "文件上传与下载"
 title: "文件上传与下载 - CyberGo HTTPC | 上传与下载"
 description: "HTTPC 文件上传与下载指南：WithFile 简单上传、WithFormData Multipart 多文件上传、Download 统一下载、带进度回调、断点续传 ResumeDownload、SHA-256 校验与 UNC 路径等安全防护。"
+sidebar_position: 4
 ---
 
 # 文件上传与下载
@@ -179,6 +181,6 @@ result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
 
 ## 下一步
 
-- [文件下载 API](../api-reference/download) - 完整下载 API 参考
+- [文件下载 API](../api-reference/client-config/download) - 完整下载 API 参考
 - [域名客户端与会话](./domain-session) - 会话管理
 - [请求与响应](./request-response) - 基本请求指南

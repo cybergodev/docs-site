@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Функции пакета"
 title: "Функции пакета - CyberGo env | Глобальные удобные функции"
 description: "Справочник пакетных функций CyberGo env: Load, GetString, GetInt, Keys, Marshal и ParseInto поверх потокобезопасного глобального загрузчика."
+sidebar_position: 2
 ---
 
 # Функции пакета
@@ -373,7 +375,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ### GetSliceFrom[T]
 
 ```go
-func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
+func GetSliceFrom[T sliceElement](./loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
 Получает значение среза из указанного экземпляра Loader. Это отдельная универсальная функция (не метод Loader).

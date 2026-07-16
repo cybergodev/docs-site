@@ -1,6 +1,8 @@
 ---
+sidebar_label: "审计日志"
 title: "审计日志 - CyberGo DD | 安全审计实战指南"
 description: "CyberGo DD 审计日志实战指南，涵盖 AuditLogger 异步事件记录机制、11 种内置审计事件类型、严重等级过滤与分级、HMAC 完整性签名集成方案、审计统计与实时监控、日志验证与防篡改策略，帮助开发者构建符合合规要求的企业级安全审计系统。"
+sidebar_position: 5
 ---
 
 # 审计日志
@@ -196,5 +198,5 @@ func main() {
 
 - [HMAC 签名实战](../advanced/integrity) -- 完整性签名详解
 - [行业合规配置](../security/compliance) -- HIPAA/PCI-DSS 审计要求
-- [API 参考 - Audit](../api-reference/audit) -- AuditLogger 完整 API
-- [API 参考 - Integrity](../api-reference/integrity) -- IntegritySigner API
+- [API 参考 - Audit](../api-reference/security-audit/audit) -- AuditLogger 完整 API
+- [API 参考 - Integrity](../api-reference/security-audit/integrity) -- IntegritySigner API

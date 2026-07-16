@@ -1,6 +1,8 @@
 ---
+sidebar_label: "ファイルアップロードとダウンロード"
 title: "ファイルアップロードとダウンロード - CyberGo HTTPC | アップロードと取得"
 description: "HTTPC ファイルアップロードとダウンロードガイド: WithFile アップロード、WithFormData マルチファイル、Download 統合ダウンロード、レジューム ResumeDownload、SHA-256 チェックサムなどセキュリティ防護を解説します。"
+sidebar_position: 4
 ---
 
 # ファイルアップロードとダウンロード
@@ -179,6 +181,6 @@ result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
 
 ## 次のステップ
 
-- [ファイルダウンロード API](../api-reference/download) - 完全なダウンロード API リファレンス
+- [ファイルダウンロード API](../api-reference/client-config/download) - 完全なダウンロード API リファレンス
 - [ドメインクライアントとセッション](./domain-session) - セッション管理
 - [リクエストとレスポンス](./request-response) - 基本リクエストガイド

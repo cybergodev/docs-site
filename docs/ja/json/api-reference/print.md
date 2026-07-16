@@ -1,6 +1,8 @@
 ---
+sidebar_label: "出力関数"
 title: "出力関数 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON 出力とフォーマット：Encode、EncodePretty、Prettify と標準 fmt パッケージでカスタムインデント付き JSON 出力を実現し、廃止された Print 系関数を置き換えます。"
+sidebar_position: 11
 ---
 
 # 出力関数
@@ -118,4 +120,4 @@ func main() {
 ## 関連
 
 - [エンコード・デコード関数](./functions/encode-decode) - Encode、EncodePretty、Prettify
-- [パッケージ関数](./functions) - パッケージレベル関数の概要
+- [パッケージ関数](./functions/) - パッケージレベル関数の概要

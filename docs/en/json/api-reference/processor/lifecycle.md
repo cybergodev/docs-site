@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Lifecycle"
 title: "Processor Lifecycle - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor lifecycle: New, Close resource release, IsClosed state, GetStats statistics, and GetHealthStatus for safe concurrent shutdown."
+sidebar_position: 9
 ---
 
 # Lifecycle & Statistics
@@ -267,5 +269,5 @@ go func() {
 ## Related
 
 - [Config](../config) - Configuration options (cache size, TTL, etc.)
-- [Hook System](../hooks) - Detailed hook usage guide
+- [Hook System](../../extensions/hooks) - Detailed hook usage guide
 - [Interface Definitions](../interfaces) - Hook interfaces

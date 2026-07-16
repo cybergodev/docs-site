@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Custom Claims"
 title: "Custom Claims - CyberGo JWT | Business Claims"
 description: "Implement the CustomClaims interface to define business claim fields, contrast built-in Claims with custom validation, and apply ValidateInto and RefreshInto."
+sidebar_position: 2
 ---
 
 # Custom Claims

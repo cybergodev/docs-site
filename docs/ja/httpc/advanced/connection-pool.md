@@ -1,6 +1,8 @@
 ---
+sidebar_label: "コネクションプールとプロキシ"
 title: "コネクションプールとプロキシ - CyberGo HTTPC | プールとプロキシ"
 description: "HTTPC コネクションプールとプロキシガイド: MaxIdleConns チューニングとシナリオ推奨、ProxyURL 手動とシステムプロキシ、SOCKS5 と HTTP プロキシ、DoH フェイルバック、HTTP/2 設定の実践ポイントを解説します。"
+sidebar_position: 3
 ---
 
 # コネクションプールとプロキシ
@@ -180,5 +182,5 @@ func fetchAll(ctx context.Context, urls []string) ([]*httpc.Result, error) {
 ## 次のステップ
 
 - [パフォーマンス最適化](./performance) - パフォーマンスチューニングガイド
-- [設定 API](../api-reference/config) - 接続設定リファレンス
+- [設定 API](../api-reference/client-config/config) - 接続設定リファレンス
 - [セキュリティ概要](../security/) - SSRF と TLS セキュリティ

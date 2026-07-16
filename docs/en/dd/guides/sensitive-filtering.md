@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Sensitive Data Filtering"
 title: "Sensitive Data Filtering - CyberGo DD | Redaction"
 description: "CyberGo DD sensitive data filtering: built-in patterns, custom regex, five security levels, HIPAA/PCI-DSS presets, and redaction statistics."
+sidebar_position: 4
 ---
 
 # Sensitive Data Filtering
@@ -177,5 +179,5 @@ logger, _ := dd.New(dd.Config{
 
 - [Audit Logging](./audit-logging) -- Security event auditing
 - [Industry Compliance Configuration](../security/compliance) -- HIPAA/PCI-DSS details
-- [API Reference - Security](../api-reference/security) -- Security API complete documentation
+- [API Reference - Security](../api-reference/security-audit/security) -- Security API complete documentation
 - [Production Checklist](../security/production-checklist) -- Pre-launch checks

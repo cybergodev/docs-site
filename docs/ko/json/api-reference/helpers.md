@@ -1,6 +1,8 @@
 ---
+sidebar_label: "헬퍼 함수"
 title: "보조 함수 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 보조 함수: CompareJSON 비교, ClearCache/GetStats 캐시 관리, 전역 프로세서, 보안 헬퍼로 일상적인 Go JSON 작업을 단순화합니다."
+sidebar_position: 8
 ---
 
 # 보조 함수

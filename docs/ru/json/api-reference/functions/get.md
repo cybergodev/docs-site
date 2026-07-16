@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Запрос и получение"
 title: "Функции запросов и получения - CyberGo JSON | API"
 description: "Функции запросов CyberGo JSON: типобезопасные Get/GetString/GetInt/GetFloat/GetBool, обобщённые GetTyped[T] и Parse/ParseAny с полной поддержкой JSONPath."
+sidebar_position: 2
 ---
 
 # Функции запросов и получения
@@ -522,7 +524,7 @@ func main() {
 ```
 
 ::: tip Подробнее
-Полное определение типа Schema и способы использования валидатора см. в разделе [Валидатор](../validator).
+Полное определение типа Schema и способы использования валидатора см. в разделе [Валидатор](../../extensions/validator).
 :::
 
 ## Функции безопасного получения

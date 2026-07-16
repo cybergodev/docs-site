@@ -1,6 +1,8 @@
 ---
+sidebar_label: "类型定义"
 title: "类型定义 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 核心类型：Result[T] 泛型结果、AccessResult 动态访问、BatchOperation、BatchResult、Schema、Stats、HealthStatus 与 IterableValue，构成完整类型系统。"
+sidebar_position: 5
 ---
 
 # 类型定义
@@ -1047,7 +1049,7 @@ if delim, ok := token.(json.Delim); ok {
 
 ## 相关
 
-- [包函数](./functions) - 包级函数参考
+- [包函数](./functions/) - 包级函数参考
 - [Config](./config) - 配置选项
 - [Processor](./processor/) - 处理器方法
 - [接口定义](./interfaces) - 扩展接口

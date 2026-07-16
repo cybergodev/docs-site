@@ -1,6 +1,8 @@
 ---
+sidebar_label: "セキュリティ概要"
 title: "セキュリティ概要 - CyberGo HTML | 保護機能の概要"
 description: "CyberGo HTML セキュリティ概要：入力サイズ制限、DOM 深度制限、パストラバーサル防御、パニックリカバリ、タイムアウト、コンテンツクリーニング、監査で errors.Is/As 判定をサポートします。"
+sidebar_position: 1
 ---
 
 # セキュリティ概要
@@ -52,7 +54,7 @@ cfg.EnableSanitization = true
 
 ## 監査システム
 
-セキュリティ監査の詳細な設定は [監査システム](../api-reference/audit) を参照してください。
+セキュリティ監査の詳細な設定は [監査システム](../api-reference/modules/audit) を参照してください。
 
 監査システムは以下のセキュリティイベントを記録できます：
 

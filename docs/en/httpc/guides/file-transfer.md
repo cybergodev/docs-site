@@ -1,6 +1,8 @@
 ---
+sidebar_label: "File Upload & Download"
 title: "File Upload and Download - CyberGo HTTPC | Upload & Get"
 description: "HTTPC file upload and download guide: WithFile upload, WithFormData multi-file upload, unified Download, resumable ResumeDownload, and SHA-256 checksums."
+sidebar_position: 4
 ---
 
 # File Upload and Download
@@ -179,6 +181,6 @@ result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
 
 ## Next Steps
 
-- [File Download API](../api-reference/download) - Complete download API reference
+- [File Download API](../api-reference/client-config/download) - Complete download API reference
 - [Domain Client and Sessions](./domain-session) - Session management
 - [Request and Response](./request-response) - Basic request guide

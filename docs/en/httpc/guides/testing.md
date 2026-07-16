@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Testing Guide"
 title: "Testing Guide - CyberGo HTTPC | httptest & Mocks"
 description: "HTTPC testing guide: TestingConfig for tests, net/http/httptest mock servers, error and redirect simulation, table-driven tests, and Cookie assertions."
+sidebar_position: 7
 ---
 
 # Testing Guide
@@ -216,6 +218,6 @@ func TestHTTPMethods(t *testing.T) {
 
 ## Next Steps
 
-- [Configuration API](../api-reference/config) - TestingConfig detailed parameters
-- [Error Types](../api-reference/errors) - Error assertion reference
+- [Configuration API](../api-reference/client-config/config) - TestingConfig detailed parameters
+- [Error Types](../api-reference/types/errors) - Error assertion reference
 - [Middleware Chain](./middleware-chain) - Middleware testing patterns

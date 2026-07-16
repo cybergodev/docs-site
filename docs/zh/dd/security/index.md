@@ -1,6 +1,8 @@
 ---
+sidebar_label: "概述"
 title: "安全概述 - CyberGo DD | 日志安全"
 description: "CyberGo DD 日志库安全特性全面概述，包括敏感数据自动检测与脱敏过滤机制、文件路径安全验证与防护策略、异步审计事件记录与链式追踪能力、HMAC 完整性签名防篡改技术和合规配置最佳实践指南，从数据过滤到审计追踪全面保障日志系统运行安全。"
+sidebar_position: 1
 ---
 
 # 安全概述
@@ -43,7 +45,7 @@ filter, _ := dd.NewCustomSensitiveDataFilter(
 )
 ```
 
-详见 [安全过滤 API](../api-reference/security)。
+详见 [安全过滤 API](../api-reference/security-audit/security)。
 
 ## 路径安全
 
@@ -94,7 +96,7 @@ audit.LogSecurityViolation("sql_injection", "SQL 注入", map[string]any{
 })
 ```
 
-详见 [审计日志 API](../api-reference/audit)。
+详见 [审计日志 API](../api-reference/security-audit/audit)。
 
 ## 日志完整性
 
@@ -107,10 +109,10 @@ signature := signer.Sign(logMessage)
 // 验证时：signer.Verify(signedEntry)
 ```
 
-详见 [完整性签名 API](../api-reference/integrity)。
+详见 [完整性签名 API](../api-reference/security-audit/integrity)。
 
 ## 下一步
 
 - [生产检查清单](./production-checklist) -- 上线前安全检查
-- [安全过滤 API](../api-reference/security) -- SensitiveDataFilter 详解
-- [审计日志 API](../api-reference/audit) -- AuditLogger 详解
+- [安全过滤 API](../api-reference/security-audit/security) -- SensitiveDataFilter 详解
+- [审计日志 API](../api-reference/security-audit/audit) -- AuditLogger 详解

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "解析与加载"
 title: "Processor 解析与加载 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor 解析方法：Valid 验证、Parse 解析、ParseAny 任意类型、PreParse 预解析优化与 GetFromParsed 快速查询，支持配置化解析。"
+sidebar_position: 5
 ---
 
 # 解析与加载方法

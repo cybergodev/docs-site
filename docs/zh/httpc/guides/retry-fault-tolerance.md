@@ -1,6 +1,8 @@
 ---
+sidebar_label: "重试与容错"
 title: "重试与容错 - CyberGo HTTPC | 退避与自动重试"
 description: "HTTPC 重试与容错指南：默认指数退避重试策略与 RetryConfig 配置、408/429/5xx 自动重试条件、RetryPolicy 自定义接口、Retry-After 响应头自动解析、退避策略选择与按请求 WithMaxRetries 控制最佳实践。"
+sidebar_position: 5
 ---
 
 # 重试与容错
@@ -174,5 +176,5 @@ if err != nil {
 ## 下一步
 
 - [错误处理](../advanced/error-handling) - 完整错误处理指南
-- [配置 API](../api-reference/config) - 重试配置参考
-- [接口定义](../api-reference/interfaces) - RetryPolicy 接口参考
+- [配置 API](../api-reference/client-config/config) - 重试配置参考
+- [接口定义](../api-reference/types/interfaces) - RetryPolicy 接口参考

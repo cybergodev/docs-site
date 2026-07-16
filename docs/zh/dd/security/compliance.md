@@ -1,6 +1,8 @@
 ---
+sidebar_label: "行业合规配置"
 title: "行业合规配置 - CyberGo DD | HIPAA PCI-DSS 政府标准"
 description: "CyberGo DD 行业合规日志配置专题，详细说明 HIPAA 医疗行业合规、PCI-DSS 金融支付合规和政府安全标准的敏感数据过滤规则配置、审计日志要求、日志保留与轮换策略以及完整合规配置示例，帮助开发者在严格合规要求下构建安全可靠的日志系统。"
+sidebar_position: 2
 ---
 
 # 行业合规配置
@@ -188,4 +190,4 @@ logger, _ := dd.New(dd.Config{
 - [敏感数据过滤](../guides/sensitive-filtering) -- 过滤功能详解
 - [审计日志](../guides/audit-logging) -- 安全审计集成
 - [生产检查清单](./production-checklist) -- 上线前检查
-- [API 参考 - Security](../api-reference/security) -- 安全 API 文档
+- [API 参考 - Security](../api-reference/security-audit/security) -- 安全 API 文档

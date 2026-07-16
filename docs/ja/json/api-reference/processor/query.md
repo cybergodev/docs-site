@@ -1,6 +1,8 @@
 ---
+sidebar_label: "パスクエリ"
 title: "Processor パスクエリ - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor パスクエリ：Get/GetString/GetInt、GetMultiple バッチ、SafeGet（AccessResult）、GetTyped[T] で JSONPath とキャッシュをサポートします。"
+sidebar_position: 2
 ---
 
 # パスクエリメソッド

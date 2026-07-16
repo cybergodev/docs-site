@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Industry Compliance"
 title: "Compliance Config - CyberGo DD | HIPAA & PCI-DSS"
 description: "CyberGo DD compliance config: HIPAA healthcare, PCI-DSS payment, and government standards for filtering, audit, retention, and rotation policies."
+sidebar_position: 2
 ---
 
 # Industry Compliance Configuration
@@ -188,4 +190,4 @@ logger, _ := dd.New(dd.Config{
 - [Sensitive Data Filtering](../guides/sensitive-filtering) -- Filtering feature details
 - [Audit Logging](../guides/audit-logging) -- Security audit integration
 - [Production Checklist](./production-checklist) -- Pre-launch checks
-- [API Reference - Security](../api-reference/security) -- Security API documentation
+- [API Reference - Security](../api-reference/security-audit/security) -- Security API documentation

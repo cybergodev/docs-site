@@ -1,6 +1,8 @@
 ---
+sidebar_label: "テストパターン"
 title: "テストパターン - CyberGo DD | LoggerRecorder テストサンプル"
 description: "CyberGo DD テストパターンサンプル。LoggerRecorder の単体テストと統合テストでの完全な使用方法を詳細に紹介。ログメッセージアサーション、レベルフィルタリングテスト、フィールド値検査、マルチテストケースの分離、並行安全性テスト、テストカバレッジ向上の完全なヒントとベストプラクティス。各種 Go プロジェクトのログテストに適用可能。"
+sidebar_position: 4
 ---
 
 # テストパターン
@@ -250,5 +252,5 @@ func TestLogLevel_Behavior(t *testing.T) {
 ## 次のステップ
 
 - [Web サービス統合](./web-service) -- HTTP サービスログ統合
-- [API リファレンス - Recorder](../api-reference/recorder) -- LoggerRecorder 完全 API
+- [API リファレンス - Recorder](../api-reference/dev-tools/recorder) -- LoggerRecorder 完全 API
 - [フックシステム](../guides/hooks) -- ライフサイクルフック

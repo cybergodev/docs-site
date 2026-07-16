@@ -1,4 +1,5 @@
 ---
+sidebar_label: "概要"
 title: "JWT 認証ライブラリ - CyberGo JWT | 本番級トークン発行と検証"
 description: "CyberGo JWT は Go 向け本番級認証ライブラリで、HMAC・RSA・RSA-PSS・ECDSA 4 種 12 アルゴリズムを提供し、発行・検証・リフレッシュ・失効・ブラックリスト・レート制限を備え、全メソッドが並行安全。"
 ---
@@ -91,7 +92,7 @@ func main() {
 
 ## 次のステップ
 
-- [クイックスタート](./getting-started) — 詳細なインストールと設定ガイド
+- [クイックスタート](./getting-started/) — 詳細なインストールと設定ガイド
 - [署名アルゴリズム](./guides/signing-algorithms) — HMAC、RSA、ECDSA 選択ガイド
 - [カスタム Claims](./guides/custom-claims) — ビジネスフィールドの定義
 - [API リファレンス](./api-reference/) — 完全な API リファレンス

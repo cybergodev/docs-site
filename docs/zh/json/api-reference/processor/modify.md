@@ -1,6 +1,8 @@
 ---
+sidebar_label: "数据修改"
 title: "Processor 数据修改 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor 修改方法：Set 设置、SetMultiple 批量、SetCreate 自动创建路径、Delete 删除与 DeleteClean 清理，所有方法支持链式调用。"
+sidebar_position: 3
 ---
 
 # 数据修改方法

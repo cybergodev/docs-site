@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Processor"
 title: "Processor - CyberGo JWT | Операции с токенами"
 description: "Processor — основной тип CyberGo JWT: методы Create, Validate, Refresh, Revoke, IsRevoked, ParseUnverified и Close с сигнатурами, параметрами и примерами."
+sidebar_position: 3
 ---
 
 # Processor

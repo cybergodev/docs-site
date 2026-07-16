@@ -1,6 +1,8 @@
 ---
+sidebar_label: "エラー処理"
 title: "エラー処理 - CyberGo JSON | ベストプラクティス"
 description: "CyberGo JSON エラー処理ベストプラクティス：JsonsError 判定、errors.Is/As、標準エラー変数、リカバリ戦略、SafeError、RedactedPath ログで堅牢な例外処理を構築します。"
+sidebar_position: 2
 ---
 
 # エラー処理

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Обзор"
 title: "Справочник API - CyberGo JWT | Полная документация"
 description: "Обзор API CyberGo JWT: навигация по функциям пакета, методам Processor, Config, Claims, RegisteredClaims, интерфейсам, типам и 19 ошибкам."
+sidebar_position: 1
 ---
 
 # Справочник API

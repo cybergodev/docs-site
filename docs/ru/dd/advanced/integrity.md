@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Практика HMAC-подписей"
 title: "HMAC-подписи - CyberGo DD | Защита целостности"
 description: "Практическое руководство по подписям целостности логов CyberGo DD HMAC-SHA256, охватывающее создание и инициализацию IntegritySigner, полный процесс подписи и проверки, механизм инкрементных серийных номеров и временных меток, стратегии обнаружения подделки, решения интеграции с системой аудитных логов и лучшие практики развёртывания в производственных средах, гарантирующие целостность и прослеживаемость цепочки логов."
+sidebar_position: 3
 ---
 
 # Практика HMAC-подписей
@@ -227,4 +229,4 @@ func startIntegrityChecker(signer *dd.IntegritySigner, logPath string) {
 
 - [Аудитные логи](../guides/audit-logging) -- интеграция аудита безопасности
 - [Конфигурация отраслевого соответствия](../security/compliance) -- требования к подписям HIPAA/PCI-DSS
-- [Справочник API - Integrity](../api-reference/integrity) -- полный API IntegritySigner
+- [Справочник API - Integrity](../api-reference/security-audit/integrity) -- полный API IntegritySigner

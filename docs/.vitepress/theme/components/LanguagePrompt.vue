@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useData } from 'vitepress'
-import { supportedLanguages, STORAGE_KEYS } from '../../locales/languages'
+import { supportedLanguages, STORAGE_KEYS } from '../../shared'
 import { findMatchingLanguage } from '../composables/useLanguageDetect'
 
 /**

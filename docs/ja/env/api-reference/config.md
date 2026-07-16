@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Config API"
 title: "Config API - CyberGo env | 設定詳細"
 description: "CyberGo env の Config 構造体 API リファレンス。ファイル検索パス、セキュリティ制限、キー検証、変数展開、監査設定、Development/Production プリセットを解説します。"
+sidebar_position: 4
 ---
 
 # Config API

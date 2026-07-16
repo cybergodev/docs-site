@@ -1,6 +1,8 @@
 ---
+sidebar_label: "修改操作"
 title: "修改函数 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 修改函数：Set/SetMultiple 设置、Delete 删除、MergeJSON/MergeMany 合并，支持自动路径创建、原子操作与多种 MergeMode 策略。"
+sidebar_position: 3
 ---
 
 # 修改函数

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "ComponentFactory API"
 title: "ComponentFactory API - CyberGo env | Фабрика компонентов"
 description: "Справочник ComponentFactory в CyberGo env: создание обработчиков аудита, валидаторов, файловых адаптеров и регистрация парсеров с управлением Close."
+sidebar_position: 8
 ---
 
 # ComponentFactory API

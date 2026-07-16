@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Testing Patterns"
 title: "Testing Patterns - CyberGo DD | LoggerRecorder Examples"
 description: "CyberGo DD testing patterns: LoggerRecorder in unit tests, message assertions, level filtering, field inspection, isolation, and concurrent safety."
+sidebar_position: 4
 ---
 
 # Testing Patterns
@@ -251,5 +253,5 @@ func TestLogLevel_Behavior(t *testing.T) {
 ## Next Steps
 
 - [Web Service Integration](./web-service) -- HTTP service logging
-- [API Reference - Recorder](../api-reference/recorder) -- LoggerRecorder complete API
+- [API Reference - Recorder](../api-reference/dev-tools/recorder) -- LoggerRecorder complete API
 - [Hook System](../guides/hooks) -- Lifecycle hooks

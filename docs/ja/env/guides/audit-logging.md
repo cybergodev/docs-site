@@ -1,6 +1,8 @@
 ---
+sidebar_label: "監査ログ"
 title: "監査ログ - CyberGo env | セキュリティ監査設定"
 description: "CyberGo env 監査ログ設定ガイド。JSON ファイル、標準ログ、チャネルハンドラーとカスタム AuditHandler で変数の読み込み・読み取り・変更・削除を記録し、コンプライアンスを満たします。"
+sidebar_position: 5
 ---
 
 # 監査ログ

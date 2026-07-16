@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo env | Pre-Deployment Security"
 description: "CyberGo env production security checklist: .env permissions, RequiredKeys and AllowedKeys validation, audit enabling, SecureValue handling and perf tuning."
+sidebar_position: 2
 ---
 
 # Production Checklist

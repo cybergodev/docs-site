@@ -1,4 +1,5 @@
 ---
+sidebar_label: "개요"
 title: "CyberGo JSON | 고성능 Go JSON 라이브러리"
 description: "CyberGo JSON은 고성능 스레드 안전 Go JSON 라이브러리로, JSONPath 쿼리, 스트림 처리, 제네릭 API, Schema 검증을 지원하며 encoding/json과 100% 호환되는 고동시성 프로덕션 환경용입니다."
 ---
@@ -100,12 +101,12 @@ func main() {
 
 | 모듈 | 설명 |
 |------|------|
-| [빠른 시작](./getting-started) | 설치, 기본 사용법, 핵심 개념 |
-| [경로 표현식 문법](./path-syntax) | 경로 쿼리, 슬라이스, 와일드카드, 필드 추출 |
+| [빠른 시작](./getting-started/) | 설치, 기본 사용법, 핵심 개념 |
+| [경로 표현식 문법](./getting-started/path-syntax) | 경로 쿼리, 슬라이스, 와일드카드, 필드 추출 |
 | [API 문서](./api-reference/) | 완전한 API 참조 |
-| [대용량 파일 처리](./large-files) | 스트림 처리, 청크 읽기/쓰기, 메모리 최적화 |
-| [사용 예제](./examples) | 실전 코드 예제 |
-| [고급 기능 예제](./examples-advanced) | 배치 인코딩, 사전 파싱, 훅 시스템 |
+| [대용량 파일 처리](./streaming/large-files) | 스트림 처리, 청크 읽기/쓰기, 메모리 최적화 |
+| [사용 예제](./examples/) | 실전 코드 예제 |
+| [고급 기능 예제](./examples/examples-advanced) | 배치 인코딩, 사전 파싱, 훅 시스템 |
 
 ## 성능 특징
 
@@ -141,6 +142,6 @@ func main() {
 
 ## 다음 단계
 
-- [빠른 시작](./getting-started) — 5분 안에 시작하기
-- [경로 표현식 문법](./path-syntax) — 완전한 경로 문법
-- [사용 예제](./examples) — 더 많은 실전 예제
+- [빠른 시작](./getting-started/) — 5분 안에 시작하기
+- [경로 표현식 문법](./getting-started/path-syntax) — 완전한 경로 문법
+- [사용 예제](./examples/) — 더 많은 실전 예제

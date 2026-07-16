@@ -1,6 +1,8 @@
 ---
+sidebar_label: "수정"
 title: "수정 함수 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 수정 함수: Set/SetMultiple, Delete, MergeJSON/MergeMany로 자동 경로 생성, 원자적 작업, 다양한 MergeMode 전략을 지원합니다."
+sidebar_position: 3
 ---
 
 # 수정 함수

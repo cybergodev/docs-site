@@ -1,6 +1,8 @@
 ---
+sidebar_label: "イテレータ"
 title: "イテレータ - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON 反復 API：Foreach、ForeachWithPath、ForeachNested 再帰、IterableValue、ParallelForeach で多様な走査シナリオをカバーします。"
+sidebar_position: 9
 ---
 
 # イテレータ
@@ -1011,6 +1013,6 @@ func main() {
 ## 関連
 
 - [Processor](./processor/) - プロセッサメソッド
-- [大ファイル処理](./large-file) - ストリーミングプロセッサ
-- [NDJSON プロセッサ](./jsonl) - JSONL 処理
-- [大ファイル処理ガイド](../large-files) - 大ファイル処理ガイド
+- [大ファイル処理](../streaming/large-file) - ストリーミングプロセッサ
+- [NDJSON プロセッサ](../streaming/jsonl) - JSONL 処理
+- [大ファイル処理ガイド](../streaming/large-files) - 大ファイル処理ガイド

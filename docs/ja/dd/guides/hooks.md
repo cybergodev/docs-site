@@ -1,6 +1,8 @@
 ---
+sidebar_label: "フックシステム"
 title: "フックシステム - CyberGo DD | ライフサイクルフック実践ガイド"
 description: "CyberGo DD フックシステム実践ガイド。6 種類のライフサイクルフックイベント（BeforeLog、AfterLog、OnFilter、OnRotate、OnClose、OnError）、HookRegistry 登録と管理、HookContext コンテキストデータ、エラー処理戦略、一般的なフック使用シナリオを詳細に紹介し、ログライブラリの動作を拡張できます。"
+sidebar_position: 6
 ---
 
 # フックシステム
@@ -195,4 +197,4 @@ registry.Add(dd.HookAfterLog, newHookFunc)
 
 - [監査ログ](./audit-logging) -- セキュリティ監査統合
 - [分散トレーシング](./context-tracing) -- コンテキスト統合
-- [API リファレンス - Hooks](../api-reference/hooks) -- フック完全 API
+- [API リファレンス - Hooks](../api-reference/security-audit/hooks) -- フック完全 API

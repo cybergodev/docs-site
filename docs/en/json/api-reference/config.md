@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Config"
 title: "Config - CyberGo JSON | API Reference"
 description: "CyberGo JSON Config reference: DefaultConfig, SecurityConfig, PrettyConfig, caching, size limits, and encoding options to customize JSON behavior in Go."
+sidebar_position: 4
 ---
 
 # Config

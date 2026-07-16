@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Защита от SSRF"
 title: "Защита от SSRF - CyberGo HTTPC | Приватные IP"
 description: "Подробно о защите от SSRF в HTTPC: блокировка приватных IP, исключения SSRFExemptCIDRs, защита от перепривязки DNS, белые списки и защита метаданных."
+sidebar_position: 2
 ---
 
 # Защита от SSRF

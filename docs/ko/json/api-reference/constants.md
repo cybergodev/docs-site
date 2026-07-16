@@ -1,6 +1,8 @@
 ---
+sidebar_label: "상수 및 오류"
 title: "상수와 오류 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 상수와 오류: DefaultMaxJSONSize, DefaultMaxNestingDepth, ErrPathNotFound 오류 변수, MergeMode 열거형으로 Go 설정과 오류 처리를 지원합니다."
+sidebar_position: 7
 ---
 
 # 상수와 오류

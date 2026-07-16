@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo DD | Security Launch"
 description: "Pre-deployment security checklist for CyberGo DD in production: config verification, sensitive data filtering, audit logging, rotation, and HMAC signing."
+sidebar_position: 3
 ---
 
 # Production Checklist
@@ -96,5 +98,5 @@ logger.SetWriteErrorHandler(func(w io.Writer, err error) {
 ## Next Steps
 
 - [Security Overview](./) -- Security features overview
-- [Security Filtering API](../api-reference/security) -- Configuration reference
+- [Security Filtering API](../api-reference/security-audit/security) -- Configuration reference
 - [Performance Optimization](../advanced/performance) -- Performance tuning

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "개요"
 title: "API 레퍼런스 - CyberGo JWT | 전체 인터페이스 문서"
 description: "CyberGo JWT API 레퍼런스 색인: 패키지 함수, Processor 메서드, Config와 BlacklistConfig, Claims와 RegisteredClaims, 확장 인터페이스, 19 센티넬 오류의 전체 내비게이션."
+sidebar_position: 1
 ---
 
 # API 레퍼런스

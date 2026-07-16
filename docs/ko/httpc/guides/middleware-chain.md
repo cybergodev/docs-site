@@ -1,6 +1,8 @@
 ---
+sidebar_label: "미들웨어 체인"
 title: "미들웨어 체인 - CyberGo HTTPC | 양파 모델 체인"
 description: "HTTPC 미들웨어 체인 가이드: 양파 모델 실행 원리와 요청/응답 양방향 처리, 여덟 개 내장 미들웨어 설정, Chain 수동 조합, 커스텀 MiddlewareFunc 작성법과 서킷 브레이커 단락 예제를 다룹니다."
+sidebar_position: 6
 ---
 
 # 미들웨어 체인
@@ -215,6 +217,6 @@ client, _ := httpc.New(cfg)
 
 ## 다음 단계
 
-- [미들웨어 API](../api-reference/middleware) - 완전한 미들웨어 참조
+- [미들웨어 API](../api-reference/client-config/middleware) - 완전한 미들웨어 참조
 - [재시도와 장애 허용](./retry-fault-tolerance) - 재시도 전략 가이드
 - [보안 개요](../security/) - 감사 미들웨어 보안 실천

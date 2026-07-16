@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Parse & Load"
 title: "Processor Parse and Load - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor parse: Valid validation, Parse, ParseAny for any type, PreParse optimization, and GetFromParsed with configurable parsing."
+sidebar_position: 5
 ---
 
 # Parse and Load Methods

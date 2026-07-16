@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Методы вывода"
 title: "Processor - Методы вывода - CyberGo JSON | Справочник API"
 description: "Методы вывода Processor CyberGo JSON: Encode, EncodePretty, EncodeWithConfig, EncodeBatch/EncodeFields и Compact/Indent/HTMLEscape для разных форматов вывода."
+sidebar_position: 4
 ---
 
 # Методы вывода

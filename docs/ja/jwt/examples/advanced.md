@@ -1,6 +1,8 @@
 ---
+sidebar_label: "高度なサンプル"
 title: "高度なサンプル - CyberGo JWT | 非対称署名とカスタムストア"
 description: "高度なサンプル集：RSA と ECDSA 非対称署名の検証、CustomClaims でカスタムビジネス宣言を実装、Redis カスタムブラックリストバックエンドへの接続、FixedClock 時計注入テストと完全な Web サービス統合。"
+sidebar_position: 2
 ---
 
 # 高度なサンプル

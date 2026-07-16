@@ -1,6 +1,8 @@
 ---
+sidebar_label: "성능"
 title: "성능 최적화 - CyberGo DD | 고성능 로그"
 description: "CyberGo DD 로그 라이브러리 성능 최적화 전체 가이드. 제로 할당 최적화 기술, BufferedWriter 버퍼 쓰기 설정, 로그 샘플링 전략과 빈도 제어, 레벨 사전 확인으로 불필요한 할당 방지, sync.Pool 객체 풀 재사용 및 벤치마크 분석 방법을 상세히 설명하여 개발자가 고동시성 시나리오에서 극한의 로그 성능을 달성할 수 있도록 돕습니다."
+sidebar_position: 1
 ---
 
 # 성능 최적화
@@ -147,6 +149,6 @@ logger.Shutdown(ctx)
 
 ## 다음 단계
 
-- [출력 대상](../api-reference/writers) -- FileWriter, BufferedWriter API
-- [설정](../api-reference/config) -- 성능 관련 설정 항목
+- [출력 대상](../api-reference/output-integration/writers) -- FileWriter, BufferedWriter API
+- [설정](../api-reference/core/config) -- 성능 관련 설정 항목
 - [프로덕션 체크리스트](../security/production-checklist) -- 출시 전 체크리스트

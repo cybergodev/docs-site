@@ -1,6 +1,8 @@
 ---
+sidebar_label: "変更操作"
 title: "変更関数 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON 変更関数：Set/SetMultiple、Delete、MergeJSON/MergeMany で自動パス作成、アトミック操作、複数の MergeMode 戦略をサポートします。"
+sidebar_position: 3
 ---
 
 # 変更関数

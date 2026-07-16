@@ -1,6 +1,8 @@
 ---
+sidebar_label: "SecureValue API"
 title: "SecureValue API - CyberGo env | セキュア値ストレージ"
 description: "CyberGo env の SecureValue API リファレンス。mlock メモリロック、Release ゼロクリア、Masked マスク、IsSensitiveKey 検出でパスワードやトークンを安全に保存します。"
+sidebar_position: 5
 ---
 
 # SecureValue API

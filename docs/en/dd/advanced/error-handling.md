@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo DD | Log Error Management"
 description: "CyberGo DD error handling guide: structured error types, sentinel errors, errors.Is/As wrapping, custom strategies, recovery, and error hook callbacks."
+sidebar_position: 2
 ---
 
 # Error Handling
@@ -199,6 +201,6 @@ if err := dd.DefaultInitError(); err != nil {
 
 ## Next Steps
 
-- [Constants & Errors](../api-reference/constants) -- Complete error code list
-- [Hook System](../api-reference/hooks) -- HookRegistry
-- [Security Filtering](../api-reference/security) -- Security-related errors
+- [Constants & Errors](../api-reference/dev-tools/constants) -- Complete error code list
+- [Hook System](../api-reference/security-audit/hooks) -- HookRegistry
+- [Security Filtering](../api-reference/security-audit/security) -- Security-related errors

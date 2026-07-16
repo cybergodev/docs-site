@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Повторные попытки и отказоустойчивость"
 title: "Повторы и отказоустойчивость - CyberGo HTTPC | RetryPolicy"
 description: "Руководство по повторам HTTPC: экспоненциальный откат и RetryConfig, авто-повтор 408/429/5xx, пользовательский RetryPolicy и контроль повторов по запросу."
+sidebar_position: 5
 ---
 
 # Повторные попытки и отказоустойчивость
@@ -174,5 +176,5 @@ if err != nil {
 ## Что дальше
 
 - [Обработка ошибок](../advanced/error-handling) - полное руководство по обработке ошибок
-- [Конфигурация API](../api-reference/config) - справочник конфигурации повторов
-- [Интерфейсы](../api-reference/interfaces) - справочник интерфейса RetryPolicy
+- [Конфигурация API](../api-reference/client-config/config) - справочник конфигурации повторов
+- [Интерфейсы](../api-reference/types/interfaces) - справочник интерфейса RetryPolicy

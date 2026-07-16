@@ -1,4 +1,5 @@
 ---
+sidebar_label: "Overview"
 title: "HTML Library - CyberGo HTML | Production-Grade Go Library"
 description: "Production-grade Go HTML extraction library: article recognition, 15+ encoding detection, links, batch processing, pluggable audit, and multi-format output."
 ---
@@ -99,17 +100,17 @@ The HTML library is built around three core types:
 
 | Stage | Page | What You'll Learn |
 |--------|------|-------------------|
-| Getting Started | [Quick Start](./getting-started) | Installation, basic usage, two calling modes |
-| Core | [Content Extraction](./guides/content-extraction) | Extract family, Config, Result interpretation |
-| Formats | [Output Formats](./guides/output-formats) | Markdown / JSON output, custom templates |
-| Performance | [Cache & Reuse](./guides/processor-cache) | Processor lifecycle, cache tuning, batch processing |
-| Extensions | [Link Extraction](./guides/link-extraction) | Link extraction, grouping, resource discovery |
-| Security | [Audit Pipeline](./guides/audit-pipeline) | Audit system, custom Sinks, security monitoring |
-| Advanced | [Testing & Custom](./guides/testing-custom) | Custom Scorer, ContentNode, test mode |
-| Reference | [Cheat Sheet](./cheatsheet) | Common API quick reference |
+| Getting Started | [Quick Start](./getting-started/) | Installation, basic usage, two calling modes |
+| Core | [Content Extraction](./guides/core-features/content-extraction) | Extract family, Config, Result interpretation |
+| Formats | [Output Formats](./guides/core-features/output-formats) | Markdown / JSON output, custom templates |
+| Performance | [Cache & Reuse](./guides/advanced-patterns/processor-cache) | Processor lifecycle, cache tuning, batch processing |
+| Extensions | [Link Extraction](./guides/core-features/link-extraction) | Link extraction, grouping, resource discovery |
+| Security | [Audit Pipeline](./guides/advanced-patterns/audit-pipeline) | Audit system, custom Sinks, security monitoring |
+| Advanced | [Testing & Custom](./guides/integration/testing-custom) | Custom Scorer, ContentNode, test mode |
+| Reference | [Cheat Sheet](./getting-started/cheatsheet) | Common API quick reference |
 
 ## Next Steps
 
-- [Quick Start](./getting-started) - 5-minute tutorial
-- [Cheat Sheet](./cheatsheet) - Common operations reference
+- [Quick Start](./getting-started/) - 5-minute tutorial
+- [Cheat Sheet](./getting-started/cheatsheet) - Common operations reference
 - [API Reference](./api-reference/) - Complete API documentation

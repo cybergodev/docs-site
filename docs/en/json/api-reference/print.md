@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Print Functions"
 title: "Print Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON print and formatting: Encode, EncodePretty, Prettify, and the standard fmt package for JSON output, replacing the removed Print functions."
+sidebar_position: 11
 ---
 
 # Print Functions
@@ -118,4 +120,4 @@ func main() {
 ## See Also
 
 - [Encode/Decode Functions](./functions/encode-decode) - Encode, EncodePretty, Prettify
-- [Package Functions](./functions) - Package-level function overview
+- [Package Functions](./functions/) - Package-level function overview

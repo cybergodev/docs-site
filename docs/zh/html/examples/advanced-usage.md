@@ -1,13 +1,15 @@
 ---
+sidebar_label: "高级示例"
 title: "高级示例 - CyberGo HTML | 进阶场景示例"
 description: "CyberGo HTML 高级示例：自定义 Scorer、多 Sink 审计管道、批量文件与并发控制、Processor 池化与 ChannelAuditSink 实时监控等可运行示例。"
+sidebar_position: 2
 ---
 
 # 高级示例
 
 ## 自定义 Scorer
 
-针对特定网站结构定制内容识别逻辑。完整实现请参考 [测试与自定义扩展](../guides/testing-custom)，以下展示核心用法：
+针对特定网站结构定制内容识别逻辑。完整实现请参考 [测试与自定义扩展](../guides/integration/testing-custom)，以下展示核心用法：
 
 ```go
 package main

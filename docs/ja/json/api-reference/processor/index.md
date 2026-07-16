@@ -1,6 +1,8 @@
 ---
+sidebar_label: "概要"
 title: "Processor プロセッサ - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor：New 作成、GetString/Set/Delete、Foreach 反復、Encode、Close ライフサイクル、Stats 統計、キャッシュ設定で高頻度再利用に適します。"
+sidebar_position: 1
 ---
 
 # Processor
@@ -151,7 +153,7 @@ func main() {
 
 ## 関連
 
-- [パッケージ関数](../functions) - トップレベル関数リファレンス
+- [パッケージ関数](../functions/) - トップレベル関数リファレンス
 - [Config](../config) - 設定オプション
 - [インターフェース定義](../interfaces) - Hook インターフェース
-- [Hook フックシステム](../hooks) - フックの詳細な使用ガイド
+- [Hook フックシステム](../../extensions/hooks) - フックの詳細な使用ガイド

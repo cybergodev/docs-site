@@ -1,6 +1,8 @@
 ---
+sidebar_label: "보안 개요"
 title: "보안 개요 - CyberGo HTML | 보호 기능 총람"
 description: "CyberGo HTML 보안 개요: 입력 크기 제한, DOM 깊이 제한, 경로 순회 방지, 패닉 복구, 타임아웃, 콘텐츠 정제, 플러그형 감사로 모든 위반을 errors.Is/As로 판별합니다."
+sidebar_position: 1
 ---
 
 # 보안 개요
@@ -52,7 +54,7 @@ cfg.EnableSanitization = true
 
 ## 감사 시스템
 
-자세한 보안 감사 설정은 [감사 시스템](../api-reference/audit)을 참조하세요.
+자세한 보안 감사 설정은 [감사 시스템](../api-reference/modules/audit)을 참조하세요.
 
 감사 시스템은 다음과 같은 보안 이벤트를 기록할 수 있습니다:
 

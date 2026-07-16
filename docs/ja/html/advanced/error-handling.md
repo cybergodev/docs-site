@@ -1,6 +1,8 @@
 ---
+sidebar_label: "エラー処理"
 title: "エラー処理 - CyberGo HTML | 堅牢なエラーガイド"
 description: "CyberGo HTML エラー処理ガイド：5 種のエラー分類、errors.Is センチネル判定、errors.As 構造化抽出、context キャンセルとバッチ部分失敗処理で堅牢なロジックを構築します。"
+sidebar_position: 2
 ---
 
 # エラー処理

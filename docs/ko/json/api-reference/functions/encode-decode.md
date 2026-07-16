@@ -1,6 +1,8 @@
 ---
+sidebar_label: "인코딩 및 디코딩"
 title: "인코딩 디코딩 함수 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 인코딩/디코딩 함수: Marshal/Unmarshal, Compact/Indent/HTMLEscape, Encode/EncodePretty/Prettify로 표준 라이브러리 호환 인코딩을 제공합니다."
+sidebar_position: 4
 ---
 
 # 인코딩 디코딩 함수

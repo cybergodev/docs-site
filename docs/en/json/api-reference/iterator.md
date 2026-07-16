@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Iterator"
 title: "Iterator - CyberGo JSON | API Reference"
 description: "CyberGo JSON iterator API: Foreach, ForeachWithPath, ForeachNested recursion, IterableValue, and ParallelForeach for diverse traversal scenarios."
+sidebar_position: 9
 ---
 
 # Iterator
@@ -1011,6 +1013,6 @@ func main() {
 ## Related
 
 - [Processor](./processor/) - Processor methods
-- [Large File Processing](./large-file) - Stream processor
-- [NDJSON Processor](./jsonl) - JSONL processing
-- [Large File Processing Guide](../large-files) - Large file processing guide
+- [Large File Processing](../streaming/large-file) - Stream processor
+- [NDJSON Processor](../streaming/jsonl) - JSONL processing
+- [Large File Processing Guide](../streaming/large-files) - Large file processing guide

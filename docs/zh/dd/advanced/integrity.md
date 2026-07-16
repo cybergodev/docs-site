@@ -1,6 +1,8 @@
 ---
+sidebar_label: "HMAC 签名实战"
 title: "HMAC 签名实战 - CyberGo DD | 日志完整性保护"
 description: "CyberGo DD HMAC-SHA256 日志完整性签名实战指南，涵盖 IntegritySigner 创建与初始化配置、签名与验签完整流程、时间戳与序列号递增机制、防篡改检测策略、与审计日志系统集成方案以及生产环境部署最佳实践，确保日志链路的完整性与可追溯性。"
+sidebar_position: 3
 ---
 
 # HMAC 签名实战
@@ -227,4 +229,4 @@ func startIntegrityChecker(signer *dd.IntegritySigner, logPath string) {
 
 - [审计日志](../guides/audit-logging) -- 安全审计集成
 - [行业合规配置](../security/compliance) -- HIPAA/PCI-DSS 签名要求
-- [API 参考 - Integrity](../api-reference/integrity) -- IntegritySigner 完整 API
+- [API 参考 - Integrity](../api-reference/security-audit/integrity) -- IntegritySigner 完整 API

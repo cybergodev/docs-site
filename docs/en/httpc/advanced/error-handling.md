@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo HTTPC | Types & Sentinels"
 description: "HTTPC error handling guide: twelve ErrorType classifications, ClientError and IsRetryable, errors.Is/As matching, retry exhaustion, and context timeouts."
+sidebar_position: 2
 ---
 
 # Error Handling
@@ -156,6 +158,6 @@ result, err := client.Request(ctx, "GET", url)
 
 ## Next Steps
 
-- [Error Types API](../api-reference/errors) - Error types and variables reference
+- [Error Types API](../api-reference/types/errors) - Error types and variables reference
 - [Retry and Fault Tolerance](../guides/retry-fault-tolerance) - Retry strategy configuration
 - [Middleware Chain](../guides/middleware-chain) - Unified error handling with middleware

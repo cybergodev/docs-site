@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo JWT | Sentinels"
 description: "Categorize all 19 CyberGo JWT sentinel errors across config, token validation, rate limiting, and lifecycle with errors.Is matching and response practices."
+sidebar_position: 5
 ---
 
 # Error Handling

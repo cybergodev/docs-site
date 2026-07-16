@@ -1,6 +1,8 @@
 ---
+sidebar_label: "반복"
 title: "Processor 반복 메서드 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor 반복 메서드: Foreach, ForeachWithPath, ForeachNested, IterableValue, IteratorControl로 배치 반복 실무를 지원합니다."
+sidebar_position: 6
 ---
 
 # 반복 메서드

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Кодирование и декодирование"
 title: "Кодирование и декодирование - CyberGo JSON | API"
 description: "Кодирование/декодирование CyberGo JSON: Marshal/Unmarshal, Compact/Indent/HTMLEscape и Encode/EncodePretty/Prettify, совместимые со стандартной библиотекой."
+sidebar_position: 4
 ---
 
 # Функции кодирования и декодирования

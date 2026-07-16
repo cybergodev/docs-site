@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Файловый ввод-вывод"
 title: "Функции файловых операций - CyberGo JSON | Справочник API"
 description: "Файловые функции CyberGo JSON: LoadFromReader, ParseJSONL/ToJSONL, StreamLinesInto[T] и NewJSONLWriter для потоковой обработки больших файлов в Go."
+sidebar_position: 5
 ---
 
 # Функции файловых операций
@@ -324,5 +326,5 @@ if err := jw.Err(); err != nil {
 ## Связанные разделы
 
 - [Функции кодирования/декодирования](./encode-decode) - Операции сериализации Marshal, Unmarshal и др.
-- [Потоковая обработка](../../large-files) - Подробное описание потокового процессора
+- [Потоковая обработка](../../streaming/large-files) - Подробное описание потокового процессора
 - [Методы Processor JSONL](../processor/jsonl) - Подробное описание методов JSONL уровня Processor

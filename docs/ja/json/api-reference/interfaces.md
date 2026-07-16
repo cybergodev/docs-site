@@ -1,6 +1,8 @@
 ---
+sidebar_label: "インターフェース定義"
 title: "インターフェース定義 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON 拡張インターフェース：CustomEncoder、TypeEncoder、Validator、Hook、PathParser、DangerousPattern でエンコードや検証、セキュリティを柔軟に拡張します。"
+sidebar_position: 6
 ---
 
 # インターフェース定義
@@ -647,6 +649,6 @@ func (ve *ValidationError) Error() string
 
 ## 関連
 
-- [Hook フックシステム](./hooks) - フックの詳細な使用ガイド
-- [バリデータ](./validator) - バリデータの詳細な使用ガイド
-- [CustomEncoder](./custom-encoder) - カスタムエンコーダガイド
+- [Hook フックシステム](../extensions/hooks) - フックの詳細な使用ガイド
+- [バリデータ](../extensions/validator) - バリデータの詳細な使用ガイド
+- [CustomEncoder](../extensions/custom-encoder) - カスタムエンコーダガイド

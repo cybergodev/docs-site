@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo JSON | Best Practices"
 description: "CyberGo JSON error handling: JsonsError checks, errors.Is/As matching, standard errors, recovery strategies, SafeError, and RedactedPath logging."
+sidebar_position: 2
 ---
 
 # Error Handling

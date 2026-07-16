@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Пул соединений и прокси"
 title: "Пул соединений и прокси - CyberGo HTTPC | Пул и прокси"
 description: "Руководство по пулу и прокси HTTPC: тюнинг MaxIdleConns, ручной и системный прокси ProxyURL, SOCKS5/HTTP-прокси, откат DoH и настройка HTTP/2."
+sidebar_position: 3
 ---
 
 # Пул соединений и прокси
@@ -180,5 +182,5 @@ func fetchAll(ctx context.Context, urls []string) ([]*httpc.Result, error) {
 ## Что дальше
 
 - [Оптимизация производительности](./performance) - руководство по настройке производительности
-- [Конфигурация API](../api-reference/config) - справочник конфигурации соединений
+- [Конфигурация API](../api-reference/client-config/config) - справочник конфигурации соединений
 - [Обзор безопасности](../security/) - безопасность SSRF и TLS

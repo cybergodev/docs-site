@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Обработка ошибок"
 title: "Ошибки - CyberGo JWT | Сопоставление errors.Is"
 description: "Обработка ошибок CyberGo JWT: условия срабатывания 19 сигнальных ошибок в конфигурации, проверке, лимитах и lifecycle, errors.Is и ValidationError."
+sidebar_position: 5
 ---
 
 # Обработка ошибок

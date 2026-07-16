@@ -1,6 +1,8 @@
 ---
+sidebar_label: "TLS & Certificate Pinning"
 title: "TLS and Certificate Pinning - CyberGo HTTPC | Crypto & Pins"
 description: "HTTPC TLS and certificate pinning guide: TLS 1.2-1.3 and cipher suites, custom CA loading, mTLS, the CertificatePinner API, and HTTP/2 negotiation."
+sidebar_position: 3
 ---
 
 # TLS and Certificate Pinning
@@ -193,4 +195,4 @@ cfg.Connection.EnableHTTP2 = false // Disable HTTP/2
 
 - [SSRF Protection](./ssrf) - SSRF security configuration
 - [Security Overview](./) - Security features overview
-- [Configuration API](../api-reference/config) - SecurityConfig reference
+- [Configuration API](../api-reference/client-config/config) - SecurityConfig reference

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "TLS 与证书固定"
 title: "TLS 与证书固定 - CyberGo HTTPC | 加密与证书固定"
 description: "HTTPC TLS 与证书固定指南：TLS 1.2-1.3 版本控制与密码套件、自定义 CA 加载、mTLS 双向认证、CertificatePinner 固定 API 与 HTTP/2 协商。"
+sidebar_position: 3
 ---
 
 # TLS 与证书固定
@@ -193,4 +195,4 @@ cfg.Connection.EnableHTTP2 = false // 禁用 HTTP/2
 
 - [SSRF 防护](./ssrf) - SSRF 安全配置
 - [安全概述](./) - 安全特性总览
-- [配置 API](../api-reference/config) - SecurityConfig 参考
+- [配置 API](../api-reference/client-config/config) - SecurityConfig 参考

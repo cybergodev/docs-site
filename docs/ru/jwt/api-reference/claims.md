@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Claims"
 title: "Claims - CyberGo JWT | Встроенные утверждения"
 description: "Claims — встроенная структура утверждений CyberGo JWT с UserID, Username, Role, правами, scope и RegisteredClaims RFC 7519 плюс ограничения длины и валидация."
+sidebar_position: 5
 ---
 
 # Claims

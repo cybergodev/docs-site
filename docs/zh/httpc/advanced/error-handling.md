@@ -1,6 +1,8 @@
 ---
+sidebar_label: "错误处理"
 title: "错误处理 - CyberGo HTTPC | 分类与哨兵匹配"
 description: "HTTPC 错误处理指南：ErrorType 十二种错误分类、ClientError 字段及 IsRetryable 判断、errors.Is/As 哨兵错误匹配、重试耗尽处理、context 超时与取消、中间件统一错误处理与超时分层最佳实践。"
+sidebar_position: 2
 ---
 
 # 错误处理
@@ -156,6 +158,6 @@ result, err := client.Request(ctx, "GET", url)
 
 ## 下一步
 
-- [错误类型 API](../api-reference/errors) - 错误类型和变量参考
+- [错误类型 API](../api-reference/types/errors) - 错误类型和变量参考
 - [重试与容错](../guides/retry-fault-tolerance) - 重试策略配置
 - [中间件链](../guides/middleware-chain) - 使用中间件统一处理错误

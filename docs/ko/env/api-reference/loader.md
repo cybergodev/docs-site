@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Loader"
 title: "Loader API - CyberGo env | 로더 상세"
 description: "CyberGo env Loader API 참조로 핵심 유형이 다중 형식 로딩·타입 안전 읽기·키 조작·검증·직렬화·Close 수명 주기를 제공하며 모두 스레드 안전합니다."
+sidebar_position: 3
 ---
 
 # Loader API

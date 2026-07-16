@@ -1,6 +1,8 @@
 ---
+sidebar_label: "ドメインクライアントとセッション"
 title: "ドメインクライアントとセッション - CyberGo HTTPC | セッションとドメイン"
 description: "HTTPC ドメインクライアントとセッションガイド: NewDomain によるドメインスコープクライアント作成、URL 自動結合、SetHeader ヘッダー維持、Cookie セキュリティ検証、REST API クライアントラッパーの実践例を解説します。"
+sidebar_position: 3
 ---
 
 # ドメインクライアントとセッション
@@ -192,6 +194,6 @@ func main() {
 
 ## 次のステップ
 
-- [ドメインクライアント API](../api-reference/domain-client) - 完全な API リファレンス
-- [セッション管理 API](../api-reference/session) - SessionManager リファレンス
+- [ドメインクライアント API](../api-reference/client-config/domain-client) - 完全な API リファレンス
+- [セッション管理 API](../api-reference/client-config/session) - SessionManager リファレンス
 - [リクエストとレスポンス](./request-response) - 基本リクエストガイド

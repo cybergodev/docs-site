@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Загрузка и скачивание файлов"
 title: "Загрузка и выгрузка файлов - CyberGo HTTPC | Resume & Hash"
 description: "Руководство по загрузке файлов HTTPC: выгрузка WithFile, мультизагрузка WithFormData, единый Download, возобновляемая загрузка и защита SHA-256."
+sidebar_position: 4
 ---
 
 # Загрузка и выгрузка файлов
@@ -179,6 +181,6 @@ result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
 
 ## Что дальше
 
-- [Загрузка файлов API](../api-reference/download) - полный справочник API загрузки
+- [Загрузка файлов API](../api-reference/client-config/download) - полный справочник API загрузки
 - [Доменный клиент и сессии](./domain-session) - управление сессиями
 - [Запросы и ответы](./request-response) - руководство по базовым запросам

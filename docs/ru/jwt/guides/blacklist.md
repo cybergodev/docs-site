@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Чёрный список токенов"
 title: "Чёрный список - CyberGo JWT | Отзыв и хранилище"
 description: "Руководство по чёрному списку CyberGo JWT: настройка хранилища в памяти и очистка, отзыв токенов через Revoke и IsRevoked, реализация BlacklistStore для Redis."
+sidebar_position: 3
 ---
 
 # Чёрный список токенов

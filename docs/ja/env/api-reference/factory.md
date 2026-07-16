@@ -1,6 +1,8 @@
 ---
+sidebar_label: "ComponentFactory API"
 title: "ComponentFactory API - CyberGo env | コンポーネントファクトリー"
 description: "CyberGo env の ComponentFactory API リファレンス。監査ハンドラー、検証器、ファイルシステムアダプターの生成とカスタムパーサー登録を Close ライフサイクル管理と共に提供します。"
+sidebar_position: 8
 ---
 
 # ComponentFactory API

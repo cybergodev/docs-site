@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Factory"
 title: "ComponentFactory API - CyberGo env | Component Factory"
 description: "CyberGo env ComponentFactory API reference: create audit handlers, validators, file-system adapters and register custom parsers with Close lifecycle control."
+sidebar_position: 8
 ---
 
 # ComponentFactory API

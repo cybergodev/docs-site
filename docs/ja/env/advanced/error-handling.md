@@ -1,6 +1,8 @@
 ---
+sidebar_label: "エラー処理"
 title: "エラー処理 - CyberGo env | センチネルエラーと復旧戦略"
 description: "CyberGo env エラー処理ガイド。16個のセンチネルエラーの errors.Is 検査、8種の構造化エラーの errors.As 抽出、復旧・グレードダウン戦略、エラーチェーン追跡を解説します。"
+sidebar_position: 2
 ---
 
 # エラー処理

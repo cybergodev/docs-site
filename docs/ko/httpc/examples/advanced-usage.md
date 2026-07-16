@@ -1,6 +1,8 @@
 ---
+sidebar_label: "고급 예제"
 title: "고급 예제 - CyberGo HTTPC | 프로덕션 코드"
 description: "HTTPC 고급 예제 모음: 커스텀 RetryPolicy 재시도 전략, 완전한 미들웨어 체인 구성, RESTful API 클라이언트 래핑, 동시성 다운로드와 HMAC-SHA256 서명 미들웨어의 완전한 코드를 제공합니다."
+sidebar_position: 2
 ---
 
 # 고급 예제

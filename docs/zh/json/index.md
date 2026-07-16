@@ -1,4 +1,5 @@
 ---
+sidebar_label: "概述"
 title: "JSON 处理库 - CyberGo JSON | 高性能 Go 库"
 description: "CyberGo JSON 是高性能、线程安全的 Go JSON 处理库，支持 JSONPath 路径查询、流式处理、泛型 API 与 Schema 验证，100% 兼容 encoding/json，适用于高并发生产环境。"
 ---
@@ -100,12 +101,12 @@ func main() {
 
 | 模块 | 说明 |
 |------|------|
-| [快速开始](./getting-started) | 安装、基本用法、核心概念 |
-| [路径表达式语法](./path-syntax) | 路径查询、切片、通配符、字段提取 |
+| [快速开始](./getting-started/) | 安装、基本用法、核心概念 |
+| [路径表达式语法](./getting-started/path-syntax) | 路径查询、切片、通配符、字段提取 |
 | [API 文档](./api-reference/) | 完整 API 参考 |
-| [大文件处理](./large-files) | 流式处理、分块读写、内存优化 |
-| [使用示例](./examples) | 实战代码示例 |
-| [高级功能示例](./examples-advanced) | 批量编码、预解析、钩子系统 |
+| [大文件处理](./streaming/large-files) | 流式处理、分块读写、内存优化 |
+| [使用示例](./examples/) | 实战代码示例 |
+| [高级功能示例](./examples/examples-advanced) | 批量编码、预解析、钩子系统 |
 
 ## 性能特性
 
@@ -141,6 +142,6 @@ func main() {
 
 ## 下一步
 
-- [快速开始](./getting-started) — 5 分钟上手
-- [路径表达式语法](./path-syntax) — 完整路径语法
-- [使用示例](./examples) — 更多实战示例
+- [快速开始](./getting-started/) — 5 分钟上手
+- [路径表达式语法](./getting-started/path-syntax) — 完整路径语法
+- [使用示例](./examples/) — 更多实战示例

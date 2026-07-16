@@ -1,6 +1,8 @@
 ---
+sidebar_label: "实战教程"
 title: "实战教程 - CyberGo HTTPC | GitHub API 实战"
 description: "三十分钟实战教程：从 httpc.Get 逐步构建完整的 GitHub REST API 客户端，涵盖 JSON 响应解析、NewDomain 域名客户端、WithJSON 发送数据、中间件链组合、ClientError 错误处理与文件下载功能。"
+sidebar_position: 1
 ---
 
 # 实战教程：构建 GitHub API 客户端

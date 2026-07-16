@@ -1,4 +1,5 @@
 ---
+sidebar_label: "개요"
 title: "DD - 구조화된 로그 라이브러리"
 description: "CyberGo DD는 CyberGo 조직에서 개발한 고성능 Go 구조화된 로그 라이브러리로, 스레드 안전한 로그 기록, 유연한 출력 대상 구성, 파일 자동 순환, 민감 데이터 자동 필터링, 비동기 감사 로그, HMAC 무결성 서명 및 제로 할당 최적화를 제공하여 개발자가 안전하고 신뢰할 수 있는 로그 기록 시스템을 빠르게 구축할 수 있도록 도와줍니다."
 ---
@@ -68,9 +69,9 @@ func main() {
 
 ## 다음 단계
 
-- [빠른 시작](./getting-started) -- 5분 입문 가이드
+- [빠른 시작](./getting-started/) -- 5분 입문 가이드
 - [핵심 개념](./guides/core-concepts) -- DD 아키텍처 이해
 - [마이그레이션 가이드](./guides/migration) -- log/slog/zap/logrus에서 마이그레이션
-- [치트시트](./cheatsheet) -- 자주 사용하는 API 빠른 참조
+- [치트시트](./getting-started/cheatsheet) -- 자주 사용하는 API 빠른 참조
 - [API 레퍼런스](./api-reference/) -- 전체 API 문서
 - [기본 예제](./examples/basic-usage) -- 실용 코드 예제

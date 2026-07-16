@@ -1,4 +1,5 @@
 ---
+sidebar_label: "概述"
 title: "CyberGo env - 环境变量管理库"
 description: "CyberGo env 是高安全 Go 环境变量管理库，支持 .env、JSON、YAML 多格式加载与类型安全转换，内置 SecureValue 内存保护和审计日志，让配置更安全可靠。"
 ---
@@ -21,7 +22,7 @@ description: "CyberGo env 是高安全 Go 环境变量管理库，支持 .env、
 
 | 功能 | 说明 |
 |------|------|
-| [类型转换](/zh/env/getting-started) | GetString, GetInt, GetBool, GetDuration, GetSlice |
+| [类型转换](/zh/env/getting-started/) | GetString, GetInt, GetBool, GetDuration, GetSlice |
 | [结构体映射](/zh/env/guides/struct-mapping) | 标签驱动的配置绑定 |
 | [安全存储](/zh/env/api-reference/secure-value) | 敏感值内存保护 |
 | [多格式加载](/zh/env/guides/multi-format) | .env, JSON, YAML |
@@ -31,8 +32,8 @@ description: "CyberGo env 是高安全 Go 环境变量管理库，支持 .env、
 <div class="vp-features">
 
 ### 入门
-- [快速开始](/zh/env/getting-started) - 5 分钟上手教程
-- [速查表](/zh/env/cheatsheet) - 常用代码片段
+- [快速开始](/zh/env/getting-started/) - 5 分钟上手教程
+- [速查表](/zh/env/getting-started/cheatsheet) - 常用代码片段
 
 ### API 参考
 - [包函数](/zh/env/api-reference/functions) - 完整 API 文档

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Функции вывода"
 title: "Функции печати - CyberGo JSON | Справочник API"
 description: "Печать и форматирование CyberGo JSON: Encode, EncodePretty, Prettify и стандартный fmt для вывода JSON, заменяя удалённые функции Print."
+sidebar_position: 11
 ---
 
 # Функции печати
@@ -118,4 +120,4 @@ func main() {
 ## Связанные разделы
 
 - [Функции кодирования/декодирования](./functions/encode-decode) - Encode, EncodePretty, Prettify
-- [Функции пакета](./functions) - Обзор функций уровня пакета
+- [Функции пакета](./functions/) - Обзор функций уровня пакета

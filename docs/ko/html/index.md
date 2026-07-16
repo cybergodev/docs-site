@@ -1,4 +1,5 @@
 ---
+sidebar_label: "개요"
 title: "HTML 추출 라이브러리 - CyberGo HTML | 고성능 Go 라이브러리"
 description: "CyberGo HTML은 고성능 Go HTML 콘텐츠 추출·정제 라이브러리로, 문서 인식, 인코딩 자동 감지, 동시성 배치, 플러그형 감사를 제공하며 텍스트·Markdown·JSON 출력을 지원합니다."
 ---
@@ -99,17 +100,17 @@ HTML 라이브러리는 세 가지 핵심 타입을 중심으로 구축됩니다
 
 | 단계 | 페이지 | 배울 내용 |
 |------|------|----------|
-| 입문 | [빠른 시작](./getting-started) | 설치, 기본 사용법, 두 가지 호출 방식 |
-| 핵심 | [콘텐츠 추출](./guides/content-extraction) | Extract 전체 패밀리, Config 설정, Result 해석 |
-| 형식 | [출력 형식](./guides/output-formats) | Markdown / JSON 출력, 커스텀 템플릿 |
-| 성능 | [캐시와 재사용](./guides/processor-cache) | Processor 라이프사이클, 캐시 튜닝, 배치 처리 |
-| 확장 | [링크 추출](./guides/link-extraction) | 링크 추출, 그룹화, 리소스 발견 |
-| 보안 | [감사 파이프라인](./guides/audit-pipeline) | 감사 시스템, 커스텀 Sink, 보안 모니터링 |
-| 고급 | [테스트와 커스터마이징](./guides/testing-custom) | 커스텀 Scorer, ContentNode, 테스트 모드 |
-| 참조 | [치트시트](./cheatsheet) | 자주 사용하는 API 한눈에 보기 |
+| 입문 | [빠른 시작](./getting-started/) | 설치, 기본 사용법, 두 가지 호출 방식 |
+| 핵심 | [콘텐츠 추출](./guides/core-features/content-extraction) | Extract 전체 패밀리, Config 설정, Result 해석 |
+| 형식 | [출력 형식](./guides/core-features/output-formats) | Markdown / JSON 출력, 커스텀 템플릿 |
+| 성능 | [캐시와 재사용](./guides/advanced-patterns/processor-cache) | Processor 라이프사이클, 캐시 튜닝, 배치 처리 |
+| 확장 | [링크 추출](./guides/core-features/link-extraction) | 링크 추출, 그룹화, 리소스 발견 |
+| 보안 | [감사 파이프라인](./guides/advanced-patterns/audit-pipeline) | 감사 시스템, 커스텀 Sink, 보안 모니터링 |
+| 고급 | [테스트와 커스터마이징](./guides/integration/testing-custom) | 커스텀 Scorer, ContentNode, 테스트 모드 |
+| 참조 | [치트시트](./getting-started/cheatsheet) | 자주 사용하는 API 한눈에 보기 |
 
 ## 다음 단계
 
-- [빠른 시작](./getting-started) - 5분 입문 튜토리얼
-- [치트시트](./cheatsheet) - 자주 사용하는 작업 빠른 참조
+- [빠른 시작](./getting-started/) - 5분 입문 튜토리얼
+- [치트시트](./getting-started/cheatsheet) - 자주 사용하는 작업 빠른 참조
 - [API 레퍼런스](./api-reference/) - 전체 API 문서

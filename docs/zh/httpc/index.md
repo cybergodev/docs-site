@@ -1,4 +1,5 @@
 ---
+sidebar_label: "概述"
 title: "HTTP 客户端 - CyberGo HTTPC | 安全高性能客户端"
 description: "CyberGo HTTPC 是 Go 语言安全高性能 HTTP 客户端库，提供 TLS 1.2+ 强制加密、SSRF 防护、智能指数退避重试、洋葱模型中间件链、连接池管理与 Result 生命周期自动管理，适用于微服务通信与高并发 API 调用场景。"
 ---
@@ -50,9 +51,9 @@ func main() {
 
 | 目标 | 推荐 |
 |------|------|
-| 5 分钟上手 | [快速开始](./getting-started) |
+| 5 分钟上手 | [快速开始](./getting-started/) |
 | 30 分钟实战 | [实战教程](./guides/tutorial) |
-| 查找某个用法 | [速查表](./cheatsheet) |
+| 查找某个用法 | [速查表](./getting-started/cheatsheet) |
 | 了解安全特性 | [安全概述](./security/) |
 | 查 API 签名 | [API 参考](./api-reference/) |
 

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Struct Mapping"
 title: "Struct Mapping - CyberGo env | Env Vars to Struct"
 description: "CyberGo env struct mapping guide: map env vars to Go struct fields via env tags, covering nesting, pointers, slices, converters, defaults and validation."
+sidebar_position: 1
 ---
 
 # Struct Mapping
@@ -527,4 +529,4 @@ func main() {
 
 - [Package Functions - ParseInto](/en/env/api-reference/functions#parseinto) - ParseInto function reference
 - [Loader API - ParseInto](/en/env/api-reference/loader#parseinto) - Loader method reference
-- [Getting Started](/en/env/getting-started) - Basic usage
+- [Getting Started](/en/env/getting-started/) - Basic usage

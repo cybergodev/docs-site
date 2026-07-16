@@ -1,6 +1,8 @@
 ---
+sidebar_label: "泛型操作"
 title: "泛型操作 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 泛型 API：GetTyped[T] 泛型获取、Result[T] 结果类型、AccessResult 动态访问，利用 Go 1.18+ 泛型实现编译时类型安全检查。"
+sidebar_position: 10
 ---
 
 # 泛型操作
@@ -416,6 +418,6 @@ func main() {
 
 ## 相关
 
-- [包函数](./functions) - 类型特定的 getter 函数
+- [包函数](./functions/) - 类型特定的 getter 函数
 - [类型定义](./types) - AccessResult 详细定义
 - [配置](./config) - Config 配置选项

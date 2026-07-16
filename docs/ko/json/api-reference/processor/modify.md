@@ -1,6 +1,8 @@
 ---
+sidebar_label: "데이터 수정"
 title: "Processor 데이터 수정 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor 수정 메서드: Set, SetMultiple, SetCreate 자동 경로 생성, Delete, DeleteClean으로 메서드 체이닝을 지원합니다."
+sidebar_position: 3
 ---
 
 # 데이터 수정 메서드

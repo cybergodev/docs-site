@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Query & Get"
 title: "Query and Get Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON query and get: Get/GetString/GetInt/GetFloat/GetBool type-safe getters, GetTyped[T] generics, and Parse/ParseAny with full JSONPath."
+sidebar_position: 2
 ---
 
 # Query and Get Functions
@@ -523,7 +525,7 @@ func main() {
 ```
 
 ::: tip See Also
-For the full Schema type definition and validator usage, see [Validator](../validator).
+For the full Schema type definition and validator usage, see [Validator](../../extensions/validator).
 :::
 
 ## Safe Get Functions

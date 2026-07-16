@@ -1,6 +1,8 @@
 ---
+sidebar_label: "パースと読み込み"
 title: "Processor 解析と読み込み - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor 解析メソッド：Valid 検証、Parse、ParseAny、PreParse 最適化、GetFromParsed で設定ベースの解析をサポートします。"
+sidebar_position: 5
 ---
 
 # 解析と読み込みメソッド

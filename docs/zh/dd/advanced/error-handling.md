@@ -1,6 +1,8 @@
 ---
+sidebar_label: "错误处理"
 title: "错误处理 - CyberGo DD | 日志错误管理"
 description: "CyberGo DD 日志库错误处理完整指南，详解结构化错误类型与层级体系、错误码设计、哨兵错误定义与判断方法、errors.Is/As 错误包装与拆包、自定义错误处理策略实现、错误恢复机制和错误钩子回调配置，帮助开发者精确识别和处理各类日志相关错误。"
+sidebar_position: 2
 ---
 
 # 错误处理
@@ -196,6 +198,6 @@ if err := dd.DefaultInitError(); err != nil {
 
 ## 下一步
 
-- [常量与错误](../api-reference/constants) -- 完整错误码列表
-- [钩子系统](../api-reference/hooks) -- HookRegistry
-- [安全过滤](../api-reference/security) -- 安全相关错误
+- [常量与错误](../api-reference/dev-tools/constants) -- 完整错误码列表
+- [钩子系统](../api-reference/security-audit/hooks) -- HookRegistry
+- [安全过滤](../api-reference/security-audit/security) -- 安全相关错误

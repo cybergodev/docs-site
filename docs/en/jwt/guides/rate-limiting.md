@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Rate Limiting"
 title: "Rate Limiting - CyberGo JWT | Token Bucket"
 description: "Configure token-bucket max requests per window for signing endpoints with Subject, UserID, and RateLimitKeyer priority lookup supporting distributed limiting."
+sidebar_position: 4
 ---
 
 # Rate Limiting

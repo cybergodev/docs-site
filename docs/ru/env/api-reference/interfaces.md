@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Интерфейсы"
 title: "Определения интерфейсов - CyberGo env | Иерархия интерфейсов"
 description: "Справочник интерфейсов CyberGo env для внедрения зависимостей: Validator, FullAuditLogger, EnvParser, EnvStorage и адаптер FileSystem."
+sidebar_position: 6
 ---
 
 # Определения интерфейсов

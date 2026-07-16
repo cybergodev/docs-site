@@ -1,6 +1,8 @@
 ---
+sidebar_label: "本番チェックリスト"
 title: "本番チェックリスト - CyberGo DD | セキュリティリリースチェック"
 description: "CyberGo DD ログライブラリの本番環境デプロイ前の完全なセキュリティチェックリスト。基本設定項目の検証、機密データフィルタリングルールの有効化とテスト検証、監査ログの有効確認、ファイルローテーション戦略の設定、HMAC 整合性署名の設定、パフォーマンスベンチマークのチューニングなど重要なチェック項目をカバーし、ログシステムの安全で信頼性の高いコンプライアンス運用を確保。"
+sidebar_position: 3
 ---
 
 # 本番チェックリスト
@@ -96,5 +98,5 @@ logger.SetWriteErrorHandler(func(w io.Writer, err error) {
 ## 次のステップ
 
 - [セキュリティ概要](./) -- セキュリティ機能総覧
-- [セキュリティフィルタ API](../api-reference/security) -- 設定リファレンス
+- [セキュリティフィルタ API](../api-reference/security-audit/security) -- 設定リファレンス
 - [パフォーマンス最適化](../advanced/performance) -- パフォーマンスチューニング

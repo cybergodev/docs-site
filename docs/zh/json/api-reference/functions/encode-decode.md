@@ -1,6 +1,8 @@
 ---
+sidebar_label: "编码解码"
 title: "编码解码函数 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 编码解码函数：Marshal/Unmarshal 序列化、Compact/Indent/HTMLEscape 格式化与 Encode/EncodePretty/Prettify 配置化编码，100% 兼容标准库。"
+sidebar_position: 4
 ---
 
 # 编码解码函数

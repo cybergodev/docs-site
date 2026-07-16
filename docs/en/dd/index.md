@@ -1,4 +1,5 @@
 ---
+sidebar_label: "Overview"
 title: "DD - Structured Logging Library"
 description: "CyberGo DD is a high-performance Go structured logging library with thread-safe recording, file rotation, sensitive data filtering, and audit logging."
 ---
@@ -68,9 +69,9 @@ func main() {
 
 ## Next Steps
 
-- [Quick Start](./getting-started) -- 5-minute getting started guide
+- [Quick Start](./getting-started/) -- 5-minute getting started guide
 - [Core Concepts](./guides/core-concepts) -- Understand DD architecture
 - [Migration Guide](./guides/migration) -- Migrate from log/slog/zap/logrus
-- [Cheat Sheet](./cheatsheet) -- Common API quick reference
+- [Cheat Sheet](./getting-started/cheatsheet) -- Common API quick reference
 - [API Reference](./api-reference/) -- Complete API documentation
 - [Basic Examples](./examples/basic-usage) -- Practical code examples

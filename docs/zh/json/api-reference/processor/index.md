@@ -1,6 +1,8 @@
 ---
+sidebar_label: "概述"
 title: "Processor 处理器 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor 处理器：New 创建、GetString/Set/Delete 操作、Foreach 迭代、Encode 编码、Close 生命周期、Stats 统计与缓存配置，适合高频复用场景。"
+sidebar_position: 1
 ---
 
 # Processor
@@ -151,7 +153,7 @@ func main() {
 
 ## 相关
 
-- [包函数](../functions) - 顶级函数参考
+- [包函数](../functions/) - 顶级函数参考
 - [Config](../config) - 配置选项
 - [接口定义](../interfaces) - Hook 接口
-- [Hook 钩子系统](../hooks) - 钩子详细使用指南
+- [Hook 钩子系统](../../extensions/hooks) - 钩子详细使用指南

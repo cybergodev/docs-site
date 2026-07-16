@@ -1,6 +1,8 @@
 ---
+sidebar_label: "ミドルウェアチェーン"
 title: "ミドルウェアチェーン - CyberGo HTTPC | オニオンモデル連鎖"
 description: "HTTPC ミドルウェアチェーンガイド: オニオンモデルの実行原理とリクエスト/レスポンス双方向処理、8 つの内蔵ミドルウェア設定、Chain 手動組み合わせ、カスタム MiddlewareFunc 作成、サーキットブレーカー短路の実装例を解説します。"
+sidebar_position: 6
 ---
 
 # ミドルウェアチェーン
@@ -215,6 +217,6 @@ client, _ := httpc.New(cfg)
 
 ## 次のステップ
 
-- [ミドルウェア API](../api-reference/middleware) - 完全なミドルウェアリファレンス
+- [ミドルウェア API](../api-reference/client-config/middleware) - 完全なミドルウェアリファレンス
 - [リトライとフォールトトレランス](./retry-fault-tolerance) - リトライポリシーガイド
 - [セキュリティ概要](../security/) - 監査ミドルウェアのセキュリティプラクティス

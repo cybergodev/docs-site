@@ -1,4 +1,5 @@
 ---
+sidebar_label: "개요"
 title: "JWT 인증 라이브러리 - CyberGo JWT | 프로덕션급 토큰 발급·검증"
 description: "CyberGo JWT는 프로덕션급 Go JWT 인증 라이브러리로 HMAC·RSA·RSA-PSS·ECDSA 4종 12 알고리즘을 지원하며 토큰 발급·검증·갱신·취소, 블랙리스트와 속도 제한을 제공하고 모든 메서드가 동시성에 안전합니다."
 ---
@@ -91,7 +92,7 @@ func main() {
 
 ## 다음 단계
 
-- [빠른 시작](./getting-started) — 상세 설치 및 설정 가이드
+- [빠른 시작](./getting-started/) — 상세 설치 및 설정 가이드
 - [서명 알고리즘](./guides/signing-algorithms) — HMAC, RSA, ECDSA 선택 가이드
 - [커스텀 Claims](./guides/custom-claims) — 비즈니스 필드 정의
 - [API 레퍼런스](./api-reference/) — 전체 API 참조 문서

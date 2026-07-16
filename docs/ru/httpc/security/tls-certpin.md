@@ -1,6 +1,8 @@
 ---
+sidebar_label: "TLS и привязка сертификатов"
 title: "TLS и пиннинг сертификатов - CyberGo HTTPC | Шифры и пиннинг"
 description: "Руководство по TLS и закреплению сертификатов HTTPC: версии TLS 1.2-1.3 и шифры, пользовательские CA, mTLS, API закрепления CertificatePinner и HTTP/2."
+sidebar_position: 3
 ---
 
 # TLS и закрепление сертификатов
@@ -193,4 +195,4 @@ cfg.Connection.EnableHTTP2 = false // Отключить HTTP/2
 
 - [Защита от SSRF](./ssrf) - конфигурация безопасности SSRF
 - [Обзор безопасности](./) - обзор функций безопасности
-- [Конфигурация API](../api-reference/config) - справочник по SecurityConfig
+- [Конфигурация API](../api-reference/client-config/config) - справочник по SecurityConfig

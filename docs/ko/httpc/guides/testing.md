@@ -1,6 +1,8 @@
 ---
+sidebar_label: "테스트 가이드"
 title: "테스트 가이드 - CyberGo HTTPC | httptest와 목"
 description: "HTTPC 테스트 가이드: TestingConfig 테스트 전용 설정, net/http/httptest 모의 서버 통합, 오류 응답과 리다이렉트 시뮬레이션, 테이블 기반 테스트와 Cookie 세션 단언 모범 사례를 다룹니다."
+sidebar_position: 7
 ---
 
 # 테스트 가이드
@@ -216,6 +218,6 @@ func TestHTTPMethods(t *testing.T) {
 
 ## 다음 단계
 
-- [설정 API](../api-reference/config) - TestingConfig 상세 매개변수
-- [오류 타입](../api-reference/errors) - 오류 단언 참조
+- [설정 API](../api-reference/client-config/config) - TestingConfig 상세 매개변수
+- [오류 타입](../api-reference/types/errors) - 오류 단언 참조
 - [미들웨어 체인](./middleware-chain) - 미들웨어 테스트 패턴

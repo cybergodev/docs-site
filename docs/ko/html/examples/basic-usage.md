@@ -1,6 +1,8 @@
 ---
+sidebar_label: "기본 예제"
 title: "기본 예제 - CyberGo HTML | 실행 가능 예제"
 description: "CyberGo HTML 기본 예제: 기본 추출, 파일 추출, 텍스트, Markdown 출력, 링크 그룹화, Processor 재사용, 타임아웃, 동시성 배치, JSON 직렬화 등 실행 가능 예시입니다."
+sidebar_position: 1
 ---
 
 # 기본 예제

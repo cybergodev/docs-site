@@ -1,0 +1,55 @@
+name: CI
+
+# Quality gate: type-check + production build on every PR and main push.
+# Deploy (FTP) is handled separately by deploy.yml; this workflow only guards
+# against regressions (type errors, broken builds, dead internal links —
+# VitePress fails the build on the latter by default).
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=7168
+
+  # CJK typography gate (half/full-width punctuation, CJK–Latin spacing).
+  # Chinese is the primary language, so this is near-zero-cost polish.
+  # Local: `npm run lint:autocorrect` / `npm run fix:autocorrect`.
+  lint:
+    name: Autocorrect
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Autocorrect lint
+        uses: huacnlee/autocorrect-action@main
+        with:
+          use_npm: true

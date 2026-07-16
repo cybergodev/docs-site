@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Basic Usage"
 title: "Basic Usage - CyberGo DD | Practical Examples"
 description: "CyberGo DD practical examples: Gin/Echo request logging, gRPC interceptors, database logging, middleware chaining, and distributed tracing integration."
+sidebar_position: 1
 ---
 
 # Basic Usage
@@ -260,6 +262,6 @@ func SetupLogger(env string) (*dd.Logger, error) {
 
 ## Next Steps
 
-- [Quick Start](../getting-started) -- Getting started guide
+- [Quick Start](../getting-started/) -- Getting started guide
 - [API Reference](../api-reference/) -- Complete API
 - [Security](../security/) -- Security configuration

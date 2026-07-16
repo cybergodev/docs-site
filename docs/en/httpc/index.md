@@ -1,4 +1,5 @@
 ---
+sidebar_label: "Overview"
 title: "HTTP Client - CyberGo HTTPC | Secure Go Client"
 description: "CyberGo HTTPC is a secure Go HTTP client with TLS 1.2+, SSRF protection, exponential backoff retry, middleware chains, and connection pooling for microservices."
 ---
@@ -50,9 +51,9 @@ Choose your reading path based on your goal:
 
 | Goal | Recommended |
 |------|-------------|
-| 5-minute setup | [Quick Start](./getting-started) |
+| 5-minute setup | [Quick Start](./getting-started/) |
 | 30-minute hands-on | [Tutorial](./guides/tutorial) |
-| Look up a specific usage | [Cheat Sheet](./cheatsheet) |
+| Look up a specific usage | [Cheat Sheet](./getting-started/cheatsheet) |
 | Learn about security | [Security Overview](./security/) |
 | Check API signatures | [API Reference](./api-reference/) |
 

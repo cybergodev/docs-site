@@ -1,6 +1,8 @@
 ---
+sidebar_label: "变量展开"
 title: "变量展开 - CyberGo env 变量语法"
 description: "CyberGo env 变量展开语法指南，详解 ${VAR} 与 ${VAR:-default} 引用、条件展开、循环引用检测与 MaxExpansionDepth 深度限制。"
+sidebar_position: 4
 ---
 
 # 变量展开
@@ -252,6 +254,6 @@ func main() {
 
 ## 相关文档
 
-- [快速开始](/zh/env/getting-started) - 基础使用
+- [快速开始](/zh/env/getting-started/) - 基础使用
 - [Config API](/zh/env/api-reference/config) - ExpandVariables 配置
 - [常量与错误](/zh/env/api-reference/constants) - 展开深度限制

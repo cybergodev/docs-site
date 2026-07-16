@@ -1,6 +1,8 @@
 ---
+sidebar_label: "TLS와 인증서 고정"
 title: "TLS와 인증서 고정 - CyberGo HTTPC | 암호와 핀닝"
 description: "HTTPC TLS와 인증서 고정 가이드: TLS 1.2-1.3 버전 제어와 암호 스위트, 커스텀 CA 인증서 로드, mTLS 상호 인증, CertificatePinner 인증서 고정 API와 HTTP/2 협상을 다룹니다."
+sidebar_position: 3
 ---
 
 # TLS와 인증서 고정
@@ -193,4 +195,4 @@ cfg.Connection.EnableHTTP2 = false // HTTP/2 비활성화
 
 - [SSRF 방어](./ssrf) - SSRF 보안 설정
 - [보안 개요](./) - 보안 기능 개요
-- [설정 API](../api-reference/config) - SecurityConfig 참조
+- [설정 API](../api-reference/client-config/config) - SecurityConfig 참조

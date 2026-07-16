@@ -1,6 +1,8 @@
 ---
+sidebar_label: "오류 처리"
 title: "오류 처리 - CyberGo HTTPC | 분류와 센티널"
 description: "HTTPC 오류 처리 가이드: ErrorType 12가지 오류 분류, ClientError 필드와 IsRetryable, errors.Is/As 센티넬 매칭, 재시도 소진, 컨텍스트 타임아웃과 미들웨어 통합 처리 모범 사례를 다룹니다."
+sidebar_position: 2
 ---
 
 # 오류 처리
@@ -156,6 +158,6 @@ result, err := client.Request(ctx, "GET", url)
 
 ## 다음 단계
 
-- [오류 타입 API](../api-reference/errors) - 오류 타입과 변수 참조
+- [오류 타입 API](../api-reference/types/errors) - 오류 타입과 변수 참조
 - [재시도와 장애 허용](../guides/retry-fault-tolerance) - 재시도 전략 설정
 - [미들웨어 체인](../guides/middleware-chain) - 미들웨어로 오류 통합 처리

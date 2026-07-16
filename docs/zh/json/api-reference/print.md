@@ -1,6 +1,8 @@
 ---
+sidebar_label: "打印函数"
 title: "打印函数 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 打印与格式化：使用 Encode、EncodePretty、Prettify 与标准 fmt 包输出 JSON，支持自定义缩进与前缀，替代已移除的 Print 系列。"
+sidebar_position: 11
 ---
 
 # 打印函数
@@ -118,4 +120,4 @@ func main() {
 ## 相关
 
 - [编码解码函数](./functions/encode-decode) - Encode、EncodePretty、Prettify
-- [包函数](./functions) - 包级函数总览
+- [包函数](./functions/) - 包级函数总览

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Encode & Decode"
 title: "Encode and Decode Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON encode/decode: Marshal/Unmarshal, Compact/Indent/HTMLEscape, and Encode/EncodePretty/Prettify configurable encoding, stdlib compatible."
+sidebar_position: 4
 ---
 
 # Encode and Decode Functions

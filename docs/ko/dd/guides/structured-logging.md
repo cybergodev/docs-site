@@ -1,6 +1,8 @@
 ---
+sidebar_label: "구조화된 로깅"
 title: "구조화된 로그 - CyberGo DD | 필드와 체인 호출"
 description: "CyberGo DD 구조화된 로그 사용 가이드. 20개 이상의 타입 안전한 필드 생성자, Field 체인 전달 패턴, LoggerEntry 불변 설계 원리, 필드 명명 규칙과 검증 규칙, 구조화된 로그의 모범 사례와 일반적인 사용 패턴을 상세히 소개하여 개발자가 프로젝트에서 고성능 구조화된 로그 기록 솔루션을 효과적으로 사용할 수 있도록 돕습니다."
+sidebar_position: 2
 ---
 
 # 구조화된 로그
@@ -247,5 +249,5 @@ logger.InfoWith("요청 완료",
 
 - [파일 출력과 순환](./file-output) -- 로그를 파일에 기록
 - [민감 데이터 필터링](./sensitive-filtering) -- 민감 정보 자동 마스킹
-- [API 레퍼런스 - 필드](../api-reference/fields) -- 모든 필드 생성자
-- [API 레퍼런스 - LoggerEntry](../api-reference/entry) -- Entry 전체 메서드
+- [API 레퍼런스 - 필드](../api-reference/output-integration/fields) -- 모든 필드 생성자
+- [API 레퍼런스 - LoggerEntry](../api-reference/core/entry) -- Entry 전체 메서드

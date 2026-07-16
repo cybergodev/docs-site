@@ -1,6 +1,8 @@
 ---
+sidebar_label: "JSONL 처리"
 title: "Processor JSONL 메서드 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor JSONL 메서드: StreamJSONL, ForeachJSONL, MapJSONL, ReduceJSONL, FilterJSONL로 스트림 데이터 처리에 적합합니다."
+sidebar_position: 8
 ---
 
 # Processor JSONL 메서드
@@ -420,6 +422,6 @@ func main() {
 
 ## 관련 문서
 
-- [JSONL 프로세서](../jsonl) - 패키지 레벨 JSONL 함수
-- [대용량 파일 처리](../../large-files) - 대용량 파일 처리 가이드
+- [JSONL 프로세서](../../streaming/jsonl) - 패키지 레벨 JSONL 함수
+- [대용량 파일 처리](../../streaming/large-files) - 대용량 파일 처리 가이드
 - [반복자](../iterator) - IterableValue 타입 상세

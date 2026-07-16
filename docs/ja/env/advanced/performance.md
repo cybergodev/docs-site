@@ -1,6 +1,8 @@
 ---
+sidebar_label: "パフォーマンス最適化"
 title: "パフォーマンス最適化 - CyberGo env | 高並発読み書きチューニング"
 description: "CyberGo env 性能最適化ガイド。RWMutex 並行性、オブジェクトプール再利用、mlock メモリロック、大容量ファイルストリーミング、ベンチマークに基づくチューニングを提案します。"
+sidebar_position: 1
 ---
 
 # パフォーマンス最適化

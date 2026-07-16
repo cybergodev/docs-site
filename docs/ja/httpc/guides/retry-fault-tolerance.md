@@ -1,6 +1,8 @@
 ---
+sidebar_label: "リトライとフォールトトレランス"
 title: "リトライとフォールトトレランス - CyberGo HTTPC | バックオフと再試行"
 description: "HTTPC リトライとフォールトトレランスガイド: デフォルト指数バックオフ戦略と RetryConfig 設定、408/429/5xx 自動リトライ、カスタム RetryPolicy、Retry-After 解析、リクエストごとのリトライ制御を解説します。"
+sidebar_position: 5
 ---
 
 # リトライとフォールトトレランス
@@ -174,5 +176,5 @@ if err != nil {
 ## 次のステップ
 
 - [エラー処理](../advanced/error-handling) - 完全なエラー処理ガイド
-- [設定 API](../api-reference/config) - リトライ設定リファレンス
-- [インターフェース定義](../api-reference/interfaces) - RetryPolicy インターフェースリファレンス
+- [設定 API](../api-reference/client-config/config) - リトライ設定リファレンス
+- [インターフェース定義](../api-reference/types/interfaces) - RetryPolicy インターフェースリファレンス

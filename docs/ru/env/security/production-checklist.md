@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Контрольный список для продакшена"
 title: "Чек-лист продакшена - CyberGo env | Проверка безопасности"
 description: "Чек-лист безопасности CyberGo env: права .env, валидация RequiredKeys и AllowedKeys, аудит, обработка SecureValue и тюнинг производительности."
+sidebar_position: 2
 ---
 
 # Контрольный список для продакшена

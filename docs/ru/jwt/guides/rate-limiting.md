@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Ограничение скорости"
 title: "Лимит запросов - CyberGo JWT | Корзина токенов"
 description: "Лимиты запросов CyberGo JWT: настройка корзины токенов для ограничения запросов, приоритет ключей Subject, UserID и RateLimitKeyer, свой RateLimitProvider."
+sidebar_position: 4
 ---
 
 # Ограничение скорости

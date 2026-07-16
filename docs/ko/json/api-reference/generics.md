@@ -1,6 +1,8 @@
 ---
+sidebar_label: "제네릭"
 title: "제네릭 작업 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 제네릭 API: GetTyped[T], Result[T], AccessResult로 Go 1.18+ 제네릭을 활용해 컴파일 타임 타입 안전성을 제공합니다."
+sidebar_position: 10
 ---
 
 # 제네릭 작업
@@ -416,6 +418,6 @@ func main() {
 
 ## 관련 문서
 
-- [패키지 함수](./functions) - 타입 특정 getter 함수
+- [패키지 함수](./functions/) - 타입 특정 getter 함수
 - [타입 정의](./types) - AccessResult 자세한 정의
 - [설정](./config) - Config 설정 옵션

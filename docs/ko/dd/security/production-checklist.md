@@ -1,6 +1,8 @@
 ---
+sidebar_label: "프로덕션 체크리스트"
 title: "프로덕션 체크리스트 - CyberGo DD | 보안 출시 체크리스트"
 description: "CyberGo DD 로그 라이브러리 프로덕션 환경 배포 전의 전체 보안 체크리스트. 기본 설정 항목 확인, 민감 데이터 필터링 규칙 활성화와 테스트 검증, 감사 로그 스위치 확인, 파일 순환 전략 설정, HMAC 무결성 서명 설정 및 성능 벤치마크 튜닝 등 핵심 점검 항목을 다루어 로그 시스템이 안전하고 신뢰할 수 있으며 준수 요구 사항을 충족하도록 보장합니다."
+sidebar_position: 3
 ---
 
 # 프로덕션 체크리스트
@@ -96,5 +98,5 @@ logger.SetWriteErrorHandler(func(w io.Writer, err error) {
 ## 다음 단계
 
 - [보안 개요](./) -- 보안 기능 총정리
-- [보안 필터 API](../api-reference/security) -- 설정 레퍼런스
+- [보안 필터 API](../api-reference/security-audit/security) -- 설정 레퍼런스
 - [성능 최적화](../advanced/performance) -- 성능 튜닝

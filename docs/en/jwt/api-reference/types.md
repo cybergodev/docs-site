@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Types & Constants"
 title: "Types - CyberGo JWT | Types & Constants"
 description: "Types and constants: NumericDate, StringOrSlice serialization, SigningMethod, ValidationError, RateLimiter, SystemClock, FixedClock, and 12 algorithm constants."
+sidebar_position: 7
 ---
 
 # Types & Constants

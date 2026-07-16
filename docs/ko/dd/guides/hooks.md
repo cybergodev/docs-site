@@ -1,6 +1,8 @@
 ---
+sidebar_label: "훅 시스템"
 title: "훅 시스템 - CyberGo DD | 라이프사이클 훅 실전 가이드"
 description: "CyberGo DD 훅 시스템 실전 가이드. 6가지 라이프사이클 훅 이벤트 (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), HookRegistry 등록과 관리, HookContext 컨텍스트 데이터, 오류 처리 전략 및 일반적인 훅 사용 시나리오를 상세히 소개하여 개발자가 로그 라이브러리의 동작을 확장할 수 있도록 돕습니다."
+sidebar_position: 6
 ---
 
 # 훅 시스템
@@ -195,4 +197,4 @@ registry.Add(dd.HookAfterLog, newHookFunc)
 
 - [감사 로그](./audit-logging) -- 보안 감사 통합
 - [분산 추적](./context-tracing) -- 컨텍스트 통합
-- [API 레퍼런스 - Hooks](../api-reference/hooks) -- 훅 전체 API
+- [API 레퍼런스 - Hooks](../api-reference/security-audit/hooks) -- 훅 전체 API

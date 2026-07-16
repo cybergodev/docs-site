@@ -1,6 +1,8 @@
 ---
+sidebar_label: "파일 출력과 로테이션"
 title: "파일 출력과 순환 - CyberGo DD | 파일 로그 설정 가이드"
 description: "CyberGo DD 파일 출력과 로그 순환 설정 가이드. FileWriter 크기 순환 및 시간 정리 전략, BufferedWriter 버퍼 쓰기 최적화, MultiWriter 다중 대상 분배, 동적 Writer 관리 및 프로덕션 환경 모범 사례를 다루어 개발자가 고신뢰성 파일 로그 시스템을 구축할 수 있도록 돕습니다."
+sidebar_position: 3
 ---
 
 # 파일 출력과 순환
@@ -224,5 +226,5 @@ func NewProductionLogger() (*dd.Logger, error) {
 
 - [구조화된 로그](./structured-logging) -- 필드와 체인 호출
 - [민감 데이터 필터링](./sensitive-filtering) -- 자동 마스킹
-- [API 레퍼런스 - Writers](../api-reference/writers) -- Writer 전체 API
+- [API 레퍼런스 - Writers](../api-reference/output-integration/writers) -- Writer 전체 API
 - [성능 최적화](../advanced/performance) -- 성능 튜닝 조언

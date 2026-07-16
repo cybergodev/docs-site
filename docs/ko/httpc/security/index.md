@@ -1,6 +1,8 @@
 ---
+sidebar_label: "보안 개요"
 title: "보안 개요 - CyberGo HTTPC | 보안 기능 개요"
 description: "HTTPC 보안 기능 개요: TLS 1.2+ 버전 제어, SSRF 사설 IP 차단과 CIDR 면제, CRLF 주입 방어, StrictCookieSecurityConfig Cookie 보안과 리다이렉트 허용 목록을 다룹니다."
+sidebar_position: 1
 ---
 
 # 보안 개요

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "機密データフィルタリング"
 title: "機密データフィルタリング - CyberGo DD | 自動マスキング設定ガイド"
 description: "CyberGo DD 機密データフィルタリング設定ガイド。組み込みフィルタリングパターン（パスワード、API Key、クレジットカード、SSN、JWT など）、カスタム正規表現パターン、5 段階セキュリティレベル、業界コンプライアンスプリセット（HIPAA、PCI-DSS、政府基準）、フィルタリング統計とモニタリングをカバーし、コンプライアンスに準拠したログマスキングソリューションを構築できます。"
+sidebar_position: 4
 ---
 
 # 機密データフィルタリング
@@ -181,5 +183,5 @@ logger, _ := dd.New(dd.Config{
 
 - [監査ログ](./audit-logging) -- セキュリティイベント監査
 - [業界コンプライアンス設定](../security/compliance) -- HIPAA/PCI-DSS 詳解
-- [API リファレンス - Security](../api-reference/security) -- セキュリティ API 完全ドキュメント
+- [API リファレンス - Security](../api-reference/security-audit/security) -- セキュリティ API 完全ドキュメント
 - [本番チェックリスト](../security/production-checklist) -- リリース前チェック

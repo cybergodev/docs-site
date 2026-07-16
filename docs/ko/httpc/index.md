@@ -1,4 +1,5 @@
 ---
+sidebar_label: "개요"
 title: "HTTP 클라이언트 - CyberGo HTTPC | 보안 Go 클라이언트"
 description: "CyberGo HTTPC는 Go 보안 고성능 HTTP 클라이언트로, TLS 1.2+ 강제 암호화, SSRF 방어, 지수 백오프 재시도, 양파 모델 미들웨어 체인, 연결 풀 관리를 내장해 마이크로서비스와 고동시성 API 호출에 적합합니다."
 ---
@@ -50,9 +51,9 @@ func main() {
 
 | 목적 | 추천 |
 |------|------|
-| 5분 만에 시작 | [빠른 시작](./getting-started) |
+| 5분 만에 시작 | [빠른 시작](./getting-started/) |
 | 30분 실전 | [실전 튜토리얼](./guides/tutorial) |
-| 특정 사용법 찾기 | [치트시트](./cheatsheet) |
+| 특정 사용법 찾기 | [치트시트](./getting-started/cheatsheet) |
 | 보안 기능 알아보기 | [보안 개요](./security/) |
 | API 서명 확인 | [API 레퍼런스](./api-reference/) |
 

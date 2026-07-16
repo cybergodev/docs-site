@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Request & Response"
 title: "Request and Response - CyberGo HTTPC | Options & Responses"
 description: "HTTPC request and response guide: package functions and client requests, WithHeader/WithJSON options, Bearer auth, query parameters, and context control."
+sidebar_position: 2
 ---
 
 # Request and Response
@@ -251,5 +253,5 @@ When the limit is exceeded, an error containing `"exceeds limit"` is returned, w
 
 - [File Upload and Download](./file-transfer) - File transfer guide
 - [Domain Client and Sessions](./domain-session) - Session management
-- [Request Options API](../api-reference/options) - Complete options reference
-- [Result API](../api-reference/result) - Response handling reference
+- [Request Options API](../api-reference/core/options) - Complete options reference
+- [Result API](../api-reference/core/result) - Response handling reference

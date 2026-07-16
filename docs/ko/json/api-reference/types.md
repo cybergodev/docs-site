@@ -1,6 +1,8 @@
 ---
+sidebar_label: "타입 정의"
 title: "타입 정의 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 핵심 타입: Result[T], AccessResult, BatchOperation, BatchResult, Schema, Stats, HealthStatus, IterableValue로 전체 타입 시스템을 구성합니다."
+sidebar_position: 5
 ---
 
 # 타입 정의
@@ -1047,7 +1049,7 @@ if delim, ok := token.(json.Delim); ok {
 
 ## 관련 문서
 
-- [패키지 함수](./functions) - 패키지 레벨 함수 레퍼런스
+- [패키지 함수](./functions/) - 패키지 레벨 함수 레퍼런스
 - [Config](./config) - 설정 옵션
 - [Processor](./processor/) - 프로세서 메서드
 - [인터페이스 정의](./interfaces) - 확장 인터페이스

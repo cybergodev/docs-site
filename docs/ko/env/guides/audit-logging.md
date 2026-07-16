@@ -1,6 +1,8 @@
 ---
+sidebar_label: "감사 로그"
 title: "감사 로그 - CyberGo env | 보안 감사 구성"
 description: "CyberGo env 감사 로그 설정 가이드로 JSON 파일·표준 로그·채널 핸들러와 커스텀 AuditHandler로 변수 로딩·읽기·수정·삭제 작업을 기록해 규정 준수를 충족합니다."
+sidebar_position: 5
 ---
 
 # 감사 로그

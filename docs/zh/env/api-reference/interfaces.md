@@ -1,6 +1,8 @@
 ---
+sidebar_label: "接口定义"
 title: "接口定义 - CyberGo env | 核心接口层次"
 description: "CyberGo env 核心接口定义参考，采用细粒度设计支持依赖注入，含 Validator、FullAuditLogger、EnvParser、EnvStorage、FileSystem 等接口。"
+sidebar_position: 6
 ---
 
 # 接口定义

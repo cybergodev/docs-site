@@ -1,6 +1,8 @@
 ---
+sidebar_label: "概要"
 title: "API リファレンス - CyberGo HTTPC | API総索引"
 description: "HTTPC API リファレンス索引: コア、リクエスト/レスポンス、高度な機能で分類したナビゲーション。パッケージ関数、リクエストオプション、設定プリセット、ミドルウェア、ドメインクライアント、ダウンロード、エラータイプの完全な参照入口を提供します。"
+sidebar_position: 1
 ---
 
 # API リファレンス
@@ -26,27 +28,27 @@ httpc パッケージ
 
 | モジュール | 説明 |
 |-----------|------|
-| [パッケージ関数](./functions) | Get/Post/Put/Patch/Delete などのパッケージレベル関数、クライアントメソッド、ヘルパー関数 |
-| [設定](./config) | Config 構造体、5 種類のプリセット設定、検証関数、Cookie セキュリティ |
-| [インターフェース](./interfaces) | Client、Doer、DomainClienter、RetryPolicy などのコアインターフェース |
-| [Result](./result) | Result、RequestInfo、ResponseInfo、RequestMeta タイプと全メソッド |
+| [パッケージ関数](./core/functions) | Get/Post/Put/Patch/Delete などのパッケージレベル関数、クライアントメソッド、ヘルパー関数 |
+| [設定](./client-config/config) | Config 構造体、5 種類のプリセット設定、検証関数、Cookie セキュリティ |
+| [インターフェース](./types/interfaces) | Client、Doer、DomainClienter、RetryPolicy などのコアインターフェース |
+| [Result](./core/result) | Result、RequestInfo、ResponseInfo、RequestMeta タイプと全メソッド |
 
 ### リクエストとレスポンス
 
 | モジュール | 説明 |
 |-----------|------|
-| [リクエストオプション](./options) | 28 個の WithXxx リクエストオプション関数（ヘッダー、ボディ、認証、Cookie、コールバックなど） |
-| [ミドルウェア](./middleware) | Chain 組み合わせ、8 つの内蔵ミドルウェアファクトリ、監査イベントタイプ |
-| [エラータイプ](./errors) | ClientError、12 種類の ErrorType 列挙、12 個のエラー変数 |
+| [リクエストオプション](./core/options) | 28 個の WithXxx リクエストオプション関数（ヘッダー、ボディ、認証、Cookie、コールバックなど） |
+| [ミドルウェア](./client-config/middleware) | Chain 組み合わせ、8 つの内蔵ミドルウェアファクトリ、監査イベントタイプ |
+| [エラータイプ](./types/errors) | ClientError、12 種類の ErrorType 列挙、12 個のエラー変数 |
 
 ### 高度な機能
 
 | モジュール | 説明 |
 |-----------|------|
-| [ドメインクライアント](./domain-client) | DomainClient 作成、HTTP メソッド、ダウンロードメソッド、URL 結合ルール |
-| [セッション管理](./session) | SessionManager の Cookie/ヘッダー管理とセキュリティ検証 |
-| [ファイルダウンロード](./download) | ダウンロード関数、DownloadConfig、レジューム、セキュリティ保護 |
-| [定数とタイプ](./constants) | BodyKind 列挙、FormData/FileData、監査コンテキストキー |
+| [ドメインクライアント](./client-config/domain-client) | DomainClient 作成、HTTP メソッド、ダウンロードメソッド、URL 結合ルール |
+| [セッション管理](./client-config/session) | SessionManager の Cookie/ヘッダー管理とセキュリティ検証 |
+| [ファイルダウンロード](./client-config/download) | ダウンロード関数、DownloadConfig、レジューム、セキュリティ保護 |
+| [定数とタイプ](./types/constants) | BodyKind 列挙、FormData/FileData、監査コンテキストキー |
 
 ## クイックリファレンス
 

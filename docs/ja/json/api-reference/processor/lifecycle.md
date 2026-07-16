@@ -1,6 +1,8 @@
 ---
+sidebar_label: "ライフサイクル"
 title: "Processor ライフサイクル - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor ライフサイクル：New 作成、Close 解放、IsClosed 確認、GetStats 統計、GetHealthStatus 監視で並行安全な終了を保証します。"
+sidebar_position: 9
 ---
 
 # ライフサイクルと統計
@@ -267,5 +269,5 @@ go func() {
 ## 関連
 
 - [Config](../config) - 設定オプション（キャッシュサイズ、TTL など）
-- [Hook フックシステム](../hooks) - フックの詳細な使用ガイド
+- [Hook フックシステム](../../extensions/hooks) - フックの詳細な使用ガイド
 - [インターフェース定義](../interfaces) - Hook インターフェース

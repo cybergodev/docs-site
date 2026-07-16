@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Constants & Errors"
 title: "Constants & Errors - CyberGo env | Sentinels & Security"
 description: "CyberGo env constants and errors reference: DefaultMaxFileSize limit, ErrFileNotFound sentinel, ParseError type, plus IsSensitiveKey and MaskValue helpers."
+sidebar_position: 7
 ---
 
 # Constants & Errors

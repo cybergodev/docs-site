@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Интерфейсы"
 title: "Определения интерфейсов - CyberGo JSON | Справочник API"
 description: "Интерфейсы CyberGo JSON: CustomEncoder, TypeEncoder, Validator, Hook, PathParser и DangerousPattern для расширения кодирования, валидации и безопасности."
+sidebar_position: 6
 ---
 
 # Определения интерфейсов
@@ -647,6 +649,6 @@ func (ve *ValidationError) Error() string
 
 ## Смотрите также
 
-- [Система перехватчиков Hook](./hooks) - Подробное руководство по перехватчикам
-- [Validator](./validator) - Подробное руководство по валидаторам
-- [CustomEncoder](./custom-encoder) - Руководство по пользовательскому кодировщику
+- [Система перехватчиков Hook](../extensions/hooks) - Подробное руководство по перехватчикам
+- [Validator](../extensions/validator) - Подробное руководство по валидаторам
+- [CustomEncoder](../extensions/custom-encoder) - Руководство по пользовательскому кодировщику

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "ファイル出力とローテーション"
 title: "ファイル出力とローテーション - CyberGo DD | ファイルログ設定ガイド"
 description: "CyberGo DD ファイル出力とログローテーション設定ガイド。FileWriter のサイズローテーションと時間クリーンアップポリシー、BufferedWriter バッファ書き込み最適化、MultiWriter マルチ出力先ディスパッチ、動的 Writer 管理、本番環境のベストプラクティスをカバーし、高信頼性のファイルログシステムを構築できます。"
+sidebar_position: 3
 ---
 
 # ファイル出力とローテーション
@@ -224,5 +226,5 @@ func NewProductionLogger() (*dd.Logger, error) {
 
 - [構造化ログ](./structured-logging) -- フィールドとチェーン呼び出し
 - [機密データフィルタリング](./sensitive-filtering) -- 自動マスキング
-- [API リファレンス - Writers](../api-reference/writers) -- Writer 完全 API
+- [API リファレンス - Writers](../api-reference/output-integration/writers) -- Writer 完全 API
 - [パフォーマンス最適化](../advanced/performance) -- パフォーマンスチューニングのヒント

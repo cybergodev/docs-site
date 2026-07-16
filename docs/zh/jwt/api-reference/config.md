@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Config"
 title: "Config - CyberGo JWT | 统一配置说明"
 description: "Config 是 CyberGo JWT 统一配置：签名密钥与算法、访问与刷新令牌 TTL、签发者、期望受众、时钟偏移、黑名单与速率限制等全部字段、默认值、自动填充规则与 Validate 校验逻辑。"
+sidebar_position: 4
 ---
 
 # Config

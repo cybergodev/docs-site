@@ -1,6 +1,8 @@
 ---
+sidebar_label: "TLS と証明書ピンニング"
 title: "TLS と証明書ピンニング - CyberGo HTTPC | 暗号とピンニング"
 description: "HTTPC TLS と証明書ピンニングガイド: TLS 1.2-1.3 バージョン制御と暗号スイート、カスタム CA 証明書の読み込み、mTLS 双方向認証、CertificatePinner ピンニング API、HTTP/2 ネゴシエーションを解説します。"
+sidebar_position: 3
 ---
 
 # TLS と証明書ピンニング
@@ -193,4 +195,4 @@ cfg.Connection.EnableHTTP2 = false // HTTP/2 を無効化
 
 - [SSRF 防護](./ssrf) - SSRF セキュリティ設定
 - [セキュリティ概要](./) - セキュリティ機能一覧
-- [設定 API](../api-reference/config) - SecurityConfig リファレンス
+- [設定 API](../api-reference/client-config/config) - SecurityConfig リファレンス

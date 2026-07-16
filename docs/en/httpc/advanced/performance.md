@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Performance"
 title: "Performance Optimization - CyberGo HTTPC | Tuning Presets"
 description: "HTTPC performance guide: comparing Default/Secure/Performance/Minimal presets, tuning pool and timeouts, Result lifecycle, and high-concurrency patterns."
+sidebar_position: 1
 ---
 
 # Performance Optimization

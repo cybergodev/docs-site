@@ -1,0 +1,232 @@
+/**
+ * Homepage: project card grid + Hero/Feature enhancements.
+ */
+
+/* ============================================
+   Project Card Grid Layout
+   ============================================ */
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  align-items: stretch;
+}
+
+.project-card {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 16px;
+  padding: 28px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--vp-c-bg-soft);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.project-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--vp-c-brand-1), var(--vp-c-brand-2));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.project-card:hover {
+  border-color: var(--vp-c-brand-1);
+  box-shadow: 0 8px 32px rgba(118, 185, 0, 0.15);
+  transform: translateY(-4px);
+}
+
+.project-card:hover::before {
+  opacity: 1;
+}
+
+.project-card .card-main {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.project-card .card-main:hover {
+  text-decoration: none;
+}
+
+.project-card .title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--vp-c-text-1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-card .title .icon {
+  font-size: 1.6rem;
+  filter: saturate(1.2);
+}
+
+.project-card .description {
+  color: var(--vp-c-text-2);
+  line-height: 1.7;
+  margin-bottom: 18px;
+  font-size: 0.95rem;
+  flex: 1;
+}
+
+.project-card .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.project-card .tag {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.project-card:hover .tag {
+  background: rgba(118, 185, 0, 0.2);
+}
+
+.project-card .actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-direction: row-reverse;
+}
+
+.project-card .actions .primary {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--vp-c-brand-1);
+  transition: all 0.2s ease;
+}
+
+.project-card:hover .actions .primary {
+  color: var(--vp-c-brand-2);
+}
+
+.project-card .actions .github-link {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--vp-c-text-3);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.project-card .actions .github-link:hover {
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+
+.project-card .actions .github-link .github-icon {
+  flex-shrink: 0;
+}
+
+/* ============================================
+   Hero Section Enhancements
+   ============================================ */
+
+.VPHero .name {
+  background: linear-gradient(
+    135deg,
+    var(--vp-c-brand-1),
+    var(--vp-c-brand-2),
+    var(--vp-c-brand-3)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.VPHero .text {
+  font-size: 2.5rem !important;
+  line-height: 1.2 !important;
+}
+
+.VPHero .tagline {
+  font-size: 1.1rem !important;
+  line-height: 1.5 !important;
+}
+
+@media (max-width: 768px) {
+  .VPHero .text {
+    font-size: 1.75rem !important;
+  }
+  .VPHero .tagline {
+    font-size: 0.95rem !important;
+  }
+}
+
+.VPHero .actions .action-button {
+  transition: all 0.3s ease;
+}
+
+.VPHero .actions .action-button:hover {
+  transform: translateY(-2px);
+}
+
+/* Feature cards */
+.VPFeature .icon {
+  color: var(--vp-c-brand-1);
+  font-size: 1.5rem;
+}
+
+.VPFeature {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.VPFeature:hover {
+  border-color: var(--vp-c-brand-soft);
+  transform: translateY(-2px);
+}
+
+.VPFeatures .container {
+  max-width: 1200px;
+}
+
+.VPFeature .title {
+  font-weight: 600;
+}
+
+.home-projects h2 {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+/* Code groups */
+.vp-code-group .tabs label {
+  font-weight: 500;
+}

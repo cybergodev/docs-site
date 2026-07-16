@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Modify"
 title: "Processor Data Modification - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor modify methods: Set, SetMultiple batching, SetCreate auto-path creation, Delete, and DeleteClean cleanup, all supporting chained calls."
+sidebar_position: 3
 ---
 
 # Data Modification Methods

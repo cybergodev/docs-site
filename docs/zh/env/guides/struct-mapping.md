@@ -1,6 +1,8 @@
 ---
+sidebar_label: "结构体映射"
 title: "结构体映射 - CyberGo env | 环境变量到结构体"
 description: "CyberGo env 结构体映射指南，通过 env 标签将环境变量自动映射到 Go 结构体字段，涵盖嵌套结构体、指针与切片、自定义转换器、默认值设置与必填验证，实现类型安全的配置加载。"
+sidebar_position: 1
 ---
 
 # 结构体映射
@@ -527,4 +529,4 @@ func main() {
 
 - [包函数 - ParseInto](/zh/env/api-reference/functions#parseinto) - ParseInto 函数参考
 - [Loader API - ParseInto](/zh/env/api-reference/loader#parseinto) - Loader 方法参考
-- [快速开始](/zh/env/getting-started) - 基本用法
+- [快速开始](/zh/env/getting-started/) - 基本用法

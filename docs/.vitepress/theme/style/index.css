@@ -1,0 +1,13 @@
+/**
+ * CyberGoDev custom theme styles — aggregated entry point.
+ *
+ * Split by UI concern (was a single 724-line custom.css). Import order follows
+ * the original cascade: tokens (CSS variables) first so every var() resolves,
+ * then UI layers in the original sequence. theme/index.ts imports this file.
+ */
+@import './tokens.css';
+@import './home.css';
+@import './nav.css';
+@import './overrides.css';
+@import './components.css';
+@import './utilities.css';

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "개요"
 title: "API 레퍼런스 - CyberGo JSON | 전체 함수 문서"
 description: "CyberGo JSON 전체 API 레퍼런스: GetString/GetInt 쿼리, Set/Delete 수정, Marshal/Unmarshal, Processor, Schema 검증, Hook, 보안 설정을 표준 라이브러리 호환으로 제공합니다."
+sidebar_position: 1
 ---
 
 # API 레퍼런스
@@ -11,21 +13,21 @@ description: "CyberGo JSON 전체 API 레퍼런스: GetString/GetInt 쿼리, Set
 
 | 모듈 | 설명 |
 |------|------|
-| [패키지 함수](./functions) | 패키지 레벨 함수 참조, 경로 쿼리, 타입 가져오기, 인코딩/디코딩 등 |
+| [패키지 함수](./functions/) | 패키지 레벨 함수 참조, 경로 쿼리, 타입 가져오기, 인코딩/디코딩 등 |
 | [Processor](./processor/) | 프로세서 메서드와 설정 |
 | [Config](./config) | 설정 옵션 상세 설명 |
 | [타입 정의](./types) | 핵심 타입 정의 (Encoder/Decoder 포함) |
 | [제네릭 작업](./generics) | 제네릭 API 참조 |
 | [인터페이스 정의](./interfaces) | 확장 인터페이스 정의 |
-| [스트림 처리](./large-file) | 스트림 프로세서 참조 |
-| [NDJSON 처리](./jsonl) | JSONL/NDJSON 프로세서 |
+| [스트림 처리](../streaming/large-file) | 스트림 프로세서 참조 |
+| [NDJSON 처리](../streaming/jsonl) | JSONL/NDJSON 프로세서 |
 | [반복자](./iterator) | 반복 순회 API |
 | [보조 함수](./helpers) | 타입 변환과 유틸리티 함수 |
 | [포맷 출력](./print) | 포맷팅과 미화 출력 |
-| [보안 검증](./security) | 보안 관련 API |
-| [검증기](./validator) | Schema 검증기 |
-| [훅 시스템](./hooks) | 작업 가로채기 훅 |
-| [커스텀 인코더](./custom-encoder) | 커스텀 인코더 |
+| [보안 검증](../security/security-mode) | 보안 관련 API |
+| [검증기](../extensions/validator) | Schema 검증기 |
+| [훅 시스템](../extensions/hooks) | 작업 가로채기 훅 |
+| [커스텀 인코더](../extensions/custom-encoder) | 커스텀 인코더 |
 | [상수와 오류](./constants) | 상수와 오류 타입 |
 
 ## 빠른 찾기
@@ -109,7 +111,7 @@ description: "CyberGo JSON 전체 API 레퍼런스: GetString/GetInt 쿼리, Set
 
 ## 관련 문서
 
-- [빠른 시작](../getting-started) -- 설치와 기본 사용법
-- [경로 표현식 문법](../path-syntax) -- 경로 쿼리 문법
-- [사용 예제](../examples) -- 실전 코드 예제
-- [대용량 파일 처리](../large-files) -- 스트림 처리 가이드
+- [빠른 시작](../getting-started/) -- 설치와 기본 사용법
+- [경로 표현식 문법](../getting-started/path-syntax) -- 경로 쿼리 문법
+- [사용 예제](../examples/) -- 실전 코드 예제
+- [대용량 파일 처리](../streaming/large-files) -- 스트림 처리 가이드

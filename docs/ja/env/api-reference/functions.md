@@ -1,6 +1,8 @@
 ---
+sidebar_label: "パッケージ関数"
 title: "パッケージ関数 - CyberGo env | グローバル便利関数"
 description: "CyberGo env のパッケージ関数 API リファレンス。Load、GetString、GetInt、Keys、Marshal、ParseInto などスレッドセーフなグローバルローダー基盤の簡潔な API を提供します。"
+sidebar_position: 2
 ---
 
 # パッケージ関数
@@ -373,7 +375,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ### GetSliceFrom[T]
 
 ```go
-func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
+func GetSliceFrom[T sliceElement](./loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
 指定の Loader インスタンスからスライス値を取得します。これは独立したジェネリック関数です（Loader メソッドではありません）。

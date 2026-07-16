@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Структуры и маппинг"
 title: "Маппинг структур - CyberGo env | Переменные в структуры"
 description: "Руководство по маппингу структур CyberGo env: переменные в поля через теги env, вложенность, указатели, срезы, конвертеры и обязательная валидация."
+sidebar_position: 1
 ---
 
 # Маппинг структур
@@ -527,4 +529,4 @@ func main() {
 
 - [Функции пакета - ParseInto](/ru/env/api-reference/functions#parseinto) - Справка по функции ParseInto
 - [Loader API - ParseInto](/ru/env/api-reference/loader#parseinto) - Справка по методу Loader
-- [Быстрый старт](/ru/env/getting-started) - Базовое использование
+- [Быстрый старт](/ru/env/getting-started/) - Базовое использование

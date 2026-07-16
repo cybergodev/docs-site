@@ -1,6 +1,8 @@
 ---
+sidebar_label: "JSONL 处理"
 title: "Processor JSONL 方法 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor JSONL 方法：StreamJSONL 流式、ForeachJSONL 迭代、MapJSONL 映射、ReduceJSONL 归约与 FilterJSONL 过滤，适合流式数据处理。"
+sidebar_position: 8
 ---
 
 # Processor JSONL 方法
@@ -420,6 +422,6 @@ func main() {
 
 ## 相关
 
-- [JSONL 处理器](../jsonl) - 包级 JSONL 函数
-- [大文件处理](../../large-files) - 大文件处理指南
+- [JSONL 处理器](../../streaming/jsonl) - 包级 JSONL 函数
+- [大文件处理](../../streaming/large-files) - 大文件处理指南
 - [迭代器](../iterator) - IterableValue 类型详解

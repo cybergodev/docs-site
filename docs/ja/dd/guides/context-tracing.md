@@ -1,6 +1,8 @@
 ---
+sidebar_label: "分散トレーシング統合"
 title: "分散トレーシング統合 - CyberGo DD | Context とトレーシングガイド"
 description: "CyberGo DD 分散トレーシング統合ガイド。TraceID、SpanID、RequestID コンテキスト伝播、ContextExtractor カスタムエクストラクタ、HTTP ミドルウェア統合パターン、リクエストスコープログ、OpenTelemetry などのトレーシングシステムとの統合方法をカバーし、マイクロサービスアーキテクチャでエンドツーエンドのログトレーシングを実現します。"
+sidebar_position: 7
 ---
 
 # 分散トレーシング統合
@@ -239,5 +241,5 @@ func (rl *RequestLogger) Finish(status int) {
 
 - [フックシステム](./hooks) -- ライフサイクルフック拡張
 - [監査ログ](./audit-logging) -- セキュリティ監査
-- [API リファレンス - Context](../api-reference/context) -- Context 完全 API
+- [API リファレンス - Context](../api-reference/output-integration/context) -- Context 完全 API
 - [Web サービスサンプル](../examples/web-service) -- 完全 Web サービス例

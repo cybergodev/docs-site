@@ -1,6 +1,8 @@
 ---
+sidebar_label: "構造体マッピング"
 title: "構造体マッピング - CyberGo env | 環境変数から構造体へ"
 description: "CyberGo env 構造体マッピングガイド。env タグで変数を構造体にマッピングし、ネスト、ポインタ、スライス、カスタムコンバーター、デフォルト値、必須検証を説明します。"
+sidebar_position: 1
 ---
 
 # 構造体マッピング
@@ -527,4 +529,4 @@ func main() {
 
 - [パッケージ関数 - ParseInto](/ja/env/api-reference/functions#parseinto) - ParseInto 関数リファレンス
 - [Loader API - ParseInto](/ja/env/api-reference/loader#parseinto) - Loader メソッドリファレンス
-- [クイックスタート](/ja/env/getting-started) - 基本的な使い方
+- [クイックスタート](/ja/env/getting-started/) - 基本的な使い方

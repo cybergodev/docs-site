@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Config"
 title: "Конфигурация Config - CyberGo JSON | Справочник API"
 description: "Справочник Config CyberGo JSON: DefaultConfig, SecurityConfig, PrettyConfig, кэш, лимиты размеров и кодирование для настройки поведения JSON в Go."
+sidebar_position: 4
 ---
 
 # Config

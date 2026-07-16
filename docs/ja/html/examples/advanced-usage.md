@@ -1,13 +1,15 @@
 ---
+sidebar_label: "高度なサンプル"
 title: "高度なサンプル - CyberGo HTML | 応用シナリオ"
 description: "CyberGo HTML 高度なサンプル：カスタム Scorer、マルチ Sink 監査パイプライン、バッチファイルと並列制御、Processor プーリング、ChannelAuditSink 監視の実行可能例です。"
+sidebar_position: 2
 ---
 
 # 高度なサンプル
 
 ## カスタム Scorer
 
-特定のウェブサイト構造に合わせてコンテンツ認識ロジックをカスタマイズします。完全な実装は [テストとカスタム拡張](../guides/testing-custom) を参照してください。以下はコアとなる使い方です：
+特定のウェブサイト構造に合わせてコンテンツ認識ロジックをカスタマイズします。完全な実装は [テストとカスタム拡張](../guides/integration/testing-custom) を参照してください。以下はコアとなる使い方です：
 
 ```go
 package main

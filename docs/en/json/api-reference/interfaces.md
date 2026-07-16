@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Interfaces"
 title: "Interface Definitions - CyberGo JSON | API Reference"
 description: "CyberGo JSON extension interfaces: CustomEncoder, TypeEncoder, Validator, Hook, PathParser, and DangerousPattern to extend encoding, validation, and security."
+sidebar_position: 6
 ---
 
 # Interface Definitions
@@ -647,6 +649,6 @@ func (ve *ValidationError) Error() string
 
 ## See Also
 
-- [Hook System](./hooks) - Detailed hook usage guide
-- [Validator](./validator) - Detailed validator usage guide
-- [CustomEncoder](./custom-encoder) - Custom encoder guide
+- [Hook System](../extensions/hooks) - Detailed hook usage guide
+- [Validator](../extensions/validator) - Detailed validator usage guide
+- [CustomEncoder](../extensions/custom-encoder) - Custom encoder guide

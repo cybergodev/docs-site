@@ -1,4 +1,5 @@
 ---
+sidebar_label: "概述"
 title: "HTML 提取库 - CyberGo HTML | 生产级 Go 库"
 description: "CyberGo HTML 是高性能 Go HTML 内容提取与清洗库，提供智能文章识别、自动编码检测、并发批量处理与可插拔审计，输出文本、Markdown、JSON，适用于 Web 抓取与文档分析。"
 ---
@@ -99,17 +100,17 @@ HTML 库围绕三个核心类型构建：
 
 | 阶段 | 页面 | 你将学到 |
 |------|------|----------|
-| 入门 | [快速开始](./getting-started) | 安装、基本用法、两种调用方式 |
-| 核心 | [内容提取](./guides/content-extraction) | Extract 全家族、Config 配置、Result 解读 |
-| 格式 | [输出格式](./guides/output-formats) | Markdown / JSON 输出、格式配置 |
-| 性能 | [缓存与复用](./guides/processor-cache) | Processor 生命周期、缓存调优、批量处理 |
-| 扩展 | [链接提取](./guides/link-extraction) | 链接提取、分组、资源发现 |
-| 安全 | [审计管道](./guides/audit-pipeline) | 审计系统、自定义 Sink、安全监控 |
-| 高级 | [测试与自定义](./guides/testing-custom) | 自定义 Scorer、ContentNode、测试模式 |
-| 参考 | [速查表](./cheatsheet) | 常用 API 一览 |
+| 入门 | [快速开始](./getting-started/) | 安装、基本用法、两种调用方式 |
+| 核心 | [内容提取](./guides/core-features/content-extraction) | Extract 全家族、Config 配置、Result 解读 |
+| 格式 | [输出格式](./guides/core-features/output-formats) | Markdown / JSON 输出、格式配置 |
+| 性能 | [缓存与复用](./guides/advanced-patterns/processor-cache) | Processor 生命周期、缓存调优、批量处理 |
+| 扩展 | [链接提取](./guides/core-features/link-extraction) | 链接提取、分组、资源发现 |
+| 安全 | [审计管道](./guides/advanced-patterns/audit-pipeline) | 审计系统、自定义 Sink、安全监控 |
+| 高级 | [测试与自定义](./guides/integration/testing-custom) | 自定义 Scorer、ContentNode、测试模式 |
+| 参考 | [速查表](./getting-started/cheatsheet) | 常用 API 一览 |
 
 ## 下一步
 
-- [快速开始](./getting-started) - 5 分钟入门教程
-- [速查表](./cheatsheet) - 常用操作速查
+- [快速开始](./getting-started/) - 5 分钟入门教程
+- [速查表](./getting-started/cheatsheet) - 常用操作速查
 - [API 参考](./api-reference/) - 完整 API 文档

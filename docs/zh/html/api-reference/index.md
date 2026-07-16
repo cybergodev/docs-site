@@ -1,6 +1,8 @@
 ---
+sidebar_label: "概览"
 title: "API 参考 - CyberGo HTML | 完整模块索引"
 description: "CyberGo HTML 完整 API 索引：包函数与 Processor 两种调用方式，涵盖内容提取、格式输出、链接、批量、配置、审计与类型等全部模块。"
+sidebar_position: 1
 ---
 
 # API 参考
@@ -9,16 +11,16 @@ HTML 库提供以下核心组件：
 
 | 组件 | 说明 | 文档 |
 |------|------|------|
-| 包函数 | 便捷函数，适合一次性调用 | [包函数](./functions) |
-| Processor | 处理器实例，复用资源和缓存 | [Processor](./processor) |
-| Config | 配置结构体和预设 | [配置](./config) |
-| 输出格式 | Markdown、JSON 输出 | [输出格式](./output) |
-| 链接提取 | 独立的链接提取 API | [链接提取](./links) |
-| 批量处理 | 并发批量提取 | [批量处理](./batch) |
-| 接口 | Extractor、StatsProvider 等 | [接口定义](./interfaces) |
-| 类型 | Result、ImageInfo 等 | [类型定义](./types) |
-| 常量与错误 | 默认值、哨兵错误 | [常量与错误](./constants) |
-| 审计系统 | 审计管道和 Sink | [审计系统](./audit) |
+| 包函数 | 便捷函数，适合一次性调用 | [包函数](./core/functions) |
+| Processor | 处理器实例，复用资源和缓存 | [Processor](./core/processor) |
+| Config | 配置结构体和预设 | [配置](./core/config) |
+| 输出格式 | Markdown、JSON 输出 | [输出格式](./modules/output) |
+| 链接提取 | 独立的链接提取 API | [链接提取](./modules/links) |
+| 批量处理 | 并发批量提取 | [批量处理](./modules/batch) |
+| 接口 | Extractor、StatsProvider 等 | [接口定义](./types/interfaces) |
+| 类型 | Result、ImageInfo 等 | [类型定义](./types/type-defs) |
+| 常量与错误 | 默认值、哨兵错误 | [常量与错误](./types/constants) |
+| 审计系统 | 审计管道和 Sink | [审计系统](./modules/audit) |
 
 ## API 总览
 

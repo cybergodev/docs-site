@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Обзор"
 title: "Обзор безопасности - CyberGo DD | Безопасность логов"
 description: "Всесторонний обзор функций безопасности библиотеки логирования CyberGo DD, включая автоматическое обнаружение и маскирование конфиденциальных данных, верификацию и защиту файловых путей, асинхронную запись аудитных событий и возможности цепочной трассировки, технологию защиты от подделки HMAC подписями целостности и руководство по лучшим практикам конфигурации соответствия, всесторонне обеспечивающие безопасность системы логирования от фильтрации данных до аудит-трассировки."
+sidebar_position: 1
 ---
 
 # Обзор безопасности
@@ -43,7 +45,7 @@ filter, _ := dd.NewCustomSensitiveDataFilter(
 )
 ```
 
-Подробнее в [API фильтрации безопасности](../api-reference/security).
+Подробнее в [API фильтрации безопасности](../api-reference/security-audit/security).
 
 ## Безопасность путей
 
@@ -94,7 +96,7 @@ audit.LogSecurityViolation("sql_injection", "SQL-инъекция", map[string]a
 })
 ```
 
-Подробнее в [API аудитных логов](../api-reference/audit).
+Подробнее в [API аудитных логов](../api-reference/security-audit/audit).
 
 ## Целостность логов
 
@@ -107,10 +109,10 @@ signature := signer.Sign(logMessage)
 // При проверке: signer.Verify(signedEntry)
 ```
 
-Подробнее в [API подписей целостности](../api-reference/integrity).
+Подробнее в [API подписей целостности](../api-reference/security-audit/integrity).
 
 ## Следующие шаги
 
 - [Контрольный список для продакшена](./production-checklist) -- проверка безопасности перед развёртыванием
-- [API фильтрации безопасности](../api-reference/security) -- подробное описание SensitiveDataFilter
-- [API аудитных логов](../api-reference/audit) -- подробное описание AuditLogger
+- [API фильтрации безопасности](../api-reference/security-audit/security) -- подробное описание SensitiveDataFilter
+- [API аудитных логов](../api-reference/security-audit/audit) -- подробное описание AuditLogger

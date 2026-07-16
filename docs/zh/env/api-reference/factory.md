@@ -1,6 +1,8 @@
 ---
+sidebar_label: "组件工厂"
 title: "ComponentFactory API - CyberGo env | 组件工厂"
 description: "CyberGo env 的 ComponentFactory 组件工厂 API 参考，统一创建审计处理器、验证器、文件系统适配器并注册自定义解析器，提供生命周期 Close 管理。"
+sidebar_position: 8
 ---
 
 # ComponentFactory API

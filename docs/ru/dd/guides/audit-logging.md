@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Аудитные логи"
 title: "Аудитные логи - CyberGo DD | Руководство по аудиту"
 description: "Практическое руководство по аудитным логам CyberGo DD, охватывающее механизм асинхронной записи событий AuditLogger, 11 встроенных типов аудитных событий, фильтрацию по уровню серьёзности, интеграцию с HMAC-подписями целостности, статистику аудита и мониторинг в реальном времени, проверку логов и стратегии защиты от подделки, помогающее разработчикам создать корпоративную систему аудита безопасности, соответствующую требованиям соответствия."
+sidebar_position: 5
 ---
 
 # Аудитные логи
@@ -196,5 +198,5 @@ func main() {
 
 - [Практика HMAC-подписей](../advanced/integrity) -- подробное описание подписей целостности
 - [Конфигурация отраслевого соответствия](../security/compliance) -- требования аудита HIPAA/PCI-DSS
-- [Справочник API - Audit](../api-reference/audit) -- полный API AuditLogger
-- [Справочник API - Integrity](../api-reference/integrity) -- API IntegritySigner
+- [Справочник API - Audit](../api-reference/security-audit/audit) -- полный API AuditLogger
+- [Справочник API - Integrity](../api-reference/security-audit/integrity) -- API IntegritySigner

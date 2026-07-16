@@ -1,6 +1,8 @@
 ---
+sidebar_label: "파일 업로드와 다운로드"
 title: "파일 업로드와 다운로드 - CyberGo HTTPC | 업로드와 다운로드"
 description: "HTTPC 파일 업로드와 다운로드 가이드: WithFile 간단 업로드, WithFormData 다중 파일 업로드, Download 통합 다운로드, 이어받기 ResumeDownload와 SHA-256 체크섬 등 보안 방어를 다룹니다."
+sidebar_position: 4
 ---
 
 # 파일 업로드와 다운로드
@@ -179,6 +181,6 @@ result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
 
 ## 다음 단계
 
-- [파일 다운로드 API](../api-reference/download) - 완전한 다운로드 API 참조
+- [파일 다운로드 API](../api-reference/client-config/download) - 완전한 다운로드 API 참조
 - [도메인 클라이언트와 세션](./domain-session) - 세션 관리
 - [요청과 응답](./request-response) - 기본 요청 가이드

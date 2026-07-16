@@ -1,6 +1,8 @@
 ---
+sidebar_label: "変数展開"
 title: "変数展開 - CyberGo env 変数構文"
 description: "CyberGo env 変数展開構文ガイド。${VAR} と ${VAR:-default} 参照、条件付き展開、循環参照検出、MaxExpansionDepth 制限を .env ファイルに適用します。"
+sidebar_position: 4
 ---
 
 # 変数展開
@@ -252,6 +254,6 @@ func main() {
 
 ## 関連ドキュメント
 
-- [クイックスタート](/ja/env/getting-started) - 基本的な使用方法
+- [クイックスタート](/ja/env/getting-started/) - 基本的な使用方法
 - [Config API](/ja/env/api-reference/config) - ExpandVariables 設定
 - [定数とエラー](/ja/env/api-reference/constants) - 展開深度制限

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "チュートリアル"
 title: "チュートリアル - CyberGo HTTPC | GitHub API 実戦"
 description: "HTTPC 実践チュートリアル: httpc.Get から段階的に完全な GitHub REST API クライアントを構築し、JSON 解析、ドメインクライアント、ミドルウェアチェーン組み合わせ、ClientError エラー処理、ファイルダウンロードをカバーします。"
+sidebar_position: 1
 ---
 
 # チュートリアル：GitHub API クライアントの構築

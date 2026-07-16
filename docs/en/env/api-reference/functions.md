@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Package Functions"
 title: "Package Functions - CyberGo env | Global Helpers"
 description: "CyberGo env package function API reference: Load, GetString, GetInt, Keys, Marshal and ParseInto over a thread-safe global default Loader."
+sidebar_position: 2
 ---
 
 # Package Functions
@@ -373,7 +375,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ### GetSliceFrom[T]
 
 ```go
-func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
+func GetSliceFrom[T sliceElement](./loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
 Gets a slice value from a specific Loader instance. This is a standalone generic function (not a Loader method).

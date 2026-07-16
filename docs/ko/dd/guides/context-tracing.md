@@ -1,6 +1,8 @@
 ---
+sidebar_label: "분산 추적 통합"
 title: "분산 추적 통합 - CyberGo DD | Context와 추적 가이드"
 description: "CyberGo DD 분산 추적 통합 가이드. TraceID, SpanID, RequestID 컨텍스트 전파, ContextExtractor 커스텀 추출기, HTTP 미들웨어 통합 패턴, 요청 범위 로그 및 OpenTelemetry 등 추적 시스템과의 통합 방식을 다루어 개발자가 마이크로서비스 아키텍처에서 엔드투엔드 로그 추적을 구현할 수 있도록 돕습니다."
+sidebar_position: 7
 ---
 
 # 분산 추적 통합
@@ -239,5 +241,5 @@ func (rl *RequestLogger) Finish(status int) {
 
 - [훅 시스템](./hooks) -- 라이프사이클 훅 확장
 - [감사 로그](./audit-logging) -- 보안 감사
-- [API 레퍼런스 - Context](../api-reference/context) -- Context 전체 API
+- [API 레퍼런스 - Context](../api-reference/output-integration/context) -- Context 전체 API
 - [웹 서비스 예제](../examples/web-service) -- 전체 웹 서비스 예제

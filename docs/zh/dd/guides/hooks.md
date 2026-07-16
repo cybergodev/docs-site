@@ -1,6 +1,8 @@
 ---
+sidebar_label: "钩子系统"
 title: "钩子系统 - CyberGo DD | 生命周期钩子实战指南"
 description: "CyberGo DD 钩子系统实战指南，详细介绍 6 种生命周期钩子事件（BeforeLog、AfterLog、OnFilter、OnRotate、OnClose、OnError）、HookRegistry 注册与管理、HookContext 上下文数据、错误处理策略以及常见钩子使用场景，帮助开发者扩展日志库行为。"
+sidebar_position: 6
 ---
 
 # 钩子系统
@@ -195,4 +197,4 @@ registry.Add(dd.HookAfterLog, newHookFunc)
 
 - [审计日志](./audit-logging) -- 安全审计集成
 - [分布式追踪](./context-tracing) -- 上下文集成
-- [API 参考 - Hooks](../api-reference/hooks) -- 钩子完整 API
+- [API 参考 - Hooks](../api-reference/security-audit/hooks) -- 钩子完整 API

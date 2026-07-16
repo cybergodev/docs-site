@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Безопасность и аудит на практике"
 title: "Безопасность и аудит - CyberGo DD | Примеры логов"
 description: "Полная коллекция практических примеров фильтрации безопасности и аудитных логов CyberGo DD, охватывающая настройку правил фильтрации конфиденциальных данных, HMAC-подписи целостности и проверку, запись аудитных событий и массовую проверку, отраслевые конфигурации соответствия (HIPAA/PCI-DSS) и лучшие практики и рекомендации по проектированию и развёртыванию архитектуры безопасных логов в производственных средах."
+sidebar_position: 3
 ---
 
 # Безопасность и аудит на практике
@@ -225,7 +227,7 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
 
 ## Следующие шаги
 
-- [Справочник API - Security](../api-reference/security) -- полный API фильтрации безопасности
-- [Справочник API - Audit](../api-reference/audit) -- полный API аудитных логов
-- [Справочник API - Integrity](../api-reference/integrity) -- API подписей целостности
+- [Справочник API - Security](../api-reference/security-audit/security) -- полный API фильтрации безопасности
+- [Справочник API - Audit](../api-reference/security-audit/audit) -- полный API аудитных логов
+- [Справочник API - Integrity](../api-reference/security-audit/integrity) -- API подписей целостности
 - [Контрольный список для продакшена](../security/production-checklist) -- проверка безопасности перед развёртыванием

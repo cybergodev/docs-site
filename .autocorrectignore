@@ -1,0 +1,18 @@
+# Build output & deps
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+dist/
+report/
+tmp/
+
+# Lockfiles
+package-lock.json
+*.lock
+
+# Non-doc config / metadata
+.git/
+.github/
+.vscode/
+.claude/
+tsconfig.json

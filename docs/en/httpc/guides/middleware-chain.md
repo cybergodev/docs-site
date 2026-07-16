@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Middleware Chain"
 title: "Middleware Chain - CyberGo HTTPC | Onion-Model Chains"
 description: "HTTPC middleware chain guide: onion-model execution, eight built-in middleware, Chain composition, custom MiddlewareFunc, and a circuit-breaker example."
+sidebar_position: 6
 ---
 
 # Middleware Chain
@@ -215,6 +217,6 @@ client, _ := httpc.New(cfg)
 
 ## Next Steps
 
-- [Middleware API](../api-reference/middleware) - Complete middleware reference
+- [Middleware API](../api-reference/client-config/middleware) - Complete middleware reference
 - [Retry and Fault Tolerance](./retry-fault-tolerance) - Retry strategy guide
 - [Security Overview](../security/) - Audit middleware security practices

@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vitepress dev docs",
-    "build": "node --max-old-space-size=8192 ./node_modules/vitepress/bin/vitepress.js build docs && node scripts/fix-clean-urls.js && node scripts/generate-project-redirects.js",
+    "build": "node --max-old-space-size=8192 ./node_modules/vitepress/bin/vitepress.js build docs && tsx scripts/fix-clean-urls.ts && tsx scripts/generate-project-redirects.ts && tsx scripts/generate-moved-redirects.ts && tsx scripts/generate-llms.ts",
     "preview": "vitepress preview docs",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "typecheck": "vue-tsc --noEmit",
+    "audit": "tsx scripts/audit-locales.ts",
+    "lint:autocorrect": "autocorrect --lint",
+    "fix:autocorrect": "autocorrect --fix"
   },
   "keywords": [
     "go",
@@ -19,9 +23,13 @@
   "author": "CyberGo",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^26.1.1",
     "png-to-ico": "^3.0.1",
     "prettier": "^3.4.2",
     "sharp": "^0.34.5",
-    "vitepress": "^1.6.4"
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3",
+    "vitepress": "^1.6.4",
+    "vue-tsc": "^3.3.7"
   }
 }

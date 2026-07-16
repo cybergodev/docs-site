@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useData } from 'vitepress'
-import { STORAGE_KEYS } from '../../locales/languages'
+import { STORAGE_KEYS } from '../../shared'
 import { getPreferencePath } from '../composables/useLanguageDetect'
 
 const { lang } = useData()

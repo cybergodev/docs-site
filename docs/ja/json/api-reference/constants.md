@@ -1,6 +1,8 @@
 ---
+sidebar_label: "定数とエラー"
 title: "定数とエラー - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON 定数とエラー：DefaultMaxJSONSize、DefaultMaxNestingDepth、ErrPathNotFound などのエラー変数と MergeMode 列挙型で Go の設定とエラー処理を支えます。"
+sidebar_position: 7
 ---
 
 # 定数とエラー

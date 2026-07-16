@@ -1,6 +1,8 @@
 ---
+sidebar_label: "基础用法"
 title: "基础用法 - CyberGo HTML | 可运行示例集"
 description: "CyberGo HTML 基础用法示例：基本内容提取、文件提取、纯文本、Markdown 输出、链接分组、Processor 复用、超时控制、并发批量与 JSON 序列化。"
+sidebar_position: 1
 ---
 
 # 基础用法

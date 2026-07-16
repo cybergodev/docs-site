@@ -1,6 +1,8 @@
 ---
+sidebar_label: "シリアライズ"
 title: "シリアライズ - CyberGo env | 多フォーマット変換"
 description: "CyberGo env シリアライズガイド。.env・JSON・YAML 間の Map・構造体変換、Marshal/Unmarshal 関数群、カスタムインターフェース、env タグ、機密フィールドマスクを解説します。"
+sidebar_position: 2
 ---
 
 # シリアライズ

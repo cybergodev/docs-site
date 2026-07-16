@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Custom Parser"
 title: "Custom Parser - CyberGo env | Extending File Formats"
 description: "CyberGo env custom parser guide: implement EnvParser and register via RegisterParser, with complete TOML and INI parser examples and best practices."
+sidebar_position: 7
 ---
 
 # Custom Parser

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "署名アルゴリズム"
 title: "署名アルゴリズム - CyberGo JWT | アルゴリズム比較と選定"
 description: "署名アルゴリズムガイド：HMAC・RSA・RSA-PSS・ECDSA 4 種 12 アルゴリズムの鍵種・生成方式・署名検証性能・署名長・構成結合度を比較し、選定の決定と鍵管理の安全実務を示す。"
+sidebar_position: 1
 ---
 
 # 署名アルゴリズム

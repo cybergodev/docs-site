@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Domain Client & Sessions"
 title: "Domain Client and Sessions - CyberGo HTTPC | Cookie Mgmt"
 description: "HTTPC domain client and session guide: NewDomain domain-scoped client, URL auto-concatenation, SetHeader headers, Cookie validation, and a REST wrapper."
+sidebar_position: 3
 ---
 
 # Domain Client and Sessions
@@ -192,6 +194,6 @@ func main() {
 
 ## Next Steps
 
-- [Domain Client API](../api-reference/domain-client) - Complete API reference
-- [Session Management API](../api-reference/session) - SessionManager reference
+- [Domain Client API](../api-reference/client-config/domain-client) - Complete API reference
+- [Session Management API](../api-reference/client-config/session) - SessionManager reference
 - [Request and Response](./request-response) - Basic request guide

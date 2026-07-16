@@ -1,6 +1,8 @@
 ---
+sidebar_label: "민감 데이터 필터링"
 title: "민감 데이터 필터링 - CyberGo DD | 자동 마스킹 설정 가이드"
 description: "CyberGo DD 민감 데이터 필터링 설정 가이드. 내장 필터링 패턴 (비밀번호, API Key, 신용카드, SSN, JWT 등), 커스텀 정규식 패턴, 5단계 보안 등급, 업계 준수 사전 설정 (HIPAA, PCI-DSS, 정부 표준) 및 필터링 통계와 모니터링을 다루어 개발자가 준수 규정을 충족하는 로그 마스킹 솔루션을 구축할 수 있도록 돕습니다."
+sidebar_position: 4
 ---
 
 # 민감 데이터 필터링
@@ -181,5 +183,5 @@ logger, _ := dd.New(dd.Config{
 
 - [감사 로그](./audit-logging) -- 보안 이벤트 감사
 - [업계 준수 설정](../security/compliance) -- HIPAA/PCI-DSS 상세 가이드
-- [API 레퍼런스 - Security](../api-reference/security) -- 보안 API 전체 문서
+- [API 레퍼런스 - Security](../api-reference/security-audit/security) -- 보안 API 전체 문서
 - [프로덕션 체크리스트](../security/production-checklist) -- 출시 전 체크리스트

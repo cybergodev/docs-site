@@ -1,6 +1,8 @@
 ---
+sidebar_label: "監査ログ"
 title: "監査ログ - CyberGo DD | セキュリティ監査実践ガイド"
 description: "CyberGo DD 監査ログ実践ガイド。AuditLogger 非同期イベント記録メカニズム、11 種類の組み込み監査イベントタイプ、重大度レベルフィルタリングと段階別設定、HMAC 整合性署名統合ソリューション、監査統計とリアルタイムモニタリング、ログ検証と改ざん防止戦略をカバーし、コンプライアンス要件に準拠したエンタープライズグレードのセキュリティ監査システムを構築できます。"
+sidebar_position: 5
 ---
 
 # 監査ログ
@@ -196,5 +198,5 @@ func main() {
 
 - [HMAC 署名実践](../advanced/integrity) -- 整合性署名詳解
 - [業界コンプライアンス設定](../security/compliance) -- HIPAA/PCI-DSS 監査要件
-- [API リファレンス - Audit](../api-reference/audit) -- AuditLogger 完全 API
-- [API リファレンス - Integrity](../api-reference/integrity) -- IntegritySigner API
+- [API リファレンス - Audit](../api-reference/security-audit/audit) -- AuditLogger 完全 API
+- [API リファレンス - Integrity](../api-reference/security-audit/integrity) -- IntegritySigner API

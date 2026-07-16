@@ -1,6 +1,8 @@
 ---
+sidebar_label: "테스트 시나리오"
 title: "테스트 시나리오 - CyberGo env | 단위 테스트 모범 사례"
 description: "CyberGo env 테스트 모범 사례 가이드로 TestingConfig, 메모리 파일 시스템 모킹, 테이블 기반 테스트, 벤치마크, ResetDefaultLoader 정리로 안정적 결과를 보장합니다."
+sidebar_position: 6
 ---
 
 # 테스트 시나리오

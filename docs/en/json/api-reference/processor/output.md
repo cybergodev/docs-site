@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Output"
 title: "Processor Output Methods - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor output: Encode, EncodePretty, EncodeWithConfig, EncodeBatch/EncodeFields, and Compact/Indent/HTMLEscape for varied output."
+sidebar_position: 4
 ---
 
 # Output Methods

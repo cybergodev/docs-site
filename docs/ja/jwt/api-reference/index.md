@@ -1,6 +1,8 @@
 ---
+sidebar_label: "概要"
 title: "API リファレンス - CyberGo JWT | 完全なインターフェース文書"
 description: "CyberGo JWT API リファレンス総覧：パッケージ関数・Processor 核心メソッド・Config と BlacklistConfig・Claims と RegisteredClaims・拡張インターフェース・補助型・19 個のセンチネルエラーへナビゲート。"
+sidebar_position: 1
 ---
 
 # API リファレンス

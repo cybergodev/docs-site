@@ -1,6 +1,8 @@
 ---
+sidebar_label: "高级示例"
 title: "高级示例 - CyberGo JWT | 非对称签名与自定义存储"
 description: "高级示例集：RSA 与 ECDSA 非对称签名验证、实现 CustomClaims 自定义业务声明、对接 Redis 自定义黑名单后端、FixedClock 时钟注入测试及完整 Web 服务集成。"
+sidebar_position: 2
 ---
 
 # 高级示例

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "실전 튜토리얼"
 title: "실전 튜토리얼 - CyberGo HTTPC | GitHub API 실전"
 description: "HTTPC 실전 튜토리얼: httpc.Get에서 단계적으로 완전한 GitHub REST API 클라이언트를 구축하며, JSON 파싱, 도메인 클라이언트, 미들웨어 체인 조합, ClientError 오류 처리와 파일 다운로드를 다룹니다."
+sidebar_position: 1
 ---
 
 # 실전 튜토리얼: GitHub API 클라이언트 구축

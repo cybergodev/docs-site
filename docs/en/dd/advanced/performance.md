@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Performance"
 title: "Performance - CyberGo DD | Optimization Guide"
 description: "CyberGo DD performance optimization: zero-allocation techniques, BufferedWriter, log sampling, level checking, sync.Pool reuse, and benchmarking."
+sidebar_position: 1
 ---
 
 # Performance Optimization
@@ -147,6 +149,6 @@ logger.Shutdown(ctx)
 
 ## Next Steps
 
-- [Output Targets](../api-reference/writers) -- FileWriter, BufferedWriter API
-- [Configuration](../api-reference/config) -- Performance-related configuration options
+- [Output Targets](../api-reference/output-integration/writers) -- FileWriter, BufferedWriter API
+- [Configuration](../api-reference/core/config) -- Performance-related configuration options
 - [Production Checklist](../security/production-checklist) -- Pre-launch checks

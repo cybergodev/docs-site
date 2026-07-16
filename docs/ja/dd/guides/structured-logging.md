@@ -1,6 +1,8 @@
 ---
+sidebar_label: "構造化ロギング"
 title: "構造化ログ - CyberGo DD | フィールドとチェーン呼び出し"
 description: "CyberGo DD 構造化ログ使用ガイド。20+ の型安全なフィールドコンストラクタ、Field チェーン渡しパターン、LoggerEntry 不変設計の原理、フィールド命名規則と検証ルール、構造化ログのベストプラクティスと一般的な使用パターンを詳細に紹介し、プロジェクトで高性能な構造化ログ記録ソリューションを効果的に活用できます。"
+sidebar_position: 2
 ---
 
 # 構造化ログ
@@ -247,5 +249,5 @@ logger.InfoWith("リクエスト完了",
 
 - [ファイル出力とローテーション](./file-output) -- ログをファイルに書き込む
 - [機密データフィルタリング](./sensitive-filtering) -- 機密情報の自動マスキング
-- [API リファレンス - フィールド](../api-reference/fields) -- 全フィールドコンストラクタ
-- [API リファレンス - LoggerEntry](../api-reference/entry) -- Entry の全メソッド
+- [API リファレンス - フィールド](../api-reference/output-integration/fields) -- 全フィールドコンストラクタ
+- [API リファレンス - LoggerEntry](../api-reference/core/entry) -- Entry の全メソッド

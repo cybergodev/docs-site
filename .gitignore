@@ -4,7 +4,14 @@ node_modules/
 # Build output
 docs/.vitepress/dist/
 docs/.vitepress/cache/
-.vitepress/cache/
+
+# Stray root-level .vitepress/ — running `vitepress dev` at the repo root
+# (instead of `vitepress dev docs`) creates this orphan; the real config lives
+# in docs/.vitepress/. Leading slash anchors this to the repo root only.
+/.vitepress/
+
+# Generated locale-parity audit report (scripts/audit-locales.ts writes report/)
+/report/
 
 # Logs
 logs

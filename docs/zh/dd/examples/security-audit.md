@@ -1,6 +1,8 @@
 ---
+sidebar_label: "安全与审计实战"
 title: "安全与审计实战 - CyberGo DD | 安全日志示例"
 description: "CyberGo DD 安全过滤与审计日志的完整实战示例集合，涵盖敏感数据过滤规则配置、HMAC 完整性签名与验签、审计事件记录与批量验证、行业合规配置方案（HIPAA/PCI-DSS）以及生产环境安全日志架构设计与部署的最佳实践建议和注意事项。"
+sidebar_position: 3
 ---
 
 # 安全与审计实战
@@ -225,7 +227,7 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
 
 ## 下一步
 
-- [API 参考 - Security](../api-reference/security) -- 安全过滤完整 API
-- [API 参考 - Audit](../api-reference/audit) -- 审计日志完整 API
-- [API 参考 - Integrity](../api-reference/integrity) -- 完整性签名 API
+- [API 参考 - Security](../api-reference/security-audit/security) -- 安全过滤完整 API
+- [API 参考 - Audit](../api-reference/security-audit/audit) -- 审计日志完整 API
+- [API 参考 - Integrity](../api-reference/security-audit/integrity) -- 完整性签名 API
 - [生产检查清单](../security/production-checklist) -- 上线安全检查

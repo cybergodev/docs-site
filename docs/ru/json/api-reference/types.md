@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Типы"
 title: "Определения типов - CyberGo JSON | Справочник API"
 description: "Основные типы CyberGo JSON: Result[T], AccessResult, BatchOperation, BatchResult, Schema, Stats, HealthStatus и IterableValue, формирующие систему типов."
+sidebar_position: 5
 ---
 
 # Определения типов
@@ -1047,7 +1049,7 @@ if delim, ok := token.(json.Delim); ok {
 
 ## Смотрите также
 
-- [Функции пакета](./functions) - Справочник функций уровня пакета
+- [Функции пакета](./functions/) - Справочник функций уровня пакета
 - [Config](./config) - Параметры конфигурации
 - [Processor](./processor/) - Методы процессора
 - [Определения интерфейсов](./interfaces) - Расширяемые интерфейсы

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Claims"
 title: "Claims - CyberGo JWT | Claim Structs"
 description: "The built-in CyberGo JWT Claims struct holds UserID, Username, Role, permissions, and scope plus RFC 7519 RegisteredClaims with validation constraints."
+sidebar_position: 5
 ---
 
 # Claims

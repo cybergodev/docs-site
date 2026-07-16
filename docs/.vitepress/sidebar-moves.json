@@ -1,0 +1,230 @@
+[
+  {
+    "from": "dd/api-reference/audit",
+    "to": "dd/api-reference/security-audit/audit"
+  },
+  {
+    "from": "dd/api-reference/config",
+    "to": "dd/api-reference/core/config"
+  },
+  {
+    "from": "dd/api-reference/constants",
+    "to": "dd/api-reference/dev-tools/constants"
+  },
+  {
+    "from": "dd/api-reference/context",
+    "to": "dd/api-reference/output-integration/context"
+  },
+  {
+    "from": "dd/api-reference/debug-visual",
+    "to": "dd/api-reference/dev-tools/debug-visual"
+  },
+  {
+    "from": "dd/api-reference/entry",
+    "to": "dd/api-reference/core/entry"
+  },
+  {
+    "from": "dd/api-reference/fields",
+    "to": "dd/api-reference/output-integration/fields"
+  },
+  {
+    "from": "dd/api-reference/functions",
+    "to": "dd/api-reference/core/functions"
+  },
+  {
+    "from": "dd/api-reference/hooks",
+    "to": "dd/api-reference/security-audit/hooks"
+  },
+  {
+    "from": "dd/api-reference/integrity",
+    "to": "dd/api-reference/security-audit/integrity"
+  },
+  {
+    "from": "dd/api-reference/interfaces",
+    "to": "dd/api-reference/core/interfaces"
+  },
+  {
+    "from": "dd/api-reference/logger",
+    "to": "dd/api-reference/core/logger"
+  },
+  {
+    "from": "dd/api-reference/recorder",
+    "to": "dd/api-reference/dev-tools/recorder"
+  },
+  {
+    "from": "dd/api-reference/security",
+    "to": "dd/api-reference/security-audit/security"
+  },
+  {
+    "from": "dd/api-reference/writers",
+    "to": "dd/api-reference/output-integration/writers"
+  },
+  {
+    "from": "dd/cheatsheet",
+    "to": "dd/getting-started/cheatsheet"
+  },
+  {
+    "from": "env/cheatsheet",
+    "to": "env/getting-started/cheatsheet"
+  },
+  {
+    "from": "html/api-reference/audit",
+    "to": "html/api-reference/modules/audit"
+  },
+  {
+    "from": "html/api-reference/batch",
+    "to": "html/api-reference/modules/batch"
+  },
+  {
+    "from": "html/api-reference/config",
+    "to": "html/api-reference/core/config"
+  },
+  {
+    "from": "html/api-reference/constants",
+    "to": "html/api-reference/types/constants"
+  },
+  {
+    "from": "html/api-reference/functions",
+    "to": "html/api-reference/core/functions"
+  },
+  {
+    "from": "html/api-reference/interfaces",
+    "to": "html/api-reference/types/interfaces"
+  },
+  {
+    "from": "html/api-reference/links",
+    "to": "html/api-reference/modules/links"
+  },
+  {
+    "from": "html/api-reference/output",
+    "to": "html/api-reference/modules/output"
+  },
+  {
+    "from": "html/api-reference/processor",
+    "to": "html/api-reference/core/processor"
+  },
+  {
+    "from": "html/api-reference/types",
+    "to": "html/api-reference/types/type-defs"
+  },
+  {
+    "from": "html/cheatsheet",
+    "to": "html/getting-started/cheatsheet"
+  },
+  {
+    "from": "html/guides/audit-pipeline",
+    "to": "html/guides/advanced-patterns/audit-pipeline"
+  },
+  {
+    "from": "html/guides/content-extraction",
+    "to": "html/guides/core-features/content-extraction"
+  },
+  {
+    "from": "html/guides/http-integration",
+    "to": "html/guides/integration/http-integration"
+  },
+  {
+    "from": "html/guides/link-extraction",
+    "to": "html/guides/core-features/link-extraction"
+  },
+  {
+    "from": "html/guides/output-formats",
+    "to": "html/guides/core-features/output-formats"
+  },
+  {
+    "from": "html/guides/processor-cache",
+    "to": "html/guides/advanced-patterns/processor-cache"
+  },
+  {
+    "from": "html/guides/testing-custom",
+    "to": "html/guides/integration/testing-custom"
+  },
+  {
+    "from": "httpc/api-reference/config",
+    "to": "httpc/api-reference/client-config/config"
+  },
+  {
+    "from": "httpc/api-reference/constants",
+    "to": "httpc/api-reference/types/constants"
+  },
+  {
+    "from": "httpc/api-reference/domain-client",
+    "to": "httpc/api-reference/client-config/domain-client"
+  },
+  {
+    "from": "httpc/api-reference/download",
+    "to": "httpc/api-reference/client-config/download"
+  },
+  {
+    "from": "httpc/api-reference/errors",
+    "to": "httpc/api-reference/types/errors"
+  },
+  {
+    "from": "httpc/api-reference/functions",
+    "to": "httpc/api-reference/core/functions"
+  },
+  {
+    "from": "httpc/api-reference/interfaces",
+    "to": "httpc/api-reference/types/interfaces"
+  },
+  {
+    "from": "httpc/api-reference/middleware",
+    "to": "httpc/api-reference/client-config/middleware"
+  },
+  {
+    "from": "httpc/api-reference/options",
+    "to": "httpc/api-reference/core/options"
+  },
+  {
+    "from": "httpc/api-reference/result",
+    "to": "httpc/api-reference/core/result"
+  },
+  {
+    "from": "httpc/api-reference/session",
+    "to": "httpc/api-reference/client-config/session"
+  },
+  {
+    "from": "httpc/cheatsheet",
+    "to": "httpc/getting-started/cheatsheet"
+  },
+  {
+    "from": "json/api-reference/custom-encoder",
+    "to": "json/extensions/custom-encoder"
+  },
+  {
+    "from": "json/api-reference/hooks",
+    "to": "json/extensions/hooks"
+  },
+  {
+    "from": "json/api-reference/jsonl",
+    "to": "json/streaming/jsonl"
+  },
+  {
+    "from": "json/api-reference/large-file",
+    "to": "json/streaming/large-file"
+  },
+  {
+    "from": "json/api-reference/security",
+    "to": "json/security/security-mode"
+  },
+  {
+    "from": "json/api-reference/validator",
+    "to": "json/extensions/validator"
+  },
+  {
+    "from": "json/cheatsheet",
+    "to": "json/getting-started/cheatsheet"
+  },
+  {
+    "from": "json/examples-advanced",
+    "to": "json/examples/examples-advanced"
+  },
+  {
+    "from": "json/large-files",
+    "to": "json/streaming/large-files"
+  },
+  {
+    "from": "json/path-syntax",
+    "to": "json/getting-started/path-syntax"
+  }
+]

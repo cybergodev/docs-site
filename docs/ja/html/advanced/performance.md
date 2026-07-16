@@ -1,6 +1,8 @@
 ---
+sidebar_label: "パフォーマンス最適化"
 title: "パフォーマンス最適化 - CyberGo HTML | スループット向上"
 description: "CyberGo HTML パフォーマンス最適化：Processor 再利用、キャッシュ戦略、バッチ並列制御、入力サイズ・タイムアウト設定で大規模処理のスループットを向上します。"
+sidebar_position: 1
 ---
 
 # パフォーマンス最適化

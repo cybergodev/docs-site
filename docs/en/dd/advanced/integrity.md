@@ -1,6 +1,8 @@
 ---
+sidebar_label: "HMAC Signing"
 title: "HMAC Signing - CyberGo DD | Integrity Protection"
 description: "CyberGo DD HMAC-SHA256 integrity signing: IntegritySigner setup, signing and verification workflow, tamper detection, and production best practices."
+sidebar_position: 3
 ---
 
 # HMAC Signing in Practice
@@ -227,4 +229,4 @@ func startIntegrityChecker(signer *dd.IntegritySigner, logPath string) {
 
 - [Audit Logging](../guides/audit-logging) -- Security audit integration
 - [Industry Compliance Configuration](../security/compliance) -- HIPAA/PCI-DSS signing requirements
-- [API Reference - Integrity](../api-reference/integrity) -- IntegritySigner complete API
+- [API Reference - Integrity](../api-reference/security-audit/integrity) -- IntegritySigner complete API

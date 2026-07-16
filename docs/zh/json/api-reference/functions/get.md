@@ -1,6 +1,8 @@
 ---
+sidebar_label: "查询获取"
 title: "查询与获取函数 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 查询与获取函数：Get/GetString/GetInt/GetFloat/GetBool 类型安全获取、GetTyped[T] 泛型与 Parse/ParseAny 解析，全面支持 JSONPath。"
+sidebar_position: 2
 ---
 
 # 查询与获取函数
@@ -522,7 +524,7 @@ func main() {
 ```
 
 ::: tip 详见
-完整的 Schema 类型定义和验证器用法请参考 [验证器](../validator)。
+完整的 Schema 类型定义和验证器用法请参考 [验证器](../../extensions/validator)。
 :::
 
 ## 安全获取函数

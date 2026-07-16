@@ -1,6 +1,8 @@
 ---
+sidebar_label: "HMAC 署名実践"
 title: "HMAC 署名実践 - CyberGo DD | ログ整合性保護"
 description: "CyberGo DD HMAC-SHA256 ログ整合性署名実践ガイド。IntegritySigner の作成と初期化設定、署名と検証の完全なフロー、タイムスタンプとシリアル番号インクリメントメカニズム、改ざん検出戦略、監査ログシステムとの統合スキーム、本番環境デプロイのベストプラクティスをカバーし、ログチェーンの整合性とトレーサビリティを確保。"
+sidebar_position: 3
 ---
 
 # HMAC 署名実践
@@ -227,4 +229,4 @@ func startIntegrityChecker(signer *dd.IntegritySigner, logPath string) {
 
 - [監査ログ](../guides/audit-logging) -- セキュリティ監査統合
 - [業界コンプライアンス設定](../security/compliance) -- HIPAA/PCI-DSS 署名要件
-- [API リファレンス - Integrity](../api-reference/integrity) -- IntegritySigner 完全 API
+- [API リファレンス - Integrity](../api-reference/security-audit/integrity) -- IntegritySigner 完全 API

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "재시도와 장애 허용"
 title: "재시도와 장애 허용 - CyberGo HTTPC | 백오프와 재시도"
 description: "HTTPC 재시도와 장애 허용 가이드: 기본 지수 백오프 재시도 전략과 RetryConfig 설정, 408/429/5xx 자동 재시도, 커스텀 RetryPolicy, Retry-After 파싱과 요청별 재시도 제어를 다룹니다."
+sidebar_position: 5
 ---
 
 # 재시도와 장애 허용
@@ -174,5 +176,5 @@ if err != nil {
 ## 다음 단계
 
 - [오류 처리](../advanced/error-handling) - 완전한 오류 처리 가이드
-- [설정 API](../api-reference/config) - 재시도 설정 참조
-- [인터페이스 정의](../api-reference/interfaces) - RetryPolicy 인터페이스 참조
+- [설정 API](../api-reference/client-config/config) - 재시도 설정 참조
+- [인터페이스 정의](../api-reference/types/interfaces) - RetryPolicy 인터페이스 참조

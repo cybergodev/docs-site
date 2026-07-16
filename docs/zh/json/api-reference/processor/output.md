@@ -1,6 +1,8 @@
 ---
+sidebar_label: "输出方法"
 title: "Processor 输出方法 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor 输出方法：Encode、EncodePretty、EncodeWithConfig、EncodeBatch/EncodeFields 批量与 Compact/Indent/HTMLEscape 格式化，满足多种输出需求。"
+sidebar_position: 4
 ---
 
 # 输出方法

@@ -1,0 +1,122 @@
+/**
+ * Navigation bar: fixed/glass nav, brand shimmer line, mobile screen,
+ * and the project-aware navbar title.
+ */
+
+/* ============================================
+   Navigation Bar Styles
+   ============================================ */
+
+/*
+ * Safari and some browsers add a top border to the body or app root element.
+ * Use compound selectors to increase specificity and avoid !important.
+ */
+html.VPApp,
+body.VPApp,
+.Layout,
+#app > .Layout {
+  border-top: none;
+  margin: 0;
+  padding: 0;
+  outline: none;
+}
+
+.VPNav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background-color: transparent;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.VPNavBar,
+.VPNavBar .content-body {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 960px) {
+  .VPNavBar:not(.home.top) .content {
+    padding-top: 3px;
+  }
+}
+
+/* Dark mode navbar */
+.dark .VPNavBar,
+.dark .VPNavBar .content-body {
+  background: rgba(30, 30, 30, 0.8);
+}
+
+/* Enhanced on scroll */
+.VPNavBar.scroll,
+.VPNavBar.scroll .content-body,
+.has-sidebar .VPNav .VPNavBar,
+.has-sidebar .VPNav .VPNavBar .content-body {
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.dark .VPNavBar.scroll,
+.dark .VPNavBar.scroll .content-body,
+.dark .has-sidebar .VPNav .VPNavBar,
+.dark .has-sidebar .VPNav .VPNavBar .content-body {
+  background: rgba(30, 30, 30, 0.95);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* Navbar top brand line */
+.VPNavBar::before {
+  display: block;
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--vp-c-brand-1), var(--vp-c-brand-2), var(--vp-c-brand-1));
+  background-size: 200% 100%;
+  animation: brand-line-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes brand-line-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Safari black line fix — compound selectors only */
+.VPApp::before,
+.VPApp::after,
+.VPNav::after,
+.VPNavBar::after,
+.VPNav .divider,
+.Layout > .divider,
+.Layout::before,
+.Layout::after {
+  display: none;
+  height: 0;
+  border: none;
+  content: none;
+}
+
+/* Mobile navigation */
+.VPNavScreen {
+  border-top: none;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.dark .VPNavScreen {
+  background-color: rgba(30, 30, 30, 0.95);
+}
+
+/* Project-page navbar title styling now lives in ProjectNavBarTitle.vue
+   (scoped). The old .VPNavBarTitle[data-project] rule depended on the removed
+   DOM-mutation siteTitle logic in theme/index.ts. */

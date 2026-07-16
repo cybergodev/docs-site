@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Overview"
 title: "API Reference - CyberGo JWT | Interface Docs"
 description: "CyberGo JWT API reference index linking to package factory functions, Processor methods, Config, Claims, RegisteredClaims, interfaces, types, and errors."
+sidebar_position: 1
 ---
 
 # API Reference

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "業界コンプライアンス設定"
 title: "業界コンプライアンス設定 - CyberGo DD | HIPAA PCI-DSS 政府基準"
 description: "CyberGo DD 業界コンプライアンスログ設定ガイド。HIPAA 医療業界コンプライアンス、PCI-DSS 金融決済コンプライアンス、政府セキュリティ基準の機密データフィルタリングルール設定、監査ログ要件、ログ保持とローテーション戦略、完全なコンプライアンス設定例を詳細に説明し、厳格なコンプライアンス要件の下で安全で信頼性の高いログシステムを構築できます。"
+sidebar_position: 2
 ---
 
 # 業界コンプライアンス設定
@@ -188,4 +190,4 @@ logger, _ := dd.New(dd.Config{
 - [機密データフィルタリング](../guides/sensitive-filtering) -- フィルタリング機能詳解
 - [監査ログ](../guides/audit-logging) -- セキュリティ監査統合
 - [本番チェックリスト](./production-checklist) -- リリース前チェック
-- [API リファレンス - Security](../api-reference/security) -- セキュリティ API ドキュメント
+- [API リファレンス - Security](../api-reference/security-audit/security) -- セキュリティ API ドキュメント

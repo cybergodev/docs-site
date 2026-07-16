@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Processor"
 title: "Processor - CyberGo JWT | 核心トークン操作型"
 description: "Processor は CyberGo JWT の核心型で、Create・Validate・Refresh・Revoke・IsRevoked・ParseUnverified・Close など全トークン操作メソッドの署名・引数・戻り値・エラー・例を説明。"
+sidebar_position: 3
 ---
 
 # Processor

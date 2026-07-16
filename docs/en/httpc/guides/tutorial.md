@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Tutorial"
 title: "Tutorial - CyberGo HTTPC | GitHub API Tour"
 description: "HTTPC tutorial: build a GitHub REST API client step by step from httpc.Get, covering JSON parsing, domain client, middleware, and file downloads."
+sidebar_position: 1
 ---
 
 # Tutorial: Build a GitHub API Client

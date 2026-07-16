@@ -1,6 +1,8 @@
 ---
+sidebar_label: "감사 로그"
 title: "감사 로그 - CyberGo DD | 보안 감사 실전 가이드"
 description: "CyberGo DD 감사 로그 실전 가이드. AuditLogger 비동기 이벤트 기록 메커니즘, 11가지 내장 감사 이벤트 타입, 심각도 등급 필터링과 분류, HMAC 무결성 서명 통합 방안, 감사 통계와 실시간 모니터링, 로그 검증과 변조 방지 전략을 다루어 개발자가 준수 요구 사항을 충족하는 엔터프라이즈급 보안 감사 시스템을 구축할 수 있도록 돕습니다."
+sidebar_position: 5
 ---
 
 # 감사 로그
@@ -196,5 +198,5 @@ func main() {
 
 - [HMAC 서명 실전](../advanced/integrity) -- 무결성 서명 상세 가이드
 - [업계 준수 설정](../security/compliance) -- HIPAA/PCI-DSS 감사 요구 사항
-- [API 레퍼런스 - Audit](../api-reference/audit) -- AuditLogger 전체 API
-- [API 레퍼런스 - Integrity](../api-reference/integrity) -- IntegritySigner API
+- [API 레퍼런스 - Audit](../api-reference/security-audit/audit) -- AuditLogger 전체 API
+- [API 레퍼런스 - Integrity](../api-reference/security-audit/integrity) -- IntegritySigner API

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Processor"
 title: "Processor - CyberGo JWT | Core Type"
 description: "The core CyberGo JWT Processor type exposes Create, Validate, Refresh, Revoke, IsRevoked, ParseUnverified, and Close methods with their signatures and examples."
+sidebar_position: 3
 ---
 
 # Processor

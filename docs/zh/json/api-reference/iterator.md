@@ -1,6 +1,8 @@
 ---
+sidebar_label: "迭代器"
 title: "迭代器 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 迭代 API：Foreach 基础迭代、ForeachWithPath 带路径、ForeachNested 递归、IterableValue 与 ParallelForeach 并行迭代，覆盖各类遍历场景。"
+sidebar_position: 9
 ---
 
 # 迭代器
@@ -1011,6 +1013,6 @@ func main() {
 ## 相关
 
 - [Processor](./processor/) - 处理器方法
-- [大文件处理](./large-file) - 流式处理器
-- [NDJSON 处理器](./jsonl) - JSONL 处理
-- [大文件处理指南](../large-files) - 大文件处理指南
+- [大文件处理](../streaming/large-file) - 流式处理器
+- [NDJSON 处理器](../streaming/jsonl) - JSONL 处理
+- [大文件处理指南](../streaming/large-files) - 大文件处理指南

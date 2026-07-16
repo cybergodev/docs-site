@@ -1,6 +1,8 @@
 ---
+sidebar_label: "セキュリティと監査実践"
 title: "セキュリティと監査実践 - CyberGo DD | セキュリティログサンプル"
 description: "CyberGo DD セキュリティフィルタリングと監査ログの完全な実践サンプル集。機密データフィルタリングルール設定、HMAC 整合性署名と検証、監査イベント記録とバッチ検証、業界コンプライアンス設定スキーム（HIPAA/PCI-DSS）、本番環境セキュリティログアーキテクチャ設計とデプロイのベストプラクティス提案と注意事項。"
+sidebar_position: 3
 ---
 
 # セキュリティと監査実践
@@ -225,7 +227,7 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
 
 ## 次のステップ
 
-- [API リファレンス - Security](../api-reference/security) -- セキュリティフィルタリング完全 API
-- [API リファレンス - Audit](../api-reference/audit) -- 監査ログ完全 API
-- [API リファレンス - Integrity](../api-reference/integrity) -- 整合性署名 API
+- [API リファレンス - Security](../api-reference/security-audit/security) -- セキュリティフィルタリング完全 API
+- [API リファレンス - Audit](../api-reference/security-audit/audit) -- 監査ログ完全 API
+- [API リファレンス - Integrity](../api-reference/security-audit/integrity) -- 整合性署名 API
 - [本番チェックリスト](../security/production-checklist) -- リリース前セキュリティチェック

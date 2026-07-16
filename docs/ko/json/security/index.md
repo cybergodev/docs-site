@@ -1,6 +1,8 @@
 ---
+sidebar_label: "보안 개요"
 title: "보안 개요 - CyberGo JSON | 보안 모범 사례"
 description: "CyberGo JSON 보안 모범 사례: 입력 검증, MaxNestingDepthSecurity/MaxMemory 제한, 경로 순회 및 JSON 인젝션 방어, 민감 데이터 필터링, 감사 로그로 프로덕션 보안을 보장합니다."
+sidebar_position: 1
 ---
 
 # 보안 개요
@@ -261,4 +263,4 @@ func (h *AuditHook) After(ctx json.HookContext, result any, err error) (any, err
 
 - [프로덕션 체크리스트](./production-checklist)
 - [Config 설정](../api-reference/config)
-- [Validator](../api-reference/validator)
+- [Validator](../extensions/validator)

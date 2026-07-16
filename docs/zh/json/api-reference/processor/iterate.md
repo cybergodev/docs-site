@@ -1,6 +1,8 @@
 ---
+sidebar_label: "迭代方法"
 title: "Processor 迭代方法 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor 迭代方法：Foreach、ForeachWithPath、ForeachNested 迭代、IterableValue 数据访问与 IteratorControl 控制流，支持批量迭代实践。"
+sidebar_position: 6
 ---
 
 # 迭代方法

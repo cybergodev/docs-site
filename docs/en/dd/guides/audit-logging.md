@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Audit Logging"
 title: "Audit Logging - CyberGo DD | Security Audit Practical Guide"
 description: "CyberGo DD audit logging guide: AuditLogger async events, 11 event types, severity filtering, HMAC signing, monitoring, and compliance strategies."
+sidebar_position: 5
 ---
 
 # Audit Logging
@@ -196,5 +198,5 @@ func main() {
 
 - [HMAC Signatures in Practice](../advanced/integrity) -- Integrity signature details
 - [Industry Compliance Configuration](../security/compliance) -- HIPAA/PCI-DSS audit requirements
-- [API Reference - Audit](../api-reference/audit) -- AuditLogger complete API
-- [API Reference - Integrity](../api-reference/integrity) -- IntegritySigner API
+- [API Reference - Audit](../api-reference/security-audit/audit) -- AuditLogger complete API
+- [API Reference - Integrity](../api-reference/security-audit/integrity) -- IntegritySigner API

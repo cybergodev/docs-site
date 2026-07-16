@@ -1,6 +1,8 @@
 ---
+sidebar_label: "개요"
 title: "Processor 프로세서 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor: New 생성, GetString/Set/Delete, Foreach 반복, Encode, Close 수명 주기, Stats 통계, 캐시 설정으로 고빈도 재사용에 적합합니다."
+sidebar_position: 1
 ---
 
 # Processor
@@ -151,7 +153,7 @@ func main() {
 
 ## 관련 문서
 
-- [패키지 함수](../functions) - 최상위 함수 레퍼런스
+- [패키지 함수](../functions/) - 최상위 함수 레퍼런스
 - [Config](../config) - 설정 옵션
 - [인터페이스 정의](../interfaces) - Hook 인터페이스
-- [Hook 훅 시스템](../hooks) - 훅 자세한 사용 가이드
+- [Hook 훅 시스템](../../extensions/hooks) - 훅 자세한 사용 가이드

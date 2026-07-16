@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Migration Guide"
 title: "Migration Guide - CyberGo DD | Library Migration"
 description: "Migrate to CyberGo DD from log/slog, zap, logrus, or zerolog with API mapping tables, config comparisons, and progressive migration strategies."
+sidebar_position: 8
 ---
 
 # Migration Guide
@@ -197,4 +199,4 @@ After migration, you can take advantage of DD's unique features:
 
 - [Core Concepts](./core-concepts) -- DD architecture overview
 - [Structured Logging](./structured-logging) -- Field usage in detail
-- [Cheat Sheet](../cheatsheet) -- API quick reference
+- [Cheat Sheet](../getting-started/cheatsheet) -- API quick reference

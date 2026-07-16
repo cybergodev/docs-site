@@ -1,6 +1,8 @@
 ---
+sidebar_label: "パフォーマンス最適化"
 title: "パフォーマンス最適化 - CyberGo JSON | 高パフォーマンスガイド"
 description: "CyberGo JSON パフォーマンスガイド：EnableCache/CacheTTL、ParallelThreshold 並列、PreParse、WarmupCache、オブジェクトプール再利用で高頻度 JSON 処理を高速化します。"
+sidebar_position: 1
 ---
 
 # パフォーマンス最適化
@@ -239,6 +241,6 @@ func TestMemoryUsage(t *testing.T) {
 
 ## 関連
 
-- [大ファイル処理 API](../api-reference/large-file)
+- [大ファイル処理 API](../streaming/large-file)
 - [エラー処理](./error-handling)
-- [大ファイル処理](../large-files)
+- [大ファイル処理](../streaming/large-files)

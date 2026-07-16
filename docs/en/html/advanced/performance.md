@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Performance"
 title: "Performance - CyberGo HTML | Throughput Guide"
 description: "CyberGo HTML performance: Processor reuse, cache strategy (MaxCacheEntries, CacheTTL), batch concurrency (WorkerPoolSize), plus input size and timeout control."
+sidebar_position: 1
 ---
 
 # Performance

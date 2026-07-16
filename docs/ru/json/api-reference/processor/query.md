@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Путевой запрос"
 title: "Processor - Запросы по пути - CyberGo JSON | API"
 description: "Запросы по пути Processor CyberGo JSON: Get/GetString/GetInt, пакетный GetMultiple, SafeGet с AccessResult и обобщённый GetTyped[T] с JSONPath и кэшем."
+sidebar_position: 2
 ---
 
 # Методы запросов по пути

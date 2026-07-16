@@ -1,6 +1,8 @@
 ---
+sidebar_label: "컴포넌트 팩토리"
 title: "ComponentFactory API - CyberGo env | 컴포넌트 팩토리"
 description: "CyberGo env ComponentFactory API 참조로 감사 핸들러·검증기·파일 시스템 어댑터를 생성하고 커스텀 파서를 등록하며 Close로 수명 주기를 관리합니다."
+sidebar_position: 8
 ---
 
 # ComponentFactory API

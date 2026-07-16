@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Loader"
 title: "Loader API - CyberGo env | 加载器详解"
 description: "CyberGo env 的 Loader 加载器 API 参考，核心类型提供多格式文件加载、类型安全读取、键值增删改、验证、序列化导出与生命周期管理，所有方法线程安全。"
+sidebar_position: 3
 ---
 
 # Loader API

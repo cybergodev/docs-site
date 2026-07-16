@@ -1,6 +1,8 @@
 ---
+sidebar_label: "型定義"
 title: "型定義 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON コア型：Result[T]、AccessResult、BatchOperation、BatchResult、Schema、Stats、HealthStatus、IterableValue で完全な型システムを構成します。"
+sidebar_position: 5
 ---
 
 # 型定義
@@ -1047,7 +1049,7 @@ if delim, ok := token.(json.Delim); ok {
 
 ## 関連
 
-- [パッケージ関数](./functions) - パッケージレベル関数リファレンス
+- [パッケージ関数](./functions/) - パッケージレベル関数リファレンス
 - [Config](./config) - 設定オプション
 - [Processor](./processor/) - プロセッサメソッド
 - [インターフェース定義](./interfaces) - 拡張インターフェース

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Signing Algorithms"
 title: "Signing Algorithms - CyberGo JWT | Selection"
 description: "Compare HMAC, RSA, RSA-PSS, and ECDSA across 12 algorithms by key type, signing performance, signature length, and coupling, with selection guidance."
+sidebar_position: 1
 ---
 
 # Signing Algorithms

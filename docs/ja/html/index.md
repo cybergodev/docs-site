@@ -1,4 +1,5 @@
 ---
+sidebar_label: "概要"
 title: "HTML 抽出ライブラリ - CyberGo HTML | 高性能 Go ライブラリ"
 description: "CyberGo HTML は高性能な Go 製 HTML 抽出・クリーニングライブラリで、記事認識、エンコーディング自動検出、並列バッチ、プラグイン可能な監査を提供し、テキスト・Markdown・JSON 出力をサポートします。"
 ---
@@ -99,17 +100,17 @@ HTML ライブラリは 3 つのコアタイプを中心に構築されていま
 
 | 段階 | ページ | 学べる内容 |
 |------|------|----------|
-| 入門 | [クイックスタート](./getting-started) | インストール、基本的な使い方、2 つの呼び出し方 |
-| コア | [コンテンツ抽出](./guides/content-extraction) | Extract ファミリー、Config 設定、Result の読み方 |
-| フォーマット | [出力フォーマット](./guides/output-formats) | Markdown / JSON 出力、カスタムテンプレート |
-| パフォーマンス | [キャッシュと再利用](./guides/processor-cache) | Processor ライフサイクル、キャッシュチューニング、バッチ処理 |
-| 拡張 | [リンク抽出](./guides/link-extraction) | リンク抽出、グループ化、リソース発見 |
-| セキュリティ | [監査パイプライン](./guides/audit-pipeline) | 監査システム、カスタム Sink、セキュリティモニタリング |
-| 応用 | [テストとカスタマイズ](./guides/testing-custom) | カスタム Scorer、ContentNode、テストモード |
-| リファレンス | [チートシート](./cheatsheet) | よく使う API 一覧 |
+| 入門 | [クイックスタート](./getting-started/) | インストール、基本的な使い方、2 つの呼び出し方 |
+| コア | [コンテンツ抽出](./guides/core-features/content-extraction) | Extract ファミリー、Config 設定、Result の読み方 |
+| フォーマット | [出力フォーマット](./guides/core-features/output-formats) | Markdown / JSON 出力、カスタムテンプレート |
+| パフォーマンス | [キャッシュと再利用](./guides/advanced-patterns/processor-cache) | Processor ライフサイクル、キャッシュチューニング、バッチ処理 |
+| 拡張 | [リンク抽出](./guides/core-features/link-extraction) | リンク抽出、グループ化、リソース発見 |
+| セキュリティ | [監査パイプライン](./guides/advanced-patterns/audit-pipeline) | 監査システム、カスタム Sink、セキュリティモニタリング |
+| 応用 | [テストとカスタマイズ](./guides/integration/testing-custom) | カスタム Scorer、ContentNode、テストモード |
+| リファレンス | [チートシート](./getting-started/cheatsheet) | よく使う API 一覧 |
 
 ## 次のステップ
 
-- [クイックスタート](./getting-started) - 5 分で始めるチュートリアル
-- [チートシート](./cheatsheet) - よく使う操作のクイックリファレンス
+- [クイックスタート](./getting-started/) - 5 分で始めるチュートリアル
+- [チートシート](./getting-started/cheatsheet) - よく使う操作のクイックリファレンス
 - [API リファレンス](./api-reference/) - 完全な API ドキュメント

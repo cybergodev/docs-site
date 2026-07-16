@@ -1,6 +1,8 @@
 ---
+sidebar_label: "토큰 블랙리스트"
 title: "토큰 블랙리스트 - CyberGo JWT | 취소와 외부 저장소"
 description: "토큰 블랙리스트 가이드: 내장 메모리 저장소 설정과 만료 정리, Revoke와 IsRevoked로 토큰 취소, BlacklistStore 인터페이스로 Redis 등 외부 저장소 연동, 다중 인스턴스 배포 모범 사례를 안내합니다."
+sidebar_position: 3
 ---
 
 # 토큰 블랙리스트

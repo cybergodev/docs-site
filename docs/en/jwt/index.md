@@ -1,4 +1,5 @@
 ---
+sidebar_label: "Overview"
 title: "JWT Auth - CyberGo JWT | Token Sign & Verify"
 description: "Production-grade Go JWT library with 12 HMAC, RSA, RSA-PSS, and ECDSA algorithms plus token validation, refresh, revocation, blacklist, and rate limiting."
 ---
@@ -91,7 +92,7 @@ func main() {
 
 ## Next Steps
 
-- [Getting Started](./getting-started) — Detailed installation and configuration guide
+- [Getting Started](./getting-started/) — Detailed installation and configuration guide
 - [Signing Algorithms](./guides/signing-algorithms) — HMAC, RSA, ECDSA selection guide
 - [Custom Claims](./guides/custom-claims) — Define business fields
 - [API Reference](./api-reference/) — Complete API reference

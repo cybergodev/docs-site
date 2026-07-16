@@ -1,6 +1,8 @@
 ---
+sidebar_label: "クエリと取得"
 title: "クエリと取得関数 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON クエリと取得関数：Get/GetString/GetInt/GetFloat/GetBool の型安全取得、GetTyped[T]、Parse/ParseAny で JSONPath を全面的にサポートします。"
+sidebar_position: 2
 ---
 
 # クエリと取得関数
@@ -522,7 +524,7 @@ func main() {
 ```
 
 ::: tip 詳しくは
-完全な Schema 型定義とバリデータの使用方法については [バリデータ](../validator) を参照してください。
+完全な Schema 型定義とバリデータの使用方法については [バリデータ](../../extensions/validator) を参照してください。
 :::
 
 ## 安全な取得関数

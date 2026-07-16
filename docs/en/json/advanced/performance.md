@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Performance"
 title: "Performance - CyberGo JSON | High Performance Guide"
 description: "CyberGo JSON performance guide: EnableCache/CacheTTL caching, ParallelThreshold parallelism, PreParse, WarmupCache, and object-pool reuse for throughput."
+sidebar_position: 1
 ---
 
 # Performance Optimization
@@ -239,6 +241,6 @@ func TestMemoryUsage(t *testing.T) {
 
 ## See Also
 
-- [Large File Processing API](../api-reference/large-file)
+- [Large File Processing API](../streaming/large-file)
 - [Error Handling](./error-handling)
-- [Large File Processing](../large-files)
+- [Large File Processing](../streaming/large-files)

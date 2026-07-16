@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Функции пакета"
 title: "Функции пакета - CyberGo JWT | Фабрики и умолчания"
 description: "Справочник функций пакета CyberGo JWT: New создаёт и валидирует Processor, DefaultConfig и DefaultBlacklistConfig, NewNumericDate, NewRateLimiter с умолчаниями."
+sidebar_position: 2
 ---
 
 # Функции пакета

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Claims"
 title: "Claims - CyberGo JWT | 内蔵宣言構造体"
 description: "Claims は CyberGo JWT の内蔵宣言構造体で、UserID・Username・Role・権限・スコープなどのビジネス項目と RFC 7519 RegisteredClaims を含み、フィールド長・配列サイズ・注入モードの検証制約を備える。"
+sidebar_position: 5
 ---
 
 # Claims

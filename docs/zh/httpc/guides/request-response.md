@@ -1,6 +1,8 @@
 ---
+sidebar_label: "发送请求与处理响应"
 title: "请求与响应 - CyberGo HTTPC | 请求选项与响应"
 description: "HTTPC 请求与响应处理指南：包级函数与客户端请求、WithHeader/WithJSON/WithForm 等请求选项、WithBearerToken 认证、WithQuery 查询参数、Cookie 管理、上下文控制与流式响应解压大小限制配置。"
+sidebar_position: 2
 ---
 
 # 请求与响应
@@ -251,5 +253,5 @@ cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // 解压后最大 100
 
 - [文件上传与下载](./file-transfer) - 文件传输指南
 - [域名客户端与会话](./domain-session) - 会话管理
-- [请求选项 API](../api-reference/options) - 完整选项参考
-- [Result API](../api-reference/result) - 响应处理参考
+- [请求选项 API](../api-reference/core/options) - 完整选项参考
+- [Result API](../api-reference/core/result) - 响应处理参考

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Config"
 title: "Config 配置 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Config 配置参考：DefaultConfig 默认配置、SecurityConfig 安全、PrettyConfig 格式化、缓存、大小限制与编码选项，自定义 Go 应用的全部 JSON 行为。"
+sidebar_position: 4
 ---
 
 # Config

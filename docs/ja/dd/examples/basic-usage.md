@@ -1,6 +1,8 @@
 ---
+sidebar_label: "基本的な使い方"
 title: "基本的な使い方 - CyberGo DD | 実用サンプル"
 description: "CyberGo DD ログライブラリの実用的なコードサンプル集。Gin/Echo Web サービスのリクエストログ、gRPC インターセプター統合、データベース操作ログ記録、ミドルウェアチェーン呼び出し、定期タスクログ出力、マイクロサービス分散トレーシング統合など一般的なシナリオをカバーし、そのままコピーして使用できるベストプラクティスコードスニペットを提供。"
+sidebar_position: 1
 ---
 
 # 基本的な使い方
@@ -260,6 +262,6 @@ func SetupLogger(env string) (*dd.Logger, error) {
 
 ## 次のステップ
 
-- [クイックスタート](../getting-started) -- 基礎入門
+- [クイックスタート](../getting-started/) -- 基礎入門
 - [API リファレンス](../api-reference/) -- 完全 API
 - [セキュリティ](../security/) -- セキュリティ設定

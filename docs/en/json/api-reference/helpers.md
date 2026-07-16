@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Helpers"
 title: "Helper Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON helper functions: CompareJSON, ClearCache/GetStats cache management, global processor control, and security helpers for everyday Go JSON."
+sidebar_position: 8
 ---
 
 # Helper Functions

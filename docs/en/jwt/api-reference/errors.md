@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Errors"
 title: "Errors - CyberGo JWT | Sentinel Errors"
 description: "CyberGo JWT defines 19 sentinel errors for config validation, token verification, signing, expiration, issuer, audience, blacklist, and lifecycle via errors.Is."
+sidebar_position: 8
 ---
 
 # Errors

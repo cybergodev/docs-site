@@ -1,6 +1,8 @@
 ---
+sidebar_label: "변수 확장"
 title: "변수 확장 - CyberGo env 변수 구문"
 description: "CyberGo env 변수 확장 구문 가이드로 ${VAR}와 ${VAR:-default} 참조, 조건부 확장, 순환 참조 감지, MaxExpansionDepth 제한을 .env 파일에 적용합니다."
+sidebar_position: 4
 ---
 
 # 변수 확장
@@ -252,6 +254,6 @@ func main() {
 
 ## 관련 문서
 
-- [빠른 시작](/ko/env/getting-started) - 기본 사용법
+- [빠른 시작](/ko/env/getting-started/) - 기본 사용법
 - [Config API](/ko/env/api-reference/config) - ExpandVariables 구성
 - [상수 및 오류](/ko/env/api-reference/constants) - 확장 깊이 제한

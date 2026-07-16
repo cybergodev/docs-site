@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo HTTPC | Pre-Deploy Audit"
 description: "HTTPC production security checklist: TLS verification, SSRF and CIDR audit, timeout configuration, response size limits, retry strategy, and audit monitoring."
+sidebar_position: 4
 ---
 
 # Production Checklist
@@ -134,4 +136,4 @@ grep -r "AllowPrivateIPs.*true" --include="*.go" | grep -v "_test.go"
 
 - [Security Overview](./) - Security features overview
 - [SSRF Protection](./ssrf) - SSRF protection in depth
-- [Configuration API](../api-reference/config) - Complete configuration reference
+- [Configuration API](../api-reference/client-config/config) - Complete configuration reference

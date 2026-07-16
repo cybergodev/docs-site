@@ -1,87 +1,51 @@
 import DefaultTheme from 'vitepress/theme'
-import { h, nextTick, onMounted, watch } from 'vue'
-import { useData, useRouter } from 'vitepress'
-import './custom.css'
-import GitHubIcon from './components/GitHubIcon.vue'
-import NotFound from './components/NotFound.vue'
-import LanguagePrompt from './components/LanguagePrompt.vue'
-import LanguageMenu from './components/LanguageMenu.vue'
-import SiteFooter from './components/SiteFooter.vue'
-import DocFeedback from './components/DocFeedback.vue'
-import { STORAGE_KEYS } from '../locales/languages'
-import { PROJECTS } from '../shared'
+import { h, onMounted, watch } from 'vue'
+import { useData } from 'vitepress'
+import type { EnhanceAppContext } from 'vitepress'
+import './style/index.css'
+import { STORAGE_KEYS } from '../shared'
+import {
+  GitHubIcon,
+  NotFound,
+  LanguageMenu,
+  LanguagePrompt,
+  SiteFooter,
+  DocFeedback,
+  ProjectNavBarTitle,
+  ProjectGitHubLink
+} from './components'
 
-const GITHUB_ORG = 'https://github.com/cybergodev'
-const DEFAULT_SITE_TITLE = 'CyberGo'
-
-function updateProjectGitHubLink() {
-  if (typeof window === 'undefined') return
-
-  const links = document.querySelectorAll<HTMLAnchorElement>(
-    '.VPSocialLinks a.VPSocialLink[href*="github.com"]'
-  )
-  if (!links.length) return
-
-  const path = window.location.pathname
-  let project: string | null = null
-  for (const p of PROJECTS) {
-    if (path.includes(`/${p}/`) || path.endsWith(`/${p}`)) {
-      project = p
-      break
-    }
-  }
-
-  const href = project ? `${GITHUB_ORG}/${project}` : GITHUB_ORG
-  links.forEach((link) => {
-    link.href = href
-  })
-}
-
-function updateProjectSiteTitle() {
-  if (typeof window === 'undefined') return
-
-  const navTitles = document.querySelectorAll('.VPNavBarTitle')
-  if (!navTitles.length) return
-
-  const path = window.location.pathname
-  let project: string | null = null
-  for (const p of PROJECTS) {
-    if (path.includes(`/${p}/`) || path.endsWith(`/${p}`)) {
-      project = p
-      break
-    }
-  }
-
-  navTitles.forEach((el) => {
-    const link = el.querySelector<HTMLAnchorElement>('.title')
-    if (!link) return
-
-    const img = link.querySelector<HTMLImageElement>('.VPImage')
-    const textSpan = link.querySelector('span')
-
-    if (project) {
-      el.setAttribute('data-project', project)
-      if (textSpan) {
-        const orgSpan = document.createElement('span')
-        orgSpan.textContent = 'cybergodev/'
-        textSpan.replaceChildren(orgSpan, document.createTextNode(project))
-      }
-    } else {
-      el.removeAttribute('data-project')
-      if (textSpan) textSpan.textContent = DEFAULT_SITE_TITLE
-    }
-  })
-}
-
+/**
+ * CyberGo theme entry.
+ *
+ * Every Layout-slot component below (ProjectNavBarTitle, ProjectGitHubLink,
+ * LanguageMenu, …) is pure Vue: it reads the current route reactively via a
+ * composable and renders the right value, with NO post-render DOM surgery.
+ * This replaces the earlier approach of mutating VitePress internals
+ * (`.VPNavBarTitle`, `.VPSocialLinks`) with querySelector after each
+ * navigation — which was silently broken on every VitePress upgrade. See
+ * composables/useProjectContext.ts.
+ *
+ * The only setup() side effect left is persisting the user's language choice
+ * (cookie + localStorage) so the browser-language prompt and the dev
+ * bare-path redirect can read it on the next visit.
+ */
 export default {
   extends: DefaultTheme,
-  enhanceApp({ app }) {
+  enhanceApp({ app }: EnhanceAppContext) {
     app.component('GitHubIcon', GitHubIcon)
   },
   Layout: () => {
     return h(DefaultTheme.Layout, null, {
       'not-found': () => h(NotFound),
-      'nav-bar-content-after': () => h(LanguageMenu, { variant: 'bar' }),
+      // Sole visible navbar title (native siteTitle span hidden via CSS).
+      'nav-bar-title-after': () => h(ProjectNavBarTitle),
+      // Project-aware GitHub link + unified language switcher. The native
+      // social-links cluster (which only held GitHub) is hidden via CSS.
+      'nav-bar-content-after': () => [
+        h(ProjectGitHubLink),
+        h(LanguageMenu, { variant: 'bar' })
+      ],
       'nav-screen-content-after': () => h(LanguageMenu, { variant: 'screen' }),
       'layout-top': () => h(LanguagePrompt),
       'doc-footer-before': () => h(DocFeedback),
@@ -90,19 +54,8 @@ export default {
   },
   setup() {
     const { lang } = useData()
-    const router = useRouter()
 
     onMounted(() => {
-      updateProjectGitHubLink()
-      updateProjectSiteTitle()
-
-      watch(() => router.route.path, () => {
-        nextTick(() => {
-          updateProjectGitHubLink()
-          updateProjectSiteTitle()
-        })
-      })
-
       watch(lang, (newLang) => {
         if (typeof window !== 'undefined') {
           localStorage.setItem(STORAGE_KEYS.preference, newLang)

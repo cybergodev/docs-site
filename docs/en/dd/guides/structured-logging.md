@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Structured Logging"
 title: "Structured Logging - CyberGo DD | Fields and Chaining"
 description: "CyberGo DD structured logging guide: type-safe field constructors, Field chaining, LoggerEntry immutability, naming conventions, and best practices."
+sidebar_position: 2
 ---
 
 # Structured Logging
@@ -247,5 +249,5 @@ logger.InfoWith("Request completed",
 
 - [File Output and Rotation](./file-output) -- Writing logs to files
 - [Sensitive Data Filtering](./sensitive-filtering) -- Automatic redaction of sensitive information
-- [API Reference - Fields](../api-reference/fields) -- All field constructors
-- [API Reference - LoggerEntry](../api-reference/entry) -- Entry complete methods
+- [API Reference - Fields](../api-reference/output-integration/fields) -- All field constructors
+- [API Reference - LoggerEntry](../api-reference/core/entry) -- Entry complete methods

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "エラー処理"
 title: "エラー処理 - CyberGo DD | ログエラー管理"
 description: "CyberGo DD ログライブラリのエラー処理完全ガイド。構造化エラータイプと階層体系、エラーコード設計、センチネルエラー定義と判定方法、errors.Is/As エラーラッピングとアンラッピング、カスタムエラー処理戦略の実装、エラー復旧メカニズム、エラーフックコールバック設定を詳解し、開発者が各種ログ関連エラーを正確に識別して処理できるようにします。"
+sidebar_position: 2
 ---
 
 # エラー処理
@@ -196,6 +198,6 @@ if err := dd.DefaultInitError(); err != nil {
 
 ## 次のステップ
 
-- [定数とエラー](../api-reference/constants) -- 完全エラーコードリスト
-- [フックシステム](../api-reference/hooks) -- HookRegistry
-- [セキュリティフィルタ](../api-reference/security) -- セキュリティ関連エラー
+- [定数とエラー](../api-reference/dev-tools/constants) -- 完全エラーコードリスト
+- [フックシステム](../api-reference/security-audit/hooks) -- HookRegistry
+- [セキュリティフィルタ](../api-reference/security-audit/security) -- セキュリティ関連エラー

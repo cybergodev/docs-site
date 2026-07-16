@@ -1,6 +1,8 @@
 ---
+sidebar_label: "파일 I/O"
 title: "파일 작업 함수 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON 파일 입출력 함수: LoadFromReader, ParseJSONL/ToJSONL, StreamLinesInto[T], NewJSONLWriter로 대용량 파일 스트리밍을 지원합니다."
+sidebar_position: 5
 ---
 
 # 파일 작업 함수
@@ -324,5 +326,5 @@ if err := jw.Err(); err != nil {
 ## 관련 문서
 
 - [인코딩 디코딩 함수](./encode-decode) - Marshal, Unmarshal 등 직렬화 작업
-- [스트리밍 처리](../../large-files) - 스트리밍 프로세서 자세히
+- [스트리밍 처리](../../streaming/large-files) - 스트리밍 프로세서 자세히
 - [Processor JSONL 메서드](../processor/jsonl) - Processor 수준 JSONL 메서드 자세히

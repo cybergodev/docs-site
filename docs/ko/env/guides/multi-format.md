@@ -1,6 +1,8 @@
 ---
+sidebar_label: "다중 포맷 설정"
 title: "다중 형식 구성 - CyberGo env | .env/JSON/YAML"
 description: "CyberGo env 다중 형식 로딩 가이드로 .env·JSON·YAML 자동 감지와 혼합 로딩, 병합 우선순위 규칙과 형식 변환을 마이크로서비스·컨테이너 환경에 제공합니다."
+sidebar_position: 3
 ---
 
 # 다중 형식 구성

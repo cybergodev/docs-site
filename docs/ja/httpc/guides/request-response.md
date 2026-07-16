@@ -1,6 +1,8 @@
 ---
+sidebar_label: "リクエストとレスポンス"
 title: "リクエストとレスポンス - CyberGo HTTPC | オプションと応答"
 description: "HTTPC リクエストとレスポンスガイド: パッケージレベル関数とクライアントリクエスト、WithHeader/WithJSON などのリクエストオプション、Bearer 認証、クエリパラメータ、Cookie 管理、コンテキスト制御のベストプラクティスを解説します。"
+sidebar_position: 2
 ---
 
 # リクエストとレスポンス
@@ -251,5 +253,5 @@ cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // 解凍後最大 100
 
 - [ファイルアップロードとダウンロード](./file-transfer) - ファイル転送ガイド
 - [ドメインクライアントとセッション](./domain-session) - セッション管理
-- [リクエストオプション API](../api-reference/options) - 完全なオプションリファレンス
-- [Result API](../api-reference/result) - レスポンス処理リファレンス
+- [リクエストオプション API](../api-reference/core/options) - 完全なオプションリファレンス
+- [Result API](../api-reference/core/result) - レスポンス処理リファレンス

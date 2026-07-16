@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Модификация данных"
 title: "Processor Модификация данных - CyberGo JSON | API"
 description: "Методы изменения Processor CyberGo JSON: Set, SetMultiple, SetCreate, Delete и DeleteClean с поддержкой цепочечных вызовов в Go."
+sidebar_position: 3
 ---
 
 # Методы модификации данных

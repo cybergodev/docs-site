@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Обработка JSONL"
 title: "Processor - Методы JSONL - CyberGo JSON | Справочник API"
 description: "Методы JSONL процессора CyberGo JSON: StreamJSONL, ForeachJSONL, MapJSONL, ReduceJSONL и FilterJSONL для потоковой обработки данных."
+sidebar_position: 8
 ---
 
 # Методы Processor JSONL
@@ -420,6 +422,6 @@ func main() {
 
 ## См. также
 
-- [Обработчик JSONL](../jsonl) - функции JSONL на уровне пакета
-- [Обработка больших файлов](../../large-files) - руководство по обработке больших файлов
+- [Обработчик JSONL](../../streaming/jsonl) - функции JSONL на уровне пакета
+- [Обработка больших файлов](../../streaming/large-files) - руководство по обработке больших файлов
 - [Итератор](../iterator) - подробное описание типа IterableValue

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "パフォーマンス"
 title: "パフォーマンス最適化 - CyberGo HTTPC | プリセットと並列"
 description: "HTTPC パフォーマンス最適化ガイド: Default/Secure/Performance/Minimal 4 種類のプリセット比較とシナリオ選択、接続プールとタイムアウト微調整、Result ライフサイクル管理、高並列リクエストパターンを解説します。"
+sidebar_position: 1
 ---
 
 # パフォーマンス最適化

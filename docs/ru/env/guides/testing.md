@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Тестирование"
 title: "Тестирование - CyberGo env | Практики unit-тестов"
 description: "Руководство по тестированию CyberGo env: TestingConfig, мокинг файловой системы, табличные тесты, бенчмарки и очистка ResetDefaultLoader для стабильности."
+sidebar_position: 6
 ---
 
 # Сценарии тестирования

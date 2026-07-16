@@ -1,6 +1,8 @@
 ---
+sidebar_label: "分布式追踪集成"
 title: "分布式追踪集成 - CyberGo DD | Context 与追踪指南"
 description: "CyberGo DD 分布式追踪集成指南，涵盖 TraceID、SpanID、RequestID 上下文传播、ContextExtractor 自定义提取器、HTTP 中间件集成模式、请求作用域日志以及与 OpenTelemetry 等追踪系统的集成方式，帮助开发者在微服务架构中实现端到端日志追踪。"
+sidebar_position: 7
 ---
 
 # 分布式追踪集成
@@ -239,5 +241,5 @@ func (rl *RequestLogger) Finish(status int) {
 
 - [钩子系统](./hooks) -- 生命周期钩子扩展
 - [审计日志](./audit-logging) -- 安全审计
-- [API 参考 - Context](../api-reference/context) -- Context 完整 API
+- [API 参考 - Context](../api-reference/output-integration/context) -- Context 完整 API
 - [Web 服务示例](../examples/web-service) -- 完整 Web 服务示例

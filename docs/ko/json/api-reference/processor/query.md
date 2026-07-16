@@ -1,6 +1,8 @@
 ---
+sidebar_label: "경로 쿼리"
 title: "Processor 경로 쿼리 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor 경로 쿼리: Get/GetString/GetInt, GetMultiple 배치, SafeGet(AccessResult), GetTyped[T]로 JSONPath와 캐시를 지원합니다."
+sidebar_position: 2
 ---
 
 # 경로 쿼리 메서드

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Distributed Tracing"
 title: "Distributed Tracing - CyberGo DD | Context Guide"
 description: "CyberGo DD distributed tracing: TraceID, SpanID, RequestID propagation, ContextExtractor, HTTP middleware, and OpenTelemetry integration."
+sidebar_position: 7
 ---
 
 # Distributed Tracing Integration
@@ -239,5 +241,5 @@ func (rl *RequestLogger) Finish(status int) {
 
 - [Hook System](./hooks) -- Lifecycle hook extensions
 - [Audit Logging](./audit-logging) -- Security auditing
-- [API Reference - Context](../api-reference/context) -- Context complete API
+- [API Reference - Context](../api-reference/output-integration/context) -- Context complete API
 - [Web Service Example](../examples/web-service) -- Complete web service example

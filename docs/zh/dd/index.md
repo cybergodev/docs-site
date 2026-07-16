@@ -1,4 +1,5 @@
 ---
+sidebar_label: "概述"
 title: "DD - 结构化日志库"
 description: "CyberGo DD 是 CyberGo 组织推出的高性能 Go 结构化日志库，提供线程安全的日志记录、灵活的输出目标配置、文件自动轮换、敏感数据自动过滤、异步审计日志、HMAC 完整性签名和零分配优化，帮助开发者快速构建安全可靠的日志记录系统。"
 ---
@@ -68,9 +69,9 @@ func main() {
 
 ## 下一步
 
-- [快速开始](./getting-started) -- 5 分钟入门指南
+- [快速开始](./getting-started/) -- 5 分钟入门指南
 - [核心概念](./guides/core-concepts) -- 理解 DD 架构
 - [迁移指南](./guides/migration) -- 从 log/slog/zap/logrus 迁移
-- [速查表](./cheatsheet) -- 常用 API 速查
+- [速查表](./getting-started/cheatsheet) -- 常用 API 速查
 - [API 参考](./api-reference/) -- 完整 API 文档
 - [基础示例](./examples/basic-usage) -- 实用代码示例

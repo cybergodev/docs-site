@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Парсинг и загрузка"
 title: "Processor Парсинг и загрузка - CyberGo JSON | API"
 description: "Методы парсинга Processor CyberGo JSON: Valid, Parse, ParseAny, оптимизация PreParse и GetFromParsed с настраиваемым парсингом в Go."
+sidebar_position: 5
 ---
 
 # Методы парсинга и загрузки

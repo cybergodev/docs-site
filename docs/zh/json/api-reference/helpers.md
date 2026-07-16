@@ -1,6 +1,8 @@
 ---
+sidebar_label: "辅助函数"
 title: "辅助函数 - CyberGo JSON | API 参考"
 description: "CyberGo JSON 辅助函数：CompareJSON 比较、ClearCache/GetStats 缓存管理、全局处理器管理与安全模式辅助，简化 Go 日常 JSON 操作。"
+sidebar_position: 8
 ---
 
 # 辅助函数

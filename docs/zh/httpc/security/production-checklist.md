@@ -1,6 +1,8 @@
 ---
+sidebar_label: "生产检查清单"
 title: "生产检查清单 - CyberGo HTTPC | 上线前核查"
 description: "HTTPC 生产环境安全检查清单：TLS 核查、SSRF AllowPrivateIPs 确认与 CIDR 审计、Timeouts 超时配置、MaxResponseBodySize 大小限制、MaxRetries 重试策略、资源释放与 AuditMiddleware 监控审计。"
+sidebar_position: 4
 ---
 
 # 生产检查清单
@@ -134,4 +136,4 @@ grep -r "AllowPrivateIPs.*true" --include="*.go" | grep -v "_test.go"
 
 - [安全概述](./) - 安全特性总览
 - [SSRF 防护](./ssrf) - SSRF 防护详解
-- [配置 API](../api-reference/config) - 完整配置参考
+- [配置 API](../api-reference/client-config/config) - 完整配置参考

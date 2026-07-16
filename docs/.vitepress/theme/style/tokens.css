@@ -1,0 +1,118 @@
+/**
+ * Design tokens — single source of truth for color, spacing, radius, elevation.
+ *
+ * Three layers (kept in one file at this site's scale; a larger site would split
+ * them into ramp / semantic / vp-bridge files, as LongBridge does):
+ *
+ *   1. RAW RAMP   — the brand (NVIDIA green) color scale 50…900, the ingredients.
+ *   2. SEMANTIC   — `--cg-*` tokens with meaning (brand / brand-hover / …) that
+ *                   reference the ramp. Dark mode overrides THESE, not the ramp,
+ *                   so dark is a retuned palette (brighter brand for contrast on
+ *                   dark surfaces) rather than a blind invert.
+ *   3. VP BRIDGE  — VitePress's own hooks (`--vp-c-brand-*`, `--vp-c-divider`, …)
+ *                   mapped onto the semantic layer, so every built-in component
+ *                   inherits the brand with zero per-component overrides.
+ *
+ * Plus scale tokens for spacing / radius / z-index, so new code retires magic
+ * numbers (existing literal values are untouched for now — migrate gradually).
+ *
+ * Loaded first (theme/style/index.css) so every var() elsewhere resolves.
+ *
+ * VISUAL CONTRACT: ramp slots 400/500/600/700 are the EXACT original brand
+ * values (#8ed000/#76b900/#5a8b00/#4a7500). The VP-bridge mappings reproduce the
+ * previous tokens.css output for both light and dark, so this refactor changes
+ * no rendered color — it only adds structure + the new scales.
+ */
+
+/* ============================================
+   1. RAW RAMP — brand (NVIDIA green) scale
+   Slots 400–700 are the original exact brand values; the rest extend the ramp.
+   ============================================ */
+:root {
+  --cg-brand-50: #f7fcea;
+  --cg-brand-100: #ecf9ce;
+  --cg-brand-200: #d9f09e;
+  --cg-brand-300: #b8e355;
+  --cg-brand-400: #8ed000; /* dark-mode brand */
+  --cg-brand-500: #76b900; /* light-mode brand / primary */
+  --cg-brand-600: #5a8b00;
+  --cg-brand-700: #4a7500;
+  --cg-brand-800: #3a5c00;
+  --cg-brand-900: #2b4400;
+}
+
+/* ============================================
+   2. SEMANTIC tokens (--cg-*)
+   ============================================ */
+:root {
+  /* Brand — light: default → hover → pressed go darker, matching the original. */
+  --cg-brand: var(--cg-brand-500);
+  --cg-brand-hover: var(--cg-brand-600);
+  --cg-brand-pressed: var(--cg-brand-700);
+  --cg-brand-soft: rgba(118, 185, 0, 0.14);
+  --cg-brand-contrast: #ffffff; /* text on a brand-filled surface */
+
+  /* Lines */
+  --cg-divider: rgba(118, 185, 0, 0.15);
+
+  /* Spacing scale (4px base) */
+  --cg-sp-1: 4px;
+  --cg-sp-2: 8px;
+  --cg-sp-3: 12px;
+  --cg-sp-4: 16px;
+  --cg-sp-5: 24px;
+  --cg-sp-6: 32px;
+
+  /* Radius scale */
+  --cg-radius-sm: 4px;
+  --cg-radius-md: 8px;
+  --cg-radius-lg: 16px;
+  --cg-radius-pill: 9999px;
+
+  /* z-index scale */
+  --cg-z-base: 1;
+  --cg-z-dropdown: 10;
+  --cg-z-sticky: 100;
+  --cg-z-overlay: 1000;
+  --cg-z-toast: 1100;
+}
+
+.dark {
+  /* Dark is retuned, not inverted: brighter brand for contrast on dark, and the
+     default→hover→pressed run shifts UP the ramp (400→500→600). */
+  --cg-brand: var(--cg-brand-400);
+  --cg-brand-hover: var(--cg-brand-500);
+  --cg-brand-pressed: var(--cg-brand-600);
+  --cg-brand-soft: rgba(142, 208, 0, 0.14);
+
+  --cg-divider: rgba(142, 208, 0, 0.12);
+}
+
+/* ============================================
+   3. VP BRIDGE — map VitePress hooks onto --cg-*
+   Values are identical to the previous tokens.css (verified per slot), so no
+   built-in component changes appearance.
+   ============================================ */
+:root {
+  --vp-c-brand-1: var(--cg-brand); /* #76b900 */
+  --vp-c-brand-2: var(--cg-brand-hover); /* #5a8b00 */
+  --vp-c-brand-3: var(--cg-brand-pressed); /* #4a7500 */
+  --vp-c-brand-soft: var(--cg-brand-soft);
+  --vp-c-accent: var(--cg-brand-500); /* stays #76b900 in both themes (was unoverridden in dark) */
+  --vp-c-divider: var(--cg-divider);
+  --vp-c-gutter: var(--cg-divider);
+}
+
+.dark {
+  --vp-c-brand-1: var(--cg-brand); /* #8ed000 */
+  --vp-c-brand-2: var(--cg-brand-hover); /* #76b900 */
+  --vp-c-brand-3: var(--cg-brand-pressed); /* #5a8b00 */
+  --vp-c-brand-soft: var(--cg-brand-soft);
+  --vp-c-divider: var(--cg-divider);
+  --vp-c-gutter: var(--cg-divider);
+}
+
+/* Custom-block radius now references the token (value unchanged: 8px). */
+.custom-block {
+  border-radius: var(--cg-radius-md);
+}

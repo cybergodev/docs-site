@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Система хуков"
 title: "Система хуков - CyberGo DD | Хуки жизненного цикла"
 description: "Практическое руководство по системе хуков CyberGo DD, подробно описывающее 6 типов событий хуков жизненного цикла (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), регистрацию и управление HookRegistry, контекстные данные HookContext, стратегии обработки ошибок и распространённые сценарии использования хуков, помогающее разработчикам расширять поведение библиотеки логирования."
+sidebar_position: 6
 ---
 
 # Система хуков
@@ -195,4 +197,4 @@ registry.Add(dd.HookAfterLog, newHookFunc)
 
 - [Аудитные логи](./audit-logging) -- интеграция аудита безопасности
 - [Распределённая трассировка](./context-tracing) -- интеграция с контекстом
-- [Справочник API - Хуки](../api-reference/hooks) -- полный API хуков
+- [Справочник API - Хуки](../api-reference/security-audit/hooks) -- полный API хуков

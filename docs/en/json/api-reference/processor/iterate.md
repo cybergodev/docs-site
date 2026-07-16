@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Iterate"
 title: "Processor Iteration Methods - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor iteration: Foreach, ForeachWithPath, ForeachNested, IterableValue data access, and IteratorControl flow for batch iteration."
+sidebar_position: 6
 ---
 
 # Iteration Methods

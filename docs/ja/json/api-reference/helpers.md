@@ -1,6 +1,8 @@
 ---
+sidebar_label: "ヘルパー関数"
 title: "ヘルパー関数 - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON ヘルパー関数：CompareJSON 比較、ClearCache/GetStats キャッシュ管理、グローバルプロセッサ、セキュリティヘルパーで Go の日常的な JSON 操作を簡素化します。"
+sidebar_position: 8
 ---
 
 # ヘルパー関数

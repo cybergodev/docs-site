@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Modify"
 title: "Modify Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON modify functions: Set/SetMultiple, Delete, MergeJSON/MergeMany with auto path creation, atomic ops, and multiple MergeMode strategies."
+sidebar_position: 3
 ---
 
 # Modify Functions

@@ -1,6 +1,8 @@
 ---
+sidebar_label: "Доменный клиент и сессии"
 title: "Доменный клиент и сессии - CyberGo HTTPC | Сессии и домены"
 description: "Руководство по доменному клиенту и сессиям HTTPC: создание NewDomain, авто-сборка URL, заголовки SetHeader, проверка Cookie и пример обёртки REST API."
+sidebar_position: 3
 ---
 
 # Доменный клиент и сессии
@@ -192,6 +194,6 @@ func main() {
 
 ## Что дальше
 
-- [Доменный клиент API](../api-reference/domain-client) - полный справочник API
-- [Управление сессиями API](../api-reference/session) - справочник по SessionManager
+- [Доменный клиент API](../api-reference/client-config/domain-client) - полный справочник API
+- [Управление сессиями API](../api-reference/client-config/session) - справочник по SessionManager
 - [Запросы и ответы](./request-response) - руководство по базовым запросам

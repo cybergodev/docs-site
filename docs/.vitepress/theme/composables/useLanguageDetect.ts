@@ -1,7 +1,4 @@
-import {
-  supportedLanguages,
-  type LanguageConfig
-} from '../../locales/languages'
+import { supportedLanguages, type LanguageConfig } from '../../shared'
 
 /**
  * Find the best matching locale for a browser language string
