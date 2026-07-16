@@ -258,7 +258,7 @@ jsonlStr, err := json.ToJSONLString(items)
 ## JSONL 配置
 
 ::: warning
-`JSONLConfig` 独立结构和 `DefaultJSONLConfig()` 函数已移除。JSONL 配置已统一集成到 `Config` 的 `JSONL*` 字段中。
+JSONLConfig 独立结构和 `DefaultJSONLConfig()` 函数已移除。JSONL 配置已统一集成到 `Config` 的 `JSONL*` 字段中。
 :::
 
 ### 通过 Config 配置 JSONL

@@ -47,7 +47,7 @@ batch := html.ExtractBatchFiles(paths)
 
 ### 带上下文版本
 
-所有函数都有 `WithContext` 变体：
+所有函数都有 `ExtractWithContext` 变体：
 
 ```go
 result, err := html.ExtractWithContext(ctx, data)

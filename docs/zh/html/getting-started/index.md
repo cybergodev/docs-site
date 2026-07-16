@@ -117,7 +117,7 @@ jsonBytes, err := html.ExtractToJSON(data)
 
 ## 上下文支持
 
-所有函数都有带 `WithContext` 的版本，支持取消和超时：
+所有函数都有带 `ExtractWithContext` 的版本，支持取消和超时：
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -133,7 +133,10 @@ result, err := html.ExtractWithContext(ctx, data)
 `Processor` 实例是并发安全的，可以在多个 goroutine 中共享使用：
 
 ```go
-p, _ := html.New(html.DefaultConfig())
+p, err := html.New(html.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer p.Close()
 
 // 多个 goroutine 安全调用

@@ -117,7 +117,7 @@ jsonBytes, err := html.ExtractToJSON(data)
 
 ## Поддержка контекста
 
-Все функции имеют версии с `WithContext` для поддержки отмены и тайм-аута:
+Все функции имеют версии с `ExtractWithContext` для поддержки отмены и тайм-аута:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

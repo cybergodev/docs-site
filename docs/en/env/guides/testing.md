@@ -13,7 +13,7 @@ This guide covers how to use the env library in tests, including isolated test e
 
 ### Using TestingConfig
 
-`TestingConfig` overrides existing environment variables, suitable for test isolation:
+TestingConfig overrides existing environment variables, suitable for test isolation:
 
 ```go
 func TestWithTestingConfig(t *testing.T) {
@@ -30,7 +30,7 @@ func TestWithTestingConfig(t *testing.T) {
 ```
 
 ::: tip Note
-`TestingConfig` sets `OverwriteExisting: true` to ensure test isolation. If you need to preserve existing variables, manually set `cfg.OverwriteExisting = false`.
+TestingConfig sets `OverwriteExisting: true` to ensure test isolation. If you need to preserve existing variables, manually set `cfg.OverwriteExisting = false`.
 :::
 
 ### Independent Loader per Test

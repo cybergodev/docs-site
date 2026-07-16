@@ -136,7 +136,7 @@ cfg.Security.CertificatePinner = chainPinner
 
 ### 高级：自定义 TLS 验证回调
 
-如需完全控制 TLS 验证逻辑（例如固定完整证书而非公钥），可通过 `TLSConfig` 自行实现。此时标准链验证由 `InsecureSkipVerify` 跳过，**必须**在 `VerifyPeerCertificate` 中完成全部校验：
+如需完全控制 TLS 验证逻辑（例如固定完整证书而非公钥），可通过 `TLSConfig` 自行实现。此时标准链验证由 `InsecureSkipVerify` 跳过，**必须**在 VerifyPeerCertificate 中完成全部校验：
 
 ```go
 cfg := httpc.DefaultConfig()

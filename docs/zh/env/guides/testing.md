@@ -13,7 +13,7 @@ sidebar_position: 6
 
 ### 使用 TestingConfig
 
-`TestingConfig` 会覆盖已存在的环境变量，适合测试隔离：
+TestingConfig 会覆盖已存在的环境变量，适合测试隔离：
 
 ```go
 func TestWithTestingConfig(t *testing.T) {
@@ -30,7 +30,7 @@ func TestWithTestingConfig(t *testing.T) {
 ```
 
 ::: tip 注意
-`TestingConfig` 设置 `OverwriteExisting: true`，确保测试隔离。如果需要保留已存在变量，可手动设置 `cfg.OverwriteExisting = false`。
+TestingConfig 设置 `OverwriteExisting: true`，确保测试隔离。如果需要保留已存在变量，可手动设置 `cfg.OverwriteExisting = false`。
 :::
 
 ### 每个测试独立加载器

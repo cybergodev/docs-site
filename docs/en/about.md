@@ -7,7 +7,7 @@ description: "Learn about the CyberGo documentation site, including coverage, co
 
 ## Documentation Site
 
-The CyberGo documentation site is the unified technical documentation center for the [CyberGoDev](https://github.com/cybergodev) organization, providing comprehensive Chinese and English documentation for all Go open-source libraries.
+The CyberGo documentation site is the unified technical documentation center for the [CyberGoDev](https://github.com/cybergodev) organization, providing comprehensive documentation in five languages — Chinese, English, Korean, Japanese, and Russian — for all Go open-source libraries.
 
 This site helps developers quickly get started and gain a deep understanding of each library's features, APIs, and best practices, ensuring efficient and safe usage in production environments.
 

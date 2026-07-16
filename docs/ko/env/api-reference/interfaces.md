@@ -243,7 +243,7 @@ type FullAuditLogger interface {
 
 | 메서드 | 용도 |
 |------|------|
-| `LogError` | 오류 이벤트 기록 (AuditLogger에서 상속) |
+| LogError | 오류 이벤트 기록 (AuditLogger에서 상속) |
 | `Log` | 일반 감사 이벤트 기록 |
 | `LogWithFile` | 파일 정보가 포함된 이벤트 기록 |
 | `LogWithDuration` | 소요 시간이 포함된 이벤트 기록 |
@@ -511,11 +511,11 @@ type File interface {
 
 | 메서드 | 용도 |
 |------|------|
-| `Read` | 데이터 읽기 |
-| `Write` | 데이터 쓰기 |
-| `Close` | 파일 닫기 |
-| `Stat` | 파일 정보 가져오기 |
-| `Sync` | 디스크에 동기화 |
+| Read | 데이터 읽기 |
+| Write | 데이터 쓰기 |
+| Close | 파일 닫기 |
+| Stat | 파일 정보 가져오기 |
+| Sync | 디스크에 동기화 |
 
 ---
 
@@ -661,15 +661,15 @@ type AuditEvent = internal.Event
 
 | 필드 | 유형 | 설명 |
 |------|------|------|
-| `Timestamp` | `time.Time` | 타임스탬프 |
-| `Action` | `AuditAction` | 작업 유형 |
-| `Key` | `string` | 키 이름 (마스킹됨) |
-| `File` | `string` | 파일 이름 |
-| `Reason` | `string` | 사유/설명 |
-| `Success` | `bool` | 성공 여부 |
-| `Masked` | `bool` | 마스킹 여부 |
-| `Details` | `string` | 상세 정보 |
-| `Duration` | `int64` | 소요 시간 (나노초) |
+| Timestamp | `time.Time` | 타임스탬프 |
+| Action | `AuditAction` | 작업 유형 |
+| Key | `string` | 키 이름 (마스킹됨) |
+| File | `string` | 파일 이름 |
+| Reason | `string` | 사유/설명 |
+| Success | `bool` | 성공 여부 |
+| Masked | `bool` | 마스킹 여부 |
+| Details | `string` | 상세 정보 |
+| Duration | `int64` | 소요 시간 (나노초) |
 
 ---
 

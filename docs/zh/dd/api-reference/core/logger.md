@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Logger"
 title: "Logger - CyberGo DD | 核心日志记录器"
-description: "CyberGo DD Logger 核心日志记录器完整 API 文档，涵盖日志输出方法（Info/Warn/Error/Fatal）、级别动态管理、Writer 动态添加与替换、生命周期控制（Close/Flush）、全局日志函数和链式字段设置，是使用 DD 日志库的核心入口类型。"
+description: "CyberGo DD Logger 核心日志记录器 API：日志输出方法（Info/Warn/Error/Fatal）、级别动态管理、Writer 增删替换、生命周期控制（Close/Flush）与链式字段设置，是日志库的核心入口类型。"
 sidebar_position: 2
 ---
 

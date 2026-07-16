@@ -185,7 +185,7 @@ fmt.Printf("%s: ⭐ %d\n", repo.FullName, repo.Stars)
 ```
 
 ポイント：
-- ミドルウェアは `Config.Middleware.Middlewares` で設定
+- ミドルウェアは `MiddlewareConfig.Middlewares` で設定
 - `LoggingMiddleware` はリクエストログを記録
 - `RecoveryMiddleware` は panic によるクラッシュを防止
 - `RequestIDMiddleware` は各リクエストにユニーク ID を生成

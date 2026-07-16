@@ -136,7 +136,7 @@ cfg.Security.CertificatePinner = chainPinner
 
 ### 高度：カスタム TLS 検証コールバック
 
-TLS 検証ロジックを完全に制御したい場合（例：公開鍵ではなく完全な証明書を固定する場合）は、`TLSConfig` で独自に実装できます。この場合、標準のチェーン検証は `InsecureSkipVerify` でスキップされるため、`VerifyPeerCertificate` で**必ず**すべての検証を行う必要があります：
+TLS 検証ロジックを完全に制御したい場合（例：公開鍵ではなく完全な証明書を固定する場合）は、`TLSConfig` で独自に実装できます。この場合、標準のチェーン検証は `InsecureSkipVerify` でスキップされるため、VerifyPeerCertificate で**必ず**すべての検証を行う必要があります：
 
 ```go
 cfg := httpc.DefaultConfig()

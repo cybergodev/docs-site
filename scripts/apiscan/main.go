@@ -80,13 +80,19 @@ func isExcludedFile(name string) bool {
 		strings.HasSuffix(name, ".gen.go")
 }
 
-// isTestFuncName drops Test*/Benchmark*/Example*/Fuzz* (defensive — they usually
-// live in *_test.go which is already excluded, but guard exported test helpers).
+// isTestFuncName drops Go test funcs (TestXxx/BenchmarkXxx/ExampleXxx/FuzzXxx,
+// where Xxx starts uppercase — the Go test convention). The uppercase check
+// avoids clobbering exported helpers whose names merely begin with these
+// prefixes, e.g. TestingConfig / TestingClient. (*_test.go is already excluded;
+// this is a defensive guard for any test-funcs living outside it.)
 func isTestFuncName(name string) bool {
-	return strings.HasPrefix(name, "Test") ||
-		strings.HasPrefix(name, "Benchmark") ||
-		strings.HasPrefix(name, "Example") ||
-		strings.HasPrefix(name, "Fuzz")
+	for _, p := range []string{"Test", "Benchmark", "Example", "Fuzz"} {
+		if strings.HasPrefix(name, p) {
+			rest := name[len(p):]
+			return rest != "" && rest[0] >= 'A' && rest[0] <= 'Z'
+		}
+	}
+	return false
 }
 
 func isDeprecated(doc string) bool { return strings.Contains(doc, "Deprecated:") }
@@ -199,6 +205,14 @@ func main() {
 						Name: t.Name + "." + name, Signature: funcSig(fset, m.Decl),
 						Doc: trimDoc(m.Doc), Deprecated: isDeprecated(m.Doc),
 					})
+				}
+				// Interface method set: go/doc's t.Methods holds only receiver
+				// methods (func (T) M()), NOT the methods declared inside
+				// `interface { … }`. Without collecting those, every interface-
+				// method doc reference (Reader.Read, Logger.Log, …) false-positives
+				// as dangling. Structs have no such set — only interfaces do.
+				if ty.Kind == "interface" {
+					ty.Methods = append(ty.Methods, interfaceMethods(fset, t)...)
 				}
 				pkgOut.Types = append(pkgOut.Types, ty)
 
@@ -341,6 +355,43 @@ func structFields(fset *token.FileSet, t *doc.Type) []Symbol {
 					out = append(out, Symbol{
 						Name: n.Name, Signature: n.Name + " " + typ,
 						Doc: trimDoc(field.Doc.Text()),
+					})
+				}
+			}
+		}
+	}
+	return out
+}
+
+// interfaceMethods returns the method names declared inside an interface type
+// (inline method declarations only — embedded interfaces are skipped, their
+// methods belong to the embedded type). go/doc's Type.Methods holds only
+// receiver methods, so the interface method set must be read from the AST
+// directly. Function declaration order is irrelevant in Go, so this may call
+// exprString (defined below).
+func interfaceMethods(fset *token.FileSet, t *doc.Type) []Symbol {
+	if t.Decl == nil {
+		return nil
+	}
+	var out []Symbol
+	for _, sp := range t.Decl.Specs {
+		ts, ok := sp.(*ast.TypeSpec)
+		if !ok {
+			continue
+		}
+		it, ok := ts.Type.(*ast.InterfaceType)
+		if !ok || it.Methods == nil {
+			continue
+		}
+		for _, field := range it.Methods.List {
+			if len(field.Names) == 0 {
+				continue // embedded interface (e.g. io.Reader) — skip
+			}
+			for _, n := range field.Names {
+				if token.IsExported(n.Name) {
+					out = append(out, Symbol{
+						Name:      t.Name + "." + n.Name,
+						Signature: exprString(fset, field.Type),
 					})
 				}
 			}

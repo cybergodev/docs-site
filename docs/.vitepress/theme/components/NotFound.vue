@@ -1,36 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useData } from 'vitepress'
+import { useUiLabels } from '../composables/useUiLabels'
 import { STORAGE_KEYS } from '../../shared'
 import { getPreferencePath } from '../composables/useLanguageDetect'
 
-const { lang } = useData()
-
-type NotFoundTranslations = {
-  title: string
-  desc: string
-  goHome: string
-  goBack: string
-}
-
-const notFoundI18n: Record<string, NotFoundTranslations> = {
-  zh: { title: '页面未找到', desc: '抱歉，您访问的页面不存在或已被移除。', goHome: '返回首页', goBack: '返回上页' },
-  en: { title: 'Page Not Found', desc: 'Sorry, the page you are looking for does not exist or has been removed.', goHome: 'Go Home', goBack: 'Go Back' },
-  ko: { title: '페이지를 찾을 수 없습니다', desc: '죄송합니다. 요청하신 페이지가 존재하지 않거나 삭제되었습니다.', goHome: '홈으로', goBack: '뒤로 가기' },
-  ja: { title: 'ページが見つかりません', desc: '申し訳ありません。お探しのページは存在しないか、削除されました。', goHome: 'ホームへ', goBack: '戻る' },
-  ru: { title: 'Страница не найдена', desc: 'Извините, запрашиваемая страница не существует или была удалена.', goHome: 'На главную', goBack: 'Назад' }
-}
-
-function getLangKey(): string {
-  const l = lang.value || ''
-  if (l.startsWith('zh')) return 'zh'
-  if (l.startsWith('ko')) return 'ko'
-  if (l.startsWith('ja')) return 'ja'
-  if (l.startsWith('ru')) return 'ru'
-  return 'en'
-}
-
-const t = computed(() => notFoundI18n[getLangKey()] || notFoundI18n.en)
+const t = useUiLabels()
 
 const goHome = () => {
   // Honor a previously-saved language preference; otherwise go to the site
@@ -56,17 +29,17 @@ const goBack = () => {
     <div class="not-found-content">
       <h1 class="not-found-code">404</h1>
       <p class="not-found-title">
-        {{ t.title }}
+        {{ t.notFoundTitle }}
       </p>
       <p class="not-found-desc">
-        {{ t.desc }}
+        {{ t.notFoundDesc }}
       </p>
       <div class="not-found-actions">
         <button type="button" class="btn-primary" @click="goHome">
-          {{ t.goHome }}
+          {{ t.notFoundGoHome }}
         </button>
         <button type="button" class="btn-secondary" @click="goBack">
-          {{ t.goBack }}
+          {{ t.notFoundGoBack }}
         </button>
       </div>
     </div>

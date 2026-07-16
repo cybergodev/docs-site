@@ -180,7 +180,7 @@ if result.Resumed {
 ```
 
 续传机制：
-1. 检查本地文件大小 → 作为 `Range` 请求偏移量
+1. 检查本地文件大小 → 作为 Range 请求偏移量
 2. 服务端返回 206 (Partial Content) → 追加写入
 3. 服务端返回 416 (Range Not Satisfiable) → 返回错误
 4. 服务端返回 200（不支持 Range）→ 返回错误（保护本地部分文件不被覆盖）

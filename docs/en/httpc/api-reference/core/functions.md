@@ -178,7 +178,7 @@ result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
 :::tip Migration note
-The old `DownloadFile`, `DownloadWithOptions`, `DownloadFileWithContext`, and `DownloadWithOptionsWithContext` were removed in v1.5.2. Migrate to the unified `Download(ctx, url, cfg, options...)` and configure path, overwrite, resume, and checksum via `DownloadConfig`.
+The old download functions (DownloadFile, DownloadWithOptions, DownloadFileWithContext, and DownloadWithOptionsWithContext) were removed in v1.5.2. Migrate to the unified `Download(ctx, url, cfg, options...)` and configure path, overwrite, resume, and checksum via `DownloadConfig`.
 :::
 
 ## Helper Functions

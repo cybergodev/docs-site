@@ -32,14 +32,14 @@ type ClientError struct {
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `Type` | `ErrorType` | 错误分类，用于 switch 判断 |
-| `Message` | `string` | 错误描述信息 |
-| `Cause` | `error` | 底层错误，可通过 `Unwrap()` 获取 |
+| Type | `ErrorType` | 错误分类，用于 switch 判断 |
+| Message | `string` | 错误描述信息 |
+| Cause | `error` | 底层错误，可通过 `Unwrap()` 获取 |
 | `URL` | `string` | 请求 URL（凭据已脱敏） |
 | `Method` | `string` | HTTP 方法（GET、POST 等） |
 | `Attempts` | `int` | 已重试次数 |
 | `StatusCode` | `int` | HTTP 状态码（非 HTTP 错误时为 0） |
-| `Host` | `string` | 请求主机名 |
+| Host | `string` | 请求主机名 |
 
 ### 方法
 

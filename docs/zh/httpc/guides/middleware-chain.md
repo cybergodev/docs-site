@@ -25,7 +25,11 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
     httpc.RequestIDMiddleware("X-Request-ID", nil), // 最内层：请求 ID
 }
 
-client, _ := httpc.New(cfg)
+client, err := httpc.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+defer client.Close()
 ```
 
 ## 内置中间件
@@ -119,7 +123,11 @@ auditCfg := &httpc.AuditMiddlewareConfig{
 }
 
 httpc.AuditMiddlewareWithConfig(func(event httpc.AuditEvent) {
-    data, _ := json.Marshal(event)
+    data, err := json.Marshal(event)
+    if err != nil {
+        log.Println("序列化审计事件失败:", err)
+        return
+    }
     log.Println(string(data))
 }, auditCfg)
 ```
@@ -212,7 +220,11 @@ cfg.Middleware = &httpc.MiddlewareConfig{
     MaxRedirects:    10,
 }
 
-client, _ := httpc.New(cfg)
+client, err := httpc.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+defer client.Close()
 ```
 
 ## 下一步

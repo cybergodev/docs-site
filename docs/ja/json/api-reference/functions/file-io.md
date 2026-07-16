@@ -258,7 +258,7 @@ jsonlStr, err := json.ToJSONLString(items)
 ## JSONL 設定
 
 ::: warning
-`JSONLConfig` 独立構造体と `DefaultJSONLConfig()` 関数は削除されました。JSONL 設定は `Config` の `JSONL*` フィールドに統合されています。
+JSONLConfig 独立構造体と `DefaultJSONLConfig()` 関数は削除されました。JSONL 設定は `Config` の `JSONL*` フィールドに統合されています。
 :::
 
 ### Config による JSONL 設定

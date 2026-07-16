@@ -215,7 +215,7 @@ type PathSegment = internal.PathSegment
 ```
 
 ::: warning 内部実装のエイリアス
-`PathSegment` は `internal.PathSegment` の型エイリアスです。具体的なフィールド、フィールド型（`PathSegmentType`、`PathSegmentFlags` など）およびメソッドは `internal` パッケージに属し、**公開 API としてはエクスポートされていません**。バージョン間で変更される可能性があるため、ビジネスコードで内部構造に直接依存しないでください。
+`PathSegment` は `internal.PathSegment` の型エイリアスです。具体的なフィールド、フィールド型（PathSegmentType、PathSegmentFlags など）およびメソッドは `internal` パッケージに属し、**公開 API としてはエクスポートされていません**。バージョン間で変更される可能性があるため、ビジネスコードで内部構造に直接依存しないでください。
 
 - カスタムパス構文を実装する際は、[`PathParser`](./interfaces#pathparser) インターフェースの `ParsePath` メソッドで `[]PathSegment` を返します。
 - プリコンパイル済みパスには [`Processor.CompilePath`](./processor/query#compilepath) を使用し、`*CompiledPath` を返します。

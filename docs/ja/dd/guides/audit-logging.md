@@ -58,17 +58,17 @@ AuditLogger は 11 種類のセキュリティイベントを記録します：
 
 | イベントタイプ | 説明 | デフォルト重大度 |
 |----------|------|-------------|
-| `SensitiveDataRedacted` | 機密データがマスキングされた | Info |
-| `RateLimitExceeded` | レート制限がトリガーされた | Warning |
-| `ReDoSAttempt` | ReDoS 攻撃の試行 | Critical |
-| `SecurityViolation` | セキュリティ違反 | Error |
-| `IntegrityViolation` | ログの整合性が破損 | Critical |
-| `InputSanitized` | 入力がサニタイズされた | Info |
-| `PathTraversalAttempt` | パストラバーサルの試行 | Critical |
-| `Log4ShellAttempt` | Log4Shell 攻撃の試行 | <Badge type="info" text="呼び出し元が指定" /> |
-| `NullByteInjection` | Null バイトインジェクションの試行 | <Badge type="info" text="呼び出し元が指定" /> |
-| `OverlongEncoding` | オーバーロングエンコーディング攻撃 | <Badge type="info" text="呼び出し元が指定" /> |
-| `HomographAttack` | ホモグラフ攻撃 | <Badge type="info" text="呼び出し元が指定" /> |
+| `AuditEventSensitiveDataRedacted` | 機密データがマスキングされた | Info |
+| `AuditEventRateLimitExceeded` | レート制限がトリガーされた | Warning |
+| `AuditEventReDoSAttempt` | ReDoS 攻撃の試行 | Critical |
+| `AuditEventSecurityViolation` | セキュリティ違反 | Error |
+| `AuditEventIntegrityViolation` | ログの整合性が破損 | Critical |
+| `AuditEventInputSanitized` | 入力がサニタイズされた | Info |
+| `AuditEventPathTraversalAttempt` | パストラバーサルの試行 | Critical |
+| `AuditEventLog4ShellAttempt` | Log4Shell 攻撃の試行 | <Badge type="info" text="呼び出し元が指定" /> |
+| `AuditEventNullByteInjection` | Null バイトインジェクションの試行 | <Badge type="info" text="呼び出し元が指定" /> |
+| `AuditEventOverlongEncoding` | オーバーロングエンコーディング攻撃 | <Badge type="info" text="呼び出し元が指定" /> |
+| `AuditEventHomographAttack` | ホモグラフ攻撃 | <Badge type="info" text="呼び出し元が指定" /> |
 
 ## HMAC 署名との統合
 

@@ -185,7 +185,7 @@ fmt.Printf("%s: Stars %d\n", repo.FullName, repo.Stars)
 ```
 
 Key points:
-- Middleware is configured in `Config.Middleware.Middlewares`
+- Middleware is configured in `MiddlewareConfig.Middlewares`
 - `LoggingMiddleware` records request logs
 - `RecoveryMiddleware` prevents panic crashes
 - `RequestIDMiddleware` generates a unique ID for each request

@@ -8,7 +8,7 @@ sidebar_position: 11
 # 打印函数
 
 ::: warning API 变更说明
-`Print`、`PrintPretty`、`PrintE`、`PrintPrettyE` 已从库中移除，不再提供。请使用以下替代方案。
+Print、PrintPretty、PrintE、PrintPrettyE 已从库中移除，不再提供。请使用以下替代方案。
 :::
 
 ## 替代方案

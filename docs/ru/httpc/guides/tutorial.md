@@ -185,7 +185,7 @@ fmt.Printf("%s: ⭐ %d\n", repo.FullName, repo.Stars)
 ```
 
 Ключевые моменты:
-- Промежуточное ПО настраивается в `Config.Middleware.Middlewares`
+- Промежуточное ПО настраивается в `MiddlewareConfig.Middlewares`
 - `LoggingMiddleware` записывает логи запросов
 - `RecoveryMiddleware` предотвращает падение процесса при panic
 - `RequestIDMiddleware` генерирует уникальный ID для каждого запроса

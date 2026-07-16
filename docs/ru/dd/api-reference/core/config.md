@@ -274,7 +274,7 @@ type FieldValidationConfig struct {
 | `NamingConventionAny` | Принимать любой формат (по умолчанию) | - |
 | `NamingConventionSnakeCase` | snake_case | `user_id`, `created_at` |
 | `NamingConventionCamelCase` | camelCase | `userId`, `createdAt` |
-| `NamingConventionPascalCase` | PascalCase | `UserId`, `CreatedAt` |
+| `NamingConventionPascalCase` | PascalCase | UserId, CreatedAt |
 | `NamingConventionKebabCase` | kebab-case | `user-id`, `created-at` |
 
 Реализует метод `String()`, возвращающий имя соглашения об именовании.

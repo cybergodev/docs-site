@@ -1,14 +1,19 @@
-name: Deploy Docs to Server
+name: Deploy Docs to Server (FTP, cold-standby)
+
+# Disabled in favor of Cloudflare Pages (deploy-cloudflare.yml runs on push to
+# main). Kept runnable via the Actions UI (workflow_dispatch) as a cold-standby:
+# trigger manually if Cloudflare is ever down. To roll back to FTP, re-enable
+# the `push:` block below and disable deploy-cloudflare.yml's push trigger.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'docs/**'
-      - 'docs/.vitepress/**'
-      - 'package.json'
-      - 'package-lock.json'
   workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'docs/**'
+  #     - 'docs/.vitepress/**'
+  #     - 'package.json'
+  #     - 'package-lock.json'
 
 concurrency:
   group: deploy

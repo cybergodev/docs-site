@@ -178,7 +178,7 @@ result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
 :::tip 마이그레이션 안내
-기존의 `DownloadFile`, `DownloadWithOptions`, `DownloadFileWithContext`, `DownloadWithOptionsWithContext`는 v1.5.2에서 제거되었습니다. `Download(ctx, url, cfg, options...)`로 통일하여 사용하고, 경로, 덮어쓰기, 이어받기, 검증은 `DownloadConfig`로 설정하세요.
+기존의 DownloadFile, DownloadWithOptions, DownloadFileWithContext, DownloadWithOptionsWithContext는 v1.5.2에서 제거되었습니다. `Download(ctx, url, cfg, options...)`로 통일하여 사용하고, 경로, 덮어쓰기, 이어받기, 검증은 `DownloadConfig`로 설정하세요.
 :::
 
 ## 보조 함수

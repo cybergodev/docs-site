@@ -16,38 +16,20 @@
  *
  * Run after `vitepress build` (see package.json `build`).
  */
-import { readdir, readFile, writeFile, mkdir } from 'fs/promises'
+import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join, dirname } from 'path'
-import type { Dirent } from 'fs'
 import { DIST_DIR } from '../docs/.vitepress/shared'
+import { collectMd } from './_lib/walk'
 
 /** Markdown source root, relative to the repo root. */
 const SRC_DIR = 'docs'
 
-// Recursively collect every *.md file under `root`, skipping .vitepress/.
-async function collectMd(root: string): Promise<string[]> {
-  const out: string[] = []
-  async function walk(dir: string): Promise<void> {
-    let entries: Dirent[]
-    try {
-      entries = await readdir(dir, { withFileTypes: true })
-    } catch {
-      return
-    }
-    for (const entry of entries) {
-      // Skip VitePress internals (config/theme/scripts/cache/dist).
-      if (dir === SRC_DIR && entry.name === '.vitepress') continue
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) await walk(full)
-      else if (entry.name.endsWith('.md')) out.push(full)
-    }
-  }
-  await walk(root)
-  return out
-}
-
 async function main(): Promise<void> {
-  const files = await collectMd(SRC_DIR)
+  // Skip VitePress internals (config/theme/scripts/cache/dist). The shared
+  // helper skips a name at any depth; the original only skipped `.vitepress`
+  // directly under `docs/`, but no nested `.vitepress` exists in a clean tree,
+  // so this is equivalent and also guards against stray nested copies.
+  const files = await collectMd(SRC_DIR, { skipDirs: ['.vitepress'] })
   let count = 0
   for (const f of files) {
     const content = await readFile(f, 'utf8')

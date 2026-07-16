@@ -215,7 +215,7 @@ type PathSegment = internal.PathSegment
 ```
 
 ::: warning Псевдоним внутренней реализации
-`PathSegment` — это псевдоним типа `internal.PathSegment`. Его конкретные поля, типы полей (например, `PathSegmentType`, `PathSegmentFlags`) и методы принадлежат пакету `internal`, **не экспортируются как публичный API** и могут меняться между версиями — не полагайтесь на его внутреннюю структуру напрямую в бизнес-коде.
+`PathSegment` — это псевдоним типа `internal.PathSegment`. Его конкретные поля, типы полей (например, PathSegmentType, PathSegmentFlags) и методы принадлежат пакету `internal`, **не экспортируются как публичный API** и могут меняться между версиями — не полагайтесь на его внутреннюю структуру напрямую в бизнес-коде.
 
 - При реализации пользовательского синтаксиса путей возвращайте `[]PathSegment` через метод `ParsePath` интерфейса [`PathParser`](./interfaces#pathparser).
 - Для предкомпилированных путей используйте [`Processor.CompilePath`](./processor/query#compilepath), который возвращает `*CompiledPath`.

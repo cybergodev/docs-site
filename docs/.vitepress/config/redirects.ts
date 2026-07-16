@@ -1,3 +1,5 @@
+import type { Plugin, ViteDevServer } from 'vite'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PROJECTS, LANGS } from '../shared'
 
 // Dev-only redirect for bare project paths (e.g. /json → /{lang}/json).
@@ -14,7 +16,7 @@ function codeToLang(code: string | undefined): string | null {
   const base = code.toLowerCase().split('-')[0]
   return (LANGS as readonly string[]).includes(base) ? base : null
 }
-function pickRequestLang(req: any): string {
+function pickRequestLang(req: IncomingMessage): string {
   const cookie = (req.headers?.cookie as string) || ''
   const m = cookie.match(/(?:^|;)\s*vitepress-lang-preference=([^;]+)/)
   if (m) {
@@ -28,12 +30,12 @@ function pickRequestLang(req: any): string {
   }
   return 'zh'
 }
-export const bareProjectDevRedirect = {
+export const bareProjectDevRedirect: Plugin = {
   name: 'cybergo:bare-project-redirect',
-  enforce: 'pre' as const,
-  apply: 'serve' as const,
-  configureServer(server: any) {
-    server.middlewares.use((req: any, res: any, next: any) => {
+  enforce: 'pre',
+  apply: 'serve',
+  configureServer(server: ViteDevServer) {
+    server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
       const raw: string = req.url || '/'
       const pathname = raw.split('?')[0].split('#')[0]
       // Only intercept HTML navigations; skip any file/asset request.

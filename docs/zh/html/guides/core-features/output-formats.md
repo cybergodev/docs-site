@@ -173,7 +173,7 @@ jsonBytes, err := html.ExtractToJSONFromFile("page.html")
 
 ## 带上下文的版本
 
-所有格式函数都有 `WithContext` 变体，支持超时和取消：
+所有格式函数都有 `ExtractWithContext` 变体，支持超时和取消：
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

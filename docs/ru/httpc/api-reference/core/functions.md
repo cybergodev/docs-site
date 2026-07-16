@@ -178,7 +178,7 @@ result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
 :::tip Замечание о миграции
-Старые `DownloadFile`, `DownloadWithOptions`, `DownloadFileWithContext` и `DownloadWithOptionsWithContext` удалены в v1.5.2. Используйте единый `Download(ctx, url, cfg, options...)`, настраивая путь, перезапись, возобновление и контрольную сумму через `DownloadConfig`.
+Старые функции загрузки (DownloadFile, DownloadWithOptions, DownloadFileWithContext и DownloadWithOptionsWithContext) удалены в v1.5.2. Используйте единый `Download(ctx, url, cfg, options...)`, настраивая путь, перезапись, возобновление и контрольную сумму через `DownloadConfig`.
 :::
 
 ## Вспомогательные функции

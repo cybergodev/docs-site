@@ -32,14 +32,14 @@ type ClientError struct {
 
 | フィールド | タイプ | 説明 |
 |-----------|--------|------|
-| `Type` | `ErrorType` | エラー分類。switch 判定に使用 |
-| `Message` | `string` | エラーの説明 |
-| `Cause` | `error` | 基底エラー。`Unwrap()` で取得可能 |
+| Type | `ErrorType` | エラー分類。switch 判定に使用 |
+| Message | `string` | エラーの説明 |
+| Cause | `error` | 基底エラー。`Unwrap()` で取得可能 |
 | `URL` | `string` | リクエスト URL（認証情報はマスク済み） |
 | `Method` | `string` | HTTP メソッド（GET、POST など） |
 | `Attempts` | `int` | リトライ済み回数 |
 | `StatusCode` | `int` | HTTP ステータスコード（HTTP エラー以外では 0） |
-| `Host` | `string` | リクエストホスト名 |
+| Host | `string` | リクエストホスト名 |
 
 ### メソッド
 

@@ -93,7 +93,7 @@ base.InfoWith("Response",
 
 ## Type Definition
 
-`Field` is the structured log field type, containing `Key` (string) and `Value` (any) fields. Create instances using the constructor functions above.
+`Field` is the structured log field type, containing a key (string) and a value (any). Create instances using the constructor functions above.
 
 ## Next Steps
 

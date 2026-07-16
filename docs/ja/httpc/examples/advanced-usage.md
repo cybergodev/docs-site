@@ -12,7 +12,7 @@ sidebar_position: 2
 502/503/504 のみリトライし、固定遅延を使用：
 
 :::warning 内部タイプ
-`RetryPolicy.ShouldRetry` の `resp` パラメータのタイプ `ResponseReader` は内部インターフェース（`internal/types` パッケージに定義）であり、外部パッケージからは直接参照できません。カスタム `RetryPolicy` は `httpc` と同じモジュール内のパッケージで実装する必要があります。ほとんどのシナリオでは `RetryConfig` 設定で要件を満たせます。以下の例は実装パターンを示していますが、実際のコードは `httpc` モジュール内部でコンパイルする必要があります。
+RetryPolicy.ShouldRetry の `resp` パラメータのタイプ ResponseReader は内部インターフェース（`internal/types` パッケージに定義）であり、外部パッケージからは直接参照できません。カスタム `RetryPolicy` は `httpc` と同じモジュール内のパッケージで実装する必要があります。ほとんどのシナリオでは `RetryConfig` 設定で要件を満たせます。以下の例は実装パターンを示していますが、実際のコードは `httpc` モジュール内部でコンパイルする必要があります。
 :::
 
 ```go

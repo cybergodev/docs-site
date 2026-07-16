@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useData } from 'vitepress'
 import { supportedLanguages, STORAGE_KEYS } from '../../shared'
 import { findMatchingLanguage } from '../composables/useLanguageDetect'
+import { useUiLabels, useCurrentLang } from '../composables/useUiLabels'
 
 /**
  * Browser-language switch prompt.
@@ -12,39 +12,16 @@ import { findMatchingLanguage } from '../composables/useLanguageDetect'
  * only appears (once) when the user lands on a page whose language differs
  * from their browser language and they have not already made a choice.
  */
-const { lang } = useData()
+const t = useUiLabels()
+const currentLang = useCurrentLang()
 const visible = ref(false)
 const suggestedPath = ref('')
 const suggestedLabel = ref('')
 
-// Current page language code, derived from VitePress `lang` (root defaults to zh).
-function currentLangCode(): string {
-  const l = (lang.value || '').toLowerCase()
-  if (l.startsWith('zh')) return 'zh'
-  if (l.startsWith('en')) return 'en'
-  if (l.startsWith('ko')) return 'ko'
-  if (l.startsWith('ja')) return 'ja'
-  if (l.startsWith('ru')) return 'ru'
-  return 'zh' // root path serves the Chinese homepage
-}
-
-type PromptMessages = {
-  text: (label: string) => string
-  switch: string
-  dismiss: string
-}
-
-// Prompt copy is shown in the *current* page's language; the suggested
-// language name is rendered in that language's own label (e.g. "English").
-const messages: Record<string, PromptMessages> = {
-  zh: { text: (l) => `检测到您的浏览器语言为「${l}」，是否切换？`, switch: '切换语言', dismiss: '暂不' },
-  en: { text: (l) => `Your browser language appears to be ${l}. Switch?`, switch: 'Switch', dismiss: 'Not now' },
-  ko: { text: (l) => `브라우저 언어가 ${l}인 것 같습니다. 전환할까요?`, switch: '전환', dismiss: '나중에' },
-  ja: { text: (l) => `ブラウザの言語が「${l}」のようです。切り替えますか？`, switch: '切り替え', dismiss: '後で' },
-  ru: { text: (l) => `Язык вашего браузера, вероятно, ${l}. Переключить?`, switch: 'Переключить', dismiss: 'Не сейчас' }
-}
-
-const t = computed(() => messages[currentLangCode()] || messages.zh)
+// Prompt text with the suggested language name interpolated in.
+const promptText = computed(() =>
+  t.value.langPromptTextTemplate.replace('{label}', suggestedLabel.value)
+)
 
 onMounted(() => {
   if (typeof window === 'undefined') return
@@ -58,7 +35,7 @@ onMounted(() => {
   if (!matched) return
 
   const suggestedCode = matched.lang.split('-')[0].toLowerCase()
-  if (currentLangCode() === suggestedCode) return // already on the matching language
+  if (currentLang.value === suggestedCode) return // already on the matching language
 
   suggestedPath.value = matched.path
   suggestedLabel.value = matched.label
@@ -66,7 +43,7 @@ onMounted(() => {
 })
 
 // If the user switches language themselves, the prompt is no longer relevant.
-watch(lang, () => {
+watch(currentLang, () => {
   visible.value = false
 })
 
@@ -101,13 +78,13 @@ function dismiss() {
 <template>
   <Transition name="lang-prompt">
     <div v-if="visible" class="lang-prompt" role="dialog" aria-live="polite">
-      <p class="lang-prompt-text">{{ t.text(suggestedLabel) }}</p>
+      <p class="lang-prompt-text">{{ promptText }}</p>
       <div class="lang-prompt-actions">
         <button type="button" class="btn-switch" @click="switchLanguage">
-          {{ t.switch }}
+          {{ t.langPromptSwitch }}
         </button>
         <button type="button" class="btn-dismiss" @click="dismiss">
-          {{ t.dismiss }}
+          {{ t.langPromptDismiss }}
         </button>
       </div>
     </div>

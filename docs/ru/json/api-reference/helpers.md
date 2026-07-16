@@ -222,7 +222,7 @@ func main() {
 ## Функции вывода
 
 ::: warning
-`Print`, `PrintPretty`, `PrintE`, `PrintPrettyE` удалены из библиотеки и больше не предоставляются. Используйте [Encode](./functions/encode-decode#encode), [EncodePretty](./functions/encode-decode#encodepretty) или [Prettify](./functions/encode-decode#prettify) вместе с `fmt.Println`. Подробности в разделе [Функции печати](./print).
+Print, PrintPretty, PrintE, PrintPrettyE удалены из библиотеки и больше не предоставляются. Используйте [Encode](./functions/encode-decode#encode), [EncodePretty](./functions/encode-decode#encodepretty) или [Prettify](./functions/encode-decode#prettify) вместе с `fmt.Println`. Подробности в разделе [Функции печати](./print).
 :::
 
 ---

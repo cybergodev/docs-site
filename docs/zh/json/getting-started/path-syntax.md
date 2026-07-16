@@ -248,7 +248,10 @@ data := `{
 }`
 
 // 只提取 id 和 name
-extracted, _ := json.Get(data, "user{id,name}")
+extracted, err := json.Get(data, "user{id,name}")
+if err != nil {
+    panic(err)
+}
 // 结果: {"id": 1001, "name": "Alice"}
 ```
 
@@ -330,10 +333,16 @@ json.GetArray(data, "orders{flat:items}[0:3]")
 ```go
 data := `{"items": [1, 2, 3]}`
 
-updated, _ := json.Set(data, "items[+]", 4)
+updated, err := json.Set(data, "items[+]", 4)
+if err != nil {
+    panic(err)
+}
 // 结果: {"items": [1, 2, 3, 4]}
 
-updated, _ = json.Set(updated, "items[+]", 5)
+updated, err = json.Set(updated, "items[+]", 5)
+if err != nil {
+    panic(err)
+}
 // 结果: {"items": [1, 2, 3, 4, 5]}
 ```
 
@@ -342,7 +351,10 @@ updated, _ = json.Set(updated, "items[+]", 5)
 ```go
 data := `{"items": [1, 2, 3]}`
 
-updated, _ := json.Set(data, "items[*]", 0)
+updated, err := json.Set(data, "items[*]", 0)
+if err != nil {
+    panic(err)
+}
 // 结果: {"items": [0, 0, 0]}
 ```
 
@@ -384,8 +396,11 @@ if err != nil {
 data := `{"name": "test"}`
 
 // 获取整个对象
-root, _ := json.Get(data, "")     // {"name": "test"}
-root, _ = json.Get(data, ".")     // 同上
+root, err := json.Get(data, "") // {"name": "test"}
+if err != nil {
+    panic(err)
+}
+root, err = json.Get(data, ".") // 同上
 ```
 
 ### 路径转义
@@ -452,15 +467,21 @@ func main() {
     fmt.Println("\nEvery other price:", prices)
 
     // 4. 字段提取
-    extracted, _ := json.Get(data, "store.books[0]{title,price}")
+    extracted, err := json.Get(data, "store.books[0]{title,price}")
+    if err != nil {
+        panic(err)
+    }
     fmt.Println("\nExtracted fields:", extracted)
 
     // 5. 追加元素
-    updated, _ := json.Set(data, "store.books[+]", map[string]any{
+    updated, err := json.Set(data, "store.books[+]", map[string]any{
         "title":    "New Book",
         "price":    55,
         "category": "programming",
     })
+    if err != nil {
+        panic(err)
+    }
     fmt.Println("\nAfter append:", json.Valid([]byte(updated)))
 }
 ```

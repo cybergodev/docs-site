@@ -258,7 +258,7 @@ jsonlStr, err := json.ToJSONLString(items)
 ## JSONL Configuration
 
 ::: warning
-The standalone `JSONLConfig` struct and `DefaultJSONLConfig()` function have been removed. JSONL configuration is now unified into the `Config` struct's `JSONL*` fields.
+The standalone JSONLConfig struct and `DefaultJSONLConfig()` function have been removed. JSONL configuration is now unified into the `Config` struct's `JSONL*` fields.
 :::
 
 ### Configure JSONL via Config

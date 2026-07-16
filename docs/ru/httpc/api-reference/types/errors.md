@@ -32,14 +32,14 @@ type ClientError struct {
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `Type` | `ErrorType` | Классификация ошибки для switch |
-| `Message` | `string` | Описание ошибки |
-| `Cause` | `error` | Базовая ошибка, доступна через `Unwrap()` |
+| Type | `ErrorType` | Классификация ошибки для switch |
+| Message | `string` | Описание ошибки |
+| Cause | `error` | Базовая ошибка, доступна через `Unwrap()` |
 | `URL` | `string` | URL запроса (учётные данные маскированы) |
 | `Method` | `string` | HTTP-метод (GET, POST и др.) |
 | `Attempts` | `int` | Количество повторных попыток |
 | `StatusCode` | `int` | HTTP-код состояния (0 для не-HTTP ошибок) |
-| `Host` | `string` | Имя хоста запроса |
+| Host | `string` | Имя хоста запроса |
 
 ### Методы
 

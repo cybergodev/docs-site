@@ -14,7 +14,7 @@ type MiddlewareFunc func(Handler) Handler
 type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, error)
 ```
 
-中间件在 `Config.Middleware.Middlewares` 中配置，按顺序执行：
+中间件在 `MiddlewareConfig.Middlewares` 中配置，按顺序执行：
 
 ```go
 client, _ := httpc.New(&httpc.Config{

@@ -12,7 +12,7 @@ sidebar_position: 2
 502/503/504에만 재시도하고 고정 지연 사용:
 
 :::warning 내부 타입
-`RetryPolicy.ShouldRetry`의 `resp` 매개변수 타입 `ResponseReader`는 내부 인터페이스(`internal/types` 패키지에 정의)이므로 외부 패키지에서 직접 참조할 수 없습니다. 커스텀 `RetryPolicy`는 `httpc`와 같은 모듈 내 패키지에서 구현해야 합니다. 대부분의 시나리오는 `RetryConfig` 설정으로 충분합니다. 다음 예제는 구현 패턴을 보여주며, 실제 코드는 `httpc` 모듈 내부에서 컴파일해야 합니다.
+RetryPolicy.ShouldRetry의 `resp` 매개변수 타입 ResponseReader는 내부 인터페이스(`internal/types` 패키지에 정의)이므로 외부 패키지에서 직접 참조할 수 없습니다. 커스텀 `RetryPolicy`는 `httpc`와 같은 모듈 내 패키지에서 구현해야 합니다. 대부분의 시나리오는 `RetryConfig` 설정으로 충분합니다. 다음 예제는 구현 패턴을 보여주며, 실제 코드는 `httpc` 모듈 내부에서 컴파일해야 합니다.
 :::
 
 ```go

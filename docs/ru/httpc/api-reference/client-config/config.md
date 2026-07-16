@@ -55,7 +55,7 @@ type TimeoutConfig struct {
 Значение 0 означает отсутствие таймаута (не рекомендуется для продакшена).
 
 :::tip Дизайн ResponseHeader
-`ResponseHeader` по умолчанию равен 0 (отключен), при этом используется `Timeouts.Request` или `WithTimeout()` как единственный механизм таймаута, что обеспечивает полный контроль `WithTimeout()` над длительностью запроса. Этот дизайн подходит для AI API и long-polling, где требуется увеличенное время ответа. Устанавливайте положительное значение только при необходимости жёсткого ограничения транспортного уровня (например, для защиты от атак Slowloris), но учтите, что это переопределит `WithTimeout`.
+`ResponseHeader` по умолчанию равен 0 (отключен), при этом используется `TimeoutConfig.Request` или `WithTimeout()` как единственный механизм таймаута, что обеспечивает полный контроль `WithTimeout()` над длительностью запроса. Этот дизайн подходит для AI API и long-polling, где требуется увеличенное время ответа. Устанавливайте положительное значение только при необходимости жёсткого ограничения транспортного уровня (например, для защиты от атак Slowloris), но учтите, что это переопределит `WithTimeout`.
 :::
 
 ## ConnectionConfig
@@ -352,11 +352,11 @@ type CookieSecurityConfig struct {
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `RequireSecure` | `bool` | Требовать установки атрибута Secure |
-| `RequireHttpOnly` | `bool` | Требовать установки атрибута HttpOnly |
-| `RequireSameSite` | `string` | Требуемое значение SameSite, например `"Strict"`, `"Lax"`; пустая строка — без проверки |
-| `AllowSameSiteNone` | `bool` | Разрешить ли SameSite=None |
-| `RequireSecureForSameSiteNone` | `bool` | Требовать атрибут Secure при SameSite=None (по умолчанию `true`) |
+| RequireSecure | `bool` | Требовать установки атрибута Secure |
+| RequireHttpOnly | `bool` | Требовать установки атрибута HttpOnly |
+| RequireSameSite | `string` | Требуемое значение SameSite, например `"Strict"`, `"Lax"`; пустая строка — без проверки |
+| AllowSameSiteNone | `bool` | Разрешить ли SameSite=None |
+| RequireSecureForSameSiteNone | `bool` | Требовать атрибут Secure при SameSite=None (по умолчанию `true`) |
 
 ### DefaultCookieSecurityConfig
 

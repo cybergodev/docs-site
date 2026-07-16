@@ -160,7 +160,7 @@ type AuditEvent struct {
 
 ### 实现 FullAuditLogger 接口
 
-`FullAuditLogger` 是完整的审计日志接口，扩展了最小接口 `AuditLogger`（仅包含 `LogError` 方法）：
+`FullAuditLogger` 是完整的审计日志接口，扩展了最小接口 `AuditLogger`（仅包含 LogError 方法）：
 
 ```go
 type FullAuditLogger interface {

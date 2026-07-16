@@ -62,11 +62,15 @@
   --cg-sp-4: 16px;
   --cg-sp-5: 24px;
   --cg-sp-6: 32px;
+  --cg-sp-7: 40px;
+  --cg-sp-8: 48px;
 
   /* Radius scale */
   --cg-radius-sm: 4px;
   --cg-radius-md: 8px;
-  --cg-radius-lg: 16px;
+  --cg-radius-lg: 12px;
+  --cg-radius-xl: 16px;
+  --cg-radius-2xl: 20px;
   --cg-radius-pill: 9999px;
 
   /* z-index scale */

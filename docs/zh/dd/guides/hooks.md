@@ -1,7 +1,7 @@
 ---
 sidebar_label: "钩子系统"
 title: "钩子系统 - CyberGo DD | 生命周期钩子实战指南"
-description: "CyberGo DD 钩子系统实战指南，详细介绍 6 种生命周期钩子事件（BeforeLog、AfterLog、OnFilter、OnRotate、OnClose、OnError）、HookRegistry 注册与管理、HookContext 上下文数据、错误处理策略以及常见钩子使用场景，帮助开发者扩展日志库行为。"
+description: "CyberGo DD 钩子系统指南：6 种生命周期事件（BeforeLog、AfterLog、OnFilter、OnRotate、OnClose、OnError）、HookRegistry 注册管理、HookContext 上下文与常见扩展场景。"
 sidebar_position: 6
 ---
 
@@ -38,9 +38,13 @@ hooks := dd.NewHooksFromConfig(dd.HooksConfig{
     }},
 })
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Hooks: hooks,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### 使用 HookRegistry
@@ -63,9 +67,13 @@ registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Hooks: registry,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ## HookContext 上下文
@@ -106,7 +114,11 @@ registry.Add(dd.HookAfterLog, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, _ := dd.New(dd.Config{Hooks: registry})
+logger, err := dd.New(dd.Config{Hooks: registry})
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### 日志采样

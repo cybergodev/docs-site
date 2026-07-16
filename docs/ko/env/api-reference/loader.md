@@ -623,7 +623,7 @@ func (l *Loader) Validate() error
 - `error` - 검증 오류
 
 **동작:**
-- `Config.RequiredKeys`에 지정된 모든 키가 존재하는지 확인
+- `ValidationConfig.RequiredKeys`에 지정된 모든 키가 존재하는지 확인
 
 ```go
 cfg := env.DefaultConfig()

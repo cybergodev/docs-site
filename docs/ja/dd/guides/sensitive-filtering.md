@@ -89,11 +89,11 @@ cfg := dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
 
 | レベル | 説明 | 適用シナリオ |
 |------|------|----------|
-| `Development` | 最も緩やか | ローカル開発 |
-| `Basic` | 基本フィルタリング | テスト環境 |
-| `Standard` | 標準フィルタリング | 一般的な本番環境 |
-| `Strict` | 厳格フィルタリング | 高セキュリティ要件 |
-| `Paranoid` | 最も厳格 | 金融/医療などの機密業界 |
+| `SecurityLevelDevelopment` | 最も緩やか | ローカル開発 |
+| `SecurityLevelBasic` | 基本フィルタリング | テスト環境 |
+| `SecurityLevelStandard` | 標準フィルタリング | 一般的な本番環境 |
+| `SecurityLevelStrict` | 厳格フィルタリング | 高セキュリティ要件 |
+| `SecurityLevelParanoid` | 最も厳格 | 金融/医療などの機密業界 |
 
 ## 業界コンプライアンスプリセット
 

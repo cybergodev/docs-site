@@ -258,7 +258,7 @@ jsonlStr, err := json.ToJSONLString(items)
 ## Конфигурация JSONL
 
 ::: warning
-Отдельная структура `JSONLConfig` и функция `DefaultJSONLConfig()` удалены. Конфигурация JSONL теперь интегрирована в поля `JSONL*` структуры `Config`.
+Отдельная структура JSONLConfig и функция `DefaultJSONLConfig()` удалены. Конфигурация JSONL теперь интегрирована в поля `JSONL*` структуры `Config`.
 :::
 
 ### Конфигурация JSONL через Config

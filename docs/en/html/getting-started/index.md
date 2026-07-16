@@ -117,7 +117,7 @@ jsonBytes, err := html.ExtractToJSON(data)
 
 ## Context Support
 
-All functions have `WithContext` variants that support cancellation and timeout:
+All functions have `ExtractWithContext` variants that support cancellation and timeout:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -24,7 +24,7 @@ sidebar_position: 4
 ### 超时配置
 
 - [ ] 所有超时值已设置且合理
-- [ ] `Timeouts.Request` 不为 0（防止无限等待）
+- [ ] `TimeoutConfig.Request` 不为 0（防止无限等待）
 - [ ] 考虑使用 `WithContext` 为每个请求设置超时
 
 ### 响应限制

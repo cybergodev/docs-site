@@ -130,7 +130,7 @@ if result.Resumed {
 ```
 
 :::tip
-Resumable downloads depend on server support for the `Range` request header. If the server does not support it (returns 200 instead of 206), an error is returned to protect the existing partial file.
+Resumable downloads depend on server support for the Range request header. If the server does not support it (returns 200 instead of 206), an error is returned to protect the existing partial file.
 :::
 
 ### With Context Control

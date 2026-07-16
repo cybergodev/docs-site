@@ -12,14 +12,30 @@ sidebar_position: 4
 ### 简单文件上传
 
 ```go
-fileContent, err := os.ReadFile("document.pdf")
-if err != nil {
-    log.Fatal(err)
-}
+package main
 
-result, err := httpc.Post("https://api.example.com/upload",
-    httpc.WithFile("file", "document.pdf", fileContent),
+import (
+    "log"
+    "os"
+
+    "github.com/cybergodev/httpc"
 )
+
+func main() {
+    fileContent, err := os.ReadFile("document.pdf")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    result, err := httpc.Post("https://api.example.com/upload",
+        httpc.WithFile("file", "document.pdf", fileContent),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Printf("上传完成: %d", result.StatusCode()) // 输出: 上传完成: 200
+}
 ```
 
 ### Multipart 表单
@@ -65,10 +81,16 @@ result, err := httpc.Post(url, httpc.WithFormData(form))
 ### 二进制上传
 
 ```go
-data, _ := os.ReadFile("data.bin")
+data, err := os.ReadFile("data.bin")
+if err != nil {
+    log.Fatal(err)
+}
 result, err := httpc.Post(url,
     httpc.WithBinary(data, "application/octet-stream"),
 )
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## 文件下载
@@ -130,7 +152,7 @@ if result.Resumed {
 ```
 
 :::tip
-断点续传依赖服务端支持 `Range` 请求头。如果服务端不支持（返回 200 而非 206），将返回错误以保护已下载的部分文件。
+断点续传依赖服务端支持 Range 请求头。如果服务端不支持（返回 200 而非 206），将返回错误以保护已下载的部分文件。
 :::
 
 ### 带上下文控制
@@ -167,7 +189,10 @@ if err != nil {
 域名客户端的下载会自动捕获响应 Cookie 到会话：
 
 ```go
-dc, _ := httpc.NewDomain("https://api.example.com")
+dc, err := httpc.NewDomain("https://api.example.com")
+if err != nil {
+    log.Fatal(err)
+}
 defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
@@ -177,6 +202,9 @@ cfg.FilePath = "/tmp/report.pdf"
 
 // 下载并自动管理会话（path 相对于 baseURL）
 result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## 下一步

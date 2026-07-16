@@ -47,7 +47,7 @@ cfg.Audit.Sink = html.NewWriterAuditSink(auditFile)
 
 ## 컨텍스트와 타임아웃
 
-- [ ] 모든 추출 작업에 `WithContext` 버전 사용
+- [ ] 모든 추출 작업에 `ExtractWithContext` 버전 사용
 - [ ] 적절한 컨텍스트 타임아웃 설정
 - [ ] 배치 작업에 취소가 포함된 컨텍스트 사용
 

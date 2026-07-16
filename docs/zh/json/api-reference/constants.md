@@ -215,7 +215,7 @@ type PathSegment = internal.PathSegment
 ```
 
 ::: warning 内部实现别名
-`PathSegment` 是 `internal.PathSegment` 的类型别名。其具体字段、字段类型（如 `PathSegmentType`、`PathSegmentFlags`）及方法均属于 `internal` 包，**未作为公开 API 导出**，可能随版本变化，请勿在业务代码中直接依赖其内部结构。
+`PathSegment` 是 `internal.PathSegment` 的类型别名。其具体字段、字段类型（如 PathSegmentType、PathSegmentFlags）及方法均属于 `internal` 包，**未作为公开 API 导出**，可能随版本变化，请勿在业务代码中直接依赖其内部结构。
 
 - 实现自定义路径语法时，通过 [`PathParser`](./interfaces#pathparser) 接口的 `ParsePath` 方法返回 `[]PathSegment`。
 - 预编译路径请使用 [`Processor.CompilePath`](./processor/query#compilepath)，返回 `*CompiledPath`。

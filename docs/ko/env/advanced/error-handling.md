@@ -130,7 +130,7 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 ::: tip 해결 방법
-`KeyValidator`만 구현하는 대신 `Validator` 인터페이스(`ValidateKey`, `ValidateValue`, `ValidateRequired` 세 가지 메서드 포함)를 구현하세요.
+`KeyValidator`만 구현하는 대신 `Validator` 인터페이스(ValidateKey, ValidateValue, ValidateRequired 세 가지 메서드 포함)를 구현하세요.
 :::
 
 ## 구조화된 오류 타입

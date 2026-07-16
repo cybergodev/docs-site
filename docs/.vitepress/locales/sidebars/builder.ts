@@ -2,6 +2,7 @@ import type { DefaultTheme } from 'vitepress'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { PROJECTS, type Lang } from '../../shared'
+import { extractFrontmatter, parseFmField } from '../../utils/frontmatter'
 
 /**
  * Filesystem-generated sidebars (Phase 2).
@@ -21,8 +22,12 @@ import { PROJECTS, type Lang } from '../../shared'
  *
  * VitePress resolves the sidebar at config time, in Node, so synchronous file
  * reads here are fine. This module is never shipped to the client bundle
- * (sidebars become serialized data in the build); `shared.ts` stays the only
- * pure-data module imported by the client.
+ * (sidebars become serialized data in the build). The pure-data modules that DO
+ * reach the client bundle are `shared.ts` and `config/labels.ts` (the latter is
+ * pulled in by `composables/useUiLabels.ts` for component-facing UI strings).
+ *
+ * Frontmatter parsing delegates to `utils/frontmatter.ts` (shared with the
+ * llms.txt generator) so the unquote/field-extract logic lives in one place.
  *
  * Dev note: editing `_category_.json` / `sidebar_position` / `sidebar_label`
  * does not trigger a VitePress config reload (`.md`/`.json` are content, not
@@ -31,9 +36,6 @@ import { PROJECTS, type Lang } from '../../shared'
  */
 
 const DOCS = 'docs'
-
-/** Matches a leading YAML frontmatter block, tolerating mixed line endings. */
-const FM_RE = /^---\r?\n([\s\S]*?)\r?\n---/
 
 interface CategoryMeta {
   label?: string
@@ -46,18 +48,14 @@ function readCategory(dirAbs: string): CategoryMeta | null {
   if (!existsSync(f)) return null
   try {
     return JSON.parse(readFileSync(f, 'utf8')) as CategoryMeta
-  } catch {
+  } catch (e) {
+    // Surface a malformed _category_.json instead of silently falling back to
+    // the title-cased directory name (which would quietly mislabel the group).
+    console.warn(
+      `[sidebar] failed to parse ${f}: ${e instanceof Error ? e.message : e} — falling back to directory name`
+    )
     return null
   }
-}
-
-function frontmatter(raw: string): string {
-  return raw.match(FM_RE)?.[1] ?? ''
-}
-
-function fmField(fm: string, key: string): string | undefined {
-  const m = fm.match(new RegExp(`^${key}:\\s*(.+?)\\s*$`, 'm'))
-  return m ? m[1].replace(/^['"]|['"]$/g, '') : undefined
 }
 
 function titleCase(slug: string): string {
@@ -70,12 +68,12 @@ function titleCase(slug: string): string {
 
 /** A leaf's sidebar label: frontmatter `sidebar_label` → `title` → pretty file name. */
 function leafLabel(fileAbs: string, fileName: string): string {
-  const fm = frontmatter(readFileSync(fileAbs, 'utf8'))
-  return fmField(fm, 'sidebar_label') ?? fmField(fm, 'title') ?? titleCase(fileName)
+  const fm = extractFrontmatter(readFileSync(fileAbs, 'utf8'))
+  return parseFmField(fm, 'sidebar_label') ?? parseFmField(fm, 'title') ?? titleCase(fileName)
 }
 
 function leafPosition(fileAbs: string): number {
-  const v = fmField(frontmatter(readFileSync(fileAbs, 'utf8')), 'sidebar_position')
+  const v = parseFmField(extractFrontmatter(readFileSync(fileAbs, 'utf8')), 'sidebar_position')
   const n = v == null ? NaN : Number(v)
   return Number.isFinite(n) ? n : Infinity
 }

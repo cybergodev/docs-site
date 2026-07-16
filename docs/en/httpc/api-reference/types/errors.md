@@ -32,14 +32,14 @@ type ClientError struct {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `Type` | `ErrorType` | Error classification for switch statements |
-| `Message` | `string` | Error description |
-| `Cause` | `error` | Underlying error, accessible via `Unwrap()` |
+| Type | `ErrorType` | Error classification for switch statements |
+| Message | `string` | Error description |
+| Cause | `error` | Underlying error, accessible via `Unwrap()` |
 | `URL` | `string` | Request URL (credentials masked) |
 | `Method` | `string` | HTTP method (GET, POST, etc.) |
 | `Attempts` | `int` | Number of retries attempted |
 | `StatusCode` | `int` | HTTP status code (0 for non-HTTP errors) |
-| `Host` | `string` | Request hostname |
+| Host | `string` | Request hostname |
 
 ### Methods
 

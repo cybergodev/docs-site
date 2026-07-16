@@ -14,7 +14,7 @@ type MiddlewareFunc func(Handler) Handler
 type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, error)
 ```
 
-Middleware is configured in `Config.Middleware.Middlewares` and executes in order:
+Middleware is configured in `MiddlewareConfig.Middlewares` and executes in order:
 
 ```go
 client, _ := httpc.New(&httpc.Config{

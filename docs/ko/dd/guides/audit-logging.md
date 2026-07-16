@@ -58,17 +58,17 @@ AuditLogger는 11가지 보안 이벤트를 기록합니다:
 
 | 이벤트 타입 | 설명 | 기본 심각도 |
 |----------|------|-------------|
-| `SensitiveDataRedacted` | 민감 데이터가 마스킹됨 | Info |
-| `RateLimitExceeded` | 속도 제한 트리거 | Warning |
-| `ReDoSAttempt` | ReDoS 공격 시도 | Critical |
-| `SecurityViolation` | 보안 위반 | Error |
-| `IntegrityViolation` | 로그 무결성 손상 | Critical |
-| `InputSanitized` | 입력이 정제됨 | Info |
-| `PathTraversalAttempt` | 경로 순회 시도 | Critical |
-| `Log4ShellAttempt` | Log4Shell 공격 시도 | <Badge type="info" text="호출자가 지정" /> |
-| `NullByteInjection` | 널 바이트 주입 시도 | <Badge type="info" text="호출자가 지정" /> |
-| `OverlongEncoding` | 오버롱 인코딩 공격 | <Badge type="info" text="호출자가 지정" /> |
-| `HomographAttack` | 동형문자 공격 | <Badge type="info" text="호출자가 지정" /> |
+| `AuditEventSensitiveDataRedacted` | 민감 데이터가 마스킹됨 | Info |
+| `AuditEventRateLimitExceeded` | 속도 제한 트리거 | Warning |
+| `AuditEventReDoSAttempt` | ReDoS 공격 시도 | Critical |
+| `AuditEventSecurityViolation` | 보안 위반 | Error |
+| `AuditEventIntegrityViolation` | 로그 무결성 손상 | Critical |
+| `AuditEventInputSanitized` | 입력이 정제됨 | Info |
+| `AuditEventPathTraversalAttempt` | 경로 순회 시도 | Critical |
+| `AuditEventLog4ShellAttempt` | Log4Shell 공격 시도 | <Badge type="info" text="호출자가 지정" /> |
+| `AuditEventNullByteInjection` | 널 바이트 주입 시도 | <Badge type="info" text="호출자가 지정" /> |
+| `AuditEventOverlongEncoding` | 오버롱 인코딩 공격 | <Badge type="info" text="호출자가 지정" /> |
+| `AuditEventHomographAttack` | 동형문자 공격 | <Badge type="info" text="호출자가 지정" /> |
 
 ## HMAC 서명 통합
 

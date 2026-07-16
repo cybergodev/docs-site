@@ -12,7 +12,7 @@ sidebar_position: 2
 仅对 502/503/504 重试，使用固定延迟：
 
 :::warning 内部类型
-`RetryPolicy.ShouldRetry` 的 `resp` 参数类型 `ResponseReader` 为内部接口（定义在 `internal/types` 包中），外部包无法直接引用。自定义 `RetryPolicy` 必须在与 `httpc` 同一模块内的包中实现。大多数场景可通过 `RetryConfig` 配置满足需求。以下示例展示实现模式，实际代码需在 `httpc` 模块内部编译。
+RetryPolicy.ShouldRetry 的 `resp` 参数类型 ResponseReader 为内部接口（定义在 `internal/types` 包中），外部包无法直接引用。自定义 `RetryPolicy` 必须在与 `httpc` 同一模块内的包中实现。大多数场景可通过 `RetryConfig` 配置满足需求。以下示例展示实现模式，实际代码需在 `httpc` 模块内部编译。
 :::
 
 ```go

@@ -174,7 +174,7 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 :::tip Решение
-Реализуйте интерфейс `Validator` (включающий методы `ValidateKey`, `ValidateValue`, `ValidateRequired`) вместо только `KeyValidator`.
+Реализуйте интерфейс `Validator` (включающий методы ValidateKey, ValidateValue, ValidateRequired) вместо только `KeyValidator`.
 :::
 
 ## Типы ошибок
@@ -276,7 +276,7 @@ type ExpansionError struct {
 }
 ```
 
-**Классификация ошибок (поле `Kind`):**
+**Классификация ошибок (поле Kind):**
 
 ```go
 type ExpansionErrorKind int

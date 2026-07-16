@@ -12,7 +12,7 @@ sidebar_position: 2
 Retry only on 502/503/504 with fixed delay:
 
 :::warning Internal Type
-The `resp` parameter type `ResponseReader` in `RetryPolicy.ShouldRetry` is an internal interface (defined in the `internal/types` package) that external packages cannot reference directly. Custom `RetryPolicy` must be implemented in a package within the same module as `httpc`. Most scenarios can be satisfied through `RetryConfig` configuration. The following example demonstrates the implementation pattern; actual code must compile within the `httpc` module.
+The `resp` parameter type ResponseReader in RetryPolicy.ShouldRetry is an internal interface (defined in the `internal/types` package) that external packages cannot reference directly. Custom `RetryPolicy` must be implemented in a package within the same module as `httpc`. Most scenarios can be satisfied through `RetryConfig` configuration. The following example demonstrates the implementation pattern; actual code must compile within the `httpc` module.
 :::
 
 ```go

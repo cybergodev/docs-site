@@ -15,19 +15,24 @@ import { EDIT_LINK_BASE, DOC_ISSUE_URL } from '../shared'
  * The factory helpers below turn a language code + this table into a full
  * LocaleSpecificConfig, so config/locales.ts has zero per-language boilerplate
  * and adding a language is one row here + one in shared.ts LANGS.
+ *
+ * The `UiLabels` table is ALSO the single source for client-side component
+ * strings (DocFeedback / SiteFooter / NotFound / LanguagePrompt), consumed via
+ * the `useUiLabels()` composable. This closes the old gap where each component
+ * carried its own dictionary + its own language-detection logic.
  */
 export interface UiLabels {
   /** SEO `<meta name="description">` for the locale's pages. */
   description: string
   /** Top-nav group label for the project list. */
   navProjects: string
-  /** Top-nav "About" link label. */
+  /** Top-nav "About" link label (also reused as SiteFooter column title). */
   navAbout: string
   /** "Edit this page on GitHub" link text. */
   editLinkText: string
   /** Footer license note, e.g. "Released under the MIT License". */
   footerLicense: string
-  /** Footer "report a doc issue" link text. */
+  /** Footer "report a doc issue" link text (reused by SiteFooter). */
   footerReportIssue: string
   /** Prev / next page footer labels. */
   docFooterPrev: string
@@ -43,6 +48,39 @@ export interface UiLabels {
   darkModeSwitchLabel: string
   lightModeSwitchTitle: string
   darkModeSwitchTitle: string
+
+  // --- Component-facing strings (consumed via useUiLabels) ---
+  // DocFeedback
+  feedbackQuestion: string
+  feedbackYes: string
+  feedbackNo: string
+  feedbackThanks: string
+  // SiteFooter
+  footerBrandDesc: string
+  footerCommunity: string
+  footerAboutSite: string
+  footerEditDocs: string
+  /** Standalone word "License", used in "MIT {license}". */
+  footerLicenseWord: string
+  footerCopyright: string
+  footerOpensInNewWindow: string
+  // NotFound
+  notFoundTitle: string
+  notFoundDesc: string
+  notFoundGoHome: string
+  notFoundGoBack: string
+  // LanguagePrompt
+  /** Prompt text template; `{label}` is replaced with the suggested language name. */
+  langPromptTextTemplate: string
+  langPromptSwitch: string
+  langPromptDismiss: string
+  // CliCommand / GoPlaygroundButton
+  /** "Docs" link label on a CliCommand block. */
+  cliDocs: string
+  /** "Open in Go Playground" button label. */
+  openInPlayground: string
+  /** Toast shown when a snippet was copied as the share fallback. */
+  codeCopied: string
 }
 
 export const UI_LABELS: Record<Lang, UiLabels> = {
@@ -62,7 +100,28 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     sidebarMenuLabel: '菜单',
     darkModeSwitchLabel: '主题',
     lightModeSwitchTitle: '切换到浅色模式',
-    darkModeSwitchTitle: '切换到深色模式'
+    darkModeSwitchTitle: '切换到深色模式',
+    feedbackQuestion: '本文有帮助吗？',
+    feedbackYes: '有帮助',
+    feedbackNo: '没帮助',
+    feedbackThanks: '感谢您的反馈！',
+    footerBrandDesc: '专为 Go 语言打造的高性能开源库集合，涵盖 JSON、JWT、HTTP 客户端、HTML 提取、日志和环境变量管理。',
+    footerCommunity: '社区',
+    footerAboutSite: '关于本站',
+    footerEditDocs: '编辑文档',
+    footerLicenseWord: '许可证',
+    footerCopyright: '版权所有 © 2026 CyberGo (cybergo.dev)',
+    footerOpensInNewWindow: '（在新窗口打开）',
+    notFoundTitle: '页面未找到',
+    notFoundDesc: '抱歉，您访问的页面不存在或已被移除。',
+    notFoundGoHome: '返回首页',
+    notFoundGoBack: '返回上页',
+    langPromptTextTemplate: '检测到您的浏览器语言为「{label}」，是否切换？',
+    langPromptSwitch: '切换语言',
+    langPromptDismiss: '暂不',
+    cliDocs: '文档',
+    openInPlayground: '在 Go Playground 打开',
+    codeCopied: '代码已复制，请粘贴'
   },
   en: {
     description: 'High-Performance Go Open Source Library Documentation',
@@ -80,7 +139,28 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     sidebarMenuLabel: 'Menu',
     darkModeSwitchLabel: 'Theme',
     lightModeSwitchTitle: 'Switch to light theme',
-    darkModeSwitchTitle: 'Switch to dark theme'
+    darkModeSwitchTitle: 'Switch to dark theme',
+    feedbackQuestion: 'Was this page helpful?',
+    feedbackYes: 'Yes',
+    feedbackNo: 'No',
+    feedbackThanks: 'Thanks for your feedback!',
+    footerBrandDesc: 'High-performance Go open-source library collection: JSON, JWT, HTTP client, HTML extraction, logging, and environment management.',
+    footerCommunity: 'Community',
+    footerAboutSite: 'About This Site',
+    footerEditDocs: 'Edit Docs',
+    footerLicenseWord: 'License',
+    footerCopyright: 'Copyright © 2026 CyberGo (cybergo.dev)',
+    footerOpensInNewWindow: '(opens in new window)',
+    notFoundTitle: 'Page Not Found',
+    notFoundDesc: 'Sorry, the page you are looking for does not exist or has been removed.',
+    notFoundGoHome: 'Go Home',
+    notFoundGoBack: 'Go Back',
+    langPromptTextTemplate: 'Your browser language appears to be {label}. Switch?',
+    langPromptSwitch: 'Switch',
+    langPromptDismiss: 'Not now',
+    cliDocs: 'Docs',
+    openInPlayground: 'Open in Go Playground',
+    codeCopied: 'Code copied — paste it'
   },
   ko: {
     description: '고성능 Go 오픈소스 라이브러리 문서',
@@ -98,7 +178,28 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     sidebarMenuLabel: '메뉴',
     darkModeSwitchLabel: '테마',
     lightModeSwitchTitle: '라이트 테마로 전환',
-    darkModeSwitchTitle: '다크 테마로 전환'
+    darkModeSwitchTitle: '다크 테마로 전환',
+    feedbackQuestion: '이 페이지가 도움이 되었나요?',
+    feedbackYes: '도움 됨',
+    feedbackNo: '도움 안 됨',
+    feedbackThanks: '피드백 감사합니다!',
+    footerBrandDesc: 'Go 언어를 위한 고성능 오픈소스 라이브러리 컬렉션: JSON, JWT, HTTP 클라이언트, HTML 추출, 로깅, 환경 변수 관리.',
+    footerCommunity: '커뮤니티',
+    footerAboutSite: '이 사이트에 대하여',
+    footerEditDocs: '문서 편집',
+    footerLicenseWord: '라이선스',
+    footerCopyright: '저작권 © 2026 CyberGo (cybergo.dev)',
+    footerOpensInNewWindow: '(새 창에서 열림)',
+    notFoundTitle: '페이지를 찾을 수 없습니다',
+    notFoundDesc: '죄송합니다. 요청하신 페이지가 존재하지 않거나 삭제되었습니다.',
+    notFoundGoHome: '홈으로',
+    notFoundGoBack: '뒤로 가기',
+    langPromptTextTemplate: '브라우저 언어가 {label}인 것 같습니다. 전환할까요?',
+    langPromptSwitch: '전환',
+    langPromptDismiss: '나중에',
+    cliDocs: '문서',
+    openInPlayground: 'Go Playground에서 열기',
+    codeCopied: '코드가 복사되었습니다 — 붙여넣으세요'
   },
   ja: {
     description: '高性能 Go オープンソースライブラリドキュメント',
@@ -116,7 +217,28 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     sidebarMenuLabel: 'メニュー',
     darkModeSwitchLabel: 'テーマ',
     lightModeSwitchTitle: 'ライトモードに切り替え',
-    darkModeSwitchTitle: 'ダークモードに切り替え'
+    darkModeSwitchTitle: 'ダークモードに切り替え',
+    feedbackQuestion: 'このページは役に立ちましたか？',
+    feedbackYes: '役に立った',
+    feedbackNo: '役に立たなかった',
+    feedbackThanks: 'フィードバックありがとうございます！',
+    footerBrandDesc: 'Go 言語のための高性能オープンソースライブラリコレクション：JSON、JWT、HTTPクライアント、HTML抽出、ロギング、環境変数管理。',
+    footerCommunity: 'コミュニティ',
+    footerAboutSite: 'このサイトについて',
+    footerEditDocs: 'ドキュメントを編集',
+    footerLicenseWord: 'ライセンス',
+    footerCopyright: 'Copyright © 2026 CyberGo (cybergo.dev)',
+    footerOpensInNewWindow: '（新しいウィンドウで開く）',
+    notFoundTitle: 'ページが見つかりません',
+    notFoundDesc: '申し訳ありません。お探しのページは存在しないか、削除されました。',
+    notFoundGoHome: 'ホームへ',
+    notFoundGoBack: '戻る',
+    langPromptTextTemplate: 'ブラウザの言語が「{label}」のようです。切り替えますか？',
+    langPromptSwitch: '切り替え',
+    langPromptDismiss: '後で',
+    cliDocs: 'ドキュメント',
+    openInPlayground: 'Go Playground で開く',
+    codeCopied: 'コードをコピーしました — 貼り付けてください'
   },
   ru: {
     description: 'Документация высокопроизводительных библиотек Go с открытым исходным кодом',
@@ -134,7 +256,28 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     sidebarMenuLabel: 'Меню',
     darkModeSwitchLabel: 'Тема',
     lightModeSwitchTitle: 'Переключить на светлую тему',
-    darkModeSwitchTitle: 'Переключить на тёмную тему'
+    darkModeSwitchTitle: 'Переключить на тёмную тему',
+    feedbackQuestion: 'Была ли эта страница полезной?',
+    feedbackYes: 'Да',
+    feedbackNo: 'Нет',
+    feedbackThanks: 'Спасибо за отзыв!',
+    footerBrandDesc: 'Коллекция высокопроизводительных библиотек Go: JSON, JWT, HTTP-клиент, извлечение HTML, логирование и управление переменными окружения.',
+    footerCommunity: 'Сообщество',
+    footerAboutSite: 'О сайте',
+    footerEditDocs: 'Редактировать документацию',
+    footerLicenseWord: 'Лицензия',
+    footerCopyright: '© 2026 CyberGo (cybergo.dev)',
+    footerOpensInNewWindow: '(откроется в новом окне)',
+    notFoundTitle: 'Страница не найдена',
+    notFoundDesc: 'Извините, запрашиваемая страница не существует или была удалена.',
+    notFoundGoHome: 'На главную',
+    notFoundGoBack: 'Назад',
+    langPromptTextTemplate: 'Язык вашего браузера, вероятно, {label}. Переключить?',
+    langPromptSwitch: 'Переключить',
+    langPromptDismiss: 'Не сейчас',
+    cliDocs: 'Документация',
+    openInPlayground: 'Открыть в Go Playground',
+    codeCopied: 'Код скопирован — вставьте его'
   }
 }
 

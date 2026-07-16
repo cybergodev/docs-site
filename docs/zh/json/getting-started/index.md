@@ -108,17 +108,26 @@ arr := json.GetArray(data, "items[0:2]")   // ["a", "b"]
 data := `{"name": "old"}`
 
 // 设置新值
-updated, _ := json.Set(data, "name", "new")
+updated, err := json.Set(data, "name", "new")
+if err != nil {
+    panic(err)
+}
 fmt.Println(updated) // {"name":"new"}
 
 // 添加新字段
-updated, _ = json.Set(data, "version", 1)
+updated, err = json.Set(data, "version", 1)
+if err != nil {
+    panic(err)
+}
 fmt.Println(updated) // {"name":"old","version":1}
 
-// 逐个设置多个字段
-updated, _ = json.Set(data, "name", "updated")
-updated, _ = json.Set(updated, "version", 2)
-updated, _ = json.Set(updated, "active", true)
+// 逐个设置多个字段（每次返回新 JSON，需检查 err）
+updated, err = json.Set(data, "name", "updated")
+updated, err = json.Set(updated, "version", 2)
+updated, err = json.Set(updated, "active", true)
+if err != nil {
+    panic(err)
+}
 ```
 
 #### 删除值
@@ -127,7 +136,10 @@ updated, _ = json.Set(updated, "active", true)
 data := `{"name": "test", "temp": "remove"}`
 
 // 删除字段
-updated, _ := json.Delete(data, "temp")
+updated, err := json.Delete(data, "temp")
+if err != nil {
+    panic(err)
+}
 fmt.Println(updated) // {"name":"test"}
 ```
 
@@ -143,11 +155,17 @@ type User struct {
 
 // 编码
 user := User{Name: "Alice", Age: 30}
-bytes, _ := json.Marshal(user)
+bytes, err := json.Marshal(user)
+if err != nil {
+    panic(err)
+}
 fmt.Println(string(bytes)) // {"name":"Alice","age":30}
 
 // 格式化编码
-pretty, _ := json.MarshalIndent(user, "", "  ")
+pretty, err := json.MarshalIndent(user, "", "  ")
+if err != nil {
+    panic(err)
+}
 fmt.Println(string(pretty))
 // {
 //   "name": "Alice",
@@ -156,7 +174,9 @@ fmt.Println(string(pretty))
 
 // 解码
 var u User
-json.Unmarshal(bytes, &u)
+if err := json.Unmarshal(bytes, &u); err != nil {
+    panic(err)
+}
 fmt.Println(u.Name, u.Age) // Alice 30
 ```
 
@@ -176,7 +196,10 @@ fmt.Println(json.Valid([]byte(invalid))) // false
 compact := `{"name":"test","nested":{"key":"value"}}`
 
 // 格式化输出
-pretty, _ := json.Prettify(compact)
+pretty, err := json.Prettify(compact)
+if err != nil {
+    panic(err)
+}
 fmt.Println(pretty)
 // {
 //   "name": "test",

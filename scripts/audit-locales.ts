@@ -22,10 +22,10 @@
  * against the source in {project}-dev via go/ast — parity of *content*, not just
  * page existence. That needs a Go parser and is tracked separately.
  */
-import { readdir, writeFile, mkdir } from 'fs/promises'
+import { writeFile, mkdir } from 'fs/promises'
 import { join, relative } from 'path'
-import type { Dirent } from 'fs'
 import { LANGS, PRIMARY_LANG } from '../docs/.vitepress/shared'
+import { collectMd } from './_lib/walk'
 
 const DOCS_ROOT = 'docs'
 const REPORT_DIR = 'report'
@@ -33,22 +33,10 @@ const REPORT_FILE = join(REPORT_DIR, 'locale-parity.md')
 
 /** Collect every page under docs/{lang}/ as a normalized logical path. */
 async function collectPages(langDir: string): Promise<Set<string>> {
-  const pages = new Set<string>()
-  async function walk(dir: string): Promise<void> {
-    let entries: Dirent[]
-    try {
-      entries = await readdir(dir, { withFileTypes: true })
-    } catch {
-      return // language dir may not exist yet
-    }
-    for (const entry of entries) {
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) await walk(full)
-      else if (entry.name.endsWith('.md')) pages.add(normalize(relative(langDir, full)))
-    }
-  }
-  await walk(langDir)
-  return pages
+  // collectMd returns [] for a missing dir (e.g. a language tree not yet
+  // created), which is exactly the "no pages" semantics this needs.
+  const files = await collectMd(langDir)
+  return new Set(files.map((f) => normalize(relative(langDir, f))))
 }
 
 /** `json/index.md` → `json`, `index.md` → ``, `getting-started.md` → `getting-started`. */

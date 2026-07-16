@@ -180,7 +180,7 @@ if result.Resumed {
 ```
 
 Resume mechanism:
-1. Check local file size -> use as `Range` request offset
+1. Check local file size -> use as Range request offset
 2. Server returns 206 (Partial Content) -> append write
 3. Server returns 416 (Range Not Satisfiable) -> return error
 4. Server returns 200 (Range not supported) -> return error (protect local partial file from being overwritten)

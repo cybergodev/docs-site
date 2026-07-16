@@ -89,11 +89,11 @@ cfg := dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
 
 | 등급 | 설명 | 적용 시나리오 |
 |------|------|----------|
-| `Development` | 가장 느슨함 | 로컬 개발 |
-| `Basic` | 기본 필터링 | 테스트 환경 |
-| `Standard` | 표준 필터링 | 일반 프로덕션 환경 |
-| `Strict` | 엄격한 필터링 | 높은 보안 요구 |
-| `Paranoid` | 가장 엄격함 | 금융/의료 등 민감 산업 |
+| `SecurityLevelDevelopment` | 가장 느슨함 | 로컬 개발 |
+| `SecurityLevelBasic` | 기본 필터링 | 테스트 환경 |
+| `SecurityLevelStandard` | 표준 필터링 | 일반 프로덕션 환경 |
+| `SecurityLevelStrict` | 엄격한 필터링 | 높은 보안 요구 |
+| `SecurityLevelParanoid` | 가장 엄격함 | 금융/의료 등 민감 산업 |
 
 ## 업계 준수 사전 설정
 

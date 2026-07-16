@@ -174,7 +174,7 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 :::tip Solution
-Implement the `Validator` interface (including `ValidateKey`, `ValidateValue`, `ValidateRequired` methods) instead of only implementing `KeyValidator`.
+Implement the `Validator` interface (including ValidateKey, ValidateValue, ValidateRequired methods) instead of only implementing `KeyValidator`.
 :::
 
 ## Error Types
@@ -276,7 +276,7 @@ type ExpansionError struct {
 }
 ```
 
-**Error classification (`Kind` field):**
+**Error classification (Kind field):**
 
 ```go
 type ExpansionErrorKind int

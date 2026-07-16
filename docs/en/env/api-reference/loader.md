@@ -623,7 +623,7 @@ Validates that all required keys exist.
 - `error` - Validation error
 
 **Behavior:**
-- Checks whether all keys specified in `Config.RequiredKeys` exist
+- Checks whether all keys specified in `ValidationConfig.RequiredKeys` exist
 
 ```go
 cfg := env.DefaultConfig()

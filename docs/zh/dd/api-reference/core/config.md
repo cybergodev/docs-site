@@ -213,7 +213,7 @@ cfg.FieldNames = &dd.JSONFieldNames{
 func DefaultJSONOptions() *JSONOptions
 ```
 
-返回默认的 JSON 输出选项：`PrettyPrint` 为 `false`，缩进为两个空格，字段名采用默认值。
+返回默认的 `JSONOptions` 输出选项：默认不美化输出（缩进为两个空格），字段名采用默认值。
 
 ```go
 opts := dd.DefaultJSONOptions()
@@ -279,7 +279,7 @@ type FieldValidationConfig struct {
 | `NamingConventionAny` | 接受任何格式（默认） | - |
 | `NamingConventionSnakeCase` | snake_case | `user_id`, `created_at` |
 | `NamingConventionCamelCase` | camelCase | `userId`, `createdAt` |
-| `NamingConventionPascalCase` | PascalCase | `UserId`, `CreatedAt` |
+| `NamingConventionPascalCase` | PascalCase | UserId, CreatedAt |
 | `NamingConventionKebabCase` | kebab-case | `user-id`, `created-at` |
 
 实现了 `String()` 方法，返回命名规范名称。

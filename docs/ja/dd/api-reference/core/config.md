@@ -274,7 +274,7 @@ type FieldValidationConfig struct {
 | `NamingConventionAny` | 任意のフォーマットを受け付け（デフォルト） | - |
 | `NamingConventionSnakeCase` | snake_case | `user_id`, `created_at` |
 | `NamingConventionCamelCase` | camelCase | `userId`, `createdAt` |
-| `NamingConventionPascalCase` | PascalCase | `UserId`, `CreatedAt` |
+| `NamingConventionPascalCase` | PascalCase | UserId, CreatedAt |
 | `NamingConventionKebabCase` | kebab-case | `user-id`, `created-at` |
 
 `String()` メソッドを実装し、命名規則名を返します。

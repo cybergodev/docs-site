@@ -185,7 +185,7 @@ fmt.Printf("%s: ⭐ %d\n", repo.FullName, repo.Stars)
 ```
 
 핵심 포인트:
-- 미들웨어는 `Config.Middleware.Middlewares`에서 설정
+- 미들웨어는 `MiddlewareConfig.Middlewares`에서 설정
 - `LoggingMiddleware`는 요청 로그 기록
 - `RecoveryMiddleware`는 panic으로 인한 크래시 방지
 - `RequestIDMiddleware`는 각 요청에 고유 ID 생성

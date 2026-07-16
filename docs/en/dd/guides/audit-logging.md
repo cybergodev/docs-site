@@ -58,17 +58,17 @@ AuditLogger records 11 types of security events:
 
 | Event Type | Description | Default Severity |
 |------------|-------------|-----------------|
-| `SensitiveDataRedacted` | Sensitive data was redacted | Info |
-| `RateLimitExceeded` | Rate limit triggered | Warning |
-| `ReDoSAttempt` | ReDoS attack attempt | Critical |
-| `SecurityViolation` | Security violation | Error |
-| `IntegrityViolation` | Log integrity compromised | Critical |
-| `InputSanitized` | Input was sanitized | Info |
-| `PathTraversalAttempt` | Path traversal attempt | Critical |
-| `Log4ShellAttempt` | Log4Shell attack attempt | <Badge type="info" text="Caller-specified" /> |
-| `NullByteInjection` | Null byte injection attempt | <Badge type="info" text="Caller-specified" /> |
-| `OverlongEncoding` | Overlong encoding attack | <Badge type="info" text="Caller-specified" /> |
-| `HomographAttack` | Homograph attack | <Badge type="info" text="Caller-specified" /> |
+| `AuditEventSensitiveDataRedacted` | Sensitive data was redacted | Info |
+| `AuditEventRateLimitExceeded` | Rate limit triggered | Warning |
+| `AuditEventReDoSAttempt` | ReDoS attack attempt | Critical |
+| `AuditEventSecurityViolation` | Security violation | Error |
+| `AuditEventIntegrityViolation` | Log integrity compromised | Critical |
+| `AuditEventInputSanitized` | Input was sanitized | Info |
+| `AuditEventPathTraversalAttempt` | Path traversal attempt | Critical |
+| `AuditEventLog4ShellAttempt` | Log4Shell attack attempt | <Badge type="info" text="Caller-specified" /> |
+| `AuditEventNullByteInjection` | Null byte injection attempt | <Badge type="info" text="Caller-specified" /> |
+| `AuditEventOverlongEncoding` | Overlong encoding attack | <Badge type="info" text="Caller-specified" /> |
+| `AuditEventHomographAttack` | Homograph attack | <Badge type="info" text="Caller-specified" /> |
 
 ## Integrating with HMAC Signatures
 

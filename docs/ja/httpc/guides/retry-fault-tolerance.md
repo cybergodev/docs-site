@@ -40,7 +40,7 @@ client, _ := httpc.New(cfg)
 `RetryPolicy` インターフェースを実装してリトライ動作を完全に制御します：
 
 :::warning 内部タイプ
-`RetryPolicy.ShouldRetry` の `resp` パラメータのタイプ `ResponseReader` は内部インターフェース（`internal/types` パッケージに定義）であり、外部パッケージからは直接参照できません。カスタム `RetryPolicy` は `httpc` と同じモジュール内のパッケージで実装する必要があります。ほとんどのシナリオでは `RetryConfig` フィールドの設定で要件を満たせます。
+RetryPolicy.ShouldRetry の `resp` パラメータのタイプ ResponseReader は内部インターフェース（`internal/types` パッケージに定義）であり、外部パッケージからは直接参照できません。カスタム `RetryPolicy` は `httpc` と同じモジュール内のパッケージで実装する必要があります。ほとんどのシナリオでは `RetryConfig` フィールドの設定で要件を満たせます。
 :::
 
 ```go

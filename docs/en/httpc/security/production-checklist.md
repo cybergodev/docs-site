@@ -24,7 +24,7 @@ sidebar_position: 4
 ### Timeout Configuration
 
 - [ ] All timeout values are set and reasonable
-- [ ] `Timeouts.Request` is not 0 (prevents infinite waiting)
+- [ ] `TimeoutConfig.Request` is not 0 (prevents infinite waiting)
 - [ ] Consider using `WithContext` to set per-request timeouts
 
 ### Response Limits

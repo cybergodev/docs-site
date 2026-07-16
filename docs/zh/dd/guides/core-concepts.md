@@ -28,7 +28,10 @@ Logger（日志记录器）
 `Logger` 是核心日志记录器，由 `dd.New()` 创建：
 
 ```go
-logger, _ := dd.New(dd.DefaultConfig())
+logger, err := dd.New(dd.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer logger.Close()
 
 logger.Info("服务启动")
@@ -220,13 +223,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 DD 支持三种输出目标，可任意组合：
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Targets: []dd.OutputTarget{
         dd.ConsoleOutput(),                    // 控制台
         dd.FileOutput("logs/app.log"),         // 文件（自动轮换）
         dd.CustomOutput(customWriter),         // 自定义 io.Writer
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 内置 Writer 组件：

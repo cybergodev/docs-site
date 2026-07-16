@@ -69,7 +69,7 @@ if errors.As(err, &fileErr) {
 
 ## Отмена через контекст
 
-Использование версий `WithContext` для поддержки отмены:
+Использование версий `ExtractWithContext` для поддержки отмены:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

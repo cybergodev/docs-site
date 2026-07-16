@@ -55,7 +55,7 @@ type TimeoutConfig struct {
 0 に設定するとタイムアウトなしになります（本番環境では推奨されません）。
 
 :::tip ResponseHeader の設計
-`ResponseHeader` のデフォルトは 0（無効）です。この場合、`Timeouts.Request` または `WithTimeout()` が唯一のタイムアウト機構として使用され、`WithTimeout()` がリクエストの所要時間を完全に制御できます。この設計は AI API やロングポーリングなど、レスポンス時間を延長する必要があるシナリオに適しています。トランスポート層のハードリミットが必要な場合（Slowloris 攻撃の防御など）のみ正の値を設定してください。ただし、これは `WithTimeout` をオーバーライドすることに注意してください。
+`ResponseHeader` のデフォルトは 0（無効）です。この場合、`TimeoutConfig.Request` または `WithTimeout()` が唯一のタイムアウト機構として使用され、`WithTimeout()` がリクエストの所要時間を完全に制御できます。この設計は AI API やロングポーリングなど、レスポンス時間を延長する必要があるシナリオに適しています。トランスポート層のハードリミットが必要な場合（Slowloris 攻撃の防御など）のみ正の値を設定してください。ただし、これは `WithTimeout` をオーバーライドすることに注意してください。
 :::
 
 ## ConnectionConfig
@@ -352,11 +352,11 @@ Cookie セキュリティ属性の検証設定。
 
 | フィールド | タイプ | 説明 |
 |-----------|--------|------|
-| `RequireSecure` | `bool` | Cookie に Secure 属性の設定を要求 |
-| `RequireHttpOnly` | `bool` | Cookie に HttpOnly 属性の設定を要求 |
-| `RequireSameSite` | `string` | 要求する SameSite 値（例：`"Strict"`、`"Lax"`）。空文字列はチェックなし |
-| `AllowSameSiteNone` | `bool` | SameSite=None を許可するかどうか |
-| `RequireSecureForSameSiteNone` | `bool` | SameSite=None の場合に Secure 属性を要求（デフォルト `true`） |
+| RequireSecure | `bool` | Cookie に Secure 属性の設定を要求 |
+| RequireHttpOnly | `bool` | Cookie に HttpOnly 属性の設定を要求 |
+| RequireSameSite | `string` | 要求する SameSite 値（例：`"Strict"`、`"Lax"`）。空文字列はチェックなし |
+| AllowSameSiteNone | `bool` | SameSite=None を許可するかどうか |
+| RequireSecureForSameSiteNone | `bool` | SameSite=None の場合に Secure 属性を要求（デフォルト `true`） |
 
 ### DefaultCookieSecurityConfig
 

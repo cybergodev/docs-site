@@ -174,7 +174,7 @@ pretty, err := p.Prettify(`{"name":"Alice","age":30}`)
 ### Print (已移除)
 
 ::: warning API 变更说明
-`Print`、`PrintE`、`PrintPretty`、`PrintPrettyE` 已从库中移除，不再提供。请使用以下替代方案：
+Print、PrintE、PrintPretty、PrintPrettyE 已从库中移除，不再提供。请使用以下替代方案：
 
 ```go
 // 紧凑输出

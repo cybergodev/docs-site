@@ -69,7 +69,7 @@ if errors.As(err, &fileErr) {
 
 ## コンテキストのキャンセル
 
-`WithContext` バージョンを使用してキャンセルに対応します：
+`ExtractWithContext` バージョンを使用してキャンセルに対応します：
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

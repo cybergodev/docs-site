@@ -102,10 +102,10 @@ type RetryPolicy interface {
 | `MaxRetries()` | 최대 재시도 횟수 반환 |
 
 :::warning 내부 타입 제한
-`ShouldRetry`의 `resp` 매개변수 타입 `ResponseReader`는 내부 인터페이스(`internal/types` 패키지에 위치)이므로 외부 코드에서 직접 참조할 수 없습니다. 따라서 `RetryPolicy`는 같은 모듈 내에서만 구현할 수 있습니다. 대부분의 시나리오는 `RetryConfig` 설정과 `WithMaxRetries` 옵션으로 재시도 요구사항을 충족할 수 있습니다. 커스텀 전략이 필요한 경우 프로젝트 내부 패키지에서 `RetryPolicy` 인터페이스를 구현하세요.
+ShouldRetry의 `resp` 매개변수 타입 ResponseReader는 내부 인터페이스(`internal/types` 패키지에 위치)이므로 외부 코드에서 직접 참조할 수 없습니다. 따라서 `RetryPolicy`는 같은 모듈 내에서만 구현할 수 있습니다. 대부분의 시나리오는 `RetryConfig` 설정과 `WithMaxRetries` 옵션으로 재시도 요구사항을 충족할 수 있습니다. 커스텀 전략이 필요한 경우 프로젝트 내부 패키지에서 `RetryPolicy` 인터페이스를 구현하세요.
 :::
 
-다음 예제는 `RetryPolicy`의 구현 패턴을 보여줍니다. `ResponseReader`는 내부 타입이므로 이 코드는 `httpc` 모듈 내부에서만 컴파일됩니다:
+다음 예제는 `RetryPolicy`의 구현 패턴을 보여줍니다. ResponseReader는 내부 타입이므로 이 코드는 `httpc` 모듈 내부에서만 컴파일됩니다:
 
 ```go
 // 주의: ResponseReader는 내부 타입(internal/types 패키지)입니다.
@@ -172,7 +172,7 @@ type RequestMutator interface {
 }
 ```
 
-미들웨어에서 사용하며, 요청에 대한 읽기/쓰기 접근을 제공합니다. 내부 인터페이스 `RequestReader`와 `RequestWriter`로 구성됩니다.
+미들웨어에서 사용하며, 요청에 대한 읽기/쓰기 접근을 제공합니다. 내부 인터페이스 RequestReader와 RequestWriter로 구성됩니다.
 
 ### ResponseMutator
 
@@ -215,7 +215,7 @@ type ResponseMutator interface {
 }
 ```
 
-미들웨어에서 사용하며, 응답에 대한 읽기/쓰기 접근을 제공합니다. 내부 인터페이스 `ResponseReader`와 `ResponseWriter`로 구성됩니다.
+미들웨어에서 사용하며, 응답에 대한 읽기/쓰기 접근을 제공합니다. 내부 인터페이스 ResponseReader와 ResponseWriter로 구성됩니다.
 
 ### Handler
 

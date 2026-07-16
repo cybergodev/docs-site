@@ -136,7 +136,7 @@ cfg.Security.CertificatePinner = chainPinner
 
 ### 고급: 커스텀 TLS 검증 콜백
 
-TLS 검증 로직을 완전히 제어해야 하는 경우(예: 공개키가 아닌 전체 인증서를 고정), `TLSConfig`로 직접 구현할 수 있습니다. 이때 표준 체인 검증은 `InsecureSkipVerify`로 건너뛰며, `VerifyPeerCertificate`에서 **반드시** 모든 검증을 완료해야 합니다:
+TLS 검증 로직을 완전히 제어해야 하는 경우(예: 공개키가 아닌 전체 인증서를 고정), `TLSConfig`로 직접 구현할 수 있습니다. 이때 표준 체인 검증은 `InsecureSkipVerify`로 건너뛰며, VerifyPeerCertificate에서 **반드시** 모든 검증을 완료해야 합니다:
 
 ```go
 cfg := httpc.DefaultConfig()

@@ -127,7 +127,7 @@ fmt.Println(data) // 元の JSON 文字列
 ### LoadFromFileAsData（非公開化）
 
 ::: warning API 変更のお知らせ
-`LoadFromFileAsData` は内部メソッド（`loadFromFileAsData`）に移行され、公開 API としてエクスポートされなくなりました。`LoadFromFile` + `Parse` の組み合わせを代替として使用してください：
+LoadFromFileAsData は内部メソッド（`loadFromFileAsData`）に移行され、公開 API としてエクスポートされなくなりました。`LoadFromFile` + `Parse` の組み合わせを代替として使用してください：
 
 ```go
 jsonStr, err := p.LoadFromFile("data.json")
@@ -164,7 +164,7 @@ if err != nil {
 ### LoadFromReaderAsData（非公開化）
 
 ::: warning API 変更のお知らせ
-`LoadFromReaderAsData` は内部メソッド（`loadFromReaderAsData`）に移行され、公開 API としてエクスポートされなくなりました。`LoadFromReader` + `Parse` の組み合わせを代替として使用してください：
+LoadFromReaderAsData は内部メソッド（`loadFromReaderAsData`）に移行され、公開 API としてエクスポートされなくなりました。`LoadFromReader` + `Parse` の組み合わせを代替として使用してください：
 
 ```go
 file, _ := os.Open("data.json")

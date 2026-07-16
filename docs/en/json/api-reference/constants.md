@@ -215,7 +215,7 @@ type PathSegment = internal.PathSegment
 ```
 
 ::: warning Internal implementation alias
-`PathSegment` is a type alias for `internal.PathSegment`. Its specific fields, field types (such as `PathSegmentType`, `PathSegmentFlags`) and methods belong to the `internal` package, are **not exported as public API**, and may change between versions — do not rely on its internal structure directly in your business code.
+`PathSegment` is a type alias for `internal.PathSegment`. Its specific fields, field types (such as PathSegmentType, PathSegmentFlags) and methods belong to the `internal` package, are **not exported as public API**, and may change between versions — do not rely on its internal structure directly in your business code.
 
 - When implementing custom path syntax, return `[]PathSegment` via the `ParsePath` method of the [`PathParser`](./interfaces#pathparser) interface.
 - For precompiled paths, use [`Processor.CompilePath`](./processor/query#compilepath), which returns `*CompiledPath`.

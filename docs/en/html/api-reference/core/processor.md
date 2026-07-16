@@ -65,7 +65,7 @@ Extract plain text from a file.
 
 ## Context Variants
 
-All extraction methods have `WithContext` variants:
+All extraction methods have `ExtractWithContext` variants:
 
 ```go
 func (p *Processor) ExtractWithContext(ctx context.Context, htmlBytes []byte) (*Result, error)

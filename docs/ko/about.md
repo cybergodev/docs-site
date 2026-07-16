@@ -7,7 +7,7 @@ description: "CyberGo 문서 사이트에 대해 알아보세요. 문서 범위,
 
 ## 문서 사이트
 
-CyberGo 문서 사이트는 [CyberGoDev](https://github.com/cybergodev) 조직의 통합 기술 문서 센터로, 모든 Go 오픈소스 라이브러리에 대한 포괄적인 한국어 및 영어 문서를 제공합니다.
+CyberGo 문서 사이트는 [CyberGoDev](https://github.com/cybergodev) 조직의 통합 기술 문서 센터로, 모든 Go 오픈소스 라이브러리에 대해 한국어, 영어, 중국어, 일본어, 러시아어 5개 언어의 포괄적인 문서를 제공합니다.
 
 이 사이트는 개발자가 각 라이브러리의 기능, API 및 모범 사례를 빠르게 이해하고 프로덕션 환경에서 효율적이고 안전하게 사용할 수 있도록 돕습니다.
 

@@ -127,7 +127,7 @@ fmt.Println(data) // Исходная строка JSON
 ### LoadFromFileAsData (приватизировано)
 
 ::: warning Изменение API
-`LoadFromFileAsData` преобразован во внутренний метод (`loadFromFileAsData`) и больше не экспортируется как публичный API. Используйте комбинацию `LoadFromFile` + `Parse`:
+LoadFromFileAsData преобразован во внутренний метод (`loadFromFileAsData`) и больше не экспортируется как публичный API. Используйте комбинацию `LoadFromFile` + `Parse`:
 
 ```go
 jsonStr, err := p.LoadFromFile("data.json")
@@ -164,7 +164,7 @@ if err != nil {
 ### LoadFromReaderAsData (приватизировано)
 
 ::: warning Изменение API
-`LoadFromReaderAsData` преобразован во внутренний метод (`loadFromReaderAsData`) и больше не экспортируется как публичный API. Используйте комбинацию `LoadFromReader` + `Parse`:
+LoadFromReaderAsData преобразован во внутренний метод (`loadFromReaderAsData`) и больше не экспортируется как публичный API. Используйте комбинацию `LoadFromReader` + `Parse`:
 
 ```go
 file, _ := os.Open("data.json")

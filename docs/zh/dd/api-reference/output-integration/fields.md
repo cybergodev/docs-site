@@ -1,7 +1,7 @@
 ---
 sidebar_label: "结构化字段"
 title: "结构化字段 - CyberGo DD | Field 构造器"
-description: "CyberGo DD 结构化字段构造器完整 API 文档，支持 20 余种类型的类型安全字段创建，包括 String/Int/Float/Bool 等基础字段、Time/Duration 时间字段、Error 错误字段、Any 对象字段和自定义字段，提供便捷的链式调用组合方式。"
+description: "CyberGo DD 结构化字段构造器 API：提供 20 余种类型安全字段，涵盖 String/Int/Float/Bool 基础类型、Time/Duration 时间、Error 错误与 Any 对象字段，支持便捷的链式组合。"
 sidebar_position: 3
 ---
 
@@ -93,7 +93,7 @@ base.InfoWith("响应",
 
 ## 类型定义
 
-`Field` 是结构化日志字段类型，包含 `Key`（字符串）和 `Value`（任意值）两个字段，通过构造函数创建。
+`Field` 是结构化日志字段类型，包含键（字符串）和值（任意值）两个字段，通过构造函数创建。
 
 ## 下一步
 

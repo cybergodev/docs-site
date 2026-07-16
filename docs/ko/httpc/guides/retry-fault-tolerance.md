@@ -40,7 +40,7 @@ client, _ := httpc.New(cfg)
 `RetryPolicy` 인터페이스를 구현하여 재시도 동작을 완전히 제어합니다:
 
 :::warning 내부 타입
-`RetryPolicy.ShouldRetry`의 `resp` 매개변수 타입 `ResponseReader`는 내부 인터페이스(`internal/types` 패키지에 정의)이므로 외부 패키지에서 직접 참조할 수 없습니다. 커스텀 `RetryPolicy`는 `httpc`와 같은 모듈 내 패키지에서 구현해야 합니다. 대부분의 시나리오는 `RetryConfig` 필드 설정으로 충분합니다.
+RetryPolicy.ShouldRetry의 `resp` 매개변수 타입 ResponseReader는 내부 인터페이스(`internal/types` 패키지에 정의)이므로 외부 패키지에서 직접 참조할 수 없습니다. 커스텀 `RetryPolicy`는 `httpc`와 같은 모듈 내 패키지에서 구현해야 합니다. 대부분의 시나리오는 `RetryConfig` 필드 설정으로 충분합니다.
 :::
 
 ```go

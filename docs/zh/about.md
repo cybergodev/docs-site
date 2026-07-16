@@ -7,7 +7,7 @@ description: "了解 CyberGo 文档站点，涵盖文档覆盖范围、贡献方
 
 ## 文档站点
 
-CyberGo 文档站点是 [CyberGoDev](https://github.com/cybergodev) 组织的统一技术文档中心，为所有 Go 开源库提供详尽的中文和英文文档。
+CyberGo 文档站点是 [CyberGoDev](https://github.com/cybergodev) 组织的统一技术文档中心，为所有 Go 开源库提供中文、英文、韩文、日文、俄文五种语言的详尽文档。
 
 本站旨在帮助开发者快速上手并深入理解每个库的功能、API 和最佳实践，确保在生产环境中高效、安全地使用这些工具。
 

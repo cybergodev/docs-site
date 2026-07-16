@@ -137,9 +137,13 @@ cfg := dd.DefaultFieldValidationConfig()
 ### 在配置中启用
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     FieldValidation: dd.StrictSnakeCaseConfig(),
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 启用后，不合规的字段名会在日志中产生警告：
@@ -234,7 +238,11 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### JSON 格式
 
 ```go
-logger, _ := dd.New(dd.JSONConfig())
+logger, err := dd.New(dd.JSONConfig())
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 logger.InfoWith("请求完成",
     dd.String("method", "GET"),
     dd.Int("status", 200),

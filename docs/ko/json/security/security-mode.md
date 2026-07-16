@@ -107,7 +107,7 @@ PatternLevel의 문자열 표현을 반환합니다.
 ### 핵심 패턴
 
 :::warning 내부 API
-`GetCriticalPatterns`는 내부 함수로 전환되어 공개 API로 내보내지지 않습니다. 핵심 패턴(`__proto__`, `constructor[`, `prototype.`)은 항상 강제 검사되며 비활성화할 수 없습니다.
+GetCriticalPatterns는 내부 함수로 전환되어 공개 API로 내보내지지 않습니다. 핵심 패턴(`__proto__`, `constructor[`, `prototype.`)은 항상 강제 검사되며 비활성화할 수 없습니다.
 :::
 
 다음 핵심 패턴은 JSON 크기에 관계없이 항상 전체 스캔합니다:

@@ -127,7 +127,7 @@ fmt.Println(data) // 原始 JSON 字符串
 ### LoadFromFileAsData (已私有化)
 
 ::: warning API 变更说明
-`LoadFromFileAsData` 已转为内部方法（`loadFromFileAsData`），不再作为公开 API 导出。请使用 `LoadFromFile` + `Parse` 组合代替：
+LoadFromFileAsData 已转为内部方法（`loadFromFileAsData`），不再作为公开 API 导出。请使用 `LoadFromFile` + `Parse` 组合代替：
 
 ```go
 jsonStr, err := p.LoadFromFile("data.json")
@@ -164,7 +164,7 @@ if err != nil {
 ### LoadFromReaderAsData (已私有化)
 
 ::: warning API 变更说明
-`LoadFromReaderAsData` 已转为内部方法（`loadFromReaderAsData`），不再作为公开 API 导出。请使用 `LoadFromReader` + `Parse` 组合代替：
+LoadFromReaderAsData 已转为内部方法（`loadFromReaderAsData`），不再作为公开 API 导出。请使用 `LoadFromReader` + `Parse` 组合代替：
 
 ```go
 file, _ := os.Open("data.json")

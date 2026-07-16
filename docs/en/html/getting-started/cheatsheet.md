@@ -47,7 +47,7 @@ batch := html.ExtractBatchFiles(paths)
 
 ### Context Variants
 
-All functions have `WithContext` variants:
+All functions have `ExtractWithContext` variants:
 
 ```go
 result, err := html.ExtractWithContext(ctx, data)

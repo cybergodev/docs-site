@@ -34,6 +34,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+        # Project metadata dual-source sync (projects.yaml ↔ shared.ts).
+        # Catches "added to yaml, forgot shared.ts" drift before merge.
+      - name: Project metadata sync
+        run: npm run check:projects
+
       - name: Build
         run: npm run build
         env:
@@ -59,3 +64,78 @@ jobs:
         uses: huacnlee/autocorrect-action@main
         with:
           use_npm: true
+
+  # API drift gate (specs/0002). audit-api.ts scans each library's Go source
+  # (AST exports) and compares against the zh docs; DANGLING references — docs
+  # citing symbols the source no longer exports — fail the job (exit 1).
+  # Source is checked out from github.com/cybergodev/{project}: a missing or
+  # private repo fails the checkout step red, rather than letting audit:api
+  # silently skip it (scripts/audit-api.ts treats a missing source dir as skip).
+  audit-api:
+    name: API drift (audit:api)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout docs repo
+        uses: actions/checkout@v4
+
+      - name: Checkout json source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/json
+          path: src/json-dev
+      - name: Checkout jwt source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/jwt
+          path: src/jwt-dev
+      - name: Checkout httpc source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/httpc
+          path: src/httpc-dev
+      - name: Checkout html source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/html
+          path: src/html-dev
+      - name: Checkout dd source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/dd
+          path: src/dd-dev
+      - name: Checkout env source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/env
+          path: src/env-dev
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          # scripts/apiscan/go.mod requires go 1.25; it is stdlib-only, so
+          # dependency caching is off (no go.sum to key on).
+          go-version: '1.25'
+          cache: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: API drift audit
+        env:
+          # audit-api.ts joins CYBERGO_SOURCE_ROOT + `{project}-dev`, matching
+          # the src/{project}-dev layout checked out above.
+          CYBERGO_SOURCE_ROOT: ${{ github.workspace }}/src
+        run: npm run audit:api
+
+      - name: Upload drift report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-drift-report
+          path: report/api-drift.md

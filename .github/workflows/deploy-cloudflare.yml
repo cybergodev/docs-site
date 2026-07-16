@@ -1,25 +1,25 @@
 name: Deploy to Cloudflare Pages
 
-# Migrate from FTP (deploy.yml) to Cloudflare Pages for: atomic deploys,
-# global edge caching (see public/_headers), and per-PR preview deploys.
+# Production deploy path: atomic deploys, global edge caching (see
+# public/_headers), and per-PR preview deploys. The old FTP workflow
+# (deploy.yml) is now manual-only cold-standby.
 #
-# This ships MANUAL-ONLY (workflow_dispatch) so it does NOT double-deploy
-# alongside the existing FTP workflow while you verify it. Once the first
-# deploy looks good:
-#   1. Uncomment the `push:` block below.
-#   2. Disable/delete deploy.yml (FTP) so only one path runs on push to main.
-# See DEPLOY.md for the full migration + DNS + secrets walkthrough.
+# PREREQUISITES before merging this to main (else the deploy job fails):
+#   - GitHub secrets set: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+#   - Cloudflare Pages project "cybergo-docs" created
+#   - DNS: www.cybergo.dev CNAME → cybergo-docs.pages.dev
+# Verify with a manual workflow_dispatch run first. See DEPLOY.md.
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [main]
-  #   paths:
-  #     - 'docs/**'
-  #     - 'docs/.vitepress/**'
-  #     - 'package.json'
-  #     - 'package-lock.json'
-  #     - 'public/_headers'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'public/_headers'
 
 permissions:
   contents: read

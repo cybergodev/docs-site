@@ -107,7 +107,7 @@ The following are built-in dangerous patterns, all at Critical level:
 ### Critical Patterns
 
 ::: warning Internal API
-`GetCriticalPatterns` has been converted to an internal function and is no longer exported as a public API. Critical patterns (`__proto__`, `constructor[`, `prototype.`) are always enforced and cannot be disabled.
+GetCriticalPatterns has been converted to an internal function and is no longer exported as a public API. Critical patterns (`__proto__`, `constructor[`, `prototype.`) are always enforced and cannot be disabled.
 :::
 
 The following critical patterns are always fully scanned regardless of JSON size:

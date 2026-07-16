@@ -178,7 +178,10 @@ func TestHTTPMethods(t *testing.T) {
     }))
     defer server.Close()
 
-    client, _ := httpc.New(httpc.TestingConfig())
+    client, err := httpc.New(httpc.TestingConfig())
+    if err != nil {
+        log.Fatal(err)
+    }
     defer client.Close()
 
     tests := []struct {

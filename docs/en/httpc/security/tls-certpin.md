@@ -136,7 +136,7 @@ cfg.Security.CertificatePinner = chainPinner
 
 ### Advanced: Custom TLS Verification Callback
 
-If you need full control over TLS verification logic (for example, pinning the full certificate rather than its public key), implement it yourself via `TLSConfig`. Standard chain validation is then skipped via `InsecureSkipVerify`, and you **must** perform all validation in `VerifyPeerCertificate`:
+If you need full control over TLS verification logic (for example, pinning the full certificate rather than its public key), implement it yourself via `TLSConfig`. Standard chain validation is then skipped via `InsecureSkipVerify`, and you **must** perform all validation in VerifyPeerCertificate:
 
 ```go
 cfg := httpc.DefaultConfig()

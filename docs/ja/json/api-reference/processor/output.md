@@ -174,7 +174,7 @@ pretty, err := p.Prettify(`{"name":"Alice","age":30}`)
 ### Print（削除）
 
 ::: warning API 変更のお知らせ
-`Print`、`PrintE`、`PrintPretty`、`PrintPrettyE` はライブラリから削除され、提供されなくなりました。以下の代替手段を使用してください：
+Print、PrintE、PrintPretty、PrintPrettyE はライブラリから削除され、提供されなくなりました。以下の代替手段を使用してください：
 
 ```go
 // コンパクト出力

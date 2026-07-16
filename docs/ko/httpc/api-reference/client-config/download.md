@@ -180,7 +180,7 @@ if result.Resumed {
 ```
 
 이어받기 메커니즘:
-1. 로컬 파일 크기 확인 → `Range` 요청 오프셋으로 사용
+1. 로컬 파일 크기 확인 → Range 요청 오프셋으로 사용
 2. 서버가 206 (Partial Content) 반환 → 이어쓰기
 3. 서버가 416 (Range Not Satisfiable) 반환 → 오류 반환
 4. 서버가 200 반환 (Range 미지원) → 오류 반환 (로컬 부분 파일 덮어쓰기 방지)

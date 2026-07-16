@@ -8,7 +8,7 @@ sidebar_position: 11
 # Print Functions
 
 ::: warning API Change Notice
-`Print`, `PrintPretty`, `PrintE`, `PrintPrettyE` have been removed from the library and are no longer available. Please use the following alternatives.
+Print, PrintPretty, PrintE, PrintPrettyE have been removed from the library and are no longer available. Please use the following alternatives.
 :::
 
 ## Alternatives

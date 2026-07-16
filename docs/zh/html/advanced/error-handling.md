@@ -69,7 +69,7 @@ if errors.As(err, &fileErr) {
 
 ## 上下文取消
 
-使用 `WithContext` 版本支持取消：
+使用 `ExtractWithContext` 版本支持取消：
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

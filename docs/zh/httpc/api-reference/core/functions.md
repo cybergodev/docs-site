@@ -178,7 +178,7 @@ result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
 :::tip 迁移说明
-旧的 `DownloadFile`、`DownloadWithOptions`、`DownloadFileWithContext`、`DownloadWithOptionsWithContext` 已在 v1.5.2 移除。统一改用 `Download(ctx, url, cfg, options...)`，并通过 `DownloadConfig` 配置路径、覆盖、续传与校验。
+旧版下载函数（DownloadFile、DownloadWithOptions、DownloadFileWithContext、DownloadWithOptionsWithContext）已在 v1.5.2 移除。统一改用 `Download(ctx, url, cfg, options...)`，并通过 `DownloadConfig` 配置路径、覆盖、续传与校验。
 :::
 
 ## 辅助函数

@@ -47,7 +47,7 @@ batch := html.ExtractBatchFiles(paths)
 
 ### 컨텍스트 버전
 
-모든 함수에는 `WithContext` 변형이 있습니다:
+모든 함수에는 `ExtractWithContext` 변형이 있습니다:
 
 ```go
 result, err := html.ExtractWithContext(ctx, data)

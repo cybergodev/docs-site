@@ -215,7 +215,7 @@ type PathSegment = internal.PathSegment
 ```
 
 ::: warning 내부 구현 별칭
-`PathSegment`는 `internal.PathSegment`의 타입 별칭입니다. 구체적인 필드, 필드 타입(예: `PathSegmentType`, `PathSegmentFlags`) 및 메서드는 `internal` 패키지에 속하며 **공개 API로 내보내지지 않습니다**. 버전에 따라 변경될 수 있으므로 비즈니스 코드에서 내부 구조에 직접 의존하지 마세요.
+`PathSegment`는 `internal.PathSegment`의 타입 별칭입니다. 구체적인 필드, 필드 타입(예: PathSegmentType, PathSegmentFlags) 및 메서드는 `internal` 패키지에 속하며 **공개 API로 내보내지지 않습니다**. 버전에 따라 변경될 수 있으므로 비즈니스 코드에서 내부 구조에 직접 의존하지 마세요.
 
 - 커스텀 경로 문법을 구현할 때는 [`PathParser`](./interfaces#pathparser) 인터페이스의 `ParsePath` 메서드를 통해 `[]PathSegment`를 반환합니다.
 - 사전 컴파일된 경로는 [`Processor.CompilePath`](./processor/query#compilepath)를 사용하며, `*CompiledPath`를 반환합니다.

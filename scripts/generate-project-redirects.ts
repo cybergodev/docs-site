@@ -24,10 +24,10 @@
  * Runs after `fix-clean-urls.js` so the /zh/ tree is already in
  * directory-per-page form.
  */
-import { readdir, access, mkdir, writeFile } from 'fs/promises'
-import { join, relative } from 'path'
-import type { Dirent } from 'fs'
+import { access, mkdir, writeFile } from 'fs/promises'
+import { join, relative, dirname, basename } from 'path'
 import { DIST_DIR, HOST, LANGS, PRIMARY_LANG } from '../docs/.vitepress/shared'
+import { collectMd } from './_lib/walk'
 
 const ZH_DIR = join(DIST_DIR, PRIMARY_LANG)
 
@@ -36,28 +36,23 @@ const fileExists = (p: string): Promise<boolean> =>
     .then(() => true)
     .catch(() => false)
 
-// Recursively collect every subdirectory under `root` that contains an
-// index.html (i.e. a rendered page), returned as forward-slashed paths
-// relative to `root`.
+// Recursively collect every built page under `root` as a forward-slashed path
+// relative to `root`. A page is a directory containing `index.html` (clean URLs,
+// applied by fix-clean-urls before this runs). Implemented via the shared
+// collectMd helper (ext: '.html'): gather every index.html, then map each back
+// to its directory. The root home (index.html directly under `root`) maps to
+// rel "" and is excluded — it already exists at the bare path, so it needs no
+// bridge (main()'s fileExists guard would skip it anyway, but excluding it
+// here keeps collectPages self-describing).
 async function collectPages(root: string): Promise<string[]> {
+  const htmlFiles = await collectMd(root, { ext: '.html' })
   const pages: string[] = []
-  async function walk(dir: string): Promise<void> {
-    let entries: Dirent[]
-    try {
-      entries = await readdir(dir, { withFileTypes: true })
-    } catch {
-      return
-    }
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue
-      const full = join(dir, entry.name)
-      if (await fileExists(join(full, 'index.html'))) {
-        pages.push(relative(root, full).replace(/\\/g, '/'))
-      }
-      await walk(full)
-    }
+  for (const f of htmlFiles) {
+    if (basename(f) !== 'index.html') continue
+    const dir = relative(root, dirname(f)).replace(/\\/g, '/')
+    if (dir === '') continue // home page — no bare-path bridge
+    pages.push(dir)
   }
-  await walk(root)
   return pages
 }
 
@@ -97,19 +92,25 @@ if(lang!=='zh'){location.replace('/'+lang+'/'+${relLiteral}+'/');}
 }
 
 function buildBridgeHtml(rel: string, availableLangs: string[]): string {
-  const canonical = `${HOST}/${PRIMARY_LANG}/${rel}/`
-  const refreshUrl = `/${PRIMARY_LANG}/${rel}/`
+  // `rel` is the page path under the language prefix (e.g. "json" or
+  // "json/getting-started"). The home page (rel === "") is an edge case
+  // collectPages never yields, but handle it here directly instead of relying
+  // on that upstream guard — otherwise empty rel produces `/zh//` canonicals.
+  const langPath = (l: string) => (rel ? `/${l}/${rel}/` : `/${l}/`)
+  const canonical = rel ? `${HOST}/${PRIMARY_LANG}/${rel}/` : `${HOST}/`
+  const refreshUrl = rel ? `/${PRIMARY_LANG}/${rel}/` : `/`
   const hreflangLinks = availableLangs
-    .map((l) => `  <link rel="alternate" hreflang="${l}" href="${HOST}/${l}/${rel}/">`)
+    .map((l) => `  <link rel="alternate" hreflang="${l}" href="${HOST}${langPath(l)}">`)
     .join('\n')
-  const langLinks = availableLangs.map((l) => `<a href="/${l}/${rel}/">${l}</a>`).join(' ')
+  const langLinks = availableLangs.map((l) => `<a href="${langPath(l)}">${l}</a>`).join(' ')
   const detectScript = buildDetectScript(rel, availableLangs)
+  const titleRel = escapeHtml(rel || PRIMARY_LANG)
 
   return `<!DOCTYPE html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CyberGo - ${escapeHtml(rel)}</title>
+<title>CyberGo - ${titleRel}</title>
 ${detectScript}
 <link rel="canonical" href="${canonical}">
 ${hreflangLinks}
@@ -119,7 +120,7 @@ ${hreflangLinks}
 </head>
 <body>
 <noscript>
-  <p>Redirecting to <a href="${refreshUrl}">${escapeHtml(rel)}</a>.</p>
+  <p>Redirecting to <a href="${refreshUrl}">${titleRel}</a>.</p>
   <p>Also available in: ${langLinks}</p>
 </noscript>
 </body>

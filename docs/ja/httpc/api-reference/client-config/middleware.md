@@ -14,7 +14,7 @@ type MiddlewareFunc func(Handler) Handler
 type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, error)
 ```
 
-ミドルウェアは `Config.Middleware.Middlewares` で設定し、順番に実行されます：
+ミドルウェアは `MiddlewareConfig.Middlewares` で設定し、順番に実行されます：
 
 ```go
 client, _ := httpc.New(&httpc.Config{

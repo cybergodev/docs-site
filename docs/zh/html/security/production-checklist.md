@@ -47,7 +47,7 @@ cfg.Audit.Sink = html.NewWriterAuditSink(auditFile)
 
 ## 上下文与超时
 
-- [ ] 所有提取操作使用 `WithContext` 版本
+- [ ] 所有提取操作使用 `ExtractWithContext` 版本
 - [ ] 设置合理的上下文超时
 - [ ] 批量操作使用带取消的上下文
 

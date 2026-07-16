@@ -623,7 +623,7 @@ func (l *Loader) Validate() error
 - `error` - Ошибка валидации
 
 **Поведение:**
-- Проверяет, существуют ли все ключи, указанные в `Config.RequiredKeys`
+- Проверяет, существуют ли все ключи, указанные в `ValidationConfig.RequiredKeys`
 
 ```go
 cfg := env.DefaultConfig()

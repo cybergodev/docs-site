@@ -160,7 +160,7 @@ type AuditEvent struct {
 
 ### FullAuditLogger インターフェースの実装
 
-`FullAuditLogger` は完全な監査ログインターフェースで、最小インターフェース `AuditLogger`（`LogError` メソッドのみを含む）を拡張します：
+`FullAuditLogger` は完全な監査ログインターフェースで、最小インターフェース `AuditLogger`（LogError メソッドのみを含む）を拡張します：
 
 ```go
 type FullAuditLogger interface {

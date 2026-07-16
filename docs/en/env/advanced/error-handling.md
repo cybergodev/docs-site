@@ -130,7 +130,7 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 :::tip Resolution
-Implement the `Validator` interface (which includes `ValidateKey`, `ValidateValue`, and `ValidateRequired` methods) rather than only implementing `KeyValidator`.
+Implement the `Validator` interface (which includes ValidateKey, ValidateValue, and ValidateRequired methods) rather than only implementing `KeyValidator`.
 :::
 
 ## Structured Error Types

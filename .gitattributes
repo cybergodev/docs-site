@@ -1,0 +1,19 @@
+# Normalize text file line endings to LF in the repository, regardless of the
+# OS used to check out the working tree. This keeps diffs clean and avoids the
+# CRLF/LF churn that breaks shell scripts and CI on mixed-platform teams.
+#
+# NOTE: normalizing already-committed files requires `git add --renormalize`,
+# which is a git operation outside this repo's AI red lines — it must be run
+# by a human. This file only governs how files are checked in from now on.
+* text=auto eol=lf
+
+# Binary assets — never diffed as text, never re-encoded.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.svg  binary
+*.webp binary
+*.woff  binary
+*.woff2 binary

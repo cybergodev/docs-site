@@ -21,10 +21,10 @@
  * Override the root with CYBERGO_SOURCE_ROOT. Local: `npm run audit:api`.
  */
 import { execFileSync } from 'child_process'
-import { readdir, readFile, writeFile, mkdir } from 'fs/promises'
+import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join, relative } from 'path'
-import type { Dirent } from 'fs'
 import { PROJECTS, PRIMARY_LANG } from '../docs/.vitepress/shared'
+import { collectMd } from './_lib/walk'
 
 // Root holding the {project}-dev source repos. Override with CYBERGO_SOURCE_ROOT.
 const SOURCE_ROOT = process.env.CYBERGO_SOURCE_ROOT || 'D:/MyProject'
@@ -99,32 +99,46 @@ function collectSymbols(m: Manifest): Set<string> {
   return set
 }
 
-async function collectMd(root: string): Promise<string[]> {
-  const out: string[] = []
-  async function walk(dir: string): Promise<void> {
-    let entries: Dirent[]
-    try {
-      entries = await readdir(dir, { withFileTypes: true })
-    } catch {
-      return
-    }
-    for (const entry of entries) {
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) await walk(full)
-      else if (entry.name.endsWith('.md')) out.push(full)
-    }
-  }
-  await walk(root)
-  return out
-}
-
 // A backticked exported identifier: `GetString`, `Processor.Set`, `Config`.
 const IDENT_RE = /`([A-Z][A-Za-z0-9_.]*)`/g
 
-// Common all-caps acronyms (HTTP, JSON, TLS, SSRF…) appear in docs but are not
-// symbols — exclude them from the DANGLING list to keep the signal clean.
-function isAcronym(s: string): boolean {
-  return s.length <= 5 && s === s.toUpperCase() && /[A-Z]/.test(s) && !s.includes('.')
+// All-caps tokens — `HTTP`, `JSON`, `TLS`, `SSRF`, but also `API_KEY`,
+// `DATABASE_URL`, `LD_LIBRARY_PATH`, `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256`,
+// `PATH_TRAVERSAL`… — show up in docs as acronyms, environment-variable names,
+// stdlib crypto/tls constants, or example values. The cybergodev libraries
+// consistently use PascalCase for exports (no CONSTANT_CASE exports), so an
+// all-caps backticked token is never a cybergodev symbol. Excluding these
+// keeps DANGLING focused on real (PascalCase) identifier drift.
+function isAllCaps(s: string): boolean {
+  return /^[A-Z][A-Z0-9_]*$/.test(s) && !s.includes('.')
+}
+
+// Well-known Go stdlib interface methods (json.Marshaler, encoding.TextMarshaler,
+// fmt.Stringer, encoding.BinaryMarshaler). Docs legitimately say "implements
+// json.Marshaler (MarshalJSON)" — these aren't cybergodev exports.
+const STDLIB_INTERFACE_METHODS = new Set([
+  'MarshalJSON',
+  'UnmarshalJSON',
+  'MarshalText',
+  'UnmarshalText',
+  'MarshalBinary',
+  'UnmarshalBinary',
+  'GoString'
+])
+
+// Standard-library struct fields docs reference when discussing stdlib types
+// (e.g. net/http.Transport tuning in integration guides). cybergodev structs
+// do not reuse these exact names today; if one ever does, remove it here so it
+// is checked against source instead of silently passed.
+const STDLIB_FIELDS = new Set([
+  'IdleConnTimeout',
+  'MaxIdleConns',
+  'MaxIdleConnsPerHost',
+  'Timeout' // net/http.Transport
+])
+
+function isLikelyNotSymbol(s: string): boolean {
+  return isAllCaps(s) || STDLIB_INTERFACE_METHODS.has(s) || STDLIB_FIELDS.has(s)
 }
 
 // Scan a project's primary-language docs; return Map<ident, files[]>.
@@ -162,7 +176,7 @@ async function auditProject(project: string): Promise<ProjectResult | null> {
   const undocumented = [...source].filter((s) => !docs.has(s)).sort()
   const dangling: { ident: string; files: string[] }[] = []
   for (const [ident, files] of docs) {
-    if (!source.has(ident) && !isAcronym(ident)) {
+    if (!source.has(ident) && !isLikelyNotSymbol(ident)) {
       dangling.push({ ident, files: [...new Set(files)] })
     }
   }
@@ -211,7 +225,9 @@ async function main(): Promise<void> {
     if (r.dangling.length) {
       lines.push(`### ❌ DANGLING (${r.dangling.length})`, '')
       for (const d of r.dangling) {
-        lines.push(`- \`${d.ident}\` — ${d.files.slice(0, 3).join(', ')}${d.files.length > 3 ? ', …' : ''}`)
+        lines.push(
+          `- \`${d.ident}\` — ${d.files.slice(0, 3).join(', ')}${d.files.length > 3 ? ', …' : ''}`
+        )
       }
       lines.push('')
     }
@@ -222,12 +238,20 @@ async function main(): Promise<void> {
     }
   }
 
-  lines.push('---', '', totalDangling ? `**Result: FAIL** — ${totalDangling} dangling reference(s).` : '**Result: PASS** — no dangling references.')
+  lines.push(
+    '---',
+    '',
+    totalDangling
+      ? `**Result: FAIL** — ${totalDangling} dangling reference(s).`
+      : '**Result: PASS** — no dangling references.'
+  )
 
   await mkdir(REPORT_DIR, { recursive: true })
   await writeFile(DRIFT_REPORT, lines.join('\n') + '\n', 'utf8')
 
-  console.log(`audit-api: wrote ${DRIFT_REPORT} (${results.length} projects, ${totalDangling} dangling)`)
+  console.log(
+    `audit-api: wrote ${DRIFT_REPORT} (${results.length} projects, ${totalDangling} dangling)`
+  )
   if (totalDangling) process.exit(1)
 }
 

@@ -65,7 +65,7 @@ func (p *Processor) ExtractTextFromFile(filePath string) (string, error)
 
 ## 컨텍스트 버전
 
-모든 추출 메서드에는 `WithContext` 버전이 있습니다:
+모든 추출 메서드에는 `ExtractWithContext` 버전이 있습니다:
 
 ```go
 func (p *Processor) ExtractWithContext(ctx context.Context, htmlBytes []byte) (*Result, error)

@@ -160,7 +160,7 @@ type AuditEvent struct {
 
 ### Implementing the FullAuditLogger Interface
 
-`FullAuditLogger` is the complete audit logging interface, extending the minimal `AuditLogger` interface (which only contains the `LogError` method):
+`FullAuditLogger` is the complete audit logging interface, extending the minimal `AuditLogger` interface (which only contains the LogError method):
 
 ```go
 type FullAuditLogger interface {

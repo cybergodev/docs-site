@@ -1,4 +1,12 @@
-import { supportedLanguages, type LanguageConfig } from '../../shared'
+import {
+  supportedLanguages,
+  LANGS,
+  PRIMARY_LANG,
+  LOCALE_TO_SHORT,
+  LANGUAGES,
+  type LanguageConfig,
+  type Lang
+} from '../../shared'
 
 /**
  * Find the best matching locale for a browser language string
@@ -44,4 +52,28 @@ export function getPreferencePath(preference: string): string | null {
     }
   }
   return null
+}
+
+/**
+ * Normalize a VitePress `useData().lang` value (e.g. `zh-CN`, `en-US`) to the
+ * internal short language code (`zh`, `en`, …).
+ *
+ * Defaults to the primary language `zh` because the root path `/` serves the
+ * Chinese homepage — this fixes the prior bug where several components
+ * defaulted to `en` and rendered English on the root homepage.
+ *
+ * This is the single language-detection routine for client components,
+ * replacing the per-component `startsWith('zh')` chains.
+ */
+export function normalizeVpLang(vpLang: string): Lang {
+  if (!vpLang) return PRIMARY_LANG
+  // Exact locale-code hit first (e.g. 'en-US' → 'en' via the lookup table).
+  const exact = LOCALE_TO_SHORT[vpLang]
+  if (exact) return exact
+  // Fallback: match by base prefix against every language's VitePress `lang`.
+  const base = vpLang.toLowerCase().split('-')[0]
+  for (const code of LANGS) {
+    if (LANGUAGES[code].lang.toLowerCase().split('-')[0] === base) return code
+  }
+  return PRIMARY_LANG
 }

@@ -89,11 +89,11 @@ cfg := dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
 
 | Level | Description | Use Case |
 |-------|-------------|----------|
-| `Development` | Most lenient | Local development |
-| `Basic` | Basic filtering | Test environments |
-| `Standard` | Standard filtering | General production |
-| `Strict` | Strict filtering | High-security requirements |
-| `Paranoid` | Most strict | Sensitive industries like finance/healthcare |
+| `SecurityLevelDevelopment` | Most lenient | Local development |
+| `SecurityLevelBasic` | Basic filtering | Test environments |
+| `SecurityLevelStandard` | Standard filtering | General production |
+| `SecurityLevelStrict` | Strict filtering | High-security requirements |
+| `SecurityLevelParanoid` | Most strict | Sensitive industries like finance/healthcare |
 
 ## Industry Compliance Presets
 

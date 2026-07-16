@@ -8,7 +8,7 @@ sidebar_position: 11
 # 출력 함수
 
 :::warning API 변경 안내
-`Print`, `PrintPretty`, `PrintE`, `PrintPrettyE`는 라이브러리에서 제거되어 더 이상 제공되지 않습니다. 다음 대안을 사용하십시오.
+Print, PrintPretty, PrintE, PrintPrettyE는 라이브러리에서 제거되어 더 이상 제공되지 않습니다. 다음 대안을 사용하십시오.
 :::
 
 ## 대안

@@ -1,5 +1,10 @@
 /**
  * Homepage: project card grid + Hero/Feature enhancements.
+ *
+ * Hardcoded px migrated to design tokens where the value matches the scale
+ * (spacing / radius). Values off-scale (28px card padding, 10px icon gap, the
+ * 340px minmax / 1200px max-width layout constraints, font sizes) stay literal
+ * until the scale grows or they are intentionally bespoke.
  */
 
 /* ============================================
@@ -9,7 +14,7 @@
 .project-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 24px;
+  gap: var(--cg-sp-5);
   max-width: 1200px;
   margin: 0 auto;
   align-items: stretch;
@@ -17,7 +22,7 @@
 
 .project-card {
   border: 1px solid var(--vp-c-divider);
-  border-radius: 16px;
+  border-radius: var(--cg-radius-xl);
   padding: 28px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--vp-c-bg-soft);
@@ -42,7 +47,7 @@
 
 .project-card:hover {
   border-color: var(--vp-c-brand-1);
-  box-shadow: 0 8px 32px rgba(118, 185, 0, 0.15);
+  box-shadow: 0 8px 32px var(--cg-brand-soft);
   transform: translateY(-4px);
 }
 
@@ -63,7 +68,7 @@
 .project-card .title {
   font-size: 1.35rem;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: var(--cg-sp-3);
   color: var(--vp-c-text-1);
   display: flex;
   align-items: center;
@@ -86,7 +91,7 @@
 .project-card .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--cg-sp-2);
   margin-bottom: 20px;
 }
 
@@ -94,7 +99,7 @@
   background: var(--vp-c-brand-soft);
   color: var(--vp-c-brand-1);
   padding: 5px 14px;
-  border-radius: 20px;
+  border-radius: var(--cg-radius-2xl);
   font-size: 0.82rem;
   font-weight: 600;
   transition: all 0.2s ease;
@@ -106,7 +111,7 @@
 
 .project-card .actions {
   display: flex;
-  gap: 16px;
+  gap: var(--cg-sp-4);
   align-items: center;
   flex-direction: row-reverse;
 }
@@ -204,7 +209,7 @@
 }
 
 .VPFeature {
-  border-radius: 12px;
+  border-radius: var(--cg-radius-lg);
   transition: all 0.3s ease;
 }
 
@@ -223,7 +228,7 @@
 
 .home-projects h2 {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: var(--cg-sp-6);
 }
 
 /* Code groups */

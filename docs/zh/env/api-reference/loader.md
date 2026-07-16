@@ -623,7 +623,7 @@ func (l *Loader) Validate() error
 - `error` - 验证错误
 
 **行为：**
-- 检查 `Config.RequiredKeys` 中指定的所有键是否存在
+- 检查 `ValidationConfig.RequiredKeys` 中指定的所有键是否存在
 
 ```go
 cfg := env.DefaultConfig()

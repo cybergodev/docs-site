@@ -13,7 +13,7 @@ sidebar_position: 6
 
 ### Использование TestingConfig
 
-`TestingConfig` перекрывает существующие переменные окружения, что подходит для изоляции тестов:
+TestingConfig перекрывает существующие переменные окружения, что подходит для изоляции тестов:
 
 ```go
 func TestWithTestingConfig(t *testing.T) {
@@ -30,7 +30,7 @@ func TestWithTestingConfig(t *testing.T) {
 ```
 
 ::: tip Примечание
-`TestingConfig` устанавливает `OverwriteExisting: true`, обеспечивая изоляцию тестов. Если нужно сохранить существующие переменные, можно вручную установить `cfg.OverwriteExisting = false`.
+TestingConfig устанавливает `OverwriteExisting: true`, обеспечивая изоляцию тестов. Если нужно сохранить существующие переменные, можно вручную установить `cfg.OverwriteExisting = false`.
 :::
 
 ### Независимый загрузчик для каждого теста

@@ -8,7 +8,7 @@ sidebar_position: 11
 # 出力関数
 
 ::: warning API 変更のお知らせ
-`Print`、`PrintPretty`、`PrintE`、`PrintPrettyE` はライブラリから削除され、提供されなくなりました。以下の代替案を使用してください。
+Print、PrintPretty、PrintE、PrintPrettyE はライブラリから削除され、提供されなくなりました。以下の代替案を使用してください。
 :::
 
 ## 代替案

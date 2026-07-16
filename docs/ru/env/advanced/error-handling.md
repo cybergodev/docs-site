@@ -130,7 +130,7 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 ::: tip Решение
-Реализуйте интерфейс `Validator` (включающий методы `ValidateKey`, `ValidateValue`, `ValidateRequired`), а не только `KeyValidator`.
+Реализуйте интерфейс `Validator` (включающий методы ValidateKey, ValidateValue, ValidateRequired), а не только `KeyValidator`.
 :::
 
 ## Структурированные типы ошибок

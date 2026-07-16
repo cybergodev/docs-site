@@ -15,6 +15,8 @@ DD 提供多种便捷构造函数，满足不同场景需求：
 package main
 
 import (
+    "log"
+
     "github.com/cybergodev/dd"
 )
 
@@ -23,35 +25,47 @@ func main() {
     dd.Info("使用全局日志记录器")
 
     // 方式二：开发模式（DEBUG 级别，带 caller）
-    dev, _ := dd.New(dd.DevelopmentConfig())
+    dev, err := dd.New(dd.DevelopmentConfig())
+    if err != nil {
+        log.Fatal(err)
+    }
     defer dev.Close()
     dev.Info("开发模式输出")
 
     // 方式三：输出到文件
-    file, _ := dd.New(dd.Config{
+    file, err := dd.New(dd.Config{
         Targets: []dd.OutputTarget{dd.FileOutput("logs/app.log")},
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer file.Close()
     file.Info("文件输出")
 
     // 方式四：同时输出到控制台和文件
-    all, _ := dd.New(dd.Config{
+    all, err := dd.New(dd.Config{
         Targets: []dd.OutputTarget{
             dd.ConsoleOutput(),
             dd.FileOutput("logs/app.log"),
         },
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer all.Close()
     all.Info("双目标输出")
 
     // 方式五：JSON 格式双目标输出
-    jsonLogger, _ := dd.New(dd.Config{
+    jsonLogger, err := dd.New(dd.Config{
         Format: dd.FormatJSON,
         Targets: []dd.OutputTarget{
             dd.ConsoleOutput(),
             dd.FileOutput("logs/app.json"),
         },
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer jsonLogger.Close()
     jsonLogger.Info("JSON 格式输出")
 }
@@ -128,11 +142,18 @@ fwCfg.MaxBackups = 3
 fwCfg.MaxSizeMB = 1
 fwCfg.Compress = true
 
-fw, _ := dd.NewFileWriter("logs/app.log", fwCfg)
-logger, _ := dd.New(dd.Config{
+fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
+if err != nil {
+    log.Fatal(err)
+}
+logger, err := dd.New(dd.Config{
     Level: dd.LevelInfo,
     Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 logger.Info("hello world")
 ```
@@ -143,7 +164,11 @@ DD 默认启用基础敏感数据过滤（密码、API Key、信用卡号等自�
 
 ```go
 // 默认配置已包含基础安全过滤
-logger, _ := dd.New(dd.DefaultConfig())
+logger, err := dd.New(dd.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 // 密码字段自动脱敏
 logger.InfoWith("用户登录",

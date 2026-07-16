@@ -25,7 +25,20 @@ interface Move {
   from: string
   to: string
 }
-const MOVES: Move[] = JSON.parse(readFileSync(join('docs', '.vitepress', 'sidebar-moves.json'), 'utf8'))
+// The moves manifest is a one-time migration artifact; it may be absent or
+// emptied later. Parse defensively so a missing/corrupt file degrades to "no
+// moves" (build still succeeds) rather than crashing the whole post-build chain.
+let MOVES: Move[] = []
+try {
+  MOVES = JSON.parse(readFileSync(join('docs', '.vitepress', 'sidebar-moves.json'), 'utf8'))
+} catch (e) {
+  if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+    console.warn(
+      `moved-redirects: sidebar-moves.json exists but could not be parsed (${e instanceof Error ? e.message : e}); skipping`
+    )
+  }
+  // ENOENT (file removed after migration) is the quiet, expected case.
+}
 
 const fileExists = (p: string): Promise<boolean> =>
   access(p)
@@ -33,7 +46,10 @@ const fileExists = (p: string): Promise<boolean> =>
     .catch(() => false)
 
 function escapeHtml(s: string): string {
-  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
+  return s.replace(
+    /[&<>"]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string
+  )
 }
 
 function redirectHtml(lang: string, to: string): string {

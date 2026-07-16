@@ -47,7 +47,7 @@ cfg.Audit.Sink = html.NewWriterAuditSink(auditFile)
 
 ## Context & Timeout
 
-- [ ] Use `WithContext` variants for all extraction operations
+- [ ] Use `ExtractWithContext` variants for all extraction operations
 - [ ] Set reasonable context timeouts
 - [ ] Use cancellation-enabled contexts for batch operations
 

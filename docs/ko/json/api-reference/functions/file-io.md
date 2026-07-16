@@ -258,7 +258,7 @@ jsonlStr, err := json.ToJSONLString(items)
 ## JSONL 설정
 
 :::warning 경고
-`JSONLConfig` 독립 구조체와 `DefaultJSONLConfig()` 함수는 제거되었습니다. JSONL 설정은 `Config`의 `JSONL*` 필드로 통합되었습니다.
+JSONLConfig 독립 구조체와 `DefaultJSONLConfig()` 함수는 제거되었습니다. JSONL 설정은 `Config`의 `JSONL*` 필드로 통합되었습니다.
 :::
 
 ### Config를 통해 JSONL 설정

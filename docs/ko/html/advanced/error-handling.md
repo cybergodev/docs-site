@@ -69,7 +69,7 @@ if errors.As(err, &fileErr) {
 
 ## 컨텍스트 취소
 
-`WithContext` 버전을 사용하여 취소를 지원합니다:
+`ExtractWithContext` 버전을 사용하여 취소를 지원합니다:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -174,7 +174,7 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 ::: tip 解決方法
-`KeyValidator` のみではなく、`Validator` インターフェース（`ValidateKey`、`ValidateValue`、`ValidateRequired` の3つのメソッドを含む）を実装してください。
+`KeyValidator` のみではなく、`Validator` インターフェース（ValidateKey、ValidateValue、ValidateRequired の3つのメソッドを含む）を実装してください。
 :::
 
 ## エラー型
@@ -276,7 +276,7 @@ type ExpansionError struct {
 }
 ```
 
-**エラー分類（`Kind` フィールド）:**
+**エラー分類（Kind フィールド）:**
 
 ```go
 type ExpansionErrorKind int

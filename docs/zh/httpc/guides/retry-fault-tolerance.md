@@ -16,7 +16,11 @@ cfg.Retry.Delay = 1 * time.Second  // 初始延迟 1s
 cfg.Retry.BackoffFactor = 2.0      // 指数退避 2x
 cfg.Retry.EnableJitter = true      // 启用抖动
 
-client, _ := httpc.New(cfg)
+client, err := httpc.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+defer client.Close()
 ```
 
 默认重试延迟序列：`1s → 2s → 4s`（含随机抖动）
@@ -40,7 +44,7 @@ client, _ := httpc.New(cfg)
 实现 `RetryPolicy` 接口完全控制重试行为：
 
 :::warning 内部类型
-`RetryPolicy.ShouldRetry` 的 `resp` 参数类型 `ResponseReader` 为内部接口（定义在 `internal/types` 包中），外部包无法直接引用。自定义 `RetryPolicy` 必须在与 `httpc` 同一模块内的包中实现。大多数场景可通过 `RetryConfig` 字段配置满足需求。
+RetryPolicy.ShouldRetry 的 `resp` 参数类型 ResponseReader 为内部接口（定义在 `internal/types` 包中），外部包无法直接引用。自定义 `RetryPolicy` 必须在与 `httpc` 同一模块内的包中实现。大多数场景可通过 `RetryConfig` 字段配置满足需求。
 :::
 
 ```go

@@ -65,7 +65,7 @@ func (p *Processor) ExtractTextFromFile(filePath string) (string, error)
 
 ## コンテキスト付きバージョン
 
-すべての抽出メソッドには `WithContext` 付きのバージョンがあります：
+すべての抽出メソッドには `ExtractWithContext` 付きのバージョンがあります：
 
 ```go
 func (p *Processor) ExtractWithContext(ctx context.Context, htmlBytes []byte) (*Result, error)

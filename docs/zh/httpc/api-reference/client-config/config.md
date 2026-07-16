@@ -55,7 +55,7 @@ type TimeoutConfig struct {
 设为 0 表示无超时（生产环境不推荐）。
 
 :::tip ResponseHeader 设计
-`ResponseHeader` 默认为 0（禁用），此时使用 `Timeouts.Request` 或 `WithTimeout()` 作为唯一的超时机制，确保 `WithTimeout()` 对请求持续时间有完全控制。此设计适合 AI API 和长轮询等需要扩展响应时间的场景。仅在需要传输层硬性上限（如防御 Slowloris 攻击）时设为正值，但需注意这会覆盖 `WithTimeout`。
+`ResponseHeader` 默认为 0（禁用），此时使用 `TimeoutConfig.Request` 或 `WithTimeout()` 作为唯一的超时机制，确保 `WithTimeout()` 对请求持续时间有完全控制。此设计适合 AI API 和长轮询等需要扩展响应时间的场景。仅在需要传输层硬性上限（如防御 Slowloris 攻击）时设为正值，但需注意这会覆盖 `WithTimeout`。
 :::
 
 ## ConnectionConfig
@@ -352,11 +352,11 @@ Cookie 安全属性验证配置。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `RequireSecure` | `bool` | 要求 Cookie 设置 Secure 属性 |
-| `RequireHttpOnly` | `bool` | 要求 Cookie 设置 HttpOnly 属性 |
-| `RequireSameSite` | `string` | 要求的 SameSite 值，如 `"Strict"`、`"Lax"`；空字符串表示不检查 |
-| `AllowSameSiteNone` | `bool` | 是否允许 SameSite=None |
-| `RequireSecureForSameSiteNone` | `bool` | SameSite=None 时要求 Secure 属性（默认 `true`） |
+| RequireSecure | `bool` | 要求 Cookie 设置 Secure 属性 |
+| RequireHttpOnly | `bool` | 要求 Cookie 设置 HttpOnly 属性 |
+| RequireSameSite | `string` | 要求的 SameSite 值，如 `"Strict"`、`"Lax"`；空字符串表示不检查 |
+| AllowSameSiteNone | `bool` | 是否允许 SameSite=None |
+| RequireSecureForSameSiteNone | `bool` | SameSite=None 时要求 Secure 属性（默认 `true`） |
 
 ### DefaultCookieSecurityConfig
 

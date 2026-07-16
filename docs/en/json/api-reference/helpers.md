@@ -222,7 +222,7 @@ func main() {
 ## Output Functions
 
 ::: warning API Change Notice
-`Print`, `PrintPretty`, `PrintE`, `PrintPrettyE` have been removed from the library and are no longer available. Please use [Encode](./functions/encode-decode#encode), [EncodePretty](./functions/encode-decode#encodepretty), or [Prettify](./functions/encode-decode#prettify) with `fmt.Println` instead. See [Print Functions](./print) for details.
+Print, PrintPretty, PrintE, PrintPrettyE have been removed from the library and are no longer available. Please use [Encode](./functions/encode-decode#encode), [EncodePretty](./functions/encode-decode#encodepretty), or [Prettify](./functions/encode-decode#prettify) with `fmt.Println` instead. See [Print Functions](./print) for details.
 :::
 
 ---

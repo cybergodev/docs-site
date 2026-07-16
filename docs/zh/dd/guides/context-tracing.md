@@ -1,7 +1,7 @@
 ---
 sidebar_label: "分布式追踪集成"
 title: "分布式追踪集成 - CyberGo DD | Context 与追踪指南"
-description: "CyberGo DD 分布式追踪集成指南，涵盖 TraceID、SpanID、RequestID 上下文传播、ContextExtractor 自定义提取器、HTTP 中间件集成模式、请求作用域日志以及与 OpenTelemetry 等追踪系统的集成方式，帮助开发者在微服务架构中实现端到端日志追踪。"
+description: "CyberGo DD 分布式追踪集成指南：TraceID、SpanID、RequestID 上下文传播，ContextExtractor 自定义提取器、HTTP 中间件集成、请求作用域日志与 OpenTelemetry 分布式追踪系统集成。"
 sidebar_position: 7
 ---
 
@@ -185,7 +185,10 @@ logger.AddContextExtractor(tenantExtractor)
 ```go
 // 发送端：将追踪标识注入请求头
 func callUpstream(ctx context.Context, url string) (*http.Response, error) {
-    req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+    req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+    if err != nil {
+        return nil, err
+    }
 
     // 传播追踪标识
     if traceID := dd.GetTraceID(ctx); traceID != "" {

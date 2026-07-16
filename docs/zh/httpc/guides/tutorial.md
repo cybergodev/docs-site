@@ -185,7 +185,7 @@ fmt.Printf("%s: ⭐ %d\n", repo.FullName, repo.Stars)
 ```
 
 要点：
-- 中间件在 `Config.Middleware.Middlewares` 中配置
+- 中间件在 `MiddlewareConfig.Middlewares` 中配置
 - `LoggingMiddleware` 记录请求日志
 - `RecoveryMiddleware` 防止 panic 崩溃
 - `RequestIDMiddleware` 为每个请求生成唯一 ID
@@ -276,7 +276,10 @@ fmt.Printf("\n下载完成: %s (%d bytes)\n",
 
 ```go
 func fetchRepos(ctx context.Context, repos []string) error {
-    client, _ := httpc.New(httpc.PerformanceConfig())
+    client, err := httpc.New(httpc.PerformanceConfig())
+    if err != nil {
+        return err
+    }
     defer client.Close()
 
     results := make([]*httpc.Result, len(repos))

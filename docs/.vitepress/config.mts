@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 import { PRIMARY_LANG } from './shared'
 import { markdownConfig } from './config/markdown'
 import { bareProjectDevRedirect } from './config/redirects'
@@ -7,7 +8,10 @@ import { locales } from './config/locales'
 import { search } from './config/search'
 import { buildNav, UI_LABELS } from './config/labels'
 
-export default defineConfig({
+// `withMermaid` wraps defineConfig to register the mermaid markdown-it plugin,
+// so ```mermaid fences render as diagrams (loaded on demand per page — pages
+// without a mermaid block pay no cost). See vitepress-plugin-mermaid.
+export default withMermaid(defineConfig({
   title: 'CyberGo',
   description: 'CyberGo - Go Open Source Libraries',
 
@@ -64,4 +68,4 @@ export default defineConfig({
       copyright: 'Copyright © 2026 CyberGoDev'
     }
   }
-})
+}))

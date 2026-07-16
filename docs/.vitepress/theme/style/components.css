@@ -1,5 +1,9 @@
 /**
  * Page components: custom site footer + doc feedback widget.
+ *
+ * Hardcoded px migrated to design tokens where the value matches the scale.
+ * Off-scale values (10/14/28/34px icon & widget sizes, the 1200px max-width,
+ * 10px feedback radius) stay literal — they are intentionally bespoke.
  */
 
 /* ============================================
@@ -9,7 +13,7 @@
 .site-footer {
   border-top: 1px solid var(--vp-c-divider);
   background: var(--vp-c-bg-soft);
-  padding: 48px 24px 24px;
+  padding: var(--cg-sp-8) var(--cg-sp-5) var(--cg-sp-5);
   margin-top: 0;
 }
 
@@ -21,8 +25,8 @@
 .site-footer .footer-grid {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 40px;
-  margin-bottom: 40px;
+  gap: var(--cg-sp-7);
+  margin-bottom: var(--cg-sp-7);
 }
 
 /* Brand Column */
@@ -53,7 +57,7 @@
 
 .site-footer .social-links {
   display: flex;
-  gap: 12px;
+  gap: var(--cg-sp-3);
 }
 
 .site-footer .social-link {
@@ -62,7 +66,7 @@
   justify-content: center;
   width: 34px;
   height: 34px;
-  border-radius: 8px;
+  border-radius: var(--cg-radius-md);
   color: var(--vp-c-text-2);
   background: var(--vp-c-default-soft);
   transition: all 0.2s ease;
@@ -91,13 +95,13 @@
 }
 
 .site-footer .col-links li {
-  margin-bottom: 8px;
+  margin-bottom: var(--cg-sp-2);
 }
 
 .site-footer .col-links a {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--cg-sp-1);
   color: var(--vp-c-text-2);
   font-size: 0.88rem;
   text-decoration: none;
@@ -135,14 +139,14 @@
 @media (max-width: 960px) {
   .site-footer .footer-grid {
     grid-template-columns: 1fr 1fr;
-    gap: 32px;
+    gap: var(--cg-sp-6);
   }
 }
 
 /* Responsive: Mobile */
 @media (max-width: 640px) {
   .site-footer {
-    padding: 32px 16px 20px;
+    padding: var(--cg-sp-6) var(--cg-sp-4) 20px;
   }
 
   .site-footer .footer-grid {
@@ -156,8 +160,8 @@
    ============================================ */
 
 .doc-feedback {
-  margin: 32px 0 16px;
-  padding: 20px 24px;
+  margin: var(--cg-sp-6) 0 var(--cg-sp-4);
+  padding: 20px var(--cg-sp-5);
   border: 1px solid var(--vp-c-divider);
   border-radius: 10px;
   background: var(--vp-c-bg-soft);
@@ -168,7 +172,7 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--cg-sp-3);
 }
 
 .doc-feedback .feedback-text {
@@ -179,16 +183,16 @@
 
 .doc-feedback .feedback-buttons {
   display: flex;
-  gap: 8px;
+  gap: var(--cg-sp-2);
 }
 
 .doc-feedback .feedback-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 16px;
+  padding: 6px var(--cg-sp-4);
   border: 1px solid var(--vp-c-divider);
-  border-radius: 8px;
+  border-radius: var(--cg-radius-md);
   background: var(--vp-c-bg);
   color: var(--vp-c-text-2);
   font-size: 0.85rem;
@@ -210,7 +214,7 @@
 .doc-feedback .feedback-thanks {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--cg-sp-2);
   color: var(--vp-c-brand-1);
   font-size: 0.9rem;
   font-weight: 500;

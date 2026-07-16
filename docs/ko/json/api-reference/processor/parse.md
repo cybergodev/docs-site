@@ -127,7 +127,7 @@ fmt.Println(data) // 원시 JSON 문자열
 ### LoadFromFileAsData (비공개 전환)
 
 :::warning API 변경 안내
-`LoadFromFileAsData`는 내부 메서드(`loadFromFileAsData`)로 전환되어 공개 API로 내보내지 않습니다. `LoadFromFile` + `Parse` 조합을 대신 사용하세요:
+LoadFromFileAsData는 내부 메서드(`loadFromFileAsData`)로 전환되어 공개 API로 내보내지 않습니다. `LoadFromFile` + `Parse` 조합을 대신 사용하세요:
 
 ```go
 jsonStr, err := p.LoadFromFile("data.json")
@@ -164,7 +164,7 @@ if err != nil {
 ### LoadFromReaderAsData (비공개 전환)
 
 :::warning API 변경 안내
-`LoadFromReaderAsData`는 내부 메서드(`loadFromReaderAsData`)로 전환되어 공개 API로 내보내지 않습니다. `LoadFromReader` + `Parse` 조합을 대신 사용하세요:
+LoadFromReaderAsData는 내부 메서드(`loadFromReaderAsData`)로 전환되어 공개 API로 내보내지 않습니다. `LoadFromReader` + `Parse` 조합을 대신 사용하세요:
 
 ```go
 file, _ := os.Open("data.json")

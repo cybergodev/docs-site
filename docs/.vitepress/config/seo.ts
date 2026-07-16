@@ -12,6 +12,20 @@ import {
   LANG_PREFIX_RE,
   type Lang
 } from '../shared'
+import { UI_LABELS } from './labels'
+
+// Minimal shape of a sitemap entry — only the fields we read/mutate in
+// `transformItems`. Declared locally (rather than importing the `sitemap`
+// package's SitemapItem, whose surface is larger and version-dependent) so this
+// module stays decoupled from that dependency's exact type exports.
+interface SitemapLink {
+  lang: string
+  url: string
+}
+interface SitemapItem {
+  url: string
+  links?: SitemapLink[]
+}
 
 // Chinese homepage is served at two URLs: the root `/` (the canonical one) and
 // `/zh/` (kept for VitePress locale structure / nav). Both must collapse onto
@@ -26,7 +40,7 @@ export function transformHead(ctx: TransformContext) {
   const relativePath = pageData.relativePath
   const path = '/' + relativePath.replace(/(?:index)?\.md$/, '')
 
-  const head: any[] = []
+  const head: HeadConfig[] = []
 
   // 404 page: noindex, skip all other SEO tags
   if (relativePath === '404.md') {
@@ -48,10 +62,7 @@ export function transformHead(ctx: TransformContext) {
   // AI/agent discovery: the raw Markdown source for this page (mirrored to
   // dist/ by scripts/generate-md-mirror.ts). Complementary to /llms.txt —
   // per-page precision instead of a site-wide dump.
-  head.push([
-    'link',
-    { rel: 'alternate', type: 'text/markdown', href: `${HOST}/${relativePath}` }
-  ])
+  head.push(['link', { rel: 'alternate', type: 'text/markdown', href: `${HOST}/${relativePath}` }])
 
   // Any homepage (root `/` or a `/{lang}/` landing page): the Chinese
   // counterpart is the canonical root `/`, and x-default → `/`. Inner pages
@@ -91,13 +102,16 @@ export function transformHead(ctx: TransformContext) {
     head.push(['meta', { property: 'og:locale:alternate', content: altLocale }])
   }
 
-  // Dynamic OG and Twitter tags from frontmatter
+  // Dynamic OG and Twitter tags from frontmatter. Fallbacks are language-aware:
+  // a localized page missing frontmatter should not advertise itself in Chinese.
+  // The per-locale `description` (from UI_LABELS) is the single source for the
+  // fallback both here and for the VitePress locale `description` meta.
   const fmTitle = pageData.frontmatter?.title
   const fmDesc = pageData.frontmatter?.description
+  const labelDesc = UI_LABELS[currentLang].description
 
-  const ogTitle = fmTitle || 'CyberGo - 高性能 Go 开源库'
-  const ogDesc =
-    fmDesc || 'CyberGo 是专为 Go 语言打造的高性能开源库集合，为高并发生产环境提供可靠的基础组件。'
+  const ogTitle = fmTitle || `CyberGo - ${labelDesc}`
+  const ogDesc = fmDesc || labelDesc
 
   head.push(['meta', { property: 'og:title', content: ogTitle }])
   head.push(['meta', { property: 'og:description', content: ogDesc }])
@@ -111,26 +125,23 @@ export function transformHead(ctx: TransformContext) {
 // Sitemap configuration for SEO
 export const sitemap = {
   hostname: HOST,
-  transformItems(items: any[]) {
+  transformItems(items: SitemapItem[]): SitemapItem[] {
     return items
-      .filter((item: any) => !item.url.startsWith('404'))
-      .map((item: any) => {
+      .filter((item) => !item.url.startsWith('404'))
+      .map((item) => {
         // Any homepage (root `/` or `/{lang}/`): point hreflang `zh` and
         // `x-default` at the canonical root `/`.
         const trimmed = item.url.replace(/^\/+|\/+$/g, '')
         const isHome = trimmed === '' || BARE_LANG_RE.test(trimmed)
         if (isHome) {
           item.links = [
-            { lang: 'zh', url: `${HOST}/` },
-            { lang: 'en', url: `${HOST}/en/` },
-            { lang: 'ko', url: `${HOST}/ko/` },
-            { lang: 'ja', url: `${HOST}/ja/` },
-            { lang: 'ru', url: `${HOST}/ru/` },
+            { lang: PRIMARY_LANG, url: `${HOST}/` },
+            ...NON_PRIMARY_LANGS.map((l) => ({ lang: l, url: `${HOST}/${l}/` })),
             { lang: 'x-default', url: `${HOST}/` }
           ]
         } else if (item.links) {
           // VitePress auto-generates locale hreflang (e.g. en-US); shorten to en
-          item.links = item.links.map((link: any) => ({
+          item.links = item.links.map((link) => ({
             ...link,
             url: link.url?.replace(HOST, '').startsWith('/') ? `${HOST}${link.url}` : link.url,
             lang: LOCALE_TO_SHORT[link.lang] || link.lang
@@ -139,7 +150,7 @@ export const sitemap = {
           const urlMatch = LANG_PATH_RE.exec(item.url)
           if (urlMatch) {
             const subPath = urlMatch[2] || ''
-            if (!item.links.some((l: any) => l.lang === 'x-default')) {
+            if (!item.links.some((l) => l.lang === 'x-default')) {
               item.links.push({ lang: 'x-default', url: `${HOST}/zh${subPath}` })
             }
           }

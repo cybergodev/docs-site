@@ -58,17 +58,17 @@ AuditLogger записывает 11 типов событий безопасно
 
 | Тип события | Описание | Уровень серьёзности по умолчанию |
 |-------------|----------|--------------------------------|
-| `SensitiveDataRedacted` | Конфиденциальные данные замаскированы | Info |
-| `RateLimitExceeded` | Срабатывание ограничения скорости | Warning |
-| `ReDoSAttempt` | Попытка атаки ReDoS | Critical |
-| `SecurityViolation` | Нарушение безопасности | Error |
-| `IntegrityViolation` | Нарушение целостности логов | Critical |
-| `InputSanitized` | Входные данные очищены | Info |
-| `PathTraversalAttempt` | Попытка обхода пути | Critical |
-| `Log4ShellAttempt` | Попытка атаки Log4Shell | <Badge type="info" text="Указывается вызывающим" /> |
-| `NullByteInjection` | Попытка инъекции null-байта | <Badge type="info" text="Указывается вызывающим" /> |
-| `OverlongEncoding` | Атака сверхдлинной кодировкой | <Badge type="info" text="Указывается вызывающим" /> |
-| `HomographAttack` | Атака гомоглифами | <Badge type="info" text="Указывается вызывающим" /> |
+| `AuditEventSensitiveDataRedacted` | Конфиденциальные данные замаскированы | Info |
+| `AuditEventRateLimitExceeded` | Срабатывание ограничения скорости | Warning |
+| `AuditEventReDoSAttempt` | Попытка атаки ReDoS | Critical |
+| `AuditEventSecurityViolation` | Нарушение безопасности | Error |
+| `AuditEventIntegrityViolation` | Нарушение целостности логов | Critical |
+| `AuditEventInputSanitized` | Входные данные очищены | Info |
+| `AuditEventPathTraversalAttempt` | Попытка обхода пути | Critical |
+| `AuditEventLog4ShellAttempt` | Попытка атаки Log4Shell | <Badge type="info" text="Указывается вызывающим" /> |
+| `AuditEventNullByteInjection` | Попытка инъекции null-байта | <Badge type="info" text="Указывается вызывающим" /> |
+| `AuditEventOverlongEncoding` | Атака сверхдлинной кодировкой | <Badge type="info" text="Указывается вызывающим" /> |
+| `AuditEventHomographAttack` | Атака гомоглифами | <Badge type="info" text="Указывается вызывающим" /> |
 
 ## Интеграция с HMAC-подписями
 

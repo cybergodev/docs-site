@@ -107,7 +107,7 @@ PatternLevel の文字列表現を返します。
 ### 重要パターン
 
 ::: warning 内部 API
-`GetCriticalPatterns` は内部関数に移行し、公開 API としてエクスポートされなくなりました。重要パターン（`__proto__`、`constructor[`、`prototype.`）は常に強制的にチェックされ、無効化できません。
+GetCriticalPatterns は内部関数に移行し、公開 API としてエクスポートされなくなりました。重要パターン（`__proto__`、`constructor[`、`prototype.`）は常に強制的にチェックされ、無効化できません。
 :::
 
 以下の重要パターンは JSON サイズに関わらず常にフルスキャンされます：

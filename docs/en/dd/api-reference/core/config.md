@@ -274,7 +274,7 @@ Implements `String()` method, returns mode name.
 | `NamingConventionAny` | Accept any format (default) | - |
 | `NamingConventionSnakeCase` | snake_case | `user_id`, `created_at` |
 | `NamingConventionCamelCase` | camelCase | `userId`, `createdAt` |
-| `NamingConventionPascalCase` | PascalCase | `UserId`, `CreatedAt` |
+| `NamingConventionPascalCase` | PascalCase | UserId, CreatedAt |
 | `NamingConventionKebabCase` | kebab-case | `user-id`, `created-at` |
 
 Implements `String()` method, returns naming convention name.

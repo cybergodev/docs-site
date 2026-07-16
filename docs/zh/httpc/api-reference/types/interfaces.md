@@ -102,10 +102,10 @@ type RetryPolicy interface {
 | `MaxRetries()` | 返回最大重试次数 |
 
 :::warning 内部类型限制
-`ShouldRetry` 的 `resp` 参数类型 `ResponseReader` 是内部接口（位于 `internal/types` 包），外部代码无法直接引用，因此 `RetryPolicy` 仅可在同一模块内实现。大多数场景可通过 `RetryConfig` 配置和 `WithMaxRetries` 选项满足重试需求。如需自定义策略，请在项目内部包中实现 `RetryPolicy` 接口。
+ShouldRetry 的 `resp` 参数类型 ResponseReader 是内部接口（位于 `internal/types` 包），外部代码无法直接引用，因此 `RetryPolicy` 仅可在同一模块内实现。大多数场景可通过 `RetryConfig` 配置和 `WithMaxRetries` 选项满足重试需求。如需自定义策略，请在项目内部包中实现 `RetryPolicy` 接口。
 :::
 
-以下示例展示 `RetryPolicy` 的实现模式。注意 `ResponseReader` 是内部类型 — 此代码仅能在 `httpc` 模块内部编译：
+以下示例展示 `RetryPolicy` 的实现模式。注意 ResponseReader 是内部类型 — 此代码仅能在 `httpc` 模块内部编译：
 
 ```go
 // 注意：ResponseReader 是内部类型（internal/types 包）。
@@ -172,7 +172,7 @@ type RequestMutator interface {
 }
 ```
 
-中间件中使用，提供请求的读写访问。由内部接口 `RequestReader` 和 `RequestWriter` 组合而成。
+中间件中使用，提供请求的读写访问。由内部接口 RequestReader 和 RequestWriter 组合而成。
 
 ### ResponseMutator
 
@@ -215,7 +215,7 @@ type ResponseMutator interface {
 }
 ```
 
-中间件中使用，提供响应的读写访问。由内部接口 `ResponseReader` 和 `ResponseWriter` 组合而成。
+中间件中使用，提供响应的读写访问。由内部接口 ResponseReader 和 ResponseWriter 组合而成。
 
 ### Handler
 

@@ -107,7 +107,7 @@ func (pl PatternLevel) String() string
 ### 关键模式
 
 ::: warning 内部 API
-`GetCriticalPatterns` 已转为内部函数，不再作为公开 API 导出。关键模式（`__proto__`、`constructor[`、`prototype.`）始终强制检查，无法禁用。
+GetCriticalPatterns 已转为内部函数，不再作为公开 API 导出。关键模式（`__proto__`、`constructor[`、`prototype.`）始终强制检查，无法禁用。
 :::
 
 以下关键模式始终完全扫描，无论 JSON 大小如何：

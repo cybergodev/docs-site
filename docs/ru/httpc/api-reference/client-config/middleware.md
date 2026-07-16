@@ -14,7 +14,7 @@ type MiddlewareFunc func(Handler) Handler
 type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, error)
 ```
 
-Промежуточное ПО настраивается в `Config.Middleware.Middlewares`, выполняется в порядке добавления:
+Промежуточное ПО настраивается в `MiddlewareConfig.Middlewares`, выполняется в порядке добавления:
 
 ```go
 client, _ := httpc.New(&httpc.Config{

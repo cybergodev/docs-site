@@ -65,7 +65,7 @@ func (p *Processor) ExtractTextFromFile(filePath string) (string, error)
 
 ## Версии с контекстом
 
-Все методы извлечения имеют версии с `WithContext`:
+Все методы извлечения имеют версии с `ExtractWithContext`:
 
 ```go
 func (p *Processor) ExtractWithContext(ctx context.Context, htmlBytes []byte) (*Result, error)

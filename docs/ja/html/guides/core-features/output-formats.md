@@ -173,7 +173,7 @@ jsonBytes, err := html.ExtractToJSONFromFile("page.html")
 
 ## コンテキスト付きバージョン
 
-すべてのフォーマット関数には `WithContext` バリアントがあり、タイムアウトとキャンセルに対応します：
+すべてのフォーマット関数には `ExtractWithContext` バリアントがあり、タイムアウトとキャンセルに対応します：
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

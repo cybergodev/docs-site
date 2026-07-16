@@ -173,7 +173,7 @@ jsonBytes, err := html.ExtractToJSONFromFile("page.html")
 
 ## Версии с контекстом
 
-Все функции форматирования имеют варианты `WithContext` с поддержкой тайм-аута и отмены:
+Все функции форматирования имеют варианты `ExtractWithContext` с поддержкой тайм-аута и отмены:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

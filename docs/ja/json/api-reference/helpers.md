@@ -222,7 +222,7 @@ func main() {
 ## 出力関数
 
 ::: warning API 変更のお知らせ
-`Print`、`PrintPretty`、`PrintE`、`PrintPrettyE` はライブラリから削除され、提供されなくなりました。[Encode](./functions/encode-decode#encode)、[EncodePretty](./functions/encode-decode#encodepretty)、または [Prettify](./functions/encode-decode#prettify) を `fmt.Println` と組み合わせて使用してください。詳細は [出力関数](./print) を参照。
+Print、PrintPretty、PrintE、PrintPrettyE はライブラリから削除され、提供されなくなりました。[Encode](./functions/encode-decode#encode)、[EncodePretty](./functions/encode-decode#encodepretty)、または [Prettify](./functions/encode-decode#prettify) を `fmt.Println` と組み合わせて使用してください。詳細は [出力関数](./print) を参照。
 :::
 
 ---

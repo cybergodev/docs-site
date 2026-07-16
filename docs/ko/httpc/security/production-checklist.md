@@ -24,7 +24,7 @@ sidebar_position: 4
 ### 타임아웃 설정
 
 - [ ] 모든 타임아웃 값이 설정되어 있고 적절함
-- [ ] `Timeouts.Request`가 0이 아님 (무한 대기 방지)
+- [ ] `TimeoutConfig.Request`가 0이 아님 (무한 대기 방지)
 - [ ] 각 요청에 `WithContext`로 타임아웃 설정 고려
 
 ### 응답 제한

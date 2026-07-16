@@ -127,7 +127,7 @@ fmt.Println(data) // Raw JSON string
 ### LoadFromFileAsData (Now Private)
 
 ::: warning API Change Notice
-`LoadFromFileAsData` has been converted to an internal method (`loadFromFileAsData`) and is no longer exported as a public API. Please use the `LoadFromFile` + `Parse` combination instead:
+LoadFromFileAsData has been converted to an internal method (`loadFromFileAsData`) and is no longer exported as a public API. Please use the `LoadFromFile` + `Parse` combination instead:
 
 ```go
 jsonStr, err := p.LoadFromFile("data.json")
@@ -164,7 +164,7 @@ if err != nil {
 ### LoadFromReaderAsData (Now Private)
 
 ::: warning API Change Notice
-`LoadFromReaderAsData` has been converted to an internal method (`loadFromReaderAsData`) and is no longer exported as a public API. Please use the `LoadFromReader` + `Parse` combination instead:
+LoadFromReaderAsData has been converted to an internal method (`loadFromReaderAsData`) and is no longer exported as a public API. Please use the `LoadFromReader` + `Parse` combination instead:
 
 ```go
 file, _ := os.Open("data.json")

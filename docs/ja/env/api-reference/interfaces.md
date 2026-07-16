@@ -243,7 +243,7 @@ type FullAuditLogger interface {
 
 | 方法 | 用途 |
 |------|------|
-| `LogError` | エラーイベントを記録（AuditLogger から継承） |
+| LogError | エラーイベントを記録（AuditLogger から継承） |
 | `Log` | 一般的な監査イベントを記録 |
 | `LogWithFile` | ファイル情報を含むイベントを記録 |
 | `LogWithDuration` | 所要時間を含むイベントを記録 |
@@ -511,11 +511,11 @@ type File interface {
 
 | 方法 | 用途 |
 |------|------|
-| `Read` | データの読み取り |
-| `Write` | データの書き込み |
-| `Close` | ファイルをクローズ |
-| `Stat` | ファイル情報の取得 |
-| `Sync` | ディスクに同期 |
+| Read | データの読み取り |
+| Write | データの書き込み |
+| Close | ファイルをクローズ |
+| Stat | ファイル情報の取得 |
+| Sync | ディスクに同期 |
 
 ---
 
@@ -661,15 +661,15 @@ type AuditEvent = internal.Event
 
 | フィールド | 型 | 説明 |
 |------|------|------|
-| `Timestamp` | `time.Time` | タイムスタンプ |
-| `Action` | `AuditAction` | 操作タイプ |
-| `Key` | `string` | キー名（マスク済み） |
-| `File` | `string` | ファイル名 |
-| `Reason` | `string` | 原因/説明 |
-| `Success` | `bool` | 成功したかどうか |
-| `Masked` | `bool` | マスク済みかどうか |
-| `Details` | `string` | 詳細 |
-| `Duration` | `int64` | 所要時間（ナノ秒） |
+| Timestamp | `time.Time` | タイムスタンプ |
+| Action | `AuditAction` | 操作タイプ |
+| Key | `string` | キー名（マスク済み） |
+| File | `string` | ファイル名 |
+| Reason | `string` | 原因/説明 |
+| Success | `bool` | 成功したかどうか |
+| Masked | `bool` | マスク済みかどうか |
+| Details | `string` | 詳細 |
+| Duration | `int64` | 所要時間（ナノ秒） |
 
 ---
 

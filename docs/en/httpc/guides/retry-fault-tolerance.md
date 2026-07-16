@@ -40,7 +40,7 @@ By default, the following errors trigger retries:
 Implement the `RetryPolicy` interface for full control over retry behavior:
 
 :::warning Internal Type
-The `resp` parameter type `ResponseReader` in `RetryPolicy.ShouldRetry` is an internal interface (defined in the `internal/types` package) that external packages cannot reference directly. Custom `RetryPolicy` must be implemented in a package within the same module as `httpc`. Most scenarios can be satisfied through `RetryConfig` field configuration.
+The `resp` parameter type ResponseReader in RetryPolicy.ShouldRetry is an internal interface (defined in the `internal/types` package) that external packages cannot reference directly. Custom `RetryPolicy` must be implemented in a package within the same module as `httpc`. Most scenarios can be satisfied through `RetryConfig` field configuration.
 :::
 
 ```go

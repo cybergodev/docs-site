@@ -19,10 +19,11 @@
  *
  * Run after `vitepress build` (see package.json `build`).
  */
-import { readdir, readFile, writeFile, mkdir } from 'fs/promises'
+import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join, relative } from 'path'
-import type { Dirent } from 'fs'
 import { DIST_DIR, HOST, PRIMARY_LANG, PROJECTS } from '../docs/.vitepress/shared'
+import { extractFrontmatter, extractBody, parseFmField } from '../docs/.vitepress/utils/frontmatter'
+import { collectMd } from './_lib/walk'
 
 /** Markdown source tree for the primary language, relative to the repo root. */
 const SRC_DIR = join('docs', PRIMARY_LANG)
@@ -36,45 +37,15 @@ interface Doc {
   body: string
 }
 
-// Recursively collect every *.md file under `root` (forward-slashed, absolute).
-async function collectMd(root: string): Promise<string[]> {
-  const out: string[] = []
-  async function walk(dir: string): Promise<void> {
-    let entries: Dirent[]
-    try {
-      entries = await readdir(dir, { withFileTypes: true })
-    } catch {
-      return
-    }
-    for (const entry of entries) {
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) await walk(full)
-      else if (entry.name.endsWith('.md')) out.push(full)
-    }
-  }
-  await walk(root)
-  return out
-}
-
-function unquote(s: string): string {
-  const m = s.match(/^["']([\s\S]*)["']$/)
-  return m ? m[1] : s
-}
-
 // Extract title/description from YAML frontmatter and return the body without
-// it. Falls back to the first H1 if title is absent.
+// it. Falls back to the first H1 if title is absent. Parsing delegates to
+// utils/frontmatter (single-line fields, no YAML dependency — see CLAUDE.md),
+// shared with the sidebar builder.
 function parseMd(content: string): { title: string; description: string; body: string } {
-  let title = ''
-  let description = ''
-  let body = content
-  const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/)
-  if (fm) {
-    body = content.slice(fm[0].length)
-    const t = fm[1].match(/^title:\s*(.+?)\s*$/m)
-    const d = fm[1].match(/^description:\s*(.+?)\s*$/m)
-    if (t) title = unquote(t[1])
-    if (d) description = unquote(d[1])
-  }
+  const fm = extractFrontmatter(content)
+  let title = fm ? (parseFmField(fm, 'title') ?? '') : ''
+  let description = fm ? (parseFmField(fm, 'description') ?? '') : ''
+  const body = extractBody(content)
   if (!title) {
     const h1 = body.match(/^#\s+(.+?)\s*$/m)
     if (h1) title = h1[1].replace(/[*_`]/g, '')
@@ -86,9 +57,9 @@ function parseMd(content: string): { title: string; description: string; body: s
 // so json/index.md → /zh/json/ and the language home index.md → /zh/.
 function toUrl(absFile: string): string {
   let rel = relative(SRC_DIR, absFile).replace(/\\/g, '/').replace(/\.md$/, '')
-  if (rel === 'index') rel = '' // language home → /{lang}/
-  else if (rel.endsWith('/index'))
-    rel = rel.slice(0, -'/index'.length) + '/' // dir page → /{lang}/{dir}/
+  if (rel === 'index')
+    rel = '' // language home → /{lang}/
+  else if (rel.endsWith('/index')) rel = rel.slice(0, -'/index'.length) + '/' // dir page → /{lang}/{dir}/
   return `/${PRIMARY_LANG}/${rel}`
 }
 

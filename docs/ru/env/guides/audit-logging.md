@@ -160,7 +160,7 @@ type AuditEvent struct {
 
 ### Реализация интерфейса FullAuditLogger
 
-`FullAuditLogger` — это полный интерфейс аудитного журнала, расширяющий минимальный интерфейс `AuditLogger` (содержащий только метод `LogError`):
+`FullAuditLogger` — это полный интерфейс аудитного журнала, расширяющий минимальный интерфейс `AuditLogger` (содержащий только метод LogError):
 
 ```go
 type FullAuditLogger interface {

@@ -102,10 +102,10 @@ Custom retry strategy interface.
 | `MaxRetries()` | Returns the maximum retry count |
 
 :::warning Internal Type Limitation
-The `resp` parameter type `ResponseReader` in `ShouldRetry` is an internal interface (located in the `internal/types` package) that external code cannot reference directly. Therefore, `RetryPolicy` can only be implemented within the same module. Most scenarios can be satisfied through `RetryConfig` configuration and the `WithMaxRetries` option. If you need a custom policy, implement the `RetryPolicy` interface within your project's internal package.
+The `resp` parameter type ResponseReader in ShouldRetry is an internal interface (located in the `internal/types` package) that external code cannot reference directly. Therefore, `RetryPolicy` can only be implemented within the same module. Most scenarios can be satisfied through `RetryConfig` configuration and the `WithMaxRetries` option. If you need a custom policy, implement the `RetryPolicy` interface within your project's internal package.
 :::
 
-The following example demonstrates the `RetryPolicy` implementation pattern. Note that `ResponseReader` is an internal type -- this code can only compile within the `httpc` module:
+The following example demonstrates the `RetryPolicy` implementation pattern. Note that ResponseReader is an internal type -- this code can only compile within the `httpc` module:
 
 ```go
 // Note: ResponseReader is an internal type (internal/types package).
@@ -172,7 +172,7 @@ type RequestMutator interface {
 }
 ```
 
-Used in middleware to provide read-write access to requests. Composed from internal interfaces `RequestReader` and `RequestWriter`.
+Used in middleware to provide read-write access to requests. Composed from internal interfaces RequestReader and RequestWriter.
 
 ### ResponseMutator
 
@@ -215,7 +215,7 @@ type ResponseMutator interface {
 }
 ```
 
-Used in middleware to provide read-write access to responses. Composed from internal interfaces `ResponseReader` and `ResponseWriter`.
+Used in middleware to provide read-write access to responses. Composed from internal interfaces ResponseReader and ResponseWriter.
 
 ### Handler
 

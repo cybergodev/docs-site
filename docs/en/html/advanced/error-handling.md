@@ -69,7 +69,7 @@ if errors.As(err, &fileErr) {
 
 ## Context Cancellation
 
-Use `WithContext` variants for cancellation support:
+Use `ExtractWithContext` variants for cancellation support:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

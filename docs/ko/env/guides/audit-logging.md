@@ -160,7 +160,7 @@ type AuditEvent struct {
 
 ### FullAuditLogger 인터페이스 구현
 
-`FullAuditLogger`는 최소 인터페이스 `AuditLogger`(`LogError` 메서드만 포함)를 확장한 완전한 감사 로그 인터페이스입니다:
+`FullAuditLogger`는 최소 인터페이스 `AuditLogger`(LogError 메서드만 포함)를 확장한 완전한 감사 로그 인터페이스입니다:
 
 ```go
 type FullAuditLogger interface {

@@ -55,7 +55,7 @@ type TimeoutConfig struct {
 Setting to 0 means no timeout (not recommended for production).
 
 :::tip ResponseHeader Design
-`ResponseHeader` defaults to 0 (disabled). In this case, `Timeouts.Request` or `WithTimeout()` serves as the sole timeout mechanism, ensuring `WithTimeout()` has full control over request duration. This design is suitable for AI APIs and long-polling scenarios that require extended response times. Only set a positive value when you need a transport-layer hard cap (e.g., to defend against Slowloris attacks), but note that this will override `WithTimeout`.
+`ResponseHeader` defaults to 0 (disabled). In this case, `TimeoutConfig.Request` or `WithTimeout()` serves as the sole timeout mechanism, ensuring `WithTimeout()` has full control over request duration. This design is suitable for AI APIs and long-polling scenarios that require extended response times. Only set a positive value when you need a transport-layer hard cap (e.g., to defend against Slowloris attacks), but note that this will override `WithTimeout`.
 :::
 
 ## ConnectionConfig
@@ -352,11 +352,11 @@ Cookie security attribute validation configuration.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `RequireSecure` | `bool` | Require Cookie to have Secure attribute |
-| `RequireHttpOnly` | `bool` | Require Cookie to have HttpOnly attribute |
-| `RequireSameSite` | `string` | Required SameSite value, e.g. `"Strict"`, `"Lax"`; empty string means no check |
-| `AllowSameSiteNone` | `bool` | Whether to allow SameSite=None |
-| `RequireSecureForSameSiteNone` | `bool` | Require Secure attribute when SameSite=None (default `true`) |
+| RequireSecure | `bool` | Require Cookie to have Secure attribute |
+| RequireHttpOnly | `bool` | Require Cookie to have HttpOnly attribute |
+| RequireSameSite | `string` | Required SameSite value, e.g. `"Strict"`, `"Lax"`; empty string means no check |
+| AllowSameSiteNone | `bool` | Whether to allow SameSite=None |
+| RequireSecureForSameSiteNone | `bool` | Require Secure attribute when SameSite=None (default `true`) |
 
 ### DefaultCookieSecurityConfig
 

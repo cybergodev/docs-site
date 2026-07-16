@@ -222,7 +222,7 @@ func main() {
 ## 输出函数
 
 ::: warning API 变更说明
-`Print`、`PrintPretty`、`PrintE`、`PrintPrettyE` 已从库中移除，不再提供。请使用 [Encode](./functions/encode-decode#encode)、[EncodePretty](./functions/encode-decode#encodepretty) 或 [Prettify](./functions/encode-decode#prettify) 配合 `fmt.Println` 代替。详见 [打印函数](./print)。
+Print、PrintPretty、PrintE、PrintPrettyE 已从库中移除，不再提供。请使用 [Encode](./functions/encode-decode#encode)、[EncodePretty](./functions/encode-decode#encodepretty) 或 [Prettify](./functions/encode-decode#prettify) 配合 `fmt.Println` 代替。详见 [打印函数](./print)。
 :::
 
 ---

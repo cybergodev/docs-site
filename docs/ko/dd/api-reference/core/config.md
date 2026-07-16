@@ -274,7 +274,7 @@ type FieldValidationConfig struct {
 | `NamingConventionAny` | 모든 형식 허용 (기본값) | - |
 | `NamingConventionSnakeCase` | snake_case | `user_id`, `created_at` |
 | `NamingConventionCamelCase` | camelCase | `userId`, `createdAt` |
-| `NamingConventionPascalCase` | PascalCase | `UserId`, `CreatedAt` |
+| `NamingConventionPascalCase` | PascalCase | UserId, CreatedAt |
 | `NamingConventionKebabCase` | kebab-case | `user-id`, `created-at` |
 
 `String()` 메서드를 구현하여 명명 규칙 이름을 반환합니다.
