@@ -1,8 +1,8 @@
 ---
-sidebar_label: "输出方法"
-title: "Processor 输出方法 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 输出方法：Encode、EncodePretty、EncodeWithConfig、EncodeBatch/EncodeFields 批量与 Compact/Indent/HTMLEscape 格式化，满足多种输出需求。"
-sidebar_position: 4
+sidebar_label: "编码输出"
+title: "Processor 编码输出 - CyberGo JSON | API 参考"
+description: "CyberGo JSON Processor 输出方法：Encode、EncodePretty、EncodeWithConfig、EncodeBatch/EncodeFields 批量与 Compact/Indent/HTMLEscape 格式化。"
+sidebar_position: 5
 ---
 
 # 输出方法
@@ -16,6 +16,10 @@ Processor 提供多种 JSON 编码输出方法。
 签名：`func (p *Processor) Encode(value any, config ...Config) (string, error)`
 
 将任意值编码为 JSON 字符串。
+
+::: warning 已废弃
+`Processor.Encode` 直接委托给 [`EncodeWithConfig`](#encodewithconfig)。请改用 `EncodeWithConfig`。`Encode` 将在未来的主版本中移除。
+:::
 
 ```go
 result, err := p.Encode(map[string]any{"name": "CyberGo"})

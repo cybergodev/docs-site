@@ -11,15 +11,17 @@ HTTPC provides 28 request option functions, 5 configuration presets, 8 built-in 
 
 ## Core Architecture
 
+HTTPC uses a two-layer design: the Layer 1 method API is a thin wrapper, and the real request-processing engine is the Layer 2 Handler pipeline.
+
 ```text
-httpc package
-├── Client interface - Main client, supports all HTTP methods
-├── DomainClienter interface - Domain-scoped client with built-in session management
-├── Config - Configuration system (timeouts/connection/security/retry/middleware)
-├── RequestOption - 28 request option functions
-├── MiddlewareFunc - Middleware chain
-├── Result - Response result (includes request metadata)
-└── Package-level functions - Use without creating a client
+HTTPC two-layer architecture
+├── Layer 1  Method API (thin wrapper)
+│     Package functions httpc.Get/Post/... + Client methods + request options → Result
+│
+└── Layer 2  Handler pipeline (request-processing engine)
+      MiddlewareFunc(Handler) onion chain
+      → assembles clientImpl.middlewareChain
+      → executes (each request = assemble and run a Handler chain)
 ```
 
 ## Module Navigation
@@ -28,10 +30,11 @@ httpc package
 
 | Module | Description |
 |--------|-------------|
-| [Package Functions](./core/functions) | Package-level functions like Get/Post/Put/Patch/Delete, client methods, and helper functions |
+| [Package Functions & Client Methods](./core/functions) | Package-level functions like Get/Post/Put/Patch/Delete, client methods, and helper functions |
 | [Configuration](./client-config/config) | Config struct, 5 configuration presets, validation functions, and cookie security |
 | [Interfaces](./types/interfaces) | Core interfaces including Client, Doer, DomainClienter, and RetryPolicy |
 | [Result](./core/result) | Result, RequestInfo, ResponseInfo, RequestMeta types and all methods |
+| [Handler Pipeline](./handler/handler-chain) | Handler pipeline, MiddlewareFunc onion chain, Chain combinator, and mutator contracts |
 
 ### Request and Response
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "カスタムエンコーダ"
 title: "CustomEncoder - CyberGo JSON | カスタムエンコーダ"
-description: "CyberGo JSON カスタムエンコーダガイド：CustomEncoder と TypeEncoder の定義、設定、実装例でカスタム Go 型に専用の JSON シリアライズを登録できます。"
+description: "CyberGo JSON カスタムエンコーダ：CustomEncoder インターフェースと TypeEncoder 型エンコーダの定義と実装で、Go 型に JSON シリアライズロジックを登録します。"
 sidebar_position: 3
 ---
 

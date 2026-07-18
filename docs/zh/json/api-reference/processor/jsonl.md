@@ -1,5 +1,5 @@
 ---
-sidebar_label: "JSONL 处理"
+sidebar_label: "JSONL"
 title: "Processor JSONL 方法 - CyberGo JSON | API 参考"
 description: "CyberGo JSON Processor JSONL 方法：StreamJSONL 流式、ForeachJSONL 迭代、MapJSONL 映射、ReduceJSONL 归约与 FilterJSONL 过滤，适合流式数据处理。"
 sidebar_position: 8

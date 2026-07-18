@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Web サービス統合"
 title: "Web サービス統合 - CyberGo DD | HTTP サービスログサンプル"
-description: "CyberGo DD の Web サービスでの完全な統合サンプル。HTTP ミドルウェアログ記録、リクエストチェーントレーシングと TraceID 伝播、マルチルート階層ログ設定、グレースフルシャットダウンとログフラッシュ、本番レベルのログ設定スキームを含み、DD ログライブラリを HTTP サービスプロジェクトに迅速統合できます。"
+description: "CyberGo DD の Web サービス統合サンプル。HTTP ミドルウェアログ、リクエストチェーン追跡と TraceID 伝播、マルチルート階層設定、グレースフルシャットダウン、本番ログ設定を含む HTTP 統合ガイドで、プロジェクトへの迅速な統合を支援。"
 sidebar_position: 2
 ---
 

@@ -2,7 +2,7 @@
 sidebar_label: "Processor"
 title: "Processor - CyberGo JWT | 核心令牌操作类型"
 description: "Processor 是 CyberGo JWT 核心类型：提供 Create、Validate、Refresh、Revoke、IsRevoked、ParseUnverified、Close 等全部令牌操作方法的签名、参数、返回值、错误与示例说明。"
-sidebar_position: 3
+sidebar_position: 20
 ---
 
 # Processor
@@ -307,7 +307,14 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 func (p *Processor) Revoke(tokenString string) error
 ```
 
-将令牌加入黑名单。
+通过验证签名并提取令牌 ID（jti）将令牌加入黑名单。仅持有有效签名的令牌可被吊销，防止恶意调用者将任意令牌 ID 加入黑名单。
+
+:::info TTL 行为
+- 令牌的 `exp` 决定黑名单条目的 TTL
+- 无 `exp` 的令牌默认 7 天 TTL
+- TTL 上限 30 天，防止伪造的超长 `exp` 锁定内存（DoS 防护）
+- 已过期的令牌仍可吊销；条目会由黑名单自动清理
+:::
 
 <Badge type="tip" text="v1.0.0+" />
 
@@ -343,7 +350,7 @@ func (p *Processor) Revoke(tokenString string) error
 func (p *Processor) IsRevoked(tokenString string) (bool, error)
 ```
 
-检查令牌是否已被吊销。
+检查令牌是否已被吊销。通过验证签名后查找令牌的 jti 在黑名单中的状态。当黑名单未配置时返回 `false` 和 `nil` 错误。
 
 <Badge type="tip" text="v1.0.0+" />
 

@@ -15,18 +15,29 @@ Print、PrintPretty、PrintE、PrintPrettyE 已从库中移除，不再提供。
 
 ### 打印紧凑 JSON
 
-使用 `fmt.Println` + `Encode`：
+使用 `fmt.Println` + `EncodeWithConfig`（推荐）或 `Marshal`：
 
 ```go
 data := map[string]any{"name": "Alice", "age": 30}
 
-s, err := json.Encode(data)
+s, err := json.EncodeWithConfig(data)
 if err != nil {
     log.Fatal(err)
 }
 fmt.Println(s)
 // 输出: {"age":30,"name":"Alice"}
+
+// 或者使用 Marshal（[]byte 输出）
+b, err := json.Marshal(data)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(string(b))
 ```
+
+::: warning Encode 已废弃
+`json.Encode` 已标记为废弃（与 `EncodeWithConfig` 功能等价），将在未来主版本移除。新代码请使用 `EncodeWithConfig` 或 `Marshal`。
+:::
 
 ### 打印格式化 JSON
 
@@ -66,8 +77,8 @@ if err != nil {
 }
 defer p.Close()
 
-// 编码并打印
-s, err := p.Encode(data)
+// 编码并打印（推荐 EncodeWithConfig；Encode 已废弃）
+s, err := p.EncodeWithConfig(data)
 if err != nil {
     log.Fatal(err)
 }
@@ -101,8 +112,8 @@ func main() {
         "total": 2,
     }
 
-    // 紧凑输出
-    compact, err := json.Encode(data)
+    // 紧凑输出（Encode 已废弃，推荐 EncodeWithConfig）
+    compact, err := json.EncodeWithConfig(data)
     if err != nil {
         log.Fatal(err)
     }
@@ -119,5 +130,5 @@ func main() {
 
 ## 相关
 
-- [编码解码函数](./functions/encode-decode) - Encode、EncodePretty、Prettify
+- [编码输出函数](./functions/output) - Encode、EncodePretty、Prettify
 - [包函数](./functions/) - 包级函数总览

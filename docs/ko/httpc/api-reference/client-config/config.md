@@ -275,7 +275,7 @@ func TestingConfig() *Config
 | UserAgent | httpc-test/1.0 |
 
 :::danger
-이 설정은 TLS 검증과 SSRF 방어를 비활성화하므로 **테스트에만 사용**하세요. 테스트 환경 외부에서 사용하면 보안 경고가 출력됩니다.
+이 설정은 TLS 검증과 SSRF 방어를 비활성화하므로 **테스트에만 사용**하세요. 테스트 환경 외부에서 사용하면 보안 경고가 출력됩니다(자세한 내용은 [보안 경고 출력](#setsecuritywarnoutput) 참조).
 :::
 
 ### MinimalConfig
@@ -300,6 +300,26 @@ func MinimalConfig() *Config
 | BackoffFactor | 1.0 |
 | EnableJitter | false |
 | FollowRedirects | false |
+
+## 보안 경고 출력
+
+### SetSecurityWarnOutput
+
+```go
+func SetSecurityWarnOutput(w io.Writer)
+```
+
+보안 경고의 출력 대상을 설정합니다. `TestingConfig()`를 사용하거나 `SecurityConfig.InsecureSkipVerify`(`Config.Security`)를 `true`로 설정하면, httpc는 이 writer에 `[SECURITY WARNING]` 수준의 경고를 출력합니다(각 경고 유형별로 프로세스당 최대 한 번). 기본 출력은 `os.Stderr`이며, `io.Discard`를 전달하면 경고를 완전히 억제하여 테스트나 이미 알려진 안전한 내부 시나리오에서 조용히 실행할 수 있습니다.
+
+```go
+// 테스트에서 보안 경고 억제
+httpc.SetSecurityWarnOutput(io.Discard)
+cfg := httpc.TestingConfig()
+```
+
+:::tip 영향 범위
+이 설정은 프로세스 수준의 전역 상태이며, 이후에 생성되는 모든 클라이언트에 영향을 줍니다. `TestingConfig`와 `InsecureSkipVerify` 두 가지 경고는 각각 독립적으로 카운트됩니다(서로의 트리거에 영향을 주지 않음), 하지만 동일한 출력 writer를 공유합니다.
+:::
 
 ## 검증
 

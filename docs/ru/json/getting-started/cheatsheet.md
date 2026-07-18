@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Шпаргалка"
-title: "Шпаргалка - CyberGo JSON | Быстрый справочник по API"
-description: "Шпаргалка по API CyberGo JSON: GetString/GetInt, Set/Delete, Marshal/Unmarshal, конфигурация, итераторы и безопасность для быстрого поиска в Go."
-sidebar_position: 4
+title: "Шпаргалка - CyberGo JSON | API"
+description: "Шпаргалка API CyberGo JSON: GetString/GetInt, Set/Delete, Marshal/Unmarshal, конфигурация, итераторы и безопасность."
+sidebar_position: 3
 ---
 
 # Шпаргалка

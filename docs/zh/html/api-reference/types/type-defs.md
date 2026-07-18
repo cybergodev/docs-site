@@ -1,7 +1,7 @@
 ---
-sidebar_label: "类型定义"
-title: "类型定义 - CyberGo HTML | 数据类型参考"
-description: "CyberGo HTML 数据类型：Result（自定义 JSON 序列化）、ImageInfo、LinkInfo、LinkResource、Statistics、BatchResult 等核心类型字段说明。"
+sidebar_label: "数据类型"
+title: "类型定义 - CyberGo html | 数据类型参考"
+description: "CyberGo html 数据类型：Result、ImageInfo、LinkInfo、LinkResource、Statistics、BatchResult 等核心类型字段说明。"
 sidebar_position: 2
 ---
 
@@ -32,6 +32,12 @@ type Result struct {
 ```go
 func (r *Result) MarshalJSON() ([]byte, error)
 ```
+
+:::warning 注意：不支持 round-trip
+`Result` **未实现 `UnmarshalJSON`**。如果将 `MarshalJSON()` 的输出反序列化回 `Result`，会**丢失 `ProcessingTime`、`ReadingTime` 等 duration 字段**——JSON 输出的键名（`processing_time_ms`、`reading_time_ms`）与 struct 字段名不一致，无法对应还原。
+
+这是**有意设计**：该 JSON 格式面向外部消费（如 API 响应、日志、前端展示），不是为双向序列化准备的。
+:::
 
 ## ImageInfo
 

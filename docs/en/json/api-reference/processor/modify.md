@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Modify"
 title: "Processor Data Modification - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor modify methods: Set, SetMultiple batching, SetCreate auto-path creation, Delete, and DeleteClean cleanup, all supporting chained calls."
+description: "CyberGo JSON Processor modify methods: Set, SetMultiple batching, SetCreate auto-path creation, SetMultipleCreate batch creation, all supporting chained calls."
 sidebar_position: 3
 ---
 
 # Data Modification Methods
 
-Processor provides data modification methods. All methods return the modified JSON string.
+Processor provides data modification methods. All methods return the modified JSON string. Deletion methods are documented in [Delete Operations](./delete).
 
 ## Set
 
@@ -39,40 +39,6 @@ result, _ = p.Set(data, "user.profile", map[string]any{
 
 // Array
 result, _ = p.Set(data, "items", []any{"a", "b", "c"})
-```
-
-## Delete
-
-Signature: `func (p *Processor) Delete(jsonStr, path string, cfg ...Config) (string, error)`
-
-Deletes the value at the specified path and returns the modified JSON string.
-
-```go
-result, err := p.Delete(data, "user.temporary")
-```
-
-## DeleteClean
-
-Signature: `func (p *Processor) DeleteClean(jsonStr, path string, cfg ...Config) (string, error)`
-
-Deletes the specified path and automatically cleans up null values and empty arrays.
-
-```go
-result, err := p.DeleteClean(data, "user.temporary")
-// After deletion, null values and empty arrays are cleaned up
-```
-
-**Difference between Delete and DeleteClean**:
-
-```go
-// Original data: {"user": {"temp": "value", "name": "test"}}
-
-// After Delete: {"user": {"name": "test"}}
-result, _ := p.Delete(data, "user.temp")
-
-// If the parent object becomes empty after deletion, DeleteClean continues cleanup
-// {"user": {}} -> {}
-result, _ = p.DeleteClean(data, "user.temp")
 ```
 
 ## SetMultiple
@@ -126,7 +92,61 @@ result2, _ := processor.Set(result1, "user.version", "1.0.0")
 finalResult, _ := processor.Delete(result2, "user.temporary")
 ```
 
+## Processor Merge Methods
+
+Processor provides instance methods corresponding to the package-level [MergeJSON](../functions/modify#mergejson), [MergeMany](../functions/modify#mergemany), and [CompareJSON](../helpers#comparejson).
+
+### Processor.MergeJSON
+
+Signature: `func (p *Processor) MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
+
+Resolves options from `cfg` (falling back to the processor's own configuration when omitted), deeply merges the two objects according to `Config.MergeMode`, then re-encodes the result with this processor.
+
+Like the package-level function, `Processor.MergeJSON` performs no security validation — it is a structural tool that only decodes, deep-merges, and re-encodes. When security validation is required, use `CompareJSON` (which validates when `cfg` is passed).
+
+```go
+p, err := json.New()
+if err != nil {
+    panic(err)
+}
+defer p.Close()
+
+// Union merge (default)
+result, err := p.MergeJSON(base, override)
+
+// Intersection merge
+cfg := json.DefaultConfig()
+cfg.MergeMode = json.MergeIntersection
+result, err = p.MergeJSON(base, override, cfg)
+```
+
+### Processor.MergeMany
+
+Signature: `func (p *Processor) MergeMany(jsons []string, cfg ...Config) (string, error)`
+
+Folds the slice from left to right via `MergeJSON`; the merge strategy is determined by `Config.MergeMode` (default `MergeUnion`). Returns an error when fewer than 2 JSON strings are provided, and returns an error carrying the failing index if any merge step fails.
+
+```go
+result, err := p.MergeMany([]string{config1, config2, config3})
+```
+
+### Processor.CompareJSON
+
+Signature: `func (p *Processor) CompareJSON(json1, json2 string, cfg ...Config) (bool, error)`
+
+Compares two JSON strings for equality (number normalization, key-order independent).
+
+::: warning Difference from package-level CompareJSON
+The package-level `CompareJSON` performs no security validation when called without `cfg` and marshals both sides with `encoding/json`; the Processor method **always** performs security validation (per `cfg` when passed, otherwise per the processor's own configuration) and symmetrically marshals both sides with the library encoder, so configured encoding (such as `EscapeHTML`) applies symmetrically.
+:::
+
+```go
+equal, err := p.CompareJSON(a, b)
+equal, err = p.CompareJSON(a, b, json.SecurityConfig())
+```
+
 ## See Also
 
 - [Path Query](./query) - Get series methods
+- [Delete Operations](./delete) - Delete/DeleteClean methods
 - [Batch Operations](./batch) - ProcessBatch batch processing

@@ -331,8 +331,15 @@ func WithSecureCookie(securityConfig *CookieSecurityConfig) RequestOption
 
 强制验证请求 Cookie 的安全属性（Secure、HttpOnly、SameSite）。
 
+:::warning 选项顺序
+此选项**仅校验应用时已存在的 Cookie**。必须将 `WithSecureCookie` 放在所有 `WithCookie`/`WithCookies`/`WithCookieMap`/`WithCookieString` **之后**，否则后添加的 Cookie 不会被校验。如需不受顺序限制的会话级 Cookie 安全校验，请使用 `SessionManager.SetCookieSecurity`。
+:::
+
 ```go
+// 正确顺序：先添加 Cookie，再校验
 result, err := client.Get(url,
+    httpc.WithCookie(sessionCookie),
+    httpc.WithCookieMap(otherCookies),
     httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()),
 )
 ```
@@ -399,6 +406,10 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 
 设置单次请求最大重定向次数。范围：0-50。
 
+:::warning 0 值语义
+`0` **不会**禁用重定向。引擎将 `0` 视为「未显式设置」的哨兵值，回退到默认上限（10），因此 `WithMaxRedirects(0)` 等价于省略该选项。要完全禁用重定向跟随，请改用 `WithFollowRedirects(false)`。
+:::
+
 ### WithAllowPrivateIPs
 
 ```go
@@ -426,11 +437,13 @@ result, err := httpc.Get("http://localhost:8080/health",
 func WithStreamBody(stream bool) RequestOption
 ```
 
-启用流式模式，响应体不缓存到内存。内部用于文件下载，避免大文件占用内存。
+启用流式模式，响应体不缓存到内存。
 
-```go
-result, err := client.Get(url, httpc.WithStreamBody(true))
-```
+:::warning 重要限制
+流式模式**仅通过 [`Download`](./functions#download) 生效**。与标准请求方法（`Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`）配合使用时，响应体会被完整读入并转换为 `Result`，随后底层流被关闭——返回的 `Result` 响应体为空，调用方无法消费该流。
+
+要真正流式下载大文件而不缓存到内存，请使用 `Download`。
+:::
 
 ## 回调
 

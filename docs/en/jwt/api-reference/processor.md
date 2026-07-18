@@ -2,7 +2,7 @@
 sidebar_label: "Processor"
 title: "Processor - CyberGo JWT | Core Type"
 description: "The core CyberGo JWT Processor type exposes Create, Validate, Refresh, Revoke, IsRevoked, ParseUnverified, and Close methods with their signatures and examples."
-sidebar_position: 3
+sidebar_position: 20
 ---
 
 # Processor
@@ -307,7 +307,14 @@ Refresh only validates standard JWT fields and basic structural validity. Deep f
 func (p *Processor) Revoke(tokenString string) error
 ```
 
-Adds a token to the blacklist.
+Adds the token to the blacklist by verifying the signature and extracting the token ID (jti). Only tokens with a valid signature can be revoked, preventing malicious callers from adding arbitrary token IDs to the blacklist.
+
+:::info TTL Behavior
+- The token's `exp` determines the TTL of the blacklist entry
+- Tokens without an `exp` default to a 7-day TTL
+- TTL is capped at 30 days to prevent forged excessive `exp` values from locking memory (DoS protection)
+- Expired tokens can still be revoked; the entry is automatically cleaned up by the blacklist
+:::
 
 <Badge type="tip" text="v1.0.0+" />
 
@@ -343,7 +350,7 @@ Adds a token to the blacklist.
 func (p *Processor) IsRevoked(tokenString string) (bool, error)
 ```
 
-Checks if a token has been revoked.
+Checks whether a token has been revoked. After verifying the signature, it looks up the token's jti status in the blacklist. When the blacklist is not configured, returns `false` and a `nil` error.
 
 <Badge type="tip" text="v1.0.0+" />
 

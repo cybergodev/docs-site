@@ -2,7 +2,7 @@
 sidebar_label: "Path Syntax"
 title: "Path Expression Syntax - CyberGo JSON | JSONPath Guide"
 description: "CyberGo JSON path syntax guide: user.name, items[0], slicing, wildcards, and multi-field extraction to target any node in Go JSON data."
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # Path Expression Syntax

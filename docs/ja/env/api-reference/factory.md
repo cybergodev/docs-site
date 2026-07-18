@@ -1,7 +1,7 @@
 ---
-sidebar_label: "ComponentFactory API"
+sidebar_label: "コンポーネントファクトリー"
 title: "ComponentFactory API - CyberGo env | コンポーネントファクトリー"
-description: "CyberGo env の ComponentFactory API リファレンス。監査ハンドラー、検証器、ファイルシステムアダプターの生成とカスタムパーサー登録を Close ライフサイクル管理と共に提供します。"
+description: "CyberGo env の ComponentFactory API リファレンス。Validator 検証器、Auditor 監査ハンドラー、FileSystem ファイルシステムアダプターと変数展開器を生成し、RegisterParser でカスタムパーサーを登録し、Close でライフサイクル管理を提供します。"
 sidebar_position: 8
 ---
 
@@ -292,7 +292,7 @@ func NewCloseableChannelHandler(bufferSize int) *CloseableChannelHandler
 独自のバッファチャネルを持つクローズ可能な監査ハンドラーを作成します。`ChannelAuditHandler` が外部チャネルを受け取るのに対し、`CloseableChannelHandler` は独自のバッファチャネルを作成・所有します。`Close()` を呼び出すとハンドラーをクローズしチャネルを閉じます。`Channel()` でイベントを受信します。
 
 **パラメータ：**
-- `bufferSize` - バッファチャネルのサイズ
+- `bufferSize` - バッファチャネルのサイズ（負の値は 0 として扱われます）
 
 ```go
 handler := env.NewCloseableChannelHandler(64)
@@ -302,6 +302,40 @@ go func() {
     for event := range handler.Channel() {
         fmt.Printf("Audit: %+v\n", event)
     }
+}()
+```
+
+#### CloseableChannelHandler メソッド
+
+`CloseableChannelHandler` は `AuditHandler` インターフェース（`Log` / `Close`）を実装するほか、以下の固有のメソッドを提供します:
+
+```go
+func (h *CloseableChannelHandler) Channel() <-chan AuditEvent
+func (h *CloseableChannelHandler) IsClosed() bool
+```
+
+**メソッドの説明：**
+
+| メソッド | シグネチャ | 用途 |
+|------|------|------|
+| `Channel` | `func (h *CloseableChannelHandler) Channel() <-chan AuditEvent` | 監査イベントを消費するための内部読み取り専用チャネルを返します。`Close()` を呼び出すとこのチャネルは閉じられ、`range` ループがそれに伴って終了します |
+| `IsClosed` | `func (h *CloseableChannelHandler) IsClosed() bool` | ハンドラーがクローズされたかどうかを確認します（スレッドセーフ、同時呼び出し可能） |
+
+```go
+handler := env.NewCloseableChannelHandler(64)
+defer handler.Close()
+
+// クローズ前にステータスを確認可能
+if !handler.IsClosed() {
+    // ハンドラーはまだ使用可能
+}
+
+// チャネルが閉じるまでイベントを消費
+go func() {
+    for event := range handler.Channel() {
+        fmt.Printf("Audit: %+v\n", event)
+    }
+    // handler.Close() 後、チャネルが閉じループ終了
 }()
 ```
 

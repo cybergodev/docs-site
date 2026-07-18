@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Cheat Sheet"
-title: "Cheat Sheet - CyberGo HTML | API at a Glance"
-description: "CyberGo HTML API cheat sheet on one page: package functions, Processor methods, config presets, key options, error matching, and audit setup."
+title: "Cheat Sheet - CyberGo html | API at a Glance"
+description: "CyberGo html API cheat sheet on one page: package functions, Processor methods, config presets, key options, error matching, and audit setup with signatures."
 sidebar_position: 3
 ---
 

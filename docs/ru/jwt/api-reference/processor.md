@@ -2,7 +2,7 @@
 sidebar_label: "Processor"
 title: "Processor - CyberGo JWT | Операции с токенами"
 description: "Processor — основной тип CyberGo JWT: методы Create, Validate, Refresh, Revoke, IsRevoked, ParseUnverified и Close с сигнатурами, параметрами и примерами."
-sidebar_position: 3
+sidebar_position: 20
 ---
 
 # Processor
@@ -307,7 +307,14 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 func (p *Processor) Revoke(tokenString string) error
 ```
 
-Добавляет токен в чёрный список.
+Добавляет токен в чёрный список, проверяя подпись и извлекая ID токена (jti). Только токены с действительной подписью могут быть отозваны, что предотвращает добавление злоумышленниками произвольных ID токенов в чёрный список.
+
+:::info Поведение TTL
+- Утверждение `exp` токена определяет TTL записи в чёрном списке
+- Токены без `exp` по умолчанию получают TTL 7 дней
+- TTL ограничен 30 днями, чтобы предотвратить блокировку памяти подделанными чрезмерно большими значениями `exp` (защита от DoS)
+- Истёкшие токены также могут быть отозваны; запись автоматически очищается чёрным списком
+:::
 
 <Badge type="tip" text="v1.0.0+" />
 
@@ -343,7 +350,7 @@ func (p *Processor) Revoke(tokenString string) error
 func (p *Processor) IsRevoked(tokenString string) (bool, error)
 ```
 
-Проверяет, был ли токен отозван.
+Проверяет, был ли токен отозван. После проверки подписи выполняется поиск статуса jti токена в чёрном списке. Если чёрный список не настроен, возвращает `false` и ошибку `nil`.
 
 <Badge type="tip" text="v1.0.0+" />
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Config"
 title: "Config 設定 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON Config リファレンス：DefaultConfig、SecurityConfig、PrettyConfig、キャッシュ、サイズ制限、エンコード設定で Go アプリの JSON 挙動を完全にカスタマイズします。"
+description: "CyberGo JSON Config リファレンス：DefaultConfig デフォルト、SecurityConfig セキュリティ、PrettyConfig フォーマットとキャッシュ、サイズ制限で、Go アプリの JSON 挙動をカスタマイズします。"
 sidebar_position: 4
 ---
 
@@ -18,6 +18,7 @@ type Config struct {
     CacheTTL     time.Duration `json:"cache_ttl"`      // キャッシュ有効期限
     EnableCache  bool          `json:"enable_cache"`   // キャッシュを有効にするか
     CacheResults bool          `json:"cache_results"`  // 操作結果をキャッシュするか
+    CacheSharedResults bool `json:"cache_shared_results"` // 共有キャッシュ結果（防御的ディープコピーを省略、呼び出し側は返されたコンテナを変更してはならない）
 
     // ===== サイズ制限 =====
     MaxJSONSize  int64 `json:"max_json_size"`  // JSON の最大サイズ（バイト）
@@ -104,6 +105,10 @@ type Config struct {
 }
 ```
 
+::: warning CacheSharedResults 契約
+`CacheSharedResults` を `true` にすると、キャッシュヒット時の `Get`/`GetFromParsed` は**キャッシュ値をそのまま返し**、防御的ディープコピーを省略します（より高速、より少ないアロケーション）。このとき**呼び出し側は返された** `map[string]any`/`[]any` **を変更してはなりません**。変更すると共有キャッシュが破損し、以降の読み取りに影響します。プリミティブ値（`bool`、`float64`、`string`、`json.Number`、`nil`）は不変であり、常に安全です。デフォルトの `false` は安全な「読み取り時コピー」動作を維持します。結果を読み取り専用として扱う場合のみ有効化してください（例：同じ大きなサブツリーを繰り返し読み取る読み取り専用ワークロード）。
+:::
+
 ## 設定プリセット
 
 ### DefaultConfig
@@ -137,6 +142,7 @@ defer processor.Close()
 | MaxCacheSize | 128 | キャッシュエントリ最大数 |
 | EnableCache | true | キャッシュ有効 |
 | CacheResults | true | 操作結果をキャッシュ |
+| CacheSharedResults | false | 共有キャッシュ結果、読み取り専用の高スループット |
 | EnableValidation | true | 検証有効 |
 | StrictMode | false | 非厳格モード |
 | FullSecurityScan | false | サンプリングセキュリティスキャン（全量ではない） |

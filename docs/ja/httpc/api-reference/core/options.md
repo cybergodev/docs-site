@@ -331,8 +331,15 @@ func WithSecureCookie(securityConfig *CookieSecurityConfig) RequestOption
 
 リクエスト Cookie のセキュリティ属性（Secure、HttpOnly、SameSite）の検証を強制します。
 
+:::warning オプションの順序
+このオプションは**適用時にすでに存在する Cookie のみ**を検証します。`WithSecureCookie` はすべての `WithCookie`/`WithCookies`/`WithCookieMap`/`WithCookieString` の**後に**配置する必要があります。そうしないと、後から追加された Cookie は検証されません。順序に依存しないセッションレベルの Cookie セキュリティ検証が必要な場合は、`SessionManager.SetCookieSecurity` を使用してください。
+:::
+
 ```go
+// 正しい順序：まず Cookie を追加してから検証
 result, err := client.Get(url,
+    httpc.WithCookie(sessionCookie),
+    httpc.WithCookieMap(otherCookies),
     httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()),
 )
 ```
@@ -399,6 +406,10 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 
 単一リクエストの最大リダイレクト回数を設定します。範囲：0-50。
 
+:::warning 0 値の意味
+`0` はリダイレクトを無効にしません。エンジンは `0` を「明示的に未設定」のセンチネル値として扱い、デフォルト上限（10）にフォールバックするため、`WithMaxRedirects(0)` はこのオプションを省略した場合と等価です。リダイレクト追従を完全に無効にするには、代わりに `WithFollowRedirects(false)` を使用してください。
+:::
+
 ### WithAllowPrivateIPs
 
 ```go
@@ -426,11 +437,13 @@ result, err := httpc.Get("http://localhost:8080/health",
 func WithStreamBody(stream bool) RequestOption
 ```
 
-ストリーミングモードを有効にします。レスポンスボディはメモリにキャッシュされません。内部的にファイルダウンロードで使用され、大きなファイルのメモリ消費を防ぎます。
+ストリーミングモードを有効にすると、レスポンスボディはメモリにキャッシュされません。
 
-```go
-result, err := client.Get(url, httpc.WithStreamBody(true))
-```
+:::warning 重要な制限
+ストリーミングモードは**[`Download`](./functions#download) 経由でのみ有効**です。標準リクエストメソッド（`Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`）と組み合わせた場合、レスポンスボディは完全に読み込まれて `Result` に変換され、その後基盤のストリームが閉じられます——返される `Result` のレスポンスボディは空になり、呼び出し側はそのストリームを消費できません。
+
+大きなファイルをメモリにキャッシュせずに本当にストリーミングダウンロードするには、`Download` を使用してください。
+:::
 
 ## コールバック
 

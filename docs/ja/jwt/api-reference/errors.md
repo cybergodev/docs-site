@@ -2,7 +2,7 @@
 sidebar_label: "エラー"
 title: "エラー参考 - CyberGo JWT | センチネルエラー一覧"
 description: "エラー参考：CyberGo JWT は 19 個のセンチネルエラーを定義し、設定検証・トークン検証・署名アルゴリズム・有効期限・発行者と Audience・ブラックリスト・レート制限・ライフサイクル場面を網羅し、全て errors.Is で照合できる。"
-sidebar_position: 8
+sidebar_position: 70
 ---
 
 # エラー

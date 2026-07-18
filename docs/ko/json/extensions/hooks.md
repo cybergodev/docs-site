@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Hook 시스템"
 title: "Hook 훅 시스템 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Hook 시스템: Hook 인터페이스, LoggingHook, TimingHook, ValidationHook, ErrorHook과 커스텀 훅으로 JSON 작업 전후에 커스텀 로직을 삽입합니다."
+description: "CyberGo JSON Hook 시스템: Hook, LoggingHook, TimingHook, ValidationHook, ErrorHook으로 JSON 작업 전후에 커스텀 로직을 삽입합니다."
 sidebar_position: 1
 ---
 

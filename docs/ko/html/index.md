@@ -1,7 +1,7 @@
 ---
 sidebar_label: "개요"
-title: "HTML 추출 라이브러리 - CyberGo HTML | 고성능 Go 라이브러리"
-description: "CyberGo HTML은 고성능 Go HTML 콘텐츠 추출·정제 라이브러리로, 문서 인식, 인코딩 자동 감지, 동시성 배치, 플러그형 감사를 제공하며 텍스트·Markdown·JSON 출력을 지원합니다."
+title: "html - CyberGo html | HTML 콘텐츠 추출·정제 Go 라이브러리"
+description: "CyberGo html은 고성능 HTML 콘텐츠 추출·정제 Go 라이브러리로, 문서 인식, 인코딩 감지, 콘텐츠 정제, 다중 포맷 출력을 제공해 웹 스크래핑과 문서 분석에 적합합니다."
 ---
 
 # HTML

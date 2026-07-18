@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Quick Start"
-title: "Quick Start - CyberGo HTML | 5-Minute Guide"
-description: "Quick start with CyberGo HTML: install, basic extraction, Config presets, output formats (text, Markdown, JSON), timeouts, and concurrency-safe patterns."
+title: "Quick Start - CyberGo html | 5-Minute Guide"
+description: "Quick start with CyberGo html: install, basic content extraction, four Config presets, text/Markdown/JSON output, and start HTML extraction in 5 minutes."
 sidebar_position: 2
 ---
 

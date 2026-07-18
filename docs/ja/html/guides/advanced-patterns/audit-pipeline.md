@@ -1,7 +1,7 @@
 ---
 sidebar_label: "監査システム実践"
-title: "監査システム実践 - CyberGo HTML | パイプライン構築"
-description: "CyberGo HTML 監査システム実践：基本有効化から多層パイプラインまで、イベント、内蔵 Sink 比較、レベルフィルタ、カスタム Sink、本番監視のベストプラクティスです。"
+title: "監査システム実践 - CyberGo html | パイプライン構築ガイド"
+description: "CyberGo html 監査システム実践：基本有効化から多層パイプラインまで、イベント型、内蔵 Sink 比較、レベルフィルタ、本番監視のベストプラクティスを解説。"
 sidebar_position: 2
 ---
 

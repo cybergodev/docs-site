@@ -2,7 +2,7 @@
 sidebar_label: "Processor"
 title: "Processor - CyberGo JWT | 핵심 토큰 조작 타입"
 description: "Processor는 CyberGo JWT 핵심 타입으로 Create·Validate·Refresh·Revoke·IsRevoked·ParseUnverified·Close 등 토큰 조작 메서드의 시그니처·매개변수·반환값·오류와 예시를 제공합니다."
-sidebar_position: 3
+sidebar_position: 20
 ---
 
 # Processor
@@ -307,7 +307,14 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 func (p *Processor) Revoke(tokenString string) error
 ```
 
-토큰을 블랙리스트에 추가합니다.
+서명을 검증하고 토큰 ID (jti)를 추출하여 토큰을 블랙리스트에 추가합니다. 유효한 서명을 가진 토큰만 취소할 수 있으며, 악의적인 호출자가 임의의 토큰 ID를 블랙리스트에 추가하는 것을 방지합니다.
+
+:::info TTL 동작
+- 토큰의 `exp`가 블랙리스트 항목의 TTL을 결정합니다
+- `exp`가 없는 토큰은 기본 7일 TTL을 사용합니다
+- TTL 상한은 30일이며, 위조된 과도하게 긴 `exp`가 메모리를 잠그는 것을 방지합니다 (DoS 방어)
+- 만료된 토큰도 취소할 수 있으며, 항목은 블랙리스트에서 자동으로 정리됩니다
+:::
 
 <Badge type="tip" text="v1.0.0+" />
 
@@ -343,7 +350,7 @@ func (p *Processor) Revoke(tokenString string) error
 func (p *Processor) IsRevoked(tokenString string) (bool, error)
 ```
 
-토큰이 취소되었는지 확인합니다.
+토큰이 취소되었는지 확인합니다. 서명을 검증한 후 블랙리스트에서 토큰의 jti 상태를 조회합니다. 블랙리스트가 설정되지 않은 경우 `false`와 `nil` 오류를 반환합니다.
 
 <Badge type="tip" text="v1.0.0+" />
 

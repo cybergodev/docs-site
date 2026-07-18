@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Интеграция с HTTP"
-title: "Интеграция с HTTP - CyberGo HTML | веб-сервисы"
-description: "Интеграция CyberGo HTML с HTTP: скрейпинг через net/http, оптимизация пакетов, тайм-ауты контекста, веб-сервисы, синглтон Processor и продакшен."
+title: "Интеграция с HTTP - CyberGo html | веб-сервисы"
+description: "Интеграция CyberGo html с HTTP: скрейпинг через net/http, оптимизация пакетов, тайм-ауты контекста, веб-сервисы и продакшен-практики."
 sidebar_position: 1
 ---
 

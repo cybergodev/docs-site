@@ -2,7 +2,7 @@
 sidebar_label: "Типы и константы"
 title: "Типы - CyberGo JWT | Сериализация и часы"
 description: "Справочник типов CyberGo JWT: NumericDate и StringOrSlice, SigningMethod, ValidationError, RateLimiter, SystemClock и FixedClock, плюс константы 12 алгоритмов."
-sidebar_position: 7
+sidebar_position: 60
 ---
 
 # Типы и константы

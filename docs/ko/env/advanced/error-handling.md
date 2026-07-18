@@ -1,7 +1,7 @@
 ---
 sidebar_label: "오류 처리"
 title: "오류 처리 - CyberGo env | 센티넬 오류와 복구 전략"
-description: "CyberGo env 오류 처리 가이드로 16개 센티넬 오류의 errors.Is 검사, 8가지 구조화 오류의 errors.As 추출, 복구·성능 저하 전략, 오류 체인 추적을 설명합니다."
+description: "CyberGo env 오류 처리 가이드로 16개 센티넬 오류의 errors.Is 검사, ParseError/FileError/SecurityError 구조화 오류의 errors.As 추출, 복구·성능 저하 전략과 오류 체인 추적을 프로덕션 관점에서 설명합니다."
 sidebar_position: 2
 ---
 

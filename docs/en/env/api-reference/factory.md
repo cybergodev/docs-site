@@ -1,7 +1,7 @@
 ---
-sidebar_label: "Factory"
+sidebar_label: "Component Factory"
 title: "ComponentFactory API - CyberGo env | Component Factory"
-description: "CyberGo env ComponentFactory API reference: create audit handlers, validators, file-system adapters and register custom parsers with Close lifecycle control."
+description: "CyberGo env ComponentFactory API: creates Validator, Auditor, FileSystem adapter, expander; registers custom parsers; Close lifecycle management."
 sidebar_position: 8
 ---
 
@@ -292,7 +292,7 @@ func NewCloseableChannelHandler(bufferSize int) *CloseableChannelHandler
 Creates a closeable audit handler with its own buffered channel. Unlike `ChannelAuditHandler` which accepts an external channel, `CloseableChannelHandler` creates and owns its own buffered channel. Call `Close()` to close the handler and the channel. Use `Channel()` to receive events.
 
 **Parameters:**
-- `bufferSize` - Buffered channel size
+- `bufferSize` - Buffered channel size (negative values are treated as 0)
 
 ```go
 handler := env.NewCloseableChannelHandler(64)
@@ -302,6 +302,40 @@ go func() {
     for event := range handler.Channel() {
         fmt.Printf("Audit: %+v\n", event)
     }
+}()
+```
+
+#### CloseableChannelHandler Methods
+
+In addition to implementing the `AuditHandler` interface (`Log` / `Close`), `CloseableChannelHandler` provides the following specific methods:
+
+```go
+func (h *CloseableChannelHandler) Channel() <-chan AuditEvent
+func (h *CloseableChannelHandler) IsClosed() bool
+```
+
+**Method Descriptions:**
+
+| Method | Signature | Purpose |
+|------|------|------|
+| `Channel` | `func (h *CloseableChannelHandler) Channel() <-chan AuditEvent` | Returns the internal read-only channel for consuming audit events. After `Close()` is called, this channel is closed and the `range` loop exits accordingly |
+| `IsClosed` | `func (h *CloseableChannelHandler) IsClosed() bool` | Checks whether the handler has been closed (thread-safe, can be called concurrently) |
+
+```go
+handler := env.NewCloseableChannelHandler(64)
+defer handler.Close()
+
+// Check status before closing
+if !handler.IsClosed() {
+    // Handler is still usable
+}
+
+// Consume events until the channel closes
+go func() {
+    for event := range handler.Channel() {
+        fmt.Printf("Audit: %+v\n", event)
+    }
+    // After handler.Close(), the channel closes and the loop exits
 }()
 ```
 

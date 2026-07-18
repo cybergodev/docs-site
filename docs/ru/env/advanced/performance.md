@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Оптимизация производительности"
 title: "Производительность - CyberGo env | Настройка параллелизма"
-description: "Руководство по производительности CyberGo env: конкурентность RWMutex, пул объектов, блокировка mlock и потоковый разбор с бенчмарками и тюнингом."
+description: "Производительность CyberGo env: RWMutex, сегментированные блокировки, sync.Pool, mlock, потоковый разбор, бенчмарки и тюнинг MaxFileSize/MaxVariables."
 sidebar_position: 1
 ---
 

@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Hooks"
+sidebar_label: "HookRegistry"
 title: "Hook System - CyberGo DD | HookRegistry"
 description: "CyberGo DD lifecycle hooks API: custom callbacks for BeforeLog, AfterLog, OnRotate, OnError events via HookRegistry for log processing extensions."
 sidebar_position: 1
@@ -19,6 +19,36 @@ DD provides an event-based hook system for inserting custom logic at key points 
 | `HookOnRotate` | `"OnRotate"` | During file rotation |
 | `HookOnClose` | `"OnClose"` | When logger is closed |
 | `HookOnError` | `"OnError"` | When an error occurs |
+
+## Hook Function Types
+
+### Hook
+
+```go
+type Hook func(ctx context.Context, hookCtx *HookContext) error
+```
+
+Hook function signature. Called when a log-lifecycle event is triggered.
+
+- When a `BeforeLog` hook returns an error, **the log entry is not written**.
+- For other events, a returned error by default aborts subsequent hook execution; if an error handler is set (see `HookErrorHandler`), the error is instead handed to the handler and all hooks still run.
+- Panics raised inside a hook are caught by the `HookRegistry` and converted into errors, so they cannot bring down the whole application.
+
+### HookErrorHandler
+
+```go
+type HookErrorHandler func(event HookEvent, hookCtx *HookContext, err error)
+```
+
+Hook error handler signature.
+
+Parameters:
+
+- `event`: the hook event type that triggered the error
+- `hookCtx`: the context passed to the hook
+- `err`: the error returned by the hook (or converted from a panic)
+
+Once an error handler is set (via `HookRegistry.SetErrorHandler` or `HooksConfig.ErrorHandler`), `Trigger` runs all hooks instead of stopping on the first error; each error is passed to the handler. **Exception**: for the `BeforeLog` event, even when a handler is set, a returned error still prevents the log from being written. The handler itself must not panic; if it does, the panic is recovered and printed to stderr.
 
 ## HookRegistry
 

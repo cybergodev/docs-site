@@ -1,7 +1,7 @@
 ---
 sidebar_label: "セキュリティ概要"
-title: "セキュリティ概要 - CyberGo JSON | セキュリティベストプラクティス"
-description: "CyberGo JSON セキュリティベストプラクティス：入力バリデーション、MaxNestingDepthSecurity/MaxMemory 制限、パストラバーサルと JSON インジェクション対策、機密データフィルタ、監査ログで本番安全を支えます。"
+title: "セキュリティ概要 - CyberGo JSON | ベストプラクティス"
+description: "CyberGo JSON セキュリティベストプラクティス：入力バリデーション、MaxNestingDepthSecurity/MaxMemory リソース制限、パストラバーサルと JSON インジェクション防御、機密データフィルタリングで本番を守ります。"
 sidebar_position: 1
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Конфигурация"
 title: "Конфигурация - CyberGo DD | Подробное описание Config"
-description: "Полная документация API структуры Config CyberGo DD, включая предустановленные конфигурации DefaultConfig/DevelopmentConfig/JSONConfig, настройку целей вывода OutputTarget, правила валидации полей, управление сэмплированием, параметры форматирования и метод Validate, предоставляющая гибкую и типобезопасную настройку поведения логгера."
+description: "Полная документация API структуры Config CyberGo DD: пресеты DefaultConfig/DevelopmentConfig/JSONConfig, настройка целей вывода OutputTarget, правила валидации полей, управление сэмплированием, параметры форматирования и метод Validate, обеспечивая гибкую и типобезопасную настройку поведения логгера."
 sidebar_position: 4
 ---
 
@@ -85,7 +85,13 @@ type Config struct {
 func (c *Config) Clone() Config
 ```
 
-Создаёт глубокую копию конфигурации, которую можно безопасно изменять, не затрагивая оригинал.
+Создаёт копию конфигурации, которую можно безопасно изменять, не затрагивая оригинал. Для nil-приёмника возвращает нулевое значение `Config{}`.
+
+Стратегия копирования (согласована с комментариями к `Clone` в исходниках):
+
+- **Глубокое копирование**: `Targets` (срез), `JSON` (включая `JSONFieldNames`), `Security`, `Hooks`, `Sampling`, `Audit`
+- **Поверхностное копирование**: `FatalHandler`, `WriteErrorHandler`, `FieldValidation` (функции/указатели разделяются)
+- **Смешанное**: срез `ContextExtractors` копируется, но сами экземпляры экстракторов разделяются
 
 ```go
 base := dd.DefaultConfig()
@@ -99,7 +105,15 @@ custom.Level = dd.LevelDebug
 func (c Config) Validate() error
 ```
 
-Проверяет корректность конфигурации, проверяет цели вывода, уровень, формат и т.д.
+Проверяет корректность конфигурации и возвращает первую обнаруженную ошибку. `dd.New(cfg)` автоматически вызывает этот метод внутри; его можно вызвать вручную до передачи в `New`, чтобы выявить проблемы заранее.
+
+Пункты проверки:
+
+- `Level` должен попадать в диапазон `[LevelDebug, LevelFatal]`
+- `Format` должен быть `FormatText` или `FormatJSON`
+- При `IncludeTime=true` и непустом `TimeFormat` проверяется эталонный шаблон времени Go (например, `time.RFC3339`)
+- Общее число `Targets` не превышает 100 (при превышении возвращается `ErrMaxWritersExceeded`)
+- Каждый элемент `Targets`: для `OutputCustom` требуется не-nil `Writer`, для `OutputFile` требуется непустой `Path`
 
 ```go
 cfg := dd.DefaultConfig()
@@ -148,6 +162,19 @@ func ConsoleOutput() OutputTarget
 func FileOutput(path string) OutputTarget
 func CustomOutput(w io.Writer) OutputTarget
 ```
+
+:::tip Параметры ротации по умолчанию FileOutput
+`OutputTarget`, возвращаемый `FileOutput`, предзаполнен значениями ротации по умолчанию: `MaxSizeMB=100`, `MaxBackups=10`, `MaxAge=30 * 24 * time.Hour` (30 дней), `Compress=false`. Для пользовательской настройки просто измените соответствующие поля возвращаемого значения:
+
+```go
+target := dd.FileOutput("logs/app.log")
+target.MaxSizeMB = 50               // Срезка по 50 МБ
+target.MaxBackups = 5               // Хранить 5 резервных копий
+target.MaxAge = 7 * 24 * time.Hour  // Хранить 7 дней
+target.Compress = true              // gzip-сжатие старых логов
+```
+
+:::
 
 ```go
 // Вывод в консоль
@@ -213,11 +240,16 @@ cfg.FieldNames = &dd.JSONFieldNames{
 func DefaultJSONOptions() *JSONOptions
 ```
 
-Возвращает параметры вывода JSON по умолчанию.
+Возвращает параметры `JSONOptions` по умолчанию: по умолчанию без красивого вывода (отступ — два пробела), имена полей используются по умолчанию.
 
 ```go
-cfg := dd.JSONConfig()
-// Включает JSONOptions по умолчанию
+opts := dd.DefaultJSONOptions()
+opts.PrettyPrint = true
+
+logger, _ := dd.New(dd.Config{
+    Format: dd.FormatJSON,
+    JSON:   opts,
+})
 ```
 
 ## SamplingConfig

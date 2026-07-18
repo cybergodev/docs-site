@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Быстрый старт"
 title: "Быстрый старт - CyberGo env | Руководство на 5 минут"
-description: "Начните с CyberGo env за 5 минут: установка go get, загрузка .env, типобезопасное чтение, маппинг структур и подстановка переменных с примерами кода."
-sidebar_position: 2
+description: "CyberGo env за 5 минут: go get, .env, типобезопасное чтение, GetSecure, маппинг структур, ${VAR}, errors.Is, четыре пресета и многофайловая загрузка."
+sidebar_position: 1
 ---
 
 # Быстрый старт

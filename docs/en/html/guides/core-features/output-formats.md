@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Output Formats"
-title: "Output Format Guide - CyberGo HTML | Format Comparison"
-description: "CyberGo HTML output format guide: comparing text, Markdown, and JSON — features, use cases, InlineImageFormat, InlineLinkFormat, context, and file input."
+title: "Output Format Guide - CyberGo html | Format Comparison"
+description: "CyberGo html output format guide: comparing the features and use cases of plain text, Markdown, and JSON output, including format option configuration."
 sidebar_position: 2
 ---
 

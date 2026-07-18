@@ -1,7 +1,7 @@
 ---
 sidebar_label: "오류 처리"
 title: "오류 처리 - CyberGo JSON | 모범 사례"
-description: "CyberGo JSON 오류 처리 모범 사례: JsonsError 판단, errors.Is/As, 표준 오류 변수, 복구 전략, SafeError, RedactedPath 로깅으로 견고한 예외 처리를 구축합니다."
+description: "CyberGo JSON 오류 처리 모범 사례: JsonsError, errors.Is/As, 표준 오류 변수, SafeError, RedactedPath로 견고한 예외 처리를 구축합니다."
 sidebar_position: 2
 ---
 

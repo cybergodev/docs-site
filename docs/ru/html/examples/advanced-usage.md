@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Продвинутые примеры"
-title: "Продвинутые примеры - CyberGo HTML | сценарии"
-description: "Продвинутые примеры CyberGo HTML: свой Scorer, конвейер аудита с несколькими Sink, пакетная обработка, пул Processor и мониторинг через ChannelAuditSink."
+title: "Продвинутые примеры - CyberGo html | сценарии"
+description: "Продвинутые примеры CyberGo html: пользовательский Scorer, многокомпонентный конвейер аудита, пакетная обработка, пул Processor и мониторинг."
 sidebar_position: 2
 ---
 

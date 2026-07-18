@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Фильтрация конфиденциальных данных"
-title: "Фильтрация данных - CyberGo DD | Автомаскирование"
-description: "Руководство по конфигурации фильтрации конфиденциальных данных CyberGo DD, охватывающее встроенные шаблоны фильтрации (пароли, API-ключи, кредитные карты, SSN, JWT и др.), пользовательские regex-шаблоны, пять уровней безопасности, отраслевые предустановки соответствия (HIPAA, PCI-DSS, правительственные стандарты) и статистику фильтрации с мониторингом, помогающее разработчикам создать соответствующую стандартам систему маскирования логов."
+title: "Фильтрация данных - CyberGo DD | Маскирование логов"
+description: "Фильтрация конфиденциальных данных CyberGo DD: встроенные шаблоны (пароли, API-ключи, SSN, JWT), regex, уровни безопасности и предустановки HIPAA/PCI-DSS."
 sidebar_position: 4
 ---
 
@@ -12,9 +12,13 @@ DD имеет встроенную автоматическую фильтрац
 ## Быстрое включение
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: dd.DefaultSecurityConfig(),
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 // Поле password автоматически маскируется
 logger.InfoWith("Пользователь вошёл",
@@ -55,11 +59,15 @@ filter := dd.NewEmptySensitiveDataFilter()
 _ = filter.AddPattern(`(?i)credit_card\s*[:=]\s*\d+`)
 _ = filter.AddPattern(`(?i)phone\s*[:=]\s*\d{11}`)
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: &dd.SecurityConfig{
         SensitiveFilter: filter,
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### Создание пользовательского фильтра с нуля
@@ -127,13 +135,17 @@ cfg := dd.GovernmentConfig()
 
 ```go
 // Медицинская система: использование конфигурации соответствия HIPAA
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Format:   dd.FormatJSON,
     Security: dd.HealthcareConfig(),
     Targets: []dd.OutputTarget{
         dd.FileOutput("logs/hipaa-audit.json"),
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 // Лог-сообщения с конфиденциальной информацией автоматически маскируются
 logger.Info("Запись пациента mrn=MRN-123456 diagnosis=J18.9 обновлена")
@@ -163,16 +175,23 @@ fmt.Printf("Количество таймаутов: %d\n", stats.TotalTimeouts)
 
 ```go
 // Использование уровня безопасности Development (без фильтрации конфиденциальных данных)
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: dd.SecurityConfigForLevel(dd.SecurityLevelDevelopment),
 })
+if err != nil {
+    log.Fatal(err)
+}
 
 // Или ручная установка пустого SensitiveFilter
-logger, _ := dd.New(dd.Config{
+logger, err = dd.New(dd.Config{
     Security: &dd.SecurityConfig{
         SensitiveFilter: nil,
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 :::warning Фильтрация включена по умолчанию

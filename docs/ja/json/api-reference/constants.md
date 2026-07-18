@@ -1,7 +1,7 @@
 ---
 sidebar_label: "定数とエラー"
 title: "定数とエラー - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON 定数とエラー：DefaultMaxJSONSize、DefaultMaxNestingDepth、ErrPathNotFound などのエラー変数と MergeMode 列挙型で Go の設定とエラー処理を支えます。"
+description: "CyberGo JSON 定数とエラー：DefaultMaxJSONSize、DefaultMaxNestingDepth 制限、ErrPathNotFound エラー変数と MergeMode マージモードで、Go 設定を支えます。"
 sidebar_position: 7
 ---
 
@@ -23,13 +23,13 @@ var (
     // 制限エラー
     ErrSizeLimit        = errors.New("size limit exceeded")
     ErrDepthLimit       = errors.New("depth limit exceeded")
-    ErrConcurrencyLimit = errors.New("concurrency limit exceeded")
+    ErrConcurrencyLimit = errors.New("concurrency limit exceeded") // 制御された操作（Get/Set/Delete など）が MaxConcurrency に達したときに返されます
 
     // セキュリティとバリデーションエラー
     ErrSecurityViolation = errors.New("security violation detected")
     ErrUnsupportedPath   = errors.New("unsupported path operation")
 
-    // リソースとパフォーマンスエラー
+    // リソースとパフォーマンスエラー（いずれも Deprecated：現在どの操作からも返されず、将来の使用のために予約）
     ErrOperationTimeout  = errors.New("operation timeout")
     ErrResourceExhausted = errors.New("system resources exhausted")
 )

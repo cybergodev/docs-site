@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Audit Logging"
 title: "Audit Logging - CyberGo DD | Security Audit Practical Guide"
-description: "CyberGo DD audit logging guide: AuditLogger async events, 11 event types, severity filtering, HMAC signing, monitoring, and compliance strategies."
+description: "CyberGo DD audit logging: AuditLogger async events, 11 event types, severity filtering, HMAC signing, monitoring, and tamper-proof verification."
 sidebar_position: 5
 ---
 
@@ -21,35 +21,46 @@ Business Logger               Audit Logger (AuditLogger)
                                     └─ IntegrityViolation
 ```
 
-Audit logs are written asynchronously through a buffered channel without blocking business flows.
+Audit logs are written asynchronously through a buffered channel, without blocking business flows.
 
 ## Creating an AuditLogger
 
 ### Basic Usage
 
 ```go
-auditLogger, _ := dd.NewAuditLogger(dd.DefaultAuditConfig())
+auditLogger, err := dd.NewAuditLogger(dd.DefaultAuditConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer auditLogger.Close()
 
 // Note: AuditLogger and Logger are independent components.
 // They do not auto-integrate; connection requires hooks or other mechanisms.
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: dd.DefaultSecurityConfig(),
-    Targets: []dd.OutputTarget{dd.ConsoleOutput()},
+    Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### Custom Configuration
 
 ```go
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     Enabled:          true,
-    Output:           os.Stderr,           // Output target (*os.File)
-    BufferSize:       2000,                // Buffered channel size
-    IncludeTimestamp: true,                // Include timestamp
-    JSONFormat:       true,                // JSON format
+    Output:           os.Stderr,               // Output target (*os.File)
+    BufferSize:       2000,                    // Buffered channel size
+    IncludeTimestamp: true,                    // Include timestamp
+    JSONFormat:       true,                    // JSON format
     MinimumSeverity:  dd.AuditSeverityWarning, // Minimum severity level
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer auditLogger.Close()
 ```
 
 ## Audit Event Types
@@ -76,17 +87,23 @@ Audit logging combined with integrity signatures can prevent log tampering:
 
 ```go
 // Create a signer
-integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
-signer, _ := dd.NewIntegritySigner(integrityCfg)
+integrityCfg, err := dd.DefaultIntegrityConfigSafe()
+if err != nil {
+    log.Fatal(err)
+}
+signer, err := dd.NewIntegritySigner(integrityCfg)
+if err != nil {
+    log.Fatal(err)
+}
 
 // Create an audit logger with signing
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     Enabled:          true,
     Output:           auditFile,
     JSONFormat:       true,
     BufferSize:       1000,
     MinimumSeverity:  dd.AuditSeverityInfo,
-    IntegritySigner:  signer,    // HMAC signature
+    IntegritySigner:  signer, // HMAC signature
 })
 ```
 
@@ -132,9 +149,13 @@ Audit events are filtered by severity level. Events below `MinimumSeverity` are 
 
 ```go
 // Only record Warning and above
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     MinimumSeverity: dd.AuditSeverityWarning,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer auditLogger.Close()
 ```
 
 | Level | Value | Use Case |
@@ -150,6 +171,7 @@ auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
 package main
 
 import (
+    "log"
     "os"
 
     "github.com/cybergodev/dd"
@@ -157,15 +179,24 @@ import (
 
 func main() {
     // Create audit file
-    auditFile, _ := os.Create("logs/audit.json")
+    auditFile, err := os.Create("logs/audit.json")
+    if err != nil {
+        log.Fatal(err)
+    }
     defer auditFile.Close()
 
     // Create signer
-    integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
-    signer, _ := dd.NewIntegritySigner(integrityCfg)
+    integrityCfg, err := dd.DefaultIntegrityConfigSafe()
+    if err != nil {
+        log.Fatal(err)
+    }
+    signer, err := dd.NewIntegritySigner(integrityCfg)
+    if err != nil {
+        log.Fatal(err)
+    }
 
     // Create audit logger
-    auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+    auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
         Enabled:          true,
         Output:           auditFile,
         JSONFormat:       true,
@@ -173,14 +204,20 @@ func main() {
         MinimumSeverity:  dd.AuditSeverityInfo,
         IntegritySigner:  signer,
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer auditLogger.Close()
 
     // Create business logger (with security filtering)
-    logger, _ := dd.New(dd.Config{
+    logger, err := dd.New(dd.Config{
         Format:   dd.FormatJSON,
         Security: dd.DefaultSecureConfig(),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer logger.Close()
 
     // Normal business logging (sensitive data automatically redacted)
@@ -190,7 +227,7 @@ func main() {
     )
 
     // Note: AuditLogger and Logger are independent components.
-    // Use hooks or other mechanisms to forward Logger security events to AuditLogger.
+    // Use hooks to forward Logger security events to AuditLogger.
 }
 ```
 

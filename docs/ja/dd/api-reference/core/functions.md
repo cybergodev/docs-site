@@ -1,7 +1,7 @@
 ---
 sidebar_label: "パッケージ関数"
 title: "パッケージ関数 - CyberGo DD | グローバル関数とコンストラクタ"
-description: "CyberGo DD パッケージレベル関数完全 API ドキュメント。New ロガー作成関数、Default/SetDefault/InitDefault グローバルログ管理関数、DefaultConfig/DevelopmentConfig/JSONConfig 設定プリセット関数、全コンストラクタファクトリ関数を含み、dd. プレフィックスで直接呼び出し可能。"
+description: "CyberGo DD パッケージ関数 API ドキュメント。New ロガー作成、Default/SetDefault/InitDefault グローバル管理、設定プリセット、全コンストラクタを含み dd. プレフィックスで直接呼び出し可能。"
 sidebar_position: 1
 ---
 
@@ -156,7 +156,7 @@ dd.LogWith(dd.LevelError, "リクエスト失敗",
 | `InfoWith` | `func InfoWith(msg string, fields ...Field)` | Info レベル 構造化ログ |
 | `WarnWith` | `func WarnWith(msg string, fields ...Field)` | Warn レベル 構造化ログ |
 | `ErrorWith` | `func ErrorWith(msg string, fields ...Field)` | Error レベル 構造化ログ |
-| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal レベル 構造化ログ |
+| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal レベル 構造化ログ（デフォルトで os.Exit(1) を呼び出し、FatalHandler でカスタマイズ可能） |
 
 ```go
 dd.InfoWith("リクエスト完了",

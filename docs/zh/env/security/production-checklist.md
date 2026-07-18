@@ -1,7 +1,7 @@
 ---
 sidebar_label: "生产检查清单"
 title: "生产检查清单 - CyberGo env | 安全上线检查"
-description: "CyberGo env 生产部署安全检查清单，涵盖 .env 权限保护、RequiredKeys/AllowedKeys 验证、审计启用、SecureValue 处理与性能参数调优。"
+description: "CyberGo env 生产部署安全检查清单，涵盖 .env 文件 600 权限与 .gitignore 保护、RequiredKeys/AllowedKeys 必需键验证、审计日志启用、SecureValue 处理与性能参数调优，保障上线即安全。"
 sidebar_position: 2
 ---
 

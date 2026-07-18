@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor"
-title: "Processor - CyberGo HTML | ядро обработки"
-description: "API Processor CyberGo HTML: New, семейство Extract, GetStatistics, GetAuditLog, ClearCache, Close — управление жизненным циклом для частого переиспользования."
+title: "Processor - CyberGo html | API и примеры"
+description: "API Processor CyberGo html: New, семейство Extract, GetStatistics, ClearCache, Close — управление жизненным циклом для высокочастотного переиспользования."
 sidebar_position: 2
 ---
 

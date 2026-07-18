@@ -11,15 +11,17 @@ HTTPC는 28개의 요청 옵션 함수, 5개의 설정 프리셋, 8개의 내장
 
 ## 핵심 아키텍처
 
+HTTPC는 이중 계층 설계를 사용합니다. Layer 1의 메서드 API는 얇은 래퍼이며, 실제 요청을 처리하는 엔진은 Layer 2의 Handler 파이프라인입니다.
+
 ```text
-httpc 패키지
-├── Client 인터페이스 - 메인 클라이언트, 모든 HTTP 메서드 지원
-├── DomainClienter 인터페이스 - 도메인 범위 클라이언트, 세션 관리 내장
-├── Config - 설정 시스템 (타임아웃/연결/보안/재시도/미들웨어)
-├── RequestOption - 28개 요청 옵션 함수
-├── MiddlewareFunc - 미들웨어 체인
-├── Result - 응답 결과 (요청 메타데이터 포함)
-└── 패키지 함수 - 클라이언트 생성 없이 사용 가능
+HTTPC 이중 계층 아키텍처
+├── Layer 1  메서드 API (얇은 래퍼)
+│     패키지 함수 httpc.Get/Post/... + Client 메서드 + 요청 옵션 → Result
+│
+└── Layer 2  Handler 파이프라인 (요청 처리 엔진)
+      MiddlewareFunc(Handler) 양파 체인
+      → clientImpl.middlewareChain 조립
+      → 실행 (각 요청 = Handler 체인 조립 및 실행)
 ```
 
 ## 모듈 탐색
@@ -28,10 +30,11 @@ httpc 패키지
 
 | 모듈 | 설명 |
 |------|------|
-| [패키지 함수](./core/functions) | Get/Post/Put/Patch/Delete 등 패키지 함수, 클라이언트 메서드와 보조 함수 |
+| [패키지 함수와 클라이언트 메서드](./core/functions) | Get/Post/Put/Patch/Delete 등 패키지 함수, 클라이언트 메서드와 보조 함수 |
 | [설정](./client-config/config) | Config 구조체, 5가지 프리셋 설정, 검증 함수와 Cookie 보안 |
 | [인터페이스](./types/interfaces) | Client, Doer, DomainClienter, RetryPolicy 등 핵심 인터페이스 |
 | [Result](./core/result) | Result, RequestInfo, ResponseInfo, RequestMeta 타입과 모든 메서드 |
+| [핸들러 파이프라인](./handler/handler-chain) | Handler 파이프라인, MiddlewareFunc 양파 체인, Chain 결합기와 뮤테이터 계약 |
 
 ### 요청과 응답
 

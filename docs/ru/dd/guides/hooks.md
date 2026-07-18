@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Система хуков"
 title: "Система хуков - CyberGo DD | Хуки жизненного цикла"
-description: "Практическое руководство по системе хуков CyberGo DD, подробно описывающее 6 типов событий хуков жизненного цикла (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), регистрацию и управление HookRegistry, контекстные данные HookContext, стратегии обработки ошибок и распространённые сценарии использования хуков, помогающее разработчикам расширять поведение библиотеки логирования."
+description: "Руководство по системе хуков CyberGo DD: 6 событий жизненного цикла, HookRegistry для регистрации, контекст HookContext и распространённые сценарии расширения."
 sidebar_position: 6
 ---
 
@@ -38,9 +38,13 @@ hooks := dd.NewHooksFromConfig(dd.HooksConfig{
     }},
 })
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Hooks: hooks,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### Использование HookRegistry
@@ -63,9 +67,13 @@ registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Hooks: registry,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ## Контекст HookContext
@@ -106,7 +114,11 @@ registry.Add(dd.HookAfterLog, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, _ := dd.New(dd.Config{Hooks: registry})
+logger, err := dd.New(dd.Config{Hooks: registry})
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### Сэмплирование логов

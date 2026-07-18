@@ -1,7 +1,7 @@
 ---
 sidebar_label: "インターフェース定義"
-title: "インターフェース定義 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON 拡張インターフェース：CustomEncoder、TypeEncoder、Validator、Hook、PathParser、DangerousPattern でエンコードや検証、セキュリティを柔軟に拡張します。"
+title: "インターフェース - CyberGo JSON | API リファレンス"
+description: "CyberGo JSON 拡張インターフェース：CustomEncoder、TypeEncoder、Validator、Hook、PathParser、DangerousPattern で、エンコード・検証・セキュリティ防護を柔軟に拡張します。"
 sidebar_position: 6
 ---
 

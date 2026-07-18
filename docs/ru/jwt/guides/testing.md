@@ -2,7 +2,7 @@
 sidebar_label: "Тестирование и внедрение часов"
 title: "Тестирование - CyberGo JWT | Фиксированные часы"
 description: "Руководство по тестированию CyberGo JWT: внедрение FixedClock через ClockProvider для контроля времени в модульных тестах, проверка срока, обновления и отзыва."
-sidebar_position: 6
+sidebar_position: 60
 ---
 
 # Тестирование и внедрение часов

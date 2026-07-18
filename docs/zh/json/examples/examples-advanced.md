@@ -1,7 +1,7 @@
 ---
 sidebar_label: "高级示例"
 title: "高级功能示例 - CyberGo JSON | 进阶用法"
-description: "CyberGo JSON 高级示例：EncodeBatch 批量编码、EncodeFields 字段选择、PreParse 预解析、SafeGet 安全获取、WarmupCache 缓存预热与内存池优化，展示生产级性能技巧。"
+description: "CyberGo JSON 高级示例：EncodeBatch 批量编码、EncodeFields 字段选择、PreParse 预解析、SafeGet 安全获取与 WarmupCache 预热，提升性能。"
 sidebar_position: 2
 ---
 

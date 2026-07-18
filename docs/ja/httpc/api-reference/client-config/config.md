@@ -275,7 +275,7 @@ func TestingConfig() *Config
 | UserAgent | httpc-test/1.0 |
 
 :::danger
-この設定は TLS 検証と SSRF 防護を無効にします。**テストのみに使用してください**。テスト以外の環境で使用するとセキュリティ警告が出力されます。
+この設定は TLS 検証と SSRF 防護を無効にします。**テストのみに使用してください**。テスト以外の環境で使用するとセキュリティ警告が出力されます（詳しくは [セキュリティ警告の出力](#setsecuritywarnoutput) を参照）。
 :::
 
 ### MinimalConfig
@@ -300,6 +300,26 @@ func MinimalConfig() *Config
 | BackoffFactor | 1.0 |
 | EnableJitter | false |
 | FollowRedirects | false |
+
+## セキュリティ警告の出力
+
+### SetSecurityWarnOutput
+
+```go
+func SetSecurityWarnOutput(w io.Writer)
+```
+
+セキュリティ警告の出力先をリダイレクトします。`TestingConfig()` を使用した場合、または `SecurityConfig.InsecureSkipVerify`（`Config.Security`）を `true` に設定した場合、httpc はこの writer に `[SECURITY WARNING]` レベルの警告を出力します（警告の種類ごとにプロセス単位で最大 1 回まで出力）。デフォルトの出力先は `os.Stderr` です。`io.Discard` を渡すことで警告を完全に抑制でき、テスト時や安全性が確認された内部シナリオでのサイレント実行に便利です。
+
+```go
+// テストでセキュリティ警告を抑制
+httpc.SetSecurityWarnOutput(io.Discard)
+cfg := httpc.TestingConfig()
+```
+
+:::tip 影響範囲
+この設定はプロセスレベルのグローバル状態であり、以降に作成されるすべてのクライアントに影響します。`TestingConfig` と `InsecureSkipVerify` の 2 種類の警告はそれぞれ独立してカウントされます（互いのトリガーに影響しません）が、同じ出力 writer を共有します。
+:::
 
 ## 検証
 

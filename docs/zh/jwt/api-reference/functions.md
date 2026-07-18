@@ -2,7 +2,7 @@
 sidebar_label: "包函数"
 title: "包函数 - CyberGo JWT | 工厂函数与默认值"
 description: "包级函数参考：New 创建并校验 Processor、DefaultConfig 与 DefaultBlacklistConfig 返回默认配置、NewNumericDate 构造时间戳、NewRateLimiter 创建令牌桶限流器，含完整签名与默认值。"
-sidebar_position: 2
+sidebar_position: 10
 ---
 
 # 包函数

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "設定"
 title: "設定 - CyberGo DD | Config 詳解"
-description: "CyberGo DD Config 構造体完全 API ドキュメント。DefaultConfig/DevelopmentConfig/JSONConfig プリセット設定関数、OutputTarget 出力先設定、フィールド検証ルール、サンプリング制御、フォーマットオプション、Validate 検証メソッドを含み、柔軟で型安全なロガーの動作カスタマイズ機能を提供。"
+description: "CyberGo DD Config 構造体 API ドキュメント。DefaultConfig/DevelopmentConfig/JSONConfig プリセット、OutputTarget 出力先、検証ルール、サンプリング、フォーマット、Validate 検証を含む型安全なロガー設定。"
 sidebar_position: 4
 ---
 
@@ -85,7 +85,13 @@ type Config struct {
 func (c *Config) Clone() Config
 ```
 
-設定のディープコピーを作成し、元の設定に影響を与えずに安全に変更できます。
+設定のコピーを作成し、元の設定に影響を与えずに安全に変更できます。nil レシーバに対してはゼロ値 `Config{}` を返します。
+
+コピーストラテジ（ソースコード `Clone` コメントと一致）：
+
+- **ディープコピー**：`Targets`（スライス）、`JSON`（`JSONFieldNames` を含む）、`Security`、`Hooks`、`Sampling`、`Audit`
+- **シャローコピー**：`FatalHandler`、`WriteErrorHandler`、`FieldValidation`（関数/ポインタを共有）
+- **ハイブリッド**：`ContextExtractors` スライスはコピーされるが、エクストラクタインスタンス自体は共有
 
 ```go
 base := dd.DefaultConfig()
@@ -99,7 +105,15 @@ custom.Level = dd.LevelDebug
 func (c Config) Validate() error
 ```
 
-設定の妥当性を検証し、出力先、レベル、フォーマットなどが有効かチェックします。
+設定の妥当性を検証し、最初に遭遇したエラーを返します。`dd.New(cfg)` 内部で自動的に呼び出されます；`New` に渡す前に手動で呼び出して問題を早期発見することもできます。
+
+検証項目：
+
+- `Level` は `[LevelDebug, LevelFatal]` の範囲内でなければなりません
+- `Format` は `FormatText` または `FormatJSON` でなければなりません
+- `IncludeTime=true` かつ `TimeFormat` が空でない場合、Go 時間リファレンスレイアウト（`time.RFC3339` など）を検証します
+- `Targets` 総数は 100 を超えてはなりません（超過時は `ErrMaxWritersExceeded` を返します）
+- 各 `Targets` 要素：`OutputCustom` は nil でない `Writer` を持つ必要があり、`OutputFile` は空でない `Path` を持つ必要があります
 
 ```go
 cfg := dd.DefaultConfig()
@@ -148,6 +162,19 @@ func ConsoleOutput() OutputTarget
 func FileOutput(path string) OutputTarget
 func CustomOutput(w io.Writer) OutputTarget
 ```
+
+:::tip FileOutput のデフォルトローテーションパラメータ
+`FileOutput` が返す `OutputTarget` にはデフォルトのローテーション値が事前入力されています：`MaxSizeMB=100`、`MaxBackups=10`、`MaxAge=30 * 24 * time.Hour`（30 日）、`Compress=false`。カスタマイズが必要な場合は戻り値の対応フィールドを直接変更します：
+
+```go
+target := dd.FileOutput("logs/app.log")
+target.MaxSizeMB = 50               // 50 MB で分割
+target.MaxBackups = 5               // 5 個のバックアップを保持
+target.MaxAge = 7 * 24 * time.Hour  // 7 日間保持
+target.Compress = true              // 古いログを gzip 圧縮
+```
+
+:::
 
 ```go
 // コンソール出力
@@ -213,11 +240,16 @@ cfg.FieldNames = &dd.JSONFieldNames{
 func DefaultJSONOptions() *JSONOptions
 ```
 
-デフォルトの JSON 出力オプションを返します。
+デフォルトの `JSONOptions` 出力オプションを返します：デフォルトでは整形出力せず（インデントは 2 つのスペース）、フィールド名はデフォルト値を使用します。
 
 ```go
-cfg := dd.JSONConfig()
-// デフォルト JSONOptions を含む
+opts := dd.DefaultJSONOptions()
+opts.PrettyPrint = true
+
+logger, _ := dd.New(dd.Config{
+    Format: dd.FormatJSON,
+    JSON:   opts,
+})
 ```
 
 ## SamplingConfig

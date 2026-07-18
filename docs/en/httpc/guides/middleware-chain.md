@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Middleware Chain"
 title: "Middleware Chain - CyberGo HTTPC | Onion-Model Chains"
-description: "HTTPC middleware chain guide: onion-model execution, eight built-in middleware, Chain composition, custom MiddlewareFunc, and a circuit-breaker example."
+description: "HTTPC middleware chain guide: onion-model execution and bidirectional request/response processing, eight built-in middleware like Recovery/Logging/RequestID, Chain composition, custom MiddlewareFunc, and a circuit-breaker short-circuit example, helping you build observable, resilient request-processing pipelines."
 sidebar_position: 6
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Config"
 title: "Config API - CyberGo env | 설정 상세"
-description: "CyberGo env Config 구조체 API 참조로 파일 검색 경로, 보안 제한, 키 검증, 변수 확장, 감사 설정과 Development/Production 프리셋을 다룹니다."
+description: "CyberGo env Config 구조체 API 참조로 파일 검색 경로, 크기·수량 제한, 키 검증, JSON/YAML 파싱 옵션, 변수 확장, 감사 설정과 Development/Production 프리셋, 중첩 구조와 필드 승격 접근 방식을 다룹니다."
 sidebar_position: 4
 ---
 

@@ -44,7 +44,6 @@ interface CategoryMeta {
   label?: string
   position?: number
   collapsed?: boolean
-  /** Optional emoji icon prefixed to the group label (e.g. "🚀 进阶"). */
   icon?: string
 }
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Валидатор"
 title: "Validator - CyberGo JSON | Валидатор схем"
-description: "Валидатор CyberGo JSON: интерфейс Validator, структура Schema, ValidationError, SchemaConfig и руководство по пользовательским валидаторам для проверки JSON."
+description: "Валидатор CyberGo JSON: интерфейс Validator, Schema, ValidationError, SchemaConfig и пользовательские валидаторы для проверки JSON."
 sidebar_position: 2
 ---
 

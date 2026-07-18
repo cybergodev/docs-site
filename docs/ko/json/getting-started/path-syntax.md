@@ -1,8 +1,8 @@
 ---
 sidebar_label: "경로 표현식 문법"
 title: "경로 표현식 문법 - CyberGo JSON | JSONPath 가이드"
-description: "CyberGo JSON 경로 표현식 문법 가이드: 속성 접근 user.name, 배열 인덱스 items[0], 슬라이스, 와일드카드, 다중 필드 추출로 JSON 노드를 정확히 지정합니다."
-sidebar_position: 3
+description: "CyberGo JSON 경로 표현식: 속성 접근 user.name, 배열 인덱스 items[0], 슬라이스, 와일드카드, 다중 필드 추출로 JSON 노드를 지정합니다."
+sidebar_position: 2
 ---
 
 # 경로 표현식 문법

@@ -2,7 +2,7 @@
 sidebar_label: "基本サンプル"
 title: "基本サンプル - CyberGo JWT | HMAC 署名と失効"
 description: "基本サンプル集：HMAC 対称鍵でアクセストークンを発行・検証し、リフレッシュトークンで新トークンを取得、内蔵ブラックリストでログアウト済みセッションを遮断、トークンバケットレート制限で乱用を防止、全例は独立コンパイル可能。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 基本サンプル

@@ -13,9 +13,11 @@ json 包提供丰富的辅助函数，用于 JSON 比较、缓存管理和工具
 
 ### CompareJSON
 
-签名：`func CompareJSON(json1, json2 string) (bool, error)`
+签名：`func CompareJSON(json1, json2 string, cfg ...Config) (bool, error)`
 
 比较两个 JSON 字符串是否相等。处理数字精度差异和键顺序差异。
+
+无 cfg 时行为与历史一致（不做安全验证，两侧均用 `encoding/json` 编组）。传入 cfg 时，对两个输入应用安全验证（大小/深度/危险模式限制），并使用配置中的编码进行对称比较。
 
 ```go
 // 键顺序不同但内容相同
@@ -29,7 +31,14 @@ fmt.Println(equal) // true
 // 内容不同
 equal, _ = json.CompareJSON(`{"a":1}`, `{"a":2}`)
 fmt.Println(equal) // false
+
+// 带配置（应用安全验证与编码控制）
+equal, err = json.CompareJSON(a, b, json.SecurityConfig())
 ```
+
+::: tip Processor 等价方法
+`Processor.CompareJSON` 始终执行安全验证（按 cfg 或处理器自身配置），与包级函数的无 cfg 路径行为不同。详见 [Processor 数据修改](./processor/modify#processor-comparejson)。
+:::
 
 ---
 
@@ -222,7 +231,7 @@ func main() {
 ## 输出函数
 
 ::: warning API 变更说明
-Print、PrintPretty、PrintE、PrintPrettyE 已从库中移除，不再提供。请使用 [Encode](./functions/encode-decode#encode)、[EncodePretty](./functions/encode-decode#encodepretty) 或 [Prettify](./functions/encode-decode#prettify) 配合 `fmt.Println` 代替。详见 [打印函数](./print)。
+Print、PrintPretty、PrintE、PrintPrettyE 已从库中移除，不再提供。请使用 [EncodeWithConfig](./functions/output#encodewithconfig)、[EncodePretty](./functions/output#encodepretty) 或 [Prettify](./functions/output#prettify) 配合 `fmt.Println` 代替（`Encode` 已废弃）。详见 [打印函数](./print)。
 :::
 
 ---
@@ -429,7 +438,7 @@ enabled, err := result.AsBool()
 
 ## 相关
 
-- [查询获取函数](./functions/get) - Get, GetString 等查询操作
+- [查询获取函数](./functions/query) - Get, GetString 等查询操作
 - [修改函数](./functions/modify) - Set, Delete 等修改操作
 - [类型定义](./types) - AccessResult 等类型
 - [配置选项](./config) - Config 配置详解

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "快速开始"
-title: "快速开始 - CyberGo HTML | 5分钟上手指南"
-description: "CyberGo HTML 快速入门：安装、基本内容提取、四种 Config 预设、文本/Markdown/JSON 输出、上下文超时与并发安全模式，5 分钟上手 HTML 提取。"
+title: "快速开始 - CyberGo html | 5分钟入门指南"
+description: "CyberGo html 快速入门：安装、内容提取、四种 Config 预设、文本/Markdown/JSON 输出与并发安全，5 分钟上手 HTML 内容提取。"
 sidebar_position: 2
 ---
 

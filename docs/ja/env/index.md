@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概要"
-title: "CyberGo env - 環境変数管理ライブラリ"
-description: "CyberGo env は高セキュリティの Go 環境変数管理ライブラリで、.env・JSON・YAML の多フォーマット読み込み、型安全変換、SecureValue メモリ保護、監査ログで設定を安全に管理します。"
+title: "環境変数管理 - CyberGo env | Go 設定"
+description: "CyberGo env は高セキュリティの Go 環境変数管理ライブラリで、.env・JSON・YAML の自動検出読み込みと型安全変換、SecureValue メモリロック・自動ゼロクリア、${VAR} 変数展開、env タグ構造体マッピング、監査ログで設定を安全に管理します。"
 ---
 
 # env

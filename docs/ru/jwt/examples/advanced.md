@@ -2,7 +2,7 @@
 sidebar_label: "Продвинутые примеры"
 title: "Продвинутые примеры - CyberGo JWT | Асимметрия и хранилище"
 description: "Продвинутые примеры CyberGo JWT: подпись RSA и ECDSA, реализация CustomClaims, чёрный список на Redis, FixedClock для тестов и интеграция с веб-сервисом."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Продвинутые примеры

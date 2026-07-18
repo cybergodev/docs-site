@@ -2,7 +2,7 @@
 sidebar_label: "빠른 시작"
 title: "빠른 시작 - CyberGo HTTPC | 5분 가이드"
 description: "HTTPC 빠른 시작: go get 설치와 초기화, GET/POST 요청 및 응답 처리, 다섯 가지 설정 프리셋 선택, JSON 파싱과 Bearer Token 인증으로 5분 만에 보안 HTTP 클라이언트를 시작하고 첫 요청을 완성합니다."
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # 빠른 시작

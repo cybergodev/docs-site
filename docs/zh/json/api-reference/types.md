@@ -1,7 +1,7 @@
 ---
 sidebar_label: "类型定义"
 title: "类型定义 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 核心类型：Result[T] 泛型结果、AccessResult 动态访问、BatchOperation、BatchResult、Schema、Stats、HealthStatus 与 IterableValue，构成完整类型系统。"
+description: "CyberGo JSON 核心类型：Result[T] 泛型、AccessResult 访问、BatchOperation、BatchResult、Schema、Stats 与 IterableValue，构成完整类型系统。"
 sidebar_position: 5
 ---
 

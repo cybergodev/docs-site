@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Core Concepts"
 title: "Core Concepts - CyberGo DD | Architecture Design"
-description: "CyberGo DD core architecture: Logger and LoggerEntry lifecycle, structured Field patterns, processing pipeline, interfaces, and concurrency model."
+description: "CyberGo DD core architecture: Logger and LoggerEntry lifecycle, type-safe Field patterns, processing pipeline, interface hierarchy, and concurrency model."
 sidebar_position: 1
 ---
 
@@ -14,7 +14,7 @@ Understanding DD's core concepts is the foundation for effective use of this lib
 DD's logging revolves around three core types:
 
 ```text
-Logger (Log Recorder)
+Logger (log recorder)
   │
   ├── Direct use → logger.Info("message")
   │
@@ -28,11 +28,14 @@ Logger (Log Recorder)
 `Logger` is the core log recorder, created by `dd.New()`:
 
 ```go
-logger, _ := dd.New(dd.DefaultConfig())
+logger, err := dd.New(dd.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer logger.Close()
 
-logger.Info("Service started")
-logger.InfoWith("Request processed",
+logger.Info("service started")
+logger.InfoWith("request processed",
     dd.String("method", "GET"),
     dd.Int("status", 200),
 )
@@ -52,13 +55,13 @@ requestLog := logger.WithFields(
 )
 
 // Each call automatically carries preset fields
-requestLog.Info("Service started")
-// Output: ... Service started service=user-api version=2.1.0
+requestLog.Info("service started")
+// Output: ... service started service=user-api version=2.1.0
 
-requestLog.InfoWith("User login",
+requestLog.InfoWith("user login",
     dd.String("user", "alice"),
 )
-// Output: ... User login service=user-api version=2.1.0 user=alice
+// Output: ... user login service=user-api version=2.1.0 user=alice
 ```
 
 :::tip Immutable Design
@@ -71,10 +74,10 @@ DD provides a global logger suitable for simple scenarios or quick prototyping:
 
 ```go
 // Use package-level functions directly (via global Logger)
-dd.Info("Global log")
+dd.Info("global log")
 
 // Equivalent to
-dd.Default().Info("Global log")
+dd.Default().Info("global log")
 ```
 
 ## Field System
@@ -113,7 +116,7 @@ requestLog := serviceLog.WithFields(
 )
 
 // Layer 3: Actual log (appending more fields)
-requestLog.InfoWith("Processing completed",
+requestLog.InfoWith("processing completed",
     dd.Int("status", 200),
     dd.Duration("elapsed", 50*time.Millisecond),
 )
@@ -137,7 +140,7 @@ User calls logger.InfoWith("msg", fields...)
   ③ Context extraction ── Extract TraceID/SpanID etc. from registered extractors
        │
        ▼
-  ④ BeforeLog hook ── Can modify fields or abort logging
+  ④ BeforeLog hook
        │
        ▼
   ⑤ Formatting ──── Text format or JSON format
@@ -156,7 +159,7 @@ User calls logger.InfoWith("msg", fields...)
 ```
 
 :::info Performance Design
-The level check (step 1) uses atomic operations without locking, resulting in nearly zero overhead. Security filtering (step 2) processes small inputs synchronously and uses independent goroutines with timeout protection for large inputs, without blocking the main flow.
+The level check (step ①) uses atomic operations without locking, resulting in nearly zero overhead. Security filtering (step ②) processes small inputs synchronously and uses independent goroutines with timeout protection for large inputs, without blocking the main flow.
 :::
 
 ## Interface Hierarchy
@@ -208,7 +211,7 @@ var logger *dd.Logger  // Initialize once
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
     // Safe: concurrent calls
-    logger.InfoWith("Request received",
+    logger.InfoWith("request received",
         dd.String("path", r.URL.Path),
         dd.String("method", r.Method),
     )
@@ -220,13 +223,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 DD supports three output targets that can be freely combined:
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Targets: []dd.OutputTarget{
         dd.ConsoleOutput(),                    // Console
         dd.FileOutput("logs/app.log"),         // File (auto-rotation)
         dd.CustomOutput(customWriter),         // Custom io.Writer
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 Built-in Writer components:

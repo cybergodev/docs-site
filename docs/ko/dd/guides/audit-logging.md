@@ -1,7 +1,7 @@
 ---
 sidebar_label: "감사 로그"
 title: "감사 로그 - CyberGo DD | 보안 감사 실전 가이드"
-description: "CyberGo DD 감사 로그 실전 가이드. AuditLogger 비동기 이벤트 기록 메커니즘, 11가지 내장 감사 이벤트 타입, 심각도 등급 필터링과 분류, HMAC 무결성 서명 통합 방안, 감사 통계와 실시간 모니터링, 로그 검증과 변조 방지 전략을 다루어 개발자가 준수 요구 사항을 충족하는 엔터프라이즈급 보안 감사 시스템을 구축할 수 있도록 돕습니다."
+description: "CyberGo DD 감사 로그 실전 가이드. AuditLogger 비동기 이벤트 기록, 11가지 내장 감사 이벤트 타입, 심각도 등급 필터링, HMAC 무결성 서명 통합, 통계와 모니터링, 로그 검증과 변조 방지로 준수 요구를 충족하는 엔터프라이즈급 보안 감사 시스템을 구축합니다."
 sidebar_position: 5
 ---
 
@@ -28,28 +28,39 @@ sidebar_position: 5
 ### 기본 사용법
 
 ```go
-auditLogger, _ := dd.NewAuditLogger(dd.DefaultAuditConfig())
+auditLogger, err := dd.NewAuditLogger(dd.DefaultAuditConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer auditLogger.Close()
 
 // 참고: AuditLogger와 Logger는 독립 컴포넌트입니다
 // 둘은 자동으로 통합되지 않으며, 훅이나 다른 메커니즘을 통해 수동으로 연결해야 합니다
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: dd.DefaultSecurityConfig(),
-    Targets: []dd.OutputTarget{dd.ConsoleOutput()},
+    Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### 커스텀 설정
 
 ```go
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     Enabled:          true,
-    Output:           os.Stderr,           // 출력 대상 (*os.File)
-    BufferSize:       2000,                // 버퍼 채널 크기
-    IncludeTimestamp: true,                // 타임스탬프 포함
-    JSONFormat:       true,                // JSON 형식
+    Output:           os.Stderr,               // 출력 대상 (*os.File)
+    BufferSize:       2000,                    // 버퍼 채널 크기
+    IncludeTimestamp: true,                    // 타임스탬프 포함
+    JSONFormat:       true,                    // JSON 형식
     MinimumSeverity:  dd.AuditSeverityWarning, // 최소 심각도 등급
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer auditLogger.Close()
 ```
 
 ## 감사 이벤트 타입
@@ -76,17 +87,23 @@ AuditLogger는 11가지 보안 이벤트를 기록합니다:
 
 ```go
 // 서명기 생성
-integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
-signer, _ := dd.NewIntegritySigner(integrityCfg)
+integrityCfg, err := dd.DefaultIntegrityConfigSafe()
+if err != nil {
+    log.Fatal(err)
+}
+signer, err := dd.NewIntegritySigner(integrityCfg)
+if err != nil {
+    log.Fatal(err)
+}
 
 // 서명이 포함된 감사 Logger 생성
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     Enabled:          true,
     Output:           auditFile,
     JSONFormat:       true,
     BufferSize:       1000,
     MinimumSeverity:  dd.AuditSeverityInfo,
-    IntegritySigner:  signer,    // HMAC 서명
+    IntegritySigner:  signer, // HMAC 서명
 })
 ```
 
@@ -105,7 +122,7 @@ for eventType, count := range stats.ByType {
 }
 ```
 
-:::tip 모니터링 조언
+:::tip 모니터링 권장
 `Dropped` 카운트를 정기적으로 확인하세요. 버려진 이벤트 수가 증가하면 버퍼가 부족하다는 뜻이므로 `BufferSize`를 늘리거나 소비 속도를 높여야 합니다.
 :::
 
@@ -132,9 +149,13 @@ if result.Valid {
 
 ```go
 // Warning 이상만 기록
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     MinimumSeverity: dd.AuditSeverityWarning,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer auditLogger.Close()
 ```
 
 | 등급 | 수치 | 적용 시나리오 |
@@ -150,6 +171,7 @@ auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
 package main
 
 import (
+    "log"
     "os"
 
     "github.com/cybergodev/dd"
@@ -157,15 +179,24 @@ import (
 
 func main() {
     // 감사 파일 생성
-    auditFile, _ := os.Create("logs/audit.json")
+    auditFile, err := os.Create("logs/audit.json")
+    if err != nil {
+        log.Fatal(err)
+    }
     defer auditFile.Close()
 
     // 서명기 생성
-    integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
-    signer, _ := dd.NewIntegritySigner(integrityCfg)
+    integrityCfg, err := dd.DefaultIntegrityConfigSafe()
+    if err != nil {
+        log.Fatal(err)
+    }
+    signer, err := dd.NewIntegritySigner(integrityCfg)
+    if err != nil {
+        log.Fatal(err)
+    }
 
     // 감사 Logger 생성
-    auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+    auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
         Enabled:          true,
         Output:           auditFile,
         JSONFormat:       true,
@@ -173,14 +204,20 @@ func main() {
         MinimumSeverity:  dd.AuditSeverityInfo,
         IntegritySigner:  signer,
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer auditLogger.Close()
 
     // 비즈니스 Logger 생성 (보안 필터링 포함)
-    logger, _ := dd.New(dd.Config{
+    logger, err := dd.New(dd.Config{
         Format:   dd.FormatJSON,
         Security: dd.DefaultSecureConfig(),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer logger.Close()
 
     // 일반 비즈니스 로그 (민감 데이터 자동 마스킹)

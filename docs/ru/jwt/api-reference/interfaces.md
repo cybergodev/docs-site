@@ -2,7 +2,7 @@
 sidebar_label: "Определения интерфейсов"
 title: "Интерфейсы - CyberGo JWT | Расширение ядра"
 description: "Интерфейсы CyberGo JWT: TokenManager операций с токенами, CustomClaims, BlacklistStore, RateLimitProvider, ClockProvider и опциональный RateLimitKeyer."
-sidebar_position: 6
+sidebar_position: 50
 ---
 
 # Определения интерфейсов

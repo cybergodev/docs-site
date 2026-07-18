@@ -2,7 +2,7 @@
 sidebar_label: "基础示例"
 title: "基础示例 - CyberGo JWT | HMAC 签发与吊销"
 description: "基础示例集：用 HMAC 对称密钥签发并验证访问令牌、配合刷新令牌轮换获取新令牌、通过内置黑名单吊销令牌阻止已注销会话、配置令牌桶速率限制防暴力滥用，所有示例完整可独立编译运行。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 基础示例

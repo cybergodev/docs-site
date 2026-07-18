@@ -2,7 +2,7 @@
 sidebar_label: "レート制限"
 title: "レート制限 - CyberGo JWT | トークンバケット制限"
 description: "レート制限ガイド：トークンバケットで発行インターフェースのウィンドウ毎最大要求数を設定、制限鍵の Subject・UserID・RateLimitKeyer 優先順位検索を解説、内蔵とカスタム分散制限の実装を支持。"
-sidebar_position: 4
+sidebar_position: 40
 ---
 
 # レート制限

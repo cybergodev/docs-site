@@ -1,7 +1,7 @@
 ---
 sidebar_label: "分散トレーシング統合"
 title: "分散トレーシング統合 - CyberGo DD | Context とトレーシングガイド"
-description: "CyberGo DD 分散トレーシング統合ガイド。TraceID、SpanID、RequestID コンテキスト伝播、ContextExtractor カスタムエクストラクタ、HTTP ミドルウェア統合パターン、リクエストスコープログ、OpenTelemetry などのトレーシングシステムとの統合方法をカバーし、マイクロサービスアーキテクチャでエンドツーエンドのログトレーシングを実現します。"
+description: "CyberGo DD 分散トレーシング統合ガイド。TraceID、SpanID、RequestID 伝播、ContextExtractor 抽出器、HTTP ミドルウェア統合、リクエストスコープログと OpenTelemetry 連携でエンドツーエンド追跡を実現。"
 sidebar_position: 7
 ---
 

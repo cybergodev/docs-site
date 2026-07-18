@@ -1,7 +1,7 @@
 ---
 sidebar_label: "HTTP 統合"
-title: "HTTP 統合 - CyberGo HTML | Webサービス実践"
-description: "CyberGo HTML HTTP 統合実践：net/http の単一ページスクレイピング、並列バッチ最適化、コンテキストタイムアウト、Web サービス統合、シングルトン、本番デプロイのベストプラクティスです。"
+title: "HTTP 統合 - CyberGo html | Web サービス実践"
+description: "CyberGo html と HTTP の統合実践：net/http 単一ページスクレイピング、並行バッチ最適化、コンテキストタイムアウト、Web サービス統合、本番デプロイ運用。"
 sidebar_position: 1
 ---
 

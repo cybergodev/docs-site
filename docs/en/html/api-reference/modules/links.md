@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Link Extraction"
-title: "Link Extraction - CyberGo HTML | Resource Link API"
-description: "Link extraction API for CyberGo HTML, including ExtractAllLinks and GroupLinksByType for extracting and grouping HTML resource links with filtering."
+title: "Link Extraction - CyberGo html | Resource Link API"
+description: "CyberGo html link extraction API: ExtractAllLinks family and GroupLinksByType to extract resource links, group them by type, with configurable filtering."
 sidebar_position: 2
 ---
 

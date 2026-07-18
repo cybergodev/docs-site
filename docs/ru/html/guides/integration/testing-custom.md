@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Тестирование и пользовательские расширения"
-title: "Тестирование и расширения - CyberGo HTML | руководство"
-description: "Тестирование и расширения CyberGo HTML: свой Scorer, обход ContentNode, тестовый режим, mock-данные, mock Extractor и примеры кода для типичных сценариев."
+title: "Тестирование и расширения - CyberGo html | гайд"
+description: "Тестирование и расширения CyberGo html: пользовательский Scorer, обход ContentNode, тестовый режим, mock-данные и mock Extractor."
 sidebar_position: 2
 ---
 

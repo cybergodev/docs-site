@@ -1,9 +1,8 @@
 ---
 sidebar_label: "クイックスタート"
-title: "クイックスタート - CyberGo JSON | 5分で始めるガイド"
-description: "CyberGo JSON クイックスタート：インストール、パスクエリ GetString/GetInt、Marshal/Unmarshal、ファイル読み書きを 5 分で習得。標準ライブラリと 100% 互換の Go JSON 処理を始めましょう。"
-sidebar_position: 2
-sidebar_icon: "⚡"
+title: "クイックスタート - CyberGo JSON | 5分ガイド"
+description: "CyberGo JSON クイックスタート：インストール、GetString/GetInt パスクエリ、Marshal/Unmarshal エンコード、ファイル読み書きを 5 分で習得、標準ライブラリと 100% 互換な Go JSON 処理。"
+sidebar_position: 1
 ---
 
 # クイックスタート

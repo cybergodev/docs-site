@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Loader"
 title: "Loader API - CyberGo env | 로더 상세"
-description: "CyberGo env Loader API 참조로 핵심 유형이 다중 형식 로딩·타입 안전 읽기·키 조작·검증·직렬화·Close 수명 주기를 제공하며 모두 스레드 안전합니다."
+description: "CyberGo env Loader API 참조로 핵심 유형이 다중 형식 LoadFiles 로딩, GetString/GetInt/GetSlice 타입 안전 읽기, Set/Delete 키 조작, Validate 검증, 직렬화·Close 수명 주기를 제공하며 모두 스레드 안전합니다."
 sidebar_position: 3
 ---
 
@@ -108,6 +108,7 @@ err := loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 - `*ParseError` - 파싱 오류
 - `*JSONError` - JSON 파싱 오류
 - `*YAMLError` - YAML 파싱 오류
+- `*SecurityError` - 파일 경로 보안 검증 실패(예: 경로 순회 공격)
 
 **형식 감지 규칙:**
 
@@ -426,6 +427,7 @@ if err != nil {
 **오류 유형:**
 - `ErrInvalidKey` - 키 이름이 유효하지 않음
 - `ErrForbiddenKey` - 금지된 키
+- `ErrInvalidValue` - 값이 유효하지 않음 (`ValidateValues`가 true일 때, 값에 널 바이트·제어 문자 등 안전하지 않은 내용이 포함된 경우)
 - `ErrClosed` - 로더가 닫힘
 
 ---
@@ -533,6 +535,10 @@ func (l *Loader) Apply() error
 - 로드된 모든 변수를 순회
 - `OverwriteExisting` 설정에 따라 이미 존재하는 시스템 환경 변수를 덮어쓸지 결정
 - 적용 후 `os.Getenv()`로 접근 가능
+
+**오류 유형:**
+- `ErrClosed` - 로더가 닫힘
+- 래핑된 `os` 오류 - 환경 변수 설정 실패(키 이름 마스킹됨, 오류 메시지에 민감 키 노출 안 함)
 
 ```go
 err := loader.Apply()

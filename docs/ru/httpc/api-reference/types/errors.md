@@ -37,7 +37,7 @@ type ClientError struct {
 | Cause | `error` | Базовая ошибка, доступна через `Unwrap()` |
 | `URL` | `string` | URL запроса (учётные данные маскированы) |
 | `Method` | `string` | HTTP-метод (GET, POST и др.) |
-| `Attempts` | `int` | Количество повторных попыток |
+| `Attempts` | `int` | Количество попыток (включая первый запрос) |
 | `StatusCode` | `int` | HTTP-код состояния (0 для не-HTTP ошибок) |
 | Host | `string` | Имя хоста запроса |
 

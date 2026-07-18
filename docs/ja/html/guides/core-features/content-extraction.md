@@ -1,7 +1,7 @@
 ---
 sidebar_label: "コンテンツ抽出実践"
-title: "コンテンツ抽出実践 - CyberGo HTML | 核心使い方"
-description: "CyberGo HTML コンテンツ抽出実践：抽出フロー、記事認識、基本・ファイル抽出、Result フィールド解説、カスタム Scorer、非 UTF-8 エンコーディング検出処理を説明します。"
+title: "コンテンツ抽出実践 - CyberGo html | 抽出フローガイド"
+description: "CyberGo html コンテンツ抽出実践：抽出フロー、スマート記事認識、Result フィールド解読、カスタム Scorer、エンコーディング検出処理を解説します。"
 sidebar_position: 1
 ---
 

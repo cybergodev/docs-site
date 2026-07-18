@@ -2,7 +2,7 @@
 sidebar_label: "Claims"
 title: "Claims - CyberGo JWT | 内置声明结构"
 description: "Claims 是 CyberGo JWT 内置声明结构，含 UserID、Username、Role、权限、作用域等业务字段与 RFC 7519 RegisteredClaims，附带字段长度、数组大小与注入模式验证约束。"
-sidebar_position: 5
+sidebar_position: 40
 ---
 
 # Claims

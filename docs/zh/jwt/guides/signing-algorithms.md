@@ -2,7 +2,7 @@
 sidebar_label: "签名算法"
 title: "签名算法 - CyberGo JWT | 算法对比与选型"
 description: "签名算法指南：对比 HMAC、RSA、RSA-PSS 与 ECDSA 四类 12 种算法的密钥类型、生成方式、签名验证性能、签名长度与架构耦合度，给出选型决策与密钥管理安全实践。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 签名算法
@@ -61,7 +61,7 @@ cfg.VerificationKey = rsaPublicKey    // *rsa.PublicKey（可选）
 ```
 
 :::tip 验证密钥
-`VerificationKey` 可选。不设置时，库会从 `SigningKey` 提取公钥进行验证。
+`VerificationKey` 可选。不设置时，库使用 `SigningKey` 进行验证（内部从私钥提取公钥）。
 :::
 
 ### 密钥生成

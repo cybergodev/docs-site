@@ -2,7 +2,7 @@
 sidebar_label: "오류"
 title: "오류 레퍼런스 - CyberGo JWT | 센티넬 오류 목록"
 description: "오류 레퍼런스: CyberGo JWT는 구성 검증, 토큰 검증, 서명 알고리즘, 만료, 발급자·청중, 블랙리스트, 속도 제한과 수명주기의 19 에러를 정의하며 모두 errors.Is 매칭을 지원합니다."
-sidebar_position: 8
+sidebar_position: 70
 ---
 
 # 오류

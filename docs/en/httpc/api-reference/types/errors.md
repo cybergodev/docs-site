@@ -37,7 +37,7 @@ type ClientError struct {
 | Cause | `error` | Underlying error, accessible via `Unwrap()` |
 | `URL` | `string` | Request URL (credentials masked) |
 | `Method` | `string` | HTTP method (GET, POST, etc.) |
-| `Attempts` | `int` | Number of retries attempted |
+| `Attempts` | `int` | Number of attempts (including the first request) |
 | `StatusCode` | `int` | HTTP status code (0 for non-HTTP errors) |
 | Host | `string` | Request hostname |
 

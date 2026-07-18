@@ -2,7 +2,7 @@
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo DD | Common API Quick Reference"
 description: "CyberGo DD cheat sheet: logger creation, level control, field constructors, file rotation, sensitive data filtering, hooks, audit, and integrity signing."
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # Cheat Sheet

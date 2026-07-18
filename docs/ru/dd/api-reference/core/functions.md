@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Функции пакета"
 title: "Пакетные функции - CyberGo DD | Глобальные функции"
-description: "Полная документация API пакетных функций CyberGo DD, включая функции создания логгера New, функции управления глобальным логгером Default/SetDefault/InitDefault, предустановки конфигурации DefaultConfig/DevelopmentConfig/JSONConfig и все фабричные функции конструкторов, поддерживающие прямой вызов через префикс dd."
+description: "Полная документация пакетных функций CyberGo DD: New, Default/SetDefault/InitDefault, пресеты и фабричные конструкторы, вызываемые через dd. префикс."
 sidebar_position: 1
 ---
 
@@ -156,7 +156,7 @@ dd.LogWith(dd.LevelError, "Ошибка запроса",
 | `InfoWith` | `func InfoWith(msg string, fields ...Field)` | Структурированный лог уровня Info |
 | `WarnWith` | `func WarnWith(msg string, fields ...Field)` | Структурированный лог уровня Warn |
 | `ErrorWith` | `func ErrorWith(msg string, fields ...Field)` | Структурированный лог уровня Error |
-| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Структурированный лог уровня Fatal |
+| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Структурированный лог уровня Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
 
 ```go
 dd.InfoWith("Запрос завершён",

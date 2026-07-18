@@ -1,7 +1,7 @@
 ---
 sidebar_label: "監査ログ"
 title: "監査ログ - CyberGo DD | セキュリティ監査実践ガイド"
-description: "CyberGo DD 監査ログ実践ガイド。AuditLogger 非同期イベント記録メカニズム、11 種類の組み込み監査イベントタイプ、重大度レベルフィルタリングと段階別設定、HMAC 整合性署名統合ソリューション、監査統計とリアルタイムモニタリング、ログ検証と改ざん防止戦略をカバーし、コンプライアンス要件に準拠したエンタープライズグレードのセキュリティ監査システムを構築できます。"
+description: "CyberGo DD 監査ログ実践ガイド。AuditLogger 非同期イベント記録メカニズム、11 種の組み込み監査イベントタイプ、重大度フィルタリングと段階的分類、HMAC 整合性署名統合ソリューション、監査統計とモニタリング、ログ検証と改ざん防止を網羅し、コンプライアンス準拠の監査システム構築を支援します。"
 sidebar_position: 5
 ---
 
@@ -28,28 +28,39 @@ sidebar_position: 5
 ### 基本的な使い方
 
 ```go
-auditLogger, _ := dd.NewAuditLogger(dd.DefaultAuditConfig())
+auditLogger, err := dd.NewAuditLogger(dd.DefaultAuditConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer auditLogger.Close()
 
 // 注意：AuditLogger と Logger は独立したコンポーネント
 // 両者は自動的に統合されず、フックや他のメカニズムで手動接続が必要
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: dd.DefaultSecurityConfig(),
-    Targets: []dd.OutputTarget{dd.ConsoleOutput()},
+    Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### カスタム設定
 
 ```go
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     Enabled:          true,
-    Output:           os.Stderr,           // 出力先 (*os.File)
-    BufferSize:       2000,                // バッファチャネルサイズ
-    IncludeTimestamp: true,                // タイムスタンプを含む
-    JSONFormat:       true,                // JSON フォーマット
+    Output:           os.Stderr,               // 出力先 (*os.File)
+    BufferSize:       2000,                    // バッファチャネルサイズ
+    IncludeTimestamp: true,                    // タイムスタンプを含む
+    JSONFormat:       true,                    // JSON フォーマット
     MinimumSeverity:  dd.AuditSeverityWarning, // 最低重大度レベル
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer auditLogger.Close()
 ```
 
 ## 監査イベントタイプ
@@ -76,17 +87,23 @@ AuditLogger は 11 種類のセキュリティイベントを記録します：
 
 ```go
 // 署名器を作成
-integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
-signer, _ := dd.NewIntegritySigner(integrityCfg)
+integrityCfg, err := dd.DefaultIntegrityConfigSafe()
+if err != nil {
+    log.Fatal(err)
+}
+signer, err := dd.NewIntegritySigner(integrityCfg)
+if err != nil {
+    log.Fatal(err)
+}
 
 // 署名付き監査 Logger を作成
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     Enabled:          true,
     Output:           auditFile,
     JSONFormat:       true,
     BufferSize:       1000,
     MinimumSeverity:  dd.AuditSeverityInfo,
-    IntegritySigner:  signer,    // HMAC 署名
+    IntegritySigner:  signer, // HMAC 署名
 })
 ```
 
@@ -132,9 +149,13 @@ if result.Valid {
 
 ```go
 // Warning 以上のみ記録
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     MinimumSeverity: dd.AuditSeverityWarning,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer auditLogger.Close()
 ```
 
 | レベル | 数値 | 適用シナリオ |
@@ -150,6 +171,7 @@ auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
 package main
 
 import (
+    "log"
     "os"
 
     "github.com/cybergodev/dd"
@@ -157,15 +179,24 @@ import (
 
 func main() {
     // 監査ファイルを作成
-    auditFile, _ := os.Create("logs/audit.json")
+    auditFile, err := os.Create("logs/audit.json")
+    if err != nil {
+        log.Fatal(err)
+    }
     defer auditFile.Close()
 
     // 署名器を作成
-    integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
-    signer, _ := dd.NewIntegritySigner(integrityCfg)
+    integrityCfg, err := dd.DefaultIntegrityConfigSafe()
+    if err != nil {
+        log.Fatal(err)
+    }
+    signer, err := dd.NewIntegritySigner(integrityCfg)
+    if err != nil {
+        log.Fatal(err)
+    }
 
     // 監査 Logger を作成
-    auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+    auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
         Enabled:          true,
         Output:           auditFile,
         JSONFormat:       true,
@@ -173,14 +204,20 @@ func main() {
         MinimumSeverity:  dd.AuditSeverityInfo,
         IntegritySigner:  signer,
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer auditLogger.Close()
 
     // 業務 Logger を作成（セキュリティフィルタリング付き）
-    logger, _ := dd.New(dd.Config{
+    logger, err := dd.New(dd.Config{
         Format:   dd.FormatJSON,
         Security: dd.DefaultSecureConfig(),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer logger.Close()
 
     // 通常の業務ログ（機密データは自動マスキング）

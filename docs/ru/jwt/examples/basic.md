@@ -2,7 +2,7 @@
 sidebar_label: "Базовые примеры"
 title: "Базовые примеры - CyberGo JWT | HMAC и отзыв"
 description: "Базовые примеры CyberGo JWT: выпуск и проверка токенов HMAC, ротация через refresh, отзыв через встроенный чёрный список и лимит на корзине токенов."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Базовые примеры

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Жизненный цикл"
-title: "Processor - Жизненный цикл - CyberGo JSON | Справочник API"
-description: "Жизненный цикл Processor CyberGo JSON: New, Close, IsClosed, GetStats и GetHealthStatus для безопасного завершения в многопоточной среде."
-sidebar_position: 9
+title: "Processor: жизненный цикл - CyberGo JSON | API"
+description: "Жизненный цикл Processor CyberGo JSON: New, Close, IsClosed, GetStats, GetHealthStatus для безопасного завершения."
+sidebar_position: 11
 ---
 
 # Жизненный цикл и статистика

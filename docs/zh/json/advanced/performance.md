@@ -1,7 +1,7 @@
 ---
 sidebar_label: "性能优化"
 title: "性能优化 - CyberGo JSON | 高性能指南"
-description: "CyberGo JSON 性能优化指南：EnableCache/CacheTTL 缓存、ParallelThreshold 并行、PreParse 预解析、WarmupCache 预热与对象池复用，提升高频 JSON 处理性能。"
+description: "CyberGo JSON 性能优化：EnableCache/CacheTTL 缓存、ParallelThreshold 并行、PreParse 预解析与 WarmupCache 预热，提升高频 JSON 处理性能。"
 sidebar_position: 1
 ---
 
@@ -241,6 +241,5 @@ func TestMemoryUsage(t *testing.T) {
 
 ## 相关
 
-- [大文件处理 API](../streaming/large-file)
-- [错误处理](./error-handling)
 - [大文件处理](../streaming/large-files)
+- [错误处理](./error-handling)

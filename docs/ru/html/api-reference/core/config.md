@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Конфигурация"
-title: "Конфигурация - CyberGo HTML | поля Config"
-description: "Подробно о Config CyberGo HTML: ресурсы (MaxInputSize, кэш, тайм-аут), безопасность, извлечение контента, форматы вывода, фильтры ссылок и метод Validate."
+title: "Конфигурация - CyberGo html | поля Config"
+description: "Подробно о Config CyberGo html: управление ресурсами, безопасность, извлечение контента, форматы вывода, фильтры ссылок и метод Validate."
 sidebar_position: 3
 ---
 

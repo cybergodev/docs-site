@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Структурированное логирование"
 title: "Структурированное логирование - CyberGo DD | Поля и цепочки"
-description: "Руководство по структурированному логированию CyberGo DD, подробно описывающее 20+ типобезопасных конструкторов полей, паттерны цепочной передачи Field, принципы неизменяемого дизайна LoggerEntry, соглашения об именовании полей и правила валидации, а также лучшие практики и распространённые паттерны использования структурированного логирования для эффективного применения высокопроизводительного решения структурированного логирования в проектах."
+description: "Структурированное логирование CyberGo DD: 20+ типобезопасных конструкторов полей, цепочная передача Field, неизменяемый LoggerEntry и лучшие практики."
 sidebar_position: 2
 ---
 
@@ -65,7 +65,7 @@ dd.ErrorWith("Критическая ошибка", dd.ErrWithStack(err))
 dd.InfoWith("Полезная нагрузка запроса", dd.Any("body", requestBody))
 ```
 
-:::warning Подсказка по производительности
+:::warning Замечание о производительности
 `Any` использует рефлексию, производительность ниже, чем у типизированных конструкторов. На высокочастотных путях предпочитайте конкретные типы.
 :::
 
@@ -137,9 +137,13 @@ cfg := dd.DefaultFieldValidationConfig()
 ### Включение в конфигурации
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     FieldValidation: dd.StrictSnakeCaseConfig(),
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 После включения несоответствующие имена полей будут вызывать предупреждение в логах:
@@ -234,7 +238,11 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### Формат JSON
 
 ```go
-logger, _ := dd.New(dd.JSONConfig())
+logger, err := dd.New(dd.JSONConfig())
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 logger.InfoWith("Запрос завершён",
     dd.String("method", "GET"),
     dd.Int("status", 200),

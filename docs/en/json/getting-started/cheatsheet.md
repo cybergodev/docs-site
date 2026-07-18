@@ -2,7 +2,7 @@
 sidebar_label: "Cheat Sheet"
 title: "Cheatsheet - CyberGo JSON | API Quick Reference"
 description: "CyberGo JSON API cheatsheet: GetString/GetInt queries, Set/Delete, Marshal/Unmarshal, config, iterators, and security functions for quick Go lookup."
-sidebar_position: 4
+sidebar_position: 3
 ---
 
 # Cheatsheet

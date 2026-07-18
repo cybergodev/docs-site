@@ -1,8 +1,8 @@
 ---
 sidebar_label: "빠른 시작"
 title: "빠른 시작 - CyberGo env | 5분 입문 가이드"
-description: "CyberGo env 5분 빠른 시작 가이드로, go get 설치부터 .env 로딩·타입 안전 읽기·구조체 매핑·변수 확장까지 핵심 기능과 실행 가능한 코드 예제를 제공합니다."
-sidebar_position: 2
+description: "CyberGo env 5분 빠른 시작 가이드로, go get 설치부터 .env 로딩·타입 안전 읽기·GetSecure 보안 값·구조체 매핑·변수 확장·errors.Is 오류 처리와 네 가지 설정 프리셋·다중 환경 로딩까지, 실행 가능한 코드 예제로 빠르게 익힙니다."
+sidebar_position: 1
 ---
 
 # 빠른 시작

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "安全概述"
 title: "安全概述 - CyberGo JSON | 安全最佳实践"
-description: "CyberGo JSON 安全最佳实践：输入验证与清洗、MaxNestingDepthSecurity/MaxMemory 资源限制、路径遍历与 JSON 注入防御、敏感数据过滤与审计日志，保障生产安全。"
+description: "CyberGo JSON 安全最佳实践：输入验证、MaxNestingDepthSecurity/MaxMemory 资源限制、路径遍历与 JSON 注入防御、敏感数据过滤。"
 sidebar_position: 1
 ---
 

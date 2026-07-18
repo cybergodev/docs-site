@@ -1,11 +1,11 @@
 ---
-sidebar_label: "Package Functions"
-title: "Package Functions - CyberGo HTTPC | Package Functions"
-description: "HTTPC package functions API reference: seven HTTP methods like Get/Post, New client creation, the Download entry, helpers, and NewDomain creation."
+sidebar_label: "Package Functions & Client Methods"
+title: "Package Functions & Client Methods - CyberGo HTTPC | HTTP Method API"
+description: "HTTPC package functions & client methods API reference: seven HTTP methods like Get/Post, New client creation, the Download entry, FormatBytes/FormatSpeed helpers, and NewDomain creation, enabling flexible configuration with request options."
 sidebar_position: 1
 ---
 
-# Package Functions
+# Package Functions & Client Methods
 
 ## Package-Level HTTP Methods
 

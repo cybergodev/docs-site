@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Large Files Guide"
 title: "Large File Processing - CyberGo JSON | Guide"
-description: "CyberGo JSON large-file guide: ForeachFile iteration, ForeachFileChunked batching, memory control, and NDJSONProcessor streaming for Go ETL."
+description: "CyberGo JSON large-file guide and API reference: ForeachFile* method signatures, parameter tables, memory control, and NDJSONProcessor streaming for Go ETL."
 sidebar_position: 1
 ---
 
@@ -285,6 +285,147 @@ defer processor.Close()
 | 100MB-1GB | Processor.ForeachFileChunked | Chunked iteration |
 | > 1GB | NDJSONProcessor / JSONL format | True streaming, memory-controllable |
 
+
+## API Reference
+
+This section summarizes the function signatures and parameter tables for the large-file processing API for quick lookup.
+
+### Processor Methods
+
+**ForeachFile**
+
+Signature: `func (p *Processor) ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Processes JSON array elements in a large file one by one. See [Basic Usage](#basic-usage) and [Interrupt Control](#with-interrupt-control).
+
+**Parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `filePath` | `string` | JSON file path |
+| `fn` | `func(key any, item *IterableValue) error` | Processing callback |
+
+**Callback Return Values**
+
+| Return Value | Description |
+|--------------|-------------|
+| `nil` | Continue to next item |
+| `item.Break()` | Stop iteration without returning an error |
+| other `error` | Stop iteration and return the error |
+
+**ForeachFileChunked**
+
+Signature: `func (p *Processor) ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) (err error)`
+
+Processes a large file in batches, processing the specified number of elements each time. See [Batch Processing](#batch-processing).
+
+**Parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `filePath` | `string` | JSON file path |
+| `chunkSize` | `int` | Number of elements per batch |
+| `fn` | `func(chunk []*IterableValue) error` | Batch processing callback |
+
+**ForeachFileWithPath**
+
+Signature: `func (p *Processor) ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Processes JSON arrays or objects at a specified path within a file.
+
+**Parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `filePath` | `string` | JSON file path |
+| `path` | `string` | JSON path expression |
+| `fn` | `func(key any, item *IterableValue) error` | Processing callback |
+
+```go
+// Process each element of the users array in the file
+err := p.ForeachFileWithPath("data.json", "users", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Name: %s\n", item.GetString("name"))
+    return nil
+})
+```
+
+**ForeachFileNested**
+
+Signature: `func (p *Processor) ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Recursively traverses all nested JSON structures in a file.
+
+```go
+// Recursively traverse all nested elements
+err := p.ForeachFileNested("data.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Key: %v, Type: %T\n", key, item.GetData())
+    return nil
+})
+```
+
+## Package-Level Functions
+
+In addition to Processor methods, the following functions can be called directly without creating a Processor instance. They use the global processor internally.
+
+### ForeachFile (Package-Level Function)
+
+Signature: `func ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Loads JSON from a file and iterates.
+
+```go
+err := json.ForeachFile("data.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("[%v] %v\n", key, item.GetData())
+    return nil
+})
+```
+
+### ForeachFileWithPath (Package-Level Function)
+
+Signature: `func ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Loads JSON from a file and iterates by path.
+
+```go
+err := json.ForeachFileWithPath("data.json", "users", func(key any, item *json.IterableValue) error {
+    name := item.GetString("name")
+    fmt.Printf("User: %s\n", name)
+    return nil
+})
+```
+
+### ForeachFileChunked (Package-Level Function)
+
+Signature: `func ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
+
+Chunk-iterates JSON arrays in a file.
+
+```go
+err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.IterableValue) error {
+    for _, item := range chunk {
+        processItem(item)
+    }
+    return nil
+})
+```
+
+### ForeachFileNested (Package-Level Function)
+
+Signature: `func ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Loads JSON from a file and recursively iterates all nested structures.
+
+```go
+err := json.ForeachFileNested("config.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Path: %v, Type: %T\n", key, item.GetData())
+    return nil
+})
+```
+
+## See Also
+
+- [NDJSON Processor](./jsonl) — JSONL/NDJSON streaming
+- [JSONLWriter](./jsonl#jsonlwriter) — JSONL writer
 
 ## Next Steps
 - [API Reference](../api-reference/) — Complete API reference

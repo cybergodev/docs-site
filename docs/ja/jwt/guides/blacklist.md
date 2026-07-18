@@ -2,7 +2,7 @@
 sidebar_label: "トークンブラックリスト"
 title: "トークンブラックリスト - CyberGo JWT | 失効と外部ストア"
 description: "トークンブラックリストガイド：内蔵メモリストアの設定と期限切れクリーンアップ機構、Revoke と IsRevoked でトークンを失効させ、BlacklistStore インターフェースで Redis など外部ストアへ接続、複数インスタンス運用のベストプラクティス。"
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # トークンブラックリスト

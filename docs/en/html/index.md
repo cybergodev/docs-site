@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
-title: "HTML Library - CyberGo HTML | Production-Grade Go Library"
-description: "Production-grade Go HTML extraction library: article recognition, 15+ encoding detection, links, batch processing, pluggable audit, and multi-format output."
+title: "HTML Library - CyberGo html | Go HTML Extraction & Cleaning"
+description: "CyberGo html is a high-performance Go HTML extraction and cleaning library with article detection, encoding detection, sanitization, and multi-format output."
 ---
 
 # HTML

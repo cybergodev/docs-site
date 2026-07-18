@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Основные концепции"
-title: "Основные концепции - CyberGo DD | Архитектура"
-description: "Глубокое понимание основных концепций и архитектуры библиотеки логирования CyberGo DD, включая взаимосвязь и жизненный цикл Logger и LoggerEntry, типобезопасные паттерны использования структурированных полей Field, полный процесс обработки в конвейере логов, четырёхуровневую прогрессивную архитектуру интерфейсов и потокобезопасную модель конкурентности, помогающее разработчикам сформировать системное понимание библиотеки DD."
+title: "Основные концепции - CyberGo DD | Архитектура и дизайн"
+description: "Основы архитектуры CyberGo DD: жизненный цикл Logger и LoggerEntry, типобезопасные поля Field, конвейер обработки, интерфейсы и потокобезопасность."
 sidebar_position: 1
 ---
 
@@ -28,7 +28,10 @@ Logger (логгер)
 `Logger` — основной логгер, создаваемый через `dd.New()`:
 
 ```go
-logger, _ := dd.New(dd.DefaultConfig())
+logger, err := dd.New(dd.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer logger.Close()
 
 logger.Info("Сервис запущен")
@@ -61,7 +64,7 @@ requestLog.InfoWith("Пользователь вошёл",
 // Вывод: ... Пользователь вошёл service=user-api version=2.1.0 user=alice
 ```
 
-:::tip Неизменяемый дизайн
+:::tip Неизменяемая конструкция
 Каждый вызов `WithFields()` создаёт новый `LoggerEntry`, оригинальный Entry не затрагивается. Это означает, что вы можете безопасно повторно использовать один и тот же Entry в разных goroutine.
 :::
 
@@ -220,13 +223,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 DD поддерживает три цели вывода, которые можно свободно комбинировать:
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Targets: []dd.OutputTarget{
         dd.ConsoleOutput(),                    // Консоль
         dd.FileOutput("logs/app.log"),         // Файл (автоматическая ротация)
         dd.CustomOutput(customWriter),         // Пользовательский io.Writer
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 Встроенные компоненты Writer:

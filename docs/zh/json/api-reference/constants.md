@@ -1,7 +1,7 @@
 ---
 sidebar_label: "常量与错误"
 title: "常量与错误 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 常量与错误参考：DefaultMaxJSONSize、DefaultMaxNestingDepth 默认限制、ErrPathNotFound 等错误变量与 MergeMode 合并模式，支撑 Go 配置与错误处理。"
+description: "CyberGo JSON 常量与错误：DefaultMaxJSONSize、DefaultMaxNestingDepth 限制、ErrPathNotFound 错误变量与 MergeMode 合并模式，支撑 Go 配置。"
 sidebar_position: 7
 ---
 
@@ -23,7 +23,7 @@ var (
     // 限制错误
     ErrSizeLimit        = errors.New("size limit exceeded")
     ErrDepthLimit       = errors.New("depth limit exceeded")
-    ErrConcurrencyLimit = errors.New("concurrency limit exceeded") // Deprecated: 当前未被任何操作返回，保留供未来使用
+    ErrConcurrencyLimit = errors.New("concurrency limit exceeded") // 受控操作（Get/Set/Delete 等）达到 MaxConcurrency 时返回
 
     // 安全和验证错误
     ErrSecurityViolation = errors.New("security violation detected")

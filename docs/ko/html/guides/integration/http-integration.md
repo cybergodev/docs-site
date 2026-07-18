@@ -1,7 +1,7 @@
 ---
 sidebar_label: "HTTP 통합"
-title: "HTTP 통합 - CyberGo HTML | 웹 서비스 실전"
-description: "CyberGo HTML HTTP 통합 실전: net/http 단일 페이지 스크래핑, 동시성 배치 최적화, 컨텍스트 타임아웃, 웹 서비스 통합, Processor 싱글톤, 프로덕션 배포 모범 사례입니다."
+title: "HTTP 통합 - CyberGo html | 웹 서비스 실전"
+description: "CyberGo html HTTP 통합 실전: net/http 단일 페이지 스크래핑, 동시성 배치 최적화, 컨텍스트 타임아웃, 웹 서비스 통합과 프로덕션 배포 실전을 다룹니다."
 sidebar_position: 1
 ---
 

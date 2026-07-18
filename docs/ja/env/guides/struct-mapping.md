@@ -1,7 +1,7 @@
 ---
 sidebar_label: "構造体マッピング"
 title: "構造体マッピング - CyberGo env | 環境変数から構造体へ"
-description: "CyberGo env 構造体マッピングガイド。env タグで変数を構造体にマッピングし、ネスト、ポインタ、スライス、カスタムコンバーター、デフォルト値、必須検証を説明します。"
+description: "CyberGo env 構造体マッピングガイド。env・envDefault・envSeparator・envPrefix タグで変数を構造体にマッピングし、ネスト、ポインタ、スライス、カスタムコンバーター、フィールド無視、デフォルト値、必須検証を説明します。"
 sidebar_position: 1
 ---
 

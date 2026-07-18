@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Testing Scenarios"
 title: "Testing - CyberGo env | Unit Test Practices"
-description: "CyberGo env testing guide: TestingConfig, in-memory FileSystem mocking, table-driven tests, benchmarks and ResetDefaultLoader cleanup for stable results."
+description: "CyberGo env testing: TestingConfig, OverwriteExisting isolation, in-memory FileSystem mock, per-test loaders, table-driven tests, benchmarks, ResetDefaultLoader."
 sidebar_position: 6
 ---
 

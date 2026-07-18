@@ -459,55 +459,55 @@ Package-level functions are suitable for one-off processing. If you need to call
 
 ### StreamJSONL
 
-Signature: `func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+Signature: `func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 Stream-processes JSONL line by line, parsing each line into an `IterableValue` before invoking the callback.
 
 ### StreamJSONLParallel
 
-Signature: `func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+Signature: `func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 Processes JSONL using `workers` parallel goroutines.
 
 ### StreamJSONLParallelWithContext
 
-Signature: `func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+Signature: `func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 Parallel JSONL processing with context cancellation support.
 
 ### StreamJSONLChunked
 
-Signature: `func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error) error`
+Signature: `func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
 
 Processes JSONL in batches of `chunkSize`, passing each batch as `[]*IterableValue` to the callback.
 
 ### ForeachJSONL
 
-Signature: `func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+Signature: `func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 Iterates over JSONL, invoking the callback for each line.
 
 ### MapJSONL
 
-Signature: `func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error)) ([]any, error)`
+Signature: `func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error), cfg ...Config) ([]any, error)`
 
 Maps each line to a new value and returns a slice of results.
 
 ### ReduceJSONL
 
-Signature: `func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any) (any, error)`
+Signature: `func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any, cfg ...Config) (any, error)`
 
 Reduces JSONL; `initial` is the accumulator's initial value.
 
 ### FilterJSONL
 
-Signature: `func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool) ([]*IterableValue, error)`
+Signature: `func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) ([]*IterableValue, error)`
 
 Filters JSONL by predicate, returning the matching items.
 
 ### StreamJSONLFile
 
-Signature: `func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error) error`
+Signature: `func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 Package-level function that stream-processes JSONL data directly from a file without creating a Processor.
 
@@ -520,13 +520,13 @@ err := json.StreamJSONLFile("data.jsonl", func(lineNum int, item *json.IterableV
 
 ### CollectJSONL
 
-Signature: `func CollectJSONL(reader io.Reader) ([]*IterableValue, error)`
+Signature: `func CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
 
 Reads all JSONL lines and collects them into a slice.
 
 ### FirstJSONL
 
-Signature: `func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool) (*IterableValue, bool, error)`
+Signature: `func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) (*IterableValue, bool, error)`
 
 Returns the first element satisfying the predicate; the second return value indicates whether a match was found.
 
@@ -709,6 +709,5 @@ func main() {
 
 ## See Also
 
-- [Large File Processing API](./large-file) - ForeachFile series methods
-- [Large File Processing Guide](./large-files) - Large file processing guide
+- [Large File Processing](./large-files) - Large file guide and API reference
 - [Iterator](../api-reference/iterator) - Iteration API

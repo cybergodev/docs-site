@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor 재사용과 캐시"
-title: "Processor 재사용과 캐시 - CyberGo HTML | 재사용 가이드"
-description: "CyberGo HTML Processor 재사용과 캐시: 패키지 함수와 Processor 차이, sync.Pool, 캐시 전략(TTL·용량·정리), 적중률 통계와 웹 서비스 싱글톤 실전을 다룹니다."
+title: "Processor 재사용과 캐시 - CyberGo html | 고성능 재사용 가이드"
+description: "CyberGo html Processor 재사용과 캐시: 패키지 함수와 인스턴스 차이, sync.Pool 메커니즘, 캐시 전략과 적중률 모니터링, 웹 서비스 싱글톤 실전을 다룹니다."
 sidebar_position: 1
 ---
 

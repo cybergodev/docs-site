@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обработка ошибок"
 title: "Обработка ошибок - CyberGo env | Стратегии восстановления"
-description: "Руководство по ошибкам CyberGo env: 16 сторожевых ошибок через errors.Is, 8 типов через errors.As, стратегии восстановления и цепочки ошибок."
+description: "Ошибки CyberGo env: 16 сторожевых через errors.Is, ParseError/FileError/SecurityError через errors.As, восстановление, Unwrap и практика для продакшена."
 sidebar_position: 2
 ---
 

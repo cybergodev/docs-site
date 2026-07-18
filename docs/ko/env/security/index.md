@@ -1,7 +1,7 @@
 ---
 sidebar_label: "보안 개요"
 title: "보안 개요 - CyberGo env | 보안 아키텍처"
-description: "CyberGo env 보안 아키텍처 개요로 SecureValue 메모리 잠금, 키 검증, 금지 키 목록, IsSensitiveKey 자동 감지, 보안 프리셋과 감사 추적을 설명합니다."
+description: "CyberGo env 보안 아키텍처 개요로 SecureValue 메모리 잠금·자동 제로화, 키 검증으로 제어 문자·널 바이트 차단, DefaultForbiddenKeys로 PATH·LD_PRELOAD 금지, IsSensitiveKey 자동 감지, 보안 프리셋과 감사 추적을 설명합니다."
 sidebar_position: 1
 ---
 

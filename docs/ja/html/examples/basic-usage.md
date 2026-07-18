@@ -1,7 +1,7 @@
 ---
 sidebar_label: "基本サンプル"
-title: "基本サンプル - CyberGo HTML | 実行可能サンプル"
-description: "CyberGo HTML 基本サンプル：基本抽出、ファイル抽出、テキスト、Markdown 出力、リンクグループ化、Processor 再利用、タイムアウト、並列バッチ、JSON 直列化の実行可能例です。"
+title: "基本サンプル - CyberGo html | 実行可能サンプル集"
+description: "CyberGo html 基本サンプル：コンテンツ抽出、ファイル抽出、テキスト、Markdown 出力、リンクグループ化、Processor 再利用、並行バッチなどの実行可能コード。"
 sidebar_position: 1
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Быстрый старт"
-title: "Быстрый старт - CyberGo HTML | за 5 минут"
-description: "Быстрый старт CyberGo HTML за 5 минут: установка, базовое извлечение, пресеты Config, вывод в текст, Markdown и JSON, тайм-ауты контекста."
+title: "Быстрый старт - CyberGo html | за 5 минут"
+description: "Быстрый старт CyberGo html: установка, базовое извлечение контента, пресеты Config, вывод в текст, Markdown и JSON — HTML-извлечение за 5 минут."
 sidebar_position: 2
 ---
 

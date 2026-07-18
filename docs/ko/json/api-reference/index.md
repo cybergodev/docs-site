@@ -1,7 +1,7 @@
 ---
 sidebar_label: "개요"
 title: "API 레퍼런스 - CyberGo JSON | 전체 함수 문서"
-description: "CyberGo JSON 전체 API 레퍼런스: GetString/GetInt 쿼리, Set/Delete 수정, Marshal/Unmarshal, Processor, Schema 검증, Hook, 보안 설정을 표준 라이브러리 호환으로 제공합니다."
+description: "CyberGo JSON 전체 API 레퍼런스: GetString/GetInt, Set/Delete, Marshal/Unmarshal, Processor, Schema 검증, Hook, 보안 설정을 제공합니다."
 sidebar_position: 1
 ---
 
@@ -19,7 +19,7 @@ sidebar_position: 1
 | [타입 정의](./types) | 핵심 타입 정의 (Encoder/Decoder 포함) |
 | [제네릭 작업](./generics) | 제네릭 API 참조 |
 | [인터페이스 정의](./interfaces) | 확장 인터페이스 정의 |
-| [스트림 처리](../streaming/large-file) | 스트림 프로세서 참조 |
+| [스트림 처리](../streaming/large-files) | 스트림 프로세서 참조 |
 | [NDJSON 처리](../streaming/jsonl) | JSONL/NDJSON 프로세서 |
 | [반복자](./iterator) | 반복 순회 API |
 | [보조 함수](./helpers) | 타입 변환과 유틸리티 함수 |
@@ -56,8 +56,8 @@ sidebar_position: 1
 
 | 함수 | 설명 |
 |------|------|
-| `Marshal`, `Unmarshal` | 표준 인코딩/디코딩 |
-| `MarshalIndent` | 포맷팅 인코딩 |
+| `Marshal`, `Unmarshal` | 표준 인코딩/디코딩 (`encoding/json` 호환, `cfg` 추가 가능) |
+| `MarshalIndent` | 포맷팅 인코딩 (`encoding/json.MarshalIndent` 호환, `cfg` 추가 가능) |
 | `Encode`, `EncodeWithConfig` | 문자열로 인코딩 |
 | `NewEncoder`, `NewDecoder` | 스트림 인코딩/디코딩 |
 | `Parse` | JSON 파싱 |
@@ -67,7 +67,8 @@ sidebar_position: 1
 | 함수 | 설명 |
 |------|------|
 | `Prettify` | JSON 포맷팅 |
-| `Compact` | JSON 압축 |
+| `Compact` | JSON 압축 (buffer 형식, `encoding/json.Compact` 호환) |
+| `CompactString` | JSON 압축 (문자열 입력/출력 형식, `Processor.Compact` 미러) |
 
 #### 파일 작업
 

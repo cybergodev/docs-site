@@ -1,7 +1,7 @@
 ---
 sidebar_label: "개요"
 title: "API 레퍼런스 - CyberGo DD | 개요"
-description: "CyberGo DD 구조화된 로그 라이브러리 전체 API 레퍼런스 문서 개요. Logger 핵심 로거, Config 설정 옵션, Writers 출력 대상, Security 보안 필터링, Audit 감사 로그, Hooks 훅 시스템, Integrity 무결성 서명 등 핵심 기능 모듈을 포괄적으로 다룹니다."
+description: "CyberGo DD 구조화된 로그 라이브러리 API 레퍼런스 개요. Logger 로거, Config 설정, Writers 출력, Security 보안 필터링, Audit 감사 로그, Hooks 훅 시스템, Integrity 무결성 서명 등 핵심 모듈을 다룹니다."
 sidebar_position: 1
 ---
 

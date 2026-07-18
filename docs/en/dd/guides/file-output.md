@@ -1,7 +1,7 @@
 ---
 sidebar_label: "File Output & Rotation"
 title: "File Output & Rotation - CyberGo DD | Config"
-description: "CyberGo DD file output and rotation: FileWriter size and time-based rotation, BufferedWriter optimization, MultiWriter, and production best practices."
+description: "CyberGo DD file output and rotation: FileWriter policies, BufferedWriter, MultiWriter, dynamic Writer management, and production best practices."
 sidebar_position: 3
 ---
 
@@ -14,25 +14,41 @@ DD provides flexible file output capabilities with automatic rotation, buffered 
 ### Basic File Output
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.FileOutput("logs/app.log"),
-    },
-})
-defer logger.Close()
+package main
 
-logger.Info("Log will be written to file")
+import (
+    "log"
+
+    "github.com/cybergodev/dd"
+)
+
+func main() {
+    logger, err := dd.New(dd.Config{
+        Targets: []dd.OutputTarget{
+            dd.FileOutput("logs/app.log"),
+        },
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer logger.Close()
+
+    logger.Info("log will be written to file") // output: written to logs/app.log
+}
 ```
 
 ### Console + File Dual Output
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Targets: []dd.OutputTarget{
         dd.ConsoleOutput(),
         dd.FileOutput("logs/app.log"),
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
 defer logger.Close()
 ```
 
@@ -60,21 +76,32 @@ fwCfg.MaxBackups = 20               // Keep 20 backups
 fwCfg.MaxAge = 7 * 24 * time.Hour   // Clean up after 7 days
 fwCfg.Compress = true      // Compress old files
 
-fw, _ := dd.NewFileWriter("logs/app.log", fwCfg)
-logger, _ := dd.New(dd.Config{
+fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
+if err != nil {
+    log.Fatal(err)
+}
+logger, err := dd.New(dd.Config{
     Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### JSON Format Log Files
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Format: dd.FormatJSON,
     Targets: []dd.OutputTarget{
         dd.FileOutput("logs/app.json"),
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 Rotated file naming convention:
@@ -92,18 +119,27 @@ In high-throughput scenarios, use `BufferedWriter` to reduce I/O operations:
 
 ```go
 // Create file Writer
-fw, _ := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
+fw, err := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
+if err != nil {
+    log.Fatal(err)
+}
 
 // Wrap as buffered Writer
 bwCfg := dd.DefaultBufferedWriterConfig()
 // BufferSize: 1024  — 1KB buffer
 // FlushTime:  100ms — 100ms auto-flush
 
-bw, _ := dd.NewBufferedWriter(fw, bwCfg)
+bw, err := dd.NewBufferedWriter(fw, bwCfg)
+if err != nil {
+    log.Fatal(err)
+}
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Targets: []dd.OutputTarget{dd.CustomOutput(bw)},
 })
+if err != nil {
+    log.Fatal(err)
+}
 defer logger.Close() // Close automatically flushes
 ```
 
@@ -124,14 +160,21 @@ BufferedWriter flushes when the buffer is full or the timer triggers. Abnormal p
 
 ```go
 // Write to both file and remote service simultaneously
-fw, _ := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
+fw, err := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
+if err != nil {
+    log.Fatal(err)
+}
 remote := &RemoteLogWriter{endpoint: "http://log-service/ingest"}
 
 mw := dd.NewMultiWriter(fw, remote)
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Targets: []dd.OutputTarget{dd.CustomOutput(mw)},
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 MultiWriter dispatches logs to all Writers. A failure in one Writer does not affect others.
@@ -142,14 +185,18 @@ Logger supports adding and removing Writers at runtime:
 
 ```go
 // Add Writer at runtime
-fw, _ := dd.NewFileWriter("logs/debug.log", dd.DefaultFileWriterConfig())
-err := logger.AddWriter(fw)
+fw, err := dd.NewFileWriter("logs/debug.log", dd.DefaultFileWriterConfig())
+if err != nil {
+    log.Fatal(err)
+}
+err = logger.AddWriter(fw)
 
 // Remove Writer at runtime
 err = logger.RemoveWriter(fw)
 
 // Query current Writer count
 count := logger.WriterCount()
+_ = count
 ```
 
 :::tip Use Cases
@@ -177,7 +224,7 @@ func (w *LogstashWriter) Write(p []byte) (n int, err error) {
 }
 
 // Use custom Writer
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Format: dd.FormatJSON,
     Targets: []dd.OutputTarget{
         dd.FileOutput("logs/app.json"),
@@ -187,6 +234,10 @@ logger, _ := dd.New(dd.Config{
         }),
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ## Production Environment Recommended Configuration

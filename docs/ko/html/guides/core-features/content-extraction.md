@@ -1,7 +1,7 @@
 ---
 sidebar_label: "콘텐츠 추출 실전"
-title: "콘텐츠 추출 실전 - CyberGo HTML | 핵심 활용 가이드"
-description: "CyberGo HTML 콘텐츠 추출 실전: 추출 프로세스, 문서 인식 원리, 기본·파일 추출, Result 필드 해석, 커스텀 Scorer, 비 UTF-8 인코딩 감지 처리를 설명합니다."
+title: "콘텐츠 추출 실전 - CyberGo html | 추출 흐름 가이드"
+description: "CyberGo html 콘텐츠 추출 실전: 추출 흐름, 문서 인식, Result 필드 해석, 커스텀 Scorer, 인코딩 감지 처리를 다룹니다."
 sidebar_position: 1
 ---
 

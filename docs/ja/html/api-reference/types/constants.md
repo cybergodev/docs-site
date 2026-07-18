@@ -1,7 +1,7 @@
 ---
 sidebar_label: "定数とエラー"
-title: "定数とエラー - CyberGo HTML | 既定値とエラー型"
-description: "CyberGo HTML 定数とエラー型：既定値、センチネルエラー、InputError・ConfigError・FileError の構造化エラーで errors.Is/As 判定をサポートします。"
+title: "定数とエラー - CyberGo html | 既定値とエラー型"
+description: "CyberGo html 定数とエラー型：既定値定数、センチネルエラー、InputError・ConfigError・FileError の構造化エラーで errors.Is/As 判定をサポートします。"
 sidebar_position: 3
 ---
 

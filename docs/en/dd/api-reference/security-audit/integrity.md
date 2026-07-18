@@ -19,6 +19,14 @@ Log entry signer, supporting HMAC signing and chain verification.
 func NewIntegritySigner(cfg IntegrityConfig) (*IntegritySigner, error)
 ```
 
+Creates a signer using the supplied `IntegrityConfig`. Use `DefaultIntegrityConfigSafe()` to generate a cryptographically secure random key.
+
+Cases that return an error: `SecretKey` is fewer than 32 bytes, or `HashAlgorithm` is unsupported.
+
+::: warning Key Security
+`NewIntegritySigner` **copies** the supplied `SecretKey` and immediately zeroes the original `cfg.SecretKey` (to prevent key material from lingering in two memory locations). Callers should still avoid exposing the raw key in logs or serialization.
+:::
+
 ```go
 // Safe creation (recommended for production)
 cfg, err := dd.DefaultIntegrityConfigSafe()
@@ -110,11 +118,11 @@ Signing configuration.
 
 ```go
 type IntegrityConfig struct {
-    SecretKey       []byte         // HMAC key
-    HashAlgorithm   HashAlgorithm  // Hash algorithm
-    IncludeTimestamp bool           // Include timestamp in signature
-    IncludeSequence  bool           // Include sequence number in signature
-    SignaturePrefix  string        // Signature prefix
+    SecretKey        []byte        // HMAC key (SHA-256 requires ≥ 32 bytes; keep it safe and rotate regularly)
+    HashAlgorithm    HashAlgorithm // Hash algorithm (default SHA256)
+    IncludeTimestamp bool          // Include timestamp in signature
+    IncludeSequence  bool          // Include a monotonically increasing sequence number (when enabled, replay can be detected during verification)
+    SignaturePrefix  string        // Signature prefix (default "[SIG:"; when empty, NewIntegritySigner fills in the default)
 }
 ```
 
@@ -130,9 +138,9 @@ Safely creates default configuration (auto-generates key). Recommended for produ
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `Validate` | `() error` | Validate configuration |
-| `Clone` | `() IntegrityConfig` | Copy configuration |
-| `MarshalJSON` | `() ([]byte, error)` | JSON serialization (key is excluded, only length is output) |
+| `Validate` | `() error` | Validate configuration legality (`SecretKey` must be ≥ 32 bytes; `HashAlgorithm` must be a supported algorithm) |
+| `Clone` | `() IntegrityConfig` | Deep-copy the configuration (`SecretKey` is copied to a new slice) |
+| `MarshalJSON` | `() ([]byte, error)` | JSON serialization (the key itself is **not** serialized; only `secretKeyLength` is output) |
 
 ```go
 cfg, err := dd.DefaultIntegrityConfigSafe()

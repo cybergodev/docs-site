@@ -1,7 +1,7 @@
 ---
 sidebar_label: "结构体映射"
 title: "结构体映射 - CyberGo env | 环境变量到结构体"
-description: "CyberGo env 结构体映射指南，通过 env 标签将环境变量自动映射到 Go 结构体字段，涵盖嵌套结构体、指针与切片、自定义转换器、默认值设置与必填验证，实现类型安全的配置加载。"
+description: "CyberGo env 结构体映射指南，通过 env、envDefault、envSeparator、envPrefix 标签将环境变量自动映射到 Go 结构体字段，涵盖嵌套结构体、指针与切片、自定义转换器、字段忽略、默认值与必填验证，实现类型安全的配置加载。"
 sidebar_position: 1
 ---
 

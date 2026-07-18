@@ -1,7 +1,7 @@
 ---
 sidebar_label: "오류 처리"
-title: "오류 처리 - CyberGo HTML | 견고한 오류 가이드"
-description: "CyberGo HTML 오류 처리 가이드: 5가지 오류 분류, errors.Is 센티넬 판별, errors.As 구조화 추출, context 취소와 배치 부분 실패 처리로 견고한 로직을 구축합니다."
+title: "오류 처리 - CyberGo html | 견고한 오류 처리 가이드"
+description: "CyberGo html 오류 처리 가이드: 5가지 오류 분류, errors.Is/As 판별, context 취소와 배치 부분 실패 처리로 견고한 로직을 구축합니다."
 sidebar_position: 2
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Извлечение и группировка ссылок"
-title: "Ссылки и группировка - CyberGo HTML | для скрейпинга"
-description: "Извлечение и группировка ссылок CyberGo HTML: ExtractAllLinks для ресурсов, фильтры Include, относительные URL и лучшие практики для скрейпинга и краулеров."
+title: "Ссылки и группировка - CyberGo html | скрейпинг"
+description: "Извлечение и группировка ссылок CyberGo html: ExtractAllLinks для ресурсов, фильтры Include, относительные URL и практики для скрейпинга."
 sidebar_position: 3
 ---
 

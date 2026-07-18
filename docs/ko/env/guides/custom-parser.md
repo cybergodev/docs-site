@@ -1,7 +1,7 @@
 ---
 sidebar_label: "커스텀 파서"
 title: "커스텀 파서 - CyberGo env | 파일 형식 확장"
-description: "CyberGo env 커스텀 파서 가이드로 EnvParser 인터페이스를 구현해 RegisterParser로 등록하며, TOML·INI 파서 전체 예제와 모범 사례를 제공합니다."
+description: "CyberGo env 커스텀 파서 가이드로 EnvParser 인터페이스의 Parse 메서드를 구현해 RegisterParser로 등록하고, ComponentFactory로 Validator와 Auditor를 얻으며 TOML·INI 파서 예제와 모범 사례를 제공합니다."
 sidebar_position: 7
 ---
 

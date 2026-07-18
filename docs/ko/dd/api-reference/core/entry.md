@@ -1,7 +1,7 @@
 ---
 sidebar_label: "LoggerEntry"
 title: "LoggerEntry - CyberGo DD | 사전 설정 필드 로그"
-description: "CyberGo DD LoggerEntry 타입 전체 API 문서. 사전 설정 필드가 있는 체인식 로거를 생성하는 데 사용되며, 매번 WithFields 호출 시 새로운 불변 Entry 인스턴스를 반환합니다. 필드 누적 조합, 컨텍스트 바인딩 전파 및 레벨 상속 메커니즘을 지원하여 요청 수준 로그 추적과 컨텍스트 연관 등 시나리오에 적합합니다."
+description: "CyberGo DD LoggerEntry API 문서. 사전 설정 필드가 있는 체인식 로거를 생성하며, 매번 WithFields 호출 시 새로운 불변 Entry를 반환해 필드 누적 조합, 컨텍스트 바인딩 전파, 레벨 상속을 지원하여 요청 수준 추적과 컨텍스트 연관에 적합합니다."
 sidebar_position: 3
 ---
 
@@ -54,7 +54,7 @@ Logger의 모든 로그 메서드는 Entry에서도 사용할 수 있으며, 출
 | `Info(args ...any)` | Info 레벨 |
 | `Warn(args ...any)` | Warn 레벨 |
 | `Error(args ...any)` | Error 레벨 |
-| `Fatal(args ...any)` | Fatal 레벨 |
+| `Fatal(args ...any)` | Fatal 레벨 (기본적으로 os.Exit(1) 호출, FatalHandler로 커스터마이즈 가능) |
 | `Log(level LogLevel, args ...any)` | 레벨 지정 |
 
 ### 포맷팅 로그
@@ -65,7 +65,7 @@ Logger의 모든 로그 메서드는 Entry에서도 사용할 수 있으며, 출
 | `Infof(format string, args ...any)` | 포맷팅 Info |
 | `Warnf(format string, args ...any)` | 포맷팅 Warn |
 | `Errorf(format string, args ...any)` | 포맷팅 Error |
-| `Fatalf(format string, args ...any)` | 포맷팅 Fatal |
+| `Fatalf(format string, args ...any)` | 포맷팅 Fatal (기본적으로 os.Exit(1) 호출, FatalHandler로 커스터마이즈 가능) |
 | `Logf(level LogLevel, format string, args ...any)` | 포맷팅 레벨 지정 |
 
 ### 구조화된 로그
@@ -76,7 +76,7 @@ Logger의 모든 로그 메서드는 Entry에서도 사용할 수 있으며, 출
 | `InfoWith(msg string, fields ...Field)` | 구조화된 Info |
 | `WarnWith(msg string, fields ...Field)` | 구조화된 Warn |
 | `ErrorWith(msg string, fields ...Field)` | 구조화된 Error |
-| `FatalWith(msg string, fields ...Field)` | 구조화된 Fatal |
+| `FatalWith(msg string, fields ...Field)` | 구조화된 Fatal (기본적으로 os.Exit(1) 호출, FatalHandler로 커스터마이즈 가능) |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | 구조화된 레벨 지정 |
 
 ### Print 메서드

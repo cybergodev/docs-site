@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Обзор"
-title: "Справочник API - CyberGo JSON"
+title: "Справочник API - CyberGo JSON | Функции"
 description: "Справочник API CyberGo JSON: GetString/GetInt, Set/Delete, Marshal/Unmarshal, Processor, Schema, Hook и безопасность, совместимый со stdlib."
 sidebar_position: 1
 ---
@@ -19,7 +19,7 @@ sidebar_position: 1
 | [Определения типов](./types) | Основные определения типов (включая Encoder/Decoder) |
 | [Обобщённые операции](./generics) | Справочник обобщённых API |
 | [Определения интерфейсов](./interfaces) | Расширяемые интерфейсы |
-| [Потоковая обработка](../streaming/large-file) | Справочник потокового процессора |
+| [Потоковая обработка](../streaming/large-files) | Справочник потокового процессора |
 | [Обработка NDJSON](../streaming/jsonl) | Обработчик JSONL/NDJSON |
 | [Итератор](./iterator) | API итерации и обхода |
 | [Вспомогательные функции](./helpers) | Преобразование типов и утилиты |
@@ -56,8 +56,8 @@ sidebar_position: 1
 
 | Функция | Описание |
 |---------|----------|
-| `Marshal`, `Unmarshal` | Стандартное кодирование/декодирование |
-| `MarshalIndent` | Форматированное кодирование |
+| `Marshal`, `Unmarshal` | Стандартное кодирование/декодирование (совместимо с `encoding/json`, можно добавить `cfg`) |
+| `MarshalIndent` | Форматированное кодирование (совместимо с `encoding/json.MarshalIndent`, можно добавить `cfg`) |
 | `Encode`, `EncodeWithConfig` | Кодирование в строку |
 | `NewEncoder`, `NewDecoder` | Потоковое кодирование/декодирование |
 | `Parse` | Парсинг JSON |
@@ -67,7 +67,8 @@ sidebar_position: 1
 | Функция | Описание |
 |---------|----------|
 | `Prettify` | Форматирование JSON |
-| `Compact` | Сжатие JSON |
+| `Compact` | Сжатие JSON (форма с буфером, совместимо с `encoding/json.Compact`) |
+| `CompactString` | Сжатие JSON (строковый ввод/вывод, зеркало `Processor.Compact`) |
 
 #### Файловые операции
 

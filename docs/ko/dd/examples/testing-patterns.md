@@ -1,7 +1,7 @@
 ---
 sidebar_label: "테스트 패턴"
 title: "테스트 패턴 - CyberGo DD | LoggerRecorder 테스트 예제"
-description: "CyberGo DD 테스트 패턴 예제. LoggerRecorder를 단위 테스트와 통합 테스트에서 사용하는 전체 사용법을 상세히 소개합니다. 로그 메시지 단언, 레벨 필터링 테스트, 필드 값 검사, 다중 테스트 케이스 격리, 동시성 안전 테스트 및 테스트 커버리지 향상을 위한 완전한 팁과 모범 사례를 다룹니다. 다양한 Go 프로젝트의 로그 테스트에 적합합니다."
+description: "CyberGo DD 테스트 패턴 예제. LoggerRecorder를 단위/통합 테스트에서 사용하는 방법을 소개합니다. 로그 메시지 단언, 레벨 필터링, 필드 검사, 케이스 격리, 동시성 안전 테스트, 커버리지 향상 팁으로 다양한 Go 프로젝트 로그 테스트에 적합합니다."
 sidebar_position: 4
 ---
 

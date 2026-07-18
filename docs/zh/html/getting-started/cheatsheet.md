@@ -1,7 +1,7 @@
 ---
 sidebar_label: "速查表"
-title: "速查表 - CyberGo HTML | API 一页通"
-description: "CyberGo HTML 常用 API 速查表：包函数、Processor 方法、四种配置预设、关键配置项、错误判断与审计设置，一页速查函数签名与用法。"
+title: "速查表 - CyberGo html | API 一页速查"
+description: "CyberGo html 常用 API 一页速查表：包级函数、Processor 方法、配置预设、错误判断与审计设置，覆盖函数签名与用法。"
 sidebar_position: 3
 ---
 

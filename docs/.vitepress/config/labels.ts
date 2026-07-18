@@ -334,10 +334,14 @@ function themeLabels(lang: Lang) {
   }
 }
 
-/** "Edit this page" link — pattern embeds the language segment, text is localized. */
+/** "Edit this page" link — VitePress resolves `:path` to the page's path relative
+ * to `srcDir` (i.e. `docs/`), which already includes the language segment
+ * (e.g. `zh/json/index.md`). The base therefore only appends `/:path`;
+ * adding `/${lang}` here would produce a duplicated language segment (`/zh/zh/`).
+ * `lang` is still needed to localize the link text. */
 function buildEditLink(lang: Lang) {
   return {
-    pattern: `${EDIT_LINK_BASE}/${lang}/:path`,
+    pattern: `${EDIT_LINK_BASE}/:path`,
     text: UI_LABELS[lang].editLinkText
   }
 }

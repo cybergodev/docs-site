@@ -46,7 +46,7 @@ logger, _ := dd.New(dd.Config{
 | `Infof(format string, args ...any)` | Formatted Info |
 | `Warnf(format string, args ...any)` | Formatted Warn |
 | `Errorf(format string, args ...any)` | Formatted Error |
-| `Fatalf(format string, args ...any)` | Formatted Fatal |
+| `Fatalf(format string, args ...any)` | Formatted Fatal (default calls os.Exit(1), customizable via FatalHandler) |
 | `Logf(level LogLevel, format string, args ...any)` | Formatted specified level |
 
 ### Structured Logging
@@ -57,7 +57,7 @@ logger, _ := dd.New(dd.Config{
 | `InfoWith(msg string, fields ...Field)` | Structured Info |
 | `WarnWith(msg string, fields ...Field)` | Structured Warn |
 | `ErrorWith(msg string, fields ...Field)` | Structured Error |
-| `FatalWith(msg string, fields ...Field)` | Structured Fatal |
+| `FatalWith(msg string, fields ...Field)` | Structured Fatal (default calls os.Exit(1), customizable via FatalHandler) |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | Structured specified level |
 
 ```go
@@ -127,14 +127,14 @@ logger.SetWriteErrorHandler(func(w io.Writer, err error) {
 
 ```go
 // Add context extractor
-logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
+_ = logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
     return []dd.Field{
         dd.String("trace_id", dd.GetTraceID(ctx)),
     }
 })
 
 // Replace all extractors
-logger.SetContextExtractors(extractor1, extractor2)
+_ = logger.SetContextExtractors(extractor1, extractor2)
 
 // Get current extractors
 extractors := logger.GetContextExtractors()

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
 title: "API Reference - CyberGo env | Interface Docs"
-description: "CyberGo env API reference index linking package functions, Config, interfaces, Loader, ComponentFactory, SecureValue, constants and errors for quick lookup."
+description: "CyberGo env API reference index: package functions, Config, Loader, SecureValue, interfaces, ComponentFactory, constants/errors with method-signature lookup."
 sidebar_position: 1
 ---
 

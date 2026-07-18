@@ -1,7 +1,7 @@
 ---
 sidebar_label: "内容提取实战"
-title: "内容提取实战 - CyberGo HTML | 核心用法详解"
-description: "CyberGo HTML 内容提取实战：提取流程、文章智能识别、基础与文件提取、Result 字段解读、自定义 Scorer 与非 UTF-8 编码检测处理。"
+title: "内容提取实战 - CyberGo html | 提取流程指南"
+description: "CyberGo html 内容提取实战：提取流程、文章智能识别与候选评分、Result 字段解读、自定义 Scorer 与编码自动检测。"
 sidebar_position: 1
 ---
 

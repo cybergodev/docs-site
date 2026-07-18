@@ -1,7 +1,7 @@
 ---
 sidebar_label: "パッケージ関数"
-title: "パッケージ関数 - CyberGo HTML | 便利な抽出 API"
-description: "CyberGo HTML パッケージ関数：Extract、ExtractText、ExtractToMarkdown など。内部の sync.Pool で Processor を再利用し、単発呼び出しや迅速な統合に適しています。"
+title: "パッケージ関数 - CyberGo html | 使い方・パラメータ・サンプル"
+description: "CyberGo html パッケージ関数：Extract、ExtractText、ExtractToMarkdown など。内部で sync.Pool により Processor を再利用し、単発呼び出しに適しています。"
 sidebar_position: 1
 ---
 

@@ -241,6 +241,5 @@ func TestMemoryUsage(t *testing.T) {
 
 ## See Also
 
-- [Large File Processing API](../streaming/large-file)
-- [Error Handling](./error-handling)
 - [Large File Processing](../streaming/large-files)
+- [Error Handling](./error-handling)

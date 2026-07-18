@@ -1,11 +1,11 @@
 ---
-sidebar_label: "Кодирование и декодирование"
-title: "Кодирование и декодирование - CyberGo JSON | API"
-description: "Кодирование/декодирование CyberGo JSON: Marshal/Unmarshal, Compact/Indent/HTMLEscape и Encode/EncodePretty/Prettify, совместимые со стандартной библиотекой."
-sidebar_position: 4
+sidebar_label: "Кодирование и вывод"
+title: "Функции кодирования и вывода - CyberGo JSON | Справочник API"
+description: "Функции кодирования и вывода CyberGo JSON: Marshal/Unmarshal сериализация, Compact/Indent/HTMLEscape форматирование и Encode/EncodePretty/Prettify настраиваемое кодирование, 100% совместимость со стандартной библиотекой."
+sidebar_position: 5
 ---
 
-# Функции кодирования и декодирования
+# Функции кодирования и вывода
 
 Функции кодирования и декодирования, предоставляемые пакетом json, включают сериализацию, десериализацию, форматирование и настраиваемое кодирование.
 
@@ -13,52 +13,62 @@ sidebar_position: 4
 
 ### Marshal
 
-Сигнатура: `func Marshal(value any) ([]byte, error)`
+Сигнатура: `func Marshal(value any, cfg ...Config) ([]byte, error)`
 
-Сериализация значения Go в срез байт JSON. 100% совместимость с `encoding/json.Marshal`.
+Сериализация значения Go в срез байт JSON. 100% совместимость с `encoding/json.Marshal`: вызов `json.Marshal(v)` без cfg полностью идентичен стандартной библиотеке.
+
+С помощью необязательного хвостового `Config` можно управлять поведением кодирования (отступы, обработка чисел и т.д.), образуя пару пакетный/экземплярный вместе с `Processor.Marshal`.
 
 ```go
+// Совместимость с encoding/json (без cfg)
 data, err := json.Marshal(map[string]any{"name": "test"})
 if err != nil {
     panic(err)
 }
 fmt.Println(string(data)) // {"name":"test"}
-```
 
-:::tip
-`Marshal` не принимает параметры конфигурации. Для кодирования с конфигурацией используйте [EncodeWithConfig](#encodewithconfig).
-:::
+// С конфигурацией (неразрушающий необязательный параметр)
+data, err = json.Marshal(value, json.PrettyConfig())
+```
 
 ### Unmarshal
 
-Сигнатура: `func Unmarshal(data []byte, value any) error`
+Сигнатура: `func Unmarshal(data []byte, value any, cfg ...Config) error`
 
-Десериализация среза байт JSON в значение Go. 100% совместимость с `encoding/json.Unmarshal`.
+Десериализация среза байт JSON в значение Go. 100% совместимость с `encoding/json.Unmarshal`: вызов `json.Unmarshal(data, &v)` без cfg полностью идентичен стандартной библиотеке.
+
+С помощью необязательного хвостового `Config` можно управлять ограничениями безопасности, сохранением чисел и т.д., образуя пару с `Processor.Unmarshal`.
 
 ```go
 var result struct {
     Name string `json:"name"`
 }
+// Совместимость с encoding/json (без cfg)
 err := json.Unmarshal([]byte(`{"name":"test"}`), &result)
+
+// С конфигурацией
+err = json.Unmarshal(data, &v, json.SecurityConfig())
 ```
 
 ### MarshalIndent
 
-Сигнатура: `func MarshalIndent(v any, prefix, indent string) ([]byte, error)`
+Сигнатура: `func MarshalIndent(v any, prefix, indent string, cfg ...Config) ([]byte, error)`
 
-Сериализация с отступами. 100% совместимость с `encoding/json.MarshalIndent`.
+Сериализация с отступами. 100% совместимость с `encoding/json.MarshalIndent`: вызов `json.MarshalIndent(v, prefix, indent)` без cfg полностью идентичен стандартной библиотеке.
+
+С помощью необязательного хвостового `Config` можно добавить конфигурацию; параметры `prefix` и `indent` переопределяют соответствующие поля `Config`.
 
 ```go
+// Совместимость с encoding/json (без cfg)
 data, err := json.MarshalIndent(user, "", "  ")
 if err != nil {
     panic(err)
 }
 fmt.Println(string(data))
-```
 
-:::tip
-`MarshalIndent` не принимает параметры конфигурации. Для кодирования с конфигурацией используйте [EncodeWithConfig](#encodewithconfig).
-:::
+// С конфигурацией
+data, err = json.MarshalIndent(v, "", "  ", json.SecurityConfig())
+```
 
 ## Функции форматирования
 
@@ -77,6 +87,30 @@ if err != nil {
 fmt.Println(buf.String()) // {"name":"test"}
 ```
 
+### CompactString
+
+Сигнатура: `func CompactString(jsonStr string, cfg ...Config) (string, error)`
+
+Сжатие JSON в форме строкового ввода/вывода с удалением ненужных пробелов. Является пакетным зеркалом `Processor.Compact` и симметричен `Prettify` (зеркало `Processor.Prettify`).
+
+::: info Compact vs CompactString
+- `Compact(dst, src)`: форма с буфером, совместимость с `encoding/json.Compact`, зеркало `Processor.CompactBuffer`
+- `CompactString(s)`: строковая форма, зеркало `Processor.Compact`
+:::
+
+```go
+compact, err := json.CompactString(`{
+    "name": "Alice",
+    "age": 30
+}`)
+// compact == `{"name":"Alice","age":30}`
+
+// С конфигурацией (например, сохранение исходного формата чисел)
+cfg := json.DefaultConfig()
+cfg.PreserveNumbers = true
+compact, err = json.CompactString(jsonStr, cfg)
+```
+
 ### Indent
 
 Сигнатура: `func Indent(dst *bytes.Buffer, src []byte, prefix, indent string, cfg ...Config) error`
@@ -85,7 +119,7 @@ fmt.Println(buf.String()) // {"name":"test"}
 
 ```go
 var buf bytes.Buffer
-err := json.Indent(&buf, []byte(`{"name":"test"}`), "", "  ")
+err := json.Indent(&buf, []byte(`{"name": "test"}`), "", "  ")
 if err != nil {
     panic(err)
 }
@@ -133,6 +167,10 @@ fmt.Println(pretty)
 Сигнатура: `func Encode(value any, cfg ...Config) (string, error)`
 
 Кодирование значения Go в JSON-строку с поддержкой необязательного параметра конфигурации.
+
+::: warning Устарело
+`Encode` функционально полностью идентичен [`EncodeWithConfig`](#encodewithconfig) (оба делегируют одну реализацию). Используйте `EncodeWithConfig` или, при приемлемости вывода `[]byte`, [`Marshal`](#marshal). `Encode` будет удалён в будущей мажорной версии.
+:::
 
 ```go
 result, err := json.Encode(user)
@@ -322,7 +360,7 @@ cfg = json.SecurityConfig()
 
 ## Смотрите также
 
-- [Функции запросов и получения](./get) - Операции запросов Get, GetString и др.
+- [Функции запросов и получения](./query) - Операции запросов Get, GetString и др.
 - [Функции изменения](./modify) - Операции изменения Set, Delete и др.
 - [Файловые операции](./file-io) - Файловые операции LoadFromFile, SaveToFile и др.
 - [Конфигурация](../config) - Тип Config и параметры

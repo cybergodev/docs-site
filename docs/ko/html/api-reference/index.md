@@ -1,7 +1,7 @@
 ---
 sidebar_label: "개요"
-title: "API 레퍼런스 - CyberGo HTML | 전체 모듈 인덱스"
-description: "CyberGo HTML 전체 API 인덱스: 패키지 함수와 Processor 두 방식으로 콘텐츠 추출, 출력, 링크, 배치, 설정, 감사, 타입 등 모든 모듈을 안내합니다."
+title: "API 레퍼런스 - CyberGo html | 전체 함수·타입 목록"
+description: "CyberGo html 전체 API 인덱스: 패키지 함수와 Processor 두 호출 방식으로 콘텐츠 추출·출력·링크·배치·설정·감사·타입 모듈을 안내합니다."
 sidebar_position: 1
 ---
 

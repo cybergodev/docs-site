@@ -1,5 +1,5 @@
 ---
-sidebar_label: "JSONL 처리"
+sidebar_label: "JSONL"
 title: "Processor JSONL 메서드 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor JSONL 메서드: StreamJSONL, ForeachJSONL, MapJSONL, ReduceJSONL, FilterJSONL로 스트림 데이터 처리에 적합합니다."
 sidebar_position: 8

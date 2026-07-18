@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo DD | 5-Minute Guide"
-description: "Get started with CyberGo DD: install, first log output, create loggers, configure rotation, structured fields, and hook system in 5 minutes."
-sidebar_position: 2
+description: "CyberGo DD quickstart: install, create loggers, configure output targets and file rotation, structured fields, and hook system in 5 minutes."
+sidebar_position: 1
 ---
 
 # Quick Start
@@ -15,6 +15,8 @@ DD provides multiple convenience constructors for different scenarios:
 package main
 
 import (
+    "log"
+
     "github.com/cybergodev/dd"
 )
 
@@ -23,35 +25,47 @@ func main() {
     dd.Info("using global logger")
 
     // Option 2: Development mode (DEBUG level, with caller)
-    dev, _ := dd.New(dd.DevelopmentConfig())
+    dev, err := dd.New(dd.DevelopmentConfig())
+    if err != nil {
+        log.Fatal(err)
+    }
     defer dev.Close()
     dev.Info("development mode output")
 
     // Option 3: Output to file
-    file, _ := dd.New(dd.Config{
+    file, err := dd.New(dd.Config{
         Targets: []dd.OutputTarget{dd.FileOutput("logs/app.log")},
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer file.Close()
     file.Info("file output")
 
     // Option 4: Output to both console and file
-    all, _ := dd.New(dd.Config{
+    all, err := dd.New(dd.Config{
         Targets: []dd.OutputTarget{
             dd.ConsoleOutput(),
             dd.FileOutput("logs/app.log"),
         },
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer all.Close()
     all.Info("dual output")
 
     // Option 5: JSON format dual output
-    jsonLogger, _ := dd.New(dd.Config{
+    jsonLogger, err := dd.New(dd.Config{
         Format: dd.FormatJSON,
         Targets: []dd.OutputTarget{
             dd.ConsoleOutput(),
             dd.FileOutput("logs/app.json"),
         },
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer jsonLogger.Close()
     jsonLogger.Info("JSON format output")
 }
@@ -128,22 +142,33 @@ fwCfg.MaxBackups = 3
 fwCfg.MaxSizeMB = 1
 fwCfg.Compress = true
 
-fw, _ := dd.NewFileWriter("logs/app.log", fwCfg)
-logger, _ := dd.New(dd.Config{
+fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
+if err != nil {
+    log.Fatal(err)
+}
+logger, err := dd.New(dd.Config{
     Level: dd.LevelInfo,
     Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 logger.Info("hello world")
 ```
 
 ## 6. Sensitive Data Filtering
 
-DD enables basic sensitive data filtering by default with `DefaultConfig()`. You can use stronger filtering presets:
+DD enables basic sensitive data filtering by default (passwords, API keys, credit card numbers, etc. are automatically redacted):
 
 ```go
-// DefaultConfig() already includes basic security filtering
-logger, _ := dd.New(dd.DefaultConfig())
+// Default configuration already includes basic security filtering
+logger, err := dd.New(dd.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 // Password field is automatically redacted
 logger.InfoWith("user login",

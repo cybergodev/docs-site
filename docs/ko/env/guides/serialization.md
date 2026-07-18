@@ -1,7 +1,7 @@
 ---
 sidebar_label: "직렬화"
 title: "직렬화 - CyberGo env | 다중 형식 변환"
-description: "CyberGo env 직렬화 가이드로 .env·JSON·YAML 간 Map·구조체 변환, Marshal/Unmarshal 함수군, 커스텀 인터페이스, env 태그와 민감 필드 마스킹을 다룹니다."
+description: "CyberGo env 직렬화 가이드로 .env·JSON·YAML 간 Map·구조체 변환, Marshal/Unmarshal 함수군, Marshaler/Unmarshaler 인터페이스, DetectFormat 자동 감지와 env 태그·민감 필드 마스킹을 다룹니다."
 sidebar_position: 2
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概述"
 title: "API 参考 - CyberGo JSON | 完整函数文档"
-description: "CyberGo JSON 完整 API 参考：GetString/GetInt 路径查询、Set/Delete 修改、Marshal/Unmarshal 序列化、Processor 处理器、Schema 验证、Hook 与安全配置，兼容标准库。"
+description: "CyberGo JSON API 参考：GetString/GetInt 路径查询、Set/Delete 修改、Marshal/Unmarshal 序列化、Processor 处理器与 Schema 验证，兼容标准库。"
 sidebar_position: 1
 ---
 
@@ -19,7 +19,7 @@ sidebar_position: 1
 | [类型定义](./types) | 核心类型定义（含 Encoder/Decoder） |
 | [泛型操作](./generics) | 泛型 API 参考 |
 | [接口定义](./interfaces) | 扩展接口定义 |
-| [流式处理](../streaming/large-file) | 流式处理器参考 |
+| [流式处理](../streaming/large-files) | 流式处理器参考 |
 | [NDJSON 处理](../streaming/jsonl) | JSONL/NDJSON 处理器 |
 | [迭代器](./iterator) | 迭代遍历 API |
 | [辅助函数](./helpers) | 类型转换和工具函数 |
@@ -56,8 +56,8 @@ sidebar_position: 1
 
 | 函数 | 说明 |
 |------|------|
-| `Marshal`, `Unmarshal` | 标准编解码 |
-| `MarshalIndent` | 格式化编码 |
+| `Marshal`, `Unmarshal` | 标准编解码（兼容 `encoding/json`，可附加 `cfg`） |
+| `MarshalIndent` | 格式化编码（兼容 `encoding/json.MarshalIndent`，可附加 `cfg`） |
 | `Encode`, `EncodeWithConfig` | 编码为字符串 |
 | `NewEncoder`, `NewDecoder` | 流式编解码 |
 | `Parse` | 解析 JSON |
@@ -67,7 +67,8 @@ sidebar_position: 1
 | 函数 | 说明 |
 |------|------|
 | `Prettify` | 格式化 JSON |
-| `Compact` | 压缩 JSON |
+| `Compact` | 压缩 JSON（buffer 形式，兼容 `encoding/json.Compact`） |
+| `CompactString` | 压缩 JSON（字符串输入/输出形式，镜像 `Processor.Compact`） |
 
 #### 文件操作
 

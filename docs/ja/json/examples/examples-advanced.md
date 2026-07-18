@@ -1,7 +1,7 @@
 ---
 sidebar_label: "高度なサンプル"
 title: "高度な機能の例 - CyberGo JSON | 応用編"
-description: "CyberGo JSON 高度な例：EncodeBatch、EncodeFields、PreParse、SafeGet、WarmupCache、メモリプール最適化など、プロダクション級の Go パフォーマンス手法を紹介します。"
+description: "CyberGo JSON 高度な例：EncodeBatch 一括エンコード、EncodeFields フィールド選択、PreParse プリパース、SafeGet 安全取得と WarmupCache ウォームアップで性能を向上します。"
 sidebar_position: 2
 ---
 

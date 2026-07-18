@@ -1,6 +1,6 @@
 ---
-sidebar_label: "Обработка JSONL"
-title: "Processor - Методы JSONL - CyberGo JSON | Справочник API"
+sidebar_label: "JSONL"
+title: "Processor: JSONL - CyberGo JSON | API"
 description: "Методы JSONL процессора CyberGo JSON: StreamJSONL, ForeachJSONL, MapJSONL, ReduceJSONL и FilterJSONL для потоковой обработки данных."
 sidebar_position: 8
 ---

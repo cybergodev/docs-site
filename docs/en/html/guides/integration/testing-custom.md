@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Testing & Custom"
-title: "Testing & Custom Extensions - CyberGo HTML | Testing Guide"
-description: "CyberGo HTML testing and extension guide: custom Scorer, ContentNode traversal, test mode, mock HTML data, and Extractor mocking with runnable examples."
+title: "Testing & Custom Extensions - CyberGo html | Testing Guide"
+description: "CyberGo html testing and custom extensions: custom Scorer implementation, ContentNode traversal, test mode, mock data, and Extractor interface mock examples."
 sidebar_position: 2
 ---
 

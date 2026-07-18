@@ -1,7 +1,7 @@
 ---
 sidebar_label: "TLS と証明書ピンニング"
 title: "TLS と証明書ピンニング - CyberGo HTTPC | 暗号とピンニング"
-description: "HTTPC TLS と証明書ピンニングガイド: TLS 1.2-1.3 バージョン制御と暗号スイート、カスタム CA 証明書の読み込み、mTLS 双方向認証、CertificatePinner ピンニング API、HTTP/2 ネゴシエーションを解説します。"
+description: "HTTPC TLS と証明書ピンニングガイド: TLS 1.2-1.3 バージョン制御と安全な暗号スイート設定、カスタム CA 証明書の読み込み、mTLS 双方向認証、CertificatePinner 証明書ピンニング API、HTTP/2 ネゴシエーションにより、デフォルトで安全な設定を提供し、トランスポート層の暗号化防御を構築します。"
 sidebar_position: 3
 ---
 

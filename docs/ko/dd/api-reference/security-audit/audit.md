@@ -1,7 +1,7 @@
 ---
-sidebar_label: "감사 로그"
+sidebar_label: "AuditLogger"
 title: "감사 로그 - CyberGo DD | AuditLogger"
-description: "CyberGo DD 감사 로그 전체 API 문서. AuditLogger 비동기 감사 이벤트 레코더, AuditConfig 설정 옵션 (출력 대상, 형식, 서명) 및 감사 항목 구조화된 포맷팅을 포함하여, 보안 관련 이벤트 추적 기록을 지원하며 엔터프라이즈급 준수 감사 및 데이터 보안 감독의 다양한 요구를 충족합니다."
+description: "CyberGo DD 감사 로그 API 문서. AuditLogger 비동기 감사 이벤트 레코더, AuditConfig 설정 옵션 (출력 대상, 형식, 서명), 감사 항목 구조화된 포맷팅으로 보안 이벤트 추적을 지원해 엔터프라이즈급 준수 감사 요구를 충족합니다."
 sidebar_position: 3
 ---
 
@@ -18,6 +18,10 @@ DD는 비동기 감사 로그 기능을 제공하여 보안 관련 이벤트를 
 ```go
 func NewAuditLogger(cfg AuditConfig) (*AuditLogger, error)
 ```
+
+전달된 `AuditConfig`를 사용해 비동기 감사 레코더를 생성합니다. `DefaultAuditConfig()`로 합리적인 기본값이 포함된 설정을 얻을 수 있습니다.
+
+오류를 반환하는 경우: 설정 검증 실패 (예: `BufferSize`가 음수).
 
 ```go
 // 기본 설정 사용
@@ -73,12 +77,12 @@ audit.LogSecurityViolation("sql_injection", "SQL 주입 시도", map[string]any{
 ```go
 type AuditConfig struct {
     Enabled          bool             // 감사 활성화 여부 (기본값 true)
-    Output           *os.File         // 출력 파일 (기본값 os.Stderr)
-    BufferSize       int              // 버퍼 크기 (기본값 1000)
-    IncludeTimestamp  bool            // 타임스탬프 포함 여부 (기본값 true)
+    Output           *os.File         // 출력 파일 (기본값 os.Stderr); nil인 경우 이벤트는 Events 채널로만 전달됨
+    BufferSize       int              // 비동기 이벤트 버퍼 크기 (기본값 1000; 음수인 경우 검증 실패)
+    IncludeTimestamp bool             // 타임스탬프 포함 여부 (기본값 true)
     JSONFormat       bool             // JSON 형식 출력 (기본값 true)
     MinimumSeverity  AuditSeverity    // 최소 기록 심각도 (기본값 AuditSeverityInfo)
-    IntegritySigner  *IntegritySigner // 무결성 서명기
+    IntegritySigner  *IntegritySigner // 무결성 서명기 (선택 사항; 설정 시 매 감사 이벤트가 서명됨)
 }
 ```
 
@@ -94,8 +98,8 @@ func DefaultAuditConfig() AuditConfig
 
 | 메서드 | 서명 | 설명 |
 |------|------|------|
-| `Validate` | `() error` | 설정 유효성 검증 |
-| `Clone` | `() AuditConfig` | 설정 복사 |
+| `Validate` | `() error` | 설정 유효성 검증 (`BufferSize`가 음수인 경우 오류 반환) |
+| `Clone` | `() AuditConfig` | 설정 복사 (`IntegritySigner`는 공유 참조로 깊은 복사하지 않음) |
 
 ## AuditEvent
 
@@ -119,11 +123,11 @@ type AuditEvent struct {
 
 ```go
 type AuditStats struct {
-    TotalEvents int64                      // 총 이벤트 수
-    Dropped     int64                      // 버려진 이벤트 수
-    ByType      map[AuditEventType]int64   // 타입별 통계
-    BufferSize  int                        // 버퍼 크기
-    BufferUsage int                        // 버퍼 사용량
+    TotalEvents int64                    // 총 이벤트 수
+    Dropped     int64                    // 버려진 이벤트 수 (버퍼가 가득 찰 때 누적)
+    ByType      map[AuditEventType]int64 // 타입별 통계
+    BufferSize  int                      // 버퍼 크기
+    BufferUsage int                      // 현재 버퍼 사용량
 }
 ```
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Константы и ошибки"
 title: "Константы и ошибки - CyberGo env | Константы безопасности"
-description: "Константы и ошибки CyberGo env: лимит DefaultMaxFileSize, ErrFileNotFound, тип ParseError и функции IsSensitiveKey и MaskValue с errors.Is и errors.As."
+description: "Константы и ошибки CyberGo env: лимиты DefaultMaxFileSize, ErrFileNotFound, ParseError, DefaultForbiddenKeys и функции IsSensitiveKey, MaskValue."
 sidebar_position: 7
 ---
 

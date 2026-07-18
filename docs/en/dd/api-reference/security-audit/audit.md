@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Audit"
+sidebar_label: "AuditLogger"
 title: "Audit Logging - CyberGo DD | AuditLogger"
 description: "CyberGo DD audit logging API: AuditLogger async event recorder, AuditConfig options, structured entries, and enterprise compliance audit support."
 sidebar_position: 3
@@ -18,6 +18,10 @@ Asynchronous security audit event recorder.
 ```go
 func NewAuditLogger(cfg AuditConfig) (*AuditLogger, error)
 ```
+
+Creates an asynchronous audit logger using the supplied `AuditConfig`. Use `DefaultAuditConfig()` to get a configuration with sensible defaults.
+
+Cases that return an error: configuration validation failure (e.g. `BufferSize` is negative).
 
 ```go
 // Using default configuration
@@ -72,13 +76,13 @@ Audit log configuration.
 
 ```go
 type AuditConfig struct {
-    Enabled          bool             // Whether to enable auditing
-    Output           *os.File         // Output file
-    BufferSize       int              // Buffer size
-    IncludeTimestamp  bool            // Whether to include timestamp
-    JSONFormat       bool             // JSON format output
-    MinimumSeverity  AuditSeverity    // Minimum severity level to record
-    IntegritySigner  *IntegritySigner // Integrity signer
+    Enabled          bool             // Whether to enable auditing (default true)
+    Output           *os.File         // Output file (default os.Stderr); when nil, events are only passed through the Events channel
+    BufferSize       int              // Async event buffer size (default 1000; a negative value fails validation)
+    IncludeTimestamp bool             // Whether to include a timestamp (default true)
+    JSONFormat       bool             // JSON format output (default true)
+    MinimumSeverity  AuditSeverity    // Minimum severity to record (default AuditSeverityInfo)
+    IntegritySigner  *IntegritySigner // Integrity signer (optional; when configured, every audit event is signed)
 }
 ```
 
@@ -88,14 +92,14 @@ type AuditConfig struct {
 func DefaultAuditConfig() AuditConfig
 ```
 
-Returns default audit configuration. Audit logging is enabled by default.
+Returns the default audit configuration. Audit logging is enabled by default.
 
 ### Methods
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `Validate` | `() error` | Validate configuration |
-| `Clone` | `() AuditConfig` | Copy configuration |
+| `Validate` | `() error` | Validate configuration legality (returns an error if `BufferSize` is negative) |
+| `Clone` | `() AuditConfig` | Copy the configuration (`IntegritySigner` is a shared reference, not deep-copied) |
 
 ## AuditEvent
 

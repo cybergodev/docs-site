@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Сериализация"
 title: "Сериализация - CyberGo env | Мультиформатное преобразование"
-description: "Руководство по сериализации CyberGo env: преобразование Map и структур между .env, JSON и YAML, Marshal/Unmarshal, теги env и маскирование полей."
+description: "Сериализация CyberGo env: Map и структуры между .env/JSON/YAML, Marshal/Unmarshal, Marshaler/Unmarshaler и DetectFormat для экспорта и миграции конфигов."
 sidebar_position: 2
 ---
 

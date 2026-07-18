@@ -1,7 +1,7 @@
 ---
 sidebar_label: "序列化"
 title: "序列化 - CyberGo env | 多格式转换"
-description: "CyberGo env 序列化指南，详解 .env、JSON、YAML 间的 Map 与结构体转换，含 Marshal/Unmarshal 函数族、自定义接口与敏感字段掩码处理。"
+description: "CyberGo env 序列化指南，详解 .env、JSON、YAML 间的 Map 与结构体转换，含 Marshal/Unmarshal 函数族、Marshaler/Unmarshaler 自定义接口与 DetectFormat 自动检测，覆盖配置导出与格式迁移等实用场景。"
 sidebar_position: 2
 ---
 

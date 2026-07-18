@@ -1,7 +1,7 @@
 ---
 sidebar_label: "本番チェックリスト"
 title: "本番チェックリスト - CyberGo env | セキュリティリリースチェック"
-description: "CyberGo env 本番デプロイのセキュリティチェックリスト。.env 権限、RequiredKeys/AllowedKeys 検証、監査有効化、SecureValue 処理、性能パラメータチューニングを扱います。"
+description: "CyberGo env 本番デプロイのセキュリティチェックリスト。.env ファイル 600 権限と .gitignore 保護、RequiredKeys/AllowedKeys 必須キー検証、監査ログ有効化、SecureValue 処理、性能パラメータチューニングを扱い、安全なリリースを保証します。"
 sidebar_position: 2
 ---
 

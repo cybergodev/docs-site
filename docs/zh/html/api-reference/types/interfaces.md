@@ -1,7 +1,7 @@
 ---
 sidebar_label: "接口定义"
-title: "接口定义 - CyberGo HTML | 核心接口参考"
-description: "CyberGo HTML 核心接口：Extractor、StatsProvider、ContentNode、Scorer、AuditSink，用于功能扩展、集成测试与架构理解。"
+title: "接口定义 - CyberGo html | 核心接口参考"
+description: "CyberGo html 核心接口：Extractor、StatsProvider、ContentNode、Scorer、AuditSink，用于功能扩展与集成测试。"
 sidebar_position: 1
 ---
 
@@ -92,6 +92,12 @@ type Scorer interface {
     ShouldRemove(node ContentNode) bool  // 判断节点是否应移除
 }
 ```
+
+:::warning 注意：实现必须并发安全
+当单个 `Processor` 被多个并发 `Extract` 调用共享时，会从**多个 goroutine 同时**触发 `Score`/`ShouldRemove`。因此任何 `Scorer` 实现都必须**自身保证并发安全**。
+
+库内置的默认评分器只读、天然满足并发安全；**自定义 `Scorer` 若持有可变状态（如缓存、计数器），必须自行加锁同步**。
+:::
 
 通过 `Config.Scorer` 字段注入自定义评分器：
 

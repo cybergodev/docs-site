@@ -1,7 +1,7 @@
 ---
 sidebar_label: "프로덕션 체크리스트"
 title: "프로덕션 체크리스트 - CyberGo JSON | 보안 배포"
-description: "CyberGo JSON 프로덕션 보안 체크리스트: SecurityConfig, 자원 제한, 입력 검증, 오류 처리, 모니터링 알림, 성능-보안 균형으로 프로덕션 신뢰성을 보장합니다."
+description: "CyberGo JSON 프로덕션 보안 체크리스트: SecurityConfig, 자원 제한, 입력 검증, 오류 처리, 모니터링 알림으로 신뢰성을 보장합니다."
 sidebar_position: 3
 ---
 

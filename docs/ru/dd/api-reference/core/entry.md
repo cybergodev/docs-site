@@ -1,7 +1,7 @@
 ---
 sidebar_label: "LoggerEntry"
 title: "LoggerEntry - CyberGo DD | Логи с предустановленными полями"
-description: "Полная документация API типа CyberGo DD LoggerEntry для создания цепочного логгера с предустановленными полями, каждый вызов WithFields возвращает новый неизменяемый экземпляр Entry, поддерживает кумулятивную комбинацию полей, распространение привязки контекста и наследование уровней, подходит для отслеживания логов на уровне запросов и корреляции контекста."
+description: "Полная документация API типа LoggerEntry CyberGo DD: используется для создания цепочного логгера с предустановленными полями, каждый вызов WithFields возвращает новый неизменяемый экземпляр Entry, поддерживая накопление и комбинацию полей, привязку и распространение контекста и механизм наследования уровня, подходит для сценариев отслеживания логов на уровне запроса и контекстной корреляции."
 sidebar_position: 3
 ---
 
@@ -54,7 +54,7 @@ entry := base.WithField("svc", "gateway")  // svc становится "gateway"
 | `Info(args ...any)` | Уровень Info |
 | `Warn(args ...any)` | Уровень Warn |
 | `Error(args ...any)` | Уровень Error |
-| `Fatal(args ...any)` | Уровень Fatal |
+| `Fatal(args ...any)` | Уровень Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
 | `Log(level LogLevel, args ...any)` | С указанным уровнем |
 
 ### Форматированные логи
@@ -65,7 +65,7 @@ entry := base.WithField("svc", "gateway")  // svc становится "gateway"
 | `Infof(format string, args ...any)` | Форматированный Info |
 | `Warnf(format string, args ...any)` | Форматированный Warn |
 | `Errorf(format string, args ...any)` | Форматированный Error |
-| `Fatalf(format string, args ...any)` | Форматированный Fatal |
+| `Fatalf(format string, args ...any)` | Форматированный Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
 | `Logf(level LogLevel, format string, args ...any)` | Форматированный с указанным уровнем |
 
 ### Структурированные логи
@@ -76,7 +76,7 @@ entry := base.WithField("svc", "gateway")  // svc становится "gateway"
 | `InfoWith(msg string, fields ...Field)` | Структурированный Info |
 | `WarnWith(msg string, fields ...Field)` | Структурированный Warn |
 | `ErrorWith(msg string, fields ...Field)` | Структурированный Error |
-| `FatalWith(msg string, fields ...Field)` | Структурированный Fatal |
+| `FatalWith(msg string, fields ...Field)` | Структурированный Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | Структурированный с указанным уровнем |
 
 ### Методы Print

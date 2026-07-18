@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Package Functions"
 title: "Package Functions - CyberGo env | Global Helpers"
-description: "CyberGo env package function API reference: Load, GetString, GetInt, Keys, Marshal and ParseInto over a thread-safe global default Loader."
+description: "CyberGo env package functions: Load, GetString, GetInt, GetBool, GetDuration, GetSlice, GetSecure, Lookup, Keys, ParseInto over the global default Loader."
 sidebar_position: 2
 ---
 
@@ -375,7 +375,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ### GetSliceFrom[T]
 
 ```go
-func GetSliceFrom[T sliceElement](./loader *Loader, key string, defaultValue ...[]T) []T
+func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
 Gets a slice value from a specific Loader instance. This is a standalone generic function (not a Loader method).
@@ -520,6 +520,7 @@ Sets an environment variable.
 **Error Types:**
 - `ErrInvalidKey` - Invalid key name
 - `ErrForbiddenKey` - Forbidden key
+- `ErrInvalidValue` - Invalid value (when `ValidateValues` is true, value contains unsafe content like null bytes or control characters)
 - `ErrClosed` - Loader is closed
 
 ```go
@@ -634,9 +635,9 @@ Resets the global default loader. Primarily used in testing scenarios.
 - `error` - Error from closing the old loader (if one exists); returns nil if there was no previous loader or if closing succeeded
 
 **Behavior:**
-- Atomically swaps the default loader with nil
-- Closes the old loader (executed outside the lock to avoid blocking)
-- Allows a new default loader to be created
+- Atomically swaps the default loader to nil via `atomic.Pointer.Swap`
+- Closes the old loader while holding the `defaultMu` lock (lock released only after close completes, ensuring atomic reset)
+- After reset, a new default loader can be created via `Load()` or `LoadWithConfig()`
 
 ```go
 func TestMain(m *testing.M) {

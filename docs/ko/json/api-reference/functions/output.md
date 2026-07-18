@@ -1,64 +1,74 @@
 ---
-sidebar_label: "인코딩 및 디코딩"
-title: "인코딩 디코딩 함수 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 인코딩/디코딩 함수: Marshal/Unmarshal, Compact/Indent/HTMLEscape, Encode/EncodePretty/Prettify로 표준 라이브러리 호환 인코딩을 제공합니다."
-sidebar_position: 4
+sidebar_label: "인코딩 출력"
+title: "인코딩 출력 함수 - CyberGo JSON | API 레퍼런스"
+description: "CyberGo JSON 인코딩 출력 함수: Marshal/Unmarshal 직렬화, Compact/Indent/HTMLEscape 포맷팅과 Encode/EncodePretty/Prettify 설정형 인코딩, 표준 라이브러리 100% 호환."
+sidebar_position: 5
 ---
 
-# 인코딩 디코딩 함수
+# 인코딩 출력 함수
 
-json 패키지가 제공하는 인코딩 디코딩 함수로, 직렬화, 역직렬화, 포맷 및 설정형 인코딩을 포함합니다.
+json 패키지가 제공하는 인코딩 출력 함수로, 직렬화, 역직렬화, 포맷 및 설정형 인코딩을 포함합니다.
 
 ## 직렬화 함수
 
 ### Marshal
 
-시그니처: `func Marshal(value any) ([]byte, error)`
+시그니처: `func Marshal(value any, cfg ...Config) ([]byte, error)`
 
-Go 값을 JSON 바이트 슬라이스로 직렬화합니다. `encoding/json.Marshal`과 100% 호환됩니다.
+Go 값을 JSON 바이트 슬라이스로 직렬화합니다. `encoding/json.Marshal`과 100% 호환됩니다: cfg 없이 `json.Marshal(v)`를 호출하면 표준 라이브러리와 완전히 동일합니다.
+
+선택적인 후행 `Config`로 인코딩 동작(들여쓰기, 숫자 처리 등)을 제어할 수 있으며, `Processor.Marshal`과 패키지 레벨/인스턴스 레벨의 쌍을 이룹니다.
 
 ```go
+// encoding/json 호환 (cfg 없음)
 data, err := json.Marshal(map[string]any{"name": "test"})
 if err != nil {
     panic(err)
 }
 fmt.Println(string(data)) // {"name":"test"}
-```
 
-:::tip
-`Marshal`은 설정 매개변수를 받지 않습니다. 설정형 인코딩이 필요하면 [EncodeWithConfig](#encodewithconfig)를 사용하십시오.
-:::
+// 설정과 함께 (비파괴적 선택 매개변수)
+data, err = json.Marshal(value, json.PrettyConfig())
+```
 
 ### Unmarshal
 
-시그니처: `func Unmarshal(data []byte, value any) error`
+시그니처: `func Unmarshal(data []byte, value any, cfg ...Config) error`
 
-JSON 바이트 슬라이스를 Go 값으로 역직렬화합니다. `encoding/json.Unmarshal`과 100% 호환됩니다.
+JSON 바이트 슬라이스를 Go 값으로 역직렬화합니다. `encoding/json.Unmarshal`과 100% 호환됩니다: cfg 없이 `json.Unmarshal(data, &v)`를 호출하면 표준 라이브러리와 완전히 동일합니다.
+
+선택적인 후행 `Config`로 보안 제한, 숫자 보존 등을 제어할 수 있으며, `Processor.Unmarshal`과 쌍을 이룹니다.
 
 ```go
 var result struct {
     Name string `json:"name"`
 }
+// encoding/json 호환 (cfg 없음)
 err := json.Unmarshal([]byte(`{"name":"test"}`), &result)
+
+// 설정과 함께
+err = json.Unmarshal(data, &v, json.SecurityConfig())
 ```
 
 ### MarshalIndent
 
-시그니처: `func MarshalIndent(v any, prefix, indent string) ([]byte, error)`
+시그니처: `func MarshalIndent(v any, prefix, indent string, cfg ...Config) ([]byte, error)`
 
-들여쓰기가 있는 직렬화입니다. `encoding/json.MarshalIndent`와 100% 호환됩니다.
+들여쓰기가 있는 직렬화입니다. `encoding/json.MarshalIndent`와 100% 호환됩니다: cfg 없이 `json.MarshalIndent(v, prefix, indent)`를 호출하면 표준 라이브러리와 완전히 동일합니다.
+
+선택적인 후행 `Config`로 설정을 추가할 수 있습니다; `prefix`와 `indent` 매개변수는 `Config`의 해당 필드를 덮어씁니다.
 
 ```go
+// encoding/json 호환 (cfg 없음)
 data, err := json.MarshalIndent(user, "", "  ")
 if err != nil {
     panic(err)
 }
 fmt.Println(string(data))
-```
 
-:::tip
-`MarshalIndent`는 설정 매개변수를 받지 않습니다. 설정형 인코딩이 필요하면 [EncodeWithConfig](#encodewithconfig)를 사용하십시오.
-:::
+// 설정과 함께
+data, err = json.MarshalIndent(v, "", "  ", json.SecurityConfig())
+```
 
 ## 포맷 함수
 
@@ -75,6 +85,30 @@ if err != nil {
     panic(err)
 }
 fmt.Println(buf.String()) // {"name":"test"}
+```
+
+### CompactString
+
+시그니처: `func CompactString(jsonStr string, cfg ...Config) (string, error)`
+
+문자열 입력/출력 형식으로 JSON을 압축하여 불필요한 공백 문자를 제거합니다. `Processor.Compact`의 패키지 레벨 미러이며, `Prettify`(`Processor.Prettify` 미러)와 대칭을 이룹니다.
+
+::: info Compact vs CompactString
+- `Compact(dst, src)`: buffer 형식, `encoding/json.Compact` 호환, `Processor.CompactBuffer` 미러
+- `CompactString(s)`: 문자열 형식, `Processor.Compact` 미러
+:::
+
+```go
+compact, err := json.CompactString(`{
+    "name": "Alice",
+    "age": 30
+}`)
+// compact == `{"name":"Alice","age":30}`
+
+// 설정과 함께 (예: 원본 숫자 형식 보존)
+cfg := json.DefaultConfig()
+cfg.PreserveNumbers = true
+compact, err = json.CompactString(jsonStr, cfg)
 ```
 
 ### Indent
@@ -133,6 +167,10 @@ fmt.Println(pretty)
 시그니처: `func Encode(value any, cfg ...Config) (string, error)`
 
 Go 값을 JSON 문자열로 인코딩하며, 선택적 설정 매개변수를 지원합니다.
+
+::: warning 더 이상 사용되지 않음
+`Encode`는 기능상 [`EncodeWithConfig`](#encodewithconfig)와 완전히 동일합니다 (둘 다 동일한 구현에 위임). 대신 `EncodeWithConfig`를 사용하거나, `[]byte` 출력이 허용되는 경우 [`Marshal`](#marshal)을 사용하십시오. `Encode`는 향후 메이저 버전에서 제거될 예정입니다.
+:::
 
 ```go
 result, err := json.Encode(user)
@@ -322,7 +360,7 @@ cfg = json.SecurityConfig()
 
 ## 관련 문서
 
-- [조회 가져오기 함수](./get) - Get, GetString 등 조회 작업
+- [조회 및 가져오기 함수](./query) - Get, GetString 등 조회 작업
 - [수정 함수](./modify) - Set, Delete 등 수정 작업
 - [파일 작업](./file-io) - LoadFromFile, SaveToFile 등 파일 작업
 - [설정](../config) - Config 타입과 옵션

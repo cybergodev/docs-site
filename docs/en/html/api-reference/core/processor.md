@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor"
-title: "Processor - CyberGo HTML | Core Processor API"
-description: "CyberGo HTML Processor API: New creation, Extract method family, GetStatistics, GetAuditLog, ClearCache, ResetStatistics, and Close lifecycle management."
+title: "Processor - CyberGo html | Usage & Examples"
+description: "CyberGo html Processor API: New creation, the Extract method family, plus GetStatistics, ClearCache, and Close lifecycle management for high-frequency reuse."
 sidebar_position: 2
 ---
 

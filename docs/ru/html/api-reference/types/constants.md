@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Константы и ошибки"
-title: "Константы и ошибки - CyberGo HTML | значения и ошибки"
-description: "Константы и ошибки CyberGo HTML: значения по умолчанию, сторожевые ошибки и структурированные InputError, ConfigError, FileError с поддержкой errors.Is/As."
+title: "Константы и ошибки - CyberGo html | значения и типы"
+description: "Константы и ошибки CyberGo html: значения по умолчанию, сторожевые ошибки и структурированные InputError, ConfigError, FileError с errors.Is/As."
 sidebar_position: 3
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "大規模ファイルガイド"
 title: "大ファイル処理 - CyberGo JSON | ガイド"
-description: "CyberGo JSON 大ファイル処理ガイド：ForeachFile 反復、ForeachFileChunked バッチ、メモリ制御、NDJSONProcessor ストリーミングで Go のログ分析やデータ抽出、ETL に対応します。"
+description: "CyberGo JSON 大ファイル処理：ForeachFile、ForeachFileChunked、ForeachFileWithPath、ForeachFileNested ストリームメソッドで、ログ分析や ETL に対応します。"
 sidebar_position: 1
 ---
 
@@ -285,6 +285,147 @@ defer processor.Close()
 | 100MB-1GB | Processor.ForeachFileChunked | チャンクイテレーション処理 |
 | > 1GB | NDJSONProcessor / JSONL 形式 | 真のストリーム処理、メモリ制御可能 |
 
+
+## API リファレンス
+
+このセクションでは、大ファイル処理 API の関数シグネチャとパラメータ表を要約し、すぐに参照できるようにします。
+
+### Processor メソッド
+
+**ForeachFile**
+
+シグネチャ：`func (p *Processor) ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+大規模ファイル内の JSON 配列要素を1件ずつ処理します。[基本的な使用方法](#基本的な使用方法)と[中断制御付き](#中断制御付き)を参照してください。
+
+**パラメータ**
+
+| 名前 | 型 | 説明 |
+|------|------|------|
+| `filePath` | `string` | JSON ファイルパス |
+| `fn` | `func(key any, item *IterableValue) error` | 処理コールバック |
+
+**コールバック戻り値**
+
+| 戻り値 | 説明 |
+|--------|------|
+| `nil` | 次の要素の処理を継続 |
+| `item.Break()` | イテレーションを停止、エラーは返さない |
+| その他の `error` | イテレーションを停止し、エラーを返す |
+
+**ForeachFileChunked**
+
+シグネチャ：`func (p *Processor) ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) (err error)`
+
+大規模ファイルをチャンク単位でバッチ処理します。[バッチ処理](#バッチ処理)を参照してください。
+
+**パラメータ**
+
+| 名前 | 型 | 説明 |
+|------|------|------|
+| `filePath` | `string` | JSON ファイルパス |
+| `chunkSize` | `int` | 1バッチあたりの要素数 |
+| `fn` | `func(chunk []*IterableValue) error` | バッチ処理コールバック |
+
+**ForeachFileWithPath**
+
+シグネチャ：`func (p *Processor) ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+ファイル内の指定したパスの JSON 配列またはオブジェクトを処理します。
+
+**パラメータ**
+
+| 名前 | 型 | 説明 |
+|------|------|------|
+| `filePath` | `string` | JSON ファイルパス |
+| `path` | `string` | JSON パス式 |
+| `fn` | `func(key any, item *IterableValue) error` | 処理コールバック |
+
+```go
+// ファイル内の users 配列の各要素を処理
+err := p.ForeachFileWithPath("data.json", "users", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Name: %s\n", item.GetString("name"))
+    return nil
+})
+```
+
+**ForeachFileNested**
+
+シグネチャ：`func (p *Processor) ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+ファイル内のすべてのネストされた JSON 構造を再帰的に走査します。
+
+```go
+// すべてのネストされた要素を再帰的に走査
+err := p.ForeachFileNested("data.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Key: %v, Type: %T\n", key, item.GetData())
+    return nil
+})
+```
+
+## パッケージレベル関数
+
+Processor メソッドとは別に、以下の関数は Processor インスタンスを作成せずに直接呼び出せます。これらは内部でグローバルプロセッサを使用します。
+
+### ForeachFile（パッケージレベル関数）
+
+シグネチャ：`func ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+ファイルから JSON を読み込み、イテレーションします。
+
+```go
+err := json.ForeachFile("data.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("[%v] %v\n", key, item.GetData())
+    return nil
+})
+```
+
+### ForeachFileWithPath（パッケージレベル関数）
+
+シグネチャ：`func ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+ファイルから JSON を読み込み、指定パスでイテレーションします。
+
+```go
+err := json.ForeachFileWithPath("data.json", "users", func(key any, item *json.IterableValue) error {
+    name := item.GetString("name")
+    fmt.Printf("ユーザー: %s\n", name)
+    return nil
+})
+```
+
+### ForeachFileChunked（パッケージレベル関数）
+
+シグネチャ：`func ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
+
+ファイル内の JSON 配列をチャンク単位でイテレーションします。
+
+```go
+err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.IterableValue) error {
+    for _, item := range chunk {
+        processItem(item)
+    }
+    return nil
+})
+```
+
+### ForeachFileNested（パッケージレベル関数）
+
+シグネチャ：`func ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+ファイルから JSON を読み込み、すべてのネストされた構造を再帰的にイテレーションします。
+
+```go
+err := json.ForeachFileNested("config.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("パス: %v, 型: %T\n", key, item.GetData())
+    return nil
+})
+```
+
+## 関連
+
+- [NDJSON プロセッサ](./jsonl) — JSONL/NDJSON ストリーミング処理
+- [JSONLWriter](./jsonl#jsonlwriter) — JSONL ライター
 
 ## 次のステップ
 - [API ドキュメント](../api-reference/) — 完全な API リファレンス

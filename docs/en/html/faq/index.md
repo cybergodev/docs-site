@@ -1,7 +1,7 @@
 ---
 sidebar_label: "FAQ"
-title: "FAQ - CyberGo HTML | Common Answers"
-description: "FAQ for the CyberGo HTML library, covering package functions vs Processor, encoding detection, size limits, batch processing, and audit setup."
+title: "FAQ - CyberGo html | Common Answers"
+description: "CyberGo html FAQ: choosing package functions vs Processor, encoding detection, input limits, batch caps, empty-text debugging, and statistics monitoring."
 sidebar_position: 1
 ---
 

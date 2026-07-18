@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обзор безопасности"
 title: "Обзор безопасности - CyberGo env | Архитектура безопасности"
-description: "Обзор безопасности CyberGo env: блокировка памяти SecureValue, валидация ключей, запрещённые ключи, IsSensitiveKey, пресеты и трассировка аудита."
+description: "Безопасность CyberGo env: SecureValue с mlock и обнулением, фильтр управляющих символов, запрещённые PATH/LD_PRELOAD, IsSensitiveKey, пресеты и аудит."
 sidebar_position: 1
 ---
 

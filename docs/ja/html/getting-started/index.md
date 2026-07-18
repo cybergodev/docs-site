@@ -1,7 +1,7 @@
 ---
 sidebar_label: "クイックスタート"
-title: "クイックスタート - CyberGo HTML | 5分ガイド"
-description: "CyberGo HTML クイックスタート：インストール、基本抽出、4 種の Config プリセット、テキスト・Markdown・JSON 出力、コンテキストタイムアウトと並列安全パターンで 5 分で始められます。"
+title: "クイックスタート - CyberGo html | 5分スタートガイド"
+description: "CyberGo html クイックスタート：インストール、基本コンテンツ抽出、4 種の Config プリセット、テキスト・Markdown・JSON 出力で、5 分で HTML コンテンツ抽出を始められます。"
 sidebar_position: 2
 ---
 

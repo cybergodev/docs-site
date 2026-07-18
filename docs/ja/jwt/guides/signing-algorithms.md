@@ -2,7 +2,7 @@
 sidebar_label: "署名アルゴリズム"
 title: "署名アルゴリズム - CyberGo JWT | アルゴリズム比較と選定"
 description: "署名アルゴリズムガイド：HMAC・RSA・RSA-PSS・ECDSA 4 種 12 アルゴリズムの鍵種・生成方式・署名検証性能・署名長・構成結合度を比較し、選定の決定と鍵管理の安全実務を示す。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 署名アルゴリズム
@@ -61,7 +61,7 @@ cfg.VerificationKey = rsaPublicKey    // *rsa.PublicKey（省略可）
 ```
 
 :::tip 検証鍵
-`VerificationKey` は省略可能です。未設定の場合、ライブラリは `SigningKey` から公開鍵を抽出して検証に使用します。
+`VerificationKey` は省略可能です。未設定の場合、ライブラリは `SigningKey` を使用して検証を行います（内部で秘密鍵から公開鍵を抽出します）。
 :::
 
 ### 鍵の生成

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "セキュリティ概要"
 title: "セキュリティ概要 - CyberGo env | セキュリティアーキテクチャ"
-description: "CyberGo env セキュリティアーキテクチャ概要。SecureValue メモリロック、キー検証、禁止キーリスト、IsSensitiveKey 自動検出、セキュリティプリセット、監査追跡を説明します。"
+description: "CyberGo env セキュリティアーキテクチャ概要。SecureValue メモリロック・自動ゼロクリア、キー検証で制御文字・ヌルバイト遮断、DefaultForbiddenKeys で PATH・LD_PRELOAD 禁止、IsSensitiveKey 自動検出、セキュリティプリセット、監査追跡を説明します。"
 sidebar_position: 1
 ---
 

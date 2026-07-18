@@ -2,7 +2,7 @@
 sidebar_label: "Processor"
 title: "Processor - CyberGo JWT | 核心トークン操作型"
 description: "Processor は CyberGo JWT の核心型で、Create・Validate・Refresh・Revoke・IsRevoked・ParseUnverified・Close など全トークン操作メソッドの署名・引数・戻り値・エラー・例を説明。"
-sidebar_position: 3
+sidebar_position: 20
 ---
 
 # Processor
@@ -307,7 +307,14 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 func (p *Processor) Revoke(tokenString string) error
 ```
 
-トークンをブラックリストに追加します。
+署名を検証してトークン ID（jti）を抽出し、トークンをブラックリストに追加します。有効な署名を持つトークンのみが失効可能で、悪意のある呼び出し元が任意のトークン ID をブラックリストに追加するのを防ぎます。
+
+:::info TTL の振る舞い
+- トークンの `exp` がブラックリストエントリの TTL を決定します
+- `exp` のないトークンはデフォルトで 7 日間の TTL となります
+- TTL の上限は 30 日で、偽造された極端に長い `exp` によるメモリのロックを防ぎます（DoS 防御）
+- 期限切れのトークンも失効可能です。エントリはブラックリストにより自動的にクリーンアップされます
+:::
 
 <Badge type="tip" text="v1.0.0+" />
 
@@ -343,7 +350,7 @@ func (p *Processor) Revoke(tokenString string) error
 func (p *Processor) IsRevoked(tokenString string) (bool, error)
 ```
 
-トークンが失効済みかどうかを確認します。
+トークンが失効済みかどうかを確認します。署名を検証した後、ブラックリスト内のトークンの jti ステータスを検索します。ブラックリストが未設定の場合、`false` と `nil` エラーを返します。
 
 <Badge type="tip" text="v1.0.0+" />
 

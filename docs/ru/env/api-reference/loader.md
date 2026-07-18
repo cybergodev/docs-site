@@ -1,7 +1,7 @@
 ---
-sidebar_label: "Loader API"
+sidebar_label: "Loader"
 title: "Loader API - CyberGo env | Подробно о загрузчике"
-description: "Справочник API Loader в CyberGo env: загрузка файлов, типобезопасное чтение, операции с ключами, валидация, сериализация и Close — всё потокобезопасно."
+description: "Loader в CyberGo env: LoadFiles для нескольких форматов, GetString/GetInt/GetSlice, Set/Delete, Validate, сериализация и Close — все методы потокобезопасны."
 sidebar_position: 3
 ---
 
@@ -108,6 +108,7 @@ err := loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 - `*ParseError` - Ошибка разбора
 - `*JSONError` - Ошибка разбора JSON
 - `*YAMLError` - Ошибка разбора YAML
+- `*SecurityError` - Ошибка проверки безопасности пути к файлу (например, атака обхода пути)
 
 **Правила определения формата:**
 
@@ -426,6 +427,7 @@ if err != nil {
 **Типы ошибок:**
 - `ErrInvalidKey` - Имя ключа недействительно
 - `ErrForbiddenKey` - Ключ запрещён
+- `ErrInvalidValue` - Недопустимое значение (когда `ValidateValues` равно true, значение содержит небезопасный контент: нулевые байты, управляющие символы)
 - `ErrClosed` - Загрузчик закрыт
 
 ---
@@ -533,6 +535,10 @@ func (l *Loader) Apply() error
 - Перебирает все загруженные переменные
 - Перезапись существующих системных переменных окружения определяется конфигурацией `OverwriteExisting`
 - После применения доступно через `os.Getenv()`
+
+**Типы ошибок:**
+- `ErrClosed` - Загрузчик закрыт
+- Обёрнутая ошибка `os` - Не удалось установить переменную окружения (имя ключа маскировано; конфиденциальный ключ не раскрывается в сообщении об ошибке)
 
 ```go
 err := loader.Apply()

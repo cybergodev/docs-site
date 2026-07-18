@@ -1,8 +1,8 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo env | 常用 API 速查"
-description: "CyberGo env 常用 API 速查表，一页汇总文件加载、类型读取、验证、SecureValue 存储、序列化与审计日志等高频操作的核心代码片段，方便日常查阅。"
-sidebar_position: 3
+description: "CyberGo env 常用 API 速查表，一页汇总文件加载、类型读取、结构体映射、变量展开、验证、SecureValue 存储、Marshal/Unmarshal 序列化、哨兵错误 errors.Is 与审计日志等高频操作的核心代码片段，方便日常查阅。"
+sidebar_position: 2
 ---
 
 # 速查表

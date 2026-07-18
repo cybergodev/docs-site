@@ -1,7 +1,7 @@
 ---
 sidebar_label: "セキュリティ概要"
-title: "セキュリティ概要 - CyberGo HTML | 保護機能の概要"
-description: "CyberGo HTML セキュリティ概要：入力サイズ制限、DOM 深度制限、パストラバーサル防御、パニックリカバリ、タイムアウト、コンテンツクリーニング、監査で errors.Is/As 判定をサポートします。"
+title: "セキュリティ概要 - CyberGo html | セキュリティ防護総覧"
+description: "CyberGo html セキュリティ概要：入力サイズ制限、DOM 深度制限、パストラバーサル防御、パニックリカバリ、処理タイムアウト、コンテンツクリーニング、プラグイン監査。"
 sidebar_position: 1
 ---
 

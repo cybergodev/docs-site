@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Audit Logging"
 title: "Audit Logging - CyberGo env | Security Audit Configuration"
-description: "CyberGo env audit logging guide for JSON-file, standard-log and Channel handlers, plus custom AuditHandler to record load, read, modify and delete operations."
+description: "CyberGo env audit logging: JSONAuditHandler, LogAuditHandler, ChannelAuditHandler and custom AuditHandler tracking load/read/modify/delete for security compliance."
 sidebar_position: 5
 ---
 

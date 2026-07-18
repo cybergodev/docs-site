@@ -2,7 +2,7 @@
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo HTTPC | Quick Reference"
 description: "HTTPC cheat sheet: client creation, seven request methods, WithXxx options, Result handling, middleware chains, and file download code snippets."
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # Cheat Sheet

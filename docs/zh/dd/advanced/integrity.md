@@ -1,5 +1,5 @@
 ---
-sidebar_label: "HMAC 签名实战"
+sidebar_label: "HMAC 签名"
 title: "HMAC 签名实战 - CyberGo DD | 日志完整性保护"
 description: "CyberGo DD HMAC-SHA256 日志完整性签名实战指南，涵盖 IntegritySigner 创建与初始化配置、签名与验签完整流程、时间戳与序列号递增机制、防篡改检测策略、与审计日志系统集成方案以及生产环境部署最佳实践，确保日志链路的完整性与可追溯性。"
 sidebar_position: 3

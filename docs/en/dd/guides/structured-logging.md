@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Structured Logging"
 title: "Structured Logging - CyberGo DD | Fields and Chaining"
-description: "CyberGo DD structured logging guide: type-safe field constructors, Field chaining, LoggerEntry immutability, naming conventions, and best practices."
+description: "CyberGo DD structured logging: 20+ type-safe field constructors, Field chaining, LoggerEntry immutability, naming conventions, and best practices."
 sidebar_position: 2
 ---
 
@@ -11,12 +11,12 @@ Structured logging records contextual information through key-value pair fields,
 
 ## Field Constructors
 
-DD provides 20 type-safe field constructors:
+DD provides 20+ type-safe field constructors:
 
 ### Basic Types
 
 ```go
-dd.InfoWith("User registration",
+dd.InfoWith("user registration",
     dd.String("username", "alice"),
     dd.Int("age", 25),
     dd.Float64("score", 98.5),
@@ -27,7 +27,7 @@ dd.InfoWith("User registration",
 ### Time-Related
 
 ```go
-dd.InfoWith("Scheduled task executed",
+dd.InfoWith("scheduled task executed",
     dd.Time("scheduled_at", time.Now()),
     dd.Duration("elapsed", 150*time.Millisecond),
 )
@@ -36,7 +36,7 @@ dd.InfoWith("Scheduled task executed",
 ### Integer Type Family
 
 ```go
-dd.InfoWith("Packet processing",
+dd.InfoWith("packet processing",
     dd.Int8("flags", 0x0F),
     dd.Int32("seq", 1001),
     dd.Int64("total_bytes", 1<<20),
@@ -49,20 +49,20 @@ dd.InfoWith("Packet processing",
 
 ```go
 // Default key is "error"
-dd.ErrorWith("Query failed", dd.Err(err))
+dd.ErrorWith("query failed", dd.Err(err))
 
 // Custom key
-dd.ErrorWith("Database error", dd.ErrWithKey("db_error", dbErr))
+dd.ErrorWith("database error", dd.ErrWithKey("db_error", dbErr))
 
 // With stack trace
-dd.ErrorWith("Critical error", dd.ErrWithStack(err))
+dd.ErrorWith("critical error", dd.ErrWithStack(err))
 ```
 
 ### Any Type
 
 ```go
-// Any type, formatted using fmt.Sprintf("%v", value) during output
-dd.InfoWith("Request payload", dd.Any("body", requestBody))
+// Any type, formatted via fmt.Sprintf
+dd.InfoWith("request payload", dd.Any("body", requestBody))
 ```
 
 :::warning Performance Note
@@ -81,9 +81,9 @@ reqLog := logger.WithFields(
 )
 
 // Entry automatically carries preset fields
-reqLog.Info("Service started")
-reqLog.Warn("High memory usage")
-reqLog.ErrorWith("Request failed",
+reqLog.Info("service started")
+reqLog.Warn("high memory usage")
+reqLog.ErrorWith("request failed",
     dd.String("path", "/api/users"),
     dd.Err(err),
 )
@@ -101,7 +101,7 @@ dbLog := svcLog.WithFields(dd.String("module", "database"))
 // Operation level (inherits all parent fields)
 queryLog := dbLog.WithFields(dd.String("operation", "query"))
 
-queryLog.InfoWith("Query completed",
+queryLog.InfoWith("query completed",
     dd.Int("rows", 42),
     dd.Duration("elapsed", 10*time.Millisecond),
 )
@@ -114,7 +114,7 @@ queryLog.InfoWith("Query completed",
 dd.WithFields(
     dd.String("app", "myapp"),
     dd.String("env", "production"),
-).Info("Application started")
+).Info("application started")
 ```
 
 ## Field Naming Conventions
@@ -137,15 +137,19 @@ cfg := dd.DefaultFieldValidationConfig()
 ### Enabling in Configuration
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     FieldValidation: dd.StrictSnakeCaseConfig(),
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 When enabled, non-compliant field names produce warnings in the log output:
 
 ```go
-logger.InfoWith("Test",
+logger.InfoWith("test",
     dd.String("UserName", "alice"),   // PascalCase → warning
     dd.String("user_name", "alice"),  // snake_case → normal
 )
@@ -170,7 +174,7 @@ func loggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
 
             next.ServeHTTP(w, r)
 
-            reqLog.InfoWith("Request completed",
+            reqLog.InfoWith("request completed",
                 dd.Duration("elapsed", time.Since(start)),
             )
         })
@@ -192,12 +196,12 @@ func NewUserService(logger *dd.Logger) *UserService {
 }
 
 func (s *UserService) CreateUser(ctx context.Context, name string) error {
-    s.log.InfoWith("Creating user",
+    s.log.InfoWith("creating user",
         dd.String("name", name),
     )
 
     if err := s.validate(name); err != nil {
-        s.log.ErrorWith("User creation failed",
+        s.log.ErrorWith("user creation failed",
             dd.String("name", name),
             dd.Err(err),
         )
@@ -214,7 +218,7 @@ func (s *UserService) CreateUser(ctx context.Context, name string) error {
 // Method 1: Check level first
 if logger.IsDebugEnabled() {
     data := computeExpensiveDebugInfo()
-    logger.DebugWith("Debug data", dd.Any("data", data))
+    logger.DebugWith("debug data", dd.Any("data", data))
 }
 
 // Method 2: Use WithFields lazy evaluation
@@ -228,21 +232,25 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### Text Format (Default)
 
 ```text
-[2026-04-16T21:16:48+08:00   INFO] main.go:13 Request completed method=GET status=200 elapsed=150ms
+[2026-04-16T21:16:48+08:00   INFO] main.go:13 request completed method=GET status=200 elapsed=150ms
 ```
 
 ### JSON Format
 
 ```go
-logger, _ := dd.New(dd.JSONConfig())
-logger.InfoWith("Request completed",
+logger, err := dd.New(dd.JSONConfig())
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
+logger.InfoWith("request completed",
     dd.String("method", "GET"),
     dd.Int("status", 200),
 )
 ```
 
 ```json
-{"level":"info","time":"2026-04-16T21:16:48+08:00","message":"Request completed","method":"GET","status":200,"caller":"main.go:13"}
+{"timestamp":"2026-04-16T21:16:48+08:00","level":"info","caller":"main.go:13","message":"request completed","fields":{"method":"GET","status":200}}
 ```
 
 ## Next Steps

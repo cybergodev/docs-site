@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обзор"
 title: "Справочник API - CyberGo DD | Обзор"
-description: "Обзор полной справочной документации API библиотеки структурированного логирования CyberGo DD, всесторонне охватывающий основные модули: ядро Logger, конфигурацию Config, цели вывода Writers, фильтрацию безопасности Security, аудитные логи Audit, систему хуков Hooks и подписи целостности Integrity."
+description: "Обзор полной справочной документации API CyberGo DD: Logger, Config, Writers, Security, Audit, Hooks и Integrity — основные модули библиотеки."
 sidebar_position: 1
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概要"
-title: "HTML 抽出ライブラリ - CyberGo HTML | 高性能 Go ライブラリ"
-description: "CyberGo HTML は高性能な Go 製 HTML 抽出・クリーニングライブラリで、記事認識、エンコーディング自動検出、並列バッチ、プラグイン可能な監査を提供し、テキスト・Markdown・JSON 出力をサポートします。"
+title: "html - CyberGo html | HTML 抽出・クリーニング Go ライブラリ"
+description: "CyberGo html は高性能な HTML 抽出・クリーニング Go ライブラリで、スマート記事認識、自動エンコーディング検出、コンテンツクリーニング、マルチフォーマット出力を提供し、Web スクレイピングやドキュメント分析に適しています。"
 ---
 
 # HTML

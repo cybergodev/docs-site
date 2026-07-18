@@ -2,7 +2,7 @@
 sidebar_label: "路径表达式语法"
 title: "路径表达式语法 - CyberGo JSON | JSONPath 查询指南"
 description: "CyberGo JSON 路径表达式语法指南：属性访问 user.name、数组索引 items[0]、切片、通配符、多字段提取，精确定位 Go JSON 数据中的任意节点。"
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # 路径表达式语法

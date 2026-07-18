@@ -1,7 +1,7 @@
 ---
 sidebar_label: "링크 추출과 그룹화"
-title: "링크 추출과 그룹화 - CyberGo HTML | 수집 가이드"
-description: "CyberGo HTML 링크 추출과 그룹화: ExtractAllLinks로 리소스 링크 추출·그룹화, Include 필터, 상대 URL 해석, 크롤러 수집 모범 사례를 설명합니다."
+title: "링크 추출과 그룹화 - CyberGo html | 리소스 수집 가이드"
+description: "CyberGo html 링크 추출과 그룹화: ExtractAllLinks로 리소스 링크 추출, 유형별 그룹화, Include 필터, 상대 URL 해석, 크롤러 모범 사례를 설명합니다."
 sidebar_position: 3
 ---
 

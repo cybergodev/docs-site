@@ -1,7 +1,7 @@
 ---
 sidebar_label: "常量与错误"
-title: "常量与错误 - CyberGo HTML | 默认值与错误类型"
-description: "CyberGo HTML 常量与错误类型：默认值常量、哨兵错误及 InputError、ConfigError、FileError 结构化错误，均支持 errors.Is/As 判断。"
+title: "常量与错误 - CyberGo html | 默认值与错误类型"
+description: "CyberGo html 常量与错误类型：默认值常量、哨兵错误及 InputError、ConfigError、FileError 结构化错误，支持 errors.Is/As 判断。"
 sidebar_position: 3
 ---
 
@@ -108,7 +108,7 @@ type FileError struct {
 func (e *FileError) Error() string        // 安全输出（截断路径）
 func (e *FileError) SafePath() string     // 仅返回文件名
 func (e *FileError) Unwrap() error        // → ErrFileNotFound | 原始错误 | ErrInvalidFilePath
-func (e *FileError) MarshalJSON() ([]byte, error) // JSON 序列化时同样截断路径（防止 API 响应泄露）
+func (e *FileError) MarshalJSON() ([]byte, error) // 专为 HTTP API 响应场景：序列化为 JSON 返回客户端时经 SafePath() 截断 Path，防止文件系统路径泄露
 ```
 
 :::tip 安全路径

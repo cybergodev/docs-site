@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概述"
-title: "HTML 提取库 - CyberGo HTML | 生产级 Go 库"
-description: "CyberGo HTML 是高性能 Go HTML 内容提取与清洗库，提供智能文章识别、自动编码检测、并发批量处理与可插拔审计，输出文本、Markdown、JSON，适用于 Web 抓取与文档分析。"
+title: "HTML 提取工具库 - CyberGo html | 内容提取与清洗"
+description: "CyberGo html 是高性能 HTML 提取与清洗库，提供智能文章识别、编码检测、多格式输出与链接提取，适用于 Web 抓取。"
 ---
 
 # HTML

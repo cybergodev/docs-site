@@ -1,7 +1,7 @@
 ---
 sidebar_label: "패키지 함수"
-title: "패키지 함수 - CyberGo HTML | 편의 추출 API"
-description: "CyberGo HTML 패키지 함수: Extract, ExtractText, ExtractToMarkdown 등. 내부 sync.Pool로 Processor를 재사용해 일회성 호출과 빠른 통합에 적합합니다."
+title: "패키지 함수 - CyberGo html | 용법·매개변수·예제"
+description: "CyberGo html 패키지 함수: Extract, ExtractText, ExtractToMarkdown 등. 내부 sync.Pool로 Processor를 재사용해 일회성 호출에 적합합니다."
 sidebar_position: 1
 ---
 

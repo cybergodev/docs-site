@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Интеграция с контекстом"
 title: "Интеграция с контекстом - CyberGo DD | Интеграция Context"
-description: "Полная документация API интеграции с контекстом CyberGo DD, поддерживает автоматическое распространение и извлечение TraceID, SpanID, RequestID, предоставляет пользовательскую реализацию интерфейса ContextExtractor, параметры конфигурации распространения Context и метод привязки WithContext, реализует бесшовную интеграцию с системами распределённой трассировки, такими как OpenTelemetry."
+description: "API интеграции с контекстом CyberGo DD: инъекция идентификаторов трассировки через WithTraceID/WithSpanID/WithRequestID, типобезопасный ключ ContextKey и тип функции ContextExtractor для автоматического извлечения полей, поддержка интеграции с распределёнными системами трассировки вроде OpenTelemetry."
 sidebar_position: 2
 ---
 
@@ -9,19 +9,38 @@ sidebar_position: 2
 
 DD поддерживает интеграцию со стандартной библиотекой Go `context.Context`, может автоматически распространять информацию трассировки и извлекать поля контекста.
 
-## Встроенные ключи контекста
+## Тип ContextKey
+
+`ContextKey` — пользовательский тип ключа на основе `string`, исключающий конфликты с ключами контекста других пакетов.
+
+```go
+type ContextKey string
+```
+
+Предопределены три константы ключей — для TraceID / SpanID / RequestID соответственно:
+
+| Константа | Тип | Значение |
+|-----------|-----|----------|
+| `ContextKeyTraceID` | `ContextKey` | `"trace_id"` |
+| `ContextKeySpanID` | `ContextKey` | `"span_id"` |
+| `ContextKeyRequestID` | `ContextKey` | `"request_id"` |
+
+## Инъекция и чтение
 
 | Функция | Сигнатура | Описание |
 |---------|-----------|----------|
-| `WithTraceID` | `(ctx context.Context, traceID string) context.Context` | Добавить TraceID |
-| `WithSpanID` | `(ctx context.Context, spanID string) context.Context` | Добавить SpanID |
-| `WithRequestID` | `(ctx context.Context, requestID string) context.Context` | Добавить RequestID |
-| `GetTraceID` | `(ctx context.Context) string` | Получить TraceID |
-| `GetSpanID` | `(ctx context.Context) string` | Получить SpanID |
-| `GetRequestID` | `(ctx context.Context) string` | Получить RequestID |
+| `WithTraceID` | `(ctx context.Context, traceID string) context.Context` | Инъекция TraceID |
+| `WithSpanID` | `(ctx context.Context, spanID string) context.Context` | Инъекция SpanID |
+| `WithRequestID` | `(ctx context.Context, requestID string) context.Context` | Инъекция RequestID |
+| `GetTraceID` | `(ctx context.Context) string` | Чтение TraceID (при отсутствии возвращает `""`) |
+| `GetSpanID` | `(ctx context.Context) string` | Чтение SpanID (при отсутствии возвращает `""`) |
+| `GetRequestID` | `(ctx context.Context) string` | Чтение RequestID (при отсутствии возвращает `""`) |
+
+Функции `With*` порождают новый ctx на основе `context.WithValue` (ключом служит соответствующая константа `ContextKey`), а функции `Get*` извлекают из ctx строковое значение; если ключ отсутствует или значение не является строкой, единообразно возвращается пустая строка.
 
 ### Пример использования
 
+<!-- check-code: skip -->
 ```go
 func handleRequest(ctx context.Context) {
     // Инъекция информации трассировки
@@ -39,47 +58,63 @@ func handleRequest(ctx context.Context) {
 ```
 
 :::tip Массовое извлечение
-Через `ContextExtractor` в сочетании с `Config.ContextExtractors` можно реализовать автоматическое извлечение, экстрактор выполняется при каждом вызове логирования. Подробнее в разделе [ContextExtractor](#contextextractor) ниже.
+Ручные вызовы `Get*` подходят для разовых сценариев. Если нужно, чтобы каждая запись лога автоматически содержала поля трассировки, используйте `ContextExtractor` ниже и зарегистрируйте его в Logger — экстрактор выполняется при каждом вызове `*With`.
 :::
 
 ## ContextExtractor
 
-Экстрактор контекста используется для автоматического извлечения полей из `context.Context`.
+`ContextExtractor` — тип функции для автоматического извлечения полей из `context.Context`, удобный для интеграции с такими системами трассировки, как OpenTelemetry, Jaeger и др.
 
 ```go
 type ContextExtractor func(ctx context.Context) []Field
 ```
 
+Экстракторы удерживаются внутри Logger потокобезопасным реестром (`contextExtractorRegistry`, **приватный, не экспонируется**): выполняются в порядке добавления, чтение идёт по неблокирующему быстрому пути через `atomic.Pointer`; паника в любом экстракторе перехватывается recover и фиксируется в stderr, не обрушивая приложение.
+
 ### Регистрация экстрактора
 
+Сам экстрактор в этом файле определяется только как тип; API для регистрации/управления находятся на Logger (область core):
+
+<!-- check-code: skip -->
 ```go
-// Через метод Logger
-logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
+// Добавление одного экстрактора (возвращает error, nil-экстрактор будет отклонён)
+err := logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
     return []dd.Field{
         dd.String("trace_id", dd.GetTraceID(ctx)),
         dd.String("request_id", dd.GetRequestID(ctx)),
     }
 })
 
-// Массовая замена
-logger.SetContextExtractors(extractor1, extractor2)
+// Массовая замена всех экстракторов
+_ = logger.SetContextExtractors(extractor1, extractor2)
 
-// Получение текущих экстракторов
+// Получение снимка текущих зарегистрированных экстракторов
 extractors := logger.GetContextExtractors()
 ```
 
-## Константы ключей контекста
+### Пример с OpenTelemetry
 
-| Константа | Тип | Значение |
-|-----------|-----|----------|
-| `ContextKeyTraceID` | `ContextKey` | `"trace_id"` |
-| `ContextKeySpanID` | `ContextKey` | `"span_id"` |
-| `ContextKeyRequestID` | `ContextKey` | `"request_id"` |
+<!-- check-code: skip -->
+```go
+// Инъекция trace_id / span_id из span OTel в каждую запись лога
+otelExtractor := dd.ContextExtractor(func(ctx context.Context) []dd.Field {
+    span := trace.SpanFromContext(ctx)
+    if !span.SpanContext().IsValid() {
+        return nil
+    }
+    return []dd.Field{
+        dd.String("trace_id", span.SpanContext().TraceID().String()),
+        dd.String("span_id", span.SpanContext().SpanID().String()),
+    }
+})
+_ = logger.AddContextExtractor(otelExtractor)
+```
 
 ## Полный пример
 
 ### HTTP-посредник
 
+<!-- check-code: skip -->
 ```go
 func tracingMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +131,7 @@ func tracingMiddleware(next http.Handler) http.Handler {
 
 ### gRPC-перехватчик
 
+<!-- check-code: skip -->
 ```go
 func loggingInterceptor(
     ctx context.Context,
@@ -118,6 +154,6 @@ func loggingInterceptor(
 
 ## Следующие шаги
 
-- [Logger](../core/logger) -- метод AddContextExtractor
-- [Определения интерфейсов](../core/interfaces) -- определение типа ContextExtractor
-- [Структурированные поля](./fields) -- конструкторы Field
+- [Logger](../core/logger) -- `AddContextExtractor` / `SetContextExtractors` / `GetContextExtractors`
+- [Структурированные поля](./fields) -- конструкторы `Field` и валидация полей
+- [Конфигурация](../core/config) -- `Config.ContextExtractors`

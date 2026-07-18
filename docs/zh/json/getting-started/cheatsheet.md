@@ -1,8 +1,8 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo JSON | API 快速参考"
-description: "CyberGo JSON API 速查表：覆盖 GetString/GetInt 路径查询、Set/Delete 修改、Marshal/Unmarshal 序列化、配置选项、迭代器与安全函数，便于 Go 开发者快速查阅。"
-sidebar_position: 4
+description: "CyberGo JSON API 速查表：GetString/GetInt 路径查询、Set/Delete 修改、Marshal/Unmarshal 序列化、配置与安全函数，便于快速查阅。"
+sidebar_position: 3
 ---
 
 # 速查表

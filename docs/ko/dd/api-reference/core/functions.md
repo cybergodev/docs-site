@@ -1,7 +1,7 @@
 ---
 sidebar_label: "패키지 함수"
 title: "패키지 함수 - CyberGo DD | 전역 함수와 생성자"
-description: "CyberGo DD 패키지 수준 함수 전체 API 문서. New 로거 생성 함수, Default/SetDefault/InitDefault 전역 로그 관리 함수, DefaultConfig/DevelopmentConfig/JSONConfig 설정 사전 설정 함수 및 모든 생성자 팩토리 함수를 포함하며, dd. 접두사로 직접 호출할 수 있습니다."
+description: "CyberGo DD 패키지 수준 함수 API 문서. New, Default/SetDefault/InitDefault, DefaultConfig/DevelopmentConfig/JSONConfig 등 로거 생성, 전역 관리, 사전 설정과 팩토리 함수를 dd. 접두사로 직접 호출합니다."
 sidebar_position: 1
 ---
 
@@ -156,7 +156,7 @@ dd.LogWith(dd.LevelError, "요청 실패",
 | `InfoWith` | `func InfoWith(msg string, fields ...Field)` | Info 레벨 구조화된 로그 |
 | `WarnWith` | `func WarnWith(msg string, fields ...Field)` | Warn 레벨 구조화된 로그 |
 | `ErrorWith` | `func ErrorWith(msg string, fields ...Field)` | Error 레벨 구조화된 로그 |
-| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal 레벨 구조화된 로그 |
+| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal 레벨 구조화된 로그 (기본적으로 os.Exit(1) 호출, FatalHandler로 커스터마이즈 가능) |
 
 ```go
 dd.InfoWith("요청 완료",

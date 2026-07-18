@@ -15,18 +15,29 @@ Print, PrintPretty, PrintE, PrintPrettyE have been removed from the library and 
 
 ### Print Compact JSON
 
-Use `fmt.Println` + `Encode`:
+Use `fmt.Println` + `EncodeWithConfig` (recommended) or `Marshal`:
 
 ```go
 data := map[string]any{"name": "Alice", "age": 30}
 
-s, err := json.Encode(data)
+s, err := json.EncodeWithConfig(data)
 if err != nil {
     log.Fatal(err)
 }
 fmt.Println(s)
 // Output: {"age":30,"name":"Alice"}
+
+// Or use Marshal ([]byte output)
+b, err := json.Marshal(data)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(string(b))
 ```
+
+::: warning Encode Deprecated
+`json.Encode` is marked as deprecated (functionally equivalent to `EncodeWithConfig`) and will be removed in a future major version. New code should use `EncodeWithConfig` or `Marshal`.
+:::
 
 ### Print Formatted JSON
 
@@ -66,8 +77,8 @@ if err != nil {
 }
 defer p.Close()
 
-// Encode and print
-s, err := p.Encode(data)
+// Encode and print (EncodeWithConfig recommended; Encode is deprecated)
+s, err := p.EncodeWithConfig(data)
 if err != nil {
     log.Fatal(err)
 }
@@ -101,8 +112,8 @@ func main() {
         "total": 2,
     }
 
-    // Compact output
-    compact, err := json.Encode(data)
+    // Compact output (Encode is deprecated, EncodeWithConfig recommended)
+    compact, err := json.EncodeWithConfig(data)
     if err != nil {
         log.Fatal(err)
     }
@@ -119,5 +130,5 @@ func main() {
 
 ## See Also
 
-- [Encode/Decode Functions](./functions/encode-decode) - Encode, EncodePretty, Prettify
+- [Encoding & Output Functions](./functions/output) - Encode, EncodePretty, Prettify
 - [Package Functions](./functions/) - Package-level function overview

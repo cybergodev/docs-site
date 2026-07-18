@@ -1,7 +1,7 @@
 ---
 sidebar_label: "HTTP 集成"
-title: "HTTP 集成 - CyberGo HTML | Web 服务实战"
-description: "CyberGo HTML 与 HTTP 集成实战：net/http 单页抓取、并发批量优化、上下文超时、Web 服务集成、Processor 单例复用与生产部署实践。"
+title: "HTTP 集成 - CyberGo html | Web 服务实战"
+description: "CyberGo html 与 net/http 集成实战：单页抓取、并发批量抓取、Processor 单例 Web 服务、指数退避重试与生产部署实践。"
 sidebar_position: 1
 ---
 

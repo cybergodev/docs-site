@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Hook System"
 title: "Hook System - CyberGo DD | Lifecycle Hooks Practical Guide"
-description: "CyberGo DD hook system guide: 6 lifecycle events (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), HookRegistry, and usage patterns."
+description: "CyberGo DD hook system: 6 lifecycle events (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), HookRegistry, and HookContext."
 sidebar_position: 6
 ---
 
@@ -29,7 +29,7 @@ DD provides 6 lifecycle hook events:
 ```go
 hooks := dd.NewHooksFromConfig(dd.HooksConfig{
     BeforeLog: []dd.Hook{func(ctx context.Context, hCtx *dd.HookContext) error {
-        fmt.Printf("About to write: %s\n", hCtx.Message)
+        fmt.Printf("about to write: %s\n", hCtx.Message)
         return nil
     }},
     AfterLog: []dd.Hook{func(ctx context.Context, hCtx *dd.HookContext) error {
@@ -38,9 +38,13 @@ hooks := dd.NewHooksFromConfig(dd.HooksConfig{
     }},
 })
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Hooks: hooks,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### Using HookRegistry
@@ -59,13 +63,17 @@ registry.Add(dd.HookBeforeLog, func(ctx context.Context, hCtx *dd.HookContext) e
 
 // Register OnRotate hook
 registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) error {
-    fmt.Printf("File rotated: %s\n", hCtx.Metadata)
+    fmt.Printf("file rotated: %s\n", hCtx.Metadata)
     return nil
 })
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Hooks: registry,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ## HookContext
@@ -106,7 +114,11 @@ registry.Add(dd.HookAfterLog, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, _ := dd.New(dd.Config{Hooks: registry})
+logger, err := dd.New(dd.Config{Hooks: registry})
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### Log Sampling
@@ -145,7 +157,7 @@ registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) er
 ```go
 registry.Add(dd.HookOnError, func(ctx context.Context, hCtx *dd.HookContext) error {
     // Send alert
-    alerting.Send(fmt.Sprintf("Log write failed: %v", hCtx.Error))
+    alerting.Send(fmt.Sprintf("log write failed: %v", hCtx.Error))
     return nil
 })
 ```
@@ -161,7 +173,7 @@ hooks := dd.NewHooksFromConfig(dd.HooksConfig{
         return someOperation()
     }},
     ErrorHandler: func(event dd.HookEvent, hCtx *dd.HookContext, err error) {
-        log.Printf("Hook %s execution failed: %v", event, err)
+        log.Printf("hook %s execution failed: %v", event, err)
     },
 })
 ```

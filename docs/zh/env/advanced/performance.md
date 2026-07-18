@@ -1,7 +1,7 @@
 ---
 sidebar_label: "性能优化"
 title: "性能优化 - CyberGo env | 高并发读写调优"
-description: "CyberGo env 性能优化指南，详解 RWMutex 读写锁并发安全、sync.Pool 对象池复用、mlock 内存锁定使用与大文件流式解析，附基准测试对比与参数调优建议。"
+description: "CyberGo env 性能优化指南，详解 RWMutex 读写锁与分片锁的并发安全机制、sync.Pool 对象池复用实现零分配、mlock 内存锁定开销权衡与大文件流式解析，附基准测试对比、并发吞吐量分析与 MaxFileSize/MaxVariables 参数调优建议。"
 sidebar_position: 1
 ---
 

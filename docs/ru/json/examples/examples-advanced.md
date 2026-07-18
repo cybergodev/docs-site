@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Продвинутые примеры"
-title: "Примеры расширенных функций - CyberGo JSON | Гайд"
-description: "Продвинутые примеры CyberGo JSON: EncodeBatch, EncodeFields, PreParse, SafeGet, WarmupCache и пулы памяти для производительной Go-обработки в продакшене."
+title: "Продвинутые примеры - CyberGo JSON | Гайд"
+description: "Продвинутые примеры CyberGo JSON: EncodeBatch, EncodeFields, PreParse, SafeGet, WarmupCache и пулы памяти для Go."
 sidebar_position: 2
 ---
 

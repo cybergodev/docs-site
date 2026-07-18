@@ -1,7 +1,7 @@
 ---
 sidebar_label: "상수와 오류"
-title: "상수와 오류 - CyberGo HTML | 기본값과 오류 타입"
-description: "CyberGo HTML 상수와 오류 타입: 기본값 상수, 센티넬 오류와 InputError, ConfigError, FileError 구조화된 오류로 errors.Is/As를 지원합니다."
+title: "상수와 오류 - CyberGo html | 기본값과 오류 타입"
+description: "CyberGo html 상수와 오류 타입: 기본값 상수, 센티넬 오류와 InputError, ConfigError, FileError 구조화 오류로 errors.Is/As 판별을 지원합니다."
 sidebar_position: 3
 ---
 

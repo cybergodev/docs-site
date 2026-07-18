@@ -2,7 +2,7 @@
 sidebar_label: "型と定数"
 title: "型と定数 - CyberGo JWT | 直列化と時計型"
 description: "型と定数参考：NumericDate と StringOrSlice 直列化型、SigningMethod アルゴリズム型、ValidationError 項目級エラー、RateLimiter・SystemClock・FixedClock 時計と 12 種アルゴリズム定数。"
-sidebar_position: 7
+sidebar_position: 60
 ---
 
 # 型と定数

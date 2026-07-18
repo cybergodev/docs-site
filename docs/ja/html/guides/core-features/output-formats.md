@@ -1,7 +1,7 @@
 ---
 sidebar_label: "出力形式の選択"
-title: "出力フォーマットの選択 - CyberGo HTML | 比較ガイド"
-description: "CyberGo HTML 出力フォーマット選択：テキスト・Markdown・JSON の三形式の特徴と適用シーンを比較し、フォーマットオプションとファイル読み込みを扱います。"
+title: "出力フォーマット選択 - CyberGo html | フォーマット比較ガイド"
+description: "CyberGo html 出力フォーマット選択：テキスト、Markdown、JSON の 3 形式の特徴と適用シーンを比較し、フォーマットオプション設定も解説します。"
 sidebar_position: 2
 ---
 

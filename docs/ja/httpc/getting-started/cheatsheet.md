@@ -2,7 +2,7 @@
 sidebar_label: "チートシート"
 title: "チートシート - CyberGo HTTPC | クイック参照"
 description: "HTTPC チートシート: クライアント作成と 5 つのプリセット、7 種類のリクエストメソッド、主要な WithXxx オプション、Result 処理、ミドルウェアチェーン、エラー分類、ファイルダウンロードの再利用可能なコードスニペットを素早く参照できます。"
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # チートシート

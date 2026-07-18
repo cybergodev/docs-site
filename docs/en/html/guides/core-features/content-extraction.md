@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Content Extraction"
-title: "Content Extraction - CyberGo HTML | Core Usage Guide"
-description: "Content extraction guide for CyberGo HTML, covering extraction flow, article recognition, file extraction, Result fields, custom Scorer, and encoding detection."
+title: "Content Extraction - CyberGo html | Workflow Guide"
+description: "CyberGo html content extraction in practice: extraction workflow, smart article recognition, Result fields, custom Scorer, and encoding detection handling."
 sidebar_position: 1
 ---
 

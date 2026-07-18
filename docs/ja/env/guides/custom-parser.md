@@ -1,7 +1,7 @@
 ---
 sidebar_label: "カスタムパーサー"
 title: "カスタムパーサー - CyberGo env | ファイルフォーマットの拡張"
-description: "CyberGo env カスタムパーサーガイド。EnvParser インターフェースを実装して RegisterParser で登録する方法と、TOML・INI パーサーの完全例、ベストプラクティスを提供します。"
+description: "CyberGo env カスタムパーサーガイド。EnvParser インターフェースの Parse メソッドを実装して RegisterParser で登録し、ComponentFactory から Validator と Auditor を取得し、TOML・INI 例とベストプラクティスを提供します。"
 sidebar_position: 7
 ---
 

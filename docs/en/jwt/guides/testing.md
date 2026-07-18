@@ -2,7 +2,7 @@
 sidebar_label: "Testing & Clock Injection"
 title: "Testing & Clock - CyberGo JWT | Fixed-Clock"
 description: "Inject FixedClock via ClockProvider to control time in unit tests, validating token expiration, refresh, custom Claims, and revocation for repeatable runs."
-sidebar_position: 6
+sidebar_position: 60
 ---
 
 # Testing & Clock Injection

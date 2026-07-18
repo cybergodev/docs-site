@@ -1,7 +1,7 @@
 ---
 sidebar_label: "高级示例"
 title: "高级示例 - CyberGo HTTPC | 生产级代码"
-description: "HTTPC 高级示例集：自定义 RetryPolicy 重试策略、完整中间件链配置、RESTful API 客户端封装、sync.WaitGroup 并发下载与 HMAC-SHA256 请求签名中间件，助您构建生产级客户端。"
+description: "HTTPC 高级示例集：自定义 RetryPolicy 重试策略、完整中间件链配置、RESTful API 客户端封装、sync.WaitGroup 并发下载与 HMAC-SHA256 请求签名中间件，助您构建高性能、可观测的生产级 HTTP 客户端。"
 sidebar_position: 2
 ---
 

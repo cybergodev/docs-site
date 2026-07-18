@@ -1,7 +1,7 @@
 ---
 sidebar_label: "チートシート"
-title: "チートシート - CyberGo HTML | API 一覧"
-description: "CyberGo HTML API チートシート：パッケージ関数、Processor メソッド、4 種の設定プリセット、主要設定、エラー判定、監査設定を 1 ページにまとめます。"
+title: "チートシート - CyberGo html | API 一覧"
+description: "CyberGo html 主要 API チートシート：パッケージ関数、Processor メソッド、設定プリセット、主要設定項目、エラー判定、監査設定を 1 ページで素早く参照できます。"
 sidebar_position: 3
 ---
 

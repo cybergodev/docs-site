@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Validator"
 title: "Validator - CyberGo JSON | Schema バリデータ"
-description: "CyberGo JSON バリデータ：Validator インターフェース、Schema 構造、ValidationError、SchemaConfig、カスタムバリデータ実装ガイドで完全な JSON 検証を提供します。"
+description: "CyberGo JSON バリデータ：Validator インターフェース、Schema 検証構造体、ValidationError エラーと SchemaConfig 設定で、完全な JSON データ検証を提供します。"
 sidebar_position: 2
 ---
 

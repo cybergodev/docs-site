@@ -1,7 +1,7 @@
 ---
 sidebar_label: "마이그레이션 가이드"
 title: "마이그레이션 가이드 - CyberGo DD | 다른 로그 라이브러리에서 마이그레이션"
-description: "CyberGo DD 표준 라이브러리 log/slog 및 주요 서드파티 로그 라이브러리 (zap, logrus, zerolog)에서 마이그레이션하는 전체 비교 가이드. 상세한 API 매핑 테이블, 설정 매개변수 비교, 일반적인 마이그레이션 패턴 및 점진적 마이그레이션 전략을 제공하여 개발자가 낮은 위험으로 기존 로그 시스템을 DD 로그 라이브러리로 원활하게 전환할 수 있도록 돕습니다."
+description: "CyberGo DD 마이그레이션 가이드. 표준 라이브러리 log/slog와 주요 서드파티(zap, logrus, zerolog)에서 DD로 전환하는 API 매핑 테이블, 설정 비교, 일반적 마이그레이션 패턴, 점진적 전략으로 기존 로그 시스템을 저위험으로 평활하게 전환합니다."
 sidebar_position: 8
 ---
 
@@ -47,12 +47,15 @@ log.SetOutput(file)
 log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 // After: DD
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Format: dd.FormatText,
     Targets: []dd.OutputTarget{
         dd.FileOutput("logs/app.log"),
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
 dd.SetDefault(logger)
 ```
 
@@ -120,7 +123,7 @@ cfg := zap.Config{
 logger, _ := cfg.Build()
 
 // After: DD
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Level:  dd.LevelInfo,
     Format: dd.FormatJSON,
     Targets: []dd.OutputTarget{
@@ -128,6 +131,9 @@ logger, _ := dd.New(dd.Config{
         dd.FileOutput("logs/app.json"),
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ### 필드 비교

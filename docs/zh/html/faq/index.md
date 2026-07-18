@@ -1,7 +1,7 @@
 ---
 sidebar_label: "常见问题"
-title: "常见问题 - CyberGo HTML | 高频问题解答"
-description: "CyberGo HTML 常见问题解答：包函数与 Processor 选择、编码检测、输入限制、批量上限、空文本排查、统计监控、审计与自定义评分器。"
+title: "常见问题 - CyberGo html | 高频问题解答"
+description: "CyberGo html 常见问题解答：包函数与 Processor 选择、编码检测、输入限制、空文本排查、统计监控与审计启用等。"
 sidebar_position: 1
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "定数とエラー"
 title: "定数とエラー - CyberGo env | センチネルエラーとセキュリティ定数"
-description: "CyberGo env の定数とエラーリファレンス。DefaultMaxFileSize 制限、ErrFileNotFound センチネルエラー、ParseError 型、IsSensitiveKey と MaskValue ユーティリティを提供します。"
+description: "CyberGo env の定数とエラー参照。DefaultMaxFileSize・MaxVariables 制限、ErrFileNotFound センチネル、ParseError、DefaultForbiddenKeys、IsSensitiveKey・MaskValue ユーティリティを提供します。"
 sidebar_position: 7
 ---
 

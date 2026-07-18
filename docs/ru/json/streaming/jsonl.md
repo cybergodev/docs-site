@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Обработчик JSONL"
-title: "Обработчик JSONL - CyberGo JSON | Справочник API"
+title: "JSONL обработчик - CyberGo JSON | API"
 description: "Обработчик JSONL CyberGo JSON: StreamJSONL, JSONLWriter, StreamLinesInto[T], ParseJSONL и ToJSONL для чтения и записи JSON Lines в Go."
 sidebar_position: 3
 ---
@@ -458,55 +458,55 @@ err := np.ProcessReader(file, func(lineNum int, obj map[string]any) error {
 
 ### StreamJSONL
 
-Сигнатура: `func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+Сигнатура: `func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 Потоковая построчная обработка JSONL: каждая строка разбирается в `IterableValue`, после чего вызывается callback.
 
 ### StreamJSONLParallel
 
-Сигнатура: `func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+Сигнатура: `func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 Обработка JSONL с использованием `workers` параллельных горутин.
 
 ### StreamJSONLParallelWithContext
 
-Сигнатура: `func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+Сигнатура: `func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 Параллельная обработка JSONL с поддержкой отмены контекста.
 
 ### StreamJSONLChunked
 
-Сигнатура: `func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error) error`
+Сигнатура: `func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
 
 Пакетная обработка JSONL порциями по `chunkSize`; каждая порция передаётся в callback как `[]*IterableValue`.
 
 ### ForeachJSONL
 
-Сигнатура: `func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+Сигнатура: `func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 Перебор JSONL с вызовом callback для каждой строки.
 
 ### MapJSONL
 
-Сигнатура: `func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error)) ([]any, error)`
+Сигнатура: `func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error), cfg ...Config) ([]any, error)`
 
 Преобразование каждой строки в новое значение и возврат среза результатов.
 
 ### ReduceJSONL
 
-Сигнатура: `func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any) (any, error)`
+Сигнатура: `func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any, cfg ...Config) (any, error)`
 
 Свёртка JSONL; `initial` — начальное значение аккумулятора.
 
 ### FilterJSONL
 
-Сигнатура: `func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool) ([]*IterableValue, error)`
+Сигнатура: `func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) ([]*IterableValue, error)`
 
 Фильтрация JSONL по предикату; возвращает совпадающие элементы.
 
 ### StreamJSONLFile
 
-Сигнатура: `func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error) error`
+Сигнатура: `func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 Потоковая обработка всего файла JSONL.
 
@@ -519,13 +519,13 @@ err := json.StreamJSONLFile("data.jsonl", func(lineNum int, item *json.IterableV
 
 ### CollectJSONL
 
-Сигнатура: `func CollectJSONL(reader io.Reader) ([]*IterableValue, error)`
+Сигнатура: `func CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
 
 Чтение всех строк JSONL и сборка их в срез.
 
 ### FirstJSONL
 
-Сигнатура: `func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool) (*IterableValue, bool, error)`
+Сигнатура: `func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) (*IterableValue, bool, error)`
 
 Возвращает первый элемент, удовлетворяющий предикату; второе возвращаемое значение указывает, было ли найдено совпадение.
 
@@ -708,6 +708,5 @@ func main() {
 
 ## Смотрите также
 
-- [API обработки больших файлов](./large-file) - Серия методов ForeachFile
-- [Руководство по обработке больших файлов](./large-files) - Руководство по обработке больших файлов
+- [Обработка больших файлов](./large-files) - Руководство и справочник API по большим файлам
 - [Итераторы](../api-reference/iterator) - API итеративного обхода

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Файловый ввод-вывод"
-title: "Функции файловых операций - CyberGo JSON | Справочник API"
-description: "Файловые функции CyberGo JSON: LoadFromReader, ParseJSONL/ToJSONL, StreamLinesInto[T] и NewJSONLWriter для потоковой обработки больших файлов в Go."
-sidebar_position: 5
+title: "Файловые функции - CyberGo JSON | API"
+description: "Файловые функции CyberGo JSON: LoadFromFile/SaveToFile, LoadFromReader/SaveToWriter, MarshalToFile/UnmarshalFromFile."
+sidebar_position: 9
 ---
 
 # Функции файловых операций
 
-Функции файловых операций и обработки JSONL пакета json.
+Пакет json предоставляет функции файловых операций, поддерживающие чтение/запись файлов и потоковый ввод-вывод.
 
 ## Функции чтения файлов
 
@@ -78,7 +78,7 @@ err := json.MarshalToFile("data.json", myStruct)
 
 Сигнатура: `func UnmarshalFromFile(filePath string, v any, cfg ...Config) error`
 
-Читает из файла и десериализует данные.
+Читает и десериализует данные из файла.
 
 **Параметры**
 
@@ -100,7 +100,7 @@ if err != nil {
 
 Сигнатура: `func LoadFromReader(reader io.Reader, cfg ...Config) (string, error)`
 
-Загружает JSON-данные из io.Reader. Подходит для чтения JSON из сетевых соединений, тел HTTP-запросов и других потоковых источников данных.
+Загружает JSON-данные из io.Reader. Подходит для чтения JSON из потоковых источников, таких как сетевые соединения, тела HTTP-запросов и т. д.
 
 **Параметры**
 
@@ -129,7 +129,7 @@ data, err = json.LoadFromReader(strings.NewReader(`{"name":"test"}`))
 
 | Имя | Тип | Обязательный | Описание |
 |-----|-----|:------------:|----------|
-| `writer` | `io.Writer` | Да | Цель вывода |
+| `writer` | `io.Writer` | Да | Целевой вывод |
 | `data` | `any` | Да | Данные для записи |
 | `cfg` | `Config` | Нет | Необязательная конфигурация |
 
@@ -141,190 +141,8 @@ if err != nil {
 }
 ```
 
-## Функции обработки JSONL
-
-JSONL (JSON Lines) — формат с разделением строками, где каждая строка представляет отдельный JSON-объект.
-
-### ParseJSONL
-
-Сигнатура: `func ParseJSONL(data []byte, cfg ...Config) ([]any, error)`
-
-Парсит данные JSONL (JSON с разделением строками).
-
-**Параметры**
-
-| Имя | Тип | Обязательный | Описание |
-|-----|-----|:------------:|----------|
-| `data` | `[]byte` | Да | Байтовые данные JSONL |
-| `cfg` | `Config` | Нет | Необязательная конфигурация |
-
-```go
-jsonl := `{"name":"Alice"}
-{"name":"Bob"}
-{"name":"Charlie"}`
-results, err := json.ParseJSONL([]byte(jsonl))
-if err != nil {
-    panic(err)
-}
-for i, r := range results {
-    fmt.Printf("[%d] %v\n", i, r)
-}
-```
-
-### StreamLinesInto
-
-Сигнатура: `func StreamLinesInto[T any](reader io.Reader, fn func(lineNum int, data T) error, cfg ...Config) ([]T, error)`
-
-Потоково читает данные JSONL из io.Reader и обрабатывает каждую строку через функцию обратного вызова. Это рекомендуемый обобщённый способ обработки JSONL.
-
-**Параметры**
-
-| Имя | Тип | Обязательный | Описание |
-|-----|-----|:------------:|----------|
-| `reader` | `io.Reader` | Да | Источник данных |
-| `fn` | `func(lineNum int, data T) error` | Да | Обратный вызов обработки (получает номер строки и данные) |
-| `cfg` | `Config` | Нет | Необязательная конфигурация |
-
-**Возвращаемое значение**
-
-| Тип | Описание |
-|-----|----------|
-| `[]T` | Срез всех обработанных результатов |
-| `error` | Информация об ошибке |
-
-```go
-type User struct {
-    Name string `json:"name"`
-}
-
-file, _ := os.Open("users.jsonl")
-defer file.Close()
-
-// Базовое использование
-results, err := json.StreamLinesInto[User](file, func(lineNum int, user User) error {
-    fmt.Printf("Строка %d: пользователь %s\n", lineNum, user.Name)
-    return nil // Возврат ошибки прервет обработку
-})
-if err != nil {
-    panic(err)
-}
-fmt.Printf("Всего обработано %d записей\n", len(results))
-```
-
-### ToJSONL
-
-Сигнатура: `func ToJSONL(data []any, cfg ...Config) ([]byte, error)`
-
-Преобразует срез данных в формат JSONL.
-
-**Параметры**
-
-| Имя | Тип | Обязательный | Описание |
-|-----|-----|:------------:|----------|
-| `data` | `[]any` | Да | Срез данных |
-| `cfg` | `Config` | Нет | Необязательная конфигурация |
-
-```go
-items := []any{
-    map[string]any{"name": "Alice"},
-    map[string]any{"name": "Bob"},
-}
-jsonl, err := json.ToJSONL(items)
-if err != nil {
-    panic(err)
-}
-fmt.Println(string(jsonl))
-// {"name":"Alice"}
-// {"name":"Bob"}
-```
-
-### ToJSONLString
-
-Сигнатура: `func ToJSONLString(data []any, cfg ...Config) (string, error)`
-
-Преобразует срез данных в строку JSONL.
-
-**Параметры**
-
-| Имя | Тип | Обязательный | Описание |
-|-----|-----|:------------:|----------|
-| `data` | `[]any` | Да | Срез данных |
-| `cfg` | `Config` | Нет | Необязательная конфигурация |
-
-```go
-jsonlStr, err := json.ToJSONLString(items)
-```
-
-## Конфигурация JSONL
-
-::: warning
-Отдельная структура JSONLConfig и функция `DefaultJSONLConfig()` удалены. Конфигурация JSONL теперь интегрирована в поля `JSONL*` структуры `Config`.
-:::
-
-### Конфигурация JSONL через Config
-
-```go
-cfg := json.DefaultConfig()
-
-// Конфигурация JSONL
-cfg.JSONLBufferSize    = 64 * 1024    // Размер буфера чтения (по умолчанию: 64KB)
-cfg.JSONLMaxLineSize   = 1024 * 1024  // Максимальный размер одной строки (по умолчанию: 1MB)
-cfg.JSONLSkipEmpty     = true         // Пропускать пустые строки (по умолчанию: true)
-cfg.JSONLSkipComments  = false        // Пропускать строки с комментариями (по умолчанию: false)
-cfg.JSONLContinueOnErr = false        // Продолжать при ошибке (по умолчанию: false)
-cfg.JSONLWorkers       = 4            // Количество параллельных горутин (по умолчанию: 4)
-cfg.JSONLChunkSize     = 1000         // Строк на пакет обработки (по умолчанию: 1000)
-cfg.JSONLMaxMemory     = 100 * 1024 * 1024 // Максимальная память (по умолчанию: 100MB)
-
-processor, err := json.New(cfg)
-```
-
-Подробнее см. [Конфигурация Config](../config#структура-config)
-
-## JSONL-писатель
-
-### NewJSONLWriter
-
-Сигнатура: `func NewJSONLWriter(writer io.Writer, cfg ...Config) *JSONLWriter`
-
-Создаёт JSONL-писатель.
-
-```go
-file, _ := os.Create("output.jsonl")
-defer file.Close()
-jw := json.NewJSONLWriter(file)
-jw.Write(map[string]any{"id": 1, "name": "Alice"})
-jw.Write(map[string]any{"id": 2, "name": "Bob"})
-```
-
-**Методы JSONLWriter**
-
-| Метод | Сигнатура | Описание |
-|-------|-----------|----------|
-| `Write` | `(data any) error` | Записать одну строку |
-| `WriteAll` | `(data []any) error` | Записать несколько строк |
-| `WriteRaw` | `(line []byte) error` | Записать сырую байтовую строку |
-| `Err` | `() error` | Возвращает накопленную ошибку |
-| `Stats` | `() JSONLStats` | Возвращает статистику записи |
-
-```go
-jw := json.NewJSONLWriter(file)
-
-items := []any{
-    map[string]any{"id": 1, "name": "Alice"},
-    map[string]any{"id": 2, "name": "Bob"},
-}
-if err := jw.WriteAll(items); err != nil {
-    log.Fatal(err)
-}
-
-if err := jw.Err(); err != nil {
-    log.Fatal(err)
-}
-```
-
 ## Связанные разделы
 
-- [Функции кодирования/декодирования](./encode-decode) - Операции сериализации Marshal, Unmarshal и др.
+- [Функции обработки JSONL](./jsonl) - Обработка JSON с разделением строками ParseJSONL, StreamLinesInto и др.
+- [Функции кодирования и вывода](./output) - Операции сериализации Marshal, Unmarshal и др.
 - [Потоковая обработка](../../streaming/large-files) - Подробное описание потокового процессора
-- [Методы Processor JSONL](../processor/jsonl) - Подробное описание методов JSONL уровня Processor

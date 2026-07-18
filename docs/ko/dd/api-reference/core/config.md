@@ -1,7 +1,7 @@
 ---
 sidebar_label: "설정"
 title: "설정 - CyberGo DD | Config 상세 가이드"
-description: "CyberGo DD Config 구조체 전체 API 문서. DefaultConfig/DevelopmentConfig/JSONConfig 사전 설정 함수, OutputTarget 출력 대상 설정, 필드 검증 규칙, 샘플링 제어, 포맷팅 옵션 및 Validate 검증 메서드를 포함하여 유연하고 타입 안전한 로거 동작 커스터마이징 기능을 제공합니다."
+description: "CyberGo DD Config API 문서. DefaultConfig/DevelopmentConfig/JSONConfig 사전 설정, OutputTarget 출력 대상, 필드 검증, 샘플링, 포맷팅, Validate 메서드로 유연하고 타입 안전한 로거 커스터마이징을 제공합니다."
 sidebar_position: 4
 ---
 
@@ -76,7 +76,7 @@ type Config struct {
 ```
 
 :::tip Audit 필드
-`Audit`를 설정하면 민감 데이터 마스킹, 속도 제한 이벤트, 보안 위반이 [AuditLogger](../security-audit/audit)를 통해 감사 이벤트로 기록됩니다. [감사 로그](../security-audit/audit)를 참조하세요.
+`Audit`를 설정하면 민감 데이터 마스킹, 속도 제한 및 위반 이벤트가 [AuditLogger](../security-audit/audit)를 통해 감사 이벤트로 기록됩니다. 자세한 내용은 [감사 로그](../security-audit/audit)를 참조하세요.
 :::
 
 ### Clone
@@ -85,7 +85,13 @@ type Config struct {
 func (c *Config) Clone() Config
 ```
 
-설정의 깊은 복사를 생성하여, 원본 설정에 영향을 주지 않고 안전하게 수정할 수 있습니다.
+설정의 사본을 생성하여, 원본 설정에 영향을 주지 않고 안전하게 수정할 수 있습니다. nil 리시버에 대해서는 제로값 `Config{}`를 반환합니다.
+
+복사 전략 (소스 코드 `Clone` 주석과 일치):
+
+- **깊은 복사**: `Targets` (슬라이스), `JSON` (`JSONFieldNames` 포함), `Security`, `Hooks`, `Sampling`, `Audit`
+- **얕은 복사**: `FatalHandler`, `WriteErrorHandler`, `FieldValidation` (함수/포인터 공유)
+- **혼합**: `ContextExtractors` 슬라이스는 복사되지만, 추출기 인스턴스 자체는 공유됩니다
 
 ```go
 base := dd.DefaultConfig()
@@ -99,7 +105,15 @@ custom.Level = dd.LevelDebug
 func (c Config) Validate() error
 ```
 
-설정의 유효성을 검증하여, 출력 대상, 레벨, 형식 등이 올바른지 확인합니다.
+설정의 유효성을 검증하여, 처음 발견된 오류를 반환합니다. `dd.New(cfg)` 내부에서 자동으로 이 메서드를 호출합니다; `New`에 전달하기 전에 수동으로 호출하여 미리 문제를 발견할 수도 있습니다.
+
+검증 항목:
+
+- `Level`은 `[LevelDebug, LevelFatal]` 범위 내에 있어야 함
+- `Format`은 `FormatText` 또는 `FormatJSON`이어야 함
+- `IncludeTime=true`이고 `TimeFormat`이 비어 있지 않은 경우, Go 시간 참조 레이아웃(예: `time.RFC3339`)을 검증
+- `Targets` 총수가 100을 초과하지 않아야 함 (초과 시 `ErrMaxWritersExceeded` 반환)
+- 각 `Targets` 요소: `OutputCustom`은 nil이 아닌 `Writer`를 가져야 하며, `OutputFile`은 비어 있지 않은 `Path`를 가져야 함
 
 ```go
 cfg := dd.DefaultConfig()
@@ -148,6 +162,19 @@ func ConsoleOutput() OutputTarget
 func FileOutput(path string) OutputTarget
 func CustomOutput(w io.Writer) OutputTarget
 ```
+
+:::tip FileOutput 기본 순환 매개변수
+`FileOutput`이 반환하는 `OutputTarget`에는 기본 순환 값이 미리 채워져 있습니다: `MaxSizeMB=100`, `MaxBackups=10`, `MaxAge=30 * 24 * time.Hour` (30일), `Compress=false`. 커스터마이즈가 필요한 경우 반환값의 해당 필드를 직접 수정하세요:
+
+```go
+target := dd.FileOutput("logs/app.log")
+target.MaxSizeMB = 50               // 50 MB 단위 분할
+target.MaxBackups = 5               // 백업 5개 보존
+target.MaxAge = 7 * 24 * time.Hour  // 7일 보존
+target.Compress = true              // 이전 로그 gzip 압축
+```
+
+:::
 
 ```go
 // 콘솔 출력
@@ -213,11 +240,16 @@ cfg.FieldNames = &dd.JSONFieldNames{
 func DefaultJSONOptions() *JSONOptions
 ```
 
-기본 JSON 출력 옵션을 반환합니다.
+기본 `JSONOptions` 출력 옵션을 반환합니다: 기본적으로 예쁘게 출력하지 않으며 (들여쓰기 두 칸 공백), 필드명은 기본값을 사용합니다.
 
 ```go
-cfg := dd.JSONConfig()
-// 기본 JSONOptions 포함
+opts := dd.DefaultJSONOptions()
+opts.PrettyPrint = true
+
+logger, _ := dd.New(dd.Config{
+    Format: dd.FormatJSON,
+    JSON:   opts,
+})
 ```
 
 ## SamplingConfig

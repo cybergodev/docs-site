@@ -1,7 +1,7 @@
 ---
 sidebar_label: "生产检查清单"
-title: "生产检查清单 - CyberGo HTML | 上线安全核对"
-description: "CyberGo HTML 生产部署安全清单：HighSecurityConfig 预设、Processor 生命周期、审计监控、上下文超时、错误处理、资源与文件处理安全要点。"
+title: "生产检查清单 - CyberGo html | 上线安全核对"
+description: "CyberGo html 生产部署安全清单：HighSecurityConfig 预设、Processor 生命周期、审计监控、上下文超时、错误处理与资源管理。"
 sidebar_position: 2
 ---
 

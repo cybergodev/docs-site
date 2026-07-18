@@ -1,7 +1,7 @@
 ---
 sidebar_label: "审计系统实战"
-title: "审计系统实战 - CyberGo HTML | 管道构建指南"
-description: "CyberGo HTML 审计系统实战：从基础启用到多层级管道，涵盖事件类型、内置 Sink 对比、级别过滤、自定义 Sink 与生产监控实践。"
+title: "审计系统实战 - CyberGo html | 管道构建指南"
+description: "CyberGo html 审计系统实战：基础启用与多层级管道，涵盖事件类型、内置 Sink 对比、级别过滤与自定义 Sink 监控实践。"
 sidebar_position: 2
 ---
 

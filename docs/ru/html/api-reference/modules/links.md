@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Извлечение ссылок"
-title: "Извлечение ссылок - CyberGo HTML | ссылки ресурсов"
-description: "API извлечения ссылок CyberGo HTML: ExtractAllLinks и GroupLinksByType для сбора и группировки ссылок на ресурсы с фильтрацией через Config."
+title: "Извлечение ссылок - CyberGo html | ресурсы и ссылки"
+description: "API извлечения ссылок CyberGo html: ExtractAllLinks и GroupLinksByType — сбор ресурсов и группировка по типам с настраиваемой фильтрацией."
 sidebar_position: 2
 ---
 

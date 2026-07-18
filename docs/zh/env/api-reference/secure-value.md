@@ -1,7 +1,7 @@
 ---
 sidebar_label: "SecureValue"
 title: "SecureValue API - CyberGo env | 安全值存储"
-description: "CyberGo env 的 SecureValue 安全值 API 参考，含 mlock 内存锁定、Release 清零销毁、Masked 掩码、IsSensitiveKey 检测，安全存储密码与令牌。"
+description: "CyberGo env 的 SecureValue 安全值 API 参考，含 NewSecureValue 创建、mlock 内存锁定、Reveal 读取明文、Masked 掩码、Release 清零销毁、IsSensitiveKey 检测，安全存储密码、令牌与密钥。"
 sidebar_position: 5
 ---
 

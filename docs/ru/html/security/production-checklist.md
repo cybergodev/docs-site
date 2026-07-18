@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Контрольный список для продакшена"
-title: "Чек-лист продакшена - CyberGo HTML | безопасность"
-description: "Чек-лист безопасности CyberGo HTML для продакшена: пресет HighSecurityConfig, жизненный цикл Processor, аудит, тайм-ауты, обработка ошибок, ресурсы и файлы."
+title: "Чек-лист продакшена - CyberGo html | безопасность"
+description: "Чек-лист безопасности CyberGo html для продакшена: пресет HighSecurityConfig, жизненный цикл Processor, аудит, тайм-ауты контекста и обработка ошибок."
 sidebar_position: 2
 ---
 

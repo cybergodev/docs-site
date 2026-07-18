@@ -1,7 +1,7 @@
 ---
 sidebar_label: "输出格式选择"
-title: "输出格式选择 - CyberGo HTML | 格式对比指南"
-description: "CyberGo HTML 输出格式选择：对比纯文本、Markdown、JSON 三种输出的特点与适用场景，含格式选项配置与文件读取。"
+title: "输出格式选择 - CyberGo html | 格式对比指南"
+description: "CyberGo html 输出格式选择：对比纯文本、Markdown、JSON 的特点与适用场景，含 InlineImageFormat 与 InlineLinkFormat 选项配置。"
 sidebar_position: 2
 ---
 

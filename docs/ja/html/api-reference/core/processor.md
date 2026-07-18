@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor"
-title: "Processor - CyberGo HTML | コア Processor API"
-description: "CyberGo HTML Processor API：New 生成、Extract メソッド群と GetStatistics、GetAuditLog、ClearCache、Close のライフサイクル管理で高頻度再利用に適しています。"
+title: "Processor - CyberGo html | 使い方・パラメータ・サンプル"
+description: "CyberGo html Processor API：New 生成、Extract メソッド群と GetStatistics、ClearCache、Close などのライフサイクル管理で、高頻度再利用に適しています。"
 sidebar_position: 2
 ---
 

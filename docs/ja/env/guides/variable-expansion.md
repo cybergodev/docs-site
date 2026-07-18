@@ -1,7 +1,7 @@
 ---
 sidebar_label: "変数展開"
-title: "変数展開 - CyberGo env 変数構文"
-description: "CyberGo env 変数展開構文ガイド。${VAR} と ${VAR:-default} 参照、条件付き展開、循環参照検出、MaxExpansionDepth 制限を .env ファイルに適用します。"
+title: "変数展開 - CyberGo env | 構文ガイド"
+description: "CyberGo env 変数展開構文ガイド。${VAR} と ${VAR:-default} 参照、${VAR:=default} デフォルト値、${VAR:?error} 必須検証、$VAR 省略記法、循環参照検出、MaxExpansionDepth 制限で設定の再利用と動的値置換を実現します。"
 sidebar_position: 4
 ---
 

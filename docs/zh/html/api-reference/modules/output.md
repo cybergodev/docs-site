@@ -1,7 +1,7 @@
 ---
 sidebar_label: "输出格式"
-title: "输出格式 - CyberGo HTML | Markdown 与 JSON API"
-description: "CyberGo HTML 输出格式 API：ExtractToMarkdown、ExtractToJSON 包函数与 Processor 方法，支持字节或文件转 Markdown/JSON，含上下文版本与 Result 自定义序列化。"
+title: "输出格式 - CyberGo html | Markdown 与 JSON 输出"
+description: "CyberGo html 输出格式 API：ExtractToMarkdown、ExtractToJSON 包函数与 Processor 方法，支持字节或文件转 Markdown/JSON。"
 sidebar_position: 1
 ---
 

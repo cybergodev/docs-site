@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Loader"
 title: "Loader API - CyberGo env | Loader Details"
-description: "CyberGo env Loader API reference: multi-format file loading, type-safe reading, key set/delete, validation, serialization and Close — all thread-safe."
+description: "CyberGo env Loader API: LoadFiles multi-format, GetString/GetInt/GetSlice reads, Set/Delete, Validate, serialization and Close — all thread-safe."
 sidebar_position: 3
 ---
 
@@ -108,6 +108,7 @@ err := loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 - `*ParseError` - Parse error
 - `*JSONError` - JSON parse error
 - `*YAMLError` - YAML parse error
+- `*SecurityError` - File path security validation failed (e.g., path traversal attack)
 
 **Format Detection Rules:**
 
@@ -426,6 +427,7 @@ if err != nil {
 **Error Types:**
 - `ErrInvalidKey` - Invalid key name
 - `ErrForbiddenKey` - Forbidden key
+- `ErrInvalidValue` - Invalid value (when `ValidateValues` is true, value contains unsafe content like null bytes or control characters)
 - `ErrClosed` - Loader is closed
 
 ---
@@ -533,6 +535,10 @@ Applies variables to the system environment (`os.Environ`).
 - Iterates through all loaded variables
 - Whether to overwrite existing system environment variables is controlled by `OverwriteExisting` configuration
 - After applying, values can be accessed via `os.Getenv()`
+
+**Error types:**
+- `ErrClosed` - Loader has been closed
+- Wrapped `os` error - Failed to set environment variable (key name masked; sensitive key not exposed in error message)
 
 ```go
 err := loader.Apply()

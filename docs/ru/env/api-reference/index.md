@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обзор"
-title: "API справочник - CyberGo env | Документация интерфейсов"
-description: "Указатель API CyberGo env: пакетные функции, Config, интерфейсы, Loader, ComponentFactory, SecureValue, константы и ошибки с быстрым переходом."
+title: "API справочник - CyberGo env | Полная документация API"
+description: "Полный указатель API CyberGo env: пакетные функции, Config, Loader, SecureValue, интерфейсы, ComponentFactory, константы и ошибки с сигнатурами методов."
 sidebar_position: 1
 ---
 

@@ -54,7 +54,7 @@ entry := base.WithField("svc", "gateway")  // svc 变为 "gateway"
 | `Info(args ...any)` | Info 级别 |
 | `Warn(args ...any)` | Warn 级别 |
 | `Error(args ...any)` | Error 级别 |
-| `Fatal(args ...any)` | Fatal 级别 |
+| `Fatal(args ...any)` | Fatal 级别（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
 | `Log(level LogLevel, args ...any)` | 指定级别 |
 
 ### 格式化日志
@@ -65,7 +65,7 @@ entry := base.WithField("svc", "gateway")  // svc 变为 "gateway"
 | `Infof(format string, args ...any)` | 格式化 Info |
 | `Warnf(format string, args ...any)` | 格式化 Warn |
 | `Errorf(format string, args ...any)` | 格式化 Error |
-| `Fatalf(format string, args ...any)` | 格式化 Fatal |
+| `Fatalf(format string, args ...any)` | 格式化 Fatal（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
 | `Logf(level LogLevel, format string, args ...any)` | 格式化指定级别 |
 
 ### 结构化日志
@@ -76,7 +76,7 @@ entry := base.WithField("svc", "gateway")  // svc 变为 "gateway"
 | `InfoWith(msg string, fields ...Field)` | 结构化 Info |
 | `WarnWith(msg string, fields ...Field)` | 结构化 Warn |
 | `ErrorWith(msg string, fields ...Field)` | 结构化 Error |
-| `FatalWith(msg string, fields ...Field)` | 结构化 Fatal |
+| `FatalWith(msg string, fields ...Field)` | 结构化 Fatal（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | 结构化指定级别 |
 
 ### Print 方法

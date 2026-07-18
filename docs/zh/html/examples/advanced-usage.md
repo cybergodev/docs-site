@@ -1,7 +1,7 @@
 ---
 sidebar_label: "高级示例"
-title: "高级示例 - CyberGo HTML | 进阶场景示例"
-description: "CyberGo HTML 高级示例：自定义 Scorer、多 Sink 审计管道、批量文件与并发控制、Processor 池化与 ChannelAuditSink 实时监控等可运行示例。"
+title: "高级示例 - CyberGo html | 进阶场景示例"
+description: "CyberGo html 高级示例：自定义 Scorer、多 Sink 审计管道、批量文件处理、Processor 池化与 Web 服务单例等进阶可运行代码。"
 sidebar_position: 2
 ---
 

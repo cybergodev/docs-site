@@ -1,8 +1,8 @@
 ---
 sidebar_label: "クイックスタート"
 title: "クイックスタート - CyberGo env | 5分で始める入門ガイド"
-description: "CyberGo env の5分クイックスタート。go get インストールから .env 読み込み、型安全読み取り、構造体マッピング、変数展開まで、実行可能なコード例付きで素早く習得できます。"
-sidebar_position: 2
+description: "CyberGo env の5分クイックスタート。go get インストールから .env 読み込み、型安全読み取り、GetSecure セキュア値、構造体マッピング、変数展開、errors.Is エラー処理、4種の設定プリセットと多環境多ファイル読み込みまで、実行可能なコード例で素早く習得できます。"
+sidebar_position: 1
 ---
 
 # クイックスタート

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "セキュリティモード"
 title: "セキュリティモード - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON セキュリティ API：セキュリティ設定、AddDangerousPattern 危険パターン、入力バリデーションで JSON インジェクションや深いネスト、リソース枯渇を防ぎます。"
+description: "CyberGo JSON セキュリティ API：セキュリティ設定、AddDangerousPattern 危険パターンと入力バリデーションで、JSON インジェクション、プロトタイプ汚染、XSS などの脅威を防御します。"
 sidebar_position: 2
 ---
 

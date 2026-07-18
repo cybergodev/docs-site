@@ -1,7 +1,7 @@
 ---
-sidebar_label: "ComponentFactory API"
+sidebar_label: "Фабрика компонентов"
 title: "ComponentFactory API - CyberGo env | Фабрика компонентов"
-description: "Справочник ComponentFactory в CyberGo env: создание обработчиков аудита, валидаторов, файловых адаптеров и регистрация парсеров с управлением Close."
+description: "ComponentFactory в CyberGo env: создание Validator, Auditor, FileSystem и раскрывателя переменных, регистрация парсеров через RegisterParser и управление Close."
 sidebar_position: 8
 ---
 
@@ -292,7 +292,7 @@ func NewCloseableChannelHandler(bufferSize int) *CloseableChannelHandler
 Создаёт закрываемый обработчик аудита с собственным буферизованным каналом. В отличие от `ChannelAuditHandler`, принимающего внешний канал, `CloseableChannelHandler` создаёт и владеет собственным буферизованным каналом. Вызов `Close()` закрывает обработчик и канал. Используйте `Channel()` для получения событий.
 
 **Параметры:**
-- `bufferSize` - Размер буферизованного канала
+- `bufferSize` - Размер буферизованного канала (отрицательные значения обрабатываются как 0)
 
 ```go
 handler := env.NewCloseableChannelHandler(64)
@@ -302,6 +302,40 @@ go func() {
     for event := range handler.Channel() {
         fmt.Printf("Audit: %+v\n", event)
     }
+}()
+```
+
+#### Методы CloseableChannelHandler
+
+Помимо реализации интерфейса `AuditHandler` (`Log` / `Close`), `CloseableChannelHandler` предоставляет следующие специфичные методы:
+
+```go
+func (h *CloseableChannelHandler) Channel() <-chan AuditEvent
+func (h *CloseableChannelHandler) IsClosed() bool
+```
+
+**Описание методов:**
+
+| Метод | Сигнатура | Назначение |
+|------|------|------|
+| `Channel` | `func (h *CloseableChannelHandler) Channel() <-chan AuditEvent` | Возвращает внутренний канал только для чтения для потребления событий аудита. После вызова `Close()` этот канал закрывается, и цикл `range` завершается соответственно |
+| `IsClosed` | `func (h *CloseableChannelHandler) IsClosed() bool` | Проверяет, был ли обработчик закрыт (потокобезопасный, допускает конкурентный вызов) |
+
+```go
+handler := env.NewCloseableChannelHandler(64)
+defer handler.Close()
+
+// Можно проверить статус перед закрытием
+if !handler.IsClosed() {
+    // Обработчик всё ещё доступен
+}
+
+// Потребление событий до закрытия канала
+go func() {
+    for event := range handler.Channel() {
+        fmt.Printf("Audit: %+v\n", event)
+    }
+    // После handler.Close() канал закрывается, цикл завершается
 }()
 ```
 

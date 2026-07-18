@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Продвинутые примеры"
 title: "Расширенные примеры - CyberGo HTTPC | Production-код"
-description: "Расширенные примеры HTTPC: пользовательский RetryPolicy, полная цепочка middleware, обёртка RESTful-клиента, параллельные загрузки и подпись HMAC-SHA256."
+description: "Расширенные примеры HTTPC: пользовательский RetryPolicy, полная цепочка middleware, обёртка RESTful-клиента, параллельные загрузки и подпись HMAC-SHA256 — помогут построить высокопроизводительный, наблюдаемый HTTP-клиент продакшен-уровня."
 sidebar_position: 2
 ---
 

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Итерация"
-title: "Processor - Методы итерации - CyberGo JSON | API"
+title: "Processor: итерация - CyberGo JSON | API"
 description: "Методы итерации Processor CyberGo JSON: Foreach, ForeachWithPath, ForeachNested, IterableValue и IteratorControl для пакетной итерации в Go."
-sidebar_position: 6
+sidebar_position: 10
 ---
 
 # Методы итерации
@@ -11,7 +11,7 @@ Processor предоставляет различные методы для ит
 
 ## Foreach
 
-Сигнатура: `func (p *Processor) Foreach(jsonStr string, fn func(key any, item *IterableValue))`
+Сигнатура: `func (p *Processor) Foreach(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 Итерирует массив или объект JSON.
 
@@ -26,7 +26,7 @@ p.Foreach(data, func(key any, item *json.IterableValue) {
 
 ## ForeachWithPath
 
-Сигнатура: `func (p *Processor) ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue)) error`
+Сигнатура: `func (p *Processor) ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue), cfg ...Config) error`
 
 Итерирует по указанному пути, возвращает ошибку.
 
@@ -42,7 +42,7 @@ err := p.ForeachWithPath(data, "items", func(key any, item *json.IterableValue) 
 
 ## ForeachNested
 
-Сигнатура: `func (p *Processor) ForeachNested(jsonStr string, fn func(key any, item *IterableValue))`
+Сигнатура: `func (p *Processor) ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 Рекурсивно итерирует все вложенные уровни.
 
@@ -79,7 +79,7 @@ p.ForeachNested(data, func(key any, item *json.IterableValue) {
 
 ## ForeachReturn
 
-Сигнатура: `func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue)) (string, error)`
+Сигнатура: `func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
 
 Итерирует и возвращает исходный JSON (операция только для чтения).
 
@@ -93,7 +93,7 @@ result, err := p.ForeachReturn(data, func(key any, item *json.IterableValue) {
 
 ## ForeachWithError
 
-Сигнатура: `func (p *Processor) ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error) error`
+Сигнатура: `func (p *Processor) ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
 Итерирует по указанному пути, обратный вызов поддерживает возврат ошибки.
 
@@ -108,7 +108,7 @@ err := p.ForeachWithError(data, "items", func(key any, item *json.IterableValue)
 
 ## ForeachNestedWithError
 
-Сигнатура: `func (p *Processor) ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error) error`
+Сигнатура: `func (p *Processor) ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
 Рекурсивно итерирует все вложенные уровни, обратный вызов поддерживает возврат ошибки.
 
@@ -121,7 +121,7 @@ err := p.ForeachNestedWithError(data, func(key any, item *json.IterableValue) er
 
 ## ForeachWithPathAndIterator
 
-Сигнатура: `func (p *Processor) ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl) error`
+Сигнатура: `func (p *Processor) ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl, cfg ...Config) error`
 
 Итерирует по указанному пути и предоставляет информацию о текущем пути. Использует `IteratorControl` для управления потоком итерации.
 
@@ -137,7 +137,7 @@ err := p.ForeachWithPathAndIterator(data, "items", func(key any, item *json.Iter
 
 ## ForeachWithPathAndControl
 
-Сигнатура: `func (p *Processor) ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl) error`
+Сигнатура: `func (p *Processor) ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl, cfg ...Config) error`
 
 Итерирует исходные значения по указанному пути, использует `IteratorControl` для управления потоком.
 
@@ -197,7 +197,7 @@ Processor предоставляет методы для прямой итера
 
 ### ForeachFile
 
-Сигнатура: `func (p *Processor) ForeachFile(filePath string, fn func(key any, item *IterableValue) error) error`
+Сигнатура: `func (p *Processor) ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
 Загружает JSON из файла и итерирует.
 
@@ -219,7 +219,7 @@ err := p.ForeachFile("data.json", func(key any, item *json.IterableValue) error 
 
 ### ForeachFileWithPath
 
-Сигнатура: `func (p *Processor) ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error) error`
+Сигнатура: `func (p *Processor) ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
 Загружает JSON из файла и итерирует по указанному пути.
 
@@ -236,7 +236,7 @@ err := p.ForeachFileWithPath("data.json", ".users", func(key any, item *json.Ite
 
 ### ForeachFileChunked
 
-Сигнатура: `func (p *Processor) ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error) error`
+Сигнатура: `func (p *Processor) ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) (err error)`
 
 Построчно итерирует JSON-массив в файле, подходит для массовой обработки больших наборов данных.
 
@@ -273,7 +273,7 @@ err := p.ForeachFileChunked("large_data.json", 100, func(chunk []*json.IterableV
 
 ### ForeachFileNested
 
-Сигнатура: `func (p *Processor) ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error) error`
+Сигнатура: `func (p *Processor) ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
 Загружает JSON из файла и рекурсивно итерирует все вложенные структуры.
 

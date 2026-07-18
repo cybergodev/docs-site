@@ -1,11 +1,11 @@
 ---
-sidebar_label: "编码解码"
-title: "编码解码函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 编码解码函数：Marshal/Unmarshal 序列化、Compact/Indent/HTMLEscape 格式化与 Encode/EncodePretty/Prettify 配置化编码，100% 兼容标准库。"
-sidebar_position: 4
+sidebar_label: "编码输出"
+title: "编码输出函数 - CyberGo JSON | API 参考"
+description: "CyberGo JSON 编码输出函数：Marshal/Unmarshal 序列化、Compact/Indent/HTMLEscape 格式化与 Encode/EncodePretty/Prettify 配置化编码，100% 兼容标准库。"
+sidebar_position: 5
 ---
 
-# 编码解码函数
+# 编码输出函数
 
 json 包提供的编码解码函数，包括序列化、反序列化、格式化和配置化编码。
 
@@ -13,52 +13,62 @@ json 包提供的编码解码函数，包括序列化、反序列化、格式化
 
 ### Marshal
 
-签名：`func Marshal(value any) ([]byte, error)`
+签名：`func Marshal(value any, cfg ...Config) ([]byte, error)`
 
-将 Go 值序列化为 JSON 字节切片。100% 兼容 `encoding/json.Marshal`。
+将 Go 值序列化为 JSON 字节切片。100% 兼容 `encoding/json.Marshal`：无 cfg 调用 `json.Marshal(v)` 与标准库完全一致。
+
+通过可选的尾随 `Config` 可控制编码行为（缩进、数字处理等），与 `Processor.Marshal` 形成包级/实例级镜像。
 
 ```go
+// 兼容 encoding/json（无 cfg）
 data, err := json.Marshal(map[string]any{"name": "test"})
 if err != nil {
     panic(err)
 }
 fmt.Println(string(data)) // {"name":"test"}
-```
 
-:::tip
-`Marshal` 不接受配置参数。如需配置化编码，请使用 [EncodeWithConfig](#encodewithconfig)。
-:::
+// 带配置（非破坏性可选参数）
+data, err = json.Marshal(value, json.PrettyConfig())
+```
 
 ### Unmarshal
 
-签名：`func Unmarshal(data []byte, value any) error`
+签名：`func Unmarshal(data []byte, value any, cfg ...Config) error`
 
-将 JSON 字节切片反序列化到 Go 值。100% 兼容 `encoding/json.Unmarshal`。
+将 JSON 字节切片反序列化到 Go 值。100% 兼容 `encoding/json.Unmarshal`：无 cfg 调用 `json.Unmarshal(data, &v)` 与标准库完全一致。
+
+通过可选的尾随 `Config` 可控制安全限制、数字保留等，与 `Processor.Unmarshal` 形成镜像。
 
 ```go
 var result struct {
     Name string `json:"name"`
 }
+// 兼容 encoding/json（无 cfg）
 err := json.Unmarshal([]byte(`{"name":"test"}`), &result)
+
+// 带配置
+err = json.Unmarshal(data, &v, json.SecurityConfig())
 ```
 
 ### MarshalIndent
 
-签名：`func MarshalIndent(v any, prefix, indent string) ([]byte, error)`
+签名：`func MarshalIndent(v any, prefix, indent string, cfg ...Config) ([]byte, error)`
 
-带缩进的序列化。100% 兼容 `encoding/json.MarshalIndent`。
+带缩进的序列化。100% 兼容 `encoding/json.MarshalIndent`：无 cfg 调用 `json.MarshalIndent(v, prefix, indent)` 与标准库完全一致。
+
+通过可选的尾随 `Config` 可附加配置；`prefix` 与 `indent` 参数会覆盖 `Config` 中的对应字段。
 
 ```go
+// 兼容 encoding/json（无 cfg）
 data, err := json.MarshalIndent(user, "", "  ")
 if err != nil {
     panic(err)
 }
 fmt.Println(string(data))
-```
 
-:::tip
-`MarshalIndent` 不接受配置参数。如需配置化编码，请使用 [EncodeWithConfig](#encodewithconfig)。
-:::
+// 带配置
+data, err = json.MarshalIndent(v, "", "  ", json.SecurityConfig())
+```
 
 ## 格式化函数
 
@@ -66,7 +76,7 @@ fmt.Println(string(data))
 
 签名：`func Compact(dst *bytes.Buffer, src []byte, cfg ...Config) error`
 
-压缩 JSON，移除不必要的空白字符，将结果写入 `dst`。兼容 `encoding/json.Compact`。
+压缩 JSON，移除不必要的空白字符，将结果写入 `dst`。兼容 `encoding/json.Compact`（buffer 形式）。
 
 ```go
 var buf bytes.Buffer
@@ -75,6 +85,30 @@ if err != nil {
     panic(err)
 }
 fmt.Println(buf.String()) // {"name":"test"}
+```
+
+### CompactString
+
+签名：`func CompactString(jsonStr string, cfg ...Config) (string, error)`
+
+以字符串输入/字符串输出形式压缩 JSON，移除不必要的空白字符。是 `Processor.Compact` 的包级镜像，与 `Prettify`（镜像 `Processor.Prettify`）对称。
+
+::: info Compact vs CompactString
+- `Compact(dst, src)`：buffer 形式，兼容 `encoding/json.Compact`，镜像 `Processor.CompactBuffer`
+- `CompactString(s)`：字符串形式，镜像 `Processor.Compact`
+:::
+
+```go
+compact, err := json.CompactString(`{
+    "name": "Alice",
+    "age": 30
+}`)
+// compact == `{"name":"Alice","age":30}`
+
+// 带配置（例如保留原始数字格式）
+cfg := json.DefaultConfig()
+cfg.PreserveNumbers = true
+compact, err = json.CompactString(jsonStr, cfg)
 ```
 
 ### Indent
@@ -133,6 +167,10 @@ fmt.Println(pretty)
 签名：`func Encode(value any, cfg ...Config) (string, error)`
 
 将 Go 值编码为 JSON 字符串，支持可选配置参数。
+
+::: warning 已废弃
+`Encode` 在功能上与 [`EncodeWithConfig`](#encodewithconfig) 完全相同（两者委托同一实现）。请改用 `EncodeWithConfig`，或在 `[]byte` 输出可接受时使用 [`Marshal`](#marshal)。`Encode` 将在未来的主版本中移除。
+:::
 
 ```go
 result, err := json.Encode(user)
@@ -322,7 +360,7 @@ cfg = json.SecurityConfig()
 
 ## 相关
 
-- [查询获取函数](./get) - Get, GetString 等查询操作
+- [查询获取函数](./query) - Get, GetString 等查询操作
 - [修改函数](./modify) - Set, Delete 等修改操作
 - [文件操作](./file-io) - LoadFromFile, SaveToFile 等文件操作
 - [配置](../config) - Config 类型和选项

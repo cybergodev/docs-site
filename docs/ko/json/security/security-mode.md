@@ -1,7 +1,7 @@
 ---
 sidebar_label: "보안 모드"
 title: "보안 모드 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 보안 API: 보안 설정, AddDangerousPattern 위험 패턴, 입력 검증으로 JSON 인젝션, 깊은 중첩, 자원 고갈 위협을 방어합니다."
+description: "CyberGo JSON 보안 API: 보안 설정, AddDangerousPattern 위험 패턴, 입력 검증으로 JSON 인젝션, 프로토타입 오염, XSS 위협을 방어합니다."
 sidebar_position: 2
 ---
 

@@ -2,7 +2,7 @@
 sidebar_label: "Шпаргалка"
 title: "Шпаргалка - CyberGo HTTPC | Краткая справка"
 description: "Шпаргалка HTTPC: создание клиента, семь методов запроса, параметры WithXxx, обработка Result, цепочки middleware и загрузка файлов с примерами кода."
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # Шпаргалка

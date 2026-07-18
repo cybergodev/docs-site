@@ -2,7 +2,7 @@
 sidebar_label: "Lifecycle"
 title: "Processor Lifecycle - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor lifecycle: New, Close resource release, IsClosed state, GetStats statistics, and GetHealthStatus for safe concurrent shutdown."
-sidebar_position: 9
+sidebar_position: 11
 ---
 
 # Lifecycle & Statistics

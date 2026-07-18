@@ -30,7 +30,7 @@ type Client interface {
 }
 ```
 
-主客户端接口，通过 `New()` 创建。详见 [包函数](../core/functions)。
+主客户端接口，通过 `New()` 创建。详见 [包级函数与客户端方法](../core/functions)。
 
 ## Doer
 
@@ -172,7 +172,7 @@ type RequestMutator interface {
 }
 ```
 
-中间件中使用，提供请求的读写访问。由内部接口 RequestReader 和 RequestWriter 组合而成。
+中间件中使用，提供请求的读写访问。由内部接口 RequestReader 和 RequestWriter 组合而成。完整方法契约与读写示例见 [请求与响应变更器](../handler/mutators)。
 
 ### ResponseMutator
 
@@ -215,7 +215,7 @@ type ResponseMutator interface {
 }
 ```
 
-中间件中使用，提供响应的读写访问。由内部接口 ResponseReader 和 ResponseWriter 组合而成。
+中间件中使用，提供响应的读写访问。由内部接口 ResponseReader 和 ResponseWriter 组合而成。完整方法契约见 [请求与响应变更器](../handler/mutators)。
 
 ### Handler
 
@@ -232,6 +232,79 @@ type MiddlewareFunc func(Handler) Handler
 ```
 
 中间件函数签名，接收下一个 Handler 并返回包装后的 Handler。
+
+## 证书锁定
+
+证书锁定（Certificate Pinning）在 TLS 握手阶段校验服务器证书是否匹配预先固定的公钥/证书。即使受信任的 CA 被攻破，握手也会被拒绝，从而防御中间人攻击。
+
+### CertificatePinner
+
+```go
+type CertificatePinner = security.CertificatePinner
+```
+
+证书锁定器接口。通过下方构造函数创建后赋值给 `SecurityConfig.CertificatePinner` 字段（经 `Config.Security` 访问）：
+
+```go
+pinner, err := httpc.NewSPKIHashPinner(
+    "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2fuihg=", // 当前密钥
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // 备用密钥（轮换）
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+cfg := httpc.DefaultConfig()
+cfg.Security.CertificatePinner = pinner
+client, err := httpc.New(cfg)
+```
+
+:::tip
+Pinner 实现并发安全，可被同一 `Config` 创建的多个客户端共享（深拷贝时按引用传递，不复制）。高级用户也可直接实现该接口以支持自定义锁定策略（如固定完整证书而非公钥）。
+:::
+
+### NewSPKIHashPinner
+
+```go
+func NewSPKIHashPinner(hashes ...string) (CertificatePinner, error)
+```
+
+从一个或多个 base64 编码的 SHA-256 哈希值（针对 DER 编码的 SubjectPublicKeyInfo/SPKI）创建证书锁定器。这是最常用的锁定格式（HPKP 采用），也是推荐方案。
+
+传入多个哈希可支持密钥轮换——只要对端公钥匹配**任意一个**固定哈希，握手即成功。
+
+用以下命令从证书生成哈希：
+
+```bash
+openssl x509 -in cert.pem -pubkey -noout | openssl pkey -pubin -outform der \
+  | openssl dgst -sha256 -binary | openssl enc -base64
+```
+
+未提供有效哈希，或哈希非合法 base64 时返回错误。
+
+### NewPublicKeyPinner
+
+```go
+func NewPublicKeyPinner(publicKeys ...[]byte) (CertificatePinner, error)
+```
+
+从一个或多个 DER 编码的 PKIX 公钥（由 `x509.MarshalPKIXPublicKey` 返回）创建证书锁定器。内部对每个公钥计算 SHA-256 哈希；当你已持有原始公钥字节时，这是比 `NewSPKIHashPinner` 更便捷的选择。
+
+未提供有效公钥时返回错误。
+
+### NewCertificatePinnerChain
+
+```go
+func NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner
+```
+
+将多个锁定器组合为一个。只要**任意一个**被包装的锁定器接受该证书，证书即被接受。用于同时支持多种锁定策略，或组合用不同构造函数构建的轮换密钥。
+
+不传参数时返回 no-op 锁定器（拒绝所有证书）。
+
+:::tip 深入阅读
+证书锁定的完整指南（哈希生成、密钥轮换策略、生产部署）见 [TLS 证书锁定](../../security/tls-certpin)。
+:::
 
 ## 相关页面
 

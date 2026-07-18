@@ -1,7 +1,7 @@
 ---
-sidebar_label: "Типы"
-title: "Типы - CyberGo HTML | структуры данных"
-description: "Типы данных CyberGo HTML: поля Result (с MarshalJSON), ImageInfo, LinkInfo, LinkResource, Statistics, BatchResult и других ключевых структур."
+sidebar_label: "Типы данных"
+title: "Типы данных - CyberGo html | структуры и поля"
+description: "Типы данных CyberGo html: поля Result, ImageInfo, LinkInfo, LinkResource, Statistics, BatchResult и других ключевых структур."
 sidebar_position: 2
 ---
 

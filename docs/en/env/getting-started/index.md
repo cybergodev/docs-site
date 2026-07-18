@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Quick Start"
 title: "Getting Started - CyberGo env | 5-Minute Guide"
-description: "Start with CyberGo env in 5 minutes: install via go get, load .env, read type-safe values, map structs and expand variables, with complete Go code examples."
-sidebar_position: 2
+description: "CyberGo env 5-minute start: go get, .env load, type-safe reads, GetSecure, struct mapping, expansion, errors.Is, four presets and multi-env loading."
+sidebar_position: 1
 ---
 
 # Getting Started

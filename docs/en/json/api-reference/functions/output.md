@@ -1,11 +1,11 @@
 ---
-sidebar_label: "Encode & Decode"
-title: "Encode and Decode Functions - CyberGo JSON | API Reference"
+sidebar_label: "Encoding & Output"
+title: "Encoding & Output Functions - CyberGo JSON | API Reference"
 description: "CyberGo JSON encode/decode: Marshal/Unmarshal, Compact/Indent/HTMLEscape, and Encode/EncodePretty/Prettify configurable encoding, stdlib compatible."
-sidebar_position: 4
+sidebar_position: 5
 ---
 
-# Encode and Decode Functions
+# Encoding & Output Functions
 
 The json package provides encoding and decoding functions, including serialization, deserialization, formatting, and configured encoding.
 
@@ -13,52 +13,62 @@ The json package provides encoding and decoding functions, including serializati
 
 ### Marshal
 
-Signature: `func Marshal(value any) ([]byte, error)`
+Signature: `func Marshal(value any, cfg ...Config) ([]byte, error)`
 
-Serializes a Go value to a JSON byte slice. 100% compatible with `encoding/json.Marshal`.
+Serializes a Go value to a JSON byte slice. 100% compatible with `encoding/json.Marshal`: called without `cfg`, `json.Marshal(v)` behaves identically to the standard library.
+
+The optional trailing `Config` controls encoding behavior (indentation, number handling, etc.), mirroring `Processor.Marshal` at the package/instance level.
 
 ```go
+// Compatible with encoding/json (no cfg)
 data, err := json.Marshal(map[string]any{"name": "test"})
 if err != nil {
     panic(err)
 }
 fmt.Println(string(data)) // {"name":"test"}
-```
 
-:::tip
-`Marshal` does not accept configuration parameters. For configured encoding, use [EncodeWithConfig](#encodewithconfig).
-:::
+// With configuration (non-breaking optional parameter)
+data, err = json.Marshal(value, json.PrettyConfig())
+```
 
 ### Unmarshal
 
-Signature: `func Unmarshal(data []byte, value any) error`
+Signature: `func Unmarshal(data []byte, value any, cfg ...Config) error`
 
-Deserializes a JSON byte slice into a Go value. 100% compatible with `encoding/json.Unmarshal`.
+Deserializes a JSON byte slice into a Go value. 100% compatible with `encoding/json.Unmarshal`: called without `cfg`, `json.Unmarshal(data, &v)` behaves identically to the standard library.
+
+The optional trailing `Config` controls security limits, number preservation, and more, mirroring `Processor.Unmarshal`.
 
 ```go
 var result struct {
     Name string `json:"name"`
 }
+// Compatible with encoding/json (no cfg)
 err := json.Unmarshal([]byte(`{"name":"test"}`), &result)
+
+// With configuration
+err = json.Unmarshal(data, &v, json.SecurityConfig())
 ```
 
 ### MarshalIndent
 
-Signature: `func MarshalIndent(v any, prefix, indent string) ([]byte, error)`
+Signature: `func MarshalIndent(v any, prefix, indent string, cfg ...Config) ([]byte, error)`
 
-Serialization with indentation. 100% compatible with `encoding/json.MarshalIndent`.
+Serialization with indentation. 100% compatible with `encoding/json.MarshalIndent`: called without `cfg`, `json.MarshalIndent(v, prefix, indent)` behaves identically to the standard library.
+
+The optional trailing `Config` can attach configuration; the `prefix` and `indent` parameters override the corresponding fields in `Config`.
 
 ```go
+// Compatible with encoding/json (no cfg)
 data, err := json.MarshalIndent(user, "", "  ")
 if err != nil {
     panic(err)
 }
 fmt.Println(string(data))
-```
 
-:::tip
-`MarshalIndent` does not accept configuration parameters. For configured encoding, use [EncodeWithConfig](#encodewithconfig).
-:::
+// With configuration
+data, err = json.MarshalIndent(v, "", "  ", json.SecurityConfig())
+```
 
 ## Formatting Functions
 
@@ -66,7 +76,7 @@ fmt.Println(string(data))
 
 Signature: `func Compact(dst *bytes.Buffer, src []byte, cfg ...Config) error`
 
-Compacts JSON by removing unnecessary whitespace and writes the result to `dst`. Compatible with `encoding/json.Compact`.
+Compacts JSON by removing unnecessary whitespace and writes the result to `dst`. Compatible with `encoding/json.Compact` (buffer form).
 
 ```go
 var buf bytes.Buffer
@@ -75,6 +85,30 @@ if err != nil {
     panic(err)
 }
 fmt.Println(buf.String()) // {"name":"test"}
+```
+
+### CompactString
+
+Signature: `func CompactString(jsonStr string, cfg ...Config) (string, error)`
+
+Compacts JSON in string-in/string-out form, removing unnecessary whitespace. It is the package-level mirror of `Processor.Compact`, symmetric with `Prettify` (which mirrors `Processor.Prettify`).
+
+::: info Compact vs CompactString
+- `Compact(dst, src)`: buffer form, compatible with `encoding/json.Compact`, mirrors `Processor.CompactBuffer`
+- `CompactString(s)`: string form, mirrors `Processor.Compact`
+:::
+
+```go
+compact, err := json.CompactString(`{
+    "name": "Alice",
+    "age": 30
+}`)
+// compact == `{"name":"Alice","age":30}`
+
+// With configuration (e.g. preserve original number formats)
+cfg := json.DefaultConfig()
+cfg.PreserveNumbers = true
+compact, err = json.CompactString(jsonStr, cfg)
 ```
 
 ### Indent
@@ -133,6 +167,10 @@ fmt.Println(pretty)
 Signature: `func Encode(value any, cfg ...Config) (string, error)`
 
 Encodes a Go value to a JSON string with optional configuration parameters.
+
+::: warning Deprecated
+`Encode` is functionally identical to [`EncodeWithConfig`](#encodewithconfig) (both delegate to the same implementation). Prefer `EncodeWithConfig`, or use [`Marshal`](#marshal) when a `[]byte` output is acceptable. `Encode` will be removed in a future major version.
+:::
 
 ```go
 result, err := json.Encode(user)
@@ -322,7 +360,7 @@ For complete Config field documentation, see [Configuration](../config).
 
 ## See Also
 
-- [Query and Get Functions](./get) - Get, GetString and other query operations
+- [Query & Get Functions](./query) - Get, GetString and other query operations
 - [Modify Functions](./modify) - Set, Delete and other modify operations
 - [File Operations](./file-io) - LoadFromFile, SaveToFile and other file operations
 - [Configuration](../config) - Config type and options

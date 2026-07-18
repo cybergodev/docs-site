@@ -1,7 +1,7 @@
 ---
-sidebar_label: "Аудитный журнал"
+sidebar_label: "AuditLogger"
 title: "Аудитные логи - CyberGo DD | AuditLogger"
-description: "Полная документация API аудитных логов CyberGo DD, включая асинхронный регистратор аудитных событий AuditLogger, параметры конфигурации AuditConfig (цель вывода, формат, подписи) и структурированное форматирование записей аудита, поддерживает отслеживание событий, связанных с безопасностью, удовлетворяющая различным требованиям корпоративного аудита соответствия и надзора за безопасностью данных."
+description: "Полная документация API аудитных логов CyberGo DD: асинхронный регистратор AuditLogger, параметры конфигурации AuditConfig (цель вывода, формат, подписи) и структурированное форматирование записей аудита, поддерживая отслеживание событий, связанных с безопасностью, и удовлетворяя корпоративным требованиям к комплаенс-аудиту и надзору за защитой данных."
 sidebar_position: 3
 ---
 
@@ -18,6 +18,10 @@ DD предоставляет функцию асинхронных аудитн
 ```go
 func NewAuditLogger(cfg AuditConfig) (*AuditLogger, error)
 ```
+
+Создаёт асинхронный регистратор аудита с переданной `AuditConfig`. Можно использовать `DefaultAuditConfig()` для получения конфигурации с разумными значениями по умолчанию.
+
+Случаи возврата ошибки: неудача проверки конфигурации (например, отрицательный `BufferSize`).
 
 ```go
 // С конфигурацией по умолчанию
@@ -73,12 +77,12 @@ audit.LogSecurityViolation("sql_injection", "Попытка SQL-инъекции
 ```go
 type AuditConfig struct {
     Enabled          bool             // Включить аудит (по умолчанию true)
-    Output           *os.File         // Файл вывода (по умолчанию os.Stderr)
-    BufferSize       int              // Размер буфера (по умолчанию 1000)
-    IncludeTimestamp  bool            // Включать временную метку (по умолчанию true)
+    Output           *os.File         // Файл вывода (по умолчанию os.Stderr); при nil события передаются только через канал Events
+    BufferSize       int              // Размер буфера асинхронных событий (по умолчанию 1000; отрицательное значение приведёт к неудаче проверки)
+    IncludeTimestamp bool             // Включать временную метку (по умолчанию true)
     JSONFormat       bool             // Вывод в формате JSON (по умолчанию true)
-    MinimumSeverity  AuditSeverity    // Минимальный уровень серьёзности (по умолчанию AuditSeverityInfo)
-    IntegritySigner  *IntegritySigner // Подписывающее устройство целостности
+    MinimumSeverity  AuditSeverity    // Минимальный уровень серьёзности записи (по умолчанию AuditSeverityInfo)
+    IntegritySigner  *IntegritySigner // Подписывающее устройство целостности (опционально; при настройке каждая аудитная запись подписывается)
 }
 ```
 
@@ -94,8 +98,8 @@ func DefaultAuditConfig() AuditConfig
 
 | Метод | Сигнатура | Описание |
 |-------|-----------|----------|
-| `Validate` | `() error` | Проверить корректность конфигурации |
-| `Clone` | `() AuditConfig` | Копировать конфигурацию |
+| `Validate` | `() error` | Проверить корректность конфигурации (при отрицательном `BufferSize` возвращает ошибку) |
+| `Clone` | `() AuditConfig` | Копировать конфигурацию (`IntegritySigner` — разделяемая ссылка, глубокого копирования нет) |
 
 ## AuditEvent
 
@@ -103,13 +107,13 @@ func DefaultAuditConfig() AuditConfig
 
 ```go
 type AuditEvent struct {
-    Type     AuditEventType    `json:"type"`
-    Timestamp time.Time        `json:"timestamp"`
-    Message  string            `json:"message"`
-    Pattern  string            `json:"pattern,omitempty"`
-    Field    string            `json:"field,omitempty"`
-    Metadata map[string]any    `json:"metadata,omitempty"`
-    Severity AuditSeverity     `json:"severity"`
+    Type      AuditEventType `json:"type"`
+    Timestamp time.Time      `json:"timestamp"`
+    Message   string         `json:"message"`
+    Pattern   string         `json:"pattern,omitempty"`
+    Field     string         `json:"field,omitempty"`
+    Metadata  map[string]any `json:"metadata,omitempty"`
+    Severity  AuditSeverity  `json:"severity"`
 }
 ```
 
@@ -119,11 +123,11 @@ type AuditEvent struct {
 
 ```go
 type AuditStats struct {
-    TotalEvents int64                      // Общее количество событий
-    Dropped     int64                      // Количество отброшенных событий
-    ByType      map[AuditEventType]int64   // Статистика по типам
-    BufferSize  int                        // Размер буфера
-    BufferUsage int                        // Использование буфера
+    TotalEvents int64                    // Общее количество событий
+    Dropped     int64                    // Количество отброшенных событий (накапливается при переполнении буфера)
+    ByType      map[AuditEventType]int64 // Статистика по типам
+    BufferSize  int                      // Размер буфера
+    BufferUsage int                      // Текущее использование буфера
 }
 ```
 

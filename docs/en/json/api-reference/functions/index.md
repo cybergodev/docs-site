@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
 title: "Package Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON package functions: Get/GetString/GetInt queries, Set/Delete/MergeJSON, Marshal/Unmarshal, and file I/O callable without a Processor."
+description: "CyberGo JSON package functions: Get/GetString/GetInt path queries, Set/Delete/MergeJSON modification, Marshal/Unmarshal encoding, and ParseJSONL/ProcessBatch batch processing."
 sidebar_position: 1
 ---
 
@@ -9,35 +9,65 @@ sidebar_position: 1
 
 Top-level functions provided by the json package, callable directly without creating a Processor instance. Organized by feature category:
 
-## [Query & Get](./get)
+## [Query & Get](./query)
 
-Path queries, type-safe getters, batch operations, parsing, and validation functions.
+Path queries, type-safe getters, safe access, and batch getters.
 
-**Key Functions**: [`Get`](./get#get) · [`GetString`](./get#getstring) · [`GetInt`](./get#getint) · [`GetFloat`](./get#getfloat) · [`GetBool`](./get#getbool) · [`GetArray`](./get#getarray) · [`GetObject`](./get#getobject) · [`GetTyped[T]`](./get#gettyped-t) · [`SafeGet`](./get#safeget-package-level-function) · [`GetMultiple`](./get#getmultiple-package-level-function) · [`ProcessBatch`](./get#processor-processbatch) · [`Parse`](./get#parse) · [`ParseAny`](./get#parseany) · [`Valid`](./get#valid) · [`ValidWithConfig`](./get#validwithconfig)
+**Key Functions**: [`Get`](./query#get) · [`GetWithContext`](./query#getwithcontext) · [`GetString`](./query#getstring) · [`GetInt`](./query#getint) · [`GetFloat`](./query#getfloat) · [`GetBool`](./query#getbool) · [`GetArray`](./query#getarray) · [`GetObject`](./query#getobject) · [`GetTyped[T]`](./query#gettyped-t) · [`SafeGet`](./query#safeget-package-level-function) · [`GetMultiple`](./query#getmultiple-package-level-function)
 
-## [Modify Operations](./modify)
+## [Modify](./modify)
 
-Functions for setting, deleting, and merging JSON data.
+Functions for setting and merging JSON data.
 
-**Key Functions**: [`Set`](./modify#set) · [`SetMultiple`](./modify#setmultiple) · [`SetCreate`](./modify#setcreate) · [`SetMultipleCreate`](./modify#setmultiplecreate) · [`Delete`](./modify#delete) · [`DeleteClean`](./modify#deleteclean) · [`MergeJSON`](./modify#mergejson) · [`MergeMany`](./modify#mergemany)
+**Key Functions**: [`Set`](./modify#set) · [`SetMultiple`](./modify#setmultiple) · [`SetCreate`](./modify#setcreate) · [`SetMultipleCreate`](./modify#setmultiplecreate) · [`MergeJSON`](./modify#mergejson) · [`MergeMany`](./modify#mergemany)
 
-## [Encoding & Decoding](./encode-decode)
+## [Delete Operations](./delete)
+
+Functions for deleting JSON data nodes.
+
+**Key Functions**: [`Delete`](./delete#delete) · [`DeleteClean`](./delete#deleteclean)
+
+## [Encoding & Output](./output)
 
 Serialization, deserialization, and stream encoding/decoding functions.
 
-**Key Functions**: [`Marshal`](./encode-decode#marshal) · [`Unmarshal`](./encode-decode#unmarshal) · [`MarshalIndent`](./encode-decode#marshalindent) · [`Encode`](./encode-decode#encode) · [`EncodePretty`](./encode-decode#encodepretty) · [`EncodeWithConfig`](./encode-decode#encodewithconfig) · [`Prettify`](./encode-decode#prettify) · [`Compact`](./encode-decode#compact) · [`Indent`](./encode-decode#indent) · [`HTMLEscape`](./encode-decode#htmlescape) · [`NewEncoder`](../types#encoder-json-encoder) · [`NewDecoder`](../types#decoder-json-decoder) · [`EncodeBatch`](../processor/output#encodebatch) · [`EncodeFields`](../processor/output#encodefields) · [`EncodeStream`](../processor/output#encodestream) · [`SaveToWriter`](./file-io#savetowriter)
+**Key Functions**: [`Marshal`](./output#marshal) · [`Unmarshal`](./output#unmarshal) · [`MarshalIndent`](./output#marshalindent) · [`Encode`](./output#encode) · [`EncodePretty`](./output#encodepretty) · [`EncodeWithConfig`](./output#encodewithconfig) · [`Prettify`](./output#prettify) · [`Compact`](./output#compact) · [`CompactString`](./output#compactstring) · [`Indent`](./output#indent) · [`HTMLEscape`](./output#htmlescape) · [`NewEncoder`](../types#encoder-json-encoder) · [`NewDecoder`](../types#decoder-json-decoder) · [`EncodeBatch`](../processor/output#encodebatch) · [`EncodeFields`](../processor/output#encodefields) · [`EncodeStream`](../processor/output#encodestream) · [`SaveToWriter`](./file-io#savetowriter)
 
-## [File Operations](./file-io)
+## [Parse & Validate](./parse)
 
-File read/write and JSONL processing functions.
+Functions for parsing JSON into target objects, parsing via Processor instances, and JSON validity / JSON Schema validation.
 
-**Key Functions**: [`LoadFromFile`](./file-io#loadfromfile) · [`LoadFromReader`](./file-io#loadfromreader) · [`SaveToFile`](./file-io#savetofile) · [`MarshalToFile`](./file-io#marshaltofile) · [`UnmarshalFromFile`](./file-io#unmarshalfromfile) · [`SaveToWriter`](./file-io#savetowriter) · [`ParseJSONL`](./file-io#parsejsonl) · [`ToJSONL`](./file-io#tojsonl) · [`ToJSONLString`](./file-io#tojsonlstring) · [`StreamLinesInto[T]`](./file-io#streamlinesinto)
+**Key Functions**: [`Parse`](./parse#parse) · [`ParseAny`](./parse#parseany) · [`Processor.Parse`](./parse#processor-parse) · [`Processor.ParseAny`](./parse#processor-parseany) · [`Valid`](./parse#valid) · [`ValidWithConfig`](./parse#validwithconfig) · [`ValidateSchema`](./parse#validateschema)
 
-## [File Iteration](../../streaming/large-file)
+## [Batch Operations](./batch)
 
-File stream iteration functions (package-level functions, no Processor required).
+Functions for batch processing multiple JSON operations (get/set/delete/validate).
 
-**Key Functions**: [`ForeachFile`](../../streaming/large-file#foreachfile-package-level-function) · [`ForeachFileWithPath`](../../streaming/large-file#foreachfilewithpath-package-level-function) · [`ForeachFileChunked`](../../streaming/large-file#foreachfilechunked-package-level-function) · [`ForeachFileNested`](../../streaming/large-file#foreachfilenested-package-level-function)
+**Key Functions**: [`ProcessBatch`](./batch#processbatch) · [`BatchOperation`](./batch#batchoperation) · [`BatchResult`](./batch#batchresult)
+
+## [JSONL](./jsonl)
+
+JSONL (JSON Lines) parsing, streaming reads, conversion, and writer functions.
+
+**Key Functions**: [`ParseJSONL`](./jsonl#parsejsonl) · [`ToJSONL`](./jsonl#tojsonl) · [`ToJSONLString`](./jsonl#tojsonlstring) · [`StreamLinesInto[T]`](./jsonl#streamlinesinto) · [`NewJSONLWriter`](./jsonl#newjsonlwriter)
+
+## [File I/O](./file-io)
+
+File read/write and streaming I/O functions.
+
+**Key Functions**: [`LoadFromFile`](./file-io#loadfromfile) · [`LoadFromReader`](./file-io#loadfromreader) · [`SaveToFile`](./file-io#savetofile) · [`MarshalToFile`](./file-io#marshaltofile) · [`UnmarshalFromFile`](./file-io#unmarshalfromfile) · [`SaveToWriter`](./file-io#savetowriter)
+
+## [Iteration Methods](./iterate)
+
+Iteration functions for traversing JSON arrays, objects, nested structures, and files.
+
+**Key Functions**: [`Foreach`](./iterate#foreach) · [`ForeachWithPath`](./iterate#foreachwithpath) · [`ForeachNested`](./iterate#foreachnested) · [`ForeachReturn`](./iterate#foreachreturn) · [`ForeachWithError`](./iterate#foreachwitherror) · [`ForeachNestedWithError`](./iterate#foreachnestedwitherror) · [`ForeachWithPathAndIterator`](./iterate#foreachwithpathanditerator) · [`ForeachWithPathAndControl`](./iterate#foreachwithpathandcontrol) · [`ForeachFile`](./iterate#foreachfile) · [`ForeachFileWithPath`](./iterate#foreachfilewithpath) · [`ForeachFileChunked`](./iterate#foreachfilechunked) · [`ForeachFileNested`](./iterate#foreachfilenested)
+
+## [File Iteration](../../streaming/large-files)
+
+File stream iteration guide and practices (see [Iteration Methods](./iterate#file-iteration-functions) for the package-level `ForeachFile*` API reference).
+
+**Key Functions**: [`ForeachFile`](./iterate#foreachfile) · [`ForeachFileWithPath`](./iterate#foreachfilewithpath) · [`ForeachFileChunked`](./iterate#foreachfilechunked) · [`ForeachFileNested`](./iterate#foreachfilenested)
 
 ## [Helper Utilities](../helpers)
 
@@ -51,22 +81,27 @@ Type conversion, comparison, cache management, error handling, and other utility
 
 | Use Case | Recommended Function | Documentation |
 |----------|---------------------|---------------|
-| Get single value | `GetString`, `GetInt`, `GetFloat`, `GetBool` | [Query & Get](./get#path-query-functions) |
-| Get any type | `Get`, `GetTyped[T]` | [Query & Get](./get#generic-getter-function) |
-| Get with default | `GetString(data, path, "default")` | [Query & Get](./get#type-safe-getter-functions) |
-| Generic get | `GetTyped[T](data, path, defaultValue...)` | [Query & Get](./get#generic-getter-function) |
-| Batch get | `GetMultiple` | [Query & Get](./get#processor-extended-methods) |
-| Modify JSON | `Set`, `Delete`, `SetCreate`, `DeleteClean` | [Modify Operations](./modify) |
-| Serialize | `Marshal`, `Encode` | [Encoding & Decoding](./encode-decode#serialization-functions) |
-| Deserialize | `Unmarshal`, `Parse` | [Encoding & Decoding](./encode-decode#serialization-functions) · [Query & Get](./get#parse-functions) |
-| Format | `Prettify`, `Processor.Compact` | [Encoding & Decoding](./encode-decode#serialization-functions) |
+| Get single value | `GetString`, `GetInt`, `GetFloat`, `GetBool` | [Query & Get](./query#path-query-functions) |
+| Get any type | `Get`, `GetTyped[T]` | [Query & Get](./query#generic-getter-function) |
+| Get with default | `GetString(data, path, "default")` | [Query & Get](./query#type-safe-getter-functions) |
+| Generic get | `GetTyped[T](data, path, defaultValue...)` | [Query & Get](./query#generic-getter-function) |
+| Batch get | `GetMultiple` | [Query & Get](./query#processor-extended-methods) |
+| Modify JSON | `Set`, `SetCreate` | [Modify](./modify) |
+| Delete JSON | `Delete`, `DeleteClean` | [Delete Operations](./delete) |
+| Serialize | `Marshal`, `Encode` | [Encoding & Output](./output#serialization-functions) |
+| Deserialize | `Unmarshal`, `Parse` | [Encoding & Output](./output#serialization-functions) · [Parse & Validate](./parse#parse-functions) |
+| Format | `Prettify`, `CompactString`, `Processor.Compact` | [Encoding & Output](./output#serialization-functions) |
 | Print output | `Encode` + `fmt.Println`, `EncodePretty` | [Print Functions](../print) |
-| Batch encoding | `EncodeBatch`, `EncodeFields`, `EncodeStream` | [Batch Encoding](./encode-decode#batch-encoding-functions) · [Processor Output](../processor/output) |
-| Validate | `Valid` | [Query & Get](./get#validation-functions) |
-| File read/write | `LoadFromFile`, `SaveToFile` | [File Operations](./file-io#file-read-functions) |
-| JSONL processing | `ParseJSONL`, `ToJSONL` | [File Operations](./file-io#jsonl-processing-functions) |
+| Batch encoding | `EncodeBatch`, `EncodeFields`, `EncodeStream` | [Batch Encoding](./output#batch-encoding-functions) · [Processor Output](../processor/output) |
+| Batch operations | `ProcessBatch` | [Batch Operations](./batch) |
+| Validate | `Valid` | [Parse & Validate](./parse#validation-functions) |
+| JSON Schema validation | `ValidateSchema` | [Parse & Validate](./parse#validateschema) |
+| File read/write | `LoadFromFile`, `SaveToFile` | [File I/O](./file-io#file-read-functions) |
+| Iterate traversal | `Foreach`, `ForeachWithPath`, `ForeachNested` | [Iteration Methods](./iterate#method-comparison) |
+| File iteration | `ForeachFile`, `ForeachFileChunked` | [Iteration Methods](./iterate#file-iteration-method-comparison) |
+| JSONL processing | `ParseJSONL`, `ToJSONL` | [JSONL](./jsonl#jsonl-processing-functions) |
 | Compare | `CompareJSON` | [Helper Utilities](../helpers#json-comparison-functions) |
-| Merge | `MergeJSON`, `MergeMany` | [Modify Operations](./modify#merge-functions) |
+| Merge | `MergeJSON`, `MergeMany` | [Modify](./modify#merge-functions) |
 | Type conversion | `AccessResult` type conversion methods | [Helper Utilities](../helpers#accessresult-type-conversion-methods) |
 | Error handling | `JsonsError`, `errors.Is` | [Constants & Errors](../constants#error-variables) |
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "链接提取与分组"
-title: "链接提取与分组 - CyberGo HTML | 资源收集指南"
-description: "CyberGo HTML 链接提取与分组：ExtractAllLinks 提取各类资源链接、按类型分组、Include 过滤、相对 URL 解析与爬虫场景最佳实践。"
+title: "链接提取与分组 - CyberGo html | 资源收集指南"
+description: "CyberGo html 链接提取与分组：ExtractAllLinks 提取资源链接、类型分组、Include 过滤、URL 解析与 BaseURL 检测，适用爬虫。"
 sidebar_position: 3
 ---
 

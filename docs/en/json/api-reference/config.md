@@ -18,6 +18,7 @@ type Config struct {
     CacheTTL     time.Duration `json:"cache_ttl"`      // Cache expiration time
     EnableCache  bool          `json:"enable_cache"`   // Whether to enable cache
     CacheResults bool          `json:"cache_results"`  // Whether to cache operation results
+    CacheSharedResults bool    `json:"cache_shared_results"` // Share cached results (skip defensive deep copy; caller must not mutate returned containers)
 
     // ===== Size Limits =====
     MaxJSONSize  int64 `json:"max_json_size"`  // Maximum JSON size (bytes)
@@ -104,6 +105,10 @@ type Config struct {
 }
 ```
 
+::: warning CacheSharedResults contract
+When `CacheSharedResults` is `true`, a cache-hit `Get`/`GetFromParsed` returns the cached value **directly**, skipping the defensive deep copy (faster, fewer allocations). The caller **must not mutate** the returned `map[string]any`/`[]any`, since doing so corrupts the shared cache and affects subsequent reads. Primitives (`bool`, `float64`, `string`, `json.Number`, `nil`) are immutable and always safe. The default `false` preserves the safe copy-on-read behavior; enable it only when callers treat results as read-only (for example, read-heavy workloads that `Get` the same large subtrees repeatedly).
+:::
+
 ## Configuration Presets
 
 ### DefaultConfig
@@ -137,6 +142,7 @@ defer processor.Close()
 | MaxCacheSize | 128 | Maximum cache entries |
 | EnableCache | true | Enable cache |
 | CacheResults | true | Cache operation results |
+| CacheSharedResults | false | Share cached results (read-only high-throughput) |
 | EnableValidation | true | Enable validation |
 | StrictMode | false | Non-strict mode |
 | FullSecurityScan | false | Sampled security scan (not full) |

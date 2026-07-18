@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Modify"
 title: "Modify Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON modify functions: Set/SetMultiple, Delete, MergeJSON/MergeMany with auto path creation, atomic ops, and multiple MergeMode strategies."
+description: "CyberGo JSON modify functions: Set/SetMultiple, MergeJSON/MergeMany with auto path creation, atomic ops, and multiple MergeMode strategies."
 sidebar_position: 3
 ---
 
 # Modify Functions
 
-The json package provides JSON modification functions supporting path setting, batch updates, and delete operations.
+The json package provides JSON modification functions supporting path setting, batch updates, and merge operations.
 
 ## Set Functions
 
@@ -140,74 +140,6 @@ result, err := json.SetMultipleCreate(`{}`, map[string]any{
 })
 ```
 
-## Delete Functions
-
-### Delete
-
-Signature: `func Delete(jsonStr, path string, cfg ...Config) (string, error)`
-
-Deletes the value at the specified path.
-
-**Parameters**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `jsonStr` | `string` | Yes | JSON string |
-| `path` | `string` | Yes | Path expression |
-| `cfg` | `Config` | No | Optional configuration |
-
-**Example**
-
-```go
-result, err := json.Delete(data, "user.temporary")
-if err != nil {
-    panic(err)
-}
-```
-
-**Delete Object Properties**
-
-```go
-// Delete a single property
-result, err := json.Delete(`{"user":{"name":"Alice","temp":"value"}}`, "user.temp")
-// {"user":{"name":"Alice"}}
-```
-
-**Delete Array Elements**
-
-```go
-// Delete an element from an array (0-based index)
-result, err := json.Delete(`{"items":["a","b","c"]}`, "items[1]")
-// {"items":["a","c"]}
-```
-
-**Path Does Not Exist**
-
-```go
-// When path does not exist, returns original JSON and an error
-result, err := json.Delete(`{"a":1}`, "nonexistent.path")
-if err != nil {
-    // err contains JsonsError wrapping ErrPathNotFound
-    fmt.Println("Delete failed:", err)
-}
-// result is still the original JSON: {"a":1}
-```
-
-### DeleteClean
-
-Signature: `func DeleteClean(jsonStr, path string, cfg ...Config) (string, error)`
-
-Deletes the specified path and automatically cleans up resulting empty values and empty arrays.
-
-```go
-// Original data: {"user": {"temp": "value", "name": "test"}}
-result, err := json.DeleteClean(data, "user.temp")
-// {"user":{"name":"test"}}
-
-// If the parent object is empty after deletion, cleanup continues
-// {"user": {}} -> {}
-```
-
 ## Merge Functions
 
 ### MergeJSON
@@ -276,61 +208,6 @@ result, err := json.MergeMany([]string{config1, config2, config3})
 // Result: {"api":"v1","timeout":60,"retries":5,"debug":true}
 ```
 
-## Batch Operations
-
-### ProcessBatch
-
-Signature: `func ProcessBatch(operations []BatchOperation, cfg ...Config) ([]BatchResult, error)`
-
-Batch processes multiple JSON operations (package-level function, no Processor required).
-
-```go
-jsonStr := `{"user": {"name": "CyberGo", "age": 25}}`
-
-operations := []json.BatchOperation{
-    {Type: "get", JSONStr: jsonStr, Path: "user.name", ID: "op1"},
-    {Type: "set", JSONStr: jsonStr, Path: "user.age", Value: 30, ID: "op2"},
-}
-
-results, err := json.ProcessBatch(operations)
-if err != nil {
-    panic(err)
-}
-for _, r := range results {
-    if r.Error != nil {
-        fmt.Printf("Operation %s failed: %v\n", r.ID, r.Error)
-    } else {
-        fmt.Printf("Operation %s result: %v\n", r.ID, r.Result)
-    }
-}
-```
-
-### BatchOperation
-
-Batch operation descriptor structure.
-
-```go
-type BatchOperation struct {
-    Type    string `json:"type"`     // Operation type: "get", "set", "delete", "validate"
-    JSONStr string `json:"json_str"` // Target JSON string
-    Path    string `json:"path"`     // Path expression
-    Value   any    `json:"value"`    // Operation value (used for set operations)
-    ID      string `json:"id"`       // Operation identifier
-}
-```
-
-### BatchResult
-
-Batch operation result structure.
-
-```go
-type BatchResult struct {
-    ID     string `json:"id"`     // Operation identifier
-    Result any    `json:"result"` // Operation result
-    Error  error  `json:"error"`  // Error information
-}
-```
-
 ## Processor Methods
 
 Processor provides corresponding modify methods with signatures matching the package-level functions:
@@ -343,8 +220,23 @@ result, err = p.Delete(jsonStr, "user.temp")
 result, err = p.SetCreate(jsonStr, "user.email", "test@example.com")
 ```
 
+`MergeJSON` and `MergeMany` also have corresponding Processor methods, with signatures matching the package-level functions, making it convenient to reuse an already-configured Processor:
+
+```go
+result, err := p.MergeJSON(base, override)
+
+merged, err := p.MergeMany([]string{config1, config2, config3})
+
+// CompareJSON also has a Processor method (note: Processor.CompareJSON always
+// performs security validation, unlike the package-level function's no-cfg path)
+equal, err := p.CompareJSON(a, b)
+```
+
+See [Processor Data Modification](../processor/modify#processor-merge-methods).
+
 ## See Also
 
-- [Query and Get Functions](./get) - Get, GetString and other query operations
-- [Encode and Decode Functions](./encode-decode) - Marshal, Unmarshal and other serialization operations
+- [Query & Get Functions](./query) - Get, GetString and other query operations
+- [Batch Operation Functions](./batch) - ProcessBatch batch processing
+- [Encoding & Output Functions](./output) - Marshal, Unmarshal and other serialization operations
 - [Helper Functions](../helpers) - CompareJSON and other utility functions

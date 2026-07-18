@@ -1,7 +1,7 @@
 ---
 sidebar_label: "基本サンプル"
 title: "使用例 - CyberGo JSON | 実践コード例"
-description: "CyberGo JSON の実践例：パスクエリ、構造体 Marshal/Unmarshal、JSONL ストリーミング、Hook、Schema 検証、エラー処理を完全な実行可能な Go コード例で紹介します。"
+description: "CyberGo JSON 実践例：パスクエリ、構造体 Marshal/Unmarshal、JSONL ストリーム処理、Hook フック、Schema 検証、エラー処理を、実行可能な Go コードで紹介します。"
 sidebar_position: 1
 ---
 

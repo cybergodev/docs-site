@@ -1,7 +1,7 @@
 ---
-sidebar_label: "타입 정의"
-title: "타입 정의 - CyberGo HTML | 데이터 타입 참조"
-description: "CyberGo HTML 데이터 타입: Result(사용자 정의 JSON 직렬화), ImageInfo, LinkInfo, LinkResource, Statistics, BatchResult 등 핵심 타입 필드를 설명합니다."
+sidebar_label: "데이터 타입"
+title: "타입 정의 - CyberGo html | 데이터 타입 참조"
+description: "CyberGo html 데이터 타입: Result, ImageInfo, LinkInfo, LinkResource, Statistics, BatchResult 등 핵심 타입의 필드를 설명합니다."
 sidebar_position: 2
 ---
 

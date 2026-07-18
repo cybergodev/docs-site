@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概要"
-title: "Processor プロセッサ - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON Processor：New 作成、GetString/Set/Delete、Foreach 反復、Encode、Close ライフサイクル、Stats 統計、キャッシュ設定で高頻度再利用に適します。"
+title: "Processor 概要 - CyberGo JSON | API リファレンス"
+description: "CyberGo JSON Processor：New、GetString/Set/Delete、Foreach、Encode、Close で高頻度再利用に適します。"
 sidebar_position: 1
 ---
 
@@ -58,13 +58,15 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 
 | カテゴリ | 説明 |
 |----------|------|
-| [パスクエリ](./query) | GetString/Int/Float/Bool/Get/GetWithContext/SafeGet/GetArray/GetObject/GetMultiple/CompilePath/GetCompiled |
-| [データ変更](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/Delete/DeleteClean |
-| [出力メソッド](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
-| [解析と読み込み](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal/LoadFromFile/LoadFromReader/SaveToFile/MarshalToFile/SaveToWriter/UnmarshalFromFile |
-| [反復メソッド](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachReturn/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachWithPathAndControl/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
+| [クエリと取得](./query) | GetString/Int/Float/Bool/Get/GetWithContext/SafeGet/GetArray/GetObject/GetMultiple/CompilePath/GetCompiled |
+| [変更操作](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/MergeJSON/MergeMany/CompareJSON |
+| [削除操作](./delete) | Delete/DeleteClean |
+| [エンコードと出力](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
+| [パースと検証](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal |
 | [バッチ操作](./batch) | ProcessBatch/WarmupCache |
-| [JSONL 処理](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |
+| [JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |
+| [ファイル I/O](./file-io) | LoadFromFile/LoadFromReader/SaveToFile/MarshalToFile/SaveToWriter/UnmarshalFromFile |
+| [反復メソッド](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachReturn/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachWithPathAndControl/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
 | [ライフサイクル](./lifecycle) | Close/IsClosed/GetConfig/AddHook/ClearCache/GetStats/GetHealthStatus |
 
 ---

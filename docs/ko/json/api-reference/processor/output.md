@@ -1,8 +1,8 @@
 ---
-sidebar_label: "출력"
-title: "Processor 출력 메서드 - CyberGo JSON | API 레퍼런스"
+sidebar_label: "인코딩 및 출력"
+title: "Processor 출력 - CyberGo JSON | API"
 description: "CyberGo JSON Processor 출력 메서드: Encode, EncodePretty, EncodeWithConfig, EncodeBatch/EncodeFields, Compact/Indent/HTMLEscape로 다양한 출력을 지원합니다."
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # 출력 메서드
@@ -16,6 +16,10 @@ Processor는 다양한 JSON 인코딩 출력 메서드를 제공합니다.
 시그니처: `func (p *Processor) Encode(value any, config ...Config) (string, error)`
 
 임의의 값을 JSON 문자열로 인코딩합니다.
+
+::: warning 더 이상 사용되지 않음
+`Processor.Encode`는 직접 [`EncodeWithConfig`](#encodewithconfig)에 위임합니다. 대신 `EncodeWithConfig`를 사용하세요. `Encode`는 향후 메이저 버전에서 제거될 예정입니다.
+:::
 
 ```go
 result, err := p.Encode(map[string]any{"name": "CyberGo"})

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "개요"
 title: "API 참조 - CyberGo env | 전체 인터페이스 문서"
-description: "CyberGo env 전체 API 참조 색인으로 패키지 함수, Config, 핵심 인터페이스, Loader, ComponentFactory, SecureValue, 상수와 오류 모듈의 진입점을 빠르게 찾아볼 수 있습니다."
+description: "CyberGo env 전체 API 참조 색인으로 패키지 함수, Config 구성, Loader, SecureValue, 핵심 인터페이스, ComponentFactory, 상수와 오류 등 일곱 모듈의 진입점과 메서드 시그니처를 빠르게 찾아볼 수 있습니다."
 sidebar_position: 1
 ---
 

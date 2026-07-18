@@ -2,7 +2,7 @@
 sidebar_label: "오류 처리"
 title: "오류 처리 - CyberGo JWT | 센티넬 오류 매칭"
 description: "오류 처리 가이드: CyberGo JWT 19 에러가 구성, 토큰 검증, 속도 제한, 수명주기 단계에서 트리거되는 조건을 분류하고 errors.Is 매칭, ValidationError 필드 오류와 표준 응답 실무를 안내합니다."
-sidebar_position: 5
+sidebar_position: 50
 ---
 
 # 오류 처리

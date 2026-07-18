@@ -1,5 +1,5 @@
 ---
-sidebar_label: "发送请求与处理响应"
+sidebar_label: "请求与响应"
 title: "请求与响应 - CyberGo HTTPC | 请求选项与响应"
 description: "HTTPC 请求与响应处理指南：包级函数与客户端请求、WithHeader/WithJSON/WithForm 等请求选项、WithBearerToken 认证、WithQuery 查询参数、Cookie 管理、上下文控制与流式响应解压大小限制配置。"
 sidebar_position: 2

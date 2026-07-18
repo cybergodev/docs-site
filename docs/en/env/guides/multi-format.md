@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Multi-format Config"
 title: "Multi-format Config - CyberGo env | .env/JSON/YAML"
-description: "CyberGo env multi-format guide: load .env, JSON and YAML with auto-detection and mixed loading, merge-priority rules and format conversion for containers."
+description: "CyberGo env multi-format: load .env/JSON/YAML, auto-detect, flatten nested keys, merge priority, Marshal/UnmarshalMap, RegisterParser for containers."
 sidebar_position: 3
 ---
 

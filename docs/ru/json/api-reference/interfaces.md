@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Интерфейсы"
-title: "Определения интерфейсов - CyberGo JSON | Справочник API"
-description: "Интерфейсы CyberGo JSON: CustomEncoder, TypeEncoder, Validator, Hook, PathParser и DangerousPattern для расширения кодирования, валидации и безопасности."
+title: "Интерфейсы - CyberGo JSON | API"
+description: "Интерфейсы CyberGo JSON: CustomEncoder, TypeEncoder, Validator, Hook, PathParser, DangerousPattern для расширения и безопасности."
 sidebar_position: 6
 ---
 

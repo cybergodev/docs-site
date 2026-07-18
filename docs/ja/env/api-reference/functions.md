@@ -1,7 +1,7 @@
 ---
 sidebar_label: "パッケージ関数"
 title: "パッケージ関数 - CyberGo env | グローバル便利関数"
-description: "CyberGo env のパッケージ関数 API リファレンス。Load、GetString、GetInt、Keys、Marshal、ParseInto などスレッドセーフなグローバルローダー基盤の簡潔な API を提供します。"
+description: "CyberGo env のパッケージ関数 API リファレンス。Load、GetString、GetInt、GetBool、GetDuration、GetSlice、GetSecure、Lookup、Keys、ParseInto などスレッドセーフなグローバルローダー基盤の簡潔な API を提供します。"
 sidebar_position: 2
 ---
 
@@ -375,7 +375,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ### GetSliceFrom[T]
 
 ```go
-func GetSliceFrom[T sliceElement](./loader *Loader, key string, defaultValue ...[]T) []T
+func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
 指定の Loader インスタンスからスライス値を取得します。これは独立したジェネリック関数です（Loader メソッドではありません）。
@@ -425,7 +425,7 @@ func Lookup(key string) (string, bool)
 - `key` - キー名（ドットパスをサポート）
 
 **戻り値：**
-- `string` - 值（先頭と末尾の空白は削除される）
+- `string` - 値（先頭と末尾の空白は削除される）
 - `bool` - 存在するかどうか
 
 ```go
@@ -520,6 +520,7 @@ func Set(key, value string) error
 **エラー型：**
 - `ErrInvalidKey` - キー名が無効
 - `ErrForbiddenKey` - キーが禁止されています
+- `ErrInvalidValue` - 値が無効です（`ValidateValues` が true のとき、値にヌルバイトや制御文字など安全でない内容が含まれる場合）
 - `ErrClosed` - ローダークローズ済み
 
 ```go
@@ -634,9 +635,9 @@ func ResetDefaultLoader() error
 - `error` - 旧ローダーをクローズする際のエラー（存在する場合）；以前にローダーがない場合、またはクローズが成功した場合は nil を返す
 
 **動作：**
-- アトミックにデフォルトローダーを nil と交換
-- 旧ローダーをクローズ（ロックの外で実行し、ブロックを回避）
-- 新しいデフォルトローダーの作成を許可
+- `atomic.Pointer.Swap` でデフォルトローダーを nil に原子的に置換
+- `defaultMu` ロックを保持した状態で旧ローダーをクローズ（クローズ完了後にロック解放、リセットの原子性を保証）
+- リセット後、`Load()` または `LoadWithConfig()` で新しいデフォルトローダーを作成可能
 
 ```go
 func TestMain(m *testing.M) {

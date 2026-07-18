@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Типы"
-title: "Определения типов - CyberGo JSON | Справочник API"
-description: "Основные типы CyberGo JSON: Result[T], AccessResult, BatchOperation, BatchResult, Schema, Stats, HealthStatus и IterableValue, формирующие систему типов."
+title: "Определения типов - CyberGo JSON | API"
+description: "Основные типы CyberGo JSON: Result[T], AccessResult, BatchOperation, BatchResult, Schema, Stats, HealthStatus, IterableValue."
 sidebar_position: 5
 ---
 

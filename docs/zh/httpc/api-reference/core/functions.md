@@ -1,11 +1,11 @@
 ---
-sidebar_label: "包函数"
-title: "包函数 - CyberGo HTTPC | 包级函数"
-description: "HTTPC 包级函数与客户端方法 API 参考：Get/Post 等七种 HTTP 方法、New 客户端创建、Download 统一下载入口、FormatBytes/FormatSpeed 工具与 NewDomain 域名客户端创建。"
+sidebar_label: "包级函数与客户端方法"
+title: "包级函数与客户端方法 - CyberGo HTTPC | HTTP 方法 API"
+description: "HTTPC 包级函数与客户端方法 API 参考：Get/Post 等七种 HTTP 方法、New 客户端创建、Download 统一下载入口、FormatBytes/FormatSpeed 工具与 NewDomain 域名客户端创建，配合请求选项实现灵活配置。"
 sidebar_position: 1
 ---
 
-# 包函数
+# 包级函数与客户端方法
 
 ## 包级 HTTP 方法
 

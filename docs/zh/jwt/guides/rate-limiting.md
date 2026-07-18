@@ -2,7 +2,7 @@
 sidebar_label: "速率限制"
 title: "速率限制 - CyberGo JWT | 令牌桶限流"
 description: "速率限制指南：基于令牌桶配置签发接口每窗口最大请求数，讲解限流键的 Subject、UserID 与 RateLimitKeyer 优先级查找，支持内置与自定义分布式限流实现。"
-sidebar_position: 4
+sidebar_position: 40
 ---
 
 # 速率限制

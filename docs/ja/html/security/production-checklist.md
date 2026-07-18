@@ -1,7 +1,7 @@
 ---
 sidebar_label: "本番チェックリスト"
-title: "本番チェックリスト - CyberGo HTML | 本番前点検"
-description: "CyberGo HTML 本番セキュリティチェックリスト：HighSecurityConfig プリセット、Processor ライフサイクル、監査・モニタリング、タイムアウト、エラー処理、リソース・ファイルの注意点です。"
+title: "本番チェックリスト - CyberGo html | 本番前セキュリティ点検"
+description: "CyberGo html 本番デプロイセキュリティチェックリスト：HighSecurityConfig プリセット、Processor ライフサイクル、監査監視、コンテキストタイムアウト、エラー処理の要点。"
 sidebar_position: 2
 ---
 

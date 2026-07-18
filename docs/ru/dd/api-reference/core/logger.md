@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Logger"
 title: "Logger - CyberGo DD | Основной логгер"
-description: "Полная документация API основного логгера CyberGo DD Logger, охватывающая методы вывода логов (Info/Warn/Error/Fatal), динамическое управление уровнями, динамическое добавление и замену Writer, управление жизненным циклом (Close/Flush), глобальные функции логирования и настройку цепочек полей, являющуюся основным входным типом для использования библиотеки логирования DD."
+description: "API основного логгера CyberGo DD Logger: методы вывода логов (Info/Warn/Error/Fatal), динамическое управление уровнем, добавление/удаление/замена Writer, управление жизненным циклом (Close/Flush) и цепочная установка полей, является основным потокобезопасным высокопроизводительным типом-входом библиотеки логирования."
 sidebar_position: 2
 ---
 
@@ -46,7 +46,7 @@ logger, _ := dd.New(dd.Config{
 | `Infof(format string, args ...any)` | Форматированный Info |
 | `Warnf(format string, args ...any)` | Форматированный Warn |
 | `Errorf(format string, args ...any)` | Форматированный Error |
-| `Fatalf(format string, args ...any)` | Форматированный Fatal |
+| `Fatalf(format string, args ...any)` | Форматированный Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
 | `Logf(level LogLevel, format string, args ...any)` | Форматированный с указанным уровнем |
 
 ### Структурированные логи
@@ -57,7 +57,7 @@ logger, _ := dd.New(dd.Config{
 | `InfoWith(msg string, fields ...Field)` | Структурированный Info |
 | `WarnWith(msg string, fields ...Field)` | Структурированный Warn |
 | `ErrorWith(msg string, fields ...Field)` | Структурированный Error |
-| `FatalWith(msg string, fields ...Field)` | Структурированный Fatal |
+| `FatalWith(msg string, fields ...Field)` | Структурированный Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | Структурированный с указанным уровнем |
 
 ```go

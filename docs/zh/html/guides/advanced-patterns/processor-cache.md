@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor 复用与缓存"
-title: "Processor 复用与缓存 - CyberGo HTML | 高性能复用指南"
-description: "CyberGo HTML Processor 复用与缓存：包函数与实例区别、sync.Pool 机制、缓存策略（TTL、容量、清理）、命中率监控与 Web 服务单例实践。"
+title: "Processor 复用与缓存 - CyberGo html | 复用指南"
+description: "CyberGo html Processor 复用与缓存：包函数与实例区别、sync.Pool 机制、缓存策略与命中率监控，含 Web 服务单例实践。"
 sidebar_position: 1
 ---
 

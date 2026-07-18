@@ -1,7 +1,7 @@
 ---
 sidebar_label: "自定义解析器"
 title: "自定义解析器 - CyberGo env | 扩展文件格式"
-description: "CyberGo env 自定义解析器指南，实现 EnvParser 接口并通过 RegisterParser 注册，附 TOML 与 INI 解析器完整示例与最佳实践。"
+description: "CyberGo env 自定义解析器指南，实现 EnvParser 接口的 Parse 方法并通过 RegisterParser 注册，借助 ComponentFactory 获取 Validator 与 Auditor，附 TOML 与 INI 解析器完整示例与最佳实践。"
 sidebar_position: 7
 ---
 

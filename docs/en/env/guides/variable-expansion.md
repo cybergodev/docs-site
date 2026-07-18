@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Variable Expansion"
 title: "Variable Expansion - CyberGo env | Variable Syntax"
-description: "CyberGo env variable expansion guide: ${VAR} and ${VAR:-default} references, conditional expansion, circular-reference detection and MaxExpansionDepth limits."
+description: "CyberGo env variable expansion: ${VAR}, ${VAR:-default}, ${VAR:=default}, ${VAR:?error}, $VAR shorthand, circular-ref detection, MaxExpansionDepth limits."
 sidebar_position: 4
 ---
 

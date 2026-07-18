@@ -331,8 +331,15 @@ func WithSecureCookie(securityConfig *CookieSecurityConfig) RequestOption
 
 Принудительная проверка атрибутов безопасности Cookie запроса (Secure, HttpOnly, SameSite).
 
+:::warning Порядок опций
+Эта опция **проверяет только те Cookie, которые существуют на момент применения**. `WithSecureCookie` необходимо помещать **после** всех `WithCookie`/`WithCookies`/`WithCookieMap`/`WithCookieString`, иначе добавленные позже Cookie не будут проверены. Для проверки безопасности Cookie на уровне сессии, не зависящей от порядка, используйте `SessionManager.SetCookieSecurity`.
+:::
+
 ```go
+// Правильный порядок: сначала добавляем Cookie, затем проверяем
 result, err := client.Get(url,
+    httpc.WithCookie(sessionCookie),
+    httpc.WithCookieMap(otherCookies),
     httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()),
 )
 ```
@@ -399,6 +406,10 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 
 Устанавливает максимальное число перенаправлений для отдельного запроса. Диапазон: 0-50.
 
+:::warning Семантика значения 0
+`0` **не** отключает перенаправления. Движок трактует `0` как сигнальное значение «явно не задано» и откатывается к лимиту по умолчанию (10), поэтому `WithMaxRedirects(0)` эквивалентно пропуску этой опции. Чтобы полностью запретить следование перенаправлениям, используйте `WithFollowRedirects(false)`.
+:::
+
 ### WithAllowPrivateIPs
 
 ```go
@@ -426,11 +437,13 @@ result, err := httpc.Get("http://localhost:8080/health",
 func WithStreamBody(stream bool) RequestOption
 ```
 
-Включает потоковый режим — тело ответа не кэшируется в памяти. Используется внутри для загрузки файлов, чтобы избежать расходования памяти на большие файлы.
+Включает потоковый режим; тело ответа не кэшируется в памяти.
 
-```go
-result, err := client.Get(url, httpc.WithStreamBody(true))
-```
+:::warning Важное ограничение
+Потоковый режим **действует только через [`Download`](./functions#download)**. При использовании со стандартными методами запроса (`Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`) тело ответа будет полностью прочитано и преобразовано в `Result`, после чего базовый поток закрывается — возвращённый `Result` содержит пустое тело ответа, и вызывающая сторона не сможет этот поток прочитать.
+
+Для действительной потоковой загрузки больших файлов без кэширования в памяти используйте `Download`.
+:::
 
 ## Обратные вызовы
 

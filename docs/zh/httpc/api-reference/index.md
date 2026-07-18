@@ -11,15 +11,17 @@ HTTPC 提供 28 个请求选项函数、5 个配置预设、8 个内置中间件
 
 ## 核心架构
 
+HTTPC 采用双层设计：Layer 1 的方法 API 是薄封装，真正处理请求的引擎是 Layer 2 的 Handler 管线。
+
 ```text
-httpc 包
-├── Client 接口 - 主客户端，支持所有 HTTP 方法
-├── DomainClienter 接口 - 域名作用域客户端，内置会话管理
-├── Config - 配置系统（超时/连接/安全/重试/中间件）
-├── RequestOption - 28 个请求选项函数
-├── MiddlewareFunc - 中间件链
-├── Result - 响应结果（含请求元数据）
-└── 包级函数 - 无需创建客户端即可使用
+HTTPC 双层架构
+├── Layer 1  方法 API（薄封装）
+│     包级函数 httpc.Get/Post/... + Client 方法 + 请求选项 → Result
+│
+└── Layer 2  Handler 管线（请求处理引擎）
+      MiddlewareFunc(Handler) 洋葱链
+      → 组装 clientImpl.middlewareChain
+      → 执行（每个请求 = 组装并执行一条 Handler 链）
 ```
 
 ## 模块导航
@@ -28,10 +30,11 @@ httpc 包
 
 | 模块 | 说明 |
 |------|------|
-| [包函数](./core/functions) | Get/Post/Put/Patch/Delete 等包级函数、客户端方法和辅助函数 |
+| [包级函数与客户端方法](./core/functions) | Get/Post/Put/Patch/Delete 等包级函数、客户端方法和辅助函数 |
 | [配置](./client-config/config) | Config 结构体、5 种预设配置、验证函数和 Cookie 安全 |
 | [接口](./types/interfaces) | Client、Doer、DomainClienter、RetryPolicy 等核心接口 |
 | [Result](./core/result) | Result、RequestInfo、ResponseInfo、RequestMeta 类型和所有方法 |
+| [处理器](./handler/handler-chain) | Handler 管线、MiddlewareFunc 洋葱链、Chain 组合器与 Mutator 契约 |
 
 ### 请求与响应
 

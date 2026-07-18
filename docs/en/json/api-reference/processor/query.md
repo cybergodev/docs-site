@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Query"
+sidebar_label: "Query & Get"
 title: "Processor Path Query - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor path queries: Get/GetString/GetInt getters, GetMultiple batching, SafeGet with AccessResult, and GetTyped[T] with JSONPath."
 sidebar_position: 2

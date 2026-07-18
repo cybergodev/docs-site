@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Пользовательский кодировщик"
-title: "CustomEncoder - CyberGo JSON | Пользовательский кодировщик"
-description: "Руководство по кодировщику CyberGo JSON: интерфейсы CustomEncoder и TypeEncoder, настройка и примеры регистрации JSON-сериализации для кастомных Go-типов."
+title: "CustomEncoder - CyberGo JSON | Кодировщик"
+description: "Руководство по кодировщику CyberGo JSON: CustomEncoder и TypeEncoder, регистрация JSON-сериализации для кастомных Go-типов."
 sidebar_position: 3
 ---
 

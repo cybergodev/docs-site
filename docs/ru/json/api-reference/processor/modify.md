@@ -1,13 +1,13 @@
 ---
-sidebar_label: "Модификация данных"
-title: "Processor Модификация данных - CyberGo JSON | API"
-description: "Методы изменения Processor CyberGo JSON: Set, SetMultiple, SetCreate, Delete и DeleteClean с поддержкой цепочечных вызовов в Go."
+sidebar_label: "Модификация"
+title: "Processor: модификация - CyberGo JSON | API"
+description: "Методы изменения Processor CyberGo JSON: Set, SetMultiple, SetCreate и SetMultipleCreate с поддержкой цепочечных вызовов в Go."
 sidebar_position: 3
 ---
 
 # Методы модификации данных
 
-Processor предоставляет методы модификации данных, все методы возвращают изменённую строку JSON.
+Processor предоставляет методы модификации данных, все методы возвращают изменённую строку JSON. Методы удаления описаны в разделе [Операции удаления](./delete).
 
 ## Set
 
@@ -39,40 +39,6 @@ result, _ = p.Set(data, "user.profile", map[string]any{
 
 // Массив
 result, _ = p.Set(data, "items", []any{"a", "b", "c"})
-```
-
-## Delete
-
-Сигнатура: `func (p *Processor) Delete(jsonStr, path string, cfg ...Config) (string, error)`
-
-Удаляет значение по указанному пути, возвращает изменённую строку JSON.
-
-```go
-result, err := p.Delete(data, "user.temporary")
-```
-
-## DeleteClean
-
-Сигнатура: `func (p *Processor) DeleteClean(jsonStr, path string, cfg ...Config) (string, error)`
-
-Удаляет значение по указанному пути и автоматически очищает пустые значения и пустые массивы.
-
-```go
-result, err := p.DeleteClean(data, "user.temporary")
-// После удаления будут очищены возникшие null и пустые массивы
-```
-
-**Разница между Delete и DeleteClean**:
-
-```go
-// Исходные данные: {"user": {"temp": "value", "name": "test"}}
-
-// После Delete: {"user": {"name": "test"}}
-result, _ := p.Delete(data, "user.temp")
-
-// Если после удаления родительский объект пуст, DeleteClean продолжит очистку
-// {"user": {}} -> {}
-result, _ = p.DeleteClean(data, "user.temp")
 ```
 
 ## SetMultiple
@@ -126,7 +92,61 @@ result2, _ := processor.Set(result1, "user.version", "1.0.0")
 finalResult, _ := processor.Delete(result2, "user.temporary")
 ```
 
+## Processor методы слияния
+
+Processor предоставляет методы-экземпляры, соответствующие пакетным [MergeJSON](../functions/modify#mergejson), [MergeMany](../functions/modify#mergemany) и [CompareJSON](../helpers#comparejson).
+
+### Processor.MergeJSON
+
+Сигнатура: `func (p *Processor) MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
+
+Разбирает параметры из cfg (при отсутствии — из собственной конфигурации процессора), глубоко объединяет два объекта в соответствии с `Config.MergeMode`, а затем повторно кодирует результат этим процессором.
+
+Как и пакетная функция, `Processor.MergeJSON` не выполняет проверку безопасности — это структурный инструмент, который только декодирует, глубоко объединяет и снова кодирует. Для проверки безопасности используйте `CompareJSON` (он проверяет при передаче cfg).
+
+```go
+p, err := json.New()
+if err != nil {
+    panic(err)
+}
+defer p.Close()
+
+// Слияние с объединением (по умолчанию)
+result, err := p.MergeJSON(base, override)
+
+// Слияние с пересечением
+cfg := json.DefaultConfig()
+cfg.MergeMode = json.MergeIntersection
+result, err = p.MergeJSON(base, override, cfg)
+```
+
+### Processor.MergeMany
+
+Сигнатура: `func (p *Processor) MergeMany(jsons []string, cfg ...Config) (string, error)`
+
+Свёртывает срез слева направо через `MergeJSON`, стратегия слияния определяется `Config.MergeMode` (по умолчанию `MergeUnion`). При количестве JSON-строк менее 2 возвращает ошибку; при сбое любого шага слияния возвращает ошибку с индексом сбойного шага.
+
+```go
+result, err := p.MergeMany([]string{config1, config2, config3})
+```
+
+### Processor.CompareJSON
+
+Сигнатура: `func (p *Processor) CompareJSON(json1, json2 string, cfg ...Config) (bool, error)`
+
+Сравнивает две JSON-строки на равенство (нормализация чисел, независимость от порядка ключей).
+
+::: warning Отличие от пакетного CompareJSON
+Пакетный `CompareJSON` без cfg не выполняет проверку безопасности и маршалирует обе стороны через `encoding/json`; метод Processor **всегда** выполняет проверку безопасности (при передаче cfg — по cfg, иначе по собственной конфигурации процессора) и симметрично маршалирует обе стороны библиотечным кодировщиком, благодаря чему сконфигурированное кодирование (например, `EscapeHTML`) применяется симметрично.
+:::
+
+```go
+equal, err := p.CompareJSON(a, b)
+equal, err = p.CompareJSON(a, b, json.SecurityConfig())
+```
+
 ## Связанные разделы
 
 - [Запросы по пути](./query) - Методы Get
+- [Операции удаления](./delete) - Методы Delete/DeleteClean
 - [Массовые операции](./batch) - Массовая обработка ProcessBatch

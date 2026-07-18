@@ -1,8 +1,8 @@
 ---
 sidebar_label: "치트시트"
-title: "치트시트 - CyberGo JSON | API 빠른 참조하세요"
-description: "CyberGo JSON API 치트시트: GetString/GetInt 쿼리, Set/Delete 수정, Marshal/Unmarshal 직렬화, 설정 옵션, 반복자, 보안 함수를 빠르게 조회하는 Go 개발용 참조입니다."
-sidebar_position: 4
+title: "치트시트 - CyberGo JSON | API 빠른 참조"
+description: "CyberGo JSON API 치트시트: GetString/GetInt, Set/Delete, Marshal/Unmarshal, 설정, 반복자, 보안 함수를 빠르게 조회하는 Go 참조입니다."
+sidebar_position: 3
 ---
 
 # 치트시트

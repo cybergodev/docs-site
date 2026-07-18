@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Config"
 title: "Config API - CyberGo env | Configuration Details"
-description: "CyberGo env Config struct API reference: file search paths, security limits, key validation, variable expansion, audit and Development/Production presets."
+description: "CyberGo env Config struct API: file paths, size/count limits, key/value validation, JSON/YAML options, audit, Dev/Prod presets and nested/promoted access."
 sidebar_position: 4
 ---
 

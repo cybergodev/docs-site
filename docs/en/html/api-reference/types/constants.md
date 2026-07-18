@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Constants & Errors"
-title: "Constants & Errors - CyberGo HTML | Defaults & Error Types"
-description: "CyberGo HTML constants and errors: DefaultMaxInputSize and defaults, sentinel errors like ErrInputTooLarge, plus InputError, ConfigError, and FileError."
+title: "Constants & Errors - CyberGo html | Defaults & Error Types"
+description: "CyberGo html constants and error types: default value constants, sentinel errors, plus InputError, ConfigError, FileError structured errors for errors.Is/As."
 sidebar_position: 3
 ---
 

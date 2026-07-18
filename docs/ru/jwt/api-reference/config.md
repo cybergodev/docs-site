@@ -2,7 +2,7 @@
 sidebar_label: "Config"
 title: "Config - CyberGo JWT | Единая конфигурация"
 description: "Config — единая конфигурация CyberGo JWT: ключи, алгоритмы, TTL доступа и обновления, Issuer, аудитория, ClockSkew, BlacklistConfig и логика Validate."
-sidebar_position: 4
+sidebar_position: 30
 ---
 
 # Config

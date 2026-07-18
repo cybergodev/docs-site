@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Logger"
 title: "Logger - CyberGo DD | コアロガー"
-description: "CyberGo DD Logger コアロガー完全 API ドキュメント。ログ出力メソッド（Info/Warn/Error/Fatal）、レベル動的管理、Writer 動的追加と置き換え、ライフサイクル制御（Close/Flush）、グローバルログ関数とチェーンフィールド設定をカバー。DD ログライブラリを使用するためのコアエントリタイプです。"
+description: "CyberGo DD Logger コアロガー完全 API ドキュメント。ログ出力メソッド（Info/Warn/Error/Fatal）、レベル動的管理、Writer 増減と置き換え、ライフサイクル制御（Close/Flush）、グローバルログ関数とチェーンフィールド設定をカバーするログライブラリのコアエントリタイプ。"
 sidebar_position: 2
 ---
 
@@ -46,7 +46,7 @@ logger, _ := dd.New(dd.Config{
 | `Infof(format string, args ...any)` | フォーマット Info |
 | `Warnf(format string, args ...any)` | フォーマット Warn |
 | `Errorf(format string, args ...any)` | フォーマット Error |
-| `Fatalf(format string, args ...any)` | フォーマット Fatal |
+| `Fatalf(format string, args ...any)` | フォーマット Fatal（デフォルトで os.Exit(1) を呼び出し、FatalHandler でカスタマイズ可能） |
 | `Logf(level LogLevel, format string, args ...any)` | フォーマット レベル指定 |
 
 ### 構造化ログ
@@ -57,7 +57,7 @@ logger, _ := dd.New(dd.Config{
 | `InfoWith(msg string, fields ...Field)` | 構造化 Info |
 | `WarnWith(msg string, fields ...Field)` | 構造化 Warn |
 | `ErrorWith(msg string, fields ...Field)` | 構造化 Error |
-| `FatalWith(msg string, fields ...Field)` | 構造化 Fatal |
+| `FatalWith(msg string, fields ...Field)` | 構造化 Fatal（デフォルトで os.Exit(1) を呼び出し、FatalHandler でカスタマイズ可能） |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | 構造化 レベル指定 |
 
 ```go

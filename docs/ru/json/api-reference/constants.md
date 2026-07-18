@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Константы и ошибки"
-title: "Константы и ошибки - CyberGo JSON | Справочник API"
-description: "Константы и ошибки CyberGo JSON: DefaultMaxJSONSize, DefaultMaxNestingDepth, переменные ErrPathNotFound и MergeMode для настройки и обработки ошибок в Go."
+title: "Константы и ошибки - CyberGo JSON | API"
+description: "Константы и ошибки CyberGo JSON: DefaultMaxJSONSize, DefaultMaxNestingDepth, ErrPathNotFound и MergeMode."
 sidebar_position: 7
 ---
 
@@ -23,13 +23,13 @@ var (
     // Ошибки ограничений
     ErrSizeLimit        = errors.New("size limit exceeded")
     ErrDepthLimit       = errors.New("depth limit exceeded")
-    ErrConcurrencyLimit = errors.New("concurrency limit exceeded")
+    ErrConcurrencyLimit = errors.New("concurrency limit exceeded") // возвращается, когда управляемые операции (Get/Set/Delete и др.) достигают MaxConcurrency
 
     // Ошибки безопасности и валидации
     ErrSecurityViolation = errors.New("security violation detected")
     ErrUnsupportedPath   = errors.New("unsupported path operation")
 
-    // Ошибки ресурсов и производительности
+    // Ошибки ресурсов и производительности (обе Deprecated: в настоящее время не возвращаются ни одной операцией, сохранены для будущего использования)
     ErrOperationTimeout  = errors.New("operation timeout")
     ErrResourceExhausted = errors.New("system resources exhausted")
 )

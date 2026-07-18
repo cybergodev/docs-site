@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Security Overview"
 title: "Security Overview - CyberGo env | Security Architecture"
-description: "CyberGo env security overview: SecureValue memory locking, key validation, forbidden keys, IsSensitiveKey auto-detection, presets and audit tracing."
+description: "CyberGo env security: SecureValue memory lock + auto-zero, key/value validation, DefaultForbiddenKeys (PATH/LD_PRELOAD), IsSensitiveKey, presets and audit."
 sidebar_position: 1
 ---
 

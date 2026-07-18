@@ -1,7 +1,7 @@
 ---
 sidebar_label: "リンク抽出とグループ化"
-title: "リンク抽出とグループ化 - CyberGo HTML | リソース収集"
-description: "CyberGo HTML リンク抽出とグループ化：ExtractAllLinks でリソースリンクを抽出・グループ化、Include フィルタ、相対 URL 解決、クローラー収集のベストプラクティスを説明します。"
+title: "リンク抽出とグループ化 - CyberGo html | リソース収集ガイド"
+description: "CyberGo html リンク抽出とグループ化：ExtractAllLinks でリソースリンクを抽出しタイプ別にグループ化、Include フィルタ、相対 URL 解決、クローラーのベストプラクティスを解説。"
 sidebar_position: 3
 ---
 

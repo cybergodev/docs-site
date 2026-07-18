@@ -1,8 +1,8 @@
 ---
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo env | 5分钟入门指南"
-description: "5 分钟上手 CyberGo env 环境变量管理库，涵盖 go get 安装、.env 加载、类型安全读取、结构体映射与变量展开，附完整代码示例助您快速入门。"
-sidebar_position: 2
+description: "5 分钟上手 CyberGo env 环境变量管理库，涵盖 go get 安装、.env 加载、类型安全读取、GetSecure 安全值、结构体映射、变量展开与 errors.Is 错误处理，并讲解四种配置预设与多环境多文件加载，附完整可运行代码示例助您快速入门。"
+sidebar_position: 1
 ---
 
 # 快速开始

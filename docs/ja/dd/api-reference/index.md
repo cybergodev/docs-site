@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概要"
 title: "API リファレンス - CyberGo DD | 概要"
-description: "CyberGo DD 構造化ログライブラリ完全 API リファレンスドキュメント概要。Logger コアロガー、Config 設定オプション、Writers 出力先、Security セキュリティフィルタリング、Audit 監査ログ、Hooks フックシステム、Integrity 整合性署名などコア機能モジュールを包括的にカバー。"
+description: "CyberGo DD 構造化ログライブラリ完全 API リファレンス概要。Logger コアロガー、Config 設定オプション、Writers 出力先、Security セキュリティフィルタリング、Audit 監査ログ、Hooks フックシステム、Integrity 整合性署名などコア機能モジュールを網羅。"
 sidebar_position: 1
 ---
 

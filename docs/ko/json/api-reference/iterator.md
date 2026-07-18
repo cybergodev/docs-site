@@ -1,95 +1,22 @@
 ---
-sidebar_label: "반복자"
-title: "반복자 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 반복 API: Foreach, ForeachWithPath, ForeachNested 재귀, IterableValue, ParallelForeach로 다양한 순회 시나리오를 지원합니다."
+sidebar_label: "반복기 타입"
+title: "반복기 타입 - CyberGo JSON | API 레퍼런스"
+description: "CyberGo JSON 반복기 타입: Iterator 순차 순회, IterableValue 데이터 접근, StreamIterator/StreamObjectIterator 스트림, BatchIterator 배치와 ParallelIterator 병렬 반복기 생성 및 메서드."
 sidebar_position: 9
 ---
 
-# 반복자
+# 반복기 타입
 
-json 패키지는 풍부한 반복자 기능을 제공하여 다양한 순회 방식을 지원합니다: 패키지 레벨 함수, Processor 메서드, 스트림 반복, 배치 처리 및 병렬 처리.
+json 패키지는 순차 순회, 스트림 처리, 배치 처리 및 병렬 처리 사례를 아우르는 다양한 반복기 타입을 제공합니다. 반복 **함수**(`Foreach`/`ForeachFile` 등)는 [패키지 레벨 반복 함수](./functions/iterate)와 [Processor 반복 메서드](./processor/iterate)를 참조하세요.
 
-## 패키지 레벨 반복 함수
+## IteratorControl 상수
 
-Processor 인스턴스를 생성하지 않고 직접 호출할 수 있는 반복 함수입니다.
-
-### Foreach
-
-시그니처: `func Foreach(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
-
-JSON 배열 또는 객체를 순회합니다.
-
-```go
-json.Foreach(`{"name": "Alice", "age": 30}`, func(key any, item *json.IterableValue) {
-    fmt.Printf("키: %v, 값: %v\n", key, item.GetData())
-})
-// 출력:
-// 키: name, 값: Alice
-// 키: age, 값: 30
-```
-
-### ForeachWithPath
-
-시그니처: `func ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue), cfg ...Config) error`
-
-경로를 따라 순회하며, 오류를 반환합니다.
-
-```go
-err := json.ForeachWithPath(data, "items", func(key any, item *json.IterableValue) {
-    fmt.Printf("[%v] %v\n", key, item.GetData())
-})
-if err != nil {
-    panic(err)
-}
-```
-
-### ForeachReturn
-
-시그니처: `func ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
-
-순회하고 원래 JSON 문자열을 반환합니다 (읽기 전용 작업).
-
-```go
-result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) {
-    // 읽기 전용 처리
-    fmt.Printf("처리: %v\n", item.GetData())
-})
-```
-
-### ForeachNested
-
-시그니처: `func ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
-
-모든 중첩 수준을 재귀적으로 순회합니다.
-
-```go
-json.ForeachNested(data, func(key any, item *json.IterableValue) {
-    fmt.Printf("타입: %T, 값: %v\n", item.GetData(), item.GetData())
-})
-```
-
-### ForeachWithPathAndControl
-
-시그니처: `func ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl, cfg ...Config) error`
-
-제어 흐름이 있는 순회로, 반환값으로 반복 흐름을 제어할 수 있습니다.
-
-```go
-err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) json.IteratorControl {
-    if value == nil {
-        return json.IteratorBreak // 반복 중단
-    }
-    // 처리...
-    return json.IteratorNormal // 계속 반복
-})
-```
-
-**IteratorControl 상수**
+`IteratorControl`은 반복 제어 플래그를 나타내며, `ForeachWithPathAndControl`와 `ForeachWithPathAndIterator`에서 반복 흐름을 제어하는 데 사용됩니다.
 
 | 상수 | 설명 |
 |------|------|
-| `IteratorNormal` | 정상적으로 계속 반복 |
-| `IteratorContinue` | 현재 항목 건너뛰고 계속 반복 |
+| `IteratorNormal` | 정상적으로 반복 계속(기본값) |
+| `IteratorContinue` | 현재 항목 건너뛰고 반복 계속 |
 | `IteratorBreak` | 반복 중단 |
 
 **사용 시나리오**
@@ -100,84 +27,6 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 | 무효한 데이터 필터링 | `IteratorContinue` | 현재 요소 건너뛰고 반복 계속 |
 | 대상 찾은 후 종료 | `IteratorBreak` | 필요한 데이터를 찾은 후 즉시 중단 |
 | 오류 발생 시 중단 | `IteratorBreak` | 심각한 오류 발생 시 반복 중단 |
-
-```go
-// 시나리오 1: 무효한 데이터 필터링
-err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) json.IteratorControl {
-    if value == nil {
-        return json.IteratorContinue // null 값 건너뛰기
-    }
-    process(value)
-    return json.IteratorNormal
-})
-
-// 시나리오 2: 첫 번째로 조건을 만족하는 요소를 찾은 후 종료
-var found any
-err = json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
-    if obj, ok := value.(map[string]any); ok {
-        if obj["admin"] == true {
-            found = obj
-            return json.IteratorBreak // 관리자를 찾은 후 중단
-        }
-    }
-    return json.IteratorNormal
-})
-
-// 시나리오 3: 데이터 무결성 검증
-var hasError bool
-err = json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
-    if !validateRecord(value) {
-        hasError = true
-        return json.IteratorBreak // 데이터가 불완전하면 검증 중단
-    }
-    return json.IteratorNormal
-})
-```
-
-### ForeachWithError
-
-시그니처: `func ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error) error`
-
-오류 처리가 있는 경로 순회입니다. 콜백 함수가 error를 반환하면 반복이 중단되고 해당 오류가 반환됩니다.
-
-```go
-err := json.ForeachWithError(data, "items", func(key any, item *json.IterableValue) error {
-    val := item.GetData()
-    if val == nil {
-        return fmt.Errorf("항목 %v의 값이 null입니다", key)
-    }
-    return processItem(val)
-})
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-### ForeachNestedWithError
-
-시그니처: `func ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error) error`
-
-모든 중첩 수준을 재귀적으로 순회하며 오류 처리를 지원합니다. 콜백 함수가 error를 반환하면 반복이 중단됩니다.
-
-```go
-err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
-    fmt.Printf("키: %v, 값: %v\n", key, item.GetData())
-    return nil
-})
-```
-
-### ForeachWithPathAndIterator
-
-시그니처: `func ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl) error`
-
-경로 정보가 있는 반복으로, 콜백 함수가 현재 전체 경로를 받습니다. 순회 위치를 추적해야 하는 깊은 중첩 구조 처리에 적합합니다.
-
-```go
-err := json.ForeachWithPathAndIterator(data, "users", func(key any, item *json.IterableValue, currentPath string) json.IteratorControl {
-    fmt.Printf("경로: %s, 키: %v\n", currentPath, key)
-    return json.IteratorNormal
-})
-```
 
 ---
 
@@ -241,7 +90,7 @@ for it.HasNext() {
 
 ## IterableValue 타입
 
-IterableValue는 반복 과정의 현재 요소를 캡슐화하여 편리한 값 접근 메서드를 제공합니다.
+IterableValue는 반복 과정의 현재 요소를 캡슐화하여 편리한 값 접근 메서드를 제공합니다. `Foreach` 계열 함수의 콜백이 `*IterableValue`를 받습니다.
 
 ### 메서드
 
@@ -255,7 +104,7 @@ IterableValue는 반복 과정의 현재 요소를 캡슐화하여 편리한 값
 
 시그니처: `func (iv *IterableValue) Get(path string) any`
 
-경로로 값을 가져옵니다 (점 표기법과 배열 인덱스 지원).
+경로로 값을 가져옵니다(점 표기법과 배열 인덱스 지원).
 
 ```go
 val := iv.Get("user.address.city")
@@ -424,7 +273,7 @@ if item.IsNull("optional_field") {
 
 시그니처: `func (iv *IterableValue) IsEmptyData() bool`
 
-전체 값이 비어 있는지 확인합니다 (nil, 빈 문자열, 빈 배열 또는 빈 객체).
+전체 값이 비어 있는지 확인합니다(nil, 빈 문자열, 빈 배열 또는 빈 객체).
 
 ```go
 if item.IsEmptyData() {
@@ -715,176 +564,7 @@ defer it.Close()
 
 ---
 
-## Processor 반복 메서드
-
-Processor도 반복 메서드를 제공하여 프로세서를 재사용해야 하는 시나리오에 적합합니다.
-
-### Foreach
-
-시그니처: `func (p *Processor) Foreach(jsonStr string, fn func(key any, item *IterableValue))`
-
-JSON 배열 또는 객체를 반복합니다.
-
-```go
-p, err := json.New()
-if err != nil {
-    panic(err)
-}
-defer p.Close()
-p.Foreach(`{"name": "Alice", "age": 30}`, func(key any, item *json.IterableValue) {
-    fmt.Printf("키: %v, 값: %v\n", key, item.GetData())
-})
-```
-
-### ForeachWithPath
-
-시그니처: `func (p *Processor) ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue)) error`
-
-경로를 따라 반복하며, 오류를 반환합니다.
-
-### ForeachNested
-
-시그니처: `func (p *Processor) ForeachNested(jsonStr string, fn func(key any, item *IterableValue))`
-
-모든 중첩 수준을 재귀적으로 반복합니다.
-
-### ForeachReturn
-
-시그니처: `func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue)) (string, error)`
-
-반복하고 원래 JSON을 반환합니다 (읽기 전용 작업).
-
-### ForeachWithPathAndControl
-
-시그니처: `func (p *Processor) ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl) error`
-
-제어 흐름이 있는 경로 순회로, 반환값으로 반복 흐름을 제어할 수 있습니다.
-
-### ForeachWithPathAndIterator
-
-시그니처: `func (p *Processor) ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl) error`
-
-경로 정보가 있는 반복으로, 콜백 함수가 현재 전체 경로를 받습니다. 순회 위치를 추적해야 하는 깊은 중첩 구조 처리에 적합합니다.
-
-```go
-p.ForeachWithPathAndIterator(data, "users", func(key any, item *json.IterableValue, currentPath string) json.IteratorControl {
-    fmt.Printf("경로: %s, 키: %v\n", currentPath, key)
-    return json.IteratorNormal
-})
-```
-
-### ForeachWithError
-
-시그니처: `func (p *Processor) ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error) error`
-
-오류 처리가 있는 반복입니다. 콜백 함수가 error를 반환하면 반복이 중단되고 해당 오류가 반환됩니다.
-
-```go
-err := p.ForeachWithError(data, "items", func(key any, item *json.IterableValue) error {
-    val := item.GetData()
-    if val == nil {
-        return fmt.Errorf("항목 %v의 값이 null입니다", key)
-    }
-    return processItem(val)
-})
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-### ForeachNestedWithError
-
-시그니처: `func (p *Processor) ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error) error`
-
-모든 중첩 수준을 재귀적으로 반복하며 오류 처리를 지원합니다. 콜백 함수가 error를 반환하면 반복이 중단됩니다.
-
-```go
-err := p.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
-    fmt.Printf("키: %v, 값: %v\n", key, item.GetData())
-    return nil
-})
-```
-
----
-
 ## 전체 예제
-
-### 배열 순회
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/cybergodev/json"
-)
-
-func main() {
-    data := `[
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"},
-        {"id": 3, "name": "Charlie"}
-    ]`
-
-    json.Foreach(data, func(key any, item *json.IterableValue) {
-        id := item.GetInt("id")
-        name := item.GetString("name")
-        fmt.Printf("[%v] ID: %d, Name: %s\n", key, id, name)
-    })
-}
-```
-
-### 객체 순회
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/cybergodev/json"
-)
-
-func main() {
-    data := `{
-        "server1": {"host": "192.168.1.1", "port": 8080},
-        "server2": {"host": "192.168.1.2", "port": 8081}
-    }`
-
-    json.Foreach(data, func(key any, item *json.IterableValue) {
-        fmt.Printf("서버: %s\n", key)
-        host := item.GetString("host")
-        port := item.GetInt("port")
-        fmt.Printf("  호스트: %s, 포트: %d\n", host, port)
-    })
-}
-```
-
-### 중첩 구조 재귀 순회
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/cybergodev/json"
-)
-
-func main() {
-    data := `{
-        "users": [
-            {"name": "Alice", "profile": {"city": "Beijing"}},
-            {"name": "Bob", "profile": {"city": "Shanghai"}}
-        ]
-    }`
-
-    json.ForeachNested(data, func(key any, item *json.IterableValue) {
-        // 문자열 값만 처리
-        if str, ok := item.GetData().(string); ok {
-            fmt.Printf("값: %s\n", str)
-        }
-    })
-}
-```
 
 ### 대용량 파일 스트림 처리
 
@@ -998,21 +678,48 @@ func main() {
 }
 ```
 
+### Iterator 재사용
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/cybergodev/json"
+)
+
+func main() {
+    // 첫 번째 순회
+    it := json.NewIterator([]any{"a", "b", "c"})
+    for it.HasNext() {
+        val, _ := it.Next()
+        fmt.Println(val)
+    }
+
+    // 동일 반복기를 재사용하여 새 데이터 순회, 재할당 방지
+    it.ResetWith([]any{1, 2, 3, 4})
+    for it.HasNext() {
+        val, _ := it.Next()
+        fmt.Println(val)
+    }
+}
+```
+
 ---
 
 ## 성능 권장 사항
 
-1. **반복 중 시간이 많이 걸리는 작업 피하기** - 반복은 동기식이므로 시간이 많이 걸리는 작업은 전체 반복을 차단합니다
-2. **ForeachWithPath로 정확히 위치 지정** - 불필요한 데이터 순회 피하기
-3. **대용량 데이터셋에 스트림 처리 사용** - ForeachFile 또는 NDJSONProcessor 사용
-4. **배치 처리로 오버헤드 감소** - ForeachFileChunked로 배치 작업 수행
-5. **CPU 집약적 작업에 병렬 처리 사용** - ForeachFileChunked 또는 ParallelIterator로 멀티코어 활용
+1. **Iterator 재사용** - `Reset`/`ResetWith`로 재할당을 피하고 여러 번 순회하는 사례에 적합
+2. **대용량 데이터셋에 스트림 반복기 사용** - `StreamIterator`/`StreamObjectIterator`는 요소 단위 처리로 메모리 효율적
+3. **배치 처리로 오버헤드 감소** - `BatchIterator`는 배치 단위 처리로 단일 요소 오버헤드를 줄임
+4. **CPU 집약적 작업은 병렬 처리** - `ParallelIterator`로 멀티코어 가속 활용
+5. **IterableValue 해제** - `Foreach` 콜백에서 처리 완료 후 `Release()`를 호출해 GC 부담 감소
 
 ---
 
 ## 관련 문서
 
-- [Processor](./processor/) - 프로세서 메서드
-- [대용량 파일 처리](../streaming/large-file) - 스트림 프로세서
+- [패키지 레벨 반복 함수](./functions/iterate) - Foreach/ForeachFile 등 반복 함수
+- [Processor 반복 메서드](./processor/iterate) - 대응되는 프로세서 반복 메서드
+- [대용량 파일 처리](../streaming/large-files) - 대용량 파일 처리 가이드와 API 레퍼런스
 - [NDJSON 처리기](../streaming/jsonl) - JSONL 처리
-- [대용량 파일 처리 가이드](../streaming/large-files) - 대용량 파일 처리 가이드

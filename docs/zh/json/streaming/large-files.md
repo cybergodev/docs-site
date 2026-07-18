@@ -1,7 +1,7 @@
 ---
 sidebar_label: "大文件处理指南"
 title: "大文件处理 - CyberGo JSON | 指南"
-description: "CyberGo JSON 大文件处理指南：ForeachFile 结构化迭代、ForeachFileChunked 批量处理、内存控制与 NDJSONProcessor 流式处理，适用于日志分析、数据导出与 ETL 场景。"
+description: "CyberGo JSON 大文件处理：ForeachFile、ForeachFileChunked、ForeachFileWithPath 与 ForeachFileNested 流式方法，适用日志分析与 ETL。"
 sidebar_position: 1
 ---
 
@@ -285,6 +285,147 @@ defer processor.Close()
 | 100MB-1GB | Processor.ForeachFileChunked | 分块迭代处理 |
 | > 1GB | NDJSONProcessor / JSONL 格式 | 真正的流式处理，内存可控 |
 
+
+## API 参考
+
+本节汇总大文件处理相关 API 的函数签名与参数表，便于快速查阅。
+
+### Processor 方法
+
+**ForeachFile**
+
+签名：`func (p *Processor) ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+逐条处理大文件中的 JSON 数组元素。完整用法见[基本使用](#基本使用)与[中断控制](#带中断控制)。
+
+**参数**
+
+| 名称 | 类型 | 说明 |
+|------|------|------|
+| `filePath` | `string` | JSON 文件路径 |
+| `fn` | `func(key any, item *IterableValue) error` | 处理回调 |
+
+**回调返回值**
+
+| 返回值 | 说明 |
+|--------|------|
+| `nil` | 继续处理下一项 |
+| `item.Break()` | 停止迭代，不返回错误 |
+| 其他 `error` | 停止迭代并返回错误 |
+
+**ForeachFileChunked**
+
+签名：`func (p *Processor) ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) (err error)`
+
+分批处理大文件，每次处理指定数量的元素。用法见[批量处理](#批量处理)。
+
+**参数**
+
+| 名称 | 类型 | 说明 |
+|------|------|------|
+| `filePath` | `string` | JSON 文件路径 |
+| `chunkSize` | `int` | 每批元素数量 |
+| `fn` | `func(chunk []*IterableValue) error` | 批处理回调 |
+
+**ForeachFileWithPath**
+
+签名：`func (p *Processor) ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+处理文件中指定路径的 JSON 数组或对象。
+
+**参数**
+
+| 名称 | 类型 | 说明 |
+|------|------|------|
+| `filePath` | `string` | JSON 文件路径 |
+| `path` | `string` | JSON 路径表达式 |
+| `fn` | `func(key any, item *IterableValue) error` | 处理回调 |
+
+```go
+// 处理文件中 users 数组的每个元素
+err := p.ForeachFileWithPath("data.json", "users", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Name: %s\n", item.GetString("name"))
+    return nil
+})
+```
+
+**ForeachFileNested**
+
+签名：`func (p *Processor) ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+递归遍历文件中的所有嵌套 JSON 结构。
+
+```go
+// 递归遍历所有嵌套元素
+err := p.ForeachFileNested("data.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Key: %v, Type: %T\n", key, item.GetData())
+    return nil
+})
+```
+
+## 包级函数
+
+除了 Processor 方法外，以下函数可以直接调用，无需创建 Processor 实例。它们内部使用全局处理器。
+
+### ForeachFile（包级函数）
+
+签名：`func ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+从文件加载 JSON 并迭代。
+
+```go
+err := json.ForeachFile("data.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("[%v] %v\n", key, item.GetData())
+    return nil
+})
+```
+
+### ForeachFileWithPath（包级函数）
+
+签名：`func ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+从文件加载 JSON 并按路径迭代。
+
+```go
+err := json.ForeachFileWithPath("data.json", "users", func(key any, item *json.IterableValue) error {
+    name := item.GetString("name")
+    fmt.Printf("用户: %s\n", name)
+    return nil
+})
+```
+
+### ForeachFileChunked（包级函数）
+
+签名：`func ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
+
+分块迭代文件中的 JSON 数组。
+
+```go
+err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.IterableValue) error {
+    for _, item := range chunk {
+        processItem(item)
+    }
+    return nil
+})
+```
+
+### ForeachFileNested（包级函数）
+
+签名：`func ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+从文件加载 JSON 并递归迭代所有嵌套结构。
+
+```go
+err := json.ForeachFileNested("config.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("路径: %v, 类型: %T\n", key, item.GetData())
+    return nil
+})
+```
+
+## 相关
+
+- [NDJSON 处理器](./jsonl) — JSONL/NDJSON 流式处理
+- [JSONLWriter](./jsonl#jsonlwriter) — JSONL 写入器
 
 ## 下一步
 - [API 文档](../api-reference/) — 完整 API 参考

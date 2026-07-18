@@ -1,7 +1,7 @@
 ---
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo env | 哨兵错误与恢复策略"
-description: "CyberGo env 错误处理指南，详解 16 个哨兵错误的 errors.Is 精确匹配、8 种结构化错误的 errors.As 上下文提取、恢复降级策略与错误链 Unwrap 追踪。"
+description: "CyberGo env 错误处理指南，详解 16 个哨兵错误的 errors.Is 精确匹配、ParseError/FileError/SecurityError 等结构化错误的 errors.As 上下文提取、恢复降级策略与错误链 Unwrap 追踪，附生产环境错误分类实践。"
 sidebar_position: 2
 ---
 

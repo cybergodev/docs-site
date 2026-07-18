@@ -2,7 +2,7 @@
 sidebar_label: "타입과 상수"
 title: "타입과 상수 - CyberGo JWT | 직렬화와 클럭 타입"
 description: "타입과 상수 레퍼런스: NumericDate·StringOrSlice 직렬화, SigningMethod 알고리즘, ValidationError 필드 오류, RateLimiter, SystemClock·FixedClock 클럭, 12 알고리즘 상수."
-sidebar_position: 7
+sidebar_position: 60
 ---
 
 # 타입과 상수

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Система хуков"
-title: "Система перехватчиков Hook - CyberGo JSON | Справочник API"
-description: "Система Hook CyberGo JSON: интерфейс Hook, LoggingHook, TimingHook, ValidationHook, ErrorHook и пользовательские перехватчики для операций с JSON."
+title: "Hook перехватчики - CyberGo JSON | API"
+description: "Система Hook CyberGo JSON: интерфейс Hook, LoggingHook, TimingHook, ValidationHook, ErrorHook и пользовательские перехватчики."
 sidebar_position: 1
 ---
 

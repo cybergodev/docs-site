@@ -2,7 +2,7 @@
 sidebar_label: "Iterate"
 title: "Processor Iteration Methods - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor iteration: Foreach, ForeachWithPath, ForeachNested, IterableValue data access, and IteratorControl flow for batch iteration."
-sidebar_position: 6
+sidebar_position: 10
 ---
 
 # Iteration Methods
@@ -11,7 +11,7 @@ Processor provides multiple methods for iterating over JSON arrays and objects.
 
 ## Foreach
 
-Signature: `func (p *Processor) Foreach(jsonStr string, fn func(key any, item *IterableValue))`
+Signature: `func (p *Processor) Foreach(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 Iterates over a JSON array or object.
 
@@ -26,7 +26,7 @@ p.Foreach(data, func(key any, item *json.IterableValue) {
 
 ## ForeachWithPath
 
-Signature: `func (p *Processor) ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue)) error`
+Signature: `func (p *Processor) ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue), cfg ...Config) error`
 
 Iterates by path, returns an error.
 
@@ -42,7 +42,7 @@ Useful for:
 
 ## ForeachNested
 
-Signature: `func (p *Processor) ForeachNested(jsonStr string, fn func(key any, item *IterableValue))`
+Signature: `func (p *Processor) ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 Recursively iterates through all nested levels.
 
@@ -79,7 +79,7 @@ Key: tags, Value: []any{...}
 
 ## ForeachReturn
 
-Signature: `func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue)) (string, error)`
+Signature: `func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
 
 Iterates the JSON data and returns the re-serialized JSON string. The callback is read-only.
 
@@ -93,7 +93,7 @@ Useful for scenarios where you need to continue chained operations after iterati
 
 ## ForeachWithError
 
-Signature: `func (p *Processor) ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error) error`
+Signature: `func (p *Processor) ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
 Iterates by path, callback supports returning errors.
 
@@ -108,7 +108,7 @@ err := p.ForeachWithError(data, "items", func(key any, item *json.IterableValue)
 
 ## ForeachNestedWithError
 
-Signature: `func (p *Processor) ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error) error`
+Signature: `func (p *Processor) ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
 Recursively iterates through all nested levels, callback supports returning errors.
 
@@ -121,7 +121,7 @@ err := p.ForeachNestedWithError(data, func(key any, item *json.IterableValue) er
 
 ## ForeachWithPathAndIterator
 
-Signature: `func (p *Processor) ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl) error`
+Signature: `func (p *Processor) ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl, cfg ...Config) error`
 
 Iterates by path and provides current path information. Use `IteratorControl` to control the iteration flow.
 
@@ -137,7 +137,7 @@ err := p.ForeachWithPathAndIterator(data, "items", func(key any, item *json.Iter
 
 ## ForeachWithPathAndControl
 
-Signature: `func (p *Processor) ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl) error`
+Signature: `func (p *Processor) ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl, cfg ...Config) error`
 
 Iterates raw values by path, using `IteratorControl` for flow control.
 
@@ -197,7 +197,7 @@ Processor provides methods for iterating directly from files, suitable for proce
 
 ### ForeachFile
 
-Signature: `func (p *Processor) ForeachFile(filePath string, fn func(key any, item *IterableValue) error) error`
+Signature: `func (p *Processor) ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
 Loads JSON from a file and iterates over it.
 
@@ -219,7 +219,7 @@ err := p.ForeachFile("data.json", func(key any, item *json.IterableValue) error 
 
 ### ForeachFileWithPath
 
-Signature: `func (p *Processor) ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error) error`
+Signature: `func (p *Processor) ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
 Loads JSON from a file and iterates by path.
 
@@ -236,7 +236,7 @@ err := p.ForeachFileWithPath("data.json", ".users", func(key any, item *json.Ite
 
 ### ForeachFileChunked
 
-Signature: `func (p *Processor) ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error) error`
+Signature: `func (p *Processor) ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) (err error)`
 
 Iterates a JSON array from a file in chunks, suitable for batch processing large datasets.
 
@@ -273,7 +273,7 @@ err := p.ForeachFileChunked("large_data.json", 100, func(chunk []*json.IterableV
 
 ### ForeachFileNested
 
-Signature: `func (p *Processor) ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error) error`
+Signature: `func (p *Processor) ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
 Loads JSON from a file and recursively iterates through all nested structures.
 

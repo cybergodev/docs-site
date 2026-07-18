@@ -1,7 +1,7 @@
 ---
 sidebar_label: "빠른 시작"
-title: "빠른 시작 - CyberGo HTML | 5분 가이드"
-description: "CyberGo HTML 빠른 시작: 설치, 기본 추출, 4종 Config 프리셋, 텍스트·Markdown·JSON 출력, 컨텍스트 타임아웃과 동시성 안전 패턴으로 5분 만에 입문합니다."
+title: "빠른 시작 - CyberGo html | 5분 입문 가이드"
+description: "CyberGo html 빠른 시작 안내: 설치, 기본 콘텐츠 추출, 4종 Config 프리셋, 텍스트·Markdown·JSON 출력으로 5분 만에 HTML 콘텐츠 추출을 시작합니다."
 sidebar_position: 2
 ---
 

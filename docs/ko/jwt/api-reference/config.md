@@ -2,7 +2,7 @@
 sidebar_label: "Config"
 title: "Config - CyberGo JWT | 통합 설정 안내"
 description: "Config는 CyberGo JWT 통합 설정으로 서명 키·알고리즘, 접근·갱신 토큰 TTL, 발급자, 기대 청중, 클럭 스큐, 블랙리스트와 속도 제한 전체 필드·기본값·자동 채움 규칙·Validate 검증 로직을 정의합니다."
-sidebar_position: 4
+sidebar_position: 30
 ---
 
 # Config

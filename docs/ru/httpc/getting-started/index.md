@@ -2,7 +2,7 @@
 sidebar_label: "Быстрый старт"
 title: "Быстрый старт - CyberGo HTTPC | За 5 минут"
 description: "Быстрый старт HTTPC: установка, запросы GET/POST, обработка ответов, выбор пресета, парсинг JSON и аутентификация Bearer Token за пять минут."
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # Быстрый старт

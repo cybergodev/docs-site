@@ -1,7 +1,7 @@
 ---
 sidebar_label: "대용량 파일 가이드"
 title: "대용량 파일 처리 - CyberGo JSON | 가이드"
-description: "CyberGo JSON 대용량 파일 가이드: ForeachFile 반복, ForeachFileChunked 배치, 메모리 제어, NDJSONProcessor 스트리밍으로 Go 로그 분석, 데이터 내보내기, ETL에 대응합니다."
+description: "CyberGo JSON 대용량 파일 가이드: ForeachFile* 메서드와 패키지 함수 시그니처, 매개변수, 콜백 반환값, 메모리 제어로 스트리밍 로그 분석, ETL에 대응합니다."
 sidebar_position: 1
 ---
 
@@ -289,6 +289,147 @@ defer processor.Close()
 | 10-100MB | Processor.ForeachFile | 항목별 처리 |
 | 100MB-1GB | Processor.ForeachFileChunked | 청크 반복 처리 |
 | > 1GB | NDJSONProcessor / JSONL 형식 | 진정한 스트림 처리, 메모리 제어 가능 |
+
+## API 레퍼런스
+
+이 섹션은 대용량 파일 처리 API의 함수 시그니처와 매개변수 표를 요약하여 빠르게 조회할 수 있도록 합니다.
+
+### Processor 메서드
+
+**ForeachFile**
+
+시그니처: `func (p *Processor) ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+대용량 파일의 JSON 배열 요소를 하나씩 반복합니다. [기본 사용](#기본-사용)과 [중단 제어](#중단-제어-포함)를 참조하세요.
+
+**매개변수**
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| `filePath` | `string` | JSON 파일 경로 |
+| `fn` | `func(key any, item *IterableValue) error` | 처리 콜백 |
+
+**콜백 반환값**
+
+| 반환값 | 설명 |
+|--------|------|
+| `nil` | 다음 항목으로 계속 처리 |
+| `item.Break()` | 반복 중지, 오류 반환 안 함 |
+| 기타 `error` | 반복 중지하고 오류 반환 |
+
+**ForeachFileChunked**
+
+시그니처: `func (p *Processor) ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) (err error)`
+
+대용량 파일을 배치로 처리합니다. [배치 처리](#배치-처리)를 참조하세요.
+
+**매개변수**
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| `filePath` | `string` | JSON 파일 경로 |
+| `chunkSize` | `int` | 배치당 요소 수 |
+| `fn` | `func(chunk []*IterableValue) error` | 배치 처리 콜백 |
+
+**ForeachFileWithPath**
+
+시그니처: `func (p *Processor) ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+파일에서 지정된 경로의 JSON 배열 또는 객체를 처리합니다.
+
+**매개변수**
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| `filePath` | `string` | JSON 파일 경로 |
+| `path` | `string` | JSON 경로 표현식 |
+| `fn` | `func(key any, item *IterableValue) error` | 처리 콜백 |
+
+```go
+// 파일에서 users 배열의 각 요소 처리
+err := p.ForeachFileWithPath("data.json", "users", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Name: %s\n", item.GetString("name"))
+    return nil
+})
+```
+
+**ForeachFileNested**
+
+시그니처: `func (p *Processor) ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+파일의 모든 중첩 JSON 구조를 재귀적으로 순회합니다.
+
+```go
+// 모든 중첩 요소 재귀 순회
+err := p.ForeachFileNested("data.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Key: %v, Type: %T\n", key, item.GetData())
+    return nil
+})
+```
+
+## 패키지 레벨 함수
+
+Processor 메서드 외에도, 다음 함수는 Processor 인스턴스를 생성하지 않고 직접 호출할 수 있습니다. 내부적으로 전역 프로세서를 사용합니다.
+
+### ForeachFile (패키지 레벨 함수)
+
+시그니처: `func ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+파일에서 JSON을 로드하고 반복합니다.
+
+```go
+err := json.ForeachFile("data.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("[%v] %v\n", key, item.GetData())
+    return nil
+})
+```
+
+### ForeachFileWithPath (패키지 레벨 함수)
+
+시그니처: `func ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+파일에서 JSON을 로드하고 경로로 반복합니다.
+
+```go
+err := json.ForeachFileWithPath("data.json", "users", func(key any, item *json.IterableValue) error {
+    name := item.GetString("name")
+    fmt.Printf("사용자: %s\n", name)
+    return nil
+})
+```
+
+### ForeachFileChunked (패키지 레벨 함수)
+
+시그니처: `func ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
+
+파일의 JSON 배열을 청크 단위로 반복합니다.
+
+```go
+err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.IterableValue) error {
+    for _, item := range chunk {
+        processItem(item)
+    }
+    return nil
+})
+```
+
+### ForeachFileNested (패키지 레벨 함수)
+
+시그니처: `func ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+파일에서 JSON을 로드하고 모든 중첩 구조를 재귀적으로 반복합니다.
+
+```go
+err := json.ForeachFileNested("config.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("경로: %v, 타입: %T\n", key, item.GetData())
+    return nil
+})
+```
+
+## 관련 문서
+
+- [NDJSON 프로세서](./jsonl) — JSONL/NDJSON 스트리밍 처리
+- [JSONLWriter](./jsonl#jsonlwriter) — JSONL 쓰기
 
 ## 다음 단계
 

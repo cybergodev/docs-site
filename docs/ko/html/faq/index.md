@@ -1,7 +1,7 @@
 ---
 sidebar_label: "자주 묻는 질문"
-title: "자주 묻는 질문 - CyberGo HTML | 주요 답변"
-description: "CyberGo HTML 자주 묻는 질문: 패키지 함수와 Processor 선택, 인코딩 감지, 입력 제한, 배치 상한, 빈 텍스트 진단, 통계 모니터링, 감사와 커스텀 스코어러를 다룹니다."
+title: "자주 묻는 질문 - CyberGo html | 주요 질문 답변"
+description: "CyberGo html 자주 묻는 질문: 패키지 함수와 Processor 선택, 인코딩 감지, 입력 제한, 배치 상한, 빈 텍스트 진단, 통계 모니터링 등을 다룹니다."
 sidebar_position: 1
 ---
 

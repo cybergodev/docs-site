@@ -281,7 +281,9 @@ export const OGC_LOCALE: Record<Lang, string> = Object.fromEntries(
 export const HOST = 'https://www.cybergo.dev'
 
 /** Base URL for the "Edit this page on GitHub" link. The locale factory appends
- * `/{lang}/:path` (VitePress resolves the :path placeholder per page). */
+ * `/:path`; VitePress resolves that placeholder to the page's path relative to
+ * `srcDir` (`docs/`), which already includes the language segment
+ * (e.g. `zh/json/index.md`). */
 export const EDIT_LINK_BASE = 'https://github.com/cybergodev/docs-site/edit/main/docs'
 
 /** Issue template used by the footer "report a doc issue" link. */

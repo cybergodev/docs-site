@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Базовые примеры"
-title: "Примеры использования - CyberGo JSON | Практика"
-description: "Практические примеры CyberGo JSON: запросы по пути, Marshal/Unmarshal структур, JSONL-потоки, Hook, Schema-валидация и обработка ошибок с готовым Go-кодом."
+title: "Примеры - CyberGo JSON | Практика"
+description: "Практические примеры CyberGo JSON: запросы по пути, Marshal/Unmarshal, JSONL-потоки, Hook, Schema и обработка ошибок с Go-кодом."
 sidebar_position: 1
 ---
 

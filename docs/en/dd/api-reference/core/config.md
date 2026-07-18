@@ -85,7 +85,13 @@ When `Audit` is set, sensitive data redactions, rate limit events, and security 
 func (c *Config) Clone() Config
 ```
 
-Creates a deep copy of the configuration, safe to modify without affecting the original.
+Creates a copy of the configuration that can be safely modified without affecting the original. Returns a zero-value `Config{}` for a nil receiver.
+
+Copy strategy (consistent with the source `Clone` comments):
+
+- **Deep copy**: `Targets` (slice), `JSON` (including `JSONFieldNames`), `Security`, `Hooks`, `Sampling`, `Audit`
+- **Shallow copy**: `FatalHandler`, `WriteErrorHandler`, `FieldValidation` (functions/pointers are shared)
+- **Mixed**: the `ContextExtractors` slice is copied, but the extractor instances themselves are shared
 
 ```go
 base := dd.DefaultConfig()
@@ -99,7 +105,15 @@ custom.Level = dd.LevelDebug
 func (c Config) Validate() error
 ```
 
-Validates the configuration, checking that output targets, levels, formats, etc. are valid.
+Validates the configuration and returns the first error encountered. `dd.New(cfg)` calls this method internally; you can also call it manually before passing to `New` to surface problems earlier.
+
+Validation items:
+
+- `Level` must fall within `[LevelDebug, LevelFatal]`
+- `Format` must be `FormatText` or `FormatJSON`
+- When `IncludeTime=true` and `TimeFormat` is non-empty, validates the Go time reference layout (e.g. `time.RFC3339`)
+- The total number of `Targets` must not exceed 100 (exceeding returns `ErrMaxWritersExceeded`)
+- Each `Targets` element: `OutputCustom` must have a non-nil `Writer`, `OutputFile` must have a non-empty `Path`
 
 ```go
 cfg := dd.DefaultConfig()
@@ -148,6 +162,19 @@ func ConsoleOutput() OutputTarget
 func FileOutput(path string) OutputTarget
 func CustomOutput(w io.Writer) OutputTarget
 ```
+
+:::tip FileOutput Default Rotation Parameters
+The `OutputTarget` returned by `FileOutput` is pre-filled with default rotation values: `MaxSizeMB=100`, `MaxBackups=10`, `MaxAge=30 * 24 * time.Hour` (30 days), `Compress=false`. To customize, modify the corresponding fields of the returned value directly:
+
+```go
+target := dd.FileOutput("logs/app.log")
+target.MaxSizeMB = 50               // Rotate at 50 MB
+target.MaxBackups = 5               // Keep 5 backups
+target.MaxAge = 7 * 24 * time.Hour  // Retain for 7 days
+target.Compress = true              // gzip-compress old logs
+```
+
+:::
 
 ```go
 // Console output
@@ -213,11 +240,16 @@ cfg.FieldNames = &dd.JSONFieldNames{
 func DefaultJSONOptions() *JSONOptions
 ```
 
-Returns default JSON output options.
+Returns the default `JSONOptions` output options: pretty-printing is off by default (indent is two spaces), and field names use the defaults.
 
 ```go
-cfg := dd.JSONConfig()
-// Includes default JSONOptions
+opts := dd.DefaultJSONOptions()
+opts.PrettyPrint = true
+
+logger, _ := dd.New(dd.Config{
+    Format: dd.FormatJSON,
+    JSON:   opts,
+})
 ```
 
 ## SamplingConfig

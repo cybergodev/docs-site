@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Аудитные логи"
 title: "Аудитный журнал - CyberGo env | Настройка аудита"
-description: "Руководство по аудиту CyberGo env: обработчики JSON-файла, лога и канала, плюс AuditHandler для записи загрузки, чтения, изменения и удаления переменных."
+description: "Аудит CyberGo env: обработчики JSONAuditHandler, LogAuditHandler, ChannelAuditHandler и пользовательский AuditHandler для записи операций над переменными."
 sidebar_position: 5
 ---
 

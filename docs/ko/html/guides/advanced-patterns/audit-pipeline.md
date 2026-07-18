@@ -1,7 +1,7 @@
 ---
 sidebar_label: "감사 시스템 실전"
-title: "감사 시스템 실전 - CyberGo HTML | 파이프라인 가이드"
-description: "CyberGo HTML 감사 시스템 실전: 기본 활성화부터 다층 파이프라인까지 이벤트, 내장 Sink 비교, 레벨 필터, 커스텀 Sink, 프로덕션 모니터링 모범 사례입니다."
+title: "감사 시스템 실전 - CyberGo html | 파이프라인 구축 가이드"
+description: "CyberGo html 감사 시스템 실전: 기본 활성화부터 다층 파이프라인까지 이벤트 유형, 내장 Sink 비교, 수준 필터와 프로덕션 모니터링 실전을 다룹니다."
 sidebar_position: 2
 ---
 

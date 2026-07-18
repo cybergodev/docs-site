@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概要"
-title: "API リファレンス - CyberGo JSON | 完全関数ドキュメント"
-description: "CyberGo JSON 完全 API リファレンス：GetString/GetInt クエリ、Set/Delete 変更、Marshal/Unmarshal、Processor、Schema 検証、Hook、セキュリティ設定を標準ライブラリ互換で網羅します。"
+title: "API リファレンス - CyberGo JSON | 全関数"
+description: "CyberGo JSON API リファレンス：GetString/GetInt パスクエリ、Set/Delete 変更、Marshal/Unmarshal シリアライズ、Processor と Schema 検証、標準ライブラリ互換。"
 sidebar_position: 1
 ---
 
@@ -19,7 +19,7 @@ sidebar_position: 1
 | [型定義](./types) | コア型定義（Encoder/Decoder 含む） |
 | [ジェネリクス操作](./generics) | ジェネリック API リファレンス |
 | [インターフェース定義](./interfaces) | 拡張インターフェース定義 |
-| [ストリーミング処理](../streaming/large-file) | ストリーミングプロセッサリファレンス |
+| [ストリーミング処理](../streaming/large-files) | ストリーミングプロセッサリファレンス |
 | [NDJSON 処理](../streaming/jsonl) | JSONL/NDJSON プロセッサ |
 | [イテレータ](./iterator) | 反復走査 API |
 | [ヘルパー関数](./helpers) | 型変換とユーティリティ関数 |
@@ -56,8 +56,8 @@ sidebar_position: 1
 
 | 関数 | 説明 |
 |------|------|
-| `Marshal`, `Unmarshal` | 標準エンコード・デコード |
-| `MarshalIndent` | フォーマットエンコード |
+| `Marshal`, `Unmarshal` | 標準エンコード・デコード（`encoding/json` 互換、cfg 追加可能） |
+| `MarshalIndent` | フォーマットエンコード（`encoding/json.MarshalIndent` 互換、cfg 追加可能） |
 | `Encode`, `EncodeWithConfig` | 文字列へのエンコード |
 | `NewEncoder`, `NewDecoder` | ストリーミングエンコード・デコード |
 | `Parse` | JSON のパース |
@@ -67,7 +67,8 @@ sidebar_position: 1
 | 関数 | 説明 |
 |------|------|
 | `Prettify` | JSON のフォーマット |
-| `Compact` | JSON の圧縮 |
+| `Compact` | JSON の圧縮（バッファ形式、`encoding/json.Compact` 互換） |
+| `CompactString` | JSON の圧縮（文字列入力/出力形式、`Processor.Compact` のミラー） |
 
 #### ファイル操作
 

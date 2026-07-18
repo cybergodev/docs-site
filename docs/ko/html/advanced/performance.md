@@ -1,7 +1,7 @@
 ---
 sidebar_label: "성능 최적화"
-title: "성능 최적화 - CyberGo HTML | 처리량 향상 가이드"
-description: "CyberGo HTML 성능 최적화: Processor 재사용, 캐시 전략, 배치 동시성 제어, 입력 크기와 타임아웃 설정 등 대규모 처리의 처리량을 높이는 팁입니다."
+title: "성능 최적화 - CyberGo html | 처리량 향상 가이드"
+description: "CyberGo html 성능 최적화: Processor 인스턴스 재사용, 캐시 전략, 배치 동시성 제어, 입력 크기와 타임아웃 설정 등 처리량 향상 팁을 다룹니다."
 sidebar_position: 1
 ---
 

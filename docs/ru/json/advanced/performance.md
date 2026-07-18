@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Оптимизация производительности"
-title: "Производительность - CyberGo JSON | Руководство"
-description: "Руководство по производительности CyberGo JSON: кэш EnableCache/CacheTTL, параллелизм ParallelThreshold, PreParse, WarmupCache и пулы объектов для скорости."
+title: "Производительность - CyberGo JSON | Гайд"
+description: "Производительность CyberGo JSON: EnableCache/CacheTTL, ParallelThreshold, PreParse, WarmupCache и пулы объектов."
 sidebar_position: 1
 ---
 
@@ -241,6 +241,5 @@ func TestMemoryUsage(t *testing.T) {
 
 ## Связанные разделы
 
-- [API обработки больших файлов](../streaming/large-file)
-- [Обработка ошибок](./error-handling)
 - [Обработка больших файлов](../streaming/large-files)
+- [Обработка ошибок](./error-handling)

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "패키지 함수"
 title: "패키지 함수 - CyberGo env | 전역 편의 함수"
-description: "CyberGo env 패키지 함수 API 참조로 Load, GetString, GetInt, Keys, Marshal, ParseInto 등 스레드 안전한 전역 기본 로더 기반의 간결한 API를 제공합니다."
+description: "CyberGo env 패키지 함수 API: Load, GetString, GetInt, GetBool, GetDuration, GetSlice, GetSecure, Lookup, Keys, ParseInto 등 전역 기본 로더 기반 스레드 안전 API."
 sidebar_position: 2
 ---
 
@@ -375,7 +375,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ### GetSliceFrom[T]
 
 ```go
-func GetSliceFrom[T sliceElement](./loader *Loader, key string, defaultValue ...[]T) []T
+func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
 지정된 Loader 인스턴스에서 슬라이스 값을 가져옵니다. 독립적인 제네릭 함수입니다 (Loader 메서드가 아님).
@@ -520,6 +520,7 @@ func Set(key, value string) error
 **오류 유형:**
 - `ErrInvalidKey` - 키 이름이 유효하지 않음
 - `ErrForbiddenKey` - 금지된 키
+- `ErrInvalidValue` - 값이 유효하지 않음 (`ValidateValues`가 true일 때, 값에 널 바이트·제어 문자 등 안전하지 않은 내용이 포함된 경우)
 - `ErrClosed` - 로더가 닫힘
 
 ```go
@@ -634,9 +635,9 @@ func ResetDefaultLoader() error
 - `error` - 이전 로더 닫기 오류 (있는 경우); 이전에 로더가 없거나 닫기에 성공하면 nil 반환
 
 **동작:**
-- 기본 로더를 원자적으로 nil로 교체
-- 이전 로더 닫기 (락 외부에서 실행하여 차단 방지)
-- 새로운 기본 로더 생성 허용
+- `atomic.Pointer.Swap`로 기본 로더를 nil로 원자적 교체
+- `defaultMu` 락을 보유한 상태에서 이전 로더를 닫습니다(닫기 완료 후에야 락 해제, 재설정의 원자성 보장)
+- 재설정 후 `Load()` 또는 `LoadWithConfig()`로 새 기본 로더 생성 가능
 
 ```go
 func TestMain(m *testing.M) {

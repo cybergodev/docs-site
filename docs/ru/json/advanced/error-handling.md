@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обработка ошибок"
-title: "Обработка ошибок - CyberGo JSON | Лучшие практики"
-description: "Лучшие практики обработки ошибок CyberGo JSON: проверки JsonsError, errors.Is/As, стандартные ошибки, восстановление, SafeError и логирование RedactedPath."
+title: "Обработка ошибок - CyberGo JSON | Гайд"
+description: "CyberGo JSON обработка ошибок: JsonsError, errors.Is/As, SafeError, восстановление и RedactedPath для логирования."
 sidebar_position: 2
 ---
 

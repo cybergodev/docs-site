@@ -1,7 +1,7 @@
 ---
 sidebar_label: "常量与错误"
 title: "常量与错误 - CyberGo env | 哨兵错误与安全常量"
-description: "CyberGo env 常量与错误参考，含 DefaultMaxFileSize 限制、ErrFileNotFound 哨兵错误、ParseError 类型及 IsSensitiveKey、MaskValue 工具函数。"
+description: "CyberGo env 常量与错误参考，含 DefaultMaxFileSize 与 MaxVariables 限制、ErrFileNotFound 哨兵错误、ParseError 类型、DefaultForbiddenKeys 禁止键及 IsSensitiveKey、MaskValue 工具函数。"
 sidebar_position: 7
 ---
 

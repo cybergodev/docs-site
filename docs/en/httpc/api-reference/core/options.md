@@ -331,8 +331,15 @@ func WithSecureCookie(securityConfig *CookieSecurityConfig) RequestOption
 
 Enforces validation of request cookie security attributes (Secure, HttpOnly, SameSite).
 
+:::warning Option Order
+This option **only validates cookies that already exist at the time it is applied**. You must place `WithSecureCookie` **after** all `WithCookie`/`WithCookies`/`WithCookieMap`/`WithCookieString` calls; otherwise cookies added later will not be validated. For session-level cookie security validation that is not subject to ordering, use `SessionManager.SetCookieSecurity`.
+:::
+
 ```go
+// Correct order: add cookies first, then validate
 result, err := client.Get(url,
+    httpc.WithCookie(sessionCookie),
+    httpc.WithCookieMap(otherCookies),
     httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()),
 )
 ```
@@ -399,6 +406,10 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 
 Sets the per-request maximum redirect count. Range: 0-50.
 
+:::warning 0 Value Semantics
+`0` does **not** disable redirects. The engine treats `0` as an "unset" sentinel value and falls back to the default cap (10), so `WithMaxRedirects(0)` is equivalent to omitting the option. To fully disable redirect following, use `WithFollowRedirects(false)` instead.
+:::
+
 ### WithAllowPrivateIPs
 
 ```go
@@ -426,11 +437,13 @@ result, err := httpc.Get("http://localhost:8080/health",
 func WithStreamBody(stream bool) RequestOption
 ```
 
-Enables streaming mode where the response body is not cached in memory. Used internally for file downloads to avoid memory consumption with large files.
+Enables streaming mode; the response body is not cached in memory.
 
-```go
-result, err := client.Get(url, httpc.WithStreamBody(true))
-```
+:::warning Important Limitation
+Streaming mode **only takes effect via [`Download`](./functions#download)**. When used with the standard request methods (`Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`), the response body is read in full and converted into a `Result`, after which the underlying stream is closed -- the returned `Result` body is empty and the caller cannot consume the stream.
+
+To actually stream-download large files without caching them in memory, use `Download`.
+:::
 
 ## Callbacks
 

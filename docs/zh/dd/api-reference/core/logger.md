@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Logger"
 title: "Logger - CyberGo DD | 核心日志记录器"
-description: "CyberGo DD Logger 核心日志记录器 API：日志输出方法（Info/Warn/Error/Fatal）、级别动态管理、Writer 增删替换、生命周期控制（Close/Flush）与链式字段设置，是日志库的核心入口类型。"
+description: "CyberGo DD Logger 核心日志记录器 API：日志输出方法（Info/Warn/Error/Fatal）、级别动态管理、Writer 增删替换、生命周期控制（Close/Flush）与链式字段设置，是日志库线程安全高性能的核心入口类型。"
 sidebar_position: 2
 ---
 
@@ -46,7 +46,7 @@ logger, _ := dd.New(dd.Config{
 | `Infof(format string, args ...any)` | 格式化 Info |
 | `Warnf(format string, args ...any)` | 格式化 Warn |
 | `Errorf(format string, args ...any)` | 格式化 Error |
-| `Fatalf(format string, args ...any)` | 格式化 Fatal |
+| `Fatalf(format string, args ...any)` | 格式化 Fatal（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
 | `Logf(level LogLevel, format string, args ...any)` | 格式化指定级别 |
 
 ### 结构化日志
@@ -57,7 +57,7 @@ logger, _ := dd.New(dd.Config{
 | `InfoWith(msg string, fields ...Field)` | 结构化 Info |
 | `WarnWith(msg string, fields ...Field)` | 结构化 Warn |
 | `ErrorWith(msg string, fields ...Field)` | 结构化 Error |
-| `FatalWith(msg string, fields ...Field)` | 结构化 Fatal |
+| `FatalWith(msg string, fields ...Field)` | 结构化 Fatal（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | 结构化指定级别 |
 
 ```go

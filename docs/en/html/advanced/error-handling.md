@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
-title: "Error Handling - CyberGo HTML | Robust Error Guide"
-description: "CyberGo HTML error handling: five error categories, errors.Is sentinel matching, errors.As structured errors, context cancellation, and batch partial failures."
+title: "Error Handling - CyberGo html | Robust Error Guide"
+description: "CyberGo html error handling guide: five error categories, errors.Is/As matching, context cancellation, and batch partial-failure handling for robust logic."
 sidebar_position: 2
 ---
 

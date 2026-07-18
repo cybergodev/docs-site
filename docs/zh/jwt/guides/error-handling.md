@@ -2,7 +2,7 @@
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo JWT | 哨兵错误匹配"
 description: "错误处理指南：分类讲解 CyberGo JWT 全部 19 个哨兵错误在配置、令牌验证、限流与生命周期阶段的触发条件，演示 errors.Is 匹配、ValidationError 字段错误与标准化响应实践。"
-sidebar_position: 5
+sidebar_position: 50
 ---
 
 # 错误处理

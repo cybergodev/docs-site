@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Security Overview"
-title: "Security Overview - CyberGo HTML | Protection Overview"
-description: "CyberGo HTML security overview: 50MB input limit, DOM depth (500), path traversal prevention, panic recovery, timeouts, content sanitization, and audit logging."
+title: "Security Overview - CyberGo html | Protection Overview"
+description: "CyberGo html security overview: input size limit, DOM depth, path traversal prevention, panic recovery, timeouts, content sanitization, and pluggable audit."
 sidebar_position: 1
 ---
 

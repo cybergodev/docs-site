@@ -156,7 +156,7 @@ The following functions output structured logs through the global logger:
 | `InfoWith` | `func InfoWith(msg string, fields ...Field)` | Info level structured log |
 | `WarnWith` | `func WarnWith(msg string, fields ...Field)` | Warn level structured log |
 | `ErrorWith` | `func ErrorWith(msg string, fields ...Field)` | Error level structured log |
-| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal level structured log |
+| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal level structured log (default calls os.Exit(1), customizable via FatalHandler) |
 
 ```go
 dd.InfoWith("Request completed",

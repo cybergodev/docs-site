@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Руководство по работе с большими файлами"
-title: "Обработка больших файлов - CyberGo JSON | Руководство"
-description: "Большие файлы CyberGo JSON: итерация ForeachFile, пакетная ForeachFileChunked, управление памятью и потоковая NDJSONProcessor для Go-аналитики."
+title: "Большие файлы - CyberGo JSON | Гайд"
+description: "Большие файлы CyberGo JSON: сигнатуры методов ForeachFile*, управление памятью и потоковая обработка."
 sidebar_position: 1
 ---
 
@@ -285,6 +285,147 @@ defer processor.Close()
 | 100 МБ - 1 ГБ | Processor.ForeachFileChunked | Порционная итерационная обработка |
 | > 1 ГБ | NDJSONProcessor / формат JSONL | Настоящая потоковая обработка, контролируемое использование памяти |
 
+
+## Справочник API
+
+В этом разделе собраны сигнатуры функций и таблицы параметров API обработки больших файлов для быстрого поиска.
+
+### Методы Processor
+
+**ForeachFile**
+
+Сигнатура: `func (p *Processor) ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Построчная обработка элементов массива JSON в большом файле. См. [Базовое использование](#базовое-использование) и [Управление прерыванием](#с-управлением-прерыванием).
+
+**Параметры**
+
+| Название | Тип | Описание |
+|------|------|------|
+| `filePath` | `string` | Путь к файлу JSON |
+| `fn` | `func(key any, item *IterableValue) error` | Обратный вызов обработки |
+
+**Возвращаемые значения обратного вызова**
+
+| Возвращаемое значение | Описание |
+|--------|------|
+| `nil` | Продолжить обработку следующего элемента |
+| `item.Break()` | Остановить итерацию без ошибки |
+| другое `error` | Остановить итерацию и вернуть ошибку |
+
+**ForeachFileChunked**
+
+Сигнатура: `func (p *Processor) ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) (err error)`
+
+Пакетная обработка большого файла. См. [Пакетная обработка](#пакетная-обработка).
+
+**Параметры**
+
+| Название | Тип | Описание |
+|------|------|------|
+| `filePath` | `string` | Путь к файлу JSON |
+| `chunkSize` | `int` | Количество элементов в пакете |
+| `fn` | `func(chunk []*IterableValue) error` | Обратный вызов пакетной обработки |
+
+**ForeachFileWithPath**
+
+Сигнатура: `func (p *Processor) ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Обработка массива или объекта JSON по указанному пути в файле.
+
+**Параметры**
+
+| Название | Тип | Описание |
+|------|------|------|
+| `filePath` | `string` | Путь к файлу JSON |
+| `path` | `string` | Выражение пути JSON |
+| `fn` | `func(key any, item *IterableValue) error` | Обратный вызов обработки |
+
+```go
+// Обработка каждого элемента массива users в файле
+err := p.ForeachFileWithPath("data.json", "users", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Name: %s\n", item.GetString("name"))
+    return nil
+})
+```
+
+**ForeachFileNested**
+
+Сигнатура: `func (p *Processor) ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Рекурсивный обход всех вложенных JSON структур в файле.
+
+```go
+// Рекурсивный обход всех вложенных элементов
+err := p.ForeachFileNested("data.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Key: %v, Type: %T\n", key, item.GetData())
+    return nil
+})
+```
+
+## Функции уровня пакета
+
+Помимо методов Processor, следующие функции можно вызывать напрямую без создания экземпляра Processor. Они используют глобальный процессор внутри.
+
+### ForeachFile (функция уровня пакета)
+
+Сигнатура: `func ForeachFile(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Загружает JSON из файла и итерирует.
+
+```go
+err := json.ForeachFile("data.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("[%v] %v\n", key, item.GetData())
+    return nil
+})
+```
+
+### ForeachFileWithPath (функция уровня пакета)
+
+Сигнатура: `func ForeachFileWithPath(filePath, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Загружает JSON из файла и итерирует по указанному пути.
+
+```go
+err := json.ForeachFileWithPath("data.json", "users", func(key any, item *json.IterableValue) error {
+    name := item.GetString("name")
+    fmt.Printf("Пользователь: %s\n", name)
+    return nil
+})
+```
+
+### ForeachFileChunked (функция уровня пакета)
+
+Сигнатура: `func ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
+
+Построчная итерация массива JSON в файле чанками.
+
+```go
+err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.IterableValue) error {
+    for _, item := range chunk {
+        processItem(item)
+    }
+    return nil
+})
+```
+
+### ForeachFileNested (функция уровня пакета)
+
+Сигнатура: `func ForeachFileNested(filePath string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
+
+Загружает JSON из файла и рекурсивно итерирует все вложенные структуры.
+
+```go
+err := json.ForeachFileNested("config.json", func(key any, item *json.IterableValue) error {
+    fmt.Printf("Путь: %v, Тип: %T\n", key, item.GetData())
+    return nil
+})
+```
+
+## Смотрите также
+
+- [Обработчик NDJSON](./jsonl) — потоковая обработка JSONL/NDJSON
+- [JSONLWriter](./jsonl#jsonlwriter) — модуль записи JSONL
 
 ## Что дальше
 - [Документация API](../api-reference/) — полный справочник API

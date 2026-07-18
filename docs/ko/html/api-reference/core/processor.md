@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor"
-title: "Processor - CyberGo HTML | 핵심 Processor API"
-description: "CyberGo HTML Processor API: New 생성, Extract 메서드 계열과 GetStatistics, GetAuditLog, ClearCache, Close 등 수명 주기 관리로 고빈도 재사용에 적합합니다."
+title: "Processor - CyberGo html | 용법·매개변수·예제"
+description: "CyberGo html Processor API: New 생성, Extract 메서드 계열과 GetStatistics, ClearCache, Close 등 수명 주기 관리로 고빈도 재사용에 적합합니다."
 sidebar_position: 2
 ---
 

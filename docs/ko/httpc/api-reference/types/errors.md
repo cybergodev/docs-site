@@ -37,7 +37,7 @@ type ClientError struct {
 | Cause | `error` | 근본 오류, `Unwrap()`으로 접근 가능 |
 | `URL` | `string` | 요청 URL (자격 증명 마스킹됨) |
 | `Method` | `string` | HTTP 메서드 (GET, POST 등) |
-| `Attempts` | `int` | 재시도한 횟수 |
+| `Attempts` | `int` | 시도한 횟수(첫 요청 포함) |
 | `StatusCode` | `int` | HTTP 상태 코드 (HTTP 오류가 아닌 경우 0) |
 | Host | `string` | 요청 호스트명 |
 

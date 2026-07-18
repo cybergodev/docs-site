@@ -1,7 +1,7 @@
 ---
 sidebar_label: "高度なサンプル"
-title: "高度なサンプル - CyberGo HTML | 応用シナリオ"
-description: "CyberGo HTML 高度なサンプル：カスタム Scorer、マルチ Sink 監査パイプライン、バッチファイルと並列制御、Processor プーリング、ChannelAuditSink 監視の実行可能例です。"
+title: "高度なサンプル - CyberGo html | 応用シナリオ集"
+description: "CyberGo html 高度なサンプル：カスタム Scorer、マルチ Sink 監査パイプライン、バッチ並行制御、Processor プーリングなどの応用向け実行可能コード集。"
 sidebar_position: 2
 ---
 

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo env | Common API Quick Reference"
-description: "One-page CyberGo env cheat sheet of common Go API snippets: file loading, type-safe reading, validation, SecureValue storage, serialization and audit logging."
-sidebar_position: 3
+description: "CyberGo env cheat sheet: file loading, type reads, struct mapping, expansion, validation, SecureValue, Marshal/Unmarshal, sentinel errors and audit logging."
+sidebar_position: 2
 ---
 
 # Cheat Sheet

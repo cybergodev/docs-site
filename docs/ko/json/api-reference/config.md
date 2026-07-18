@@ -18,6 +18,7 @@ type Config struct {
     CacheTTL     time.Duration `json:"cache_ttl"`      // 캐시 만료 시간
     EnableCache  bool          `json:"enable_cache"`   // 캐시 활성화 여부
     CacheResults bool          `json:"cache_results"`  // 작업 결과 캐시 여부
+    CacheSharedResults bool `json:"cache_shared_results"` // 캐시 결과 공유 (방어적 딥카피 건너뛰기, 호출자는 반환된 컨테이너를 수정하면 안 됨)
 
     // ===== 크기 제한 =====
     MaxJSONSize  int64 `json:"max_json_size"`  // 최대 JSON 크기 (바이트)
@@ -104,6 +105,10 @@ type Config struct {
 }
 ```
 
+::: warning CacheSharedResults 계약
+`CacheSharedResults`가 `true`이면, 캐시 적중 시 `Get`/`GetFromParsed`는 방어적 딥카피를 건너뛰고 **캐시 값을 직접 반환**합니다(더 빠르고 할당이 적음). 이때 **호출자는 반환된 `map[string]any`/`[]any`를 수정해서는 안 됩니다**. 수정하면 공유 캐시가 훼손되어 이후 읽기에 영향을 줍니다. 원시 값(`bool`, `float64`, `string`, `json.Number`, `nil`)은 불변이므로 항상 안전합니다. 기본값 `false`는 안전한 "읽기 시 복사" 동작을 유지하며, 호출자가 결과를 읽기 전용으로 취급할 때만 활성화하세요(예: 동일한 대형 하위 트리를 반복적으로 읽는 읽기 전용 워크로드).
+:::
+
 ## 설정 프리셋
 
 ### DefaultConfig
@@ -137,6 +142,7 @@ defer processor.Close()
 | MaxCacheSize | 128 | 최대 캐시 항목 수 |
 | EnableCache | true | 캐시 활성화 |
 | CacheResults | true | 작업 결과 캐시 |
+| CacheSharedResults | false | 캐시 결과 공유(읽기 전용 고성능) |
 | EnableValidation | true | 유효성 검사 활성화 |
 | StrictMode | false | 비엄격 모드 |
 | FullSecurityScan | false | 샘플링 보안 스캔 (전체 아님) |

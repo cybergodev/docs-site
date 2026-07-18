@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Шпаргалка"
 title: "Шпаргалка - CyberGo env | Быстрый справочник API"
-description: "Шпаргалка CyberGo env: загрузка файлов, типобезопасное чтение, валидация, SecureValue-хранилище, сериализация и аудит — сниппеты на одной странице."
-sidebar_position: 3
+description: "Шпаргалка CyberGo env: загрузка, типы, маппинг структур, ${VAR}, валидация, SecureValue, Marshal/Unmarshal, ошибки errors.Is и аудит — на одной странице."
+sidebar_position: 2
 ---
 
 # Шпаргалка

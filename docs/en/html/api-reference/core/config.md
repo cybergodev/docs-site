@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Config"
-title: "Configuration - CyberGo HTML | Config Field Reference"
-description: "Config reference for CyberGo HTML, covering resource management, security settings, content extraction, output formats, link filtering, and validation."
+title: "Config - CyberGo html | Config Field Reference"
+description: "CyberGo html Config reference: resource management, security, content extraction, output formats, link filtering, and the Validate method for configuration."
 sidebar_position: 3
 ---
 

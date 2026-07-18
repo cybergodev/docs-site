@@ -19,7 +19,7 @@ This section provides the complete API reference for the `github.com/cybergodev/
 | [Type Definitions](./types) | Core type definitions (including Encoder/Decoder) |
 | [Generic Operations](./generics) | Generic API reference |
 | [Interface Definitions](./interfaces) | Extension interface definitions |
-| [Stream Processing](../streaming/large-file) | Stream processor reference |
+| [Stream Processing](../streaming/large-files) | Stream processor reference |
 | [NDJSON Processing](../streaming/jsonl) | JSONL/NDJSON processor |
 | [Iterator](./iterator) | Iteration traversal API |
 | [Helper Functions](./helpers) | Type conversion and utility functions |
@@ -56,8 +56,8 @@ This section provides the complete API reference for the `github.com/cybergodev/
 
 | Function | Description |
 |----------|-------------|
-| `Marshal`, `Unmarshal` | Standard encoding/decoding |
-| `MarshalIndent` | Pretty-print encoding |
+| `Marshal`, `Unmarshal` | Standard encoding/decoding (compatible with `encoding/json`, optional `cfg`) |
+| `MarshalIndent` | Pretty-print encoding (compatible with `encoding/json.MarshalIndent`, optional `cfg`) |
 | `Encode`, `EncodeWithConfig` | Encode to string |
 | `NewEncoder`, `NewDecoder` | Stream encoding/decoding |
 | `Parse` | Parse JSON |
@@ -67,7 +67,8 @@ This section provides the complete API reference for the `github.com/cybergodev/
 | Function | Description |
 |----------|-------------|
 | `Prettify` | Format JSON |
-| `Compact` | Compact JSON |
+| `Compact` | Compact JSON (buffer form, compatible with `encoding/json.Compact`) |
+| `CompactString` | Compact JSON (string in/out form, mirrors `Processor.Compact`) |
 
 #### File Operations
 

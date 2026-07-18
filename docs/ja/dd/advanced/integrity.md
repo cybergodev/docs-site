@@ -1,7 +1,7 @@
 ---
-sidebar_label: "HMAC 署名実践"
+sidebar_label: "HMAC 署名"
 title: "HMAC 署名実践 - CyberGo DD | ログ整合性保護"
-description: "CyberGo DD HMAC-SHA256 ログ整合性署名実践ガイド。IntegritySigner の作成と初期化設定、署名と検証の完全なフロー、タイムスタンプとシリアル番号インクリメントメカニズム、改ざん検出戦略、監査ログシステムとの統合スキーム、本番環境デプロイのベストプラクティスをカバーし、ログチェーンの整合性とトレーサビリティを確保。"
+description: "CyberGo DD HMAC-SHA256 ログ整合性署名実践ガイド。IntegritySigner の作成と初期化、署名と検証の完全フロー、タイムスタンプとシリアル番号インクリメント、改ざん検出戦略、監査ログ統合、本番環境デプロイのベストプラクティスを網羅しログチェーンの整合性を確保。"
 sidebar_position: 3
 ---
 

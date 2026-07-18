@@ -2,8 +2,7 @@
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo JSON | 5分钟上手指南"
 description: "CyberGo JSON 快速入门：安装配置、路径查询 GetString/GetInt、编解码 Marshal/Unmarshal、文件读写，5 分钟上手 Go JSON 处理，100% 兼容标准库。"
-sidebar_position: 2
-sidebar_icon: "⚡"
+sidebar_position: 1
 ---
 
 # 快速开始

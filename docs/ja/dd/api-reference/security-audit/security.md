@@ -1,7 +1,7 @@
 ---
 sidebar_label: "セキュリティフィルタ"
 title: "セキュリティフィルタ - CyberGo DD | 機密データフィルタリング"
-description: "CyberGo DD 機密データフィルタリング完全 API ドキュメント。SensitiveDataFilter フィルタリングルール設定、SecurityConfig セキュリティポリシーオプションとプリセットセキュリティ設定スキームを含み、ログ内のパスワード、API キー、Token、電話番号、身分証明番号などの機密情報を自動検出してマスキングし、ログ漏洩リスクを効果的に防止。"
+description: "CyberGo DD 機密データフィルタリング API。SensitiveDataFilter ルール、SecurityConfig ポリシー、プリセットを含み、パスワード、API キー、Token、電話番号、ID 番号を自動マスキングして漏洩を防止。"
 sidebar_position: 2
 ---
 

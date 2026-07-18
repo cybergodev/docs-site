@@ -1,7 +1,7 @@
 ---
 sidebar_label: "インターフェース定義"
 title: "インターフェース定義 - CyberGo DD | Logger インターフェース階層"
-description: "CyberGo DD ログライブラリのインターフェース階層定義完全ドキュメント。CoreLogger 基本ログインターフェース、LevelLogger レベルログインターフェース、ConfigurableLogger 設定可能ログインターフェース、LogProvider ログプロバイダーインターフェースを含み、シンプルから複雑まで多層レベルのログ抽象ニーズをサポート。カスタム実装と依存性注入に便利です。"
+description: "CyberGo DD インターフェース階層定義ドキュメント。CoreLogger、LevelLogger、ConfigurableLogger、LogProvider の 4 インターフェースで多層ログ抽象をサポートしカスタム実装と DI に便利。"
 sidebar_position: 5
 ---
 

@@ -1,11 +1,11 @@
 ---
-sidebar_label: "패키지 함수"
-title: "패키지 함수 - CyberGo HTTPC | 패키지 함수"
-description: "HTTPC 패키지 레벨 함수 API 레퍼런스: Get/Post 등 일곱 가지 HTTP 메서드, New 클라이언트 생성, Download 진입점, FormatBytes 포맷 도구와 NewDomain 도메인 클라이언트 생성의 완전한 사용법을 제공합니다."
+sidebar_label: "패키지 함수와 클라이언트 메서드"
+title: "패키지 함수와 클라이언트 메서드 - CyberGo HTTPC | HTTP 메서드 API"
+description: "HTTPC 패키지 레벨 함수와 클라이언트 메서드 API 레퍼런스: Get/Post 등 일곱 가지 HTTP 메서드, New 클라이언트 생성, Download 통합 다운로드 진입점, FormatBytes/FormatSpeed 도구와 NewDomain 도메인 클라이언트 생성으로, 요청 옵션과 조합하여 유연한 설정을 구현합니다."
 sidebar_position: 1
 ---
 
-# 패키지 함수
+# 패키지 함수와 클라이언트 메서드
 
 ## 패키지 레벨 HTTP 메서드
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Пользовательский парсер"
 title: "Пользовательский парсер - CyberGo env | Расширение форматов"
-description: "Руководство по парсеру CyberGo env: реализация EnvParser и регистрация через RegisterParser с примерами TOML и INI и практиками продакшена."
+description: "Парсер CyberGo env: реализация Parse из EnvParser, регистрация через RegisterParser, ComponentFactory для Validator/Auditor, с примерами TOML и INI."
 sidebar_position: 7
 ---
 

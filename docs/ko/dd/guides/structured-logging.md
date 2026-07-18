@@ -1,7 +1,7 @@
 ---
-sidebar_label: "구조화된 로깅"
+sidebar_label: "구조화된 로그"
 title: "구조화된 로그 - CyberGo DD | 필드와 체인 호출"
-description: "CyberGo DD 구조화된 로그 사용 가이드. 20개 이상의 타입 안전한 필드 생성자, Field 체인 전달 패턴, LoggerEntry 불변 설계 원리, 필드 명명 규칙과 검증 규칙, 구조화된 로그의 모범 사례와 일반적인 사용 패턴을 상세히 소개하여 개발자가 프로젝트에서 고성능 구조화된 로그 기록 솔루션을 효과적으로 사용할 수 있도록 돕습니다."
+description: "CyberGo DD 구조화된 로그 사용 가이드. 20개 이상의 타입 안전 필드 생성자, Field 체인 전달 패턴, LoggerEntry 불변 설계 원리, 필드 명명과 검증 규칙, 모범 사례와 일반 사용 패턴으로 프로젝트에서 구조화된 로그 솔루션을 효과적으로 활용하도록 돕습니다."
 sidebar_position: 2
 ---
 
@@ -137,9 +137,13 @@ cfg := dd.DefaultFieldValidationConfig()
 ### 설정에서 활성화
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     FieldValidation: dd.StrictSnakeCaseConfig(),
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 활성화 후, 규칙에 맞지 않는 필드명은 로그에 경고가 표시됩니다:
@@ -234,7 +238,11 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### JSON 형식
 
 ```go
-logger, _ := dd.New(dd.JSONConfig())
+logger, err := dd.New(dd.JSONConfig())
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 logger.InfoWith("요청 완료",
     dd.String("method", "GET"),
     dd.Int("status", 200),

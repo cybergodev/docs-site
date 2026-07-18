@@ -1,7 +1,7 @@
 ---
 sidebar_label: "配置"
-title: "配置 - CyberGo HTML | Config 字段详解"
-description: "CyberGo HTML Config 配置详解：资源管理（MaxInputSize、缓存、超时）、安全、内容提取、输出格式、链接过滤与 Validate 验证方法。"
+title: "配置 - CyberGo html | Config 字段详解"
+description: "CyberGo html Config 配置详解：资源、安全、内容、输出与链接字段，含四种预设配置、取值约束与 Validate 验证方法。"
 sidebar_position: 3
 ---
 

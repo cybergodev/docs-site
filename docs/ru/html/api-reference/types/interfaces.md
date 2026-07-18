@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Интерфейсы"
-title: "Интерфейсы - CyberGo HTML | ключевые интерфейсы"
-description: "Ключевые интерфейсы CyberGo HTML: Extractor, StatsProvider, ContentNode, Scorer и AuditSink — для расширения, тестирования и понимания архитектуры."
+title: "Интерфейсы - CyberGo html | ключевые интерфейсы"
+description: "Ключевые интерфейсы CyberGo html: Extractor, StatsProvider, ContentNode, Scorer, AuditSink — для расширения возможностей и интеграционного тестирования."
 sidebar_position: 1
 ---
 

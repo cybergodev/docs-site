@@ -1,7 +1,7 @@
 ---
 sidebar_label: "민감 데이터 필터링"
 title: "민감 데이터 필터링 - CyberGo DD | 자동 마스킹 설정 가이드"
-description: "CyberGo DD 민감 데이터 필터링 설정 가이드. 내장 필터링 패턴 (비밀번호, API Key, 신용카드, SSN, JWT 등), 커스텀 정규식 패턴, 5단계 보안 등급, 업계 준수 사전 설정 (HIPAA, PCI-DSS, 정부 표준) 및 필터링 통계와 모니터링을 다루어 개발자가 준수 규정을 충족하는 로그 마스킹 솔루션을 구축할 수 있도록 돕습니다."
+description: "CyberGo DD 민감 데이터 필터링 설정 가이드. 내장 필터링 패턴(비밀번호, API Key, 신용카드, SSN, JWT 등), 커스텀 정규식, 5단계 보안 등급, 업계 준수 프리셋(HIPAA, PCI-DSS, 정부 표준), 통계와 모니터링으로 준수 로그 마스킹 방안을 구축합니다."
 sidebar_position: 4
 ---
 
@@ -12,9 +12,13 @@ DD는 내장된 민감 데이터 자동 필터링으로 로그 기록 전에 비
 ## 빠른 활성화
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: dd.DefaultSecurityConfig(),
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 // password 필드 자동 마스킹
 logger.InfoWith("사용자 로그인",
@@ -55,11 +59,15 @@ filter := dd.NewEmptySensitiveDataFilter()
 _ = filter.AddPattern(`(?i)credit_card\s*[:=]\s*\d+`)
 _ = filter.AddPattern(`(?i)phone\s*[:=]\s*\d{11}`)
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: &dd.SecurityConfig{
         SensitiveFilter: filter,
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### 처음부터 커스텀 필터 생성
@@ -127,13 +135,17 @@ cfg := dd.GovernmentConfig()
 
 ```go
 // 의료 시스템: HIPAA 준수 설정 사용
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Format:   dd.FormatJSON,
     Security: dd.HealthcareConfig(),
     Targets: []dd.OutputTarget{
         dd.FileOutput("logs/hipaa-audit.json"),
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 // 민감 정보가 포함된 로그 메시지 자동 마스킹
 logger.Info("환자 기록 mrn=MRN-123456 diagnosis=J18.9 업데이트됨")
@@ -163,20 +175,27 @@ fmt.Printf("타임아웃 횟수: %d\n", stats.TotalTimeouts)
 
 ```go
 // Development 보안 등급 사용 (민감 데이터 필터링 없음)
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: dd.SecurityConfigForLevel(dd.SecurityLevelDevelopment),
 })
+if err != nil {
+    log.Fatal(err)
+}
 
 // 또는 SensitiveFilter를 수동으로 nil로 설정
-logger, _ := dd.New(dd.Config{
+logger, err = dd.New(dd.Config{
     Security: &dd.SecurityConfig{
         SensitiveFilter: nil,
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 :::warning 기본 필터링 활성화
-`DefaultConfig()`는 기본적으로 기본 민감 데이터 필터링 (`DefaultSecurityConfig()`)이 활성화되어 있습니다. `Security` 필드를 설정하지 않아도 기본 보안 설정이 사용됩니다. 필터링을 비활성화하려면 `SensitiveFilter`를 명시적으로 `nil`로 설정해야 합니다.
+`DefaultConfig()`는 기본적으로 기본 민감 데이터 필터링(`DefaultSecurityConfig()`)이 활성화되어 있습니다. `Security` 필드를 설정하지 않아도 기본 보안 설정이 사용됩니다. 필터링을 비활성화하려면 `SensitiveFilter`를 명시적으로 `nil`로 설정해야 합니다.
 :::
 
 ## 다음 단계

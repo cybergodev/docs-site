@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Logger"
 title: "Logger - CyberGo DD | 핵심 로거"
-description: "CyberGo DD Logger 핵심 로거 전체 API 문서. 로그 출력 메서드 (Info/Warn/Error/Fatal), 레벨 동적 관리, Writer 동적 추가 및 교체, 라이프사이클 제어 (Close/Flush), 전역 로그 함수 및 체인 필드 설정을 다루며 DD 로그 라이브러리 사용의 핵심 진입 타입입니다."
+description: "CyberGo DD Logger 핵심 로거 API. 로그 출력 메서드 (Info/Warn/Error/Fatal), 레벨 동적 관리, Writer 추가/교체/삭제, 라이프사이클 제어 (Close/Flush), 체인 필드 설정을 다루는 DD 로그 라이브러리의 핵심 진입 타입입니다."
 sidebar_position: 2
 ---
 
@@ -46,7 +46,7 @@ logger, _ := dd.New(dd.Config{
 | `Infof(format string, args ...any)` | 포맷팅 Info |
 | `Warnf(format string, args ...any)` | 포맷팅 Warn |
 | `Errorf(format string, args ...any)` | 포맷팅 Error |
-| `Fatalf(format string, args ...any)` | 포맷팅 Fatal |
+| `Fatalf(format string, args ...any)` | 포맷팅 Fatal (기본적으로 os.Exit(1) 호출, FatalHandler로 커스터마이즈 가능) |
 | `Logf(level LogLevel, format string, args ...any)` | 포맷팅 레벨 지정 |
 
 ### 구조화된 로그
@@ -57,7 +57,7 @@ logger, _ := dd.New(dd.Config{
 | `InfoWith(msg string, fields ...Field)` | 구조화된 Info |
 | `WarnWith(msg string, fields ...Field)` | 구조화된 Warn |
 | `ErrorWith(msg string, fields ...Field)` | 구조화된 Error |
-| `FatalWith(msg string, fields ...Field)` | 구조화된 Fatal |
+| `FatalWith(msg string, fields ...Field)` | 구조화된 Fatal (기본적으로 os.Exit(1) 호출, FatalHandler로 커스터마이즈 가능) |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | 구조화된 레벨 지정 |
 
 ```go

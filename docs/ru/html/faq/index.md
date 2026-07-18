@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Часто задаваемые вопросы"
-title: "FAQ - CyberGo HTML | ответы на вопросы"
-description: "FAQ по CyberGo HTML: функции пакета или Processor, кодировки, лимиты ввода, пакетные ограничения, пустой текст, статистика, аудит и собственный Scorer."
+title: "Частые вопросы - CyberGo html | ответы и разъяснения"
+description: "FAQ по CyberGo html: выбор функций пакета или Processor, определение кодировок, лимиты ввода, пакеты, пустой текст и статистика."
 sidebar_position: 1
 ---
 

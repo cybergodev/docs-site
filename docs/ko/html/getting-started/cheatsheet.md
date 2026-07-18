@@ -1,7 +1,7 @@
 ---
 sidebar_label: "치트시트"
-title: "치트시트 - CyberGo HTML | API 한눈에"
-description: "CyberGo HTML API 치트시트: 패키지 함수, Processor 메서드, 4종 설정 프리셋, 주요 설정, 오류 판별, 감사 설정을 한 페이지에 정리합니다."
+title: "치트시트 - CyberGo html | API 한눈에 보기"
+description: "CyberGo html 주요 API 치트시트: 패키지 함수, Processor 메서드, Config 프리셋, 주요 설정 항목, 오류 판별, 감사 설정을 한 페이지에 함수 시그니처와 함께 정리합니다."
 sidebar_position: 3
 ---
 

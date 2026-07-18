@@ -2,7 +2,7 @@
 sidebar_label: "속도 제한"
 title: "속도 제한 - CyberGo JWT | 토큰 버킷 속도 제한"
 description: "속도 제한 가이드: 토큰 버킷으로 발급 인터페이스의 윈도우당 최대 요청 수를 설정하고, Subject·UserID·RateLimitKeyer 우선순위 조회, 내장과 커스텀 분산 속도 제한 구현을 지원합니다."
-sidebar_position: 4
+sidebar_position: 40
 ---
 
 # 속도 제한

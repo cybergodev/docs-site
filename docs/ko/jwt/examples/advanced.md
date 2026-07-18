@@ -2,7 +2,7 @@
 sidebar_label: "고급 예제"
 title: "고급 예제 - CyberGo JWT | 비대칭 서명과 커스텀 저장소"
 description: "고급 예제: RSA와 ECDSA 비대칭 서명 검증, CustomClaims 비즈니스 선언, Redis 커스텀 블랙리스트 백엔드, FixedClock 클럭 인젝션 테스트, 완전한 웹 서비스 통합."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 고급 예제

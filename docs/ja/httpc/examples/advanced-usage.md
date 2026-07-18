@@ -1,7 +1,7 @@
 ---
 sidebar_label: "高度なサンプル"
 title: "高度な使用例 - CyberGo HTTPC | 本番コード"
-description: "HTTPC 高度な使用例集: カスタム RetryPolicy リトライ戦略、完全なミドルウェアチェーン構成、RESTful API クライアントラッパー、並列ダウンロード、HMAC-SHA256 署名ミドルウェアの完全なコードを提供します。"
+description: "HTTPC 高度な使用例集: カスタム RetryPolicy リトライ戦略、完全なミドルウェアチェーン構成、RESTful API クライアントラッパー、sync.WaitGroup 並列ダウンロード、HMAC-SHA256 リクエスト署名ミドルウェアを通じて、高パフォーマンスで可観測な本番級 HTTP クライアントの構築を支援します。"
 sidebar_position: 2
 ---
 

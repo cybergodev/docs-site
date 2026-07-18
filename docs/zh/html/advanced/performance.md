@@ -1,7 +1,7 @@
 ---
 sidebar_label: "性能优化"
-title: "性能优化 - CyberGo HTML | 吞吐量提升指南"
-description: "CyberGo HTML 性能优化：Processor 实例复用、缓存策略、批量并发控制、输入大小与超时设置等技巧，提升大规模处理吞吐量。"
+title: "性能优化 - CyberGo html | 吞吐量提升指南"
+description: "CyberGo html 性能优化：Processor 复用、缓存命中率监控、批量并发控制、WorkerPool 调优与超时设置，提升处理吞吐量。"
 sidebar_position: 1
 ---
 

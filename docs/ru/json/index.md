@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обзор"
 title: "JSON библиотека - CyberGo JSON | Быстрый Go"
-description: "CyberGo JSON — быстрая потокобезопасная Go JSON-библиотека с JSONPath, потоковой обработкой, обобщёнными API и Schema-валидацией, совместимая с encoding/json."
+description: "CyberGo JSON — быстрая потокобезопасная Go JSON-библиотека с JSONPath, потоковой обработкой, обобщёнными API и Schema, совместимая с encoding/json."
 ---
 
 # Библиотека обработки JSON

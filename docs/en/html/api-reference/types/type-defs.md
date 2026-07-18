@@ -1,7 +1,7 @@
 ---
-sidebar_label: "Types"
-title: "Types - CyberGo HTML | Data Type Reference"
-description: "CyberGo HTML data types API: field descriptions for Result (custom JSON), ImageInfo, LinkInfo, VideoInfo, AudioInfo, LinkResource, Statistics, and BatchResult."
+sidebar_label: "Data Types"
+title: "Types - CyberGo html | Data Type Reference"
+description: "CyberGo html data types: field reference for Result, ImageInfo, LinkInfo, LinkResource, Statistics, BatchResult, and other core types."
 sidebar_position: 2
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "상수 및 오류"
 title: "상수 및 오류 - CyberGo env | 센티넬 오류와 보안 상수"
-description: "CyberGo env 상수·오류 참조로 DefaultMaxFileSize 제한, ErrFileNotFound 센티넬 오류, ParseError 유형, IsSensitiveKey와 MaskValue 유틸리티 함수를 제공합니다."
+description: "CyberGo env 상수·오류 참조로 DefaultMaxFileSize·MaxVariables 제한, ErrFileNotFound 센티넬, ParseError, DefaultForbiddenKeys, IsSensitiveKey·MaskValue 유틸리티를 제공합니다."
 sidebar_position: 7
 ---
 

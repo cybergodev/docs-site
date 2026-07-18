@@ -37,7 +37,7 @@ type ClientError struct {
 | Cause | `error` | 基底エラー。`Unwrap()` で取得可能 |
 | `URL` | `string` | リクエスト URL（認証情報はマスク済み） |
 | `Method` | `string` | HTTP メソッド（GET、POST など） |
-| `Attempts` | `int` | リトライ済み回数 |
+| `Attempts` | `int` | 試行済み回数（初回リクエスト含む） |
 | `StatusCode` | `int` | HTTP ステータスコード（HTTP エラー以外では 0） |
 | Host | `string` | リクエストホスト名 |
 

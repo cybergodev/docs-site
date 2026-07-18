@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Константы и ошибки"
 title: "Константы и ошибки - CyberGo DD | LogLevel и ошибки"
-description: "Полная документация определений констант и типов ошибок CyberGo DD, включая константы уровней логирования LogLevel (Debug/Info/Warn/Error/Fatal), константы форматов вывода Format и определения сторожевых ошибок SentinelErrors, используемые для точного управления поведением логирования и обработки ошибок, являющиеся ключевой основой для понимания системы конфигурации библиотеки логирования DD."
+description: "Полная документация констант и типов ошибок CyberGo DD: LogLevel (Debug/Info/Warn/Error/Fatal), Format и сторожевые ошибки SentinelErrors."
 sidebar_position: 3
 ---
 

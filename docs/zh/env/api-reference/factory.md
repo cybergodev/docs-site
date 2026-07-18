@@ -1,7 +1,7 @@
 ---
 sidebar_label: "组件工厂"
 title: "ComponentFactory API - CyberGo env | 组件工厂"
-description: "CyberGo env 的 ComponentFactory 组件工厂 API 参考，统一创建审计处理器、验证器、文件系统适配器并注册自定义解析器，提供生命周期 Close 管理。"
+description: "CyberGo env 的 ComponentFactory 组件工厂 API 参考，统一创建 Validator 验证器、Auditor 审计器、FileSystem 文件系统适配器与变量展开器，并通过 RegisterParser 注册自定义解析器，提供 Close 生命周期管理。"
 sidebar_position: 8
 ---
 
@@ -292,7 +292,7 @@ func NewCloseableChannelHandler(bufferSize int) *CloseableChannelHandler
 创建拥有自有缓冲通道的可关闭审计处理器。与 `ChannelAuditHandler` 接受外部通道不同，`CloseableChannelHandler` 创建并拥有自己的缓冲通道。调用 `Close()` 关闭处理器并关闭通道。使用 `Channel()` 接收事件。
 
 **参数：**
-- `bufferSize` - 缓冲通道大小
+- `bufferSize` - 缓冲通道大小（负数会被视为 0）
 
 ```go
 handler := env.NewCloseableChannelHandler(64)
@@ -302,6 +302,40 @@ go func() {
     for event := range handler.Channel() {
         fmt.Printf("Audit: %+v\n", event)
     }
+}()
+```
+
+#### CloseableChannelHandler 方法
+
+`CloseableChannelHandler` 除实现 `AuditHandler` 接口（`Log` / `Close`）外，还提供以下特有方法：
+
+```go
+func (h *CloseableChannelHandler) Channel() <-chan AuditEvent
+func (h *CloseableChannelHandler) IsClosed() bool
+```
+
+**方法说明：**
+
+| 方法 | 签名 | 用途 |
+|------|------|------|
+| `Channel` | `func (h *CloseableChannelHandler) Channel() <-chan AuditEvent` | 返回内部只读通道，用于消费审计事件。`Close()` 调用后该通道会被关闭，`range` 循环随之退出 |
+| `IsClosed` | `func (h *CloseableChannelHandler) IsClosed() bool` | 检查处理器是否已关闭（线程安全，可并发调用） |
+
+```go
+handler := env.NewCloseableChannelHandler(64)
+defer handler.Close()
+
+// 在关闭前可检查状态
+if !handler.IsClosed() {
+    // 处理器仍可用
+}
+
+// 消费事件直至通道关闭
+go func() {
+    for event := range handler.Channel() {
+        fmt.Printf("Audit: %+v\n", event)
+    }
+    // handler.Close() 后通道关闭，循环退出
 }()
 ```
 

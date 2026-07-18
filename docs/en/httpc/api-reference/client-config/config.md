@@ -275,7 +275,7 @@ Testing environment configuration. Security checks disabled, short timeouts.
 | UserAgent | httpc-test/1.0 |
 
 :::danger
-This configuration disables TLS verification and SSRF protection. **For testing only**. Using it outside test environments will print a security warning.
+This configuration disables TLS verification and SSRF protection. **For testing only**. Using it outside test environments will print a security warning (see [Security Warning Output](#setsecuritywarnoutput)).
 :::
 
 ### MinimalConfig
@@ -300,6 +300,26 @@ Lightweight configuration. Retries and redirects disabled, minimal connection po
 | BackoffFactor | 1.0 |
 | EnableJitter | false |
 | FollowRedirects | false |
+
+## Security Warning Output
+
+### SetSecurityWarnOutput
+
+```go
+func SetSecurityWarnOutput(w io.Writer)
+```
+
+Redirects the destination of security warning output. When you use `TestingConfig()` or set `SecurityConfig.InsecureSkipVerify` (`Config.Security`) to `true`, httpc prints a `[SECURITY WARNING]`-level alert to this writer (each type of warning is printed at most once per process). The default output is `os.Stderr`; pass `io.Discard` to fully suppress warnings, useful for silencing them in tests or known-safe internal scenarios.
+
+```go
+// Suppress security warnings in tests
+httpc.SetSecurityWarnOutput(io.Discard)
+cfg := httpc.TestingConfig()
+```
+
+:::tip Scope
+This setting is process-level global state that affects all subsequently created clients. The `TestingConfig` and `InsecureSkipVerify` warnings are each counted independently (neither affects the other's triggering), but they share the same output writer.
+:::
 
 ## Validation
 

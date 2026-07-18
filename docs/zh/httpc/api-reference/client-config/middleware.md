@@ -7,6 +7,10 @@ sidebar_position: 5
 
 # 中间件
 
+:::tip 架构总览
+本页是**内置中间件参考**。Handler 管线的整体架构、洋葱模型原理与自定义中间件编写见 [处理器 / Handler 与中间件链](../handler/handler-chain)。
+:::
+
 HTTPC 采用洋葱模型中间件架构，通过 `MiddlewareFunc` 包装请求处理逻辑。
 
 ```go

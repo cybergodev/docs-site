@@ -54,7 +54,7 @@ All Logger log methods are also available on Entry. Output logs automatically ca
 | `Info(args ...any)` | Info level |
 | `Warn(args ...any)` | Warn level |
 | `Error(args ...any)` | Error level |
-| `Fatal(args ...any)` | Fatal level |
+| `Fatal(args ...any)` | Fatal level (calls os.Exit(1) by default, customizable via FatalHandler) |
 | `Log(level LogLevel, args ...any)` | Specified level |
 
 ### Formatted Logging
@@ -65,7 +65,7 @@ All Logger log methods are also available on Entry. Output logs automatically ca
 | `Infof(format string, args ...any)` | Formatted Info |
 | `Warnf(format string, args ...any)` | Formatted Warn |
 | `Errorf(format string, args ...any)` | Formatted Error |
-| `Fatalf(format string, args ...any)` | Formatted Fatal |
+| `Fatalf(format string, args ...any)` | Formatted Fatal (calls os.Exit(1) by default, customizable via FatalHandler) |
 | `Logf(level LogLevel, format string, args ...any)` | Formatted specified level |
 
 ### Structured Logging
@@ -76,7 +76,7 @@ All Logger log methods are also available on Entry. Output logs automatically ca
 | `InfoWith(msg string, fields ...Field)` | Structured Info |
 | `WarnWith(msg string, fields ...Field)` | Structured Warn |
 | `ErrorWith(msg string, fields ...Field)` | Structured Error |
-| `FatalWith(msg string, fields ...Field)` | Structured Fatal |
+| `FatalWith(msg string, fields ...Field)` | Structured Fatal (calls os.Exit(1) by default, customizable via FatalHandler) |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | Structured specified level |
 
 ### Print Methods

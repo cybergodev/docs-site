@@ -1,7 +1,7 @@
 ---
 sidebar_label: "ヘルパー関数"
 title: "ヘルパー関数 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON ヘルパー関数：CompareJSON 比較、ClearCache/GetStats キャッシュ管理、グローバルプロセッサ、セキュリティヘルパーで Go の日常的な JSON 操作を簡素化します。"
+description: "CyberGo JSON ヘルパー関数：CompareJSON 比較、ClearCache/GetStats キャッシュ管理、グローバルプロセッサ管理とセキュリティモードヘルパーで、Go の日常 JSON 操作を簡素化します。"
 sidebar_position: 8
 ---
 
@@ -13,9 +13,11 @@ json パッケージは JSON 比較、キャッシュ管理、ユーティリテ
 
 ### CompareJSON
 
-シグネチャ：`func CompareJSON(json1, json2 string) (bool, error)`
+シグネチャ：`func CompareJSON(json1, json2 string, cfg ...Config) (bool, error)`
 
 2 つの JSON 文字列が等しいか比較します。数値精度の差異とキー順序の差異を処理します。
+
+cfg なしの場合、従来の動作と同じです（セキュリティ検証を行わず、両側を `encoding/json` でマーシャル）。cfg を渡すと、2 つの入力にセキュリティ検証（サイズ/深度/危険パターン制限）を適用し、設定のエンコードで対称的な比較を行います。
 
 ```go
 // キー順序は異なるが内容は同じ
@@ -29,7 +31,14 @@ fmt.Println(equal) // true
 // 内容が異なる
 equal, _ = json.CompareJSON(`{"a":1}`, `{"a":2}`)
 fmt.Println(equal) // false
+
+// 設定付き（セキュリティ検証とエンコード制御を適用）
+equal, err = json.CompareJSON(a, b, json.SecurityConfig())
 ```
+
+::: tip Processor の同等メソッド
+`Processor.CompareJSON` は常にセキュリティ検証を実行します（cfg またはプロセッサ自身の設定に従い）、パッケージレベル関数の cfg なしパスとは動作が異なります。詳しくは [Processor データ変更](./processor/modify#processor-comparejson) を参照してください。
+:::
 
 ---
 
@@ -222,7 +231,7 @@ func main() {
 ## 出力関数
 
 ::: warning API 変更のお知らせ
-Print、PrintPretty、PrintE、PrintPrettyE はライブラリから削除され、提供されなくなりました。[Encode](./functions/encode-decode#encode)、[EncodePretty](./functions/encode-decode#encodepretty)、または [Prettify](./functions/encode-decode#prettify) を `fmt.Println` と組み合わせて使用してください。詳細は [出力関数](./print) を参照。
+Print、PrintPretty、PrintE、PrintPrettyE はライブラリから削除され、提供されなくなりました。[EncodeWithConfig](./functions/output#encodewithconfig)、[EncodePretty](./functions/output#encodepretty)、または [Prettify](./functions/output#prettify) を `fmt.Println` と組み合わせて使用してください（`Encode` は非推奨です）。詳細は [出力関数](./print) を参照。
 :::
 
 ---
@@ -429,7 +438,7 @@ enabled, err := result.AsBool()
 
 ## 関連
 
-- [クエリ取得関数](./functions/get) - Get, GetString などのクエリ操作
+- [クエリと取得関数](./functions/query) - Get, GetString などのクエリ操作
 - [変更関数](./functions/modify) - Set, Delete などの変更操作
 - [型定義](./types) - AccessResult などの型
 - [設定オプション](./config) - Config 設定の詳細

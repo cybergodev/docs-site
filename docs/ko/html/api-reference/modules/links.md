@@ -1,7 +1,7 @@
 ---
 sidebar_label: "링크 추출"
-title: "링크 추출 - CyberGo HTML | 리소스 링크 API"
-description: "CyberGo HTML 링크 추출 API: ExtractAllLinks 계열과 GroupLinksByType으로 리소스 링크를 추출·그룹화하며 Config로 필터링을 제어합니다."
+title: "링크 추출 - CyberGo html | 리소스 링크 추출 API"
+description: "CyberGo html 링크 추출 API: ExtractAllLinks 계열과 GroupLinksByType으로 리소스 링크를 추출해 유형별로 그룹화하며 필터 설정이 가능합니다."
 sidebar_position: 2
 ---
 

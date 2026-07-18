@@ -1,7 +1,7 @@
 ---
 sidebar_label: "基础示例"
 title: "使用示例 - CyberGo JSON | 实战代码示例"
-description: "CyberGo JSON 实战示例集合：路径查询、结构体 Marshal/Unmarshal、JSONL 流式处理、Hook 钩子、Schema 验证与错误处理，提供完整可运行的 Go 代码示例。"
+description: "CyberGo JSON 实战示例：路径查询、结构体 Marshal/Unmarshal、JSONL 流式处理、Hook 钩子、Schema 验证与错误处理，含可运行 Go 代码。"
 sidebar_position: 1
 ---
 

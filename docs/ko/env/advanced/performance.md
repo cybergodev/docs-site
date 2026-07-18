@@ -1,7 +1,7 @@
 ---
 sidebar_label: "성능 최적화"
 title: "성능 최적화 - CyberGo env | 고동시성 읽기/쓰기 튜닝"
-description: "CyberGo env 성능 최적화 가이드로 RWMutex 동시성, 객체 풀 재사용, mlock 메모리 잠금, 대용량 파일 스트리밍과 벤치마크 기반 매개변수 튜닝을 제안합니다."
+description: "CyberGo env 성능 최적화 가이드로 RWMutex·샤드 락 동시성, sync.Pool 객체 풀 재사용으로 제로 할당, mlock 메모리 잠금 비용 절충, 대용량 파일 스트리밍과 MaxFileSize/MaxVariables 매개변수 튜닝을 벤치마크 기반으로 제안합니다."
 sidebar_position: 1
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Базовые примеры"
-title: "Базовые примеры - CyberGo HTML | примеры кода"
-description: "Базовые примеры CyberGo HTML: извлечение контента и файлов, текст, Markdown, ссылки, переиспользование Processor, тайм-ауты, пакетная обработка и JSON."
+title: "Базовые примеры - CyberGo html | исполняемый код"
+description: "Базовые примеры CyberGo html: извлечение контента и файлов, текст, Markdown, группировка ссылок, переиспользование Processor и пакетная обработка."
 sidebar_position: 1
 ---
 

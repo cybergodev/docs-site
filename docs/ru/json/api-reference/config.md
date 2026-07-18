@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Config"
-title: "Конфигурация Config - CyberGo JSON | Справочник API"
-description: "Справочник Config CyberGo JSON: DefaultConfig, SecurityConfig, PrettyConfig, кэш, лимиты размеров и кодирование для настройки поведения JSON в Go."
+title: "Config - CyberGo JSON | API"
+description: "Config CyberGo JSON: DefaultConfig, SecurityConfig, PrettyConfig, кэш, лимиты и кодирование для настройки JSON в Go."
 sidebar_position: 4
 ---
 
@@ -18,6 +18,7 @@ type Config struct {
     CacheTTL     time.Duration `json:"cache_ttl"`      // Время жизни кэша
     EnableCache  bool          `json:"enable_cache"`   // Включить ли кэширование
     CacheResults bool          `json:"cache_results"`  // Кэшировать ли результаты операций
+    CacheSharedResults bool `json:"cache_shared_results"` // Разделять кэшированные результаты (пропустить защитное глубокое копирование; вызывающая сторона не должна изменять возвращённые контейнеры)
 
     // ===== Ограничения размеров =====
     MaxJSONSize  int64 `json:"max_json_size"`  // Максимальный размер JSON (байты)
@@ -104,6 +105,10 @@ type Config struct {
 }
 ```
 
+::: warning Контракт CacheSharedResults
+При `CacheSharedResults = true` попадания в кэш для `Get`/`GetFromParsed` **возвращают значение кэша напрямую**, пропуская защитное глубокое копирование (быстрее, меньше выделений памяти). При этом **вызывающая сторона не должна изменять** возвращённые `map[string]any`/`[]any` — в противном случае общий кэш будет повреждён и это повлияет на последующие чтения; примитивные значения (`bool`, `float64`, `string`, `json.Number`, `nil`) неизменяемы и всегда безопасны. Значение по умолчанию `false` сохраняет безопасное поведение «копирования при чтении»; включайте только если вызывающая сторона воспринимает результаты как доступные только для чтения (например, рабочие нагрузки с многократным чтением одного крупного поддерева в режиме только для чтения).
+:::
+
 ## Предустановки конфигурации
 
 ### DefaultConfig
@@ -137,6 +142,7 @@ defer processor.Close()
 | MaxCacheSize | 128 | Максимальное количество записей в кэше |
 | EnableCache | true | Включить кэширование |
 | CacheResults | true | Кэшировать результаты операций |
+| CacheSharedResults | false | Разделяемые кэшированные результаты, только для чтения, высокая пропускная способность |
 | EnableValidation | true | Включить валидацию |
 | StrictMode | false | Нестрогий режим |
 | FullSecurityScan | false | Выборочное сканирование безопасности (не полное) |

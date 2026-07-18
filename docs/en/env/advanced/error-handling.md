@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo env | Sentinel Errors & Recovery"
-description: "CyberGo env error-handling guide: 16 sentinel errors with errors.Is, 8 structured types with errors.As, recovery strategies and error-chain unwrapping."
+description: "CyberGo env error handling: 16 sentinels via errors.Is, ParseError/FileError/SecurityError via errors.As, recovery, Unwrap, production classification."
 sidebar_position: 2
 ---
 

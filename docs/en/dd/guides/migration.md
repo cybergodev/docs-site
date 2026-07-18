@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Migration Guide"
 title: "Migration Guide - CyberGo DD | Library Migration"
-description: "Migrate to CyberGo DD from log/slog, zap, logrus, or zerolog with API mapping tables, config comparisons, and progressive migration strategies."
+description: "Migrate to CyberGo DD from standard log/slog, zap, logrus, and zerolog with API mapping, config comparisons, and progressive strategies."
 sidebar_position: 8
 ---
 
@@ -27,13 +27,13 @@ If you are currently using another logging library, this guide helps you quickly
 
 ```go
 // Before: log
-log.Printf("User %s login failed: %v", username, err)
+log.Printf("user %s login failed: %v", username, err)
 
 // After: DD
-dd.Infof("User %s login failed: %v", username, err)
+dd.Infof("user %s login failed: %v", username, err)
 
 // Or use structured logging
-dd.ErrorWith("User login failed",
+dd.ErrorWith("user login failed",
     dd.String("username", username),
     dd.Err(err),
 )
@@ -47,12 +47,15 @@ log.SetOutput(file)
 log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 // After: DD
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Format: dd.FormatText,
     Targets: []dd.OutputTarget{
         dd.FileOutput("logs/app.log"),
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
 dd.SetDefault(logger)
 ```
 
@@ -82,7 +85,7 @@ slog.Info("request completed",
 )
 
 // After: DD
-dd.InfoWith("Request completed",
+dd.InfoWith("request completed",
     dd.String("method", "GET"),
     dd.Int("status", 200),
     dd.Duration("duration", 150*time.Millisecond),
@@ -120,7 +123,7 @@ cfg := zap.Config{
 logger, _ := cfg.Build()
 
 // After: DD
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Level:  dd.LevelInfo,
     Format: dd.FormatJSON,
     Targets: []dd.OutputTarget{
@@ -128,6 +131,9 @@ logger, _ := dd.New(dd.Config{
         dd.FileOutput("logs/app.json"),
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ### Field Comparison

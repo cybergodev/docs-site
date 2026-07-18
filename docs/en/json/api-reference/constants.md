@@ -23,13 +23,13 @@ var (
     // Limit errors
     ErrSizeLimit        = errors.New("size limit exceeded")
     ErrDepthLimit       = errors.New("depth limit exceeded")
-    ErrConcurrencyLimit = errors.New("concurrency limit exceeded")
+    ErrConcurrencyLimit = errors.New("concurrency limit exceeded") // Returned when controlled operations (Get/Set/Delete, etc.) reach MaxConcurrency
 
     // Security and validation errors
     ErrSecurityViolation = errors.New("security violation detected")
     ErrUnsupportedPath   = errors.New("unsupported path operation")
 
-    // Resource and performance errors
+    // Resource and performance errors (both Deprecated: not returned by any operation currently, retained for future use)
     ErrOperationTimeout  = errors.New("operation timeout")
     ErrResourceExhausted = errors.New("system resources exhausted")
 )

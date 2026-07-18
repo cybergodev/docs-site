@@ -275,7 +275,7 @@ func TestingConfig() *Config
 | UserAgent | httpc-test/1.0 |
 
 :::danger
-此配置禁用 TLS 验证和 SSRF 防护，**仅用于测试**。在非测试环境使用会打印安全警告。
+此配置禁用 TLS 验证和 SSRF 防护，**仅用于测试**。在非测试环境使用会打印安全警告（详见 [安全警告输出](#setsecuritywarnoutput)）。
 :::
 
 ### MinimalConfig
@@ -300,6 +300,26 @@ func MinimalConfig() *Config
 | BackoffFactor | 1.0 |
 | EnableJitter | false |
 | FollowRedirects | false |
+
+## 安全警告输出
+
+### SetSecurityWarnOutput
+
+```go
+func SetSecurityWarnOutput(w io.Writer)
+```
+
+重定向安全警告的输出目标。当使用 `TestingConfig()` 或将 `SecurityConfig.InsecureSkipVerify`（`Config.Security`）设为 `true` 时，httpc 会向该 writer 打印 `[SECURITY WARNING]` 级别的告警（每种警告每进程最多打印一次）。默认输出到 `os.Stderr`；传入 `io.Discard` 可完全抑制警告，便于测试或已知安全的内部场景静默运行。
+
+```go
+// 测试中抑制安全警告
+httpc.SetSecurityWarnOutput(io.Discard)
+cfg := httpc.TestingConfig()
+```
+
+:::tip 影响范围
+此设置是进程级全局状态，影响所有后续创建的客户端。`TestingConfig` 与 `InsecureSkipVerify` 两种告警各自独立计数（互不影响触发），但共享同一输出 writer。
+:::
 
 ## 验证
 

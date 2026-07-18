@@ -1,7 +1,7 @@
 ---
 sidebar_label: "구조체 매핑"
 title: "구조체 매핑 - CyberGo env | 환경 변수에서 구조체로"
-description: "CyberGo env 구조체 매핑 가이드로 env 태그로 변수를 구조체에 매핑하며 중첩·포인터·슬라이스·커스텀 변환기·기본값·필수 검증을 설명합니다."
+description: "CyberGo env 구조체 매핑 가이드로 env·envDefault·envSeparator·envPrefix 태그로 변수를 구조체에 매핑하며 중첩·포인터·슬라이스·커스텀 변환기·필드 무시·기본값·필수 검증을 설명합니다."
 sidebar_position: 1
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概述"
-title: "CyberGo env - 环境变量管理库"
-description: "CyberGo env 是高安全 Go 环境变量管理库，支持 .env、JSON、YAML 多格式加载与类型安全转换，内置 SecureValue 内存保护和审计日志，让配置更安全可靠。"
+title: "环境变量管理 - CyberGo env | Go 配置库"
+description: "CyberGo env 是高安全 Go 环境变量管理库，支持 .env、JSON、YAML 多格式自动检测加载与类型安全转换，内置 SecureValue 内存锁定与自动清零、分片锁线程安全、${VAR} 变量展开、env 标签结构体映射和完整审计日志，适用于微服务与云原生配置管理。"
 ---
 
 # env

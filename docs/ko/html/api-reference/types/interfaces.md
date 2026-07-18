@@ -1,7 +1,7 @@
 ---
 sidebar_label: "인터페이스 정의"
-title: "인터페이스 정의 - CyberGo HTML | 핵심 인터페이스"
-description: "CyberGo HTML 핵심 인터페이스: Extractor, StatsProvider, ContentNode, Scorer, AuditSink로 확장, 통합 테스트, 아키텍처 이해를 지원합니다."
+title: "인터페이스 정의 - CyberGo html | 핵심 인터페이스 참조"
+description: "CyberGo html 핵심 인터페이스: Extractor, StatsProvider, ContentNode, Scorer, AuditSink로 기능 확장과 통합 테스트를 지원합니다."
 sidebar_position: 1
 ---
 

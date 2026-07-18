@@ -1,7 +1,7 @@
 ---
 sidebar_label: "변수 확장"
-title: "변수 확장 - CyberGo env 변수 구문"
-description: "CyberGo env 변수 확장 구문 가이드로 ${VAR}와 ${VAR:-default} 참조, 조건부 확장, 순환 참조 감지, MaxExpansionDepth 제한을 .env 파일에 적용합니다."
+title: "변수 확장 - CyberGo env | 구문 가이드"
+description: "CyberGo env 변수 확장 구문 가이드로 ${VAR}와 ${VAR:-default} 참조, ${VAR:=default} 기본값, ${VAR:?error} 필수 검증, $VAR 단축, 순환 참조 감지와 MaxExpansionDepth 제한으로 설정 재사용을 구현합니다."
 sidebar_position: 4
 ---
 

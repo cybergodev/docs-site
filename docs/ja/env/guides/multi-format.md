@@ -1,7 +1,7 @@
 ---
 sidebar_label: "マルチフォーマット設定"
 title: "マルチフォーマット設定 - CyberGo env | .env/JSON/YAML"
-description: "CyberGo env マルチフォーマット読み込みガイド。.env・JSON・YAML の自動検出と混在読み込み、マージ優先順位、フォーマット変換をマイクロサービス・コンテナ環境に提供します。"
+description: "CyberGo env マルチフォーマット読み込みガイド。.env・JSON・YAML の自動検出と混在読み込み、ネスト・配列のフラットキー、マージ優先順位、Marshal/UnmarshalMap フォーマット変換、RegisterParser カスタム形式をマイクロサービス・コンテナ環境に提供します。"
 sidebar_position: 3
 ---
 

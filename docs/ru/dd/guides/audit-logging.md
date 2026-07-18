@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Аудитные логи"
-title: "Аудитные логи - CyberGo DD | Руководство по аудиту"
-description: "Практическое руководство по аудитным логам CyberGo DD, охватывающее механизм асинхронной записи событий AuditLogger, 11 встроенных типов аудитных событий, фильтрацию по уровню серьёзности, интеграцию с HMAC-подписями целостности, статистику аудита и мониторинг в реальном времени, проверку логов и стратегии защиты от подделки, помогающее разработчикам создать корпоративную систему аудита безопасности, соответствующую требованиям соответствия."
+title: "Аудитные логи - CyberGo DD | Аудит и безопасность"
+description: "Руководство по аудитным логам CyberGo DD: AuditLogger, 11 типов событий, HMAC-подписи целостности, мониторинг и защита от подделки для корпоративного аудита."
 sidebar_position: 5
 ---
 
@@ -28,28 +28,39 @@ sidebar_position: 5
 ### Базовое использование
 
 ```go
-auditLogger, _ := dd.NewAuditLogger(dd.DefaultAuditConfig())
+auditLogger, err := dd.NewAuditLogger(dd.DefaultAuditConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer auditLogger.Close()
 
 // Примечание: AuditLogger и Logger — независимые компоненты
 // Они не интегрируются автоматически, нужно подключать вручную через хуки или другие механизмы
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: dd.DefaultSecurityConfig(),
-    Targets: []dd.OutputTarget{dd.ConsoleOutput()},
+    Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### Пользовательская конфигурация
 
 ```go
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     Enabled:          true,
-    Output:           os.Stderr,           // Цель вывода (*os.File)
-    BufferSize:       2000,                // Размер буферизованного канала
-    IncludeTimestamp: true,                // Включать временную метку
-    JSONFormat:       true,                // Формат JSON
+    Output:           os.Stderr,               // Цель вывода (*os.File)
+    BufferSize:       2000,                    // Размер буферизованного канала
+    IncludeTimestamp: true,                    // Включать временную метку
+    JSONFormat:       true,                    // Формат JSON
     MinimumSeverity:  dd.AuditSeverityWarning, // Минимальный уровень серьёзности
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer auditLogger.Close()
 ```
 
 ## Типы аудитных событий
@@ -76,17 +87,23 @@ AuditLogger записывает 11 типов событий безопасно
 
 ```go
 // Создание подписывающего устройства
-integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
-signer, _ := dd.NewIntegritySigner(integrityCfg)
+integrityCfg, err := dd.DefaultIntegrityConfigSafe()
+if err != nil {
+    log.Fatal(err)
+}
+signer, err := dd.NewIntegritySigner(integrityCfg)
+if err != nil {
+    log.Fatal(err)
+}
 
 // Создание аудитного Logger с подписями
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     Enabled:          true,
     Output:           auditFile,
     JSONFormat:       true,
     BufferSize:       1000,
     MinimumSeverity:  dd.AuditSeverityInfo,
-    IntegritySigner:  signer,    // HMAC-подпись
+    IntegritySigner:  signer, // HMAC-подпись
 })
 ```
 
@@ -105,7 +122,7 @@ for eventType, count := range stats.ByType {
 }
 ```
 
-:::tip Рекомендация по мониторингу
+:::tip Рекомендации по мониторингу
 Регулярно проверяйте счётчик `Dropped`. Если количество отброшенных событий растёт, это указывает на недостаточный размер буфера — увеличьте `BufferSize` или повысьте скорость потребления.
 :::
 
@@ -132,9 +149,13 @@ if result.Valid {
 
 ```go
 // Записывать только Warning и выше
-auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
     MinimumSeverity: dd.AuditSeverityWarning,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer auditLogger.Close()
 ```
 
 | Уровень | Значение | Сценарий применения |
@@ -150,6 +171,7 @@ auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
 package main
 
 import (
+    "log"
     "os"
 
     "github.com/cybergodev/dd"
@@ -157,15 +179,24 @@ import (
 
 func main() {
     // Создание файла аудита
-    auditFile, _ := os.Create("logs/audit.json")
+    auditFile, err := os.Create("logs/audit.json")
+    if err != nil {
+        log.Fatal(err)
+    }
     defer auditFile.Close()
 
     // Создание подписывающего устройства
-    integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
-    signer, _ := dd.NewIntegritySigner(integrityCfg)
+    integrityCfg, err := dd.DefaultIntegrityConfigSafe()
+    if err != nil {
+        log.Fatal(err)
+    }
+    signer, err := dd.NewIntegritySigner(integrityCfg)
+    if err != nil {
+        log.Fatal(err)
+    }
 
     // Создание аудитного Logger
-    auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+    auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
         Enabled:          true,
         Output:           auditFile,
         JSONFormat:       true,
@@ -173,14 +204,20 @@ func main() {
         MinimumSeverity:  dd.AuditSeverityInfo,
         IntegritySigner:  signer,
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer auditLogger.Close()
 
     // Создание бизнес-Logger (с фильтрацией безопасности)
-    logger, _ := dd.New(dd.Config{
+    logger, err := dd.New(dd.Config{
         Format:   dd.FormatJSON,
         Security: dd.DefaultSecureConfig(),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer logger.Close()
 
     // Нормальные бизнес-логи (конфиденциальные данные автоматически маскируются)

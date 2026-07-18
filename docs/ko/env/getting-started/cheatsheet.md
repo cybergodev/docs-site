@@ -1,8 +1,8 @@
 ---
 sidebar_label: "치트시트"
 title: "치트시트 - CyberGo env | 자주 사용하는 API 빠른 참조"
-description: "CyberGo env 자주 쓰는 API 치트시트로 파일 로딩, 타입 읽기, 검증, SecureValue 저장, 직렬화, 감사 로그 등 고빈도 작업의 핵심 코드를 한 페이지에 정리해 빠르게 참조할 수 있습니다."
-sidebar_position: 3
+description: "CyberGo env 자주 쓰는 API 치트시트로 파일 로딩, 타입 읽기, 구조체 매핑, 변수 확장, SecureValue 저장, Marshal 직렬화, 센티넬 오류 errors.Is, 감사 로그 등 고빈도 작업의 핵심 코드를 한 페이지에 정리해 빠르게 참조할 수 있습니다."
+sidebar_position: 2
 ---
 
 # 치트시트

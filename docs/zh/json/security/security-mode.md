@@ -1,7 +1,7 @@
 ---
 sidebar_label: "安全模式"
 title: "安全模式 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 安全 API：安全配置、AddDangerousPattern 危险模式与输入验证，防御 JSON 注入、深度嵌套与资源耗尽等威胁。"
+description: "CyberGo JSON 安全 API：安全配置、AddDangerousPattern 危险模式与输入验证，防御 JSON 注入、原型污染与 XSS 等威胁。"
 sidebar_position: 2
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "自定义编码器"
 title: "CustomEncoder - CyberGo JSON | 自定义编码器"
-description: "CyberGo JSON 自定义编码器指南：CustomEncoder 接口与 TypeEncoder 类型编码器的定义、配置与实现示例，为自定义 Go 类型注册专用 JSON 序列化逻辑。"
+description: "CyberGo JSON 自定义编码器：CustomEncoder 接口与 TypeEncoder 类型编码器的定义与实现，为 Go 类型注册 JSON 序列化逻辑。"
 sidebar_position: 3
 ---
 

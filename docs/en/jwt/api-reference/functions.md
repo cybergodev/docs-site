@@ -2,7 +2,7 @@
 sidebar_label: "Package Functions"
 title: "Functions - CyberGo JWT | Factories"
 description: "Package functions: New creates and validates a Processor, DefaultConfig and DefaultBlacklistConfig return defaults, and NewRateLimiter builds a limiter."
-sidebar_position: 2
+sidebar_position: 10
 ---
 
 # Package Functions

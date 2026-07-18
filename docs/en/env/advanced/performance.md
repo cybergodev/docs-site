@@ -1,7 +1,7 @@
 ---
-sidebar_label: "Performance"
+sidebar_label: "Performance Optimization"
 title: "Performance - CyberGo env | High-Concurrency Tuning"
-description: "CyberGo env performance guide: RWMutex concurrency, object-pool reuse, mlock memory locking and large-file streaming, with benchmarks and tuning tips."
+description: "CyberGo env performance: RWMutex/sharded locks, sync.Pool reuse, mlock tradeoffs, large-file streaming, benchmarks, MaxFileSize/MaxVariables tuning."
 sidebar_position: 1
 ---
 

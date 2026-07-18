@@ -1,7 +1,7 @@
 ---
 sidebar_label: "テスト補助"
 title: "テスト補助 - CyberGo DD | LoggerRecorder"
-description: "CyberGo DD テスト補助ツール LoggerRecorder 完全 API ドキュメント。単体テストシナリオ専用に設計され、ログ出力内容のキャプチャとアサーションをサポート。レベル別フィルタリング、構造化フィールド値検証、エントリカウント統計、順序付きアサーションを含み、ログ関連の単体テストの作成効率と可読性を大幅に向上。"
+description: "CyberGo DD テスト補助ツール LoggerRecorder 完全 API ドキュメント。単体テスト専用でログ出力のキャプチャとアサーションをサポート。レベル別フィルタリング、構造化フィールド値検証、エントリカウント統計、順序付きアサーションを含み、ログ関連単体テストの効率と可読性を向上。"
 sidebar_position: 2
 ---
 

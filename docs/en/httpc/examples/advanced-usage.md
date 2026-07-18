@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Advanced Usage"
 title: "Advanced Examples - CyberGo HTTPC | Production Code"
-description: "HTTPC advanced examples: a custom RetryPolicy, a complete middleware chain, a RESTful client wrapper, concurrent downloads, and HMAC-SHA256 signing."
+description: "HTTPC advanced examples: a custom RetryPolicy, a complete middleware chain, a RESTful client wrapper, concurrent downloads, and HMAC-SHA256 signing, helping you build a high-performance, observable production HTTP client."
 sidebar_position: 2
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Basic Usage"
-title: "Basic Usage - CyberGo HTML | Runnable Examples"
-description: "CyberGo HTML basic examples: content and file extraction, text, Markdown, links, Processor reuse, timeouts, batch processing, and JSON serialization."
+title: "Basic Usage - CyberGo html | Runnable Examples"
+description: "CyberGo html basic usage examples: content and file extraction, plain text, Markdown output, link grouping, Processor reuse, and concurrent batch code."
 sidebar_position: 1
 ---
 

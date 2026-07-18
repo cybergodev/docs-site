@@ -1,7 +1,7 @@
 ---
 sidebar_label: "よくある質問"
-title: "よくある質問 - CyberGo HTML | 質問と回答"
-description: "CyberGo HTML よくある質問：パッケージ関数と Processor の選択、エンコーディング検出、入力制限、バッチ上限、空テキスト診断、統計、監査、カスタムスコアラーに答えます。"
+title: "よくある質問 - CyberGo html | 高頻度質問回答"
+description: "CyberGo html よくある質問：パッケージ関数と Processor の選択、エンコーディング検出、入力制限、バッチ上限、空テキスト診断、統計監視などに答えます。"
 sidebar_position: 1
 ---
 

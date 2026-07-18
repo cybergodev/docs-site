@@ -2,7 +2,7 @@
 sidebar_label: "치트시트"
 title: "치트시트 - CyberGo HTTPC | 빠른 참조"
 description: "HTTPC 치트시트: 클라이언트 생성과 다섯 가지 프리셋, 일곱 가지 요청 메서드, 주요 WithXxx 요청 옵션, Result 처리, 미들웨어 체인, 오류 분류와 파일 다운로드의 완전하고 재사용 가능한 코드 조각을 빠르게 참조하세요."
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # 치트시트

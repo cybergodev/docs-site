@@ -458,55 +458,55 @@ err := np.ProcessReader(file, func(lineNum int, obj map[string]any) error {
 
 ### StreamJSONL
 
-シグネチャ：`func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+シグネチャ：`func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 JSONL を行ごとにストリーム処理し、各行を `IterableValue` に解析してからコールバックを呼び出します。
 
 ### StreamJSONLParallel
 
-シグネチャ：`func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+シグネチャ：`func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 `workers` 個の並行 goroutine で JSONL を処理します。
 
 ### StreamJSONLParallelWithContext
 
-シグネチャ：`func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error) error`
+シグネチャ：`func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 コンテキストキャンセルをサポートする並行 JSONL 処理。
 
 ### StreamJSONLChunked
 
-シグネチャ：`func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error) error`
+シグネチャ：`func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
 
 `chunkSize` ごとに JSONL をバッチ処理し、各バッチを `[]*IterableValue` としてコールバックに渡します。
 
 ### ForeachJSONL
 
-シグネチャ：`func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error) error`
+シグネチャ：`func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 JSONL を走査し、各行でコールバックを呼び出します。
 
 ### MapJSONL
 
-シグネチャ：`func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error)) ([]any, error)`
+シグネチャ：`func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error), cfg ...Config) ([]any, error)`
 
 各行を新しい値にマッピングし、結果のスライスを返します。
 
 ### ReduceJSONL
 
-シグネチャ：`func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any) (any, error)`
+シグネチャ：`func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any, cfg ...Config) (any, error)`
 
 JSONL を畳み込みます。`initial` はアキュムレータの初期値です。
 
 ### FilterJSONL
 
-シグネチャ：`func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool) ([]*IterableValue, error)`
+シグネチャ：`func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) ([]*IterableValue, error)`
 
 述語で JSONL をフィルタリングし、一致する項目を返します。
 
 ### StreamJSONLFile
 
-シグネチャ：`func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error) error`
+シグネチャ：`func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
 パッケージレベル関数。Processor を作成せずに、ファイルから直接 JSONL データをストリーム処理します。
 
@@ -519,13 +519,13 @@ err := json.StreamJSONLFile("data.jsonl", func(lineNum int, item *json.IterableV
 
 ### CollectJSONL
 
-シグネチャ：`func CollectJSONL(reader io.Reader) ([]*IterableValue, error)`
+シグネチャ：`func CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
 
 すべての JSONL 行を読み取り、スライスとして収集します。
 
 ### FirstJSONL
 
-シグネチャ：`func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool) (*IterableValue, bool, error)`
+シグネチャ：`func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) (*IterableValue, bool, error)`
 
 述語を満たす最初の要素を返します。2 番目の戻り値は一致が見つかったかどうかを示します。
 
@@ -708,6 +708,5 @@ func main() {
 
 ## 関連
 
-- [大規模ファイル処理 API](./large-file) - ForeachFile シリーズメソッド
-- [大規模ファイル処理ガイド](./large-files) - 大規模ファイル処理ガイド
+- [大規模ファイル処理](./large-files) - 大ファイルガイドと API リファレンス
 - [イテレータ](../api-reference/iterator) - イテレーション API

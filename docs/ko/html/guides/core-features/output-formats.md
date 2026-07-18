@@ -1,7 +1,7 @@
 ---
 sidebar_label: "출력 형식 선택"
-title: "출력 형식 선택 - CyberGo HTML | 형식 비교 가이드"
-description: "CyberGo HTML 출력 형식 선택: 순수 텍스트, Markdown, JSON 세 형식의 특징과 적용 시나리오를 비교하고 형식 옵션과 파일 읽기를 다룹니다."
+title: "출력 형식 선택 - CyberGo html | 형식 비교 가이드"
+description: "CyberGo html 출력 형식 선택: 순수 텍스트, Markdown, JSON 세 출력의 특징과 적용 시나리오를 비교하고 형식 옵션 설정을 다룹니다."
 sidebar_position: 2
 ---
 

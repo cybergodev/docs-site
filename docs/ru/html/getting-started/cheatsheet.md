@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Шпаргалка"
-title: "Шпаргалка - CyberGo HTML | API на странице"
-description: "Шпаргалка по API CyberGo HTML: функции пакета, методы Processor, пресеты, ключевые параметры, обработка ошибок и настройка аудита."
+title: "Шпаргалка - CyberGo html | сводка API"
+description: "Шпаргалка по API CyberGo html: функции пакета, методы Processor, пресеты конфигурации, ключевые параметры, обработка ошибок и настройка аудита."
 sidebar_position: 3
 ---
 

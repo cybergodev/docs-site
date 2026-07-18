@@ -1,7 +1,7 @@
 ---
-sidebar_label: "構造化ロギング"
+sidebar_label: "構造化ログ"
 title: "構造化ログ - CyberGo DD | フィールドとチェーン呼び出し"
-description: "CyberGo DD 構造化ログ使用ガイド。20+ の型安全なフィールドコンストラクタ、Field チェーン渡しパターン、LoggerEntry 不変設計の原理、フィールド命名規則と検証ルール、構造化ログのベストプラクティスと一般的な使用パターンを詳細に紹介し、プロジェクトで高性能な構造化ログ記録ソリューションを効果的に活用できます。"
+description: "CyberGo DD 構造化ログ使用ガイド。20+ の型安全なフィールドコンストラクタ、Field チェーン渡しパターン、LoggerEntry 不変設計の原理、フィールド命名規則と検証ルール、ベストプラクティスと一般的な使用パターンを紹介し、構造化ログを効果的に活用するよう支援します。"
 sidebar_position: 2
 ---
 
@@ -137,9 +137,13 @@ cfg := dd.DefaultFieldValidationConfig()
 ### 設定で有効化
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     FieldValidation: dd.StrictSnakeCaseConfig(),
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 有効にすると、非準拠のフィールド名はログに警告が出力されます：
@@ -234,7 +238,11 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### JSON フォーマット
 
 ```go
-logger, _ := dd.New(dd.JSONConfig())
+logger, err := dd.New(dd.JSONConfig())
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 logger.InfoWith("リクエスト完了",
     dd.String("method", "GET"),
     dd.Int("status", 200),

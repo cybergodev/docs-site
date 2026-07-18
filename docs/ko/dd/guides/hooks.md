@@ -1,7 +1,7 @@
 ---
 sidebar_label: "훅 시스템"
 title: "훅 시스템 - CyberGo DD | 라이프사이클 훅 실전 가이드"
-description: "CyberGo DD 훅 시스템 실전 가이드. 6가지 라이프사이클 훅 이벤트 (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), HookRegistry 등록과 관리, HookContext 컨텍스트 데이터, 오류 처리 전략 및 일반적인 훅 사용 시나리오를 상세히 소개하여 개발자가 로그 라이브러리의 동작을 확장할 수 있도록 돕습니다."
+description: "CyberGo DD 훅 시스템 가이드: 6가지 라이프사이클 이벤트(BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), HookRegistry 등록 관리, HookContext 컨텍스트와 일반적인 확장 시나리오를 다룹니다."
 sidebar_position: 6
 ---
 
@@ -38,9 +38,13 @@ hooks := dd.NewHooksFromConfig(dd.HooksConfig{
     }},
 })
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Hooks: hooks,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### HookRegistry 사용
@@ -63,9 +67,13 @@ registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Hooks: registry,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ## HookContext 컨텍스트
@@ -106,7 +114,11 @@ registry.Add(dd.HookAfterLog, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, _ := dd.New(dd.Config{Hooks: registry})
+logger, err := dd.New(dd.Config{Hooks: registry})
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### 로그 샘플링
@@ -180,7 +192,7 @@ registry.Add(dd.HookBeforeLog, func(ctx context.Context, hCtx *dd.HookContext) e
 })
 ```
 
-:::warning 훅 내의 Panic
+:::warning 훅에서의 Panic
 훅 함수에서 panic이 발생하면 DD가 자동으로 복구하며 메인 흐름에 영향을 주지 않습니다. panic 정보는 ErrorHandler에 전달됩니다.
 :::
 

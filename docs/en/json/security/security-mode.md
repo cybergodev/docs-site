@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Security Mode"
 title: "Security - CyberGo JSON | API Reference"
-description: "CyberGo JSON security API: security config, AddDangerousPattern dangerous patterns, and input validation against JSON injection and resource exhaustion."
+description: "CyberGo JSON security API: security config, AddDangerousPattern dangerous patterns, and input validation against JSON injection, prototype pollution, and XSS."
 sidebar_position: 2
 ---
 

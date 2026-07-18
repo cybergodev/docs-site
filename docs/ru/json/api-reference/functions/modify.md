@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Модификация"
-title: "Функции изменения - CyberGo JSON | Справочник API"
-description: "Функции изменения CyberGo JSON: Set/SetMultiple, Delete, MergeJSON/MergeMany с авто-созданием путей, атомарными операциями и стратегиями MergeMode."
+title: "Функции изменения - CyberGo JSON | API"
+description: "Функции изменения CyberGo JSON: Set/SetMultiple, MergeJSON/MergeMany с авто-созданием путей и MergeMode."
 sidebar_position: 3
 ---
 
 # Функции изменения
 
-Функции изменения JSON, предоставляемые пакетом json, поддерживают установку значений по пути, пакетное обновление и операции удаления.
+Функции изменения JSON, предоставляемые пакетом json, поддерживают установку значений по пути, пакетное обновление и операции слияния.
 
 ## Функции установки
 
@@ -140,74 +140,6 @@ result, err := json.SetMultipleCreate(`{}`, map[string]any{
 })
 ```
 
-## Функции удаления
-
-### Delete
-
-Сигнатура: `func Delete(jsonStr, path string, cfg ...Config) (string, error)`
-
-Удаление значения по указанному пути.
-
-**Параметры**
-
-| Имя | Тип | Обязательный | Описание |
-|------|------|------|------|
-| `jsonStr` | `string` | Да | JSON-строка |
-| `path` | `string` | Да | Выражение пути |
-| `cfg` | `Config` | Нет | Необязательная конфигурация |
-
-**Пример**
-
-```go
-result, err := json.Delete(data, "user.temporary")
-if err != nil {
-    panic(err)
-}
-```
-
-**Удаление свойства объекта**
-
-```go
-// Удаление одного свойства
-result, err := json.Delete(`{"user":{"name":"Alice","temp":"value"}}`, "user.temp")
-// {"user":{"name":"Alice"}}
-```
-
-**Удаление элемента массива**
-
-```go
-// Удаление элемента массива (индексация с 0)
-result, err := json.Delete(`{"items":["a","b","c"]}`, "items[1]")
-// {"items":["a","c"]}
-```
-
-**Несуществующий путь**
-
-```go
-// При несуществующем пути возвращается исходный JSON и ошибка
-result, err := json.Delete(`{"a":1}`, "nonexistent.path")
-if err != nil {
-    // err содержит JsonsError, обёрнутый вокруг ErrPathNotFound
-    fmt.Println("Ошибка удаления:", err)
-}
-// result всё ещё содержит исходный JSON: {"a":1}
-```
-
-### DeleteClean
-
-Сигнатура: `func DeleteClean(jsonStr, path string, cfg ...Config) (string, error)`
-
-Удаление по указанному пути с автоматической очисткой пустых значений и пустых массивов.
-
-```go
-// Исходные данные: {"user": {"temp": "value", "name": "test"}}
-result, err := json.DeleteClean(data, "user.temp")
-// {"user":{"name":"test"}}
-
-// Если после удаления родительский объект пуст, очистка продолжается
-// {"user": {}} -> {}
-```
-
 ## Функции слияния
 
 ### MergeJSON
@@ -276,61 +208,6 @@ result, err := json.MergeMany([]string{config1, config2, config3})
 // Результат: {"api":"v1","timeout":60,"retries":5,"debug":true}
 ```
 
-## Пакетные операции
-
-### ProcessBatch
-
-Сигнатура: `func ProcessBatch(operations []BatchOperation, cfg ...Config) ([]BatchResult, error)`
-
-Пакетная обработка нескольких JSON-операций (функция уровня пакета, не требует создания Processor).
-
-```go
-jsonStr := `{"user": {"name": "CyberGo", "age": 25}}`
-
-operations := []json.BatchOperation{
-    {Type: "get", JSONStr: jsonStr, Path: "user.name", ID: "op1"},
-    {Type: "set", JSONStr: jsonStr, Path: "user.age", Value: 30, ID: "op2"},
-}
-
-results, err := json.ProcessBatch(operations)
-if err != nil {
-    panic(err)
-}
-for _, r := range results {
-    if r.Error != nil {
-        fmt.Printf("Операция %s не удалась: %v\n", r.ID, r.Error)
-    } else {
-        fmt.Printf("Результат операции %s: %v\n", r.ID, r.Result)
-    }
-}
-```
-
-### BatchOperation
-
-Структура описания пакетной операции.
-
-```go
-type BatchOperation struct {
-    Type    string `json:"type"`     // Тип операции: "get", "set", "delete", "validate"
-    JSONStr string `json:"json_str"` // Целевая JSON-строка
-    Path    string `json:"path"`     // Выражение пути
-    Value   any    `json:"value"`    // Значение операции (используется для set)
-    ID      string `json:"id"`       // Идентификатор операции
-}
-```
-
-### BatchResult
-
-Структура результата пакетной операции.
-
-```go
-type BatchResult struct {
-    ID     string `json:"id"`     // Идентификатор операции
-    Result any    `json:"result"` // Результат операции
-    Error  error  `json:"error"`  // Информация об ошибке
-}
-```
-
 ## Методы Processor
 
 Processor предоставляет соответствующие методы изменения, сигнатуры совпадают с функциями уровня пакета:
@@ -343,8 +220,24 @@ result, err = p.Delete(jsonStr, "user.temp")
 result, err = p.SetCreate(jsonStr, "user.email", "test@example.com")
 ```
 
+У `MergeJSON` и `MergeMany` также есть соответствующие методы Processor с сигнатурами, идентичными функциям уровня пакета, что удобно для повторного использования настроенного Processor:
+
+```go
+result, err := p.MergeJSON(base, override)
+
+merged, err := p.MergeMany([]string{config1, config2, config3})
+
+// У CompareJSON тоже есть метод Processor (внимание: Processor.CompareJSON
+// всегда выполняет проверку безопасности, в отличие от пути без cfg у функции
+// уровня пакета)
+equal, err := p.CompareJSON(a, b)
+```
+
+Подробнее см. [Модификация данных Processor](../processor/modify#processor-методы-слияния).
+
 ## Смотрите также
 
-- [Функции запросов и получения](./get) - Операции запросов Get, GetString и др.
-- [Функции кодирования и декодирования](./encode-decode) - Операции сериализации Marshal, Unmarshal и др.
+- [Функции запросов и получения](./query) - Операции запросов Get, GetString и др.
+- [Функции пакетных операций](./batch) - Пакетная обработка ProcessBatch
+- [Функции кодирования и вывода](./output) - Операции сериализации Marshal, Unmarshal и др.
 - [Вспомогательные функции](../helpers) - Утилиты CompareJSON и др.

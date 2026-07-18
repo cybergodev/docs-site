@@ -85,7 +85,13 @@ type Config struct {
 func (c *Config) Clone() Config
 ```
 
-创建配置的深拷贝，可安全修改而不影响原始配置。
+创建配置的副本，可安全修改而不影响原始配置。对 nil 接收者返回零值 `Config{}`。
+
+拷贝策略（与源码 `Clone` 注释一致）：
+
+- **深拷贝**：`Targets`（切片）、`JSON`（含 `JSONFieldNames`）、`Security`、`Hooks`、`Sampling`、`Audit`
+- **浅拷贝**：`FatalHandler`、`WriteErrorHandler`、`FieldValidation`（函数/指针共享）
+- **混合**：`ContextExtractors` 切片被复制，但提取器实例本身共享
 
 ```go
 base := dd.DefaultConfig()
@@ -99,7 +105,15 @@ custom.Level = dd.LevelDebug
 func (c Config) Validate() error
 ```
 
-验证配置的合法性，检查输出目标、级别、格式等是否有效。
+验证配置的合法性，返回遇到的第一个错误。`dd.New(cfg)` 内部会自动调用此方法；也可在传入 `New` 前手动调用以提前发现问题。
+
+校验项：
+
+- `Level` 必须落在 `[LevelDebug, LevelFatal]` 范围内
+- `Format` 必须为 `FormatText` 或 `FormatJSON`
+- 当 `IncludeTime=true` 且 `TimeFormat` 非空时，校验 Go 时间参考布局（如 `time.RFC3339`）
+- `Targets` 总数不超过 100（超出返回 `ErrMaxWritersExceeded`）
+- 每个 `Targets` 元素：`OutputCustom` 必须有非 nil 的 `Writer`，`OutputFile` 必须有非空的 `Path`
 
 ```go
 cfg := dd.DefaultConfig()
@@ -148,6 +162,19 @@ func ConsoleOutput() OutputTarget
 func FileOutput(path string) OutputTarget
 func CustomOutput(w io.Writer) OutputTarget
 ```
+
+:::tip FileOutput 默认轮转参数
+`FileOutput` 返回的 `OutputTarget` 已预填默认轮转值：`MaxSizeMB=100`、`MaxBackups=10`、`MaxAge=30 * 24 * time.Hour`（30 天）、`Compress=false`。如需自定义，直接修改返回值的对应字段：
+
+```go
+target := dd.FileOutput("logs/app.log")
+target.MaxSizeMB = 50               // 50 MB 切割
+target.MaxBackups = 5               // 保留 5 个备份
+target.MaxAge = 7 * 24 * time.Hour  // 保留 7 天
+target.Compress = true              // gzip 压缩旧日志
+```
+
+:::
 
 ```go
 // 控制台输出

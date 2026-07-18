@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor & Cache"
-title: "Processor Cache & Reuse - CyberGo HTML | Reuse Guide"
-description: "CyberGo HTML Processor reuse and cache: package-function vs Processor, sync.Pool, cache strategy (TTL, capacity, cleanup), hit-rate stats, web-service patterns."
+title: "Processor Cache & Reuse - CyberGo html | Performance Guide"
+description: "CyberGo html Processor reuse and cache: package-function vs instance, sync.Pool, cache strategy with hit-rate monitoring, and web-service singleton practice."
 sidebar_position: 1
 ---
 

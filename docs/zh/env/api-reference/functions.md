@@ -1,7 +1,7 @@
 ---
 sidebar_label: "包函数"
 title: "包函数 - CyberGo env | 全局便捷函数"
-description: "CyberGo env 包级便捷函数 API 参考，提供 Load、GetString、GetInt、Keys、Marshal、ParseInto 等基于全局默认 Loader 的线程安全接口。"
+description: "CyberGo env 包级便捷函数 API 参考，提供 Load、GetString、GetInt、GetBool、GetDuration、GetSlice、GetSecure、Lookup、Keys 与 ParseInto 等基于全局默认 Loader 的线程安全接口。"
 sidebar_position: 2
 ---
 
@@ -375,7 +375,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ### GetSliceFrom[T]
 
 ```go
-func GetSliceFrom[T sliceElement](./loader *Loader, key string, defaultValue ...[]T) []T
+func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
 从指定 Loader 实例获取切片值。这是独立的泛型函数（不是 Loader 方法）。
@@ -520,6 +520,7 @@ func Set(key, value string) error
 **错误类型：**
 - `ErrInvalidKey` - 键名无效
 - `ErrForbiddenKey` - 键被禁止
+- `ErrInvalidValue` - 值无效（当 `ValidateValues` 为 true 时，值包含空字节、控制字符等不安全内容）
 - `ErrClosed` - 加载器已关闭
 
 ```go
@@ -634,9 +635,9 @@ func ResetDefaultLoader() error
 - `error` - 关闭旧加载器的错误（如果存在）；如果之前没有加载器或关闭成功则返回 nil
 
 **行为：**
-- 原子地将默认加载器交换为 nil
-- 关闭旧的加载器（在锁外执行，避免阻塞）
-- 允许创建新的默认加载器
+- 通过 `atomic.Pointer.Swap` 原子地将默认加载器交换为 nil
+- 在持有 `defaultMu` 锁的状态下关闭旧的加载器（关闭完成才释放锁，确保重置过程的原子性）
+- 重置后允许通过 `Load()` 或 `LoadWithConfig()` 创建新的默认加载器
 
 ```go
 func TestMain(m *testing.M) {

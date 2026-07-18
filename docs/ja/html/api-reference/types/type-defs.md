@@ -1,7 +1,7 @@
 ---
-sidebar_label: "型定義"
-title: "型定義 - CyberGo HTML | データ型リファレンス"
-description: "CyberGo HTML データ型：Result（カスタム JSON シリアライズ）、ImageInfo、LinkInfo、LinkResource、Statistics、BatchResult など主要型のフィールドを説明します。"
+sidebar_label: "データ型"
+title: "型定義 - CyberGo html | データ型リファレンス"
+description: "CyberGo html データ型：Result、ImageInfo、LinkInfo、LinkResource、Statistics、BatchResult などコア型のフィールドを説明します。"
 sidebar_position: 2
 ---
 

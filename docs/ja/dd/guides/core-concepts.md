@@ -1,7 +1,7 @@
 ---
 sidebar_label: "コア概念"
 title: "コア概念 - CyberGo DD | アーキテクチャと設計理念"
-description: "CyberGo DD ログライブラリのコアアーキテクチャと設計理念を深く理解。Logger と LoggerEntry の関係とライフサイクル、構造化フィールド Field の型安全使用パターン、ログ処理パイプラインの完全処理フロー、4 層の段階的インターフェース設計、スレッドセーフな並行モデルを含み、DD ライブラリの体系的理解を構築します。"
+description: "CyberGo DD ログライブラリのコアアーキテクチャと設計理念を深く理解。Logger と LoggerEntry の関係とライフサイクル、構造化フィールド Field の型安全使用パターン、ログ処理パイプラインの処理フロー、4 層の段階的インターフェース設計、並行モデルを網羅し、体系的理解を支援します。"
 sidebar_position: 1
 ---
 
@@ -28,7 +28,10 @@ Logger（ロガー）
 `Logger` はコアとなるロガーで、`dd.New()` で作成します：
 
 ```go
-logger, _ := dd.New(dd.DefaultConfig())
+logger, err := dd.New(dd.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer logger.Close()
 
 logger.Info("サービス起動")
@@ -220,13 +223,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 DD は 3 種類の出力先をサポートし、自由に組み合わせ可能：
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Targets: []dd.OutputTarget{
         dd.ConsoleOutput(),                    // コンソール
         dd.FileOutput("logs/app.log"),         // ファイル（自動ローテーション）
         dd.CustomOutput(customWriter),         // カスタム io.Writer
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 組み込み Writer コンポーネント：

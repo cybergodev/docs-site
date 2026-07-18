@@ -2,7 +2,7 @@
 sidebar_label: "커스텀 Claims"
 title: "커스텀 Claims - CyberGo JWT | 비즈니스 선언 인터페이스"
 description: "커스텀 Claims 가이드: CustomClaims 인터페이스로 비즈니스 전용 선언 필드를 정의하고, 내장 Claims와 커스텀 타입의 검증 차이, ValidateInto와 RefreshInto 파싱·갱신 사용법을 안내합니다."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 커스텀 Claims

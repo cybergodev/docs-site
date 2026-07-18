@@ -1,7 +1,7 @@
 ---
 sidebar_label: "개요"
-title: "CyberGo JSON | 고성능 Go JSON 라이브러리"
-description: "CyberGo JSON은 고성능 스레드 안전 Go JSON 라이브러리로, JSONPath 쿼리, 스트림 처리, 제네릭 API, Schema 검증을 지원하며 encoding/json과 100% 호환되는 고동시성 프로덕션 환경용입니다."
+title: "JSON 라이브러리 - CyberGo JSON | 고성능 Go"
+description: "CyberGo JSON은 고성능 스레드 안전 Go 라이브러리로 JSONPath 쿼리, 스트림 처리, 제네릭 API, Schema 검증을 지원하며 encoding/json과 100% 호환됩니다."
 ---
 
 # JSON 처리 라이브러리

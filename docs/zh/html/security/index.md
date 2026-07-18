@@ -1,7 +1,7 @@
 ---
 sidebar_label: "安全概述"
-title: "安全概述 - CyberGo HTML | 安全防护总览"
-description: "CyberGo HTML 安全概述：输入大小限制、DOM 深度限制、路径遍历防护、恐慌恢复、处理超时、内容清洗与可插拔审计，违规支持 errors.Is/As 判断。"
+title: "安全概述 - CyberGo html | 安全防护总览"
+description: "CyberGo html 安全概述：输入大小限制、DOM 深度限制、路径遍历防护、恐慌恢复、内容清洗与审计 HighSecurityConfig 预设。"
 sidebar_position: 1
 ---
 

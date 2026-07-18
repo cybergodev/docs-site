@@ -1,5 +1,5 @@
 ---
-sidebar_label: "JSONL Processing"
+sidebar_label: "JSONL"
 title: "Processor JSONL Methods - CyberGo JSON | API Reference"
 description: "CyberGo JSON Processor JSONL: StreamJSONL streaming, ForeachJSONL iteration, MapJSONL mapping, ReduceJSONL reduction, and FilterJSONL filtering."
 sidebar_position: 8

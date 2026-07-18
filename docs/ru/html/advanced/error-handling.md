@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обработка ошибок"
-title: "Обработка ошибок - CyberGo HTML | надёжная обработка"
-description: "Обработка ошибок CyberGo HTML: пять категорий, errors.Is, errors.As, отмена context и частичные неудачи пакетов для надёжной логики."
+title: "Обработка ошибок - CyberGo html | надёжная логика"
+description: "Обработка ошибок CyberGo html: пять категорий, errors.Is/As, отмена context и частичные неудачи пакетов для построения надёжной логики."
 sidebar_position: 2
 ---
 

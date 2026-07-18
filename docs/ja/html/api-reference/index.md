@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概要"
-title: "API リファレンス - CyberGo HTML | 全モジュール索引"
-description: "CyberGo HTML 全 API 索引：パッケージ関数と Processor の二つの呼び出し方式で、抽出、出力、リンク、バッチ、設定、監査、型など全モジュールを案内します。"
+title: "API リファレンス - CyberGo html | 全関数・型インデックス"
+description: "CyberGo html 完全 API 索引：パッケージ関数と Processor の 2 方式で、コンテンツ抽出、出力フォーマット、リンク、バッチ、設定、監査、型モジュールを網羅します。"
 sidebar_position: 1
 ---
 

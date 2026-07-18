@@ -1,7 +1,7 @@
 ---
 sidebar_label: "웹 서비스 통합"
 title: "웹 서비스 통합 - CyberGo DD | HTTP 서비스 로그 예제"
-description: "CyberGo DD를 웹 서비스에 통합하는 전체 예제. HTTP 미들웨어 로그 기록, 요청 체인 추적과 TraceID 전달, 다중 라우팅 계층화 로그 설정, 정상 종료와 로그 새로고침 및 프로덕션급 로그 설정 방안을 다루어 개발자가 DD 로그 라이브러리를 HTTP 서비스 프로젝트에 빠르게 통합할 수 있도록 돕습니다."
+description: "CyberGo DD 웹 서비스 통합 예제. HTTP 미들웨어 로그 기록, 요청 체인 추적과 TraceID 전달, 다중 라우팅 계층화 로그 설정, 정상 종료와 로그 새로고침, 프로덕션급 로그 설정 방안으로 DD 로그 라이브러리를 HTTP 서비스에 빠르게 통합합니다."
 sidebar_position: 2
 ---
 

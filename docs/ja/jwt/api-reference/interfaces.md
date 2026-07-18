@@ -2,7 +2,7 @@
 sidebar_label: "インターフェース定義"
 title: "インターフェース定義 - CyberGo JWT | 核心拡張インターフェース"
 description: "インターフェース参考：TokenManager トークン操作核心、CustomClaims カスタム宣言、BlacklistStore ブラックリスト、RateLimitProvider 制限器、ClockProvider 時計注入、任意 RateLimitKeyer。"
-sidebar_position: 6
+sidebar_position: 50
 ---
 
 # インターフェース定義

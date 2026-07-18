@@ -1,7 +1,7 @@
 ---
-sidebar_label: "HMAC 서명 실전"
+sidebar_label: "HMAC 서명"
 title: "HMAC 서명 실전 - CyberGo DD | 로그 무결성 보호"
-description: "CyberGo DD HMAC-SHA256 로그 무결성 서명 실전 가이드. IntegritySigner 생성과 초기화 설정, 서명과 검증 전체 흐름, 타임스탬프와 일련번호 증분 메커니즘, 변조 방지 검출 전략, 감사 로그 시스템과의 통합 방안 및 프로덕션 환경 배포 모범 사례를 다루어 로그 체인의 무결성과 추적 가능성을 보장합니다."
+description: "CyberGo DD HMAC-SHA256 로그 무결성 서명 실전 가이드. IntegritySigner 생성과 초기화, 서명과 검증 흐름, 타임스탬프와 일련번호 증분, 변조 방지 검출, 감사 로그 통합 및 프로덕션 배포 모범 사례로 로그 체인의 무결성과 추적 가능성을 보장합니다."
 sidebar_position: 3
 ---
 

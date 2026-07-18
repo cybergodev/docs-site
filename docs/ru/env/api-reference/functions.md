@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Функции пакета"
 title: "Функции пакета - CyberGo env | Глобальные удобные функции"
-description: "Справочник пакетных функций CyberGo env: Load, GetString, GetInt, Keys, Marshal и ParseInto поверх потокобезопасного глобального загрузчика."
+description: "Пакетные функции CyberGo env поверх глобального загрузчика: Load, GetString, GetInt, GetBool, GetDuration, GetSlice, GetSecure, Lookup, Keys и ParseInto."
 sidebar_position: 2
 ---
 
@@ -375,7 +375,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 ### GetSliceFrom[T]
 
 ```go
-func GetSliceFrom[T sliceElement](./loader *Loader, key string, defaultValue ...[]T) []T
+func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
 Получает значение среза из указанного экземпляра Loader. Это отдельная универсальная функция (не метод Loader).
@@ -520,6 +520,7 @@ func Set(key, value string) error
 **Типы ошибок:**
 - `ErrInvalidKey` - Имя ключа недействительно
 - `ErrForbiddenKey` - Ключ запрещён
+- `ErrInvalidValue` - Недопустимое значение (когда `ValidateValues` равно true, значение содержит небезопасный контент: нулевые байты, управляющие символы)
 - `ErrClosed` - Загрузчик закрыт
 
 ```go
@@ -634,9 +635,9 @@ func ResetDefaultLoader() error
 - `error` - Ошибка закрытия старого загрузчика (если он существует); nil если загрузчика не было или закрытие успешно
 
 **Поведение:**
-- Атомарно заменяет загрузчик по умолчанию на nil
-- Закрывает старый загрузчик (выполняется вне блокировки, чтобы избежать блокировки)
-- Позволяет создать новый загрузчик по умолчанию
+- Атомарно заменяет загрузчик по умолчанию на nil через `atomic.Pointer.Swap`
+- Закрывает старый загрузчик, удерживая блокировку `defaultMu` (блокировка снимается только после завершения закрытия, что обеспечивает атомарность сброса)
+- После сброса можно создать новый загрузчик по умолчанию через `Load()` или `LoadWithConfig()`
 
 ```go
 func TestMain(m *testing.M) {

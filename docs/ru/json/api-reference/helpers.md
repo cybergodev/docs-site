@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Вспомогательные функции"
-title: "Вспомогательные функции - CyberGo JSON | Справочник API"
-description: "Вспомогательные функции CyberGo JSON: CompareJSON, ClearCache/GetStats, управление глобальным Processor и помощники безопасности для работы с JSON в Go."
+title: "Вспомогательные функции - CyberGo JSON | API"
+description: "Вспомогательные функции CyberGo JSON: CompareJSON, ClearCache/GetStats, управление Processor и помощники безопасности."
 sidebar_position: 8
 ---
 
@@ -13,9 +13,11 @@ sidebar_position: 8
 
 ### CompareJSON
 
-Сигнатура: `func CompareJSON(json1, json2 string) (bool, error)`
+Сигнатура: `func CompareJSON(json1, json2 string, cfg ...Config) (bool, error)`
 
 Сравнивает две строки JSON на равенство. Обрабатывает различия в точности чисел и порядке ключей.
+
+Без cfg поведение остаётся прежним (проверка безопасности не выполняется, обе стороны маршалируются через `encoding/json`). При передаче cfg к обоим входам применяется проверка безопасности (ограничения размера/глубины/опасных шаблонов) и используется симметричное сравнение с кодировкой из конфигурации.
 
 ```go
 // Разный порядок ключей, но одинаковое содержимое
@@ -29,7 +31,14 @@ fmt.Println(equal) // true
 // Разное содержимое
 equal, _ = json.CompareJSON(`{"a":1}`, `{"a":2}`)
 fmt.Println(equal) // false
+
+// С конфигурацией (применение проверки безопасности и управления кодировкой)
+equal, err = json.CompareJSON(a, b, json.SecurityConfig())
 ```
+
+::: tip Эквивалентный метод Processor
+`Processor.CompareJSON` всегда выполняет проверку безопасности (по cfg или собственной конфигурации процессора), в отличие от пути без cfg у функции уровня пакета. Подробнее см. [Модификация данных Processor](./processor/modify#processor-comparejson).
+:::
 
 ---
 
@@ -222,7 +231,7 @@ func main() {
 ## Функции вывода
 
 ::: warning
-Print, PrintPretty, PrintE, PrintPrettyE удалены из библиотеки и больше не предоставляются. Используйте [Encode](./functions/encode-decode#encode), [EncodePretty](./functions/encode-decode#encodepretty) или [Prettify](./functions/encode-decode#prettify) вместе с `fmt.Println`. Подробности в разделе [Функции печати](./print).
+Print, PrintPretty, PrintE, PrintPrettyE удалены из библиотеки и больше не предоставляются. Используйте [EncodeWithConfig](./functions/output#encodewithconfig), [EncodePretty](./functions/output#encodepretty) или [Prettify](./functions/output#prettify) вместе с `fmt.Println` (`Encode` устарел). Подробности в разделе [Функции печати](./print).
 :::
 
 ---
@@ -429,7 +438,7 @@ enabled, err := result.AsBool()
 
 ## Связанные разделы
 
-- [Функции запросов](./functions/get) - Операции запросов Get, GetString и др.
+- [Функции запросов](./functions/query) - Операции запросов Get, GetString и др.
 - [Функции модификации](./functions/modify) - Операции изменения Set, Delete и др.
 - [Определения типов](./types) - Типы, такие как AccessResult
 - [Параметры конфигурации](./config) - Подробное описание Config

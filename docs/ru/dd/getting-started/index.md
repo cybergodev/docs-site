@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Быстрый старт"
 title: "Быстрый старт - CyberGo DD | Руководство за 5 минут"
-description: "Полное руководство для быстрого старта с высокопроизводительной библиотекой структурированного логирования CyberGo DD, от установки зависимостей до первого вывода логов, с пошаговым изучением создания логгера, настройки целей вывода и стратегий ротации файлов, использования структурированных полей для записи контекстной информации запросов и расширения функциональности через систему хуков, освоение основных возможностей за 5 минут для применения в реальных проектах."
-sidebar_position: 2
+description: "Быстрый старт с CyberGo DD за 5 минут: установка, создание логгера, настройка целей вывода и ротации, структурированные поля и хуки для реальных проектов."
+sidebar_position: 1
 ---
 
 # Быстрый старт
@@ -15,6 +15,8 @@ DD предоставляет множество удобных конструк
 package main
 
 import (
+    "log"
+
     "github.com/cybergodev/dd"
 )
 
@@ -23,35 +25,47 @@ func main() {
     dd.Info("Использование глобального логгера")
 
     // Способ 2: Режим разработки (уровень DEBUG, с caller)
-    dev, _ := dd.New(dd.DevelopmentConfig())
+    dev, err := dd.New(dd.DevelopmentConfig())
+    if err != nil {
+        log.Fatal(err)
+    }
     defer dev.Close()
     dev.Info("Вывод в режиме разработки")
 
     // Способ 3: Вывод в файл
-    file, _ := dd.New(dd.Config{
+    file, err := dd.New(dd.Config{
         Targets: []dd.OutputTarget{dd.FileOutput("logs/app.log")},
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer file.Close()
     file.Info("Вывод в файл")
 
     // Способ 4: Одновременный вывод в консоль и файл
-    all, _ := dd.New(dd.Config{
+    all, err := dd.New(dd.Config{
         Targets: []dd.OutputTarget{
             dd.ConsoleOutput(),
             dd.FileOutput("logs/app.log"),
         },
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer all.Close()
     all.Info("Вывод в две цели")
 
     // Способ 5: Двойной вывод в формате JSON
-    jsonLogger, _ := dd.New(dd.Config{
+    jsonLogger, err := dd.New(dd.Config{
         Format: dd.FormatJSON,
         Targets: []dd.OutputTarget{
             dd.ConsoleOutput(),
             dd.FileOutput("logs/app.json"),
         },
     })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer jsonLogger.Close()
     jsonLogger.Info("Вывод в формате JSON")
 }
@@ -128,11 +142,18 @@ fwCfg.MaxBackups = 3
 fwCfg.MaxSizeMB = 1
 fwCfg.Compress = true
 
-fw, _ := dd.NewFileWriter("logs/app.log", fwCfg)
-logger, _ := dd.New(dd.Config{
+fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
+if err != nil {
+    log.Fatal(err)
+}
+logger, err := dd.New(dd.Config{
     Level: dd.LevelInfo,
     Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 logger.Info("hello world")
 ```
@@ -143,7 +164,11 @@ DD по умолчанию включает базовую фильтрацию 
 
 ```go
 // Конфигурация по умолчанию уже включает базовую фильтрацию безопасности
-logger, _ := dd.New(dd.DefaultConfig())
+logger, err := dd.New(dd.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 // Поле password автоматически маскируется
 logger.InfoWith("Пользователь вошёл",

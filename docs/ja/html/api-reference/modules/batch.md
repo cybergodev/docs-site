@@ -1,7 +1,7 @@
 ---
 sidebar_label: "バッチ処理"
-title: "バッチ処理 - CyberGo HTML | 並行バッチ API"
-description: "CyberGo HTML 並行バッチ API：ExtractBatch、ExtractBatchFiles 系とコンテキスト版。WorkerPoolSize 並行、バッチ最大 10000 項目、BatchResult カウントを提供します。"
+title: "バッチ処理 - CyberGo html | 並行バッチ抽出 API"
+description: "CyberGo html 並行バッチ API：ExtractBatch、ExtractBatchFiles 系とコンテキスト版。並行処理をサポートし、1 バッチ最大 10000 件まで処理可能です。"
 sidebar_position: 3
 ---
 

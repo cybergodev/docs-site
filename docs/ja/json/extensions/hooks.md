@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Hook システム"
-title: "Hook フックシステム - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON Hook システム：Hook インターフェース、LoggingHook、TimingHook、ValidationHook、ErrorHook とカスタムフックで JSON 操作の前後に独自ロジックを挟めます。"
+title: "Hook システム - CyberGo JSON | API リファレンス"
+description: "CyberGo JSON Hook システム：Hook インターフェース、LoggingHook、TimingHook、ValidationHook、ErrorHook とカスタムフックで、JSON 操作の前後に独自ロジックを挟めます。"
 sidebar_position: 1
 ---
 

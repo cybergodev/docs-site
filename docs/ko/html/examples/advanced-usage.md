@@ -1,7 +1,7 @@
 ---
 sidebar_label: "고급 예제"
-title: "고급 예제 - CyberGo HTML | 심화 시나리오"
-description: "CyberGo HTML 고급 예제: 커스텀 Scorer, 다중 Sink 감사 파이프라인, 배치 파일과 동시성 제어, Processor 풀링, ChannelAuditSink 모니터링 등 실행 가능 예시입니다."
+title: "고급 예제 - CyberGo html | 심화 시나리오 예제"
+description: "CyberGo html 고급 예제: 커스텀 Scorer, 다중 Sink 감사 파이프라인, 배치 동시성 제어, Processor 풀링 등 심화 실행 가능 코드입니다."
 sidebar_position: 2
 ---
 

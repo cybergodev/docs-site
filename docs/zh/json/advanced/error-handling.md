@@ -1,7 +1,7 @@
 ---
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo JSON | 最佳实践"
-description: "CyberGo JSON 错误处理最佳实践：JsonsError 类型判断、errors.Is/As 匹配、标准错误变量、恢复策略、SafeError 安全输出与 RedactedPath 脱敏日志，构建健壮异常机制。"
+description: "CyberGo JSON 错误处理：JsonsError 类型判断、errors.Is/As 匹配、SafeError 安全输出与 RedactedPath 脱敏日志，构建健壮异常机制。"
 sidebar_position: 2
 ---
 

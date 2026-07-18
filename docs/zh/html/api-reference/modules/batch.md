@@ -1,7 +1,7 @@
 ---
 sidebar_label: "批量处理"
-title: "批量处理 - CyberGo HTML | 并发批量 API"
-description: "CyberGo HTML 并发批量 API：ExtractBatch、ExtractBatchFiles 系列及上下文版本，WorkerPoolSize 并发，单批最多 10000 项，BatchResult 含成功/失败/取消计数。"
+title: "批量处理 - CyberGo html | 并发批量提取 API"
+description: "CyberGo html 并发批量 API：ExtractBatch、ExtractBatchFiles 系列及上下文版本，支持并发处理，单批最多 10000 项。"
 sidebar_position: 3
 ---
 

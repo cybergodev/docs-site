@@ -1,13 +1,13 @@
 ---
 sidebar_label: "修改操作"
 title: "修改函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 修改函数：Set/SetMultiple 设置、Delete 删除、MergeJSON/MergeMany 合并，支持自动路径创建、原子操作与多种 MergeMode 策略。"
+description: "CyberGo JSON 修改函数：Set/SetMultiple 设置、MergeJSON/MergeMany 合并，支持自动路径创建、原子操作与多种 MergeMode 策略。"
 sidebar_position: 3
 ---
 
 # 修改函数
 
-json 包提供的 JSON 修改函数，支持路径设置、批量更新和删除操作。
+json 包提供的 JSON 修改函数，支持路径设置、批量更新和合并操作。
 
 ## 设置函数
 
@@ -140,74 +140,6 @@ result, err := json.SetMultipleCreate(`{}`, map[string]any{
 })
 ```
 
-## 删除函数
-
-### Delete
-
-签名：`func Delete(jsonStr, path string, cfg ...Config) (string, error)`
-
-删除指定路径的值。
-
-**参数**
-
-| 名称 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `jsonStr` | `string` | 是 | JSON 字符串 |
-| `path` | `string` | 是 | 路径表达式 |
-| `cfg` | `Config` | 否 | 可选配置 |
-
-**示例**
-
-```go
-result, err := json.Delete(data, "user.temporary")
-if err != nil {
-    panic(err)
-}
-```
-
-**删除对象属性**
-
-```go
-// 删除单个属性
-result, err := json.Delete(`{"user":{"name":"Alice","temp":"value"}}`, "user.temp")
-// {"user":{"name":"Alice"}}
-```
-
-**删除数组元素**
-
-```go
-// 删除数组中的元素（索引从 0 开始）
-result, err := json.Delete(`{"items":["a","b","c"]}`, "items[1]")
-// {"items":["a","c"]}
-```
-
-**路径不存在**
-
-```go
-// 路径不存在时返回原 JSON 和错误
-result, err := json.Delete(`{"a":1}`, "nonexistent.path")
-if err != nil {
-    // err 包含 JsonsError，包装了 ErrPathNotFound
-    fmt.Println("删除失败:", err)
-}
-// result 仍为原始 JSON: {"a":1}
-```
-
-### DeleteClean
-
-签名：`func DeleteClean(jsonStr, path string, cfg ...Config) (string, error)`
-
-删除指定路径并自动清理产生的空值和空数组。
-
-```go
-// 原始数据: {"user": {"temp": "value", "name": "test"}}
-result, err := json.DeleteClean(data, "user.temp")
-// {"user":{"name":"test"}}
-
-// 如果删除后父对象为空，会继续清理
-// {"user": {}} -> {}
-```
-
 ## 合并函数
 
 ### MergeJSON
@@ -276,64 +208,9 @@ result, err := json.MergeMany([]string{config1, config2, config3})
 // 结果: {"api":"v1","timeout":60,"retries":5,"debug":true}
 ```
 
-## 批量操作
-
-### ProcessBatch
-
-签名：`func ProcessBatch(operations []BatchOperation, cfg ...Config) ([]BatchResult, error)`
-
-批量处理多个 JSON 操作（包级函数，无需创建 Processor）。
-
-```go
-jsonStr := `{"user": {"name": "CyberGo", "age": 25}}`
-
-operations := []json.BatchOperation{
-    {Type: "get", JSONStr: jsonStr, Path: "user.name", ID: "op1"},
-    {Type: "set", JSONStr: jsonStr, Path: "user.age", Value: 30, ID: "op2"},
-}
-
-results, err := json.ProcessBatch(operations)
-if err != nil {
-    panic(err)
-}
-for _, r := range results {
-    if r.Error != nil {
-        fmt.Printf("操作 %s 失败: %v\n", r.ID, r.Error)
-    } else {
-        fmt.Printf("操作 %s 结果: %v\n", r.ID, r.Result)
-    }
-}
-```
-
-### BatchOperation
-
-批量操作描述结构。
-
-```go
-type BatchOperation struct {
-    Type    string `json:"type"`     // 操作类型："get", "set", "delete", "validate"
-    JSONStr string `json:"json_str"` // 目标 JSON 字符串
-    Path    string `json:"path"`     // 路径表达式
-    Value   any    `json:"value"`    // 操作值（set 操作使用）
-    ID      string `json:"id"`       // 操作标识
-}
-```
-
-### BatchResult
-
-批量操作结果结构。
-
-```go
-type BatchResult struct {
-    ID     string `json:"id"`     // 操作标识
-    Result any    `json:"result"` // 操作结果
-    Error  error  `json:"error"`  // 错误信息
-}
-```
-
 ## Processor 方法
 
-Processor 提供了对应的修改方法，签名与包级函数一致：
+Processor 提供了对应的修改与合并方法，签名与包级函数一致：
 
 ```go
 p, err := json.New()
@@ -343,8 +220,23 @@ result, err = p.Delete(jsonStr, "user.temp")
 result, err = p.SetCreate(jsonStr, "user.email", "test@example.com")
 ```
 
+`MergeJSON`、`MergeMany` 也有对应的 Processor 方法，签名与包级函数一致，便于复用已配置的 Processor：
+
+```go
+result, err := p.MergeJSON(base, override)
+
+merged, err := p.MergeMany([]string{config1, config2, config3})
+
+// CompareJSON 也有 Processor 方法（注意：Processor.CompareJSON 始终执行
+// 安全验证，与包级函数的无 cfg 路径不同）
+equal, err := p.CompareJSON(a, b)
+```
+
+详见 [Processor 数据修改](../processor/modify#processor-合并方法)。
+
 ## 相关
 
-- [查询获取函数](./get) - Get, GetString 等查询操作
-- [编码解码函数](./encode-decode) - Marshal, Unmarshal 等序列化操作
+- [查询获取函数](./query) - Get, GetString 等查询操作
+- [批量操作函数](./batch) - ProcessBatch 批量处理
+- [编码输出函数](./output) - Marshal, Unmarshal 等序列化操作
 - [辅助函数](../helpers) - CompareJSON 等工具函数

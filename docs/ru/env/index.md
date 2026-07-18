@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обзор"
-title: "CyberGo env - Библиотека управления переменными окружения"
-description: "CyberGo env — защищённая Go-библиотека переменных окружения: загрузка .env, JSON и YAML, типобезопасное чтение, SecureValue с защитой памяти и аудит."
+title: "Переменные окружения - CyberGo env | Go-библиотека"
+description: "CyberGo env — защищённая Go-библиотека переменных окружения: .env/JSON/YAML, типобезопасное чтение, SecureValue (mlock), ${VAR}, маппинг и аудит."
 ---
 
 # env

@@ -2,7 +2,7 @@
 sidebar_label: "서명 알고리즘"
 title: "서명 알고리즘 - CyberGo JWT | 알고리즘 비교와 선택"
 description: "서명 알고리즘 가이드: HMAC, RSA, RSA-PSS, ECDSA 4종 12 알고리즘의 키 타입, 생성, 서명·검증 성능, 서명 길이, 아키텍처 결합도를 비교하며 선택과 키 관리 보안 실무를 안내합니다."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 서명 알고리즘
@@ -61,7 +61,7 @@ cfg.VerificationKey = rsaPublicKey    // *rsa.PublicKey (선택)
 ```
 
 :::tip 검증 키
-`VerificationKey`는 선택 사항입니다. 설정하지 않으면 라이브러리가 `SigningKey`에서 공개 키를 추출하여 검증에 사용합니다.
+`VerificationKey`는 선택 사항입니다. 설정하지 않으면 라이브러리가 `SigningKey`를 사용하여 검증합니다 (내부적으로 개인 키에서 공개 키를 추출).
 :::
 
 ### 키 생성

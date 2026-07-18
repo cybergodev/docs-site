@@ -7,6 +7,10 @@ sidebar_position: 5
 
 # Middleware
 
+:::tip Architecture Overview
+This page is the **built-in middleware reference**. For the overall Handler pipeline architecture, the onion model, and writing custom middleware, see [Handler Pipeline / Handler & Middleware Chain](../handler/handler-chain).
+:::
+
 HTTPC uses an onion-model middleware architecture, wrapping request handling logic via `MiddlewareFunc`.
 
 ```go

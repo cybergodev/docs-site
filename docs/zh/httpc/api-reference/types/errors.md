@@ -37,7 +37,7 @@ type ClientError struct {
 | Cause | `error` | 底层错误，可通过 `Unwrap()` 获取 |
 | `URL` | `string` | 请求 URL（凭据已脱敏） |
 | `Method` | `string` | HTTP 方法（GET、POST 等） |
-| `Attempts` | `int` | 已重试次数 |
+| `Attempts` | `int` | 已尝试次数（含首次请求） |
 | `StatusCode` | `int` | HTTP 状态码（非 HTTP 错误时为 0） |
 | Host | `string` | 请求主机名 |
 

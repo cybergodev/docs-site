@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概览"
-title: "API 参考 - CyberGo HTML | 完整模块索引"
-description: "CyberGo HTML 完整 API 索引：包函数与 Processor 两种调用方式，涵盖内容提取、格式输出、链接、批量、配置、审计与类型等全部模块。"
+title: "API 参考 - CyberGo html | 完整函数与类型清单"
+description: "CyberGo html 完整 API 索引：包函数与 Processor 两种调用模式，涵盖提取、输出、链接、批量、配置与审计等模块。"
 sidebar_position: 1
 ---
 

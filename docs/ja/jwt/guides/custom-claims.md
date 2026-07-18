@@ -2,7 +2,7 @@
 sidebar_label: "カスタム Claims"
 title: "カスタム Claims - CyberGo JWT | ビジネス宣言インターフェース"
 description: "カスタム Claims ガイド：CustomClaims インターフェースを実装してビジネス専用宣言項目を定義し、内蔵 Claims とカスタム型の検証差を比較、ValidateInto と RefreshInto の解析・更新用法を示す。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # カスタム Claims

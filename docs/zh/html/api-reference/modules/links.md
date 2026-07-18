@@ -1,7 +1,7 @@
 ---
 sidebar_label: "链接提取"
-title: "链接提取 - CyberGo HTML | 资源链接 API"
-description: "CyberGo HTML 链接提取 API：ExtractAllLinks 系列与 GroupLinksByType，提取各类资源链接并按类型分组，可通过 Config 控制过滤。"
+title: "链接提取 - CyberGo html | 资源链接提取 API"
+description: "CyberGo html 链接提取 API：ExtractAllLinks 系列与 GroupLinksByType，提取各类资源链接并按类型分组，可配置过滤。"
 sidebar_position: 2
 ---
 
@@ -77,3 +77,14 @@ cfg.IncludeExternalLinks = true
 cfg.ResolveRelativeURLs = true
 cfg.BaseURL = "https://example.com"
 ```
+
+:::tip BaseURL 自动检测
+当 `ResolveRelativeURLs=true` 且 `BaseURL` **为空**时，库会从 HTML 文档本身自动推导 BaseURL，按以下**优先级**逐项尝试，命中即返回：
+
+1. `<base href>` 标签；
+2. `<meta property="og:url">` 或 `<meta property="canonical">` 的 `content`；
+3. `<link rel="canonical" href>`；
+4. 文档中出现的首个绝对 URL（从其 `href`/`src` 提取 base）。
+
+显式设置 `BaseURL` 会**跳过自动检测**，优先使用调用方提供的值。
+:::

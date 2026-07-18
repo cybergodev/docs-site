@@ -1,7 +1,7 @@
 ---
 sidebar_label: "测试场景"
 title: "测试场景 - CyberGo env | 单元测试最佳实践"
-description: "CyberGo env 测试最佳实践指南，含 TestingConfig 配置、内存文件系统模拟、表驱动测试、基准测试与 ResetDefaultLoader 状态清理策略。"
+description: "CyberGo env 测试最佳实践指南，含 TestingConfig 配置与 OverwriteExisting 测试隔离、FileSystem 接口模拟内存文件系统、每个测试独立加载器、表驱动与基准测试、ResetDefaultLoader 状态清理策略，保障测试稳定可复现。"
 sidebar_position: 6
 ---
 

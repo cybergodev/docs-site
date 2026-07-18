@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor"
-title: "Processor - CyberGo HTML | 核心处理器 API"
-description: "CyberGo HTML Processor API：New 创建、Extract 方法族与 GetStatistics、GetAuditLog、ClearCache、Close 等生命周期管理，适合高频复用。"
+title: "Processor - CyberGo html | 用法、参数与示例"
+description: "CyberGo html Processor API：New 创建、Extract 方法族与 GetStatistics、ClearCache、Close 等生命周期管理，适合高频复用。"
 sidebar_position: 2
 ---
 

@@ -30,7 +30,7 @@ type Client interface {
 }
 ```
 
-メインクライアントインターフェース。`New()` で作成します。詳しくは [パッケージ関数](../core/functions) をご覧ください。
+メインクライアントインターフェース。`New()` で作成します。詳しくは [パッケージ関数とクライアントメソッド](../core/functions) をご覧ください。
 
 ## Doer
 
@@ -172,7 +172,7 @@ type RequestMutator interface {
 }
 ```
 
-ミドルウェアで使用され、リクエストの読み書きアクセスを提供します。内部インターフェース RequestReader と RequestWriter で構成されています。
+ミドルウェアで使用され、リクエストの読み書きアクセスを提供します。内部インターフェース RequestReader と RequestWriter で構成されています。完全なメソッド契約と読み書きの例は [リクエストとレスポンスミューテータ](../handler/mutators) を参照してください。
 
 ### ResponseMutator
 
@@ -215,7 +215,7 @@ type ResponseMutator interface {
 }
 ```
 
-ミドルウェアで使用され、レスポンスの読み書きアクセスを提供します。内部インターフェース ResponseReader と ResponseWriter で構成されています。
+ミドルウェアで使用され、レスポンスの読み書きアクセスを提供します。内部インターフェース ResponseReader と ResponseWriter で構成されています。完全なメソッド契約は [リクエストとレスポンスミューテータ](../handler/mutators) を参照してください。
 
 ### Handler
 
@@ -232,6 +232,79 @@ type MiddlewareFunc func(Handler) Handler
 ```
 
 ミドルウェア関数のシグネチャ。次の Handler を受け取り、ラップされた Handler を返します。
+
+## 証明書ピンニング
+
+証明書ピンニング（Certificate Pinning）は、TLS ハンドシェイク時にサーバー証明書が事前に固定された公開鍵/証明書と一致するかを検証します。信頼された CA が侵害されていてもハンドシェイクは拒否されるため、中間者攻撃を防げます。
+
+### CertificatePinner
+
+```go
+type CertificatePinner = security.CertificatePinner
+```
+
+証明書ピンナーインターフェース。以下のコンストラクタで作成後、`SecurityConfig.CertificatePinner` フィールド（`Config.Security` 経由でアクセス）に代入します。
+
+```go
+pinner, err := httpc.NewSPKIHashPinner(
+    "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2fuihg=", // 現在の鍵
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // バックアップ鍵（ローテーション用）
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+cfg := httpc.DefaultConfig()
+cfg.Security.CertificatePinner = pinner
+client, err := httpc.New(cfg)
+```
+
+:::tip
+Pinner の実装は並行安全であり、同じ `Config` から作成された複数のクライアントで共有できます（ディープコピー時は参照渡しされ、複製されません）。上級者はこのインターフェースを直接実装して、カスタムピンニング戦略（公開鍵ではなく完全な証明書を固定するなど）をサポートすることも可能です。
+:::
+
+### NewSPKIHashPinner
+
+```go
+func NewSPKIHashPinner(hashes ...string) (CertificatePinner, error)
+```
+
+1 つ以上の base64 エンコードされた SHA-256 ハッシュ値（DER エンコードされた SubjectPublicKeyInfo/SPKI に対する）から証明書ピンナーを作成します。これは最も一般的なピンニング形式（HPKP が採用）であり、推奨されるアプローチです。
+
+複数のハッシュを渡すことで鍵のローテーションに対応できます——対向側の公開鍵が固定されたハッシュの**いずれか 1 つ**に一致すれば、ハンドシェイクは成功します。
+
+以下のコマンドで証明書からハッシュを生成します:
+
+```bash
+openssl x509 -in cert.pem -pubkey -noout | openssl pkey -pubin -outform der \
+  | openssl dgst -sha256 -binary | openssl enc -base64
+```
+
+有効なハッシュが提供されない、またはハッシュが正当な base64 でない場合、エラーを返します。
+
+### NewPublicKeyPinner
+
+```go
+func NewPublicKeyPinner(publicKeys ...[]byte) (CertificatePinner, error)
+```
+
+1 つ以上の DER エンコードされた PKIX 公開鍵（`x509.MarshalPKIXPublicKey` が返すもの）から証明書ピンナーを作成します。内部で各公開鍵の SHA-256 ハッシュを計算します。すでに元の公開鍵バイトを保持している場合は、`NewSPKIHashPinner` よりも便利な選択肢です。
+
+有効な公開鍵が提供されない場合、エラーを返します。
+
+### NewCertificatePinnerChain
+
+```go
+func NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner
+```
+
+複数のピンナーを 1 つに組み合わせます。ラップされたピンナーの**いずれか 1 つ**が証明書を受け入れれば、証明書は受け入れられます。複数のピンニング戦略を同時にサポートする場合や、異なるコンストラクタで構築したローテーション用鍵を組み合わせる場合に使用します。
+
+引数を渡さない場合は no-op ピンナー（すべての証明書を拒否）を返します。
+
+:::tip さらに詳しく
+証明書ピンニングの完全なガイド（ハッシュ生成、鍵のローテーション戦略、本番デプロイ）は [TLS 証明書ピンニング](../../security/tls-certpin) をご覧ください。
+:::
 
 ## 関連ページ
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "リンク抽出"
-title: "リンク抽出 - CyberGo HTML | リソースリンク API"
-description: "CyberGo HTML リンク抽出 API：ExtractAllLinks 系と GroupLinksByType でリソースリンクを抽出・グループ化し、Config でフィルタを制御します。"
+title: "リンク抽出 - CyberGo html | リソースリンク抽出 API"
+description: "CyberGo html リンク抽出 API：ExtractAllLinks 系と GroupLinksByType で各種リソースリンクを抽出しタイプ別にグループ化、フィルタ設定も可能です。"
 sidebar_position: 2
 ---
 

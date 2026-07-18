@@ -1,7 +1,7 @@
 ---
 sidebar_label: "包函数"
-title: "包函数 - CyberGo HTML | 便捷提取 API"
-description: "CyberGo HTML 包级便捷函数：Extract、ExtractText、ExtractToMarkdown 等，内部用 sync.Pool 复用 Processor，适合一次性调用与快速集成。"
+title: "包函数 - CyberGo html | 用法、参数与示例"
+description: "CyberGo html 包级便捷函数：Extract、ExtractText、ExtractToMarkdown 等，内部用 sync.Pool 复用 Processor，适合一次性调用。"
 sidebar_position: 1
 ---
 

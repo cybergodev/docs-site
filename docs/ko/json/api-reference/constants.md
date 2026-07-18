@@ -23,13 +23,13 @@ var (
     // 제한 오류
     ErrSizeLimit        = errors.New("size limit exceeded")
     ErrDepthLimit       = errors.New("depth limit exceeded")
-    ErrConcurrencyLimit = errors.New("concurrency limit exceeded")
+    ErrConcurrencyLimit = errors.New("concurrency limit exceeded") // 제어된 작업(Get/Set/Delete 등)이 MaxConcurrency에 도달하면 반환
 
     // 보안 및 검증 오류
     ErrSecurityViolation = errors.New("security violation detected")
     ErrUnsupportedPath   = errors.New("unsupported path operation")
 
-    // 리소스 및 성능 오류
+    // 리소스 및 성능 오류 (모두 Deprecated: 현재 어떤 작업에서도 반환되지 않으며, 향후 사용을 위해 보존)
     ErrOperationTimeout  = errors.New("operation timeout")
     ErrResourceExhausted = errors.New("system resources exhausted")
 )

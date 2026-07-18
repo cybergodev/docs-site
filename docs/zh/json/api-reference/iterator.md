@@ -1,94 +1,21 @@
 ---
-sidebar_label: "迭代器"
-title: "迭代器 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 迭代 API：Foreach 基础迭代、ForeachWithPath 带路径、ForeachNested 递归、IterableValue 与 ParallelForeach 并行迭代，覆盖各类遍历场景。"
+sidebar_label: "迭代器类型"
+title: "迭代器类型 - CyberGo JSON | API 参考"
+description: "CyberGo JSON 迭代器类型：Iterator 顺序遍历、IterableValue 数据访问、StreamIterator/StreamObjectIterator 流式、BatchIterator 批量与 ParallelIterator 并行迭代器构造与方法。"
 sidebar_position: 9
 ---
 
-# 迭代器
+# 迭代器类型
 
-json 包提供丰富的迭代器功能，支持多种遍历方式：包级函数、Processor 方法、流式迭代、批量处理和并行处理。
+json 包提供多种迭代器类型，覆盖顺序遍历、流式处理、批量处理和并行处理场景。迭代**函数**（`Foreach`/`ForeachFile` 等）见 [包级迭代函数](./functions/iterate) 与 [Processor 迭代方法](./processor/iterate)。
 
-## 包级迭代函数
+## IteratorControl 常量
 
-无需创建 Processor 实例，可直接调用的迭代函数。
-
-### Foreach
-
-签名：`func Foreach(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
-
-遍历 JSON 数组或对象。
-
-```go
-json.Foreach(`{"name": "Alice", "age": 30}`, func(key any, item *json.IterableValue) {
-    fmt.Printf("键: %v, 值: %v\n", key, item.GetData())
-})
-// 输出（对象键的遍历顺序不保证，每次运行可能不同）:
-// 键: name, 值: Alice
-// 键: age, 值: 30
-```
-
-### ForeachWithPath
-
-签名：`func ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue), cfg ...Config) error`
-
-按路径遍历，返回错误。
-
-```go
-err := json.ForeachWithPath(data, "items", func(key any, item *json.IterableValue) {
-    fmt.Printf("[%v] %v\n", key, item.GetData())
-})
-if err != nil {
-    panic(err)
-}
-```
-
-### ForeachReturn
-
-签名：`func ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
-
-遍历并返回原始 JSON 字符串（只读操作）。
-
-```go
-result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) {
-    // 只读处理
-    fmt.Printf("处理: %v\n", item.GetData())
-})
-```
-
-### ForeachNested
-
-签名：`func ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
-
-递归遍历所有嵌套层级。
-
-```go
-json.ForeachNested(data, func(key any, item *json.IterableValue) {
-    fmt.Printf("类型: %T, 值: %v\n", item.GetData(), item.GetData())
-})
-```
-
-### ForeachWithPathAndControl
-
-签名：`func ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl, cfg ...Config) error`
-
-带控制流的遍历，可通过返回值控制迭代流程。
-
-```go
-err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) json.IteratorControl {
-    if value == nil {
-        return json.IteratorBreak // 停止迭代
-    }
-    // 处理...
-    return json.IteratorNormal // 继续迭代
-})
-```
-
-**IteratorControl 常量**
+`IteratorControl` 表示迭代控制标志，用于 `ForeachWithPathAndControl` 与 `ForeachWithPathAndIterator` 控制迭代流程。
 
 | 常量 | 说明 |
 |------|------|
-| `IteratorNormal` | 正常继续迭代 |
+| `IteratorNormal` | 正常继续迭代（默认值） |
 | `IteratorContinue` | 跳过当前项，继续迭代 |
 | `IteratorBreak` | 停止迭代 |
 
@@ -100,84 +27,6 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 | 过滤无效数据 | `IteratorContinue` | 跳过当前元素，不中断迭代 |
 | 找到目标后退出 | `IteratorBreak` | 找到所需数据后立即停止 |
 | 遇到错误中断 | `IteratorBreak` | 遇到严重错误时停止迭代 |
-
-```go
-// 场景1：过滤无效数据
-err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) json.IteratorControl {
-    if value == nil {
-        return json.IteratorContinue // 跳过 null 值
-    }
-    process(value)
-    return json.IteratorNormal
-})
-
-// 场景2：找到第一个符合条件的元素后退出
-var found any
-err = json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
-    if obj, ok := value.(map[string]any); ok {
-        if obj["admin"] == true {
-            found = obj
-            return json.IteratorBreak // 找到管理员后停止
-        }
-    }
-    return json.IteratorNormal
-})
-
-// 场景3：验证数据完整性
-var hasError bool
-err = json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
-    if !validateRecord(value) {
-        hasError = true
-        return json.IteratorBreak // 数据不完整，停止验证
-    }
-    return json.IteratorNormal
-})
-```
-
-### ForeachWithError
-
-签名：`func ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error) error`
-
-带错误处理的路径遍历。回调函数返回 error 时，迭代中止并返回该错误。
-
-```go
-err := json.ForeachWithError(data, "items", func(key any, item *json.IterableValue) error {
-    val := item.GetData()
-    if val == nil {
-        return fmt.Errorf("项 %v 的值为 null", key)
-    }
-    return processItem(val)
-})
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-### ForeachNestedWithError
-
-签名：`func ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error) error`
-
-递归遍历所有嵌套层级，带错误处理。回调函数返回 error 时，迭代中止。
-
-```go
-err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
-    fmt.Printf("键: %v, 值: %v\n", key, item.GetData())
-    return nil
-})
-```
-
-### ForeachWithPathAndIterator
-
-签名：`func ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl) error`
-
-带路径信息的迭代，回调函数接收当前完整路径。适用于需要跟踪遍历位置的深层嵌套结构处理。
-
-```go
-err := json.ForeachWithPathAndIterator(data, "users", func(key any, item *json.IterableValue, currentPath string) json.IteratorControl {
-    fmt.Printf("路径: %s, 键: %v\n", currentPath, key)
-    return json.IteratorNormal
-})
-```
 
 ---
 
@@ -241,7 +90,7 @@ for it.HasNext() {
 
 ## IterableValue 类型
 
-IterableValue 封装了迭代过程中的当前元素，提供便捷的值访问方法。
+IterableValue 封装了迭代过程中的当前元素，提供便捷的值访问方法。`Foreach` 系列函数的回调即接收 `*IterableValue`。
 
 ### 方法
 
@@ -715,176 +564,7 @@ defer it.Close()
 
 ---
 
-## Processor 迭代方法
-
-Processor 也提供迭代方法，适用于需要复用处理器的场景。
-
-### Foreach
-
-签名：`func (p *Processor) Foreach(jsonStr string, fn func(key any, item *IterableValue))`
-
-迭代 JSON 数组或对象。
-
-```go
-p, err := json.New()
-if err != nil {
-    panic(err)
-}
-defer p.Close()
-p.Foreach(`{"name": "Alice", "age": 30}`, func(key any, item *json.IterableValue) {
-    fmt.Printf("键: %v, 值: %v\n", key, item.GetData())
-})
-```
-
-### ForeachWithPath
-
-签名：`func (p *Processor) ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue)) error`
-
-按路径迭代，返回错误。
-
-### ForeachNested
-
-签名：`func (p *Processor) ForeachNested(jsonStr string, fn func(key any, item *IterableValue))`
-
-递归迭代所有嵌套层级。
-
-### ForeachReturn
-
-签名：`func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue)) (string, error)`
-
-迭代数组或对象并返回重新序列化后的 JSON 字符串。回调为只读访问；序列化失败时返回原始输入。
-
-### ForeachWithPathAndControl
-
-签名：`func (p *Processor) ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl) error`
-
-带控制流的路径遍历，可通过返回值控制迭代流程。
-
-### ForeachWithPathAndIterator
-
-签名：`func (p *Processor) ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl) error`
-
-带路径信息的迭代，回调函数接收当前完整路径。适用于需要跟踪遍历位置的深层嵌套结构处理。
-
-```go
-p.ForeachWithPathAndIterator(data, "users", func(key any, item *json.IterableValue, currentPath string) json.IteratorControl {
-    fmt.Printf("路径: %s, 键: %v\n", currentPath, key)
-    return json.IteratorNormal
-})
-```
-
-### ForeachWithError
-
-签名：`func (p *Processor) ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error) error`
-
-带错误处理的迭代。回调函数返回 error 时，迭代中止并返回该错误。
-
-```go
-err := p.ForeachWithError(data, "items", func(key any, item *json.IterableValue) error {
-    val := item.GetData()
-    if val == nil {
-        return fmt.Errorf("项 %v 的值为 null", key)
-    }
-    return processItem(val)
-})
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-### ForeachNestedWithError
-
-签名：`func (p *Processor) ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error) error`
-
-递归迭代所有嵌套层级，带错误处理。回调函数返回 error 时，迭代中止。
-
-```go
-err := p.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
-    fmt.Printf("键: %v, 值: %v\n", key, item.GetData())
-    return nil
-})
-```
-
----
-
 ## 完整示例
-
-### 遍历数组
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/cybergodev/json"
-)
-
-func main() {
-    data := `[
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"},
-        {"id": 3, "name": "Charlie"}
-    ]`
-
-    json.Foreach(data, func(key any, item *json.IterableValue) {
-        id := item.GetInt("id")
-        name := item.GetString("name")
-        fmt.Printf("[%v] ID: %d, Name: %s\n", key, id, name)
-    })
-}
-```
-
-### 遍历对象
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/cybergodev/json"
-)
-
-func main() {
-    data := `{
-        "server1": {"host": "192.168.1.1", "port": 8080},
-        "server2": {"host": "192.168.1.2", "port": 8081}
-    }`
-
-    json.Foreach(data, func(key any, item *json.IterableValue) {
-        fmt.Printf("服务器: %s\n", key)
-        host := item.GetString("host")
-        port := item.GetInt("port")
-        fmt.Printf("  主机: %s, 端口: %d\n", host, port)
-    })
-}
-```
-
-### 递归遍历嵌套结构
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/cybergodev/json"
-)
-
-func main() {
-    data := `{
-        "users": [
-            {"name": "Alice", "profile": {"city": "Beijing"}},
-            {"name": "Bob", "profile": {"city": "Shanghai"}}
-        ]
-    }`
-
-    json.ForeachNested(data, func(key any, item *json.IterableValue) {
-        // 只处理字符串值
-        if str, ok := item.GetData().(string); ok {
-            fmt.Printf("值: %s\n", str)
-        }
-    })
-}
-```
 
 ### 流式处理大文件
 
@@ -906,7 +586,7 @@ func main() {
 
     it := json.NewStreamIterator(file)
     count := 0
-    
+
     for it.Next() {
         val := it.Value()
         // 逐元素处理，内存友好
@@ -915,11 +595,11 @@ func main() {
             fmt.Printf("已处理 %d 个元素，当前值: %v\n", count, val)
         }
     }
-    
+
     if err := it.Err(); err != nil {
         panic(err)
     }
-    
+
     fmt.Printf("总计处理 %d 个元素\n", count)
 }
 ```
@@ -989,7 +669,7 @@ func main() {
     for it.HasNext() {
         batch := it.NextBatch()
         batchNum++
-        
+
         // 批量处理（如批量写入数据库）
         fmt.Printf("批次 %d: 处理 %d 个元素\n", batchNum, len(batch))
     }
@@ -998,21 +678,48 @@ func main() {
 }
 ```
 
+### Iterator 复用
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/cybergodev/json"
+)
+
+func main() {
+    // 首次遍历
+    it := json.NewIterator([]any{"a", "b", "c"})
+    for it.HasNext() {
+        val, _ := it.Next()
+        fmt.Println(val)
+    }
+
+    // 复用同一迭代器遍历新数据，避免重新分配
+    it.ResetWith([]any{1, 2, 3, 4})
+    for it.HasNext() {
+        val, _ := it.Next()
+        fmt.Println(val)
+    }
+}
+```
+
 ---
 
 ## 性能建议
 
-1. **避免在迭代中执行耗时操作** - 迭代是同步的，耗时操作会阻塞整个迭代
-2. **使用 ForeachWithPath 精确定位** - 避免遍历不需要的数据
-3. **对于大数据集使用流式处理** - 使用 ForeachFile 或 NDJSONProcessor
-4. **批量处理减少开销** - 使用 ForeachFileChunked 进行批量操作
-5. **CPU 密集型任务使用并行处理** - 使用 ForeachFileChunked 或 ParallelIterator 利用多核
+1. **复用 Iterator** - 使用 `Reset`/`ResetWith` 避免重复分配，适合多次遍历场景
+2. **大数据集使用流式迭代器** - `StreamIterator`/`StreamObjectIterator` 逐元素处理，内存友好
+3. **批量处理减少开销** - `BatchIterator` 按批处理，降低单元素开销
+4. **CPU 密集型任务并行处理** - `ParallelIterator` 利用多核加速
+5. **释放 IterableValue** - 在 `Foreach` 回调中处理完毕后调用 `Release()` 减轻 GC 压力
 
 ---
 
 ## 相关
 
-- [Processor](./processor/) - 处理器方法
-- [大文件处理](../streaming/large-file) - 流式处理器
+- [包级迭代函数](./functions/iterate) - Foreach/ForeachFile 等迭代函数
+- [Processor 迭代方法](./processor/iterate) - 对应的处理器迭代方法
+- [大文件处理](../streaming/large-files) - 大文件处理指南与 API 参考
 - [NDJSON 处理器](../streaming/jsonl) - JSONL 处理
-- [大文件处理指南](../streaming/large-files) - 大文件处理指南

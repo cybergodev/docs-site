@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Синтаксис путей"
-title: "Синтаксис выражений пути - CyberGo JSON | JSONPath"
-description: "Руководство по синтаксису путей CyberGo JSON: user.name, items[0], срезы, подстановочные знаки и извлечение полей для любых узлов JSON в Go."
-sidebar_position: 3
+title: "Синтаксис пути - CyberGo JSON | JSONPath"
+description: "Руководство по путям CyberGo JSON: user.name, items[0], срезы, подстановочные знаки и извлечение полей для узлов JSON в Go."
+sidebar_position: 2
 ---
 
 # Синтаксис выражений пути

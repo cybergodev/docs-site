@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Sensitive Data Filtering"
 title: "Sensitive Data Filtering - CyberGo DD | Redaction"
-description: "CyberGo DD sensitive data filtering: built-in patterns, custom regex, five security levels, HIPAA/PCI-DSS presets, and redaction statistics."
+description: "CyberGo DD sensitive data filtering: built-in patterns, custom regex, five security levels, HIPAA/PCI-DSS/government presets, and redaction statistics."
 sidebar_position: 4
 ---
 
@@ -12,14 +12,18 @@ DD has built-in automatic sensitive data filtering that replaces passwords, API 
 ## Quick Enable
 
 ```go
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: dd.DefaultSecurityConfig(),
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 // password field automatically redacted
-logger.InfoWith("User login",
+logger.InfoWith("user login",
     dd.String("username", "alice"),
-    dd.String("password", "s3cr3t123"),    // Output: password=[REDACTED]
+    dd.String("password", "s3cr3t123"),    // output: password=[REDACTED]
 )
 ```
 
@@ -55,11 +59,15 @@ filter := dd.NewEmptySensitiveDataFilter()
 _ = filter.AddPattern(`(?i)credit_card\s*[:=]\s*\d+`)
 _ = filter.AddPattern(`(?i)phone\s*[:=]\s*\d{11}`)
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Security: &dd.SecurityConfig{
         SensitiveFilter: filter,
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### Creating a Custom Filter from Scratch
@@ -105,7 +113,7 @@ DD provides three industry compliance configurations:
 cfg := dd.HealthcareConfig()
 ```
 
-Additional filtering: ICD-10 codes, Medical Record Numbers (MRN), NPI numbers, HICN numbers.
+Additional filtering: ICD-10 codes, Medical Record Numbers (MRN), Health Insurance Claim Numbers (HICN), patient identifiers.
 
 ### PCI-DSS (Financial Payments)
 
@@ -127,22 +135,26 @@ Additional filtering: Passport numbers, driver's license numbers, tax IDs, SSN v
 
 ```go
 // Healthcare system: using HIPAA compliance configuration
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Format:   dd.FormatJSON,
     Security: dd.HealthcareConfig(),
     Targets: []dd.OutputTarget{
         dd.FileOutput("logs/hipaa-audit.json"),
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 
 // Log messages containing sensitive info are automatically redacted
-logger.Info("Patient record mrn=MRN-123456 diagnosis=J18.9 updated")
+logger.Info("patient record mrn=MRN-123456 diagnosis=J18.9 updated")
 // MRN and ICD-10 code patterns in the message are redacted
 
 // Structured fields are filtered by key-name sensitivity
-logger.InfoWith("User login",
-    dd.String("password", "s3cr3t123"),  // → [REDACTED] (sensitive key)
-    dd.String("department", "Internal Medicine"), // Normal output
+logger.InfoWith("user login",
+    dd.String("password", "s3cr3t123"),    // → [REDACTED] (sensitive key)
+    dd.String("department", "internal medicine"), // normal output
 )
 ```
 
@@ -153,27 +165,38 @@ Monitor the filter's operational status:
 ```go
 filter := dd.NewSensitiveDataFilter()
 stats := filter.GetFilterStats()
-fmt.Printf("Active goroutines: %d\n", stats.ActiveGoroutines)
-fmt.Printf("Filter patterns: %d\n", stats.PatternCount)
-fmt.Printf("Total redactions: %d\n", stats.TotalRedactions)
-fmt.Printf("Timeouts: %d\n", stats.TotalTimeouts)
+fmt.Printf("active goroutines: %d\n", stats.ActiveGoroutines)
+fmt.Printf("filter patterns: %d\n", stats.PatternCount)
+fmt.Printf("total redactions: %d\n", stats.TotalRedactions)
+fmt.Printf("timeouts: %d\n", stats.TotalTimeouts)
 ```
 
 ## Disabling Filtering
 
 ```go
-// Use SecurityLevelDevelopment to disable filtering
-logger, _ := dd.New(dd.Config{
+// Use SecurityLevelDevelopment (no sensitive data filtering)
+logger, err := dd.New(dd.Config{
     Security: dd.SecurityConfigForLevel(dd.SecurityLevelDevelopment),
 })
+if err != nil {
+    log.Fatal(err)
+}
 
 // Or manually set SensitiveFilter to nil
-logger, _ := dd.New(dd.Config{
+logger, err = dd.New(dd.Config{
     Security: &dd.SecurityConfig{
         SensitiveFilter: nil,
     },
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
+
+:::warning Filtering Enabled by Default
+`DefaultConfig()` enables basic sensitive data filtering by default (`DefaultSecurityConfig()`). When the `Security` field is not set, the default security configuration is also used. To disable filtering, you must explicitly set `SensitiveFilter` to `nil`.
+:::
 
 ## Next Steps
 

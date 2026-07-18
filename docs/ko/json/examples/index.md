@@ -1,7 +1,7 @@
 ---
 sidebar_label: "기본 예제"
 title: "사용 예제 - CyberGo JSON | 실전 코드 예제"
-description: "CyberGo JSON 실전 예제: 경로 쿼리, 구조체 Marshal/Unmarshal, JSONL 스트림 처리, Hook, Schema 검증, 오류 처리를 실행 가능한 Go 코드 예제로 제공합니다."
+description: "CyberGo JSON 실전 예제: 경로 쿼리, Marshal/Unmarshal, JSONL 스트림, Hook, Schema 검증, 오류 처리를 Go 코드 예제로 제공합니다."
 sidebar_position: 1
 ---
 

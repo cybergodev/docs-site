@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Validator 验证器"
 title: "Validator - CyberGo JSON | Schema 验证器"
-description: "CyberGo JSON 验证器：Validator 接口、Schema 验证结构、ValidationError 错误、SchemaConfig 配置与自定义验证器实现指南，提供完整 JSON 数据验证能力。"
+description: "CyberGo JSON 验证器：Validator 接口、Schema 验证结构、ValidationError 错误与 SchemaConfig 配置，提供完整 JSON 数据验证能力。"
 sidebar_position: 2
 ---
 

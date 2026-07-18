@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Advanced Usage"
-title: "Advanced Usage - CyberGo HTML | Advanced Scenarios"
-description: "CyberGo HTML advanced examples: custom Scorer, multi-Sink audit pipeline, batch file processing, Processor pooling, and ChannelAuditSink monitoring."
+title: "Advanced Examples - CyberGo html | Advanced Scenarios"
+description: "CyberGo html advanced examples: custom Scorer, multi-Sink audit pipeline, batch concurrency control, Processor pooling, and more runnable advanced code."
 sidebar_position: 2
 ---
 

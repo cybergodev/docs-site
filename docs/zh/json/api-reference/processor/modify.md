@@ -1,13 +1,13 @@
 ---
-sidebar_label: "数据修改"
+sidebar_label: "修改操作"
 title: "Processor 数据修改 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 修改方法：Set 设置、SetMultiple 批量、SetCreate 自动创建路径、Delete 删除与 DeleteClean 清理，所有方法支持链式调用。"
+description: "CyberGo JSON Processor 修改方法：Set 设置、SetMultiple 批量、SetCreate 自动创建路径、SetMultipleCreate 批量创建，所有方法支持链式调用。"
 sidebar_position: 3
 ---
 
 # 数据修改方法
 
-Processor 提供数据修改方法，所有方法返回修改后的 JSON 字符串。
+Processor 提供数据修改方法，所有方法返回修改后的 JSON 字符串。删除相关方法见[删除操作](./delete)。
 
 ## Set
 
@@ -39,40 +39,6 @@ result, _ = p.Set(data, "user.profile", map[string]any{
 
 // 数组
 result, _ = p.Set(data, "items", []any{"a", "b", "c"})
-```
-
-## Delete
-
-签名：`func (p *Processor) Delete(jsonStr, path string, cfg ...Config) (string, error)`
-
-删除指定路径的值，返回修改后的 JSON 字符串。
-
-```go
-result, err := p.Delete(data, "user.temporary")
-```
-
-## DeleteClean
-
-签名：`func (p *Processor) DeleteClean(jsonStr, path string, cfg ...Config) (string, error)`
-
-删除指定路径并自动清理空值和空数组。
-
-```go
-result, err := p.DeleteClean(data, "user.temporary")
-// 删除后会清理产生的 null 和空数组
-```
-
-**Delete 与 DeleteClean 区别**：
-
-```go
-// 原始数据: {"user": {"temp": "value", "name": "test"}}
-
-// Delete 后: {"user": {"name": "test"}}
-result, _ := p.Delete(data, "user.temp")
-
-// 如果删除后父对象为空，DeleteClean 会继续清理
-// {"user": {}} -> {}
-result, _ = p.DeleteClean(data, "user.temp")
 ```
 
 ## SetMultiple
@@ -126,7 +92,61 @@ result2, _ := processor.Set(result1, "user.version", "1.0.0")
 finalResult, _ := processor.Delete(result2, "user.temporary")
 ```
 
+## Processor 合并方法
+
+Processor 提供与包级 [MergeJSON](../functions/modify#mergejson)、[MergeMany](../functions/modify#mergemany)、[CompareJSON](../helpers#comparejson) 对应的实例方法。
+
+### Processor.MergeJSON
+
+签名：`func (p *Processor) MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
+
+从 cfg（省略时用处理器自身配置）解析选项，按 `Config.MergeMode` 深度合并两个对象，再用本处理器重新编码结果。
+
+与包级函数一样，`Processor.MergeJSON` 不执行安全验证——它是仅做解码、深合并、再编码的结构性工具。需要安全验证时请使用 `CompareJSON`（在传入 cfg 时会验证）。
+
+```go
+p, err := json.New()
+if err != nil {
+    panic(err)
+}
+defer p.Close()
+
+// 联合合并（默认）
+result, err := p.MergeJSON(base, override)
+
+// 交集合并
+cfg := json.DefaultConfig()
+cfg.MergeMode = json.MergeIntersection
+result, err = p.MergeJSON(base, override, cfg)
+```
+
+### Processor.MergeMany
+
+签名：`func (p *Processor) MergeMany(jsons []string, cfg ...Config) (string, error)`
+
+通过 `MergeJSON` 从左到右折叠切片，合并策略由 `Config.MergeMode` 决定（默认 `MergeUnion`）。少于 2 个 JSON 字符串时返回错误；任一合并步骤失败时返回携带失败索引的错误。
+
+```go
+result, err := p.MergeMany([]string{config1, config2, config3})
+```
+
+### Processor.CompareJSON
+
+签名：`func (p *Processor) CompareJSON(json1, json2 string, cfg ...Config) (bool, error)`
+
+比较两个 JSON 字符串是否相等（数字归一化、键顺序无关）。
+
+::: warning 与包级 CompareJSON 的差异
+包级 `CompareJSON` 在无 cfg 时不执行安全验证、两侧用 `encoding/json` 编组；Processor 方法**始终**执行安全验证（传入 cfg 时按 cfg，否则按处理器自身配置），并用库编码器对两侧对称编组，使配置的编码（如 `EscapeHTML`）对称应用。
+:::
+
+```go
+equal, err := p.CompareJSON(a, b)
+equal, err = p.CompareJSON(a, b, json.SecurityConfig())
+```
+
 ## 相关
 
 - [路径查询](./query) - Get 系列方法
+- [删除操作](./delete) - Delete/DeleteClean 方法
 - [批量操作](./batch) - ProcessBatch 批量处理

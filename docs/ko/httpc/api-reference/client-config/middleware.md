@@ -7,6 +7,10 @@ sidebar_position: 5
 
 # 미들웨어
 
+:::tip 아키텍처 개요
+이 페이지는 **내장 미들웨어 참조**입니다. Handler 파이프라인의 전체 아키텍처, 양파 모델 원리와 커스텀 미들웨어 작성은 [핸들러 파이프라인 / Handler와 미들웨어 체인](../handler/handler-chain)을 참조하세요.
+:::
+
 HTTPC은 양파 모델 미들웨어 아키텍처를 채택하여, `MiddlewareFunc`로 요청 처리 로직을 래핑합니다.
 
 ```go

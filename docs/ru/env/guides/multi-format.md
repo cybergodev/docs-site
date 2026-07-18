@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Мультиформатные конфиги"
 title: "Мультиформатная конфигурация - CyberGo env | .env/JSON/YAML"
-description: "Руководство CyberGo env: загрузка .env, JSON и YAML с автоопределением и смешанной загрузкой, приоритет слияния и конвертация для контейнеров."
+description: "Мультиформат CyberGo env: авто-загрузка .env/JSON/YAML, плоские имена вложенных структур, Marshal/UnmarshalMap, RegisterParser и приоритет слияния."
 sidebar_position: 3
 ---
 

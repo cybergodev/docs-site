@@ -2,7 +2,7 @@
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo HTTPC | 5-Minute Guide"
 description: "HTTPC quick start: install, send GET/POST requests, handle responses, pick a preset, parse JSON, and authenticate with Bearer Token in five minutes."
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # Quick Start

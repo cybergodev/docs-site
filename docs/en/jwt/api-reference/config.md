@@ -2,7 +2,7 @@
 sidebar_label: "Config"
 title: "Config - CyberGo JWT | Configuration"
 description: "Unified CyberGo JWT Config spanning signing keys, algorithms, token TTL, issuer, audiences, clock skew, blacklist, and rate limiting with Validate logic."
-sidebar_position: 4
+sidebar_position: 30
 ---
 
 # Config

@@ -192,6 +192,14 @@
     "to": "json/extensions/custom-encoder"
   },
   {
+    "from": "json/api-reference/functions/encode-decode",
+    "to": "json/api-reference/functions/output"
+  },
+  {
+    "from": "json/api-reference/functions/get",
+    "to": "json/api-reference/functions/query"
+  },
+  {
     "from": "json/api-reference/hooks",
     "to": "json/extensions/hooks"
   },
@@ -201,7 +209,7 @@
   },
   {
     "from": "json/api-reference/large-file",
-    "to": "json/streaming/large-file"
+    "to": "json/streaming/large-files"
   },
   {
     "from": "json/api-reference/security",
@@ -226,5 +234,9 @@
   {
     "from": "json/path-syntax",
     "to": "json/getting-started/path-syntax"
+  },
+  {
+    "from": "json/streaming/large-file",
+    "to": "json/streaming/large-files"
   }
 ]

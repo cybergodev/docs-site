@@ -2,8 +2,7 @@
 sidebar_label: "Quick Start"
 title: "Getting Started - CyberGo JSON | 5-Minute Guide"
 description: "CyberGo JSON quick start: install, GetString/GetInt queries, Marshal/Unmarshal, and file I/O. Master Go JSON in 5 minutes, fully standard-library compatible."
-sidebar_position: 2
-sidebar_icon: "⚡"
+sidebar_position: 1
 ---
 
 # Getting Started

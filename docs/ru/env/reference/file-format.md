@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Форматы файлов"
 title: "Формат файла - CyberGo env | Синтаксис .env/JSON/YAML"
-description: "Справочник форматов CyberGo env: синтаксис .env, JSON и YAML, комментарии, типы данных, UTF-8 и автоопределение через DetectFormat."
+description: "Форматы CyberGo env: .env/JSON/YAML, кавычки и export, ${VAR}, многострочные значения, плоская вложенность, UTF-8 и автоопределение через DetectFormat."
 sidebar_position: 1
 ---
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "TLS & Certificate Pinning"
 title: "TLS and Certificate Pinning - CyberGo HTTPC | Crypto & Pins"
-description: "HTTPC TLS and certificate pinning guide: TLS 1.2-1.3 and cipher suites, custom CA loading, mTLS, the CertificatePinner API, and HTTP/2 negotiation."
+description: "HTTPC TLS and certificate pinning guide: TLS 1.2-1.3 version control and secure cipher suite configuration, custom CA loading, mTLS mutual auth, the CertificatePinner pinning API, and HTTP/2 negotiation -- secure by default out of the box, building a transport-layer encryption defense."
 sidebar_position: 3
 ---
 

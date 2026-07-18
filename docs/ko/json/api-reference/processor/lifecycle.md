@@ -2,7 +2,7 @@
 sidebar_label: "라이프사이클"
 title: "Processor 수명 주기 - CyberGo JSON | API 레퍼런스"
 description: "CyberGo JSON Processor 수명 주기: New 생성, Close 해제, IsClosed 확인, GetStats 통계, GetHealthStatus 모니터링으로 동시 안전 종료를 보장합니다."
-sidebar_position: 9
+sidebar_position: 11
 ---
 
 # 수명 주기와 통계

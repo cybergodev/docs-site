@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Подстановка переменных"
 title: "Подстановка переменных - CyberGo env | Синтаксис переменных"
-description: "Руководство по подстановке переменных CyberGo env: синтаксис ${VAR} и ${VAR:-default}, условная подстановка, циклы и лимит MaxExpansionDepth."
+description: "Подстановка CyberGo env: ${VAR}, ${VAR:-default}, ${VAR:=default}, ${VAR:?error}, краткая форма $VAR, обнаружение циклов и лимит MaxExpansionDepth."
 sidebar_position: 4
 ---
 

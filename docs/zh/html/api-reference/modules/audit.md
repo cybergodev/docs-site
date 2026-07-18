@@ -1,7 +1,7 @@
 ---
 sidebar_label: "审计系统"
-title: "审计系统 - CyberGo HTML | 可插拔审计 API"
-description: "CyberGo HTML 可插拔审计 API：AuditConfig 配置、8 种审计事件、3 个级别、AuditEntry 结构与六种内置 Sink，满足安全合规需求。"
+title: "审计系统 - CyberGo html | 可插拔审计 API"
+description: "CyberGo html 可插拔审计 API：AuditConfig 配置、8 种审计事件、3 个级别、AuditEntry 结构、六种内置 Sink 与级别过滤管道。"
 sidebar_position: 4
 ---
 
@@ -140,7 +140,7 @@ type AuditSink interface {
 
 ### LoggerAuditSink
 
-输出到标准错误，带 `[AUDIT]` 前缀。
+通过标准库 `log.Logger` 输出，带 `[AUDIT]` 前缀。`NewLoggerAuditSink()` **默认输出到标准错误**（`os.Stderr`）；如需重定向到文件、网络连接等，用 `NewLoggerAuditSinkWithWriter(w)` 指定任意 `io.Writer`。
 
 ```go
 func NewLoggerAuditSink() *LoggerAuditSink
@@ -149,13 +149,14 @@ func NewLoggerAuditSinkWithWriter(w io.Writer) *LoggerAuditSink
 
 ### ChannelAuditSink
 
-发送到缓冲 channel，适合异步处理。
+发送到缓冲 channel，适合异步处理或与外部日志系统集成。`Write` 是**非阻塞**的：当缓冲区已满时，会**丢弃该条目**并递增丢弃计数（不阻塞、不报错），调用方通过 `DroppedCount()` 查询被丢弃的数量，可在监控中据此触发告警或扩容。
 
 ```go
 func NewChannelAuditSink(bufferSize int) *ChannelAuditSink
 
 func (s *ChannelAuditSink) Channel() <-chan AuditEntry
 func (s *ChannelAuditSink) DroppedCount() int64
+func (s *ChannelAuditSink) Close() error // 幂等：可安全多次调用，仅首次真正关闭 channel
 ```
 
 ```go
@@ -177,7 +178,7 @@ func NewWriterAuditSink(w io.Writer) *WriterAuditSink
 
 ### MultiSink
 
-扇出到多个 Sink。
+扇出到多个 Sink。`Close` 用 Go 1.20+ 的 `errors.Join` **聚合所有子 Sink 返回的关闭错误**（而非只保留最后一个）——对审计子系统而言，丢弃早期 Sink 的交付失败会掩盖真实问题。
 
 ```go
 func NewMultiSink(sinks ...AuditSink) *MultiSink

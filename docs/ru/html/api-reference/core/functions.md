@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Функции пакета"
-title: "Функции пакета - CyberGo HTML | удобные функции"
-description: "Функции пакета CyberGo HTML: Extract, ExtractText, ExtractToMarkdown. Повторно используют Processor через sync.Pool — для разовых вызовов и быстрой интеграции."
+title: "Функции пакета - CyberGo html | синтаксис и примеры"
+description: "Функции уровня пакета CyberGo html: Extract, ExtractText, ExtractToMarkdown. Используют sync.Pool для переиспользования Processor — для разовых вызовов."
 sidebar_position: 1
 ---
 

@@ -13,9 +13,11 @@ The json package provides a rich set of helper functions for JSON comparison, ca
 
 ### CompareJSON
 
-Signature: `func CompareJSON(json1, json2 string) (bool, error)`
+Signature: `func CompareJSON(json1, json2 string, cfg ...Config) (bool, error)`
 
 Compares two JSON strings for equality. Handles numeric precision differences and key order differences.
+
+Without `cfg`, the behavior is identical to the historical implementation (no security validation; both sides are marshalled with `encoding/json`). When `cfg` is passed, security validation (size/depth/dangerous-mode limits) is applied to both inputs, and a symmetric comparison is performed using the configured encoding.
 
 ```go
 // Different key order but same content
@@ -29,7 +31,14 @@ fmt.Println(equal) // true
 // Different content
 equal, _ = json.CompareJSON(`{"a":1}`, `{"a":2}`)
 fmt.Println(equal) // false
+
+// With configuration (applies security validation and encoding control)
+equal, err = json.CompareJSON(a, b, json.SecurityConfig())
 ```
+
+::: tip Processor Equivalent
+`Processor.CompareJSON` always performs security validation (per `cfg` or the processor's own configuration), unlike the package-level function's no-cfg path. See [Processor Data Modification](./processor/modify#processor-comparejson).
+:::
 
 ---
 
@@ -222,7 +231,7 @@ func main() {
 ## Output Functions
 
 ::: warning API Change Notice
-Print, PrintPretty, PrintE, PrintPrettyE have been removed from the library and are no longer available. Please use [Encode](./functions/encode-decode#encode), [EncodePretty](./functions/encode-decode#encodepretty), or [Prettify](./functions/encode-decode#prettify) with `fmt.Println` instead. See [Print Functions](./print) for details.
+Print, PrintPretty, PrintE, PrintPrettyE have been removed from the library and are no longer available. Please use [EncodeWithConfig](./functions/output#encodewithconfig), [EncodePretty](./functions/output#encodepretty), or [Prettify](./functions/output#prettify) with `fmt.Println` instead (`Encode` is deprecated). See [Print Functions](./print) for details.
 :::
 
 ---
@@ -429,7 +438,7 @@ enabled, err := result.AsBool()
 
 ## Related
 
-- [Query & Get Functions](./functions/get) - Get, GetString and other query operations
+- [Query & Get Functions](./functions/query) - Get, GetString and other query operations
 - [Modify Functions](./functions/modify) - Set, Delete and other modification operations
 - [Type Definitions](./types) - AccessResult and other types
 - [Configuration Options](./config) - Config configuration details

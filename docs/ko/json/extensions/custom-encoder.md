@@ -1,7 +1,7 @@
 ---
 sidebar_label: "커스텀 인코더"
 title: "CustomEncoder - CyberGo JSON | 커스텀 인코더"
-description: "CyberGo JSON 커스텀 인코더 가이드: CustomEncoder 인터페이스와 TypeEncoder 정의, 설정, 구현 예제로 커스텀 Go 타입에 전용 JSON 직렬화를 등록합니다."
+description: "CyberGo JSON 커스텀 인코더: CustomEncoder, TypeEncoder 정의와 구현 예제로 커스텀 Go 타입에 전용 JSON 직렬화를 등록합니다."
 sidebar_position: 3
 ---
 

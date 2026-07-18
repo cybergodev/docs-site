@@ -1,95 +1,22 @@
 ---
-sidebar_label: "Iterator"
-title: "Iterator - CyberGo JSON | API Reference"
-description: "CyberGo JSON iterator API: Foreach, ForeachWithPath, ForeachNested recursion, IterableValue, and ParallelForeach for diverse traversal scenarios."
+sidebar_label: "Iterator Types"
+title: "Iterator Types - CyberGo JSON | API Reference"
+description: "CyberGo JSON iterator types: Iterator sequential traversal, IterableValue data access, StreamIterator/StreamObjectIterator streaming, BatchIterator batch, and ParallelIterator parallel iterator constructors and methods."
 sidebar_position: 9
 ---
 
-# Iterator
+# Iterator Types
 
-The json package provides a rich set of iterator features, supporting multiple traversal methods: package-level functions, Processor methods, stream iteration, batch processing, and parallel processing.
+The json package provides a variety of iterator types, covering sequential traversal, stream processing, batch processing, and parallel processing scenarios. The iteration **functions** (`Foreach`, `ForeachFile`, etc.) are documented in [Package-Level Iteration Functions](./functions/iterate) and [Processor Iteration Methods](./processor/iterate).
 
-## Package-Level Iterator Functions
+## IteratorControl Constants
 
-Iterator functions that can be called directly without creating a Processor instance.
-
-### Foreach
-
-Signature: `func Foreach(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
-
-Iterates over a JSON array or object.
-
-```go
-json.Foreach(`{"name": "Alice", "age": 30}`, func(key any, item *json.IterableValue) {
-    fmt.Printf("Key: %v, Value: %v\n", key, item.GetData())
-})
-// Output:
-// Key: name, Value: Alice
-// Key: age, Value: 30
-```
-
-### ForeachWithPath
-
-Signature: `func ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue), cfg ...Config) error`
-
-Iterates by path, returns an error.
-
-```go
-err := json.ForeachWithPath(data, "items", func(key any, item *json.IterableValue) {
-    fmt.Printf("[%v] %v\n", key, item.GetData())
-})
-if err != nil {
-    panic(err)
-}
-```
-
-### ForeachReturn
-
-Signature: `func ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
-
-Iterates and returns the original JSON string (read-only operation).
-
-```go
-result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) {
-    // Read-only processing
-    fmt.Printf("Processing: %v\n", item.GetData())
-})
-```
-
-### ForeachNested
-
-Signature: `func ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
-
-Recursively iterates through all nested levels.
-
-```go
-json.ForeachNested(data, func(key any, item *json.IterableValue) {
-    fmt.Printf("Type: %T, Value: %v\n", item.GetData(), item.GetData())
-})
-```
-
-### ForeachWithPathAndControl
-
-Signature: `func ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl, cfg ...Config) error`
-
-Iterates with flow control. The return value controls the iteration flow.
-
-```go
-err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) json.IteratorControl {
-    if value == nil {
-        return json.IteratorBreak // Stop iteration
-    }
-    // Process...
-    return json.IteratorNormal // Continue iteration
-})
-```
-
-**IteratorControl Constants**
+`IteratorControl` represents an iteration control flag, used by `ForeachWithPathAndControl` and `ForeachWithPathAndIterator` to control the iteration flow.
 
 | Constant | Description |
 |------|------|
-| `IteratorNormal` | Continue iteration normally |
-| `IteratorContinue` | Skip the current item, continue iteration |
+| `IteratorNormal` | Continue iteration normally (the default) |
+| `IteratorContinue` | Skip the current item and continue iteration |
 | `IteratorBreak` | Stop iteration |
 
 **Use Cases**
@@ -100,84 +27,6 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 | Filter invalid data | `IteratorContinue` | Skip the current element without breaking iteration |
 | Exit after finding target | `IteratorBreak` | Stop immediately after finding the required data |
 | Break on error | `IteratorBreak` | Stop iteration when a critical error is encountered |
-
-```go
-// Scenario 1: Filter invalid data
-err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) json.IteratorControl {
-    if value == nil {
-        return json.IteratorContinue // Skip null values
-    }
-    process(value)
-    return json.IteratorNormal
-})
-
-// Scenario 2: Exit after finding the first matching element
-var found any
-err = json.ForeachWithPathAndControl(data, "users", func(key any, value any) json.IteratorControl {
-    if obj, ok := value.(map[string]any); ok {
-        if obj["admin"] == true {
-            found = obj
-            return json.IteratorBreak // Stop after finding admin
-        }
-    }
-    return json.IteratorNormal
-})
-
-// Scenario 3: Validate data integrity
-var hasError bool
-err = json.ForeachWithPathAndControl(data, "records", func(key any, value any) json.IteratorControl {
-    if !validateRecord(value) {
-        hasError = true
-        return json.IteratorBreak // Data incomplete, stop validation
-    }
-    return json.IteratorNormal
-})
-```
-
-### ForeachWithError
-
-Signature: `func ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error) error`
-
-Path iteration with error handling. When the callback function returns an error, iteration stops and the error is returned.
-
-```go
-err := json.ForeachWithError(data, "items", func(key any, item *json.IterableValue) error {
-    val := item.GetData()
-    if val == nil {
-        return fmt.Errorf("item %v has null value", key)
-    }
-    return processItem(val)
-})
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-### ForeachNestedWithError
-
-Signature: `func ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error) error`
-
-Recursively iterates through all nested levels with error handling. When the callback function returns an error, iteration stops.
-
-```go
-err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
-    fmt.Printf("Key: %v, Value: %v\n", key, item.GetData())
-    return nil
-})
-```
-
-### ForeachWithPathAndIterator
-
-Signature: `func ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl) error`
-
-Iteration with path information. The callback function receives the current full path. Suitable for processing deeply nested structures that require tracking the traversal position.
-
-```go
-err := json.ForeachWithPathAndIterator(data, "users", func(key any, item *json.IterableValue, currentPath string) json.IteratorControl {
-    fmt.Printf("Path: %s, Key: %v\n", currentPath, key)
-    return json.IteratorNormal
-})
-```
 
 ---
 
@@ -241,7 +90,7 @@ for it.HasNext() {
 
 ## IterableValue Type
 
-IterableValue wraps the current element during iteration, providing convenient value access methods.
+IterableValue wraps the current element during iteration, providing convenient value access methods. The callback of the `Foreach` family of functions receives `*IterableValue`.
 
 ### Methods
 
@@ -715,176 +564,7 @@ defer it.Close()
 
 ---
 
-## Processor Iterator Methods
-
-Processor also provides iterator methods, suitable for scenarios that require reusing the processor.
-
-### Foreach
-
-Signature: `func (p *Processor) Foreach(jsonStr string, fn func(key any, item *IterableValue))`
-
-Iterates over a JSON array or object.
-
-```go
-p, err := json.New()
-if err != nil {
-    panic(err)
-}
-defer p.Close()
-p.Foreach(`{"name": "Alice", "age": 30}`, func(key any, item *json.IterableValue) {
-    fmt.Printf("Key: %v, Value: %v\n", key, item.GetData())
-})
-```
-
-### ForeachWithPath
-
-Signature: `func (p *Processor) ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue)) error`
-
-Iterates by path, returns an error.
-
-### ForeachNested
-
-Signature: `func (p *Processor) ForeachNested(jsonStr string, fn func(key any, item *IterableValue))`
-
-Recursively iterates through all nested levels.
-
-### ForeachReturn
-
-Signature: `func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue)) (string, error)`
-
-Iterates over arrays or objects and returns the re-serialized JSON string. The callback is read-only; on serialization failure it returns the original input.
-
-### ForeachWithPathAndControl
-
-Signature: `func (p *Processor) ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl) error`
-
-Path iteration with flow control. The return value controls the iteration flow.
-
-### ForeachWithPathAndIterator
-
-Signature: `func (p *Processor) ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl) error`
-
-Iteration with path information. The callback function receives the current full path. Suitable for processing deeply nested structures that require tracking the traversal position.
-
-```go
-p.ForeachWithPathAndIterator(data, "users", func(key any, item *json.IterableValue, currentPath string) json.IteratorControl {
-    fmt.Printf("Path: %s, Key: %v\n", currentPath, key)
-    return json.IteratorNormal
-})
-```
-
-### ForeachWithError
-
-Signature: `func (p *Processor) ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error) error`
-
-Iteration with error handling. When the callback function returns an error, iteration stops and the error is returned.
-
-```go
-err := p.ForeachWithError(data, "items", func(key any, item *json.IterableValue) error {
-    val := item.GetData()
-    if val == nil {
-        return fmt.Errorf("item %v has null value", key)
-    }
-    return processItem(val)
-})
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-### ForeachNestedWithError
-
-Signature: `func (p *Processor) ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error) error`
-
-Recursively iterates through all nested levels with error handling. When the callback function returns an error, iteration stops.
-
-```go
-err := p.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
-    fmt.Printf("Key: %v, Value: %v\n", key, item.GetData())
-    return nil
-})
-```
-
----
-
 ## Complete Examples
-
-### Iterating an Array
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/cybergodev/json"
-)
-
-func main() {
-    data := `[
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"},
-        {"id": 3, "name": "Charlie"}
-    ]`
-
-    json.Foreach(data, func(key any, item *json.IterableValue) {
-        id := item.GetInt("id")
-        name := item.GetString("name")
-        fmt.Printf("[%v] ID: %d, Name: %s\n", key, id, name)
-    })
-}
-```
-
-### Iterating an Object
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/cybergodev/json"
-)
-
-func main() {
-    data := `{
-        "server1": {"host": "192.168.1.1", "port": 8080},
-        "server2": {"host": "192.168.1.2", "port": 8081}
-    }`
-
-    json.Foreach(data, func(key any, item *json.IterableValue) {
-        fmt.Printf("Server: %s\n", key)
-        host := item.GetString("host")
-        port := item.GetInt("port")
-        fmt.Printf("  Host: %s, Port: %d\n", host, port)
-    })
-}
-```
-
-### Recursive Nested Structure Traversal
-
-```go
-package main
-
-import (
-    "fmt"
-    "github.com/cybergodev/json"
-)
-
-func main() {
-    data := `{
-        "users": [
-            {"name": "Alice", "profile": {"city": "Beijing"}},
-            {"name": "Bob", "profile": {"city": "Shanghai"}}
-        ]
-    }`
-
-    json.ForeachNested(data, func(key any, item *json.IterableValue) {
-        // Only process string values
-        if str, ok := item.GetData().(string); ok {
-            fmt.Printf("Value: %s\n", str)
-        }
-    })
-}
-```
 
 ### Stream Processing Large Files
 
@@ -998,21 +678,48 @@ func main() {
 }
 ```
 
+### Iterator Reuse
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/cybergodev/json"
+)
+
+func main() {
+    // First traversal
+    it := json.NewIterator([]any{"a", "b", "c"})
+    for it.HasNext() {
+        val, _ := it.Next()
+        fmt.Println(val)
+    }
+
+    // Reuse the same iterator for new data, avoiding reallocation
+    it.ResetWith([]any{1, 2, 3, 4})
+    for it.HasNext() {
+        val, _ := it.Next()
+        fmt.Println(val)
+    }
+}
+```
+
 ---
 
 ## Performance Tips
 
-1. **Avoid expensive operations during iteration** - Iteration is synchronous; expensive operations will block the entire iteration
-2. **Use ForeachWithPath for precise targeting** - Avoid traversing unnecessary data
-3. **Use stream processing for large datasets** - Use ForeachFile or NDJSONProcessor
-4. **Use batch processing to reduce overhead** - Use ForeachFileChunked for batch operations
-5. **Use parallel processing for CPU-intensive tasks** - Use ForeachFileChunked or ParallelIterator to leverage multiple cores
+1. **Reuse Iterator** - Use `Reset`/`ResetWith` to avoid repeated allocation, suitable for multi-pass traversal scenarios
+2. **Use stream iterators for large datasets** - `StreamIterator`/`StreamObjectIterator` process elements one by one, memory-friendly
+3. **Reduce overhead with batch processing** - `BatchIterator` processes in batches, lowering per-element overhead
+4. **Parallel processing for CPU-intensive tasks** - `ParallelIterator` leverages multi-core acceleration
+5. **Release IterableValue** - Call `Release()` after processing in `Foreach` callbacks to reduce GC pressure
 
 ---
 
 ## Related
 
-- [Processor](./processor/) - Processor methods
-- [Large File Processing](../streaming/large-file) - Stream processor
+- [Package-Level Iteration Functions](./functions/iterate) - Foreach/ForeachFile and other iteration functions
+- [Processor Iteration Methods](./processor/iterate) - The corresponding Processor iteration methods
+- [Large File Processing](../streaming/large-files) - Large file guide and API reference
 - [NDJSON Processor](../streaming/jsonl) - JSONL processing
-- [Large File Processing Guide](../streaming/large-files) - Large file processing guide

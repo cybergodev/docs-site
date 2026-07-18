@@ -1,7 +1,7 @@
 ---
 sidebar_label: "フックシステム"
 title: "フックシステム - CyberGo DD | ライフサイクルフック実践ガイド"
-description: "CyberGo DD フックシステム実践ガイド。6 種類のライフサイクルフックイベント（BeforeLog、AfterLog、OnFilter、OnRotate、OnClose、OnError）、HookRegistry 登録と管理、HookContext コンテキストデータ、エラー処理戦略、一般的なフック使用シナリオを詳細に紹介し、ログライブラリの動作を拡張できます。"
+description: "CyberGo DD フックシステムガイド。6 種のライフサイクルイベント（BeforeLog、AfterLog、OnFilter、OnRotate、OnClose、OnError）、HookRegistry 登録管理、HookContext コンテキストと一般的な拡張シナリオを解説します。"
 sidebar_position: 6
 ---
 
@@ -38,9 +38,13 @@ hooks := dd.NewHooksFromConfig(dd.HooksConfig{
     }},
 })
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Hooks: hooks,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### HookRegistry を使用
@@ -63,9 +67,13 @@ registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, _ := dd.New(dd.Config{
+logger, err := dd.New(dd.Config{
     Hooks: registry,
 })
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ## HookContext コンテキスト
@@ -106,7 +114,11 @@ registry.Add(dd.HookAfterLog, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, _ := dd.New(dd.Config{Hooks: registry})
+logger, err := dd.New(dd.Config{Hooks: registry})
+if err != nil {
+    log.Fatal(err)
+}
+defer logger.Close()
 ```
 
 ### ログサンプリング

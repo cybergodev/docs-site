@@ -156,7 +156,7 @@ dd.LogWith(dd.LevelError, "请求失败",
 | `InfoWith` | `func InfoWith(msg string, fields ...Field)` | Info 级别结构化日志 |
 | `WarnWith` | `func WarnWith(msg string, fields ...Field)` | Warn 级别结构化日志 |
 | `ErrorWith` | `func ErrorWith(msg string, fields ...Field)` | Error 级别结构化日志 |
-| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal 级别结构化日志 |
+| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal 级别结构化日志（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
 
 ```go
 dd.InfoWith("请求完成",

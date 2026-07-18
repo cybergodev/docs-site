@@ -1,7 +1,7 @@
 ---
 sidebar_label: "監査システム"
-title: "監査システム - CyberGo HTML | プラグイン監査 API"
-description: "CyberGo HTML プラグイン監査 API：AuditConfig、8 種の監査イベント、3 段階、AuditEntry、Logger・Channel・Writer・Multi・Filtered・LevelFiltered の 6 Sink を提供します。"
+title: "監査システム - CyberGo html | プラグイン監査 API"
+description: "CyberGo html プラグイン監査 API：AuditConfig 設定、8 種の監査イベント、3 段階のレベル、AuditEntry 構造体、6 種の内蔵 Sink を提供します。"
 sidebar_position: 4
 ---
 

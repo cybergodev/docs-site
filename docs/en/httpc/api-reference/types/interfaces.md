@@ -30,7 +30,7 @@ type Client interface {
 }
 ```
 
-Main client interface, created via `New()`. See [Package Functions](../core/functions) for details.
+Main client interface, created via `New()`. See [Package Functions & Client Methods](../core/functions) for details.
 
 ## Doer
 
@@ -172,7 +172,7 @@ type RequestMutator interface {
 }
 ```
 
-Used in middleware to provide read-write access to requests. Composed from internal interfaces RequestReader and RequestWriter.
+Used in middleware to provide read-write access to requests. Composed from internal interfaces RequestReader and RequestWriter. For the full method contract and a read/write example, see [Request & Response Mutators](../handler/mutators).
 
 ### ResponseMutator
 
@@ -215,7 +215,7 @@ type ResponseMutator interface {
 }
 ```
 
-Used in middleware to provide read-write access to responses. Composed from internal interfaces ResponseReader and ResponseWriter.
+Used in middleware to provide read-write access to responses. Composed from internal interfaces ResponseReader and ResponseWriter. For the full method contract, see [Request & Response Mutators](../handler/mutators).
 
 ### Handler
 
@@ -232,6 +232,79 @@ type MiddlewareFunc func(Handler) Handler
 ```
 
 Middleware function signature that receives the next Handler and returns a wrapped Handler.
+
+## Certificate Pinning
+
+Certificate Pinning validates at the TLS handshake stage whether the server certificate matches a pre-pinned public key/certificate. Even if a trusted CA is compromised, the handshake is rejected, defending against man-in-the-middle attacks.
+
+### CertificatePinner
+
+```go
+type CertificatePinner = security.CertificatePinner
+```
+
+The certificate pinner interface. Create one via the constructors below and assign it to the `SecurityConfig.CertificatePinner` field (accessed via `Config.Security`):
+
+```go
+pinner, err := httpc.NewSPKIHashPinner(
+    "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2fuihg=", // current key
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // backup key (rotation)
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+cfg := httpc.DefaultConfig()
+cfg.Security.CertificatePinner = pinner
+client, err := httpc.New(cfg)
+```
+
+:::tip
+Pinner implementations are concurrency-safe and can be shared across multiple clients created from the same `Config` (passed by reference on deep copy, not duplicated). Advanced users can also implement this interface directly to support custom pinning strategies (e.g. pinning the full certificate rather than the public key).
+:::
+
+### NewSPKIHashPinner
+
+```go
+func NewSPKIHashPinner(hashes ...string) (CertificatePinner, error)
+```
+
+Creates a certificate pinner from one or more base64-encoded SHA-256 hashes (over the DER-encoded SubjectPublicKeyInfo/SPKI). This is the most common pinning format (used by HPKP) and the recommended approach.
+
+Passing multiple hashes supports key rotation -- as long as the peer's public key matches **any one** of the pinned hashes, the handshake succeeds.
+
+Generate a hash from a certificate with the following command:
+
+```bash
+openssl x509 -in cert.pem -pubkey -noout | openssl pkey -pubin -outform der \
+  | openssl dgst -sha256 -binary | openssl enc -base64
+```
+
+Returns an error when no valid hash is provided, or when a hash is not valid base64.
+
+### NewPublicKeyPinner
+
+```go
+func NewPublicKeyPinner(publicKeys ...[]byte) (CertificatePinner, error)
+```
+
+Creates a certificate pinner from one or more DER-encoded PKIX public keys (as returned by `x509.MarshalPKIXPublicKey`). It computes a SHA-256 hash of each public key internally; when you already hold the raw public key bytes, this is more convenient than `NewSPKIHashPinner`.
+
+Returns an error when no valid public key is provided.
+
+### NewCertificatePinnerChain
+
+```go
+func NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner
+```
+
+Combines multiple pinners into one. The certificate is accepted as long as **any one** of the wrapped pinners accepts it. Use this to support multiple pinning strategies simultaneously, or to combine rotation keys built with different constructors.
+
+With no arguments it returns a no-op pinner (rejects all certificates).
+
+:::tip Further reading
+For the complete guide to certificate pinning (hash generation, key rotation strategies, production deployment), see [TLS Certificate Pinning](../../security/tls-certpin).
+:::
 
 ## Related Pages
 
