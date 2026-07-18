@@ -116,7 +116,3 @@ body.VPApp,
 .dark .VPNavScreen {
   background-color: rgba(30, 30, 30, 0.95);
 }
-
-/* Project-page navbar title styling now lives in ProjectNavBarTitle.vue
-   (scoped). The old .VPNavBarTitle[data-project] rule depended on the removed
-   DOM-mutation siteTitle logic in theme/index.ts. */

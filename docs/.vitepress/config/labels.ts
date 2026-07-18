@@ -3,14 +3,8 @@ import { PROJECTS, type Lang } from '../shared'
 import { EDIT_LINK_BASE, DOC_ISSUE_URL } from '../shared'
 
 /**
- * Per-language UI strings, in ONE place.
- *
- * The five old locale files (locales/{zh,en,ko,ja,ru}.ts) each duplicated ~12
- * label fields — nav text, doc footer, outline, theme-switch titles, edit-link
- * text, footer license + report-issue, search placeholder — plus a structurally
- * identical nav. They now live here, keyed by language, so a translator
- * reviews the whole set at once and a missing translation is a type error,
- * not a silent gap.
+ * Per-language UI strings, in ONE place — keyed by language so a missing
+ * translation is a type error, not a silent gap.
  *
  * The factory helpers below turn a language code + this table into a full
  * LocaleSpecificConfig, so config/locales.ts has zero per-language boilerplate
@@ -18,8 +12,7 @@ import { EDIT_LINK_BASE, DOC_ISSUE_URL } from '../shared'
  *
  * The `UiLabels` table is ALSO the single source for client-side component
  * strings (DocFeedback / SiteFooter / NotFound / LanguagePrompt), consumed via
- * the `useUiLabels()` composable. This closes the old gap where each component
- * carried its own dictionary + its own language-detection logic.
+ * the `useUiLabels()` composable.
  */
 export interface UiLabels {
   /** SEO `<meta name="description">` for the locale's pages. */
@@ -39,7 +32,7 @@ export interface UiLabels {
   docFooterNext: string
   /** Right-side outline heading. */
   outlineLabel: string
-  /** Algolia search box placeholder. */
+  /** ProjectSearch trigger + modal input placeholder. */
   searchPlaceholder: string
   // --- VitePress themeConfig label fields ---
   langMenuLabel: string

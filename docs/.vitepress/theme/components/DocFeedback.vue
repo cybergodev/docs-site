@@ -85,8 +85,7 @@
   const show = ref(false)
 
   // Matches `{lang}/index.md` and `{lang}/about.md` for every language in LANGS,
-  // so adding a language cannot leave this hide-rule behind. Replaces the old
-  // hardcoded `zh|en|ko|ja|ru` literal.
+  // so adding a language cannot leave this hide-rule behind.
   const HOME_OR_ABOUT_RE = new RegExp(`^(${LANGS.join('|')})\\/(index|about)\\.md$`)
 
   function vote(choice: 'yes' | 'no') {

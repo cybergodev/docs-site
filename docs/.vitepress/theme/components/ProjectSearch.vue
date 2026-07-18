@@ -265,10 +265,3 @@
     </div>
   </Teleport>
 </template>
-
-<style scoped>
-  /* All ProjectSearch styles live globally in theme/style/search.css so they
-   * apply correctly to the modal markup teleported to <body> (teleport keeps
-   * the SFC's data-v attribute, but a dedicated stylesheet avoids any
-   * specificity surprises once the markup leaves the component subtree). */
-</style>

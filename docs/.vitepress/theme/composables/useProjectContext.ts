@@ -24,14 +24,12 @@ export function getProjectFromPath(path: string): ProjectName | null {
 /**
  * Reactive project context for the current route.
  *
- * Replaces the previous DOM-mutation approach in theme/index.ts
- * (`updateProjectGitHubLink` / `updateProjectSiteTitle`), which reached into
- * VitePress internals (`.VPSocialLinks`, `.VPNavBarTitle`) with querySelector
- * after every navigation — fragile, and silently broken on every VitePress
- * upgrade. Deriving from `router.route.path` here lets the title and
- * GitHub-link components render the right value reactively, with no
- * post-render DOM surgery, and (unlike the old code) correctly during SSR so
- * the first paint already shows the right title.
+ * Deriving from `router.route.path` lets the title and GitHub-link components
+ * render the right value reactively, with no post-render DOM surgery, and
+ * correctly during SSR so the first paint already shows the right title. Do
+ * NOT reintroduce querySelector-based DOM surgery against VitePress internals
+ * (`.VPSocialLinks`, `.VPNavBarTitle`, …) — that approach broke silently on
+ * every VitePress upgrade.
  */
 export function useProjectContext() {
   const router = useRouter()

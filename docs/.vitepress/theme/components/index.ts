@@ -4,7 +4,6 @@
 // and Layout-slot injection. Adding a component = create the .vue + add one
 // line below; no scattered imports across theme/index.ts.
 
-export { default as GitHubIcon } from './GitHubIcon.vue'
 export { default as NotFound } from './NotFound.vue'
 export { default as LanguageMenu } from './LanguageMenu.vue'
 export { default as LanguagePrompt } from './LanguagePrompt.vue'

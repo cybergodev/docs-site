@@ -145,11 +145,11 @@ export function useProjectSearch() {
     const ms = await getInstance()
     const raw = ms.search(q).slice(0, limit)
     return raw.map((r) => ({
-      title: (r.title as string) ?? '',
-      description: (r.description as string) ?? '',
-      headings: (r.headings as string) ?? '',
+      title: r.title as string,
+      description: r.description as string,
+      headings: r.headings as string,
       url: (r.url as string) ?? r.id,
-      project: (r.project as ProjectName | '') ?? '',
+      project: r.project as ProjectName | '',
       score: r.score
     }))
   }

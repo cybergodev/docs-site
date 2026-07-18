@@ -7,9 +7,8 @@
    *
    * Injected into the `nav-bar-title-after` slot; VitePress's native siteTitle
    * `<span>` is hidden via theme/style/overrides.css so the two never render at
-   * once. Driven by `useProjectContext()` (reactive on the route), this replaces
-   * the old `updateProjectSiteTitle` DOM mutation in theme/index.ts — and
-   * renders the correct title during SSR instead of only after hydration.
+   * once. Driven by `useProjectContext()` (reactive on the route), it renders
+   * the correct title during SSR instead of only after hydration.
    */
   const { project } = useProjectContext()
 </script>

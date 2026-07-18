@@ -8,8 +8,8 @@
   /**
    * Homepage project grid, data-driven from `PROJECT_META` (shared.ts).
    * Reuses the `.home-projects` / `.project-card` / … classes already defined
-   * in theme/style/home.css, and renders `.tags` chips when a language has
-   * feature entries (zh only for now).
+   * in theme/style/home.css, and renders `.tags` chips from the per-language
+   * feature entries in PROJECT_META.
    */
   const cards = computed(() =>
     PROJECTS.map((project) => {

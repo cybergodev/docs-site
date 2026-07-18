@@ -9,8 +9,7 @@
    * Injected into `nav-bar-content-after`; VitePress's native social-links
    * cluster (which only ever held this one GitHub link) is hidden via
    * theme/style/overrides.css so the two never duplicate. Driven by
-   * `useProjectContext()` (reactive on the route), this replaces the old
-   * `updateProjectGitHubLink` DOM mutation in theme/index.ts.
+   * `useProjectContext()` (reactive on the route).
    *
    * Mirrors the native social-links visibility: hidden below 768px (mobile uses
    * the nav drawer; VitePress surfaces no GitHub link there either).

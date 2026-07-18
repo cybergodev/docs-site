@@ -93,7 +93,7 @@ export function transformHead(ctx: TransformContext) {
   // Dynamic og:locale based on page language (root defaults to Chinese)
   const langFromPath = LANG_PREFIX_RE.exec(path)
   const currentLang = (langFromPath ? langFromPath[1] : PRIMARY_LANG) as Lang
-  const locale = OGC_LOCALE[currentLang] || 'zh_CN'
+  const locale = OGC_LOCALE[currentLang]
   const altLocales = Object.entries(OGC_LOCALE)
     .filter(([lang]) => lang !== currentLang)
     .map(([, loc]) => loc)

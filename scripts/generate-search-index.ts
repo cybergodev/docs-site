@@ -33,8 +33,8 @@
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join, relative } from 'path'
 import { LANGS, PROJECTS, type Lang, type ProjectName } from '../docs/.vitepress/shared'
-import { extractFrontmatter, extractBody, parseFmField } from '../docs/.vitepress/utils/frontmatter'
 import { collectMd } from './_lib/walk'
+import { parseMd } from './_lib/parse-md'
 
 /** Output root, relative to the repo root. Lives under docs/public/ so the
  * VitePress static-asset pipeline ships it to dist verbatim. */
@@ -54,19 +54,6 @@ interface SearchDoc {
   lang: Lang
   /** '' for site-level pages (home / about) so the UI can render a "site" pill. */
   project: ProjectName | ''
-}
-
-/** Parse title/description from frontmatter, fall back to first H1 if title missing. */
-function parseMd(content: string): { title: string; description: string; body: string } {
-  const fm = extractFrontmatter(content)
-  let title = fm ? (parseFmField(fm, 'title') ?? '') : ''
-  let description = fm ? (parseFmField(fm, 'description') ?? '') : ''
-  const body = extractBody(content)
-  if (!title) {
-    const h1 = body.match(/^#\s+(.+?)\s*$/m)
-    if (h1) title = h1[1].replace(/[*_`]/g, '')
-  }
-  return { title: title.trim(), description: description.trim(), body: body.trim() }
 }
 
 /** File path → site URL path for the given language (cleanUrls-aware). */

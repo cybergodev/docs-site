@@ -119,7 +119,6 @@
    SOLE visible navbar title text. Hide VitePress's native siteTitle <span> so
    the two never show at once. The native <a class="title"> still carries the
    logo and the click target; only the redundant text span is suppressed.
-   Replaces the old DOM-mutation siteTitle logic in theme/index.ts.
    `:not(.project-nav-title)` is essential: our ProjectNavBarTitle also renders
    a <span> inside <a class="title"> (via the nav-bar-title-after slot), and
    without the exclusion this rule would hide the replacement title too. */

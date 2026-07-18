@@ -59,11 +59,8 @@ export function getPreferencePath(preference: string): string | null {
  * internal short language code (`zh`, `en`, …).
  *
  * Defaults to the primary language `zh` because the root path `/` serves the
- * Chinese homepage — this fixes the prior bug where several components
- * defaulted to `en` and rendered English on the root homepage.
- *
- * This is the single language-detection routine for client components,
- * replacing the per-component `startsWith('zh')` chains.
+ * Chinese homepage. This is the single language-detection routine for client
+ * components.
  */
 export function normalizeVpLang(vpLang: string): Lang {
   if (!vpLang) return PRIMARY_LANG

@@ -22,8 +22,8 @@
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join, relative } from 'path'
 import { DIST_DIR, HOST, PRIMARY_LANG, PROJECTS } from '../docs/.vitepress/shared'
-import { extractFrontmatter, extractBody, parseFmField } from '../docs/.vitepress/utils/frontmatter'
 import { collectMd } from './_lib/walk'
+import { parseMd } from './_lib/parse-md'
 
 /** Markdown source tree for the primary language, relative to the repo root. */
 const SRC_DIR = join('docs', PRIMARY_LANG)
@@ -35,22 +35,6 @@ interface Doc {
   urlPath: string
   /** Markdown body with the frontmatter stripped. */
   body: string
-}
-
-// Extract title/description from YAML frontmatter and return the body without
-// it. Falls back to the first H1 if title is absent. Parsing delegates to
-// utils/frontmatter (single-line fields, no YAML dependency — see CLAUDE.md),
-// shared with the sidebar builder.
-function parseMd(content: string): { title: string; description: string; body: string } {
-  const fm = extractFrontmatter(content)
-  let title = fm ? (parseFmField(fm, 'title') ?? '') : ''
-  let description = fm ? (parseFmField(fm, 'description') ?? '') : ''
-  const body = extractBody(content)
-  if (!title) {
-    const h1 = body.match(/^#\s+(.+?)\s*$/m)
-    if (h1) title = h1[1].replace(/[*_`]/g, '')
-  }
-  return { title: title.trim(), description: description.trim(), body: body.trim() }
 }
 
 // File path → site URL path. `index.md` collapses to its directory (cleanUrls),

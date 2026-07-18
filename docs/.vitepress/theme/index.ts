@@ -24,13 +24,10 @@ import {
  *
  * Every Layout-slot component below (ProjectNavBarTitle, ProjectGitHubLink,
  * LanguageMenu, …) is pure Vue: it reads the current route reactively via a
- * composable and renders the right value, with NO post-render DOM surgery.
- * This replaces the earlier approach of mutating VitePress internals
- * (`.VPNavBarTitle`, `.VPSocialLinks`) with querySelector after each
- * navigation — which was silently broken on every VitePress upgrade. See
- * composables/useProjectContext.ts.
+ * composable and renders the right value, with NO post-render DOM surgery
+ * against VitePress internals. See composables/useProjectContext.ts.
  *
- * The only setup() side effect left is persisting the user's language choice
+ * The only setup() side effect is persisting the user's language choice
  * (cookie + localStorage) so the browser-language prompt and the dev
  * bare-path redirect can read it on the next visit.
  */

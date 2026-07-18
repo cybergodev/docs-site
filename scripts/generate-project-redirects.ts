@@ -24,17 +24,14 @@
  * Runs after `fix-clean-urls.js` so the /zh/ tree is already in
  * directory-per-page form.
  */
-import { access, mkdir, writeFile } from 'fs/promises'
+import { mkdir, writeFile } from 'fs/promises'
 import { join, relative, dirname, basename } from 'path'
 import { DIST_DIR, HOST, LANGS, PRIMARY_LANG } from '../docs/.vitepress/shared'
 import { collectMd } from './_lib/walk'
+import { fileExists } from './_lib/file-exists'
+import { escapeHtml } from './_lib/escape-html'
 
 const ZH_DIR = join(DIST_DIR, PRIMARY_LANG)
-
-const fileExists = (p: string): Promise<boolean> =>
-  access(p)
-    .then(() => true)
-    .catch(() => false)
 
 // Recursively collect every built page under `root` as a forward-slashed path
 // relative to `root`. A page is a directory containing `index.html` (clean URLs,
@@ -54,16 +51,6 @@ async function collectPages(root: string): Promise<string[]> {
     pages.push(dir)
   }
   return pages
-}
-
-function escapeHtml(s: string): string {
-  const map: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;'
-  }
-  return s.replace(/[&<>"]/g, (c) => map[c])
 }
 
 // Inline, synchronous client-side language detection embedded in each bridge

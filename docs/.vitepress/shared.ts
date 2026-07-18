@@ -20,8 +20,8 @@ export type ProjectName = (typeof PROJECTS)[number]
 /**
  * Per-project display metadata driving the homepage project grid
  * (`<ProjectGrid>`), so adding a project = one entry here. The six per-language
- * `index.md` files no longer each hand-write six cards (the old layout was
- * 6 languages × 6 projects = 36 duplicated HTML blocks).
+ * `index.md` files render the grid via `<ProjectGrid lang>` instead of
+ * hand-writing cards.
  *
  * `desc` and `features` are both localized across all five languages, so the
  * grid renders translated tag chips on every locale.
@@ -53,7 +53,12 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
       en: ['JSONPath queries', 'Streaming', 'Type-safe conversion', 'Zero-allocation extraction'],
       ko: ['JSONPath 경로 쿼리', '스트리밍 처리', '타입 안전 변환', '제로 할당 추출'],
       ja: ['JSONPath パスクエリ', 'ストリーミング処理', '型安全変換', 'ゼロアロケーション抽出'],
-      ru: ['Запросы JSONPath', 'Потоковая обработка', 'Типобезопасное преобразование', 'Извлечение без аллокаций']
+      ru: [
+        'Запросы JSONPath',
+        'Потоковая обработка',
+        'Типобезопасное преобразование',
+        'Извлечение без аллокаций'
+      ]
     }
   },
   jwt: {
@@ -68,10 +73,20 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
     },
     features: {
       zh: ['多算法支持', '签名验证', '黑名单管理', 'Claims 解析'],
-      en: ['Multi-algorithm support', 'Signature verification', 'Blacklist management', 'Claims parsing'],
+      en: [
+        'Multi-algorithm support',
+        'Signature verification',
+        'Blacklist management',
+        'Claims parsing'
+      ],
       ko: ['다중 알고리즘 지원', '서명 검증', '블랙리스트 관리', 'Claims 파싱'],
       ja: ['マルチアルゴリズムサポート', '署名検証', 'ブラックリスト管理', 'Claims パース'],
-      ru: ['Поддержка нескольких алгоритмов', 'Проверка подписи', 'Управление чёрным списком', 'Парсинг Claims']
+      ru: [
+        'Поддержка нескольких алгоритмов',
+        'Проверка подписи',
+        'Управление чёрным списком',
+        'Парсинг Claims'
+      ]
     }
   },
   httpc: {
@@ -86,10 +101,28 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
     },
     features: {
       zh: ['TLS 1.2+', 'SSRF 防护', '断路器', '连接池管理', '请求重试'],
-      en: ['TLS 1.2+', 'SSRF protection', 'Circuit breaker', 'Connection pool management', 'Request retry'],
+      en: [
+        'TLS 1.2+',
+        'SSRF protection',
+        'Circuit breaker',
+        'Connection pool management',
+        'Request retry'
+      ],
       ko: ['TLS 1.2+', 'SSRF 방어', '서킷 브레이커', '연결 풀 관리', '요청 재시도'],
-      ja: ['TLS 1.2+', 'SSRF 防御', 'サーキットブレイカー', 'コネクションプール管理', 'リクエストリトライ'],
-      ru: ['TLS 1.2+', 'Защита от SSRF', 'Автоматический выключатель', 'Управление пулом соединений', 'Повтор запросов']
+      ja: [
+        'TLS 1.2+',
+        'SSRF 防御',
+        'サーキットブレイカー',
+        'コネクションプール管理',
+        'リクエストリトライ'
+      ],
+      ru: [
+        'TLS 1.2+',
+        'Защита от SSRF',
+        'Автоматический выключатель',
+        'Управление пулом соединений',
+        'Повтор запросов'
+      ]
     }
   },
   html: {
@@ -243,7 +276,12 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
       en: ['.env file support', 'Type conversion', 'Secure storage', 'Audit logging'],
       ko: ['.env 파일 지원', '타입 변환', '안전한 저장', '감사 로깅'],
       ja: ['.env ファイルサポート', '型変換', 'セキュアストレージ', '監査ログ'],
-      ru: ['Поддержка файлов .env', 'Преобразование типов', 'Безопасное хранение', 'Журналирование аудита']
+      ru: [
+        'Поддержка файлов .env',
+        'Преобразование типов',
+        'Безопасное хранение',
+        'Журналирование аудита'
+      ]
     }
   }
 }
@@ -374,7 +412,6 @@ export const DIST_DIR = 'docs/.vitepress/dist'
 /** localStorage / cookie keys for language preference (client-side only). */
 export const STORAGE_KEYS = {
   preference: 'vitepress-lang-preference',
-  detected: 'vitepress-lang-auto-detected',
   /** Set when the user dismisses the browser-language prompt; stops re-prompting. */
   langPromptDismissed: 'vitepress-lang-prompt-dismissed'
 } as const

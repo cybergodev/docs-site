@@ -16,10 +16,12 @@
  *
  * Modeled on `scripts/generate-project-redirects.ts`.
  */
-import { access, mkdir, writeFile } from 'fs/promises'
+import { mkdir, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { DIST_DIR, HOST, LANGS } from '../docs/.vitepress/shared'
 import { readFileSync } from 'fs'
+import { fileExists } from './_lib/file-exists'
+import { escapeHtml } from './_lib/escape-html'
 
 interface Move {
   from: string
@@ -38,18 +40,6 @@ try {
     )
   }
   // ENOENT (file removed after migration) is the quiet, expected case.
-}
-
-const fileExists = (p: string): Promise<boolean> =>
-  access(p)
-    .then(() => true)
-    .catch(() => false)
-
-function escapeHtml(s: string): string {
-  return s.replace(
-    /[&<>"]/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string
-  )
 }
 
 function redirectHtml(lang: string, to: string): string {

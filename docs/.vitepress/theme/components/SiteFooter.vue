@@ -106,8 +106,7 @@
   // Derived straight from the reactive frontmatter so it tracks navigation
   // automatically — no imperative onMounted toggle and no route `watch` to set
   // up/clean up. It is also hydration-safe: `frontmatter` is identical on server
-  // and client, so the computed resolves the same way in both passes (unlike the
-  // old `ref(false)` + onMounted flip, which rendered no footer in SSR HTML).
+  // and client, so the computed resolves the same way in both passes.
   const show = computed(() => {
     const layout = frontmatter.value.layout
     return layout === 'home' || layout === 'page'
