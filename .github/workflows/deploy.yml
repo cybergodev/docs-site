@@ -1,26 +1,14 @@
 name: Deploy Docs to Server (FTP)
 
-# Production deploy: fires on push to main. In the fork-based contribution flow
-# (rnb3ds/docs-site → PR → cybergodev/docs-site), a push to main happens exactly
-# when a PR is merged — so this deploys on merge. Pushes/commits to the fork
-# never reach this repo and never trigger this workflow.
-#
-# Why `push` and not `pull_request`: workflows triggered by pull_request events
-# from a fork do NOT receive the repo's secrets (GitHub security default), which
-# would make the FTP step fail (no FTP_SERVER etc.). The merge's push-to-main
-# event has full secret access, so `push` is the correct trigger.
-#
-# Builds with VitePress and uploads docs/.vitepress/dist/ to the FTP server via
-# FTPS. Also runnable manually via the Actions UI (workflow_dispatch). The
-# previous Cloudflare Pages workflow was removed in favor of this FTP path.
-#
-# Prerequisites: GitHub secrets FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, and
-# FTP_REMOTE_DIR must be configured, or the FTP deploy step fails.
-
 on:
-  workflow_dispatch:
   push:
     branches: [main]
+    paths:
+      - 'docs/**'
+      - 'docs/.vitepress/**'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
 
 concurrency:
   group: deploy
