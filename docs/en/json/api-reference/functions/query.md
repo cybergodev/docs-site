@@ -254,7 +254,7 @@ func main() {
 
 Signature: `func GetTyped[T any](jsonStr, path string, defaultValue ...T) T`
 
-Generic getter function supporting custom types. Returns `defaultValue` (or the zero value of `T` if not provided) when the path does not exist or type conversion fails.
+Generic getter function supporting custom types. Returns `defaultValue` (or the zero value of `T` if not provided) when the path does not exist, the value is null, or type conversion fails.
 
 **Naming Convention**: `GetTyped[T]` is semantically equivalent to `GetAs[T]`, meaning get and convert the JSON value to the specified type `T`.
 

@@ -38,7 +38,7 @@ defer p.Close()
 - [ ] `ErrInternalPanic` エラーと `AuditEventPathTraversal` 監査イベントに注目
 
 ```go
-auditFile, _ := os.OpenFile("audit.jsonl", os.O_APPEND|os.O_CREATE, 0644)
+auditFile, _ := os.OpenFile("audit.jsonl", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 defer auditFile.Close()
 
 cfg := html.HighSecurityConfig()

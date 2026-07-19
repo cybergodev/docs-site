@@ -363,16 +363,44 @@ func init() {
 }
 
 func main() {
-    // Registration must complete before New (done in init)
+    // Registration must complete before New (done in init).
+    //
+    // Important limitation: LoadFiles does not auto-route to the TOMLParser
+    // above based on the .toml extension — DetectFormat only recognizes
+    // .env/.json/.yaml/.yml; any other extension falls back to the built-in
+    // dotenv parser (see DetectFormat in format.go). To actually invoke
+    // TOMLParser via LoadFiles, use ForceRegisterParser to override
+    // FormatEnv and name the file *.env:
+    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &TOMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
 
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // Now .toml files can be loaded
-    loader.LoadFiles("config.toml")
+    // The file extension must be .env (with TOML content) to be routed to the overridden parser
+    if err := loader.LoadFiles("config.env"); err != nil {
+        panic(err)
+    }
 }
 ```
+
+::: warning LoadFiles routing limitation
+Custom format numbers registered via `RegisterParser` (e.g., `FormatTOML = 100`) **are not recognized by `LoadFiles` based on file extension**. Internally, `LoadFiles` calls `DetectFormat(filename)` to pick the parser, and `DetectFormat` only recognizes the four extensions `.env` / `.json` / `.yaml` / `.yml`; any other extension returns `FormatAuto`, which ultimately falls back to the built-in dotenv parser — the custom parser is never invoked.
+
+Two paths to load a custom format file:
+
+1. **`.env` extension + `ForceRegisterParser`** (recommended): name the custom-format file `*.env` and use `env.ForceRegisterParser(env.FormatEnv, ...)` to override the built-in dotenv parser. Be sure to preserve key/value/size security checks, otherwise you will introduce security holes.
+2. **Call the parser manually**: read the file into an `io.Reader`, construct the parser instance yourself, and call `parser.Parse(reader, filename)` to obtain a `map[string]string`, then write the entries one by one via `loader.Set`. Note that the parser's internal `validator`/`auditor` typically depend on `*ComponentFactory`, which must be obtained and passed in when registering the factory.
+:::
 
 ---
 
@@ -576,19 +604,36 @@ func init() {
 }
 
 func main() {
+    // LoadFiles does not auto-route to the XML parser based on the .xml
+    // extension — DetectFormat only recognizes .env/.json/.yaml/.yml.
+    // Here we use ForceRegisterParser to override FormatEnv; the file is
+    // loaded with a .env extension (but contains XML content):
+    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &XMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
+
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // Load XML configuration
     /*
+    config.env file content (XML format):
     <?xml version="1.0"?>
     <config>
         <entry key="DATABASE_HOST">localhost</entry>
         <entry key="DATABASE_PORT">5432</entry>
     </config>
     */
-    loader.LoadFiles("config.xml")
+    if err := loader.LoadFiles("config.env"); err != nil {
+        panic(err)
+    }
 
     fmt.Println(loader.GetString("DATABASE_HOST"))  // localhost
     fmt.Println(loader.GetInt("DATABASE_PORT"))     // 5432

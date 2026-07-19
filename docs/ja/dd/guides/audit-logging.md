@@ -34,8 +34,8 @@ if err != nil {
 }
 defer auditLogger.Close()
 
-// 注意：AuditLogger と Logger は独立したコンポーネント
-// 両者は自動的に統合されず、フックや他のメカニズムで手動接続が必要
+// AuditLogger は独立して作成することも（本例のように）、Config.Audit で Logger と自動統合することも可能
+// ここでは独立用法をデモンストレーション：別途 logger を作成し、Config.Audit は未設定
 logger, err := dd.New(dd.Config{
     Security: dd.DefaultSecurityConfig(),
     Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
@@ -226,10 +226,15 @@ func main() {
         dd.String("password", "secret123"), // → [REDACTED]
     )
 
-    // 注意：AuditLogger と Logger は独立したコンポーネント
-    // フックで Logger のセキュリティイベントを AuditLogger に転送する必要がある
+    // 注：本例の Logger は Config.Audit を未設定のため、マスキングなどのセキュリティイベントは自動的に監査に入りません。
+    // 業務 logger のセキュリティイベントを AuditLogger に自動転送したい場合は、その logger の
+    // Config.Audit を設定してください（有効化するとマスキング、レート制限などのイベントが自動的に監査ストリームに転送されます）。
 }
 ```
+
+:::info 自動統合 vs 独立使用
+AuditLogger は**独立して作成**することも（`dd.NewAuditLogger`、本節の例の使い方）、**`Config.Audit` 経由で Logger と自動統合**することも可能です。後者は `Config.Audit.Enabled` が true の場合、機密データのマスキングイベントやレート制限イベントなどを自動的に AuditLogger に転送し、フックを手動接続する必要はありません。
+:::
 
 ## 次のステップ
 

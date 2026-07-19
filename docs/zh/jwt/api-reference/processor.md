@@ -19,7 +19,7 @@ func (p *Processor) Create(claims CustomClaims) (string, error)
 
 创建新的 JWT 访问令牌。接受任何实现 `CustomClaims` 接口的类型。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 参数
 
@@ -64,7 +64,7 @@ func (p *Processor) Validate(tokenString string) (Claims, bool, error)
 
 验证 JWT 访问令牌，返回解析后的 Claims。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 参数
 
@@ -119,7 +119,7 @@ func (p *Processor) CreateRefresh(claims CustomClaims) (string, error)
 
 创建刷新令牌，使用 `RefreshTokenTTL` 而非 `AccessTokenTTL`。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 参数
 
@@ -161,7 +161,7 @@ func (p *Processor) Refresh(refreshTokenString string) (string, error)
 刷新时仅验证标准 JWT 字段（exp、nbf、iss、aud、黑名单）和基本结构有效性（UserID 或 Username 必须存在）。深度字段约束（长度限制、注入模式）不会重新检查，因为它们在创建时已验证。
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 参数
 
@@ -204,7 +204,7 @@ func (p *Processor) ValidateInto(tokenString string, claims CustomClaims) (Custo
 
 验证令牌并填充到自定义 Claims 结构。返回与传入的 `claims` 相同的指针。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 参数
 
@@ -265,7 +265,7 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 刷新时仅验证标准 JWT 字段（exp、nbf、iss、aud、黑名单）和基本结构有效性。深度字段约束（长度限制、注入模式）不会重新检查，因为它们在创建时已验证。
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 参数
 
@@ -316,7 +316,7 @@ func (p *Processor) Revoke(tokenString string) error
 - 已过期的令牌仍可吊销；条目会由黑名单自动清理
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 参数
 
@@ -352,7 +352,7 @@ func (p *Processor) IsRevoked(tokenString string) (bool, error)
 
 检查令牌是否已被吊销。通过验证签名后查找令牌的 jti 在黑名单中的状态。当黑名单未配置时返回 `false` 和 `nil` 错误。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 参数
 
@@ -392,7 +392,7 @@ func (p *Processor) ParseUnverified(tokenString string, claims any) error
 返回的 Claims 未经验证，**不可信任**。仅用于调试或日志场景。
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 参数
 
@@ -425,7 +425,7 @@ func (p *Processor) Close() error
 
 释放资源并安全清除密钥。可多次调用，后续调用返回 `ErrProcessorClosed`。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 返回值
 
@@ -443,7 +443,7 @@ func (p *Processor) IsClosed() bool
 
 检查 Processor 是否已关闭。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 返回值
 

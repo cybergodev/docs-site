@@ -1,13 +1,13 @@
 ---
 sidebar_label: "웹 서비스 통합"
 title: "웹 서비스 통합 - CyberGo DD | HTTP 서비스 로그 예제"
-description: "CyberGo DD 웹 서비스 통합 예제. HTTP 미들웨어 로그 기록, 요청 체인 추적과 TraceID 전달, 다중 라우팅 계층화 로그 설정, 정상 종료와 로그 새로고침, 프로덕션급 로그 설정 방안으로 DD 로그 라이브러리를 HTTP 서비스에 빠르게 통합합니다."
+description: "CyberGo DD를 웹 서비스에 통합하는 완전한 예제입니다. HTTP 미들웨어 로그 기록, 요청 체인 추적과 TraceID 전달, 다중 라우트 계층화 로그 구성, 우아한 종료와 로그 flush, 프로덕션급 로그 구성 방안을 다루어 개발자가 DD 로그 라이브러리를 HTTP 서비스 프로젝트에 빠르게 통합할 수 있도록 돕습니다."
 sidebar_position: 2
 ---
 
 # 웹 서비스 통합
 
-이 예제에서는 DD를 HTTP 웹 서비스에 통합하여 요청 로그, 추적, 오류 처리 및 정상 종료를 구현하는 방법을 보여줍니다.
+이 예제는 DD를 HTTP 웹 서비스에 통합하여 요청 로그, 추적, 오류 처리, 우아한 종료를 구현하는 방법을 보여줍니다.
 
 ## 기본 통합
 
@@ -76,7 +76,7 @@ func LoggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
                 requestID = generateRequestID()
             }
 
-            // 요청 범위 로그
+            // 요청 스코프 로그
             reqLog := logger.WithFields(
                 dd.String("request_id", requestID),
                 dd.String("method", r.Method),
@@ -150,7 +150,7 @@ func NewOrderService(logger *dd.Logger) *OrderService {
 }
 ```
 
-## 정상 종료
+## 우아한 종료
 
 ```go
 package main
@@ -177,7 +177,7 @@ func main() {
 
     server := &http.Server{Addr: ":8080"}
 
-    // 종료 신호 대기
+    // 종료 신호 감지
     quit := make(chan os.Signal, 1)
     signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
@@ -189,9 +189,9 @@ func main() {
     }()
 
     <-quit
-    logger.Info("서비스를 종료하는 중...")
+    logger.Info("서비스 종료 중...")
 
-    // HTTP 서비스 정상 종료
+    // HTTP 서비스 우아한 종료
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
@@ -199,15 +199,15 @@ func main() {
         logger.ErrorWith("서비스 종료 실패", dd.Err(err))
     }
 
-    // 로거 정상 종료
-    logger.Info("서비스가 중지되었습니다")
+    // 로거 우아한 종료
+    logger.Info("서비스 중지됨")
     logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
     defer logCancel()
     logger.Shutdown(logCtx)
 }
 ```
 
-## 전체 예시
+## 완전한 예
 
 ```go
 package main
@@ -225,7 +225,7 @@ import (
     "github.com/cybergodev/dd"
 )
 
-// LoggingMiddleware 요청 로깅 미들웨어
+// LoggingMiddleware 요청 로그 미들웨어
 func LoggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -301,5 +301,5 @@ func main() {
 ## 다음 단계
 
 - [테스트 패턴](./testing-patterns) -- 테스트에서 LoggerRecorder 사용
-- [보안과 감사 실전](./security-audit) -- 보안 필터링과 감사 로그
+- [보안과 감사 실전](./security-audit) -- 보안 필터와 감사 로그
 - [분산 추적](../guides/context-tracing) -- 요청 추적 통합

@@ -39,7 +39,7 @@ logger.InfoWith("用户登录",
 | SSN | 美国社会安全号码格式 |
 | 电话号码 | 全球电话号码格式（含国际格式） |
 
-`DefaultSecureConfig()` 在基础之上增加：
+`DefaultSecureConfig()` 使用**全量模式集**（含基础全部，再加以下常见类别）：
 
 | 类别 | 匹配目标 |
 |------|----------|
@@ -47,6 +47,10 @@ logger.InfoWith("用户登录",
 | IP 地址 | IPv4/IPv6 地址 |
 | JWT Token | `eyJ` 开头的 JWT 格式 |
 | 连接字符串 | 数据库连接字符串中的密码 |
+
+:::info 模式覆盖范围
+上表仅列出常见类别示例。`DefaultSecurityConfig()` 实际内置约 36 条模式，行业预设（如 `HealthcareConfig()`）可达 71 条，还涵盖 AWS 密钥、Stripe/GitHub/Slack 令牌、IBAN、多国税务号、Log4Shell 等。完整模式集见源码 `internal/patterns.go`。
+:::
 
 ## 自定义过滤模式
 
@@ -148,7 +152,7 @@ if err != nil {
 defer logger.Close()
 
 // 含敏感信息的日志消息自动脱敏
-logger.Info("患者记录 mrn=MRN-123456 diagnosis=J18.9 已更新")
+logger.Info("患者记录 mrn=MRN123456 diagnosis=J18.9 已更新")
 // 消息中的 MRN 和 ICD-10 编码匹配模式会被脱敏
 
 // 结构化字段根据键名敏感度过滤

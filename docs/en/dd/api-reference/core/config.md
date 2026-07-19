@@ -1,35 +1,39 @@
 ---
 sidebar_label: "Config"
-title: "Configuration - CyberGo DD | Config Details"
-description: "CyberGo DD Config API: preset configs (Default/Development/JSON), OutputTarget settings, field validation, sampling, and type-safe logger customization."
+title: "Config - CyberGo DD | Config In Depth"
+description: "Complete API documentation for the CyberGo DD Config struct, including the DefaultConfig/DevelopmentConfig/JSONConfig preset factories, OutputTarget output-target configuration, field-validation rules, sampling control, formatter options, and the Validate method, providing flexible and type-safe logger behavior customization."
 sidebar_position: 4
 ---
 
-# Configuration
+# Config
 
-DD configures logger behavior through the `Config` struct and provides multiple preset configuration factory functions.
+DD configures logger behavior via the `Config` struct, and provides several preset configuration factory functions.
 
-## Preset Configuration Factories
+## Preset Config Factories
 
 ```go
 // Default config: INFO level, text format
 cfg := dd.DefaultConfig()
-
-// Development config: DEBUG level, dynamic caller detection
-cfg := dd.DevelopmentConfig()
-
-// JSON config: JSON format output
-cfg := dd.JSONConfig()
 ```
 
-| Factory Function | Return Type | Level | Format | Use Case |
-|------------------|-------------|-------|--------|----------|
+```go
+// Development config: DEBUG level, dynamic caller detection
+cfgDev := dd.DevelopmentConfig()
+```
+
+```go
+// JSON config: JSON output
+cfgJSON := dd.JSONConfig()
+```
+
+| Factory | Return type | Level | Format | Use case |
+|---------|-------------|-------|--------|----------|
 | `DefaultConfig()` | `Config` | Info | Text | Production |
 | `DevelopmentConfig()` | `Config` | Debug | Text | Development |
 | `JSONConfig()` | `Config` | Debug | JSON | Log collection |
 
-:::tip Security Enabled by Default
-All preset configurations (`DefaultConfig`, `DevelopmentConfig`, `JSONConfig`) have security filtering enabled by default, automatically redacting passwords, API keys, credit card numbers, and other sensitive data.
+:::tip Security filtering is enabled by default
+All preset configs (`DefaultConfig`, `DevelopmentConfig`, `JSONConfig`) enable security filtering by default and automatically redact sensitive data such as passwords, API keys, and credit card numbers.
 :::
 
 ## Config Struct
@@ -42,12 +46,12 @@ type Config struct {
 
     // Time configuration
     TimeFormat     string           // Time format (default ISO 8601)
-    IncludeTime    bool             // Whether to include time (default true)
-    IncludeLevel   bool             // Whether to include level (default true)
+    IncludeTime    bool             // Include time (default true)
+    IncludeLevel   bool             // Include level (default true)
 
-    // Caller information
+    // Caller info
     DynamicCaller  bool             // Dynamic caller detection (default true)
-    FullPath       bool             // Whether to show full path (default false)
+    FullPath       bool             // Show full path (default false)
 
     // Output targets
     Targets        []OutputTarget   // Output target list
@@ -62,8 +66,8 @@ type Config struct {
     FieldValidation *FieldValidationConfig
 
     // Lifecycle handlers
-    FatalHandler      FatalHandler       // Fatal level custom handler
-    WriteErrorHandler WriteErrorHandler  // Write error callback
+    FatalHandler      FatalHandler       // Custom Fatal-level handler
+    WriteErrorHandler WriteErrorHandler  // Write-error callback
 
     // Extensibility
     ContextExtractors []ContextExtractor // Context extractor list
@@ -71,12 +75,12 @@ type Config struct {
     Sampling          *SamplingConfig    // Sampling config
 
     // Audit configuration
-    Audit             *AuditConfig       // Audit logging config (security events)
+    Audit             *AuditConfig       // Audit logging config (security event recording)
 }
 ```
 
-:::tip Audit Field
-When `Audit` is set, sensitive data redactions, rate limit events, and security violations are emitted as audit events via the [AuditLogger](../security-audit/audit). See [Audit Logging](../security-audit/audit).
+:::tip Audit field
+When `Audit` is set, sensitive-data redaction, rate-limit, and violation events are recorded as audit events via the [AuditLogger](../security-audit/audit). See [Audit Logging](../security-audit/audit).
 :::
 
 ### Clone
@@ -85,7 +89,7 @@ When `Audit` is set, sensitive data redactions, rate limit events, and security 
 func (c *Config) Clone() Config
 ```
 
-Creates a copy of the configuration that can be safely modified without affecting the original. Returns a zero-value `Config{}` for a nil receiver.
+Creates a copy of the configuration that can be safely modified without affecting the original. Returns the zero value `Config{}` for a nil receiver.
 
 Copy strategy (consistent with the source `Clone` comments):
 
@@ -105,14 +109,14 @@ custom.Level = dd.LevelDebug
 func (c Config) Validate() error
 ```
 
-Validates the configuration and returns the first error encountered. `dd.New(cfg)` calls this method internally; you can also call it manually before passing to `New` to surface problems earlier.
+Validates the configuration and returns the first error encountered. `dd.New(cfg)` calls this method internally; you can also call it manually before passing to `New` to surface issues early.
 
-Validation items:
+Validation checks:
 
 - `Level` must fall within `[LevelDebug, LevelFatal]`
 - `Format` must be `FormatText` or `FormatJSON`
 - When `IncludeTime=true` and `TimeFormat` is non-empty, validates the Go time reference layout (e.g. `time.RFC3339`)
-- The total number of `Targets` must not exceed 100 (exceeding returns `ErrMaxWritersExceeded`)
+- Total `Targets` count must not exceed 100 (otherwise returns `ErrMaxWritersExceeded`)
 - Each `Targets` element: `OutputCustom` must have a non-nil `Writer`, `OutputFile` must have a non-empty `Path`
 
 ```go
@@ -127,7 +131,7 @@ if err := cfg.Validate(); err != nil {
 
 ### OutputType
 
-Output target type enumeration.
+Enumeration of output target types.
 
 ```go
 type OutputType int
@@ -141,16 +145,16 @@ type OutputType int
 
 ### OutputTarget
 
-Output target configuration, describing a single output target.
+Output target configuration, describing a single output destination.
 
 ```go
 type OutputTarget struct {
     Type       OutputType     // Output type
     Path       string         // File path (effective for OutputFile)
-    MaxSizeMB  int            // File size limit MB (effective for OutputFile)
-    MaxBackups int            // Number of backups to retain (effective for OutputFile)
-    MaxAge     time.Duration  // Old file retention duration (effective for OutputFile)
-    Compress   bool           // Whether to gzip compress (effective for OutputFile)
+    MaxSizeMB  int            // File size cap in MB (effective for OutputFile)
+    MaxBackups int            // Number of backups to keep (effective for OutputFile)
+    MaxAge     time.Duration  // How long to keep old files (effective for OutputFile)
+    Compress   bool           // Whether to gzip-compress (effective for OutputFile)
     Writer     io.Writer      // Custom Writer (effective for OutputCustom)
 }
 ```
@@ -163,14 +167,14 @@ func FileOutput(path string) OutputTarget
 func CustomOutput(w io.Writer) OutputTarget
 ```
 
-:::tip FileOutput Default Rotation Parameters
-The `OutputTarget` returned by `FileOutput` is pre-filled with default rotation values: `MaxSizeMB=100`, `MaxBackups=10`, `MaxAge=30 * 24 * time.Hour` (30 days), `Compress=false`. To customize, modify the corresponding fields of the returned value directly:
+:::tip FileOutput default rotation parameters
+The `OutputTarget` returned by `FileOutput` is pre-filled with default rotation values: `MaxSizeMB=100`, `MaxBackups=10`, `MaxAge=30 * 24 * time.Hour` (30 days), `Compress=false`. To customize, modify the corresponding fields on the returned value:
 
 ```go
 target := dd.FileOutput("logs/app.log")
 target.MaxSizeMB = 50               // Rotate at 50 MB
 target.MaxBackups = 5               // Keep 5 backups
-target.MaxAge = 7 * 24 * time.Hour  // Retain for 7 days
+target.MaxAge = 7 * 24 * time.Hour  // Keep 7 days
 target.Compress = true              // gzip-compress old logs
 ```
 
@@ -201,7 +205,7 @@ JSON output format configuration.
 
 ```go
 type JSONOptions struct {
-    PrettyPrint bool           // Whether to pretty print (default false)
+    PrettyPrint bool           // Pretty-print output (default false)
     Indent      string         // Indent string (default "  ")
     FieldNames  *JSONFieldNames // Custom JSON field names
 }
@@ -209,7 +213,7 @@ type JSONOptions struct {
 
 ### JSONFieldNames
 
-Custom field names in JSON output. Used to adapt to different log collection systems.
+Customize the field names in JSON output. Useful for adapting to different log collection systems.
 
 ```go
 type JSONFieldNames struct {
@@ -217,11 +221,11 @@ type JSONFieldNames struct {
     Level     string  // Level field name (default "level")
     Caller    string  // Caller field name (default "caller")
     Message   string  // Message field name (default "message")
-    Fields    string  // Fields container name (default "fields")
+    Fields    string  // Field container name (default "fields")
 }
 ```
 
-Implements a pointer-receiver method `(*JSONFieldNames).IsComplete() bool`: returns `true` when all 5 field names are non-empty, useful for checking whether all field names have been fully customized.
+Implements the pointer-receiver method `(*JSONFieldNames).IsComplete() bool`: returns `true` when all 5 field names are non-empty, useful for checking whether all field names have been fully customized.
 
 Usage example:
 
@@ -240,7 +244,7 @@ cfg.FieldNames = &dd.JSONFieldNames{
 func DefaultJSONOptions() *JSONOptions
 ```
 
-Returns the default `JSONOptions` output options: pretty-printing is off by default (indent is two spaces), and field names use the defaults.
+Returns the default `JSONOptions`: no pretty-printing by default (two-space indent), field names use the defaults.
 
 ```go
 opts := dd.DefaultJSONOptions()
@@ -260,7 +264,7 @@ Sampling configuration for reducing log volume in high-throughput scenarios.
 type SamplingConfig struct {
     Enabled    bool          // Whether to enable sampling
     Initial    int           // Number of messages always logged before sampling
-    Thereafter int           // Sampling rate (value of 10 means log 1 out of every 10)
+    Thereafter int           // Sampling rate (value of 10 means 1 of every 10 is logged)
     Tick       time.Duration // Counter reset interval (0 means no reset)
 }
 ```
@@ -278,7 +282,7 @@ logger, _ := dd.New(cfg)
 
 ## FieldValidationConfig
 
-Field validation configuration for controlling field key naming conventions.
+Field validation configuration, controlling naming conventions for field keys.
 
 ```go
 type FieldValidationConfig struct {
@@ -294,10 +298,10 @@ type FieldValidationConfig struct {
 | Constant | Description |
 |----------|-------------|
 | `FieldValidationNone` | Disable validation (default) |
-| `FieldValidationWarn` | Warn on non-conforming fields, but still accept |
-| `FieldValidationStrict` | Reject non-conforming fields, output error |
+| `FieldValidationWarn` | Warn on non-conforming fields but still accept |
+| `FieldValidationStrict` | Emit an error to stderr on naming mismatch (the log entry is still written normally, not rejected) |
 
-Implements `String()` method, returns mode name.
+Implements a `String()` method returning the mode name.
 
 ### FieldNamingConvention
 
@@ -309,7 +313,7 @@ Implements `String()` method, returns mode name.
 | `NamingConventionPascalCase` | PascalCase | UserId, CreatedAt |
 | `NamingConventionKebabCase` | kebab-case | `user-id`, `created-at` |
 
-Implements `String()` method, returns naming convention name.
+Implements a `String()` method returning the naming-convention name.
 
 ### ValidateFieldKey
 
@@ -317,7 +321,7 @@ Implements `String()` method, returns naming convention name.
 func (c *FieldValidationConfig) ValidateFieldKey(key string) error
 ```
 
-Validates that a field key name conforms to the configured naming convention.
+Validates that a field key conforms to the configured naming convention.
 
 ## Field Validation Configuration
 
@@ -335,7 +339,7 @@ Default configuration: validation disabled.
 func StrictSnakeCaseConfig() *FieldValidationConfig
 ```
 
-Strict snake_case validation. Field names must be in `snake_case` format.
+Strict snake_case validation; field names must be in `snake_case` format.
 
 ### StrictCamelCaseConfig
 
@@ -343,7 +347,7 @@ Strict snake_case validation. Field names must be in `snake_case` format.
 func StrictCamelCaseConfig() *FieldValidationConfig
 ```
 
-Strict camelCase validation. Field names must be in `camelCase` format.
+Strict camelCase validation; field names must be in `camelCase` format.
 
 ### Usage
 
@@ -356,7 +360,7 @@ logger, _ := dd.New(dd.Config{
 // Valid
 logger.InfoWith("ok", dd.String("user_name", "admin"))
 
-// Invalid (not snake_case)
+// Non-conforming naming (not snake_case; the log is still written, error goes to stderr)
 logger.InfoWith("fail", dd.String("userName", "admin"))
 ```
 
@@ -396,8 +400,8 @@ logger, _ := dd.New(dd.Config{
 
 ## Next Steps
 
-- [Logger](./logger) -- Create logger with config
+- [Logger](./logger) -- Create loggers from configuration
 - [Output Targets](../output-integration/writers) -- FileWriter, BufferedWriter, MultiWriter
-- [Security Filtering](../security-audit/security) -- SecurityConfig in detail
-- [Hook System](../security-audit/hooks) -- HooksConfig in detail
-- [Audit Logging](../security-audit/audit) -- AuditConfig in detail
+- [Security Filtering](../security-audit/security) -- SecurityConfig in depth
+- [Hook System](../security-audit/hooks) -- HooksConfig in depth
+- [Audit Logging](../security-audit/audit) -- AuditConfig in depth

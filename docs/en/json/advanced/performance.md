@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Performance"
 title: "Performance - CyberGo JSON | High Performance Guide"
-description: "CyberGo JSON performance guide: EnableCache/CacheTTL caching, ParallelThreshold parallelism, PreParse, WarmupCache, and object-pool reuse for throughput."
+description: "CyberGo JSON performance optimization: EnableCache/CacheTTL caching, ParallelThreshold parallelism, PreParse pre-parsing and WarmupCache warmup to improve high-frequency JSON processing performance."
 sidebar_position: 1
 ---
 
@@ -14,12 +14,12 @@ Strategies and techniques for optimizing JSON processing performance.
 ### Reuse Processor Instances
 
 ```go
-// Package-level functions automatically reuse the global Processor
+// ✅ Package-level functions automatically reuse the global Processor
 for _, item := range dataList {
     val := json.GetString(item, "name")
 }
 
-// Or explicitly reuse instances (suitable for custom configuration)
+// ✅ Or explicitly reuse instances (suitable for custom configuration)
 processor, err := json.New()
 if err != nil {
     panic(err)
@@ -35,11 +35,11 @@ for _, item := range dataList {
 ### Reduce Allocations
 
 ```go
-// Use Marshal to return a byte slice
+// ✅ Use Marshal to return a byte slice
 bytes, _ := json.Marshal(data)
 
-// Use Encode to return a string
-s, _ := json.Encode(data)
+// ✅ Use EncodeWithConfig to return a string (Encode is deprecated)
+s, _ := json.EncodeWithConfig(data)
 ```
 
 ### Pre-allocate Buffers
@@ -54,11 +54,11 @@ buf := make([]byte, 0, 1024*1024)
 ### Use Structured Iteration for Large Files
 
 ```go
-// Bad: load everything at once
+// ❌ Load everything at once
 data, _ := os.ReadFile("large.json")
 parsed, _ := json.ParseAny(string(data))
 
-// Good: structured iteration (note: still loads the full file into memory)
+// ✅ Structured iteration (note: still loads the full file into memory)
 processor, err := json.New()
 if err != nil {
     panic(err)

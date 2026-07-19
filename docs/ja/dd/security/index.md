@@ -63,7 +63,7 @@ FileWriter は多層のパスセキュリティ検証を組み込みで提供：
 ```go
 // パストラバーサル攻撃は自動拒否
 fw, err := dd.NewFileWriter("../../../etc/passwd", dd.DefaultFileWriterConfig())
-// err: PATH_TRAVERSAL
+// err.Error(): "path traversal detected"
 ```
 
 ## コンプライアンス設定

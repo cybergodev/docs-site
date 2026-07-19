@@ -63,6 +63,10 @@ if err := cfg.Validate(); err != nil {
 
 ## 센티넬 오류
 
+:::warning 참고
+다음 센티넬들은 모두 미리 정의된 기호이지만, 현재 구현에서는 일부 시나리오가 **이 센티넬들을 `errors.Is`로 일치시키지 않습니다**: 금지 키는 `*SecurityError`를 반환하고 (`errors.Is(err, ErrSecurityViolation)`로 일치), 키 형식 오류와 필수 키 누락은 `*ValidationError`를 반환합니다 (`errors.As`로 추출). 자세한 내용은 각 오류 유형 섹션을 참조하세요.
+:::
+
 ### 파일 오류
 
 ```go
@@ -102,8 +106,8 @@ var ErrInvalidValue = errors.New("invalid value content")
 
 ```go
 err := loader.Set("PATH", "value")
-if errors.Is(err, env.ErrForbiddenKey) {
-    // 금지된 키 설정 시도
+if errors.Is(err, env.ErrSecurityViolation) {
+    // 금지 키 설정 시도 시 *SecurityError 반환
 }
 ```
 
@@ -147,8 +151,9 @@ if errors.Is(err, env.ErrNotInitialized) {
     // 먼저 env.Load() 또는 env.LoadWithConfig()를 호출해야 함
 }
 
-// 필수 키 누락 확인
-if errors.Is(err, env.ErrMissingRequired) {
+// 필수 키 누락 확인 (실제로는 *ValidationError{Rule:"required"} 반환)
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Rule == "required" {
     // 필수 키 누락
 }
 ```
@@ -387,9 +392,9 @@ func IsMarshalError(err error) bool  // 확인 함수
 **사용 예제:**
 
 ```go
-// 금지된 키 설정 시도 시 ErrForbiddenKey 반환
+// 금지 키 설정 시 *SecurityError 반환
 err := loader.Set("PATH", "/malicious/path")
-if errors.Is(err, env.ErrForbiddenKey) {
+if errors.Is(err, env.ErrSecurityViolation) {
     // 키가 금지됨
 }
 
@@ -634,8 +639,8 @@ case errors.Is(err, env.ErrFileNotFound):
     // 파일이 존재하지 않음
 case errors.Is(err, env.ErrFileTooLarge):
     // 파일이 너무 큼
-case errors.Is(err, env.ErrForbiddenKey):
-    // 금지된 키
+case errors.Is(err, env.ErrSecurityViolation):
+    // 금지 키
 case errors.Is(err, env.ErrClosed):
     // 로더가 닫힘
 }

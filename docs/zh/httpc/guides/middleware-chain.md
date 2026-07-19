@@ -50,7 +50,7 @@ httpc.RecoveryMiddleware()
 httpc.LoggingMiddleware(func(format string, args ...any) {
     log.Printf("[HTTP] "+format, args...)
 })
-// 输出: [HTTP] GET https://api.example.com/data -> 200 (150ms)
+// 输出示例: [HTTP] GET https://api.example.com/data -> 200 (150ms)（状态码与耗时为实际测量值，非固定）
 ```
 
 ### RequestIDMiddleware
@@ -73,6 +73,10 @@ httpc.RequestIDMiddleware("X-Request-ID", func() string {
 ```go
 httpc.TimeoutMiddleware(30 * time.Second)
 ```
+
+:::warning 不要用于 Download 或流式请求
+`TimeoutMiddleware` 的 `defer cancel()` 会在处理器返回（即收到响应头）后立即触发，对 `Download` 或 `WithStreamBody` 请求会在读取响应体之前提前取消上下文，表现为「context canceled」错误。流式/下载场景请改用 [`WithTimeout`](../api-reference/core/options#withtimeout) 选项。
+:::
 
 ### HeaderMiddleware
 

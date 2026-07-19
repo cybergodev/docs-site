@@ -88,12 +88,12 @@ type AccessResult struct {
 
 Signature: `func (r AccessResult) Ok() bool`
 
-Checks whether the value exists and has no error.
+Checks whether the value exists.
 
 ```go
 result := json.SafeGet(data, "user.name")
 if result.Ok() {
-    // Value exists with no error
+    // Value exists
 }
 ```
 

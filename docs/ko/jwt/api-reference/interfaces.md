@@ -78,7 +78,7 @@ Processor는 `*Claims`와 다른 타입에 대해 다른 검증 경로를 실행
 | 타입 | 검증 동작 |
 |------|----------|
 | `*Claims` | 심층 검증: 모든 필드 (길이 제한, 인젝션 패턴, 제어 문자) |
-| 기타 타입 | `Validate()` 호출 + 등록 선언 문자열 정제 (Issuer, Subject, ID, Audience) |
+| 기타 타입 | `Validate()` 호출 + 등록 선언 문자열 정제 (Issuer, Subject, ID, TokenType, Audience) |
 
 :::warning 주의
 `*Claims`가 아닌 타입의 경우, 커스텀 구조체 필드는 심층 검증되지 **않습니다**. 구현자는 `Validate()` 메서드에서 모든 비즈니스 필드를 직접 검증해야 합니다.

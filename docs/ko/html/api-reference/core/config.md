@@ -22,6 +22,10 @@ sidebar_position: 3
 | `WorkerPoolSize` | `int` | `4` | 워커 풀 크기 |
 | `ProcessingTimeout` | `time.Duration` | `30s` | 처리 타임아웃 시간 |
 
+:::tip 팁
+`MaxCacheEntries`, `CacheCleanup`, `ProcessingTimeout`을 `0`으로 설정하는 것은 오류가 아니라 명확한 의미를 가집니다(각각 캐시 비활성화, 백그라운드 정리 비활성화, 시간 제한 없음을 의미). 반면 `MaxInputSize`, `WorkerPoolSize`, `MaxDepth`는 반드시 양수여야 하며, 그렇지 않으면 `ConfigError`가 발생합니다.
+:::
+
 ### 보안
 
 | 필드 | 타입 | 기본값 | 설명 |
@@ -131,3 +135,22 @@ cfg := html.DefaultConfig()
 cfg.MaxInputSize = -1
 err := cfg.Validate() // ConfigError 반환
 ```
+
+### 검증 제약 조건
+
+`Validate()`가 숫자 필드에 적용하는 값의 범위입니다(위반 시 `ConfigError`를 반환하며, `errors.Is(err, html.ErrInvalidConfig)`로 확인할 수 있음):
+
+| 필드 | 제약 조건 | 잘못된 예 |
+|------|-----------|-----------|
+| `MaxInputSize` | 양수이며 ≤ `52428800` (50MB) | `0`, `-1`, `100000000` |
+| `MaxCacheEntries` | ≥ `0`이며 ≤ `100000` | `-1`, `200000` |
+| `CacheTTL` | ≥ `0` | `-1 * time.Second` |
+| `CacheCleanup` | ≥ `0` | `-1 * time.Minute` |
+| `WorkerPoolSize` | 양수이며 ≤ `256` | `0`, `512` |
+| `MaxDepth` | 양수이며 ≤ `500` | `0`, `1000` |
+| `ProcessingTimeout` | ≥ `0` | `-1 * time.Second` |
+| `InlineImageFormat` | 빈 값 / `none` / `markdown` / `html` / `placeholder` | `"pdf"` |
+| `InlineLinkFormat` | 빈 값 / `none` / `markdown` / `html` | `"pdf"` |
+| `TableFormat` | 빈 값 / `markdown` / `html` | `"csv"` |
+
+형식 문자열은 대소문자를 구분하지 않으며, 빈 값은 기본값으로 간주됩니다(`InlineImageFormat`/`InlineLinkFormat` → `none`, `TableFormat` → `markdown`). `New()`는 Processor 생성 전에 `Validate()`를 먼저 호출하므로, 잘못된 설정은 사용 가능한 Processor를 생성하지 않습니다.

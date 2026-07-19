@@ -59,5 +59,5 @@ for i, err := range batch.Errors {
 ```
 
 :::warning バッチ制限
-1 回のバッチは最大 10000 件です。超過するとエラーになります。
+1 回のバッチは最大 10000 件です。超過するとすべての項目が失敗した `*BatchResult` を返します（各 `Errors` 項目は `html: batch size N exceeds maximum 10000`）。panic は発生しません。
 :::

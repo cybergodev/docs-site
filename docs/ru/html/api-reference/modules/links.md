@@ -77,3 +77,14 @@ cfg.IncludeExternalLinks = true
 cfg.ResolveRelativeURLs = true
 cfg.BaseURL = "https://example.com"
 ```
+
+:::tip Подсказка
+Если `ResolveRelativeURLs=true` и `BaseURL` **пуст**, библиотека автоматически выводит BaseURL из самого HTML-документа, перебирая следующие источники **в порядке приоритета** и возвращая первое совпадение:
+
+1. тег `<base href>`;
+2. `content` из `<meta property="og:url">` или `<meta property="canonical">`;
+3. `<link rel="canonical" href>`;
+4. первый абсолютный URL, встречающийся в документе (base извлекается из его `href`/`src`).
+
+Явное задание `BaseURL` **пропускает автоопределение** и использует значение, предоставленное вызывающей стороной.
+:::

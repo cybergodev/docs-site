@@ -33,7 +33,7 @@ func main() {
     }
     defer logger.Close()
 
-    logger.Info("日志将写入文件") // 输出: 写入 logs/app.log
+    logger.Info("日志将写入文件") // 日志将写入 logs/app.log
 }
 ```
 
@@ -113,6 +113,10 @@ logs/app_log_2.log     ← 更早的备份
 logs/app_log_1.log.gz  ← 启用 Compress 后旧备份会被压缩为 .gz
 ```
 
+:::info 压缩与备份不并存
+启用 `Compress` 后，压缩在轮换之后由单独 goroutine 异步进行；压缩完成时原 `.log` 备份会被**重命名**为 `.log.gz`，二者不会并存。
+:::
+
 ## BufferedWriter 缓冲写入
 
 在高吞吐场景下，使用 `BufferedWriter` 减少 I/O 次数：
@@ -153,7 +157,7 @@ defer logger.Close() // Close 时自动 Flush
 | 批处理任务 | 8192 | 1000ms | 最大缓冲，适合离线处理 |
 
 :::warning 数据安全
-BufferedWriter 在缓冲区满或定时器触发时刷新。程序异常退出可能导致缓冲区中的数据丢失。确保调用 `Close()` 或 `Flush()` 以保证数据完整。
+BufferedWriter 在缓冲区半满（达 BufferSize/2）或定时器触发时刷新。程序异常退出可能导致缓冲区中的数据丢失。确保调用 `Close()` 或 `Flush()` 以保证数据完整。
 :::
 
 ## MultiWriter 多目标分发

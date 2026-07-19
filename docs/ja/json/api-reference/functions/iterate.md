@@ -81,11 +81,11 @@ json.ForeachNested(data, func(key any, item *json.IterableValue) {
 
 シグネチャ：`func ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
 
-JSON データを反復し、再シリアライズされた JSON 文字列を返します。コールバックは読み取り専用アクセスです。
+JSON データを反復し、コールバックで各要素にアクセスした上で、再シリアライズされた JSON 文字列を返します。コールバックは `GetData()` 経由で map/slice を変更でき、変更内容は戻り値に反映されます。
 
 ```go
 result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) {
-    // 読み取り専用処理
+    // item.GetData() で要素にアクセス・変更可能
 })
 ```
 

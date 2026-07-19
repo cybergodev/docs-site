@@ -73,8 +73,8 @@ type ErrorType = engine.ErrorType
 | 상수 | 설명 | 재시도 가능 |
 |------|------|-------------|
 | `ErrorTypeUnknown` | 알 수 없음/미분류 오류 | 아니요 |
-| `ErrorTypeNetwork` | 네트워크 오류 (연결 거부, DNS 실패 등) | 상황에 따라 |
-| `ErrorTypeTimeout` | 요청 타임아웃 | 예 |
+| `ErrorTypeNetwork` | 네트워크 오류 (연결 거부, 연결 리셋 등) | 상황에 따라 |
+| `ErrorTypeTimeout` | 요청 타임아웃 | 상황에 따라¹ |
 | `ErrorTypeContextCanceled` | 컨텍스트 취소 | 아니요 |
 | `ErrorTypeResponseRead` | 응답 본문 읽기 오류 | 상황에 따라 |
 | `ErrorTypeTransport` | 전송 계층 오류 | 예 |
@@ -84,6 +84,8 @@ type ErrorType = engine.ErrorType
 | `ErrorTypeDNS` | DNS 해석 오류 | 상황에 따라 |
 | `ErrorTypeValidation` | 요청 검증 오류 | 아니요 |
 | `ErrorTypeHTTP` | HTTP 계층 오류 | 상황에 따라 |
+
+> ¹ 컨텍스트 데드라인(`WithTimeout`, `TimeoutConfig.Request`)으로 인한 타임아웃은 재시도**하지 않습니다**. 전송 계층 타임아웃(예: `net.OpError` 타임아웃)만 재시도됩니다.
 
 ### 타입 판단
 

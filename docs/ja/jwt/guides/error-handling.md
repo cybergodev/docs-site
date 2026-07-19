@@ -56,6 +56,8 @@ if err != nil {
 | `ErrEmptyToken` | すべてのトークン操作メソッド | リクエストヘッダーを確認 |
 | `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 署名の不一致、アクセスを拒否 |
 | `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | トークンのアルゴリズムが設定と不一致、アクセスを拒否 |
+| `ErrExpirationRequired` | Validate, Refresh, ValidateInto, RefreshInto | `RequireExpiration` 有効だがトークンに `exp` クレームなし |
+| `ErrTokenTypeMismatch` | Refresh, RefreshInto | アクセストークン（`token_type=access`）でリフレッシュ試行、アクセスを拒否 |
 | `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | ユーザーにトークンのリフレッシュを案内 |
 | `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | クロックの同期を確認 |
 | `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 発行者が一致しない |

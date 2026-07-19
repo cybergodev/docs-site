@@ -27,7 +27,7 @@ By default, the following errors trigger retries:
 
 | Condition | Retry |
 |-----------|-------|
-| Network errors (connection refused, DNS failure) | Yes |
+| Network errors (connection refused, temporary/timeout DNS failures) | Yes |
 | Timeout errors | Yes |
 | 5xx server errors (500/502/503/504) | Yes |
 | 408 Request Timeout / 429 Too Many Requests | Yes |
@@ -101,10 +101,10 @@ HTTPC automatically parses the `Retry-After` response header from the server:
 
 ```go
 // Server returns: Retry-After: 120
-// HTTPC will wait 120 seconds before retrying, instead of using exponential backoff delay
+// HTTPC waits at most 60 seconds before retrying (the 120s is capped to a 60s safety limit)
 
 // Server returns: Retry-After: Fri, 25 Apr 2026 12:00:00 GMT
-// HTTPC will wait until the specified time before retrying
+// HTTPC waits until the specified time before retrying (capped to 60s if more than 60s away)
 ```
 
 :::tip
@@ -167,7 +167,7 @@ if err != nil {
 | Microservice communication | MaxRetries=2, Delay=500ms |
 | File downloads | MaxRetries=5, Delay=2s, Backoff=2.0 |
 | Idempotent operations | Safe to retry freely |
-| Non-idempotent operations (POST) | Only retry on network errors |
+| Non-idempotent operations (POST) | Recommend retrying only on network errors (default also retries 5xx/408/429; narrow via a custom RetryPolicy) |
 
 :::warning
 Non-idempotent POST requests are retried by default. For precise control, implement a custom `RetryPolicy`.

@@ -425,8 +425,8 @@ if err != nil {
 ```
 
 **エラー型：**
-- `ErrInvalidKey` - キー名が無効
-- `ErrForbiddenKey` - キーが禁止されています
+- `*ValidationError` - キー名形式が無効（Field="key"）
+- `*SecurityError` - キーが禁止されています（`errors.Is(err, env.ErrSecurityViolation)` で一致）
 - `ErrInvalidValue` - 値が無効です（`ValidateValues` が true のとき、値にヌルバイトや制御文字など安全でない内容が含まれる場合）
 - `ErrClosed` - ローダークローズ済み
 
@@ -667,14 +667,15 @@ func (l *Loader) ParseInto(v any) error
 - `env:"KEY"` - 指定環境変数名
 - `env:"-"` - このフィールドを無視
 - `envDefault:"value"` - デフォルト値を指定
-- `envSeparator:","` - スライスのセパレータを指定
+
+スライスフィールドはデフォルトでカンマ `,` で区切られます（セパレータ前後の空白は自動的に削除されます）。カスタムセパレータタグは存在しません。
 
 ```go
 type Config struct {
     Host    string   `env:"HOST" envDefault:"localhost"`
     Port    int64    `env:"PORT" envDefault:"8080"`
     Debug   bool     `env:"DEBUG" envDefault:"false"`
-    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Hosts   []string `env:"HOSTS"`
     Ignored string   `env:"-"`
 }
 

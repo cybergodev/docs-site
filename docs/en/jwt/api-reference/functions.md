@@ -15,7 +15,7 @@ func New(cfg Config) (*Processor, error)
 
 Creates a new JWT Processor. Use `DefaultConfig()` to get default configuration, modify required fields, and pass it in.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -73,7 +73,7 @@ func DefaultConfig() Config
 
 Returns a configuration with sensible defaults.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Returns
 
@@ -111,7 +111,7 @@ func DefaultBlacklistConfig() BlacklistConfig
 
 Returns a blacklist configuration with sensible defaults.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Returns
 
@@ -137,7 +137,7 @@ func NewNumericDate(t time.Time) NumericDate
 
 Creates a `NumericDate` from `time.Time`.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -161,7 +161,7 @@ func NewRateLimiter(maxRate int, window time.Duration) *RateLimiter
 
 Creates a token bucket rate limiter.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 

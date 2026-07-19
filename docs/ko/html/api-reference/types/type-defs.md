@@ -33,6 +33,12 @@ type Result struct {
 func (r *Result) MarshalJSON() ([]byte, error)
 ```
 
+:::warning 경고
+`Result`는 `UnmarshalJSON`을 **구현하지 않습니다**. `MarshalJSON()`의 출력을 다시 `Result`로 역직렬화하면 `ProcessingTime`, `ReadingTime` 같은 duration 필드가 **손실됩니다** — JSON 출력의 키 이름(`processing_time_ms`, `reading_time_ms`)이 struct 필드 이름과 일치하지 않아 복원할 수 없습니다.
+
+이는 **의도된 설계**입니다. 이 JSON 형식은 외부 소비(API 응답, 로그, 프론트엔드 표시 등)를 위한 것이며, 양방향 직렬화를 위해 설계되지 않았습니다.
+:::
+
 ## ImageInfo
 
 이미지 정보입니다.
@@ -58,7 +64,7 @@ type LinkInfo struct {
     URL        string `json:"url"`         // 링크 주소
     Text       string `json:"text"`        // 링크 텍스트
     Title      string `json:"title"`       // 링크 제목
-    IsExternal bool   `json:"is_external"` // 외부 링크 여부
+    IsExternal bool   `json:"is_external"` // 외부 링크 여부(URL 자체가 절대 외부 URL인지로 판정하며, BaseURL과 비교하지 않음)
     IsNoFollow bool   `json:"is_nofollow"` // nofollow 여부
     Position   int    `json:"position"`    // 문서 내 위치
 }

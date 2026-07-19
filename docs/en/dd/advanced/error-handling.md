@@ -1,30 +1,30 @@
 ---
 sidebar_label: "Error Handling"
-title: "Error Handling - CyberGo DD | Log Error Management"
-description: "CyberGo DD error handling guide: structured error types, sentinel errors, errors.Is/As wrapping, custom strategies, recovery, and error hook callbacks."
+title: "Error Handling - CyberGo DD | Logging Error Management"
+description: "A complete error-handling guide for the CyberGo DD logging library, covering structured error types and the hierarchy, error-code design, sentinel-error definitions and matching, errors.Is/As wrapping and unwrapping, custom error-handling strategies, error-recovery mechanisms, and error-hook callback configuration to help you precisely identify and handle all kinds of logging-related errors."
 sidebar_position: 2
 ---
 
 # Error Handling
 
-DD defines a structured error system for precise identification and handling of various errors.
+DD defines a structured error system for precisely identifying and handling various errors.
 
 ## Error Types
 
 ### LoggerError
 
-A structured error containing error code, message, cause, and context:
+Structured error containing an error code, message, cause, and context:
 
 ```go
 type LoggerError struct { ... }
 
-// Create (using LoggerError struct fields directly)
+// Create (use LoggerError struct fields directly)
 err := &dd.LoggerError{
     Code:    "CUSTOM_CODE",
     Message: "error description",
 }
 
-// Wrap (using LoggerError struct fields)
+// Wrap (use LoggerError struct fields)
 err := &dd.LoggerError{
     Code:    "WRAP_CODE",
     Message: "wrap description",
@@ -37,10 +37,10 @@ Methods:
 | Method | Description |
 |--------|-------------|
 | `Error() string` | Error message |
-| `Unwrap() error` | Get inner error |
+| `Unwrap() error` | Get the inner error |
 | `Is(target error) bool` | Error comparison |
-| `WithContext(key, value)` | Add context information |
-| `WithField(key, value)` | Add field information |
+| `WithContext(key, value)` | Add context info |
+| `WithField(key, value)` | Add field info |
 
 ```go
 err := &dd.LoggerError{
@@ -54,7 +54,7 @@ err = err.WithField("retry_count", 3)
 
 ### WriterError
 
-Writer error containing Writer index and original error.
+Writer error containing the Writer index and the original error.
 
 ```go
 type WriterError struct {
@@ -66,7 +66,7 @@ type WriterError struct {
 
 ### MultiWriterError
 
-Multi-writer aggregated error.
+Aggregated multi-writer error.
 
 ```go
 type MultiWriterError struct { ... }
@@ -74,32 +74,31 @@ type MultiWriterError struct { ... }
 
 Methods: `HasErrors()`, `ErrorCount()`, `FirstError()`
 
-## Error Handling Patterns
+## Error-Handling Patterns
 
 ### errors.Is Matching
 
 ```go
 logger, err := dd.New(config)
 if err != nil {
+    if errors.Is(err, dd.ErrNilConfig) {
+        // Handle nil config
+    }
     if errors.Is(err, dd.ErrInvalidLevel) {
         // Handle invalid level
-    }
-    if errors.Is(err, dd.ErrInvalidFormat) {
-        // Handle invalid format
-    }
-    if errors.Is(err, dd.ErrMaxWritersExceeded) {
-        // Handle too many writers
     }
 }
 ```
 
-### Write Error Handling
+### Write-Error Handling
 
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
-    // Custom write error handling
-    if errors.Is(err, dd.ErrWriterNotFound) {
-        // Writer has been removed
+    // Custom write-error handling
+    // Note: this callback fires only when writer.Write() fails and is passed the writer's own error;
+    // dd.ErrWriterNotFound is returned by RemoveWriter directly to its caller and is never delivered via this callback.
+    if errors.Is(err, io.ErrShortWrite) {
+        // Fewer bytes written than requested
         return
     }
     // Record error metrics
@@ -110,7 +109,7 @@ logger.SetWriteErrorHandler(func(w io.Writer, err error) {
 ### Runtime Error Handling
 
 ```go
-// Add Writer
+// Add a Writer
 if err := logger.AddWriter(w); err != nil {
     if errors.Is(err, dd.ErrLoggerClosed) {
         // Logger is closed
@@ -122,7 +121,7 @@ if err := logger.AddWriter(w); err != nil {
     }
 }
 
-// Set level
+// Set the level
 if err := logger.SetLevel(dd.LevelDebug); err != nil {
     if errors.Is(err, dd.ErrInvalidLevel) {
         // Invalid level
@@ -136,15 +135,15 @@ if err := logger.SetLevel(dd.LevelDebug); err != nil {
 fw, err := dd.NewFileWriter(userPath, dd.DefaultFileWriterConfig())
 if err != nil {
     if errors.Is(err, dd.ErrPathTraversal) {
-        // Path traversal attack
-        log.Fatal("Path traversal attack detected")
+        // Path-traversal attack
+        log.Fatal("path traversal attack detected")
     }
     if errors.Is(err, dd.ErrNullByte) {
-        // Null byte injection
-        log.Fatal("Null byte injection detected")
+        // Null-byte injection
+        log.Fatal("null byte injection detected")
     }
     if errors.Is(err, dd.ErrSymlinkNotAllowed) {
-        // Symlinks not allowed
+        // Symlink not allowed
     }
 }
 ```
@@ -155,8 +154,8 @@ if err != nil {
 filter, err := dd.NewCustomSensitiveDataFilter(pattern)
 if err != nil {
     if errors.Is(err, dd.ErrReDoSPattern) {
-        // ReDoS risk pattern
-        log.Fatal("Regex pattern has ReDoS risk")
+        // ReDoS-risk pattern
+        log.Fatal("regex pattern carries ReDoS risk")
     }
     if errors.Is(err, dd.ErrInvalidPattern) {
         // Invalid regex
@@ -169,13 +168,13 @@ if err != nil {
 
 ## Hook Errors
 
-When using hooks, you can capture and handle errors during hook execution via the `OnError` callback in the hook configuration:
+When using hooks, you can capture and handle errors from hook execution via the `ErrorHandler` callback in the hook configuration:
 
 ```go
-// Configure hook error handling via HooksConfig
+// Configure hook-error handling via HooksConfig
 registry := dd.NewHooksFromConfig(dd.HooksConfig{
     ErrorHandler: func(event dd.HookEvent, hc *dd.HookContext, err error) {
-        // Custom hook error handling
+        // Custom hook-error handling
         handleHookError(event.String(), err)
     },
 })
@@ -187,20 +186,20 @@ logger, _ := dd.New(dd.Config{
 ## Global Logger Errors
 
 ```go
-// Check during initialization
+// Check at initialization
 err := dd.InitDefault(cfg)
 if err != nil {
     log.Fatal(err)
 }
 
-// Runtime check
+// Check at runtime
 if err := dd.DefaultInitError(); err != nil {
-    fmt.Println("Global logger initialization error:", err)
+    fmt.Println("global logger initialization error:", err)
 }
 ```
 
 ## Next Steps
 
-- [Constants & Errors](../api-reference/dev-tools/constants) -- Complete error code list
+- [Constants & Errors](../api-reference/dev-tools/constants) -- Full error-code list
 - [Hook System](../api-reference/security-audit/hooks) -- HookRegistry
 - [Security Filtering](../api-reference/security-audit/security) -- Security-related errors

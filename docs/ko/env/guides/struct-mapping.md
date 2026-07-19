@@ -1,7 +1,7 @@
 ---
 sidebar_label: "구조체 매핑"
 title: "구조체 매핑 - CyberGo env | 환경 변수에서 구조체로"
-description: "CyberGo env 구조체 매핑 가이드로 env·envDefault·envSeparator·envPrefix 태그로 변수를 구조체에 매핑하며 중첩·포인터·슬라이스·커스텀 변환기·필드 무시·기본값·필수 검증을 설명합니다."
+description: "CyberGo env 구조체 매핑 가이드로 env·envDefault 태그로 환경 변수를 Go 구조체 필드에 자동 매핑하며, 중첩 구조체·포인터·슬라이스·커스텀 타입 디코딩·필드 무시·기본값·필수 검증을 다루어 타입 안전한 설정 로딩을 구현합니다."
 sidebar_position: 1
 ---
 
@@ -127,6 +127,8 @@ type Config struct {
 
 ### 슬라이스 타입
 
+슬라이스 필드는 쉼표 `,`로 구분되며, 구분자 앞뒤의 공백은 자동으로 제거됩니다.
+
 ```go
 type Config struct {
     Hosts []string `env:"HOSTS"`      // 쉼표 구분
@@ -140,36 +142,6 @@ type Config struct {
 HOSTS=localhost,example.com,api.example.com
 PORTS=80,443,8080
 ```
-
-### 커스텀 구분자
-
-`envSeparator` 태그로 커스텀 구분자 지정:
-
-```go
-type Config struct {
-    // 세미콜론 구분
-    Servers []string `env:"SERVERS" envSeparator:";"`
-
-    // 파이프 구분
-    Tags []string `env:"TAGS" envSeparator:"|"`
-
-    // 공백 구분
-    Words []string `env:"WORDS" envSeparator:" "`
-}
-```
-
-`.env` 파일:
-
-```bash
-SERVERS=server1.example.com;server2.example.com;server3.example.com
-TAGS=production|api|v2
-WORDS=hello world go lang
-```
-
-**참고 사항:**
-- 기본 구분자는 쉼표 `,`입니다
-- `envSeparator`는 슬라이스 타입에만 적용됩니다
-- 구분자 앞뒤의 공백은 자동으로 제거됩니다
 
 ## 중첩 구조체
 
@@ -246,28 +218,58 @@ func main() {
 
 ## 커스텀 타입
 
-### Unmarshaler 인터페이스 구현
+### encoding.TextUnmarshaler 인터페이스 구현
+
+구조체 필드의 커스텀 디코딩은 표준 라이브러리 `encoding.TextUnmarshaler` 인터페이스를 구현하여 수행합니다 — 이 인터페이스가 필드 단위 채우기에서 **실제로 호출되는** 인터페이스입니다.
 
 ```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/cybergodev/env"
+)
+
 type LogLevel string
 
-func (l *LogLevel) UnmarshalEnv(data map[string]string) error {
-    *l = LogLevel(data["LOG_LEVEL"])
-    return nil
+// encoding.TextUnmarshaler 구현 — 필드 수준에서 호출됨
+func (l *LogLevel) UnmarshalText(text []byte) error {
+    switch string(text) {
+    case "debug", "info", "warn", "error":
+        *l = LogLevel(text)
+        return nil
+    default:
+        return fmt.Errorf("invalid log level: %s", string(text))
+    }
 }
 
 type Config struct {
     Level LogLevel `env:"LOG_LEVEL"`
 }
+
+func main() {
+    data := map[string]string{"LOG_LEVEL": "info"}
+
+    var cfg Config
+    if err := env.UnmarshalInto(data, &cfg); err != nil {
+        panic(err)
+    }
+
+    fmt.Println(cfg.Level)
+    // 출력: info
+}
 ```
 
-### 타입 별칭
+### 검증을 포함한 타입 별칭
 
+<!-- check-code: skip -->
 ```go
 type Port int64
 
-func (p *Port) UnmarshalEnv(data map[string]string) error {
-    val, err := strconv.ParseInt(data["PORT"], 10, 64)
+// encoding.TextUnmarshaler 구현, 파싱 시 범위 검증 포함
+func (p *Port) UnmarshalText(text []byte) error {
+    val, err := strconv.ParseInt(string(text), 10, 64)
     if err != nil {
         return err
     }
@@ -278,6 +280,10 @@ func (p *Port) UnmarshalEnv(data map[string]string) error {
     return nil
 }
 ```
+
+:::tip env.Marshaler / env.Unmarshaler 인터페이스에 대해
+`env.Marshaler`(`MarshalEnv()`)와 `env.Unmarshaler`(`UnmarshalEnv(map[string]string)`) 인터페이스는 **`env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto`에 전달된 최상위 값에서만 동작**하며, 구조체의 필드 단위 채우기 로직에서는 호출되지 않습니다. 구조체 필드에 커스텀 인코딩/디코딩을 적용하려면 표준 라이브러리 `encoding.TextMarshaler` / `encoding.TextUnmarshaler`를 구현하세요. 이들은 필드 수준에서 인식됩니다.
+:::
 
 ## 설정 검증
 

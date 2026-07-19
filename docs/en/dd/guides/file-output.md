@@ -1,13 +1,13 @@
 ---
 sidebar_label: "File Output & Rotation"
-title: "File Output & Rotation - CyberGo DD | Config"
-description: "CyberGo DD file output and rotation: FileWriter policies, BufferedWriter, MultiWriter, dynamic Writer management, and production best practices."
+title: "File Output & Rotation - CyberGo DD | File Logging Guide"
+description: "CyberGo DD file output and log-rotation configuration guide, covering FileWriter size rotation and time cleanup, BufferedWriter buffered-write optimization, MultiWriter multi-target fan-out, dynamic Writer management, and production best practices to help you build a highly reliable file-logging system."
 sidebar_position: 3
 ---
 
-# File Output and Rotation
+# File Output & Rotation
 
-DD provides flexible file output capabilities with automatic rotation, buffered writing, and multi-target dispatch, suitable for production environments.
+DD provides flexible file-output capabilities, supporting automatic rotation, buffered writes, and multi-target fan-out, suitable for production use.
 
 ## Quick Start
 
@@ -33,7 +33,7 @@ func main() {
     }
     defer logger.Close()
 
-    logger.Info("log will be written to file") // output: written to logs/app.log
+    logger.Info("log will be written to a file") // Written to logs/app.log
 }
 ```
 
@@ -54,26 +54,26 @@ defer logger.Close()
 
 ## FileWriter Rotation Configuration
 
-FileWriter supports automatic size-based rotation and time-based cleanup of old files:
+FileWriter supports size-based automatic rotation and time-based cleanup of old files:
 
-### Default Configuration
+### Default Config
 
 ```go
 cfg := dd.DefaultFileWriterConfig()
-// MaxSizeMB:   100   — Max 100MB per file
-// MaxAge:      30 * 24 * time.Hour  — Retain for 30 days
-// MaxBackups:  10    — Keep up to 10 backups
-// Compress:    false — No compression
+// MaxSizeMB:   100   - 100MB max per file
+// MaxAge:      30 * 24 * time.Hour  - keep 30 days
+// MaxBackups:  10    - keep up to 10 backups
+// Compress:    false - no compression
 ```
 
 ### Custom Rotation Strategy
 
 ```go
-// High-traffic service: smaller files, faster rotation
+// High-traffic service: small files, fast rotation
 fwCfg := dd.DefaultFileWriterConfig()
 fwCfg.MaxSizeMB = 50                // Rotate at 50MB
 fwCfg.MaxBackups = 20               // Keep 20 backups
-fwCfg.MaxAge = 7 * 24 * time.Hour   // Clean up after 7 days
+fwCfg.MaxAge = 7 * 24 * time.Hour   // 7-day cleanup
 fwCfg.Compress = true      // Compress old files
 
 fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
@@ -89,7 +89,7 @@ if err != nil {
 defer logger.Close()
 ```
 
-### JSON Format Log Files
+### JSON-format Log File
 
 ```go
 logger, err := dd.New(dd.Config{
@@ -104,30 +104,34 @@ if err != nil {
 defer logger.Close()
 ```
 
-Rotated file naming convention:
+Rotated file naming rules:
 
 ```text
-logs/app.log           ← Current log
-logs/app_log_1.log     ← First rotation (newest backup)
-logs/app_log_2.log     ← Older backup
-logs/app_log_1.log.gz  ← Old backup compressed to .gz when Compress is enabled
+logs/app.log           <- current log
+logs/app_log_1.log     <- first rotation (newest backup)
+logs/app_log_2.log     <- older backup
+logs/app_log_1.log.gz  <- old backups are compressed to .gz when Compress is enabled
 ```
 
-## BufferedWriter
+:::info Compression and Backups Do Not Coexist
+When `Compress` is enabled, compression happens after rotation in a separate goroutine, asynchronously; when compression finishes, the original `.log` backup is **renamed** to `.log.gz` — the two do not coexist.
+:::
 
-In high-throughput scenarios, use `BufferedWriter` to reduce I/O operations:
+## BufferedWriter Buffered Writes
+
+For high-throughput scenarios, use `BufferedWriter` to reduce I/O count:
 
 ```go
-// Create file Writer
+// Create the file Writer
 fw, err := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
 if err != nil {
     log.Fatal(err)
 }
 
-// Wrap as buffered Writer
+// Wrap in a buffered Writer
 bwCfg := dd.DefaultBufferedWriterConfig()
-// BufferSize: 1024  — 1KB buffer
-// FlushTime:  100ms — 100ms auto-flush
+// BufferSize: 1024  - 1KB buffer
+// FlushTime:  100ms - 100ms auto-flush
 
 bw, err := dd.NewBufferedWriter(fw, bwCfg)
 if err != nil {
@@ -140,26 +144,26 @@ logger, err := dd.New(dd.Config{
 if err != nil {
     log.Fatal(err)
 }
-defer logger.Close() // Close automatically flushes
+defer logger.Close() // Close auto-flushes
 ```
 
-### Tuning Recommendations
+### Tuning Advice
 
 | Scenario | BufferSize | FlushTime | Description |
 |----------|-----------|-----------|-------------|
-| Low latency required | 512 | 50ms | Fast flush, reduced latency |
-| General purpose | 1024 | 100ms | Default values, balanced latency and throughput |
-| High throughput | 4096 | 500ms | Large buffer, maximized throughput |
-| Batch processing | 8192 | 1000ms | Maximum buffer, suitable for offline processing |
+| Low-latency | 512 | 50ms | Fast flush, lower latency |
+| General | 1024 | 100ms | Defaults; balances latency and throughput |
+| High-throughput | 4096 | 500ms | Large buffer, maximizes throughput |
+| Batch processing | 8192 | 1000ms | Max buffer; suitable for offline processing |
 
 :::warning Data Safety
-BufferedWriter flushes when the buffer is full or the timer triggers. Abnormal program exit may cause data loss in the buffer. Ensure you call `Close()` or `Flush()` to guarantee data integrity.
+BufferedWriter flushes when the buffer is half-full (reaches BufferSize/2) or on a timer tick. Abnormal program exits may lose data still in the buffer. Be sure to call `Close()` or `Flush()` to ensure data integrity.
 :::
 
-## MultiWriter Multi-Target Dispatch
+## MultiWriter Multi-target Fan-out
 
 ```go
-// Write to both file and remote service simultaneously
+// Write to file and a remote service simultaneously
 fw, err := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
 if err != nil {
     log.Fatal(err)
@@ -177,21 +181,21 @@ if err != nil {
 defer logger.Close()
 ```
 
-MultiWriter dispatches logs to all Writers. A failure in one Writer does not affect others.
+MultiWriter fans logs out to all Writers; failure of one Writer does not affect the others.
 
 ## Dynamic Writer Management
 
-Logger supports adding and removing Writers at runtime:
+The Logger supports adding and removing Writers at runtime:
 
 ```go
-// Add Writer at runtime
+// Add a Writer at runtime
 fw, err := dd.NewFileWriter("logs/debug.log", dd.DefaultFileWriterConfig())
 if err != nil {
     log.Fatal(err)
 }
 err = logger.AddWriter(fw)
 
-// Remove Writer at runtime
+// Remove a Writer at runtime
 err = logger.RemoveWriter(fw)
 
 // Query current Writer count
@@ -200,10 +204,10 @@ _ = count
 ```
 
 :::tip Use Cases
-Dynamic Writers are suitable for scenarios requiring runtime log target switching, such as: adding detailed log files when debug mode is enabled, or switching to a remote logging service when disk space is low.
+Dynamic Writers are suitable for scenarios needing runtime log-target switching, such as adding a detailed log file when debug mode is enabled, or switching to a remote log service when disk space is low.
 :::
 
-## Custom Writer
+## Custom Writers
 
 Implement the `io.Writer` interface to create custom output targets:
 
@@ -223,7 +227,7 @@ func (w *LogstashWriter) Write(p []byte) (n int, err error) {
     return len(p), nil
 }
 
-// Use custom Writer
+// Use the custom Writer
 logger, err := dd.New(dd.Config{
     Format: dd.FormatJSON,
     Targets: []dd.OutputTarget{
@@ -240,11 +244,11 @@ if err != nil {
 defer logger.Close()
 ```
 
-## Production Environment Recommended Configuration
+## Recommended Production Configuration
 
 ```go
 func NewProductionLogger() (*dd.Logger, error) {
-    // File Writer: medium rotation + compression
+    // File Writer: moderate rotation + compression
     fwCfg := dd.DefaultFileWriterConfig()
     fwCfg.MaxSizeMB = 100
     fwCfg.MaxAge = 30 * 24 * time.Hour
@@ -276,6 +280,6 @@ func NewProductionLogger() (*dd.Logger, error) {
 ## Next Steps
 
 - [Structured Logging](./structured-logging) -- Fields and chaining
-- [Sensitive Data Filtering](./sensitive-filtering) -- Automatic redaction
-- [API Reference - Writers](../api-reference/output-integration/writers) -- Writer complete API
-- [Performance Optimization](../advanced/performance) -- Performance tuning tips
+- [Sensitive Data Filtering](./sensitive-filtering) -- Auto-redaction
+- [API Reference - Writers](../api-reference/output-integration/writers) -- Complete Writer API
+- [Performance Tuning](../advanced/performance) -- Performance tuning advice

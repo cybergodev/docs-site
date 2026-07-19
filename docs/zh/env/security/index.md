@@ -52,7 +52,7 @@ password := secret.Reveal()  // 仅在需要明文时调用
 ```
 
 **核心功能：**
-- **内存锁定** - 防止交换到磁盘（Linux/macOS/FreeBSD）
+- **内存锁定** - 防止交换到磁盘（Linux/macOS/Windows/FreeBSD）
 - **自动清零** - `Close()` 时安全擦除内存
 - **掩码显示** - `Masked()` 用于日志输出
 - **线程安全** - 支持并发读取

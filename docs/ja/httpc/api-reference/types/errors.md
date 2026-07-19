@@ -73,8 +73,8 @@ type ErrorType = engine.ErrorType
 | 定数 | 説明 | リトライ可能 |
 |------|------|-------------|
 | `ErrorTypeUnknown` | 不明/未分類エラー | 不可 |
-| `ErrorTypeNetwork` | ネットワークエラー（接続拒否、DNS 失敗など） | 条件による |
-| `ErrorTypeTimeout` | リクエストタイムアウト | 可能 |
+| `ErrorTypeNetwork` | ネットワークエラー（接続拒否、接続リセットなど） | 条件による |
+| `ErrorTypeTimeout` | リクエストタイムアウト | 条件による¹ |
 | `ErrorTypeContextCanceled` | コンテキストキャンセル | 不可 |
 | `ErrorTypeResponseRead` | レスポンスボディ読み取りエラー | 条件による |
 | `ErrorTypeTransport` | トランスポート層エラー | 可能 |
@@ -84,6 +84,8 @@ type ErrorType = engine.ErrorType
 | `ErrorTypeDNS` | DNS 解決エラー | 条件による |
 | `ErrorTypeValidation` | リクエスト検証エラー | 不可 |
 | `ErrorTypeHTTP` | HTTP 層エラー | 条件による |
+
+> ¹ コンテキストデッドライン（`WithTimeout`、`TimeoutConfig.Request`）によってトリガーされたタイムアウトはリトライ**されません**。トランスポート層のタイムアウト（例：`net.OpError` のタイムアウト）のみリトライされます。
 
 ### タイプ判定
 

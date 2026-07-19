@@ -1,7 +1,7 @@
 ---
 sidebar_label: "삭제 작업"
 title: "Processor 삭제 메서드 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor 삭제 메서드: Delete는 값을 삭제하고 DeleteClean은 null 값과 빈 배열을 자동 정리하며 체이닝을 지원합니다."
+description: "CyberGo JSON Processor 삭제 메서드: Delete 경로 삭제, DeleteClean 삭제 후 빈 값과 빈 배열 자동 정리, 체인 호출 능력 유지."
 sidebar_position: 4
 ---
 
@@ -38,8 +38,8 @@ result, err := p.DeleteClean(data, "user.temporary")
 // Delete 후: {"user": {"name": "test"}}
 result, _ := p.Delete(data, "user.temp")
 
-// 삭제 후 부모 객체가 비어있으면 DeleteClean은 계속 정리
-// {"user": {}} -> {}
+// DeleteClean도 user.temp를 동일하게 삭제; 이 예제에서는 user가 여전히 name을 포함하므로 비어있지 않음
+// 결과: {"user": {"name": "test"}}
 result, _ = p.DeleteClean(data, "user.temp")
 ```
 

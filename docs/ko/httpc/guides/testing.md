@@ -9,7 +9,7 @@ sidebar_position: 7
 
 ## TestingConfig
 
-`TestingConfig()`은 테스트 환경에 특화되어 보안 검사를 비활성화하고 타임아웃을 단축하여 테스트 실행을 가속화합니다:
+`TestingConfig()`은 테스트 환경에 특화되어 보안 검사를 비활성화하고 연결/핸드셰이크 타임아웃을 단축합니다 (Request는 기본 180s 유지):
 
 ```go
 func TestAPI(t *testing.T) {
@@ -113,17 +113,22 @@ defer server.Close()
 ### 지연 모의
 
 ```go
+// TestingConfig은 SSRF 방어를 끕니다 — 그렇지 않으면 기본 클라이언트가 127.0.0.1
+// 테스트 서버를 차단하여 타임아웃 오류 대신 SSRF 오류가 발생합니다.
+client, _ := httpc.New(httpc.TestingConfig())
+defer client.Close()
+
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     time.Sleep(5 * time.Second)
     w.WriteHeader(http.StatusOK)
 }))
 defer server.Close()
 
-// 타임아웃 처리 테스트
+// 타임아웃 처리 테스트: 1s 컨텍스트 타임아웃 < 5s 서버 지연
 ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 defer cancel()
 
-_, err := httpc.Request(ctx, "GET", server.URL)
+_, err := client.Request(ctx, "GET", server.URL)
 if err == nil {
     t.Fatal("expected timeout error")
 }
@@ -179,7 +184,10 @@ func TestHTTPMethods(t *testing.T) {
     }))
     defer server.Close()
 
-    client, _ := httpc.New(httpc.TestingConfig())
+    client, err := httpc.New(httpc.TestingConfig())
+    if err != nil {
+        t.Fatal(err)
+    }
     defer client.Close()
 
     tests := []struct {

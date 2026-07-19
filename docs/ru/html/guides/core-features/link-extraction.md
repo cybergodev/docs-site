@@ -25,10 +25,10 @@ for _, link := range links {
 Пример вывода:
 
 ```text
-[link] Официальный сайт Go - https://go.dev
 [image] Талисман Gopher - gopher.png
-[css] style - https://example.com/style.css
-[js] app - https://example.com/app.js
+[js] app.js - https://example.com/app.js
+[css] style.css - https://example.com/style.css
+[link] Официальный сайт Go - https://go.dev
 ```
 
 ## Типы ссылок
@@ -39,7 +39,7 @@ for _, link := range links {
 |------|----------|------|
 | `link` | `<a>` | Ссылки на страницы |
 | `image` | `<img>` | Ресурсы изображений |
-| `video` | `<video>`, `<iframe>`, `<embed>`, `<object>` | Видеоресурсы |
+| `video` | `<video>`, а также `<iframe>`/`<embed>`/`<object>` (только когда src — видео-URL) | Видеоресурсы |
 | `audio` | `<audio>` | Аудиоресурсы |
 | `css` | `<link rel="stylesheet">` | Стили |
 | `media` | `<source>` | Общие медиаресурсы (когда невозможно определить видео/аудио) |
@@ -66,9 +66,9 @@ for typ, items := range groups {
 
 ```text
 === image (3) ===
-  https://example.com/logo.png
   https://example.com/hero.jpg
   https://example.com/icon.svg
+  https://example.com/logo.png
 
 === css (2) ===
   https://example.com/style.css
@@ -77,6 +77,10 @@ for typ, items := range groups {
 === js (1) ===
   https://example.com/app.js
 ```
+
+:::tip Порядок группировки
+`GroupLinksByType` возвращает `map`, поэтому **порядок перебора между группами не определён**; внутри каждой группы URL сохраняют возрастающий порядок.
+:::
 
 ## Настройка правил фильтрации
 

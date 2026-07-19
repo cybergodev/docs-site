@@ -33,6 +33,12 @@ type Result struct {
 func (r *Result) MarshalJSON() ([]byte, error)
 ```
 
+:::warning 警告
+`Result`は`UnmarshalJSON`を**実装していません**。`MarshalJSON()`の出力を再度`Result`にデシリアライズすると、`ProcessingTime`や`ReadingTime`などの duration フィールドが**失われます** — JSON 出力のキー名（`processing_time_ms`, `reading_time_ms`）が struct フィールド名と一致しないため、復元できません。
+
+これは**意図的な設計**です。この JSON 形式は外部消費（API レスポンス、ログ、フロントエンド表示など）を対象としており、双方向シリアライズを想定したものではありません。
+:::
+
 ## ImageInfo
 
 画像情報。
@@ -58,7 +64,7 @@ type LinkInfo struct {
     URL        string `json:"url"`         // リンクアドレス
     Text       string `json:"text"`        // リンクテキスト
     Title      string `json:"title"`       // リンクタイトル
-    IsExternal bool   `json:"is_external"` // 外部リンクかどうか
+    IsExternal bool   `json:"is_external"` // 外部リンクかどうか（URL 自体が絶対外部 URL かで判定し、BaseURL とは比較しない）
     IsNoFollow bool   `json:"is_nofollow"` // nofollow かどうか
     Position   int    `json:"position"`    // ドキュメント内の位置
 }

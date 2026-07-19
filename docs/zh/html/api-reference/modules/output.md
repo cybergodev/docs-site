@@ -11,7 +11,7 @@ HTML 库支持将提取结果输出为 Markdown 或 JSON 格式。
 
 ## Markdown 输出
 
-将 HTML 内容提取并转换为 Markdown 格式。
+将 HTML 内容提取并转换为 Markdown 格式。该方法使用临时 Processor（禁用缓存），不读取也不写入主 Processor 的缓存。
 
 ### 包函数
 
@@ -44,7 +44,7 @@ fmt.Println(md)
 
 ## JSON 输出
 
-将提取结果序列化为 JSON 字节。
+将提取结果序列化为 JSON 字节。该方法走主 Processor 的正常 Extract（启用缓存时会命中/写入缓存），再序列化为 JSON。
 
 ### 包函数
 

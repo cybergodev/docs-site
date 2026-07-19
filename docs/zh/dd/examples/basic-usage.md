@@ -184,8 +184,8 @@ func init() {
 func HandleLogin(username, password, ip string) error {
     logger.InfoWith("登录尝试",
         dd.String("username", username),
-        dd.String("ip", ip),
-        // password 经过 SecurityConfig 自动过滤
+        dd.String("ip", ip),  // FinancialConfig 会将 ip 也脱敏为 [REDACTED]
+        // password 未记录到日志（安全实践：永远不要 log 原始密码）
     )
 
     if isBruteForce(ip) {

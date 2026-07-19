@@ -95,8 +95,10 @@ if err != nil {
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
     // カスタム書き込みエラー処理
-    if errors.Is(err, dd.ErrWriterNotFound) {
-        // Writer が既に削除されている
+    // 注意：このコールバックは writer.Write() の失敗時のみ発火し、writer 自身のエラーが渡されます；
+    // dd.ErrWriterNotFound は RemoveWriter が呼び出し元に直接返すものであり、このコールバック経由では渡されません。
+    if errors.Is(err, io.ErrShortWrite) {
+        // 書き込みバイト数が不足
         return
     }
     // エラーメトリクスを記録
@@ -166,7 +168,7 @@ if err != nil {
 
 ## フックエラー
 
-フック使用時はフック設定の `OnError` コールバックでフック実行中のエラーをキャプチャして処理できます：
+フック使用時はフック設定の `ErrorHandler` コールバックでフック実行中のエラーをキャプチャして処理できます：
 
 ```go
 // HooksConfig でフックエラー処理を設定

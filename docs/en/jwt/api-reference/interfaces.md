@@ -78,7 +78,7 @@ The Processor applies different validation paths for `*Claims` versus other type
 | Type | Validation Behavior |
 |------|---------------------|
 | `*Claims` | Deep validation: all fields (length limits, injection patterns, control characters) |
-| Other types | Calls `Validate()` + registered claims string sanitization (Issuer, Subject, ID, Audience) |
+| Other types | Calls `Validate()` + registered claims string sanitization (Issuer, Subject, ID, TokenType, Audience) |
 
 :::warning Note
 For non-`*Claims` types, custom struct fields are **not** deep-validated. Implementers must validate all business fields in the `Validate()` method.

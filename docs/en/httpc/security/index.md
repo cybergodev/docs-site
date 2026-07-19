@@ -64,9 +64,13 @@ client, _ := httpc.New(httpc.SecureConfig())
 | 172.16.0.0/12 | Class B private |
 | 192.168.0.0/16 | Class C private |
 | 169.254.0.0/16 | Link-local |
+| 100.64.0.0/10 | CGNAT (includes Alibaba Cloud metadata `100.100.100.200`) |
+| 240.0.0.0/4 | Class E reserved |
 | ::1/128 | IPv6 loopback |
 | fc00::/7 | IPv6 unique local |
 | fe80::/10 | IPv6 link-local |
+
+> The table above lists the main ranges; for the full list (including `0.0.0.0/8`, TEST-NET, the IPv6 documentation prefix `2001:db8::/32`, NAT64 `64:ff9b::/96`, etc.) see the source `isPrivateOrReservedIP`.
 
 ## Header Validation
 

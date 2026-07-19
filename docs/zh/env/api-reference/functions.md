@@ -518,14 +518,14 @@ func Set(key, value string) error
 - `error` - 设置错误
 
 **错误类型：**
-- `ErrInvalidKey` - 键名无效
-- `ErrForbiddenKey` - 键被禁止
+- `*ValidationError` - 键名格式无效（Field="key"）
+- `*SecurityError` - 键被禁止（可用 `errors.Is(err, env.ErrSecurityViolation)` 匹配）
 - `ErrInvalidValue` - 值无效（当 `ValidateValues` 为 true 时，值包含空字节、控制字符等不安全内容）
 - `ErrClosed` - 加载器已关闭
 
 ```go
 if err := env.Set("CUSTOM_KEY", "value"); err != nil {
-    // 可能是 ErrForbiddenKey 或 ErrInvalidKey
+    // 可能是 *SecurityError（禁止键）或 *ValidationError（键格式）
 }
 ```
 
@@ -613,7 +613,8 @@ if err := env.ParseInto(&cfg); err != nil {
 | `env:"KEY"` | 映射到指定键 |
 | `env:"-"` | 忽略此字段 |
 | `envDefault:"value"` | 默认值 |
-| `envSeparator:","` | 切片分隔符 |
+
+切片字段默认按逗号 `,` 分隔（分隔符前后空格自动去除），无自定义分隔符标签。
 
 ::: tip 详见
 [结构体映射](/zh/env/guides/struct-mapping) 获取完整指南。
@@ -734,9 +735,12 @@ envStr, _ := env.Marshal(mapData)
 // HOST=localhost
 // PORT=8080
 
-// map 转 JSON 格式
+// map 转 JSON 格式（数字字符串原样输出为数字，键按字母序排列）
 jsonStr, _ := env.Marshal(mapData, env.FormatJSON)
-// {"HOST":"localhost","PORT":"8080"}
+// {
+//   "HOST": "localhost",
+//   "PORT": 8080
+// }
 
 // 结构体转 .env 格式
 type Config struct {
@@ -913,7 +917,7 @@ type AppConfig struct {
     Port     int64         `env:"APP_PORT" envDefault:"8080"`
     Debug    bool          `env:"DEBUG" envDefault:"false"`
     Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"HOSTS" envSeparator:","`
+    Hosts    []string      `env:"HOSTS"`
 }
 
 func main() {

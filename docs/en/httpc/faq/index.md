@@ -38,7 +38,7 @@ SSRF protection blocks private IP connections by default. To access internal ser
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.AllowPrivateIPs = true // Allow all private IPs
+cfg.Security.AllowPrivateIPs = true // Warning: fully disables all connection-level SSRF dial validation (not only private IPs); prefer SSRFExemptCIDRs for precise exemptions in production
 
 // Or precise exemptions
 cfg.Security.SSRFExemptCIDRs = []string{"10.0.0.0/8"}

@@ -53,9 +53,11 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
-{"timestamp":"2024-01-15T10:30:01Z","action":"get","key":"API_KEY","success":true,"masked":true}
+{"timestamp":"2024-01-15T10:30:01Z","action":"set","key":"[MASKED:7 chars]","success":true,"masked":true}
 {"timestamp":"2024-01-15T10:30:02Z","action":"set","key":"CUSTOM_VAR","success":true}
 ```
+
+Чувствительные ключи (например, `API_KEY`) автоматически маскируются в поле `key` аудитного журнала как `[MASKED:N chars]` (N — длина ключа); нечувствительные ключи (например, `CUSTOM_VAR`) отображаются как есть.
 
 ---
 
@@ -78,7 +80,7 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 
 ```text
 [AUDIT] 2024/01/15 10:30:00 action=load success=true reason="" file=.env duration=1.23ms
-[AUDIT] 2024/01/15 10:30:01 action=get key=API_KEY success=true reason=""
+[AUDIT] 2024/01/15 10:30:01 action=set key=[MASKED:7 chars] success=true reason=""
 [AUDIT] 2024/01/15 10:30:02 action=set key=CUSTOM_VAR success=true reason=""
 ```
 
@@ -330,14 +332,21 @@ func processAuditEvents(ch chan env.AuditEvent) {
 
 ## Вопросы безопасности
 
-### Автоматическое маскирование чувствительных значений
+### Записи аудита и маскирование
 
-Аудитный журнал автоматически маскирует значения чувствительных ключей:
+Аудитный журнал автоматически маскирует поле `key` для чувствительных ключей (по умолчанию отображается как `[MASKED:N chars]`, где N — количество символов в имени ключа; нечувствительные ключи отображаются как есть). **События аудита записываются только для операций записи**: `Set` / `Delete` / `LoadFiles` и т. п. вызывают события `ActionSet` / `ActionDelete` / `ActionLoad` и фиксируют ключ в маскированном виде.
+
+Операции чтения не порождают аудит: `Get` / `GetString` / `GetInt` / `GetSecure` и т. п. **при успешном чтении не создают записей аудита**. Событие `ActionGet` возникает только на пути ошибки при **неудачном преобразовании типа** в `GetInt` / `GetBool` / `GetFloat64` и т. п. (`success=false`), например:
 
 ```go
-// Автоматическое маскирование при получении чувствительного значения
-secret := loader.GetSecure("API_KEY")
-// Запись аудита: {"action":"get","key":"API_KEY","masked":true}
+// Операция записи: создаёт событие аудита (с маскированным чувствительным ключом)
+_ = loader.Set("API_KEY", "sk-1234567890")
+// Запись аудита: {"action":"set","key":"[MASKED:7 chars]","success":true,"masked":true}
+
+// Операции чтения: нормальное чтение не порождает аудит
+secret := loader.GetSecure("API_KEY") // не создаёт записи аудита
+_ = loader.GetInt("PORT")             // успешный разбор — записи аудита нет
+_ = loader.GetInt("API_KEY")          // при неудачном разборе возникает событие ActionGet (success=false)
 ```
 
 ### Права доступа к журналу аудита

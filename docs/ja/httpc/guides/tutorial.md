@@ -224,7 +224,7 @@ case result.StatusCode() == 401:
 case result.IsClientError():
     log.Printf("クライアントエラー: %d", result.StatusCode())
 case result.IsServerError():
-    log.Printf("サーバーエラー: %d (自動リトライ %d 回)",
+    log.Printf("サーバーエラー: %d (合計 %d 回試行、初回含む)",
         result.StatusCode(), result.Meta.Attempts)
 }
 ```
@@ -276,7 +276,10 @@ fmt.Printf("\nダウンロード完了: %s (%d bytes)\n",
 
 ```go
 func fetchRepos(ctx context.Context, repos []string) error {
-    client, _ := httpc.New(httpc.PerformanceConfig())
+    client, err := httpc.New(httpc.PerformanceConfig())
+    if err != nil {
+        return err
+    }
     defer client.Close()
 
     results := make([]*httpc.Result, len(repos))
@@ -372,7 +375,7 @@ func main() {
         fmt.Printf("✅ %s\n", repo.FullName)
         fmt.Printf("   ⭐ %d | 言語: %s\n", repo.Stars, repo.Language)
         fmt.Printf("   %s\n", repo.Description)
-        fmt.Printf("   所要時間: %s (リトライ %d 回)\n",
+        fmt.Printf("   所要時間: %s (合計 %d 回試行、初回含む)\n",
             result.Meta.Duration, result.Meta.Attempts)
     }
 }

@@ -279,7 +279,7 @@ result, err := client.Get(url,
 func WithCookies(cookies []http.Cookie) RequestOption
 ```
 
-Cookie를 일괄 추가합니다. `WithCookie`를 여러 번 호출하는 것보다 효율적입니다 -- 용량을 미리 할당하고 단일 순회에서 모든 Cookie를 검증합니다.
+Cookie를 일괄 추가합니다. `WithCookie`를 여러 번 호출하는 것보다 효율적입니다 — 용량을 미리 할당하고 단일 순회에서 모든 Cookie를 검증합니다.
 
 ```go
 cookies := []http.Cookie{

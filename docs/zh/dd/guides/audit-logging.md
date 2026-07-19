@@ -34,8 +34,8 @@ if err != nil {
 }
 defer auditLogger.Close()
 
-// 注意：AuditLogger 与 Logger 是独立组件
-// 两者不自动集成，需要通过钩子或其他机制手动连接
+// AuditLogger 既可独立创建（如本例），也可通过 Config.Audit 与 Logger 自动集成
+// 这里演示独立用法：另建 logger 且未设 Config.Audit
 logger, err := dd.New(dd.Config{
     Security: dd.DefaultSecurityConfig(),
     Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
@@ -74,7 +74,7 @@ AuditLogger 记录 11 种安全事件：
 | `AuditEventReDoSAttempt` | ReDoS 攻击尝试 | Critical |
 | `AuditEventSecurityViolation` | 安全违规 | Error |
 | `AuditEventIntegrityViolation` | 日志完整性被破坏 | Critical |
-| `AuditEventInputSanitized` | 输入被清洗 | Info |
+| `AuditEventInputSanitized` | 输入被清洗 | <Badge type="info" text="由调用者指定" /> |
 | `AuditEventPathTraversalAttempt` | 路径穿越尝试 | Critical |
 | `AuditEventLog4ShellAttempt` | Log4Shell 攻击尝试 | <Badge type="info" text="由调用者指定" /> |
 | `AuditEventNullByteInjection` | 空字节注入尝试 | <Badge type="info" text="由调用者指定" /> |
@@ -226,10 +226,15 @@ func main() {
         dd.String("password", "secret123"), // → [REDACTED]
     )
 
-    // 注意：AuditLogger 和 Logger 是独立组件
-    // 需通过钩子将 Logger 的安全事件转发到 AuditLogger
+    // 注：本示例中 Logger 未设 Config.Audit，因此脱敏等安全事件不会自动入审计。
+    // 若要让业务 logger 的安全事件自动转发到 AuditLogger，需在该 logger 的
+    // Config.Audit 中配置（启用后会自动把脱敏、速率限制等事件转入审计流）。
 }
 ```
+
+:::info 自动集成 vs 独立使用
+AuditLogger **既可独立创建**（`dd.NewAuditLogger`，本节示例的用法），**也可通过 `Config.Audit` 与 Logger 自动集成**。后者会在 `Config.Audit`（类型 `AuditConfig`）的 `Enabled` 字段为 true 时，自动把敏感数据脱敏事件、速率限制事件等转发到 AuditLogger，无需手动连接钩子。
+:::
 
 ## 下一步
 

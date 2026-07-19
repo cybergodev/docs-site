@@ -11,7 +11,7 @@ The HTML library supports outputting extraction results as Markdown or JSON form
 
 ## Markdown Output
 
-Extract HTML content and convert to Markdown format.
+Extract HTML content and convert to Markdown format. This method uses a transient Processor with caching disabled; it neither reads from nor writes to the main Processor's cache.
 
 ### Package Functions
 
@@ -44,7 +44,7 @@ fmt.Println(md)
 
 ## JSON Output
 
-Serialize extraction results to JSON bytes.
+Serialize extraction results to JSON bytes. This method goes through the main Processor's normal Extract (hits/writes the cache when enabled), then serializes to JSON.
 
 ### Package Functions
 

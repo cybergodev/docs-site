@@ -1,7 +1,7 @@
 # AutoCorrect — 中文/英文混排自动校正 (https://github.com/huacnlee/autocorrect)
 #
 # 自动修正中英文之间空格、全半角标点等排版问题。中文是主语言，这是
-# 零成本收益：作者无需手动在 `中文 code` 之间加空格。
+# 零成本收益：无需手动在 `中文 code` 之间加空格。
 #
 # 本地: npm run lint:autocorrect (检查) / npm run fix:autocorrect (修正)
 # CI: 见 .github/workflows/ci.yml 的 lint job。

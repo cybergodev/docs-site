@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обработка ошибок"
 title: "Обработка ошибок - CyberGo env | Стратегии восстановления"
-description: "Ошибки CyberGo env: 16 сторожевых через errors.Is, ParseError/FileError/SecurityError через errors.As, восстановление, Unwrap и практика для продакшена."
+description: "Руководство по обработке ошибок CyberGo env: 16 сторожевых через errors.Is, извлечение контекста через errors.As для ParseError/FileError/SecurityError, восстановление, цепочки Unwrap и практика классификации ошибок для продакшена."
 sidebar_position: 2
 ---
 
@@ -52,11 +52,11 @@ var (
 )
 ```
 
-**Проверка запрещённых ключей:**
+**Проверка запрещённых ключей (фактически возвращается `*SecurityError`, совпадение с `ErrSecurityViolation`):**
 
 ```go
 err := loader.Set("PATH", "/malicious")
-if errors.Is(err, env.ErrForbiddenKey) {
+if errors.Is(err, env.ErrSecurityViolation) {
     log.Println("Попытка установить запрещённый ключ")
 }
 ```
@@ -103,9 +103,10 @@ if errors.Is(err, env.ErrNotInitialized) {
     // Необходимо сначала вызвать env.Load() или env.LoadWithConfig()
 }
 
-// Проверка, отсутствует ли обязательный ключ
-if errors.Is(err, env.ErrMissingRequired) {
-    // Отсутствует обязательный ключ
+// Проверка отсутствия обязательного ключа (фактически возвращается *ValidationError, Rule=="required")
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Rule == "required" {
+    // Отсутствует обязательный ключ: valErr.Message содержит список отсутствующих ключей
 }
 ```
 
@@ -341,17 +342,19 @@ case errors.Is(err, env.ErrFileTooLarge):
     // Файл слишком большой
     log.Fatal("Конфигурационный файл слишком большой")
 
-case errors.Is(err, env.ErrForbiddenKey):
-    // Запрещённый ключ
+case errors.Is(err, env.ErrSecurityViolation):
+    // Запрещённый ключ (фактически возвращается *SecurityError)
     log.Fatal("Обнаружен запрещённый ключ")
-
-case errors.Is(err, env.ErrInvalidKey):
-    // Недопустимый формат ключа
-    log.Fatal("Обнаружен недопустимый ключ")
 
 case err != nil:
     // Другая ошибка
     log.Fatalf("Ошибка загрузки: %v", err)
+}
+
+// Недопустимый формат ключа (фактически возвращается *ValidationError, Field=="key")
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Field == "key" {
+    log.Fatalf("Обнаружен недопустимый ключ: %s", valErr.Message)
 }
 ```
 
@@ -534,7 +537,7 @@ func handleLoadError(err error) {
         errors.As(err, &fileErr)
         log.Fatalf("Файл слишком большой: %s (%d байт)", fileErr.Path, fileErr.Size)
 
-    case errors.Is(err, env.ErrForbiddenKey):
+    case errors.Is(err, env.ErrSecurityViolation):
         log.Fatal("Обнаружен запрещённый ключ")
     }
 
@@ -556,11 +559,11 @@ func handleLoadError(err error) {
 func handleValidationError(err error) {
     var valErr *env.ValidationError
     if errors.As(err, &valErr) {
+        if valErr.Rule == "required" {
+            // Отсутствует обязательный ключ: valErr.Message содержит список отсутствующих ключей
+            log.Fatalf("Отсутствует обязательный ключ: %s", valErr.Message)
+        }
         log.Fatalf("Ошибка валидации: %s - %s", valErr.Field, valErr.Message)
-    }
-
-    if errors.Is(err, env.ErrMissingRequired) {
-        log.Fatal("Отсутствует обязательный ключ")
     }
 
     log.Fatalf("Ошибка валидации: %v", err)

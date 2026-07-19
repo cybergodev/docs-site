@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Методы итерации"
 title: "Функции итерации уровня пакета - CyberGo JSON | Справочник API"
-description: "Функции итерации уровня пакета CyberGo JSON: Foreach, ForeachWithPath, ForeachNested, ForeachWithError с IterableValue и ForeachFile для итерации файлов."
+description: "Функции итерации уровня пакета CyberGo JSON: Foreach, ForeachWithPath, рекурсивный ForeachNested, обработка ошибок ForeachWithError и доступ к данным IterableValue, включая файловую итерацию ForeachFile."
 sidebar_position: 10
 ---
 
@@ -81,11 +81,11 @@ json.ForeachNested(data, func(key any, item *json.IterableValue) {
 
 Сигнатура: `func ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
 
-Обходит JSON-данные и возвращает повторно сериализованную строку JSON. Обратный вызов выполняет доступ только для чтения.
+Обходит JSON-данные через обратный вызов для доступа к каждому элементу и возвращает повторно сериализованную строку JSON. Обратный вызов может изменять map/slice через `GetData()`, и изменения отразятся в возвращаемом значении.
 
 ```go
 result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) {
-    // Обработка только для чтения
+    // Доступ/изменение элементов через item.GetData()
 })
 ```
 
@@ -255,7 +255,7 @@ err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.Iterab
 })
 ```
 
-::: tip Подсказка Варианты использования
+::: tip Варианты использования
 - Пакетная вставка в базу данных
 - Пакетные вызовы API
 - Обработка больших файлов с ограниченной памятью
@@ -272,7 +272,7 @@ err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.Iterab
 ```go
 err := json.ForeachFileNested("config.json", func(key any, item *json.IterableValue) error {
     // Обход всех пар ключ-значение на всех уровнях
-    fmt.Printf("Ключ: %v, Тип: %T\n", key, item.GetData())
+    fmt.Printf("Путь: %v, Тип: %T\n", key, item.GetData())
     return nil
 })
 ```
@@ -295,12 +295,12 @@ err := json.ForeachFileNested("config.json", func(key any, item *json.IterableVa
 **Вывод**:
 
 ```text
-Ключ: database, Тип: map[string]any
-Ключ: host, Тип: string
-Ключ: port, Тип: float64
-Ключ: pool, Тип: map[string]any
-Ключ: min, Тип: float64
-Ключ: max, Тип: float64
+Путь: database, Тип: map[string]any
+Путь: host, Тип: string
+Путь: port, Тип: float64
+Путь: pool, Тип: map[string]any
+Путь: min, Тип: float64
+Путь: max, Тип: float64
 ```
 
 ---

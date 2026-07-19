@@ -133,7 +133,10 @@ result, err := html.ExtractWithContext(ctx, data)
 Экземпляр `Processor` потокобезопасен и может совместно использоваться несколькими горутинами:
 
 ```go
-p, _ := html.New(html.DefaultConfig())
+p, err := html.New(html.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer p.Close()
 
 // Безопасный вызов из нескольких горутин

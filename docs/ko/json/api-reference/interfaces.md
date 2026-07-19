@@ -1,7 +1,7 @@
 ---
 sidebar_label: "인터페이스"
 title: "인터페이스 정의 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 확장 인터페이스: CustomEncoder, TypeEncoder, Validator, Hook, PathParser, DangerousPattern으로 인코딩, 검증, 보안을 확장합니다."
+description: "CyberGo JSON 확장 인터페이스: CustomEncoder, TypeEncoder, Validator, Hook, PathParser와 DangerousPattern으로 인코딩, 검증, 보안 방어 능력을 유연하게 확장합니다."
 sidebar_position: 6
 ---
 
@@ -383,20 +383,17 @@ func (n Number) Int64() (int64, error)       // int64로 변환
 **사용 예제**:
 
 ```go
-processor, err := json.New()
-if err != nil {
-    panic(err)
-}
-defer processor.Close()
+// Number 타입 가져오기 (Decoder.UseNumber로 완전한 정밀도 보존)
+decoder := json.NewDecoder(strings.NewReader(data))
+decoder.UseNumber()
 
-// Number 타입 가져오기 (Get 메서드로 가져온 후 타입 단언)
-val, err := processor.Get(data, "large_number")
-if err != nil {
+var obj map[string]any
+if err := decoder.Decode(&obj); err != nil {
     panic(err)
 }
 
 // 타입 단언으로 Number 가져오기
-if num, ok := val.(json.Number); ok {
+if num, ok := obj["large_number"].(json.Number); ok {
     // Number는 원래 정밀도를 보존
     fmt.Println(num.String()) // "9007199254740993" (완전한 정밀도)
 

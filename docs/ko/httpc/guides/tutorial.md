@@ -224,7 +224,7 @@ case result.StatusCode() == 401:
 case result.IsClientError():
     log.Printf("클라이언트 오류: %d", result.StatusCode())
 case result.IsServerError():
-    log.Printf("서버 오류: %d (자동 재시도 %d회)",
+    log.Printf("서버 오류: %d (총 %d회 시도, 첫 요청 포함)",
         result.StatusCode(), result.Meta.Attempts)
 }
 ```
@@ -276,7 +276,10 @@ fmt.Printf("\n다운로드 완료: %s (%d bytes)\n",
 
 ```go
 func fetchRepos(ctx context.Context, repos []string) error {
-    client, _ := httpc.New(httpc.PerformanceConfig())
+    client, err := httpc.New(httpc.PerformanceConfig())
+    if err != nil {
+        return err
+    }
     defer client.Close()
 
     results := make([]*httpc.Result, len(repos))
@@ -372,7 +375,7 @@ func main() {
         fmt.Printf("✅ %s\n", repo.FullName)
         fmt.Printf("   ⭐ %d | 언어: %s\n", repo.Stars, repo.Language)
         fmt.Printf("   %s\n", repo.Description)
-        fmt.Printf("   소요 시간: %s (재시도 %d회)\n",
+        fmt.Printf("   소요 시간: %s (총 %d회 시도, 첫 요청 포함)\n",
             result.Meta.Duration, result.Meta.Attempts)
     }
 }
@@ -380,8 +383,8 @@ func main() {
 
 ## 다음 단계
 
-- [요청과 응답](./request-response) -- 완전한 요청 옵션 참조
-- [미들웨어 체인](./middleware-chain) -- 커스텀 미들웨어 개발
-- [재시도와 장애 허용](./retry-fault-tolerance) -- 고급 재시도 전략
-- [성능 최적화](../advanced/performance) -- 프로덕션 환경 튜닝
-- [프로덕션 체크리스트](../security/production-checklist) -- 보안 모범 사례
+- [요청과 응답](./request-response) — 완전한 요청 옵션 참조
+- [미들웨어 체인](./middleware-chain) — 커스텀 미들웨어 개발
+- [재시도와 장애 허용](./retry-fault-tolerance) — 고급 재시도 전략
+- [성능 최적화](../advanced/performance) — 프로덕션 환경 튜닝
+- [프로덕션 체크리스트](../security/production-checklist) — 보안 모범 사례

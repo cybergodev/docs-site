@@ -1,7 +1,7 @@
 ---
 sidebar_label: "수정"
 title: "Processor 데이터 수정 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor 수정 메서드: Set, SetMultiple, SetCreate 자동 경로 생성, SetMultipleCreate 배치 생성으로 메서드 체이닝을 지원합니다."
+description: "CyberGo JSON Processor 수정 메서드: Set 설정, SetMultiple 배치, SetCreate 자동 경로 생성, SetMultipleCreate 배치 생성, 모든 메서드가 체인 호출 지원."
 sidebar_position: 3
 ---
 
@@ -11,7 +11,7 @@ Processor는 데이터 수정 메서드를 제공하며, 모든 메서드는 수
 
 ## Set
 
-시그니처: `func (p *Processor) Set(jsonStr, path string, value any, cfg ...Config) (string, error)`
+시그니처: `func (p *Processor) Set(jsonStr, path string, value any, cfg ...Config) (result string, err error)`
 
 지정된 경로에 값을 설정하고, 수정된 JSON 문자열을 반환합니다.
 
@@ -100,9 +100,9 @@ Processor는 패키지 레벨 [MergeJSON](../functions/modify#mergejson), [Merge
 
 시그니처: `func (p *Processor) MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
 
-cfg(생략 시 프로세서 자체 설정)에서 옵션을 파싱하여, `Config.MergeMode`에 따라 두 객체를 깊이 병합한 뒤 이 프로세서로 결과를 다시 인코딩합니다.
+cfg에서 옵션을 파싱하여(**cfg 생략 시 프로세서 자체 설정이 아닌 DefaultConfig 사용** — 프로세서를 커스텀 MergeMode로 생성한 경우, 해당 모드를 적용하려면 cfg를 명시적으로 전달해야 함), `Config.MergeMode`에 따라 두 객체를 깊이 병합한 뒤 이 프로세서로 결과를 다시 인코딩합니다.
 
-패키지 레벨 함수와 마찬가지로 `Processor.MergeJSON`은 보안 검증을 수행하지 않습니다 — 디코딩, 깊은 병합, 재인코딩만 하는 구조적 도구입니다. 보안 검증이 필요하면 `CompareJSON`을 사용하세요 (cfg 전달 시 검증 수행).
+패키지 레벨 함수와 마찬가지로 `Processor.MergeJSON`은 보안 검증을 수행하지 않습니다 — 디코딩, 깊은 병합, 재인코딩만 하는 구조적 도구입니다. 보안 검증이 필요하면 `CompareJSON`을 사용하세요 (항상 보안 검증 수행; cfg 전달 시 cfg에 따라, 그렇지 않으면 프로세서 자체 설정에 따라).
 
 ```go
 p, err := json.New()

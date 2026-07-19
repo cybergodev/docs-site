@@ -86,6 +86,19 @@ client := &http.Client{
 In web services, reuse a single Processor instance for all requests:
 
 ```go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "io"
+    "log"
+    "net/http"
+    "time"
+
+    "github.com/cybergodev/html"
+)
+
 var processor *html.Processor
 
 func init() {

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概要"
-title: "Processor 概要 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON Processor：New、GetString/Set/Delete、Foreach、Encode、Close で高頻度再利用に適します。"
+title: "Processor プロセッサ - CyberGo JSON | API リファレンス"
+description: "CyberGo JSON Processor プロセッサ：New 作成、GetString/Set/Delete 操作、Foreach 反復、Encode エンコードと Close ライフサイクルで、高頻度再利用に適します。"
 sidebar_position: 1
 ---
 
@@ -61,7 +61,7 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [クエリと取得](./query) | GetString/Int/Float/Bool/Get/GetWithContext/SafeGet/GetArray/GetObject/GetMultiple/CompilePath/GetCompiled |
 | [変更操作](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/MergeJSON/MergeMany/CompareJSON |
 | [削除操作](./delete) | Delete/DeleteClean |
-| [エンコードと出力](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
+| [エンコードと出力](./output) | Encode/EncodePretty/EncodeWithConfig/MarshalIndent/Prettify/Compact/CompactBuffer/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
 | [パースと検証](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal |
 | [バッチ操作](./batch) | ProcessBatch/WarmupCache |
 | [JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |

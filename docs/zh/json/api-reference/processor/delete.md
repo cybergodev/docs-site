@@ -38,8 +38,8 @@ result, err := p.DeleteClean(data, "user.temporary")
 // Delete 后: {"user": {"name": "test"}}
 result, _ := p.Delete(data, "user.temp")
 
-// 如果删除后父对象为空，DeleteClean 会继续清理
-// {"user": {}} -> {}
+// DeleteClean 同样会删除 user.temp；此处 user 仍含 name，不会变空
+// 结果: {"user": {"name": "test"}}
 result, _ = p.DeleteClean(data, "user.temp")
 ```
 

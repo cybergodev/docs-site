@@ -9,7 +9,7 @@ sidebar_position: 7
 
 ## TestingConfig
 
-`TestingConfig()` специально разработана для тестовой среды: отключены проверки безопасности, сокращены таймауты, ускоряется выполнение тестов:
+`TestingConfig()` специально разработана для тестовой среды: отключены проверки безопасности, сокращены таймауты соединения/рукопожатия (Request остаётся 180s):
 
 ```go
 func TestAPI(t *testing.T) {
@@ -113,17 +113,22 @@ defer server.Close()
 ### Имитация задержек
 
 ```go
+// TestingConfig отключает защиту SSRF — иначе клиент по умолчанию блокирует тестовый сервер 127.0.0.1,
+// и вместо ошибки таймаута будет получена ошибка SSRF.
+client, _ := httpc.New(httpc.TestingConfig())
+defer client.Close()
+
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     time.Sleep(5 * time.Second)
     w.WriteHeader(http.StatusOK)
 }))
 defer server.Close()
 
-// Тестирование обработки таймаута
+// Тестирование обработки таймаута: таймаут контекста 1s < задержка сервера 5s
 ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 defer cancel()
 
-_, err := httpc.Request(ctx, "GET", server.URL)
+_, err := client.Request(ctx, "GET", server.URL)
 if err == nil {
     t.Fatal("expected timeout error")
 }
@@ -179,7 +184,10 @@ func TestHTTPMethods(t *testing.T) {
     }))
     defer server.Close()
 
-    client, _ := httpc.New(httpc.TestingConfig())
+    client, err := httpc.New(httpc.TestingConfig())
+    if err != nil {
+        t.Fatal(err)
+    }
     defer client.Close()
 
     tests := []struct {

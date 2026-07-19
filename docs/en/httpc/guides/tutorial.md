@@ -224,7 +224,7 @@ case result.StatusCode() == 401:
 case result.IsClientError():
     log.Printf("Client error: %d", result.StatusCode())
 case result.IsServerError():
-    log.Printf("Server error: %d (auto-retried %d times)",
+    log.Printf("Server error: %d (attempted %d times, including first request)",
         result.StatusCode(), result.Meta.Attempts)
 }
 ```
@@ -372,7 +372,7 @@ func main() {
         fmt.Printf("%s\n", repo.FullName)
         fmt.Printf("   Stars %d | Language: %s\n", repo.Stars, repo.Language)
         fmt.Printf("   %s\n", repo.Description)
-        fmt.Printf("   Duration: %s (retries %d)\n",
+        fmt.Printf("   Duration: %s (attempted %d times, including first request)\n",
             result.Meta.Duration, result.Meta.Attempts)
     }
 }

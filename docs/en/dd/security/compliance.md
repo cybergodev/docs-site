@@ -1,33 +1,33 @@
 ---
 sidebar_label: "Industry Compliance"
-title: "Compliance Config - CyberGo DD | HIPAA & PCI-DSS"
-description: "CyberGo DD compliance config: HIPAA healthcare, PCI-DSS payment, and government standards for filtering, audit, retention, and rotation policies."
+title: "Industry Compliance Configuration - CyberGo DD | HIPAA PCI-DSS Government"
+description: "CyberGo DD industry-compliance logging configuration, detailing HIPAA medical, PCI-DSS financial-payment, and government-standard sensitive-data filtering rules, audit-log requirements, log-retention and rotation policies, and complete compliance configuration examples to help you build secure, reliable logging systems under strict compliance requirements."
 sidebar_position: 2
 ---
 
 # Industry Compliance Configuration
 
-DD provides three industry compliance preset configurations covering sensitive data protection requirements for healthcare, financial, and government sectors.
+DD provides three industry-compliance preset configurations covering medical, financial, and government sensitive-data protection requirements.
 
-## HIPAA Healthcare Compliance
+## HIPAA Medical Compliance
 
 ### Applicable Scenarios
 
 - Electronic Health Record (EHR) systems
-- Hospital Information Management Systems
+- Hospital information management systems
 - Telemedicine platforms
 - Medical data research platforms
 
 ### Filtering Rules
 
-`HealthcareConfig()` adds the following filters on top of default security rules:
+`HealthcareConfig()` filters additionally on top of `DefaultSecureConfig()` (the full pattern set):
 
 | Data Type | Pattern | Example |
 |-----------|---------|---------|
-| ICD-10 Codes | Diagnosis code format in log messages | `diagnosis=J18.9` |
-| Medical Record Number (MRN) | Medical record identifiers in log messages | `mrn=MRN-123456` |
-| Health Insurance Claim Number (HICN) | HICN identifiers in log messages | `hicn=123456789A` |
-| Patient Identifier | Patient identifiers in log messages | `patient_id=PAT-123456` |
+| ICD-10 codes | Diagnostic-code format in log messages | `diagnosis=J18.9` |
+| Medical Record Number (MRN) | Medical record identifier in log messages | `mrn=MRN-123456` |
+| Health Insurance Claim Number (HICN) | HICN identifier in log messages | `hicn=123456789A` |
+| Patient identifier | Patient identifier in log messages | `patient_id=PAT-123456` |
 
 ### Configuration Example
 
@@ -47,7 +47,7 @@ func NewHIPAACompliantLogger() (*dd.Logger, error) {
 ### Audit Requirements
 
 ```go
-// HIPAA requires: security event auditing + integrity protection
+// HIPAA requirements: security-event audit + integrity protection
 integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
 signer, _ := dd.NewIntegritySigner(integrityCfg)
 
@@ -68,21 +68,21 @@ auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
 ### Applicable Scenarios
 
 - Online payment systems
-- Credit card processing services
+- Credit-card processing services
 - Core banking systems
 - E-commerce transaction platforms
 
 ### Filtering Rules
 
-`FinancialConfig()` adds the following filters on top of default security rules:
+`FinancialConfig()` filters additionally on top of `DefaultSecureConfig()` (the full pattern set):
 
 | Data Type | Pattern | Example |
 |-----------|---------|---------|
-| SWIFT Code | International bank code in log messages | `swift=BOFAUS3N` |
-| IBAN Account | International bank account number in log messages | `iban=DE89370400440532013000` |
+| SWIFT code | International bank code in log messages | `swift=BOFAUS3N` |
+| IBAN account | International bank account number in log messages | `iban=DE89370400440532013000` |
 | CVV/CVC | Card verification code in log messages | `cvv=123` |
-| Bank Routing Number | ABA routing number in log messages | `routing_number=021000021` |
-| Bank Account Number | Bank account number in log messages | `account_number=12345678` |
+| Bank routing number | ABA routing number in log messages | `routing_number=021000021` |
+| Bank account | Bank account number in log messages | `account_number=12345678` |
 
 ### Configuration Example
 
@@ -104,8 +104,8 @@ func NewPCICompliantLogger() (*dd.Logger, error) {
 ```go
 fwCfg := dd.DefaultFileWriterConfig()
 fwCfg.MaxSizeMB = 100    // 100MB per file
-fwCfg.MaxAge = 365 * 24 * time.Hour // Retain for 1 year (PCI-DSS requirement)
-fwCfg.MaxBackups = 50    // Keep enough backups
+fwCfg.MaxAge = 365 * 24 * time.Hour // Keep 1 year (PCI-DSS requirement)
+fwCfg.MaxBackups = 50    // Keep plenty of backups
 fwCfg.Compress = true    // Compress old files to save space
 
 fw, _ := dd.NewFileWriter("logs/pci-audit.json", fwCfg)
@@ -117,27 +117,27 @@ logger, _ := dd.New(dd.Config{
 })
 ```
 
-## Government Standards
+## Government Standard
 
 ### Applicable Scenarios
 
 - Government information systems
 - Public service platforms
-- Social security management systems
+- Social-security management systems
 - Tax processing systems
 
 ### Filtering Rules
 
-`GovernmentConfig()` adds the following filters on top of default security rules:
+`GovernmentConfig()` filters additionally on top of `DefaultSecureConfig()` (the full pattern set):
 
 | Data Type | Pattern | Example |
 |-----------|---------|---------|
-| Passport Number | Passport number in log messages | `passport_number=E12345678` |
-| Driver's License Number | Driver's license number in log messages | `dl_number=D123456789` |
+| Passport number | Passport identifier in log messages | `passport_number=E12345678` |
+| Driver's license number | Driver's license identifier in log messages | `dl_number=D123456789` |
 | US Federal Tax ID (EIN) | EIN format in log messages | `12-3456789` |
 | UK National Insurance Number | NINo format in log messages | `AB123456C` |
-| Canada Social Insurance Number | SIN format in log messages | `123 456 789` |
-| Case Number | Case number in log messages | `case_number=CR-2024-00123` |
+| Canadian Social Insurance Number | SIN format in log messages | `123 456 789` |
+| Case number | Case identifier in log messages | `case_number=CR-2024-00123` |
 
 ### Configuration Example
 
@@ -158,20 +158,20 @@ func NewGovernmentLogger() (*dd.Logger, error) {
 
 | Dimension | HIPAA | PCI-DSS | Government |
 |-----------|-------|---------|------------|
-| Extra Filter Patterns | +4 | +5 | +6 |
-| Log Retention | 6 years | 1 year | Per regulation |
-| Integrity Signing | Recommended | Required | Required |
-| Audit Logging | Required | Required | Required |
-| Encrypted Transmission | Required | Required | Recommended |
+| Extra filter patterns | +4 | +5 | +6 |
+| Log retention | 6 years | 1 year | As required |
+| Integrity signing | Recommended | Required | Required |
+| Audit logging | Required | Required | Required |
+| Encrypted transmission | Required | Required | Recommended |
 
 ## Custom Compliance Configuration
 
-When preset configurations don't fully meet your needs, you can combine custom settings:
+When a preset does not fully meet your needs, you can compose custom configurations:
 
 ```go
 // Add custom patterns
 filter, _ := dd.NewCustomSensitiveDataFilter(
-    // Custom patterns specific to your healthcare system
+    // Custom medical-system-specific patterns
     `(?i)insurance_id\s*[:=]\s*\S+`,
     `(?i)prescription\s*[:=]\s*\S+`,
 )
@@ -187,7 +187,7 @@ logger, _ := dd.New(dd.Config{
 
 ## Next Steps
 
-- [Sensitive Data Filtering](../guides/sensitive-filtering) -- Filtering feature details
+- [Sensitive Data Filtering](../guides/sensitive-filtering) -- Filtering in depth
 - [Audit Logging](../guides/audit-logging) -- Security audit integration
 - [Production Checklist](./production-checklist) -- Pre-launch checks
 - [API Reference - Security](../api-reference/security-audit/security) -- Security API documentation

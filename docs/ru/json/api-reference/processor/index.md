@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обзор"
-title: "Processor - CyberGo JSON | Справочник API"
-description: "Processor CyberGo JSON: New, GetString/Set/Delete, Foreach, Encode, Close, Stats и кэш для повторного использования."
+title: "Processor процессор - CyberGo JSON | Справочник API"
+description: "CyberGo JSON Processor процессор: создание New, операции GetString/Set/Delete, итерация Foreach, кодирование Encode и жизненный цикл Close — подходит для высокочастотного повторного использования."
 sidebar_position: 1
 ---
 
@@ -61,7 +61,7 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [Запрос и получение](./query) | GetString/Int/Float/Bool/Get/GetWithContext/SafeGet/GetArray/GetObject/GetMultiple/CompilePath/GetCompiled |
 | [Модификация](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/MergeJSON/MergeMany/CompareJSON |
 | [Операции удаления](./delete) | Delete/DeleteClean |
-| [Кодирование и вывод](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
+| [Кодирование и вывод](./output) | Encode/EncodePretty/EncodeWithConfig/MarshalIndent/Prettify/Compact/CompactBuffer/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
 | [Парсинг и валидация](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal |
 | [Пакетные операции](./batch) | ProcessBatch/WarmupCache |
 | [JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |

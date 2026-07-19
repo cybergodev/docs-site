@@ -63,7 +63,11 @@ for _, page := range pages {
 配置工作池大小以匹配 CPU 核心数：
 
 ```go
-cfg.WorkerPoolSize = runtime.NumCPU()
+// WorkerPoolSize 上限为 256，高核数机器需封顶
+if n := runtime.NumCPU(); n > 256 {
+    n = 256
+}
+cfg.WorkerPoolSize = n
 ```
 
 ## 输入控制

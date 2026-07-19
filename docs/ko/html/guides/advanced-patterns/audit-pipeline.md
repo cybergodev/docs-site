@@ -35,7 +35,7 @@ defer p.Close()
 | 깊이 위반 | `depth_violation` | warning | DOM 중첩이 제한을 초과함 |
 | 처리 타임아웃 | `timeout` | warning | 단일 처리가 타임아웃됨 |
 | 인코딩 문제 | `encoding_issue` | info | 인코딩 감지 실패 |
-| 경로 순회 | `path_traversal` | critical | 파일 경로에 `..` 포함 |
+| 경로 순회 | `path_traversal` | critical | 파일 경로에 `..`가 포함되거나, `AllowedBaseDir` 모드에서 OS 핸들 해석 후 경로가 기준을 벗어나는 경우(symlink/junction 방지) |
 
 ## 감사 레벨
 
@@ -80,7 +80,7 @@ sink := html.NewWriterAuditSink(file)
 
 ### ChannelAuditSink
 
-채널로 비동기 전송, 외부 시스템 통합에 적합:
+버퍼링된 channel에 논블로킹으로 이벤트를 푸시하며, 소비자 goroutine이 비동기로 처리합니다 — 외부 시스템 통합에 적합:
 
 ```go
 sink := html.NewChannelAuditSink(100)

@@ -15,7 +15,7 @@ func New(cfg Config) (*Processor, error)
 
 新しい JWT Processor を作成します。`DefaultConfig()` でデフォルト設定を取得し、必要なフィールドを変更して渡します。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### パラメータ
 
@@ -73,7 +73,7 @@ func DefaultConfig() Config
 
 適切なデフォルト値を持つ設定を返します。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 戻り値
 
@@ -111,7 +111,7 @@ func DefaultBlacklistConfig() BlacklistConfig
 
 適切なデフォルト値を持つブラックリスト設定を返します。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 戻り値
 
@@ -137,7 +137,7 @@ func NewNumericDate(t time.Time) NumericDate
 
 `time.Time` から `NumericDate` を作成します。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### パラメータ
 
@@ -161,7 +161,7 @@ func NewRateLimiter(maxRate int, window time.Duration) *RateLimiter
 
 トークンバケットレートリミッターを作成します。
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### パラメータ
 

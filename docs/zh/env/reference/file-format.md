@@ -33,8 +33,9 @@ URL=https://example.com?foo=bar
 MESSAGE="Hello World"
 PATH="/usr/local/bin"
 
-# 单引号：原样保留，不转义
-LITERAL='no ${expansion} here'
+# 单引号：不处理转义（原样保留反斜杠序列）
+# 注意：单引号不阻止变量展开——展开在引号剥离后统一进行
+LITERAL='no escaping here: \n stays literal'
 
 # 无引号
 SIMPLE=value
@@ -108,15 +109,18 @@ ANOTHER: "quoted value"
 
 ### 多行值
 
-```bash
-# 双引号内换行
-PRIVATE_KEY="-----BEGIN KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
------END KEY-----"
+`.env` 解析器按行扫描，每行独立解析，**不支持跨多行的引号字符串**——双引号值必须在一行内闭合，否则会报 `ErrInvalidValue`。需要换行时用 `\n` 转义（仅在双引号中有效，单引号不处理转义）：
 
-# 使用 \n 转义
+```bash
+# 双引号内的 \n 会被解析为换行符
 LINES="line1\nline2\nline3"
+# 实际值为三行文本：line1 / line2 / line3
+
+# PRIVATE_KEY 等多行证书建议用 \n 拼接
+PRIVATE_KEY="-----BEGIN KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END KEY-----"
 ```
+
+如需真正的跨行字符串，请改用 [JSON 或 YAML 格式](#格式检测)，或通过自定义解析器扩展多行支持。
 
 ## JSON 格式
 
@@ -254,19 +258,17 @@ ALLOWED_HOSTS_2=api.example.com
 
 ### 多行字符串
 
-```yaml
-# 字面量块（保留换行）
-description: |
-  Line 1
-  Line 2
-  Line 3
+::: warning 注意
+YAML 块标量（字面量块 `|` 与折叠块 `>`）**当前不支持**。解析器会将 `|`/`>` 当作普通标量字符存储，后续缩进行会破坏键值解析。
+:::
 
-# 折叠块（换行变空格）
-summary: >
-  This is a long
-  summary that will
-  be on one line.
+需要保留换行的值，请用双引号加 `\n` 转义：
+
+```yaml
+description: "Line1\nLine2\nLine3"
 ```
+
+或通过自定义解析器扩展块标量支持。
 
 ### 类型转换选项
 

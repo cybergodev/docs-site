@@ -81,7 +81,7 @@ func createProductionClient() (httpc.Client, error) {
     cfg.Timeouts.Request = 30 * time.Second
     cfg.Timeouts.Dial = 10 * time.Second
     cfg.Timeouts.TLSHandshake = 10 * time.Second
-    cfg.Timeouts.ResponseHeader = 30 * time.Second
+    cfg.Timeouts.ResponseHeader = 30 * time.Second // transport 수준 하드 캡: 해당 client의 모든 요청에 적용, WithTimeout으로 요청별 재정의 불가; AI API/장기 응답 시나리오는 0으로 설정해 Request 타임아웃에 의존
 
     // 연결 풀
     cfg.Connection.MaxIdleConns = 50

@@ -25,10 +25,10 @@ for _, link := range links {
 Example output:
 
 ```text
-[link] Go Official Site - https://go.dev
 [image] Gopher mascot - gopher.png
-[css] style - https://example.com/style.css
-[js] app - https://example.com/app.js
+[js] app.js - https://example.com/app.js
+[css] style.css - https://example.com/style.css
+[link] Go Official Site - https://go.dev
 ```
 
 ## Link Types
@@ -39,7 +39,7 @@ The `Type` field of `LinkResource` identifies the resource type:
 |------|---------------|-------------|
 | `link` | `<a>` | Page links |
 | `image` | `<img>` | Image resources |
-| `video` | `<video>`, `<iframe>`, `<embed>`, `<object>` | Video resources |
+| `video` | `<video>`, and `<iframe>`/`<embed>`/`<object>` (only when src is a video URL) | Video resources |
 | `audio` | `<audio>` | Audio resources |
 | `css` | `<link rel="stylesheet">` | Stylesheets |
 | `media` | `<source>` | Generic media resources (when video/audio is indeterminate) |
@@ -66,9 +66,9 @@ Example output:
 
 ```text
 === image (3) ===
-  https://example.com/logo.png
   https://example.com/hero.jpg
   https://example.com/icon.svg
+  https://example.com/logo.png
 
 === css (2) ===
   https://example.com/style.css
@@ -77,6 +77,10 @@ Example output:
 === js (1) ===
   https://example.com/app.js
 ```
+
+:::tip Group order
+`GroupLinksByType` returns a `map`; **iteration order between groups is non-deterministic**; within each group, URLs stay in ascending order.
+:::
 
 ## Configuring Filter Rules
 

@@ -19,7 +19,7 @@ func (p *Processor) Create(claims CustomClaims) (string, error)
 
 Создаёт новый JWT-токен доступа. Принимает любой тип, реализующий интерфейс `CustomClaims`.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -64,7 +64,7 @@ func (p *Processor) Validate(tokenString string) (Claims, bool, error)
 
 Проверяет JWT-токен доступа и возвращает разобранные Claims.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -119,7 +119,7 @@ func (p *Processor) CreateRefresh(claims CustomClaims) (string, error)
 
 Создаёт токен обновления с использованием `RefreshTokenTTL` вместо `AccessTokenTTL`.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -161,7 +161,7 @@ func (p *Processor) Refresh(refreshTokenString string) (string, error)
 При обновлении проверяются только стандартные JWT-поля (exp, nbf, iss, aud, чёрный список) и базовая структурная валидность (наличие UserID или Username). Глубокие ограничения полей (лимит длины, инъекционные паттерны) не перепроверяются, так как они уже были проверены при создании.
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -204,7 +204,7 @@ func (p *Processor) ValidateInto(tokenString string, claims CustomClaims) (Custo
 
 Проверяет токен и заполняет пользовательскую структуру Claims. Возвращает тот же указатель, что и переданный `claims`.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -265,7 +265,7 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 При обновлении проверяются только стандартные JWT-поля (exp, nbf, iss, aud, чёрный список) и базовая структурная валидность. Глубокие ограничения полей (лимит длины, инъекционные паттерны) не перепроверяются, так как они уже были проверены при создании.
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -316,7 +316,7 @@ func (p *Processor) Revoke(tokenString string) error
 - Истёкшие токены также могут быть отозваны; запись автоматически очищается чёрным списком
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -352,7 +352,7 @@ func (p *Processor) IsRevoked(tokenString string) (bool, error)
 
 Проверяет, был ли токен отозван. После проверки подписи выполняется поиск статуса jti токена в чёрном списке. Если чёрный список не настроен, возвращает `false` и ошибку `nil`.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -392,7 +392,7 @@ func (p *Processor) ParseUnverified(tokenString string, claims any) error
 Возвращаемые Claims не проверены и **не могут быть доверенными**. Используйте только для отладки или логирования.
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -425,7 +425,7 @@ func (p *Processor) Close() error
 
 Освобождает ресурсы и безопасно очищает ключи. Может вызываться многократно, последующие вызовы возвращают `ErrProcessorClosed`.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Возвращаемые значения
 
@@ -443,7 +443,7 @@ func (p *Processor) IsClosed() bool
 
 Проверяет, закрыт ли Processor.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Возвращаемые значения
 

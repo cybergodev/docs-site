@@ -35,7 +35,7 @@ Once enabled, security events are output to stderr in `[AUDIT] JSON` format.
 | Depth violation | `depth_violation` | warning | DOM nesting exceeds limit |
 | Processing timeout | `timeout` | warning | Single processing timeout |
 | Encoding issue | `encoding_issue` | info | Encoding detection failure |
-| Path traversal | `path_traversal` | critical | File path contains `..` |
+| Path traversal | `path_traversal` | critical | The path contains `..`, or in `AllowedBaseDir` mode the path escapes the base after OS-handle resolution (symlink/junction protection) |
 
 ## Audit Levels
 
@@ -80,7 +80,7 @@ Output format (one JSON per line):
 
 ### ChannelAuditSink
 
-Sends asynchronously to a channel, suitable for external system integration:
+Pushes events non-blockingly into a buffered channel; a consumer goroutine processes them asynchronously — suitable for external system integration:
 
 ```go
 sink := html.NewChannelAuditSink(100)

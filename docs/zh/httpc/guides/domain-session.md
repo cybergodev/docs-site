@@ -99,6 +99,10 @@ result, _ := dc.Request(ctx, "GET", "/users")
 result, _ := dc.Get("https://other-api.com/data")
 ```
 
+:::warning 请求选项会应用两次
+域名客户端在内部对请求选项**应用两次**（一次捕获会话状态、一次实际请求）。避免使用带副作用的选项（如计数器、nonce 生成）；如需此类选项请改用底层 `Client`。
+:::
+
 ## 会话访问
 
 ```go

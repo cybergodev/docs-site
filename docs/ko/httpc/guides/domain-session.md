@@ -99,6 +99,10 @@ result, _ := dc.Request(ctx, "GET", "/users")
 result, _ := dc.Get("https://other-api.com/data")
 ```
 
+:::warning 요청 옵션이 두 번 적용됨
+도메인 클라이언트는 내부적으로 요청 옵션을 **두 번 적용**합니다(한 번은 세션 상태 캡처, 한 번은 실제 요청). 부작용이 있는 옵션(예: 카운터, nonce 생성)은 피하세요. 이러한 옵션이 필요하면 내부 `Client`를 대신 사용하세요.
+:::
+
 ## 세션 접근
 
 ```go

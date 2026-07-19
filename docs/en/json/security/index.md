@@ -146,15 +146,15 @@ The `String()` method of `PatternLevel` returns the corresponding string represe
 
 #### Disabling Default Patterns
 
-Use `Config.DisableDefaultPatterns` to disable built-in default warning-level patterns:
+Use `Config.DisableDefaultPatterns` to disable built-in default patterns:
 
 ```go
 cfg := json.DefaultConfig()
-cfg.DisableDefaultPatterns = true // Disable default warning-level patterns
+cfg.DisableDefaultPatterns = true // Disable built-in default patterns
 ```
 
 ::: warning Note
-`DisableDefaultPatterns` only disables default warning-level (`PatternLevelWarning`) patterns. Default critical-level (`PatternLevelCritical`) patterns are not affected.
+When `DisableDefaultPatterns=true`, all built-in patterns are disabled except for 3 critical patterns (`__proto__`, `constructor[`, `prototype.`, which are always forcibly scanned). Note: all built-in patterns are Critical level.
 :::
 
 ### Production Configuration

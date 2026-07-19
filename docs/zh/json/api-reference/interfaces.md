@@ -383,20 +383,17 @@ func (n Number) Int64() (int64, error)       // 转换为 int64
 **使用示例**：
 
 ```go
-processor, err := json.New()
-if err != nil {
-    panic(err)
-}
-defer processor.Close()
+// 获取 Number 类型（通过 Decoder.UseNumber 保留完整精度）
+decoder := json.NewDecoder(strings.NewReader(data))
+decoder.UseNumber()
 
-// 获取 Number 类型（通过 Get 方法获取后类型断言）
-val, err := processor.Get(data, "large_number")
-if err != nil {
+var obj map[string]any
+if err := decoder.Decode(&obj); err != nil {
     panic(err)
 }
 
 // 类型断言获取 Number
-if num, ok := val.(json.Number); ok {
+if num, ok := obj["large_number"].(json.Number); ok {
     // Number 保留原始精度
     fmt.Println(num.String()) // "9007199254740993" (完整精度)
 

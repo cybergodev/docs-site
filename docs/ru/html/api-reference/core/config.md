@@ -22,6 +22,10 @@ sidebar_position: 3
 | `WorkerPoolSize` | `int` | `4` | Размер пула воркеров |
 | `ProcessingTimeout` | `time.Duration` | `30с` | Тайм-аут обработки |
 
+:::tip Подсказка
+Установка `MaxCacheEntries`, `CacheCleanup` или `ProcessingTimeout` в `0` — это не ошибка, а значения с определённой семантикой (отключить кэш, отключить фоновую очистку и без тайм-аута соответственно). `MaxInputSize`, `WorkerPoolSize` и `MaxDepth` должны быть положительными, иначе возвращается `ConfigError`.
+:::
+
 ### Безопасность
 
 | Поле | Тип | По умолчанию | Описание |
@@ -131,3 +135,22 @@ cfg := html.DefaultConfig()
 cfg.MaxInputSize = -1
 err := cfg.Validate() // Возвращает ConfigError
 ```
+
+### Ограничения валидации
+
+`Validate()` применяет следующие диапазоны значений к числовым полям (при нарушении возвращается `ConfigError`, который можно проверить через `errors.Is(err, html.ErrInvalidConfig)`):
+
+| Поле | Ограничение | Недопустимый пример |
+|------|-------------|---------------------|
+| `MaxInputSize` | Положительное и ≤ `52428800` (50 МБ) | `0`, `-1`, `100000000` |
+| `MaxCacheEntries` | ≥ `0` и ≤ `100000` | `-1`, `200000` |
+| `CacheTTL` | ≥ `0` | `-1 * time.Second` |
+| `CacheCleanup` | ≥ `0` | `-1 * time.Minute` |
+| `WorkerPoolSize` | Положительное и ≤ `256` | `0`, `512` |
+| `MaxDepth` | Положительное и ≤ `500` | `0`, `1000` |
+| `ProcessingTimeout` | ≥ `0` | `-1 * time.Second` |
+| `InlineImageFormat` | Пусто / `none` / `markdown` / `html` / `placeholder` | `"pdf"` |
+| `InlineLinkFormat` | Пусто / `none` / `markdown` / `html` | `"pdf"` |
+| `TableFormat` | Пусто / `markdown` / `html` | `"csv"` |
+
+Строки формата нечувствительны к регистру, а пустое значение воспринимается как значение по умолчанию (`InlineImageFormat`/`InlineLinkFormat` → `none`, `TableFormat` → `markdown`). `New()` вызывает `Validate()` перед созданием Processor, поэтому недопустимая конфигурация никогда не создаёт пригодный к использованию Processor.

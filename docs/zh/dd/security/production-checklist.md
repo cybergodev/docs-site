@@ -36,7 +36,7 @@ logger.SetSecurityConfig(dd.DefaultSecurityConfig())
 
 ## 文件安全
 
-- [ ] **日志目录权限** -- 设置合理的目录和文件权限（如 `0600`）
+- [ ] **日志权限** -- 文件权限 `0600`、目录权限 `0700`（库默认值；目录需执行位才能进入）
 - [ ] **路径验证** -- 确保日志路径不可被用户输入控制
 - [ ] **符号链接** -- 生产环境禁止符号链接
 - [ ] **磁盘空间** -- 配置轮换策略防止磁盘写满
@@ -59,12 +59,12 @@ signer, _ := dd.NewIntegritySigner(cfg)
 
 - [ ] **采样策略** -- 高吞吐场景考虑启用日志采样
 - [ ] **缓冲写入** -- 使用 `BufferedWriter` 减少 I/O 次数
-- [ ] **异步输出** -- 确认写入不阻塞业务逻辑
+- [ ] **同步写入感知** -- 默认写入路径为同步；高吞吐场景使用 `BufferedWriter` 减少系统调用
 - [ ] **内存监控** -- 监控日志相关内存使用
 
 ## 生命周期
 
-- [ ] **优雅关闭** -- 使用 `Shutdown(ctx)` 而非 `Close()`
+- [ ] **优雅关闭** -- 使用 `Shutdown(ctx)` 而非 `Close()`（注意：`Shutdown` 不会内部等待过滤 goroutine，而 `Close` 会调用 `WaitForFilterGoroutines`，切换前需显式调用 `logger.WaitForFilterGoroutines(...)` 以避免 writer 关闭后过滤 goroutine 仍访问造成的竞态）
 - [ ] **超时设置** -- 设置合理的关闭超时（推荐 5-10 秒）
 - [ ] **全局日志记录器** -- 通过 `SetDefault()` 替换而非重复创建
 

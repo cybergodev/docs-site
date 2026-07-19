@@ -2,9 +2,9 @@
  * Design tokens — single source of truth for color, spacing, radius, elevation.
  *
  * Three layers (kept in one file at this site's scale; a larger site would split
- * them into ramp / semantic / vp-bridge files, as LongBridge does):
+ * them into ramp / semantic / vp-bridge files):
  *
- *   1. RAW RAMP   — the brand (NVIDIA green) color scale 50…900, the ingredients.
+ *   1. RAW RAMP   — the brand (green) color scale 50…900, the ingredients.
  *   2. SEMANTIC   — `--cg-*` tokens with meaning (brand / brand-hover / …) that
  *                   reference the ramp. Dark mode overrides THESE, not the ramp,
  *                   so dark is a retuned palette (brighter brand for contrast on
@@ -25,7 +25,7 @@
  */
 
 /* ============================================
-   1. RAW RAMP — brand (NVIDIA green) scale
+   1. RAW RAMP — brand (green) scale
    Slots 400–700 are the original exact brand values; the rest extend the ramp.
    ============================================ */
 :root {

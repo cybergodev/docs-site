@@ -1,7 +1,7 @@
 ---
 sidebar_label: "오류 처리"
 title: "오류 처리 - CyberGo JSON | 모범 사례"
-description: "CyberGo JSON 오류 처리 모범 사례: JsonsError, errors.Is/As, 표준 오류 변수, SafeError, RedactedPath로 견고한 예외 처리를 구축합니다."
+description: "CyberGo JSON 오류 처리: JsonsError 타입 판별, errors.Is/As 매칭, SafeError 안전 출력과 RedactedPath 마스킹 로그로 견고한 예외 처리를 구축합니다."
 sidebar_position: 2
 ---
 
@@ -23,7 +23,7 @@ var (
     ErrSizeLimit          = errors.New("size limit exceeded")
     ErrSecurityViolation  = errors.New("security violation detected")
     ErrProcessorClosed    = errors.New("processor is closed")
-    ErrConcurrencyLimit   = errors.New("concurrency limit exceeded") // Deprecated
+    ErrConcurrencyLimit   = errors.New("concurrency limit exceeded")
     ErrUnsupportedPath    = errors.New("unsupported path operation")
     ErrOperationTimeout   = errors.New("operation timeout")           // Deprecated
     ErrResourceExhausted  = errors.New("system resources exhausted")  // Deprecated
@@ -320,7 +320,7 @@ if err != nil {
         return fmt.Errorf("일시적 오류, 다시 시도해 주세요: %w", err)
     }
     if errors.Is(err, json.ErrConcurrencyLimit) {
-        // 동시성 제한 <Badge type="danger" text="사용 중단" />
+        // 동시성 제한 (MaxConcurrency 도달 시 반환, 재시도 가능)
         return fmt.Errorf("시스템이 혼잡합니다, 잠시 후 다시 시도해 주세요: %w", err)
     }
     if errors.Is(err, json.ErrResourceExhausted) {
@@ -355,9 +355,10 @@ func processJSON(data string) error {
             // 보안 오류, 기록 및 거부
             log.Warn("보안 위반", "error", err)
             return errors.New("입력이 올바르지 않습니다")
-        case errors.Is(err, json.ErrOperationTimeout),          // Deprecated
-            errors.Is(err, json.ErrConcurrencyLimit): // Deprecated
-            // 재시도 가능한 오류 (이러한 오류는 현재 라이브러리에서 반환되지 않으며, 호환성을 위해 유지)
+        case errors.Is(err, json.ErrConcurrencyLimit):
+            // 동시성 상한, 잠시 후 재시도 가능
+            return fmt.Errorf("시스템이 혼잡합니다, 잠시 후 다시 시도해 주세요: %w", err)
+        case errors.Is(err, json.ErrOperationTimeout): // Deprecated (현재 반환되지 않음, 호환성 유지)
             return fmt.Errorf("일시적 오류, 다시 시도해 주세요: %w", err)
         default:
             // 시스템 오류

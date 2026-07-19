@@ -99,8 +99,8 @@ type SecurityLevel int
 
 | 常量 | 说明 |
 |------|------|
-| `SecurityLevelDevelopment` | 开发环境（无过滤、无限流、无审计） |
-| `SecurityLevelBasic` | 基础过滤（密码、API Key、信用卡） |
+| `SecurityLevelDevelopment` | 开发环境（无敏感过滤、无限流） |
+| `SecurityLevelBasic` | 基础过滤（密码、令牌、API Key、信用卡、SSN、电话、SWIFT/CVV 等约 40 类常见敏感数据） |
 | `SecurityLevelStandard` | 标准过滤（推荐生产环境） |
 | `SecurityLevelStrict` | 严格过滤（PII/金融数据环境） |
 | `SecurityLevelParanoid` | 极致过滤（高风险环境） |
@@ -142,9 +142,12 @@ func (c *SecurityConfig) Clone() *SecurityConfig
 ### 通过 Config 配置
 
 ```go
+// DefaultConfig 已内置 DefaultSecurityConfig()，通常无需显式赋值
 cfg := dd.DefaultConfig()
-cfg.Security = dd.DefaultSecurityConfig()
 logger, _ := dd.New(cfg)
+
+// 如需替换为更高安全级别配置，则显式覆盖
+// cfg.Security = dd.DefaultSecureConfig()
 ```
 
 ### 运行时修改
@@ -174,7 +177,7 @@ data := map[string]any{
         "token":    "eyJhbGciOi...",
     },
 }
-filtered := filter.FilterValueRecursive("data", data)
+filteredData := filter.FilterValueRecursive("data", data)
 ```
 
 ### 监控过滤统计

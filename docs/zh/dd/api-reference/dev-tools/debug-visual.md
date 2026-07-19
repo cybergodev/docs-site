@@ -103,7 +103,7 @@ logger.Text(data)
 | 性能分析数据 | `dd.JSON()` |
 
 :::danger 仅用于调试
-这些函数设计用于开发调试，**不应在生产代码中使用**。生产环境请使用 `Info`、`Error` 等标准日志方法。
+`JSON`、`Text`、`Exit` 系列设计用于开发调试，**不应用在生产代码中**（它们不经过敏感数据过滤，直接输出到 stdout）。`Print`/`Println`/`Printf` 行为等同 `Info`（LevelInfo + 安全过滤 + 配置的 writer），可用于生产。生产环境优先使用 `Info`、`Error` 等标准日志方法。
 :::
 
 ## 下一步

@@ -187,7 +187,7 @@ type Config struct {
     // AdditionalDangerousPatterns 添加除默认模式外的安全模式
     AdditionalDangerousPatterns []DangerousPattern
 
-    // DisableDefaultPatterns 禁用内置警告级别安全模式
+    // DisableDefaultPatterns 禁用内置默认安全模式（关键模式除外）
     // 设为 true 则仅使用 AdditionalDangerousPatterns
     // 注意：关键模式（__proto__、constructor[、prototype.）始终强制执行，无法禁用
     DisableDefaultPatterns bool
@@ -292,7 +292,7 @@ func main() {
 ```go
 cfg := json.DefaultConfig()
 
-// 禁用内置警告级别模式，仅使用自定义模式
+// 禁用内置默认模式（关键模式除外），仅使用自定义模式
 // 注意：关键模式（__proto__、constructor[、prototype.）始终强制执行
 cfg.DisableDefaultPatterns = true
 
@@ -333,17 +333,16 @@ for _, p := range cfg.AdditionalDangerousPatterns {
 
 ### 小 JSON（< 4KB）
 
-始终进行完整的安全扫描。
+始终进行完整的安全扫描，逐一检查全部危险模式。
 
-### 中等 JSON（>= 4KB）
+### 较大 JSON（≥ 4KB）
 
-使用 32KB 滚动窗口扫描，确保不遗漏跨边界的模式。
+采用多层级优化扫描，**保证 100% 覆盖**（无采样盲区）：
 
-### 大 JSON
-
-- 关键模式始终完全扫描
-- 其他模式使用采样策略
-- 检查可疑字符密度
+- 关键模式（`__proto__`、`constructor[`、`prototype.`）始终完全扫描
+- 先做指示字符检查：若无任何危险字符则快速跳过
+- 检测可疑字符密度：密度过高时回退全量扫描，防止攻击者把恶意内容藏在密集区
+- 其余模式使用 32KB **滚动窗口**扫描（窗口带重叠），确保跨边界模式不遗漏
 
 ---
 

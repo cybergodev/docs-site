@@ -224,7 +224,7 @@ case result.StatusCode() == 401:
 case result.IsClientError():
     log.Printf("客户端错误: %d", result.StatusCode())
 case result.IsServerError():
-    log.Printf("服务端错误: %d (已自动重试 %d 次)",
+    log.Printf("服务端错误: %d (共尝试 %d 次，含首次请求)",
         result.StatusCode(), result.Meta.Attempts)
 }
 ```
@@ -375,7 +375,7 @@ func main() {
         fmt.Printf("✅ %s\n", repo.FullName)
         fmt.Printf("   ⭐ %d | 语言: %s\n", repo.Stars, repo.Language)
         fmt.Printf("   %s\n", repo.Description)
-        fmt.Printf("   耗时: %s (重试 %d 次)\n",
+        fmt.Printf("   耗时: %s (共尝试 %d 次，含首次请求)\n",
             result.Meta.Duration, result.Meta.Attempts)
     }
 }

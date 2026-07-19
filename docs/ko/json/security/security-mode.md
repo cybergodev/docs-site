@@ -187,7 +187,7 @@ type Config struct {
     // AdditionalDangerousPatterns는 기본 패턴 외에 추가할 보안 패턴
     AdditionalDangerousPatterns []DangerousPattern
 
-    // DisableDefaultPatterns는 내장 경고 수준 보안 패턴을 비활성화
+    // DisableDefaultPatterns는 내장 기본 보안 패턴을 비활성화 (핵심 패턴 제외)
     // true로 설정하면 AdditionalDangerousPatterns만 사용
     // 참고: 핵심 패턴(__proto__, constructor[, prototype.)은 항상 강제 실행되며 비활성화할 수 없음
     DisableDefaultPatterns bool
@@ -292,7 +292,7 @@ func main() {
 ```go
 cfg := json.DefaultConfig()
 
-// 내장 경고 수준 패턴 비활성화, 커스텀 패턴만 사용
+// 내장 기본 패턴 비활성화(핵심 패턴 제외), 커스텀 패턴만 사용
 // 참고: 핵심 패턴(__proto__, constructor[, prototype.)은 항상 강제 실행됨
 cfg.DisableDefaultPatterns = true
 
@@ -333,17 +333,16 @@ for _, p := range cfg.AdditionalDangerousPatterns {
 
 ### 작은 JSON (< 4KB)
 
-항상 전체 보안 스캔을 수행합니다.
+항상 전체 보안 스캔을 수행하며, 모든 위험 패턴을 하나씩 검사합니다.
 
-### 중간 크기 JSON (>= 4KB)
+### 더 큰 JSON (≥ 4KB)
 
-32KB 슬라이딩 윈도우 스캔을 사용하여 경계를 가로지르는 패턴을 놓치지 않습니다.
+다계층 최적화 스캔을 사용하여 **100% 커버리지를 보장**합니다 (샘플링 사각지대 없음):
 
-### 대용량 JSON
-
-- 핵심 패턴은 항상 전체 스캔
-- 다른 패턴은 샘플링 전략 사용
-- 의심스러운 문자 밀도 확인
+- 핵심 패턴(`__proto__`, `constructor[`, `prototype.`)은 항상 전체 스캔
+- 먼저 지시자 문자를 검사: 위험 문자가 전혀 없으면 빠르게 건너뜀
+- 의심스러운 문자 밀도 감지: 밀도가 너무 높으면 전체 스캔으로 회귀하여, 공격자가 악의적 내용을 밀집 지역에 숨기는 것을 방지
+- 나머지 패턴은 32KB **슬라이딩 윈도우** 스캔 사용 (윈도우는 겹침), 경계를 가로지르는 패턴 누락 방지
 
 ---
 

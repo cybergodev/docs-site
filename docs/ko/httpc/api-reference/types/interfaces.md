@@ -300,7 +300,9 @@ func NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner
 
 여러 고정기를 하나로 조합합니다. 래핑된 고정기 중 **어느 하나**라도 해당 인증서를 수락하면 인증서가 수락됩니다. 여러 고정 전략을 동시에 지원하거나, 서로 다른 생성자로 구축한 로테이션 키를 조합할 때 사용합니다.
 
-인수를 전달하지 않으면 no-op 고정기(모든 인증서 거부)를 반환합니다.
+::: warning 인수 없음 동작: 모든 인증서 허용
+인수를 전달하지 않으면 빈 체인을 반환하며, 이 체인은 **어떤 인증서도 검증하지 않습니다** (검증 로직이 직접 `nil`을 반환합니다) — 즉 **모든 인증서를 허용하며, 인증서 고정을 비활성화한 것과 동일**합니다 (소스 코드 `internal/security/certpin.go`의 주석은 "No pinners means no pinning"). 이는 "pinner가 없으면 거부한다"는 직관과 반대되는 fail-open 동작입니다. 항상 최소 하나의 유효한 pinner를 전달하고, 인수 없음 동작에 의존하지 마세요.
+:::
 
 :::tip 더 읽어보기
 인증서 고정의 완전한 가이드(해시 생성, 키 로테이션 전략, 프로덕션 배포)는 [TLS 인증서 고정](../../security/tls-certpin)을 참조하세요.

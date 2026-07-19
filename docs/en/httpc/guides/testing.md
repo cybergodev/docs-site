@@ -9,7 +9,7 @@ sidebar_position: 7
 
 ## TestingConfig
 
-`TestingConfig()` is designed specifically for testing environments, disabling security checks and shortening timeouts to accelerate test execution:
+`TestingConfig()` is designed specifically for testing environments, disabling security checks; it shortens connection/handshake timeouts (Request stays default 180s):
 
 ```go
 func TestAPI(t *testing.T) {
@@ -113,17 +113,22 @@ defer server.Close()
 ### Mock Delays
 
 ```go
+// TestingConfig disables SSRF protection -- otherwise the default client blocks the 127.0.0.1 test server,
+// resulting in an SSRF error instead of a timeout.
+client, _ := httpc.New(httpc.TestingConfig())
+defer client.Close()
+
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     time.Sleep(5 * time.Second)
     w.WriteHeader(http.StatusOK)
 }))
 defer server.Close()
 
-// Test timeout handling
+// Test timeout handling: 1s context timeout < 5s server delay
 ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 defer cancel()
 
-_, err := httpc.Request(ctx, "GET", server.URL)
+_, err := client.Request(ctx, "GET", server.URL)
 if err == nil {
     t.Fatal("expected timeout error")
 }
@@ -179,7 +184,10 @@ func TestHTTPMethods(t *testing.T) {
     }))
     defer server.Close()
 
-    client, _ := httpc.New(httpc.TestingConfig())
+    client, err := httpc.New(httpc.TestingConfig())
+    if err != nil {
+        t.Fatal(err)
+    }
     defer client.Close()
 
     tests := []struct {

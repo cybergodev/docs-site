@@ -68,7 +68,7 @@ func main() {
     // Вывод:
     // {
     //   "HOST": "localhost",
-    //   "PORT": "8080"
+    //   "PORT": 8080
     // }
 }
 ```
@@ -99,8 +99,8 @@ func main() {
     fmt.Println(result)
     // Вывод:
     // DATABASE_HOST: localhost
-    // DATABASE_PORT: "5432"
     // DATABASE_NAME: myapp
+    // DATABASE_PORT: 5432
 }
 ```
 
@@ -137,9 +137,9 @@ func main() {
 
     fmt.Println(result)
     // Вывод:
+    // DEBUG=true
     // HOST=localhost
     // PORT=8080
-    // DEBUG=true
 }
 ```
 
@@ -384,24 +384,32 @@ ENABLED=true
 
 ## Пользовательская сериализация
 
-### Реализация интерфейса Marshaler
+:::tip Область действия двух пользовательских интерфейсов
+- **Уровень поля**: для пользовательского кодирования/декодирования полей структуры реализуйте стандартные интерфейсы `encoding.TextMarshaler` / `encoding.TextUnmarshaler` (`MarshalText()` / `UnmarshalText([]byte)`). Когда структура обрабатывается функциями `env.Marshal`/`env.UnmarshalInto`, постатейная логика распознаёт эти интерфейсы.
+- **Верхний уровень**: интерфейсы `env.Marshaler` (`MarshalEnv()`) и `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) **действуют только на верхнем уровне значения, непосредственно переданного в `env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto`**; если передана внешняя структура, содержащая поле этого типа, они не будут вызваны.
+:::
+
+### Уровень поля: реализация encoding.TextMarshaler
 
 ```go
 package main
 
 import (
     "fmt"
+    "strings"
+
     "github.com/cybergodev/env"
 )
 
 type LogLevel string
 
-type LogConfig struct {
-    Level LogLevel `env:"LOG_LEVEL"`
+// Реализация encoding.TextMarshaler — вызывается при сериализации как поле структуры
+func (l LogLevel) MarshalText() ([]byte, error) {
+    return []byte(strings.ToUpper(string(l))), nil
 }
 
-func (l LogLevel) MarshalEnv() ([]byte, error) {
-    return []byte(string(l)), nil
+type LogConfig struct {
+    Level LogLevel `env:"LOG_LEVEL"`
 }
 
 func main() {
@@ -415,28 +423,36 @@ func main() {
     }
 
     fmt.Println(result)
+    // Вывод: LOG_LEVEL=DEBUG
 }
 ```
 
-### Реализация интерфейса Unmarshaler
+### Уровень поля: реализация encoding.TextUnmarshaler
 
 ```go
 package main
 
 import (
     "fmt"
+
     "github.com/cybergodev/env"
 )
 
 type LogLevel string
 
-type LogConfig struct {
-    Level LogLevel `env:"LOG_LEVEL"`
+// Реализация encoding.TextUnmarshaler — вызывается при десериализации как поле структуры
+func (l *LogLevel) UnmarshalText(text []byte) error {
+    switch string(text) {
+    case "debug", "info", "warn", "error":
+        *l = LogLevel(text)
+        return nil
+    default:
+        return fmt.Errorf("invalid log level: %s", string(text))
+    }
 }
 
-func (l *LogLevel) UnmarshalEnv(data map[string]string) error {
-    *l = LogLevel(data["LOG_LEVEL"])
-    return nil
+type LogConfig struct {
+    Level LogLevel `env:"LOG_LEVEL"`
 }
 
 func main() {
@@ -451,6 +467,42 @@ func main() {
     }
 
     fmt.Printf("Level: %s\n", cfg.Level)
+    // Вывод: Level: info
+}
+```
+
+### Верхний уровень: реализация env.Marshaler / env.Unmarshaler
+
+Когда значение типа **напрямую** передаётся в `env.Marshal` / `env.UnmarshalInto` (а не как поле внешней структуры), интерфейсы `env.Marshaler` / `env.Unmarshaler` срабатывают на этом верхнем уровне:
+
+```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/cybergodev/env"
+)
+
+// Тип верхнего уровня напрямую реализует env.Marshaler
+type EnvBlob string
+
+func (e EnvBlob) MarshalEnv() ([]byte, error) {
+    // Пользовательская сериализация всего значения
+    return []byte("APP_NAME=custom\nAPP_VERSION=2.0.0"), nil
+}
+
+func main() {
+    // Непосредственная сериализация верхнего уровня (не поле внешней структуры)
+    result, err := env.Marshal(EnvBlob(""), env.FormatEnv)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println(result)
+    // Вывод:
+    // APP_NAME=custom
+    // APP_VERSION=2.0.0
 }
 ```
 

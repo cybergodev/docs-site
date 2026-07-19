@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Функции пакета"
 title: "Пакетные функции - CyberGo DD | Глобальные функции"
-description: "Полная документация пакетных функций CyberGo DD: New, Default/SetDefault/InitDefault, пресеты и фабричные конструкторы, вызываемые через dd. префикс."
+description: "Полная документация пакетных функций CyberGo DD: функция создания логгера New, функции управления глобальным логгером Default/SetDefault/InitDefault, пресеты конфигураций DefaultConfig/DevelopmentConfig/JSONConfig и все фабричные конструкторы, поддерживающие прямой вызов через префикс dd."
 sidebar_position: 1
 ---
 
@@ -111,7 +111,7 @@ logger, _ := dd.New(cfg)
 | `Info` | `func Info(args ...any)` | Лог уровня Info |
 | `Warn` | `func Warn(args ...any)` | Лог уровня Warn |
 | `Error` | `func Error(args ...any)` | Лог уровня Error |
-| `Fatal` | `func Fatal(args ...any)` | Лог уровня Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
+| `Fatal` | `func Fatal(args ...any)` | Лог уровня Fatal (по умолчанию вызывает os.Exit(1), **defer не выполняется**; можно настроить через FatalHandler) |
 
 ```go
 dd.Info("Приложение запущено")
@@ -127,7 +127,7 @@ dd.Warn("Недостаточно места на диске")
 | `Infof` | `func Infof(format string, args ...any)` | Форматированный лог уровня Info |
 | `Warnf` | `func Warnf(format string, args ...any)` | Форматированный лог уровня Warn |
 | `Errorf` | `func Errorf(format string, args ...any)` | Форматированный лог уровня Error |
-| `Fatalf` | `func Fatalf(format string, args ...any)` | Форматированный лог уровня Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
+| `Fatalf` | `func Fatalf(format string, args ...any)` | Форматированный лог уровня Fatal (по умолчанию вызывает os.Exit(1), **defer не выполняется**; можно настроить через FatalHandler) |
 
 ## Логирование с указанием уровня (пакетный уровень)
 
@@ -156,7 +156,7 @@ dd.LogWith(dd.LevelError, "Ошибка запроса",
 | `InfoWith` | `func InfoWith(msg string, fields ...Field)` | Структурированный лог уровня Info |
 | `WarnWith` | `func WarnWith(msg string, fields ...Field)` | Структурированный лог уровня Warn |
 | `ErrorWith` | `func ErrorWith(msg string, fields ...Field)` | Структурированный лог уровня Error |
-| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Структурированный лог уровня Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
+| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Структурированный лог уровня Fatal (по умолчанию вызывает os.Exit(1), **defer не выполняется**; можно настроить через FatalHandler) |
 
 ```go
 dd.InfoWith("Запрос завершён",
@@ -338,8 +338,8 @@ dd.InfoWith("Запрос завершён",
 )
 ```
 
-:::tip Рекомендация по производительности
-Предпочитайте типизированные конструкторы (такие как `Int`, `String`) вместо `Any` для лучшей производительности.
+:::tip Типобезопасность
+Предпочитайте типизированные конструкторы (такие как `Int`, `String`) вместо `Any` — это позволяет выявлять несоответствие типов на этапе компиляции и избегать ошибок времени выполнения, вызванных неверным типом.
 :::
 
 ## Конфигурация валидации полей

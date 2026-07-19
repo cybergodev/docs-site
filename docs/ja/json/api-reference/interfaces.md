@@ -383,20 +383,17 @@ func (n Number) Int64() (int64, error)       // int64 に変換
 **使用例**：
 
 ```go
-processor, err := json.New()
-if err != nil {
-    panic(err)
-}
-defer processor.Close()
+// Number 型の取得（Decoder.UseNumber で完全な精度を維持）
+decoder := json.NewDecoder(strings.NewReader(data))
+decoder.UseNumber()
 
-// Number 型の取得（Get メソッドで取得後に型アサーション）
-val, err := processor.Get(data, "large_number")
-if err != nil {
+var obj map[string]any
+if err := decoder.Decode(&obj); err != nil {
     panic(err)
 }
 
 // 型アサーションで Number を取得
-if num, ok := val.(json.Number); ok {
+if num, ok := obj["large_number"].(json.Number); ok {
     // Number は元の精度を維持
     fmt.Println(num.String()) // "9007199254740993"（完全な精度）
 

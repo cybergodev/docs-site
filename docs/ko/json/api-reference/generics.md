@@ -1,7 +1,7 @@
 ---
 sidebar_label: "제네릭"
 title: "제네릭 작업 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON 제네릭 API: GetTyped[T], Result[T], AccessResult로 Go 1.18+ 제네릭을 활용해 컴파일 타임 타입 안전성을 제공합니다."
+description: "CyberGo JSON 제네릭 API: GetTyped[T] 제네릭 가져오기, Result[T] 결과 타입, AccessResult 동적 접근으로 Go 1.18+ 제네릭을 활용해 컴파일 타임 타입 안전 검사를 구현합니다."
 sidebar_position: 10
 ---
 

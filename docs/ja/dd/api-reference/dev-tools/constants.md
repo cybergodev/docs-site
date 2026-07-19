@@ -31,10 +31,10 @@ type LogLevel int8 // ログレベル型
 type LogFormat int8 // 出力フォーマット型
 ```
 
-| 定数 | 説明 |
-|------|------|
-| `FormatText` | テキストフォーマット |
-| `FormatJSON` | JSON フォーマット |
+| 定数 | 値 | 説明 |
+|------|----|------|
+| `FormatText` | 0 | テキストフォーマット |
+| `FormatJSON` | 1 | JSON フォーマット |
 
 `LogFormat` は `String() string` メソッド（`"text"`/`"json"` を返し、未知の値には `"unknown"` を返す）を実装しています。
 
@@ -70,9 +70,9 @@ type FieldNamingConvention int // フィールドキー命名規則
 type HashAlgorithm int // 整合性署名ハッシュアルゴリズム
 ```
 
-| 定数 | 説明 |
-|------|------|
-| `HashAlgorithmSHA256` | SHA-256 アルゴリズム |
+| 定数 | 値 | 説明 |
+|------|----|------|
+| `HashAlgorithmSHA256` | 0 | SHA-256 アルゴリズム（[整合性署名](../security-audit/integrity) で使用） |
 
 ## デフォルト値
 

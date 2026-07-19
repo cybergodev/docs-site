@@ -59,5 +59,5 @@ for i, err := range batch.Errors {
 ```
 
 :::warning 배치 제한
-단일 배치당 최대 10000개 항목이며, 초과 시 오류가 발생합니다.
+단일 배치당 최대 10000개 항목이며, 초과 시 모든 항목이 실패한 `*BatchResult`를 반환합니다(각 `Errors` 항목은 `html: batch size N exceeds maximum 10000`로 채워집니다). panic은 발생하지 않습니다.
 :::

@@ -111,7 +111,7 @@ logger, _ := dd.New(cfg)
 | `Info` | `func Info(args ...any)` | Info レベルログ |
 | `Warn` | `func Warn(args ...any)` | Warn レベルログ |
 | `Error` | `func Error(args ...any)` | Error レベルログ |
-| `Fatal` | `func Fatal(args ...any)` | Fatal レベルログ（デフォルトで os.Exit(1) を呼び出し、FatalHandler でカスタマイズ可能） |
+| `Fatal` | `func Fatal(args ...any)` | Fatal レベルログ（デフォルトで os.Exit(1) を呼び出し、**defer は実行されません**；FatalHandler でカスタマイズ可能） |
 
 ```go
 dd.Info("アプリケーション起動完了")
@@ -127,7 +127,7 @@ dd.Warn("ディスク容量不足")
 | `Infof` | `func Infof(format string, args ...any)` | Info レベル フォーマットログ |
 | `Warnf` | `func Warnf(format string, args ...any)` | Warn レベル フォーマットログ |
 | `Errorf` | `func Errorf(format string, args ...any)` | Error レベル フォーマットログ |
-| `Fatalf` | `func Fatalf(format string, args ...any)` | Fatal レベル フォーマットログ（デフォルトで os.Exit(1) を呼び出し、FatalHandler でカスタマイズ可能） |
+| `Fatalf` | `func Fatalf(format string, args ...any)` | Fatal レベル フォーマットログ（デフォルトで os.Exit(1) を呼び出し、**defer は実行されません**；FatalHandler でカスタマイズ可能） |
 
 ## 汎用レベルログ（パッケージレベル）
 
@@ -156,7 +156,7 @@ dd.LogWith(dd.LevelError, "リクエスト失敗",
 | `InfoWith` | `func InfoWith(msg string, fields ...Field)` | Info レベル 構造化ログ |
 | `WarnWith` | `func WarnWith(msg string, fields ...Field)` | Warn レベル 構造化ログ |
 | `ErrorWith` | `func ErrorWith(msg string, fields ...Field)` | Error レベル 構造化ログ |
-| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal レベル 構造化ログ（デフォルトで os.Exit(1) を呼び出し、FatalHandler でカスタマイズ可能） |
+| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal レベル 構造化ログ（デフォルトで os.Exit(1) を呼び出し、**defer は実行されません**；FatalHandler でカスタマイズ可能） |
 
 ```go
 dd.InfoWith("リクエスト完了",
@@ -338,8 +338,8 @@ dd.InfoWith("リクエスト完了",
 )
 ```
 
-:::tip パフォーマンスアドバイス
-`Any` よりも型が明確なコンストラクタ（`Int`、`String` など）を優先して使用すると、より良いパフォーマンスが得られます。
+:::tip 型安全性の推奨
+`Any` よりも型が明確なコンストラクタ（`Int`、`String` など）を優先することで、コンパイル時に型エラーを検出でき、実行時に型不一致で問題が発生するのを防げます。
 :::
 
 ## フィールド検証設定

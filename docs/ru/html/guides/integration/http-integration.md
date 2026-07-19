@@ -86,6 +86,19 @@ client := &http.Client{
 В веб-сервисе используйте один экземпляр Processor для обработки всех запросов:
 
 ```go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "io"
+    "log"
+    "net/http"
+    "time"
+
+    "github.com/cybergodev/html"
+)
+
 var processor *html.Processor
 
 func init() {

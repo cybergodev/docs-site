@@ -1,17 +1,17 @@
 ---
 sidebar_label: "Structured Logging"
-title: "Structured Logging - CyberGo DD | Fields and Chaining"
-description: "CyberGo DD structured logging: 20+ type-safe field constructors, Field chaining, LoggerEntry immutability, naming conventions, and best practices."
+title: "Structured Logging - CyberGo DD | Fields & Chaining"
+description: "CyberGo DD structured logging guide, covering 20 type-safe field constructors, the Field chaining pattern, LoggerEntry immutable design, field-naming conventions and validation rules, plus structured-logging best practices and common usage patterns to help you use high-performance structured logging effectively in your project."
 sidebar_position: 2
 ---
 
 # Structured Logging
 
-Structured logging records contextual information through key-value pair fields, making logs machine-parseable, searchable, and analyzable. DD provides type-safe field constructors and a flexible chaining mechanism.
+Structured logging records context information as key-value field pairs, making logs parseable, searchable, and analyzable. DD provides type-safe field constructors and a flexible chaining mechanism.
 
 ## Field Constructors
 
-DD provides 20+ type-safe field constructors:
+DD provides 20 type-safe field constructors:
 
 ### Basic Types
 
@@ -24,7 +24,7 @@ dd.InfoWith("user registration",
 )
 ```
 
-### Time-Related
+### Time-related
 
 ```go
 dd.InfoWith("scheduled task executed",
@@ -33,10 +33,10 @@ dd.InfoWith("scheduled task executed",
 )
 ```
 
-### Integer Type Family
+### Integer Family
 
 ```go
-dd.InfoWith("packet processing",
+dd.InfoWith("packet processed",
     dd.Int8("flags", 0x0F),
     dd.Int32("seq", 1001),
     dd.Int64("total_bytes", 1<<20),
@@ -55,7 +55,7 @@ dd.ErrorWith("query failed", dd.Err(err))
 dd.ErrorWith("database error", dd.ErrWithKey("db_error", dbErr))
 
 // With stack trace
-dd.ErrorWith("critical error", dd.ErrWithStack(err))
+dd.ErrorWith("severe error", dd.ErrWithStack(err))
 ```
 
 ### Any Type
@@ -66,12 +66,12 @@ dd.InfoWith("request payload", dd.Any("body", requestBody))
 ```
 
 :::warning Performance Note
-`Any` uses reflection and is slower than type-specific constructors. Prefer concrete types on high-frequency code paths.
+`Any` has no extra overhead for primitive types (int/string/bool/time, etc.); for complex types like struct/map/slice, the filtering and formatting stages require reflection and are slower than type-specific constructors. Prefer concrete types on hot paths.
 :::
 
 ## Chaining
 
-### Logger to Entry
+### Logger -> Entry
 
 ```go
 // Create an Entry with preset fields
@@ -82,23 +82,23 @@ reqLog := logger.WithFields(
 
 // Entry automatically carries preset fields
 reqLog.Info("service started")
-reqLog.Warn("high memory usage")
+reqLog.Warn("memory usage high")
 reqLog.ErrorWith("request failed",
     dd.String("path", "/api/users"),
     dd.Err(err),
 )
 ```
 
-### Entry to Entry (Multi-Level Nesting)
+### Entry -> Entry (Multi-layer Nesting)
 
 ```go
-// Service level
+// Service-level
 svcLog := logger.WithFields(dd.String("service", "order"))
 
-// Module level (inherits service-level fields)
+// Module-level (inherits service-level fields)
 dbLog := svcLog.WithFields(dd.String("module", "database"))
 
-// Operation level (inherits all parent fields)
+// Operation-level (inherits all upper-layer fields)
 queryLog := dbLog.WithFields(dd.String("operation", "query"))
 
 queryLog.InfoWith("query completed",
@@ -108,7 +108,7 @@ queryLog.InfoWith("query completed",
 // Fields: service=order module=database operation=query rows=42 elapsed=10ms
 ```
 
-### Package-Level Function Chaining
+### Package-level Function Chaining
 
 ```go
 dd.WithFields(
@@ -119,12 +119,12 @@ dd.WithFields(
 
 ## Field Naming Conventions
 
-DD supports configurable field naming conventions with automatic checking during development:
+DD supports configurable field-naming conventions that are automatically checked during development:
 
 ### Built-in Conventions
 
 ```go
-// snake_case (recommended, most universal)
+// snake_case (recommended; most universal)
 cfg := dd.StrictSnakeCaseConfig()
 
 // camelCase
@@ -146,12 +146,12 @@ if err != nil {
 defer logger.Close()
 ```
 
-When enabled, non-compliant field names produce warnings in the log output:
+Once enabled, non-conforming field names produce an error (Strict mode) or warning (Warn mode) on **stderr**; the log line itself is unaffected:
 
 ```go
 logger.InfoWith("test",
-    dd.String("UserName", "alice"),   // PascalCase → warning
-    dd.String("user_name", "alice"),  // snake_case → normal
+    dd.String("UserName", "alice"),   // PascalCase -> triggers an stderr error (log is still written)
+    dd.String("user_name", "alice"),  // snake_case -> OK
 )
 ```
 
@@ -182,7 +182,7 @@ func loggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
 }
 ```
 
-### Service Layered Logging
+### Service-Layered Logging
 
 ```go
 type UserService struct {
@@ -196,7 +196,7 @@ func NewUserService(logger *dd.Logger) *UserService {
 }
 
 func (s *UserService) CreateUser(ctx context.Context, name string) error {
-    s.log.InfoWith("creating user",
+    s.log.InfoWith("create user",
         dd.String("name", name),
     )
 
@@ -215,25 +215,29 @@ func (s *UserService) CreateUser(ctx context.Context, name string) error {
 ### Conditional Logging (Avoiding Unnecessary Computation)
 
 ```go
-// Method 1: Check level first
+// Option 1: check level first
 if logger.IsDebugEnabled() {
     data := computeExpensiveDebugInfo()
     logger.DebugWith("debug data", dd.Any("data", data))
 }
 
-// Method 2: Use WithFields lazy evaluation
+// Option 2: use WithFields' lazy-computation property
 reqLog := logger.WithFields(dd.String("request_id", reqID))
-// WithFields only constructs fields, no I/O overhead
-// Only when Info/Error etc. are actually called does the log get written
+// WithFields only constructs fields, no I/O cost
+// Only an actual call to Info/Error etc. writes the log
 ```
 
-## Output Formats
+## Output Format
 
 ### Text Format (Default)
 
 ```text
-[2026-04-16T21:16:48+08:00   INFO] main.go:13 request completed method=GET status=200 elapsed=150ms
+[2026-04-16T21:16:48+08:00   INFO] logger.go:1567 request completed method=GET status=200 elapsed=150ms
 ```
+
+:::info caller field note
+The `caller` field records the call site; when called via `*Logger` methods (e.g. `logger.InfoWith(...)`), the caller resolves to an internal library call frame (e.g. `logger.go:1567`); when called via package-level functions (e.g. `dd.InfoWith`), it resolves to user code.
+:::
 
 ### JSON Format
 
@@ -250,12 +254,12 @@ logger.InfoWith("request completed",
 ```
 
 ```json
-{"timestamp":"2026-04-16T21:16:48+08:00","level":"info","caller":"main.go:13","message":"request completed","fields":{"method":"GET","status":200}}
+{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"logger.go:1567","message":"request completed","fields":{"method":"GET","status":200}}
 ```
 
 ## Next Steps
 
-- [File Output and Rotation](./file-output) -- Writing logs to files
-- [Sensitive Data Filtering](./sensitive-filtering) -- Automatic redaction of sensitive information
+- [File Output & Rotation](./file-output) -- Writing logs to files
+- [Sensitive Data Filtering](./sensitive-filtering) -- Auto-redacting sensitive information
 - [API Reference - Fields](../api-reference/output-integration/fields) -- All field constructors
-- [API Reference - LoggerEntry](../api-reference/core/entry) -- Entry complete methods
+- [API Reference - LoggerEntry](../api-reference/core/entry) -- Complete Entry methods

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "JSONL"
 title: "JSONL 処理関数 - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON JSONL 処理関数：ParseJSONL/ToJSONL/ToJSONLString 変換、StreamLinesInto[T] ジェネリックストリームと NewJSONLWriter ライタで、JSON Lines 形式をサポートします。"
+description: "CyberGo JSON JSONL 処理関数：ParseJSONL/ToJSONL/ToJSONLString 変換、StreamJSONL/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL ストリーミング処理、StreamLinesInto[T] ジェネリックストリームと NewJSONLWriter ライタ。"
 sidebar_position: 8
 ---
 
@@ -167,6 +167,78 @@ func main() {
     fmt.Println(jsonlStr)
 }
 ```
+
+## JSONL ストリーミング処理関数（パッケージレベル）
+
+json パッケージが提供する JSONL ストリーミング処理パッケージレベル便捷関数。シグネチャは対応する Processor メソッドと一致し、末尾にオプションの `cfg ...Config` 引数を追加で受け取ります。内部では `cfg` ごとにキャッシュされたグローバル Processor を使用するため、インスタンスを手動作成する必要がなく、一回限りの処理シナリオに適しています。複数回の処理や同一設定の共有が必要な場合は、[`json.New(cfg)`](../processor/#new) で独立した Processor を作成することを推奨します。
+
+完全な使用方法とサンプルは [JSONL ストリーミング処理ガイド](../../streaming/jsonl#パッケージレベル関数) および [Processor JSONL メソッド](../processor/jsonl) を参照してください。
+
+### StreamJSONL
+
+シグネチャ：`func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+JSONL をストリーミングで行ごとに処理し、各行を `IterableValue` にパースしてからコールバックを呼び出します。
+
+### StreamJSONLParallel
+
+シグネチャ：`func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+`workers` 個の並列 goroutine で JSONL を処理します（CPU 集約型シナリオ向け）。
+
+### StreamJSONLParallelWithContext
+
+シグネチャ：`func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+コンテキストのキャンセル/タイムアウトをサポートする並列 JSONL 処理。
+
+### StreamJSONLChunked
+
+シグネチャ：`func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
+
+`chunkSize` ごとにバッチ処理し、各バッチは `[]*IterableValue` としてコールバックに渡されます。
+
+### ForeachJSONL
+
+シグネチャ：`func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+JSONL を反復します（`StreamJSONL` と同じ動作のエイリアス）。
+
+### MapJSONL
+
+シグネチャ：`func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error), cfg ...Config) ([]any, error)`
+
+各行を新しい値にマッピングし、結果のスライスを返します。
+
+### ReduceJSONL
+
+シグネチャ：`func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any, cfg ...Config) (any, error)`
+
+JSONL を単一の値に畳み込みます。`initial` はアキュムレータの初期値です。
+
+### FilterJSONL
+
+シグネチャ：`func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) ([]*IterableValue, error)`
+
+述語でフィルタリングし、一致する要素のスライスを返します。
+
+### StreamJSONLFile
+
+シグネチャ：`func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+JSONL ファイル全体を直接ストリーミング処理します。
+
+### CollectJSONL
+
+シグネチャ：`func CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
+
+JSONL の全行を読み込んでスライスに収集します（注意：全量をメモリにロードします。大ファイルには `StreamJSONL` を推奨）。
+
+### FirstJSONL
+
+シグネチャ：`func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) (*IterableValue, bool, error)`
+
+述語を満たす最初の要素を返します。第2戻り値は見つかったかどうかを示します。
 
 ## JSONL 設定
 

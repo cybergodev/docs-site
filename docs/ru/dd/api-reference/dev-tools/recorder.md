@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Помощник тестирования"
 title: "Тестовые утилиты - CyberGo DD | LoggerRecorder"
-description: "Полная документация API инструмента тестирования LoggerRecorder CyberGo DD: захват и проверка логов, фильтрация по уровню и подсчёт записей."
+description: "Полная документация API инструмента тестирования LoggerRecorder CyberGo DD, специально разработанного для сценария модульного тестирования: захват и проверка содержимого вывода логов, поддержка фильтрации записей по уровню, проверки значений структурированных полей, статистики количества записей и последовательных проверок, значительно повышая эффективность написания и читаемость модульных тестов, связанных с логированием."
 sidebar_position: 2
 ---
 
@@ -72,7 +72,12 @@ func TestLogger(t *testing.T) {
 ```go
 func TestLogLevel(t *testing.T) {
     rec := dd.NewLoggerRecorder()
-    logger, _ := rec.NewLogger(dd.DevelopmentConfig())
+    // Примечание: Recorder разбирает уровень по временной метке ISO 8601,
+    // формат времени DevelopmentConfig ("15:04:05.000") несовместим,
+    // поэтому используем DefaultConfig и вручную задаём DEBUG.
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelDebug
+    logger, _ := rec.NewLogger(cfg)
 
     logger.Debug("debug")
     logger.Info("info")

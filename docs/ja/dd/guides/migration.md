@@ -48,6 +48,7 @@ log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 // 移行後: DD
 logger, err := dd.New(dd.Config{
+    Level:  dd.LevelInfo,
     Format: dd.FormatText,
     Targets: []dd.OutputTarget{
         dd.FileOutput("logs/app.log"),

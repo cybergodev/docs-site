@@ -1,13 +1,13 @@
 ---
 sidebar_label: "LoggerEntry"
 title: "LoggerEntry - CyberGo DD | Логи с предустановленными полями"
-description: "Полная документация API типа LoggerEntry CyberGo DD: используется для создания цепочного логгера с предустановленными полями, каждый вызов WithFields возвращает новый неизменяемый экземпляр Entry, поддерживая накопление и комбинацию полей, привязку и распространение контекста и механизм наследования уровня, подходит для сценариев отслеживания логов на уровне запроса и контекстной корреляции."
+description: "Полная документация API типа LoggerEntry CyberGo DD: используется для создания цепочного логгера с предустановленными полями (при передаче хотя бы одного поля возвращается новый неизменяемый экземпляр Entry, без полей — исходный Entry), поддерживая накопление и комбинацию полей, привязку и распространение контекста и механизм наследования уровня, подходит для сценариев отслеживания логов на уровне запроса и контекстной корреляции."
 sidebar_position: 3
 ---
 
 # LoggerEntry
 
-`LoggerEntry` — логгер с предустановленными полями, каждый вызов `WithFields` возвращает новый неизменяемый Entry.
+`LoggerEntry` — логгер с предустановленными полями: при передаче хотя бы одного поля возвращается новый неизменяемый Entry.
 
 ## Создание
 
@@ -39,7 +39,7 @@ entry := base.WithField("svc", "gateway")  // svc становится "gateway"
 ```
 
 :::tip Неизменяемость
-Каждый вызов `WithFields` / `WithField` возвращает новый `LoggerEntry`, оригинальный Entry не затрагивается, безопасен для конкурентного использования.
+При передаче хотя бы одного поля `WithFields` / `WithField` возвращает новый `LoggerEntry`, оригинальный Entry не затрагивается и безопасен для конкурентного использования. Вызов `WithFields()` без полей является оптимизацией без действия (no-op) и напрямую возвращает исходный Entry.
 :::
 
 ## Методы логирования
@@ -54,7 +54,7 @@ entry := base.WithField("svc", "gateway")  // svc становится "gateway"
 | `Info(args ...any)` | Уровень Info |
 | `Warn(args ...any)` | Уровень Warn |
 | `Error(args ...any)` | Уровень Error |
-| `Fatal(args ...any)` | Уровень Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
+| `Fatal(args ...any)` | Уровень Fatal (по умолчанию вызывает os.Exit(1), **defer не выполняется**; можно настроить через FatalHandler) |
 | `Log(level LogLevel, args ...any)` | С указанным уровнем |
 
 ### Форматированные логи
@@ -65,7 +65,7 @@ entry := base.WithField("svc", "gateway")  // svc становится "gateway"
 | `Infof(format string, args ...any)` | Форматированный Info |
 | `Warnf(format string, args ...any)` | Форматированный Warn |
 | `Errorf(format string, args ...any)` | Форматированный Error |
-| `Fatalf(format string, args ...any)` | Форматированный Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
+| `Fatalf(format string, args ...any)` | Форматированный Fatal (по умолчанию вызывает os.Exit(1), **defer не выполняется**; можно настроить через FatalHandler) |
 | `Logf(level LogLevel, format string, args ...any)` | Форматированный с указанным уровнем |
 
 ### Структурированные логи
@@ -76,7 +76,7 @@ entry := base.WithField("svc", "gateway")  // svc становится "gateway"
 | `InfoWith(msg string, fields ...Field)` | Структурированный Info |
 | `WarnWith(msg string, fields ...Field)` | Структурированный Warn |
 | `ErrorWith(msg string, fields ...Field)` | Структурированный Error |
-| `FatalWith(msg string, fields ...Field)` | Структурированный Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
+| `FatalWith(msg string, fields ...Field)` | Структурированный Fatal (по умолчанию вызывает os.Exit(1), **defer не выполняется**; можно настроить через FatalHandler) |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | Структурированный с указанным уровнем |
 
 ### Методы Print

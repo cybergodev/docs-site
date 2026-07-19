@@ -518,14 +518,14 @@ func Set(key, value string) error
 - `error` - 設定エラー
 
 **エラー型：**
-- `ErrInvalidKey` - キー名が無効
-- `ErrForbiddenKey` - キーが禁止されています
+- `*ValidationError` - キー名形式が無効（Field="key"）
+- `*SecurityError` - キーが禁止されています（`errors.Is(err, env.ErrSecurityViolation)` で一致）
 - `ErrInvalidValue` - 値が無効です（`ValidateValues` が true のとき、値にヌルバイトや制御文字など安全でない内容が含まれる場合）
 - `ErrClosed` - ローダークローズ済み
 
 ```go
 if err := env.Set("CUSTOM_KEY", "value"); err != nil {
-    // ErrForbiddenKey または ErrInvalidKey の可能性
+    // *SecurityError（禁止キー）または *ValidationError（キー形式）の可能性
 }
 ```
 
@@ -613,7 +613,8 @@ if err := env.ParseInto(&cfg); err != nil {
 | `env:"KEY"` | 指定キーにマッピング |
 | `env:"-"` | このフィールドを無視 |
 | `envDefault:"value"` | デフォルト値 |
-| `envSeparator:","` | スライスセパレータ |
+
+スライスフィールドはデフォルトでカンマ `,` で区切られます（セパレータ前後の空白は自動的に削除されます）。カスタムセパレータタグは存在しません。
 
 ::: tip 詳細は
 [構造体マッピング](/ja/env/guides/struct-mapping) 完全なガイドを取得。
@@ -734,9 +735,12 @@ envStr, _ := env.Marshal(mapData)
 // HOST=localhost
 // PORT=8080
 
-// map を JSON フォーマットに変換
+// map を JSON フォーマットに変換（数字文字列はそのまま数値として出力、キーはアルファベット順にソート）
 jsonStr, _ := env.Marshal(mapData, env.FormatJSON)
-// {"HOST":"localhost","PORT":"8080"}
+// {
+//   "HOST": "localhost",
+//   "PORT": 8080
+// }
 
 // 構造体を .env フォーマットに変換
 type Config struct {
@@ -913,7 +917,7 @@ type AppConfig struct {
     Port     int64         `env:"APP_PORT" envDefault:"8080"`
     Debug    bool          `env:"DEBUG" envDefault:"false"`
     Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"HOSTS" envSeparator:","`
+    Hosts    []string      `env:"HOSTS"`
 }
 
 func main() {

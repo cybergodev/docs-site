@@ -1,7 +1,7 @@
 ---
 sidebar_label: "JSONL"
 title: "JSONL 处理函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON JSONL 处理函数：ParseJSONL/ToJSONL/ToJSONLString 转换、StreamLinesInto[T] 泛型流式与 NewJSONLWriter 写入器，支持 JSON Lines 格式。"
+description: "CyberGo JSON JSONL 处理函数：ParseJSONL/ToJSONL/ToJSONLString 转换、StreamJSONL/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL 流式处理、StreamLinesInto[T] 泛型流与 NewJSONLWriter 写入器。"
 sidebar_position: 8
 ---
 
@@ -167,6 +167,78 @@ func main() {
     fmt.Println(jsonlStr)
 }
 ```
+
+## JSONL 流式处理函数（包级）
+
+json 包提供的 JSONL 流式处理包级便捷函数，签名与对应 Processor 方法一致，并在末尾额外接受可选的 `cfg ...Config` 尾参；内部使用按 `cfg` 缓存的全局 Processor，因此无需手动创建实例，适合一次性处理场景。需要多次处理或共享同一份配置时，建议改用 [`json.New(cfg)`](../processor/#new) 创建独立 Processor。
+
+完整用法与示例见 [JSONL 流式处理指南](../../streaming/jsonl#包级函数) 与 [Processor JSONL 方法](../processor/jsonl)。
+
+### StreamJSONL
+
+签名：`func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+流式逐行处理 JSONL，每行解析为 `IterableValue` 后调用回调。
+
+### StreamJSONLParallel
+
+签名：`func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+使用 `workers` 个并行 goroutine 处理 JSONL（CPU 密集型场景）。
+
+### StreamJSONLParallelWithContext
+
+签名：`func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+支持上下文取消/超时的并行 JSONL 处理。
+
+### StreamJSONLChunked
+
+签名：`func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
+
+按 `chunkSize` 分批处理，每批以 `[]*IterableValue` 传入回调。
+
+### ForeachJSONL
+
+签名：`func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+遍历 JSONL（行为与 `StreamJSONL` 相同的别名）。
+
+### MapJSONL
+
+签名：`func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error), cfg ...Config) ([]any, error)`
+
+将每行映射为新值，返回结果切片。
+
+### ReduceJSONL
+
+签名：`func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any, cfg ...Config) (any, error)`
+
+归约 JSONL 为单个值，`initial` 为累加器初值。
+
+### FilterJSONL
+
+签名：`func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) ([]*IterableValue, error)`
+
+按谓词过滤，返回匹配项切片。
+
+### StreamJSONLFile
+
+签名：`func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+直接流式处理整个 JSONL 文件。
+
+### CollectJSONL
+
+签名：`func CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
+
+读取全部 JSONL 行并收集为切片（注意：全量加载到内存，大文件建议用 `StreamJSONL`）。
+
+### FirstJSONL
+
+签名：`func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) (*IterableValue, bool, error)`
+
+返回第一个满足谓词的元素；第二个返回值表示是否找到。
 
 ## JSONL 配置
 

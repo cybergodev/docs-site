@@ -25,7 +25,11 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
     httpc.RequestIDMiddleware("X-Request-ID", nil), // 最内層：リクエスト ID
 }
 
-client, _ := httpc.New(cfg)
+client, err := httpc.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+defer client.Close()
 ```
 
 ## 内蔵ミドルウェア
@@ -46,7 +50,7 @@ httpc.RecoveryMiddleware()
 httpc.LoggingMiddleware(func(format string, args ...any) {
     log.Printf("[HTTP] "+format, args...)
 })
-// 出力: [HTTP] GET https://api.example.com/data -> 200 (150ms)
+// 出力例: [HTTP] GET https://api.example.com/data -> 200 (150ms)（ステータスコードと所要時間は実測値、固定ではありません）
 ```
 
 ### RequestIDMiddleware
@@ -69,6 +73,10 @@ httpc.RequestIDMiddleware("X-Request-ID", func() string {
 ```go
 httpc.TimeoutMiddleware(30 * time.Second)
 ```
+
+:::warning Download やストリーミングリクエストには使用しないでください
+`TimeoutMiddleware` の `defer cancel()` は、ハンドラーが戻った（レスポンスヘッダーを受信した）直後に発火します。`Download` や `WithStreamBody` リクエストでは、レスポンスボディを読み取る前にコンテキストがキャンセルされ、「context canceled」エラーとして現れます。ストリーミング/ダウンロードのシナリオでは [`WithTimeout`](../api-reference/core/options#withtimeout) オプションを使用してください。
+:::
 
 ### HeaderMiddleware
 
@@ -119,7 +127,11 @@ auditCfg := &httpc.AuditMiddlewareConfig{
 }
 
 httpc.AuditMiddlewareWithConfig(func(event httpc.AuditEvent) {
-    data, _ := json.Marshal(event)
+    data, err := json.Marshal(event)
+    if err != nil {
+        log.Println("監査イベントのシリアライズ失敗:", err)
+        return
+    }
     log.Println(string(data))
 }, auditCfg)
 ```
@@ -212,7 +224,11 @@ cfg.Middleware = &httpc.MiddlewareConfig{
     MaxRedirects:    10,
 }
 
-client, _ := httpc.New(cfg)
+client, err := httpc.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+defer client.Close()
 ```
 
 ## 次のステップ

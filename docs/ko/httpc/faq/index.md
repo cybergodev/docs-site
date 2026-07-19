@@ -38,7 +38,7 @@ defer client.Close()
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.AllowPrivateIPs = true // 모든 사설 IP 허용
+cfg.Security.AllowPrivateIPs = true // ⚠️ 모든 연결 수준 SSRF 다이얼 검증 완전히 비활성화 (사설 IP뿐 아님); 프로덕션은 SSRFExemptCIDRs로 정밀 면제 권장
 
 // 또는 정밀한 면제
 cfg.Security.SSRFExemptCIDRs = []string{"10.0.0.0/8"}

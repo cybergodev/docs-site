@@ -41,9 +41,10 @@ fmt.Println(text)
 
 ### 特点
 
-- 图片和链接的文本被移除
+- 图片的 alt 文本被移除；链接保留可见文本（仅去除 URL 与 Markdown 语法）
 - 标题、段落之间保留换行
 - 列表内容以纯文本形式展示
+- 表格按 `TableFormat` 渲染（默认 Markdown 表格）
 
 ## Markdown
 

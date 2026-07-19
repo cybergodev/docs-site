@@ -23,7 +23,7 @@ type Field struct {
 }
 ```
 
-すべてのフィールドコンストラクタは `Field` 値を返します。フォーマッタ（`internal.FormatFields`）は `Key=Value` 形式で出力します。基本型（string / 数値 / bool / `time.Duration` / `time.Time`）は高速パスを通り、複雑な型は JSON シリアライズにフォールバックします。
+すべてのフィールドコンストラクタは `Field` 値を返します。フォーマッタ（`internal.FormatFields`）は `Key=Value` 形式で出力します。基本型（string / 数値 / bool / `time.Duration` / `time.Time` / nil）は高速パスを通り、スライス、配列、map、struct などの「複雑型」は JSON シリアライズにフォールバックします（`internal.IsComplexValue` で判定）、その他の型（`fmt.Stringer` や `error` インターフェースを実装する値など）は `fmt.Fprint` を通ります。
 
 ## 基本フィールド
 
@@ -33,8 +33,8 @@ type Field struct {
 | `String` | `(key, value string) Field` | 文字列 |
 | `Bool` | `(key string, value bool) Field` | 真偽値 |
 | `Err` | `(err error) Field` | エラー（key は `"error"` 固定；`err == nil` の場合 Value は `nil`、それ以外は `err.Error()`） |
-| `ErrWithKey` | `(key string, err error) Field` | カスタム key のエラー |
-| `ErrWithStack` | `(err error) Field` | コールスタック付きエラー（key は `"error"`、キャプチャにわずかなオーバーヘッドあり） |
+| `ErrWithKey` | `(key string, err error) Field` | カスタム key のエラー（`Err` と同じく `err == nil` の場合 Value は `nil`） |
+| `ErrWithStack` | `(err error) Field` | コールスタック付きエラー（key は `"error"`、`err == nil` の場合 Value は `nil`；スタックフレームは runtime/ と dd パッケージ内のフレームをフィルタリング、キャプチャにわずかなオーバーヘッドあり） |
 
 ## 数値フィールド
 

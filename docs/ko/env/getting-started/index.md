@@ -214,7 +214,7 @@ type Config struct {
     Password string        `env:"DB_PASSWORD"`
     Debug    bool          `env:"DEBUG" envDefault:"false"`
     Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"ALLOWED_HOSTS" envSeparator:","`
+    Hosts    []string      `env:"ALLOWED_HOSTS"`
 }
 
 func main() {
@@ -375,12 +375,16 @@ if err != nil {
         // 파일 없음
     case errors.Is(err, env.ErrFileTooLarge):
         // 파일이 너무 큼
-    case errors.Is(err, env.ErrForbiddenKey):
-        // 금지된 키
-    case errors.Is(err, env.ErrInvalidKey):
-        // 잘못된 키 형식
+    case errors.Is(err, env.ErrSecurityViolation):
+        // 금지 키 (실제로는 *SecurityError 반환)
     default:
         // 기타 오류
+    }
+
+    // 키 형식이 잘못된 경우: 실제로는 *ValidationError, Field=="key" 반환
+    var valErr *env.ValidationError
+    if errors.As(err, &valErr) && valErr.Field == "key" {
+        // 잘못된 키 형식
     }
 }
 ```

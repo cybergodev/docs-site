@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # 包函数
 
-包级函数适合一次性调用场景，内部使用 `sync.Pool` 复用 Processor，无需手动管理生命周期。
+包级函数适合一次性调用场景，内部使用 `sync.Pool` 复用 Processor，无需手动管理生命周期。 注意：池化 Processor 已禁用缓存与审计保留；需要缓存/统计/审计请用 [html.New](./processor) 创建独立 Processor。
 
 ## 内容提取
 

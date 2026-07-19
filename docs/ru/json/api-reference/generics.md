@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обобщённые функции"
-title: "Обобщённые операции - CyberGo JSON | API"
-description: "Обобщённый API CyberGo JSON: GetTyped[T], Result[T], AccessResult с дженериками Go 1.18+ для типобезопасности."
+title: "Обобщённые операции - CyberGo JSON | Справочник API"
+description: "CyberGo JSON обобщённый API: обобщённое получение GetTyped[T], тип результата Result[T], динамический доступ AccessResult — типобезопасность на этапе компиляции через обобщения Go 1.18+."
 sidebar_position: 10
 ---
 
@@ -88,12 +88,12 @@ type AccessResult struct {
 
 Сигнатура: `func (r AccessResult) Ok() bool`
 
-Проверяет, существует ли значение и нет ли ошибки.
+Проверяет, существует ли значение.
 
 ```go
 result := json.SafeGet(data, "user.name")
 if result.Ok() {
-    // Значение существует и нет ошибок
+    // Значение существует
 }
 ```
 

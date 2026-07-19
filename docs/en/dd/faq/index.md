@@ -1,7 +1,7 @@
 ---
 sidebar_label: "FAQ"
 title: "FAQ - CyberGo DD | Frequently Asked Questions"
-description: "CyberGo DD FAQ: configuration tuning, performance optimization, sensitive data filtering, audit logging, file rotation, error handling, and hook usage."
+description: "A collection of CyberGo DD logging-library FAQs with detailed answers, covering configuration tuning, performance optimization, sensitive-data security-filter rules, audit logging and compliance configuration, file-rotation strategy selection and tuning, error-handling best practices, and hook-system usage examples to help you quickly solve problems encountered in real projects."
 sidebar_position: 1
 ---
 
@@ -11,18 +11,18 @@ sidebar_position: 1
 
 ### What is the difference between the global logger and a custom logger?
 
-The **global logger** is used directly via package-level functions like `dd.Info()`, suitable for simple scenarios. A **custom logger** is created via `dd.New()`, supporting independent configuration and lifecycle management.
+The **global logger** is used directly via package-level functions such as `dd.Info()`, suitable for simple scenarios. A **custom logger** is created via `dd.New()`, supporting independent configuration and lifecycle management.
 
 ```go
 // Global logger
-dd.Info("Global log")
+dd.Info("global log")
 
 // Custom logger
 logger, _ := dd.New(dd.JSONConfig())
-logger.Info("Independent log")
+logger.Info("independent log")
 ```
 
-### How to initialize the global logger at program startup?
+### How do I initialize the global logger at program startup?
 
 ```go
 func init() {
@@ -46,13 +46,13 @@ logger, _ := dd.New(dd.Config{
 dd.SetDefault(logger)
 ```
 
-### What happens with Fatal level logs?
+### What happens with Fatal-level logs?
 
-`Fatal` / `Fatalf` / `FatalWith` call `os.Exit(1)` after outputting the log. You can customize this behavior via `FatalHandler`.
+`Fatal` / `Fatalf` / `FatalWith` call `os.Exit(1)` after emitting the log (**deferred functions will not run**; internally it first tries to `Close()` to flush pending logs, waiting up to 5 seconds). You can customize the exit behavior via `FatalHandler`; for resource cleanup, use `ErrorWith` + an explicit `Shutdown(ctx)` instead.
 
 ## Configuration
 
-### How to output to both console and file?
+### How do I output to both console and file?
 
 ```go
 logger, _ := dd.New(dd.Config{
@@ -71,14 +71,14 @@ logger, _ := dd.New(dd.Config{
 })
 ```
 
-### How to dynamically change the log level?
+### How do I dynamically change the log level?
 
 ```go
-_ = logger.SetLevel(dd.LevelDebug)  // Runtime modification (returns error)
-_ = dd.SetLevel(dd.LevelDebug)      // Modify global logger level
+_ = logger.SetLevel(dd.LevelDebug)  // Modify at runtime (returns an error)
+_ = dd.SetLevel(dd.LevelDebug)      // Modify the global logger's level
 ```
 
-### How to configure file rotation policy?
+### How do I configure the file-rotation strategy?
 
 Configure via `FileWriter`:
 
@@ -93,27 +93,27 @@ fw, _ := dd.NewFileWriter("logs/app.log",
 ### Will logging affect program performance?
 
 DD is designed for high performance:
-- Zero-allocation optimization on hot paths
+- Low-allocation optimization on hot paths
 - Atomic level checks, lock-free
-- Sensitive data filtering runs in separate goroutines
-- Optional buffered writing to reduce I/O
+- Sensitive-data filtering for large inputs (>=10KB) runs in a separate goroutine with timeout protection; small inputs are processed synchronously
+- Optional buffered writes to reduce I/O
 
-### How to optimize for high-throughput scenarios?
+### How do I optimize for high-throughput scenarios?
 
 1. Use `BufferedWriter` to reduce I/O
-2. Check level before constructing fields
+2. Check the level before building fields
 3. Consider enabling log sampling
-4. Avoid using `Any` fields on high-frequency paths
+4. Avoid `Any` fields on hot paths
 
-See [Performance Optimization](../advanced/performance).
+See [Performance Tuning](../advanced/performance).
 
 ## Security
 
-### How does sensitive data filtering work?
+### How does sensitive-data filtering work?
 
-`SensitiveDataFilter` uses regex pattern matching to automatically replace matched sensitive values with `[REDACTED]` before log writing. For small inputs, filtering runs synchronously. For large inputs (>10KB), filtering runs in a separate goroutine with timeout protection (50ms default).
+`SensitiveDataFilter` uses regex pattern matching to automatically replace matching sensitive values with `[REDACTED]` before the log is written. Small inputs are processed synchronously; large inputs run in a separate goroutine with timeout protection, without blocking log writes.
 
-### How to customize sensitive data patterns?
+### How do I customize sensitive-data patterns?
 
 ```go
 filter, _ := dd.NewCustomSensitiveDataFilter(
@@ -121,7 +121,7 @@ filter, _ := dd.NewCustomSensitiveDataFilter(
 )
 ```
 
-### How to ensure logs are not tampered with?
+### How do I ensure logs are not tampered with?
 
 Use `IntegritySigner` to HMAC-sign logs:
 
@@ -137,11 +137,11 @@ sig := signer.Sign(logMessage)
 ### Why does AddWriter return an error?
 
 Possible reasons:
-- `ErrNilWriter` -- nil Writer was passed
-- `ErrLoggerClosed` -- Logger is closed
-- `ErrMaxWritersExceeded` -- Writer count exceeded
+- `ErrNilWriter` -- a nil Writer was passed
+- `ErrLoggerClosed` -- the logger is closed
+- `ErrMaxWritersExceeded` -- the writer count exceeds the limit
 
-### How to handle write failures?
+### How do I handle write failures?
 
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
@@ -152,7 +152,7 @@ logger.SetWriteErrorHandler(func(w io.Writer, err error) {
 
 ## Testing
 
-### How to capture logs in tests?
+### How do I capture logs in tests?
 
 Use `LoggerRecorder`:
 
@@ -163,7 +163,7 @@ logger, _ := rec.NewLogger()
 logger.Info("test")
 
 if !rec.ContainsMessage("test") {
-    t.Error("Expected log not found")
+    t.Error("expected log not found")
 }
 ```
 

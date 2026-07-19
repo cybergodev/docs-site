@@ -38,7 +38,7 @@ defer client.Close()
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.AllowPrivateIPs = true // разрешить все приватные IP
+cfg.Security.AllowPrivateIPs = true // ⚠️ полностью отключает всю проверку SSRF на уровне соединения (не только приватные IP); в продакшене предпочесть SSRFExemptCIDRs
 
 // Или точечное исключение
 cfg.Security.SSRFExemptCIDRs = []string{"10.0.0.0/8"}

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "성능 최적화"
 title: "성능 최적화 - CyberGo JSON | 고성능 가이드"
-description: "CyberGo JSON 성능 가이드: EnableCache/CacheTTL, ParallelThreshold 병렬, PreParse, WarmupCache, 객체 풀 재사용으로 처리 성능을 높입니다."
+description: "CyberGo JSON 성능 최적화: EnableCache/CacheTTL 캐시, ParallelThreshold 병렬, PreParse 사전 파싱과 WarmupCache 웜업으로 고빈도 JSON 처리 성능을 높입니다."
 sidebar_position: 1
 ---
 
@@ -38,8 +38,8 @@ for _, item := range dataList {
 // ✅ Marshal은 바이트 슬라이스 반환
 bytes, _ := json.Marshal(data)
 
-// ✅ Encode는 문자열 반환
-s, _ := json.Encode(data)
+// ✅ EncodeWithConfig로 문자열 반환 (Encode는 사용 중단)
+s, _ := json.EncodeWithConfig(data)
 ```
 
 ### 버퍼 미리 할당

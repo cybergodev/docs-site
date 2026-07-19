@@ -52,7 +52,7 @@ password := secret.Reveal()  // 평문이 필요할 때만 호출
 ```
 
 **핵심 기능:**
-- **메모리 잠금** - 디스크 스왑 방지 (Linux/macOS/FreeBSD)
+- **메모리 잠금** - 디스크 스왑 방지 (Linux/macOS/Windows/FreeBSD)
 - **자동 영값 초기화** - `Close()` 시 보안 메모리 삭제
 - **마스킹 표시** - `Masked()`는 로그 출력에 사용
 - **스레드 안전** - 동시 읽기 지원

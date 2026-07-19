@@ -1,7 +1,7 @@
 ---
 sidebar_label: "结构化日志"
 title: "结构化日志 - CyberGo DD | 字段与链式调用"
-description: "CyberGo DD 结构化日志使用指南，详细介绍 20+ 类型安全的字段构造器、Field 链式传递模式、LoggerEntry 不可变设计原理、字段命名规范与验证规则，以及结构化日志的最佳实践和常见使用模式，帮助开发者在项目中有效使用高性能的结构化日志记录方案。"
+description: "CyberGo DD 结构化日志使用指南，详细介绍 20 种类型安全的字段构造器、Field 链式传递模式、LoggerEntry 不可变设计原理、字段命名规范与验证规则，以及结构化日志的最佳实践和常见使用模式，帮助开发者在项目中有效使用高性能的结构化日志记录方案。"
 sidebar_position: 2
 ---
 
@@ -11,7 +11,7 @@ sidebar_position: 2
 
 ## 字段构造器
 
-DD 提供 20+ 类型安全的字段构造器：
+DD 提供 20 种类型安全的字段构造器：
 
 ### 基本类型
 
@@ -66,7 +66,7 @@ dd.InfoWith("请求负载", dd.Any("body", requestBody))
 ```
 
 :::warning 性能提示
-`Any` 使用反射，性能低于类型明确的构造器。在高频路径上优先使用具体类型。
+`Any` 对于原始类型（int/string/bool/time 等）无额外开销；对于 struct/map/slice 等复杂类型，过滤与格式化阶段需要反射，性能低于类型明确的构造器。在高频路径上优先使用具体类型。
 :::
 
 ## 链式调用
@@ -146,11 +146,11 @@ if err != nil {
 defer logger.Close()
 ```
 
-启用后，不合规的字段名会在日志中产生警告：
+启用后，不合规的字段名会在 **stderr** 产生错误提示（Strict 模式）或警告提示（Warn 模式），日志行本身不受影响：
 
 ```go
 logger.InfoWith("测试",
-    dd.String("UserName", "alice"),   // PascalCase → 警告
+    dd.String("UserName", "alice"),   // PascalCase → 触发 stderr 错误（日志仍写入）
     dd.String("user_name", "alice"),  // snake_case → 正常
 )
 ```
@@ -232,8 +232,12 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### 文本格式（默认）
 
 ```text
-[2026-04-16T21:16:48+08:00   INFO] main.go:13 请求完成 method=GET status=200 elapsed=150ms
+[2026-04-16T21:16:48+08:00   INFO] logger.go:1567 请求完成 method=GET status=200 elapsed=150ms
 ```
+
+:::info caller 字段说明
+`caller` 字段记录调用位置；通过 `*Logger` 方法（如 `logger.InfoWith(...)`）调用时，caller 解析到库内调用帧（如 `logger.go:1567`）；通过包级函数（如 `dd.InfoWith`）调用时则解析到用户代码。
+:::
 
 ### JSON 格式
 
@@ -250,7 +254,7 @@ logger.InfoWith("请求完成",
 ```
 
 ```json
-{"timestamp":"2026-04-16T21:16:48+08:00","level":"info","caller":"main.go:13","message":"请求完成","fields":{"method":"GET","status":200}}
+{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"logger.go:1567","message":"请求完成","fields":{"method":"GET","status":200}}
 ```
 
 ## 下一步

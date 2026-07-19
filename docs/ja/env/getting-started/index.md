@@ -214,7 +214,7 @@ type Config struct {
     Password string        `env:"DB_PASSWORD"`
     Debug    bool          `env:"DEBUG" envDefault:"false"`
     Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"ALLOWED_HOSTS" envSeparator:","`
+    Hosts    []string      `env:"ALLOWED_HOSTS"`
 }
 
 func main() {
@@ -375,12 +375,16 @@ if err != nil {
         // ファイルが存在しない
     case errors.Is(err, env.ErrFileTooLarge):
         // ファイルが大きすぎる
-    case errors.Is(err, env.ErrForbiddenKey):
-        // 禁止キー
-    case errors.Is(err, env.ErrInvalidKey):
-        // 無効なキー形式
+    case errors.Is(err, env.ErrSecurityViolation):
+        // 禁止キー（実際は *SecurityError を返す）
     default:
         // その他のエラー
+    }
+
+    // キー形式が不正: 実際は *ValidationError、Field=="key"
+    var valErr *env.ValidationError
+    if errors.As(err, &valErr) && valErr.Field == "key" {
+        // 無効なキー形式
     }
 }
 ```

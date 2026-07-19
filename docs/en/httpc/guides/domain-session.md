@@ -99,6 +99,10 @@ result, _ := dc.Request(ctx, "GET", "/users")
 result, _ := dc.Get("https://other-api.com/data")
 ```
 
+:::warning Request options are applied twice
+The domain client internally applies request options **twice** (once to capture session state, once for the actual request). Avoid side-effect options (e.g. counters, nonce generation); use the underlying `Client` if you need them.
+:::
+
 ## Session Access
 
 ```go

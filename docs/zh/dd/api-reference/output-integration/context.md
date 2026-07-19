@@ -58,7 +58,7 @@ func handleRequest(ctx context.Context) {
 ```
 
 :::tip 批量提取
-手动 `Get*` 适合一次性场景。如需每条日志都自动带上追踪字段，使用下方 `ContextExtractor` 注册到 Logger，提取器在每次 `*With` 调用时执行。
+手动 `Get*` 适合一次性场景。如需每条日志自动带上**全局/静态**字段（如服务名、主机名），使用下方 `ContextExtractor` 注册到 Logger，提取器在每次 `*With` 调用时执行。注意：提取器接收的是 `context.Background()`，**无法**自动获取请求作用域的 TraceID（见下方限制）。
 :::
 
 ## ContextExtractor
@@ -91,6 +91,10 @@ _ = logger.SetContextExtractors(extractor1, extractor2)
 // 读取当前已注册的提取器快照
 extractors := logger.GetContextExtractors()
 ```
+
+:::warning 上下文限制（重要）
+日志方法（`Info`/`InfoWith` 等）不接受 `context.Context` 参数，`ContextExtractor` 内部以 `context.Background()` 调用，因此**无法自动从请求作用域提取** TraceID/SpanID。下方 OTel 示例仅在存在全局 span 时才会产出字段；要为每次请求附加追踪 ID，请用 `WithFields()` 手动传递（见[分布式追踪集成](../../guides/context-tracing)）。
+:::
 
 ### OpenTelemetry 示例
 

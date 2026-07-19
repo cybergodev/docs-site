@@ -81,7 +81,7 @@ func createProductionClient() (httpc.Client, error) {
     cfg.Timeouts.Request = 30 * time.Second
     cfg.Timeouts.Dial = 10 * time.Second
     cfg.Timeouts.TLSHandshake = 10 * time.Second
-    cfg.Timeouts.ResponseHeader = 30 * time.Second
+    cfg.Timeouts.ResponseHeader = 30 * time.Second // Transport-level hard cap: applies to every request on this client and cannot be overridden per request with WithTimeout; for AI API/long-response scenarios set to 0 and rely on the Request timeout
 
     // Connection pool
     cfg.Connection.MaxIdleConns = 50

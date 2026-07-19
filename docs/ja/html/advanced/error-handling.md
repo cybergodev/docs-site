@@ -77,10 +77,16 @@ defer cancel()
 
 result, err := html.ExtractWithContext(ctx, data)
 if err != nil {
-    if ctx.Err() == context.DeadlineExceeded {
-        // タイムアウト
-    } else if ctx.Err() == context.Canceled {
+    switch {
+    case errors.Is(err, html.ErrProcessingTimeout):
+        // ライブラリ内の ProcessingTimeout タイムアウト（この時点で ctx.Err() は nil の可能性あり）
+    case ctx.Err() == context.DeadlineExceeded:
+        // ユーザーコンテキストの期限切れ
+    case ctx.Err() == context.Canceled:
         // 手動キャンセル
+    default:
+        // その他のエラー（ErrInvalidHTML、ErrInputTooLarge など）
+        slog.Error("抽出失敗", "err", err)
     }
 }
 ```

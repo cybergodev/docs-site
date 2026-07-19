@@ -63,6 +63,10 @@ if err := cfg.Validate(); err != nil {
 
 ## Сторожевые ошибки
 
+:::warning Внимание
+Все нижеперечисленные сторожевые являются предопределёнными символами, однако в текущей реализации ряд сценариев **не сопоставляется с этими сторожевыми через `errors.Is`**: запрещённые ключи возвращают `*SecurityError` (используйте `errors.Is(err, ErrSecurityViolation)`), недопустимый формат ключа и отсутствие обязательного ключа возвращают `*ValidationError` (используйте `errors.As` для извлечения). Подробности см. в разделах соответствующих типов ошибок.
+:::
+
 ### Ошибки файлов
 
 ```go
@@ -102,8 +106,8 @@ var ErrInvalidValue = errors.New("invalid value content")
 
 ```go
 err := loader.Set("PATH", "value")
-if errors.Is(err, env.ErrForbiddenKey) {
-    // Попытка установить запрещённый ключ
+if errors.Is(err, env.ErrSecurityViolation) {
+    // Попытка установить запрещённый ключ возвращает *SecurityError
 }
 ```
 
@@ -147,8 +151,9 @@ if errors.Is(err, env.ErrNotInitialized) {
     // Нужно сначала вызвать env.Load() или env.LoadWithConfig()
 }
 
-// Проверка отсутствия обязательных ключей
-if errors.Is(err, env.ErrMissingRequired) {
+// Проверка отсутствия обязательных ключей (фактически возвращается *ValidationError{Rule:"required"})
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Rule == "required" {
     // Отсутствует обязательный ключ
 }
 ```
@@ -387,9 +392,9 @@ func IsMarshalError(err error) bool  // Функция проверки
 **Пример использования:**
 
 ```go
-// Попытка установить запрещённый ключ возвращает ErrForbiddenKey
+// Установка запрещённого ключа возвращает *SecurityError
 err := loader.Set("PATH", "/malicious/path")
-if errors.Is(err, env.ErrForbiddenKey) {
+if errors.Is(err, env.ErrSecurityViolation) {
     // Ключ запрещён
 }
 
@@ -634,7 +639,7 @@ case errors.Is(err, env.ErrFileNotFound):
     // Файл не найден
 case errors.Is(err, env.ErrFileTooLarge):
     // Файл слишком большой
-case errors.Is(err, env.ErrForbiddenKey):
+case errors.Is(err, env.ErrSecurityViolation):
     // Запрещённый ключ
 case errors.Is(err, env.ErrClosed):
     // Загрузчик закрыт

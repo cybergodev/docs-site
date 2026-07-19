@@ -92,7 +92,7 @@ client, _ := httpc.New(&httpc.Config{
 func RequestIDMiddleware(headerName string, generator func() string) MiddlewareFunc
 ```
 
-Adds a unique ID to each request. Defaults to a 32-character hex ID generated with `crypto/rand`.
+Adds a unique ID to each request. Defaults to a 32-character hex ID generated with `crypto/rand`. If the request already has a header with the same name, the original value is preserved (not overwritten).
 
 | Parameter | Description |
 |-----------|-------------|
@@ -121,6 +121,10 @@ func TimeoutMiddleware(timeout time.Duration) MiddlewareFunc
 
 Middleware-level timeout control. Takes effect before the client's built-in timeout; cancels context and returns an error on timeout.
 
+:::warning Do not use for Download or streaming requests
+`TimeoutMiddleware`'s `defer cancel()` fires immediately after the handler returns (i.e., once the response headers are received), so for `Download` or `WithStreamBody` requests it cancels the context before the response body is read, producing a "context canceled" error. For streaming/download scenarios, use [`WithTimeout`](../core/options#withtimeout).
+:::
+
 ```go
 client, _ := httpc.New(&httpc.Config{
     Middleware: &httpc.MiddlewareConfig{
@@ -137,7 +141,7 @@ client, _ := httpc.New(&httpc.Config{
 func HeaderMiddleware(headers map[string]string) MiddlewareFunc
 ```
 
-Adds static headers to every request. Header security is validated at creation time (CRLF injection protection).
+Adds static headers to every request. Header security is validated at creation time (CRLF injection protection). Conflicts with existing same-name headers will overwrite them.
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -178,7 +182,7 @@ client, _ := httpc.New(&httpc.Config{
 func AuditMiddleware(onAudit func(event AuditEvent)) MiddlewareFunc
 ```
 
-Security audit middleware, suitable for financial, medical, government, and other compliance scenarios. Records complete request/response information; URLs are automatically masked.
+Security audit middleware, suitable for financial, medical, government, and other compliance scenarios. By default, records request/response metadata (method, URL, status code, duration, retries, etc.) with automatic URL masking; for full headers use [`AuditMiddlewareWithConfig`](#auditmiddlewarewithconfig) with `IncludeHeaders: true`.
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -266,7 +270,7 @@ event := httpc.AuditEvent{
     StatusCode: 200,
 }
 data, _ := json.Marshal(event)
-// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"durationMs":150,"attempts":0}
+// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"attempts":0,"durationMs":150}
 ```
 
 ### AuditMiddlewareConfig

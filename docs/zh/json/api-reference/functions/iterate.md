@@ -81,11 +81,11 @@ json.ForeachNested(data, func(key any, item *json.IterableValue) {
 
 签名：`func ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
 
-迭代 JSON 数据并返回重新序列化后的 JSON 字符串。回调为只读访问。
+迭代 JSON 数据并通过回调访问每个元素，返回重新序列化后的 JSON 字符串。回调可经由 `GetData()` 对 map/slice 做修改，修改会反映到返回值。
 
 ```go
 result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) {
-    // 只读处理
+    // 可通过 item.GetData() 访问/修改元素
 })
 ```
 

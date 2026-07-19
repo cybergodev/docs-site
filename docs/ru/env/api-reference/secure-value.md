@@ -130,7 +130,7 @@ func (sv *SecureValue) String() string
 Возвращает маскированное представление, безопасное для логов и форматирования. Реализует интерфейс `fmt.Stringer`, предотвращая случайную утечку ключей через `fmt.Printf`, `log.Println` или обёртку ошибок.
 
 **Возвращает:**
-- `string` - Маскированное представление (например, `[SECURE:32 bytes locked]`); nil возвращает `[NIL]`
+- `string` - Маскированное представление (например, `[SECURE:32 bytes]`); nil возвращает `[NIL]`
 
 ```go
 secret := env.GetSecure("PASSWORD")
@@ -235,7 +235,10 @@ func (sv *SecureValue) Masked() string
 secret := env.GetSecure("API_KEY")
 if secret != nil {
     log.Printf("API Key: %s", secret.Masked())
-    // Вывод: API Key: [SECURE:32 bytes locked]
+    // Вывод: API Key: [SECURE:32 bytes]
+    // Примечание: суффикс " locked" добавляется к маске только если включена
+    // блокировка памяти (SetMemoryLockEnabled(true)) и блокировка успешна
+    // (также возможны " lock-failed" и " unlocked").
 }
 ```
 
@@ -606,10 +609,10 @@ func MaskSensitiveInString(s string) string
 - `string` - Маскированная строка
 
 ```go
-// Длинные строки будут усечены
+// Длинные строки будут усечены (сохраняются первые 47 символов и добавляется "...")
 long := "This is a very long string that exceeds 50 characters"
 clean := env.MaskSensitiveInString(long)
-// Возвращает: "This is a very long string that exceeds 50..."
+// Возвращает: "This is a very long string that exceeds 50 char..."
 ```
 
 :::tip Сценарии использования

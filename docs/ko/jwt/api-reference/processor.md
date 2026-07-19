@@ -19,7 +19,7 @@ func (p *Processor) Create(claims CustomClaims) (string, error)
 
 새로운 JWT 액세스 토큰을 생성합니다. `CustomClaims` 인터페이스를 구현하는 모든 타입을 허용합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -64,7 +64,7 @@ func (p *Processor) Validate(tokenString string) (Claims, bool, error)
 
 JWT 액세스 토큰을 검증하고 파싱된 Claims를 반환합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -119,7 +119,7 @@ func (p *Processor) CreateRefresh(claims CustomClaims) (string, error)
 
 리프레시 토큰을 생성합니다. `AccessTokenTTL` 대신 `RefreshTokenTTL`을 사용합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -161,7 +161,7 @@ func (p *Processor) Refresh(refreshTokenString string) (string, error)
 갱신 시 표준 JWT 필드(exp, nbf, iss, aud, 블랙리스트)와 기본 구조 유효성(UserID 또는 Username 필수)만 검증합니다. 심층 필드 제약(길이 제한, 인젝션 패턴)은 생성 시 이미 검증되었으므로 재검사하지 않습니다.
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -204,7 +204,7 @@ func (p *Processor) ValidateInto(tokenString string, claims CustomClaims) (Custo
 
 토큰을 검증하고 커스텀 Claims 구조체에 채웁니다. 전달된 `claims`와 동일한 포인터를 반환합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -265,7 +265,7 @@ func (p *Processor) RefreshInto(refreshTokenString string, claims CustomClaims) 
 갱신 시 표준 JWT 필드와 기본 구조 유효성만 검증합니다. 심층 필드 제약은 생성 시 이미 검증되었으므로 재검사하지 않습니다.
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -316,7 +316,7 @@ func (p *Processor) Revoke(tokenString string) error
 - 만료된 토큰도 취소할 수 있으며, 항목은 블랙리스트에서 자동으로 정리됩니다
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -352,7 +352,7 @@ func (p *Processor) IsRevoked(tokenString string) (bool, error)
 
 토큰이 취소되었는지 확인합니다. 서명을 검증한 후 블랙리스트에서 토큰의 jti 상태를 조회합니다. 블랙리스트가 설정되지 않은 경우 `false`와 `nil` 오류를 반환합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -392,7 +392,7 @@ func (p *Processor) ParseUnverified(tokenString string, claims any) error
 반환된 Claims는 검증되지 않았으므로 **신뢰할 수 없습니다**. 디버깅이나 로깅 시나리오에만 사용하세요.
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -425,7 +425,7 @@ func (p *Processor) Close() error
 
 리소스를 해제하고 키를 안전하게 삭제합니다. 여러 번 호출할 수 있으며, 이후 호출은 `ErrProcessorClosed`를 반환합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 반환값
 
@@ -443,7 +443,7 @@ func (p *Processor) IsClosed() bool
 
 Processor가 종료되었는지 확인합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 반환값
 

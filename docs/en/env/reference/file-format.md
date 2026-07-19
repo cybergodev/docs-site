@@ -33,8 +33,9 @@ URL=https://example.com?foo=bar
 MESSAGE="Hello World"
 PATH="/usr/local/bin"
 
-# Single quotes: literal, no escaping
-LITERAL='no ${expansion} here'
+# Single quotes: do not process escapes (preserve backslash sequences as-is)
+# Note: single quotes do NOT prevent variable expansion — expansion happens after quote stripping
+LITERAL='no escaping here: \n stays literal'
 
 # Unquoted
 SIMPLE=value
@@ -108,15 +109,18 @@ ANOTHER: "quoted value"
 
 ### Multiline Values
 
-```bash
-# Newlines inside double quotes
-PRIVATE_KEY="-----BEGIN KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
------END KEY-----"
+The `.env` parser scans line by line, parsing each line independently and **not supporting quoted strings that span multiple lines** — a double-quoted value must be closed on the same line, otherwise it returns `ErrInvalidValue`. To include newlines, use the `\n` escape (only effective within double quotes; single quotes do not process escapes):
 
-# Using \n escapes
+```bash
+# \n inside double quotes is parsed as a newline
 LINES="line1\nline2\nline3"
+# The actual value is three lines: line1 / line2 / line3
+
+# For multi-line certificates like PRIVATE_KEY, join with \n
+PRIVATE_KEY="-----BEGIN KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END KEY-----"
 ```
+
+For genuinely cross-line strings, use the [JSON or YAML format](#format-detection) instead, or extend multi-line support via a custom parser.
 
 ## JSON Format
 
@@ -254,19 +258,17 @@ ALLOWED_HOSTS_2=api.example.com
 
 ### Multiline Strings
 
-```yaml
-# Literal block (preserves newlines)
-description: |
-  Line 1
-  Line 2
-  Line 3
+:::warning Note
+YAML block scalars (literal block `|` and folded block `>`) are **not currently supported**. The parser treats `|`/`>` as ordinary scalar characters and the subsequent indented lines break the key-value parsing.
+:::
 
-# Folded block (newlines become spaces)
-summary: >
-  This is a long
-  summary that will
-  be on one line.
+For values that must preserve newlines, use double quotes with `\n` escapes:
+
+```yaml
+description: "Line1\nLine2\nLine3"
 ```
+
+Or extend block scalar support via a custom parser.
 
 ### Type Conversion Options
 

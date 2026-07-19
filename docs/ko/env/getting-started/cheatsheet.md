@@ -85,7 +85,7 @@ type Config struct {
     Host    string   `env:"HOST" envDefault:"localhost"`
     Port    int64    `env:"PORT" envDefault:"8080"`
     Debug   bool     `env:"DEBUG" envDefault:"false"`
-    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Hosts   []string `env:"HOSTS"`
     Ignored string   `env:"-"`
 }
 
@@ -137,10 +137,15 @@ import "errors"
 // 센티넬 오류
 errors.Is(err, env.ErrFileNotFound)
 errors.Is(err, env.ErrFileTooLarge)
-errors.Is(err, env.ErrForbiddenKey)
-errors.Is(err, env.ErrInvalidKey)
+errors.Is(err, env.ErrSecurityViolation)  // 금지 키 (실제로는 *SecurityError 반환)
 errors.Is(err, env.ErrClosed)
 errors.Is(err, env.ErrAlreadyInitialized)
+
+// 키 형식이 잘못된 경우: 실제로는 *ValidationError, Field=="key" 반환
+var keyErr *env.ValidationError
+if errors.As(err, &keyErr) && keyErr.Field == "key" {
+    // 잘못된 키 형식: keyErr.Message
+}
 
 // 구조화된 오류
 var parseErr *env.ParseError

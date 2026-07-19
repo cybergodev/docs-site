@@ -56,6 +56,8 @@ if err != nil {
 | `ErrEmptyToken` | Все методы операций с токенами | Проверьте заголовок запроса |
 | `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Подпись не совпадает, отказать в доступе |
 | `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | Алгоритм токена не совпадает с конфигурацией, отказать в доступе |
+| `ErrExpirationRequired` | Validate, Refresh, ValidateInto, RefreshInto | `RequireExpiration` включён, но у токена нет утверждения `exp` |
+| `ErrTokenTypeMismatch` | Refresh, RefreshInto | Для обновления использован токен доступа (`token_type=access`), отказать в доступе |
 | `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | Направить пользователя на обновление токена |
 | `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | Проверьте синхронизацию часов |
 | `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Издатель не совпадает |

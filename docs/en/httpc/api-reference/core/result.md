@@ -226,7 +226,7 @@ Returns a human-readable string representation. Sensitive headers are automatica
 ```go
 result, _ := client.Get(url)
 fmt.Println(result.String())
-// Result{Status: 200 OK, ContentLength: 1024, Duration: 125ms, Attempts: 1, ...}
+// Result{Status: 200 200 OK, ContentLength: 1024, Duration: 125ms, Attempts: 1, ...}
 ```
 
 ## Sub-types

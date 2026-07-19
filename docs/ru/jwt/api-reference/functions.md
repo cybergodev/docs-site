@@ -15,7 +15,7 @@ func New(cfg Config) (*Processor, error)
 
 Создаёт новый JWT Processor. Используйте `DefaultConfig()` для получения конфигурации по умолчанию, измените необходимые поля и передайте в функцию.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -73,7 +73,7 @@ func DefaultConfig() Config
 
 Возвращает конфигурацию с разумными значениями по умолчанию.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Возвращаемые значения
 
@@ -111,7 +111,7 @@ func DefaultBlacklistConfig() BlacklistConfig
 
 Возвращает конфигурацию чёрного списка с разумными значениями по умолчанию.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Возвращаемые значения
 
@@ -137,7 +137,7 @@ func NewNumericDate(t time.Time) NumericDate
 
 Создаёт `NumericDate` из `time.Time`.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 
@@ -161,7 +161,7 @@ func NewRateLimiter(maxRate int, window time.Duration) *RateLimiter
 
 Создаёт ограничитель скорости на основе алгоритма корзины токенов.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Параметры
 

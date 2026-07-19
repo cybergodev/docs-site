@@ -61,7 +61,7 @@ result, err := client.Get("https://httpbin.org/get")
 | `DefaultConfig()` | 通用场景 | 安全默认值，SSRF 防护开启 |
 | `SecureConfig()` | 安全敏感场景 | 禁用自动重定向，严格超时 |
 | `PerformanceConfig()` | 高吞吐场景 | 大连接池，长超时，启用 Cookie |
-| `TestingConfig()` | 测试环境 | 禁用安全检查和 HTTP/2，短超时 |
+| `TestingConfig()` | 测试环境 | 禁用安全检查与 HTTP/2，启用 Cookie |
 | `MinimalConfig()` | 轻量请求 | 无重试，无重定向 |
 
 ```go

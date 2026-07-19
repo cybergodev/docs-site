@@ -1,24 +1,24 @@
 ---
 sidebar_label: "Overview"
-title: "Structured Logging - CyberGo DD | High-Performance Logger"
-description: "CyberGo DD is a high-performance Go structured logging library with thread-safe recording, file rotation, sensitive data filtering, and audit logging."
+title: "Structured Logging - CyberGo DD | High-Performance Go Logger"
+description: "CyberGo DD is a high-performance Go structured logging library from the CyberGo organization, offering thread-safe logging, flexible output targets, automatic file rotation, sensitive-data redaction, async audit logging, HMAC integrity signing, and low-allocation optimization."
 ---
 
 # DD
 
-DD (Data-Driven Debugger) is a high-performance structured logging library from the CyberGo organization, providing thread-safe log recording, flexible output target configuration, and comprehensive security protection.
+DD (read as "data-driven" or "distributed debugger" in the source comments) is a high-performance structured logging library from the CyberGo organization, providing thread-safe log recording, flexible output target configuration, and comprehensive security protection.
 
 ## Features
 
-- **Structured Logging** -- Type-safe field recording with automatic JSON serialization
+- **Structured Logging** -- Type-safe field recording with optional JSON output
 - **Multiple Output Targets** -- Simultaneous output to console, file, and custom `io.Writer`
-- **File Rotation** -- Automatic rotation by size or time, with configurable backup count and retention policies
+- **File Rotation** -- Automatic size-based rotation with configurable backup count and retention policies
 - **Sensitive Data Filtering** -- Built-in regex patterns for automatic redaction of passwords, keys, tokens, and other sensitive information
-- **Audit Logging** -- Asynchronous audit event recording with integrity signatures and chain verification
+- **Audit Logging** -- Asynchronous audit event recording with HMAC integrity signing and sequence numbers
 - **Hook System** -- Lifecycle hooks including BeforeLog, AfterLog, OnRotate, and more
-- **Context Integration** -- Automatic propagation of TraceID, SpanID, and RequestID
+- **Context Integration** -- Provides TraceID/SpanID/RequestID context utilities and a ContextExtractor extension point (logging methods do not accept `ctx`; pass fields via `WithFields`)
 - **Log Sampling** -- Optional log sampling strategy for high-throughput scenarios
-- **Zero-Allocation Optimization** -- Minimized memory allocation on hot paths for exceptional performance
+- **Low-Allocation Optimization** -- Minimized memory allocation on hot paths for exceptional performance
 
 ## Installation
 

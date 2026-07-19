@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
 title: "Processor - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor: New, GetString/Set/Delete, Foreach iteration, Encode, Close lifecycle, Stats, and cache config for high-frequency reuse."
+description: "CyberGo JSON Processor: New creation, GetString/Set/Delete operations, Foreach iteration, Encode encoding and Close lifecycle, suitable for high-frequency reuse."
 sidebar_position: 1
 ---
 
@@ -61,7 +61,7 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [Query & Get](./query) | GetString/Int/Float/Bool/Get/GetWithContext/SafeGet/GetArray/GetObject/GetMultiple/CompilePath/GetCompiled |
 | [Modify](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/MergeJSON/MergeMany/CompareJSON |
 | [Delete Operations](./delete) | Delete/DeleteClean |
-| [Encode & Output](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
+| [Encode & Output](./output) | Encode/EncodePretty/EncodeWithConfig/MarshalIndent/Prettify/Compact/CompactBuffer/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
 | [Parse & Validate](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal |
 | [Batch Operations](./batch) | ProcessBatch/WarmupCache |
 | [JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |

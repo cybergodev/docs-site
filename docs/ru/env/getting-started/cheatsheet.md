@@ -85,7 +85,7 @@ type Config struct {
     Host    string   `env:"HOST" envDefault:"localhost"`
     Port    int64    `env:"PORT" envDefault:"8080"`
     Debug   bool     `env:"DEBUG" envDefault:"false"`
-    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Hosts   []string `env:"HOSTS"`
     Ignored string   `env:"-"`
 }
 
@@ -137,10 +137,15 @@ import "errors"
 // Сторожевые ошибки
 errors.Is(err, env.ErrFileNotFound)
 errors.Is(err, env.ErrFileTooLarge)
-errors.Is(err, env.ErrForbiddenKey)
-errors.Is(err, env.ErrInvalidKey)
+errors.Is(err, env.ErrSecurityViolation)  // Запрещённый ключ (фактически возвращается *SecurityError)
 errors.Is(err, env.ErrClosed)
 errors.Is(err, env.ErrAlreadyInitialized)
+
+// Недопустимый формат ключа: фактически возвращается *ValidationError, Field=="key"
+var keyErr *env.ValidationError
+if errors.As(err, &keyErr) && keyErr.Field == "key" {
+    // Недопустимый формат ключа: keyErr.Message
+}
 
 // Структурированные ошибки
 var parseErr *env.ParseError

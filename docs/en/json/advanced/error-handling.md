@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo JSON | Best Practices"
-description: "CyberGo JSON error handling: JsonsError checks, errors.Is/As matching, standard errors, recovery strategies, SafeError, and RedactedPath logging."
+description: "CyberGo JSON error handling: JsonsError type checking, errors.Is/As matching, SafeError safe output and RedactedPath redacted logging to build a robust exception mechanism."
 sidebar_position: 2
 ---
 
@@ -25,8 +25,8 @@ var (
     ErrProcessorClosed    = errors.New("processor is closed")
     ErrConcurrencyLimit   = errors.New("concurrency limit exceeded")
     ErrUnsupportedPath    = errors.New("unsupported path operation")
-    ErrOperationTimeout   = errors.New("operation timeout")
-    ErrResourceExhausted  = errors.New("system resources exhausted")
+    ErrOperationTimeout   = errors.New("operation timeout")           // Deprecated
+    ErrResourceExhausted  = errors.New("system resources exhausted")  // Deprecated
 )
 ```
 
@@ -316,15 +316,15 @@ System-level transient errors:
 val, err := json.Get(data, "user.name")
 if err != nil {
     if errors.Is(err, json.ErrOperationTimeout) {
-        // Operation timeout, retryable
+        // Operation timeout, retryable <Badge type="danger" text="Deprecated" />
         return fmt.Errorf("transient error, please retry: %w", err)
     }
     if errors.Is(err, json.ErrConcurrencyLimit) {
-        // Concurrency limit
+        // Concurrency limit (returned when MaxConcurrency is reached, retryable)
         return fmt.Errorf("system busy, please try later: %w", err)
     }
     if errors.Is(err, json.ErrResourceExhausted) {
-        // Resource exhausted
+        // Resource exhausted <Badge type="danger" text="Deprecated" />
         return fmt.Errorf("insufficient system resources: %w", err)
     }
     if errors.Is(err, json.ErrProcessorClosed) {
@@ -349,18 +349,19 @@ func processJSON(data string) error {
             errors.Is(err, json.ErrPathNotFound),
             errors.Is(err, json.ErrTypeMismatch),
             errors.Is(err, json.ErrInvalidPath):
-            // User input errors, return friendly message
+            // User input error, return friendly message
             return fmt.Errorf("data format error: %w", err)
         case errors.Is(err, json.ErrSecurityViolation):
             // Security error, log and reject
             log.Warn("Security violation", "error", err)
             return errors.New("invalid input")
-        case errors.Is(err, json.ErrOperationTimeout),
-            errors.Is(err, json.ErrConcurrencyLimit):
-            // Retryable errors
+        case errors.Is(err, json.ErrConcurrencyLimit):
+            // Concurrency limit, can retry later
+            return fmt.Errorf("system busy, please retry later: %w", err)
+        case errors.Is(err, json.ErrOperationTimeout): // Deprecated (not returned currently, kept for compatibility)
             return fmt.Errorf("transient error, please retry: %w", err)
         default:
-            // System errors
+            // System error
             log.Error("System error", "error", err)
             return errors.New("internal error")
         }

@@ -316,7 +316,7 @@ BASE_URL=https://api.example.com
 API_URL=${BASE_URL}/v1
 
 # デフォルト値
-LOG_LEVEL=${LOG_LEVEL:-info}
+LOG_LEVEL=info
 ```
 
 ### 変数展開
@@ -352,8 +352,8 @@ PORT=8080
 URL=http://${HOST}:${PORT}
 
 # デフォルト値
-TIMEOUT=${TIMEOUT:-30s}
-DEBUG=${DEBUG:-false}
+TIMEOUT_VALUE=${TIMEOUT:-30s}
+DEBUG_VALUE=${DEBUG:-false}
 ```
 
 ### export 構文
@@ -472,13 +472,16 @@ envStr, _ := env.Marshal(data)
 
 ```go [JSON]
 jsonStr, _ := env.Marshal(data, env.FormatJSON)
-// {"HOST":"localhost","PORT":"8080"}
+// {
+//   "HOST": "localhost",
+//   "PORT": 8080
+// }
 ```
 
 ```go [YAML]
 yamlStr, _ := env.Marshal(data, env.FormatYAML)
 // HOST: localhost
-// PORT: "8080"
+// PORT: 8080
 ```
 
 :::

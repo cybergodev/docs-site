@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Руководство по миграции"
 title: "Руководство по миграции - CyberGo DD | С других библиотек"
-description: "Руководство по миграции на CyberGo DD с log/slog, zap, logrus и zerolog: таблицы API, сравнение конфигурации и стратегии постепенной миграции."
+description: "Полное сравнительное руководство по миграции на CyberGo DD со стандартной библиотеки log/slog и популярных сторонних библиотек (zap, logrus, zerolog), содержащее подробные таблицы соответствия API, сравнение параметров конфигурации, распространённые шаблоны миграции и стратегии постепенной миграции, помогая разработчикам плавно переключить существующие системы логирования на библиотеку DD с низкими рисками."
 sidebar_position: 8
 ---
 
@@ -48,6 +48,7 @@ log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 // После: DD
 logger, err := dd.New(dd.Config{
+    Level:  dd.LevelInfo,
     Format: dd.FormatText,
     Targets: []dd.OutputTarget{
         dd.FileOutput("logs/app.log"),

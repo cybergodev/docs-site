@@ -1,7 +1,7 @@
 ---
 sidebar_label: "结构体映射"
 title: "结构体映射 - CyberGo env | 环境变量到结构体"
-description: "CyberGo env 结构体映射指南，通过 env、envDefault、envSeparator、envPrefix 标签将环境变量自动映射到 Go 结构体字段，涵盖嵌套结构体、指针与切片、自定义转换器、字段忽略、默认值与必填验证，实现类型安全的配置加载。"
+description: "CyberGo env 结构体映射指南，通过 env、envDefault 标签将环境变量自动映射到 Go 结构体字段，涵盖嵌套结构体、指针与切片、自定义类型解码、字段忽略、默认值与必填验证，实现类型安全的配置加载。"
 sidebar_position: 1
 ---
 
@@ -127,6 +127,8 @@ type Config struct {
 
 ### 切片类型
 
+切片字段以逗号 `,` 分隔，分隔符前后的空格会自动去除。
+
 ```go
 type Config struct {
     Hosts []string `env:"HOSTS"`      // 逗号分隔
@@ -140,36 +142,6 @@ type Config struct {
 HOSTS=localhost,example.com,api.example.com
 PORTS=80,443,8080
 ```
-
-### 自定义分隔符
-
-使用 `envSeparator` 标签指定自定义分隔符：
-
-```go
-type Config struct {
-    // 使用分号分隔
-    Servers []string `env:"SERVERS" envSeparator:";"`
-
-    // 使用管道分隔
-    Tags []string `env:"TAGS" envSeparator:"|"`
-
-    // 使用空格分隔
-    Words []string `env:"WORDS" envSeparator:" "`
-}
-```
-
-`.env` 文件：
-
-```bash
-SERVERS=server1.example.com;server2.example.com;server3.example.com
-TAGS=production|api|v2
-WORDS=hello world go lang
-```
-
-**注意事项：**
-- 默认分隔符为逗号 `,`
-- `envSeparator` 只对切片类型有效
-- 分隔符前后空格会自动去除
 
 ## 嵌套结构体
 
@@ -246,28 +218,58 @@ func main() {
 
 ## 自定义类型
 
-### 实现 Unmarshaler 接口
+### 实现 encoding.TextUnmarshaler 接口
+
+结构体字段的自定义解码通过实现标准库 `encoding.TextUnmarshaler` 接口完成——这是逐字段填充时**实际会被调用**的接口。
 
 ```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/cybergodev/env"
+)
+
 type LogLevel string
 
-func (l *LogLevel) UnmarshalEnv(data map[string]string) error {
-    *l = LogLevel(data["LOG_LEVEL"])
-    return nil
+// 实现 encoding.TextUnmarshaler —— 字段级别会被调用
+func (l *LogLevel) UnmarshalText(text []byte) error {
+    switch string(text) {
+    case "debug", "info", "warn", "error":
+        *l = LogLevel(text)
+        return nil
+    default:
+        return fmt.Errorf("invalid log level: %s", string(text))
+    }
 }
 
 type Config struct {
     Level LogLevel `env:"LOG_LEVEL"`
 }
+
+func main() {
+    data := map[string]string{"LOG_LEVEL": "info"}
+
+    var cfg Config
+    if err := env.UnmarshalInto(data, &cfg); err != nil {
+        panic(err)
+    }
+
+    fmt.Println(cfg.Level)
+    // 输出: info
+}
 ```
 
-### 类型别名
+### 带校验的类型别名
 
+<!-- check-code: skip -->
 ```go
 type Port int64
 
-func (p *Port) UnmarshalEnv(data map[string]string) error {
-    val, err := strconv.ParseInt(data["PORT"], 10, 64)
+// 实现 encoding.TextUnmarshaler，解析时附带范围校验
+func (p *Port) UnmarshalText(text []byte) error {
+    val, err := strconv.ParseInt(string(text), 10, 64)
     if err != nil {
         return err
     }
@@ -278,6 +280,10 @@ func (p *Port) UnmarshalEnv(data map[string]string) error {
     return nil
 }
 ```
+
+::: tip 关于 env.Marshaler / env.Unmarshaler 接口
+`env.Marshaler`（`MarshalEnv()`）与 `env.Unmarshaler`（`UnmarshalEnv(map[string]string)`）接口**仅在传给 `env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto` 的顶层值上生效**，不会被结构体的逐字段填充逻辑调用。若要对结构体字段做自定义编解码，请实现标准库 `encoding.TextMarshaler` / `encoding.TextUnmarshaler`，它们在字段级别会被识别。
+:::
 
 ## 配置验证
 

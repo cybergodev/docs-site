@@ -63,6 +63,10 @@ if err := cfg.Validate(); err != nil {
 
 ## センチネルエラー
 
+::: warning 注意
+以下のセンチネルは事前定義されたシンボルですが、現在の実装では一部のシナリオで**これらのセンチネルに `errors.Is` で一致しません**：禁止キーは `*SecurityError` を返し（`errors.Is(err, ErrSecurityViolation)` で一致）、キー形式不正や必須キー不足は `*ValidationError` を返します（`errors.As` で抽出）。詳細は各エラー型のセクションを参照してください。
+:::
+
 ### ファイルエラー
 
 ```go
@@ -102,8 +106,8 @@ var ErrInvalidValue = errors.New("invalid value content")
 
 ```go
 err := loader.Set("PATH", "value")
-if errors.Is(err, env.ErrForbiddenKey) {
-    // 禁止キーの設定を試みました
+if errors.Is(err, env.ErrSecurityViolation) {
+    // 禁止キーの設定を試みると *SecurityError が返されます
 }
 ```
 
@@ -147,8 +151,9 @@ if errors.Is(err, env.ErrNotInitialized) {
     // 先に env.Load() または env.LoadWithConfig() を呼び出す必要があります
 }
 
-// 必須キーが不足していないか確認
-if errors.Is(err, env.ErrMissingRequired) {
+// 必須キーが不足していないか確認（実際は *ValidationError{Rule:"required"}）
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Rule == "required" {
     // 必須キーが不足
 }
 ```
@@ -387,9 +392,9 @@ func IsMarshalError(err error) bool  // チェック関数
 **使用例：**
 
 ```go
-// 禁止キーを設定しようとすると ErrForbiddenKey が返されます
+// 禁止キーを設定しようとすると *SecurityError が返されます
 err := loader.Set("PATH", "/malicious/path")
-if errors.Is(err, env.ErrForbiddenKey) {
+if errors.Is(err, env.ErrSecurityViolation) {
     // キーが禁止されています
 }
 
@@ -634,7 +639,7 @@ case errors.Is(err, env.ErrFileNotFound):
     // ファイルが存在しません
 case errors.Is(err, env.ErrFileTooLarge):
     // ファイルが大きすぎます
-case errors.Is(err, env.ErrForbiddenKey):
+case errors.Is(err, env.ErrSecurityViolation):
     // 禁止キー
 case errors.Is(err, env.ErrClosed):
     // ローダーはクローズ済み

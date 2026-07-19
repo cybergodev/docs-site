@@ -133,7 +133,10 @@ result, err := html.ExtractWithContext(ctx, data)
 `Processor` instances are concurrent-safe and can be shared across goroutines:
 
 ```go
-p, _ := html.New(html.DefaultConfig())
+p, err := html.New(html.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer p.Close()
 
 // Safe to call from multiple goroutines

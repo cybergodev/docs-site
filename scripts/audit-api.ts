@@ -137,8 +137,22 @@ const STDLIB_FIELDS = new Set([
   'Timeout' // net/http.Transport
 ])
 
+// OS-level API / syscall function names referenced for cross-platform context
+// (e.g. "Linux `mlock` / Windows `VirtualLock`"). These are not Go exports at
+// all — they are platform C APIs — but PascalCase members like `VirtualLock`
+// match the IDENT_RE pattern. Lowercase siblings (mlock, mmap) never trigger
+// because they fail the [A-Z…] anchor. If a cybergodev export ever collides
+// with one of these, drop it here so it is checked against source instead of
+// being silently passed.
+const OS_API_FUNCTIONS = new Set(['VirtualLock'])
+
 function isLikelyNotSymbol(s: string): boolean {
-  return isAllCaps(s) || STDLIB_INTERFACE_METHODS.has(s) || STDLIB_FIELDS.has(s)
+  return (
+    isAllCaps(s) ||
+    STDLIB_INTERFACE_METHODS.has(s) ||
+    STDLIB_FIELDS.has(s) ||
+    OS_API_FUNCTIONS.has(s)
+  )
 }
 
 // Scan a project's primary-language docs; return Map<ident, files[]>.

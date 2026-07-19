@@ -95,7 +95,7 @@ reg.Add(dd.HookAfterLog, func(ctx context.Context, hc *dd.HookContext) error {
 // OnRotate 钩子
 reg.Add(dd.HookOnRotate, func(ctx context.Context, hc *dd.HookContext) error {
     dd.InfoWith("文件轮换完成",
-        dd.String("new_file", hc.Message),
+        dd.String("path", hc.Metadata["path"].(string)),
     )
     return nil
 })

@@ -425,8 +425,8 @@ if err != nil {
 ```
 
 **Типы ошибок:**
-- `ErrInvalidKey` - Имя ключа недействительно
-- `ErrForbiddenKey` - Ключ запрещён
+- `*ValidationError` - Недопустимый формат имени ключа (Field="key")
+- `*SecurityError` - Ключ запрещён (можно сопоставить через `errors.Is(err, env.ErrSecurityViolation)`)
 - `ErrInvalidValue` - Недопустимое значение (когда `ValidateValues` равно true, значение содержит небезопасный контент: нулевые байты, управляющие символы)
 - `ErrClosed` - Загрузчик закрыт
 
@@ -667,14 +667,15 @@ func (l *Loader) ParseInto(v any) error
 - `env:"KEY"` - Указывает имя переменной окружения
 - `env:"-"` - Игнорирует это поле
 - `envDefault:"value"` - Указывает значение по умолчанию
-- `envSeparator:","` - Указывает разделитель срезов
+
+По умолчанию поля-срезы разделяются запятой `,` (пробелы вокруг разделителя удаляются автоматически), пользовательского тега разделителя нет.
 
 ```go
 type Config struct {
     Host    string   `env:"HOST" envDefault:"localhost"`
     Port    int64    `env:"PORT" envDefault:"8080"`
     Debug   bool     `env:"DEBUG" envDefault:"false"`
-    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Hosts   []string `env:"HOSTS"`
     Ignored string   `env:"-"`
 }
 

@@ -22,7 +22,7 @@ Or via the TS orchestrator (scans all projects + writes the drift report):
 npm run audit:api
 ```
 
-## Filters (CLAUDE.md "公开 API 识别规则")
+## Filters ("公开 API 识别规则")
 
 | What | Skipped how |
 |------|-------------|

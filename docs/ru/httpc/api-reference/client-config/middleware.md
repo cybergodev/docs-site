@@ -92,7 +92,7 @@ client, _ := httpc.New(&httpc.Config{
 func RequestIDMiddleware(headerName string, generator func() string) MiddlewareFunc
 ```
 
-Добавляет уникальный ID каждому запросу. По умолчанию использует `crypto/rand` для генерации 32-символьного шестнадцатеричного ID.
+Добавляет уникальный ID каждому запросу. По умолчанию использует `crypto/rand` для генерации 32-символьного шестнадцатеричного ID; если в запросе уже есть заголовок с тем же именем, исходное значение сохраняется и не перезаписывается.
 
 | Параметр | Описание |
 |----------|----------|
@@ -121,6 +121,10 @@ func TimeoutMiddleware(timeout time.Duration) MiddlewareFunc
 
 Управление таймаутом на уровне промежуточного ПО. Срабатывает до встроенного таймаута клиента, при истечении отменяет контекст и возвращает ошибку.
 
+:::warning Не используйте для Download или потоковых запросов
+`defer cancel()` в `TimeoutMiddleware` срабатывает сразу после возврата обработчика (т.е. после получения заголовков ответа), поэтому для запросов `Download` или `WithStreamBody` контекст отменяется до чтения тела ответа, что проявляется как ошибка «context canceled». Для потоковых сценариев и загрузок используйте опцию [`WithTimeout`](../core/options#withtimeout).
+:::
+
 ```go
 client, _ := httpc.New(&httpc.Config{
     Middleware: &httpc.MiddlewareConfig{
@@ -137,7 +141,7 @@ client, _ := httpc.New(&httpc.Config{
 func HeaderMiddleware(headers map[string]string) MiddlewareFunc
 ```
 
-Добавляет статические заголовки каждому запросу. Безопасность заголовков проверяется при создании (защита от CRLF-инъекций).
+Добавляет статические заголовки каждому запросу. Безопасность заголовков проверяется при создании (защита от CRLF-инъекций); при конфликте с уже существующими заголовками с тем же именем они будут перезаписаны.
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -178,7 +182,7 @@ client, _ := httpc.New(&httpc.Config{
 func AuditMiddleware(onAudit func(event AuditEvent)) MiddlewareFunc
 ```
 
-Промежуточное ПО безопасности для аудита, подходит для финансовых, медицинских, государственных и других сценариях с требованиями соответствия. Записывает полную информацию о запросе/ответе, URL автоматически маскируется.
+Промежуточное ПО безопасности для аудита, подходит для финансовых, медицинских, государственных и других сценариях с требованиями соответствия. По умолчанию записывает метаданные запроса/ответа (метод, URL, код состояния, длительность, повторные попытки и т. д.), URL автоматически маскируется; для записи полных заголовков используйте [`AuditMiddlewareWithConfig`](#auditmiddlewarewithconfig) с `IncludeHeaders: true`.
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -266,7 +270,7 @@ event := httpc.AuditEvent{
     StatusCode: 200,
 }
 data, _ := json.Marshal(event)
-// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"durationMs":150,"attempts":0}
+// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"attempts":0,"durationMs":150}
 ```
 
 ### AuditMiddlewareConfig

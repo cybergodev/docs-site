@@ -43,6 +43,10 @@ URL=$HOST:8080
 | `${VAR:=default}` | Если VAR не существует, используется default (аналог `:-`) |
 | `${VAR:?error}` | Если VAR не существует или пусто, возвращается ошибка |
 
+::: warning Ограничение самообращения
+Переменная, на которую ссылаются `:-`, `:=`, `:?`, должна отличаться от ключа, которому присваивается значение. Самообращение вида `KEY=${KEY:-default}` распознаётся как цикл и приводит к ошибке `ErrExpansionDepth` при загрузке. Чтобы задать ключу значение по умолчанию, присвойте литерал напрямую (`KEY=default`) либо сошлитесь на другую переменную (см. примеры ниже).
+:::
+
 ---
 
 ## Подробный синтаксис
@@ -52,14 +56,17 @@ URL=$HOST:8080
 Наиболее распространённый синтаксис значений по умолчанию. Когда переменная не существует, используется значение по умолчанию; если переменная существует (даже с пустым значением), используется оригинальное значение:
 
 ```bash
-# Если LOG_LEVEL не существует, используется "info"
-LOG_LEVEL=${LOG_LEVEL:-info}
+# HOST уже определена, используется её значение
+HOST=localhost
+PRIMARY_HOST=${HOST:-127.0.0.1}
+# PRIMARY_HOST разворачивается в: localhost
 
-# Если TIMEOUT не существует, используется "30s"
-TIMEOUT=${TIMEOUT:-30s}
+# Если TIMEOUT не существует, используется значение по умолчанию "30s"
+TIMEOUT_VALUE=${TIMEOUT:-30s}
+# TIMEOUT_VALUE разворачивается в: 30s
 
 # Вложенные значения по умолчанию
-DB_HOST=${DB_HOST:-localhost}
+DB_HOST=localhost
 DB_URL=${DB_HOST}:${DB_PORT:-5432}
 # Если DB_HOST=localhost и DB_PORT не существует
 # DB_URL разворачивается в: localhost:5432
@@ -77,10 +84,10 @@ DB_URL=${DB_HOST}:${DB_PORT:-5432}
 
 ```bash
 # Если DEBUG не существует, используется "false"
-DEBUG=${DEBUG:=false}
+DEBUG_VALUE=${DEBUG:=false}
 
-# Если не существует, используется значение по умолчанию
-CACHE_TTL=${CACHE_TTL:=3600}
+# Если CACHE_TTL не существует, используется значение по умолчанию
+CACHE_TTL_VALUE=${CACHE_TTL:=3600}
 ```
 
 ::: info Связь с `:-`
@@ -95,10 +102,10 @@ CACHE_TTL=${CACHE_TTL:=3600}
 
 ```bash
 # Если DATABASE_URL не существует, загрузка завершится с ошибкой
-DATABASE_URL=${DATABASE_URL:?Database URL is required}
+DB_URL=${DATABASE_URL:?Database URL is required}
 
-# Если API_KEY не существует, будет выдана ошибка
-API_KEY=${API_KEY:?API_KEY must be set}
+# Если API_TOKEN не существует, будет выдана ошибка
+AUTH_TOKEN=${API_TOKEN:?API_TOKEN must be set}
 ```
 
 **Сценарии использования:**
@@ -123,18 +130,26 @@ MESSAGE=Price is $$100
 # Разворачивается в: Price is $100
 ```
 
-### Одинарные кавычки
+### Кавычки и подстановка
 
-Переменные внутри одинарных кавычек не разворачиваются:
+Подстановка переменных выполняется на едином этапе постобработки после снятия кавычек, поэтому **ни одинарные, ни двойные кавычки не влияют на подстановку**. Например, `SINGLE='${BASE}'` (при `BASE=hello`) после подстановки даёт значение `hello` — так же, как в двойных кавычках; если ссылочная переменная не определена (например, `LITERAL='${NO_EXPANSION}'`), результатом будет пустая строка, а не литерал `${NO_EXPANSION}`.
+
+Различие между одинарными и двойными кавычками состоит только в **буквальном разборе**: двойные кавычки обрабатывают escape-последовательности вроде `\n`, `\t`, одинарные — сохраняют текст как есть (без экранирования).
+
+:::warning Внимание
+Не используйте кавычки для «запрета подстановки». Чтобы сохранить литерал `${VAR}`, используйте следующие способы:
+:::
 
 ```bash
-# Без разворачивания
-LITERAL='${NO_EXPANSION}'
+# Способ 1: экранирование знака доллара ($$ разворачивается в буквальный $)
+LITERAL='$${NO_EXPANSION}'
 # Значение: ${NO_EXPANSION}
+```
 
-# Для сравнения — двойные кавычки
-EXPANDED="${WILL_EXPAND}"
-# ${WILL_EXPAND} будет развёрнуто
+```go
+// Способ 2: глобальное отключение подстановки переменных
+cfg := env.DefaultConfig()
+cfg.ExpandVariables = false
 ```
 
 ---
@@ -144,15 +159,15 @@ EXPANDED="${WILL_EXPAND}"
 Переменные могут содержать вложенные ссылки:
 
 ```bash
-# Базовая конфигурация
+# Базовая конфигурация (избегайте встроенного запрещённого ключа ENV, используйте DEPLOY_ENV)
 APP_NAME=myapp
-ENV=production
+DEPLOY_ENV=production
 
 # Вложенные ссылки
-DB_HOST=db.${ENV}.example.com
+DB_HOST=db.${DEPLOY_ENV}.example.com
 # Разворачивается в: db.production.example.com
 
-API_URL=https://${APP_NAME}.${ENV}.api.example.com
+API_URL=https://${APP_NAME}.${DEPLOY_ENV}.api.example.com
 # Разворачивается в: https://myapp.production.api.example.com
 ```
 
@@ -196,24 +211,23 @@ cfg.MaxExpansionDepth = 10  // Пользовательская глубина
 ```bash
 # Файл .env
 
-# Базовая конфигурация
+# Базовая конфигурация (избегайте встроенного запрещённого ключа ENV)
 APP_NAME=myapp
-ENV=development
+DEPLOY_ENV=development
 DEBUG=true
 
 # Конфигурация базы данных
-DB_HOST=${DB_HOST:-localhost}
-DB_PORT=${DB_PORT:-5432}
-DB_NAME=${DB_NAME:-${APP_NAME}}
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=${APP_NAME}
 DB_URL=postgres://${DB_HOST}:${DB_PORT}/${DB_NAME}
 
 # Конфигурация API
-API_BASE=https://api.${ENV}.example.com
+API_BASE=https://api.${DEPLOY_ENV}.example.com
 API_URL=${API_BASE}/v1
-API_KEY=${API_KEY:?API_KEY is required}
 
 # Конфигурация логирования
-LOG_LEVEL=${LOG_LEVEL:-info}
+LOG_LEVEL=info
 
 # Цена (экранирование)
 PRICE=$$99.99

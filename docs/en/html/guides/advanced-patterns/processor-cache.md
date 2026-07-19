@@ -193,7 +193,7 @@ Processing the same HTML 1000 times (for reference only):
 | Processor (with cache) | ≈Baseline | ≈1/10 of baseline |
 
 :::tip Cache Activation
-Cache only works on Processor instances. Package functions use different Processor instances each time and cannot leverage caching.
+Cache only works on Processor instances. Package-level functions reuse a Processor via `sync.Pool`, but the pooled config disables caching (`MaxCacheEntries = 0`) and clears the cache on return, so caching is unavailable.
 :::
 
 ## Common Pitfalls

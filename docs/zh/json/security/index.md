@@ -145,15 +145,15 @@ for _, p := range patterns {
 
 #### 禁用默认模式
 
-通过 `Config.DisableDefaultPatterns` 可以禁用内置的默认警告级模式：
+通过 `Config.DisableDefaultPatterns` 可以禁用内置的默认模式：
 
 ```go
 cfg := json.DefaultConfig()
-cfg.DisableDefaultPatterns = true // 禁用默认警告级模式
+cfg.DisableDefaultPatterns = true // 禁用内置默认模式
 ```
 
 ::: warning 注意
-`DisableDefaultPatterns` 仅禁用默认的警告级（`PatternLevelWarning`）模式。严重级别（`PatternLevelCritical`）的默认模式不受影响。
+`DisableDefaultPatterns=true` 时，除 3 个关键模式（`__proto__`、`constructor[`、`prototype.`，始终强制扫描）外，其余内置模式将被禁用。注意：内置模式全部为 Critical 级别。
 :::
 
 ### 生产环境配置

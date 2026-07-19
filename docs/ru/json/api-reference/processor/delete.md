@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Операции удаления"
-title: "Processor Методы удаления - CyberGo JSON | API"
-description: "Методы удаления Processor CyberGo JSON: Delete удаляет по пути, DeleteClean очищает пустые значения и массивы с цепочечными вызовами."
+title: "Методы удаления Processor - CyberGo JSON | Справочник API"
+description: "Методы удаления CyberGo JSON Processor: Delete удаляет по пути, DeleteClean автоматически очищает пустые значения и пустые массивы после удаления, сохраняя возможность цепочечных вызовов."
 sidebar_position: 4
 ---
 
@@ -38,8 +38,8 @@ result, err := p.DeleteClean(data, "user.temporary")
 // После Delete: {"user": {"name": "test"}}
 result, _ := p.Delete(data, "user.temp")
 
-// Если после удаления родительский объект пуст, DeleteClean продолжит очистку
-// {"user": {}} -> {}
+// DeleteClean также удаляет user.temp; здесь user по-прежнему содержит name и не становится пустым
+// Результат: {"user": {"name": "test"}}
 result, _ = p.DeleteClean(data, "user.temp")
 ```
 

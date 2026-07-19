@@ -12,14 +12,30 @@ sidebar_position: 4
 ### Простая выгрузка файла
 
 ```go
-fileContent, err := os.ReadFile("document.pdf")
-if err != nil {
-    log.Fatal(err)
-}
+package main
 
-result, err := httpc.Post("https://api.example.com/upload",
-    httpc.WithFile("file", "document.pdf", fileContent),
+import (
+    "log"
+    "os"
+
+    "github.com/cybergodev/httpc"
 )
+
+func main() {
+    fileContent, err := os.ReadFile("document.pdf")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    result, err := httpc.Post("https://api.example.com/upload",
+        httpc.WithFile("file", "document.pdf", fileContent),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Printf("Выгрузка завершена: %d", result.StatusCode()) // Пример вывода: Выгрузка завершена: 200 (фактический код состояния зависит от сервера)
+}
 ```
 
 ### Multipart-форма
@@ -65,10 +81,16 @@ result, err := httpc.Post(url, httpc.WithFormData(form))
 ### Бинарная выгрузка
 
 ```go
-data, _ := os.ReadFile("data.bin")
+data, err := os.ReadFile("data.bin")
+if err != nil {
+    log.Fatal(err)
+}
 result, err := httpc.Post(url,
     httpc.WithBinary(data, "application/octet-stream"),
 )
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## Загрузка файлов
@@ -167,16 +189,22 @@ if err != nil {
 Загрузки через доменный клиент автоматически фиксируют Cookie ответа в сессии:
 
 ```go
-dc, _ := httpc.NewDomain("https://api.example.com")
+dc, err := httpc.NewDomain("https://api.example.com")
+if err != nil {
+    log.Fatal(err)
+}
 defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
 
-// Загрузка с автоматическим управлением сессией (path относительно baseURL)
 cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/report.pdf"
 
+// Загрузка с автоматическим управлением сессией (path относительно baseURL)
 result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## Что дальше

@@ -43,6 +43,10 @@ URL=$HOST:8080
 | `${VAR:=default}` | VAR이 없으면 default 사용 (`:-`과 동일) |
 | `${VAR:?error}` | VAR이 없거나 비어 있으면 오류 반환 |
 
+::: warning 자기 참조 제한
+`:-`, `:=`, `:?`가 참조하는 변수는 대입되는 키와 달라야 합니다. `KEY=${KEY:-default}` 형태의 자기 참조는 순환 참조로 간주되어 로드 시 `ErrExpansionDepth` 오류가 발생합니다. 키에 기본값을 설정하려면 리터럴을 직접 대입(`KEY=default`)하거나 다른 변수를 참조하세요(아래 예시 참고).
+:::
+
 ---
 
 ## 구문 상세
@@ -52,14 +56,17 @@ URL=$HOST:8080
 가장 일반적인 기본값 구문입니다. 변수가 없을 때 기본값을 사용하고, 변수가 존재하면(비어 있어도) 원래 값을 사용합니다:
 
 ```bash
-# LOG_LEVEL이 없으면 "info" 사용
-LOG_LEVEL=${LOG_LEVEL:-info}
+# HOST가 정의되어 있으면 해당 값 사용
+HOST=localhost
+PRIMARY_HOST=${HOST:-127.0.0.1}
+# PRIMARY_HOST 확장 결과: localhost
 
-# TIMEOUT이 없으면 "30s" 사용
-TIMEOUT=${TIMEOUT:-30s}
+# TIMEOUT이 없으면 기본값 "30s" 사용
+TIMEOUT_VALUE=${TIMEOUT:-30s}
+# TIMEOUT_VALUE 확장 결과: 30s
 
 # 중첩 기본값
-DB_HOST=${DB_HOST:-localhost}
+DB_HOST=localhost
 DB_URL=${DB_HOST}:${DB_PORT:-5432}
 # DB_HOST=localhost이고 DB_PORT가 없으면
 # DB_URL 확장 결과: localhost:5432
@@ -77,10 +84,10 @@ DB_URL=${DB_HOST}:${DB_PORT:-5432}
 
 ```bash
 # DEBUG가 없으면 "false" 사용
-DEBUG=${DEBUG:=false}
+DEBUG_VALUE=${DEBUG:=false}
 
-# 없으면 기본값 사용
-CACHE_TTL=${CACHE_TTL:=3600}
+# CACHE_TTL이 없으면 기본값 사용
+CACHE_TTL_VALUE=${CACHE_TTL:=3600}
 ```
 
 ::: info `:-`과의 관계
@@ -95,10 +102,10 @@ CACHE_TTL=${CACHE_TTL:=3600}
 
 ```bash
 # DATABASE_URL이 없으면 로딩 실패 및 오류 표시
-DATABASE_URL=${DATABASE_URL:?Database URL is required}
+DB_URL=${DATABASE_URL:?Database URL is required}
 
-# API_KEY가 없으면 오류 발생
-API_KEY=${API_KEY:?API_KEY must be set}
+# API_TOKEN이 없으면 오류 발생
+AUTH_TOKEN=${API_TOKEN:?API_TOKEN must be set}
 ```
 
 **사용 시나리오:**
@@ -123,18 +130,26 @@ MESSAGE=Price is $$100
 # 확장 결과: Price is $100
 ```
 
-### 작은따옴표
+### 따옴표와 확장
 
-작은따옴표 안의 변수는 확장되지 않습니다:
+변수 확장은 따옴표 제거 후의 통합 후처리 단계에서 일어나며, **작은따옴표와 큰따옴표 모두 변수 확장에 영향을 주지 않습니다**. 예를 들어 `SINGLE='${BASE}'`(`BASE=hello`)는 확장 후 값이 `hello`가 되며 큰따옴표와 동일하게 동작합니다. 참조된 변수가 정의되어 있지 않은 경우(예: `LITERAL='${NO_EXPANSION}'`), 결과는 빈 문자열이 되며 `${NO_EXPANSION}` 리터럴이 유지되지 않습니다.
+
+작은따옴표와 큰따옴표의 차이는 **리터럴 파싱**에만 있습니다. 큰따옴표는 `\n`, `\t` 등의 이스케이프 시퀀스를 처리하지만, 작은따옴표는 원문을 그대로 보존합니다 (이스케이프 없음).
+
+::: warning 참고
+따옴표로 "확장 금지"를 지정하지 마세요. `${VAR}` 리터럴을 유지하려면 다음 방법을 사용하세요:
+:::
 
 ```bash
-# 확장 안 됨
-LITERAL='${NO_EXPANSION}'
+# 방법 1: 달러 기호 이스케이프 ($$는 리터럴 $로 확장)
+LITERAL='$${NO_EXPANSION}'
 # 값: ${NO_EXPANSION}
+```
 
-# 큰따옴표와 비교
-EXPANDED="${WILL_EXPAND}"
-# ${WILL_EXPAND}가 확장됨
+```go
+// 방법 2: 전역 변수 확장 비활성화
+cfg := env.DefaultConfig()
+cfg.ExpandVariables = false
 ```
 
 ---
@@ -144,15 +159,15 @@ EXPANDED="${WILL_EXPAND}"
 변수를 중첩하여 참조할 수 있습니다:
 
 ```bash
-# 기본 설정
+# 기본 설정 (내장 금지 키 ENV 대신 DEPLOY_ENV 사용)
 APP_NAME=myapp
-ENV=production
+DEPLOY_ENV=production
 
 # 중첩 참조
-DB_HOST=db.${ENV}.example.com
+DB_HOST=db.${DEPLOY_ENV}.example.com
 # 확장 결과: db.production.example.com
 
-API_URL=https://${APP_NAME}.${ENV}.api.example.com
+API_URL=https://${APP_NAME}.${DEPLOY_ENV}.api.example.com
 # 확장 결과: https://myapp.production.api.example.com
 ```
 
@@ -196,24 +211,23 @@ cfg.MaxExpansionDepth = 10  // 커스텀 깊이
 ```bash
 # .env 파일
 
-# 기본 설정
+# 기본 설정 (내장 금지 키 ENV 사용 회피)
 APP_NAME=myapp
-ENV=development
+DEPLOY_ENV=development
 DEBUG=true
 
 # 데이터베이스 설정
-DB_HOST=${DB_HOST:-localhost}
-DB_PORT=${DB_PORT:-5432}
-DB_NAME=${DB_NAME:-${APP_NAME}}
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=${APP_NAME}
 DB_URL=postgres://${DB_HOST}:${DB_PORT}/${DB_NAME}
 
 # API 설정
-API_BASE=https://api.${ENV}.example.com
+API_BASE=https://api.${DEPLOY_ENV}.example.com
 API_URL=${API_BASE}/v1
-API_KEY=${API_KEY:?API_KEY is required}
 
 # 로그 설정
-LOG_LEVEL=${LOG_LEVEL:-info}
+LOG_LEVEL=info
 
 # 가격 (이스케이프)
 PRICE=$$99.99

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Структуры и маппинг"
 title: "Маппинг структур - CyberGo env | Переменные в структуры"
-description: "Маппинг CyberGo env: теги env, envDefault, envSeparator, envPrefix, вложенные структуры, указатели, срезы, конвертеры, дефолты и обязательная валидация."
+description: "Маппинг CyberGo env: теги env, envDefault, вложенные структуры, указатели, срезы, пользовательские типы через encoding.TextUnmarshaler, дефолты и обязательная валидация для типобезопасной загрузки конфигурации."
 sidebar_position: 1
 ---
 
@@ -127,6 +127,8 @@ type Config struct {
 
 ### Типы срезов
 
+Поля-срезы разделяются запятой `,`, пробелы вокруг разделителя удаляются автоматически.
+
 ```go
 type Config struct {
     Hosts []string `env:"HOSTS"`      // Разделение запятой
@@ -140,36 +142,6 @@ type Config struct {
 HOSTS=localhost,example.com,api.example.com
 PORTS=80,443,8080
 ```
-
-### Пользовательский разделитель
-
-Используйте тег `envSeparator` для указания пользовательского разделителя:
-
-```go
-type Config struct {
-    // Разделение точкой с запятой
-    Servers []string `env:"SERVERS" envSeparator:";"`
-
-    // Разделение вертикальной чертой
-    Tags []string `env:"TAGS" envSeparator:"|"`
-
-    // Разделение пробелом
-    Words []string `env:"WORDS" envSeparator:" "`
-}
-```
-
-Файл `.env`:
-
-```bash
-SERVERS=server1.example.com;server2.example.com;server3.example.com
-TAGS=production|api|v2
-WORDS=hello world go lang
-```
-
-**Примечания:**
-- Разделитель по умолчанию — запятая `,`
-- `envSeparator` действует только для типов срезов
-- Пробелы вокруг разделителя удаляются автоматически
 
 ## Вложенные структуры
 
@@ -246,28 +218,58 @@ func main() {
 
 ## Пользовательские типы
 
-### Реализация интерфейса Unmarshaler
+### Реализация интерфейса encoding.TextUnmarshaler
+
+Пользовательская декодировка полей структуры выполняется через реализацию стандартного интерфейса `encoding.TextUnmarshaler` — это интерфейс, **фактически вызываемый** при постатейном заполнении.
 
 ```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/cybergodev/env"
+)
+
 type LogLevel string
 
-func (l *LogLevel) UnmarshalEnv(data map[string]string) error {
-    *l = LogLevel(data["LOG_LEVEL"])
-    return nil
+// Реализация encoding.TextUnmarshaler — вызывается на уровне поля
+func (l *LogLevel) UnmarshalText(text []byte) error {
+    switch string(text) {
+    case "debug", "info", "warn", "error":
+        *l = LogLevel(text)
+        return nil
+    default:
+        return fmt.Errorf("invalid log level: %s", string(text))
+    }
 }
 
 type Config struct {
     Level LogLevel `env:"LOG_LEVEL"`
 }
+
+func main() {
+    data := map[string]string{"LOG_LEVEL": "info"}
+
+    var cfg Config
+    if err := env.UnmarshalInto(data, &cfg); err != nil {
+        panic(err)
+    }
+
+    fmt.Println(cfg.Level)
+    // Вывод: info
+}
 ```
 
-### Псевдоним типа
+### Псевдоним типа с валидацией
 
+<!-- check-code: skip -->
 ```go
 type Port int64
 
-func (p *Port) UnmarshalEnv(data map[string]string) error {
-    val, err := strconv.ParseInt(data["PORT"], 10, 64)
+// Реализация encoding.TextUnmarshaler с проверкой диапазона при разборе
+func (p *Port) UnmarshalText(text []byte) error {
+    val, err := strconv.ParseInt(string(text), 10, 64)
     if err != nil {
         return err
     }
@@ -278,6 +280,10 @@ func (p *Port) UnmarshalEnv(data map[string]string) error {
     return nil
 }
 ```
+
+:::tip Об интерфейсах env.Marshaler / env.Unmarshaler
+Интерфейсы `env.Marshaler` (`MarshalEnv()`) и `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) **действуют только на верхнем уровне значения, переданного в `env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto`**, и не вызываются логикой постатейного заполнения структуры. Для пользовательского кодирования/декодирования полей структуры реализуйте стандартные интерфейсы `encoding.TextMarshaler` / `encoding.TextUnmarshaler` — они распознаются на уровне полей.
+:::
 
 ## Валидация конфигурации
 

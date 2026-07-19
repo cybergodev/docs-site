@@ -133,7 +133,10 @@ result, err := html.ExtractWithContext(ctx, data)
 `Processor` 인스턴스는 동시성 안전하므로 여러 goroutine에서 공유하여 사용할 수 있습니다:
 
 ```go
-p, _ := html.New(html.DefaultConfig())
+p, err := html.New(html.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer p.Close()
 
 // 여러 goroutine에서 안전하게 호출

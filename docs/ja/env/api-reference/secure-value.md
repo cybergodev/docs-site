@@ -130,7 +130,7 @@ func (sv *SecureValue) String() string
 マスク表現を返します。安全なログ出力とフォーマット用。`fmt.Stringer` インターフェースを実装し、`fmt.Printf`、`log.Println`、エラーラッピングによる秘密鍵の意図しない漏洩を防止します。
 
 **戻り値：**
-- `string` - マスク表現（例：`[SECURE:32 bytes locked]`）、nil の場合は `[NIL]` を返す
+- `string` - マスク表現（例：`[SECURE:32 bytes]`）、nil の場合は `[NIL]` を返す
 
 ```go
 secret := env.GetSecure("PASSWORD")
@@ -235,7 +235,9 @@ func (sv *SecureValue) Masked() string
 secret := env.GetSecure("API_KEY")
 if secret != nil {
     log.Printf("API Key: %s", secret.Masked())
-    // 出力: API Key: [SECURE:32 bytes locked]
+    // 出力: API Key: [SECURE:32 bytes]
+    // 注：メモリロック（SetMemoryLockEnabled(true)）が有効かつロック成功時にのみ、
+    // マスクに " locked" サフィックスが追加されます（他に " lock-failed" / " unlocked" あり）
 }
 ```
 
@@ -606,10 +608,10 @@ func MaskSensitiveInString(s string) string
 - `string` - マスクされた文字列
 
 ```go
-// 長い文字列は切り詰められます
+// 長い文字列は切り詰められます（先頭 47 文字を保持し "..." を追加）
 long := "This is a very long string that exceeds 50 characters"
 clean := env.MaskSensitiveInString(long)
-// 戻り値: "This is a very long string that exceeds 50..."
+// 戻り値: "This is a very long string that exceeds 50 char..."
 ```
 
 ::: tip 使用例

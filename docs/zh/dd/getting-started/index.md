@@ -71,6 +71,20 @@ func main() {
 }
 ```
 
+:::warning 零值 Config 陷阱
+上面方式三/四/五直接使用 `dd.Config{...}` 字面量，仅显式设置了 `Targets`/`Format`，其余字段保持零值：`Level=Debug`（不过滤）、`IncludeTime=false`（无时间戳）、`IncludeLevel=false`（无级别）、`DynamicCaller=false`（无调用者）、`Security=nil`（回退到 `DefaultSecurityConfig()` 基础过滤，仍开启约 36 类脱敏；如需关闭需显式 `&dd.SecurityConfig{}` 或 `SecurityLevelDevelopment`）。输出会缺失时间戳与级别等关键信息。
+
+**生产推荐**：以 `dd.DefaultConfig()` 作为基础再修改字段，可一次性获得时间戳、级别、调用者与默认安全过滤：
+
+```go
+cfg := dd.DefaultConfig()                 // Level=Info, Format=Text, 含时间/级别/caller/Security
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/app.log")}
+logger, err := dd.New(cfg)
+```
+
+类似地，`dd.DevelopmentConfig()`（DEBUG+caller）与 `dd.JSONConfig()`（DEBUG+JSON+RFC3339）也是预设了完整字段集的便捷起点。
+:::
+
 ## 2. 日志级别
 
 DD 支持 5 个日志级别，从低到高：

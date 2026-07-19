@@ -92,7 +92,7 @@ client, _ := httpc.New(&httpc.Config{
 func RequestIDMiddleware(headerName string, generator func() string) MiddlewareFunc
 ```
 
-各リクエストにユニーク ID を追加します。デフォルトでは `crypto/rand` で 32 文字の 16 進数 ID を生成します。
+各リクエストにユニーク ID を追加します。デフォルトでは `crypto/rand` で 32 文字の 16 進数 ID を生成します。リクエストに同名のヘッダーが既に存在する場合は、元の値が保持され上書きされません。
 
 | パラメータ | 説明 |
 |-----------|------|
@@ -121,6 +121,10 @@ func TimeoutMiddleware(timeout time.Duration) MiddlewareFunc
 
 ミドルウェアレベルのタイムアウト制御。クライアントの内蔵タイムアウトより前に有効になります。タイムアウト時にコンテキストをキャンセルし、エラーを返します。
 
+:::warning Download やストリーミングリクエストには使用しないでください
+`TimeoutMiddleware` の `defer cancel()` は、ハンドラーが戻った（レスポンスヘッダーを受信した）直後に発火します。`Download` や `WithStreamBody` リクエストでは、レスポンスボディを読み取る前にコンテキストがキャンセルされ、「context canceled」エラーとして現れます。ストリーミング/ダウンロードのシナリオでは [`WithTimeout`](../core/options#withtimeout) を使用してください。
+:::
+
 ```go
 client, _ := httpc.New(&httpc.Config{
     Middleware: &httpc.MiddlewareConfig{
@@ -137,7 +141,7 @@ client, _ := httpc.New(&httpc.Config{
 func HeaderMiddleware(headers map[string]string) MiddlewareFunc
 ```
 
-各リクエストに静的ヘッダーを追加します。作成時にヘッダーのセキュリティ検証（CRLF インジェクション対策）を行います。
+各リクエストに静的ヘッダーを追加します。作成時にヘッダーのセキュリティ検証（CRLF インジェクション対策）を行います。リクエストに同名のヘッダーが既に存在する場合は競合により上書きされます。
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -178,7 +182,7 @@ client, _ := httpc.New(&httpc.Config{
 func AuditMiddleware(onAudit func(event AuditEvent)) MiddlewareFunc
 ```
 
-セキュリティ監査ミドルウェア。金融、医療、行政などのコンプライアンスシナリオに適しています。完全なリクエスト/レスポンス情報を記録し、URL は自動的にマスクされます。
+セキュリティ監査ミドルウェア。金融、医療、行政などのコンプライアンスシナリオに適しています。デフォルトではリクエスト/レスポンスのメタ情報（メソッド、URL、ステータスコード、所要時間、リトライ回数など）を記録し、URL は自動的にマスクされます。完全なヘッダーを記録するには [`AuditMiddlewareWithConfig`](#auditmiddlewarewithconfig) を使用し、`IncludeHeaders: true` を設定してください。
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -266,7 +270,7 @@ event := httpc.AuditEvent{
     StatusCode: 200,
 }
 data, _ := json.Marshal(event)
-// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"durationMs":150,"attempts":0}
+// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"attempts":0,"durationMs":150}
 ```
 
 ### AuditMiddlewareConfig

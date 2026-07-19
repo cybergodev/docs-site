@@ -12,8 +12,8 @@
  * 任一不一致 → 非零退出，可纳入 CI gate。
  *
  * 依赖：js-yaml（`npm i -D js-yaml @types/js-yaml`）
- * 运行：`npx tsx scripts/check-projects-sync.ts`（生产经 tsx；scripts/*.ts 约定见 CLAUDE.md §2.1）
- * 前提：shared.ts 为纯数据、无副作用、不 import vitepress/node（CLAUDE.md §2.3 铁律），可安全 import。
+ * 运行：`npx tsx scripts/check-projects-sync.ts`（生产经 tsx；scripts/*.ts
+ * 前提：shared.ts 为纯数据、无副作用、不 import vitepress/node，可安全 import。
  *
  * package.json 建议：在 scripts 段加 `"check:projects": "tsx scripts/check-projects-sync.ts"`
  * CI 建议：ci.yml 在 typecheck 后加一步 `- run: npm run check:projects`

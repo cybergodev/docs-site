@@ -1,7 +1,7 @@
 ---
 sidebar_label: "JSONL"
 title: "JSONL 처리 함수 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON JSONL 함수: ParseJSONL/ToJSONL/ToJSONLString 변환, StreamLinesInto[T] 스트리밍, NewJSONLWriter, Config JSONL* 설정으로 JSON Lines를 지원합니다."
+description: "CyberGo JSON JSONL 함수: ParseJSONL/ToJSONL/ToJSONLString 변환, StreamJSONL/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL 스트리밍 처리, StreamLinesInto[T] 제네릭 스트림과 NewJSONLWriter 쓰기."
 sidebar_position: 8
 ---
 
@@ -167,6 +167,78 @@ func main() {
     fmt.Println(jsonlStr)
 }
 ```
+
+## JSONL 스트리밍 처리 함수 (패키지 수준)
+
+json 패키지가 제공하는 JSONL 스트리밍 처리 패키지 수준 편의 함수입니다. 시그니처는 대응하는 Processor 메서드와 동일하며, 끝에 선택적 `cfg ...Config` 매개변수를 추가로 받습니다. 내부적으로 `cfg`를 기준으로 캐싱된 전역 Processor를 사용하므로 인스턴스를 수동으로 생성할 필요가 없으며, 일회성 처리 시나리오에 적합합니다. 여러 번 처리하거나 동일한 설정을 공유해야 할 때는 [`json.New(cfg)`](../processor/#new)로 독립된 Processor를 생성하는 것을 권장합니다.
+
+자세한 사용법과 예제는 [JSONL 스트리밍 처리 가이드](../../streaming/jsonl#패키지-레벨-함수)와 [Processor JSONL 메서드](../processor/jsonl)를 참조하세요.
+
+### StreamJSONL
+
+시그니처: `func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+JSONL을 줄 단위로 스트리밍 처리하며, 각 줄을 `IterableValue`로 파싱한 후 콜백을 호출합니다.
+
+### StreamJSONLParallel
+
+시그니처: `func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+`workers`개의 병렬 goroutine으로 JSONL을 처리합니다 (CPU 집약적 시나리오).
+
+### StreamJSONLParallelWithContext
+
+시그니처: `func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+컨텍스트 취소/타임아웃을 지원하는 병렬 JSONL 처리입니다.
+
+### StreamJSONLChunked
+
+시그니처: `func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
+
+`chunkSize` 단위로 배치 처리하며, 각 배치는 `[]*IterableValue`로 콜백에 전달됩니다.
+
+### ForeachJSONL
+
+시그니처: `func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+JSONL을 순회합니다 (`StreamJSONL`과 동일한 동작의 별칭).
+
+### MapJSONL
+
+시그니처: `func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error), cfg ...Config) ([]any, error)`
+
+각 줄을 새로운 값으로 매핑하여 결과 슬라이스를 반환합니다.
+
+### ReduceJSONL
+
+시그니처: `func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any, cfg ...Config) (any, error)`
+
+JSONL을 단일 값으로 리듀스하며, `initial`은 누산기의 초기값입니다.
+
+### FilterJSONL
+
+시그니처: `func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) ([]*IterableValue, error)`
+
+술어로 필터링하여 일치하는 항목의 슬라이스를 반환합니다.
+
+### StreamJSONLFile
+
+시그니처: `func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+전체 JSONL 파일을 직접 스트리밍 처리합니다.
+
+### CollectJSONL
+
+시그니처: `func CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
+
+JSONL의 모든 줄을 읽어 슬라이스로 수집합니다 (주의: 전체가 메모리에 로드되므로, 큰 파일에는 `StreamJSONL`을 권장합니다).
+
+### FirstJSONL
+
+시그니처: `func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) (*IterableValue, bool, error)`
+
+술어를 만족하는 첫 번째 요소를 반환하며, 두 번째 반환값은 찾았는지 여부를 나타냅니다.
 
 ## JSONL 설정
 

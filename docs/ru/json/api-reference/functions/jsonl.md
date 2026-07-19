@@ -1,7 +1,7 @@
 ---
 sidebar_label: "JSONL"
-title: "JSONL функции - CyberGo JSON | API"
-description: "Функции JSONL CyberGo JSON: ParseJSONL/ToJSONL/ToJSONLString, StreamLinesInto[T], NewJSONLWriter и поля JSONL* в Config."
+title: "Функции обработки JSONL - CyberGo JSON | Справочник API"
+description: "Функции обработки JSONL CyberGo JSON: преобразование ParseJSONL/ToJSONL/ToJSONLString, потоковая обработка StreamJSONL/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL, обобщённый поток StreamLinesInto[T] и писатель NewJSONLWriter."
 sidebar_position: 8
 ---
 
@@ -167,6 +167,78 @@ func main() {
     fmt.Println(jsonlStr)
 }
 ```
+
+## Функции потоковой обработки JSONL (на уровне пакета)
+
+Пакет json предоставляет пакетные удобные функции потоковой обработки JSONL; их сигнатуры совпадают с соответствующими методами Processor, и в конце они дополнительно принимают необязательный параметр `cfg ...Config`; внутри используется глобальный Processor, кэшируемый по `cfg`, поэтому вручную создавать экземпляр не нужно — подходит для одноразовых сценариев обработки. При необходимости многократной обработки или совместного использования одной конфигурации рекомендуется создать независимый Processor через [`json.New(cfg)`](../processor/#new).
+
+Полное описание и примеры см. в [Руководстве по потоковой обработке JSONL](../../streaming/jsonl#функции-уровня-пакета) и [Методах JSONL уровня Processor](../processor/jsonl).
+
+### StreamJSONL
+
+Сигнатура: `func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+Потоково построчно обрабатывает JSONL; каждая строка парсится в `IterableValue` перед вызовом обратного вызова.
+
+### StreamJSONLParallel
+
+Сигнатура: `func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+Обрабатывает JSONL с использованием `workers` параллельных горутин (для сценариев с интенсивной нагрузкой на CPU).
+
+### StreamJSONLParallelWithContext
+
+Сигнатура: `func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+Параллельная обработка JSONL с поддержкой отмены/тайм-аута контекста.
+
+### StreamJSONLChunked
+
+Сигнатура: `func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
+
+Поблочно обрабатывает по `chunkSize`; каждая партия передаётся в обратный вызов как `[]*IterableValue`.
+
+### ForeachJSONL
+
+Сигнатура: `func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+Обходит JSONL (псевдоним с поведением, идентичным `StreamJSONL`).
+
+### MapJSONL
+
+Сигнатура: `func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error), cfg ...Config) ([]any, error)`
+
+Отображает каждую строку в новое значение, возвращает срез результатов.
+
+### ReduceJSONL
+
+Сигнатура: `func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any, cfg ...Config) (any, error)`
+
+Сводит JSONL к одному значению; `initial` — начальное значение аккумулятора.
+
+### FilterJSONL
+
+Сигнатура: `func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) ([]*IterableValue, error)`
+
+Фильтрует по предикату, возвращает срез совпадающих элементов.
+
+### StreamJSONLFile
+
+Сигнатура: `func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+Напрямую потоково обрабатывает весь JSONL-файл.
+
+### CollectJSONL
+
+Сигнатура: `func CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
+
+Читает все строки JSONL и собирает их в срез (примечание: полная загрузка в память; для больших файлов рекомендуется использовать `StreamJSONL`).
+
+### FirstJSONL
+
+Сигнатура: `func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) (*IterableValue, bool, error)`
+
+Возвращает первый элемент, удовлетворяющий предикату; второе возвращаемое значение указывает, найден ли элемент.
 
 ## Конфигурация JSONL
 

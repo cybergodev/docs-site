@@ -22,6 +22,10 @@ sidebar_position: 3
 | `WorkerPoolSize` | `int` | `4` | Worker pool size |
 | `ProcessingTimeout` | `time.Duration` | `30s` | Processing timeout |
 
+:::tip
+Setting `MaxCacheEntries`, `CacheCleanup`, or `ProcessingTimeout` to `0` is not an error — each has a well-defined meaning (disable cache, disable background cleanup, and no timeout respectively). `MaxInputSize`, `WorkerPoolSize`, and `MaxDepth` must be positive, otherwise a `ConfigError` is returned.
+:::
+
 ### Security
 
 | Field | Type | Default | Description |
@@ -131,3 +135,22 @@ cfg := html.DefaultConfig()
 cfg.MaxInputSize = -1
 err := cfg.Validate() // Returns ConfigError
 ```
+
+### Validation Constraints
+
+`Validate()` enforces the following value ranges on numeric fields (violations return a `ConfigError`, which can be checked via `errors.Is(err, html.ErrInvalidConfig)`):
+
+| Field | Constraint | Invalid example |
+|-------|------------|-----------------|
+| `MaxInputSize` | Positive and ≤ `52428800` (50MB) | `0`, `-1`, `100000000` |
+| `MaxCacheEntries` | ≥ `0` and ≤ `100000` | `-1`, `200000` |
+| `CacheTTL` | ≥ `0` | `-1 * time.Second` |
+| `CacheCleanup` | ≥ `0` | `-1 * time.Minute` |
+| `WorkerPoolSize` | Positive and ≤ `256` | `0`, `512` |
+| `MaxDepth` | Positive and ≤ `500` | `0`, `1000` |
+| `ProcessingTimeout` | ≥ `0` | `-1 * time.Second` |
+| `InlineImageFormat` | Empty / `none` / `markdown` / `html` / `placeholder` | `"pdf"` |
+| `InlineLinkFormat` | Empty / `none` / `markdown` / `html` | `"pdf"` |
+| `TableFormat` | Empty / `markdown` / `html` | `"csv"` |
+
+Format strings are case-insensitive, and an empty value is treated as the default (`InlineImageFormat`/`InlineLinkFormat` → `none`, `TableFormat` → `markdown`). `New()` calls `Validate()` before creating the Processor, so an invalid configuration never produces a usable Processor.

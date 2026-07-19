@@ -315,8 +315,8 @@ LITERAL='literal ${noexpand}'
 BASE_URL=https://api.example.com
 API_URL=${BASE_URL}/v1
 
-# Default values
-LOG_LEVEL=${LOG_LEVEL:-info}
+# Log level
+LOG_LEVEL=info
 ```
 
 ### Variable Expansion
@@ -351,9 +351,9 @@ PORT=8080
 # Reference other variables
 URL=http://${HOST}:${PORT}
 
-# Default values
-TIMEOUT=${TIMEOUT:-30s}
-DEBUG=${DEBUG:-false}
+# Default values (reference another variable, use default when undefined)
+TIMEOUT_VALUE=${TIMEOUT:-30s}
+DEBUG_VALUE=${DEBUG:-false}
 ```
 
 ### export Syntax
@@ -472,13 +472,16 @@ envStr, _ := env.Marshal(data)
 
 ```go [JSON]
 jsonStr, _ := env.Marshal(data, env.FormatJSON)
-// {"HOST":"localhost","PORT":"8080"}
+// {
+//   "HOST": "localhost",
+//   "PORT": 8080
+// }
 ```
 
 ```go [YAML]
 yamlStr, _ := env.Marshal(data, env.FormatYAML)
 // HOST: localhost
-// PORT: "8080"
+// PORT: 8080
 ```
 
 :::

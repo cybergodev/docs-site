@@ -2,12 +2,12 @@
 // functions, methods, types, constants and variables, each with its signature
 // and doc comment — into a JSON manifest. The manifest is consumed by
 // scripts/audit-api.ts to detect drift between the source code and the
-// hand-written API-reference docs (see CLAUDE.md "公开 API 识别规则").
+// hand-written API-reference docs.
 //
 // It parses the AST only (go/parser + go/doc): no type checking, no build of
 // the scanned project, so it needs none of the target's module dependencies.
 //
-// Filters (CLAUDE.md "公开 API 识别规则"):
+// Filters:
 //   - skip files: *_test.go, *.pb.go, *.gen.go
 //   - skip dirs:  internal, testdata, vendor, examples, example, dev_test,
 //                 docs, node_modules, .git, .idea, .claude
@@ -78,6 +78,186 @@ func isExcludedFile(name string) bool {
 	return strings.HasSuffix(name, "_test.go") ||
 		strings.HasSuffix(name, ".pb.go") ||
 		strings.HasSuffix(name, ".gen.go")
+}
+
+// aliasTarget describes the destination of a qualified type alias
+// declaration `type X = pkg.Y`. The same-package form (`type X = Y`, an
+// *ast.Ident) is intentionally not handled — it has no cross-package
+// visibility problem because the source AST sees the methods directly.
+type aliasTarget struct {
+	importPath string // full import path of the target package, e.g. "github.com/cybergodev/env/internal"
+	typeName   string // exported type name in that package, e.g. "CloseableChannelHandler"
+}
+
+// lookupImport resolves a package qualifier (the token before `.` in a
+// selector like `internal.Foo`) to its full import path, scanning every file
+// in the package for a matching import spec. Returns "" if not found (the
+// qualifier refers to a stdlib / third-party package, or to a dot/blank
+// import — none of which we can resolve to an in-module dir).
+func lookupImport(pkgAST *ast.Package, qual string) string {
+	for _, f := range pkgAST.Files {
+		for _, imp := range f.Imports {
+			path := strings.Trim(imp.Path.Value, `"`)
+			var name string
+			if imp.Name != nil {
+				name = imp.Name.Name // explicit alias: `ierrors "...internal"`
+			} else {
+				if i := strings.LastIndex(path, "/"); i >= 0 {
+					name = path[i+1:]
+				} else {
+					name = path
+				}
+			}
+			if name == "." || name == "_" || name != qual {
+				continue
+			}
+			return path
+		}
+	}
+	return ""
+}
+
+// extractAliasTarget inspects a type-alias declaration's AST and, if it is a
+// qualified in-module reference (`type X = pkg.Y`), resolves `pkg.Y` to
+// {importPath, typeName}. Returns nil for non-qualified aliases
+// (`type X = int`), external-package targets, or anything we cannot resolve.
+func extractAliasTarget(t *doc.Type, pkgAST *ast.Package) *aliasTarget {
+	if t.Decl == nil {
+		return nil
+	}
+	for _, sp := range t.Decl.Specs {
+		ts, ok := sp.(*ast.TypeSpec)
+		if !ok {
+			continue
+		}
+		sel, ok := ts.Type.(*ast.SelectorExpr)
+		if !ok {
+			continue
+		}
+		pkgIdent, ok := sel.X.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		path := lookupImport(pkgAST, pkgIdent.Name)
+		if path == "" {
+			continue
+		}
+		return &aliasTarget{importPath: path, typeName: sel.Sel.Name}
+	}
+	return nil
+}
+
+// targetDir converts an in-module import path to its source directory (relative
+// to src). Returns "" for import paths outside the current module — those
+// targets can't be resolved by reading the local source tree.
+func targetDir(module, importPath string) string {
+	if importPath == module {
+		return "."
+	}
+	prefix := module + "/"
+	if !strings.HasPrefix(importPath, prefix) {
+		return ""
+	}
+	return strings.TrimPrefix(importPath, prefix)
+}
+
+// aliasResolver parses skipped packages (typically internal/) on demand to
+// discover the exported methods of types reached only via a public alias.
+// Without it, `type X = internal.Y` looks like a method-less alias even when Y
+// has methods — the canonical case is env's `CloseableChannelHandler` whose
+// `Channel()` method lives on the internal struct. One parser instance is
+// reused across the whole scan so each target dir is parsed at most once.
+type aliasResolver struct {
+	src    string
+	module string
+	fset   *token.FileSet
+	cache  map[string]*doc.Package
+}
+
+func newAliasResolver(src, module string) *aliasResolver {
+	return &aliasResolver{src: src, module: module, fset: token.NewFileSet(), cache: make(map[string]*doc.Package)}
+}
+
+// parseTarget parses the target package on demand (the main scan skips
+// internal/, so these are usually not yet parsed) and caches it. Returns nil
+// for external packages or unreadable dirs (skip gracefully).
+func (r *aliasResolver) parseTarget(importPath string) *doc.Package {
+	if dp, ok := r.cache[importPath]; ok {
+		return dp
+	}
+	rel := targetDir(r.module, importPath)
+	if rel == "" {
+		r.cache[importPath] = nil
+		return nil
+	}
+	dir := filepath.Join(r.src, rel)
+	pkgs, err := parser.ParseDir(r.fset, dir, func(fi fs.FileInfo) bool {
+		return !isExcludedFile(fi.Name())
+	}, parser.ParseComments)
+	if err != nil || len(pkgs) == 0 {
+		r.cache[importPath] = nil
+		return nil
+	}
+	var pkgAST *ast.Package
+	for name, p := range pkgs {
+		if strings.HasSuffix(name, "_test") {
+			continue
+		}
+		pkgAST = p
+		break
+	}
+	if pkgAST == nil {
+		r.cache[importPath] = nil
+		return nil
+	}
+	dp := doc.New(pkgAST, importPath, 0)
+	r.cache[importPath] = dp
+	return dp
+}
+
+// targetTypeMethods returns the exported methods of {importPath}.typeName,
+// renamed to aliasName.Method so the existing audit-api collectSymbols logic
+// picks up both "AliasName.Method" and the bare "Method" identifier. Covers
+// receiver methods (structs) and inline interface method declarations — the
+// two surfaces the public alias actually exposes. Returns nil if the target
+// package or type can't be resolved.
+func (r *aliasResolver) targetTypeMethods(importPath, typeName, aliasName string) []Symbol {
+	dp := r.parseTarget(importPath)
+	if dp == nil {
+		return nil
+	}
+	for _, t := range dp.Types {
+		if t.Name != typeName {
+			continue
+		}
+		var out []Symbol
+		for _, m := range t.Methods {
+			name := m.Decl.Name.Name
+			if isTestFuncName(name) {
+				continue
+			}
+			out = append(out, Symbol{
+				Name:       aliasName + "." + name,
+				Signature:  funcSig(r.fset, m.Decl),
+				Doc:        trimDoc(m.Doc),
+				Deprecated: isDeprecated(m.Doc),
+			})
+		}
+		// Interface method set: same dual source as the main scan — go/doc's
+		// t.Methods holds only receiver methods, so the interface's inline
+		// declarations are read from the AST and the prefix renamed.
+		for _, sm := range interfaceMethods(r.fset, t) {
+			methodName := strings.TrimPrefix(sm.Name, typeName+".")
+			out = append(out, Symbol{
+				Name:       aliasName + "." + methodName,
+				Signature:  sm.Signature,
+				Doc:        sm.Doc,
+				Deprecated: sm.Deprecated,
+			})
+		}
+		return out
+	}
+	return nil
 }
 
 // isTestFuncName drops Go test funcs (TestXxx/BenchmarkXxx/ExampleXxx/FuzzXxx,
@@ -155,6 +335,7 @@ func main() {
 
 	fset := token.NewFileSet()
 	manifest := Manifest{Module: *module}
+	resolver := newAliasResolver(*src, *module)
 
 	for _, dir := range collectPkgDirs(*src) {
 		// parser.ParseDir is deprecated upstream (it ignores build tags); the
@@ -213,6 +394,20 @@ func main() {
 				// as dangling. Structs have no such set — only interfaces do.
 				if ty.Kind == "interface" {
 					ty.Methods = append(ty.Methods, interfaceMethods(fset, t)...)
+				}
+				// Qualified type alias (`type X = pkg.Y`): attach the target
+				// type's exported methods as X.Method. The target is usually
+				// inside internal/ (skipped by the main scan), so the resolver
+				// parses it on demand. Without this, a doc reference like
+				// `handler.Channel()` — where Channel is defined on the
+				// internal struct reached only via the public alias — would
+				// false-positive as DANGLING. Non-qualified / external aliases
+				// fall through (extractAliasTarget returns nil).
+				if ty.Kind == "alias" {
+					if at := extractAliasTarget(t, pkgAST); at != nil {
+						ty.Methods = append(ty.Methods, resolver.targetTypeMethods(
+							at.importPath, at.typeName, ty.Name)...)
+					}
 				}
 				pkgOut.Types = append(pkgOut.Types, ty)
 

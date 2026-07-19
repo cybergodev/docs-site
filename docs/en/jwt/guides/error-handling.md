@@ -56,6 +56,8 @@ Don't use `err == jwt.ErrTokenExpired` or string matching. `errors.Is()` correct
 | `ErrEmptyToken` | All token operation methods | Check request header |
 | `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Signature mismatch, deny access |
 | `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | Token algorithm doesn't match config, deny access |
+| `ErrExpirationRequired` | Validate, Refresh, ValidateInto, RefreshInto | `RequireExpiration` enabled but token lacks `exp` claim |
+| `ErrTokenTypeMismatch` | Refresh, RefreshInto | Access token (`token_type=access`) used to refresh, deny access |
 | `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | Prompt user to refresh token |
 | `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | Check clock synchronization |
 | `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Issuer mismatch |

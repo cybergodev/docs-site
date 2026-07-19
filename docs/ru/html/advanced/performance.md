@@ -63,7 +63,11 @@ for _, page := range pages {
 Настройка размера пула воркеров под количество ядер CPU:
 
 ```go
-cfg.WorkerPoolSize = runtime.NumCPU()
+// WorkerPoolSize имеет верхний предел 256; на многоядерных машинах необходимо ограничить
+if n := runtime.NumCPU(); n > 256 {
+    n = 256
+}
+cfg.WorkerPoolSize = n
 ```
 
 ## Управление вводом

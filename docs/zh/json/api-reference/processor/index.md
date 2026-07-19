@@ -61,7 +61,7 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [查询获取](./query) | GetString/Int/Float/Bool/Get/GetWithContext/SafeGet/GetArray/GetObject/GetMultiple/CompilePath/GetCompiled |
 | [修改操作](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/MergeJSON/MergeMany/CompareJSON |
 | [删除操作](./delete) | Delete/DeleteClean |
-| [编码输出](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
+| [编码输出](./output) | Encode/EncodePretty/EncodeWithConfig/MarshalIndent/Prettify/Compact/CompactBuffer/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
 | [解析验证](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal |
 | [批量操作](./batch) | ProcessBatch/WarmupCache |
 | [JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |

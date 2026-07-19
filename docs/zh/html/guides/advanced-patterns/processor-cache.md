@@ -193,7 +193,7 @@ go func() {
 | Processor（有缓存） | ≈基准 | ≈基准的 1/10 |
 
 :::tip 缓存生效条件
-缓存仅在 Processor 实例上生效。包级函数每次调用使用不同的 Processor 实例，无法利用缓存。
+缓存仅在 Processor 实例上生效。包级函数虽经 `sync.Pool` 复用 Processor，但池化配置已禁用缓存（`MaxCacheEntries = 0`），且每次归还时清空缓存，因此无法利用缓存。
 :::
 
 ## 常见误区

@@ -7,7 +7,7 @@ sidebar_position: 7
 
 # 分布式追踪集成
 
-DD 支持通过 `context.Context` 自动传播追踪标识（TraceID、SpanID、RequestID），在微服务架构中实现端到端的日志关联。
+DD 提供基于 `context.Context` 的追踪标识工具函数（`WithTraceID`/`GetTraceID` 等），便于在微服务架构中关联日志。需要注意：**DD 的日志方法不接受 `context.Context` 参数**，因此无法自动从请求作用域提取 TraceID——必须通过 `WithFields()` 手动将追踪标识作为字段附加到日志（详见 [HTTP 中间件集成](#http-中间件集成)）。
 
 ## 上下文键
 
@@ -37,10 +37,10 @@ spanID := dd.GetSpanID(ctx)      // "span-def456"
 requestID := dd.GetRequestID(ctx) // "req-789"
 ```
 
-### 自动提取到日志
+### 为何不能「自动提取」到日志
 
 :::warning 当前限制
-DD 的日志方法（`Info`、`InfoWith` 等）不直接接受 `context.Context` 参数。上下文提取器在内部使用 `context.Background()` 调用，因此无法直接从请求作用域的 context 中获取 TraceID 等值。推荐使用手动传递字段的方式（见下方 HTTP 中间件集成）。
+DD 的日志方法（`Info`、`InfoWith` 等）不直接接受 `context.Context` 参数。上下文提取器在内部使用 `context.Background()` 调用（`logger.go:1414`），因此无法直接从请求作用域的 context 中获取 TraceID 等值。推荐使用手动传递字段的方式（见下方 HTTP 中间件集成）。
 :::
 
 ```go

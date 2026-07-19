@@ -33,9 +33,9 @@ func main() {
         dd.String("password", "s3cr3t123"),    // → password=[REDACTED]
     )
 
-    // API Key 自动脱敏
+    // API Key 自动脱敏（注意：endpoint 同属敏感键名，也会被脱敏）
     logger.InfoWith("API 调用",
-        dd.String("endpoint", "/api/data"),
+        dd.String("endpoint", "/api/data"),      // → endpoint=[REDACTED]（"endpoint" 同属敏感键名）
         dd.String("api_key", "sk-abc123xyz"),   // → api_key=[REDACTED]
     )
 }
@@ -107,10 +107,13 @@ func main() {
         Format:   dd.FormatJSON,
         Security: dd.DefaultSecureConfig(),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
+        // 注意：此处未配置 Audit，业务 logger 的脱敏/安全事件不会自动进入上面的 auditLogger。
+        // 若要让安全事件自动入审计，需在此配置 Audit 字段（例如把上方 auditLogger 对应的
+        // AuditConfig 经 Audit: &auditCfg 传入），或通过显式调用 auditLogger.LogX(...) 记录事件。
     })
     defer logger.Close()
 
-    // 正常业务操作
+    // 正常业务操作（脱敏由 Security 处理，但不会自动写入审计日志）
     logger.InfoWith("交易处理",
         dd.String("transaction_id", "TXN-001"),
         dd.String("amount", "1500.00"),

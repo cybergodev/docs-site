@@ -173,7 +173,7 @@ func main() {
     p, _ := html.New(html.TextOnlyConfig())
     defer p.Close()
 
-    // 最多 10000 个文件一批
+    // 单批上限 10000；超出会整批失败，需调用方自行分批
     batch := p.ExtractBatchFiles(files)
 
     fmt.Printf("成功: %d, 失败: %d, 取消: %d\n",

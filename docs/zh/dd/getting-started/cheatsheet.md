@@ -18,12 +18,16 @@ sidebar_position: 2
 | 双目标 | `dd.New(dd.Config{Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("path")}})` | 控制台+文件 |
 | JSON 双目标 | `dd.New(dd.Config{Format: dd.FormatJSON, Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("path")}})` | JSON格式双目标 |
 
+:::tip 配置零值
+表中 `dd.Config{...}` 字面量未设置的字段均为零值（Level=Debug、IncludeTime/IncludeLevel/DynamicCaller=false，输出无时间戳/级别/caller）。生产环境建议以 `dd.DefaultConfig()` 为基础再覆盖所需字段。
+:::
+
 ## 预设配置
 
 ```go
 dd.DefaultConfig()       // 默认配置：INFO 级别，文本格式
 dd.DevelopmentConfig()   // 开发配置：DEBUG 级别，动态 caller
-dd.JSONConfig()          // JSON 配置：JSON 格式输出
+dd.JSONConfig()          // JSON 配置：DEBUG 级别 + JSON 格式输出
 ```
 
 ## 日志级别

@@ -14,7 +14,9 @@ sidebar_position: 2
 ```go
 // 通过 New 创建
 logger, _ := dd.New(dd.DefaultConfig())
+```
 
+```go
 // 自定义配置创建
 logger, _ := dd.New(dd.Config{
     Level: dd.LevelInfo,
@@ -35,7 +37,7 @@ logger, _ := dd.New(dd.Config{
 | `Info(args ...any)` | Info 级别日志 |
 | `Warn(args ...any)` | Warn 级别日志 |
 | `Error(args ...any)` | Error 级别日志 |
-| `Fatal(args ...any)` | Fatal 级别日志（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
+| `Fatal(args ...any)` | Fatal 级别日志（默认调用 os.Exit(1)，**defer 不会执行**；可通过 FatalHandler 自定义） |
 | `Log(level LogLevel, args ...any)` | 指定级别日志 |
 
 ### 格式化日志
@@ -46,7 +48,7 @@ logger, _ := dd.New(dd.Config{
 | `Infof(format string, args ...any)` | 格式化 Info |
 | `Warnf(format string, args ...any)` | 格式化 Warn |
 | `Errorf(format string, args ...any)` | 格式化 Error |
-| `Fatalf(format string, args ...any)` | 格式化 Fatal（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
+| `Fatalf(format string, args ...any)` | 格式化 Fatal（默认调用 os.Exit(1)，**defer 不会执行**；可通过 FatalHandler 自定义） |
 | `Logf(level LogLevel, format string, args ...any)` | 格式化指定级别 |
 
 ### 结构化日志
@@ -57,7 +59,7 @@ logger, _ := dd.New(dd.Config{
 | `InfoWith(msg string, fields ...Field)` | 结构化 Info |
 | `WarnWith(msg string, fields ...Field)` | 结构化 Warn |
 | `ErrorWith(msg string, fields ...Field)` | 结构化 Error |
-| `FatalWith(msg string, fields ...Field)` | 结构化 Fatal（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
+| `FatalWith(msg string, fields ...Field)` | 结构化 Fatal（默认调用 os.Exit(1)，**defer 不会执行**；可通过 FatalHandler 自定义） |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | 结构化指定级别 |
 
 ```go
@@ -217,10 +219,10 @@ active := logger.ActiveFilterGoroutines()
 | `Print(args ...any)` | 输出到配置的 Writer（LevelInfo，受安全过滤） |
 | `Println(args ...any)` | 与 Print 行为一致（底层 Log() 已自动换行） |
 | `Printf(format string, args ...any)` | 格式化输出（LevelInfo，受安全过滤） |
-| `JSON(data ...any)` | JSON 格式调试输出到 stdout（不经过安全过滤） |
-| `JSONF(format string, args ...any)` | 格式化 JSON 调试输出到 stdout（不经过安全过滤） |
-| `Text(data ...any)` | 文本格式调试输出到 stdout（不经过安全过滤） |
-| `Textf(format string, args ...any)` | 格式化文本调试输出到 stdout（不经过安全过滤） |
+| `JSON(data ...any)` | 紧凑 JSON 格式输出到 stdout（含调用者信息，不经过安全过滤） |
+| `JSONF(format string, args ...any)` | 格式化紧凑 JSON 输出到 stdout（含调用者信息，不经过安全过滤） |
+| `Text(data ...any)` | 美化打印格式输出到 stdout（不含调用者信息，不经过安全过滤） |
+| `Textf(format string, args ...any)` | 格式化文本输出到 stdout（不含调用者信息，不经过安全过滤） |
 
 ## 下一步
 

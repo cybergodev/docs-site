@@ -69,6 +69,6 @@ if err != nil {
 
 ## 다음 단계
 
-- [연결 풀과 프록시](./connection-pool) -- 연결 풀 매개변수 선택, 프록시와 DoH 설정
-- [오류 처리](./error-handling) -- 타임아웃 계층화 전략
-- [보안 개요](../security/) -- 보안과 성능의 균형
+- [연결 풀과 프록시](./connection-pool) — 연결 풀 매개변수 선택, 프록시와 DoH 설정
+- [오류 처리](./error-handling) — 타임아웃 계층화 전략
+- [보안 개요](../security/) — 보안과 성능의 균형

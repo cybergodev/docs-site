@@ -76,9 +76,13 @@ if len(errorEntries) > 0 {
     t.Error("Unexpected error logs")
 }
 
-// 使用 DevelopmentConfig 捕获所有级别
+// 使用 DEBUG 级别捕获所有级别
+// 注意：Recorder 依 ISO 8601 时间戳解析级别，DevelopmentConfig 的时间格式
+// 与其不兼容，故用 DefaultConfig 手动设 DEBUG 级别。
 rec2 := dd.NewLoggerRecorder()
-logger2, _ := rec2.NewLogger(dd.DevelopmentConfig())
+devCfg := dd.DefaultConfig()
+devCfg.Level = dd.LevelDebug
+logger2, _ := rec2.NewLogger(devCfg)
 logger2.Debug("调试信息")
 debugs := rec2.EntriesAtLevel(dd.LevelDebug)
 ```

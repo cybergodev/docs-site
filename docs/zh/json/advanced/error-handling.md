@@ -23,7 +23,7 @@ var (
     ErrSizeLimit          = errors.New("size limit exceeded")
     ErrSecurityViolation  = errors.New("security violation detected")
     ErrProcessorClosed    = errors.New("processor is closed")
-    ErrConcurrencyLimit   = errors.New("concurrency limit exceeded") // Deprecated
+    ErrConcurrencyLimit   = errors.New("concurrency limit exceeded")
     ErrUnsupportedPath    = errors.New("unsupported path operation")
     ErrOperationTimeout   = errors.New("operation timeout")           // Deprecated
     ErrResourceExhausted  = errors.New("system resources exhausted")  // Deprecated
@@ -320,7 +320,7 @@ if err != nil {
         return fmt.Errorf("暂时性错误，请重试: %w", err)
     }
     if errors.Is(err, json.ErrConcurrencyLimit) {
-        // 并发限制 <Badge type="danger" text="已废弃" />
+        // 并发限制（达到 MaxConcurrency 时返回，可重试）
         return fmt.Errorf("系统繁忙，请稍后: %w", err)
     }
     if errors.Is(err, json.ErrResourceExhausted) {
@@ -355,9 +355,10 @@ func processJSON(data string) error {
             // 安全错误，记录并拒绝
             log.Warn("安全违规", "error", err)
             return errors.New("输入不合法")
-        case errors.Is(err, json.ErrOperationTimeout),          // Deprecated
-            errors.Is(err, json.ErrConcurrencyLimit): // Deprecated
-            // 可重试错误（这些错误当前不会被库返回，保留用于兼容）
+        case errors.Is(err, json.ErrConcurrencyLimit):
+            // 并发上限，可稍后重试
+            return fmt.Errorf("系统繁忙，请稍后重试: %w", err)
+        case errors.Is(err, json.ErrOperationTimeout): // Deprecated（当前不会被返回，保留兼容）
             return fmt.Errorf("暂时性错误，请重试: %w", err)
         default:
             // 系统错误

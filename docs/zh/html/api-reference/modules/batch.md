@@ -48,7 +48,9 @@ batch := html.ExtractBatch(pages)
 fmt.Printf("成功: %d, 失败: %d\n", batch.Success, batch.Failed)
 
 for i, result := range batch.Results {
-    fmt.Printf("页面 %d: %s\n", i, result.Title)
+    if result != nil {
+        fmt.Printf("页面 %d: %s\n", i, result.Title)
+    }
 }
 
 for i, err := range batch.Errors {
@@ -59,5 +61,5 @@ for i, err := range batch.Errors {
 ```
 
 :::warning 批量限制
-单次批量最多 10000 个项目，超出将导致错误。
+单次批量最多 10000 个项目，超出时返回一个所有项均失败的 `*BatchResult`（每项 `Errors` 填充 `html: batch size N exceeds maximum 10000`），不会触发 panic。
 :::

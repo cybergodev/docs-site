@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Performance Optimization"
 title: "Performance - CyberGo env | High-Concurrency Tuning"
-description: "CyberGo env performance: RWMutex/sharded locks, sync.Pool reuse, mlock tradeoffs, large-file streaming, benchmarks, MaxFileSize/MaxVariables tuning."
+description: "CyberGo env performance optimization guide: RWMutex and sharded locks for concurrency safety, sync.Pool object reuse significantly reducing allocations, mlock tradeoffs, large-file streaming, with benchmark comparisons, concurrency throughput analysis, and MaxFileSize/MaxVariables tuning recommendations."
 sidebar_position: 1
 ---
 
@@ -338,10 +338,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 ### Memory Locking Overhead
 
-| Operation | Without Lock | With Lock |
-|-----------|-------------|-----------|
-| Create | ~100ns | ~1us |
-| Read | ~10ns | ~10ns |
+Memory locking (`mlock` on Linux / `VirtualLock` on Windows) incurs a one-time extra syscall overhead only when creating a `SecureValue`; read operations (`Reveal` / `String` / `Masked`) are unaffected. Keep `SecureValue` instances small and short-lived — release them back to the pool immediately via `Close()` / `Release()` to avoid holding large locked memory regions for long periods.
 
 ## Benchmarks
 

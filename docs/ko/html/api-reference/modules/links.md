@@ -77,3 +77,14 @@ cfg.IncludeExternalLinks = true
 cfg.ResolveRelativeURLs = true
 cfg.BaseURL = "https://example.com"
 ```
+
+:::tip 팁
+`ResolveRelativeURLs=true`이고 `BaseURL`이 **비어 있을 때**, 라이브러리는 HTML 문서 자체에서 BaseURL을 자동으로 유추합니다. 다음 **우선순위** 순서대로 시도하여, 일치하는 항목이 있으면 그 즉시 반환합니다:
+
+1. `<base href>` 태그;
+2. `<meta property="og:url">` 또는 `<meta property="canonical">`의 `content`;
+3. `<link rel="canonical" href>`;
+4. 문서에서 처음으로 등장하는 절대 URL(`href`/`src`에서 base 추출).
+
+`BaseURL`을 명시적으로 설정하면 **자동 감지를 건너뛰고** 호출자가 제공한 값을 우선 사용합니다.
+:::

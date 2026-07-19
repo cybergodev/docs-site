@@ -35,7 +35,7 @@ defer p.Close()
 | 深度違反 | `depth_violation` | warning | DOM ネストが制限を超過 |
 | 処理タイムアウト | `timeout` | warning | 単一処理がタイムアウト |
 | エンコーディングの問題 | `encoding_issue` | info | エンコーディング検出に失敗 |
-| パストラバーサル | `path_traversal` | critical | ファイルパスに `..` が含まれる |
+| パストラバーサル | `path_traversal` | critical | ファイルパスに `..` が含まれる、または `AllowedBaseDir` モードで OS ハンドル解決後にパスがベースを逸脱する場合（symlink/junction 防護） |
 
 ## 監査レベル
 
@@ -80,7 +80,7 @@ sink := html.NewWriterAuditSink(file)
 
 ### ChannelAuditSink
 
-チャネルに非同期送信、外部システムとの統合に適しています：
+バッファ付き channel に非ブロッキングでイベントをプッシュし、消費側 goroutine が非同期で処理します — 外部システムとの統合に適しています：
 
 ```go
 sink := html.NewChannelAuditSink(100)

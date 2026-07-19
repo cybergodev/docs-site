@@ -15,7 +15,7 @@ func New(cfg Config) (*Processor, error)
 
 새로운 JWT Processor를 생성합니다. `DefaultConfig()`로 기본 설정을 가져와 필요한 필드를 수정한 후 전달합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -73,7 +73,7 @@ func DefaultConfig() Config
 
 합리적인 기본값이 설정된 설정을 반환합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 반환값
 
@@ -111,7 +111,7 @@ func DefaultBlacklistConfig() BlacklistConfig
 
 합리적인 기본값이 설정된 블랙리스트 설정을 반환합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 반환값
 
@@ -137,7 +137,7 @@ func NewNumericDate(t time.Time) NumericDate
 
 `time.Time`에서 `NumericDate`를 생성합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 
@@ -161,7 +161,7 @@ func NewRateLimiter(maxRate int, window time.Duration) *RateLimiter
 
 토큰 버킷 속도 제한기를 생성합니다.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### 매개변수
 

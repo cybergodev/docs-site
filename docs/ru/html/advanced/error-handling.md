@@ -77,10 +77,16 @@ defer cancel()
 
 result, err := html.ExtractWithContext(ctx, data)
 if err != nil {
-    if ctx.Err() == context.DeadlineExceeded {
-        // Тайм-аут
-    } else if ctx.Err() == context.Canceled {
+    switch {
+    case errors.Is(err, html.ErrProcessingTimeout):
+        // Внутренний тайм-аут ProcessingTimeout (в этот момент ctx.Err() может быть nil)
+    case ctx.Err() == context.DeadlineExceeded:
+        // Дедлайн пользовательского контекста истёк
+    case ctx.Err() == context.Canceled:
         // Ручная отмена
+    default:
+        // Другие ошибки (ErrInvalidHTML, ErrInputTooLarge и т.д.)
+        slog.Error("Извлечение не удалось", "err", err)
     }
 }
 ```

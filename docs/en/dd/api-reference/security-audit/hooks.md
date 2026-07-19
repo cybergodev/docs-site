@@ -1,23 +1,23 @@
 ---
 sidebar_label: "HookRegistry"
 title: "Hook System - CyberGo DD | HookRegistry"
-description: "CyberGo DD lifecycle hooks API: custom callbacks for BeforeLog, AfterLog, OnRotate, OnError events via HookRegistry for log processing extensions."
+description: "Complete API documentation for CyberGo DD's lifecycle hook system. Register custom callbacks on key events such as before/after log writes (BeforeLog/AfterLog), file rotation (OnRotate), and error occurrence (OnError). Provides the HookRegistry registry and a flexible logging-extension mechanism."
 sidebar_position: 1
 ---
 
 # Hook System
 
-DD provides an event-based hook system for inserting custom logic at key points in the log lifecycle.
+DD provides an event-based hook system that allows inserting custom logic at key points of the log lifecycle.
 
 ## Hook Events
 
-| Constant | String() | Trigger Timing |
+| Constant | String() | When triggered |
 |----------|----------|----------------|
-| `HookBeforeLog` | `"BeforeLog"` | Before log write |
-| `HookAfterLog` | `"AfterLog"` | After log write |
-| `HookOnFilter` | `"OnFilter"` | During sensitive data filtering |
-| `HookOnRotate` | `"OnRotate"` | During file rotation |
-| `HookOnClose` | `"OnClose"` | When logger is closed |
+| `HookBeforeLog` | `"BeforeLog"` | Before a log is written |
+| `HookAfterLog` | `"AfterLog"` | After a log is written |
+| `HookOnFilter` | `"OnFilter"` | When sensitive data is filtered |
+| `HookOnRotate` | `"OnRotate"` | When a file is rotated |
+| `HookOnClose` | `"OnClose"` | When the logger is closed |
 | `HookOnError` | `"OnError"` | When an error occurs |
 
 ## Hook Function Types
@@ -28,11 +28,11 @@ DD provides an event-based hook system for inserting custom logic at key points 
 type Hook func(ctx context.Context, hookCtx *HookContext) error
 ```
 
-Hook function signature. Called when a log-lifecycle event is triggered.
+Hook function signature. Invoked when a log-lifecycle event is triggered.
 
 - When a `BeforeLog` hook returns an error, **the log entry is not written**.
-- For other events, a returned error by default aborts subsequent hook execution; if an error handler is set (see `HookErrorHandler`), the error is instead handed to the handler and all hooks still run.
-- Panics raised inside a hook are caught by the `HookRegistry` and converted into errors, so they cannot bring down the whole application.
+- For other events, a returned error by default stops subsequent hook execution; if an error handler is set (see `HookErrorHandler`), the error is instead passed to the handler and all hooks still execute.
+- Panics inside hooks are caught by `HookRegistry` and converted to errors, avoiding application crashes.
 
 ### HookErrorHandler
 
@@ -40,7 +40,7 @@ Hook function signature. Called when a log-lifecycle event is triggered.
 type HookErrorHandler func(event HookEvent, hookCtx *HookContext, err error)
 ```
 
-Hook error handler signature.
+Hook error-handler signature.
 
 Parameters:
 
@@ -48,11 +48,11 @@ Parameters:
 - `hookCtx`: the context passed to the hook
 - `err`: the error returned by the hook (or converted from a panic)
 
-Once an error handler is set (via `HookRegistry.SetErrorHandler` or `HooksConfig.ErrorHandler`), `Trigger` runs all hooks instead of stopping on the first error; each error is passed to the handler. **Exception**: for the `BeforeLog` event, even when a handler is set, a returned error still prevents the log from being written. The handler itself must not panic; if it does, the panic is recovered and printed to stderr.
+Once an error handler is set (via `HookRegistry.SetErrorHandler` or `HooksConfig.ErrorHandler`), `Trigger` runs all hooks instead of stopping on the first error; each error is passed to the handler. **Exception**: for the `BeforeLog` event, even with a handler set, a returned error still prevents the log from being written. The handler itself should not panic; if it does, the panic is recovered and printed to stderr.
 
 ## HookRegistry
 
-Hook registry, managing registration and triggering of all hooks. Thread-safe.
+Hook registry, managing hook registration and triggering. Thread-safe.
 
 ### Creation
 
@@ -60,7 +60,7 @@ Hook registry, managing registration and triggering of all hooks. Thread-safe.
 // Empty registry
 reg := dd.NewHookRegistry()
 
-// Create from configuration
+// From config
 reg := dd.NewHooksFromConfig(hooksConfig)
 ```
 
@@ -68,12 +68,12 @@ reg := dd.NewHooksFromConfig(hooksConfig)
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `Add` | `(event HookEvent, hook Hook)` | Register hook |
-| `Remove` | `(event HookEvent)` | Remove all hooks for event |
-| `Trigger` | `(ctx, event, hookCtx) error` | Trigger all hooks for event |
+| `Add` | `(event HookEvent, hook Hook)` | Register a hook |
+| `Remove` | `(event HookEvent)` | Remove all hooks for an event |
+| `Trigger` | `(ctx, event, hookCtx) error` | Trigger all hooks for an event |
 | `Clear` | `()` | Clear all hooks |
-| `ClearFor` | `(event HookEvent)` | Clear hooks for specified event |
-| `SetErrorHandler` | `(handler HookErrorHandler)` | Set error handler |
+| `ClearFor` | `(event HookEvent)` | Clear hooks for the specified event |
+| `SetErrorHandler` | `(handler HookErrorHandler)` | Set the error handler |
 
 ### Registering Hooks
 
@@ -82,7 +82,7 @@ reg := dd.NewHookRegistry()
 
 // BeforeLog hook
 reg.Add(dd.HookBeforeLog, func(ctx context.Context, hc *dd.HookContext) error {
-    fmt.Println("About to write log:", hc.Message)
+    fmt.Println("about to write log:", hc.Message)
     return nil
 })
 
@@ -94,8 +94,8 @@ reg.Add(dd.HookAfterLog, func(ctx context.Context, hc *dd.HookContext) error {
 
 // OnRotate hook
 reg.Add(dd.HookOnRotate, func(ctx context.Context, hc *dd.HookContext) error {
-    dd.InfoWith("File rotation completed",
-        dd.String("new_file", hc.Message),
+    dd.InfoWith("file rotation completed",
+        dd.String("path", hc.Metadata["path"].(string)),
     )
     return nil
 })
@@ -104,13 +104,13 @@ reg.Add(dd.HookOnRotate, func(ctx context.Context, hc *dd.HookContext) error {
 ### Managing via Logger
 
 ```go
-// Add single hook
+// Add a single hook
 _ = logger.AddHook(dd.HookBeforeLog, myHook)
 
-// Replace entire registry
+// Replace the entire registry
 _ = logger.SetHooks(reg)
 
-// Get current registry
+// Get the current registry
 hooks := logger.GetHooks()
 ```
 
@@ -125,10 +125,10 @@ type HookContext struct {
     Message        string         // Log message
     Fields         []Field        // Structured fields (after filtering)
     OriginalFields []Field        // Original fields (before filtering)
-    Error          error          // Error information (OnError event)
+    Error          error          // Error info (OnError event)
     Timestamp      time.Time      // Event time
     Writer         io.Writer      // Target Writer (write-related events)
-    Metadata       map[string]any // Additional metadata
+    Metadata       map[string]any // Extra metadata
 }
 ```
 
@@ -138,12 +138,12 @@ Structured hook configuration, recommended for batch hook registration.
 
 ```go
 type HooksConfig struct {
-    BeforeLog    []Hook              // Pre-log write hooks
-    AfterLog     []Hook              // Post-log write hooks
-    OnFilter     []Hook              // Sensitive data filtering hooks
-    OnRotate     []Hook              // File rotation hooks
-    OnClose      []Hook              // Logger close hooks
-    OnError      []Hook              // Write error hooks
+    BeforeLog    []Hook              // Pre-write hooks
+    AfterLog     []Hook              // Post-write hooks
+    OnFilter     []Hook              // Hooks for sensitive-data filtering
+    OnRotate     []Hook              // Hooks for file rotation
+    OnClose      []Hook              // Hooks for logger close
+    OnError      []Hook              // Hooks for write errors
     ErrorHandler HookErrorHandler    // Error handler
 }
 ```
@@ -159,7 +159,7 @@ cfg := dd.HooksConfig{
         return nil
     }},
     ErrorHandler: func(event dd.HookEvent, hc *dd.HookContext, err error) {
-        log.Printf("Hook error: %v\n", err)
+        log.Printf("hook error: %v\n", err)
     },
 }
 registry := dd.NewHooksFromConfig(cfg)
@@ -186,5 +186,5 @@ _ = logger.SetHooks(reg)
 ## Next Steps
 
 - [Logger](../core/logger) -- AddHook / SetHooks methods
-- [Configuration](../core/config) -- HooksConfig configuration
-- [Interface Definitions](../core/interfaces) -- Hook type definition
+- [Config](../core/config) -- HooksConfig configuration
+- [Interfaces](../core/interfaces) -- Hook type definitions

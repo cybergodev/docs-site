@@ -95,8 +95,10 @@ if err != nil {
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
     // 自定义写入错误处理
-    if errors.Is(err, dd.ErrWriterNotFound) {
-        // Writer 已被移除
+    // 注意：此回调仅在 writer.Write() 失败时触发，传入的是 writer 自身错误；
+    // dd.ErrWriterNotFound 由 RemoveWriter 直接返回给调用者，不会经此回调传递。
+    if errors.Is(err, io.ErrShortWrite) {
+        // 写入字节数不足
         return
     }
     // 记录错误指标
@@ -166,7 +168,7 @@ if err != nil {
 
 ## 钩子错误
 
-使用钩子时可通过钩子配置的 `OnError` 回调来捕获和处理钩子执行中的错误：
+使用钩子时可通过钩子配置的 `ErrorHandler` 回调来捕获和处理钩子执行中的错误：
 
 ```go
 // 通过 HooksConfig 配置钩子错误处理

@@ -61,7 +61,7 @@ result, err := client.Get("https://httpbin.org/get")
 | `DefaultConfig()` | General purpose | Secure defaults, SSRF protection enabled |
 | `SecureConfig()` | Security-sensitive scenarios | Disables auto-redirect, strict timeouts |
 | `PerformanceConfig()` | High throughput scenarios | Large connection pool, long timeouts, cookies enabled |
-| `TestingConfig()` | Test environments | Disables security checks and HTTP/2, short timeouts |
+| `TestingConfig()` | Test environments | Disables security checks and HTTP/2, enables cookies |
 | `MinimalConfig()` | Lightweight requests | No retries, no redirects |
 
 ```go

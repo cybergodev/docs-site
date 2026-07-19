@@ -92,7 +92,7 @@ client, _ := httpc.New(&httpc.Config{
 func RequestIDMiddleware(headerName string, generator func() string) MiddlewareFunc
 ```
 
-각 요청에 고유 ID를 추가합니다. 기본적으로 `crypto/rand`로 32자 16진수 ID를 생성합니다.
+각 요청에 고유 ID를 추가합니다. 기본적으로 `crypto/rand`로 32자 16진수 ID를 생성합니다. 요청에 이미 동일한 이름의 헤더가 있으면 원래 값을 유지하고 덮어쓰지 않습니다.
 
 | 매개변수 | 설명 |
 |-----------|------|
@@ -121,6 +121,10 @@ func TimeoutMiddleware(timeout time.Duration) MiddlewareFunc
 
 미들웨어 레벨의 타임아웃 제어. 클라이언트 내장 타임아웃 전에 적용되며, 타임아웃 시 컨텍스트를 취소하고 오류를 반환합니다.
 
+:::warning Download나 스트리밍 요청에는 사용 금지
+`TimeoutMiddleware`의 `defer cancel()`은 핸들러가 반환(응답 헤더 수신)된 직후에 실행되어, `Download`나 `WithStreamBody` 요청에서는 응답 본문을 읽기 전에 컨텍스트가 미리 취소되어 "context canceled" 오류가 발생합니다. 스트리밍/다운로드 시나리오에서는 [`WithTimeout`](../core/options#withtimeout)을 대신 사용하세요.
+:::
+
 ```go
 client, _ := httpc.New(&httpc.Config{
     Middleware: &httpc.MiddlewareConfig{
@@ -137,7 +141,7 @@ client, _ := httpc.New(&httpc.Config{
 func HeaderMiddleware(headers map[string]string) MiddlewareFunc
 ```
 
-모든 요청에 정적 요청 헤더를 추가합니다. 생성 시 헤더 보안 검증을 수행합니다(CRLF 주입 방지).
+모든 요청에 정적 요청 헤더를 추가합니다. 생성 시 헤더 보안 검증을 수행합니다(CRLF 주입 방지). 요청에 이미 동일한 이름의 헤더가 있으면 충돌 시 덮어씁니다.
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -178,7 +182,7 @@ client, _ := httpc.New(&httpc.Config{
 func AuditMiddleware(onAudit func(event AuditEvent)) MiddlewareFunc
 ```
 
-보안 감사 미들웨어로, 금융, 의료, 정부 등 컴플라이언스 시나리오에 적합합니다. 완전한 요청/응답 정보를 기록하며, URL은 자동 마스킹됩니다.
+보안 감사 미들웨어로, 금융, 의료, 정부 등 컴플라이언스 시나리오에 적합합니다. 기본적으로 요청/응답 메타데이터(메서드, URL, 상태 코드, 소요 시간, 재시도 등)를 기록하며, URL은 자동 마스킹됩니다. 완전한 헤더를 기록하려면 [`AuditMiddlewareWithConfig`](#auditmiddlewarewithconfig)에 `IncludeHeaders: true`를 설정하세요.
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -266,7 +270,7 @@ event := httpc.AuditEvent{
     StatusCode: 200,
 }
 data, _ := json.Marshal(event)
-// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"durationMs":150,"attempts":0}
+// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"attempts":0,"durationMs":150}
 ```
 
 ### AuditMiddlewareConfig

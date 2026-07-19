@@ -1,7 +1,7 @@
 ---
 sidebar_label: "ジェネリクス"
 title: "ジェネリクス - CyberGo JSON | API リファレンス"
-description: "CyberGo JSON ジェネリック API：GetTyped[T]、Result[T]、AccessResult で Go 1.18+ のジェネリクスを活用し、コンパイル時の型安全性を実現します。"
+description: "CyberGo JSON ジェネリック API：GetTyped[T] ジェネリック取得、Result[T] 結果型、AccessResult 動的アクセスで、Go 1.18+ のジェネリクスを活用しコンパイル時の型安全チェックを実現します。"
 sidebar_position: 10
 ---
 

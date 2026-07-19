@@ -1,7 +1,5 @@
 # 贡献指南
 
-感谢你对 CyberGo 文档项目的关注！本文档面向**人类贡献者**，帮助你在本地跑起站点、按规范提交内容改动。
-
 > 本仓是 CyberGo 6 个 Go 库的 [VitePress](https://vitepress.dev/) 多语言文档站，部署于 [www.cybergo.dev](https://www.cybergo.dev)。库本身的源码在各自独立仓库，本仓只维护**文档**。
 
 ---
@@ -39,7 +37,7 @@ npm install
 npm run dev          # 启动本地预览（含 dev 重定向中间件）
 ```
 
-默认在 `http://localhost:5173` 提供预览。
+默认在 `http://localhost:5310` 提供预览。
 
 ### 常用脚本
 

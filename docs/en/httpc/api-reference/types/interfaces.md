@@ -300,7 +300,9 @@ func NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner
 
 Combines multiple pinners into one. The certificate is accepted as long as **any one** of the wrapped pinners accepts it. Use this to support multiple pinning strategies simultaneously, or to combine rotation keys built with different constructors.
 
-With no arguments it returns a no-op pinner (rejects all certificates).
+:::warning Zero-argument behavior: accepts all certificates
+With no arguments it returns an empty chain that **does not verify any certificate** (its verification logic returns `nil` directly) -- that is, **it accepts all certificates, equivalent to disabling certificate pinning** (the source `internal/security/certpin.go` comment reads "No pinners means no pinning"). This is the opposite of the intuitive "no pinner means reject" expectation, and is fail-open. Always pass at least one valid pinner; do not rely on the zero-argument behavior.
+:::
 
 :::tip Further reading
 For the complete guide to certificate pinning (hash generation, key rotation strategies, production deployment), see [TLS Certificate Pinning](../../security/tls-certpin).

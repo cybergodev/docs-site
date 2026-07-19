@@ -78,7 +78,7 @@ Processor 对 `*Claims` 和其他类型执行不同的验证路径：
 | 类型 | 验证行为 |
 |------|----------|
 | `*Claims` | 深度验证：所有字段（长度限制、注入模式、控制字符） |
-| 其他类型 | 调用 `Validate()` + 注册声明字符串清洗（Issuer、Subject、ID、Audience） |
+| 其他类型 | 调用 `Validate()` + 注册声明字符串清洗（Issuer、Subject、ID、TokenType、Audience） |
 
 :::warning 注意
 对于非 `*Claims` 类型，自定义结构体字段**不会**被深度验证。实现者须在 `Validate()` 方法中自行校验所有业务字段。

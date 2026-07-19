@@ -1,7 +1,7 @@
 ---
 sidebar_label: "セキュリティフィルタ"
 title: "セキュリティフィルタ - CyberGo DD | 機密データフィルタリング"
-description: "CyberGo DD 機密データフィルタリング API。SensitiveDataFilter ルール、SecurityConfig ポリシー、プリセットを含み、パスワード、API キー、Token、電話番号、ID 番号を自動マスキングして漏洩を防止。"
+description: "CyberGo DD 機密データフィルタリング完全 API ドキュメント。SensitiveDataFilter フィルタリングルール設定、SecurityConfig セキュリティポリシーオプション、プリセットセキュリティ設定スキームを含み、ログ内のパスワード、API キー、Token、電話番号、ID 番号などの機密情報を自動検出・マスキングし、ログ漏洩リスクを効果的に防止します。"
 sidebar_position: 2
 ---
 
@@ -59,12 +59,12 @@ type SecurityConfig struct {
     MaxMessageSize  int                       // メッセージサイズ上限（バイト、0 は制限なし、プリセット設定のデフォルトは 5MB）
     MaxWriters      int                       // 最大 Writer 数（プリセット設定のデフォルトは 100）
     SensitiveFilter *SensitiveDataFilter      // 機密データフィルター
-    RateLimitConfig *internal.RateLimitConfig // レート制限設定（内部型、プリセット設定で自動入力、nil はレート制限無効）
+    RateLimitConfig *internal.RateLimitConfig // レート制限設定（内部型、nil はレート制限無効を示す；プリセット設定はいずれもこのフィールドを埋めない）
 }
 ```
 
 :::info RateLimitConfig について
-`RateLimitConfig` はログのレート制限を制御し、ログフラッディング（DoS）を防止して高負荷時のシステム安定性を維持します。このフィールドは内部型（`*internal.RateLimitConfig`）であり、直接生成できません。通常、`SecurityConfigForLevel` や `DefaultSecureConfig` などのプリセット設定により自動入力されます。レート制限を無効にするには `nil` に設定してください。
+`RateLimitConfig` はログのレート制限を制御し、ログフラッディング（DoS）を防止して高負荷時のシステム安定性を維持します。このフィールドは内部型（`*internal.RateLimitConfig`）であり、直接生成できません。すべてのプリセット設定（`DefaultSecurityConfig`、`DefaultSecureConfig`、`SecurityConfigForLevel` など）はこのフィールドを**埋めません**、つまりデフォルトではレート制限が有効になりません；明示的に設定した場合のみ、Logger がそれに従いレートリミッターを初期化します。レート制限を無効にするには `nil` に設定してください。
 :::
 
 ### FilterStats
@@ -99,8 +99,8 @@ type SecurityLevel int
 
 | 定数 | 説明 |
 |------|------|
-| `SecurityLevelDevelopment` | 開発環境（フィルタリングなし、レート制限なし、監査なし） |
-| `SecurityLevelBasic` | 基本フィルタリング（パスワード、API Key、クレジットカード） |
+| `SecurityLevelDevelopment` | 開発環境（機密フィルタリングなし、レート制限なし） |
+| `SecurityLevelBasic` | 基本フィルタリング（パスワード、トークン、API Key、クレジットカード、SSN、電話番号、SWIFT/CVV など約 40 種の一般的な機密データ） |
 | `SecurityLevelStandard` | 標準フィルタリング（本番環境推奨） |
 | `SecurityLevelStrict` | 厳格フィルタリング（PII/金融データ環境） |
 | `SecurityLevelParanoid` | 最高レベルフィルタリング（高リスク環境） |
@@ -142,9 +142,12 @@ func (c *SecurityConfig) Clone() *SecurityConfig
 ### Config で設定
 
 ```go
+// DefaultConfig には DefaultSecurityConfig() が組み込み済みで、通常は明示的な代入は不要
 cfg := dd.DefaultConfig()
-cfg.Security = dd.DefaultSecurityConfig()
 logger, _ := dd.New(cfg)
+
+// より高いセキュリティレベルの設定に置き換える場合は明示的に上書き
+// cfg.Security = dd.DefaultSecureConfig()
 ```
 
 ### 実行時に変更
@@ -174,7 +177,7 @@ data := map[string]any{
         "token":    "eyJhbGciOi...",
     },
 }
-filtered := filter.FilterValueRecursive("data", data)
+filteredData := filter.FilterValueRecursive("data", data)
 ```
 
 ### フィルタリング統計のモニタリング

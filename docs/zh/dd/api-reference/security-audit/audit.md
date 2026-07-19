@@ -7,7 +7,7 @@ sidebar_position: 3
 
 # 审计日志
 
-DD 提供异步审计日志功能，记录安全相关事件，支持完整性签名和链式验证。
+DD 提供异步审计日志功能，记录安全相关事件，支持完整性签名和条目序列号追踪。
 
 ## AuditLogger
 
@@ -77,7 +77,7 @@ audit.LogSecurityViolation("sql_injection", "SQL 注入尝试", map[string]any{
 ```go
 type AuditConfig struct {
     Enabled          bool             // 是否启用审计（默认 true）
-    Output           *os.File         // 输出文件（默认 os.Stderr）；为 nil 时事件仅经 Events 通道传递
+    Output           *os.File         // 输出文件（默认 os.Stderr）；为 nil 时不产生输出，事件仅计入统计
     BufferSize       int              // 异步事件缓冲区大小（默认 1000；为负数将校验失败）
     IncludeTimestamp bool             // 是否包含时间戳（默认 true）
     JSONFormat       bool             // JSON 格式输出（默认 true）

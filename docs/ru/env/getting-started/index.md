@@ -214,7 +214,7 @@ type Config struct {
     Password string        `env:"DB_PASSWORD"`
     Debug    bool          `env:"DEBUG" envDefault:"false"`
     Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"ALLOWED_HOSTS" envSeparator:","`
+    Hosts    []string      `env:"ALLOWED_HOSTS"`
 }
 
 func main() {
@@ -375,12 +375,16 @@ if err != nil {
         // Файл не найден
     case errors.Is(err, env.ErrFileTooLarge):
         // Файл слишком большой
-    case errors.Is(err, env.ErrForbiddenKey):
-        // Запрещённый ключ
-    case errors.Is(err, env.ErrInvalidKey):
-        // Неверный формат ключа
+    case errors.Is(err, env.ErrSecurityViolation):
+        // Запрещённый ключ (фактически возвращается *SecurityError)
     default:
         // Другая ошибка
+    }
+
+    // Недопустимый формат ключа: фактически возвращается *ValidationError, Field=="key"
+    var valErr *env.ValidationError
+    if errors.As(err, &valErr) && valErr.Field == "key" {
+        // Недопустимый формат ключа
     }
 }
 ```

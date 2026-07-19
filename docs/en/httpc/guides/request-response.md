@@ -142,9 +142,12 @@ result, err := client.Get(url, httpc.WithMaxRetries(5))
 // Redirects
 result, err := client.Get(url,
     httpc.WithFollowRedirects(false),    // Disable redirects
-    httpc.WithMaxRedirects(3),           // Max 3 redirects
 )
 ```
+
+:::tip WithMaxRedirects(0) does not disable
+`WithMaxRedirects(0)` does **not** disable redirects -- the engine treats `0` as "unset" and falls back to the default of 10. To fully disable redirect following, use `WithFollowRedirects(false)`.
+:::
 
 ### Callbacks
 
@@ -238,14 +241,16 @@ HTTPC automatically handles decompression of gzip, deflate, and other content en
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // Max compressed body 10MB
+cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // Response body limit: enforced on streaming download; fallback for the decompressed limit in non-streaming reads
 cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // Max decompressed body 100MB
 ```
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `MaxResponseBodySize` | 10MB | Raw response body size limit |
+| `MaxResponseBodySize` | 10MB | Streaming download response body limit; falls back to the decompressed limit in non-streaming reads |
 | `MaxDecompressedBodySize` | 100MB | Decompressed response body size limit |
+
+The compressed body has a separate 100MB hard cap (`maxCompressedSize`, not configurable) that defends against decompression bombs, independent of `MaxResponseBodySize`.
 
 When the limit is exceeded, an error containing `"exceeds limit"` is returned, which can be handled via the `ClientError` type. `ErrResponseBodyTooLarge` is returned when `Result.Unmarshal()` parses a response body exceeding the 50MB JSON size limit (independent of `MaxResponseBodySize`).
 

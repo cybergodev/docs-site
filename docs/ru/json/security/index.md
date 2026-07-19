@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Обзор безопасности"
-title: "Безопасность - CyberGo JSON | Обзор"
-description: "Безопасность CyberGo JSON: валидация, лимиты MaxNestingDepthSecurity/MaxMemory, защита от инъекций, фильтрация данных и аудит."
+title: "Обзор безопасности - CyberGo JSON | Лучшие практики безопасности"
+description: "Лучшие практики безопасности CyberGo JSON: валидация входных данных, ограничения ресурсов MaxNestingDepthSecurity/MaxMemory, защита от обхода пути и JSON-инъекций, фильтрация конфиденциальных данных."
 sidebar_position: 1
 ---
 
@@ -145,15 +145,15 @@ for _, p := range patterns {
 
 #### Отключение паттернов по умолчанию
 
-Через `Config.DisableDefaultPatterns` можно отключить встроенные паттерны уровня предупреждения по умолчанию:
+Через `Config.DisableDefaultPatterns` можно отключить встроенные паттерны по умолчанию:
 
 ```go
 cfg := json.DefaultConfig()
-cfg.DisableDefaultPatterns = true // Отключить паттерны уровня предупреждения по умолчанию
+cfg.DisableDefaultPatterns = true // Отключить встроенные паттерны по умолчанию
 ```
 
 ::: warning Примечание
-`DisableDefaultPatterns` отключает только паттерны уровня предупреждения по умолчанию (`PatternLevelWarning`). Паттерны критического уровня (`PatternLevelCritical`) по умолчанию не затрагиваются.
+При `DisableDefaultPatterns=true` все встроенные паттерны, кроме 3 критических (`__proto__`, `constructor[`, `prototype.` — всегда принудительно сканируются), будут отключены. Примечание: все встроенные паттерны относятся к уровню Critical.
 :::
 
 ### Конфигурация для продакшена

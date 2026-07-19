@@ -63,7 +63,11 @@ for _, page := range pages {
 CPU 코어 수에 맞게 워커 풀 크기 설정:
 
 ```go
-cfg.WorkerPoolSize = runtime.NumCPU()
+// WorkerPoolSize 상한은 256, 고코어 머신에서는 상한 적용 필요
+if n := runtime.NumCPU(); n > 256 {
+    n = 256
+}
+cfg.WorkerPoolSize = n
 ```
 
 ## 입력 제어

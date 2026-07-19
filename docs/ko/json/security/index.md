@@ -1,7 +1,7 @@
 ---
 sidebar_label: "보안 개요"
 title: "보안 개요 - CyberGo JSON | 보안 모범 사례"
-description: "CyberGo JSON 보안 모범 사례: 입력 검증, MaxNestingDepthSecurity/MaxMemory, 경로 순회/JSON 인젝션 방어, 민감 데이터 필터링, 감사 로그로 보안을 보장합니다."
+description: "CyberGo JSON 보안 모범 사례: 입력 검증, MaxNestingDepthSecurity/MaxMemory 자원 제한, 경로 순회 및 JSON 인젝션 방어, 민감 데이터 필터링."
 sidebar_position: 1
 ---
 
@@ -145,15 +145,15 @@ for _, p := range patterns {
 
 #### 기본 패턴 비활성화
 
-`Config.DisableDefaultPatterns`로 내장된 기본 경고 수준 패턴을 비활성화할 수 있습니다:
+`Config.DisableDefaultPatterns`로 내장된 기본 패턴을 비활성화할 수 있습니다:
 
 ```go
 cfg := json.DefaultConfig()
-cfg.DisableDefaultPatterns = true // 기본 경고 수준 패턴 비활성화
+cfg.DisableDefaultPatterns = true // 내장 기본 패턴 비활성화
 ```
 
 :::warning 주의
-`DisableDefaultPatterns`는 기본 경고 수준(`PatternLevelWarning`) 패턴만 비활성화합니다. 심각 수준(`PatternLevelCritical`)의 기본 패턴은 영향을 받지 않습니다.
+`DisableDefaultPatterns=true`이면, 항상 강제 스캔하는 3개의 핵심 패턴(`__proto__`, `constructor[`, `prototype.`)을 제외하고 나머지 내장 패턴이 모두 비활성화됩니다. 참고: 내장 패턴은 모두 Critical 수준입니다.
 :::
 
 ### 프로덕션 환경 설정

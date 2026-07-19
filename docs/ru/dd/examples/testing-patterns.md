@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Паттерны тестирования"
 title: "Паттерны тестирования - CyberGo DD | Примеры LoggerRecorder"
-description: "Примеры паттернов тестирования CyberGo DD: LoggerRecorder для модульных и интеграционных тестов, утверждения полей, изоляция и проверка конкурентности."
+description: "Примеры паттернов тестирования CyberGo DD с подробным описанием полного использования LoggerRecorder в модульных и интеграционных тестах, включая утверждения сообщений логов, тестирование фильтрации по уровню, проверку значений полей, изоляцию тестовых случаев, проверку потокобезопасности и методы повышения покрытия тестами; применимо к тестированию логирования в различных проектах на Go."
 sidebar_position: 4
 ---
 
@@ -76,9 +76,14 @@ if len(errorEntries) > 0 {
     t.Error("Unexpected error logs")
 }
 
-// Использование DevelopmentConfig для захвата всех уровней
+// Использование уровня DEBUG для захвата всех уровней
+// Примечание: Recorder разбирает уровень по временной метке ISO 8601,
+// формат времени DevelopmentConfig с ним несовместим, поэтому используем
+// DefaultConfig и вручную задаём уровень DEBUG.
 rec2 := dd.NewLoggerRecorder()
-logger2, _ := rec2.NewLogger(dd.DevelopmentConfig())
+devCfg := dd.DefaultConfig()
+devCfg.Level = dd.LevelDebug
+logger2, _ := rec2.NewLogger(devCfg)
 logger2.Debug("Отладочная информация")
 debugs := rec2.EntriesAtLevel(dd.LevelDebug)
 ```

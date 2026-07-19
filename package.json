@@ -4,7 +4,7 @@
   "description": "CyberGo project documentation website",
   "type": "module",
   "scripts": {
-    "dev": "vitepress dev docs",
+    "dev": "vitepress dev docs --port 15310",
     "build": "tsx scripts/generate-search-index.ts && node --max-old-space-size=8192 ./node_modules/vitepress/bin/vitepress.js build docs && tsx scripts/fix-clean-urls.ts && tsx scripts/generate-project-redirects.ts && tsx scripts/generate-moved-redirects.ts && tsx scripts/generate-llms.ts && tsx scripts/generate-md-mirror.ts",
     "preview": "vitepress preview docs",
     "search-index": "tsx scripts/generate-search-index.ts",

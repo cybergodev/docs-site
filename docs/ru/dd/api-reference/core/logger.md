@@ -14,7 +14,9 @@ sidebar_position: 2
 ```go
 // Через New
 logger, _ := dd.New(dd.DefaultConfig())
+```
 
+```go
 // С пользовательской конфигурацией
 logger, _ := dd.New(dd.Config{
     Level: dd.LevelInfo,
@@ -35,7 +37,7 @@ logger, _ := dd.New(dd.Config{
 | `Info(args ...any)` | Лог уровня Info |
 | `Warn(args ...any)` | Лог уровня Warn |
 | `Error(args ...any)` | Лог уровня Error |
-| `Fatal(args ...any)` | Лог уровня Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
+| `Fatal(args ...any)` | Лог уровня Fatal (по умолчанию вызывает os.Exit(1), **defer не выполняется**; можно настроить через FatalHandler) |
 | `Log(level LogLevel, args ...any)` | Лог с указанным уровнем |
 
 ### Форматированные логи
@@ -46,7 +48,7 @@ logger, _ := dd.New(dd.Config{
 | `Infof(format string, args ...any)` | Форматированный Info |
 | `Warnf(format string, args ...any)` | Форматированный Warn |
 | `Errorf(format string, args ...any)` | Форматированный Error |
-| `Fatalf(format string, args ...any)` | Форматированный Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
+| `Fatalf(format string, args ...any)` | Форматированный Fatal (по умолчанию вызывает os.Exit(1), **defer не выполняется**; можно настроить через FatalHandler) |
 | `Logf(level LogLevel, format string, args ...any)` | Форматированный с указанным уровнем |
 
 ### Структурированные логи
@@ -57,7 +59,7 @@ logger, _ := dd.New(dd.Config{
 | `InfoWith(msg string, fields ...Field)` | Структурированный Info |
 | `WarnWith(msg string, fields ...Field)` | Структурированный Warn |
 | `ErrorWith(msg string, fields ...Field)` | Структурированный Error |
-| `FatalWith(msg string, fields ...Field)` | Структурированный Fatal (по умолчанию вызывает os.Exit(1), настраивается через FatalHandler) |
+| `FatalWith(msg string, fields ...Field)` | Структурированный Fatal (по умолчанию вызывает os.Exit(1), **defer не выполняется**; можно настроить через FatalHandler) |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | Структурированный с указанным уровнем |
 
 ```go
@@ -217,10 +219,10 @@ active := logger.ActiveFilterGoroutines()
 | `Print(args ...any)` | Вывод в настроенный Writer (уровень Info, с фильтрацией безопасности) |
 | `Println(args ...any)` | Аналогично Print (базовый Log() уже добавляет перенос строки) |
 | `Printf(format string, args ...any)` | Форматированный вывод (уровень Info, с фильтрацией безопасности) |
-| `JSON(data ...any)` | Отладочный вывод JSON в stdout (без фильтрации безопасности) |
-| `JSONF(format string, args ...any)` | Форматированный отладочный вывод JSON в stdout (без фильтрации безопасности) |
-| `Text(data ...any)` | Отладочный текстовый вывод в stdout (без фильтрации безопасности) |
-| `Textf(format string, args ...any)` | Форматированный текстовый отладочный вывод в stdout (без фильтрации безопасности) |
+| `JSON(data ...any)` | Отладочный вывод JSON в stdout (с информацией о вызывающем, без фильтрации безопасности) |
+| `JSONF(format string, args ...any)` | Форматированный отладочный вывод JSON в stdout (с информацией о вызывающем, без фильтрации безопасности) |
+| `Text(data ...any)` | Отладочный текстовый вывод в stdout (без информации о вызывающем, без фильтрации безопасности) |
+| `Textf(format string, args ...any)` | Форматированный текстовый отладочный вывод в stdout (без информации о вызывающем, без фильтрации безопасности) |
 
 ## Следующие шаги
 

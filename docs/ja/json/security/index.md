@@ -1,6 +1,6 @@
 ---
 sidebar_label: "セキュリティ概要"
-title: "セキュリティ概要 - CyberGo JSON | ベストプラクティス"
+title: "セキュリティ概要 - CyberGo JSON | セキュリティベストプラクティス"
 description: "CyberGo JSON セキュリティベストプラクティス：入力バリデーション、MaxNestingDepthSecurity/MaxMemory リソース制限、パストラバーサルと JSON インジェクション防御、機密データフィルタリングで本番を守ります。"
 sidebar_position: 1
 ---
@@ -145,15 +145,15 @@ for _, p := range patterns {
 
 #### デフォルトパターンの無効化
 
-`Config.DisableDefaultPatterns` で組み込みのデフォルト警告レベルパターンを無効にできます：
+`Config.DisableDefaultPatterns` で組み込みのデフォルトパターンを無効にできます：
 
 ```go
 cfg := json.DefaultConfig()
-cfg.DisableDefaultPatterns = true
+cfg.DisableDefaultPatterns = true // 組み込みデフォルトパターンを無効化
 ```
 
 ::: warning 注意
-`__proto__`、`constructor[`、`prototype.` などの致命的パターンは常に強制チェックされ、無効化できません。
+`DisableDefaultPatterns=true` の場合、3つの重要パターン（`__proto__`、`constructor[`、`prototype.`、常に強制スキャン）を除き、その他の組み込みパターンはすべて無効化されます。注意：組み込みパターンはすべて Critical レベルです。
 :::
 
 ### プロダクション環境の設定

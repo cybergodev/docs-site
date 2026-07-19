@@ -14,8 +14,7 @@
  * so both files deploy at the site root (/llms.txt, /llms-full.txt).
  *
  * frontmatter is parsed by hand (title/description only) to avoid pulling in a
- * YAML dependency; CLAUDE.md guarantees both fields are single-line and
- * double-quoted, which is all this needs.
+ * YAML dependency;
  *
  * Run after `vitepress build` (see package.json `build`).
  */

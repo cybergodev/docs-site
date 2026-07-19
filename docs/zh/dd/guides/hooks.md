@@ -17,7 +17,7 @@ DD 提供 6 种生命周期钩子事件：
 |------|----------|----------|
 | `HookBeforeLog` | 日志格式化之前（字段已过滤） | 条件跳过、采样控制 |
 | `HookAfterLog` | 日志写入完成 | 更新指标、发送通知 |
-| `HookOnFilter` | 安全过滤触发 | 记录脱敏事件、审计 |
+| `HookOnFilter` | 字段值被脱敏时触发（消息文本脱敏不触发；hook 仅收到字段 key，不收到原值） | 记录脱敏事件、审计 |
 | `HookOnRotate` | 文件轮换完成 | 通知运维、上传旧文件 |
 | `HookOnClose` | Logger 关闭 | 清理资源、发送最终报告 |
 | `HookOnError` | 写入错误发生 | 告警、降级处理 |
@@ -145,8 +145,7 @@ registry.Add(dd.HookBeforeLog, func(ctx context.Context, hCtx *dd.HookContext) e
 registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) error {
     // 通知监控系统
     monitoring.Alert("log_rotated", map[string]any{
-        "file":     hCtx.Metadata["file"],
-        "new_file": hCtx.Metadata["new_file"],
+        "path": hCtx.Metadata["path"],
     })
     return nil
 })
@@ -204,6 +203,10 @@ registry.Add(dd.HookAfterLog, newHookFunc)
 
 // 运行时移除（通过 HookRegistry 方法）
 ```
+
+:::warning registry 克隆
+Logger 创建时会克隆传入的 `registry`（`dd.New(dd.Config{Hooks: registry})` 后内部存的是副本），之后再修改原 `registry` 不影响已创建的 Logger。运行时变更**已创建 Logger** 的钩子，请用 `logger.AddHook(event, hook)`（内部 Clone-Modify-Store）。
+:::
 
 ## 下一步
 

@@ -52,11 +52,11 @@ var (
 )
 ```
 
-**禁止キーのチェック：**
+**禁止キーのチェック（実際は `*SecurityError` を返し、`ErrSecurityViolation` に一致）：**
 
 ```go
 err := loader.Set("PATH", "/malicious")
-if errors.Is(err, env.ErrForbiddenKey) {
+if errors.Is(err, env.ErrSecurityViolation) {
     log.Println("禁止キーの設定を試みました")
 }
 ```
@@ -103,9 +103,10 @@ if errors.Is(err, env.ErrNotInitialized) {
     // 先に env.Load() または env.LoadWithConfig() を呼び出す必要がある
 }
 
-// 必須キーが不足していないか確認
-if errors.Is(err, env.ErrMissingRequired) {
-    // 必須キーが不足
+// 必須キーが不足していないか確認（実際は *ValidationError、Rule=="required"）
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Rule == "required" {
+    // 必須キーが不足: valErr.Message に不足キーのリストを含む
 }
 ```
 
@@ -341,17 +342,19 @@ case errors.Is(err, env.ErrFileTooLarge):
     // ファイルが大きすぎます
     log.Fatal("設定ファイルが大きすぎます")
 
-case errors.Is(err, env.ErrForbiddenKey):
-    // 禁止キー
+case errors.Is(err, env.ErrSecurityViolation):
+    // 禁止キー（実際は *SecurityError を返す）
     log.Fatal("禁止キーを検出")
-
-case errors.Is(err, env.ErrInvalidKey):
-    // 無効なキーフォーマット
-    log.Fatal("無効なキーを検出")
 
 case err != nil:
     // その他のエラー
     log.Fatalf("読み込み失敗: %v", err)
+}
+
+// キー形式が不正（実際は *ValidationError、Field=="key"）
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Field == "key" {
+    log.Fatalf("無効なキーを検出: %s", valErr.Message)
 }
 ```
 
@@ -534,7 +537,7 @@ func handleLoadError(err error) {
         errors.As(err, &fileErr)
         log.Fatalf("ファイルが大きすぎます: %s (%d bytes)", fileErr.Path, fileErr.Size)
 
-    case errors.Is(err, env.ErrForbiddenKey):
+    case errors.Is(err, env.ErrSecurityViolation):
         log.Fatal("禁止キーを検出")
     }
 
@@ -556,11 +559,11 @@ func handleLoadError(err error) {
 func handleValidationError(err error) {
     var valErr *env.ValidationError
     if errors.As(err, &valErr) {
+        if valErr.Rule == "required" {
+            // 必須キーが不足: valErr.Message に不足キーのリストを含む
+            log.Fatalf("必須キーが不足: %s", valErr.Message)
+        }
         log.Fatalf("検証失敗: %s - %s", valErr.Field, valErr.Message)
-    }
-
-    if errors.Is(err, env.ErrMissingRequired) {
-        log.Fatal("必須キーが不足")
     }
 
     log.Fatalf("検証失敗: %v", err)

@@ -316,7 +316,7 @@ BASE_URL=https://api.example.com
 API_URL=${BASE_URL}/v1
 
 # 기본값
-LOG_LEVEL=${LOG_LEVEL:-info}
+LOG_LEVEL=info
 ```
 
 ### 변수 확장
@@ -351,9 +351,9 @@ PORT=8080
 # 다른 변수 참조
 URL=http://${HOST}:${PORT}
 
-# 기본값
-TIMEOUT=${TIMEOUT:-30s}
-DEBUG=${DEBUG:-false}
+# 기본값 (다른 변수 참조, 정의되지 않은 경우 기본값 사용)
+TIMEOUT_VALUE=${TIMEOUT:-30s}
+DEBUG_VALUE=${DEBUG:-false}
 ```
 
 ### export 구문
@@ -472,13 +472,16 @@ envStr, _ := env.Marshal(data)
 
 ```go [JSON]
 jsonStr, _ := env.Marshal(data, env.FormatJSON)
-// {"HOST":"localhost","PORT":"8080"}
+// {
+//   "HOST": "localhost",
+//   "PORT": 8080
+// }
 ```
 
 ```go [YAML]
 yamlStr, _ := env.Marshal(data, env.FormatYAML)
 // HOST: localhost
-// PORT: "8080"
+// PORT: 8080
 ```
 
 :::

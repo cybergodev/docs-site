@@ -25,10 +25,10 @@ for _, link := range links {
 输出示例：
 
 ```text
-[link] Go 官网 - https://go.dev
 [image] Gopher 吉祥物 - gopher.png
-[css] style - https://example.com/style.css
-[js] app - https://example.com/app.js
+[js] app.js - https://example.com/app.js
+[css] style.css - https://example.com/style.css
+[link] Go 官网 - https://go.dev
 ```
 
 ## 链接类型
@@ -39,7 +39,7 @@ for _, link := range links {
 |------|----------|------|
 | `link` | `<a>` | 页面链接 |
 | `image` | `<img>` | 图片资源 |
-| `video` | `<video>`, `<iframe>`, `<embed>`, `<object>` | 视频资源 |
+| `video` | `<video>`，以及 `<iframe>`/`<embed>`/`<object>`（仅当 src 为视频 URL 时收录） | 视频资源 |
 | `audio` | `<audio>` | 音频资源 |
 | `css` | `<link rel="stylesheet">` | 样式表 |
 | `media` | `<source>` | 通用媒体资源（无法确定视频/音频时） |
@@ -66,9 +66,9 @@ for typ, items := range groups {
 
 ```text
 === image (3) ===
-  https://example.com/logo.png
   https://example.com/hero.jpg
   https://example.com/icon.svg
+  https://example.com/logo.png
 
 === css (2) ===
   https://example.com/style.css
@@ -77,6 +77,10 @@ for typ, items := range groups {
 === js (1) ===
   https://example.com/app.js
 ```
+
+:::tip 分组顺序
+`GroupLinksByType` 返回 `map`，**组间迭代顺序不确定**；每组内部保持 `ExtractAllLinks` 的 URL 升序。
+:::
 
 ## 配置过滤规则
 

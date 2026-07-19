@@ -239,7 +239,7 @@ cfgCopy.EnableValidation = true // Does not affect original config
 
 Signature: `func (c *Config) Validate() error`
 
-Validates the configuration and automatically corrects invalid values. This method **modifies the Config in place**, correcting invalid fields to their corresponding minimum valid values.
+Validates the configuration and automatically corrects invalid values. This method **modifies the Config in place**, correcting invalid fields to within their valid ranges: values that are too small (≤0) are raised to the minimum, and values that exceed the upper bound are capped at the maximum.
 
 ```go
 cfg := json.DefaultConfig()

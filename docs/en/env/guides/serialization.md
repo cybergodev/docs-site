@@ -68,7 +68,7 @@ func main() {
     // Output:
     // {
     //   "HOST": "localhost",
-    //   "PORT": "8080"
+    //   "PORT": 8080
     // }
 }
 ```
@@ -99,8 +99,8 @@ func main() {
     fmt.Println(result)
     // Output:
     // DATABASE_HOST: localhost
-    // DATABASE_PORT: "5432"
     // DATABASE_NAME: myapp
+    // DATABASE_PORT: 5432
 }
 ```
 
@@ -137,9 +137,9 @@ func main() {
 
     fmt.Println(result)
     // Output:
+    // DEBUG=true
     // HOST=localhost
     // PORT=8080
-    // DEBUG=true
 }
 ```
 
@@ -384,24 +384,32 @@ ENABLED=true
 
 ## Custom Serialization
 
-### Implementing the Marshaler Interface
+::: tip Scope of the two custom interfaces
+- **Field-level**: For custom encoding/decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler` (`MarshalText()` / `UnmarshalText([]byte)`). When a struct is processed by `env.Marshal` / `env.UnmarshalInto`, the per-field logic recognizes these two interfaces.
+- **Top-level**: The `env.Marshaler` (`MarshalEnv()`) and `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) interfaces **only take effect on the top-level value passed directly to `env.Marshal` / `env.MarshalStruct` / `env.UnmarshalInto`**; if the value is a field inside an enclosing struct, they are not invoked.
+:::
+
+### Field-level: Implementing encoding.TextMarshaler
 
 ```go
 package main
 
 import (
     "fmt"
+    "strings"
+
     "github.com/cybergodev/env"
 )
 
 type LogLevel string
 
-type LogConfig struct {
-    Level LogLevel `env:"LOG_LEVEL"`
+// Implement encoding.TextMarshaler — invoked when serializing as a struct field
+func (l LogLevel) MarshalText() ([]byte, error) {
+    return []byte(strings.ToUpper(string(l))), nil
 }
 
-func (l LogLevel) MarshalEnv() ([]byte, error) {
-    return []byte(string(l)), nil
+type LogConfig struct {
+    Level LogLevel `env:"LOG_LEVEL"`
 }
 
 func main() {
@@ -415,28 +423,36 @@ func main() {
     }
 
     fmt.Println(result)
+    // Output: LOG_LEVEL=DEBUG
 }
 ```
 
-### Implementing the Unmarshaler Interface
+### Field-level: Implementing encoding.TextUnmarshaler
 
 ```go
 package main
 
 import (
     "fmt"
+
     "github.com/cybergodev/env"
 )
 
 type LogLevel string
 
-type LogConfig struct {
-    Level LogLevel `env:"LOG_LEVEL"`
+// Implement encoding.TextUnmarshaler — invoked when deserializing as a struct field
+func (l *LogLevel) UnmarshalText(text []byte) error {
+    switch string(text) {
+    case "debug", "info", "warn", "error":
+        *l = LogLevel(text)
+        return nil
+    default:
+        return fmt.Errorf("invalid log level: %s", string(text))
+    }
 }
 
-func (l *LogLevel) UnmarshalEnv(data map[string]string) error {
-    *l = LogLevel(data["LOG_LEVEL"])
-    return nil
+type LogConfig struct {
+    Level LogLevel `env:"LOG_LEVEL"`
 }
 
 func main() {
@@ -451,6 +467,42 @@ func main() {
     }
 
     fmt.Printf("Level: %s\n", cfg.Level)
+    // Output: Level: info
+}
+```
+
+### Top-level: Implementing env.Marshaler / env.Unmarshaler
+
+When you pass a value of a type **directly** to `env.Marshal` / `env.UnmarshalInto` (rather than as a field of an enclosing struct), the `env.Marshaler` / `env.Unmarshaler` interfaces take effect on that top-level value:
+
+```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/cybergodev/env"
+)
+
+// The top-level type directly implements env.Marshaler
+type EnvBlob string
+
+func (e EnvBlob) MarshalEnv() ([]byte, error) {
+    // Custom overall serialization output
+    return []byte("APP_NAME=custom\nAPP_VERSION=2.0.0"), nil
+}
+
+func main() {
+    // Serialize the top-level value directly (not a field of an enclosing struct)
+    result, err := env.Marshal(EnvBlob(""), env.FormatEnv)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println(result)
+    // Output:
+    // APP_NAME=custom
+    // APP_VERSION=2.0.0
 }
 ```
 

@@ -30,7 +30,7 @@ DD 日志库提供丰富的 API 接口，按功能模块组织如下：
 
 | 模块 | 说明 | 文档 |
 |------|------|------|
-| **Fields** | 结构化字段构造器（20+ 类型） | [结构化字段](./output-integration/fields) |
+| **Fields** | 结构化字段构造器（20 种） | [结构化字段](./output-integration/fields) |
 | **Hooks** | 生命周期钩子系统 | [钩子系统](./security-audit/hooks) |
 | **Security** | 敏感数据过滤和安全配置 | [安全过滤](./security-audit/security) |
 | **Audit** | 审计日志和审计事件 | [审计日志](./security-audit/audit) |

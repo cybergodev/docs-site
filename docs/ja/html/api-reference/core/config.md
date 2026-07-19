@@ -22,6 +22,10 @@ sidebar_position: 3
 | `WorkerPoolSize` | `int` | `4` | ワーカープールサイズ |
 | `ProcessingTimeout` | `time.Duration` | `30s` | 処理タイムアウト時間 |
 
+:::tip ヒント
+`MaxCacheEntries`、`CacheCleanup`、`ProcessingTimeout`を `0` に設定することはエラーではなく、明確な意味を持ちます（それぞれキャッシュ無効化、バックグラウンドクリーンアップ無効化、タイムアウトなしを意味します）。一方、`MaxInputSize`、`WorkerPoolSize`、`MaxDepth`は正の数でなければならず、そうでない場合は `ConfigError` が発生します。
+:::
+
 ### セキュリティ
 
 | フィールド | 型 | デフォルト値 | 説明 |
@@ -131,3 +135,22 @@ cfg := html.DefaultConfig()
 cfg.MaxInputSize = -1
 err := cfg.Validate() // ConfigError を返す
 ```
+
+### 検証の制約
+
+`Validate()` が数値フィールドに強制する値の範囲です（違反時は `ConfigError` を返し、`errors.Is(err, html.ErrInvalidConfig)` で判定できます）：
+
+| フィールド | 制約 | 不正な例 |
+|------|------|----------|
+| `MaxInputSize` | 正の数かつ ≤ `52428800`（50MB） | `0`、`-1`、`100000000` |
+| `MaxCacheEntries` | ≥ `0` かつ ≤ `100000` | `-1`、`200000` |
+| `CacheTTL` | ≥ `0` | `-1 * time.Second` |
+| `CacheCleanup` | ≥ `0` | `-1 * time.Minute` |
+| `WorkerPoolSize` | 正の数かつ ≤ `256` | `0`、`512` |
+| `MaxDepth` | 正の数かつ ≤ `500` | `0`、`1000` |
+| `ProcessingTimeout` | ≥ `0` | `-1 * time.Second` |
+| `InlineImageFormat` | 空 / `none` / `markdown` / `html` / `placeholder` | `"pdf"` |
+| `InlineLinkFormat` | 空 / `none` / `markdown` / `html` | `"pdf"` |
+| `TableFormat` | 空 / `markdown` / `html` | `"csv"` |
+
+フォーマット文字列は大文字小文字を区別せず、空の値はデフォルトとして扱われます（`InlineImageFormat`/`InlineLinkFormat` → `none`、`TableFormat` → `markdown`）。`New()` は Processor を生成する前に `Validate()` を呼び出すため、無効な設定からは使用可能な Processor は生成されません。

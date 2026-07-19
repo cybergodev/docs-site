@@ -63,6 +63,10 @@ if err := cfg.Validate(); err != nil {
 
 ## 哨兵错误
 
+::: warning 注意
+以下哨兵均为预定义符号，但当前实现中部分场景**不通过 `errors.Is` 匹配这些哨兵**：禁止键返回 `*SecurityError`（用 `errors.Is(err, ErrSecurityViolation)` 匹配），键格式非法与缺少必需键返回 `*ValidationError`（用 `errors.As` 提取）。详见各错误类型章节。
+:::
+
 ### 文件错误
 
 ```go
@@ -102,8 +106,8 @@ var ErrInvalidValue = errors.New("invalid value content")
 
 ```go
 err := loader.Set("PATH", "value")
-if errors.Is(err, env.ErrForbiddenKey) {
-    // 尝试设置禁止键
+if errors.Is(err, env.ErrSecurityViolation) {
+    // 尝试设置禁止键返回 *SecurityError
 }
 ```
 
@@ -147,8 +151,9 @@ if errors.Is(err, env.ErrNotInitialized) {
     // 需要先调用 env.Load() 或 env.LoadWithConfig()
 }
 
-// 检查必需键是否缺失
-if errors.Is(err, env.ErrMissingRequired) {
+// 检查必需键是否缺失（实际返回 *ValidationError{Rule:"required"}）
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Rule == "required" {
     // 缺少必需键
 }
 ```
@@ -387,9 +392,9 @@ func IsMarshalError(err error) bool  // 检查函数
 **使用示例：**
 
 ```go
-// 尝试设置禁止键会返回 ErrForbiddenKey
+// 设置禁止键返回 *SecurityError
 err := loader.Set("PATH", "/malicious/path")
-if errors.Is(err, env.ErrForbiddenKey) {
+if errors.Is(err, env.ErrSecurityViolation) {
     // 键被禁止
 }
 
@@ -634,7 +639,7 @@ case errors.Is(err, env.ErrFileNotFound):
     // 文件不存在
 case errors.Is(err, env.ErrFileTooLarge):
     // 文件过大
-case errors.Is(err, env.ErrForbiddenKey):
+case errors.Is(err, env.ErrSecurityViolation):
     // 禁止键
 case errors.Is(err, env.ErrClosed):
     // 加载器已关闭

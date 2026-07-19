@@ -35,7 +35,7 @@ defer p.Close()
 | 深度违规 | `depth_violation` | warning | DOM 嵌套超过限制 |
 | 处理超时 | `timeout` | warning | 单次处理超时 |
 | 编码问题 | `encoding_issue` | info | 编码检测失败 |
-| 路径穿越 | `path_traversal` | critical | 文件路径包含 `..` |
+| 路径穿越 | `path_traversal` | critical | 文件路径含 `..`，或 `AllowedBaseDir` 模式下经 OS 句柄解析后路径越界（防 symlink/junction） |
 
 ## 审计级别
 
@@ -80,7 +80,7 @@ sink := html.NewWriterAuditSink(file)
 
 ### ChannelAuditSink
 
-异步发送到 channel，适合集成外部系统：
+将事件非阻塞地推入带缓冲的 channel，由消费方独立 goroutine 异步处理，适合集成外部系统：
 
 ```go
 sink := html.NewChannelAuditSink(100)

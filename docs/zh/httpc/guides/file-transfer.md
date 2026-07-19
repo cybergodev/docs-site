@@ -34,7 +34,7 @@ func main() {
         log.Fatal(err)
     }
 
-    log.Printf("上传完成: %d", result.StatusCode()) // 输出: 上传完成: 200
+    log.Printf("上传完成: %d", result.StatusCode()) // 输出示例：上传完成: 200（实际状态码取决于服务端）
 }
 ```
 

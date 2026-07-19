@@ -56,6 +56,8 @@ if err != nil {
 | `ErrEmptyToken` | 모든 토큰 작업 메서드 | 요청 헤더 확인 |
 | `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 서명 불일치, 접근 거부 |
 | `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | 토큰 알고리즘이 설정과 불일치, 접근 거부 |
+| `ErrExpirationRequired` | Validate, Refresh, ValidateInto, RefreshInto | `RequireExpiration` 활성화되었으나 토큰에 `exp` 선언 없음 |
+| `ErrTokenTypeMismatch` | Refresh, RefreshInto | 액세스 토큰(`token_type=access`)으로 갱신 시도, 접근 거부 |
 | `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | 사용자에게 토큰 갱신 안내 |
 | `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | 시계 동기화 확인 |
 | `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 발급자 불일치 |

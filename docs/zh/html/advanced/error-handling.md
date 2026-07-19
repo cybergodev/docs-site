@@ -77,10 +77,16 @@ defer cancel()
 
 result, err := html.ExtractWithContext(ctx, data)
 if err != nil {
-    if ctx.Err() == context.DeadlineExceeded {
-        // 超时
-    } else if ctx.Err() == context.Canceled {
+    switch {
+    case errors.Is(err, html.ErrProcessingTimeout):
+        // 处理超时（库内 ProcessingTimeout 触发，此时 ctx.Err() 可能为 nil）
+    case ctx.Err() == context.DeadlineExceeded:
+        // 用户上下文截止时间到
+    case ctx.Err() == context.Canceled:
         // 手动取消
+    default:
+        // 其他错误（ErrInvalidHTML、ErrInputTooLarge 等）
+        slog.Error("提取失败", "err", err)
     }
 }
 ```

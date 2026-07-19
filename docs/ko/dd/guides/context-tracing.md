@@ -1,27 +1,27 @@
 ---
 sidebar_label: "분산 추적 통합"
 title: "분산 추적 통합 - CyberGo DD | Context와 추적 가이드"
-description: "CyberGo DD 분산 추적 통합 가이드. TraceID, SpanID, RequestID 컨텍스트 전파, ContextExtractor 추출기, HTTP 미들웨어 통합, 요청 범위 로그와 OpenTelemetry 통합으로 마이크로서비스에서 엔드투엔드 로그 추적을 구현합니다."
+description: "CyberGo DD 분산 추적 통합 가이드입니다. TraceID, SpanID, RequestID 컨텍스트 전파, ContextExtractor 커스텀 추출기, HTTP 미들웨어 통합, 요청 스코프 로깅과 OpenTelemetry 분산 추적 시스템 통합을 다룹니다."
 sidebar_position: 7
 ---
 
 # 분산 추적 통합
 
-DD는 `context.Context`를 통해 추적 식별자(TraceID, SpanID, RequestID)를 자동으로 전파하여 마이크로서비스 아키텍처에서 엔드투엔드 로그 연관을 구현합니다.
+DD는 `context.Context` 기반의 추적 식별자 도구 함수(`WithTraceID`/`GetTraceID` 등)를 제공하여 마이크로서비스 아키텍처에서 로그를 연관 짓기 편리합니다. 주의: **DD의 로그 메서드는 `context.Context` 매개변수를 받지 않으므로** 요청 스코프에서 TraceID를 자동으로 추출할 수 없습니다 - `WithFields()`로 추적 식별자를 필드로 수동 추가해야 합니다([HTTP 미들웨어 통합](#http-미들웨어-통합) 참조).
 
 ## 컨텍스트 키
 
-DD는 3가지 컨텍스트 키를 사전 정의합니다:
+DD는 세 가지 컨텍스트 키를 미리 정의합니다.
 
 | 키 | 설명 | 용도 |
 |-----|------|------|
 | `ContextKeyTraceID` | 추적 ID | 서비스 간 추적, 전체 요청 체인 연관 |
 | `ContextKeySpanID` | Span ID | 서비스 내 작업 추적 |
-| `ContextKeyRequestID` | 요청 ID | 단일 요청의 고유 식별자 |
+| `ContextKeyRequestID` | 요청 ID | 단일 요청 고유 식별자 |
 
-## 기본 사용법
+## 기본 사용
 
-### 설정 및 가져오기
+### 설정과 가져오기
 
 ```go
 ctx := context.Background()
@@ -37,18 +37,18 @@ spanID := dd.GetSpanID(ctx)      // "span-def456"
 requestID := dd.GetRequestID(ctx) // "req-789"
 ```
 
-### 로그에 자동 추출
+### 로그에 '자동 추출'이 불가능한 이유
 
-:::warning 현재 제한 사항
-DD의 로그 메서드(`Info`, `InfoWith` 등)는 `context.Context` 매개변수를 직접 받지 않습니다. 컨텍스트 추출기는 내부적으로 `context.Background()`를 사용하여 호출되므로 요청 범위의 context에서 TraceID 등의 값을 직접 가져올 수 없습니다. 수동으로 필드를 전달하는 방식을 권장합니다 (아래 HTTP 미들웨어 통합 참조).
+:::warning 경고 현재 제한
+DD의 로그 메서드(`Info`, `InfoWith` 등)는 `context.Context` 매개변수를 직접 받지 않습니다. 컨텍스트 추출기는 내부적으로 `context.Background()`로 호출(`logger.go:1414`)되므로 요청 스코프의 context에서 TraceID 등의 값을 직접 가져올 수 없습니다. 수동으로 필드를 전달하는 방식을 권장합니다(아래 HTTP 미들웨어 통합 참조).
 :::
 
 ```go
-// 컨텍스트 추출기는 설정에 사전 설정된 정적 컨텍스트 필드에 사용됩니다
-// 참고: 로그 메서드가 context를 받지 않으므로 추출기의 GetTraceID 등 함수는
-// 요청 범위의 context 값을 가져올 수 없습니다
+// 컨텍스트 추출기는 구성에 미리 설정된 정적 컨텍스트 필드에 사용됩니다
+// 주의: 로그 메서드가 context를 받지 않으므로 추출기의 GetTraceID 등 함수는
+// 요청 스코프의 context 값을 가져올 수 없습니다
 
-// 권장 방식: WithFields를 사용하여 추적 필드를 수동으로 전달
+// 권장 방식: WithFields로 추적 필드를 수동 전달
 reqLog := logger.WithFields(
     dd.String("trace_id", traceID),
     dd.String("request_id", requestID),
@@ -80,13 +80,13 @@ func TracingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
             ctx = dd.WithTraceID(ctx, traceID)
             ctx = dd.WithRequestID(ctx, requestID)
 
-            // 요청 범위의 로그 Entry 생성
+            // 요청 스코프 로그 Entry 생성
             reqLog := logger.WithFields(
                 dd.String("trace_id", traceID),
                 dd.String("request_id", requestID),
             )
 
-            // Logger를 핸들러에 전달 (커스텀 타입 키를 사용하여 충돌 방지)
+            // Logger를 핸들러에 전달(충돌 회피용 커스텀 타입 키 사용)
             type ctxKey struct{}
             ctx = context.WithValue(ctx, ctxKey{}, reqLog)
             next.ServeHTTP(w, r.WithContext(ctx))
@@ -100,7 +100,7 @@ func TracingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
 }
 ```
 
-### 전체 요청 추적 예시
+### 완전한 요청 추적 예
 
 <!-- check-code: skip -->
 ```go
@@ -140,15 +140,15 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 ## ContextExtractor 커스텀 추출기
 
-`ContextExtractor`를 사용하여 context에서 필드를 추출할 수 있습니다. 참고: 로그 메서드는 context 매개변수를 받지 않으므로 추출기는 내부적으로 `context.Background()`로 호출되며, 다음 시나리오에 적합합니다:
+`ContextExtractor`는 context에서 필드를 추출하는 데 사용됩니다. 주의: 로그 메서드가 context 매개변수를 받지 않으므로 추출기는 내부적으로 `context.Background()`로 호출되며 다음 시나리오에 적합합니다.
 
 - 글로벌 context 또는 goroutine-local 저장소에서 정적 필드 추출
-- HTTP 미들웨어와 결합하여 추적 필드를 수동으로 `WithFields`에 전달
+- HTTP 미들웨어와 결합해 추적 필드를 수동으로 `WithFields`에 전달
 
-### 커스텀 추출기 예시
+### 커스텀 추출기 예
 
 ```go
-// 커스텀 추출기: 모든 로그에 정적/글로벌 메타데이터 추가
+// 커스텀 추출기: 매 로그에 정적/글로벌 메타데이터 추가
 func tenantExtractor(ctx context.Context) []dd.Field {
     return []dd.Field{
         dd.String("service", "order-service"),
@@ -160,14 +160,14 @@ func tenantExtractor(ctx context.Context) []dd.Field {
 logger.AddContextExtractor(tenantExtractor)
 ```
 
-:::warning 컨텍스트 제한
-`ContextExtractor` 함수는 요청 범위의 context가 아닌 `context.Background()`를 받습니다. 요청마다 추적 ID를 추가하려면 위의 `WithFields()` 패턴을 사용하여 요청 범위의 `LoggerEntry`를 생성하세요.
+:::warning 경고 컨텍스트 제한
+`ContextExtractor` 함수가 받는 것은 요청 스코프의 context가 아닌 `context.Background()`입니다. 매 요청의 추적 ID를 추가하려면 위의 `WithFields()` 패턴으로 요청 스코프의 `LoggerEntry`를 생성하세요.
 :::
 
 ### 여러 추출기 조합
 
 ```go
-// 서로 다른 글로벌 메타데이터를 수집하기 위해 여러 추출기 등록
+// 여러 추출기를 등록하여 서로 다른 글로벌 메타데이터 수집
 logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
     return []dd.Field{
         dd.String("hostname", getHostname()),
@@ -180,12 +180,15 @@ logger.AddContextExtractor(tenantExtractor)
 
 ## 마이크로서비스 간 전파
 
-마이크로서비스 호출에서 추적 식별자는 HTTP 헤더를 통해 전파됩니다:
+마이크로서비스 호출에서 추적 식별자는 HTTP 헤더로 전파됩니다.
 
 ```go
 // 발신 측: 추적 식별자를 요청 헤더에 주입
 func callUpstream(ctx context.Context, url string) (*http.Response, error) {
-    req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+    req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+    if err != nil {
+        return nil, err
+    }
 
     // 추적 식별자 전파
     if traceID := dd.GetTraceID(ctx); traceID != "" {
@@ -199,7 +202,7 @@ func callUpstream(ctx context.Context, url string) (*http.Response, error) {
 }
 ```
 
-## 요청 범위 로그 패턴
+## 요청 스코프 로그 패턴
 
 ```go
 type RequestLogger struct {
@@ -241,5 +244,5 @@ func (rl *RequestLogger) Finish(status int) {
 
 - [훅 시스템](./hooks) -- 라이프사이클 훅 확장
 - [감사 로그](./audit-logging) -- 보안 감사
-- [API 레퍼런스 - Context](../api-reference/output-integration/context) -- Context 전체 API
-- [웹 서비스 예제](../examples/web-service) -- 전체 웹 서비스 예제
+- [API 레퍼런스 - Context](../api-reference/output-integration/context) -- Context 완전한 API
+- [웹 서비스 예제](../examples/web-service) -- 완전한 웹 서비스 예

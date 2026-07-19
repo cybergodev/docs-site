@@ -173,7 +173,7 @@ func main() {
     p, _ := html.New(html.TextOnlyConfig())
     defer p.Close()
 
-    // 한 배치당 최대 10000개 파일
+    // 단일 배치 상한 10000; 초과 시 전체 실패, 호출자가 직접 분할
     batch := p.ExtractBatchFiles(files)
 
     fmt.Printf("성공: %d, 실패: %d, 취소: %d\n",

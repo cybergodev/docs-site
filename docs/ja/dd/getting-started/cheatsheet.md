@@ -1,7 +1,7 @@
 ---
 sidebar_label: "チートシート"
 title: "チートシート - CyberGo DD | よく使う API クイックリファレンス"
-description: "CyberGo DD ログライブラリのよく使う API チートシート。ロガーの作成とクローン、ログレベル制御、構造化フィールドコンストラクタ、ファイル出力ローテーションとバッファ設定、機密データフィルタリングルール、フック登録とコールバックハンドラ、監査ログ記録、整合性署名検証など高頻度操作のクイックリファレンス。"
+description: "CyberGo DD ログライブラリのよく使う API チートシート。ロガーの作成とクローン、ログレベル制御、構造化フィールドコンストラクタ、ファイル出力ローテーションとバッファ設定、機密データセキュリティフィルタリングルール、フック登録とコールバックハンドラ、監査ログ記録、整合性署名検証など高頻度操作を網羅し、開発者が素早く查阅・利用できる便利な参照です。"
 sidebar_position: 2
 ---
 
@@ -16,14 +16,18 @@ sidebar_position: 2
 | カスタム | `dd.New(dd.Config{Targets: ...})` | 完全設定 |
 | ファイル | `dd.New(dd.Config{Targets: []dd.OutputTarget{dd.FileOutput("path")}})` | ファイル出力のみ |
 | デュアル出力先 | `dd.New(dd.Config{Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("path")}})` | コンソール+ファイル |
-| JSON デュアル出力先 | `dd.New(dd.Config{Format: dd.FormatJSON, Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("path")}})` | JSONフォーマット デュアル出力先 |
+| JSON デュアル出力先 | `dd.New(dd.Config{Format: dd.FormatJSON, Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("path")}})` | JSON フォーマット デュアル出力先 |
+
+:::tip ヒント 設定のゼロ値
+表内の `dd.Config{...}` リテラルは未設定のフィールドがすべてゼロ値になります（Level=Debug、IncludeTime/IncludeLevel/DynamicCaller=false、出力にタイムスタンプ/レベル/caller なし）。本番環境では `dd.DefaultConfig()` をベースにして必要なフィールドを上書きすることを推奨します。
+:::
 
 ## プリセット設定
 
 ```go
 dd.DefaultConfig()       // デフォルト設定：INFO レベル、テキストフォーマット
 dd.DevelopmentConfig()   // 開発設定：DEBUG レベル、動的 caller
-dd.JSONConfig()          // JSON 設定：JSON フォーマット出力
+dd.JSONConfig()          // JSON 設定：DEBUG レベル + JSON フォーマット出力
 ```
 
 ## ログレベル

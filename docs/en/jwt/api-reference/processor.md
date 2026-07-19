@@ -19,7 +19,7 @@ func (p *Processor) Create(claims CustomClaims) (string, error)
 
 Creates a new JWT access token. Accepts any type implementing the `CustomClaims` interface.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -64,7 +64,7 @@ func (p *Processor) Validate(tokenString string) (Claims, bool, error)
 
 Validates a JWT access token and returns the parsed Claims.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -119,7 +119,7 @@ func (p *Processor) CreateRefresh(claims CustomClaims) (string, error)
 
 Creates a refresh token using `RefreshTokenTTL` instead of `AccessTokenTTL`.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -161,7 +161,7 @@ Refreshes an existing refresh token and returns a new access token. The refresh 
 Refresh only validates standard JWT fields (exp, nbf, iss, aud, blacklist) and basic structural validity (UserID or Username must exist). Deep field constraints (length limits, injection patterns) are not re-checked since they were validated at creation time.
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -204,7 +204,7 @@ func (p *Processor) ValidateInto(tokenString string, claims CustomClaims) (Custo
 
 Validates a token and populates a custom Claims struct. Returns the same pointer as the input `claims`.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -265,7 +265,7 @@ Tokens with `token_type=access` are rejected (returns [`ErrTokenTypeMismatch`](.
 Refresh only validates standard JWT fields and basic structural validity. Deep field constraints are not re-checked since they were validated at creation time.
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -316,7 +316,7 @@ Adds the token to the blacklist by verifying the signature and extracting the to
 - Expired tokens can still be revoked; the entry is automatically cleaned up by the blacklist
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -352,7 +352,7 @@ func (p *Processor) IsRevoked(tokenString string) (bool, error)
 
 Checks whether a token has been revoked. After verifying the signature, it looks up the token's jti status in the blacklist. When the blacklist is not configured, returns `false` and a `nil` error.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -392,7 +392,7 @@ Parses a token without verifying the signature. Useful for extracting Claims inf
 The returned Claims are **not verified** and must not be trusted. Only use for debugging or logging.
 :::
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Parameters
 
@@ -425,7 +425,7 @@ func (p *Processor) Close() error
 
 Releases resources and securely clears keys. Can be called multiple times; subsequent calls return `ErrProcessorClosed`.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Returns
 
@@ -443,7 +443,7 @@ func (p *Processor) IsClosed() bool
 
 Checks if the Processor is closed.
 
-<Badge type="tip" text="v1.0.0+" />
+
 
 ### Returns
 

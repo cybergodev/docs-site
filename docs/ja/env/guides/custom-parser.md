@@ -363,16 +363,44 @@ func init() {
 }
 
 func main() {
-    // 登録は New の前に完了する必要がある（init で完了済み）
+    // 登録は New の前に完了する必要がある（init で完了済み）。
+    //
+    // 重要な制限：LoadFiles は .toml 拡張子を見ても上記の TOMLParser に
+    // 自動的にルーティングしません——DetectFormat は .env/.json/.yaml/.yml
+    // しか認識せず、それ以外の拡張子は組み込みの dotenv パーサーに
+    // フォールバックします（format.go の DetectFormat を参照）。
+    // LoadFiles で実際に TOMLParser を呼び出すには、ForceRegisterParser で
+    // FormatEnv を上書きし、ファイル名を *.env にします：
+    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &TOMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
 
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // .toml ファイルを読み込めるようになります
-    loader.LoadFiles("config.toml")
+    // ファイル拡張子を .env にする（内容は TOML フォーマット）ことで、上書き後のパーサーにルーティングされる
+    if err := loader.LoadFiles("config.env"); err != nil {
+        panic(err)
+    }
 }
 ```
+
+::: warning LoadFiles のルーティング制限
+`RegisterParser` で登録したカスタムフォーマット番号（例：`FormatTOML = 100`）は、`LoadFiles` がファイル拡張子から自動的には認識し**ません**。`LoadFiles` は内部で `DetectFormat(filename)` を呼び出してパーサーを選択しますが、`DetectFormat` は `.env` / `.json` / `.yaml` / `.yml` の 4 種類の拡張子しか認識せず、それ以外は `FormatAuto` を返し、最終的に組み込みの dotenv パーサーにフォールバックします——カスタムパーサーは呼び出されません。
+
+カスタムフォーマットファイルを読み込む 2 つの方法：
+
+1. **`.env` 拡張子 + `ForceRegisterParser`**（推奨）：カスタムフォーマットファイルに `*.env` という名前を付け、`env.ForceRegisterParser(env.FormatEnv, ...)` で組み込みの dotenv パーサーを上書きします。キー名/値/サイズなどのセキュリティ検証を必ず保持してください。保持しないとセキュリティホールが生じます。
+2. **パーサーを手動で呼び出す**：ファイルを読み込んで `io.Reader` を取得し、自分でパーサーインスタンスを構築して `parser.Parse(reader, filename)` を呼び出して `map[string]string` を取得し、`loader.Set` で 1 件ずつ書き込みます。パーサー内部の `validator`/`auditor` は通常 `*ComponentFactory` に依存するため、ファクトリー登録時に併せて取得して渡す必要がある点に注意してください。
+:::
 
 ---
 
@@ -576,19 +604,36 @@ func init() {
 }
 
 func main() {
+    // LoadFiles は .xml 拡張子を見ても XML パーサーに自動ルーティング
+    // しません——DetectFormat は .env/.json/.yaml/.yml しか認識しません。
+    // ここでは ForceRegisterParser で FormatEnv を上書きし、.env 拡張子で
+    // 読み込みます（内容は XML フォーマット）：
+    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &XMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
+
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // XML 設定を読み込み
     /*
+    config.env ファイル内容（XML フォーマット）：
     <?xml version="1.0"?>
     <config>
         <entry key="DATABASE_HOST">localhost</entry>
         <entry key="DATABASE_PORT">5432</entry>
     </config>
     */
-    loader.LoadFiles("config.xml")
+    if err := loader.LoadFiles("config.env"); err != nil {
+        panic(err)
+    }
 
     fmt.Println(loader.GetString("DATABASE_HOST"))  // localhost
     fmt.Println(loader.GetInt("DATABASE_PORT"))     // 5432

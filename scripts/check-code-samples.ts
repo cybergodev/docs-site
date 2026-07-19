@@ -1,7 +1,7 @@
 /**
  * check-code-samples.ts — Go 代码示例编译校验（路线图 #1）
  *
- * 文档规范（CLAUDE.md §5）要求每个 go 代码示例是完整可编译的 `package main`
+ * 规范要求每个 go 代码示例是完整可编译的 `package main`
  * 程序，但此前无任何机制校验——错字、签名漂移、缺 import 只能靠肉眼。本脚本
  * 把文档承诺落到 CI gate 上：提取所有 ```go 代码块，把完整块写入临时 Go 模块
  * 的**独立子目录**（每块一目录，避免多个 package main 同目录冲突），跑一次

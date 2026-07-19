@@ -1,7 +1,7 @@
 ---
 sidebar_label: "JSONL"
 title: "JSONL Processing Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON JSONL: ParseJSONL/ToJSONL/ToJSONLString conversion, StreamLinesInto[T] streaming, NewJSONLWriter, and JSONL* Config fields for JSON Lines support."
+description: "CyberGo JSON JSONL processing functions: ParseJSONL/ToJSONL/ToJSONLString conversion, StreamJSONL/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL streaming, StreamLinesInto[T] generics, and NewJSONLWriter writer."
 sidebar_position: 8
 ---
 
@@ -167,6 +167,78 @@ func main() {
     fmt.Println(jsonlStr)
 }
 ```
+
+## Package-level JSONL Streaming Functions
+
+The json package provides package-level convenience functions for JSONL streaming. Their signatures match the corresponding Processor methods, with an additional optional `cfg ...Config` variadic parameter at the end. They internally use a global Processor cached per `cfg`, so there is no need to manually create an instance — well suited for one-off processing scenarios. When you need to process data multiple times or share the same configuration, prefer creating an independent Processor via [`json.New(cfg)`](../processor/#new).
+
+For full usage and examples, see the [JSONL Streaming Guide](../../streaming/jsonl#package-level-functions) and the [Processor JSONL Methods](../processor/jsonl).
+
+### StreamJSONL
+
+Signature: `func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+Streams JSONL line by line, parsing each line into an `IterableValue` before invoking the callback.
+
+### StreamJSONLParallel
+
+Signature: `func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+Processes JSONL using `workers` parallel goroutines (for CPU-intensive scenarios).
+
+### StreamJSONLParallelWithContext
+
+Signature: `func StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+Parallel JSONL processing that supports context cancellation / timeout.
+
+### StreamJSONLChunked
+
+Signature: `func StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
+
+Processes data in batches of `chunkSize`, passing each batch as a `[]*IterableValue` to the callback.
+
+### ForeachJSONL
+
+Signature: `func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+Iterates JSONL (an alias with the same behavior as `StreamJSONL`).
+
+### MapJSONL
+
+Signature: `func MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error), cfg ...Config) ([]any, error)`
+
+Maps each line to a new value and returns a slice of results.
+
+### ReduceJSONL
+
+Signature: `func ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any, cfg ...Config) (any, error)`
+
+Reduces JSONL into a single value, where `initial` is the accumulator's starting value.
+
+### FilterJSONL
+
+Signature: `func FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) ([]*IterableValue, error)`
+
+Filters by predicate and returns a slice of matching items.
+
+### StreamJSONLFile
+
+Signature: `func StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
+
+Streams an entire JSONL file directly.
+
+### CollectJSONL
+
+Signature: `func CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
+
+Reads all JSONL lines and collects them into a slice (note: fully loaded into memory; for large files, prefer `StreamJSONL`).
+
+### FirstJSONL
+
+Signature: `func FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) (*IterableValue, bool, error)`
+
+Returns the first element that satisfies the predicate; the second return value indicates whether a match was found.
 
 ## JSONL Configuration
 

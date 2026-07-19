@@ -61,7 +61,7 @@ result, err := client.Get("https://httpbin.org/get")
 | `DefaultConfig()` | 汎用シナリオ | 安全なデフォルト値、SSRF 防護有効 |
 | `SecureConfig()` | セキュリティ重視シナリオ | 自動リダイレクト無効、厳格なタイムアウト |
 | `PerformanceConfig()` | 高スループットシナリオ | 大規模コネクションプール、長いタイムアウト、Cookie 有効 |
-| `TestingConfig()` | テスト環境 | セキュリティチェックと HTTP/2 無効、短いタイムアウト |
+| `TestingConfig()` | テスト環境 | セキュリティ検査・HTTP/2 無効化、Cookie 有効化 |
 | `MinimalConfig()` | 軽量リクエスト | リトライなし、リダイレクトなし |
 
 ```go

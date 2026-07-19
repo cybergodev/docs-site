@@ -86,6 +86,19 @@ client := &http.Client{
 Web サービスでは、単一の Processor インスタンスを再利用してすべてのリクエストを処理します：
 
 ```go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "io"
+    "log"
+    "net/http"
+    "time"
+
+    "github.com/cybergodev/html"
+)
+
 var processor *html.Processor
 
 func init() {

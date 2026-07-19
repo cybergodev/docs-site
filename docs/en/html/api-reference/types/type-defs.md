@@ -33,6 +33,12 @@ Custom JSON serialization. `ProcessingTime` and `ReadingTime` have `json:"-"` ta
 func (r *Result) MarshalJSON() ([]byte, error)
 ```
 
+:::warning
+`Result` **does not implement `UnmarshalJSON`**. If you deserialize the output of `MarshalJSON()` back into a `Result`, duration fields such as `ProcessingTime` and `ReadingTime` **will be lost** — the JSON output key names (`processing_time_ms`, `reading_time_ms`) do not match the struct field names, so they cannot be restored.
+
+This is **intentional**: the JSON format is designed for external consumption (e.g., API responses, logs, frontend display), not for bidirectional serialization.
+:::
+
 ## ImageInfo
 
 Image information.
@@ -58,7 +64,7 @@ type LinkInfo struct {
     URL        string `json:"url"`         // Link URL
     Text       string `json:"text"`        // Link text
     Title      string `json:"title"`       // Link title
-    IsExternal bool   `json:"is_external"` // Whether the link is external
+    IsExternal bool   `json:"is_external"` // Whether it is an external link (determined by whether the URL itself is an absolute external URL, not by comparison with BaseURL)
     IsNoFollow bool   `json:"is_nofollow"` // Whether the link is nofollow
     Position   int    `json:"position"`    // Position in the document
 }

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Basic Usage"
 title: "Basic Usage - CyberGo DD | Practical Examples"
-description: "CyberGo DD practical examples: Gin/Echo request logging, gRPC interceptors, database logging, middleware chaining, and distributed tracing integration."
+description: "A collection of practical code examples for the CyberGo DD logging library, covering common scenarios such as request logging for web services, gRPC interceptor integration, database-operation logging, middleware chaining, scheduled-task log output, and microservice distributed-tracing integration, with ready-to-use best-practice snippets."
 sidebar_position: 1
 ---
 
@@ -38,7 +38,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
         ctx := dd.WithRequestID(r.Context(), reqID)
         ctx = dd.WithTraceID(ctx, r.Header.Get("X-Trace-ID"))
 
-        logger.InfoWith("Request started",
+        logger.InfoWith("request started",
             dd.String("method", r.Method),
             dd.String("path", r.URL.Path),
             dd.String("remote", r.RemoteAddr),
@@ -46,7 +46,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
         next.ServeHTTP(w, r.WithContext(ctx))
 
-        logger.InfoWith("Request completed",
+        logger.InfoWith("request completed",
             dd.String("method", r.Method),
             dd.String("path", r.URL.Path),
             dd.Duration("elapsed", time.Since(start)),
@@ -60,13 +60,13 @@ func main() {
     mux := http.NewServeMux()
     mux.HandleFunc("/api/users", handleUsers)
 
-    fmt.Println("Server started: :8080")
+    fmt.Println("server starting: :8080")
     http.ListenAndServe(":8080", loggingMiddleware(mux))
 }
 
 // handleUsers example handler
 func handleUsers(w http.ResponseWriter, r *http.Request) {
-    logger.InfoWith("Processing user request",
+    logger.InfoWith("handle users request",
         dd.String("path", r.URL.Path),
         dd.String("method", r.Method),
     )
@@ -102,15 +102,15 @@ func NewUserService(db Database) *UserService {
 
 func (s *UserService) GetUser(id int) (*User, error) {
     log := s.logger.WithField("user_id", id)
-    log.Info("Querying user")
+    log.Info("query user")
 
     user, err := s.db.FindUser(id)
     if err != nil {
-        log.ErrorWith("Query failed", dd.Err(err))
+        log.ErrorWith("query failed", dd.Err(err))
         return nil, err
     }
 
-    log.InfoWith("Query successful",
+    log.InfoWith("query succeeded",
         dd.String("username", user.Name),
     )
     return user, nil
@@ -134,25 +134,25 @@ func RunCleanup() {
     defer logger.Close()
 
     start := time.Now()
-    logger.Info("Cleanup task started")
+    logger.Info("cleanup task started")
 
     cleaned, err := cleanupExpiredRecords()
     if err != nil {
-        logger.ErrorWith("Cleanup failed",
+        logger.ErrorWith("cleanup failed",
             dd.Err(err),
             dd.Duration("elapsed", time.Since(start)),
         )
         return
     }
 
-    logger.InfoWith("Cleanup completed",
+    logger.InfoWith("cleanup completed",
         dd.Int("cleaned", cleaned),
         dd.Duration("elapsed", time.Since(start)),
     )
 }
 ```
 
-## Secure Logging with Audit
+## Security Logging with Audit
 
 <!-- check-code: skip -->
 ```go
@@ -182,14 +182,14 @@ func init() {
 }
 
 func HandleLogin(username, password, ip string) error {
-    logger.InfoWith("Login attempt",
+    logger.InfoWith("login attempt",
         dd.String("username", username),
-        dd.String("ip", ip),
-        // password is automatically filtered via SecurityConfig
+        dd.String("ip", ip),  // FinancialConfig also redacts ip to [REDACTED]
+        // password is not logged (security practice: never log raw passwords)
     )
 
     if isBruteForce(ip) {
-        audit.LogRateLimitExceeded("Login rate too high", map[string]any{
+        audit.LogRateLimitExceeded("login rate too high", map[string]any{
             "ip":      ip,
             "attempts": getAttemptCount(ip),
         })
@@ -200,7 +200,7 @@ func HandleLogin(username, password, ip string) error {
 }
 ```
 
-## Testing with Logs
+## Logging in Tests
 
 ```go
 package service_test
@@ -218,21 +218,21 @@ func TestUserCreation(t *testing.T) {
     svc := NewService(logger)
     svc.CreateUser("admin")
 
-    if !rec.ContainsMessage("User created") {
-        t.Error("Should log user creation")
+    if !rec.ContainsMessage("user created") {
+        t.Error("expected a user-created log")
     }
 
     if !rec.ContainsField("username") {
-        t.Error("Should contain username field")
+        t.Error("expected the username field")
     }
 
     if rec.GetFieldValue("username") != "admin" {
-        t.Error("Username should be admin")
+        t.Error("username should be admin")
     }
 }
 ```
 
-## Multi-Environment Configuration
+## Multi-environment Configuration
 
 ```go
 package logger
@@ -265,6 +265,6 @@ func SetupLogger(env string) (*dd.Logger, error) {
 
 ## Next Steps
 
-- [Quick Start](../getting-started/) -- Getting started guide
+- [Quick Start](../getting-started/) -- Basic intro
 - [API Reference](../api-reference/) -- Complete API
 - [Security](../security/) -- Security configuration

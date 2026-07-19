@@ -46,7 +46,7 @@ Request/response logging with automatic URL masking:
 httpc.LoggingMiddleware(func(format string, args ...any) {
     log.Printf("[HTTP] "+format, args...)
 })
-// Output: [HTTP] GET https://api.example.com/data -> 200 (150ms)
+// Output example: [HTTP] GET https://api.example.com/data -> 200 (150ms) (status code and duration are measured values, not fixed)
 ```
 
 ### RequestIDMiddleware
@@ -69,6 +69,10 @@ Middleware-level timeout enforced before the client timeout:
 ```go
 httpc.TimeoutMiddleware(30 * time.Second)
 ```
+
+:::warning Do not use for Download or streaming requests
+`TimeoutMiddleware`'s `defer cancel()` fires immediately after the handler returns (i.e., once the response headers are received), so for `Download` or `WithStreamBody` requests it cancels the context before the response body is read, producing a "context canceled" error. For streaming/download scenarios, use the [`WithTimeout`](../api-reference/core/options#withtimeout) option instead.
+:::
 
 ### HeaderMiddleware
 

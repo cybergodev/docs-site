@@ -425,8 +425,8 @@ if err != nil {
 ```
 
 **错误类型：**
-- `ErrInvalidKey` - 键名无效
-- `ErrForbiddenKey` - 键被禁止
+- `*ValidationError` - 键名格式无效（Field="key"）
+- `*SecurityError` - 键被禁止（可用 `errors.Is(err, env.ErrSecurityViolation)` 匹配）
 - `ErrInvalidValue` - 值无效（当 `ValidateValues` 为 true 时，值包含空字节、控制字符等不安全内容）
 - `ErrClosed` - 加载器已关闭
 
@@ -667,14 +667,15 @@ func (l *Loader) ParseInto(v any) error
 - `env:"KEY"` - 指定环境变量名
 - `env:"-"` - 忽略此字段
 - `envDefault:"value"` - 指定默认值
-- `envSeparator:","` - 指定切片分隔符
+
+切片字段默认按逗号 `,` 分隔（分隔符前后空格自动去除），无自定义分隔符标签。
 
 ```go
 type Config struct {
     Host    string   `env:"HOST" envDefault:"localhost"`
     Port    int64    `env:"PORT" envDefault:"8080"`
     Debug   bool     `env:"DEBUG" envDefault:"false"`
-    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Hosts   []string `env:"HOSTS"`
     Ignored string   `env:"-"`
 }
 

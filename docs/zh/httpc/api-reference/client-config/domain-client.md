@@ -70,6 +70,10 @@ result, err := dc.Request(ctx, "GET", "/users", options...)
 
 带上下文的通用请求方法，支持超时和取消控制。
 
+:::warning 请求选项会应用两次
+域名客户端在内部对请求选项**应用两次**——一次用于捕获会话状态（Cookie、请求头），一次用于实际请求。请避免使用带副作用的选项（如计数器、nonce 生成）；如需此类选项，请改用底层 `Client`。
+:::
+
 ## 下载方法
 
 ```go
@@ -107,7 +111,7 @@ dc.Close()    // error - 关闭客户端释放资源
 | `https://other.com/api` | `https://other.com/api`（绝对 URL） |
 
 :::warning
-仅允许 `http://` 和 `https://` 协议的绝对 URL，其他协议会被拒绝（防止 SSRF）。
+只有 `http://` 和 `https://` 开头的路径会被识别为绝对 URL；其他协议（如 `ftp://`）不会被识别为绝对路径，会按相对路径拼接，通常导致请求失败。
 :::
 
 ## DomainClienter 接口

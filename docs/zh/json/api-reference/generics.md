@@ -88,12 +88,12 @@ type AccessResult struct {
 
 签名：`func (r AccessResult) Ok() bool`
 
-判断值是否存在且无错误。
+判断值是否存在。
 
 ```go
 result := json.SafeGet(data, "user.name")
 if result.Ok() {
-    // 值存在且无错误
+    // 值存在
 }
 ```
 

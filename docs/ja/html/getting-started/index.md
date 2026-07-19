@@ -133,7 +133,10 @@ result, err := html.ExtractWithContext(ctx, data)
 `Processor` インスタンスは並列安全で、複数の goroutine で共有して使用できます：
 
 ```go
-p, _ := html.New(html.DefaultConfig())
+p, err := html.New(html.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer p.Close()
 
 // 複数の goroutine で安全に呼び出し

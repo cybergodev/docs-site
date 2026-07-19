@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Constants & Errors"
-title: "Constants & Errors - CyberGo DD | LogLevel Sentinel"
-description: "CyberGo DD constants and errors: LogLevel (Debug/Info/Warn/Error/Fatal), Format constants, and SentinelErrors for precise log behavior control."
+title: "Constants & Errors - CyberGo DD | LogLevel, Format, SentinelErrors"
+description: "Complete documentation of CyberGo DD's constants and error types, including LogLevel log-level constants (Debug/Info/Warn/Error/Fatal), Format output-format constants, and SentinelErrors sentinel error definitions. Used to precisely control log behavior and error handling; core foundation for understanding the DD logging library configuration system."
 sidebar_position: 3
 ---
 
-# Constants and Errors
+# Constants & Errors
 
-DD defines rich constants and error types for log level control, formatting, and error handling.
+DD defines a rich set of constants and error types for log-level control, formatting, and error handling.
 
 ## Log Levels
 
@@ -19,11 +19,11 @@ type LogLevel int8 // Log level type
 |----------|-------|-------------|
 | `LevelDebug` | 0 | Debug level |
 | `LevelInfo` | 1 | Info level (default) |
-| `LevelWarn` | 2 | Warning level |
+| `LevelWarn` | 2 | Warn level |
 | `LevelError` | 3 | Error level |
 | `LevelFatal` | 4 | Fatal level |
 
-`LogLevel` implements a `String() string` method (returning `"DEBUG"`/`"INFO"`/`"WARN"`/`"ERROR"`/`"FATAL"`, and `"UNKNOWN"` for unrecognized values) and an `IsValid() bool` method (checks whether the level is within the valid range from `LevelDebug` to `LevelFatal`).
+`LogLevel` implements `String() string` (returns `"DEBUG"`/`"INFO"`/`"WARN"`/`"ERROR"`/`"FATAL"`; unknown values return `"UNKNOWN"`) and `IsValid() bool` (whether the level is within the valid range `LevelDebug`~`LevelFatal`).
 
 ## Log Formats
 
@@ -31,12 +31,12 @@ type LogLevel int8 // Log level type
 type LogFormat int8 // Output format type
 ```
 
-| Constant | Description |
-|----------|-------------|
-| `FormatText` | Text format |
-| `FormatJSON` | JSON format |
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `FormatText` | 0 | Text format |
+| `FormatJSON` | 1 | JSON format |
 
-`LogFormat` implements a `String() string` method (returning `"text"`/`"json"`, and `"unknown"` for unrecognized values).
+`LogFormat` implements `String() string` (returns `"text"`/`"json"`; unknown values return `"unknown"`).
 
 ## Field Validation Modes
 
@@ -46,9 +46,9 @@ type FieldValidationMode int // Field key validation mode
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `FieldValidationNone` | 0 | No validation (default) |
-| `FieldValidationWarn` | 1 | Warn on validation failure but accept |
-| `FieldValidationStrict` | 2 | Strict mode, log error on validation failure |
+| `FieldValidationNone` | 0 | Disable validation (default) |
+| `FieldValidationWarn` | 1 | Warn on validation failure but still accept |
+| `FieldValidationStrict` | 2 | Strict mode; log an error on validation failure |
 
 ## Field Naming Conventions
 
@@ -59,20 +59,20 @@ type FieldNamingConvention int // Field key naming convention
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `NamingConventionAny` | 0 | Accept any format (default) |
-| `NamingConventionSnakeCase` | 1 | snake_case (e.g., user_id) |
-| `NamingConventionCamelCase` | 2 | camelCase (e.g., userId) |
-| `NamingConventionPascalCase` | 3 | PascalCase (e.g., UserId) |
-| `NamingConventionKebabCase` | 4 | kebab-case (e.g., user-id) |
+| `NamingConventionSnakeCase` | 1 | snake_case (e.g. user_id) |
+| `NamingConventionCamelCase` | 2 | camelCase (e.g. userId) |
+| `NamingConventionPascalCase` | 3 | PascalCase (e.g. UserId) |
+| `NamingConventionKebabCase` | 4 | kebab-case (e.g. user-id) |
 
-## Hash Algorithm
+## Hash Algorithms
 
 ```go
 type HashAlgorithm int // Integrity signing hash algorithm
 ```
 
-| Constant | Description |
-|----------|-------------|
-| `HashAlgorithmSHA256` | SHA-256 algorithm |
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `HashAlgorithmSHA256` | 0 | SHA-256 algorithm (used by [integrity signing](../security-audit/integrity)) |
 
 ## Default Values
 
@@ -94,7 +94,7 @@ type HashAlgorithm int // Integrity signing hash algorithm
 
 ## Error Codes
 
-The `LoggerError.Code` field contains machine-readable error code strings for fine-grained error matching. Error codes are internal implementation details; sentinel errors are recommended for matching.
+The `LoggerError.Code` field contains a machine-readable error-code string, used for fine-grained error-type matching. Error codes are internal implementation details; prefer matching against sentinel errors.
 
 ## Sentinel Errors
 
@@ -143,7 +143,7 @@ if errors.Is(err, dd.ErrLoggerClosed) {
 }
 
 if errors.Is(err, dd.ErrPathTraversal) {
-    // Path traversal attack detected
+    // Path-traversal attack detected
 }
 ```
 
@@ -194,6 +194,6 @@ Methods: `Error()`, `Unwrap()`, `HasErrors()`, `ErrorCount()`, `FirstError()`
 
 ## Next Steps
 
-- [Package Functions](../core/functions) -- Error handling functions
-- [Security Filtering](../security-audit/security) -- Path security validation
+- [Package Functions](../core/functions) -- Error-handling functions
+- [Security Filtering](../security-audit/security) -- Path-safety validation
 - [Hook System](../security-audit/hooks) -- OnError hook

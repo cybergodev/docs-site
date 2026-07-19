@@ -48,7 +48,7 @@ dd.SetDefault(logger)
 
 ### Fatal 级别日志会怎样？
 
-`Fatal` / `Fatalf` / `FatalWith` 在输出日志后调用 `os.Exit(1)`。可通过 `FatalHandler` 自定义行为。
+`Fatal` / `Fatalf` / `FatalWith` 在输出日志后调用 `os.Exit(1)`（**defer 语句不会执行**；内部会先尝试 `Close()` 刷新挂起日志，最多等待 5 秒）。可通过 `FatalHandler` 自定义退出行为；如需资源清理，请改用 `ErrorWith` + 显式 `Shutdown(ctx)`。
 
 ## 配置
 
@@ -93,9 +93,9 @@ fw, _ := dd.NewFileWriter("logs/app.log",
 ### 日志会影响程序性能吗？
 
 DD 在设计上追求高性能：
-- 热路径零分配优化
+- 热路径低分配优化
 - 原子级别检查，无锁
-- 敏感数据过滤在独立 goroutine 中执行
+- 大输入（≥10KB）的敏感数据过滤在独立 goroutine 中执行并带超时保护；小输入同步处理
 - 可选缓冲写入减少 I/O
 
 ### 高吞吐场景如何优化？

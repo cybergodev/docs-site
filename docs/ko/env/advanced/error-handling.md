@@ -52,12 +52,12 @@ var (
 )
 ```
 
-**금지 키 확인:**
+**금지 키 확인 (실제로는 `*SecurityError` 반환, `ErrSecurityViolation`과 일치):**
 
 ```go
 err := loader.Set("PATH", "/malicious")
-if errors.Is(err, env.ErrForbiddenKey) {
-    log.Println("금지 키 설정 시도 감지")
+if errors.Is(err, env.ErrSecurityViolation) {
+    log.Println("금지 키 설정 시도")
 }
 ```
 
@@ -103,9 +103,10 @@ if errors.Is(err, env.ErrNotInitialized) {
     // 먼저 env.Load() 또는 env.LoadWithConfig()를 호출해야 함
 }
 
-// 필수 키 누락 여부 확인
-if errors.Is(err, env.ErrMissingRequired) {
-    // 필수 키 누락
+// 필수 키 누락 여부 확인 (실제로는 *ValidationError, Rule=="required" 반환)
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Rule == "required" {
+    // 필수 키 누락: valErr.Message에 누락된 키 목록 포함
 }
 ```
 
@@ -341,17 +342,19 @@ case errors.Is(err, env.ErrFileTooLarge):
     // 파일이 너무 큼
     log.Fatal("구성 파일이 너무 큼")
 
-case errors.Is(err, env.ErrForbiddenKey):
-    // 금지 키
+case errors.Is(err, env.ErrSecurityViolation):
+    // 금지 키 (실제로는 *SecurityError 반환)
     log.Fatal("금지 키 감지")
-
-case errors.Is(err, env.ErrInvalidKey):
-    // 잘못된 키 형식
-    log.Fatal("잘못된 키 감지")
 
 case err != nil:
     // 기타 오류
     log.Fatalf("로딩 실패: %v", err)
+}
+
+// 키 형식이 잘못된 경우 (실제로는 *ValidationError, Field=="key" 반환)
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Field == "key" {
+    log.Fatalf("잘못된 키 감지: %s", valErr.Message)
 }
 ```
 
@@ -534,7 +537,7 @@ func handleLoadError(err error) {
         errors.As(err, &fileErr)
         log.Fatalf("파일이 너무 큼: %s (%d bytes)", fileErr.Path, fileErr.Size)
 
-    case errors.Is(err, env.ErrForbiddenKey):
+    case errors.Is(err, env.ErrSecurityViolation):
         log.Fatal("금지 키 감지")
     }
 
@@ -556,11 +559,11 @@ func handleLoadError(err error) {
 func handleValidationError(err error) {
     var valErr *env.ValidationError
     if errors.As(err, &valErr) {
+        if valErr.Rule == "required" {
+            // 필수 키 누락: valErr.Message에 누락된 키 목록 포함
+            log.Fatalf("필수 키 누락: %s", valErr.Message)
+        }
         log.Fatalf("검증 실패: %s - %s", valErr.Field, valErr.Message)
-    }
-
-    if errors.Is(err, env.ErrMissingRequired) {
-        log.Fatal("필수 키 누락")
     }
 
     log.Fatalf("검증 실패: %v", err)

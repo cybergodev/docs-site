@@ -39,7 +39,7 @@ logger.InfoWith("ユーザーログイン",
 | SSN | 米国社会保障番号フォーマット |
 | 電話番号 | グローバル電話番号フォーマット（国際フォーマット含む） |
 
-`DefaultSecureConfig()` は基本に追加：
+`DefaultSecureConfig()` は**完全パターンセット**を使用します（基本全パターンを含み、さらに以下の一般的なカテゴリを追加）：
 
 | カテゴリ | マッチ対象 |
 |------|----------|
@@ -47,6 +47,10 @@ logger.InfoWith("ユーザーログイン",
 | IP アドレス | IPv4/IPv6 アドレス |
 | JWT Token | `eyJ` で始まる JWT フォーマット |
 | 接続文字列 | データベース接続文字列内のパスワード |
+
+:::info パターンカバー範囲
+上表は一般的なカテゴリの例のみです。`DefaultSecurityConfig()` は実際に約 36 パターンを内蔵し、業界プリセット（`HealthcareConfig()` など）は 71 パターンに達し、AWS キー、Stripe/GitHub/Slack トークン、IBAN、複数国の税務番号、Log4Shell などもカバーします。完全なパターンセットはソースコード `internal/patterns.go` を参照してください。
+:::
 
 ## カスタムフィルタリングパターン
 
@@ -148,7 +152,7 @@ if err != nil {
 defer logger.Close()
 
 // 機密情報を含むログメッセージは自動マスキング
-logger.Info("患者記録 mrn=MRN-123456 diagnosis=J18.9 が更新されました")
+logger.Info("患者記録 mrn=MRN123456 diagnosis=J18.9 が更新されました")
 // メッセージ内の MRN と ICD-10 コードがパターンにマッチするとマスキングされる
 
 // 構造化フィールドはキー名の機密度に基づいてフィルタリング

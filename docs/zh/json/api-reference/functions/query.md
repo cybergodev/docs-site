@@ -253,7 +253,7 @@ func main() {
 
 签名：`func GetTyped[T any](jsonStr, path string, defaultValue ...T) T`
 
-泛型获取函数，支持自定义类型。当路径不存在或类型转换失败时返回 `defaultValue`（未提供则返回 `T` 的零值）。
+泛型获取函数，支持自定义类型。当路径不存在、值为 null 或类型转换失败时返回 `defaultValue`（未提供则返回 `T` 的零值）。
 
 **命名约定说明**：`GetTyped[T]` 等同于 `GetAs[T]` 语义，表示将 JSON 值获取并转换为指定类型 `T`。
 

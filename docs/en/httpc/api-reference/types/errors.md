@@ -73,8 +73,8 @@ Error classification enum.
 | Constant | Description | Retryable |
 |----------|-------------|-----------|
 | `ErrorTypeUnknown` | Unknown/unclassified error | No |
-| `ErrorTypeNetwork` | Network error (connection refused, DNS failure, etc.) | Conditional |
-| `ErrorTypeTimeout` | Request timeout | Yes |
+| `ErrorTypeNetwork` | Network error (connection refused, connection reset, etc.) | Conditional |
+| `ErrorTypeTimeout` | Request timeout | Conditional¹ |
 | `ErrorTypeContextCanceled` | Context canceled | No |
 | `ErrorTypeResponseRead` | Response body read error | Conditional |
 | `ErrorTypeTransport` | Transport layer error | Yes |
@@ -84,6 +84,8 @@ Error classification enum.
 | `ErrorTypeDNS` | DNS resolution error | Conditional |
 | `ErrorTypeValidation` | Request validation error | No |
 | `ErrorTypeHTTP` | HTTP layer error | Conditional |
+
+> ¹ Timeouts triggered by a context deadline (`WithTimeout`, `TimeoutConfig.Request`) are **not** retried; only transport-level timeouts (e.g. `net.OpError` timeout) are retried.
 
 ### Type Checking
 

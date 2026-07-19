@@ -49,7 +49,7 @@ cfg := httpc.DefaultConfig()
 cfg.Retry.CustomPolicy = &selectiveRetry{maxAttempts: 5, baseDelay: time.Second}
 ```
 
-외부 프로젝트의 대안 -- `RetryConfig` 설정 사용:
+외부 프로젝트의 대안 — `RetryConfig` 설정 사용:
 
 ```go
 package main

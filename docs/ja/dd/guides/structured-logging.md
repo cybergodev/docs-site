@@ -66,7 +66,7 @@ dd.InfoWith("リクエストペイロード", dd.Any("body", requestBody))
 ```
 
 :::warning パフォーマンスに関する注意
-`Any` はリフレクションを使用するため、型が明確なコンストラクタよりパフォーマンスが低くなります。高頻度パスでは具体的な型の使用を優先してください。
+`Any` 自体はリフレクションを使用しませんが、struct/map/slice などの複合型はフィルタおよびフォーマット段階でリフレクションを必要とするため、型が明確なコンストラクタよりパフォーマンスが低くなります。高頻度パスでは具体的な型の使用を優先してください。
 :::
 
 ## チェーン呼び出し
@@ -146,11 +146,11 @@ if err != nil {
 defer logger.Close()
 ```
 
-有効にすると、非準拠のフィールド名はログに警告が出力されます：
+有効にすると、非準拠のフィールド名は **stderr** にエラー（Strict モード）または警告（Warn モード）として出力され、ログ行自体は影響を受けません：
 
 ```go
 logger.InfoWith("テスト",
-    dd.String("UserName", "alice"),   // PascalCase → 警告
+    dd.String("UserName", "alice"),   // PascalCase → stderr エラー（ログは依然書き込まれる）
     dd.String("user_name", "alice"),  // snake_case → 正常
 )
 ```
@@ -232,8 +232,12 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### テキストフォーマット（デフォルト）
 
 ```text
-[2026-04-16T21:16:48+08:00   INFO] main.go:13 リクエスト完了 method=GET status=200 elapsed=150ms
+[2026-04-16T21:16:48+08:00   INFO] logger.go:1567 リクエスト完了 method=GET status=200 elapsed=150ms
 ```
+
+:::info caller フィールドの説明
+`caller` フィールドは呼び出し位置を記録します；`*Logger` メソッド（例：`logger.InfoWith(...)`）経由で呼び出すと、caller はライブラリ内部の呼び出しフレーム（例：`logger.go:1567`）に解決されます；パッケージレベル関数（例：`dd.InfoWith`）経由で呼び出すと、ユーザーコードに解決されます。
+:::
 
 ### JSON フォーマット
 
@@ -250,7 +254,7 @@ logger.InfoWith("リクエスト完了",
 ```
 
 ```json
-{"timestamp":"2026-04-16T21:16:48+08:00","level":"info","caller":"main.go:13","message":"リクエスト完了","fields":{"method":"GET","status":200}}
+{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"logger.go:1567","message":"リクエスト完了","fields":{"method":"GET","status":200}}
 ```
 
 ## 次のステップ

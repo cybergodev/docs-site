@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Оптимизация производительности"
-title: "Производительность - CyberGo JSON | Гайд"
-description: "Производительность CyberGo JSON: EnableCache/CacheTTL, ParallelThreshold, PreParse, WarmupCache и пулы объектов."
+title: "Оптимизация производительности - CyberGo JSON | Руководство по высокой производительности"
+description: "Оптимизация производительности CyberGo JSON: кэширование EnableCache/CacheTTL, параллелизм ParallelThreshold, предпарсинг PreParse и прогрев WarmupCache — повышение производительности высокочастотной обработки JSON."
 sidebar_position: 1
 ---
 
@@ -38,8 +38,8 @@ for _, item := range dataList {
 // Использование Marshal, возвращающего байтовый срез
 bytes, _ := json.Marshal(data)
 
-// Использование Encode, возвращающего строку
-s, _ := json.Encode(data)
+// Использование EncodeWithConfig, возвращающего строку (Encode устарел)
+s, _ := json.EncodeWithConfig(data)
 ```
 
 ### Предварительное выделение буфера
@@ -54,11 +54,11 @@ buf := make([]byte, 0, 1024*1024)
 ### Использование структурной итерации для больших файлов
 
 ```go
-// Однократная загрузка (не рекомендуется для больших файлов)
+// ❌ Однократная загрузка
 data, _ := os.ReadFile("large.json")
 parsed, _ := json.ParseAny(string(data))
 
-// Структурная итерация (примечание: полный файл всё равно загружается в память)
+// ✅ Структурная итерация (примечание: полный файл всё равно загружается в память)
 processor, err := json.New()
 if err != nil {
     panic(err)

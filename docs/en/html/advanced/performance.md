@@ -63,7 +63,11 @@ for _, page := range pages {
 Configure worker pool size to match CPU cores:
 
 ```go
-cfg.WorkerPoolSize = runtime.NumCPU()
+// WorkerPoolSize is capped at 256; cap it on high-core machines
+if n := runtime.NumCPU(); n > 256 {
+    n = 256
+}
+cfg.WorkerPoolSize = n
 ```
 
 ## Input Control

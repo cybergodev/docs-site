@@ -253,7 +253,7 @@ func main() {
 
 시그니처: `func GetTyped[T any](jsonStr, path string, defaultValue ...T) T`
 
-제네릭 가져오기 함수로, 커스텀 타입을 지원합니다. 경로가 존재하지 않거나 타입 변환에 실패하면 `defaultValue`를 반환합니다 (제공되지 않으면 `T`의 제로값 반환).
+제네릭 가져오기 함수로, 커스텀 타입을 지원합니다. 경로가 존재하지 않거나, 값이 null이거나, 타입 변환에 실패하면 `defaultValue`를 반환합니다 (제공되지 않으면 `T`의 제로값 반환).
 
 **명명 규칙 설명**: `GetTyped[T]`는 `GetAs[T]`와 동일한 의미로, JSON 값을 가져와 지정된 타입 `T`로 변환함을 나타냅니다.
 

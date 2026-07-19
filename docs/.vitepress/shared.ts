@@ -93,33 +93,33 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
     icon: '🌐',
     github: 'https://github.com/cybergodev/httpc',
     desc: {
-      zh: '现代高性能 HTTP 客户端。支持 TLS 1.2+、SSRF 防护、断路器、智能重试、零分配池，将 GC 减少 90%。',
-      en: 'Modern high-performance HTTP client. Supports TLS 1.2+, SSRF protection, circuit breaker, smart retry, zero-allocation pooling, reducing GC by 90%.',
-      ko: '모던 고성능 HTTP 클라이언트. TLS 1.2+, SSRF 방어, 서킷 브레이커, 스마트 재시도, 제로 할당 풀을 지원하며 GC를 90% 감소시킵니다.',
-      ja: 'モダンで高性能な HTTP クライアント。TLS 1.2+、SSRF 防御、サーキットブレーカー、インテリジェントリトライ、ゼロアロケーションプールをサポートし、GC を 90% 削減。',
-      ru: 'Современный высокопроизводительный HTTP-клиент. Поддержка TLS 1.2+, защита от SSRF, автоматические выключатели, интеллектуальные повторы, пулы без аллокаций, снижение GC на 90%.'
+      zh: '现代高性能 HTTP 客户端。支持 TLS 1.2+、SSRF 防护、中间件链、智能重试、零分配池，将 GC 减少 90%。',
+      en: 'Modern high-performance HTTP client. Supports TLS 1.2+, SSRF protection, middleware chain, smart retry, zero-allocation pooling, reducing GC by 90%.',
+      ko: '모던 고성능 HTTP 클라이언트. TLS 1.2+, SSRF 방어, 미들웨어 체인, 스마트 재시도, 제로 할당 풀을 지원하며 GC를 90% 감소시킵니다.',
+      ja: 'モダンで高性能な HTTP クライアント。TLS 1.2+、SSRF 防御、ミドルウェアチェーン、インテリジェントリトライ、ゼロアロケーションプールをサポートし、GC を 90% 削減。',
+      ru: 'Современный высокопроизводительный HTTP-клиент. Поддержка TLS 1.2+, защита от SSRF, цепочки промежуточного ПО, интеллектуальные повторы, пулы без аллокаций, снижение GC на 90%.'
     },
     features: {
-      zh: ['TLS 1.2+', 'SSRF 防护', '断路器', '连接池管理', '请求重试'],
+      zh: ['TLS 1.2+', 'SSRF 防护', '中间件链', '连接池管理', '请求重试'],
       en: [
         'TLS 1.2+',
         'SSRF protection',
-        'Circuit breaker',
+        'Middleware chain',
         'Connection pool management',
         'Request retry'
       ],
-      ko: ['TLS 1.2+', 'SSRF 방어', '서킷 브레이커', '연결 풀 관리', '요청 재시도'],
+      ko: ['TLS 1.2+', 'SSRF 방어', '미들웨어 체인', '연결 풀 관리', '요청 재시도'],
       ja: [
         'TLS 1.2+',
         'SSRF 防御',
-        'サーキットブレイカー',
+        'ミドルウェアチェーン',
         'コネクションプール管理',
         'リクエストリトライ'
       ],
       ru: [
         'TLS 1.2+',
         'Защита от SSRF',
-        'Автоматический выключатель',
+        'Цепочка промежуточного ПО',
         'Управление пулом соединений',
         'Повтор запросов'
       ]

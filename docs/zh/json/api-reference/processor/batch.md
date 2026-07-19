@@ -1,7 +1,7 @@
 ---
 sidebar_label: "批量操作"
 title: "Processor 批量操作 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 批量操作：ProcessBatch 多操作、BatchOperation 与 BatchResult 类型、ContinueOnError 配置，适合批量处理。"
+description: "CyberGo JSON Processor 批量操作：ProcessBatch 多操作、BatchOperation 与 BatchResult 类型，适合批量处理。"
 sidebar_position: 7
 ---
 

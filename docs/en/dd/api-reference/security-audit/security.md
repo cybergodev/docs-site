@@ -1,121 +1,121 @@
 ---
 sidebar_label: "Security"
 title: "Security Filtering - CyberGo DD | Sensitive Data Filtering"
-description: "CyberGo DD security filtering API: SensitiveDataFilter rules, SecurityConfig policies, auto-masking passwords, tokens, and API keys in logs."
+description: "Complete API documentation for CyberGo DD's sensitive-data filtering, including the SensitiveDataFilter rule configuration, SecurityConfig security-policy options, and preset security configurations. Automatically detects and redacts passwords, API keys, tokens, phone numbers, SSNs, and other sensitive information in logs, effectively preventing log leakage."
 sidebar_position: 2
 ---
 
 # Security Filtering
 
-DD has built-in sensitive data filtering that automatically detects and masks sensitive information such as passwords, keys, and tokens in logs.
+DD has built-in sensitive-data filtering that automatically detects and redacts passwords, keys, tokens, and other sensitive information in logs.
 
 ## SensitiveDataFilter
 
-Regex-based sensitive data filter with support for dynamic patterns and caching.
+Regex-based sensitive-data filter supporting dynamic patterns and caching.
 
 ### Creation
 
-| Function | Description |
-|----------|-------------|
-| `NewSensitiveDataFilter()` | Full pattern set |
-| `NewEmptySensitiveDataFilter()` | Empty filter |
-| `NewCustomSensitiveDataFilter(patterns ...string)` | Custom patterns |
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `NewSensitiveDataFilter` | `() *SensitiveDataFilter` | Full pattern set |
+| `NewEmptySensitiveDataFilter` | `() *SensitiveDataFilter` | Empty filter |
+| `NewCustomSensitiveDataFilter` | `(patterns ...string) (*SensitiveDataFilter, error)` | Custom patterns |
 
 ### Methods
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `AddPattern` | `(pattern string) error` | Add regex pattern |
-| `AddPatterns` | `(patterns ...string) error` | Batch add patterns |
+| `AddPattern` | `(pattern string) error` | Add a regex pattern |
+| `AddPatterns` | `(patterns ...string) error` | Add patterns in batch |
 | `ClearPatterns` | `()` | Clear all patterns |
-| `PatternCount` | `() int` | Number of patterns |
+| `PatternCount` | `() int` | Pattern count |
 | `Enable` | `()` | Enable filtering |
 | `Disable` | `()` | Disable filtering |
 | `IsEnabled` | `() bool` | Whether enabled |
-| `Filter` | `(input string) string` | Filter string |
-| `FilterFieldValue` | `(key string, value any) any` | Filter single field value |
+| `Filter` | `(input string) string` | Filter a string |
+| `FilterFieldValue` | `(key string, value any) any` | Filter a single field value |
 | `FilterValueRecursive` | `(key string, value any) any` | Recursively filter nested structures |
-| `GetFilterStats` | `() FilterStats` | Get filter statistics |
-| `ActiveGoroutineCount` | `() int32` | Active filter goroutine count |
-| `WaitForGoroutines` | `(timeout time.Duration) bool` | Wait for filter goroutines to complete |
-| `Close` | `() bool` | Close filter and release cache |
+| `GetFilterStats` | `() FilterStats` | Get filtering statistics |
+| `ActiveGoroutineCount` | `() int32` | Active filter goroutines |
+| `WaitForGoroutines` | `(timeout time.Duration) bool` | Wait for filter goroutines to finish |
+| `Close` | `() bool` | Close the filter and release caches |
 
 ### Custom Patterns
 
 ```go
 filter, _ := dd.NewCustomSensitiveDataFilter(
-    `(?i)password\s*[:=]\s*\S+`,     // Passwords
-    `(?i)api[_-]?key\s*[:=]\s*\S+`,  // API Keys
-    `\b\d{16,19}\b`,                  // Credit card numbers
+    `(?i)password\s*[:=]\s*\S+`,     // Password
+    `(?i)api[_-]?key\s*[:=]\s*\S+`,  // API Key
+    `\b\d{16,19}\b`,                  // Credit card number
 )
 ```
 
 ## SecurityConfig
 
-Security configuration struct, controlling filter behavior and security level.
+Security configuration struct controlling filter behavior and security level.
 
 ```go
 type SecurityConfig struct {
-    MaxMessageSize  int                       // Message size limit in bytes (0 means no limit, default 5MB in preset configs)
-    MaxWriters      int                       // Maximum Writer count (default 100)
-    SensitiveFilter *SensitiveDataFilter      // Sensitive data filter
-    RateLimitConfig *internal.RateLimitConfig // Rate limiting config (internal type, auto-filled by preset configs; nil disables rate limiting)
+    MaxMessageSize  int                       // Message size cap in bytes (0 means no limit; preset configs default to 5MB)
+    MaxWriters      int                       // Max writer count (preset configs default to 100)
+    SensitiveFilter *SensitiveDataFilter      // Sensitive-data filter
+    RateLimitConfig *internal.RateLimitConfig // Rate-limit config (internal type; nil disables rate limiting; preset configs do not populate this field)
 }
 ```
 
 :::info About RateLimitConfig
-`RateLimitConfig` controls log rate limiting to prevent log flooding (DoS) and maintain system stability under load. This field is an internal type (`*internal.RateLimitConfig`) and cannot be constructed directly; it is typically auto-filled by preset configs such as `SecurityConfigForLevel` or `DefaultSecureConfig`. Set it to `nil` to disable rate limiting.
+`RateLimitConfig` controls log rate limiting, used to prevent log flooding (DoS) and keep the system stable under high load. The field is an internal type (`*internal.RateLimitConfig`) and cannot be constructed directly. All preset configs (`DefaultSecurityConfig`, `DefaultSecureConfig`, `SecurityConfigForLevel`, etc.) **do not populate** this field, i.e. rate limiting is disabled by default; the Logger initializes a rate limiter only when it is explicitly set. To disable rate limiting, set it to `nil`.
 :::
 
 ### FilterStats
 
-Filter statistics structure for monitoring and observability.
+Filter statistics struct, used for monitoring and observability.
 
 ```go
 type FilterStats struct {
     ActiveGoroutines  int32         // Currently active filter goroutines
-    PatternCount      int32         // Registered sensitive data pattern count
-    SemaphoreCapacity int           // Maximum concurrent filter operations
+    PatternCount      int32         // Number of registered sensitive-data patterns
+    SemaphoreCapacity int           // Max concurrent filter operations
     MaxInputLength    int           // Input length truncation threshold
     Enabled           bool          // Whether filtering is enabled
     TotalFiltered     int64         // Total filter operations
-    TotalRedactions   int64         // Total redaction count
-    TotalTimeouts     int64         // Total timeout count
+    TotalRedactions   int64         // Total redactions
+    TotalTimeouts     int64         // Total timeouts
     AverageLatency    time.Duration // Average filter latency
-    CacheHits         int64         // Cache hit count
-    CacheMiss         int64         // Cache miss count
+    CacheHits         int64         // Cache hits
+    CacheMiss         int64         // Cache misses
 }
 ```
 
 ### SecurityLevel
 
-Security level enum, used to quickly get preset configurations via `SecurityConfigForLevel`.
+Security level enum, used with `SecurityConfigForLevel` to quickly obtain preset configurations.
 
 ```go
 type SecurityLevel int
 ```
 
-Implements `String()` method, returns readable level name.
+Implements a `String()` method returning a readable level name.
 
 | Constant | Description |
 |----------|-------------|
-| `SecurityLevelDevelopment` | Development environment (no filtering, no rate limiting, no auditing) |
-| `SecurityLevelBasic` | Basic filtering (passwords, API keys, credit cards) |
+| `SecurityLevelDevelopment` | Development (no sensitive filtering, no rate limiting) |
+| `SecurityLevelBasic` | Basic filtering (passwords, tokens, API keys, credit cards, SSNs, phones, SWIFT/CVV, etc. — about 40 common sensitive-data categories) |
 | `SecurityLevelStandard` | Standard filtering (recommended for production) |
-| `SecurityLevelStrict` | Strict filtering (PII/financial data environments) |
+| `SecurityLevelStrict` | Strict filtering (PII / financial-data environments) |
 | `SecurityLevelParanoid` | Maximum filtering (high-risk environments) |
 
 ### Preset Configurations
 
 | Function | Description | Use Case |
 |----------|-------------|----------|
-| `DefaultSecurityConfig()` | Basic sensitive data filtering | Production (recommended) |
-| `DefaultSecureConfig()` | Complete sensitive data filtering | High security requirements |
-| `HealthcareConfig()` | HIPAA compliance | Healthcare industry |
+| `DefaultSecurityConfig()` | Basic sensitive-data filtering | Production (recommended) |
+| `DefaultSecureConfig()` | Complete sensitive-data filtering | High-security needs |
+| `HealthcareConfig()` | HIPAA compliance | Medical industry |
 | `FinancialConfig()` | PCI-DSS compliance | Financial industry |
-| `GovernmentConfig()` | Government standards | Public sector |
+| `GovernmentConfig()` | Government standard | Public sector |
 
-### Level-based Configuration
+### Configuration by Level
 
 ```go
 func SecurityConfigForLevel(level SecurityLevel) *SecurityConfig
@@ -123,7 +123,7 @@ func SecurityConfigForLevel(level SecurityLevel) *SecurityConfig
 
 | Level | Constant | Description |
 |-------|----------|-------------|
-| Development | `SecurityLevelDevelopment` | Development environment, most permissive |
+| Development | `SecurityLevelDevelopment` | Development, most permissive |
 | Basic | `SecurityLevelBasic` | Basic filtering |
 | Standard | `SecurityLevelStandard` | Standard filtering |
 | Strict | `SecurityLevelStrict` | Strict filtering |
@@ -139,21 +139,24 @@ Creates a deep copy of the security configuration.
 
 ## Usage
 
-### Via Config
+### Configuring via Config
 
 ```go
+// DefaultConfig already embeds DefaultSecurityConfig(); usually no need to assign explicitly
 cfg := dd.DefaultConfig()
-cfg.Security = dd.DefaultSecurityConfig()
 logger, _ := dd.New(cfg)
+
+// To replace with a higher security-level config, override explicitly
+// cfg.Security = dd.DefaultSecureConfig()
 ```
 
 ### Runtime Modification
 
 ```go
-// Update security configuration
+// Update the security config
 logger.SetSecurityConfig(dd.DefaultSecureConfig())
 
-// Read current configuration
+// Read the current config
 sec := logger.GetSecurityConfig()
 ```
 
@@ -164,9 +167,9 @@ filter := dd.NewSensitiveDataFilter()
 
 // String filtering
 filtered := filter.Filter("password=s3cr3t")
-// → "password=[REDACTED]"
+// -> "password=[REDACTED]"
 
-// Nested structures (automatic recursion, supports circular reference detection)
+// Nested structures (auto-recursive, supports cycle detection)
 data := map[string]any{
     "user": map[string]any{
         "name":     "admin",
@@ -174,21 +177,21 @@ data := map[string]any{
         "token":    "eyJhbGciOi...",
     },
 }
-filtered := filter.FilterValueRecursive("data", data)
+filteredData := filter.FilterValueRecursive("data", data)
 ```
 
 ### Monitoring Filter Statistics
 
 ```go
 filter := dd.NewSensitiveDataFilter()
-// ... use filtering ...
+// ... use the filter ...
 stats := filter.GetFilterStats()
-fmt.Printf("Total filtered: %d, Redactions: %d, Avg latency: %v\n",
+fmt.Printf("Total filtered: %d, redactions: %d, avg latency: %v\n",
     stats.TotalFiltered, stats.TotalRedactions, stats.AverageLatency)
 ```
 
 ## Next Steps
 
-- [Configuration](../core/config) -- SecurityConfig configuration
+- [Config](../core/config) -- SecurityConfig configuration
 - [Logger](../core/logger) -- SetSecurityConfig method
 - [Audit Logging](./audit) -- Security event auditing

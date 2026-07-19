@@ -93,6 +93,12 @@ type Scorer interface {
 }
 ```
 
+:::warning
+When a single `Processor` is shared across concurrent `Extract` calls, `Score`/`ShouldRemove` may be invoked **from multiple goroutines simultaneously**. Therefore, any `Scorer` implementation must **ensure its own concurrency safety**.
+
+The library's built-in default scorer is read-only and inherently concurrency-safe; **a custom `Scorer` that holds mutable state (such as a cache or counter) must perform its own locking and synchronization**.
+:::
+
 Inject a custom scorer via the `Config.Scorer` field:
 
 ```go

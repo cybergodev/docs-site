@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <div class="doc-feedback" v-if="show" aria-live="polite">
     <div class="feedback-prompt" v-if="!voted">
       <span class="feedback-text">{{ t.feedbackQuestion }}</span>
@@ -70,7 +70,7 @@
       <span>{{ t.feedbackThanks }}</span>
     </div>
   </div>
-</template>
+</template> -->
 
 <script setup lang="ts">
   import { ref, onMounted } from 'vue'

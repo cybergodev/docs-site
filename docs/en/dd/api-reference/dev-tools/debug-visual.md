@@ -1,42 +1,42 @@
 ---
 sidebar_label: "Debug Visual"
 title: "Debug Output - CyberGo DD | Print/JSON/Text/Exit"
-description: "CyberGo DD debug output API: Print, JSON, Text, and Exit functions for quick debugging via package-level calls without creating a Logger instance."
+description: "Complete API documentation for CyberGo DD's debug visualization functions, including Print formatted printing, JSON structured output, Text plain-text output, and Exit fatal-exit. These quick-debug functions are callable directly via package-level functions without creating a Logger instance, dramatically simplifying the development and debugging workflow."
 sidebar_position: 1
 ---
 
 # Debug Output
 
-DD provides a set of quick debug output functions for data visualization during development and debugging.
+DD provides a set of quick debug-output functions for data visualization during development and debugging.
 
 ## Package-level Debug Functions
 
-Directly callable via the `dd.` prefix:
+Callable directly via the `dd.` prefix:
 
-### Print Series
+### Print Family
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Print` | `(args ...any)` | Output to global logger's Writer (LevelInfo, security filtered) |
-| `Println` | `(args ...any)` | Same as Print (underlying Log() already adds newline, security filtered) |
-| `Printf` | `(format string, args ...any)` | Formatted output (LevelInfo, security filtered) |
+| `Print` | `(args ...any)` | Output to the global logger's Writer (LevelInfo, subject to security filtering) |
+| `Println` | `(args ...any)` | Same as Print (the underlying Log() already appends a newline; subject to security filtering) |
+| `Printf` | `(format string, args ...any)` | Formatted output (LevelInfo, subject to security filtering) |
 
 ```go
 dd.Print("value:", 42, true)
-dd.Println("same as Print")
+dd.Println("behaves like Print")
 dd.Printf("user: %s, ID: %d", name, id)
 ```
 
 :::tip Security Filtering
-The `Print` series functions undergo sensitive data filtering, suitable for outputting debug data that may contain sensitive information.
+The `Print` family goes through sensitive-data filtering, suitable for printing debug data that may contain sensitive information.
 :::
 
 ### JSON Output
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `JSON` | `(data ...any)` | Compact JSON format output to stdout (with caller info) |
-| `JSONF` | `(format string, args ...any)` | Formatted string as compact JSON output to stdout (with caller info) |
+| `JSON` | `(data ...any)` | Compact-JSON output to stdout (includes caller info) |
+| `JSONF` | `(format string, args ...any)` | Formatted string output as compact JSON to stdout (includes caller info) |
 
 ```go
 user := map[string]any{"name": "admin", "role": "super"}
@@ -45,69 +45,69 @@ dd.JSON(user)
 ```
 
 :::warning No Security Filtering
-`JSON`/`JSONF` outputs raw data directly and **does not go through sensitive data filtering**. Do not use in production environments.
+`JSON`/`JSONF` output raw data directly and **do not go through sensitive-data filtering**. Do not use them in production.
 :::
 
 ### Text Output
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Text` | `(data ...any)` | Pretty-printed format output to stdout |
+| `Text` | `(data ...any)` | Pretty-printed output to stdout |
 | `Textf` | `(format string, args ...any)` | Formatted text output to stdout |
 
 ```go
 dd.Text(complexData)
-dd.Textf("Processing result: %+v", result)
+dd.Textf("result: %+v", result)
 ```
 
 ### Exit Functions
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Exit` | `(data ...any)` | Text output with caller info then exit (exit code 0), complex types auto pretty-printed, no security filtering |
-| `Exitf` | `(format string, args ...any)` | Formatted output with caller info then exit (exit code 0), no security filtering |
+| `Exit` | `(data ...any)` | Text output with caller info followed by exit (exit code 0); complex types are pretty-printed automatically; does not go through security filtering |
+| `Exitf` | `(format string, args ...any)` | Formatted output with caller info followed by exit (exit code 0; does not go through security filtering) |
 
 ```go
-dd.Exit("Debug breakpoint", someData)
-// Outputs text with caller info (complex types auto pretty-printed) then os.Exit(0)
+dd.Exit("debug breakpoint", someData)
+// Outputs text with caller info (complex types are pretty-printed) then calls os.Exit(0)
 ```
 
 ## Logger Methods
 
-Logger instances also provide identically named methods (except Exit/Exitf, which are only available as package-level functions):
+Logger instances also provide same-named methods (except Exit/Exitf, which are package-level only):
 
 ```go
 logger := dd.Default()
 
-// Print series writes to configured Writer (security filtered)
+// Print family writes to the configured Writer (subject to security filtering)
 logger.Print("instance method")
 
-// JSON/Text outputs directly to stdout (no security filtering)
+// JSON/Text output directly to stdout (does not go through security filtering)
 logger.JSON(data)
 logger.Text(data)
 ```
 
-:::warning Difference Between Logger Methods and Package Functions
-`logger.Print()` outputs through the current Logger instance's configured Writer with security filtering, while `dd.Print()` outputs through the global logger's Writer with security filtering. Both behave similarly but may have different output targets. `logger.JSON()` and `logger.Text()` are the same as `dd.JSON()` and `dd.Text()`, outputting directly to stdout **without security filtering**.
+:::warning Logger methods vs package-level functions
+`logger.Print()` writes to the current Logger instance's configured Writer and goes through security filtering; `dd.Print()` writes to the global logger's Writer and also goes through security filtering. The two behave similarly but may target different writers. `logger.JSON()` and `logger.Text()`, like `dd.JSON()` and `dd.Text()`, output directly to stdout and **do not go through security filtering**.
 :::
 
-## Usage Scenarios
+## Use Cases
 
-| Scenario | Recommended Function |
-|----------|---------------------|
+| Scenario | Recommended function |
+|----------|----------------------|
 | Quick value printing | `dd.Print()` |
-| Inspect struct | `dd.JSON()` |
+| Inspect a struct | `dd.JSON()` |
 | Formatted output | `dd.Text()` |
 | Debug breakpoint | `dd.Exit()` |
-| May contain sensitive data | `dd.Print()` (auto-filtered) |
+| Possibly contains sensitive info | `dd.Print()` (auto-filtered) |
 | Performance profiling data | `dd.JSON()` |
 
-:::danger Debug Only
-These functions are designed for development debugging and **should not be used in production code**. Use standard log methods like `Info`, `Error`, etc. in production environments.
+:::danger Debug only
+The `JSON`, `Text`, and `Exit` families are designed for development debugging and **should not be used in production code** (they bypass sensitive-data filtering and write directly to stdout). `Print`/`Println`/`Printf` behave like `Info` (LevelInfo + security filtering + configured writer) and can be used in production. In production, prefer standard log methods like `Info`, `Error`, etc.
 :::
 
 ## Next Steps
 
 - [Logger](../core/logger) -- Logger debug methods
 - [Package Functions](../core/functions) -- Global functions
-- [Testing Helper](./recorder) -- LoggerRecorder testing tool
+- [Test Helper](./recorder) -- LoggerRecorder test tool

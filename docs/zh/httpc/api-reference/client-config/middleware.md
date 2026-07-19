@@ -92,7 +92,7 @@ client, _ := httpc.New(&httpc.Config{
 func RequestIDMiddleware(headerName string, generator func() string) MiddlewareFunc
 ```
 
-为每个请求添加唯一 ID。默认使用 `crypto/rand` 生成 32 字符十六进制 ID。
+为每个请求添加唯一 ID。默认使用 `crypto/rand` 生成 32 字符十六进制 ID；若请求已存在同名头则保留原值不覆盖。
 
 | 参数 | 说明 |
 |------|------|
@@ -121,6 +121,10 @@ func TimeoutMiddleware(timeout time.Duration) MiddlewareFunc
 
 中间件级别的超时控制。在客户端内置超时之前生效，超时后取消上下文并返回错误。
 
+:::warning 不要用于 Download 或流式请求
+`TimeoutMiddleware` 的 `defer cancel()` 在处理器返回（收到响应头）后立即触发，对 `Download` 或 `WithStreamBody` 请求会在读取响应体之前提前取消上下文，产生「context canceled」错误。流式/下载场景请改用 [`WithTimeout`](../core/options#withtimeout)。
+:::
+
 ```go
 client, _ := httpc.New(&httpc.Config{
     Middleware: &httpc.MiddlewareConfig{
@@ -137,7 +141,7 @@ client, _ := httpc.New(&httpc.Config{
 func HeaderMiddleware(headers map[string]string) MiddlewareFunc
 ```
 
-为每个请求添加静态请求头。在创建时即验证头部安全性（CRLF 注入防护）。
+为每个请求添加静态请求头。在创建时即验证头部安全性（CRLF 注入防护）；与请求中已有的同名头冲突时会覆盖。
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -178,7 +182,7 @@ client, _ := httpc.New(&httpc.Config{
 func AuditMiddleware(onAudit func(event AuditEvent)) MiddlewareFunc
 ```
 
-安全审计中间件，适用于金融、医疗、政务等合规场景。记录完整的请求/响应信息，URL 自动脱敏。
+安全审计中间件，适用于金融、医疗、政务等合规场景。默认记录请求/响应元信息（方法、URL、状态码、耗时、重试等），URL 自动脱敏；如需记录完整头部请用 [`AuditMiddlewareWithConfig`](#auditmiddlewarewithconfig) 并设置 `IncludeHeaders: true`。
 
 ```go
 client, _ := httpc.New(&httpc.Config{
@@ -266,7 +270,7 @@ event := httpc.AuditEvent{
     StatusCode: 200,
 }
 data, _ := json.Marshal(event)
-// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"durationMs":150,"attempts":0}
+// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"attempts":0,"durationMs":150}
 ```
 
 ### AuditMiddlewareConfig

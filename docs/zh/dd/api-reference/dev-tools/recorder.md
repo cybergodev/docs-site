@@ -72,7 +72,11 @@ func TestLogger(t *testing.T) {
 ```go
 func TestLogLevel(t *testing.T) {
     rec := dd.NewLoggerRecorder()
-    logger, _ := rec.NewLogger(dd.DevelopmentConfig())
+    // 注意：Recorder 依 ISO 8601 时间戳解析级别，DevelopmentConfig 的
+    // 时间格式（"15:04:05.000"）不兼容，故用 DefaultConfig 手动设 DEBUG。
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelDebug
+    logger, _ := rec.NewLogger(cfg)
 
     logger.Debug("debug")
     logger.Info("info")

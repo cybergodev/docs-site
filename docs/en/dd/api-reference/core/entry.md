@@ -1,52 +1,52 @@
 ---
 sidebar_label: "LoggerEntry"
-title: "LoggerEntry - CyberGo DD | Preset Field Logger"
-description: "CyberGo DD LoggerEntry API: create chained loggers with preset fields, immutable WithFields composition, context binding, and level inheritance for tracing."
+title: "LoggerEntry - CyberGo DD | Preset-Field Logger"
+description: "Complete API documentation for CyberGo DD's LoggerEntry type, used to create chained loggers with preset fields. Passing at least one field returns a new immutable Entry instance (passing none returns the original Entry), supporting field accumulation and composition, context-bound propagation, and level inheritance. Suitable for request-scoped log tracing and context correlation."
 sidebar_position: 3
 ---
 
 # LoggerEntry
 
-`LoggerEntry` is a logger with preset fields. Each `WithFields` call returns a new immutable Entry.
+`LoggerEntry` is a logger with preset fields; passing at least one field returns a new immutable Entry.
 
 ## Creation
 
 ```go
-// Create from Logger
+// From a Logger
 entry := logger.WithFields(
     dd.String("service", "api"),
     dd.String("env", "prod"),
 )
 
-// Create via global Logger
+// Via the global Logger
 entry := dd.Default().WithFields(
     dd.String("service", "api"),
 )
 
-// Single field shortcut
+// Single-field shortcut
 entry := logger.WithField("request_id", "req-123")
 ```
 
-## Chaining
+## Chained Calls
 
 ```go
-// Append fields (returns new Entry, original Entry unchanged)
+// Append fields (returns a new Entry; the original is unchanged)
 base := logger.WithFields(dd.String("svc", "api"))
 enhanced := base.WithFields(dd.String("env", "prod"))
 
-// New fields override same-named old fields
+// New fields overwrite same-named old fields
 entry := base.WithField("svc", "gateway")  // svc becomes "gateway"
 ```
 
 :::tip Immutability
-Each `WithFields` / `WithField` call returns a new `LoggerEntry`. The original Entry is not affected and is safe for concurrent use.
+When at least one field is passed, `WithFields` / `WithField` return a new `LoggerEntry`; the original Entry is unaffected and safe for concurrent use. Calling `WithFields()` with no fields is a no-op optimization that returns the original Entry directly.
 :::
 
-## Log Methods
+## Logging Methods
 
-All Logger log methods are also available on Entry. Output logs automatically carry preset fields:
+All Logger logging methods are also available on the Entry; emitted logs automatically carry the preset fields:
 
-### Basic Logging
+### Basic Logs
 
 | Method | Description |
 |--------|-------------|
@@ -54,10 +54,10 @@ All Logger log methods are also available on Entry. Output logs automatically ca
 | `Info(args ...any)` | Info level |
 | `Warn(args ...any)` | Warn level |
 | `Error(args ...any)` | Error level |
-| `Fatal(args ...any)` | Fatal level (calls os.Exit(1) by default, customizable via FatalHandler) |
+| `Fatal(args ...any)` | Fatal level (by default calls os.Exit(1), **deferred functions will not run**; customizable via FatalHandler) |
 | `Log(level LogLevel, args ...any)` | Specified level |
 
-### Formatted Logging
+### Formatted Logs
 
 | Method | Description |
 |--------|-------------|
@@ -65,10 +65,10 @@ All Logger log methods are also available on Entry. Output logs automatically ca
 | `Infof(format string, args ...any)` | Formatted Info |
 | `Warnf(format string, args ...any)` | Formatted Warn |
 | `Errorf(format string, args ...any)` | Formatted Error |
-| `Fatalf(format string, args ...any)` | Formatted Fatal (calls os.Exit(1) by default, customizable via FatalHandler) |
-| `Logf(level LogLevel, format string, args ...any)` | Formatted specified level |
+| `Fatalf(format string, args ...any)` | Formatted Fatal (by default calls os.Exit(1), **deferred functions will not run**; customizable via FatalHandler) |
+| `Logf(level LogLevel, format string, args ...any)` | Formatted, specified level |
 
-### Structured Logging
+### Structured Logs
 
 | Method | Description |
 |--------|-------------|
@@ -76,23 +76,23 @@ All Logger log methods are also available on Entry. Output logs automatically ca
 | `InfoWith(msg string, fields ...Field)` | Structured Info |
 | `WarnWith(msg string, fields ...Field)` | Structured Warn |
 | `ErrorWith(msg string, fields ...Field)` | Structured Error |
-| `FatalWith(msg string, fields ...Field)` | Structured Fatal (calls os.Exit(1) by default, customizable via FatalHandler) |
-| `LogWith(level LogLevel, msg string, fields ...Field)` | Structured specified level |
+| `FatalWith(msg string, fields ...Field)` | Structured Fatal (by default calls os.Exit(1), **deferred functions will not run**; customizable via FatalHandler) |
+| `LogWith(level LogLevel, msg string, fields ...Field)` | Structured, specified level |
 
 ### Print Methods
 
 | Method | Description |
 |--------|-------------|
-| `Print(args ...any)` | Output to Writer (LevelInfo, security filtered) |
-| `Println(args ...any)` | Identical to Print |
-| `Printf(format string, args ...any)` | Formatted output (LevelInfo, security filtered) |
+| `Print(args ...any)` | Output to the Writer (LevelInfo, subject to security filtering) |
+| `Println(args ...any)` | Same behavior as Print |
+| `Printf(format string, args ...any)` | Formatted output (LevelInfo, subject to security filtering) |
 
 ### Field Chaining
 
 | Method | Description |
 |--------|-------------|
-| `WithFields(fields ...Field) *LoggerEntry` | Append fields, returns new Entry |
-| `WithField(key string, value any) *LoggerEntry` | Add single field, returns new Entry |
+| `WithFields(fields ...Field) *LoggerEntry` | Append fields, returns a new Entry |
+| `WithField(key string, value any) *LoggerEntry` | Add a single field, returns a new Entry |
 
 ## Usage Examples
 
@@ -106,11 +106,11 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         dd.String("remote", r.RemoteAddr),
     )
 
-    reqLog.Info("Request started")
+    reqLog.Info("request started")
 
-    // Processing logic...
+    // Handling logic...
 
-    reqLog.WithField("status", 200).Info("Request completed")
+    reqLog.WithField("status", 200).Info("request completed")
 }
 ```
 
@@ -122,15 +122,15 @@ serviceLog := logger.WithFields(
     dd.String("version", "2.1.0"),
 )
 
-serviceLog.Info("Service started")
+serviceLog.Info("service started")
 
 dbLog := serviceLog.WithField("component", "database")
-dbLog.Info("Connection established")
-dbLog.ErrorWith("Query failed", dd.Err(err))
+dbLog.Info("connected")
+dbLog.ErrorWith("query failed", dd.Err(err))
 ```
 
 ## Next Steps
 
 - [Logger](./logger) -- Logger instance methods
 - [Structured Fields](../output-integration/fields) -- Field constructors
-- [Package Functions](./functions) -- Global logging functions
+- [Package Functions](./functions) -- Global log functions

@@ -33,9 +33,9 @@ func main() {
         dd.String("password", "s3cr3t123"),    // → password=[REDACTED]
     )
 
-    // API Key は自動マスキング
+    // API Key は自動マスキング（注意：endpoint も機密キー名に該当し、マスキングされる）
     logger.InfoWith("API 呼び出し",
-        dd.String("endpoint", "/api/data"),
+        dd.String("endpoint", "/api/data"),      // → endpoint=[REDACTED]（"endpoint" も機密キー名に該当）
         dd.String("api_key", "sk-abc123xyz"),   // → api_key=[REDACTED]
     )
 }
@@ -107,10 +107,13 @@ func main() {
         Format:   dd.FormatJSON,
         Security: dd.DefaultSecureConfig(),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
+        // 注意：ここでは Audit を未設定のため、業務 logger のマスキング/セキュリティイベントは上記 auditLogger に自動的に入りません。
+        // セキュリティイベントを自動的に監査に送るには、ここで Audit フィールドを設定する（例：上記 auditLogger に対応する
+        // AuditConfig を Audit: &auditCfg 経由で渡す）か、明示的に auditLogger.LogX(...) を呼び出してイベントを記録します。
     })
     defer logger.Close()
 
-    // 通常の業務操作
+    // 通常の業務操作（マスキングは Security が処理するが、監査ログには自動的に書き込まれない）
     logger.InfoWith("取引処理",
         dd.String("transaction_id", "TXN-001"),
         dd.String("amount", "1500.00"),

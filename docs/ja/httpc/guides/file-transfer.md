@@ -12,14 +12,30 @@ sidebar_position: 4
 ### シンプルなファイルアップロード
 
 ```go
-fileContent, err := os.ReadFile("document.pdf")
-if err != nil {
-    log.Fatal(err)
-}
+package main
 
-result, err := httpc.Post("https://api.example.com/upload",
-    httpc.WithFile("file", "document.pdf", fileContent),
+import (
+    "log"
+    "os"
+
+    "github.com/cybergodev/httpc"
 )
+
+func main() {
+    fileContent, err := os.ReadFile("document.pdf")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    result, err := httpc.Post("https://api.example.com/upload",
+        httpc.WithFile("file", "document.pdf", fileContent),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Printf("アップロード完了: %d", result.StatusCode()) // 出力例：アップロード完了: 200（実際のステータスコードはサーバーに依存）
+}
 ```
 
 ### Multipart フォーム
@@ -65,10 +81,16 @@ result, err := httpc.Post(url, httpc.WithFormData(form))
 ### バイナリアップロード
 
 ```go
-data, _ := os.ReadFile("data.bin")
+data, err := os.ReadFile("data.bin")
+if err != nil {
+    log.Fatal(err)
+}
 result, err := httpc.Post(url,
     httpc.WithBinary(data, "application/octet-stream"),
 )
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## ファイルダウンロード
@@ -167,7 +189,10 @@ if err != nil {
 ドメインクライアントのダウンロードでは、レスポンス Cookie が自動的にセッションにキャプチャされます：
 
 ```go
-dc, _ := httpc.NewDomain("https://api.example.com")
+dc, err := httpc.NewDomain("https://api.example.com")
+if err != nil {
+    log.Fatal(err)
+}
 defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
@@ -177,6 +202,9 @@ cfg.FilePath = "/tmp/report.pdf"
 
 // ダウンロードしながらセッションを自動管理（path は baseURL に対して相対）
 result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## 次のステップ

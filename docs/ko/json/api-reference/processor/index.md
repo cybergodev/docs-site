@@ -1,7 +1,7 @@
 ---
 sidebar_label: "개요"
 title: "Processor 프로세서 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor: New 생성, GetString/Set/Delete, Foreach 반복, Encode, Close 수명 주기, Stats 통계, 캐시 설정으로 고빈도 재사용에 적합합니다."
+description: "CyberGo JSON Processor 프로세서: New 생성, GetString/Set/Delete 작업, Foreach 반복, Encode 인코딩과 Close 수명 주기로 고빈도 재사용에 적합합니다."
 sidebar_position: 1
 ---
 
@@ -61,7 +61,7 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [조회 및 가져오기](./query) | GetString/Int/Float/Bool/Get/GetWithContext/SafeGet/GetArray/GetObject/GetMultiple/CompilePath/GetCompiled |
 | [수정](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/MergeJSON/MergeMany/CompareJSON |
 | [삭제 작업](./delete) | Delete/DeleteClean |
-| [인코딩 및 출력](./output) | Encode/EncodePretty/EncodeWithConfig/Compact/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
+| [인코딩 및 출력](./output) | Encode/EncodePretty/EncodeWithConfig/MarshalIndent/Prettify/Compact/CompactBuffer/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream |
 | [파싱 및 검증](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal |
 | [배치 작업](./batch) | ProcessBatch/WarmupCache |
 | [JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |

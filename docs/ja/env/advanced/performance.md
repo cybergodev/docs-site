@@ -1,7 +1,7 @@
 ---
 sidebar_label: "パフォーマンス最適化"
 title: "パフォーマンス最適化 - CyberGo env | 高並発読み書きチューニング"
-description: "CyberGo env 性能最適化ガイド。RWMutex・シャードロックの並行性、sync.Pool 再利用によるゼロアロケーション、mlock メモリロックのオーバーヘッド天秤、大容量ファイルストリーミング、MaxFileSize/MaxVariables チューニングをベンチマーク基準で提案します。"
+description: "CyberGo env パフォーマンス最適化ガイド。RWMutex 読み書きロックとシャードロックの並行安全性、sync.Pool オブジェクトプール再利用による割り当ての大幅削減、mlock メモリロックのオーバーヘッドと大容量ファイルのストリーミング解析、ベンチマーク比較、並行スループット分析、MaxFileSize/MaxVariables パラメータチューニングの提案を含みます。"
 sidebar_position: 1
 ---
 
@@ -338,10 +338,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 ### メモリロックのオーバーヘッド
 
-| 操作 | ロックなし | ロックあり |
-|------|--------|--------|
-| 作成 | ~100ns | ~1μs |
-| 読み取り | ~10ns | ~10ns |
+メモリロック（Linux の `mlock` / Windows の `VirtualLock`）は `SecureValue` 作成時にのみ 1 回の追加 syscall オーバーヘッドを発生させ、読み取り操作（`Reveal` / `String` / `Masked`）に差異はありません。`SecureValue` は小さく短命に保つことを推奨します——使用後すぐに `Close()` / `Release()` でオブジェクトプールに返却し、大きなロック済みメモリを長期間保持しないでください。
 
 ## ベンチマークテスト
 

@@ -187,7 +187,7 @@ type Config struct {
     // AdditionalDangerousPatterns デフォルトパターンに追加するセキュリティパターン
     AdditionalDangerousPatterns []DangerousPattern
 
-    // DisableDefaultPatterns 組み込み警告レベルセキュリティパターンを無効化
+    // DisableDefaultPatterns 組み込みデフォルトセキュリティパターンを無効化（重要パターン以外）
     // true に設定すると AdditionalDangerousPatterns のみ使用
     // 注意：重要パターン（__proto__、constructor[、prototype.）は常に強制実行され、無効化不可
     DisableDefaultPatterns bool
@@ -292,7 +292,7 @@ func main() {
 ```go
 cfg := json.DefaultConfig()
 
-// 組み込み警告レベルパターンを無効化し、カスタムパターンのみ使用
+// 組み込みデフォルトパターンを無効化し（重要パターン以外）、カスタムパターンのみ使用
 // 注意：重要パターン（__proto__、constructor[、prototype.）は常に強制実行
 cfg.DisableDefaultPatterns = true
 
@@ -333,17 +333,16 @@ for _, p := range cfg.AdditionalDangerousPatterns {
 
 ### 小規模 JSON（< 4KB）
 
-常に完全なセキュリティスキャンを実行します。
+常に完全なセキュリティスキャンを実行し、すべての危険パターンを一つずつチェックします。
 
-### 中規模 JSON（>= 4KB）
+### より大きな JSON（≥ 4KB）
 
-32KB のスライディングウィンドウでスキャンし、境界をまたぐパターンの見落としを防止します。
+多層最適化スキャンを採用し、**100% カバレッジを保証**します（サンプリングの盲域なし）：
 
-### 大規模 JSON
-
-- 重要パターンは常にフルスキャン
-- その他のパターンはサンプリング戦略を使用
-- 疑わしい文字密度をチェック
+- 重要パターン（`__proto__`、`constructor[`、`prototype.`）は常に完全スキャン
+- まず指示文字のチェック：危険文字が1つもない場合は高速にスキップ
+- 疑わしい文字密度を検出：密度が高すぎる場合は全量スキャンにフォールバックし、攻撃者が密集領域に悪意ある内容を隠すのを防止
+- その他のパターンは 32KB **スライディングウィンドウ**でスキャン（ウィンドウはオーバーラップ付き）、境界をまたぐパターンの見落としを防止
 
 ---
 

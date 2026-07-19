@@ -1,25 +1,25 @@
 ---
 sidebar_label: "Performance"
-title: "Performance - CyberGo DD | Optimization Guide"
-description: "CyberGo DD performance optimization: zero-allocation techniques, BufferedWriter, log sampling, level checking, sync.Pool reuse, and benchmarking."
+title: "Performance Tuning - CyberGo DD | High-Performance Logging"
+description: "A complete performance-tuning guide for the CyberGo DD logging library, covering low-allocation optimization, BufferedWriter buffered-write configuration, log-sampling strategy and frequency control, early level-check to avoid wasteful allocations, sync.Pool object-pool reuse, and benchmark-analysis methods, helping you achieve extreme logging performance in high-concurrency scenarios."
 sidebar_position: 1
 ---
 
-# Performance Optimization
+# Performance Tuning
 
-DD is designed for high performance. Here are recommendations for further optimizing logging performance.
+DD is designed for high performance; here are suggestions for further optimizing logging performance.
 
-## Zero-Allocation Optimization
+## Low-Allocation Optimization
 
 DD minimizes memory allocations on hot paths:
 
 - `IsLevelEnabled()` checks use atomic operations, lock-free
 - Structured fields use pre-allocated buffers
-- Avoids formatting messages when the log level doesn't match
+- Avoids formatting messages when the log level does not match
 
-## Level Checking
+## Level Checks
 
-Check the level first on high-frequency paths to avoid unnecessary field construction:
+On hot paths, check the level first to avoid unnecessary field construction:
 
 ```go
 // Recommended: check level first
@@ -30,15 +30,15 @@ if logger.IsDebugEnabled() {
     )
 }
 
-// Not recommended: always construct fields
+// Not recommended: always build fields
 logger.DebugWith("detailed info",
     dd.String("data", expensiveToString()),
 )
 ```
 
-## Buffered Writing
+## Buffered Writes
 
-Use `BufferedWriter` to reduce I/O system calls:
+Use `BufferedWriter` to reduce I/O syscalls:
 
 ```go
 fw, _ := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
@@ -49,43 +49,43 @@ bw, _ := dd.NewBufferedWriter(fw, bwCfg)  // 8KB buffer
 logger, _ := dd.New(dd.Config{
     Targets: []dd.OutputTarget{dd.CustomOutput(bw)},
 })
-defer logger.Close()  // Close automatically flushes
+defer logger.Close()  // Close auto-flushes
 ```
 
 :::tip Buffer Size
-4KB-16KB is recommended. Buffers that are too small won't effectively reduce system calls, while buffers that are too large increase memory usage and latency.
+4KB-16KB is recommended. Too small a buffer fails to effectively reduce syscalls; too large a buffer increases memory usage and latency.
 :::
 
 ## Log Sampling
 
-Enable log sampling in high-throughput scenarios to reduce duplicate logs:
+For high-throughput scenarios, enable log sampling to reduce repeated logs:
 
 ```go
 logger.SetSampling(&dd.SamplingConfig{
     Enabled:    true,
-    Initial:    100,    // Always log the first 100 messages
-    Thereafter: 10,     // Then log 1 out of every 10 messages
-    Tick:       time.Minute, // Reset counters every minute
+    Initial:    100,    // First 100 entries all logged
+    Thereafter: 10,     // After that, 1 of every 10
+    Tick:       time.Minute, // Reset the counter every minute
 })
 
-// Dynamic adjustment at runtime
+// Adjust dynamically at runtime
 cfg := logger.GetSampling()
 ```
 
-## File Writing Optimization
+## File-Write Optimization
 
 ### Reasonable Rotation Configuration
 
 ```go
 fw, _ := dd.NewFileWriter("logs/app.log", dd.DefaultFileWriterConfig())
-// Default: 100MB / 30 days / 10 backups
+// Defaults: 100MB / 30 days / 10 backups
 ```
 
-- Files that are too small cause frequent rotation, increasing I/O
+- Too-small files cause frequent rotation and more I/O
 - Too many backups consume disk space
-- Adjust parameters based on actual log volume
+- Tune parameters based on actual log volume
 
-### Multi-File Separation
+### Multi-file Separation
 
 ```go
 // Separate by level
@@ -95,7 +95,7 @@ errorWriter, _ := dd.NewFileWriter("logs/error.log", dd.DefaultFileWriterConfig(
 
 ## Writer Management
 
-### Dynamic Writer Addition/Removal
+### Dynamically Add/Remove Writers
 
 ```go
 // Add dynamically at runtime
@@ -118,14 +118,14 @@ Each Writer adds write latency. No more than 3-4 Writers is recommended.
 dd.Int("count", 42)
 dd.String("name", "test")
 
-// Avoid: Any (requires additional type assertion)
+// Avoid: Any (needs an extra type assertion)
 dd.Any("count", 42)
 ```
 
 ### Avoid Large Objects
 
 ```go
-// Not recommended: logging large objects
+// Not recommended: logging a large object
 logger.InfoWith("data", dd.Any("payload", hugeStruct))
 
 // Recommended: log only key information
@@ -138,10 +138,10 @@ logger.InfoWith("data",
 ## Shutdown and Cleanup
 
 ```go
-// Wait for filter goroutines to complete first
+// Wait for filter goroutines to finish
 logger.WaitForFilterGoroutines(3 * time.Second)
 
-// Graceful shutdown, wait for all buffer flushes
+// Graceful shutdown; waits for all buffers to flush
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 defer cancel()
 logger.Shutdown(ctx)
@@ -150,5 +150,5 @@ logger.Shutdown(ctx)
 ## Next Steps
 
 - [Output Targets](../api-reference/output-integration/writers) -- FileWriter, BufferedWriter API
-- [Configuration](../api-reference/core/config) -- Performance-related configuration options
+- [Config](../api-reference/core/config) -- Performance-related config options
 - [Production Checklist](../security/production-checklist) -- Pre-launch checks

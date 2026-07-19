@@ -11,7 +11,7 @@ Processor provides data modification methods. All methods return the modified JS
 
 ## Set
 
-Signature: `func (p *Processor) Set(jsonStr, path string, value any, cfg ...Config) (string, error)`
+Signature: `func (p *Processor) Set(jsonStr, path string, value any, cfg ...Config) (result string, err error)`
 
 Sets the value at the specified path and returns the modified JSON string.
 
@@ -100,9 +100,9 @@ Processor provides instance methods corresponding to the package-level [MergeJSO
 
 Signature: `func (p *Processor) MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
 
-Resolves options from `cfg` (falling back to the processor's own configuration when omitted), deeply merges the two objects according to `Config.MergeMode`, then re-encodes the result with this processor.
+Resolves options from `cfg` (**when `cfg` is omitted it uses `DefaultConfig`, not the processor's own configuration** — if the processor was created with a custom `MergeMode`, you must pass `cfg` explicitly to apply that mode), deeply merges the two objects according to `Config.MergeMode`, then re-encodes the result with this processor.
 
-Like the package-level function, `Processor.MergeJSON` performs no security validation — it is a structural tool that only decodes, deep-merges, and re-encodes. When security validation is required, use `CompareJSON` (which validates when `cfg` is passed).
+Like the package-level function, `Processor.MergeJSON` performs no security validation — it is a structural tool that only decodes, deep-merges, and re-encodes. When security validation is required, use `CompareJSON` (which always performs security validation; per `cfg` when passed, otherwise per the processor's own configuration).
 
 ```go
 p, err := json.New()

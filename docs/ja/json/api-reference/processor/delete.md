@@ -1,6 +1,6 @@
 ---
 sidebar_label: "削除操作"
-title: "Processor 削除 - CyberGo JSON | API リファレンス"
+title: "Processor 削除メソッド - CyberGo JSON | API リファレンス"
 description: "CyberGo JSON Processor 削除メソッド：Delete はパスベースで削除、DeleteClean は削除後に null 値や空配列を自動クリーンアップし、メソッドチェーンを維持します。"
 sidebar_position: 4
 ---
@@ -38,8 +38,8 @@ result, err := p.DeleteClean(data, "user.temporary")
 // Delete 後: {"user": {"name": "test"}}
 result, _ := p.Delete(data, "user.temp")
 
-// 削除後に親オブジェクトが空になった場合、DeleteClean はさらにクリーンアップ
-// {"user": {}} -> {}
+// DeleteClean も user.temp を削除します。ここでは user は依然 name を含むため、空にはなりません
+// 結果: {"user": {"name": "test"}}
 result, _ = p.DeleteClean(data, "user.temp")
 ```
 

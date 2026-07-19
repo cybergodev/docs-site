@@ -1,62 +1,62 @@
 ---
 sidebar_label: "HMAC 서명"
 title: "HMAC 서명 실전 - CyberGo DD | 로그 무결성 보호"
-description: "CyberGo DD HMAC-SHA256 로그 무결성 서명 실전 가이드. IntegritySigner 생성과 초기화, 서명과 검증 흐름, 타임스탬프와 일련번호 증분, 변조 방지 검출, 감사 로그 통합 및 프로덕션 배포 모범 사례로 로그 체인의 무결성과 추적 가능성을 보장합니다."
+description: "CyberGo DD HMAC-SHA256 로그 무결성 서명 실전 가이드입니다. IntegritySigner 생성과 초기화 구성, 서명과 검증의 완전한 흐름, 타임스탬프와 단조 시퀀스 번호 메커니즘, 변조 감지 전략, 감사 로그 시스템 통합 방안, 프로덕션 환경 배포 모범 사례를 다루어 로그 체인의 무결성과 추적 가능성을 보장합니다."
 sidebar_position: 3
 ---
 
 # HMAC 서명 실전
 
-DD의 `IntegritySigner`는 HMAC-SHA256을 사용하여 로그 항목에 서명하여 로그가 저장 및 전송 중에 변조되지 않도록 보장합니다.
+DD의 `IntegritySigner`는 HMAC-SHA256으로 로그 항목을 서명하여 로그가 저장과 전송 과정에서 변조되지 않도록 보장합니다.
 
 ## 핵심 개념
 
 ```text
 서명 흐름:
-  원본 로그 → HMAC-SHA256(키 + 타임스탬프 + 일련번호) → 서명된 로그
+  원본 로그 → HMAC-SHA256(키 + 타임스탬프 + 시퀀스 번호) → 서명된 로그
 
 검증 흐름:
   서명된 로그 → 서명 추출 → HMAC 재계산 → 서명 비교 → 무결성 판단
 ```
 
-## 서명기 생성
+## 서명자 생성
 
-### 안전한 키 설정
+### 안전한 키 구성
 
 ```go
-// 방법 1: 안전한 키 자동 생성 (권장)
+// 방법 1: 안전한 키 자동 생성(권장)
 cfg, err := dd.DefaultIntegrityConfigSafe()
 if err != nil {
     log.Fatal(err)
 }
-// cfg.SecretKey에 32바이트 랜덤 키가 채워짐
+// cfg.SecretKey는 32바이트 랜덤 키로 채워짐
 
 signer, _ := dd.NewIntegritySigner(cfg)
 ```
 
-### 커스텀 설정
+### 커스텀 구성
 
 ```go
 cfg := dd.IntegrityConfig{
     SecretKey:       []byte("your-32-byte-minimum-secret-key!!"),  // 최소 32바이트
     HashAlgorithm:   dd.HashAlgorithmSHA256,
     IncludeTimestamp: true,    // 서명에 타임스탬프 포함
-    IncludeSequence:  true,    // 서명에 일련번호 포함
+    IncludeSequence:  true,    // 서명에 시퀀스 번호 포함
     SignaturePrefix:  "[SIG:",  // 서명 접두사
 }
 ```
 
-:::danger 키 관리
-- 키는 최소 32바이트여야 함
-- 소스 코드에 키를 하드코딩하지 말고, 환경 변수나 키 관리 서비스 사용
-- 정기적으로 키 교체
-- 키가 유출된 경우 즉시 교체하고 모든 로그 재검증
+:::danger 위험 키 관리
+- 키는 최소 32바이트
+- 키를 소스 코드에 하드코딩하지 말고 환경 변수나 키 관리 서비스 사용
+- 정기적으로 키 로테이션
+- 키 유출 시 즉시 로테이션하고 모든 로그 재검증
 :::
 
 ## 서명 흐름
 
 ```go
-// 서명기 생성
+// 서명자 생성
 signer, _ := dd.NewIntegritySigner(cfg)
 
 // 단일 로그 서명
@@ -72,10 +72,10 @@ fmt.Println(signedEntry)
 
 ```go
 stats := signer.Stats()
-fmt.Printf("현재 일련번호: %d\n", stats.Sequence)
+fmt.Printf("현재 시퀀스 번호: %d\n", stats.Sequence)
 fmt.Printf("알고리즘: %s\n", stats.Algorithm)
 fmt.Printf("타임스탬프 포함: %v\n", stats.IncludeTimestamp)
-fmt.Printf("일련번호 포함: %v\n", stats.IncludeSequence)
+fmt.Printf("시퀀스 번호 포함: %v\n", stats.IncludeSequence)
 ```
 
 ## 검증 흐름
@@ -85,16 +85,16 @@ fmt.Printf("일련번호 포함: %v\n", stats.IncludeSequence)
 ```go
 result, err := signer.Verify(signedEntry)
 if err != nil {
-    fmt.Printf("검증 실패: %v\n", err)
+    fmt.Printf("✗ 검증 실패: %v\n", err)
     return
 }
 
 if result.Valid {
-    fmt.Printf("로그 무결성 확인 - 시간: %s, 일련번호: %d\n",
+    fmt.Printf("✓ 로그 무결 - 시간: %s, 시퀀스 번호: %d\n",
         result.Timestamp, result.Sequence)
     fmt.Printf("메시지: %s\n", result.Message)
 } else {
-    fmt.Printf("로그가 변조되었을 수 있음\n")
+    fmt.Printf("✗ 로그가 변조되었을 수 있음\n")
 }
 ```
 
@@ -136,9 +136,9 @@ if result.Valid && result.Event != nil {
 ## 감사 로그와 통합
 
 ```go
-// 전체 서명 + 감사 솔루션
+// 완전한 서명 + 감사 방안
 func NewSignedAuditSystem() (*dd.AuditLogger, *dd.IntegritySigner, error) {
-    // 서명기
+    // 서명자
     cfg, _ := dd.DefaultIntegrityConfigSafe()
     signer, _ := dd.NewIntegritySigner(cfg)
 
@@ -149,7 +149,7 @@ func NewSignedAuditSystem() (*dd.AuditLogger, *dd.IntegritySigner, error) {
         0600,
     )
 
-    // 감사 Logger (서명 포함)
+    // 감사 Logger(서명 포함)
     auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
         Enabled:          true,
         Output:           auditFile,
@@ -164,25 +164,27 @@ func NewSignedAuditSystem() (*dd.AuditLogger, *dd.IntegritySigner, error) {
 }
 ```
 
-## 타임스탬프와 일련번호
+## 타임스탬프와 시퀀스 번호
 
-서명기는 서명에 타임스탬프와 일련번호를 내장하는 것을 지원합니다:
+서명자는 서명에 타임스탬프와 시퀀스 번호를 포함할 수 있습니다.
 
 ```go
 cfg := dd.IntegrityConfig{
     SecretKey:       secretKey,
     IncludeTimestamp: true,    // 서명에 타임스탬프 포함
-    IncludeSequence:  true,    // 서명에 증가하는 일련번호 포함
+    IncludeSequence:  true,    // 서명에 단조 증가 시퀀스 번호 포함
 }
 
 // 활성화 후 Verify 결과에 추가 정보 포함
 result, _ := signer.Verify(signedEntry)
 result.Timestamp  // 서명 시 타임스탬프
-result.Sequence   // 서명 시 일련번호
+result.Sequence   // 서명 시 시퀀스 번호
 ```
 
-:::tip 일련번호 감지
-일련번호를 활성화하면 로그가 삭제되거나 재배치되었는지 감지할 수 있습니다. 일련번호가 연속적이지 않으면 로그가 변조되었을 수 있습니다.
+:::tip 팁 시퀀스 번호 감지
+시퀀스 번호를 활성화하면 로그가 삭제되거나 재정렬되었는지 감지할 수 있습니다. 시퀀스 번호가 불연속이면 로그가 변조되었을 가능성이 있습니다.
+
+주의: 시퀀스 번호 자체는 재생 공격을 막지 않으며, 검증 측이 이미 관찰한 시퀀스 번호를 직접 추적하여 중복을 거부해야 합니다.
 :::
 
 ## 프로덕션 모범 사례
@@ -228,5 +230,5 @@ func startIntegrityChecker(signer *dd.IntegritySigner, logPath string) {
 ## 다음 단계
 
 - [감사 로그](../guides/audit-logging) -- 보안 감사 통합
-- [업계 준수 설정](../security/compliance) -- HIPAA/PCI-DSS 서명 요구 사항
-- [API 레퍼런스 - Integrity](../api-reference/security-audit/integrity) -- IntegritySigner 전체 API
+- [산업 규정 준수 구성](../security/compliance) -- HIPAA/PCI-DSS 서명 요구
+- [API 레퍼런스 - Integrity](../api-reference/security-audit/integrity) -- IntegritySigner 완전한 API

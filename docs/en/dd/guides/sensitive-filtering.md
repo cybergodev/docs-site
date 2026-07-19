@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Sensitive Data Filtering"
-title: "Sensitive Data Filtering - CyberGo DD | Redaction"
-description: "CyberGo DD sensitive data filtering: built-in patterns, custom regex, five security levels, HIPAA/PCI-DSS/government presets, and redaction statistics."
+title: "Sensitive Data Filtering - CyberGo DD | Auto-Redaction Guide"
+description: "CyberGo DD sensitive-data filtering configuration guide, covering built-in filter patterns (passwords, API keys, credit cards, SSNs, JWTs, etc.), custom regex patterns, five security levels, industry-compliance presets (HIPAA, PCI-DSS, government standards), and filter statistics and monitoring, to help you build a compliant log-redaction solution."
 sidebar_position: 4
 ---
 
 # Sensitive Data Filtering
 
-DD has built-in automatic sensitive data filtering that replaces passwords, API keys, credit card numbers, and other sensitive information with `[REDACTED]` before logs are written, preventing sensitive data from leaking into logs.
+DD has built-in automatic sensitive-data filtering that replaces passwords, API keys, credit card numbers, and other sensitive information with `[REDACTED]` before logs are written, preventing leakage into logs.
 
 ## Quick Enable
 
@@ -20,42 +20,46 @@ if err != nil {
 }
 defer logger.Close()
 
-// password field automatically redacted
+// The password field is redacted automatically
 logger.InfoWith("user login",
     dd.String("username", "alice"),
-    dd.String("password", "s3cr3t123"),    // output: password=[REDACTED]
+    dd.String("password", "s3cr3t123"),    // Output: password=[REDACTED]
 )
 ```
 
-## Built-in Filtering Patterns
+## Built-in Filter Patterns
 
-`DefaultSecurityConfig()` enables basic filtering covering the following sensitive information:
+`DefaultSecurityConfig()` enables basic filtering, covering the following sensitive information:
 
-| Category | Matching Targets |
+| Category | Matched Targets |
 |----------|-----------------|
-| Passwords | `password`, `passwd`, `pwd`, and similar fields |
+| Passwords | `password`, `passwd`, `pwd`, etc. fields |
 | API Keys | `api_key`, `apikey`, `access_token`, etc. |
-| Credit Cards | Visa, MasterCard, and other card number formats |
+| Credit cards | Visa, MasterCard, and other card-number formats |
 | SSN | US Social Security Number format |
-| Phone Numbers | Global phone number formats (including international) |
+| Phone numbers | Global phone-number formats (including international) |
 
-`DefaultSecureConfig()` adds the following on top of the basics:
+`DefaultSecureConfig()` uses the **full pattern set** (all of basic plus the following common categories):
 
-| Category | Matching Targets |
+| Category | Matched Targets |
 |----------|-----------------|
-| Emails | Email address format |
-| IP Addresses | IPv4/IPv6 addresses |
-| JWT Tokens | JWT format starting with `eyJ` |
-| Connection Strings | Passwords in database connection strings |
+| Emails | email address format |
+| IP addresses | IPv4/IPv6 addresses |
+| JWT tokens | JWT format starting with `eyJ` |
+| Connection strings | passwords inside database connection strings |
 
-## Custom Filtering Patterns
+:::info Pattern Coverage
+The table above only lists common-category examples. `DefaultSecurityConfig()` actually ships about 36 patterns; industry presets (e.g. `HealthcareConfig()`) can reach 71. They also cover AWS keys, Stripe/GitHub/Slack tokens, IBAN, multi-country tax IDs, Log4Shell, and more. See the source `internal/patterns.go` for the full pattern set.
+:::
+
+## Custom Filter Patterns
 
 ### Adding Custom Patterns
 
 ```go
 filter := dd.NewEmptySensitiveDataFilter()
 
-// Add custom regex patterns (built-in ReDoS protection)
+// Add custom regex patterns (with built-in ReDoS protection)
 _ = filter.AddPattern(`(?i)credit_card\s*[:=]\s*\d+`)
 _ = filter.AddPattern(`(?i)phone\s*[:=]\s*\d{11}`)
 
@@ -70,7 +74,7 @@ if err != nil {
 defer logger.Close()
 ```
 
-### Creating a Custom Filter from Scratch
+### Creating a Custom Filter From Scratch
 
 ```go
 filter, err := dd.NewCustomSensitiveDataFilter(
@@ -83,7 +87,7 @@ if err != nil {
 ```
 
 :::warning ReDoS Protection
-`NewCustomSensitiveDataFilter` has built-in ReDoS validation. If a regex pattern poses a catastrophic backtracking risk, it will return an error. Use non-greedy matching and anchored patterns to avoid this issue.
+`NewCustomSensitiveDataFilter` has built-in ReDoS validation. If a regex carries catastrophic backtracking risk, it returns an error. Use non-greedy matching and anchored patterns to avoid this.
 :::
 
 ## Security Levels
@@ -91,29 +95,29 @@ if err != nil {
 DD provides five security levels, each with a corresponding preset configuration:
 
 ```go
-// Get configuration by level
+// Get config by level
 cfg := dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
 ```
 
 | Level | Description | Use Case |
 |-------|-------------|----------|
-| `SecurityLevelDevelopment` | Most lenient | Local development |
+| `SecurityLevelDevelopment` | Most permissive | Local development |
 | `SecurityLevelBasic` | Basic filtering | Test environments |
 | `SecurityLevelStandard` | Standard filtering | General production |
 | `SecurityLevelStrict` | Strict filtering | High-security requirements |
-| `SecurityLevelParanoid` | Most strict | Sensitive industries like finance/healthcare |
+| `SecurityLevelParanoid` | Most strict | Sensitive industries (finance/medical) |
 
-## Industry Compliance Presets
+## Industry-Compliance Presets
 
-DD provides three industry compliance configurations:
+DD provides three industry-compliance configurations:
 
-### HIPAA (Healthcare)
+### HIPAA (Medical)
 
 ```go
 cfg := dd.HealthcareConfig()
 ```
 
-Additional filtering: ICD-10 codes, Medical Record Numbers (MRN), Health Insurance Claim Numbers (HICN), patient identifiers.
+Extra filtering: ICD-10 codes, medical record numbers (MRN), health insurance claim numbers (HICN), patient identifiers.
 
 ### PCI-DSS (Financial Payments)
 
@@ -121,20 +125,20 @@ Additional filtering: ICD-10 codes, Medical Record Numbers (MRN), Health Insuran
 cfg := dd.FinancialConfig()
 ```
 
-Additional filtering: SWIFT codes, IBAN account numbers, CVV/CVC, bank routing numbers.
+Extra filtering: SWIFT codes, IBAN account numbers, CVV/CVC, bank routing numbers.
 
-### Government Standards
+### Government Standard
 
 ```go
 cfg := dd.GovernmentConfig()
 ```
 
-Additional filtering: Passport numbers, driver's license numbers, tax IDs, SSN variants.
+Extra filtering: passport numbers, driver's license numbers, tax IDs, SSN variants.
 
 ### Complete Example
 
 ```go
-// Healthcare system: using HIPAA compliance configuration
+// Medical system: HIPAA-compliant config
 logger, err := dd.New(dd.Config{
     Format:   dd.FormatJSON,
     Security: dd.HealthcareConfig(),
@@ -147,34 +151,34 @@ if err != nil {
 }
 defer logger.Close()
 
-// Log messages containing sensitive info are automatically redacted
-logger.Info("patient record mrn=MRN-123456 diagnosis=J18.9 updated")
-// MRN and ICD-10 code patterns in the message are redacted
+// Log messages with sensitive info are auto-redacted
+logger.Info("patient record mrn=MRN123456 diagnosis=J18.9 updated")
+// MRN and ICD-10 codes in the message match patterns and are redacted
 
 // Structured fields are filtered by key-name sensitivity
 logger.InfoWith("user login",
-    dd.String("password", "s3cr3t123"),    // → [REDACTED] (sensitive key)
-    dd.String("department", "internal medicine"), // normal output
+    dd.String("password", "s3cr3t123"),    // -> [REDACTED] (key name is sensitive)
+    dd.String("department", "internal"),   // Normal output
 )
 ```
 
-## Filtering Statistics
+## Filter Statistics
 
-Monitor the filter's operational status:
+Monitor filter runtime state:
 
 ```go
 filter := dd.NewSensitiveDataFilter()
 stats := filter.GetFilterStats()
 fmt.Printf("active goroutines: %d\n", stats.ActiveGoroutines)
-fmt.Printf("filter patterns: %d\n", stats.PatternCount)
+fmt.Printf("filter pattern count: %d\n", stats.PatternCount)
 fmt.Printf("total redactions: %d\n", stats.TotalRedactions)
-fmt.Printf("timeouts: %d\n", stats.TotalTimeouts)
+fmt.Printf("timeout count: %d\n", stats.TotalTimeouts)
 ```
 
 ## Disabling Filtering
 
 ```go
-// Use SecurityLevelDevelopment (no sensitive data filtering)
+// Use the Development security level (no sensitive-data filtering)
 logger, err := dd.New(dd.Config{
     Security: dd.SecurityConfigForLevel(dd.SecurityLevelDevelopment),
 })
@@ -182,7 +186,7 @@ if err != nil {
     log.Fatal(err)
 }
 
-// Or manually set SensitiveFilter to nil
+// Or manually set an empty SensitiveFilter
 logger, err = dd.New(dd.Config{
     Security: &dd.SecurityConfig{
         SensitiveFilter: nil,
@@ -194,13 +198,13 @@ if err != nil {
 defer logger.Close()
 ```
 
-:::warning Filtering Enabled by Default
-`DefaultConfig()` enables basic sensitive data filtering by default (`DefaultSecurityConfig()`). When the `Security` field is not set, the default security configuration is also used. To disable filtering, you must explicitly set `SensitiveFilter` to `nil`.
+:::warning Filtering Is Enabled by Default
+`DefaultConfig()` enables basic sensitive-data filtering by default (`DefaultSecurityConfig()`). Even when the `Security` field is not set, the default security config is used. To disable filtering, you must explicitly set `SensitiveFilter` to `nil`.
 :::
 
 ## Next Steps
 
 - [Audit Logging](./audit-logging) -- Security event auditing
-- [Industry Compliance Configuration](../security/compliance) -- HIPAA/PCI-DSS details
-- [API Reference - Security](../api-reference/security-audit/security) -- Security API complete documentation
+- [Industry Compliance Configuration](../security/compliance) -- HIPAA/PCI-DSS in depth
+- [API Reference - Security](../api-reference/security-audit/security) -- Complete security API documentation
 - [Production Checklist](../security/production-checklist) -- Pre-launch checks

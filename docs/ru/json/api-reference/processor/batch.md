@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Пакетные операции"
-title: "Processor: пакетные - CyberGo JSON | API"
-description: "Пакетные операции Processor CyberGo JSON: ProcessBatch, BatchOperation, BatchResult, ContinueOnError для пакетной обработки."
+title: "Пакетные операции Processor - CyberGo JSON | Справочник API"
+description: "Пакетные операции CyberGo JSON Processor: ProcessBatch для нескольких операций, типы BatchOperation и BatchResult — подходят для пакетной обработки."
 sidebar_position: 7
 ---
 

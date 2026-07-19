@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Package Functions"
-title: "Package Functions - CyberGo DD | Global Helpers"
-description: "CyberGo DD package functions API: New logger creation, Default/SetDefault global management, config presets, and constructors callable via dd. prefix."
+title: "Package Functions - CyberGo DD | Global Functions & Constructors"
+description: "Complete API documentation for CyberGo DD's package-level functions, including the New logger constructor, Default/SetDefault/InitDefault global logger management, DefaultConfig/DevelopmentConfig/JSONConfig configuration presets, and all constructor factories, callable directly via the dd. prefix."
 sidebar_position: 1
 ---
 
 # Package Functions
 
-DD provides a rich set of package-level functions that can be called directly via the `dd.` prefix. These functions all execute through the global logger (`Default()`).
+DD provides a rich set of package-level functions callable directly via the `dd.` prefix. All of them execute through the global logger (`Default()`).
 
 ## Logger Creation
 
@@ -26,7 +26,7 @@ logger, _ := dd.New()
 // Custom config
 logger, _ := dd.New(dd.DefaultConfig())
 
-// Note: Only 0 or 1 config is accepted; passing multiple will return an error
+// Note: only 0 or 1 config is accepted; passing multiple returns an error
 // logger, _ := dd.New(cfg1, cfg2)  // Error!
 ```
 
@@ -36,36 +36,36 @@ logger, _ := dd.New(dd.DefaultConfig())
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Default` | `func Default() *Logger` | Get the global logger (lazy initialization) |
+| `Default` | `func Default() *Logger` | Get the global logger (lazy-initialized) |
 | `SetDefault` | `func SetDefault(logger *Logger)` | Set the global logger |
 | `InitDefault` | `func InitDefault(cfg ...Config) error` | Initialize the global logger with config |
-| `DefaultWithErr` | `func DefaultWithErr() (*Logger, error)` | Get the global logger and initialization error |
+| `DefaultWithErr` | `func DefaultWithErr() (*Logger, error)` | Get the global logger and its initialization error |
 | `DefaultInitError` | `func DefaultInitError() error` | Get the initialization error |
 
-### Initializing the Global Logger
+### Initialize the Global Logger
 
 ```go
-// Method 1: Auto-initialization (created on first call)
-dd.Default().Info("Global logger auto-created")
+// Option 1: auto-initialize (created on first call)
+dd.Default().Info("global logger auto-created")
 
-// Method 2: Explicit initialization
+// Option 2: explicit initialization
 err := dd.InitDefault(dd.JSONConfig())
 if err != nil {
     log.Fatal(err)
 }
-dd.Default().Info("Global logger with JSON config")
+dd.Default().Info("global logger with JSON config")
 
-// Method 3: Replace the global logger
+// Option 3: replace the global logger
 custom, _ := dd.New(dd.Config{
     Level: dd.LevelInfo,
     Targets: []dd.OutputTarget{dd.FileOutput("logs/app.log")},
 })
 dd.SetDefault(custom)
 
-// Method 4: Check initialization error
+// Option 4: check initialization errors
 logger, err := dd.DefaultWithErr()
 if err != nil {
-    log.Printf("Global logger initialization failed: %v", err)
+    log.Printf("global logger initialization failed: %v", err)
 }
 ```
 
@@ -101,44 +101,44 @@ cfg.Targets = []dd.OutputTarget{
 logger, _ := dd.New(cfg)
 ```
 
-## Basic Logging (Package Level)
+## Basic Logging (Package-level)
 
-The following functions output logs through the global logger:
+The following functions emit logs through the global logger:
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Debug` | `func Debug(args ...any)` | Debug level log |
-| `Info` | `func Info(args ...any)` | Info level log |
-| `Warn` | `func Warn(args ...any)` | Warn level log |
-| `Error` | `func Error(args ...any)` | Error level log |
-| `Fatal` | `func Fatal(args ...any)` | Fatal level log (default calls os.Exit(1), customizable via FatalHandler) |
+| `Debug` | `func Debug(args ...any)` | Debug-level log |
+| `Info` | `func Info(args ...any)` | Info-level log |
+| `Warn` | `func Warn(args ...any)` | Warn-level log |
+| `Error` | `func Error(args ...any)` | Error-level log |
+| `Fatal` | `func Fatal(args ...any)` | Fatal-level log (by default calls os.Exit(1), **deferred functions will not run**; customizable via FatalHandler) |
 
 ```go
-dd.Info("Application started")
-dd.Errorf("User %s login failed", username)
-dd.Warn("Disk space running low")
+dd.Info("application started")
+dd.Errorf("user %s login failed", username)
+dd.Warn("low disk space")
 ```
 
-## Formatted Logging (Package Level)
+## Formatted Logging (Package-level)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Debugf` | `func Debugf(format string, args ...any)` | Debug level formatted log |
-| `Infof` | `func Infof(format string, args ...any)` | Info level formatted log |
-| `Warnf` | `func Warnf(format string, args ...any)` | Warn level formatted log |
-| `Errorf` | `func Errorf(format string, args ...any)` | Error level formatted log |
-| `Fatalf` | `func Fatalf(format string, args ...any)` | Fatal level formatted log (default calls os.Exit(1), customizable via FatalHandler) |
+| `Debugf` | `func Debugf(format string, args ...any)` | Debug-level formatted log |
+| `Infof` | `func Infof(format string, args ...any)` | Info-level formatted log |
+| `Warnf` | `func Warnf(format string, args ...any)` | Warn-level formatted log |
+| `Errorf` | `func Errorf(format string, args ...any)` | Error-level formatted log |
+| `Fatalf` | `func Fatalf(format string, args ...any)` | Fatal-level formatted log (by default calls os.Exit(1), **deferred functions will not run**; customizable via FatalHandler) |
 
-## Generic Level Logging (Package Level)
+## Generic-Level Logging (Package-level)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Log` | `func Log(level LogLevel, args ...any)` | Log at specified level |
-| `Logf` | `func Logf(level LogLevel, format string, args ...any)` | Formatted log at specified level |
-| `LogWith` | `func LogWith(level LogLevel, msg string, fields ...Field)` | Structured log at specified level |
+| `Log` | `func Log(level LogLevel, args ...any)` | Specified-level log |
+| `Logf` | `func Logf(level LogLevel, format string, args ...any)` | Specified-level formatted log |
+| `LogWith` | `func LogWith(level LogLevel, msg string, fields ...Field)` | Specified-level structured log |
 
 ```go
-dd.Log(dd.LevelDebug, "debug info")
+dd.Log(dd.LevelDebug, "debug message")
 dd.Logf(dd.LevelWarn, "warning: %s", reason)
 dd.LogWith(dd.LevelError, "request failed",
     dd.String("path", "/api/users"),
@@ -146,45 +146,45 @@ dd.LogWith(dd.LevelError, "request failed",
 )
 ```
 
-## Structured Logging (Package Level)
+## Structured Logging (Package-level)
 
-The following functions output structured logs through the global logger:
+The following functions emit structured logs through the global logger:
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `DebugWith` | `func DebugWith(msg string, fields ...Field)` | Debug level structured log |
-| `InfoWith` | `func InfoWith(msg string, fields ...Field)` | Info level structured log |
-| `WarnWith` | `func WarnWith(msg string, fields ...Field)` | Warn level structured log |
-| `ErrorWith` | `func ErrorWith(msg string, fields ...Field)` | Error level structured log |
-| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal level structured log (default calls os.Exit(1), customizable via FatalHandler) |
+| `DebugWith` | `func DebugWith(msg string, fields ...Field)` | Debug-level structured log |
+| `InfoWith` | `func InfoWith(msg string, fields ...Field)` | Info-level structured log |
+| `WarnWith` | `func WarnWith(msg string, fields ...Field)` | Warn-level structured log |
+| `ErrorWith` | `func ErrorWith(msg string, fields ...Field)` | Error-level structured log |
+| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal-level structured log (by default calls os.Exit(1), **deferred functions will not run**; customizable via FatalHandler) |
 
 ```go
-dd.InfoWith("Request completed",
+dd.InfoWith("request completed",
     dd.String("method", "GET"),
     dd.Int("status", 200),
 )
 
-dd.ErrorWith("Database error",
+dd.ErrorWith("database error",
     dd.Err(err),
     dd.String("query", sql),
 )
 ```
 
-## Level Management (Package Level)
+## Level Management (Package-level)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `SetLevel` | `func SetLevel(level LogLevel) error` | Set global log level |
-| `GetLevel` | `func GetLevel() LogLevel` | Get global log level |
-| `IsLevelEnabled` | `func IsLevelEnabled(level LogLevel) bool` | Check if specified level is enabled |
-| `IsDebugEnabled` | `func IsDebugEnabled() bool` | Check if Debug level is enabled |
-| `IsInfoEnabled` | `func IsInfoEnabled() bool` | Check if Info level is enabled |
-| `IsWarnEnabled` | `func IsWarnEnabled() bool` | Check if Warn level is enabled |
-| `IsErrorEnabled` | `func IsErrorEnabled() bool` | Check if Error level is enabled |
-| `IsFatalEnabled` | `func IsFatalEnabled() bool` | Check if Fatal level is enabled |
+| `SetLevel` | `func SetLevel(level LogLevel) error` | Set the global log level |
+| `GetLevel` | `func GetLevel() LogLevel` | Get the global log level |
+| `IsLevelEnabled` | `func IsLevelEnabled(level LogLevel) bool` | Check whether a level is enabled |
+| `IsDebugEnabled` | `func IsDebugEnabled() bool` | Check whether Debug level is enabled |
+| `IsInfoEnabled` | `func IsInfoEnabled() bool` | Check whether Info level is enabled |
+| `IsWarnEnabled` | `func IsWarnEnabled() bool` | Check whether Warn level is enabled |
+| `IsErrorEnabled` | `func IsErrorEnabled() bool` | Check whether Error level is enabled |
+| `IsFatalEnabled` | `func IsFatalEnabled() bool` | Check whether Fatal level is enabled |
 
 ```go
-// Dynamically adjust log level
+// Dynamically adjust the log level
 dd.SetLevel(dd.LevelDebug)
 
 // Conditional logging (avoid unnecessary computation)
@@ -193,35 +193,35 @@ if dd.IsDebugEnabled() {
 }
 ```
 
-## Field Chaining (Package Level)
+## Field Chaining (Package-level)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `WithFields` | `func WithFields(fields ...Field) *LoggerEntry` | Create Entry with preset fields |
-| `WithField` | `func WithField(key string, value any) *LoggerEntry` | Create Entry with single preset field |
+| `WithFields` | `func WithFields(fields ...Field) *LoggerEntry` | Create an Entry with preset fields |
+| `WithField` | `func WithField(key string, value any) *LoggerEntry` | Create an Entry with a single preset field |
 
 ```go
 dd.WithFields(dd.String("service", "api"), dd.String("version", "1.0")).
-    Info("Request processed")
+    Info("request completed")
 
-dd.WithField("request_id", "abc123").Info("Processing request")
+dd.WithField("request_id", "abc123").Info("processing request")
 ```
 
-## Lifecycle (Package Level)
+## Lifecycle (Package-level)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Flush` | `func Flush() error` | Flush global log buffer |
+| `Flush` | `func Flush() error` | Flush the global logger buffers |
 
-## Writer Management (Package Level)
+## Writer Management (Package-level)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `AddWriter` | `func AddWriter(writer io.Writer) error` | Add output writer |
-| `RemoveWriter` | `func RemoveWriter(writer io.Writer) error` | Remove output writer |
-| `WriterCount` | `func WriterCount() int` | Get writer count |
+| `AddWriter` | `func AddWriter(writer io.Writer) error` | Add an output writer |
+| `RemoveWriter` | `func RemoveWriter(writer io.Writer) error` | Remove an output writer |
+| `WriterCount` | `func WriterCount() int` | Get the writer count |
 
-## Sampling Control (Package Level)
+## Sampling Control (Package-level)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
@@ -232,11 +232,11 @@ dd.WithField("request_id", "abc123").Info("Processing request")
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `NewFileWriter` | `func NewFileWriter(path string, cfg FileWriterConfig) (*FileWriter, error)` | Create file writer |
+| `NewFileWriter` | `func NewFileWriter(path string, cfg FileWriterConfig) (*FileWriter, error)` | Create a file writer |
 | `DefaultFileWriterConfig` | `func DefaultFileWriterConfig() FileWriterConfig` | Default file writer config |
-| `NewBufferedWriter` | `func NewBufferedWriter(w io.Writer, cfg BufferedWriterConfig) (*BufferedWriter, error)` | Create buffered writer |
+| `NewBufferedWriter` | `func NewBufferedWriter(w io.Writer, cfg BufferedWriterConfig) (*BufferedWriter, error)` | Create a buffered writer |
 | `DefaultBufferedWriterConfig` | `func DefaultBufferedWriterConfig() BufferedWriterConfig` | Default buffered writer config |
-| `NewMultiWriter` | `func NewMultiWriter(writers ...io.Writer) *MultiWriter` | Create multi-output writer |
+| `NewMultiWriter` | `func NewMultiWriter(writers ...io.Writer) *MultiWriter` | Create a multi-output writer |
 
 ## Security Config Constructors
 
@@ -244,46 +244,46 @@ dd.WithField("request_id", "abc123").Info("Processing request")
 |----------|-----------|-------------|
 | `DefaultSecurityConfig` | `func DefaultSecurityConfig() *SecurityConfig` | Default security config (basic filtering) |
 | `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | Complete security config |
-| `HealthcareConfig` | `func HealthcareConfig() *SecurityConfig` | HIPAA compliance config |
-| `FinancialConfig` | `func FinancialConfig() *SecurityConfig` | PCI-DSS compliance config |
-| `GovernmentConfig` | `func GovernmentConfig() *SecurityConfig` | Government standard config |
+| `HealthcareConfig` | `func HealthcareConfig() *SecurityConfig` | HIPAA-compliant config |
+| `FinancialConfig` | `func FinancialConfig() *SecurityConfig` | PCI-DSS-compliant config |
+| `GovernmentConfig` | `func GovernmentConfig() *SecurityConfig` | Government-standard config |
 | `SecurityConfigForLevel` | `func SecurityConfigForLevel(level SecurityLevel) *SecurityConfig` | Get security config by level |
 
-## Sensitive Data Filter Constructors
+## Sensitive-Data Filter Constructors
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `NewSensitiveDataFilter` | `func NewSensitiveDataFilter() *SensitiveDataFilter` | Full pattern set filter |
 | `NewEmptySensitiveDataFilter` | `func NewEmptySensitiveDataFilter() *SensitiveDataFilter` | Empty filter |
-| `NewCustomSensitiveDataFilter` | `func NewCustomSensitiveDataFilter(patterns ...string) (*SensitiveDataFilter, error)` | Custom pattern filter |
+| `NewCustomSensitiveDataFilter` | `func NewCustomSensitiveDataFilter(patterns ...string) (*SensitiveDataFilter, error)` | Custom-pattern filter |
 
 ## Hook Constructors
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `NewHookRegistry` | `func NewHookRegistry() *HookRegistry` | Create hook registry |
-| `NewHooksFromConfig` | `func NewHooksFromConfig(cfg HooksConfig) *HookRegistry` | Create hook registry from config |
+| `NewHookRegistry` | `func NewHookRegistry() *HookRegistry` | Create a hook registry |
+| `NewHooksFromConfig` | `func NewHooksFromConfig(cfg HooksConfig) *HookRegistry` | Create a hook registry from config |
 
-## Audit Log Constructors
+## Audit Logger Constructors
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `NewAuditLogger` | `func NewAuditLogger(cfg AuditConfig) (*AuditLogger, error)` | Create audit logger |
+| `NewAuditLogger` | `func NewAuditLogger(cfg AuditConfig) (*AuditLogger, error)` | Create an audit logger |
 | `DefaultAuditConfig` | `func DefaultAuditConfig() AuditConfig` | Default audit config |
-| `VerifyAuditEvent` | `func VerifyAuditEvent(entry string, signer *IntegritySigner) *AuditVerificationResult` | Verify audit event integrity |
+| `VerifyAuditEvent` | `func VerifyAuditEvent(entry string, signer *IntegritySigner) *AuditVerificationResult` | Verify the integrity of an audit event |
 
 ## Integrity Signing Constructors
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `NewIntegritySigner` | `func NewIntegritySigner(cfg IntegrityConfig) (*IntegritySigner, error)` | Create integrity signer |
-| `DefaultIntegrityConfigSafe` | `func DefaultIntegrityConfigSafe() (IntegrityConfig, error)` | Safe random key config |
+| `NewIntegritySigner` | `func NewIntegritySigner(cfg IntegrityConfig) (*IntegritySigner, error)` | Create an integrity signer |
+| `DefaultIntegrityConfigSafe` | `func DefaultIntegrityConfigSafe() (IntegrityConfig, error)` | Safe random-key config |
 
-## Testing Helper Constructors
+## Test Helper Constructor
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `NewLoggerRecorder` | `func NewLoggerRecorder() *LoggerRecorder` | Create log recorder (for testing) |
+| `NewLoggerRecorder` | `func NewLoggerRecorder() *LoggerRecorder` | Create a log recorder (for testing) |
 
 ## Context Functions
 
@@ -304,13 +304,13 @@ dd.WithField("request_id", "abc123").Info("Processing request")
 
 ## Field Constructors
 
-Used to create structured log fields (`Field`), combined with `*With` methods or `WithFields`.
+Used to create structured log fields (`Field`); used with the `*With` family of methods or `WithFields`.
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Any` | `func Any(key string, value any) Field` | Any type field |
+| `Any` | `func Any(key string, value any) Field` | Any-type field |
 | `String` | `func String(key, value string) Field` | String field |
-| `Bool` | `func Bool(key string, value bool) Field` | Boolean field |
+| `Bool` | `func Bool(key string, value bool) Field` | Bool field |
 | `Int` | `func Int(key string, value int) Field` | int field |
 | `Int8` | `func Int8(key string, value int8) Field` | int8 field |
 | `Int16` | `func Int16(key string, value int16) Field` | int16 field |
@@ -330,7 +330,7 @@ Used to create structured log fields (`Field`), combined with `*With` methods or
 | `ErrWithStack` | `func ErrWithStack(err error) Field` | Error field with stack trace |
 
 ```go
-dd.InfoWith("Request completed",
+dd.InfoWith("request completed",
     dd.String("method", "GET"),
     dd.Int("status", 200),
     dd.Duration("elapsed", 100*time.Millisecond),
@@ -338,15 +338,15 @@ dd.InfoWith("Request completed",
 )
 ```
 
-:::tip Performance Tip
-Prefer type-specific constructors (e.g., `Int`, `String`) over `Any` for better performance.
+:::tip Type-safety recommendation
+Prefer type-specific constructors (e.g. `Int`, `String`) over `Any` to catch type errors at compile time and avoid runtime issues from type mismatches.
 :::
 
-## Field Validation Config
+## Field Validation Configuration
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `DefaultFieldValidationConfig` | `func DefaultFieldValidationConfig() *FieldValidationConfig` | Default field validation (no validation) |
+| `DefaultFieldValidationConfig` | `func DefaultFieldValidationConfig() *FieldValidationConfig` | Default field validation (none) |
 | `StrictSnakeCaseConfig` | `func StrictSnakeCaseConfig() *FieldValidationConfig` | Strict snake_case validation |
 | `StrictCamelCaseConfig` | `func StrictCamelCaseConfig() *FieldValidationConfig` | Strict camelCase validation |
 
@@ -354,23 +354,23 @@ Prefer type-specific constructors (e.g., `Int`, `String`) over `Any` for better 
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Print` | `func Print(args ...any)` | Output to global logger's Writer (LevelInfo, security filtered) |
-| `Println` | `func Println(args ...any)` | Same as Print (underlying Log() already adds newline, security filtered) |
-| `Printf` | `func Printf(format string, args ...any)` | Formatted output (LevelInfo, security filtered) |
-| `JSON` | `func JSON(data ...any)` | Compact JSON format output to stdout (with caller info, no security filtering) |
-| `JSONF` | `func JSONF(format string, args ...any)` | Formatted string as compact JSON output to stdout (with caller info, no security filtering) |
-| `Text` | `func Text(data ...any)` | Pretty-printed format output to stdout (no security filtering) |
-| `Textf` | `func Textf(format string, args ...any)` | Formatted text output to stdout (no security filtering) |
-| `Exit` | `func Exit(data ...any)` | Text output with caller info then exit (exit code 0), complex types auto pretty-printed, no security filtering |
-| `Exitf` | `func Exitf(format string, args ...any)` | Formatted output with caller info then exit (exit code 0, no security filtering) |
+| `Print` | `func Print(args ...any)` | Output to the global logger's Writer (LevelInfo, subject to security filtering) |
+| `Println` | `func Println(args ...any)` | Same as Print (the underlying Log() already appends a newline; subject to security filtering) |
+| `Printf` | `func Printf(format string, args ...any)` | Formatted output (LevelInfo, subject to security filtering) |
+| `JSON` | `func JSON(data ...any)` | Compact-JSON output to stdout (includes caller info; does not go through security filtering) |
+| `JSONF` | `func JSONF(format string, args ...any)` | Formatted string output as compact JSON to stdout (includes caller info; does not go through security filtering) |
+| `Text` | `func Text(data ...any)` | Pretty-printed output to stdout (does not go through security filtering) |
+| `Textf` | `func Textf(format string, args ...any)` | Formatted text output to stdout (does not go through security filtering) |
+| `Exit` | `func Exit(data ...any)` | Text output with caller info followed by exit (exit code 0); complex types are pretty-printed automatically; does not go through security filtering |
+| `Exitf` | `func Exitf(format string, args ...any)` | Formatted output with caller info followed by exit (exit code 0; does not go through security filtering) |
 
-:::warning Debug Function Security Note
-`Print`/`Println`/`Printf` are security filtered, but `JSON`/`JSONF`/`Text`/`Textf`/`Exit`/`Exitf` output raw data directly and **do not go through security filtering**.
+:::warning Debug-function security note
+`Print`/`Println`/`Printf` go through security filtering, but `JSON`/`JSONF`/`Text`/`Textf`/`Exit`/`Exitf` emit raw data directly and **do not go through security filtering**.
 :::
 
 ## Next Steps
 
-- [Logger](./logger) -- Logger instance methods in detail
+- [Logger](./logger) -- Logger instance methods in depth
 - [LoggerEntry](./entry) -- Log Entry with preset fields
-- [Configuration](./config) -- Config struct
-- [Debug Output](../dev-tools/debug-visual) -- Debug visualization functions
+- [Config](./config) -- Config struct
+- [Debug Output](../dev-tools/debug-visual) -- Debug visual functions

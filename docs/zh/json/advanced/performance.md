@@ -38,8 +38,8 @@ for _, item := range dataList {
 // ✅ 使用 Marshal 返回字节切片
 bytes, _ := json.Marshal(data)
 
-// ✅ 使用 Encode 返回字符串
-s, _ := json.Encode(data)
+// ✅ 使用 EncodeWithConfig 返回字符串（Encode 已废弃）
+s, _ := json.EncodeWithConfig(data)
 ```
 
 ### 预分配缓冲区

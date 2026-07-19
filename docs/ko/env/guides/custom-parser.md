@@ -363,16 +363,44 @@ func init() {
 }
 
 func main() {
-    // 등록은 New 전에 완료되어야 함 (init에서 이미 완료)
+    // 등록은 New 전에 완료되어야 함 (init에서 이미 완료).
+    //
+    // 중요 제한: LoadFiles는 .toml 확장자를 보고 위의 TOMLParser로
+    // 자동 라우팅하지 않습니다 — DetectFormat는 .env/.json/.yaml/.yml만
+    // 인식하며, 그 외 확장자는 내장 dotenv 파서로 폴백합니다
+    // (format.go의 DetectFormat 참고). LoadFiles가 실제로 TOMLParser를
+    // 호출하게 하려면 ForceRegisterParser로 FormatEnv를 덮어쓰고 파일
+    // 이름을 *.env로 지정하세요:
+    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &TOMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
 
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // 이제 .toml 파일을 로딩할 수 있음
-    loader.LoadFiles("config.toml")
+    // 파일 확장자가 .env여야 덮어쓴 파서로 라우팅됨 (내용은 TOML 형식)
+    if err := loader.LoadFiles("config.env"); err != nil {
+        panic(err)
+    }
 }
 ```
+
+::: warning LoadFiles 라우팅 제한
+`RegisterParser`로 등록한 커스텀 형식 번호(예: `FormatTOML = 100`)는 `LoadFiles`에서 파일 확장자로 **자동 인식되지 않습니다**. `LoadFiles`는 내부적으로 `DetectFormat(filename)`을 호출해 파서를 선택하는데, `DetectFormat`는 `.env` / `.json` / `.yaml` / `.yml` 네 가지 확장자만 인식하며 다른 확장자는 `FormatAuto`를 반환해 결국 내장 dotenv 파서로 폴백합니다 — 커스텀 파서는 결코 호출되지 않습니다.
+
+커스텀 형식 파일을 로드하는 두 가지 경로:
+
+1. **`.env` 확장자 + `ForceRegisterParser`** (권장): 커스텀 형식 파일 이름을 `*.env`로 지정하고 `env.ForceRegisterParser(env.FormatEnv, ...)`로 내장 dotenv 파서를 덮어씁니다. 단, 키 이름/값/크기 등의 보안 검사는 그대로 유지해야 하며 그렇지 않으면 보안 취약점이 생깁니다.
+2. **파서 수동 호출**: 파일을 읽어 `io.Reader`를 얻고, 직접 파서 인스턴스를 생성해 `parser.Parse(reader, filename)`을 호출해 `map[string]string`을 얻은 다음 `loader.Set`으로 하나씩 기록합니다. 단, 파서 내부의 `validator`/`auditor`는 일반적으로 `*ComponentFactory`에 의존하므로 팩토리 등록 시 함께 획득해 전달해야 합니다.
+:::
 
 ---
 
@@ -576,19 +604,35 @@ func init() {
 }
 
 func main() {
+    // LoadFiles는 .xml 확장자를 XML 파서로 자동 라우팅하지 않음 — DetectFormat는
+    // .env/.json/.yaml/.yml만 인식. 여기서는 ForceRegisterParser로 FormatEnv를
+    // 덮어쓰고 파일을 .env 확장자로 로드 (내용은 XML 형식):
+    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &XMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
+
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // XML 설정 로딩
     /*
+    config.env 파일 내용 (XML 형식):
     <?xml version="1.0"?>
     <config>
         <entry key="DATABASE_HOST">localhost</entry>
         <entry key="DATABASE_PORT">5432</entry>
     </config>
     */
-    loader.LoadFiles("config.xml")
+    if err := loader.LoadFiles("config.env"); err != nil {
+        panic(err)
+    }
 
     fmt.Println(loader.GetString("DATABASE_HOST"))  // localhost
     fmt.Println(loader.GetInt("DATABASE_PORT"))     // 5432

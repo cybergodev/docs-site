@@ -52,8 +52,8 @@ count := env.Len()
 secret := env.GetSecure("PASSWORD")
 if secret != nil {
     defer secret.Release()  // または secret.Close()
-    value := secret.Reveal()
-    masked := secret.Masked()
+    value := secret.Reveal()   // 平文値（必要な場合のみ使用）
+    masked := secret.Masked()  // マスク（ログ用）
 }
 ```
 
@@ -85,7 +85,7 @@ type Config struct {
     Host    string   `env:"HOST" envDefault:"localhost"`
     Port    int64    `env:"PORT" envDefault:"8080"`
     Debug   bool     `env:"DEBUG" envDefault:"false"`
-    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Hosts   []string `env:"HOSTS"`
     Ignored string   `env:"-"`
 }
 
@@ -137,10 +137,15 @@ import "errors"
 // センチネルエラー
 errors.Is(err, env.ErrFileNotFound)
 errors.Is(err, env.ErrFileTooLarge)
-errors.Is(err, env.ErrForbiddenKey)
-errors.Is(err, env.ErrInvalidKey)
+errors.Is(err, env.ErrSecurityViolation)  // 禁止キー（実際は *SecurityError を返す）
 errors.Is(err, env.ErrClosed)
 errors.Is(err, env.ErrAlreadyInitialized)
+
+// キー形式が不正: 実際は *ValidationError、Field=="key"
+var keyErr *env.ValidationError
+if errors.As(err, &keyErr) && keyErr.Field == "key" {
+    // 無効なキー形式: keyErr.Message
+}
 
 // 構造化エラー
 var parseErr *env.ParseError

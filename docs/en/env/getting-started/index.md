@@ -214,7 +214,7 @@ type Config struct {
     Password string        `env:"DB_PASSWORD"`
     Debug    bool          `env:"DEBUG" envDefault:"false"`
     Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"ALLOWED_HOSTS" envSeparator:","`
+    Hosts    []string      `env:"ALLOWED_HOSTS"`
 }
 
 func main() {
@@ -375,12 +375,16 @@ if err != nil {
         // File not found
     case errors.Is(err, env.ErrFileTooLarge):
         // File too large
-    case errors.Is(err, env.ErrForbiddenKey):
-        // Forbidden key
-    case errors.Is(err, env.ErrInvalidKey):
-        // Invalid key format
+    case errors.Is(err, env.ErrSecurityViolation):
+        // Forbidden key (actually returns *SecurityError)
     default:
         // Other errors
+    }
+
+    // Invalid key format: actually returns *ValidationError, Field=="key"
+    var valErr *env.ValidationError
+    if errors.As(err, &valErr) && valErr.Field == "key" {
+        // Invalid key format
     }
 }
 ```

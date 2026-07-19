@@ -1,7 +1,7 @@
 ---
 sidebar_label: "파일 업로드와 다운로드"
 title: "파일 업로드와 다운로드 - CyberGo HTTPC | 업로드와 다운로드"
-description: "HTTPC 파일 업로드와 다운로드 가이드: WithFile 간단 업로드, WithFormData 다중 파일 업로드, Download 통합 다운로드, 이어받기 ResumeDownload와 SHA-256 체크섬 등 보안 방어를 다룹니다."
+description: "HTTPC 파일 업로드와 다운로드 가이드: WithFile 간단 업로드, WithFormData Multipart 다중 파일 업로드, Download 통합 다운로드, 진행률 콜백, 이어받기 ResumeDownload, SHA-256 체크섬과 UNC 경로 등 보안 방어를 다룹니다."
 sidebar_position: 4
 ---
 
@@ -12,14 +12,30 @@ sidebar_position: 4
 ### 간단한 파일 업로드
 
 ```go
-fileContent, err := os.ReadFile("document.pdf")
-if err != nil {
-    log.Fatal(err)
-}
+package main
 
-result, err := httpc.Post("https://api.example.com/upload",
-    httpc.WithFile("file", "document.pdf", fileContent),
+import (
+    "log"
+    "os"
+
+    "github.com/cybergodev/httpc"
 )
+
+func main() {
+    fileContent, err := os.ReadFile("document.pdf")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    result, err := httpc.Post("https://api.example.com/upload",
+        httpc.WithFile("file", "document.pdf", fileContent),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Printf("업로드 완료: %d", result.StatusCode()) // 출력 예시: 업로드 완료: 200 (실제 상태 코드는 서버에 따라 다름)
+}
 ```
 
 ### Multipart 폼
@@ -65,10 +81,16 @@ result, err := httpc.Post(url, httpc.WithFormData(form))
 ### 바이너리 업로드
 
 ```go
-data, _ := os.ReadFile("data.bin")
+data, err := os.ReadFile("data.bin")
+if err != nil {
+    log.Fatal(err)
+}
 result, err := httpc.Post(url,
     httpc.WithBinary(data, "application/octet-stream"),
 )
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## 파일 다운로드
@@ -130,7 +152,7 @@ if result.Resumed {
 ```
 
 :::tip
-이어받기는 서버가 Range 요청 헤더를 지원해야 합니다. 서버가 지원하지 않는 경우(200 대신 206이 아닌 응답), 이미 다운로드된 부분 파일을 보호하기 위해 오류를 반환합니다.
+이어받기는 서버가 Range 요청 헤더를 지원해야 합니다. 서버가 지원하지 않는 경우(206 대신 200 반환), 이미 다운로드된 부분 파일을 보호하기 위해 오류를 반환합니다.
 :::
 
 ### 컨텍스트 제어 포함
@@ -167,16 +189,22 @@ if err != nil {
 도메인 클라이언트의 다운로드는 응답 Cookie를 세션에 자동으로 캡처합니다:
 
 ```go
-dc, _ := httpc.NewDomain("https://api.example.com")
+dc, err := httpc.NewDomain("https://api.example.com")
+if err != nil {
+    log.Fatal(err)
+}
 defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
 
-// 다운로드 및 세션 자동 관리 (path는 baseURL에 상대적)
 cfg := httpc.DefaultDownloadConfig()
 cfg.FilePath = "/tmp/report.pdf"
 
+// 다운로드 및 세션 자동 관리 (path는 baseURL에 상대적)
 result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## 다음 단계

@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # Package Functions
 
-Package-level functions are ideal for one-time calls. They use `sync.Pool` internally to reuse Processor instances, so no manual lifecycle management is needed.
+Package-level functions are ideal for one-time calls. They use `sync.Pool` internally to reuse Processor instances, so no manual lifecycle management is needed. Note: the pooled Processor disables caching and audit retention; for caching/statistics/audit, create a dedicated Processor with [html.New](./processor).
 
 ## Content Extraction
 

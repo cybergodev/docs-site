@@ -383,20 +383,17 @@ func (n Number) Int64() (int64, error)       // Converts to int64
 **Usage Example**:
 
 ```go
-processor, err := json.New()
-if err != nil {
-    panic(err)
-}
-defer processor.Close()
+// Get Number type (via Decoder.UseNumber to preserve full precision)
+decoder := json.NewDecoder(strings.NewReader(data))
+decoder.UseNumber()
 
-// Get Number type (via Get method then type assertion)
-val, err := processor.Get(data, "large_number")
-if err != nil {
+var obj map[string]any
+if err := decoder.Decode(&obj); err != nil {
     panic(err)
 }
 
 // Type assertion to get Number
-if num, ok := val.(json.Number); ok {
+if num, ok := obj["large_number"].(json.Number); ok {
     // Number preserves original precision
     fmt.Println(num.String()) // "9007199254740993" (full precision)
 

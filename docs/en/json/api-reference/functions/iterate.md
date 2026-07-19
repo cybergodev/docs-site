@@ -81,11 +81,11 @@ Key: tags, Value: []any{...}
 
 Signature: `func ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
 
-Iterates over JSON data and returns the re-serialized JSON string. The callback is read-only.
+Iterates over JSON data, accessing each element via the callback, and returns the re-serialized JSON string. The callback can modify map/slice via `GetData()`, and modifications are reflected in the returned value.
 
 ```go
 result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) {
-    // Read-only processing
+    // Access/modify element via item.GetData()
 })
 ```
 

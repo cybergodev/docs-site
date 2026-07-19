@@ -130,7 +130,7 @@ func (sv *SecureValue) String() string
 마스크 표현을 반환하며, 로깅 및 포맷팅에 안전합니다. `fmt.Stringer` 인터페이스를 구현하여 `fmt.Printf`, `log.Println` 또는 오류 래핑을 통한 비밀 키의 우발적 노출을 방지합니다.
 
 **반환값:**
-- `string` - 마스크 표현 (예: `[SECURE:32 bytes locked]`), nil인 경우 `[NIL]` 반환
+- `string` - 마스크 표현 (예: `[SECURE:32 bytes]`), nil인 경우 `[NIL]` 반환
 
 ```go
 secret := env.GetSecure("PASSWORD")
@@ -235,7 +235,9 @@ func (sv *SecureValue) Masked() string
 secret := env.GetSecure("API_KEY")
 if secret != nil {
     log.Printf("API Key: %s", secret.Masked())
-    // 출력: API Key: [SECURE:32 bytes locked]
+    // 출력: API Key: [SECURE:32 bytes]
+    // 주: 메모리 잠금을 활성화(SetMemoryLockEnabled(true))하고 잠금에 성공한 경우에만
+    // 마스크에 " locked" 접미사가 추가됩니다 (" lock-failed" / " unlocked"도 있음)
 }
 ```
 
@@ -609,7 +611,7 @@ func MaskSensitiveInString(s string) string
 // 긴 문자열은 잘림
 long := "This is a very long string that exceeds 50 characters"
 clean := env.MaskSensitiveInString(long)
-// 반환: "This is a very long string that exceeds 50..."
+// 반환: "This is a very long string that exceeds 50 char..."
 ```
 
 :::tip 사용 사례

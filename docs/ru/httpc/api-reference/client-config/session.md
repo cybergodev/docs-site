@@ -176,7 +176,7 @@ sm.SetCookieSecurity(httpc.StrictCookieSecurityConfig())
 func (s *SessionManager) UpdateFromResult(result *Result)
 ```
 
-Обновляет Cookie сессии из результата запроса. Небезопасные Cookie silently пропускаются.
+Обновляет Cookie сессии из результата запроса. Небезопасные Cookie молча пропускаются.
 
 ### UpdateFromCookies
 

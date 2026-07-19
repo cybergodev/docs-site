@@ -14,7 +14,9 @@ sidebar_position: 2
 ```go
 // New で作成
 logger, _ := dd.New(dd.DefaultConfig())
+```
 
+```go
 // カスタム設定で作成
 logger, _ := dd.New(dd.Config{
     Level: dd.LevelInfo,
@@ -35,7 +37,7 @@ logger, _ := dd.New(dd.Config{
 | `Info(args ...any)` | Info レベルログ |
 | `Warn(args ...any)` | Warn レベルログ |
 | `Error(args ...any)` | Error レベルログ |
-| `Fatal(args ...any)` | Fatal レベルログ（デフォルトで os.Exit(1) を呼び出し、FatalHandler でカスタマイズ可能） |
+| `Fatal(args ...any)` | Fatal レベルログ（デフォルトで os.Exit(1) を呼び出し、**defer は実行されません**；FatalHandler でカスタマイズ可能） |
 | `Log(level LogLevel, args ...any)` | レベル指定ログ |
 
 ### フォーマットログ
@@ -46,7 +48,7 @@ logger, _ := dd.New(dd.Config{
 | `Infof(format string, args ...any)` | フォーマット Info |
 | `Warnf(format string, args ...any)` | フォーマット Warn |
 | `Errorf(format string, args ...any)` | フォーマット Error |
-| `Fatalf(format string, args ...any)` | フォーマット Fatal（デフォルトで os.Exit(1) を呼び出し、FatalHandler でカスタマイズ可能） |
+| `Fatalf(format string, args ...any)` | フォーマット Fatal（デフォルトで os.Exit(1) を呼び出し、**defer は実行されません**；FatalHandler でカスタマイズ可能） |
 | `Logf(level LogLevel, format string, args ...any)` | フォーマット レベル指定 |
 
 ### 構造化ログ
@@ -57,7 +59,7 @@ logger, _ := dd.New(dd.Config{
 | `InfoWith(msg string, fields ...Field)` | 構造化 Info |
 | `WarnWith(msg string, fields ...Field)` | 構造化 Warn |
 | `ErrorWith(msg string, fields ...Field)` | 構造化 Error |
-| `FatalWith(msg string, fields ...Field)` | 構造化 Fatal（デフォルトで os.Exit(1) を呼び出し、FatalHandler でカスタマイズ可能） |
+| `FatalWith(msg string, fields ...Field)` | 構造化 Fatal（デフォルトで os.Exit(1) を呼び出し、**defer は実行されません**；FatalHandler でカスタマイズ可能） |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | 構造化 レベル指定 |
 
 ```go
@@ -217,10 +219,10 @@ active := logger.ActiveFilterGoroutines()
 | `Print(args ...any)` | 設定された Writer に出力（LevelInfo、セキュリティフィルタリング対象） |
 | `Println(args ...any)` | Print と同じ動作（内部 Log() で自動改行） |
 | `Printf(format string, args ...any)` | フォーマット出力（LevelInfo、セキュリティフィルタリング対象） |
-| `JSON(data ...any)` | JSON フォーマットデバッグ出力を stdout へ（セキュリティフィルタリングなし） |
-| `JSONF(format string, args ...any)` | フォーマット JSON デバッグ出力を stdout へ（セキュリティフィルタリングなし） |
-| `Text(data ...any)` | テキストフォーマットデバッグ出力を stdout へ（セキュリティフィルタリングなし） |
-| `Textf(format string, args ...any)` | フォーマットテキストデバッグ出力を stdout へ（セキュリティフィルタリングなし） |
+| `JSON(data ...any)` | コンパクト JSON フォーマットで stdout に出力（呼び出し元情報付き、セキュリティフィルタリングなし） |
+| `JSONF(format string, args ...any)` | フォーマット文字列をコンパクト JSON として stdout に出力（呼び出し元情報付き、セキュリティフィルタリングなし） |
+| `Text(data ...any)` | pretty-print フォーマットで stdout に出力（呼び出し元情報なし、セキュリティフィルタリングなし） |
+| `Textf(format string, args ...any)` | フォーマットテキストを stdout に出力（呼び出し元情報なし、セキュリティフィルタリングなし） |
 
 ## 次のステップ
 

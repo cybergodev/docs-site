@@ -38,8 +38,8 @@ result, err := p.DeleteClean(data, "user.temporary")
 // After Delete: {"user": {"name": "test"}}
 result, _ := p.Delete(data, "user.temp")
 
-// If the parent object becomes empty after deletion, DeleteClean continues cleanup
-// {"user": {}} -> {}
+// DeleteClean also removes user.temp; here user still contains name and does not become empty
+// Result: {"user": {"name": "test"}}
 result, _ = p.DeleteClean(data, "user.temp")
 ```
 

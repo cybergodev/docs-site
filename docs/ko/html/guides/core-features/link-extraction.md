@@ -25,10 +25,10 @@ for _, link := range links {
 출력 예시:
 
 ```text
-[link] Go 공식 웹사이트 - https://go.dev
 [image] Gopher 마스코트 - gopher.png
-[css] style - https://example.com/style.css
-[js] app - https://example.com/app.js
+[js] app.js - https://example.com/app.js
+[css] style.css - https://example.com/style.css
+[link] Go 공식 웹사이트 - https://go.dev
 ```
 
 ## 링크 유형
@@ -39,7 +39,7 @@ for _, link := range links {
 |------|----------|------|
 | `link` | `<a>` | 페이지 링크 |
 | `image` | `<img>` | 이미지 리소스 |
-| `video` | `<video>`, `<iframe>`, `<embed>`, `<object>` | 비디오 리소스 |
+| `video` | `<video>` 및 `<iframe>`/`<embed>`/`<object>`(src가 비디오 URL일 때만 수집) | 비디오 리소스 |
 | `audio` | `<audio>` | 오디오 리소스 |
 | `css` | `<link rel="stylesheet">` | 스타일시트 |
 | `media` | `<source>` | 범용 미디어 리소스(비디오/오디오 구분 불가 시) |
@@ -66,9 +66,9 @@ for typ, items := range groups {
 
 ```text
 === image (3) ===
-  https://example.com/logo.png
   https://example.com/hero.jpg
   https://example.com/icon.svg
+  https://example.com/logo.png
 
 === css (2) ===
   https://example.com/style.css
@@ -77,6 +77,10 @@ for typ, items := range groups {
 === js (1) ===
   https://example.com/app.js
 ```
+
+:::tip 그룹 순서
+`GroupLinksByType`은 `map`을 반환하므로 **그룹 간 반복 순서는 불확정**입니다; 각 그룹 내 URL은 `ExtractAllLinks`의 오름차순을 유지합니다.
+:::
 
 ## 필터링 규칙 설정
 

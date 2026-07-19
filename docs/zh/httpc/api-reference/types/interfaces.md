@@ -300,7 +300,9 @@ func NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner
 
 将多个锁定器组合为一个。只要**任意一个**被包装的锁定器接受该证书，证书即被接受。用于同时支持多种锁定策略，或组合用不同构造函数构建的轮换密钥。
 
-不传参数时返回 no-op 锁定器（拒绝所有证书）。
+::: warning 零参行为：放行所有证书
+不传参数时返回一个空链，**空链不校验任何证书**（校验逻辑直接返回 `nil`）——即**放行所有证书，等价于未启用证书锁定**（源码 `internal/security/certpin.go` 注释为 "No pinners means no pinning"）。这与「无 pinner 即拒绝」的直觉相反，请始终至少传入一个有效 pinner，勿依赖零参行为。
+:::
 
 :::tip 深入阅读
 证书锁定的完整指南（哈希生成、密钥轮换策略、生产部署）见 [TLS 证书锁定](../../security/tls-certpin)。

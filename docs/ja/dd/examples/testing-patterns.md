@@ -76,9 +76,13 @@ if len(errorEntries) > 0 {
     t.Error("Unexpected error logs")
 }
 
-// DevelopmentConfig で全レベルをキャプチャ
+// DEBUG レベルを使用して全レベルをキャプチャ
+// 注意：Recorder は ISO 8601 タイムスタンプでレベルを解析するが、DevelopmentConfig の時間フォーマット
+// とは非互換のため、DefaultConfig で手動 DEBUG 設定。
 rec2 := dd.NewLoggerRecorder()
-logger2, _ := rec2.NewLogger(dd.DevelopmentConfig())
+devCfg := dd.DefaultConfig()
+devCfg.Level = dd.LevelDebug
+logger2, _ := rec2.NewLogger(devCfg)
 logger2.Debug("デバッグ情報")
 debugs := rec2.EntriesAtLevel(dd.LevelDebug)
 ```

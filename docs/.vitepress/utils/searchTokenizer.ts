@@ -14,8 +14,7 @@
  *
  * It is a PURE module — no fs, no async, no env, no vitepress — so it loads
  * safely into both Node (tsx) and the browser bundle. Mirrors the contract
- * of `frontmatter.ts` in the same folder. Lives outside `shared.ts` on
- * purpose: `shared.ts` must stay pure data (CLAUDE.md §2.3).
+ * of `frontmatter.ts` in the same folder.
  *
  * `cjkProcessTerm` is the matching-side companion to `cjkTokenize`: it lower-
  * cases a search term and returns `null` for the empty string so minisearch

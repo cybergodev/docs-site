@@ -111,7 +111,7 @@ logger, _ := dd.New(cfg)
 | `Info` | `func Info(args ...any)` | Info 级别日志 |
 | `Warn` | `func Warn(args ...any)` | Warn 级别日志 |
 | `Error` | `func Error(args ...any)` | Error 级别日志 |
-| `Fatal` | `func Fatal(args ...any)` | Fatal 级别日志（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
+| `Fatal` | `func Fatal(args ...any)` | Fatal 级别日志（默认调用 os.Exit(1)，**defer 不会执行**；可通过 FatalHandler 自定义） |
 
 ```go
 dd.Info("应用启动完成")
@@ -127,7 +127,7 @@ dd.Warn("磁盘空间不足")
 | `Infof` | `func Infof(format string, args ...any)` | Info 级别格式化日志 |
 | `Warnf` | `func Warnf(format string, args ...any)` | Warn 级别格式化日志 |
 | `Errorf` | `func Errorf(format string, args ...any)` | Error 级别格式化日志 |
-| `Fatalf` | `func Fatalf(format string, args ...any)` | Fatal 级别格式化日志（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
+| `Fatalf` | `func Fatalf(format string, args ...any)` | Fatal 级别格式化日志（默认调用 os.Exit(1)，**defer 不会执行**；可通过 FatalHandler 自定义） |
 
 ## 通用级别日志（包级）
 
@@ -156,7 +156,7 @@ dd.LogWith(dd.LevelError, "请求失败",
 | `InfoWith` | `func InfoWith(msg string, fields ...Field)` | Info 级别结构化日志 |
 | `WarnWith` | `func WarnWith(msg string, fields ...Field)` | Warn 级别结构化日志 |
 | `ErrorWith` | `func ErrorWith(msg string, fields ...Field)` | Error 级别结构化日志 |
-| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal 级别结构化日志（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
+| `FatalWith` | `func FatalWith(msg string, fields ...Field)` | Fatal 级别结构化日志（默认调用 os.Exit(1)，**defer 不会执行**；可通过 FatalHandler 自定义） |
 
 ```go
 dd.InfoWith("请求完成",
@@ -338,8 +338,8 @@ dd.InfoWith("请求完成",
 )
 ```
 
-:::tip 性能建议
-优先使用类型明确的构造器（如 `Int`、`String`），而非 `Any`，可获得更好的性能。
+:::tip 类型安全建议
+优先使用类型明确的构造器（如 `Int`、`String`），而非 `Any`，可在编译期捕获类型错误，避免运行时因类型不符产生问题。
 :::
 
 ## 字段验证配置

@@ -41,9 +41,10 @@ fmt.Println(text)
 
 ### Characteristics
 
-- Image and link text is removed
+- Image alt text is removed; link visible text is retained (only the URL and Markdown syntax are stripped)
 - Line breaks preserved between headings and paragraphs
 - List content displayed as plain text
+- Tables are rendered per `TableFormat` (Markdown tables by default)
 
 ## Markdown
 

@@ -71,6 +71,20 @@ func main() {
 }
 ```
 
+:::warning ゼロ値 Config の落とし穴
+上記の方法 3/4/5 は `dd.Config{...}` リテラルを直接使用しており、`Targets`/`Format` のみを明示的に設定し、残りのフィールドはゼロ値のままです：`Level=Debug`（フィルタなし）、`IncludeTime=false`（タイムスタンプなし）、`IncludeLevel=false`（レベルなし）、`DynamicCaller=false`（呼び出し元なし）、`Security=nil`（`DefaultSecurityConfig()` の基本フィルタにフォールバックし、約 36 パターンのマスキングが有効なまま。無効化するには `&dd.SecurityConfig{}` または `SecurityLevelDevelopment` を明示的に指定する必要があります）。出力にはタイムスタンプやレベルなどの重要な情報が欠落します。
+
+**本番推奨**：`dd.DefaultConfig()` をベースにしてフィールドを変更すると、タイムスタンプ、レベル、呼び出し元、デフォルトセキュリティフィルタを一度に取得できます：
+
+```go
+cfg := dd.DefaultConfig()                 // Level=Info, Format=Text, 時間/レベル/caller/Security 含む
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/app.log")}
+logger, err := dd.New(cfg)
+```
+
+同様に、`dd.DevelopmentConfig()`（DEBUG+caller）と `dd.JSONConfig()`（DEBUG+JSON+RFC3339）も、完全なフィールドセットが事前設定された便利な起点です。
+:::
+
 ## 2. ログレベル
 
 DD は 5 つのログレベルをサポートします。低い方から高い方へ：

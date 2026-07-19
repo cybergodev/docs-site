@@ -85,7 +85,7 @@ type Config struct {
     Host    string   `env:"HOST" envDefault:"localhost"`
     Port    int64    `env:"PORT" envDefault:"8080"`
     Debug   bool     `env:"DEBUG" envDefault:"false"`
-    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Hosts   []string `env:"HOSTS"`
     Ignored string   `env:"-"`
 }
 
@@ -137,10 +137,15 @@ import "errors"
 // Sentinel errors
 errors.Is(err, env.ErrFileNotFound)
 errors.Is(err, env.ErrFileTooLarge)
-errors.Is(err, env.ErrForbiddenKey)
-errors.Is(err, env.ErrInvalidKey)
+errors.Is(err, env.ErrSecurityViolation)  // Forbidden key (actually returns *SecurityError)
 errors.Is(err, env.ErrClosed)
 errors.Is(err, env.ErrAlreadyInitialized)
+
+// Invalid key format: actually returns *ValidationError, Field=="key"
+var keyErr *env.ValidationError
+if errors.As(err, &keyErr) && keyErr.Field == "key" {
+    // Invalid key format: keyErr.Message
+}
 
 // Structured errors
 var parseErr *env.ParseError

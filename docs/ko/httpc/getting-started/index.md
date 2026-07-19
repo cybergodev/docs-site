@@ -61,7 +61,7 @@ result, err := client.Get("https://httpbin.org/get")
 | `DefaultConfig()` | 범용 시나리오 | 보안 기본값, SSRF 방어 활성화 |
 | `SecureConfig()` | 보안 민감 시나리오 | 자동 리다이렉트 비활성화, 엄격한 타임아웃 |
 | `PerformanceConfig()` | 높은 처리량 시나리오 | 대형 연결 풀, 긴 타임아웃, Cookie 활성화 |
-| `TestingConfig()` | 테스트 환경 | 보안 검사 및 HTTP/2 비활성화, 짧은 타임아웃 |
+| `TestingConfig()` | 테스트 환경 | 보안 검사 및 HTTP/2 비활성화, Cookie 활성화 |
 | `MinimalConfig()` | 경량 요청 | 재시도 없음, 리다이렉트 없음 |
 
 ```go

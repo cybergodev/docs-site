@@ -85,7 +85,7 @@ type Config struct {
     Host    string   `env:"HOST" envDefault:"localhost"`
     Port    int64    `env:"PORT" envDefault:"8080"`
     Debug   bool     `env:"DEBUG" envDefault:"false"`
-    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Hosts   []string `env:"HOSTS"`
     Ignored string   `env:"-"`
 }
 
@@ -137,10 +137,15 @@ import "errors"
 // 哨兵错误
 errors.Is(err, env.ErrFileNotFound)
 errors.Is(err, env.ErrFileTooLarge)
-errors.Is(err, env.ErrForbiddenKey)
-errors.Is(err, env.ErrInvalidKey)
+errors.Is(err, env.ErrSecurityViolation)  // 禁止键（实际返回 *SecurityError）
 errors.Is(err, env.ErrClosed)
 errors.Is(err, env.ErrAlreadyInitialized)
+
+// 键格式非法：实际返回 *ValidationError，Field=="key"
+var keyErr *env.ValidationError
+if errors.As(err, &keyErr) && keyErr.Field == "key" {
+    // 无效键格式: keyErr.Message
+}
 
 // 结构化错误
 var parseErr *env.ParseError

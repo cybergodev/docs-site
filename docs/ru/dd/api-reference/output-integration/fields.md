@@ -23,7 +23,7 @@ type Field struct {
 }
 ```
 
-Все конструкторы полей возвращают значения `Field`; форматтер (`internal.FormatFields`) выводит их в формате `Key=Value`. Базовые типы (string / числа / bool / `time.Duration` / `time.Time`) проходят быстрый путь, сложные типы fallback'ят к JSON-сериализации.
+Все конструкторы полей возвращают значения `Field`; форматтер (`internal.FormatFields`) выводит их в формате `Key=Value`. Базовые типы (string / числа / bool / `time.Duration` / `time.Time` / nil) проходят быстрый путь; «сложные типы» — срезы, массивы, map, struct — fallback'ят к JSON-сериализации (определяется `internal.IsComplexValue`), прочие типы (например, значения, реализующие интерфейс `fmt.Stringer` или `error`) проходят через `fmt.Fprint`.
 
 ## Базовые поля
 
@@ -33,8 +33,8 @@ type Field struct {
 | `String` | `(key, value string) Field` | Строка |
 | `Bool` | `(key string, value bool) Field` | Логическое значение |
 | `Err` | `(err error) Field` | Ошибка (ключ фиксирован `"error"`; при `err == nil` Value равно `nil`, иначе `err.Error()`) |
-| `ErrWithKey` | `(key string, err error) Field` | Ошибка с пользовательским ключом |
-| `ErrWithStack` | `(err error) Field` | Ошибка со стеком вызовов (ключ `"error"`, захват несёт небольшие накладные расходы) |
+| `ErrWithKey` | `(key string, err error) Field` | Ошибка с пользовательским ключом (как у `Err`: при `err == nil` Value равно `nil`) |
+| `ErrWithStack` | `(err error) Field` | Ошибка со стеком вызовов (ключ `"error"`, при `err == nil` Value равно `nil`; кадры стека фильтруются от runtime/ и собственных кадров dd, захват несёт небольшие накладные расходы) |
 
 ## Числовые поля
 
@@ -163,7 +163,7 @@ type FieldValidationConfig struct {
 ```
 
 :::warning Ловушка нулевого значения
-Литерал `FieldValidationConfig{}` приведёт к `EnableSecurityValidation=false`, что **молча отключит проверку безопасности** — предпочитайте конструктор [`DefaultFieldValidationConfig`](#предустановленные-конфигурации) (он устанавливает этот пункт в `true`). Кроме того, при `Mode == FieldValidationNone` выполнение сокращается до проверки безопасности: даже если включён `EnableSecurityValidation`, она не выполняется.
+Литерал `FieldValidationConfig{}` приведёт к `EnableSecurityValidation=false`, что **молча отключит проверку безопасности** — предпочитайте конструктор [`DefaultFieldValidationConfig`](#предустановленные-конфигурации) (он устанавливает этот пункт в `true`). Кроме того, при `Mode == FieldValidationNone` выполнение прерывается до проверки безопасности: даже если включён `EnableSecurityValidation`, она не выполняется.
 :::
 
 ### Предустановленные конфигурации

@@ -239,7 +239,7 @@ cfgCopy.EnableValidation = true // 不影响原配置
 
 签名：`func (c *Config) Validate() error`
 
-验证配置并自动修正无效值。此方法会**原地修改** Config，将不合法的字段修正为对应的最小有效值。
+验证配置并自动修正无效值。此方法会**原地修改** Config，将不合法的字段修正到有效范围内：过小（≤0）取最小值，过大（超出上限）取最大值。
 
 ```go
 cfg := json.DefaultConfig()

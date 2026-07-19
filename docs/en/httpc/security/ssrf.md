@@ -25,9 +25,13 @@ Blocked IP ranges by default:
 | Class B private | `172.16.0.0/12` | Internal network |
 | Class C private | `192.168.0.0/16` | Internal network |
 | Link-local | `169.254.0.0/16` | Auto-configuration |
+| CGNAT | `100.64.0.0/10` | Carrier-grade NAT (includes Alibaba Cloud metadata `100.100.100.200`) |
+| Class E reserved | `240.0.0.0/4` | Reserved addresses |
 | IPv6 loopback | `::1/128` | localhost |
 | IPv6 local | `fc00::/7` | Unique local addresses |
 | IPv6 link-local | `fe80::/10` | Link-local |
+
+> The table above lists the main ranges. The full block list also includes `0.0.0.0/8`, TEST-NET (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`, etc.), the IPv6 documentation prefix `2001:db8::/32`, and NAT64 `64:ff9b::/96`. See the source `isPrivateOrReservedIP` for details.
 
 ## CIDR Exemptions
 
@@ -114,7 +118,7 @@ Metadata service addresses for major cloud platforms:
 HTTPC blocks AWS/Azure metadata access by default (`169.254.169.254` is in the `169.254.0.0/16` block list). GCP metadata (`metadata.google.internal`) is blocked through DNS resolution validation.
 
 :::warning
-Alibaba Cloud metadata (`100.100.100.200`) is in the CGNAT range (`100.64.0.0/10`). To support VPNs like Tailscale/WireGuard, this range is **not** in the default block list. If you need to protect against Alibaba Cloud metadata access, use additional security measures such as firewall rules.
+Alibaba Cloud metadata (`100.100.100.200`) is in the CGNAT range (`100.64.0.0/10`), which HTTPC **blocks by default**, so Alibaba Cloud metadata access is blocked by default. If you need to reach this range for VPNs like Tailscale/WireGuard or internal routing, you must explicitly exempt it via `SSRFExemptCIDRs: []string{"100.64.0.0/10"}` -- once exempted, Alibaba Cloud metadata in that range also becomes reachable, so evaluate the risk accordingly.
 :::
 
 ## Completely Disabling SSRF Protection

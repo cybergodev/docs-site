@@ -173,7 +173,7 @@ func main() {
     p, _ := html.New(html.TextOnlyConfig())
     defer p.Close()
 
-    // 1 バッチ最大 10000 ファイル
+    // 単一バッチの上限は 10000、超過するとバッチ全体が失敗し呼び出し側で分割が必要
     batch := p.ExtractBatchFiles(files)
 
     fmt.Printf("成功: %d, 失敗: %d, キャンセル: %d\n",

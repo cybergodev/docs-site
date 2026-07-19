@@ -173,7 +173,7 @@ func main() {
     p, _ := html.New(html.TextOnlyConfig())
     defer p.Close()
 
-    // Максимум 10 000 файлов на пакет
+    // Лимит одной партии — 10 000; при превышении падает вся партия, вызывающая сторона должна разбивать сама
     batch := p.ExtractBatchFiles(files)
 
     fmt.Printf("Успешно: %d, Неудачно: %d, Отменено: %d\n",

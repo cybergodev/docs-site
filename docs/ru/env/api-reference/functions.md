@@ -518,14 +518,14 @@ func Set(key, value string) error
 - `error` - Ошибка установки
 
 **Типы ошибок:**
-- `ErrInvalidKey` - Имя ключа недействительно
-- `ErrForbiddenKey` - Ключ запрещён
+- `*ValidationError` - Недопустимый формат имени ключа (Field="key")
+- `*SecurityError` - Ключ запрещён (можно сопоставить через `errors.Is(err, env.ErrSecurityViolation)`)
 - `ErrInvalidValue` - Недопустимое значение (когда `ValidateValues` равно true, значение содержит небезопасный контент: нулевые байты, управляющие символы)
 - `ErrClosed` - Загрузчик закрыт
 
 ```go
 if err := env.Set("CUSTOM_KEY", "value"); err != nil {
-    // Может быть ErrForbiddenKey или ErrInvalidKey
+    // Может быть *SecurityError (запрещённый ключ) или *ValidationError (формат ключа)
 }
 ```
 
@@ -613,7 +613,8 @@ if err := env.ParseInto(&cfg); err != nil {
 | `env:"KEY"` | Маппинг на указанный ключ |
 | `env:"-"` | Игнорировать это поле |
 | `envDefault:"value"` | Значение по умолчанию |
-| `envSeparator:","` | Разделитель срезов |
+
+По умолчанию поля-срезы разделяются запятой `,` (пробелы вокруг разделителя удаляются автоматически), пользовательского тега разделителя нет.
 
 :::tip Подробнее
 [Маппинг структур](/ru/env/guides/struct-mapping) - полное руководство.
@@ -736,7 +737,10 @@ envStr, _ := env.Marshal(mapData)
 
 // map в формат JSON
 jsonStr, _ := env.Marshal(mapData, env.FormatJSON)
-// {"HOST":"localhost","PORT":"8080"}
+// {
+//   "HOST": "localhost",
+//   "PORT": 8080
+// }
 
 // Структура в формат .env
 type Config struct {
@@ -913,7 +917,7 @@ type AppConfig struct {
     Port     int64         `env:"APP_PORT" envDefault:"8080"`
     Debug    bool          `env:"DEBUG" envDefault:"false"`
     Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"HOSTS" envSeparator:","`
+    Hosts    []string      `env:"HOSTS"`
 }
 
 func main() {

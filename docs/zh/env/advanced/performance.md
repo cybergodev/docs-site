@@ -1,7 +1,7 @@
 ---
 sidebar_label: "性能优化"
 title: "性能优化 - CyberGo env | 高并发读写调优"
-description: "CyberGo env 性能优化指南，详解 RWMutex 读写锁与分片锁的并发安全机制、sync.Pool 对象池复用实现零分配、mlock 内存锁定开销权衡与大文件流式解析，附基准测试对比、并发吞吐量分析与 MaxFileSize/MaxVariables 参数调优建议。"
+description: "CyberGo env 性能优化指南，详解 RWMutex 读写锁与分片锁的并发安全机制、sync.Pool 对象池复用显著减少分配、mlock 内存锁定开销权衡与大文件流式解析，附基准测试对比、并发吞吐量分析与 MaxFileSize/MaxVariables 参数调优建议。"
 sidebar_position: 1
 ---
 
@@ -338,10 +338,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 ### 内存锁定开销
 
-| 操作 | 无锁定 | 有锁定 |
-|------|--------|--------|
-| 创建 | ~100ns | ~1μs |
-| 读取 | ~10ns | ~10ns |
+内存锁定（Linux 的 `mlock` / Windows 的 `VirtualLock`）仅在创建 `SecureValue` 时产生一次额外的 syscall 开销，读取操作（`Reveal` / `String` / `Masked`）无差异。建议保持 `SecureValue` 小而短命——用完立即 `Close()` / `Release()` 归还到对象池，避免长期持有大块锁定内存。
 
 ## 基准测试
 

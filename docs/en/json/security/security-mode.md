@@ -187,7 +187,7 @@ type Config struct {
     // AdditionalDangerousPatterns adds security patterns beyond the defaults
     AdditionalDangerousPatterns []DangerousPattern
 
-    // DisableDefaultPatterns disables built-in warning-level security patterns
+    // DisableDefaultPatterns disables built-in default security patterns (except critical ones)
     // When true, only AdditionalDangerousPatterns are used
     // Note: Critical patterns (__proto__, constructor[, prototype.) are always enforced and cannot be disabled
     DisableDefaultPatterns bool
@@ -292,7 +292,7 @@ func main() {
 ```go
 cfg := json.DefaultConfig()
 
-// Disable built-in warning-level patterns, use only custom patterns
+// Disable built-in default patterns (except critical ones), use only custom patterns
 // Note: Critical patterns (__proto__, constructor[, prototype.) are always enforced
 cfg.DisableDefaultPatterns = true
 
@@ -333,17 +333,16 @@ for _, p := range cfg.AdditionalDangerousPatterns {
 
 ### Small JSON (< 4KB)
 
-Always performs a full security scan.
+Always performs a full security scan, checking each dangerous pattern one by one.
 
-### Medium JSON (>= 4KB)
+### Larger JSON (≥ 4KB)
 
-Uses a 32KB sliding window scan to ensure patterns spanning boundaries are not missed.
+Uses a multi-level optimized scan that **guarantees 100% coverage** (no sampling blind spots):
 
-### Large JSON
-
-- Critical patterns are always fully scanned
-- Other patterns use sampling strategy
-- Checks suspicious character density
+- Critical patterns (`__proto__`, `constructor[`, `prototype.`) are always fully scanned
+- An indicator-character check is performed first: if no dangerous characters are present, the scan is skipped quickly
+- Suspicious character density is detected: when the density is too high, a full scan is performed to prevent attackers from hiding malicious content in dense regions
+- The remaining patterns use a 32KB **sliding window** scan (with overlap) to ensure cross-boundary patterns are not missed
 
 ---
 

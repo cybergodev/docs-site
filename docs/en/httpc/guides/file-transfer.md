@@ -1,7 +1,7 @@
 ---
 sidebar_label: "File Upload & Download"
 title: "File Upload and Download - CyberGo HTTPC | Upload & Get"
-description: "HTTPC file upload and download guide: WithFile upload, WithFormData multi-file upload, unified Download, resumable ResumeDownload, and SHA-256 checksums."
+description: "HTTPC file upload and download guide: WithFile upload, WithFormData multi-file upload, unified Download, progress callbacks, resumable ResumeDownload, SHA-256 checksums, and UNC path protection."
 sidebar_position: 4
 ---
 
@@ -12,14 +12,30 @@ sidebar_position: 4
 ### Simple File Upload
 
 ```go
-fileContent, err := os.ReadFile("document.pdf")
-if err != nil {
-    log.Fatal(err)
-}
+package main
 
-result, err := httpc.Post("https://api.example.com/upload",
-    httpc.WithFile("file", "document.pdf", fileContent),
+import (
+    "log"
+    "os"
+
+    "github.com/cybergodev/httpc"
 )
+
+func main() {
+    fileContent, err := os.ReadFile("document.pdf")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    result, err := httpc.Post("https://api.example.com/upload",
+        httpc.WithFile("file", "document.pdf", fileContent),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Printf("Upload complete: %d", result.StatusCode()) // Sample output: Upload complete: 200 (actual status code depends on the server)
+}
 ```
 
 ### Multipart Form
@@ -65,10 +81,16 @@ result, err := httpc.Post(url, httpc.WithFormData(form))
 ### Binary Upload
 
 ```go
-data, _ := os.ReadFile("data.bin")
+data, err := os.ReadFile("data.bin")
+if err != nil {
+    log.Fatal(err)
+}
 result, err := httpc.Post(url,
     httpc.WithBinary(data, "application/octet-stream"),
 )
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## File Download
@@ -167,7 +189,10 @@ File downloads include multiple layers of built-in security:
 Domain client downloads automatically capture response cookies into the session:
 
 ```go
-dc, _ := httpc.NewDomain("https://api.example.com")
+dc, err := httpc.NewDomain("https://api.example.com")
+if err != nil {
+    log.Fatal(err)
+}
 defer dc.Close()
 
 dc.SetHeader("Authorization", "Bearer "+token)
@@ -177,6 +202,9 @@ cfg.FilePath = "/tmp/report.pdf"
 
 // Download with automatic session management (path is relative to baseURL)
 result, err := dc.Download(context.Background(), "/files/report.pdf", cfg)
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## Next Steps

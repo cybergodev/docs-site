@@ -425,8 +425,8 @@ if err != nil {
 ```
 
 **Error Types:**
-- `ErrInvalidKey` - Invalid key name
-- `ErrForbiddenKey` - Forbidden key
+- `*ValidationError` - Invalid key name format (Field="key")
+- `*SecurityError` - Forbidden key (matchable via `errors.Is(err, env.ErrSecurityViolation)`)
 - `ErrInvalidValue` - Invalid value (when `ValidateValues` is true, value contains unsafe content like null bytes or control characters)
 - `ErrClosed` - Loader is closed
 
@@ -667,14 +667,15 @@ Maps environment variables to a struct.
 - `env:"KEY"` - Specifies the environment variable name
 - `env:"-"` - Ignores this field
 - `envDefault:"value"` - Specifies the default value
-- `envSeparator:","` - Specifies the slice separator
+
+Slice fields are split by comma `,` by default (surrounding whitespace around the separator is trimmed automatically); there is no custom separator tag.
 
 ```go
 type Config struct {
     Host    string   `env:"HOST" envDefault:"localhost"`
     Port    int64    `env:"PORT" envDefault:"8080"`
     Debug   bool     `env:"DEBUG" envDefault:"false"`
-    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Hosts   []string `env:"HOSTS"`
     Ignored string   `env:"-"`
 }
 

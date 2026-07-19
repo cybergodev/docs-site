@@ -518,14 +518,14 @@ func Set(key, value string) error
 - `error` - 설정 오류
 
 **오류 유형:**
-- `ErrInvalidKey` - 키 이름이 유효하지 않음
-- `ErrForbiddenKey` - 금지된 키
+- `*ValidationError` - 키 이름 형식이 유효하지 않음 (Field="key")
+- `*SecurityError` - 키가 금지됨 (`errors.Is(err, env.ErrSecurityViolation)`로 일치 가능)
 - `ErrInvalidValue` - 값이 유효하지 않음 (`ValidateValues`가 true일 때, 값에 널 바이트·제어 문자 등 안전하지 않은 내용이 포함된 경우)
 - `ErrClosed` - 로더가 닫힘
 
 ```go
 if err := env.Set("CUSTOM_KEY", "value"); err != nil {
-    // ErrForbiddenKey 또는 ErrInvalidKey일 수 있음
+    // *SecurityError (금지 키) 또는 *ValidationError (키 형식)일 수 있음
 }
 ```
 
@@ -613,7 +613,8 @@ if err := env.ParseInto(&cfg); err != nil {
 | `env:"KEY"` | 지정된 키에 매핑 |
 | `env:"-"` | 이 필드 무시 |
 | `envDefault:"value"` | 기본값 |
-| `envSeparator:","` | 슬라이스 구분자 |
+
+슬라이스 필드는 기본적으로 쉼표 `,`로 구분됩니다 (구분자 앞뒤 공백은 자동 제거되며, 커스텀 구분자 태그는 없습니다).
 
 :::tip 자세히
 [구조체 매핑](/ko/env/guides/struct-mapping)에서 전체 가이드를 확인하세요.
@@ -734,9 +735,12 @@ envStr, _ := env.Marshal(mapData)
 // HOST=localhost
 // PORT=8080
 
-// map을 JSON 형식으로 변환
+// map을 JSON 형식으로 변환 (숫자 문자열을 숫자로 그대로 출력하고, 키를 알파벳순으로 정렬)
 jsonStr, _ := env.Marshal(mapData, env.FormatJSON)
-// {"HOST":"localhost","PORT":"8080"}
+// {
+//   "HOST": "localhost",
+//   "PORT": 8080
+// }
 
 // 구조체를 .env 형식으로 변환
 type Config struct {
@@ -913,7 +917,7 @@ type AppConfig struct {
     Port     int64         `env:"APP_PORT" envDefault:"8080"`
     Debug    bool          `env:"DEBUG" envDefault:"false"`
     Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"HOSTS" envSeparator:","`
+    Hosts    []string      `env:"HOSTS"`
 }
 
 func main() {

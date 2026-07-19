@@ -286,8 +286,8 @@ func main() {
     if err != nil {
         panic(err)
     }
-    fmt.Println("IssuedAt:", parsed.IssuedAt.Time)   // 出力: 2026-01-01 00:00:00
-    fmt.Println("ExpiresAt:", parsed.ExpiresAt.Time) // 出力: 2026-01-01 00:15:00
+    fmt.Println("IssuedAt:", parsed.IssuedAt.Time)   // 出力: 2026-01-01 00:00:00 +0000 UTC
+    fmt.Println("ExpiresAt:", parsed.ExpiresAt.Time) // 出力: 2026-01-01 00:15:00 +0000 UTC
 }
 ```
 

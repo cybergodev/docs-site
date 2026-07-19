@@ -1,13 +1,13 @@
 ---
 sidebar_label: "LoggerEntry"
 title: "LoggerEntry - CyberGo DD | 预设字段日志"
-description: "CyberGo DD LoggerEntry 类型完整 API 文档，用于创建带预设字段的链式日志记录器，每次 WithFields 调用返回新的不可变 Entry 实例，支持字段累积组合、上下文绑定传播和级别继承机制，适用于请求级日志追踪和上下文关联等场景。"
+description: "CyberGo DD LoggerEntry 类型完整 API 文档，用于创建带预设字段的链式日志记录器，传入字段时返回新的不可变 Entry 实例（不传字段时返回原 Entry），支持字段累积组合、上下文绑定传播和级别继承机制，适用于请求级日志追踪和上下文关联等场景。"
 sidebar_position: 3
 ---
 
 # LoggerEntry
 
-`LoggerEntry` 是带预设字段的日志记录器，每次 `WithFields` 调用返回新的不可变 Entry。
+`LoggerEntry` 是带预设字段的日志记录器，传入至少一个字段时返回新的不可变 Entry。
 
 ## 创建
 
@@ -39,7 +39,7 @@ entry := base.WithField("svc", "gateway")  // svc 变为 "gateway"
 ```
 
 :::tip 不可变性
-每次 `WithFields` / `WithField` 调用返回新的 `LoggerEntry`，原始 Entry 不受影响，可安全并发使用。
+传入至少一个字段时，`WithFields` / `WithField` 调用返回新的 `LoggerEntry`，原始 Entry 不受影响，可安全并发使用。`WithFields()` 不传字段时属无操作优化，直接返回原 Entry。
 :::
 
 ## 日志方法
@@ -54,7 +54,7 @@ entry := base.WithField("svc", "gateway")  // svc 变为 "gateway"
 | `Info(args ...any)` | Info 级别 |
 | `Warn(args ...any)` | Warn 级别 |
 | `Error(args ...any)` | Error 级别 |
-| `Fatal(args ...any)` | Fatal 级别（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
+| `Fatal(args ...any)` | Fatal 级别（默认调用 os.Exit(1)，**defer 不会执行**；可通过 FatalHandler 自定义） |
 | `Log(level LogLevel, args ...any)` | 指定级别 |
 
 ### 格式化日志
@@ -65,7 +65,7 @@ entry := base.WithField("svc", "gateway")  // svc 变为 "gateway"
 | `Infof(format string, args ...any)` | 格式化 Info |
 | `Warnf(format string, args ...any)` | 格式化 Warn |
 | `Errorf(format string, args ...any)` | 格式化 Error |
-| `Fatalf(format string, args ...any)` | 格式化 Fatal（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
+| `Fatalf(format string, args ...any)` | 格式化 Fatal（默认调用 os.Exit(1)，**defer 不会执行**；可通过 FatalHandler 自定义） |
 | `Logf(level LogLevel, format string, args ...any)` | 格式化指定级别 |
 
 ### 结构化日志
@@ -76,7 +76,7 @@ entry := base.WithField("svc", "gateway")  // svc 变为 "gateway"
 | `InfoWith(msg string, fields ...Field)` | 结构化 Info |
 | `WarnWith(msg string, fields ...Field)` | 结构化 Warn |
 | `ErrorWith(msg string, fields ...Field)` | 结构化 Error |
-| `FatalWith(msg string, fields ...Field)` | 结构化 Fatal（默认调用 os.Exit(1)，可通过 FatalHandler 自定义） |
+| `FatalWith(msg string, fields ...Field)` | 结构化 Fatal（默认调用 os.Exit(1)，**defer 不会执行**；可通过 FatalHandler 自定义） |
 | `LogWith(level LogLevel, msg string, fields ...Field)` | 结构化指定级别 |
 
 ### Print 方法

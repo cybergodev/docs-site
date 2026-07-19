@@ -1,7 +1,7 @@
 ---
 sidebar_label: "성능 최적화"
 title: "성능 최적화 - CyberGo env | 고동시성 읽기/쓰기 튜닝"
-description: "CyberGo env 성능 최적화 가이드로 RWMutex·샤드 락 동시성, sync.Pool 객체 풀 재사용으로 제로 할당, mlock 메모리 잠금 비용 절충, 대용량 파일 스트리밍과 MaxFileSize/MaxVariables 매개변수 튜닝을 벤치마크 기반으로 제안합니다."
+description: "CyberGo env 성능 최적화 가이드로 RWMutex·샤드 락 동시성, sync.Pool 객체 풀 재사용으로 할당을 크게 줄임, mlock 메모리 잠금 비용 절충, 대용량 파일 스트리밍과 MaxFileSize/MaxVariables 매개변수 튜닝을 벤치마크 기반으로 제안합니다."
 sidebar_position: 1
 ---
 
@@ -338,10 +338,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 ### 메모리 잠금 오버헤드
 
-| 작업 | 잠금 없음 | 잠금 있음 |
-|------|--------|--------|
-| 생성 | ~100ns | ~1μs |
-| 읽기 | ~10ns | ~10ns |
+메모리 잠금(Linux의 `mlock` / Windows의 `VirtualLock`)은 `SecureValue` 생성 시 한 번만 추가 syscall 오버헤드를 발생시키며, 읽기 작업(`Reveal` / `String` / `Masked`)에는 차이가 없습니다. `SecureValue`는 작고 짧게 유지하는 것을 권장합니다 — 사용 후 즉시 `Close()` / `Release()`하여 객체 풀에 반납하고, 큰 잠금 메모리를 장기간 보유하지 마세요.
 
 ## 벤치마크 테스트
 

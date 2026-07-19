@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Web Service Integration"
-title: "Web Service Integration - CyberGo DD | HTTP Service Logging"
-description: "CyberGo DD web service integration: HTTP middleware logging, TraceID propagation, layered config, graceful shutdown, and production-grade setup."
+title: "Web Service Integration - CyberGo DD | HTTP Service Logging Example"
+description: "A complete integration example of CyberGo DD in a web service, including HTTP middleware logging, request-chain tracing and TraceID propagation, multi-route layered logging configuration, graceful shutdown and log flushing, and production-grade logging configuration to help you integrate the DD logging library into HTTP service projects quickly."
 sidebar_position: 2
 ---
 
 # Web Service Integration
 
-This example demonstrates how to integrate DD into an HTTP web service, implementing request logging, tracing, error handling, and graceful shutdown.
+This example shows how to integrate DD into an HTTP web service for request logging, tracing, error handling, and graceful shutdown.
 
 ## Basic Integration
 
@@ -23,7 +23,7 @@ import (
 )
 
 func main() {
-    // Initialize logger
+    // Initialize the logger
     logger, err := dd.New(dd.Config{
         Format: dd.FormatJSON,
         Targets: []dd.OutputTarget{
@@ -36,7 +36,7 @@ func main() {
     }
     defer logger.Close()
 
-    // Set global logger
+    // Set the global logger
     dd.SetDefault(logger)
 
     mux := http.NewServeMux()
@@ -45,21 +45,21 @@ func main() {
 
     server := &http.Server{Addr: ":8080", Handler: mux}
 
-    logger.InfoWith("Server started", dd.String("addr", ":8080"))
+    logger.InfoWith("server started", dd.String("addr", ":8080"))
     if err := server.ListenAndServe(); err != nil {
-        logger.ErrorWith("Server exited abnormally", dd.Err(err))
+        logger.ErrorWith("server exited abnormally", dd.Err(err))
     }
 }
 
 // usersHandler example handler
 func usersHandler(w http.ResponseWriter, r *http.Request) {
-    dd.Default().InfoWith("Processing user request", dd.String("path", r.URL.Path))
+    dd.Default().InfoWith("handle users request", dd.String("path", r.URL.Path))
     fmt.Fprintf(w, `{"status":"ok"}`)
 }
 
 // ordersHandler example handler
 func ordersHandler(w http.ResponseWriter, r *http.Request) {
-    dd.Default().InfoWith("Processing order request", dd.String("path", r.URL.Path))
+    dd.Default().InfoWith("handle orders request", dd.String("path", r.URL.Path))
     fmt.Fprintf(w, `{"status":"ok"}`)
 }
 ```
@@ -76,7 +76,7 @@ func LoggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
                 requestID = generateRequestID()
             }
 
-            // Request-scoped logger
+            // Request-scoped logging
             reqLog := logger.WithFields(
                 dd.String("request_id", requestID),
                 dd.String("method", r.Method),
@@ -84,13 +84,13 @@ func LoggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
                 dd.String("remote_addr", r.RemoteAddr),
             )
 
-            reqLog.Info("Request started")
+            reqLog.Info("request started")
 
-            // Wrap ResponseWriter to capture status code
+            // Wrap ResponseWriter to capture the status code
             wrapped := &responseWriter{ResponseWriter: w, status: 200}
             next.ServeHTTP(wrapped, r)
 
-            reqLog.InfoWith("Request completed",
+            reqLog.InfoWith("request completed",
                 dd.Int("status", wrapped.status),
                 dd.Duration("elapsed", time.Since(start)),
             )
@@ -109,7 +109,7 @@ func (rw *responseWriter) WriteHeader(code int) {
 }
 ```
 
-## Service-Layer Logging
+## Service-Layered Logging
 
 ```go
 type UserService struct {
@@ -125,11 +125,11 @@ func NewUserService(logger *dd.Logger, db *sql.DB) *UserService {
 }
 
 func (s *UserService) GetUser(ctx context.Context, id string) (*User, error) {
-    s.log.InfoWith("Querying user", dd.String("user_id", id))
+    s.log.InfoWith("query user", dd.String("user_id", id))
 
     user, err := s.queryUser(ctx, id)
     if err != nil {
-        s.log.ErrorWith("Query user failed",
+        s.log.ErrorWith("query user failed",
             dd.String("user_id", id),
             dd.Err(err),
         )
@@ -182,25 +182,25 @@ func main() {
     signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
     go func() {
-        logger.InfoWith("Server started", dd.String("addr", ":8080"))
+        logger.InfoWith("server started", dd.String("addr", ":8080"))
         if err := server.ListenAndServe(); err != http.ErrServerClosed {
-            logger.ErrorWith("Server error", dd.Err(err))
+            logger.ErrorWith("server error", dd.Err(err))
         }
     }()
 
     <-quit
-    logger.Info("Shutting down server...")
+    logger.Info("shutting down server...")
 
-    // Gracefully shutdown HTTP server
+    // Graceful shutdown of the HTTP server
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
     if err := server.Shutdown(ctx); err != nil {
-        logger.ErrorWith("Server shutdown failed", dd.Err(err))
+        logger.ErrorWith("server shutdown failed", dd.Err(err))
     }
 
-    // Flush and close logger
-    logger.Info("Server stopped")
+    // Graceful shutdown of the logger
+    logger.Info("server stopped")
     logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
     defer logCancel()
     logger.Shutdown(logCtx)
@@ -225,17 +225,17 @@ import (
     "github.com/cybergodev/dd"
 )
 
-// LoggingMiddleware request logging middleware
+// LoggingMiddleware request-logging middleware
 func LoggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
             start := time.Now()
-            logger.InfoWith("Request started",
+            logger.InfoWith("request started",
                 dd.String("method", r.Method),
                 dd.String("path", r.URL.Path),
             )
             next.ServeHTTP(w, r)
-            logger.InfoWith("Request completed",
+            logger.InfoWith("request completed",
                 dd.String("method", r.Method),
                 dd.String("path", r.URL.Path),
                 dd.Duration("elapsed", time.Since(start)),
@@ -264,7 +264,7 @@ func main() {
             dd.String("method", r.Method),
             dd.String("path", r.URL.Path),
         )
-        reqLog.Info("Processing user request")
+        reqLog.Info("handle users request")
 
         w.Header().Set("Content-Type", "application/json")
         fmt.Fprintf(w, `{"status":"ok"}`)
@@ -279,14 +279,14 @@ func main() {
     signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
     go func() {
-        logger.InfoWith("Server started", dd.String("addr", ":8080"))
+        logger.InfoWith("server started", dd.String("addr", ":8080"))
         if err := server.ListenAndServe(); err != http.ErrServerClosed {
-            logger.ErrorWith("Server error", dd.Err(err))
+            logger.ErrorWith("server error", dd.Err(err))
         }
     }()
 
     <-quit
-    logger.Info("Shutting down...")
+    logger.Info("shutting down...")
 
     ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
     defer cancel()
@@ -302,4 +302,4 @@ func main() {
 
 - [Testing Patterns](./testing-patterns) -- Using LoggerRecorder in tests
 - [Security & Audit in Practice](./security-audit) -- Security filtering and audit logging
-- [Context & Tracing](../guides/context-tracing) -- Request tracing integration
+- [Distributed Tracing](../guides/context-tracing) -- Request tracing integration

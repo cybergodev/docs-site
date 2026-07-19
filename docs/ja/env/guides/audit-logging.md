@@ -53,9 +53,11 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
-{"timestamp":"2024-01-15T10:30:01Z","action":"get","key":"API_KEY","success":true,"masked":true}
+{"timestamp":"2024-01-15T10:30:01Z","action":"set","key":"[MASKED:7 chars]","success":true,"masked":true}
 {"timestamp":"2024-01-15T10:30:02Z","action":"set","key":"CUSTOM_VAR","success":true}
 ```
+
+機密キー（例：`API_KEY`）は監査ログの `key` フィールドで自動的に `[MASKED:N chars]`（N はキーの文字数）にマスクされ、非機密キー（例：`CUSTOM_VAR`）はそのまま表示されます。
 
 ---
 
@@ -78,7 +80,7 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 
 ```text
 [AUDIT] 2024/01/15 10:30:00 action=load success=true reason="" file=.env duration=1.23ms
-[AUDIT] 2024/01/15 10:30:01 action=get key=API_KEY success=true reason=""
+[AUDIT] 2024/01/15 10:30:01 action=set key=[MASKED:7 chars] success=true reason=""
 [AUDIT] 2024/01/15 10:30:02 action=set key=CUSTOM_VAR success=true reason=""
 ```
 
@@ -330,14 +332,21 @@ func processAuditEvents(ch chan env.AuditEvent) {
 
 ## セキュリティ上の注意
 
-### 機密値の自動マスク
+### 監査記録とマスク
 
-監査ログは機密キーの値を自動的にマスク：
+監査ログは機密キーの `key` フィールドを自動的にマスクします（デフォルトでは `[MASKED:N chars]` と表示、N はキー名の文字数。非機密キーはそのまま表示）。**書き込み操作のみが監査イベントを記録します**：`Set` / `Delete` / `LoadFiles` などは `ActionSet` / `ActionDelete` / `ActionLoad` などのイベントをトリガーし、イベントにはマスク後のキー名が記録されます。
+
+読み取り操作は監査を生成しません：`Get` / `GetString` / `GetInt` / `GetSecure` などの**正常な読み取りは監査ログに記録されません**。`ActionGet` イベントは `GetInt` / `GetBool` / `GetFloat64` などの型変換**解析失敗**のエラーパス（`success=false`）でのみトリガーされます。例：
 
 ```go
-// 機密値の取得時に自動的にマスク
-secret := loader.GetSecure("API_KEY")
-// 監査記録: {"action":"get","key":"API_KEY","masked":true}
+// 書き込み操作：監査イベントを記録（機密キーはマスク後に記録）
+_ = loader.Set("API_KEY", "sk-1234567890")
+// 監査記録: {"action":"set","key":"[MASKED:7 chars]","success":true,"masked":true}
+
+// 読み取り操作：正常な読み取りは監査を生成しない
+secret := loader.GetSecure("API_KEY") // 監査ログを生成しない
+_ = loader.GetInt("PORT")             // 解析成功、監査ログを生成しない
+_ = loader.GetInt("API_KEY")          // 解析失敗時に ActionGet イベントを生成（success=false）
 ```
 
 ### 監査ログの権限

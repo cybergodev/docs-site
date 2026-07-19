@@ -1,20 +1,20 @@
 ---
 sidebar_label: "Recorder"
-title: "Testing Helper - CyberGo DD | LoggerRecorder"
-description: "CyberGo DD LoggerRecorder testing API: capture and assert log output, filter by level, validate fields, and count entries in unit tests."
+title: "Test Helper - CyberGo DD | LoggerRecorder"
+description: "Complete API documentation for the CyberGo DD LoggerRecorder test helper, designed for unit-test scenarios. Captures and asserts on log output, supporting per-level entry filtering, structured-field value validation, entry-count statistics, and in-order assertions. Significantly improves the efficiency and readability of log-related unit tests."
 sidebar_position: 2
 ---
 
-# Testing Helper
+# Test Helper
 
-DD provides `LoggerRecorder` for testing scenarios, capturing log entries for assertion.
+DD provides `LoggerRecorder` for test scenarios, capturing log entries for assertions.
 
 ## LoggerRecorder
 
 Thread-safe log recorder for capturing and inspecting log output in tests.
 
-:::warning Text Format Parsing Limitation
-The text mode parser assumes the default time format (ISO 8601) and default level strings (DEBUG/INFO/WARN/ERROR/FATAL). If you customize `TimeFormat`, the text mode parsing may silently fail to extract level/timestamp. For custom formats, use JSON format (`FormatJSON`) instead, which can be set via `SetFormat`.
+:::warning Text-format parsing limitation
+The text-mode parser assumes the default time format (ISO 8601) and the default level strings (DEBUG/INFO/WARN/ERROR/FATAL). If you customized `TimeFormat`, text mode may not correctly extract the level and timestamp. For custom formats, prefer JSON (`FormatJSON`), settable via `SetFormat`.
 :::
 
 ### Creation
@@ -27,9 +27,9 @@ recorder := dd.NewLoggerRecorder()
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `Writer` | `() io.Writer` | Get io.Writer |
-| `SetFormat` | `(format LogFormat)` | Set log format (for parsing) |
-| `NewLogger` | `(cfg ...Config) (*Logger, error)` | Create Logger that writes to this recorder |
+| `Writer` | `() io.Writer` | Get the io.Writer |
+| `SetFormat` | `(format LogFormat)` | Set the log format (for parsing) |
+| `NewLogger` | `(cfg ...Config) (*Logger, error)` | Create a Logger that writes to this recorder |
 | `Entries` | `() []LogEntry` | Get all log entries |
 | `Count` | `() int` | Entry count |
 | `Clear` | `()` | Clear all entries |
@@ -41,9 +41,9 @@ recorder := dd.NewLoggerRecorder()
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `EntriesAtLevel` | `(level LogLevel) []LogEntry` | Filter entries by level |
-| `ContainsMessage` | `(msg string) bool` | Whether it contains specified message (exact or substring match) |
-| `ContainsField` | `(key string) bool` | Whether it contains specified field |
-| `GetFieldValue` | `(key string) any` | Get value of first matching field |
+| `ContainsMessage` | `(msg string) bool` | Whether it contains the specified message (exact or substring match) |
+| `ContainsField` | `(key string) bool` | Whether it contains the specified field |
+| `GetFieldValue` | `(key string) any` | Get the value of the first matching field |
 
 ### Usage Examples
 
@@ -72,7 +72,12 @@ func TestLogger(t *testing.T) {
 ```go
 func TestLogLevel(t *testing.T) {
     rec := dd.NewLoggerRecorder()
-    logger, _ := rec.NewLogger(dd.DevelopmentConfig())
+    // Note: the Recorder parses the level from the ISO 8601 timestamp;
+    // DevelopmentConfig's time format ("15:04:05.000") is incompatible,
+    // so use DefaultConfig and manually set DEBUG.
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelDebug
+    logger, _ := rec.NewLogger(cfg)
 
     logger.Debug("debug")
     logger.Info("info")
@@ -90,7 +95,7 @@ func TestLogLevel(t *testing.T) {
 }
 ```
 
-#### Structured Field Assertion
+#### Structured-Field Assertion
 
 ```go
 func TestStructuredLog(t *testing.T) {
@@ -113,7 +118,7 @@ func TestStructuredLog(t *testing.T) {
 }
 ```
 
-#### Last Log Entry
+#### Last Entry
 
 ```go
 func TestLastEntry(t *testing.T) {
@@ -150,6 +155,6 @@ type LogEntry struct {
 
 ## Next Steps
 
-- [Logger](../core/logger) -- Logger complete methods
+- [Logger](../core/logger) -- Full Logger methods
 - [Structured Fields](../output-integration/fields) -- Field constructors
-- [Constants and Errors](./constants) -- LogLevel constants
+- [Constants & Errors](./constants) -- LogLevel constants

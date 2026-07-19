@@ -130,7 +130,7 @@ func (sv *SecureValue) String() string
 返回掩码表示，安全用于日志和格式化。实现了 `fmt.Stringer` 接口，防止通过 `fmt.Printf`、`log.Println` 或错误包装意外泄露密钥。
 
 **返回：**
-- `string` - 掩码表示（如 `[SECURE:32 bytes locked]`），nil 时返回 `[NIL]`
+- `string` - 掩码表示（如 `[SECURE:32 bytes]`），nil 时返回 `[NIL]`
 
 ```go
 secret := env.GetSecure("PASSWORD")
@@ -235,7 +235,9 @@ func (sv *SecureValue) Masked() string
 secret := env.GetSecure("API_KEY")
 if secret != nil {
     log.Printf("API Key: %s", secret.Masked())
-    // 输出: API Key: [SECURE:32 bytes locked]
+    // 输出: API Key: [SECURE:32 bytes]
+    // 注：仅当启用内存锁定（SetMemoryLockEnabled(true)）且锁定成功时，
+    // 掩码才追加 " locked" 后缀（另有 " lock-failed" / " unlocked"）
 }
 ```
 
@@ -606,10 +608,10 @@ func MaskSensitiveInString(s string) string
 - `string` - 掩码后的字符串
 
 ```go
-// 长字符串会被截断
+// 长字符串会被截断（保留前 47 个字符并追加 "..."）
 long := "This is a very long string that exceeds 50 characters"
 clean := env.MaskSensitiveInString(long)
-// 返回: "This is a very long string that exceeds 50..."
+// 返回: "This is a very long string that exceeds 50 char..."
 ```
 
 ::: tip 使用场景

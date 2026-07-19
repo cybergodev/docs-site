@@ -1,44 +1,44 @@
 ---
-sidebar_label: "구조화된 필드"
-title: "구조화된 필드 - CyberGo DD | Field 생성자와 검증"
-description: "CyberGo DD 구조화된 필드 API: 20종의 타입 안전한 필드 생성자(String/Int/Float/Bool/Time/Duration/Err 등), Field 타입과 필드 키 검증(명명 규칙과 Log4Shell 보안 검사)을 제공하며, 커스텀 검증 모드와 사전 설정을 지원합니다."
+sidebar_label: "구조화 필드"
+title: "구조화 필드 - CyberGo DD | Field 생성자와 검증"
+description: "CyberGo DD 구조화 필드 API입니다. 20종의 타입 안전 필드 생성자(String/Int/Float/Bool/Time/Duration/Err 등), Field 타입과 필드 키 검증(명명 규칙과 Log4Shell 보안 검사)을 지원하며, 커스텀 검증 모드와 사전 설정 구성을 제공합니다."
 sidebar_position: 3
 ---
 
-# 구조화된 필드
+# 구조화 필드
 
-DD는 20종의 타입 안전한 필드 생성자, 통합된 `Field` 타입, 그리고 선택적으로 사용할 수 있는 필드 키 검증 메커니즘을 제공하여 구조화된 로그 출력에 사용합니다.
+DD는 20종의 타입 안전 필드 생성자, 통일된 `Field` 타입, 선택적 필드 키 검증 메커니즘을 제공하여 구조화 로그 출력에 사용합니다.
 
 ## Field 타입
 
-`Field`는 구조화된 로그 필드 타입으로, `internal.Field`의 **타입 별칭**으로 외부에 노출됩니다:
+`Field`는 구조화 로그 필드 타입으로, `internal.Field`의 **타입 별칭**으로 외부에 노출됩니다.
 
 ```go
 type Field = internal.Field
 
-// 실제 구조 (internal/fields.go)
+// 실제 구조(internal/fields.go)
 type Field struct {
     Key   string  // 필드 키
-    Value any     // 필드 값 (임의 타입)
+    Value any     // 필드 값(임의 타입)
 }
 ```
 
-모든 필드 생성자는 `Field` 값을 반환합니다; 포매터(`internal.FormatFields`)는 `Key=Value` 형식으로 출력합니다. 기본 타입(string / 숫자 / bool / `time.Duration` / `time.Time`)은 빠른 경로를 사용하고, 복잡한 타입은 JSON 직렬화로 폴백합니다.
+모든 필드 생성자는 `Field` 값을 반환하며, 포맷터(`internal.FormatFields`)가 `Key=Value` 형식으로 출력합니다. 기본 타입(string / 수치 / bool / `time.Duration` / `time.Time` / nil)은 빠른 경로를 사용하고, 슬라이스, 배열, map, struct 등 '복잡한 타입'은 JSON 직렬화로 폴백(`internal.IsComplexValue` 판정)하며, 그 외 타입(`fmt.Stringer` 또는 `error` 인터페이스를 구현한 값 등)은 `fmt.Fprint`를 사용합니다.
 
 ## 기본 필드
 
-| 생성자 | 서명 | 설명 |
+| 생성자 | 시그니처 | 설명 |
 |--------|------|------|
 | `Any` | `(key string, value any) Field` | 임의 타입 |
 | `String` | `(key, value string) Field` | 문자열 |
 | `Bool` | `(key string, value bool) Field` | 불리언 |
-| `Err` | `(err error) Field` | 오류 (key는 `"error"`로 고정; `err == nil`이면 Value가 `nil`, 그렇지 않으면 `err.Error()`) |
-| `ErrWithKey` | `(key string, err error) Field` | 커스텀 key의 오류 |
-| `ErrWithStack` | `(err error) Field` | 호출 스택을 포함한 오류 (key는 `"error"`, 캡처에 약간의 오버헤드 발생) |
+| `Err` | `(err error) Field` | 오류(key 고정 `"error"`; `err == nil`이면 Value가 `nil`, 그렇지 않으면 `err.Error()`) |
+| `ErrWithKey` | `(key string, err error) Field` | 커스텀 key의 오류(`Err`과 동일, `err == nil`이면 Value가 `nil`) |
+| `ErrWithStack` | `(err error) Field` | 호출 스택을 포함한 오류(key가 `"error"`, `err == nil`이면 Value가 `nil`; 스택 프레임은 runtime/과 dd 패키지 내부 프레임을 필터링, 캡처 시 약간의 오버헤드 있음) |
 
-## 숫자 필드
+## 수치 필드
 
-| 생성자 | 타입 | 예시 |
+| 생성자 | 타입 | 예 |
 |--------|------|------|
 | `Int` | `int` | `dd.Int("count", 42)` |
 | `Int8` | `int8` | `dd.Int8("flags", 1)` |
@@ -55,26 +55,26 @@ type Field struct {
 
 ## 시간 필드
 
-| 생성자 | 서명 | 설명 |
+| 생성자 | 시그니처 | 설명 |
 |--------|------|------|
-| `Time` | `(key string, value time.Time) Field` | 타임스탬프 (RFC3339 형식으로 포맷팅) |
-| `Duration` | `(key string, value time.Duration) Field` | 기간 (`Duration.String()` 호출) |
+| `Time` | `(key string, value time.Time) Field` | 타임스탬프(RFC3339 형식으로 포맷팅) |
+| `Duration` | `(key string, value time.Duration) Field` | 기간(`Duration.String()` 호출) |
 
 ## 오류 필드
 
 <!-- check-code: skip -->
 ```go
-// 표준 오류 필드 (key는 "error"로 고정, nil error → Value는 nil)
+// 표준 오류 필드(key는 "error"로 고정, nil error → Value가 nil)
 dd.Err(err)
 
 // 커스텀 key
 dd.ErrWithKey("db_error", err)
 
-// 스택 정보 포함 (스택 프레임은 runtime/과 dd 자체 프레임을 필터링)
+// 스택 정보 포함(스택 프레임은 runtime/과 dd 자체 프레임 필터링)
 dd.ErrWithStack(err)
 ```
 
-## 사용 방법
+## 사용 방식
 
 ### InfoWith와 조합
 
@@ -88,7 +88,7 @@ dd.InfoWith("사용자 로그인",
 )
 ```
 
-### WithFields 체인 호출
+### WithFields와 체인 호출
 
 <!-- check-code: skip -->
 ```go
@@ -113,33 +113,33 @@ base.InfoWith("응답",
 
 ## 필드 검증
 
-DD는 필드 키 검증 메커니즘을 제공하여 명명 규칙 검사와 보안 검증(Log4Shell 주입, 동형문자 공격, overlong UTF-8)을 지원합니다. 검증 설정 `FieldValidationConfig`는 [`Config.FieldValidation`](../core/config)에 연결하여 생성 시 적용하거나, 런타임에 [`Logger.SetFieldValidation`](../core/logger)로 동적으로 교체할 수 있습니다. `*With` 호출 시마다 각 필드의 Key에 대해 `ValidateFieldKey`를 호출하며, Strict 모드에서 실패하면 로그 형태로 오류를 보고합니다 (로그 메서드 자체는 error를 반환하지 않습니다).
+DD는 필드 키 검증 메커니즘을 제공하여 명명 규칙 검사와 보안 검증(Log4Shell 주입, 동형자 공격, overlong UTF-8)을 지원합니다. 검증 구성 `FieldValidationConfig`는 [`Config.FieldValidation`](../core/config)에 연결해 생성 시 적용하거나, 런타임에 [`Logger.SetFieldValidation`](../core/logger)으로 동적 교체할 수 있습니다. 매 `*With` 호출 시 각 필드의 Key에 대해 `ValidateFieldKey`가 호출되며, Strict 모드에서 실패 시 로그 형식으로 오류가 보고됩니다(로그 메서드 자체는 error를 반환하지 않음).
 
 ### FieldValidationMode
 
-검증 모드로, 검증 실패 시의 처리 방식을 결정합니다.
+검증 모드, 검증 실패 시 처리 방식을 결정합니다.
 
 ```go
 type FieldValidationMode int
 
 const (
-    FieldValidationNone   FieldValidationMode = iota // 검증 비활성화 (기본값, 모든 검사를 단락)
-    FieldValidationWarn                              // 명명 불일치 시 warning 로그 1건 기록
-    FieldValidationStrict                            // 명명 불일치 시 error 로그 1건 기록
+    FieldValidationNone   FieldValidationMode = iota // 검증 비활성화(기본, 모든 검사를 단락)
+    FieldValidationWarn                              // 명명 불일치 시 warning 로그 기록
+    FieldValidationStrict                            // 명명 불일치 시 error 로그 기록
 )
 ```
 
-`FieldValidationMode`의 `String()` 메서드는 `"none"` / `"warn"` / `"strict"`을 반환합니다 (알 수 없는 값은 `"unknown"` 반환).
+`FieldValidationMode`의 `String()` 메서드는 `"none"` / `"warn"` / `"strict"`을 반환(알 수 없는 값은 `"unknown"` 반환)합니다.
 
 ### FieldNamingConvention
 
-명명 규칙입니다.
+명명 규칙.
 
 ```go
 type FieldNamingConvention int
 
 const (
-    NamingConventionAny         FieldNamingConvention = iota // 임의의 유효한 키 허용 (기본값)
+    NamingConventionAny         FieldNamingConvention = iota // 임의의 유효한 키 수락(기본)
     NamingConventionSnakeCase                                // snake_case: user_id
     NamingConventionCamelCase                                // camelCase: userId
     NamingConventionPascalCase                               // PascalCase: UserId
@@ -147,29 +147,29 @@ const (
 )
 ```
 
-`FieldNamingConvention`의 `String()` 메서드는 `"any"` / `"snake_case"` / `"camelCase"` / `"PascalCase"` / `"kebab-case"`을 반환합니다 (알 수 없는 값은 `"unknown"` 반환).
+`FieldNamingConvention`의 `String()` 메서드는 `"any"` / `"snake_case"` / `"camelCase"` / `"PascalCase"` / `"kebab-case"`를 반환(알 수 없는 값은 `"unknown"` 반환)합니다.
 
 ### FieldValidationConfig
 
-필드 검증 설정입니다.
+필드 검증 구성.
 
 ```go
 type FieldValidationConfig struct {
     Mode                     FieldValidationMode    // 검증 모드
     Convention               FieldNamingConvention  // 명명 규칙
-    AllowCommonAbbreviations bool                   // 일반적인 약어 허용 (ID, URL, HTTP, JSON 등)
-    EnableSecurityValidation bool                   // 보안 검증 활성화 (Log4Shell / 동형문자 / overlong UTF-8)
+    AllowCommonAbbreviations bool                   // 일반 약어 허용(ID, URL, HTTP, JSON 등)
+    EnableSecurityValidation bool                   // 보안 검증 활성화(Log4Shell / 동형자 / overlong UTF-8)
 }
 ```
 
-:::warning 제로값 함정
-리터럴 `FieldValidationConfig{}`는 `EnableSecurityValidation=false`가 되어 **보안 검증을 자동으로 비활성화**합니다 — [`DefaultFieldValidationConfig`](#사전-설정) 생성자를 우선 사용하세요 (이 함수는 해당 항목을 `true`로 설정합니다). 또한 `Mode == FieldValidationNone`이면 보안 검증 이전에 단락되어, `EnableSecurityValidation`을 활성화해도 실행되지 않습니다.
+:::warning 경고 제로값 함정
+리터럴 `FieldValidationConfig{}`는 `EnableSecurityValidation=false`가 되어 **보안 검증을 조용히 끕니다** - [`DefaultFieldValidationConfig`](#사전-설정-구성) 생성자를 우선 사용하세요(이 항목을 `true`로 설정). 또한 `Mode == FieldValidationNone`이면 보안 검증 이전에 단락되어, `EnableSecurityValidation`을 켜도 실행되지 않습니다.
 :::
 
-### 사전 설정
+### 사전 설정 구성
 
 ```go
-// 기본 설정: 명명 검증은 비활성화하지만 보안 검증은 활성화
+// 기본 구성: 명명 검증 비활성화, 보안 검증 활성화
 func DefaultFieldValidationConfig() *FieldValidationConfig
 
 // 엄격한 snake_case
@@ -179,7 +179,7 @@ func StrictSnakeCaseConfig() *FieldValidationConfig
 func StrictCamelCaseConfig() *FieldValidationConfig
 ```
 
-세 가지 사전 설정 모두 `AllowCommonAbbreviations=true`이고 `EnableSecurityValidation=true`입니다; 뒤의 두 가지는 `Mode=FieldValidationStrict`입니다.
+세 가지 사전 설정 모두 `AllowCommonAbbreviations=true`, `EnableSecurityValidation=true`이며, 뒤의 두 가지는 `Mode=FieldValidationStrict`입니다.
 
 ### ValidateFieldKey
 
@@ -187,13 +187,13 @@ func StrictCamelCaseConfig() *FieldValidationConfig
 func (c *FieldValidationConfig) ValidateFieldKey(key string) error
 ```
 
-필드 키가 설정과 일치하는지 검증합니다. 실패 시 원인을 설명하는 error를 반환하고, 검증 통과 시 `nil`을 반환합니다. 리시버가 `nil`이거나 `Mode == FieldValidationNone`이면 즉시 `nil`을 반환합니다. 검증 순서:
+필드 키가 구성에 일치하는지 검증합니다. 실패 시 원인을 설명하는 error를 반환하며, 통과 시 `nil`을 반환합니다. 리시버가 `nil`이거나 `Mode == FieldValidationNone`이면 직접 `nil`을 반환합니다. 검증 순서:
 
 1. 빈 키 → `"field key cannot be empty"` 반환
-2. `EnableSecurityValidation` 활성화 시 `internal.ValidateFieldKeyStrict` 실행 (Log4Shell / 동형문자 / overlong UTF-8)
+2. `EnableSecurityValidation` 활성화 시 `internal.ValidateFieldKeyStrict` 실행(Log4Shell / 동형자 / overlong UTF-8)
 3. `Convention == NamingConventionAny` → 명명 검사 건너뜀
-4. `AllowCommonAbbreviations`가 활성화되고 키가 일반 약어 표에 적중 (`id`/`url`/`http`/`json`/`jwt` 등, 또는 `_id`/`_url`/`_uri`/`_ip`/`_api`로 끝남) → 통과
-5. 규칙에 따라 항목별 검증: snake_case / camelCase / PascalCase / kebab-case
+4. `AllowCommonAbbreviations` 활성화이고 키가 일반 약어 표(`id`/`url`/`http`/`json`/`jwt` 등, 또는 `_id`/`_url`/`_uri`/`_ip`/`_api`로 끝남)에 해당 → 통과
+5. 규칙별 검증: snake_case / camelCase / PascalCase / kebab-case
 
 ```go
 package main
@@ -220,7 +220,7 @@ func main() {
         // 출력: userId: field key "userId" does not match snake_case convention
     }
 
-    // 일반 약어 면제: URL은 snake_case에 부합하지 않지만 약어 표에 적중하므로 통과
+    // 일반 약어 면제: URL은 snake_case가 아니지만 약어 표에 해당하므로 통과
     if err := cfg.ValidateFieldKey("URL"); err != nil {
         fmt.Println("URL:", err)
     } else {
@@ -228,7 +228,7 @@ func main() {
         // 출력: URL OK (약어 면제)
     }
 
-    // 기본 설정은 Mode=None, 명명을 검증하지 않음
+    // 기본 구성은 Mode=None이며 명명을 검증하지 않음
     defaultCfg := dd.DefaultFieldValidationConfig()
     if err := defaultCfg.ValidateFieldKey("anyKey"); err != nil {
         fmt.Println("anyKey:", err)

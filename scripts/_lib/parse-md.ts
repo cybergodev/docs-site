@@ -8,7 +8,7 @@ import {
  * Parse title / description from YAML frontmatter and return the body without
  * it. Falls back to the first H1 if `title` is absent (markdown emphasis
  * markers stripped). Frontmatter parsing delegates to `utils/frontmatter`
- * (single-line fields, no YAML dependency — see CLAUDE.md §5), shared with the
+ * (single-line fields, no YAML dependency), shared with the
  * sidebar builder.
  *
  * Used by `generate-llms.ts` and `generate-search-index.ts` so the two

@@ -56,6 +56,8 @@ if err != nil {
 | `ErrEmptyToken` | 所有令牌操作方法 | 检查请求头 |
 | `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 签名不匹配，拒绝访问 |
 | `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | 令牌算法与配置不匹配，拒绝访问 |
+| `ErrExpirationRequired` | Validate, Refresh, ValidateInto, RefreshInto | 启用 `RequireExpiration` 但令牌缺少 `exp` 声明 |
+| `ErrTokenTypeMismatch` | Refresh, RefreshInto | 用访问令牌（`token_type=access`）尝试刷新，拒绝访问 |
 | `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | 引导用户刷新令牌 |
 | `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | 检查时钟同步 |
 | `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 签发者不匹配 |

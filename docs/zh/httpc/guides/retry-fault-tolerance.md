@@ -31,7 +31,7 @@ defer client.Close()
 
 | 条件 | 重试 |
 |------|------|
-| 网络错误（连接拒绝、DNS 失败） | 是 |
+| 网络错误（连接拒绝、临时/超时类 DNS 失败） | 是 |
 | 超时错误 | 是 |
 | 5xx 服务端错误（500/502/503/504） | 是 |
 | 408 Request Timeout / 429 Too Many Requests | 是 |
@@ -105,10 +105,10 @@ HTTPC 自动解析服务端返回的 `Retry-After` 响应头：
 
 ```go
 // 服务端返回: Retry-After: 120
-// HTTPC 会等待 120 秒后重试，而不是使用指数退避延迟
+// HTTPC 最多等待 60 秒后重试（服务端指定的 120s 会被截断为安全上限 60s）
 
 // 服务端返回: Retry-After: Fri, 25 Apr 2026 12:00:00 GMT
-// HTTPC 会等待到指定时间后重试
+// HTTPC 会等待到指定时间后重试（若距今超过 60s 则截断为 60s）
 ```
 
 :::tip
@@ -171,7 +171,7 @@ if err != nil {
 | 微服务通信 | MaxRetries=2, Delay=500ms |
 | 文件下载 | MaxRetries=5, Delay=2s, Backoff=2.0 |
 | 幂等操作 | 可放心重试 |
-| 非幂等操作（POST） | 仅在网络错误时重试 |
+| 非幂等操作（POST） | 建议仅在网络错误时重试（默认也会对 5xx/408/429 重试，需自定义 RetryPolicy 收窄） |
 
 :::warning
 非幂等的 POST 请求默认也会重试。如需精确控制，请实现自定义 `RetryPolicy`。

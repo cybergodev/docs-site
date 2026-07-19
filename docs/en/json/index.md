@@ -113,7 +113,7 @@ func main() {
 - **Zero-Copy Parsing** — Reduced memory allocations
 - **Smart Caching** — Automatic caching of hot paths with cache warmup support
 - **Object Pool** — Reuse of intermediate objects to reduce GC pressure
-- **Parallel Processing** — Automatic parallelization of batch operations
+- **Parallel Stream Processing** — JSONL streaming supports multi-worker parallelism (`StreamJSONLParallel`)
 - **Pre-Parse Optimization** — Parse large JSON once, query many times
 
 ## Comparison with Standard Library

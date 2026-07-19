@@ -1,20 +1,22 @@
 ---
 sidebar_label: "Logger"
 title: "Logger - CyberGo DD | Core Logger"
-description: "CyberGo DD Logger API: log output methods (Info/Warn/Error/Fatal), dynamic level and Writer management, lifecycle control, and chained field setup."
+description: "CyberGo DD Logger core API: log output methods (Info/Warn/Error/Fatal), dynamic level management, Writer add/remove/replace, lifecycle control (Close/Flush), and chained field setting. The thread-safe, high-performance core entry-point type of the logging library."
 sidebar_position: 2
 ---
 
 # Logger
 
-`Logger` is the core type of DD, providing thread-safe logging capabilities.
+`Logger` is the core type of DD, providing thread-safe logging functionality.
 
 ## Creation
 
 ```go
-// Create via New
+// Via New
 logger, _ := dd.New(dd.DefaultConfig())
+```
 
+```go
 // Create with custom config
 logger, _ := dd.New(dd.Config{
     Level: dd.LevelInfo,
@@ -25,20 +27,20 @@ logger, _ := dd.New(dd.Config{
 })
 ```
 
-## Log Methods
+## Logging Methods
 
-### Basic Logging
+### Basic Logs
 
 | Method | Description |
 |--------|-------------|
-| `Debug(args ...any)` | Debug level log |
-| `Info(args ...any)` | Info level log |
-| `Warn(args ...any)` | Warn level log |
-| `Error(args ...any)` | Error level log |
-| `Fatal(args ...any)` | Fatal level log (default calls os.Exit(1), customizable via FatalHandler) |
-| `Log(level LogLevel, args ...any)` | Log at specified level |
+| `Debug(args ...any)` | Debug-level log |
+| `Info(args ...any)` | Info-level log |
+| `Warn(args ...any)` | Warn-level log |
+| `Error(args ...any)` | Error-level log |
+| `Fatal(args ...any)` | Fatal-level log (by default calls os.Exit(1), **deferred functions will not run**; customizable via FatalHandler) |
+| `Log(level LogLevel, args ...any)` | Specified-level log |
 
-### Formatted Logging
+### Formatted Logs
 
 | Method | Description |
 |--------|-------------|
@@ -46,10 +48,10 @@ logger, _ := dd.New(dd.Config{
 | `Infof(format string, args ...any)` | Formatted Info |
 | `Warnf(format string, args ...any)` | Formatted Warn |
 | `Errorf(format string, args ...any)` | Formatted Error |
-| `Fatalf(format string, args ...any)` | Formatted Fatal (default calls os.Exit(1), customizable via FatalHandler) |
-| `Logf(level LogLevel, format string, args ...any)` | Formatted specified level |
+| `Fatalf(format string, args ...any)` | Formatted Fatal (by default calls os.Exit(1), **deferred functions will not run**; customizable via FatalHandler) |
+| `Logf(level LogLevel, format string, args ...any)` | Formatted, specified level |
 
-### Structured Logging
+### Structured Logs
 
 | Method | Description |
 |--------|-------------|
@@ -57,11 +59,11 @@ logger, _ := dd.New(dd.Config{
 | `InfoWith(msg string, fields ...Field)` | Structured Info |
 | `WarnWith(msg string, fields ...Field)` | Structured Warn |
 | `ErrorWith(msg string, fields ...Field)` | Structured Error |
-| `FatalWith(msg string, fields ...Field)` | Structured Fatal (default calls os.Exit(1), customizable via FatalHandler) |
-| `LogWith(level LogLevel, msg string, fields ...Field)` | Structured specified level |
+| `FatalWith(msg string, fields ...Field)` | Structured Fatal (by default calls os.Exit(1), **deferred functions will not run**; customizable via FatalHandler) |
+| `LogWith(level LogLevel, msg string, fields ...Field)` | Structured, specified level |
 
 ```go
-logger.InfoWith("Request completed",
+logger.InfoWith("request completed",
     dd.String("method", "GET"),
     dd.Int("status", 200),
     dd.Duration("elapsed", 100*time.Millisecond),
@@ -75,7 +77,7 @@ level := logger.GetLevel()                    // Get current level
 _ = logger.SetLevel(dd.LevelDebug)            // Set level
 enabled := logger.IsLevelEnabled(dd.LevelInfo)// Check level
 
-// Quick checks
+// Shortcut checks
 logger.IsDebugEnabled()
 logger.IsInfoEnabled()
 logger.IsWarnEnabled()
@@ -95,7 +97,7 @@ resolver := logger.GetLevelResolver()
 ## Field Chaining
 
 ```go
-// Preset fields, returns LoggerEntry
+// Preset fields, returns a LoggerEntry
 entry := logger.WithFields(
     dd.String("service", "api"),
     dd.Int("version", 2),
@@ -108,25 +110,25 @@ entry := logger.WithField("env", "prod")
 ## Output Target Management
 
 ```go
-// Add Writer
+// Add a Writer
 _ = logger.AddWriter(os.Stderr)
 
-// Remove Writer
+// Remove a Writer
 _ = logger.RemoveWriter(os.Stderr)
 
-// Get Writer count
+// Get the Writer count
 count := logger.WriterCount()
 
-// Set write error handler
+// Set the write-error handler
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
-    fmt.Fprintf(os.Stderr, "Write failed: %v\n", err)
+    fmt.Fprintf(os.Stderr, "write failed: %v\n", err)
 })
 ```
 
 ## Context Integration
 
 ```go
-// Add context extractor
+// Add a context extractor
 _ = logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
     return []dd.Field{
         dd.String("trace_id", dd.GetTraceID(ctx)),
@@ -136,23 +138,23 @@ _ = logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
 // Replace all extractors
 _ = logger.SetContextExtractors(extractor1, extractor2)
 
-// Get current extractors
+// Get the current extractors
 extractors := logger.GetContextExtractors()
 ```
 
 ## Hook Management
 
 ```go
-// Register hook
+// Register a hook
 _ = logger.AddHook(dd.HookBeforeLog, func(ctx context.Context, hc *dd.HookContext) error {
     // Pre-log processing
     return nil
 })
 
-// Replace hook registry
+// Replace the hook registry
 _ = logger.SetHooks(registry)
 
-// Get hook registry
+// Get the hook registry
 hooks := logger.GetHooks()
 ```
 
@@ -191,10 +193,10 @@ validation := logger.GetFieldValidation()
 ## Lifecycle
 
 ```go
-// Flush buffer
+// Flush buffers
 _ = logger.Flush()
 
-// Close logger
+// Close the logger
 _ = logger.Close()
 
 // Graceful shutdown (with timeout)
@@ -202,10 +204,10 @@ ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 defer cancel()
 _ = logger.Shutdown(ctx)
 
-// Check if closed
+// Check whether closed
 closed := logger.IsClosed()
 
-// Wait for filter goroutines to complete
+// Wait for filter goroutines to finish
 ok := logger.WaitForFilterGoroutines(3 * time.Second)
 active := logger.ActiveFilterGoroutines()
 ```
@@ -214,16 +216,16 @@ active := logger.ActiveFilterGoroutines()
 
 | Method | Description |
 |--------|-------------|
-| `Print(args ...any)` | Output to configured Writer (LevelInfo, security filtered) |
-| `Println(args ...any)` | Identical to Print (Log() already adds newline) |
-| `Printf(format string, args ...any)` | Formatted output (LevelInfo, security filtered) |
-| `JSON(data ...any)` | JSON format debug output to stdout (no security filtering) |
-| `JSONF(format string, args ...any)` | Formatted JSON debug output to stdout (no security filtering) |
-| `Text(data ...any)` | Text format debug output to stdout (no security filtering) |
-| `Textf(format string, args ...any)` | Formatted text debug output to stdout (no security filtering) |
+| `Print(args ...any)` | Output to the configured Writer (LevelInfo, subject to security filtering) |
+| `Println(args ...any)` | Same behavior as Print (the underlying Log() already appends a newline) |
+| `Printf(format string, args ...any)` | Formatted output (LevelInfo, subject to security filtering) |
+| `JSON(data ...any)` | Compact-JSON output to stdout (includes caller info; does not go through security filtering) |
+| `JSONF(format string, args ...any)` | Formatted compact-JSON output to stdout (includes caller info; does not go through security filtering) |
+| `Text(data ...any)` | Pretty-printed output to stdout (no caller info; does not go through security filtering) |
+| `Textf(format string, args ...any)` | Formatted text output to stdout (no caller info; does not go through security filtering) |
 
 ## Next Steps
 
-- [LoggerEntry](./entry) -- Preset field chaining
-- [Configuration](./config) -- Config in detail
-- [Output Targets](../output-integration/writers) -- FileWriter in detail
+- [LoggerEntry](./entry) -- Preset-field chaining
+- [Config](./config) -- Config in depth
+- [Output Targets](../output-integration/writers) -- FileWriter in depth

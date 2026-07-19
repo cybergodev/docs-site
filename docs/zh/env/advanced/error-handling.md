@@ -52,11 +52,11 @@ var (
 )
 ```
 
-**禁止键检查：**
+**禁止键检查（实际返回 `*SecurityError`，匹配 `ErrSecurityViolation`）：**
 
 ```go
 err := loader.Set("PATH", "/malicious")
-if errors.Is(err, env.ErrForbiddenKey) {
+if errors.Is(err, env.ErrSecurityViolation) {
     log.Println("尝试设置禁止键")
 }
 ```
@@ -103,9 +103,10 @@ if errors.Is(err, env.ErrNotInitialized) {
     // 需要先调用 env.Load() 或 env.LoadWithConfig()
 }
 
-// 检查必需键是否缺失
-if errors.Is(err, env.ErrMissingRequired) {
-    // 缺少必需键
+// 检查必需键是否缺失（实际返回 *ValidationError，Rule=="required"）
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Rule == "required" {
+    // 缺少必需键: valErr.Message 含缺失键列表
 }
 ```
 
@@ -341,17 +342,19 @@ case errors.Is(err, env.ErrFileTooLarge):
     // 文件过大
     log.Fatal("配置文件过大")
 
-case errors.Is(err, env.ErrForbiddenKey):
-    // 禁止键
+case errors.Is(err, env.ErrSecurityViolation):
+    // 禁止键（实际返回 *SecurityError）
     log.Fatal("检测到禁止键")
-
-case errors.Is(err, env.ErrInvalidKey):
-    // 无效键格式
-    log.Fatal("检测到无效键")
 
 case err != nil:
     // 其他错误
     log.Fatalf("加载失败: %v", err)
+}
+
+// 键格式非法（实际返回 *ValidationError，Field=="key"）
+var valErr *env.ValidationError
+if errors.As(err, &valErr) && valErr.Field == "key" {
+    log.Fatalf("检测到无效键: %s", valErr.Message)
 }
 ```
 
@@ -534,7 +537,7 @@ func handleLoadError(err error) {
         errors.As(err, &fileErr)
         log.Fatalf("文件过大: %s (%d bytes)", fileErr.Path, fileErr.Size)
 
-    case errors.Is(err, env.ErrForbiddenKey):
+    case errors.Is(err, env.ErrSecurityViolation):
         log.Fatal("检测到禁止键")
     }
 
@@ -556,11 +559,11 @@ func handleLoadError(err error) {
 func handleValidationError(err error) {
     var valErr *env.ValidationError
     if errors.As(err, &valErr) {
+        if valErr.Rule == "required" {
+            // 缺少必需键: valErr.Message 含缺失键列表
+            log.Fatalf("缺少必需键: %s", valErr.Message)
+        }
         log.Fatalf("验证失败: %s - %s", valErr.Field, valErr.Message)
-    }
-
-    if errors.Is(err, env.ErrMissingRequired) {
-        log.Fatal("缺少必需键")
     }
 
     log.Fatalf("验证失败: %v", err)

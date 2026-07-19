@@ -9,7 +9,7 @@ sidebar_position: 7
 
 ## TestingConfig
 
-`TestingConfig()` 专为测试环境设计，禁用安全检查、缩短超时，加速测试执行：
+`TestingConfig()` 专为测试环境设计，禁用安全检查、缩短连接/握手超时（Request 仍为默认 180s）：
 
 ```go
 func TestAPI(t *testing.T) {
@@ -113,17 +113,22 @@ defer server.Close()
 ### 模拟延迟
 
 ```go
+// TestingConfig 关闭 SSRF 防护——否则默认客户端会阻止 127.0.0.1 测试服务器，
+// 得到的是 SSRF 错误而非超时错误。
+client, _ := httpc.New(httpc.TestingConfig())
+defer client.Close()
+
 server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     time.Sleep(5 * time.Second)
     w.WriteHeader(http.StatusOK)
 }))
 defer server.Close()
 
-// 测试超时处理
+// 测试超时处理：1s 上下文超时 < 5s 服务端延迟
 ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 defer cancel()
 
-_, err := httpc.Request(ctx, "GET", server.URL)
+_, err := client.Request(ctx, "GET", server.URL)
 if err == nil {
     t.Fatal("expected timeout error")
 }
@@ -181,7 +186,7 @@ func TestHTTPMethods(t *testing.T) {
 
     client, err := httpc.New(httpc.TestingConfig())
     if err != nil {
-        log.Fatal(err)
+        t.Fatal(err)
     }
     defer client.Close()
 

@@ -363,16 +363,44 @@ func init() {
 }
 
 func main() {
-    // Регистрация должна быть завершена до вызова New (выполнено в init)
+    // Регистрация должна быть завершена до вызова New (выполнено в init).
+    //
+    // Важное ограничение: LoadFiles не маршрутизирует по расширению .toml
+    // в TOMLParser выше — DetectFormat распознаёт только .env/.json/.yaml/.yml,
+    // прочие расширения fallback на встроенный парсер dotenv (см. format.go,
+    // функцию DetectFormat). Чтобы LoadFiles фактически вызвал TOMLParser,
+    // нужно переопределить FormatEnv через ForceRegisterParser и назвать
+    // файл *.env:
+    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &TOMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
 
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // Теперь можно загружать файлы .toml
-    loader.LoadFiles("config.toml")
+    // Расширение файла должно быть .env (содержимое в формате TOML), чтобы сработал переопределённый парсер
+    if err := loader.LoadFiles("config.env"); err != nil {
+        panic(err)
+    }
 }
 ```
+
+:::warning Ограничение маршрутизации LoadFiles
+Зарегистрированный через `RegisterParser` номер пользовательского формата (например, `FormatTOML = 100`) **не распознаётся `LoadFiles` автоматически по расширению файла**. Внутренне `LoadFiles` вызывает `DetectFormat(filename)` для выбора парсера, а `DetectFormat` распознаёт только расширения `.env` / `.json` / `.yaml` / `.yml`; прочие расширения возвращают `FormatAuto` и в итоге fallback на встроенный парсер dotenv — пользовательский парсер не вызывается.
+
+Два пути загрузки файлов пользовательского формата:
+
+1. **Расширение `.env` + `ForceRegisterParser`** (рекомендуется): назовите файл пользовательского формата как `*.env` и переопределите встроенный парсер dotenv через `env.ForceRegisterParser(env.FormatEnv, ...)`. Сохраните проверки имени/значения/размера ключа, иначе появятся уязвимости безопасности.
+2. **Ручной вызов парсера**: прочтите файл в `io.Reader`, самостоятельно создайте экземпляр парсера и вызовите `parser.Parse(reader, filename)`, получив `map[string]string`, затем записывайте значения через `loader.Set` по одному. Учтите, что внутренние `validator`/`auditor` парсера обычно зависят от `*ComponentFactory` — их следует получить при регистрации фабрики и передать внутрь.
+:::
 
 ---
 
@@ -576,19 +604,36 @@ func init() {
 }
 
 func main() {
+    // LoadFiles не маршрутизирует по расширению .xml в XML-парсер — DetectFormat
+    // распознаёт только .env/.json/.yaml/.yml. Здесь переопределяем FormatEnv
+    // через ForceRegisterParser, файл загружается с расширением .env
+    // (содержимое в формате XML):
+    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &XMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
+
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // Загрузка XML-конфигурации
     /*
+    Содержимое файла config.env (формат XML):
     <?xml version="1.0"?>
     <config>
         <entry key="DATABASE_HOST">localhost</entry>
         <entry key="DATABASE_PORT">5432</entry>
     </config>
     */
-    loader.LoadFiles("config.xml")
+    if err := loader.LoadFiles("config.env"); err != nil {
+        panic(err)
+    }
 
     fmt.Println(loader.GetString("DATABASE_HOST"))  // localhost
     fmt.Println(loader.GetInt("DATABASE_PORT"))     // 5432

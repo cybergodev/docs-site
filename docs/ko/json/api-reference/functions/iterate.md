@@ -81,11 +81,11 @@ json.ForeachNested(data, func(key any, item *json.IterableValue) {
 
 시그니처: `func ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
 
-JSON 데이터를 순회하고 다시 직렬화한 JSON 문자열을 반환합니다. 콜백은 읽기 전용 접근입니다.
+JSON 데이터를 순회하며 콜백으로 각 요소에 접근하고, 다시 직렬화한 JSON 문자열을 반환합니다. 콜백은 `GetData()`를 통해 map/slice를 수정할 수 있으며, 수정 사항은 반환값에 반영됩니다.
 
 ```go
 result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) {
-    // 읽기 전용 처리
+    // item.GetData()로 요소에 접근/수정 가능
 })
 ```
 

@@ -23,7 +23,7 @@ type Field struct {
 }
 ```
 
-所有字段构造器返回 `Field` 值；格式化器（`internal.FormatFields`）按 `Key=Value` 形式输出。基础类型（string / 数值 / bool / `time.Duration` / `time.Time`）走快速路径，复杂类型回退到 JSON 序列化。
+所有字段构造器返回 `Field` 值；格式化器（`internal.FormatFields`）按 `Key=Value` 形式输出。基础类型（string / 数值 / bool / `time.Duration` / `time.Time` / nil）走快速路径；切片、数组、map、struct 等「复杂类型」会回退到 JSON 序列化（`internal.IsComplexValue` 判定），其他类型（如实现 `fmt.Stringer` 或 `error` 接口的值）走 `fmt.Fprint`。
 
 ## 基础字段
 
@@ -33,8 +33,8 @@ type Field struct {
 | `String` | `(key, value string) Field` | 字符串 |
 | `Bool` | `(key string, value bool) Field` | 布尔值 |
 | `Err` | `(err error) Field` | 错误（key 固定 `"error"`；`err == nil` 时 Value 为 `nil`，否则为 `err.Error()`） |
-| `ErrWithKey` | `(key string, err error) Field` | 自定义 key 的错误 |
-| `ErrWithStack` | `(err error) Field` | 错误含调用栈（key 为 `"error"`，捕获有少量开销） |
+| `ErrWithKey` | `(key string, err error) Field` | 自定义 key 的错误（同 `Err`，`err == nil` 时 Value 为 `nil`） |
+| `ErrWithStack` | `(err error) Field` | 错误含调用栈（key 为 `"error"`，`err == nil` 时 Value 为 `nil`；栈帧过滤 runtime/ 与 dd 包内帧，捕获有少量开销） |
 
 ## 数值字段
 

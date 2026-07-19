@@ -72,7 +72,11 @@ func TestLogger(t *testing.T) {
 ```go
 func TestLogLevel(t *testing.T) {
     rec := dd.NewLoggerRecorder()
-    logger, _ := rec.NewLogger(dd.DevelopmentConfig())
+    // 注意：Recorder は ISO 8601 タイムスタンプでレベルを解析するが、DevelopmentConfig の
+    // 時間フォーマット（"15:04:05.000"）は非互換のため、DefaultConfig で手動 DEBUG 設定。
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelDebug
+    logger, _ := rec.NewLogger(cfg)
 
     logger.Debug("debug")
     logger.Info("info")

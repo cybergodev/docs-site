@@ -73,8 +73,8 @@ type ErrorType = engine.ErrorType
 | 常量 | 说明 | 可重试 |
 |------|------|--------|
 | `ErrorTypeUnknown` | 未知/未分类错误 | 否 |
-| `ErrorTypeNetwork` | 网络错误（连接拒绝、DNS 失败等） | 视情况 |
-| `ErrorTypeTimeout` | 请求超时 | 是 |
+| `ErrorTypeNetwork` | 网络错误（连接拒绝、连接重置等） | 视情况 |
+| `ErrorTypeTimeout` | 请求超时 | 视情况¹ |
 | `ErrorTypeContextCanceled` | 上下文取消 | 否 |
 | `ErrorTypeResponseRead` | 响应体读取错误 | 视情况 |
 | `ErrorTypeTransport` | 传输层错误 | 是 |
@@ -84,6 +84,8 @@ type ErrorType = engine.ErrorType
 | `ErrorTypeDNS` | DNS 解析错误 | 视情况 |
 | `ErrorTypeValidation` | 请求验证错误 | 否 |
 | `ErrorTypeHTTP` | HTTP 层错误 | 视情况 |
+
+> ¹ 由上下文截止（`WithTimeout`、`TimeoutConfig.Request`）触发的超时**不会**重试；仅传输层超时（如 `net.OpError` 超时）才会重试。
 
 ### 类型判断
 

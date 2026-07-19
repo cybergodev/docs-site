@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Testing Patterns"
-title: "Testing Patterns - CyberGo DD | LoggerRecorder Examples"
-description: "CyberGo DD testing patterns: LoggerRecorder in unit tests, message assertions, level filtering, field inspection, isolation, and concurrent safety."
+title: "Testing Patterns - CyberGo DD | LoggerRecorder Test Examples"
+description: "CyberGo DD testing-patterns examples, detailing the complete usage of LoggerRecorder in unit and integration tests, including log-message assertions, level-filter tests, field-value checks, multi-case isolation, concurrency-safety tests, and a full set of tips and best practices for improving test coverage. Applicable to log testing in any Go project."
 sidebar_position: 4
 ---
 
 # Testing Patterns
 
-DD provides `LoggerRecorder` as a testing utility that captures logs in unit tests for assertion without writing to actual files or console.
+DD provides `LoggerRecorder` as a test helper that captures logs for assertions in unit tests, without actually writing to files or the console.
 
 ## Basic Usage
 
@@ -21,7 +21,7 @@ import (
 )
 
 func TestUserService_Create(t *testing.T) {
-    // Create a test logger recorder
+    // Create a test logger
     rec := dd.NewLoggerRecorder()
     logger, _ := rec.NewLogger()
 
@@ -33,8 +33,8 @@ func TestUserService_Create(t *testing.T) {
     }
 
     // Assert log content
-    if !rec.ContainsMessage("User created") {
-        t.Error("Expected log message 'User created'")
+    if !rec.ContainsMessage("create user") {
+        t.Error("Expected log message 'create user'")
     }
 
     if rec.GetFieldValue("name") != "alice" {
@@ -45,18 +45,18 @@ func TestUserService_Create(t *testing.T) {
 
 ## LoggerRecorder Methods
 
-### Message Checking
+### Message Inspection
 
 ```go
 rec := dd.NewLoggerRecorder()
 logger, _ := rec.NewLogger()
 
-logger.Info("Operation succeeded")
-logger.Error("Operation failed")
+logger.Info("operation succeeded")
+logger.Error("operation failed")
 
-// Check if a message exists
-rec.ContainsMessage("Operation succeeded")  // true
-rec.ContainsMessage("Operation failed")     // true
+// Check whether a message is present
+rec.ContainsMessage("operation succeeded")  // true
+rec.ContainsMessage("operation failed")  // true
 
 // Get all log entries
 entries := rec.Entries()
@@ -68,7 +68,7 @@ for _, entry := range entries {
 ### Level Filtering
 
 ```go
-// Filter logs by specific level
+// Inspect only logs at a specific level
 infoEntries := rec.EntriesAtLevel(dd.LevelInfo)
 errorEntries := rec.EntriesAtLevel(dd.LevelError)
 
@@ -76,20 +76,24 @@ if len(errorEntries) > 0 {
     t.Error("Unexpected error logs")
 }
 
-// Use DevelopmentConfig to capture all levels
+// Use DEBUG level to capture all levels
+// Note: the Recorder parses the level from the ISO 8601 timestamp; DevelopmentConfig's
+// time format is incompatible, so use DefaultConfig and manually set DEBUG.
 rec2 := dd.NewLoggerRecorder()
-logger2, _ := rec2.NewLogger(dd.DevelopmentConfig())
-logger2.Debug("Debug info")
+devCfg := dd.DefaultConfig()
+devCfg.Level = dd.LevelDebug
+logger2, _ := rec2.NewLogger(devCfg)
+logger2.Debug("debug info")
 debugs := rec2.EntriesAtLevel(dd.LevelDebug)
 ```
 
-### Field Checking
+### Field Inspection
 
 ```go
 rec := dd.NewLoggerRecorder()
 logger, _ := rec.NewLogger()
 
-logger.InfoWith("Request completed",
+logger.InfoWith("request completed",
     dd.String("method", "GET"),
     dd.Int("status", 200),
     dd.Duration("elapsed", 50*time.Millisecond),
@@ -100,15 +104,15 @@ if rec.GetFieldValue("method") != "GET" {
     t.Error("Expected method=GET")
 }
 
-// Note: field values are string type in text format
+// Note: in text format, field values are of string type
 if rec.GetFieldValue("status") != "200" {
     t.Error("Expected status=200")
 }
 ```
 
-## Testing Patterns
+## Test Patterns
 
-### Testing Service Layer
+### Testing the Service Layer
 
 ```go
 func TestOrderService_PlaceOrder(t *testing.T) {
@@ -120,7 +124,7 @@ func TestOrderService_PlaceOrder(t *testing.T) {
     // Happy path
     order, err := svc.PlaceOrder(ctx, "user-1", []string{"item-1"})
     require.NoError(t, err)
-    require.True(t, rec.ContainsMessage("Order created"))
+    require.True(t, rec.ContainsMessage("order created"))
     require.True(t, rec.ContainsField("user_id"))
     require.Equal(t, "user-1", rec.GetFieldValue("user_id"))
 
@@ -139,14 +143,14 @@ func TestService_DatabaseError(t *testing.T) {
 
     svc := &Service{
         log: logger,
-        db:  &failingDB{}, // Simulate database error
+        db:  &failingDB{}, // Simulate a database error
     }
 
     err := svc.Process(ctx)
     require.Error(t, err)
 
-    // Verify error was logged
-    require.True(t, rec.ContainsMessage("Processing failed"))
+    // Verify the error was logged
+    require.True(t, rec.ContainsMessage("processing failed"))
     require.True(t, rec.ContainsField("error"))
     require.Contains(t, rec.GetFieldValue("error"), "database connection refused")
 
@@ -176,11 +180,10 @@ func TestMiddleware_LogsRequestFields(t *testing.T) {
     require.Len(t, entries, 1)
 
     entry := entries[0]
-    require.Equal(t, "Request completed", entry.Message)
-    // Verify field values
+    require.Equal(t, "request completed", entry.Message)
+    // Verify field values (note: in text format, field values are of string type)
     require.Equal(t, "GET", rec.GetFieldValue("method"))
     require.Equal(t, "/api/users", rec.GetFieldValue("path"))
-    // Note: field values are string type in text format
     require.Equal(t, "200", rec.GetFieldValue("status"))
 }
 ```
@@ -203,7 +206,7 @@ func TestSuite(t *testing.T) {
 }
 ```
 
-## Table-Driven Tests
+## Table-driven Tests
 
 ```go
 func TestLogLevel_Behavior(t *testing.T) {
@@ -216,20 +219,20 @@ func TestLogLevel_Behavior(t *testing.T) {
         {
             name:     "Debug level",
             level:    dd.LevelDebug,
-            logFunc:  func(l *dd.Logger) { l.Debug("Debug info") },
-            expected: "Debug info",
+            logFunc:  func(l *dd.Logger) { l.Debug("debug info") },
+            expected: "debug info",
         },
         {
             name:     "Info level",
             level:    dd.LevelInfo,
-            logFunc:  func(l *dd.Logger) { l.Info("General info") },
-            expected: "General info",
+            logFunc:  func(l *dd.Logger) { l.Info("general info") },
+            expected: "general info",
         },
         {
             name:     "Error level",
             level:    dd.LevelError,
-            logFunc:  func(l *dd.Logger) { l.Error("Error info") },
-            expected: "Error info",
+            logFunc:  func(l *dd.Logger) { l.Error("error info") },
+            expected: "error info",
         },
     }
 
@@ -252,6 +255,6 @@ func TestLogLevel_Behavior(t *testing.T) {
 
 ## Next Steps
 
-- [Web Service Integration](./web-service) -- HTTP service logging
-- [API Reference - Recorder](../api-reference/dev-tools/recorder) -- LoggerRecorder complete API
+- [Web Service Integration](./web-service) -- HTTP service log integration
+- [API Reference - Recorder](../api-reference/dev-tools/recorder) -- Complete LoggerRecorder API
 - [Hook System](../guides/hooks) -- Lifecycle hooks

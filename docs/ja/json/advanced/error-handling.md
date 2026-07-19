@@ -25,8 +25,8 @@ var (
     ErrProcessorClosed    = errors.New("processor is closed")
     ErrConcurrencyLimit   = errors.New("concurrency limit exceeded")
     ErrUnsupportedPath    = errors.New("unsupported path operation")
-    ErrOperationTimeout   = errors.New("operation timeout")
-    ErrResourceExhausted  = errors.New("system resources exhausted")
+    ErrOperationTimeout   = errors.New("operation timeout")           // Deprecated
+    ErrResourceExhausted  = errors.New("system resources exhausted")  // Deprecated
 )
 ```
 
@@ -316,15 +316,15 @@ if err != nil {
 val, err := json.Get(data, "user.name")
 if err != nil {
     if errors.Is(err, json.ErrOperationTimeout) {
-        // 操作タイムアウト、リトライ可能
+        // 操作タイムアウト、リトライ可能 <Badge type="danger" text="非推奨" />
         return fmt.Errorf("一時的なエラーです、リトライしてください: %w", err)
     }
     if errors.Is(err, json.ErrConcurrencyLimit) {
-        // 同時実行制限
+        // 同時実行制限（MaxConcurrency 到達時に返される、リトライ可能）
         return fmt.Errorf("システムが混雑しています、後でもう一度お試しください: %w", err)
     }
     if errors.Is(err, json.ErrResourceExhausted) {
-        // リソース枯渇
+        // リソース枯渇 <Badge type="danger" text="非推奨" />
         return fmt.Errorf("システムリソースが不足: %w", err)
     }
     if errors.Is(err, json.ErrProcessorClosed) {
@@ -355,9 +355,10 @@ func processJSON(data string) error {
             // セキュリティエラー、記録して拒否
             log.Warn("セキュリティ違反", "error", err)
             return errors.New("入力が不正です")
-        case errors.Is(err, json.ErrOperationTimeout),
-            errors.Is(err, json.ErrConcurrencyLimit):
-            // リトライ可能なエラー
+        case errors.Is(err, json.ErrConcurrencyLimit):
+            // 同時実行上限、後でリトライ可能
+            return fmt.Errorf("システムが混雑しています、後でリトライしてください: %w", err)
+        case errors.Is(err, json.ErrOperationTimeout): // Deprecated（現在返されることはありません、互換性のために保持）
             return fmt.Errorf("一時的なエラーです、リトライしてください: %w", err)
         default:
             // システムエラー

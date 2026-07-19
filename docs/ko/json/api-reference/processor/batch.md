@@ -1,7 +1,7 @@
 ---
 sidebar_label: "배치 작업"
 title: "Processor 배치 작업 - CyberGo JSON | API 레퍼런스"
-description: "CyberGo JSON Processor 배치 작업: ProcessBatch, BatchOperation, BatchResult, ContinueOnError 설정과 성능 최적화로 배치 데이터 처리에 적합합니다."
+description: "CyberGo JSON Processor 배치 작업: ProcessBatch 다중 작업, BatchOperation과 BatchResult 타입으로 배치 처리에 적합합니다."
 sidebar_position: 7
 ---
 

@@ -64,7 +64,7 @@ type LinkInfo struct {
     URL        string `json:"url"`         // 链接地址
     Text       string `json:"text"`        // 链接文本
     Title      string `json:"title"`       // 链接标题
-    IsExternal bool   `json:"is_external"` // 是否为外部链接
+    IsExternal bool   `json:"is_external"` // 是否为外部链接（基于 URL 本身是否为绝对外部 URL 判定，不与 BaseURL 对比）
     IsNoFollow bool   `json:"is_nofollow"` // 是否为 nofollow
     Position   int    `json:"position"`    // 在文档中的位置
 }

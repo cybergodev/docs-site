@@ -70,6 +70,10 @@ result, err := dc.Request(ctx, "GET", "/users", options...)
 
 Generic request method with context support for timeout and cancellation control.
 
+:::warning Request options are applied twice
+The domain client internally applies request options **twice** -- once to capture session state (cookies, headers) and once for the actual request. Avoid side-effect options (e.g. counters, nonce generation); use the underlying `Client` if you need them.
+:::
+
 ## Download Methods
 
 ```go
@@ -107,7 +111,7 @@ dc.Close()    // error - Close client and release resources
 | `https://other.com/api` | `https://other.com/api` (absolute URL) |
 
 :::warning
-Only `http://` and `https://` protocol absolute URLs are allowed; other protocols are rejected (SSRF prevention).
+Only paths prefixed with `http://` or `https://` are recognized as absolute URLs; other protocols (e.g. `ftp://`) are not recognized as absolute, are joined as relative paths, and usually cause the request to fail.
 :::
 
 ## DomainClienter Interface

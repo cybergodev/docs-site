@@ -166,9 +166,13 @@ cfg.ExpandVariables = true
 | 语法 | 说明 |
 |------|------|
 | `${VAR}` | 引用变量 |
-| `${VAR:-default}` | 变量不存在或为空时使用默认值 |
-| `${VAR:=default}` | 变量不存在或为空时设置默认值 |
+| `${VAR:-default}` | 变量不存在时使用默认值（变量存在即使为空也用原值） |
+| `${VAR:=default}` | 同 `${VAR:-default}`（变量不存在时使用默认值，不写回存储） |
 | `${VAR:?error}` | 变量不存在或为空时报错 |
+
+::: tip 空字符串的处理
+`${VAR:-default}` 与 `${VAR:=default}` 仅在变量**未设置**时使用默认值；若变量被显式设为空字符串（`VAR=`），则使用空字符串原值。仅 `${VAR:?error}` 会把空字符串视为错误。详见 [变量展开](/zh/env/guides/variable-expansion)。
+:::
 
 ### 安全限制
 

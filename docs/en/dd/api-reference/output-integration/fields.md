@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Fields"
-title: "Structured Fields - CyberGo DD | Field Constructors and Validation"
-description: "CyberGo DD structured field API: 20 type-safe field constructors (String/Int/Float/Bool/Time/Duration/Err, etc.), the Field type and field-key validation (naming conventions and Log4Shell security detection), with customizable validation modes and preset configs."
+title: "Structured Fields - CyberGo DD | Field Constructors & Validation"
+description: "CyberGo DD structured field API: 20 type-safe field constructors (String/Int/Float/Bool/Time/Duration/Err, etc.), the Field type, and optional field-key validation (naming conventions and Log4Shell security detection) with custom validation modes and preset configs."
 sidebar_position: 3
 ---
 
@@ -11,19 +11,19 @@ DD provides 20 type-safe field constructors, a unified `Field` type, and an opti
 
 ## Field Type
 
-`Field` is the structured log field type, exposed as a **type alias** of `internal.Field`:
+`Field` is the structured-log field type, exposed as a **type alias** of `internal.Field`:
 
 ```go
 type Field = internal.Field
 
-// Actual structure (internal/fields.go)
+// Actual struct (internal/fields.go)
 type Field struct {
-    Key   string  // field key
-    Value any     // field value (any type)
+    Key   string  // Field key
+    Value any     // Field value (any type)
 }
 ```
 
-All field constructors return a `Field` value; the formatter (`internal.FormatFields`) outputs them as `Key=Value`. Primitive types (string / numeric / bool / `time.Duration` / `time.Time`) take a fast path, while complex types fall back to JSON serialization.
+All field constructors return a `Field` value; the formatter (`internal.FormatFields`) outputs them as `Key=Value`. Primitive types (string / numeric / bool / `time.Duration` / `time.Time` / nil) take a fast path; "complex types" such as slices, arrays, maps, and structs fall back to JSON serialization (decided by `internal.IsComplexValue`); other types (such as values implementing the `fmt.Stringer` or `error` interface) go through `fmt.Fprint`.
 
 ## Basic Fields
 
@@ -32,9 +32,9 @@ All field constructors return a `Field` value; the formatter (`internal.FormatFi
 | `Any` | `(key string, value any) Field` | Any type |
 | `String` | `(key, value string) Field` | String |
 | `Bool` | `(key string, value bool) Field` | Boolean |
-| `Err` | `(err error) Field` | Error (key is fixed to `"error"`; when `err == nil`, Value is `nil`, otherwise `err.Error()`) |
-| `ErrWithKey` | `(key string, err error) Field` | Error with custom key |
-| `ErrWithStack` | `(err error) Field` | Error with call stack (key is `"error"`, capturing frames has a small overhead) |
+| `Err` | `(err error) Field` | Error (key is fixed to `"error"`; when `err == nil` Value is `nil`, otherwise `err.Error()`) |
+| `ErrWithKey` | `(key string, err error) Field` | Error with custom key (same as `Err`; when `err == nil` Value is `nil`) |
+| `ErrWithStack` | `(err error) Field` | Error with call stack (key is `"error"`; when `err == nil` Value is `nil`; stack frames filter out runtime/ and dd-package frames; capture has a small cost) |
 
 ## Numeric Fields
 
@@ -64,23 +64,23 @@ All field constructors return a `Field` value; the formatter (`internal.FormatFi
 
 <!-- check-code: skip -->
 ```go
-// Standard error field (key is fixed to "error"; nil error → Value is nil)
+// Standard error field (key is fixed to "error"; nil error -> Value is nil)
 dd.Err(err)
 
 // Custom key
 dd.ErrWithKey("db_error", err)
 
-// With stack trace (stack frames filter out runtime/ and dd's own frames)
+// With stack info (stack frames filter out runtime/ and dd-package frames)
 dd.ErrWithStack(err)
 ```
 
 ## Usage
 
-### Combined with InfoWith
+### With InfoWith
 
 <!-- check-code: skip -->
 ```go
-dd.InfoWith("User login",
+dd.InfoWith("user login",
     dd.String("username", "admin"),
     dd.Time("login_at", time.Now()),
     dd.Bool("mfa", true),
@@ -88,7 +88,7 @@ dd.InfoWith("User login",
 )
 ```
 
-### Chaining with WithFields
+### With WithFields Chaining
 
 <!-- check-code: skip -->
 ```go
@@ -96,15 +96,15 @@ entry := logger.WithFields(
     dd.String("service", "api"),
     dd.Int("pid", os.Getpid()),
 )
-entry.Info("Service started")
+entry.Info("service started")
 ```
 
-### Appending to Entry
+### Appending to an Entry
 
 <!-- check-code: skip -->
 ```go
 base := logger.WithFields(dd.String("req_id", id))
-base.InfoWith("Response",
+base.InfoWith("response",
     dd.Int("status", 200),
     dd.Duration("elapsed", took),
     dd.Err(err),
@@ -113,11 +113,11 @@ base.InfoWith("Response",
 
 ## Field Validation
 
-DD provides a field-key validation mechanism that supports naming-convention checks and security verification (Log4Shell injection, homograph attacks, overlong UTF-8). The validation config `FieldValidationConfig` can be attached to [`Config.FieldValidation`](../core/config) to take effect at construction time, or dynamically replaced at runtime via [`Logger.SetFieldValidation`](../core/logger). Each `*With` call invokes `ValidateFieldKey` on every field's Key; in Strict mode, failures are reported as log entries (the logging methods themselves do not return an error).
+DD provides a field-key validation mechanism supporting naming-convention checks and security validation (Log4Shell injection, homograph attacks, overlong UTF-8). The validation config `FieldValidationConfig` can be attached to [`Config.FieldValidation`](../core/config) to take effect at construction time, or dynamically replaced at runtime via [`Logger.SetFieldValidation`](../core/logger). Each `*With` call invokes `ValidateFieldKey` on each field's Key; in Strict mode, failures are reported as log errors (the log method itself does not return an error).
 
 ### FieldValidationMode
 
-Validation mode, determines how validation failures are handled.
+Validation mode, deciding how validation failures are handled.
 
 ```go
 type FieldValidationMode int
@@ -151,7 +151,7 @@ The `String()` method of `FieldNamingConvention` returns: `"any"` / `"snake_case
 
 ### FieldValidationConfig
 
-Field validation config.
+Field validation configuration.
 
 ```go
 type FieldValidationConfig struct {
@@ -162,14 +162,14 @@ type FieldValidationConfig struct {
 }
 ```
 
-:::warning Zero-Value Pitfall
-A literal `FieldValidationConfig{}` leaves `EnableSecurityValidation=false`, **silently disabling security validation** — prefer constructing it via [`DefaultFieldValidationConfig`](#preset-configs) (which sets this to `true`). Additionally, when `Mode == FieldValidationNone`, the check short-circuits before security validation, so even with `EnableSecurityValidation` enabled, it will not run.
+:::warning Zero-value pitfall
+A literal `FieldValidationConfig{}` sets `EnableSecurityValidation=false`, **silently disabling security validation** — prefer the [`DefaultFieldValidationConfig`](#preset-configs) constructor (which sets it to `true`). Additionally, when `Mode == FieldValidationNone`, validation short-circuits before security checks; even with `EnableSecurityValidation` enabled, security validation will not run.
 :::
 
 ### Preset Configs
 
 ```go
-// Default config: disables naming validation but enables security validation
+// Default config: disable naming validation but enable security validation
 func DefaultFieldValidationConfig() *FieldValidationConfig
 
 // Strict snake_case
@@ -179,7 +179,7 @@ func StrictSnakeCaseConfig() *FieldValidationConfig
 func StrictCamelCaseConfig() *FieldValidationConfig
 ```
 
-All three presets set `AllowCommonAbbreviations=true` and `EnableSecurityValidation=true`; the latter two also set `Mode=FieldValidationStrict`.
+All three presets set `AllowCommonAbbreviations=true` and `EnableSecurityValidation=true`; the latter two set `Mode=FieldValidationStrict`.
 
 ### ValidateFieldKey
 
@@ -187,13 +187,13 @@ All three presets set `AllowCommonAbbreviations=true` and `EnableSecurityValidat
 func (c *FieldValidationConfig) ValidateFieldKey(key string) error
 ```
 
-Validates whether a field key matches the config. On failure, returns an error describing the reason; on success, returns `nil`. Returns `nil` directly when the receiver is `nil` or `Mode == FieldValidationNone`. Validation order:
+Validates whether a field key matches the configuration. Returns an error describing the reason on failure, `nil` on success. Returns `nil` directly when the receiver is `nil` or `Mode == FieldValidationNone`. Validation order:
 
-1. Empty key → returns `"field key cannot be empty"`
+1. Empty key -> returns `"field key cannot be empty"`
 2. When `EnableSecurityValidation` is enabled, runs `internal.ValidateFieldKeyStrict` (Log4Shell / homograph / overlong UTF-8)
-3. `Convention == NamingConventionAny` → skip naming check
-4. `AllowCommonAbbreviations` enabled and the key matches the common-abbreviation table (`id`/`url`/`http`/`json`/`jwt`, etc., or ends with `_id`/`_url`/`_uri`/`_ip`/`_api`) → pass
-5. Validate against the convention: snake_case / camelCase / PascalCase / kebab-case
+3. `Convention == NamingConventionAny` -> skip naming check
+4. If `AllowCommonAbbreviations` is on and the key hits the common-abbreviation table (`id`/`url`/`http`/`json`/`jwt`, etc., or ends with `_id`/`_url`/`_uri`/`_ip`/`_api`) -> pass
+5. Per-convention checks: snake_case / camelCase / PascalCase / kebab-case
 
 ```go
 package main
@@ -220,7 +220,7 @@ func main() {
         // Output: userId: field key "userId" does not match snake_case convention
     }
 
-    // Common abbreviation exemption: URL does not conform to snake_case, but passes by hitting the abbreviation table
+    // Common-abbreviation exemption: URL is not snake_case but hits the abbreviation table, so it passes
     if err := cfg.ValidateFieldKey("URL"); err != nil {
         fmt.Println("URL:", err)
     } else {
@@ -228,7 +228,7 @@ func main() {
         // Output: URL OK (abbreviation exemption)
     }
 
-    // Default config Mode=None, does not validate naming
+    // Default config Mode=None, no naming validation
     defaultCfg := dd.DefaultFieldValidationConfig()
     if err := defaultCfg.ValidateFieldKey("anyKey"); err != nil {
         fmt.Println("anyKey:", err)
@@ -242,6 +242,6 @@ func main() {
 ## Next Steps
 
 - [Logger](../core/logger) -- `WithFields` / `InfoWith` / `SetFieldValidation`
-- [LoggerEntry](../core/entry) -- Preset field chaining
+- [LoggerEntry](../core/entry) -- Preset-field chaining
 - [Context Integration](./context) -- `ContextExtractor` field extraction
 - [Config](../core/config) -- `Config.FieldValidation`

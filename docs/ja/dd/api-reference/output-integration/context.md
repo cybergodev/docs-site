@@ -58,7 +58,7 @@ func handleRequest(ctx context.Context) {
 ```
 
 :::tip 一括抽出
-手動 `Get*` は一回限りのシナリオに適しています。各ログにトレースフィールドを自動付与したい場合は、下記の `ContextExtractor` を Logger に登録します。エクストラクタは `*With` 呼び出しのたびに実行されます。
+手動 `Get*` は単発の場面に適しています。**グローバル/静的**フィールド（サービス名やホスト名など）を毎ログに自動付与するには、`ContextExtractor` を Logger に登録します。抽出器は毎回 `*With` 呼び出し時に実行されます。注意: 抽出器が受け取るのは `context.Background()` であり、リクエストスコープの TraceID を**自動取得できません**（下記の制限事項を参照）。
 :::
 
 ## ContextExtractor
@@ -91,6 +91,10 @@ _ = logger.SetContextExtractors(extractor1, extractor2)
 // 現在登録済みのエクストラクタのスナップショットを取得
 extractors := logger.GetContextExtractors()
 ```
+
+:::warning コンテキストの制限（重要）
+ログメソッド（`Info`/`InfoWith` 等）は `context.Context` を受け取らず、`ContextExtractor` は内部で `context.Background()` で呼ばれるため、リクエストスコープの TraceID/SpanID を**自動抽出できません**。下記の OTel 例はグローバル span が存在する場合のみフィールドを出力します。リクエストごとのトレース ID を付与するには `WithFields()` で手動渡してください（[分散トレーシング統合](../../guides/context-tracing) を参照）。
+:::
 
 ### OpenTelemetry 例
 

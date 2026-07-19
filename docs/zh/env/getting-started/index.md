@@ -214,7 +214,7 @@ type Config struct {
     Password string        `env:"DB_PASSWORD"`
     Debug    bool          `env:"DEBUG" envDefault:"false"`
     Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"ALLOWED_HOSTS" envSeparator:","`
+    Hosts    []string      `env:"ALLOWED_HOSTS"`
 }
 
 func main() {
@@ -375,12 +375,16 @@ if err != nil {
         // 文件不存在
     case errors.Is(err, env.ErrFileTooLarge):
         // 文件过大
-    case errors.Is(err, env.ErrForbiddenKey):
-        // 禁止键
-    case errors.Is(err, env.ErrInvalidKey):
-        // 无效键格式
+    case errors.Is(err, env.ErrSecurityViolation):
+        // 禁止键（实际返回 *SecurityError）
     default:
         // 其他错误
+    }
+
+    // 键格式非法：实际返回 *ValidationError，Field=="key"
+    var valErr *env.ValidationError
+    if errors.As(err, &valErr) && valErr.Field == "key" {
+        // 无效键格式
     }
 }
 ```

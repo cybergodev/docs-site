@@ -173,7 +173,7 @@ func main() {
     p, _ := html.New(html.TextOnlyConfig())
     defer p.Close()
 
-    // Up to 10000 files per batch
+    // single batch limit 10000; exceeding it fails the whole batch — caller must chunk
     batch := p.ExtractBatchFiles(files)
 
     fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n",

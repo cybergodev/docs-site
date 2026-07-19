@@ -363,16 +363,43 @@ func init() {
 }
 
 func main() {
-    // 注册必须在 New 之前完成（已在 init 中完成）
+    // 注册必须在 New 之前完成（已在 init 中完成）。
+    //
+    // 重要限制：LoadFiles 不会按 .toml 扩展名自动路由到上面的
+    // TOMLParser——DetectFormat 只识别 .env/.json/.yaml/.yml，其他
+    // 扩展名会 fallback 到内置 dotenv 解析器（见 format.go 的
+    // DetectFormat）。要让 LoadFiles 实际调用 TOMLParser，需用
+    // ForceRegisterParser 覆盖 FormatEnv，并把文件命名为 *.env：
+    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &TOMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
 
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // 现在可以加载 .toml 文件
-    loader.LoadFiles("config.toml")
+    // 文件扩展名须为 .env（内容为 TOML 格式）才会路由到覆盖后的解析器
+    if err := loader.LoadFiles("config.env"); err != nil {
+        panic(err)
+    }
 }
 ```
+
+::: warning LoadFiles 路由限制
+`RegisterParser` 注册的自定义格式号（如 `FormatTOML = 100`）**不会被 `LoadFiles` 按文件扩展名自动识别**。`LoadFiles` 内部调用 `DetectFormat(filename)` 选解析器，而 `DetectFormat` 只识别 `.env` / `.json` / `.yaml` / `.yml` 四种扩展名，其他扩展名返回 `FormatAuto`，最终 fallback 到内置 dotenv 解析器——自定义解析器从不被调用。
+
+加载自定义格式文件的两条路径：
+
+1. **`.env` 扩展名 + `ForceRegisterParser`**（推荐）：将自定义格式文件命名为 `*.env`，用 `env.ForceRegisterParser(env.FormatEnv, ...)` 覆盖内置 dotenv 解析器。注意保留键名/值/大小等安全校验，否则会引入安全漏洞。
+2. **手动调用解析器**：读取文件得到 `io.Reader`，自行构造解析器实例并调用 `parser.Parse(reader, filename)` 得到 `map[string]string`，再用 `loader.Set` 逐条写入。注意解析器内部的 `validator`/`auditor` 通常依赖 `*ComponentFactory`，需在注册工厂时一并获取并传入。
+:::
 
 ---
 
@@ -576,19 +603,35 @@ func init() {
 }
 
 func main() {
+    // LoadFiles 不会按 .xml 扩展名自动路由到 XML 解析器——DetectFormat
+    // 只识别 .env/.json/.yaml/.yml。这里用 ForceRegisterParser 覆盖
+    // FormatEnv，文件以 .env 扩展名加载（内容为 XML 格式）：
+    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+        return &XMLParser{
+            cfg:       cfg,
+            validator: f.Validator(),
+            auditor:   f.Auditor(),
+        }, nil
+    })
+    if err != nil {
+        panic(err)
+    }
+
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // 加载 XML 配置
     /*
+    config.env 文件内容（XML 格式）：
     <?xml version="1.0"?>
     <config>
         <entry key="DATABASE_HOST">localhost</entry>
         <entry key="DATABASE_PORT">5432</entry>
     </config>
     */
-    loader.LoadFiles("config.xml")
+    if err := loader.LoadFiles("config.env"); err != nil {
+        panic(err)
+    }
 
     fmt.Println(loader.GetString("DATABASE_HOST"))  // localhost
     fmt.Println(loader.GetInt("DATABASE_PORT"))     // 5432

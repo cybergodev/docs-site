@@ -59,5 +59,5 @@ for i, err := range batch.Errors {
 ```
 
 :::warning Batch Limit
-A single batch supports up to 10000 items. Exceeding this limit will result in an error.
+A single batch supports up to 10000 items. Exceeding this limit returns a `*BatchResult` in which every item failed (each `Errors` entry is `html: batch size N exceeds maximum 10000`); no panic is triggered.
 :::

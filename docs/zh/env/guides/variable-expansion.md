@@ -43,6 +43,10 @@ URL=$HOST:8080
 | `${VAR:=default}` | 如果 VAR 不存在，使用 default（同 `:-`） |
 | `${VAR:?error}` | 如果 VAR 不存在或为空，返回错误 |
 
+::: warning 自引用限制
+`:-`、`:=`、`:?` 引用的变量必须与被赋值的键**不同**。形如 `KEY=${KEY:-default}` 的自引用会被识别为循环引用，加载时报 `ErrExpansionDepth` 错误。为某键设置默认值请直接赋值字面量（`KEY=default`），或引用其他变量（见下方示例）。
+:::
+
 ---
 
 ## 语法详解
@@ -52,16 +56,19 @@ URL=$HOST:8080
 最常见的默认值语法。当变量不存在时使用默认值，变量存在（即使值为空）则使用原值：
 
 ```bash
-# 如果 LOG_LEVEL 不存在，使用 "info"
-LOG_LEVEL=${LOG_LEVEL:-info}
+# HOST 已定义，使用其值
+HOST=localhost
+PRIMARY_HOST=${HOST:-127.0.0.1}
+# PRIMARY_HOST 展开为: localhost
 
-# 如果 TIMEOUT 不存在，使用 "30s"
-TIMEOUT=${TIMEOUT:-30s}
+# TIMEOUT 未定义时使用默认值 "30s"
+TIMEOUT_VALUE=${TIMEOUT:-30s}
+# TIMEOUT_VALUE 展开为: 30s
 
 # 嵌套默认值
-DB_HOST=${DB_HOST:-localhost}
+DB_HOST=localhost
 DB_URL=${DB_HOST}:${DB_PORT:-5432}
-# 如果 DB_HOST=localhost 且 DB_PORT 不存在
+# DB_HOST=localhost 且 DB_PORT 未定义时
 # DB_URL 展开为: localhost:5432
 ```
 
@@ -76,11 +83,11 @@ DB_URL=${DB_HOST}:${DB_PORT:-5432}
 行为与 `${VAR:-default}` 相同，当变量不存在时使用默认值：
 
 ```bash
-# 如果 DEBUG 不存在，使用 "false"
-DEBUG=${DEBUG:=false}
+# DEBUG 未定义时使用 "false"
+DEBUG_VALUE=${DEBUG:=false}
 
-# 如果不存在则使用默认值
-CACHE_TTL=${CACHE_TTL:=3600}
+# CACHE_TTL 未定义时使用默认值
+CACHE_TTL_VALUE=${CACHE_TTL:=3600}
 ```
 
 ::: info 与 `:-` 的关系
@@ -94,11 +101,11 @@ CACHE_TTL=${CACHE_TTL:=3600}
 如果变量不存在或为空则返回错误：
 
 ```bash
-# 如果 DATABASE_URL 不存在，加载失败并显示错误
-DATABASE_URL=${DATABASE_URL:?Database URL is required}
+# 如果 DATABASE_URL 未定义，加载失败并显示错误
+DB_URL=${DATABASE_URL:?Database URL is required}
 
-# 如果 API_KEY 不存在，报错
-API_KEY=${API_KEY:?API_KEY must be set}
+# 如果 API_TOKEN 未定义，报错
+AUTH_TOKEN=${API_TOKEN:?API_TOKEN must be set}
 ```
 
 **使用场景：**
@@ -123,18 +130,26 @@ MESSAGE=Price is $$100
 # 展开为: Price is $100
 ```
 
-### 单引号
+### 引号与展开
 
-单引号内的变量不展开：
+变量展开发生在引号剥离之后的统一后处理阶段，**单引号与双引号都不影响变量展开**。例如 `SINGLE='${BASE}'`（`BASE=hello`）展开后的值为 `hello`，与双引号行为一致；若被引用的变量未定义（如 `LITERAL='${NO_EXPANSION}'`），结果为空字符串，而非保留 `${NO_EXPANSION}` 字面量。
+
+单引号与双引号的区别仅在**字面解析**：双引号处理 `\n`、`\t` 等转义序列，单引号原样保留（不转义）。
+
+::: warning 注意
+不要用引号来"禁止展开"。如需保留 `${VAR}` 字面量，请使用以下方式：
+:::
 
 ```bash
-# 不展开
-LITERAL='${NO_EXPANSION}'
+# 方式一：转义美元符号（$$ 展开为字面 $）
+LITERAL='$${NO_EXPANSION}'
 # 值为: ${NO_EXPANSION}
+```
 
-# 对比双引号
-EXPANDED="${WILL_EXPAND}"
-# 会展开 ${WILL_EXPAND}
+```go
+// 方式二：关闭全局变量展开
+cfg := env.DefaultConfig()
+cfg.ExpandVariables = false
 ```
 
 ---
@@ -144,15 +159,15 @@ EXPANDED="${WILL_EXPAND}"
 变量可以嵌套引用：
 
 ```bash
-# 基础配置
+# 基础配置（避免使用内置禁止键 ENV，改用 DEPLOY_ENV）
 APP_NAME=myapp
-ENV=production
+DEPLOY_ENV=production
 
 # 嵌套引用
-DB_HOST=db.${ENV}.example.com
+DB_HOST=db.${DEPLOY_ENV}.example.com
 # 展开为: db.production.example.com
 
-API_URL=https://${APP_NAME}.${ENV}.api.example.com
+API_URL=https://${APP_NAME}.${DEPLOY_ENV}.api.example.com
 # 展开为: https://myapp.production.api.example.com
 ```
 
@@ -196,24 +211,23 @@ cfg.MaxExpansionDepth = 10  // 自定义深度
 ```bash
 # .env 文件
 
-# 基础配置
+# 基础配置（避免使用内置禁止键 ENV）
 APP_NAME=myapp
-ENV=development
+DEPLOY_ENV=development
 DEBUG=true
 
 # 数据库配置
-DB_HOST=${DB_HOST:-localhost}
-DB_PORT=${DB_PORT:-5432}
-DB_NAME=${DB_NAME:-${APP_NAME}}
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=${APP_NAME}
 DB_URL=postgres://${DB_HOST}:${DB_PORT}/${DB_NAME}
 
 # API 配置
-API_BASE=https://api.${ENV}.example.com
+API_BASE=https://api.${DEPLOY_ENV}.example.com
 API_URL=${API_BASE}/v1
-API_KEY=${API_KEY:?API_KEY is required}
 
 # 日志配置
-LOG_LEVEL=${LOG_LEVEL:-info}
+LOG_LEVEL=info
 
 # 价格（转义）
 PRICE=$$99.99

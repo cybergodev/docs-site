@@ -425,8 +425,8 @@ if err != nil {
 ```
 
 **오류 유형:**
-- `ErrInvalidKey` - 키 이름이 유효하지 않음
-- `ErrForbiddenKey` - 금지된 키
+- `*ValidationError` - 키 이름 형식이 유효하지 않음 (Field="key")
+- `*SecurityError` - 키가 금지됨 (`errors.Is(err, env.ErrSecurityViolation)`로 일치 가능)
 - `ErrInvalidValue` - 값이 유효하지 않음 (`ValidateValues`가 true일 때, 값에 널 바이트·제어 문자 등 안전하지 않은 내용이 포함된 경우)
 - `ErrClosed` - 로더가 닫힘
 
@@ -667,14 +667,15 @@ func (l *Loader) ParseInto(v any) error
 - `env:"KEY"` - 환경 변수 이름 지정
 - `env:"-"` - 이 필드 무시
 - `envDefault:"value"` - 기본값 지정
-- `envSeparator:","` - 슬라이스 구분자 지정
+
+슬라이스 필드는 기본적으로 쉼표 `,`로 구분됩니다 (구분자 앞뒤 공백은 자동 제거되며, 커스텀 구분자 태그는 없습니다).
 
 ```go
 type Config struct {
     Host    string   `env:"HOST" envDefault:"localhost"`
     Port    int64    `env:"PORT" envDefault:"8080"`
     Debug   bool     `env:"DEBUG" envDefault:"false"`
-    Hosts   []string `env:"HOSTS" envSeparator:","`
+    Hosts   []string `env:"HOSTS"`
     Ignored string   `env:"-"`
 }
 

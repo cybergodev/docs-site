@@ -25,10 +25,10 @@ for _, link := range links {
 出力例：
 
 ```text
-[link] Go 公式サイト - https://go.dev
 [image] Gopher マスコット - gopher.png
-[css] style - https://example.com/style.css
-[js] app - https://example.com/app.js
+[js] app.js - https://example.com/app.js
+[css] style.css - https://example.com/style.css
+[link] Go 公式サイト - https://go.dev
 ```
 
 ## リンクタイプ
@@ -39,7 +39,7 @@ for _, link := range links {
 |------|----------|------|
 | `link` | `<a>` | ページリンク |
 | `image` | `<img>` | 画像リソース |
-| `video` | `<video>`, `<iframe>`, `<embed>`, `<object>` | 動画リソース |
+| `video` | `<video>`、および `<iframe>`/`<embed>`/`<object>`（src が動画 URL の場合のみ収録） | 動画リソース |
 | `audio` | `<audio>` | 音声リソース |
 | `css` | `<link rel="stylesheet">` | スタイルシート |
 | `media` | `<source>` | 汎用メディアリソース（動画/音声の判定不可時） |
@@ -66,9 +66,9 @@ for typ, items := range groups {
 
 ```text
 === image (3) ===
-  https://example.com/logo.png
   https://example.com/hero.jpg
   https://example.com/icon.svg
+  https://example.com/logo.png
 
 === css (2) ===
   https://example.com/style.css
@@ -77,6 +77,10 @@ for typ, items := range groups {
 === js (1) ===
   https://example.com/app.js
 ```
+
+:::tip グループの順序
+`GroupLinksByType` は `map` を返すため、**グループ間の反復順序は不定**です。各グループ内の URL は `ExtractAllLinks` の URL 昇順を維持します。
+:::
 
 ## フィルタリングルールの設定
 

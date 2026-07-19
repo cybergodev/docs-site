@@ -63,7 +63,11 @@ for _, page := range pages {
 CPU コア数に合わせてワーカープールサイズを設定：
 
 ```go
-cfg.WorkerPoolSize = runtime.NumCPU()
+// WorkerPoolSize の上限は 256、コア数が多いマシンでは上限でキャップ
+if n := runtime.NumCPU(); n > 256 {
+    n = 256
+}
+cfg.WorkerPoolSize = n
 ```
 
 ## 入力の制御
