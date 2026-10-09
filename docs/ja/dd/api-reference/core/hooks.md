@@ -72,7 +72,7 @@ reg := dd.NewHooksFromConfig(hooksConfig)
 | `Remove` | `(event HookEvent)` | イベントの全フックを削除 |
 | `Trigger` | `(ctx, event, hookCtx) error` | イベントの全フックをトリガー |
 | `Clear` | `()` | 全フックをクリア |
-| `ClearFor` | `(event HookEvent)` | 指定イベントのフックをクリア |
+| `ClearFor` | `(event HookEvent)` | 指定イベントのフックをクリア（非推奨：`Remove` と完全に等価、後方互換性のためだけに保持） |
 | `SetErrorHandler` | `(handler HookErrorHandler)` | エラーハンドラーを設定 |
 
 ### フックの登録

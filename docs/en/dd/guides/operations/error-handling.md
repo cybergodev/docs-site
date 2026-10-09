@@ -81,11 +81,11 @@ Methods: `HasErrors()`, `ErrorCount()`, `FirstError()`
 ```go
 logger, err := dd.New(config)
 if err != nil {
-    if errors.Is(err, dd.ErrNilConfig) {
-        // Handle nil config
+    if errors.Is(err, dd.ErrMultipleConfigs) {
+        // New(cfg1, cfg2) — only 0 or 1 Config is accepted
     }
     if errors.Is(err, dd.ErrInvalidLevel) {
-        // Handle invalid level
+        // Validation failed: Level outside LevelDebug~LevelFatal
     }
 }
 ```
@@ -95,7 +95,8 @@ if err != nil {
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
     // Custom write-error handling
-    // Note: this callback fires only when writer.Write() fails and is passed the writer's own error;
+    // Note: this callback fires when writer.Write() fails **or panics** (the panic is converted to an error)
+    // and is passed the writer's own error;
     // dd.ErrWriterNotFound is returned by RemoveWriter directly to its caller and is never delivered via this callback.
     if errors.Is(err, io.ErrShortWrite) {
         // Fewer bytes written than requested

@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # 包函数
 
-DD 提供丰富的包级函数，可直接通过 `dd.` 前缀调用。这些函数均通过全局日志记录器（`Default()`）执行。
+DD 提供丰富的包级函数，可直接通过 `dd.` 前缀调用。日志类函数均通过全局日志记录器（`Default()`）执行；例外是调试输出函数 `JSON`/`JSONF`/`Text`/`Textf`/`Exit`/`Exitf`，它们直接写 `os.Stdout`，不经过全局日志记录器。
 
 ## 日志记录器创建
 
@@ -75,7 +75,8 @@ if err != nil {
 |------|------|------|
 | `DefaultConfig` | `func DefaultConfig() Config` | 默认配置（Info 级别、文本格式） |
 | `DevelopmentConfig` | `func DevelopmentConfig() Config` | 开发配置（Debug 级别） |
-| `JSONConfig` | `func JSONConfig() Config` | JSON 输出配置 |
+| `JSONConfig` | `func JSONConfig() Config` | JSON 输出配置（Debug 级别） |
+| `ProductionConfig` | `func ProductionConfig() Config` | 生产配置（Info 级别、JSON 格式、RFC3339 时间戳） |
 
 ```go
 cfg := dd.DefaultConfig()
@@ -212,6 +213,8 @@ dd.WithField("request_id", "abc123").Info("处理请求")
 | 函数 | 签名 | 说明 |
 |------|------|------|
 | `Flush` | `func Flush() error` | 刷新全局日志缓冲 |
+| `Close` | `func Close() error` | 关闭全局日志记录器 |
+| `Shutdown` | `func Shutdown(ctx context.Context) error` | 优雅关闭（带超时） |
 
 ## Writer 管理（包级）
 
@@ -243,7 +246,7 @@ dd.WithField("request_id", "abc123").Info("处理请求")
 | 函数 | 签名 | 说明 |
 |------|------|------|
 | `DefaultSecurityConfig` | `func DefaultSecurityConfig() *SecurityConfig` | 默认安全配置（基础过滤） |
-| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | 完整安全配置 |
+| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | 完整安全配置（已弃用：改用 `SecurityConfigForLevel(dd.SecurityLevelStandard)`） |
 | `HealthcareConfig` | `func HealthcareConfig() *SecurityConfig` | HIPAA 合规配置 |
 | `FinancialConfig` | `func FinancialConfig() *SecurityConfig` | PCI-DSS 合规配置 |
 | `GovernmentConfig` | `func GovernmentConfig() *SecurityConfig` | 政府标准配置 |

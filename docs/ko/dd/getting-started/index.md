@@ -72,7 +72,7 @@ func main() {
 ```
 
 :::warning 경고 제로값 Config 함정
-위 방법 3/4/5 는 `dd.Config{...}` 리터럴을 직접 사용해 `Targets`/`Format`만 명시적으로 설정했을 뿐, 나머지 필드는 제로값을 유지합니다. `Level=Debug`(필터링 없음), `IncludeTime=false`(타임스탬프 없음), `IncludeLevel=false`(레벨 없음), `DynamicCaller=false`(caller 없음), `Security=nil`(`DefaultSecurityConfig()` 기본 필터로 폴백, 약 36 종의 마스킹은 여전히 활성화됨; 완전히 끄려면 `&dd.SecurityConfig{}` 또는 `SecurityLevelDevelopment` 명시 필요). 출력에 타임스탬프와 레벨 같은 핵심 정보가 누락됩니다.
+위 방법 3/4/5 는 `dd.Config{...}` 리터럴을 직접 사용해 `Targets`/`Format`만 명시적으로 설정했을 뿐, 나머지 필드는 제로값을 유지합니다. `Level=Debug`(필터링 없음), `IncludeTime=false`(타임스탬프 없음), `IncludeLevel=false`(레벨 없음), `DynamicCaller=false`(caller 없음), `Security=nil`(`DefaultSecurityConfig()` 기본 필터로 폴백, 기본 마스킹 패턴 38 종은 여전히 활성화됨; 완전히 끄려면 `&dd.SecurityConfig{}` 또는 `SecurityLevelDevelopment` 명시 필요). 출력에 타임스탬프와 레벨 같은 핵심 정보가 누락됩니다.
 
 **프로덕션 권장**: `dd.DefaultConfig()`를 기반으로 필드를 수정하면 타임스탬프, 레벨, caller, 기본 보안 필터를 한 번에 얻을 수 있습니다.
 

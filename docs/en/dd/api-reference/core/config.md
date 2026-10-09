@@ -31,9 +31,10 @@ cfgJSON := dd.JSONConfig()
 | `DefaultConfig()` | `Config` | Info | Text | Production |
 | `DevelopmentConfig()` | `Config` | Debug | Text | Development |
 | `JSONConfig()` | `Config` | Debug | JSON | Log collection |
+| `ProductionConfig()` | `Config` | Info | JSON (RFC3339) | Production (JSON output) |
 
 :::tip Security filtering is enabled by default
-All preset configs (`DefaultConfig`, `DevelopmentConfig`, `JSONConfig`) enable security filtering by default and automatically redact sensitive data such as passwords, API keys, and credit card numbers.
+All preset configs (`DefaultConfig`, `DevelopmentConfig`, `JSONConfig`, `ProductionConfig`) enable security filtering by default and automatically redact sensitive data such as passwords, API keys, and credit card numbers.
 :::
 
 ## Config Struct
@@ -67,6 +68,7 @@ type Config struct {
 
     // Lifecycle handlers
     FatalHandler      FatalHandler       // Custom Fatal-level handler
+    LevelResolver     LevelResolver      // Dynamic level resolver (nil disables; overrides Level when set)
     WriteErrorHandler WriteErrorHandler  // Write-error callback
 
     // Extensibility

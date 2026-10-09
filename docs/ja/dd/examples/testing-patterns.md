@@ -175,11 +175,11 @@ func TestMiddleware_LogsRequestFields(t *testing.T) {
     rr := httptest.NewRecorder()
     handler.ServeHTTP(rr, req)
 
-    // 全ての期待されるフィールドを確認
+    // 全ての期待されるフィールドを確認（ミドルウェアは「リクエスト開始」と「リクエスト完了」の 2 件の Info を記録）
     entries := rec.EntriesAtLevel(dd.LevelInfo)
-    require.Len(t, entries, 1)
+    require.Len(t, entries, 2)
 
-    entry := entries[0]
+    entry := entries[1]
     require.Equal(t, "リクエスト完了", entry.Message)
     // フィールド値を確認（注意：テキストフォーマットではフィールド値は string 型）
     require.Equal(t, "GET", rec.GetFieldValue("method"))

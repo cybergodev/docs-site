@@ -95,7 +95,7 @@ dd.GetRequestID(ctx)   // "req-456"
 
 ```go
 dd.DefaultSecurityConfig()   // 기본 필터 (권장)
-dd.DefaultSecureConfig()     // 완전 필터
+dd.DefaultSecureConfig()     // 완전 필터 (사용 중단: SecurityConfigForLevel(dd.SecurityLevelStandard) 사용)
 dd.HealthcareConfig()        // HIPAA 규정 준수
 dd.FinancialConfig()         // PCI-DSS 규정 준수
 dd.GovernmentConfig()        // 정부 표준

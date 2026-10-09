@@ -232,11 +232,11 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### 텍스트 형식 (기본)
 
 ```text
-[2026-04-16T21:16:48+08:00   INFO] logger.go:1567 요청 완료 method=GET status=200 elapsed=150ms
+[2026-04-16T21:16:48+08:00   INFO] main.go:42 요청 완료 method=GET status=200 elapsed=150ms
 ```
 
 :::info 정보 caller 필드 설명
-`caller` 필드는 호출 위치를 기록합니다. `*Logger` 메서드 (예: `logger.InfoWith(...)`) 로 호출하면 caller 는 라이브러리 내부 호출 프레임 (예: `logger.go:1567`) 으로 해석되고, 패키지 수준 함수 (예: `dd.InfoWith`) 로 호출하면 사용자 코드로 해석됩니다.
+`caller` 필드는 **사용자 코드의 호출 위치**를 기록합니다. `*Logger` 메서드 (예: `logger.InfoWith(...)`) 로 호출하든 패키지 수준 함수 (예: `dd.InfoWith`) 로 호출하든, caller 는 항상 사용자의 호출 지점 (예시의 `main.go:42`) 으로 해석됩니다. 캡처 로직은 고정 프레임 건너뛰기를 사용하고 dd 내부 프레임을 능동적으로 거부하므로 `logger.go` 같은 라이브러리 내부 위치를 보고하지 않습니다.
 :::
 
 ### JSON 형식
@@ -254,7 +254,7 @@ logger.InfoWith("요청 완료",
 ```
 
 ```json
-{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"logger.go:1567","message":"요청 완료","fields":{"method":"GET","status":200}}
+{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"main.go:42","message":"요청 완료","fields":{"method":"GET","status":200}}
 ```
 
 ## 다음 단계

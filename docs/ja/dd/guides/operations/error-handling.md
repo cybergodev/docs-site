@@ -81,11 +81,11 @@ type MultiWriterError struct { ... }
 ```go
 logger, err := dd.New(config)
 if err != nil {
-    if errors.Is(err, dd.ErrNilConfig) {
-        // 設定が nil の場合の処理
+    if errors.Is(err, dd.ErrMultipleConfigs) {
+        // New(cfg1, cfg2) で複数の Config を渡した場合（有効なのは 0 個または 1 個のみ）
     }
     if errors.Is(err, dd.ErrInvalidLevel) {
-        // 無効なレベルの処理
+        // 設定検証失敗：Level が LevelDebug~LevelFatal の範囲外
     }
 }
 ```
@@ -95,7 +95,7 @@ if err != nil {
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
     // カスタム書き込みエラー処理
-    // 注意：このコールバックは writer.Write() の失敗時のみ発火し、writer 自身のエラーが渡されます；
+    // 注意：このコールバックは writer.Write() が失敗**または panic した時**（panic は error に変換されます）に発火し、writer 自身のエラーが渡されます；
     // dd.ErrWriterNotFound は RemoveWriter が呼び出し元に直接返すものであり、このコールバック経由では渡されません。
     if errors.Is(err, io.ErrShortWrite) {
         // 書き込みバイト数が不足

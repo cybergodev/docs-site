@@ -56,8 +56,8 @@ FileWriter has multi-layered path-safety validation built in:
 | Path traversal | Reject `../` and similar traversal |
 | Null bytes | Reject null-byte injection |
 | Overlong encoding | Detect UTF-8 overlong encoding |
-| Symlinks | Configurable symlink rejection |
-| Hardlinks | Configurable hardlink rejection |
+| Symlinks | Unconditional symlink rejection |
+| Hardlinks | Unconditional hardlink rejection |
 | Path length | Cap maximum path length |
 
 ```go

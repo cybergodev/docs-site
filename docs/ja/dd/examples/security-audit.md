@@ -105,11 +105,11 @@ func main() {
     // 業務 Logger
     logger, _ := dd.New(dd.Config{
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
         // 注意：ここでは Audit を未設定のため、業務 logger のマスキング/セキュリティイベントは上記 auditLogger に自動的に入りません。
-        // セキュリティイベントを自動的に監査に送るには、ここで Audit フィールドを設定する（例：上記 auditLogger に対応する
-        // AuditConfig を Audit: &auditCfg 経由で渡す）か、明示的に auditLogger.LogX(...) を呼び出してイベントを記録します。
+        // セキュリティイベントを自動的に監査に入れたい場合は、ここで Audit フィールドを設定します——dd.New はその AuditConfig から
+        // logger 自身の内部 AuditLogger を構築します（イベントは上記で個別に構築した auditLogger インスタンスには流れず、二重書き込みを回避。両者が同じファイルに出力する場合は各自で調整が必要です）、または明示的に auditLogger.LogX(...) を呼び出してイベントを記録します。
     })
     defer logger.Close()
 
@@ -220,7 +220,7 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
     logger, _ := dd.New(dd.Config{
         Level:    dd.LevelInfo,
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.CustomOutput(fw)},
     })
 

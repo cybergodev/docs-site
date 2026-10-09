@@ -51,7 +51,7 @@ logger.InfoWith("用户登录",
 | 连接字符串 | 数据库连接字符串中的密码 |
 
 :::info 模式覆盖范围
-上表仅列出常见类别示例。`DefaultSecurityConfig()` 实际内置约 36 条模式，行业预设（如 `HealthcareConfig()`）可达 71 条，还涵盖 AWS 密钥、Stripe/GitHub/Slack 令牌、IBAN、多国税务号、Log4Shell 等。完整模式集见源码 `internal/patterns.go`。
+上表仅列出常见类别示例。`DefaultSecurityConfig()`（基础集）实际内置 **38** 条模式，涵盖 AWS 密钥、Stripe/GitHub/Slack 令牌、Log4Shell 等；行业预设更高：`HealthcareConfig()` 73 条、`FinancialConfig()` 74 条、`GovernmentConfig()` 75 条。注意：IBAN 与多国税务号（ABN/NZ-IRD/RUT/CPF/RFC）属于**全量集与行业预设**，不在基础集内。完整模式集见源码 `internal/patterns.go`。
 :::
 
 ## 自定义过滤模式

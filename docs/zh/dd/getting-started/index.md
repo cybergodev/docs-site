@@ -72,7 +72,7 @@ func main() {
 ```
 
 :::warning 零值 Config 陷阱
-上面方式三/四/五直接使用 `dd.Config{...}` 字面量，仅显式设置了 `Targets`/`Format`，其余字段保持零值：`Level=Debug`（不过滤）、`IncludeTime=false`（无时间戳）、`IncludeLevel=false`（无级别）、`DynamicCaller=false`（无调用者）、`Security=nil`（回退到 `DefaultSecurityConfig()` 基础过滤，仍开启约 36 类脱敏；如需关闭需显式 `&dd.SecurityConfig{}` 或 `SecurityLevelDevelopment`）。输出会缺失时间戳与级别等关键信息。
+上面方式三/四/五直接使用 `dd.Config{...}` 字面量，仅显式设置了 `Targets`/`Format`，其余字段保持零值：`Level=Debug`（不过滤）、`IncludeTime=false`（无时间戳）、`IncludeLevel=false`（无级别）、`DynamicCaller=false`（无调用者）、`Security=nil`（回退到 `DefaultSecurityConfig()` 基础过滤，仍开启 38 条基础脱敏模式；如需关闭需显式 `&dd.SecurityConfig{}` 或 `SecurityLevelDevelopment`）。输出会缺失时间戳与级别等关键信息。
 
 **生产推荐**：以 `dd.DefaultConfig()` 作为基础再修改字段，可一次性获得时间戳、级别、调用者与默认安全过滤：
 

@@ -81,11 +81,11 @@ type MultiWriterError struct { ... }
 ```go
 logger, err := dd.New(config)
 if err != nil {
-    if errors.Is(err, dd.ErrNilConfig) {
-        // 구성이 비어 있을 때 처리
+    if errors.Is(err, dd.ErrMultipleConfigs) {
+        // New(cfg1, cfg2) 로 여러 Config 전달 (0 개 또는 1 개만 허용)
     }
     if errors.Is(err, dd.ErrInvalidLevel) {
-        // 무효한 레벨 처리
+        // 구성 검증 실패: Level 이 LevelDebug~LevelFatal 범위를 벗어남
     }
 }
 ```
@@ -95,7 +95,7 @@ if err != nil {
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
     // 커스텀 쓰기 오류 처리
-    // 주의: 이 콜백은 writer.Write() 실패 시에만 트리거되며, 전달되는 것은 writer 자신의 오류;
+    // 주의: 이 콜백은 writer.Write() 실패 **또는 panic** (panic 은 오류로 변환됨) 시 트리거되며, 전달되는 것은 writer 자신의 오류;
     // dd.ErrWriterNotFound 는 RemoveWriter 가 호출자에게 직접 반환되며 이 콜백으로 전달되지 않습니다.
     if errors.Is(err, io.ErrShortWrite) {
         // 쓰기 바이트 수 부족

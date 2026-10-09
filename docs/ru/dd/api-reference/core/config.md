@@ -31,9 +31,10 @@ cfgJSON := dd.JSONConfig()
 | `DefaultConfig()` | `Config` | Info | Text | Производственная среда |
 | `DevelopmentConfig()` | `Config` | Debug | Text | Среда разработки |
 | `JSONConfig()` | `Config` | Debug | JSON | Сбор логов |
+| `ProductionConfig()` | `Config` | Info | JSON (RFC3339) | Продакшен (JSON-вывод) |
 
 :::tip Фильтрация безопасности включена по умолчанию
-Все предустановленные конфигурации (`DefaultConfig`, `DevelopmentConfig`, `JSONConfig`) по умолчанию включают фильтрацию безопасности, автоматически маскируя пароли, API-ключи, номера кредитных карт и другую конфиденциальную информацию.
+Все предустановленные конфигурации (`DefaultConfig`, `DevelopmentConfig`, `JSONConfig`, `ProductionConfig`) по умолчанию включают фильтрацию безопасности, автоматически маскируя пароли, API-ключи, номера кредитных карт и другую конфиденциальную информацию.
 :::
 
 ## Структура Config
@@ -68,6 +69,7 @@ type Config struct {
     // Обработчики жизненного цикла
     FatalHandler      FatalHandler       // Пользовательская функция обработки уровня Fatal
     WriteErrorHandler WriteErrorHandler  // Обратный вызов ошибки записи
+    LevelResolver     LevelResolver      // динамическое разрешение уровня (проверяется на каждую запись; nil — выключено)
 
     // Расширяемость
     ContextExtractors []ContextExtractor // Список экстракторов контекста

@@ -36,6 +36,7 @@ DD 内置敏感数据过滤功能，可自动检测和脱敏日志中的密码�
 | `IsEnabled` | `() bool` | 是否启用 |
 | `Filter` | `(input string) string` | 过滤字符串 |
 | `FilterFieldValue` | `(key string, value any) any` | 过滤单个字段值 |
+| `FilterString` | `(key, value string) string` | 过滤字符串值（基于字段 key 上下文） |
 | `FilterValueRecursive` | `(key string, value any) any` | 递归过滤嵌套结构 |
 | `GetFilterStats` | `() FilterStats` | 获取过滤统计 |
 | `ActiveGoroutineCount` | `() int32` | 活跃过滤协程数 |
@@ -58,15 +59,15 @@ filter, _ := dd.NewCustomSensitiveDataFilter(
 
 ```go
 type SecurityConfig struct {
-    MaxMessageSize  int                       // 消息大小上限（字节，0 表示不限制，预设配置默认 5MB）
-    MaxWriters      int                       // 最大 Writer 数量（预设配置默认 100）
-    SensitiveFilter *SensitiveDataFilter      // 敏感数据过滤器
-    RateLimitConfig *internal.RateLimitConfig // 速率限制配置（内部类型，nil 表示禁用限流；预设配置均不填充该字段）
+    MaxMessageSize  int               // 消息大小上限（字节，0 表示不限制，预设配置默认 5MB）
+    MaxWriters      int               // 最大 Writer 数量（预设配置默认 100）
+    SensitiveFilter *SensitiveDataFilter // 敏感数据过滤器
+    RateLimitConfig *RateLimitConfig  // 速率限制配置（dd 包导出的类型别名，nil 表示禁用限流；预设配置均不填充该字段）
 }
 ```
 
 :::info 关于 RateLimitConfig
-`RateLimitConfig` 控制日志速率限制，用于防止日志洪泛（DoS）并维持系统在高负载下的稳定性。该字段为内部类型（`*internal.RateLimitConfig`），无法直接构造。所有预设配置（`DefaultSecurityConfig`、`DefaultSecureConfig`、`SecurityConfigForLevel` 等）均**不填充**该字段，即默认不启用限流；仅当显式设置后，Logger 才会据此初始化限流器。如需关闭限流，将其置为 `nil` 即可。
+`RateLimitConfig` 控制日志速率限制，用于防止日志洪泛（DoS）并维持系统在高负载下的稳定性。`dd` 包**导出了类型别名** `type RateLimitConfig = internal.RateLimitConfig` 与工厂函数 `DefaultRateLimitConfig()`（默认：10000 条/秒、10MB/秒、burst 1000、Drop 策略、采样率 100），可直接构造与修改。所有预设配置（`DefaultSecurityConfig`、`SecurityConfigForLevel` 等）均**不填充**该字段，即默认不启用限流；仅当显式设置后，Logger 才会据此初始化限流器。如需关闭限流，将其置为 `nil` 即可。
 :::
 
 ### FilterStats
@@ -112,7 +113,7 @@ type SecurityLevel int
 | 函数 | 说明 | 适用场景 |
 |------|------|----------|
 | `DefaultSecurityConfig()` | 基础敏感数据过滤 | 生产环境（推荐） |
-| `DefaultSecureConfig()` | 完整敏感数据过滤 | 高安全需求 |
+| `DefaultSecureConfig()` | 完整敏感数据过滤（**已弃用**：与 `DefaultSecurityConfig` 近义易混，改用 `SecurityConfigForLevel(dd.SecurityLevelStandard)`） | 高安全需求 |
 | `HealthcareConfig()` | HIPAA 合规 | 医疗行业 |
 | `FinancialConfig()` | PCI-DSS 合规 | 金融行业 |
 | `GovernmentConfig()` | 政府标准 | 公共部门 |
@@ -149,14 +150,14 @@ cfg := dd.DefaultConfig()
 logger, _ := dd.New(cfg)
 
 // 如需替换为更高安全级别配置，则显式覆盖
-// cfg.Security = dd.DefaultSecureConfig()
+// cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
 ```
 
 ### 运行时修改
 
 ```go
 // 更新安全配置
-logger.SetSecurityConfig(dd.DefaultSecureConfig())
+logger.SetSecurityConfig(dd.SecurityConfigForLevel(dd.SecurityLevelStandard))
 
 // 读取当前配置
 sec := logger.GetSecurityConfig()

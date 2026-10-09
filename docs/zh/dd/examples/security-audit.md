@@ -105,11 +105,12 @@ func main() {
     // 业务 Logger
     logger, _ := dd.New(dd.Config{
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
         // 注意：此处未配置 Audit，业务 logger 的脱敏/安全事件不会自动进入上面的 auditLogger。
-        // 若要让安全事件自动入审计，需在此配置 Audit 字段（例如把上方 auditLogger 对应的
-        // AuditConfig 经 Audit: &auditCfg 传入），或通过显式调用 auditLogger.LogX(...) 记录事件。
+        // 若要让安全事件自动入审计，需在此配置 Audit 字段——dd.New 会根据该 AuditConfig 构建
+        // logger 自己的内部 AuditLogger（事件不会流入上方单独构造的 auditLogger 实例，避免
+        // 双写；两者若输出同一文件需自行协调），或通过显式调用 auditLogger.LogX(...) 记录事件。
     })
     defer logger.Close()
 
@@ -220,7 +221,7 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
     logger, _ := dd.New(dd.Config{
         Level:    dd.LevelInfo,
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.CustomOutput(fw)},
     })
 

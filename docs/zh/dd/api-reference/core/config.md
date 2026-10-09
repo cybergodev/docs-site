@@ -33,9 +33,10 @@ cfgJSON := dd.JSONConfig()
 | `DefaultConfig()` | `Config` | Info | Text | 生产环境 |
 | `DevelopmentConfig()` | `Config` | Debug | Text | 开发环境 |
 | `JSONConfig()` | `Config` | Debug | JSON | 日志采集 |
+| `ProductionConfig()` | `Config` | Info | JSON（RFC3339） | 生产环境 JSON 输出 |
 
 :::tip 安全过滤默认启用
-所有预设配置（`DefaultConfig`、`DevelopmentConfig`、`JSONConfig`）均默认启用安全过滤，自动对密码、API Key、信用卡号等敏感数据进行脱敏。
+所有预设配置（`DefaultConfig`、`DevelopmentConfig`、`JSONConfig`、`ProductionConfig`）均默认启用安全过滤，自动对密码、API Key、信用卡号等敏感数据进行脱敏。
 :::
 
 ## Config 结构体
@@ -70,6 +71,7 @@ type Config struct {
     // 生命周期处理器
     FatalHandler      FatalHandler       // Fatal 级别自定义处理函数
     WriteErrorHandler WriteErrorHandler  // 写入错误回调
+    LevelResolver     LevelResolver      // 动态级别解析器（nil 禁用；生效时覆盖 Level）
 
     // 扩展性
     ContextExtractors []ContextExtractor // 上下文提取器列表

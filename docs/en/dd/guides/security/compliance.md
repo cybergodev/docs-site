@@ -25,9 +25,9 @@ DD provides three industry-compliance preset configurations covering medical, fi
 | Data Type | Pattern | Example |
 |-----------|---------|---------|
 | ICD-10 codes | Diagnostic-code format in log messages | `diagnosis=J18.9` |
-| Medical Record Number (MRN) | Medical record identifier in log messages | `mrn=MRN-123456` |
+| Medical Record Number (MRN) | Medical record identifier in log messages | `mrn=MRN123456` |
 | Health Insurance Claim Number (HICN) | HICN identifier in log messages | `hicn=123456789A` |
-| Patient identifier | Patient identifier in log messages | `patient_id=PAT-123456` |
+| Patient identifier | Patient identifier in log messages | `patient_id=PAT123456` |
 
 ### Configuration Example
 
@@ -132,12 +132,12 @@ logger, _ := dd.New(dd.Config{
 
 | Data Type | Pattern | Example |
 |-----------|---------|---------|
-| Passport number | Passport identifier in log messages | `passport_number=E12345678` |
+| Passport number | Passport identifier in log messages | `passport_number=123456789` |
 | Driver's license number | Driver's license identifier in log messages | `dl_number=D123456789` |
 | US Federal Tax ID (EIN) | EIN format in log messages | `12-3456789` |
 | UK National Insurance Number | NINo format in log messages | `AB123456C` |
 | Canadian Social Insurance Number | SIN format in log messages | `123 456 789` |
-| Case number | Case identifier in log messages | `case_number=CR-2024-00123` |
+| Case number | Case identifier in log messages | `case_number=CR202400123` |
 
 ### Configuration Example
 

@@ -34,6 +34,7 @@ DD は機密データフィルタリング機能を組み込みで提供し、�
 | `IsEnabled` | `() bool` | 有効かどうか |
 | `Filter` | `(input string) string` | 文字列をフィルタリング |
 | `FilterFieldValue` | `(key string, value any) any` | 単一フィールド値をフィルタリング |
+| `FilterString` | `(key, value string) string` | 文字列値をフィルタリング（フィールド key に基づくコンテキスト） |
 | `FilterValueRecursive` | `(key string, value any) any` | ネストされた構造を再帰的にフィルタリング |
 | `GetFilterStats` | `() FilterStats` | フィルタリング統計を取得 |
 | `ActiveGoroutineCount` | `() int32` | アクティブなフィルター goroutine 数 |
@@ -59,12 +60,12 @@ type SecurityConfig struct {
     MaxMessageSize  int                       // メッセージサイズ上限（バイト、0 は制限なし、プリセット設定のデフォルトは 5MB）
     MaxWriters      int                       // 最大 Writer 数（プリセット設定のデフォルトは 100）
     SensitiveFilter *SensitiveDataFilter      // 機密データフィルター
-    RateLimitConfig *internal.RateLimitConfig // レート制限設定（内部型、nil はレート制限無効を示す；プリセット設定はいずれもこのフィールドを埋めない）
+    RateLimitConfig *RateLimitConfig          // レート制限設定（dd パッケージがエクスポートする型、nil はレート制限無効を示す；プリセット設定はいずれもこのフィールドを埋めない）
 }
 ```
 
 :::info RateLimitConfig について
-`RateLimitConfig` はログのレート制限を制御し、ログフラッディング（DoS）を防止して高負荷時のシステム安定性を維持します。このフィールドは内部型（`*internal.RateLimitConfig`）であり、直接生成できません。すべてのプリセット設定（`DefaultSecurityConfig`、`DefaultSecureConfig`、`SecurityConfigForLevel` など）はこのフィールドを**埋めません**、つまりデフォルトではレート制限が有効になりません；明示的に設定した場合のみ、Logger がそれに従いレートリミッターを初期化します。レート制限を無効にするには `nil` に設定してください。
+`RateLimitConfig` はログのレート制限を制御し、ログフラッディング（DoS）を防止して高負荷時のシステム安定性を維持します。`dd` パッケージは**型エイリアス** `type RateLimitConfig = internal.RateLimitConfig` とファクトリ関数 `DefaultRateLimitConfig()`（デフォルト：10000 件/秒、10MB/秒、バースト 1000、Drop 戦略、サンプリング率 100）をエクスポートしており、直接構築・変更できます。すべてのプリセット設定（`DefaultSecurityConfig`、`SecurityConfigForLevel` など）はこのフィールドを**埋めません**。つまりデフォルトではレート制限が有効になりません；明示的に設定した場合のみ、Logger がそれに従いレートリミッターを初期化します。レート制限を無効にするには `nil` に設定してください。
 :::
 
 ### FilterStats
@@ -110,7 +111,7 @@ type SecurityLevel int
 | 関数 | 説明 | 適用シナリオ |
 |------|------|----------|
 | `DefaultSecurityConfig()` | 基本機密データフィルタリング | 本番環境（推奨） |
-| `DefaultSecureConfig()` | 完全機密データフィルタリング | 高セキュリティ要件 |
+| `DefaultSecureConfig()` | 完全機密データフィルタリング（**非推奨**：`DefaultSecurityConfig` と近名で紛らわしい。`SecurityConfigForLevel(dd.SecurityLevelStandard)` を使用） | 高セキュリティ要件 |
 | `HealthcareConfig()` | HIPAA 準拠 | 医療業界 |
 | `FinancialConfig()` | PCI-DSS 準拠 | 金融業界 |
 | `GovernmentConfig()` | 政府基準 | 公共部門 |
@@ -147,14 +148,14 @@ cfg := dd.DefaultConfig()
 logger, _ := dd.New(cfg)
 
 // より高いセキュリティレベルの設定に置き換える場合は明示的に上書き
-// cfg.Security = dd.DefaultSecureConfig()
+// cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
 ```
 
 ### 実行時に変更
 
 ```go
 // セキュリティ設定を更新
-logger.SetSecurityConfig(dd.DefaultSecureConfig())
+logger.SetSecurityConfig(dd.SecurityConfigForLevel(dd.SecurityLevelStandard))
 
 // 現在の設定を読み取り
 sec := logger.GetSecurityConfig()

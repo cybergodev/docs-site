@@ -72,7 +72,7 @@ reg := dd.NewHooksFromConfig(hooksConfig)
 | `Remove` | `(event HookEvent)` | Удалить все хуки события |
 | `Trigger` | `(ctx, event, hookCtx) error` | Сработать все хуки события |
 | `Clear` | `()` | Очистить все хуки |
-| `ClearFor` | `(event HookEvent)` | Очистить хуки указанного события |
+| `ClearFor` | `(event HookEvent)` | Очистить хуки указанного события (устарело: полностью эквивалентно `Remove`, сохранено только для обратной совместимости) |
 | `SetErrorHandler` | `(handler HookErrorHandler)` | Установить обработчик ошибок |
 
 ### Регистрация хуков

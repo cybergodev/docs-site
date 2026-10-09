@@ -23,7 +23,7 @@ type Field struct {
 }
 ```
 
-Все конструкторы полей возвращают значения `Field`; форматтер (`internal.FormatFields`) выводит их в формате `Key=Value`. Базовые типы (string / числа / bool / `time.Duration` / `time.Time` / nil) проходят быстрый путь; «сложные типы» — срезы, массивы, map, struct — fallback'ят к JSON-сериализации (определяется `internal.IsComplexValue`), прочие типы (например, значения, реализующие интерфейс `fmt.Stringer` или `error`) проходят через `fmt.Fprint`.
+Все конструкторы полей возвращают значения `Field`; текстовый форматтер выводит их в формате `Key=Value`. Базовые типы (string / числа / bool / `time.Duration` / `time.Time` / nil) проходят быстрый путь; «сложные типы» — срезы, массивы, map, struct — fallback'ят к JSON-сериализации (определяется `internal.IsComplexValue`), прочие типы (например, значения, реализующие интерфейс `fmt.Stringer` или `error`) проходят через `fmt.Fprint`.
 
 ## Базовые поля
 
@@ -124,8 +124,8 @@ type FieldValidationMode int
 
 const (
     FieldValidationNone   FieldValidationMode = iota // Отключить валидацию (по умолчанию, сокращает все проверки)
-    FieldValidationWarn                              // При несоответствии именования записывает один warning-лог
-    FieldValidationStrict                            // При несоответствии именования записывает один error-лог
+    FieldValidationWarn                              // При несоответствии именования выводит в stderr предупреждение-диагностику (поле всё равно записывается)
+    FieldValidationStrict                            // При несоответствии именования выводит в stderr ошибку-диагностику (поле всё равно записывается, отличается только формулировка)
 )
 ```
 

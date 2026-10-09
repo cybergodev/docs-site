@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # 패키지 함수
 
-DD 는 풍부한 패키지 수준 함수를 제공하며, `dd.` 접두사로 직접 호출할 수 있습니다. 이 함수들은 모두 전역 로거 (`Default()`) 를 통해 실행됩니다.
+DD 는 풍부한 패키지 수준 함수를 제공하며, `dd.` 접두사로 직접 호출할 수 있습니다. 로그 관련 함수는 모두 전역 로거 (`Default()`) 를 통해 실행됩니다; 예외는 디버그 출력 함수 `JSON`/`JSONF`/`Text`/`Textf`/`Exit`/`Exitf` 로, 이들은 `os.Stdout`에 직접 쓰며 전역 로거를 거치지 않습니다.
 
 ## 로거 생성
 
@@ -76,6 +76,7 @@ if err != nil {
 | `DefaultConfig` | `func DefaultConfig() Config` | 기본 구성 (Info 레벨, 텍스트 형식) |
 | `DevelopmentConfig` | `func DevelopmentConfig() Config` | 개발 구성 (Debug 레벨) |
 | `JSONConfig` | `func JSONConfig() Config` | JSON 출력 구성 |
+| `ProductionConfig` | `func ProductionConfig() Config` | 프로덕션 구성 (Info 레벨, JSON 형식, RFC3339 타임스탬프) |
 
 ```go
 cfg := dd.DefaultConfig()
@@ -212,6 +213,8 @@ dd.WithField("request_id", "abc123").Info("요청 처리")
 | 함수 | 시그니처 | 설명 |
 |------|------|------|
 | `Flush` | `func Flush() error` | 전역 로그 버퍼 flush |
+| `Close` | `func Close() error` | 전역 로거 종료 |
+| `Shutdown` | `func Shutdown(ctx context.Context) error` | 우아한 종료 (타임아웃 포함) |
 
 ## Writer 관리 (패키지 수준)
 
@@ -243,7 +246,7 @@ dd.WithField("request_id", "abc123").Info("요청 처리")
 | 함수 | 시그니처 | 설명 |
 |------|------|------|
 | `DefaultSecurityConfig` | `func DefaultSecurityConfig() *SecurityConfig` | 기본 보안 구성 (기본 필터) |
-| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | 완전 보안 구성 |
+| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | 완전 보안 구성 (사용 중단: `SecurityConfigForLevel(dd.SecurityLevelStandard)` 사용) |
 | `HealthcareConfig` | `func HealthcareConfig() *SecurityConfig` | HIPAA 규정 준수 구성 |
 | `FinancialConfig` | `func FinancialConfig() *SecurityConfig` | PCI-DSS 규정 준수 구성 |
 | `GovernmentConfig` | `func GovernmentConfig() *SecurityConfig` | 정부 표준 구성 |

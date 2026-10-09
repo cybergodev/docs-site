@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # Пакетные функции
 
-DD предоставляет богатый набор пакетных функций, доступных для прямого вызова через префикс `dd.`. Все эти функции выполняются через глобальный логгер (`Default()`).
+DD предоставляет богатый набор пакетных функций, доступных для прямого вызова через префикс `dd.`. Функции логирования выполняются через глобальный логгер (`Default()`); исключение — функции отладочного вывода `JSON`/`JSONF`/`Text`/`Textf`/`Exit`/`Exitf`: они пишут напрямую в `os.Stdout`, минуя глобальный логгер.
 
 ## Создание логгера
 
@@ -76,6 +76,7 @@ if err != nil {
 | `DefaultConfig` | `func DefaultConfig() Config` | Конфигурация по умолчанию (уровень Info, текстовый формат) |
 | `DevelopmentConfig` | `func DevelopmentConfig() Config` | Конфигурация разработки (уровень Debug) |
 | `JSONConfig` | `func JSONConfig() Config` | Конфигурация вывода JSON |
+| `ProductionConfig` | `func ProductionConfig() Config` | Конфигурация продакшена (уровень Info, формат JSON, метки времени RFC3339) |
 
 ```go
 cfg := dd.DefaultConfig()
@@ -212,6 +213,8 @@ dd.WithField("request_id", "abc123").Info("Обработка запроса")
 | Функция | Сигнатура | Описание |
 |---------|-----------|----------|
 | `Flush` | `func Flush() error` | Сбросить буфер глобального логгера |
+| `Close` | `func Close() error` | Закрыть глобальный логгер |
+| `Shutdown` | `func Shutdown(ctx context.Context) error` | Корректное завершение (с таймаутом) |
 
 ## Управление Writer (пакетный уровень)
 
@@ -243,7 +246,7 @@ dd.WithField("request_id", "abc123").Info("Обработка запроса")
 | Функция | Сигнатура | Описание |
 |---------|-----------|----------|
 | `DefaultSecurityConfig` | `func DefaultSecurityConfig() *SecurityConfig` | Конфигурация безопасности по умолчанию (базовая фильтрация) |
-| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | Полная конфигурация безопасности |
+| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | Полная конфигурация безопасности (устарело: используйте `SecurityConfigForLevel(dd.SecurityLevelStandard)`) |
 | `HealthcareConfig` | `func HealthcareConfig() *SecurityConfig` | Конфигурация соответствия HIPAA |
 | `FinancialConfig` | `func FinancialConfig() *SecurityConfig` | Конфигурация соответствия PCI-DSS |
 | `GovernmentConfig` | `func GovernmentConfig() *SecurityConfig` | Конфигурация правительственного стандарта |

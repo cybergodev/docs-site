@@ -40,7 +40,7 @@ requestID := dd.GetRequestID(ctx) // "req-789"
 ### なぜログに「自動抽出」できないのか
 
 :::warning 現在の制限
-DD のログメソッド（`Info`、`InfoWith` など）は `context.Context` パラメータを直接受け取りません。コンテキストエクストラクタは内部で `context.Background()` を呼び出すため（`logger.go:1414`）、リクエストスコープの context から TraceID などの値を直接取得できません。手動でフィールドを渡す方法（以下の HTTP ミドルウェア統合を参照）を推奨します。
+DD のログメソッド（`Info`、`InfoWith` など）は `context.Context` パラメータを直接受け取りません。コンテキストエクストラクタは内部で `context.Background()` を呼び出すため、リクエストスコープの context から TraceID などの値を直接取得できません。手動でフィールドを渡す方法（以下の HTTP ミドルウェア統合を参照）を推奨します。
 :::
 
 ```go

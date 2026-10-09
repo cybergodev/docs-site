@@ -49,7 +49,7 @@ logger.InfoWith("사용자 로그인",
 | 연결 문자열 | 데이터베이스 연결 문자열 내 비밀번호 |
 
 :::info 정보 패턴 범위
-위 표는 일반적인 카테고리 예시일 뿐입니다. `DefaultSecurityConfig()`는 실제로 약 36 개의 패턴을 내장하고 있으며, 산업 사전 설정 (예: `HealthcareConfig()`) 은 71 개에 달하고 AWS 키, Stripe/GitHub/Slack 토큰, IBAN, 다국 세금 번호, Log4Shell 등도 다룹니다. 완전한 패턴 집합은 소스 코드 `internal/patterns.go`를 참조하세요.
+위 표는 일반적인 카테고리 예시일 뿐입니다. `DefaultSecurityConfig()`(기본 집합) 는 실제로 **38 개**의 패턴을 내장하며 AWS 키, Stripe/GitHub/Slack 토큰, Log4Shell 등을 다룹니다; 산업 사전 설정은 더 많습니다: `HealthcareConfig()` 73 개, `FinancialConfig()` 74 개, `GovernmentConfig()` 75 개. 주의: IBAN 과 다국 세금 번호 (ABN/NZ-IRD/RUT/CPF/RFC) 는 **완전 집합과 산업 사전 설정에만** 속하며 기본 집합에는 없습니다. 완전한 패턴 집합은 소스 코드 `internal/patterns.go`를 참조하세요.
 :::
 
 ## 커스텀 필터 패턴

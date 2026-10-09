@@ -23,7 +23,7 @@ type Field struct {
 }
 ```
 
-All field constructors return a `Field` value; the formatter (`internal.FormatFields`) outputs them as `Key=Value`. Primitive types (string / numeric / bool / `time.Duration` / `time.Time` / nil) take a fast path; "complex types" such as slices, arrays, maps, and structs fall back to JSON serialization (decided by `internal.IsComplexValue`); other types (such as values implementing the `fmt.Stringer` or `error` interface) go through `fmt.Fprint`.
+All field constructors return a `Field` value; the text formatter outputs them as `Key=Value`. Primitive types (string / numeric / bool / `time.Duration` / `time.Time` / nil) take a fast path; "complex types" such as slices, arrays, maps, and structs fall back to JSON serialization (decided by `internal.IsComplexValue`); other types (such as values implementing the `fmt.Stringer` or `error` interface) go through `fmt.Fprint`.
 
 ## Basic Fields
 
@@ -124,8 +124,8 @@ type FieldValidationMode int
 
 const (
     FieldValidationNone   FieldValidationMode = iota // Disable validation (default, short-circuits all checks)
-    FieldValidationWarn                              // Log a warning entry on naming mismatch
-    FieldValidationStrict                            // Log an error entry on naming mismatch
+    FieldValidationWarn                              // Emit a stderr warning diagnostic on naming mismatch (field is still logged)
+    FieldValidationStrict                            // Emit a stderr error diagnostic on naming mismatch (field is still logged; wording differs)
 )
 ```
 

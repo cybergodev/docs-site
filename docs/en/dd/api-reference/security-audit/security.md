@@ -34,6 +34,7 @@ Regex-based sensitive-data filter supporting dynamic patterns and caching.
 | `IsEnabled` | `() bool` | Whether enabled |
 | `Filter` | `(input string) string` | Filter a string |
 | `FilterFieldValue` | `(key string, value any) any` | Filter a single field value |
+| `FilterString` | `(key, value string) string` | Filter a string value (keyed context) |
 | `FilterValueRecursive` | `(key string, value any) any` | Recursively filter nested structures |
 | `GetFilterStats` | `() FilterStats` | Get filtering statistics |
 | `ActiveGoroutineCount` | `() int32` | Active filter goroutines |
@@ -56,15 +57,15 @@ Security configuration struct controlling filter behavior and security level.
 
 ```go
 type SecurityConfig struct {
-    MaxMessageSize  int                       // Message size cap in bytes (0 means no limit; preset configs default to 5MB)
-    MaxWriters      int                       // Max writer count (preset configs default to 100)
-    SensitiveFilter *SensitiveDataFilter      // Sensitive-data filter
-    RateLimitConfig *internal.RateLimitConfig // Rate-limit config (internal type; nil disables rate limiting; preset configs do not populate this field)
+    MaxMessageSize  int                  // Message size cap in bytes (0 means no limit; preset configs default to 5MB)
+    MaxWriters      int                  // Max writer count (preset configs default to 100)
+    SensitiveFilter *SensitiveDataFilter // Sensitive-data filter
+    RateLimitConfig *RateLimitConfig     // Rate-limit config (type alias exported by the dd package; nil disables rate limiting; preset configs do not populate this field)
 }
 ```
 
 :::info About RateLimitConfig
-`RateLimitConfig` controls log rate limiting, used to prevent log flooding (DoS) and keep the system stable under high load. The field is an internal type (`*internal.RateLimitConfig`) and cannot be constructed directly. All preset configs (`DefaultSecurityConfig`, `DefaultSecureConfig`, `SecurityConfigForLevel`, etc.) **do not populate** this field, i.e. rate limiting is disabled by default; the Logger initializes a rate limiter only when it is explicitly set. To disable rate limiting, set it to `nil`.
+`RateLimitConfig` controls log rate limiting, used to prevent log flooding (DoS) and keep the system stable under high load. The `dd` package **exports the type alias** `type RateLimitConfig = internal.RateLimitConfig` and the factory `DefaultRateLimitConfig()` (defaults: 10000 msgs/s, 10MB/s, burst 1000, Drop strategy, sampling rate 100) — it can be constructed and modified directly. All preset configs (`DefaultSecurityConfig`, `SecurityConfigForLevel`, etc.) **do not populate** this field, i.e. rate limiting is disabled by default; the Logger initializes a rate limiter only when it is explicitly set. To disable rate limiting, set it to `nil`.
 :::
 
 ### FilterStats
@@ -110,7 +111,7 @@ Implements a `String()` method returning a readable level name.
 | Function | Description | Use Case |
 |----------|-------------|----------|
 | `DefaultSecurityConfig()` | Basic sensitive-data filtering | Production (recommended) |
-| `DefaultSecureConfig()` | Complete sensitive-data filtering | High-security needs |
+| `DefaultSecureConfig()` | Complete sensitive-data filtering (**deprecated**: a near-homonym of `DefaultSecurityConfig`; use `SecurityConfigForLevel(dd.SecurityLevelStandard)` instead) | High-security needs |
 | `HealthcareConfig()` | HIPAA compliance | Medical industry |
 | `FinancialConfig()` | PCI-DSS compliance | Financial industry |
 | `GovernmentConfig()` | Government standard | Public sector |
@@ -147,14 +148,14 @@ cfg := dd.DefaultConfig()
 logger, _ := dd.New(cfg)
 
 // To replace with a higher security-level config, override explicitly
-// cfg.Security = dd.DefaultSecureConfig()
+// cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
 ```
 
 ### Runtime Modification
 
 ```go
 // Update the security config
-logger.SetSecurityConfig(dd.DefaultSecureConfig())
+logger.SetSecurityConfig(dd.SecurityConfigForLevel(dd.SecurityLevelStandard))
 
 // Read the current config
 sec := logger.GetSecurityConfig()

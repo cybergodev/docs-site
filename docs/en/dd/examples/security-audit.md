@@ -105,12 +105,14 @@ func main() {
     // Business Logger
     logger, _ := dd.New(dd.Config{
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
         // Note: Audit is not configured here, so the business logger's redaction/security
         // events do NOT automatically flow into the auditLogger above.
-        // To have security events auto-routed to audit, configure the Audit field here
-        // (e.g. pass the AuditConfig of the auditLogger above via Audit: &auditCfg),
+        // To have security events auto-routed to audit, configure the Audit field here —
+        // dd.New builds the logger's OWN internal AuditLogger from that AuditConfig
+        // (events do not flow into the separately constructed auditLogger above; if both
+        // write to the same file, coordinate them yourself),
         // or call auditLogger.LogX(...) explicitly to record events.
     })
     defer logger.Close()
@@ -222,7 +224,7 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
     logger, _ := dd.New(dd.Config{
         Level:    dd.LevelInfo,
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.CustomOutput(fw)},
     })
 

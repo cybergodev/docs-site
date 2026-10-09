@@ -159,7 +159,7 @@ User calls logger.InfoWith("msg", fields...)
 ```
 
 :::info Performance Design
-The level check (step 1) uses atomic operations without locking, at nearly zero cost. Security filtering (step 2) has timeout protection to avoid blocking the main flow for long (large inputs are guaranteed to return within ~50ms worst case via a goroutine + timeout). Fatal handling (step 9) asynchronously triggers the Logger's Close (including flush and OnClose hook), waiting up to 5s; deferred functions in the user's main still do not run, but the Logger's own Close is called.
+The level check (step 1) uses atomic operations without locking, at nearly zero cost. Security filtering (step 2) has timeout protection: the regex scan runs in a helper goroutine, but the **caller blocks waiting for its result** (the wait scales with input size — a fixed 50ms for inputs up to 32KB, then +200ms per additional 32KB; on timeout it returns `[REDACTED]`). Fatal handling (step 9) asynchronously triggers the Logger's Close (including flush and OnClose hook), waiting up to 5s; deferred functions in the user's main still do not run, but the Logger's own Close is called.
 :::
 
 ## Interface Hierarchy

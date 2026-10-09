@@ -176,11 +176,11 @@ func TestMiddleware_LogsRequestFields(t *testing.T) {
     rr := httptest.NewRecorder()
     handler.ServeHTTP(rr, req)
 
-    // Проверка всех ожидаемых полей
+    // Проверка всех ожидаемых полей (middleware пишет две записи Info: «Запрос начат» и «Запрос завершён»)
     entries := rec.EntriesAtLevel(dd.LevelInfo)
-    require.Len(t, entries, 1)
+    require.Len(t, entries, 2)
 
-    entry := entries[0]
+    entry := entries[1]
     require.Equal(t, "Запрос завершён", entry.Message)
     // Проверка значений полей (примечание: в текстовом формате значения полей — string)
     require.Equal(t, "GET", rec.GetFieldValue("method"))

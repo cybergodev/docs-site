@@ -108,13 +108,15 @@ Rotated file naming rules:
 
 ```text
 logs/app.log           <- current log
-logs/app_log_1.log     <- first rotation (newest backup)
-logs/app_log_2.log     <- older backup
+logs/app_log_1.log     <- first rotation (older backup)
+logs/app_log_2.log     <- second rotation (newest backup)
 logs/app_log_1.log.gz  <- old backups are compressed to .gz when Compress is enabled
 ```
 
+Each rotation uses a new monotonically increasing index (`maxIndex + 1`), so the **highest index is the newest backup**; when `MaxBackups` is exceeded, cleanup **deletes the lowest indices first**.
+
 :::info Compression and Backups Do Not Coexist
-When `Compress` is enabled, compression happens after rotation in a separate goroutine, asynchronously; when compression finishes, the original `.log` backup is **renamed** to `.log.gz` — the two do not coexist.
+When `Compress` is enabled, compression happens after rotation in a separate goroutine, asynchronously; the backup is compressed into a `.log.gz` file (written to a temp file and verified), then the original `.log` backup is deleted — the two do not coexist.
 :::
 
 ## BufferedWriter Buffered Writes
@@ -151,10 +153,10 @@ defer logger.Close() // Close auto-flushes
 
 | Scenario | BufferSize | FlushTime | Description |
 |----------|-----------|-----------|-------------|
-| Low-latency | 512 | 50ms | Fast flush, lower latency |
+| Low-latency | 1024 | 10ms | Default buffer + frequent flush (BufferSize below 1024 is clamped up to the default) |
 | General | 1024 | 100ms | Defaults; balances latency and throughput |
 | High-throughput | 4096 | 500ms | Large buffer, maximizes throughput |
-| Batch processing | 8192 | 1000ms | Max buffer; suitable for offline processing |
+| Batch processing | 8192 | 1000ms | Large buffer; suitable for offline processing (hard cap is 10MB) |
 
 :::warning Data Safety
 BufferedWriter flushes when the buffer is half-full (reaches BufferSize/2) or on a timer tick. Abnormal program exits may lose data still in the buffer. Be sure to call `Close()` or `Flush()` to ensure data integrity.

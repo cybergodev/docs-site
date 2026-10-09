@@ -110,13 +110,15 @@ defer logger.Close()
 
 ```text
 logs/app.log           ← 当前日志
-logs/app_log_1.log     ← 第一次轮换（最新的备份）
-logs/app_log_2.log     ← 更早的备份
+logs/app_log_1.log     ← 第一次轮换（较旧的备份）
+logs/app_log_2.log     ← 第二次轮换（最新的备份）
 logs/app_log_1.log.gz  ← 启用 Compress 后旧备份会被压缩为 .gz
 ```
 
+每次轮换使用比现有编号更大的新编号（`maxIndex + 1`），因此**编号最大的是最新备份**；清理超出 `MaxBackups` 的备份时**从最小编号开始删除**。
+
 :::info 压缩与备份不并存
-启用 `Compress` 后，压缩在轮换之后由单独 goroutine 异步进行；压缩完成时原 `.log` 备份会被**重命名**为 `.log.gz`，二者不会并存。
+启用 `Compress` 后，压缩在轮换之后由单独 goroutine 异步进行；压缩写入 `.log.gz` 临时文件并校验后再删除原 `.log` 备份，二者不会并存。
 :::
 
 ## BufferedWriter 缓冲写入
@@ -153,10 +155,10 @@ defer logger.Close() // Close 时自动 Flush
 
 | 场景 | BufferSize | FlushTime | 说明 |
 |------|-----------|-----------|------|
-| 低延迟要求 | 512 | 50ms | 快速刷新，减少延迟 |
+| 低延迟要求 | 1024 | 10ms | 默认缓冲 + 高频刷新，减少延迟（BufferSize 低于 1024 会被钳制到默认值） |
 | 通用场景 | 1024 | 100ms | 默认值，平衡延迟与吞吐 |
 | 高吞吐量 | 4096 | 500ms | 大缓冲，最大化吞吐 |
-| 批处理任务 | 8192 | 1000ms | 最大缓冲，适合离线处理 |
+| 批处理任务 | 8192 | 1000ms | 大缓冲，适合离线处理（上限为 10MB） |
 
 :::warning 数据安全
 BufferedWriter 在缓冲区半满（达 BufferSize/2）或定时器触发时刷新。程序异常退出可能导致缓冲区中的数据丢失。确保调用 `Close()` 或 `Flush()` 以保证数据完整。

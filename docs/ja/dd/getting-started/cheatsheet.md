@@ -95,7 +95,7 @@ dd.GetRequestID(ctx)   // "req-456"
 
 ```go
 dd.DefaultSecurityConfig()   // 基本フィルタリング（推奨）
-dd.DefaultSecureConfig()     // 完全フィルタリング
+dd.DefaultSecureConfig()     // 完全フィルタリング（非推奨：SecurityConfigForLevel(dd.SecurityLevelStandard) を使用）
 dd.HealthcareConfig()        // HIPAA 準拠
 dd.FinancialConfig()         // PCI-DSS 準拠
 dd.GovernmentConfig()        // 政府基準

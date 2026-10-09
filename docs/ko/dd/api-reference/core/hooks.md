@@ -72,7 +72,7 @@ reg := dd.NewHooksFromConfig(hooksConfig)
 | `Remove` | `(event HookEvent)` | 이벤트의 모든 훅 제거 |
 | `Trigger` | `(ctx, event, hookCtx) error` | 이벤트의 모든 훅 트리거 |
 | `Clear` | `()` | 모든 훅 제거 |
-| `ClearFor` | `(event HookEvent)` | 지정 이벤트의 훅 제거 |
+| `ClearFor` | `(event HookEvent)` | 지정 이벤트의 훅 제거 (사용 중단: `Remove`와 완전히 동일, 하위 호환을 위해서만 유지) |
 | `SetErrorHandler` | `(handler HookErrorHandler)` | 오류 핸들러 설정 |
 
 ### 훅 등록

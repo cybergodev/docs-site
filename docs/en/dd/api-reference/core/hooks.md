@@ -72,7 +72,7 @@ reg := dd.NewHooksFromConfig(hooksConfig)
 | `Remove` | `(event HookEvent)` | Remove all hooks for an event |
 | `Trigger` | `(ctx, event, hookCtx) error` | Trigger all hooks for an event |
 | `Clear` | `()` | Clear all hooks |
-| `ClearFor` | `(event HookEvent)` | Clear hooks for the specified event |
+| `ClearFor` | `(event HookEvent)` | Clear hooks for the specified event (deprecated: identical to `Remove`, kept for backward compatibility) |
 | `SetErrorHandler` | `(handler HookErrorHandler)` | Set the error handler |
 
 ### Registering Hooks

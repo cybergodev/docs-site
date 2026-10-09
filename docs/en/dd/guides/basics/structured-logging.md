@@ -232,11 +232,11 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### Text Format (Default)
 
 ```text
-[2026-04-16T21:16:48+08:00   INFO] logger.go:1567 request completed method=GET status=200 elapsed=150ms
+[2026-04-16T21:16:48+08:00   INFO] main.go:42 request completed method=GET status=200 elapsed=150ms
 ```
 
 :::info caller field note
-The `caller` field records the call site; when called via `*Logger` methods (e.g. `logger.InfoWith(...)`), the caller resolves to an internal library call frame (e.g. `logger.go:1567`); when called via package-level functions (e.g. `dd.InfoWith`), it resolves to user code.
+The `caller` field records the **user's call site**. Whether you call `*Logger` methods (e.g. `logger.InfoWith(...)`) or package-level functions (e.g. `dd.InfoWith`), the caller resolves to your code (`main.go:42` in the example) — the capture uses a fixed frame skip and explicitly rejects dd-internal frames, so it never reports `logger.go` or other library locations.
 :::
 
 ### JSON Format
@@ -254,7 +254,7 @@ logger.InfoWith("request completed",
 ```
 
 ```json
-{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"logger.go:1567","message":"request completed","fields":{"method":"GET","status":200}}
+{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"main.go:42","message":"request completed","fields":{"method":"GET","status":200}}
 ```
 
 ## Next Steps

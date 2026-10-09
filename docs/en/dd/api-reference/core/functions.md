@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # Package Functions
 
-DD provides a rich set of package-level functions callable directly via the `dd.` prefix. All of them execute through the global logger (`Default()`).
+DD provides a rich set of package-level functions callable directly via the `dd.` prefix. Logging functions execute through the global logger (`Default()`); the exception is the debug-output functions `JSON`/`JSONF`/`Text`/`Textf`/`Exit`/`Exitf`, which write directly to `os.Stdout` and bypass the global logger.
 
 ## Logger Creation
 
@@ -75,7 +75,8 @@ if err != nil {
 |----------|-----------|-------------|
 | `DefaultConfig` | `func DefaultConfig() Config` | Default config (Info level, text format) |
 | `DevelopmentConfig` | `func DevelopmentConfig() Config` | Development config (Debug level) |
-| `JSONConfig` | `func JSONConfig() Config` | JSON output config |
+| `JSONConfig` | `func JSONConfig() Config` | JSON output config (Debug level) |
+| `ProductionConfig` | `func ProductionConfig() Config` | Production config (Info level, JSON format, RFC3339 timestamps) |
 
 ```go
 cfg := dd.DefaultConfig()
@@ -212,6 +213,8 @@ dd.WithField("request_id", "abc123").Info("processing request")
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `Flush` | `func Flush() error` | Flush the global logger buffers |
+| `Close` | `func Close() error` | Close the global logger |
+| `Shutdown` | `func Shutdown(ctx context.Context) error` | Graceful shutdown with timeout |
 
 ## Writer Management (Package-level)
 
@@ -243,7 +246,7 @@ dd.WithField("request_id", "abc123").Info("processing request")
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `DefaultSecurityConfig` | `func DefaultSecurityConfig() *SecurityConfig` | Default security config (basic filtering) |
-| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | Complete security config |
+| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | Complete security config (deprecated: use `SecurityConfigForLevel(dd.SecurityLevelStandard)`) |
 | `HealthcareConfig` | `func HealthcareConfig() *SecurityConfig` | HIPAA-compliant config |
 | `FinancialConfig` | `func FinancialConfig() *SecurityConfig` | PCI-DSS-compliant config |
 | `GovernmentConfig` | `func GovernmentConfig() *SecurityConfig` | Government-standard config |

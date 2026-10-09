@@ -34,6 +34,7 @@ DD имеет встроенную функцию фильтрации конф�
 | `IsEnabled` | `() bool` | Включена ли фильтрация |
 | `Filter` | `(input string) string` | Отфильтровать строку |
 | `FilterFieldValue` | `(key string, value any) any` | Отфильтровать значение одного поля |
+| `FilterString` | `(key, value string) string` | Отфильтровать строковое значение (с контекстом ключа поля) |
 | `FilterValueRecursive` | `(key string, value any) any` | Рекурсивная фильтрация вложенных структур |
 | `GetFilterStats` | `() FilterStats` | Получить статистику фильтрации |
 | `ActiveGoroutineCount` | `() int32` | Количество активных фильтрующих горутин |
@@ -59,12 +60,12 @@ type SecurityConfig struct {
     MaxMessageSize  int                       // Макс. размер сообщения (байт, 0 = без ограничения, по умолчанию 5МБ в предустановках)
     MaxWriters      int                       // Макс. количество Writer (по умолчанию 100 в предустановках)
     SensitiveFilter *SensitiveDataFilter      // Фильтр конфиденциальных данных
-    RateLimitConfig *internal.RateLimitConfig // Конфигурация ограничения частоты (внутренний тип, nil отключает ограничение; пресеты это поле не заполняют)
+    RateLimitConfig *RateLimitConfig  // Конфигурация ограничения частоты (тип-алиас, экспортируемый пакетом dd; nil отключает ограничение; пресеты это поле не заполняют)
 }
 ```
 
 :::info О RateLimitConfig
-`RateLimitConfig` управляет ограничением частоты логирования для предотвращения флуда логов (DoS) и поддержания стабильности системы под нагрузкой. Это поле — внутренний тип (`*internal.RateLimitConfig`), его нельзя создать напрямую. Все предустановленные конфигурации (`DefaultSecurityConfig`, `DefaultSecureConfig`, `SecurityConfigForLevel` и др.) **не заполняют** это поле, то есть по умолчанию ограничение частоты не включается; Logger инициализирует ограничитель только при явной установке. Чтобы отключить ограничение частоты, установите его в `nil`.
+`RateLimitConfig` управляет ограничением частоты логирования для предотвращения флуда логов (DoS) и поддержания стабильности системы под нагрузкой. Пакет `dd` **экспортирует тип-алиас** `type RateLimitConfig = internal.RateLimitConfig` и фабричную функцию `DefaultRateLimitConfig()` (по умолчанию: 10000 сообщений/с, 10МБ/с, burst 1000, стратегия Drop, коэффициент сэмплирования 100) — конструировать и изменять её можно напрямую. Все предустановленные конфигурации (`DefaultSecurityConfig`, `SecurityConfigForLevel` и др.) **не заполняют** это поле, то есть по умолчанию ограничение частоты не включается; Logger инициализирует ограничитель только при явной установке. Чтобы отключить ограничение частоты, установите его в `nil`.
 :::
 
 ### FilterStats
@@ -110,7 +111,7 @@ type SecurityLevel int
 | Функция | Описание | Сценарий |
 |---------|----------|----------|
 | `DefaultSecurityConfig()` | Базовая фильтрация конфиденциальных данных | Производственная среда (рекомендуется) |
-| `DefaultSecureConfig()` | Полная фильтрация конфиденциальных данных | Высокие требования к безопасности |
+| `DefaultSecureConfig()` | Полная фильтрация конфиденциальных данных (**устарело**: почти омоним `DefaultSecurityConfig`, легко перепутать; используйте `SecurityConfigForLevel(dd.SecurityLevelStandard)`) | Высокие требования к безопасности |
 | `HealthcareConfig()` | Соответствие HIPAA | Медицина |
 | `FinancialConfig()` | Соответствие PCI-DSS | Финансы |
 | `GovernmentConfig()` | Правительственный стандарт | Государственный сектор |
@@ -147,14 +148,14 @@ cfg := dd.DefaultConfig()
 logger, _ := dd.New(cfg)
 
 // Если нужно заменить на конфигурацию более высокого уровня безопасности, переопределите явно
-// cfg.Security = dd.DefaultSecureConfig()
+// cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
 ```
 
 ### Изменение во время выполнения
 
 ```go
 // Обновление конфигурации безопасности
-logger.SetSecurityConfig(dd.DefaultSecureConfig())
+logger.SetSecurityConfig(dd.SecurityConfigForLevel(dd.SecurityLevelStandard))
 
 // Чтение текущей конфигурации
 sec := logger.GetSecurityConfig()

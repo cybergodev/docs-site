@@ -17,7 +17,7 @@ DD 는 6 가지 라이프사이클 훅 이벤트를 제공합니다.
 |------|----------|----------|
 | `HookBeforeLog` | 로그 포맷팅 이전 (필드 필터 완료 후) | 조건부 건너뛰기, 샘플링 제어 |
 | `HookAfterLog` | 로그 쓰기 완료 | 메트릭 업데이트, 알림 발송 |
-| `HookOnFilter` | 필드값이 마스킹될 때 트리거 (메시지 텍스트 마스킹은 트리거 안 함; 훅은 필드 key 만 받고 원래 값은 받지 않음) | 마스킹 이벤트 기록, 감사 |
+| `HookOnFilter` | 민감 데이터가 마스킹될 때 트리거: 필드값 마스킹 (훅이 필드 key 수신) 또는 메시지 텍스트 마스킹 (key 는 빈 문자열); 훅은 key 만 받고 **원래 값은 받지 않음** | 마스킹 이벤트 기록, 감사 |
 | `HookOnRotate` | 파일 로테이션 완료 | 운영 알림, 이전 파일 업로드 |
 | `HookOnClose` | Logger 종료 | 리소스 정리, 최종 보고서 발송 |
 | `HookOnError` | 쓰기 오류 발생 | 알림, 성능 저하 처리 |
@@ -192,7 +192,7 @@ registry.Add(dd.HookBeforeLog, func(ctx context.Context, hCtx *dd.HookContext) e
 ```
 
 :::warning 경고 훅 내의 Panic
-훅 함수에서 panic 이 발생해도 DD 가 자동으로 복구하여 메인 흐름에 영향을 주지 않습니다. panic 정보는 ErrorHandler 에 전달됩니다.
+훅 함수에서 panic 이 발생하면 DD 가 자동으로 복구하여 error 로 변환합니다. `ErrorHandler`가 구성되어 있으면 이 error 는 ErrorHandler 에 전달되고 (나머지 훅도 계속 실행), 구성되어 있지 않으면 훅 실행이 중단되고 해당 오류가 반환됩니다 (`HookBeforeLog`의 오류는 해당 로그 항목의 쓰기도 중단). 어느 경우든 메인 흐름에는 영향을 주지 않습니다.
 :::
 
 ## 동적 등록

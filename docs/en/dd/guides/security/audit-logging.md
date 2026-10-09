@@ -212,7 +212,7 @@ func main() {
     // Create the business Logger (with security filtering)
     logger, err := dd.New(dd.Config{
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
     })
     if err != nil {
@@ -235,7 +235,7 @@ func main() {
 ```
 
 :::info Auto-integration vs Standalone Use
-AuditLogger **can be created standalone** (`dd.NewAuditLogger`, as in this section's examples) **or auto-integrated with a Logger via `Config.Audit`**. The latter, when the `Enabled` field of `Config.Audit` (type `AuditConfig`) is true, automatically forwards sensitive-data redaction events, rate-limit events, etc. to the AuditLogger — no manual hook wiring required.
+AuditLogger **can be created standalone** (`dd.NewAuditLogger`, as in this section's examples) **or auto-integrated with a Logger via `Config.Audit`**. The latter, when the `Enabled` field of `Config.Audit` (type `AuditConfig`) is true, automatically forwards exactly two event kinds to the audit stream — sensitive-data redaction events and rate-limit events — no manual hook wiring required.
 :::
 
 ## Next Steps

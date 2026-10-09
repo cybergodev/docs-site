@@ -49,7 +49,7 @@ logger.InfoWith("user login",
 | Connection strings | passwords inside database connection strings |
 
 :::info Pattern Coverage
-The table above only lists common-category examples. `DefaultSecurityConfig()` actually ships about 36 patterns; industry presets (e.g. `HealthcareConfig()`) can reach 71. They also cover AWS keys, Stripe/GitHub/Slack tokens, IBAN, multi-country tax IDs, Log4Shell, and more. See the source `internal/patterns.go` for the full pattern set.
+The table above only lists common-category examples. `DefaultSecurityConfig()` (the basic set) actually ships **38** patterns, covering AWS keys, Stripe/GitHub/Slack tokens, Log4Shell, and more; industry presets go higher: `HealthcareConfig()` 73, `FinancialConfig()` 74, `GovernmentConfig()` 75. Note that IBAN and multi-country tax IDs (ABN/NZ-IRD/RUT/CPF/RFC) belong to the **full set and industry presets only**, not the basic set. See the source `internal/patterns.go` for the full pattern set.
 :::
 
 ## Custom Filter Patterns

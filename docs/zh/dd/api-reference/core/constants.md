@@ -49,8 +49,8 @@ type FieldValidationMode int // 字段键验证模式
 | 常量 | 值 | 说明 |
 |------|----|------|
 | `FieldValidationNone` | 0 | 禁用验证（默认） |
-| `FieldValidationWarn` | 1 | 验证失败时警告但仍接受 |
-| `FieldValidationStrict` | 2 | 严格模式，验证失败时记录错误 |
+| `FieldValidationWarn` | 1 | 验证失败时向 stderr 输出警告诊断（字段仍接受并记录） |
+| `FieldValidationStrict` | 2 | 严格模式，验证失败时向 stderr 输出错误诊断（日志条目仍正常写入） |
 
 ## 字段命名约定
 

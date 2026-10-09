@@ -74,7 +74,7 @@ reg := dd.NewHooksFromConfig(hooksConfig)
 | `Remove` | `(event HookEvent)` | 移除事件的所有钩子 |
 | `Trigger` | `(ctx, event, hookCtx) error` | 触发事件的所有钩子 |
 | `Clear` | `()` | 清除所有钩子 |
-| `ClearFor` | `(event HookEvent)` | 清除指定事件的钩子 |
+| `ClearFor` | `(event HookEvent)` | 清除指定事件的钩子（已弃用：与 `Remove` 完全等价，保留仅为向后兼容） |
 | `SetErrorHandler` | `(handler HookErrorHandler)` | 设置错误处理器 |
 
 ### 注册钩子

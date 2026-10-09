@@ -25,7 +25,7 @@ type Field struct {
 }
 ```
 
-所有字段构造器返回 `Field` 值；格式化器（`internal.FormatFields`）按 `Key=Value` 形式输出。基础类型（string / 数值 / bool / `time.Duration` / `time.Time` / nil）走快速路径；切片、数组、map、struct 等「复杂类型」会回退到 JSON 序列化（`internal.IsComplexValue` 判定），其他类型（如实现 `fmt.Stringer` 或 `error` 接口的值）走 `fmt.Fprint`。
+所有字段构造器返回 `Field` 值；文本格式化器按 `Key=Value` 形式输出。基础类型（string / 数值 / bool / `time.Duration` / `time.Time` / nil）走快速路径；切片、数组、map、struct 等「复杂类型」会回退到 JSON 序列化（`internal.IsComplexValue` 判定），其他类型（如实现 `fmt.Stringer` 或 `error` 接口的值）走 `fmt.Fprint`。
 
 ## 基础字段
 
@@ -126,8 +126,8 @@ type FieldValidationMode int
 
 const (
     FieldValidationNone   FieldValidationMode = iota // 禁用校验（默认，短路所有检查）
-    FieldValidationWarn                              // 命名不匹配时记一条 warning 日志
-    FieldValidationStrict                            // 命名不匹配时记一条 error 日志
+    FieldValidationWarn                              // 命名不匹配时向 stderr 输出警告诊断（字段仍正常记录）
+    FieldValidationStrict                            // 命名不匹配时向 stderr 输出错误诊断（字段仍正常记录，仅措辞不同）
 )
 ```
 

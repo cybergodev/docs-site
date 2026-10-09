@@ -49,7 +49,7 @@ logger.InfoWith("ユーザーログイン",
 | 接続文字列 | データベース接続文字列内のパスワード |
 
 :::info パターンカバー範囲
-上表は一般的なカテゴリの例のみです。`DefaultSecurityConfig()` は実際に約 36 パターンを内蔵し、業界プリセット（`HealthcareConfig()` など）は 71 パターンに達し、AWS キー、Stripe/GitHub/Slack トークン、IBAN、複数国の税務番号、Log4Shell などもカバーします。完全なパターンセットはソースコード `internal/patterns.go` を参照してください。
+上表は一般的なカテゴリの例のみです。`DefaultSecurityConfig()`（基本セット）には実際に **38** パターンが内蔵されており、AWS キー、Stripe/GitHub/Slack トークン、Log4Shell などをカバーします。業界プリセットはさらに多く、`HealthcareConfig()` は 73 パターン、`FinancialConfig()` は 74 パターン、`GovernmentConfig()` は 75 パターンです。注意：IBAN と複数国の税務番号（ABN/NZ-IRD/RUT/CPF/RFC）は**フルセットおよび業界プリセットのみ**に含まれ、基本セットには含まれません。完全なパターンセットはソースコード `internal/patterns.go` を参照してください。
 :::
 
 ## カスタムフィルタリングパターン

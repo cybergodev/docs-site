@@ -1,7 +1,7 @@
 ---
 sidebar_label: "設定"
 title: "設定 - CyberGo DD | Config 構造体とプリセット"
-description: "CyberGo DD 設定ガイド：DefaultConfig、DevelopmentConfig、JSONConfig プリセット、完全な Config 構造体フィールドリファレンス、マルチ出力ターゲット設定、JSON フォーマットカスタマイズ、Clone ディープコピー使用方法。"
+description: "CyberGo DD 設定ガイド：DefaultConfig、DevelopmentConfig、JSONConfig、ProductionConfig の 4 つのプリセット、完全な Config 構造体フィールドリファレンス、マルチ出力ターゲット設定、JSON フォーマットカスタマイズ、Clone ディープコピー使用方法。"
 sidebar_position: 2
 ---
 
@@ -11,16 +11,17 @@ DD は構造体ベースの設定（`Config`）を使用し、IDE の自動補�
 
 > **API リファレンス**: 完全なフィールドリストは [Config](../../api-reference/core/config) を参照してください。
 
-## 3つのプリセット
+## 4 つのプリセット
 
 | プリセット | レベル | フォーマット | セキュリティフィルター | 典型的な用途 |
 |--------|-------|--------|:---------------:|-------------|
 | `DefaultConfig()` | Info | Text | ✅ 基本 | 本番環境のデフォルト |
 | `DevelopmentConfig()` | Debug | Text（短い時刻） | ✅ 基本 | ローカル開発 |
 | `JSONConfig()` | Debug | JSON（RFC3339） | ✅ 基本 | ログ集約システム |
+| `ProductionConfig()` | Info | JSON（RFC3339） | ✅ 基本 | 本番環境（JSON 出力） |
 
 :::warning 警告 セキュリティフィルターはデフォルトで有効
-3つのプリセットはすべて、基本となる機密データフィルタリング（パスワード、API キー、クレジットカードなど）を**有効**にします。開発モードでも、意図しない機密データの漏洩を早期に発見するため、フィルタリングは有効のままです。無効にするには、明示的に `Security: &dd.SecurityConfig{}` を設定するか、`SecurityLevelDevelopment` を使用してください。
+4 つのプリセットはすべて、基本となる機密データフィルタリング（パスワード、API キー、クレジットカードなど）を**有効**にします。開発モードでも、意図しない機密データの漏洩を早期に発見するため、フィルタリングは有効のままです。無効にするには、明示的に `Security: &dd.SecurityConfig{}` を設定するか、`SecurityLevelDevelopment` を使用してください。
 :::
 
 ## Config フィールド概要
@@ -51,6 +52,7 @@ type Config struct {
     // ─── ライフサイクル ───
     FatalHandler      FatalHandler      // カスタム Fatal ハンドラー
     WriteErrorHandler WriteErrorHandler // 書き込みエラーコールバック
+    LevelResolver     LevelResolver     // 動的レベル解決（エントリごとに参照、nil で無効）
 
     // ─── 拡張 ───
     ContextExtractors []ContextExtractor // コンテキスト Field エグストラクター
@@ -72,6 +74,7 @@ package main
 import (
     "log"
     "os"
+    "time"
 
     "github.com/cybergodev/dd"
 )
@@ -86,9 +89,9 @@ func main() {
 
     // カスタムファイルローテーションパラメータ
     fileTarget := dd.FileOutput("logs/app.log")
-    fileTarget.MaxSizeMB = 50     // 50MB でローテーション
-    fileTarget.MaxBackups = 5     // 5個のバックアップを保持
-    fileTarget.MaxAge = 7 * 24    // 7日間保持
+    fileTarget.MaxSizeMB = 50              // 50MB でローテーション
+    fileTarget.MaxBackups = 5              // 5 個のバックアップを保持
+    fileTarget.MaxAge = 7 * 24 * time.Hour // 7 日間保持（MaxAge は time.Duration、単位必須）
 
     logger, err := dd.New(cfg)
     if err != nil {
@@ -148,7 +151,7 @@ cfg.Security = &dd.SecurityConfig{
 ```go
 cfg := dd.DefaultConfig()
 cfg.FieldValidation = dd.StrictSnakeCaseConfig()
-// すべての Field キーが snake_case である必要があります。それ以外は stderr に警告が出力されます
+// すべての Field キーが snake_case である必要があります。それ以外は stderr に診断が出力されます（フィールドは通常どおり記録され、ログメソッドはエラーを返しません）
 ```
 
 [Field 検証](../security/field-validation) を参照してください。

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "出力先"
 title: "出力先 - CyberGo DD | FileWriter、BufferedWriter、MultiWriter"
-description: "CyberGo DD 出力先 API：FileWriter はファイルサイズによる自動ローテーションと時間による古いバックアップのクリーンアップ、BufferedWriter は高性能バッファ書き込み（バッファサイズとフラッシュ間隔を設定可能）、MultiWriter はマルチ出力先並行出力を提供し、開発から本番までの各種ログ出力シナリオに対応し、信頼性の高いログシステムの構築を支援します。"
+description: "CyberGo DD 出力先 API：FileWriter はファイルサイズによる自動ローテーションと時間による古いバックアップのクリーンアップ、BufferedWriter は高性能バッファ書き込み（バッファサイズとフラッシュ間隔を設定可能）、MultiWriter は複数出力先への登録順逐次出力を提供し、開発から本番までの各種ログ出力シナリオに対応し、信頼性の高いログシステムの構築を支援します。"
 sidebar_position: 1
 ---
 
@@ -21,7 +21,7 @@ func NewFileWriter(path string, cfg FileWriterConfig) (*FileWriter, error)
 
 パスは内部のパスセキュリティ検証（パストラバーサル、null バイト、overlong UTF-8）を経た後、`cfg.Validate()` が数量上限を検証し、最後にゼロ/負の値をデフォルト設定にフォールバックします。エラーを返すケース：
 
-- パス系：`ErrEmptyFilePath` / `ErrNullByte` / `ErrPathTooLong`（>4096 バイト）/ `ErrPathTraversal` / `ErrInvalidPath` / `ErrOverlongEncoding`
+- パス系：`ErrEmptyFilePath` / `ErrNullByte` / `ErrPathTooLong`（>4096 バイト）/ `ErrPathTraversal` / `ErrInvalidPath` / `ErrOverlongEncoding`、および Windows 予約デバイス名（`CON`、`NUL`、`COM1` など）と NTFS 代替データストリーム（`file:ads`）パス
 - 設定系：`ErrMaxSizeExceeded`（`MaxSizeMB > 10240`）/ `ErrMaxBackupsExceeded`（`MaxBackups > 1000`）
 - I/O 系：ディレクトリ作成失敗（`failed to create directory: …` としてラップ）またはファイルオープン失敗（`failed to open file …: %w` としてラップ、`ErrSymlinkNotAllowed` / `ErrHardlinkNotAllowed` を含む）
 
@@ -68,7 +68,7 @@ func (c FileWriterConfig) Validate() error
 - `MaxSizeMB` が 10240 を超える（`ErrMaxSizeExceeded` を返す）
 - `MaxBackups` が 1000 を超える（`ErrMaxBackupsExceeded` を返す）
 
-負の値は Validate エラーをトリガーしません；ゼロまたは負の値の `MaxSizeMB` はデフォルト値適用時に 100MB にフォールバックし、`MaxBackups` / `MaxAge` の負の値はそのまま維持されます（詳細は下記「デフォルト値適用ルール」を参照）。
+負の値は Validate エラーをトリガーしません；ゼロまたは負の値の `MaxSizeMB` はデフォルト値適用時に 100MB にフォールバックし、`MaxBackups` / `MaxAge` の負の値はまず 0 に正規化されてから「デフォルト値適用ルール」が適用されます（例：`MaxBackups=-5` のみ設定 → 0 に正規化 →「両方とも 0」の分岐 → デフォルト 10）。
 
 ### メソッド
 
@@ -107,7 +107,7 @@ fw.Write([]byte("ログ内容\n"))
 
 FileWriter のローテーションとクリーンアップは 2 つの独立したパスで実行されます：
 
-- **ローテーション（rotation）**：`Write` 呼び出し時に現在のファイルサイズをチェックし、`MaxSizeMB`（デフォルト 100MB）を超えるとトリガーされます——古いファイルはバックアップにリネーム、新しいファイルは `O_EXCL` で再オープン（シンボリックリンク TOCTOU を防止）され、その後 `internal.RotateBackups` が `MaxBackups` に従ってバックアップチェーンを切り詰め、`Compress=true` の場合は独立した goroutine がバックアップを gzip 圧縮します。
+- **ローテーション（rotation）**：`Write` 呼び出し時に「現在のファイルサイズ + 今回の書き込みデータ長」が `MaxSizeMB`（デフォルト 100MB）を超えるかをチェックし、超える場合は書き込みが上限を跨ぐ前にトリガーされます——古いファイルはバックアップにリネーム、新しいファイルは `O_EXCL` で再オープン（シンボリックリンク TOCTOU を防止）され、その後 `internal.RotateBackups` が `MaxBackups` に従ってバックアップチェーンを切り詰め、`Compress=true` の場合は独立した goroutine がバックアップを gzip 圧縮します。バックアップチェーンの切り詰めでは最も小さい番号から削除されます。
 - **クリーンアップ（cleanup）**：`MaxAge > 0` かつ `MaxBackups > 0` の場合のみバックグラウンド goroutine を起動し、1 時間ごとにスキャンして `internal.CleanupOldFiles` を呼び出し、`MaxAge`（デフォルト 30 日）を超える古いバックアップを削除します。
 
 :::tip デフォルト値適用ルール
@@ -123,8 +123,8 @@ fw.Write([]byte("ログ内容\n"))
 
 // ローテーション後に生成されるファイル：
 // logs/app.log      (現在のファイル)
-// logs/app_log_1.log (最新のバックアップ)
-// logs/app_log_2.log (さらに古いバックアップ)
+// logs/app_log_1.log (1 回目のローテーション、より古いバックアップ)
+// logs/app_log_2.log (2 回目のローテーション、最新のバックアップ；各ローテーションで新たな増分番号を使用)
 // Compress 有効時に古いバックアップは logs/app_log_1.log.gz に非同期圧縮
 ```
 
@@ -212,7 +212,7 @@ defer bw.Close()    // Close はまず Flush し基底 Writer をクローズ
 
 ## MultiWriter
 
-マルチライター管理。複数の出力先に同時書き込みします。
+マルチライター管理。1 回の `Write` を登録順に逐次ファンアウトします（並列ではありません。一部の writer の失敗が残りの writer に影響することはありません）。
 
 ### 作成
 
@@ -231,13 +231,13 @@ mw := dd.NewMultiWriter(os.Stdout, fileWriter)
 
 | メソッド | シグネチャ | 説明 |
 |------|------|------|
-| `Write` | `(p []byte) (int, error)` | 全出力先に書き込み（エラー戦略は下記参照） |
-| `AddWriter` | `(w io.Writer) error` | 出力先を動的追加（重複 writer は暗黙的に受け付け） |
+| `Write` | `(p []byte) (int, error)` | 登録順に全出力先へ逐次書き込み（エラー戦略は下記参照） |
+| `AddWriter` | `(w io.Writer) error` | 出力先を動的追加（重複 writer は no-op：重複除外され、エラーにも追加にもならない。対照的に `Logger.AddWriter` は重複を受け付ける） |
 | `RemoveWriter` | `(w io.Writer) error` | 出力先を動的削除 |
 | `Close` | `() error` | すべての基底 `io.Closer` をクローズ（標準ストリームを除く） |
 
-`AddWriter` がエラーを返すケース：`ErrNilMultiWriter`（レシーバが `nil`）/ `ErrNilWriter`（引数が `nil`）/ `ErrMaxWritersExceeded`（≥ 100 個登録済み）。
-`RemoveWriter` がエラーを返すケース：`ErrNilMultiWriter` / `ErrWriterNotFound`。
+`AddWriter` がエラーを返すケース：`ErrNilMultiWriter`（レシーバが `nil`）/ `ErrNilWriter`（引数が `nil`）/ `ErrMaxWritersExceeded`（≥ 100 個登録済み）/ `Close` 後の呼び出し（`os.ErrClosed` をラップしたエラーを返す）。
+`RemoveWriter` がエラーを返すケース：`ErrNilMultiWriter` / `ErrWriterNotFound`（`Close` 後の呼び出しも同様に `os.ErrClosed` をラップしたエラーを返す）。
 
 <!-- check-code: skip -->
 ```go

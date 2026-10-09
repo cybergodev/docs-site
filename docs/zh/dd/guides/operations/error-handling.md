@@ -83,11 +83,11 @@ type MultiWriterError struct { ... }
 ```go
 logger, err := dd.New(config)
 if err != nil {
-    if errors.Is(err, dd.ErrNilConfig) {
-        // 处理配置为空
+    if errors.Is(err, dd.ErrMultipleConfigs) {
+        // New(cfg1, cfg2) 传了多个 Config（0 或 1 个才合法）
     }
     if errors.Is(err, dd.ErrInvalidLevel) {
-        // 处理无效级别
+        // 配置校验失败：Level 超出 LevelDebug~LevelFatal 范围
     }
 }
 ```
@@ -97,7 +97,7 @@ if err != nil {
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
     // 自定义写入错误处理
-    // 注意：此回调仅在 writer.Write() 失败时触发，传入的是 writer 自身错误；
+    // 注意：此回调在 writer.Write() 失败**或 panic**（panic 会被转为错误）时触发，传入的是 writer 自身错误；
     // dd.ErrWriterNotFound 由 RemoveWriter 直接返回给调用者，不会经此回调传递。
     if errors.Is(err, io.ErrShortWrite) {
         // 写入字节数不足

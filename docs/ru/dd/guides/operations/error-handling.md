@@ -81,11 +81,11 @@ type MultiWriterError struct { ... }
 ```go
 logger, err := dd.New(config)
 if err != nil {
-    if errors.Is(err, dd.ErrNilConfig) {
-        // Обработка нулевой конфигурации
+    if errors.Is(err, dd.ErrMultipleConfigs) {
+        // New(cfg1, cfg2) — передано несколько Config (допустимы только 0 или 1)
     }
     if errors.Is(err, dd.ErrInvalidLevel) {
-        // Обработка недопустимого уровня
+        // Валидация конфигурации не пройдена: Level вне диапазона LevelDebug~LevelFatal
     }
 }
 ```
@@ -95,9 +95,9 @@ if err != nil {
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
     // Пользовательская обработка ошибок записи
-    // Примечание: этот колбэк срабатывает только при сбое writer.Write(), в него передаётся
-    // собственная ошибка writer; dd.ErrWriterNotFound возвращается напрямую из RemoveWriter и
-    // через этот колбэк не проходит.
+    // Примечание: этот колбэк срабатывает при сбое writer.Write() **или panic** внутри Write
+    // (panic преобразуется в ошибку); в него передаётся собственная ошибка writer;
+    // dd.ErrWriterNotFound возвращается напрямую из RemoveWriter и через этот колбэк не проходит.
     if errors.Is(err, io.ErrShortWrite) {
         // Записано меньше байт, чем предоставлено
         return

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration - CyberGo DD | Config 구조체와 프리셋"
-description: "CyberGo DD configuration 가이드: DefaultConfig, DevelopmentConfig, JSONConfig 프리셋, 전체 Config 구조체 Field 참조, 다중 출력 대상 설정, JSON 형식 커스터마이징, Clone 깊은 복사 사용법."
+description: "CyberGo DD configuration 가이드: DefaultConfig, DevelopmentConfig, JSONConfig, ProductionConfig 4 가지 프리셋, 전체 Config 구조체 Field 참조, 다중 출력 대상 설정, JSON 형식 커스터마이징, Clone 깊은 복사 사용법."
 sidebar_position: 2
 ---
 
@@ -11,16 +11,17 @@ DD는 IDE 자동완성을 지원하는 구조체 기반 configuration(`Config`)�
 
 > **API 참조**: 전체 Field 목록은 [Config](../../api-reference/core/config)를 참조하십시오.
 
-## 세 가지 프리셋
+## 네 가지 프리셋
 
 | 프리셋 | 레벨 | 형식 | 보안 필터 | 일반적 용도 |
 |--------|-------|--------|:---------------:|-------------|
 | `DefaultConfig()` | Info | Text | ✅ 기본 | 프로덕션 기본값 |
 | `DevelopmentConfig()` | Debug | Text (단축 시간) | ✅ 기본 | 로컬 개발 |
 | `JSONConfig()` | Debug | JSON (RFC3339) | ✅ 기본 | 로그 수집 시스템 |
+| `ProductionConfig()` | Info | JSON (RFC3339) | ✅ 기본 | 프로덕션 (JSON 출력) |
 
 :::warning 경고 보안 필터가 기본적으로 활성화됨
-세 가지 프리셋 모두 기본 민감 데이터 필터링(비밀번호, API 키, 신용카드 등)을 **활성화**합니다. 개발 모드에서도 우발적인 민감 데이터 유출을 조기에 발견하기 위해 켜져 있습니다. 비활성화하려면 `Security: &dd.SecurityConfig{}`를 명시적으로 설정하거나 `SecurityLevelDevelopment`를 사용하십시오.
+네 가지 프리셋 모두 기본 민감 데이터 필터링 (비밀번호, API 키, 신용카드 등) 을 **활성화**합니다. 개발 모드에서도 우발적인 민감 데이터 유출을 조기에 발견하기 위해 켜져 있습니다. 비활성화하려면 `Security: &dd.SecurityConfig{}`를 명시적으로 설정하거나 `SecurityLevelDevelopment`를 사용하십시오.
 :::
 
 ## Config Field 개요
@@ -51,6 +52,7 @@ type Config struct {
     // ─── 라이프사이클 ───
     FatalHandler      FatalHandler      // 커스텀 Fatal 핸들러
     WriteErrorHandler WriteErrorHandler // 쓰기 에러 콜백
+    LevelResolver     LevelResolver     // 동적 레벨 해석 (항목마다 참조, nil 이면 비활성)
 
     // ─── 확장 ───
     ContextExtractors []ContextExtractor // 컨텍스트 Field 추출기
@@ -72,6 +74,7 @@ package main
 import (
     "log"
     "os"
+    "time"
 
     "github.com/cybergodev/dd"
 )
@@ -86,9 +89,9 @@ func main() {
 
     // 커스텀 파일 로테이션 매개변수
     fileTarget := dd.FileOutput("logs/app.log")
-    fileTarget.MaxSizeMB = 50     // 50MB에서 로테이션
-    fileTarget.MaxBackups = 5     // 5개 백업 유지
-    fileTarget.MaxAge = 7 * 24    // 7일 보관
+    fileTarget.MaxSizeMB = 50              // 50MB 에서 로테이션
+    fileTarget.MaxBackups = 5              // 5 개 백업 유지
+    fileTarget.MaxAge = 7 * 24 * time.Hour // 7 일 보관 (MaxAge 는 time.Duration, 단위 필수)
 
     logger, err := dd.New(cfg)
     if err != nil {
@@ -148,7 +151,7 @@ cfg.Security = &dd.SecurityConfig{
 ```go
 cfg := dd.DefaultConfig()
 cfg.FieldValidation = dd.StrictSnakeCaseConfig()
-// 모든 Field 키는 snake_case여야 하며, 그렇지 않으면 stderr 경고
+// 모든 Field 키는 snake_case 여야 하며, 그렇지 않으면 stderr 로 진단 출력 (해당 Field 는 여전히 기록되며, 로그 메서드는 에러를 반환하지 않음)
 ```
 
 [Field Validation](../security/field-validation)을 참조하십시오.

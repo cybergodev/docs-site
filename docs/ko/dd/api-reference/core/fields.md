@@ -23,7 +23,7 @@ type Field struct {
 }
 ```
 
-모든 필드 생성자는 `Field` 값을 반환하며, 포맷터 (`internal.FormatFields`) 가 `Key=Value` 형식으로 출력합니다. 기본 타입 (string / 수치 / bool / `time.Duration` / `time.Time` / nil) 은 빠른 경로를 사용하고, 슬라이스, 배열, map, struct 등 '복잡한 타입'은 JSON 직렬화로 폴백 (`internal.IsComplexValue` 판정) 하며, 그 외 타입 (`fmt.Stringer` 또는 `error` 인터페이스를 구현한 값 등) 은 `fmt.Fprint`를 사용합니다.
+모든 필드 생성자는 `Field` 값을 반환하며, 텍스트 포맷터가 `Key=Value` 형식으로 출력합니다. 기본 타입 (string / 수치 / bool / `time.Duration` / `time.Time` / nil) 은 빠른 경로를 사용하고, 슬라이스, 배열, map, struct 등 '복잡한 타입'은 JSON 직렬화로 폴백 (`internal.IsComplexValue` 판정) 하며, 그 외 타입 (`fmt.Stringer` 또는 `error` 인터페이스를 구현한 값 등) 은 `fmt.Fprint`를 사용합니다.
 
 ## 기본 필드
 
@@ -124,8 +124,8 @@ type FieldValidationMode int
 
 const (
     FieldValidationNone   FieldValidationMode = iota // 검증 비활성화 (기본, 모든 검사를 단락)
-    FieldValidationWarn                              // 명명 불일치 시 warning 로그 기록
-    FieldValidationStrict                            // 명명 불일치 시 error 로그 기록
+    FieldValidationWarn                              // 명명 불일치 시 stderr 에 경고 진단 출력 (해당 필드는 여전히 기록됨)
+    FieldValidationStrict                            // 명명 불일치 시 stderr 에 에러 진단 출력 (해당 필드는 여전히 기록됨, 차이는 안내 문구뿐)
 )
 ```
 

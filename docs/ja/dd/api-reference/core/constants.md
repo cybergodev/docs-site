@@ -47,8 +47,8 @@ type FieldValidationMode int // フィールドキー検証モード
 | 定数 | 値 | 説明 |
 |------|----|------|
 | `FieldValidationNone` | 0 | 検証を無効化（デフォルト） |
-| `FieldValidationWarn` | 1 | 検証失敗時に警告するが受け付ける |
-| `FieldValidationStrict` | 2 | 厳格モード、検証失敗時にエラーを記録 |
+| `FieldValidationWarn` | 1 | 検証失敗時に stderr へ警告診断を出力（フィールドは受け入れられ、そのまま記録される） |
+| `FieldValidationStrict` | 2 | 厳格モード、検証失敗時に stderr へエラー診断を出力（ログエントリは拒否されず、通常どおり書き込まれる） |
 
 ## フィールド命名規則
 

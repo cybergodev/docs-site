@@ -111,7 +111,7 @@ See [Performance Tuning](../advanced/performance).
 
 ### How does sensitive-data filtering work?
 
-`SensitiveDataFilter` uses regex pattern matching to automatically replace matching sensitive values with `[REDACTED]` before the log is written. Small inputs are processed synchronously; large inputs run in a separate goroutine with timeout protection, without blocking log writes.
+`SensitiveDataFilter` uses regex pattern matching to automatically replace matching sensitive values with `[REDACTED]` before the log is written. Small inputs are processed synchronously; for large inputs the regex scan runs in a separate goroutine, but the **caller blocks waiting for the result** (the wait scales with input size — a fixed 50ms for inputs up to 32KB, then +200ms per additional 32KB; on timeout it returns `[REDACTED]`).
 
 ### How do I customize sensitive-data patterns?
 

@@ -159,7 +159,7 @@ requestLog.InfoWith("处理完成",
 ```
 
 :::info 性能设计
-级别检查（步骤 ①）使用原子操作，无需加锁，几乎零开销。安全过滤（步骤 ②）带超时保护，防止长时间阻塞主流程（大输入通过 goroutine + 超时保证最坏约 50ms 内返回）。Fatal 处理（步骤 ⑨）会异步触发 Logger 的 Close（含 flush 与 OnClose 钩子），最长等待 5s；用户 main 中的 defer 仍不执行，但 Logger 自身的 Close 会被调用。
+级别检查（步骤 ①）使用原子操作，无需加锁，几乎零开销。安全过滤（步骤 ②）带超时保护：正则在独立 goroutine 中执行，但**调用方会阻塞等待结果**（最坏等待时长随输入大小扩展：32KB 以内固定 50ms，超过后每 32KB 增加 200ms；超时返回 `[REDACTED]`）。Fatal 处理（步骤 ⑨）会异步触发 Logger 的 Close（含 flush 与 OnClose 钩子），最长等待 5s；用户 main 中的 defer 仍不执行，但 Logger 自身的 Close 会被调用。
 :::
 
 ## 接口层次

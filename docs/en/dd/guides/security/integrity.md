@@ -13,7 +13,7 @@ DD's `IntegritySigner` signs log entries with HMAC-SHA256, ensuring logs are not
 
 ```text
 Signing flow:
-  Original log -> HMAC-SHA256(key + timestamp + sequence) -> Signed log
+  Original log -> HMAC-SHA256(key, message | timestamp | sequence) -> Signed log
 
 Verification flow:
   Signed log -> Extract signature -> Recompute HMAC -> Compare signatures -> Determine integrity

@@ -40,7 +40,7 @@ requestID := dd.GetRequestID(ctx) // "req-789"
 ### 로그에 '자동 추출'이 불가능한 이유
 
 :::warning 경고 현재 제한
-DD 의 로그 메서드 (`Info`, `InfoWith` 등) 는 `context.Context` 매개변수를 직접 받지 않습니다. 컨텍스트 추출기는 내부적으로 `context.Background()`로 호출 (`logger.go:1414`) 되므로 요청 스코프의 context 에서 TraceID 등의 값을 직접 가져올 수 없습니다. 수동으로 필드를 전달하는 방식을 권장합니다 (아래 HTTP 미들웨어 통합 참조).
+DD 의 로그 메서드 (`Info`, `InfoWith` 등) 는 `context.Context` 매개변수를 직접 받지 않습니다. 컨텍스트 추출기는 내부적으로 `context.Background()`로 호출되므로 요청 스코프의 context 에서 TraceID 등의 값을 직접 가져올 수 없습니다. 수동으로 필드를 전달하는 방식을 권장합니다 (아래 HTTP 미들웨어 통합 참조).
 :::
 
 ```go

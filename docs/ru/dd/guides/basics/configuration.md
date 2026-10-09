@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Конфигурация"
 title: "Конфигурация - CyberGo DD | Структура Config и пресеты"
-description: "Руководство по конфигурации CyberGo DD: пресеты DefaultConfig, DevelopmentConfig, JSONConfig, полный справочник по полям структуры Config, конфигурация нескольких целевых назначений вывода, настройка JSON-формата и использование Clone для глубокого копирования."
+description: "Руководство по конфигурации CyberGo DD: четыре пресета — DefaultConfig, DevelopmentConfig, JSONConfig, ProductionConfig, полный справочник по полям структуры Config, конфигурация нескольких целевых назначений вывода, настройка JSON-формата и использование Clone для глубокого копирования."
 sidebar_position: 2
 ---
 
@@ -11,16 +11,17 @@ DD использует конфигурацию на основе структ�
 
 > **Справочник по API**: см. [Config](../../api-reference/core/config) для полного списка полей.
 
-## Три пресета
+## Четыре пресета
 
 | Пресет | Уровень | Формат | Фильтр безопасности | Типичное использование |
 |--------|---------|--------|:-------------------:|----------------------|
 | `DefaultConfig()` | Info | Текст | ✅ Базовый | По умолчанию для production |
 | `DevelopmentConfig()` | Debug | Текст (короткое время) | ✅ Базовый | Локальная разработка |
 | `JSONConfig()` | Debug | JSON (RFC3339) | ✅ Базовый | Системы агрегации логов |
+| `ProductionConfig()` | Info | JSON (RFC3339) | ✅ Базовый | Продакшен (JSON-вывод) |
 
 :::warning Предупреждение Фильтр безопасности включён по умолчанию
-Все три пресета **включают** базовую фильтрацию конфиденциальных данных (пароли, API-ключи, номера кредитных карт и т.д.). Даже в режиме разработки она остаётся включённой — чтобы своевременно выявлять случайные утечки конфиденциальных данных. Для отключения явно установите `Security: &dd.SecurityConfig{}` или используйте `SecurityLevelDevelopment`.
+Все четыре пресета **включают** базовую фильтрацию конфиденциальных данных (пароли, API-ключи, номера кредитных карт и т.д.). Даже в режиме разработки она остаётся включённой — чтобы своевременно выявлять случайные утечки конфиденциальных данных. Для отключения явно установите `Security: &dd.SecurityConfig{}` или используйте `SecurityLevelDevelopment`.
 :::
 
 ## Обзор полей Config
@@ -51,6 +52,7 @@ type Config struct {
     // ─── Жизненный цикл ───
     FatalHandler      FatalHandler      // Пользовательский обработчик Fatal
     WriteErrorHandler WriteErrorHandler // Callback при ошибке записи
+    LevelResolver     LevelResolver     // динамическое разрешение уровня (проверяется на каждую запись; nil — выключено)
 
     // ─── Расширения ───
     ContextExtractors []ContextExtractor // Экстракторы Field из контекста
@@ -72,6 +74,7 @@ package main
 import (
     "log"
     "os"
+    "time"
 
     "github.com/cybergodev/dd"
 )
@@ -86,9 +89,9 @@ func main() {
 
     // Пользовательские параметры ротации файлов
     fileTarget := dd.FileOutput("logs/app.log")
-    fileTarget.MaxSizeMB = 50     // Ротация при 50МБ
-    fileTarget.MaxBackups = 5     // Хранить 5 резервных копий
-    fileTarget.MaxAge = 7 * 24    // Хранить 7 дней
+    fileTarget.MaxSizeMB = 50              // Ротация при 50МБ
+    fileTarget.MaxBackups = 5              // Хранить 5 резервных копий
+    fileTarget.MaxAge = 7 * 24 * time.Hour // Хранить 7 дней (MaxAge — time.Duration, единица обязательна)
 
     logger, err := dd.New(cfg)
     if err != nil {
@@ -148,7 +151,8 @@ cfg.Security = &dd.SecurityConfig{
 ```go
 cfg := dd.DefaultConfig()
 cfg.FieldValidation = dd.StrictSnakeCaseConfig()
-// Все ключи Field должны быть snake_case, иначе предупреждение в stderr
+// Все ключи Field должны быть snake_case; при ошибке валидации выводится диагностика в stderr,
+// но поле всё равно записывается (методы логирования не возвращают ошибку)
 ```
 
 См. [Валидация Field](../security/field-validation).

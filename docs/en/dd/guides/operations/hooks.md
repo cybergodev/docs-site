@@ -17,7 +17,7 @@ DD provides 6 lifecycle hook events:
 |-------|----------------|-------------|
 | `HookBeforeLog` | Before a log is formatted (fields already filtered) | Conditional skip, sampling |
 | `HookAfterLog` | After a log write completes | Update metrics, send notifications |
-| `HookOnFilter` | When a field value is redacted (message-text redaction does not trigger this; the hook receives only the field key, not the original value) | Record redaction events, audit |
+| `HookOnFilter` | When sensitive data is redacted: field-value redaction (the hook receives the field key) or message-text redaction (empty key); the hook receives only the key, **never the original value** | Record redaction events, audit |
 | `HookOnRotate` | After file rotation completes | Notify ops, upload old files |
 | `HookOnClose` | When the Logger closes | Clean up resources, send final reports |
 | `HookOnError` | When a write error occurs | Alerting, graceful degradation |
@@ -192,7 +192,7 @@ registry.Add(dd.HookBeforeLog, func(ctx context.Context, hCtx *dd.HookContext) e
 ```
 
 :::warning Panics in Hooks
-If a hook function panics, DD recovers automatically without affecting the main flow. The panic value is passed to the ErrorHandler.
+If a hook function panics, DD recovers automatically and converts the panic to an error. When an `ErrorHandler` is configured, the error is passed to it and execution continues with the next hook; without one, hook execution stops and the error is returned (a `HookBeforeLog` error also aborts that log entry). The main flow is never affected.
 :::
 
 ## Dynamic Registration

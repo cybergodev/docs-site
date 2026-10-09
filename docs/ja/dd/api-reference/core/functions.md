@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # パッケージ関数
 
-DD は豊富なパッケージレベル関数を提供し、`dd.` プレフィックスで直接呼び出せます。これらの関数はすべてグローバルロガー（`Default()`）を通じて実行されます。
+DD は豊富なパッケージレベル関数を提供し、`dd.` プレフィックスで直接呼び出せます。ログ系の関数はすべてグローバルロガー（`Default()`）を通じて実行されます。例外はデバッグ出力関数 `JSON`/`JSONF`/`Text`/`Textf`/`Exit`/`Exitf` で、これらは `os.Stdout` に直接書き込み、グローバルロガーを経由しません。
 
 ## ロガー作成
 
@@ -76,6 +76,7 @@ if err != nil {
 | `DefaultConfig` | `func DefaultConfig() Config` | デフォルト設定（Info レベル、テキストフォーマット） |
 | `DevelopmentConfig` | `func DevelopmentConfig() Config` | 開発設定（Debug レベル） |
 | `JSONConfig` | `func JSONConfig() Config` | JSON 出力設定 |
+| `ProductionConfig` | `func ProductionConfig() Config` | 本番設定（Info レベル、JSON フォーマット、RFC3339 タイムスタンプ） |
 
 ```go
 cfg := dd.DefaultConfig()
@@ -212,6 +213,8 @@ dd.WithField("request_id", "abc123").Info("リクエスト処理")
 | 関数 | シグネチャ | 説明 |
 |------|------|------|
 | `Flush` | `func Flush() error` | グローバルログバッファをフラッシュ |
+| `Close` | `func Close() error` | グローバルロガーをクローズ |
+| `Shutdown` | `func Shutdown(ctx context.Context) error` | グレースフルシャットダウン（タイムアウト付き） |
 
 ## Writer 管理（パッケージレベル）
 
@@ -243,7 +246,7 @@ dd.WithField("request_id", "abc123").Info("リクエスト処理")
 | 関数 | シグネチャ | 説明 |
 |------|------|------|
 | `DefaultSecurityConfig` | `func DefaultSecurityConfig() *SecurityConfig` | デフォルトセキュリティ設定（基本フィルタリング） |
-| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | 完全セキュリティ設定 |
+| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | 完全セキュリティ設定（非推奨：`SecurityConfigForLevel(dd.SecurityLevelStandard)` を使用） |
 | `HealthcareConfig` | `func HealthcareConfig() *SecurityConfig` | HIPAA 準拠設定 |
 | `FinancialConfig` | `func FinancialConfig() *SecurityConfig` | PCI-DSS 準拠設定 |
 | `GovernmentConfig` | `func GovernmentConfig() *SecurityConfig` | 政府基準設定 |

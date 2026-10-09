@@ -214,7 +214,7 @@ func main() {
     // 创建业务 Logger（带安全过滤）
     logger, err := dd.New(dd.Config{
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
     })
     if err != nil {
@@ -229,13 +229,13 @@ func main() {
     )
 
     // 注：本示例中 Logger 未设 Config.Audit，因此脱敏等安全事件不会自动入审计。
-    // 若要让业务 logger 的安全事件自动转发到 AuditLogger，需在该 logger 的
-    // Config.Audit 中配置（启用后会自动把脱敏、速率限制等事件转入审计流）。
+    // 若要让业务 logger 的安全事件自动转发到审计流，需在该 logger 的
+    // Config.Audit 中配置（自动转发的仅限：敏感数据脱敏事件与速率限制事件）。
 }
 ```
 
 :::info 自动集成 vs 独立使用
-AuditLogger **既可独立创建**（`dd.NewAuditLogger`，本节示例的用法），**也可通过 `Config.Audit` 与 Logger 自动集成**。后者会在 `Config.Audit`（类型 `AuditConfig`）的 `Enabled` 字段为 true 时，自动把敏感数据脱敏事件、速率限制事件等转发到 AuditLogger，无需手动连接钩子。
+AuditLogger **既可独立创建**（`dd.NewAuditLogger`，本节示例的用法），**也可通过 `Config.Audit` 与 Logger 自动集成**。后者会在 `Config.Audit`（类型 `AuditConfig`）的 `Enabled` 字段为 true 时，自动把**两类**事件——敏感数据脱敏事件与速率限制事件——转发到 AuditLogger，无需手动连接钩子。
 :::
 
 ## 下一步

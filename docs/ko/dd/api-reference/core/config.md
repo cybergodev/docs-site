@@ -31,9 +31,10 @@ cfgJSON := dd.JSONConfig()
 | `DefaultConfig()` | `Config` | Info | Text | 프로덕션 환경 |
 | `DevelopmentConfig()` | `Config` | Debug | Text | 개발 환경 |
 | `JSONConfig()` | `Config` | Debug | JSON | 로그 수집 |
+| `ProductionConfig()` | `Config` | Info | JSON (RFC3339) | 프로덕션 JSON 출력 |
 
 :::tip 팁 보안 필터 기본 활성화
-모든 사전 설정 구성 (`DefaultConfig`, `DevelopmentConfig`, `JSONConfig`) 은 기본적으로 보안 필터가 활성화되어, 비밀번호, API Key, 신용카드 번호 등 민감 데이터를 자동으로 마스킹합니다.
+모든 사전 설정 구성 (`DefaultConfig`, `DevelopmentConfig`, `JSONConfig`, `ProductionConfig`) 은 기본적으로 보안 필터가 활성화되어, 비밀번호, API Key, 신용카드 번호 등 민감 데이터를 자동으로 마스킹합니다.
 :::
 
 ## Config 구조체
@@ -68,6 +69,7 @@ type Config struct {
     // 라이프사이클 핸들러
     FatalHandler      FatalHandler       // Fatal 레벨 커스텀 처리 함수
     WriteErrorHandler WriteErrorHandler  // 쓰기 오류 콜백
+    LevelResolver     LevelResolver     // 동적 레벨 해석 (항목마다 참조, nil 이면 비활성)
 
     // 확장성
     ContextExtractors []ContextExtractor // 컨텍스트 추출기 목록

@@ -234,11 +234,11 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### 文本格式（默认）
 
 ```text
-[2026-04-16T21:16:48+08:00   INFO] logger.go:1567 请求完成 method=GET status=200 elapsed=150ms
+[2026-04-16T21:16:48+08:00   INFO] main.go:42 请求完成 method=GET status=200 elapsed=150ms
 ```
 
 :::info caller 字段说明
-`caller` 字段记录调用位置；通过 `*Logger` 方法（如 `logger.InfoWith(...)`）调用时，caller 解析到库内调用帧（如 `logger.go:1567`）；通过包级函数（如 `dd.InfoWith`）调用时则解析到用户代码。
+`caller` 字段记录**用户代码的调用位置**。无论通过 `*Logger` 方法（如 `logger.InfoWith(...)`）还是包级函数（如 `dd.InfoWith`）调用，caller 都解析到用户调用点（示例中的 `main.go:42`）；捕获逻辑使用固定跳帧数并主动拒绝 dd 内部帧，因此不会报告 `logger.go` 之类的库内位置。
 :::
 
 ### JSON 格式
@@ -256,7 +256,7 @@ logger.InfoWith("请求完成",
 ```
 
 ```json
-{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"logger.go:1567","message":"请求完成","fields":{"method":"GET","status":200}}
+{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"main.go:42","message":"请求完成","fields":{"method":"GET","status":200}}
 ```
 
 ## 下一步

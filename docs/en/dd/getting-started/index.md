@@ -72,7 +72,7 @@ func main() {
 ```
 
 :::warning Zero-value Config pitfall
-Options 3/4/5 above use the `dd.Config{...}` literal directly and set only `Targets`/`Format`; the remaining fields keep their zero values: `Level=Debug` (no filtering), `IncludeTime=false` (no timestamp), `IncludeLevel=false` (no level), `DynamicCaller=false` (no caller), `Security=nil` (falls back to `DefaultSecurityConfig()` baseline filtering, which still enables ~36 redaction patterns; to disable, set `&dd.SecurityConfig{}` or `SecurityLevelDevelopment` explicitly). Output will be missing key information such as timestamps and levels.
+Options 3/4/5 above use the `dd.Config{...}` literal directly and set only `Targets`/`Format`; the remaining fields keep their zero values: `Level=Debug` (no filtering), `IncludeTime=false` (no timestamp), `IncludeLevel=false` (no level), `DynamicCaller=false` (no caller), `Security=nil` (falls back to `DefaultSecurityConfig()` baseline filtering, which still enables the 38 basic redaction patterns; to disable, set `&dd.SecurityConfig{}` or `SecurityLevelDevelopment` explicitly). Output will be missing key information such as timestamps and levels.
 
 **Recommended for production**: start from `dd.DefaultConfig()` and modify only the fields you need. This gives you timestamps, level, caller, and default security filtering in one shot:
 

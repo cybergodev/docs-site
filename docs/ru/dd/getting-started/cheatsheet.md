@@ -95,7 +95,7 @@ dd.GetRequestID(ctx)   // "req-456"
 
 ```go
 dd.DefaultSecurityConfig()   // Базовая фильтрация (рекомендуется)
-dd.DefaultSecureConfig()     // Полная фильтрация
+dd.DefaultSecureConfig()     // Полная фильтрация (устарело: используйте SecurityConfigForLevel(dd.SecurityLevelStandard))
 dd.HealthcareConfig()        // Соответствие HIPAA
 dd.FinancialConfig()         // Соответствие PCI-DSS
 dd.GovernmentConfig()        // Правительственный стандарт

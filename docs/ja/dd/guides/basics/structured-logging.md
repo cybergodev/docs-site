@@ -232,11 +232,11 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### テキストフォーマット（デフォルト）
 
 ```text
-[2026-04-16T21:16:48+08:00   INFO] logger.go:1567 リクエスト完了 method=GET status=200 elapsed=150ms
+[2026-04-16T21:16:48+08:00   INFO] main.go:42 リクエスト完了 method=GET status=200 elapsed=150ms
 ```
 
 :::info caller フィールドの説明
-`caller` フィールドは呼び出し位置を記録します；`*Logger` メソッド（例：`logger.InfoWith(...)`）経由で呼び出すと、caller はライブラリ内部の呼び出しフレーム（例：`logger.go:1567`）に解決されます；パッケージレベル関数（例：`dd.InfoWith`）経由で呼び出すと、ユーザーコードに解決されます。
+`caller` フィールドは**ユーザーコードの呼び出し位置**を記録します。`*Logger` メソッド（例：`logger.InfoWith(...)`）経由でもパッケージレベル関数（例：`dd.InfoWith`）経由でも、caller は常にユーザーの呼び出し位置（例では `main.go:42`）に解決されます。キャプチャロジックは固定のフレームスキップ数を使用し、dd 内部フレームを明示的に拒否するため、`logger.go` のようなライブラリ内の位置が報告されることはありません。
 :::
 
 ### JSON フォーマット
@@ -254,7 +254,7 @@ logger.InfoWith("リクエスト完了",
 ```
 
 ```json
-{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"logger.go:1567","message":"リクエスト完了","fields":{"method":"GET","status":200}}
+{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"main.go:42","message":"リクエスト完了","fields":{"method":"GET","status":200}}
 ```
 
 ## 次のステップ

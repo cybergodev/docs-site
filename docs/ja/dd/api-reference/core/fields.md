@@ -23,7 +23,7 @@ type Field struct {
 }
 ```
 
-すべてのフィールドコンストラクタは `Field` 値を返します。フォーマッタ（`internal.FormatFields`）は `Key=Value` 形式で出力します。基本型（string / 数値 / bool / `time.Duration` / `time.Time` / nil）は高速パスを通り、スライス、配列、map、struct などの「複雑型」は JSON シリアライズにフォールバックします（`internal.IsComplexValue` で判定）、その他の型（`fmt.Stringer` や `error` インターフェースを実装する値など）は `fmt.Fprint` を通ります。
+すべてのフィールドコンストラクタは `Field` 値を返します。テキストフォーマッタは `Key=Value` 形式で出力します。基本型（string / 数値 / bool / `time.Duration` / `time.Time` / nil）は高速パスを通り、スライス、配列、map、struct などの「複雑型」は JSON シリアライズにフォールバックします（`internal.IsComplexValue` で判定）、その他の型（`fmt.Stringer` や `error` インターフェースを実装する値など）は `fmt.Fprint` を通ります。
 
 ## 基本フィールド
 
@@ -124,8 +124,8 @@ type FieldValidationMode int
 
 const (
     FieldValidationNone   FieldValidationMode = iota // 検証を無効化（デフォルト、すべてのチェックをショートサーキット）
-    FieldValidationWarn                              // 命名不一致時に warning ログを 1 件記録
-    FieldValidationStrict                            // 命名不一致時に error ログを 1 件記録
+    FieldValidationWarn                              // 命名不一致時に stderr へ警告診断を出力（フィールドは通常どおり記録）
+    FieldValidationStrict                            // 命名不一致時に stderr へエラー診断を出力（フィールドは通常どおり記録、文言のみ異なる）
 )
 ```
 

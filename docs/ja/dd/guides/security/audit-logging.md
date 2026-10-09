@@ -212,7 +212,7 @@ func main() {
     // 業務 Logger を作成（セキュリティフィルタリング付き）
     logger, err := dd.New(dd.Config{
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
     })
     if err != nil {
@@ -228,12 +228,12 @@ func main() {
 
     // 注：本例の Logger は Config.Audit を未設定のため、マスキングなどのセキュリティイベントは自動的に監査に入りません。
     // 業務 logger のセキュリティイベントを AuditLogger に自動転送したい場合は、その logger の
-    // Config.Audit を設定してください（有効化するとマスキング、レート制限などのイベントが自動的に監査ストリームに転送されます）。
+    // Config.Audit を設定してください（自動転送されるのは機密データのマスキングイベントとレート制限イベントの 2 種類のみです）。
 }
 ```
 
 :::info 自動統合 vs 独立使用
-AuditLogger は**独立して作成**することも（`dd.NewAuditLogger`、本節の例の使い方）、**`Config.Audit` 経由で Logger と自動統合**することも可能です。後者は `Config.Audit.Enabled` が true の場合、機密データのマスキングイベントやレート制限イベントなどを自動的に AuditLogger に転送し、フックを手動接続する必要はありません。
+AuditLogger は**独立して作成**することも（`dd.NewAuditLogger`、本節の例の使い方）、**`Config.Audit` 経由で Logger と自動統合**することも可能です。後者は `Config.Audit.Enabled` が true の場合、**2 種類のイベント**——機密データのマスキングイベントとレート制限イベント——のみを自動的に AuditLogger に転送し、フックを手動接続する必要はありません。
 :::
 
 ## 次のステップ

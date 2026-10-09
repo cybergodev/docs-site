@@ -31,9 +31,10 @@ cfgJSON := dd.JSONConfig()
 | `DefaultConfig()` | `Config` | Info | Text | 本番環境 |
 | `DevelopmentConfig()` | `Config` | Debug | Text | 開発環境 |
 | `JSONConfig()` | `Config` | Debug | JSON | ログ収集 |
+| `ProductionConfig()` | `Config` | Info | JSON（RFC3339） | 本番環境 JSON 出力 |
 
 :::tip セキュリティフィルタリングはデフォルトで有効
-全てのプリセット設定（`DefaultConfig`、`DevelopmentConfig`、`JSONConfig`）はデフォルトでセキュリティフィルタリングが有効で、パスワード、API Key、クレジットカード番号などの機密データを自動マスキングします。
+全てのプリセット設定（`DefaultConfig`、`DevelopmentConfig`、`JSONConfig`、`ProductionConfig`）はデフォルトでセキュリティフィルタリングが有効で、パスワード、API Key、クレジットカード番号などの機密データを自動マスキングします。
 :::
 
 ## Config 構造体
@@ -68,6 +69,7 @@ type Config struct {
     // ライフサイクルハンドラー
     FatalHandler      FatalHandler       // Fatal レベル カスタム処理関数
     WriteErrorHandler WriteErrorHandler  // 書き込みエラーコールバック
+    LevelResolver     LevelResolver      // 動的レベルリゾルバー（nil で無効；有効時は Level を上書き）
 
     // 拡張性
     ContextExtractors []ContextExtractor // コンテキストエクストラクタリスト

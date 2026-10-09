@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration - CyberGo DD | Config Struct and Presets"
-description: "CyberGo DD configuration guide: DefaultConfig, DevelopmentConfig, JSONConfig presets, full Config struct field reference, multi-output target configuration, JSON format customization, and Clone deep-copy usage."
+description: "CyberGo DD configuration guide: DefaultConfig, DevelopmentConfig, JSONConfig, ProductionConfig presets, full Config struct field reference, multi-output target configuration, JSON format customization, and Clone deep-copy usage."
 sidebar_position: 2
 ---
 
@@ -11,16 +11,17 @@ DD uses struct-based configuration (`Config`) with IDE autocompletion support �
 
 > **API Reference**: See [Config](../../api-reference/core/config) for the complete field list.
 
-## Three Presets
+## Four Presets
 
 | Preset | Level | Format | Security Filter | Typical Use |
 |--------|-------|--------|:---------------:|-------------|
 | `DefaultConfig()` | Info | Text | ✅ Basic | Production default |
 | `DevelopmentConfig()` | Debug | Text (short time) | ✅ Basic | Local development |
 | `JSONConfig()` | Debug | JSON (RFC3339) | ✅ Basic | Log aggregation systems |
+| `ProductionConfig()` | Info | JSON (RFC3339) | ✅ Basic | Production (JSON output) |
 
 :::warning Security filter enabled by default
-All three presets **enable** basic sensitive-data filtering (passwords, API keys, credit cards, etc.). Even development mode keeps it on — to catch accidental sensitive-data leaks early. To disable, explicitly set `Security: &dd.SecurityConfig{}` or use `SecurityLevelDevelopment`.
+All four presets **enable** basic sensitive-data filtering (passwords, API keys, credit cards, etc.). Even development mode keeps it on — to catch accidental sensitive-data leaks early. To disable, explicitly set `Security: &dd.SecurityConfig{}` or use `SecurityLevelDevelopment`.
 :::
 
 ## Config Field Overview
@@ -51,6 +52,7 @@ type Config struct {
     // ─── Lifecycle ───
     FatalHandler      FatalHandler      // Custom fatal handler
     WriteErrorHandler WriteErrorHandler // Write-error callback
+    LevelResolver      LevelResolver      // Dynamic level resolution (consulted per entry; nil disables)
 
     // ─── Extensions ───
     ContextExtractors []ContextExtractor // Context field extractors
@@ -72,6 +74,7 @@ package main
 import (
     "log"
     "os"
+    "time"
 
     "github.com/cybergodev/dd"
 )
@@ -86,9 +89,9 @@ func main() {
 
     // Custom file rotation parameters
     fileTarget := dd.FileOutput("logs/app.log")
-    fileTarget.MaxSizeMB = 50     // Rotate at 50MB
-    fileTarget.MaxBackups = 5     // Keep 5 backups
-    fileTarget.MaxAge = 7 * 24    // Retain 7 days
+    fileTarget.MaxSizeMB = 50              // Rotate at 50MB
+    fileTarget.MaxBackups = 5              // Keep 5 backups
+    fileTarget.MaxAge = 7 * 24 * time.Hour // Retain 7 days (MaxAge is a time.Duration — the unit is mandatory)
 
     logger, err := dd.New(cfg)
     if err != nil {
@@ -148,7 +151,8 @@ See [Sensitive Data Filtering](../security/sensitive-filtering) and [Security Ov
 ```go
 cfg := dd.DefaultConfig()
 cfg.FieldValidation = dd.StrictSnakeCaseConfig()
-// All field keys must be snake_case, otherwise stderr warning
+// All field keys must be snake_case, otherwise a diagnostic goes to stderr
+// (the field is still logged — logging methods do not return errors)
 ```
 
 See [Field Validation](../security/field-validation).

@@ -47,8 +47,8 @@ type FieldValidationMode int // Field key validation mode
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `FieldValidationNone` | 0 | Disable validation (default) |
-| `FieldValidationWarn` | 1 | Warn on validation failure but still accept |
-| `FieldValidationStrict` | 2 | Strict mode; log an error on validation failure |
+| `FieldValidationWarn` | 1 | Emit a stderr warning diagnostic on failure (field is still accepted and logged) |
+| `FieldValidationStrict` | 2 | Strict mode; emit a stderr error diagnostic on failure (the log entry is still written normally, not rejected) |
 
 ## Field Naming Conventions
 

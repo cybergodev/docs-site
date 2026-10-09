@@ -212,7 +212,7 @@ func main() {
     // 비즈니스 Logger 생성 (보안 필터 포함)
     logger, err := dd.New(dd.Config{
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
     })
     if err != nil {
@@ -233,7 +233,7 @@ func main() {
 ```
 
 :::info 정보 자동 통합 vs 독립 사용
-AuditLogger 는 **독립 생성**(`dd.NewAuditLogger`, 본 절 예시의 사용법) 도 가능하고, **`Config.Audit`로 Logger 와 자동 통합**도 가능합니다. 후자는 `Config.Audit`(타입 `AuditConfig`) 의 `Enabled` 필드가 true 일 때 민감 데이터 마스킹 이벤트, 속도 제한 이벤트 등을 AuditLogger 로 자동 전달하며, 수동으로 훅을 연결할 필요가 없습니다.
+AuditLogger 는 **독립 생성**(`dd.NewAuditLogger`, 본 절 예시의 사용법) 도 가능하고, **`Config.Audit`로 Logger 와 자동 통합**도 가능합니다. 후자는 `Config.Audit`(타입 `AuditConfig`) 의 `Enabled` 필드가 true 일 때 정확히 두 종류의 이벤트, 즉 민감 데이터 마스킹 이벤트와 속도 제한 이벤트를 AuditLogger 로 자동 전달하며, 수동으로 훅을 연결할 필요가 없습니다.
 :::
 
 ## 다음 단계

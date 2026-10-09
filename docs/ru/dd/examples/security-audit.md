@@ -105,13 +105,14 @@ func main() {
     // Бизнес Logger
     logger, _ := dd.New(dd.Config{
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
         // Примечание: Audit здесь не задан, поэтому события маскирования/безопасности бизнес-логгера
         // не будут автоматически попадать в приведённый выше auditLogger. Чтобы события безопасности
-        // автоматически шли в аудит, задайте здесь поле Audit (например, передайте AuditConfig из
-        // вышестоящего auditLogger как Audit: &auditCfg) или записывайте события явным вызовом
-        // auditLogger.LogX(...).
+        // автоматически шли в аудит, задайте здесь поле Audit — dd.New построит по этой AuditConfig
+        // собственный внутренний AuditLogger логгера (события НЕ попадают в отдельный auditLogger,
+        // построенный выше; если оба пишут в один и тот же файл, их нужно согласовать) — или
+        // записывайте события явным вызовом auditLogger.LogX(...).
     })
     defer logger.Close()
 
@@ -222,7 +223,7 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
     logger, _ := dd.New(dd.Config{
         Level:    dd.LevelInfo,
         Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
+        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
         Targets:  []dd.OutputTarget{dd.CustomOutput(fw)},
     })
 

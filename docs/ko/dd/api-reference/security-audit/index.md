@@ -28,14 +28,14 @@ DD 의 보안 체계는 세 가지 독립적이면서도 상호 보완적인 컴
        │         │
        │         └─→ AuditLogger ──→ 마스킹 이벤트 비동기 기록 (어떤 로그에서 무엇이 필터링되었는지)
        │
-       ├─→ 포맷 출력
-       │
-       └─→ IntegritySigner ──→ HMAC 서명 (변조 방지)
+       └─→ 포맷 출력
+
+  AuditLogger (선택적 IntegritySigner) ──→ 감사 이벤트 HMAC 서명 (변조 방지)
 ```
 
 - **SensitiveDataFilter** 는 로그 기록 **전**에 민감 데이터를 가로챕니다
 - **AuditLogger** 는 보안 이벤트를 비동기로 기록하여 주 로그 성능에 영향을 주지 않습니다
-- **IntegritySigner** 는 로그 기록 **후**에 서명하여 로그 체인의 무결성을 보장합니다
+- **IntegritySigner** 는 일반 로그 쓰기 경로에 연결되지 **않습니다**: 오직 **감사 이벤트**에만 서명하며 (`AuditConfig.IntegritySigner`로 연결), 또는 사용자가 `Sign`/`SignFields`로 임의 내용에 수동 서명합니다
 
 ## 빠른 선택
 

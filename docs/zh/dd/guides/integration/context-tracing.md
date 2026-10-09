@@ -40,7 +40,7 @@ requestID := dd.GetRequestID(ctx) // "req-789"
 ### 为何不能「自动提取」到日志
 
 :::warning 当前限制
-DD 的日志方法（`Info`、`InfoWith` 等）不直接接受 `context.Context` 参数。上下文提取器在内部使用 `context.Background()` 调用（`logger.go:1414`），因此无法直接从请求作用域的 context 中获取 TraceID 等值。推荐使用手动传递字段的方式（见下方 HTTP 中间件集成）。
+DD 的日志方法（`Info`、`InfoWith` 等）不直接接受 `context.Context` 参数。上下文提取器在内部使用 `context.Background()` 调用，因此无法直接从请求作用域的 context 中获取 TraceID 等值。推荐使用手动传递字段的方式（见下方 HTTP 中间件集成）。
 :::
 
 ```go

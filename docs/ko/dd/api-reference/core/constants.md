@@ -47,8 +47,8 @@ type FieldValidationMode int // 필드 키 검증 모드
 | 상수 | 값 | 설명 |
 |------|----|------|
 | `FieldValidationNone` | 0 | 검증 비활성화 (기본) |
-| `FieldValidationWarn` | 1 | 검증 실패 시 경고하되 여전히 수락 |
-| `FieldValidationStrict` | 2 | 엄격 모드, 검증 실패 시 오류 기록 |
+| `FieldValidationWarn` | 1 | 검증 실패 시 stderr 에 경고 진단 출력 (해당 필드는 여전히 수락되어 기록됨) |
+| `FieldValidationStrict` | 2 | 엄격 모드, 검증 실패 시 stderr 에 에러 진단 출력 (로그 항목은 여전히 정상적으로 기록되며 거부되지 않음) |
 
 ## 필드 명명 규칙
 
