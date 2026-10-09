@@ -67,7 +67,6 @@ changes.log
 .env.development
 .env.staging
 .env.test
-!.env.example
 
 # API keys and certificates
 *.key

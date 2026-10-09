@@ -7,7 +7,7 @@ description: "Learn about the CyberGo documentation site, including coverage, co
 
 ## Documentation Site
 
-The CyberGo documentation site is the unified technical documentation center for the [CyberGoDev](https://github.com/cybergodev) organization, providing comprehensive documentation in five languages — Chinese, English, Korean, Japanese, and Russian — for all Go open-source libraries.
+The CyberGo documentation site is the unified technical documentation center for the [CyberGoDev](https://github.com/cybergodev) organization, providing comprehensive documentation in two languages — Chinese and English — for all Go open-source libraries.
 
 This site helps developers quickly get started and gain a deep understanding of each library's features, APIs, and best practices, ensuring efficient and safe usage in production environments.
 
@@ -53,7 +53,7 @@ This site is built with the following technologies:
 | [VitePress](https://vitepress.dev/) | Static site generator |
 | [Vue 3](https://vuejs.org/) | Frontend component framework |
 | [TypeScript](https://www.typescriptlang.org/) | Configuration and scripting |
-| [GitHub Pages](https://pages.github.com/) | Site hosting and auto-deployment |
+| Static hosting | Site deployment (FTPS to www.cybergo.dev) |
 
 ## Contact
 

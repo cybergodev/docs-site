@@ -16,7 +16,7 @@
  * 前提：shared.ts 为纯数据、无副作用、不 import vitepress/node，可安全 import。
  *
  * package.json 建议：在 scripts 段加 `"check:projects": "tsx scripts/check-projects-sync.ts"`
- * CI 建议：ci.yml 在 typecheck 后加一步 `- run: npm run check:projects`
+ * 本地：`npm run check:projects`（仓库无 CI；若未来引入，建议排在 typecheck 之后）
  *
  * 深度校验（已实现）：PROJECT_META[p].desc 覆盖全部 LANGS、features.zh 非空（仅当项目键集合一致时执行）。
  */

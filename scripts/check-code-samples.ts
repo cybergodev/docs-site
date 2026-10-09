@@ -31,8 +31,7 @@
  *
  * 依赖：Go 工具链（go 1.25）+ 6 个 cybergodev 源码 repo（位于
  * CYBERGO_SOURCE_ROOT/{project}-dev，同 audit-api.ts 约定）。
- * 本地：`npm run check:code`（默认 zh；CLI 参数指定 lang 或 `--all` 全 5 语言）。
- * CI：ci.yml 的 `check-code-samples` job（6 源码 checkout + setup-go 1.25）。
+ * 本地：`npm run check:code`（默认 zh；CLI 参数指定 lang 或 `--all` 全部语言(zh/en)）。
  *
  * 与 audit-api.ts 的关系：audit-api 比对源码导出符号 vs 文档引用，查的是「文档
  * 提到了源码里不存在的东西」；本脚本查的是「文档里的示例代码本身能不能编译」。
