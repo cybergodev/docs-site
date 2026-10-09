@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Constants & Errors"
-title: "Constants & Errors - CyberGo DD | LogLevel, Format, SentinelErrors"
-description: "Complete documentation of CyberGo DD's constants and error types, including LogLevel log-level constants (Debug/Info/Warn/Error/Fatal), Format output-format constants, and SentinelErrors sentinel error definitions. Used to precisely control log behavior and error handling; core foundation for understanding the DD logging library configuration system."
+title: "Constants & Errors - CyberGo DD | LogLevel & SentinelErrors"
+description: "Reference for CyberGo DD constants and error types: LogLevel log-level constants, Format output formats, and SentinelErrors definitions."
 sidebar_position: 6
 ---
 

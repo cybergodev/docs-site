@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Constants & Types"
 title: "Constants and Types - CyberGo HTTPC | Helper Types"
-description: "HTTPC constants and helper-types API reference: the six-value BodyKind request-body enum and its auto-detection rules, ProxyStrategy proxy strategies, FormData and FileData file-upload types, the AuditEvent audit-event struct, AuditConfig audit configuration, and context-key definitions such as SourceIPKey."
+description: "HTTPC constants and helper types: BodyKind values with auto-detection, ProxyStrategy options, FormData and FileData uploads, AuditEvent, AuditConfig."
 sidebar_position: 2
 ---
 
@@ -399,7 +399,7 @@ result, err := client.Get(url, httpc.WithSecureCookie(strict))
 ```
 
 :::warning WithSecureCookie is order-sensitive
-`WithSecureCookie` validates only cookies that **exist at apply time**. It must be placed after all `WithCookie`/`WithCookieMap`. For order-independent session-level validation, use `SessionManager.SetCookieSecurity`.
+`WithSecureCookie` validates only cookies that **exist at apply time**. It must be placed after all `WithCookies`/`WithCookieMap`/`WithCookieString` calls. For order-independent session-level validation, use `SessionManager.SetCookieSecurity`.
 :::
 
 ## See Also

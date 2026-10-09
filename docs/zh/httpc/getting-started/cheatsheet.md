@@ -1,7 +1,7 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo HTTPC | 常用代码速查"
-description: "HTTPC 速查表：客户端创建与五种配置预设、Get/Post 等七种请求方法、28 个常用 WithXxx 请求选项、Result 响应处理、中间件链组合、ClientError 错误分类、文件下载与域名客户端操作的完整可复用代码片段，方便开发者快速查阅。"
+description: "HTTPC 速查表：客户端创建与五种配置预设、Get/Post 等七种请求方法、27 个常用 WithXxx 请求选项、Result 响应处理、中间件链组合、ClientError 错误分类、文件下载与域名客户端操作的完整可复用代码片段，方便开发者快速查阅。"
 sidebar_position: 3
 ---
 
@@ -105,11 +105,11 @@ httpc.WithBasicAuth("user", "pass")
 ### Cookie
 
 ```go
-httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"})
+httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc"}}) // 单个 Cookie：单元素切片
 httpc.WithCookies([]http.Cookie{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}})
 httpc.WithCookieMap(map[string]string{"session": "abc"})
 httpc.WithCookieString("session=abc; token=xyz")
-httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()) // 须放在所有 WithCookie* 之后
+httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()) // 须放在所有 Cookie 添加选项之后
 ```
 
 ### 控制

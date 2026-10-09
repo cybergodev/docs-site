@@ -23,22 +23,22 @@ Requires Go 1.25+.
 package main
 
 import (
-    "time"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!" // HMAC requires at least 32 bytes
-    cfg.AccessTokenTTL = 15 * time.Minute
-    cfg.RefreshTokenTTL = 7 * 24 * time.Hour
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!" // HMAC requires at least 32 bytes
+	cfg.AccessTokenTTL = 15 * time.Minute
+	cfg.RefreshTokenTTL = 7 * 24 * time.Hour
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close() // Securely clear keys
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close() // Securely clear keys
 }
 ```
 

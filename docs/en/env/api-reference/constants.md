@@ -681,74 +681,74 @@ if errors.As(err, &secErr) {
 package main
 
 import (
-    "errors"
-    "log"
+	"errors"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    cfg := env.ProductionConfig()
-    cfg.FailOnMissingFile = true
+	cfg := env.ProductionConfig()
+	cfg.FailOnMissingFile = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        switch {
-        case errors.Is(err, env.ErrFileNotFound):
-            log.Fatal("Configuration file not found")
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		switch {
+		case errors.Is(err, env.ErrFileNotFound):
+			log.Fatal("Configuration file not found")
 
-        case errors.Is(err, env.ErrFileTooLarge):
-            log.Fatal("Configuration file too large")
+		case errors.Is(err, env.ErrFileTooLarge):
+			log.Fatal("Configuration file too large")
 
-        case errors.Is(err, env.ErrClosed):
-            log.Fatal("Loader has been closed")
+		case errors.Is(err, env.ErrClosed):
+			log.Fatal("Loader has been closed")
 
-        default:
-            var parseErr *env.ParseError
-            if errors.As(err, &parseErr) {
-                log.Fatalf("Parse error %s:%d - %v",
-                    parseErr.File, parseErr.Line, parseErr.Err)
-            }
+		default:
+			var parseErr *env.ParseError
+			if errors.As(err, &parseErr) {
+				log.Fatalf("Parse error %s:%d - %v",
+					parseErr.File, parseErr.Line, parseErr.Err)
+			}
 
-            var fileErr *env.FileError
-            if errors.As(err, &fileErr) {
-                log.Fatalf("File error %s - %v", fileErr.Path, fileErr.Err)
-            }
+			var fileErr *env.FileError
+			if errors.As(err, &fileErr) {
+				log.Fatalf("File error %s - %v", fileErr.Path, fileErr.Err)
+			}
 
-            var secErr *env.SecurityError
-            if errors.As(err, &secErr) {
-                log.Fatalf("Security error: %s - %s", secErr.Action, secErr.Reason)
-            }
+			var secErr *env.SecurityError
+			if errors.As(err, &secErr) {
+				log.Fatalf("Security error: %s - %s", secErr.Action, secErr.Reason)
+			}
 
-            var jsonErr *env.JSONError
-            if errors.As(err, &jsonErr) {
-                log.Fatalf("JSON error %s: %s", jsonErr.Path, jsonErr.Message)
-            }
+			var jsonErr *env.JSONError
+			if errors.As(err, &jsonErr) {
+				log.Fatalf("JSON error %s: %s", jsonErr.Path, jsonErr.Message)
+			}
 
-            var yamlErr *env.YAMLError
-            if errors.As(err, &yamlErr) {
-                log.Fatalf("YAML error %s:%d:%d - %s",
-                    yamlErr.Path, yamlErr.Line, yamlErr.Column, yamlErr.Message)
-            }
+			var yamlErr *env.YAMLError
+			if errors.As(err, &yamlErr) {
+				log.Fatalf("YAML error %s:%d:%d - %s",
+					yamlErr.Path, yamlErr.Line, yamlErr.Column, yamlErr.Message)
+			}
 
-            log.Fatal(err)
-        }
-    }
+			log.Fatal(err)
+		}
+	}
 
-    // Validate required keys
-    if err := loader.Validate(); err != nil {
-        var valErr *env.ValidationError
-        if errors.As(err, &valErr) {
-            log.Fatalf("Validation failed: %s - %s", valErr.Field, valErr.Message)
-        }
-        log.Fatal(err)
-    }
+	// Validate required keys
+	if err := loader.Validate(); err != nil {
+		var valErr *env.ValidationError
+		if errors.As(err, &valErr) {
+			log.Fatalf("Validation failed: %s - %s", valErr.Field, valErr.Message)
+		}
+		log.Fatal(err)
+	}
 }
 ```
 

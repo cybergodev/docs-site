@@ -261,56 +261,56 @@ func CORSMiddleware(origin string) httpc.MiddlewareFunc {
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 // timingMiddleware 记录每个请求的方法、URL、状态码与耗时
 func timingMiddleware() httpc.MiddlewareFunc {
-    return func(next httpc.Handler) httpc.Handler {
-        return func(ctx context.Context, req httpc.RequestMutator) (httpc.ResponseMutator, error) {
-            start := time.Now()
+	return func(next httpc.Handler) httpc.Handler {
+		return func(ctx context.Context, req httpc.RequestMutator) (httpc.ResponseMutator, error) {
+			start := time.Now()
 
-            // 请求阶段：可读取/修改请求
-            req.SetHeader("X-Client-Trace", "demo")
+			// 请求阶段：可读取/修改请求
+			req.SetHeader("X-Client-Trace", "demo")
 
-            // 调用下一层（最终到达引擎）
-            resp, err := next(ctx, req)
+			// 调用下一层（最终到达引擎）
+			resp, err := next(ctx, req)
 
-            // 响应阶段：可读取/修改响应
-            status := 0
-            if resp != nil {
-                status = resp.StatusCode()
-            }
-            log.Printf("%s %s -> %d (%v)", req.Method(), req.URL(), status, time.Since(start))
+			// 响应阶段：可读取/修改响应
+			status := 0
+			if resp != nil {
+				status = resp.StatusCode()
+			}
+			log.Printf("%s %s -> %d (%v)", req.Method(), req.URL(), status, time.Since(start))
 
-            return resp, err
-        }
-    }
+			return resp, err
+		}
+	}
 }
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-        httpc.RecoveryMiddleware(),
-        timingMiddleware(),
-    }
+	cfg := httpc.DefaultConfig()
+	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
+		httpc.RecoveryMiddleware(),
+		timingMiddleware(),
+	}
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.StatusCode()) // 200
+	result, err := client.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.StatusCode()) // 200
 }
 ```
 

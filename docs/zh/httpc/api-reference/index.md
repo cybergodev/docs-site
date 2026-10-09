@@ -1,13 +1,13 @@
 ---
 sidebar_label: "概览"
 title: "API 参考 - CyberGo HTTPC | API 总索引"
-description: "HTTPC API 参考总索引：按核心函数、请求选项、Result、Config 配置、Handler 中间件、Mutator 变更器、类型、错误与常量九组给出完整 API 地图，覆盖 28 个 WithXxx 选项、5 个配置预设、7 个内置中间件与 12 个错误变量，并附快速上手示例。"
+description: "HTTPC API 参考总索引：按核心函数、请求选项、Result、Config 配置、Handler 中间件、Mutator 变更器、类型、错误与常量九组给出完整 API 地图，覆盖 27 个 WithXxx 选项、5 个配置预设、7 个内置中间件与 12 个错误变量，并附快速上手示例。"
 sidebar_position: 1
 ---
 
 # API 参考
 
-HTTPC 提供 28 个请求选项函数、5 个配置预设、7 个内置中间件和完整的下载支持。
+HTTPC 提供 27 个请求选项函数、5 个配置预设、7 个内置中间件和完整的下载支持。
 
 ## 核心架构
 
@@ -41,7 +41,7 @@ HTTPC 双层架构
 
 | 模块 | 说明 |
 |------|------|
-| [请求选项](./core/options) | 28 个 WithXxx 请求选项函数（请求头、请求体、认证、Cookie、回调等） |
+| [请求选项](./core/options) | 27 个 WithXxx 请求选项函数（请求头、请求体、认证、Cookie、回调等） |
 | [内置中间件](./client-config/middleware) | Chain 组合、7 个内置中间件工厂和审计事件类型 |
 | [错误类型](./types/errors) | ClientError、12 种 ErrorType 枚举和 12 个错误变量 |
 
@@ -70,7 +70,7 @@ HTTPC 双层架构
 | [`SetSecurityWarnOutput`](./core/functions#setsecuritywarnoutput) | 安全警告输出重定向 |
 | [`FormatBytes`](./core/functions#formatbytes) / [`FormatSpeed`](./core/functions#formatspeed) | 字节数 / 速率格式化 |
 
-### 请求选项（28 个）
+### 请求选项（27 个）
 
 | 分组 | 选项 |
 |------|------|
@@ -78,7 +78,7 @@ HTTPC 双层架构
 | 认证（2） | `WithBasicAuth`、`WithBearerToken` |
 | 请求体（7） | `WithJSON`、`WithXML`、`WithForm`、`WithFormData`、`WithFile`、`WithBinary`、`WithBody` |
 | 查询参数（2） | `WithQuery`、`WithQueryMap` |
-| Cookie（5） | `WithCookie`、`WithCookies`、`WithCookieMap`、`WithCookieString`、`WithSecureCookie` |
+| Cookie（4） | `WithCookies`、`WithCookieMap`、`WithCookieString`、`WithSecureCookie` |
 | 请求控制（7） | `WithContext`、`WithTimeout`、`WithMaxRetries`、`WithFollowRedirects`、`WithMaxRedirects`、`WithAllowPrivateIPs`、`WithStreamBody` |
 | 回调（2） | `WithOnRequest`、`WithOnResponse` |
 

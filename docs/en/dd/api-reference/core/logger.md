@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Logger"
 title: "Logger - CyberGo DD | Core Logger"
-description: "CyberGo DD Logger core API: log output methods (Info/Warn/Error/Fatal), dynamic level management, Writer add/remove/replace, lifecycle control (Close/Flush), and chained field setting. The thread-safe, high-performance core entry-point type of the logging library."
+description: "CyberGo DD Logger core API: output methods (Info/Warn/Error/Fatal), dynamic level control, writer management, Close/Flush lifecycle, and chained fields."
 sidebar_position: 2
 ---
 

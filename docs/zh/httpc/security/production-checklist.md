@@ -159,7 +159,7 @@ cfg.Retry.EnableJitter = true              // 默认已开，显式写出便于�
 | 检查项 | 默认值 | 推荐生产值 | 验证方法 |
 |--------|--------|-----------|----------|
 | `CookieSecurity` | `nil`（不验证） | `StrictCookieSecurityConfig()` | `grep CookieSecurity` |
-| `WithSecureCookie` 顺序 | — | 放在所有 `WithCookie` 之后 | 代码审查 |
+| `WithSecureCookie` 顺序 | — | 放在所有 Cookie 添加选项（`WithCookies` 等）之后 | 代码审查 |
 
 ```go
 cfg := httpc.DefaultConfig()

@@ -522,29 +522,20 @@ type ConfigWarning struct {
 | `NewValue` | `any` | Value after correction |
 | `Reason` | `string` | Reason for the correction (e.g. below the lower bound, above the upper bound) |
 
-### The SecurityLimits Type
+### Security-Related Fields Overview
 
-`SecurityLimits` gathers the security-related limit fields of Config.
+Security limits have no separate aggregate type — they are provided directly as the following Config fields:
 
-```go
-type SecurityLimits struct {
-    MaxNestingDepth           int   `json:"max_nesting_depth"`
-    MaxSecurityValidationSize int64 `json:"max_security_validation_size"`
-    MaxObjectKeys             int   `json:"max_object_keys"`
-    MaxArrayElements          int   `json:"max_array_elements"`
-    MaxJSONSize               int64 `json:"max_json_size"`
-    MaxPathDepth              int   `json:"max_path_depth"`
-}
-```
-
-| Field                       | Type    | Description                                                                  |
-| --------------------------- | ------- | ---------------------------------------------------------------------------- |
-| `MaxNestingDepth`           | `int`   | Maximum nesting depth (maps to `Config.MaxNestingDepthSecurity`)             |
-| `MaxSecurityValidationSize` | `int64` | Maximum size for security validation (maps to `Config.MaxSecurityValidationSize`) |
-| `MaxObjectKeys`             | `int`   | Maximum object key count (maps to `Config.MaxObjectKeys`)                    |
-| `MaxArrayElements`          | `int`   | Maximum array element count (maps to `Config.MaxArrayElements`)              |
-| `MaxJSONSize`               | `int64` | Maximum JSON size (maps to `Config.MaxJSONSize`)                             |
-| `MaxPathDepth`              | `int`   | Maximum path depth (maps to `Config.MaxPathDepth`)                           |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `MaxJSONSize` | `int64` | 100MB | Cap on input JSON size (`ErrSizeLimit`) |
+| `MaxPathDepth` | `int` | 50 | Cap on path segment count (`ErrInvalidPath`) |
+| `MaxBatchSize` | `int` | 2000 | Cap on operations per batch (`ErrSizeLimit`) |
+| `MaxNestingDepthSecurity` | `int` | 200 (`DefaultMaxNestingDepth`, Validate clamps to 10–200) | Cap on input nesting depth (`ErrDepthLimit`); semantically distinct from `MaxDepth`, the encoding/decoding nesting depth (default 100) — do not confuse them |
+| `MaxSecurityValidationSize` | `int64` | 10MB | Size threshold for security validation (threshold type) |
+| `MaxObjectKeys` | `int` | 100000 | Maximum object key count (`ErrSizeLimit`) |
+| `MaxArrayElements` | `int` | 100000 | Maximum array element count (`ErrSizeLimit`) |
+| `FullSecurityScan` | `bool` | `false` (tiered scanning) | Whether to fully security-scan all input (set to `true` for full scanning) |
 
 ### AddHook
 

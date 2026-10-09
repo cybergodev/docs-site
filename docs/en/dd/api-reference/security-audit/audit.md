@@ -1,7 +1,7 @@
 ---
 sidebar_label: "AuditLogger"
 title: "Audit Logging - CyberGo DD | AuditLogger"
-description: "Complete API documentation for CyberGo DD's audit logging, including the AuditLogger asynchronous audit-event recorder, AuditConfig options (output target, format, signing), and structured formatting of audit entries. Supports tracking of security-related events to meet enterprise-grade compliance and data-security requirements."
+description: "CyberGo DD AuditLogger API: async audit-event recorder with AuditConfig output, format, and signing options, for tracking security events and compliance."
 sidebar_position: 3
 ---
 

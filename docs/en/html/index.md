@@ -32,23 +32,23 @@ go get github.com/cybergodev/html
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html><head><title>Example</title></head>
+	data := []byte(`<html><head><title>Example</title></head>
         <body><h1>Title</h1><p>Body content</p></body></html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.Title) // Output: Example
-    fmt.Println(result.Text)  // Output: Title\n\nBody content
+	fmt.Println(result.Title) // Output: Example
+	fmt.Println(result.Text)  // Output: Title\n\nBody content
 }
 ```
 

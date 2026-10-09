@@ -905,52 +905,52 @@ if env.IsMarshalError(err) {
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type AppConfig struct {
-    Host     string        `env:"APP_HOST" envDefault:"0.0.0.0"`
-    Port     int64         `env:"APP_PORT" envDefault:"8080"`
-    Debug    bool          `env:"DEBUG" envDefault:"false"`
-    Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"HOSTS"`
+	Host    string        `env:"APP_HOST" envDefault:"0.0.0.0"`
+	Port    int64         `env:"APP_PORT" envDefault:"8080"`
+	Debug   bool          `env:"DEBUG" envDefault:"false"`
+	Timeout time.Duration `env:"TIMEOUT" envDefault:"30s"`
+	Hosts   []string      `env:"HOSTS"`
 }
 
 func main() {
-    // Load configuration files
-    if err := env.Load(".env"); err != nil {
-        log.Printf("Warning: %v", err)
-    }
+	// Load configuration files
+	if err := env.Load(".env"); err != nil {
+		log.Printf("Warning: %v", err)
+	}
 
-    // Read individual values
-    host := env.GetString("APP_HOST", "localhost")
-    port := env.GetInt("APP_PORT", 8080)
-    debug := env.GetBool("DEBUG", false)
-    timeout := env.GetDuration("TIMEOUT", 30*time.Second)
+	// Read individual values
+	host := env.GetString("APP_HOST", "localhost")
+	port := env.GetInt("APP_PORT", 8080)
+	debug := env.GetBool("DEBUG", false)
+	timeout := env.GetDuration("TIMEOUT", 30*time.Second)
 
-    fmt.Printf("Server: %s:%d\n", host, port)
-    fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
+	fmt.Printf("Server: %s:%d\n", host, port)
+	fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
 
-    // Sensitive data
-    secret := env.GetSecure("API_KEY")
-    if secret != nil {
-        defer secret.Release()
-        fmt.Printf("API Key length: %d\n", secret.Length())
-    }
+	// Sensitive data
+	secret := env.GetSecure("API_KEY")
+	if secret != nil {
+		defer secret.Release()
+		fmt.Printf("API Key length: %d\n", secret.Length())
+	}
 
-    // Struct mapping
-    var cfg AppConfig
-    if err := env.ParseInto(&cfg); err != nil {
-        log.Fatal(err)
-    }
-    fmt.Printf("Config: %+v\n", cfg)
+	// Struct mapping
+	var cfg AppConfig
+	if err := env.ParseInto(&cfg); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Config: %+v\n", cfg)
 
-    // All variables
-    fmt.Printf("Loaded %d variables\n", env.Len())
+	// All variables
+	fmt.Printf("Loaded %d variables\n", env.Len())
 }
 ```
 

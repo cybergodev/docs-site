@@ -173,64 +173,64 @@ defer auditLogger.Close()
 package main
 
 import (
-    "log"
-    "os"
+	"log"
+	"os"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // 创建审计文件
-    auditFile, err := os.Create("logs/audit.json")
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer auditFile.Close()
+	// 创建审计文件
+	auditFile, err := os.Create("logs/audit.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer auditFile.Close()
 
-    // 创建签名器
-    integrityCfg, err := dd.DefaultIntegrityConfigSafe()
-    if err != nil {
-        log.Fatal(err)
-    }
-    signer, err := dd.NewIntegritySigner(integrityCfg)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 创建签名器
+	integrityCfg, err := dd.DefaultIntegrityConfigSafe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	signer, err := dd.NewIntegritySigner(integrityCfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 创建审计 Logger
-    auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
-        Enabled:          true,
-        Output:           auditFile,
-        JSONFormat:       true,
-        BufferSize:       1000,
-        MinimumSeverity:  dd.AuditSeverityInfo,
-        IntegritySigner:  signer,
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer auditLogger.Close()
+	// 创建审计 Logger
+	auditLogger, err := dd.NewAuditLogger(dd.AuditConfig{
+		Enabled:         true,
+		Output:          auditFile,
+		JSONFormat:      true,
+		BufferSize:      1000,
+		MinimumSeverity: dd.AuditSeverityInfo,
+		IntegritySigner: signer,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer auditLogger.Close()
 
-    // 创建业务 Logger（带安全过滤）
-    logger, err := dd.New(dd.Config{
-        Format:   dd.FormatJSON,
-        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
-        Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	// 创建业务 Logger（带安全过滤）
+	logger, err := dd.New(dd.Config{
+		Format:   dd.FormatJSON,
+		Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
+		Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    // 正常业务日志（敏感数据自动脱敏）
-    logger.InfoWith("用户操作",
-        dd.String("username", "alice"),
-        dd.String("password", "secret123"), // → [REDACTED]
-    )
+	// 正常业务日志（敏感数据自动脱敏）
+	logger.InfoWith("用户操作",
+		dd.String("username", "alice"),
+		dd.String("password", "secret123"), // → [REDACTED]
+	)
 
-    // 注：本示例中 Logger 未设 Config.Audit，因此脱敏等安全事件不会自动入审计。
-    // 若要让业务 logger 的安全事件自动转发到审计流，需在该 logger 的
-    // Config.Audit 中配置（自动转发的仅限：敏感数据脱敏事件与速率限制事件）。
+	// 注：本示例中 Logger 未设 Config.Audit，因此脱敏等安全事件不会自动入审计。
+	// 若要让业务 logger 的安全事件自动转发到审计流，需在该 logger 的
+	// Config.Audit 中配置（自动转发的仅限：敏感数据脱敏事件与速率限制事件）。
 }
 ```
 

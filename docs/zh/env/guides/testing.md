@@ -3,7 +3,6 @@ sidebar_label: "测试场景"
 title: "测试场景 - CyberGo env | 单元测试最佳实践"
 description: "CyberGo env 测试最佳实践指南，含 TestingConfig 配置与 OverwriteExisting 测试隔离、FileSystem 接口模拟内存文件系统、每个测试独立加载器、表驱动与基准测试、ResetDefaultLoader 状态清理策略，保障测试稳定可复现。"
 sidebar_position: 7
-sidebar_icon: "🧪"
 ---
 
 # 测试场景
@@ -387,46 +386,46 @@ func BenchmarkLoadFile(b *testing.B) {
 package testutil
 
 import (
-    "os"
-    "testing"
+	"os"
+	"testing"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func NewTestLoader(t *testing.T, values map[string]string) *env.Loader {
-    t.Helper()
+	t.Helper()
 
-    loader, err := env.New(env.TestingConfig())
-    if err != nil {
-        t.Fatalf("failed to create loader: %v", err)
-    }
+	loader, err := env.New(env.TestingConfig())
+	if err != nil {
+		t.Fatalf("failed to create loader: %v", err)
+	}
 
-    t.Cleanup(func() {
-        loader.Close()
-    })
+	t.Cleanup(func() {
+		loader.Close()
+	})
 
-    for k, v := range values {
-        if err := loader.Set(k, v); err != nil {
-            t.Fatalf("failed to set %s: %v", k, err)
-        }
-    }
+	for k, v := range values {
+		if err := loader.Set(k, v); err != nil {
+			t.Fatalf("failed to set %s: %v", k, err)
+		}
+	}
 
-    return loader
+	return loader
 }
 
 func SetTestEnv(t *testing.T, key, value string) {
-    t.Helper()
+	t.Helper()
 
-    original := os.Getenv(key)
-    os.Setenv(key, value)
+	original := os.Getenv(key)
+	os.Setenv(key, value)
 
-    t.Cleanup(func() {
-        if original == "" {
-            os.Unsetenv(key)
-        } else {
-            os.Setenv(key, original)
-        }
-    })
+	t.Cleanup(func() {
+		if original == "" {
+			os.Unsetenv(key)
+		} else {
+			os.Setenv(key, original)
+		}
+	})
 }
 ```
 

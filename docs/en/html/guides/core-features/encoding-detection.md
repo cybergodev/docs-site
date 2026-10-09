@@ -74,38 +74,38 @@ A GBK-encoded Chinese HTML document is recognized automatically via its meta tag
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
-    "golang.org/x/text/encoding/simplifiedchinese"
+	"github.com/cybergodev/html"
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 func main() {
-    // GBK-encoded Chinese HTML (meta tag declares charset=gbk)
-    gbkHTML := `<html><head><meta charset="gbk">` +
-        `<title>中文网页</title></head>` +
-        `<body><article><h1>你好世界</h1>` +
-        `<p>这是一段中文内容。</p></article></body></html>`
+	// GBK-encoded Chinese HTML (meta tag declares charset=gbk)
+	gbkHTML := `<html><head><meta charset="gbk">` +
+		`<title>中文网页</title></head>` +
+		`<body><article><h1>你好世界</h1>` +
+		`<p>这是一段中文内容。</p></article></body></html>`
 
-    // Encode the UTF-8 string to GBK bytes (simulating a real GBK web page)
-    gbkBytes, err := simplifiedchinese.GBK.NewEncoder().Bytes([]byte(gbkHTML))
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Encode the UTF-8 string to GBK bytes (simulating a real GBK web page)
+	gbkBytes, err := simplifiedchinese.GBK.NewEncoder().Bytes([]byte(gbkHTML))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Auto-detect encoding and extract (detects GBK from meta charset, converts to UTF-8, then extracts)
-    result, err := html.Extract(gbkBytes)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Auto-detect encoding and extract (detects GBK from meta charset, converts to UTF-8, then extracts)
+	result, err := html.Extract(gbkBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("Title:", result.Title)
-    // Title: 中文网页
+	fmt.Println("Title:", result.Title)
+	// Title: 中文网页
 
-    fmt.Println("Text:", result.Text)
-    // Text: 你好世界
-    //       这是一段中文内容。
+	fmt.Println("Text:", result.Text)
+	// Text: 你好世界
+	//       这是一段中文内容。
 }
 ```
 
@@ -138,37 +138,37 @@ Japanese web pages often use the Shift_JIS encoding. Even without a meta declara
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
-    "golang.org/x/text/encoding/japanese"
+	"github.com/cybergodev/html"
+	"golang.org/x/text/encoding/japanese"
 )
 
 func main() {
-    // Shift_JIS-encoded Japanese HTML (no meta charset declaration)
-    sjisHTML := `<html><head><title>日本語ページ</title></head>` +
-        `<body><article><h1>こんにちは</h1>` +
-        `<p>東京の天気は晴れです。</p></article></body></html>`
+	// Shift_JIS-encoded Japanese HTML (no meta charset declaration)
+	sjisHTML := `<html><head><title>日本語ページ</title></head>` +
+		`<body><article><h1>こんにちは</h1>` +
+		`<p>東京の天気は晴れです。</p></article></body></html>`
 
-    // Encode to Shift_JIS bytes
-    sjisBytes, err := japanese.ShiftJIS.NewEncoder().Bytes([]byte(sjisHTML))
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Encode to Shift_JIS bytes
+	sjisBytes, err := japanese.ShiftJIS.NewEncoder().Bytes([]byte(sjisHTML))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // The statistical algorithm recognizes Shift_JIS automatically (samples bytes to analyze Japanese character distribution)
-    result, err := html.Extract(sjisBytes)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// The statistical algorithm recognizes Shift_JIS automatically (samples bytes to analyze Japanese character distribution)
+	result, err := html.Extract(sjisBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("Title:", result.Title)
-    // Title: 日本語ページ
+	fmt.Println("Title:", result.Title)
+	// Title: 日本語ページ
 
-    fmt.Println("Text:", result.Text)
-    // Text: こんにちは
-    //       東京の天気は晴れです。
+	fmt.Println("Text:", result.Text)
+	// Text: こんにちは
+	//       東京の天気は晴れです。
 }
 ```
 
@@ -180,39 +180,39 @@ Western European encodings (containing characters like `é`, `€`) can be speci
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
-    "golang.org/x/text/encoding/charmap"
+	"github.com/cybergodev/html"
+	"golang.org/x/text/encoding/charmap"
 )
 
 func main() {
-    // Windows-1252-encoded Western European text
-    winHTML := `<html><head><title>Café Menu</title></head>` +
-        `<body><article><h1>Café</h1>` +
-        `<p>Price: 100 €. Résumé available.</p></article></body></html>`
+	// Windows-1252-encoded Western European text
+	winHTML := `<html><head><title>Café Menu</title></head>` +
+		`<body><article><h1>Café</h1>` +
+		`<p>Price: 100 €. Résumé available.</p></article></body></html>`
 
-    winBytes, err := charmap.Windows1252.NewEncoder().Bytes([]byte(winHTML))
-    if err != nil {
-        log.Fatal(err)
-    }
+	winBytes, err := charmap.Windows1252.NewEncoder().Bytes([]byte(winHTML))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Manually specify the Windows-1252 encoding
-    cfg := html.DefaultConfig()
-    cfg.Encoding = "windows-1252"
+	// Manually specify the Windows-1252 encoding
+	cfg := html.DefaultConfig()
+	cfg.Encoding = "windows-1252"
 
-    result, err := html.Extract(winBytes, cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(winBytes, cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("Title:", result.Title)
-    // Title: Café Menu
+	fmt.Println("Title:", result.Title)
+	// Title: Café Menu
 
-    fmt.Println("Text:", result.Text)
-    // Text: Café
-    //       Price: 100 €. Résumé available.
+	fmt.Println("Text:", result.Text)
+	// Text: Café
+	//       Price: 100 €. Résumé available.
 }
 ```
 
@@ -249,36 +249,36 @@ With auditing enabled, encoding detection issues are logged as `AuditEventEncodi
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.DefaultConfig()
-    cfg.Audit = html.DefaultAuditConfig()
-    cfg.Audit.Enabled = true
-    // LogEncodingIssues defaults to true (enabled in DefaultAuditConfig)
+	cfg := html.DefaultConfig()
+	cfg.Audit = html.DefaultAuditConfig()
+	cfg.Audit.Enabled = true
+	// LogEncodingIssues defaults to true (enabled in DefaultAuditConfig)
 
-    p, err := html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer p.Close()
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer p.Close()
 
-    // Process HTML (encoding issues are logged to the audit log automatically)
-    p.Extract([]byte(`<html><body><p>content</p></body></html>`))
+	// Process HTML (encoding issues are logged to the audit log automatically)
+	p.Extract([]byte(`<html><body><p>content</p></body></html>`))
 
-    // Query the audit log for encoding events
-    for _, entry := range p.GetAuditLog() {
-        if entry.EventType == html.AuditEventEncodingIssue {
-            fmt.Printf("[Encoding issue] %s\n", entry.Message)
-        }
-    }
+	// Query the audit log for encoding events
+	for _, entry := range p.GetAuditLog() {
+		if entry.EventType == html.AuditEventEncodingIssue {
+			fmt.Printf("[Encoding issue] %s\n", entry.Message)
+		}
+	}
 
-    fmt.Println("Encoding event check complete")
-    // Encoding event check complete
+	fmt.Println("Encoding event check complete")
+	// Encoding event check complete
 }
 ```
 

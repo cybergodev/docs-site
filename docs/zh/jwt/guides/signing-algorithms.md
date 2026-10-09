@@ -43,32 +43,32 @@ HMAC 密钥需通过 `validateSigningKey` 的两项检查：
 package main
 
 import (
-    "crypto/rand"
-    "encoding/base64"
-    "fmt"
-    "log"
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // 使用 crypto/rand 生成 32 字节随机密钥
-    raw := make([]byte, 32)
-    if _, err := rand.Read(raw); err != nil {
-        log.Fatal(err)
-    }
-    // 以 base64 编码存储、传递
-    secret := base64.StdEncoding.EncodeToString(raw)
+	// 使用 crypto/rand 生成 32 字节随机密钥
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		log.Fatal(err)
+	}
+	// 以 base64 编码存储、传递
+	secret := base64.StdEncoding.EncodeToString(raw)
 
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = secret
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = secret
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer processor.Close()
 
-    fmt.Println("HMAC 密钥已就绪，长度（字节）：", len(secret)) // 输出：HMAC 密钥已就绪，长度（字节）：44
+	fmt.Println("HMAC 密钥已就绪，长度（字节）：", len(secret)) // 输出：HMAC 密钥已就绪，长度（字节）：44
 }
 ```
 
@@ -270,23 +270,23 @@ apiCfg.VerificationKey = rsaPublicKey        // *rsa.PublicKey，验证时实际
 package main
 
 import (
-    "fmt"
-    "os"
+	"fmt"
+	"os"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    secret := os.Getenv("JWT_SECRET_KEY")
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = secret
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        fmt.Println("密钥无效：", err)
-        return
-    }
-    defer processor.Close()
-    fmt.Println("Processor 就绪") // 输出：Processor 就绪
+	secret := os.Getenv("JWT_SECRET_KEY")
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = secret
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		fmt.Println("密钥无效：", err)
+		return
+	}
+	defer processor.Close()
+	fmt.Println("Processor 就绪") // 输出：Processor 就绪
 }
 ```
 
@@ -298,44 +298,44 @@ func main() {
 package main
 
 import (
-    "crypto/x509"
-    "encoding/pem"
-    "fmt"
-    "os"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
+	"os"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // 读取私钥 PEM 文件
-    keyData, err := os.ReadFile("private_key.pem")
-    if err != nil {
-        fmt.Println("读取私钥失败：", err)
-        return
-    }
+	// 读取私钥 PEM 文件
+	keyData, err := os.ReadFile("private_key.pem")
+	if err != nil {
+		fmt.Println("读取私钥失败：", err)
+		return
+	}
 
-    block, _ := pem.Decode(keyData)
-    if block == nil {
-        fmt.Println("PEM 解码失败")
-        return
-    }
+	block, _ := pem.Decode(keyData)
+	if block == nil {
+		fmt.Println("PEM 解码失败")
+		return
+	}
 
-    privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-    if err != nil {
-        fmt.Println("解析私钥失败：", err)
-        return
-    }
+	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		fmt.Println("解析私钥失败：", err)
+		return
+	}
 
-    cfg := jwt.DefaultConfig()
-    cfg.SigningMethod = jwt.SigningMethodRS256
-    cfg.SigningKey = privateKey
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        fmt.Println("初始化失败：", err)
-        return
-    }
-    defer processor.Close()
-    fmt.Println("RSA 密钥已从 PEM 加载") // 输出：RSA 密钥已从 PEM 加载
+	cfg := jwt.DefaultConfig()
+	cfg.SigningMethod = jwt.SigningMethodRS256
+	cfg.SigningKey = privateKey
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		fmt.Println("初始化失败：", err)
+		return
+	}
+	defer processor.Close()
+	fmt.Println("RSA 密钥已从 PEM 加载") // 输出：RSA 密钥已从 PEM 加载
 }
 ```
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Debug Visual"
 title: "Debug Output - CyberGo DD | Print/JSON/Text/Exit"
-description: "Complete API documentation for CyberGo DD's debug visualization functions, including Print formatted printing, JSON structured output, Text plain-text output, and Exit fatal-exit. These quick-debug functions are callable directly via package-level functions without creating a Logger instance, dramatically simplifying the development and debugging workflow."
+description: "CyberGo DD debug functions: Print, JSON, Text, and Exit for quick output via package-level calls, with no Logger instance needed."
 sidebar_position: 1
 ---
 

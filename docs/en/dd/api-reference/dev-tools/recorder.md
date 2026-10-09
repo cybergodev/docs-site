@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Recorder"
 title: "Test Helper - CyberGo DD | LoggerRecorder"
-description: "Complete API documentation for the CyberGo DD LoggerRecorder test helper, designed for unit-test scenarios. Captures and asserts on log output, supporting per-level entry filtering, structured-field value validation, entry-count statistics, and in-order assertions. Significantly improves the efficiency and readability of log-related unit tests."
+description: "CyberGo DD LoggerRecorder test helper: capture and assert log output in unit tests, with per-level filtering, field validation, and in-order assertions."
 sidebar_position: 2
 ---
 

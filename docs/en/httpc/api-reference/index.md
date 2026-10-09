@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Overview"
 title: "API Reference - CyberGo HTTPC | Full API Index"
-description: "HTTPC API index: full API map of 28 WithXxx options, 5 config presets, 7 built-in middleware, 12 error variables, and quick-start examples grouped for lookup."
+description: "HTTPC API index: full API map of 27 WithXxx options, 5 config presets, 7 built-in middleware, 12 error variables, and quick-start examples grouped for lookup."
 sidebar_position: 1
 ---
 
 # API Reference
 
-HTTPC provides 28 request-option functions, 5 configuration presets, 7 built-in middleware, and complete download support.
+HTTPC provides 27 request-option functions, 5 configuration presets, 7 built-in middleware, and complete download support.
 
 ## Core Architecture
 
@@ -41,7 +41,7 @@ HTTPC two-layer architecture
 
 | Module | Description |
 |--------|-------------|
-| [Request Options](./core/options) | 28 WithXxx request-option functions (headers, body, authentication, cookies, callbacks, etc.) |
+| [Request Options](./core/options) | 27 WithXxx request-option functions (headers, body, authentication, cookies, callbacks, etc.) |
 | [Built-in Middleware](./client-config/middleware) | Chain composition, 7 built-in middleware factories, and audit event types |
 | [Error Types](./types/errors) | ClientError, 12 ErrorType enums, and 12 error variables |
 
@@ -70,7 +70,7 @@ A complete index grouped by symbol type, mapping one-to-one to the exported surf
 | [`SetSecurityWarnOutput`](./core/functions#setsecuritywarnoutput) | Redirect security-warning output |
 | [`FormatBytes`](./core/functions#formatbytes) / [`FormatSpeed`](./core/functions#formatspeed) | Format byte counts / speeds |
 
-### Request Options (28)
+### Request Options (27)
 
 | Group | Options |
 |-------|---------|
@@ -78,7 +78,7 @@ A complete index grouped by symbol type, mapping one-to-one to the exported surf
 | Authentication (2) | `WithBasicAuth`, `WithBearerToken` |
 | Body (7) | `WithJSON`, `WithXML`, `WithForm`, `WithFormData`, `WithFile`, `WithBinary`, `WithBody` |
 | Query parameters (2) | `WithQuery`, `WithQueryMap` |
-| Cookies (5) | `WithCookie`, `WithCookies`, `WithCookieMap`, `WithCookieString`, `WithSecureCookie` |
+| Cookies (4) | `WithCookies`, `WithCookieMap`, `WithCookieString`, `WithSecureCookie` |
 | Request control (7) | `WithContext`, `WithTimeout`, `WithMaxRetries`, `WithFollowRedirects`, `WithMaxRedirects`, `WithAllowPrivateIPs`, `WithStreamBody` |
 | Callbacks (2) | `WithOnRequest`, `WithOnResponse` |
 

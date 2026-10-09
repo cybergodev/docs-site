@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Web Server Integration"
-title: "Web Server Integration - CyberGo JWT | Auth Middleware & RBAC"
-description: "Production-grade JWT web server integration: authentication flow, Bearer middleware, RBAC role control, refresh token rotation, logout revocation, and graceful shutdown across the full HTTP service lifecycle."
+title: "Web Server Integration - CyberGo JWT | Auth & RBAC"
+description: "Production JWT web server integration: Bearer auth middleware, RBAC role control, refresh token rotation, logout revocation, and graceful shutdown."
 sidebar_position: 15
 check_code: false
 ---

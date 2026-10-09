@@ -30,14 +30,14 @@ The simplest usage is extracting content from HTML bytes:
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html>
+	data := []byte(`<html>
         <head><title>Go Tutorial</title></head>
         <body>
             <article>
@@ -50,31 +50,31 @@ func main() {
         </body>
     </html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("Title:", result.Title)
-    // Title: Go Tutorial
+	fmt.Println("Title:", result.Title)
+	// Title: Go Tutorial
 
-    fmt.Println("Text:", result.Text)
-    // Text: Getting Started with Go
-    //       Go is a statically typed compiled language with built-in concurrency support.
-    //       It compiles quickly, deploys easily, and is ideal for building high-performance services.
-    //       Go Official Site
+	fmt.Println("Text:", result.Text)
+	// Text: Getting Started with Go
+	//       Go is a statically typed compiled language with built-in concurrency support.
+	//       It compiles quickly, deploys easily, and is ideal for building high-performance services.
+	//       Go Official Site
 
-    fmt.Println("Words:", result.WordCount)
-    // Words: 30
+	fmt.Println("Words:", result.WordCount)
+	// Words: 30
 
-    fmt.Println("Reading Time:", result.ReadingTime)
-    // Reading Time: 9s (calculated at 200 words/minute)
+	fmt.Println("Reading Time:", result.ReadingTime)
+	// Reading Time: 9s (calculated at 200 words/minute)
 
-    fmt.Println("Images:", len(result.Images))
-    // Images: 1
+	fmt.Println("Images:", len(result.Images))
+	// Images: 1
 
-    fmt.Println("Links:", len(result.Links))
-    // Links: 1
+	fmt.Println("Links:", len(result.Links))
+	// Links: 1
 }
 ```
 
@@ -216,14 +216,14 @@ Example — extracting HTML containing a table:
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html><body><article>
+	data := []byte(`<html><body><article>
         <h1>Price List</h1>
         <table>
             <tr><th>Product</th><th>Price</th></tr>
@@ -232,18 +232,18 @@ func main() {
         </table>
     </article></body></html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.Text)
-    // Output (when TableFormat = "markdown"):
-    // Price List
-    //
-    // | Product | Price   |
-    // |---------|---------|
-    // | Basic   | Free    |
-    // | Pro     | $99/mo  |
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.Text)
+	// Output (when TableFormat = "markdown"):
+	// Price List
+	//
+	// | Product | Price   |
+	// |---------|---------|
+	// | Basic   | Free    |
+	// | Pro     | $99/mo  |
 }
 ```
 

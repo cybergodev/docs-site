@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Fields"
-title: "Structured Fields - CyberGo DD | Field Constructors & Validation"
-description: "CyberGo DD structured field API: 20 type-safe field constructors (String/Int/Float/Bool/Time/Duration/Err, etc.), the Field type, and optional field-key validation (naming conventions and Log4Shell security detection) with custom validation modes and preset configs."
+title: "Structured Fields - CyberGo DD | Constructors & Validation"
+description: "CyberGo DD structured field API: 20 type-safe field constructors, optional field-key validation with naming rules and Log4Shell detection."
 sidebar_position: 3.5
 ---
 
@@ -199,43 +199,43 @@ Validates whether a field key matches the configuration. Returns an error descri
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // Strict snake_case preset
-    cfg := dd.StrictSnakeCaseConfig()
+	// Strict snake_case preset
+	cfg := dd.StrictSnakeCaseConfig()
 
-    if err := cfg.ValidateFieldKey("user_id"); err != nil {
-        fmt.Println("user_id:", err)
-    } else {
-        fmt.Println("user_id OK")
-        // Output: user_id OK
-    }
+	if err := cfg.ValidateFieldKey("user_id"); err != nil {
+		fmt.Println("user_id:", err)
+	} else {
+		fmt.Println("user_id OK")
+		// Output: user_id OK
+	}
 
-    if err := cfg.ValidateFieldKey("userId"); err != nil {
-        fmt.Println("userId:", err)
-        // Output: userId: field key "userId" does not match snake_case convention
-    }
+	if err := cfg.ValidateFieldKey("userId"); err != nil {
+		fmt.Println("userId:", err)
+		// Output: userId: field key "userId" does not match snake_case convention
+	}
 
-    // Common-abbreviation exemption: URL is not snake_case but hits the abbreviation table, so it passes
-    if err := cfg.ValidateFieldKey("URL"); err != nil {
-        fmt.Println("URL:", err)
-    } else {
-        fmt.Println("URL OK (abbreviation exemption)")
-        // Output: URL OK (abbreviation exemption)
-    }
+	// Common-abbreviation exemption: URL is not snake_case but hits the abbreviation table, so it passes
+	if err := cfg.ValidateFieldKey("URL"); err != nil {
+		fmt.Println("URL:", err)
+	} else {
+		fmt.Println("URL OK (abbreviation exemption)")
+		// Output: URL OK (abbreviation exemption)
+	}
 
-    // Default config Mode=None, no naming validation
-    defaultCfg := dd.DefaultFieldValidationConfig()
-    if err := defaultCfg.ValidateFieldKey("anyKey"); err != nil {
-        fmt.Println("anyKey:", err)
-    } else {
-        fmt.Println("anyKey OK (Mode=None)")
-        // Output: anyKey OK (Mode=None)
-    }
+	// Default config Mode=None, no naming validation
+	defaultCfg := dd.DefaultFieldValidationConfig()
+	if err := defaultCfg.ValidateFieldKey("anyKey"); err != nil {
+		fmt.Println("anyKey:", err)
+	} else {
+		fmt.Println("anyKey OK (Mode=None)")
+		// Output: anyKey OK (Mode=None)
+	}
 }
 ```
 

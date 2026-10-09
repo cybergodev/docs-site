@@ -3,7 +3,6 @@ sidebar_label: "敏感数据脱敏"
 title: "敏感数据脱敏 - CyberGo env | 日志安全工具"
 description: "CyberGo env 敏感数据脱敏工具完整指南，详解 IsSensitiveKey 自动检测密码密钥等敏感键、MaskValue 按敏感性脱敏值、MaskKey 脱敏键名、SanitizeForLog 清理日志字符串与 ClearBytes 安全清零，附 HTTP 中间件与结构化日志实战示例。"
 sidebar_position: 2
-sidebar_icon: "🛡️"
 ---
 
 # 敏感数据脱敏
@@ -56,24 +55,24 @@ func IsSensitiveKey(key string) bool
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 认证与密钥类
-    fmt.Println(env.IsSensitiveKey("DB_PASSWORD"))  // true
-    fmt.Println(env.IsSensitiveKey("API_KEY"))      // true
-    fmt.Println(env.IsSensitiveKey("ACCESS_TOKEN")) // true
+	// 认证与密钥类
+	fmt.Println(env.IsSensitiveKey("DB_PASSWORD"))  // true
+	fmt.Println(env.IsSensitiveKey("API_KEY"))      // true
+	fmt.Println(env.IsSensitiveKey("ACCESS_TOKEN")) // true
 
-    // 大小写不敏感
-    fmt.Println(env.IsSensitiveKey("api_key")) // true
-    fmt.Println(env.IsSensitiveKey("ApiKey"))  // true
+	// 大小写不敏感
+	fmt.Println(env.IsSensitiveKey("api_key")) // true
+	fmt.Println(env.IsSensitiveKey("ApiKey"))  // true
 
-    // 非敏感键
-    fmt.Println(env.IsSensitiveKey("PORT"))    // false
-    fmt.Println(env.IsSensitiveKey("DB_HOST")) // false
+	// 非敏感键
+	fmt.Println(env.IsSensitiveKey("PORT"))    // false
+	fmt.Println(env.IsSensitiveKey("DB_HOST")) // false
 }
 ```
 
@@ -95,23 +94,23 @@ func MaskValue(key, value string) string
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 敏感值 → 脱敏（保留长度信息便于排查）
-    fmt.Println(env.MaskValue("DB_PASSWORD", "p@ssw0rd123"))
-    // 输出: [MASKED:11 chars]
+	// 敏感值 → 脱敏（保留长度信息便于排查）
+	fmt.Println(env.MaskValue("DB_PASSWORD", "p@ssw0rd123"))
+	// 输出: [MASKED:11 chars]
 
-    // 非敏感短值 → 原样返回
-    fmt.Println(env.MaskValue("PORT", "8080"))
-    // 输出: 8080
+	// 非敏感短值 → 原样返回
+	fmt.Println(env.MaskValue("PORT", "8080"))
+	// 输出: 8080
 
-    // 非敏感长值（>20 字符）→ 截断
-    fmt.Println(env.MaskValue("DESCRIPTION", "this-is-a-very-long-description-value"))
-    // 输出: this-is-a-very-lo...
+	// 非敏感长值（>20 字符）→ 截断
+	fmt.Println(env.MaskValue("DESCRIPTION", "this-is-a-very-long-description-value"))
+	// 输出: this-is-a-very-lo...
 }
 ```
 
@@ -136,17 +135,17 @@ func MaskKey(key string) string
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    fmt.Println(env.MaskKey("DB_PASSWORD")) // DB***
-    fmt.Println(env.MaskKey("API_KEY"))     // AP***
-    fmt.Println(env.MaskKey("TOKEN"))       // TO***
-    fmt.Println(env.MaskKey("AB"))          // ***
-    fmt.Println(env.MaskKey("XYZ"))         // ***（长度 ≤ 3）
+	fmt.Println(env.MaskKey("DB_PASSWORD")) // DB***
+	fmt.Println(env.MaskKey("API_KEY"))     // AP***
+	fmt.Println(env.MaskKey("TOKEN"))       // TO***
+	fmt.Println(env.MaskKey("AB"))          // ***
+	fmt.Println(env.MaskKey("XYZ"))         // ***（长度 ≤ 3）
 }
 ```
 
@@ -171,19 +170,19 @@ func MaskSensitiveInString(s string) string
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    long := "012345678901234567890123456789012345678901234567890123456789"
-    fmt.Println(env.MaskSensitiveInString(long))
-    // 输出: 012345678901234567890123456789012345678901234567...
+	long := "012345678901234567890123456789012345678901234567890123456789"
+	fmt.Println(env.MaskSensitiveInString(long))
+	// 输出: 012345678901234567890123456789012345678901234567...
 
-    short := "hello world"
-    fmt.Println(env.MaskSensitiveInString(short))
-    // 输出: hello world
+	short := "hello world"
+	fmt.Println(env.MaskSensitiveInString(short))
+	// 输出: hello world
 }
 ```
 
@@ -201,21 +200,21 @@ func SanitizeForLog(s string) string
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    fmt.Println(env.SanitizeForLog("user=admin password=s3cret"))
-    // 输出: user=admin [MASKED]
+	fmt.Println(env.SanitizeForLog("user=admin password=s3cret"))
+	// 输出: user=admin [MASKED]
 
-    fmt.Println(env.SanitizeForLog("token=abc123 host=localhost"))
-    // 输出: [MASKED] host=localhost
+	fmt.Println(env.SanitizeForLog("token=abc123 host=localhost"))
+	// 输出: [MASKED] host=localhost
 
-    // 多个敏感值全部脱敏
-    fmt.Println(env.SanitizeForLog("user=pguser password=hunter2 api_key=sk_123"))
-    // 输出: user=pguser [MASKED] [MASKED]
+	// 多个敏感值全部脱敏
+	fmt.Println(env.SanitizeForLog("user=pguser password=hunter2 api_key=sk_123"))
+	// 输出: user=pguser [MASKED] [MASKED]
 }
 ```
 
@@ -235,20 +234,20 @@ func ClearBytes(b []byte)
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 模拟以 []byte 形式处理的敏感数据
-    secret := []byte("secret123")
-    fmt.Printf("清零前: %s\n", secret)
-    // 输出: 清零前: secret123
+	// 模拟以 []byte 形式处理的敏感数据
+	secret := []byte("secret123")
+	fmt.Printf("清零前: %s\n", secret)
+	// 输出: 清零前: secret123
 
-    env.ClearBytes(secret)
-    fmt.Printf("清零后: %q\n", secret)
-    // 输出: 清零后: "\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+	env.ClearBytes(secret)
+	fmt.Printf("清零后: %q\n", secret)
+	// 输出: 清零后: "\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 }
 ```
 
@@ -264,36 +263,36 @@ func main() {
 package main
 
 import (
-    "errors"
-    "fmt"
+	"errors"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 模拟从环境变量加载的配置
-    config := []struct{ key, value string }{
-        {"PORT", "8080"},
-        {"DB_HOST", "localhost"},
-        {"DB_PASSWORD", "super-secret-pwd"},
-        {"API_KEY", "sk_live_1234567890abcdef"},
-    }
+	// 模拟从环境变量加载的配置
+	config := []struct{ key, value string }{
+		{"PORT", "8080"},
+		{"DB_HOST", "localhost"},
+		{"DB_PASSWORD", "super-secret-pwd"},
+		{"API_KEY", "sk_live_1234567890abcdef"},
+	}
 
-    fmt.Println("=== 启动配置（已脱敏）===")
-    for _, c := range config {
-        fmt.Printf("%-15s = %s\n", c.key, env.MaskValue(c.key, c.value))
-    }
+	fmt.Println("=== 启动配置（已脱敏）===")
+	for _, c := range config {
+		fmt.Printf("%-15s = %s\n", c.key, env.MaskValue(c.key, c.value))
+	}
 
-    fmt.Println("\n=== 错误日志（自动脱敏）===")
-    err := errors.New("failed to connect: user=admin password=hunter2 host=db.local")
-    fmt.Println(env.SanitizeForLog(err.Error()))
+	fmt.Println("\n=== 错误日志（自动脱敏）===")
+	err := errors.New("failed to connect: user=admin password=hunter2 host=db.local")
+	fmt.Println(env.SanitizeForLog(err.Error()))
 
-    fmt.Println("\n=== 敏感键清单（键名脱敏）===")
-    for _, c := range config {
-        if env.IsSensitiveKey(c.key) {
-            fmt.Printf("敏感配置: %s\n", env.MaskKey(c.key))
-        }
-    }
+	fmt.Println("\n=== 敏感键清单（键名脱敏）===")
+	for _, c := range config {
+		if env.IsSensitiveKey(c.key) {
+			fmt.Printf("敏感配置: %s\n", env.MaskKey(c.key))
+		}
+	}
 }
 ```
 

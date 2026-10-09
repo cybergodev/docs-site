@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Types"
 title: "Error Types - CyberGo HTTPC | ClientError In Detail"
-description: "HTTPC error types API reference: the eight-field ClientError struct and its methods (Code, IsRetryable, Unwrap, etc.), the twelve ErrorType classification enums including ErrorTypeNetwork, sentinel error variables like ErrNilConfig, and errors.Is/As matching examples."
+description: "HTTPC error types: eight-field ClientError with Code, IsRetryable, and Unwrap methods, twelve ErrorType enums, sentinel errors, and errors.Is/As matching."
 sidebar_position: 3
 ---
 

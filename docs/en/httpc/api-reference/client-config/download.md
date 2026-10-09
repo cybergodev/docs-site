@@ -1,7 +1,7 @@
 ---
 sidebar_label: "File Download"
 title: "File Download - CyberGo HTTPC | Download & Verification"
-description: "HTTPC file download API reference: the unified Download entry-point function, DownloadConfig configuration struct, DownloadProgressCallback progress callback, DownloadResult result type, SHA-256 checksum verification, and six layers of file-path security protection including UNC-path blocking."
+description: "HTTPC file download API: Download, DownloadConfig, progress callbacks, DownloadResult, SHA-256 checksum verification, and multi-layer path security."
 sidebar_position: 4
 ---
 

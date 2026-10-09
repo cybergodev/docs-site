@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Writers"
-title: "Output Targets - CyberGo DD | FileWriter, BufferedWriter, MultiWriter"
-description: "CyberGo DD output writer API: FileWriter with automatic size-based rotation and time-based cleanup of old backups, BufferedWriter for high-performance buffered writes (configurable buffer size and flush interval), and MultiWriter for multi-target output (sequential, in registration order). Covers development through production scenarios to help you build a reliable logging system."
+title: "Output Targets - CyberGo DD | FileWriter & BufferedWriter"
+description: "CyberGo DD writers: FileWriter with size-based rotation and backup cleanup, BufferedWriter for buffered writes, and MultiWriter for multi-target output."
 sidebar_position: 1
 ---
 

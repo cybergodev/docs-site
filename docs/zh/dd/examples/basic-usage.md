@@ -13,64 +13,64 @@ sidebar_position: 1
 package main
 
 import (
-    "fmt"
-    "net/http"
-    "time"
+	"fmt"
+	"net/http"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 var logger *dd.Logger
 
 func init() {
-    var err error
-    logger, err = dd.New(dd.Config{Format: dd.FormatJSON, Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/api.json")}})
-    if err != nil {
-        panic(err)
-    }
+	var err error
+	logger, err = dd.New(dd.Config{Format: dd.FormatJSON, Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/api.json")}})
+	if err != nil {
+		panic(err)
+	}
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        start := time.Now()
-        reqID := fmt.Sprintf("req-%d", time.Now().UnixNano())
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		reqID := fmt.Sprintf("req-%d", time.Now().UnixNano())
 
-        ctx := dd.WithRequestID(r.Context(), reqID)
-        ctx = dd.WithTraceID(ctx, r.Header.Get("X-Trace-ID"))
+		ctx := dd.WithRequestID(r.Context(), reqID)
+		ctx = dd.WithTraceID(ctx, r.Header.Get("X-Trace-ID"))
 
-        logger.InfoWith("请求开始",
-            dd.String("method", r.Method),
-            dd.String("path", r.URL.Path),
-            dd.String("remote", r.RemoteAddr),
-        )
+		logger.InfoWith("请求开始",
+			dd.String("method", r.Method),
+			dd.String("path", r.URL.Path),
+			dd.String("remote", r.RemoteAddr),
+		)
 
-        next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r.WithContext(ctx))
 
-        logger.InfoWith("请求完成",
-            dd.String("method", r.Method),
-            dd.String("path", r.URL.Path),
-            dd.Duration("elapsed", time.Since(start)),
-        )
-    })
+		logger.InfoWith("请求完成",
+			dd.String("method", r.Method),
+			dd.String("path", r.URL.Path),
+			dd.Duration("elapsed", time.Since(start)),
+		)
+	})
 }
 
 func main() {
-    defer logger.Close()
+	defer logger.Close()
 
-    mux := http.NewServeMux()
-    mux.HandleFunc("/api/users", handleUsers)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/users", handleUsers)
 
-    fmt.Println("服务启动：:8080")
-    http.ListenAndServe(":8080", loggingMiddleware(mux))
+	fmt.Println("服务启动：:8080")
+	http.ListenAndServe(":8080", loggingMiddleware(mux))
 }
 
 // handleUsers 示例处理器
 func handleUsers(w http.ResponseWriter, r *http.Request) {
-    logger.InfoWith("处理用户请求",
-        dd.String("path", r.URL.Path),
-        dd.String("method", r.Method),
-    )
-    fmt.Fprintf(w, `{"status":"ok"}`)
+	logger.InfoWith("处理用户请求",
+		dd.String("path", r.URL.Path),
+		dd.String("method", r.Method),
+	)
+	fmt.Fprintf(w, `{"status":"ok"}`)
 }
 ```
 
@@ -238,28 +238,28 @@ func TestUserCreation(t *testing.T) {
 package logger
 
 import (
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func SetupLogger(env string) (*dd.Logger, error) {
-    switch env {
-    case "development":
-        return dd.New(dd.DevelopmentConfig())
+	switch env {
+	case "development":
+		return dd.New(dd.DevelopmentConfig())
 
-    case "staging":
-        return dd.New(dd.Config{Format: dd.FormatJSON, Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/app.json")}})
+	case "staging":
+		return dd.New(dd.Config{Format: dd.FormatJSON, Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/app.json")}})
 
-    case "production":
-        return dd.New(dd.Config{
-            Level:    dd.LevelInfo,
-            Format:   dd.FormatJSON,
-            Security: dd.DefaultSecurityConfig(),
-            Targets:  []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/app.json")},
-        })
+	case "production":
+		return dd.New(dd.Config{
+			Level:    dd.LevelInfo,
+			Format:   dd.FormatJSON,
+			Security: dd.DefaultSecurityConfig(),
+			Targets:  []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/app.json")},
+		})
 
-    default:
-        return dd.New(dd.DevelopmentConfig())
-    }
+	default:
+		return dd.New(dd.DevelopmentConfig())
+	}
 }
 ```
 

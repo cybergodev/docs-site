@@ -193,26 +193,14 @@ cfg.AddHook(&FilterFieldsHook{fields: map[string]bool{
 
 ### 安全相关 Config 字段总览
 
-这些限制在库内部汇总为导出类型 `SecurityLimits`（无公开访问器，仅作字段结构说明）：
-
-```go
-type SecurityLimits struct {
-    MaxNestingDepth           int   `json:"max_nesting_depth"`
-    MaxSecurityValidationSize int64 `json:"max_security_validation_size"`
-    MaxObjectKeys             int   `json:"max_object_keys"`
-    MaxArrayElements          int   `json:"max_array_elements"`
-    MaxJSONSize               int64 `json:"max_json_size"`
-    MaxPathDepth              int   `json:"max_path_depth"`
-}
-```
-
-各字段在两种常用配置下的取值：
+这些限制不设独立的汇总类型，直接以 `Config` 字段提供。各字段在两种常用配置下的取值：
 
 | Config 字段 | `DefaultConfig()` 默认 | `SecurityConfig()` 预设 | 触发的错误 |
 |------------|------------------------|--------------------------|------------|
 | `MaxJSONSize` | 100MB（`DefaultMaxJSONSize`） | 10MB | `ErrSizeLimit` |
 | `MaxNestingDepthSecurity` | 200（`DefaultMaxNestingDepth`） | 30 | `ErrDepthLimit` |
 | `MaxPathDepth` | 50（`DefaultMaxPathDepth`） | 30 | `ErrInvalidPath` |
+| `MaxBatchSize` | 2000（`DefaultMaxBatchSize`） | 2000 | `ErrSizeLimit` |
 | `MaxObjectKeys` | 100000（`DefaultMaxObjectKeys`） | 5000 | `ErrSizeLimit` |
 | `MaxArrayElements` | 100000（`DefaultMaxArrayElements`） | 5000 | `ErrSizeLimit` |
 | `MaxSecurityValidationSize` | 10MB（`DefaultMaxSecuritySize`） | 10MB | ——（阈值型） |

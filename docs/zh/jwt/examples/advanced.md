@@ -15,45 +15,45 @@ sidebar_position: 20
 package main
 
 import (
-    "crypto/rand"
-    "crypto/rsa"
-    "fmt"
-    "log"
+	"crypto/rand"
+	"crypto/rsa"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // 生成 RSA 密钥对（实际使用中从文件加载）
-    privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 生成 RSA 密钥对（实际使用中从文件加载）
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    cfg := jwt.DefaultConfig()
-    cfg.SigningMethod = jwt.SigningMethodRS256
-    cfg.SigningKey = privateKey
-    cfg.VerificationKey = &privateKey.PublicKey // 可选，不设置则使用 SigningKey
+	cfg := jwt.DefaultConfig()
+	cfg.SigningMethod = jwt.SigningMethodRS256
+	cfg.SigningKey = privateKey
+	cfg.VerificationKey = &privateKey.PublicKey // 可选，不设置则使用 SigningKey
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user456", Username: "bob"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("RSA Token:", token)
+	claims := &jwt.Claims{UserID: "user456", Username: "bob"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("RSA Token:", token)
 
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid)
-    fmt.Println("UserID:", parsed.UserID)
+	parsed, valid, err := processor.Validate(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Valid:", valid)
+	fmt.Println("UserID:", parsed.UserID)
 }
 ```
 
@@ -65,45 +65,45 @@ RSA-PSS（RS256/384/512 的现代替代）使用概率签名方案（PSS）填�
 package main
 
 import (
-    "crypto/rand"
-    "crypto/rsa"
-    "fmt"
-    "log"
+	"crypto/rand"
+	"crypto/rsa"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // 生成 RSA 密钥对（RSA-PSS 与 RSA 共用同一密钥类型）
-    privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 生成 RSA 密钥对（RSA-PSS 与 RSA 共用同一密钥类型）
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    cfg := jwt.DefaultConfig()
-    cfg.SigningMethod = jwt.SigningMethodPS256
-    cfg.SigningKey = privateKey
-    cfg.VerificationKey = &privateKey.PublicKey
+	cfg := jwt.DefaultConfig()
+	cfg.SigningMethod = jwt.SigningMethodPS256
+	cfg.SigningKey = privateKey
+	cfg.VerificationKey = &privateKey.PublicKey
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user_ps", Username: "diana"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("RSA-PSS Token:", token)
+	claims := &jwt.Claims{UserID: "user_ps", Username: "diana"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("RSA-PSS Token:", token)
 
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid) // 输出：Valid: true
-    fmt.Println("UserID:", parsed.UserID)
+	parsed, valid, err := processor.Validate(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Valid:", valid) // 输出：Valid: true
+	fmt.Println("UserID:", parsed.UserID)
 }
 ```
 
@@ -119,38 +119,38 @@ func main() {
 package main
 
 import (
-    "crypto/ecdsa"
-    "crypto/elliptic"
-    "crypto/rand"
-    "fmt"
-    "log"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // 生成 ECDSA 密钥对
-    privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 生成 ECDSA 密钥对
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    cfg := jwt.DefaultConfig()
-    cfg.SigningMethod = jwt.SigningMethodES256
-    cfg.SigningKey = privateKey
+	cfg := jwt.DefaultConfig()
+	cfg.SigningMethod = jwt.SigningMethodES256
+	cfg.SigningKey = privateKey
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user789", Username: "charlie"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("ECDSA Token:", token)
+	claims := &jwt.Claims{UserID: "user789", Username: "charlie"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("ECDSA Token:", token)
 }
 ```
 
@@ -162,60 +162,60 @@ func main() {
 package main
 
 import (
-    "crypto/rand"
-    "crypto/rsa"
-    "fmt"
-    "log"
+	"crypto/rand"
+	"crypto/rsa"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // 生成 RSA 密钥对
-    privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-    if err != nil {
-        log.Fatal(err)
-    }
-    publicKey := &privateKey.PublicKey
+	// 生成 RSA 密钥对
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		log.Fatal(err)
+	}
+	publicKey := &privateKey.PublicKey
 
-    // --- 认证服务：持有私钥，签发令牌 ---
-    authCfg := jwt.DefaultConfig()
-    authCfg.SigningMethod = jwt.SigningMethodRS256
-    authCfg.SigningKey = privateKey
-    authCfg.Issuer = "auth-service"
+	// --- 认证服务：持有私钥，签发令牌 ---
+	authCfg := jwt.DefaultConfig()
+	authCfg.SigningMethod = jwt.SigningMethodRS256
+	authCfg.SigningKey = privateKey
+	authCfg.Issuer = "auth-service"
 
-    authProcessor, err := jwt.New(authCfg)
-    if err != nil {
-        panic(err)
-    }
-    defer authProcessor.Close()
+	authProcessor, err := jwt.New(authCfg)
+	if err != nil {
+		panic(err)
+	}
+	defer authProcessor.Close()
 
-    claims := &jwt.Claims{UserID: "user_dist", Username: "charlie"}
-    token, err := authProcessor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("认证服务签发令牌（私钥）")
+	claims := &jwt.Claims{UserID: "user_dist", Username: "charlie"}
+	token, err := authProcessor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("认证服务签发令牌（私钥）")
 
-    // --- API 服务：通过公钥验证令牌 ---
-    apiCfg := jwt.DefaultConfig()
-    apiCfg.SigningMethod = jwt.SigningMethodRS256
-    apiCfg.SigningKey = privateKey     // 当前 API 要求 SigningKey 非空
-    apiCfg.VerificationKey = publicKey // 验证时实际使用此公钥
-    apiCfg.Issuer = "auth-service"     // 必须与签发方一致
+	// --- API 服务：通过公钥验证令牌 ---
+	apiCfg := jwt.DefaultConfig()
+	apiCfg.SigningMethod = jwt.SigningMethodRS256
+	apiCfg.SigningKey = privateKey     // 当前 API 要求 SigningKey 非空
+	apiCfg.VerificationKey = publicKey // 验证时实际使用此公钥
+	apiCfg.Issuer = "auth-service"     // 必须与签发方一致
 
-    apiProcessor, err := jwt.New(apiCfg)
-    if err != nil {
-        panic(err)
-    }
-    defer apiProcessor.Close()
+	apiProcessor, err := jwt.New(apiCfg)
+	if err != nil {
+		panic(err)
+	}
+	defer apiProcessor.Close()
 
-    parsed, valid, err := apiProcessor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("API 服务验证通过（公钥）：", valid) // 输出：API 服务验证通过（公钥）： true
-    fmt.Println("UserID:", parsed.UserID)
+	parsed, valid, err := apiProcessor.Validate(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("API 服务验证通过（公钥）：", valid) // 输出：API 服务验证通过（公钥）： true
+	fmt.Println("UserID:", parsed.UserID)
 }
 ```
 
@@ -320,78 +320,78 @@ func main() {
 package main
 
 import (
-    "errors"
-    "fmt"
+	"errors"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 // 自定义 Claims 结构
 type MyClaims struct {
-    UserID string `json:"user_id"`
-    Email  string `json:"email"`
-    Role   string `json:"role"`
-    jwt.RegisteredClaims
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
 }
 
 func (c *MyClaims) GetRegisteredClaims() *jwt.RegisteredClaims {
-    return &c.RegisteredClaims
+	return &c.RegisteredClaims
 }
 
 func (c *MyClaims) Validate() error {
-    if c.UserID == "" {
-        return errors.New("user_id is required")
-    }
-    if c.Email == "" {
-        return errors.New("email is required")
-    }
-    return nil
+	if c.UserID == "" {
+		return errors.New("user_id is required")
+	}
+	if c.Email == "" {
+		return errors.New("email is required")
+	}
+	return nil
 }
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &MyClaims{
-        UserID: "user123",
-        Email:  "alice@example.com",
-        Role:   "admin",
-    }
+	claims := &MyClaims{
+		UserID: "user123",
+		Email:  "alice@example.com",
+		Role:   "admin",
+	}
 
-    // 创建令牌
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token:", token)
+	// 创建令牌
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token:", token)
 
-    // 验证到自定义 Claims
-    myClaims := &MyClaims{}
-    result, valid, err := processor.ValidateInto(token, myClaims)
-    if err != nil {
-        panic(err)
-    }
-    if valid {
-        parsed := result.(*MyClaims)
-        fmt.Println("UserID:", parsed.UserID) // 输出：user123
-        fmt.Println("Email:", parsed.Email)   // 输出：alice@example.com
-    }
+	// 验证到自定义 Claims
+	myClaims := &MyClaims{}
+	result, valid, err := processor.ValidateInto(token, myClaims)
+	if err != nil {
+		panic(err)
+	}
+	if valid {
+		parsed := result.(*MyClaims)
+		fmt.Println("UserID:", parsed.UserID) // 输出：user123
+		fmt.Println("Email:", parsed.Email)   // 输出：alice@example.com
+	}
 
-    // 刷新到自定义 Claims
-    refreshToken, err := processor.CreateRefresh(claims)
-    if err != nil {
-        panic(err)
-    }
-    newToken, err := processor.RefreshInto(refreshToken, &MyClaims{})
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("New Token:", newToken)
+	// 刷新到自定义 Claims
+	refreshToken, err := processor.CreateRefresh(claims)
+	if err != nil {
+		panic(err)
+	}
+	newToken, err := processor.RefreshInto(refreshToken, &MyClaims{})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("New Token:", newToken)
 }
 ```
 
@@ -401,63 +401,63 @@ func main() {
 package main
 
 import (
-    "context"
-    "fmt"
-    "time"
+	"context"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 // RedisBlacklistStore 实现 BlacklistStore 接口
 // 注意：实际使用时需引入 Redis 客户端（如 github.com/redis/go-redis）
 type RedisBlacklistStore struct {
-    // client *redis.Client
+	// client *redis.Client
 }
 
 func (s *RedisBlacklistStore) Add(tokenID string, expiresAt time.Time) error {
-    ttl := time.Until(expiresAt)
-    if ttl <= 0 {
-        return nil
-    }
-    // return s.client.Set(context.Background(), "blacklist:"+tokenID, "1", ttl).Err()
-    fmt.Printf("Redis ADD: %s, TTL: %v\n", tokenID, ttl)
-    return nil
+	ttl := time.Until(expiresAt)
+	if ttl <= 0 {
+		return nil
+	}
+	// return s.client.Set(context.Background(), "blacklist:"+tokenID, "1", ttl).Err()
+	fmt.Printf("Redis ADD: %s, TTL: %v\n", tokenID, ttl)
+	return nil
 }
 
 func (s *RedisBlacklistStore) Contains(tokenID string) (bool, error) {
-    // return s.client.Exists(context.Background(), "blacklist:"+tokenID).Result()
-    return false, nil
+	// return s.client.Exists(context.Background(), "blacklist:"+tokenID).Result()
+	return false, nil
 }
 
 func (s *RedisBlacklistStore) Close() error {
-    // return s.client.Close()
-    return nil
+	// return s.client.Close()
+	return nil
 }
 
 func main() {
-    _ = context.Background() // 保持 context 导入可用（实际使用时取消注释 Redis 调用）
+	_ = context.Background() // 保持 context 导入可用（实际使用时取消注释 Redis 调用）
 
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    cfg.Blacklist.Store = &RedisBlacklistStore{}
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg.Blacklist.Store = &RedisBlacklistStore{}
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user123", Username: "alice"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	claims := &jwt.Claims{UserID: "user123", Username: "alice"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    err = processor.Revoke(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token revoked via Redis backend")
+	err = processor.Revoke(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token revoked via Redis backend")
 }
 ```
 
@@ -469,37 +469,37 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    cfg.Clock = jwt.FixedClock{T: fixedTime}
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg.Clock = jwt.FixedClock{T: fixedTime}
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user123", Username: "alice"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	claims := &jwt.Claims{UserID: "user123", Username: "alice"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    parsed, _, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("IssuedAt:", parsed.IssuedAt.Time)   // 输出：2026-01-01 00:00:00 +0000 UTC
-    fmt.Println("ExpiresAt:", parsed.ExpiresAt.Time) // 输出：2026-01-01 00:15:00 +0000 UTC
+	parsed, _, err := processor.Validate(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("IssuedAt:", parsed.IssuedAt.Time)   // 输出：2026-01-01 00:00:00 +0000 UTC
+	fmt.Println("ExpiresAt:", parsed.ExpiresAt.Time) // 输出：2026-01-01 00:15:00 +0000 UTC
 }
 ```
 
@@ -511,33 +511,33 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user123", Username: "alice"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	claims := &jwt.Claims{UserID: "user123", Username: "alice"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    // 不验证签名解析
-    parsed := &jwt.Claims{}
-    err = processor.ParseUnverified(token, parsed)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("UserID (unverified):", parsed.UserID)
+	// 不验证签名解析
+	parsed := &jwt.Claims{}
+	err = processor.ParseUnverified(token, parsed)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("UserID (unverified):", parsed.UserID)
 }
 ```
 

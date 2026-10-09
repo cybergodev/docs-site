@@ -426,10 +426,10 @@ package main
 import "github.com/cybergodev/env"
 
 func main() {
-    // Enable at application startup
-    env.SetMemoryLockEnabled(true)
+	// Enable at application startup
+	env.SetMemoryLockEnabled(true)
 
-    // All subsequent SecureValues will attempt to lock
+	// All subsequent SecureValues will attempt to lock
 }
 ```
 
@@ -679,57 +679,57 @@ Used for truncating long strings that may contain sensitive data. To auto-mask s
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Check and enable memory locking
-    if env.IsMemoryLockSupported() {
-        env.SetMemoryLockEnabled(true)
-        fmt.Println("Memory locking enabled")
-    }
+	// Check and enable memory locking
+	if env.IsMemoryLockSupported() {
+		env.SetMemoryLockEnabled(true)
+		fmt.Println("Memory locking enabled")
+	}
 
-    // Load environment variables
-    if err := env.Load(".env"); err != nil {
-        log.Printf("Warning: %v", err)
-    }
+	// Load environment variables
+	if err := env.Load(".env"); err != nil {
+		log.Printf("Warning: %v", err)
+	}
 
-    // Securely get sensitive value
-    apiKey := env.GetSecure("API_KEY")
-    if apiKey == nil {
-        log.Fatal("API_KEY not found")
-    }
-    defer apiKey.Release()
+	// Securely get sensitive value
+	apiKey := env.GetSecure("API_KEY")
+	if apiKey == nil {
+		log.Fatal("API_KEY not found")
+	}
+	defer apiKey.Release()
 
-    // Safe usage
-    fmt.Printf("API Key length: %d\n", apiKey.Length())
-    fmt.Printf("API Key (masked): %s\n", apiKey.Masked())
+	// Safe usage
+	fmt.Printf("API Key length: %d\n", apiKey.Length())
+	fmt.Printf("API Key (masked): %s\n", apiKey.Masked())
 
-    // Check memory lock status
-    if apiKey.IsMemoryLocked() {
-        fmt.Println("Memory is locked")
-    }
+	// Check memory lock status
+	if apiKey.IsMemoryLocked() {
+		fmt.Println("Memory is locked")
+	}
 
-    // Check locking error
-    if err := apiKey.MemoryLockError(); err != nil {
-        fmt.Printf("Memory lock warning: %v\n", err)
-    }
+	// Check locking error
+	if err := apiKey.MemoryLockError(); err != nil {
+		fmt.Printf("Memory lock warning: %v\n", err)
+	}
 
-    // Pass to other functions
-    connectAPI(apiKey.Reveal())
+	// Pass to other functions
+	connectAPI(apiKey.Reveal())
 
-    // Use security utility functions
-    logMessage := "Processing with API_KEY=secret"
-    safeMessage := env.SanitizeForLog(logMessage)
-    fmt.Println(safeMessage)  // Processing with API_KEY=[MASKED]
+	// Use security utility functions
+	logMessage := "Processing with API_KEY=secret"
+	safeMessage := env.SanitizeForLog(logMessage)
+	fmt.Println(safeMessage) // Processing with API_KEY=[MASKED]
 }
 
 func connectAPI(key string) {
-    // Connect with key...
-    fmt.Printf("Connecting with key of length %d\n", len(key))
+	// Connect with key...
+	fmt.Printf("Connecting with key of length %d\n", len(key))
 }
 ```
 

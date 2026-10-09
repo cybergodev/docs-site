@@ -116,31 +116,31 @@ Disabling the cache is suitable for **one-time processing of large amounts of di
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    // Crawler processing many distinct pages: disable cache to save hash computation and memory
-    cfg := html.DefaultConfig()
-    cfg.MaxCacheEntries = 0 // Zero overhead, skip the entire cache layer
-    cfg.CacheTTL = 0         // Also disable the background cleanup goroutine
-    cfg.CacheCleanup = 0
+	// Crawler processing many distinct pages: disable cache to save hash computation and memory
+	cfg := html.DefaultConfig()
+	cfg.MaxCacheEntries = 0 // Zero overhead, skip the entire cache layer
+	cfg.CacheTTL = 0        // Also disable the background cleanup goroutine
+	cfg.CacheCleanup = 0
 
-    p, err := html.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer p.Close()
+	p, err := html.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer p.Close()
 
-    // eachPage comes from a real crawl stream, almost never duplicated
-    result, err := p.Extract([]byte("<html><body>Every page is different</body></html>"))
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Text length:", len(result.Text))
-    // Output: Text length: ...
+	// eachPage comes from a real crawl stream, almost never duplicated
+	result, err := p.Extract([]byte("<html><body>Every page is different</body></html>"))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Text length:", len(result.Text))
+	// Output: Text length: ...
 }
 ```
 
@@ -192,41 +192,41 @@ When handling timeouts/cancellation at the application layer, distinguish the so
 package main
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.DefaultConfig()
-    cfg.ProcessingTimeout = 5 * time.Second // Library timeout
-    p, err := html.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer p.Close()
+	cfg := html.DefaultConfig()
+	cfg.ProcessingTimeout = 5 * time.Second // Library timeout
+	p, err := html.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer p.Close()
 
-    // Outer context adds another safeguard (can be shorter than the library timeout)
-    ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-    defer cancel()
+	// Outer context adds another safeguard (can be shorter than the library timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
 
-    result, err := p.ExtractWithContext(ctx, []byte("<html></html>"))
-    switch {
-    case errors.Is(err, html.ErrProcessingTimeout):
-        fmt.Println("Library processing timeout: consider increasing ProcessingTimeout or reducing input")
-    case errors.Is(err, context.DeadlineExceeded):
-        fmt.Println("Outer context timeout")
-    case errors.Is(err, context.Canceled):
-        fmt.Println("Caller cancelled")
-    case err != nil:
-        fmt.Println("Other error:", err)
-    default:
-        fmt.Println("Success, text length:", len(result.Text))
-    }
-    // Output: Success, text length: ...
+	result, err := p.ExtractWithContext(ctx, []byte("<html></html>"))
+	switch {
+	case errors.Is(err, html.ErrProcessingTimeout):
+		fmt.Println("Library processing timeout: consider increasing ProcessingTimeout or reducing input")
+	case errors.Is(err, context.DeadlineExceeded):
+		fmt.Println("Outer context timeout")
+	case errors.Is(err, context.Canceled):
+		fmt.Println("Caller cancelled")
+	case err != nil:
+		fmt.Println("Other error:", err)
+	default:
+		fmt.Println("Success, text length:", len(result.Text))
+	}
+	// Output: Success, text length: ...
 }
 ```
 
@@ -251,33 +251,33 @@ Therefore, no matter how large the batch, the **number of extractions running si
 package main
 
 import (
-    "fmt"
-    "runtime"
+	"fmt"
+	"runtime"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.DefaultConfig()
-    // WorkerPoolSize is capped at 256; cap it on high-core machines
-    n := runtime.NumCPU()
-    if n > 256 {
-        n = 256
-    }
-    cfg.WorkerPoolSize = n
-    p, err := html.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer p.Close()
+	cfg := html.DefaultConfig()
+	// WorkerPoolSize is capped at 256; cap it on high-core machines
+	n := runtime.NumCPU()
+	if n > 256 {
+		n = 256
+	}
+	cfg.WorkerPoolSize = n
+	p, err := html.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer p.Close()
 
-    pages := [][]byte{
-        []byte("<html><body>Page A</body></html>"),
-        []byte("<html><body>Page B</body></html>"),
-    }
-    br := p.ExtractBatch(pages)
-    fmt.Printf("Success %d, Failed %d\n", br.Success, br.Failed)
-    // Output: Success 2, Failed 0
+	pages := [][]byte{
+		[]byte("<html><body>Page A</body></html>"),
+		[]byte("<html><body>Page B</body></html>"),
+	}
+	br := p.ExtractBatch(pages)
+	fmt.Printf("Success %d, Failed %d\n", br.Success, br.Failed)
+	// Output: Success 2, Failed 0
 }
 ```
 
@@ -304,29 +304,29 @@ Reducing the amount of work per extraction is the most direct optimization:
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    // TextOnlyConfig already disables all media preservation, no extra setup needed
-    cfg := html.TextOnlyConfig()
-    cfg.MaxInputSize = 10 * 1024 * 1024 // 10MB, reject oversized input
-    cfg.ExtractArticle = false           // Disable article recognition for faster plain text extraction
+	// TextOnlyConfig already disables all media preservation, no extra setup needed
+	cfg := html.TextOnlyConfig()
+	cfg.MaxInputSize = 10 * 1024 * 1024 // 10MB, reject oversized input
+	cfg.ExtractArticle = false          // Disable article recognition for faster plain text extraction
 
-    p, err := html.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer p.Close()
+	p, err := html.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer p.Close()
 
-    result, err := p.Extract([]byte("<html><body><p>Plain text only</p></body></html>"))
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println(result.Text)
-    // Output: Plain text only
+	result, err := p.Extract([]byte("<html><body><p>Plain text only</p></body></html>"))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(result.Text)
+	// Output: Plain text only
 }
 ```
 
@@ -449,7 +449,7 @@ func BenchmarkConfigs(b *testing.B) {
 :::tip Interpreting benchmark results
 - `ns/op`: time per extraction — lower is faster
 - `B/op` and `allocs/op`: heap allocation bytes and count per extraction — these are the core metrics for judging "whether pooling is working" and "whether caching is hitting." When the cache hits, `allocs/op` drops significantly
-- Comparing `CacheHit` vs `NoCache`: if they are close, your content **has no duplication** and caching is pure overhead — disable it
+- Comparing the cache-hit case (with the default config warmed up, `stats.CacheHits` > 0; note the stats field is plural `CacheHits`) against `NoCache`: if they are close, your content **has no duplication** and caching is pure overhead — disable it
 :::
 
 Run benchmarks:

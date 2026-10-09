@@ -49,34 +49,34 @@ result, err := dc.Get("/users")
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Timeouts.Request = 15 * time.Second
-    cfg.Retry.MaxRetries = 2
-    cfg.Defaults.UserAgent = "my-app/1.0"
+	cfg := httpc.DefaultConfig()
+	cfg.Timeouts.Request = 15 * time.Second
+	cfg.Retry.MaxRetries = 2
+	cfg.Defaults.UserAgent = "my-app/1.0"
 
-    dc, err := httpc.NewDomain("https://api.github.com", cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer dc.Close()
+	dc, err := httpc.NewDomain("https://api.github.com", cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dc.Close()
 
-    if err := dc.SetHeader("Accept", "application/vnd.github+json"); err != nil {
-        log.Fatal(err)
-    }
+	if err := dc.SetHeader("Accept", "application/vnd.github+json"); err != nil {
+		log.Fatal(err)
+	}
 
-    result, err := dc.Get("/repos/golang/go")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.StatusCode()) // 200
+	result, err := dc.Get("/repos/golang/go")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.StatusCode()) // 200
 }
 ```
 
@@ -163,7 +163,7 @@ dc.ClearCookies()
 Cookie 的自动维护覆盖三条路径：
 
 - **响应回填**：每次请求结束后，响应中的 `Set-Cookie` 自动写入会话（下载用的 `Download` 方法同样会捕获响应 Cookie）
-- **校验**：写入前做与 `WithCookie` 相同的合法性校验；配置了 Cookie 安全策略（见下方「Cookie 安全验证」）时，不合规的 Cookie 会被**静默跳过**，不影响其余 Cookie
+- **校验**：写入前做与 `WithCookies` 相同的合法性校验；配置了 Cookie 安全策略（见下方「Cookie 安全验证」）时，不合规的 Cookie 会被**静默跳过**，不影响其余 Cookie
 - **副本语义**：`GetCookie`/`GetCookies` 返回 Cookie 的副本，修改返回值不会污染会话内部状态
 
 ### 请求选项自动持久化
@@ -173,7 +173,7 @@ Cookie 的自动维护覆盖三条路径：
 ```go
 // 第一次请求：选项传入的 Cookie 与请求头……
 _, err := dc.Get("/login",
-    httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"}),
+    httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc"}}),
     httpc.WithHeader("X-Client", "mobile"),
 )
 if err != nil {
@@ -272,7 +272,7 @@ session.UpdateFromResult(result)     // 从 Result 捕获响应 Cookie
 session.UpdateFromCookies(cookies)   // 从 []*http.Cookie 批量更新
 ```
 
-配合普通 `Client` 使用时，需自行读取 `GetHeaders()`/`GetCookies()` 并转成 `WithHeaderMap`/`WithCookie` 选项附加到请求（`DomainClient` 内部正是这样把会话状态注入每个请求的）。
+配合普通 `Client` 使用时，需自行读取 `GetHeaders()`/`GetCookies()` 并转成 `WithHeaderMap`/`WithCookies` 选项附加到请求（`DomainClient` 内部正是这样把会话状态注入每个请求的）。
 
 ## 并发语义
 
@@ -341,54 +341,54 @@ dc.DeleteHeader("Authorization")
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // 创建域名客户端
-    dc, err := httpc.NewDomainDefault("https://api.example.com")
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer dc.Close()
+	// 创建域名客户端
+	dc, err := httpc.NewDomainDefault("https://api.example.com")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dc.Close()
 
-    // 登录获取 Token
-    loginResult, err := dc.Post("/auth/login", httpc.WithJSON(map[string]string{
-        "username": "admin",
-        "password": "secret",
-    }))
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 登录获取 Token
+	loginResult, err := dc.Post("/auth/login", httpc.WithJSON(map[string]string{
+		"username": "admin",
+		"password": "secret",
+	}))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 从响应中解析 Token
-    var loginResp struct {
-        Token string `json:"token"`
-    }
-    if err := loginResult.Unmarshal(&loginResp); err != nil {
-        log.Fatal(err)
-    }
+	// 从响应中解析 Token
+	var loginResp struct {
+		Token string `json:"token"`
+	}
+	if err := loginResult.Unmarshal(&loginResp); err != nil {
+		log.Fatal(err)
+	}
 
-    // 设置会话头
-    if err := dc.SetHeader("Authorization", "Bearer "+loginResp.Token); err != nil {
-        log.Fatal(err)
-    }
+	// 设置会话头
+	if err := dc.SetHeader("Authorization", "Bearer "+loginResp.Token); err != nil {
+		log.Fatal(err)
+	}
 
-    // 后续请求自动携带 Token 和 Cookie
-    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancel()
+	// 后续请求自动携带 Token 和 Cookie
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-    users, err := dc.Request(ctx, "GET", "/users")
-    if err != nil {
-        log.Fatal(err)
-    }
+	users, err := dc.Request(ctx, "GET", "/users")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(users.StatusCode()) // 200
+	fmt.Println(users.StatusCode()) // 200
 }
 ```
 

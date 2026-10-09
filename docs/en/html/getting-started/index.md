@@ -23,14 +23,14 @@ Extract content from HTML bytes:
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html>
+	data := []byte(`<html>
         <head><title>Go Tutorial</title></head>
         <body>
             <article>
@@ -42,16 +42,16 @@ func main() {
         </body>
     </html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("Title:", result.Title)
-    fmt.Println("Text:", result.Text)
-    fmt.Println("Images:", len(result.Images))
-    fmt.Println("Links:", len(result.Links))
-    fmt.Println("Words:", result.WordCount)
+	fmt.Println("Title:", result.Title)
+	fmt.Println("Text:", result.Text)
+	fmt.Println("Images:", len(result.Images))
+	fmt.Println("Links:", len(result.Links))
+	fmt.Println("Words:", result.WordCount)
 }
 ```
 

@@ -43,34 +43,34 @@ DD 采用**计数器采样**策略：
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    cfg := dd.DefaultConfig()
-    cfg.Sampling = &dd.SamplingConfig{
-        Enabled:    true,
-        Initial:    100,             // 前 100 条始终记录
-        Thereafter: 10,              // 之后每 10 条记录 1 条
-        Tick:       time.Second,     // 每秒重置计数器
-    }
+	cfg := dd.DefaultConfig()
+	cfg.Sampling = &dd.SamplingConfig{
+		Enabled:    true,
+		Initial:    100,         // 前 100 条始终记录
+		Thereafter: 10,          // 之后每 10 条记录 1 条
+		Tick:       time.Second, // 每秒重置计数器
+	}
 
-    logger, err := dd.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	logger, err := dd.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    // 模拟高吞吐日志
-    for i := 0; i < 1000; i++ {
-        logger.InfoWith("请求处理",
-            dd.Int("seq", i),
-        )
-    }
-    // 实际输出：前 100 条 + 后 900 条中的 90 条 = 190 条
+	// 模拟高吞吐日志
+	for i := 0; i < 1000; i++ {
+		logger.InfoWith("请求处理",
+			dd.Int("seq", i),
+		)
+	}
+	// 实际输出：前 100 条 + 后 900 条中的 90 条 = 190 条
 }
 ```
 

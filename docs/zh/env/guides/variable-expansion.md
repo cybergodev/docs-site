@@ -3,7 +3,6 @@ sidebar_label: "变量展开"
 title: "变量展开 - CyberGo env | ${VAR} 引用与默认值语法"
 description: "CyberGo env 变量展开语法指南，详解 ${VAR} 与 ${VAR:-default} 引用、${VAR:=default} 默认值、${VAR:?error} 必填校验、$VAR 简写、循环引用检测与 MaxExpansionDepth 深度限制，实现配置复用与动态值替换。"
 sidebar_position: 3
-sidebar_icon: "🔧"
 ---
 
 # 变量展开
@@ -238,30 +237,30 @@ PRICE=$$99.99
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    cfg := env.DefaultConfig()
-    cfg.ExpandVariables = true
+	cfg := env.DefaultConfig()
+	cfg.ExpandVariables = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        log.Fatal(err)
-    }
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("DB_URL:", loader.GetString("DB_URL"))
-    fmt.Println("API_URL:", loader.GetString("API_URL"))
-    fmt.Println("PRICE:", loader.GetString("PRICE"))
+	fmt.Println("DB_URL:", loader.GetString("DB_URL"))
+	fmt.Println("API_URL:", loader.GetString("API_URL"))
+	fmt.Println("PRICE:", loader.GetString("PRICE"))
 }
 ```
 

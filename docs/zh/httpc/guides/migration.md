@@ -32,25 +32,25 @@ HTTPC 不是 `net/http` 的替代品，而是构建在其传输层之上的增�
 package main
 
 import (
-    "fmt"
-    "io"
-    "net/http"
+	"fmt"
+	"io"
+	"net/http"
 )
 
 func main() {
-    resp, err := http.Get("https://httpbin.org/get")
-    if err != nil {
-        panic(err)
-    }
-    defer resp.Body.Close() // 必须手动关闭，否则连接泄漏
+	resp, err := http.Get("https://httpbin.org/get")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close() // 必须手动关闭，否则连接泄漏
 
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        panic(err)
-    }
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(resp.StatusCode) // 200
-    fmt.Println(len(body))       // 响应字节数
+	fmt.Println(resp.StatusCode) // 200
+	fmt.Println(len(body))       // 响应字节数
 }
 ```
 
@@ -58,19 +58,19 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/get")
-    if err != nil {
-        panic(err) // 仅网络层错误
-    }
+	result, err := httpc.Get("https://httpbin.org/get")
+	if err != nil {
+		panic(err) // 仅网络层错误
+	}
 
-    fmt.Println(result.StatusCode())  // 200
-    fmt.Println(len(result.RawBody())) // 响应字节数（已读入内存，无需关闭）
+	fmt.Println(result.StatusCode())   // 200
+	fmt.Println(len(result.RawBody())) // 响应字节数（已读入内存，无需关闭）
 }
 ```
 
@@ -93,7 +93,7 @@ func main() {
 | `req.Header.Set(k, v)` | `httpc.WithHeader(k, v)` / `WithHeaderMap(m)` | 头键值经 CRLF 注入校验，非法值返回 `ErrInvalidHeader` |
 | `req.Header.Set("User-Agent", ua)` | `httpc.WithUserAgent(ua)` | 实例级默认用 `cfg.Defaults.UserAgent` |
 | `req.SetBasicAuth(u, p)` | `httpc.WithBasicAuth(u, p)` | 带格式校验 |
-| `req.AddCookie(&http.Cookie{...})` | `httpc.WithCookie(http.Cookie{...})` | 接受值类型；批量用 `WithCookies`/`WithCookieMap`/`WithCookieString` |
+| `req.AddCookie(&http.Cookie{...})` | `httpc.WithCookies([]http.Cookie{{...}})` | 接受 Cookie 切片（单个也传单元素切片）；仅 name-value 用 `WithCookieMap`、原始头字符串用 `WithCookieString` |
 | `req.URL.Query()` 拼接查询串 | `httpc.WithQuery(k, v)` / `WithQueryMap(m)` | 值支持常见标量与 `fmt.Stringer`，自动编码合并进 URL |
 | `jar, _ := cookiejar.New(nil)` 挂到 `client.Jar` | `cfg.Connection.EnableCookies = true` | 或用 `DomainClient` 自动维护 Cookie 与公共头（见[域名会话](./domain-session)） |
 | `client.CheckRedirect = func(...)` | `cfg.Defaults.FollowRedirects` / `MaxRedirects` | 请求级 `WithFollowRedirects(false)`；重定向域名白名单 `Security.RedirectWhitelist`（见[重定向](./redirects)） |
@@ -136,35 +136,36 @@ func main() {
 package main
 
 import (
-    "encoding/json"
-    "errors"
-    "fmt"
-    "io"
-    "net/http"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
 )
 
 func main() {
-    resp, err := http.Get("https://api.example.com/users/42")
-    if err != nil {
-        // *url.Error：连接失败、超时、TLS 错误都从这里出来，
-        // 进一步分类要靠类型断言或字符串匹配
-        panic(err)
-    }
-    defer resp.Body.Close()
+	resp, err := http.Get("https://api.example.com/users/42")
+	if err != nil {
+		// *url.Error：连接失败、超时、TLS 错误都从这里出来，
+		// 进一步分类要靠类型断言或字符串匹配
+		panic(err)
+	}
+	defer resp.Body.Close()
 
-    // 4xx/5xx 不是 error：走正常路径，需手动检查状态码
-    if resp.StatusCode != http.StatusOK {
-        fmt.Println("HTTP 错误：", resp.StatusCode)
-        return
-    }
+	// 4xx/5xx 不是 error：走正常路径，需手动检查状态码
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("HTTP 错误：", resp.StatusCode)
+		return
+	}
 
-    var user map[string]any
-    // 空响应体时 Decode 返回 io.EOF——常见的遗漏分支
-    if err := json.NewDecoder(resp.Body).Decode(&user); err != nil && !errors.Is(err, io.EOF) {
-        panic(err)
-    }
-    fmt.Println(user["name"])
+	var user map[string]any
+	// 空响应体时 Decode 返回 io.EOF——常见的遗漏分支
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil && !errors.Is(err, io.EOF) {
+		panic(err)
+	}
+	fmt.Println(user["name"])
 }
+
 // 输出（取决于服务端响应）：
 // HTTP 错误： 404
 ```
@@ -175,42 +176,43 @@ func main() {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://api.example.com/users/42")
-    if err != nil {
-        // 网络层错误：已分类为 ClientError（12 类），带短码与可重试性
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            log.Printf("错误类型: %s, 可重试: %v, 尝试次数: %d",
-                clientErr.Code(), clientErr.IsRetryable(), clientErr.Attempts)
-        }
-        panic(err)
-    }
+	result, err := httpc.Get("https://api.example.com/users/42")
+	if err != nil {
+		// 网络层错误：已分类为 ClientError（12 类），带短码与可重试性
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			log.Printf("错误类型: %s, 可重试: %v, 尝试次数: %d",
+				clientErr.Code(), clientErr.IsRetryable(), clientErr.Attempts)
+		}
+		panic(err)
+	}
 
-    // 4xx/5xx 不是 error：通过 Result 的状态判断方法检查
-    if !result.IsSuccess() {
-        fmt.Println("HTTP 错误：", result.StatusCode())
-        return
-    }
+	// 4xx/5xx 不是 error：通过 Result 的状态判断方法检查
+	if !result.IsSuccess() {
+		fmt.Println("HTTP 错误：", result.StatusCode())
+		return
+	}
 
-    var user map[string]any
-    // 空响应体返回哨兵错误 ErrResponseBodyEmpty，errors.Is 精确判断
-    if err := result.Unmarshal(&user); err != nil {
-        if errors.Is(err, httpc.ErrResponseBodyEmpty) {
-            fmt.Println("(空响应体)")
-            return
-        }
-        panic(err)
-    }
-    fmt.Println(user["name"])
+	var user map[string]any
+	// 空响应体返回哨兵错误 ErrResponseBodyEmpty，errors.Is 精确判断
+	if err := result.Unmarshal(&user); err != nil {
+		if errors.Is(err, httpc.ErrResponseBodyEmpty) {
+			fmt.Println("(空响应体)")
+			return
+		}
+		panic(err)
+	}
+	fmt.Println(user["name"])
 }
+
 // 输出（取决于服务端响应）：
 // HTTP 错误： 404
 ```
@@ -271,7 +273,7 @@ result, err := client.Post("https://api.example.com/orders",
 | `bytes.NewReader(raw)` 原始体 | `WithBody(raw)`（类型自动检测）/ `WithBinary(data, ct...)` |
 | `req.Header.Set(k, v)` | `WithHeader(k, v)` / `WithHeaderMap(m)` |
 | `req.SetBasicAuth` / 手拼 Bearer | `WithBasicAuth(u, p)` / `WithBearerToken(t)` |
-| `req.AddCookie` | `WithCookie(c)` / `WithCookies(cs)` / `WithCookieMap(m)` / `WithCookieString(s)` |
+| `req.AddCookie` | `WithCookies(cs)` / `WithCookieMap(m)` / `WithCookieString(s)` |
 | `io.Reader` 流式请求体 | `WithBody(reader)`（原样透传；**绕过大小校验**，用 `io.LimitReader` 包一层） |
 
 上下文用法与标准库一致——`context.Context` 仍然是超时与取消的载体，只是传递位置不同：
@@ -354,33 +356,33 @@ result, err := client.Get(url, httpc.WithTimeout(30*time.Second)) // 本次请�
 package main
 
 import (
-    "crypto/tls"
-    "fmt"
-    "log"
+	"crypto/tls"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // 已有的 tls.Config（自定义 CA、密码套件、mTLS 客户端证书）原样迁入
-    tlsCfg := &tls.Config{
-        MinVersion: tls.VersionTLS12,
-        MaxVersion: tls.VersionTLS13,
-    }
+	// 已有的 tls.Config（自定义 CA、密码套件、mTLS 客户端证书）原样迁入
+	tlsCfg := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		MaxVersion: tls.VersionTLS13,
+	}
 
-    cfg := httpc.DefaultConfig()
-    cfg.Security.TLSConfig = tlsCfg
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	cfg := httpc.DefaultConfig()
+	cfg.Security.TLSConfig = tlsCfg
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err) // 网络层错误
-    }
-    fmt.Println(result.StatusCode()) // 200
+	result, err := client.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err) // 网络层错误
+	}
+	fmt.Println(result.StatusCode()) // 200
 }
 ```
 

@@ -15,52 +15,52 @@ sidebar_position: 2
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/http"
+	"fmt"
+	"log"
+	"net/http"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // 初始化日志记录器
-    logger, err := dd.New(dd.Config{
-        Format: dd.FormatJSON,
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.json"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	// 初始化日志记录器
+	logger, err := dd.New(dd.Config{
+		Format: dd.FormatJSON,
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.json"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    // 设置全局日志记录器
-    dd.SetDefault(logger)
+	// 设置全局日志记录器
+	dd.SetDefault(logger)
 
-    mux := http.NewServeMux()
-    mux.HandleFunc("/api/users", usersHandler)
-    mux.HandleFunc("/api/orders", ordersHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/users", usersHandler)
+	mux.HandleFunc("/api/orders", ordersHandler)
 
-    server := &http.Server{Addr: ":8080", Handler: mux}
+	server := &http.Server{Addr: ":8080", Handler: mux}
 
-    logger.InfoWith("服务启动", dd.String("addr", ":8080"))
-    if err := server.ListenAndServe(); err != nil {
-        logger.ErrorWith("服务异常退出", dd.Err(err))
-    }
+	logger.InfoWith("服务启动", dd.String("addr", ":8080"))
+	if err := server.ListenAndServe(); err != nil {
+		logger.ErrorWith("服务异常退出", dd.Err(err))
+	}
 }
 
 // usersHandler 示例处理器
 func usersHandler(w http.ResponseWriter, r *http.Request) {
-    dd.Default().InfoWith("处理用户请求", dd.String("path", r.URL.Path))
-    fmt.Fprintf(w, `{"status":"ok"}`)
+	dd.Default().InfoWith("处理用户请求", dd.String("path", r.URL.Path))
+	fmt.Fprintf(w, `{"status":"ok"}`)
 }
 
 // ordersHandler 示例处理器
 func ordersHandler(w http.ResponseWriter, r *http.Request) {
-    dd.Default().InfoWith("处理订单请求", dd.String("path", r.URL.Path))
-    fmt.Fprintf(w, `{"status":"ok"}`)
+	dd.Default().InfoWith("处理订单请求", dd.String("path", r.URL.Path))
+	fmt.Fprintf(w, `{"status":"ok"}`)
 }
 ```
 
@@ -156,54 +156,54 @@ func NewOrderService(logger *dd.Logger) *OrderService {
 package main
 
 import (
-    "context"
-    "net/http"
-    "os"
-    "os/signal"
-    "syscall"
-    "time"
+	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    logger, _ := dd.New(dd.Config{
-        Format: dd.FormatJSON,
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.json"),
-        },
-    })
+	logger, _ := dd.New(dd.Config{
+		Format: dd.FormatJSON,
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.json"),
+		},
+	})
 
-    server := &http.Server{Addr: ":8080"}
+	server := &http.Server{Addr: ":8080"}
 
-    // 监听关闭信号
-    quit := make(chan os.Signal, 1)
-    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	// 监听关闭信号
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-    go func() {
-        logger.InfoWith("服务启动", dd.String("addr", ":8080"))
-        if err := server.ListenAndServe(); err != http.ErrServerClosed {
-            logger.ErrorWith("服务异常", dd.Err(err))
-        }
-    }()
+	go func() {
+		logger.InfoWith("服务启动", dd.String("addr", ":8080"))
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			logger.ErrorWith("服务异常", dd.Err(err))
+		}
+	}()
 
-    <-quit
-    logger.Info("正在关闭服务...")
+	<-quit
+	logger.Info("正在关闭服务...")
 
-    // 优雅关闭 HTTP 服务
-    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
+	// 优雅关闭 HTTP 服务
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-    if err := server.Shutdown(ctx); err != nil {
-        logger.ErrorWith("服务关闭失败", dd.Err(err))
-    }
+	if err := server.Shutdown(ctx); err != nil {
+		logger.ErrorWith("服务关闭失败", dd.Err(err))
+	}
 
-    // 优雅关闭日志记录器
-    logger.Info("服务已停止")
-    logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer logCancel()
-    logger.Shutdown(logCtx)
+	// 优雅关闭日志记录器
+	logger.Info("服务已停止")
+	logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer logCancel()
+	logger.Shutdown(logCtx)
 }
 ```
 
@@ -213,88 +213,88 @@ func main() {
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "net/http"
-    "os"
-    "os/signal"
-    "syscall"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 // LoggingMiddleware 请求日志中间件
 func LoggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
-    return func(next http.Handler) http.Handler {
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            start := time.Now()
-            logger.InfoWith("请求开始",
-                dd.String("method", r.Method),
-                dd.String("path", r.URL.Path),
-            )
-            next.ServeHTTP(w, r)
-            logger.InfoWith("请求完成",
-                dd.String("method", r.Method),
-                dd.String("path", r.URL.Path),
-                dd.Duration("elapsed", time.Since(start)),
-            )
-        })
-    }
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			logger.InfoWith("请求开始",
+				dd.String("method", r.Method),
+				dd.String("path", r.URL.Path),
+			)
+			next.ServeHTTP(w, r)
+			logger.InfoWith("请求完成",
+				dd.String("method", r.Method),
+				dd.String("path", r.URL.Path),
+				dd.Duration("elapsed", time.Since(start)),
+			)
+		})
+	}
 }
 
 func main() {
-    logger, err := dd.New(dd.Config{
-        Format: dd.FormatJSON,
-        Security: dd.DefaultSecurityConfig(),
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.json"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    dd.SetDefault(logger)
+	logger, err := dd.New(dd.Config{
+		Format:   dd.FormatJSON,
+		Security: dd.DefaultSecurityConfig(),
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.json"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	dd.SetDefault(logger)
 
-    mux := http.NewServeMux()
-    mux.HandleFunc("/api/users", func(w http.ResponseWriter, r *http.Request) {
-        reqLog := logger.WithFields(
-            dd.String("method", r.Method),
-            dd.String("path", r.URL.Path),
-        )
-        reqLog.Info("处理用户请求")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/users", func(w http.ResponseWriter, r *http.Request) {
+		reqLog := logger.WithFields(
+			dd.String("method", r.Method),
+			dd.String("path", r.URL.Path),
+		)
+		reqLog.Info("处理用户请求")
 
-        w.Header().Set("Content-Type", "application/json")
-        fmt.Fprintf(w, `{"status":"ok"}`)
-    })
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"ok"}`)
+	})
 
-    server := &http.Server{
-        Addr:    ":8080",
-        Handler: LoggingMiddleware(logger)(mux),
-    }
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: LoggingMiddleware(logger)(mux),
+	}
 
-    quit := make(chan os.Signal, 1)
-    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-    go func() {
-        logger.InfoWith("服务启动", dd.String("addr", ":8080"))
-        if err := server.ListenAndServe(); err != http.ErrServerClosed {
-            logger.ErrorWith("服务异常", dd.Err(err))
-        }
-    }()
+	go func() {
+		logger.InfoWith("服务启动", dd.String("addr", ":8080"))
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			logger.ErrorWith("服务异常", dd.Err(err))
+		}
+	}()
 
-    <-quit
-    logger.Info("正在关闭...")
+	<-quit
+	logger.Info("正在关闭...")
 
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
-    server.Shutdown(ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	server.Shutdown(ctx)
 
-    logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer logCancel()
-    logger.Shutdown(logCtx)
+	logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer logCancel()
+	logger.Shutdown(logCtx)
 }
 ```
 

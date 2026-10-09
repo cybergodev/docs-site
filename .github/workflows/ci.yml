@@ -1,0 +1,199 @@
+# Continuous Integration — quality gates for the docs site.
+#
+# Four independent jobs, all running in parallel (no needs: between them):
+#   check               typecheck + projects.yaml<->shared.ts sync + VitePress build + locale parity
+#   lint                CJK typography lint (autocorrect)
+#   audit-api           Go API drift: doc pages vs exported API of the 6 source repos
+#   check-code-samples  compile every ```go block in docs/{lang}/
+#
+# Production deploy is a separate pipeline: deploy.yml (FTPS to the
+# self-hosted server). See DEPLOY.md.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Check projects sync (projects.yaml <-> shared.ts)
+        run: npm run check:projects
+
+      - name: Build with VitePress
+        run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=7168
+
+      - name: Audit locale parity
+        run: npm run audit
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Default args (". --lint --no-diff-bg-color") run lint mode over the
+      # whole tree — the job fails on any CJK typography violation, matching
+      # the local `npm run lint:autocorrect` gate.
+      - name: Autocorrect lint
+        uses: huacnlee/autocorrect-action@v1
+
+  audit-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Source repos of the 6 libraries (single source of truth: .claude/
+      # config/projects.yaml global.github_base + shared.ts PROJECT_META).
+      # Checked out to src/{project}-dev — the layout scripts/audit-api.ts
+      # expects under CYBERGO_SOURCE_ROOT. audit-api.ts silently skips a
+      # missing source, so the checkout steps themselves are the gate: a
+      # private/renamed repo turns this job red instead of being skipped.
+      - name: Checkout json source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/json
+          path: src/json-dev
+
+      - name: Checkout jwt source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/jwt
+          path: src/jwt-dev
+
+      - name: Checkout httpc source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/httpc
+          path: src/httpc-dev
+
+      - name: Checkout html source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/html
+          path: src/html-dev
+
+      - name: Checkout dd source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/dd
+          path: src/dd-dev
+
+      - name: Checkout env source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/env
+          path: src/env-dev
+
+      # No go.sum at the repo root (sources live in src/*-dev) — skip
+      # setup-go's module cache resolution.
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Audit API drift
+        run: npm run audit:api
+        env:
+          CYBERGO_SOURCE_ROOT: src
+
+  check-code-samples:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Same source checkout as audit-api: scripts/check-code-samples.ts
+      # resolves `github.com/cybergodev/{project}` imports via replace
+      # directives pointing at CYBERGO_SOURCE_ROOT/{project}-dev.
+      - name: Checkout json source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/json
+          path: src/json-dev
+
+      - name: Checkout jwt source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/jwt
+          path: src/jwt-dev
+
+      - name: Checkout httpc source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/httpc
+          path: src/httpc-dev
+
+      - name: Checkout html source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/html
+          path: src/html-dev
+
+      - name: Checkout dd source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/dd
+          path: src/dd-dev
+
+      - name: Checkout env source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/env
+          path: src/env-dev
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Check code samples (all languages)
+        run: npm run check:code -- --all
+        env:
+          CYBERGO_SOURCE_ROOT: src

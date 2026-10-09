@@ -33,27 +33,27 @@ go get github.com/cybergodev/dd
 package main
 
 import (
-    "time"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // 使用默认日志记录器
-    dd.Info("服务启动")
+	// 使用默认日志记录器
+	dd.Info("服务启动")
 
-    // 结构化日志
-    dd.InfoWith("请求处理完成",
-        dd.String("method", "GET"),
-        dd.Int("status", 200),
-        dd.Duration("elapsed", 150*time.Millisecond),
-    )
+	// 结构化日志
+	dd.InfoWith("请求处理完成",
+		dd.String("method", "GET"),
+		dd.Int("status", 200),
+		dd.Duration("elapsed", 150*time.Millisecond),
+	)
 
-    // 创建自定义日志记录器
-    logger, _ := dd.New(dd.DefaultConfig())
-    defer logger.Close()
+	// 创建自定义日志记录器
+	logger, _ := dd.New(dd.DefaultConfig())
+	defer logger.Close()
 
-    logger.Info("自定义日志记录器已创建")
+	logger.Info("自定义日志记录器已创建")
 }
 ```
 

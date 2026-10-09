@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Token Refresh & Rotation"
-title: "Token Refresh & Rotation - CyberGo JWT | Access and Refresh Token Strategy"
-description: "Token refresh and rotation guide: two-tier access/refresh token TTL design, CreateRefresh and Refresh flow, custom Claims with RefreshInto, reuse vs. one-time rotation strategies, and Refresh non-revocation security semantics."
+title: "Token Refresh & Rotation - CyberGo JWT | Rotation Strategy"
+description: "Token refresh and rotation in CyberGo JWT: two-tier TTL design, CreateRefresh and Refresh flow, RefreshInto claims, and one-time rotation strategies."
 sidebar_position: 25
 check_code: false
 ---

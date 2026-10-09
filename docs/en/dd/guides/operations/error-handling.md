@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo DD | Logging Error Management"
-description: "A complete error-handling guide for the CyberGo DD logging library, covering structured error types and the hierarchy, error-code design, sentinel-error definitions and matching, errors.Is/As wrapping and unwrapping, custom error-handling strategies, error-recovery mechanisms, and error-hook callback configuration to help you precisely identify and handle all kinds of logging-related errors."
+description: "Error handling in CyberGo DD: error types and hierarchy, error codes, sentinel errors, errors.Is/As wrapping, recovery, and error-hook callbacks."
 sidebar_position: 3
 ---
 

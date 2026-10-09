@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Hook System"
 title: "Hook System - CyberGo DD | Lifecycle Hooks Guide"
-description: "CyberGo DD hook system guide: 6 lifecycle events (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), the HookRegistry registry, the HookContext context, and common extension scenarios."
+description: "CyberGo DD hook system: 6 lifecycle events (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), HookRegistry, and HookContext usage scenarios."
 sidebar_position: 2
 ---
 

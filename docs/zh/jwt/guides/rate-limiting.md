@@ -111,23 +111,23 @@ func (rl *RateLimiter) AllowN(key string, n int) bool
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    limiter := jwt.NewRateLimiter(100, time.Minute)
-    defer limiter.Close()
+	limiter := jwt.NewRateLimiter(100, time.Minute)
+	defer limiter.Close()
 
-    // 一次性申请 10 个配额（如批量签发 10 个令牌）
-    if limiter.AllowN("user:123", 10) {
-        fmt.Println("允许批量操作") // 输出：允许批量操作
-    }
+	// 一次性申请 10 个配额（如批量签发 10 个令牌）
+	if limiter.AllowN("user:123", 10) {
+		fmt.Println("允许批量操作") // 输出：允许批量操作
+	}
 
-    // 剩余 90 个令牌，申请 95 个则拒绝
-    fmt.Println(limiter.AllowN("user:123", 95)) // 输出：false
+	// 剩余 90 个令牌，申请 95 个则拒绝
+	fmt.Println(limiter.AllowN("user:123", 95)) // 输出：false
 }
 ```
 

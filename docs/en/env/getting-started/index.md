@@ -49,21 +49,21 @@ For the complete `.env` syntax rules (quoting, escapes, multi-line values), see 
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Load the .env file and apply to the system environment
-    if err := env.Load(".env"); err != nil {
-        panic(err)
-    }
+	// Load the .env file and apply to the system environment
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
-    // Get environment variables
-    host := env.GetString("DB_HOST", "localhost")
-    port := env.GetInt("DB_PORT", 5432)
+	// Get environment variables
+	host := env.GetString("DB_HOST", "localhost")
+	port := env.GetInt("DB_PORT", 5432)
 
-    fmt.Printf("Server: %s:%d\n", host, port)
+	fmt.Printf("Server: %s:%d\n", host, port)
 }
 ```
 
@@ -219,30 +219,30 @@ Use struct tags to map environment variables to a struct:
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host     string        `env:"DB_HOST" envDefault:"localhost"`
-    Port     int64         `env:"DB_PORT" envDefault:"5432"`
-    Password string        `env:"DB_PASSWORD"`
-    Debug    bool          `env:"DEBUG" envDefault:"false"`
-    Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"ALLOWED_HOSTS"`
+	Host     string        `env:"DB_HOST" envDefault:"localhost"`
+	Port     int64         `env:"DB_PORT" envDefault:"5432"`
+	Password string        `env:"DB_PASSWORD"`
+	Debug    bool          `env:"DEBUG" envDefault:"false"`
+	Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
+	Hosts    []string      `env:"ALLOWED_HOSTS"`
 }
 
 func main() {
-    env.Load(".env")
+	env.Load(".env")
 
-    var cfg Config
-    if err := env.ParseInto(&cfg); err != nil {
-        panic(err)
-    }
+	var cfg Config
+	if err := env.ParseInto(&cfg); err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", cfg)
+	fmt.Printf("%+v\n", cfg)
 }
 ```
 
@@ -314,35 +314,35 @@ When you need more control, use a Loader instance:
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Create configuration
-    cfg := env.ProductionConfig()
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	// Create configuration
+	cfg := env.ProductionConfig()
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-    // Create a loader
-    loader, err := env.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer loader.Close()
+	// Create a loader
+	loader, err := env.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer loader.Close()
 
-    // Load files (in order, later files overwrite earlier ones)
-    if err := loader.LoadFiles(".env", ".env.production"); err != nil {
-        panic(err)
-    }
+	// Load files (in order, later files overwrite earlier ones)
+	if err := loader.LoadFiles(".env", ".env.production"); err != nil {
+		panic(err)
+	}
 
-    // Validate required keys
-    if err := loader.Validate(); err != nil {
-        panic(err)
-    }
+	// Validate required keys
+	if err := loader.Validate(); err != nil {
+		panic(err)
+	}
 
-    // Use
-    host := loader.GetString("DB_HOST")
-    fmt.Println("Host:", host)
+	// Use
+	host := loader.GetString("DB_HOST")
+	fmt.Println("Host:", host)
 }
 ```
 

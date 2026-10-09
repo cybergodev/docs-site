@@ -240,15 +240,15 @@ security := &httpc.CookieSecurityConfig{
     RequireSecure:   true,
     RequireHttpOnly: true,
 }
-// Note: WithSecureCookie must come after WithCookie; it only validates cookies present at apply time
+// Note: WithSecureCookie must come after WithCookies; it only validates cookies present at apply time
 result, err := client.Get("https://api.example.com",
-    httpc.WithCookie(sessionCookie),
+    httpc.WithCookies(sessionCookies),
     httpc.WithSecureCookie(security),
 )
 ```
 
 :::warning
-`WithSecureCookie` is a request-level "after-the-fact" check: it validates only the cookies that exist when it is applied. Always place it after all `WithCookie` options. For order-independent global validation, use config-level `CookieSecurity` or session-level `SetCookieSecurity`.
+`WithSecureCookie` is a request-level "after-the-fact" check: it validates only the cookies that exist when it is applied. Always place it after all cookie-adding options (`WithCookies` etc.). For order-independent global validation, use config-level `CookieSecurity` or session-level `SetCookieSecurity`.
 :::
 
 ## Decompression-Bomb Defense

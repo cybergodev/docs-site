@@ -15,44 +15,44 @@ sidebar_position: 10
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    cfg.AccessTokenTTL = 15 * time.Minute
-    cfg.RefreshTokenTTL = 7 * 24 * time.Hour
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg.AccessTokenTTL = 15 * time.Minute
+	cfg.RefreshTokenTTL = 7 * 24 * time.Hour
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // 签发
-    claims := &jwt.Claims{
-        UserID:      "user123",
-        Username:    "alice",
-        Role:        "admin",
-        Permissions: []string{"read", "write", "delete"},
-    }
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Access Token:", token)
+	// 签发
+	claims := &jwt.Claims{
+		UserID:      "user123",
+		Username:    "alice",
+		Role:        "admin",
+		Permissions: []string{"read", "write", "delete"},
+	}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Access Token:", token)
 
-    // 验证
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid)          // 输出：true
-    fmt.Println("UserID:", parsed.UserID) // 输出：user123
+	// 验证
+	parsed, valid, err := processor.Validate(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Valid:", valid)          // 输出：true
+	fmt.Println("UserID:", parsed.UserID) // 输出：user123
 }
 ```
 
@@ -62,46 +62,46 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{
-        UserID:   "user123",
-        Username: "alice",
-    }
+	claims := &jwt.Claims{
+		UserID:   "user123",
+		Username: "alice",
+	}
 
-    // 创建访问令牌（短期）
-    accessToken, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	// 创建访问令牌（短期）
+	accessToken, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    // 创建刷新令牌（长期）
-    refreshToken, err := processor.CreateRefresh(claims)
-    if err != nil {
-        panic(err)
-    }
+	// 创建刷新令牌（长期）
+	refreshToken, err := processor.CreateRefresh(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println("Access Token:", accessToken)
-    fmt.Println("Refresh Token:", refreshToken)
+	fmt.Println("Access Token:", accessToken)
+	fmt.Println("Refresh Token:", refreshToken)
 
-    // 使用刷新令牌获取新的访问令牌
-    newAccessToken, err := processor.Refresh(refreshToken)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("New Access Token:", newAccessToken)
+	// 使用刷新令牌获取新的访问令牌
+	newAccessToken, err := processor.Refresh(refreshToken)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("New Access Token:", newAccessToken)
 }
 ```
 
@@ -111,43 +111,43 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user123", Username: "alice"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	claims := &jwt.Claims{UserID: "user123", Username: "alice"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    // 吊销令牌
-    err = processor.Revoke(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token revoked")
+	// 吊销令牌
+	err = processor.Revoke(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token revoked")
 
-    // 再次验证会失败
-    _, _, err = processor.Validate(token)
-    fmt.Println("Validate error:", err) // token revoked
+	// 再次验证会失败
+	_, _, err = processor.Validate(token)
+	fmt.Println("Validate error:", err) // token revoked
 
-    // 检查是否已吊销
-    revoked, err := processor.IsRevoked(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Is revoked:", revoked) // 输出：true
+	// 检查是否已吊销
+	revoked, err := processor.IsRevoked(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Is revoked:", revoked) // 输出：true
 }
 ```
 
@@ -157,40 +157,40 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    cfg.EnableRateLimit = true
-    cfg.RateLimitRate = 5              // 每分钟最多 5 次
-    cfg.RateLimitWindow = time.Minute
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg.EnableRateLimit = true
+	cfg.RateLimitRate = 5 // 每分钟最多 5 次
+	cfg.RateLimitWindow = time.Minute
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user123", Username: "alice"}
+	claims := &jwt.Claims{UserID: "user123", Username: "alice"}
 
-    // 正常请求
-    for i := 0; i < 5; i++ {
-        _, err := processor.Create(claims)
-        if err != nil {
-            fmt.Printf("Request %d: %v\n", i+1, err)
-        } else {
-            fmt.Printf("Request %d: success\n", i+1)
-        }
-    }
+	// 正常请求
+	for i := 0; i < 5; i++ {
+		_, err := processor.Create(claims)
+		if err != nil {
+			fmt.Printf("Request %d: %v\n", i+1, err)
+		} else {
+			fmt.Printf("Request %d: success\n", i+1)
+		}
+	}
 
-    // 第 6 次请求被限流
-    _, err = processor.Create(claims)
-    fmt.Println("Request 6:", err) // rate limit exceeded
+	// 第 6 次请求被限流
+	_, err = processor.Create(claims)
+	fmt.Println("Request 6:", err) // rate limit exceeded
 }
 ```
 
@@ -202,58 +202,58 @@ func main() {
 package main
 
 import (
-    "errors"
-    "fmt"
+	"errors"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    cfg.ExpectedAudience = "billing-api" // 仅接受面向 billing-api 的令牌
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg.ExpectedAudience = "billing-api" // 仅接受面向 billing-api 的令牌
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // 受众匹配的令牌
-    validClaims := &jwt.Claims{
-        UserID: "user1",
-        RegisteredClaims: jwt.RegisteredClaims{
-            Audience: jwt.StringOrSlice{"billing-api"},
-        },
-    }
-    validToken, err := processor.Create(validClaims)
-    if err != nil {
-        panic(err)
-    }
+	// 受众匹配的令牌
+	validClaims := &jwt.Claims{
+		UserID: "user1",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.StringOrSlice{"billing-api"},
+		},
+	}
+	validToken, err := processor.Create(validClaims)
+	if err != nil {
+		panic(err)
+	}
 
-    _, valid, err := processor.Validate(validToken)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Matching audience valid:", valid) // 输出：true
+	_, valid, err := processor.Validate(validToken)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Matching audience valid:", valid) // 输出：true
 
-    // 受众不匹配的令牌会被拒绝
-    wrongClaims := &jwt.Claims{
-        UserID: "user2",
-        RegisteredClaims: jwt.RegisteredClaims{
-            Audience: jwt.StringOrSlice{"admin-api"},
-        },
-    }
-    wrongToken, err := processor.Create(wrongClaims)
-    if err != nil {
-        panic(err)
-    }
+	// 受众不匹配的令牌会被拒绝
+	wrongClaims := &jwt.Claims{
+		UserID: "user2",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.StringOrSlice{"admin-api"},
+		},
+	}
+	wrongToken, err := processor.Create(wrongClaims)
+	if err != nil {
+		panic(err)
+	}
 
-    _, valid, err = processor.Validate(wrongToken)
-    fmt.Println("Wrong audience valid:", valid) // 输出：false
-    fmt.Println("Wrong audience error:", err)   // 输出：token invalid audience
-    fmt.Println("Is audience error:",
-        errors.Is(err, jwt.ErrTokenInvalidAudience)) // 输出：true
+	_, valid, err = processor.Validate(wrongToken)
+	fmt.Println("Wrong audience valid:", valid) // 输出：false
+	fmt.Println("Wrong audience error:", err)   // 输出：token invalid audience
+	fmt.Println("Is audience error:",
+		errors.Is(err, jwt.ErrTokenInvalidAudience)) // 输出：true
 }
 ```
 
@@ -269,54 +269,54 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // 用 Extra 存储附加业务字段（仅支持 string 和 []string 值）
-    claims := &jwt.Claims{
-        UserID:   "user123",
-        Username: "alice",
-        Role:     "engineer",
-        Extra: map[string]any{
-            "team_id": "team-backend",
-            "level":   "senior",
-            "tags":    []string{"onboarding", "mentor"},
-        },
-    }
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	// 用 Extra 存储附加业务字段（仅支持 string 和 []string 值）
+	claims := &jwt.Claims{
+		UserID:   "user123",
+		Username: "alice",
+		Role:     "engineer",
+		Extra: map[string]any{
+			"team_id": "team-backend",
+			"level":   "senior",
+			"tags":    []string{"onboarding", "mentor"},
+		},
+	}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    // 验证后读取 Extra 字段
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid)            // 输出：true
-    fmt.Println("UserID:", parsed.UserID)   // 输出：user123
+	// 验证后读取 Extra 字段
+	parsed, valid, err := processor.Validate(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Valid:", valid)          // 输出：true
+	fmt.Println("UserID:", parsed.UserID) // 输出：user123
 
-    // 类型断言读取 Extra 值
-    if teamID, ok := parsed.Extra["team_id"].(string); ok {
-        fmt.Println("TeamID:", teamID) // 输出：team-backend
-    }
-    if level, ok := parsed.Extra["level"].(string); ok {
-        fmt.Println("Level:", level) // 输出：senior
-    }
-    if tags, ok := parsed.Extra["tags"].([]string); ok {
-        fmt.Println("Tags:", tags) // 输出：[onboarding mentor]
-    }
+	// 类型断言读取 Extra 值
+	if teamID, ok := parsed.Extra["team_id"].(string); ok {
+		fmt.Println("TeamID:", teamID) // 输出：team-backend
+	}
+	if level, ok := parsed.Extra["level"].(string); ok {
+		fmt.Println("Level:", level) // 输出：senior
+	}
+	if tags, ok := parsed.Extra["tags"].([]string); ok {
+		fmt.Println("Tags:", tags) // 输出：[onboarding mentor]
+	}
 }
 ```
 

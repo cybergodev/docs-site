@@ -184,43 +184,43 @@ case errors.Is(err, html.ErrFileNotFound),
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.HighSecurityConfig()
+	cfg := html.HighSecurityConfig()
 
-    // 1. 配置合法性校验（New 内部会调 Validate）
-    p, err := html.New(cfg)
-    if err != nil {
-        log.Fatalf("配置非法: %v", err)
-    }
-    defer p.Close()
+	// 1. 配置合法性校验（New 内部会调 Validate）
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatalf("配置非法: %v", err)
+	}
+	defer p.Close()
 
-    // 2. 关键配置项核对
-    fmt.Printf("MaxInputSize      = %d bytes\n", cfg.MaxInputSize)
-    fmt.Printf("MaxDepth          = %d\n", cfg.MaxDepth)
-    fmt.Printf("ProcessingTimeout = %v\n", cfg.ProcessingTimeout)
-    fmt.Printf("WorkerPoolSize    = %d\n", cfg.WorkerPoolSize)
-    fmt.Printf("Audit.Enabled     = %v\n", cfg.Audit.Enabled)
+	// 2. 关键配置项核对
+	fmt.Printf("MaxInputSize      = %d bytes\n", cfg.MaxInputSize)
+	fmt.Printf("MaxDepth          = %d\n", cfg.MaxDepth)
+	fmt.Printf("ProcessingTimeout = %v\n", cfg.ProcessingTimeout)
+	fmt.Printf("WorkerPoolSize    = %d\n", cfg.WorkerPoolSize)
+	fmt.Printf("Audit.Enabled     = %v\n", cfg.Audit.Enabled)
 
-    // 3. 实际提取测试
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
+	// 3. 实际提取测试
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-    sample := []byte("<html><body><h1>自检</h1><p>生产就绪</p></body></html>")
-    result, err := p.ExtractWithContext(ctx, sample)
-    if err != nil {
-        log.Fatalf("提取失败: %v", err)
-    }
-    fmt.Printf("提取成功，文本长度: %d\n", len(result.Text))
+	sample := []byte("<html><body><h1>自检</h1><p>生产就绪</p></body></html>")
+	result, err := p.ExtractWithContext(ctx, sample)
+	if err != nil {
+		log.Fatalf("提取失败: %v", err)
+	}
+	fmt.Printf("提取成功，文本长度: %d\n", len(result.Text))
 
-    fmt.Println("✓ 配置自检通过")
+	fmt.Println("✓ 配置自检通过")
 }
 ```
 

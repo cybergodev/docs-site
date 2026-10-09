@@ -23,14 +23,14 @@ go get github.com/cybergodev/html
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html>
+	data := []byte(`<html>
         <head><title>Go 语言教程</title></head>
         <body>
             <article>
@@ -42,16 +42,16 @@ func main() {
         </body>
     </html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("标题：", result.Title)
-    fmt.Println("正文：", result.Text)
-    fmt.Println("图片数：", len(result.Images))
-    fmt.Println("链接数：", len(result.Links))
-    fmt.Println("字数：", result.WordCount)
+	fmt.Println("标题：", result.Title)
+	fmt.Println("正文：", result.Text)
+	fmt.Println("图片数：", len(result.Images))
+	fmt.Println("链接数：", len(result.Links))
+	fmt.Println("字数：", result.WordCount)
 }
 ```
 

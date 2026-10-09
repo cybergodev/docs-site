@@ -49,21 +49,21 @@ ALLOWED_HOSTS=localhost,example.com,api.example.com
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 加载 .env 文件并应用到系统环境
-    if err := env.Load(".env"); err != nil {
-        panic(err)
-    }
+	// 加载 .env 文件并应用到系统环境
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
-    // 获取环境变量
-    host := env.GetString("DB_HOST", "localhost")
-    port := env.GetInt("DB_PORT", 5432)
+	// 获取环境变量
+	host := env.GetString("DB_HOST", "localhost")
+	port := env.GetInt("DB_PORT", 5432)
 
-    fmt.Printf("Server: %s:%d\n", host, port)
+	fmt.Printf("Server: %s:%d\n", host, port)
 }
 ```
 
@@ -220,30 +220,30 @@ if secret != nil {
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host     string        `env:"DB_HOST" envDefault:"localhost"`
-    Port     int64         `env:"DB_PORT" envDefault:"5432"`
-    Password string        `env:"DB_PASSWORD"`
-    Debug    bool          `env:"DEBUG" envDefault:"false"`
-    Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"ALLOWED_HOSTS"`
+	Host     string        `env:"DB_HOST" envDefault:"localhost"`
+	Port     int64         `env:"DB_PORT" envDefault:"5432"`
+	Password string        `env:"DB_PASSWORD"`
+	Debug    bool          `env:"DEBUG" envDefault:"false"`
+	Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
+	Hosts    []string      `env:"ALLOWED_HOSTS"`
 }
 
 func main() {
-    env.Load(".env")
+	env.Load(".env")
 
-    var cfg Config
-    if err := env.ParseInto(&cfg); err != nil {
-        panic(err)
-    }
+	var cfg Config
+	if err := env.ParseInto(&cfg); err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", cfg)
+	fmt.Printf("%+v\n", cfg)
 }
 ```
 
@@ -315,35 +315,35 @@ env.Load(".env", ".env."+goEnv, ".env.local")
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 创建配置
-    cfg := env.ProductionConfig()
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	// 创建配置
+	cfg := env.ProductionConfig()
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-    // 创建加载器
-    loader, err := env.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer loader.Close()
+	// 创建加载器
+	loader, err := env.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer loader.Close()
 
-    // 加载文件（按顺序，后加载的覆盖先加载的）
-    if err := loader.LoadFiles(".env", ".env.production"); err != nil {
-        panic(err)
-    }
+	// 加载文件（按顺序，后加载的覆盖先加载的）
+	if err := loader.LoadFiles(".env", ".env.production"); err != nil {
+		panic(err)
+	}
 
-    // 验证必需键
-    if err := loader.Validate(); err != nil {
-        panic(err)
-    }
+	// 验证必需键
+	if err := loader.Validate(); err != nil {
+		panic(err)
+	}
 
-    // 使用
-    host := loader.GetString("DB_HOST")
-    fmt.Println("Host:", host)
+	// 使用
+	host := loader.GetString("DB_HOST")
+	fmt.Println("Host:", host)
 }
 ```
 

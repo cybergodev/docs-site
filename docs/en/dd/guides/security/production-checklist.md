@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Production Checklist"
-title: "Production Checklist - CyberGo DD | Pre-Launch Security Checks"
-description: "A complete pre-deployment security checklist for CyberGo DD in production, covering basic configuration verification, sensitive-data filter rule enablement and test validation, audit-logging switch confirmation, file-rotation strategy, HMAC integrity-signing configuration, and key performance-baseline tuning items to ensure your logging system goes live securely, reliably, and compliantly."
+title: "Production Checklist - CyberGo DD | Pre-Launch Security"
+description: "Pre-deployment security checklist for CyberGo DD: config verification, sensitive-data filters, audit logging, HMAC signing, and rotation strategy."
 sidebar_position: 6
 ---
 

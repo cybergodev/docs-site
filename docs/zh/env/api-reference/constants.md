@@ -680,74 +680,74 @@ if errors.As(err, &secErr) {
 package main
 
 import (
-    "errors"
-    "log"
+	"errors"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    cfg := env.ProductionConfig()
-    cfg.FailOnMissingFile = true
+	cfg := env.ProductionConfig()
+	cfg.FailOnMissingFile = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        switch {
-        case errors.Is(err, env.ErrFileNotFound):
-            log.Fatal("配置文件不存在")
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		switch {
+		case errors.Is(err, env.ErrFileNotFound):
+			log.Fatal("配置文件不存在")
 
-        case errors.Is(err, env.ErrFileTooLarge):
-            log.Fatal("配置文件过大")
+		case errors.Is(err, env.ErrFileTooLarge):
+			log.Fatal("配置文件过大")
 
-        case errors.Is(err, env.ErrClosed):
-            log.Fatal("加载器已关闭")
+		case errors.Is(err, env.ErrClosed):
+			log.Fatal("加载器已关闭")
 
-        default:
-            var parseErr *env.ParseError
-            if errors.As(err, &parseErr) {
-                log.Fatalf("解析错误 %s:%d - %v",
-                    parseErr.File, parseErr.Line, parseErr.Err)
-            }
+		default:
+			var parseErr *env.ParseError
+			if errors.As(err, &parseErr) {
+				log.Fatalf("解析错误 %s:%d - %v",
+					parseErr.File, parseErr.Line, parseErr.Err)
+			}
 
-            var fileErr *env.FileError
-            if errors.As(err, &fileErr) {
-                log.Fatalf("文件错误 %s - %v", fileErr.Path, fileErr.Err)
-            }
+			var fileErr *env.FileError
+			if errors.As(err, &fileErr) {
+				log.Fatalf("文件错误 %s - %v", fileErr.Path, fileErr.Err)
+			}
 
-            var secErr *env.SecurityError
-            if errors.As(err, &secErr) {
-                log.Fatalf("安全错误: %s - %s", secErr.Action, secErr.Reason)
-            }
+			var secErr *env.SecurityError
+			if errors.As(err, &secErr) {
+				log.Fatalf("安全错误: %s - %s", secErr.Action, secErr.Reason)
+			}
 
-            var jsonErr *env.JSONError
-            if errors.As(err, &jsonErr) {
-                log.Fatalf("JSON 错误 %s: %s", jsonErr.Path, jsonErr.Message)
-            }
+			var jsonErr *env.JSONError
+			if errors.As(err, &jsonErr) {
+				log.Fatalf("JSON 错误 %s: %s", jsonErr.Path, jsonErr.Message)
+			}
 
-            var yamlErr *env.YAMLError
-            if errors.As(err, &yamlErr) {
-                log.Fatalf("YAML 错误 %s:%d:%d - %s",
-                    yamlErr.Path, yamlErr.Line, yamlErr.Column, yamlErr.Message)
-            }
+			var yamlErr *env.YAMLError
+			if errors.As(err, &yamlErr) {
+				log.Fatalf("YAML 错误 %s:%d:%d - %s",
+					yamlErr.Path, yamlErr.Line, yamlErr.Column, yamlErr.Message)
+			}
 
-            log.Fatal(err)
-        }
-    }
+			log.Fatal(err)
+		}
+	}
 
-    // 验证必需键
-    if err := loader.Validate(); err != nil {
-        var valErr *env.ValidationError
-        if errors.As(err, &valErr) {
-            log.Fatalf("验证失败: %s - %s", valErr.Field, valErr.Message)
-        }
-        log.Fatal(err)
-    }
+	// 验证必需键
+	if err := loader.Validate(); err != nil {
+		var valErr *env.ValidationError
+		if errors.As(err, &valErr) {
+			log.Fatalf("验证失败: %s - %s", valErr.Field, valErr.Message)
+		}
+		log.Fatal(err)
+	}
 }
 ```
 

@@ -201,43 +201,43 @@ func (c *FieldValidationConfig) ValidateFieldKey(key string) error
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // 严格 snake_case 预设
-    cfg := dd.StrictSnakeCaseConfig()
+	// 严格 snake_case 预设
+	cfg := dd.StrictSnakeCaseConfig()
 
-    if err := cfg.ValidateFieldKey("user_id"); err != nil {
-        fmt.Println("user_id:", err)
-    } else {
-        fmt.Println("user_id OK")
-        // 输出：user_id OK
-    }
+	if err := cfg.ValidateFieldKey("user_id"); err != nil {
+		fmt.Println("user_id:", err)
+	} else {
+		fmt.Println("user_id OK")
+		// 输出：user_id OK
+	}
 
-    if err := cfg.ValidateFieldKey("userId"); err != nil {
-        fmt.Println("userId:", err)
-        // 输出：userId: field key "userId" does not match snake_case convention
-    }
+	if err := cfg.ValidateFieldKey("userId"); err != nil {
+		fmt.Println("userId:", err)
+		// 输出：userId: field key "userId" does not match snake_case convention
+	}
 
-    // 常见缩写豁免：URL 不符合 snake_case，但命中缩写表故通过
-    if err := cfg.ValidateFieldKey("URL"); err != nil {
-        fmt.Println("URL:", err)
-    } else {
-        fmt.Println("URL OK (缩写豁免)")
-        // 输出：URL OK (缩写豁免)
-    }
+	// 常见缩写豁免：URL 不符合 snake_case，但命中缩写表故通过
+	if err := cfg.ValidateFieldKey("URL"); err != nil {
+		fmt.Println("URL:", err)
+	} else {
+		fmt.Println("URL OK (缩写豁免)")
+		// 输出：URL OK (缩写豁免)
+	}
 
-    // 默认配置 Mode=None，不校验命名
-    defaultCfg := dd.DefaultFieldValidationConfig()
-    if err := defaultCfg.ValidateFieldKey("anyKey"); err != nil {
-        fmt.Println("anyKey:", err)
-    } else {
-        fmt.Println("anyKey OK (Mode=None)")
-        // 输出：anyKey OK (Mode=None)
-    }
+	// 默认配置 Mode=None，不校验命名
+	defaultCfg := dd.DefaultFieldValidationConfig()
+	if err := defaultCfg.ValidateFieldKey("anyKey"); err != nil {
+		fmt.Println("anyKey:", err)
+	} else {
+		fmt.Println("anyKey OK (Mode=None)")
+		// 输出：anyKey OK (Mode=None)
+	}
 }
 ```
 

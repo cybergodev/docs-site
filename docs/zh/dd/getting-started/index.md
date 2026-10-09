@@ -15,59 +15,59 @@ DD 提供多种便捷构造函数，满足不同场景需求：
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // 方式一：默认全局日志记录器（零配置）
-    dd.Info("使用全局日志记录器")
+	// 方式一：默认全局日志记录器（零配置）
+	dd.Info("使用全局日志记录器")
 
-    // 方式二：开发模式（DEBUG 级别，带 caller）
-    dev, err := dd.New(dd.DevelopmentConfig())
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer dev.Close()
-    dev.Info("开发模式输出")
+	// 方式二：开发模式（DEBUG 级别，带 caller）
+	dev, err := dd.New(dd.DevelopmentConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dev.Close()
+	dev.Info("开发模式输出")
 
-    // 方式三：输出到文件
-    file, err := dd.New(dd.Config{
-        Targets: []dd.OutputTarget{dd.FileOutput("logs/app.log")},
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer file.Close()
-    file.Info("文件输出")
+	// 方式三：输出到文件
+	file, err := dd.New(dd.Config{
+		Targets: []dd.OutputTarget{dd.FileOutput("logs/app.log")},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Info("文件输出")
 
-    // 方式四：同时输出到控制台和文件
-    all, err := dd.New(dd.Config{
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.log"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer all.Close()
-    all.Info("双目标输出")
+	// 方式四：同时输出到控制台和文件
+	all, err := dd.New(dd.Config{
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.log"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer all.Close()
+	all.Info("双目标输出")
 
-    // 方式五：JSON 格式双目标输出
-    jsonLogger, err := dd.New(dd.Config{
-        Format: dd.FormatJSON,
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.json"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer jsonLogger.Close()
-    jsonLogger.Info("JSON 格式输出")
+	// 方式五：JSON 格式双目标输出
+	jsonLogger, err := dd.New(dd.Config{
+		Format: dd.FormatJSON,
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.json"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer jsonLogger.Close()
+	jsonLogger.Info("JSON 格式输出")
 }
 ```
 

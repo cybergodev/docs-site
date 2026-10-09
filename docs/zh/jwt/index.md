@@ -32,42 +32,42 @@ go get github.com/cybergodev/jwt
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // 1. 创建配置
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	// 1. 创建配置
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
 
-    // 2. 创建 Processor
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	// 2. 创建 Processor
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // 3. 签发令牌
-    claims := &jwt.Claims{
-        UserID:   "user123",
-        Username: "alice",
-        Role:     "admin",
-    }
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token:", token)
+	// 3. 签发令牌
+	claims := &jwt.Claims{
+		UserID:   "user123",
+		Username: "alice",
+		Role:     "admin",
+	}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token:", token)
 
-    // 4. 验证令牌
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid)
-    fmt.Println("UserID:", parsed.UserID)
+	// 4. 验证令牌
+	parsed, valid, err := processor.Validate(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Valid:", valid)
+	fmt.Println("UserID:", parsed.UserID)
 }
 ```
 

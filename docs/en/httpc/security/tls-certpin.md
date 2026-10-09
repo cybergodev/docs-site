@@ -1,7 +1,7 @@
 ---
 sidebar_label: "TLS & Certificate Pinning"
 title: "TLS & Certificate Pinning - CyberGo HTTPC | Crypto & Pinning"
-description: "HTTPC TLS and certificate pinning guide: TLS 1.2-1.3 version control, SPKI hash generation steps and key rotation, comparison of three Pinner constructors, custom CertificatePinner, mTLS mutual authentication, custom CA certificates, and Let's Encrypt short-lifetime certificate pinning strategies."
+description: "HTTPC TLS and certificate pinning: TLS 1.2-1.3 control, SPKI hash generation and rotation, Pinner constructors, mTLS, and custom CA certificates."
 sidebar_position: 3
 ---
 

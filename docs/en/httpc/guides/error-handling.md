@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo HTTPC | Types & Sentinel Matching"
-description: "HTTPC error handling guide: the twelve ErrorType classifications, ClientError fields and IsRetryable checks, errors.Is/As sentinel-error matching, retry-exhaustion handling, context timeout and cancellation, unified error handling via middleware, and timeout-layering best practices."
+description: "Handle HTTPC errors: ErrorType classes, ClientError fields and IsRetryable checks, errors.Is/As sentinel matching, retry exhaustion, and context timeouts."
 sidebar_position: 7
 ---
 
@@ -53,48 +53,48 @@ The `ClientError` struct carries the full context of a request failure:
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            switch clientErr.Type {
-            case httpc.ErrorTypeTimeout:
-                log.Printf("request timed out (tried %d times): %v", clientErr.Attempts, err)
-            case httpc.ErrorTypeNetwork:
-                log.Printf("network error: %v", err)
-            case httpc.ErrorTypeDNS:
-                log.Printf("DNS resolution failed: %v", err)
-            case httpc.ErrorTypeTLS:
-                log.Printf("TLS handshake failed: %v", err)
-            case httpc.ErrorTypeCertificate:
-                log.Printf("certificate verification failed: %v", err)
-            case httpc.ErrorTypeRetryExhausted:
-                log.Printf("still failing after %d retries: %v", clientErr.Attempts, err)
-            case httpc.ErrorTypeValidation:
-                log.Printf("request validation failed: %v", err)
-            case httpc.ErrorTypeContextCanceled:
-                log.Printf("request canceled: %v", err)
-            default:
-                log.Printf("other error [%s]: %v", clientErr.Code(), err)
-            }
-        }
-        return
-    }
-    fmt.Printf("success: %d\n", result.StatusCode())
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			switch clientErr.Type {
+			case httpc.ErrorTypeTimeout:
+				log.Printf("request timed out (tried %d times): %v", clientErr.Attempts, err)
+			case httpc.ErrorTypeNetwork:
+				log.Printf("network error: %v", err)
+			case httpc.ErrorTypeDNS:
+				log.Printf("DNS resolution failed: %v", err)
+			case httpc.ErrorTypeTLS:
+				log.Printf("TLS handshake failed: %v", err)
+			case httpc.ErrorTypeCertificate:
+				log.Printf("certificate verification failed: %v", err)
+			case httpc.ErrorTypeRetryExhausted:
+				log.Printf("still failing after %d retries: %v", clientErr.Attempts, err)
+			case httpc.ErrorTypeValidation:
+				log.Printf("request validation failed: %v", err)
+			case httpc.ErrorTypeContextCanceled:
+				log.Printf("request canceled: %v", err)
+			default:
+				log.Printf("other error [%s]: %v", clientErr.Code(), err)
+			}
+		}
+		return
+	}
+	fmt.Printf("success: %d\n", result.StatusCode())
 }
 ```
 
@@ -106,31 +106,31 @@ func main() {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    _, err = client.Get("https://api.example.com/data")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            if clientErr.IsRetryable() {
-                fmt.Println("retryable error; upper layer may retry later")
-            } else {
-                fmt.Printf("non-retryable error [%s]; manual intervention needed\n", clientErr.Code())
-            }
-        }
-    }
+	_, err = client.Get("https://api.example.com/data")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			if clientErr.IsRetryable() {
+				fmt.Println("retryable error; upper layer may retry later")
+			} else {
+				fmt.Printf("non-retryable error [%s]; manual intervention needed\n", clientErr.Code())
+			}
+		}
+	}
 }
 ```
 
@@ -165,36 +165,36 @@ The `ErrInvalid*` family (`ErrInvalidHeader`/`ErrInvalidTimeout`/`ErrInvalidRetr
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
+	result, err := client.Get("https://api.example.com/data")
 
-    switch {
-    case errors.Is(err, httpc.ErrClientClosed):
-        fmt.Println("client is closed; recreate it")
-    case errors.Is(err, httpc.ErrResponseBodyTooLarge):
-        fmt.Println("response body too large; consider raising MaxResponseBodySize")
-    case errors.Is(err, httpc.ErrResponseBodyEmpty):
-        fmt.Println("response body empty; check RawBody before calling parsing methods")
-    case errors.Is(err, httpc.ErrInvalidHeader):
-        fmt.Println("invalid header; fix and retry")
-    }
+	switch {
+	case errors.Is(err, httpc.ErrClientClosed):
+		fmt.Println("client is closed; recreate it")
+	case errors.Is(err, httpc.ErrResponseBodyTooLarge):
+		fmt.Println("response body too large; consider raising MaxResponseBodySize")
+	case errors.Is(err, httpc.ErrResponseBodyEmpty):
+		fmt.Println("response body empty; check RawBody before calling parsing methods")
+	case errors.Is(err, httpc.ErrInvalidHeader):
+		fmt.Println("invalid header; fix and retry")
+	}
 
-    if result != nil {
-        fmt.Printf("status code: %d\n", result.StatusCode())
-    }
+	if result != nil {
+		fmt.Printf("status code: %d\n", result.StatusCode())
+	}
 }
 ```
 
@@ -206,29 +206,29 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // URL carries credentials
-    result, err := client.Get("https://admin:s3cret@api.example.com/data")
-    if err != nil {
-        // Credentials are auto-sanitized in the error message:
-        // "GET https://***:***@api.example.com/data: network error occurred"
-        fmt.Println(err)
-    }
-    if result != nil {
-        fmt.Println(result.StatusCode())
-    }
+	// URL carries credentials
+	result, err := client.Get("https://admin:s3cret@api.example.com/data")
+	if err != nil {
+		// Credentials are auto-sanitized in the error message:
+		// "GET https://***:***@api.example.com/data: network error occurred"
+		fmt.Println(err)
+	}
+	if result != nil {
+		fmt.Println(result.StatusCode())
+	}
 }
 ```
 
@@ -302,39 +302,39 @@ HTTPC's retry engine automatically handles retryable errors internally. Knowing 
 package main
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-    result, err := client.Request(ctx, "GET", "https://api.example.com/slow")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            if clientErr.Type == httpc.ErrorTypeContextCanceled {
-                // Context timed out or was manually canceled — not auto-retried
-                fmt.Println("request canceled (timeout or manual cancel); will not retry")
-            } else if clientErr.Type == httpc.ErrorTypeTimeout {
-                fmt.Println("request timed out; auto-retries still failed")
-            }
-        }
-        return
-    }
-    fmt.Println(result.StatusCode())
+	result, err := client.Request(ctx, "GET", "https://api.example.com/slow")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			if clientErr.Type == httpc.ErrorTypeContextCanceled {
+				// Context timed out or was manually canceled — not auto-retried
+				fmt.Println("request canceled (timeout or manual cancel); will not retry")
+			} else if clientErr.Type == httpc.ErrorTypeTimeout {
+				fmt.Println("request timed out; auto-retries still failed")
+			}
+		}
+		return
+	}
+	fmt.Println(result.StatusCode())
 }
 ```
 
@@ -346,36 +346,36 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        // Network-layer error — connection, TLS, DNS, etc.
-        log.Printf("network-layer error: %v", err)
-        return
-    }
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		// Network-layer error — connection, TLS, DNS, etc.
+		log.Printf("network-layer error: %v", err)
+		return
+	}
 
-    // HTTP-layer error — response received but status code is not 2xx
-    if result.IsClientError() {
-        // 4xx: the client request was wrong (bad params, insufficient permissions, etc.)
-        log.Printf("client error: %d", result.StatusCode())
-    } else if result.IsServerError() {
-        // 5xx: server failure (retries exhausted, upstream still unavailable)
-        log.Printf("server error: %d", result.StatusCode())
-    } else {
-        fmt.Printf("success: %d\n", result.StatusCode())
-    }
+	// HTTP-layer error — response received but status code is not 2xx
+	if result.IsClientError() {
+		// 4xx: the client request was wrong (bad params, insufficient permissions, etc.)
+		log.Printf("client error: %d", result.StatusCode())
+	} else if result.IsServerError() {
+		// 5xx: server failure (retries exhausted, upstream still unavailable)
+		log.Printf("server error: %d", result.StatusCode())
+	} else {
+		fmt.Printf("success: %d\n", result.StatusCode())
+	}
 }
 ```
 
@@ -479,43 +479,43 @@ func fetchWithFallback(client httpc.Client, url string, fallback []byte) []byte 
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-        httpc.RecoveryMiddleware(),
-        httpc.LoggingMiddleware(&httpc.LoggingConfig{
-            LogFunc: func(format string, args ...any) {
-                log.Printf("[HTTP] "+format, args...)
-            },
-        }),
-        httpc.MetricsMiddleware(&httpc.MetricsConfig{
-            OnMetrics: func(method, url string, statusCode int, duration time.Duration, err error) {
-                if err != nil {
-                    log.Printf("[METRICS] %s %s failed: %v (took %v)", method, url, err, duration)
-                } else {
-                    log.Printf("[METRICS] %s %s -> %d (took %v)", method, url, statusCode, duration)
-                }
-            },
-        }),
-    }
+	cfg := httpc.DefaultConfig()
+	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
+		httpc.RecoveryMiddleware(),
+		httpc.LoggingMiddleware(&httpc.LoggingConfig{
+			LogFunc: func(format string, args ...any) {
+				log.Printf("[HTTP] "+format, args...)
+			},
+		}),
+		httpc.MetricsMiddleware(&httpc.MetricsConfig{
+			OnMetrics: func(method, url string, statusCode int, duration time.Duration, err error) {
+				if err != nil {
+					log.Printf("[METRICS] %s %s failed: %v (took %v)", method, url, err, duration)
+				} else {
+					log.Printf("[METRICS] %s %s -> %d (took %v)", method, url, statusCode, duration)
+				}
+			},
+		}),
+	}
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("status code: %d", result.StatusCode())
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("status code: %d", result.StatusCode())
 }
 ```
 

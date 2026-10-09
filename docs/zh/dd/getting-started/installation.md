@@ -50,7 +50,7 @@ package main
 import "github.com/cybergodev/dd"
 
 func main() {
-    dd.Info("DD 安装成功！")
+	dd.Info("DD 安装成功！")
 }
 ```
 

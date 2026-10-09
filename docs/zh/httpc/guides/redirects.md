@@ -17,20 +17,20 @@ HTTPC 默认自动跟随 HTTP 重定向（最多 10 次），并记录完整的�
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/redirect/2")
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Get("https://httpbin.org/redirect/2")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.StatusCode())        // 200（最终响应的状态码）
-    fmt.Println(result.Meta.RedirectCount)  // 2（实际跟随的重定向次数）
+	fmt.Println(result.StatusCode())       // 200（最终响应的状态码）
+	fmt.Println(result.Meta.RedirectCount) // 2（实际跟随的重定向次数）
 }
 ```
 
@@ -130,28 +130,28 @@ result, err = httpc.Get(url, httpc.WithMaxRedirects(3))
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/redirect/3")
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Get("https://httpbin.org/redirect/3")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Printf("跟随 %d 次重定向\n", result.Meta.RedirectCount)
-    for i, u := range result.Meta.RedirectChain {
-        fmt.Printf("  %d. %s\n", i+1, u)
-    }
-    fmt.Println("最终地址：", result.Request.URL)
-    // 输出：
-    //   1. https://httpbin.org/redirect/3
-    //   2. https://httpbin.org/redirect/2
-    //   3. https://httpbin.org/redirect/1
-    // 最终地址： https://httpbin.org/get
+	fmt.Printf("跟随 %d 次重定向\n", result.Meta.RedirectCount)
+	for i, u := range result.Meta.RedirectChain {
+		fmt.Printf("  %d. %s\n", i+1, u)
+	}
+	fmt.Println("最终地址：", result.Request.URL)
+	// 输出：
+	//   1. https://httpbin.org/redirect/3
+	//   2. https://httpbin.org/redirect/2
+	//   3. https://httpbin.org/redirect/1
+	// 最终地址： https://httpbin.org/get
 }
 ```
 
@@ -199,32 +199,32 @@ A → A → A     连续同 URL：不算环形（服务器可能每次返回不�
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Defaults.MaxRedirects = 2 // 只允许跟随 2 次
+	cfg := httpc.DefaultConfig()
+	cfg.Defaults.MaxRedirects = 2 // 只允许跟随 2 次
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // /redirect/5 需要跟随 5 次，必然超过上限
-    _, err = client.Get("https://httpbin.org/redirect/5")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeValidation {
-            fmt.Println("重定向被拒绝：", clientErr.Message)
-            // 输出：重定向被拒绝： redirect limit exceeded
-        }
-    }
+	// /redirect/5 需要跟随 5 次，必然超过上限
+	_, err = client.Get("https://httpbin.org/redirect/5")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeValidation {
+			fmt.Println("重定向被拒绝：", clientErr.Message)
+			// 输出：重定向被拒绝： redirect limit exceeded
+		}
+	}
 }
 ```
 
@@ -260,55 +260,55 @@ client, err := httpc.New(cfg)
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/url"
+	"fmt"
+	"log"
+	"net/url"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Defaults.FollowRedirects = false
+	cfg := httpc.DefaultConfig()
+	cfg.Defaults.FollowRedirects = false
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    currentURL := "https://httpbin.org/redirect/3"
-    base, err := url.Parse(currentURL)
-    if err != nil {
-        log.Fatal(err)
-    }
+	currentURL := "https://httpbin.org/redirect/3"
+	base, err := url.Parse(currentURL)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    for i := 0; i < 5; i++ {
-        result, err := client.Get(currentURL)
-        if err != nil {
-            log.Fatal(err)
-        }
-        if !result.IsRedirect() {
-            fmt.Println("到达最终地址：", currentURL)
-            break
-        }
+	for i := 0; i < 5; i++ {
+		result, err := client.Get(currentURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if !result.IsRedirect() {
+			fmt.Println("到达最终地址：", currentURL)
+			break
+		}
 
-        location := result.Response.Headers.Get("Location")
-        if location == "" {
-            fmt.Println("重定向响应缺少 Location 头，停止跟随")
-            break
-        }
+		location := result.Response.Headers.Get("Location")
+		if location == "" {
+			fmt.Println("重定向响应缺少 Location 头，停止跟随")
+			break
+		}
 
-        // 相对地址按当前 URL 解析为绝对地址
-        next, err := base.Parse(location)
-        if err != nil {
-            log.Fatal(err)
-        }
-        fmt.Printf("第 %d 跳：%s\n", i+1, next.String())
+		// 相对地址按当前 URL 解析为绝对地址
+		next, err := base.Parse(location)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("第 %d 跳：%s\n", i+1, next.String())
 
-        currentURL = next.String()
-        base = next
-    }
+		currentURL = next.String()
+		base = next
+	}
 }
 ```
 

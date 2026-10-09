@@ -35,99 +35,99 @@ When no `Scorer` is configured, the built-in default scorer is used. It calculat
 package main
 
 import (
-    "fmt"
-    "log"
-    "strings"
+	"fmt"
+	"log"
+	"strings"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 // blogScorer is optimized for blog-style websites
 type blogScorer struct{}
 
 func (s blogScorer) Score(node html.ContentNode) int {
-    if node == nil {
-        return 0
-    }
+	if node == nil {
+		return 0
+	}
 
-    score := 0
-    class := strings.ToLower(node.AttrValue("class"))
-    id := strings.ToLower(node.AttrValue("id"))
-    tag := node.Data()
+	score := 0
+	class := strings.ToLower(node.AttrValue("class"))
+	id := strings.ToLower(node.AttrValue("id"))
+	tag := node.Data()
 
-    // Positive signals: article-related class/id
-    if containsAny(class, "article", "post", "content", "entry") {
-        score += 50
-    }
-    if containsAny(id, "article", "post", "content") {
-        score += 60
-    }
+	// Positive signals: article-related class/id
+	if containsAny(class, "article", "post", "content", "entry") {
+		score += 50
+	}
+	if containsAny(id, "article", "post", "content") {
+		score += 60
+	}
 
-    // Semantic tags bonus
-    switch tag {
-    case "article":
-        score += 80
-    case "main":
-        score += 70
-    case "section":
-        score += 30
-    }
+	// Semantic tags bonus
+	switch tag {
+	case "article":
+		score += 80
+	case "main":
+		score += 70
+	case "section":
+		score += 30
+	}
 
-    // Negative signals
-    if containsAny(class, "sidebar", "comment", "footer", "nav", "menu") {
-        score -= 50
-    }
-    if containsAny(id, "sidebar", "comments", "footer") {
-        score -= 60
-    }
+	// Negative signals
+	if containsAny(class, "sidebar", "comment", "footer", "nav", "menu") {
+		score -= 50
+	}
+	if containsAny(id, "sidebar", "comments", "footer") {
+		score -= 60
+	}
 
-    return score
+	return score
 }
 
 func (s blogScorer) ShouldRemove(node html.ContentNode) bool {
-    if node == nil {
-        return false
-    }
+	if node == nil {
+		return false
+	}
 
-    // Remove navigation and footer
-    switch node.Data() {
-    case "nav", "footer", "header":
-        return true
-    }
+	// Remove navigation and footer
+	switch node.Data() {
+	case "nav", "footer", "header":
+		return true
+	}
 
-    // Remove ads and comments
-    class := strings.ToLower(node.AttrValue("class"))
-    return containsAny(class, "ad", "advertisement", "comment", "social-share")
+	// Remove ads and comments
+	class := strings.ToLower(node.AttrValue("class"))
+	return containsAny(class, "ad", "advertisement", "comment", "social-share")
 }
 
 func containsAny(s string, keywords ...string) bool {
-    for _, kw := range keywords {
-        if strings.Contains(s, kw) {
-            return true
-        }
-    }
-    return false
+	for _, kw := range keywords {
+		if strings.Contains(s, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
-    cfg := html.DefaultConfig()
-    cfg.Scorer = blogScorer{}
+	cfg := html.DefaultConfig()
+	cfg.Scorer = blogScorer{}
 
-    p, err := html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer p.Close()
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer p.Close()
 
-    data := []byte(`<html><body>
+	data := []byte(`<html><body>
         <article class="post"><h1>Test Article</h1><p>Article content</p></article>
     </body></html>`)
 
-    result, err := p.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.Text)
+	result, err := p.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.Text)
 }
 ```
 

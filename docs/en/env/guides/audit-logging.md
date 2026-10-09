@@ -3,7 +3,6 @@ sidebar_label: "Audit Logging"
 title: "Audit Logging - CyberGo env | Security Audit Configuration"
 description: "Audit logging guide for CyberGo env: JSONAuditHandler, LogAuditHandler, and ChannelAuditHandler record variable loads, reads, and changes for auditing."
 sidebar_position: 6
-sidebar_icon: "🔧"
 ---
 
 # Audit Logging
@@ -181,49 +180,49 @@ type FullAuditLogger interface {
 package myhandler
 
 import (
-    "database/sql"
-    "time"
-    "github.com/cybergodev/env"
+	"database/sql"
+	"github.com/cybergodev/env"
+	"time"
 )
 
 type DatabaseAuditHandler struct {
-    db *sql.DB
+	db *sql.DB
 }
 
 func NewDatabaseAuditHandler(db *sql.DB) *DatabaseAuditHandler {
-    return &DatabaseAuditHandler{db: db}
+	return &DatabaseAuditHandler{db: db}
 }
 
 func (h *DatabaseAuditHandler) Log(action env.AuditAction, key, reason string, success bool) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, reason, success)
         VALUES (?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, reason, success)
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) LogError(action env.AuditAction, key, errMsg string) error {
-    return h.Log(action, key, errMsg, false)
+	return h.Log(action, key, errMsg, false)
 }
 
 func (h *DatabaseAuditHandler) LogWithFile(action env.AuditAction, key, file, reason string, success bool) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, file, reason, success)
         VALUES (?, ?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, file, reason, success)
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) LogWithDuration(action env.AuditAction, key, reason string, success bool, duration time.Duration) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, reason, success, duration_ms)
         VALUES (?, ?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, reason, success, duration.Milliseconds())
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) Close() error {
-    return nil
+	return nil
 }
 ```
 
@@ -237,47 +236,47 @@ func (h *DatabaseAuditHandler) Close() error {
 package main
 
 import (
-    "log"
-    "os"
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
+	"log"
+	"os"
 )
 
 func main() {
-    // Create audit log file
-    auditFile, err := os.OpenFile("/var/log/app/env-audit.log",
-        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer auditFile.Close()
+	// Create audit log file
+	auditFile, err := os.OpenFile("/var/log/app/env-audit.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer auditFile.Close()
 
-    // Configuration
-    cfg := env.ProductionConfig()
-    cfg.AuditEnabled = true
-    cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	// Configuration
+	cfg := env.ProductionConfig()
+	cfg.AuditEnabled = true
+	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-    // Create loader
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	// Create loader
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // Load configuration
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Load configuration
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Validate
-    err = loader.Validate()
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Validate
+	err = loader.Validate()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Use configuration
-    log.Println("Configuration loaded successfully")
+	// Use configuration
+	log.Println("Configuration loaded successfully")
 }
 ```
 
@@ -287,45 +286,45 @@ func main() {
 package main
 
 import (
-    "encoding/json"
-    "log"
-    "os"
-    "github.com/cybergodev/env"
+	"encoding/json"
+	"github.com/cybergodev/env"
+	"log"
+	"os"
 )
 
 func main() {
-    // Create audit event channel
-    auditChan := make(chan env.AuditEvent, 1000)
+	// Create audit event channel
+	auditChan := make(chan env.AuditEvent, 1000)
 
-    // Start async processor
-    go processAuditEvents(auditChan)
+	// Start async processor
+	go processAuditEvents(auditChan)
 
-    // Configuration
-    cfg := env.ProductionConfig()
-    cfg.AuditEnabled = true
-    cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
+	// Configuration
+	cfg := env.ProductionConfig()
+	cfg.AuditEnabled = true
+	cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
 
-    loader, _ := env.New(cfg)
-    defer loader.Close()
+	loader, _ := env.New(cfg)
+	defer loader.Close()
 
-    // Normal usage...
+	// Normal usage...
 }
 
 func processAuditEvents(ch chan env.AuditEvent) {
-    file, _ := os.OpenFile("/var/log/app/audit.log",
-        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-    defer file.Close()
+	file, _ := os.OpenFile("/var/log/app/audit.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	defer file.Close()
 
-    encoder := json.NewEncoder(file)
+	encoder := json.NewEncoder(file)
 
-    for event := range ch {
-        // Can add filtering, aggregation, etc.
-        if event.Action == env.ActionError {
-            log.Printf("Audit error: %+v", event)
-        }
+	for event := range ch {
+		// Can add filtering, aggregation, etc.
+		if event.Action == env.ActionError {
+			log.Printf("Audit error: %+v", event)
+		}
 
-        encoder.Encode(event)
-    }
+		encoder.Encode(event)
+	}
 }
 ```
 

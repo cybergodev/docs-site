@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Context"
 title: "Context Integration - CyberGo DD | Context Integration"
-description: "CyberGo DD context integration API: inject tracing identifiers via WithTraceID/WithSpanID/WithRequestID, with the ContextKey type-safe key and the ContextExtractor function type for automatic field extraction. Supports integration with distributed-tracing frameworks such as OpenTelemetry."
+description: "CyberGo DD context API: inject trace IDs with WithTraceID/WithSpanID/WithRequestID; ContextExtractor adds automatic fields for OpenTelemetry tracing."
 sidebar_position: 2
 ---
 

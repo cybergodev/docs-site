@@ -709,39 +709,39 @@ func (f *ComponentFactory) IsClosed() bool
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // 自定义审计处理器
 type CustomAuditHandler struct {
-    events []env.AuditEvent
+	events []env.AuditEvent
 }
 
 func (h *CustomAuditHandler) Log(event env.AuditEvent) error {
-    h.events = append(h.events, event)
-    return nil
+	h.events = append(h.events, event)
+	return nil
 }
 
 func (h *CustomAuditHandler) Close() error {
-    return nil
+	return nil
 }
 
 func main() {
-    cfg := env.ProductionConfig()
-    cfg.AuditEnabled = true
-    handler := &CustomAuditHandler{}
-    cfg.AuditHandler = handler
+	cfg := env.ProductionConfig()
+	cfg.AuditEnabled = true
+	handler := &CustomAuditHandler{}
+	cfg.AuditHandler = handler
 
-    loader, _ := env.New(cfg)
-    defer loader.Close()
-    // 使用 loader...
+	loader, _ := env.New(cfg)
+	defer loader.Close()
+	// 使用 loader...
 
-    // 查看审计事件
-    for _, event := range handler.events {
-        fmt.Printf("%s: %s - %s\n", event.Action, event.Key, event.Reason)
-    }
+	// 查看审计事件
+	for _, event := range handler.events {
+		fmt.Printf("%s: %s - %s\n", event.Action, event.Key, event.Reason)
+	}
 }
 ```
 
@@ -751,37 +751,37 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 // 只需要读取能力
 func printConfig(getter env.EnvGetter) {
-    for _, key := range getter.Keys() {
-        value, _ := getter.Lookup(key)
-        fmt.Printf("%s = %s\n", key, value)
-    }
+	for _, key := range getter.Keys() {
+		value, _ := getter.Lookup(key)
+		fmt.Printf("%s = %s\n", key, value)
+	}
 }
 
 // 只需要写入能力
 func setDefaults(setter env.EnvSetter) error {
-    return setter.Set("DEFAULT_KEY", "default_value")
+	return setter.Set("DEFAULT_KEY", "default_value")
 }
 
 // 只需要加载能力
 func loadConfig(loader env.EnvFileLoader) error {
-    return loader.LoadFiles(".env")
+	return loader.LoadFiles(".env")
 }
 
 func main() {
-    cfg := env.DefaultConfig()
-    loader, _ := env.New(cfg)
-    defer loader.Close()
+	cfg := env.DefaultConfig()
+	loader, _ := env.New(cfg)
+	defer loader.Close()
 
-    // 使用细粒度接口
-    loadConfig(loader)
-    setDefaults(loader)
-    printConfig(loader)
+	// 使用细粒度接口
+	loadConfig(loader)
+	setDefaults(loader)
+	printConfig(loader)
 }
 ```
 

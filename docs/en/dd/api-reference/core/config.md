@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Config"
 title: "Config - CyberGo DD | Config In Depth"
-description: "Complete API documentation for the CyberGo DD Config struct, including the DefaultConfig/DevelopmentConfig/JSONConfig preset factories, OutputTarget output-target configuration, field-validation rules, sampling control, formatter options, and the Validate method, providing flexible and type-safe logger behavior customization."
+description: "API reference for the CyberGo DD Config struct: preset factories, output targets, field validation, sampling, formatters, and the Validate method."
 sidebar_position: 4
 ---
 

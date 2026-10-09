@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Testing Patterns"
 title: "Testing Patterns - CyberGo DD | LoggerRecorder Test Examples"
-description: "CyberGo DD testing-patterns examples, detailing the complete usage of LoggerRecorder in unit and integration tests, including log-message assertions, level-filter tests, field-value checks, multi-case isolation, concurrency-safety tests, and a full set of tips and best practices for improving test coverage. Applicable to log testing in any Go project."
+description: "Test logging with CyberGo DD LoggerRecorder: message assertions, level filters, field checks, case isolation, and concurrency-safety tips for Go tests."
 sidebar_position: 4
 ---
 

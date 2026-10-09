@@ -106,7 +106,7 @@ if err != nil {
     panic(err)
 }
 // 可在后续操作中重复使用 compiled
-val, err := processor.GetCompiled(data, compiled)
+val, err := processor.GetCompiled(jsonStr, compiled)
 ```
 
 ::: tip 性能提示
@@ -118,15 +118,15 @@ val, err := processor.GetCompiled(data, compiled)
 | 方法 | 签名 | 说明 |
 |------|------|------|
 | `Get` | `func (cp *CompiledPath) Get(data any) (any, error)` | 从已解析的 JSON 数据中按编译路径取值 |
-| `GetFromRaw` | `func (cp *CompiledPath) GetFromRaw(raw []byte) (any, error)` | 从原始 JSON 字节中按编译路径取值（内部先反序列化再导航） |
 | `Exists` | `func (cp *CompiledPath) Exists(data any) bool` | 检查已解析数据中该路径是否存在值 |
 | `Len` | `func (cp *CompiledPath) Len() int` | 返回路径的段数 |
 | `IsEmpty` | `func (cp *CompiledPath) IsEmpty() bool` | 路径没有任何段时返回 true |
-| `Hash` | `func (cp *CompiledPath) Hash() uint64` | 返回编译时预计算的路径哈希（FNV-1a），可用于自定义缓存键 |
 | `Path` | `func (cp *CompiledPath) Path() string` | 返回编译时的原始路径字符串 |
 | `String` | `func (cp *CompiledPath) String() string` | 与 `Path` 等价的字符串表示 |
 | `Segments` | `func (cp *CompiledPath) Segments() []PathSegment` | 返回解析后的路径段（详见下文 PathSegment 一节） |
 | `Release` | `func (cp *CompiledPath) Release()` | 归还对象池；调用后不得再使用该实例 |
+
+编译时还会预计算路径哈希（FNV-1a）——它只是内部缓存键，没有公开访问器。
 
 ### 使用示例
 
@@ -152,8 +152,8 @@ func main() {
 	}
 	defer cp.Release()
 
-	// 直接从原始 JSON 字节取值，无需先解析成 Go 值
-	val, err := cp.GetFromRaw([]byte(`{"user": {"name": "CyberGo"}}`))
+	// GetCompiled 接收原始 JSON 字符串，无需先解析成 Go 值
+	val, err := p.GetCompiled(`{"user": {"name": "CyberGo"}}`, cp)
 	if err != nil {
 		panic(err)
 	}
@@ -161,8 +161,8 @@ func main() {
 }
 ```
 
-::: tip GetFromRaw 与 PreParse 的取舍
-`GetFromRaw` 每次调用都会完整反序列化输入字节，适合一次性查询；对同一文档做多次查询时，请改用 `PreParse` 获得 `ParsedJSON` 后调用 `Get`，或直接使用 `GetFromParsed`，避免重复解析。
+::: tip GetCompiled 与 PreParse 的取舍
+`GetCompiled` 每次调用都会完整解析输入字符串，适合一次性查询；对同一文档做多次查询时，请改用 `PreParse` 获得 `ParsedJSON` 后调用 `GetFromParsed`，或先 `Parse` 再用 `cp.Get(data)`，避免重复解析。
 :::
 
 ---
@@ -780,35 +780,22 @@ type Stats struct {
 
 ---
 
-## SecurityLimits
+## Config 安全字段总览
 
-`SecurityLimits` 汇总 Config 中的安全相关限制字段，是这些字段的只读快照视图（字段一一映射）。
+安全限制不设独立的汇总类型，直接以 [`Config`](./config#config-结构体) 的字段形式提供：
 
-### 结构定义
+| Config 字段 | 类型 | 默认值 | 说明 |
+|------------|------|--------|------|
+| `MaxJSONSize` | `int64` | 100MB（`DefaultMaxJSONSize`） | 输入 JSON 大小上限，超出返回 `ErrSizeLimit` |
+| `MaxPathDepth` | `int` | 50（`DefaultMaxPathDepth`） | 路径段数上限，超出返回 `ErrInvalidPath` |
+| `MaxBatchSize` | `int` | 2000（`DefaultMaxBatchSize`） | 批处理操作的单批数量上限，超出返回 `ErrSizeLimit` |
+| `MaxNestingDepthSecurity` | `int` | 200（`DefaultMaxNestingDepth`） | 输入嵌套深度上限（安全扫描用），超出返回 `ErrDepthLimit`；勿与编码/解码嵌套深度 `Config.MaxDepth`（默认 100）混淆 |
+| `MaxSecurityValidationSize` | `int64` | 10MB（`DefaultMaxSecuritySize`） | 安全校验的大小阈值（阈值型） |
+| `MaxObjectKeys` | `int` | 100000（`DefaultMaxObjectKeys`） | 对象最大键数，超出返回 `ErrSizeLimit` |
+| `MaxArrayElements` | `int` | 100000（`DefaultMaxArrayElements`） | 数组最大元素数，超出返回 `ErrSizeLimit` |
+| `FullSecurityScan` | `bool` | `false`（分层扫描） | 是否对所有输入做全量安全扫描（设为 `true` 时全量） |
 
-```go
-type SecurityLimits struct {
-    MaxNestingDepth           int   `json:"max_nesting_depth"`
-    MaxSecurityValidationSize int64 `json:"max_security_validation_size"`
-    MaxObjectKeys             int   `json:"max_object_keys"`
-    MaxArrayElements          int   `json:"max_array_elements"`
-    MaxJSONSize               int64 `json:"max_json_size"`
-    MaxPathDepth              int   `json:"max_path_depth"`
-}
-```
-
-### 与 Config 字段映射
-
-| SecurityLimits 字段 | 来源 Config 字段 |
-|--------------------|------------------|
-| `MaxNestingDepth` | `MaxNestingDepthSecurity` |
-| `MaxSecurityValidationSize` | `MaxSecurityValidationSize` |
-| `MaxObjectKeys` | `MaxObjectKeys` |
-| `MaxArrayElements` | `MaxArrayElements` |
-| `MaxJSONSize` | `MaxJSONSize` |
-| `MaxPathDepth` | `MaxPathDepth` |
-
-该类型由库内部汇总安全限制时使用（零值表示 nil Config）；字段含义与取值范围见 [Config](./config#config-结构体)。
+`Config.Validate` 会把越界值钳制回合法区间（如 `MaxNestingDepthSecurity` 钳至 10–200、`MaxObjectKeys` 钳至 100–100000），可用 `ValidateWithWarnings` 查看调整明细；各字段完整语义见 [Config](./config#config-结构体)。
 
 ---
 

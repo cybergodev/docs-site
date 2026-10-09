@@ -162,8 +162,8 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			sem <- struct{}{}                // 获取信号量
-			defer func() { <-sem }()         // 释放信号量
+			sem <- struct{}{}        // 获取信号量
+			defer func() { <-sem }() // 释放信号量
 
 			result, err := client.Get(server.URL)
 			if err != nil {
@@ -220,35 +220,35 @@ HTTPC 的连接池固定使用 30 秒 TCP keep-alive 间隔（`defaultKeepAlive 
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // 微服务高 QPS 场景：调大连接池
-    cfg := httpc.PerformanceConfig()
-    cfg.Connection.MaxIdleConns = 200   // 全局空闲连接上限
-    cfg.Connection.MaxConnsPerHost = 50 // 每主机最大连接（空闲自动计算为 10）
-    cfg.Timeouts.IdleConn = 300 * time.Second // 空闲连接存活更久，提高复用率
+	// 微服务高 QPS 场景：调大连接池
+	cfg := httpc.PerformanceConfig()
+	cfg.Connection.MaxIdleConns = 200         // 全局空闲连接上限
+	cfg.Connection.MaxConnsPerHost = 50       // 每主机最大连接（空闲自动计算为 10）
+	cfg.Timeouts.IdleConn = 300 * time.Second // 空闲连接存活更久，提高复用率
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 热路径请求直接复用连接池中的连接
-    for i := 0; i < 100; i++ {
-        result, err := client.Get("https://api.example.com/data")
-        if err != nil {
-            log.Printf("请求 %d 失败: %v", i, err)
-            continue
-        }
-        fmt.Printf("请求 %d: %d\n", i, result.StatusCode())
-    }
+	// 热路径请求直接复用连接池中的连接
+	for i := 0; i < 100; i++ {
+		result, err := client.Get("https://api.example.com/data")
+		if err != nil {
+			log.Printf("请求 %d 失败: %v", i, err)
+			continue
+		}
+		fmt.Printf("请求 %d: %d\n", i, result.StatusCode())
+	}
 }
 ```
 
@@ -270,37 +270,37 @@ HTTP/2 的多路复用让单个 TCP 连接可以同时承载多个请求，大�
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // 默认配置已启用 HTTP/2
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.EnableHTTP2 = true // 默认即 true，显式声明更清晰
+	// 默认配置已启用 HTTP/2
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.EnableHTTP2 = true // 默认即 true，显式声明更清晰
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 对支持 HTTP/2 的站点（如大多数 CDN/云服务）发起并发请求
-    // 单个 TCP 连接即可复用，无需为每个请求新建连接
-    start := time.Now()
-    for i := 0; i < 10; i++ {
-        result, err := client.Get("https://http2.golang.org/")
-        if err != nil {
-            log.Printf("请求 %d 失败: %v", i, err)
-            continue
-        }
-        // Proto() 返回协议版本，如 "HTTP/2.0"
-        fmt.Printf("请求 %d: %s, 状态码 %d\n", i, result.Proto(), result.StatusCode())
-    }
-    fmt.Printf("10 个请求耗时: %v\n", time.Since(start))
+	// 对支持 HTTP/2 的站点（如大多数 CDN/云服务）发起并发请求
+	// 单个 TCP 连接即可复用，无需为每个请求新建连接
+	start := time.Now()
+	for i := 0; i < 10; i++ {
+		result, err := client.Get("https://http2.golang.org/")
+		if err != nil {
+			log.Printf("请求 %d 失败: %v", i, err)
+			continue
+		}
+		// Proto() 返回协议版本，如 "HTTP/2.0"
+		fmt.Printf("请求 %d: %s, 状态码 %d\n", i, result.Proto(), result.StatusCode())
+	}
+	fmt.Printf("10 个请求耗时: %v\n", time.Since(start))
 }
 ```
 
@@ -363,30 +363,30 @@ HTTPC 引擎层广泛使用 `sync.Pool` 复用短生命周期对象，减少 GC 
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // Result 每次请求新建，GC 自动回收，无需手动释放
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Result 每次请求新建，GC 自动回收，无需手动释放
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 热路径中优先用 RawBody() 而非 Body()
-    // RawBody() 返回原始字节切片；Body() 返回预存字符串；String() 是调试格式化（开销最大）
-    data := result.RawBody()
-    fmt.Printf("响应大小: %d 字节\n", len(data))
-    fmt.Printf("请求耗时: %v\n", result.Meta.Duration)
+	// 热路径中优先用 RawBody() 而非 Body()
+	// RawBody() 返回原始字节切片；Body() 返回预存字符串；String() 是调试格式化（开销最大）
+	data := result.RawBody()
+	fmt.Printf("响应大小: %d 字节\n", len(data))
+	fmt.Printf("请求耗时: %v\n", result.Meta.Duration)
 }
 ```
 
@@ -440,41 +440,41 @@ result, err := httpc.Post("https://api.ai.example.com/v1/completions",
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.PerformanceConfig()
-    // 连接池按后端实例数量调优
-    cfg.Connection.MaxIdleConns = 300   // 总空闲连接
-    cfg.Connection.MaxConnsPerHost = 30 // 每个后端实例
-    // 微服务响应通常很快，缩短超时快速失败
-    cfg.Timeouts.Request = 10 * time.Second
-    cfg.Retry.Delay = 200 * time.Millisecond
-    cfg.Retry.BackoffFactor = 2.0
-    cfg.Retry.MaxRetries = 2
+	cfg := httpc.PerformanceConfig()
+	// 连接池按后端实例数量调优
+	cfg.Connection.MaxIdleConns = 300   // 总空闲连接
+	cfg.Connection.MaxConnsPerHost = 30 // 每个后端实例
+	// 微服务响应通常很快，缩短超时快速失败
+	cfg.Timeouts.Request = 10 * time.Second
+	cfg.Retry.Delay = 200 * time.Millisecond
+	cfg.Retry.BackoffFactor = 2.0
+	cfg.Retry.MaxRetries = 2
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    start := time.Now()
-    // 高频请求复用连接池，无需重建 TCP/TLS
-    for i := 0; i < 50; i++ {
-        result, err := client.Get("http://user-service:8080/api/users")
-        if err != nil {
-            log.Printf("请求 %d 失败: %v", i, err)
-            continue
-        }
-        _ = result
-    }
-    fmt.Printf("50 个请求耗时: %v\n", time.Since(start))
+	start := time.Now()
+	// 高频请求复用连接池，无需重建 TCP/TLS
+	for i := 0; i < 50; i++ {
+		result, err := client.Get("http://user-service:8080/api/users")
+		if err != nil {
+			log.Printf("请求 %d 失败: %v", i, err)
+			continue
+		}
+		_ = result
+	}
+	fmt.Printf("50 个请求耗时: %v\n", time.Since(start))
 }
 ```
 
@@ -486,35 +486,35 @@ func main() {
 package main
 
 import (
-    "context"
-    "log"
+	"context"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.PerformanceConfig()
-    cfg.Security.MaxResponseBodySize = 500 * 1024 * 1024 // 500MB 上限
+	cfg := httpc.PerformanceConfig()
+	cfg.Security.MaxResponseBodySize = 500 * 1024 * 1024 // 500MB 上限
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    dcfg := httpc.DefaultDownloadConfig()
-    dcfg.FilePath = "/tmp/large-file.zip"
-    dcfg.ResumeDownload = true // 断点续传
+	dcfg := httpc.DefaultDownloadConfig()
+	dcfg.FilePath = "/tmp/large-file.zip"
+	dcfg.ResumeDownload = true // 断点续传
 
-    result, err := client.Download(
-        context.Background(),
-        "https://example.com/large-file.zip",
-        dcfg,
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("下载完成: %d 字节", result.BytesWritten)
+	result, err := client.Download(
+		context.Background(),
+		"https://example.com/large-file.zip",
+		dcfg,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("下载完成: %d 字节", result.BytesWritten)
 }
 ```
 
@@ -563,51 +563,51 @@ HTTP 性能的根基是连接复用。每请求新建 Client 意味着每次都�
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 // 反模式演示：每请求新建 Client
 func main() {
-    start := time.Now()
+	start := time.Now()
 
-    for i := 0; i < 5; i++ {
-        // ❌ 每次循环新建 Client——连接无法复用
-        client, err := httpc.NewDefault()
-        if err != nil {
-            log.Fatal(err)
-        }
-        result, err := client.Get("https://httpbin.org/get")
-        client.Close() // 每次都关闭，连接池清空
-        if err != nil {
-            log.Printf("请求 %d 失败: %v", i, err)
-            continue
-        }
-        _ = result
-    }
-    // 5 个请求的耗时远高于复用 Client 的方案
-    fmt.Printf("反模式耗时: %v\n", time.Since(start))
+	for i := 0; i < 5; i++ {
+		// ❌ 每次循环新建 Client——连接无法复用
+		client, err := httpc.NewDefault()
+		if err != nil {
+			log.Fatal(err)
+		}
+		result, err := client.Get("https://httpbin.org/get")
+		client.Close() // 每次都关闭，连接池清空
+		if err != nil {
+			log.Printf("请求 %d 失败: %v", i, err)
+			continue
+		}
+		_ = result
+	}
+	// 5 个请求的耗时远高于复用 Client 的方案
+	fmt.Printf("反模式耗时: %v\n", time.Since(start))
 
-    // ✅ 正确做法：复用 Client
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	// ✅ 正确做法：复用 Client
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    start = time.Now()
-    for i := 0; i < 5; i++ {
-        result, err := client.Get("https://httpbin.org/get")
-        if err != nil {
-            log.Printf("请求 %d 失败: %v", i, err)
-            continue
-        }
-        _ = result
-    }
-    fmt.Printf("复用模式耗时: %v\n", time.Since(start))
+	start = time.Now()
+	for i := 0; i < 5; i++ {
+		result, err := client.Get("https://httpbin.org/get")
+		if err != nil {
+			log.Printf("请求 %d 失败: %v", i, err)
+			continue
+		}
+		_ = result
+	}
+	fmt.Printf("复用模式耗时: %v\n", time.Since(start))
 }
 ```
 

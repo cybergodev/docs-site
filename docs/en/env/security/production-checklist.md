@@ -3,7 +3,6 @@ sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo env | Security Launch Check"
 description: "Production security checklist for CyberGo env: .env permissions and .gitignore, RequiredKeys/AllowedKeys validation, audit logging, SecureValue handling."
 sidebar_position: 4
-sidebar_icon: "🛡️"
 ---
 
 # Production Checklist

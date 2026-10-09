@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Session Management"
 title: "Session Management - CyberGo HTTPC | SessionManager"
-description: "HTTPC SessionManager API reference: NewSessionManager creation, SessionConfig configuration, SetHeader header management, SetCookie methods, and SetCookieSecurity validation with complete usage details."
+description: "HTTPC SessionManager API: NewSessionManager, SessionConfig, SetHeader and SetCookie management, plus SetCookieSecurity validation."
 sidebar_position: 3
 ---
 

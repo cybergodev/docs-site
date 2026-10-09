@@ -3,7 +3,6 @@ sidebar_label: "自定义解析器"
 title: "自定义解析器 - CyberGo env | 扩展文件格式"
 description: "CyberGo env 自定义解析器指南，实现 EnvParser 接口的 Parse 方法并通过 RegisterParser 注册，借助 ComponentFactory 获取 Validator 与 Auditor，附 TOML 与 INI 解析器完整示例与最佳实践。"
 sidebar_position: 8
-sidebar_icon: "⚙️"
 ---
 
 # 自定义解析器
@@ -40,51 +39,51 @@ type EnvParser interface {
 package myparser
 
 import (
-    "io"
-    "strings"
+	"io"
+	"strings"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // 自定义解析器
 type CustomParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
+	cfg       env.Config
+	validator env.Validator
+	auditor   env.FullAuditLogger
 }
 
 // 实现 EnvParser 接口
 func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    result := make(map[string]string)
+	result := make(map[string]string)
 
-    // 1. 读取内容（注意大小限制）
-    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize))
-    if err != nil {
-        return nil, err
-    }
+	// 1. 读取内容（注意大小限制）
+	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize))
+	if err != nil {
+		return nil, err
+	}
 
-    // 2. 解析内容为键值对
-    for _, line := range strings.Split(string(content), "\n") {
-        line = strings.TrimSpace(line)
-        if line == "" || strings.HasPrefix(line, "#") {
-            continue
-        }
-        idx := strings.Index(line, "=")
-        if idx <= 0 {
-            continue
-        }
-        result[strings.TrimSpace(line[:idx])] = strings.TrimSpace(line[idx+1:])
-    }
+	// 2. 解析内容为键值对
+	for _, line := range strings.Split(string(content), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		idx := strings.Index(line, "=")
+		if idx <= 0 {
+			continue
+		}
+		result[strings.TrimSpace(line[:idx])] = strings.TrimSpace(line[idx+1:])
+	}
 
-    // 3. 验证结果
-    for key := range result {
-        if err := p.validator.ValidateKey(key); err != nil {
-            return nil, err
-        }
-    }
+	// 3. 验证结果
+	for key := range result {
+		if err := p.validator.ValidateKey(key); err != nil {
+			return nil, err
+		}
+	}
 
-    // 4. 返回结果
-    return result, nil
+	// 4. 返回结果
+	return result, nil
 }
 ```
 
@@ -94,88 +93,88 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 package tomlparser
 
 import (
-    "fmt"
-    "io"
-    "strings"
-    "time"
+	"fmt"
+	"io"
+	"strings"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // TOMLParser 解析 TOML 格式
 type TOMLParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
+	cfg       env.Config
+	validator env.Validator
+	auditor   env.FullAuditLogger
 }
 
 func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    start := time.Now()
+	start := time.Now()
 
-    // 限制读取大小
-    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
-    if err != nil {
-        return nil, err
-    }
-    if int64(len(content)) > p.cfg.MaxFileSize {
-        return nil, fmt.Errorf("file exceeds size limit")
-    }
+	// 限制读取大小
+	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > p.cfg.MaxFileSize {
+		return nil, fmt.Errorf("file exceeds size limit")
+	}
 
-    result := make(map[string]string)
-    lines := strings.Split(string(content), "\n")
+	result := make(map[string]string)
+	lines := strings.Split(string(content), "\n")
 
-    var currentSection string
+	var currentSection string
 
-    for lineNum, line := range lines {
-        line = strings.TrimSpace(line)
+	for lineNum, line := range lines {
+		line = strings.TrimSpace(line)
 
-        // 跳过空行和注释
-        if line == "" || strings.HasPrefix(line, "#") {
-            continue
-        }
+		// 跳过空行和注释
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
 
-        // 解析 section [section]
-        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-            currentSection = strings.Trim(line, "[]")
-            continue
-        }
+		// 解析 section [section]
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			currentSection = strings.Trim(line, "[]")
+			continue
+		}
 
-        // 解析 key = value
-        parts := strings.SplitN(line, "=", 2)
-        if len(parts) != 2 {
-            continue // 或返回错误
-        }
+		// 解析 key = value
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue // 或返回错误
+		}
 
-        key := strings.TrimSpace(parts[0])
-        value := strings.TrimSpace(parts[1])
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
 
-        // 添加 section 前缀
-        if currentSection != "" {
-            key = currentSection + "_" + key
-        }
+		// 添加 section 前缀
+		if currentSection != "" {
+			key = currentSection + "_" + key
+		}
 
-        // 去除引号
-        value = strings.Trim(value, "\"'")
+		// 去除引号
+		value = strings.Trim(value, "\"'")
 
-        // 转大写
-        key = strings.ToUpper(key)
+		// 转大写
+		key = strings.ToUpper(key)
 
-        // 验证键
-        if err := p.validator.ValidateKey(key); err != nil {
-            _ = p.auditor.LogError(env.ActionParse, key, err.Error())
-            return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
-        }
+		// 验证键
+		if err := p.validator.ValidateKey(key); err != nil {
+			_ = p.auditor.LogError(env.ActionParse, key, err.Error())
+			return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
+		}
 
-        result[key] = value
-    }
+		result[key] = value
+	}
 
-    // 检查变量数量
-    if len(result) > p.cfg.MaxVariables {
-        return nil, fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
-    }
+	// 检查变量数量
+	if len(result) > p.cfg.MaxVariables {
+		return nil, fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
+	}
 
-    _ = p.auditor.LogWithDuration(env.ActionParse, "", "parsed TOML: "+filename, true, time.Since(start))
-    return result, nil
+	_ = p.auditor.LogWithDuration(env.ActionParse, "", "parsed TOML: "+filename, true, time.Since(start))
+	return result, nil
 }
 ```
 
@@ -185,64 +184,64 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
 package iniparser
 
 import (
-    "fmt"
-    "io"
-    "strings"
+	"fmt"
+	"io"
+	"strings"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // INIParser 解析 INI 格式
 type INIParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
+	cfg       env.Config
+	validator env.Validator
+	auditor   env.FullAuditLogger
 }
 
 func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
-    if err != nil {
-        return nil, err
-    }
+	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
+	if err != nil {
+		return nil, err
+	}
 
-    result := make(map[string]string)
-    lines := strings.Split(string(content), "\n")
+	result := make(map[string]string)
+	lines := strings.Split(string(content), "\n")
 
-    var currentSection string
+	var currentSection string
 
-    for lineNum, line := range lines {
-        line = strings.TrimSpace(line)
+	for lineNum, line := range lines {
+		line = strings.TrimSpace(line)
 
-        // 跳过空行和注释
-        if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
-            continue
-        }
+		// 跳过空行和注释
+		if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+			continue
+		}
 
-        // Section
-        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-            currentSection = strings.Trim(line, "[]")
-            continue
-        }
+		// Section
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			currentSection = strings.Trim(line, "[]")
+			continue
+		}
 
-        // Key=Value
-        if idx := strings.Index(line, "="); idx > 0 {
-            key := strings.TrimSpace(line[:idx])
-            value := strings.TrimSpace(line[idx+1:])
+		// Key=Value
+		if idx := strings.Index(line, "="); idx > 0 {
+			key := strings.TrimSpace(line[:idx])
+			value := strings.TrimSpace(line[idx+1:])
 
-            if currentSection != "" {
-                key = currentSection + "_" + key
-            }
+			if currentSection != "" {
+				key = currentSection + "_" + key
+			}
 
-            // 验证
-            if err := p.validator.ValidateKey(strings.ToUpper(key)); err != nil {
-                return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
-            }
+			// 验证
+			if err := p.validator.ValidateKey(strings.ToUpper(key)); err != nil {
+				return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
+			}
 
-            result[strings.ToUpper(key)] = value
-        }
-    }
+			result[strings.ToUpper(key)] = value
+		}
+	}
 
-    return result, nil
+	return result, nil
 }
 ```
 
@@ -511,131 +510,131 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 package main
 
 import (
-    "encoding/xml"
-    "fmt"
-    "io"
-    "strings"
-    "time"
+	"encoding/xml"
+	"fmt"
+	"io"
+	"strings"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // XML 配置结构
 type XMLConfig struct {
-    XMLName xml.Name   `xml:"config"`
-    Entries []XMLEntry `xml:"entry"`
+	XMLName xml.Name   `xml:"config"`
+	Entries []XMLEntry `xml:"entry"`
 }
 
 type XMLEntry struct {
-    Key   string `xml:"key,attr"`
-    Value string `xml:",chardata"`
+	Key   string `xml:"key,attr"`
+	Value string `xml:",chardata"`
 }
 
 // XMLParser 解析 XML 格式
 type XMLParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
+	cfg       env.Config
+	validator env.Validator
+	auditor   env.FullAuditLogger
 }
 
 func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    start := time.Now()
+	start := time.Now()
 
-    // 限制读取大小
-    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
-    if err != nil {
-        return nil, err
-    }
-    if int64(len(content)) > p.cfg.MaxFileSize {
-        _ = p.auditor.LogError(env.ActionParse, "", "file exceeds size limit")
-        return nil, fmt.Errorf("file exceeds size limit: %d > %d", len(content), p.cfg.MaxFileSize)
-    }
+	// 限制读取大小
+	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > p.cfg.MaxFileSize {
+		_ = p.auditor.LogError(env.ActionParse, "", "file exceeds size limit")
+		return nil, fmt.Errorf("file exceeds size limit: %d > %d", len(content), p.cfg.MaxFileSize)
+	}
 
-    var xmlConfig XMLConfig
-    if err := xml.Unmarshal(content, &xmlConfig); err != nil {
-        _ = p.auditor.LogError(env.ActionParse, "", "xml parse error: "+err.Error())
-        return nil, fmt.Errorf("xml parse error: %w", err)
-    }
+	var xmlConfig XMLConfig
+	if err := xml.Unmarshal(content, &xmlConfig); err != nil {
+		_ = p.auditor.LogError(env.ActionParse, "", "xml parse error: "+err.Error())
+		return nil, fmt.Errorf("xml parse error: %w", err)
+	}
 
-    result := make(map[string]string)
+	result := make(map[string]string)
 
-    for _, entry := range xmlConfig.Entries {
-        key := strings.ToUpper(entry.Key)
+	for _, entry := range xmlConfig.Entries {
+		key := strings.ToUpper(entry.Key)
 
-        // 验证键长度
-        if len(key) > p.cfg.MaxKeyLength {
-            return nil, fmt.Errorf("key too long: %s", key)
-        }
+		// 验证键长度
+		if len(key) > p.cfg.MaxKeyLength {
+			return nil, fmt.Errorf("key too long: %s", key)
+		}
 
-        // 验证键格式
-        if err := p.validator.ValidateKey(key); err != nil {
-            return nil, fmt.Errorf("invalid key %q: %w", key, err)
-        }
+		// 验证键格式
+		if err := p.validator.ValidateKey(key); err != nil {
+			return nil, fmt.Errorf("invalid key %q: %w", key, err)
+		}
 
-        // 验证值长度
-        if len(entry.Value) > p.cfg.MaxValueLength {
-            return nil, fmt.Errorf("value too long for key: %s", key)
-        }
+		// 验证值长度
+		if len(entry.Value) > p.cfg.MaxValueLength {
+			return nil, fmt.Errorf("value too long for key: %s", key)
+		}
 
-        result[key] = entry.Value
-    }
+		result[key] = entry.Value
+	}
 
-    // 检查变量数量
-    if len(result) > p.cfg.MaxVariables {
-        return nil, fmt.Errorf("too many variables: %d > %d", len(result), p.cfg.MaxVariables)
-    }
+	// 检查变量数量
+	if len(result) > p.cfg.MaxVariables {
+		return nil, fmt.Errorf("too many variables: %d > %d", len(result), p.cfg.MaxVariables)
+	}
 
-    _ = p.auditor.LogWithDuration(env.ActionParse, "", "parsed XML: "+filename, true, time.Since(start))
-    return result, nil
+	_ = p.auditor.LogWithDuration(env.ActionParse, "", "parsed XML: "+filename, true, time.Since(start))
+	return result, nil
 }
 
 // 定义 XML 格式常量
 const FormatXML env.FileFormat = 102
 
 func init() {
-    // 注册 XML 解析器
-    env.RegisterParser(FormatXML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
-        return &XMLParser{
-            cfg:       cfg,
-            validator: f.Validator(),
-            auditor:   f.Auditor(),
-        }, nil
-    })
+	// 注册 XML 解析器
+	env.RegisterParser(FormatXML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+		return &XMLParser{
+			cfg:       cfg,
+			validator: f.Validator(),
+			auditor:   f.Auditor(),
+		}, nil
+	})
 }
 
 func main() {
-    // LoadFiles 不会按 .xml 扩展名自动路由到 XML 解析器——DetectFormat
-    // 只识别 .env/.json/.yaml/.yml。这里用 ForceRegisterParser 覆盖
-    // FormatEnv，文件以 .env 扩展名加载（内容为 XML 格式）：
-    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
-        return &XMLParser{
-            cfg:       cfg,
-            validator: f.Validator(),
-            auditor:   f.Auditor(),
-        }, nil
-    })
-    if err != nil {
-        panic(err)
-    }
+	// LoadFiles 不会按 .xml 扩展名自动路由到 XML 解析器——DetectFormat
+	// 只识别 .env/.json/.yaml/.yml。这里用 ForceRegisterParser 覆盖
+	// FormatEnv，文件以 .env 扩展名加载（内容为 XML 格式）：
+	err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+		return &XMLParser{
+			cfg:       cfg,
+			validator: f.Validator(),
+			auditor:   f.Auditor(),
+		}, nil
+	})
+	if err != nil {
+		panic(err)
+	}
 
-    cfg := env.DefaultConfig()
-    loader, _ := env.New(cfg)
-    defer loader.Close()
+	cfg := env.DefaultConfig()
+	loader, _ := env.New(cfg)
+	defer loader.Close()
 
-    /*
-    config.env 文件内容（XML 格式）：
-    <?xml version="1.0"?>
-    <config>
-        <entry key="DATABASE_HOST">localhost</entry>
-        <entry key="DATABASE_PORT">5432</entry>
-    </config>
-    */
-    if err := loader.LoadFiles("config.env"); err != nil {
-        panic(err)
-    }
+	/*
+	   config.env 文件内容（XML 格式）：
+	   <?xml version="1.0"?>
+	   <config>
+	       <entry key="DATABASE_HOST">localhost</entry>
+	       <entry key="DATABASE_PORT">5432</entry>
+	   </config>
+	*/
+	if err := loader.LoadFiles("config.env"); err != nil {
+		panic(err)
+	}
 
-    fmt.Println(loader.GetString("DATABASE_HOST"))  // localhost
-    fmt.Println(loader.GetInt("DATABASE_PORT"))     // 5432
+	fmt.Println(loader.GetString("DATABASE_HOST")) // localhost
+	fmt.Println(loader.GetInt("DATABASE_PORT"))    // 5432
 }
 ```
 

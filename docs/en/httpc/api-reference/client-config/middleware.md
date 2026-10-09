@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Built-in Middleware"
 title: "Middleware - CyberGo HTTPC | Seven Built-in Middleware"
-description: "HTTPC middleware system API reference: Chain onion-model composition, seven built-in middleware (Recovery/Logging/Timeout/Metrics/Audit etc.), per-middleware config structs and Default constructors, and the AuditEvent audit-event struct."
+description: "HTTPC middleware API: Chain composition, seven built-in middleware (Recovery, Logging, Timeout, Metrics, Audit), config structs, and AuditEvent."
 sidebar_position: 5
 ---
 

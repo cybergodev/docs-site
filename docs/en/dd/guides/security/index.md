@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
 title: "Security Overview - CyberGo DD | Log Security"
-description: "A comprehensive overview of CyberGo DD's security features, including automatic sensitive-data detection and redaction filtering, file-path safety validation and protection, asynchronous audit-event recording and chain-tracking capabilities, HMAC integrity-signing tamper protection, and compliance-configuration best practices — fully safeguarding the logging system from data filtering to audit tracing."
+description: "Overview of CyberGo DD security: sensitive-data redaction, file-path safety validation, audit events, HMAC integrity signing, and compliance setup."
 sidebar_position: 1
 ---
 

@@ -159,88 +159,88 @@ if err != nil {
 package main
 
 import (
-    "errors"
-    "fmt"
+	"errors"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 // AccountClaims 携带账户层级与设备配额的业务声明
 type AccountClaims struct {
-    UserID    string   `json:"user_id"`
-    Tier      string   `json:"tier"`       // free | pro | enterprise
-    Region    string   `json:"region"`     // cn | us | eu
-    DeviceIDs []string `json:"device_ids"`
-    jwt.RegisteredClaims
+	UserID    string   `json:"user_id"`
+	Tier      string   `json:"tier"`   // free | pro | enterprise
+	Region    string   `json:"region"` // cn | us | eu
+	DeviceIDs []string `json:"device_ids"`
+	jwt.RegisteredClaims
 }
 
 // 各层级的最大设备数
 var tierMaxDevices = map[string]int{
-    "free":       2,
-    "pro":        10,
-    "enterprise": 100,
+	"free":       2,
+	"pro":        10,
+	"enterprise": 100,
 }
 
 var allowedRegions = map[string]bool{"cn": true, "us": true, "eu": true}
 
 func (c *AccountClaims) GetRegisteredClaims() *jwt.RegisteredClaims {
-    return &c.RegisteredClaims
+	return &c.RegisteredClaims
 }
 
 func (c *AccountClaims) Validate() error {
-    // 1. 必填字段校验
-    if c.UserID == "" {
-        return errors.New("user_id is required")
-    }
+	// 1. 必填字段校验
+	if c.UserID == "" {
+		return errors.New("user_id is required")
+	}
 
-    // 2. 枚举值校验
-    if _, ok := tierMaxDevices[c.Tier]; !ok {
-        return fmt.Errorf("invalid tier %q: must be free, pro or enterprise", c.Tier)
-    }
-    if !allowedRegions[c.Region] {
-        return fmt.Errorf("invalid region %q: must be cn, us or eu", c.Region)
-    }
+	// 2. 枚举值校验
+	if _, ok := tierMaxDevices[c.Tier]; !ok {
+		return fmt.Errorf("invalid tier %q: must be free, pro or enterprise", c.Tier)
+	}
+	if !allowedRegions[c.Region] {
+		return fmt.Errorf("invalid region %q: must be cn, us or eu", c.Region)
+	}
 
-    // 3. 跨字段约束：设备数不能超过该层级配额
-    if max := tierMaxDevices[c.Tier]; len(c.DeviceIDs) > max {
-        return fmt.Errorf("tier %q allows at most %d devices, got %d",
-            c.Tier, max, len(c.DeviceIDs))
-    }
+	// 3. 跨字段约束：设备数不能超过该层级配额
+	if max := tierMaxDevices[c.Tier]; len(c.DeviceIDs) > max {
+		return fmt.Errorf("tier %q allows at most %d devices, got %d",
+			c.Tier, max, len(c.DeviceIDs))
+	}
 
-    return nil
+	return nil
 }
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // 合法规牌：pro 层级，3 台设备（≤ 10）
-    valid := &AccountClaims{
-        UserID:    "user123",
-        Tier:      "pro",
-        Region:    "cn",
-        DeviceIDs: []string{"dev-1", "dev-2", "dev-3"},
-    }
-    _, err = processor.Create(valid)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token created successfully")
+	// 合法规牌：pro 层级，3 台设备（≤ 10）
+	valid := &AccountClaims{
+		UserID:    "user123",
+		Tier:      "pro",
+		Region:    "cn",
+		DeviceIDs: []string{"dev-1", "dev-2", "dev-3"},
+	}
+	_, err = processor.Create(valid)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token created successfully")
 
-    // 违法规牌：free 层级配 5 台设备（> 2）→ Validate() 拒绝
-    _, err = processor.Create(&AccountClaims{
-        UserID:    "user456",
-        Tier:      "free",
-        Region:    "us",
-        DeviceIDs: []string{"d1", "d2", "d3", "d4", "d5"},
-    })
-    fmt.Println("Over-quota error:", err)
-    // 输出：Over-quota error: invalid claims: tier "free" allows at most 2 devices, got 5
+	// 违法规牌：free 层级配 5 台设备（> 2）→ Validate() 拒绝
+	_, err = processor.Create(&AccountClaims{
+		UserID:    "user456",
+		Tier:      "free",
+		Region:    "us",
+		DeviceIDs: []string{"d1", "d2", "d3", "d4", "d5"},
+	})
+	fmt.Println("Over-quota error:", err)
+	// 输出：Over-quota error: invalid claims: tier "free" allows at most 2 devices, got 5
 }
 ```
 
@@ -276,56 +276,56 @@ func main() {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "strings"
+	"errors"
+	"fmt"
+	"strings"
 )
 
 const maxClaimLength = 256
 
 // dangerousSubstrings 列出与库内置检测重叠的高危子串，可按业务增删。
 var dangerousSubstrings = []string{
-    "<script", "javascript:", "onerror=", "onload=",
-    "drop table", "union select", "../", "/etc/passwd",
+	"<script", "javascript:", "onerror=", "onload=",
+	"drop table", "union select", "../", "/etc/passwd",
 }
 
 // validateField 校验自定义字段的长度、控制字符和常见注入模式。
 func validateField(name, value string) error {
-    if len(value) > maxClaimLength {
-        return fmt.Errorf("%s exceeds maximum length of %d", name, maxClaimLength)
-    }
-    for i := 0; i < len(value); i++ {
-        c := value[i]
-        if c < 32 && c != '\t' && c != '\n' && c != '\r' {
-            return fmt.Errorf("%s contains invalid control character", name)
-        }
-    }
-    lower := strings.ToLower(value)
-    for _, pattern := range dangerousSubstrings {
-        if strings.Contains(lower, pattern) {
-            return fmt.Errorf("%s contains suspicious pattern", name)
-        }
-    }
-    return nil
+	if len(value) > maxClaimLength {
+		return fmt.Errorf("%s exceeds maximum length of %d", name, maxClaimLength)
+	}
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+		if c < 32 && c != '\t' && c != '\n' && c != '\r' {
+			return fmt.Errorf("%s contains invalid control character", name)
+		}
+	}
+	lower := strings.ToLower(value)
+	for _, pattern := range dangerousSubstrings {
+		if strings.Contains(lower, pattern) {
+			return fmt.Errorf("%s contains suspicious pattern", name)
+		}
+	}
+	return nil
 }
 
 type MyClaims struct {
-    UserID     string `json:"user_id"`
-    Department string `json:"department"`
+	UserID     string `json:"user_id"`
+	Department string `json:"department"`
 }
 
 func (c *MyClaims) Validate() error {
-    if c.UserID == "" {
-        return errors.New("user_id is required")
-    }
-    // 自定义字段不享受内置深度验证，手动补齐长度与注入检查
-    if err := validateField("user_id", c.UserID); err != nil {
-        return err
-    }
-    if err := validateField("department", c.Department); err != nil {
-        return err
-    }
-    return nil
+	if c.UserID == "" {
+		return errors.New("user_id is required")
+	}
+	// 自定义字段不享受内置深度验证，手动补齐长度与注入检查
+	if err := validateField("user_id", c.UserID); err != nil {
+		return err
+	}
+	if err := validateField("department", c.Department); err != nil {
+		return err
+	}
+	return nil
 }
 
 func main() {}

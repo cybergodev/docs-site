@@ -17,20 +17,20 @@ Without any configuration, the client follows redirects automatically until the 
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/redirect/2")
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Get("https://httpbin.org/redirect/2")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.StatusCode())        // 200 (status of the final response)
-    fmt.Println(result.Meta.RedirectCount)  // 2 (redirects actually followed)
+	fmt.Println(result.StatusCode())       // 200 (status of the final response)
+	fmt.Println(result.Meta.RedirectCount) // 2 (redirects actually followed)
 }
 ```
 
@@ -130,28 +130,28 @@ The precise semantics of both fields:
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/redirect/3")
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Get("https://httpbin.org/redirect/3")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Printf("Followed %d redirects\n", result.Meta.RedirectCount)
-    for i, u := range result.Meta.RedirectChain {
-        fmt.Printf("  %d. %s\n", i+1, u)
-    }
-    fmt.Println("Final destination:", result.Request.URL)
-    // Output:
-    //   1. https://httpbin.org/redirect/3
-    //   2. https://httpbin.org/redirect/2
-    //   3. https://httpbin.org/redirect/1
-    // Final destination: https://httpbin.org/get
+	fmt.Printf("Followed %d redirects\n", result.Meta.RedirectCount)
+	for i, u := range result.Meta.RedirectChain {
+		fmt.Printf("  %d. %s\n", i+1, u)
+	}
+	fmt.Println("Final destination:", result.Request.URL)
+	// Output:
+	//   1. https://httpbin.org/redirect/3
+	//   2. https://httpbin.org/redirect/2
+	//   3. https://httpbin.org/redirect/1
+	// Final destination: https://httpbin.org/get
 }
 ```
 
@@ -199,32 +199,32 @@ When following is refused (limit exceeded, circular, whitelist, SSRF block), the
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Defaults.MaxRedirects = 2 // only allow 2 follows
+	cfg := httpc.DefaultConfig()
+	cfg.Defaults.MaxRedirects = 2 // only allow 2 follows
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // /redirect/5 needs 5 follows and will necessarily exceed the limit
-    _, err = client.Get("https://httpbin.org/redirect/5")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeValidation {
-            fmt.Println("Redirect refused:", clientErr.Message)
-            // Output: Redirect refused: redirect limit exceeded
-        }
-    }
+	// /redirect/5 needs 5 follows and will necessarily exceed the limit
+	_, err = client.Get("https://httpbin.org/redirect/5")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeValidation {
+			fmt.Println("Redirect refused:", clientErr.Message)
+			// Output: Redirect refused: redirect limit exceeded
+		}
+	}
 }
 ```
 
@@ -260,55 +260,55 @@ When you need per-hop inspection, conditional following, or custom logging, disa
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/url"
+	"fmt"
+	"log"
+	"net/url"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Defaults.FollowRedirects = false
+	cfg := httpc.DefaultConfig()
+	cfg.Defaults.FollowRedirects = false
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    currentURL := "https://httpbin.org/redirect/3"
-    base, err := url.Parse(currentURL)
-    if err != nil {
-        log.Fatal(err)
-    }
+	currentURL := "https://httpbin.org/redirect/3"
+	base, err := url.Parse(currentURL)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    for i := 0; i < 5; i++ {
-        result, err := client.Get(currentURL)
-        if err != nil {
-            log.Fatal(err)
-        }
-        if !result.IsRedirect() {
-            fmt.Println("Reached final destination:", currentURL)
-            break
-        }
+	for i := 0; i < 5; i++ {
+		result, err := client.Get(currentURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if !result.IsRedirect() {
+			fmt.Println("Reached final destination:", currentURL)
+			break
+		}
 
-        location := result.Response.Headers.Get("Location")
-        if location == "" {
-            fmt.Println("Redirect response has no Location header, stopping")
-            break
-        }
+		location := result.Response.Headers.Get("Location")
+		if location == "" {
+			fmt.Println("Redirect response has no Location header, stopping")
+			break
+		}
 
-        // Resolve a relative address against the current URL
-        next, err := base.Parse(location)
-        if err != nil {
-            log.Fatal(err)
-        }
-        fmt.Printf("Hop %d: %s\n", i+1, next.String())
+		// Resolve a relative address against the current URL
+		next, err := base.Parse(location)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Hop %d: %s\n", i+1, next.String())
 
-        currentURL = next.String()
-        base = next
-    }
+		currentURL = next.String()
+		base = next
+	}
 }
 ```
 

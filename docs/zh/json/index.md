@@ -2,7 +2,6 @@
 sidebar_label: "概述"
 title: "JSON 处理库 - CyberGo JSON | 高性能 Go 库"
 description: "CyberGo JSON 是高性能、线程安全的 Go JSON 处理库，支持 JSONPath 路径查询、流式处理、泛型 API、Schema 验证与钩子扩展，内置输入校验、危险模式检测与智能缓存，100% 兼容 encoding/json，可无缝替换标准库。"
-sidebar_icon: "📘"
 ---
 
 # JSON 处理库

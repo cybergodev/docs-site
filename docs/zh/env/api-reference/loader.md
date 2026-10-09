@@ -749,65 +749,65 @@ if loader.IsClosed() {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
-    "os"
-    "time"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 创建生产环境配置
-    cfg := env.ProductionConfig()
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
-    cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+	// 创建生产环境配置
+	cfg := env.ProductionConfig()
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 
-    // 创建加载器
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	// 创建加载器
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // 加载文件
-    if err := loader.LoadFiles(".env", ".env.production"); err != nil {
-        if errors.Is(err, env.ErrFileNotFound) {
-            log.Fatal("配置文件不存在")
-        }
-        log.Fatal(err)
-    }
+	// 加载文件
+	if err := loader.LoadFiles(".env", ".env.production"); err != nil {
+		if errors.Is(err, env.ErrFileNotFound) {
+			log.Fatal("配置文件不存在")
+		}
+		log.Fatal(err)
+	}
 
-    // 验证必需键
-    if err := loader.Validate(); err != nil {
-        log.Fatal("缺少必需配置：", err)
-    }
+	// 验证必需键
+	if err := loader.Validate(); err != nil {
+		log.Fatal("缺少必需配置：", err)
+	}
 
-    // 读取配置
-    host := loader.GetString("DB_HOST")
-    port := loader.GetInt("DB_PORT", 5432)
-    debug := loader.GetBool("DEBUG", false)
-    timeout := loader.GetDuration("TIMEOUT", 30*time.Second)
+	// 读取配置
+	host := loader.GetString("DB_HOST")
+	port := loader.GetInt("DB_PORT", 5432)
+	debug := loader.GetBool("DEBUG", false)
+	timeout := loader.GetDuration("TIMEOUT", 30*time.Second)
 
-    fmt.Printf("Server: %s:%d\n", host, port)
-    fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
+	fmt.Printf("Server: %s:%d\n", host, port)
+	fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
 
-    // 敏感数据
-    secret := loader.GetSecure("API_KEY")
-    if secret != nil {
-        defer secret.Release()
-        fmt.Printf("API Key length: %d\n", secret.Length())
-    }
+	// 敏感数据
+	secret := loader.GetSecure("API_KEY")
+	if secret != nil {
+		defer secret.Release()
+		fmt.Printf("API Key length: %d\n", secret.Length())
+	}
 
-    // 应用到系统环境
-    if err := loader.Apply(); err != nil {
-        log.Fatal(err)
-    }
+	// 应用到系统环境
+	if err := loader.Apply(); err != nil {
+		log.Fatal(err)
+	}
 
-    // 所有变量
-    fmt.Printf("Loaded %d variables\n", loader.Len())
-    fmt.Printf("Load time: %v\n", loader.LoadTime())
+	// 所有变量
+	fmt.Printf("Loaded %d variables\n", loader.Len())
+	fmt.Printf("Load time: %v\n", loader.LoadTime())
 }
 ```
 

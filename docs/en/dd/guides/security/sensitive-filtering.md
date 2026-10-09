@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Sensitive Data Filtering"
 title: "Sensitive Data Filtering - CyberGo DD | Auto-Redaction Guide"
-description: "CyberGo DD sensitive-data filtering configuration guide, covering built-in filter patterns (passwords, API keys, credit cards, SSNs, JWTs, etc.), custom regex patterns, five security levels, industry-compliance presets (HIPAA, PCI-DSS, government standards), and filter statistics and monitoring, to help you build a compliant log-redaction solution."
+description: "Configure CyberGo DD sensitive-data filtering: built-in patterns for passwords, API keys, and SSNs, custom regex, security levels, and compliance presets."
 sidebar_position: 2
 ---
 

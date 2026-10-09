@@ -399,7 +399,7 @@ result, err := client.Get(url, httpc.WithSecureCookie(strict))
 ```
 
 :::warning WithSecureCookie 顺序敏感
-`WithSecureCookie` 只验证**应用时已存在**的 Cookie。必须放在所有 `WithCookie`/`WithCookieMap` 之后。如需会话级的无序验证，使用 `SessionManager.SetCookieSecurity`。
+`WithSecureCookie` 只验证**应用时已存在**的 Cookie。必须放在所有 `WithCookies`/`WithCookieMap`/`WithCookieString` 之后。如需会话级的无序验证，使用 `SessionManager.SetCookieSecurity`。
 :::
 
 ## 错误分类常量（ErrorType）

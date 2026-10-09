@@ -62,17 +62,17 @@ Apart from `golang.org/x/sys` there are no other third-party dependencies — im
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/httpc"
+	"fmt"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/get")
-    if err != nil {
-        panic(err)
-    }
+	result, err := httpc.Get("https://httpbin.org/get")
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(result.StatusCode()) // 200
+	fmt.Println(result.StatusCode()) // 200
 }
 ```
 

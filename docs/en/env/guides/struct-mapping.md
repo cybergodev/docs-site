@@ -3,7 +3,6 @@ sidebar_label: "Struct Mapping"
 title: "Struct Mapping - CyberGo env | env Tag Mapping"
 description: "Struct mapping guide for CyberGo env: map environment variables to struct fields via env and envDefault tags, with nested structs and required fields."
 sidebar_position: 2
-sidebar_icon: "🔧"
 ---
 
 # Struct Mapping
@@ -18,25 +17,25 @@ Use struct tags to automatically map environment variables to Go structs, enabli
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host string `env:"SERVER_HOST"`
-    Port int64  `env:"SERVER_PORT"`
-    Debug bool  `env:"DEBUG"`
+	Host  string `env:"SERVER_HOST"`
+	Port  int64  `env:"SERVER_PORT"`
+	Debug bool   `env:"DEBUG"`
 }
 
 func main() {
-    env.Load(".env")
+	env.Load(".env")
 
-    cfg := Config{}
-    if err := env.ParseInto(&cfg); err != nil {
-        panic(err)
-    }
+	cfg := Config{}
+	if err := env.ParseInto(&cfg); err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", cfg)
+	fmt.Printf("%+v\n", cfg)
 }
 ```
 
@@ -196,24 +195,24 @@ Pointer fields are supported:
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host    *string `env:"HOST"`
-    Port    *int64  `env:"PORT"`
-    Enabled *bool   `env:"ENABLED"`
+	Host    *string `env:"HOST"`
+	Port    *int64  `env:"PORT"`
+	Enabled *bool   `env:"ENABLED"`
 }
 
 func main() {
-    cfg := Config{}
-    env.ParseInto(&cfg)
+	cfg := Config{}
+	env.ParseInto(&cfg)
 
-    if cfg.Port != nil {
-        fmt.Println("Port:", *cfg.Port)
-    }
+	if cfg.Port != nil {
+		fmt.Println("Port:", *cfg.Port)
+	}
 }
 ```
 
@@ -227,38 +226,38 @@ Custom decoding of struct fields is done by implementing the standard library `e
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type LogLevel string
 
 // Implement encoding.TextUnmarshaler — called at field level
 func (l *LogLevel) UnmarshalText(text []byte) error {
-    switch string(text) {
-    case "debug", "info", "warn", "error":
-        *l = LogLevel(text)
-        return nil
-    default:
-        return fmt.Errorf("invalid log level: %s", string(text))
-    }
+	switch string(text) {
+	case "debug", "info", "warn", "error":
+		*l = LogLevel(text)
+		return nil
+	default:
+		return fmt.Errorf("invalid log level: %s", string(text))
+	}
 }
 
 type Config struct {
-    Level LogLevel `env:"LOG_LEVEL"`
+	Level LogLevel `env:"LOG_LEVEL"`
 }
 
 func main() {
-    data := map[string]string{"LOG_LEVEL": "info"}
+	data := map[string]string{"LOG_LEVEL": "info"}
 
-    var cfg Config
-    if err := env.UnmarshalInto(data, &cfg); err != nil {
-        panic(err)
-    }
+	var cfg Config
+	if err := env.UnmarshalInto(data, &cfg); err != nil {
+		panic(err)
+	}
 
-    fmt.Println(cfg.Level)
-    // Output: info
+	fmt.Println(cfg.Level)
+	// Output: info
 }
 ```
 
@@ -294,33 +293,33 @@ func (p *Port) UnmarshalText(text []byte) error {
 package main
 
 import (
-    "errors"
-    "log"
+	"errors"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type ServerConfig struct {
-    Host string `env:"SERVER_HOST" envDefault:"0.0.0.0"`
-    Port int64  `env:"SERVER_PORT" envDefault:"8080"`
+	Host string `env:"SERVER_HOST" envDefault:"0.0.0.0"`
+	Port int64  `env:"SERVER_PORT" envDefault:"8080"`
 }
 
 func (c *ServerConfig) Validate() error {
-    if c.Port < 1024 || c.Port > 65535 {
-        return errors.New("port must be 1024-65535")
-    }
-    return nil
+	if c.Port < 1024 || c.Port > 65535 {
+		return errors.New("port must be 1024-65535")
+	}
+	return nil
 }
 
 func main() {
-    cfg := ServerConfig{}
-    if err := env.ParseInto(&cfg); err != nil {
-        log.Fatal(err)
-    }
+	cfg := ServerConfig{}
+	if err := env.ParseInto(&cfg); err != nil {
+		log.Fatal(err)
+	}
 
-    if err := cfg.Validate(); err != nil {
-        log.Fatal(err)
-    }
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
 
@@ -450,86 +449,86 @@ if err := env.ParseInto(&cfg); err != nil {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
-    "time"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type ServerConfig struct {
-    Host         string        `env:"SERVER_HOST" envDefault:"0.0.0.0"`
-    Port         int64         `env:"SERVER_PORT" envDefault:"8080"`
-    ReadTimeout  time.Duration `env:"READ_TIMEOUT" envDefault:"30s"`
-    WriteTimeout time.Duration `env:"WRITE_TIMEOUT" envDefault:"30s"`
+	Host         string        `env:"SERVER_HOST" envDefault:"0.0.0.0"`
+	Port         int64         `env:"SERVER_PORT" envDefault:"8080"`
+	ReadTimeout  time.Duration `env:"READ_TIMEOUT" envDefault:"30s"`
+	WriteTimeout time.Duration `env:"WRITE_TIMEOUT" envDefault:"30s"`
 }
 
 func (c *ServerConfig) Validate() error {
-    if c.Port < 1024 || c.Port > 65535 {
-        return errors.New("port must be 1024-65535")
-    }
-    return nil
+	if c.Port < 1024 || c.Port > 65535 {
+		return errors.New("port must be 1024-65535")
+	}
+	return nil
 }
 
 type DatabaseConfig struct {
-    Host     string `env:"DB_HOST" envDefault:"localhost"`
-    Port     int64  `env:"DB_PORT" envDefault:"5432"`
-    User     string `env:"DB_USER" envDefault:"postgres"`
-    Password string `env:"DB_PASSWORD"`
-    Name     string `env:"DB_NAME" envDefault:"myapp"`
+	Host     string `env:"DB_HOST" envDefault:"localhost"`
+	Port     int64  `env:"DB_PORT" envDefault:"5432"`
+	User     string `env:"DB_USER" envDefault:"postgres"`
+	Password string `env:"DB_PASSWORD"`
+	Name     string `env:"DB_NAME" envDefault:"myapp"`
 }
 
 func (c *DatabaseConfig) Validate() error {
-    if c.Password == "" {
-        return errors.New("DB_PASSWORD is required")
-    }
-    return nil
+	if c.Password == "" {
+		return errors.New("DB_PASSWORD is required")
+	}
+	return nil
 }
 
 type Config struct {
-    Server   ServerConfig
-    Database DatabaseConfig
+	Server   ServerConfig
+	Database DatabaseConfig
 }
 
 func LoadConfig() (*Config, error) {
-    if err := env.Load(".env"); err != nil {
-        return nil, fmt.Errorf("load env: %w", err)
-    }
+	if err := env.Load(".env"); err != nil {
+		return nil, fmt.Errorf("load env: %w", err)
+	}
 
-    cfg := &Config{
-        Server:   ServerConfig{},
-        Database: DatabaseConfig{},
-    }
+	cfg := &Config{
+		Server:   ServerConfig{},
+		Database: DatabaseConfig{},
+	}
 
-    if err := env.ParseInto(cfg); err != nil {
-        return nil, fmt.Errorf("parse config: %w", err)
-    }
+	if err := env.ParseInto(cfg); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
 
-    if err := cfg.Server.Validate(); err != nil {
-        return nil, fmt.Errorf("server config: %w", err)
-    }
+	if err := cfg.Server.Validate(); err != nil {
+		return nil, fmt.Errorf("server config: %w", err)
+	}
 
-    if err := cfg.Database.Validate(); err != nil {
-        return nil, fmt.Errorf("database config: %w", err)
-    }
+	if err := cfg.Database.Validate(); err != nil {
+		return nil, fmt.Errorf("database config: %w", err)
+	}
 
-    return cfg, nil
+	return cfg, nil
 }
 
 func main() {
-    cfg, err := LoadConfig()
-    if err != nil {
-        log.Fatal(err)
-    }
+	cfg, err := LoadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Printf("Server: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
-    fmt.Printf("Database: %s@%s:%d/%s\n",
-        cfg.Database.User,
-        cfg.Database.Host,
-        cfg.Database.Port,
-        cfg.Database.Name,
-    )
+	fmt.Printf("Server: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
+	fmt.Printf("Database: %s@%s:%d/%s\n",
+		cfg.Database.User,
+		cfg.Database.Host,
+		cfg.Database.Port,
+		cfg.Database.Name,
+	)
 }
 ```
 

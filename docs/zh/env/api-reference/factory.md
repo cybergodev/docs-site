@@ -571,9 +571,9 @@ func RegisterParser(format FileFormat, factory ParserFactory) error
 package main
 
 import (
-    "io"
+	"io"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // 1. 定义自定义格式常量
@@ -581,40 +581,40 @@ const FormatTOML env.FileFormat = 100
 
 // 2. 实现解析器接口
 type TOMLParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
+	cfg       env.Config
+	validator env.Validator
+	auditor   env.FullAuditLogger
 }
 
 func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    // 实现 TOML 解析逻辑
-    result := make(map[string]string)
-    // ... 解析代码
-    return result, nil
+	// 实现 TOML 解析逻辑
+	result := make(map[string]string)
+	// ... 解析代码
+	return result, nil
 }
 
 // 3. 注册解析器（在 init() 中注册，确保在使用前完成）
 func init() {
-    err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
-        return &TOMLParser{
-            cfg:       cfg,
-            validator: f.Validator(),
-            auditor:   f.Auditor(),
-        }, nil
-    })
-    if err != nil {
-        panic(err)
-    }
+	err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+		return &TOMLParser{
+			cfg:       cfg,
+			validator: f.Validator(),
+			auditor:   f.Auditor(),
+		}, nil
+	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 // 4. 使用自定义格式
 func main() {
-    // 注册已在 init() 中完成（先于 main 执行）
-    loader, _ := env.New(env.DefaultConfig())
-    defer loader.Close()
+	// 注册已在 init() 中完成（先于 main 执行）
+	loader, _ := env.New(env.DefaultConfig())
+	defer loader.Close()
 
-    // 现在可以加载 .toml 文件
-    loader.LoadFiles("config.toml")
+	// 现在可以加载 .toml 文件
+	loader.LoadFiles("config.toml")
 }
 ```
 
@@ -733,93 +733,93 @@ YAML 格式解析器，支持：
 package main
 
 import (
-    "fmt"
-    "io"
-    "strings"
+	"fmt"
+	"io"
+	"strings"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // 自定义 INI 解析器
 type INIParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
+	cfg       env.Config
+	validator env.Validator
+	auditor   env.FullAuditLogger
 }
 
 func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    content, err := io.ReadAll(r)
-    if err != nil {
-        return nil, err
-    }
+	content, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
 
-    result := make(map[string]string)
-    lines := strings.Split(string(content), "\n")
-    var section string
+	result := make(map[string]string)
+	lines := strings.Split(string(content), "\n")
+	var section string
 
-    for lineNum, line := range lines {
-        line = strings.TrimSpace(line)
+	for lineNum, line := range lines {
+		line = strings.TrimSpace(line)
 
-        // 跳过空行和注释
-        if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
-            continue
-        }
+		// 跳过空行和注释
+		if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+			continue
+		}
 
-        // Section [section]
-        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-            section = strings.Trim(line, "[]")
-            continue
-        }
+		// Section [section]
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			section = strings.Trim(line, "[]")
+			continue
+		}
 
-        // Key=Value
-        if idx := strings.Index(line, "="); idx > 0 {
-            key := strings.TrimSpace(line[:idx])
-            value := strings.TrimSpace(line[idx+1:])
+		// Key=Value
+		if idx := strings.Index(line, "="); idx > 0 {
+			key := strings.TrimSpace(line[:idx])
+			value := strings.TrimSpace(line[idx+1:])
 
-            // 添加 section 前缀
-            if section != "" {
-                key = section + "_" + key
-            }
+			// 添加 section 前缀
+			if section != "" {
+				key = section + "_" + key
+			}
 
-            // 验证键
-            if err := p.validator.ValidateKey(key); err != nil {
-                _ = p.auditor.LogError(env.ActionParse, key, err.Error())
-                return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
-            }
+			// 验证键
+			if err := p.validator.ValidateKey(key); err != nil {
+				_ = p.auditor.LogError(env.ActionParse, key, err.Error())
+				return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
+			}
 
-            result[strings.ToUpper(key)] = value
-        }
-    }
+			result[strings.ToUpper(key)] = value
+		}
+	}
 
-    _ = p.auditor.Log(env.ActionParse, "", fmt.Sprintf("parsed %d variables from %s", len(result), filename), true)
-    return result, nil
+	_ = p.auditor.Log(env.ActionParse, "", fmt.Sprintf("parsed %d variables from %s", len(result), filename), true)
+	return result, nil
 }
 
 func main() {
-    // 定义自定义格式
-    const FormatINI env.FileFormat = 101
+	// 定义自定义格式
+	const FormatINI env.FileFormat = 101
 
-    // 注册解析器
-    err := env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
-        return &INIParser{
-            cfg:       cfg,
-            validator: f.Validator(),
-            auditor:   f.Auditor(),
-        }, nil
-    })
-    if err != nil {
-        panic(err)
-    }
+	// 注册解析器
+	err := env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+		return &INIParser{
+			cfg:       cfg,
+			validator: f.Validator(),
+			auditor:   f.Auditor(),
+		}, nil
+	})
+	if err != nil {
+		panic(err)
+	}
 
-    // 使用自定义格式
-    cfg := env.DefaultConfig()
-    loader, _ := env.New(cfg)
-    defer loader.Close()
+	// 使用自定义格式
+	cfg := env.DefaultConfig()
+	loader, _ := env.New(cfg)
+	defer loader.Close()
 
-    // 现在可以加载 .ini 文件
-    // loader.LoadFiles("config.ini")
+	// 现在可以加载 .ini 文件
+	// loader.LoadFiles("config.ini")
 
-    fmt.Println("INI parser registered")
+	fmt.Println("INI parser registered")
 }
 ```
 
@@ -829,85 +829,85 @@ func main() {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "os"
-    "strings"
-    "time"
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // 内存文件系统（用于测试）
 type MemoryFileSystem struct {
-    files map[string]string
-    env   map[string]string
+	files map[string]string
+	env   map[string]string
 }
 
 func NewMemoryFileSystem() *MemoryFileSystem {
-    return &MemoryFileSystem{
-        files: make(map[string]string),
-        env:   make(map[string]string),
-    }
+	return &MemoryFileSystem{
+		files: make(map[string]string),
+		env:   make(map[string]string),
+	}
 }
 
 func (m *MemoryFileSystem) Open(name string) (env.File, error) {
-    content, ok := m.files[name]
-    if !ok {
-        return nil, os.ErrNotExist
-    }
-    return &MemoryFile{reader: strings.NewReader(content)}, nil
+	content, ok := m.files[name]
+	if !ok {
+		return nil, os.ErrNotExist
+	}
+	return &MemoryFile{reader: strings.NewReader(content)}, nil
 }
 
 func (m *MemoryFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
-    return m.Open(name)
+	return m.Open(name)
 }
 
 func (m *MemoryFileSystem) Stat(name string) (os.FileInfo, error) {
-    content, ok := m.files[name]
-    if !ok {
-        return nil, os.ErrNotExist
-    }
-    return &MemoryFileInfo{name: name, size: int64(len(content))}, nil
+	content, ok := m.files[name]
+	if !ok {
+		return nil, os.ErrNotExist
+	}
+	return &MemoryFileInfo{name: name, size: int64(len(content))}, nil
 }
 
 func (m *MemoryFileSystem) MkdirAll(path string, perm os.FileMode) error {
-    return nil
+	return nil
 }
 
 func (m *MemoryFileSystem) Remove(name string) error {
-    delete(m.files, name)
-    return nil
+	delete(m.files, name)
+	return nil
 }
 
 func (m *MemoryFileSystem) Rename(oldpath, newpath string) error {
-    m.files[newpath] = m.files[oldpath]
-    delete(m.files, oldpath)
-    return nil
+	m.files[newpath] = m.files[oldpath]
+	delete(m.files, oldpath)
+	return nil
 }
 
 func (m *MemoryFileSystem) Getenv(key string) string {
-    return m.env[key]
+	return m.env[key]
 }
 
 func (m *MemoryFileSystem) Setenv(key, value string) error {
-    m.env[key] = value
-    return nil
+	m.env[key] = value
+	return nil
 }
 
 func (m *MemoryFileSystem) Unsetenv(key string) error {
-    delete(m.env, key)
-    return nil
+	delete(m.env, key)
+	return nil
 }
 
 func (m *MemoryFileSystem) LookupEnv(key string) (string, bool) {
-    val, ok := m.env[key]
-    return val, ok
+	val, ok := m.env[key]
+	return val, ok
 }
 
 // MemoryFile 实现 env.File
 type MemoryFile struct {
-    reader *strings.Reader
+	reader *strings.Reader
 }
 
 func (f *MemoryFile) Read(p []byte) (n int, err error)  { return f.reader.Read(p) }
@@ -918,8 +918,8 @@ func (f *MemoryFile) Sync() error                       { return nil }
 
 // MemoryFileInfo 实现 os.FileInfo
 type MemoryFileInfo struct {
-    name string
-    size int64
+	name string
+	size int64
 }
 
 func (i *MemoryFileInfo) Name() string       { return i.name }
@@ -931,21 +931,21 @@ func (i *MemoryFileInfo) Sys() interface{}   { return nil }
 
 // 使用示例
 func main() {
-    // 创建内存文件系统
-    fs := NewMemoryFileSystem()
-    fs.files[".env"] = "APP_NAME=myapp\nPORT=8080\n"
+	// 创建内存文件系统
+	fs := NewMemoryFileSystem()
+	fs.files[".env"] = "APP_NAME=myapp\nPORT=8080\n"
 
-    // 配置使用自定义文件系统
-    cfg := env.TestingConfig()
-    cfg.FileSystem = fs
+	// 配置使用自定义文件系统
+	cfg := env.TestingConfig()
+	cfg.FileSystem = fs
 
-    loader, _ := env.New(cfg)
-    defer loader.Close()
+	loader, _ := env.New(cfg)
+	defer loader.Close()
 
-    loader.LoadFiles(".env")
+	loader.LoadFiles(".env")
 
-    fmt.Println(loader.GetString("APP_NAME"))  // myapp
-    fmt.Println(loader.GetInt("PORT"))         // 8080
+	fmt.Println(loader.GetString("APP_NAME")) // myapp
+	fmt.Println(loader.GetInt("PORT"))        // 8080
 }
 ```
 

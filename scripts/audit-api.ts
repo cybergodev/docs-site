@@ -7,6 +7,23 @@
  *   - UNDOCUMENTED the source exports a symbol no doc page mentions —
  *                  informational only (many exports are intentional helpers).
  *
+ * Dotted doc identifiers match on any ≥2-segment dotted suffix (a doc may
+ * write `Config.Defaults.FollowRedirects` where the symbol set holds
+ * `Defaults.FollowRedirects`) — see hasSourceMatch.
+ *
+ * Field-access-path aliases: docs also write legal field paths — `Config.
+ * Retry.MaxRetries` or bare `Retry.MaxRetries` — where `Retry` is a FIELD of
+ * Config typed RetryConfig; plain "Type.Member" symbols can never match those
+ * (field name ≠ type name). Field signatures in the manifest carry the type
+ * (`"Retry RetryConfig"`), so the symbol set additionally gets graph-walked
+ * access paths (type-anchored and bare, ≤3 segments, cycle-guarded) — see
+ * addAccessPathAliases. Aliases feed DANGLING matching only; UNDOCUMENTED
+ * still enumerates the base exported surface, keeping that informational
+ * list readable. Finally, per-project whitelists
+ * (PROJECT_KNOWN_NOT_SYMBOLS) cover stdlib / HTTP-header / Windows / teaching
+ * -placeholder names docs legitimately backtick that are not cybergodev
+ * exports.
+ *
  * Pipeline per project:
  *   1. run scripts/apiscan (Go AST scanner) → report/api/{project}.json
  *   2. collect the source symbol set from that manifest
@@ -75,28 +92,133 @@ function runApiscan(project: string): string | null {
   }
 }
 
-// Flatten a manifest into the set of symbol names a doc could reference:
-// functions, types, methods (both Type.Method and the bare method name),
-// constants and variables.
-function collectSymbols(m: Manifest): Set<string> {
-  const set = new Set<string>()
+// Flatten a manifest into the symbol sets a doc could reference:
+//   base — exported API surface: functions, types, methods (both Type.Method
+//          and the bare method name), Type.Field pairs, constants, variables.
+//   all  — base + field-access-path aliases (see addAccessPathAliases).
+// DANGLING matching consults `all` (aliases rescue legal field paths);
+// UNDOCUMENTED enumerates `base` only, so the informational list stays a
+// readable inventory of the real exported surface instead of every path alias.
+interface SymbolSets {
+  base: Set<string>
+  all: Set<string>
+}
+
+function collectSymbols(m: Manifest): SymbolSets {
+  const base = new Set<string>()
   for (const pkg of m.packages) {
-    for (const f of pkg.functions ?? []) set.add(f.name)
+    for (const f of pkg.functions ?? []) base.add(f.name)
     for (const t of pkg.types ?? []) {
-      set.add(t.name)
+      base.add(t.name)
       for (const meth of t.methods ?? []) {
-        set.add(meth.name) // "Type.Method"
-        set.add(meth.name.split('.').pop()!) // "Method"
+        base.add(meth.name) // "Type.Method"
+        base.add(meth.name.split('.').pop()!) // "Method"
       }
       for (const f of t.fields ?? []) {
-        set.add(f.name) // field short name
-        set.add(t.name + '.' + f.name) // "Type.Field"
+        base.add(f.name) // field short name
+        base.add(t.name + '.' + f.name) // "Type.Field"
       }
     }
-    for (const c of pkg.constants ?? []) set.add(c.name)
-    for (const v of pkg.variables ?? []) set.add(v.name)
+    for (const c of pkg.constants ?? []) base.add(c.name)
+    for (const v of pkg.variables ?? []) base.add(v.name)
   }
-  return set
+  const all = new Set(base)
+  addAccessPathAliases(all, m)
+  return { base, all }
+}
+
+/** Parse the type name out of a Go field signature like "Retry RetryConfig",
+ *  "Meta *RequestMeta" or "RedirectChain []string": drop the leading field
+ *  name, then strip pointer / slice / map[K]V decorations (repeatedly —
+ *  `map[string]*Foo` → `Foo`). Returns null when what remains is not a bare
+ *  unqualified identifier: builtins (string), qualified types (time.Duration,
+ *  tls.Config, os.FileMode) and func types never alias to package types. */
+function fieldTypeName(signature: string): string | null {
+  const m = signature.match(/^\S+\s+(.+)$/)
+  if (!m) return null
+  let t = m[1].trim()
+  for (;;) {
+    if (t.startsWith('[]')) t = t.slice(2).trim()
+    else if (t.startsWith('*')) t = t.slice(1).trim()
+    else {
+      const map = t.match(/^map\[[^\]]+\](.+)$/)
+      if (!map) break
+      t = map[1].trim()
+    }
+  }
+  return /^[A-Za-z_]\w*$/.test(t) ? t : null
+}
+
+// Field-access-path aliases. Docs legitimately write field paths —
+// `Config.Retry.MaxRetries` (type-anchored) or `Retry.MaxRetries` (bare) —
+// where `Retry` is a FIELD of Config whose TYPE is RetryConfig; the plain
+// "Type.Member" symbols can never match those because field name ≠ type name.
+// The manifest's field signatures carry the type, so we walk the field-type
+// graph and register every access path of ≤MAX_PATH_SEGS segments, both
+// anchored at the owning type and at the bare field name. The cycle guard
+// keeps the walk finite even if the cap is ever raised; a type already on the
+// current path is not re-entered.
+const MAX_PATH_SEGS = 3
+
+function addAccessPathAliases(set: Set<string>, m: Manifest): void {
+  // Exported types a doc can "dot into": struct AND alias kinds carry fields,
+  // interfaces carry methods (apiscan records exported members only — e.g.
+  // httpc's ClientError is kind "alias" with 8 fields). Types with the same
+  // name across packages are merged: the symbol set is already flat per
+  // project, so merging matches existing semantics.
+  const graph = new Map<string, Type>()
+  for (const pkg of m.packages) {
+    for (const t of pkg.types ?? []) {
+      if (!/^[A-Z]/.test(t.name)) continue
+      if ((t.fields?.length ?? 0) === 0 && (t.methods?.length ?? 0) === 0) continue
+      const existing = graph.get(t.name)
+      if (existing) {
+        existing.fields = [...(existing.fields ?? []), ...(t.fields ?? [])]
+        existing.methods = [...(existing.methods ?? []), ...(t.methods ?? [])]
+      } else {
+        graph.set(t.name, { ...t })
+      }
+    }
+  }
+
+  // Members of a graph type: fields (carrying their type signature for the
+  // next hop) and methods (bare name — method names arrive as "Type.Method").
+  // Methods are path terminals: a call result has no named fields to walk.
+  const membersOf = (t: Type): { name: string; typeSig?: string }[] => [
+    ...(t.fields ?? []).map((f) => ({ name: f.name, typeSig: f.signature })),
+    ...(t.methods ?? []).map((meth) => ({ name: meth.name.split('.').pop()! }))
+  ]
+  const resolve = (sig?: string): Type | undefined => {
+    if (!sig) return undefined
+    const n = fieldTypeName(sig)
+    return n && /^[A-Z]/.test(n) ? graph.get(n) : undefined
+  }
+
+  const emit = (prefix: string[], t: Type, onPath: Set<string>): void => {
+    if (prefix.length >= MAX_PATH_SEGS) return
+    onPath.add(t.name)
+    for (const mem of membersOf(t)) {
+      if (!/^[A-Z]/.test(mem.name)) continue // defensive: unexported member
+      const path = [...prefix, mem.name]
+      set.add(path.join('.'))
+      if (mem.typeSig) {
+        const next = resolve(mem.typeSig)
+        if (next && !onPath.has(next.name)) emit(path, next, onPath)
+      }
+    }
+    onPath.delete(t.name)
+  }
+
+  for (const t of graph.values()) {
+    // Type-anchored paths: "Config.Retry.MaxRetries" (2- and 3-segment).
+    emit([t.name], t, new Set())
+    // Bare-anchored paths: "Retry.MaxRetries" — drop the owning type and walk
+    // the field's own type. (The bare field name is already in the base set.)
+    for (const f of t.fields ?? []) {
+      const s = resolve(f.signature)
+      if (s && /^[A-Z]/.test(f.name)) emit([f.name], s, new Set())
+    }
+  }
 }
 
 // A backticked exported identifier: `GetString`, `Processor.Set`, `Config`.
@@ -148,6 +270,82 @@ const STDLIB_FIELDS = new Set([
 // checked against source instead of being silently passed.
 const OS_API_FUNCTIONS = new Set(['VirtualLock', 'VirtualUnlock', 'SeLockMemoryPrivilege'])
 
+// Per-project whitelist of backticked identifiers docs legitimately use that
+// are NOT cybergodev exports: stdlib members (net/http.Client/Transport
+// fields, crypto/tls constants, x509/context errors, strings/encoding
+// helpers), HTTP header names (Authorization), Windows registry values
+// (ProxyEnable/ProxyServer) and Win32 APIs (GetFinalPathNameByHandleW),
+// option-pattern teaching placeholders (WithXxx, XxxConfig; likewise the
+// preset-constructor colloquialisms Default/Performance/Secure), and engine
+// symbols the docs explicitly attribute to an internal package (httpc's
+// OnResponse/SetContext/CloneHeader/SanitizeURL/ValidateSSRFHost — wording
+// verified against source). Scoped PER PROJECT so a name harmless in one
+// library's prose is still checked against every other project's source.
+// Same deal as STDLIB_FIELDS above: if cybergodev ever exports one of these
+// names, remove it here so its drift is checked against source again (until
+// then the entry only suppresses the DANGLING flag — hasSourceMatch can never
+// turn a whitelisted REAL export into a pass it didn't already earn).
+const PROJECT_KNOWN_NOT_SYMBOLS: Record<string, Set<string>> = {
+  httpc: new Set([
+    'Append',
+    'Authorization',
+    'CheckRedirect',
+    'Clean',
+    'Cookie',
+    'DeadlineExceeded',
+    'Decode',
+    'Default',
+    'Deprecated',
+    'DialContext',
+    'Do',
+    'ExpectContinueTimeout',
+    'ForceAttemptHTTP2',
+    'GetBody',
+    'IsTemporary',
+    'IsTimeout',
+    'Location',
+    'MinVersion',
+    'MkdirAll',
+    'Performance',
+    'Proxy',
+    'ProxyEnable',
+    'ProxyServer',
+    'RenegotiateNever',
+    'ResponseHeaderTimeout',
+    'Secure',
+    'TLSClientConfig',
+    'Transport.DialContext',
+    'Transport.IdleConnTimeout',
+    'Transport.Proxy',
+    'Transport.ResponseHeaderTimeout',
+    'Transport.TLSHandshakeTimeout',
+    'TrimSpace',
+    'Use',
+    'WithXxx',
+    'XxxConfig',
+    // The five below are engine/validation symbols the docs explicitly mark
+    // as belonging to an internal package — doc wording matches source truth.
+    'OnResponse',
+    'SetContext',
+    'CloneHeader',
+    'SanitizeURL',
+    'ValidateSSRFHost'
+  ]),
+  jwt: new Set(['ParsePKCS8PrivateKey', 'ParsePKIXPublicKey', 'WaitGroup']),
+  html: new Set([
+    'CacheHit',
+    'Get',
+    'GetFinalPathNameByHandleW',
+    'NoCache',
+    'Put',
+    'DefaultScorer',
+    'Record',
+    'WithContext'
+  ]),
+  dd: new Set(['CreatedAt', 'UserId'])
+  // json needs no whitelist.
+}
+
 function isLikelyNotSymbol(s: string): boolean {
   return (
     isAllCaps(s) ||
@@ -155,6 +353,24 @@ function isLikelyNotSymbol(s: string): boolean {
     STDLIB_FIELDS.has(s) ||
     OS_API_FUNCTIONS.has(s)
   )
+}
+
+// Docs sometimes qualify a member more deeply than the source symbol set
+// records it: collectSymbols only emits one-segment names plus two-segment
+// "Type.Field" / "Type.Method" shapes, while a doc may write
+// `Config.Defaults.FollowRedirects`. Treat a dotted identifier as present
+// when ANY dotted suffix of ≥2 segments hits the symbol set — tried longest
+// first (`Config.Defaults.FollowRedirects`, then `Defaults.FollowRedirects`).
+// Single-segment suffixes are deliberately NOT tried: matching any bare
+// member name would let an unrelated qualifier silently pass a typo.
+// Identifiers without a dot behave exactly as before.
+function hasSourceMatch(ident: string, source: Set<string>): boolean {
+  if (!ident.includes('.')) return source.has(ident)
+  const segs = ident.split('.')
+  for (let start = 0; start <= segs.length - 2; start++) {
+    if (source.has(segs.slice(start).join('.'))) return true
+  }
+  return false
 }
 
 // Scan a project's primary-language docs; return Map<ident, files[]>.
@@ -189,10 +405,15 @@ async function auditProject(project: string): Promise<ProjectResult | null> {
   const source = collectSymbols(manifest)
   const docs = await collectDocIdents(project)
 
-  const undocumented = [...source].filter((s) => !docs.has(s)).sort()
+  const undocumented = [...source.base].filter((s) => !docs.has(s)).sort()
+  const knownNotSymbol = PROJECT_KNOWN_NOT_SYMBOLS[project]
   const dangling: { ident: string; files: string[] }[] = []
   for (const [ident, files] of docs) {
-    if (!source.has(ident) && !isLikelyNotSymbol(ident)) {
+    if (
+      !hasSourceMatch(ident, source.all) &&
+      !isLikelyNotSymbol(ident) &&
+      !knownNotSymbol?.has(ident)
+    ) {
       dangling.push({ ident, files: [...new Set(files)] })
     }
   }
@@ -201,7 +422,7 @@ async function auditProject(project: string): Promise<ProjectResult | null> {
   return {
     project,
     module: manifest.module,
-    sourceCount: source.size,
+    sourceCount: source.base.size,
     docCount: docs.size,
     undocumented,
     dangling

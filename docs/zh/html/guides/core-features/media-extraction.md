@@ -104,18 +104,18 @@ OGG 是一种容器格式，可承载视频（Theora）或音频（Vorbis/Opus�
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    // 包含三种媒体场景的 HTML：
-    // 1. iframe YouTube 嵌入（Type = "embed"）
-    // 2. 原生视频带 <source> 子元素（Type 来自 type 属性）
-    // 3. 音频带 <source> 子元素（Type 来自 type 属性）
-    data := []byte(`<html><body><article>
+	// 包含三种媒体场景的 HTML：
+	// 1. iframe YouTube 嵌入（Type = "embed"）
+	// 2. 原生视频带 <source> 子元素（Type 来自 type 属性）
+	// 3. 音频带 <source> 子元素（Type 来自 type 属性）
+	data := []byte(`<html><body><article>
         <h1>多媒体页面</h1>
         <p>本文介绍视频和音频技术。</p>
         <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" width="560" height="315"></iframe>
@@ -127,37 +127,37 @@ func main() {
         </audio>
     </article></body></html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Printf("视频数量：%d\n", len(result.Videos))
-    // 视频数量：2
+	fmt.Printf("视频数量：%d\n", len(result.Videos))
+	// 视频数量：2
 
-    for i, v := range result.Videos {
-        fmt.Printf("  视频 %d: %s\n", i+1, v.URL)
-        fmt.Printf("    Type: %s", v.Type)
-        if v.Poster != "" {
-            fmt.Printf(", 海报: %s", v.Poster)
-        }
-        if v.Width != "" || v.Height != "" {
-            fmt.Printf(", 尺寸: %sx%s", v.Width, v.Height)
-        }
-        fmt.Println()
-    }
-    // 视频 1: https://www.youtube.com/embed/dQw4w9WgXcQ
-    //   Type: embed, 尺寸: 560x315
-    // 视频 2: https://example.com/trailer.mp4
-    //   Type: video/mp4, 海报: poster.jpg, 尺寸: 640x360
+	for i, v := range result.Videos {
+		fmt.Printf("  视频 %d: %s\n", i+1, v.URL)
+		fmt.Printf("    Type: %s", v.Type)
+		if v.Poster != "" {
+			fmt.Printf(", 海报: %s", v.Poster)
+		}
+		if v.Width != "" || v.Height != "" {
+			fmt.Printf(", 尺寸: %sx%s", v.Width, v.Height)
+		}
+		fmt.Println()
+	}
+	// 视频 1: https://www.youtube.com/embed/dQw4w9WgXcQ
+	//   Type: embed, 尺寸: 560x315
+	// 视频 2: https://example.com/trailer.mp4
+	//   Type: video/mp4, 海报: poster.jpg, 尺寸: 640x360
 
-    fmt.Printf("\n音频数量：%d\n", len(result.Audios))
-    // 音频数量：1
+	fmt.Printf("\n音频数量：%d\n", len(result.Audios))
+	// 音频数量：1
 
-    for i, a := range result.Audios {
-        fmt.Printf("  音频 %d: %s (Type: %s)\n", i+1, a.URL, a.Type)
-    }
-    // 音频 1: https://example.com/episode.mp3 (Type: audio/mpeg)
+	for i, a := range result.Audios {
+		fmt.Printf("  音频 %d: %s (Type: %s)\n", i+1, a.URL, a.Type)
+	}
+	// 音频 1: https://example.com/episode.mp3 (Type: audio/mpeg)
 }
 ```
 

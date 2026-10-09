@@ -1,7 +1,7 @@
 ---
 sidebar_label: "HookRegistry"
 title: "Hook System - CyberGo DD | HookRegistry"
-description: "Complete API documentation for CyberGo DD's lifecycle hook system. Register custom callbacks on key events such as before/after log writes (BeforeLog/AfterLog), file rotation (OnRotate), and error occurrence (OnError). Provides the HookRegistry registry and a flexible logging-extension mechanism."
+description: "CyberGo DD lifecycle hooks: register callbacks for before/after log writes (BeforeLog/AfterLog), rotation (OnRotate), and errors (OnError)."
 sidebar_position: 5.5
 ---
 

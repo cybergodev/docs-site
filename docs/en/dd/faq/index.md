@@ -1,7 +1,7 @@
 ---
 sidebar_label: "FAQ"
 title: "FAQ - CyberGo DD | Frequently Asked Questions"
-description: "A collection of CyberGo DD logging-library FAQs with detailed answers, covering configuration tuning, performance optimization, sensitive-data security-filter rules, audit logging and compliance configuration, file-rotation strategy selection and tuning, error-handling best practices, and hook-system usage examples to help you quickly solve problems encountered in real projects."
+description: "CyberGo DD FAQ with answers on configuration tuning, performance, security-filter rules, audit compliance, file rotation, error handling, and hooks."
 sidebar_position: 1
 ---
 

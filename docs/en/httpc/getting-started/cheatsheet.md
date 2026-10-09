@@ -105,11 +105,11 @@ httpc.WithBasicAuth("user", "pass")
 ### Cookies
 
 ```go
-httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"})
+httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc"}}) // Single cookie: one-element slice
 httpc.WithCookies([]http.Cookie{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}})
 httpc.WithCookieMap(map[string]string{"session": "abc"})
 httpc.WithCookieString("session=abc; token=xyz")
-httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()) // Must come after all WithCookie* options
+httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()) // Must come after all cookie-adding options
 ```
 
 ### Control

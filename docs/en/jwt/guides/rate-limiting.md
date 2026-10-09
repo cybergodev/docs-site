@@ -111,23 +111,23 @@ Use cases: when a single operation needs to consume multiple quota units (e.g., 
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    limiter := jwt.NewRateLimiter(100, time.Minute)
-    defer limiter.Close()
+	limiter := jwt.NewRateLimiter(100, time.Minute)
+	defer limiter.Close()
 
-    // Request 10 quota units at once (e.g., batch issuing 10 tokens)
-    if limiter.AllowN("user:123", 10) {
-        fmt.Println("Batch operation allowed") // Output: Batch operation allowed
-    }
+	// Request 10 quota units at once (e.g., batch issuing 10 tokens)
+	if limiter.AllowN("user:123", 10) {
+		fmt.Println("Batch operation allowed") // Output: Batch operation allowed
+	}
 
-    // 90 tokens remaining, requesting 95 is denied
-    fmt.Println(limiter.AllowN("user:123", 95)) // Output: false
+	// 90 tokens remaining, requesting 95 is denied
+	fmt.Println(limiter.AllowN("user:123", 95)) // Output: false
 }
 ```
 

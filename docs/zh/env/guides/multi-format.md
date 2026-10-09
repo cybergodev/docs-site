@@ -3,7 +3,6 @@ sidebar_label: "多格式配置"
 title: "多格式配置 - CyberGo env | .env/JSON/YAML"
 description: "CyberGo env 多格式配置加载指南，支持 .env、JSON、YAML 自动检测与混合加载，详解嵌套对象与数组的扁平化键名、键值合并优先级、Marshal/UnmarshalMap 格式互转与 RegisterParser 自定义格式，适配微服务与容器化场景。"
 sidebar_position: 1
-sidebar_icon: "🔧"
 ---
 
 # 多格式配置
@@ -612,43 +611,43 @@ func init() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 创建加载器
-    cfg := env.DefaultConfig()
-    cfg.ExpandVariables = true
+	// 创建加载器
+	cfg := env.DefaultConfig()
+	cfg.ExpandVariables = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // 加载混合格式配置
-    err = loader.LoadFiles(
-        "config/base.json",       // JSON 基础配置
-        "config/database.yaml",   // YAML 数据库配置
-        "config/app.env",         // .env 应用配置
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 加载混合格式配置
+	err = loader.LoadFiles(
+		"config/base.json",     // JSON 基础配置
+		"config/database.yaml", // YAML 数据库配置
+		"config/app.env",       // .env 应用配置
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 读取配置
-    fmt.Printf("App: %s\n", loader.GetString("APP_NAME"))
-    fmt.Printf("DB Host: %s\n", loader.GetString("DATABASE_HOST"))
-    fmt.Printf("DB Port: %d\n", loader.GetInt("DATABASE_PORT"))
+	// 读取配置
+	fmt.Printf("App: %s\n", loader.GetString("APP_NAME"))
+	fmt.Printf("DB Host: %s\n", loader.GetString("DATABASE_HOST"))
+	fmt.Printf("DB Port: %d\n", loader.GetInt("DATABASE_PORT"))
 
-    // 导出当前配置
-    all := loader.All()
-    exported, _ := env.Marshal(all, env.FormatEnv)
-    fmt.Println("\nExported config:")
-    fmt.Println(exported)
+	// 导出当前配置
+	all := loader.All()
+	exported, _ := env.Marshal(all, env.FormatEnv)
+	fmt.Println("\nExported config:")
+	fmt.Println(exported)
 }
 ```
 

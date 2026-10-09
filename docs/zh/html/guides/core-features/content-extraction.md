@@ -30,14 +30,14 @@ HTML 输入 → 输入校验 → 编码检测 (自动转 UTF-8) → DOM 解析 �
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html>
+	data := []byte(`<html>
         <head><title>Go 语言教程</title></head>
         <body>
             <article>
@@ -50,31 +50,31 @@ func main() {
         </body>
     </html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("标题：", result.Title)
-    // 标题：Go 语言教程
+	fmt.Println("标题：", result.Title)
+	// 标题：Go 语言教程
 
-    fmt.Println("正文：", result.Text)
-    // 正文：Go 入门指南
-    //       Go 是一门静态类型的编译语言，内置并发支持。
-    //       它编译速度快，部署简单，适合构建高性能服务。
-    //       Go 官网
+	fmt.Println("正文：", result.Text)
+	// 正文：Go 入门指南
+	//       Go 是一门静态类型的编译语言，内置并发支持。
+	//       它编译速度快，部署简单，适合构建高性能服务。
+	//       Go 官网
 
-    fmt.Println("字数：", result.WordCount)
-    // 字数：7
+	fmt.Println("字数：", result.WordCount)
+	// 字数：7
 
-    fmt.Println("阅读时间：", result.ReadingTime)
-    // 阅读时间：2.1s（按 200 词/分钟计算）
+	fmt.Println("阅读时间：", result.ReadingTime)
+	// 阅读时间：2.1s（按 200 词/分钟计算）
 
-    fmt.Println("图片：", len(result.Images))
-    // 图片：1
+	fmt.Println("图片：", len(result.Images))
+	// 图片：1
 
-    fmt.Println("链接：", len(result.Links))
-    // 链接：1
+	fmt.Println("链接：", len(result.Links))
+	// 链接：1
 }
 ```
 
@@ -216,14 +216,14 @@ cfg.TableFormat = "markdown" // 默认；或 "html"
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html><body><article>
+	data := []byte(`<html><body><article>
         <h1>价格表</h1>
         <table>
             <tr><th>产品</th><th>价格</th></tr>
@@ -232,18 +232,18 @@ func main() {
         </table>
     </article></body></html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.Text)
-    // 输出（TableFormat = "markdown" 时）：
-    // 价格表
-    //
-    // | 产品   | 价格    |
-    // |--------|---------|
-    // | 基础版 | 免费    |
-    // | 专业版 | ¥99/月  |
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.Text)
+	// 输出（TableFormat = "markdown" 时）：
+	// 价格表
+	//
+	// | 产品   | 价格    |
+	// |--------|---------|
+	// | 基础版 | 免费    |
+	// | 专业版 | ¥99/月  |
 }
 ```
 

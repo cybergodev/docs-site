@@ -15,26 +15,26 @@ sidebar_position: 6
 package main
 
 import (
-    "log"
-    "os"
+	"log"
+	"os"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    fileContent, err := os.ReadFile("document.pdf")
-    if err != nil {
-        log.Fatal(err)
-    }
+	fileContent, err := os.ReadFile("document.pdf")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    result, err := httpc.Post("https://api.example.com/upload",
-        httpc.WithFile("file", "document.pdf", fileContent),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Post("https://api.example.com/upload",
+		httpc.WithFile("file", "document.pdf", fileContent),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    log.Printf("上传完成：%d", result.StatusCode()) // 输出示例：上传完成：200（实际状态码取决于服务端）
+	log.Printf("上传完成：%d", result.StatusCode()) // 输出示例：上传完成：200（实际状态码取决于服务端）
 }
 ```
 

@@ -3,7 +3,6 @@ sidebar_label: "Memory Locking"
 title: "Memory Locking - CyberGo env | mlock Memory Protection"
 description: "Memory locking guide for CyberGo env: SetMemoryLockEnabled, IsMemoryLockSupported detection, strict mode, and Linux CAP_IPC_LOCK permission notes."
 sidebar_position: 3
-sidebar_icon: "🛡️"
 ---
 
 # Memory Locking
@@ -105,30 +104,30 @@ Call at application startup, before creating any SecureValue:
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Check platform support
-    if !env.IsMemoryLockSupported() {
-        fmt.Println("Warning: current platform does not support memory locking")
-    }
+	// Check platform support
+	if !env.IsMemoryLockSupported() {
+		fmt.Println("Warning: current platform does not support memory locking")
+	}
 
-    // Globally enable memory locking
-    env.SetMemoryLockEnabled(true)
+	// Globally enable memory locking
+	env.SetMemoryLockEnabled(true)
 
-    // Load configuration
-    if err := env.Load(".env"); err != nil {
-        panic(err)
-    }
+	// Load configuration
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
-    // All subsequent SecureValues will attempt memory locking
-    secret := env.GetSecure("API_KEY")
-    if secret != nil {
-        defer secret.Release()
-        fmt.Println(secret.Masked()) // [SECURE:32 bytes locked]
-    }
+	// All subsequent SecureValues will attempt memory locking
+	secret := env.GetSecure("API_KEY")
+	if secret != nil {
+		defer secret.Release()
+		fmt.Println(secret.Masked()) // [SECURE:32 bytes locked]
+	}
 }
 ```
 
@@ -212,64 +211,64 @@ fmt.Println(sv.Masked())
 package main
 
 import (
-    "log"
-    "os"
+	"log"
+	"os"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // ── Initialize security configuration ──
+	// ── Initialize security configuration ──
 
-    if env.IsMemoryLockSupported() {
-        env.SetMemoryLockEnabled(true)
-        env.SetMemoryLockStrict(true) // Enable strict mode in production
-        log.Println("Memory locking enabled (strict mode)")
-    } else {
-        log.Println("Warning: platform does not support memory locking")
-    }
+	if env.IsMemoryLockSupported() {
+		env.SetMemoryLockEnabled(true)
+		env.SetMemoryLockStrict(true) // Enable strict mode in production
+		log.Println("Memory locking enabled (strict mode)")
+	} else {
+		log.Println("Warning: platform does not support memory locking")
+	}
 
-    // ── Load configuration ──
+	// ── Load configuration ──
 
-    cfg := env.ProductionConfig()
-    cfg.RequiredKeys = []string{"DB_PASSWORD", "API_KEY"}
-    cfg.AutoApply = true
+	cfg := env.ProductionConfig()
+	cfg.RequiredKeys = []string{"DB_PASSWORD", "API_KEY"}
+	cfg.AutoApply = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    if err := loader.LoadFiles(".env"); err != nil {
-        log.Fatal(err)
-    }
+	if err := loader.LoadFiles(".env"); err != nil {
+		log.Fatal(err)
+	}
 
-    // ── Securely access sensitive values ──
+	// ── Securely access sensitive values ──
 
-    dbPassword := loader.GetSecure("DB_PASSWORD")
-    if dbPassword == nil {
-        log.Fatal("DB_PASSWORD not found")
-    }
-    defer dbPassword.Release()
+	dbPassword := loader.GetSecure("DB_PASSWORD")
+	if dbPassword == nil {
+		log.Fatal("DB_PASSWORD not found")
+	}
+	defer dbPassword.Release()
 
-    // Check lock status
-    if !dbPassword.IsMemoryLocked() {
-        log.Printf("Security warning: DB_PASSWORD not locked")
-        if err := dbPassword.MemoryLockError(); err != nil {
-            log.Printf("Reason: %v", err)
-        }
-    }
+	// Check lock status
+	if !dbPassword.IsMemoryLocked() {
+		log.Printf("Security warning: DB_PASSWORD not locked")
+		if err := dbPassword.MemoryLockError(); err != nil {
+			log.Printf("Reason: %v", err)
+		}
+	}
 
-    // Only get plaintext when needed
-    password := dbPassword.Reveal()
-    _ = password // Used for database connection, etc.
+	// Only get plaintext when needed
+	password := dbPassword.Reveal()
+	_ = password // Used for database connection, etc.
 
-    // Safe logging (no plaintext leakage)
-    log.Printf("Database password: %s", dbPassword.Masked())
-    // Output: Database password: [SECURE:12 bytes locked]
+	// Safe logging (no plaintext leakage)
+	log.Printf("Database password: %s", dbPassword.Masked())
+	// Output: Database password: [SECURE:12 bytes locked]
 
-    _ = os.Stdout
+	_ = os.Stdout
 }
 ```
 

@@ -3,7 +3,6 @@ sidebar_label: "Variable Expansion"
 title: "Variable Expansion - CyberGo env | ${VAR} and Defaults"
 description: "Variable expansion syntax for CyberGo env: ${VAR} and ${VAR:-default} references, ${VAR:?error} validation, and circular reference detection."
 sidebar_position: 3
-sidebar_icon: "🔧"
 ---
 
 # Variable Expansion
@@ -238,30 +237,30 @@ PRICE=$$99.99
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    cfg := env.DefaultConfig()
-    cfg.ExpandVariables = true
+	cfg := env.DefaultConfig()
+	cfg.ExpandVariables = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        log.Fatal(err)
-    }
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("DB_URL:", loader.GetString("DB_URL"))
-    fmt.Println("API_URL:", loader.GetString("API_URL"))
-    fmt.Println("PRICE:", loader.GetString("PRICE"))
+	fmt.Println("DB_URL:", loader.GetString("DB_URL"))
+	fmt.Println("API_URL:", loader.GetString("API_URL"))
+	fmt.Println("PRICE:", loader.GetString("PRICE"))
 }
 ```
 

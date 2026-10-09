@@ -159,7 +159,7 @@ Two more pitfalls to avoid: `io.Reader` request bodies are fully buffered to sup
 | Check item | Default | Recommended production value | Verification method |
 |--------|--------|-----------|----------|
 | `CookieSecurity` | `nil` (no validation) | `StrictCookieSecurityConfig()` | `grep CookieSecurity` |
-| `WithSecureCookie` ordering | — | After all `WithCookie` calls | Code review |
+| `WithSecureCookie` ordering | — | After all cookie-adding options (`WithCookies` etc.) | Code review |
 
 ```go
 cfg := httpc.DefaultConfig()

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
-title: "Configuration - CyberGo JWT | Config Fields and Security Hardening"
-description: "Configuration guide: all Config fields including issuer/audience validation, clock skew tolerance, mandatory expiration, TTL design, and built-in input validation with length limits, injection detection, and ValidationError handling."
+title: "Configuration - CyberGo JWT | Config & Security Hardening"
+description: "CyberGo JWT configuration: issuer/audience validation, clock skew tolerance, mandatory expiration, TTL, and input validation with injection detection."
 sidebar_position: 15
 check_code: false
 ---

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Core Concepts"
 title: "Core Concepts - CyberGo DD | Architecture & Design"
-description: "Deep dive into the core architecture and design philosophy of the CyberGo DD logging library, including the relationship and lifecycle of Logger and LoggerEntry, type-safe usage patterns for structured Field, the complete log-processing pipeline, the four-layer progressive interface design, and the thread-safe concurrency model, helping you build a systematic understanding of the DD library."
+description: "CyberGo DD architecture: Logger and LoggerEntry lifecycle, Field usage, the log pipeline, four-layer interfaces, and thread-safe concurrency model."
 sidebar_position: 1
 ---
 

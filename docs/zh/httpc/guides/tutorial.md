@@ -33,20 +33,20 @@ go get github.com/cybergodev/httpc
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://api.github.com/repos/golang/go")
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Get("https://api.github.com/repos/golang/go")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.StatusCode()) // 200
-    fmt.Println(result.Body())       // JSON 响应
+	fmt.Println(result.StatusCode()) // 200
+	fmt.Println(result.Body())       // JSON 响应
 }
 ```
 
@@ -64,38 +64,38 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // 自定义配置并设为默认客户端（旧默认客户端会自动关闭）
-    cfg := httpc.DefaultConfig()
-    cfg.Timeouts.Request = 30 * time.Second
-    cfg.Retry.MaxRetries = 2
+	// 自定义配置并设为默认客户端（旧默认客户端会自动关闭）
+	cfg := httpc.DefaultConfig()
+	cfg.Timeouts.Request = 30 * time.Second
+	cfg.Retry.MaxRetries = 2
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    if err := httpc.SetDefaultClient(client); err != nil {
-        log.Fatal(err)
-    }
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := httpc.SetDefaultClient(client); err != nil {
+		log.Fatal(err)
+	}
 
-    // 此后的包级函数都使用这个客户端
-    result, err := httpc.Get("https://api.github.com/repos/golang/go")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.StatusCode()) // 200
+	// 此后的包级函数都使用这个客户端
+	result, err := httpc.Get("https://api.github.com/repos/golang/go")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.StatusCode()) // 200
 
-    // 程序退出前释放默认客户端
-    if err := httpc.CloseDefaultClient(); err != nil {
-        log.Fatal(err)
-    }
+	// 程序退出前释放默认客户端
+	if err := httpc.CloseDefaultClient(); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
 
@@ -141,36 +141,36 @@ fmt.Printf("描述: %s\n", repo.Description)
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
-    "time"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Timeouts.Request = 30 * time.Second
-    cfg.Timeouts.Dial = 5 * time.Second
-    cfg.Retry.MaxRetries = 2
+	cfg := httpc.DefaultConfig()
+	cfg.Timeouts.Request = 30 * time.Second
+	cfg.Timeouts.Dial = 5 * time.Second
+	cfg.Retry.MaxRetries = 2
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err) // 配置校验失败（如非法超时值）在此返回
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err) // 配置校验失败（如非法超时值）在此返回
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.github.com/repos/golang/go",
-        httpc.WithUserAgent("my-github-app/1.0"),
-    )
-    if err != nil {
-        if errors.Is(err, httpc.ErrClientClosed) {
-            log.Fatal("客户端已关闭：", err)
-        }
-        log.Fatal(err)
-    }
-    fmt.Println(result.StatusCode()) // 200
+	result, err := client.Get("https://api.github.com/repos/golang/go",
+		httpc.WithUserAgent("my-github-app/1.0"),
+	)
+	if err != nil {
+		if errors.Is(err, httpc.ErrClientClosed) {
+			log.Fatal("客户端已关闭：", err)
+		}
+		log.Fatal(err)
+	}
+	fmt.Println(result.StatusCode()) // 200
 }
 ```
 
@@ -484,62 +484,62 @@ func fetchRepos(ctx context.Context, repos []string) error {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
-    "os"
-    "time"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 type Repo struct {
-    FullName    string `json:"full_name"`
-    Description string `json:"description"`
-    Stars       int    `json:"stargazers_count"`
-    Language    string `json:"language"`
+	FullName    string `json:"full_name"`
+	Description string `json:"description"`
+	Stars       int    `json:"stargazers_count"`
+	Language    string `json:"language"`
 }
 
 func main() {
-    token := os.Getenv("GITHUB_TOKEN")
+	token := os.Getenv("GITHUB_TOKEN")
 
-    cfg := httpc.DefaultConfig()
-    cfg.Retry.MaxRetries = 3
-    cfg.Retry.Delay = 1 * time.Second
-    cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-        httpc.LoggingMiddleware(&httpc.LoggingConfig{LogFunc: func(format string, args ...any) {
-            log.Printf("[HTTP] "+format, args...)
-        }}),
-        httpc.RecoveryMiddleware(),
-    }
+	cfg := httpc.DefaultConfig()
+	cfg.Retry.MaxRetries = 3
+	cfg.Retry.Delay = 1 * time.Second
+	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
+		httpc.LoggingMiddleware(&httpc.LoggingConfig{LogFunc: func(format string, args ...any) {
+			log.Printf("[HTTP] "+format, args...)
+		}}),
+		httpc.RecoveryMiddleware(),
+	}
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 获取仓库信息
-    result, err := client.Get("https://api.github.com/repos/golang/go",
-        httpc.WithHeader("Authorization", "Bearer "+token),
-    )
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) && clientErr.IsRetryable() {
-            log.Fatal("请求失败（已重试）:", err)
-        }
-        log.Fatal(err)
-    }
+	// 获取仓库信息
+	result, err := client.Get("https://api.github.com/repos/golang/go",
+		httpc.WithHeader("Authorization", "Bearer "+token),
+	)
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) && clientErr.IsRetryable() {
+			log.Fatal("请求失败（已重试）:", err)
+		}
+		log.Fatal(err)
+	}
 
-    if result.IsSuccess() {
-        var repo Repo
-        result.Unmarshal(&repo)
-        fmt.Printf("✅ %s\n", repo.FullName)
-        fmt.Printf("   ⭐ %d | 语言: %s\n", repo.Stars, repo.Language)
-        fmt.Printf("   %s\n", repo.Description)
-        fmt.Printf("   耗时: %s (共尝试 %d 次，含首次请求)\n",
-            result.Meta.Duration, result.Meta.Attempts)
-    }
+	if result.IsSuccess() {
+		var repo Repo
+		result.Unmarshal(&repo)
+		fmt.Printf("✅ %s\n", repo.FullName)
+		fmt.Printf("   ⭐ %d | 语言: %s\n", repo.Stars, repo.Language)
+		fmt.Printf("   %s\n", repo.Description)
+		fmt.Printf("   耗时: %s (共尝试 %d 次，含首次请求)\n",
+			result.Meta.Duration, result.Meta.Attempts)
+	}
 }
 ```
 

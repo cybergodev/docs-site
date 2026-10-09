@@ -283,7 +283,7 @@ func main() {
 	cfg := httpc.DefaultDownloadConfig()
 	cfg.FilePath = "/tmp/large-file.zip"
 	cfg.Overwrite = true
-	cfg.ResumeDownload = true // Resumable: re-downloading after an interruption resumes from the breakpoint
+	cfg.ResumeDownload = true                            // Resumable: re-downloading after an interruption resumes from the breakpoint
 	cfg.Checksum = "e3b0c44298fc1c149afbf4c8996fb924..." // Expected SHA-256
 	cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 	cfg.ProgressCallback = func(downloaded, total int64, speed float64) {

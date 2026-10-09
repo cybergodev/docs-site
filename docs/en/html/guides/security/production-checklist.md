@@ -184,43 +184,43 @@ Run this self-check program before launch to verify the config is valid and the 
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.HighSecurityConfig()
+	cfg := html.HighSecurityConfig()
 
-    // 1. Config validity check (New calls Validate internally)
-    p, err := html.New(cfg)
-    if err != nil {
-        log.Fatalf("invalid config: %v", err)
-    }
-    defer p.Close()
+	// 1. Config validity check (New calls Validate internally)
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatalf("invalid config: %v", err)
+	}
+	defer p.Close()
 
-    // 2. Review key config fields
-    fmt.Printf("MaxInputSize      = %d bytes\n", cfg.MaxInputSize)
-    fmt.Printf("MaxDepth          = %d\n", cfg.MaxDepth)
-    fmt.Printf("ProcessingTimeout = %v\n", cfg.ProcessingTimeout)
-    fmt.Printf("WorkerPoolSize    = %d\n", cfg.WorkerPoolSize)
-    fmt.Printf("Audit.Enabled     = %v\n", cfg.Audit.Enabled)
+	// 2. Review key config fields
+	fmt.Printf("MaxInputSize      = %d bytes\n", cfg.MaxInputSize)
+	fmt.Printf("MaxDepth          = %d\n", cfg.MaxDepth)
+	fmt.Printf("ProcessingTimeout = %v\n", cfg.ProcessingTimeout)
+	fmt.Printf("WorkerPoolSize    = %d\n", cfg.WorkerPoolSize)
+	fmt.Printf("Audit.Enabled     = %v\n", cfg.Audit.Enabled)
 
-    // 3. Actual extraction test
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
+	// 3. Actual extraction test
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-    sample := []byte("<html><body><h1>Self-check</h1><p>Production ready</p></body></html>")
-    result, err := p.ExtractWithContext(ctx, sample)
-    if err != nil {
-        log.Fatalf("extraction failed: %v", err)
-    }
-    fmt.Printf("Extraction succeeded, text length: %d\n", len(result.Text))
+	sample := []byte("<html><body><h1>Self-check</h1><p>Production ready</p></body></html>")
+	result, err := p.ExtractWithContext(ctx, sample)
+	if err != nil {
+		log.Fatalf("extraction failed: %v", err)
+	}
+	fmt.Printf("Extraction succeeded, text length: %d\n", len(result.Text))
 
-    fmt.Println("✓ Config self-check passed")
+	fmt.Println("✓ Config self-check passed")
 }
 ```
 

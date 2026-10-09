@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Distributed Tracing"
-title: "Distributed Tracing Integration - CyberGo DD | Context & Tracing Guide"
-description: "CyberGo DD distributed-tracing integration guide: TraceID, SpanID, RequestID context propagation, ContextExtractor custom extractors, HTTP middleware integration, request-scoped logging, and integration with OpenTelemetry distributed-tracing systems."
+title: "Distributed Tracing - CyberGo DD | Context & Tracing Guide"
+description: "Distributed tracing with CyberGo DD: TraceID/SpanID/RequestID propagation, custom ContextExtractor, HTTP middleware, and OpenTelemetry integration."
 sidebar_position: 1
 ---
 

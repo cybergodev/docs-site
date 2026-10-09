@@ -3,7 +3,6 @@ sidebar_label: "Serialization"
 title: "Serialization - CyberGo env | Multi-format Conversion"
 description: "Serialization guide for CyberGo env: map and struct conversion across .env, JSON, and YAML with Marshal/Unmarshal, custom Marshaler, and DetectFormat."
 sidebar_position: 4
-sidebar_icon: "🔧"
 ---
 
 # Serialization
@@ -113,34 +112,34 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host string `env:"HOST"`
-    Port int64  `env:"PORT"`
-    Debug bool  `env:"DEBUG"`
+	Host  string `env:"HOST"`
+	Port  int64  `env:"PORT"`
+	Debug bool   `env:"DEBUG"`
 }
 
 func main() {
-    cfg := Config{
-        Host:  "localhost",
-        Port:  8080,
-        Debug: true,
-    }
+	cfg := Config{
+		Host:  "localhost",
+		Port:  8080,
+		Debug: true,
+	}
 
-    // Serialize struct to .env format
-    result, err := env.Marshal(cfg, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	// Serialize struct to .env format
+	result, err := env.Marshal(cfg, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(result)
-    // Output:
-    // DEBUG=true
-    // HOST=localhost
-    // PORT=8080
+	fmt.Println(result)
+	// Output:
+	// DEBUG=true
+	// HOST=localhost
+	// PORT=8080
 }
 ```
 
@@ -150,35 +149,35 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 type DatabaseConfig struct {
-    Host string `env:"DB_HOST"`
-    Port int64  `env:"DB_PORT"`
+	Host string `env:"DB_HOST"`
+	Port int64  `env:"DB_PORT"`
 }
 
 type AppConfig struct {
-    Name     string         `env:"APP_NAME"`
-    Database DatabaseConfig
+	Name     string `env:"APP_NAME"`
+	Database DatabaseConfig
 }
 
 func main() {
-    cfg := AppConfig{
-        Name: "my-app",
-        Database: DatabaseConfig{
-            Host: "localhost",
-            Port: 5432,
-        },
-    }
+	cfg := AppConfig{
+		Name: "my-app",
+		Database: DatabaseConfig{
+			Host: "localhost",
+			Port: 5432,
+		},
+	}
 
-    result, err := env.Marshal(cfg, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	result, err := env.Marshal(cfg, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(result)
+	fmt.Println(result)
 }
 ```
 
@@ -206,9 +205,9 @@ import (
 )
 
 type Config struct {
-	Host string `env:"HOST"`
-	Port int64  `env:"PORT"`
-	Debug bool  `env:"DEBUG"`
+	Host  string `env:"HOST"`
+	Port  int64  `env:"PORT"`
+	Debug bool   `env:"DEBUG"`
 }
 
 func main() {
@@ -241,26 +240,26 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // .env format string
-    data := `
+	// .env format string
+	data := `
 HOST=localhost
 PORT=8080
 DEBUG=true
 `
 
-    // Deserialize to map
-    result, err := env.UnmarshalMap(data, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	// Deserialize to map
+	result, err := env.UnmarshalMap(data, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", result)
-    // Output: map[DEBUG:true HOST:localhost PORT:8080]
+	fmt.Printf("%+v\n", result)
+	// Output: map[DEBUG:true HOST:localhost PORT:8080]
 }
 ```
 
@@ -270,23 +269,23 @@ DEBUG=true
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    jsonData := `{
+	jsonData := `{
         "API_KEY": "secret123",
         "API_URL": "https://api.example.com",
         "TIMEOUT": "30"
     }`
 
-    result, err := env.UnmarshalMap(jsonData, env.FormatJSON)
-    if err != nil {
-        panic(err)
-    }
+	result, err := env.UnmarshalMap(jsonData, env.FormatJSON)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", result)
+	fmt.Printf("%+v\n", result)
 }
 ```
 
@@ -296,23 +295,23 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    yamlData := `
+	yamlData := `
 DATABASE_HOST: localhost
 DATABASE_PORT: "5432"
 DATABASE_USER: postgres
 `
 
-    result, err := env.UnmarshalMap(yamlData, env.FormatYAML)
-    if err != nil {
-        panic(err)
-    }
+	result, err := env.UnmarshalMap(yamlData, env.FormatYAML)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", result)
+	fmt.Printf("%+v\n", result)
 }
 ```
 
@@ -324,29 +323,29 @@ DATABASE_USER: postgres
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host string `env:"HOST"`
-    Port int64  `env:"PORT"`
+	Host string `env:"HOST"`
+	Port int64  `env:"PORT"`
 }
 
 func main() {
-    data := map[string]string{
-        "HOST": "example.com",
-        "PORT": "443",
-    }
+	data := map[string]string{
+		"HOST": "example.com",
+		"PORT": "443",
+	}
 
-    var cfg Config
-    err := env.UnmarshalInto(data, &cfg)
-    if err != nil {
-        panic(err)
-    }
+	var cfg Config
+	err := env.UnmarshalInto(data, &cfg)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", cfg)
-    // Output: {Host:example.com Port:443}
+	fmt.Printf("%+v\n", cfg)
+	// Output: {Host:example.com Port:443}
 }
 ```
 
@@ -356,30 +355,30 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 type ServerConfig struct {
-    Host    string `env:"SERVER_HOST"`
-    Port    int64  `env:"SERVER_PORT"`
-    Enabled bool   `env:"ENABLED"`
+	Host    string `env:"SERVER_HOST"`
+	Port    int64  `env:"SERVER_PORT"`
+	Enabled bool   `env:"ENABLED"`
 }
 
 func main() {
-    envData := `
+	envData := `
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
 ENABLED=true
 `
 
-    var cfg ServerConfig
-    err := env.UnmarshalStruct(envData, &cfg, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	var cfg ServerConfig
+	err := env.UnmarshalStruct(envData, &cfg, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", cfg)
+	fmt.Printf("%+v\n", cfg)
 }
 ```
 
@@ -396,35 +395,35 @@ ENABLED=true
 package main
 
 import (
-    "fmt"
-    "strings"
+	"fmt"
+	"strings"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type LogLevel string
 
 // Implement encoding.TextMarshaler — called when serializing as a struct field
 func (l LogLevel) MarshalText() ([]byte, error) {
-    return []byte(strings.ToUpper(string(l))), nil
+	return []byte(strings.ToUpper(string(l))), nil
 }
 
 type LogConfig struct {
-    Level LogLevel `env:"LOG_LEVEL"`
+	Level LogLevel `env:"LOG_LEVEL"`
 }
 
 func main() {
-    cfg := LogConfig{
-        Level: LogLevel("debug"),
-    }
+	cfg := LogConfig{
+		Level: LogLevel("debug"),
+	}
 
-    result, err := env.Marshal(cfg, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	result, err := env.Marshal(cfg, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(result)
-    // Output: LOG_LEVEL=DEBUG
+	fmt.Println(result)
+	// Output: LOG_LEVEL=DEBUG
 }
 ```
 
@@ -434,41 +433,41 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type LogLevel string
 
 // Implement encoding.TextUnmarshaler — called when deserializing as a struct field
 func (l *LogLevel) UnmarshalText(text []byte) error {
-    switch string(text) {
-    case "debug", "info", "warn", "error":
-        *l = LogLevel(text)
-        return nil
-    default:
-        return fmt.Errorf("invalid log level: %s", string(text))
-    }
+	switch string(text) {
+	case "debug", "info", "warn", "error":
+		*l = LogLevel(text)
+		return nil
+	default:
+		return fmt.Errorf("invalid log level: %s", string(text))
+	}
 }
 
 type LogConfig struct {
-    Level LogLevel `env:"LOG_LEVEL"`
+	Level LogLevel `env:"LOG_LEVEL"`
 }
 
 func main() {
-    data := map[string]string{
-        "LOG_LEVEL": "info",
-    }
+	data := map[string]string{
+		"LOG_LEVEL": "info",
+	}
 
-    var cfg LogConfig
-    err := env.UnmarshalInto(data, &cfg)
-    if err != nil {
-        panic(err)
-    }
+	var cfg LogConfig
+	err := env.UnmarshalInto(data, &cfg)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("Level: %s\n", cfg.Level)
-    // Output: Level: info
+	fmt.Printf("Level: %s\n", cfg.Level)
+	// Output: Level: info
 }
 ```
 
@@ -480,30 +479,30 @@ When you **directly** pass a type's value to `env.Marshal` / `env.UnmarshalInto`
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // Top-level type directly implements env.Marshaler
 type EnvBlob string
 
 func (e EnvBlob) MarshalEnv() ([]byte, error) {
-    // Custom overall serialization output
-    return []byte("APP_NAME=custom\nAPP_VERSION=2.0.0"), nil
+	// Custom overall serialization output
+	return []byte("APP_NAME=custom\nAPP_VERSION=2.0.0"), nil
 }
 
 func main() {
-    // Directly serialize the top-level value (not a field of an outer struct)
-    result, err := env.Marshal(EnvBlob(""), env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	// Directly serialize the top-level value (not a field of an outer struct)
+	result, err := env.Marshal(EnvBlob(""), env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(result)
-    // Output:
-    // APP_NAME=custom
-    // APP_VERSION=2.0.0
+	fmt.Println(result)
+	// Output:
+	// APP_NAME=custom
+	// APP_VERSION=2.0.0
 }
 ```
 
@@ -515,25 +514,25 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Auto-detect format
-    format := env.DetectFormat("config.json")
-    fmt.Println(format.String()) // json
+	// Auto-detect format
+	format := env.DetectFormat("config.json")
+	fmt.Println(format.String()) // json
 
-    format = env.DetectFormat("settings.yaml")
-    fmt.Println(format.String()) // yaml
+	format = env.DetectFormat("settings.yaml")
+	fmt.Println(format.String()) // yaml
 
-    format = env.DetectFormat(".env")
-    fmt.Println(format.String()) // dotenv
+	format = env.DetectFormat(".env")
+	fmt.Println(format.String()) // dotenv
 
-    // Use FormatAuto for auto-detection
-    data := `{"KEY": "value"}`
-    result, _ := env.UnmarshalMap(data, env.FormatAuto)
-    fmt.Println(result)
+	// Use FormatAuto for auto-detection
+	data := `{"KEY": "value"}`
+	result, _ := env.UnmarshalMap(data, env.FormatAuto)
+	fmt.Println(result)
 }
 ```
 
@@ -545,27 +544,27 @@ func main() {
 package main
 
 import (
-    "os"
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
+	"os"
 )
 
 func main() {
-    cfg := map[string]string{
-        "HOST": "localhost",
-        "PORT": "8080",
-    }
+	cfg := map[string]string{
+		"HOST": "localhost",
+		"PORT": "8080",
+	}
 
-    // Serialize
-    content, err := env.Marshal(cfg, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	// Serialize
+	content, err := env.Marshal(cfg, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    // Write to file
-    err = os.WriteFile(".env", []byte(content), 0644)
-    if err != nil {
-        panic(err)
-    }
+	// Write to file
+	err = os.WriteFile(".env", []byte(content), 0644)
+	if err != nil {
+		panic(err)
+	}
 }
 ```
 
@@ -575,27 +574,27 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "os"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
+	"os"
 )
 
 func main() {
-    env.Load(".env")
+	env.Load(".env")
 
-    // Get all environment variables
-    all := env.All()
+	// Get all environment variables
+	all := env.All()
 
-    // Export as JSON
-    content, err := env.Marshal(all, env.FormatJSON)
-    if err != nil {
-        panic(err)
-    }
+	// Export as JSON
+	content, err := env.Marshal(all, env.FormatJSON)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(content)
+	fmt.Println(content)
 
-    // Or write to file
-    os.WriteFile("env-export.json", []byte(content), 0644)
+	// Or write to file
+	os.WriteFile("env-export.json", []byte(content), 0644)
 }
 ```
 
@@ -606,8 +605,8 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"github.com/cybergodev/env"
+	"os"
 )
 
 func main() {

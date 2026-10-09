@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Web Service Integration"
-title: "Web Service Integration - CyberGo DD | HTTP Service Logging Example"
-description: "A complete integration example of CyberGo DD in a web service, including HTTP middleware logging, request-chain tracing and TraceID propagation, multi-route layered logging configuration, graceful shutdown and log flushing, and production-grade logging configuration to help you integrate the DD logging library into HTTP service projects quickly."
+title: "Web Service Integration - CyberGo DD | HTTP Logging Example"
+description: "Integrate CyberGo DD into an HTTP service: middleware logging, TraceID propagation, per-route logger config, and graceful shutdown with log flushing."
 sidebar_position: 2
 ---
 
@@ -15,52 +15,52 @@ This example shows how to integrate DD into an HTTP web service for request logg
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/http"
+	"fmt"
+	"log"
+	"net/http"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // Initialize the logger
-    logger, err := dd.New(dd.Config{
-        Format: dd.FormatJSON,
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.json"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	// Initialize the logger
+	logger, err := dd.New(dd.Config{
+		Format: dd.FormatJSON,
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.json"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    // Set the global logger
-    dd.SetDefault(logger)
+	// Set the global logger
+	dd.SetDefault(logger)
 
-    mux := http.NewServeMux()
-    mux.HandleFunc("/api/users", usersHandler)
-    mux.HandleFunc("/api/orders", ordersHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/users", usersHandler)
+	mux.HandleFunc("/api/orders", ordersHandler)
 
-    server := &http.Server{Addr: ":8080", Handler: mux}
+	server := &http.Server{Addr: ":8080", Handler: mux}
 
-    logger.InfoWith("server started", dd.String("addr", ":8080"))
-    if err := server.ListenAndServe(); err != nil {
-        logger.ErrorWith("server exited abnormally", dd.Err(err))
-    }
+	logger.InfoWith("server started", dd.String("addr", ":8080"))
+	if err := server.ListenAndServe(); err != nil {
+		logger.ErrorWith("server exited abnormally", dd.Err(err))
+	}
 }
 
 // usersHandler example handler
 func usersHandler(w http.ResponseWriter, r *http.Request) {
-    dd.Default().InfoWith("handle users request", dd.String("path", r.URL.Path))
-    fmt.Fprintf(w, `{"status":"ok"}`)
+	dd.Default().InfoWith("handle users request", dd.String("path", r.URL.Path))
+	fmt.Fprintf(w, `{"status":"ok"}`)
 }
 
 // ordersHandler example handler
 func ordersHandler(w http.ResponseWriter, r *http.Request) {
-    dd.Default().InfoWith("handle orders request", dd.String("path", r.URL.Path))
-    fmt.Fprintf(w, `{"status":"ok"}`)
+	dd.Default().InfoWith("handle orders request", dd.String("path", r.URL.Path))
+	fmt.Fprintf(w, `{"status":"ok"}`)
 }
 ```
 
@@ -156,54 +156,54 @@ func NewOrderService(logger *dd.Logger) *OrderService {
 package main
 
 import (
-    "context"
-    "net/http"
-    "os"
-    "os/signal"
-    "syscall"
-    "time"
+	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    logger, _ := dd.New(dd.Config{
-        Format: dd.FormatJSON,
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.json"),
-        },
-    })
+	logger, _ := dd.New(dd.Config{
+		Format: dd.FormatJSON,
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.json"),
+		},
+	})
 
-    server := &http.Server{Addr: ":8080"}
+	server := &http.Server{Addr: ":8080"}
 
-    // Listen for shutdown signals
-    quit := make(chan os.Signal, 1)
-    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	// Listen for shutdown signals
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-    go func() {
-        logger.InfoWith("server started", dd.String("addr", ":8080"))
-        if err := server.ListenAndServe(); err != http.ErrServerClosed {
-            logger.ErrorWith("server error", dd.Err(err))
-        }
-    }()
+	go func() {
+		logger.InfoWith("server started", dd.String("addr", ":8080"))
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			logger.ErrorWith("server error", dd.Err(err))
+		}
+	}()
 
-    <-quit
-    logger.Info("shutting down server...")
+	<-quit
+	logger.Info("shutting down server...")
 
-    // Graceful shutdown of the HTTP server
-    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
+	// Graceful shutdown of the HTTP server
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-    if err := server.Shutdown(ctx); err != nil {
-        logger.ErrorWith("server shutdown failed", dd.Err(err))
-    }
+	if err := server.Shutdown(ctx); err != nil {
+		logger.ErrorWith("server shutdown failed", dd.Err(err))
+	}
 
-    // Graceful shutdown of the logger
-    logger.Info("server stopped")
-    logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer logCancel()
-    logger.Shutdown(logCtx)
+	// Graceful shutdown of the logger
+	logger.Info("server stopped")
+	logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer logCancel()
+	logger.Shutdown(logCtx)
 }
 ```
 
@@ -213,88 +213,88 @@ func main() {
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "net/http"
-    "os"
-    "os/signal"
-    "syscall"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 // LoggingMiddleware request-logging middleware
 func LoggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
-    return func(next http.Handler) http.Handler {
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            start := time.Now()
-            logger.InfoWith("request started",
-                dd.String("method", r.Method),
-                dd.String("path", r.URL.Path),
-            )
-            next.ServeHTTP(w, r)
-            logger.InfoWith("request completed",
-                dd.String("method", r.Method),
-                dd.String("path", r.URL.Path),
-                dd.Duration("elapsed", time.Since(start)),
-            )
-        })
-    }
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			logger.InfoWith("request started",
+				dd.String("method", r.Method),
+				dd.String("path", r.URL.Path),
+			)
+			next.ServeHTTP(w, r)
+			logger.InfoWith("request completed",
+				dd.String("method", r.Method),
+				dd.String("path", r.URL.Path),
+				dd.Duration("elapsed", time.Since(start)),
+			)
+		})
+	}
 }
 
 func main() {
-    logger, err := dd.New(dd.Config{
-        Format: dd.FormatJSON,
-        Security: dd.DefaultSecurityConfig(),
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.json"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    dd.SetDefault(logger)
+	logger, err := dd.New(dd.Config{
+		Format:   dd.FormatJSON,
+		Security: dd.DefaultSecurityConfig(),
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.json"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	dd.SetDefault(logger)
 
-    mux := http.NewServeMux()
-    mux.HandleFunc("/api/users", func(w http.ResponseWriter, r *http.Request) {
-        reqLog := logger.WithFields(
-            dd.String("method", r.Method),
-            dd.String("path", r.URL.Path),
-        )
-        reqLog.Info("handle users request")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/users", func(w http.ResponseWriter, r *http.Request) {
+		reqLog := logger.WithFields(
+			dd.String("method", r.Method),
+			dd.String("path", r.URL.Path),
+		)
+		reqLog.Info("handle users request")
 
-        w.Header().Set("Content-Type", "application/json")
-        fmt.Fprintf(w, `{"status":"ok"}`)
-    })
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"ok"}`)
+	})
 
-    server := &http.Server{
-        Addr:    ":8080",
-        Handler: LoggingMiddleware(logger)(mux),
-    }
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: LoggingMiddleware(logger)(mux),
+	}
 
-    quit := make(chan os.Signal, 1)
-    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-    go func() {
-        logger.InfoWith("server started", dd.String("addr", ":8080"))
-        if err := server.ListenAndServe(); err != http.ErrServerClosed {
-            logger.ErrorWith("server error", dd.Err(err))
-        }
-    }()
+	go func() {
+		logger.InfoWith("server started", dd.String("addr", ":8080"))
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			logger.ErrorWith("server error", dd.Err(err))
+		}
+	}()
 
-    <-quit
-    logger.Info("shutting down...")
+	<-quit
+	logger.Info("shutting down...")
 
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
-    server.Shutdown(ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	server.Shutdown(ctx)
 
-    logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer logCancel()
-    logger.Shutdown(logCtx)
+	logCtx, logCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer logCancel()
+	logger.Shutdown(logCtx)
 }
 ```
 

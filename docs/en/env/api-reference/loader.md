@@ -749,65 +749,65 @@ if loader.IsClosed() {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
-    "os"
-    "time"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Create production configuration
-    cfg := env.ProductionConfig()
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
-    cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+	// Create production configuration
+	cfg := env.ProductionConfig()
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 
-    // Create loader
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	// Create loader
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // Load files
-    if err := loader.LoadFiles(".env", ".env.production"); err != nil {
-        if errors.Is(err, env.ErrFileNotFound) {
-            log.Fatal("Configuration file not found")
-        }
-        log.Fatal(err)
-    }
+	// Load files
+	if err := loader.LoadFiles(".env", ".env.production"); err != nil {
+		if errors.Is(err, env.ErrFileNotFound) {
+			log.Fatal("Configuration file not found")
+		}
+		log.Fatal(err)
+	}
 
-    // Validate required keys
-    if err := loader.Validate(); err != nil {
-        log.Fatal("Missing required configuration:", err)
-    }
+	// Validate required keys
+	if err := loader.Validate(); err != nil {
+		log.Fatal("Missing required configuration:", err)
+	}
 
-    // Read configuration
-    host := loader.GetString("DB_HOST")
-    port := loader.GetInt("DB_PORT", 5432)
-    debug := loader.GetBool("DEBUG", false)
-    timeout := loader.GetDuration("TIMEOUT", 30*time.Second)
+	// Read configuration
+	host := loader.GetString("DB_HOST")
+	port := loader.GetInt("DB_PORT", 5432)
+	debug := loader.GetBool("DEBUG", false)
+	timeout := loader.GetDuration("TIMEOUT", 30*time.Second)
 
-    fmt.Printf("Server: %s:%d\n", host, port)
-    fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
+	fmt.Printf("Server: %s:%d\n", host, port)
+	fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
 
-    // Sensitive data
-    secret := loader.GetSecure("API_KEY")
-    if secret != nil {
-        defer secret.Release()
-        fmt.Printf("API Key length: %d\n", secret.Length())
-    }
+	// Sensitive data
+	secret := loader.GetSecure("API_KEY")
+	if secret != nil {
+		defer secret.Release()
+		fmt.Printf("API Key length: %d\n", secret.Length())
+	}
 
-    // Apply to system environment
-    if err := loader.Apply(); err != nil {
-        log.Fatal(err)
-    }
+	// Apply to system environment
+	if err := loader.Apply(); err != nil {
+		log.Fatal(err)
+	}
 
-    // All variables
-    fmt.Printf("Loaded %d variables\n", loader.Len())
-    fmt.Printf("Load time: %v\n", loader.LoadTime())
+	// All variables
+	fmt.Printf("Loaded %d variables\n", loader.Len())
+	fmt.Printf("Load time: %v\n", loader.LoadTime())
 }
 ```
 

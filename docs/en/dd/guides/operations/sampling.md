@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Log Sampling"
-title: "Log Sampling - CyberGo DD | High-Throughput Log Volume Reduction"
-description: "CyberGo DD log sampling configuration guide: SamplingConfig Initial, Thereafter, Tick parameters for reducing log volume in high-throughput scenarios while preserving key information, with runtime toggle support."
+title: "Log Sampling - CyberGo DD | High-Throughput Logging"
+description: "Configure CyberGo DD log sampling: SamplingConfig Initial, Thereafter, Tick parameters cut log volume in high-throughput scenarios, with runtime toggling."
 sidebar_position: 1
 ---
 
@@ -41,34 +41,34 @@ DD uses a **counter-based sampling** strategy:
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    cfg := dd.DefaultConfig()
-    cfg.Sampling = &dd.SamplingConfig{
-        Enabled:    true,
-        Initial:    100,             // First 100 always logged
-        Thereafter: 10,              // Then log 1 of every 10
-        Tick:       time.Second,     // Reset counter every second
-    }
+	cfg := dd.DefaultConfig()
+	cfg.Sampling = &dd.SamplingConfig{
+		Enabled:    true,
+		Initial:    100,         // First 100 always logged
+		Thereafter: 10,          // Then log 1 of every 10
+		Tick:       time.Second, // Reset counter every second
+	}
 
-    logger, err := dd.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	logger, err := dd.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    // Simulate high-throughput logging
-    for i := 0; i < 1000; i++ {
-        logger.InfoWith("request processed",
-            dd.Int("seq", i),
-        )
-    }
-    // Actual output: first 100 + 90 of remaining 900 = 190 entries
+	// Simulate high-throughput logging
+	for i := 0; i < 1000; i++ {
+		logger.InfoWith("request processed",
+			dd.Int("seq", i),
+		)
+	}
+	// Actual output: first 100 + 90 of remaining 900 = 190 entries
 }
 ```
 

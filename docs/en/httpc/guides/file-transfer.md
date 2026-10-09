@@ -15,26 +15,26 @@ sidebar_position: 6
 package main
 
 import (
-    "log"
-    "os"
+	"log"
+	"os"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    fileContent, err := os.ReadFile("document.pdf")
-    if err != nil {
-        log.Fatal(err)
-    }
+	fileContent, err := os.ReadFile("document.pdf")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    result, err := httpc.Post("https://api.example.com/upload",
-        httpc.WithFile("file", "document.pdf", fileContent),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Post("https://api.example.com/upload",
+		httpc.WithFile("file", "document.pdf", fileContent),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    log.Printf("Upload complete: %d", result.StatusCode()) // Sample output: Upload complete: 200 (actual status code depends on the server)
+	log.Printf("Upload complete: %d", result.StatusCode()) // Sample output: Upload complete: 200 (actual status code depends on the server)
 }
 ```
 

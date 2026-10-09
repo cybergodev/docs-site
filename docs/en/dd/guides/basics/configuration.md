@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration - CyberGo DD | Config Struct and Presets"
-description: "CyberGo DD configuration guide: DefaultConfig, DevelopmentConfig, JSONConfig, ProductionConfig presets, full Config struct field reference, multi-output target configuration, JSON format customization, and Clone deep-copy usage."
+description: "Configure CyberGo DD: DefaultConfig, DevelopmentConfig, JSONConfig, and ProductionConfig presets, Config struct reference, and multi-output setup."
 sidebar_position: 2
 ---
 
@@ -72,32 +72,32 @@ Use `ConsoleOutput()`, `FileOutput()`, `CustomOutput()` to construct output targ
 package main
 
 import (
-    "log"
-    "os"
-    "time"
+	"log"
+	"os"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    cfg := dd.DefaultConfig()
-    cfg.Targets = []dd.OutputTarget{
-        dd.ConsoleOutput(),                          // Console
-        dd.FileOutput("logs/app.log"),               // File (default 100MB/10 backups/30 days)
-        dd.CustomOutput(os.Stderr),                  // Custom Writer
-    }
+	cfg := dd.DefaultConfig()
+	cfg.Targets = []dd.OutputTarget{
+		dd.ConsoleOutput(),            // Console
+		dd.FileOutput("logs/app.log"), // File (default 100MB/10 backups/30 days)
+		dd.CustomOutput(os.Stderr),    // Custom Writer
+	}
 
-    // Custom file rotation parameters
-    fileTarget := dd.FileOutput("logs/app.log")
-    fileTarget.MaxSizeMB = 50              // Rotate at 50MB
-    fileTarget.MaxBackups = 5              // Keep 5 backups
-    fileTarget.MaxAge = 7 * 24 * time.Hour // Retain 7 days (MaxAge is a time.Duration — the unit is mandatory)
+	// Custom file rotation parameters
+	fileTarget := dd.FileOutput("logs/app.log")
+	fileTarget.MaxSizeMB = 50              // Rotate at 50MB
+	fileTarget.MaxBackups = 5              // Keep 5 backups
+	fileTarget.MaxAge = 7 * 24 * time.Hour // Retain 7 days (MaxAge is a time.Duration — the unit is mandatory)
 
-    logger, err := dd.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	logger, err := dd.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 }
 ```
 

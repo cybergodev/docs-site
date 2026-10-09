@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Interfaces"
 title: "Interface Definitions - CyberGo HTTPC | Core Interfaces"
-description: "HTTPC core interfaces API reference: the full-capability Client interface, the minimal Doer execution interface, the DomainClienter domain client, the RetryPolicy retry strategy, and the RequestMutator/ResponseMutator middleware interface definitions."
+description: "HTTPC core interfaces: full-capability Client, minimal Doer, DomainClienter domain client, RetryPolicy strategy, and RequestMutator/ResponseMutator."
 sidebar_position: 1
 ---
 

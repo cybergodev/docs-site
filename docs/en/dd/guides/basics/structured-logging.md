@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Structured Logging"
 title: "Structured Logging - CyberGo DD | Fields & Chaining"
-description: "CyberGo DD structured logging guide, covering 20 type-safe field constructors, the Field chaining pattern, LoggerEntry immutable design, field-naming conventions and validation rules, plus structured-logging best practices and common usage patterns to help you use high-performance structured logging effectively in your project."
+description: "Structured logging with CyberGo DD: type-safe field constructors, Field chaining, LoggerEntry immutability, naming rules and validation."
 sidebar_position: 3
 ---
 

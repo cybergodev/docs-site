@@ -3,7 +3,6 @@ sidebar_label: "Custom Parser"
 title: "Custom Parser - CyberGo env | Extending File Formats"
 description: "Custom parser guide for CyberGo env: implement the EnvParser interface's Parse method and register via RegisterParser, with TOML and INI examples."
 sidebar_position: 8
-sidebar_icon: "⚙️"
 ---
 
 # Custom Parser
@@ -40,51 +39,51 @@ type EnvParser interface {
 package myparser
 
 import (
-    "io"
-    "strings"
+	"io"
+	"strings"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // Custom parser
 type CustomParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
+	cfg       env.Config
+	validator env.Validator
+	auditor   env.FullAuditLogger
 }
 
 // Implement EnvParser interface
 func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    result := make(map[string]string)
+	result := make(map[string]string)
 
-    // 1. Read content (mind the size limit)
-    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize))
-    if err != nil {
-        return nil, err
-    }
+	// 1. Read content (mind the size limit)
+	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize))
+	if err != nil {
+		return nil, err
+	}
 
-    // 2. Parse content into key-value pairs
-    for _, line := range strings.Split(string(content), "\n") {
-        line = strings.TrimSpace(line)
-        if line == "" || strings.HasPrefix(line, "#") {
-            continue
-        }
-        idx := strings.Index(line, "=")
-        if idx <= 0 {
-            continue
-        }
-        result[strings.TrimSpace(line[:idx])] = strings.TrimSpace(line[idx+1:])
-    }
+	// 2. Parse content into key-value pairs
+	for _, line := range strings.Split(string(content), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		idx := strings.Index(line, "=")
+		if idx <= 0 {
+			continue
+		}
+		result[strings.TrimSpace(line[:idx])] = strings.TrimSpace(line[idx+1:])
+	}
 
-    // 3. Validate results
-    for key := range result {
-        if err := p.validator.ValidateKey(key); err != nil {
-            return nil, err
-        }
-    }
+	// 3. Validate results
+	for key := range result {
+		if err := p.validator.ValidateKey(key); err != nil {
+			return nil, err
+		}
+	}
 
-    // 4. Return results
-    return result, nil
+	// 4. Return results
+	return result, nil
 }
 ```
 
@@ -94,88 +93,88 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 package tomlparser
 
 import (
-    "fmt"
-    "io"
-    "strings"
-    "time"
+	"fmt"
+	"io"
+	"strings"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // TOMLParser parses TOML format
 type TOMLParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
+	cfg       env.Config
+	validator env.Validator
+	auditor   env.FullAuditLogger
 }
 
 func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    start := time.Now()
+	start := time.Now()
 
-    // Limit read size
-    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
-    if err != nil {
-        return nil, err
-    }
-    if int64(len(content)) > p.cfg.MaxFileSize {
-        return nil, fmt.Errorf("file exceeds size limit")
-    }
+	// Limit read size
+	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > p.cfg.MaxFileSize {
+		return nil, fmt.Errorf("file exceeds size limit")
+	}
 
-    result := make(map[string]string)
-    lines := strings.Split(string(content), "\n")
+	result := make(map[string]string)
+	lines := strings.Split(string(content), "\n")
 
-    var currentSection string
+	var currentSection string
 
-    for lineNum, line := range lines {
-        line = strings.TrimSpace(line)
+	for lineNum, line := range lines {
+		line = strings.TrimSpace(line)
 
-        // Skip empty lines and comments
-        if line == "" || strings.HasPrefix(line, "#") {
-            continue
-        }
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
 
-        // Parse section [section]
-        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-            currentSection = strings.Trim(line, "[]")
-            continue
-        }
+		// Parse section [section]
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			currentSection = strings.Trim(line, "[]")
+			continue
+		}
 
-        // Parse key = value
-        parts := strings.SplitN(line, "=", 2)
-        if len(parts) != 2 {
-            continue // or return error
-        }
+		// Parse key = value
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue // or return error
+		}
 
-        key := strings.TrimSpace(parts[0])
-        value := strings.TrimSpace(parts[1])
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
 
-        // Add section prefix
-        if currentSection != "" {
-            key = currentSection + "_" + key
-        }
+		// Add section prefix
+		if currentSection != "" {
+			key = currentSection + "_" + key
+		}
 
-        // Strip quotes
-        value = strings.Trim(value, "\"'")
+		// Strip quotes
+		value = strings.Trim(value, "\"'")
 
-        // Uppercase
-        key = strings.ToUpper(key)
+		// Uppercase
+		key = strings.ToUpper(key)
 
-        // Validate key
-        if err := p.validator.ValidateKey(key); err != nil {
-            _ = p.auditor.LogError(env.ActionParse, key, err.Error())
-            return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
-        }
+		// Validate key
+		if err := p.validator.ValidateKey(key); err != nil {
+			_ = p.auditor.LogError(env.ActionParse, key, err.Error())
+			return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
+		}
 
-        result[key] = value
-    }
+		result[key] = value
+	}
 
-    // Check variable count
-    if len(result) > p.cfg.MaxVariables {
-        return nil, fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
-    }
+	// Check variable count
+	if len(result) > p.cfg.MaxVariables {
+		return nil, fmt.Errorf("exceeds max variables: %d > %d", len(result), p.cfg.MaxVariables)
+	}
 
-    _ = p.auditor.LogWithDuration(env.ActionParse, "", "parsed TOML: "+filename, true, time.Since(start))
-    return result, nil
+	_ = p.auditor.LogWithDuration(env.ActionParse, "", "parsed TOML: "+filename, true, time.Since(start))
+	return result, nil
 }
 ```
 
@@ -185,64 +184,64 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
 package iniparser
 
 import (
-    "fmt"
-    "io"
-    "strings"
+	"fmt"
+	"io"
+	"strings"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // INIParser parses INI format
 type INIParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
+	cfg       env.Config
+	validator env.Validator
+	auditor   env.FullAuditLogger
 }
 
 func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
-    if err != nil {
-        return nil, err
-    }
+	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
+	if err != nil {
+		return nil, err
+	}
 
-    result := make(map[string]string)
-    lines := strings.Split(string(content), "\n")
+	result := make(map[string]string)
+	lines := strings.Split(string(content), "\n")
 
-    var currentSection string
+	var currentSection string
 
-    for lineNum, line := range lines {
-        line = strings.TrimSpace(line)
+	for lineNum, line := range lines {
+		line = strings.TrimSpace(line)
 
-        // Skip empty lines and comments
-        if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
-            continue
-        }
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+			continue
+		}
 
-        // Section
-        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-            currentSection = strings.Trim(line, "[]")
-            continue
-        }
+		// Section
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			currentSection = strings.Trim(line, "[]")
+			continue
+		}
 
-        // Key=Value
-        if idx := strings.Index(line, "="); idx > 0 {
-            key := strings.TrimSpace(line[:idx])
-            value := strings.TrimSpace(line[idx+1:])
+		// Key=Value
+		if idx := strings.Index(line, "="); idx > 0 {
+			key := strings.TrimSpace(line[:idx])
+			value := strings.TrimSpace(line[idx+1:])
 
-            if currentSection != "" {
-                key = currentSection + "_" + key
-            }
+			if currentSection != "" {
+				key = currentSection + "_" + key
+			}
 
-            // Validate
-            if err := p.validator.ValidateKey(strings.ToUpper(key)); err != nil {
-                return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
-            }
+			// Validate
+			if err := p.validator.ValidateKey(strings.ToUpper(key)); err != nil {
+				return nil, fmt.Errorf("line %d: %w", lineNum+1, err)
+			}
 
-            result[strings.ToUpper(key)] = value
-        }
-    }
+			result[strings.ToUpper(key)] = value
+		}
+	}
 
-    return result, nil
+	return result, nil
 }
 ```
 
@@ -512,132 +511,132 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 package main
 
 import (
-    "encoding/xml"
-    "fmt"
-    "io"
-    "strings"
-    "time"
+	"encoding/xml"
+	"fmt"
+	"io"
+	"strings"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // XML configuration structure
 type XMLConfig struct {
-    XMLName xml.Name   `xml:"config"`
-    Entries []XMLEntry `xml:"entry"`
+	XMLName xml.Name   `xml:"config"`
+	Entries []XMLEntry `xml:"entry"`
 }
 
 type XMLEntry struct {
-    Key   string `xml:"key,attr"`
-    Value string `xml:",chardata"`
+	Key   string `xml:"key,attr"`
+	Value string `xml:",chardata"`
 }
 
 // XMLParser parses XML format
 type XMLParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
+	cfg       env.Config
+	validator env.Validator
+	auditor   env.FullAuditLogger
 }
 
 func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    start := time.Now()
+	start := time.Now()
 
-    // Limit read size
-    content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
-    if err != nil {
-        return nil, err
-    }
-    if int64(len(content)) > p.cfg.MaxFileSize {
-        _ = p.auditor.LogError(env.ActionParse, "", "file exceeds size limit")
-        return nil, fmt.Errorf("file exceeds size limit: %d > %d", len(content), p.cfg.MaxFileSize)
-    }
+	// Limit read size
+	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > p.cfg.MaxFileSize {
+		_ = p.auditor.LogError(env.ActionParse, "", "file exceeds size limit")
+		return nil, fmt.Errorf("file exceeds size limit: %d > %d", len(content), p.cfg.MaxFileSize)
+	}
 
-    var xmlConfig XMLConfig
-    if err := xml.Unmarshal(content, &xmlConfig); err != nil {
-        _ = p.auditor.LogError(env.ActionParse, "", "xml parse error: "+err.Error())
-        return nil, fmt.Errorf("xml parse error: %w", err)
-    }
+	var xmlConfig XMLConfig
+	if err := xml.Unmarshal(content, &xmlConfig); err != nil {
+		_ = p.auditor.LogError(env.ActionParse, "", "xml parse error: "+err.Error())
+		return nil, fmt.Errorf("xml parse error: %w", err)
+	}
 
-    result := make(map[string]string)
+	result := make(map[string]string)
 
-    for _, entry := range xmlConfig.Entries {
-        key := strings.ToUpper(entry.Key)
+	for _, entry := range xmlConfig.Entries {
+		key := strings.ToUpper(entry.Key)
 
-        // Validate key length
-        if len(key) > p.cfg.MaxKeyLength {
-            return nil, fmt.Errorf("key too long: %s", key)
-        }
+		// Validate key length
+		if len(key) > p.cfg.MaxKeyLength {
+			return nil, fmt.Errorf("key too long: %s", key)
+		}
 
-        // Validate key format
-        if err := p.validator.ValidateKey(key); err != nil {
-            return nil, fmt.Errorf("invalid key %q: %w", key, err)
-        }
+		// Validate key format
+		if err := p.validator.ValidateKey(key); err != nil {
+			return nil, fmt.Errorf("invalid key %q: %w", key, err)
+		}
 
-        // Validate value length
-        if len(entry.Value) > p.cfg.MaxValueLength {
-            return nil, fmt.Errorf("value too long for key: %s", key)
-        }
+		// Validate value length
+		if len(entry.Value) > p.cfg.MaxValueLength {
+			return nil, fmt.Errorf("value too long for key: %s", key)
+		}
 
-        result[key] = entry.Value
-    }
+		result[key] = entry.Value
+	}
 
-    // Check variable count
-    if len(result) > p.cfg.MaxVariables {
-        return nil, fmt.Errorf("too many variables: %d > %d", len(result), p.cfg.MaxVariables)
-    }
+	// Check variable count
+	if len(result) > p.cfg.MaxVariables {
+		return nil, fmt.Errorf("too many variables: %d > %d", len(result), p.cfg.MaxVariables)
+	}
 
-    _ = p.auditor.LogWithDuration(env.ActionParse, "", "parsed XML: "+filename, true, time.Since(start))
-    return result, nil
+	_ = p.auditor.LogWithDuration(env.ActionParse, "", "parsed XML: "+filename, true, time.Since(start))
+	return result, nil
 }
 
 // Define XML format constant
 const FormatXML env.FileFormat = 102
 
 func init() {
-    // Register XML parser
-    env.RegisterParser(FormatXML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
-        return &XMLParser{
-            cfg:       cfg,
-            validator: f.Validator(),
-            auditor:   f.Auditor(),
-        }, nil
-    })
+	// Register XML parser
+	env.RegisterParser(FormatXML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+		return &XMLParser{
+			cfg:       cfg,
+			validator: f.Validator(),
+			auditor:   f.Auditor(),
+		}, nil
+	})
 }
 
 func main() {
-    // LoadFiles will NOT auto-route to the XML parser based on the .xml extension —
-    // DetectFormat only recognizes .env/.json/.yaml/.yml. Here we use
-    // ForceRegisterParser to override FormatEnv, loading the file with a .env
-    // extension (content in XML format):
-    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
-        return &XMLParser{
-            cfg:       cfg,
-            validator: f.Validator(),
-            auditor:   f.Auditor(),
-        }, nil
-    })
-    if err != nil {
-        panic(err)
-    }
+	// LoadFiles will NOT auto-route to the XML parser based on the .xml extension —
+	// DetectFormat only recognizes .env/.json/.yaml/.yml. Here we use
+	// ForceRegisterParser to override FormatEnv, loading the file with a .env
+	// extension (content in XML format):
+	err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+		return &XMLParser{
+			cfg:       cfg,
+			validator: f.Validator(),
+			auditor:   f.Auditor(),
+		}, nil
+	})
+	if err != nil {
+		panic(err)
+	}
 
-    cfg := env.DefaultConfig()
-    loader, _ := env.New(cfg)
-    defer loader.Close()
+	cfg := env.DefaultConfig()
+	loader, _ := env.New(cfg)
+	defer loader.Close()
 
-    /*
-    config.env file content (XML format):
-    <?xml version="1.0"?>
-    <config>
-        <entry key="DATABASE_HOST">localhost</entry>
-        <entry key="DATABASE_PORT">5432</entry>
-    </config>
-    */
-    if err := loader.LoadFiles("config.env"); err != nil {
-        panic(err)
-    }
+	/*
+	   config.env file content (XML format):
+	   <?xml version="1.0"?>
+	   <config>
+	       <entry key="DATABASE_HOST">localhost</entry>
+	       <entry key="DATABASE_PORT">5432</entry>
+	   </config>
+	*/
+	if err := loader.LoadFiles("config.env"); err != nil {
+		panic(err)
+	}
 
-    fmt.Println(loader.GetString("DATABASE_HOST"))  // localhost
-    fmt.Println(loader.GetInt("DATABASE_PORT"))     // 5432
+	fmt.Println(loader.GetString("DATABASE_HOST")) // localhost
+	fmt.Println(loader.GetInt("DATABASE_PORT"))    // 5432
 }
 ```
 

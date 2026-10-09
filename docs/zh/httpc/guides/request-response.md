@@ -201,13 +201,13 @@ result, err := client.Get(url, httpc.WithBasicAuth("user", "pass"))
 
 ```go
 result, err := client.Get(url,
-    httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"}),
+    httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc"}}),
     httpc.WithCookieMap(map[string]string{"session": "abc", "lang": "zh"}),
     httpc.WithCookieString("session=abc; lang=zh"),
 )
 ```
 
-批量设置用 `WithCookies` 一次传入切片，比多次 `WithCookie` 更高效（单次预分配、单趟校验）：
+批量设置用 `WithCookies` 一次传入整个切片（单次预分配、单趟校验）：
 
 ```go
 result, err := client.Get(url, httpc.WithCookies([]http.Cookie{
@@ -220,7 +220,7 @@ result, err := client.Get(url, httpc.WithCookies([]http.Cookie{
 
 ```go
 result, err := client.Get(url,
-    httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"}),
+    httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc"}}),
     httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()), // 要求 Secure/HttpOnly/SameSite=Strict
 )
 ```

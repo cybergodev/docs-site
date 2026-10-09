@@ -72,32 +72,32 @@ type Config struct {
 package main
 
 import (
-    "log"
-    "os"
-    "time"
+	"log"
+	"os"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    cfg := dd.DefaultConfig()
-    cfg.Targets = []dd.OutputTarget{
-        dd.ConsoleOutput(),                          // 控制台
-        dd.FileOutput("logs/app.log"),               // 文件（默认 100MB/10备份/30天）
-        dd.CustomOutput(os.Stderr),                  // 自定义 Writer
-    }
+	cfg := dd.DefaultConfig()
+	cfg.Targets = []dd.OutputTarget{
+		dd.ConsoleOutput(),            // 控制台
+		dd.FileOutput("logs/app.log"), // 文件（默认 100MB/10备份/30天）
+		dd.CustomOutput(os.Stderr),    // 自定义 Writer
+	}
 
-    // 自定义文件轮换参数
-    fileTarget := dd.FileOutput("logs/app.log")
-    fileTarget.MaxSizeMB = 50              // 50MB 轮换
-    fileTarget.MaxBackups = 5              // 保留 5 个备份
-    fileTarget.MaxAge = 7 * 24 * time.Hour // 保留 7 天（MaxAge 是 time.Duration，必须带单位）
+	// 自定义文件轮换参数
+	fileTarget := dd.FileOutput("logs/app.log")
+	fileTarget.MaxSizeMB = 50              // 50MB 轮换
+	fileTarget.MaxBackups = 5              // 保留 5 个备份
+	fileTarget.MaxAge = 7 * 24 * time.Hour // 保留 7 天（MaxAge 是 time.Duration，必须带单位）
 
-    logger, err := dd.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	logger, err := dd.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 }
 ```
 

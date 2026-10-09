@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Migration Guide"
-title: "Migration Guide - CyberGo DD | Migrating From Other Log Libraries"
-description: "A complete side-by-side migration guide from the standard library log/slog and popular third-party log libraries (zap, logrus, zerolog) to CyberGo DD, with detailed API mapping tables, configuration-parameter comparisons, common migration patterns, and a progressive migration strategy to help you smoothly switch existing logging systems to DD with low risk."
+title: "Migration Guide - CyberGo DD | slog, zap, logrus, zerolog"
+description: "Migrate from log/slog, zap, logrus, or zerolog to CyberGo DD with API mapping tables, config comparisons, and a progressive low-risk strategy."
 sidebar_position: 2
 ---
 

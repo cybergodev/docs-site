@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Installation"
 title: "Installation - CyberGo DD | Requirements & Integration"
-description: "CyberGo DD logging library installation guide covering Go version requirements, go get installation, Go Module integration, CI/CD configuration tips, and common installation troubleshooting."
+description: "Install CyberGo DD: Go version requirements, go get, Go Module integration, CI/CD tips, and troubleshooting for common installation issues."
 sidebar_position: 1
 ---
 
@@ -50,7 +50,7 @@ package main
 import "github.com/cybergodev/dd"
 
 func main() {
-    dd.Info("DD installed successfully!")
+	dd.Info("DD installed successfully!")
 }
 ```
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Global Logger"
 title: "Global Logger - CyberGo DD | Default Logger Usage Guide"
-description: "CyberGo DD global Logger pattern: Default() lazy initialization, SetDefault() replacement, InitDefault() with error handling, and choosing between package-level functions dd.Info() and instance methods logger.Info()."
+description: "CyberGo DD global logger pattern: Default() lazy init, SetDefault() replacement, InitDefault() with error handling, and dd.Info() vs logger.Info()."
 sidebar_position: 3
 ---
 
@@ -28,32 +28,32 @@ package main
 import "github.com/cybergodev/dd"
 
 func main() {
-    // Basic logging
-    dd.Debug("debug info")
-    dd.Info("service started")
-    dd.Warn("high memory usage")
-    dd.Error("request failed")
-    // dd.Fatal("fatal error")  // ⚠️ calls os.Exit(1)
+	// Basic logging
+	dd.Debug("debug info")
+	dd.Info("service started")
+	dd.Warn("high memory usage")
+	dd.Error("request failed")
+	// dd.Fatal("fatal error")  // ⚠️ calls os.Exit(1)
 
-    // Formatted
-    username := "alice"
-    dd.Infof("user %s logged in", username)
+	// Formatted
+	username := "alice"
+	dd.Infof("user %s logged in", username)
 
-    // Structured logging
-    dd.InfoWith("request completed",
-        dd.String("method", "GET"),
-        dd.Int("status", 200),
-    )
+	// Structured logging
+	dd.InfoWith("request completed",
+		dd.String("method", "GET"),
+		dd.Int("status", 200),
+	)
 
-    // Field chaining
-    dd.WithFields(dd.String("service", "api")).
-        Info("service ready")
+	// Field chaining
+	dd.WithFields(dd.String("service", "api")).
+		Info("service ready")
 
-    // Level control
-    dd.SetLevel(dd.LevelDebug)
-    if dd.IsDebugEnabled() {
-        dd.Debug("debug enabled")
-    }
+	// Level control
+	dd.SetLevel(dd.LevelDebug)
+	if dd.IsDebugEnabled() {
+		dd.Debug("debug enabled")
+	}
 }
 ```
 
@@ -81,22 +81,22 @@ Initialize the global Logger with custom configuration at startup:
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    cfg := dd.DefaultConfig()
-    cfg.Level = dd.LevelDebug
-    cfg.Format = dd.FormatJSON
+	cfg := dd.DefaultConfig()
+	cfg.Level = dd.LevelDebug
+	cfg.Format = dd.FormatJSON
 
-    if err := dd.InitDefault(cfg); err != nil {
-        log.Fatalf("failed to init logger: %v", err)
-    }
+	if err := dd.InitDefault(cfg); err != nil {
+		log.Fatalf("failed to init logger: %v", err)
+	}
 
-    // All package-level functions now use this configuration
-    dd.Info("global Logger initialized")
+	// All package-level functions now use this configuration
+	dd.Info("global Logger initialized")
 }
 ```
 

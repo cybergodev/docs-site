@@ -3,7 +3,6 @@ sidebar_label: "Testing"
 title: "Testing - CyberGo env | Unit Test Best Practices"
 description: "Testing guide for CyberGo env: TestingConfig with OverwriteExisting for isolation, in-memory FileSystem mocking, and ResetDefaultLoader cleanup."
 sidebar_position: 7
-sidebar_icon: "🧪"
 ---
 
 # Testing
@@ -387,46 +386,46 @@ Create test helper functions:
 package testutil
 
 import (
-    "os"
-    "testing"
+	"os"
+	"testing"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func NewTestLoader(t *testing.T, values map[string]string) *env.Loader {
-    t.Helper()
+	t.Helper()
 
-    loader, err := env.New(env.TestingConfig())
-    if err != nil {
-        t.Fatalf("failed to create loader: %v", err)
-    }
+	loader, err := env.New(env.TestingConfig())
+	if err != nil {
+		t.Fatalf("failed to create loader: %v", err)
+	}
 
-    t.Cleanup(func() {
-        loader.Close()
-    })
+	t.Cleanup(func() {
+		loader.Close()
+	})
 
-    for k, v := range values {
-        if err := loader.Set(k, v); err != nil {
-            t.Fatalf("failed to set %s: %v", k, err)
-        }
-    }
+	for k, v := range values {
+		if err := loader.Set(k, v); err != nil {
+			t.Fatalf("failed to set %s: %v", k, err)
+		}
+	}
 
-    return loader
+	return loader
 }
 
 func SetTestEnv(t *testing.T, key, value string) {
-    t.Helper()
+	t.Helper()
 
-    original := os.Getenv(key)
-    os.Setenv(key, value)
+	original := os.Getenv(key)
+	os.Setenv(key, value)
 
-    t.Cleanup(func() {
-        if original == "" {
-            os.Unsetenv(key)
-        } else {
-            os.Setenv(key, original)
-        }
-    })
+	t.Cleanup(func() {
+		if original == "" {
+			os.Unsetenv(key)
+		} else {
+			os.Setenv(key, original)
+		}
+	})
 }
 ```
 

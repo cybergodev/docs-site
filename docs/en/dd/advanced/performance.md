@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Performance"
 title: "Performance Tuning - CyberGo DD | High-Performance Logging"
-description: "A complete performance-tuning guide for the CyberGo DD logging library, covering low-allocation optimization, BufferedWriter buffered-write configuration, log-sampling strategy and frequency control, early level-check to avoid wasteful allocations, sync.Pool object-pool reuse, and benchmark-analysis methods, helping you achieve extreme logging performance in high-concurrency scenarios."
+description: "Performance tuning for CyberGo DD logging: low-allocation optimization, BufferedWriter configuration, sampling strategy, and benchmark analysis."
 sidebar_position: 1
 ---
 

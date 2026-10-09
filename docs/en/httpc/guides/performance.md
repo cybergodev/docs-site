@@ -162,8 +162,8 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			sem <- struct{}{}                // acquire the semaphore
-			defer func() { <-sem }()         // release the semaphore
+			sem <- struct{}{}        // acquire the semaphore
+			defer func() { <-sem }() // release the semaphore
 
 			result, err := client.Get(server.URL)
 			if err != nil {
@@ -220,35 +220,35 @@ HTTPC's connection pool uses a fixed 30-second TCP keep-alive interval (`default
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // High-QPS microservice scenario: enlarge the pool
-    cfg := httpc.PerformanceConfig()
-    cfg.Connection.MaxIdleConns = 200   // Global idle connection cap
-    cfg.Connection.MaxConnsPerHost = 50 // Max conns per host (idle auto-computed to 10)
-    cfg.Timeouts.IdleConn = 300 * time.Second // Idle conns live longer, higher reuse rate
+	// High-QPS microservice scenario: enlarge the pool
+	cfg := httpc.PerformanceConfig()
+	cfg.Connection.MaxIdleConns = 200         // Global idle connection cap
+	cfg.Connection.MaxConnsPerHost = 50       // Max conns per host (idle auto-computed to 10)
+	cfg.Timeouts.IdleConn = 300 * time.Second // Idle conns live longer, higher reuse rate
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // Hot-path requests reuse pooled connections directly
-    for i := 0; i < 100; i++ {
-        result, err := client.Get("https://api.example.com/data")
-        if err != nil {
-            log.Printf("request %d failed: %v", i, err)
-            continue
-        }
-        fmt.Printf("request %d: %d\n", i, result.StatusCode())
-    }
+	// Hot-path requests reuse pooled connections directly
+	for i := 0; i < 100; i++ {
+		result, err := client.Get("https://api.example.com/data")
+		if err != nil {
+			log.Printf("request %d failed: %v", i, err)
+			continue
+		}
+		fmt.Printf("request %d: %d\n", i, result.StatusCode())
+	}
 }
 ```
 
@@ -270,37 +270,37 @@ HTTP/2 multiplexing lets a single TCP connection carry multiple simultaneous req
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // HTTP/2 is enabled in the default configuration
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.EnableHTTP2 = true // true by default; explicit for clarity
+	// HTTP/2 is enabled in the default configuration
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.EnableHTTP2 = true // true by default; explicit for clarity
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // Concurrent requests to an HTTP/2-capable host (most CDNs/cloud services)
-    // A single TCP connection is reused; no new connection per request
-    start := time.Now()
-    for i := 0; i < 10; i++ {
-        result, err := client.Get("https://http2.golang.org/")
-        if err != nil {
-            log.Printf("request %d failed: %v", i, err)
-            continue
-        }
-        // Proto() returns the protocol version, e.g. "HTTP/2.0"
-        fmt.Printf("request %d: %s, status %d\n", i, result.Proto(), result.StatusCode())
-    }
-    fmt.Printf("10 requests took: %v\n", time.Since(start))
+	// Concurrent requests to an HTTP/2-capable host (most CDNs/cloud services)
+	// A single TCP connection is reused; no new connection per request
+	start := time.Now()
+	for i := 0; i < 10; i++ {
+		result, err := client.Get("https://http2.golang.org/")
+		if err != nil {
+			log.Printf("request %d failed: %v", i, err)
+			continue
+		}
+		// Proto() returns the protocol version, e.g. "HTTP/2.0"
+		fmt.Printf("request %d: %s, status %d\n", i, result.Proto(), result.StatusCode())
+	}
+	fmt.Printf("10 requests took: %v\n", time.Since(start))
 }
 ```
 
@@ -363,30 +363,30 @@ The optimizations above are fully transparent to the caller. You just use the AP
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // Result is created fresh per request and reclaimed by GC — no manual release
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Result is created fresh per request and reclaimed by GC — no manual release
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // On hot paths prefer RawBody() over Body()
-    // RawBody() returns the raw byte slice; Body() returns a pre-stored string; String() is debug formatting (highest overhead)
-    data := result.RawBody()
-    fmt.Printf("response size: %d bytes\n", len(data))
-    fmt.Printf("request duration: %v\n", result.Meta.Duration)
+	// On hot paths prefer RawBody() over Body()
+	// RawBody() returns the raw byte slice; Body() returns a pre-stored string; String() is debug formatting (highest overhead)
+	data := result.RawBody()
+	fmt.Printf("response size: %d bytes\n", len(data))
+	fmt.Printf("request duration: %v\n", result.Meta.Duration)
 }
 ```
 
@@ -440,41 +440,41 @@ High-frequency calls between internal microservices need a large connection pool
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.PerformanceConfig()
-    // Tune the pool to the number of backend instances
-    cfg.Connection.MaxIdleConns = 300   // Total idle connections
-    cfg.Connection.MaxConnsPerHost = 30 // Per backend instance
-    // Microservice responses are usually fast — shorten timeouts for fast failure
-    cfg.Timeouts.Request = 10 * time.Second
-    cfg.Retry.Delay = 200 * time.Millisecond
-    cfg.Retry.BackoffFactor = 2.0
-    cfg.Retry.MaxRetries = 2
+	cfg := httpc.PerformanceConfig()
+	// Tune the pool to the number of backend instances
+	cfg.Connection.MaxIdleConns = 300   // Total idle connections
+	cfg.Connection.MaxConnsPerHost = 30 // Per backend instance
+	// Microservice responses are usually fast — shorten timeouts for fast failure
+	cfg.Timeouts.Request = 10 * time.Second
+	cfg.Retry.Delay = 200 * time.Millisecond
+	cfg.Retry.BackoffFactor = 2.0
+	cfg.Retry.MaxRetries = 2
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    start := time.Now()
-    // High-frequency requests reuse the pool — no TCP/TLS re-establishment
-    for i := 0; i < 50; i++ {
-        result, err := client.Get("http://user-service:8080/api/users")
-        if err != nil {
-            log.Printf("request %d failed: %v", i, err)
-            continue
-        }
-        _ = result
-    }
-    fmt.Printf("50 requests took: %v\n", time.Since(start))
+	start := time.Now()
+	// High-frequency requests reuse the pool — no TCP/TLS re-establishment
+	for i := 0; i < 50; i++ {
+		result, err := client.Get("http://user-service:8080/api/users")
+		if err != nil {
+			log.Printf("request %d failed: %v", i, err)
+			continue
+		}
+		_ = result
+	}
+	fmt.Printf("50 requests took: %v\n", time.Since(start))
 }
 ```
 
@@ -486,35 +486,35 @@ For large files, use `Download()`: it enables streaming mode automatically, the 
 package main
 
 import (
-    "context"
-    "log"
+	"context"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.PerformanceConfig()
-    cfg.Security.MaxResponseBodySize = 500 * 1024 * 1024 // 500MB cap
+	cfg := httpc.PerformanceConfig()
+	cfg.Security.MaxResponseBodySize = 500 * 1024 * 1024 // 500MB cap
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    dcfg := httpc.DefaultDownloadConfig()
-    dcfg.FilePath = "/tmp/large-file.zip"
-    dcfg.ResumeDownload = true // resumable download
+	dcfg := httpc.DefaultDownloadConfig()
+	dcfg.FilePath = "/tmp/large-file.zip"
+	dcfg.ResumeDownload = true // resumable download
 
-    result, err := client.Download(
-        context.Background(),
-        "https://example.com/large-file.zip",
-        dcfg,
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("download complete: %d bytes", result.BytesWritten)
+	result, err := client.Download(
+		context.Background(),
+		"https://example.com/large-file.zip",
+		dcfg,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("download complete: %d bytes", result.BytesWritten)
 }
 ```
 
@@ -563,51 +563,51 @@ The foundation of HTTP performance is connection reuse. Creating a Client per re
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 // Anti-pattern demo: creating a Client per request
 func main() {
-    start := time.Now()
+	start := time.Now()
 
-    for i := 0; i < 5; i++ {
-        // WRONG: new Client every iteration — connections can't be reused
-        client, err := httpc.NewDefault()
-        if err != nil {
-            log.Fatal(err)
-        }
-        result, err := client.Get("https://httpbin.org/get")
-        client.Close() // Closed every time; the pool is drained
-        if err != nil {
-            log.Printf("request %d failed: %v", i, err)
-            continue
-        }
-        _ = result
-    }
-    // 5 requests take far longer than the reuse approach
-    fmt.Printf("anti-pattern took: %v\n", time.Since(start))
+	for i := 0; i < 5; i++ {
+		// WRONG: new Client every iteration — connections can't be reused
+		client, err := httpc.NewDefault()
+		if err != nil {
+			log.Fatal(err)
+		}
+		result, err := client.Get("https://httpbin.org/get")
+		client.Close() // Closed every time; the pool is drained
+		if err != nil {
+			log.Printf("request %d failed: %v", i, err)
+			continue
+		}
+		_ = result
+	}
+	// 5 requests take far longer than the reuse approach
+	fmt.Printf("anti-pattern took: %v\n", time.Since(start))
 
-    // CORRECT: reuse the Client
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	// CORRECT: reuse the Client
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    start = time.Now()
-    for i := 0; i < 5; i++ {
-        result, err := client.Get("https://httpbin.org/get")
-        if err != nil {
-            log.Printf("request %d failed: %v", i, err)
-            continue
-        }
-        _ = result
-    }
-    fmt.Printf("reuse pattern took: %v\n", time.Since(start))
+	start = time.Now()
+	for i := 0; i < 5; i++ {
+		result, err := client.Get("https://httpbin.org/get")
+		if err != nil {
+			log.Printf("request %d failed: %v", i, err)
+			continue
+		}
+		_ = result
+	}
+	fmt.Printf("reuse pattern took: %v\n", time.Since(start))
 }
 ```
 

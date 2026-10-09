@@ -1,6 +1,6 @@
 ---
 title: "Core Concepts - CyberGo JWT | Architecture & Token Model"
-description: "CyberGo JWT core concepts: the Processor type and token lifecycle, dual-layer token model, Claims and RegisteredClaims structures, CustomClaims interface, Config overview, and extension interfaces."
+description: "CyberGo JWT core concepts: the Processor type, token lifecycle, dual-layer token model, Claims and RegisteredClaims, CustomClaims, and Config."
 sidebar_label: "Core Concepts"
 sidebar_position: 1
 ---

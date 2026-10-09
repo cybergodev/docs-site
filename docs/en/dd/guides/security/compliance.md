@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Industry Compliance"
-title: "Industry Compliance Configuration - CyberGo DD | HIPAA PCI-DSS Government"
-description: "CyberGo DD industry-compliance logging configuration, detailing HIPAA medical, PCI-DSS financial-payment, and government-standard sensitive-data filtering rules, audit-log requirements, log-retention and rotation policies, and complete compliance configuration examples to help you build secure, reliable logging systems under strict compliance requirements."
+title: "Industry Compliance - CyberGo DD | HIPAA PCI-DSS Government"
+description: "Compliance logging with CyberGo DD: HIPAA, PCI-DSS, and government filtering rules, audit-log requirements, retention and rotation policies."
 sidebar_position: 5
 ---
 

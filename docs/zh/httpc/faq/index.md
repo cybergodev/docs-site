@@ -283,7 +283,7 @@ func main() {
 	cfg := httpc.DefaultDownloadConfig()
 	cfg.FilePath = "/tmp/large-file.zip"
 	cfg.Overwrite = true
-	cfg.ResumeDownload = true // 断点续传：中断后重下会从断点继续
+	cfg.ResumeDownload = true                            // 断点续传：中断后重下会从断点继续
 	cfg.Checksum = "e3b0c44298fc1c149afbf4c8996fb924..." // 预期 SHA-256
 	cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 	cfg.ProgressCallback = func(downloaded, total int64, speed float64) {

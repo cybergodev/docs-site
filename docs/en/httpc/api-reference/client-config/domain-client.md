@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Domain Client"
 title: "Domain Client - CyberGo HTTPC | NewDomain & Sessions"
-description: "HTTPC domain client API reference: the NewDomain constructor, seven HTTP methods plus the generic Request method, URL auto-concatenation rules, and the DomainClienter interface's SetHeader/SetCookie session management and Close lifecycle."
+description: "HTTPC domain client API: NewDomain constructor, seven HTTP methods plus generic Request, URL auto-concatenation, and DomainClienter session management."
 sidebar_position: 2
 ---
 

@@ -3,7 +3,6 @@ sidebar_label: "Multi-format Config"
 title: "Multi-format Config - CyberGo env | .env/JSON/YAML"
 description: "Multi-format config guide for CyberGo env: .env, JSON, and YAML auto-detection with mixed loading, nested object flattening, and merge priority."
 sidebar_position: 1
-sidebar_icon: "🔧"
 ---
 
 # Multi-format Config
@@ -612,43 +611,43 @@ See [Custom Parser](/en/env/guides/custom-parser).
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Create loader
-    cfg := env.DefaultConfig()
-    cfg.ExpandVariables = true
+	// Create loader
+	cfg := env.DefaultConfig()
+	cfg.ExpandVariables = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // Load mixed-format configuration
-    err = loader.LoadFiles(
-        "config/base.json",       // JSON base configuration
-        "config/database.yaml",   // YAML database configuration
-        "config/app.env",         // .env application configuration
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Load mixed-format configuration
+	err = loader.LoadFiles(
+		"config/base.json",     // JSON base configuration
+		"config/database.yaml", // YAML database configuration
+		"config/app.env",       // .env application configuration
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Read configuration
-    fmt.Printf("App: %s\n", loader.GetString("APP_NAME"))
-    fmt.Printf("DB Host: %s\n", loader.GetString("DATABASE_HOST"))
-    fmt.Printf("DB Port: %d\n", loader.GetInt("DATABASE_PORT"))
+	// Read configuration
+	fmt.Printf("App: %s\n", loader.GetString("APP_NAME"))
+	fmt.Printf("DB Host: %s\n", loader.GetString("DATABASE_HOST"))
+	fmt.Printf("DB Port: %d\n", loader.GetInt("DATABASE_PORT"))
 
-    // Export current configuration
-    all := loader.All()
-    exported, _ := env.Marshal(all, env.FormatEnv)
-    fmt.Println("\nExported config:")
-    fmt.Println(exported)
+	// Export current configuration
+	all := loader.All()
+	exported, _ := env.Marshal(all, env.FormatEnv)
+	fmt.Println("\nExported config:")
+	fmt.Println(exported)
 }
 ```
 

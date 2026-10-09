@@ -3,7 +3,6 @@ sidebar_label: "Security Overview"
 title: "Security Overview - CyberGo env | Security Architecture"
 description: "Security architecture overview for CyberGo env: SecureValue memory locking and zeroing, key-value validation, sensitive-key detection, and audit tracking."
 sidebar_position: 1
-sidebar_icon: "🛡️"
 ---
 
 # Security Overview

@@ -19,23 +19,23 @@ DD 提供灵活的文件输出能力，支持自动轮换、缓冲写入和多�
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    logger, err := dd.New(dd.Config{
-        Targets: []dd.OutputTarget{
-            dd.FileOutput("logs/app.log"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	logger, err := dd.New(dd.Config{
+		Targets: []dd.OutputTarget{
+			dd.FileOutput("logs/app.log"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    logger.Info("日志将写入文件") // 日志将写入 logs/app.log
+	logger.Info("日志将写入文件") // 日志将写入 logs/app.log
 }
 ```
 

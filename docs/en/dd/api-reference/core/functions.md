@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Package Functions"
-title: "Package Functions - CyberGo DD | Global Functions & Constructors"
-description: "Complete API documentation for CyberGo DD's package-level functions, including the New logger constructor, Default/SetDefault/InitDefault global logger management, DefaultConfig/DevelopmentConfig/JSONConfig configuration presets, and all constructor factories, callable directly via the dd. prefix."
+title: "Package Functions - CyberGo DD | Global API & Constructors"
+description: "CyberGo DD package-level functions: New constructor, global logger management, config presets, and constructor factories via the dd. prefix."
 sidebar_position: 1
 ---
 

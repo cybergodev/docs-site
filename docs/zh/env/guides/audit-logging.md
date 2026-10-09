@@ -3,7 +3,6 @@ sidebar_label: "审计日志"
 title: "审计日志 - CyberGo env | 安全审计配置"
 description: "CyberGo env 审计日志配置指南，涵盖 JSONAuditHandler、LogAuditHandler 与 ChannelAuditHandler 三种处理器，及自定义 AuditHandler 记录变量加载、读取、修改与删除操作，用于安全审计、合规检查与问题排查。"
 sidebar_position: 6
-sidebar_icon: "🔧"
 ---
 
 # 审计日志
@@ -181,49 +180,49 @@ type FullAuditLogger interface {
 package myhandler
 
 import (
-    "database/sql"
-    "time"
-    "github.com/cybergodev/env"
+	"database/sql"
+	"github.com/cybergodev/env"
+	"time"
 )
 
 type DatabaseAuditHandler struct {
-    db *sql.DB
+	db *sql.DB
 }
 
 func NewDatabaseAuditHandler(db *sql.DB) *DatabaseAuditHandler {
-    return &DatabaseAuditHandler{db: db}
+	return &DatabaseAuditHandler{db: db}
 }
 
 func (h *DatabaseAuditHandler) Log(action env.AuditAction, key, reason string, success bool) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, reason, success)
         VALUES (?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, reason, success)
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) LogError(action env.AuditAction, key, errMsg string) error {
-    return h.Log(action, key, errMsg, false)
+	return h.Log(action, key, errMsg, false)
 }
 
 func (h *DatabaseAuditHandler) LogWithFile(action env.AuditAction, key, file, reason string, success bool) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, file, reason, success)
         VALUES (?, ?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, file, reason, success)
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) LogWithDuration(action env.AuditAction, key, reason string, success bool, duration time.Duration) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, reason, success, duration_ms)
         VALUES (?, ?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, reason, success, duration.Milliseconds())
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) Close() error {
-    return nil
+	return nil
 }
 ```
 
@@ -237,47 +236,47 @@ func (h *DatabaseAuditHandler) Close() error {
 package main
 
 import (
-    "log"
-    "os"
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
+	"log"
+	"os"
 )
 
 func main() {
-    // 创建审计日志文件
-    auditFile, err := os.OpenFile("/var/log/app/env-audit.log",
-        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer auditFile.Close()
+	// 创建审计日志文件
+	auditFile, err := os.OpenFile("/var/log/app/env-audit.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer auditFile.Close()
 
-    // 配置
-    cfg := env.ProductionConfig()
-    cfg.AuditEnabled = true
-    cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	// 配置
+	cfg := env.ProductionConfig()
+	cfg.AuditEnabled = true
+	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-    // 创建加载器
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	// 创建加载器
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // 加载配置
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 加载配置
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 验证
-    err = loader.Validate()
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 验证
+	err = loader.Validate()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 使用配置
-    log.Println("Configuration loaded successfully")
+	// 使用配置
+	log.Println("Configuration loaded successfully")
 }
 ```
 
@@ -287,45 +286,45 @@ func main() {
 package main
 
 import (
-    "encoding/json"
-    "log"
-    "os"
-    "github.com/cybergodev/env"
+	"encoding/json"
+	"github.com/cybergodev/env"
+	"log"
+	"os"
 )
 
 func main() {
-    // 创建审计事件通道
-    auditChan := make(chan env.AuditEvent, 1000)
+	// 创建审计事件通道
+	auditChan := make(chan env.AuditEvent, 1000)
 
-    // 启动异步处理器
-    go processAuditEvents(auditChan)
+	// 启动异步处理器
+	go processAuditEvents(auditChan)
 
-    // 配置
-    cfg := env.ProductionConfig()
-    cfg.AuditEnabled = true
-    cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
+	// 配置
+	cfg := env.ProductionConfig()
+	cfg.AuditEnabled = true
+	cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
 
-    loader, _ := env.New(cfg)
-    defer loader.Close()
+	loader, _ := env.New(cfg)
+	defer loader.Close()
 
-    // 正常使用...
+	// 正常使用...
 }
 
 func processAuditEvents(ch chan env.AuditEvent) {
-    file, _ := os.OpenFile("/var/log/app/audit.log",
-        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-    defer file.Close()
+	file, _ := os.OpenFile("/var/log/app/audit.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	defer file.Close()
 
-    encoder := json.NewEncoder(file)
+	encoder := json.NewEncoder(file)
 
-    for event := range ch {
-        // 可添加过滤、聚合等逻辑
-        if event.Action == env.ActionError {
-            log.Printf("Audit error: %+v", event)
-        }
+	for event := range ch {
+		// 可添加过滤、聚合等逻辑
+		if event.Action == env.ActionError {
+			log.Printf("Audit error: %+v", event)
+		}
 
-        encoder.Encode(event)
-    }
+		encoder.Encode(event)
+	}
 }
 ```
 

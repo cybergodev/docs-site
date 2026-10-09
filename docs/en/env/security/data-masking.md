@@ -3,7 +3,6 @@ sidebar_label: "Data Masking"
 title: "Data Masking - CyberGo env | Log Security Tools"
 description: "Sensitive data masking guide for CyberGo env: IsSensitiveKey auto-detection, MaskValue and MaskKey masking, and ClearBytes zeroing, with logging examples."
 sidebar_position: 2
-sidebar_icon: "🛡️"
 ---
 
 # Data Masking
@@ -56,24 +55,24 @@ Case-insensitively checks whether `key` contains sensitive patterns. Detection u
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Authentication and key types
-    fmt.Println(env.IsSensitiveKey("DB_PASSWORD"))  // true
-    fmt.Println(env.IsSensitiveKey("API_KEY"))      // true
-    fmt.Println(env.IsSensitiveKey("ACCESS_TOKEN")) // true
+	// Authentication and key types
+	fmt.Println(env.IsSensitiveKey("DB_PASSWORD"))  // true
+	fmt.Println(env.IsSensitiveKey("API_KEY"))      // true
+	fmt.Println(env.IsSensitiveKey("ACCESS_TOKEN")) // true
 
-    // Case-insensitive
-    fmt.Println(env.IsSensitiveKey("api_key")) // true
-    fmt.Println(env.IsSensitiveKey("ApiKey"))  // true
+	// Case-insensitive
+	fmt.Println(env.IsSensitiveKey("api_key")) // true
+	fmt.Println(env.IsSensitiveKey("ApiKey"))  // true
 
-    // Non-sensitive keys
-    fmt.Println(env.IsSensitiveKey("PORT"))    // false
-    fmt.Println(env.IsSensitiveKey("DB_HOST")) // false
+	// Non-sensitive keys
+	fmt.Println(env.IsSensitiveKey("PORT"))    // false
+	fmt.Println(env.IsSensitiveKey("DB_HOST")) // false
 }
 ```
 
@@ -95,23 +94,23 @@ Masks `value` based on the sensitivity of `key`, suitable for logging configurat
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Sensitive value → masked (preserves length info for troubleshooting)
-    fmt.Println(env.MaskValue("DB_PASSWORD", "p@ssw0rd123"))
-    // Output: [MASKED:11 chars]
+	// Sensitive value → masked (preserves length info for troubleshooting)
+	fmt.Println(env.MaskValue("DB_PASSWORD", "p@ssw0rd123"))
+	// Output: [MASKED:11 chars]
 
-    // Non-sensitive short value → returned as-is
-    fmt.Println(env.MaskValue("PORT", "8080"))
-    // Output: 8080
+	// Non-sensitive short value → returned as-is
+	fmt.Println(env.MaskValue("PORT", "8080"))
+	// Output: 8080
 
-    // Non-sensitive long value (>20 chars) → truncated
-    fmt.Println(env.MaskValue("DESCRIPTION", "this-is-a-very-long-description-value"))
-    // Output: this-is-a-very-lo...
+	// Non-sensitive long value (>20 chars) → truncated
+	fmt.Println(env.MaskValue("DESCRIPTION", "this-is-a-very-long-description-value"))
+	// Output: this-is-a-very-lo...
 }
 ```
 
@@ -136,17 +135,17 @@ Masks the key name itself, for scenarios where you need to show a key exists but
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    fmt.Println(env.MaskKey("DB_PASSWORD")) // DB***
-    fmt.Println(env.MaskKey("API_KEY"))     // AP***
-    fmt.Println(env.MaskKey("TOKEN"))       // TO***
-    fmt.Println(env.MaskKey("AB"))          // ***
-    fmt.Println(env.MaskKey("XYZ"))         // *** (length ≤ 3)
+	fmt.Println(env.MaskKey("DB_PASSWORD")) // DB***
+	fmt.Println(env.MaskKey("API_KEY"))     // AP***
+	fmt.Println(env.MaskKey("TOKEN"))       // TO***
+	fmt.Println(env.MaskKey("AB"))          // ***
+	fmt.Println(env.MaskKey("XYZ"))         // *** (length ≤ 3)
 }
 ```
 
@@ -171,19 +170,19 @@ Truncates long strings to prevent excessive content in logs (which may indirectl
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    long := "012345678901234567890123456789012345678901234567890123456789"
-    fmt.Println(env.MaskSensitiveInString(long))
-    // Output: 012345678901234567890123456789012345678901234567...
+	long := "012345678901234567890123456789012345678901234567890123456789"
+	fmt.Println(env.MaskSensitiveInString(long))
+	// Output: 012345678901234567890123456789012345678901234567...
 
-    short := "hello world"
-    fmt.Println(env.MaskSensitiveInString(short))
-    // Output: hello world
+	short := "hello world"
+	fmt.Println(env.MaskSensitiveInString(short))
+	// Output: hello world
 }
 ```
 
@@ -201,21 +200,21 @@ Scans the string for `key=value` patterns, **replacing the entire** sensitive `k
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    fmt.Println(env.SanitizeForLog("user=admin password=s3cret"))
-    // Output: user=admin [MASKED]
+	fmt.Println(env.SanitizeForLog("user=admin password=s3cret"))
+	// Output: user=admin [MASKED]
 
-    fmt.Println(env.SanitizeForLog("token=abc123 host=localhost"))
-    // Output: [MASKED] host=localhost
+	fmt.Println(env.SanitizeForLog("token=abc123 host=localhost"))
+	// Output: [MASKED] host=localhost
 
-    // Multiple sensitive values all masked
-    fmt.Println(env.SanitizeForLog("user=pguser password=hunter2 api_key=sk_123"))
-    // Output: user=pguser [MASKED] [MASKED]
+	// Multiple sensitive values all masked
+	fmt.Println(env.SanitizeForLog("user=pguser password=hunter2 api_key=sk_123"))
+	// Output: user=pguser [MASKED] [MASKED]
 }
 ```
 
@@ -235,20 +234,20 @@ Sets all bytes in a slice to zero. Used to manually clean sensitive data obtaine
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Simulate sensitive data processed as []byte
-    secret := []byte("secret123")
-    fmt.Printf("Before zeroing: %s\n", secret)
-    // Output: Before zeroing: secret123
+	// Simulate sensitive data processed as []byte
+	secret := []byte("secret123")
+	fmt.Printf("Before zeroing: %s\n", secret)
+	// Output: Before zeroing: secret123
 
-    env.ClearBytes(secret)
-    fmt.Printf("After zeroing: %q\n", secret)
-    // Output: After zeroing: "\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+	env.ClearBytes(secret)
+	fmt.Printf("After zeroing: %q\n", secret)
+	// Output: After zeroing: "\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 }
 ```
 
@@ -264,36 +263,36 @@ The following demonstrates safely printing configuration at application startup 
 package main
 
 import (
-    "errors"
-    "fmt"
+	"errors"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Simulate configuration loaded from environment variables
-    config := []struct{ key, value string }{
-        {"PORT", "8080"},
-        {"DB_HOST", "localhost"},
-        {"DB_PASSWORD", "super-secret-pwd"},
-        {"API_KEY", "sk_live_1234567890abcdef"},
-    }
+	// Simulate configuration loaded from environment variables
+	config := []struct{ key, value string }{
+		{"PORT", "8080"},
+		{"DB_HOST", "localhost"},
+		{"DB_PASSWORD", "super-secret-pwd"},
+		{"API_KEY", "sk_live_1234567890abcdef"},
+	}
 
-    fmt.Println("=== Startup Config (masked) ===")
-    for _, c := range config {
-        fmt.Printf("%-15s = %s\n", c.key, env.MaskValue(c.key, c.value))
-    }
+	fmt.Println("=== Startup Config (masked) ===")
+	for _, c := range config {
+		fmt.Printf("%-15s = %s\n", c.key, env.MaskValue(c.key, c.value))
+	}
 
-    fmt.Println("\n=== Error Log (auto-masked) ===")
-    err := errors.New("failed to connect: user=admin password=hunter2 host=db.local")
-    fmt.Println(env.SanitizeForLog(err.Error()))
+	fmt.Println("\n=== Error Log (auto-masked) ===")
+	err := errors.New("failed to connect: user=admin password=hunter2 host=db.local")
+	fmt.Println(env.SanitizeForLog(err.Error()))
 
-    fmt.Println("\n=== Sensitive Key List (key names masked) ===")
-    for _, c := range config {
-        if env.IsSensitiveKey(c.key) {
-            fmt.Printf("Sensitive config: %s\n", env.MaskKey(c.key))
-        }
-    }
+	fmt.Println("\n=== Sensitive Key List (key names masked) ===")
+	for _, c := range config {
+		if env.IsSensitiveKey(c.key) {
+			fmt.Printf("Sensitive config: %s\n", env.MaskKey(c.key))
+		}
+	}
 }
 ```
 

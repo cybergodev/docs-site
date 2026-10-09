@@ -56,35 +56,35 @@ br := p.ExtractBatch(pages)
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    pages := [][]byte{
-        []byte(`<html><body><article><h1>第一页</h1><p>Go 语言教程。</p></article></body></html>`),
-        []byte(`<html><body><article><h1>第二页</h1><p>并发编程指南。</p></article></body></html>`),
-        []byte(`<html><body><article><h1>第三页</h1><p>性能优化技巧。</p></article></body></html>`),
-    }
+	pages := [][]byte{
+		[]byte(`<html><body><article><h1>第一页</h1><p>Go 语言教程。</p></article></body></html>`),
+		[]byte(`<html><body><article><h1>第二页</h1><p>并发编程指南。</p></article></body></html>`),
+		[]byte(`<html><body><article><h1>第三页</h1><p>性能优化技巧。</p></article></body></html>`),
+	}
 
-    // 批量并发提取（使用包级函数）
-    br := html.ExtractBatch(pages)
+	// 批量并发提取（使用包级函数）
+	br := html.ExtractBatch(pages)
 
-    fmt.Printf("成功：%d，失败：%d，取消：%d\n", br.Success, br.Failed, br.Cancelled)
-    // 成功：3，失败：0，取消：0
+	fmt.Printf("成功：%d，失败：%d，取消：%d\n", br.Success, br.Failed, br.Cancelled)
+	// 成功：3，失败：0，取消：0
 
-    // 遍历结果（索引与输入对应）
-    for i, result := range br.Results {
-        if result != nil {
-            fmt.Printf("  [%d] 标题：%s\n", i+1, result.Title)
-        } else if br.Errors[i] != nil {
-            fmt.Printf("  [%d] 错误：%v\n", i+1, br.Errors[i])
-        }
-    }
-    // [1] 标题：第一页
-    // [2] 标题：第二页
-    // [3] 标题：第三页
+	// 遍历结果（索引与输入对应）
+	for i, result := range br.Results {
+		if result != nil {
+			fmt.Printf("  [%d] 标题：%s\n", i+1, result.Title)
+		} else if br.Errors[i] != nil {
+			fmt.Printf("  [%d] 错误：%v\n", i+1, br.Errors[i])
+		}
+	}
+	// [1] 标题：第一页
+	// [2] 标题：第二页
+	// [3] 标题：第三页
 }
 ```
 

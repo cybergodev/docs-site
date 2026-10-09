@@ -41,32 +41,32 @@ DD 的字段验证子系统在日志写入前对结构化字段的**键名**进�
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    cfg := dd.DefaultConfig()
-    cfg.FieldValidation = dd.StrictSnakeCaseConfig()
-    // 等价于：
-    // &dd.FieldValidationConfig{
-    //     Mode:                     dd.FieldValidationStrict,
-    //     Convention:               dd.NamingConventionSnakeCase,
-    //     AllowCommonAbbreviations: true,
-    //     EnableSecurityValidation: true,
-    // }
+	cfg := dd.DefaultConfig()
+	cfg.FieldValidation = dd.StrictSnakeCaseConfig()
+	// 等价于：
+	// &dd.FieldValidationConfig{
+	//     Mode:                     dd.FieldValidationStrict,
+	//     Convention:               dd.NamingConventionSnakeCase,
+	//     AllowCommonAbbreviations: true,
+	//     EnableSecurityValidation: true,
+	// }
 
-    logger, err := dd.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	logger, err := dd.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    logger.InfoWith("用户操作",
-        dd.String("user_id", "123"),    // ✅ 符合 snake_case
-        dd.String("userName", "alice"), // ⚠️ 不符合，stderr 输出错误
-    )
+	logger.InfoWith("用户操作",
+		dd.String("user_id", "123"),    // ✅ 符合 snake_case
+		dd.String("userName", "alice"), // ⚠️ 不符合，stderr 输出错误
+	)
 }
 ```
 

@@ -426,10 +426,10 @@ package main
 import "github.com/cybergodev/env"
 
 func main() {
-    // 应用启动时启用
-    env.SetMemoryLockEnabled(true)
+	// 应用启动时启用
+	env.SetMemoryLockEnabled(true)
 
-    // 后续所有 SecureValue 都会尝试锁定
+	// 后续所有 SecureValue 都会尝试锁定
 }
 ```
 
@@ -679,57 +679,57 @@ clean := env.MaskSensitiveInString(long)
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 检查并启用内存锁定
-    if env.IsMemoryLockSupported() {
-        env.SetMemoryLockEnabled(true)
-        fmt.Println("Memory locking enabled")
-    }
+	// 检查并启用内存锁定
+	if env.IsMemoryLockSupported() {
+		env.SetMemoryLockEnabled(true)
+		fmt.Println("Memory locking enabled")
+	}
 
-    // 加载环境变量
-    if err := env.Load(".env"); err != nil {
-        log.Printf("Warning: %v", err)
-    }
+	// 加载环境变量
+	if err := env.Load(".env"); err != nil {
+		log.Printf("Warning: %v", err)
+	}
 
-    // 安全获取敏感值
-    apiKey := env.GetSecure("API_KEY")
-    if apiKey == nil {
-        log.Fatal("API_KEY not found")
-    }
-    defer apiKey.Release()
+	// 安全获取敏感值
+	apiKey := env.GetSecure("API_KEY")
+	if apiKey == nil {
+		log.Fatal("API_KEY not found")
+	}
+	defer apiKey.Release()
 
-    // 安全使用
-    fmt.Printf("API Key length: %d\n", apiKey.Length())
-    fmt.Printf("API Key (masked): %s\n", apiKey.Masked())
+	// 安全使用
+	fmt.Printf("API Key length: %d\n", apiKey.Length())
+	fmt.Printf("API Key (masked): %s\n", apiKey.Masked())
 
-    // 检查内存锁定状态
-    if apiKey.IsMemoryLocked() {
-        fmt.Println("Memory is locked")
-    }
+	// 检查内存锁定状态
+	if apiKey.IsMemoryLocked() {
+		fmt.Println("Memory is locked")
+	}
 
-    // 检查锁定错误
-    if err := apiKey.MemoryLockError(); err != nil {
-        fmt.Printf("Memory lock warning: %v\n", err)
-    }
+	// 检查锁定错误
+	if err := apiKey.MemoryLockError(); err != nil {
+		fmt.Printf("Memory lock warning: %v\n", err)
+	}
 
-    // 传递给其他函数
-    connectAPI(apiKey.Reveal())
+	// 传递给其他函数
+	connectAPI(apiKey.Reveal())
 
-    // 使用安全工具函数
-    logMessage := "Processing with API_KEY=secret"
-    safeMessage := env.SanitizeForLog(logMessage)
-    fmt.Println(safeMessage)  // Processing with API_KEY=[MASKED]
+	// 使用安全工具函数
+	logMessage := "Processing with API_KEY=secret"
+	safeMessage := env.SanitizeForLog(logMessage)
+	fmt.Println(safeMessage) // Processing with API_KEY=[MASKED]
 }
 
 func connectAPI(key string) {
-    // 使用密钥连接...
-    fmt.Printf("Connecting with key of length %d\n", len(key))
+	// 使用密钥连接...
+	fmt.Printf("Connecting with key of length %d\n", len(key))
 }
 ```
 

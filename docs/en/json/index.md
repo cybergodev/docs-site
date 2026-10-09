@@ -2,7 +2,6 @@
 sidebar_label: "Overview"
 title: "JSON Library - CyberGo JSON | High-Performance Go Library"
 description: "CyberGo JSON: high-performance, thread-safe Go JSON with JSONPath queries, streaming, generics, Schema validation, hooks, and 100% encoding/json compatibility."
-sidebar_icon: "📘"
 ---
 
 # JSON Library

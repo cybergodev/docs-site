@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Functions & Methods"
 title: "Functions & Methods - CyberGo HTTPC | HTTP Method API"
-description: "HTTPC package-level functions and client-method API reference: seven HTTP methods like Get/Post, the New client constructor, the unified Download entry point, the FormatBytes/FormatSpeed helpers, and NewDomain domain-client creation, combined with request options for flexible configuration."
+description: "HTTPC package functions and client methods: Get/Post and five more HTTP methods, New constructor, Download, FormatBytes/FormatSpeed helpers, and NewDomain."
 sidebar_position: 1
 ---
 

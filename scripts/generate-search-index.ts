@@ -30,7 +30,7 @@
  * prepended so the freshly generated JSON is bundled into dist). Also exposed
  * as `npm run search-index` for ad-hoc regeneration during `npm run dev`.
  */
-import { readFile, writeFile, mkdir } from 'fs/promises'
+import { readFile, writeFile, mkdir, readdir, rm } from 'fs/promises'
 import { join, relative } from 'path'
 import { LANGS, PROJECTS, type Lang, type ProjectName } from '../docs/.vitepress/shared'
 import { collectMd } from './_lib/walk'
@@ -39,6 +39,23 @@ import { parseMd } from './_lib/parse-md'
 /** Output root, relative to the repo root. Lives under docs/public/ so the
  * VitePress static-asset pipeline ships it to dist verbatim. */
 const OUT_DIR = join('docs', 'public', 'search-index')
+
+/**
+ * Cap for the searchable `text` field, in UTF-16 code units (≈ characters).
+ *
+ * Size/recall tradeoff: `text` is 71–90% of every index file's raw bytes, yet
+ * it is the ONLY query field with no boost at runtime (title 3 / headings 2 /
+ * description 1.5 — see useProjectSearch.ts, and all three stay untruncated
+ * here). Keeping the head of each page covers where query-worthy content
+ * lives, while section terms past the cap remain searchable through the
+ * intact `headings` field (MiniSearch AND-matches a term in ANY field), so
+ * recall loss is limited to body-only words unique to a long page's tail.
+ * Measured at 1000: zh/_site -41% raw / en/_site -66%, and ~1/3 of zh docs
+ * (median body ≈1343 chars) keep their text verbatim. Indexes are lazily
+ * fetched off the critical path, so this is purely a first-search latency /
+ * transfer-size win. Tune up if tail-of-page misses get reported.
+ */
+const MAX_TEXT_CHARS = 1000
 
 interface SearchDoc {
   /** Unique within a scope (= the url). */
@@ -116,6 +133,20 @@ function extractHeadings(body: string): string {
   return out.join(' · ')
 }
 
+/**
+ * Truncate the searchable text to MAX_TEXT_CHARS. JS strings are UTF-16, so a
+ * naive slice can split a surrogate pair (emoji / rare CJK ideograph) at the
+ * boundary and corrupt the final character — if the cut lands on a high
+ * surrogate, drop that lone half. No ellipsis marker is appended: `text` is
+ * index-only (not in MiniSearch's storeFields), so nothing ever renders it.
+ */
+function truncateText(text: string): string {
+  if (text.length <= MAX_TEXT_CHARS) return text
+  const cut = text.slice(0, MAX_TEXT_CHARS)
+  const last = cut.charCodeAt(cut.length - 1)
+  return last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut
+}
+
 /** Build a SearchDoc from a markdown file path under docs/{lang}/. */
 async function buildDoc(absFile: string, lang: Lang): Promise<SearchDoc | null> {
   const content = await readFile(absFile, 'utf8')
@@ -127,7 +158,7 @@ async function buildDoc(absFile: string, lang: Lang): Promise<SearchDoc | null> 
     title,
     description,
     headings: extractHeadings(body),
-    text: stripMarkdown(body),
+    text: truncateText(stripMarkdown(body)),
     url,
     lang,
     project: projectOf(url)
@@ -135,6 +166,22 @@ async function buildDoc(absFile: string, lang: Lang): Promise<SearchDoc | null> 
 }
 
 async function main(): Promise<void> {
+  // Prune language dirs under OUT_DIR that are no longer in LANGS — e.g.
+  // after a language removal (see the multilingual cleanup), stale generated
+  // JSON for dead languages would otherwise ship into every subsequent
+  // dist/ via the public/ copy step, forever. Data-driven from LANGS, so
+  // adding/removing a language needs no edit here.
+  try {
+    for (const entry of await readdir(OUT_DIR, { withFileTypes: true })) {
+      if (entry.isDirectory() && !(LANGS as readonly string[]).includes(entry.name)) {
+        await rm(join(OUT_DIR, entry.name), { recursive: true, force: true })
+        console.log(`search-index: pruned stale language dir "${entry.name}" (not in LANGS)`)
+      }
+    }
+  } catch {
+    /* OUT_DIR doesn't exist yet — nothing to prune */
+  }
+
   let totalFiles = 0
   let totalDocs = 0
   for (const lang of LANGS) {

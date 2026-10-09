@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Security"
 title: "Security Filtering - CyberGo DD | Sensitive Data Filtering"
-description: "Complete API documentation for CyberGo DD's sensitive-data filtering, including the SensitiveDataFilter rule configuration, SecurityConfig security-policy options, and preset security configurations. Automatically detects and redacts passwords, API keys, tokens, phone numbers, SSNs, and other sensitive information in logs, effectively preventing log leakage."
+description: "CyberGo DD sensitive-data filtering: SensitiveDataFilter rules, SecurityConfig options, and presets that auto-redact passwords, API keys, and tokens in logs."
 sidebar_position: 2
 ---
 

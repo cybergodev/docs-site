@@ -39,27 +39,27 @@ If both `ProxyURL` and `ProxyPool` are set, `ProxyURL` wins. To use the proxy po
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyURL = "socks5://proxy.example.com:1080"
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyURL = "socks5://proxy.example.com:1080"
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    // Output: status: 200, proxy: socks5://proxy.example.com:1080
-    log.Printf("status: %d, proxy: %s", result.StatusCode(), result.Meta.ProxyURL)
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Output: status: 200, proxy: socks5://proxy.example.com:1080
+	log.Printf("status: %d, proxy: %s", result.StatusCode(), result.Meta.ProxyURL)
 }
 ```
 
@@ -149,32 +149,32 @@ When requests need to be spread across multiple proxy IPs (scraping, load disper
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-    }
-    cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin // default, may be omitted
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin // default, may be omitted
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    // Output: status: 200, proxy: http://proxy1:8080 (the next request automatically lands on proxy2)
-    log.Printf("status: %d, proxy: %s", result.StatusCode(), result.Meta.ProxyURL)
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Output: status: 200, proxy: http://proxy1:8080 (the next request automatically lands on proxy2)
+	log.Printf("status: %d, proxy: %s", result.StatusCode(), result.Meta.ProxyURL)
 }
 ```
 
@@ -235,34 +235,34 @@ For Cloudflare/WAF-style IP blocking — when the response carries specific stat
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-    }
-    cfg.Connection.ProxyRotateOnStatus = []int{403} // switch proxy and retry on 403
-    cfg.Retry.MaxRetries = 3                        // retries must be enabled
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	cfg.Connection.ProxyRotateOnStatus = []int{403} // switch proxy and retry on 403
+	cfg.Retry.MaxRetries = 3                        // retries must be enabled
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://protected-site.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    // Output: status: 200, proxy: http://proxy2:8080, attempts: 2
-    log.Printf("status: %d, proxy: %s, attempts: %d",
-        result.StatusCode(), result.Meta.ProxyURL, result.Meta.Attempts)
+	result, err := client.Get("https://protected-site.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Output: status: 200, proxy: http://proxy2:8080, attempts: 2
+	log.Printf("status: %d, proxy: %s, attempts: %d",
+		result.StatusCode(), result.Meta.ProxyURL, result.Meta.Attempts)
 }
 ```
 
@@ -282,34 +282,34 @@ When enabled, all idle connections are closed at the start of each request, forc
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-    }
-    cfg.Connection.ProxyRotatePerRequest = true // rotate the proxy on every request
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	cfg.Connection.ProxyRotatePerRequest = true // rotate the proxy on every request
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    for i := 0; i < 3; i++ {
-        result, err := client.Get("https://api.example.com/data")
-        if err != nil {
-            log.Fatal(err)
-        }
-        // Output (in order): http://proxy1:8080 / http://proxy2:8080 / http://proxy3:8080
-        log.Printf("request %d went through: %s", i+1, result.Meta.ProxyURL)
-    }
+	for i := 0; i < 3; i++ {
+		result, err := client.Get("https://api.example.com/data")
+		if err != nil {
+			log.Fatal(err)
+		}
+		// Output (in order): http://proxy1:8080 / http://proxy2:8080 / http://proxy3:8080
+		log.Printf("request %d went through: %s", i+1, result.Meta.ProxyURL)
+	}
 }
 ```
 
@@ -340,38 +340,38 @@ Proxy-pool setups often need to audit "which egress this request actually used".
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-    }
-    cfg.Connection.ProxyRotateOnStatus = []int{403}
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	cfg.Connection.ProxyRotateOnStatus = []int{403}
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://protected-site.example.com/data",
-        httpc.WithOnResponse(func(resp httpc.ResponseMutator) error {
-            log.Printf("attempt %d got %d", resp.Attempts(), resp.StatusCode())
-            return nil
-        }),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := client.Get("https://protected-site.example.com/data",
+		httpc.WithOnResponse(func(resp httpc.ResponseMutator) error {
+			log.Printf("attempt %d got %d", resp.Attempts(), resp.StatusCode())
+			return nil
+		}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Output: final proxy: http://proxy2:8080, total attempts: 2
-    log.Printf("final proxy: %s, total attempts: %d", result.Meta.ProxyURL, result.Meta.Attempts)
+	// Output: final proxy: http://proxy2:8080, total attempts: 2
+	log.Printf("final proxy: %s, total attempts: %d", result.Meta.ProxyURL, result.Meta.Attempts)
 }
 ```
 

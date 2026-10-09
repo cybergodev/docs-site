@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Integrity"
-title: "HMAC Signing In Practice - CyberGo DD | Log Integrity Protection"
-description: "A practical guide to CyberGo DD's HMAC-SHA256 log-integrity signing, covering IntegritySigner creation and initialization, the complete signing and verification flow, the timestamp and monotonically increasing sequence-number mechanism, tamper-detection strategies, integration with audit logging, and production-deployment best practices to ensure the integrity and traceability of the log chain."
+title: "HMAC Signing - CyberGo DD | Log Integrity Protection"
+description: "HMAC-SHA256 log signing in CyberGo DD: IntegritySigner setup, sign-and-verify flow, monotonic sequence numbers, tamper detection, and production practices."
 sidebar_position: 4.5
 ---
 

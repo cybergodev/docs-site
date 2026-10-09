@@ -3,7 +3,6 @@ sidebar_label: "错误处理"
 title: "错误处理 - CyberGo env | 哨兵错误与恢复策略"
 description: "CyberGo env 错误处理指南，详解 16 个哨兵错误的 errors.Is 精确匹配、ParseError/FileError/SecurityError 等结构化错误的 errors.As 上下文提取、恢复降级策略与错误链 Unwrap 追踪，附生产环境错误分类实践。"
 sidebar_position: 5
-sidebar_icon: "🔧"
 ---
 
 # 错误处理
@@ -498,76 +497,76 @@ func loadWithRetry(filenames []string, maxRetries int) error {
 package main
 
 import (
-    "errors"
-    "log"
+	"errors"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    cfg := env.ProductionConfig()
-    cfg.Filenames = nil
-    cfg.FailOnMissingFile = true
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	cfg := env.ProductionConfig()
+	cfg.Filenames = nil
+	cfg.FailOnMissingFile = true
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        handleLoadError(err)
-    }
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		handleLoadError(err)
+	}
 
-    if err := loader.Validate(); err != nil {
-        handleValidationError(err)
-    }
+	if err := loader.Validate(); err != nil {
+		handleValidationError(err)
+	}
 
-    log.Println("配置加载成功")
+	log.Println("配置加载成功")
 }
 
 func handleLoadError(err error) {
-    switch {
-    case errors.Is(err, env.ErrFileNotFound):
-        log.Fatal("配置文件不存在")
+	switch {
+	case errors.Is(err, env.ErrFileNotFound):
+		log.Fatal("配置文件不存在")
 
-    case errors.Is(err, env.ErrFileTooLarge):
-        var fileErr *env.FileError
-        errors.As(err, &fileErr)
-        log.Fatalf("文件过大: %s (%d bytes)", fileErr.Path, fileErr.Size)
+	case errors.Is(err, env.ErrFileTooLarge):
+		var fileErr *env.FileError
+		errors.As(err, &fileErr)
+		log.Fatalf("文件过大: %s (%d bytes)", fileErr.Path, fileErr.Size)
 
-    case errors.Is(err, env.ErrSecurityViolation):
-        log.Fatal("检测到禁止键")
-    }
+	case errors.Is(err, env.ErrSecurityViolation):
+		log.Fatal("检测到禁止键")
+	}
 
-    // 结构化错误
-    var parseErr *env.ParseError
-    if errors.As(err, &parseErr) {
-        log.Fatalf("解析错误 %s:%d - %v",
-            parseErr.File, parseErr.Line, parseErr.Err)
-    }
+	// 结构化错误
+	var parseErr *env.ParseError
+	if errors.As(err, &parseErr) {
+		log.Fatalf("解析错误 %s:%d - %v",
+			parseErr.File, parseErr.Line, parseErr.Err)
+	}
 
-    var secErr *env.SecurityError
-    if errors.As(err, &secErr) {
-        log.Fatalf("安全错误: %s - %s", secErr.Action, secErr.Reason)
-    }
+	var secErr *env.SecurityError
+	if errors.As(err, &secErr) {
+		log.Fatalf("安全错误: %s - %s", secErr.Action, secErr.Reason)
+	}
 
-    log.Fatalf("加载失败: %v", err)
+	log.Fatalf("加载失败: %v", err)
 }
 
 func handleValidationError(err error) {
-    var valErr *env.ValidationError
-    if errors.As(err, &valErr) {
-        if valErr.Rule == "required" {
-            // 缺少必需键：valErr.Message 含缺失键列表
-            log.Fatalf("缺少必需键: %s", valErr.Message)
-        }
-        log.Fatalf("验证失败: %s - %s", valErr.Field, valErr.Message)
-    }
+	var valErr *env.ValidationError
+	if errors.As(err, &valErr) {
+		if valErr.Rule == "required" {
+			// 缺少必需键：valErr.Message 含缺失键列表
+			log.Fatalf("缺少必需键: %s", valErr.Message)
+		}
+		log.Fatalf("验证失败: %s - %s", valErr.Field, valErr.Message)
+	}
 
-    log.Fatalf("验证失败: %v", err)
+	log.Fatalf("验证失败: %v", err)
 }
 ```
 

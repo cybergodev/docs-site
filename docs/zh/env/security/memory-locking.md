@@ -3,7 +3,6 @@ sidebar_label: "内存锁定"
 title: "内存锁定 - CyberGo env | mlock 内存保护"
 description: "CyberGo env 内存锁定指南，详解 SetMemoryLockEnabled 启用、IsMemoryLockSupported 检测与 SetMemoryLockStrict 严格模式，阐述 mlock 防止敏感数据被交换到磁盘的原理与 SecureValue 生命周期管理实践。"
 sidebar_position: 3
-sidebar_icon: "🛡️"
 ---
 
 # 内存锁定
@@ -104,30 +103,30 @@ AmbientCapabilities=CAP_IPC_LOCK
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 检查平台支持
-    if !env.IsMemoryLockSupported() {
-        fmt.Println("警告：当前平台不支持内存锁定")
-    }
+	// 检查平台支持
+	if !env.IsMemoryLockSupported() {
+		fmt.Println("警告：当前平台不支持内存锁定")
+	}
 
-    // 全局启用内存锁定
-    env.SetMemoryLockEnabled(true)
+	// 全局启用内存锁定
+	env.SetMemoryLockEnabled(true)
 
-    // 加载配置
-    if err := env.Load(".env"); err != nil {
-        panic(err)
-    }
+	// 加载配置
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
-    // 此后所有 SecureValue 都会尝试锁定内存
-    secret := env.GetSecure("API_KEY")
-    if secret != nil {
-        defer secret.Release()
-        fmt.Println(secret.Masked()) // [SECURE:32 bytes locked]
-    }
+	// 此后所有 SecureValue 都会尝试锁定内存
+	secret := env.GetSecure("API_KEY")
+	if secret != nil {
+		defer secret.Release()
+		fmt.Println(secret.Masked()) // [SECURE:32 bytes locked]
+	}
 }
 ```
 
@@ -211,64 +210,64 @@ fmt.Println(sv.Masked())
 package main
 
 import (
-    "log"
-    "os"
+	"log"
+	"os"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // ── 初始化安全配置 ──
+	// ── 初始化安全配置 ──
 
-    if env.IsMemoryLockSupported() {
-        env.SetMemoryLockEnabled(true)
-        env.SetMemoryLockStrict(true) // 生产环境启用严格模式
-        log.Println("内存锁定已启用（严格模式）")
-    } else {
-        log.Println("警告：平台不支持内存锁定")
-    }
+	if env.IsMemoryLockSupported() {
+		env.SetMemoryLockEnabled(true)
+		env.SetMemoryLockStrict(true) // 生产环境启用严格模式
+		log.Println("内存锁定已启用（严格模式）")
+	} else {
+		log.Println("警告：平台不支持内存锁定")
+	}
 
-    // ── 加载配置 ──
+	// ── 加载配置 ──
 
-    cfg := env.ProductionConfig()
-    cfg.RequiredKeys = []string{"DB_PASSWORD", "API_KEY"}
-    cfg.AutoApply = true
+	cfg := env.ProductionConfig()
+	cfg.RequiredKeys = []string{"DB_PASSWORD", "API_KEY"}
+	cfg.AutoApply = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    if err := loader.LoadFiles(".env"); err != nil {
-        log.Fatal(err)
-    }
+	if err := loader.LoadFiles(".env"); err != nil {
+		log.Fatal(err)
+	}
 
-    // ── 安全访问敏感值 ──
+	// ── 安全访问敏感值 ──
 
-    dbPassword := loader.GetSecure("DB_PASSWORD")
-    if dbPassword == nil {
-        log.Fatal("DB_PASSWORD not found")
-    }
-    defer dbPassword.Release()
+	dbPassword := loader.GetSecure("DB_PASSWORD")
+	if dbPassword == nil {
+		log.Fatal("DB_PASSWORD not found")
+	}
+	defer dbPassword.Release()
 
-    // 检查锁定状态
-    if !dbPassword.IsMemoryLocked() {
-        log.Printf("安全警告：DB_PASSWORD 未锁定")
-        if err := dbPassword.MemoryLockError(); err != nil {
-            log.Printf("原因: %v", err)
-        }
-    }
+	// 检查锁定状态
+	if !dbPassword.IsMemoryLocked() {
+		log.Printf("安全警告：DB_PASSWORD 未锁定")
+		if err := dbPassword.MemoryLockError(); err != nil {
+			log.Printf("原因: %v", err)
+		}
+	}
 
-    // 仅在需要时获取明文
-    password := dbPassword.Reveal()
-    _ = password // 用于数据库连接等
+	// 仅在需要时获取明文
+	password := dbPassword.Reveal()
+	_ = password // 用于数据库连接等
 
-    // 安全日志（不泄露明文）
-    log.Printf("数据库密码: %s", dbPassword.Masked())
-    // 输出: 数据库密码: [SECURE:12 bytes locked]
+	// 安全日志（不泄露明文）
+	log.Printf("数据库密码: %s", dbPassword.Masked())
+	// 输出: 数据库密码: [SECURE:12 bytes locked]
 
-    _ = os.Stdout
+	_ = os.Stdout
 }
 ```
 

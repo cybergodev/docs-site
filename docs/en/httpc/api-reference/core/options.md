@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Request Options"
 title: "Request Options - CyberGo HTTPC | WithXxx Options"
-description: "HTTPC request options API reference: WithHeader headers, WithBearerToken authentication, WithJSON/WithForm request bodies, WithQuery query parameters, cookie options, and WithOnRequest/WithOnResponse callback functions."
+description: "HTTPC request options: WithHeader, WithBearerToken, WithJSON/WithForm bodies, WithQuery parameters, cookies, and WithOnRequest/WithOnResponse callbacks."
 sidebar_position: 2
 ---
 
@@ -259,35 +259,27 @@ result, err := client.Get(url,
 
 ## Cookies
 
-### WithCookie
-
-```go
-func WithCookie(cookie http.Cookie) RequestOption
-```
-
-Adds a single cookie, with security validation.
-
-```go
-result, err := client.Get(url,
-    httpc.WithCookie(http.Cookie{Name: "session", Value: "abc123"}),
-)
-```
-
 ### WithCookies
 
 ```go
 func WithCookies(cookies []http.Cookie) RequestOption
 ```
 
-Adds multiple cookies at once. More efficient than calling `WithCookie` multiple times — pre-allocates capacity and validates all cookies in a single pass.
+Adds one or more cookies, each security-validated: names ≤256 characters, values ≤4096 characters; control characters and illegal cookie characters are rejected; Domain (≤255) and Path (≤1024) are validated when set. The whole batch is pre-allocated and validated in a single pass.
 
 ```go
+// A single cookie: pass a one-element slice
+result, err := client.Get(url,
+    httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc123"}}),
+)
+
+// Multiple cookies
 cookies := []http.Cookie{
     {Name: "session_id", Value: "abc123"},
     {Name: "user_pref", Value: "dark_mode"},
     {Name: "lang", Value: "en"},
 }
-result, err := client.Get("https://api.example.com",
+result, err = client.Get("https://api.example.com",
     httpc.WithCookies(cookies),
 )
 ```
@@ -332,13 +324,13 @@ func WithSecureCookie(securityConfig *CookieSecurityConfig) RequestOption
 Enforces validation of the security attributes (Secure, HttpOnly, SameSite) of request cookies.
 
 :::warning
-This option **only validates cookies that already exist at the time it is applied**. You must place `WithSecureCookie` **after** all `WithCookie`/`WithCookies`/`WithCookieMap`/`WithCookieString` calls; otherwise cookies added later will not be validated. For session-level cookie-security validation that is not subject to ordering, use `SessionManager.SetCookieSecurity`.
+This option **only validates cookies that already exist at the time it is applied**. You must place `WithSecureCookie` **after** all `WithCookies`/`WithCookieMap`/`WithCookieString` calls; otherwise cookies added later will not be validated. For session-level cookie-security validation that is not subject to ordering, use `SessionManager.SetCookieSecurity`.
 :::
 
 ```go
 // Correct order: add cookies first, then validate
 result, err := client.Get(url,
-    httpc.WithCookie(sessionCookie),
+    httpc.WithCookies(sessionCookies),
     httpc.WithCookieMap(otherCookies),
     httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()),
 )

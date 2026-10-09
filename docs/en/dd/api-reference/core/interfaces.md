@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Interfaces"
 title: "Interfaces - CyberGo DD | Logger Interface Hierarchy"
-description: "Complete documentation of CyberGo DD's hierarchical logger interfaces, including the CoreLogger base interface, the LevelLogger leveled-logging interface, the ConfigurableLogger configurable-logger interface, and the LogProvider provider interface. Supports multi-level logging abstractions from simple to complex for custom implementations and dependency injection."
+description: "CyberGo DD logger interfaces: CoreLogger, LevelLogger, ConfigurableLogger, and LogProvider for custom implementations and dependency injection."
 sidebar_position: 5
 ---
 

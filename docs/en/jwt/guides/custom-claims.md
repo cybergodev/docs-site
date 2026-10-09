@@ -159,88 +159,88 @@ The real value of custom Claims is implementing business rules in `Validate()`. 
 package main
 
 import (
-    "errors"
-    "fmt"
+	"errors"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 // AccountClaims carries business claims of account tier and device quota.
 type AccountClaims struct {
-    UserID    string   `json:"user_id"`
-    Tier      string   `json:"tier"`       // free | pro | enterprise
-    Region    string   `json:"region"`     // cn | us | eu
-    DeviceIDs []string `json:"device_ids"`
-    jwt.RegisteredClaims
+	UserID    string   `json:"user_id"`
+	Tier      string   `json:"tier"`   // free | pro | enterprise
+	Region    string   `json:"region"` // cn | us | eu
+	DeviceIDs []string `json:"device_ids"`
+	jwt.RegisteredClaims
 }
 
 // Max devices per tier.
 var tierMaxDevices = map[string]int{
-    "free":       2,
-    "pro":        10,
-    "enterprise": 100,
+	"free":       2,
+	"pro":        10,
+	"enterprise": 100,
 }
 
 var allowedRegions = map[string]bool{"cn": true, "us": true, "eu": true}
 
 func (c *AccountClaims) GetRegisteredClaims() *jwt.RegisteredClaims {
-    return &c.RegisteredClaims
+	return &c.RegisteredClaims
 }
 
 func (c *AccountClaims) Validate() error {
-    // 1. Required-field validation
-    if c.UserID == "" {
-        return errors.New("user_id is required")
-    }
+	// 1. Required-field validation
+	if c.UserID == "" {
+		return errors.New("user_id is required")
+	}
 
-    // 2. Enum-value validation
-    if _, ok := tierMaxDevices[c.Tier]; !ok {
-        return fmt.Errorf("invalid tier %q: must be free, pro or enterprise", c.Tier)
-    }
-    if !allowedRegions[c.Region] {
-        return fmt.Errorf("invalid region %q: must be cn, us or eu", c.Region)
-    }
+	// 2. Enum-value validation
+	if _, ok := tierMaxDevices[c.Tier]; !ok {
+		return fmt.Errorf("invalid tier %q: must be free, pro or enterprise", c.Tier)
+	}
+	if !allowedRegions[c.Region] {
+		return fmt.Errorf("invalid region %q: must be cn, us or eu", c.Region)
+	}
 
-    // 3. Cross-field constraint: device count must not exceed the tier quota
-    if max := tierMaxDevices[c.Tier]; len(c.DeviceIDs) > max {
-        return fmt.Errorf("tier %q allows at most %d devices, got %d",
-            c.Tier, max, len(c.DeviceIDs))
-    }
+	// 3. Cross-field constraint: device count must not exceed the tier quota
+	if max := tierMaxDevices[c.Tier]; len(c.DeviceIDs) > max {
+		return fmt.Errorf("tier %q allows at most %d devices, got %d",
+			c.Tier, max, len(c.DeviceIDs))
+	}
 
-    return nil
+	return nil
 }
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // Valid claim: pro tier, 3 devices (≤ 10)
-    valid := &AccountClaims{
-        UserID:    "user123",
-        Tier:      "pro",
-        Region:    "cn",
-        DeviceIDs: []string{"dev-1", "dev-2", "dev-3"},
-    }
-    _, err = processor.Create(valid)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token created successfully")
+	// Valid claim: pro tier, 3 devices (≤ 10)
+	valid := &AccountClaims{
+		UserID:    "user123",
+		Tier:      "pro",
+		Region:    "cn",
+		DeviceIDs: []string{"dev-1", "dev-2", "dev-3"},
+	}
+	_, err = processor.Create(valid)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token created successfully")
 
-    // Invalid claim: free tier with 5 devices (> 2) → Validate() rejects
-    _, err = processor.Create(&AccountClaims{
-        UserID:    "user456",
-        Tier:      "free",
-        Region:    "us",
-        DeviceIDs: []string{"d1", "d2", "d3", "d4", "d5"},
-    })
-    fmt.Println("Over-quota error:", err)
-    // Output: Over-quota error: invalid claims: tier "free" allows at most 2 devices, got 5
+	// Invalid claim: free tier with 5 devices (> 2) → Validate() rejects
+	_, err = processor.Create(&AccountClaims{
+		UserID:    "user456",
+		Tier:      "free",
+		Region:    "us",
+		DeviceIDs: []string{"d1", "d2", "d3", "d4", "d5"},
+	})
+	fmt.Println("Over-quota error:", err)
+	// Output: Over-quota error: invalid claims: tier "free" allows at most 2 devices, got 5
 }
 ```
 
@@ -276,56 +276,56 @@ The helper function below replicates the core logic of the built-in deep validat
 package main
 
 import (
-    "errors"
-    "fmt"
-    "strings"
+	"errors"
+	"fmt"
+	"strings"
 )
 
 const maxClaimLength = 256
 
 // dangerousSubstrings lists high-risk substrings overlapping with the library's built-in detection; add or remove as needed for your business.
 var dangerousSubstrings = []string{
-    "<script", "javascript:", "onerror=", "onload=",
-    "drop table", "union select", "../", "/etc/passwd",
+	"<script", "javascript:", "onerror=", "onload=",
+	"drop table", "union select", "../", "/etc/passwd",
 }
 
 // validateField checks a custom field's length, control characters, and common injection patterns.
 func validateField(name, value string) error {
-    if len(value) > maxClaimLength {
-        return fmt.Errorf("%s exceeds maximum length of %d", name, maxClaimLength)
-    }
-    for i := 0; i < len(value); i++ {
-        c := value[i]
-        if c < 32 && c != '\t' && c != '\n' && c != '\r' {
-            return fmt.Errorf("%s contains invalid control character", name)
-        }
-    }
-    lower := strings.ToLower(value)
-    for _, pattern := range dangerousSubstrings {
-        if strings.Contains(lower, pattern) {
-            return fmt.Errorf("%s contains suspicious pattern", name)
-        }
-    }
-    return nil
+	if len(value) > maxClaimLength {
+		return fmt.Errorf("%s exceeds maximum length of %d", name, maxClaimLength)
+	}
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+		if c < 32 && c != '\t' && c != '\n' && c != '\r' {
+			return fmt.Errorf("%s contains invalid control character", name)
+		}
+	}
+	lower := strings.ToLower(value)
+	for _, pattern := range dangerousSubstrings {
+		if strings.Contains(lower, pattern) {
+			return fmt.Errorf("%s contains suspicious pattern", name)
+		}
+	}
+	return nil
 }
 
 type MyClaims struct {
-    UserID     string `json:"user_id"`
-    Department string `json:"department"`
+	UserID     string `json:"user_id"`
+	Department string `json:"department"`
 }
 
 func (c *MyClaims) Validate() error {
-    if c.UserID == "" {
-        return errors.New("user_id is required")
-    }
-    // Custom fields do not enjoy built-in deep validation; manually add length and injection checks
-    if err := validateField("user_id", c.UserID); err != nil {
-        return err
-    }
-    if err := validateField("department", c.Department); err != nil {
-        return err
-    }
-    return nil
+	if c.UserID == "" {
+		return errors.New("user_id is required")
+	}
+	// Custom fields do not enjoy built-in deep validation; manually add length and injection checks
+	if err := validateField("user_id", c.UserID); err != nil {
+		return err
+	}
+	if err := validateField("department", c.Department); err != nil {
+		return err
+	}
+	return nil
 }
 
 func main() {}

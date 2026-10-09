@@ -74,38 +74,38 @@ GBK 编码的中文 HTML，通过 meta 标签声明自动识别：
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
-    "golang.org/x/text/encoding/simplifiedchinese"
+	"github.com/cybergodev/html"
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 func main() {
-    // GBK 编码的中文 HTML（meta 标签声明 charset=gbk）
-    gbkHTML := `<html><head><meta charset="gbk">` +
-        `<title>中文网页</title></head>` +
-        `<body><article><h1>你好世界</h1>` +
-        `<p>这是一段中文内容。</p></article></body></html>`
+	// GBK 编码的中文 HTML（meta 标签声明 charset=gbk）
+	gbkHTML := `<html><head><meta charset="gbk">` +
+		`<title>中文网页</title></head>` +
+		`<body><article><h1>你好世界</h1>` +
+		`<p>这是一段中文内容。</p></article></body></html>`
 
-    // 将 UTF-8 字符串编码为 GBK 字节（模拟真实 GBK 网页）
-    gbkBytes, err := simplifiedchinese.GBK.NewEncoder().Bytes([]byte(gbkHTML))
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 将 UTF-8 字符串编码为 GBK 字节（模拟真实 GBK 网页）
+	gbkBytes, err := simplifiedchinese.GBK.NewEncoder().Bytes([]byte(gbkHTML))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 自动检测编码并提取（从 meta charset 识别 GBK，转 UTF-8 后提取）
-    result, err := html.Extract(gbkBytes)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 自动检测编码并提取（从 meta charset 识别 GBK，转 UTF-8 后提取）
+	result, err := html.Extract(gbkBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("标题：", result.Title)
-    // 标题：中文网页
+	fmt.Println("标题：", result.Title)
+	// 标题：中文网页
 
-    fmt.Println("正文：", result.Text)
-    // 正文：你好世界
-    //       这是一段中文内容。
+	fmt.Println("正文：", result.Text)
+	// 正文：你好世界
+	//       这是一段中文内容。
 }
 ```
 
@@ -138,37 +138,37 @@ result, err := html.Extract(gbkBytes, cfg)
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
-    "golang.org/x/text/encoding/japanese"
+	"github.com/cybergodev/html"
+	"golang.org/x/text/encoding/japanese"
 )
 
 func main() {
-    // Shift_JIS 编码的日文 HTML（无 meta charset 声明）
-    sjisHTML := `<html><head><title>日本語ページ</title></head>` +
-        `<body><article><h1>こんにちは</h1>` +
-        `<p>東京の天気は晴れです。</p></article></body></html>`
+	// Shift_JIS 编码的日文 HTML（无 meta charset 声明）
+	sjisHTML := `<html><head><title>日本語ページ</title></head>` +
+		`<body><article><h1>こんにちは</h1>` +
+		`<p>東京の天気は晴れです。</p></article></body></html>`
 
-    // 编码为 Shift_JIS 字节
-    sjisBytes, err := japanese.ShiftJIS.NewEncoder().Bytes([]byte(sjisHTML))
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 编码为 Shift_JIS 字节
+	sjisBytes, err := japanese.ShiftJIS.NewEncoder().Bytes([]byte(sjisHTML))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 统计算法自动识别 Shift_JIS（采样字节分析日文字符分布）
-    result, err := html.Extract(sjisBytes)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 统计算法自动识别 Shift_JIS（采样字节分析日文字符分布）
+	result, err := html.Extract(sjisBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("标题：", result.Title)
-    // 标题：日本語ページ
+	fmt.Println("标题：", result.Title)
+	// 标题：日本語ページ
 
-    fmt.Println("正文：", result.Text)
-    // 正文：こんにちは
-    //       東京の天気は晴れです。
+	fmt.Println("正文：", result.Text)
+	// 正文：こんにちは
+	//       東京の天気は晴れです。
 }
 ```
 
@@ -180,39 +180,39 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
-    "golang.org/x/text/encoding/charmap"
+	"github.com/cybergodev/html"
+	"golang.org/x/text/encoding/charmap"
 )
 
 func main() {
-    // Windows-1252 编码的西欧文本
-    winHTML := `<html><head><title>Café Menu</title></head>` +
-        `<body><article><h1>Café</h1>` +
-        `<p>Price: 100 €. Résumé available.</p></article></body></html>`
+	// Windows-1252 编码的西欧文本
+	winHTML := `<html><head><title>Café Menu</title></head>` +
+		`<body><article><h1>Café</h1>` +
+		`<p>Price: 100 €. Résumé available.</p></article></body></html>`
 
-    winBytes, err := charmap.Windows1252.NewEncoder().Bytes([]byte(winHTML))
-    if err != nil {
-        log.Fatal(err)
-    }
+	winBytes, err := charmap.Windows1252.NewEncoder().Bytes([]byte(winHTML))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 手动指定 Windows-1252 编码
-    cfg := html.DefaultConfig()
-    cfg.Encoding = "windows-1252"
+	// 手动指定 Windows-1252 编码
+	cfg := html.DefaultConfig()
+	cfg.Encoding = "windows-1252"
 
-    result, err := html.Extract(winBytes, cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(winBytes, cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("标题：", result.Title)
-    // 标题：Café Menu
+	fmt.Println("标题：", result.Title)
+	// 标题：Café Menu
 
-    fmt.Println("正文：", result.Text)
-    // 正文：Café
-    //       Price: 100 €. Résumé available.
+	fmt.Println("正文：", result.Text)
+	// 正文：Café
+	//       Price: 100 €. Résumé available.
 }
 ```
 
@@ -249,36 +249,36 @@ if err != nil {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.DefaultConfig()
-    cfg.Audit = html.DefaultAuditConfig()
-    cfg.Audit.Enabled = true
-    // LogEncodingIssues 默认为 true（DefaultAuditConfig 已启用）
+	cfg := html.DefaultConfig()
+	cfg.Audit = html.DefaultAuditConfig()
+	cfg.Audit.Enabled = true
+	// LogEncodingIssues 默认为 true（DefaultAuditConfig 已启用）
 
-    p, err := html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer p.Close()
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer p.Close()
 
-    // 处理 HTML（编码问题时自动记录到审计日志）
-    p.Extract([]byte(`<html><body><p>content</p></body></html>`))
+	// 处理 HTML（编码问题时自动记录到审计日志）
+	p.Extract([]byte(`<html><body><p>content</p></body></html>`))
 
-    // 查询审计日志中的编码事件
-    for _, entry := range p.GetAuditLog() {
-        if entry.EventType == html.AuditEventEncodingIssue {
-            fmt.Printf("[编码问题] %s\n", entry.Message)
-        }
-    }
+	// 查询审计日志中的编码事件
+	for _, entry := range p.GetAuditLog() {
+		if entry.EventType == html.AuditEventEncodingIssue {
+			fmt.Printf("[编码问题] %s\n", entry.Message)
+		}
+	}
 
-    fmt.Println("编码事件检查完成")
-    // 编码事件检查完成
+	fmt.Println("编码事件检查完成")
+	// 编码事件检查完成
 }
 ```
 

@@ -240,15 +240,15 @@ security := &httpc.CookieSecurityConfig{
     RequireSecure:   true,
     RequireHttpOnly: true,
 }
-// 注意：WithSecureCookie 必须放在 WithCookie 之后，仅验证此时已添加的 Cookie
+// 注意：WithSecureCookie 必须放在 WithCookies 之后，仅验证此时已添加的 Cookie
 result, err := client.Get("https://api.example.com",
-    httpc.WithCookie(sessionCookie),
+    httpc.WithCookies(sessionCookies),
     httpc.WithSecureCookie(security),
 )
 ```
 
 :::warning
-`WithSecureCookie` 是请求级「事后校验」：它只验证在它应用时已存在的 Cookie。务必将其放在所有 `WithCookie` 选项之后。需要忽略添加顺序的全局校验，请用配置级 `CookieSecurity` 或会话级 `SetCookieSecurity`。
+`WithSecureCookie` 是请求级「事后校验」：它只验证在它应用时已存在的 Cookie。务必将其放在所有 Cookie 添加选项（`WithCookies` 等）之后。需要忽略添加顺序的全局校验，请用配置级 `CookieSecurity` 或会话级 `SetCookieSecurity`。
 :::
 
 ## 解压炸弹防护

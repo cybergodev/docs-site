@@ -32,25 +32,25 @@ The same request, before and after migration:
 package main
 
 import (
-    "fmt"
-    "io"
-    "net/http"
+	"fmt"
+	"io"
+	"net/http"
 )
 
 func main() {
-    resp, err := http.Get("https://httpbin.org/get")
-    if err != nil {
-        panic(err)
-    }
-    defer resp.Body.Close() // must close manually, otherwise the connection leaks
+	resp, err := http.Get("https://httpbin.org/get")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close() // must close manually, otherwise the connection leaks
 
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        panic(err)
-    }
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(resp.StatusCode) // 200
-    fmt.Println(len(body))       // response byte count
+	fmt.Println(resp.StatusCode) // 200
+	fmt.Println(len(body))       // response byte count
 }
 ```
 
@@ -58,19 +58,19 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/get")
-    if err != nil {
-        panic(err) // network-layer errors only
-    }
+	result, err := httpc.Get("https://httpbin.org/get")
+	if err != nil {
+		panic(err) // network-layer errors only
+	}
 
-    fmt.Println(result.StatusCode())  // 200
-    fmt.Println(len(result.RawBody())) // response byte count (already in memory, nothing to close)
+	fmt.Println(result.StatusCode())   // 200
+	fmt.Println(len(result.RawBody())) // response byte count (already in memory, nothing to close)
 }
 ```
 
@@ -93,7 +93,7 @@ The migrated code is shorter, and it now carries the TLS policy, SSRF protection
 | `req.Header.Set(k, v)` | `httpc.WithHeader(k, v)` / `WithHeaderMap(m)` | Header keys and values are CRLF-injection validated; invalid values return `ErrInvalidHeader` |
 | `req.Header.Set("User-Agent", ua)` | `httpc.WithUserAgent(ua)` | Instance-level default via `cfg.Defaults.UserAgent` |
 | `req.SetBasicAuth(u, p)` | `httpc.WithBasicAuth(u, p)` | Format-validated |
-| `req.AddCookie(&http.Cookie{...})` | `httpc.WithCookie(http.Cookie{...})` | Takes a value type; for batches use `WithCookies`/`WithCookieMap`/`WithCookieString` |
+| `req.AddCookie(&http.Cookie{...})` | `httpc.WithCookies([]http.Cookie{{...}})` | Takes a cookie slice (a single cookie is a one-element slice); name-value only via `WithCookieMap`, raw header string via `WithCookieString` |
 | `req.URL.Query()` string assembly | `httpc.WithQuery(k, v)` / `WithQueryMap(m)` | Values support common scalars and `fmt.Stringer`; encoded and merged into the URL automatically |
 | `jar, _ := cookiejar.New(nil)` on `client.Jar` | `cfg.Connection.EnableCookies = true` | Or use a `DomainClient` that maintains cookies and common headers automatically (see [Domain Sessions](./domain-session)) |
 | `client.CheckRedirect = func(...)` | `cfg.Defaults.FollowRedirects` / `MaxRedirects` | Per-request `WithFollowRedirects(false)`; redirect domain whitelist via `Security.RedirectWhitelist` (see [Redirects](./redirects)) |
@@ -136,36 +136,37 @@ Typical error handling before migration:
 package main
 
 import (
-    "encoding/json"
-    "errors"
-    "fmt"
-    "io"
-    "net/http"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
 )
 
 func main() {
-    resp, err := http.Get("https://api.example.com/users/42")
-    if err != nil {
-        // *url.Error: connection failures, timeouts, and TLS errors all
-        // surface here; further classification needs type assertions or
-        // string matching
-        panic(err)
-    }
-    defer resp.Body.Close()
+	resp, err := http.Get("https://api.example.com/users/42")
+	if err != nil {
+		// *url.Error: connection failures, timeouts, and TLS errors all
+		// surface here; further classification needs type assertions or
+		// string matching
+		panic(err)
+	}
+	defer resp.Body.Close()
 
-    // 4xx/5xx are not errors: normal path, status code checked manually
-    if resp.StatusCode != http.StatusOK {
-        fmt.Println("HTTP error:", resp.StatusCode)
-        return
-    }
+	// 4xx/5xx are not errors: normal path, status code checked manually
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("HTTP error:", resp.StatusCode)
+		return
+	}
 
-    var user map[string]any
-    // Decode returns io.EOF on an empty body — a commonly missed branch
-    if err := json.NewDecoder(resp.Body).Decode(&user); err != nil && !errors.Is(err, io.EOF) {
-        panic(err)
-    }
-    fmt.Println(user["name"])
+	var user map[string]any
+	// Decode returns io.EOF on an empty body — a commonly missed branch
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil && !errors.Is(err, io.EOF) {
+		panic(err)
+	}
+	fmt.Println(user["name"])
 }
+
 // Output (depends on the server's response):
 // HTTP error: 404
 ```
@@ -176,44 +177,45 @@ After migration:
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://api.example.com/users/42")
-    if err != nil {
-        // Network-layer error: already classified as a ClientError (12 types),
-        // carrying a short code and retryability
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            log.Printf("error type: %s, retryable: %v, attempts: %d",
-                clientErr.Code(), clientErr.IsRetryable(), clientErr.Attempts)
-        }
-        panic(err)
-    }
+	result, err := httpc.Get("https://api.example.com/users/42")
+	if err != nil {
+		// Network-layer error: already classified as a ClientError (12 types),
+		// carrying a short code and retryability
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			log.Printf("error type: %s, retryable: %v, attempts: %d",
+				clientErr.Code(), clientErr.IsRetryable(), clientErr.Attempts)
+		}
+		panic(err)
+	}
 
-    // 4xx/5xx are not errors: check via Result's status helpers
-    if !result.IsSuccess() {
-        fmt.Println("HTTP error:", result.StatusCode())
-        return
-    }
+	// 4xx/5xx are not errors: check via Result's status helpers
+	if !result.IsSuccess() {
+		fmt.Println("HTTP error:", result.StatusCode())
+		return
+	}
 
-    var user map[string]any
-    // An empty body returns the sentinel error ErrResponseBodyEmpty,
-    // matched precisely with errors.Is
-    if err := result.Unmarshal(&user); err != nil {
-        if errors.Is(err, httpc.ErrResponseBodyEmpty) {
-            fmt.Println("(empty response body)")
-            return
-        }
-        panic(err)
-    }
-    fmt.Println(user["name"])
+	var user map[string]any
+	// An empty body returns the sentinel error ErrResponseBodyEmpty,
+	// matched precisely with errors.Is
+	if err := result.Unmarshal(&user); err != nil {
+		if errors.Is(err, httpc.ErrResponseBodyEmpty) {
+			fmt.Println("(empty response body)")
+			return
+		}
+		panic(err)
+	}
+	fmt.Println(user["name"])
 }
+
 // Output (depends on the server's response):
 // HTTP error: 404
 ```
@@ -275,7 +277,7 @@ Mapping of standard-library operations to request options:
 | `bytes.NewReader(raw)` raw body | `WithBody(raw)` (type auto-detected) / `WithBinary(data, ct...)` |
 | `req.Header.Set(k, v)` | `WithHeader(k, v)` / `WithHeaderMap(m)` |
 | `req.SetBasicAuth` / hand-assembled Bearer | `WithBasicAuth(u, p)` / `WithBearerToken(t)` |
-| `req.AddCookie` | `WithCookie(c)` / `WithCookies(cs)` / `WithCookieMap(m)` / `WithCookieString(s)` |
+| `req.AddCookie` | `WithCookies(cs)` / `WithCookieMap(m)` / `WithCookieString(s)` |
 | `io.Reader` streaming request body | `WithBody(reader)` (passed through as-is; **bypasses size validation** — wrap with `io.LimitReader`) |
 
 Context usage matches the standard library — `context.Context` is still the carrier of timeouts and cancellation; only where you pass it changes:
@@ -359,34 +361,34 @@ Existing `tls.Config` knowledge (mTLS, custom CAs, cipher suites) carries over u
 package main
 
 import (
-    "crypto/tls"
-    "fmt"
-    "log"
+	"crypto/tls"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // An existing tls.Config (custom CA, cipher suites, mTLS client
-    // certificates) migrates as-is
-    tlsCfg := &tls.Config{
-        MinVersion: tls.VersionTLS12,
-        MaxVersion: tls.VersionTLS13,
-    }
+	// An existing tls.Config (custom CA, cipher suites, mTLS client
+	// certificates) migrates as-is
+	tlsCfg := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		MaxVersion: tls.VersionTLS13,
+	}
 
-    cfg := httpc.DefaultConfig()
-    cfg.Security.TLSConfig = tlsCfg
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	cfg := httpc.DefaultConfig()
+	cfg.Security.TLSConfig = tlsCfg
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err) // network-layer error
-    }
-    fmt.Println(result.StatusCode()) // 200
+	result, err := client.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err) // network-layer error
+	}
+	fmt.Println(result.StatusCode()) // 200
 }
 ```
 

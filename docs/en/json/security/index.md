@@ -194,26 +194,14 @@ For runnable, production-ready code see [Production Checklist - Sensitive Data H
 
 ### Security-Related Config Fields Overview
 
-These limits are gathered internally into the exported type `SecurityLimits` (no public accessor; shown as field structure documentation only):
-
-```go
-type SecurityLimits struct {
-    MaxNestingDepth           int   `json:"max_nesting_depth"`
-    MaxSecurityValidationSize int64 `json:"max_security_validation_size"`
-    MaxObjectKeys             int   `json:"max_object_keys"`
-    MaxArrayElements          int   `json:"max_array_elements"`
-    MaxJSONSize               int64 `json:"max_json_size"`
-    MaxPathDepth              int   `json:"max_path_depth"`
-}
-```
-
-Field values under the two common configurations:
+These limits have no separate aggregate type — they are provided directly as `Config` fields. Field values under the two common configurations:
 
 | Config field | `DefaultConfig()` default | `SecurityConfig()` preset | Error triggered |
 |--------------|---------------------------|---------------------------|-----------------|
 | `MaxJSONSize` | 100MB (`DefaultMaxJSONSize`) | 10MB | `ErrSizeLimit` |
 | `MaxNestingDepthSecurity` | 200 (`DefaultMaxNestingDepth`) | 30 | `ErrDepthLimit` |
 | `MaxPathDepth` | 50 (`DefaultMaxPathDepth`) | 30 | `ErrInvalidPath` |
+| `MaxBatchSize` | 2000 (`DefaultMaxBatchSize`) | 2000 | `ErrSizeLimit` |
 | `MaxObjectKeys` | 100000 (`DefaultMaxObjectKeys`) | 5000 | `ErrSizeLimit` |
 | `MaxArrayElements` | 100000 (`DefaultMaxArrayElements`) | 5000 | `ErrSizeLimit` |
 | `MaxSecurityValidationSize` | 10MB (`DefaultMaxSecuritySize`) | 10MB | — (threshold type) |

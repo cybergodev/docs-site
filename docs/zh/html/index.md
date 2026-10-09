@@ -32,23 +32,23 @@ go get github.com/cybergodev/html
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html><head><title>示例</title></head>
+	data := []byte(`<html><head><title>示例</title></head>
         <body><h1>标题</h1><p>正文内容</p></body></html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.Title) // 输出：示例
-    fmt.Println(result.Text)  // 输出：标题\n\n正文内容
+	fmt.Println(result.Title) // 输出：示例
+	fmt.Println(result.Text)  // 输出：标题\n\n正文内容
 }
 ```
 

@@ -17,37 +17,37 @@ HTML 库不内置 HTTP 客户端，而是与标准库 `net/http` 无缝配合。
 package main
 
 import (
-    "fmt"
-    "io"
-    "log"
-    "net/http"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    resp, err := http.Get("https://example.com/article")
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer resp.Body.Close()
+	resp, err := http.Get("https://example.com/article")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
 
-    if resp.StatusCode != http.StatusOK {
-        log.Fatalf("HTTP %d", resp.StatusCode)
-    }
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("HTTP %d", resp.StatusCode)
+	}
 
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        log.Fatal(err)
-    }
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    result, err := html.Extract(body)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(body)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("标题：", result.Title)
-    fmt.Println("字数：", result.WordCount)
+	fmt.Println("标题：", result.Title)
+	fmt.Println("字数：", result.WordCount)
 }
 ```
 
@@ -89,56 +89,56 @@ client := &http.Client{
 package main
 
 import (
-    "context"
-    "encoding/json"
-    "io"
-    "log"
-    "net/http"
-    "time"
+	"context"
+	"encoding/json"
+	"io"
+	"log"
+	"net/http"
+	"time"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 var processor *html.Processor
 
 func init() {
-    cfg := html.DefaultConfig()
-    cfg.MaxCacheEntries = 5000
-    cfg.CacheTTL = 30 * time.Minute
-    cfg.ProcessingTimeout = 10 * time.Second
+	cfg := html.DefaultConfig()
+	cfg.MaxCacheEntries = 5000
+	cfg.CacheTTL = 30 * time.Minute
+	cfg.ProcessingTimeout = 10 * time.Second
 
-    var err error
-    processor, err = html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
+	var err error
+	processor, err = html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func extractHandler(w http.ResponseWriter, r *http.Request) {
-    ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
 
-    body, err := io.ReadAll(io.LimitReader(r.Body, 10*1024*1024))
-    if err != nil {
-        http.Error(w, "读取失败", http.StatusBadRequest)
-        return
-    }
+	body, err := io.ReadAll(io.LimitReader(r.Body, 10*1024*1024))
+	if err != nil {
+		http.Error(w, "读取失败", http.StatusBadRequest)
+		return
+	}
 
-    result, err := processor.ExtractWithContext(ctx, body)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	result, err := processor.ExtractWithContext(ctx, body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(result)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
 }
 
 func main() {
-    defer processor.Close()
+	defer processor.Close()
 
-    http.HandleFunc("/extract", extractHandler)
-    log.Fatal(http.ListenAndServe(":8080", nil))
+	http.HandleFunc("/extract", extractHandler)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 ```
 

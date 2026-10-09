@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Integrity"
 title: "Integrity Signing - CyberGo DD | IntegritySigner"
-description: "Complete API documentation for CyberGo DD's integrity signing, supporting HMAC-SHA256 signing and a monotonically increasing sequence-number tracking mechanism, ensuring each log entry is tamper-evident. Provides the IntegritySigner signer and Verify verifier to meet security-audit and tamper-protection compliance requirements."
+description: "CyberGo DD integrity signing: HMAC-SHA256 plus monotonic sequence numbers make each log entry tamper-evident, with IntegritySigner and Verify."
 sidebar_position: 4
 ---
 

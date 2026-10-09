@@ -1,7 +1,7 @@
 ---
 sidebar_label: "File Output & Rotation"
 title: "File Output & Rotation - CyberGo DD | File Logging Guide"
-description: "CyberGo DD file output and log-rotation configuration guide, covering FileWriter size rotation and time cleanup, BufferedWriter buffered-write optimization, MultiWriter multi-target fan-out, dynamic Writer management, and production best practices to help you build a highly reliable file-logging system."
+description: "File logging with CyberGo DD: FileWriter size rotation and time cleanup, BufferedWriter optimization, MultiWriter fan-out, and production best practices."
 sidebar_position: 4
 ---
 
@@ -17,23 +17,23 @@ DD provides flexible file-output capabilities, supporting automatic rotation, bu
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    logger, err := dd.New(dd.Config{
-        Targets: []dd.OutputTarget{
-            dd.FileOutput("logs/app.log"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	logger, err := dd.New(dd.Config{
+		Targets: []dd.OutputTarget{
+			dd.FileOutput("logs/app.log"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    logger.Info("log will be written to a file") // Written to logs/app.log
+	logger.Info("log will be written to a file") // Written to logs/app.log
 }
 ```
 

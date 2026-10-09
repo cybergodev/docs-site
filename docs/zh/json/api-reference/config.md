@@ -522,29 +522,20 @@ type ConfigWarning struct {
 | `NewValue` | `any` | 修正后的值 |
 | `Reason` | `string` | 修正原因（如低于下限、超出上限） |
 
-### SecurityLimits 类型
+### 安全相关字段总览
 
-`SecurityLimits` 汇总 Config 中的安全相关限制字段。
+安全限制不设独立的汇总类型，直接以下列 Config 字段提供：
 
-```go
-type SecurityLimits struct {
-    MaxNestingDepth           int   `json:"max_nesting_depth"`
-    MaxSecurityValidationSize int64 `json:"max_security_validation_size"`
-    MaxObjectKeys             int   `json:"max_object_keys"`
-    MaxArrayElements          int   `json:"max_array_elements"`
-    MaxJSONSize               int64 `json:"max_json_size"`
-    MaxPathDepth              int   `json:"max_path_depth"`
-}
-```
-
-| 字段                      | 类型    | 说明                                            |
-| ------------------------- | ------- | ----------------------------------------------- |
-| `MaxNestingDepth`         | `int`   | 最大嵌套深度（对应 `Config.MaxNestingDepthSecurity`） |
-| `MaxSecurityValidationSize` | `int64` | 安全验证最大大小（对应 `Config.MaxSecurityValidationSize`） |
-| `MaxObjectKeys`           | `int`   | 对象最大键数（对应 `Config.MaxObjectKeys`）     |
-| `MaxArrayElements`        | `int`   | 数组最大元素数（对应 `Config.MaxArrayElements`） |
-| `MaxJSONSize`             | `int64` | 最大 JSON 大小（对应 `Config.MaxJSONSize`）     |
-| `MaxPathDepth`            | `int`   | 最大路径深度（对应 `Config.MaxPathDepth`）      |
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `MaxJSONSize` | `int64` | 100MB | 输入 JSON 大小上限（`ErrSizeLimit`） |
+| `MaxPathDepth` | `int` | 50 | 路径段数上限（`ErrInvalidPath`） |
+| `MaxBatchSize` | `int` | 2000 | 批处理操作的单批数量上限（`ErrSizeLimit`） |
+| `MaxNestingDepthSecurity` | `int` | 200（`DefaultMaxNestingDepth`，Validate 钳制 10–200） | 输入嵌套深度上限（`ErrDepthLimit`）；与编码/解码嵌套深度 `MaxDepth`（默认 100）语义不同，勿混淆 |
+| `MaxSecurityValidationSize` | `int64` | 10MB | 安全校验的大小阈值（阈值型） |
+| `MaxObjectKeys` | `int` | 100000 | 对象最大键数（`ErrSizeLimit`） |
+| `MaxArrayElements` | `int` | 100000 | 数组最大元素数（`ErrSizeLimit`） |
+| `FullSecurityScan` | `bool` | `false`（分层扫描） | 是否对所有输入做全量安全扫描（设为 `true` 时全量） |
 
 ### AddHook
 

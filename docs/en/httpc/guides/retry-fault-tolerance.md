@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Retry & Fault Tolerance"
 title: "Retry & Fault Tolerance - CyberGo HTTPC | Backoff Strategy"
-description: "HTTPC retry and fault tolerance guide: default exponential-backoff retry strategy and RetryConfig configuration, automatic retry conditions for 408/429/5xx, the custom RetryPolicy interface, automatic Retry-After response-header parsing, backoff-strategy selection, and per-request WithMaxRetries control best practices."
+description: "HTTPC retries: exponential backoff with RetryConfig, auto-retry on 408/429/5xx, custom RetryPolicy, Retry-After parsing, and per-request WithMaxRetries."
 sidebar_position: 8
 ---
 
@@ -17,31 +17,31 @@ HTTPC's default retry configuration is carefully tuned and works out of the box:
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Retry.MaxRetries = 3                  // Max 3 retries
-    cfg.Retry.Delay = 1 * time.Second         // Initial delay 1s
-    cfg.Retry.BackoffFactor = 2.0             // Exponential backoff factor 2x
-    cfg.Retry.EnableJitter = true             // Enable jitter
-    cfg.Retry.MaxRetryDelay = 30 * time.Second // Per-delay ceiling
+	cfg := httpc.DefaultConfig()
+	cfg.Retry.MaxRetries = 3                   // Max 3 retries
+	cfg.Retry.Delay = 1 * time.Second          // Initial delay 1s
+	cfg.Retry.BackoffFactor = 2.0              // Exponential backoff factor 2x
+	cfg.Retry.EnableJitter = true              // Enable jitter
+	cfg.Retry.MaxRetryDelay = 30 * time.Second // Per-delay ceiling
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("success: %d", result.StatusCode())
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("success: %d", result.StatusCode())
 }
 ```
 
@@ -155,34 +155,34 @@ The `Retry-After` header takes **higher** priority than the exponential backoff 
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Retry.MaxRetries = 3
-    // Exponential backoff delays: 1s -> 2s -> 4s
-    // But if the server returns Retry-After: 5, the first retry delay becomes 5s
-    // (not exceeding the 60s safety cap)
+	cfg := httpc.DefaultConfig()
+	cfg.Retry.MaxRetries = 3
+	// Exponential backoff delays: 1s -> 2s -> 4s
+	// But if the server returns Retry-After: 5, the first retry delay becomes 5s
+	// (not exceeding the 60s safety cap)
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    start := time.Now()
-    _, err = client.Get("https://api.example.com/rate-limited")
-    elapsed := time.Since(start)
+	start := time.Now()
+	_, err = client.Get("https://api.example.com/rate-limited")
+	elapsed := time.Since(start)
 
-    if err != nil {
-        log.Printf("retries exhausted, total time %v: %v", elapsed, err)
-    } else {
-        log.Printf("success, total time %v", elapsed)
-    }
+	if err != nil {
+		log.Printf("retries exhausted, total time %v: %v", elapsed, err)
+	} else {
+		log.Printf("success, total time %v", elapsed)
+	}
 }
 ```
 
@@ -313,38 +313,38 @@ In addition to client-level configuration, you can override the retry count for 
 package main
 
 import (
-    "context"
-    "log"
-    "time"
+	"context"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // Retry a single request 5 times (overriding the client default of 3)
-    _, err = client.Get("https://api.example.com/data", httpc.WithMaxRetries(5))
-    if err != nil {
-        log.Printf("request failed: %v", err)
-    }
+	// Retry a single request 5 times (overriding the client default of 3)
+	_, err = client.Get("https://api.example.com/data", httpc.WithMaxRetries(5))
+	if err != nil {
+		log.Printf("request failed: %v", err)
+	}
 
-    // Disable retries (e.g. for a non-idempotent POST)
-    _, err = client.Post("https://api.example.com/create",
-        httpc.WithJSON(map[string]string{"name": "test"}),
-        httpc.WithMaxRetries(0),
-    )
+	// Disable retries (e.g. for a non-idempotent POST)
+	_, err = client.Post("https://api.example.com/create",
+		httpc.WithJSON(map[string]string{"name": "test"}),
+		httpc.WithMaxRetries(0),
+	)
 
-    // Combined with a context timeout
-    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancel()
-    _, err = client.Request(ctx, "GET", "https://api.example.com/data",
-        httpc.WithMaxRetries(3),
-    )
+	// Combined with a context timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, err = client.Request(ctx, "GET", "https://api.example.com/data",
+		httpc.WithMaxRetries(3),
+	)
 }
 ```
 
@@ -381,37 +381,37 @@ The first request uses the first proxy and does not count as a retry. To try all
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-        "http://proxy4:8080",
-        "http://proxy5:8080",
-    }
-    cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
-    cfg.Connection.ProxyRotateOnStatus = []int{403} // 403 triggers proxy rotation
-    cfg.Retry.MaxRetries = 3 // Auto-raised to 4 (= 5-1)
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+		"http://proxy4:8080",
+		"http://proxy5:8080",
+	}
+	cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
+	cfg.Connection.ProxyRotateOnStatus = []int{403} // 403 triggers proxy rotation
+	cfg.Retry.MaxRetries = 3                        // Auto-raised to 4 (= 5-1)
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // Every 403 auto-rotates the proxy and retries; up to 5 proxies tried
-    result, err := client.Get("https://protected-site.example.com/data")
-    if err != nil {
-        log.Printf("all proxies failed: %v", err)
-        return
-    }
-    log.Printf("success (one proxy worked): %d", result.StatusCode())
+	// Every 403 auto-rotates the proxy and retries; up to 5 proxies tried
+	result, err := client.Get("https://protected-site.example.com/data")
+	if err != nil {
+		log.Printf("all proxies failed: %v", err)
+		return
+	}
+	log.Printf("success (one proxy worked): %d", result.StatusCode())
 }
 ```
 
@@ -481,48 +481,48 @@ This means:
 package main
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // Scenario 1: manual cancel — will not retry
-    ctx1, cancel1 := context.WithCancel(context.Background())
-    go func() {
-        time.Sleep(100 * time.Millisecond)
-        cancel1() // Manually cancel after 100ms
-    }()
+	// Scenario 1: manual cancel — will not retry
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel1() // Manually cancel after 100ms
+	}()
 
-    _, err = client.Request(ctx1, "GET", "https://api.example.com/slow")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeContextCanceled {
-            fmt.Println("request manually canceled; no retry triggered")
-        }
-    }
+	_, err = client.Request(ctx1, "GET", "https://api.example.com/slow")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeContextCanceled {
+			fmt.Println("request manually canceled; no retry triggered")
+		}
+	}
 
-    // Scenario 2: context timeout — will not retry
-    ctx2, cancel2 := context.WithTimeout(context.Background(), 50*time.Millisecond)
-    defer cancel2()
+	// Scenario 2: context timeout — will not retry
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel2()
 
-    _, err = client.Request(ctx2, "GET", "https://api.example.com/slow")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeTimeout {
-            fmt.Println("request terminated by context timeout; no retry triggered")
-        }
-    }
+	_, err = client.Request(ctx2, "GET", "https://api.example.com/slow")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeTimeout {
+			fmt.Println("request terminated by context timeout; no retry triggered")
+		}
+	}
 }
 ```
 
@@ -534,30 +534,30 @@ After retries are exhausted, the error is returned via `ClientError` with `Type`
 package main
 
 import (
-    "errors"
-    "log"
+	"errors"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    _, err = client.Get("https://api.example.com/flaky")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            log.Printf("failure type: %s, attempts: %d",
-                clientErr.Code(), clientErr.Attempts)
-            if clientErr.Attempts > 1 {
-                log.Println("(auto-retried but still failed)")
-            }
-        }
-    }
+	_, err = client.Get("https://api.example.com/flaky")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			log.Printf("failure type: %s, attempts: %d",
+				clientErr.Code(), clientErr.Attempts)
+			if clientErr.Attempts > 1 {
+				log.Println("(auto-retried but still failed)")
+			}
+		}
+	}
 }
 ```
 
