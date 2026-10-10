@@ -1,8 +1,8 @@
 ---
 sidebar_label: "大文件处理指南"
-title: "大文件处理 - CyberGo JSON | 指南"
-description: "CyberGo JSON 大文件处理：ForeachFile、ForeachFileChunked、ForeachFileWithPath 与 ForeachFileNested 流式方法，配合 NDJSONProcessor 与 StreamIterator 控制内存，适用日志分析与 ETL。"
-sidebar_position: 1
+title: "大文件处理 - CyberGo JSON | 流式解析与内存控制"
+description: "CyberGo JSON 提供大文件分级处理方案，支持 ForeachFile 系列结构化迭代、StreamIterator 流式解码与 StreamJSONL 逐行消费，配合 ChunkSize、MaxMemory 等配置，帮助开发者让内存占用与文件体积解耦、稳定处理日志与 ETL 数据。"
+sidebar_position: 10
 ---
 
 # 大文件处理
@@ -14,7 +14,7 @@ sidebar_position: 1
 :::
 
 ::: warning
-`ForeachFile` 和 `ForeachFileChunked` 在迭代前会将整个文件加载到内存中。"分块"行为仅影响内存中数据的迭代方式，不影响文件的读取方式。对于真正需要控制内存的超大文件处理，请使用 `NDJSONProcessor` 配合 JSONL 格式，或使用 `StreamIterator`。
+`ForeachFile` 和 `ForeachFileChunked` 在迭代前会将整个文件加载到内存中。"分块"行为仅影响内存中数据的迭代方式，不影响文件的读取方式。对于真正需要控制内存的超大文件处理，请使用 `StreamJSONL` 家族配合 JSONL 格式，或使用 `StreamIterator`。
 :::
 
 ## 备选方案
@@ -23,7 +23,7 @@ sidebar_position: 1
 |------|----------|----------|
 | **Processor.ForeachFile** | 结构化迭代处理文件 | 加载完整文件，逐条迭代 |
 | **Processor.ForeachFileChunked** | 批量分块迭代处理 | 加载完整文件，分块迭代 |
-| **NDJSONProcessor** | 逐行处理 JSONL 文件 | 内存可控，真正的流式处理 |
+| **StreamJSONL 家族** | 逐行处理 JSONL 文件 | 内存可控，真正的流式处理 |
 | **StreamIterator** | 逐元素流式解码大数组 | 内存与数组长度无关 |
 
 ### ForeachFile 系列四变体
@@ -57,6 +57,10 @@ type Config struct {
     SampleSize      int   // 采样数量（默认 1000）
 }
 ```
+
+::: tip 两个「ChunkSize」不要混淆
+`Config.ChunkSize`（`int64`，单位字节）是大文件读取的分块尺寸；而 [`ForeachFileChunked`](#批量处理) 的参数 `chunkSize`（`int`）是**每批元素数量**，二者互不影响——`ForeachFileChunked` 的分批粒度只由它自己的参数决定（≤0 时按 100 处理）。
+:::
 
 ### 基本使用
 
@@ -125,6 +129,7 @@ err := processor.ForeachFileChunked("large-data.json", 1000, func(chunk []*json.
 ```go
 // 方式 3：带中断控制（查找特定数据后停止）
 // 返回 item.Break() 停止迭代，返回 nil 继续迭代
+targetID := 42 // 要查找的目标记录 ID（业务变量）
 err := processor.ForeachFile("large-data.json", func(key any, item *json.IterableValue) error {
     id := item.GetInt("id")
 
@@ -485,10 +490,13 @@ defer processor.Close()
 | 文件大小 | 推荐方案 | 示例 |
 |---------|---------|------|
 | < 10MB | 直接加载 | `json.ParseAny` + `Get` |
-| 10-100MB | Processor.ForeachFile | 逐条处理 |
-| 100MB-1GB | Processor.ForeachFileChunked | 分块迭代处理 |
-| > 1GB | NDJSONProcessor / JSONL 格式 | 真正的流式处理，内存可控 |
+| 10-100MB | Processor.ForeachFile | 整载内存后逐条迭代 |
+| 100MB-1GB | StreamIterator / StreamObjectIterator（或转为 JSONL 分行） | 恒定内存，边读边解码 |
+| > 1GB | JSONL 格式 + StreamJSONL 家族 | 真正的流式处理，内存可控 |
 
+::: warning 不要对超过 100MB 的文件用 ForeachFile*
+`ForeachFile*` 系列（含 `ForeachFileChunked`）在迭代前会把**整个文件读入内存**（见本页开头的警告），且受 `MaxJSONSize` 读取上限约束：默认 100MB（`DefaultMaxJSONSize`），`Config.Validate` 会把更大的值钳回 100MB——因此超过 100MB 的文件会直接收到 `ErrSizeLimit`，无法通过调大配置让 `ForeachFile*` 处理。这类输入请改用 `StreamIterator` / `StreamObjectIterator`（恒定内存；传入 `cfg.MaxJSONSize > 0` 时按该值对整个流封顶，可高于 100MB，超限输入需在构造时显式调大）或将数据转为 JSONL 后走 `StreamJSONL` 家族。
+:::
 
 ## API 参考
 
@@ -628,7 +636,7 @@ err := json.ForeachFileNested("config.json", func(key any, item *json.IterableVa
 
 ## 相关
 
-- [NDJSON 处理器](./jsonl) — JSONL/NDJSON 流式处理
+- [JSONL 流式处理](./jsonl) — StreamJSONL 家族与 JSONLWriter 实战
 - [JSONLWriter](./jsonl#jsonlwriter) — JSONL 写入器
 
 ## 下一步

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo JSON | 5 分钟上手指南"
-description: "CyberGo JSON 快速入门：安装配置、路径查询 GetString/GetInt、Set/Delete 修改、Marshal/Unmarshal 编解码、迭代遍历与错误判别，附常见第一小时问题解答，5 分钟上手 Go JSON 处理。"
-sidebar_position: 1
+description: "CyberGo JSON 快速入门指南：安装配置、路径查询 GetString/GetInt、Set/Delete 修改、Marshal/Unmarshal 编解码、迭代遍历与错误判别，并附第一小时常见问题解答，帮助开发者 5 分钟内上手 Go JSON 处理。"
+sidebar_position: 10
 ---
 
 # 快速开始
@@ -14,6 +14,8 @@ sidebar_position: 1
 ```bash
 go get github.com/cybergodev/json
 ```
+
+**要求 Go 1.25+**（源码 go.mod 声明 `go 1.25.0`；示例用到泛型与 `slices` 标准库）。
 
 ## 基本用法
 
@@ -193,6 +195,14 @@ fmt.Println(json.Valid([]byte(invalid))) // false
 ### 格式化
 
 ```go
+// 本节片段依赖以下 import（其余小节的片段同理，按需补齐）
+import (
+    "bytes"
+    "fmt"
+
+    "github.com/cybergodev/json"
+)
+
 compact := `{"name":"test","nested":{"key":"value"}}`
 
 // 格式化输出
@@ -295,7 +305,7 @@ if err != nil {
 ```
 
 ::: tip
-`Foreach` 系列共 12 个函数：需要**提前终止**时用 `ForeachWithError`（回调返回 `error`，返回 `item.Break()` 即中断）；深度嵌套遍历、携带当前路径、文件迭代等变体速查见[速查表](./cheatsheet#迭代函数族)。
+`Foreach` 系列共 12 个函数（含 4 个文件变体 `ForeachFile*`，完整清单见[速查表·迭代函数族](./cheatsheet#迭代函数族)）：需要**提前终止**时用 `ForeachWithError`（回调返回 `error`，返回 `item.Break()` 即中断）；深度嵌套遍历、携带当前路径等变体见速查表同节。
 :::
 
 ## 错误处理

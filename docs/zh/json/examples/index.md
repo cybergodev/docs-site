@@ -1,8 +1,8 @@
 ---
 sidebar_label: "基础示例"
-title: "使用示例 - CyberGo JSON | 实战代码示例"
+title: "使用示例 - CyberGo JSON | 典型场景代码合集"
 description: "CyberGo JSON 实战示例：路径查询与修改、结构体 Marshal/Unmarshal、泛型 API、Processor 复用与缓存预热、迭代遍历与并行处理、JSONL 流式处理、Hook 钩子、Schema 验证与错误处理，含可运行 Go 代码。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 使用示例
@@ -692,6 +692,8 @@ func main() {
 
 ### 流式处理大型 JSON
 
+`ForeachFile` 提供带回调的逐条遍历，但迭代前会把**整个文件载入内存**（含 `ForeachFileChunked` 在内的全系均如此）；需要恒定内存处理超大文件时，请改用 `StreamIterator` / `StreamObjectIterator` 或 JSONL 流式家族（见[大文件处理](../streaming/large-files)）。
+
 ```go
 package main
 
@@ -708,7 +710,7 @@ func main() {
 	}
 	defer processor.Close()
 
-	// 使用 ForeachFile 流式处理大文件
+	// 用 ForeachFile 逐条遍历文件数组（整个文件会先载入内存；恒定内存场景用 StreamIterator）
 	count := 0
 	err = processor.ForeachFile("large-array.json", func(key any, item *json.IterableValue) error {
 		count++
@@ -974,6 +976,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/cybergodev/json"
 )
 
@@ -990,11 +994,13 @@ func main() {
 
 	// 模拟不可信输入
 	// 注意：实际攻击可能尝试更大的 payload（如 100MB+）
-	// 安全配置会阻止超过 MaxJSONSize 的输入
+	// 两条恶意输入都是合法 JSON 结构，分别真实触发体积与深度限制
 	untrustedInputs := []string{
 		`{"data": "normal"}`,
-		`{"huge": "` + string(make([]byte, 2*1024*1024)) + `"}`,                                      // 2MB 输入（超过 1MB 限制）
-		`{"nested": {{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}`, // 过深嵌套
+		// 合法 JSON 字符串，但总体积约 2MB，超过 1MB 的 MaxJSONSize → ErrSizeLimit
+		`{"huge": "` + strings.Repeat("a", 2*1024*1024) + `"}`,
+		// 合法 JSON，但嵌套 50 层，超过 SecurityConfig 的 MaxNestingDepthSecurity（30）→ ErrDepthLimit
+		strings.Repeat(`{"a":`, 50) + "1" + strings.Repeat(`}`, 50),
 	}
 
 	for i, input := range untrustedInputs {
@@ -1010,6 +1016,11 @@ func main() {
 		}
 	}
 }
+
+// 输出：
+// Input 0 processed successfully
+// Input 1 error: JSON validate_json_input failed: size 2097164 exceeds limit 1048576 (caused by: size limit exceeded)
+// Input 2 error: JSON validate_nesting_depth failed: nesting depth 31 exceeds maximum 30 (caused by: depth limit exceeded)
 ```
 
 ## 辅助函数

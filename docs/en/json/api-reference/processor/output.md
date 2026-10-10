@@ -1,8 +1,8 @@
 ---
-sidebar_label: "Encode & Output"
-title: "Processor Encoding Output - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor output methods: Encode, EncodePretty, EncodeWithConfig, EncodeBatch/EncodeFields batching, and Compact/Indent/HTMLEscape formatting."
-sidebar_position: 5
+sidebar_label: "Encoding Output"
+title: "Processor Encoding Output - CyberGo JSON | Marshal/Encode"
+description: "CyberGo JSON Processor output: Encode/EncodePretty, EncodeBatch/EncodeFields, Marshal/Unmarshal stdlib drop-ins and Compact/Indent/HTMLEscape formatting."
+sidebar_position: 50
 ---
 
 # Output Methods
@@ -13,15 +13,9 @@ The Processor provides a variety of JSON encoding output methods.
 
 ### Encode
 
-<Badge type="danger" text="Deprecated" />
+Signature: `func (p *Processor) Encode(value any, cfg ...Config) (string, error)`
 
-Signature: `func (p *Processor) Encode(value any, config ...Config) (string, error)`
-
-Encodes any value into a JSON string.
-
-::: warning Deprecated
-`Processor.Encode` delegates directly to [`EncodeWithConfig`](#encodewithconfig). Use `EncodeWithConfig` instead. `Encode` will be removed in a future major version.
-:::
+Encodes any value into a JSON string. This is the **canonical** string-returning encoder (`Marshal` is the `[]byte`-returning `encoding/json` drop-in); the optional trailing `Config` selects the encoding behavior for this call, and the processor's default configuration applies when omitted.
 
 ```go
 result, err := p.Encode(map[string]any{"name": "CyberGo"})
@@ -33,7 +27,7 @@ fmt.Println(result)
 
 ### EncodePretty
 
-Signature: `func (p *Processor) EncodePretty(value any, config ...Config) (string, error)`
+Signature: `func (p *Processor) EncodePretty(value any, cfg ...Config) (string, error)`
 
 Encodes any value into a pretty-printed JSON string.
 
@@ -48,9 +42,15 @@ if err != nil {
 
 ### EncodeWithConfig
 
+<Badge type="danger" text="Deprecated" />
+
 Signature: `func (p *Processor) EncodeWithConfig(value any, cfg ...Config) (string, error)`
 
 Encodes a value into a JSON string with the given configuration.
+
+::: warning Deprecated
+`Processor.EncodeWithConfig` is functionally identical to [`Encode`](#encode) (both delegate to the same implementation) — the name predates `Encode` accepting an optional trailing `Config`. Use `p.Encode(value, cfg)` in new code, or [`Marshal`](#marshal) when a `[]byte` output is acceptable. `EncodeWithConfig` will not be removed within v1.
+:::
 
 **Parameters**
 
@@ -60,18 +60,8 @@ Encodes a value into a JSON string with the given configuration.
 | `cfg` | `Config` | No | Encoding configuration (optional) |
 
 ```go
-// With PrettyConfig
+// Fully equivalent to p.Encode(data, json.PrettyConfig())
 result, err := p.EncodeWithConfig(data, json.PrettyConfig())
-
-// With SecurityConfig
-result, err = p.EncodeWithConfig(data, json.SecurityConfig())
-
-// With a custom configuration
-cfg := json.DefaultConfig()
-cfg.Pretty = true
-cfg.SortKeys = true
-cfg.EscapeHTML = true
-result, err = p.EncodeWithConfig(data, cfg)
 ```
 
 ### EncodeBatch
@@ -125,7 +115,7 @@ Signature: `func (p *Processor) Marshal(value any, cfg ...Config) ([]byte, error
 Encodes a Go value into a JSON byte slice. 100% compatible with `encoding/json.Marshal`.
 
 :::tip Output is always HTML-escaped
-Consistent with `encoding/json.Marshal`, this method's output is **always** HTML-escaped — even a passed `cfg` setting `EscapeHTML=false` is overridden on this path. When the caller must control escaping, use [`EncodeWithConfig`](#encodewithconfig).
+Consistent with `encoding/json.Marshal`, this method's output is **always** HTML-escaped — even a passed `cfg` setting `EscapeHTML=false` is overridden on this path. When the caller must control escaping, use [`Encode`](#encode).
 :::
 
 ```go
@@ -193,7 +183,7 @@ Print, PrintE, PrintPretty, and PrintPrettyE have been removed from the library 
 
 ```go
 // Compact output
-s, err := p.EncodeWithConfig(data)
+s, err := p.Encode(data)
 if err != nil {
     log.Fatal(err)
 }
@@ -242,11 +232,22 @@ Signature: `func (p *Processor) Compact(jsonStr string, cfg ...Config) (string, 
 Compacts a JSON string, removing all whitespace.
 
 ::: warning Naming difference between the method and the package-level function
-The "string in, string out" compaction has **different names** at the two entry points: package-level `json.CompactString(s)` versus the method `p.Compact(s)`. The package-level `json.Compact(dst, src)` is the `encoding/json.Compact`-compatible **Buffer form**; the corresponding method is [`CompactBuffer`](#compactbuffer), not this one.
+The "string in, string out" compaction has **different names** at the two entry points: package-level `json.CompactString(s)` versus the method's preferred name `p.Compact(s)` (an equivalent [`CompactString`](#compactstring) method is also provided). The package-level `json.Compact(dst, src)` is the `encoding/json.Compact`-compatible **Buffer form**; the corresponding method is [`CompactBuffer`](#compactbuffer), not this one.
 :::
 
 ```go
 compact, err := p.Compact(`{"name": "CyberGo"}`)
+// Output: {"name":"CyberGo"}
+```
+
+### CompactString
+
+Signature: `func (p *Processor) CompactString(jsonStr string, cfg ...Config) (string, error)`
+
+Compacts JSON in a string-in, string-out form; behaves identically to [`Compact`](#compact) and is the Processor mirror of the package-level [`json.CompactString`](../functions/output#compactstring) — use it when you want the same name as the package-level function.
+
+```go
+compact, err := p.CompactString(`{"name": "CyberGo"}`)
 // Output: {"name":"CyberGo"}
 ```
 

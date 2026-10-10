@@ -1,8 +1,8 @@
 ---
 sidebar_label: "泛型操作"
-title: "泛型操作 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 泛型 API：GetTyped[T] 泛型获取、Result[T] 结果类型、AccessResult 动态访问，利用 Go 1.18+ 泛型实现编译时类型安全检查，支持基本类型与自定义结构体、默认值回退及单元素数组自动解包。"
-sidebar_position: 10
+title: "泛型操作 - CyberGo JSON | GetTyped 泛型获取"
+description: "CyberGo JSON 泛型操作基于 Go 1.18+ 泛型实现编译期类型安全：GetTyped[T] 泛型获取支持默认值回退与单元素数组解包，StreamLinesInto[T] 流式逐行解析 JSONL，配合 Result[T] 与 AccessResult 结果类型，帮助开发者写出类型安全的 JSON 读取代码。"
+sidebar_position: 110
 ---
 
 # 泛型操作

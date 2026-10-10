@@ -1,8 +1,8 @@
 ---
 sidebar_label: "File I/O"
-title: "Processor File I/O Methods - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor file methods: LoadFromFile/LoadFromReader loading, SaveToFile/MarshalToFile saving, UnmarshalFromFile reading, SaveToWriter streaming."
-sidebar_position: 9
+title: "Processor File I/O - CyberGo JSON | LoadFromFile/SaveToFile"
+description: "CyberGo JSON Processor file I/O: LoadFromFile/SaveToFile, LoadFromReader/SaveToWriter and MarshalToFile, with path checks and MaxJSONSize bounds."
+sidebar_position: 90
 ---
 
 # File Operation Methods

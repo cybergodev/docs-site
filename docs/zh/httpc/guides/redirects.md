@@ -1,8 +1,8 @@
 ---
 title: "重定向 - CyberGo HTTPC | 跟随控制与安全白名单"
-description: "HTTPC 重定向指南：默认自动跟随与 10 次上限、WithFollowRedirects 与 WithMaxRedirects 请求级控制、RedirectChain 链路追踪、301/302/303/307/308 方法语义、跨域凭据自动剥离与 RedirectWhitelist 域名白名单防开放重定向。"
+description: "HTTPC 重定向指南：自动跟随与 10 次上限、WithFollowRedirects/WithMaxRedirects 请求级控制、RedirectChain 链路追踪、301/302/303/307/308 方法语义、凭据剥离与 RedirectWhitelist 白名单防开放重定向。"
 sidebar_label: "重定向"
-sidebar_position: 4
+sidebar_position: 30
 ---
 
 # 重定向

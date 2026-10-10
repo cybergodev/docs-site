@@ -2,7 +2,7 @@
 sidebar_label: "Domain Client"
 title: "Domain Client - CyberGo HTTPC | NewDomain & Sessions"
 description: "HTTPC domain client API: NewDomain constructor, seven HTTP methods plus generic Request, URL auto-concatenation, and DomainClienter session management."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Domain Client
@@ -65,34 +65,44 @@ type DomainClienter interface {
 | `Download` | `(ctx, path string, cfg *DownloadConfig, opts ...RequestOption) (*DownloadResult, error)` | File download |
 | `Close` | `() error` | Close the client and release resources |
 
+The concrete type `*DomainClient` provides implementations for all of the above: `DomainClient.Get`, `DomainClient.Post`, `DomainClient.Put`, `DomainClient.Patch`, `DomainClient.Delete`, `DomainClient.Head`, `DomainClient.Options`, `DomainClient.Request`, `DomainClient.Download`, and `DomainClient.Close` (the last two are detailed in their own sections below).
+
 #### URL Access Methods
 
-| Method | Return type | Description |
-|------|----------|------|
-| `URL()` | `string` | Base URL (the `baseURL` passed at construction) |
-| `Domain()` | `string` | Domain (hostname, without port) |
-| `Session()` | `*SessionManager` | Underlying session manager |
+| Method | Signature | Description |
+|------|------|------|
+| `URL` | `URL() string` | Base URL (the `baseURL` passed at construction) |
+| `Domain` | `Domain() string` | Domain (hostname, without port) |
+| `Session` | `Session() *SessionManager` | Underlying session manager |
+
+On the interface these are defined as `DomainClienter.URL`, `DomainClienter.Domain`, and `DomainClienter.Session`, implemented by `DomainClient.URL`, `DomainClient.Domain`, and `DomainClient.Session`.
+
+`URL()` / `Domain()` / `Session()` / `Close()` are all nil-receiver-safe: with a nil receiver they return `""`, `""`, `nil`, and `nil` respectively.
 
 #### Session Header Management
 
-| Method | Description |
-|------|------|
-| `SetHeader(key, value string) error` | Set a single session header (validates CRLF safety) |
-| `SetHeaders(headers map[string]string) error` | Set session headers in bulk |
-| `DeleteHeader(key string)` | Delete a single session header |
-| `ClearHeaders()` | Clear all session headers |
-| `GetHeaders() map[string]string` | Get a copy of the session headers |
+| Method | Signature | Description |
+|------|------|------|
+| `SetHeader` | `(key, value string) error` | Set a single session header (validates CRLF safety) |
+| `SetHeaders` | `(headers map[string]string) error` | Set session headers in bulk |
+| `DeleteHeader` | `(key string)` | Delete a single session header |
+| `ClearHeaders` | `()` | Clear all session headers |
+| `GetHeaders` | `() map[string]string` | Get a copy of the session headers |
+
+On the interface these are defined as `DomainClienter.SetHeader`, `DomainClienter.SetHeaders`, `DomainClienter.DeleteHeader`, `DomainClienter.ClearHeaders`, and `DomainClienter.GetHeaders`; the implementations delegate to the embedded `SessionManager` (see [Session Management](./session)).
 
 #### Session Cookie Management
 
-| Method | Description |
-|------|------|
-| `SetCookie(cookie *http.Cookie) error` | Set a single session cookie |
-| `SetCookies(cookies []*http.Cookie) error` | Set session cookies in bulk |
-| `DeleteCookie(name string)` | Delete a cookie by name |
-| `ClearCookies()` | Clear all cookies |
-| `GetCookies() []*http.Cookie` | Get a copy of all cookies |
-| `GetCookie(name string) *http.Cookie` | Get a copy of a cookie by name |
+| Method | Signature | Description |
+|------|------|------|
+| `SetCookie` | `(cookie *http.Cookie) error` | Set a single session cookie |
+| `SetCookies` | `(cookies []*http.Cookie) error` | Set session cookies in bulk |
+| `DeleteCookie` | `(name string)` | Delete a cookie by name |
+| `ClearCookies` | `()` | Clear all cookies |
+| `GetCookies` | `() []*http.Cookie` | Get a copy of all cookies |
+| `GetCookie` | `(name string) *http.Cookie` | Get a copy of a cookie by name |
+
+The corresponding interface definitions are `DomainClienter.SetCookie`, `DomainClienter.SetCookies`, `DomainClienter.DeleteCookie`, `DomainClienter.ClearCookies`, `DomainClienter.GetCookies`, and `DomainClienter.GetCookie`, likewise delegating to the `SessionManager`.
 
 ## NewDomain
 

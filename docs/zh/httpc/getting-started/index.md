@@ -2,7 +2,7 @@
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo HTTPC | 5 分钟上手"
 description: "HTTPC 快速开始指南：go get 安装与项目初始化、GET/POST 请求发送与响应处理、五种配置预设选型、JSON 解析与类型绑定、Bearer Token 认证与 ClientError 错误分类处理，五分钟上手安全 HTTP 客户端库。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 快速开始
@@ -24,7 +24,7 @@ go get github.com/cybergodev/httpc
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC 要求 Go 1.25 及以上版本；除 `golang.org/x/sys` 外没有其他第三方依赖，无需任何配置即可发起第一个请求。
+HTTPC 要求 Go 1.26 及以上版本；除 `golang.org/x/sys` 外没有其他第三方依赖，无需任何配置即可发起第一个请求。
 
 ## 基本请求
 
@@ -376,4 +376,6 @@ client, _ = httpc.New(httpc.TestingConfig())
 
 - **[实战教程](../guides/tutorial)** - 30 分钟构建 GitHub API 客户端
 - **[速查表](./cheatsheet)** - 常用操作快速参考
+- **[基础示例](../examples/basic-usage)** - 可运行的最小示例集
+- **[API 总览](../api-reference/)** - 全部公开 API 索引
 - **[安全](../security/)** - 安全最佳实践与生产检查清单

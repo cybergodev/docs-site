@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Tutorial"
 title: "Hands-On Tutorial - CyberGo HTTPC | GitHub API"
-description: "Hands-on tutorial building a GitHub API client: package-level functions, config presets, request options, NewDomain client, middleware, and error handling."
-sidebar_position: 1
+description: "Thirty-minute tutorial building a GitHub API client with HTTPC package functions, WithQuery/WithJSON options, NewDomain, middleware, ClientError, concurrency."
+sidebar_position: 10
 ---
 
 # Hands-On Tutorial: Build a GitHub API Client
 
-The examples below use the GitHub API to demonstrate HTTPC's core features. Each example is self-contained and can be read on its own.
+The examples below use the GitHub API to demonstrate HTTPC's core features. Reading them in order takes about 30 minutes; each section can also be dipped into on its own when needed. Consider skimming the [Core Concepts](../getting-started/concepts) page first for the big picture before diving in.
 
 **You will learn:**
 

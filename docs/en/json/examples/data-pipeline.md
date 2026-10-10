@@ -1,8 +1,8 @@
 ---
 sidebar_label: "JSONL Data Pipeline"
-title: "JSONL Data Pipeline - CyberGo JSON | Streaming & Batch"
+title: "JSONL Data Pipeline - CyberGo JSON | ETL & Streaming"
 description: "CyberGo JSON JSONL data pipelines: StreamLinesInto streaming, ToJSONL/ToJSONLString batch format conversion, NDJSONProcessor and ForeachFile for large files."
-sidebar_position: 5
+sidebar_position: 40
 ---
 
 # JSONL Data Pipelines
@@ -250,9 +250,9 @@ func main() {
 - **Throughput**: versus serial `StreamJSONL`, the gain depends on per-line cost — light extraction-only callbacks improve little, while heavy enrichment/validation callbacks improve markedly.
 :::
 
-## Streaming Traversal of Large JSON Array Files
+## Traversing Large JSON Array Files
 
-For a **large JSON array in a single file** (not JSONL), stream element by element with `ForeachFile` — no need to load the entire file into memory.
+For a **large JSON array in a single file** (not JSONL), `ForeachFile` provides callback-based element-by-element traversal. Note its memory semantics: the **entire file is loaded into memory first** (`ForeachFileChunked`'s "chunking" only changes how the in-memory data is grouped for iteration — it loads fully too); for constant-memory processing of very large arrays use `StreamIterator` (see [Large File Handling](../streaming/large-files#streaming-and-parallel-iterators)), or convert the data to JSONL and use the `StreamJSONL` family.
 
 ```go
 package main
@@ -285,7 +285,8 @@ func main() {
 		panic(err)
 	}
 
-	// Stream over each element of the array with ForeachFile
+	// Traverse the array element by element with ForeachFile
+	// (the whole file is loaded into memory first — suits datasets that fit in RAM)
 	p, err := json.New()
 	if err != nil {
 		panic(err)
@@ -310,9 +311,9 @@ func main() {
 // Output: Total USD: 320
 ```
 
-:::tip Note
-- **JSONL files** (one independent JSON object per line): use `StreamLinesInto[T]`, `NDJSONProcessor`, or `StreamJSONLFile`.
-- **Large JSON array files** (a single JSON array with many elements): use `ForeachFile` to stream, avoiding a full in-memory load.
+:::tip
+- **JSONL files** (one independent JSON object per line): use `StreamJSONLFile` or `StreamLinesInto[T]` (the legacy `NDJSONProcessor` is deprecated).
+- **Large JSON array files** (a single JSON array with many elements): use `StreamIterator` for constant-memory element-by-element decoding; `ForeachFile` also traverses item by item, but loads the entire file into memory first — it suits small-to-medium arrays.
 :::
 
 ## Next Steps

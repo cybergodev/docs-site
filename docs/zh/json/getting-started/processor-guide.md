@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Processor 入门"
-title: "Processor 入门 - CyberGo JSON | 何时使用处理器"
-description: "CyberGo JSON Processor 入门：包函数与 Processor 选型对比、PreParse 预解析与 CompilePath 路径预编译、多 goroutine 共享、生命周期管理、监控统计与全局处理器配置，掌握高性能 JSON 处理。"
-sidebar_position: 3
+title: "Processor 入门 - CyberGo JSON | 何时使用 Processor"
+description: "CyberGo JSON Processor 入门指南：对比包函数与 Processor 的选型差异，讲解 PreParse 预解析、CompilePath 路径预编译、多 goroutine 共享、生命周期管理与监控统计，帮助开发者在高频 JSON 查询场景获得更高性能。"
+sidebar_position: 40
 ---
 
 # Processor 入门
@@ -332,7 +332,7 @@ defer json.ShutdownGlobalProcessor()
 
 ## 选择决策树
 
-```
+```text
 需要操作 JSON？
 ├── 偶尔使用、脚本工具
 │   └── → 用包函数 json.GetString / json.Set / json.Marshal

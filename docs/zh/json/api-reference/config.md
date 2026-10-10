@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Config"
-title: "Config 配置 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Config 配置：DefaultConfig 默认、SecurityConfig 安全、PrettyConfig 格式化与缓存、大小限制，涵盖编码选项、JSONL 参数、Validate 自动修正与 MergeMode 合并策略，自定义 Go 应用 JSON 行为。"
-sidebar_position: 4
+title: "Config 配置 - CyberGo JSON | 配置项与预设方法"
+description: "CyberGo JSON Config 配置详解：缓存、并发、大小与安全限制、处理选项、编码选项、JSONL 流式参数与 MergeMode 合并策略一应俱全，提供 DefaultConfig/SecurityConfig/PrettyConfig 三种预设及 Clone/Validate/AddHook 等方法，帮助开发者精准定制并校验 Processor 行为。"
+sidebar_position: 40
 ---
 
 # Config
@@ -35,21 +35,23 @@ type Config struct {
     // ===== 并发 =====
     MaxConcurrency    int `json:"max_concurrency"`    // 最大并发数
     ParallelThreshold int `json:"parallel_threshold"` // 并行处理阈值
+    MaxOperationsPerSecond int `json:"max_operations_per_second"` // 受控操作速率上限（0 = 不限）
 
     // ===== 处理选项 =====
-    EnableValidation bool `json:"enable_validation"` // 启用验证
-    StrictMode       bool `json:"strict_mode"`       // 严格模式
+    EnableValidation bool `json:"enable_validation"` // 启用验证（已废弃，不被读取）
+    StrictMode       bool `json:"strict_mode"`       // 严格模式（已废弃，不被读取）
     CreatePaths      bool `json:"create_paths"`      // 自动创建路径
     CleanupNulls     bool `json:"cleanup_nulls"`     // 清理 null 值
     CompactArrays    bool `json:"compact_arrays"`    // 压缩数组
     ContinueOnError  bool `json:"continue_on_error"` // 批量操作出错时继续
 
     // ===== 输入/输出选项 =====
-    AllowComments    bool `json:"allow_comments"`     // 允许注释
+    AllowComments    bool `json:"allow_comments"`     // 允许注释（已废弃，不被读取）
     PreserveNumbers  bool `json:"preserve_numbers"`   // 保留数字精度
-    ValidateInput    bool `json:"validate_input"`     // 验证输入
+    ValidateInput    bool `json:"validate_input"`     // 验证输入（已废弃，不被读取）
     ValidateFilePath bool `json:"validate_file_path"` // 验证文件路径
     SkipValidation   bool `json:"skip_validation"`    // 跳过验证（受信任输入）
+    DetectDuplicateKeys bool `json:"detect_duplicate_keys"` // 检测并拒绝对象中的重复键
 
     // ===== 编码选项 =====
     Pretty          bool            `json:"pretty"`           // 格式化输出
@@ -75,11 +77,12 @@ type Config struct {
     EnableHealthCheck bool `json:"enable_health_check"` // 启用健康检查
 
     // ===== 大文件处理 =====
-    ChunkSize       int64 `json:"chunk_size"`       // 分块大小
+    ChunkSize       int64 `json:"chunk_size"`       // 分块大小（已废弃，不被读取）
     MaxMemory       int64 `json:"max_memory"`       // 最大内存使用
     BufferSize      int   `json:"buffer_size"`      // 缓冲区大小
-    SamplingEnabled bool  `json:"sampling_enabled"` // 启用采样
-    SampleSize      int   `json:"sample_size"`      // 采样数量
+    SaveFileMode    os.FileMode `json:"save_file_mode,omitempty"` // 新建文件的权限位（0 回退 0644）
+    SamplingEnabled bool  `json:"sampling_enabled"` // 启用采样（已废弃，不被读取）
+    SampleSize      int   `json:"sample_size"`      // 采样数量（已废弃，不被读取）
 
     // ===== JSONL 配置 =====
     JSONLBufferSize    int   `json:"jsonl_buffer_size"`     // JSONL 缓冲区大小
@@ -93,6 +96,9 @@ type Config struct {
 
     // ===== 合并选项 =====
     MergeMode MergeMode `json:"merge_mode"` // 合并策略
+
+    // ===== 文件访问安全 =====
+    AllowedFileDirs []string `json:"allowed_file_dirs,omitempty"` // 文件操作目录白名单（空 = 仅内置拦截）
 
     // ===== 扩展点（无 JSON tag，不参与序列化） =====
     CustomEncoder               CustomEncoder                // 自定义编码器
@@ -110,16 +116,17 @@ type Config struct {
 :::
 
 ::: warning 扩展字段挂接状态
-`CustomEncoder`、`CustomTypeEncoders`、`CustomValidators`、`CustomPathParser` 四个接口字段当前版本已声明但**尚未在编码/操作流水线中挂接**，设置后不会产生效果，是为未来版本预留的接口（`CustomPathParser` 已参与处理器缓存键的"是否设置"判定，但路径解析本身仍走内置解析器）。当前可用的替代方式：
+`CustomEncoder`、`CustomTypeEncoders`、`CustomValidators` 三个接口字段当前版本已声明但**尚未在编码/操作流水线中挂接**，设置后不会产生效果，是为未来版本预留的接口。`CustomPathParser` **已挂接**：设置后所有路径类操作都会调用自定义解析器替代内置解析器（见[接口定义](./interfaces#pathparser)）。当前可用的扩展方式：
 
 - 编码行为微调 → `CustomEscapes`（**已生效**，见下方编码选项）或实现 `json.Marshaler`/`encoding.TextMarshaler`（见[自定义编码器](../extensions/custom-encoder)）
 - 操作拦截 → `Hooks` + `AddHook`（**已生效**，见 [Hook 钩子系统](../extensions/hooks)）
+- 自定义路径语法 → `CustomPathParser`（**已生效**，见[接口定义](./interfaces#pathparser)）
 - 输入验证 → `ValidateSchema`（见[Schema 校验](./schema)）
 :::
 
 ## Config 字段总表
 
-`Config` 共 66 个导出字段，按用途分组如下。默认值取自 [`DefaultConfig()`](#defaultconfig)，字段有效范围与自动修正规则见[钳制范围速查](#validatewithwarnings)。
+以下按功能分组列出 `Config` 的全部导出字段。默认值取自 [`DefaultConfig()`](#defaultconfig)，字段有效范围与自动修正规则见[钳制范围速查](#validatewithwarnings)。
 
 ### 缓存
 
@@ -155,13 +162,14 @@ type Config struct {
 | ------------------- | ----- | ------ | ---------------------------------------- |
 | `MaxConcurrency`    | `int` | 50     | 最大并发数                               |
 | `ParallelThreshold` | `int` | 10     | 并行处理阈值（低于该元素数退化为顺序处理） |
+| `MaxOperationsPerSecond` | `int` | 0（不限速） | 受控操作（Get/Set/Delete 等）的速率上限：距上一次操作不足 `1/MaxOperationsPerSecond` 秒的新操作被拒绝并返回限速错误。`Validate` 钳制到 [0, 1000000] |
 
 ### 处理选项
 
 | 字段               | 类型   | 默认值 | 说明                           |
 | ------------------ | ------ | ------ | ------------------------------ |
-| `EnableValidation` | `bool` | true   | 启用输入验证                   |
-| `StrictMode`       | `bool` | false  | 严格模式（更保守的解析与拦截） |
+| `EnableValidation` | `bool` | true   | 已废弃：不被任何操作读取（校验默认始终执行，除非 `SkipValidation`），仅参与配置缓存键 |
+| `StrictMode`       | `bool` | false  | 已废弃：不被任何解析器/操作读取，设置后不改变行为，仅参与配置缓存键 |
 | `CreatePaths`      | `bool` | true   | Set 时自动创建缺失的中间路径   |
 | `CleanupNulls`     | `bool` | false  | 清理 null 值                   |
 | `CompactArrays`    | `bool` | false  | 压缩数组                       |
@@ -171,11 +179,12 @@ type Config struct {
 
 | 字段                | 类型   | 默认值 | 说明                                                     |
 | ------------------- | ------ | ------ | -------------------------------------------------------- |
-| `AllowComments`     | `bool` | false  | 允许注释（预留字段，当前不改变行为）                     |
+| `AllowComments`     | `bool` | false  | 已废弃：不被任何解析器读取（JSONL 注释行由 `JSONLSkipComments` 单独控制），仅参与配置缓存键 |
 | `PreserveNumbers`   | `bool` | false  | 解码保留数字字面量（`1.10` 不会变成 `1.1`），编码原样回写 |
-| `ValidateInput`     | `bool` | true   | 校验输入 JSON                                            |
+| `ValidateInput`     | `bool` | true   | 已废弃：不被任何操作读取，设置后不改变行为，仅参与配置缓存键 |
 | `ValidateFilePath`  | `bool` | true   | 验证文件路径                                             |
 | `SkipValidation`    | `bool` | false  | 跳过非必要校验（仅用于可信输入）                         |
+| `DetectDuplicateKeys` | `bool` | false  | 拒绝任何对象含重复键的输入，返回包装 `ErrDuplicateKey` 的错误。默认 `false` 与 `encoding/json` 一致（重复键后者胜出）；显式开启后即使 `SkipValidation` 也生效。键按原始字节比较（转义写法不同视为不同键） |
 
 ### 编码选项
 
@@ -210,11 +219,12 @@ type Config struct {
 
 | 字段              | 类型    | 默认值 | 说明                     |
 | ----------------- | ------- | ------ | ------------------------ |
-| `ChunkSize`       | `int64` | 1MB    | 大文件分块大小           |
+| `ChunkSize`       | `int64` | 1MB    | 已废弃：不被任何代码路径读取（流式读取用 `BufferSize`），仅参与配置缓存键 |
 | `MaxMemory`       | `int64` | 100MB  | 大文件处理最大内存       |
 | `BufferSize`      | `int`   | 64KB   | 大文件读取缓冲区大小     |
-| `SamplingEnabled` | `bool`  | true   | 启用采样（预留字段，当前不改变行为） |
-| `SampleSize`      | `int`   | 1000   | 采样数量                 |
+| `SaveFileMode`    | `os.FileMode` | 0（回退 0644） | `SaveToFile` / `MarshalToFile` **新建文件**的权限位；已有文件保持原权限（与 `os.WriteFile` 一致）。敏感数据建议 `0600`；`Validate` 将其掩码为 ≤ 0777 的权限位 |
+| `SamplingEnabled` | `bool`  | true   | 已废弃：不被读取（安全扫描是否采样由 `FullSecurityScan` 与 `MaxSecurityValidationSize` 决定），仅参与配置缓存键 |
+| `SampleSize`      | `int`   | 1000   | 已废弃：不被任何代码路径读取，仅参与配置缓存键 |
 
 ### JSONL 配置
 
@@ -235,6 +245,18 @@ type Config struct {
 | ----------- | ---------- | ---------- | ---------------------------------------------------------- |
 | `MergeMode` | `MergeMode` | MergeUnion | `MergeJSON` / `MergeMany` 的合并策略（见[合并模式](#合并模式)） |
 
+### 文件访问安全
+
+| 字段              | 类型       | 默认值 | 说明 |
+| ----------------- | ---------- | ------ | ---- |
+| `AllowedFileDirs` | `[]string` | 空     | 路径类文件 API 的**目录白名单**：非空时，传给 `LoadFromFile`、`UnmarshalFromFile`、`SaveToFile`、`MarshalToFile`、`ForeachFile*` 家族与 `StreamJSONLFile` 的每个路径（经 symlink 解析后）必须位于其中一个目录内，否则返回 `ErrSecurityViolation`。该白名单在内置平台拦截名单**之外**额外生效。条目须为绝对路径（`Validate` 会把相对路径解析为绝对路径并给出警告，空条目被丢弃）；匹配按清理后路径的前缀进行。per-call cfg 中非空的列表覆盖处理器自身列表；已废弃的 `NDJSONProcessor` 入口不感知该白名单 |
+
+```go
+cfg := json.DefaultConfig()
+// 仅允许访问 /var/lib/myapp/data 下的文件
+cfg.AllowedFileDirs = []string{"/var/lib/myapp/data"}
+```
+
 ### 扩展点
 
 以下字段无 JSON tag、不参与序列化；挂接状态见上方警告。
@@ -247,7 +269,7 @@ type Config struct {
 | `AdditionalDangerousPatterns` | `[]DangerousPattern`               | nil    | 在内置模式之外追加的危险模式                     |
 | `DisableDefaultPatterns`      | `bool`                             | false  | 禁用内置警告级模式（关键模式始终强制，不可禁用） |
 | `Hooks`                       | `[]Hook`                           | nil    | 操作前后钩子（已生效）                           |
-| `CustomPathParser`            | `PathParser`                       | nil    | 自定义路径解析器（预留）                         |
+| `CustomPathParser`            | `PathParser`                       | nil    | 自定义路径解析器（已生效，替代内置路径解析器）   |
 
 ## 编码选项详解
 
@@ -258,7 +280,7 @@ type Config struct {
 ```go
 cfg := json.DefaultConfig()
 cfg.SortKeys = true
-s, _ := json.EncodeWithConfig(map[string]any{"b": 2, "a": 1}, cfg)
+s, _ := json.Encode(map[string]any{"b": 2, "a": 1}, cfg)
 // 输出：{"a":1,"b":2} — 输出键序稳定，便于比对与测试
 ```
 
@@ -267,7 +289,7 @@ s, _ := json.EncodeWithConfig(map[string]any{"b": 2, "a": 1}, cfg)
 ```go
 cfg := json.DefaultConfig()
 cfg.FloatPrecision = 2 // -1（默认）= 自动精度
-s, _ := json.EncodeWithConfig(3.14159265, cfg)
+s, _ := json.Encode(3.14159265, cfg)
 // 输出：3.14
 ```
 
@@ -280,7 +302,7 @@ cfg := json.DefaultConfig()
 cfg.CustomEscapes = map[rune]string{
     '<': "&lt;",
 }
-s, _ := json.EncodeWithConfig("<a>", cfg)
+s, _ := json.Encode("<a>", cfg)
 // 输出："&lt;a>"
 ```
 
@@ -304,18 +326,22 @@ s, _ := json.EncodeWithConfig("<a>", cfg)
 |------|------|----------|------|
 | `DisallowUnknown` | `false` | `NewDecoder(r, cfg)` | `true` 时等价于对返回的 Decoder 调用 `DisallowUnknownFields()`，解码遇到未知字段报错 |
 | `ValidateUTF8` | `true` | 预留 | 当前不改变行为（见下方说明） |
-| `AllowComments` | `false` | 预留 | 当前不改变行为（见下方说明） |
+| `AllowComments` | `false` | 已废弃 | 不被任何解析器读取（见下方说明） |
 | `EnableMetrics` | `false` | `New(cfg)` 构造时 | `true` 时创建指标采集器，`GetStats` 的操作/错误计数与 `GetHealthStatus` 的分项检查才有数据 |
-| `EnableHealthCheck` | `false` | 预留 | 当前不改变行为（见下方说明） |
-| `SamplingEnabled` | `true` | 预留 | 当前不改变行为（见下方说明） |
+| `EnableHealthCheck` | `false` | 已废弃 | 不被读取（见下方说明） |
+| `SamplingEnabled` | `true` | 已废弃 | 不被读取（见下方说明） |
 
-::: warning 预留字段说明
-`AllowComments`、`ValidateUTF8`、`EnableHealthCheck`、`SamplingEnabled` 四个字段已声明并参与配置比较与哈希（因此会区分不同 cfg 对应的处理器缓存），但当前版本**未在对应流水线中读取**，设置后不改变行为：
+::: warning 预留/已废弃字段说明
+以下字段已声明并参与配置比较与哈希（因此会区分不同 cfg 对应的处理器缓存），但**未被对应流水线读取**，设置后不改变行为（除 `ValidateUTF8` 为预留字段外，其余在源码中均已标注 Deprecated；全部在 v1 生命周期内保留）：
 
+- `EnableValidation`：校验默认始终执行，除非 `SkipValidation` 为 `true`——本开关不被任何操作读取。
+- `StrictMode`：不被任何解析器或操作读取。
 - `AllowComments`：不会让解析接受 `//` 或 `#` 注释；JSONL 文件的注释行由 `JSONLSkipComments` 单独控制。
-- `ValidateUTF8`：输入侧对无效 UTF-8 的拒绝是安全校验的无条件行为，输出侧按标准库语义处理，均不受此开关影响。
+- `ValidateInput`：不被任何操作读取。
 - `EnableHealthCheck`：健康检查通过 `GetHealthStatus` 随取随查，是否有数据取决于 `EnableMetrics`（见[生命周期与统计](./processor/lifecycle#健康检查)）。
-- `SamplingEnabled`：大输入的安全扫描是否采样由 `FullSecurityScan` 与 `MaxSecurityValidationSize` 决定。
+- `ChunkSize`：不被任何代码路径读取，流式读取实际使用 `BufferSize`。
+- `SamplingEnabled` / `SampleSize`：大输入的安全扫描是否采样由 `FullSecurityScan` 与 `MaxSecurityValidationSize` 决定，与这两个字段无关。
+- `ValidateUTF8`：输入侧对无效 UTF-8 的拒绝是安全校验的无条件行为，输出侧按标准库语义处理，均不受此开关影响。
 :::
 
 ## 配置预设
@@ -347,6 +373,7 @@ defer processor.Close()
 | MaxArrayElements | 100000 | 数组最大元素数 |
 | MaxConcurrency | 50 | 并发数 |
 | ParallelThreshold | 10 | 低于该元素数时退化为顺序处理 |
+| MaxOperationsPerSecond | 0 | 受控操作速率上限（0 = 不限速） |
 | MaxBatchSize | 2000 | 批量操作数 |
 | CacheTTL | 5 分钟 | 缓存过期 |
 | MaxCacheSize | 128 | 最大缓存条目数 |
@@ -356,8 +383,9 @@ defer processor.Close()
 | EnableValidation | true | 启用验证 |
 | StrictMode | false | 非严格模式 |
 | FullSecurityScan | false | 采样安全扫描（非全量） |
-| ValidateInput | true | 验证输入 |
+| ValidateInput | true | 验证输入（已废弃，不被读取） |
 | ValidateFilePath | true | 验证文件路径 |
+| DetectDuplicateKeys | false | 不检测重复键（重复键后者胜出） |
 | CreatePaths | true | 自动创建路径 |
 | Pretty | false | 不格式化输出 |
 | EscapeHTML | true | HTML 转义 |
@@ -368,11 +396,12 @@ defer processor.Close()
 | FloatPrecision | -1 | 自动精度 |
 | MaxDepth | 100 | 编码深度 |
 | Indent | "  " | 默认缩进 |
-| ChunkSize | 1MB | 分块大小 |
+| ChunkSize | 1MB | 分块大小（已废弃，不被读取） |
 | MaxMemory | 100MB | 最大内存 |
 | BufferSize | 64KB | 缓冲区大小 |
-| SamplingEnabled | true | 启用采样 |
-| SampleSize | 1000 | 采样数量 |
+| SaveFileMode | 0 | 新建文件权限位（0 回退 0644） |
+| SamplingEnabled | true | 启用采样（已废弃，不被读取） |
+| SampleSize | 1000 | 采样数量（已废弃，不被读取） |
 | JSONLBufferSize | 64KB | JSONL 缓冲区大小 |
 | JSONLMaxLineSize | 1MB | JSONL 最大行大小 |
 | JSONLSkipEmpty | true | 跳过空行 |
@@ -428,7 +457,7 @@ defer processor.Close()
 返回格式化输出配置。
 
 ```go
-result, err := json.EncodeWithConfig(data, json.PrettyConfig())
+result, err := json.Encode(data, json.PrettyConfig())
 ```
 
 ## 配置方法
@@ -482,7 +511,7 @@ for _, w := range warnings {
 | `MaxJSONSize` | 1MB – 100MB | int64 |
 | `MaxPathDepth` | 10 – 200 | |
 | `MaxNestingDepthSecurity` | 10 – 200 | |
-| `MaxConcurrency` | 1 – 200 | |
+| `MaxConcurrency` | 1 – 200 | ≤0 重置为默认 50（而非下限 1） |
 | `ParallelThreshold` | 1 – 50 | |
 | `MaxObjectKeys` | 100 – 100000 | |
 | `MaxArrayElements` | 100 – 100000 | |
@@ -501,6 +530,9 @@ for _, w := range warnings {
 | `JSONLWorkers` | 1 – 64 | |
 | `JSONLChunkSize` | 100 – 10000 | |
 | `JSONLMaxMemory` | 10MB – 1GB | int64 |
+| `MaxOperationsPerSecond` | [0, 1000000]，负数重置为 0（禁用限速） | 速率上限 |
+| `SaveFileMode` | 掩码为权限位（≤ 0777） | 含 `os.ModeDir` 等多余位时被掩码并告警 |
+| `AllowedFileDirs` | 条目规范化 | 相对路径解析为绝对路径（并告警）、空条目/无法解析的条目被丢弃（并告警） |
 
 ### ConfigWarning 类型
 
@@ -550,13 +582,19 @@ cfg.AddHook(json.LoggingHook(slog.Default()))
 
 ### AddValidator
 
+<Badge type="danger" text="已废弃" />
+
 签名：`func (c *Config) AddValidator(validator Validator)`
 
-添加自定义验证器。
+添加自定义验证器（追加到 `CustomValidators`）。
+
+::: warning 已废弃
+`AddValidator` 添加的验证器**不会被任何公开操作执行**（`CustomValidators` 未在操作流水线中挂接）。操作前的自定义检查请改用 `AddHook` + Before 钩子（如 [`ValidationHook`](../extensions/hooks)）。本方法在 v1 生命周期内保留、不会移除。
+:::
 
 ```go
 cfg := json.DefaultConfig()
-cfg.AddValidator(&MyValidator{})
+cfg.AddValidator(&MyValidator{}) // 已废弃：验证器不会被执行
 ```
 
 ### AddDangerousPattern
@@ -603,7 +641,7 @@ defer processor.Close()
 
 ```go
 // 格式化 JSON
-result, err := json.EncodeWithConfig(data, json.PrettyConfig())
+result, err := json.Encode(data, json.PrettyConfig())
 ```
 
 ### 自定义配置
@@ -737,7 +775,7 @@ result, err := json.MergeJSON(
 | MaxJSONSize | 10-100MB | 根据服务器内存调整 |
 | MaxNestingDepthSecurity | 30-50 | 防止深度嵌套攻击 |
 | MaxPathDepth | 30-50 | 限制路径复杂度 |
-| EnableValidation | true | 始终启用 |
+| SkipValidation | false | 保持输入校验开启（默认即开启，勿关闭；EnableValidation 已废弃、不被读取） |
 | FullSecurityScan | true（不可信输入） | 完整安全扫描 |
 
 ## 相关

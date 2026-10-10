@@ -1,8 +1,8 @@
 ---
 sidebar_label: "解析验证"
-title: "Processor 解析与验证 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 解析方法：Valid 验证并返回失败原因、ValidBytes 快速判定、Parse 解析、ParseAny 任意类型、PreParse 预解析优化与 GetFromParsed 快速查询，支持配置化解析。"
-sidebar_position: 6
+title: "Processor 解析与验证 - CyberGo JSON | Parse 与 Valid"
+description: "CyberGo JSON 的 Processor 提供 Valid/ValidBytes 验证与 Parse/ParseAny 解析，错误携带具体失败原因；PreParse 预解析配合 GetFromParsed 加速重复查询，支持 PreserveNumbers 高精度数字，适合严格校验外部输入并反复查询同一文档的读取场景。"
+sidebar_position: 60
 ---
 
 # 解析与验证方法

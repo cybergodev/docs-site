@@ -1,8 +1,8 @@
 ---
 sidebar_label: "安全概述"
 title: "安全概述 - CyberGo HTTPC | 安全特性总览"
-description: "HTTPC 安全特性总览：纵深防御分层地图、默认开启与需手动开启的安全行为对照表、SSRF 私有 IP 阻止与 CIDR 豁免、TLS 版本与密码套件控制、证书锁定、CRLF 注入防护、Cookie 安全验证、解压炸弹防护、URL 凭据脱敏与安全警告机制。"
-sidebar_position: 1
+description: "HTTPC 安全特性总览：纵深防御地图、默认与手动开启行为对照表、SSRF 私有 IP 阻止与 CIDR 豁免、TLS 版本与密码套件、证书锁定、CRLF 注入防护、Cookie 安全验证、解压炸弹防护、URL 凭据脱敏与安全警告。"
+sidebar_position: 10
 ---
 
 # 安全概述
@@ -29,7 +29,7 @@ HTTPC 遵循「默认安全」（Secure by Default）原则：所有关键安全
 | 响应体大小限制 | `SecurityConfig.MaxResponseBodySize` | 10MB | — |
 | 请求体大小限制 | `SecurityConfig.MaxRequestBodySize` | 0（不限制） | 需显式设置 |
 | 解压炸弹防护 | `SecurityConfig.MaxDecompressedBodySize` | 100MB | — |
-| 响应头大小限制 | `ConnectionConfig.MaxResponseHeaderBytes` | 0（Go 默认 10MB） | — |
+| 响应头大小限制 | `ConnectionConfig.MaxResponseHeaderBytes` | 0（Go 默认 1MB） | — |
 | 重定向白名单 | `SecurityConfig.RedirectWhitelist` | `nil`（全部允许） | — |
 | 重定向次数限制 | `RequestDefaults.MaxRedirects` | 10 | `WithMaxRedirects` |
 | 是否跟随重定向 | `RequestDefaults.FollowRedirects` | `true` | `WithFollowRedirects` |
@@ -320,10 +320,10 @@ cfg.Security.RedirectWhitelist = []string{
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Connection.MaxResponseHeaderBytes = 1 * 1024 * 1024 // 1MB 响应头上限
+cfg.Connection.MaxResponseHeaderBytes = 512 * 1024 // 512KB，比默认更严格
 ```
 
-默认 0 表示使用 Go 标准库默认值（10MB）。高安全场景建议收紧至 1MB。
+默认 0 表示使用 Go 标准库默认值（`net/http.DefaultMaxHeaderBytes`，1MB），无需显式配置即有防护。高安全场景可在此基础上进一步收紧（如 512KB）。
 
 ## 安全警告机制
 

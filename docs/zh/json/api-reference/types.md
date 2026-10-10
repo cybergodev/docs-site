@@ -1,8 +1,8 @@
 ---
 sidebar_label: "类型定义"
-title: "类型定义 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 核心类型：Result[T] 泛型、AccessResult 访问、BatchOperation、BatchResult、Schema、Stats 与 IterableValue，兼有 CompiledPath 预编译路径，构成完整类型系统。"
-sidebar_position: 5
+title: "类型定义 - CyberGo JSON | 核心类型一览"
+description: "CyberGo JSON 类型定义一览：Result[T] 泛型结果、AccessResult 动态访问、CompiledPath 预编译路径、BatchOperation/BatchResult 批量操作、Schema/ValidationError 校验类型、Stats/HealthStatus 运行状态与 IterableValue 迭代元素，以及 SyntaxError 等编码错误类型与 Encoder/Decoder 流式编解码器，帮助开发者查阅完整类型系统。"
+sidebar_position: 60
 ---
 
 # 类型定义
@@ -430,18 +430,22 @@ schema := &json.Schema{
 ```
 
 ::: warning 两条硬性限制
-- `Type` 仅支持 `object`/`array`/`string`/`number`/`boolean`/`null` 六种取值——JSON Schema 的 `integer` **不受支持**（整数也会被解析为 `float64`，请写 `"number"`）。
-- `MinLength`/`MaxLength`/`Minimum`/`Maximum`/`MinItems`/`MaxItems`/`ExclusiveMinimum`/`ExclusiveMaximum` 通过结构体字面量赋值**不会生效**，必须经 `NewSchemaWithConfig` 的指针字段启用。详见 [Schema 校验](./schema#schema-的创建方式)。
+- `Type` 支持 `object`/`array`/`string`/`number`/`integer`/`boolean`/`null` 七种取值；`integer` 按 JSON Schema 语义接受数学上为整数的值（`1`、`1.0` 均通过，`1.5` 报 `expected type integer` 错误），详见 [Schema 校验](./schema#schema-约束字段总览)。
+- `MinLength`/`MaxLength`/`Minimum`/`Maximum`/`MinItems`/`MaxItems`/`ExclusiveMinimum`/`ExclusiveMaximum` 通过结构体字面量赋值**不会生效**，必须经 `NewSchema`（弃用别名 `NewSchemaWithConfig`）的指针字段启用。详见 [Schema 校验](./schema#schema-的创建方式)。
 :::
 
-#### 使用 NewSchemaWithConfig
+#### 使用 NewSchema
+
+签名：`func NewSchema(cfg SchemaConfig) *Schema`——创建已配置 Schema 的**规范构造函数**，长度/区间类指针约束经此启用。
 
 ```go
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
-schema := json.NewSchemaWithConfig(cfg)
+schema := json.NewSchema(cfg)
 ```
+
+旧名 `NewSchemaWithConfig(cfg)` 与 `NewSchema` 完全等价，**已废弃**（v1 生命周期内保留）；新代码请使用 `NewSchema(cfg)`。
 
 #### 使用 DefaultSchema
 
@@ -502,7 +506,7 @@ type SchemaConfig struct {
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
-schema := json.NewSchemaWithConfig(cfg)
+schema := json.NewSchema(cfg)
 ```
 
 ### 使用示例
@@ -516,7 +520,7 @@ import (
 )
 
 func main() {
-	// 长度/区间约束经 NewSchemaWithConfig 的指针字段启用
+	// 长度/区间约束经 NewSchema 的指针字段启用
 	minLen, maxLen := 1, 100
 	minAge, maxAge := 0.0, 150.0
 
@@ -526,7 +530,7 @@ func main() {
 	nameCfg.MaxLength = &maxLen
 
 	ageCfg := json.DefaultSchemaConfig()
-	ageCfg.Type = "number" // 数值一律用 "number"（不支持 "integer"）
+	ageCfg.Type = "number" // "number" 接受一切数字；仅限整数可用 "integer"
 	ageCfg.Minimum = &minAge
 	ageCfg.Maximum = &maxAge
 
@@ -534,9 +538,9 @@ func main() {
 		Type:     "object",
 		Required: []string{"name", "email"},
 		Properties: map[string]*json.Schema{
-			"name":  json.NewSchemaWithConfig(nameCfg),
+			"name":  json.NewSchema(nameCfg),
 			"email": {Type: "string", Format: "email"},
-			"age":   json.NewSchemaWithConfig(ageCfg),
+			"age":   json.NewSchema(ageCfg),
 		},
 	}
 
@@ -774,7 +778,7 @@ type Stats struct {
 | `CacheTTL` | `time.Duration` | 当前缓存条目 TTL |
 | `CacheEnabled` | `bool` | 缓存是否启用 |
 | `IsClosed` | `bool` | 处理器是否已 `Close` |
-| `MemoryEfficiency` | `float64` | 内存效率指标（0–1） |
+| `MemoryEfficiency` | `float64` | 内存效率指标（缓存命中次数 / 每 MB 缓存内存，可大于 1） |
 | `OperationCount` | `int64` | 处理器累计操作数 |
 | `ErrorCount` | `int64` | 处理器累计错误数 |
 

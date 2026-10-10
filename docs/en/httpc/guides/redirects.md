@@ -1,8 +1,8 @@
 ---
 title: "Redirects - CyberGo HTTPC | Following & Whitelist"
-description: "HTTPC redirect guide: following control, RedirectChain tracking, 301-308 method semantics, credential stripping, and RedirectWhitelist open-redirect defense."
+description: "HTTPC redirect guide: following control, RedirectChain tracking, 301-308 method semantics, credential stripping, RedirectWhitelist open-redirect defense."
 sidebar_label: "Redirects"
-sidebar_position: 4
+sidebar_position: 30
 ---
 
 # Redirects

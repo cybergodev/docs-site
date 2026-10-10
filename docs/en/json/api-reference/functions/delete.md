@@ -1,8 +1,8 @@
 ---
-title: "Delete Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON delete functions: Delete removes by path and DeleteClean cleans empty values/arrays/parents, with wildcard, slice, JSON Pointer paths."
+title: "Delete Functions - CyberGo JSON | Delete Usage & Examples"
+description: "CyberGo JSON is a Go library for path deletion, offering Delete removal and DeleteClean cascade cleanup to help developers drop fields and empty parents."
 sidebar_label: "Delete Operations"
-sidebar_position: 4
+sidebar_position: 40
 ---
 
 # Delete Functions

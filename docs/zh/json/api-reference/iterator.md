@@ -1,8 +1,8 @@
 ---
 sidebar_label: "迭代器与流式迭代器"
-title: "迭代器与 IterableValue - CyberGo JSON | API 参考"
-description: "CyberGo JSON 迭代器类型：Iterator 顺序遍历、IterableValue 数据访问、StreamIterator/StreamObjectIterator 流式、BatchIterator 批量与 ParallelIterator 并行迭代器构造与方法。"
-sidebar_position: 9
+title: "迭代器与 IterableValue - CyberGo JSON | 流式遍历与并行迭代"
+description: "CyberGo JSON 迭代器类型覆盖顺序、流式、批量与并行四种遍历：Iterator 基础迭代、StreamIterator 流式读取、BatchIterator 分批回调与 ParallelIterator 并行 Map/Filter，IterableValue 提供类型化取值与 Break 控制，帮助开发者高效遍历数组、对象与大文件。"
+sidebar_position: 100
 ---
 
 # 迭代器类型
@@ -402,7 +402,7 @@ StreamIterator 提供内存高效的流式迭代，适用于大型 JSON 数组�
 
 签名：`func NewStreamIterator(reader io.Reader, cfg ...Config) *StreamIterator`
 
-创建流式迭代器。通过 `Config.BufferSize` 设置缓冲区大小（默认 32KB，`BufferSize <= 0` 时回落到 32KB）；传入 cfg 时 `MaxJSONSize` 会对**整个流的总字节数**生效，超出即报错。
+创建流式迭代器。缓冲区取 `Config.BufferSize`（不传 cfg 时为 `DefaultConfig` 的 64KB；传入 cfg 且 `BufferSize <= 0` 时回落到 32KB）；`MaxJSONSize` 始终对**整个流的总字节数**生效（不传 cfg 时上限为 `DefaultMaxJSONSize` = 100MB），超出即报错。
 
 ```go
 file, _ := os.Open("large-array.json")
@@ -447,7 +447,7 @@ StreamObjectIterator 提供内存高效的流式迭代，适用于大型 JSON �
 
 签名：`func NewStreamObjectIterator(reader io.Reader, cfg ...Config) *StreamObjectIterator`
 
-创建流式对象迭代器。`Config.BufferSize`（默认 32KB）与 `MaxJSONSize`（流总字节数上限）的语义同 `NewStreamIterator`。
+创建流式对象迭代器。`Config.BufferSize` 与 `MaxJSONSize`（流总字节数上限）的语义同 `NewStreamIterator`。
 
 ```go
 file, _ := os.Open("large-object.json")
@@ -463,7 +463,7 @@ if err := it.Err(); err != nil {
 ```
 
 ::: tip 仅接受顶层对象
-首个 token 不是 `{` 时 `Next()` 直接返回 false 结束（不报错）；键非字符串同样静默结束。读取时按流中**出现顺序**产出键值对（不做排序）。
+首个 token 不是 `{` 时 `Next()` 返回 false 且 `Err()` 报「expects a JSON object」错误；键非字符串同样以错误结束（不再静默）。读取时按流中**出现顺序**产出键值对（不做排序）。
 :::
 
 ### 方法
@@ -485,7 +485,7 @@ BatchIterator 用于高效的批量处理大型数组，减少单元素处理开
 
 签名：`func NewBatchIterator(data []any, cfg ...Config) *BatchIterator`
 
-创建批量迭代器。通过 `Config.MaxBatchSize` 设置批量大小（未传 cfg 或 `MaxBatchSize <= 0` 时默认每批 100 个元素）。
+创建批量迭代器。通过 `Config.MaxBatchSize` 设置批量大小（不传 cfg 时为 `DefaultConfig` 的 2000；传入 cfg 且 `MaxBatchSize <= 0` 时回落到每批 100 个元素）。
 
 ::: tip 批次切分方式
 `NextBatch` 返回的是底层数组切片的**视图**（`data[current:end]`），不复制数据；末批可能不足 batchSize，修改视图元素会影响原数组。
@@ -527,7 +527,7 @@ ParallelIterator 用于并行处理数组，利用多核 CPU 加速处理。
 
 签名：`func NewParallelIterator(data []any, cfg ...Config) *ParallelIterator`
 
-创建并行迭代器。通过 `Config.MaxConcurrency` 设置工作协程数（未传 cfg 或 `MaxConcurrency <= 0` 时默认 4；实际协程数不超过 `len(data)`，空数据时为 1）。
+创建并行迭代器。通过 `Config.MaxConcurrency` 设置工作协程数（不传 cfg 时为 `DefaultConfig` 的 50；传入 cfg 且 `MaxConcurrency <= 0` 时回落到 4；实际协程数不超过 `len(data)`，空数据时为 1）。
 
 ```go
 data := make([]any, 10000)
@@ -802,4 +802,4 @@ func main() {
 - [包级迭代函数](./functions/iterate) - Foreach/ForeachFile 等迭代函数
 - [Processor 迭代方法](./processor/iterate) - 对应的处理器迭代方法
 - [大文件处理](../streaming/large-files) - 大文件处理指南与 API 参考
-- [NDJSON 处理器](../streaming/jsonl) - JSONL 处理
+- [JSONL 流式处理](../streaming/jsonl) - JSONL/NDJSON 流式处理

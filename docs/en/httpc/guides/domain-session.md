@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Domain Client & Sessions"
 title: "Domain Client and Sessions - CyberGo HTTPC | Cookie Mgmt"
-description: "HTTPC domain client guide: NewDomain URL joining, path-traversal protection, SetHeader session headers, cookie auto-capture, and CookieSecurity validation."
-sidebar_position: 5
+description: "HTTPC domain client guide: NewDomain clients, URL joining with path-traversal protection, SetHeader headers, cookie auto-capture, CookieSecurity validation."
+sidebar_position: 40
 ---
 
 # Domain Client and Sessions

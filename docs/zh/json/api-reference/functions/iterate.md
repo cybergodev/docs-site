@@ -1,8 +1,8 @@
 ---
 sidebar_label: "迭代方法"
-title: "包级迭代函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 包级迭代函数：Foreach、ForeachWithPath、ForeachNested 递归、ForeachWithError 错误处理与 IterableValue 数据访问，含 ForeachFile 文件迭代。"
-sidebar_position: 10
+title: "包级迭代函数 - CyberGo JSON | Foreach 遍历用法"
+description: "CyberGo JSON 是包级迭代的 Go 库，ForeachWithPath 按路径遍历、ForeachWithError 错误可控、ForeachFile 迭代文件，对象按键名字典序遍历、顺序确定可复现，并支持嵌套递归与文件分块处理，帮助开发者按序遍历数组与对象。"
+sidebar_position: 100
 ---
 
 # 包级迭代函数
@@ -15,11 +15,18 @@ sidebar_position: 10
 
 ## Foreach
 
+<Badge type="danger" text="已废弃" />
+
 签名：`func Foreach(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 迭代 JSON 数组或对象。
 
+::: warning 已废弃
+`Foreach` 会**静默丢弃错误**：文档非法、处理器不可用或已关闭时，回调被**整体跳过**且不返回任何错误，调用方无从得知。请改用 [`ForeachWithError`](#foreachwitherror)——它把错误正常返回，且回调返回 `nil` 表示继续迭代。`Foreach` 在 v1 生命周期内保留、不会移除。
+:::
+
 ```go
+// 已废弃：错误被静默丢弃；新代码请用 ForeachWithError（见下）
 json.Foreach(data, func(key any, item *json.IterableValue) {
     fmt.Printf("Key: %v, Value: %v\n", key, item.GetData())
 })
@@ -46,11 +53,18 @@ err := json.ForeachWithPath(data, "items", func(key any, item *json.IterableValu
 
 ## ForeachNested
 
+<Badge type="danger" text="已废弃" />
+
 签名：`func ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 递归迭代所有嵌套层级。递归深度上限为 200（防止深嵌套结构导致栈溢出，超出的子树不再深入）。
 
+::: warning 已废弃
+`ForeachNested` 与 `Foreach` 一样**静默丢弃错误**：解析失败或处理器已关闭时回调被整体跳过，不返回任何错误。请改用 [`ForeachNestedWithError`](#foreachnestedwitherror)——它把错误正常返回，且回调返回 `nil` 表示继续迭代。`ForeachNested` 在 v1 生命周期内保留、不会移除。
+:::
+
 ```go
+// 已废弃：错误被静默丢弃；新代码请用 ForeachNestedWithError（见下）
 json.ForeachNested(data, func(key any, item *json.IterableValue) {
     fmt.Printf("键: %v, 值: %v\n", key, item.GetData())
 })
@@ -193,7 +207,7 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 
 ## 文件迭代函数
 
-包级提供直接从文件迭代的函数，适合处理大型 JSON 文件，与 [Processor 文件迭代方法](../processor/iterate#文件迭代方法) 对应。
+包级提供直接从文件迭代的函数，与 [Processor 文件迭代方法](../processor/iterate#文件迭代方法) 对应。注意：它们都会先把**整个文件加载进内存**再逐条/分批回调（受 `MaxJSONSize` 上限约束，默认 100MB），恒定内存的大文件处理请改用 [StreamIterator 等流式迭代器](../../streaming/large-files#流式迭代器与并行迭代器)。
 
 ### ForeachFile
 
@@ -265,8 +279,8 @@ err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.Iterab
 
 ::: tip 使用场景
 - 批量数据库插入
-- 分批 API 调用
-- 内存受限的大文件处理
+- 分批 API 调用（批量落库、分批回调）
+- 注意：分块不省内存——文件仍会整载后才分批回调；恒定内存的大文件处理请改用 [StreamIterator](../../streaming/large-files)
 :::
 
 ---
@@ -319,7 +333,7 @@ err := json.ForeachFileNested("config.json", func(key any, item *json.IterableVa
 |------|:--------:|:----:|:----:|----------|
 | `ForeachFile` | 无 | 否 | 否 | 简单文件遍历 |
 | `ForeachFileWithPath` | 有 | 否 | 否 | 定点遍历 |
-| `ForeachFileChunked` | 无 | 否 | **是** | 批量处理、内存受限 |
+| `ForeachFileChunked` | 无 | 否 | **是** | 批量落库、分批回调（文件仍整载内存） |
 | `ForeachFileNested` | 无 | **是** | 否 | 深度遍历所有节点 |
 
 ---

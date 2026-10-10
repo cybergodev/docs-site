@@ -2,7 +2,7 @@
 sidebar_label: "中间件链"
 title: "中间件链 - CyberGo HTTPC | 洋葱模型与链组合"
 description: "HTTPC 中间件链指南：洋葱模型与完整执行顺序语义、请求/响应双向处理、与请求选项及重试的关系、Recovery/Logging 等七个内置中间件、Chain 组合、自定义 MiddlewareFunc 与断路器短路示例，构建可观测请求管道。"
-sidebar_position: 9
+sidebar_position: 80
 ---
 
 # 中间件链

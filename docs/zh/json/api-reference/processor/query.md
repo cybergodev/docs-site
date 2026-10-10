@@ -1,8 +1,8 @@
 ---
 sidebar_label: "查询获取"
-title: "Processor 路径查询 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 路径查询：Get/GetString/GetInt 类型获取、GetMultiple 批量、SafeGet 返回 AccessResult 与 GetTyped[T] 泛型，支持 JSONPath。"
-sidebar_position: 2
+title: "Processor 路径查询 - CyberGo JSON | Get/GetString 方法用法"
+description: "CyberGo JSON 的 Processor 提供 Get/GetString/GetInt 等类型安全的路径查询方法，支持 GetMultiple 批量读取、SafeGet 安全访问与 GetTyped[T] 泛型获取，兼容 JSONPath 通配符、数组切片与默认值回退，可用 CompilePath 预编译加速重复查询，适合从深层嵌套 JSON 中精确取值的读取场景。"
+sidebar_position: 20
 ---
 
 # 路径查询方法
@@ -34,6 +34,20 @@ if err != nil {
 
 从指定路径获取字符串值。路径不存在、值为 null 或类型转换失败时返回空字符串或 `defaultValue`。
 
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...string` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `string` | 路径处的字符串值；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `""`） |
+
 ```go
 // 不提供默认值
 name := p.GetString(data, "user.name")
@@ -48,6 +62,20 @@ email := p.GetString(data, "user.email", "unknown@example.com")
 
 从指定路径获取整数值。路径不存在、值为 null 或类型转换失败时返回 0 或 `defaultValue`。
 
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...int` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `int` | 路径处的整数值（宽松转换）；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `0`） |
+
 ```go
 count := p.GetInt(data, "count")
 timeout := p.GetInt(data, "timeout", 30)
@@ -59,6 +87,20 @@ timeout := p.GetInt(data, "timeout", 30)
 
 从指定路径获取浮点数值。路径不存在、值为 null 或类型转换失败时返回 0 或 `defaultValue`。
 
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...float64` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `float64` | 路径处的浮点数值（整数会被提升为 `float64`）；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `0`） |
+
 ```go
 price := p.GetFloat(data, "price")
 rate := p.GetFloat(data, "rate", 0.5)
@@ -69,6 +111,20 @@ rate := p.GetFloat(data, "rate", 0.5)
 签名：`func (p *Processor) GetBool(jsonStr, path string, defaultValue ...bool) bool`
 
 从指定路径获取布尔值。路径不存在、值为 null 或类型转换失败时返回 false 或 `defaultValue`。
+
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...bool` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `bool` | 路径处的布尔值；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `false`） |
 
 ```go
 enabled := p.GetBool(data, "enabled")
@@ -151,6 +207,20 @@ enabled, err := result.AsBool()
 
 从指定路径获取数组。路径不存在、值为 null 或类型转换失败时返回 nil 或 `defaultValue`。
 
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...[]any` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `[]any` | 路径处的数组（元素保持解析后的原生类型）；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `nil`） |
+
 ```go
 items := p.GetArray(data, "items")
 tags := p.GetArray(data, "tags", []any{"default"})
@@ -161,6 +231,20 @@ tags := p.GetArray(data, "tags", []any{"default"})
 签名：`func (p *Processor) GetObject(jsonStr, path string, defaultValue ...map[string]any) map[string]any`
 
 从指定路径获取对象。路径不存在、值为 null 或类型转换失败时返回 nil 或 `defaultValue`。
+
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...map[string]any` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `map[string]any` | 路径处的对象；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `nil`） |
 
 ```go
 profile := p.GetObject(data, "user.profile")

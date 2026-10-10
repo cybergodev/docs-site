@@ -1,8 +1,8 @@
 ---
 sidebar_label: "请求与响应"
 title: "请求与响应 - CyberGo HTTPC | 请求选项与响应"
-description: "HTTPC 请求与响应完整指南：包级函数与客户端方法、WithJSON/WithForm/WithBody 请求体、WithQuery 查询参数、Cookie 与认证选项、Result 解析（Unmarshal、SaveToFile、String）、上下文控制、流式上传与响应自动解压及大小限制配置。"
-sidebar_position: 3
+description: "HTTPC 请求与响应指南：包级函数与客户端方法、WithJSON/WithForm/WithBody 请求体、WithQuery 查询参数、Cookie 与认证、Result 解析（Unmarshal/SaveToFile/String）、流式上传与自动解压及大小限制。"
+sidebar_position: 20
 ---
 
 # 请求与响应

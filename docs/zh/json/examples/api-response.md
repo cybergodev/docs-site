@@ -1,8 +1,8 @@
 ---
 sidebar_label: "API 响应解析"
 title: "API 响应解析 - CyberGo JSON | 分页与结构体反序列化"
-description: "CyberGo JSON 解析 HTTP API 响应：ParseAny 解析任意值、GetString/GetInt 提取状态与分页元信息、Get/GetArray 提取嵌套数据、路径切片处理分页数组、GetTyped 反序列化到结构体，并以 ForeachWithPath 逐元素遍历条目。"
-sidebar_position: 4
+description: "CyberGo JSON 解析 HTTP API 响应：ParseAny 解析任意值、GetString/GetInt 提取状态与分页元信息、Get/GetArray 提取嵌套数据、路径切片处理分页数组、GetTyped 反序列化到结构体，并以 ForeachWithPath 逐元素遍历条目，单次解析、高效提取。"
+sidebar_position: 30
 ---
 
 # API 响应解析

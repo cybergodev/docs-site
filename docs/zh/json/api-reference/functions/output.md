@@ -1,8 +1,8 @@
 ---
 sidebar_label: "编码输出"
-title: "编码输出函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 编码输出函数：Marshal/Unmarshal 序列化、Compact/Indent/HTMLEscape 格式化与 Encode/EncodePretty/Prettify 配置化编码，兼有 EncodeFields 字段过滤与流式编解码，100% 兼容标准库。"
-sidebar_position: 5
+title: "编码输出函数 - CyberGo JSON | Marshal 与 Encode 用法"
+description: "CyberGo JSON 是提供编码输出的 Go 库，Marshal/Unmarshal 兼容标准库、Encode/Compact/Indent 配置化格式化，另有 Prettify 美化、HTMLEscape 转义与批量编码函数，无配置调用可作标准库的直接替换，帮助开发者灵活序列化与美化 JSON 输出。"
+sidebar_position: 50
 ---
 
 # 编码输出函数
@@ -32,7 +32,7 @@ data, err = json.Marshal(value, json.PrettyConfig())
 ```
 
 ::: warning Marshal 输出始终 HTML 转义
-与 `encoding/json.Marshal` 一致，`Marshal` 的输出**总是**经过 HTML 转义——即使传入 `cfg.EscapeHTML = false`，该路径也会将其覆盖为开启。需要由调用方控制转义行为时，改用 [`EncodeWithConfig`](#encodewithconfig)。
+与 `encoding/json.Marshal` 一致，`Marshal` 的输出**总是**经过 HTML 转义——即使传入 `cfg.EscapeHTML = false`，该路径也会将其覆盖为开启。需要由调用方控制转义行为时，改用 [`Encode`](#encode)。
 :::
 
 ### Unmarshal
@@ -177,15 +177,9 @@ fmt.Println(pretty)
 
 ### Encode
 
-<Badge type="danger" text="已废弃" />
-
 签名：`func Encode(value any, cfg ...Config) (string, error)`
 
-将 Go 值编码为 JSON 字符串，支持可选配置参数。请使用 [`EncodeWithConfig`](#encodewithconfig)。
-
-::: warning 已废弃
-`Encode` 在功能上与 [`EncodeWithConfig`](#encodewithconfig) 完全相同（两者委托同一实现）。请改用 `EncodeWithConfig`，或在 `[]byte` 输出可接受时使用 [`Marshal`](#marshal)。`Encode` 将在未来的主版本中移除。
-:::
+将 Go 值编码为 JSON 字符串。这是返回 `string` 的**规范编码入口**（`Marshal` 是返回 `[]byte` 的 `encoding/json` drop-in）；可选的尾随 `Config` 控制本次调用的编码行为（`Pretty`、`EscapeHTML`、`SortKeys`、`FloatPrecision` 等），省略时应用默认配置。
 
 ```go
 result, err := json.Encode(user)
@@ -223,23 +217,23 @@ result, err := json.EncodePretty(user, json.PrettyConfig())
 
 ### EncodeWithConfig
 
+<Badge type="danger" text="已废弃" />
+
 签名：`func EncodeWithConfig(value any, cfg ...Config) (string, error)`
 
-使用指定配置将 Go 值编码为 JSON 字符串。适合需要精细控制编码行为的场景。
+使用指定配置将 Go 值编码为 JSON 字符串。
+
+::: warning 已废弃
+`EncodeWithConfig` 与 [`Encode`](#encode) 完全等价（两者委托同一实现）——该命名早于 `Encode` 接受可选尾随 `Config`。新代码请使用 `Encode(value, cfg)`；需要 `[]byte` 输出时使用 [`Marshal`](#marshal)。`EncodeWithConfig` 在 v1 生命周期内保留、不会移除。
+:::
 
 ```go
-// 使用漂亮打印配置
+// 与 json.Encode(data, json.PrettyConfig()) 完全等价
 result, err := json.EncodeWithConfig(data, json.PrettyConfig())
 if err != nil {
     panic(err)
 }
 fmt.Println(result)
-```
-
-**使用安全配置**
-
-```go
-result, err := json.EncodeWithConfig(data, json.SecurityConfig())
 ```
 
 ## 批量编码函数
@@ -248,7 +242,7 @@ result, err := json.EncodeWithConfig(data, json.SecurityConfig())
 
 签名：`func EncodeBatch(pairs map[string]any, cfg ...Config) (string, error)`
 
-将键值对批量编码为 JSON 对象字符串。等价于 `EncodeWithConfig(map[string]any(pairs), cfg)`，键按字典序输出（与 `encoding/json` 一致）。
+将键值对批量编码为 JSON 对象字符串。等价于 `Encode(map[string]any(pairs), cfg)`，键按字典序输出（与 `encoding/json` 一致）。
 
 ```go
 result, err := json.EncodeBatch(map[string]any{
@@ -289,7 +283,7 @@ fmt.Println(result) // {"name":"Alice","email":"a@b.com"}
 
 签名：`func EncodeStream(values any, cfg ...Config) (string, error)`
 
-将多个值编码为 JSON 数组流（array stream）。`values` 通常是切片或可枚举集合，输出形如 `[v1,v2,...]` 的 JSON 数组字符串。等价于 `EncodeWithConfig(values, cfg)`：`values` 是切片时输出 JSON 数组；传入非集合值时按 `EncodeWithConfig` 的语义输出该值本身。
+将多个值编码为 JSON 数组流（array stream）。`values` 通常是切片或可枚举集合，输出形如 `[v1,v2,...]` 的 JSON 数组字符串。等价于 `Encode(values, cfg)`：`values` 是切片时输出 JSON 数组；传入非集合值时按 `Encode` 的语义输出该值本身。
 
 ```go
 values := []map[string]any{

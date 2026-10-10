@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Query & Get"
-title: "Query & Get Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON query and get: Get/GetString/GetInt type-safe, GetTyped[T] generics, GetMultiple, SafeGet, JSONPath wildcards/slices, GetWithContext timeout."
-sidebar_position: 2
+title: "Query & Get Functions - CyberGo JSON | Get/GetInt Usage"
+description: "CyberGo JSON is a Go library for JSONPath queries, offering type-safe Get/GetInt, GetTyped[T], SafeGet, GetWithContext and GetMultiple for nested values."
+sidebar_position: 20
 ---
 
 # Query and Get Functions
@@ -90,6 +90,20 @@ Signature: `func GetString(jsonStr, path string, defaultValue ...string) string`
 
 Gets a string value by path.
 
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...string` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `string` | The string at the path; the default when the path does not exist, the value is null, or the conversion fails (zero value `""` when no default is given) |
+
 ```go
 package main
 
@@ -115,6 +129,20 @@ func main() {
 Signature: `func GetInt(jsonStr, path string, defaultValue ...int) int`
 
 Gets an integer value by path.
+
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...int` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `int` | The integer at the path (lenient conversion, e.g. the string `"42"` converts to `42`); the default when the path does not exist, the value is null, or the conversion fails (zero value `0` when no default is given) |
 
 ```go
 package main
@@ -145,6 +173,20 @@ Signature: `func GetFloat(jsonStr, path string, defaultValue ...float64) float64
 
 Gets a float value by path.
 
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...float64` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `float64` | The float at the path (integers are widened to `float64`); the default when the path does not exist, the value is null, or the conversion fails (zero value `0` when no default is given) |
+
 ```go
 package main
 
@@ -173,6 +215,20 @@ func main() {
 Signature: `func GetBool(jsonStr, path string, defaultValue ...bool) bool`
 
 Gets a boolean value by path.
+
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...bool` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `bool` | The boolean at the path; the default when the path does not exist, the value is null, or the conversion fails (zero value `false` when no default is given) |
 
 ```go
 package main
@@ -203,6 +259,20 @@ Signature: `func GetArray(jsonStr, path string, defaultValue ...[]any) []any`
 
 Gets an array by path.
 
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...[]any` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `[]any` | The array at the path (elements keep their parsed native types, numbers default to `float64`); the default when the path does not exist, the value is null, or the conversion fails (zero value `nil` when no default is given) |
+
 ```go
 package main
 
@@ -230,6 +300,20 @@ func main() {
 Signature: `func GetObject(jsonStr, path string, defaultValue ...map[string]any) map[string]any`
 
 Gets an object by path.
+
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...map[string]any` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `map[string]any` | The object at the path (numbers default to `float64`); the default when the path does not exist, the value is null, or the conversion fails (zero value `nil` when no default is given) |
 
 ```go
 package main

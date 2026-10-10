@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Interfaces"
-title: "Interface Definitions - CyberGo JSON | API Reference"
-description: "CyberGo JSON extension interfaces: CustomEncoder, TypeEncoder, Validator, Hook, PathParser, and DangerousPattern, with HookContext and predefined hooks."
-sidebar_position: 6
+title: "Interface Definitions - CyberGo JSON | Extension & Hook APIs"
+description: "CyberGo JSON extension interfaces: Hook/HookContext, LoggingHook, PathParser, DangerousPattern with PatternLevel, CustomEncoder, Validator and Marshaler."
+sidebar_position: 70
 ---
 
 # Interface Definitions
@@ -175,11 +175,15 @@ type HookContext struct {
 | `JSONStr`   | `string`    | Input JSON string (may be empty for marshal); **may contain sensitive data**                  |
 | `Path`      | `string`    | Target path (may be empty for marshal/unmarshal)                                              |
 | `Value`     | `any`       | Value to write for set operations                                                             |
-| `Config`    | `*Config`   | Active configuration used by the current operation                                            |
+| `Config`    | `*Config`   | Active configuration used by the current operation (a pooled object, valid only for this operation; hooks must not retain it beyond the call) |
 | `StartTime` | `time.Time` | Operation start time (set before `After` is called)                                           |
 
 ::: warning JSONStr carries sensitive data
 `JSONStr` may contain passwords, tokens, API keys, PII (personally identifiable information), and other sensitive data — do **not** write this field to logs; log only with `Operation` and `Path`, and when you must inspect the content, read only the specific paths involved.
+:::
+
+::: warning Config pointer lifetime
+`Config` points to a pooled per-call configuration that is valid only for the current operation — once the operation returns, its referenced fields are cleared and it is recycled to the pool. Hooks must **not** retain the pointer beyond the call (e.g. keep using it from an async logging queue); copy the fields you need if you must retain anything.
 :::
 
 **Usage example**
@@ -394,8 +398,8 @@ func (p *CustomPathParser) ParsePath(path string) ([]json.PathSegment, error) {
 }
 ```
 
-::: warning Reserved status
-`CustomPathParser` is **not yet wired into the path-parsing pipeline** in the current version: after setting `Config.CustomPathParser`, path parsing still uses the built-in parser (the field currently only participates in the "is it set" check of the processor cache key; setting it means the configuration bypasses the processor cache). Like `CustomEncoder` and `CustomValidators`, it is reserved for future releases.
+::: tip A wired extension point
+`CustomPathParser` **is wired into the path-parsing pipeline** in the current version: once set via `Config.CustomPathParser`, all path-based operations (Get/Set/Delete/iteration) call `ParsePath` as a **complete replacement** for the built-in parser; parsed results bypass the global path-segment cache, and configurations carrying a custom parser also bypass the processor configuration cache. Panics inside the parser are caught and converted to errors, never crashing the process. Unlike the still-reserved `CustomEncoder` and `CustomValidators`, this interface is ready to use.
 :::
 
 ## Basic Types
@@ -638,7 +642,7 @@ schema := &json.Schema{
 
 ### SchemaConfig
 
-The schema validation configuration. Used to create Schema instances via `NewSchemaWithConfig`.
+The schema validation configuration. Used to create Schema instances via `NewSchema`.
 
 ```go
 type SchemaConfig struct {
@@ -676,7 +680,7 @@ cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
 additionalProperties := false
 cfg.AdditionalProperties = &additionalProperties
-schema := json.NewSchemaWithConfig(cfg)
+schema := json.NewSchema(cfg)
 ```
 
 ### ValidationError

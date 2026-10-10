@@ -1,8 +1,8 @@
 ---
 sidebar_label: "生产检查清单"
 title: "生产检查清单 - CyberGo HTTPC | 上线前核查"
-description: "HTTPC 生产环境安全检查清单：TLS 版本与证书固定、SSRF 豁免审计、五级超时预算、连接池上限、重试风暴控制、大小限制、Cookie 安全、文件下载、Body 关闭与临时文件清理、敏感信息日志脱敏，每项含默认值、推荐生产值与代码验证方法。"
-sidebar_position: 4
+description: "HTTPC 生产安全检查清单：TLS 版本与证书固定、SSRF 豁免审计、五级超时预算、连接池上限、重试风暴控制、大小限制、Cookie 安全、文件下载、Body 关闭与临时文件清理、日志脱敏，每项含默认值与推荐生产值。"
+sidebar_position: 40
 ---
 
 # 生产检查清单
@@ -100,14 +100,14 @@ cfg.Connection.MaxConnsPerHost = 10 // 单主机连接上限（idle + active）
 | `MaxResponseBodySize` | 10MB | 按业务（如 5MB） | 确认非 0 |
 | `MaxDecompressedBodySize` | 100MB | 按业务（如 50MB） | 确认非 0 |
 | `MaxRequestBodySize` | 0（不限） | **显式设置**上传上限 | `grep MaxRequestBodySize` |
-| `MaxResponseHeaderBytes` | 0（Go 默认 10MB） | 高安全可收紧至 1MB | `grep MaxResponseHeaderBytes` |
+| `MaxResponseHeaderBytes` | 0（Go 默认 1MB） | 高安全可进一步收紧（如 512KB） | `grep MaxResponseHeaderBytes` |
 
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Security.MaxResponseBodySize = 5 * 1024 * 1024     // 5MB 响应
 cfg.Security.MaxDecompressedBodySize = 50 * 1024 * 1024 // 50MB 解压
 cfg.Security.MaxRequestBodySize = 2 * 1024 * 1024       // 2MB 上传（默认 0 不限制！）
-cfg.Connection.MaxResponseHeaderBytes = 1 * 1024 * 1024  // 1MB 响应头
+cfg.Connection.MaxResponseHeaderBytes = 512 * 1024       // 512KB 响应头（默认 0 = Go 标准 1MB）
 ```
 
 :::danger

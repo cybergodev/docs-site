@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Parse & Validate"
-title: "Processor Parse & Validate - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor parse methods: Valid validation, ValidBytes fast checks, Parse, ParseAny any type, PreParse pre-parsing, GetFromParsed fast queries."
-sidebar_position: 6
+title: "Processor Parse & Validate - CyberGo JSON | Parse & Valid"
+description: "CyberGo JSON Processor parsing: Valid returns failure reasons, ValidBytes fast-checks, Parse/ParseAny with PreserveNumbers, PreParse/GetFromParsed repeats."
+sidebar_position: 60
 ---
 
 # Parse and Validate Methods

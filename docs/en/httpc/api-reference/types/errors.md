@@ -2,7 +2,7 @@
 sidebar_label: "Error Types"
 title: "Error Types - CyberGo HTTPC | ClientError In Detail"
 description: "HTTPC error types: eight-field ClientError with Code, IsRetryable, and Unwrap methods, twelve ErrorType enums, sentinel errors, and errors.Is/As matching."
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # Error Types
@@ -34,31 +34,35 @@ type ClientError struct {
 
 | Field | Type | Description | Typical value |
 |------|------|------|--------|
-| `Type` | `ErrorType` | Error classification, for switch branching | `ErrorTypeNetwork`, `ErrorTypeTimeout` |
-| `Message` | `string` | Error description | `"network operation failed"` |
-| `Cause` | `error` | Underlying error, obtainable via `Unwrap()` | `*net.OpError`, `*net.DNSError` |
-| `URL` | `string` | Request URL (credentials sanitized) | `"https://example.com/path"` |
-| `Method` | `string` | HTTP method | `"GET"`, `"POST"` |
-| `Attempts` | `int` | Number of attempts (including the first request) | `1` (first failure), `4` (after 3 retries) |
-| `StatusCode` | `int` | HTTP status code (0 for non-HTTP errors) | `0` (network error), `503` (server error) |
-| `Host` | `string` | Request hostname (for circuit breakers) | `"example.com"` |
+| `ClientError.Type` | `ErrorType` | Error classification, for switch branching | `ErrorTypeNetwork`, `ErrorTypeTimeout` |
+| `ClientError.Message` | `string` | Error description | `"network operation failed"` |
+| `ClientError.Cause` | `error` | Underlying error, obtainable via `Unwrap()` | `*net.OpError`, `*net.DNSError` |
+| `ClientError.URL` | `string` | Request URL (credentials sanitized) | `"https://example.com/path"` |
+| `ClientError.Method` | `string` | HTTP method | `"GET"`, `"POST"` |
+| `ClientError.Attempts` | `int` | Number of attempts (including the first request) | `1` (first failure), `4` (after 3 retries) |
+| `ClientError.StatusCode` | `int` | HTTP status code (0 for non-HTTP errors) | `0` (network error), `503` (server error) |
+| `ClientError.Host` | `string` | Request hostname (for circuit breakers) | `"example.com"` |
+
+Among them, `Host` lets circuit breakers track failures per hostname, `Message` is suitable for direct logging, and `Cause` preserves the underlying error for `errors.As` inspection.
 
 ### Methods
 
-| Method | Return | Description |
-|------|--------|------|
-| `Error()` | `string` | Formatted as `"METHOD url: message: cause (attempt N)"` |
-| `Code()` | `string` | Returns a short error code, e.g. `"NETWORK_ERROR"`, `"TIMEOUT"` |
-| `IsRetryable()` | `bool` | Whether this error is worth retrying |
-| `Unwrap()` | `error` | Returns `Cause`, supporting `errors.Is`/`errors.As` traversal of the error chain |
-| `WithType(t ErrorType)` | `*ClientError` | Returns a **copy** with the error type set (does not modify the original) |
+| Method | Signature | Description |
+|------|------|------|
+| `Error` | `func (e *ClientError) Error() string` | Formatted as `"METHOD url: message: cause (attempt N)"` |
+| `Code` | `func (e *ClientError) Code() string` | Returns a short error code, e.g. `"NETWORK_ERROR"`, `"TIMEOUT"` |
+| `IsRetryable` | `func (e *ClientError) IsRetryable() bool` | Whether this error is worth retrying |
+| `Unwrap` | `func (e *ClientError) Unwrap() error` | Returns `ClientError.Cause`, supporting `errors.Is`/`errors.As` traversal of the error chain |
+| `WithType` | `func (e *ClientError) WithType(t ErrorType) *ClientError` | Returns a **copy** with the error type set (does not modify the original) |
+
+All five methods are defined on the `*ClientError` pointer receiver: `ClientError.Error` implements the `error` interface; `ClientError.Code` and `ClientError.IsRetryable` serve log classification and retry decisions; `ClientError.Unwrap` exposes the underlying cause; `ClientError.WithType` returns a copy with the type rewritten, leaving the original error untouched.
 
 ### Error() Formatting
 
 `Error()` formats the error into a readable string:
 
 - Both URL and Method present: `"GET https://example.com: network operation failed: dial tcp ... (attempt 1)"`
-- Message only: outputs the Message directly
+- `Message` only: outputs `Message` directly
 - Has Cause: appends `": " + Cause.Error()`
 - Has Attempts (>0): appends `" (attempt N)"`
 
@@ -237,6 +241,16 @@ In callbacks for middleware such as `MetricsMiddleware` and `LoggingMiddleware`,
 | `ErrFileExists` | `"file already exists"` | File exists and Overwrite=false and ResumeDownload=false |
 | `ErrResponseBodyEmpty` | `"response body is empty"` | Calling Unmarshal or similar parsing methods on an empty body |
 | `ErrResponseBodyTooLarge` | `"response body too large"` | Response body exceeds MaxResponseBodySize |
+| `ErrInvalidMaxRedirects` | `"invalid max redirects"` | [`WithMaxRedirects`](../core/options#withmaxredirects) passed a negative value or one exceeding 50 |
+| `ErrInvalidCredentials` | `"invalid credentials"` | [`WithBasicAuth`](../core/options#withbasicauth)/[`WithBearerToken`](../core/options#withbearertoken) credentials empty, oversized, or containing invalid characters |
+| `ErrStreamBodyRequiresDownload` | `"WithStreamBody requires Download; standard request methods buffer the response body"` | [`WithStreamBody`](../core/options#withstreambody)(true) combined with the standard request methods (Get/Post/.../Request) — streaming only takes effect on the `Download` path; every other path rejects the request instead of silently returning an empty body |
+
+### Download and Proxy Errors
+
+| Variable | Error message | Trigger condition |
+|------|----------|----------|
+| `ErrDownloadInProgress` | `"download already in progress for this file path"` | A download targeting the same file path is already running in this process — two concurrent downloads to one destination would corrupt each other's writes, so the second caller fails fast instead of blocking; retry once the first download finishes. The mutex is in-process only; coordinating downloads across separate processes is the caller's responsibility |
+| `ErrProxyConnectionFailed` | `"proxy connection failed"` | A configured proxy could not be dialed (dial failure, invalid address, refused connection, etc.). Wrapped alongside the underlying cause in the error chain and detectable with `errors.Is(err, httpc.ErrProxyConnectionFailed)`; the retry engine also uses it to decide whether to retry with the next proxy in the pool |
 
 ### Client Errors
 

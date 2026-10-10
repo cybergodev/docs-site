@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Advanced Usage"
 title: "Advanced Examples - CyberGo HTTPC | Production Code"
-description: "HTTPC advanced examples: RetryPolicy strategies, timeout/retry budgets, callbacks, middleware chains, domain clients, sessions, worker pools, HMAC signing."
-sidebar_position: 2
+description: "HTTPC advanced examples: RetryPolicy retries, callbacks, middleware chains, domain clients, cookie sessions, worker pools, and HMAC signing middleware."
+sidebar_position: 20
 ---
 
 # Advanced Examples
@@ -873,7 +873,7 @@ func main() {
 }
 ```
 
-Typical scenarios: customizing global behavior once at application startup, or switching configuration per environment (development/production). Note that `SetDefaultClient` only accepts clients created by `httpc.New`, and you cannot pass an already-closed instance.
+Typical scenarios: customizing global behavior once at application startup, or switching configuration per environment (development/production). Note that `SetDefaultClient` only accepts clients created by `httpc.New`, and you cannot pass an already-closed instance; a swap closes the old default client and aborts any of its in-flight requests (concurrent callers may observe connection errors), so call it only at startup or during a quiescent window, never under live traffic.
 
 ## Custom Middleware: Request Signing
 

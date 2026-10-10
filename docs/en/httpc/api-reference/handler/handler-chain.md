@@ -1,11 +1,25 @@
 ---
-sidebar_label: "Handler Pipeline & Custom Middleware"
+sidebar_label: "Handler & Middleware Chain"
 title: "Handler Pipeline - CyberGo HTTPC | Middleware Chain"
 description: "HTTPC handler pipeline: how the onion-model MiddlewareFunc chain is assembled and executed, the Chain combinator, and custom middleware examples."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Handler & Middleware Chain
+
+## Pipeline Exported Symbols Overview
+
+All exported symbols related to the Handler pipeline and where they live in this reference:
+
+| Exported symbol | Category | Description | Detailed reference |
+|----------|------|------|----------|
+| `Handler` | Function type alias | Core request-handling signature | [Handler](#handler) in this page |
+| `MiddlewareFunc` | Function type alias | Middleware signature | [MiddlewareFunc](#middlewarefunc) in this page |
+| `Chain` | Combinator function | Combines multiple middlewares into a single one | [Chain](#chain) in this page |
+| `RecoveryMiddleware` / `LoggingMiddleware` / `RequestIDMiddleware` / `TimeoutMiddleware` / `HeaderMiddleware` / `MetricsMiddleware` / `AuditMiddleware` | Middleware factories (7) | Ready-to-use built-in middleware | [Built-in Middleware](../client-config/middleware) |
+| `LoggingConfig`/`DefaultLoggingConfig`, `RequestIDConfig`/`DefaultRequestIDConfig`, `TimeoutMiddlewareConfig`/`DefaultTimeoutMiddlewareConfig`, `HeaderConfig`/`DefaultHeaderConfig`, `MetricsConfig`/`DefaultMetricsConfig` | Config structs and default constructors (5 pairs) | Per-middleware configuration and defaults | [Built-in Middleware](../client-config/middleware) |
+| `AuditEvent` (incl. the `MarshalJSON` method), `AuditConfig`/`DefaultAuditConfig` | Audit types and configuration | Security audit events and configuration | [Constants and Types](../types/constants) |
+| `SourceIPKey` / `UserIDKey` | Context key constants | Source-IP and user-ID keys for audit events | [Constants and Types](../types/constants) |
 
 ## Two-Layer Architecture
 
@@ -189,6 +203,42 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
     httpc.TimeoutMiddleware(&httpc.TimeoutMiddlewareConfig{Duration: 30 * time.Second}),
 }
 ```
+
+## Custom Middleware Full Specification
+
+A custom middleware is a factory function returning a `MiddlewareFunc`, with three closure layers: the outermost captures configuration parameters (runs once at middleware creation), the middle wraps a Handler (runs once at chain assembly), and the innermost handles the request (runs per request).
+
+<!-- check-code: skip -->
+```go
+func myMiddleware(/* outer: capture config parameters */) httpc.MiddlewareFunc {
+	return func(next httpc.Handler) httpc.Handler { // middle: wrap the Handler
+		return func(ctx context.Context, req httpc.RequestMutator) (httpc.ResponseMutator, error) {
+			// ① Pre phase: inspect/rewrite the request via req before calling next
+			resp, err := next(ctx, req) // ② Execute: synchronously run the inner chain to the network request
+			if err != nil {
+				return nil, err
+			}
+			// ③ Post phase: read/rewrite the response via resp after next returns
+			return resp, nil
+		}
+	}
+}
+```
+
+### Two-Phase Semantics
+
+| Phase | Position | Operable objects | Typical uses |
+|------|------|-----------|---------|
+| Pre (request phase) | Before calling `next` | All write methods of `req` (SetHeader/SetURL/SetBody/SetTimeout/SetContext...) | Inject auth headers/trace IDs, rewrite URL and query parameters, set timeouts dynamically per path |
+| Execute | The `next(ctx, req)` call site | —— | Synchronously execute the inner chain until `finalHandler` issues the network request and returns |
+| Post (response phase) | After `next` returns | All read/write methods of `resp`, plus `err` | Record status code/duration/retry count, append response headers, report by error type |
+| Short-circuit | Without calling `next` | A self-constructed return value | Return directly on cache hit, exit early on policy rejection (requires your own `ResponseMutator` implementation; see [Response Cache Middleware (Concept)](#response-cache-middleware-concept)) |
+
+### Error Semantics
+
+- **Returning an error in the pre phase**: the request is never sent; `(nil, err)` propagates outward through the chain and ultimately to the caller.
+- **Returning an error in the post phase**: the error likewise propagates outward. If a middleware both holds the response returned by `next` and returns an error, the `executeRequest` safety net releases that response on its behalf (preventing pool leaks), but this behavior should not be relied upon.
+- **Context passing**: `finalHandler` prefers `req.Context()` (falling back to the chain's `ctx` when nil). Middleware deriving timeout/cancellation contexts must write them back via `req.SetContext` — `TimeoutMiddleware` does exactly this, calling `SetContext` before invoking `next`.
 
 ## Custom Middleware Examples
 

@@ -2,7 +2,7 @@
 sidebar_label: "文件下载"
 title: "文件下载 - CyberGo HTTPC | Download 与校验"
 description: "HTTPC 文件下载 API 参考：Download 统一下载入口函数、DownloadConfig 配置结构体、DownloadProgressCallback 进度回调、DownloadResult 结果类型、SHA-256 校验和验证与 UNC 路径防护等六层安全保护。"
-sidebar_position: 4
+sidebar_position: 40
 ---
 
 # 文件下载
@@ -47,12 +47,12 @@ func DefaultDownloadConfig() *DownloadConfig
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `FilePath` | `string` | — | 文件保存路径（**必填**，不能为空） |
-| `ProgressCallback` | `DownloadProgressCallback` | `nil` | 进度回调函数，nil 时禁用进度上报 |
-| `Overwrite` | `bool` | `false` | 是否覆盖已存在的文件。false 时若文件已存在则返回 `ErrFileExists` |
-| `ResumeDownload` | `bool` | `false` | 是否启用断点续传。true 时复用已有部分文件 |
-| `Checksum` | `string` | `""` | 期望的十六进制编码校验和。设置后下载完成时自动校验 |
-| `ChecksumAlgorithm` | `ChecksumAlgorithm` | `"sha256"` | 校验算法（目前仅支持 SHA-256） |
+| `DownloadConfig.FilePath` | `string` | — | 文件保存路径（**必填**，不能为空） |
+| `DownloadConfig.ProgressCallback` | `DownloadProgressCallback` | `nil` | 进度回调函数，nil 时禁用进度上报 |
+| `DownloadConfig.Overwrite` | `bool` | `false` | 是否覆盖已存在的文件。false 时若文件已存在则返回 `ErrFileExists` |
+| `DownloadConfig.ResumeDownload` | `bool` | `false` | 是否启用断点续传。true 时复用已有部分文件 |
+| `DownloadConfig.Checksum` | `string` | `""` | 期望的十六进制编码校验和。设置后下载完成时自动校验 |
+| `DownloadConfig.ChecksumAlgorithm` | `ChecksumAlgorithm` | `"sha256"` | 校验算法（目前仅支持 SHA-256） |
 
 :::tip Overwrite 与 ResumeDownload 的优先级
 当文件已存在且两者都为 true 时，`ResumeDownload` 优先——已有文件被**追加扩展**而非替换。当文件不存在时两者行为相同（正常下载）。
@@ -125,20 +125,20 @@ type DownloadResult struct {
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `FilePath` | `string` | 文件实际保存的**绝对路径**（经 `prepareFilePath` 验证后的路径） |
-| `BytesWritten` | `int64` | 本次写入的字节数（续传时为追加量，非文件总大小） |
-| `Duration` | `time.Duration` | 下载耗时（从打开目标文件到写入、Sync 并关闭完成） |
-| `AverageSpeed` | `float64` | 平均速度（字节/秒，= BytesWritten / Duration） |
-| `StatusCode` | `int` | HTTP 状态码（200 或 206） |
-| `ContentLength` | `int64` | 服务器报告的 Content-Length（续传时为剩余部分长度） |
-| `Resumed` | `bool` | 是否为续传完成（请求了 Range 且收到 206） |
-| `ResponseCookies` | `[]*http.Cookie` | 响应 Cookie |
-| `ActualChecksum` | `string` | 实际计算的校验和（仅 `Checksum` 设置时填充） |
-| `Proto` | `string` | HTTP 协议版本（如 `"HTTP/1.1"`、`"HTTP/2.0"`） |
-| `ResponseHeaders` | `http.Header` | 响应头 |
-| `RequestURL` | `string` | 实际请求 URL |
-| `RequestMethod` | `string` | 请求 HTTP 方法（固定为 `"GET"`） |
-| `RequestHeaders` | `http.Header` | 实际发送的请求头 |
+| `DownloadResult.FilePath` | `string` | 文件实际保存的**绝对路径**（经 `prepareFilePath` 验证后的路径） |
+| `DownloadResult.BytesWritten` | `int64` | 本次写入的字节数（续传时为追加量，非文件总大小） |
+| `DownloadResult.Duration` | `time.Duration` | 下载耗时（从打开目标文件到写入、Sync 并关闭完成） |
+| `DownloadResult.AverageSpeed` | `float64` | 平均速度（字节/秒，= BytesWritten / Duration） |
+| `DownloadResult.StatusCode` | `int` | HTTP 状态码（200 或 206） |
+| `DownloadResult.ContentLength` | `int64` | 服务器报告的 Content-Length（续传时为剩余部分长度） |
+| `DownloadResult.Resumed` | `bool` | 是否为续传完成（请求了 Range 且收到 206） |
+| `DownloadResult.ResponseCookies` | `[]*http.Cookie` | 响应 Cookie |
+| `DownloadResult.ActualChecksum` | `string` | 实际计算的校验和（仅 `Checksum` 设置时填充） |
+| `DownloadResult.Proto` | `string` | HTTP 协议版本（如 `"HTTP/1.1"`、`"HTTP/2.0"`） |
+| `DownloadResult.ResponseHeaders` | `http.Header` | 响应头 |
+| `DownloadResult.RequestURL` | `string` | 实际请求 URL |
+| `DownloadResult.RequestMethod` | `string` | 请求 HTTP 方法（固定为 `"GET"`） |
+| `DownloadResult.RequestHeaders` | `http.Header` | 实际发送的请求头 |
 
 ```go
 fmt.Printf("下载完成: %s, 耗时 %v, 平均速度 %s\n",
@@ -228,7 +228,7 @@ prepareResumeState(filePath, opts, options):
 | 服务器返回 | 处理 |
 |-----------|------|
 | `206 Partial Content` | 续传成功：`O_APPEND` 追加模式写入，`Resumed = true` |
-| `200 OK`（不支持 Range） | **返回错误**：服务器忽略 Range 请求，续传会截断已有数据。排空响应体后报错 |
+| `200 OK`（不支持 Range） | **返回错误**：服务器忽略 Range 请求；若继续写入会从头覆盖已有部分文件，因此报错并保留已有数据（不截断）。排空响应体后报错 |
 | `416 Range Not Satisfiable` | **返回错误**：请求的偏移量超出文件大小。排空响应体后报错 |
 | 其他状态码（4xx/5xx） | 返回错误，附响应体前 200 字符预览 |
 
@@ -275,6 +275,15 @@ if result.Resumed {
 | 零内存缓冲 | 数据从网络直接流向磁盘，不经过完整内存缓冲 |
 | 流式哈希 | 校验和计算与写入同步进行，无需二次读取 |
 | 自动释放 | 响应体读取器经 `defer` 关闭，引擎响应经 `defer` 归还对象池 |
+
+:::warning 下载受 MaxResponseBodySize 约束
+流式写盘只是免去全量内存缓冲，**并非没有大小上限**：下载响应体仍受客户端 `Security.MaxResponseBodySize` 约束——`DefaultConfig` 默认 10MB（其他预设：`SecureConfig` 5MB、`PerformanceConfig` 50MB、`MinimalConfig` 1MB）。超出上限时下载以 `ErrResponseBodyTooLarge` 错误失败而非在限额处静默截断，下载大文件前需调大该值：
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.MaxResponseBodySize = 200 << 20 // 200MB，按需调整
+```
+:::
 
 :::warning 中间件兼容性
 下载需要直接访问 `*engine.Response` 的 `RawBodyReader()`。如果中间件用自定义类型**包装**了 `ResponseMutator`（而非就地修改引擎响应），下载将返回错误：`download is not compatible with middleware that wraps ResponseMutator`。所有内置中间件都是就地修改，不会触发此错误。

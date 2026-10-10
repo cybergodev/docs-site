@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Parse & Validate"
-title: "Parse & Validate Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON parse and validate: Parse/ParseAny, Valid/ValidWithConfig, ValidateSchema JSON Schema, plus size/depth/dangerous-pattern security checks."
-sidebar_position: 6
+title: "Parse & Validate Functions - CyberGo JSON | Valid & Parse"
+description: "CyberGo JSON is a Go library for parsing and validation, offering Parse/ParseAny, Valid, ValidWithConfig and ValidateSchema to handle untrusted input."
+sidebar_position: 60
 ---
 
 # Parse and Validate Functions
@@ -243,7 +243,7 @@ func main() {
 		Properties: map[string]*json.Schema{
 			"name":  {Type: "string"},
 			"email": {Type: "string", Format: "email"},
-			"age":   {Type: "number"}, // numbers are uniformly "number" (integers included)
+			"age":   {Type: "number"}, // numbers may use "number" or "integer"
 		},
 	}
 
@@ -258,8 +258,8 @@ func main() {
 ```
 
 ::: warning Two things to note
-- `Type` has no `"integer"` value — after JSON parsing all numbers are `float64`, so numeric fields always use `"number"`.
-- **Length/range constraints** such as `MinLength`/`Minimum` do not take effect when written directly in an `&json.Schema{...}` literal; the schema must be created with [`NewSchemaWithConfig`](../schema#creating-a-schema). See [Schema Validation](../schema) for details.
+- `Type` supports `"number"` and `"integer"`: `"number"` accepts every number; `"integer"` follows JSON Schema semantics and accepts values that are **mathematically integers** (`1`, `1.0`, and `1e2` all pass, while `1.5` fails with an `expected type integer` error). Numeric constraints such as `Minimum`/`Maximum`/`MultipleOf` apply to both; see the [Schema Constraint Fields Overview](../schema#schema-constraint-fields-overview).
+- **Length/range constraints** such as `MinLength`/`Minimum` do not take effect when written directly in an `&json.Schema{...}` literal; the schema must be created with [`NewSchema`](../schema#creating-a-schema). See [Schema Validation](../schema) for details.
 :::
 
 :::tip Further reading

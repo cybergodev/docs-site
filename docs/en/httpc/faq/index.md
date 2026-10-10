@@ -1,8 +1,8 @@
 ---
 sidebar_label: "FAQ"
 title: "FAQ - CyberGo HTTPC | Q&A"
-description: "HTTPC FAQ: package functions vs Client, five config presets, HTTP/SOCKS5 proxy and DoH, cookie sessions, retries, errors.Is/As, and five-level timeout tuning."
-sidebar_position: 1
+description: "HTTPC FAQ: package functions vs Client, five config presets, HTTP/SOCKS5 proxy and DoH, cookie sessions, retries, errors.Is/As, five-level timeout tuning."
+sidebar_position: 10
 ---
 
 # FAQ
@@ -34,7 +34,7 @@ defer func() { _ = client.Close() }()
 result, err := client.Get("https://api.example.com/data")
 ```
 
-To make package-level functions use custom configuration, replace the global client with `SetDefaultClient` (the old one is closed automatically):
+To make package-level functions use custom configuration, replace the global client with `SetDefaultClient` (the old one is closed automatically; this aborts the old instance's in-flight requests, so prefer calling it at startup):
 
 ```go
 customClient, _ := httpc.New(httpc.SecureConfig())
@@ -62,7 +62,7 @@ For long-running services, prefer an explicit Client to avoid the implicit coupl
 
 Decision tree:
 
-```
+```text
 Are you handling user-provided URLs?
 ├── Yes → SecureConfig()
 └── No → Do you need high throughput?
@@ -308,7 +308,7 @@ func main() {
 ```
 
 :::tip Path safety
-Download validates FilePath, rejecting directory paths (returns a file-open error) and unsupported checksum algorithms (rejected before touching the target file). Resumable download depends on the server supporting Range requests — if the server returns 200 instead of 206, HTTPC handles it correctly (starts over rather than truncating).
+Download validates FilePath, rejecting directory paths (returns a file-open error) and unsupported checksum algorithms (rejected before touching the target file). Resumable download depends on the server supporting Range requests — if the server returns 200 instead of 206, HTTPC returns an error and leaves the existing partial file intact (no truncation, no restart from scratch).
 :::
 
 ## How do I do certificate pinning?
@@ -402,7 +402,7 @@ cfg.Security.MaxRequestBodySize = 10 * 1024 * 1024 // Global 10MB cap
 
 ## How do I suppress security warnings?
 
-**Answer:** Insecure configurations such as `TestingConfig()` print warnings via `log.Printf` when used in a non-test environment. To suppress them (e.g. for specific CI scenarios), redirect the warning output to `io.Discard`:
+**Answer:** Insecure configurations such as `TestingConfig()` print warnings to `os.Stderr` (the default) when used in a non-test environment. To suppress them (e.g. for specific CI scenarios), redirect the warning output with `SetSecurityWarnOutput(io.Writer)` to `io.Discard`:
 
 ```go
 // Suppress all security-warning output

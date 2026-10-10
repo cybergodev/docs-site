@@ -1,8 +1,8 @@
 ---
 sidebar_label: "性能优化"
 title: "性能优化 - CyberGo HTTPC | 预设与并发"
-description: "HTTPC 性能优化指南：Default/Secure/Performance/Testing/Minimal 五种预设对比与场景选型、连接池空闲连接自动推导规则、并发模型与信号量限流完整示例、超时预算分层建议、零分配热路径、对象池与 resultBundle 机制及性能反模式分析。"
-sidebar_position: 12
+description: "HTTPC 性能优化指南：Default/Secure/Performance/Testing/Minimal 五种预设对比与选型、连接池空闲连接自动推导、并发模型与信号量限流、超时预算分层、零分配热路径、对象池与 resultBundle 及性能反模式。"
+sidebar_position: 110
 ---
 
 # 性能优化
@@ -95,7 +95,7 @@ client, _ := httpc.New(cfg)
 
 HTTPC 的 `Client` 与 `DomainClient` 都是**并发安全**的——任意方法可以被多个 goroutine 同时调用，库内设有专门的并发安全集成测试（`internal/concurrency`）在高并发场景下覆盖公共 API。因此正确的并发模式非常简单：
 
-```
+```text
 全局/服务级创建 1 个 Client
         │
         ├── goroutine 1 ──┐
@@ -192,7 +192,7 @@ func main() {
 
 `MaxIdleConnsPerHost`（每主机空闲连接上限）无需手动设置——HTTPC 根据 `MaxConnsPerHost` 自动推导：
 
-```
+```text
 空闲连接数 = MaxConnsPerHost / 2，限制在 [2, 10] 区间
 ```
 
@@ -312,7 +312,7 @@ HTTPC 在内存管理上做了多层优化，核心思路是减少堆分配和�
 
 每次请求返回的 `*Result` 携带三个嵌套结构体：`RequestInfo`（请求信息）、`ResponseInfo`（响应信息）、`RequestMeta`（元数据如耗时）。传统做法需要为 Result 和三个嵌套结构体分别分配——四次堆分配。HTTPC 将它们打包进一个 `resultBundle`，一次堆分配搞定全部：
 
-```
+```text
 传统方式：4 次独立分配（Result + RequestInfo + ResponseInfo + RequestMeta）
 HTTPC：1 次分配（resultBundle），Result 的三个指针指向同一块内存
 ```
@@ -396,7 +396,7 @@ func main() {
 
 四个传输层超时（`Dial`、`TLSHandshake`、`ResponseHeader`、隐含的 body 传输）共同受 `Timeouts.Request` 这个**总预算**约束。调整预设时保持「分项之和 ≤ 总预算」的层级关系，避免出现「拨号超时比总超时还长」这类无效配置：
 
-```
+```text
 Timeouts.Request（总预算，默认 180s）
  ├── Timeouts.Dial          拨号（默认 10s）
  ├── Timeouts.TLSHandshake  TLS 握手（默认 10s）

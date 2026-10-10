@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Overview"
 title: "API Reference - CyberGo HTTPC | Full API Index"
-description: "HTTPC API index: full API map of 27 WithXxx options, 5 config presets, 7 built-in middleware, 12 error variables, and quick-start examples grouped for lookup."
-sidebar_position: 1
+description: "HTTPC API index: full API map incl. core functions, options, Result, Config, and middleware, with 29 WithXxx options, 5 presets, and 17 error variables."
+sidebar_position: 10
 ---
 
 # API Reference
 
-HTTPC provides 27 request-option functions, 5 configuration presets, 7 built-in middleware, and complete download support.
+HTTPC provides 29 request-option functions, 5 configuration presets, 7 built-in middleware, and complete download support.
 
 ## Core Architecture
 
@@ -41,9 +41,9 @@ HTTPC two-layer architecture
 
 | Module | Description |
 |--------|-------------|
-| [Request Options](./core/options) | 27 WithXxx request-option functions (headers, body, authentication, cookies, callbacks, etc.) |
+| [Request Options](./core/options) | 29 WithXxx request-option functions (headers, body, authentication, cookies, callbacks, etc.) |
 | [Built-in Middleware](./client-config/middleware) | Chain composition, 7 built-in middleware factories, and audit event types |
-| [Error Types](./types/errors) | ClientError, 12 ErrorType enums, and 12 error variables |
+| [Error Types](./types/errors) | ClientError, 12 ErrorType enums, and 17 error variables |
 
 ### Advanced Features
 
@@ -70,7 +70,7 @@ A complete index grouped by symbol type, mapping one-to-one to the exported surf
 | [`SetSecurityWarnOutput`](./core/functions#setsecuritywarnoutput) | Redirect security-warning output |
 | [`FormatBytes`](./core/functions#formatbytes) / [`FormatSpeed`](./core/functions#formatspeed) | Format byte counts / speeds |
 
-### Request Options (27)
+### Request Options (29)
 
 | Group | Options |
 |-------|---------|
@@ -79,7 +79,7 @@ A complete index grouped by symbol type, mapping one-to-one to the exported surf
 | Body (7) | `WithJSON`, `WithXML`, `WithForm`, `WithFormData`, `WithFile`, `WithBinary`, `WithBody` |
 | Query parameters (2) | `WithQuery`, `WithQueryMap` |
 | Cookies (4) | `WithCookies`, `WithCookieMap`, `WithCookieString`, `WithSecureCookie` |
-| Request control (7) | `WithContext`, `WithTimeout`, `WithMaxRetries`, `WithFollowRedirects`, `WithMaxRedirects`, `WithAllowPrivateIPs`, `WithStreamBody` |
+| Request control (9) | `WithContext`, `WithTimeout`, `WithNoTimeout`, `WithMaxRetries`, `WithRetryNonIdempotent`, `WithFollowRedirects`, `WithMaxRedirects`, `WithAllowPrivateIPs`, `WithStreamBody` |
 | Callbacks (2) | `WithOnRequest`, `WithOnResponse` |
 
 For the signatures, validation rules, and Config defaults overridden by all options, see [Request Options](./core/options).
@@ -139,7 +139,7 @@ See [Interfaces](./types/interfaces), [Domain Client](./client-config/domain-cli
 | Category | Symbols |
 |----------|---------|
 | Error types | `ClientError`, `ErrorType` (enum of 12 error categories) |
-| Sentinel errors (12) | `ErrClientClosed`, `ErrNilConfig`, `ErrInvalidHeader`, `ErrInvalidTimeout`, `ErrInvalidRetry`, `ErrInvalidConnection`, `ErrInvalidSecurity`, `ErrInvalidMiddleware`, `ErrEmptyFilePath`, `ErrFileExists`, `ErrResponseBodyEmpty`, `ErrResponseBodyTooLarge` |
+| Sentinel errors (17) | `ErrClientClosed`, `ErrNilConfig`, `ErrInvalidHeader`, `ErrInvalidTimeout`, `ErrInvalidRetry`, `ErrInvalidMaxRedirects`, `ErrInvalidCredentials`, `ErrInvalidConnection`, `ErrInvalidSecurity`, `ErrInvalidMiddleware`, `ErrEmptyFilePath`, `ErrFileExists`, `ErrResponseBodyEmpty`, `ErrResponseBodyTooLarge`, `ErrStreamBodyRequiresDownload`, `ErrDownloadInProgress`, `ErrProxyConnectionFailed` |
 | BodyKind (6 constants) | `BodyAuto`, `BodyJSON`, `BodyXML`, `BodyForm`, `BodyBinary`, `BodyMultipart` |
 | Other constants | `ProxyStrategyRoundRobin` / `ProxyStrategyRandom`, `ChecksumSHA256`, audit context keys |
 
@@ -182,7 +182,7 @@ result.Meta.Attempts          // Retry count
 
 ## Version Compatibility
 
-- **Go version**: requires Go 1.25 or later (`go.mod` declares `go 1.25.0`).
+- **Go version**: requires Go 1.26 or later (`go.mod` declares `go 1.26.0`).
 - **Import path**: `github.com/cybergodev/httpc` (package name `httpc`, no alias needed).
 - **Direct dependencies**: only `golang.org/x/sys` (for per-platform system-proxy detection, covering Linux/macOS/Windows); no other third-party dependencies.
 - **API status**: no exported symbol currently carries a `Deprecated` marker; the library is under active maintenance.

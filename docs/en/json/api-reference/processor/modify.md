@@ -1,8 +1,8 @@
 ---
-sidebar_label: "Modify"
-title: "Processor Data Modification - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor modification: Set, SetMultiple batch, SetCreate auto path creation, SetMultipleCreate — immutable returns, SetFromParsed, chainable."
-sidebar_position: 3
+sidebar_label: "Modification Operations"
+title: "Processor Data Modification - CyberGo JSON | Set/SetMultiple"
+description: "CyberGo JSON Processor modification: Set/SetMultiple, SetCreate path creation, immutable chained results, plus MergeJSON — ideal for multi-step edits."
+sidebar_position: 30
 ---
 
 # Data Modification Methods
@@ -207,7 +207,7 @@ func main() {
 	fmt.Println(result)
 	// Output: {"user":{"name":"Alice","profile":{"bio":"Developer"}}}
 
-	// Create an array: user.tags[0] creates the array and fills index 0
+	// Create an array: when user.tags[0] is missing, the array is created and index 0 filled
 	result, err = p.SetCreate(data, "user.tags[0]", "admin")
 	if err != nil {
 		panic(err)
@@ -358,7 +358,7 @@ The Processor provides instance methods corresponding to the package-level [Merg
 
 Signature: `func (p *Processor) MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
 
-Resolves options from cfg (**when cfg is omitted, DefaultConfig is used — not the processor's own configuration**; if the processor was created with a custom MergeMode, you must pass cfg explicitly to apply it), deep-merges the two objects per `Config.MergeMode`, then re-encodes the result with this processor.
+Deep-merges the two objects per `Config.MergeMode`, then re-encodes the result with this processor. **When cfg is omitted, the processor's own configuration is used** — the `MergeMode` and encoding options baked in at `New(cfg)` apply directly, with no need to pass them again; when cfg is passed, the merge follows cfg's `MergeMode`.
 
 Like the package-level function, `Processor.MergeJSON` runs no security validation — it is a structural utility that only decodes, deep-merges, and re-encodes. When security validation is needed, use `CompareJSON` (which always validates; per cfg when passed, otherwise per the processor's own configuration).
 

@@ -2,7 +2,7 @@
 sidebar_label: "Middleware Chain"
 title: "Middleware Chain - CyberGo HTTPC | Onion Model Composition"
 description: "HTTPC middleware guide: onion-model execution order, seven built-in middleware, Chain composition, custom MiddlewareFunc, and circuit-breaker short circuits."
-sidebar_position: 9
+sidebar_position: 80
 ---
 
 # Middleware Chain

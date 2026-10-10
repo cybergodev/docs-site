@@ -1,11 +1,11 @@
 ---
 sidebar_label: "自定义编码器"
-title: "CustomEncoder - CyberGo JSON | 自定义编码器"
-description: "CyberGo JSON 自定义编码器：CustomEncoder 接口与 TypeEncoder 类型编码器的定义与实现，实践 json.Marshaler 与 TextMarshaler 接口及 CustomEscapes 转义映射，为 Go 类型注册 JSON 序列化逻辑。"
-sidebar_position: 2
+title: "CustomEncoder - CyberGo JSON | 自定义类型编码"
+description: "CyberGo JSON 自定义编码器指南：实现 json.Marshaler 或 TextMarshaler 接口为 Go 类型定制 JSON 形态，配合 Config.CustomEscapes 字符转义与 time.Time 内置格式，与标准库通用、可跨库复用、移植性最佳，并附完整可运行示例。"
+sidebar_position: 30
 ---
 
-# 自定义编码
+# 自定义编码器
 
 json 库与标准库 `encoding/json` 保持编码兼容，因此自定义类型的 JSON 形态主要通过实现标准库接口来完成。本页介绍**当前版本实际生效**的编码扩展点：
 
@@ -181,7 +181,7 @@ func main() {
 		'©': "(c)",
 	}
 
-	out, err := json.EncodeWithConfig(map[string]string{"note": "Copyright © 2026"}, cfg)
+	out, err := json.Encode(map[string]string{"note": "Copyright © 2026"}, cfg)
 	if err != nil {
 		panic(err)
 	}

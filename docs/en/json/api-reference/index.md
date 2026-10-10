@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Overview"
-title: "API Reference - CyberGo JSON | Complete Function Docs"
-description: "CyberGo JSON API reference: GetString/GetInt queries, Set/Delete, Marshal/Unmarshal, Processor, Schema validation, package/instance methods, stdlib compatible."
-sidebar_position: 1
+title: "API Reference - CyberGo JSON | Complete Functions & Types"
+description: "CyberGo JSON is a Go library with a complete API reference: GetString, Marshal, Unmarshal, GetTyped, ValidateSchema and Processor methods for quick lookup."
+sidebar_position: 10
 ---
 
 # API Reference
@@ -38,16 +38,16 @@ The library offers two API surfaces: **package-level functions** (e.g. `json.Get
 | Module | Description |
 |--------|-------------|
 | [Helper Functions](./helpers) | CompareJSON / MergeJSON, cache management, the global processor, SafeError / RedactedPath, AccessResult methods |
-| [Formatted Output](../getting-started/print) | Migration guide for the Print family (replacements for removed APIs) |
+| [Formatted Output](../getting-started/print) | Pretty vs compact output, incl. Print-family migration notes |
 
 ### Cross-Module Topics
 
 | Module | Description |
 |--------|-------------|
-| [Streaming](../streaming/large-files) | Large-file streaming guide |
-| [JSONL / NDJSON Processing](../streaming/jsonl) | JSONL processors (StreamJSONL / NDJSONProcessor / JSONLWriter) |
+| [Streaming](../streaming/large-files) | Large-file guide (full-load vs streaming iteration) |
+| [JSONL / NDJSON Streaming](../streaming/jsonl) | Streaming reads and writes with the StreamJSONL family and JSONLWriter |
 | [Security Validation](../security/security-mode) | Security-mode API (SecurityConfig / DangerousPattern / RegisterDangerousPattern) |
-| [Schema Validation](./schema) | Schema validation (ValidateSchema / DefaultSchema / NewSchemaWithConfig) |
+| [Schema Validation](./schema) | Schema validation (ValidateSchema / DefaultSchema / NewSchema) |
 | [Hook System](../extensions/hooks) | Operation interception hooks (LoggingHook / TimingHook / ValidationHook / ErrorHook) |
 | [Custom Encoders](../extensions/custom-encoder) | Custom encoders (CustomEncoder / TypeEncoder) |
 
@@ -59,91 +59,91 @@ The library offers two API surfaces: **package-level functions** (e.g. `json.Get
 
 | Function | Description |
 |----------|-------------|
-| `Get`, `GetWithContext`, `GetString`, `GetInt`, `GetFloat`, `GetBool`, `GetArray`, `GetObject` | Type-safe gets |
-| `GetTyped[T]` | Generic get |
-| `SafeGet` | Safe get returning an AccessResult |
-| `GetMultiple` | Batch get |
+| [`Get`](./functions/query#get), `GetWithContext`, [`GetString`](./functions/query#getstring), `GetInt`, `GetFloat`, `GetBool`, `GetArray`, `GetObject` | Type-safe gets |
+| [`GetTyped[T]`](./functions/query#gettyped-t) | Generic get |
+| [`SafeGet`](./functions/query#safeget-package-level-function) | Safe get returning an AccessResult |
+| [`GetMultiple`](./functions/query#getmultiple-package-level-function) | Batch get |
 
 #### Modification Operations
 
 | Function | Description |
 |----------|-------------|
-| `Set`, `SetMultiple` | Set values |
-| `SetCreate`, `SetMultipleCreate` | Set values with automatic path creation |
-| `Delete`, `DeleteClean` | Delete values |
-| `ProcessBatch` | Batch operations |
+| [`Set`](./functions/modify#set), `SetMultiple` | Set values |
+| [`SetCreate`](./functions/modify#setcreate), `SetMultipleCreate` | Set values with automatic path creation |
+| [`Delete`](./functions/delete#delete), `DeleteClean` | Delete values |
+| [`ProcessBatch`](./functions/batch#processbatch) | Batch operations |
 
 #### Encoding and Decoding
 
 | Function | Description |
 |----------|-------------|
-| `Marshal`, `Unmarshal` | Standard encode/decode (`encoding/json` compatible, optional `cfg`) |
-| `MarshalIndent` | Indented encoding (`encoding/json.MarshalIndent` compatible, optional `cfg`) |
-| `EncodeWithConfig`, `EncodePretty` | Encode to string (with config / pretty output) |
-| `Encode` (deprecated) | Functionally equivalent to `EncodeWithConfig`, will be removed in a future major version — use `Marshal` or `EncodeWithConfig` in new code |
+| [`Marshal`](./functions/output#marshal), [`Unmarshal`](./functions/output#unmarshal) | Standard encode/decode (`encoding/json` compatible, optional `cfg`) |
+| [`MarshalIndent`](./functions/output#marshalindent) | Indented encoding (`encoding/json.MarshalIndent` compatible, optional `cfg`) |
+| [`Encode`](./functions/output#encode), [`EncodePretty`](./functions/output#encodepretty) | Encode to string (with config / pretty output) |
+| [`EncodeWithConfig`](./functions/output#encodewithconfig) (deprecated) | Functionally equivalent to `Encode`, retained within v1 — use `Encode` or `Marshal` in new code |
 | `NewEncoder`, `NewDecoder` | Streaming encode/decode |
-| `Parse`, `ParseAny` | Parse into a target variable / parse as `any` |
-| `EncodeBatch`, `EncodeFields`, `EncodeStream` | Encode key-value pairs into an object / encode selected fields / encode multiple values into an array |
+| [`Parse`](./functions/parse#parse), [`ParseAny`](./functions/parse#parseany) | Parse into a target variable / parse as `any` |
+| [`EncodeBatch`](./processor/output#encodebatch), `EncodeFields`, `EncodeStream` | Encode key-value pairs into an object / encode selected fields / encode multiple values into an array |
 
 #### Formatting
 
 | Function | Description |
 |----------|-------------|
-| `Prettify` | Pretty-print JSON |
-| `Compact` | Compact JSON (buffer form, `encoding/json.Compact` compatible) |
-| `CompactString` | Compact JSON (string in/out form, mirrors `Processor.Compact`) |
-| `Indent` | Indent and write to a buffer (`encoding/json.Indent` compatible) |
-| `HTMLEscape` | Escape HTML characters into a buffer (`encoding/json.HTMLEscape` compatible) |
+| [`Prettify`](./functions/output#prettify) | Pretty-print JSON |
+| [`Compact`](./functions/output#compact) | Compact JSON (buffer form, `encoding/json.Compact` compatible) |
+| [`CompactString`](./functions/output#compactstring) | Compact JSON (string in/out form, mirrors `Processor.Compact`) |
+| [`Indent`](./functions/output#indent) | Indent and write to a buffer (`encoding/json.Indent` compatible) |
+| [`HTMLEscape`](./functions/output#htmlescape) | Escape HTML characters into a buffer (`encoding/json.HTMLEscape` compatible) |
 
 #### File Operations
 
 | Function | Description |
 |----------|-------------|
-| `LoadFromFile`, `SaveToFile` | Read and write files |
-| `LoadFromReader` | Read from a Reader |
-| `MarshalToFile`, `UnmarshalFromFile` | File encode/decode |
-| `SaveToWriter` | Write to any Writer |
+| [`LoadFromFile`](./functions/file-io#loadfromfile), `SaveToFile` | Read and write files |
+| [`LoadFromReader`](./functions/file-io#loadfromreader) | Read from a Reader |
+| [`MarshalToFile`](./functions/file-io#marshaltofile), `UnmarshalFromFile` | File encode/decode |
+| [`SaveToWriter`](./functions/file-io#savetowriter) | Write to any Writer |
 
 #### Iteration and Traversal
 
 | Function | Description |
 |----------|-------------|
-| `Foreach`, `ForeachWithError`, `ForeachNested`, `ForeachNestedWithError` | Iterate arrays/objects (incl. deep traversal) |
-| `ForeachWithPath`, `ForeachWithPathAndIterator`, `ForeachWithPathAndControl` | Iterate at a given path (carrying the current path / with break control) |
-| `ForeachReturn` | Iterate and return the modified JSON |
-| `ForeachFile`, `ForeachFileWithPath`, `ForeachFileChunked`, `ForeachFileNested` | Streaming iteration over large files |
-| `NewIterator`, `NewBatchIterator`, `NewParallelIterator`, `NewStreamIterator` | Standalone iterator constructors (see [Iterators](./iterator)) |
+| [`Foreach`](./functions/iterate#foreach), [`ForeachWithError`](./functions/iterate#foreachwitherror), `ForeachNested`, `ForeachNestedWithError` | Iterate arrays/objects (incl. deep traversal) |
+| [`ForeachWithPath`](./functions/iterate#foreachwithpath), `ForeachWithPathAndIterator`, `ForeachWithPathAndControl` | Iterate at a given path (carrying the current path / with break control) |
+| [`ForeachReturn`](./functions/iterate#foreachreturn) | Iterate and return the modified JSON |
+| [`ForeachFile`](./functions/iterate#foreachfile), `ForeachFileWithPath`, `ForeachFileChunked`, `ForeachFileNested` | Item-by-item file iteration (fully loaded, then item-by-item/batched callbacks) |
+| [`NewIterator`](./iterator#newiterator), `NewBatchIterator`, `NewParallelIterator`, `NewStreamIterator` | Standalone iterator constructors (see [Iterators](./iterator)) |
 
 #### Cache and Globals
 
 | Function | Description |
 |----------|-------------|
-| `WarmupCache`, `ClearCache` | Cache warm-up / clearing |
-| `GetStats`, `GetHealthStatus` | Runtime statistics / health check |
+| [`WarmupCache`](./helpers#warmupcache), `ClearCache` | Cache warm-up / clearing |
+| [`GetStats`](./helpers#getstats-package-level-function), `GetHealthStatus` | Runtime statistics / health check |
 | `GetConfig`, `SetLogger` | Read processor config / inject a logger (both global and Processor methods) |
-| `SetGlobalProcessor`, `ShutdownGlobalProcessor` | Replace and shut down the global processor |
+| [`SetGlobalProcessor`](./helpers#global-processor-management), `ShutdownGlobalProcessor` | Replace and shut down the global processor |
 | `RegisterDangerousPattern`, `UnregisterDangerousPattern`, `ListDangerousPatterns` | Global dangerous-pattern registry register / remove / list (see [Helper Functions](./helpers#registerdangerouspattern)) |
-| `CompilePath` (Processor), `PreParse` (Processor) | Path pre-compilation / JSON pre-parsing |
+| [`CompilePath`](./processor/query#compilepath) (Processor), [`PreParse`](./processor/query#preparse) (Processor) | Path pre-compilation / JSON pre-parsing |
 
 #### Streaming
 
 | Type/Method | Description |
 |-------------|-------------|
-| `StreamLinesInto[T]` | Stream JSONL from a Reader and convert to `[]T` |
-| `ParseJSONL` | Parse JSONL bytes into `[]any` |
-| `ToJSONL`, `ToJSONLString` | Convert `[]any` to JSONL format |
+| [`StreamLinesInto[T]`](./functions/jsonl#streamlinesinto) | Stream JSONL from a Reader and convert to `[]T` |
+| [`ParseJSONL`](./functions/jsonl#parsejsonl) | Parse JSONL bytes into `[]any` |
+| [`ToJSONL`](./functions/jsonl#tojsonl), `ToJSONLString` | Convert `[]any` to JSONL format |
 | `JSONLWriter` | JSONL writer (Write/WriteAll/WriteRaw) |
-| `NDJSONProcessor` | NDJSON/JSONL processor (created by `NewNDJSONProcessor`) |
-| `ForeachFile` | File streaming |
+| `NDJSONProcessor` ([deprecated](../streaming/jsonl#ndjsonprocessor)) | NDJSON/JSONL processor (created by `NewNDJSONProcessor`; use the StreamJSONL family in new code) |
+| [`ForeachFile`](./functions/iterate#foreachfile) | Item-by-item file iteration (whole file loaded) |
 
 #### Validation
 
 | Function | Description |
 |----------|-------------|
-| `Valid` | JSON validation (`encoding/json.Valid` compatible) |
-| `ValidWithConfig` | JSON validation with config |
-| `ValidateSchema` | Schema validation (used with the `Schema` type) |
-| `CompareJSON` | Compare JSON for equivalence |
+| [`Valid`](./functions/parse#valid) | JSON validation (`encoding/json.Valid` compatible) |
+| [`ValidWithConfig`](./functions/parse#validwithconfig) | JSON validation with config |
+| [`ValidateSchema`](./functions/parse#validateschema) | Schema validation (used with the `Schema` type) |
+| [`CompareJSON`](./helpers#comparejson) | Compare JSON for equivalence |
 | `MergeJSON`, `MergeMany` | JSON merging (union/intersection/difference modes, see [Helper Functions](./helpers)) |
 
 ## Naming Conventions

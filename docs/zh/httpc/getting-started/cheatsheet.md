@@ -1,13 +1,15 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo HTTPC | 常用代码速查"
-description: "HTTPC 速查表：客户端创建与五种配置预设、Get/Post 等七种请求方法、27 个常用 WithXxx 请求选项、Result 响应处理、中间件链组合、ClientError 错误分类、文件下载与域名客户端操作的完整可复用代码片段，方便开发者快速查阅。"
-sidebar_position: 3
+description: "HTTPC 速查表：客户端创建与五种配置预设、Get/Post 等七种请求方法、29 个 WithXxx 请求选项、Result 响应处理、中间件链组合、ClientError 错误分类、文件下载与域名客户端操作的完整可复用代码片段。"
+sidebar_position: 30
 ---
 
 # 速查表
 
 ## 创建客户端
+
+详见 [核心概念](../getting-started/concepts)。
 
 ```go
 // 默认配置
@@ -43,6 +45,8 @@ _ = httpc.CloseDefaultClient()     // 关闭并重置（下次包级调用自动
 
 ## HTTP 方法
 
+详见 [实战教程](../guides/tutorial)。
+
 ```go
 // 包级函数（使用默认客户端）
 result, _ := httpc.Get(url)
@@ -62,6 +66,8 @@ result, _ := client.Request(ctx, "POST", url)
 ```
 
 ## 请求选项
+
+全部选项详见 [请求选项 API](../api-reference/core/options)。
 
 ### 请求头
 
@@ -117,7 +123,9 @@ httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()) // 须放在所有 Co
 ```go
 httpc.WithContext(ctx)
 httpc.WithTimeout(30 * time.Second)
+httpc.WithNoTimeout()            // 解除客户端默认整体超时（显式 WithTimeout 与 ctx 截止仍生效）
 httpc.WithMaxRetries(3)          // 0 禁用重试；上限 10
+httpc.WithRetryNonIdempotent(true) // 允许重试 POST/PATCH 等非幂等请求（请求级双向覆盖客户端策略；警惕重复提交副作用，如重复支付）
 httpc.WithFollowRedirects(false) // 禁止跟随重定向
 httpc.WithMaxRedirects(5)        // 注意：0 等同未设置（回退默认 10），禁用跟随请用上一行
 httpc.WithStreamBody(true)       // 仅对 Download 生效（普通请求的响应体仍会完整读入 Result）
@@ -138,6 +146,8 @@ httpc.WithOnResponse(func(resp httpc.ResponseMutator) error {
 ```
 
 ## 响应处理
+
+详见 [Result API](../api-reference/core/result)。
 
 ```go
 result.StatusCode()                    // int
@@ -177,6 +187,8 @@ result.Response.ContentLength // Content-Length
 ```
 
 ## 配置
+
+全部字段详见 [配置 API](../api-reference/client-config/config)。
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -232,6 +244,8 @@ cfg.Retry.CustomPolicy = myPolicy     // 自定义策略（实现 ShouldRetry/Ge
 
 ## 中间件
 
+详见 [中间件链](../guides/middleware-chain)。
+
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
@@ -276,6 +290,8 @@ func traceMiddleware(next httpc.Handler) httpc.Handler {
 :::
 
 ## 错误处理
+
+详见 [错误处理](../guides/error-handling)。
 
 ```go
 result, err := client.Get(url)
@@ -339,6 +355,8 @@ errors.Is(err, httpc.ErrEmptyFilePath)        // DownloadConfig.FilePath 未设�
 
 ## 文件下载
 
+详见 [文件传输](../guides/file-transfer)。
+
 ```go
 // 基本下载（ctx 为 context.Context，如 context.Background()）
 dlCfg := httpc.DefaultDownloadConfig()
@@ -367,6 +385,8 @@ dlResult, err := httpc.Download(ctx, url, dlCfg)
 ```
 
 ## 域名客户端
+
+详见 [域名客户端与会话](../guides/domain-session)。
 
 ```go
 dc, _ := httpc.NewDomainDefault("https://api.example.com")
@@ -403,6 +423,8 @@ sm.UpdateFromResult(result) // 从响应提取 Set-Cookie
 :::
 
 ## 场景速配
+
+更多组合场景见 [实战教程](../guides/tutorial)。
 
 ```go
 // 请求级超时（覆盖实例配置）

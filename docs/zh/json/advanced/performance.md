@@ -1,8 +1,8 @@
 ---
 sidebar_label: "性能优化"
-title: "性能优化 - CyberGo JSON | 高性能指南"
-description: "CyberGo JSON 性能优化：EnableCache/CacheTTL 缓存、ParallelThreshold 并行、PreParse 预解析与 WarmupCache 预热，配合 CompilePath 预编译路径、对象池复用与基准测试，提升高频 JSON 处理性能。"
-sidebar_position: 1
+title: "性能优化 - CyberGo JSON | 基准测试与零分配"
+description: "CyberGo JSON 提供面向高频场景的性能优化手段，支持 CompilePath 预编译路径、PreParse 预解析、对象池复用与 ParallelThreshold 并行加速，配合基准测试与 GetStats 命中率分析，帮助开发者以数据驱动方式实现零分配的高速 JSON 处理。"
+sidebar_position: 20
 ---
 
 # 性能优化
@@ -70,8 +70,8 @@ for _, item := range dataList {
 // ✅ 使用 Marshal 返回字节切片
 bytes, _ := json.Marshal(data)
 
-// ✅ 使用 EncodeWithConfig 返回字符串（Encode 已废弃）
-s, _ := json.EncodeWithConfig(data)
+// ✅ 使用 Encode 返回字符串
+s, _ := json.Encode(data)
 ```
 
 ### 预分配缓冲区
@@ -310,12 +310,18 @@ func TestMemoryUsage(t *testing.T) {
 }
 ```
 
-## 性能对比
+## 如何自行基准测试
 
-| 操作 | 小数据 (<1KB) | 中等数据 (1MB) | 大数据 (>10MB) |
-|------|---------------|----------------|----------------|
-| `Parse` | 推荐 | 推荐 | 不推荐 |
-| `ForeachFile` | 不必要 | 可选 | 推荐 |
+性能结论依赖数据形状与硬件，本页不罗列具体数字；需要数字时请在自己的负载上实测。库源码自带的 `benchmark_test.go` 覆盖了与 `encoding/json` 的热路径对照（快速编码器、路径 `Get`、数组切片、字段提取等），以及 `StreamIterator` 流式迭代、`PreParse` 预解析、并发 `Get`/`Set`/`Marshal` 等场景：
+
+```bash
+# 在库源码根目录运行完整基准套件（含分配统计）
+go test -run='^$' -bench=. -benchmem ./...
+```
+
+- `-benchmem` 输出每次操作的分配字节数与次数（`B/op`、`allocs/op`），与 `ns/op` 一起作为选型依据；
+- 对照组以 `BenchmarkStdLib_*` / `BenchmarkComparison_*` 命名，可与 `BenchmarkFastEncoder_*` 等同场景基准直接比较；
+- 按数据规模选择 API（如 `ForeachFile` 适用于 10–100MB 的整载场景，更大文件改用 `StreamIterator`）见[大文件选择指南](../streaming/large-files#选择指南)。
 
 ## 相关
 

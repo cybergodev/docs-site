@@ -2,7 +2,7 @@
 sidebar_label: "测试指南"
 title: "测试指南 - CyberGo HTTPC | httptest 与断言"
 description: "HTTPC 测试指南：TestingConfig 测试专用配置、net/http/httptest 模拟服务器集成、Doer 接口 Mock 注入、模拟错误响应/延迟/重定向场景、确定性重试与文件下载测试、表格驱动测试与 Cookie 会话断言最佳实践。"
-sidebar_position: 13
+sidebar_position: 120
 ---
 
 # 测试指南
@@ -452,3 +452,4 @@ func TestHTTPMethods(t *testing.T) {
 - [中间件链](./middleware-chain) - 中间件测试模式
 - [文件上传与下载](./file-transfer) - 下载语义详解（本页「测试文件下载」的展开）
 - [高级示例](../examples/advanced-usage) - 生产级代码模式
+- [从 net/http 迁移](./migration) - 标准库项目迁入时的行为差异与陷阱清单

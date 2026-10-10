@@ -2,7 +2,7 @@
 title: "从标准库迁移 - CyberGo JSON | encoding/json 兼容指南"
 description: "从标准库 encoding/json 迁移到 CyberGo JSON：三步完成、只改 import 即可编译，Marshal/Encoder/Decoder 方法与错误类型兼容清单逐项核对，附默认安全校验行为差异表、迁移 FAQ 与增量能力使用指南。"
 sidebar_label: "从标准库迁移"
-sidebar_position: 1.5
+sidebar_position: 60
 ---
 
 # 从标准库迁移

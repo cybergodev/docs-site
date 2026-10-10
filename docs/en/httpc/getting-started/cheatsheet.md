@@ -1,13 +1,15 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo HTTPC | Common Code Reference"
-description: "HTTPC cheat sheet: client creation and presets, request methods, WithXxx options, Result handling, middleware, ClientError, downloads, and domain clients."
-sidebar_position: 3
+description: "HTTPC cheat sheet: client creation and presets, request methods, 29 WithXxx options, Result handling, middleware, ClientError, downloads, domain clients."
+sidebar_position: 30
 ---
 
 # Cheat Sheet
 
 ## Creating a Client
+
+See [Core Concepts](../getting-started/concepts).
 
 ```go
 // Default configuration
@@ -43,6 +45,8 @@ _ = httpc.CloseDefaultClient()     // Close and reset (the next package-level ca
 
 ## HTTP Methods
 
+See the [Hands-On Tutorial](../guides/tutorial).
+
 ```go
 // Package-level functions (using the default client)
 result, _ := httpc.Get(url)
@@ -62,6 +66,8 @@ result, _ := client.Request(ctx, "POST", url)
 ```
 
 ## Request Options
+
+For the full list, see the [Request Options API](../api-reference/core/options).
 
 ### Headers
 
@@ -117,7 +123,9 @@ httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()) // Must come after al
 ```go
 httpc.WithContext(ctx)
 httpc.WithTimeout(30 * time.Second)
+httpc.WithNoTimeout()            // Lift the client-level default timeout (explicit WithTimeout and ctx deadlines still apply)
 httpc.WithMaxRetries(3)          // 0 disables retries; max 10
+httpc.WithRetryNonIdempotent(true) // Allow retrying non-idempotent POST/PATCH (per-request override, both directions; beware replay side effects such as duplicate payments)
 httpc.WithFollowRedirects(false) // Disable redirect following
 httpc.WithMaxRedirects(5)        // Note: 0 counts as unset (falls back to the default 10); use the line above to disable following
 httpc.WithStreamBody(true)       // Only affects Download (normal requests still read the body fully into Result)
@@ -138,6 +146,8 @@ httpc.WithOnResponse(func(resp httpc.ResponseMutator) error {
 ```
 
 ## Response Handling
+
+See the [Result API](../api-reference/core/result).
 
 ```go
 result.StatusCode()                    // int
@@ -177,6 +187,8 @@ result.Response.ContentLength // Content-Length
 ```
 
 ## Configuration
+
+For all fields, see the [Configuration API](../api-reference/client-config/config).
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -232,6 +244,8 @@ cfg.Retry.CustomPolicy = myPolicy          // Custom policy (implement ShouldRet
 
 ## Middleware
 
+See the [Middleware Chain guide](../guides/middleware-chain).
+
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
@@ -276,6 +290,8 @@ func traceMiddleware(next httpc.Handler) httpc.Handler {
 :::
 
 ## Error Handling
+
+See the [Error Handling guide](../guides/error-handling).
 
 ```go
 result, err := client.Get(url)
@@ -339,6 +355,8 @@ errors.Is(err, httpc.ErrEmptyFilePath)        // DownloadConfig.FilePath not set
 
 ## File Download
 
+See the [File Upload & Download guide](../guides/file-transfer).
+
 ```go
 // Basic download (ctx is a context.Context, e.g. context.Background())
 dlCfg := httpc.DefaultDownloadConfig()
@@ -367,6 +385,8 @@ dlResult, err := httpc.Download(ctx, url, dlCfg)
 ```
 
 ## Domain Client
+
+See the [Domain Client & Sessions guide](../guides/domain-session).
 
 ```go
 dc, _ := httpc.NewDomainDefault("https://api.example.com")
@@ -403,6 +423,8 @@ Request options passed to a `DomainClient` are applied twice internally (session
 :::
 
 ## Scenario Recipes
+
+For more combined scenarios, see the [Hands-On Tutorial](../guides/tutorial).
 
 ```go
 // Per-request timeout (overrides instance configuration)

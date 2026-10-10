@@ -1,6 +1,6 @@
 ---
 sidebar_label: "概述"
-title: "JSON 处理库 - CyberGo JSON | 高性能 Go 库"
+title: "JSON 处理库 - CyberGo JSON | JSONPath 查询与流式处理"
 description: "CyberGo JSON 是高性能、线程安全的 Go JSON 处理库，支持 JSONPath 路径查询、流式处理、泛型 API、Schema 验证与钩子扩展，内置输入校验、危险模式检测与智能缓存，100% 兼容 encoding/json，可无缝替换标准库。"
 ---
 
@@ -24,6 +24,8 @@ description: "CyberGo JSON 是高性能、线程安全的 Go JSON 处理库，�
 ```bash
 go get github.com/cybergodev/json
 ```
+
+**要求 Go 1.25+**（源码 go.mod 声明 `go 1.25.0`；示例用到泛型与 `slices` 标准库）。
 
 ## 30 秒快速体验
 
@@ -96,7 +98,7 @@ func main() {
 | 路径预编译 | `Processor.CompilePath`, `Processor.GetCompiled` | 同一路径高频查询零重复解析 |
 | 并行迭代 | `NewParallelIterator` | 内置 worker 池的并行 Map/Filter/ForEach |
 | 安全获取 | `SafeGet` → `AccessResult` | 链式类型转换 |
-| 流式处理 | `NDJSONProcessor` | 逐行流式，内存可控 |
+| 流式处理 | `StreamJSONL` 家族 | 逐行流式，内存可控 |
 | JSONL 处理 | `StreamLinesInto[T]` | 日志/数据管道 |
 | Schema 验证 | `ValidateSchema` | JSON Schema 验证 |
 
@@ -108,7 +110,9 @@ func main() {
 | [路径表达式语法](./getting-started/path-syntax) | 路径查询、切片、通配符、字段提取 |
 | [Processor 入门](./getting-started/processor-guide) | 何时使用 Processor、预解析优化、生命周期 |
 | [API 文档](./api-reference/) | 完整 API 参考 |
-| [大文件处理](./streaming/large-files) | 流式处理、分块读写、内存优化 |
+| [大文件处理](./streaming/large-files) | 文件逐条迭代、流式迭代器与内存优化 |
+| [扩展接口](./extensions/) | Hook 钩子系统拦截 Get/Set/Delete 全流程，自定义编码走 `json.Marshaler`/`CustomEscapes` |
+| [安全](./security/) | 默认开启输入安全校验（体积/深度/UTF-8/危险模式），`SecurityConfig()` 预设面向不可信输入，附生产检查清单 |
 | [使用示例](./examples/) | 实战代码示例 |
 | [高级功能示例](./examples/examples-advanced) | 批量编码、预解析、钩子系统 |
 
@@ -142,7 +146,7 @@ func main() {
 | 类型安全 | `GetTyped[User](data, "user")` |
 | 同一 JSON 查多路径 | `Processor` + `PreParse` |
 | 同一路径查多 JSON | `Processor` + `CompilePath` |
-| 大文件 | `Processor.ForeachFile` |
+| 大文件 | `StreamIterator`（>100MB）/ `Processor.ForeachFile`（10–100MB，整载） |
 | 大数组并行处理 | `NewParallelIterator` |
 | JSONL 流水线 | `StreamLinesInto[T]` |
 | 不可信输入 | `SecurityConfig()` |
@@ -153,3 +157,4 @@ func main() {
 - [Processor 入门](./getting-started/processor-guide) — 何时使用处理器
 - [路径表达式语法](./getting-started/path-syntax) — 完整路径语法
 - [使用示例](./examples/) — 更多实战示例
+- [安全](./security/) — 默认输入安全校验与不可信输入防护

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "迭代方法"
-title: "Processor 迭代方法 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 迭代方法：Foreach、ForeachWithPath、ForeachNested 迭代、IterableValue 数据访问与 IteratorControl 控制流，支持 ForeachReturn 修改式迭代与批量迭代实践。"
-sidebar_position: 10
+title: "Processor 迭代方法 - CyberGo JSON | Foreach 系列方法"
+description: "CyberGo JSON 的 Processor 提供 Foreach/ForeachWithPath 等八种迭代方法与 ForeachWithError 错误处理，通过 IterableValue 访问数据、IteratorControl 控制中断，回调修改不会污染解析缓存，适合遍历数组对象并逐项转换或汇总数据的处理场景。"
+sidebar_position: 100
 ---
 
 # 迭代方法
@@ -19,11 +19,18 @@ Processor 提供多种迭代 JSON 数组和对象的方法。
 
 ## Foreach
 
+<Badge type="danger" text="已废弃" />
+
 签名：`func (p *Processor) Foreach(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 迭代 JSON 数组或对象。
 
+::: warning 已废弃
+`Foreach` 会**静默丢弃错误**：文档非法或处理器已关闭时，回调被**整体跳过**且不返回任何错误，调用方无从得知。请改用 [`ForeachWithError`](#foreachwitherror)——它把错误正常返回，且回调返回 `nil` 表示继续迭代。`Foreach` 在 v1 生命周期内保留、不会移除。
+:::
+
 ```go
+// 已废弃：错误被静默丢弃；新代码请用 ForeachWithError（见下）
 p.Foreach(data, func(key any, item *json.IterableValue) {
     fmt.Printf("Key: %v, Value: %v\n", key, item.GetData())
 })
@@ -50,11 +57,18 @@ err := p.ForeachWithPath(data, "items", func(key any, item *json.IterableValue) 
 
 ## ForeachNested
 
+<Badge type="danger" text="已废弃" />
+
 签名：`func (p *Processor) ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 递归迭代所有嵌套层级。
 
+::: warning 已废弃
+`ForeachNested` 与 `Foreach` 一样**静默丢弃错误**：解析失败或处理器已关闭时回调被整体跳过，不返回任何错误。请改用 [`ForeachNestedWithError`](#foreachnestedwitherror)——它把错误正常返回，且回调返回 `nil` 表示继续迭代。`ForeachNested` 在 v1 生命周期内保留、不会移除。
+:::
+
 ```go
+// 已废弃：错误被静默丢弃；新代码请用 ForeachNestedWithError（见下）
 p.ForeachNested(data, func(key any, item *json.IterableValue) {
     fmt.Printf("键: %v, 值: %v\n", key, item.GetData())
 })
@@ -201,7 +215,7 @@ err := p.ForeachWithPathAndControl(data, "items", func(key any, value any) json.
 
 ## 文件迭代方法
 
-Processor 提供直接从文件迭代的方法，是 `LoadFromFile` + `Foreach` 系列的便捷组合：路径安全校验、`MaxJSONSize` 读取限制与 per-call `cfg` 透传均与文件加载行为一致。
+Processor 提供直接从文件迭代的方法，是 `LoadFromFile` + `Foreach` 系列的便捷组合：路径安全校验、`MaxJSONSize` 读取限制与 per-call `cfg` 透传均与文件加载行为一致；文件同样会先**整载内存**再迭代（受 `MaxJSONSize` 上限约束，默认 100MB），恒定内存场景见[大文件处理](../../streaming/large-files#流式迭代器与并行迭代器)。
 
 | 方法 | 签名要点 | 语义 |
 |------|----------|------|
@@ -225,7 +239,7 @@ err := p.ForeachFile("data.json", func(key any, item *json.IterableValue) error 
 |------|:--------:|:----:|:----:|----------|
 | `ForeachFile` | 无 | 否 | 否 | 简单文件遍历 |
 | `ForeachFileWithPath` | 有 | 否 | 否 | 定点遍历 |
-| `ForeachFileChunked` | 无 | 否 | **是** | 批量处理、内存受限 |
+| `ForeachFileChunked` | 无 | 否 | **是** | 批量落库、分批回调（文件仍整载内存） |
 | `ForeachFileNested` | 无 | **是** | 否 | 深度遍历所有节点 |
 
 ---

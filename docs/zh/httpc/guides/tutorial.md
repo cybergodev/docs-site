@@ -1,13 +1,13 @@
 ---
 sidebar_label: "实战教程"
 title: "实战教程 - CyberGo HTTPC | GitHub API 实战"
-description: "三十分钟实战教程：以 GitHub API 为场景从零构建完整 HTTP 客户端，覆盖包级函数与默认客户端、Client 实例与配置预设、WithQuery/WithJSON 请求选项、NewDomain 域名客户端、中间件链、ClientError 错误分类、文件下载与并发请求实战。"
-sidebar_position: 1
+description: "三十分钟实战教程：以 GitHub API 为场景构建完整 HTTPC 客户端，覆盖包级函数与 Client 配置预设、WithQuery/WithJSON 请求选项、NewDomain 域名客户端、中间件链、ClientError 错误分类、文件下载与并发请求。"
+sidebar_position: 10
 ---
 
 # 实战教程：构建 GitHub API 客户端
 
-以下示例以 GitHub API 为场景，演示 HTTPC 的各项核心功能。每个示例相互独立，可按需查阅。
+以下示例以 GitHub API 为场景，演示 HTTPC 的各项核心功能。按顺序完整读完约需 30 分钟；各节亦可在需要时单独跳读。建议先浏览[核心概念](../getting-started/concepts)建立整体印象，再进入实战。
 
 **你将学到：**
 

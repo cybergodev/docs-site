@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Performance Optimization"
-title: "Performance Optimization - CyberGo JSON | High Performance"
-description: "CyberGo JSON performance: EnableCache/CacheTTL caching, ParallelThreshold parallelism, PreParse pre-parsing, WarmupCache warm-up, CompilePath precompilation."
-sidebar_position: 1
+title: "Performance Optimization - CyberGo JSON | Zero-Allocation"
+description: "CyberGo JSON offers data-driven tuning with CompilePath, PreParse, ParallelThreshold, and GetStats benchmarks to find hot paths and cut allocations."
+sidebar_position: 20
 ---
 
 # Performance Optimization
@@ -70,8 +70,8 @@ The default configuration (cache on + object pools + fast paths) already covers 
 // OK: use Marshal, which returns a byte slice
 bytes, _ := json.Marshal(data)
 
-// OK: use EncodeWithConfig, which returns a string (Encode is deprecated)
-s, _ := json.EncodeWithConfig(data)
+// OK: use Encode, which returns a string
+s, _ := json.Encode(data)
 ```
 
 ### Pre-allocate Buffers
@@ -310,12 +310,18 @@ func TestMemoryUsage(t *testing.T) {
 }
 ```
 
-## Performance Comparison
+## Running Your Own Benchmarks
 
-| Operation | Small data (<1KB) | Medium data (1MB) | Large data (>10MB) |
-|-----------|-------------------|-------------------|--------------------|
-| `Parse` | Recommended | Recommended | Not recommended |
-| `ForeachFile` | Unnecessary | Optional | Recommended |
+Performance conclusions depend on data shape and hardware, so this page does not quote specific numbers — measure on your own workload instead. The library's `benchmark_test.go` covers hot-path comparisons against `encoding/json` (the fast encoder, path-based `Get`, array slicing, field extraction) plus scenarios such as `StreamIterator` streaming, `PreParse` pre-parsing, and concurrent `Get`/`Set`/`Marshal`:
+
+```bash
+# Run the full benchmark suite with allocation stats from the library source root
+go test -run='^$' -bench=. -benchmem ./...
+```
+
+- `-benchmem` reports bytes and counts allocated per operation (`B/op`, `allocs/op`), which together with `ns/op` drive API choices;
+- the comparison groups are named `BenchmarkStdLib_*` / `BenchmarkComparison_*` and can be compared directly with same-scenario benchmarks such as `BenchmarkFastEncoder_*`;
+- for choosing APIs by data size (e.g. `ForeachFile` for the 10-100MB full-load range, `StreamIterator` for larger files) see the [large-file selection guide](../streaming/large-files#selection-guide).
 
 ## See Also
 

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "JSONL"
-title: "JSONL Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON JSONL functions: ParseJSONL/ToJSONL/ToJSONLString conversion, StreamJSONL/ForeachJSONL streaming, StreamLinesInto[T] generics, NewJSONLWriter."
-sidebar_position: 8
+title: "JSONL Functions - CyberGo JSON | ParseJSONL & ToJSONL Usage"
+description: "CyberGo JSON is a Go library for JSONL processing, offering ParseJSONL, ToJSONL, StreamLinesInto[T] streaming and NewJSONLWriter to handle NDJSON data."
+sidebar_position: 80
 ---
 
 # JSONL Functions
@@ -10,7 +10,7 @@ sidebar_position: 8
 The json package provides JSONL (JSON Lines) functions for parsing, streaming, converting, and writing newline-delimited JSON data.
 
 :::tip Full tutorial
-Want the JSONL/NDJSON concepts, streaming patterns, and real-world usage? See the complete tutorial in [JSONL Processors](../../streaming/jsonl).
+Want the JSONL/NDJSON concepts, streaming patterns, and real-world usage? See the complete tutorial in [JSONL Streaming](../../streaming/jsonl).
 :::
 
 ## JSONL Processing Functions
@@ -174,7 +174,7 @@ func main() {
 
 ## JSONL Streaming Functions (Package-Level)
 
-Convenience package-level JSONL streaming functions of the json package. Their signatures match the corresponding Processor methods, plus an optional trailing `cfg ...Config`; internally they use a global Processor cached per `cfg`, so no manual instance is needed — a good fit for one-shot processing. When processing repeatedly or sharing one configuration, prefer creating a standalone Processor with [`json.New(cfg)`](../processor/#new).
+Convenience package-level JSONL streaming functions of the json package. Their signatures match the corresponding Processor methods (likewise accepting an optional trailing `cfg ...Config` argument); internally they use a global Processor cached per `cfg`, so no manual instance is needed — a good fit for one-shot processing. When processing repeatedly or sharing one configuration, prefer creating a standalone Processor with [`json.New(cfg)`](../processor/#new).
 
 For full usage and examples see the [JSONL Streaming Guide](../../streaming/jsonl#package-level-functions) and [Processor JSONL Methods](../processor/jsonl).
 
@@ -192,7 +192,7 @@ For full usage and examples see the [JSONL Streaming Guide](../../streaming/json
 
 **Behavior highlights**
 
-- **Bad-line handling**: the `StreamJSONL` family **aborts immediately** on an unparseable line, returning an error of the form `line N: ...`; only `StreamLinesInto` honors `Config.JSONLContinueOnErr` (when `true`, bad lines are skipped and processing continues).
+- **Bad-line handling**: by default (`JSONLContinueOnErr=false`) an unparseable line **aborts immediately** with an error of the form `line N: ...`; with `JSONLContinueOnErr=true`, every JSONL engine (the `StreamJSONL` family, `StreamLinesInto`, `NDJSONProcessor`) skips bad lines and continues.
 - **Depth guard**: before parsing each line, a nesting-depth check runs (`MaxNestingDepthSecurity`, default 200) to prevent stack overflow from deeply nested lines.
 - **Parallel semantics**: `StreamJSONLParallel` treats `workers <= 0` as 4; callbacks run concurrently on multiple goroutines, so you must ensure concurrency safety yourself. A callback returning `item.Break()` is a **normal** early exit (returns `nil`); returning any other error cancels the remaining tasks and becomes the function's return value.
 - **Memory guard**: `JSONLMaxMemory` (falling back to `MaxMemory` when unset) bounds the total processed bytes; exceeding it aborts processing.
@@ -482,5 +482,5 @@ func main() {
 
 - [File Operation Functions](./file-io) - LoadFromFile, SaveToFile and other file operations
 - [Processor JSONL Methods](../processor/jsonl) - Processor-level JSONL methods in detail
-- [JSONL Processor](../../streaming/jsonl#jsonlwriter) - JSONL/NDJSON concepts and hands-on streaming tutorial
+- [JSONL Streaming](../../streaming/jsonl#jsonlwriter) - JSONL/NDJSON concepts and hands-on streaming tutorial
 - [Streaming](../../streaming/large-files) - Streaming processors in detail

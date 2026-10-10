@@ -1,8 +1,8 @@
 ---
 sidebar_label: "并发与并行处理"
-title: "并发与并行处理 - CyberGo JSON | 实战指南"
-description: "CyberGo JSON 并发与并行处理：Processor 线程安全保证、ParallelIterator 并行迭代器、StreamJSONLParallel 并行 JSONL、SetGlobalProcessor 全局共享与 MaxConcurrency 并发限制，附并发处理大型数据集配方。"
-sidebar_position: 4
+title: "并发与并行处理 - CyberGo JSON | goroutine 安全实战"
+description: "CyberGo JSON 提供线程安全的并发与并行处理能力，支持单个 Processor 实例跨 goroutine 共享、ParallelIterator 多核并行迭代与 StreamJSONLParallel 并行 JSONL 流，帮助开发者安全利用多核加速大批量数据处理并管控并发上限。"
+sidebar_position: 40
 ---
 
 # 并发与并行处理

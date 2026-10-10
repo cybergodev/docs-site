@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Lifecycle"
-title: "Processor Lifecycle - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor lifecycle: New, idempotent Close release, IsClosed, GetStats, GetHealthStatus, ClearCache, WarmupCache — safe concurrent shutdown."
-sidebar_position: 11
+title: "Processor Lifecycle - CyberGo JSON | Close & GetStats"
+description: "CyberGo JSON Processor lifecycle: Close, IsClosed, ClearCache/WarmupCache, GetStats, GetHealthStatus and ShutdownGlobalProcessor for safe shutdown."
+sidebar_position: 110
 ---
 
 # Lifecycle & Statistics

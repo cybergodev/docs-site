@@ -2,7 +2,7 @@
 sidebar_label: "File Upload & Download"
 title: "File Upload and Download - CyberGo HTTPC | Upload/Download"
 description: "HTTPC file guide: WithFile and WithFormData uploads, streaming Download with progress callbacks, ResumeDownload, SHA-256 checksums, and UNC-path blocking."
-sidebar_position: 6
+sidebar_position: 50
 ---
 
 # File Upload and Download
@@ -154,6 +154,15 @@ result, err := httpc.Post(url,
 `Download(ctx, url, cfg, options...)` is the single canonical download entry point shared across the package-level function, `Client`, and `DomainClient`.
 
 Downloads **always stream**: `WithStreamBody(true)` is attached automatically, the response body flows from the network straight to disk (`io.Copy`), and the file is never buffered whole in memory; when a checksum is enabled, the hash is computed on the fly during writing — no second pass over the file.
+
+:::warning Downloads are bounded by MaxResponseBodySize
+Streaming to disk **does not mean unbounded size**: the download body is still subject to the client's `Security.MaxResponseBodySize` — 10MB by default with `DefaultConfig` (other presets: `SecureConfig` 5MB, `PerformanceConfig` 50MB, `MinimalConfig` 1MB). A body over the limit fails the download with `ErrResponseBodyTooLarge`; the file is **never** silently truncated at the limit. Raise the value before downloading large files:
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.MaxResponseBodySize = 200 << 20 // 200MB, adjust as needed
+```
+:::
 
 ### Basic Download
 

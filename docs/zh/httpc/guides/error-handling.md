@@ -2,7 +2,7 @@
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo HTTPC | 分类与哨兵匹配"
 description: "HTTPC 错误处理指南：ErrorType 十二种错误分类与错误分类决策树、ClientError 字段与 IsRetryable 细粒度判定、平台 syscall 可重试映射、哨兵错误匹配、panic 恢复与中间件统一错误处理、超时分层最佳实践。"
-sidebar_position: 7
+sidebar_position: 60
 ---
 
 # 错误处理
@@ -611,12 +611,13 @@ HTTPC 提供多个层级的超时控制，从粗到细：
 cfg := httpc.DefaultConfig()
 cfg.Timeouts.Request = 30 * time.Second
 
-// 第二层：中间件强制超时（覆盖默认）
+// 第二层：中间件强制超时（在客户端内置超时之前生效）
 timeoutMW := httpc.TimeoutMiddleware(&httpc.TimeoutMiddlewareConfig{
     Duration: 30 * time.Second,
 })
 
-// 第三层：单请求覆盖（WithTimeout 覆盖中间件和默认）
+// 第三层：单请求覆盖（WithTimeout 只覆盖客户端默认超时；
+// 中间件超时从请求自身的 Context() 派生，更短的中间件超时无法被 WithTimeout 延长）
 result, err := client.Get(url, httpc.WithTimeout(10*time.Second))
 
 // 第四层：context 超时（最精确，推荐用于关键路径）

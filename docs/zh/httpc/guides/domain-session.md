@@ -1,8 +1,8 @@
 ---
 sidebar_label: "域名客户端与会话"
 title: "域名客户端与会话 - CyberGo HTTPC | 会话与域名管理"
-description: "HTTPC 域名客户端与会话管理指南：NewDomain 与 NewDomainDefault 创建域名作用域客户端、URL 拼接规则与路径穿越防护、SetHeader 会话头、Cookie 自动捕获与选项自动持久化、CookieSecurity 验证、并发语义与 REST 客户端封装实战。"
-sidebar_position: 5
+description: "HTTPC 域名客户端与会话管理指南：NewDomain 创建域名作用域客户端、URL 拼接规则与路径穿越防护、SetHeader 会话头、Cookie 自动捕获与选项自动持久化、CookieSecurity 验证与 REST 客户端封装实战。"
+sidebar_position: 40
 ---
 
 # 域名客户端与会话

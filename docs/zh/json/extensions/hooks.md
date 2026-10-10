@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Hook 钩子系统"
-title: "Hook 钩子系统 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Hook 钩子系统：Hook 接口、LoggingHook、TimingHook、ValidationHook、ErrorHook 与自定义钩子，经 Before/After 与 HookContext 上下文在 JSON 操作前后插入自定义逻辑。"
-sidebar_position: 1
+title: "Hook 钩子系统 - CyberGo JSON | 拦截、监控与审计指南"
+description: "CyberGo JSON 钩子系统：Hook 接口、LoggingHook、TimingHook、ValidationHook、ErrorHook 与自定义钩子，经 Before/After 与 HookContext 上下文在 JSON 操作前后插入日志、计时、校验、审计等自定义逻辑，实现拦截、监控、审计等能力。"
+sidebar_position: 20
 ---
 
 # Hook 钩子系统

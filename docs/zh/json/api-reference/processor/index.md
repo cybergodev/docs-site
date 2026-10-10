@@ -1,8 +1,8 @@
 ---
 sidebar_label: "概述"
-title: "Processor 处理器 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 处理器：New 创建、GetString/Set/Delete 操作、Foreach 迭代、Encode 编码与 Close 生命周期，内置缓存加速重复操作，支持链式调用与全局处理器管理，适合高频复用场景。"
-sidebar_position: 1
+title: "Processor 处理器 - CyberGo JSON | 链式处理与生命周期"
+description: "CyberGo JSON 的 Processor 是一次解析、多次操作的链式处理器，提供 GetString/Set/Delete 查询修改、Foreach 迭代与 Encode 编码全套方法，内置缓存加速重复操作，配套 Close 生命周期与全局处理器管理，适合高频复用同一数据源的开发场景。"
+sidebar_position: 10
 ---
 
 # Processor
@@ -61,10 +61,10 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [查询获取](./query) | GetString/Int/Float/Bool/Get/GetWithContext/SafeGet/GetArray/GetObject/GetMultiple/CompilePath/GetCompiled/PreParse/GetFromParsed |
 | [修改操作](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/MergeJSON/MergeMany/CompareJSON |
 | [删除操作](./delete) | Delete/DeleteClean |
-| [编码输出](./output) | Encode/EncodePretty/EncodeWithConfig/MarshalIndent/Prettify/Compact/CompactBuffer/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream/ValidateSchema |
+| [编码输出](./output) | Encode/EncodePretty/EncodeWithConfig（已废弃）/MarshalIndent/Prettify/Compact/CompactString/CompactBuffer/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream/ValidateSchema |
 | [解析验证](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal |
 | [批量操作](./batch) | ProcessBatch/WarmupCache |
-| [JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |
+| [JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL/ParseJSONL/ToJSONL/ToJSONLString |
 | [文件操作](./file-io) | LoadFromFile/LoadFromReader/SaveToFile/MarshalToFile/SaveToWriter/UnmarshalFromFile/ForeachFile 系列 |
 | [迭代方法](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachReturn/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachWithPathAndControl/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
 | [生命周期](./lifecycle) | Close/IsClosed/GetConfig/AddHook/SetLogger/ClearCache/WarmupCache/GetStats/GetHealthStatus/SetGlobalProcessor/ShutdownGlobalProcessor |

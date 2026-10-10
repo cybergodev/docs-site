@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Request & Response"
 title: "Request and Response - CyberGo HTTPC | Options & Responses"
-description: "HTTPC request and response guide: request bodies, WithQuery parameters, cookies and auth options, Result parsing, streaming uploads, and decompression limits."
-sidebar_position: 3
+description: "HTTPC request/response guide: package functions, WithJSON/WithForm/WithBody, WithQuery, cookies/auth, Result parsing, streaming uploads, size limits."
+sidebar_position: 20
 ---
 
 # Request and Response

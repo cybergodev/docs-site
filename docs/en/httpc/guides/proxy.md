@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Proxy & Proxy Pool"
 title: "Proxy & Proxy Pool - CyberGo HTTPC | Proxy Config & Rotation"
-description: "HTTPC proxy guide: HTTP/HTTPS/SOCKS5 single proxy, system proxy with NO_PROXY, pool strategies, circuit breaking, status-code and per-request rotation."
-sidebar_position: 11
+description: "HTTPC proxy guide: HTTP/HTTPS/SOCKS5 single proxy, system proxy with NO_PROXY, pool strategies, circuit breaking, cooldown recovery, per-request rotation."
+sidebar_position: 100
 ---
 
 # Proxy & Proxy Pool

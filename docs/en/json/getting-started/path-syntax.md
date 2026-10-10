@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Path Expression Syntax"
-title: "Path Expression Syntax - CyberGo JSON | JSONPath"
+title: "Path Expression Syntax - CyberGo JSON | JSONPath Query Guide"
 description: "CyberGo JSON path expressions: property access, array and negative indices, slice steps, wildcards, multi-field and flat extraction, append, and JSON Pointer."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Path Expression Syntax
@@ -405,7 +405,7 @@ b, _ := json.GetArray(symbols, "*.symbol")   // [AAPL GOOG], equivalent to the a
 ```
 
 ::: tip Division of labor with Foreach
-`[*].field` suits the "collect a single field" case; for per-element access to several fields, [`ForeachWithPath`](./processor-guide) is more direct.
+`[*].field` suits the "collect a single field" case; for per-element access to several fields, [`ForeachWithPath`](../api-reference/functions/iterate) is more direct.
 :::
 
 ---

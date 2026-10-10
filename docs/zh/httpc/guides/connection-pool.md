@@ -2,7 +2,7 @@
 sidebar_label: "连接池与 DNS"
 title: "连接池与 DNS - CyberGo HTTPC | 连接池调优与 DNS 解析"
 description: "HTTPC 连接池与 DNS 指南：MaxIdleConns 与 MaxConnsPerHost 调优、空闲连接与总连接上限、TIME_WAIT 治理、对象池复用、并发请求模式、DoH 加密解析降级回退与 HTTP/2 多路复用实践，附高并发场景推荐参数。"
-sidebar_position: 10
+sidebar_position: 90
 ---
 
 # 连接池与 DNS
@@ -30,7 +30,7 @@ cfg.Timeouts.IdleConn = 120 * time.Second // 空闲连接保持时间
 | `Dial` | 10s | 建立连接超时 |
 | `TLSHandshake` | 10s | TLS 握手超时 |
 | `ResponseHeader` | 0 | 禁用（使用 Request 超时） |
-| `MaxResponseHeaderBytes` | 0 | 响应头大小上限；0 = Go 标准库默认 10MB |
+| `MaxResponseHeaderBytes` | 0 | 响应头大小上限；0 = Go 标准库默认 1MB（`net/http.DefaultMaxHeaderBytes`） |
 
 ### 场景推荐
 
@@ -56,16 +56,38 @@ cfg.Timeouts.IdleConn = 120 * time.Second // 空闲连接保持时间
 | TCP KeepAlive 探测间隔 | 30s | 固定值 |
 | `ExpectContinueTimeout` | 1s | 固定值（`Expect: 100-continue` 等待时长） |
 
-:::warning 总连接上限的表现
-达到 1000 总连接上限时，新建连接以错误结束，归类为 `ClientError`（`ErrorTypeNetwork`，Message 为 `connection pool exhausted`）。默认 `MaxIdleConns=50` / `MaxConnsPerHost=10` 下几乎不可能触发，把它当作极端并发下的最后防线即可。
+:::tip TCP KeepAlive 与 IdleConn 的分工
+30s 的 TCP keep-alive 探测维持的是 TCP 层心跳——防止 NAT/防火墙静默丢弃长时间空闲的连接；`IdleConn` 决定的是 HTTP 层何时主动关闭空闲连接。两者独立生效，TCP keep-alive 无公开开关（始终开启）。
 :::
+
+### 连接池何时耗尽与如何缓解
+
+总连接上限（1000）在**拨号时刻**以原子计数执行准入：每次新建连接先占用一个名额，连接关闭时归还；计数同时覆盖**活跃与空闲**连接。名额不足时拨号立即失败，错误归类为 `ClientError`（`ErrorTypeNetwork`，Message 为 `connection pool exhausted`，底层原因保留 `(max 1000)` 字样），分类流程见[错误类型](../api-reference/types/errors#错误分类流程)。
+
+**何时会真实耗尽**：上限按单客户端、跨全部主机统计。以默认 `MaxConnsPerHost=10` 计算，需要约 100 个主机同时打满（100 × 10）才会触顶，且其中绝大多数必须是在途的活跃连接（空闲连接另受 `MaxIdleConns=50` 约束）——常规业务几乎不可能触发，典型场景是高扇出爬虫在同一客户端上并发访问数百个主机。
+
+**缓解手段**（按优先级）：
+
+1. **拆分客户端**：把大扇出流量分散到多个 Client，各自拥有独立的 1000 名额；
+2. **缩短 `IdleConn`**：空闲连接更快关闭、提前归还名额；
+3. **控制并发**：用信号量或 worker 池限制同时在途的请求数。
+
+该上限是内部固定值，`ConnectionConfig` 未暴露对应字段——定位是极端并发下的最后防线，而非调优旋钮。错误的匹配模式与处理实践见[错误处理](./error-handling)。
+
+### 多 IP 拨号与 IPv6 回退
+
+无论是否启用 DoH，拨号都不绑定单个解析结果：主机名解析出的全部 IP 先经 SSRF 过滤，然后**按顺序逐个尝试**，直到某个 IP 建连成功（典型场景：本机 IPv6 不通时自动回退 IPv4）。全部候选失败时返回聚合错误，消息中携带尝试过的地址数（如 `connection failed after trying 2 address(es): ...`）。
+
+- 每个候选 IP 的拨号各自受 `Dial` 超时（默认 10s）约束：候选越多，最坏情况下建连总耗时越长。IPv6 环境异常导致的缓慢失败，优先排查 DNS/路由而不是调大超时。
+- 标准 DNS 路径的解析超时取 `min(Dial, 10s)`，且派生自请求上下文——请求取消会立即中断解析；DoH 路径天然遵循上下文。
 
 ### 空闲连接管理
 
 - **`IdleConn`（默认 90s）**：空闲连接在传输层超时后自动关闭。调大可提高连接复用率，调小可更快释放对端资源（高频短连接场景注意 TIME_WAIT 堆积）。
 - **代理轮换时的主动清理**：启用 `ProxyRotatePerRequest` 或状态码轮换的重试路径会**自动关闭全部空闲连接**，强制下一次请求重新选择代理——否则 HTTP/2 经 CONNECT 隧道的连接复用会绕过代理选择，让轮换失效。代理配置与轮换策略详见[代理与代理池](./proxy)。
 - **`client.Close()`**：关闭全部空闲连接、DoH 解析器与内部资源；此后继续请求返回 `ErrClientClosed`。
-- **每主机统计的自动清理**：内部按主机维护连接计数，30 分钟无活动且无活跃连接的条目被周期性清理（至多每分钟一次，主机条目上限 10000），长期运行不会内存无限增长。
+- **超过 `MaxIdleConns` 全局上限**：连接空闲归还时，最久未使用的空闲连接会被立即淘汰（LRU）——空闲连接未必都能存活到 `IdleConn` 超时。
+- **TLS 会话恢复降低重建成本**：空闲连接过期后重建时，内置的 TLS 会话票据缓存（LRU，容量 256）允许跳过完整握手，重建显著快于首次建连——与调大 `IdleConn` 相辅相成。
 
 ### 响应解压的特别处理
 
@@ -182,6 +204,7 @@ func fetchAll(ctx context.Context, urls []string) ([]*httpc.Result, error) {
 | 连接被拒 | 每主机连接数不够 | 增大 `MaxConnsPerHost` |
 | 请求排队等待 | 连接池太小 | 增大 `MaxIdleConns` |
 | 想控制每主机空闲连接数 | 无独立配置字段 | 由 `MaxConnsPerHost` 派生（÷2，夹在 2–10 之间） |
+| 请求报 `connection pool exhausted` | 单客户端同时打开的连接（活跃 + 空闲）达到内部上限 1000 | 见[连接池何时耗尽与如何缓解](#连接池何时耗尽与如何缓解)；拆分客户端、缩短 `IdleConn` 或控制并发 |
 | 启用 DoH 后解析失败 | 所有 DoH 提供商不可达/超时 | 已内置回退系统 DNS；检查出口网络或保持默认 |
 | 代理不生效或频繁熔断 | 代理配置与连接复用的交互 | 见[代理与代理池](./proxy)常见问题 |
 

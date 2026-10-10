@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Batch Operations"
-title: "Processor Batch Operations - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor batch operations: ProcessBatch handles get/set/delete/validate in one call with BatchOperation/BatchResult, customized via Config."
-sidebar_position: 7
+title: "Processor Batch Operations - CyberGo JSON | ProcessBatch API"
+description: "CyberGo JSON Processor batch operations: ProcessBatch runs get/set/delete/validate in one call with ID-linked results — ideal for aggregation pipelines."
+sidebar_position: 70
 ---
 
 # Batch Operation Methods
@@ -50,16 +50,7 @@ func main() {
 
 ### Supported Operation Types
 
-| `Type` | Purpose | `Result` content | Typical errors |
-|--------|---------|------------------|----------------|
-| `get` | Read the value at a path | The value at the path (`any`) | `ErrPathNotFound`, `ErrInvalidJSON` |
-| `set` | Set the value at a path | **The complete modified JSON string** | `ErrPathNotFound` (without `CreatePaths`), `ErrInvalidPath` |
-| `delete` | Delete the node at a path | **The complete JSON string after deletion** | `ErrPathNotFound`, `ErrInvalidPath` |
-| `validate` | Check whether the JSON is valid | `map[string]any{"valid": bool}` | On invalid JSON, `Result.valid=false` and `Error` is non-empty |
-
-::: warning Operations do not chain
-Every `BatchOperation` acts **independently** on its own `JSONStr` input; operations are **never** chained. A `set` followed by a `delete` on the same document yields two independent results, not a combined "modify then delete" state. To apply multiple transformations to a single document, feed each step's output into the next in your own code, or use a single-document multi-path method such as [`SetMultiple`](./modify#setmultiple).
-:::
+The `Result` content and typical errors of the four operation types (`get`/`set`/`delete`/`validate`), plus the "operations do not chain" semantics, are identical to the package-level function — see the full table in [Batch Operations - Supported Operation Types](../functions/batch#supported-operation-types). The Processor-side difference is only in how configuration takes effect (a passed `cfg` overrides the Processor's own configuration per call; see the next section).
 
 ### Batch Size Limit
 

@@ -2,7 +2,7 @@
 sidebar_label: "Connection Pool & DNS"
 title: "Connection Pool & DNS - CyberGo HTTPC | Pool Tuning & DoH"
 description: "HTTPC connection pool and DNS guide: MaxIdleConns and MaxConnsPerHost tuning, connection caps, TIME_WAIT mitigation, DoH fallback, and HTTP/2 multiplexing."
-sidebar_position: 10
+sidebar_position: 90
 ---
 
 # Connection Pool & DNS
@@ -30,7 +30,7 @@ cfg.Timeouts.IdleConn = 120 * time.Second // Idle connection keep-alive
 | `Dial` | 10s | Connection establishment timeout |
 | `TLSHandshake` | 10s | TLS handshake timeout |
 | `ResponseHeader` | 0 | Disabled (uses the Request timeout) |
-| `MaxResponseHeaderBytes` | 0 | Response header size cap; 0 = Go standard-library default of 10MB |
+| `MaxResponseHeaderBytes` | 0 | Response header size cap; 0 = Go standard-library default of 1MB (`net/http.DefaultMaxHeaderBytes`) |
 
 ### Scenario Recommendations
 
@@ -56,16 +56,38 @@ Some connection parameters have no dedicated configuration field — the engine 
 | TCP keepalive probe interval | 30s | Fixed value |
 | `ExpectContinueTimeout` | 1s | Fixed value (wait for `Expect: 100-continue`) |
 
-:::warning What hitting the total cap looks like
-When the 1000-connection cap is reached, new connections fail with an error classified as `ClientError` (`ErrorTypeNetwork`, message `connection pool exhausted`). With the default `MaxIdleConns=50` / `MaxConnsPerHost=10` it is nearly impossible to trigger — treat it as the last line of defense under extreme concurrency.
+:::tip TCP keepalive vs IdleConn
+The 30s TCP keep-alive probe maintains a TCP-layer heartbeat — preventing NAT gateways/firewalls from silently dropping long-idle connections — while `IdleConn` decides when the HTTP layer actively closes an idle connection. The two are independent; TCP keep-alive has no public switch (always on).
 :::
+
+### When the Pool Exhausts and How to Mitigate It
+
+The total-connection cap (1000) is enforced by an atomic admission counter **at dial time**: every new connection reserves a slot first, and the slot is returned when the connection closes; the count covers both **active and idle** connections. When no slot is available, the dial fails immediately with an error classified as `ClientError` (`ErrorTypeNetwork`, message `connection pool exhausted`, with the underlying cause retaining the `(max 1000)` wording); see the classification flow in [Error Types](../api-reference/types/errors#error-classification-flow).
+
+**When it actually happens**: the cap is counted per client, across all hosts. With the default `MaxConnsPerHost=10`, roughly 100 hosts would have to be saturated simultaneously (100 × 10) to hit the ceiling — and the vast majority of those must be in-flight active connections (idle ones are separately capped by `MaxIdleConns=50`). Ordinary services will essentially never trigger it; the realistic scenario is a high-fanout crawler hammering hundreds of hosts in parallel through a single client.
+
+**Mitigations** (in order of preference):
+
+1. **Split clients**: spread the fan-out traffic across multiple Clients, each with its own 1000-slot budget;
+2. **Shorten `IdleConn`**: idle connections close sooner and return their slots earlier;
+3. **Cap concurrency**: limit in-flight requests with a semaphore or worker pool.
+
+The cap is an internal fixed value — `ConnectionConfig` exposes no field for it. It is a last line of defense under extreme concurrency, not a tuning knob. For error matching patterns and handling practice, see [Error Handling](./error-handling).
+
+### Multi-IP Dialing and IPv6 Fallback
+
+Whether or not DoH is enabled, dialing never binds to a single resolution result: all IPs the hostname resolves to are first run through the SSRF filter and then **tried in sequence** until one connects (typical case: automatic fallback to IPv4 when local IPv6 is broken). If every candidate fails, an aggregate error is returned whose message carries the number of addresses tried (e.g. `connection failed after trying 2 address(es): ...`).
+
+- Each candidate IP's dial is individually bounded by the `Dial` timeout (default 10s): the more candidates, the longer the worst-case total connection time. For slow failures caused by a broken IPv6 environment, fix DNS/routing first instead of raising timeouts.
+- On the standard DNS path, the resolution timeout is `min(Dial, 10s)` and is derived from the request context — canceling the request aborts the lookup immediately; the DoH path honors the context natively.
 
 ### Idle Connection Management
 
 - **`IdleConn` (default 90s)**: idle connections are closed automatically when the transport-level timeout expires. Raise it for higher connection reuse; lower it to release peer-side resources sooner (watch for TIME_WAIT buildup in high-frequency short-connection workloads).
 - **Active cleanup during proxy rotation**: enabling `ProxyRotatePerRequest` or the retry path of status-code rotation **automatically closes all idle connections**, forcing the next request to re-select a proxy — otherwise HTTP/2 connection reuse through CONNECT tunnels would bypass proxy selection and defeat the rotation. For proxy configuration and rotation strategies, see [Proxy & Proxy Pool](./proxy).
 - **`client.Close()`**: closes all idle connections, the DoH resolver, and internal resources; requests afterwards return `ErrClientClosed`.
-- **Automatic cleanup of per-host stats**: internally, connection counts are tracked per host, and entries with no activity for 30 minutes and no active connections are periodically pruned (at most once per minute, host-entry cap of 10000), so long-running processes never grow memory without bound.
+- **Exceeding the global `MaxIdleConns` cap**: when an idle connection is returned and the cap is full, the least-recently-used idle connection is evicted immediately (LRU) — idle connections do not necessarily survive until the `IdleConn` timeout.
+- **TLS session resumption cheapens rebuilds**: when an expired idle connection has to be re-established, the built-in TLS session-ticket cache (LRU, capacity 256) skips the full handshake, making rebuilds significantly faster than the first connection — a complement to raising `IdleConn`.
 
 ### Response Decompression Handling
 
@@ -182,6 +204,7 @@ func fetchAll(ctx context.Context, urls []string) ([]*httpc.Result, error) {
 | Connection refused | Insufficient connections per host | Increase `MaxConnsPerHost` |
 | Requests queuing | Connection pool too small | Increase `MaxIdleConns` |
 | Want to control idle connections per host | No dedicated configuration field | Derived from `MaxConnsPerHost` (÷2, clamped to 2–10) |
+| Requests fail with `connection pool exhausted` | Simultaneously open connections (active + idle) in one client reached the internal cap of 1000 | See [When the Pool Exhausts and How to Mitigate It](#when-the-pool-exhausts-and-how-to-mitigate-it); split clients, shorten `IdleConn`, or cap concurrency |
 | Resolution fails after enabling DoH | All DoH providers unreachable/timing out | Built-in fallback to system DNS; check the egress network or keep defaults |
 | Proxy not working or frequently circuit-broken | Interaction between proxy configuration and connection reuse | See the [Proxy & Proxy Pool](./proxy) common issues |
 

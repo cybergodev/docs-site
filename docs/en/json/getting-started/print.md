@@ -1,105 +1,15 @@
 ---
-sidebar_label: "Pretty Printing"
-title: "Pretty Printing - CyberGo JSON | Print & Format"
-description: "CyberGo JSON formatted output: Prettify, EncodePretty, MarshalIndent, Compact/CompactString, Indent, and HTMLEscape compared with runnable examples."
-sidebar_position: 2.5
+sidebar_label: "Formatting Output"
+title: "Formatting Output - CyberGo JSON | Pretty & Compact JSON"
+description: "CyberGo JSON output formatting: EncodePretty, Prettify, MarshalIndent, Compact and HTMLEscape compared — custom indentation, streaming and Print migration."
+sidebar_position: 30
 ---
 
-# Print Functions
+# Formatting Output
 
-::: info Migration reference
-This page is the migration guide for the Print function family (removed in an earlier release). To format JSON, use [`Prettify`](../api-reference/index#formatting) or the standard-library-compatible `MarshalIndent`.
+::: tip Migration note
+The Print / PrintPretty family of direct-print functions (Print, PrintE, PrintPretty, PrintPrettyE) was removed in an earlier release and is no longer provided; for migration details and replacements see the [historical note](#historical-note-the-removed-print-family) at the end of this page.
 :::
-
-::: warning API change notice
-Print, PrintPretty, PrintE, and PrintPrettyE have been removed from the library and are no longer provided. Use the replacements below.
-:::
-
-## Replacements
-
-### Printing Compact JSON
-
-Use `fmt.Println` + `EncodeWithConfig` (recommended) or `Marshal`:
-
-```go
-data := map[string]any{"name": "Alice", "age": 30}
-
-s, err := json.EncodeWithConfig(data)
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(s)
-// Output: {"age":30,"name":"Alice"}
-
-// Or use Marshal ([]byte output)
-b, err := json.Marshal(data)
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(string(b))
-```
-
-::: warning Encode is deprecated
-`json.Encode` is marked deprecated (functionally identical to `EncodeWithConfig`) and will be removed in a future major version. Use `EncodeWithConfig` or `Marshal` in new code.
-:::
-
-### Printing Pretty JSON
-
-Use `fmt.Println` + `EncodePretty`:
-
-```go
-s, err := json.EncodePretty(data)
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(s)
-// Output:
-// {
-//   "age": 30,
-//   "name": "Alice"
-// }
-```
-
-### Printing a JSON String (beautifying existing JSON)
-
-Use `Prettify`:
-
-```go
-pretty, err := json.Prettify(`{"name":"Alice","age":30}`)
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(pretty)
-// Output:
-// {
-//   "name": "Alice",
-//   "age": 30
-// }
-```
-
-### Printing with a Processor
-
-```go
-p, err := json.New()
-if err != nil {
-    panic(err)
-}
-defer p.Close()
-
-// Encode and print (EncodeWithConfig recommended; Encode is deprecated)
-s, err := p.EncodeWithConfig(data)
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(s)
-
-// Pretty-print
-pretty, err := p.EncodePretty(data)
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(pretty)
-```
 
 ## Formatting Tool Comparison
 
@@ -108,7 +18,7 @@ Choose a tool by whether the input is a Go value or JSON text:
 | Function | Input | Output | Typical use |
 |----------|-------|--------|-------------|
 | `Marshal(v, cfg...)` | Go value | `[]byte` compact | Standard-library signature; most general |
-| `EncodeWithConfig(v, cfg...)` | Go value | `string` compact | Recommended entry point (configurable) |
+| `Encode(v, cfg...)` | Go value | `string` compact | Recommended entry point (configurable) |
 | `EncodePretty(v, cfg...)` | Go value | `string` indented | Encode and beautify in one step |
 | `MarshalIndent(v, prefix, indent)` | Go value | `[]byte` indented | Standard-library signature; legacy-friendly |
 | `Prettify(jsonStr, cfg...)` | JSON text | `string` indented | Beautify existing JSON text |
@@ -119,7 +29,7 @@ Choose a tool by whether the input is a Go value or JSON text:
 | `NewEncoder(w)` + `SetIndent` | Go value | Writes to `io.Writer` | Streaming output (files/network) |
 
 ::: tip Three-step selection
-1. Input is a **Go value**: use `Marshal` for `[]byte`, `EncodeWithConfig` for `string`; switch to `MarshalIndent` / `EncodePretty` respectively when indentation is wanted
+1. Input is a **Go value**: use `Marshal` for `[]byte`, `Encode` for `string`; switch to `MarshalIndent` / `EncodePretty` respectively when indentation is wanted
 2. Input is already **JSON text**: beautify with `Prettify`, compact with `CompactString`; use the buffer forms `Compact`/`Indent` when the standard-library signature must be matched exactly
 3. Output goes to a **stream** (file/network): `NewEncoder` + `SetIndent` writes record by record, avoiding one giant string
 :::
@@ -242,7 +152,7 @@ func main() {
 ```
 
 ::: tip When is manual escaping needed?
-`Marshal`/`EncodeWithConfig` already enable HTML escaping by default (`Config.EscapeHTML: true`), so their output is inherently safe. `HTMLEscape` mainly serves **JSON text obtained externally** — e.g. when embedding a third-party JSON response verbatim into an HTML page, run it through first.
+`Marshal`/`Encode` already enable HTML escaping by default (`Config.EscapeHTML: true`), so their output is inherently safe. `HTMLEscape` mainly serves **JSON text obtained externally** — e.g. when embedding a third-party JSON response verbatim into an HTML page, run it through first.
 :::
 
 ## Streaming Output to a Writer
@@ -306,8 +216,8 @@ func main() {
 		"total": 2,
 	}
 
-	// Compact output (Encode is deprecated; EncodeWithConfig recommended)
-	compact, err := json.EncodeWithConfig(data)
+	// Compact output
+	compact, err := json.Encode(data)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -320,6 +230,94 @@ func main() {
 	}
 	fmt.Println(pretty)
 }
+```
+
+## Historical Note: The Removed Print Family
+
+The four early direct-print functions Print, PrintPretty, PrintE, and PrintPrettyE have been removed from the library and are no longer provided. To format JSON, use [`Prettify`](../api-reference/index#formatting) or the standard-library-compatible `MarshalIndent`. Replacements for each scenario follow.
+
+### Printing Compact JSON
+
+Use `fmt.Println` + `Encode` (recommended) or `Marshal`:
+
+```go
+data := map[string]any{"name": "Alice", "age": 30}
+
+s, err := json.Encode(data)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(s)
+// Output: {"age":30,"name":"Alice"}
+
+// Or use Marshal ([]byte output)
+b, err := json.Marshal(data)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(string(b))
+```
+
+::: warning EncodeWithConfig is deprecated
+`json.EncodeWithConfig` is marked deprecated (functionally identical to `Encode`) and will not be removed within v1. Use `Encode` or `Marshal` in new code.
+:::
+
+### Printing Pretty JSON
+
+Use `fmt.Println` + `EncodePretty`:
+
+```go
+s, err := json.EncodePretty(data)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(s)
+// Output:
+// {
+//   "age": 30,
+//   "name": "Alice"
+// }
+```
+
+### Printing a JSON String (beautifying existing JSON)
+
+Use `Prettify`:
+
+```go
+pretty, err := json.Prettify(`{"name":"Alice","age":30}`)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(pretty)
+// Output:
+// {
+//   "name": "Alice",
+//   "age": 30
+// }
+```
+
+### Printing with a Processor
+
+```go
+p, err := json.New()
+if err != nil {
+    panic(err)
+}
+defer p.Close()
+
+// Encode and print (Encode recommended)
+s, err := p.Encode(data)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(s)
+
+// Pretty-print
+pretty, err := p.EncodePretty(data)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(pretty)
 ```
 
 ## See Also

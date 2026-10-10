@@ -2,7 +2,7 @@
 sidebar_label: "内置中间件"
 title: "中间件 - CyberGo HTTPC | 七大内置中间件"
 description: "HTTPC 中间件系统 API 参考：Chain 洋葱模型组合、七个内置中间件（Recovery/Logging/Timeout/Metrics/Audit 等）、各中间件配置结构体与 Default 构造函数、AuditEvent 审计事件结构。"
-sidebar_position: 5
+sidebar_position: 50
 ---
 
 # 中间件
@@ -89,7 +89,7 @@ type LoggingConfig struct {
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
-| `LogFunc` | `nil` | 日志输出函数，为 nil 时禁用日志 |
+| `LoggingConfig.LogFunc` | `nil` | 日志输出函数，为 nil 时禁用日志 |
 
 #### DefaultLoggingConfig
 
@@ -138,8 +138,8 @@ type RequestIDConfig struct {
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
-| `HeaderName` | `"X-Request-ID"` | 请求头名称 |
-| `Generator` | `nil`（crypto/rand） | ID 生成函数，为 nil 时使用加密安全生成器 |
+| `RequestIDConfig.HeaderName` | `"X-Request-ID"` | 请求头名称 |
+| `RequestIDConfig.Generator` | `nil`（crypto/rand） | ID 生成函数，为 nil 时使用加密安全生成器 |
 
 #### DefaultRequestIDConfig
 
@@ -190,7 +190,7 @@ type TimeoutMiddlewareConfig struct {
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
-| `Duration` | `0` | 超时时长，零或负值禁用 |
+| `TimeoutMiddlewareConfig.Duration` | `0` | 超时时长，零或负值禁用 |
 
 类型名包含 `Middleware` 以区分 `types.go` 中的客户端级 `TimeoutConfig`。
 
@@ -233,7 +233,7 @@ type HeaderConfig struct {
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
-| `Headers` | `nil`（空） | 静态头键值对，创建时验证安全性 |
+| `HeaderConfig.Headers` | `nil`（空） | 静态头键值对，创建时验证安全性 |
 
 #### DefaultHeaderConfig
 
@@ -276,7 +276,7 @@ type MetricsConfig struct {
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
-| `OnMetrics` | `nil` | 指标回调，为 nil 时禁用 |
+| `MetricsConfig.OnMetrics` | `nil` | 指标回调，为 nil 时禁用 |
 
 #### DefaultMetricsConfig
 
@@ -310,33 +310,7 @@ func AuditMiddleware(config *AuditConfig) MiddlewareFunc
 
 #### AuditConfig
 
-```go
-type AuditConfig struct {
-    // OnAudit 在每次请求/响应周期完成后接收一个 AuditEvent。
-    // 为 nil 时，中间件为空操作。
-    OnAudit func(event AuditEvent)
-
-    // Format 指定输出格式："text"（默认）或 "json"
-    Format string
-
-    // IncludeHeaders 在审计日志中包含请求/响应头
-    IncludeHeaders bool
-
-    // MaskHeaders 是需要脱敏的头部名称列表（如 "Authorization"、"Cookie"）
-    MaskHeaders []string
-
-    // SanitizeError 移除错误消息中的敏感信息
-    SanitizeError bool
-}
-```
-
-| 字段 | 默认值 | 说明 |
-|------|--------|------|
-| `OnAudit` | `nil` | 审计回调，为 nil 时中间件为空操作 |
-| `Format` | `"text"` | 输出格式提示（`"text"` / `"json"`），由回调方消费，中间件不据此分支 |
-| `IncludeHeaders` | `false` | 是否记录头部 |
-| `MaskHeaders` | 六个标准敏感头 | `Authorization`、`Cookie`、`Set-Cookie`、`X-Api-Key`、`X-Auth-Token`、`Proxy-Authorization`，命中即替换为 `[REDACTED]` |
-| `SanitizeError` | `true` | 错误信息替换为 `[sanitized]` |
+审计中间件的配置结构体，共 5 个字段：`OnAudit` 审计回调（nil 时中间件为空操作）、`Format` 输出格式提示（`"text"` / `"json"`，由回调方消费）、`IncludeHeaders` 头部记录开关、`MaskHeaders` 需脱敏的头部列表（默认六个标准敏感头，命中即替换为 `[REDACTED]`）、`SanitizeError` 错误脱敏开关。完整类型定义、逐字段说明与默认值见 [AuditConfig](../types/constants#auditconfig)。
 
 #### DefaultAuditConfig
 
@@ -367,39 +341,7 @@ client, _ := httpc.New(cfg)
 
 ### AuditEvent
 
-```go
-type AuditEvent struct {
-    Timestamp     time.Time           `json:"timestamp"`
-    Method        string              `json:"method"`
-    URL           string              `json:"url"`              // 已脱敏（移除凭据）
-    StatusCode    int                 `json:"statusCode"`
-    Duration      time.Duration       `json:"duration"`
-    Attempts      int                 `json:"attempts"`
-    Error         error               `json:"error,omitempty"`
-    SourceIP      string              `json:"sourceIP,omitempty"`
-    UserID        string              `json:"userID,omitempty"`
-    RedirectChain []string            `json:"redirectChain,omitempty"`
-    ReqHeaders    map[string][]string `json:"reqHeaders,omitempty"`
-    RespHeaders   map[string][]string `json:"respHeaders,omitempty"`
-}
-```
-
-安全审计事件。
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `Timestamp` | `time.Time` | 请求开始时间 |
-| `Method` | `string` | HTTP 方法 |
-| `URL` | `string` | 已脱敏的请求 URL（凭据已移除） |
-| `StatusCode` | `int` | 响应状态码（无响应时为 0） |
-| `Duration` | `time.Duration` | 请求耗时 |
-| `Attempts` | `int` | 实际尝试次数（含重试） |
-| `Error` | `error` | 请求错误；开启 `SanitizeError` 时为 `[sanitized]` |
-| `SourceIP` | `string` | 来源 IP（经 `SourceIPKey` 注入） |
-| `UserID` | `string` | 用户标识（经 `UserIDKey` 注入） |
-| `RedirectChain` | `[]string` | 经历的重定向链 |
-| `ReqHeaders` | `map[string][]string` | 请求头（`IncludeHeaders` 开启时填充，敏感头脱敏） |
-| `RespHeaders` | `map[string][]string` | 响应头（同上） |
+`AuditMiddleware` 在每次请求/响应周期完成后生成的安全审计事件，共 12 个字段：方法、脱敏 URL、状态码、耗时、尝试次数、重定向链与错误，以及经上下文注入的 `SourceIP`/`UserID` 和按需包含的请求/响应头。完整类型定义与逐字段明细见 [AuditEvent](../types/constants#auditevent)。
 
 #### MarshalJSON
 

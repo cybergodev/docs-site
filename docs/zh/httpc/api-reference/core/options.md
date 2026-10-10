@@ -1,8 +1,8 @@
 ---
 sidebar_label: "请求选项"
 title: "请求选项 - CyberGo HTTPC | WithXxx 选项"
-description: "HTTPC 请求选项 API 参考：完整覆盖 27 个 WithXxx 函数——WithHeader 请求头、WithBearerToken 认证、WithJSON/WithForm/WithFile 请求体、Cookie 校验与回调，并注明各选项覆盖的 Config 默认值与校验规则。"
-sidebar_position: 2
+description: "HTTPC 请求选项 API 参考：完整覆盖 29 个 WithXxx 函数——WithHeader 请求头、WithBearerToken 认证、WithJSON/WithForm/WithFile 请求体、Cookie 校验与回调，并注明各选项覆盖的 Config 默认值与校验规则。"
+sidebar_position: 20
 ---
 
 # 请求选项
@@ -28,7 +28,7 @@ result, err := client.Post(url,
 | [请求体](#请求体) | `WithJSON`、`WithXML`、`WithForm`、`WithFormData`、`WithFile`、`WithBinary`、`WithBody` |
 | [查询参数](#查询参数) | `WithQuery`、`WithQueryMap` |
 | [Cookie](#cookie) | `WithCookies`、`WithCookieMap`、`WithCookieString`、`WithSecureCookie` |
-| [请求控制](#请求控制) | `WithContext`、`WithTimeout`、`WithMaxRetries`、`WithFollowRedirects`、`WithMaxRedirects`、`WithAllowPrivateIPs`、`WithStreamBody` |
+| [请求控制](#请求控制) | `WithContext`、`WithTimeout`、`WithNoTimeout`、`WithMaxRetries`、`WithRetryNonIdempotent`、`WithFollowRedirects`、`WithMaxRedirects`、`WithAllowPrivateIPs`、`WithStreamBody` |
 | [回调](#回调) | `WithOnRequest`、`WithOnResponse` |
 
 部分选项可覆盖客户端配置（`Config`）中的同名默认值：
@@ -38,7 +38,9 @@ result, err := client.Post(url,
 | `WithUserAgent` | `Defaults.UserAgent`（`"httpc/1.0"`） |
 | `WithHeader` / `WithHeaderMap` | `Defaults.Headers` 中的同名默认头 |
 | `WithTimeout` | `Timeouts.Request`（180s） |
+| `WithNoTimeout` | `Timeouts.Request`（解除该默认上限） |
 | `WithMaxRetries` | `Retry.MaxRetries`（3） |
+| `WithRetryNonIdempotent` | `Retry.RetryNonIdempotent`（false） |
 | `WithFollowRedirects` | `Defaults.FollowRedirects`（true） |
 | `WithMaxRedirects` | `Defaults.MaxRedirects`（10） |
 | `WithAllowPrivateIPs` | `Security.AllowPrivateIPs`（false） |
@@ -418,6 +420,22 @@ func WithTimeout(timeout time.Duration) RequestOption
 result, err := client.Get(url, httpc.WithTimeout(5*time.Second))
 ```
 
+### WithNoTimeout
+
+```go
+func WithNoTimeout() RequestOption
+```
+
+为单次请求解除客户端级默认整体超时（`Config.Timeouts.Request`，默认 180s），让慢调用可以运行到服务端处理完毕为止。仅解除客户端默认，两项限制始终生效：同一请求上显式设置的 [`WithTimeout`](#withtimeout) 优先级更高，调用方上下文（`WithContext` 或 ctx 参数）预设的截止时间也始终被尊重。拨号/TLS/响应头等分段超时不受影响。
+
+```go
+// 解除默认 180s 上限，用于大文件上传、慢报表等长调用
+result, err := client.Post(uploadURL,
+    httpc.WithFile("file", "backup.tar.gz", data),
+    httpc.WithNoTimeout(),
+)
+```
+
 ### WithMaxRetries
 
 ```go
@@ -428,6 +446,27 @@ func WithMaxRetries(maxRetries int) RequestOption
 
 ```go
 result, err := client.Get(url, httpc.WithMaxRetries(3))
+```
+
+### WithRetryNonIdempotent
+
+```go
+func WithRetryNonIdempotent(allow bool) RequestOption
+```
+
+为单次请求覆盖非幂等方法（POST、PATCH 及自定义方法）是否允许重试，**双向**覆盖客户端级 `Config.Retry.RetryNonIdempotent`（默认 false）：`true` 可在默认禁用重试的客户端上重试 POST；`false` 可在默认允许的客户端上将本次请求固定为单次执行。幂等方法（GET/HEAD 等）不受影响，[`WithMaxRetries`](#withmaxretries) 的次数上限照常适用。
+
+:::warning 副作用风险
+对非幂等请求启用重试，意味着超时或可重试 5xx 时请求体可能被发送不止一次（如重复下单、重复支付）。仅对可容忍重放的端点启用，或以幂等键（Idempotency-Key）保护。
+:::
+
+```go
+// 客户端默认不重试 POST；本次调用显式允许（端点已用幂等键防重放）
+result, err := client.Post(orderURL,
+    httpc.WithJSON(order),
+    httpc.WithMaxRetries(3),
+    httpc.WithRetryNonIdempotent(true),
+)
 ```
 
 ### WithFollowRedirects

@@ -2,7 +2,7 @@
 sidebar_label: "文件上传与下载"
 title: "文件上传与下载 - CyberGo HTTPC | 上传与下载"
 description: "HTTPC 文件上传与下载指南：WithFile 与 WithFormData 多文件上传、Download 流式下载、进度回调、断点续传 ResumeDownload、SHA-256 校验和验证、文件冲突与清理语义及 UNC 路径等多层安全防护。"
-sidebar_position: 6
+sidebar_position: 50
 ---
 
 # 文件上传与下载
@@ -154,6 +154,15 @@ result, err := httpc.Post(url,
 `Download(ctx, url, cfg, options...)` 是贯穿包级函数、`Client` 和 `DomainClient` 的唯一规范下载入口。
 
 下载**始终以流式进行**：内部自动附加 `WithStreamBody(true)`，响应体从网络直达磁盘（`io.Copy`），全程不会把整个文件缓冲进内存；启用校验和时哈希计算也在写入过程中同步完成，不产生第二遍读盘。
+
+:::warning 下载受 MaxResponseBodySize 约束
+流式写盘**不等于没有大小上限**：下载响应体仍受客户端 `Security.MaxResponseBodySize` 约束——`DefaultConfig` 默认 10MB（其他预设：`SecureConfig` 5MB、`PerformanceConfig` 50MB、`MinimalConfig` 1MB）。超出上限时下载以 `ErrResponseBodyTooLarge` 错误失败，**不会**在限额处静默截断文件。下载大文件前需先调大该值：
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.MaxResponseBodySize = 200 << 20 // 200MB，按需调整
+```
+:::
 
 ### 基本下载
 

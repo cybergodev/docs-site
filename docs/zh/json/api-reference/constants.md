@@ -1,8 +1,8 @@
 ---
 sidebar_label: "常量与错误"
-title: "常量与错误 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 常量与错误：DefaultMaxJSONSize、DefaultMaxNestingDepth 限制、ErrPathNotFound 错误变量与 MergeMode 合并模式，含 JsonsError 结构、触发场景速查与常量默认值对照，支撑 Go 配置。"
-sidebar_position: 7
+title: "常量与错误 - CyberGo JSON | 错误变量与预定义常量"
+description: "CyberGo JSON 常量与错误参考：ErrPathNotFound、ErrTypeMismatch 等哨兵错误附触发场景速查，JsonsError 支持 errors.Is/As 链上溯，DefaultMaxJSONSize 等默认常量与 Config 字段对照，并含 DefaultConfig 配置预设与 MergeMode 合并模式，帮助开发者编写精确的错误处理分支。"
+sidebar_position: 80
 ---
 
 # 常量与错误
@@ -27,7 +27,8 @@ var (
 
     // 安全和验证错误
     ErrSecurityViolation = errors.New("security violation detected")
-    ErrUnsupportedPath   = errors.New("unsupported path operation")
+    ErrDuplicateKey      = errors.New("duplicate object key")
+    ErrUnsupportedPath   = errors.New("unsupported path operation") // 已废弃：当前无操作返回，预留
 
     // 资源和性能错误（均 Deprecated：当前未被任何操作返回，保留供未来使用）
     ErrOperationTimeout  = errors.New("operation timeout")
@@ -50,12 +51,13 @@ var (
 | `ErrDepthLimit` | 嵌套超过 `MaxNestingDepthSecurity` | 拒绝深嵌套输入（可能是攻击） |
 | `ErrConcurrencyLimit` | 受控操作并发超过 `MaxConcurrency` | 降低并发或调大限制 |
 | `ErrSecurityViolation` | 命中危险模式、超 `MaxObjectKeys`/`MaxArrayElements` | 记录审计日志并拒绝 |
-| `ErrUnsupportedPath` | 对当前数据形态不支持该路径段（如对非数组用切片） | 检查数据结构假设 |
+| `ErrDuplicateKey` | `Config.DetectDuplicateKeys` 开启时，输入对象中存在重复键 | 拒绝输入（默认关闭时重复键后者胜出，与 `encoding/json` 一致） |
+| `ErrUnsupportedPath` | 预留，当前无操作返回（已废弃；不支持的路径段以 `ErrInvalidPath` 或 `ErrTypeMismatch` 形式出现） | 错误分支无需处理 |
 | `ErrOperationTimeout` | 预留，当前无操作返回（已废弃） | 错误分支无需处理 |
 | `ErrResourceExhausted` | 预留，当前无操作返回（已废弃） | 错误分支无需处理 |
 
-::: tip 两个 Deprecated 哨兵
-`ErrOperationTimeout` 与 `ErrResourceExhausted` 当前**没有任何操作会返回**，仅为未来版本保留——错误分支中不必处理它们。
+::: tip 三个 Deprecated 哨兵
+`ErrOperationTimeout`、`ErrResourceExhausted` 与 `ErrUnsupportedPath` 当前**没有任何操作会返回**，仅为未来版本保留——错误分支中不必处理它们。
 :::
 
 ### 错误检查
@@ -232,7 +234,7 @@ defer processor.Close()
 返回格式化输出配置。
 
 ```go
-result, err := json.EncodeWithConfig(data, json.PrettyConfig())
+result, err := json.Encode(data, json.PrettyConfig())
 ```
 
 ## 合并模式常量

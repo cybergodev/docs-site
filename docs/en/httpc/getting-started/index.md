@@ -2,7 +2,7 @@
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo HTTPC | 5-Minute Setup"
 description: "HTTPC quick start: go get install, GET/POST requests, five config presets, JSON parsing, Bearer Token auth, and ClientError classification in 5 minutes."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Quick Start
@@ -24,7 +24,7 @@ Import it in your code:
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC requires Go 1.25 or later; apart from `golang.org/x/sys` it has no other third-party dependencies, and you can send your first request without any configuration.
+HTTPC requires Go 1.26 or later; apart from `golang.org/x/sys` it has no other third-party dependencies, and you can send your first request without any configuration.
 
 ## Basic Requests
 
@@ -376,4 +376,6 @@ See [SSRF Protection](../security/ssrf) for details.
 
 - **[Tutorial](../guides/tutorial)** - Build a GitHub API client in 30 minutes
 - **[Cheat Sheet](./cheatsheet)** - Quick reference for common operations
+- **[Basic Examples](../examples/basic-usage)** - Runnable minimal examples
+- **[API Reference Overview](../api-reference/)** - Index of all public APIs
 - **[Security](../security/)** - Security best practices and the production checklist

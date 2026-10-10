@@ -1,8 +1,8 @@
 ---
 sidebar_label: "错误处理"
-title: "错误处理 - CyberGo JSON | 最佳实践"
-description: "CyberGo JSON 错误处理：JsonsError 类型判断、errors.Is/As 匹配、SafeError 安全输出与 RedactedPath 脱敏日志，配合哨兵错误分类、Op/Path 定位失败点、默认值兜底与重试降级策略，构建健壮异常机制。"
-sidebar_position: 2
+title: "错误处理 - CyberGo JSON | 错误类型与判断实践"
+description: "CyberGo JSON 提供体系化的 JSON 错误处理能力，支持用 errors.Is 匹配 ErrPathNotFound、ErrTypeMismatch 等哨兵错误、读取 JsonsError 的 Op/Path 定位失败点，帮助开发者快速判断错误类别、安全记录日志并实现默认值兜底与重试降级。"
+sidebar_position: 10
 ---
 
 # 错误处理

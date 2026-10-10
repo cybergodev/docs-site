@@ -2,7 +2,7 @@
 title: "Migrating from encoding/json - CyberGo JSON | 3-Step Guide"
 description: "Migrate from encoding/json to CyberGo JSON: three-step import swap, Marshal/Encoder/Decoder and error-type compatibility, security behavior differences, FAQ."
 sidebar_label: "Migrating from the Standard Library"
-sidebar_position: 1.5
+sidebar_position: 60
 ---
 
 # Migrating from the Standard Library

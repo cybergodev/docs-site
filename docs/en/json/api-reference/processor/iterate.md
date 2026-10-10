@@ -1,8 +1,8 @@
 ---
-sidebar_label: "Iterate"
-title: "Processor Iteration Methods - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor iteration: Foreach, ForeachWithPath, ForeachNested, IterableValue data access, IteratorControl flow, ForeachReturn modifying iteration."
-sidebar_position: 10
+sidebar_label: "Iteration Methods"
+title: "Processor Iteration Methods - CyberGo JSON | Foreach Family"
+description: "CyberGo JSON Processor iteration: Foreach, ForeachWithPath, ForeachWithError, IterableValue access and IteratorControl flow for array and object traversal."
+sidebar_position: 100
 ---
 
 # Iteration Methods
@@ -19,11 +19,18 @@ The 8 `Foreach*` methods on this page share their source with the [package-level
 
 ## Foreach
 
+<Badge type="danger" text="Deprecated" />
+
 Signature: `func (p *Processor) Foreach(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 Iterates a JSON array or object.
 
+::: warning Deprecated
+`Foreach` **silently drops errors**: when the document is invalid or the processor is closed, the callback is **skipped entirely** with no error returned — the caller cannot find out. Use [`ForeachWithError`](#foreachwitherror) instead — it returns the error, and its callback returns `nil` to continue iteration. `Foreach` will not be removed within v1.
+:::
+
 ```go
+// Deprecated: errors are silently dropped; new code should use ForeachWithError (below)
 p.Foreach(data, func(key any, item *json.IterableValue) {
     fmt.Printf("Key: %v, Value: %v\n", key, item.GetData())
 })
@@ -50,11 +57,18 @@ Good for:
 
 ## ForeachNested
 
+<Badge type="danger" text="Deprecated" />
+
 Signature: `func (p *Processor) ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 Recursively iterates all nested levels.
 
+::: warning Deprecated
+`ForeachNested` **silently drops errors** just like `Foreach`: on a failed parse or a closed processor the callback is skipped entirely, with no error returned. Use [`ForeachNestedWithError`](#foreachnestedwitherror) instead — it returns the error, and its callback returns `nil` to continue iteration. `ForeachNested` will not be removed within v1.
+:::
+
 ```go
+// Deprecated: errors are silently dropped; new code should use ForeachNestedWithError (below)
 p.ForeachNested(data, func(key any, item *json.IterableValue) {
     fmt.Printf("Key: %v, Value: %v\n", key, item.GetData())
 })
@@ -201,7 +215,7 @@ The `IterableValue` in iteration callbacks provides type-safe value access: `Get
 
 ## File Iteration Methods
 
-The Processor provides methods that iterate directly from a file — a convenience combo of `LoadFromFile` + the `Foreach` family: path security validation, the `MaxJSONSize` read limit, and per-call `cfg` forwarding all behave the same as file loading.
+The Processor provides methods that iterate directly from a file — a convenience combo of `LoadFromFile` + the `Foreach` family: path security validation, the `MaxJSONSize` read limit, and per-call `cfg` forwarding all behave the same as file loading; the file is likewise **fully loaded into memory** before iterating (bounded by the `MaxJSONSize` cap, 100MB by default); for constant-memory scenarios see [Large File Handling](../../streaming/large-files#streaming-and-parallel-iterators).
 
 | Method | Signature essentials | Semantics |
 |--------|----------------------|-----------|
@@ -225,7 +239,7 @@ err := p.ForeachFile("data.json", func(key any, item *json.IterableValue) error 
 |---------|:--------------:|:---------:|:-------:|----------|
 | `ForeachFile` | No | No | No | Simple file traversal |
 | `ForeachFileWithPath` | Yes | No | No | Targeted traversal |
-| `ForeachFileChunked` | No | No | **Yes** | Batch processing, memory-constrained |
+| `ForeachFileChunked` | No | No | **Yes** | Bulk loads, batched callbacks (file still fully loaded) |
 | `ForeachFileNested` | No | **Yes** | No | Deep traversal of all nodes |
 
 ---

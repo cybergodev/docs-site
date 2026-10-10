@@ -1,8 +1,8 @@
 ---
 sidebar_label: "高级示例"
 title: "高级示例 - CyberGo HTTPC | 生产级代码"
-description: "HTTPC 高级示例集：自定义 RetryPolicy 重试策略、超时与重试组合、请求响应回调、完整中间件链、RESTful 客户端封装、域名客户端自定义配置、Cookie 与 SessionManager 会话、worker pool 并发模式与 HMAC 请求签名中间件。"
-sidebar_position: 2
+description: "HTTPC 高级示例集：自定义 RetryPolicy 重试策略、超时与重试组合、请求响应回调、完整中间件链、RESTful 客户端封装、域名客户端配置、Cookie 与 SessionManager 会话、worker pool 并发与 HMAC 签名中间件。"
+sidebar_position: 20
 ---
 
 # 高级示例
@@ -873,7 +873,7 @@ func main() {
 }
 ```
 
-适用场景：应用启动时统一定制全局行为、按环境（开发/生产）切换配置。注意 `SetDefaultClient` 只接受 `httpc.New` 创建的客户端，且不能传入已关闭的实例。
+适用场景：应用启动时统一定制全局行为、按环境（开发/生产）切换配置。注意 `SetDefaultClient` 只接受 `httpc.New` 创建的客户端，且不能传入已关闭的实例；替换会关闭旧默认客户端并中断其仍在途的请求（并发调用方可能观察到连接错误），应只在启动期或静默期调用，勿在活跃流量下替换。
 
 ## 自定义中间件：请求签名
 

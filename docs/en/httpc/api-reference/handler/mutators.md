@@ -2,7 +2,7 @@
 sidebar_label: "Request & Response Mutators"
 title: "Request & Response Mutators - CyberGo HTTPC | Mutator API"
 description: "HTTPC middleware contracts: all read/write methods of RequestMutator and ResponseMutator, WithOnRequest/WithOnResponse options, and compilable examples."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Request & Response Mutators

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Request Options"
 title: "Request Options - CyberGo HTTPC | WithXxx Options"
-description: "HTTPC request options: WithHeader, WithBearerToken, WithJSON/WithForm bodies, WithQuery parameters, cookies, and WithOnRequest/WithOnResponse callbacks."
-sidebar_position: 2
+description: "HTTPC request options reference: all 29 WithXxx functions covering headers, auth, bodies, cookies, request control, and callbacks, with Config overrides."
+sidebar_position: 20
 ---
 
 # Request Options
@@ -18,6 +18,36 @@ result, err := client.Post(url,
 ```
 
 All options can be freely combined and are applied in the order they are passed.
+
+## Options Overview
+
+| Group | Options |
+|-------|---------|
+| [Headers](#headers) | `WithHeader`, `WithHeaderMap`, `WithUserAgent` |
+| [Authentication](#authentication) | `WithBasicAuth`, `WithBearerToken` |
+| [Request Body](#request-body) | `WithJSON`, `WithXML`, `WithForm`, `WithFormData`, `WithFile`, `WithBinary`, `WithBody` |
+| [Query Parameters](#query-parameters) | `WithQuery`, `WithQueryMap` |
+| [Cookies](#cookies) | `WithCookies`, `WithCookieMap`, `WithCookieString`, `WithSecureCookie` |
+| [Request Control](#request-control) | `WithContext`, `WithTimeout`, `WithNoTimeout`, `WithMaxRetries`, `WithRetryNonIdempotent`, `WithFollowRedirects`, `WithMaxRedirects`, `WithAllowPrivateIPs`, `WithStreamBody` |
+| [Callbacks](#callbacks) | `WithOnRequest`, `WithOnResponse` |
+
+Some options override same-named defaults in the client configuration (`Config`):
+
+| Option | Config field overridden (default) |
+|--------|-----------------------------------|
+| `WithUserAgent` | `Defaults.UserAgent` (`"httpc/1.0"`) |
+| `WithHeader` / `WithHeaderMap` | Same-named default headers in `Defaults.Headers` |
+| `WithTimeout` | `Timeouts.Request` (180s) |
+| `WithNoTimeout` | `Timeouts.Request` (lifts the default ceiling) |
+| `WithMaxRetries` | `Retry.MaxRetries` (3) |
+| `WithRetryNonIdempotent` | `Retry.RetryNonIdempotent` (false) |
+| `WithFollowRedirects` | `Defaults.FollowRedirects` (true) |
+| `WithMaxRedirects` | `Defaults.MaxRedirects` (10) |
+| `WithAllowPrivateIPs` | `Security.AllowPrivateIPs` (false) |
+
+:::tip
+`nil` options are silently skipped instead of raising an error — handy for conditionally assembling option slices. Any option that returns an error aborts the request (wrapped uniformly as `failed to apply request option`).
+:::
 
 ## Headers
 
@@ -222,6 +252,25 @@ result, _ := client.Post(url, httpc.WithBody(data, httpc.BodyXML))
 | `BodyBinary` | Force binary |
 | `BodyMultipart` | Force multipart (requires `*FormData`) |
 
+**Input constraints for explicit types**:
+
+| Type | Input requirement |
+|------|----------|
+| `BodyJSON` / `BodyXML` | Any non-nil data |
+| `BodyForm` | `map[string]string` or `url.Values` (validated per field) |
+| `BodyBinary` | `[]byte` or `string`, non-empty |
+| `BodyMultipart` | `*FormData` |
+
+A type mismatch (e.g., passing a non-`*FormData` to `BodyMultipart`) or a nil `data` returns an error.
+
+:::warning io.Reader bypasses size validation
+`io.Reader` request bodies bypass request-body size validation. When reading from an untrusted source, wrap it with `io.LimitReader` to prevent resource exhaustion:
+
+```go
+limited := io.LimitReader(untrustedReader, 10<<20) // cap at 10 MB
+```
+:::
+
 ## Query Parameters
 
 ### WithQuery
@@ -365,6 +414,22 @@ Sets a per-request timeout, overriding the client default. Range: 0 to 30 minute
 result, err := client.Get(url, httpc.WithTimeout(5*time.Second))
 ```
 
+### WithNoTimeout
+
+```go
+func WithNoTimeout() RequestOption
+```
+
+Lifts the client-level default request timeout (`Config.Timeouts.Request`, default 180s) for this single request, letting a slow call run for as long as the server takes. Only the client default is lifted: an explicit [`WithTimeout`](#withtimeout) on the same request takes precedence, and any deadline on the caller-provided context (`WithContext` or the ctx parameter) is always honored. Dial/TLS/response-header timeouts are unaffected.
+
+```go
+// Lift the default 180s ceiling for long calls (large uploads, slow reports)
+result, err := client.Post(uploadURL,
+    httpc.WithFile("file", "backup.tar.gz", data),
+    httpc.WithNoTimeout(),
+)
+```
+
 ### WithMaxRetries
 
 ```go
@@ -375,6 +440,27 @@ Sets the per-request maximum retry count, overriding the client configuration. R
 
 ```go
 result, err := client.Get(url, httpc.WithMaxRetries(3))
+```
+
+### WithRetryNonIdempotent
+
+```go
+func WithRetryNonIdempotent(allow bool) RequestOption
+```
+
+Overrides, for this single request, whether non-idempotent methods (POST, PATCH, and custom methods) may be retried, in **both** directions over the client-level `Config.Retry.RetryNonIdempotent` (default false): `true` retries a POST on a client that otherwise forbids it; `false` pins a single attempt on a client that allows it. Idempotent methods (GET/HEAD, etc.) are unaffected, and the [`WithMaxRetries`](#withmaxretries) cap still applies.
+
+:::warning
+Enabling retries for a non-idempotent request means a timeout or retryable 5xx may send the request body more than once (duplicate orders, duplicate payments). Use it only against endpoints that tolerate replay, or guard them with an idempotency key.
+:::
+
+```go
+// The client forbids POST retries by default; opt in for this call (endpoint is replay-safe via idempotency key)
+result, err := client.Post(orderURL,
+    httpc.WithJSON(order),
+    httpc.WithMaxRetries(3),
+    httpc.WithRetryNonIdempotent(true),
+)
 ```
 
 ### WithFollowRedirects

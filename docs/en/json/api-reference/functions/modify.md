@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Modification Operations"
-title: "Modification Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON modification functions: Set/SetMultiple, MergeJSON/MergeMany, auto path creation, union/intersection/difference MergeMode, array replace/append."
-sidebar_position: 3
+title: "Modification Functions - CyberGo JSON | Set/MergeJSON Usage"
+description: "CyberGo JSON is a Go library for path-based editing, offering Set, SetCreate, SetMultiple and MergeJSON/MergeMany merges to update nested fields immutably."
+sidebar_position: 30
 ---
 
 # Modification Functions

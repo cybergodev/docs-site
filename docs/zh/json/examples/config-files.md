@@ -1,8 +1,8 @@
 ---
 sidebar_label: "配置文件处理"
-title: "配置文件处理 - CyberGo JSON | 加载、修改与合并"
-description: "CyberGo JSON 配置文件实战：LoadFromFile 加载、GetString/GetInt 读取嵌套值、Set/SetCreate 修改、SaveToFile 搭配 PrettyConfig 格式化保存、MergeJSON 合并默认与用户配置并重载验证。"
-sidebar_position: 3
+title: "配置文件处理 - CyberGo JSON | 读取、修改与保存"
+description: "CyberGo JSON 配置文件实战：LoadFromFile 加载、GetString/GetInt 读取嵌套值、Set/SetCreate 修改、SaveToFile 搭配 PrettyConfig 格式化原子保存、MergeJSON 合并默认与用户配置，覆盖配置加载、修改、保存与重载验证的完整生命周期。"
+sidebar_position: 20
 ---
 
 # 配置文件处理

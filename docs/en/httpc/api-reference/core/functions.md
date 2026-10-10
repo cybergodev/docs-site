@@ -2,7 +2,7 @@
 sidebar_label: "Functions & Methods"
 title: "Functions & Methods - CyberGo HTTPC | HTTP Method API"
 description: "HTTPC package functions and client methods: Get/Post and five more HTTP methods, New constructor, Download, FormatBytes/FormatSpeed helpers, and NewDomain."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Package Functions & Client Methods
@@ -10,6 +10,17 @@ sidebar_position: 1
 ## Package-Level HTTP Methods
 
 Send requests directly without creating a client. Uses a lazily-initialized default client internally.
+
+| Function | HTTP method | Context |
+|------|-----------|--------|
+| `Get` / `Post` / `Put` / `Patch` / `Delete` / `Head` / `Options` | The corresponding verb | `context.Background()` |
+| `Request` | Any (specified via argument) | Caller-supplied |
+
+The default client is managed internally by the package, with these properties:
+
+- **Lazy initialization**: created on the first package-level call (with `DefaultConfig()`); no startup cost.
+- **Self-healing**: after the default client is closed (`CloseDefaultClient` or a direct `Close`), the next package-level call rebuilds it automatically.
+- **Concurrency-safe**: initialization and replacement are guarded by a double-checked lock; safe to call from multiple goroutines.
 
 ### Get
 
@@ -115,6 +126,8 @@ result, err := client.Head(url, options...)
 result, err := client.Options(url, options...)
 result, err := client.Request(ctx, "GET", url, options...)
 ```
+
+The complete method set of the `Client` interface: seven verb convenience methods `Client.Get`, `Client.Post`, `Client.Put`, `Client.Patch`, `Client.Delete`, `Client.Head`, and `Client.Options` (all with the signature `(url string, options ...RequestOption) (*Result, error)`), plus `Doer.Request` obtained through the embedded `Doer` interface, `Client.Download`, and the lifecycle method `Client.Close`.
 
 ### Close
 

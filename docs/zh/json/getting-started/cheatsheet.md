@@ -1,8 +1,8 @@
 ---
 sidebar_label: "速查表"
-title: "速查表 - CyberGo JSON | API 快速参考"
-description: "CyberGo JSON API 速查表：47 个包级函数全覆盖——路径查询、Set/Delete 修改、批量操作、序列化与格式化、文件读写、验证、迭代流式 JSONL、缓存安全扩展，附读文件改字段写回等高频组合模式与 Processor 用法，一页快速查阅。"
-sidebar_position: 4
+title: "速查表 - CyberGo JSON | 常用函数与代码示例"
+description: "CyberGo JSON API 速查表：包级函数全覆盖——路径查询、Set/Delete 修改、批量操作、序列化与格式化、文件读写、验证、迭代流式 JSONL、缓存安全扩展，附读文件改字段写回等高频组合模式与 Processor 用法，一页快速查阅。"
+sidebar_position: 50
 ---
 
 # 速查表
@@ -88,7 +88,7 @@ for _, r := range results {
 | 操作 | 函数 | 示例 |
 |------|------|------|
 | 编码（`[]byte` 输出） | `Marshal` | `json.Marshal(data)` |
-| 编码（`string` 输出） | `EncodeWithConfig` | `json.EncodeWithConfig(data)` |
+| 编码（`string` 输出） | `Encode` | `json.Encode(data)` |
 | 格式化编码（`[]byte`） | `MarshalIndent` | `json.MarshalIndent(data, "", "  ")` |
 | 格式化编码（`string`） | `EncodePretty` | `json.EncodePretty(data)` |
 | 解码 | `Unmarshal` | `json.Unmarshal(bytes, &v)` |
@@ -103,7 +103,7 @@ for _, r := range results {
 | 提取字段编码 | `EncodeFields` | `json.EncodeFields(user, []string{"name"})` |
 | 值列表编码为数组 | `EncodeStream` | `json.EncodeStream([]any{1, 2})` |
 
-`json.Encode` 已废弃（与 `EncodeWithConfig` 等价，将于未来主版本移除），新代码请改用 `Marshal` 或 `EncodeWithConfig`。格式化函数的详细选型见[格式化输出](./print)。
+`json.EncodeWithConfig` 已废弃（与 `Encode` 等价，v1 生命周期内保留），新代码请改用 `Encode` 或 `Marshal`。格式化函数的详细选型见[格式化输出](./print)。
 
 ```go
 // 编码
@@ -261,10 +261,16 @@ processor, err = json.New(cfg)
 | 遍历并可中断 | `ForeachWithError` | 回调返回 `error` / `item.Break()` |
 | 指定路径遍历 | `ForeachWithPath` | 等价 `Foreach(data, path, ...)` 的显式路径版 |
 | 深度遍历嵌套 | `ForeachNested` | 递归所有层级 |
+| 深度遍历并可中断 | `ForeachNestedWithError` | `ForeachNested` 的错误返回版 |
 | 遍历并改写 | `ForeachReturn` | 返回修改后的新 JSON |
 | 携带当前路径 | `ForeachWithPathAndIterator` | 回调含 `currentPath`，可控制中断 |
-| 遍历大文件 | `ForeachFile` | 流式读取，不整载内存 |
-| 分块遍历文件 | `ForeachFileChunked` | 按 `chunkSize` 批量回调 |
+| 原始值遍历控制 | `ForeachWithPathAndControl` | 回调收到原始值，用 `IteratorControl` 控制流程 |
+| 遍历大文件 | `ForeachFile` | 整载内存后逐条遍历（恒定内存用 StreamIterator） |
+| 按路径遍历文件 | `ForeachFileWithPath` | 遍历文件内指定路径的集合（文件仍整载内存） |
+| 分块遍历文件 | `ForeachFileChunked` | 按 `chunkSize` 批量回调（文件仍整载内存） |
+| 递归遍历文件 | `ForeachFileNested` | 递归文件内所有嵌套结构（文件仍整载内存） |
+
+以上共 12 个迭代函数：前 8 个作用于内存中的 JSON 字符串，后 4 个（`ForeachFile*`）作用于文件（先整载再迭代，受 `MaxJSONSize` 上限约束）。
 
 ```go
 data := `{"users":[{"name":"Alice"},{"name":"Bob"}]}`
@@ -369,7 +375,7 @@ err = json.StreamJSONLParallel(file, 4, func(lineNum int, item *json.IterableVal
     return nil
 })
 
-// NDJSONProcessor：带行号、按对象回调
+// NDJSONProcessor：带行号、按对象回调（已弃用，新代码用 StreamJSONL 家族）
 np := json.NewNDJSONProcessor()
 err = np.ProcessFile("events.ndjson", func(lineNum int, obj map[string]any) error {
     fmt.Println(lineNum, obj)
@@ -382,8 +388,8 @@ err = np.ProcessFile("events.ndjson", func(lineNum int, obj map[string]any) erro
 ```go
 // 推荐方式：基于默认配置修改
 cfg := json.DefaultConfig()
-cfg.MaxJSONSize = 200 * 1024 * 1024 // 自定义大小限制
-cfg.FullSecurityScan = true          // 启用完整安全扫描
+cfg.MaxJSONSize = 50 * 1024 * 1024 // 自定义大小限制（校验范围 1MB–100MB，超出会被钳回 100MB）
+cfg.FullSecurityScan = true        // 启用完整安全扫描
 ```
 
 ### 配置预设

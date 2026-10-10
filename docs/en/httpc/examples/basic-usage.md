@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Basic Usage"
 title: "Basic Usage - CyberGo HTTPC | Runnable Examples"
-description: "HTTPC basics: all HTTP methods, query params and auth, XML/binary bodies, the Result triple, DefaultConfig, proxy, middleware, and progress-callback downloads."
-sidebar_position: 1
+description: "HTTPC basics: all HTTP methods, query params/auth, XML/binary bodies, status checks and the Result triple, DefaultConfig, proxy, middleware, and downloads."
+sidebar_position: 10
 ---
 
 # Basic Usage

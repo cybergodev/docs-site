@@ -2,7 +2,7 @@
 sidebar_label: "Migrating from net/http"
 title: "Migrating from net/http - CyberGo HTTPC | Migration Guide"
 description: "Migrate from net/http to CyberGo HTTPC: full API mapping tables, error-model differences, five-level timeouts, Transport tuning, and a pitfalls checklist."
-sidebar_position: 2
+sidebar_position: 130
 ---
 
 # Migrating from net/http
@@ -351,7 +351,7 @@ The `http.Transport` tuning fields commonly used with the standard library all m
 | `TLSClientConfig` | `Security.TLSConfig` | nil |
 | `ForceAttemptHTTP2` | `Connection.EnableHTTP2` | true |
 | `ResponseHeaderTimeout` | `Timeouts.ResponseHeader` | 0 (disabled) |
-| `MaxResponseHeaderBytes` | `Connection.MaxResponseHeaderBytes` | 0 (standard-library default 10MB) |
+| `MaxResponseHeaderBytes` | `Connection.MaxResponseHeaderBytes` | 0 (standard-library default 1MB) |
 | `CheckRedirect` | `Defaults.FollowRedirects` / `MaxRedirects` + `Security.RedirectWhitelist` | true / 10 |
 | Custom `DialContext` (dialer) | No direct entry point | SSRF validation is wrapped into the dial layer |
 
@@ -504,7 +504,9 @@ Execute in order; every step can be verified independently:
 
 ## Next Steps
 
-- **[Tutorial](./tutorial)** - Build a complete GitHub API client in 30 minutes, covering typical post-migration patterns
+With the migration done, return to the main guide track to go deeper:
+
 - **[Request and Response](./request-response)** - Complete request options and `Result` response handling
+- **[Tutorial](./tutorial)** - Build a complete GitHub API client in 30 minutes to consolidate typical post-migration patterns
 - **[Core Concepts](../getting-started/concepts)** - Two-layer API architecture, configuration system, and request lifecycle
 - **[FAQ](../faq/)** - Source-grounded answers on retries, timeouts, proxies, cookies, and other frequent questions

@@ -2,7 +2,7 @@
 sidebar_label: "域名客户端"
 title: "域名客户端 - CyberGo HTTPC | NewDomain 与会话"
 description: "HTTPC 域名客户端 API 参考：NewDomain 创建函数、七种 HTTP 方法与 Request 通用方法、URL 自动拼接规则、DomainClienter 接口的 SetHeader/SetCookie 会话管理与 Close 生命周期。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 域名客户端
@@ -65,36 +65,44 @@ type DomainClienter interface {
 | `Download` | `(ctx, path string, cfg *DownloadConfig, opts ...RequestOption) (*DownloadResult, error)` | 文件下载 |
 | `Close` | `() error` | 关闭客户端释放资源 |
 
+具体类型 `*DomainClient` 为上述全部方法提供实现：`DomainClient.Get`、`DomainClient.Post`、`DomainClient.Put`、`DomainClient.Patch`、`DomainClient.Delete`、`DomainClient.Head`、`DomainClient.Options`、`DomainClient.Request`、`DomainClient.Download` 与 `DomainClient.Close`（后两者详见下文专节）。
+
 #### URL 访问方法
 
-| 方法 | 返回类型 | 说明 |
-|------|----------|------|
-| `URL()` | `string` | 基础 URL（构造时传入的 `baseURL`） |
-| `Domain()` | `string` | 域名（主机名，不含端口） |
-| `Session()` | `*SessionManager` | 底层会话管理器 |
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `URL` | `URL() string` | 基础 URL（构造时传入的 `baseURL`） |
+| `Domain` | `Domain() string` | 域名（主机名，不含端口） |
+| `Session` | `Session() *SessionManager` | 底层会话管理器 |
+
+三者在接口上定义为 `DomainClienter.URL`、`DomainClienter.Domain`、`DomainClienter.Session`，由 `DomainClient.URL`、`DomainClient.Domain`、`DomainClient.Session` 实现。
 
 `URL()` / `Domain()` / `Session()` / `Close()` 均为 nil 接收者安全：接收者为 nil 时分别返回 `""`、`""`、`nil`、`nil`。
 
 #### 会话头管理
 
-| 方法 | 说明 |
-|------|------|
-| `SetHeader(key, value string) error` | 设置单个会话头（校验 CRLF 安全性） |
-| `SetHeaders(headers map[string]string) error` | 批量设置会话头 |
-| `DeleteHeader(key string)` | 删除单个会话头 |
-| `ClearHeaders()` | 清空全部会话头 |
-| `GetHeaders() map[string]string` | 获取会话头副本 |
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `SetHeader` | `(key, value string) error` | 设置单个会话头（校验 CRLF 安全性） |
+| `SetHeaders` | `(headers map[string]string) error` | 批量设置会话头 |
+| `DeleteHeader` | `(key string)` | 删除单个会话头 |
+| `ClearHeaders` | `()` | 清空全部会话头 |
+| `GetHeaders` | `() map[string]string` | 获取会话头副本 |
+
+五个方法在接口上定义为 `DomainClienter.SetHeader`、`DomainClienter.SetHeaders`、`DomainClienter.DeleteHeader`、`DomainClienter.ClearHeaders`、`DomainClienter.GetHeaders`，实现委托给内嵌的 `SessionManager`（见[会话管理](./session)）。
 
 #### 会话 Cookie 管理
 
-| 方法 | 说明 |
-|------|------|
-| `SetCookie(cookie *http.Cookie) error` | 设置单个会话 Cookie |
-| `SetCookies(cookies []*http.Cookie) error` | 批量设置会话 Cookie |
-| `DeleteCookie(name string)` | 按名称删除 Cookie |
-| `ClearCookies()` | 清空全部 Cookie |
-| `GetCookies() []*http.Cookie` | 获取全部 Cookie 副本 |
-| `GetCookie(name string) *http.Cookie` | 按名称获取 Cookie 副本 |
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `SetCookie` | `(cookie *http.Cookie) error` | 设置单个会话 Cookie |
+| `SetCookies` | `(cookies []*http.Cookie) error` | 批量设置会话 Cookie |
+| `DeleteCookie` | `(name string)` | 按名称删除 Cookie |
+| `ClearCookies` | `()` | 清空全部 Cookie |
+| `GetCookies` | `() []*http.Cookie` | 获取全部 Cookie 副本 |
+| `GetCookie` | `(name string) *http.Cookie` | 按名称获取 Cookie 副本 |
+
+对应接口定义为 `DomainClienter.SetCookie`、`DomainClienter.SetCookies`、`DomainClienter.DeleteCookie`、`DomainClienter.ClearCookies`、`DomainClienter.GetCookies`、`DomainClienter.GetCookie`，同样委托给 `SessionManager`。
 
 ## NewDomain
 

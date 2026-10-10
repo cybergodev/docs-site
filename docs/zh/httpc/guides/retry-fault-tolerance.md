@@ -1,8 +1,8 @@
 ---
 sidebar_label: "重试与容错"
 title: "重试与容错 - CyberGo HTTPC | 退避与自动重试"
-description: "HTTPC 重试与容错指南：指数退避与 ±10% 抖动算法详解、408/429/5xx 与网络错误重试条件、Retry-After 自动解析与 60 秒安全上限、跨重试共享总超时预算、请求体重放缓冲、WithMaxRetries 按请求控制与代理池轮换联动。"
-sidebar_position: 8
+description: "HTTPC 重试与容错指南：指数退避与 ±10% 抖动、408/429/5xx 与网络错误重试条件、Retry-After 自动解析与 60 秒上限、跨重试共享总超时预算、请求体重放缓冲、WithMaxRetries 按请求控制与代理池轮换联动。"
+sidebar_position: 70
 ---
 
 # 重试与容错
@@ -89,7 +89,7 @@ func main() {
 
 ### 基础延迟计算
 
-```
+```text
 attempt 0: 1s × 2.0^0 = 1s
 attempt 1: 1s × 2.0^1 = 2s
 attempt 2: 1s × 2.0^2 = 4s
@@ -131,7 +131,7 @@ HTTPC 使用循环乘法（`for i := 0; i < attempt; i++ { delay *= factor }`）
 
 纯整数值，表示「N 秒后重试」：
 
-```
+```http
 HTTP/1.1 429 Too Many Requests
 Retry-After: 120
 ```
@@ -140,7 +140,7 @@ Retry-After: 120
 
 RFC 1123 日期，表示「在指定时间重试」：
 
-```
+```http
 HTTP/1.1 503 Service Unavailable
 Retry-After: Fri, 31 Jul 2026 15:00:00 GMT
 ```
@@ -151,7 +151,7 @@ HTTPC 同时支持标准 RFC1123（`Fri, 31 Jul 2026 15:00:00 GMT`）和带数�
 
 无论服务器指定多长时间，HTTPC 都将 `Retry-After` 延迟截断为最多 60 秒：
 
-```
+```text
 Retry-After: 120     →  截断为 60s（而非等待 120s）
 Retry-After: 3600    →  截断为 60s
 Retry-After: Fri, 31 Jul 2026 15:00:00 GMT（距今 2 小时）→ 截断为 60s
@@ -447,14 +447,14 @@ func main() {
 
 当配置了 `ProxyRotateOnStatus` 或 `ProxyRotatePerRequest` 时，HTTPC 会自动提高 `MaxRetries`，确保代理池中的每个代理至少被尝试一次。这是通过 `calculateMaxRetries` 实现的：
 
-```
+```text
 effective MaxRetries = max(配置的 MaxRetries, len(ProxyPool) - 1)
 （上限为 maxRetryAttempts = 10）
 ```
 
 **示例**：5 个代理，配置 `MaxRetries = 3`：
 
-```
+```text
 ProxyPool = [proxy1, proxy2, proxy3, proxy4, proxy5]
 ProxyRotateOnStatus = [403]   // 或 ProxyRotatePerRequest = true
 配置 MaxRetries = 3
@@ -520,7 +520,7 @@ func main() {
 
 ### 总最坏时间公式
 
-```
+```text
 总最坏时间 ≈ min(Timeouts.Request, WithTimeout / context 截止时间)
 ```
 
@@ -669,14 +669,12 @@ func main() {
 | 微服务通信 | `MaxRetries=2, Delay=500ms, Backoff=2.0`（快速失败） |
 | 文件下载 | `MaxRetries=5, Delay=2s, Backoff=2.0`（容忍网络波动） |
 | 幂等操作（GET/PUT/DELETE） | 可放心重试 |
-| 非幂等操作（POST） | `WithMaxRetries(0)` 或自定义 `RetryPolicy` 收窄 |
+| 非幂等操作（POST） | 默认单次执行不重试；确需重试用 [`WithRetryNonIdempotent`](../api-reference/core/options#withretrynonidempotent) 显式开启 |
 | 限流 API | 依赖 `Retry-After` 自动解析（已内置） |
 | 代理池场景 | 配合 `ProxyRotateOnStatus`，重试次数自动提高 |
 
 :::warning 非幂等 POST 请求的重试
-默认情况下，非幂等的 POST 请求在收到可重试状态码（如 500/502/503/504）或网络错误时也会重试。如果服务端不能保证幂等性，重复提交可能导致副作用（如重复创建资源）。精确控制方案：
-1. 对 POST 请求使用 `WithMaxRetries(0)` 完全禁用重试
-2. 或自定义 `RetryPolicy` 仅在网络错误（非 HTTP 状态码）时重试
+默认情况下，非幂等方法（POST、PATCH 及自定义方法）**单次执行、不重试**——引擎直接清零这类方法的重试预算，因为超时或可重试 5xx 可能在服务端已提交操作后才到达，重放请求体会造成副作用（如重复下单、重复支付）。要为单个请求重开重试，使用 [`WithRetryNonIdempotent(true)`](../api-reference/core/options#withretrynonidempotent)（客户端级开关为 `Retry.RetryNonIdempotent`，请求级选项双向覆盖它）；仅对可容忍重放的端点启用，或以幂等键（Idempotency-Key）保护。注意自定义 `RetryPolicy` 同样只对幂等方法生效，无法单独为 POST 重开重试。
 :::
 
 ## 下一步

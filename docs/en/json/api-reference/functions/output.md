@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Encoding Output"
-title: "Encoding Output Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON encoding: Marshal/Unmarshal, Compact/Indent/HTMLEscape formatting, Encode/EncodePretty/Prettify, EncodeFields filtering, stdlib compatible."
-sidebar_position: 5
+title: "Encoding Output Functions - CyberGo JSON | Marshal & Encode"
+description: "CyberGo JSON is a Go library for encoding output, offering stdlib-compatible Marshal/Unmarshal, Encode/Compact/Indent, Prettify and HTMLEscape serialization."
+sidebar_position: 50
 ---
 
 # Encoding Output Functions
@@ -32,7 +32,7 @@ data, err = json.Marshal(value, json.PrettyConfig())
 ```
 
 ::: warning Marshal output is always HTML-escaped
-Consistent with `encoding/json.Marshal`, the output of `Marshal` is **always** HTML-escaped — even if you pass `cfg.EscapeHTML = false`, this path overrides it back on. When the caller must control escaping behavior, use [`EncodeWithConfig`](#encodewithconfig) instead.
+Consistent with `encoding/json.Marshal`, the output of `Marshal` is **always** HTML-escaped — even if you pass `cfg.EscapeHTML = false`, this path overrides it back on. When the caller must control escaping behavior, use [`Encode`](#encode) instead.
 :::
 
 ### Unmarshal
@@ -151,8 +151,8 @@ HTML-escapes JSON content, replacing special characters such as `<`, `>`, `&` (p
 ```go
 var buf bytes.Buffer
 json.HTMLEscape(&buf, []byte(`{"html":"<script>alert(1)</script>"}`))
-// buf now contains the same JSON with < > & written as Unicode escape sequences
-// (like the way encoding/json escapes them, e.g. backslash-u-0-0-3-c for <)
+fmt.Println(buf.String())
+// {"html":"<script>alert(1)</script>"}
 ```
 
 ### Prettify
@@ -177,15 +177,9 @@ fmt.Println(pretty)
 
 ### Encode
 
-<Badge type="danger" text="Deprecated" />
-
 Signature: `func Encode(value any, cfg ...Config) (string, error)`
 
-Encodes a Go value into a JSON string, with optional configuration parameters.
-
-::: warning Deprecated
-`Encode` is functionally identical to [`EncodeWithConfig`](#encodewithconfig) (both delegate to the same implementation). Use `EncodeWithConfig` instead, or [`Marshal`](#marshal) when a `[]byte` output is acceptable. `Encode` will be removed in a future major version.
-:::
+Encodes a Go value into a JSON string. This is the **canonical** string-returning encoder (`Marshal` is the `[]byte`-returning `encoding/json` drop-in); the optional trailing `Config` selects the encoding behavior for this call (`Pretty`, `EscapeHTML`, `SortKeys`, `FloatPrecision`, ...), and the default configuration applies when omitted.
 
 ```go
 result, err := json.Encode(user)
@@ -223,23 +217,23 @@ result, err := json.EncodePretty(user, json.PrettyConfig())
 
 ### EncodeWithConfig
 
+<Badge type="danger" text="Deprecated" />
+
 Signature: `func EncodeWithConfig(value any, cfg ...Config) (string, error)`
 
-Encodes a Go value into a JSON string using the given configuration. Suited to scenarios that need fine-grained control over encoding behavior.
+Encodes a Go value into a JSON string using the given configuration.
+
+::: warning Deprecated
+`EncodeWithConfig` is functionally identical to [`Encode`](#encode) (both delegate to the same implementation) — the name predates `Encode` accepting an optional trailing `Config`. Use `Encode(value, cfg)` in new code, or [`Marshal`](#marshal) when a `[]byte` output is acceptable. `EncodeWithConfig` will not be removed within v1.
+:::
 
 ```go
-// Use the pretty-print configuration
+// Fully equivalent to json.Encode(data, json.PrettyConfig())
 result, err := json.EncodeWithConfig(data, json.PrettyConfig())
 if err != nil {
     panic(err)
 }
 fmt.Println(result)
-```
-
-**With the security configuration**
-
-```go
-result, err := json.EncodeWithConfig(data, json.SecurityConfig())
 ```
 
 ## Batch Encoding Functions
@@ -248,7 +242,7 @@ result, err := json.EncodeWithConfig(data, json.SecurityConfig())
 
 Signature: `func EncodeBatch(pairs map[string]any, cfg ...Config) (string, error)`
 
-Batch-encodes key-value pairs into a JSON object string. Equivalent to `EncodeWithConfig(map[string]any(pairs), cfg)`, with keys output in lexicographic order (consistent with `encoding/json`).
+Batch-encodes key-value pairs into a JSON object string. Equivalent to `Encode(map[string]any(pairs), cfg)`, with keys output in lexicographic order (consistent with `encoding/json`).
 
 ```go
 result, err := json.EncodeBatch(map[string]any{
@@ -289,7 +283,7 @@ fmt.Println(result) // {"name":"Alice","email":"a@b.com"}
 
 Signature: `func EncodeStream(values any, cfg ...Config) (string, error)`
 
-Encodes multiple values into a JSON array stream. `values` is usually a slice or enumerable collection, and the output is a JSON array string like `[v1,v2,...]`. Equivalent to `EncodeWithConfig(values, cfg)`: when `values` is a slice, a JSON array is output; when a non-collection value is passed, that value itself is output per `EncodeWithConfig` semantics.
+Encodes multiple values into a JSON array stream. `values` is usually a slice or enumerable collection, and the output is a JSON array string like `[v1,v2,...]`. Equivalent to `Encode(values, cfg)`: when `values` is a slice, a JSON array is output; when a non-collection value is passed, that value itself is output per `Encode` semantics.
 
 ```go
 values := []map[string]any{

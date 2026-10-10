@@ -2,7 +2,7 @@
 sidebar_label: "TLS 与证书固定"
 title: "TLS 与证书固定 - CyberGo HTTPC | 加密与证书固定"
 description: "HTTPC TLS 与证书固定指南：TLS 1.2-1.3 版本控制、SPKI 哈希生成步骤与密钥轮换、三种 Pinner 构造器对比、自定义 CertificatePinner、mTLS 双向认证、自定义 CA 证书与 Let's Encrypt 短周期证书固定策略。"
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # TLS 与证书固定
@@ -153,7 +153,7 @@ mTLS 常用于零信任网络、服务网格内部认证、金融 API。服务�
 
 标准 TLS 验证：客户端信任任何由可信 CA 签发的证书。证书固定：客户端额外要求证书的公钥哈希匹配预存值。
 
-```
+```text
 标准验证:  信任 CA → 信任 CA 签发的任何证书
 证书固定:  信任 CA + 证书公钥必须匹配预存哈希
 ```

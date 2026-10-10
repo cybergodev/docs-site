@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Query & Get"
-title: "Processor Path Queries - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor path queries: Get/GetString/GetInt typed access, GetMultiple batch reads, SafeGet with AccessResult, and GetTyped[T] generics."
-sidebar_position: 2
+title: "Processor Path Queries - CyberGo JSON | Get/GetString Usage"
+description: "CyberGo JSON Processor path queries: Get/GetString/GetInt, GetMultiple, SafeGet, GetTyped[T], CompilePath and JSONPath — ideal for extracting nested values."
+sidebar_position: 20
 ---
 
 # Path Query Methods
@@ -34,6 +34,20 @@ Signature: `func (p *Processor) GetString(jsonStr, path string, defaultValue ...
 
 Gets a string value from the specified path. Returns the empty string or `defaultValue` when the path is missing, the value is null, or the conversion fails.
 
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...string` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `string` | The string at the path; the default when the path does not exist, the value is null, or the conversion fails (zero value `""` when no default is given) |
+
 ```go
 // Without a default value
 name := p.GetString(data, "user.name")
@@ -48,6 +62,20 @@ Signature: `func (p *Processor) GetInt(jsonStr, path string, defaultValue ...int
 
 Gets an integer value from the specified path. Returns 0 or `defaultValue` when the path is missing, the value is null, or the conversion fails.
 
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...int` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `int` | The integer at the path (lenient conversion); the default when the path does not exist, the value is null, or the conversion fails (zero value `0` when no default is given) |
+
 ```go
 count := p.GetInt(data, "count")
 timeout := p.GetInt(data, "timeout", 30)
@@ -59,6 +87,20 @@ Signature: `func (p *Processor) GetFloat(jsonStr, path string, defaultValue ...f
 
 Gets a float value from the specified path. Returns 0 or `defaultValue` when the path is missing, the value is null, or the conversion fails.
 
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...float64` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `float64` | The float at the path (integers are widened to `float64`); the default when the path does not exist, the value is null, or the conversion fails (zero value `0` when no default is given) |
+
 ```go
 price := p.GetFloat(data, "price")
 rate := p.GetFloat(data, "rate", 0.5)
@@ -69,6 +111,20 @@ rate := p.GetFloat(data, "rate", 0.5)
 Signature: `func (p *Processor) GetBool(jsonStr, path string, defaultValue ...bool) bool`
 
 Gets a boolean value from the specified path. Returns false or `defaultValue` when the path is missing, the value is null, or the conversion fails.
+
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...bool` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `bool` | The boolean at the path; the default when the path does not exist, the value is null, or the conversion fails (zero value `false` when no default is given) |
 
 ```go
 enabled := p.GetBool(data, "enabled")
@@ -151,6 +207,20 @@ Signature: `func (p *Processor) GetArray(jsonStr, path string, defaultValue ...[
 
 Gets an array from the specified path. Returns nil or `defaultValue` when the path is missing, the value is null, or the conversion fails.
 
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...[]any` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `[]any` | The array at the path (elements keep their parsed native types); the default when the path does not exist, the value is null, or the conversion fails (zero value `nil` when no default is given) |
+
 ```go
 items := p.GetArray(data, "items")
 tags := p.GetArray(data, "tags", []any{"default"})
@@ -161,6 +231,20 @@ tags := p.GetArray(data, "tags", []any{"default"})
 Signature: `func (p *Processor) GetObject(jsonStr, path string, defaultValue ...map[string]any) map[string]any`
 
 Gets an object from the specified path. Returns nil or `defaultValue` when the path is missing, the value is null, or the conversion fails.
+
+**Parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `jsonStr` | `string` | Yes | JSON string |
+| `path` | `string` | Yes | Path expression |
+| `defaultValue` | `...map[string]any` | No | Optional default, returned when the path does not exist, the value is null, or the conversion fails |
+
+**Returns**
+
+| Return value | Type | Description |
+|--------------|------|-------------|
+| Single return value | `map[string]any` | The object at the path; the default when the path does not exist, the value is null, or the conversion fails (zero value `nil` when no default is given) |
 
 ```go
 profile := p.GetObject(data, "user.profile")

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "接口定义"
-title: "接口定义 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 扩展接口：CustomEncoder、TypeEncoder、Validator、Hook、PathParser 与 DangerousPattern，含 HookContext 上下文与预定义钩子，灵活扩展编码、验证与安全防护能力。"
-sidebar_position: 6
+title: "接口定义 - CyberGo JSON | 扩展接口与 Hook 钩子"
+description: "CyberGo JSON 接口定义汇总扩展契约：Hook/HookContext 钩子拦截与 LoggingHook 等预定义钩子、PathParser 自定义路径解析、DangerousPattern/PatternLevel 安全级别、CustomEncoder/Validator 预留接口及 Marshaler 标准库兼容接口，帮助开发者定制并扩展 JSON 处理与编码行为。"
+sidebar_position: 70
 ---
 
 # 接口定义
@@ -175,11 +175,15 @@ type HookContext struct {
 | `JSONStr`   | `string`   | 输入 JSON 字符串（marshal 时可能为空）；**可能包含敏感数据**    |
 | `Path`      | `string`   | 目标路径（marshal/unmarshal 时可能为空）                        |
 | `Value`     | `any`      | set 操作要写入的值                                              |
-| `Config`    | `*Config`  | 当前操作使用的活动配置                                          |
+| `Config`    | `*Config`  | 当前操作使用的活动配置（池化对象，仅在本操作期间有效，钩子不得保留到调用之外） |
 | `StartTime` | `time.Time` | 操作开始时间（在 `After` 调用前设置）                           |
 
 ::: warning JSONStr 含敏感数据
 `JSONStr` 可能包含密码、令牌、API 密钥、PII（个人身份信息）等敏感数据——**不要**将该字段写入日志；记录日志请只使用 `Operation` 与 `Path`，确需检查内容时只针对特定路径读取。
+:::
+
+::: warning Config 指针生命周期
+`Config` 指向池化的 per-call 配置，仅在本次操作期间有效——操作返回后其引用字段会被清空并回池复用。钩子**不得**把该指针保留到调用之外（如放入异步日志队列继续使用）；需要留存请先复制所需字段。
 :::
 
 **使用示例**
@@ -394,8 +398,8 @@ func (p *CustomPathParser) ParsePath(path string) ([]json.PathSegment, error) {
 }
 ```
 
-::: warning 预留状态
-`CustomPathParser` 当前版本**尚未在路径解析流水线中挂接**：通过 `Config.CustomPathParser` 设置后，路径解析仍使用内置解析器（该字段目前只参与处理器缓存键的"是否设置"判定，设置后配置将不走处理器缓存）。与 `CustomEncoder`、`CustomValidators` 一样属未来版本预留接口。
+::: tip 已挂接的扩展点
+`CustomPathParser` 当前版本**已在路径解析流水线中挂接**：通过 `Config.CustomPathParser` 设置后，所有路径类操作（Get/Set/Delete/迭代）都会调用 `ParsePath` **完全替代**内置解析器；解析结果不进入全局路径段缓存，携带自定义解析器的配置也不会进入处理器配置缓存。解析器 panic 会被捕获并转换为错误，不会击穿进程。与仍属预留的 `CustomEncoder`、`CustomValidators` 不同，本接口可直接使用。
 :::
 
 ## 基础类型
@@ -638,7 +642,7 @@ schema := &json.Schema{
 
 ### SchemaConfig
 
-Schema 验证配置。用于通过 `NewSchemaWithConfig` 创建 Schema 实例。
+Schema 验证配置。用于通过 `NewSchema` 创建 Schema 实例。
 
 ```go
 type SchemaConfig struct {
@@ -676,7 +680,7 @@ cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
 additionalProperties := false
 cfg.AdditionalProperties = &additionalProperties
-schema := json.NewSchemaWithConfig(cfg)
+schema := json.NewSchema(cfg)
 ```
 
 ### ValidationError

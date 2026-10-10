@@ -1,8 +1,8 @@
 ---
-sidebar_label: "Types"
-title: "Type Definitions - CyberGo JSON | API Reference"
-description: "CyberGo JSON core types: Result[T] generics, AccessResult access, BatchOperation, BatchResult, Schema, Stats, IterableValue, and CompiledPath precompiled paths."
-sidebar_position: 5
+sidebar_label: "Type Definitions"
+title: "Type Definitions - CyberGo JSON | Core Types Overview"
+description: "CyberGo JSON: Result[T], AccessResult, CompiledPath, BatchOperation/BatchResult, ValidationError/SyntaxError, HealthStatus, IterableValue, Encoder/Decoder."
+sidebar_position: 60
 ---
 
 # Type Definitions
@@ -322,7 +322,7 @@ fmt.Println("Type:", result.Type)
 | `AsBool()` | `(bool, error)` | Converts to a boolean |
 | `Ok()` | `bool` | Checks whether the path exists |
 
-::: warning Note
+:::warning Note
 The `AsInt64()`, `AsArray()`, and `AsObject()` methods have been removed. Use `GetTyped[T]` for those types.
 :::
 
@@ -431,18 +431,22 @@ schema := &json.Schema{
 ```
 
 ::: warning Two hard restrictions
-- `Type` supports only six values: `object`/`array`/`string`/`number`/`boolean`/`null` — JSON Schema's `integer` is **not supported** (integers also parse as `float64`; write `"number"`).
-- Assigning `MinLength`/`MaxLength`/`Minimum`/`Maximum`/`MinItems`/`MaxItems`/`ExclusiveMinimum`/`ExclusiveMaximum` through a struct literal **has no effect**; they must be enabled via the pointer fields of `NewSchemaWithConfig`. See [Schema Validation](./schema#creating-a-schema).
+- `Type` supports seven values: `object`/`array`/`string`/`number`/`integer`/`boolean`/`null`; `integer` follows JSON Schema semantics and accepts values that are mathematically integers (`1` and `1.0` pass, `1.5` fails with an `expected type integer` error). See [Schema Validation](./schema#schema-constraint-fields-overview).
+- Assigning `MinLength`/`MaxLength`/`Minimum`/`Maximum`/`MinItems`/`MaxItems`/`ExclusiveMinimum`/`ExclusiveMaximum` through a struct literal **has no effect**; they must be enabled via the pointer fields of `NewSchema` (deprecated alias: `NewSchemaWithConfig`). See [Schema Validation](./schema#creating-a-schema).
 :::
 
-#### Using NewSchemaWithConfig
+#### Using NewSchema
+
+Signature: `func NewSchema(cfg SchemaConfig) *Schema` — the **canonical constructor** for a configured Schema; length/range pointer constraints are enabled through it.
 
 ```go
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
-schema := json.NewSchemaWithConfig(cfg)
+schema := json.NewSchema(cfg)
 ```
+
+The older name `NewSchemaWithConfig(cfg)` is fully equivalent to `NewSchema` and **deprecated** (retained within v1); use `NewSchema(cfg)` in new code.
 
 #### Using DefaultSchema
 
@@ -503,7 +507,7 @@ Returns a SchemaConfig with defaults (`AdditionalProperties` points to `true`; t
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
-schema := json.NewSchemaWithConfig(cfg)
+schema := json.NewSchema(cfg)
 ```
 
 ### Usage Example
@@ -517,7 +521,7 @@ import (
 )
 
 func main() {
-	// Length/range constraints enabled via NewSchemaWithConfig pointer fields
+	// Length/range constraints enabled via NewSchema pointer fields
 	minLen, maxLen := 1, 100
 	minAge, maxAge := 0.0, 150.0
 
@@ -527,7 +531,7 @@ func main() {
 	nameCfg.MaxLength = &maxLen
 
 	ageCfg := json.DefaultSchemaConfig()
-	ageCfg.Type = "number" // numbers always use "number" ("integer" unsupported)
+	ageCfg.Type = "number" // "number" accepts every number; use "integer" for integers only
 	ageCfg.Minimum = &minAge
 	ageCfg.Maximum = &maxAge
 
@@ -535,9 +539,9 @@ func main() {
 		Type:     "object",
 		Required: []string{"name", "email"},
 		Properties: map[string]*json.Schema{
-			"name":  json.NewSchemaWithConfig(nameCfg),
+			"name":  json.NewSchema(nameCfg),
 			"email": {Type: "string", Format: "email"},
-			"age":   json.NewSchemaWithConfig(ageCfg),
+			"age":   json.NewSchema(ageCfg),
 		},
 	}
 
@@ -775,7 +779,7 @@ type Stats struct {
 | `CacheTTL` | `time.Duration` | Current cache entry TTL |
 | `CacheEnabled` | `bool` | Whether the cache is enabled |
 | `IsClosed` | `bool` | Whether the processor has been `Close`d |
-| `MemoryEfficiency` | `float64` | Memory efficiency metric (0–1) |
+| `MemoryEfficiency` | `float64` | Memory efficiency metric (cache hit count / MB of cache memory; may exceed 1) |
 | `OperationCount` | `int64` | Cumulative operation count of the processor |
 | `ErrorCount` | `int64` | Cumulative error count of the processor |
 

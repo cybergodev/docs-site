@@ -2,7 +2,7 @@
 title: "从 net/http 迁移 - CyberGo HTTPC | 迁移指南"
 description: "从 net/http 平滑迁移到 CyberGo HTTPC：完整 API 对照表（http.Get、http.Client、Transport、CookieJar 到 httpc 对应项）、错误模型差异、五级超时体系与迁移陷阱清单，帮助已有标准库经验的开发者快速切换。"
 sidebar_label: "从 net/http 迁移"
-sidebar_position: 2
+sidebar_position: 130
 ---
 
 # 从 net/http 迁移
@@ -346,7 +346,7 @@ result, err := client.Get(url, httpc.WithTimeout(30*time.Second)) // 本次请�
 | `TLSClientConfig` | `Security.TLSConfig` | nil |
 | `ForceAttemptHTTP2` | `Connection.EnableHTTP2` | true |
 | `ResponseHeaderTimeout` | `Timeouts.ResponseHeader` | 0（禁用） |
-| `MaxResponseHeaderBytes` | `Connection.MaxResponseHeaderBytes` | 0（标准库默认 10MB） |
+| `MaxResponseHeaderBytes` | `Connection.MaxResponseHeaderBytes` | 0（标准库默认 1MB） |
 | `CheckRedirect` | `Defaults.FollowRedirects` / `MaxRedirects` + `Security.RedirectWhitelist` | true / 10 |
 | 自定义 `DialContext`（拨号器） | 无直接入口 | SSRF 校验包装在拨号层 |
 
@@ -497,7 +497,9 @@ if err := httpc.SetDefaultClient(custom); err != nil {
 
 ## 下一步
 
-- **[实战教程](./tutorial)** - 30 分钟构建一个完整的 GitHub API 客户端，覆盖迁移后的典型写法
+迁移完成后，回到指南主线继续深入：
+
 - **[请求与响应](./request-response)** - 完整的请求选项与 `Result` 响应处理
+- **[实战教程](./tutorial)** - 30 分钟构建一个完整的 GitHub API 客户端，巩固迁移后的典型写法
 - **[核心概念](../getting-started/concepts)** - 双层 API 架构、配置体系与请求生命周期
 - **[常见问题](../faq/)** - 重试、超时、代理、Cookie 等高频问题的源码级解答

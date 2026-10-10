@@ -46,7 +46,7 @@ HTTPC is built on top of the standard-library `net/http` transport: connection r
 # Initialize a module (skip if you already have a project)
 go mod init example.com/demo
 
-# Install HTTPC (requires Go 1.25+)
+# Install HTTPC (requires Go 1.26+)
 go get github.com/cybergodev/httpc
 ```
 
@@ -118,6 +118,7 @@ Choose a reading path based on your goal:
 | Performance tuning | [Performance](./guides/performance) |
 | Learn about security features | [Security Overview](./security/) |
 | Look up API signatures | [API Reference](./api-reference/) |
+| Frequent questions | [FAQ](./faq/) |
 
 ## Core Concepts
 

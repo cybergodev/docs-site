@@ -1,8 +1,8 @@
 ---
 sidebar_label: "安全概述"
-title: "安全概述 - CyberGo JSON | 安全最佳实践"
+title: "安全概述 - CyberGo JSON | 输入校验与深度限制"
 description: "CyberGo JSON 安全最佳实践：输入验证、MaxNestingDepthSecurity/MaxMemory 资源限制防御深嵌套与超大输入、路径遍历与 JSON 注入防御、敏感数据过滤，可用 SecurityConfig 预设一键收紧不可信输入全部限制。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 安全概述
@@ -212,58 +212,9 @@ cfg.AddHook(&FilterFieldsHook{fields: map[string]bool{
 
 库内置默认危险模式检测，也支持自定义模式的注册、注销和查询。
 
-自定义模式统一用 `DangerousPattern` 结构体表达：
+自定义模式统一用 `DangerousPattern` 结构体表达（`Pattern` 检测子串，大小写不敏感 + 词边界上下文检查；`Name` 风险描述；`Level` 严重级别），有两条注册途径：**全局注册**（`RegisterDangerousPattern`/`UnregisterDangerousPattern`/`ListDangerousPatterns` 包级函数，对所有 Processor 生效）与 **Config 追加**（`AddDangerousPattern` 方法或 `AdditionalDangerousPatterns` 字段，仅影响使用该 Config 的 Processor）。
 
-```go
-type DangerousPattern struct {
-    Pattern string       // 要在输入中检测的子字符串
-    Name    string       // 模式的描述性名称
-    Level   PatternLevel // 严重级别
-}
-```
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `Pattern` | `string` | 要在输入中检测的子字符串（匹配大小写不敏感） |
-| `Name` | `string` | 人类可读的风险描述（用于日志与审计） |
-| `Level` | `PatternLevel` | 严重级别，取值见下方级别表（当前仅作语义标注） |
-
-#### RegisterDangerousPattern
-
-签名：`func RegisterDangerousPattern(pattern DangerousPattern)`
-
-注册全局危险模式。全局注册表中的模式对**所有 Processor 实例**生效（包括已创建的实例——扫描时实时读取注册表），在默认模式之外叠加检查。
-
-```go
-json.RegisterDangerousPattern(json.DangerousPattern{
-    Pattern: "eval(",
-    Name:    "eval-call",
-    Level:   json.PatternLevelCritical,
-})
-```
-
-#### UnregisterDangerousPattern
-
-签名：`func UnregisterDangerousPattern(pattern string)`
-
-按模式字符串注销全局危险模式。参数 `pattern` 为要注销的危险模式子字符串（对应 `DangerousPattern.Pattern` 字段）。
-
-```go
-json.UnregisterDangerousPattern("eval(")
-```
-
-#### ListDangerousPatterns
-
-签名：`func ListDangerousPatterns() []DangerousPattern`
-
-列出**全局注册的自定义模式**（不含内置默认模式——内置模式始终生效、无需注册）。
-
-```go
-patterns := json.ListDangerousPatterns()
-for _, p := range patterns {
-    fmt.Printf("模式: %s, 名称: %s, 级别: %s\n", p.Pattern, p.Name, p.Level)
-}
-```
+结构体字段、函数签名与「全局注册 vs Config 追加」对照表统一维护在[安全模式·自定义模式注册](./security-mode#自定义模式注册)。
 
 #### 危险模式级别
 

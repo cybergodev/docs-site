@@ -1,8 +1,8 @@
 ---
 title: "Core Concepts - CyberGo HTTPC | Two-Layer API & Config"
-description: "HTTPC core concepts: two-layer API architecture, core building blocks, Config vs With* options, request lifecycle, domain clients, and the ClientError model."
+description: "HTTPC core concepts: two-layer API architecture, core building blocks, Config vs With* options, request lifecycle, domain clients, and ClientError model."
 sidebar_label: "Core Concepts"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Core Concepts
@@ -59,7 +59,7 @@ defer func() { _ = client.Close() }()
 result, err := client.Get("https://api.example.com/data")
 ```
 
-Both approaches accept the same request options (`WithHeader`, `WithJSON`, ...) and return the same `*Result` type. Package-level functions are thin wrappers around Client instances. The default client is replaceable: `SetDefaultClient(client)` installs a custom instance as the default (the old instance is closed automatically), and `CloseDefaultClient()` closes and resets it — after a close, the next package-level call rebuilds it automatically.
+Both approaches accept the same request options (`WithHeader`, `WithJSON`, ...) and return the same `*Result` type. Package-level functions are thin wrappers around Client instances. The default client is replaceable: `SetDefaultClient(client)` installs a custom instance as the default (the old instance is closed automatically), and `CloseDefaultClient()` closes and resets it — after a close, the next package-level call rebuilds it automatically. Note that a swap **closes the old default client and aborts any of its requests still in flight** (concurrent callers may observe connection errors); swap only at startup or during a quiescent window, never under live traffic.
 
 :::tip When to use which?
 One-off requests or quick prototypes -> package-level functions. Production services, custom configuration, or connection-pool management -> Client instances.
@@ -248,3 +248,7 @@ See [Error Handling](../guides/error-handling).
 - **Explicit Close** — `client.Close()` releases the connection pool and transport resources; requests after a close return `ErrClientClosed`.
 - **Self-healing default client** — the default client behind package-level functions can be replaced with `SetDefaultClient()` and closed with `CloseDefaultClient()`; after a close, the next package-level call rebuilds it automatically.
 - **Panic safety net** — `Request` has an internal recover fallback: unexpected panics on the execution path are converted into an `error` with a stack trace instead of crashing through to the caller.
+
+## Next Steps
+
+- [Hands-On Tutorial](../guides/tutorial) - Put the concepts on this page into practice, step by step, in about 30 minutes

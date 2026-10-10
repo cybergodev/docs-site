@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Concurrency & Parallelism"
-title: "Concurrency & Parallelism - CyberGo JSON | Practical Guide"
-description: "CyberGo JSON concurrency: thread-safe Processor guarantees, ParallelIterator, StreamJSONLParallel parallel JSONL, and SetGlobalProcessor sharing."
-sidebar_position: 4
+title: "Concurrency & Parallelism - CyberGo JSON | Goroutine Safety"
+description: "CyberGo JSON offers goroutine-safe processing with shared Processor, ParallelIterator, and StreamJSONLParallel to parallelize batches within MaxConcurrency."
+sidebar_position: 40
 ---
 
 # Concurrency and Parallel Processing

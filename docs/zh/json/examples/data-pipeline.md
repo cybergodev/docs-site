@@ -1,8 +1,8 @@
 ---
 sidebar_label: "JSONL 数据管道"
-title: "JSONL 数据管道 - CyberGo JSON | 流式处理与批量转换"
-description: "CyberGo JSON 构建 JSONL 数据管道：StreamLinesInto 流式读取并转换、ToJSONL/ToJSONLString 批量格式转换、NDJSONProcessor 与 ForeachFile 处理大文件，实现字段富化与批量转换。"
-sidebar_position: 5
+title: "JSONL 数据管道 - CyberGo JSON | ETL 流式转换"
+description: "CyberGo JSON 构建 JSONL 数据管道：StreamLinesInto 流式读取并在回调中转换字段、ToJSONL/ToJSONLString 批量写回、NDJSONProcessor 与 ForeachFile 迭代处理大文件，实现字段富化与级别分类，适合日志清洗与分析等流式处理场景。"
+sidebar_position: 40
 ---
 
 # JSONL 数据管道
@@ -247,9 +247,9 @@ func main() {
 - **吞吐**：与串行 `StreamJSONL` 相比，收益取决于单行处理开销——纯提取类轻回调提升有限，富化/校验类重回调提升明显。
 :::
 
-## 流式遍历大型 JSON 数组文件
+## 遍历大型 JSON 数组文件
 
-对于**单文件大 JSON 数组**（非 JSONL），用 `ForeachFile` 逐元素流式遍历，无需一次性载入整个文件到内存。
+对于**单文件大 JSON 数组**（非 JSONL），`ForeachFile` 提供带回调的逐元素遍历。注意其内存语义：迭代前**整个文件会先载入内存**（`ForeachFileChunked` 的「分块」只改变内存中数据的迭代分组，同样整载）；需要恒定内存处理超大数组时，改用 `StreamIterator`（见[大文件处理](../streaming/large-files#流式迭代器与并行迭代器)），或将数据转为 JSONL 后走 `StreamJSONL` 家族。
 
 ```go
 package main
@@ -282,7 +282,7 @@ func main() {
 		panic(err)
 	}
 
-	// 用 ForeachFile 流式遍历数组的每个元素
+	// 用 ForeachFile 逐条遍历数组元素（整个文件会先载入内存，适合能整载的数据集）
 	p, err := json.New()
 	if err != nil {
 		panic(err)
@@ -308,8 +308,8 @@ func main() {
 ```
 
 :::tip 提示
-- **JSONL 文件**（每行一个独立 JSON 对象）：用 `StreamLinesInto[T]`、`NDJSONProcessor` 或 `StreamJSONLFile`。
-- **大 JSON 数组文件**（单个 JSON 数组含大量元素）：用 `ForeachFile` 流式遍历，避免全量载入内存。
+- **JSONL 文件**（每行一个独立 JSON 对象）：用 `StreamJSONLFile` 或 `StreamLinesInto[T]`（遗留的 `NDJSONProcessor` 已弃用）。
+- **大 JSON 数组文件**（单个 JSON 数组含大量元素）：恒定内存用 `StreamIterator` 逐元素流式解码；`ForeachFile` 亦可逐条遍历，但会先把整个文件载入内存，适合中小规模数组。
 :::
 
 ## 下一步

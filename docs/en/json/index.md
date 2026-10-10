@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Overview"
-title: "JSON Library - CyberGo JSON | High-Performance Go Library"
+title: "JSON Library - CyberGo JSON | JSONPath Queries & Streaming"
 description: "CyberGo JSON: high-performance, thread-safe Go JSON with JSONPath queries, streaming, generics, Schema validation, hooks, and 100% encoding/json compatibility."
 ---
 
@@ -24,6 +24,8 @@ description: "CyberGo JSON: high-performance, thread-safe Go JSON with JSONPath 
 ```bash
 go get github.com/cybergodev/json
 ```
+
+**Requires Go 1.25+** (the source `go.mod` declares `go 1.25.0`; examples use generics and the `slices` standard library).
 
 ## 30-Second Quick Tour
 
@@ -96,7 +98,7 @@ func main() {
 | Path pre-compilation | `Processor.CompilePath`, `Processor.GetCompiled` | Zero repeated parsing for high-frequency identical paths |
 | Parallel iteration | `NewParallelIterator` | Parallel Map/Filter/ForEach with a built-in worker pool |
 | Safe access | `SafeGet` → `AccessResult` | Chained type conversion |
-| Streaming | `NDJSONProcessor` | Line-by-line streaming with bounded memory |
+| Streaming | `StreamJSONL` family | Line-by-line streaming with bounded memory |
 | JSONL processing | `StreamLinesInto[T]` | Log/data pipelines |
 | Schema validation | `ValidateSchema` | JSON Schema validation |
 
@@ -108,7 +110,9 @@ func main() {
 | [Path Expression Syntax](./getting-started/path-syntax) | Path queries, slices, wildcards, field extraction |
 | [Processor Guide](./getting-started/processor-guide) | When to use a Processor, pre-parse optimization, lifecycle |
 | [API Reference](./api-reference/) | Complete API reference |
-| [Large File Handling](./streaming/large-files) | Streaming, chunked read/write, memory optimization |
+| [Large File Handling](./streaming/large-files) | Item-by-item file iteration, streaming iterators, memory optimization |
+| [Extension Interfaces](./extensions/) | Hook system intercepting the full Get/Set/Delete flow; custom encoding via `json.Marshaler`/`CustomEscapes` |
+| [Security](./security/) | Input validation on by default (size/depth/UTF-8/dangerous patterns); `SecurityConfig()` preset for untrusted input, with a production checklist |
 | [Examples](./examples/) | Real-world code examples |
 | [Advanced Examples](./examples/examples-advanced) | Batch encoding, pre-parsing, hook system |
 
@@ -142,7 +146,7 @@ func main() {
 | Type safety | `GetTyped[User](data, "user")` |
 | Query many paths on one JSON | `Processor` + `PreParse` |
 | Query one path across many JSONs | `Processor` + `CompilePath` |
-| Large files | `Processor.ForeachFile` |
+| Large files | `StreamIterator` (>100MB) / `Processor.ForeachFile` (10-100MB, fully loaded) |
 | Process large arrays in parallel | `NewParallelIterator` |
 | JSONL pipelines | `StreamLinesInto[T]` |
 | Untrusted input | `SecurityConfig()` |
@@ -153,3 +157,4 @@ func main() {
 - [Processor Guide](./getting-started/processor-guide) — when to use a processor
 - [Path Expression Syntax](./getting-started/path-syntax) — the complete path syntax
 - [Examples](./examples/) — more real-world examples
+- [Security](./security/) — built-in input validation and untrusted-input hardening

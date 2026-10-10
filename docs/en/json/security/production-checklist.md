@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Production Checklist"
-title: "Production Checklist - CyberGo JSON | Secure Deployment"
+title: "Production Checklist - CyberGo JSON | Pre-Launch Security"
 description: "CyberGo JSON production security checklist: SecurityConfig, MaxNestingDepthSecurity/MaxJSONSize resource limits, input validation, error handling, monitoring."
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # Production Checklist

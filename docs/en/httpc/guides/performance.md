@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Performance"
 title: "Performance - CyberGo HTTPC | Presets & Concurrency"
-description: "HTTPC performance guide: preset comparison and scenario selection, idle-connection derivation, semaphore concurrency, timeout budgets, and anti-patterns."
-sidebar_position: 12
+description: "HTTPC performance guide: presets compared, idle-connection derivation, semaphore concurrency, timeout budgets, zero-alloc hot paths, and anti-patterns."
+sidebar_position: 110
 ---
 
 # Performance Optimization

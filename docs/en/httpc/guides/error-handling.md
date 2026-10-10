@@ -2,7 +2,7 @@
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo HTTPC | Types & Sentinel Matching"
 description: "Handle HTTPC errors: ErrorType classes, ClientError fields and IsRetryable checks, errors.Is/As sentinel matching, retry exhaustion, and context timeouts."
-sidebar_position: 7
+sidebar_position: 60
 ---
 
 # Error Handling
@@ -32,6 +32,40 @@ HTTPC defines 12 error types covering every failure scenario from the network la
 `IsRetryable()` is more fine-grained than the table suggests: `ErrorTypeDNS` is only retryable when `net.DNSError` is flagged temporary or timeout; `ErrorTypeNetwork` checks `syscall.Errno` (`ECONNREFUSED`/`ECONNRESET`/`EPIPE`/`ETIMEDOUT`/`ENETUNREACH`/`EHOSTUNREACH`) and error-message patterns; `ErrorTypeResponseRead` retries only on network errors from read operations (`read`/`readfrom`). See "Retryability Check" below.
 :::
 
+## Error Classification Decision Tree
+
+Every non-nil error entering the engine goes through the same classification flow, matched top-to-bottom by priority — first hit wins:
+
+```text
+Error err
+├─ errors.Is(err, context.Canceled)          → ContextCanceled "request was canceled"
+├─ errors.Is(err, context.DeadlineExceeded)  → Timeout "request timed out"
+├─ Pool exhausted (internal sentinel ErrPoolExhausted)  → Network "connection pool exhausted"
+├─ *url.Error (unwrapped first; classify by the inner error)
+│   ├─ Message contains "http2" + "invalid" → Validation "invalid HTTP/2 request header"
+│   ├─ Message contains "parse" / "invalid url" / "missing protocol" → Validation "URL validation failed"
+│   └─ Otherwise run the inner error through the branches below
+├─ *net.DNSError                             → DNS "DNS resolution timed out / failed"
+├─ *net.OpError                              → Network "network operation timed out / failed"
+├─ net.Error                                 → Timeout (timeout) / Network (other)
+└─ Error-message pattern matching (case-insensitive, selected)
+    ├─ "stopped after … redirect"            → Validation "redirect limit exceeded"
+    ├─ "circular redirect"                   → Validation "circular redirect detected"
+    ├─ "redirect blocked"                    → Validation "redirect blocked by policy"
+    ├─ "connection refused / reset / closed", "broken pipe" → Network
+    ├─ "no such host"                        → DNS
+    ├─ "tls" / "ssl" + "handshake"           → TLS
+    ├─ "certificate", "x509"                 → Certificate
+    ├─ "transport", "protocol error"         → Transport
+    ├─ "failed to read response body", "unexpected eof"   → ResponseRead
+    ├─ "http 4xx" / "http 5xx"               → HTTP (status code extracted as well)
+    └─ "timeout" / "timed out" (without "context")        → Timeout
+```
+
+:::tip Already-classified errors are not wrapped again
+If the error chain already contains a `ClientError` (e.g. an engine error returned by middleware), the classifier reuses its fields as-is and only fills in the URL/method/attempt count — no layer-upon-layer wrapping. A single `errors.As` hit on the outermost error yields the full context.
+:::
+
 ## ClientError Fields In Detail
 
 The `ClientError` struct carries the full context of a request failure:
@@ -46,6 +80,22 @@ The `ClientError` struct carries the full context of a request failure:
 | `Attempts` | `int` | Number of attempts made (including the first); > 1 when retries are exhausted |
 | `StatusCode` | `int` | HTTP status code (only set for `ErrorTypeHTTP`) |
 | `Host` | `string` | Target hostname (for circuit breakers, etc.) |
+
+### Error() Output Format
+
+`ClientError.Error()` emits a fixed format (URL already sanitized):
+
+```text
+METHOD url: message: cause (attempt N)
+```
+
+Concrete example:
+
+```text
+GET https://api.example.com/data: network error occurred: dial tcp 1.2.3.4:443: connect: connection refused (attempt 4)
+```
+
+`Unwrap()` returns `Cause`, so every unwrap-through-the-wrapper idiom works — `errors.Is(err, context.DeadlineExceeded)`, `errors.As(err, &opErr)` (to extract `*net.OpError`), and so on. Logging `err` directly already carries the method, the sanitized URL, the cause chain, and the attempt count, so there is no need to assemble context by hand.
 
 ### Error Type Checking
 
@@ -137,6 +187,38 @@ func main() {
 :::warning IsRetryable vs automatic retry
 `IsRetryable()` answers "is this error worth retrying?" and is also used by HTTPC's internal retry engine. If you have configured automatic retries via `Retry.MaxRetries`, then by the time the error reaches your handler, a network/timeout error means retries are already exhausted. `IsRetryable()` is mainly for upper-layer decisions (e.g. circuit breakers, task queues).
 :::
+
+## Implementation Details of Retryability
+
+Below the type classification, `IsRetryable()` applies a second, cause-level layer of checks — this is where the retryability differences between types come from:
+
+### Network Errors: syscall and Message Patterns
+
+`ErrorTypeNetwork` inspects the error cause layer by layer; a hit at any layer marks the error retryable:
+
+| Check layer | Retryable condition |
+|-------------|----------------------|
+| `net.OpError.Timeout()` | Timeout → retry |
+| `syscall.Errno` (POSIX) | `ECONNREFUSED` / `ECONNRESET` / `EPIPE` / `ETIMEDOUT` / `ENETUNREACH` / `EHOSTUNREACH` |
+| Windows WSA error codes | 10054 (connection reset) / 10060 (connection timed out) / 10061 (connection refused) / 10051 (network unreachable) / 10065 (host unreachable) |
+| Error-message patterns | `connection reset` / `eof` / `connection closed` / `broken pipe` / `network error` / `transport failed` |
+| Other `net.Error` | Retry by default (server-initiated disconnects, EOF, and other transient faults) |
+
+:::tip Why Windows needs a dedicated WSA mapping table
+Since Go 1.25, POSIX-style `syscall.E*` constants on Windows carry a `1<<29` offset (e.g. `ECONNREFUSED = 536870934`), while the network stack actually returns raw WSA codes (e.g. `WSAECONNREFUSED = 10061`) — the two encodings never compare equal. HTTPC ships a built-in WSA code mapping table so that retryability decisions on Windows behave the same as on Unix — no need to worry about cross-platform retry divergence when deploying.
+:::
+
+### DNS: Retryable Only When Temporary/Timeout
+
+`ErrorTypeDNS` is retryable only when `net.DNSError` is flagged `IsTemporary` or `IsTimeout`. Permanent failures such as a nonexistent domain (NXDOMAIN) never waste retry attempts.
+
+### Response Body Reads: Retry Read Operations Only
+
+`ErrorTypeResponseRead` retries only network errors from **read-type** operations: `net.OpError` with the operation name `read` / `readfrom`, or an error message containing eof / connection / timeout. File errors and write errors are excluded.
+
+### HTTP Status Codes
+
+`ErrorTypeHTTP` consults the retryable-status table directly: 408/429/500/502/503/504 (plus extension codes injected by `ProxyRotateOnStatus`). When `StatusCode` is missing (= 0), it falls back to the `HTTP 4xx` / `HTTP 5xx` prefixes in the error message.
 
 ## Sentinel Errors Complete Reference
 
@@ -529,12 +611,14 @@ HTTPC provides multiple levels of timeout control, from coarse to fine:
 cfg := httpc.DefaultConfig()
 cfg.Timeouts.Request = 30 * time.Second
 
-// Layer 2: middleware-enforced timeout (overrides the default)
+// Layer 2: middleware-enforced timeout (applies before the client's built-in timeout)
 timeoutMW := httpc.TimeoutMiddleware(&httpc.TimeoutMiddlewareConfig{
     Duration: 30 * time.Second,
 })
 
-// Layer 3: per-request override (WithTimeout overrides middleware and default)
+// Layer 3: per-request override (WithTimeout overrides only the client default;
+// the middleware timeout derives from the request's own Context(), and a
+// shorter middleware timeout cannot be extended by WithTimeout)
 result, err := client.Get(url, httpc.WithTimeout(10*time.Second))
 
 // Layer 4: context timeout (most precise; recommended for critical paths)

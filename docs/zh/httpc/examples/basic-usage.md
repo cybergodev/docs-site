@@ -1,8 +1,8 @@
 ---
 sidebar_label: "基础示例"
 title: "基础用法 - CyberGo HTTPC | 可运行示例"
-description: "HTTPC 基础用法示例集：GET/POST/PUT/DELETE/HEAD/PATCH 全方法示例、XML 与二进制请求体、查询参数与认证、响应状态判定与 Result 三元组、DefaultConfig 自定义配置、代理、中间件与带进度回调的文件下载完整可运行代码。"
-sidebar_position: 1
+description: "HTTPC 基础用法示例集：GET/POST/PUT/DELETE/HEAD/PATCH 全方法、XML 与二进制请求体、查询参数与认证、响应状态判定与 Result 三元组、DefaultConfig 配置、代理、中间件与进度回调文件下载可运行示例。"
+sidebar_position: 10
 ---
 
 # 基础用法

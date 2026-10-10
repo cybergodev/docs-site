@@ -2,7 +2,7 @@
 sidebar_label: "Testing Guide"
 title: "Testing Guide - CyberGo HTTPC | httptest & Assertions"
 description: "HTTPC testing guide: TestingConfig, httptest mock servers, Doer mock injection, error/delay/redirect scenarios, deterministic retries, table-driven tests."
-sidebar_position: 13
+sidebar_position: 120
 ---
 
 # Testing Guide
@@ -452,3 +452,4 @@ func TestHTTPMethods(t *testing.T) {
 - [Middleware Chain](./middleware-chain) - Middleware testing patterns
 - [File Upload and Download](./file-transfer) - Download semantics in depth (expanding this page's "Testing File Downloads")
 - [Advanced Examples](../examples/advanced-usage) - Production-grade code patterns
+- [Migrating from net/http](./migration) - Behavioral differences and a pitfalls checklist for projects moving off the standard library

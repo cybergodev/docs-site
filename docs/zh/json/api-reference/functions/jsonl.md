@@ -1,8 +1,8 @@
 ---
 sidebar_label: "JSONL"
-title: "JSONL 处理函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON JSONL 处理函数：ParseJSONL/ToJSONL/ToJSONLString 转换、StreamJSONL/ForeachJSONL 流式处理、StreamLinesInto[T] 泛型流与 NewJSONLWriter 写入器。"
-sidebar_position: 8
+title: "JSONL 处理函数 - CyberGo JSON | ParseJSONL 与 ToJSONL 用法"
+description: "CyberGo JSON 是处理 JSONL 行分隔格式的 Go 库，ParseJSONL 解析、StreamLinesInto[T] 泛型流式读取与 NewJSONLWriter 逐行写入，另有 ToJSONL 等批量格式转换函数，帮助开发者以行号回调方式高效处理日志、导出等行分隔数据。"
+sidebar_position: 80
 ---
 
 # JSONL 处理函数
@@ -10,7 +10,7 @@ sidebar_position: 8
 json 包提供的 JSONL（JSON Lines）处理函数，支持解析、流式读取、转换和写入换行分隔的 JSON 数据。
 
 ::: tip 完整教程
-需要了解 JSONL/NDJSON 的概念、流式处理模式和实战用法？参阅 [JSONL 处理器](../../streaming/jsonl) 完整教程。
+需要了解 JSONL/NDJSON 的概念、流式处理模式和实战用法？参阅 [JSONL 流式处理](../../streaming/jsonl) 完整教程。
 :::
 
 ## JSONL 处理函数
@@ -174,7 +174,7 @@ func main() {
 
 ## JSONL 流式处理函数（包级）
 
-json 包提供的 JSONL 流式处理包级便捷函数，签名与对应 Processor 方法一致，并在末尾额外接受可选的 `cfg ...Config` 尾参；内部使用按 `cfg` 缓存的全局 Processor，因此无需手动创建实例，适合一次性处理场景。需要多次处理或共享同一份配置时，建议改用 [`json.New(cfg)`](../processor/#new) 创建独立 Processor。
+json 包提供的 JSONL 流式处理包级便捷函数，签名与对应 Processor 方法一致（同样在末尾接受可选的 `cfg ...Config` 尾参）；内部使用按 `cfg` 缓存的全局 Processor，因此无需手动创建实例，适合一次性处理场景。需要多次处理或共享同一份配置时，建议改用 [`json.New(cfg)`](../processor/#new) 创建独立 Processor。
 
 完整用法与示例见 [JSONL 流式处理指南](../../streaming/jsonl#包级函数) 与 [Processor JSONL 方法](../processor/jsonl)。
 
@@ -192,7 +192,7 @@ json 包提供的 JSONL 流式处理包级便捷函数，签名与对应 Process
 
 **行为要点**
 
-- **坏行处理**：`StreamJSONL` 家族遇到无法解析的行**立即中止**，返回 `line N: ...` 形式的错误；只有 `StreamLinesInto` 遵循 `Config.JSONLContinueOnErr`（为 `true` 时跳过坏行继续）。
+- **坏行处理**：默认（`JSONLContinueOnErr=false`）遇到无法解析的行**立即中止**，返回 `line N: ...` 形式的错误；`JSONLContinueOnErr=true` 时所有 JSONL 引擎（`StreamJSONL` 家族、`StreamLinesInto`、`NDJSONProcessor`）均跳过坏行继续。
 - **深度护栏**：每行解析前执行嵌套深度检查（`MaxNestingDepthSecurity`，默认 200），防止深嵌套行导致栈溢出。
 - **并行语义**：`StreamJSONLParallel` 的 `workers <= 0` 时按 4 处理；回调在多个 goroutine 中并发执行，需自行保证并发安全。回调返回 `item.Break()` 是**正常**提前结束（返回 `nil`）；返回其他错误会取消其余任务并成为函数返回值。
 - **内存护栏**：`JSONLMaxMemory`（未设时回退 `MaxMemory`）限制已处理的总字节数，超限即中止。
@@ -482,5 +482,5 @@ func main() {
 
 - [文件操作函数](./file-io) - LoadFromFile, SaveToFile 等文件操作
 - [Processor JSONL 方法](../processor/jsonl) - Processor 级 JSONL 方法详解
-- [JSONL 处理器](../../streaming/jsonl#jsonlwriter) - JSONL/NDJSON 概念与流式实战教程
+- [JSONL 流式处理](../../streaming/jsonl#jsonlwriter) - JSONL/NDJSON 概念与流式实战教程
 - [流式处理](../../streaming/large-files) - 流式处理器详解

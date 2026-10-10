@@ -1,8 +1,8 @@
 ---
 sidebar_label: "常量与类型"
 title: "常量与类型 - CyberGo HTTPC | 常量与辅助类型"
-description: "HTTPC 常量与辅助类型 API 参考：BodyKind 六种请求体枚举及自动检测规则、ProxyStrategy 代理策略、FormData 与 FileData 文件上传类型、AuditEvent 审计事件结构体、AuditConfig 审计配置与 SourceIPKey 等上下文键定义。"
-sidebar_position: 2
+description: "HTTPC 常量与辅助类型 API 参考：BodyKind 六种请求体枚举与自动检测、ProxyStrategy 代理策略、FormData/FileData 上传类型、AuditEvent 审计事件、AuditConfig 审计配置与 SourceIPKey 等上下文键。"
+sidebar_position: 20
 ---
 
 # 常量与类型
@@ -92,7 +92,12 @@ type FormData struct {
 }
 ```
 
-用于 `BodyMultipart` 模式的多部分表单数据。Fields 存储键值对，Files 存储文件。是内部 `types.FormData` 的类型别名。
+用于 `BodyMultipart` 模式的多部分表单数据：文本字段放 `Fields`（键值对），文件放 `Files`（按字段名索引到 `FileData`，其 `Filename`/`Content` 分别为文件名与原始字节）。是内部 `types.FormData` 的类型别名。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `FormData.Fields` | `map[string]string` | 普通表单字段（键值对） |
+| `FormData.Files` | `map[string]*FileData` | 文件字段（按字段名索引） |
 
 ### FileData
 
@@ -105,6 +110,12 @@ type FileData struct {
 ```
 
 是内部 `types.FileData` 的类型别名。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `FileData.Filename` | `string` | 发送给服务端的文件名 |
+| `FileData.Content` | `[]byte` | 文件原始内容 |
+| `FileData.ContentType` | `string` | MIME 类型（如 `"image/png"`、`"application/pdf"`）；为零值时回退 `application/octet-stream` |
 
 ```go
 package main
@@ -186,22 +197,22 @@ type AuditEvent struct {
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `Timestamp` | `time.Time` | 请求开始时间 |
-| `Method` | `string` | HTTP 方法 |
-| `URL` | `string` | 请求 URL（已脱敏，凭据移除） |
-| `StatusCode` | `int` | 响应状态码（无响应时为 0） |
-| `Duration` | `time.Duration` | 请求总耗时 |
-| `Attempts` | `int` | 尝试次数（含重试） |
-| `Error` | `error` | 错误对象（配合 SanitizeError 可脱敏） |
-| `SourceIP` | `string` | 源 IP（从 context 提取） |
-| `UserID` | `string` | 用户 ID（从 context 提取） |
-| `RedirectChain` | `[]string` | 重定向链 |
-| `ReqHeaders` | `map[string][]string` | 请求头（需 IncludeHeaders=true） |
-| `RespHeaders` | `map[string][]string` | 响应头（需 IncludeHeaders=true） |
+| `AuditEvent.Timestamp` | `time.Time` | 请求开始时间；加上 `AuditEvent.Duration` 即为结束时间 |
+| `AuditEvent.Method` | `string` | HTTP 方法 |
+| `AuditEvent.URL` | `string` | 请求 URL（已脱敏，凭据移除） |
+| `AuditEvent.StatusCode` | `int` | 最终响应状态码（请求出错时为 0） |
+| `AuditEvent.Duration` | `time.Duration` | 覆盖全部尝试的总耗时（含重试延迟） |
+| `AuditEvent.Attempts` | `int` | 发送的请求数（无重试时为 1） |
+| `AuditEvent.Error` | `error` | 请求错误；JSON 序列化时输出为字符串（配合 `AuditConfig.SanitizeError` 可脱敏） |
+| `AuditEvent.SourceIP` | `string` | 源 IP（应用经 `SourceIPKey` 注入 context） |
+| `AuditEvent.UserID` | `string` | 用户 ID（应用经 `UserIDKey` 注入 context） |
+| `AuditEvent.RedirectChain` | `[]string` | 到达最终响应前跟随过的 URL 链 |
+| `AuditEvent.ReqHeaders` | `map[string][]string` | 最终请求头（早期失败时可为 nil；需 `AuditConfig.IncludeHeaders=true`） |
+| `AuditEvent.RespHeaders` | `map[string][]string` | 最终响应头（请求出错时为 nil；需 `AuditConfig.IncludeHeaders=true`） |
 
 ### MarshalJSON 自定义序列化
 
-`AuditEvent` 实现了自定义 JSON 序列化，提供两个 JSON 友好的派生字段：
+`AuditEvent.MarshalJSON`（签名 `func (e AuditEvent) MarshalJSON() ([]byte, error)`）实现自定义 JSON 序列化，提供两个 JSON 友好的派生字段：
 
 | JSON 字段 | 来源 | 说明 |
 |-----------|------|------|
@@ -222,7 +233,15 @@ type AuditConfig struct {
 }
 ```
 
-`DefaultAuditConfig()` 提供默认值：`Format="text"`、`IncludeHeaders=false`、`MaskHeaders=敏感头列表`（Authorization/Cookie 等）、`SanitizeError=true`。
+`DefaultAuditConfig()` 提供默认值：
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `AuditConfig.OnAudit` | `nil` | 审计回调，为 nil 时中间件为空操作 |
+| `AuditConfig.Format` | `"text"` | 输出格式提示（`"text"` / `"json"`），由回调方消费，中间件不据此分支 |
+| `AuditConfig.IncludeHeaders` | `false` | 是否在审计日志中包含请求/响应头 |
+| `AuditConfig.MaskHeaders` | 六个标准敏感头 | `Authorization`、`Cookie`、`Set-Cookie`、`X-Api-Key`、`X-Auth-Token`、`Proxy-Authorization`，命中即替换为 `[REDACTED]` |
+| `AuditConfig.SanitizeError` | `true` | 错误信息替换为 `[sanitized]` |
 
 ## 上下文键
 
@@ -280,42 +299,7 @@ func main() {
 
 ## FormatBytes / FormatSpeed
 
-### FormatBytes
-
-```go
-func FormatBytes(bytes int64) string
-```
-
-将字节数格式化为人类可读字符串。采用二进制单位（1024 进制），小于 1024 时显示整数，否则保留两位小数。
-
-| 输入 | 输出 |
-|------|------|
-| `512` | `"512 B"` |
-| `1536` | `"1.50 KB"` |
-| `1572864` | `"1.50 MB"` |
-| `1073741824` | `"1.00 GB"` |
-
-单位链：B → KB → MB → GB → TB → PB → EB。
-
-### FormatSpeed
-
-```go
-func FormatSpeed(bytesPerSecond float64) string
-```
-
-将字节速率格式化为人类可读字符串。单位与 FormatBytes 相同，但加 `/s` 后缀。
-
-| 输入 | 输出 |
-|------|------|
-| `512.0` | `"512 B/s"` |
-| `1572864.0` | `"1.50 MB/s"` |
-
-常用于下载进度回调中的速率显示。
-
-```go
-speed := httpc.FormatSpeed(1572864.0) // "1.50 MB/s"
-size := httpc.FormatBytes(1572864)    // "1.50 MB"
-```
+将字节数与字节速率格式化为人类可读字符串（二进制 1024 进制单位，如 `"1.50 MB"`、`"1.50 MB/s"`），常用于下载进度展示与结果日志。完整签名、输入输出对照表与配合 `DownloadProgressCallback` 的用法见 [FormatBytes](../core/functions#formatbytes) 与 [FormatSpeed](../core/functions#formatspeed)。
 
 ## DownloadProgressCallback
 
@@ -367,11 +351,11 @@ type CookieSecurityConfig struct {
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| RequireSecure | `bool` | 要求 Secure 属性，仅通过 HTTPS 传输。生产环境推荐 true |
-| RequireHttpOnly | `bool` | 要求 HttpOnly 属性，禁止 JS 访问，防 XSS。会话 Cookie 推荐 true |
-| RequireSameSite | `string` | 要求 SameSite 值。`"Strict"`（仅第一方）、`"Lax"`（第一方+顶层导航）、`"None"`（所有上下文，需 Secure）、`""`（无要求） |
-| AllowSameSiteNone | `bool` | 是否允许 SameSite=None。false 且 RequireSameSite 为空时拒绝 SameSite=None 的 Cookie |
-| RequireSecureForSameSiteNone | `bool` | SameSite=None 时强制要求 Secure（符合 RFC 6265bis）。默认 true |
+| `CookieSecurityConfig.RequireSecure` | `bool` | 要求 Secure 属性，仅通过 HTTPS 传输。生产环境推荐 true |
+| `CookieSecurityConfig.RequireHttpOnly` | `bool` | 要求 HttpOnly 属性，禁止 JS 访问，防 XSS。会话 Cookie 推荐 true |
+| `CookieSecurityConfig.RequireSameSite` | `string` | 要求 SameSite 值。`"Strict"`（仅第一方）、`"Lax"`（第一方+顶层导航）、`"None"`（所有上下文，需 Secure）、`""`（无要求） |
+| `CookieSecurityConfig.AllowSameSiteNone` | `bool` | 是否允许 SameSite=None。false 且 RequireSameSite 为空时拒绝 SameSite=None 的 Cookie |
+| `CookieSecurityConfig.RequireSecureForSameSiteNone` | `bool` | SameSite=None 时强制要求 Secure（符合 RFC 6265bis）。默认 true |
 
 可用工厂函数：
 

@@ -1,8 +1,8 @@
 ---
 title: "代理与代理池 - CyberGo HTTPC | 代理配置与轮换熔断"
-description: "HTTPC 代理与代理池完整指南：HTTP/HTTPS/SOCKS5 单代理配置、系统代理自动检测与 NO_PROXY 绕过规则、代理池轮询与随机策略、连接失败熔断与冷却恢复、ProxyRotateOnStatus 按状态码换 IP、每请求轮换与重试预算自动提升详解。"
+description: "HTTPC 代理与代理池完整指南：HTTP/HTTPS/SOCKS5 单代理配置、系统代理自动检测与 NO_PROXY 绕过规则、代理池轮询与随机策略、连接失败熔断与冷却恢复、ProxyRotateOnStatus 按状态码换 IP 及每请求轮换详解。"
 sidebar_label: "代理与代理池"
-sidebar_position: 11
+sidebar_position: 100
 ---
 
 # 代理与代理池

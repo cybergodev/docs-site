@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo HTTPC | Pre-Launch Audit"
-description: "HTTPC production security checklist: TLS and certificate pinning, SSRF exemption audits, timeout budgets, pool limits, retries, size limits, and log redaction."
-sidebar_position: 4
+description: "HTTPC production checklist: TLS pinning, SSRF audits, timeouts, pool limits, retry storms, size limits, log redaction, with default and production values."
+sidebar_position: 40
 ---
 
 # Production Checklist
@@ -100,14 +100,14 @@ cfg.Connection.MaxConnsPerHost = 10 // Per-host connection cap (idle + active)
 | `MaxResponseBodySize` | 10MB | Per business need (e.g. 5MB) | Confirm non-zero |
 | `MaxDecompressedBodySize` | 100MB | Per business need (e.g. 50MB) | Confirm non-zero |
 | `MaxRequestBodySize` | 0 (unlimited) | **Explicitly set** an upload cap | `grep MaxRequestBodySize` |
-| `MaxResponseHeaderBytes` | 0 (Go default 10MB) | Tighten to 1MB for high security | `grep MaxResponseHeaderBytes` |
+| `MaxResponseHeaderBytes` | 0 (Go default 1MB) | Tighten further for high security (e.g. 512KB) | `grep MaxResponseHeaderBytes` |
 
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Security.MaxResponseBodySize = 5 * 1024 * 1024     // 5MB response
 cfg.Security.MaxDecompressedBodySize = 50 * 1024 * 1024 // 50MB decompressed
 cfg.Security.MaxRequestBodySize = 2 * 1024 * 1024       // 2MB upload (default 0 = unlimited!)
-cfg.Connection.MaxResponseHeaderBytes = 1 * 1024 * 1024  // 1MB response header
+cfg.Connection.MaxResponseHeaderBytes = 512 * 1024       // 512KB response header (default 0 = Go stdlib 1MB)
 ```
 
 :::danger

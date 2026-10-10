@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Schema 校验"
 title: "Schema 校验 - CyberGo JSON | JSON Schema 验证指南"
-description: "CyberGo JSON Schema 校验：ValidateSchema 用法、Schema 约束字段、Format 格式校验、ValidationError 错误处理与 NewSchemaWithConfig 创建方式，覆盖对象、字符串、数值与数组约束。"
-sidebar_position: 4.5
+description: "CyberGo JSON 内置 JSON Schema 校验：ValidateSchema 对照 Schema 返回全部 ValidationError，支持 Required/Properties 必填结构、Pattern/Format 字符串与语义格式、Minimum/Maximum 数值区间及 Enum/Const 枚举约束，经 NewSchema 规范创建启用区间限制，帮助开发者校验对象、字符串、数值与数组数据结构。"
+sidebar_position: 50
 ---
 
 # Schema 验证
@@ -83,9 +83,9 @@ func main() {
 | 字符串 | `MinLength` / `MaxLength` | `int` | string | 长度区间（按 rune 计数） |
 | 字符串 | `Pattern` | `string` | string | 正则表达式 |
 | 字符串 | `Format` | `string` | string | 语义格式（见[Format 值表](#支持的-format-值)） |
-| 数值 | `Minimum` / `Maximum` | `float64` | number | 取值区间 |
-| 数值 | `ExclusiveMinimum` / `ExclusiveMaximum` | `bool` | number | 排除边界值 |
-| 数值 | `MultipleOf` | `float64` | number | 必须为该值的倍数 |
+| 数值 | `Minimum` / `Maximum` | `float64` | number / integer | 取值区间 |
+| 数值 | `ExclusiveMinimum` / `ExclusiveMaximum` | `bool` | number / integer | 排除边界值 |
+| 数值 | `MultipleOf` | `float64` | number / integer | 必须为该值的倍数 |
 | 数组 | `MinItems` / `MaxItems` | `int` | array | 元素数量区间 |
 | 数组 | `UniqueItems` | `bool` | array | `true` 要求元素唯一 |
 | 取值 | `Enum` | `[]any` | 所有 | 允许的枚举值列表 |
@@ -94,10 +94,10 @@ func main() {
 | 元信息 | `Default` | `any` | — | 文档性元数据，不参与校验 |
 | 元信息 | `Examples` | `[]any` | — | 文档性元数据，不参与校验 |
 
-`Type` 支持的取值：`object`、`array`、`string`、`number`、`boolean`、`null`。
+`Type` 支持的取值：`object`、`array`、`string`、`number`、`integer`、`boolean`、`null`。
 
-::: warning 数值类型用 "number"
-JSON 解析后所有数字（含整数）都是 `float64`，因此数值字段应使用 `Type: "number"`。JSON Schema Draft 7 的 `integer` 取值**不受支持**——写成 `"integer"` 会导致所有值都报 `expected type integer` 错误。`Minimum`/`Maximum`/`MultipleOf` 等数值约束也只在 `Type` 为 `number` 时生效。
+::: tip "number" 与 "integer" 的选取
+JSON 解析后所有数字（含整数）都是 `float64`；`"number"` 接受一切数字。`"integer"` 按 JSON Schema 语义接受**数学上为整数**的值——`1`、`1.0`、`1e2` 均通过，`1.5` 报 `expected type integer, got float64` 错误。`Minimum`/`Maximum`/`MultipleOf` 等数值约束对 `number` 与 `integer` 均生效。
 :::
 
 ## 对象约束：Required / Properties / AdditionalProperties
@@ -144,7 +144,7 @@ func main() {
 
 ## 字符串约束：MinLength / MaxLength / Pattern / Format
 
-`MinLength`、`MaxLength`、`Minimum`、`Maximum`、`MinItems`、`MaxItems` 等约束**只在通过 `NewSchemaWithConfig` 创建时才生效**（原因见[创建方式](#schema-的创建方式)）。下面用 `SchemaConfig` 的指针字段设置长度，并用 `Pattern` 限定为小写字母：
+`MinLength`、`MaxLength`、`Minimum`、`Maximum`、`MinItems`、`MaxItems` 等约束**只在通过 `NewSchema` 创建时才生效**（原因见[创建方式](#schema-的创建方式)）。下面用 `SchemaConfig` 的指针字段设置长度，并用 `Pattern` 限定为小写字母：
 
 ```go
 package main
@@ -162,7 +162,7 @@ func main() {
 	nameCfg.MinLength = &minLen
 	nameCfg.MaxLength = &maxLen
 	nameCfg.Pattern = `^[a-z]+$`
-	nameSchema := json.NewSchemaWithConfig(nameCfg)
+	nameSchema := json.NewSchema(nameCfg)
 
 	schema := &json.Schema{
 		Type:     "object",
@@ -209,7 +209,7 @@ func main() {
 	ageCfg.Maximum = &maxVal
 	mult := 5.0
 	ageCfg.MultipleOf = &mult
-	ageSchema := json.NewSchemaWithConfig(ageCfg)
+	ageSchema := json.NewSchema(ageCfg)
 
 	schema := &json.Schema{
 		Type: "object",
@@ -255,7 +255,7 @@ func main() {
 	tagsCfg.MaxItems = &maxItems
 	tagsCfg.UniqueItems = true
 	tagsCfg.Items = &json.Schema{Type: "string"}
-	tagsSchema := json.NewSchemaWithConfig(tagsCfg)
+	tagsSchema := json.NewSchema(tagsCfg)
 
 	schema := &json.Schema{
 		Type: "object",
@@ -288,7 +288,7 @@ func main() {
 
 ## 枚举与常量：Enum / Const
 
-`Enum` 限定取值必须命中其一；`Const` 限定必须等于某个固定值。两者均通过直接比较生效，无需 `NewSchemaWithConfig`：
+`Enum` 限定取值必须命中其一；`Const` 限定必须等于某个固定值。两者均通过直接比较生效，无需经 `NewSchema` 创建：
 
 ```go
 package main
@@ -362,20 +362,51 @@ func (ve *ValidationError) Error() string
 //    MinItems/MaxItems/ExclusiveMinimum/ExclusiveMaximum 不生效（见下方说明）
 schema := &json.Schema{Type: "string", Pattern: `^\d+$`}
 
-// 2) NewSchemaWithConfig：通过 SchemaConfig 的指针字段设置约束，长度/区间类全部生效
+// 2) NewSchema：通过 SchemaConfig 的指针字段设置约束，长度/区间类全部生效
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "string"
 minLen := 1
 cfg.MinLength = &minLen
-schema := json.NewSchemaWithConfig(cfg)
+schema := json.NewSchema(cfg)
 
 // 3) DefaultSchema：返回带默认值的 Schema（AdditionalProperties 为 true）
 schema := json.DefaultSchema()
 ```
 
-::: warning 长度/区间约束必须用 NewSchemaWithConfig
-`MinLength`、`MaxLength`、`Minimum`、`Maximum`、`MinItems`、`MaxItems`、`ExclusiveMinimum`、`ExclusiveMaximum` 这一组约束依赖 `Schema` 内部不可外部设置的跟踪标志。直接在 `&json.Schema{...}` 字面量中给这些字段赋值**不会生效**；必须通过 `NewSchemaWithConfig` 并传入对应的**指针字段**（如 `cfg.MinLength = &v`）才会被启用。`Type`、`Required`、`Properties`、`Items`、`Pattern`、`Format`、`Enum`、`Const`、`UniqueItems`、`MultipleOf` 则不受此限制，字面量与 `NewSchemaWithConfig` 均生效。
+::: warning 长度/区间约束必须用 NewSchema
+`MinLength`、`MaxLength`、`Minimum`、`Maximum`、`MinItems`、`MaxItems`、`ExclusiveMinimum`、`ExclusiveMaximum` 这一组约束依赖 `Schema` 内部不可外部设置的跟踪标志。直接在 `&json.Schema{...}` 字面量中给这些字段赋值**不会生效**；必须通过 `NewSchema`（或其弃用别名 `NewSchemaWithConfig`）并传入对应的**指针字段**（如 `cfg.MinLength = &v`）才会被启用。`Type`、`Required`、`Properties`、`Items`、`Pattern`、`Format`、`Enum`、`Const`、`UniqueItems`、`MultipleOf` 则不受此限制，字面量与 `NewSchema` 均生效。
 :::
+
+### NewSchema
+
+签名：`func NewSchema(cfg SchemaConfig) *Schema`
+
+`NewSchema` 是创建已配置 Schema 的**规范构造函数**（与库内其他 `New*(cfg)` 构造器命名一致）：经 `SchemaConfig` 的指针字段启用长度/区间类约束，自动初始化 `Properties` / `Required`，并处理 `AdditionalProperties` 的默认值。
+
+```go
+cfg := json.DefaultSchemaConfig()
+cfg.Type = "string"
+minLen := 1
+cfg.MinLength = &minLen
+schema := json.NewSchema(cfg)
+```
+
+### NewSchemaWithConfig
+
+<Badge type="danger" text="已废弃" />
+
+签名：`func NewSchemaWithConfig(cfg SchemaConfig) *Schema`
+
+使用指定配置创建 Schema。
+
+::: warning 已废弃
+`NewSchemaWithConfig` 与 [`NewSchema`](#newschema) 完全等价（直接委托同一实现）——「WithConfig」后缀早于统一的 Config 约定，库内其他构造器均不带该后缀。新代码请使用 `NewSchema(cfg)`。`NewSchemaWithConfig` 在 v1 生命周期内保留、不会移除。
+:::
+
+```go
+// 与 json.NewSchema(cfg) 完全等价
+schema := json.NewSchemaWithConfig(cfg)
+```
 
 ### DefaultSchema
 
@@ -387,13 +418,13 @@ schema := json.DefaultSchema()
 
 签名：`func DefaultSchemaConfig() SchemaConfig`
 
-`DefaultSchemaConfig` 返回 `NewSchemaWithConfig` 的默认入参：仅 `AdditionalProperties` 预置为指向 `true` 的指针，其余字段为零值；在其上设置 `Type` 与各指针字段后即可创建 Schema。
+`DefaultSchemaConfig` 返回 `NewSchema` 的默认入参：仅 `AdditionalProperties` 预置为指向 `true` 的指针，其余字段为零值；在其上设置 `Type` 与各指针字段后即可创建 Schema。
 
-两者产出一致：`DefaultSchema()` 等价于 `NewSchemaWithConfig(DefaultSchemaConfig())`——默认都放行额外属性。
+两者产出一致：`DefaultSchema()` 等价于 `NewSchema(DefaultSchemaConfig())`——默认都放行额外属性。
 
 ### SchemaConfig 字段
 
-`SchemaConfig` 的字段集与 `Schema` 一一对应；其中数值/布尔类约束为**指针类型**——`nil` 表示未设置该约束，只有传入非 `nil` 指针，`NewSchemaWithConfig` 才会启用对应约束（这正是长度/区间类约束必须走 `NewSchemaWithConfig` 的原因，见[上方警告](#schema-的创建方式)）。
+`SchemaConfig` 的字段集与 `Schema` 一一对应；其中数值/布尔类约束为**指针类型**——`nil` 表示未设置该约束，只有传入非 `nil` 指针，`NewSchema` 才会启用对应约束（这正是长度/区间类约束必须走 `NewSchema` 的原因，见[上方警告](#schema-的创建方式)）。
 
 | 字段                    | 类型                  | 说明                                                       |
 | ----------------------- | --------------------- | ---------------------------------------------------------- |
@@ -421,7 +452,7 @@ schema := json.DefaultSchema()
 | `Default`               | `any`                 | 默认值（元信息）                                           |
 | `Examples`              | `[]any`               | 示例值（元信息）                                           |
 
-推荐始终通过 `NewSchemaWithConfig`（`func NewSchemaWithConfig(cfg SchemaConfig) *Schema`）创建已配置的 Schema——它是指针约束唯一可靠的启用途径，且会自动初始化 `Properties` / `Required` 并处理 `AdditionalProperties` 的默认值。
+推荐始终通过 `NewSchema`（`func NewSchema(cfg SchemaConfig) *Schema`）创建已配置的 Schema——它是指针约束唯一可靠的启用途径，且会自动初始化 `Properties` / `Required` 并处理 `AdditionalProperties` 的默认值。
 
 ## Config 中的验证相关字段
 
