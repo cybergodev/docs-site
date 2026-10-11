@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Batch Processing"
 title: "Batch Processing - CyberGo html | Concurrency Guide"
-description: "CyberGo html batch processing: four APIs incl. ExtractBatch, BatchResult, WorkerPoolSize concurrency, context cancellation, partial failures, and scale tuning."
+description: "CyberGo html batch processing: four APIs incl. ExtractBatch, package vs instance cache differences, BatchResult, WorkerPoolSize concurrency, 10000-item cap."
 sidebar_position: 2
 ---
 

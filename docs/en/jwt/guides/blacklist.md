@@ -13,7 +13,7 @@ The blacklist is used to invalidate tokens before they expire, suitable for user
 
 ```text
 Revoke(token) → Extract jti + exp → Write to BlacklistStore
-Validate(token) → Verify signature → Check blacklist → Return result
+Parse(token) → Verify signature → Check blacklist → Return result
 ```
 
 `Revoke` does not simply write the input string to the blacklist. It first runs a **security verification chain** to ensure only genuinely issued tokens are revoked:
@@ -54,6 +54,8 @@ cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
 ```
 
 ### Configuration
+
+The defaults below come from [`DefaultBlacklistConfig()`](../api-reference/functions#defaultblacklistconfig); override as needed.
 
 ```go
 cfg.Blacklist.CleanupInterval = 5 * time.Minute  // Cleanup interval
@@ -97,7 +99,7 @@ revoked, err := processor.IsRevoked(accessToken)
 fmt.Println("Revoked:", revoked) // true
 
 // Revoked tokens will fail validation
-_, _, err = processor.Validate(accessToken)
+_, err = processor.Parse(accessToken)
 // err → jwt.ErrTokenRevoked
 ```
 
@@ -187,3 +189,4 @@ If the access token itself has a very short validity period (e.g., 15 minutes), 
 - [API Reference → BlacklistConfig](../api-reference/config#blacklistconfig) — Configuration fields
 - [API Reference → Revoke](../api-reference/processor#revoke) — Revoke method
 - [Advanced Examples](../examples/advanced) — Redis blacklist example
+- [API Reference → DefaultBlacklistConfig](../api-reference/functions#defaultblacklistconfig) — Default blacklist configuration

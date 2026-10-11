@@ -33,7 +33,7 @@ defer p.Close()
 
 `New` is not a simple assignment; it performs the following steps to ensure the returned Processor is immediately usable:
 
-1. **Validates the config**: calls `Config.Validate()`; an invalid config returns `*ConfigError` (`errors.Is(err, ErrInvalidConfig)` is true). Validation covers numeric bounds (`MaxInputSize`, `MaxCacheEntries`, `WorkerPoolSize`, `MaxDepth` must not be negative/out of range) and format strings (the values of `InlineImageFormat`/`InlineLinkFormat`/`TableFormat` must be legal).
+1. **Validates the config**: calls `Config.Validate()`; an invalid config returns `*ConfigError` (`errors.Is(err, ErrInvalidConfig)` is true). Validation covers numeric bounds (`MaxInputSize`, `WorkerPoolSize`, `MaxDepth` must be positive; `MaxCacheEntries` cannot be negative — `0` is legal and disables the cache; all are bounded above) and format strings (the values of `InlineImageFormat`/`InlineLinkFormat`/`TableFormat` must be legal).
 2. **Sets the Scorer**: when a custom `Scorer` is configured it is adapted to the internal interface (the adaptation is performed automatically by the library); otherwise the built-in default scorer is used (internal implementation, not exported; read-only, concurrency-safe).
 3. **Pre-computes the format strings**: `InlineImageFormat`/`InlineLinkFormat` are normalized (lowercased and whitespace-stripped; an empty string maps to `"none"`) and cached in the `imageFormat`/`linkFormat` fields to avoid repeated `strings.ToLower` in the hot path.
 4. **Starts cache cleanup**: a background cleanup goroutine is started only when `CacheTTL>0` **and** `CacheCleanup>0`; if either is 0, nothing is started.
@@ -48,6 +48,43 @@ A `Processor` can be safely shared across multiple goroutines without additional
 - **Cache**: the internal cache carries its own lock and is safe to read and write. Cache behavior is observed and controlled entirely through the public API: `Config.MaxCacheEntries = 0` disables the cache, `ClearCache()` empties it, and `Statistics.CacheHits`/`CacheMisses` observe hit counts.
 - **Scorer**: the built-in default scorer (internal implementation, not exported) is read-only. **A custom `Scorer` must ensure its own concurrency safety** (e.g. by holding an internal lock), because a single Processor will invoke its `Score`/`ShouldRemove` from multiple goroutines during concurrent `Extract`.
 :::
+
+## Method Overview
+
+`Processor` has 30 exported methods, grouped by function as follows (signatures and behavior details in the sections below):
+
+| Group | Method | Description |
+|-------|--------|-------------|
+| Content extraction | `Processor.Extract` | Extract a full `Result` from HTML bytes |
+| Content extraction | `Processor.ExtractWithContext` | Same, with context cancellation |
+| Content extraction | `Processor.ExtractFromFile` | Extract from an HTML file |
+| Content extraction | `Processor.ExtractFromFileWithContext` | Same, with context cancellation |
+| Text extraction | `Processor.ExtractText` | Extract plain text only |
+| Text extraction | `Processor.ExtractTextWithContext` | Same, with context cancellation |
+| Text extraction | `Processor.ExtractTextFromFile` | Extract plain text from a file |
+| Text extraction | `Processor.ExtractTextFromFileWithContext` | Same, with context cancellation |
+| Output formats | `Processor.ExtractToMarkdown` | Output Markdown (temporary Processor, bypasses the main cache) |
+| Output formats | `Processor.ExtractToMarkdownWithContext` | Same, with context cancellation |
+| Output formats | `Processor.ExtractToMarkdownFromFile` | Output Markdown from a file |
+| Output formats | `Processor.ExtractToMarkdownFromFileWithContext` | Same, with context cancellation |
+| Output formats | `Processor.ExtractToJSON` | Output JSON (goes through the main cache) |
+| Output formats | `Processor.ExtractToJSONWithContext` | Same, with context cancellation |
+| Output formats | `Processor.ExtractToJSONFromFile` | Output JSON from a file |
+| Output formats | `Processor.ExtractToJSONFromFileWithContext` | Same, with context cancellation |
+| Link extraction | `Processor.ExtractAllLinks` | Extract all link resources (no sanitization applied) |
+| Link extraction | `Processor.ExtractAllLinksWithContext` | Same, with context cancellation |
+| Link extraction | `Processor.ExtractAllLinksFromFile` | Extract links from a file |
+| Link extraction | `Processor.ExtractAllLinksFromFileWithContext` | Same, with context cancellation |
+| Batch processing | `Processor.ExtractBatch` | Concurrent batch extraction (byte-slice input) |
+| Batch processing | `Processor.ExtractBatchWithContext` | Same, with context cancellation |
+| Batch processing | `Processor.ExtractBatchFiles` | Concurrent batch extraction (file-path input) |
+| Batch processing | `Processor.ExtractBatchFilesWithContext` | Same, with context cancellation |
+| Statistics & cache | `Processor.GetStatistics` | Return `Statistics` processing statistics |
+| Statistics & cache | `Processor.ClearCache` | Clear the cache, keeping accumulated statistics |
+| Statistics & cache | `Processor.ResetStatistics` | Reset all statistics counters |
+| Audit | `Processor.GetAuditLog` | Return audit log entries held in memory |
+| Audit | `Processor.ClearAuditLog` | Clear the audit log |
+| Lifecycle | `Processor.Close` | Release resources (idempotent; all methods return `ErrProcessorClosed` after close) |
 
 ## Content Extraction
 
@@ -65,7 +102,7 @@ The `Extract` method family returns clear sentinel errors at each processing sta
 | `ErrProcessingTimeout` | Processing time exceeds `ProcessingTimeout` | `ProcessingTimeout=0` means unlimited |
 | `ErrInternalPanic` | An unexpected internal panic was recovered | Fallback protection; should not occur in normal use |
 
-The `context`-aware variants may additionally return `context.Canceled` (user cancellation) or `context.DeadlineExceeded` (context timeout, normalized to `ErrProcessingTimeout`).
+The `context`-aware variants: manual `cancel()` returns `context.Canceled`; a user-context timeout depends on configuration — when `ProcessingTimeout` is configured it is normalized to `ErrProcessingTimeout`, otherwise `context.DeadlineExceeded` is passed through unchanged (see the [FAQ](../../faq#what-s-the-difference-between-processingtimeout-and-user-context-timeout) for the full condition table).
 
 ### Extract
 

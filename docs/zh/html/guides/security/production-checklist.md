@@ -1,7 +1,7 @@
 ---
 sidebar_label: "生产检查清单"
 title: "生产检查清单 - CyberGo html | 上线安全核对"
-description: "CyberGo html 生产部署安全核对清单：按 P0/P1/P2 优先级分级检查，涵盖 HighSecurityConfig 预设、Processor 生命周期管理、审计监控启用、context 超时控制、错误处理与资源释放等上线必查项。"
+description: "CyberGo html 生产部署安全核对清单：按 P0/P1/P2 优先级分级检查 HighSecurityConfig 预设、基础配置、Processor 生命周期、审计监控、context 超时控制、错误处理、文件路径沙箱与资源释放等上线必查项，附自检脚本、运行时监控指标与配置速查矩阵。"
 sidebar_position: 3
 ---
 

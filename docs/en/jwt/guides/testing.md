@@ -58,9 +58,8 @@ func TestTokenExpiry(t *testing.T) {
     require.NoError(t, err)
 
     // Validate at current time → success
-    _, valid, err := processor.Validate(token)
+    _, err = processor.Parse(token)
     require.NoError(t, err)
-    assert.True(t, valid)
 
     // Simulate time past expiration → use new Processor
     expiredCfg := cfg
@@ -69,7 +68,7 @@ func TestTokenExpiry(t *testing.T) {
     require.NoError(t, err)
     defer expiredProcessor.Close()
 
-    _, _, err = expiredProcessor.Validate(token)
+    _, err = expiredProcessor.Parse(token)
     assert.True(t, errors.Is(err, jwt.ErrTokenExpired))
 }
 ```
@@ -106,9 +105,8 @@ func TestClockSkew(t *testing.T) {
     require.NoError(t, err)
     defer withinProc.Close()
 
-    _, valid, err := withinProc.Validate(token)
+    _, err = withinProc.Parse(token)
     require.NoError(t, err)
-    assert.True(t, valid)
 
     // exp + 40s beyond the 30s skew window → expired
     beyondCfg := jwt.DefaultConfig()
@@ -119,7 +117,7 @@ func TestClockSkew(t *testing.T) {
     require.NoError(t, err)
     defer beyondProc.Close()
 
-    _, _, err = beyondProc.Validate(token)
+    _, err = beyondProc.Parse(token)
     assert.True(t, errors.Is(err, jwt.ErrTokenExpired))
 }
 ```
@@ -173,9 +171,8 @@ func TestCustomClaims(t *testing.T) {
     require.NoError(t, err)
 
     result := &MyClaims{}
-    parsed, valid, err := processor.ValidateInto(token, result)
+    parsed, err := processor.ParseInto(token, result)
     require.NoError(t, err)
-    assert.True(t, valid)
 
     myResult := parsed.(*MyClaims)
     assert.Equal(t, "user123", myResult.UserID)
@@ -248,7 +245,7 @@ func TestRevokeToken(t *testing.T) {
     require.NoError(t, err)
 
     // Validation should fail
-    _, _, err = processor.Validate(token)
+    _, err = processor.Parse(token)
     assert.True(t, errors.Is(err, jwt.ErrTokenRevoked))
 }
 ```
@@ -293,7 +290,7 @@ Rate limiting computes the key from the `Subject` claim; when `Subject` is empty
 
 ## Testing Concurrency Safety
 
-All `Processor` methods are goroutine-safe. Use `sync.WaitGroup` to run `Create`/`Validate` concurrently, verifying no panic and no data race:
+All `Processor` methods are goroutine-safe. Use `sync.WaitGroup` to run `Create`/`Parse` concurrently, verifying no panic and no data race:
 
 ```go
 func TestConcurrentSafety(t *testing.T) {
@@ -322,7 +319,7 @@ func TestConcurrentSafety(t *testing.T) {
                 if err != nil {
                     continue
                 }
-                if _, valid, err := processor.Validate(token); err == nil && valid {
+                if _, err := processor.Parse(token); err == nil {
                     success.Add(1)
                 }
             }
@@ -348,11 +345,11 @@ Run `go test -race ./...` to enable Go's race detector, which catches hidden dat
 | Token expiration | `FixedClock` to fix issue time, new Processor to simulate expiry | `errors.Is(err, ErrTokenExpired)` |
 | Clock skew | Set `ClockSkew`, verify window boundaries | Valid within exp + skew / expired beyond |
 | Refresh flow | `Refresh` immediately after creating refresh token | Returned token is non-empty |
-| Custom Claims | `ValidateInto` deserialize into target type | Field values match |
+| Custom Claims | `ParseInto` deserialize into target type | Field values match |
 | Input validation | Overlong string / injection pattern / control character | `errors.As` extracts `ValidationError` |
 | Rate limiting | Small window + low rate + fixed clock | Over-quota returns `ErrRateLimitExceeded` |
 | Concurrency safety | `goroutine` + `WaitGroup` concurrent operations | No panic, no data race |
-| Token revocation | `Revoke` then `Validate` | `errors.Is(err, ErrTokenRevoked)` |
+| Token revocation | `Revoke` then `Parse` | `errors.Is(err, ErrTokenRevoked)` |
 
 :::tip Core Principles
 - Use `FixedClock` to ensure tests are **repeatable** — independent of system time

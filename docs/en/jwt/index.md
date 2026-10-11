@@ -62,11 +62,10 @@ func main() {
 	fmt.Println("Token:", token)
 
 	// 4. Validate token
-	parsed, valid, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Valid:", valid)
 	fmt.Println("UserID:", parsed.UserID)
 }
 ```
@@ -78,8 +77,8 @@ func main() {
 │                  Processor                      │
 │  (implements TokenManager interface)            │
 ├────────────────────────────────────────────────┤
-│  Create / Validate / Refresh / Revoke          │
-│  CreateRefresh / ValidateInto / RefreshInto    │
+│  Create / Parse / Refresh / Revoke             │
+│  CreateRefresh / ParseInto / RefreshInto       │
 │  ParseUnverified / IsRevoked / IsClosed / Close│
 ├──────────────────┬─────────────────────────────┤
 │  BlacklistManager│     RateLimiter              │
@@ -92,8 +91,8 @@ func main() {
 
 ## Next Steps
 
-- [Core Concepts](./getting-started/concepts) — Processor, token model, Claims architecture
 - [Getting Started](./getting-started/) — Detailed installation and configuration guide
+- [Core Concepts](./getting-started/concepts) — Processor, token model, Claims architecture
 - [Signing Algorithms](./guides/signing-algorithms) — HMAC, RSA, ECDSA selection guide
 - [Token Refresh & Rotation](./guides/token-refresh) — Two-tier tokens and rotation strategies
 - [Configuration](./guides/configuration) — Security config and input validation

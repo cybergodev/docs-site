@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo html | Get Started in 5 Minutes"
-description: "CyberGo html quick start in 5 minutes: install on Go 1.25+, extraction, four Config presets, text/Markdown/JSON output, and concurrency-safe Processor use."
+description: "CyberGo html quick start in 5 minutes: install on Go 1.26+, extraction, four Config presets, text/Markdown/JSON output, and concurrency-safe Processor use."
 sidebar_position: 1
 ---
 
@@ -13,7 +13,7 @@ sidebar_position: 1
 go get github.com/cybergodev/html
 ```
 
-Requires Go 1.25+.
+Requires Go 1.26+.
 
 ## Basic Extraction
 

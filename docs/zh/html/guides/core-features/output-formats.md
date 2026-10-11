@@ -1,7 +1,7 @@
 ---
 sidebar_label: "输出格式实战"
 title: "输出格式实战 - CyberGo html | 格式对比指南"
-description: "CyberGo html 输出格式实战指南：对比纯文本、Markdown、JSON 三种格式的特点与适用场景（搜索索引、博客文档、API 传输），含 InlineImageFormat 与 InlineLinkFormat 内联格式选项配置。"
+description: "CyberGo html 输出格式实战指南：对比纯文本、Markdown、JSON 三种格式的特点与适用场景（搜索索引、博客文档、API 传输与数据存储），详解 InlineImageFormat 与 InlineLinkFormat 内联格式选项配置，附各格式从文件提取、上下文版本与选型决策建议。"
 sidebar_position: 3
 ---
 

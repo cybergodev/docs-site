@@ -92,7 +92,7 @@ Inline images and links are produced via **placeholder replacement** in two step
 1. **Text extraction phase**: each `<img>` inserts a placeholder `[IMAGE:N]` in the text stream, and each `<a>` inserts a paired `[LINK:N]...[/LINK]` (`N` is a positional index that corresponds one-to-one with the `Position` in the `Images`/`Links` slices)
 2. **Formatting phase**: according to `InlineImageFormat`/`InlineLinkFormat`, the placeholders are replaced with the target format (markdown/html) or removed outright (none)
 
-To prevent literal `[`/`]` in the source text from being mistaken for placeholders, the extraction phase escapes them (`\[`, `\]`, `\\`), and the formatting phase restores them.
+To prevent `[`, `]`, and `\` in image alt text and link text from breaking Markdown link/image syntax (Markdown injection), the **formatting phase** escapes these characters to `\[`, `\]`, and `\\` when emitting the `markdown` format (escaping happens only in the markdown branch). The escapes are **never reverted** — keeping them is exactly what prevents injection.
 
 ## JSON Output
 

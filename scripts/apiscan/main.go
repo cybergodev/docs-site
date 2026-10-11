@@ -302,9 +302,10 @@ func (r *aliasResolver) targetTypeFields(importPath, typeName, _ string) []Symbo
 				for _, n := range field.Names {
 					if token.IsExported(n.Name) {
 						out = append(out, Symbol{
-							Name:      n.Name,
-							Signature: n.Name + " " + typ,
-							Doc:       trimDoc(field.Doc.Text()),
+							Name:       n.Name,
+							Signature:  n.Name + " " + typ,
+							Doc:        trimDoc(field.Doc.Text()),
+							Deprecated: isDeprecated(field.Doc.Text()),
 						})
 					}
 				}
@@ -608,7 +609,7 @@ func structFields(fset *token.FileSet, t *doc.Type) []Symbol {
 				if token.IsExported(n.Name) {
 					out = append(out, Symbol{
 						Name: n.Name, Signature: n.Name + " " + typ,
-						Doc: trimDoc(field.Doc.Text()),
+						Doc: trimDoc(field.Doc.Text()), Deprecated: isDeprecated(field.Doc.Text()),
 					})
 				}
 			}
@@ -644,8 +645,10 @@ func interfaceMethods(fset *token.FileSet, t *doc.Type) []Symbol {
 			for _, n := range field.Names {
 				if token.IsExported(n.Name) {
 					out = append(out, Symbol{
-						Name:      t.Name + "." + n.Name,
-						Signature: exprString(fset, field.Type),
+						Name:       t.Name + "." + n.Name,
+						Signature:  exprString(fset, field.Type),
+						Doc:        trimDoc(field.Doc.Text()),
+						Deprecated: isDeprecated(field.Doc.Text()),
 					})
 				}
 			}

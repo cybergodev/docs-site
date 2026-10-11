@@ -288,7 +288,7 @@ func main() {
 
 | 类型 | `Unwrap()` 返回值 | 说明 |
 |------|-------------------|------|
-| `*InputError` | `InputErr`（非 nil 时）→ 否则 `ErrInputTooLarge` | 有底层错误时优先暴露它；否则回退到哨兵 |
+| `*InputError` | 签名为 `Unwrap() []error`：`InputErr` 非 nil 时 → `[InputErr, ErrInputTooLarge]`，否则 → `[ErrInputTooLarge]` | 无论是否携带底层错误，`ErrInputTooLarge` 恒在列表中——`errors.Is(err, ErrInputTooLarge)` 对任意 `*InputError` 为真 |
 | `*ConfigError` | 始终 `ErrInvalidConfig` | 固定映射到配置哨兵 |
 | `*FileError` | ① 若 `FileErr` 包装了 `ErrFileNotFound` → `ErrFileNotFound`；② 否则若 `FileErr != nil` → `FileErr`（原始错误）；③ 否则 → `ErrInvalidFilePath` | 三级回退：文件不存在 → 原始错误 → 路径无效 |
 

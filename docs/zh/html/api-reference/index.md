@@ -55,7 +55,7 @@ HTML 库提供以下核心组件：
 ### 模块信息
 
 - **模块路径**: `github.com/cybergodev/html`
-- **Go 版本**: 1.25+
+- **Go 版本**: 1.26+
 - **依赖**: `golang.org/x/net`, `golang.org/x/text`
 
 ## 核心类型速查

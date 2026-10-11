@@ -6,10 +6,22 @@
  *                  (deleted / renamed / typo) — a REAL error, fails the audit.
  *   - UNDOCUMENTED the source exports a symbol no doc page mentions —
  *                  informational only (many exports are intentional helpers).
+ *   - DEPRECATED-REFERENCED a doc page references a symbol the source still
+ *                  exports but marks `// Deprecated:` — informational only,
+ *                  same level as UNDOCUMENTED: docs legitimately mention
+ *                  deprecated symbols (migration notes, "use X instead"),
+ *                  so this is a human-review hint, never a CI gate. Sourced
+ *                  from apiscan's `deprecated: true` manifest flag, which is
+ *                  computed on the FULL doc comment — the manifest's `doc`
+ *                  string is trimmed to its first line, and "Deprecated:"
+ *                  paragraphs usually come after it, so a substring check on
+ *                  `doc` would miss most markers.
  *
  * Dotted doc identifiers match on any ≥2-segment dotted suffix (a doc may
  * write `Config.Defaults.FollowRedirects` where the symbol set holds
- * `Defaults.FollowRedirects`) — see hasSourceMatch.
+ * `Defaults.FollowRedirects`) — see hasSourceMatch; DEPRECATED-REFERENCED
+ * uses the same suffix rule (see deprecatedSymbolsFor) so both detections
+ * share one matching path.
  *
  * Field-access-path aliases: docs also write legal field paths — `Config.
  * Retry.MaxRetries` or bare `Retry.MaxRetries` — where `Retry` is a FIELD of
@@ -19,7 +31,8 @@
  * access paths (type-anchored and bare, ≤3 segments, cycle-guarded) — see
  * addAccessPathAliases. Aliases feed DANGLING matching only; UNDOCUMENTED
  * still enumerates the base exported surface, keeping that informational
- * list readable. Finally, per-project whitelists
+ * list readable — and DEPRECATED-REFERENCED indexes the base surface only,
+ * for the same reason. Finally, per-project whitelists
  * (PROJECT_KNOWN_NOT_SYMBOLS) cover stdlib / HTTP-header / Windows / teaching
  * -placeholder names docs legitimately backtick that are not cybergodev
  * exports.
@@ -28,7 +41,8 @@
  *   1. run scripts/apiscan (Go AST scanner) → report/api/{project}.json
  *   2. collect the source symbol set from that manifest
  *   3. scan every .md under docs/{PRIMARY_LANG}/{project}/ for backticked identifiers
- *   4. diff → undocumented (source − docs), dangling (docs − source)
+ *   4. diff → undocumented (source − docs), dangling (docs − source),
+ *      deprecated-referenced (docs ∩ deprecated source symbols)
  *
  * Exit non-zero iff any DANGLING reference is found.
  *
@@ -54,10 +68,13 @@ interface Symbol {
   name: string
   signature?: string
   doc?: string
+  deprecated?: boolean
 }
 interface Type {
   name: string
   kind: string
+  doc?: string
+  deprecated?: boolean
   methods?: Symbol[]
   fields?: Symbol[]
 }
@@ -96,35 +113,64 @@ function runApiscan(project: string): string | null {
 //   base — exported API surface: functions, types, methods (both Type.Method
 //          and the bare method name), Type.Field pairs, constants, variables.
 //   all  — base + field-access-path aliases (see addAccessPathAliases).
+//   deprecated — index of ONLY the deprecated symbols, keyed by every name
+//          shape `base` emits them under (bare method/field name included) →
+//          the canonical spelling ("Processor.Validate", "Type.Field").
 // DANGLING matching consults `all` (aliases rescue legal field paths);
 // UNDOCUMENTED enumerates `base` only, so the informational list stays a
-// readable inventory of the real exported surface instead of every path alias.
+// readable inventory of the real exported surface instead of every path alias;
+// DEPRECATED-REFERENCED consults `deprecated` (base shapes only — same
+// rationale). A bare method name lands in the index when ANY declaring type
+// deprecates it (e.g. `Validate` via Processor.Validate), even if another
+// type keeps a live method of the same name (TokenManager.Validate): the
+// report entry shows WHICH deprecated symbol matched so a human can tell the
+// legit interface mentions from calls into the deprecated one.
 interface SymbolSets {
   base: Set<string>
   all: Set<string>
+  deprecated: Map<string, Set<string>>
 }
 
 function collectSymbols(m: Manifest): SymbolSets {
   const base = new Set<string>()
+  const deprecated = new Map<string, Set<string>>()
+  const markDeprecated = (keys: string[], canonical: string): void => {
+    for (const k of keys) {
+      if (!deprecated.has(k)) deprecated.set(k, new Set())
+      deprecated.get(k)!.add(canonical)
+    }
+  }
   for (const pkg of m.packages) {
-    for (const f of pkg.functions ?? []) base.add(f.name)
+    for (const f of pkg.functions ?? []) {
+      base.add(f.name)
+      if (f.deprecated) markDeprecated([f.name], f.name)
+    }
     for (const t of pkg.types ?? []) {
       base.add(t.name)
+      if (t.deprecated) markDeprecated([t.name], t.name)
       for (const meth of t.methods ?? []) {
         base.add(meth.name) // "Type.Method"
         base.add(meth.name.split('.').pop()!) // "Method"
+        if (meth.deprecated) markDeprecated([meth.name, meth.name.split('.').pop()!], meth.name)
       }
       for (const f of t.fields ?? []) {
         base.add(f.name) // field short name
         base.add(t.name + '.' + f.name) // "Type.Field"
+        if (f.deprecated) markDeprecated([f.name, t.name + '.' + f.name], t.name + '.' + f.name)
       }
     }
-    for (const c of pkg.constants ?? []) base.add(c.name)
-    for (const v of pkg.variables ?? []) base.add(v.name)
+    for (const c of pkg.constants ?? []) {
+      base.add(c.name)
+      if (c.deprecated) markDeprecated([c.name], c.name)
+    }
+    for (const v of pkg.variables ?? []) {
+      base.add(v.name)
+      if (v.deprecated) markDeprecated([v.name], v.name)
+    }
   }
   const all = new Set(base)
   addAccessPathAliases(all, m)
-  return { base, all }
+  return { base, all, deprecated }
 }
 
 /** Parse the type name out of a Go field signature like "Retry RetryConfig",
@@ -373,6 +419,29 @@ function hasSourceMatch(ident: string, source: Set<string>): boolean {
   return false
 }
 
+// Which DEPRECATED source symbols a doc identifier resolves to — the SAME
+// suffix semantics as hasSourceMatch (bare = exact key, dotted = any ≥2-
+// segment suffix, longest-first), so a doc ident that hits here by
+// construction also has a source match (deprecated keys are a subset of the
+// base symbol set) and can never be DANGLING. The whitelists are deliberately
+// NOT consulted: they exist to keep non-export names out of DANGLING, and a
+// deprecated-index hit means a REAL export with that name — exactly the case
+// the whitelist comments say should be un-whitelisted and checked. Returns
+// the canonical names of the matched deprecated symbols (e.g.
+// "Processor.Validate" for a doc's bare `Validate`), empty when none.
+function deprecatedSymbolsFor(ident: string, deprecated: Map<string, Set<string>>): string[] {
+  const hit = new Set<string>()
+  const tryKey = (key: string): void => {
+    for (const d of deprecated.get(key) ?? []) hit.add(d)
+  }
+  if (!ident.includes('.')) tryKey(ident)
+  else {
+    const segs = ident.split('.')
+    for (let start = 0; start <= segs.length - 2; start++) tryKey(segs.slice(start).join('.'))
+  }
+  return [...hit].sort()
+}
+
 // Scan a project's primary-language docs; return Map<ident, files[]>.
 async function collectDocIdents(project: string): Promise<Map<string, string[]>> {
   const root = join('docs', PRIMARY_LANG, project)
@@ -396,6 +465,7 @@ interface ProjectResult {
   docCount: number
   undocumented: string[]
   dangling: { ident: string; files: string[] }[]
+  deprecatedRef: { ident: string; symbols: string[]; files: string[] }[]
 }
 
 async function auditProject(project: string): Promise<ProjectResult | null> {
@@ -419,13 +489,25 @@ async function auditProject(project: string): Promise<ProjectResult | null> {
   }
   dangling.sort((a, b) => a.ident.localeCompare(b.ident))
 
+  // Informational: which doc idents resolve to a deprecated source symbol.
+  // Runs over every doc ident (not just non-dangling ones) — but as noted on
+  // deprecatedSymbolsFor, a hit implies a source match, so no gating is
+  // needed and whitelists stay out of the way.
+  const deprecatedRef: { ident: string; symbols: string[]; files: string[] }[] = []
+  for (const [ident, files] of docs) {
+    const symbols = deprecatedSymbolsFor(ident, source.deprecated)
+    if (symbols.length) deprecatedRef.push({ ident, symbols, files: [...new Set(files)] })
+  }
+  deprecatedRef.sort((a, b) => a.ident.localeCompare(b.ident))
+
   return {
     project,
     module: manifest.module,
     sourceCount: source.base.size,
     docCount: docs.size,
     undocumented,
-    dangling
+    dangling,
+    deprecatedRef
   }
 }
 
@@ -447,16 +529,20 @@ async function main(): Promise<void> {
     '',
     '- **DANGLING** = doc references a symbol the source no longer exports (real error).',
     '- **UNDOCUMENTED** = source exports a symbol no doc mentions (informational).',
+    '- **DEPRECATED-REFERENCED** = doc references a symbol the source marks `// Deprecated:` (informational — migration notes legitimately mention such symbols; each entry names the deprecated symbol matched, for human review).',
     ''
   ]
 
   let totalDangling = 0
+  let totalDeprecatedRef = 0
   for (const r of results) {
     totalDangling += r.dangling.length
+    totalDeprecatedRef += r.deprecatedRef.length
     lines.push(`## ${r.project} (\`${r.module}\`)`, '')
     lines.push(
       `Source: ${r.sourceCount} symbols · Docs reference: ${r.docCount} identifiers · ` +
-        `Dangling: ${r.dangling.length} · Undocumented: ${r.undocumented.length}`,
+        `Dangling: ${r.dangling.length} · Undocumented: ${r.undocumented.length} · ` +
+        `Deprecated-referenced: ${r.deprecatedRef.length}`,
       ''
     )
     if (r.dangling.length) {
@@ -473,6 +559,19 @@ async function main(): Promise<void> {
       for (const u of r.undocumented) lines.push(`- \`${u}\``)
       lines.push('', '</details>', '')
     }
+    if (r.deprecatedRef.length) {
+      lines.push(
+        `<details><summary>⚠️ DEPRECATED-REFERENCED (${r.deprecatedRef.length})</summary>`,
+        ''
+      )
+      for (const d of r.deprecatedRef) {
+        lines.push(
+          `- \`${d.ident}\` — ${d.symbols.map((s) => `\`${s}\``).join(', ')} — ` +
+            `${d.files.slice(0, 3).join(', ')}${d.files.length > 3 ? ', …' : ''}`
+        )
+      }
+      lines.push('', '</details>', '')
+    }
   }
 
   lines.push(
@@ -487,7 +586,8 @@ async function main(): Promise<void> {
   await writeFile(DRIFT_REPORT, lines.join('\n') + '\n', 'utf8')
 
   console.log(
-    `audit-api: wrote ${DRIFT_REPORT} (${results.length} projects, ${totalDangling} dangling)`
+    `audit-api: wrote ${DRIFT_REPORT} (${results.length} projects, ${totalDangling} dangling, ` +
+      `${totalDeprecatedRef} deprecated-referenced)`
   )
   if (totalDangling) process.exit(1)
 }

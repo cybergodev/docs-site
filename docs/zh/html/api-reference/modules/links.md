@@ -1,7 +1,7 @@
 ---
 sidebar_label: "链接提取"
 title: "链接提取 - CyberGo html | 资源链接提取 API"
-description: "CyberGo html 链接提取 API 参考：ExtractAllLinks 系列与 GroupLinksByType 详解，提取脚本、样式、图片等资源链接并按类型分组，支持配置过滤，结果自动按 URL 排序去重，适用于爬虫与资源收集场景。"
+description: "CyberGo html 链接提取 API 参考：ExtractAllLinks 系列与 GroupLinksByType 详解，不应用 HTML 清洗、完整提取脚本、样式、图片等八类资源链接并按类型分组，支持 Include 字段配置过滤、相对 URL 解析与 BaseURL 自动检测，结果按 URL 排序去重，适用于爬虫与资源收集场景。"
 sidebar_position: 2
 ---
 
@@ -14,7 +14,7 @@ sidebar_position: 2
 :::
 
 :::info 结果排序与去重
-`ExtractAllLinks` 返回的结果**按 URL 升序排列**，并按 URL 去重。因此对相同输入多次调用会得到完全一致的输出（自 v1.4.2 起），便于结果比较、缓存复用与可重现的下游处理。同一 URL 出现在多个标签中时仅保留一条记录。
+`ExtractAllLinks` 返回的结果**按 URL 升序排列**，并按 URL 去重。因此对相同输入多次调用会得到完全一致的输出，便于结果比较、缓存复用与可重现的下游处理。同一 URL 出现在多个标签中时仅保留一条记录。
 :::
 
 ## 包函数
@@ -39,7 +39,7 @@ func (p *Processor) ExtractAllLinksFromFileWithContext(ctx context.Context, file
 
 ### GroupLinksByType
 
-按链接类型分组。
+按链接类型分组；`Type` 为空的链接归入 `unknown` 组。
 
 ```go
 func GroupLinksByType(links []LinkResource) map[string][]LinkResource
@@ -111,8 +111,8 @@ cfg.BaseURL = "https://example.com"
 
 | 开关 | 控制范围 | 判定方式 |
 |------|----------|----------|
-| `IncludeContentLinks` | 内部链接 | URL 本身为相对路径，或（设置了 `BaseURL` 时）解析后与 `BaseURL` 同域 |
-| `IncludeExternalLinks` | 外部链接 | URL 本身为绝对外部地址（`http(s)://` 或协议相对 `//`），或（设置了 `BaseURL` 时）解析后与 `BaseURL` 不同域 |
+| `IncludeContentLinks` | 内部链接 | URL 本身为相对路径（设置 `BaseURL` 时解析后与之同域） |
+| `IncludeExternalLinks` | 外部链接 | URL 本身为绝对外部地址（`http(s)://` 或协议相对 `//`）——无论是否与 `BaseURL` 同域，一律按外部链接处理 |
 
 默认两者均为 `true`（提取全部内容链接）。其余资源类型（图片、CSS、JS 等）不受内/外区分，仅由各自的 `Include*` 开关控制。
 

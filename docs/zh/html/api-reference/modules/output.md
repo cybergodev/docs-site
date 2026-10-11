@@ -1,7 +1,7 @@
 ---
 sidebar_label: "输出格式"
 title: "输出格式 - CyberGo html | Markdown 与 JSON 输出"
-description: "CyberGo html 输出格式 API 参考：ExtractToMarkdown 与 ExtractToJSON 包函数及 Processor 方法详解，支持从字节或文件提取并转换为 Markdown、JSON 格式，含临时 Processor 缓存隔离机制说明。"
+description: "CyberGo html 输出格式 API 参考：详解 ExtractToMarkdown 与 ExtractToJSON 的包函数及 Processor 方法签名，均有 WithContext 上下文变体，支持从字节或文件提取并转换为 Markdown、JSON 格式，说明 Markdown 临时 Processor 缓存隔离、占位符替换与防注入转义原理及 JSON 输出结构。"
 sidebar_position: 1
 ---
 
@@ -92,7 +92,7 @@ func main() {
 1. **文本提取阶段**：每个 `<img>` 在文本流中插入占位符 `[IMAGE:N]`，每个 `<a>` 插入成对的 `[LINK:N]...[/LINK]`（`N` 为位置序号，与 `Images`/`Links` 切片中的 `Position` 一一对应）
 2. **格式化阶段**：根据 `InlineImageFormat`/`InlineLinkFormat`，将占位符替换为目标格式（markdown/html），或直接移除（none）
 
-为防止源文本中字面的 `[`/`]` 被误认为占位符，提取阶段会对它们做转义（`\[`、`\]`、`\\`），格式化阶段再还原。
+为防止图片 alt 文本与链接文本中的 `[`、`]`、`\` 破坏 Markdown 链接/图片语法（Markdown 注入），**格式化阶段**输出 `markdown` 格式时会将这些字符转义为 `\[`、`\]`、`\\`（转义仅发生在 markdown 分支）。转义**不会还原**——保留转义正是防注入的目的。
 
 ## JSON 输出
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "自定义 Claims"
 title: "自定义 Claims - CyberGo JWT | 业务声明接口"
-description: "自定义 Claims 指南：实现 CustomClaims 接口定义业务专属声明字段，对比内置 Claims 与自定义类型的验证差异，演示 ValidateInto 与 RefreshInto 解析刷新用法。"
+description: "自定义 Claims 指南：实现 CustomClaims 接口定义业务专属声明字段，对比内置 Claims 与自定义类型的验证差异，演示 ParseInto 与 RefreshInto 解析刷新用法。"
 sidebar_position: 20
 ---
 
@@ -121,19 +121,17 @@ token, err := processor.Create(claims)
 
 ### 验证到自定义结构
 
-使用 `ValidateInto` 将令牌解析到自定义结构：
+使用 `ParseInto` 将令牌解析到自定义结构：
 
 ```go
 myClaims := &MyClaims{}
-result, valid, err := processor.ValidateInto(token, myClaims)
+result, err := processor.ParseInto(token, myClaims)
 if err != nil {
     panic(err)
 }
-if valid {
-    parsed := result.(*MyClaims)
-    fmt.Println("UserID:", parsed.UserID)
-    fmt.Println("Email:", parsed.Email)
-}
+parsed := result.(*MyClaims)
+fmt.Println("UserID:", parsed.UserID)
+fmt.Println("Email:", parsed.Email)
 ```
 
 ### 刷新到自定义结构
@@ -346,5 +344,5 @@ func (c *MyClaims) RateLimitKey() string {
 ## 下一步
 
 - [API 参考 → 接口定义](../api-reference/interfaces#customclaims) — CustomClaims 完整定义
-- [API 参考 → Processor](../api-reference/processor#validateinto) — ValidateInto / RefreshInto 方法
+- [API 参考 → Processor](../api-reference/processor#parseinto) — ParseInto / RefreshInto 方法
 - [高级示例](../examples/advanced) — 自定义 Claims 完整示例

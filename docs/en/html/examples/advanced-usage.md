@@ -22,7 +22,7 @@ import (
 	"github.com/cybergodev/html"
 )
 
-// Implement custom Scorer (full example in guides/testing-custom)
+// Implement custom Scorer (full example in guides/integration/testing-custom)
 type myScorer struct{}
 
 func (s myScorer) Score(node html.ContentNode) int {

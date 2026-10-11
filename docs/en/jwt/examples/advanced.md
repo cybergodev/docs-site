@@ -48,11 +48,10 @@ func main() {
 	}
 	fmt.Println("RSA Token:", token)
 
-	parsed, valid, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Valid:", valid)
 	fmt.Println("UserID:", parsed.UserID)
 }
 ```
@@ -98,11 +97,10 @@ func main() {
 	}
 	fmt.Println("RSA-PSS Token:", token)
 
-	parsed, valid, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Valid:", valid) // Output: Valid: true
 	fmt.Println("UserID:", parsed.UserID)
 }
 ```
@@ -210,11 +208,11 @@ func main() {
 	}
 	defer apiProcessor.Close()
 
-	parsed, valid, err := apiProcessor.Validate(token)
+	parsed, err := apiProcessor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("API service verified (public key):", valid) // Output: API service verified (public key): true
+	fmt.Println("API service verified (public key)") // Verified via the public key
 	fmt.Println("UserID:", parsed.UserID)
 }
 ```
@@ -372,15 +370,13 @@ func main() {
 
 	// Validate into custom Claims
 	myClaims := &MyClaims{}
-	result, valid, err := processor.ValidateInto(token, myClaims)
+	result, err := processor.ParseInto(token, myClaims)
 	if err != nil {
 		panic(err)
 	}
-	if valid {
-		parsed := result.(*MyClaims)
-		fmt.Println("UserID:", parsed.UserID) // Output: user123
-		fmt.Println("Email:", parsed.Email)   // Output: alice@example.com
-	}
+	parsed := result.(*MyClaims)
+	fmt.Println("UserID:", parsed.UserID) // Output: user123
+	fmt.Println("Email:", parsed.Email)   // Output: alice@example.com
 
 	// Refresh into custom Claims
 	refreshToken, err := processor.CreateRefresh(claims)
@@ -494,7 +490,7 @@ func main() {
 		panic(err)
 	}
 
-	parsed, _, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}

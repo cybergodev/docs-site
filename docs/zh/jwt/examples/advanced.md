@@ -48,11 +48,10 @@ func main() {
 	}
 	fmt.Println("RSA Token:", token)
 
-	parsed, valid, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Valid:", valid)
 	fmt.Println("UserID:", parsed.UserID)
 }
 ```
@@ -98,11 +97,10 @@ func main() {
 	}
 	fmt.Println("RSA-PSS Token:", token)
 
-	parsed, valid, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Valid:", valid) // 输出：Valid: true
 	fmt.Println("UserID:", parsed.UserID)
 }
 ```
@@ -210,11 +208,11 @@ func main() {
 	}
 	defer apiProcessor.Close()
 
-	parsed, valid, err := apiProcessor.Validate(token)
+	parsed, err := apiProcessor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("API 服务验证通过（公钥）：", valid) // 输出：API 服务验证通过（公钥）： true
+	fmt.Println("API 服务验证通过（公钥）") // 已通过公钥验证
 	fmt.Println("UserID:", parsed.UserID)
 }
 ```
@@ -372,15 +370,13 @@ func main() {
 
 	// 验证到自定义 Claims
 	myClaims := &MyClaims{}
-	result, valid, err := processor.ValidateInto(token, myClaims)
+	result, err := processor.ParseInto(token, myClaims)
 	if err != nil {
 		panic(err)
 	}
-	if valid {
-		parsed := result.(*MyClaims)
-		fmt.Println("UserID:", parsed.UserID) // 输出：user123
-		fmt.Println("Email:", parsed.Email)   // 输出：alice@example.com
-	}
+	parsed := result.(*MyClaims)
+	fmt.Println("UserID:", parsed.UserID) // 输出：user123
+	fmt.Println("Email:", parsed.Email)   // 输出：alice@example.com
 
 	// 刷新到自定义 Claims
 	refreshToken, err := processor.CreateRefresh(claims)
@@ -494,7 +490,7 @@ func main() {
 		panic(err)
 	}
 
-	parsed, _, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}

@@ -16,12 +16,14 @@ type Config struct {
     VerificationKey any
     SigningMethod   SigningMethod
 
-    AccessTokenTTL    time.Duration
-    RefreshTokenTTL   time.Duration
-    Issuer            string
-    ExpectedAudience  string
-    RequireExpiration bool
-    ClockSkew         time.Duration
+    AccessTokenTTL        time.Duration
+    RefreshTokenTTL       time.Duration
+    Issuer                string
+    ExpectedAudience      string
+    RequireExpiration     bool
+    RejectRefreshAsAccess bool
+    RotateRefreshTokens   bool
+    ClockSkew             time.Duration
 
     Blacklist BlacklistConfig
 
@@ -57,6 +59,8 @@ JWT Processor 的统一配置。零值字段会在 `New()` 中自动填充默认
 | `Issuer` | `string` | `"jwt-service"` | 签发者 |
 | `ExpectedAudience` | `string` | — | 期望的受众（可选） |
 | `RequireExpiration` | `bool` | `false` | 为 `true` 时拒绝缺少 `exp` 声明的令牌（返回 [`ErrExpirationRequired`](./errors#哨兵错误)） |
+| `RejectRefreshAsAccess` | `bool` | `false` | （v1.2.3 新增）为 `true` 时 [`Parse`](./processor#parse) / [`ParseInto`](./processor#parseinto) 拒绝 `token_type=refresh` 的令牌被用作访问令牌（返回 [`ErrTokenTypeMismatch`](./errors#哨兵错误)）；`Refresh` / `RefreshInto` 不受影响 |
+| `RotateRefreshTokens` | `bool` | `false` | （v1.2.3 新增）为 `true` 时 `Refresh` / `RefreshInto` 在签发新令牌前先按 jti 吊销传入的刷新令牌，实现一次性使用（fail-closed：吊销失败返回 [`ErrRefreshRotationFailed`](./errors#哨兵错误)，缺 jti 返回 `ErrTokenMissingID`）。详见[令牌刷新与轮换](../guides/token-refresh#一次性轮换) |
 | `ClockSkew` | `time.Duration` | `0` | exp/nbf 的时钟偏移容忍度（容忍签发方与验证方的时钟漂移）；负值会被 `Validate()` 拒绝 |
 | `Blacklist` | `BlacklistConfig` | — | 黑名单配置 |
 | `EnableRateLimit` | `bool` | `false` | 启用限流 |

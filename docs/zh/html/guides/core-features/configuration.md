@@ -1,7 +1,7 @@
 ---
 sidebar_label: "配置实战"
 title: "配置实战 - CyberGo html | Config 字段选择指南"
-description: "CyberGo html 配置实战指南：DefaultConfig、HighSecurityConfig、TextOnlyConfig、MarkdownConfig 四种预设选择建议、六大类字段导览、常见配置组合与 Validate 验证，助新手快速选型。"
+description: "CyberGo html 配置实战指南：对比 DefaultConfig、HighSecurityConfig、TextOnlyConfig、MarkdownConfig 四种预设的适用场景，导览资源管理、安全、内容提取、输出格式、链接提取与扩展六大类字段，附爬虫、API 后端等常见配置组合与 Validate 验证方法，助新手快速选型。"
 sidebar_position: 6
 ---
 

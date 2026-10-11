@@ -1,7 +1,7 @@
 ---
 sidebar_label: "常量与错误"
 title: "常量与错误 - CyberGo html | 默认值与错误类型"
-description: "CyberGo html 常量与错误类型参考：默认值常量（MaxInputSize、CacheTTL 等）、审计事件常量、哨兵错误及 InputError、ConfigError、FileError 结构化错误，支持 errors.Is/As 精准判断。"
+description: "CyberGo html 常量与错误类型参考：汇总默认值常量（MaxInputSize、CacheTTL 等）、八种审计事件常量与三级审计级别、十个哨兵错误及 InputError、ConfigError、FileError 结构化错误的字段定义，支持 errors.Is 与 errors.As 精准判断，并解读批量上限等内部限制常量。"
 sidebar_position: 3
 ---
 
@@ -16,6 +16,7 @@ sidebar_position: 3
 | `DefaultWorkerPoolSize` | `int` | `4` | 工作池大小 |
 | `DefaultCacheTTL` | `time.Duration` | `1h` | 缓存过期时间 |
 | `DefaultCacheCleanup` | `time.Duration` | `5m` | 缓存清理间隔 |
+| `DefaultMaxAuditEntries` | `int` | `10000` | 内存审计条目上限默认值（`AuditConfig.MaxEntries` 为 0 时使用） |
 | `DefaultMaxDepth` | `int` | `500` | 最大 DOM 深度 |
 | `DefaultProcessingTimeout` | `time.Duration` | `30s` | 处理超时时间 |
 
@@ -76,8 +77,22 @@ type InputError struct {
 }
 
 func (e *InputError) Error() string
-func (e *InputError) Unwrap() error // → InputErr（非 nil 时）或 ErrInputTooLarge
+func (e *InputError) Unwrap() []error // InputErr 非 nil 时 → [InputErr, ErrInputTooLarge]，否则 → [ErrInputTooLarge]
 ```
+
+| 成员 | 类型 | 说明 |
+|------|------|------|
+| `InputError.Op` | `string` | 失败的操作名（如 `"Extract"`、`"ExtractFromFile"`） |
+| `InputError.Size` | `int` | 实际输入大小 |
+| `InputError.MaxSize` | `int` | 配置的大小上限 |
+| `InputError.InputErr` | `error` | 底层错误（可为 `nil`） |
+
+| 方法 | 说明 |
+|------|------|
+| `InputError.Error` | 格式化错误消息（含实际/限制大小） |
+| `InputError.Unwrap` | `InputErr` 非 nil 时 → `[InputErr, ErrInputTooLarge]`，否则 → `[ErrInputTooLarge]` |
+
+`Unwrap` 返回**错误切片**而非单个错误：无论是否携带底层错误，`ErrInputTooLarge` 恒在列表中——`errors.Is(err, ErrInputTooLarge)` 对任意 `*InputError` 都成立。
 
 ### ConfigError
 
@@ -93,6 +108,17 @@ type ConfigError struct {
 func (e *ConfigError) Error() string
 func (e *ConfigError) Unwrap() error // → ErrInvalidConfig
 ```
+
+| 成员 | 类型 | 说明 |
+|------|------|------|
+| `ConfigError.Field` | `string` | 无效的配置字段名（如 `"MaxInputSize"`） |
+| `ConfigError.Value` | `any` | 被拒绝的字段值 |
+| `ConfigError.Message` | `string` | 错误描述（如 `"must be positive"`） |
+
+| 方法 | 说明 |
+|------|------|
+| `ConfigError.Error` | 格式化为 `html: invalid config: 字段=值, 描述` |
+| `ConfigError.Unwrap` | 返回 `ErrInvalidConfig` |
 
 ### FileError
 
@@ -111,6 +137,19 @@ func (e *FileError) Unwrap() error        // → ErrFileNotFound | 原始错误 
 func (e *FileError) MarshalJSON() ([]byte, error) // 专为 HTTP API 响应场景：序列化为 JSON 返回客户端时经 SafePath() 截断 Path，防止文件系统路径泄露
 ```
 
+| 成员 | 类型 | 说明 |
+|------|------|------|
+| `FileError.Op` | `string` | 失败的操作名（如 `"ExtractFromFile"`、`"ReadFile"`） |
+| `FileError.Path` | `string` | 完整文件路径（仅内部调试用，勿直接输出） |
+| `FileError.FileErr` | `error` | 底层文件系统错误 |
+
+| 方法 | 说明 |
+|------|------|
+| `FileError.Error` | 安全输出（路径截断为文件名，底层错误消息同步脱敏） |
+| `FileError.SafePath` | 仅返回文件名（无分隔符时原样返回） |
+| `FileError.Unwrap` | → `ErrFileNotFound` \| 原始错误 \| `ErrInvalidFilePath` |
+| `FileError.MarshalJSON` | 序列化为 `{op, path, message}`，`path` 经 `SafePath()` 截断，防止文件系统路径泄露 |
+
 :::tip 安全路径
 `FileError.Error()` 和 `SafePath()` 都返回截断后的安全路径（仅文件名），防止路径泄露。内部调试需要完整路径时可直接访问 `Path` 字段。
 :::
@@ -127,6 +166,7 @@ func (e *FileError) MarshalJSON() ([]byte, error) // 专为 HTTP API 响应场�
 | `maxConfigWorkerSize` | `256` | `WorkerPoolSize` 配置上限 |
 | `maxConfigDepth` | `500` | `MaxDepth` 配置上限 |
 | `maxConfigCacheEntries` | `100000` | `MaxCacheEntries` 配置上限（≈100MB，按每条 1KB 估算） |
+| `maxConfigAuditEntries` | `100000` | `Audit.MaxEntries` 配置上限（`GetAuditLog` 内存保留条目数上限） |
 
 ### 处理限制
 
@@ -142,7 +182,7 @@ func (e *FileError) MarshalJSON() ([]byte, error) // 专为 HTTP API 响应场�
 | 常量 | 值 | 说明 |
 |------|----|------|
 | `maxCacheKeySize` | `65536` (64KB) | 完整哈希的内容大小阈值；超出此值切换到 5 点采样 |
-| `cacheKeySample` | `4096` | 大文档采样的总字节预算（5 点 × ~820 字节/点） |
+| `cacheKeySample` | `4096` | 大文档采样的总字节预算（5 点 × ~819 字节/点） |
 
 :::tip 为什么需要了解这些
 这些常量解释了一些「为什么」：为什么超过 1MB 的 HTML 不再提取裸视频链接（ReDoS 防护）、为什么批量超过 10000 项整批失败（OOM 防护）、为什么 64KB 是缓存 Key 策略的分界线（哈希成本 vs 碰撞风险）。

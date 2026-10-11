@@ -2,7 +2,7 @@
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo JWT | 5 分钟入门指南"
 description: "CyberGo JWT 快速开始指南：安装库并创建 Processor，完成访问令牌与刷新令牌的签发、验证、刷新和吊销，涵盖核心用法与进阶功能导航。"
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # 快速开始
@@ -68,21 +68,21 @@ if err != nil {
 ### 3. 验证令牌
 
 ```go
-parsed, valid, err := processor.Validate(accessToken)
+// 本步用到 fmt，需确保已 import "fmt"
+parsed, err := processor.Parse(accessToken)
 if err != nil {
     // 处理错误：过期、签名无效等
     panic(err)
 }
-if valid {
-    fmt.Println("UserID:", parsed.UserID)
-    fmt.Println("Role:", parsed.Role)
-    fmt.Println("ExpiresAt:", parsed.ExpiresAt.Time)
-}
+fmt.Println("UserID:", parsed.UserID)
+fmt.Println("Role:", parsed.Role)
+fmt.Println("ExpiresAt:", parsed.ExpiresAt.Time)
 ```
 
 ### 4. 刷新令牌
 
 ```go
+// 本步用到 fmt，需确保已 import "fmt"
 newAccessToken, err := processor.Refresh(refreshToken)
 if err != nil {
     panic(err)
@@ -93,6 +93,8 @@ fmt.Println("New Access Token:", newAccessToken)
 ### 5. 吊销令牌
 
 ```go
+// 本步用到 fmt，需确保已 import "fmt"
+
 // 将令牌加入黑名单
 err := processor.Revoke(accessToken)
 if err != nil {
@@ -119,7 +121,7 @@ fmt.Println("Revoked:", revoked) // true
 | 令牌黑名单 | 吊销机制、内置存储与 Redis 自定义后端 | [令牌黑名单](../guides/blacklist) |
 | 速率限制 | 令牌桶算法，防止签发接口被滥用 | [速率限制](../guides/rate-limiting) |
 | 配置详解 | 签发者/受众校验、时钟偏移、强制过期、输入校验 | [配置详解](../guides/configuration) |
-| 错误处理 | 19 个哨兵错误分类与 `errors.Is` 匹配 | [错误处理](../guides/error-handling) |
+| 错误处理 | 20 个哨兵错误分类与 `errors.Is` 匹配 | [错误处理](../guides/error-handling) |
 | 测试与时钟注入 | `FixedClock` 固定时钟，精确控制时间流逝 | [测试与时钟注入](../guides/testing) |
 
 ## 下一步

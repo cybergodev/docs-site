@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor"
 title: "Processor - CyberGo JWT | Core Type"
-description: "The core CyberGo JWT Processor type exposes Create, Validate, Refresh, Revoke, IsRevoked, ParseUnverified, and Close methods with their signatures and examples."
+description: "Core CyberGo JWT Processor type exposing Create, Parse, ParseInto, Refresh, Revoke, IsRevoked, ParseUnverified, and Close methods with signatures and examples."
 sidebar_position: 20
 ---
 
@@ -18,8 +18,6 @@ func (p *Processor) Create(claims CustomClaims) (string, error)
 ```
 
 Creates a new JWT access token. Accepts any type implementing the `CustomClaims` interface.
-
-
 
 ### Parameters
 
@@ -56,15 +54,13 @@ token, err := processor.Create(myClaims)
 
 ---
 
-## Validate
+## Parse <Badge type="tip" text="v1.2.3+" />
 
 ```go
-func (p *Processor) Validate(tokenString string) (Claims, bool, error)
+func (p *Processor) Parse(tokenString string) (Claims, error)
 ```
 
-Validates a JWT access token and returns the parsed Claims.
-
-
+Validates a JWT access token and returns the parsed Claims (value copy). **A nil `err` means the token is valid** — there is no separate boolean to check. Replaces the deprecated [`Validate`](#validate).
 
 ### Parameters
 
@@ -77,7 +73,80 @@ Validates a JWT access token and returns the parsed Claims.
 | Return | Type | Description |
 |--------|------|-------------|
 | `claims` | `Claims` | Parsed claims (value copy) |
-| `valid` | `bool` | Whether valid |
+| `err` | `error` | Error on validation failure; nil means valid |
+
+### Errors
+
+| Error | Trigger Condition |
+|-------|-------------------|
+| `ErrProcessorClosed` | Processor is closed |
+| `ErrEmptyToken` | Token is empty |
+| `ErrInvalidToken` | Invalid signature |
+| `ErrAlgorithmMismatch` | Token algorithm does not match config |
+| `ErrExpirationRequired` | `RequireExpiration` is enabled but the token lacks an `exp` claim |
+| `ErrTokenExpired` | Token expired |
+| `ErrTokenNotValidYet` | Token not yet valid |
+| `ErrTokenInvalidIssuer` | Issuer mismatch |
+| `ErrTokenInvalidAudience` | Audience mismatch |
+| `ErrTokenRevoked` | Token revoked |
+| `ErrInvalidClaims` | Claims validation failed |
+| `ErrTokenTypeMismatch` | Token has type refresh and `RejectRefreshAsAccess` is enabled |
+
+### Example
+
+```go
+claims, err := processor.Parse(tokenString)
+if err != nil {
+    // Handle error
+    return
+}
+fmt.Println(claims.UserID)
+```
+
+---
+
+## Validate
+
+```go
+func (p *Processor) Validate(tokenString string) (Claims, bool, error)
+```
+
+::: warning Deprecated
+`Validate` is deprecated since v1.2.3: the boolean result `valid` is always equivalent to `err == nil` and carries no extra information. Use [`Parse`](#parse), which returns `(Claims, error)`.
+:::
+
+Validates a JWT access token and returns the parsed Claims. Internally delegates directly to [`Parse`](#parse).
+
+### Migrating from Validate to Parse
+
+`valid` is always equivalent to `err == nil` — migrating is just dropping the boolean check:
+
+```go
+// Old style (deprecated)
+parsed, valid, err := processor.Validate(token)
+if valid {
+    // ...
+}
+
+// New style: nil err means valid
+parsed, err := processor.Parse(token)
+if err != nil {
+    // Handle error
+}
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tokenString` | `string` | JWT string |
+
+### Returns
+
+| Return | Type | Description |
+|--------|------|-------------|
+| `claims` | `Claims` | Parsed claims (value copy) |
+| `valid` | `bool` | Whether valid (always equal to `err == nil`) |
 | `err` | `error` | Error on validation failure |
 
 ### Errors
@@ -95,6 +164,7 @@ Validates a JWT access token and returns the parsed Claims.
 | `ErrTokenInvalidAudience` | Audience mismatch |
 | `ErrTokenRevoked` | Token revoked |
 | `ErrInvalidClaims` | Claims validation failed |
+| `ErrTokenTypeMismatch` | Token has type refresh and `RejectRefreshAsAccess` is enabled |
 
 ### Example
 
@@ -118,8 +188,6 @@ func (p *Processor) CreateRefresh(claims CustomClaims) (string, error)
 ```
 
 Creates a refresh token using `RefreshTokenTTL` instead of `AccessTokenTTL`.
-
-
 
 ### Parameters
 
@@ -154,14 +222,12 @@ Refreshes an existing refresh token and returns a new access token. The refresh 
 
 :::info Token Type & Rotation
 - **Token type check**: Tokens with `token_type=access` are rejected (returns [`ErrTokenTypeMismatch`](./errors#sentinel-errors)) to prevent access tokens from being used to obtain new tokens; older tokens without a `token_type` are still accepted for backward compatibility.
-- **Does not auto-revoke the original token**: `Refresh` does not revoke the supplied refresh token. The original token remains valid until it expires or is explicitly [`Revoke()`](#revoke)d. For one-time-use semantics, call `Revoke(refreshTokenString)` after a successful `Refresh`.
+- **Does not auto-revoke the original token by default**: `Refresh` does not revoke the supplied refresh token by default. The original token remains valid until it expires or is explicitly [`Revoke()`](#revoke)d. For one-time-use semantics, enable `Config.RotateRefreshTokens` (since v1.2.3; revocation happens before the new token is minted — see [Token Refresh & Rotation](../guides/token-refresh#one-time-rotation)); manually calling `Revoke(refreshTokenString)` after a successful `Refresh` is an equivalent alternative.
 :::
 
 :::warning Security Note
 Refresh only validates standard JWT fields (exp, nbf, iss, aud, blacklist) and basic structural validity (UserID or Username must exist). Deep field constraints (length limits, injection patterns) are not re-checked since they were validated at creation time.
 :::
-
-
 
 ### Parameters
 
@@ -192,7 +258,67 @@ Refresh only validates standard JWT fields (exp, nbf, iss, aud, blacklist) and b
 | `ErrTokenRevoked` | Token revoked |
 | `ErrInvalidClaims` | Claims validation failed |
 | `ErrTokenTypeMismatch` | Refreshing with an access token (`token_type=access`) |
+| `ErrTokenMissingID` | `RotateRefreshTokens` is enabled but the refresh token lacks a `jti` claim |
+| `ErrBlacklistNotConfigured` | `RotateRefreshTokens` is enabled but the blacklist is not configured |
+| `ErrRefreshRotationFailed` | Revoking the old refresh token failed while `RotateRefreshTokens` is enabled (wraps the underlying store error) |
 | `ErrRateLimitExceeded` | Rate limit threshold exceeded |
+
+---
+
+## ParseInto <Badge type="tip" text="v1.2.3+" />
+
+```go
+func (p *Processor) ParseInto(tokenString string, claims CustomClaims) (CustomClaims, error)
+```
+
+Verifies a token and populates the provided custom Claims struct **in place**; on success it returns the same pointer that was passed in. **A nil `err` means the token is valid.** Unlike [`Parse`](#parse), which returns a value copy, this fills the caller-supplied struct directly.
+
+::: warning Claims state on error
+On validation failure the supplied claims may be **partially populated** and must not be used.
+:::
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tokenString` | `string` | JWT string |
+| `claims` | `CustomClaims` | Target Claims pointer |
+
+### Returns
+
+| Return | Type | Description |
+|--------|------|-------------|
+| `claims` | `CustomClaims` | Populated Claims (same pointer as the input) |
+| `err` | `error` | Error on validation failure; nil means valid |
+
+### Errors
+
+| Error | Trigger Condition |
+|-------|-------------------|
+| `ErrProcessorClosed` | Processor is closed |
+| `ErrEmptyToken` | Token is empty |
+| `ErrInvalidToken` | Invalid signature |
+| `ErrAlgorithmMismatch` | Token algorithm does not match config |
+| `ErrExpirationRequired` | `RequireExpiration` is enabled but the token lacks an `exp` claim |
+| `ErrTokenExpired` | Token expired |
+| `ErrTokenNotValidYet` | Token not yet valid |
+| `ErrTokenInvalidIssuer` | Issuer mismatch |
+| `ErrTokenInvalidAudience` | Audience mismatch |
+| `ErrTokenRevoked` | Token revoked |
+| `ErrInvalidClaims` | Claims validation failed |
+| `ErrTokenTypeMismatch` | Token has type refresh and `RejectRefreshAsAccess` is enabled |
+
+### Example
+
+```go
+myClaims := &MyClaims{}
+result, err := processor.ParseInto(tokenString, myClaims)
+if err != nil {
+    // Handle error
+    return
+}
+fmt.Println(result.(*MyClaims).UserID)
+```
 
 ---
 
@@ -202,9 +328,11 @@ Refresh only validates standard JWT fields (exp, nbf, iss, aud, blacklist) and b
 func (p *Processor) ValidateInto(tokenString string, claims CustomClaims) (CustomClaims, bool, error)
 ```
 
+::: warning Deprecated
+`ValidateInto` is deprecated since v1.2.3: the boolean result `valid` is always equivalent to `err == nil`. Use [`ParseInto`](#parseinto), which returns `(CustomClaims, error)`; the migration is identical to [`Validate → Parse`](#migrating-from-validate-to-parse).
+:::
+
 Validates a token and populates a custom Claims struct. Returns the same pointer as the input `claims`.
-
-
 
 ### Parameters
 
@@ -218,7 +346,7 @@ Validates a token and populates a custom Claims struct. Returns the same pointer
 | Return | Type | Description |
 |--------|------|-------------|
 | `claims` | `CustomClaims` | Populated Claims |
-| `valid` | `bool` | Whether valid |
+| `valid` | `bool` | Whether valid (always equal to `err == nil`) |
 | `err` | `error` | Error on validation failure |
 
 ### Example
@@ -265,8 +393,6 @@ Tokens with `token_type=access` are rejected (returns [`ErrTokenTypeMismatch`](.
 Refresh only validates standard JWT fields and basic structural validity. Deep field constraints are not re-checked since they were validated at creation time.
 :::
 
-
-
 ### Parameters
 
 | Parameter | Type | Description |
@@ -297,6 +423,9 @@ Refresh only validates standard JWT fields and basic structural validity. Deep f
 | `ErrTokenRevoked` | Token revoked |
 | `ErrInvalidClaims` | Claims validation failed |
 | `ErrTokenTypeMismatch` | Refreshing with an access token (`token_type=access`) |
+| `ErrTokenMissingID` | `RotateRefreshTokens` is enabled but the refresh token lacks a `jti` claim |
+| `ErrBlacklistNotConfigured` | `RotateRefreshTokens` is enabled but the blacklist is not configured |
+| `ErrRefreshRotationFailed` | Revoking the old refresh token failed while `RotateRefreshTokens` is enabled (wraps the underlying store error) |
 | `ErrRateLimitExceeded` | Rate limit threshold exceeded |
 
 ---
@@ -315,8 +444,6 @@ Adds the token to the blacklist by verifying the signature and extracting the to
 - TTL is capped at 30 days to prevent forged excessive `exp` values from locking memory (DoS protection)
 - Expired tokens can still be revoked; the entry is automatically cleaned up by the blacklist
 :::
-
-
 
 ### Parameters
 
@@ -352,8 +479,6 @@ func (p *Processor) IsRevoked(tokenString string) (bool, error)
 
 Checks whether a token has been revoked. After verifying the signature, it looks up the token's jti status in the blacklist. When the blacklist is not configured, returns `false` and a `nil` error.
 
-
-
 ### Parameters
 
 | Parameter | Type | Description |
@@ -388,11 +513,9 @@ func (p *Processor) ParseUnverified(tokenString string, claims any) error
 
 Parses a token without verifying the signature. Useful for extracting Claims information without needing to trust the token.
 
-:::danger Warning
+:::danger
 The returned Claims are **not verified** and must not be trusted. Only use for debugging or logging.
 :::
-
-
 
 ### Parameters
 
@@ -425,8 +548,6 @@ func (p *Processor) Close() error
 
 Releases resources and securely clears keys. Can be called multiple times; subsequent calls return `ErrProcessorClosed`.
 
-
-
 ### Returns
 
 | Return | Type | Description |
@@ -442,8 +563,6 @@ func (p *Processor) IsClosed() bool
 ```
 
 Checks if the Processor is closed.
-
-
 
 ### Returns
 

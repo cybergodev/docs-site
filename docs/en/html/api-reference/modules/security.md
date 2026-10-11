@@ -32,8 +32,8 @@ When enabled (default), the following cleaning is applied automatically:
 |-----------------|----------|
 | Dangerous tags | Removes `<script>`, `<style>`, `<iframe>`, `<object>`, `<embed>`, etc. |
 | Event attributes | Removes all `on*` attributes (`onclick`, `onerror`, etc.) |
-| Dangerous protocols | Blocks `javascript:`, `vbscript:` |
-| Data URLs | Only allows `data:image/*`, `data:font/*`, `data:application/pdf` |
+| Dangerous protocols | Blocks `javascript:`, `vbscript:`, `file:` schemes (including dangerous protocols in protocol-relative `//` form) |
+| Data URLs | Only allows `data:image/*` (except `image/svg+xml`), `data:font/*`, `data:application/pdf` |
 
 Blocked content is recorded through the audit system (requires audit to be enabled).
 
@@ -151,7 +151,7 @@ The sentinel errors above are actually returned wrapped in three structured erro
 
 | Type | Fields | Methods | `Unwrap()` target |
 |------|--------|---------|------------------|
-| `*InputError` | `Op` / `Size` / `MaxSize` / `InputErr` | `Error` | `InputErr` (when non-nil), otherwise `ErrInputTooLarge` |
+| `*InputError` | `Op` / `Size` / `MaxSize` / `InputErr` | `Error` | `Unwrap() []error`: `[InputErr, ErrInputTooLarge]` (or `[ErrInputTooLarge]` when `InputErr` is nil) |
 | `*ConfigError` | `Field` / `Value` / `Message` | `Error` | `ErrInvalidConfig` |
 | `*FileError` | `Op` / `Path` / `FileErr` | `Error` / `SafePath` / `MarshalJSON` | `ErrFileNotFound` / the original error / `ErrInvalidFilePath` |
 

@@ -65,10 +65,10 @@ func main() {
 	//       Go 官网
 
 	fmt.Println("字数：", result.WordCount)
-	// 字数：7
+	// 字数：51
 
 	fmt.Println("阅读时间：", result.ReadingTime)
-	// 阅读时间：2.1s（按 200 词/分钟计算）
+	// 阅读时间：15.3s（按 200 词/分钟计算）
 
 	fmt.Println("图片：", len(result.Images))
 	// 图片：1
@@ -128,7 +128,7 @@ fmt.Println("标题：", result.Title)
 | 维度 | 正面信号 | 负面信号 |
 |------|----------|----------|
 | **标签语义** | `<article>`(+1000)、`<main>`(+900)、`<section>`(+300)、`<body>`(+100) | `nav`/`aside`/`footer`/`header`/`script`/`style` 直接返回 0 |
-| **class/id 模式** | `content`/`article`/`post`/`main`/`entry`/`story`（强正面）；`blog`/`news`/`detail`/`page`（中等正面） | `comment`/`sidebar`/`nav`/`ad`/`menu`（强负面）；`widget`/`share`/`social`/`related`（中等负面）；`promo`/`banner`/`sponsor`（弱负面） |
+| **class/id 模式** | `content`/`article`/`post`/`main`/`entry`/`story` 等（强正面）；`blog`/`news`/`detail`/`page` 等（中等正面） | `comment`/`sidebar`/`nav`/`ad`/`menu` 等（强负面）；`widget`/`share`/`social`/`related` 等（中等负面）；`promo`/`banner`/`sponsor` 等（弱负面） |
 | **段落密度** | 子树中 `<p>` 数量乘以倍率加分（段落越多越可能为正文） | — |
 | **文本长度** | 超过阈值的长文本加分；低于阈值的短文本扣分 | — |
 | **内容密度** | 文本/标签比例高时乘以放大系数 | 比例低时乘以衰减系数 |
@@ -143,10 +143,6 @@ fmt.Println("标题：", result.Title)
 
 :::warning 文章识别不是万能的
 文章识别最适合新闻、博客、文档等有明确"正文区域"的页面。对于导航页、列表页、图库等非文章型页面，可能无法准确定位正文——此时可设 `ExtractArticle = false` 提取整个 `<body>` 内容。
-:::
-
-:::tip 适用场景
-文章识别最适合新闻、博客、文档等有明确"正文区域"的页面。对于导航页、列表页，可能无法准确定位正文。
 :::
 
 ### 自定义评分

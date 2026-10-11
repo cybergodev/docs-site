@@ -54,16 +54,18 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
     icon: '🔑',
     github: 'https://github.com/cybergodev/jwt',
     desc: {
-      zh: '生产级 JWT 库，仅需 3 个函数即可完成所有 JWT 操作。内置安全保护和黑名单管理功能。',
-      en: 'Production-grade JWT library that handles all JWT operations with just 3 functions. Built-in security protection and blacklist management.'
+      zh: '生产级 JWT 库，仅需 3 个函数即可完成所有 JWT 操作。内置安全保护、黑名单管理与令牌刷新/吊销功能。',
+      en: 'Production-grade JWT library that handles all JWT operations with just 3 functions. Built-in security protection, blacklist management, and token refresh/revocation.'
     },
     features: {
-      zh: ['多算法支持', '签名验证', '黑名单管理', 'Claims 解析'],
+      zh: ['多算法支持', '签名验证', '黑名单管理', 'Claims 解析', '刷新与轮换', '速率限制'],
       en: [
         'Multi-algorithm support',
         'Signature verification',
         'Blacklist management',
-        'Claims parsing'
+        'Claims parsing',
+        'Refresh & rotation',
+        'Rate limiting'
       ]
     }
   },

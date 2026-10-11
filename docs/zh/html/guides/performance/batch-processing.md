@@ -1,7 +1,7 @@
 ---
 sidebar_label: "批量处理实战"
 title: "批量处理实战 - CyberGo html | 并发提取指南"
-description: "CyberGo html 批量处理实战指南：ExtractBatch 等四个批量 API 详解、BatchResult 结果结构、WorkerPoolSize 并发控制、context 上下文取消、部分失败处理与按数据量规模的分级性能调优建议。"
+description: "CyberGo html 批量处理实战指南：详解 ExtractBatch 等四个批量 API 与包级、实例两种调用方式的缓存差异，覆盖 BatchResult 结果结构、WorkerPoolSize 并发控制、单批 10000 项上限、context 上下文取消、部分失败处理及按数据量分级的性能调优建议。"
 sidebar_position: 2
 ---
 

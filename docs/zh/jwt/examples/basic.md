@@ -47,11 +47,10 @@ func main() {
 	fmt.Println("Access Token:", token)
 
 	// 验证
-	parsed, valid, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Valid:", valid)          // 输出：true
 	fmt.Println("UserID:", parsed.UserID) // 输出：user123
 }
 ```
@@ -139,8 +138,8 @@ func main() {
 	fmt.Println("Token revoked")
 
 	// 再次验证会失败
-	_, _, err = processor.Validate(token)
-	fmt.Println("Validate error:", err) // token revoked
+	_, err = processor.Parse(token)
+	fmt.Println("Parse error:", err) // token revoked
 
 	// 检查是否已吊销
 	revoked, err := processor.IsRevoked(token)
@@ -231,11 +230,11 @@ func main() {
 		panic(err)
 	}
 
-	_, valid, err := processor.Validate(validToken)
+	_, err = processor.Parse(validToken)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Matching audience valid:", valid) // 输出：true
+	fmt.Println("Matching audience valid:", err == nil) // 输出：true
 
 	// 受众不匹配的令牌会被拒绝
 	wrongClaims := &jwt.Claims{
@@ -249,9 +248,9 @@ func main() {
 		panic(err)
 	}
 
-	_, valid, err = processor.Validate(wrongToken)
-	fmt.Println("Wrong audience valid:", valid) // 输出：false
-	fmt.Println("Wrong audience error:", err)   // 输出：token invalid audience
+	_, err = processor.Parse(wrongToken)
+	fmt.Println("Wrong audience valid:", err == nil) // 输出：false
+	fmt.Println("Wrong audience error:", err)        // 输出：token invalid audience
 	fmt.Println("Is audience error:",
 		errors.Is(err, jwt.ErrTokenInvalidAudience)) // 输出：true
 }
@@ -300,11 +299,10 @@ func main() {
 	}
 
 	// 验证后读取 Extra 字段
-	parsed, valid, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Valid:", valid)          // 输出：true
 	fmt.Println("UserID:", parsed.UserID) // 输出：user123
 
 	// 类型断言读取 Extra 值

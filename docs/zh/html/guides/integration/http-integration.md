@@ -329,7 +329,7 @@ result, _ := html.Extract(body, cfg)
 
 ## 下一步
 
-- [缓存与复用](../performance/processor-cache) - Processor 生命周期管理
+- [Processor 复用与缓存](../performance/processor-cache) - Processor 生命周期管理
 - [审计系统实战](../security/audit-pipeline) - 生产环境安全监控
 - [API 参考：批量处理](../../api-reference/modules/batch) - 完整批量 API
 - [性能优化](../performance/performance) - 性能调优技巧

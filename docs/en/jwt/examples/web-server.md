@@ -18,7 +18,7 @@ This page demonstrates how to integrate CyberGo JWT into a production-grade HTTP
 - **Graceful shutdown**: catch interrupt signals and release resources safely
 
 :::tip Full Source
-This page is based on the bundled example `examples/6_web_server.go`, which compiles and runs directly.
+This page is based on the bundled example `examples/web-server/main.go`, which compiles and runs directly.
 :::
 
 ## 1. Initialize the Processor
@@ -60,6 +60,8 @@ func newJWTProcessor() (*jwt.Processor, int, error) {
     secretKey := os.Getenv("JWT_SECRET_KEY")
     if secretKey == "" {
         log.Println("WARNING: JWT_SECRET_KEY not set, using demo key")
+        // The fallback key is demo-only, so the example runs standalone;
+        // in production the key must come from an env var or a secrets manager
         secretKey = "Kx9#mP2$vL8@nQ5!wR7&tY3^uI6*oE4%aS1+dF0-gH9~jK2#bN5$cM8@xZ7&vB4!"
     }
 
@@ -91,7 +93,7 @@ func newJWTProcessor() (*jwt.Processor, int, error) {
 ```
 
 :::warning Production Safety
-Always inject the secret key via the `JWT_SECRET_KEY` environment variable. Never write it into source code or commit it to version control.
+Always inject the secret key via the `JWT_SECRET_KEY` environment variable. Never write it into source code or commit it to version control. The fallback key above exists for demo purposes only — in production, always provide the key through an environment variable or a secrets manager.
 :::
 
 ## 2. Login Endpoint (/login)
@@ -212,7 +214,7 @@ func authenticateUser(username, password string) (User, bool) {
 
 ## 3. Auth Middleware
 
-Extract the token from the `Authorization: Bearer <token>` header, validate it with `Validate`, and inject the Claims into `context.Context` for downstream handlers to read:
+Extract the token from the `Authorization: Bearer <token>` header, validate it with `Parse`, and inject the Claims into `context.Context` for downstream handlers to read:
 
 ```go
 // contextKey is a custom type for context values to avoid collisions.
@@ -242,8 +244,8 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
             return
         }
 
-        claims, valid, err := processor.Validate(token)
-        if err != nil || !valid {
+        claims, err := processor.Parse(token)
+        if err != nil {
             sendError(w, http.StatusUnauthorized, "invalid_token", "Invalid or expired token")
             return
         }
@@ -357,7 +359,7 @@ func refreshHandler(w http.ResponseWriter, r *http.Request) {
 
 ## 6. Logout Endpoint (/logout)
 
-Add the current access token to the blacklist so it is immediately invalidated. Subsequent `Validate` calls on a revoked token will return an error:
+Add the current access token to the blacklist so it is immediately invalidated. Subsequent `Parse` calls on a revoked token will return an error:
 
 ```go
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -386,7 +388,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 ```
 
 :::tip Blacklist Mechanism
-`processor.Revoke` adds the token's `jti` to the built-in blacklist. Subsequent `Validate` calls check it automatically. The blacklist configuration (capacity, auto-cleanup interval) is set during initialization in Section 1. See [Token Blacklist](../guides/blacklist).
+`processor.Revoke` adds the token's `jti` to the built-in blacklist. Subsequent `Parse` calls check it automatically. The blacklist configuration (capacity, auto-cleanup interval) is set during initialization in Section 1. See [Token Blacklist](../guides/blacklist).
 :::
 
 ## 7. Route Registration & Graceful Shutdown

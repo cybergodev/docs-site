@@ -1,7 +1,7 @@
 ---
 sidebar_label: "安全概述"
 title: "安全概述 - CyberGo html | 安全防护总览"
-description: "CyberGo html 安全防护总览：深度防御三层架构（输入层、处理层、审计层）、MaxInputSize 与 MaxDepth 限制、路径遍历防护、panic 恢复机制、HTML 内容清洗与 HighSecurityConfig 高安全预设应用。"
+description: "CyberGo html 安全防护总览：解析深度防御三层架构（输入层、处理层、审计层），涵盖 MaxInputSize 与 MaxDepth 输入边界限制、HTML 内容清洗与 URL 多层校验、路径遍历防护、AllowedBaseDir 沙箱、panic 恢复、八种审计事件及 HighSecurityConfig 高安全预设应用。"
 sidebar_position: 1
 ---
 

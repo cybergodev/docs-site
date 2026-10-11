@@ -15,8 +15,6 @@ func New(cfg Config) (*Processor, error)
 
 创建新的 JWT Processor。使用 `DefaultConfig()` 获取默认配置，修改必要字段后传入。
 
-
-
 ### 参数
 
 | 参数 | 类型 | 说明 |
@@ -73,8 +71,6 @@ func DefaultConfig() Config
 
 返回带有合理默认值的配置。
 
-
-
 ### 返回值
 
 | 返回 | 类型 | 说明 |
@@ -109,9 +105,7 @@ cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
 func DefaultBlacklistConfig() BlacklistConfig
 ```
 
-返回带有合理默认值的黑名单配置。
-
-
+返回带有合理默认值的黑名单配置。`DefaultBlacklistConfig` 是自定义黑名单参数的推荐起点：先取默认值，再覆盖需要调整的字段，最后赋给 [`Config.Blacklist`](./config#blacklistconfig)。
 
 ### 返回值
 
@@ -127,6 +121,28 @@ func DefaultBlacklistConfig() BlacklistConfig
 | `MaxSize` | `100000` |
 | `EnableAutoCleanup` | `true` |
 
+### 示例
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/cybergodev/jwt"
+)
+
+func main() {
+	blacklist := jwt.DefaultBlacklistConfig()
+	blacklist.CleanupInterval = time.Minute // 覆盖需要调整的字段，其余保留默认值
+
+	fmt.Println(blacklist.CleanupInterval)   // 输出：1m0s
+	fmt.Println(blacklist.MaxSize)           // 输出：100000
+	fmt.Println(blacklist.EnableAutoCleanup) // 输出：true
+}
+```
+
 ---
 
 ## NewNumericDate
@@ -135,9 +151,7 @@ func DefaultBlacklistConfig() BlacklistConfig
 func NewNumericDate(t time.Time) NumericDate
 ```
 
-从 `time.Time` 创建 `NumericDate`。
-
-
+从 `time.Time` 创建 `NumericDate`。`NewNumericDate` 常用于显式构造 [`RegisteredClaims`](./claims#registeredclaims) 的时间声明字段（如 `ExpiresAt`、`NotBefore`）。
 
 ### 参数
 
@@ -151,6 +165,29 @@ func NewNumericDate(t time.Time) NumericDate
 |------|------|------|
 | `date` | `NumericDate` | JWT 数字日期 |
 
+### 示例
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/cybergodev/jwt"
+)
+
+func main() {
+	date := jwt.NewNumericDate(time.Unix(1700000000, 0))
+
+	b, err := date.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(b)) // 输出：1700000000
+}
+```
+
 ---
 
 ## NewRateLimiter
@@ -160,8 +197,6 @@ func NewRateLimiter(maxRate int, window time.Duration) *RateLimiter
 ```
 
 创建令牌桶限流器。
-
-
 
 ### 参数
 

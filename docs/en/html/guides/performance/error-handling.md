@@ -169,7 +169,9 @@ func main() {
 	// Output:
 	// Auto-detection failed (encoding detection failed: ...), retrying with encoding "gbk"...
 	// Title: Test
-	// Text: Title Hello World
+	// Text: Title
+	//
+	// Hello World
 }
 ```
 
@@ -288,7 +290,7 @@ All three structured error types (`InputError`, `ConfigError`, `FileError`) impl
 
 | Type | `Unwrap()` return value | Description |
 |------|-------------------------|-------------|
-| `*InputError` | `InputErr` (when non-nil) → otherwise `ErrInputTooLarge` | Exposes the underlying error if present; otherwise falls back to sentinel |
+| `*InputError` | Signature is `Unwrap() []error`: `[InputErr, ErrInputTooLarge]` when `InputErr` is non-nil, otherwise `[ErrInputTooLarge]` | Whether or not an underlying error is carried, `ErrInputTooLarge` is always in the list — `errors.Is(err, ErrInputTooLarge)` is true for any `*InputError` |
 | `*ConfigError` | Always `ErrInvalidConfig` | Fixed mapping to the config sentinel |
 | `*FileError` | ① If `FileErr` wraps `ErrFileNotFound` → `ErrFileNotFound`; ② otherwise if `FileErr != nil` → `FileErr` (original error); ③ otherwise → `ErrInvalidFilePath` | Three-level fallback: file not found → original error → invalid path |
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration Guide - CyberGo html | Config Field Selection"
-description: "CyberGo html configuration: DefaultConfig, HighSecurityConfig, TextOnlyConfig, MarkdownConfig presets, six field categories, combinations, and Validate checks."
+description: "CyberGo html configuration: DefaultConfig, HighSecurityConfig, TextOnlyConfig, MarkdownConfig presets by scenario, six field categories, Validate checks."
 sidebar_position: 6
 ---
 

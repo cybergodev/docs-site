@@ -1,7 +1,7 @@
 ---
 sidebar_label: "性能优化"
 title: "性能优化 - CyberGo html | 吞吐量提升指南"
-description: "CyberGo html 性能优化总览：sync.Pool 复用 Processor、缓存命中率监控、批量并发控制、WorkerPoolSize 调优、ProcessingTimeout 超时设置与反模式规避，系统提升 HTML 处理吞吐量。"
+description: "CyberGo html 性能优化总览：解析 sync.Pool 复用、缓存 Key 生成与命中率监控、批量并发控制、WorkerPoolSize 并发与 ProcessingTimeout 超时设置等内部机制，归纳输入控制、常见反模式与规避做法，并附基准测试建议，系统提升 HTML 处理吞吐量。"
 sidebar_position: 3
 ---
 
@@ -42,15 +42,16 @@ html.Extract(data)
 
 缓存 Key 是一个 `[16]byte`（128 位）值，直接用作 `map` 键，**生成 Key 不产生堆分配**。Key 的计算输入包括：
 
-- 编码转换后的 **UTF-8 内容**（而非原始字节）——相同内容用不同编码声明输入会命中同一缓存项；
+- **原始输入字节**（而非编码转换后的 UTF-8 文本）——缓存命中可跳过整个编码检测步骤；同一文档以不同编码存储会得到不同的 Key，无法互相命中；
 - 内容提取开关（`ExtractArticle`、`PreserveImages` 等 5 个布尔位）打包进一个 `uint8`；
-- 格式选项（`InlineImageFormat`、`InlineLinkFormat`、`TableFormat`）。
+- 格式选项（`InlineImageFormat`、`InlineLinkFormat`、`TableFormat`）；
+- `Encoding` 强制编码设置——同一份字节在不同 `Encoding` 配置下解码结果不同，必须区分。
 
 针对不同大小的内容，Key 生成采用两种策略：
 
 | 内容大小 | 策略 | 说明 |
 |----------|------|------|
-| ≤ 64 KB | 完整内容哈希 | 对全部字节做 xxHash 风格计算，无碰撞风险 |
+| ≤ 64 KB | 完整内容哈希 | 对全部字节做 hash/maphash 计算（AES-NI 加速），64 位结果经 splitmix64 扩展为 128 位 |
 | > 64 KB | 5 点采样 | 头部 + 尾部 + 3 个均匀分布的采样点，总采样预算 4096 字节（每点约 819 字节） |
 
 大文档采样是为了限制哈希成本——对 10 MB 文档做完整哈希会抵消缓存带来的收益。5 点采样兼顾了**抗哈希洪泛**（文档任意位置的修改都大概率改变 Key）与**吞吐量**。
@@ -97,7 +98,8 @@ html.Extract(data)
 两个输入产生**相同缓存 Key** 才会命中，这意味着：
 
 - 相同内容 + 相同配置 → 命中；
-- 相同内容的字节序列，但声明了不同编码（如一份带 `charset=gbk`、一份带 `charset=utf-8` 的相同正文）→ **命中**（Key 基于编码转换后的 UTF-8 文本计算）；
+- 同一正文以不同编码存储（如一份 GBK、一份 UTF-8）→ **不命中**（Key 基于原始输入字节计算，不同编码的字节序列不同）；
+- 相同字节但 `Encoding` 配置不同 → **不命中**（`Encoding` 参与 Key 计算）；
 - 相同内容但 `PreserveImages` 等开关不同 → **不命中**（开关位参与 Key 计算）。
 
 ### 命中后的克隆成本

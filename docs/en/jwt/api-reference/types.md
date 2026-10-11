@@ -17,13 +17,15 @@ type NumericDate struct {
 
 JWT numeric date value (Unix timestamp). Valid range: 0 to 253402300799 (9999-12-31 23:59:59 UTC).
 
+The struct embeds `time.Time` (the `Time` field), so a `NumericDate` value can call `time.Time` methods directly (such as `Unix()`, `Before()`) for time comparisons and arithmetic.
+
 <Badge type="info" text="struct" />
 
 ### Methods
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `MarshalJSON` | `func (date *NumericDate) MarshalJSON() ([]byte, error)` | Serialize to Unix timestamp JSON number; returns `null` for zero time or out-of-range values |
+| `MarshalJSON` | `func (date NumericDate) MarshalJSON() ([]byte, error)` | Serialize to Unix timestamp JSON number; returns `null` for zero time or out-of-range values |
 | `UnmarshalJSON` | `func (date *NumericDate) UnmarshalJSON(b []byte) error` | Parse Unix timestamp from JSON number or string; rejects negative and out-of-range values |
 
 ---
@@ -69,16 +71,24 @@ type ValidationError struct {
 }
 ```
 
-Field-level validation failure error.
+Field-level validation failure error. On the [`Create`](./processor#create) / [`Parse`](./processor#parse) paths it appears as the underlying cause wrapped by [`ErrInvalidClaims`](./errors#sentinel-errors) and can be extracted with `errors.As`; see the [error handling guide](../guides/error-handling).
 
 <Badge type="info" text="struct" />
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Field` | `string` | Name of the field or claim that failed validation (e.g. `user_id`, `extra.color`) |
+| `Message` | `string` | Why the field is invalid (e.g. exceeds the 256-character limit, suspicious pattern detected) |
+| `Err` | `error` | Optional underlying error wrapped by this failure; `Unwrap` returns it so `errors.Is` / `errors.As` can traverse it; nil when there is no wrapped cause |
 
 ### Methods
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `Error` | `func (e *ValidationError) Error() string` | Error message |
-| `Unwrap` | `func (e *ValidationError) Unwrap() error` | Unwrap inner error |
+| `Error` | `func (e *ValidationError) Error() string` | Error message (field name, reason, and wrapped error) |
+| `Unwrap` | `func (e *ValidationError) Unwrap() error` | Returns the underlying error stored in `Err` |
 
 ---
 

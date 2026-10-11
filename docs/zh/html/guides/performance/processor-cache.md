@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor 复用与缓存"
 title: "Processor 复用与缓存 - CyberGo html | 复用指南"
-description: "CyberGo html Processor 复用与缓存指南：包函数与 Processor 实例的核心区别与选择策略、sync.Pool 内部复用机制、缓存策略配置、GetStatistics 命中率监控与 Web 服务单例复用的最佳实践。"
+description: "CyberGo html Processor 复用与缓存指南：剖析包函数与 Processor 实例的核心区别及按场景选择策略、sync.Pool 内部复用机制、缓存 Key 生成与策略配置、GetStatistics 命中率监控，并给出 Web 服务单例、爬虫批量与定期维护等最佳实践。"
 sidebar_position: 1
 ---
 
@@ -84,11 +84,11 @@ cfg.CacheCleanup = 5 * time.Minute // 后台清理间隔
 
 ### 缓存 Key 生成
 
-缓存 Key 基于编码转换后的 UTF-8 内容生成：
+缓存 Key 基于**原始输入字节**（而非编码转换后的 UTF-8 文本）生成，并混入处理器配置（`ExtractArticle`/`Preserve*` 等提取开关、`InlineImageFormat`/`InlineLinkFormat`/`TableFormat` 三个格式串以及 `Encoding` 强制编码设置）：
 - 小于 64KB 的内容：对完整内容计算哈希
 - 大于 64KB 的内容：使用 5 点采样算法（头部 + 尾部 + 均匀采样）
 
-相同 HTML 内容在重复调用时直接命中缓存，跳过解析和提取步骤。
+相同的原始字节 + 相同的配置在重复调用时直接命中缓存，跳过编码检测、解析和提取步骤；同一文档以不同编码存储（或以不同 `Encoding` 配置处理）会得到不同的 Key，无法互相命中。
 
 ## 监控缓存命中率
 

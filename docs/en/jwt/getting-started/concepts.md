@@ -2,7 +2,7 @@
 title: "Core Concepts - CyberGo JWT | Architecture & Token Model"
 description: "CyberGo JWT core concepts: the Processor type, token lifecycle, dual-layer token model, Claims and RegisteredClaims, CustomClaims, and Config."
 sidebar_label: "Core Concepts"
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # Core Concepts
@@ -15,8 +15,8 @@ This page explains the core abstractions and design model behind CyberGo JWT, he
 
 Call [`Close()`](../api-reference/processor#close) when done to securely wipe the secret key and release pooled resources:
 
-```go
 <!-- check-code: skip -->
+```go
 cfg := jwt.DefaultConfig()
 cfg.SecretKey = "your-32-byte-secret-key-here-minimum"
 
@@ -37,7 +37,7 @@ A token moves through the following stages from issuance to invalidation:
 Issue    Create(claims)           → Access token (short-lived)
          CreateRefresh(claims)     → Refresh token (long-lived)
 
-Verify   Validate(token)          → Claims (checks signature, expiry, issuer, blacklist)
+Verify   Parse(token)             → Claims (checks signature, expiry, issuer, blacklist)
 
 Refresh  Refresh(refreshToken)    → New access token
 
@@ -61,7 +61,7 @@ CyberGo JWT uses an access token + refresh token design:
 **Why two layers?** Access tokens are short-lived, so the risk window is small even if leaked. Refresh tokens are long-lived but only used to obtain new access tokens, never for direct API authentication. This design balances security with user experience — users don't need to log in frequently, and access tokens can be refreshed silently after expiry.
 
 ::: tip Rotation semantics
-`Refresh` does **not** automatically revoke the refresh token. The original refresh token remains valid until it expires or is explicitly `Revoke`d. For one-time-use semantics (refresh token rotation), call `Revoke` on the old refresh token after a successful `Refresh`. See [Token Refresh & Rotation](../guides/token-refresh).
+`Refresh` does **not** automatically revoke the refresh token by default. The original refresh token remains valid until it expires or is explicitly `Revoke`d. For one-time-use semantics (refresh token rotation), enable `Config.RotateRefreshTokens` (since v1.2.3; automatically revokes the old token on refresh), or call `Revoke` on the old refresh token after a successful `Refresh`. See [Token Refresh & Rotation](../guides/token-refresh).
 :::
 
 ## Claims Structure
@@ -83,8 +83,8 @@ Claims carry the user identity data inside a token. CyberGo JWT provides a two-l
 
 **Claims** (built-in business claims, embeds RegisteredClaims):
 
-```go
 <!-- check-code: skip -->
+```go
 type Claims struct {
     UserID      string         // User ID
     Username    string         // Username
@@ -104,8 +104,8 @@ All fields undergo input validation: string length cap of 256, array cap of 100,
 
 When the built-in Claims don't meet your needs, implement the [`CustomClaims`](../api-reference/interfaces#customclaims) interface to define your own claim structure:
 
-```go
 <!-- check-code: skip -->
+```go
 type AppClaims struct {
     UserID string   `json:"user_id"`
     TeamID string   `json:"team_id"`
@@ -125,7 +125,7 @@ func (c *AppClaims) Validate() error {
 }
 ```
 
-Custom types are validated with `ValidateInto` and refreshed with `RefreshInto` — the Processor parses the token and populates your struct. See [Custom Claims](../guides/custom-claims).
+Custom types are validated with `ParseInto` and refreshed with `RefreshInto` — the Processor parses the token and populates your struct. See [Custom Claims](../guides/custom-claims).
 
 ## Config Overview
 
@@ -136,7 +136,7 @@ Custom types are validated with `ValidateInto` and refreshed with `RefreshInto` 
 | **Signing** | `SecretKey` / `SigningKey` / `VerificationKey` / `SigningMethod` | HMAC uses SecretKey; RSA/ECDSA uses SigningKey |
 | **Token** | `AccessTokenTTL` / `RefreshTokenTTL` | Access and refresh token lifetimes |
 | **Validation** | `Issuer` / `ExpectedAudience` / `RequireExpiration` / `ClockSkew` | Issuer, audience, mandatory expiry, clock tolerance |
-| **Security** | `Blacklist` / `EnableRateLimit` | Revocation store and rate limiting |
+| **Security** | `Blacklist` / `EnableRateLimit` / `RejectRefreshAsAccess` / `RotateRefreshTokens` | Revocation store, rate limiting, and refresh-token security switches |
 | **Extension** | `Clock` | Clock injection (for testing) |
 
 For algorithm selection see [Signing Algorithms](../guides/signing-algorithms); for full field documentation see [Configuration](../guides/configuration).
@@ -147,14 +147,13 @@ CyberGo JWT is extensible through interfaces:
 
 | Interface | Purpose |
 |-----------|---------|
-| [`TokenManager`](../api-reference/interfaces#tokenmanager) | Core interface implemented by Processor. Define your own narrower subset (e.g. only `Create` + `Validate`) for dependency injection and decoupling |
+| [`TokenManager`](../api-reference/interfaces#tokenmanager) | Core interface implemented by Processor. Define your own narrower subset (e.g. only `Create` + `Parse`) for dependency injection and decoupling |
 | [`BlacklistStore`](../api-reference/interfaces#blackliststore) | Custom blacklist backend (e.g. Redis). Implement `Add` / `Contains` / `Close` to connect external storage |
 | [`RateLimitProvider`](../api-reference/interfaces#ratelimitprovider) | Custom rate limiter. Implement `Allow` / `Reset` / `Close` to replace the built-in token bucket |
 | [`ClockProvider`](../api-reference/interfaces#clockprovider) | Clock injection. `FixedClock` returns a fixed time for deterministic control over expiry and refresh logic in tests |
 
 ## Next Steps
 
-- [Quick Start](./index) — Issue your first token
 - [Signing Algorithms](../guides/signing-algorithms) — HMAC, RSA, ECDSA selection guide
 - [Configuration](../guides/configuration) — Full field reference and security hardening
 - [Web Server Integration](../examples/web-server) — Auth middleware and RBAC in practice

@@ -13,7 +13,7 @@ sidebar_position: 30
 
 ```text
 Revoke(token) → 提取 jti + exp → 写入 BlacklistStore
-Validate(token) → 验证签名 → 检查黑名单 → 返回结果
+Parse(token) → 验证签名 → 检查黑名单 → 返回结果
 ```
 
 `Revoke` 并非简单地把传入字符串写入黑名单，而是先执行一条**安全验证链**，确保只有真实签发的令牌才会被吊销：
@@ -54,6 +54,8 @@ cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
 ```
 
 ### 配置项
+
+以下默认值来自 [`DefaultBlacklistConfig()`](../api-reference/functions#defaultblacklistconfig)，可按需覆盖。
 
 ```go
 cfg.Blacklist.CleanupInterval = 5 * time.Minute  // 清理间隔
@@ -97,7 +99,7 @@ revoked, err := processor.IsRevoked(accessToken)
 fmt.Println("Revoked:", revoked) // true
 
 // 已吊销的令牌验证会失败
-_, _, err = processor.Validate(accessToken)
+_, err = processor.Parse(accessToken)
 // err → jwt.ErrTokenRevoked
 ```
 
@@ -187,3 +189,4 @@ cfg.Blacklist.Store = &RedisStore{client: rdb}
 - [API 参考 → BlacklistConfig](../api-reference/config#blacklistconfig) — 配置字段
 - [API 参考 → Revoke](../api-reference/processor#revoke) — 吊销方法
 - [高级示例](../examples/advanced) — Redis 黑名单示例
+- [API 参考 → DefaultBlacklistConfig](../api-reference/functions#defaultblacklistconfig) — 黑名单默认配置

@@ -42,15 +42,16 @@ Pooled instances have caching disabled. If you are repeatedly processing **poten
 
 The cache Key is a `[16]byte` (128-bit) value used directly as a `map` key — **generating the Key does not cause heap allocations**. The inputs to Key computation include:
 
-- The **UTF-8 content** after encoding conversion (not the raw bytes) — identical content with different encoding declarations will hit the same cache entry
+- The **raw input bytes** (not the UTF-8 text after encoding conversion) — a cache hit skips the entire encoding detection step; the same document stored in a different encoding produces a different Key and cannot hit
 - Content extraction switches (`ExtractArticle`, `PreserveImages`, and 3 other boolean flags) packed into a single `uint8`
 - Format options (`InlineImageFormat`, `InlineLinkFormat`, `TableFormat`)
+- The `Encoding` forced-encoding setting — the same bytes decode differently under different `Encoding` configurations, so they must be distinguished
 
 For content of different sizes, the Key generation uses two strategies:
 
 | Content size | Strategy | Description |
 |-------------|----------|-------------|
-| ≤ 64 KB | Full content hash | xxHash-style computation over all bytes, no collision risk |
+| ≤ 64 KB | Full content hash | hash/maphash computation over all bytes (AES-NI accelerated), with the 64-bit result extended to 128 bits via splitmix64 |
 | > 64 KB | 5-point sampling | Head + tail + 3 evenly distributed sampling points, with a total sampling budget of 4096 bytes (about 819 bytes per point) |
 
 Large document sampling is used to limit hashing cost — full hashing of a 10 MB document would negate the cache benefit. 5-point sampling balances **hash flood resistance** (modifications anywhere in the document are very likely to change the Key) with **throughput**.
@@ -97,7 +98,8 @@ If you only care about body text and don't need image/video/audio information, u
 Two inputs must produce the **same cache Key** for a hit, which means:
 
 - Same content + same config → hit
-- Same content byte sequence but with different declared encodings (e.g., one with `charset=gbk` and one with `charset=utf-8` for the same body) → **hit** (the Key is computed from the UTF-8 text after encoding conversion)
+- The same body stored in different encodings (e.g., one GBK copy and one UTF-8 copy) → **no hit** (the Key is computed from the raw input bytes, and different encodings produce different byte sequences)
+- Same bytes but a different `Encoding` setting → **no hit** (`Encoding` participates in Key computation)
 - Same content but different `PreserveImages` and other switches → **no hit** (the switch bits participate in Key computation)
 
 ### Clone Cost After a Hit

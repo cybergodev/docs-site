@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Output Formats"
 title: "Output Formats - CyberGo html | Format Comparison Guide"
-description: "CyberGo html output formats: plain text, Markdown, and JSON for search indexing, blogging, and API transport, plus InlineImageFormat and InlineLinkFormat."
+description: "CyberGo html output formats: plain text, Markdown, JSON for search indexing, blogging, API transport, data storage, plus InlineImageFormat and InlineLinkFormat."
 sidebar_position: 3
 ---
 

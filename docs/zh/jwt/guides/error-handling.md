@@ -1,7 +1,7 @@
 ---
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo JWT | 哨兵错误匹配"
-description: "错误处理指南：分类讲解 CyberGo JWT 全部 19 个哨兵错误在配置、令牌验证、限流与生命周期阶段的触发条件，演示 errors.Is 匹配、ValidationError 字段错误与标准化响应实践。"
+description: "错误处理指南：分类讲解 CyberGo JWT 全部 20 个哨兵错误在配置、令牌验证、限流与生命周期阶段的触发条件，演示 errors.Is 匹配、ValidationError 字段错误与标准化响应实践。"
 sidebar_position: 50
 ---
 
@@ -12,7 +12,7 @@ CyberGo JWT 使用哨兵错误（sentinel errors）模式，所有错误通过 `
 ## 基本模式
 
 ```go
-claims, valid, err := processor.Validate(tokenString)
+claims, err := processor.Parse(tokenString)
 if err != nil {
     switch {
     case errors.Is(err, jwt.ErrTokenExpired):
@@ -54,24 +54,25 @@ if err != nil {
 | 错误 | 方法 | 处理建议 |
 |------|------|----------|
 | `ErrEmptyToken` | 所有令牌操作方法 | 检查请求头 |
-| `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 签名不匹配，拒绝访问 |
-| `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | 令牌算法与配置不匹配，拒绝访问 |
-| `ErrExpirationRequired` | Validate, Refresh, ValidateInto, RefreshInto | 启用 `RequireExpiration` 但令牌缺少 `exp` 声明 |
-| `ErrTokenTypeMismatch` | Refresh, RefreshInto | 用访问令牌（`token_type=access`）尝试刷新，拒绝访问 |
-| `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | 引导用户刷新令牌 |
-| `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | 检查时钟同步 |
-| `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 签发者不匹配 |
-| `ErrTokenInvalidAudience` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | 受众不匹配 |
-| `ErrTokenRevoked` | Validate, Refresh, ValidateInto, RefreshInto | 令牌已吊销，拒绝访问 |
-| `ErrInvalidClaims` | Create, CreateRefresh, Validate, Refresh, ValidateInto, RefreshInto | 业务验证失败 |
-| `ErrTokenMissingID` | Revoke, IsRevoked | 令牌缺少 jti |
+| `ErrInvalidToken` | Parse, Refresh, ParseInto, RefreshInto, Revoke, IsRevoked | 签名不匹配，拒绝访问 |
+| `ErrAlgorithmMismatch` | Parse, Refresh, ParseInto, RefreshInto | 令牌算法与配置不匹配，拒绝访问 |
+| `ErrExpirationRequired` | Parse, Refresh, ParseInto, RefreshInto | 启用 `RequireExpiration` 但令牌缺少 `exp` 声明 |
+| `ErrTokenTypeMismatch` | Refresh, RefreshInto；启用 `RejectRefreshAsAccess` 时的 Parse / ParseInto | 令牌类型不符：访问令牌尝试刷新，或刷新令牌被用作访问令牌，拒绝访问 |
+| `ErrTokenExpired` | Parse, Refresh, ParseInto, RefreshInto | 引导用户刷新令牌 |
+| `ErrTokenNotValidYet` | Parse, Refresh, ParseInto, RefreshInto | 检查时钟同步 |
+| `ErrTokenInvalidIssuer` | Parse, Refresh, ParseInto, RefreshInto, Revoke, IsRevoked | 签发者不匹配 |
+| `ErrTokenInvalidAudience` | Parse, Refresh, ParseInto, RefreshInto, Revoke, IsRevoked | 受众不匹配 |
+| `ErrTokenRevoked` | Parse, Refresh, ParseInto, RefreshInto | 令牌已吊销，拒绝访问 |
+| `ErrInvalidClaims` | Create, CreateRefresh, Parse, Refresh, ParseInto, RefreshInto | 业务验证失败 |
+| `ErrTokenMissingID` | Revoke, IsRevoked；启用 `RotateRefreshTokens` 时的 Refresh / RefreshInto | 令牌缺少 jti |
+| `ErrRefreshRotationFailed` | Refresh, RefreshInto（启用 `RotateRefreshTokens` 时） | 轮换时吊销旧刷新令牌失败，无新令牌签发 |
 
 ### 限流与黑名单
 
 | 错误 | 方法 | 处理建议 |
 |------|------|----------|
 | `ErrRateLimitExceeded` | Create, CreateRefresh, Refresh, RefreshInto | 返回 429 |
-| `ErrBlacklistNotConfigured` | Revoke | 配置黑名单 |
+| `ErrBlacklistNotConfigured` | Revoke；启用 `RotateRefreshTokens` 时的 Refresh / RefreshInto | 配置黑名单 |
 
 ### 生命周期
 
@@ -119,7 +120,7 @@ if err != nil {
 
 `Claims.Validate()`（或自定义 Claims 的 `Validate()`）返回的是**描述性错误**（如 `errors.New("user_id is required")`），而非哨兵错误。Processor 会将其包装为 `ErrInvalidClaims`：
 
-```
+```text
 invalid claims: user_id is required
 └── ErrInvalidClaims（哨兵，外层）
     └── user_id is required（描述性，内层）
@@ -186,7 +187,7 @@ if err != nil {
 
 ## Web 服务中的错误处理
 
-下面的处理器覆盖了 `Validate` 可能返回的全部常见错误，并按 [HTTP 状态码映射](#http-状态码映射) 返回合适的响应：
+下面的处理器覆盖了 `Parse` 可能返回的全部常见错误，并按 [HTTP 状态码映射](#http-状态码映射) 返回合适的响应：
 
 <!-- check-code: skip -->
 ```go
@@ -310,13 +311,9 @@ func authError(w http.ResponseWriter, err error) {
 
 func handleProtected(w http.ResponseWriter, r *http.Request) {
     tokenString := extractToken(r)
-    claims, valid, err := processor.Validate(tokenString)
+    claims, err := processor.Parse(tokenString)
     if err != nil {
         authError(w, err)
-        return
-    }
-    if !valid {
-        authError(w, jwt.ErrInvalidToken)
         return
     }
     // 认证通过，处理请求

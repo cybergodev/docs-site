@@ -22,6 +22,8 @@ check_code: false
 | `SigningMethod` | `HS256` | 签名算法 |
 | `ClockSkew` | 0 | 时钟偏移容忍 |
 | `RequireExpiration` | `false` | 是否强制要求 `exp` 声明 |
+| `RejectRefreshAsAccess` | `false` | 拒绝刷新令牌被用作访问令牌（v1.2.3 新增） |
+| `RotateRefreshTokens` | `false` | 刷新时自动吊销旧刷新令牌，实现一次性轮换（v1.2.3 新增） |
 | `ExpectedAudience` | `""`（不校验） | 预期受众 |
 
 ### normalizeConfig 自动填充规则
@@ -99,8 +101,8 @@ func main() {
         panic(err)
     }
 
-    _, valid, _ := processor.Validate(token)
-    fmt.Println("Valid:", valid)
+    _, err = processor.Parse(token)
+    fmt.Println("Valid:", err == nil)
     // 输出: Valid: true
 
     // 受众不匹配的令牌会被拒绝
@@ -111,8 +113,8 @@ func main() {
         },
     }
     wrongToken, _ := processor.Create(wrongClaims)
-    _, valid, _ = processor.Validate(wrongToken)
-    fmt.Println("Wrong audience valid:", valid)
+    _, err = processor.Parse(wrongToken)
+    fmt.Println("Wrong audience valid:", err == nil)
     // 输出: Wrong audience valid: false
 }
 ```
@@ -268,7 +270,7 @@ if err != nil {
 }
 ```
 
-`ValidationError` 同时实现了 `Unwrap()`，可以通过 `errors.Is` 和 `errors.As` 链式查找底层错误。在 `Create` 和 `Validate` 路径中，校验错误会被 `ErrInvalidClaims` 包装。
+`ValidationError` 同时实现了 `Unwrap()`，可以通过 `errors.Is` 和 `errors.As` 链式查找底层错误。在 `Create` 和 `Parse` 路径中，校验错误会被 `ErrInvalidClaims` 包装。
 
 ::: tip 自定义 Claims 校验
 实现 `CustomClaims` 接口的类型，其自定义字段不会被深度校验——实现者需在 `Validate()` 方法中自行处理。标准 JWT 字段（`iss`、`sub`、`jti` 等）的长度和注入校验始终执行。详见 [自定义 Claims](./custom-claims)。

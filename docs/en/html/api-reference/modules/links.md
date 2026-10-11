@@ -14,7 +14,7 @@ A standalone link extraction API that extracts all link resources from HTML and 
 :::
 
 :::info
-`ExtractAllLinks` returns results **sorted by URL ascending** and deduplicated by URL. Calling it repeatedly on the same input therefore yields identical output (since v1.4.2), which eases result comparison, cache reuse, and reproducible downstream processing. When the same URL appears in multiple tags, only one record is kept.
+`ExtractAllLinks` returns results **sorted by URL ascending** and deduplicated by URL. Calling it repeatedly on the same input therefore yields identical output, which eases result comparison, cache reuse, and reproducible downstream processing. When the same URL appears in multiple tags, only one record is kept.
 :::
 
 ## Package Functions
@@ -39,7 +39,7 @@ func (p *Processor) ExtractAllLinksFromFileWithContext(ctx context.Context, file
 
 ### GroupLinksByType
 
-Group links by their type.
+Group links by their type. Links with an empty `Type` are grouped under the `unknown` key.
 
 ```go
 func GroupLinksByType(links []LinkResource) map[string][]LinkResource
@@ -111,8 +111,8 @@ Content links (`<a href>`) control internal and external links via two separate 
 
 | Switch | Scope | Determination |
 |--------|-------|---------------|
-| `IncludeContentLinks` | Internal links | The URL itself is a relative path, or (when `BaseURL` is set) resolves to the same domain as `BaseURL` |
-| `IncludeExternalLinks` | External links | The URL itself is an absolute external address (`http(s)://` or protocol-relative `//`), or (when `BaseURL` is set) resolves to a different domain than `BaseURL` |
+| `IncludeContentLinks` | Internal links | The URL itself is a relative path (when `BaseURL` is set, it resolves to the same domain) |
+| `IncludeExternalLinks` | External links | The URL itself is an absolute external address (`http(s)://` or protocol-relative `//`) — always treated as external regardless of whether it shares the `BaseURL` domain |
 
 Both default to `true` (extracting all content links). Other resource types (images, CSS, JS, etc.) are not subject to the internal/external distinction and are controlled only by their respective `Include*` switches.
 

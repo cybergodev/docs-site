@@ -54,6 +54,36 @@ type Extractor interface {
 }
 ```
 
+### Method Overview
+
+| Method | Description |
+|--------|-------------|
+| `Extractor.Extract` | Extract a full `Result` from HTML bytes |
+| `Extractor.ExtractWithContext` | Same, with context cancellation |
+| `Extractor.ExtractFromFile` | Extract from an HTML file |
+| `Extractor.ExtractFromFileWithContext` | Same, with context cancellation |
+| `Extractor.ExtractText` | Extract plain text only |
+| `Extractor.ExtractTextWithContext` | Same, with context cancellation |
+| `Extractor.ExtractTextFromFile` | Extract plain text from a file |
+| `Extractor.ExtractTextFromFileWithContext` | Same, with context cancellation |
+| `Extractor.ExtractToMarkdown` | Extract and render as Markdown |
+| `Extractor.ExtractToMarkdownWithContext` | Same, with context cancellation |
+| `Extractor.ExtractToMarkdownFromFile` | Extract from a file and render as Markdown |
+| `Extractor.ExtractToMarkdownFromFileWithContext` | Same, with context cancellation |
+| `Extractor.ExtractToJSON` | Extract and serialize as JSON |
+| `Extractor.ExtractToJSONWithContext` | Same, with context cancellation |
+| `Extractor.ExtractToJSONFromFile` | Extract from a file and serialize as JSON |
+| `Extractor.ExtractToJSONFromFileWithContext` | Same, with context cancellation |
+| `Extractor.ExtractBatch` | Concurrent batch extraction (byte-slice input) |
+| `Extractor.ExtractBatchWithContext` | Same, with context cancellation |
+| `Extractor.ExtractBatchFiles` | Concurrent batch extraction (file-path input) |
+| `Extractor.ExtractBatchFilesWithContext` | Same, with context cancellation |
+| `Extractor.ExtractAllLinks` | Enumerate all link resources (no sanitization applied) |
+| `Extractor.ExtractAllLinksWithContext` | Same, with context cancellation |
+| `Extractor.ExtractAllLinksFromFile` | Enumerate link resources from a file |
+| `Extractor.ExtractAllLinksFromFileWithContext` | Same, with context cancellation |
+| `Extractor.Close` | Release resources (cache, background goroutines) |
+
 ## StatsProvider
 
 Statistics and cache management interface.
@@ -65,6 +95,14 @@ type StatsProvider interface {
     ResetStatistics()
 }
 ```
+
+### Method Overview
+
+| Method | Description |
+|--------|-------------|
+| `StatsProvider.GetStatistics` | Return the current processing statistics |
+| `StatsProvider.ClearCache` | Clear the cache contents, keeping accumulated statistics |
+| `StatsProvider.ResetStatistics` | Reset all statistics counters to zero |
 
 `Processor` implements both `Extractor` and `StatsProvider`. By referencing the `Processor` through interface types, you can inject "extraction capability" and "monitoring capability" into separate consumers:
 
@@ -139,7 +177,7 @@ func TestGetTitle(t *testing.T) {
 
 ## ContentNode
 
-Abstract interface for HTML nodes, used in content scoring algorithms.
+Abstract interface for HTML nodes, used in content scoring algorithms. `Type`, `Data`, `AttrValue`, and `Attrs` provide read-only access to node information; `FirstChild`, `NextSibling`, and `Parent` are for traversing the node tree.
 
 ```go
 type ContentNode interface {
@@ -153,6 +191,18 @@ type ContentNode interface {
 }
 ```
 
+### Method Overview
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `ContentNode.Type` | `Type() string` | Node type: `"element"`, `"text"`, `"comment"`, `"document"`, `"doctype"`, `"error"`, `"raw"`, or `"unknown"` |
+| `ContentNode.Data` | `Data() string` | Tag name for element nodes (e.g. `"div"`, `"p"`); text content for text nodes |
+| `ContentNode.AttrValue` | `AttrValue(key string) string` | Look up an attribute by name; returns an empty string when the attribute is absent |
+| `ContentNode.Attrs` | `Attrs() []NodeAttr` | Return all attributes of the node |
+| `ContentNode.FirstChild` | `FirstChild() ContentNode` | First child node, or `nil` if none |
+| `ContentNode.NextSibling` | `NextSibling() ContentNode` | Next sibling node, or `nil` if none |
+| `ContentNode.Parent` | `Parent() ContentNode` | Parent node, or `nil` for the root node |
+
 ## Scorer
 
 Content scoring algorithm interface for customizing article recognition strategies.
@@ -163,6 +213,13 @@ type Scorer interface {
     ShouldRemove(node ContentNode) bool  // Determine if node should be removed
 }
 ```
+
+### Method Overview
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `Scorer.Score` | `Score(node ContentNode) int` | Compute the content-relevance score of a node |
+| `Scorer.ShouldRemove` | `ShouldRemove(node ContentNode) bool` | Decide whether a node should be removed from the content tree |
 
 :::warning
 When a single `Processor` is shared across concurrent `Extract` calls, `Score`/`ShouldRemove` may be invoked **from multiple goroutines simultaneously**. Therefore, any `Scorer` implementation must **ensure its own concurrency safety**.

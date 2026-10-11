@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Custom Claims"
 title: "Custom Claims - CyberGo JWT | Business Claims"
-description: "Implement the CustomClaims interface to define business claim fields, contrast built-in Claims with custom validation, and apply ValidateInto and RefreshInto."
+description: "Implement the CustomClaims interface to define business claim fields, contrast built-in Claims with custom validation, and apply ParseInto and RefreshInto."
 sidebar_position: 20
 ---
 
@@ -121,19 +121,17 @@ token, err := processor.Create(claims)
 
 ### Validate into Custom Struct
 
-Use `ValidateInto` to parse the token into a custom struct:
+Use `ParseInto` to parse the token into a custom struct:
 
 ```go
 myClaims := &MyClaims{}
-result, valid, err := processor.ValidateInto(token, myClaims)
+result, err := processor.ParseInto(token, myClaims)
 if err != nil {
     panic(err)
 }
-if valid {
-    parsed := result.(*MyClaims)
-    fmt.Println("UserID:", parsed.UserID)
-    fmt.Println("Email:", parsed.Email)
-}
+parsed := result.(*MyClaims)
+fmt.Println("UserID:", parsed.UserID)
+fmt.Println("Email:", parsed.Email)
 ```
 
 ### Refresh into Custom Struct
@@ -346,5 +344,5 @@ Rate limit key lookup priority: `Subject` → `*Claims.UserID` → `RateLimitKey
 ## Next Steps
 
 - [API Reference → Interfaces](../api-reference/interfaces#customclaims) — CustomClaims full definition
-- [API Reference → Processor](../api-reference/processor#validateinto) — ValidateInto / RefreshInto methods
+- [API Reference → Processor](../api-reference/processor#parseinto) — ParseInto / RefreshInto methods
 - [Advanced Examples](../examples/advanced) — Custom Claims complete example

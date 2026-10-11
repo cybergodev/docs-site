@@ -47,11 +47,10 @@ func main() {
 	fmt.Println("Access Token:", token)
 
 	// Validate
-	parsed, valid, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Valid:", valid)          // Output: true
 	fmt.Println("UserID:", parsed.UserID) // Output: user123
 }
 ```
@@ -139,8 +138,8 @@ func main() {
 	fmt.Println("Token revoked")
 
 	// Validation will fail
-	_, _, err = processor.Validate(token)
-	fmt.Println("Validate error:", err) // token revoked
+	_, err = processor.Parse(token)
+	fmt.Println("Parse error:", err) // token revoked
 
 	// Check if revoked
 	revoked, err := processor.IsRevoked(token)
@@ -231,11 +230,11 @@ func main() {
 		panic(err)
 	}
 
-	_, valid, err := processor.Validate(validToken)
+	_, err = processor.Parse(validToken)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Matching audience valid:", valid) // Output: true
+	fmt.Println("Matching audience valid:", err == nil) // Output: true
 
 	// Token with wrong audience is rejected
 	wrongClaims := &jwt.Claims{
@@ -249,9 +248,9 @@ func main() {
 		panic(err)
 	}
 
-	_, valid, err = processor.Validate(wrongToken)
-	fmt.Println("Wrong audience valid:", valid) // Output: false
-	fmt.Println("Wrong audience error:", err)   // Output: token invalid audience
+	_, err = processor.Parse(wrongToken)
+	fmt.Println("Wrong audience valid:", err == nil) // Output: false
+	fmt.Println("Wrong audience error:", err)        // Output: token invalid audience
 	fmt.Println("Is audience error:",
 		errors.Is(err, jwt.ErrTokenInvalidAudience)) // Output: true
 }
@@ -300,11 +299,10 @@ func main() {
 	}
 
 	// Read Extra fields after validation
-	parsed, valid, err := processor.Validate(token)
+	parsed, err := processor.Parse(token)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Valid:", valid)          // Output: true
 	fmt.Println("UserID:", parsed.UserID) // Output: user123
 
 	// Type-assert to read Extra values

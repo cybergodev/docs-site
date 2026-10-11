@@ -148,14 +148,14 @@ We recommend designing custom Scorers to be stateless (computing only from the i
 
 ## How is the cache Key generated?
 
-The cache Key is computed from the UTF-8 content after encoding conversion, using an xxHash-style algorithm to produce a 128-bit (16-byte) hash:
+The cache Key is computed from the **raw input bytes** (not the UTF-8 text after encoding conversion), mixed with the processor configuration (the `ExtractArticle`/`Preserve*` extraction switches, the three format strings `InlineImageFormat`/`InlineLinkFormat`/`TableFormat`, and the `Encoding` forced-encoding setting). The algorithm is hash/maphash (AES-NI accelerated, with a process-lifetime random seed); the 64-bit hash result is extended to a 128-bit (16-byte) Key via splitmix64:
 
 - For content up to 64KB (`maxCacheKeySize`): computed over the full content
 - For content larger than 64KB: uses 5-point sampling (head, tail, and 3 evenly distributed points), with a total sampling budget of 4096 bytes (`cacheKeySample`, roughly 819 bytes per point), and additionally mixes in the total content length to improve uniqueness
-- Identical UTF-8 content (regardless of whether the original encoding was GBK, Shift_JIS, or Windows-1252) produces the same Key
+- The Key is computed from the raw bytes — the same document stored in different encodings (GBK, Shift_JIS, Windows-1252, ...) has different byte sequences and produces **different** Keys
 
-:::tip Benefits of encoding normalization
-Because the Key is computed **after** encoding detection and UTF-8 conversion, the same document stored in different byte encodings will hit the same cache entry. Cache hit rate is unaffected by the input encoding.
+:::tip Why raw bytes
+The Key is computed directly over the raw bytes **before** encoding detection, so a cache hit skips the encoding-detection scan entirely (one of the most expensive steps on the repeated-extraction hot path). The trade-off: the same document stored in different encodings produces different Keys and cannot hit each other. `Encoding` participates in the computation because the same bytes decode differently under different forced encodings and must be distinguished — otherwise cache entries would be incorrectly shared.
 :::
 
 ## Why do ExtractAllLinks and Extract produce different results?
@@ -268,7 +268,7 @@ The built-in default scorer (internal implementation, not exported) calculates a
 | Dimension | Positive signals | Negative signals |
 |-----------|-----------------|------------------|
 | Tag semantics | `<article>`(+1000), `<main>`(+900), `<section>`(+300) | `nav`/`aside`/`footer`/`header` return 0 directly |
-| class/id patterns | `content`/`article`/`post`/`main`/`entry` (strong positive); `blog`/`news`/`detail` (moderate positive) | `comment`/`sidebar`/`nav`/`ad`/`menu` (strong negative); `widget`/`share`/`social` (moderate negative) |
+| class/id patterns | `content`/`article`/`post`/`main`/`entry` etc. (strong positive); `blog`/`news`/`detail` etc. (moderate positive) | `comment`/`sidebar`/`nav`/`ad`/`menu` etc. (strong negative); `widget`/`share`/`social` etc. (moderate negative) |
 | Paragraph density | `<p>` count in subtree multiplied by a rate bonus | — |
 | Text length | Long text above a threshold gets bonus; short text gets penalized | — |
 | Link density | — | Short text with dense links gets penalized (likely navigation) |

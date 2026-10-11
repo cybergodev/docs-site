@@ -22,7 +22,7 @@ import (
 	"github.com/cybergodev/html"
 )
 
-// 实现自定义 Scorer（完整示例见 guides/testing-custom）
+// 实现自定义 Scorer（完整示例见 guides/integration/testing-custom）
 type myScorer struct{}
 
 func (s myScorer) Score(node html.ContentNode) int {

@@ -59,7 +59,7 @@ cfg.RateLimitWindow = time.Minute    // 时间窗口
 | `RateLimitWindow` | `1m` | 时间窗口 |
 
 :::tip 注意
-限流对所有令牌签发方法生效：`Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()`。不影响 `Validate()` 和 `ValidateInto()`。
+限流对所有令牌签发方法生效：`Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()`。不影响 `Parse()` 和 `ParseInto()`。
 :::
 
 ## 限流 Key
@@ -68,7 +68,7 @@ cfg.RateLimitWindow = time.Minute    // 时间窗口
 
 1. `RegisteredClaims.Subject` — 如果非空
 2. `*Claims.UserID` — 仅对内置 Claims
-3. `RateLimitKey()` — 如果实现了 `RateLimitKeyer` 接口
+3. `RateLimitKey()` — 如果实现了 [`RateLimitKeyer`](../api-reference/interfaces#ratelimitkeyer) 接口
 4. 空字符串 — 跳过限流检查
 
 ### 自定义限流 Key

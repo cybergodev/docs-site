@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Batch Processing"
 title: "Batch Processing - CyberGo html | Concurrent Batch API"
-description: "CyberGo html concurrent batch API: ExtractBatch, ExtractBatchFiles, and WithContext variants, 10000-item cap, BatchResult structure, partial-failure handling."
+description: "CyberGo html concurrent batch API: ExtractBatch, ExtractBatchFiles, WithContext variants, WorkerPoolSize concurrency, 10000-item cap, BatchResult structure."
 sidebar_position: 3
 ---
 

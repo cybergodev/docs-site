@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo html | API at a Glance"
-description: "One-page CyberGo html API cheat sheet: Extract, ExtractText, ExtractToMarkdown, Processor methods, four Config presets, errors.Is, AuditConfig, and signatures."
+description: "CyberGo html API cheat sheet: Extract, ExtractText, ExtractToMarkdown, Processor methods, four Config presets, encoding detection, AuditConfig, errors.Is."
 sidebar_position: 2
 ---
 
