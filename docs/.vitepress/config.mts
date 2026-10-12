@@ -10,11 +10,21 @@ export default defineConfig({
   title: 'CyberGo',
   description: 'CyberGo - Go Open Source Libraries',
 
+  // Page <title> = the page's own title only. The default template would
+  // append `| CyberGo`, but every content page's frontmatter title already
+  // carries the brand (`CyberGo {project}`), duplicating it. The three home
+  // pages override this via their own frontmatter `titleTemplate`.
+  titleTemplate: ':title',
+
   // Default <html lang> for the root page (the static Chinese homepage) and
   // any other non-locale page. Each locale's own `lang` overrides this under
   // its /{lang}/ prefix, so only the root `/` is affected.
   lang: 'zh-CN',
 
+  // Per-page git timestamp: shown as "最后更新 / Last updated" (label from
+  // UI_LABELS) and picked up by the built-in sitemap as <lastmod>. Derived
+  // from `git log` per file, so CI checkouts that build must fetch full
+  // history (see .github/workflows — fetch-depth: 0).
   lastUpdated: false,
   cleanUrls: true,
 

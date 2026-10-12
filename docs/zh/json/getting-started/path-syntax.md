@@ -520,7 +520,7 @@ bs := json.GetString(data, "config\\\\local")  // "backslash"
 
 ---
 
-## 语法陷阱
+## 有哪些语法陷阱？
 
 以下行为均来自库的实际实现，提前了解可以省去不少调试时间。
 

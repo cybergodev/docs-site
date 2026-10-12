@@ -47,7 +47,7 @@ Processor 实现了 [`TokenManager`](../api-reference/interfaces#tokenmanager) �
 
 每个环节都返回**哨兵错误**（如 `ErrTokenExpired`、`ErrTokenRevoked`），可通过 `errors.Is()` 精确匹配。详见 [错误处理](../guides/error-handling)。
 
-## 双层令牌模型
+## 为什么需要双层令牌？
 
 CyberGo JWT 采用访问令牌 + 刷新令牌的双层设计：
 

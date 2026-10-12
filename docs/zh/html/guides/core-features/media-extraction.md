@@ -33,7 +33,7 @@ DOM 解析 → 视频提取（3 源） → 音频提取（2 源） → 格式化
 
 ### 正则兜底支持的视频扩展名
 
-```
+```text
 .mp4  .webm  .ogg  .mov  .avi  .wmv  .flv  .mkv  .m4v  .3gp
 ```
 
@@ -48,7 +48,7 @@ DOM 解析 → 视频提取（3 源） → 音频提取（2 源） → 格式化
 
 ### 正则兜底支持的音频扩展名
 
-```
+```text
 .mp3  .wav  .ogg  .m4a  .aac  .flac  .wma  .opus  .oga
 ```
 

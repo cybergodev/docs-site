@@ -348,7 +348,7 @@ if err != nil {
 | `json.GetString` 等类型化函数 | 零值或传入的默认值 | 零值或传入的默认值 |
 | `json.SafeGet` | `Exists: false` | `Exists: true` 但值为 nil |
 
-数组下标越界时 `Get` 不报错（结果为 nil），因此判断「元素是否存在」不能只看 err，还要看返回值。完整规则见[语法陷阱](./path-syntax#语法陷阱)。
+数组下标越界时 `Get` 不报错（结果为 nil），因此判断「元素是否存在」不能只看 err，还要看返回值。完整规则见[语法陷阱](./path-syntax#有哪些语法陷阱)。
 
 **Q：取出来的数字为什么是 float64？**
 

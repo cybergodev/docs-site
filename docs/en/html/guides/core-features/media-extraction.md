@@ -33,7 +33,7 @@ Embed tags such as `iframe`, `embed`, and `object` may be removed during safe sa
 
 ### Video extensions supported by the regex fallback
 
-```
+```text
 .mp4  .webm  .ogg  .mov  .avi  .wmv  .flv  .mkv  .m4v  .3gp
 ```
 
@@ -48,7 +48,7 @@ The regex only matches complete URLs starting with `http://` or `https://`, avoi
 
 ### Audio extensions supported by the regex fallback
 
-```
+```text
 .mp3  .wav  .ogg  .m4a  .aac  .flac  .wma  .opus  .oga
 ```
 

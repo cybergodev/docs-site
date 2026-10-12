@@ -1,6 +1,6 @@
 import type { DefaultTheme } from 'vitepress'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { PROJECTS, type Lang } from '../../shared'
 import { extractFrontmatter, parseFmField } from '../../utils/frontmatter'
 
@@ -126,6 +126,16 @@ function buildChildren(lang: Lang, dirAbs: string, dirRel: string): DefaultTheme
     }
   }
   return raw.sort((a, b) => a.position - b.position).map((r) => r.item)
+}
+
+/**
+ * Display label for a docs directory: its `_category_.json` `label`, falling
+ * back to the title-cased directory name (same fallback as sidebar groups).
+ * Exported for `config/seo.ts`, which names BreadcrumbList segments from the
+ * same filesystem source so the two can never drift apart.
+ */
+export function categoryLabel(dirAbs: string): string {
+  return readCategory(dirAbs)?.label ?? titleCase(basename(dirAbs))
 }
 
 /** Build the full sidebar config (`/{lang}/{project}/` → items) for one language. */

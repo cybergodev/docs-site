@@ -580,7 +580,7 @@ func main() {
 
 When you encounter an error, determine its type in the following priority order (from most severe to least severe):
 
-```
+```text
 error != nil ?
 │
 ├── errors.Is(err, ErrProcessorClosed)

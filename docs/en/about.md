@@ -22,7 +22,7 @@ This site helps developers quickly get started and gain a deep understanding of 
 | **DD** | High-performance logging library processing 3M+ ops/sec | [cybergodev/dd](https://github.com/cybergodev/dd) |
 | **ENV** | Production-ready environment variable management with zero dependencies | [cybergodev/env](https://github.com/cybergodev/env) |
 
-## Contributing
+## How to Contribute
 
 We welcome all forms of contribution to help improve documentation quality:
 

@@ -578,7 +578,7 @@ func main() {
 
 遇到错误时，按以下优先级顺序判断（从最严重到最轻微）：
 
-```
+```text
 error != nil ?
 │
 ├── errors.Is(err, ErrProcessorClosed)

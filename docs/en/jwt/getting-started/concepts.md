@@ -47,7 +47,7 @@ Check    IsRevoked(token)         → bool
 
 Each stage returns **sentinel errors** (e.g. `ErrTokenExpired`, `ErrTokenRevoked`) that can be matched precisely with `errors.Is()`. See [Error Handling](../guides/error-handling).
 
-## Dual-Layer Token Model
+## Why a Two-Tier Token Model?
 
 CyberGo JWT uses an access token + refresh token design:
 

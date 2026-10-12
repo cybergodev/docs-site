@@ -349,7 +349,7 @@ It depends on the call, and "missing key" and "out-of-range index" behave differ
 | `json.GetString` and other typed functions | Zero value or the passed default | Zero value or the passed default |
 | `json.SafeGet` | `Exists: false` | `Exists: true` but the value is nil |
 
-When an array index is out of range, `Get` does not error (the result is nil), so to decide "does this element exist" you must look at the return value, not just err. Full rules in [Syntax Pitfalls](./path-syntax#syntax-pitfalls).
+When an array index is out of range, `Get` does not error (the result is nil), so to decide "does this element exist" you must look at the return value, not just err. Full rules in [Syntax Pitfalls](./path-syntax#what-are-the-syntax-pitfalls).
 
 **Q: Why is the number I got back a float64?**
 

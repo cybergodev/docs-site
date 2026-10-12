@@ -520,7 +520,7 @@ Internally the library parses paths into segments of different types (implementa
 
 ---
 
-## Syntax Pitfalls
+## What Are the Syntax Pitfalls?
 
 The behaviors below all come from the actual implementation; knowing them up front saves debugging time.
 

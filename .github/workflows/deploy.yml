@@ -20,6 +20,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history: `lastUpdated` (page timestamps + sitemap <lastmod>)
+          # comes from per-file `git log`; a shallow clone would stamp every
+          # page with the HEAD commit time.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4

@@ -32,6 +32,8 @@ export interface UiLabels {
   docFooterNext: string
   /** Right-side outline heading. */
   outlineLabel: string
+  /** Prefix beside the page's git timestamp (shown when lastUpdated is on). */
+  lastUpdatedText: string
   /** ProjectSearch trigger + modal input placeholder. */
   searchPlaceholder: string
   // --- VitePress themeConfig label fields ---
@@ -102,6 +104,7 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     docFooterPrev: '上一页',
     docFooterNext: '下一页',
     outlineLabel: '页面导航',
+    lastUpdatedText: '最后更新',
     searchPlaceholder: '搜索文档...',
     langMenuLabel: '多语言',
     returnToTopLabel: '回到顶部',
@@ -147,6 +150,7 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     docFooterPrev: 'Previous',
     docFooterNext: 'Next',
     outlineLabel: 'On this page',
+    lastUpdatedText: 'Last updated',
     searchPlaceholder: 'Search docs...',
     langMenuLabel: 'Language',
     returnToTopLabel: 'Return to top',
@@ -213,7 +217,8 @@ function themeLabels(lang: Lang) {
     lightModeSwitchTitle: l.lightModeSwitchTitle,
     darkModeSwitchTitle: l.darkModeSwitchTitle,
     docFooter: { prev: l.docFooterPrev, next: l.docFooterNext },
-    outline: { label: l.outlineLabel }
+    outline: { label: l.outlineLabel },
+    lastUpdatedText: l.lastUpdatedText
   }
 }
 
