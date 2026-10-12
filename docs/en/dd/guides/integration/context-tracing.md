@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Distributed Tracing"
 title: "Distributed Tracing - CyberGo DD | Context & Tracing Guide"
-description: "Distributed tracing with CyberGo DD: TraceID/SpanID/RequestID propagation, custom ContextExtractor, HTTP middleware, and OpenTelemetry integration."
+description: "CyberGo DD distributed tracing: TraceID/SpanID/RequestID propagation, custom ContextExtractor, HTTP middleware, and request-scoped logging in microservices."
 sidebar_position: 1
 ---
 

@@ -13,7 +13,7 @@ sidebar_position: 1
 
 DD 采用**计数器采样**策略：
 
-```
+```text
 ┌─────────────────────────────────────────────────────┐
 │  请求 1-100   →  全部记录（Initial 阶段）            │
 │  请求 101     →  跳过                                │
@@ -73,6 +73,29 @@ func main() {
 	// 实际输出：前 100 条 + 后 900 条中的 90 条 = 190 条
 }
 ```
+
+### 推荐起点：DefaultSamplingConfig()
+
+`dd.DefaultSamplingConfig()` 返回推荐默认值：`Initial=100`、`Thereafter=100`、`Tick=1s`——计数器每秒重置，低于 100 条/秒的流量永远不会被采样，仅超出部分降为 1/100：
+
+```go
+cfg := dd.DefaultConfig()
+sampling := dd.DefaultSamplingConfig()
+sampling.Initial = 10 // 按需调整：每秒前 10 条全量，之后 1/10 采样
+cfg.Sampling = &sampling
+logger, _ := dd.New(cfg)
+```
+
+:::warning 赋值即激活
+`DefaultSamplingConfig()` 返回的 `Enabled=true`，把它赋给 `Config.Sampling` 会**立即激活采样**。若只想拿它当「模板」逐字段调整、稍后再启用，须手动置 `Enabled=false`：
+
+```go
+sampling := dd.DefaultSamplingConfig()
+sampling.Enabled = false // 仅作模板：赋给 Config.Sampling 也不会激活采样
+// ... 逐字段调整后，需要启用时再置 sampling.Enabled = true
+```
+
+:::
 
 ### 运行时动态切换
 

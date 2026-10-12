@@ -42,6 +42,7 @@ Log write pipeline:
 | Need | Recommended |
 |------|------------|
 | Prevent password/key leakage | [SensitiveDataFilter](./security) |
+| Prevent log flooding (DoS) | `SecurityConfig.RateLimitConfig` — see [Security Filtering](./security) |
 | Record who did what and when | [AuditLogger](./audit) |
 | Ensure logs haven't been tampered | [IntegritySigner](./integrity) |
 | Meet HIPAA/PCI-DSS compliance | All three together — see [Compliance](../../guides/security/compliance) |

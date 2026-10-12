@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Basic Usage"
 title: "Basic Usage - CyberGo DD | Practical Examples"
-description: "Practical CyberGo DD examples: web request logging, gRPC interceptors, database logging, middleware chaining, and distributed-tracing snippets."
+description: "CyberGo DD examples: web service logging, microservice logging, scheduled tasks, security logging with audit, tests, and multi-environment configuration."
 sidebar_position: 1
 ---
 
@@ -24,7 +24,10 @@ var logger *dd.Logger
 
 func init() {
 	var err error
-	logger, err = dd.New(dd.Config{Format: dd.FormatJSON, Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/api.json")}})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/api.json")}
+	logger, err = dd.New(cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -90,7 +93,9 @@ type UserService struct {
 }
 
 func NewUserService(db Database) *UserService {
-    svcLogger, _ := dd.New(dd.Config{Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/service.log")}})
+    cfg := dd.DefaultConfig()
+    cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/service.log")}
+    svcLogger, _ := dd.New(cfg)
     return &UserService{
         logger: svcLogger.WithFields(
             dd.String("service", "user-service"),
@@ -130,7 +135,9 @@ import (
 )
 
 func RunCleanup() {
-    logger, _ := dd.New(dd.Config{Targets: []dd.OutputTarget{dd.FileOutput("logs/cleanup.log")}})
+    cfg := dd.DefaultConfig()
+    cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/cleanup.log")}
+    logger, _ := dd.New(cfg)
     defer logger.Close()
 
     start := time.Now()
@@ -169,11 +176,11 @@ var (
 
 func init() {
     var err error
-    logger, err = dd.New(dd.Config{
-        Level:   dd.LevelInfo,
-        Format:  dd.FormatJSON,
-        Security: dd.FinancialConfig(),
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.FinancialConfig()
+    logger, err = dd.New(cfg)
     if err != nil {
         panic(err)
     }
@@ -247,15 +254,18 @@ func SetupLogger(env string) (*dd.Logger, error) {
 		return dd.New(dd.DevelopmentConfig())
 
 	case "staging":
-		return dd.New(dd.Config{Format: dd.FormatJSON, Targets: []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/app.json")}})
+		cfg := dd.DefaultConfig()
+		cfg.Format = dd.FormatJSON
+		cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/app.json")}
+		return dd.New(cfg)
 
 	case "production":
-		return dd.New(dd.Config{
-			Level:    dd.LevelInfo,
-			Format:   dd.FormatJSON,
-			Security: dd.DefaultSecurityConfig(),
-			Targets:  []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/app.json")},
-		})
+		cfg := dd.DefaultConfig()
+		cfg.Level = dd.LevelInfo
+		cfg.Format = dd.FormatJSON
+		cfg.Security = dd.DefaultSecurityConfig()
+		cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput(), dd.FileOutput("logs/app.json")}
+		return dd.New(cfg)
 
 	default:
 		return dd.New(dd.DevelopmentConfig())

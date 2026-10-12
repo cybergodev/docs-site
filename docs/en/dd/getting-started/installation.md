@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Installation"
 title: "Installation - CyberGo DD | Requirements & Integration"
-description: "Install CyberGo DD: Go version requirements, go get, Go Module integration, CI/CD tips, and troubleshooting for common installation issues."
-sidebar_position: 1
+description: "CyberGo DD installation guide: Go version requirements, go get, Go Module integration, CI/CD tips, and troubleshooting for common issues."
+sidebar_position: 2
 ---
 
 # Installation

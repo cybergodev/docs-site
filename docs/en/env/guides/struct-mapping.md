@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Struct Mapping"
-title: "Struct Mapping - CyberGo env | env Tag Mapping"
-description: "Struct mapping guide for CyberGo env: map environment variables to struct fields via env and envDefault tags, with nested structs and required fields."
+title: "Struct Mapping - CyberGo env | Env Vars to Structs"
+description: "CyberGo env struct mapping: map env vars into structs via env/envDefault tags — nested structs, pointers, slices, time/custom types, defaults, and validation."
 sidebar_position: 2
 ---
 
@@ -77,6 +77,15 @@ type Config struct {
 }
 ```
 
+The default can also be written inline in the `env` tag — `env:"KEY,envDefault:VALUE"` — which is equivalent to the standalone `envDefault` tag (when both are present, the standalone tag takes precedence):
+
+```go
+type Config struct {
+    Host string `env:"HOST,envDefault:localhost"`
+    Port int64  `env:"PORT,envDefault:8080"`
+}
+```
+
 ### Ignoring Fields
 
 Use `env:"-"` to skip a field:
@@ -127,7 +136,7 @@ Supported formats:
 
 ### Slice Types
 
-Slice fields are comma-separated `,`; spaces around the separator are automatically removed.
+Slice fields are separated by commas (`,`); spaces around the separator are trimmed automatically.
 
 ```go
 type Config struct {
@@ -196,6 +205,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/cybergodev/env"
 )
@@ -208,13 +218,17 @@ type Config struct {
 
 func main() {
 	cfg := Config{}
-	env.ParseInto(&cfg)
+	if err := env.ParseInto(&cfg); err != nil {
+		log.Fatal(err)
+	}
 
 	if cfg.Port != nil {
 		fmt.Println("Port:", *cfg.Port)
 	}
 }
 ```
+
+Pointer fields distinguish "unset" from "zero value": when the variable is unset (or its value is empty) the pointer stays `nil`; when set to `PORT=0`, `cfg.Port` is non-`nil` with `*cfg.Port == 0`. Value-typed fields cannot tell these two cases apart.
 
 ## Custom Types
 
@@ -281,7 +295,7 @@ func (p *Port) UnmarshalText(text []byte) error {
 }
 ```
 
-:::tip
+:::tip About env.Marshaler / env.Unmarshaler
 `env.Marshaler` (`MarshalEnv()`) and `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) interfaces **only take effect on the top-level value passed to `env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto`**, and are not called by the field-by-field population logic. For custom encoding/decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler`, which are recognized at the field level.
 :::
 
@@ -405,11 +419,15 @@ func LoadConfig() interface{} {
     switch os.Getenv("GO_ENV") {
     case "production":
         cfg := ProductionConfig{}
-        env.ParseInto(&cfg)
+        if err := env.ParseInto(&cfg); err != nil {
+            log.Printf("parse production config: %v", err)
+        }
         return cfg
     default:
         cfg := DevelopmentConfig{}
-        env.ParseInto(&cfg)
+        if err := env.ParseInto(&cfg); err != nil {
+            log.Printf("parse development config: %v", err)
+        }
         return cfg
     }
 }
@@ -419,16 +437,22 @@ func LoadConfig() interface{} {
 
 ### Parse Errors
 
+Type conversion failures from `ParseInto` / `UnmarshalInto` uniformly return `*MarshalError` (since v1.2.3 the error message does not echo the original value, preventing sensitive values from leaking). Use `env.IsMarshalError` to test it, or `errors.As` to extract field details:
+
 ```go
 cfg := Config{}
 if err := env.ParseInto(&cfg); err != nil {
-    var parseErr *env.ParseError
-    if errors.As(err, &parseErr) {
-        log.Fatalf("Parse error at %s:%d", parseErr.File, parseErr.Line)
+    if env.IsMarshalError(err) {
+        var marshalErr *env.MarshalError
+        if errors.As(err, &marshalErr) {
+            log.Fatalf("Field %s failed to convert: %s", marshalErr.Field, marshalErr.Message)
+        }
     }
     log.Fatal(err)
 }
 ```
+
+Note: `*ParseError` is only returned in **file parsing** scenarios (when `LoadFiles` fails to parse env/JSON/YAML file content); `ParseInto` populates the struct directly from already-loaded key-value pairs and never goes through file parsing, so it does not return `*ParseError`.
 
 ### Type Conversion Errors
 
@@ -439,7 +463,7 @@ type Config struct {
 
 cfg := Config{}
 if err := env.ParseInto(&cfg); err != nil {
-    // Type conversion failure returns an error
+    // Type conversion failure returns *MarshalError (original value not echoed)
 }
 ```
 
@@ -534,6 +558,6 @@ func main() {
 
 ## Related Documentation
 
-- [Package Functions - ParseInto](/en/env/api-reference/functions#parseinto) - ParseInto function reference
-- [Loader API - ParseInto](/en/env/api-reference/loader#parseinto) - Loader method reference
-- [Quick Start](/en/env/getting-started/) - Basic usage
+- [Package Functions - ParseInto](../api-reference/functions#parseinto) - ParseInto function reference
+- [Loader API - ParseInto](../api-reference/loader#parseinto) - Loader method reference
+- [Quick Start](../getting-started/) - Basic usage

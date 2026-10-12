@@ -86,7 +86,7 @@ Video/audio extraction uses a two-level gating mechanism that makes the common c
 3. **Lazy initialization**: `ensureDedup` only allocates result slices and the dedup map when the first media match appears. Documents with no media have zero allocation throughout.
 
 :::tip Optimal config for plain text scenarios
-If you only care about body text and don't need image/video/audio information, use [`TextOnlyConfig()`](../../api-reference/core/config#preset-configs) to disable all media preservation in one step. Combined with the lazy mechanisms described here, media-related overhead approaches zero.
+If you only care about body text and don't need image/video/audio information, use [`TextOnlyConfig()`](../../api-reference/core/config#configuration-presets) to disable all media preservation in one step. Combined with the lazy mechanisms described here, media-related overhead approaches zero.
 :::
 
 ## Cache Deep Tuning

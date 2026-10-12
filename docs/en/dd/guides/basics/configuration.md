@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration - CyberGo DD | Config Struct and Presets"
-description: "Configure CyberGo DD: DefaultConfig, DevelopmentConfig, JSONConfig, and ProductionConfig presets, Config struct reference, and multi-output setup."
+description: "CyberGo DD configuration guide: DefaultConfig, DevelopmentConfig, JSONConfig, and ProductionConfig presets, Config struct reference, and multi-output setup."
 sidebar_position: 2
 ---
 

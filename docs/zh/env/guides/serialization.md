@@ -100,9 +100,87 @@ func main() {
 	// 输出：
 	// DATABASE_HOST: localhost
 	// DATABASE_NAME: myapp
-	// DATABASE_PORT: 5432
+	// DATABASE_PORT: "5432"
 }
 ```
+
+## 输出形态
+
+Marshal 的输出不是「扁平键原样输出」：两种结构化格式都会对键值做加工，了解这些行为才能正确解读导出结果。
+
+### JSON：下划线键重建嵌套对象
+
+Marshal 到 JSON 时，含下划线的键按 `_` 拆分重建为嵌套对象（`DATABASE_HOST` → `{"DATABASE": {"HOST": ...}}`）；叶子值经类型推断还原——`"8080"` 回到 number、`"true"` 回到 bool、`"null"` 回到 null，浮点同样还原。
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/cybergodev/env"
+)
+
+func main() {
+	data := map[string]string{
+		"DATABASE_HOST": "localhost",
+		"DATABASE_PORT": "5432",
+		"DEBUG":         "true",
+	}
+
+	result, err := env.Marshal(data, env.FormatJSON)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(result)
+	// 输出（键按字典序排序）：
+	// {
+	//   "DATABASE": {
+	//     "HOST": "localhost",
+	//     "PORT": 5432
+	//   },
+	//   "DEBUG": true
+	// }
+}
+```
+
+这与加载方向对称：加载 JSON 时嵌套对象被扁平化为 `DATABASE_HOST`，Marshal 回 JSON 时再重建嵌套，往返后结构一致。
+
+### YAML：标量加引号保往返
+
+Marshal 到 YAML 时键保持扁平，但对读回时会被 YAML 强制转换类型的标量（数字、`true`/`false`、`null`/`~` 等）自动加双引号，保证 Marshal → Unmarshal 往返后值仍为字符串：
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/cybergodev/env"
+)
+
+func main() {
+	data := map[string]string{
+		"HOST":  "localhost",
+		"PORT":  "8080",
+		"DEBUG": "true",
+	}
+
+	result, err := env.Marshal(data, env.FormatYAML)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(result)
+	// 输出（键按字典序排序）：
+	// DEBUG: "true"
+	// HOST: localhost
+	// PORT: "8080"
+}
+```
+
+这是 v1.2.3 起的行为：此前 `PORT: 8080` 不加引号，读回时会被 YAML 解析为数字，导致往返后类型漂移。
 
 ## 结构体序列化
 
@@ -286,6 +364,7 @@ func main() {
 	}
 
 	fmt.Printf("%+v\n", result)
+	// 输出：map[API_KEY:secret123 API_URL:https://api.example.com TIMEOUT:30]
 }
 ```
 
@@ -312,6 +391,7 @@ DATABASE_USER: postgres
 	}
 
 	fmt.Printf("%+v\n", result)
+	// 输出：map[DATABASE_HOST:localhost DATABASE_PORT:5432 DATABASE_USER:postgres]
 }
 ```
 
@@ -379,6 +459,7 @@ ENABLED=true
 	}
 
 	fmt.Printf("%+v\n", cfg)
+	// 输出：{Host:0.0.0.0 Port:8080 Enabled:true}
 }
 ```
 
@@ -696,6 +777,6 @@ if _, err := env.Marshal(data); err != nil {
 
 ## 相关文档
 
-- [包函数](/zh/env/api-reference/functions) - Marshal、UnmarshalMap 等函数参考
-- [多格式配置](/zh/env/guides/multi-format) - 多格式加载指南
-- [结构体映射](/zh/env/guides/struct-mapping) - 结构体映射指南
+- [包函数](../api-reference/functions) - Marshal、UnmarshalMap 等函数参考
+- [多格式配置](./multi-format) - 多格式加载指南
+- [结构体映射](./struct-mapping) - 结构体映射指南

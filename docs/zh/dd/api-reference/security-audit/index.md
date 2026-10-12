@@ -42,6 +42,7 @@ DD 的安全体系由三个独立但互补的组件构成，覆盖从数据脱�
 | 需求 | 推荐组件 |
 |------|----------|
 | 防止密码/密钥泄露 | [SensitiveDataFilter](./security) |
+| 防止日志洪泛（DoS） | `SecurityConfig.RateLimitConfig`，见 [安全过滤](./security) |
 | 记录谁在何时做了什么 | [AuditLogger](./audit) |
 | 确保日志未被篡改 | [IntegritySigner](./integrity) |
 | 满足 HIPAA/PCI-DSS 合规 | 三者配合使用，见 [行业合规配置](../../guides/security/compliance) |

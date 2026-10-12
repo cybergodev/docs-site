@@ -73,7 +73,7 @@ JSONL（JSON Lines）解析、流式读取、转换和写入函数。
 
 类型转换、比较、缓存管理、错误处理等工具函数。
 
-**主要函数**：[`CompareJSON`](../helpers#comparejson) · [`MergeJSON`](../helpers#mergejson) · [`MergeMany`](../helpers#mergemany) · [`ClearCache`](../helpers#clearcache-包级函数) · [`GetStats`](../helpers#getstats-包级函数) · [`GetHealthStatus`](../helpers#gethealthstatus-包级函数) · [`SetGlobalProcessor`](../helpers#setglobalprocessor) · [`ShutdownGlobalProcessor`](../helpers#shutdownglobalprocessor) · [`SafeError`](../helpers#safeerror) · [`RedactedPath`](../helpers#redactedpath) · [`WarmupCache`](../helpers#warmupcache)
+**主要函数**：[`CompareJSON`](../helpers#comparejson) · [`MergeJSON`](../helpers#mergejson) · [`MergeMany`](../helpers#mergemany) · [`ClearCache`](../helpers#clearcache-包级函数) · [`GetStats`](../helpers#getstats-包级函数) · [`GetHealthStatus`](../helpers#gethealthstatus-包级函数) · [`SetGlobalProcessor`](../helpers#全局处理器管理) · [`ShutdownGlobalProcessor`](../helpers#全局处理器管理) · [`SafeError`](../helpers#safeerror) · [`RedactedPath`](../helpers#redactedpath) · [`WarmupCache`](../helpers#warmupcache)
 
 ---
 

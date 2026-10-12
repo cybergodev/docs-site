@@ -102,7 +102,7 @@ The `Extract` method family returns clear sentinel errors at each processing sta
 | `ErrProcessingTimeout` | Processing time exceeds `ProcessingTimeout` | `ProcessingTimeout=0` means unlimited |
 | `ErrInternalPanic` | An unexpected internal panic was recovered | Fallback protection; should not occur in normal use |
 
-The `context`-aware variants: manual `cancel()` returns `context.Canceled`; a user-context timeout depends on configuration — when `ProcessingTimeout` is configured it is normalized to `ErrProcessingTimeout`, otherwise `context.DeadlineExceeded` is passed through unchanged (see the [FAQ](../../faq#what-s-the-difference-between-processingtimeout-and-user-context-timeout) for the full condition table).
+The `context`-aware variants: manual `cancel()` returns `context.Canceled`; a user-context timeout depends on configuration — when `ProcessingTimeout` is configured it is normalized to `ErrProcessingTimeout`, otherwise `context.DeadlineExceeded` is passed through unchanged (see the [FAQ](../../faq/#what-s-the-difference-between-processingtimeout-and-user-context-timeout) for the full condition table).
 
 ### Extract
 

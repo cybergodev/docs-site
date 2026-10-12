@@ -149,6 +149,7 @@ Specific rules for each naming convention:
 
 ## Next Steps
 
+- [Integrity](./integrity) -- Tamper-proofing with HMAC
 - [Structured Logging](../basics/structured-logging) -- Field constructors and chaining
 - [Configuration](../basics/configuration) -- Full Config field reference
 - [Security Overview](../security/) -- Complete security feature overview

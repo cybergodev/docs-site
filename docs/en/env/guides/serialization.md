@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Serialization"
 title: "Serialization - CyberGo env | Multi-format Conversion"
-description: "Serialization guide for CyberGo env: map and struct conversion across .env, JSON, and YAML with Marshal/Unmarshal, custom Marshaler, and DetectFormat."
+description: "CyberGo env serialization guide: map and struct conversion across .env/JSON/YAML, Marshal/Unmarshal, custom Marshaler, DetectFormat, config export/migration."
 sidebar_position: 4
 ---
 
@@ -100,9 +100,87 @@ func main() {
 	// Output:
 	// DATABASE_HOST: localhost
 	// DATABASE_NAME: myapp
-	// DATABASE_PORT: 5432
+	// DATABASE_PORT: "5432"
 }
 ```
+
+## Output Shape
+
+Marshal output is not a verbatim dump of flat keys: both structured formats process keys and values, and understanding this behavior is required to interpret export results correctly.
+
+### JSON: underscore keys rebuild nested objects
+
+When marshaling to JSON, keys containing underscores are split on `_` and rebuilt as nested objects (`DATABASE_HOST` → `{"DATABASE": {"HOST": ...}}`); leaf values are restored via type inference — `"8080"` becomes a number again, `"true"` a bool, `"null"` null, and floats likewise.
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/cybergodev/env"
+)
+
+func main() {
+	data := map[string]string{
+		"DATABASE_HOST": "localhost",
+		"DATABASE_PORT": "5432",
+		"DEBUG":         "true",
+	}
+
+	result, err := env.Marshal(data, env.FormatJSON)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(result)
+	// Output (keys sorted lexicographically):
+	// {
+	//   "DATABASE": {
+	//     "HOST": "localhost",
+	//     "PORT": 5432
+	//   },
+	//   "DEBUG": true
+	// }
+}
+```
+
+This is symmetric with the loading direction: loading JSON flattens nested objects into `DATABASE_HOST`, and marshaling back to JSON rebuilds the nesting — the structure survives a round trip.
+
+### YAML: quoted scalars preserve round trips
+
+When marshaling to YAML, keys stay flat, but scalars that YAML would type-coerce when read back (numbers, `true`/`false`, `null`/`~`, etc.) are automatically double-quoted so that Marshal → Unmarshal round trips keep the value a string:
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/cybergodev/env"
+)
+
+func main() {
+	data := map[string]string{
+		"HOST":  "localhost",
+		"PORT":  "8080",
+		"DEBUG": "true",
+	}
+
+	result, err := env.Marshal(data, env.FormatYAML)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(result)
+	// Output (keys sorted lexicographically):
+	// DEBUG: "true"
+	// HOST: localhost
+	// PORT: "8080"
+}
+```
+
+This behavior dates from v1.2.3: previously `PORT: 8080` was emitted unquoted and the YAML parser turned it back into a number on reload, causing type drift across round trips.
 
 ## Struct Serialization
 
@@ -286,6 +364,7 @@ func main() {
 	}
 
 	fmt.Printf("%+v\n", result)
+	// Output: map[API_KEY:secret123 API_URL:https://api.example.com TIMEOUT:30]
 }
 ```
 
@@ -312,6 +391,7 @@ DATABASE_USER: postgres
 	}
 
 	fmt.Printf("%+v\n", result)
+	// Output: map[DATABASE_HOST:localhost DATABASE_PORT:5432 DATABASE_USER:postgres]
 }
 ```
 
@@ -379,12 +459,13 @@ ENABLED=true
 	}
 
 	fmt.Printf("%+v\n", cfg)
+	// Output: {Host:0.0.0.0 Port:8080 Enabled:true}
 }
 ```
 
 ## Custom Serialization
 
-:::tip
+:::tip Scope of the two custom interfaces
 - **Field level**: Custom encoding/decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler` (`MarshalText()` / `UnmarshalText([]byte)`). When a struct is processed by `env.Marshal`/`env.UnmarshalInto`, the field-by-field logic recognizes these two interfaces.
 - **Top level**: `env.Marshaler` (`MarshalEnv()`) and `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) interfaces **only take effect on the top-level value directly passed to `env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto`**; if passed as a field within an outer struct, they will not be called.
 :::
@@ -697,6 +778,6 @@ if _, err := env.Marshal(data); err != nil {
 
 ## Related Documentation
 
-- [Package Functions](/en/env/api-reference/functions) - Marshal, UnmarshalMap and other function references
-- [Multi-format Config](/en/env/guides/multi-format) - Multi-format loading guide
-- [Struct Mapping](/en/env/guides/struct-mapping) - Struct mapping guide
+- [Package Functions](../api-reference/functions) - Marshal, UnmarshalMap and other function references
+- [Multi-format Config](./multi-format) - Multi-format loading guide
+- [Struct Mapping](./struct-mapping) - Struct mapping guide

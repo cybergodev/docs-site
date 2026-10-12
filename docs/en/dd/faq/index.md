@@ -1,7 +1,7 @@
 ---
 sidebar_label: "FAQ"
 title: "FAQ - CyberGo DD | Frequently Asked Questions"
-description: "CyberGo DD FAQ with answers on configuration tuning, performance, security-filter rules, audit compliance, file rotation, error handling, and hooks."
+description: "CyberGo DD FAQ on basic usage, configuration and file rotation, performance, sensitive-data filtering and tamper protection, error handling, and testing."
 sidebar_position: 1
 ---
 
@@ -36,13 +36,13 @@ func init() {
 Or via `SetDefault`:
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.json"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.json"),
+}
+logger, _ := dd.New(cfg)
 dd.SetDefault(logger)
 ```
 
@@ -55,20 +55,21 @@ dd.SetDefault(logger)
 ### How do I output to both console and file?
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.log"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.log"),
+}
+logger, _ := dd.New(cfg)
+
 // Or JSON format
-logger, _ := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.json"),
-    },
-})
+cfg = dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.json"),
+}
+logger, _ = dd.New(cfg)
 ```
 
 ### How do I dynamically change the log level?

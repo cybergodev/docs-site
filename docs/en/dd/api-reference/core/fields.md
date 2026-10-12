@@ -2,10 +2,12 @@
 sidebar_label: "Fields"
 title: "Structured Fields - CyberGo DD | Constructors & Validation"
 description: "CyberGo DD structured field API: 20 type-safe field constructors, optional field-key validation with naming rules and Log4Shell detection."
-sidebar_position: 3.5
+sidebar_position: 4
 ---
 
 # Structured Fields
+
+> 🔧 **API Reference** · For a hands-on tutorial see [Structured Logging](../../guides/basics/structured-logging)
 
 DD provides 20 type-safe field constructors, a unified `Field` type, and an optional field-key validation mechanism for structured log output.
 
@@ -74,6 +76,8 @@ dd.ErrWithKey("db_error", err)
 dd.ErrWithStack(err)
 ```
 
+All three error constructors guard against panics raised by the error's `Error()` method: the panic is recovered into a `%!v(PANIC=Error method: ...)` placeholder value instead of propagating to the caller.
+
 ## Usage
 
 ### With InfoWith
@@ -113,7 +117,7 @@ base.InfoWith("response",
 
 ## Field Validation
 
-DD provides a field-key validation mechanism supporting naming-convention checks and security validation (Log4Shell injection, homograph attacks, overlong UTF-8). The validation config `FieldValidationConfig` can be attached to [`Config.FieldValidation`](../core/config) to take effect at construction time, or dynamically replaced at runtime via [`Logger.SetFieldValidation`](../core/logger). Each `*With` call invokes `ValidateFieldKey` on each field's Key; in Strict mode, failures are reported as log errors (the log method itself does not return an error).
+DD provides a field-key validation mechanism supporting naming-convention checks and security validation (Log4Shell injection, homograph attacks, overlong UTF-8). The validation config `FieldValidationConfig` can be attached to [`Config.FieldValidation`](../core/config) to take effect at construction time, or dynamically replaced at runtime via [`Logger.SetFieldValidation`](../core/logger). Each `*With` call invokes `ValidateFieldKey` on each field's Key; in Warn/Strict modes, failures emit a diagnostic to stderr (the field is still logged; the log method itself does not return an error).
 
 ### FieldValidationMode
 

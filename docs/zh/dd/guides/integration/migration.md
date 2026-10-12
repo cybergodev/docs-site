@@ -1,7 +1,7 @@
 ---
 sidebar_label: "迁移指南"
 title: "迁移指南 - CyberGo DD | 从其他日志库迁移"
-description: "CyberGo DD 从标准库 log/slog 及主流第三方日志库（zap、logrus、zerolog）迁移的完整对照指南，提供详细的 API 映射表、配置参数对照、常见迁移模式和渐进式迁移策略，帮助开发者低风险地将现有日志系统平滑切换到 DD 日志库。"
+description: "CyberGo DD 从标准库 log/slog 及主流日志库（zap、logrus）迁移的对照指南：API 映射表、配置参数对照、常见迁移模式与渐进式迁移策略，低风险平滑切换现有日志系统。"
 sidebar_position: 2
 ---
 
@@ -47,6 +47,7 @@ log.SetOutput(file)
 log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 // After: DD
+// 注意：零值 Config 缺少时间戳/级别/caller 等修饰，生产请以 DefaultConfig() 为基础
 logger, err := dd.New(dd.Config{
     Level:  dd.LevelInfo,
     Format: dd.FormatText,
@@ -124,6 +125,7 @@ cfg := zap.Config{
 logger, _ := cfg.Build()
 
 // After: DD
+// 注意：零值 Config 缺少时间戳/级别/caller 等修饰，生产请以 DefaultConfig() 为基础
 logger, err := dd.New(dd.Config{
     Level:  dd.LevelInfo,
     Format: dd.FormatJSON,

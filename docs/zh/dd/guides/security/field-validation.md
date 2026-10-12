@@ -151,6 +151,7 @@ frontendLogger, _ := dd.New(frontendCfg)
 
 ## 下一步
 
+- [完整性签名](./integrity) -- HMAC 防篡改
 - [结构化日志](../basics/structured-logging) -- 字段构造器与链式调用
 - [配置详解](../basics/configuration) -- Config 结构体全字段
 - [安全概述](../security/) -- 完整安全功能导览

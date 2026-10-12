@@ -355,7 +355,7 @@ Custom JSON serialization, handling two special fields:
 
 | Field | Conversion Rule |
 |-------|----------------|
-| `Duration` | Adds `durationMs` (integer milliseconds), preserves the original `duration` field (nanoseconds) |
+| `Duration` | Serialized as `durationMs` (integer milliseconds); the Go field carries the `json:"-"` tag, so no nanosecond `duration` is emitted |
 | `Error` | Converts to `error` (error-message string), omitted when nil |
 
 ```go
@@ -366,7 +366,7 @@ event := httpc.AuditEvent{
     StatusCode: 200,
 }
 data, _ := json.Marshal(event)
-// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"attempts":0,"durationMs":150}
+// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"attempts":0,"durationMs":150}
 ```
 
 ### Audit Context Keys

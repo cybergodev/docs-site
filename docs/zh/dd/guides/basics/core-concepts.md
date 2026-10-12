@@ -1,7 +1,7 @@
 ---
 sidebar_label: "核心概念"
 title: "核心概念 - CyberGo DD | 架构与设计理念"
-description: "深入理解 CyberGo DD 日志库的核心架构与设计理念，包括 Logger 与 LoggerEntry 的关系与生命周期、结构化字段 Field 的类型安全使用模式、日志处理管道的完整处理流程、四层递进式接口设计以及线程安全并发模型，帮助开发者建立对 DD 库的系统性认知。"
+description: "CyberGo DD 核心架构与设计理念详解：Logger 与 LoggerEntry 的关系与生命周期、结构化字段 Field 的类型安全用法、日志处理管道流程、接口层次设计与线程安全并发模型。"
 sidebar_position: 1
 ---
 
@@ -223,13 +223,13 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 DD 支持三种输出目标，可任意组合：
 
 ```go
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),                    // 控制台
-        dd.FileOutput("logs/app.log"),         // 文件（自动轮换）
-        dd.CustomOutput(customWriter),         // 自定义 io.Writer
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),                    // 控制台
+    dd.FileOutput("logs/app.log"),         // 文件（自动轮换）
+    dd.CustomOutput(customWriter),         // 自定义 io.Writer
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }

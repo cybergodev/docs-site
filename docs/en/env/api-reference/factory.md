@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Component Factory"
 title: "ComponentFactory API - CyberGo env | Component Factory"
-description: "ComponentFactory API reference for CyberGo env: unified creation of Validator, Auditor, and FileSystem components, and RegisterParser for custom parsers."
+description: "CyberGo env ComponentFactory API reference: creates Validator, Auditor, FileSystem and Expander components; registers custom parsers; manages Close lifecycle."
 sidebar_position: 8
 ---
 
@@ -238,8 +238,10 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 
 **Output example:**
 ```text
-[AUDIT] 2024/01/15 10:30:00 load .env success (1.23ms)
+[AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env duration=1.23ms
 ```
+
+Events are emitted as key-value pairs — `action`, `key` (omitted when the event has no key), `success`, `reason` (quoted), plus optional `file` and `duration` (below 1ms shown in μs, otherwise in ms); the `[AUDIT]` prefix and timestamp come from the `log.Logger` you pass in.
 
 ---
 
@@ -254,7 +256,7 @@ Creates a channel audit handler for asynchronous processing of audit events.
 **Parameters:**
 - `ch` - audit event channel
 
-:::warning
+:::warning Channel ownership
 `ChannelAuditHandler` does **not own** the channel, and `Close()` will **not** close the underlying channel. The caller must close the channel themselves to signal the receiver to stop. Additionally, when the channel buffer is full, `Log()` will block — a buffered channel is recommended.
 :::
 
@@ -379,7 +381,7 @@ func (fs OSFileSystem) LookupEnv(key string) (string, bool)
 var DefaultFileSystem FileSystem = OSFileSystem{}
 ```
 
-Global default filesystem instance.
+Global default filesystem instance. `DefaultFileSystem` is a package-level exported variable holding `OSFileSystem{}`; it is what the `FileSystem` field that `Config` provides by embedding `ComponentConfig` uses when not explicitly set.
 
 ---
 
@@ -561,6 +563,7 @@ Registers a custom format parser.
 **Error cases:**
 - Built-in formats (FormatEnv, FormatJSON, FormatYAML) cannot be overridden
 - Format already registered
+- `factory` is nil
 
 **Notes:**
 - Must be registered before calling `env.New()`
@@ -953,6 +956,6 @@ func main() {
 
 ## Related Documentation
 
-- [Interfaces](/en/env/api-reference/interfaces) - All interface definitions
-- [Custom Parser](/en/env/guides/custom-parser) - Custom parser guide
-- [Testing](/en/env/guides/testing) - Testing with custom filesystem
+- [Interfaces](./interfaces) - All interface definitions
+- [Custom Parser](../guides/custom-parser) - Custom parser guide
+- [Testing](../guides/testing) - Testing with custom filesystem

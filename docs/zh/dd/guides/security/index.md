@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概述"
 title: "安全概述 - CyberGo DD | 日志安全"
-description: "CyberGo DD 日志库安全特性全面概述，包括敏感数据自动检测与脱敏过滤机制、文件路径安全验证与防护策略、异步审计事件记录与链式追踪能力、HMAC 完整性签名防篡改技术和合规配置最佳实践指南，从数据过滤到审计追踪全面保障日志系统运行安全。"
+description: "CyberGo DD 日志安全特性概述：敏感数据自动检测与脱敏、文件路径安全验证、审计日志、HMAC 完整性签名防篡改、合规配置与速率限制，从数据过滤到审计追踪保障日志系统安全。"
 sidebar_position: 1
 ---
 
@@ -19,14 +19,21 @@ DD 日志库内置多层安全防护机制，从数据过滤到审计追踪全�
 | 审计层 | 审计日志 | 记录关键安全事件（脱敏、限流、违规等） |
 | 完整性层 | HMAC 签名 | 确保日志不可篡改 |
 
+### 先读哪页
+
+- 只想让日志自动脱敏 → [敏感数据过滤](./sensitive-filtering)
+- 要满足 HIPAA / PCI-DSS 等合规要求 → [行业合规配置](./compliance)
+- 要防止日志被篡改 → [完整性签名](./integrity)
+- 准备生产上线 → [生产检查清单](./production-checklist)
+
 ## 敏感数据过滤
 
 DD 内置敏感数据自动检测和脱敏：
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Security: dd.DefaultSecurityConfig(),
-})
+cfg := dd.DefaultConfig()
+cfg.Security = dd.DefaultSecurityConfig() // 基础过滤（DefaultConfig 默认已含）
+logger, _ := dd.New(cfg)
 
 // password 字段自动脱敏
 logger.InfoWith("登录",
@@ -38,11 +45,14 @@ logger.InfoWith("登录",
 支持的自定义模式：
 
 ```go
-filter, _ := dd.NewCustomSensitiveDataFilter(
+filter, err := dd.NewCustomSensitiveDataFilter(
     `(?i)password\s*[:=]\s*\S+`,
     `(?i)api[_-]?key\s*[:=]\s*\S+`,
     `\b\d{16,19}\b`,  // 信用卡号
 )
+if err != nil {
+    log.Fatal(err) // 正则表达式安全性验证失败
+}
 ```
 
 详见 [安全过滤 API](../../api-reference/security-audit/security)。
@@ -78,9 +88,9 @@ DD 提供行业合规预设：
 
 ```go
 // HIPAA 合规
-logger, _ := dd.New(dd.Config{
-    Security: dd.HealthcareConfig(),
-})
+cfg := dd.DefaultConfig()
+cfg.Security = dd.HealthcareConfig()
+logger, _ := dd.New(cfg)
 ```
 
 ## 审计日志
@@ -110,6 +120,23 @@ signature := signer.Sign(logMessage)
 ```
 
 详见 [完整性签名 API](../../api-reference/security-audit/integrity)。
+
+## 速率限制
+
+`SecurityConfig.RateLimitConfig` 用于防止日志洪泛（DoS）。默认**关闭**——所有预设安全配置均不填充该字段，需显式启用：
+
+```go
+cfg := dd.DefaultConfig()
+cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+cfg.Security.RateLimitConfig = dd.DefaultRateLimitConfig() // 10000 条/秒、10MB/秒、burst 1000、RateLimitStrategyDrop 策略
+logger, _ := dd.New(cfg)
+```
+
+三种超限策略：`RateLimitStrategyDrop` 直接丢弃（默认）；`RateLimitStrategySample` 超限后按采样率保留（如 1/100）；`RateLimitStrategyThrottle` 为 API 完整性保留，当前行为与 `RateLimitStrategyDrop` 相同（Logger 永不阻塞）。
+
+:::tip 与日志采样是两套机制
+`Config.Sampling`（[日志采样](../operations/sampling)）与 `SecurityConfig.RateLimitConfig`（限流）相互独立：采样按计数器周期性降量，限流按速率上限防洪泛，二者可同时启用。限流字段详见 [Security API](../../api-reference/security-audit/security)。
+:::
 
 ## 下一步
 

@@ -182,7 +182,7 @@ type AuditEvent struct {
     Method        string              `json:"method"`
     URL           string              `json:"url"`           // 脱敏（凭据已移除）
     StatusCode    int                 `json:"statusCode"`
-    Duration      time.Duration       `json:"duration"`
+    Duration      time.Duration       `json:"-"`
     Attempts      int                 `json:"attempts"`
     Error         error               `json:"error,omitempty"`
     SourceIP      string              `json:"sourceIP,omitempty"`
@@ -193,7 +193,7 @@ type AuditEvent struct {
 }
 ```
 
-安全审计事件，由 `AuditMiddleware` 在每次请求/响应周期完成后生成。专为金融、医疗、政府等高合规场景设计，捕获完整的请求/响应上下文。
+安全审计事件，由 `AuditMiddleware` 在每次请求/响应周期完成后生成。专为金融、医疗、政府等高合规场景设计，捕获完整的请求/响应上下文：时间线由 `Timestamp`（请求开始时间）加 `Duration` 还原；开启 `AuditConfig.IncludeHeaders` 后，脱敏的请求/响应头分别填充到 `ReqHeaders` 与 `RespHeaders`。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -219,7 +219,7 @@ type AuditEvent struct {
 | `durationMs` | `Duration.Milliseconds()` | 毫秒整数，便于日志聚合工具解析 |
 | `error` | `Error.Error()` | 错误字符串（替代 error 接口的默认序列化） |
 
-这样 JSON 输出中同时包含原始 `duration`（纳秒）和易读的 `durationMs`（毫秒），`error` 字段输出为字符串而非空对象。
+这样 JSON 输出中的耗时字段只有易读的 `durationMs`（毫秒整数）——`Duration` 字段本身带 `json:"-"` 标签，不序列化为纳秒形式；`error` 字段输出为字符串而非空对象。
 
 ### AuditConfig
 

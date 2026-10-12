@@ -262,7 +262,7 @@ JSON 解析错误：
 
 ```go
 type JSONError struct {
-    Path    string  // 文件路径
+    Path    string  // JSON 文档内路径（出错位置）
     Message string  // 错误消息
     Err     error   // 原始错误
 }
@@ -283,7 +283,7 @@ YAML 解析错误：
 
 ```go
 type YAMLError struct {
-    Path    string  // 文件路径
+    Path    string  // YAML 文档内路径（出错位置）
     Line    int     // 行号
     Column  int     // 列号
     Message string  // 错误消息
@@ -461,12 +461,17 @@ func loadConfig() *Config {
 }
 ```
 
+::: tip 关于 ProductionConfig 的审计行为
+`ProductionConfig` 默认启用审计（`AuditEnabled=true`），未配置 `AuditHandler` 时审计日志会以 `[AUDIT]` 前缀写入 stderr；如需落盘，请显式设置 `cfg.AuditHandler`（例如 `env.NewJSONAuditHandler(file)`）。
+:::
+
 ### 重试模式
 
 ```go
 func loadWithRetry(filenames []string, maxRetries int) error {
     cfg := env.DefaultConfig()
     cfg.Filenames = nil
+    cfg.FailOnMissingFile = true // 缺失文件返回 ErrFileNotFound，而非静默跳过
     loader, err := env.New(cfg)
     if err != nil {
         return err
@@ -490,6 +495,8 @@ func loadWithRetry(filenames []string, maxRetries int) error {
     return errors.New("max retries exceeded")
 }
 ```
+
+触发条件说明：`LoadFiles` 默认（`FailOnMissingFile=false`）对缺失文件**静默跳过**，上例的 `ErrFileNotFound` 分支只有在 `FailOnMissingFile=true` 时才可达（`ProductionConfig` 预设默认开启该项）。
 
 ## 完整示例
 
@@ -612,6 +619,6 @@ func handleValidationError(err error) {
 
 ## 相关文档
 
-- [常量与错误](/zh/env/api-reference/constants) - 完整错误列表
-- [Config API](/zh/env/api-reference/config) - 配置限制设置
-- [安全概述](/zh/env/security/) - 安全错误处理
+- [常量与错误](../api-reference/constants) - 完整错误列表
+- [Config API](../api-reference/config) - 配置限制设置
+- [安全概述](../security/) - 安全错误处理

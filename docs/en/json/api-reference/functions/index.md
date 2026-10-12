@@ -73,7 +73,7 @@ Guides and practices for streaming file iteration scenarios (API reference for t
 
 Utility functions for type conversion, comparison, cache management, error handling, and more.
 
-**Key functions**: [`CompareJSON`](../helpers#comparejson) · [`MergeJSON`](../helpers#mergejson) · [`MergeMany`](../helpers#mergemany) · [`ClearCache`](../helpers#clearcache-package-level-function) · [`GetStats`](../helpers#getstats-package-level-function) · [`GetHealthStatus`](../helpers#gethealthstatus-package-level-function) · [`SetGlobalProcessor`](../helpers#setglobalprocessor) · [`ShutdownGlobalProcessor`](../helpers#shutdownglobalprocessor) · [`SafeError`](../helpers#safeerror) · [`RedactedPath`](../helpers#redactedpath) · [`WarmupCache`](../helpers#warmupcache)
+**Key functions**: [`CompareJSON`](../helpers#comparejson) · [`MergeJSON`](../helpers#mergejson) · [`MergeMany`](../helpers#mergemany) · [`ClearCache`](../helpers#clearcache-package-level-function) · [`GetStats`](../helpers#getstats-package-level-function) · [`GetHealthStatus`](../helpers#gethealthstatus-package-level-function) · [`SetGlobalProcessor`](../helpers#global-processor-management) · [`ShutdownGlobalProcessor`](../helpers#global-processor-management) · [`SafeError`](../helpers#safeerror) · [`RedactedPath`](../helpers#redactedpath) · [`WarmupCache`](../helpers#warmupcache)
 
 ---
 

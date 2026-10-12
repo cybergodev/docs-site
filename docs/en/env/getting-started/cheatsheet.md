@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo env | Quick API Reference"
-description: "CyberGo env cheat sheet: code snippets for loading, typed reads, struct mapping, variable expansion, SecureValue, sentinel errors, and audit logging."
+description: "CyberGo env API cheat sheet: core snippets for file loading, typed reads, struct mapping, variable expansion, SecureValue and Marshal/Unmarshal serialization."
 sidebar_position: 2
 ---
 
@@ -98,7 +98,7 @@ env.ParseInto(&cfg)
 | Preset | Purpose | Characteristics |
 |--------|---------|-----------------|
 | `DefaultConfig()` | General | Safe defaults |
-| `DevelopmentConfig()` | Development | Relaxed limits, YAML syntax support, 10MB file limit |
+| `DevelopmentConfig()` | Development | Relaxed limits, allows overwriting, YAML syntax support, 10MB file limit |
 | `TestingConfig()` | Testing | Overwrites existing variables, test isolation, 64KB file limit |
 | `ProductionConfig()` | Production | Strict validation + audit, no overwriting, 64KB file limit |
 
@@ -111,7 +111,10 @@ cfg.AllowedKeys = []string{"APP_NAME", "PORT"}
 ## Loader Instance
 
 ```go
-loader, _ := env.New(cfg)
+loader, err := env.New(cfg)
+if err != nil {
+    log.Fatal(err)  // Abort on creation failure (e.g. invalid config)
+}
 defer loader.Close()
 
 loader.LoadFiles(".env")
@@ -191,7 +194,7 @@ masked := env.MaskKey("DB_PASSWORD")  // "DB***"
 ```go
 goEnv := os.Getenv("GO_ENV")
 if goEnv == "" { goEnv = "development" }
-env.Load(".env", ".env."+goEnv, ".env.local")  // Single call, later overwrites earlier
+env.Load(".env", ".env."+goEnv, ".env.local")  // Single call; first file wins by default, set OverwriteExisting=true for last-file-wins
 ```
 
 ## Multi-format
@@ -219,14 +222,18 @@ env.UnmarshalMap(data, env.FormatAuto)  // Auto-detect
 # Comment
 KEY=value
 KEY="value with spaces"
-KEY='literal ${noexpand}'
+KEY='literal \n value'     # Single quotes skip escape processing but do NOT prevent expansion (see tip below)
 KEY=${OTHER_KEY}           # Variable reference
 KEY=${MISSING:-default}    # Default value (used when variable doesn't exist)
 KEY=${MISSING:=default}    # Default value (used when variable doesn't exist, same as :-)
 KEY=${MISSING:?error}      # Error message (errors when variable doesn't exist or is empty)
 export KEY=value           # bash style
-KEY=$$                     # Escaped dollar sign
+KEY=$$                     # Escaped dollar sign (yields a literal $)
 ```
+
+::: tip Variable expansion and literal $
+Single quotes do **not** prevent variable expansion — `${UNDEF}` inside `KEY='a ${UNDEF}'` is still expanded, yielding an empty string when undefined. Use `$$` to escape a literal `$`, or set `cfg.ExpandVariables = false` to disable expansion. See [File Format](../reference/file-format) for the complete rules.
+:::
 
 ## Boolean Values
 
@@ -284,6 +291,7 @@ The following keys are forbidden by default:
 | macOS | `DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH` |
 | Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS` |
 | Language runtimes | `PYTHONPATH`, `NODE_PATH`, `PERL5OPT`, `RUBYLIB` |
+| Windows | `COMSPEC`, `PATHEXT`, `SYSTEMROOT`, `WINDIR` |
 
 ## Interface Types
 
@@ -301,8 +309,8 @@ The following keys are forbidden by default:
 
 ## Related Documentation
 
-- [Quick Start](/en/env/getting-started/) - Full tutorial
-- [Package Functions](/en/env/api-reference/functions) - Detailed API
-- [Loader API](/en/env/api-reference/loader) - Loader methods
-- [Config API](/en/env/api-reference/config) - Configuration options
-- [Error Handling](/en/env/guides/error-handling) - Error handling patterns
+- [Quick Start](./) - Full tutorial
+- [Package Functions](../api-reference/functions) - Detailed API
+- [Loader API](../api-reference/loader) - Loader methods
+- [Config API](../api-reference/config) - Configuration options
+- [Error Handling](../guides/error-handling) - Error handling patterns

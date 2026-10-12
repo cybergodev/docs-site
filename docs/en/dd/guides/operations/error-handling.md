@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo DD | Logging Error Management"
-description: "Error handling in CyberGo DD: error types and hierarchy, error codes, sentinel errors, errors.Is/As wrapping, recovery, and error-hook callbacks."
+description: "CyberGo DD error handling: error types and hierarchy, errors.Is matching, write and runtime error-handling patterns, hook errors, and global-logger errors."
 sidebar_position: 3
 ---
 
@@ -179,9 +179,9 @@ registry := dd.NewHooksFromConfig(dd.HooksConfig{
         handleHookError(event.String(), err)
     },
 })
-logger, _ := dd.New(dd.Config{
-    Hooks: registry,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, _ := dd.New(cfg)
 ```
 
 ## Global Logger Errors

@@ -36,7 +36,7 @@ type ContextKey string
 | `GetSpanID` | `(ctx context.Context) string` | 读取 SpanID（缺失返回 `""`） |
 | `GetRequestID` | `(ctx context.Context) string` | 读取 RequestID（缺失返回 `""`） |
 
-`With*` 函数基于 `context.WithValue` 派生新 ctx（键为对应 `ContextKey` 常量），`Get*` 函数从 ctx 取出 string 值；若键不存在或值非 string，统一返回空串。
+`With*` 函数基于 `context.WithValue` 派生新 ctx（键为对应 `ContextKey` 常量），`Get*` 函数从 ctx 取出 string 值；若键不存在、值非 string 或 ctx 为 `nil`，统一返回空串。
 
 ### 使用示例
 
@@ -58,7 +58,7 @@ func handleRequest(ctx context.Context) {
 ```
 
 :::tip 批量提取
-手动 `Get*` 适合一次性场景。如需每条日志自动带上**全局/静态**字段（如服务名、主机名），使用下方 `ContextExtractor` 注册到 Logger，提取器在每次 `*With` 调用时执行。注意：提取器接收的是 `context.Background()`，**无法**自动获取请求作用域的 TraceID（见下方限制）。
+手动 `Get*` 适合一次性场景。如需每条日志自动带上**全局/静态**字段（如服务名、主机名），使用下方 `ContextExtractor` 注册到 Logger；提取器在每条日志输出时执行（`Info`/`Error`/`*With` 等所有日志入口共用同一管线）。注意：提取器接收的是 `context.Background()`，**无法**自动获取请求作用域的 TraceID（见下方限制）。
 :::
 
 ## ContextExtractor
@@ -77,7 +77,7 @@ type ContextExtractor func(ctx context.Context) []Field
 
 <!-- check-code: skip -->
 ```go
-// 追加一个提取器（返回 error，nil 提取器会被拒绝）
+// 追加一个提取器；nil 提取器返回 ErrNilExtractor，Logger 已关闭返回 ErrLoggerClosed
 err := logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
     return []dd.Field{
         dd.String("trace_id", dd.GetTraceID(ctx)),
@@ -85,7 +85,7 @@ err := logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
     }
 })
 
-// 批量替换全部提取器
+// 批量替换全部提取器；无参调用可清空，Logger 已关闭返回 ErrLoggerClosed
 _ = logger.SetContextExtractors(extractor1, extractor2)
 
 // 读取当前已注册的提取器快照

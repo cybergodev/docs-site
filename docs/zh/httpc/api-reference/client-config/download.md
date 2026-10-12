@@ -64,7 +64,7 @@ func DefaultDownloadConfig() *DownloadConfig
 func DefaultDownloadConfig() *DownloadConfig
 ```
 
-返回默认下载配置：`Overwrite` 和 `ResumeDownload` 均为 false，`ChecksumAlgorithm` 为 `ChecksumSHA256`。调用方必须设置 `FilePath` 后才能使用。
+返回默认下载配置：`Overwrite` 和 `ResumeDownload` 均为 false，`ChecksumAlgorithm` 为 `ChecksumSHA256`。调用方必须设置 `FilePath` 后才能使用；`ProgressCallback`、`Overwrite`、`ResumeDownload` 与 `Checksum` 可按需设置。
 
 ## DownloadProgressCallback
 

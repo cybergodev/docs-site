@@ -7,6 +7,8 @@ sidebar_position: 1
 
 # Output Targets
 
+> 🔧 **API Reference** · For a hands-on tutorial see [File Output & Rotation](../../guides/basics/file-output)
+
 DD provides 3 output writers supporting file rotation, buffered writes, and multi-target output.
 
 ## FileWriter
@@ -207,7 +209,7 @@ cfg.BufferSize = 8192
 bw, _ := dd.NewBufferedWriter(file, cfg)
 bw.Write([]byte("log line\n"))
 _ = bw.Flush()      // Explicit flush to underlying
-defer bw.Close()    // Close first Flush then closes the underlying Writer
+defer bw.Close()    // Close flushes the buffer first, then closes the underlying Writer
 ```
 
 ## MultiWriter
@@ -234,10 +236,10 @@ mw := dd.NewMultiWriter(os.Stdout, fileWriter)
 | `Write` | `(p []byte) (int, error)` | Writes to all targets (see error policy below) |
 | `AddWriter` | `(w io.Writer) error` | Dynamically add a target (a duplicate writer is a no-op — deduplicated, not an error, not added twice; by contrast, `Logger.AddWriter` accepts duplicates) |
 | `RemoveWriter` | `(w io.Writer) error` | Dynamically remove a target |
-| `Close` | `() error` | Close all underlying `io.Closer`s (except standard streams) |
+| `Close` | `() error` | First flushes writers implementing [Flusher](../core/interfaces#flusher) (prevents buffered-data loss), then closes all underlying `io.Closer`s (except standard streams) |
 
 `AddWriter` returns errors for: `ErrNilMultiWriter` (receiver is `nil`) / `ErrNilWriter` (argument is `nil`) / `ErrMaxWritersExceeded` (already has >= 100 registered) / calls made after `Close` (an error wrapping `os.ErrClosed`).
-`RemoveWriter` returns errors for: `ErrNilMultiWriter` / `ErrWriterNotFound` (calls after `Close` also return an error wrapping `os.ErrClosed`).
+`RemoveWriter` returns errors for: `ErrNilMultiWriter` / `ErrWriterNotFound`. Note that unlike `AddWriter`, `RemoveWriter` performs no closed-state check — calling it after `Close` does not return `os.ErrClosed` (it still removes from the internal list, but the writer is not closed again).
 
 <!-- check-code: skip -->
 ```go

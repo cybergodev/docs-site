@@ -1,7 +1,7 @@
 ---
 sidebar_label: "分布式追踪集成"
 title: "分布式追踪集成 - CyberGo DD | Context 与追踪指南"
-description: "CyberGo DD 分布式追踪集成指南：TraceID、SpanID、RequestID 上下文传播，ContextExtractor 自定义提取器、HTTP 中间件集成、请求作用域日志与 OpenTelemetry 分布式追踪系统集成。"
+description: "CyberGo DD 分布式追踪集成指南：TraceID、SpanID、RequestID 上下文传播，ContextExtractor 自定义提取器、HTTP 中间件集成、请求作用域日志模式与微服务间传播。"
 sidebar_position: 1
 ---
 

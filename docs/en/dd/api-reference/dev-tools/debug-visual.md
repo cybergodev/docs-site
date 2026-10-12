@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Debug Visual"
+sidebar_label: "Debug Output"
 title: "Debug Output - CyberGo DD | Print/JSON/Text/Exit"
 description: "CyberGo DD debug functions: Print, JSON, Text, and Exit for quick output via package-level calls, with no Logger instance needed."
 sidebar_position: 1
@@ -52,8 +52,8 @@ dd.JSON(user)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Text` | `(data ...any)` | Pretty-printed output to stdout |
-| `Textf` | `(format string, args ...any)` | Formatted text output to stdout |
+| `Text` | `(data ...any)` | Pretty-printed output to stdout (no caller-info prefix) |
+| `Textf` | `(format string, args ...any)` | Formatted text output to stdout (no caller-info prefix) |
 
 ```go
 dd.Text(complexData)
@@ -97,7 +97,7 @@ logger.Text(data)
 |----------|----------------------|
 | Quick value printing | `dd.Print()` |
 | Inspect a struct | `dd.JSON()` |
-| Formatted output | `dd.Text()` |
+| Formatted output | `dd.Textf()` |
 | Debug breakpoint | `dd.Exit()` |
 | Possibly contains sensitive info | `dd.Print()` (auto-filtered) |
 | Performance profiling data | `dd.JSON()` |

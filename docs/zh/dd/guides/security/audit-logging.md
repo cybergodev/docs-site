@@ -1,8 +1,8 @@
 ---
 sidebar_label: "审计日志"
 title: "审计日志 - CyberGo DD | 安全审计实战指南"
-description: "CyberGo DD 审计日志实战指南，涵盖 AuditLogger 异步事件记录机制、11 种内置审计事件类型、严重等级过滤与分级、HMAC 完整性签名集成方案、审计统计与实时监控、日志验证与防篡改策略，帮助开发者构建符合合规要求的企业级安全审计系统。"
-sidebar_position: 4
+description: "CyberGo DD 审计日志实战指南：AuditLogger 异步事件记录、11 种内置审计事件类型、HMAC 完整性签名集成、审计统计与监控、日志验证与防篡改，构建符合合规要求的企业级安全审计系统。"
+sidebar_position: 5
 ---
 
 # 审计日志
@@ -38,10 +38,10 @@ defer auditLogger.Close()
 
 // AuditLogger 既可独立创建（如本例），也可通过 Config.Audit 与 Logger 自动集成
 // 这里演示独立用法：另建 logger 且未设 Config.Audit
-logger, err := dd.New(dd.Config{
-    Security: dd.DefaultSecurityConfig(),
-    Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-})
+cfg := dd.DefaultConfig()
+cfg.Security = dd.DefaultSecurityConfig()
+cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -212,11 +212,11 @@ func main() {
 	defer auditLogger.Close()
 
 	// 创建业务 Logger（带安全过滤）
-	logger, err := dd.New(dd.Config{
-		Format:   dd.FormatJSON,
-		Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
-		Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+	logger, err := dd.New(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -240,7 +240,7 @@ AuditLogger **既可独立创建**（`dd.NewAuditLogger`，本节示例的用法
 
 ## 下一步
 
-- [HMAC 签名实战](./integrity) -- 完整性签名详解
-- [行业合规配置](../security/compliance) -- HIPAA/PCI-DSS 审计要求
+- [完整性签名](./integrity) -- HMAC 防篡改（上一篇，审计签名集成详见该页）
+- [行业合规配置](./compliance) -- HIPAA/PCI-DSS 审计要求
 - [API 参考 - Audit](../../api-reference/security-audit/audit) -- AuditLogger 完整 API
 - [API 参考 - Integrity](../../api-reference/security-audit/integrity) -- IntegritySigner API

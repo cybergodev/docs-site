@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Sensitive Data Filtering"
 title: "Sensitive Data Filtering - CyberGo DD | Auto-Redaction Guide"
-description: "Configure CyberGo DD sensitive-data filtering: built-in patterns for passwords, API keys, and SSNs, custom regex, security levels, and compliance presets."
+description: "CyberGo DD sensitive-data filtering: built-in patterns for passwords, API keys, and SSNs, custom regex, security levels, and compliance presets."
 sidebar_position: 2
 ---
 
@@ -12,9 +12,9 @@ DD has built-in automatic sensitive-data filtering that replaces passwords, API 
 ## Quick Enable
 
 ```go
-logger, err := dd.New(dd.Config{
-    Security: dd.DefaultSecurityConfig(),
-})
+cfg := dd.DefaultConfig()
+cfg.Security = dd.DefaultSecurityConfig() // Basic filtering (already the DefaultConfig default; made explicit here)
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -39,7 +39,7 @@ logger.InfoWith("user login",
 | SSN | US Social Security Number format |
 | Phone numbers | Global phone-number formats (including international) |
 
-`DefaultSecureConfig()` uses the **full pattern set** (all of basic plus the following common categories):
+`SecurityConfigForLevel(dd.SecurityLevelStandard)` uses the **full pattern set** (all of basic plus the following common categories; the former `DefaultSecureConfig()` is deprecated and returns an equivalent config):
 
 | Category | Matched Targets |
 |----------|-----------------|
@@ -63,11 +63,11 @@ filter := dd.NewEmptySensitiveDataFilter()
 _ = filter.AddPattern(`(?i)credit_card\s*[:=]\s*\d+`)
 _ = filter.AddPattern(`(?i)phone\s*[:=]\s*\d{11}`)
 
-logger, err := dd.New(dd.Config{
-    Security: &dd.SecurityConfig{
-        SensitiveFilter: filter,
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Security = &dd.SecurityConfig{
+    SensitiveFilter: filter,
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -139,13 +139,13 @@ Extra filtering: passport numbers, driver's license numbers, tax IDs, SSN varian
 
 ```go
 // Medical system: HIPAA-compliant config
-logger, err := dd.New(dd.Config{
-    Format:   dd.FormatJSON,
-    Security: dd.HealthcareConfig(),
-    Targets: []dd.OutputTarget{
-        dd.FileOutput("logs/hipaa-audit.json"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.HealthcareConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.FileOutput("logs/hipaa-audit.json"),
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -179,19 +179,19 @@ fmt.Printf("timeout count: %d\n", stats.TotalTimeouts)
 
 ```go
 // Use the Development security level (no sensitive-data filtering)
-logger, err := dd.New(dd.Config{
-    Security: dd.SecurityConfigForLevel(dd.SecurityLevelDevelopment),
-})
+cfg := dd.DefaultConfig()
+cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelDevelopment)
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
 
 // Or manually set an empty SensitiveFilter
-logger, err = dd.New(dd.Config{
-    Security: &dd.SecurityConfig{
-        SensitiveFilter: nil,
-    },
-})
+cfg = dd.DefaultConfig()
+cfg.Security = &dd.SecurityConfig{
+    SensitiveFilter: nil,
+}
+logger, err = dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -204,7 +204,8 @@ defer logger.Close()
 
 ## Next Steps
 
-- [Audit Logging](./audit-logging) -- Security event auditing
-- [Industry Compliance Configuration](../security/compliance) -- HIPAA/PCI-DSS in depth
+- [Field Validation](./field-validation) -- Key-name conventions and injection protection
+- [Integrity](./integrity) -- Tamper-proofing with HMAC
+- [Industry Compliance Configuration](./compliance) -- HIPAA/PCI-DSS in depth
 - [API Reference - Security](../../api-reference/security-audit/security) -- Complete security API documentation
-- [Production Checklist](../security/production-checklist) -- Pre-launch checks
+- [Production Checklist](./production-checklist) -- Pre-launch checks

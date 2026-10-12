@@ -119,12 +119,20 @@ sidebar_position: 3
 `DefaultConfig` 返回均衡配置，适合通用场景，是绝大多数应用的起点。
 
 ```go
+func DefaultConfig() Config
+```
+
+```go
 cfg := html.DefaultConfig()
 ```
 
 ### TextOnlyConfig
 
 仅提取纯文本，禁用所有媒体和链接保留（`PreserveImages`、`PreserveLinks`、`PreserveVideos`、`PreserveAudios` 均设为 `false`）。
+
+```go
+func TextOnlyConfig() Config
+```
 
 ```go
 cfg := html.TextOnlyConfig()
@@ -135,12 +143,20 @@ cfg := html.TextOnlyConfig()
 `MarkdownConfig` 在默认配置基础上将 `InlineImageFormat` 与 `InlineLinkFormat` 均设为 `markdown`，适合内联图片和链接使用 Markdown 格式的输出。
 
 ```go
+func MarkdownConfig() Config
+```
+
+```go
 cfg := html.MarkdownConfig()
 ```
 
 ### HighSecurityConfig
 
 高安全配置：缩减限制、更短超时、完整审计。
+
+```go
+func HighSecurityConfig() Config
+```
 
 ```go
 cfg := html.HighSecurityConfig()

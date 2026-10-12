@@ -1,8 +1,8 @@
 ---
 sidebar_label: "行业合规配置"
 title: "行业合规配置 - CyberGo DD | HIPAA PCI-DSS 政府标准"
-description: "CyberGo DD 行业合规日志配置专题，详细说明 HIPAA 医疗行业合规、PCI-DSS 金融支付合规和政府安全标准的敏感数据过滤规则配置、审计日志要求、日志保留与轮换策略以及完整合规配置示例，帮助开发者在严格合规要求下构建安全可靠的日志系统。"
-sidebar_position: 5
+description: "CyberGo DD 行业合规日志配置专题：HIPAA 医疗、PCI-DSS 金融支付与政府安全标准的敏感数据过滤规则、审计日志要求、日志保留与轮换策略及完整配置示例，在严格合规要求下构建安全可靠的日志系统。"
+sidebar_position: 6
 ---
 
 # 行业合规配置
@@ -20,7 +20,7 @@ DD 提供三种行业合规预置配置，覆盖医疗、金融和政府领域�
 
 ### 过滤规则
 
-`HealthcareConfig()` 在 `DefaultSecureConfig()`（完整模式集）之上，额外过滤：
+`HealthcareConfig()` 在 `SecurityConfigForLevel(dd.SecurityLevelStandard)`（完整模式集；原 `DefaultSecureConfig()` 已弃用，两者等价）之上，额外过滤：
 
 | 数据类型 | 模式 | 示例 |
 |----------|------|------|
@@ -33,14 +33,14 @@ DD 提供三种行业合规预置配置，覆盖医疗、金融和政府领域�
 
 ```go
 func NewHIPAACompliantLogger() (*dd.Logger, error) {
-    return dd.New(dd.Config{
-        Level:    dd.LevelInfo,
-        Format:   dd.FormatJSON,
-        Security: dd.HealthcareConfig(),
-        Targets: []dd.OutputTarget{
-            dd.FileOutput("logs/hipaa-audit.json"),
-        },
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.HealthcareConfig()
+    cfg.Targets = []dd.OutputTarget{
+        dd.FileOutput("logs/hipaa-audit.json"),
+    }
+    return dd.New(cfg)
 }
 ```
 
@@ -74,7 +74,7 @@ auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
 
 ### 过滤规则
 
-`FinancialConfig()` 在 `DefaultSecureConfig()`（完整模式集）之上，额外过滤：
+`FinancialConfig()` 在 `SecurityConfigForLevel(dd.SecurityLevelStandard)`（完整模式集）之上，额外过滤：
 
 | 数据类型 | 模式 | 示例 |
 |----------|------|------|
@@ -88,14 +88,14 @@ auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
 
 ```go
 func NewPCICompliantLogger() (*dd.Logger, error) {
-    return dd.New(dd.Config{
-        Level:    dd.LevelInfo,
-        Format:   dd.FormatJSON,
-        Security: dd.FinancialConfig(),
-        Targets: []dd.OutputTarget{
-            dd.FileOutput("logs/pci-audit.json"),
-        },
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.FinancialConfig()
+    cfg.Targets = []dd.OutputTarget{
+        dd.FileOutput("logs/pci-audit.json"),
+    }
+    return dd.New(cfg)
 }
 ```
 
@@ -109,12 +109,13 @@ fwCfg.MaxBackups = 50    // 保留足够多的备份
 fwCfg.Compress = true    // 压缩旧文件节省空间
 
 fw, _ := dd.NewFileWriter("logs/pci-audit.json", fwCfg)
-logger, _ := dd.New(dd.Config{
-    Level:    dd.LevelInfo,
-    Format:   dd.FormatJSON,
-    Security: dd.FinancialConfig(),
-    Targets:  []dd.OutputTarget{dd.CustomOutput(fw)},
-})
+
+cfg := dd.DefaultConfig()
+cfg.Level = dd.LevelInfo
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.FinancialConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+logger, _ := dd.New(cfg)
 ```
 
 ## 政府标准
@@ -128,7 +129,7 @@ logger, _ := dd.New(dd.Config{
 
 ### 过滤规则
 
-`GovernmentConfig()` 在 `DefaultSecureConfig()`（完整模式集）之上，额外过滤：
+`GovernmentConfig()` 在 `SecurityConfigForLevel(dd.SecurityLevelStandard)`（完整模式集）之上，额外过滤：
 
 | 数据类型 | 模式 | 示例 |
 |----------|------|------|
@@ -143,14 +144,14 @@ logger, _ := dd.New(dd.Config{
 
 ```go
 func NewGovernmentLogger() (*dd.Logger, error) {
-    return dd.New(dd.Config{
-        Level:    dd.LevelInfo,
-        Format:   dd.FormatJSON,
-        Security: dd.GovernmentConfig(),
-        Targets: []dd.OutputTarget{
-            dd.FileOutput("logs/gov-audit.json"),
-        },
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.GovernmentConfig()
+    cfg.Targets = []dd.OutputTarget{
+        dd.FileOutput("logs/gov-audit.json"),
+    }
+    return dd.New(cfg)
 }
 ```
 
@@ -170,19 +171,22 @@ func NewGovernmentLogger() (*dd.Logger, error) {
 
 ```go
 // 添加自定义模式
-filter, _ := dd.NewCustomSensitiveDataFilter(
+filter, err := dd.NewCustomSensitiveDataFilter(
     // 自定义医疗系统特有模式
     `(?i)insurance_id\s*[:=]\s*\S+`,
     `(?i)prescription\s*[:=]\s*\S+`,
 )
+if err != nil {
+    log.Fatal(err) // 正则表达式安全性验证失败
+}
 
-logger, _ := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Security: &dd.SecurityConfig{
-        SensitiveFilter: filter,
-    },
-    Targets: []dd.OutputTarget{dd.FileOutput("logs/custom.json")},
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = &dd.SecurityConfig{
+    SensitiveFilter: filter,
+}
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/custom.json")}
+logger, _ := dd.New(cfg)
 ```
 
 ## 下一步

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Web 服务集成"
 title: "Web 服务集成 - CyberGo DD | HTTP 服务日志示例"
-description: "CyberGo DD 在 Web 服务中的完整集成示例，包括 HTTP 中间件日志记录、请求链路追踪与 TraceID 传递、多路由分层日志配置、优雅关闭与日志刷新以及生产级日志配置方案，帮助开发者将 DD 日志库快速集成到 HTTP 服务项目中。"
+description: "CyberGo DD Web 服务集成示例：HTTP 中间件请求日志、请求追踪、服务分层日志配置、错误处理与优雅关闭时的日志刷新，附完整集成示例代码。"
 sidebar_position: 2
 ---
 
@@ -24,13 +24,13 @@ import (
 
 func main() {
 	// 初始化日志记录器
-	logger, err := dd.New(dd.Config{
-		Format: dd.FormatJSON,
-		Targets: []dd.OutputTarget{
-			dd.ConsoleOutput(),
-			dd.FileOutput("logs/app.json"),
-		},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Targets = []dd.OutputTarget{
+		dd.ConsoleOutput(),
+		dd.FileOutput("logs/app.json"),
+	}
+	logger, err := dd.New(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -167,13 +167,13 @@ import (
 )
 
 func main() {
-	logger, _ := dd.New(dd.Config{
-		Format: dd.FormatJSON,
-		Targets: []dd.OutputTarget{
-			dd.ConsoleOutput(),
-			dd.FileOutput("logs/app.json"),
-		},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Targets = []dd.OutputTarget{
+		dd.ConsoleOutput(),
+		dd.FileOutput("logs/app.json"),
+	}
+	logger, _ := dd.New(cfg)
 
 	server := &http.Server{Addr: ":8080"}
 
@@ -245,14 +245,14 @@ func LoggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
 }
 
 func main() {
-	logger, err := dd.New(dd.Config{
-		Format:   dd.FormatJSON,
-		Security: dd.DefaultSecurityConfig(),
-		Targets: []dd.OutputTarget{
-			dd.ConsoleOutput(),
-			dd.FileOutput("logs/app.json"),
-		},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Security = dd.DefaultSecurityConfig()
+	cfg.Targets = []dd.OutputTarget{
+		dd.ConsoleOutput(),
+		dd.FileOutput("logs/app.json"),
+	}
+	logger, err := dd.New(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}

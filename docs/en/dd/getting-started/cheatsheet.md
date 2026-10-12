@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo DD | Common API Quick Reference"
-description: "Quick reference for CyberGo DD APIs: logger creation, level control, field constructors, rotation, security filtering, hooks, and integrity signing."
+description: "CyberGo DD quick reference: logger creation, levels, field constructors and chaining, output targets, context integration, security, and debug output."
 sidebar_position: 4
 ---
 

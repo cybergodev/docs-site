@@ -24,7 +24,7 @@ Creates a signer using the provided `IntegrityConfig`. You can use `DefaultInteg
 Errors are returned when: `SecretKey` is fewer than 32 bytes, or `HashAlgorithm` is unsupported.
 
 ::: warning Key security
-`NewIntegritySigner` **copies** the provided `SecretKey` and immediately zeroes the original `cfg.SecretKey` (to prevent key material from lingering in two memory locations). The caller should still avoid exposing the original key in logs or serialized output.
+`NewIntegritySigner` **copies** the provided `SecretKey` and immediately zeroes the original `cfg.SecretKey` (to prevent key material from lingering in two memory locations), so the passed config cannot be reused to create a second signer — call `IntegrityConfig.Clone()` on the config or generate a fresh key per signer. The caller should still avoid exposing the original key in logs or serialized output.
 :::
 
 ```go
@@ -89,7 +89,7 @@ sig := signer.SignFields("user login", []dd.Field{
 func (s *IntegritySigner) Verify(entry string) (*LogIntegrity, error)
 ```
 
-Verifies the integrity of a log entry. Thread-safe; safe to call concurrently.
+Verifies the integrity of a log entry. Thread-safe; safe to call concurrently. When no signature is found in the entry, returns `Valid=false` (`Message` is the whole entry, with no error); the legacy signature format (bare base64 without timestamp/sequence metadata) is also accepted.
 
 ```go
 integrity, err := signer.Verify(signedEntry)
@@ -132,7 +132,7 @@ type IntegrityConfig struct {
 func DefaultIntegrityConfigSafe() (IntegrityConfig, error)
 ```
 
-Safely creates the default config (auto-generates a key). Recommended for production use.
+Safely creates the default config (auto-generates a cryptographically secure 32-byte random key; timestamp and sequence inclusion are on by default). Returns an error instead of panicking if key generation fails. Recommended for production use.
 
 ### Methods
 

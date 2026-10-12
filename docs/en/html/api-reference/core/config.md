@@ -119,12 +119,20 @@ Therefore **the zero value `Config{}` does not pass `Validate()` and must not be
 `DefaultConfig` returns a balanced configuration suited to general scenarios — the starting point for most applications.
 
 ```go
+func DefaultConfig() Config
+```
+
+```go
 cfg := html.DefaultConfig()
 ```
 
 ### TextOnlyConfig
 
 Extract plain text only, disabling all media and link preservation (`PreserveImages`, `PreserveLinks`, `PreserveVideos`, `PreserveAudios` all set to `false`).
+
+```go
+func TextOnlyConfig() Config
+```
 
 ```go
 cfg := html.TextOnlyConfig()
@@ -135,12 +143,20 @@ cfg := html.TextOnlyConfig()
 `MarkdownConfig` builds on the default configuration and sets both `InlineImageFormat` and `InlineLinkFormat` to `markdown`, suited for output whose inline images and links use Markdown format.
 
 ```go
+func MarkdownConfig() Config
+```
+
+```go
 cfg := html.MarkdownConfig()
 ```
 
 ### HighSecurityConfig
 
 High-security configuration: reduced limits, shorter timeouts, full audit.
+
+```go
+func HighSecurityConfig() Config
+```
 
 ```go
 cfg := html.HighSecurityConfig()

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Structured Logging"
 title: "Structured Logging - CyberGo DD | Fields & Chaining"
-description: "Structured logging with CyberGo DD: type-safe field constructors, Field chaining, LoggerEntry immutability, naming rules and validation."
+description: "CyberGo DD structured logging: type-safe field constructors, Field chaining, LoggerEntry immutability, naming rules and validation."
 sidebar_position: 3
 ---
 
@@ -137,9 +137,9 @@ cfg := dd.DefaultFieldValidationConfig()
 ### Enabling in Configuration
 
 ```go
-logger, err := dd.New(dd.Config{
-    FieldValidation: dd.StrictSnakeCaseConfig(),
-})
+cfg := dd.DefaultConfig()
+cfg.FieldValidation = dd.StrictSnakeCaseConfig()
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }

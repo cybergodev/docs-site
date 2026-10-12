@@ -1,7 +1,7 @@
 ---
 sidebar_label: "安全与审计实战"
 title: "安全与审计实战 - CyberGo DD | 安全日志示例"
-description: "CyberGo DD 安全过滤与审计日志的完整实战示例集合，涵盖敏感数据过滤规则配置、HMAC 完整性签名与验签、审计事件记录与批量验证、行业合规配置方案（HIPAA/PCI-DSS）以及生产环境安全日志架构设计与部署的最佳实践建议和注意事项。"
+description: "CyberGo DD 安全过滤与审计日志实战示例：敏感数据过滤规则配置、HMAC 完整性签名与验签、审计事件记录与批量验证、行业合规配置（HIPAA/PCI-DSS）等场景。"
 sidebar_position: 3
 ---
 
@@ -21,10 +21,10 @@ import (
 )
 
 func main() {
-	logger, _ := dd.New(dd.Config{
-		Security: dd.DefaultSecurityConfig(),
-		Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Security = dd.DefaultSecurityConfig()
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+	logger, _ := dd.New(cfg)
 	defer logger.Close()
 
 	// 密码自动脱敏
@@ -45,11 +45,11 @@ func main() {
 
 ```go
 // HIPAA 医疗合规
-medicalLogger, _ := dd.New(dd.Config{
-    Format:   dd.FormatJSON,
-    Security: dd.HealthcareConfig(),
-    Targets:  []dd.OutputTarget{dd.FileOutput("logs/medical.json")},
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.HealthcareConfig()
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/medical.json")}
+medicalLogger, _ := dd.New(cfg)
 
 medicalLogger.InfoWith("患者就诊",
     dd.String("password", "s3cr3t123"),        // → [REDACTED]（键名敏感）
@@ -57,11 +57,11 @@ medicalLogger.InfoWith("患者就诊",
 )
 
 // PCI-DSS 金融合规
-paymentLogger, _ := dd.New(dd.Config{
-    Format:   dd.FormatJSON,
-    Security: dd.FinancialConfig(),
-    Targets:  []dd.OutputTarget{dd.FileOutput("logs/payment.json")},
-})
+cfg = dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.FinancialConfig()
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/payment.json")}
+paymentLogger, _ := dd.New(cfg)
 
 paymentLogger.InfoWith("支付处理",
     dd.String("card_number", "4111111111111111"),  // → [REDACTED]
@@ -103,15 +103,15 @@ func main() {
 	defer auditLogger.Close()
 
 	// 业务 Logger
-	logger, _ := dd.New(dd.Config{
-		Format:   dd.FormatJSON,
-		Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
-		Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-		// 注意：此处未配置 Audit，业务 logger 的脱敏/安全事件不会自动进入上面的 auditLogger。
-		// 若要让安全事件自动入审计，需在此配置 Audit 字段——dd.New 会根据该 AuditConfig 构建
-		// logger 自己的内部 AuditLogger（事件不会流入上方单独构造的 auditLogger 实例，避免
-		// 双写；两者若输出同一文件需自行协调），或通过显式调用 auditLogger.LogX(...) 记录事件。
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+	// 注意：此处未配置 Audit，业务 logger 的脱敏/安全事件不会自动进入上面的 auditLogger。
+	// 若要让安全事件自动入审计，需在此配置 Audit 字段——dd.New 会根据该 AuditConfig 构建
+	// logger 自己的内部 AuditLogger（事件不会流入上方单独构造的 auditLogger 实例，避免
+	// 双写；两者若输出同一文件需自行协调），或通过显式调用 auditLogger.LogX(...) 记录事件。
+	logger, _ := dd.New(cfg)
 	defer logger.Close()
 
 	// 正常业务操作（脱敏由 Security 处理，但不会自动写入审计日志）
@@ -218,12 +218,12 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
     fwCfg.Compress = true
     fw, _ := dd.NewFileWriter("logs/app.json", fwCfg)
 
-    logger, _ := dd.New(dd.Config{
-        Level:    dd.LevelInfo,
-        Format:   dd.FormatJSON,
-        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
-        Targets:  []dd.OutputTarget{dd.CustomOutput(fw)},
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+    cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+    logger, _ := dd.New(cfg)
 
     return logger, auditLogger, nil
 }

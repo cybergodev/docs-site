@@ -40,9 +40,9 @@ hooks := dd.NewHooksFromConfig(dd.HooksConfig{
     }},
 })
 
-logger, err := dd.New(dd.Config{
-    Hooks: hooks,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = hooks
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -69,9 +69,9 @@ registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, err := dd.New(dd.Config{
-    Hooks: registry,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -116,7 +116,9 @@ registry.Add(dd.HookAfterLog, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, err := dd.New(dd.Config{Hooks: registry})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -200,10 +202,17 @@ registry.Add(dd.HookBeforeLog, func(ctx context.Context, hCtx *dd.HookContext) e
 ## 动态注册
 
 ```go
-// 运行时注册新钩子
-registry.Add(dd.HookAfterLog, newHookFunc)
+// 运行时为已创建的 Logger 增加钩子：正道是 logger.AddHook（Clone-Modify-Store，线程安全）
+if err := logger.AddHook(dd.HookAfterLog, newHookFunc); err != nil {
+    log.Printf("注册钩子失败: %v", err) // ErrNilHook 或 ErrLoggerClosed
+}
 
-// 运行时移除（通过 HookRegistry 方法）
+// 运行时移除：HookRegistry.Remove 会清空该事件的全部钩子（无法只移除单个钩子）。
+// 对已创建的 Logger：先 GetHooks() 取副本，Remove 后再 SetHooks() 写回
+if hooks := logger.GetHooks(); hooks != nil {
+    hooks.Remove(dd.HookAfterLog)
+    _ = logger.SetHooks(hooks)
+}
 ```
 
 :::warning registry 克隆

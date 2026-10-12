@@ -293,6 +293,6 @@ loader, _ := env.New(cfg)
 
 ## 相关文档
 
-- [快速开始](/zh/env/getting-started/) - 基础使用
-- [Config API](/zh/env/api-reference/config) - ExpandVariables 配置
-- [常量与错误](/zh/env/api-reference/constants) - 展开深度限制
+- [快速开始](../getting-started/) - 基础使用
+- [Config API](../api-reference/config) - ExpandVariables 配置
+- [常量与错误](../api-reference/constants) - 展开深度限制

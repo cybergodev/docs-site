@@ -1,7 +1,7 @@
 ---
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo DD | 日志错误管理"
-description: "CyberGo DD 日志库错误处理完整指南，详解结构化错误类型与层级体系、错误码设计、哨兵错误定义与判断方法、errors.Is/As 错误包装与拆包、自定义错误处理策略实现、错误恢复机制和错误钩子回调配置，帮助开发者精确识别和处理各类日志相关错误。"
+description: "CyberGo DD 错误处理指南：结构化错误类型与层级体系、errors.Is 错误匹配、写入与运行时错误处理模式、钩子错误与全局日志记录器错误，精确识别和处理各类日志错误。"
 sidebar_position: 3
 ---
 
@@ -180,9 +180,9 @@ registry := dd.NewHooksFromConfig(dd.HooksConfig{
         handleHookError(event.String(), err)
     },
 })
-logger, _ := dd.New(dd.Config{
-    Hooks: registry,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, _ := dd.New(cfg)
 ```
 
 ## 全局日志记录器错误

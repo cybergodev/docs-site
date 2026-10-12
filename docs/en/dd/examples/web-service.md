@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Web Service Integration"
 title: "Web Service Integration - CyberGo DD | HTTP Logging Example"
-description: "Integrate CyberGo DD into an HTTP service: middleware logging, TraceID propagation, per-route logger config, and graceful shutdown with log flushing."
+description: "CyberGo DD HTTP service integration: middleware request logging and tracing, service-layered logging, error handling, and graceful shutdown with log flushing."
 sidebar_position: 2
 ---
 
@@ -24,13 +24,13 @@ import (
 
 func main() {
 	// Initialize the logger
-	logger, err := dd.New(dd.Config{
-		Format: dd.FormatJSON,
-		Targets: []dd.OutputTarget{
-			dd.ConsoleOutput(),
-			dd.FileOutput("logs/app.json"),
-		},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Targets = []dd.OutputTarget{
+		dd.ConsoleOutput(),
+		dd.FileOutput("logs/app.json"),
+	}
+	logger, err := dd.New(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -167,13 +167,13 @@ import (
 )
 
 func main() {
-	logger, _ := dd.New(dd.Config{
-		Format: dd.FormatJSON,
-		Targets: []dd.OutputTarget{
-			dd.ConsoleOutput(),
-			dd.FileOutput("logs/app.json"),
-		},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Targets = []dd.OutputTarget{
+		dd.ConsoleOutput(),
+		dd.FileOutput("logs/app.json"),
+	}
+	logger, _ := dd.New(cfg)
 
 	server := &http.Server{Addr: ":8080"}
 
@@ -245,14 +245,14 @@ func LoggingMiddleware(logger *dd.Logger) func(http.Handler) http.Handler {
 }
 
 func main() {
-	logger, err := dd.New(dd.Config{
-		Format:   dd.FormatJSON,
-		Security: dd.DefaultSecurityConfig(),
-		Targets: []dd.OutputTarget{
-			dd.ConsoleOutput(),
-			dd.FileOutput("logs/app.json"),
-		},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Security = dd.DefaultSecurityConfig()
+	cfg.Targets = []dd.OutputTarget{
+		dd.ConsoleOutput(),
+		dd.FileOutput("logs/app.json"),
+	}
+	logger, err := dd.New(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}

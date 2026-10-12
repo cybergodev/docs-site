@@ -353,7 +353,7 @@ func (e AuditEvent) MarshalJSON() ([]byte, error)
 
 | 字段 | 转换规则 |
 |------|----------|
-| `Duration` | 新增 `durationMs`（毫秒整数），保留原 `duration` 字段（纳秒） |
+| `Duration` | 序列化为 `durationMs`（毫秒整数）；Go 字段带 `json:"-"` 标签，不输出纳秒形式的 `duration` |
 | `Error` | 转为 `error`（错误消息字符串），nil 时省略 |
 
 ```go
@@ -364,7 +364,7 @@ event := httpc.AuditEvent{
     StatusCode: 200,
 }
 data, _ := json.Marshal(event)
-// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"duration":150000000,"attempts":0,"durationMs":150}
+// {"timestamp":"...","method":"GET","url":"...","statusCode":200,"attempts":0,"durationMs":150}
 ```
 
 ### 审计上下文键

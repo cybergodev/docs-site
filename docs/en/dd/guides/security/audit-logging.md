@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Audit Logging"
 title: "Audit Logging - CyberGo DD | Security Audit Guide"
-description: "Audit logging with CyberGo DD: async AuditLogger, 11 built-in event types, severity filtering, HMAC signing integration, and tamper-protection verification."
-sidebar_position: 4
+description: "CyberGo DD audit logging: async AuditLogger, 11 built-in event types, severity filtering, HMAC signing integration, and tamper-protection verification."
+sidebar_position: 5
 ---
 
 # Audit Logging
@@ -36,10 +36,10 @@ defer auditLogger.Close()
 
 // The AuditLogger can be created standalone (as in this example) or auto-integrated with a Logger via Config.Audit
 // Here we demonstrate standalone usage: build a separate logger without setting Config.Audit
-logger, err := dd.New(dd.Config{
-    Security: dd.DefaultSecurityConfig(),
-    Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-})
+cfg := dd.DefaultConfig()
+cfg.Security = dd.DefaultSecurityConfig()
+cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -210,11 +210,11 @@ func main() {
 	defer auditLogger.Close()
 
 	// Create the business Logger (with security filtering)
-	logger, err := dd.New(dd.Config{
-		Format:   dd.FormatJSON,
-		Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
-		Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+	logger, err := dd.New(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -240,7 +240,7 @@ AuditLogger **can be created standalone** (`dd.NewAuditLogger`, as in this secti
 
 ## Next Steps
 
-- [HMAC Signing In Practice](./integrity) -- Integrity signing in depth
-- [Industry Compliance Configuration](../security/compliance) -- HIPAA/PCI-DSS audit requirements
+- [Integrity](./integrity) -- Tamper-proofing with HMAC (previous page; see it for audit-signing integration)
+- [Industry Compliance Configuration](./compliance) -- HIPAA/PCI-DSS audit requirements
 - [API Reference - Audit](../../api-reference/security-audit/audit) -- Complete AuditLogger API
 - [API Reference - Integrity](../../api-reference/security-audit/integrity) -- IntegritySigner API

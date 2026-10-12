@@ -1,7 +1,7 @@
 ---
 sidebar_label: "FAQ"
 title: "FAQ - CyberGo env | Environment Variable Common Questions"
-description: "Frequently asked questions about CyberGo env: global vs instance mode, Load initialization, nested key access, SecureValue lifecycle, and test isolation."
+description: "CyberGo env FAQ: global vs instance mode, one-time Load, nested JSON/YAML keys, GetSlice generics, thread safety, SecureValue lifecycle, and OverwriteExisting."
 sidebar_position: 2
 ---
 
@@ -26,7 +26,7 @@ defer loader.Close()
 port := loader.GetInt("PORT", 8080)
 ```
 
-:::tip
+:::tip How to choose
 If unsure, start with `env.Load()`. Switch to `env.New()` when you encounter test isolation or multi-configuration needs.
 :::
 
@@ -85,7 +85,7 @@ Nested JSON/YAML structures are automatically **flattened** to underscore-separa
 }
 ```
 
-```
+```text
 Stored as: DATABASE_HOST=localhost, DATABASE_PORT=5432
 ```
 
@@ -214,7 +214,7 @@ log.Printf("API Key: %s", sv.Masked())    // [SECURE:32 bytes locked]
 log.Printf("API Key: %s", sv)              // Same (String() returns Masked())
 
 // ✅ Safe — masking tools
-masked := env.MaskValue("API_KEY", "sk-xxx") // sk-******************************
+masked := env.MaskValue("API_KEY", "sk-xxx") // [MASKED:6 chars] (sensitive key → masked by value length)
 clean := env.SanitizeForLog(logMessage)       // Auto-detect and mask
 
 // ❌ Dangerous — plaintext leak
@@ -313,8 +313,8 @@ func TestGlobalMode(t *testing.T) {
 }
 ```
 
-:::tip
-See the [Testing](/en/env/guides/testing) guide for complete testing documentation.
+:::tip Full testing guide
+See the [Testing](../guides/testing) guide for complete testing documentation.
 :::
 
 ## Security and Lifecycle
@@ -333,15 +333,15 @@ cfg := env.DefaultConfig()
 cfg.ExpansionScope = env.ExpansionFileOnly // ${VAR} resolves file-local variables only
 ```
 
-See [Variable Expansion · Expansion Scope](/en/env/guides/variable-expansion).
+See [Variable Expansion · Expansion Scope](../guides/variable-expansion).
 
 ### Why did the `$` in my value change when read back?
 
-With variable expansion enabled by default, `$VAR`/`${VAR}` sequences are expanded at load time. If a value contains literal dollar signs (prices, template strings), load with `cfg.ExpandVariables = false`, or see [Serialization · Round-trip Pitfalls](/en/env/guides/serialization) for the analogous problem when Marshal output is read back.
+With variable expansion enabled by default, `$VAR`/`${VAR}` sequences are expanded at load time. If a value contains literal dollar signs (prices, template strings), load with `cfg.ExpandVariables = false`, or see [Serialization · Round-trip Pitfalls](../guides/serialization) for the analogous problem when Marshal output is read back.
 
 ## Related Documentation
 
-- [Quick Start](/en/env/getting-started/) — 5-minute introduction
-- [Cheat Sheet](/en/env/getting-started/cheatsheet) — High-frequency code snippets
-- [Error Handling](/en/env/guides/error-handling) — Sentinel errors and recovery strategies
-- [File Format](/en/env/reference/file-format) — .env/JSON/YAML syntax
+- [Quick Start](../getting-started/) — 5-minute introduction
+- [Cheat Sheet](../getting-started/cheatsheet) — High-frequency code snippets
+- [Error Handling](../guides/error-handling) — Sentinel errors and recovery strategies
+- [File Format](./file-format) — .env/JSON/YAML syntax

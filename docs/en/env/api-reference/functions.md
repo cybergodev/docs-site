@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Package Functions"
-title: "Package Functions - CyberGo env | Global Functions"
-description: "Global convenience functions for CyberGo env: Load, GetString, GetInt, GetBool, GetDuration, GetSlice, GetSecure, and ParseInto, all thread-safe."
+title: "Package Functions - CyberGo env | Global Convenience Functions"
+description: "CyberGo env package function API reference: Load, GetString, GetInt, GetBool, GetDuration, GetSlice, GetSecure, Lookup, Keys and ParseInto, all thread-safe."
 sidebar_position: 2
 ---
 
@@ -9,7 +9,7 @@ sidebar_position: 2
 
 Package-level convenience functions provide a simple API suitable for most use cases. These functions use the global default loader, and all are thread-safe.
 
-:::info
+:::info Initialization requirements
 The global default loader must be explicitly initialized via `Load()` or `LoadWithConfig()` — it is **not** auto-created on first call. If not initialized, function behavior is as follows:
 
 - `Get*` functions (`GetString`, `GetInt`, `GetBool`, etc.): return the passed default value (or zero value)
@@ -311,7 +311,7 @@ You must call `Release()` or `Close()` after use to release resources. Using `de
 :::
 
 :::tip
-See [SecureValue API](/en/env/api-reference/secure-value) for complete API documentation.
+See [SecureValue API](./secure-value) for complete API documentation.
 :::
 
 ---
@@ -404,7 +404,7 @@ portsUint := env.GetSliceFrom[uint](loader, "PORTS")
 portsUint64 := env.GetSliceFrom[uint64](loader, "PORTS")
 ```
 
-:::tip
+:::tip The difference
 - `GetSlice[T]` - package-level function using the default loader
 - `GetSliceFrom[T]` - generic function specifying a Loader instance (Go does not support generic methods)
 :::
@@ -425,7 +425,7 @@ Checks whether a key exists and gets its value. Supports dot-path resolution.
 - `key` - key name (supports dot path)
 
 **Returns:**
-- `string` - value (leading/trailing whitespace removed)
+- `string` - value (returned as stored, no trimming: `.env` values are trimmed at parse time, JSON/YAML values may keep surrounding whitespace)
 - `bool` - whether it exists
 
 ```go
@@ -561,20 +561,21 @@ if err := env.Delete("TEMP_KEY"); err != nil {
 func Validate() error
 ```
 
-Validates that required keys exist. Requires RequiredKeys to be set in Config.
+Validates that required keys exist, delegating to the default loader (equivalent to `Loader.Validate`). `RequiredKeys` must be set on the Config passed to `LoadWithConfig` when initializing the default loader.
 
 **Returns:**
-- `error` - validation error
+- `error` - validation error; returns `ErrNotInitialized` if the default loader has not been initialized
 
 ```go
-// Need to configure RequiredKeys first (via custom loader)
+// RequiredKeys is configured on the default loader via LoadWithConfig
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-loader, _ := env.New(cfg)
-loader.LoadFiles(".env")
+if err := env.LoadWithConfig(cfg); err != nil {
+    log.Fatal(err)
+}
 
-if err := loader.Validate(); err != nil {
+if err := env.Validate(); err != nil {
     // Missing required keys
 }
 ```
@@ -617,7 +618,7 @@ if err := env.ParseInto(&cfg); err != nil {
 Slice fields are separated by comma `,` by default (spaces around the separator are automatically removed); there is no custom separator tag.
 
 :::tip
-See [Struct Mapping](/en/env/guides/struct-mapping) for the complete guide.
+See [Struct Mapping](../guides/struct-mapping) for the complete guide.
 :::
 
 ---
@@ -727,6 +728,8 @@ Serializes data to a string in the specified format. Supports `map[string]string
 - `FormatEnv` (default) - .env format
 - `FormatJSON` - JSON format
 - `FormatYAML` - YAML format
+
+> See [Serialization · Output Shape](../guides/serialization) for JSON/YAML output behaviors such as type inference, nested objects rebuilt from underscore keys, and scalar quoting for round-trip safety.
 
 ```go
 // map to .env format
@@ -999,7 +1002,7 @@ Both `Load()` and `LoadWithConfig()` **force** `AutoApply=true` regardless of th
 
 ## Related Documentation
 
-- [Loader API](/en/env/api-reference/loader) - Loader instance methods
-- [Config API](/en/env/api-reference/config) - Configuration options
-- [SecureValue API](/en/env/api-reference/secure-value) - Secure value handling
-- [Struct Mapping](/en/env/guides/struct-mapping) - Struct mapping guide
+- [Loader API](./loader) - Loader instance methods
+- [Config API](./config) - Configuration options
+- [SecureValue API](./secure-value) - Secure value handling
+- [Struct Mapping](../guides/struct-mapping) - Struct mapping guide

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "结构化日志"
 title: "结构化日志 - CyberGo DD | 字段与链式调用"
-description: "CyberGo DD 结构化日志使用指南，详细介绍 20 种类型安全的字段构造器、Field 链式传递模式、LoggerEntry 不可变设计原理、字段命名规范与验证规则，以及结构化日志的最佳实践和常见使用模式，帮助开发者在项目中有效使用高性能的结构化日志记录方案。"
+description: "CyberGo DD 结构化日志使用指南：20 种类型安全的字段构造器、Field 链式传递模式、LoggerEntry 不可变设计、字段命名规范与验证规则及最佳实践，在项目中高效使用结构化日志记录。"
 sidebar_position: 3
 ---
 
@@ -139,9 +139,9 @@ cfg := dd.DefaultFieldValidationConfig()
 ### 在配置中启用
 
 ```go
-logger, err := dd.New(dd.Config{
-    FieldValidation: dd.StrictSnakeCaseConfig(),
-})
+cfg := dd.DefaultConfig()
+cfg.FieldValidation = dd.StrictSnakeCaseConfig()
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }

@@ -24,7 +24,7 @@ func NewIntegritySigner(cfg IntegrityConfig) (*IntegritySigner, error)
 返回错误的情况：`SecretKey` 少于 32 字节，或 `HashAlgorithm` 不受支持。
 
 ::: warning 密钥安全
-`NewIntegritySigner` 会**复制**传入的 `SecretKey` 并立即将原 `cfg.SecretKey` 清零（防止密钥材料残留在两处内存）。调用方仍应避免在日志或序列化中暴露原始密钥。
+`NewIntegritySigner` 会**复制**传入的 `SecretKey` 并立即将原 `cfg.SecretKey` 清零（防止密钥材料残留在两处内存），因此传入的配置无法复用创建第二个签名器——需要多个签名器时对配置调用 `IntegrityConfig.Clone()` 或重新生成密钥。调用方仍应避免在日志或序列化中暴露原始密钥。
 :::
 
 ```go
@@ -89,7 +89,7 @@ sig := signer.SignFields("用户登录", []dd.Field{
 func (s *IntegritySigner) Verify(entry string) (*LogIntegrity, error)
 ```
 
-验证日志条目的完整性。线程安全，可并发调用。
+验证日志条目的完整性。线程安全，可并发调用。条目中找不到签名时返回 `Valid=false`（`Message` 为整个条目，不返回错误）；另兼容仅含 base64 签名、无时间戳/序列号元数据的旧版签名格式。
 
 ```go
 integrity, err := signer.Verify(signedEntry)
@@ -132,7 +132,7 @@ type IntegrityConfig struct {
 func DefaultIntegrityConfigSafe() (IntegrityConfig, error)
 ```
 
-安全创建默认配置（自动生成密钥）。推荐生产使用。
+安全创建默认配置（自动生成 32 字节密码学安全随机密钥，默认启用时间戳与序列号）。密钥生成失败时返回错误而非 panic。推荐生产使用。
 
 ### 方法
 

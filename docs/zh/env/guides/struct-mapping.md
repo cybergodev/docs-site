@@ -1,7 +1,7 @@
 ---
 sidebar_label: "结构体映射"
 title: "结构体映射 - CyberGo env | 环境变量到结构体"
-description: "CyberGo env 结构体映射指南，通过 env、envDefault 标签将环境变量自动映射到 Go 结构体字段，涵盖嵌套结构体、指针与切片、时间类型、自定义类型解码、字段忽略、默认值与必填验证，配合 ParseInto 与 Validate 实现类型安全的配置加载。"
+description: "CyberGo env 结构体映射指南，通过 env、envDefault 标签将环境变量自动映射到 Go 结构体字段，涵盖嵌套结构体、指针切片、时间与自定义类型、默认值与必填验证，配合 ParseInto 实现类型安全配置加载。"
 sidebar_position: 2
 ---
 
@@ -74,6 +74,15 @@ type Config struct {
     Port    int64  `env:"PORT" envDefault:"8080"`
     Debug   bool   `env:"DEBUG" envDefault:"false"`
     Timeout int64  `env:"TIMEOUT" envDefault:"30"`
+}
+```
+
+默认值也可以内联写在 `env` 标签中——`env:"KEY,envDefault:VALUE"`，与独立的 `envDefault` 标签等价（两者同时存在时，独立标签优先）：
+
+```go
+type Config struct {
+    Host string `env:"HOST,envDefault:localhost"`
+    Port int64  `env:"PORT,envDefault:8080"`
 }
 ```
 
@@ -196,6 +205,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/cybergodev/env"
 )
@@ -208,13 +218,17 @@ type Config struct {
 
 func main() {
 	cfg := Config{}
-	env.ParseInto(&cfg)
+	if err := env.ParseInto(&cfg); err != nil {
+		log.Fatal(err)
+	}
 
 	if cfg.Port != nil {
 		fmt.Println("Port:", *cfg.Port)
 	}
 }
 ```
+
+指针字段可以区分「未设置」与「零值」：变量未设置（或值为空）时指针保持 `nil`；设置为 `PORT=0` 时 `cfg.Port` 非 `nil` 且 `*cfg.Port == 0`。值类型字段则无法区分这两种情况。
 
 ## 自定义类型
 
@@ -405,11 +419,15 @@ func LoadConfig() interface{} {
     switch os.Getenv("GO_ENV") {
     case "production":
         cfg := ProductionConfig{}
-        env.ParseInto(&cfg)
+        if err := env.ParseInto(&cfg); err != nil {
+            log.Printf("parse production config: %v", err)
+        }
         return cfg
     default:
         cfg := DevelopmentConfig{}
-        env.ParseInto(&cfg)
+        if err := env.ParseInto(&cfg); err != nil {
+            log.Printf("parse development config: %v", err)
+        }
         return cfg
     }
 }
@@ -419,16 +437,22 @@ func LoadConfig() interface{} {
 
 ### 解析错误
 
+`ParseInto` / `UnmarshalInto` 的类型转换失败统一返回 `*MarshalError`（v1.2.3 起错误消息不回显原始值，防止敏感值泄露），可用 `env.IsMarshalError` 判断或用 `errors.As` 提取字段信息：
+
 ```go
 cfg := Config{}
 if err := env.ParseInto(&cfg); err != nil {
-    var parseErr *env.ParseError
-    if errors.As(err, &parseErr) {
-        log.Fatalf("Parse error at %s:%d", parseErr.File, parseErr.Line)
+    if env.IsMarshalError(err) {
+        var marshalErr *env.MarshalError
+        if errors.As(err, &marshalErr) {
+            log.Fatalf("字段 %s 转换失败: %s", marshalErr.Field, marshalErr.Message)
+        }
     }
     log.Fatal(err)
 }
 ```
+
+注意：`*ParseError` 仅在**文件解析**场景（`LoadFiles` 解析 env/JSON/YAML 文件内容出错）返回；`ParseInto` 直接从已加载的键值填充结构体，不经过文件解析，不会返回 `*ParseError`。
 
 ### 类型转换错误
 
@@ -439,7 +463,7 @@ type Config struct {
 
 cfg := Config{}
 if err := env.ParseInto(&cfg); err != nil {
-    // 类型转换失败会返回错误
+    // 类型转换失败返回 *MarshalError（不回显原始值）
 }
 ```
 
@@ -534,6 +558,6 @@ func main() {
 
 ## 相关文档
 
-- [包函数 - ParseInto](/zh/env/api-reference/functions#parseinto) - ParseInto 函数参考
-- [Loader API - ParseInto](/zh/env/api-reference/loader#parseinto) - Loader 方法参考
-- [快速开始](/zh/env/getting-started/) - 基本用法
+- [包函数 - ParseInto](../api-reference/functions#parseinto) - ParseInto 函数参考
+- [Loader API - ParseInto](../api-reference/loader#parseinto) - Loader 方法参考
+- [快速开始](../getting-started/) - 基本用法

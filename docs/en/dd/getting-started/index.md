@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo DD | 5-Minute Guide"
-description: "Get started with CyberGo DD structured logging: install, create loggers, configure output targets and file rotation, log fields, and extend with hooks."
-sidebar_position: 2
+description: "CyberGo DD structured logging quick start: install, create loggers, configure output targets and file rotation, log fields, and extend with hooks."
+sidebar_position: 1
 ---
 
 # Quick Start
@@ -160,10 +160,9 @@ fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
 if err != nil {
     log.Fatal(err)
 }
-logger, err := dd.New(dd.Config{
-    Level: dd.LevelInfo,
-    Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
-})
+cfg := dd.DefaultConfig() // Level is already Info
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }

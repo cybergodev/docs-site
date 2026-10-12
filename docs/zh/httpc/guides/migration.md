@@ -93,7 +93,7 @@ func main() {
 | `req.Header.Set(k, v)` | `httpc.WithHeader(k, v)` / `WithHeaderMap(m)` | 头键值经 CRLF 注入校验，非法值返回 `ErrInvalidHeader` |
 | `req.Header.Set("User-Agent", ua)` | `httpc.WithUserAgent(ua)` | 实例级默认用 `cfg.Defaults.UserAgent` |
 | `req.SetBasicAuth(u, p)` | `httpc.WithBasicAuth(u, p)` | 带格式校验 |
-| `req.AddCookie(&http.Cookie{...})` | `httpc.WithCookies([]http.Cookie{{...}})` | 接受 Cookie 切片（单个也传单元素切片）；仅 name-value 用 `WithCookieMap`、原始头字符串用 `WithCookieString` |
+| `req.AddCookie(&http.Cookie{...})` | <code v-pre>httpc.WithCookies([]http.Cookie{{...}})</code> | 接受 Cookie 切片（单个也传单元素切片）；仅 name-value 用 `WithCookieMap`、原始头字符串用 `WithCookieString` |
 | `req.URL.Query()` 拼接查询串 | `httpc.WithQuery(k, v)` / `WithQueryMap(m)` | 值支持常见标量与 `fmt.Stringer`，自动编码合并进 URL |
 | `jar, _ := cookiejar.New(nil)` 挂到 `client.Jar` | `cfg.Connection.EnableCookies = true` | 或用 `DomainClient` 自动维护 Cookie 与公共头（见[域名会话](./domain-session)） |
 | `client.CheckRedirect = func(...)` | `cfg.Defaults.FollowRedirects` / `MaxRedirects` | 请求级 `WithFollowRedirects(false)`；重定向域名白名单 `Security.RedirectWhitelist`（见[重定向](./redirects)） |

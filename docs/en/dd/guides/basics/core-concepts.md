@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Core Concepts"
 title: "Core Concepts - CyberGo DD | Architecture & Design"
-description: "CyberGo DD architecture: Logger and LoggerEntry lifecycle, Field usage, the log pipeline, four-layer interfaces, and thread-safe concurrency model."
+description: "CyberGo DD architecture: Logger and LoggerEntry lifecycle, Field usage, the log pipeline, the interface hierarchy, and thread-safe concurrency model."
 sidebar_position: 1
 ---
 
@@ -223,13 +223,13 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 DD supports three output targets that can be combined freely:
 
 ```go
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),                    // Console
-        dd.FileOutput("logs/app.log"),         // File (auto-rotating)
-        dd.CustomOutput(customWriter),         // Custom io.Writer
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),                    // Console
+    dd.FileOutput("logs/app.log"),         // File (auto-rotating)
+    dd.CustomOutput(customWriter),         // Custom io.Writer
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }

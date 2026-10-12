@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo env | Security Launch Check"
-description: "Production security checklist for CyberGo env: .env permissions and .gitignore, RequiredKeys/AllowedKeys validation, audit logging, SecureValue handling."
+description: "Production checklist for CyberGo env security: .env 600 permissions, .gitignore, RequiredKeys/AllowedKeys, audit logging, SecureValue, and performance tuning."
 sidebar_position: 4
 ---
 
@@ -9,8 +9,8 @@ sidebar_position: 4
 
 A checklist to run through before deploying your application to production.
 
-:::tip
-For security architecture and core features, see [Security Overview](/en/env/security/).
+:::tip Security concepts
+For security architecture and core features, see [Security Overview](./).
 :::
 
 ## Pre-deployment Checks
@@ -56,21 +56,28 @@ cfg.FailOnMissingFile = true
 - [ ] Log file permissions are correct
 
 ```go
-auditFile, _ := os.OpenFile("/var/log/app/audit.log",
+auditFile, err := os.OpenFile("/var/log/app/audit.log",
     os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatalf("failed to open audit log: %v", err)
+}
 cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ```
 
+:::warning "Enabled" ≠ "flushed to disk"
+**"Enabled" is not "persisted".** `ProductionConfig()` enables `AuditEnabled = true` by default; without an `AuditHandler` configured, audit events go to the stderr `[AUDIT]` standard log instead of a file. After launch, confirm the audit log file is actually growing.
+:::
+
 ### Sensitive Data Handling
 
 - [ ] Sensitive values obtained with `GetSecure`
-- [ ] `Close()` called promptly to release resources
+- [ ] `Release()` called promptly to release resources (zeroes and returns to the object pool; `Close()` does not return to the pool)
 - [ ] Logs do not output raw sensitive values
 
 ```go
 secret := loader.GetSecure("DB_PASSWORD")
-defer secret.Close()
+defer secret.Release()
 log.Printf("Password length: %d", secret.Length())
 ```
 
@@ -79,11 +86,14 @@ log.Printf("Password length: %d", secret.Length())
 - [ ] `AllowedKeys` whitelist set (recommended)
 - [ ] `ValidateValues` enabled
 - [ ] Reasonable size limits set
+- [ ] Configuration file paths are all **relative** — `Filenames` rejects absolute paths, UNC paths, URL-encoded `%`, and `..` traversal
+- [ ] `ExpansionScope: ExpansionFileOnly` set for untrusted configuration sources, preventing .env expansion from capturing process secrets (SEC-03)
+- [ ] Audit handler is not connected to `os.Stdout` — `loader.Close()` closes the handler and, with it, the underlying writer
 
 ```go
 cfg.AllowedKeys = []string{"APP_NAME", "DB_HOST", "API_KEY"}
 cfg.ValidateValues = true
-cfg.MaxVariables = 100
+cfg.MaxVariables = 50 // ProductionConfig defaults to 50; raise only if you have more keys
 ```
 
 ## At Deployment Checks
@@ -99,6 +109,14 @@ cfg.MaxVariables = 100
 - [ ] Audit logs are being written correctly
 - [ ] No sensitive information leaked
 - [ ] Monitoring for configuration-related errors
+
+```bash
+# Health check: confirm the application is alive
+curl -fsS http://localhost:8080/healthz > /dev/null && echo "OK: health check passed"
+
+# Confirm audit logs are actually persisted (not just the stderr [AUDIT] fallback)
+tail -n 5 /var/log/app/audit.log
+```
 
 ## Quick Check Script
 
@@ -131,6 +149,6 @@ echo "=== All checks passed ==="
 
 ## Related Documentation
 
-- [Security Overview](/en/env/security/) - Security architecture and core features
-- [SecureValue API](/en/env/api-reference/secure-value) - Secure value handling
-- [Constants & Errors](/en/env/api-reference/constants) - Forbidden keys list
+- [Security Overview](./) - Security architecture and core features
+- [SecureValue API](../api-reference/secure-value) - Secure value handling
+- [Constants & Errors](../api-reference/constants) - Forbidden keys list

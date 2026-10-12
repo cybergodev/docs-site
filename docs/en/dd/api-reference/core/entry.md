@@ -83,9 +83,9 @@ All Logger logging methods are also available on the Entry; emitted logs automat
 
 | Method | Description |
 |--------|-------------|
-| `Print(args ...any)` | Output to the Writer (LevelInfo, subject to security filtering) |
+| `Print(args ...any)` | Output to the Writer (LevelInfo, includes caller info, subject to security filtering) |
 | `Println(args ...any)` | Same behavior as Print |
-| `Printf(format string, args ...any)` | Formatted output (LevelInfo, subject to security filtering) |
+| `Printf(format string, args ...any)` | Formatted output (LevelInfo, includes caller info, subject to security filtering) |
 
 ### Field Chaining
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo env | 5-Minute Tutorial"
-description: "Get started with CyberGo env in 5 minutes: installation, .env loading, type-safe reading, struct mapping, variable expansion, and errors.Is handling."
+description: "Get started with CyberGo env in 5 minutes: go get installation, .env loading, type-safe reads, GetSecure secure values, struct mapping and config presets."
 sidebar_position: 1
 ---
 
@@ -15,7 +15,7 @@ Get started with the env library in 5 minutes, from installation to practical us
 go get github.com/cybergodev/env
 ```
 
-:::tip
+:::tip Requirements
 Go 1.25+
 :::
 
@@ -40,7 +40,7 @@ ALLOWED_HOSTS=localhost,example.com,api.example.com
 ```
 
 ::: tip Full syntax reference
-For the complete `.env` syntax rules (quoting, escapes, multi-line values), see [File Format](/en/env/reference/file-format).
+For the complete `.env` syntax rules (quoting, escapes, multi-line values), see [File Format](../reference/file-format).
 :::
 
 ## Minimal Usage
@@ -64,10 +64,11 @@ func main() {
 	port := env.GetInt("DB_PORT", 5432)
 
 	fmt.Printf("Server: %s:%d\n", host, port)
+	// Output: Server: localhost:5432
 }
 ```
 
-:::tip
+:::tip Two usage modes
 env provides two usage modes:
 
 | Mode | Usage | Use Case |
@@ -78,6 +79,8 @@ env provides two usage modes:
 The global mode uses package-level functions backed by a default Loader singleton. After calling `env.Load()`, all `env.GetXxx()` calls use that instance. The instance mode creates an independent Loader via `env.New()`, suitable for scenarios requiring isolation or managing multiple configurations simultaneously.
 
 The examples in this documentation use the global mode by default. See the [Multi-environment Configuration](#multi-environment-configuration) section for the full instance mode usage.
+
+Note that forgetting to call `Load()` does not raise an error: before initialization, `Get*`/`Lookup` silently return default or zero values, while `Set`/`Delete`/`Validate`/`ParseInto` return `ErrNotInitialized`. See [Package Functions](../api-reference/functions) for details.
 :::
 
 ## Reading Values - All Types
@@ -93,13 +96,20 @@ host := env.GetString("HOST", "localhost")
 // Integer (int64) - returns default 8080 when not found
 port := env.GetInt("PORT", 8080)
 
+// Float (float64) - returns default 0.99 when not found
+rate := env.GetFloat64("RATE", 0.99)
+
+// Unsigned integer (uint64) - returns default 4096 when not found
+size := env.GetUint64("MAX_SIZE", 4096)
+
 // Boolean - returns default false when not found
 debug := env.GetBool("DEBUG", false)
 
 // Duration - returns default 30s when not found
 timeout := env.GetDuration("TIMEOUT", 30*time.Second)
+```
 
-
+```go
 // === Without default values ===
 
 // String - returns empty string "" when not found
@@ -115,7 +125,7 @@ debug := env.GetBool("DEBUG")
 timeout := env.GetDuration("TIMEOUT")
 ```
 
-:::tip
+:::tip Key-name resolution
 The library supports multiple key access methods:
 
 ```go
@@ -124,8 +134,8 @@ The library supports multiple key access methods:
 
 // All of the following can access this value
 name := env.GetString("APP_NAME")      // Flat key (recommended)
-name := env.GetString("app.name")      // Dot path (auto-converted)
-name := env.GetString("APP.NAME")      // Uppercase dot path
+name = env.GetString("app.name")       // Dot path (auto-converted)
+name = env.GetString("APP.NAME")       // Uppercase dot path
 ```
 
 **Resolution rules:**
@@ -243,11 +253,12 @@ func main() {
 	}
 
 	fmt.Printf("%+v\n", cfg)
+	// Output: {Host:localhost Port:5432 Password:secret Debug:true Timeout:30s Hosts:[localhost example.com api.example.com]}
 }
 ```
 
 :::details
-[Struct Mapping](/en/env/guides/struct-mapping) guide.
+[Struct Mapping](../guides/struct-mapping) guide.
 :::
 
 ## Configuration Presets
@@ -285,7 +296,7 @@ cfg := env.ProductionConfig()
 | Forbidden key check | ✓ | ✓ | ✓ | ✓ |
 | Value validation | ✓ | ✓ | ✓ | ✓ |
 
-:::tip
+:::tip How to choose
 - **Development**: Use `DevelopmentConfig()` with relaxed limits for fast iteration
 - **Testing**: Use `TestingConfig()` with overwrite support for test isolation
 - **Production**: Use `ProductionConfig()` with audit and strict validation
@@ -302,9 +313,20 @@ if goEnv == "" {
     goEnv = "development"
 }
 
-// Load all config files in one call (in order, later files overwrite earlier ones)
+// Default: the first file loaded wins (keys already set by .env are
+// not overridden by later files)
 env.Load(".env", ".env."+goEnv, ".env.local")
+
+// When you need last-file-wins (e.g. .env.local overrides .env):
+cfg := env.DefaultConfig()
+cfg.OverwriteExisting = true
+cfg.Filenames = []string{".env", ".env." + goEnv, ".env.local"}
+if err := env.LoadWithConfig(cfg); err != nil { log.Fatal(err) }
 ```
+
+::: tip Overwrite semantics
+Files loaded later do **not** override earlier ones by default: `DefaultConfig()` and `ProductionConfig()` both use first-file-wins, skipping keys that already exist to prevent accidentally overwriting loaded configuration at runtime. Set `OverwriteExisting = true` (built into the `DevelopmentConfig()`/`TestingConfig()` presets) for last-file-wins behavior.
+:::
 
 ### Using a Loader Instance
 
@@ -330,7 +352,7 @@ func main() {
 	}
 	defer loader.Close()
 
-	// Load files (in order, later files overwrite earlier ones)
+	// Load files (in order; under ProductionConfig the first file wins, existing keys are not overwritten)
 	if err := loader.LoadFiles(".env", ".env.production"); err != nil {
 		panic(err)
 	}
@@ -350,7 +372,7 @@ func main() {
 
 ### Multi-file Loading
 
-Files are loaded in order, later files overwrite earlier ones:
+Files are loaded in order. By default (`DefaultConfig()`) the **first file loaded wins**: keys that already exist are skipped in later files. Set `OverwriteExisting = true` (built into the `DevelopmentConfig()`/`TestingConfig()` presets) if later files should override earlier ones:
 
 ::: code-group
 
@@ -372,7 +394,7 @@ File format is auto-detected:
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 ```
 
-:::details
+:::details Supported formats
 | Format | Extension | Detection |
 |--------|-----------|-----------|
 | .env | `.env` | File extension |
@@ -406,7 +428,7 @@ if err != nil {
 }
 ```
 
-:::details
+:::details Getting detailed errors
 ```go
 // Parse error details
 var parseErr *env.ParseError
@@ -430,21 +452,17 @@ if errors.As(err, &secErr) {
 
 ## Next Steps
 
-<div class="vp-features">
-
 ### Learn More
-- [Struct Mapping](/en/env/guides/struct-mapping) - Detailed configuration binding
-- [Serialization](/en/env/guides/serialization) - Config serialization and deserialization
-- [Multi-format Config](/en/env/guides/multi-format) - JSON/YAML in depth
-- [Testing](/en/env/guides/testing) - Usage in tests
+- [Struct Mapping](../guides/struct-mapping) - Detailed configuration binding
+- [Serialization](../guides/serialization) - Config serialization and deserialization
+- [Multi-format Config](../guides/multi-format) - JSON/YAML in depth
+- [Testing](../guides/testing) - Usage in tests
 
 ### API Reference
-- [Package Functions](/en/env/api-reference/functions) - Complete list of package-level functions
-- [Loader API](/en/env/api-reference/loader) - Loader methods
-- [Config API](/en/env/api-reference/config) - Configuration options
+- [Package Functions](../api-reference/functions) - Complete list of package-level functions
+- [Loader API](../api-reference/loader) - Loader methods
+- [Config API](../api-reference/config) - Configuration options
 
 ### Security
-- [Security Overview](/en/env/security/) - Security architecture and best practices
-- [SecureValue API](/en/env/api-reference/secure-value) - Secure value handling
-
-</div>
+- [Security Overview](../security/) - Security architecture and best practices
+- [SecureValue API](../api-reference/secure-value) - Secure value handling

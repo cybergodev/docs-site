@@ -238,8 +238,10 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 
 **输出示例：**
 ```text
-[AUDIT] 2024/01/15 10:30:00 load .env success (1.23ms)
+[AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env duration=1.23ms
 ```
+
+事件以键值对输出：`action`、`key`（事件无键名时省略）、`success`、`reason`（带引号），以及可选的 `file` 与 `duration`（小于 1ms 以 μs 显示，否则以 ms 显示）；`[AUDIT]` 前缀与时间戳来自传入的 `log.Logger`。
 
 ---
 
@@ -379,7 +381,7 @@ func (fs OSFileSystem) LookupEnv(key string) (string, bool)
 var DefaultFileSystem FileSystem = OSFileSystem{}
 ```
 
-全局默认文件系统实例。
+全局默认文件系统实例。`DefaultFileSystem` 是包级导出变量，值为 `OSFileSystem{}`，`Config` 经嵌入 `ComponentConfig` 提供的 `FileSystem` 字段未显式设置时即使用它。
 
 ---
 
@@ -561,6 +563,7 @@ func RegisterParser(format FileFormat, factory ParserFactory) error
 **错误情况：**
 - 内置格式（FormatEnv、FormatJSON、FormatYAML）无法被覆盖
 - 格式已注册
+- `factory` 为 nil
 
 **注意事项：**
 - 必须在调用 `env.New()` 之前注册
@@ -953,6 +956,6 @@ func main() {
 
 ## 相关文档
 
-- [接口定义](/zh/env/api-reference/interfaces) - 所有接口定义
-- [自定义解析器](/zh/env/guides/custom-parser) - 自定义解析器指南
-- [测试场景](/zh/env/guides/testing) - 使用自定义文件系统测试
+- [接口定义](./interfaces) - 所有接口定义
+- [自定义解析器](../guides/custom-parser) - 自定义解析器指南
+- [测试场景](../guides/testing) - 使用自定义文件系统测试

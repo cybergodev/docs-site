@@ -93,7 +93,7 @@ The migrated code is shorter, and it now carries the TLS policy, SSRF protection
 | `req.Header.Set(k, v)` | `httpc.WithHeader(k, v)` / `WithHeaderMap(m)` | Header keys and values are CRLF-injection validated; invalid values return `ErrInvalidHeader` |
 | `req.Header.Set("User-Agent", ua)` | `httpc.WithUserAgent(ua)` | Instance-level default via `cfg.Defaults.UserAgent` |
 | `req.SetBasicAuth(u, p)` | `httpc.WithBasicAuth(u, p)` | Format-validated |
-| `req.AddCookie(&http.Cookie{...})` | `httpc.WithCookies([]http.Cookie{{...}})` | Takes a cookie slice (a single cookie is a one-element slice); name-value only via `WithCookieMap`, raw header string via `WithCookieString` |
+| `req.AddCookie(&http.Cookie{...})` | <code v-pre>httpc.WithCookies([]http.Cookie{{...}})</code> | Takes a cookie slice (a single cookie is a one-element slice); name-value only via `WithCookieMap`, raw header string via `WithCookieString` |
 | `req.URL.Query()` string assembly | `httpc.WithQuery(k, v)` / `WithQueryMap(m)` | Values support common scalars and `fmt.Stringer`; encoded and merged into the URL automatically |
 | `jar, _ := cookiejar.New(nil)` on `client.Jar` | `cfg.Connection.EnableCookies = true` | Or use a `DomainClient` that maintains cookies and common headers automatically (see [Domain Sessions](./domain-session)) |
 | `client.CheckRedirect = func(...)` | `cfg.Defaults.FollowRedirects` / `MaxRedirects` | Per-request `WithFollowRedirects(false)`; redirect domain whitelist via `Security.RedirectWhitelist` (see [Redirects](./redirects)) |

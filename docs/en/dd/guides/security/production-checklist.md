@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo DD | Pre-Launch Security"
-description: "Pre-deployment security checklist for CyberGo DD: config verification, sensitive-data filters, audit logging, HMAC signing, and rotation strategy."
-sidebar_position: 6
+description: "CyberGo DD pre-deployment security checklist: config verification, sensitive-data filters, audit logging, HMAC signing, and rotation strategy."
+sidebar_position: 7
 ---
 
 # Production Checklist
@@ -17,10 +17,10 @@ Before going live, check each of the following security configurations to ensure
 - [ ] **Buffer flushing** -- Ensure `Flush()` or `Close()` is called before program exit
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Level:  dd.LevelInfo,
-    Format: dd.FormatJSON,
-})
+cfg := dd.DefaultConfig()
+cfg.Level = dd.LevelInfo
+cfg.Format = dd.FormatJSON
+logger, _ := dd.New(cfg)
 defer logger.Close()
 ```
 

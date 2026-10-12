@@ -1,8 +1,8 @@
 ---
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo DD | 5 分钟入门指南"
-description: "快速上手 CyberGo DD 高性能结构化日志库的完整入门教程，从安装依赖到首次输出日志，逐步学习创建日志记录器、配置输出目标与文件轮换策略、使用结构化字段记录请求上下文信息和钩子系统扩展功能，5 分钟即可掌握核心用法并应用到实际项目中。"
-sidebar_position: 2
+description: "CyberGo DD 快速上手入门教程：从安装到首次输出日志，逐步学习创建日志记录器、日志级别控制、结构化日志与字段链式传递、文件轮换及敏感数据过滤，5 分钟掌握核心用法。"
+sidebar_position: 1
 ---
 
 # 快速开始
@@ -160,10 +160,9 @@ fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
 if err != nil {
     log.Fatal(err)
 }
-logger, err := dd.New(dd.Config{
-    Level: dd.LevelInfo,
-    Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
-})
+cfg := dd.DefaultConfig() // Level 已是 Info
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }

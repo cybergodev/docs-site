@@ -65,12 +65,12 @@ func main() {
 | [Configuration](./guides/basics/configuration) | Config struct, presets, output targets |
 | [Structured Logging](./guides/basics/structured-logging) | Field constructors, method chaining |
 | [File Output & Rotation](./guides/basics/file-output) | FileWriter, BufferedWriter |
-| [Sensitive Data Filtering](./guides/security/sensitive-filtering) | Auto-redaction, security levels |
-| [Field Validation](./guides/security/field-validation) | Naming convention checks, Log4Shell protection |
 | [Log Sampling](./guides/operations/sampling) | High-throughput log volume reduction |
-| [Audit Logging](./guides/security/audit-logging) | Asynchronous audit events, integrity signing |
 | [Hook System](./guides/operations/hooks) | Lifecycle hook extensions |
 | [Error Handling](./guides/operations/error-handling) | Structured errors, sentinel errors, errors.Is |
+| [Sensitive Data Filtering](./guides/security/sensitive-filtering) | Auto-redaction, security levels |
+| [Field Validation](./guides/security/field-validation) | Naming convention checks, Log4Shell protection |
+| [Audit Logging](./guides/security/audit-logging) | Asynchronous audit events, integrity signing |
 | [Distributed Tracing](./guides/integration/context-tracing) | TraceID/SpanID/RequestID |
 | [Migration Guide](./guides/integration/migration) | Migrate from log/slog/zap/logrus |
 

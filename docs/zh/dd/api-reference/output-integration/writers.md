@@ -1,7 +1,7 @@
 ---
 sidebar_label: "输出目标"
-title: "输出目标 - CyberGo DD | FileWriter、BufferedWriter、MultiWriter"
-description: "CyberGo DD 输出目标 API：FileWriter 按文件大小自动轮换并按时间清理旧备份、BufferedWriter 高性能缓冲写入（可配置缓冲区与刷新间隔）与 MultiWriter 多目标输出（按注册顺序依次写入），满足从开发到生产的各类日志输出场景需求，助力构建可靠的日志系统。"
+title: "输出目标 - CyberGo DD | 文件轮换与缓冲写入"
+description: "CyberGo DD 输出目标 API：FileWriter 按大小自动轮换并按时间清理旧备份、BufferedWriter 高性能缓冲写入（可配置缓冲区与刷新间隔）与 MultiWriter 多目标输出，覆盖开发到生产的各类日志输出场景。"
 sidebar_position: 1
 ---
 
@@ -236,10 +236,10 @@ mw := dd.NewMultiWriter(os.Stdout, fileWriter)
 | `Write` | `(p []byte) (int, error)` | 按注册顺序依次写入所有目标（见下方错误策略） |
 | `AddWriter` | `(w io.Writer) error` | 动态添加目标（重复 writer 为 no-op 去重，不报错也不重复添加；对比：`Logger.AddWriter` 接受重复） |
 | `RemoveWriter` | `(w io.Writer) error` | 动态移除目标 |
-| `Close` | `() error` | 关闭所有底层 `io.Closer`（标准流除外） |
+| `Close` | `() error` | 先对实现了 [Flusher](../core/interfaces#flusher) 的 writer 调用 Flush（防缓冲数据丢失），再关闭所有底层 `io.Closer`（标准流除外） |
 
 `AddWriter` 返回错误的情况：`ErrNilMultiWriter`（接收者为 `nil`）/ `ErrNilWriter`（参数为 `nil`）/ `ErrMaxWritersExceeded`（已注册 ≥ 100 个）/ `Close` 之后调用（返回包装 `os.ErrClosed` 的错误）。
-`RemoveWriter` 返回错误的情况：`ErrNilMultiWriter` / `ErrWriterNotFound`（`Close` 之后调用同样返回包装 `os.ErrClosed` 的错误）。
+`RemoveWriter` 返回错误的情况：`ErrNilMultiWriter` / `ErrWriterNotFound`。注意与 `AddWriter` 不同，`RemoveWriter` 不检查关闭状态，`Close` 之后调用不会返回 `os.ErrClosed`（仍会从内部列表移除，但对应 writer 不会再次关闭）。
 
 <!-- check-code: skip -->
 ```go

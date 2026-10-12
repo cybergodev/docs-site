@@ -75,7 +75,7 @@ logger.InfoWith("request completed",
 ```go
 level := logger.GetLevel()                    // Get current level
 _ = logger.SetLevel(dd.LevelDebug)            // Set level
-enabled := logger.IsLevelEnabled(dd.LevelInfo)// Check level
+enabled := logger.IsLevelEnabled(dd.LevelInfo) // Check level
 
 // Shortcut checks
 logger.IsDebugEnabled()
@@ -103,8 +103,8 @@ entry := logger.WithFields(
     dd.Int("version", 2),
 )
 
-// Single field
-entry := logger.WithField("env", "prod")
+// Single field (equivalent to WithFields with one field)
+entry2 := logger.WithField("env", "prod")
 ```
 
 ## Output Target Management

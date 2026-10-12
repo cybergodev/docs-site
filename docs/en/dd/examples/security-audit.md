@@ -21,10 +21,10 @@ import (
 )
 
 func main() {
-	logger, _ := dd.New(dd.Config{
-		Security: dd.DefaultSecurityConfig(),
-		Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Security = dd.DefaultSecurityConfig()
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+	logger, _ := dd.New(cfg)
 	defer logger.Close()
 
 	// Password auto-redacted
@@ -45,11 +45,11 @@ func main() {
 
 ```go
 // HIPAA medical compliance
-medicalLogger, _ := dd.New(dd.Config{
-    Format:   dd.FormatJSON,
-    Security: dd.HealthcareConfig(),
-    Targets:  []dd.OutputTarget{dd.FileOutput("logs/medical.json")},
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.HealthcareConfig()
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/medical.json")}
+medicalLogger, _ := dd.New(cfg)
 
 medicalLogger.InfoWith("patient visit",
     dd.String("password", "s3cr3t123"),        // -> [REDACTED] (sensitive key name)
@@ -57,11 +57,11 @@ medicalLogger.InfoWith("patient visit",
 )
 
 // PCI-DSS financial compliance
-paymentLogger, _ := dd.New(dd.Config{
-    Format:   dd.FormatJSON,
-    Security: dd.FinancialConfig(),
-    Targets:  []dd.OutputTarget{dd.FileOutput("logs/payment.json")},
-})
+cfg = dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.FinancialConfig()
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/payment.json")}
+paymentLogger, _ := dd.New(cfg)
 
 paymentLogger.InfoWith("payment processing",
     dd.String("card_number", "4111111111111111"),  // -> [REDACTED]
@@ -103,18 +103,18 @@ func main() {
 	defer auditLogger.Close()
 
 	// Business Logger
-	logger, _ := dd.New(dd.Config{
-		Format:   dd.FormatJSON,
-		Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
-		Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-		// Note: Audit is not configured here, so the business logger's redaction/security
-		// events do NOT automatically flow into the auditLogger above.
-		// To have security events auto-routed to audit, configure the Audit field here —
-		// dd.New builds the logger's OWN internal AuditLogger from that AuditConfig
-		// (events do not flow into the separately constructed auditLogger above; if both
-		// write to the same file, coordinate them yourself),
-		// or call auditLogger.LogX(...) explicitly to record events.
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+	// Note: Audit is not configured here, so the business logger's redaction/security
+	// events do NOT automatically flow into the auditLogger above.
+	// To have security events auto-routed to audit, configure the Audit field here —
+	// dd.New builds the logger's OWN internal AuditLogger from that AuditConfig
+	// (events do not flow into the separately constructed auditLogger above; if both
+	// write to the same file, coordinate them yourself),
+	// or call auditLogger.LogX(...) explicitly to record events.
+	logger, _ := dd.New(cfg)
 	defer logger.Close()
 
 	// Normal business operations (redaction handled by Security, but not auto-written to the audit log)
@@ -221,12 +221,12 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
     fwCfg.Compress = true
     fw, _ := dd.NewFileWriter("logs/app.json", fwCfg)
 
-    logger, _ := dd.New(dd.Config{
-        Level:    dd.LevelInfo,
-        Format:   dd.FormatJSON,
-        Security: dd.SecurityConfigForLevel(dd.SecurityLevelStandard),
-        Targets:  []dd.OutputTarget{dd.CustomOutput(fw)},
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+    cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+    logger, _ := dd.New(cfg)
 
     return logger, auditLogger, nil
 }

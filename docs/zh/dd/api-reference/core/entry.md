@@ -1,7 +1,7 @@
 ---
 sidebar_label: "LoggerEntry"
 title: "LoggerEntry - CyberGo DD | 预设字段日志"
-description: "CyberGo DD LoggerEntry 类型完整 API 文档，用于创建带预设字段的链式日志记录器，传入字段时返回新的不可变 Entry 实例（不传字段时返回原 Entry），支持字段累积组合、上下文绑定传播和级别继承机制，适用于请求级日志追踪和上下文关联等场景。"
+description: "CyberGo DD LoggerEntry 类型 API 文档：创建带预设字段的链式日志记录器，传入字段时返回新的不可变 Entry（不传时返回原实例），支持字段累积与上下文绑定，适用于请求级日志追踪场景。"
 sidebar_position: 3
 ---
 
@@ -83,9 +83,9 @@ entry := base.WithField("svc", "gateway")  // svc 变为 "gateway"
 
 | 方法 | 说明 |
 |------|------|
-| `Print(args ...any)` | 输出到 Writer（LevelInfo，受安全过滤） |
+| `Print(args ...any)` | 输出到 Writer（LevelInfo，含调用者信息，受安全过滤） |
 | `Println(args ...any)` | 与 Print 行为一致 |
-| `Printf(format string, args ...any)` | 格式化输出（LevelInfo，受安全过滤） |
+| `Printf(format string, args ...any)` | 格式化输出（LevelInfo，含调用者信息，受安全过滤） |
 
 ### 字段链
 

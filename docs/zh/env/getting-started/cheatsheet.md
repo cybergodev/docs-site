@@ -98,7 +98,7 @@ env.ParseInto(&cfg)
 | 预设 | 用途 | 特点 |
 |------|------|------|
 | `DefaultConfig()` | 通用 | 安全默认值 |
-| `DevelopmentConfig()` | 开发 | 宽松限制、支持 YAML 语法、10MB 文件上限 |
+| `DevelopmentConfig()` | 开发 | 宽松限制、允许覆盖、支持 YAML 语法、10MB 文件上限 |
 | `TestingConfig()` | 测试 | 覆盖已存在变量、测试隔离、64KB 文件上限 |
 | `ProductionConfig()` | 生产 | 严格验证 + 审计、不覆盖已存在变量、64KB 文件上限 |
 
@@ -111,7 +111,10 @@ cfg.AllowedKeys = []string{"APP_NAME", "PORT"}
 ## Loader 实例
 
 ```go
-loader, _ := env.New(cfg)
+loader, err := env.New(cfg)
+if err != nil {
+    log.Fatal(err)  // 创建失败（如配置非法）时终止
+}
 defer loader.Close()
 
 loader.LoadFiles(".env")
@@ -191,7 +194,7 @@ masked := env.MaskKey("DB_PASSWORD")  // "DB***"
 ```go
 goEnv := os.Getenv("GO_ENV")
 if goEnv == "" { goEnv = "development" }
-env.Load(".env", ".env."+goEnv, ".env.local")  // 单次调用，后覆盖前
+env.Load(".env", ".env."+goEnv, ".env.local")  // 单次调用；默认先加载的胜出，如需后覆盖设 OverwriteExisting=true
 ```
 
 ## 多格式
@@ -219,14 +222,18 @@ env.UnmarshalMap(data, env.FormatAuto)  // 自动检测
 # 注释
 KEY=value
 KEY="value with spaces"
-KEY='literal ${noexpand}'
+KEY='literal \n value'     # 单引号不处理转义，但不阻止变量展开（见下方提示）
 KEY=${OTHER_KEY}           # 变量引用
 KEY=${MISSING:-default}    # 默认值（变量不存在时使用）
 KEY=${MISSING:=default}    # 默认值（变量不存在时使用，同 :-）
 KEY=${MISSING:?error}      # 错误提示（变量不存在或为空时报错）
 export KEY=value           # bash 风格
-KEY=$$                     # 转义美元符号
+KEY=$$                     # 转义美元符号（得到字面量 $）
 ```
+
+::: tip 变量展开与字面量 $
+单引号**不阻止**变量展开——`KEY='a ${UNDEF}'` 中的 `${UNDEF}` 仍会展开，未定义时得到空串。需要字面量 `$` 时用 `$$` 转义，或设置 `cfg.ExpandVariables = false` 关闭展开。完整规则参见[文件格式](../reference/file-format)。
+:::
 
 ## 布尔值
 
@@ -284,6 +291,7 @@ func TestMain(m *testing.M) {
 | macOS | `DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH` |
 | Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS` |
 | 语言运行时 | `PYTHONPATH`, `NODE_PATH`, `PERL5OPT`, `RUBYLIB` |
+| Windows | `COMSPEC`, `PATHEXT`, `SYSTEMROOT`, `WINDIR` |
 
 ## 接口类型
 
@@ -301,8 +309,8 @@ func TestMain(m *testing.M) {
 
 ## 相关文档
 
-- [快速开始](/zh/env/getting-started/) - 完整教程
-- [包函数](/zh/env/api-reference/functions) - 详细 API
-- [Loader API](/zh/env/api-reference/loader) - Loader 方法
-- [Config API](/zh/env/api-reference/config) - 配置选项
-- [错误处理](/zh/env/guides/error-handling) - 错误处理模式
+- [快速开始](./) - 完整教程
+- [包函数](../api-reference/functions) - 详细 API
+- [Loader API](../api-reference/loader) - Loader 方法
+- [Config API](../api-reference/config) - 配置选项
+- [错误处理](../guides/error-handling) - 错误处理模式

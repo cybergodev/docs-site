@@ -64,7 +64,7 @@ When the file exists and both are true, `ResumeDownload` takes priority — the 
 func DefaultDownloadConfig() *DownloadConfig
 ```
 
-Returns the default download config: `Overwrite` and `ResumeDownload` both false, `ChecksumAlgorithm` set to `ChecksumSHA256`. The caller must set `FilePath` before use.
+Returns the default download config: `Overwrite` and `ResumeDownload` both false, `ChecksumAlgorithm` set to `ChecksumSHA256`. The caller must set `FilePath` before use; `ProgressCallback`, `Overwrite`, `ResumeDownload`, and `Checksum` can be set as needed.
 
 ## DownloadProgressCallback
 

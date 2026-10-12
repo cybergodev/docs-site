@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Log Sampling"
 title: "Log Sampling - CyberGo DD | High-Throughput Logging"
-description: "Configure CyberGo DD log sampling: SamplingConfig Initial, Thereafter, Tick parameters cut log volume in high-throughput scenarios, with runtime toggling."
+description: "CyberGo DD log sampling: SamplingConfig Initial, Thereafter, Tick parameters that cut log volume in high-throughput scenarios, with runtime toggling."
 sidebar_position: 1
 ---
 
@@ -13,7 +13,7 @@ In high-throughput scenarios (HTTP request logging, event stream processing), lo
 
 DD uses a **counter-based sampling** strategy:
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │  Requests 1-100  →  all logged (Initial phase)           │
 │  Request 101     →  skipped                               │
@@ -71,6 +71,29 @@ func main() {
 	// Actual output: first 100 + 90 of remaining 900 = 190 entries
 }
 ```
+
+### Recommended Starting Point: DefaultSamplingConfig()
+
+`dd.DefaultSamplingConfig()` returns the recommended defaults: `Initial=100`, `Thereafter=100`, `Tick=1s` — counters reset every second, so traffic below 100 messages/second is never sampled, and only the excess is reduced to 1 in 100:
+
+```go
+cfg := dd.DefaultConfig()
+sampling := dd.DefaultSamplingConfig()
+sampling.Initial = 10 // Adjust as needed: first 10 per second, then 1 in 10
+cfg.Sampling = &sampling
+logger, _ := dd.New(cfg)
+```
+
+:::warning Assignment Activates Sampling
+`DefaultSamplingConfig()` returns `Enabled=true`, so assigning it to `Config.Sampling` **activates sampling immediately**. To use it merely as a "template" that you adjust field by field and enable later, you must set `Enabled=false` manually:
+
+```go
+sampling := dd.DefaultSamplingConfig()
+sampling.Enabled = false // Inert template: assigning it to Config.Sampling will not activate sampling
+// ... after adjusting fields, set sampling.Enabled = true when you want it active
+```
+
+:::
 
 ### Runtime Toggle
 

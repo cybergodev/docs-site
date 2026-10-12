@@ -1,7 +1,7 @@
 ---
 sidebar_label: "常见问题"
 title: "常见问题 - CyberGo env | 环境变量常见问题"
-description: "CyberGo env 常见问题解答，涵盖全局模式与实例模式选择、Load 单次初始化限制、JSON/YAML 嵌套键访问、GetSlice 泛型函数设计、线程安全并发访问、SecureValue 生命周期管理、OverwriteExisting 覆盖策略与测试隔离等高频问题。"
+description: "CyberGo env 常见问题解答，涵盖全局与实例模式选择、Load 单次初始化、JSON/YAML 嵌套键访问、GetSlice 泛型设计、线程安全并发访问、SecureValue 生命周期与 OverwriteExisting 覆盖策略等高频问题。"
 sidebar_position: 2
 ---
 
@@ -85,7 +85,7 @@ JSON/YAML 的嵌套结构会被自动**扁平化**为下划线分隔的键名：
 }
 ```
 
-```
+```text
 存储为：DATABASE_HOST=localhost, DATABASE_PORT=5432
 ```
 
@@ -214,7 +214,7 @@ log.Printf("API Key: %s", sv.Masked())    // [SECURE:32 bytes locked]
 log.Printf("API Key: %s", sv)              // 同上（String() 返回 Masked()）
 
 // ✅ 安全 — 掩码工具
-masked := env.MaskValue("API_KEY", "sk-xxx") // sk-******************************
+masked := env.MaskValue("API_KEY", "sk-xxx") // [MASKED:6 chars]（敏感键 → 按值长度掩码）
 clean := env.SanitizeForLog(logMessage)       // 自动检测并掩码
 
 // ❌ 危险 — 明文泄露
@@ -314,7 +314,7 @@ func TestGlobalMode(t *testing.T) {
 ```
 
 ::: tip 完整测试指南
-详见 [测试场景](/zh/env/guides/testing) 指南。
+详见 [测试场景](../guides/testing) 指南。
 :::
 
 ## 安全与生命周期
@@ -333,15 +333,15 @@ cfg := env.DefaultConfig()
 cfg.ExpansionScope = env.ExpansionFileOnly // ${VAR} 仅解析文件内变量
 ```
 
-详见[变量展开 · 展开作用域](/zh/env/guides/variable-expansion)。
+详见[变量展开 · 展开作用域](../guides/variable-expansion)。
 
 ### 值里的 `$` 读回来为什么变了？
 
-默认开启变量展开时，`$VAR`/`${VAR}` 序列在加载期会被展开。若值本身含有美元符字面量（价格、模板字符串），请用 `cfg.ExpandVariables = false` 加载，或参见[序列化 · 往返陷阱](/zh/env/guides/serialization)了解 `Marshal` 输出再读回的同类问题。
+默认开启变量展开时，`$VAR`/`${VAR}` 序列在加载期会被展开。若值本身含有美元符字面量（价格、模板字符串），请用 `cfg.ExpandVariables = false` 加载，或参见[序列化 · 往返陷阱](../guides/serialization)了解 `Marshal` 输出再读回的同类问题。
 
 ## 相关文档
 
-- [快速开始](/zh/env/getting-started/) — 5 分钟入门
-- [速查表](/zh/env/getting-started/cheatsheet) — 高频代码片段
-- [错误处理](/zh/env/guides/error-handling) — 哨兵错误与恢复策略
-- [文件格式](/zh/env/reference/file-format) — .env/JSON/YAML 语法
+- [快速开始](../getting-started/) — 5 分钟入门
+- [速查表](../getting-started/cheatsheet) — 高频代码片段
+- [错误处理](../guides/error-handling) — 哨兵错误与恢复策略
+- [文件格式](./file-format) — .env/JSON/YAML 语法

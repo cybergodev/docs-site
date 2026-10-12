@@ -1,7 +1,7 @@
 ---
 sidebar_label: "常见问题"
 title: "FAQ - CyberGo DD | 常见问题"
-description: "CyberGo DD 日志库常见问题与详细解答汇总，涵盖配置调优技巧、性能优化建议、敏感数据安全过滤规则、审计日志与合规配置方法、文件轮换策略选择与优化、错误处理最佳实践和钩子系统使用示例等主题，帮助开发者快速解决在实际项目中遇到的各类问题。"
+description: "CyberGo DD 常见问题与解答汇总：基础使用、配置与文件轮换、性能优化、敏感数据过滤与防篡改、错误处理及测试中的日志捕获等主题，快速解决实际项目问题。"
 sidebar_position: 1
 ---
 
@@ -36,13 +36,13 @@ func init() {
 或通过 `SetDefault`：
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.json"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.json"),
+}
+logger, _ := dd.New(cfg)
 dd.SetDefault(logger)
 ```
 
@@ -55,20 +55,21 @@ dd.SetDefault(logger)
 ### 如何同时输出到控制台和文件？
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.log"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.log"),
+}
+logger, _ := dd.New(cfg)
+
 // 或 JSON 格式
-logger, _ := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.json"),
-    },
-})
+cfg = dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.json"),
+}
+logger, _ = dd.New(cfg)
 ```
 
 ### 如何动态修改日志级别？

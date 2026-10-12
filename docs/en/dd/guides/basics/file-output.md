@@ -1,7 +1,7 @@
 ---
 sidebar_label: "File Output & Rotation"
 title: "File Output & Rotation - CyberGo DD | File Logging Guide"
-description: "File logging with CyberGo DD: FileWriter size rotation and time cleanup, BufferedWriter optimization, MultiWriter fan-out, and production best practices."
+description: "CyberGo DD file logging: FileWriter size rotation and time cleanup, BufferedWriter optimization, MultiWriter fan-out, and production best practices."
 sidebar_position: 4
 ---
 
@@ -23,11 +23,11 @@ import (
 )
 
 func main() {
-	logger, err := dd.New(dd.Config{
-		Targets: []dd.OutputTarget{
-			dd.FileOutput("logs/app.log"),
-		},
-	})
+	cfg := dd.DefaultConfig()
+	cfg.Targets = []dd.OutputTarget{
+		dd.FileOutput("logs/app.log"),
+	}
+	logger, err := dd.New(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,12 +40,12 @@ func main() {
 ### Console + File Dual Output
 
 ```go
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.log"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.log"),
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -80,9 +80,10 @@ fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
 if err != nil {
     log.Fatal(err)
 }
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
-})
+
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -92,12 +93,12 @@ defer logger.Close()
 ### JSON-format Log File
 
 ```go
-logger, err := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.FileOutput("logs/app.json"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.FileOutput("logs/app.json"),
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -140,9 +141,9 @@ if err != nil {
     log.Fatal(err)
 }
 
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(bw)},
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(bw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -174,9 +175,9 @@ remote := &RemoteLogWriter{endpoint: "http://log-service/ingest"}
 
 mw := dd.NewMultiWriter(fw, remote)
 
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(mw)},
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(mw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -230,16 +231,15 @@ func (w *LogstashWriter) Write(p []byte) (n int, err error) {
 }
 
 // Use the custom Writer
-logger, err := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.FileOutput("logs/app.json"),
-        dd.CustomOutput(&LogstashWriter{
-            endpoint: "http://logstash:5044",
-            client:   &http.Client{Timeout: 5 * time.Second},
-        }),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.FileOutput("logs/app.json"),
+    dd.CustomOutput(&LogstashWriter{
+        endpoint: "http://logstash:5044",
+        client:   &http.Client{Timeout: 5 * time.Second},
+    }),
+}
 if err != nil {
     log.Fatal(err)
 }
@@ -268,20 +268,20 @@ func NewProductionLogger() (*dd.Logger, error) {
         return nil, err
     }
 
-    return dd.New(dd.Config{
-        Level:  dd.LevelInfo,
-        Format: dd.FormatJSON,
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.CustomOutput(bw),
-        },
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Targets = []dd.OutputTarget{
+        dd.ConsoleOutput(),
+        dd.CustomOutput(bw),
+    }
+    return dd.New(cfg)
 }
 ```
 
 ## Next Steps
 
 - [Structured Logging](./structured-logging) -- Fields and chaining
-- [Sensitive Data Filtering](../security/sensitive-filtering) -- Auto-redaction
+- [Log Sampling](../operations/sampling) -- Volume control for high-throughput scenarios
 - [API Reference - Writers](../../api-reference/output-integration/writers) -- Complete Writer API
 - [Performance Tuning](../../advanced/performance) -- Performance tuning advice

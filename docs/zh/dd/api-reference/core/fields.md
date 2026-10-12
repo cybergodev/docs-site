@@ -2,7 +2,7 @@
 sidebar_label: "结构化字段"
 title: "结构化字段 - CyberGo DD | Field 构造器与校验"
 description: "CyberGo DD 结构化字段 API：20 种类型安全字段构造器（String/Int/Float/Bool/Time/Duration/Err 等）、Field 类型与字段键校验（命名约定与 Log4Shell 安全检测），支持自定义校验模式与预设配置。"
-sidebar_position: 3.5
+sidebar_position: 4
 ---
 
 # 结构化字段
@@ -76,6 +76,8 @@ dd.ErrWithKey("db_error", err)
 dd.ErrWithStack(err)
 ```
 
+三个错误构造器均对 `Error()` 方法可能抛出的 panic 做了防护：panic 会被恢复为 `%!v(PANIC=Error method: ...)` 占位值，不会传播到调用方。
+
 ## 使用方式
 
 ### 与 InfoWith 组合
@@ -115,7 +117,7 @@ base.InfoWith("响应",
 
 ## 字段校验
 
-DD 提供字段键校验机制，支持命名约定检查与安全验证（Log4Shell 注入、同形异义攻击、overlong UTF-8）。校验配置 `FieldValidationConfig` 可挂在 [`Config.FieldValidation`](../core/config) 上随构造生效，或运行时由 [`Logger.SetFieldValidation`](../core/logger) 动态替换。每次 `*With` 调用会对每个字段的 Key 调用 `ValidateFieldKey`，Strict 模式下失败会以日志形式报错（日志方法本身不返回 error）。
+DD 提供字段键校验机制，支持命名约定检查与安全验证（Log4Shell 注入、同形异义攻击、overlong UTF-8）。校验配置 `FieldValidationConfig` 可挂在 [`Config.FieldValidation`](../core/config) 上随构造生效，或运行时由 [`Logger.SetFieldValidation`](../core/logger) 动态替换。每次 `*With` 调用会对每个字段的 Key 调用 `ValidateFieldKey`，Warn/Strict 模式下失败会向 stderr 输出诊断（字段仍正常记录，日志方法本身不返回 error）。
 
 ### FieldValidationMode
 

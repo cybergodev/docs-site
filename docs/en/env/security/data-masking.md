@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Data Masking"
 title: "Data Masking - CyberGo env | Log Security Tools"
-description: "Sensitive data masking guide for CyberGo env: IsSensitiveKey auto-detection, MaskValue and MaskKey masking, and ClearBytes zeroing, with logging examples."
+description: "Sensitive data masking guide for CyberGo env: IsSensitiveKey detection, MaskValue, MaskKey, SanitizeForLog log cleaning, and ClearBytes secure zeroing."
 sidebar_position: 2
 ---
 
@@ -11,7 +11,7 @@ env provides a set of **utility functions independent of the Loader** for preven
 
 ## Why Masking Is Needed
 
-Even if you properly protect sensitive values in memory with [SecureValue](/en/env/api-reference/secure-value), they can still leak in three places:
+Even if you properly protect sensitive values in memory with [SecureValue](../api-reference/secure-value), they can still leak in three places:
 
 - **Application logs** — directly printing configuration, request parameters, connection strings
 - **Error messages** — panic / error carries keys into log collection systems
@@ -47,7 +47,7 @@ Case-insensitively checks whether `key` contains sensitive patterns. Detection u
 | Infrastructure | `CONNECTION_STRING`, `CONN_STRING`, `DATABASE_URL`, `DB_PASSWORD` |
 | Cloud Services | `AWS_SECRET`, `AZURE_KEY`, `GCP_KEY`, `SERVICE_ACCOUNT` |
 
-:::tip
+:::tip What substring matching means
 `IsSensitiveKey("MY_API_KEY_TOKEN")` matches both `API_KEY` and `TOKEN`, returning true. This means `AUTHORIZATION` is also classified as sensitive because it contains `AUTH` — this is the intended conservative behavior.
 :::
 
@@ -114,7 +114,7 @@ func main() {
 }
 ```
 
-:::tip
+:::tip Why length is preserved
 `[MASKED:N chars]` exposes the value's length but not its content. This is useful for troubleshooting "was the password truncated" or "is the key complete" without leaking plaintext.
 :::
 
@@ -124,7 +124,7 @@ func main() {
 func MaskKey(key string) string
 ```
 
-Masks the key name itself, for scenarios where you need to show a key exists but don't want to expose its meaning (the public API `MaskKey` is a wrapper around the internal masking routine, sharing one implementation with error reporting and audit logs):
+Masks the key name itself, for scenarios where you need to show a key exists but don't want to expose its meaning (the public API `MaskKey` is a wrapper around the internal masking routine, sharing one implementation with error reporting; audit logs do not use `MaskKey` — key/value masking in audits goes through `MaskValue`'s `[MASKED:N chars]`):
 
 | Condition | Return Value |
 |-----------|-------------|
@@ -149,7 +149,7 @@ func main() {
 }
 ```
 
-:::warning
+:::warning Combining with MaskValue
 `MaskKey` only takes the first 2 characters of the key name, so `DB_HOST` and `DB_PASSWORD` both become `DB***`. If you need to distinguish them in logs, output alongside `MaskValue`, or only use `MaskKey` alone when the key name doesn't matter.
 :::
 
@@ -159,12 +159,12 @@ func main() {
 func MaskSensitiveInString(s string) string
 ```
 
-Truncates long strings to prevent excessive content in logs (which may indirectly leak information or bloat logs):
+**Truncate first, then mask** — a two-stage pipeline: strings longer than 50 characters are truncated first (preventing bloated logs and indirect leaks), then [`SanitizeForLog`](#sanitizeforlog) masks sensitive key-values in the result — truncation alone would leave `password=...` intact in logs (SEC-04 fix):
 
 | Condition | Return Value |
 |-----------|-------------|
-| `len(s) > 50` | `s[:47] + "..."` |
-| Otherwise | Original value |
+| `len(s) > 50` | `SanitizeForLog(s[:47] + "...")` |
+| Otherwise | `SanitizeForLog(s)` |
 
 ```go
 package main
@@ -176,9 +176,15 @@ import (
 )
 
 func main() {
+	// Stage one: strings over 50 characters are truncated first
 	long := "012345678901234567890123456789012345678901234567890123456789"
 	fmt.Println(env.MaskSensitiveInString(long))
 	// Output: 012345678901234567890123456789012345678901234567...
+
+	// Stage two: sensitive key-values are still masked after (or without) truncation
+	s := "connect failed: user=admin password=hunter2"
+	fmt.Println(env.MaskSensitiveInString(s))
+	// Output: connect failed: user=admin password=[MASKED]
 
 	short := "hello world"
 	fmt.Println(env.MaskSensitiveInString(short))
@@ -192,7 +198,7 @@ func main() {
 func SanitizeForLog(s string) string
 ```
 
-Scans the string for `key=value` patterns, **replacing the entire** sensitive `key=value` with `[MASKED]`, while removing control characters (preserving `\n` and `\t`). Suitable for processing connection strings, error messages, and other inline key-value pairs.
+Scans the string for `key=value` patterns, **keeping the key name and separator and replacing only the value** of sensitive pairs with `[MASKED]`, while removing control characters (preserving `\n` and `\t`). Suitable for processing connection strings, error messages, and other inline key-value pairs.
 
 **Detected assignment patterns:** `password=`, `secret=`, `token=`, `auth=`, `credential=`, `passphrase=`, `session=`, `cookie=`, `api_key=`, `apikey=`, `access_key=`, `secret_key=`, `private_key=`, `public_key=`, `encrypt_key=`, `decrypt_key=`, `signing_key=`, `ssn=`, `credit_card=`, `card_number=`, `cvv=`, `cvc=`, `mnemonic=`, `seed=`, `recovery=`, `wallet=`, `connection_string=`, `database_url=`, `db_password=`
 
@@ -207,19 +213,19 @@ import (
 
 func main() {
 	fmt.Println(env.SanitizeForLog("user=admin password=s3cret"))
-	// Output: user=admin [MASKED]
+	// Output: user=admin password=[MASKED]
 
 	fmt.Println(env.SanitizeForLog("token=abc123 host=localhost"))
-	// Output: [MASKED] host=localhost
+	// Output: token=[MASKED] host=localhost
 
 	// Multiple sensitive values all masked
 	fmt.Println(env.SanitizeForLog("user=pguser password=hunter2 api_key=sk_123"))
-	// Output: user=pguser [MASKED] [MASKED]
+	// Output: user=pguser password=[MASKED] api_key=[MASKED]
 }
 ```
 
-:::tip
-`SanitizeForLog` replaces `password=s3cret` entirely with a single `[MASKED]` (including the key name), rather than keeping `password=[MASKED]`. This way the log doesn't even reveal "there's a password here."
+:::tip Replacement granularity
+`SanitizeForLog` keeps the `password=` key name and separator and replaces only the value `s3cret` with `[MASKED]`. Key names and structure remain visible in the log (you can still see which config entries exist), but the sensitive values themselves never leak.
 :::
 
 ### ClearBytes
@@ -251,8 +257,8 @@ func main() {
 }
 ```
 
-:::warning
-`ClearBytes` only zeros the slice you pass in. If the same sensitive data was copied multiple times (e.g., conversions between string and []byte create new copies), those copies cannot be zeroed together. Minimize copying of sensitive data, and use it alongside [SecureValue](/en/env/api-reference/secure-value)'s `Release()` / `Close()`.
+:::warning ClearBytes limitations
+`ClearBytes` only zeros the slice you pass in. If the same sensitive data was copied multiple times (e.g., conversions between string and []byte create new copies), those copies cannot be zeroed together. Minimize copying of sensitive data, and use it alongside [SecureValue](../api-reference/secure-value)'s `Release()` / `Close()`.
 :::
 
 ## Practical Example
@@ -306,7 +312,7 @@ DB_PASSWORD     = [MASKED:16 chars]
 API_KEY         = [MASKED:24 chars]
 
 === Error Log (auto-masked) ===
-failed to connect: user=admin [MASKED] host=db.local
+failed to connect: user=admin password=[MASKED] host=db.local
 
 === Sensitive Key List (key names masked) ===
 Sensitive config: DB***
@@ -334,14 +340,14 @@ log.Printf("Connecting with %s", secret.Masked())
 log.Printf("Config %s", env.MaskValue("API_KEY", key))
 ```
 
-:::tip
+:::tip Clear division of labor
 - SecureValue's `Masked()` output looks like `[SECURE:32 bytes locked]`, dedicated to the values it manages.
 - The masking utility functions (`MaskValue`, etc.) can be used on values from **any source** — not limited to SecureValue, and not dependent on a Loader.
 :::
 
 ## Related Documentation
 
-- [Security Overview](/en/env/security/) - Security architecture overview
-- [SecureValue API](/en/env/api-reference/secure-value) - In-memory value protection (including `Masked` / `Reveal`)
-- [Memory Locking](/en/env/security/memory-locking) - Preventing sensitive data from being swapped to disk
-- [Production Checklist](/en/env/security/production-checklist) - Pre-launch security checks
+- [Security Overview](./) - Security architecture overview
+- [SecureValue API](../api-reference/secure-value) - In-memory value protection (including `Masked` / `Reveal`)
+- [Memory Locking](./memory-locking) - Preventing sensitive data from being swapped to disk
+- [Production Checklist](./production-checklist) - Pre-launch security checks

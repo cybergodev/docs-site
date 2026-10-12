@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Constants & Errors"
 title: "Constants & Errors - CyberGo DD | LogLevel & SentinelErrors"
-description: "Reference for CyberGo DD constants and error types: LogLevel log-level constants, Format output formats, and SentinelErrors definitions."
-sidebar_position: 6
+description: "CyberGo DD constants and error types reference: LogLevel log-level constants, Format output formats, and SentinelErrors definitions."
+sidebar_position: 8
 ---
 
 # Constants & Errors
+
+> 🔧 **API Reference** · For a hands-on tutorial see [Error Handling](../../guides/operations/error-handling)
 
 DD defines a rich set of constants and error types for log-level control, formatting, and error handling.
 
@@ -73,6 +75,8 @@ type HashAlgorithm int // Integrity signing hash algorithm
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `HashAlgorithmSHA256` | 0 | SHA-256 algorithm (used by [integrity signing](../security-audit/integrity)) |
+
+`HashAlgorithm` implements `String() string` (returns `"SHA256"`; unknown values return `"Unknown"`).
 
 ## Default Values
 

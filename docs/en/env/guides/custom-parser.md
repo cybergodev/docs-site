@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Custom Parser"
 title: "Custom Parser - CyberGo env | Extending File Formats"
-description: "Custom parser guide for CyberGo env: implement the EnvParser interface's Parse method and register via RegisterParser, with TOML and INI examples."
+description: "CyberGo env custom parser guide: implement EnvParser, register via RegisterParser, Validator/Auditor from ComponentFactory, TOML/INI examples and best practices."
 sidebar_position: 8
 ---
 
@@ -199,9 +199,13 @@ type INIParser struct {
 }
 
 func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+	// Limit read size; reject oversized input (consistent with the TOML/XML examples)
 	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
 	if err != nil {
 		return nil, err
+	}
+	if int64(len(content)) > p.cfg.MaxFileSize {
+		return nil, env.ErrFileTooLarge
 	}
 
 	result := make(map[string]string)
@@ -393,12 +397,12 @@ func main() {
 }
 ```
 
-:::warning
+:::warning LoadFiles routing restriction
 Custom format numbers registered via `RegisterParser` (e.g., `FormatTOML = 100`) are **not auto-recognized by `LoadFiles` based on file extension**. `LoadFiles` internally calls `DetectFormat(filename)` to select a parser, but `DetectFormat` only recognizes the four extensions `.env` / `.json` / `.yaml` / `.yml`; other extensions return `FormatAuto`, which falls back to the built-in dotenv parser — the custom parser is never invoked.
 
 Two paths for loading custom format files:
 
-1. **`.env` extension + `ForceRegisterParser`** (recommended): Name your custom format file `*.env`, and use `env.ForceRegisterParser(env.FormatEnv, ...)` to override the built-in dotenv parser. Note to preserve key name/value/size security checks, otherwise you introduce security vulnerabilities.
+1. **`.env` extension + `ForceRegisterParser`** (recommended): Name your custom format file `*.env`, and use `env.ForceRegisterParser(env.FormatEnv, ...)` to override the built-in dotenv parser. Make sure to preserve key name/value/size security checks, otherwise you will introduce security vulnerabilities.
 2. **Call the parser manually**: Read the file to get an `io.Reader`, construct the parser instance yourself and call `parser.Parse(reader, filename)` to get `map[string]string`, then write each entry with `loader.Set`. Note that the parser's internal `validator`/`auditor` typically depend on `*ComponentFactory`, which must be obtained and passed in when registering the factory.
 :::
 
@@ -656,7 +660,7 @@ err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, factory *env.
 })
 ```
 
-::: warning Security warning
+:::warning Security warning
 Overriding built-in parsers can introduce vulnerabilities: if the replacement lacks key validation, value validation, or size limits, you lose the library's default protections. Only use this when your parser implements equivalent security checks in full.
 :::
 
@@ -664,7 +668,7 @@ Overriding built-in parsers can introduce vulnerabilities: if the replacement la
 
 ## Related Documentation
 
-- [ComponentFactory API](/en/env/api-reference/factory) - ComponentFactory and RegisterParser
-- [Interfaces](/en/env/api-reference/interfaces) - EnvParser interface definition
-- [Config API](/en/env/api-reference/config) - Configuration options in detail
-- [Multi-format Config](/en/env/guides/multi-format) - JSON/YAML formats in detail
+- [ComponentFactory API](../api-reference/factory) - ComponentFactory and RegisterParser
+- [Interfaces](../api-reference/interfaces) - EnvParser interface definition
+- [Config API](../api-reference/config) - Configuration options in detail
+- [Multi-format Config](./multi-format) - JSON/YAML formats in detail

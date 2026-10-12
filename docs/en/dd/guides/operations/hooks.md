@@ -38,9 +38,9 @@ hooks := dd.NewHooksFromConfig(dd.HooksConfig{
     }},
 })
 
-logger, err := dd.New(dd.Config{
-    Hooks: hooks,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = hooks
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -67,9 +67,9 @@ registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, err := dd.New(dd.Config{
-    Hooks: registry,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -114,7 +114,9 @@ registry.Add(dd.HookAfterLog, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, err := dd.New(dd.Config{Hooks: registry})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -198,10 +200,17 @@ If a hook function panics, DD recovers automatically and converts the panic to a
 ## Dynamic Registration
 
 ```go
-// Register a new hook at runtime
-registry.Add(dd.HookAfterLog, newHookFunc)
+// To add a hook to an already-created Logger at runtime, the right way is logger.AddHook (Clone-Modify-Store, thread-safe)
+if err := logger.AddHook(dd.HookAfterLog, newHookFunc); err != nil {
+    log.Printf("failed to register hook: %v", err) // ErrNilHook or ErrLoggerClosed
+}
 
-// Remove at runtime (via HookRegistry methods)
+// Remove at runtime: HookRegistry.Remove clears ALL hooks for the event (a single hook cannot be removed individually).
+// For an already-created Logger: GetHooks() for a copy, Remove, then SetHooks() to write it back
+if hooks := logger.GetHooks(); hooks != nil {
+    hooks.Remove(dd.HookAfterLog)
+    _ = logger.SetHooks(hooks)
+}
 ```
 
 :::warning registry cloning

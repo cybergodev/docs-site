@@ -102,7 +102,7 @@ defer p.Close()
 | `ErrProcessingTimeout` | 处理耗时超过 `ProcessingTimeout` | `ProcessingTimeout=0` 表示不限时 |
 | `ErrInternalPanic` | 内部意外 panic 被恢复 | 兜底保护，不应在正常使用中出现 |
 
-带 `context` 的版本：手动 `cancel()` → 返回 `context.Canceled`；用户 context 超时则取决于配置——已配置 `ProcessingTimeout` 时归一化为 `ErrProcessingTimeout`，未配置时透传 `context.DeadlineExceeded`（完整条件表见[常见问题](../../faq#processingtimeout-和用户-context-超时有什么区别)）。
+带 `context` 的版本：手动 `cancel()` → 返回 `context.Canceled`；用户 context 超时则取决于配置——已配置 `ProcessingTimeout` 时归一化为 `ErrProcessingTimeout`，未配置时透传 `context.DeadlineExceeded`（完整条件表见[常见问题](../../faq/#processingtimeout-和用户-context-超时有什么区别)）。
 
 ### Extract
 

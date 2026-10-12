@@ -580,8 +580,10 @@ handler := env.NewLogAuditHandler(logger)
 
 **输出示例：**
 ```text
-[AUDIT] 2024/01/15 10:30:00 load .env success
+[AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env
 ```
+
+事件以键值对输出（`action`、`key`、`success`、`reason`，可选 `file` / `duration`）；前缀与时间戳取决于传入的 `log.Logger`。完整格式说明见 [NewLogAuditHandler](./factory#newlogaudithandler)。
 
 ---
 
@@ -597,7 +599,7 @@ func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 - `ch` - 审计事件通道
 
 ::: warning 通道所有权
-`ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道。调用者必须自行关闭通道以通知接收方结束。此外，当通道缓冲区满时，`Log()` 会阻塞——建议使用带缓冲的通道。如需自动管理通道生命周期，使用 [NewCloseableChannelHandler](/zh/env/api-reference/factory#newcloseablechannelhandler)。
+`ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道。调用者必须自行关闭通道以通知接收方结束。此外，当通道缓冲区满时，`Log()` 会阻塞——建议使用带缓冲的通道。如需自动管理通道生命周期，使用 [NewCloseableChannelHandler](./factory#newcloseablechannelhandler)。
 :::
 
 ```go
@@ -651,6 +653,8 @@ const (
 )
 ```
 
+十个动作常量分别对应：`ActionLoad` 文件加载、`ActionParse` 解析操作、`ActionGet` 变量读取、`ActionSet` 变量设置、`ActionDelete` 变量删除、`ActionValidate` 键值验证、`ActionExpand` 变量展开、`ActionSecurity` 安全事件、`ActionError` 错误事件、`ActionFileAccess` 路径访问检查。
+
 ---
 
 ### AuditEvent
@@ -697,7 +701,7 @@ func (f *ComponentFactory) Close() error
 func (f *ComponentFactory) IsClosed() bool
 ```
 
-**用途：** 内部使用，创建 Loader 时自动管理。详见 [ComponentFactory API](/zh/env/api-reference/factory)。
+**用途：** 内部使用，创建 Loader 时自动管理。详见 [ComponentFactory API](./factory)。
 
 ---
 
@@ -787,6 +791,6 @@ func main() {
 
 ## 相关文档
 
-- [Loader API](/zh/env/api-reference/loader) - Loader 实例方法
-- [ComponentFactory API](/zh/env/api-reference/factory) - 组件工厂
-- [自定义解析器](/zh/env/guides/custom-parser) - 自定义解析器指南
+- [Loader API](./loader) - Loader 实例方法
+- [ComponentFactory API](./factory) - 组件工厂
+- [自定义解析器](../guides/custom-parser) - 自定义解析器指南

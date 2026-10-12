@@ -199,9 +199,13 @@ type INIParser struct {
 }
 
 func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, error) {
+	// 限制读取大小，超限拒绝（与 TOML/XML 示例一致）
 	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize+1))
 	if err != nil {
 		return nil, err
+	}
+	if int64(len(content)) > p.cfg.MaxFileSize {
+		return nil, env.ErrFileTooLarge
 	}
 
 	result := make(map[string]string)
@@ -662,7 +666,7 @@ err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, factory *env.
 
 ## 相关文档
 
-- [ComponentFactory API](/zh/env/api-reference/factory) - ComponentFactory 和 RegisterParser
-- [接口定义](/zh/env/api-reference/interfaces) - EnvParser 接口定义
-- [Config API](/zh/env/api-reference/config) - 配置选项详解
-- [多格式配置](/zh/env/guides/multi-format) - JSON/YAML 格式详解
+- [ComponentFactory API](../api-reference/factory) - ComponentFactory 和 RegisterParser
+- [接口定义](../api-reference/interfaces) - EnvParser 接口定义
+- [Config API](../api-reference/config) - 配置选项详解
+- [多格式配置](./multi-format) - JSON/YAML 格式详解

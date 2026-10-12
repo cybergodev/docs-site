@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Audit Logging"
 title: "Audit Logging - CyberGo env | Security Audit Configuration"
-description: "Audit logging guide for CyberGo env: JSONAuditHandler, LogAuditHandler, and ChannelAuditHandler record variable loads, reads, and changes for auditing."
+description: "CyberGo env audit logging: JSONAuditHandler, LogAuditHandler, ChannelAuditHandler and custom handlers record variable operations for security and compliance."
 sidebar_position: 6
 ---
 
@@ -36,7 +36,7 @@ loader, _ := env.New(cfg)
 
 ### JSONAuditHandler
 
-Outputs JSON format logs:
+Outputs logs in JSON format:
 
 ```go
 import (
@@ -49,7 +49,7 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
-**Output example:**
+**Output example** (excerpt: the `reason` field and per-key `ActionSet` events are omitted):
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
@@ -113,7 +113,10 @@ go func() {
 
 No-op handler, discards all events:
 
+<!-- check-code: skip -->
 ```go
+cfg := env.DefaultConfig()
+cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewNopAuditHandler()
 ```
 
@@ -143,18 +146,7 @@ type AuditEvent struct {
 
 ### AuditAction Types
 
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `ActionLoad` | `load` | File loading |
-| `ActionParse` | `parse` | Parsing operation |
-| `ActionGet` | `get` | Variable reading |
-| `ActionSet` | `set` | Variable setting |
-| `ActionDelete` | `delete` | Variable deletion |
-| `ActionValidate` | `validate` | Validation operation |
-| `ActionExpand` | `expand` | Variable expansion |
-| `ActionSecurity` | `security` | Security event |
-| `ActionError` | `error` | Error event |
-| `ActionFileAccess` | `file_access` | File access |
+There are 10 action constants in total; the complete list (string values and per-action semantics) is consolidated in the [Audit Actions](#audit-actions) section at the end of this page.
 
 ---
 
@@ -296,8 +288,12 @@ func main() {
 	// Create audit event channel
 	auditChan := make(chan env.AuditEvent, 1000)
 
-	// Start async processor
-	go processAuditEvents(auditChan)
+	// Start async processor; done is closed when the consumer goroutine exits
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		processAuditEvents(auditChan)
+	}()
 
 	// Configuration
 	cfg := env.ProductionConfig()
@@ -305,9 +301,16 @@ func main() {
 	cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
 
 	loader, _ := env.New(cfg)
-	defer loader.Close()
 
 	// Normal usage...
+
+	// ChannelAuditHandler does not own the channel: loader.Close() does not
+	// close auditChan — the caller must close it to send EOF to the consumer
+	loader.Close()
+	close(auditChan)
+
+	// Wait for the consumer goroutine to drain remaining events
+	<-done
 }
 
 func processAuditEvents(ch chan env.AuditEvent) {
@@ -327,6 +330,8 @@ func processAuditEvents(ch chan env.AuditEvent) {
 	}
 }
 ```
+
+The key shutdown sequence: `ChannelAuditHandler` does **not** own the channel — its `Close()` is a no-op, so the caller must `close(auditChan)` for the `for range` consumer to see EOF; sends block when the buffer is full. If you prefer a handler that manages the channel lifecycle itself (`Close()` closes the channel; consumers receive via `Channel()`), see CloseableChannelHandler under "More Built-in Handlers" below.
 
 ---
 
@@ -422,37 +427,30 @@ func main() {
 
 ### NopAuditHandler (no-op)
 
-Discards all audit events — useful for tests or temporarily silencing audit output:
+Discards all audit events — useful for tests or temporarily silencing audit output. See [NopAuditHandler above](#nopaudithandler) for usage.
 
-<!-- check-code: skip -->
-```go
-cfg := env.DefaultConfig()
-cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewNopAuditHandler()
-```
+## Audit Actions
 
-## Audit Actions (AuditAction)
+Audit events are categorized by action (type `AuditAction`). Custom handlers can filter the event types they care about using the `AuditAction` constants:
 
-Audit events are categorized by action. Custom handlers can filter the event types they care about using the `AuditAction` constants:
-
-| Constant | Meaning |
-|----------|---------|
-| `ActionLoad` | File loading |
-| `ActionParse` | env/JSON/YAML file parsing |
-| `ActionGet` | Variable retrieval (including type parse-failure records) |
-| `ActionSet` | Variable set, applied to process environment, or skipped by policy |
-| `ActionDelete` | Variable deletion |
-| `ActionValidate` | Validation operations |
-| `ActionExpand` | Variable expansion |
-| `ActionSecurity` | Security events (path validation failures, forbidden keys, etc.) |
-| `ActionError` | Error conditions |
-| `ActionFileAccess` | File system access |
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `ActionLoad` | `load` | File loading |
+| `ActionParse` | `parse` | env/JSON/YAML file parsing |
+| `ActionGet` | `get` | Variable retrieval (including type parse-failure records) |
+| `ActionSet` | `set` | Variable set, applied to process environment, or skipped by policy |
+| `ActionDelete` | `delete` | Variable deletion |
+| `ActionValidate` | `validate` | Validation operations |
+| `ActionExpand` | `expand` | Variable expansion |
+| `ActionSecurity` | `security` | Security events (path validation failures, forbidden keys, etc.) |
+| `ActionError` | `error` | Error conditions |
+| `ActionFileAccess` | `file_access` | File system access |
 
 `AuditEvent` is a structured event (timestamp, action, key, reason, success/failure, duration, and more). Sensitive keys are masked by `MaskKey` into `[MASKED:N chars]` (N = key length) before entering the event; non-sensitive keys are kept as-is.
 
 ## Related Documentation
 
-- [Security Overview](/en/env/security/) - Security architecture and core features
-- [Production Checklist](/en/env/security/production-checklist) - Audit configuration checks
-- [Interfaces](/en/env/api-reference/interfaces) - AuditLogger interface
-- [Component Factory](/en/env/api-reference/factory) - Audit handler factories
+- [Security Overview](../security/) - Security architecture and core features
+- [Production Checklist](../security/production-checklist) - Audit configuration checks
+- [Interfaces](../api-reference/interfaces) - AuditLogger interface
+- [Component Factory](../api-reference/factory) - Audit handler factories

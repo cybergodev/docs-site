@@ -1,15 +1,25 @@
 ---
 sidebar_label: "HookRegistry"
 title: "Hook System - CyberGo DD | HookRegistry"
-description: "CyberGo DD lifecycle hooks: register callbacks for before/after log writes (BeforeLog/AfterLog), rotation (OnRotate), and errors (OnError)."
-sidebar_position: 5.5
+description: "CyberGo DD lifecycle hooks: six events (BeforeLog/AfterLog, OnFilter, OnRotate, OnClose, OnError) with HookRegistry, HookContext, and HooksConfig."
+sidebar_position: 7
 ---
 
 # Hook System
 
+> 🔧 **API Reference** · For a hands-on tutorial see [Hook System](../../guides/operations/hooks)
+
 DD provides an event-based hook system that allows inserting custom logic at key points of the log lifecycle.
 
 ## Hook Events
+
+```go
+type HookEvent int
+
+func (e HookEvent) String() string
+```
+
+Hook event type; `String()` returns the event name (unknown values return `"Unknown"`).
 
 | Constant | String() | When triggered |
 |----------|----------|----------------|
@@ -72,7 +82,7 @@ reg := dd.NewHooksFromConfig(hooksConfig)
 | `Remove` | `(event HookEvent)` | Remove all hooks for an event |
 | `Trigger` | `(ctx, event, hookCtx) error` | Trigger all hooks for an event |
 | `Clear` | `()` | Clear all hooks |
-| `ClearFor` | `(event HookEvent)` | Clear hooks for the specified event (deprecated: identical to `Remove`, kept for backward compatibility) |
+| `ClearFor` <Badge type="warning" text="Deprecated" /> | `(event HookEvent)` | Clear hooks for the specified event (byte-for-byte identical to `Remove`, kept only for backward compatibility; **use `Remove` instead**) |
 | `SetErrorHandler` | `(handler HookErrorHandler)` | Set the error handler |
 
 ### Registering Hooks

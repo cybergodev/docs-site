@@ -49,7 +49,7 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
-**输出示例：**
+**输出示例**（节选，省略 `reason` 字段与逐键 `ActionSet` 事件）：
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
@@ -113,7 +113,10 @@ go func() {
 
 空操作处理器，丢弃所有事件：
 
+<!-- check-code: skip -->
 ```go
+cfg := env.DefaultConfig()
+cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewNopAuditHandler()
 ```
 
@@ -143,18 +146,7 @@ type AuditEvent struct {
 
 ### AuditAction 操作类型
 
-| 常量 | 值 | 说明 |
-|------|---|------|
-| `ActionLoad` | `load` | 文件加载 |
-| `ActionParse` | `parse` | 解析操作 |
-| `ActionGet` | `get` | 变量读取 |
-| `ActionSet` | `set` | 变量设置 |
-| `ActionDelete` | `delete` | 变量删除 |
-| `ActionValidate` | `validate` | 验证操作 |
-| `ActionExpand` | `expand` | 变量展开 |
-| `ActionSecurity` | `security` | 安全事件 |
-| `ActionError` | `error` | 错误事件 |
-| `ActionFileAccess` | `file_access` | 文件访问 |
+操作类型常量共 10 个，完整清单（含字符串值与各动作语义）统一列于页末[审计动作](#审计动作)一节。
 
 ---
 
@@ -296,8 +288,12 @@ func main() {
 	// 创建审计事件通道
 	auditChan := make(chan env.AuditEvent, 1000)
 
-	// 启动异步处理器
-	go processAuditEvents(auditChan)
+	// 启动异步处理器；done 在消费 goroutine 退出时关闭
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		processAuditEvents(auditChan)
+	}()
 
 	// 配置
 	cfg := env.ProductionConfig()
@@ -305,9 +301,16 @@ func main() {
 	cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
 
 	loader, _ := env.New(cfg)
-	defer loader.Close()
 
 	// 正常使用...
+
+	// ChannelAuditHandler 不拥有通道：loader.Close() 不会关闭 auditChan，
+	// 必须由调用方 close，向消费 goroutine 发送 EOF
+	loader.Close()
+	close(auditChan)
+
+	// 等待消费 goroutine 处理完剩余事件后退出
+	<-done
 }
 
 func processAuditEvents(ch chan env.AuditEvent) {
@@ -327,6 +330,8 @@ func processAuditEvents(ch chan env.AuditEvent) {
 	}
 }
 ```
+
+上例的关键收尾逻辑：`ChannelAuditHandler` **不拥有通道**——`Close()` 是空操作，通道必须由调用方 `close(auditChan)` 才能让 `for range` 消费 goroutine 收到 EOF；缓冲满时发送会阻塞。若希望处理器自管通道生命周期（`Close()` 即关闭通道、消费方经 `Channel()` 接收），见下文「更多内置处理器」中的 CloseableChannelHandler。
 
 ---
 
@@ -422,37 +427,30 @@ func main() {
 
 ### NopAuditHandler（空操作）
 
-丢弃所有审计事件，适用于测试或临时静默审计输出的场景：
+丢弃所有审计事件，适用于测试或临时静默审计输出，用法见[上文 NopAuditHandler](#nopaudithandler)。
 
-<!-- check-code: skip -->
-```go
-cfg := env.DefaultConfig()
-cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewNopAuditHandler()
-```
+## 审计动作
 
-## 审计动作（AuditAction）
+审计事件按动作分类（类型为 `AuditAction`）。自定义处理器可通过 `AuditAction` 常量过滤关注的事件类型：
 
-审计事件按动作分类。自定义处理器可通过 `AuditAction` 常量过滤关注的事件类型：
-
-| 常量 | 含义 |
-|------|------|
-| `ActionLoad` | 文件加载 |
-| `ActionParse` | env/JSON/YAML 文件解析 |
-| `ActionGet` | 变量读取（含类型解析失败记录） |
-| `ActionSet` | 变量设置、应用到进程环境或按策略跳过 |
-| `ActionDelete` | 变量删除 |
-| `ActionValidate` | 校验操作 |
-| `ActionExpand` | 变量展开 |
-| `ActionSecurity` | 安全事件（路径校验失败、禁止键等） |
-| `ActionError` | 错误条件 |
-| `ActionFileAccess` | 文件系统访问 |
+| 常量 | 值 | 含义 |
+|------|---|------|
+| `ActionLoad` | `load` | 文件加载 |
+| `ActionParse` | `parse` | env/JSON/YAML 文件解析 |
+| `ActionGet` | `get` | 变量读取（含类型解析失败记录） |
+| `ActionSet` | `set` | 变量设置、应用到进程环境或按策略跳过 |
+| `ActionDelete` | `delete` | 变量删除 |
+| `ActionValidate` | `validate` | 校验操作 |
+| `ActionExpand` | `expand` | 变量展开 |
+| `ActionSecurity` | `security` | 安全事件（路径校验失败、禁止键等） |
+| `ActionError` | `error` | 错误条件 |
+| `ActionFileAccess` | `file_access` | 文件系统访问 |
 
 `AuditEvent` 为结构化事件（含时间戳、动作、键、原因、成败与耗时等字段）。敏感键在进入事件前已被 `MaskKey` 掩码为 `[MASKED:N chars]`（N 为键长），非敏感键原样保留。
 
 ## 相关文档
 
-- [安全概述](/zh/env/security/) - 安全架构与核心特性
-- [生产检查清单](/zh/env/security/production-checklist) - 审计配置检查
-- [接口定义](/zh/env/api-reference/interfaces) - AuditLogger 接口
-- [组件工厂](/zh/env/api-reference/factory) - 审计处理器工厂
+- [安全概述](../security/) - 安全架构与核心特性
+- [生产检查清单](../security/production-checklist) - 审计配置检查
+- [接口定义](../api-reference/interfaces) - AuditLogger 接口
+- [组件工厂](../api-reference/factory) - 审计处理器工厂
