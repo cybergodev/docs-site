@@ -109,7 +109,7 @@ if err != nil {
     var ve *jwt.ValidationError
     if errors.As(err, &ve) {
         fmt.Printf("字段: %s, 原因: %s\n", ve.Field, ve.Message)
-        // 字段: user_id, 原因: suspicious pattern detected
+        // 字段：user_id, 原因：suspicious pattern detected
         return
     }
     // 非字段级错误，走 errors.Is 分支
@@ -131,7 +131,7 @@ invalid claims: user_id is required
 ```go
 if errors.Is(err, jwt.ErrInvalidClaims) {
     // 是 Claims 验证失败这一类别
-    fmt.Println("详情:", err) // invalid claims: user_id is required
+    fmt.Println("详情：", err) // invalid claims: user_id is required
 }
 ```
 
@@ -144,7 +144,7 @@ err := processor.ParseUnverified(malformedToken, &claims)
 if err != nil {
     // ❌ 无法用 errors.Is 匹配具体原因
     // ✅ 只能判断"解析失败"这一事实
-    fmt.Println("解析失败:", err) // failed to parse token: ...
+    fmt.Println("解析失败：", err) // failed to parse token: ...
 }
 ```
 

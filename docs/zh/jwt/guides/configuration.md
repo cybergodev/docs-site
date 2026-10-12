@@ -103,7 +103,7 @@ func main() {
 
     _, err = processor.Parse(token)
     fmt.Println("Valid:", err == nil)
-    // 输出: Valid: true
+    // 输出：Valid: true
 
     // 受众不匹配的令牌会被拒绝
     wrongClaims := &jwt.Claims{
@@ -115,7 +115,7 @@ func main() {
     wrongToken, _ := processor.Create(wrongClaims)
     _, err = processor.Parse(wrongToken)
     fmt.Println("Wrong audience valid:", err == nil)
-    // 输出: Wrong audience valid: false
+    // 输出：Wrong audience valid: false
 }
 ```
 
@@ -265,7 +265,7 @@ if err != nil {
     var ve *jwt.ValidationError
     if errors.As(err, &ve) {
         fmt.Printf("字段: %s, 原因: %s\n", ve.Field, ve.Message)
-        // 字段: user_id, 原因: suspicious pattern detected
+        // 字段：user_id, 原因：suspicious pattern detected
     }
 }
 ```

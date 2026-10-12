@@ -122,8 +122,8 @@ func main() {
 	}
 
 	fmt.Println(result.StatusCode())           // 输出：200
-	fmt.Println("尝试次数:", result.Meta.Attempts) // 输出：尝试次数: 1（失败重试后增加）
-	fmt.Println("总耗时:", result.Meta.Duration)
+	fmt.Println("尝试次数：", result.Meta.Attempts) // 输出：尝试次数：1（失败重试后增加）
+	fmt.Println("总耗时：", result.Meta.Duration)
 }
 ```
 
@@ -242,7 +242,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("状态码:", result.StatusCode()) // 输出：状态码: 200
+	fmt.Println("状态码：", result.StatusCode()) // 输出：状态码：200
 }
 ```
 
@@ -397,8 +397,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("请求状态:", resp.StatusCode())     // 输出：请求状态: 200
-	fmt.Println("会话头数量:", len(dc.GetHeaders())) // 输出：会话头数量: 2
+	fmt.Println("请求状态：", resp.StatusCode())     // 输出：请求状态：200
+	fmt.Println("会话头数量：", len(dc.GetHeaders())) // 输出：会话头数量：2
 
 	// 手动注入会话 Cookie；响应 Cookie 也会自动并入会话
 	if err := dc.SetCookies([]*http.Cookie{
@@ -411,12 +411,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("第二次请求:", resp2.StatusCode()) // 输出：第二次请求: 200
+	fmt.Println("第二次请求：", resp2.StatusCode()) // 输出：第二次请求：200
 
 	// Session() 拿到底层 SessionManager（下一节演示其独立用法）
 	session := dc.Session()
 	session.UpdateFromResult(resp2) // 把本次响应的 Cookie 合并进会话
-	fmt.Println("会话 Cookie 数量:", len(session.GetCookies()))
+	fmt.Println("会话 Cookie 数量：", len(session.GetCookies()))
 }
 ```
 
@@ -525,7 +525,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("会话头:", len(session.GetHeaders()))       // 输出：会话头: 3
+	fmt.Println("会话头：", len(session.GetHeaders()))       // 输出：会话头：3
 	fmt.Println("会话 Cookie:", len(session.GetCookies())) // 输出：会话 Cookie: 2
 
 	if c := session.GetCookie("session_id"); c != nil {

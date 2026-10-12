@@ -22,7 +22,7 @@ if err := env.Load(".env"); err != nil {
 
 // 第二次初始化被拒绝
 err := env.Load(".env.local")
-fmt.Println(errors.Is(err, env.ErrAlreadyInitialized)) // 输出: true
+fmt.Println(errors.Is(err, env.ErrAlreadyInitialized)) // 输出：true
 ```
 
 多个 goroutine 并发调用 `Load()` 也是安全的：互斥锁保证恰好一个调用成功，其余得到 `ErrAlreadyInitialized`。
@@ -160,7 +160,7 @@ func main() {
 	fmt.Println("after Close, in loader:", ok)
 	mode, ok = os.LookupEnv("MY_APP_MODE")
 	fmt.Println("after Close, in process:", mode, ok)
-	// 输出:
+	// 输出：
 	// after Apply, in process: demo true
 	// after Close, in loader: false
 	// after Close, in process: demo true
@@ -214,7 +214,7 @@ func main() {
 
 	fmt.Println("MY_APP_TOKEN in process:", tokenInProc)
 	fmt.Println("FOREIGN_VAR in process:", foreignInProc)
-	// 输出:
+	// 输出：
 	// MY_APP_TOKEN in process: false
 	// FOREIGN_VAR in process: true
 }
@@ -300,7 +300,7 @@ func main() {
 	wg.Wait()
 	fmt.Println("APP_NAME =", loader.GetString("APP_NAME"))
 	fmt.Println("total keys:", loader.Len())
-	// 输出:
+	// 输出：
 	// APP_NAME = demo
 	// total keys: 9
 }
@@ -357,7 +357,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("reloaded, port =", env.GetInt("GL_PORT"))
-	// 输出:
+	// 输出：
 	// before Load, port = 8080
 	// before Load, Set is ErrNotInitialized: true
 	// after Load, port = 9000

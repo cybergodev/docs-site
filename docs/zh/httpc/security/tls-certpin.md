@@ -154,8 +154,8 @@ mTLS 常用于零信任网络、服务网格内部认证、金融 API。服务�
 标准 TLS 验证：客户端信任任何由可信 CA 签发的证书。证书固定：客户端额外要求证书的公钥哈希匹配预存值。
 
 ```text
-标准验证:  信任 CA → 信任 CA 签发的任何证书
-证书固定:  信任 CA + 证书公钥必须匹配预存哈希
+标准验证：信任 CA → 信任 CA 签发的任何证书
+证书固定：信任 CA + 证书公钥必须匹配预存哈希
 ```
 
 固定叠加在标准验证之上，无需设置 `InsecureSkipVerify`。HTTPC 校验证书链中**任意一层**证书，因此固定中间证书时，叶子证书续期后仍可继续生效。
@@ -292,14 +292,14 @@ import (
 func main() {
 	// 非 base64 哈希在构造期即失败，不会等到线上握手才暴露
 	_, err := httpc.NewSPKIHashPinner("!!not-base64!!")
-	fmt.Println("非法哈希被拒绝:", err != nil)
+	fmt.Println("非法哈希被拒绝：", err != nil)
 
 	// 空白字符串 TrimSpace 后视为未提供，同样拒绝
 	_, err = httpc.NewSPKIHashPinner("   ")
-	fmt.Println("空哈希被拒绝:", err != nil)
+	fmt.Println("空哈希被拒绝：", err != nil)
 	// 输出：
-	// 非法哈希被拒绝: true
-	// 空哈希被拒绝: true
+	// 非法哈希被拒绝：true
+	// 空哈希被拒绝：true
 }
 ```
 

@@ -315,7 +315,7 @@ data, err := json.LoadFromFile("config/app.json")
 
 ## 文件迭代函数
 
-json 包提供 `ForeachFile` 系列函数，直接从文件迭代 JSON 数组 / 对象，无需手动读取+解析：
+json 包提供 `ForeachFile` 系列函数，直接从文件迭代 JSON 数组 / 对象，无需手动读取 + 解析：
 
 | 函数 | 用途 |
 |------|------|

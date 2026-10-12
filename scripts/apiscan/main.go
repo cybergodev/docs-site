@@ -389,9 +389,20 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: apiscan -src <dir> -module <path> [-out <file>]")
 		os.Exit(2)
 	}
+	// Validate -src up front: the scanner resolves it against its own CWD
+	// (caller-side `go -C` changes directory before we run), and WalkDir below
+	// deliberately swallows per-entry errors — a typo'd or relative path would
+	// otherwise scan nothing and look like a successful empty manifest.
+	if fi, err := os.Stat(*src); err != nil || !fi.IsDir() {
+		abs, _ := filepath.Abs(*src)
+		fmt.Fprintf(os.Stderr, "apiscan: -src %s (%s) is not a readable directory\n", *src, abs)
+		os.Exit(2)
+	}
 
 	fset := token.NewFileSet()
-	manifest := Manifest{Module: *module}
+	// Non-nil empty slice so an empty scan marshals as "packages": [], never
+	// null — downstream JSON consumers iterate the field unguarded.
+	manifest := Manifest{Module: *module, Packages: []Package{}}
 	resolver := newAliasResolver(*src, *module)
 
 	for _, dir := range collectPkgDirs(*src) {
@@ -503,6 +514,14 @@ func main() {
 
 			manifest.Packages = append(manifest.Packages, pkgOut)
 		}
+	}
+
+	// A readable -src that yields 0 packages is a tool/path fault, not a
+	// result: exit non-zero instead of emitting a deceptively empty manifest
+	// (audit-api would either crash or silently pass).
+	if len(manifest.Packages) == 0 {
+		fmt.Fprintf(os.Stderr, "apiscan: %s: 0 packages found under %s — refusing to emit an empty manifest\n", *module, *src)
+		os.Exit(1)
 	}
 
 	buf, err := json.MarshalIndent(manifest, "", "  ")

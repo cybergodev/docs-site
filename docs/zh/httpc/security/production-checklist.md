@@ -220,7 +220,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("状态码: %d\n", result.StatusCode())
+	fmt.Printf("状态码：%d\n", result.StatusCode())
 }
 ```
 

@@ -36,7 +36,7 @@ type Config struct {
     IncludeLevel  bool         // 是否输出日志级别
 
     // ─── 调用者信息 ───
-    DynamicCaller bool         // 动态调用者检测（文件名:行号）
+    DynamicCaller bool         // 动态调用者检测（文件名：行号）
     FullPath      bool         // 使用完整文件路径（默认仅文件名）
 
     // ─── 输出目标 ───

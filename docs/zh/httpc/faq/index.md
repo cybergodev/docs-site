@@ -251,9 +251,9 @@ switch {
 case result.IsSuccess():      // 2xx
     handleSuccess(result)
 case result.IsClientError():  // 4xx
-    log.Printf("客户端错误: %d", result.StatusCode())
+    log.Printf("客户端错误：%d", result.StatusCode())
 case result.IsServerError():  // 5xx
-    log.Printf("服务端错误: %d", result.StatusCode())
+    log.Printf("服务端错误：%d", result.StatusCode())
 }
 ```
 

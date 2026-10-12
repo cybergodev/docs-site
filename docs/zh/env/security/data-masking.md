@@ -102,15 +102,15 @@ import (
 func main() {
 	// 敏感值 → 脱敏（保留长度信息便于排查）
 	fmt.Println(env.MaskValue("DB_PASSWORD", "p@ssw0rd123"))
-	// 输出: [MASKED:11 chars]
+	// 输出：[MASKED:11 chars]
 
 	// 非敏感短值 → 原样返回
 	fmt.Println(env.MaskValue("PORT", "8080"))
-	// 输出: 8080
+	// 输出：8080
 
 	// 非敏感长值（>20 字符）→ 截断
 	fmt.Println(env.MaskValue("DESCRIPTION", "this-is-a-very-long-description-value"))
-	// 输出: this-is-a-very-lo...
+	// 输出：this-is-a-very-lo...
 }
 ```
 
@@ -179,16 +179,16 @@ func main() {
 	// 第一级：超过 50 字符先截断
 	long := "012345678901234567890123456789012345678901234567890123456789"
 	fmt.Println(env.MaskSensitiveInString(long))
-	// 输出: 012345678901234567890123456789012345678901234567...
+	// 输出：012345678901234567890123456789012345678901234567...
 
 	// 第二级：截断（或未触发截断）后仍会掩码敏感键值
 	s := "connect failed: user=admin password=hunter2"
 	fmt.Println(env.MaskSensitiveInString(s))
-	// 输出: connect failed: user=admin password=[MASKED]
+	// 输出：connect failed: user=admin password=[MASKED]
 
 	short := "hello world"
 	fmt.Println(env.MaskSensitiveInString(short))
-	// 输出: hello world
+	// 输出：hello world
 }
 ```
 
@@ -213,14 +213,14 @@ import (
 
 func main() {
 	fmt.Println(env.SanitizeForLog("user=admin password=s3cret"))
-	// 输出: user=admin password=[MASKED]
+	// 输出：user=admin password=[MASKED]
 
 	fmt.Println(env.SanitizeForLog("token=abc123 host=localhost"))
-	// 输出: token=[MASKED] host=localhost
+	// 输出：token=[MASKED] host=localhost
 
 	// 多个敏感值全部脱敏
 	fmt.Println(env.SanitizeForLog("user=pguser password=hunter2 api_key=sk_123"))
-	// 输出: user=pguser password=[MASKED] api_key=[MASKED]
+	// 输出：user=pguser password=[MASKED] api_key=[MASKED]
 }
 ```
 
@@ -249,11 +249,11 @@ func main() {
 	// 模拟以 []byte 形式处理的敏感数据
 	secret := []byte("secret123")
 	fmt.Printf("清零前: %s\n", secret)
-	// 输出: 清零前: secret123
+	// 输出：清零前：secret123
 
 	env.ClearBytes(secret)
 	fmt.Printf("清零后: %q\n", secret)
-	// 输出: 清零后: "\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+	// 输出：清零后："\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 }
 ```
 
@@ -315,8 +315,8 @@ API_KEY         = [MASKED:24 chars]
 failed to connect: user=admin password=[MASKED] host=db.local
 
 === 敏感键清单（键名脱敏）===
-敏感配置: DB***
-敏感配置: AP***
+敏感配置：DB***
+敏感配置：AP***
 ```
 
 ## 与 SecureValue 的关系

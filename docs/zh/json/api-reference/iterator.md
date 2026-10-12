@@ -388,7 +388,7 @@ func main() {
 		panic(err)
 	}
 	// 输出：
-	// [0] name=Alice age=30 email存在=true email为null=true tags为空=true
+	// [0] name=Alice age=30 email 存在=true email 为 null=true tags 为空=true
 }
 ```
 

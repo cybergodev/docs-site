@@ -416,7 +416,7 @@ func main() {
 
 	r := readConfig(data, "env")
 	if r.Ok() {
-		fmt.Println("环境:", r.Unwrap()) // 输出：环境: production
+		fmt.Println("环境：", r.Unwrap()) // 输出：环境：production
 	}
 
 	missing := readConfig(data, "region")

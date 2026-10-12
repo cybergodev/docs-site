@@ -590,7 +590,7 @@ fmt.Printf("缓存命中率：%.2f%%\n", stats.HitRatio * 100)
 
 // 健康检查（逐项检查缓存、内存等）
 health := json.GetHealthStatus()
-fmt.Println("健康:", health.Healthy)
+fmt.Println("健康：", health.Healthy)
 ```
 
 ## 全局处理器

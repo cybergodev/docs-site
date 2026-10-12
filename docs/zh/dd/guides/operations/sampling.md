@@ -114,7 +114,7 @@ logger.SetSampling(nil)
 // 查询当前采样配置
 sc := logger.GetSampling()
 if sc != nil {
-    fmt.Printf("采样: Initial=%d, Thereafter=%d\n", sc.Initial, sc.Thereafter)
+    fmt.Printf("采样：Initial=%d, Thereafter=%d\n", sc.Initial, sc.Thereafter)
 }
 ```
 

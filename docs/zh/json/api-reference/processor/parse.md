@@ -202,7 +202,7 @@ func main() {
 
 // 输出：
 // 默认   : id 类型=float64 值=42
-// 保留数字: id 类型=json.Number 值=42
+// 保留数字：id 类型=json.Number 值=42
 ```
 
 ::: tip 何时开启

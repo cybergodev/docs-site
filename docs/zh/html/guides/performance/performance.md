@@ -338,7 +338,7 @@ func main() {
 
 | 反模式 | 问题 | 正确做法 |
 |--------|------|----------|
-| 循环里每次 `html.New()` | 每次创建+销毁 Processor，重建编码检测器、评分器等 | 循环外创建一个实例，循环内复用 |
+| 循环里每次 `html.New()` | 每次创建 + 销毁 Processor，重建编码检测器、评分器等 | 循环外创建一个实例，循环内复用 |
 | 包级函数期望缓存命中 | 池化 Processor 禁用缓存，永远 miss | 用 `Processor` 实例 |
 | 大量不同内容却开大缓存 | 缓存膨胀、命中率极低，徒增内存与哈希开销 | `MaxCacheEntries = 0` 禁用缓存 |
 | `ExtractToMarkdown` 期望命中主缓存 | 格式转换用禁用缓存的临时 Processor | 配置 `InlineImageFormat="markdown"` 后用 `Extract` |

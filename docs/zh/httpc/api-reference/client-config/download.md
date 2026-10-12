@@ -424,21 +424,21 @@ func main() {
 	fmt.Printf("  写入量:   %s\n", httpc.FormatBytes(result.BytesWritten))
 	fmt.Printf("  耗时:     %v\n", result.Duration)
 	fmt.Printf("  平均速度: %s/s\n", httpc.FormatSpeed(result.AverageSpeed))
-	fmt.Printf("  状态码:   %d\n", result.StatusCode)
+	fmt.Printf("  状态码：  %d\n", result.StatusCode)
 	fmt.Printf("  续传:     %v\n", result.Resumed)
 	fmt.Printf("  校验和:   %s\n", result.ActualChecksum)
 	// 输出示例：
-	// 进度: 5.2 MB / 52.4 MB (9.9%) 速度: 12.3 MB/s
-	// 进度: 26.1 MB / 52.4 MB (49.8%) 速度: 11.8 MB/s
-	// 进度: 52.4 MB / 52.4 MB (100.0%) 速度: 12.1 MB/s
+	// 进度：5.2 MB / 52.4 MB (9.9%) 速度：12.3 MB/s
+	// 进度：26.1 MB / 52.4 MB (49.8%) 速度：11.8 MB/s
+	// 进度：52.4 MB / 52.4 MB (100.0%) 速度：12.1 MB/s
 	// 下载完成
-	//   文件路径: /tmp/large-archive.zip
-	//   写入量:   52.4 MB
-	//   耗时:     4.331s
-	//   平均速度: 12.1 MB/s
-	//   状态码:   200
-	//   续传:     false
-	//   校验和:   abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+	//   文件路径：/tmp/large-archive.zip
+	//   写入量：52.4 MB
+	//   耗时：4.331s
+	//   平均速度：12.1 MB/s
+	//   状态码：200
+	//   续传：false
+	//   校验和：abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
 }
 ```
 

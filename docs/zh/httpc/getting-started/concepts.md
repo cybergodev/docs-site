@@ -25,6 +25,7 @@ sidebar_position: 20
 
 构件之间的关系：
 
+<!-- autocorrect-disable — 下面的 ASCII 架构图靠连续空格对齐三列，排版规则会压缩对齐空格，禁用。 -->
 ```text
 包级函数 ──共享──▶ 默认 Client ◀──创建── New(cfg)
                        │
@@ -39,6 +40,8 @@ sidebar_position: 20
 DomainClienter = Client + base URL + SessionManager
 （请求前注入会话头/Cookie，响应后回写 Set-Cookie）
 ```
+<!-- autocorrect-enable -->
+
 
 ## 双层 API 架构
 
@@ -220,7 +223,7 @@ if err != nil {
 }
 // 请求成功完成 — 检查 HTTP 状态码
 if !result.IsSuccess() {
-    log.Printf("HTTP 错误: %d", result.StatusCode())
+    log.Printf("HTTP 错误：%d", result.StatusCode())
 }
 ```
 

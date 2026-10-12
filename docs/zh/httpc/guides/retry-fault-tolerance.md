@@ -41,7 +41,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("成功: %d", result.StatusCode())
+	log.Printf("成功：%d", result.StatusCode())
 }
 ```
 
@@ -93,7 +93,7 @@ func main() {
 attempt 0: 1s × 2.0^0 = 1s
 attempt 1: 1s × 2.0^1 = 2s
 attempt 2: 1s × 2.0^2 = 4s
-attempt 3: 1s × 2.0^3 = 8s   （MaxRetries=3 时不会到这里）
+attempt 3: 1s × 2.0^3 = 8s（MaxRetries=3 时不会到这里）
 attempt 4: 1s × 2.0^4 = 16s
 attempt 5: 1s × 2.0^5 = 32s → 触发上限，截断为 30s
 ```
@@ -116,7 +116,7 @@ attempt 5: 1s × 2.0^5 = 32s → 触发上限，截断为 30s
 | 第 6 次重试（attempt 5） | 30s（截断后） | 27s ~ 33s |
 
 :::tip 为什么用迭代乘法而非 math.Pow
-HTTPC 使用循环乘法（`for i := 0; i < attempt; i++ { delay *= factor }`）而非 `math.Pow`。`math.Pow` 调用超越函数（指数+对数），开销远高于几次浮点乘法。同时循环内检查 `math.IsInf` 防止溢出，溢出时直接回退到 `MaxRetryDelay`。在重试热路径中，这种微优化是有意义的。
+HTTPC 使用循环乘法（`for i := 0; i < attempt; i++ { delay *= factor }`）而非 `math.Pow`。`math.Pow` 调用超越函数（指数 + 对数），开销远高于几次浮点乘法。同时循环内检查 `math.IsInf` 防止溢出，溢出时直接回退到 `MaxRetryDelay`。在重试热路径中，这种微优化是有意义的。
 :::
 
 :::warning Jitter 应用在上限之后

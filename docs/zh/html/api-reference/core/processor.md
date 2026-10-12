@@ -35,7 +35,7 @@ defer p.Close()
 
 1. **校验配置**：调用 `Config.Validate()`，无效配置返回 `*ConfigError`（`errors.Is(err, ErrInvalidConfig)` 为真）。校验范围包括数值边界（`MaxInputSize`、`WorkerPoolSize`、`MaxDepth` 必须为正，`MaxCacheEntries` 不能为负——`0` 合法，表示禁用缓存，均不得超上限）与格式字符串（`InlineImageFormat`/`InlineLinkFormat`/`TableFormat` 取值合法）。
 2. **设置 Scorer**：配置了自定义 `Scorer` 时适配到内部接口（适配过程由库自动完成）；否则使用内置默认评分器（内部实现，不导出；只读、并发安全）。
-3. **预计算格式串**：把 `InlineImageFormat`/`InlineLinkFormat` 归一化（小写+去空格，空串映射为 `"none"`）并缓存到 `imageFormat`/`linkFormat` 字段，避免热路径中反复 `strings.ToLower`。
+3. **预计算格式串**：把 `InlineImageFormat`/`InlineLinkFormat` 归一化（小写 + 去空格，空串映射为 `"none"`）并缓存到 `imageFormat`/`linkFormat` 字段，避免热路径中反复 `strings.ToLower`。
 4. **启动缓存清理**：仅当 `CacheTTL>0` **且** `CacheCleanup>0` 时才启动后台清理 goroutine；两者任一为 0 都不会启动。
 
 ## 并发安全性

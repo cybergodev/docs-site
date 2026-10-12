@@ -212,7 +212,7 @@ func main() {
 // 输出：
 // ok: valid=true
 // broken: valid=false
-// broken 错误: invalid JSON: ...
+// broken 错误：invalid JSON: ...
 ```
 
 ### 混合操作
@@ -256,7 +256,7 @@ func main() {
 }
 
 // 输出：
-// 验证结果: true
+// 验证结果：true
 // name: CyberGo
 // mark: {"processed":true,"user":{"name":"CyberGo"}}
 ```

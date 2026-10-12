@@ -167,7 +167,7 @@ func main() {
 }
 
 // 输出（取决于服务端响应）：
-// HTTP 错误： 404
+// HTTP 错误：404
 ```
 
 迁移后：
@@ -214,7 +214,7 @@ func main() {
 }
 
 // 输出（取决于服务端响应）：
-// HTTP 错误： 404
+// HTTP 错误：404
 ```
 
 常见的错误分类场景对照（`clientErr` 为 `errors.As` 提取的 `*httpc.ClientError`）：

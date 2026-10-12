@@ -218,7 +218,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("提取失败: %v", err)
 	}
-	fmt.Printf("提取成功，文本长度: %d\n", len(result.Text))
+	fmt.Printf("提取成功，文本长度：%d\n", len(result.Text))
 
 	fmt.Println("✓ 配置自检通过")
 }

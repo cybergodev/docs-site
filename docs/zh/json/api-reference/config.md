@@ -154,7 +154,7 @@ type Config struct {
 | `MaxSecurityValidationSize` | `int64` | 10MB    | 安全验证最大大小（超过后按采样策略扫描，除非 `FullSecurityScan` 为 true）                                          |
 | `MaxObjectKeys`            | `int`   | 100000  | 单个对象最大键数                                                                                                  |
 | `MaxArrayElements`         | `int`   | 100000  | 单个数组最大元素数                                                                                                |
-| `FullSecurityScan`         | `bool`  | false   | true 时对所有输入全量（非采样）安全扫描；false 时大输入（>4KB）采用滚动窗口+采样扫描，关键模式（`__proto__` 等）仍全量扫描 |
+| `FullSecurityScan`         | `bool`  | false   | true 时对所有输入全量（非采样）安全扫描；false 时大输入（>4KB）采用滚动窗口 + 采样扫描，关键模式（`__proto__` 等）仍全量扫描 |
 
 ### 并发
 

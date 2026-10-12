@@ -38,8 +38,8 @@ func main() {
 	defer p.Close()
 
 	_, err = p.Get(deep, "a")
-	fmt.Println("深嵌套被拦截:", err != nil)
-	// 输出：深嵌套被拦截: true
+	fmt.Println("深嵌套被拦截：", err != nil)
+	// 输出：深嵌套被拦截：true
 }
 ```
 
@@ -80,14 +80,14 @@ func main() {
 
 	// 文件路径：先做 NFC 规范化 + 递归 URL 解码，再检测遍历模式
 	_, err = p.LoadFromFile("../../../etc/passwd")
-	fmt.Println("文件路径遍历被拦截:", err != nil)
+	fmt.Println("文件路径遍历被拦截：", err != nil)
 
 	// JSON 路径：拒绝 ".."、URL 编码与零宽字符注入
 	_, err = p.Get(`{"data": 1}`, "../../etc/passwd")
-	fmt.Println("JSON 路径遍历被拦截:", err != nil)
+	fmt.Println("JSON 路径遍历被拦截：", err != nil)
 	// 输出：
-	// 文件路径遍历被拦截: true
-	// JSON 路径遍历被拦截: true
+	// 文件路径遍历被拦截：true
+	// JSON 路径遍历被拦截：true
 }
 ```
 
@@ -137,8 +137,8 @@ func main() {
 		fmt.Printf("载荷 %d 被拦截: %v\n", i+1, err != nil)
 	}
 	// 输出：
-	// 载荷 1 被拦截: true
-	// 载荷 2 被拦截: true
+	// 载荷 1 被拦截：true
+	// 载荷 2 被拦截：true
 }
 ```
 

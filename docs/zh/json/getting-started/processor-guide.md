@@ -203,14 +203,14 @@ func main() {
 	wg.Wait()
 
 	stats := p.GetStats()
-	fmt.Println("累计操作数:", stats.OperationCount)
+	fmt.Println("累计操作数：", stats.OperationCount)
 }
 
 // 输出（goroutine 顺序不确定）：
 // goroutine 5: Alice (30)
 // goroutine 2: Alice (30)
 // ...
-// 累计操作数: 16
+// 累计操作数：16
 ```
 
 ::: tip MaxConcurrency 是软限制
@@ -281,14 +281,14 @@ func main() {
 
 	// 健康检查：缓存、内存等逐项检查结果
 	health := p.GetHealthStatus()
-	fmt.Println("健康:", health.Healthy)
+	fmt.Println("健康：", health.Healthy)
 	for name, check := range health.Checks {
 		fmt.Printf("  %s: %s\n", name, check.Message)
 	}
 
 	// 读取当前配置（返回副本，修改不会影响 Processor）
 	cfg := p.GetConfig()
-	fmt.Println("缓存启用:", cfg.EnableCache)
+	fmt.Println("缓存启用：", cfg.EnableCache)
 }
 ```
 

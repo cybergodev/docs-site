@@ -291,7 +291,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(result.StatusCode())
-	// 输出: 200
+	// 输出：200
 }
 ```
 
@@ -344,7 +344,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(result.Response.Headers.Get("X-Response-Time-Ms"))
-	// 输出示例: 156
+	// 输出示例：156
 }
 ```
 

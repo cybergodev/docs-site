@@ -93,7 +93,7 @@ if err != nil {
     var ve *jwt.ValidationError
     if errors.As(err, &ve) {
         fmt.Printf("字段: %s, 原因: %s\n", ve.Field, ve.Message)
-        // 字段: user_id, 原因: suspicious pattern detected
+        // 字段：user_id, 原因：suspicious pattern detected
     }
 }
 ```

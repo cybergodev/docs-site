@@ -65,7 +65,9 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ```
 
+<!-- autocorrect-disable — 容器标题 `::: warning 「…」` 的空格是 markdown-it-container 语法的一部分，删除空格会让 type 解析失败。 -->
 ::: warning 「已启用」≠「已落盘」
+<!-- autocorrect-enable -->
 `ProductionConfig()` 默认 `AuditEnabled = true`；未配置 `AuditHandler` 时，审计事件走 stderr 的 `[AUDIT]` 标准日志而非文件。上线后应确认审计日志文件确实在增长。
 :::
 

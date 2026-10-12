@@ -37,7 +37,7 @@
  *
  * 依赖：Go 工具链（go 1.25）+ 6 个 cybergodev 源码 repo（位于
  * CYBERGO_SOURCE_ROOT/{project}-dev，同 audit-api.ts 约定）。
- * 本地：`npm run check:code`（默认 zh；CLI 参数指定 lang 或 `--all` 全部语言(zh/en)）。
+ * 本地：`npm run check:code`（默认 zh；CLI 参数指定 lang 或 `--all` 全部语言 (zh/en)）。
  *
  * 与 audit-api.ts 的关系：audit-api 比对源码导出符号 vs 文档引用，查的是「文档
  * 提到了源码里不存在的东西」；本脚本查的是「文档里的示例代码本身能不能编译」。
@@ -57,7 +57,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..')
 
 // Root holding the {project}-dev source repos. Override with CYBERGO_SOURCE_ROOT
-// (CI: ${{ github.workspace }}/src). Same convention as audit-api.ts.
+// (CI sets it to the RELATIVE "src" — resolve it to absolute before handing
+// paths to go, which resolves them against its own CWD / the go.mod dir).
+// Same convention as audit-api.ts.
 const SOURCE_ROOT = process.env.CYBERGO_SOURCE_ROOT || 'D:/MyProject'
 
 // Temp module name (used in go.mod); subdir naming uses b{NNNN} so a 4-digit
@@ -325,7 +327,7 @@ async function main(): Promise<void> {
   // instead of the audit silently passing).
   const availableProjects = new Set<string>()
   for (const p of PROJECTS) {
-    const path = join(SOURCE_ROOT, `${p}-dev`)
+    const path = resolve(SOURCE_ROOT, `${p}-dev`)
     if (existsSync(path)) {
       availableProjects.add(p)
     } else {
@@ -396,7 +398,10 @@ async function main(): Promise<void> {
     const replaceLines: string[] = []
     for (const p of PROJECTS) {
       if (availableProjects.has(p)) {
-        replaceLines.push(`\tgithub.com/cybergodev/${p} => ${join(SOURCE_ROOT, `${p}-dev`)}`)
+        // resolve (not join): a relative SOURCE_ROOT (CI sets CYBERGO_SOURCE_
+        // ROOT=src) must become absolute — go resolves replace targets against
+        // the go.mod's dir (a temp dir), not this process's CWD.
+        replaceLines.push(`\tgithub.com/cybergodev/${p} => ${resolve(SOURCE_ROOT, `${p}-dev`)}`)
       }
     }
     const goMod = [

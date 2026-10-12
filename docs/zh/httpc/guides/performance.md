@@ -385,7 +385,7 @@ func main() {
 	// 热路径中优先用 RawBody() 而非 Body()
 	// RawBody() 返回原始字节切片；Body() 返回预存字符串；String() 是调试格式化（开销最大）
 	data := result.RawBody()
-	fmt.Printf("响应大小: %d 字节\n", len(data))
+	fmt.Printf("响应大小：%d 字节\n", len(data))
 	fmt.Printf("请求耗时: %v\n", result.Meta.Duration)
 }
 ```
@@ -514,7 +514,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("下载完成: %d 字节", result.BytesWritten)
+	log.Printf("下载完成：%d 字节", result.BytesWritten)
 }
 ```
 
@@ -538,7 +538,7 @@ cfg.Connection.ProxyPool = []string{
 }
 cfg.Connection.ProxyRotateOnStatus = []int{403} // 403 触发换代理
 cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
-// MaxRetries 自动提高到 4（代理数-1），确保 5 个代理都尝试一次
+// MaxRetries 自动提高到 4（代理数 -1），确保 5 个代理都尝试一次
 ```
 
 ## 性能反模式

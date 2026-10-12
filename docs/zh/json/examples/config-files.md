@@ -75,7 +75,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("重启后端口: %d\n", json.GetInt(reloaded, "server.port"))
+	fmt.Printf("重启后端口：%d\n", json.GetInt(reloaded, "server.port"))
 	fmt.Printf("重启后日志: %s\n", json.GetString(reloaded, "logging.level"))
 }
 ```
@@ -113,8 +113,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("端口: %d（用户覆盖）\n", json.GetInt(merged, "server.port"))
-	fmt.Printf("超时: %d（默认保留）\n", json.GetInt(merged, "server.timeout"))
+	fmt.Printf("端口：%d（用户覆盖）\n", json.GetInt(merged, "server.port"))
+	fmt.Printf("超时：%d（默认保留）\n", json.GetInt(merged, "server.timeout"))
 	fmt.Printf("数据库: %s:%d\n", json.GetString(merged, "database.host"), json.GetInt(merged, "database.port"))
 
 	// 用 SetCreate 添加尚不存在的嵌套路径（自动创建中间对象）
@@ -132,11 +132,11 @@ func main() {
 }
 
 // 输出：
-// 端口: 3000（用户覆盖）
-// 超时: 30（默认保留）
-// 数据库: db.prod.example.com:5432
-// 指标开关: true
-// 指标端点: /metrics
+// 端口：3000（用户覆盖）
+// 超时：30（默认保留）
+// 数据库：db.prod.example.com:5432
+// 指标开关：true
+// 指标端点：/metrics
 ```
 
 :::tip 提示
@@ -182,11 +182,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("[交集] 用户覆盖的端口:", json.GetInt(overridden, "server.port"))
-	fmt.Println("[交集] 用户覆盖的库主机:", json.GetString(overridden, "database.host"))
+	fmt.Println("[交集] 用户覆盖的端口：", json.GetInt(overridden, "server.port"))
+	fmt.Println("[交集] 用户覆盖的库主机：", json.GetString(overridden, "database.host"))
 	// 输出：
-	// [交集] 用户覆盖的端口: 3000
-	// [交集] 用户覆盖的库主机: db.prod.example.com
+	// [交集] 用户覆盖的端口：3000
+	// [交集] 用户覆盖的库主机：db.prod.example.com
 
 	// 差集：只保留默认配置中未被用户覆盖的键
 	diffCfg := json.DefaultConfig()
@@ -195,13 +195,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("[差集] 仍是默认值的主机:", json.GetString(untouched, "server.host"))
-	fmt.Println("[差集] 仍是默认值的超时:", json.GetInt(untouched, "server.timeout"))
-	fmt.Println("[差集] 仍是默认值的连接池:", json.GetInt(untouched, "database.pool"))
+	fmt.Println("[差集] 仍是默认值的主机：", json.GetString(untouched, "server.host"))
+	fmt.Println("[差集] 仍是默认值的超时：", json.GetInt(untouched, "server.timeout"))
+	fmt.Println("[差集] 仍是默认值的连接池：", json.GetInt(untouched, "database.pool"))
 	// 输出：
-	// [差集] 仍是默认值的主机: 0.0.0.0
-	// [差集] 仍是默认值的超时: 30
-	// [差集] 仍是默认值的连接池: 10
+	// [差集] 仍是默认值的主机：0.0.0.0
+	// [差集] 仍是默认值的超时：30
+	// [差集] 仍是默认值的连接池：10
 }
 ```
 

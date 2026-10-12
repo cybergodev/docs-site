@@ -58,7 +58,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// 输出：状态: 200, 代理: socks5://proxy.example.com:1080
+	// 输出：状态：200, 代理：socks5://proxy.example.com:1080
 	log.Printf("状态: %d, 代理: %s", result.StatusCode(), result.Meta.ProxyURL)
 }
 ```
@@ -173,7 +173,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// 输出：状态: 200, 代理: http://proxy1:8080（下一次请求自动轮到 proxy2）
+	// 输出：状态：200, 代理：http://proxy1:8080（下一次请求自动轮到 proxy2）
 	log.Printf("状态: %d, 代理: %s", result.StatusCode(), result.Meta.ProxyURL)
 }
 ```
@@ -260,7 +260,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// 输出：状态: 200, 代理: http://proxy2:8080, 尝试: 2
+	// 输出：状态：200, 代理：http://proxy2:8080, 尝试：2
 	log.Printf("状态: %d, 代理: %s, 尝试: %d",
 		result.StatusCode(), result.Meta.ProxyURL, result.Meta.Attempts)
 }
@@ -276,7 +276,7 @@ func main() {
 
 `ProxyRotatePerRequest` 解决的是**连接复用**导致代理隧道固化的问题：HTTP 连接池会复用已建立的 TCP 连接，包括其代理隧道。这意味着对同一主机的连续请求会复用前一次请求的代理，即使 `ProxyPoolStrategy` 已轮换选择器游标。
 
-启用后，每次请求开始时关闭所有空闲连接，强制 Transport 重新评估代理池——代价是无连接复用（每次请求新建连接+代理隧道），但保证按请求轮换：
+启用后，每次请求开始时关闭所有空闲连接，强制 Transport 重新评估代理池——代价是无连接复用（每次请求新建连接 + 代理隧道），但保证按请求轮换：
 
 ```go
 package main
@@ -370,7 +370,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// 输出：最终代理: http://proxy2:8080, 总尝试: 2
+	// 输出：最终代理：http://proxy2:8080, 总尝试：2
 	log.Printf("最终代理: %s, 总尝试: %d", result.Meta.ProxyURL, result.Meta.Attempts)
 }
 ```

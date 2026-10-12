@@ -312,11 +312,11 @@ switch {
 case result.IsSuccess():     // 2xx
     fmt.Println("成功")
 case result.IsRedirect():    // 3xx（未跟随重定向时）
-    fmt.Println("重定向到:", result.Response.Headers.Get("Location"))
+    fmt.Println("重定向到：", result.Response.Headers.Get("Location"))
 case result.IsClientError(): // 4xx
     fmt.Println("客户端错误，检查请求参数/认证")
     if result.StatusCode() == http.StatusTooManyRequests {
-        fmt.Println("被限流，稍后重试:", result.Response.Headers.Get("Retry-After"))
+        fmt.Println("被限流，稍后重试：", result.Response.Headers.Get("Retry-After"))
     }
 case result.IsServerError(): // 5xx
     fmt.Println("服务端错误，重试可能有帮助")

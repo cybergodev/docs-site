@@ -4,8 +4,16 @@
 # 零成本收益：无需手动在 `中文 code` 之间加空格。
 #
 # 本地: npm run lint:autocorrect (检查) / npm run fix:autocorrect (修正)
+#   —— scripts/lint-autocorrect.ts 基于 npm 的 WASM 引擎(2.16.x)：它跳过 codeblock
+#   与 inline code，且不做 spellcheck。CI 的 docker action 用 v2.13.3 且检查
+#   codeblock 内容，更严；两处全绿才是真绿（对齐 CI 可用官方 2.13.3 二进制复验）。
 rules:
   spellcheck: 1
 spellcheck:
   words:
     # 请勿在此添加通用英文词(如 apple、python)。仅按需添加专有名词。
+textRules:
+  # 字面锚点豁免：markdown-it-anchor 给重复标题追加 `-1`/`-2` 后缀，锚点
+  # 内不允许空格；space-dash 规则会把 `#标题-1` 改成 `#标题 -1`，歪曲锚点
+  # 格式（scripts/audit-locales.ts 的注释以此为例）。0 = 完全豁免。
+  "#标题-1": 0

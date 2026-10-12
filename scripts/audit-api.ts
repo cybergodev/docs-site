@@ -47,13 +47,14 @@
  * Exit non-zero iff any DANGLING reference is found.
  *
  * Requires the Go toolchain (`go`) and the source repos at SOURCE_ROOT (default
- * D:/MyProject, matching .claude/config/projects.yaml). A project whose source
+ * D:/MyProject, matching the repo-root projects.yaml). A project whose source
  * is absent (e.g. CI without the repos checked out) is skipped, not failed.
  * Override the root with CYBERGO_SOURCE_ROOT. Local: `npm run audit:api`.
  */
 import { execFileSync } from 'child_process'
+import { existsSync } from 'node:fs'
 import { readFile, writeFile, mkdir } from 'fs/promises'
-import { join, relative } from 'path'
+import { join, relative, resolve } from 'path'
 import { PROJECTS, PRIMARY_LANG } from '../docs/.vitepress/shared'
 import { collectMd } from './_lib/walk'
 
@@ -90,10 +91,19 @@ interface Manifest {
   packages: Package[]
 }
 
-// Run apiscan for one project; return the JSON path, or null if the source is
-// missing / go failed (skip gracefully).
+// Run apiscan for one project; return the JSON path, or null if the source
+// repo is absent (skip — local convention; in CI the checkout steps are the
+// gate). `go -C scripts/apiscan` chdirs before the scanner runs, so a relative
+// -src would resolve against scripts/apiscan/ — always pass an absolute path.
+// With the source present, any apiscan failure is a tool/path fault and fails
+// the audit instead of being skipped (a skip there would turn CI green with
+// zero projects audited).
 function runApiscan(project: string): string | null {
-  const src = join(SOURCE_ROOT, `${project}-dev`)
+  const src = resolve(SOURCE_ROOT, `${project}-dev`)
+  if (!existsSync(src)) {
+    console.warn(`audit-api: skip ${project} (source missing at ${src})`)
+    return null
+  }
   const module = `github.com/cybergodev/${project}`
   const out = join(process.cwd(), API_JSON_DIR, `${project}.json`)
   try {
@@ -104,8 +114,8 @@ function runApiscan(project: string): string | null {
     )
     return out
   } catch {
-    console.warn(`audit-api: skip ${project} (source missing at ${src} or go failed)`)
-    return null
+    console.error(`audit-api: apiscan failed for ${project} (src: ${src}) — see stderr above`)
+    process.exit(1)
   }
 }
 
@@ -472,6 +482,14 @@ async function auditProject(project: string): Promise<ProjectResult | null> {
   const jsonPath = runApiscan(project)
   if (!jsonPath) return null
   const manifest: Manifest = JSON.parse(await readFile(jsonPath, 'utf8'))
+  // Defensive: older apiscan marshalled an empty scan as "packages": null.
+  manifest.packages ??= []
+  // The source exists (runApiscan skips otherwise), so 0 packages can only be
+  // a tool/path fault — crash-or-pass are both wrong; fail loudly instead.
+  if (manifest.packages.length === 0) {
+    console.error(`audit-api: ${project}: manifest has 0 packages (${jsonPath}) — tool/path fault`)
+    process.exit(1)
+  }
   const source = collectSymbols(manifest)
   const docs = await collectDocIdents(project)
 

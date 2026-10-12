@@ -218,11 +218,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("请求失败: %v", err)
 	}
-	fmt.Println("成功:", result.IsSuccess())
+	fmt.Println("成功：", result.IsSuccess())
 	// 输出示例：
 	// 发送 GET https://httpbin.org/get
 	// 收到状态码 200
-	// 成功: true
+	// 成功：true
 }
 ```
 
@@ -367,11 +367,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("状态码:", result.StatusCode())
+	fmt.Println("状态码：", result.StatusCode())
 	// 输出示例：
 	// [REQ] GET https://httpbin.org/get
 	// [RESP] GET https://httpbin.org/get -> 200 (123.456ms, attempts=1, redirects=0)
-	// 状态码: 200
+	// 状态码：200
 }
 ```
 

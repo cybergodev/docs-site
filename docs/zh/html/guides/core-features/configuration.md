@@ -189,7 +189,7 @@ func main() {
 	defer processor.Close()
 
 	// 批量提取
-	pages := [][]byte{[]byte("<html><body>页面1</body></html>")}
+	pages := [][]byte{[]byte("<html><body>页面 1</body></html>")}
 	batch := processor.ExtractBatch(pages)
 	log.Printf("成功 %d, 失败 %d", batch.Success, batch.Failed)
 }

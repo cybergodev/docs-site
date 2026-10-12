@@ -232,7 +232,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("健康检查状态: %d\n", result.StatusCode())
+	fmt.Printf("健康检查状态：%d\n", result.StatusCode())
 }
 ```
 

@@ -327,15 +327,15 @@ func main() {
 		count++
 	}
 	if err := iter.Err(); err != nil {
-		fmt.Println("迭代错误:", err)
+		fmt.Println("迭代错误：", err)
 		return
 	}
-	fmt.Println("共迭代元素:", count)
+	fmt.Println("共迭代元素：", count)
 	// 输出：
 	// index=0 id=1 name=Alice
 	// index=1 id=2 name=Bob
 	// index=2 id=3 name=Carol
-	// 共迭代元素: 3
+	// 共迭代元素：3
 }
 ```
 
@@ -371,7 +371,7 @@ func main() {
 		}
 	}
 	if err := iter.Err(); err != nil {
-		fmt.Println("迭代错误:", err)
+		fmt.Println("迭代错误：", err)
 		return
 	}
 	// 输出（按文档顺序，而非 map 随机顺序）：
@@ -410,13 +410,13 @@ func main() {
 	cfg.MaxBatchSize = 2
 
 	iter := json.NewBatchIterator(data, cfg)
-	fmt.Println("总批数:", iter.TotalBatches())
+	fmt.Println("总批数：", iter.TotalBatches())
 	for iter.HasNext() {
 		batch := iter.NextBatch()
 		fmt.Printf("批次 [%d:%d)，元素数=%d\n", iter.CurrentIndex()-len(batch), iter.CurrentIndex(), len(batch))
 	}
 	// 输出：
-	// 总批数: 3
+	// 总批数：3
 	// 批次 [0:2)，元素数=2
 	// 批次 [2:4)，元素数=2
 	// 批次 [4:5)，元素数=1
@@ -452,11 +452,11 @@ func main() {
 		return n * n, nil
 	})
 	if err != nil {
-		fmt.Println("处理错误:", err)
+		fmt.Println("处理错误：", err)
 		return
 	}
-	fmt.Println("平方结果:", squares)
-	// 输出：平方结果: [1 4 9 16]
+	fmt.Println("平方结果：", squares)
+	// 输出：平方结果：[1 4 9 16]
 }
 ```
 

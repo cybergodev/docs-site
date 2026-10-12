@@ -321,11 +321,11 @@ func main() {
 	for _, e := range auditLog {
 		fmt.Println(e)
 	}
-	fmt.Println("get 计时记录:", metrics.count["get"])
+	fmt.Println("get 计时记录：", metrics.count["get"])
 	// 输出：
 	// op=set path=password ok=true
 	// op=delete path=password ok=true
-	// get 计时记录: 1
+	// get 计时记录：1
 }
 ```
 

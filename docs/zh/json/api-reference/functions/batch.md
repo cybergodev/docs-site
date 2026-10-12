@@ -45,8 +45,8 @@ func main() {
 }
 
 // 输出：
-// 操作 op1 结果: CyberGo
-// 操作 op2 结果: {"user":{"age":30,"name":"CyberGo"}}
+// 操作 op1 结果：CyberGo
+// 操作 op2 结果：{"user":{"age":30,"name":"CyberGo"}}
 ```
 
 ### 支持的操作类型
@@ -228,7 +228,7 @@ func main() {
 // 输出：
 // ok: valid=true
 // broken: valid=false
-// broken 错误: invalid JSON: ...
+// broken 错误：invalid JSON: ...
 ```
 
 ## 错误处理与容错

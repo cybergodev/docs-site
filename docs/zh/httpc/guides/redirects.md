@@ -151,7 +151,7 @@ func main() {
 	//   1. https://httpbin.org/redirect/3
 	//   2. https://httpbin.org/redirect/2
 	//   3. https://httpbin.org/redirect/1
-	// 最终地址： https://httpbin.org/get
+	// 最终地址：https://httpbin.org/get
 }
 ```
 
@@ -222,7 +222,7 @@ func main() {
 		var clientErr *httpc.ClientError
 		if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeValidation {
 			fmt.Println("重定向被拒绝：", clientErr.Message)
-			// 输出：重定向被拒绝： redirect limit exceeded
+			// 输出：重定向被拒绝：redirect limit exceeded
 		}
 	}
 }

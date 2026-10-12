@@ -278,13 +278,13 @@ func main() {
 	_, err2 := withoutCfg.Get(`{"v": "project_secret"}`, "v")
 	_, err3 := withoutCfg.Get(`{"v": "internal_only"}`, "v")
 
-	fmt.Println("局部模式拦截配置处理器:", err1 != nil)
-	fmt.Println("局部模式拦截普通处理器:", err2 != nil)
-	fmt.Println("全局模式拦截普通处理器:", err3 != nil)
+	fmt.Println("局部模式拦截配置处理器：", err1 != nil)
+	fmt.Println("局部模式拦截普通处理器：", err2 != nil)
+	fmt.Println("全局模式拦截普通处理器：", err3 != nil)
 	// 输出：
-	// 局部模式拦截配置处理器: true
-	// 局部模式拦截普通处理器: false
-	// 全局模式拦截普通处理器: true
+	// 局部模式拦截配置处理器：true
+	// 局部模式拦截普通处理器：false
+	// 全局模式拦截普通处理器：true
 }
 ```
 
@@ -324,8 +324,8 @@ func main() {
 
 	// 测试危险模式检测（模式作为整词匹配：两侧不能紧邻字母/数字/下划线）
 	_, err = p.Get(`{"data": "company_secret"}`, "data")
-	fmt.Println("检测到危险模式:", err != nil)
-	// 输出：检测到危险模式: true
+	fmt.Println("检测到危险模式：", err != nil)
+	// 输出：检测到危险模式：true
 
 	// 查看已注册的模式
 	fmt.Printf("自定义模式数量：%d\n", len(cfg.AdditionalDangerousPatterns))

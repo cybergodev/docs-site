@@ -430,7 +430,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("状态码: %d\n", result.StatusCode())
+	fmt.Printf("状态码：%d\n", result.StatusCode())
 
 	// 经 Unmarshal 解析 JSON 响应
 	var user struct {
@@ -445,11 +445,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("仓库列表状态码: %d\n", repos.StatusCode())
+	fmt.Printf("仓库列表状态码：%d\n", repos.StatusCode())
 	// 输出示例：
-	// 状态码: 200
-	// 用户名: torvalds
-	// 仓库列表状态码: 200
+	// 状态码：200
+	// 用户名：torvalds
+	// 仓库列表状态码：200
 }
 ```
 

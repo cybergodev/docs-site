@@ -32,7 +32,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
 
 // ① 解析 projects.yaml
-const yamlPath = resolve(root, '.claude/config/projects.yaml')
+// Repo-root projects.yaml (moved out of .claude/config — that dir is gitignored,
+// so CI cannot read it from there).
+const yamlPath = resolve(root, 'projects.yaml')
 const yamlText = readFileSync(yamlPath, 'utf8')
 const yamlData = load(yamlText) as { projects?: Record<string, unknown> }
 const yamlProjects = Object.keys(yamlData.projects ?? {})

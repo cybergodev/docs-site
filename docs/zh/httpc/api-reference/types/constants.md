@@ -78,7 +78,7 @@ client, _ := httpc.New(cfg)
 ```
 
 :::tip 状态码触发轮换
-配合 `ProxyRotateOnStatus`（如 `[]int{403}`）可在收到特定状态码时触发重试+代理轮换，适用于绕过 CF/WAF 等 IP 维度的封锁。详见 [配置参考](../client-config/config)。
+配合 `ProxyRotateOnStatus`（如 `[]int{403}`）可在收到特定状态码时触发重试 + 代理轮换，适用于绕过 CF/WAF 等 IP 维度的封锁。详见 [配置参考](../client-config/config)。
 :::
 
 ## FormData / FileData
@@ -153,7 +153,7 @@ func main() {
 		log.Fatalf("上传失败: %v", err)
 	}
 
-	fmt.Println("上传完成，状态码:", result.StatusCode())
+	fmt.Println("上传完成，状态码：", result.StatusCode())
 }
 ```
 
@@ -293,7 +293,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("请求失败: %v", err)
 	}
-	fmt.Println("状态码:", result.StatusCode())
+	fmt.Println("状态码：", result.StatusCode())
 }
 ```
 
@@ -353,7 +353,7 @@ type CookieSecurityConfig struct {
 |------|------|------|
 | `CookieSecurityConfig.RequireSecure` | `bool` | 要求 Secure 属性，仅通过 HTTPS 传输。生产环境推荐 true |
 | `CookieSecurityConfig.RequireHttpOnly` | `bool` | 要求 HttpOnly 属性，禁止 JS 访问，防 XSS。会话 Cookie 推荐 true |
-| `CookieSecurityConfig.RequireSameSite` | `string` | 要求 SameSite 值。`"Strict"`（仅第一方）、`"Lax"`（第一方+顶层导航）、`"None"`（所有上下文，需 Secure）、`""`（无要求） |
+| `CookieSecurityConfig.RequireSameSite` | `string` | 要求 SameSite 值。`"Strict"`（仅第一方）、`"Lax"`（第一方 + 顶层导航）、`"None"`（所有上下文，需 Secure）、`""`（无要求） |
 | `CookieSecurityConfig.AllowSameSiteNone` | `bool` | 是否允许 SameSite=None。false 且 RequireSameSite 为空时拒绝 SameSite=None 的 Cookie |
 | `CookieSecurityConfig.RequireSecureForSameSiteNone` | `bool` | SameSite=None 时强制要求 Secure（符合 RFC 6265bis）。默认 true |
 

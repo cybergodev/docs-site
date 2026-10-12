@@ -64,7 +64,7 @@ func main() {
 	port := env.GetInt("DB_PORT", 5432)
 
 	fmt.Printf("Server: %s:%d\n", host, port)
-	// 输出: Server: localhost:5432
+	// 输出：Server: localhost:5432
 }
 ```
 
@@ -254,7 +254,7 @@ func main() {
 	}
 
 	fmt.Printf("%+v\n", cfg)
-	// 输出: {Host:localhost Port:5432 Password:secret Debug:true Timeout:30s Hosts:[localhost example.com api.example.com]}
+	// 输出：{Host:localhost Port:5432 Password:secret Debug:true Timeout:30s Hosts:[localhost example.com api.example.com]}
 }
 ```
 

@@ -72,10 +72,10 @@ SecureValue 保护的是**内存中**的敏感值，而日志、错误信息和�
 ```go
 // 日志中安全输出配置，避免泄露明文
 log.Printf("加载配置: %s", env.MaskValue("DB_PASSWORD", password))
-// 输出: 加载配置: [MASKED:12 chars]
+// 输出：加载配置：[MASKED:12 chars]
 
 log.Printf("连接参数: %s", env.SanitizeForLog("user=admin password=s3cret"))
-// 输出: 连接参数: user=admin password=[MASKED]
+// 输出：连接参数：user=admin password=[MASKED]
 ```
 
 ::: tip 完整指南

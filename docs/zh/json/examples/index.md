@@ -92,17 +92,17 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("订单号:", values["order.id"])
-	fmt.Println("状态:", values["order.status"])
-	fmt.Println("客户:", values["customer.name"])
-	fmt.Println("合计:", values["total"])
+	fmt.Println("订单号：", values["order.id"])
+	fmt.Println("状态：", values["order.status"])
+	fmt.Println("客户：", values["customer.name"])
+	fmt.Println("合计：", values["total"])
 }
 
 // 输出：
-// 订单号: 5001
-// 状态: shipped
-// 客户: Alice
-// 合计: 129.9
+// 订单号：5001
+// 状态：shipped
+// 客户：Alice
+// 合计：129.9
 ```
 
 :::tip 注意
@@ -550,7 +550,7 @@ func main() {
 	passed := iter.Filter(func(_ int, v any) bool {
 		return v.(float64) >= 80
 	})
-	fmt.Println("优秀分数:", passed)
+	fmt.Println("优秀分数：", passed)
 
 	// 并行映射：每个分数换算为等级（结果与输入对位）
 	grades, err := iter.Map(func(_ int, v any) (any, error) {
@@ -567,12 +567,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("等级:", grades)
+	fmt.Println("等级：", grades)
 }
 
 // 输出：
-// 优秀分数: [85 94 99 88]
-// 等级: [C B A C C A C B]
+// 优秀分数：[85 94 99 88]
+// 等级：[C B A C C A C B]
 ```
 
 worker 数取 `Config.MaxConcurrency`（默认 50，超出数组长度时自动裁剪）；回调中的 panic 会被恢复并转为错误返回，不会击溃进程。批处理与取消用法见[并发与并行处理](../advanced/concurrency)。
@@ -1072,16 +1072,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("配置语义一致:", equal)
-	// 输出：配置语义一致: true
+	fmt.Println("配置语义一致：", equal)
+	// 输出：配置语义一致：true
 
 	// 处理不可信来源的配置时，附加安全配置（限制大小/深度、执行安全扫描）
 	equal, err = json.CompareJSON(deployed, modified, json.SecurityConfig())
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("安全模式下比较:", equal)
-	// 输出：安全模式下比较: true
+	fmt.Println("安全模式下比较：", equal)
+	// 输出：安全模式下比较：true
 }
 ```
 

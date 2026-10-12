@@ -95,13 +95,13 @@ func main() {
 		log.Fatalf("提取失败: %v", err)
 	}
 
-	fmt.Println("标题:", result.Title)
-	fmt.Println("字数:", result.WordCount)
-	fmt.Println("链接数:", len(result.Links))
+	fmt.Println("标题：", result.Title)
+	fmt.Println("字数：", result.WordCount)
+	fmt.Println("链接数：", len(result.Links))
 	// 输出：
-	// 标题: 示例页面
-	// 字数: 9
-	// 链接数: 1
+	// 标题：示例页面
+	// 字数：9
+	// 链接数：1
 }
 ```
 
@@ -212,7 +212,7 @@ func GroupLinksByType(links []LinkResource) map[string][]LinkResource
 | 缓存 | **无**（池化配置 `MaxCacheEntries=0`） | 有（命中返回深拷贝） |
 | 统计 | 每次重置（归还时 `ResetStatistics`） | 累积，可随时 `GetStatistics` |
 | 审计日志 | 每次清空（归还时 `ClearAuditLog`） | 累积，可 `GetAuditLog` 查询 |
-| 自定义 `Config` | 每次创建+销毁临时 Processor | 复用同一实例 |
+| 自定义 `Config` | 每次创建 + 销毁临时 Processor | 复用同一实例 |
 | 生命周期 | 自动管理（池/临时实例） | 需手动 `defer Close()` |
 | 适用场景 | 一次性调用、脚本、低频请求 | 高频调用、长驻服务、需缓存 |
 

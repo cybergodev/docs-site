@@ -144,7 +144,7 @@ func main() {
 	err = iter.ForEachBatchWithContext(ctx, 100, func(batchIdx int, batch []any) error {
 		return nil // 模拟单批处理
 	})
-	fmt.Println("带超时批处理完成，错误:", err)
+	fmt.Println("带超时批处理完成，错误：", err)
 }
 
 // 输出：
@@ -152,7 +152,7 @@ func main() {
 // 批次 1 小计 = 150
 // 批次 2 小计 = 240
 // 批次 3 小计 = 100
-// 带超时批处理完成，错误: <nil>
+// 带超时批处理完成，错误：<nil>
 ```
 
 `batchSize <= 0` 时按 100 处理。回调返回错误与 `ForEach` 相同：首个错误胜出并停止派发新批次；批次的**派发**顺序与输入一致（`batchIdx` 递增），但**执行**顺序不保证——保序输出的做法即上例：按下标落位、完成后顺序消费。

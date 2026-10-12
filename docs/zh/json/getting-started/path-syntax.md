@@ -453,7 +453,7 @@ if err != nil {
 root, err = json.Get(data, ".") // 同上
 ```
 
-### JSON Pointer（RFC 6901）
+### JSON Pointer (RFC 6901)
 
 以 `/` 开头的路径按 JSON Pointer 语法解析（斜杠分隔），与点号语法是两套独立表示，不能混用：
 

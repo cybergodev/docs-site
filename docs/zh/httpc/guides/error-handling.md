@@ -144,7 +144,7 @@ func main() {
 		}
 		return
 	}
-	fmt.Printf("成功: %d\n", result.StatusCode())
+	fmt.Printf("成功：%d\n", result.StatusCode())
 }
 ```
 
@@ -275,7 +275,7 @@ func main() {
 	}
 
 	if result != nil {
-		fmt.Printf("状态码: %d\n", result.StatusCode())
+		fmt.Printf("状态码：%d\n", result.StatusCode())
 	}
 }
 ```
@@ -451,12 +451,12 @@ func main() {
 	// HTTP 层错误——收到了响应但状态码非 2xx
 	if result.IsClientError() {
 		// 4xx：客户端请求有误（参数错误、权限不足等）
-		log.Printf("客户端错误: %d", result.StatusCode())
+		log.Printf("客户端错误：%d", result.StatusCode())
 	} else if result.IsServerError() {
 		// 5xx：服务端故障（重试已耗尽，上游仍不可用）
-		log.Printf("服务端错误: %d", result.StatusCode())
+		log.Printf("服务端错误：%d", result.StatusCode())
 	} else {
-		fmt.Printf("成功: %d\n", result.StatusCode())
+		fmt.Printf("成功：%d\n", result.StatusCode())
 	}
 }
 ```
@@ -597,7 +597,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("状态码: %d", result.StatusCode())
+	log.Printf("状态码：%d", result.StatusCode())
 }
 ```
 

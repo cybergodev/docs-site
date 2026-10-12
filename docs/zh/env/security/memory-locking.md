@@ -202,12 +202,12 @@ sv := env.GetSecure("API_KEY")
 defer sv.Release()
 
 fmt.Println(sv.Masked())
-// 锁定成功:     [SECURE:32 bytes locked]      // 创建时已启用锁定且锁定成功
-// 锁定失败:     [SECURE:32 bytes lock-failed] // 已启用锁定但失败（权限不足/平台不支持）
-// 从未尝试锁定: [SECURE:32 bytes unlocked]    // 值在启用锁定之前创建
-// 未启用锁定:   [SECURE:32 bytes]             // 不附加任何锁定状态
-// 空值:         [SECURE:0 bytes]
-// 已关闭:       [CLOSED]
+// 锁定成功：    [SECURE:32 bytes locked]      // 创建时已启用锁定且锁定成功
+// 锁定失败：    [SECURE:32 bytes lock-failed] // 已启用锁定但失败（权限不足/平台不支持）
+// 从未尝试锁定：[SECURE:32 bytes unlocked]    // 值在启用锁定之前创建
+// 未启用锁定：  [SECURE:32 bytes]             // 不附加任何锁定状态
+// 空值：        [SECURE:0 bytes]
+// 已关闭：      [CLOSED]
 ```
 
 ## 完整生产示例
@@ -273,7 +273,7 @@ func main() {
 
 	// 安全日志（不泄露明文）
 	log.Printf("数据库密码: %s", dbPassword.Masked())
-	// 输出: 数据库密码: [SECURE:12 bytes locked]（N 取决于实际值长度）
+	// 输出：数据库密码：[SECURE:12 bytes locked]（N 取决于实际值长度）
 
 	_ = os.Stdout
 }

@@ -144,17 +144,17 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("登录事件数: %d\n", loginCount)
+	fmt.Printf("登录事件数：%d\n", loginCount)
 	fmt.Printf("聚合结果:\n%s", string(jsonlBytes))
 }
 
 // 输出：
-// 第 1 行: login by alice
-// 第 2 行: logout by alice
-// 第 3 行: login by bob
-// 第 4 行: purchase by bob
-// 登录事件数: 2
-// 聚合结果:
+// 第 1 行：login by alice
+// 第 2 行：logout by alice
+// 第 3 行：login by bob
+// 第 4 行：purchase by bob
+// 登录事件数：2
+// 聚合结果：
 // {"metric":"logins","count":2}
 // {"metric":"total_events","count":4}
 ```
@@ -301,10 +301,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("USD 总额: %d\n", totalUSD)
+	fmt.Printf("USD 总额：%d\n", totalUSD)
 }
 
-// 输出：USD 总额: 320
+// 输出：USD 总额：320
 ```
 
 :::tip 提示

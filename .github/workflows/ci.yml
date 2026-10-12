@@ -83,8 +83,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Source repos of the 6 libraries (single source of truth: .claude/
-      # config/projects.yaml global.github_base + shared.ts PROJECT_META).
+      # Source repos of the 6 libraries (single source of truth: repo-root
+      # projects.yaml global.github_base + shared.ts PROJECT_META).
       # Checked out to src/{project}-dev — the layout scripts/audit-api.ts
       # expects under CYBERGO_SOURCE_ROOT. audit-api.ts silently skips a
       # missing source, so the checkout steps themselves are the gate: a

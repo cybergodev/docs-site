@@ -168,8 +168,8 @@ func main() {
 	fmt.Printf("文本: %s\n", result.Text)
 	// 输出：
 	// 自动检测失败（encoding detection failed: ...），使用编码 "gbk" 重试...
-	// 标题: 测试
-	// 文本: 标题 你世界
+	// 标题：测试
+	// 文本：标题 你世界
 }
 ```
 
@@ -428,7 +428,7 @@ func extractHandler(w http.ResponseWriter, r *http.Request) {
 			// MarshalJSON 自动用 SafePath() 脱敏，可安全返回客户端
 			fileErrJSON, _ := json.Marshal(fileErr)
 			fmt.Fprintf(w, `{"error":"file_error","detail":%s}`, fileErrJSON)
-			// 客户端看到: {"error":"file_error","detail":{"op":"ReadFile","path":"secret.html","message":"file not found"}}
+			// 客户端看到：{"error":"file_error","detail":{"op":"ReadFile","path":"secret.html","message":"file not found"}}
 			// 而非完整的服务器路径 /var/www/uploads/secret.html
 		} else {
 			json.NewEncoder(w).Encode(apiResponse{Error: "extraction_failed"})

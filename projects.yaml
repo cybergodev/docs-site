@@ -1,0 +1,98 @@
+# CyberGo 项目配置
+# 此文件为 AI 任务变量系统的元信息源（{project_name}/{project_desc}/{source} 等变量由此解析）
+#
+# ⚠️ 双数据源边界（加项目时两处都要改且保持一致）：
+#   - 本文件（projects.yaml）：AI 任务上下文用的元信息 —— 名称/描述/特性/源码路径
+#   - docs/.vitepress/shared.ts（PROJECTS + PROJECT_META）：站点运行时数据 —— 主页卡片 / nav 的渲染源
+#   两者描述同一组项目；shared.ts 是纯数据（被浏览器 bundle 引用），无法读 yaml，故必须分开维护。
+#   一致性校验：npm run check:projects（scripts/check-projects-sync.ts，对比 yaml 与 shared.ts 项目键集合 + PROJECT_META 字段完整性）。
+#   全站接入（含 nav / 主页卡片）流程见 .claude/agents/vitepress-engineer.md「加项目」与 .claude/docs/architecture.md §2.2。
+
+## 全局配置
+global:
+  organization: cybergodev
+  github_base: https://github.com/cybergodev
+  go_module_base: github.com/cybergodev
+  docs_root: 'D:/MyProject/docs-site-dev'
+  source_root: 'D:/MyProject'
+
+## 路径模板（支持变量: {docs_root}, {source_root}, {project}）
+paths:
+  docs_zh: '{docs_root}/docs/zh/{project}/'
+  docs_en: '{docs_root}/docs/en/{project}/'
+  # 站点语言仅 zh/en；翻译任务以 {lang.target} 动态拼接 {docs_root}/docs/{lang}/{project}/，无需逐语言列举
+  locales: '{docs_root}/docs/.vitepress/locales/'
+  # source: 本地开发源码根（{source_root}=D:/MyProject）。CI 的 audit:api 改用 env CYBERGO_SOURCE_ROOT（见 ci.yml 的 audit-api job）。
+  source: '{source_root}/{project}-dev'
+
+## 项目列表
+## 执行任务时，根据 {project} 读取对应配置
+projects:
+  json:
+    name: 'JSON 处理库'
+    desc: '高性能 JSON 处理库，支持路径查询和流式处理'
+    features:
+      - JSONPath 路径查询
+      - 流式处理
+      - 类型安全转换
+      - 零分配提取
+    # source: 默认使用 paths.source 模板
+
+  jwt:
+    name: 'JWT 鉴权库'
+    desc: 'JWT 令牌生成与验证库'
+    features:
+      - 多算法支持
+      - 签名验证
+      - 黑名单管理
+      - Claims 解析
+      - 刷新与轮换
+      - 速率限制
+
+  httpc:
+    name: 'HTTP 客户端库'
+    desc: '安全 HTTP 客户端，内置重试和代理池熔断'
+    features:
+      - TLS 1.2+
+      - SSRF 防护
+      - 代理池熔断
+      - 连接池管理
+      - 请求重试
+
+  html:
+    name: 'HTML 提取工具库'
+    desc: 'HTML 内容提取和清洗工具'
+    features:
+      - 智能文章识别
+      - 元数据提取
+      - 内容清洗
+      - 自动编码检测
+      - 多格式输出
+      - 批量处理
+      - 链接提取
+      - 审计系统
+
+  dd:
+    name: '日志库'
+    desc: '结构化日志库，支持多输出目标'
+    features:
+      - 结构化日志
+      - 文件轮换
+      - 多输出目标
+      - 敏感数据过滤
+      - 字段验证
+      - 审计日志
+      - 完整性签名
+      - 钩子系统
+      - 上下文集成
+      - 日志采样
+      - 零分配优化
+
+  env:
+    name: '环境变量管理库'
+    desc: '多格式环境变量管理'
+    features:
+      - .env 文件支持
+      - 类型转换
+      - 安全存储
+      - 审计日志

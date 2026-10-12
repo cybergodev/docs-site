@@ -58,7 +58,7 @@ func newJWTProcessor() (*jwt.Processor, int, error) {
     // 密钥来自环境变量（生产安全，禁止硬编码）
     secretKey := os.Getenv("JWT_SECRET_KEY")
     if secretKey == "" {
-        log.Println("警告: 未设置 JWT_SECRET_KEY，使用演示密钥")
+        log.Println("警告：未设置 JWT_SECRET_KEY，使用演示密钥")
         // 回退密钥仅为演示，让示例可脱离环境变量独立运行；
         // 生产环境密钥必须来自环境变量或密钥管理服务
         secretKey = "Kx9#mP2$vL8@nQ5!wR7&tY3^uI6*oE4%aS1+dF0-gH9~jK2#bN5$cM8@xZ7&vB4!"
