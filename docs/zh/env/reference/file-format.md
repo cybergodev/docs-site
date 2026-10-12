@@ -1,7 +1,7 @@
 ---
 sidebar_label: "文件格式"
 title: "文件格式 - CyberGo env | .env/JSON/YAML 语法"
-description: "CyberGo env 配置文件格式参考，详解 .env、JSON、YAML 三种格式的语法规则、引号与 export 前缀、变量展开 ${VAR}、多行字符串、嵌套对象与数组扁平化、UTF-8 编码与 DetectFormat 自动检测机制。"
+description: "CyberGo env 配置文件格式参考，详解 .env、JSON、YAML 三种格式的语法规则、引号与 export 前缀、变量展开 ${VAR}、多行字符串、嵌套对象与数组扁平化、DetectFormat 自动检测机制。"
 sidebar_position: 1
 ---
 
@@ -69,7 +69,7 @@ PRICE="Price: \$100"
 
 ### 变量展开
 
-启用 `ExpandVariables` 后支持：
+`ExpandVariables` 默认开启（`DefaultConfig` 为 true，可用 `cfg.ExpandVariables = false` 关闭），支持：
 
 ```bash
 # 引用其他变量
@@ -89,7 +89,7 @@ SERVICE=${CLUSTER:-default}-${REGION:-us-east}
 
 ### export 语法
 
-启用 `AllowExportPrefix` 后支持：
+`AllowExportPrefix` 默认开启（true），支持：
 
 ```bash
 # Bash 风格导出
@@ -99,13 +99,15 @@ export ANOTHER="quoted value"
 
 ### YAML 风格
 
-启用 `AllowYamlSyntax` 后支持：
+`KEY: value` 的冒号分隔写法**始终可用**——行解析器无条件接受 `=` 与 `:` 作为分隔符，无需任何开关：
 
 ```bash
-# YAML 风格键值对
+# 冒号分隔键值对（无需 AllowYamlSyntax）
 KEY: value
 ANOTHER: "quoted value"
 ```
+
+`AllowYamlSyntax` 默认关闭（false——解析类开关中唯一的默认例外），开启后影响的是**值**的解析：按 YAML 标量语义处理，`null`/`~` 视为空字符串，YAML 布尔与数字字面量按其规则识别。
 
 ### 多行值
 
@@ -182,22 +184,18 @@ PORTS_2=8080
 hosts := env.GetSlice[string]("ALLOWED_HOSTS")
 port0 := env.GetInt("PORTS_0")  // 80
 ```
-详见 [GetSlice 文档](/zh/env/api-reference/functions#getslice-t)。
+详见 [GetSlice 文档](../api-reference/functions#getslice-t)。
 :::
 
 ### 类型转换选项
 
+`JSONNullAsEmpty` / `JSONNumberAsString` / `JSONBoolAsString` 在 `DefaultConfig` 中**默认均为 true（已开启）**，无需逐项手动赋 true；仅当需要关闭对应转换时才显式设为 false：
+
 ```go
 cfg := env.DefaultConfig()
 
-// null 转为空字符串
-cfg.JSONNullAsEmpty = true
-
-// 数字转为字符串
-cfg.JSONNumberAsString = true
-
-// 布尔值转为字符串
-cfg.JSONBoolAsString = true
+// 例：关闭「数字转字符串」，让 JSON 数字保留原始类型语义
+cfg.JSONNumberAsString = false
 ```
 
 ### 深度限制
@@ -272,13 +270,16 @@ description: "Line1\nLine2\nLine3"
 
 ### 类型转换选项
 
+`YAMLNullAsEmpty` / `YAMLNumberAsString` / `YAMLBoolAsString` 同样**默认均为 true（已开启）**，需要关闭时显式设为 false；`YAMLMaxDepth` 默认 10，需要更深嵌套时再调整：
+
 ```go
 cfg := env.DefaultConfig()
 
-cfg.YAMLNullAsEmpty = true
-cfg.YAMLNumberAsString = true
-cfg.YAMLBoolAsString = true
-cfg.YAMLMaxDepth = 10
+// 例：关闭「布尔值转字符串」
+cfg.YAMLBoolAsString = false
+
+// 例：放宽嵌套深度
+cfg.YAMLMaxDepth = 20
 ```
 
 ## 格式检测
@@ -363,6 +364,6 @@ secrets.yaml
 
 ## 相关文档
 
-- [多格式配置](/zh/env/guides/multi-format) - 多格式加载指南
-- [ComponentFactory API](/zh/env/api-reference/factory) - DetectFormat 函数参考
-- [Config API](/zh/env/api-reference/config) - JSON/YAML 解析选项
+- [多格式配置](../guides/multi-format) - 多格式加载指南
+- [ComponentFactory API](../api-reference/factory) - DetectFormat 函数参考
+- [Config API](../api-reference/config) - JSON/YAML 解析选项

@@ -2,7 +2,7 @@
 sidebar_label: "配置"
 title: "配置 - CyberGo HTTPC | Config 与预设"
 description: "HTTPC 配置系统 API 参考：Config 及 Timeouts、Connection、Security、Retry、Middleware 子配置全字段说明，DefaultConfig 等五种预设、ValidateConfig 校验范围与代理轮换自动提升重试等派生规则。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 配置
@@ -21,6 +21,15 @@ type Config struct {
 ```
 
 主配置结构体，五个子配置与 `Defaults` 均为**值类型**。通过 `DefaultConfig()` 获取安全默认值，返回的 Config 可直接修改字段。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `Config.Timeouts` | `TimeoutConfig` | 请求/拨号/TLS 握手/响应头/空闲连接超时 |
+| `Config.Connection` | `ConnectionConfig` | 连接池、代理、HTTP/2、Cookie 与 DNS-over-HTTPS |
+| `Config.Security` | `SecurityConfig` | TLS、校验与 SSRF 防护 |
+| `Config.Retry` | `RetryConfig` | 瞬态失败自动重试 |
+| `Config.Middleware` | `MiddlewareConfig` | 每客户端中间件链 |
+| `Config.Defaults` | `RequestDefaults` | 每请求默认值（User-Agent、默认请求头、重定向策略） |
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -95,11 +104,35 @@ type ConnectionConfig struct {
     ProxyRotateOnStatus      []int         // 触发代理轮换的 HTTP 状态码
     EnableHTTP2            bool          // 启用 HTTP/2，默认 true
     EnableCookies          bool          // 启用 Cookie 管理，默认 false
+    PublicSuffixList       cookiejar.PublicSuffixList // Cookie jar 的 Public Suffix 数据库，默认 nil
     EnableDoH              bool          // 启用 DNS-over-HTTPS，默认 false
     DoHCacheTTL            time.Duration // DoH 缓存 TTL，默认 5min
-    MaxResponseHeaderBytes int64         // 响应头最大字节数，默认 0（使用 Go 标准库默认 10MB）
+    MaxResponseHeaderBytes int64         // 响应头最大字节数，默认 0（使用 Go 标准库默认 1MB）
 }
 ```
+
+### 字段一览
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `ConnectionConfig.MaxIdleConns` | `int` | 50 | 全局最大空闲连接数 |
+| `ConnectionConfig.MaxConnsPerHost` | `int` | 10 | 每主机最大连接数（空闲 + 活跃） |
+| `ConnectionConfig.ProxyURL` | `string` | `""` | 显式代理地址（如 `"http://proxy:8080"`），优先级最高 |
+| `ConnectionConfig.EnableSystemProxy` | `bool` | `false` | 自动检测系统代理设置 |
+| `ConnectionConfig.ProxyPool` | `[]string` | `nil` | 代理池列表，用于轮换 |
+| `ConnectionConfig.ProxyPoolStrategy` | `ProxyStrategy` | `ProxyStrategyRoundRobin` | 代理选择策略 |
+| `ConnectionConfig.ProxyFailureThreshold` | `int` | 3（0 视为 3） | 连续失败次数阈值，达到后熔断该代理 |
+| `ConnectionConfig.ProxyCooldown` | `time.Duration` | 30s（0 视为 30s） | 熔断代理的冷却时长 |
+| `ConnectionConfig.ProxyRotatePerRequest` | `bool` | `false` | 每次独立请求强制换代理（需设置 `ProxyPool`） |
+| `ConnectionConfig.ProxyRotateOnStatus` | `[]int` | `nil` | 触发换代理重试的 HTTP 状态码（需 `Retry.MaxRetries > 0`） |
+| `ConnectionConfig.EnableHTTP2` | `bool` | `true` | 启用 HTTP/2 |
+| `ConnectionConfig.EnableCookies` | `bool` | `false` | 启用 Cookie jar 自动管理 |
+| `ConnectionConfig.PublicSuffixList` | `cookiejar.PublicSuffixList` | `nil` | 为 Cookie jar 提供 Public Suffix 数据库（推荐 `golang.org/x/net/publicsuffix.List`）。未提供时 jar 会接受公共后缀上的 Cookie 并采用宽松的域匹配，可能让 Cookie 泄漏到不相关子域 |
+| `ConnectionConfig.EnableDoH` | `bool` | `false` | 启用 DNS-over-HTTPS 解析 |
+| `ConnectionConfig.DoHCacheTTL` | `time.Duration` | 5min | DoH DNS 响应缓存时长 |
+| `ConnectionConfig.MaxResponseHeaderBytes` | `int64` | 0 | 响应头最大字节数；0 使用 Go 标准库默认 1MB（`net/http.DefaultMaxHeaderBytes`），防御恶意服务器发送超大响应头 |
+
+`PublicSuffixList` 仅在 `EnableCookies` 开启（Cookie jar 生效）时被使用，是收紧 Cookie 域匹配、防「超级 Cookie」泄漏的推荐配置。
 
 ### 代理池
 
@@ -232,25 +265,31 @@ cfg.Security.RedirectWhitelist = []string{
 
 ```go
 type RetryConfig struct {
-    MaxRetries    int           // 最大重试次数，默认 3
-    Delay         time.Duration // 初始重试延迟，默认 1s
-    BackoffFactor float64       // 退避倍数，默认 2.0
-    EnableJitter  bool          // 启用抖动，默认 true
-    MaxRetryDelay time.Duration // 最大重试延迟上限，默认 30s
-    CustomPolicy  RetryPolicy   // 自定义重试策略
+    MaxRetries         int           // 最大重试次数，默认 3
+    Delay              time.Duration // 初始重试延迟，默认 1s
+    BackoffFactor      float64       // 退避倍数，默认 2.0
+    EnableJitter       bool          // 启用抖动，默认 true
+    MaxRetryDelay      time.Duration // 最大重试延迟上限，默认 30s
+    RetryNonIdempotent bool          // 允许重试非幂等方法（POST、PATCH 及自定义方法），默认 false
+    CustomPolicy       RetryPolicy   // 自定义重试策略，默认 nil
 }
 ```
 
 | 字段 | 默认值 | 范围 |
 |------|--------|------|
-| MaxRetries | 3 | 0-10 |
-| Delay | 1s | 0-30min |
-| BackoffFactor | 2.0 | 1.0-10.0 |
-| MaxRetryDelay | 30s | 0-30min |
+| `RetryConfig.MaxRetries` | 3 | 0-10 |
+| `RetryConfig.Delay` | 1s | 0-30min |
+| `RetryConfig.BackoffFactor` | 2.0 | 1.0-10.0 |
+| `RetryConfig.MaxRetryDelay` | 30s | 0-30min |
+| `RetryConfig.EnableJitter` | true | — |
+| `RetryConfig.RetryNonIdempotent` | false | — |
+| `RetryConfig.CustomPolicy` | nil | 实现 [`RetryPolicy`](../types/interfaces#retrypolicy) 即可 |
 
 重试延迟公式：`min(Delay * BackoffFactor^attempt + jitter, MaxRetryDelay)`
 
-`CustomPolicy` 实现 [`RetryPolicy`](../types/interfaces#retrypolicy) 接口，可整体替换内置重试判定；默认 `nil`（使用内置策略）。配置代理状态码轮换时，有效重试次数会被自动提升，见[配置派生与内部换算](#配置派生与内部换算)。
+`CustomPolicy` 实现 [`RetryPolicy`](../types/interfaces#retrypolicy) 接口，可整体替换内置重试判定；默认 `nil`（使用内置策略）。与内置策略一样，`CustomPolicy` 仅对幂等方法生效——要让它接管 POST/PATCH 的重试，仍需同时设置 `RetryNonIdempotent`（或逐请求使用 [`WithRetryNonIdempotent`](../core/options#withretrynonidempotent)）。配置代理状态码轮换时，有效重试次数会被自动提升，见[配置派生与内部换算](#配置派生与内部换算)。
+
+`RetryNonIdempotent` 默认 `false`：非幂等请求**恰好执行一次**——超时或可重试 5xx 可能在服务端已提交操作后才到达，重放请求体会造成重复（重复支付、重复插入……）。仅当端点已知可容忍重放、或以幂等键保护时启用；幂等方法（GET/HEAD/PUT/DELETE/OPTIONS/TRACE）不受此开关影响，始终按 `MaxRetries` 重试。
 
 ## MiddlewareConfig
 
@@ -260,7 +299,7 @@ type MiddlewareConfig struct {
 }
 ```
 
-仅包含中间件链。请求默认值（User-Agent、默认请求头、重定向策略）已移至 [`RequestDefaults`](#requestdefaults)。
+仅包含 `Middlewares` 一个字段。请求默认值（User-Agent、默认请求头、重定向策略）已移至 [`RequestDefaults`](#requestdefaults)。
 
 ## RequestDefaults
 
@@ -274,6 +313,13 @@ type RequestDefaults struct {
 ```
 
 每请求默认值的规范位置：User-Agent、默认请求头、重定向策略。通过 `DefaultConfig()` 获取合理默认值后按需修改。
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `RequestDefaults.UserAgent` | `string` | `"httpc/1.0"` | User-Agent 请求头 |
+| `RequestDefaults.Headers` | `map[string]string` | 空 | 添加到每个请求的默认请求头 |
+| `RequestDefaults.FollowRedirects` | `bool` | `true` | 是否自动跟随重定向 |
+| `RequestDefaults.MaxRedirects` | `int` | 10 | 自动重定向次数上限 |
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -446,6 +492,15 @@ func ValidateConfig(cfg *Config) error
 
 验证配置有效性。`New()` 内部会自动调用，也可显式调用。
 
+等价的方法形式 `Config.Validate`（签名 `func (c *Config) Validate() error`，内部直接委托 `ValidateConfig`）在已有 Config 实例时直接调用 `Validate` 更顺手，新代码推荐优先使用：
+
+```go
+cfg := httpc.DefaultConfig()
+if err := cfg.Validate(); err != nil {
+    log.Fatal(err)
+}
+```
+
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Retry.MaxRetries = 100 // 超出范围
@@ -513,11 +568,11 @@ Cookie 安全属性验证配置。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| RequireSecure | `bool` | 要求 Cookie 设置 Secure 属性 |
-| RequireHttpOnly | `bool` | 要求 Cookie 设置 HttpOnly 属性 |
-| RequireSameSite | `string` | 要求的 SameSite 值，如 `"Strict"`、`"Lax"`；空字符串表示不检查 |
-| AllowSameSiteNone | `bool` | 是否允许 SameSite=None；为 `false` 且 `RequireSameSite` 为空时，SameSite=None 的 Cookie 会被拒绝 |
-| RequireSecureForSameSiteNone | `bool` | SameSite=None 时强制要求 Secure 属性（`DefaultCookieSecurityConfig()` 中为 `true`；直接构造零值结构体时是 `false`，建议始终经工厂构造） |
+| `CookieSecurityConfig.RequireSecure` | `bool` | 要求 Cookie 设置 Secure 属性 |
+| `CookieSecurityConfig.RequireHttpOnly` | `bool` | 要求 Cookie 设置 HttpOnly 属性 |
+| `CookieSecurityConfig.RequireSameSite` | `string` | 要求的 SameSite 值，如 `"Strict"`、`"Lax"`；空字符串表示不检查 |
+| `CookieSecurityConfig.AllowSameSiteNone` | `bool` | 是否允许 SameSite=None；为 `false` 且 `RequireSameSite` 为空时，SameSite=None 的 Cookie 会被拒绝 |
+| `CookieSecurityConfig.RequireSecureForSameSiteNone` | `bool` | SameSite=None 时强制要求 Secure 属性（`DefaultCookieSecurityConfig()` 中为 `true`；直接构造零值结构体时是 `false`，建议始终经工厂构造） |
 
 ### DefaultCookieSecurityConfig
 
@@ -544,8 +599,8 @@ cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
 
 | 字段 | DefaultCookieSecurityConfig | StrictCookieSecurityConfig |
 |------|------------------------------|----------------------------|
-| RequireSecure | `false` | `true` |
-| RequireHttpOnly | `false` | `true` |
-| RequireSameSite | `""`（不要求） | `"Strict"` |
-| AllowSameSiteNone | `true` | `false` |
-| RequireSecureForSameSiteNone | `true` | `true` |
+| `RequireSecure` | `false` | `true` |
+| `RequireHttpOnly` | `false` | `true` |
+| `RequireSameSite` | `""`（不要求） | `"Strict"` |
+| `AllowSameSiteNone` | `true` | `false` |
+| `RequireSecureForSameSiteNone` | `true` | `true` |

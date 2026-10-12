@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Security Overview"
-title: "Security Overview - CyberGo JSON | Best Practices"
+title: "Security Overview - CyberGo JSON | Validation & Depth Limits"
 description: "CyberGo JSON security: MaxNestingDepthSecurity/MaxMemory limits, path traversal and JSON injection defense, sensitive-data filtering, SecurityConfig presets."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Security Overview
@@ -194,26 +194,14 @@ For runnable, production-ready code see [Production Checklist - Sensitive Data H
 
 ### Security-Related Config Fields Overview
 
-These limits are gathered internally into the exported type `SecurityLimits` (no public accessor; shown as field structure documentation only):
-
-```go
-type SecurityLimits struct {
-    MaxNestingDepth           int   `json:"max_nesting_depth"`
-    MaxSecurityValidationSize int64 `json:"max_security_validation_size"`
-    MaxObjectKeys             int   `json:"max_object_keys"`
-    MaxArrayElements          int   `json:"max_array_elements"`
-    MaxJSONSize               int64 `json:"max_json_size"`
-    MaxPathDepth              int   `json:"max_path_depth"`
-}
-```
-
-Field values under the two common configurations:
+These limits have no separate aggregate type — they are provided directly as `Config` fields. Field values under the two common configurations:
 
 | Config field | `DefaultConfig()` default | `SecurityConfig()` preset | Error triggered |
 |--------------|---------------------------|---------------------------|-----------------|
 | `MaxJSONSize` | 100MB (`DefaultMaxJSONSize`) | 10MB | `ErrSizeLimit` |
 | `MaxNestingDepthSecurity` | 200 (`DefaultMaxNestingDepth`) | 30 | `ErrDepthLimit` |
 | `MaxPathDepth` | 50 (`DefaultMaxPathDepth`) | 30 | `ErrInvalidPath` |
+| `MaxBatchSize` | 2000 (`DefaultMaxBatchSize`) | 2000 | `ErrSizeLimit` |
 | `MaxObjectKeys` | 100000 (`DefaultMaxObjectKeys`) | 5000 | `ErrSizeLimit` |
 | `MaxArrayElements` | 100000 (`DefaultMaxArrayElements`) | 5000 | `ErrSizeLimit` |
 | `MaxSecurityValidationSize` | 10MB (`DefaultMaxSecuritySize`) | 10MB | — (threshold type) |
@@ -225,58 +213,9 @@ Field values under the two common configurations:
 
 The library ships default dangerous-pattern detection and also supports registering, unregistering, and querying custom patterns.
 
-Custom patterns are uniformly expressed with the `DangerousPattern` struct:
+Custom patterns are uniformly expressed with the `DangerousPattern` struct (`Pattern` detection substring, matched case-insensitively with word-boundary context checks; `Name` risk description; `Level` severity), with two registration routes: **global registration** (the `RegisterDangerousPattern`/`UnregisterDangerousPattern`/`ListDangerousPatterns` package-level functions, effective for all Processors) and **Config append** (the `AddDangerousPattern` method or the `AdditionalDangerousPatterns` field, affecting only Processors created with that Config).
 
-```go
-type DangerousPattern struct {
-    Pattern string       // Substring to detect in the input
-    Name    string       // Descriptive name of the pattern
-    Level   PatternLevel // Severity level
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `Pattern` | `string` | Substring to detect in the input (matched case-insensitively) |
-| `Name` | `string` | Human-readable risk description (for logs and audits) |
-| `Level` | `PatternLevel` | Severity level; see the table below (currently semantic labeling only) |
-
-#### RegisterDangerousPattern
-
-Signature: `func RegisterDangerousPattern(pattern DangerousPattern)`
-
-Registers a global dangerous pattern. Patterns in the global registry apply to **all Processor instances** (including already-created ones — the registry is read live at scan time), checked in addition to the default patterns.
-
-```go
-json.RegisterDangerousPattern(json.DangerousPattern{
-    Pattern: "eval(",
-    Name:    "eval-call",
-    Level:   json.PatternLevelCritical,
-})
-```
-
-#### UnregisterDangerousPattern
-
-Signature: `func UnregisterDangerousPattern(pattern string)`
-
-Unregisters a global dangerous pattern by its pattern string. The `pattern` argument is the dangerous-pattern substring to remove (matching the `DangerousPattern.Pattern` field).
-
-```go
-json.UnregisterDangerousPattern("eval(")
-```
-
-#### ListDangerousPatterns
-
-Signature: `func ListDangerousPatterns() []DangerousPattern`
-
-Lists **globally registered custom patterns** (not the built-in defaults — those are always in effect and need no registration).
-
-```go
-patterns := json.ListDangerousPatterns()
-for _, p := range patterns {
-    fmt.Printf("Pattern: %s, Name: %s, Level: %s\n", p.Pattern, p.Name, p.Level)
-}
-```
+The struct fields, function signatures, and the "Global registration vs Config append" comparison table are maintained in [Security Mode - Custom Pattern Registration](./security-mode#custom-pattern-registration).
 
 #### Dangerous Pattern Levels
 

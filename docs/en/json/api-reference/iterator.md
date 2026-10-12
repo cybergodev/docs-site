@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Iterators & Streaming Iterators"
-title: "Iterators & IterableValue - CyberGo JSON | API Reference"
-description: "CyberGo JSON iterator types: Iterator, IterableValue data access, StreamIterator/StreamObjectIterator streaming, BatchIterator and ParallelIterator."
-sidebar_position: 9
+title: "Iterators & IterableValue - CyberGo JSON | Stream & Parallel"
+description: "CyberGo JSON iterators: Iterator, StreamIterator, BatchIterator, ParallelIterator and IterableValue with Map/Filter for arrays, objects and large files."
+sidebar_position: 100
 ---
 
 # Iterator Types
@@ -403,7 +403,7 @@ StreamIterator provides memory-efficient streaming iteration for large JSON arra
 
 Signature: `func NewStreamIterator(reader io.Reader, cfg ...Config) *StreamIterator`
 
-Creates a streaming iterator. `Config.BufferSize` sets the buffer size (default 32KB; falls back to 32KB when `BufferSize <= 0`); when cfg is passed, `MaxJSONSize` applies to the **total byte count of the whole stream** and errors when exceeded.
+Creates a streaming iterator. The buffer comes from `Config.BufferSize` (64KB from `DefaultConfig` when cfg is absent; falls back to 32KB when cfg is passed with `BufferSize <= 0`); `MaxJSONSize` always applies to the **total byte count of the whole stream** (capped at `DefaultMaxJSONSize` = 100MB when cfg is absent) and errors when exceeded.
 
 ```go
 file, _ := os.Open("large-array.json")
@@ -448,7 +448,7 @@ StreamObjectIterator provides memory-efficient streaming iteration for large JSO
 
 Signature: `func NewStreamObjectIterator(reader io.Reader, cfg ...Config) *StreamObjectIterator`
 
-Creates a streaming object iterator. `Config.BufferSize` (default 32KB) and `MaxJSONSize` (total stream byte cap) have the same semantics as in `NewStreamIterator`.
+Creates a streaming object iterator. `Config.BufferSize` and `MaxJSONSize` (total stream byte cap) have the same semantics as in `NewStreamIterator`.
 
 ```go
 file, _ := os.Open("large-object.json")
@@ -464,7 +464,7 @@ if err := it.Err(); err != nil {
 ```
 
 :::tip Accepts only top-level objects
-If the first token is not `{`, `Next()` returns false immediately and ends (no error); non-string keys likewise end silently. Key-value pairs are yielded in **stream order** (no sorting).
+If the first token is not `{`, `Next()` returns false and `Err()` reports an "expects a JSON object" error; non-string keys likewise end with an error (no longer silently). Key-value pairs are yielded in **stream order** (no sorting).
 :::
 
 ### Methods
@@ -486,7 +486,7 @@ BatchIterator enables efficient batch processing of large arrays, cutting per-el
 
 Signature: `func NewBatchIterator(data []any, cfg ...Config) *BatchIterator`
 
-Creates a batch iterator. `Config.MaxBatchSize` sets the batch size (default 100 elements per batch when cfg is absent or `MaxBatchSize <= 0`).
+Creates a batch iterator. `Config.MaxBatchSize` sets the batch size (2000 from `DefaultConfig` when cfg is absent; falls back to 100 elements per batch when cfg is passed with `MaxBatchSize <= 0`).
 
 :::tip How batches are sliced
 `NextBatch` returns a **view** of the underlying array slice (`data[current:end]`) — no copy; the last batch may be shorter than batchSize, and modifying view elements affects the original array.
@@ -528,7 +528,7 @@ ParallelIterator processes arrays in parallel, exploiting multi-core CPUs for sp
 
 Signature: `func NewParallelIterator(data []any, cfg ...Config) *ParallelIterator`
 
-Creates a parallel iterator. `Config.MaxConcurrency` sets the worker goroutine count (default 4 when cfg is absent or `MaxConcurrency <= 0`; the actual count never exceeds `len(data)`, and is 1 for empty data).
+Creates a parallel iterator. `Config.MaxConcurrency` sets the worker goroutine count (50 from `DefaultConfig` when cfg is absent; falls back to 4 when cfg is passed with `MaxConcurrency <= 0`; the actual count never exceeds `len(data)`, and is 1 for empty data).
 
 ```go
 data := make([]any, 10000)
@@ -803,4 +803,4 @@ func main() {
 - [Package Iteration Functions](./functions/iterate) - Foreach/ForeachFile and other iteration functions
 - [Processor Iteration Methods](./processor/iterate) - The corresponding processor iteration methods
 - [Large File Handling](../streaming/large-files) - Large-file guide and API reference
-- [NDJSON Processors](../streaming/jsonl) - JSONL processing
+- [JSONL Streaming](../streaming/jsonl) - JSONL/NDJSON streaming

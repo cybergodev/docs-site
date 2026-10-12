@@ -32,42 +32,41 @@ go get github.com/cybergodev/jwt
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // 1. 创建配置
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	// 1. 创建配置
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
 
-    // 2. 创建 Processor
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	// 2. 创建 Processor
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // 3. 签发令牌
-    claims := &jwt.Claims{
-        UserID:   "user123",
-        Username: "alice",
-        Role:     "admin",
-    }
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token:", token)
+	// 3. 签发令牌
+	claims := &jwt.Claims{
+		UserID:   "user123",
+		Username: "alice",
+		Role:     "admin",
+	}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token:", token)
 
-    // 4. 验证令牌
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid)
-    fmt.Println("UserID:", parsed.UserID)
+	// 4. 验证令牌
+	parsed, err := processor.Parse(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("UserID:", parsed.UserID)
 }
 ```
 
@@ -78,8 +77,8 @@ func main() {
 │                  Processor                      │
 │  (implements TokenManager interface)            │
 ├────────────────────────────────────────────────┤
-│  Create / Validate / Refresh / Revoke          │
-│  CreateRefresh / ValidateInto / RefreshInto    │
+│  Create / Parse / Refresh / Revoke             │
+│  CreateRefresh / ParseInto / RefreshInto       │
 │  ParseUnverified / IsRevoked / IsClosed / Close│
 ├──────────────────┬─────────────────────────────┤
 │  BlacklistManager│     RateLimiter              │
@@ -92,8 +91,8 @@ func main() {
 
 ## 下一步
 
-- [核心概念](./getting-started/concepts) — Processor、令牌模型、Claims 架构
 - [快速开始](./getting-started/) — 详细的安装和配置指南
+- [核心概念](./getting-started/concepts) — Processor、令牌模型、Claims 架构
 - [签名算法](./guides/signing-algorithms) — HMAC、RSA、ECDSA 选择指南
 - [令牌刷新与轮换](./guides/token-refresh) — 双层令牌与轮换策略
 - [配置详解](./guides/configuration) — 安全配置与输入校验

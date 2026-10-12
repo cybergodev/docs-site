@@ -1,9 +1,8 @@
 ---
 sidebar_label: "多格式配置"
 title: "多格式配置 - CyberGo env | .env/JSON/YAML"
-description: "CyberGo env 多格式配置加载指南，支持 .env、JSON、YAML 自动检测与混合加载，详解嵌套对象与数组的扁平化键名、键值合并优先级、Marshal/UnmarshalMap 格式互转与 RegisterParser 自定义格式，适配微服务与容器化场景。"
+description: "CyberGo env 多格式配置加载指南，支持 .env、JSON、YAML 自动检测与混合加载，详解嵌套对象与数组的扁平化键名、多文件加载顺序、Marshal/UnmarshalMap 格式互转与 RegisterParser 自定义格式。"
 sidebar_position: 1
-sidebar_icon: "🔧"
 ---
 
 # 多格式配置
@@ -52,16 +51,27 @@ loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 
 ### 覆盖顺序
 
-后加载的文件覆盖先加载的：
+默认配置（`OverwriteExisting = false`）下**先加载的文件胜出**：后加载文件中的同名键会被跳过，值以最先设置的文件为准。仅当 `OverwriteExisting = true` 时，后加载的文件才覆盖先加载的。
 
 ```go
-// 顺序：base -> env -> json -> yaml
+// 默认 first-wins：同名键以 .env 中的值为准
 loader.LoadFiles(
-    ".env",           // 基础配置
-    "config.json",    // 覆盖 .env
-    "secrets.yaml",   // 覆盖 config.json
+    ".env",           // 基础配置（同名键在此生效）
+    "config.json",    // 只补充 .env 中没有的键
+    "secrets.yaml",   // 只补充前两个文件都没有的键
 )
+
+// 对照：需要 last-wins（后加载覆盖先加载）时，开启 OverwriteExisting
+cfg := env.DefaultConfig()
+cfg.OverwriteExisting = true
+loader2, _ := env.New(cfg)
+loader2.LoadFiles(".env", "config.json", "secrets.yaml")
+// 此时同名键以 secrets.yaml 为准：secrets.yaml > config.json > .env
 ```
+
+::: tip 提示
+`DevelopmentConfig()` 与 `TestingConfig()` 预设默认开启 `OverwriteExisting = true`（后加载覆盖先加载）；包级 `env.Load()` 使用 `DefaultConfig` 保持 first-wins，需要 last-wins 时改用 `env.LoadWithConfig` 并设置 `cfg.OverwriteExisting = true`。
+:::
 
 ## JSON 格式
 
@@ -137,27 +147,23 @@ JSON 数组会被扁平化为带索引的键：
     "servers": [
         { "host": "server1.example.com", "port": 8080 },
         { "host": "server2.example.com", "port": 8081 }
-    ]
+    ],
+    "hosts": ["server1.example.com", "server2.example.com"]
 }
 ```
 
 ```go
-// 使用扁平化键名访问数组元素
+// 对象数组：使用扁平化键名按下标访问元素
 host0 := loader.GetString("SERVERS_0_HOST")  // server1.example.com
 port0 := loader.GetInt("SERVERS_0_PORT")     // 8080
 host1 := loader.GetString("SERVERS_1_HOST")  // server2.example.com
 
-// 使用循环获取所有主机
-var hosts []string
-for i := 0; ; i++ {
-    h := loader.GetString(fmt.Sprintf("SERVERS_%d_HOST", i))
-    if h == "" {
-        break
-    }
-    hosts = append(hosts, h)
-}
+// 字符串数组：用 GetSliceFrom 聚合整个列表（HOSTS_0、HOSTS_1 → 切片）
+hosts := env.GetSliceFrom[string](loader, "HOSTS")
 // hosts = ["server1.example.com", "server2.example.com"]
 ```
+
+对象数组（`SERVERS_N_HOST` 形态）没有整列聚合函数，只能像上面那样按下标逐个读取；不要用「取到空字符串即终止」的循环——空值与缺失键都会返回 `""`，无法区分。字符串数组则统一用 `GetSliceFrom`（索引键优先、逗号分隔回退）。
 
 ### JSON 解析配置
 
@@ -310,7 +316,10 @@ DEBUG=true
 
 # 引号
 MESSAGE="Hello World"
-LITERAL='literal ${noexpand}'
+
+# 字面 $ 用 $$ 转义（注意：单引号不阻止变量展开，
+# LITERAL='literal ${noexpand}' 中的 ${noexpand} 仍会被展开）
+PRICE=100$$
 
 # 变量展开
 BASE_URL=https://api.example.com
@@ -321,6 +330,8 @@ LOG_LEVEL=info
 ```
 
 ### 变量展开
+
+完整的展开语法（`$$` 转义、`${VAR:-default}`、展开作用域等）见[变量展开](./variable-expansion)指南，本节为速览：
 
 ```go
 cfg := env.DefaultConfig()
@@ -367,13 +378,15 @@ export DATABASE_PORT=5432
 
 ### YAML 风格语法
 
+`KEY: value` 的冒号分隔写法**始终可用**（行解析器无条件接受 `=` 与 `:` 作为分隔符，无需开关）。`AllowYamlSyntax` 控制的是值的 YAML 标量语义：
+
 ```go
 cfg := env.DefaultConfig()
-cfg.AllowYamlSyntax = true  // 启用 YAML 风格
+cfg.AllowYamlSyntax = true  // 值按 YAML 标量语义解析（null/~ → 空字符串）
 ```
 
 ```bash
-# 支持 YAML 风格键值对
+# 冒号分隔键值对（始终支持）
 KEY: value
 ANOTHER_KEY: "quoted value"
 ```
@@ -385,9 +398,9 @@ ANOTHER_KEY: "quoted value"
 ```text
 config/
 ├── base.json          # 基础配置
-├── development.env    # 开发覆盖
-├── production.yaml    # 生产覆盖
-└── local.env          # 本地覆盖（不提交）
+├── development.env    # 开发环境配置
+├── production.yaml    # 生产环境配置
+└── local.env          # 本地配置（不提交）
 ```
 
 ```go
@@ -414,7 +427,7 @@ func loadConfig(loader *env.Loader) error {
         }
     }
 
-    // 3. 本地覆盖（可选）
+    // 3. 本地配置（可选）
     if _, err := os.Stat("config/local.env"); err == nil {
         if err := loader.LoadFiles("config/local.env"); err != nil {
             return err
@@ -424,6 +437,10 @@ func loadConfig(loader *env.Loader) error {
     return nil
 }
 ```
+
+::: tip 注意
+默认（`OverwriteExisting = false`）为 first-wins：后加载的环境配置与本地配置只**补充** base.json 中没有的键，同名键仍以 base.json 为准。若需要环境/本地配置覆盖基础配置，须设置 `cfg.OverwriteExisting = true`（如改用 `DevelopmentConfig()` 预设，该选项默认开启）。
+:::
 
 ### 按功能分离
 
@@ -446,165 +463,31 @@ loader.LoadFiles(
 
 ### 配置优先级
 
+默认（`OverwriteExisting = false`）时先加载的文件胜出，同名键以最先出现的值为准：
+
+```text
+命令行参数 > 环境变量 > base 配置 > 环境配置 > local 配置
+```
+
+若开启 `OverwriteExisting = true`（如 `DevelopmentConfig()` 预设），则后加载的文件胜出，文件间优先级方向反转：
+
 ```text
 命令行参数 > 环境变量 > local 配置 > 环境配置 > base 配置
 ```
 
 ## 序列化
 
-### Marshal
+`env.Marshal` 将 map 或结构体导出为 `.env` / JSON / YAML，`env.UnmarshalMap` / `env.UnmarshalStruct` 反向解析；传入 `env.FormatAuto` 可按内容自动检测格式。
 
-将配置序列化为指定格式。先准备数据，再按目标格式调用 `env.Marshal`：
+注意两种结构化输出的加工行为：Marshal 到 JSON 会把下划线键（如 `DATABASE_HOST`）重建为嵌套对象，并把 `"8080"`、`"true"` 等字符串推断回 number / bool；Marshal 到 YAML 对可被强制转换类型的标量自动加引号（如 `PORT: "8080"`），保证读回往返一致。
 
-```go
-data := map[string]string{
-    "HOST": "localhost",
-    "PORT": "8080",
-}
-```
-
-::: code-group
-
-```go [.env（默认）]
-envStr, _ := env.Marshal(data)
-// HOST=localhost
-// PORT=8080
-```
-
-```go [JSON]
-jsonStr, _ := env.Marshal(data, env.FormatJSON)
-// {
-//   "HOST": "localhost",
-//   "PORT": 8080
-// }
-```
-
-```go [YAML]
-yamlStr, _ := env.Marshal(data, env.FormatYAML)
-// HOST: localhost
-// PORT: 8080
-```
-
-:::
-
-### Marshal 结构体
-
-```go
-type Config struct {
-    Host string `env:"HOST"`
-    Port int    `env:"PORT"`
-}
-
-cfg := Config{Host: "localhost", Port: 8080}
-```
-
-::: code-group
-
-```go [转 .env]
-envStr, _ := env.Marshal(cfg, env.FormatEnv)
-```
-
-```go [转 JSON]
-jsonStr, _ := env.Marshal(cfg, env.FormatJSON)
-```
-
-```go [转 YAML]
-yamlStr, _ := env.Marshal(cfg, env.FormatYAML)
-```
-
-:::
-
-### UnmarshalMap
-
-反序列化为 map：
-
-::: code-group
-
-```go [从 .env]
-envData := "HOST=localhost\nPORT=8080"
-data, _ := env.UnmarshalMap(envData, env.FormatEnv)
-```
-
-```go [从 JSON]
-jsonData := `{"HOST":"localhost","PORT":"8080"}`
-data, _ := env.UnmarshalMap(jsonData, env.FormatJSON)
-```
-
-```go [从 YAML]
-yamlData := "HOST: localhost\nPORT: \"8080\""
-data, _ := env.UnmarshalMap(yamlData, env.FormatYAML)
-```
-
-:::
-
-::: tip 自动检测格式
-传入 `env.FormatAuto` 可让库按内容自动判断格式：`data, _ := env.UnmarshalMap(jsonData, env.FormatAuto)`。
-:::
-
-### UnmarshalStruct
-
-反序列化到结构体：
-
-```go
-type Config struct {
-    Host string `env:"HOST"`
-    Port int    `env:"PORT"`
-}
-
-var cfg Config
-```
-
-::: code-group
-
-```go [从 .env]
-env.UnmarshalStruct("HOST=localhost\nPORT=8080", &cfg, env.FormatEnv)
-```
-
-```go [从 JSON]
-env.UnmarshalStruct(`{"HOST":"localhost","PORT":"8080"}`, &cfg, env.FormatJSON)
-```
-
-```go [从 YAML]
-env.UnmarshalStruct("HOST: localhost\nPORT: \"8080\"", &cfg, env.FormatYAML)
-```
-
-:::
+函数族详解与输出形态示例见[序列化](./serialization)指南。
 
 ## 自定义格式
 
-### 注册解析器
+内置三格式之外，可实现 `EnvParser` 接口并用 `RegisterParser` 注册自定义格式（内置的 `.env` / JSON / YAML 不可覆盖，`ForceRegisterParser` 除外）。
 
-```go
-// 定义格式常量
-const FormatTOML env.FileFormat = 100
-
-// 实现 EnvParser 接口
-type TOMLParser struct {
-    cfg       env.Config
-    validator env.Validator
-    auditor   env.FullAuditLogger
-}
-
-func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, error) {
-    // 实现 TOML 解析
-    result := make(map[string]string)
-    // ...
-    return result, nil
-}
-
-// 注册解析器
-func init() {
-    env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
-        return &TOMLParser{
-            cfg:       cfg,
-            validator: f.Validator(),
-            auditor:   f.Auditor(),
-        }, nil
-    })
-}
-```
-
-详见 [自定义解析器](/zh/env/guides/custom-parser)。
+注意 `LoadFiles` 按扩展名路由，只识别 `.env` / `.json` / `.yaml` / `.yml`——自定义格式号不会被自动路由到。完整示例与两条加载路径见[自定义解析器](./custom-parser)指南。
 
 ## 完整示例
 
@@ -612,43 +495,43 @@ func init() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 创建加载器
-    cfg := env.DefaultConfig()
-    cfg.ExpandVariables = true
+	// 创建加载器
+	cfg := env.DefaultConfig()
+	cfg.ExpandVariables = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // 加载混合格式配置
-    err = loader.LoadFiles(
-        "config/base.json",       // JSON 基础配置
-        "config/database.yaml",   // YAML 数据库配置
-        "config/app.env",         // .env 应用配置
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 加载混合格式配置（默认同名键以先加载的文件为准，见「覆盖顺序」一节）
+	err = loader.LoadFiles(
+		"config/base.json",     // JSON 基础配置
+		"config/database.yaml", // YAML 数据库配置
+		"config/app.env",       // .env 应用配置
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 读取配置
-    fmt.Printf("App: %s\n", loader.GetString("APP_NAME"))
-    fmt.Printf("DB Host: %s\n", loader.GetString("DATABASE_HOST"))
-    fmt.Printf("DB Port: %d\n", loader.GetInt("DATABASE_PORT"))
+	// 读取配置
+	fmt.Printf("App: %s\n", loader.GetString("APP_NAME"))
+	fmt.Printf("DB Host: %s\n", loader.GetString("DATABASE_HOST"))
+	fmt.Printf("DB Port: %d\n", loader.GetInt("DATABASE_PORT"))
 
-    // 导出当前配置
-    all := loader.All()
-    exported, _ := env.Marshal(all, env.FormatEnv)
-    fmt.Println("\nExported config:")
-    fmt.Println(exported)
+	// 导出当前配置
+	all := loader.All()
+	exported, _ := env.Marshal(all, env.FormatEnv)
+	fmt.Println("\nExported config:")
+	fmt.Println(exported)
 }
 ```
 
@@ -687,7 +570,7 @@ loader, _ := env.New(cfg)
 
 ## 相关文档
 
-- [序列化](/zh/env/guides/serialization) - 序列化/反序列化详解
-- [ComponentFactory API](/zh/env/api-reference/factory) - 格式检测与解析器注册
-- [自定义解析器](/zh/env/guides/custom-parser) - 添加自定义格式
-- [Config API](/zh/env/api-reference/config) - JSON/YAML 解析配置
+- [序列化](./serialization) - 序列化/反序列化详解
+- [ComponentFactory API](../api-reference/factory) - 格式检测与解析器注册
+- [自定义解析器](./custom-parser) - 添加自定义格式
+- [Config API](../api-reference/config) - JSON/YAML 解析配置

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "接口定义"
 title: "接口定义 - CyberGo html | 核心接口参考"
-description: "CyberGo html 核心接口参考：Extractor 提取主接口、StatsProvider 统计接口、ContentNode 节点接口、Scorer 内容评分接口与 AuditSink 审计输出接口，用于功能扩展、自定义实现、单元测试与第三方集成。"
+description: "CyberGo html 核心接口参考：Extractor 内容提取主接口、StatsProvider 统计与缓存管理接口、ContentNode 节点抽象接口、Scorer 内容评分接口与 AuditSink 审计输出接口，用于依赖注入、Mock 单元测试、自定义评分算法扩展与第三方系统集成。"
 sidebar_position: 1
 ---
 
@@ -54,6 +54,36 @@ type Extractor interface {
 }
 ```
 
+### 方法一览
+
+| 方法 | 说明 |
+|------|------|
+| `Extractor.Extract` | 从 HTML 字节提取完整 `Result` |
+| `Extractor.ExtractWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractFromFile` | 从 HTML 文件提取 |
+| `Extractor.ExtractFromFileWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractText` | 仅提取纯文本 |
+| `Extractor.ExtractTextWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractTextFromFile` | 从文件提取纯文本 |
+| `Extractor.ExtractTextFromFileWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractToMarkdown` | 提取并渲染为 Markdown |
+| `Extractor.ExtractToMarkdownWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractToMarkdownFromFile` | 从文件提取并渲染为 Markdown |
+| `Extractor.ExtractToMarkdownFromFileWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractToJSON` | 提取并序列化为 JSON |
+| `Extractor.ExtractToJSONWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractToJSONFromFile` | 从文件提取并序列化为 JSON |
+| `Extractor.ExtractToJSONFromFileWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractBatch` | 并发批量提取（字节切片输入） |
+| `Extractor.ExtractBatchWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractBatchFiles` | 并发批量提取（文件路径输入） |
+| `Extractor.ExtractBatchFilesWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractAllLinks` | 枚举全部链接资源（不应用清洗） |
+| `Extractor.ExtractAllLinksWithContext` | 同上，支持 context 取消 |
+| `Extractor.ExtractAllLinksFromFile` | 从文件枚举链接资源 |
+| `Extractor.ExtractAllLinksFromFileWithContext` | 同上，支持 context 取消 |
+| `Extractor.Close` | 释放资源（缓存、后台 goroutine） |
+
 ## StatsProvider
 
 统计信息和缓存管理接口。
@@ -65,6 +95,14 @@ type StatsProvider interface {
     ResetStatistics()
 }
 ```
+
+### 方法一览
+
+| 方法 | 说明 |
+|------|------|
+| `StatsProvider.GetStatistics` | 返回当前处理统计 |
+| `StatsProvider.ClearCache` | 清空缓存内容，保留累计统计 |
+| `StatsProvider.ResetStatistics` | 重置所有统计计数器归零 |
 
 `Processor` 同时实现了 `Extractor` 和 `StatsProvider`。通过接口类型引用 `Processor`，可以将「提取能力」与「监控能力」分别注入不同的消费者：
 
@@ -139,7 +177,7 @@ func TestGetTitle(t *testing.T) {
 
 ## ContentNode
 
-HTML 节点的抽象接口，用于内容评分算法。
+HTML 节点的抽象接口，用于内容评分算法。`Type`、`Data`、`AttrValue`、`Attrs` 提供节点信息的只读访问，`FirstChild`、`NextSibling`、`Parent` 用于遍历节点树。
 
 ```go
 type ContentNode interface {
@@ -153,6 +191,18 @@ type ContentNode interface {
 }
 ```
 
+### 方法一览
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `ContentNode.Type` | `Type() string` | 节点类型：`"element"`、`"text"`、`"comment"`、`"document"`、`"doctype"`、`"error"`、`"raw"` 或 `"unknown"` |
+| `ContentNode.Data` | `Data() string` | 元素节点的标签名（如 `"div"`、`"p"`），文本节点则为文本内容 |
+| `ContentNode.AttrValue` | `AttrValue(key string) string` | 按属性名取值，属性不存在时返回空字符串 |
+| `ContentNode.Attrs` | `Attrs() []NodeAttr` | 返回节点全部属性 |
+| `ContentNode.FirstChild` | `FirstChild() ContentNode` | 第一个子节点，无则返回 `nil` |
+| `ContentNode.NextSibling` | `NextSibling() ContentNode` | 下一个兄弟节点，无则返回 `nil` |
+| `ContentNode.Parent` | `Parent() ContentNode` | 父节点，根节点时返回 `nil` |
+
 ## Scorer
 
 内容评分算法接口，用于自定义文章识别策略。
@@ -163,6 +213,13 @@ type Scorer interface {
     ShouldRemove(node ContentNode) bool  // 判断节点是否应移除
 }
 ```
+
+### 方法一览
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Scorer.Score` | `Score(node ContentNode) int` | 计算节点的内容相关性分数 |
+| `Scorer.ShouldRemove` | `ShouldRemove(node ContentNode) bool` | 判断节点是否应从内容树移除 |
 
 :::warning 注意：实现必须并发安全
 当单个 `Processor` 被多个并发 `Extract` 调用共享时，会从**多个 goroutine 同时**触发 `Score`/`ShouldRemove`。因此任何 `Scorer` 实现都必须**自身保证并发安全**。
@@ -207,7 +264,7 @@ cfg.Scorer = &MyScorer{}
 - **适配由库自动完成**——`scorerAdapter` 在公共 `Scorer` 和内部 `Scorer` 之间双向转换，用户无感知
 
 :::tip ContentNode 返回 nil 的约定
-`FirstChild()`/`NextSibling()`/`Parent()` 在没有对应节点时返回 `nil`。自定义 Scorer 遍历子树时务必做 nil 检查，否则会 panic。
+`FirstChild`、`NextSibling`、`Parent` 在没有对应节点时返回 `nil`。自定义 Scorer 遍历子树时务必做 nil 检查，否则会 panic。
 :::
 
 ## AuditSink

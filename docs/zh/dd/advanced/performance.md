@@ -1,7 +1,7 @@
 ---
 sidebar_label: "性能"
 title: "性能优化 - CyberGo DD | 高性能日志"
-description: "CyberGo DD 日志库性能优化完整指南，详解低分配优化技巧、BufferedWriter 缓冲写入配置、日志采样策略与频率控制、级别提前检查避免无用分配、sync.Pool 对象池复用和基准测试分析方法，帮助开发者在高并发场景下获得极致日志性能。"
+description: "CyberGo DD 日志库性能优化指南：低分配优化技巧、级别提前检查避免无用分配、BufferedWriter 缓冲写入、日志采样与频率控制、文件轮换配置与字段优化，获得高性能的日志输出。"
 sidebar_position: 1
 ---
 
@@ -46,9 +46,9 @@ bwCfg := dd.DefaultBufferedWriterConfig()
 bwCfg.BufferSize = 8192
 bw, _ := dd.NewBufferedWriter(fw, bwCfg)  // 8KB 缓冲
 
-logger, _ := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(bw)},
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(bw)}
+logger, _ := dd.New(cfg)
 defer logger.Close()  // Close 会自动 Flush
 ```
 

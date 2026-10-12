@@ -1,8 +1,8 @@
 ---
 sidebar_label: "解析验证"
-title: "解析与验证函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 解析与验证函数：Parse/ParseAny 解析、Valid/ValidWithConfig 校验与 ValidateSchema 的 JSON Schema 验证，解析前执行大小、嵌套深度与危险模式安全校验，覆盖完整处理链路。"
-sidebar_position: 6
+title: "解析与验证函数 - CyberGo JSON | Valid 与 Parse 用法"
+description: "CyberGo JSON 是解析与验证 JSON 的 Go 库，提供 Parse/ParseAny 解析到结构体、Valid/ValidWithConfig 校验与 ValidateSchema 的 JSON Schema 验证，解析前均执行大小、深度与危险模式的安全校验，帮助开发者安全地解析不可信输入。"
+sidebar_position: 60
 ---
 
 # 解析与验证函数
@@ -243,7 +243,7 @@ func main() {
 		Properties: map[string]*json.Schema{
 			"name":  {Type: "string"},
 			"email": {Type: "string", Format: "email"},
-			"age":   {Type: "number"}, // 数值统一用 "number"（含整数）
+			"age":   {Type: "number"}, // 数值可用 "number" 或 "integer"
 		},
 	}
 
@@ -258,8 +258,8 @@ func main() {
 ```
 
 ::: warning 两点注意
-- `Type` 取值没有 `"integer"`——JSON 解析后所有数字都是 `float64`，数值一律用 `"number"`。
-- `MinLength`/`Minimum` 等**长度/区间类约束**直接写在 `&json.Schema{...}` 字面量中不生效，必须经 [`NewSchemaWithConfig`](../schema#schema-的创建方式) 创建。详见 [Schema 校验](../schema)。
+- `Type` 支持 `"number"` 与 `"integer"`：`"number"` 接受一切数字；`"integer"` 按 JSON Schema 语义接受**数学上为整数**的值（`1`、`1.0`、`1e2` 均通过，`1.5` 报 `expected type integer` 错误）。`Minimum`/`Maximum`/`MultipleOf` 等数值约束对两者均生效，详见 [Schema 校验](../schema#schema-约束字段总览)。
+- `MinLength`/`Minimum` 等**长度/区间类约束**直接写在 `&json.Schema{...}` 字面量中不生效，必须经 [`NewSchema`](../schema#schema-的创建方式) 创建。详见 [Schema 校验](../schema)。
 :::
 
 ::: tip 详见

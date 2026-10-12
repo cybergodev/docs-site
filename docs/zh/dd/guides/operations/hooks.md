@@ -19,7 +19,7 @@ DD 提供 6 种生命周期钩子事件：
 |------|----------|----------|
 | `HookBeforeLog` | 日志格式化之前（字段已过滤） | 条件跳过、采样控制 |
 | `HookAfterLog` | 日志写入完成 | 更新指标、发送通知 |
-| `HookOnFilter` | 字段值被脱敏时触发（消息文本脱敏不触发；hook 仅收到字段 key，不收到原值） | 记录脱敏事件、审计 |
+| `HookOnFilter` | 敏感数据被脱敏时触发：字段值脱敏（hook 收到字段 key）或消息文本脱敏（key 为空字符串）；hook 仅收到 key，**不收到原值** | 记录脱敏事件、审计 |
 | `HookOnRotate` | 文件轮换完成 | 通知运维、上传旧文件 |
 | `HookOnClose` | Logger 关闭 | 清理资源、发送最终报告 |
 | `HookOnError` | 写入错误发生 | 告警、降级处理 |
@@ -40,9 +40,9 @@ hooks := dd.NewHooksFromConfig(dd.HooksConfig{
     }},
 })
 
-logger, err := dd.New(dd.Config{
-    Hooks: hooks,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = hooks
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -69,9 +69,9 @@ registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, err := dd.New(dd.Config{
-    Hooks: registry,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -116,7 +116,9 @@ registry.Add(dd.HookAfterLog, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, err := dd.New(dd.Config{Hooks: registry})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -194,16 +196,23 @@ registry.Add(dd.HookBeforeLog, func(ctx context.Context, hCtx *dd.HookContext) e
 ```
 
 :::warning 钩子中的 Panic
-钩子函数中如果发生 panic，DD 会自动恢复，不会影响主流程。panic 信息会传递给 ErrorHandler。
+钩子函数中如果发生 panic，DD 会自动恢复并转为 error。若配置了 `ErrorHandler`，该 error 会交给 ErrorHandler 处理；未配置时钩子执行停止并返回该错误（`HookBeforeLog` 的错误会中止该条日志写入），不会影响主流程。
 :::
 
 ## 动态注册
 
 ```go
-// 运行时注册新钩子
-registry.Add(dd.HookAfterLog, newHookFunc)
+// 运行时为已创建的 Logger 增加钩子：正道是 logger.AddHook（Clone-Modify-Store，线程安全）
+if err := logger.AddHook(dd.HookAfterLog, newHookFunc); err != nil {
+    log.Printf("注册钩子失败: %v", err) // ErrNilHook 或 ErrLoggerClosed
+}
 
-// 运行时移除（通过 HookRegistry 方法）
+// 运行时移除：HookRegistry.Remove 会清空该事件的全部钩子（无法只移除单个钩子）。
+// 对已创建的 Logger：先 GetHooks() 取副本，Remove 后再 SetHooks() 写回
+if hooks := logger.GetHooks(); hooks != nil {
+    hooks.Remove(dd.HookAfterLog)
+    _ = logger.SetHooks(hooks)
+}
 ```
 
 :::warning registry 克隆

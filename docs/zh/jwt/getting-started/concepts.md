@@ -2,7 +2,7 @@
 title: "核心概念 - CyberGo JWT | 架构与令牌模型"
 description: "CyberGo JWT 核心概念：Processor 中心类型与令牌生命周期、双层令牌模型、Claims 声明结构与 CustomClaims 接口、Config 配置概览及 TokenManager、BlacklistStore 等扩展接口。"
 sidebar_label: "核心概念"
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # 核心概念
@@ -15,8 +15,8 @@ sidebar_position: 1
 
 使用完毕后调用 [`Close()`](../api-reference/processor#close) 安全清除密钥并释放资源：
 
-```go
 <!-- check-code: skip -->
+```go
 cfg := jwt.DefaultConfig()
 cfg.SecretKey = "your-32-byte-secret-key-here-minimum"
 
@@ -37,7 +37,7 @@ Processor 实现了 [`TokenManager`](../api-reference/interfaces#tokenmanager) �
 签发    Create(claims)           → 访问令牌（短期）
         CreateRefresh(claims)     → 刷新令牌（长期）
 
-验证    Validate(token)          → Claims（检查签名、过期、签发者、黑名单）
+验证    Parse(token)             → Claims（检查签名、过期、签发者、黑名单）
 
 刷新    Refresh(refreshToken)    → 新访问令牌
 
@@ -47,7 +47,7 @@ Processor 实现了 [`TokenManager`](../api-reference/interfaces#tokenmanager) �
 
 每个环节都返回**哨兵错误**（如 `ErrTokenExpired`、`ErrTokenRevoked`），可通过 `errors.Is()` 精确匹配。详见 [错误处理](../guides/error-handling)。
 
-## 双层令牌模型
+## 为什么需要双层令牌？
 
 CyberGo JWT 采用访问令牌 + 刷新令牌的双层设计：
 
@@ -61,7 +61,7 @@ CyberGo JWT 采用访问令牌 + 刷新令牌的双层设计：
 **为什么用两层？** 访问令牌有效期短，即使泄露风险窗口也小；刷新令牌有效期长但只用于换取新访问令牌，不直接用于 API 认证。这种设计在安全性与用户体验之间取得平衡——用户不必频繁登录，访问令牌过期后可静默刷新。
 
 ::: tip 轮换语义
-`Refresh` **不会自动吊销**刷新令牌。原始刷新令牌在过期或显式 `Revoke` 之前仍然有效。如需一次性使用（refresh token rotation），请在 `Refresh` 成功后手动 `Revoke` 旧刷新令牌。详见 [令牌刷新与轮换](../guides/token-refresh)。
+`Refresh` **默认不自动吊销**刷新令牌。原始刷新令牌在过期或显式 `Revoke` 之前仍然有效。如需一次性使用（refresh token rotation），推荐启用 `Config.RotateRefreshTokens`（v1.2.3 起，刷新时自动吊销旧令牌），也可在 `Refresh` 成功后手动 `Revoke` 旧刷新令牌。详见 [令牌刷新与轮换](../guides/token-refresh)。
 :::
 
 ## Claims 结构
@@ -83,8 +83,8 @@ Claims 携带令牌中的用户身份数据。CyberGo JWT 提供两层结构：
 
 **Claims**（内置业务声明，嵌入 RegisteredClaims）：
 
-```go
 <!-- check-code: skip -->
+```go
 type Claims struct {
     UserID      string         // 用户 ID
     Username    string         // 用户名
@@ -104,8 +104,8 @@ type Claims struct {
 
 当内置 Claims 无法满足业务需求时，实现 [`CustomClaims`](../api-reference/interfaces#customclaims) 接口定义自己的声明结构：
 
-```go
 <!-- check-code: skip -->
+```go
 type AppClaims struct {
     UserID string   `json:"user_id"`
     TeamID string   `json:"team_id"`
@@ -125,7 +125,7 @@ func (c *AppClaims) Validate() error {
 }
 ```
 
-自定义类型通过 `ValidateInto` 验证、`RefreshInto` 刷新——Processor 会解析令牌并填充你的结构体。详见 [自定义 Claims](../guides/custom-claims)。
+自定义类型通过 `ParseInto` 验证、`RefreshInto` 刷新——Processor 会解析令牌并填充你的结构体。详见 [自定义 Claims](../guides/custom-claims)。
 
 ## Config 配置概览
 
@@ -136,7 +136,7 @@ func (c *AppClaims) Validate() error {
 | **签名** | `SecretKey` / `SigningKey` / `VerificationKey` / `SigningMethod` | HMAC 用 SecretKey，RSA/ECDSA 用 SigningKey |
 | **令牌** | `AccessTokenTTL` / `RefreshTokenTTL` | 访问与刷新令牌有效期 |
 | **校验** | `Issuer` / `ExpectedAudience` / `RequireExpiration` / `ClockSkew` | 签发者、受众、强制过期、时钟容忍 |
-| **安全** | `Blacklist` / `EnableRateLimit` | 吊销存储与速率限制 |
+| **安全** | `Blacklist` / `EnableRateLimit` / `RejectRefreshAsAccess` / `RotateRefreshTokens` | 吊销存储、速率限制与刷新令牌安全开关 |
 | **扩展** | `Clock` | 时钟注入（测试用） |
 
 签名算法选型见 [签名算法](../guides/signing-algorithms)，完整字段说明见 [配置详解](../guides/configuration)。
@@ -147,14 +147,13 @@ CyberGo JWT 通过接口实现可扩展性：
 
 | 接口 | 用途 |
 |------|------|
-| [`TokenManager`](../api-reference/interfaces#tokenmanager) | Processor 实现的核心接口。可定义自己的小子集接口（只需 `Create` + `Validate`），实现依赖注入与解耦 |
+| [`TokenManager`](../api-reference/interfaces#tokenmanager) | Processor 实现的核心接口。可定义自己的小子集接口（只需 `Create` + `Parse`），实现依赖注入与解耦 |
 | [`BlacklistStore`](../api-reference/interfaces#blackliststore) | 自定义黑名单后端（如 Redis），实现 `Add` / `Contains` / `Close` 三方法即可对接外部存储 |
 | [`RateLimitProvider`](../api-reference/interfaces#ratelimitprovider) | 自定义限流器，实现 `Allow` / `Reset` / `Close` 即可替换内置令牌桶 |
 | [`ClockProvider`](../api-reference/interfaces#clockprovider) | 时钟注入。`FixedClock` 返回固定时间，在测试中精确控制令牌过期与刷新逻辑 |
 
 ## 下一步
 
-- [快速开始](./index) — 动手签发你的第一个令牌
 - [签名算法](../guides/signing-algorithms) — HMAC、RSA、ECDSA 选型指南
 - [配置详解](../guides/configuration) — 完整配置字段与安全加固
 - [Web 服务器集成](../examples/web-server) — 认证中间件与 RBAC 实战

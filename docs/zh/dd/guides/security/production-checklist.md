@@ -1,8 +1,8 @@
 ---
 sidebar_label: "生产检查清单"
 title: "生产检查清单 - CyberGo DD | 安全上线检查"
-description: "CyberGo DD 日志库生产环境部署前的完整安全检查清单，涵盖基础配置项验证、敏感数据过滤规则启用与测试验证、审计日志开关确认、文件轮换策略设置、HMAC 完整性签名配置和性能基准调优等关键检查项目，确保日志系统安全可靠且合规上线运行。"
-sidebar_position: 6
+description: "CyberGo DD 生产环境部署前的安全检查清单：基础配置验证、敏感数据过滤规则启用与测试、文件安全与轮换策略、审计与 HMAC 完整性签名配置、生命周期与合规检查，确保日志系统安全合规上线。"
+sidebar_position: 7
 ---
 
 # 生产检查清单
@@ -17,10 +17,10 @@ sidebar_position: 6
 - [ ] **缓冲刷新** -- 确保程序退出前调用 `Flush()` 或 `Close()`
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Level:  dd.LevelInfo,
-    Format: dd.FormatJSON,
-})
+cfg := dd.DefaultConfig()
+cfg.Level = dd.LevelInfo
+cfg.Format = dd.FormatJSON
+logger, _ := dd.New(cfg)
 defer logger.Close()
 ```
 

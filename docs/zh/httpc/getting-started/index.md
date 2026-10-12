@@ -2,7 +2,7 @@
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo HTTPC | 5 分钟上手"
 description: "HTTPC 快速开始指南：go get 安装与项目初始化、GET/POST 请求发送与响应处理、五种配置预设选型、JSON 解析与类型绑定、Bearer Token 认证与 ClientError 错误分类处理，五分钟上手安全 HTTP 客户端库。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 快速开始
@@ -24,7 +24,7 @@ go get github.com/cybergodev/httpc
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC 要求 Go 1.25 及以上版本；除 `golang.org/x/sys` 外没有其他第三方依赖，无需任何配置即可发起第一个请求。
+HTTPC 要求 Go 1.26 及以上版本；除 `golang.org/x/sys` 外没有其他第三方依赖，无需任何配置即可发起第一个请求。
 
 ## 基本请求
 
@@ -34,20 +34,20 @@ HTTPC 要求 Go 1.25 及以上版本；除 `golang.org/x/sys` 外没有其他第
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.StatusCode()) // 200
-    fmt.Println(result.Body())       // 响应内容
+	fmt.Println(result.StatusCode()) // 200
+	fmt.Println(result.Body())       // 响应内容
 }
 ```
 
@@ -225,51 +225,52 @@ case result.IsServerError():
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 // Repo 对应 GitHub API 的仓库响应
 type Repo struct {
-    Name        string `json:"name"`
-    Description string `json:"description"`
-    Stars       int    `json:"stargazers_count"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Stars       int    `json:"stargazers_count"`
 }
 
 func main() {
-    // 1. 创建客户端（默认配置：TLS 1.2+、SSRF 防护、最多重试 3 次）
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	// 1. 创建客户端（默认配置：TLS 1.2+、SSRF 防护、最多重试 3 次）
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 2. 发送请求：默认头 + 请求级超时
-    result, err := client.Get("https://api.github.com/repos/golang/go",
-        httpc.WithUserAgent("httpc-demo/1.0"),
-        httpc.WithTimeout(15*time.Second),
-    )
-    if err != nil {
-        log.Fatal(err) // 网络层错误（连接/超时/TLS 等）
-    }
+	// 2. 发送请求：默认头 + 请求级超时
+	result, err := client.Get("https://api.github.com/repos/golang/go",
+		httpc.WithUserAgent("httpc-demo/1.0"),
+		httpc.WithTimeout(15*time.Second),
+	)
+	if err != nil {
+		log.Fatal(err) // 网络层错误（连接/超时/TLS 等）
+	}
 
-    // 3. 检查 HTTP 状态码（4xx/5xx 不是 error，需手动检查）
-    if !result.IsSuccess() {
-        log.Fatalf("HTTP 错误：%d", result.StatusCode())
-    }
+	// 3. 检查 HTTP 状态码（4xx/5xx 不是 error，需手动检查）
+	if !result.IsSuccess() {
+		log.Fatalf("HTTP 错误：%d", result.StatusCode())
+	}
 
-    // 4. 解析 JSON 到结构体
-    var repo Repo
-    if err := result.Unmarshal(&repo); err != nil {
-        log.Fatal(err)
-    }
+	// 4. 解析 JSON 到结构体
+	var repo Repo
+	if err := result.Unmarshal(&repo); err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Printf("%s：%s（%d 星）\n", repo.Name, repo.Description, repo.Stars)
-    fmt.Printf("耗时 %v，尝试 %d 次\n", result.Meta.Duration, result.Meta.Attempts)
+	fmt.Printf("%s：%s（%d 星）\n", repo.Name, repo.Description, repo.Stars)
+	fmt.Printf("耗时 %v，尝试 %d 次\n", result.Meta.Duration, result.Meta.Attempts)
 }
+
 // 输出（星数与耗时随实际变化）：
 // go：The Go programming language（124000 星）
 // 耗时 350ms，尝试 1 次
@@ -293,40 +294,41 @@ result, err := client.Get("https://api.example.com/v1/issues",
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Timeouts.Request = 30 * time.Second // 整体超时预算（含所有重试）
-    cfg.Retry.MaxRetries = 3                // 最多重试 3 次（0 禁用）
-    cfg.Retry.Delay = time.Second           // 初始退避 1s
-    cfg.Retry.BackoffFactor = 2.0           // 每次退避 ×2（1s → 2s → 4s）
-    cfg.Retry.EnableJitter = true           // 抖动，避免惊群
+	cfg := httpc.DefaultConfig()
+	cfg.Timeouts.Request = 30 * time.Second // 整体超时预算（含所有重试）
+	cfg.Retry.MaxRetries = 3                // 最多重试 3 次（0 禁用）
+	cfg.Retry.Delay = time.Second           // 初始退避 1s
+	cfg.Retry.BackoffFactor = 2.0           // 每次退避 ×2（1s → 2s → 4s）
+	cfg.Retry.EnableJitter = true           // 抖动，避免惊群
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // httpbin 的 /status/503 恒定返回 503（可重试状态码）
-    result, err := client.Get("https://httpbin.org/status/503")
-    if err != nil {
-        log.Fatal(err) // 网络层错误
-    }
+	// httpbin 的 /status/503 恒定返回 503（可重试状态码）
+	result, err := client.Get("https://httpbin.org/status/503")
+	if err != nil {
+		log.Fatal(err) // 网络层错误
+	}
 
-    // 503 属于可重试状态码：重试耗尽后返回最后一次响应（而非 error）
-    fmt.Println("状态码：", result.StatusCode())   // 503
-    fmt.Println("尝试次数：", result.Meta.Attempts) // 4（首次 + 3 次重试）
+	// 503 属于可重试状态码：重试耗尽后返回最后一次响应（而非 error）
+	fmt.Println("状态码：", result.StatusCode())   // 503
+	fmt.Println("尝试次数：", result.Meta.Attempts) // 4（首次 + 3 次重试）
 }
+
 // 输出：
-// 状态码： 503
-// 尝试次数： 4
+// 状态码：503
+// 尝试次数：4
 ```
 
 ### 访问本地或内网服务
@@ -374,4 +376,6 @@ client, _ = httpc.New(httpc.TestingConfig())
 
 - **[实战教程](../guides/tutorial)** - 30 分钟构建 GitHub API 客户端
 - **[速查表](./cheatsheet)** - 常用操作快速参考
+- **[基础示例](../examples/basic-usage)** - 可运行的最小示例集
+- **[API 总览](../api-reference/)** - 全部公开 API 索引
 - **[安全](../security/)** - 安全最佳实践与生产检查清单

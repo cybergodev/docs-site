@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
 title: "Security Overview - CyberGo DD | Log Security"
-description: "A comprehensive overview of CyberGo DD's security features, including automatic sensitive-data detection and redaction filtering, file-path safety validation and protection, asynchronous audit-event recording and chain-tracking capabilities, HMAC integrity-signing tamper protection, and compliance-configuration best practices — fully safeguarding the logging system from data filtering to audit tracing."
+description: "CyberGo DD security overview: sensitive-data redaction, file-path safety validation, audit events, HMAC integrity signing, compliance, and rate limiting."
 sidebar_position: 1
 ---
 
@@ -19,14 +19,21 @@ DD has multi-layered security built in, fully safeguarding log security from dat
 | Audit | Audit logging | Record key security events (redaction, rate-limit, violations, etc.) |
 | Integrity | HMAC signing | Ensure logs are tamper-evident |
 
+### Which Page to Read First
+
+- Just want automatic redaction in logs → [Sensitive Data Filtering](./sensitive-filtering)
+- Need to meet HIPAA / PCI-DSS or similar requirements → [Industry Compliance](./compliance)
+- Need tamper-proof logs → [Integrity](./integrity)
+- Preparing for production launch → [Production Checklist](./production-checklist)
+
 ## Sensitive-Data Filtering
 
 DD has built-in automatic sensitive-data detection and redaction:
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Security: dd.DefaultSecurityConfig(),
-})
+cfg := dd.DefaultConfig()
+cfg.Security = dd.DefaultSecurityConfig() // Basic filtering (already the DefaultConfig default)
+logger, _ := dd.New(cfg)
 
 // The password field is auto-redacted
 logger.InfoWith("login",
@@ -38,11 +45,14 @@ logger.InfoWith("login",
 Supported custom patterns:
 
 ```go
-filter, _ := dd.NewCustomSensitiveDataFilter(
+filter, err := dd.NewCustomSensitiveDataFilter(
     `(?i)password\s*[:=]\s*\S+`,
     `(?i)api[_-]?key\s*[:=]\s*\S+`,
     `\b\d{16,19}\b`,  // Credit card number
 )
+if err != nil {
+    log.Fatal(err) // Regex safety validation failed
+}
 ```
 
 See [Security Filtering API](../../api-reference/security-audit/security).
@@ -56,8 +66,8 @@ FileWriter has multi-layered path-safety validation built in:
 | Path traversal | Reject `../` and similar traversal |
 | Null bytes | Reject null-byte injection |
 | Overlong encoding | Detect UTF-8 overlong encoding |
-| Symlinks | Configurable symlink rejection |
-| Hardlinks | Configurable hardlink rejection |
+| Symlinks | Unconditional symlink rejection |
+| Hardlinks | Unconditional hardlink rejection |
 | Path length | Cap maximum path length |
 
 ```go
@@ -78,9 +88,9 @@ DD provides industry-compliance presets:
 
 ```go
 // HIPAA compliance
-logger, _ := dd.New(dd.Config{
-    Security: dd.HealthcareConfig(),
-})
+cfg := dd.DefaultConfig()
+cfg.Security = dd.HealthcareConfig()
+logger, _ := dd.New(cfg)
 ```
 
 ## Audit Logging
@@ -110,6 +120,23 @@ signature := signer.Sign(logMessage)
 ```
 
 See [Integrity Signing API](../../api-reference/security-audit/integrity).
+
+## Rate Limiting
+
+`SecurityConfig.RateLimitConfig` protects against log flooding (DoS). It is **off by default** — none of the preset security configs populate this field, so it must be enabled explicitly:
+
+```go
+cfg := dd.DefaultConfig()
+cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+cfg.Security.RateLimitConfig = dd.DefaultRateLimitConfig() // 10,000 msg/s, 10MB/s, burst 1000, RateLimitStrategyDrop strategy
+logger, _ := dd.New(cfg)
+```
+
+Three over-limit strategies: `RateLimitStrategyDrop` discards messages (default); `RateLimitStrategySample` keeps a fraction when over limit (e.g. 1 in 100); `RateLimitStrategyThrottle` is kept for API completeness and currently behaves like `RateLimitStrategyDrop` (the Logger never blocks).
+
+:::tip Two Independent Mechanisms
+`Config.Sampling` ([Log Sampling](../operations/sampling)) and `SecurityConfig.RateLimitConfig` (rate limiting) are independent mechanisms: sampling reduces volume periodically via counters, rate limiting caps the rate to prevent flooding; both can be enabled at the same time. See the [Security API](../../api-reference/security-audit/security) for rate-limit fields.
+:::
 
 ## Next Steps
 

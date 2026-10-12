@@ -1,7 +1,7 @@
 ---
 sidebar_label: "File Format"
 title: "File Format - CyberGo env | .env/JSON/YAML Syntax"
-description: "File format reference for CyberGo env: .env, JSON, and YAML syntax rules, quoting and export prefixes, ${VAR} expansion, and multi-line strings."
+description: "File format reference for CyberGo env: .env, JSON, and YAML syntax, quoting, export prefixes, ${VAR} expansion, multi-line values, flattening, and DetectFormat."
 sidebar_position: 1
 ---
 
@@ -69,7 +69,7 @@ PRICE="Price: \$100"
 
 ### Variable Expansion
 
-Supported when `ExpandVariables` is enabled:
+`ExpandVariables` is enabled by default (`DefaultConfig` sets it to true; disable with `cfg.ExpandVariables = false`). Supported syntax:
 
 ```bash
 # Reference other variables
@@ -89,7 +89,7 @@ SERVICE=${CLUSTER:-default}-${REGION:-us-east}
 
 ### export Syntax
 
-Supported when `AllowExportPrefix` is enabled:
+`AllowExportPrefix` is enabled by default (true). Supported:
 
 ```bash
 # Bash-style export
@@ -99,13 +99,15 @@ export ANOTHER="quoted value"
 
 ### YAML Style
 
-Supported when `AllowYamlSyntax` is enabled:
+The `KEY: value` colon-separated form is **always available** — the line parser unconditionally accepts both `=` and `:` as separators, no switch required:
 
 ```bash
-# YAML-style key-value pairs
+# Colon-separated key-value pairs (no AllowYamlSyntax needed)
 KEY: value
 ANOTHER: "quoted value"
 ```
+
+`AllowYamlSyntax` is disabled by default (false — the only parsing switch that defaults to off); when enabled, it affects how **values** are parsed: they follow YAML scalar semantics, where `null`/`~` are treated as empty strings and YAML boolean and number literals are recognized per YAML rules.
 
 ### Multi-line Values
 
@@ -176,28 +178,25 @@ PORTS_1=443
 PORTS_2=8080
 ```
 
-:::tip
+:::tip Accessing array elements
 Use the `GetSlice[T]` function or dot-path to access indexed keys:
 ```go
 hosts := env.GetSlice[string]("ALLOWED_HOSTS")
 port0 := env.GetInt("PORTS_0")  // 80
 ```
-See [GetSlice documentation](/en/env/api-reference/functions#getslice-t).
+See [GetSlice documentation](../api-reference/functions#getslice-t).
 :::
 
 ### Type Conversion Options
 
+`JSONNullAsEmpty` / `JSONNumberAsString` / `JSONBoolAsString` all **default to true (enabled)** in `DefaultConfig` — there is no need to assign true one by one; only set them explicitly when you want to disable a conversion:
+
 ```go
 cfg := env.DefaultConfig()
 
-// null converts to empty string
-cfg.JSONNullAsEmpty = true
-
-// numbers convert to strings
-cfg.JSONNumberAsString = true
-
-// booleans convert to strings
-cfg.JSONBoolAsString = true
+// Example: disable "numbers convert to strings" so JSON numbers
+// keep their original type semantics
+cfg.JSONNumberAsString = false
 ```
 
 ### Depth Limit
@@ -272,13 +271,16 @@ Or extend block scalar support via a custom parser.
 
 ### Type Conversion Options
 
+`YAMLNullAsEmpty` / `YAMLNumberAsString` / `YAMLBoolAsString` likewise **default to true (enabled)**; set them to false explicitly only when you want to disable a conversion. `YAMLMaxDepth` defaults to 10 — adjust it only when you need deeper nesting:
+
 ```go
 cfg := env.DefaultConfig()
 
-cfg.YAMLNullAsEmpty = true
-cfg.YAMLNumberAsString = true
-cfg.YAMLBoolAsString = true
-cfg.YAMLMaxDepth = 10
+// Example: disable "booleans convert to strings"
+cfg.YAMLBoolAsString = false
+
+// Example: relax the nesting depth
+cfg.YAMLMaxDepth = 20
 ```
 
 ## Format Detection
@@ -363,6 +365,6 @@ secrets.yaml
 
 ## Related Documentation
 
-- [Multi-format Config](/en/env/guides/multi-format) - Multi-format loading guide
-- [ComponentFactory API](/en/env/api-reference/factory) - DetectFormat function reference
-- [Config API](/en/env/api-reference/config) - JSON/YAML parsing options
+- [Multi-format Config](../guides/multi-format) - Multi-format loading guide
+- [ComponentFactory API](../api-reference/factory) - DetectFormat function reference
+- [Config API](../api-reference/config) - JSON/YAML parsing options

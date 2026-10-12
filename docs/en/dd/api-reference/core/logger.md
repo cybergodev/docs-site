@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Logger"
 title: "Logger - CyberGo DD | Core Logger"
-description: "CyberGo DD Logger core API: log output methods (Info/Warn/Error/Fatal), dynamic level management, Writer add/remove/replace, lifecycle control (Close/Flush), and chained field setting. The thread-safe, high-performance core entry-point type of the logging library."
+description: "CyberGo DD Logger core API: output methods (Info/Warn/Error/Fatal), dynamic level control, writer management, Close/Flush lifecycle, and chained fields."
 sidebar_position: 2
 ---
 
@@ -75,7 +75,7 @@ logger.InfoWith("request completed",
 ```go
 level := logger.GetLevel()                    // Get current level
 _ = logger.SetLevel(dd.LevelDebug)            // Set level
-enabled := logger.IsLevelEnabled(dd.LevelInfo)// Check level
+enabled := logger.IsLevelEnabled(dd.LevelInfo) // Check level
 
 // Shortcut checks
 logger.IsDebugEnabled()
@@ -103,8 +103,8 @@ entry := logger.WithFields(
     dd.Int("version", 2),
 )
 
-// Single field
-entry := logger.WithField("env", "prod")
+// Single field (equivalent to WithFields with one field)
+entry2 := logger.WithField("env", "prod")
 ```
 
 ## Output Target Management

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "输出目标"
-title: "输出目标 - CyberGo DD | FileWriter、BufferedWriter、MultiWriter"
-description: "CyberGo DD 输出目标 API：FileWriter 按文件大小自动轮换并按时间清理旧备份、BufferedWriter 高性能缓冲写入（可配置缓冲区与刷新间隔）与 MultiWriter 多目标并行输出，满足从开发到生产的各类日志输出场景需求，助力构建可靠的日志系统。"
+title: "输出目标 - CyberGo DD | 文件轮换与缓冲写入"
+description: "CyberGo DD 输出目标 API：FileWriter 按大小自动轮换并按时间清理旧备份、BufferedWriter 高性能缓冲写入（可配置缓冲区与刷新间隔）与 MultiWriter 多目标输出，覆盖开发到生产的各类日志输出场景。"
 sidebar_position: 1
 ---
 
@@ -23,7 +23,7 @@ func NewFileWriter(path string, cfg FileWriterConfig) (*FileWriter, error)
 
 路径会经内部路径安全校验（路径遍历、null 字节、overlong UTF-8），随后 `cfg.Validate()` 校验数量上限，再对零/负值回退默认配置。返回错误的情况：
 
-- 路径类：`ErrEmptyFilePath` / `ErrNullByte` / `ErrPathTooLong`（>4096 字节）/ `ErrPathTraversal` / `ErrInvalidPath` / `ErrOverlongEncoding`
+- 路径类：`ErrEmptyFilePath` / `ErrNullByte` / `ErrPathTooLong`（>4096 字节）/ `ErrPathTraversal` / `ErrInvalidPath` / `ErrOverlongEncoding`，以及 Windows 保留设备名（`CON`、`NUL`、`COM1` 等）与 NTFS 备用数据流（`file:ads`）路径
 - 配置类：`ErrMaxSizeExceeded`（`MaxSizeMB > 10240`）/ `ErrMaxBackupsExceeded`（`MaxBackups > 1000`）
 - I/O 类：目录创建失败（包装为 `failed to create directory: …`）或文件打开失败（包装为 `failed to open file …: %w`，包含 `ErrSymlinkNotAllowed` / `ErrHardlinkNotAllowed`）
 
@@ -70,7 +70,7 @@ func (c FileWriterConfig) Validate() error
 - `MaxSizeMB` 超过 10240（返回 `ErrMaxSizeExceeded`）
 - `MaxBackups` 超过 1000（返回 `ErrMaxBackupsExceeded`）
 
-负数值不会触发 Validate 错误；其中零或负值的 `MaxSizeMB` 会在应用默认值时回退到 100MB，而 `MaxBackups` / `MaxAge` 的负值保持原样（详见下方「默认值应用规则」）。
+负数值不会触发 Validate 错误；其中零或负值的 `MaxSizeMB` 会在应用默认值时回退到 100MB，而负值的 `MaxBackups` / `MaxAge` 会先被归一化为 0，再按「默认值应用规则」套用默认值（例如仅设 `MaxBackups=-5` 时，归一化为 0 后按「两者均为 0」回退为默认 10）。
 
 ### 方法
 
@@ -109,7 +109,7 @@ fw.Write([]byte("日志内容\n"))
 
 FileWriter 的轮换与清理按两条独立路径运行：
 
-- **轮换（rotation）**：在 `Write` 调用中检查当前文件大小，超过 `MaxSizeMB`（默认 100MB）时触发——旧文件重命名为备份、新文件以 `O_EXCL` 重新打开（防符号链接 TOCTOU），随后 `internal.RotateBackups` 按 `MaxBackups` 截断备份链，`Compress=true` 时由独立 goroutine 对备份做 gzip 压缩。
+- **轮换（rotation）**：在 `Write` 调用中检查「当前文件大小 + 本次写入长度」是否会超过 `MaxSizeMB`（默认 100MB），超过则在写入前触发——旧文件重命名为备份、新文件以 `O_EXCL` 重新打开（防符号链接 TOCTOU），随后 `internal.RotateBackups` 按 `MaxBackups` 截断备份链（从最小编号开始删除），`Compress=true` 时由独立 goroutine 对备份做 gzip 压缩。
 - **清理（cleanup）**：仅当 `MaxAge > 0` 且 `MaxBackups > 0` 时启动后台 goroutine，每小时扫描一次，调用 `internal.CleanupOldFiles` 删除超过 `MaxAge`（默认 30 天）的旧备份。
 
 :::tip 默认值应用规则
@@ -125,8 +125,8 @@ fw.Write([]byte("日志内容\n"))
 
 // 轮换后生成文件：
 // logs/app.log       (当前文件)
-// logs/app_log_1.log (最新备份)
-// logs/app_log_2.log (更早的备份)
+// logs/app_log_1.log (第一次轮换，较旧的备份)
+// logs/app_log_2.log (第二次轮换，最新的备份；每次轮换使用递增的新编号)
 // 启用 Compress 后旧备份会被异步压缩为 logs/app_log_1.log.gz
 ```
 
@@ -214,7 +214,7 @@ defer bw.Close()    // Close 会先 Flush 再关闭底层 Writer
 
 ## MultiWriter
 
-多写入器管理，同时写入多个目标。
+多写入器管理，一次 `Write` 按**注册顺序依次**写入所有目标（顺序执行，非并行；部分失败不影响其余目标）。
 
 ### 创建
 
@@ -233,13 +233,13 @@ mw := dd.NewMultiWriter(os.Stdout, fileWriter)
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `Write` | `(p []byte) (int, error)` | 写入所有目标（见下方错误策略） |
-| `AddWriter` | `(w io.Writer) error` | 动态添加目标（重复 writer 静默接受） |
+| `Write` | `(p []byte) (int, error)` | 按注册顺序依次写入所有目标（见下方错误策略） |
+| `AddWriter` | `(w io.Writer) error` | 动态添加目标（重复 writer 为 no-op 去重，不报错也不重复添加；对比：`Logger.AddWriter` 接受重复） |
 | `RemoveWriter` | `(w io.Writer) error` | 动态移除目标 |
-| `Close` | `() error` | 关闭所有底层 `io.Closer`（标准流除外） |
+| `Close` | `() error` | 先对实现了 [Flusher](../core/interfaces#flusher) 的 writer 调用 Flush（防缓冲数据丢失），再关闭所有底层 `io.Closer`（标准流除外） |
 
-`AddWriter` 返回错误的情况：`ErrNilMultiWriter`（接收者为 `nil`）/ `ErrNilWriter`（参数为 `nil`）/ `ErrMaxWritersExceeded`（已注册 ≥ 100 个）。
-`RemoveWriter` 返回错误的情况：`ErrNilMultiWriter` / `ErrWriterNotFound`。
+`AddWriter` 返回错误的情况：`ErrNilMultiWriter`（接收者为 `nil`）/ `ErrNilWriter`（参数为 `nil`）/ `ErrMaxWritersExceeded`（已注册 ≥ 100 个）/ `Close` 之后调用（返回包装 `os.ErrClosed` 的错误）。
+`RemoveWriter` 返回错误的情况：`ErrNilMultiWriter` / `ErrWriterNotFound`。注意与 `AddWriter` 不同，`RemoveWriter` 不检查关闭状态，`Close` 之后调用不会返回 `os.ErrClosed`（仍会从内部列表移除，但对应 writer 不会再次关闭）。
 
 <!-- check-code: skip -->
 ```go

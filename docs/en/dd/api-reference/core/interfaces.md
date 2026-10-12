@@ -1,21 +1,22 @@
 ---
 sidebar_label: "Interfaces"
 title: "Interfaces - CyberGo DD | Logger Interface Hierarchy"
-description: "Complete documentation of CyberGo DD's hierarchical logger interfaces, including the CoreLogger base interface, the LevelLogger leveled-logging interface, the ConfigurableLogger configurable-logger interface, and the LogProvider provider interface. Supports multi-level logging abstractions from simple to complex for custom implementations and dependency injection."
-sidebar_position: 5
+description: "CyberGo DD logger interfaces: CoreLogger, LevelLogger, ConfigurableLogger, and LogProvider for custom implementations and dependency injection."
+sidebar_position: 6
 ---
 
 # Interfaces
 
-DD defines a hierarchical set of logger interfaces supporting different levels of abstraction.
+DD defines a set of layered logger interfaces plus one flat interface that aggregates all features (LogProvider), supporting different levels of abstraction.
 
 ## Interface Hierarchy
 
 ```text
 CoreLogger                  Basic logging methods
-├── LevelLogger             + Level management
-└── ConfigurableLogger      + Config / lifecycle / Writer / Hook
-    └── LogProvider         + All features
+├── LevelLogger             + Level management (embeds CoreLogger)
+└── ConfigurableLogger      + Config / lifecycle / Writer / Hook (embeds CoreLogger)
+
+LogProvider                 Standalone flat interface aggregating all features (embeds none of the above)
 ```
 
 ## CoreLogger
@@ -115,7 +116,7 @@ type ConfigurableLogger interface {
 
 ## LogProvider
 
-The complete logger interface, combining all capabilities. The `Logger` type implements this interface.
+The complete logger interface, defining all methods on its own (a flat interface that embeds no other interface). The `Logger` type implements this interface.
 
 ```go
 type LogProvider interface {
@@ -223,7 +224,7 @@ These methods are documented on the [Logger](./logger) page.
 
 ## Flusher
 
-Writer flush interface. Writers implementing this interface are invoked during `Logger.Flush()`.
+Writer flush interface. Writers implementing this interface are invoked during `Logger.Flush()` and are flushed before `Logger.Close()` closes them (buffered data is not lost even if the writer does not implement io.Closer).
 
 ```go
 type Flusher interface {

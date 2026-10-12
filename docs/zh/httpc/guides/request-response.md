@@ -1,8 +1,8 @@
 ---
 sidebar_label: "请求与响应"
 title: "请求与响应 - CyberGo HTTPC | 请求选项与响应"
-description: "HTTPC 请求与响应完整指南：包级函数与客户端方法、WithJSON/WithForm/WithBody 请求体、WithQuery 查询参数、Cookie 与认证选项、Result 解析（Unmarshal、SaveToFile、String）、上下文控制、流式上传与响应自动解压及大小限制配置。"
-sidebar_position: 3
+description: "HTTPC 请求与响应指南：包级函数与客户端方法、WithJSON/WithForm/WithBody 请求体、WithQuery 查询参数、Cookie 与认证、Result 解析（Unmarshal/SaveToFile/String）、流式上传与自动解压及大小限制。"
+sidebar_position: 20
 ---
 
 # 请求与响应
@@ -201,13 +201,13 @@ result, err := client.Get(url, httpc.WithBasicAuth("user", "pass"))
 
 ```go
 result, err := client.Get(url,
-    httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"}),
+    httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc"}}),
     httpc.WithCookieMap(map[string]string{"session": "abc", "lang": "zh"}),
     httpc.WithCookieString("session=abc; lang=zh"),
 )
 ```
 
-批量设置用 `WithCookies` 一次传入切片，比多次 `WithCookie` 更高效（单次预分配、单趟校验）：
+批量设置用 `WithCookies` 一次传入整个切片（单次预分配、单趟校验）：
 
 ```go
 result, err := client.Get(url, httpc.WithCookies([]http.Cookie{
@@ -220,7 +220,7 @@ result, err := client.Get(url, httpc.WithCookies([]http.Cookie{
 
 ```go
 result, err := client.Get(url,
-    httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"}),
+    httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc"}}),
     httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()), // 要求 Secure/HttpOnly/SameSite=Strict
 )
 ```

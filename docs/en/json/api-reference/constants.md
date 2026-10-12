@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Constants and Errors"
-title: "Constants and Errors - CyberGo JSON | API Reference"
-description: "CyberGo JSON constants and errors: DefaultMaxJSONSize/DefaultMaxNestingDepth limits, ErrPathNotFound, MergeMode modes, and JsonsError trigger scenarios."
-sidebar_position: 7
+title: "Constants and Errors - CyberGo JSON | Error Vars & Defaults"
+description: "CyberGo JSON error sentinels and defaults: ErrPathNotFound, ErrTypeMismatch, JsonsError, DefaultConfig, DefaultMaxJSONSize, MergeMode mapped to Config."
+sidebar_position: 80
 ---
 
 # Constants and Errors
@@ -27,7 +27,8 @@ var (
 
     // Security and validation errors
     ErrSecurityViolation = errors.New("security violation detected")
-    ErrUnsupportedPath   = errors.New("unsupported path operation")
+    ErrDuplicateKey      = errors.New("duplicate object key")
+    ErrUnsupportedPath   = errors.New("unsupported path operation") // Deprecated: not returned by any operation today, reserved
 
     // Resource and performance errors (both Deprecated: not returned by any operation today, kept for future use)
     ErrOperationTimeout  = errors.New("operation timeout")
@@ -50,12 +51,13 @@ Typical trigger scenarios for each sentinel error, to help you write recovery lo
 | `ErrDepthLimit` | Nesting exceeds `MaxNestingDepthSecurity` | Reject deeply nested input (possibly an attack) |
 | `ErrConcurrencyLimit` | Controlled-operation concurrency exceeds `MaxConcurrency` | Reduce concurrency or raise the limit |
 | `ErrSecurityViolation` | Dangerous pattern hit, or `MaxObjectKeys`/`MaxArrayElements` exceeded | Write an audit log and reject |
-| `ErrUnsupportedPath` | A path segment unsupported for the current data shape (e.g. a slice on a non-array) | Check your data-structure assumptions |
+| `ErrDuplicateKey` | Duplicate keys present in an input object while `Config.DetectDuplicateKeys` is enabled | Reject the input (when off by default, the last duplicate key wins, consistent with `encoding/json`) |
+| `ErrUnsupportedPath` | Reserved, no operation currently returns it (deprecated; unsupported segments surface as `ErrInvalidPath` or `ErrTypeMismatch`) | No handling needed in error branches |
 | `ErrOperationTimeout` | Reserved, no operation currently returns it (deprecated) | No handling needed in error branches |
 | `ErrResourceExhausted` | Reserved, no operation currently returns it (deprecated) | No handling needed in error branches |
 
-:::tip Two deprecated sentinels
-No operation currently returns `ErrOperationTimeout` or `ErrResourceExhausted`; they are kept for future releases only — no need to handle them in error branches.
+:::tip Three deprecated sentinels
+No operation currently returns `ErrOperationTimeout`, `ErrResourceExhausted`, or `ErrUnsupportedPath`; they are kept for future releases only — no need to handle them in error branches.
 :::
 
 ### Error Checking
@@ -232,7 +234,7 @@ Signature: `func PrettyConfig() Config`
 Returns the pretty-print configuration.
 
 ```go
-result, err := json.EncodeWithConfig(data, json.PrettyConfig())
+result, err := json.Encode(data, json.PrettyConfig())
 ```
 
 ## Merge Mode Constants

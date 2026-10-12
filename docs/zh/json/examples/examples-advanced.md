@@ -1,8 +1,8 @@
 ---
 sidebar_label: "高级示例"
-title: "高级功能示例 - CyberGo JSON | 进阶用法"
-description: "CyberGo JSON 高级示例：EncodeBatch 批量编码、EncodeFields 字段选择过滤敏感信息、PreParse 预解析、SafeGet 安全获取与 WarmupCache 缓存预热，并涵盖钩子与高级配置的完整可运行示例，提升性能。"
-sidebar_position: 2
+title: "高级功能示例 - CyberGo JSON | 批量编码与缓存预热"
+description: "CyberGo JSON 高级功能示例：EncodeBatch 批量编码与 EncodeFields 敏感字段过滤、PreParse 预解析、CompilePath 路径预编译、WarmupCache 缓存预热与 ProcessBatch 批量操作，完整可运行示例帮助开发者显著提升高频查询与批量编码性能。"
+sidebar_position: 50
 ---
 
 # 高级功能示例

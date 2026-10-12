@@ -1,8 +1,8 @@
 ---
 sidebar_label: "生命周期"
-title: "Processor 生命周期 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 生命周期：New 创建、Close 幂等释放资源并排空在途操作、IsClosed 状态检查、GetStats 统计与 GetHealthStatus 健康监控，配合 ClearCache 与 WarmupCache 缓存管理，保障并发安全关闭。"
-sidebar_position: 11
+title: "Processor 生命周期 - CyberGo JSON | Close 幂等关闭与统计"
+description: "CyberGo JSON 的 Processor 提供 Close 幂等关闭与 IsClosed 状态检查，先排空在途操作再释放资源，配合 ClearCache/WarmupCache 缓存管理、GetStats 统计与 GetHealthStatus 健康监控，退出前可用 ShutdownGlobalProcessor 清理全局缓存，适合长期驻留服务的并发安全管理。"
+sidebar_position: 110
 ---
 
 # 生命周期与统计

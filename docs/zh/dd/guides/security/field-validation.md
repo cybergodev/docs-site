@@ -41,32 +41,32 @@ DD 的字段验证子系统在日志写入前对结构化字段的**键名**进�
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    cfg := dd.DefaultConfig()
-    cfg.FieldValidation = dd.StrictSnakeCaseConfig()
-    // 等价于：
-    // &dd.FieldValidationConfig{
-    //     Mode:                     dd.FieldValidationStrict,
-    //     Convention:               dd.NamingConventionSnakeCase,
-    //     AllowCommonAbbreviations: true,
-    //     EnableSecurityValidation: true,
-    // }
+	cfg := dd.DefaultConfig()
+	cfg.FieldValidation = dd.StrictSnakeCaseConfig()
+	// 等价于：
+	// &dd.FieldValidationConfig{
+	//     Mode:                     dd.FieldValidationStrict,
+	//     Convention:               dd.NamingConventionSnakeCase,
+	//     AllowCommonAbbreviations: true,
+	//     EnableSecurityValidation: true,
+	// }
 
-    logger, err := dd.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	logger, err := dd.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    logger.InfoWith("用户操作",
-        dd.String("user_id", "123"),    // ✅ 符合 snake_case
-        dd.String("userName", "alice"), // ⚠️ 不符合，stderr 输出错误
-    )
+	logger.InfoWith("用户操作",
+		dd.String("user_id", "123"),    // ✅ 符合 snake_case
+		dd.String("userName", "alice"), // ⚠️ 不符合，stderr 输出错误
+	)
 }
 ```
 
@@ -144,13 +144,14 @@ frontendLogger, _ := dd.New(frontendCfg)
 
 | 约定 | 规则 |
 |------|------|
-| snake_case | 小写字母 + 数字 + 下划线；不以 `_` 开头/结尾；无连续 `__` |
+| snake_case | 小写字母 + 数字 + 下划线；**首字符必须为小写字母**（不能是数字或 `_`）；不以 `_` 结尾；无连续 `__` |
 | camelCase | 字母 + 数字；首字符为小写字母 |
 | PascalCase | 字母 + 数字；首字符为大写字母 |
-| kebab-case | 小写字母 + 数字 + 连字符；不以 `-` 开头/结尾；无连续 `--` |
+| kebab-case | 小写字母 + 数字 + 连字符；**首字符必须为小写字母**（不能是数字或 `-`）；不以 `-` 结尾；无连续 `--` |
 
 ## 下一步
 
+- [完整性签名](./integrity) -- HMAC 防篡改
 - [结构化日志](../basics/structured-logging) -- 字段构造器与链式调用
 - [配置详解](../basics/configuration) -- Config 结构体全字段
 - [安全概述](../security/) -- 完整安全功能导览

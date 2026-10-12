@@ -2,7 +2,7 @@
 sidebar_label: "SSRF 防护"
 title: "SSRF 防护 - CyberGo HTTPC | 私有 IP 与元数据"
 description: "HTTPC SSRF 防护详解：默认阻止 IPv4/IPv6 私有 IP 与云元数据端点、SSRFExemptCIDRs 精确豁免、AllowPrivateIPs 危险对比、DNS 重绑定防护、WithAllowPrivateIPs 请求级覆盖与 RedirectWhitelist 重定向白名单。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # SSRF 防护
@@ -232,7 +232,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("健康检查状态: %d\n", result.StatusCode())
+	fmt.Printf("健康检查状态：%d\n", result.StatusCode())
 }
 ```
 
@@ -373,6 +373,10 @@ client, _ := httpc.New(cfg)
 ### 传统 IP 字面量在 DNS 解析前拦截
 
 `2130706433`、`0x7f000001`、`0177.0.0.1` 等记法被 `net.ParseIP` 拒绝，却在 cgo 构建的 `getaddrinfo` 解析器中可能被接受并映射到私有 IP。HTTPC 在预检层用 `looksLikeLegacyIPLiteral` 识别并拦截这些形式（识别规则：`0x` 前缀、纯数字无点、多点形式中的前导零八进制或十六进制段），不依赖平台解析器行为。
+
+### 198.18.0.0/15 保留段默认放行
+
+RFC 2544 基准测试段 `198.18.0.0/15` 虽属保留地址，但被**特意放行**而非拦截：Clash/Surge 类代理工具把 fake-IP 池分配在该段，拦截它会导致这类代理环境下的正常请求被 SSRF 防护误杀（见 `internal/validation/netutil.go` 中 `isPrivateOrReservedIP` 的注释与 `netutil_test` 的对应用例）。若你的环境不使用 fake-IP 代理且需要收紧该段，须在调用方或自定义中间件层自行校验目标 IP。
 
 ## 最佳实践
 

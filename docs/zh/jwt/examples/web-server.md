@@ -18,7 +18,7 @@ check_code: false
 - **优雅关闭**：捕获中断信号，安全释放资源
 
 :::tip 完整源码
-本页基于仓库内置示例 `examples/6_web_server.go`，可直接编译运行。
+本页基于仓库内置示例 `examples/web-server/main.go`，可直接编译运行。
 :::
 
 ## 1. 初始化 Processor
@@ -58,7 +58,9 @@ func newJWTProcessor() (*jwt.Processor, int, error) {
     // 密钥来自环境变量（生产安全，禁止硬编码）
     secretKey := os.Getenv("JWT_SECRET_KEY")
     if secretKey == "" {
-        log.Println("警告: 未设置 JWT_SECRET_KEY，使用演示密钥")
+        log.Println("警告：未设置 JWT_SECRET_KEY，使用演示密钥")
+        // 回退密钥仅为演示，让示例可脱离环境变量独立运行；
+        // 生产环境密钥必须来自环境变量或密钥管理服务
         secretKey = "Kx9#mP2$vL8@nQ5!wR7&tY3^uI6*oE4%aS1+dF0-gH9~jK2#bN5$cM8@xZ7&vB4!"
     }
 
@@ -90,7 +92,7 @@ func newJWTProcessor() (*jwt.Processor, int, error) {
 ```
 
 :::warning 生产安全
-务必通过环境变量 `JWT_SECRET_KEY` 注入密钥，切勿将其写入源码或提交到版本控制。
+务必通过环境变量 `JWT_SECRET_KEY` 注入密钥，切勿将其写入源码或提交到版本控制。上方代码中的回退密钥仅为演示而设，生产环境绝不依赖它——密钥应始终来自环境变量或密钥管理服务。
 :::
 
 ## 2. 登录端点（/login）
@@ -211,7 +213,7 @@ func authenticateUser(username, password string) (User, bool) {
 
 ## 3. 认证中间件
 
-从 `Authorization: Bearer <token>` 头提取令牌，调用 `Validate` 验证，并将 Claims 注入 `context.Context` 供后续处理器读取：
+从 `Authorization: Bearer <token>` 头提取令牌，调用 `Parse` 验证，并将 Claims 注入 `context.Context` 供后续处理器读取：
 
 ```go
 // contextKey 是自定义类型，避免 context 键冲突
@@ -241,8 +243,8 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
             return
         }
 
-        claims, valid, err := processor.Validate(token)
-        if err != nil || !valid {
+        claims, err := processor.Parse(token)
+        if err != nil {
             sendError(w, http.StatusUnauthorized, "invalid_token", "令牌无效或已过期")
             return
         }
@@ -356,7 +358,7 @@ func refreshHandler(w http.ResponseWriter, r *http.Request) {
 
 ## 6. 登出端点（/logout）
 
-将当前访问令牌加入黑名单，使其立即失效。已吊销的令牌后续 `Validate` 会返回错误：
+将当前访问令牌加入黑名单，使其立即失效。已吊销的令牌后续 `Parse` 会返回错误：
 
 ```go
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -385,7 +387,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 ```
 
 :::tip 黑名单机制
-`processor.Revoke` 将令牌的 `jti` 加入内置黑名单，后续 `Validate` 调用会自动检查。黑名单配置（容量、自动清理间隔）在第 1 节初始化时设定。详见[令牌黑名单](../guides/blacklist)。
+`processor.Revoke` 将令牌的 `jti` 加入内置黑名单，后续 `Parse` 调用会自动检查。黑名单配置（容量、自动清理间隔）在第 1 节初始化时设定。详见[令牌黑名单](../guides/blacklist)。
 :::
 
 ## 7. 路由注册与优雅关闭

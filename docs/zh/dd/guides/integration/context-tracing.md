@@ -1,7 +1,7 @@
 ---
 sidebar_label: "分布式追踪集成"
 title: "分布式追踪集成 - CyberGo DD | Context 与追踪指南"
-description: "CyberGo DD 分布式追踪集成指南：TraceID、SpanID、RequestID 上下文传播，ContextExtractor 自定义提取器、HTTP 中间件集成、请求作用域日志与 OpenTelemetry 分布式追踪系统集成。"
+description: "CyberGo DD 分布式追踪集成指南：TraceID、SpanID、RequestID 上下文传播，ContextExtractor 自定义提取器、HTTP 中间件集成、请求作用域日志模式与微服务间传播。"
 sidebar_position: 1
 ---
 
@@ -40,7 +40,7 @@ requestID := dd.GetRequestID(ctx) // "req-789"
 ### 为何不能「自动提取」到日志
 
 :::warning 当前限制
-DD 的日志方法（`Info`、`InfoWith` 等）不直接接受 `context.Context` 参数。上下文提取器在内部使用 `context.Background()` 调用（`logger.go:1414`），因此无法直接从请求作用域的 context 中获取 TraceID 等值。推荐使用手动传递字段的方式（见下方 HTTP 中间件集成）。
+DD 的日志方法（`Info`、`InfoWith` 等）不直接接受 `context.Context` 参数。上下文提取器在内部使用 `context.Background()` 调用，因此无法直接从请求作用域的 context 中获取 TraceID 等值。推荐使用手动传递字段的方式（见下方 HTTP 中间件集成）。
 :::
 
 ```go

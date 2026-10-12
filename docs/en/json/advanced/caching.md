@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Caching & Pre-Parsing"
-title: "Caching & Pre-Parsing - CyberGo JSON | Cache Strategy"
-description: "CyberGo JSON caching and pre-parsing: EnableCache auto caching, GetStats monitoring, WarmupCache warm-up, and PreParse parse-once query-many."
-sidebar_position: 3
+title: "Caching & Pre-Parsing - CyberGo JSON | Pre-Parse & Caching"
+description: "CyberGo JSON offers automatic caching with EnableCache, WarmupCache, and PreParse to track GetStats hit ratios, warm up hot paths, and cut repeated parsing."
+sidebar_position: 30
 ---
 
 # Caching and Pre-Parsing Strategies

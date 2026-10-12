@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Hook System"
-title: "Hook System - CyberGo JSON | API Reference"
+title: "Hook System - CyberGo JSON | Intercept, Monitor & Audit"
 description: "CyberGo JSON hook system: Hook interface, LoggingHook, TimingHook, ValidationHook, ErrorHook, and custom hooks — Before/After stages with HookContext."
-sidebar_position: 1
+sidebar_position: 20
 ---
 
 # Hook System

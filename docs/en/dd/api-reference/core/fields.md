@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Fields"
-title: "Structured Fields - CyberGo DD | Field Constructors & Validation"
-description: "CyberGo DD structured field API: 20 type-safe field constructors (String/Int/Float/Bool/Time/Duration/Err, etc.), the Field type, and optional field-key validation (naming conventions and Log4Shell security detection) with custom validation modes and preset configs."
-sidebar_position: 3.5
+title: "Structured Fields - CyberGo DD | Constructors & Validation"
+description: "CyberGo DD structured field API: 20 type-safe field constructors, optional field-key validation with naming rules and Log4Shell detection."
+sidebar_position: 4
 ---
 
 # Structured Fields
+
+> 🔧 **API Reference** · For a hands-on tutorial see [Structured Logging](../../guides/basics/structured-logging)
 
 DD provides 20 type-safe field constructors, a unified `Field` type, and an optional field-key validation mechanism for structured log output.
 
@@ -23,7 +25,7 @@ type Field struct {
 }
 ```
 
-All field constructors return a `Field` value; the formatter (`internal.FormatFields`) outputs them as `Key=Value`. Primitive types (string / numeric / bool / `time.Duration` / `time.Time` / nil) take a fast path; "complex types" such as slices, arrays, maps, and structs fall back to JSON serialization (decided by `internal.IsComplexValue`); other types (such as values implementing the `fmt.Stringer` or `error` interface) go through `fmt.Fprint`.
+All field constructors return a `Field` value; the text formatter outputs them as `Key=Value`. Primitive types (string / numeric / bool / `time.Duration` / `time.Time` / nil) take a fast path; "complex types" such as slices, arrays, maps, and structs fall back to JSON serialization (decided by `internal.IsComplexValue`); other types (such as values implementing the `fmt.Stringer` or `error` interface) go through `fmt.Fprint`.
 
 ## Basic Fields
 
@@ -74,6 +76,8 @@ dd.ErrWithKey("db_error", err)
 dd.ErrWithStack(err)
 ```
 
+All three error constructors guard against panics raised by the error's `Error()` method: the panic is recovered into a `%!v(PANIC=Error method: ...)` placeholder value instead of propagating to the caller.
+
 ## Usage
 
 ### With InfoWith
@@ -113,7 +117,7 @@ base.InfoWith("response",
 
 ## Field Validation
 
-DD provides a field-key validation mechanism supporting naming-convention checks and security validation (Log4Shell injection, homograph attacks, overlong UTF-8). The validation config `FieldValidationConfig` can be attached to [`Config.FieldValidation`](../core/config) to take effect at construction time, or dynamically replaced at runtime via [`Logger.SetFieldValidation`](../core/logger). Each `*With` call invokes `ValidateFieldKey` on each field's Key; in Strict mode, failures are reported as log errors (the log method itself does not return an error).
+DD provides a field-key validation mechanism supporting naming-convention checks and security validation (Log4Shell injection, homograph attacks, overlong UTF-8). The validation config `FieldValidationConfig` can be attached to [`Config.FieldValidation`](../core/config) to take effect at construction time, or dynamically replaced at runtime via [`Logger.SetFieldValidation`](../core/logger). Each `*With` call invokes `ValidateFieldKey` on each field's Key; in Warn/Strict modes, failures emit a diagnostic to stderr (the field is still logged; the log method itself does not return an error).
 
 ### FieldValidationMode
 
@@ -124,8 +128,8 @@ type FieldValidationMode int
 
 const (
     FieldValidationNone   FieldValidationMode = iota // Disable validation (default, short-circuits all checks)
-    FieldValidationWarn                              // Log a warning entry on naming mismatch
-    FieldValidationStrict                            // Log an error entry on naming mismatch
+    FieldValidationWarn                              // Emit a stderr warning diagnostic on naming mismatch (field is still logged)
+    FieldValidationStrict                            // Emit a stderr error diagnostic on naming mismatch (field is still logged; wording differs)
 )
 ```
 
@@ -199,43 +203,43 @@ Validates whether a field key matches the configuration. Returns an error descri
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // Strict snake_case preset
-    cfg := dd.StrictSnakeCaseConfig()
+	// Strict snake_case preset
+	cfg := dd.StrictSnakeCaseConfig()
 
-    if err := cfg.ValidateFieldKey("user_id"); err != nil {
-        fmt.Println("user_id:", err)
-    } else {
-        fmt.Println("user_id OK")
-        // Output: user_id OK
-    }
+	if err := cfg.ValidateFieldKey("user_id"); err != nil {
+		fmt.Println("user_id:", err)
+	} else {
+		fmt.Println("user_id OK")
+		// Output: user_id OK
+	}
 
-    if err := cfg.ValidateFieldKey("userId"); err != nil {
-        fmt.Println("userId:", err)
-        // Output: userId: field key "userId" does not match snake_case convention
-    }
+	if err := cfg.ValidateFieldKey("userId"); err != nil {
+		fmt.Println("userId:", err)
+		// Output: userId: field key "userId" does not match snake_case convention
+	}
 
-    // Common-abbreviation exemption: URL is not snake_case but hits the abbreviation table, so it passes
-    if err := cfg.ValidateFieldKey("URL"); err != nil {
-        fmt.Println("URL:", err)
-    } else {
-        fmt.Println("URL OK (abbreviation exemption)")
-        // Output: URL OK (abbreviation exemption)
-    }
+	// Common-abbreviation exemption: URL is not snake_case but hits the abbreviation table, so it passes
+	if err := cfg.ValidateFieldKey("URL"); err != nil {
+		fmt.Println("URL:", err)
+	} else {
+		fmt.Println("URL OK (abbreviation exemption)")
+		// Output: URL OK (abbreviation exemption)
+	}
 
-    // Default config Mode=None, no naming validation
-    defaultCfg := dd.DefaultFieldValidationConfig()
-    if err := defaultCfg.ValidateFieldKey("anyKey"); err != nil {
-        fmt.Println("anyKey:", err)
-    } else {
-        fmt.Println("anyKey OK (Mode=None)")
-        // Output: anyKey OK (Mode=None)
-    }
+	// Default config Mode=None, no naming validation
+	defaultCfg := dd.DefaultFieldValidationConfig()
+	if err := defaultCfg.ValidateFieldKey("anyKey"); err != nil {
+		fmt.Println("anyKey:", err)
+	} else {
+		fmt.Println("anyKey OK (Mode=None)")
+		// Output: anyKey OK (Mode=None)
+	}
 }
 ```
 

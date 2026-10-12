@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo DD | 5-Minute Guide"
-description: "A complete getting-started tutorial for the CyberGo DD high-performance structured logging library. From installing the dependency to your first log line, learn step by step how to create loggers, configure output targets and file rotation, log request context with structured fields, and extend behavior with hooks. Master the essentials in 5 minutes and apply them to real projects."
-sidebar_position: 2
+description: "CyberGo DD structured logging quick start: install, create loggers, configure output targets and file rotation, log fields, and extend with hooks."
+sidebar_position: 1
 ---
 
 # Quick Start
@@ -15,64 +15,64 @@ DD provides several convenience constructors for different scenarios:
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // Option 1: default global logger (zero configuration)
-    dd.Info("using the global logger")
+	// Option 1: default global logger (zero configuration)
+	dd.Info("using the global logger")
 
-    // Option 2: development mode (DEBUG level, with caller)
-    dev, err := dd.New(dd.DevelopmentConfig())
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer dev.Close()
-    dev.Info("development mode output")
+	// Option 2: development mode (DEBUG level, with caller)
+	dev, err := dd.New(dd.DevelopmentConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dev.Close()
+	dev.Info("development mode output")
 
-    // Option 3: output to a file
-    file, err := dd.New(dd.Config{
-        Targets: []dd.OutputTarget{dd.FileOutput("logs/app.log")},
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer file.Close()
-    file.Info("file output")
+	// Option 3: output to a file
+	file, err := dd.New(dd.Config{
+		Targets: []dd.OutputTarget{dd.FileOutput("logs/app.log")},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Info("file output")
 
-    // Option 4: output to both console and file
-    all, err := dd.New(dd.Config{
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.log"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer all.Close()
-    all.Info("dual-target output")
+	// Option 4: output to both console and file
+	all, err := dd.New(dd.Config{
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.log"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer all.Close()
+	all.Info("dual-target output")
 
-    // Option 5: JSON format with dual targets
-    jsonLogger, err := dd.New(dd.Config{
-        Format: dd.FormatJSON,
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.json"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer jsonLogger.Close()
-    jsonLogger.Info("JSON format output")
+	// Option 5: JSON format with dual targets
+	jsonLogger, err := dd.New(dd.Config{
+		Format: dd.FormatJSON,
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.json"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer jsonLogger.Close()
+	jsonLogger.Info("JSON format output")
 }
 ```
 
 :::warning Zero-value Config pitfall
-Options 3/4/5 above use the `dd.Config{...}` literal directly and set only `Targets`/`Format`; the remaining fields keep their zero values: `Level=Debug` (no filtering), `IncludeTime=false` (no timestamp), `IncludeLevel=false` (no level), `DynamicCaller=false` (no caller), `Security=nil` (falls back to `DefaultSecurityConfig()` baseline filtering, which still enables ~36 redaction patterns; to disable, set `&dd.SecurityConfig{}` or `SecurityLevelDevelopment` explicitly). Output will be missing key information such as timestamps and levels.
+Options 3/4/5 above use the `dd.Config{...}` literal directly and set only `Targets`/`Format`; the remaining fields keep their zero values: `Level=Debug` (no filtering), `IncludeTime=false` (no timestamp), `IncludeLevel=false` (no level), `DynamicCaller=false` (no caller), `Security=nil` (falls back to `DefaultSecurityConfig()` baseline filtering, which still enables the 38 basic redaction patterns; to disable, set `&dd.SecurityConfig{}` or `SecurityLevelDevelopment` explicitly). Output will be missing key information such as timestamps and levels.
 
 **Recommended for production**: start from `dd.DefaultConfig()` and modify only the fields you need. This gives you timestamps, level, caller, and default security filtering in one shot:
 
@@ -160,10 +160,9 @@ fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
 if err != nil {
     log.Fatal(err)
 }
-logger, err := dd.New(dd.Config{
-    Level: dd.LevelInfo,
-    Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
-})
+cfg := dd.DefaultConfig() // Level is already Info
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }

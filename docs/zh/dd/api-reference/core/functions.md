@@ -1,13 +1,13 @@
 ---
 sidebar_label: "包函数"
 title: "包函数 - CyberGo DD | 全局函数和构造器"
-description: "CyberGo DD 包级函数完整 API 文档，包括 New 日志记录器创建函数、Default/SetDefault/InitDefault 全局日志管理函数、DefaultConfig/DevelopmentConfig/JSONConfig 配置预设函数以及所有构造器工厂函数，支持通过 dd. 前缀直接调用。"
+description: "CyberGo DD 包级函数 API 文档：New 日志记录器创建、Default/SetDefault/InitDefault 全局日志管理、DefaultConfig/DevelopmentConfig 配置预设与各类构造器工厂函数，支持 dd. 前缀直接调用。"
 sidebar_position: 1
 ---
 
 # 包函数
 
-DD 提供丰富的包级函数，可直接通过 `dd.` 前缀调用。这些函数均通过全局日志记录器（`Default()`）执行。
+DD 提供丰富的包级函数，可直接通过 `dd.` 前缀调用。日志类函数均通过全局日志记录器（`Default()`）执行；例外是调试输出函数 `JSON`/`JSONF`/`Text`/`Textf`/`Exit`/`Exitf`，它们绕过 `Config.Targets` 配置的输出目标，直接写 `os.Stdout`，且不经过安全过滤。
 
 ## 日志记录器创建
 
@@ -75,7 +75,8 @@ if err != nil {
 |------|------|------|
 | `DefaultConfig` | `func DefaultConfig() Config` | 默认配置（Info 级别、文本格式） |
 | `DevelopmentConfig` | `func DevelopmentConfig() Config` | 开发配置（Debug 级别） |
-| `JSONConfig` | `func JSONConfig() Config` | JSON 输出配置 |
+| `JSONConfig` | `func JSONConfig() Config` | JSON 输出配置（Debug 级别） |
+| `ProductionConfig` | `func ProductionConfig() Config` | 生产配置（Info 级别、JSON 格式、RFC3339 时间戳） |
 
 ```go
 cfg := dd.DefaultConfig()
@@ -212,6 +213,8 @@ dd.WithField("request_id", "abc123").Info("处理请求")
 | 函数 | 签名 | 说明 |
 |------|------|------|
 | `Flush` | `func Flush() error` | 刷新全局日志缓冲 |
+| `Close` | `func Close() error` | 关闭全局日志记录器（关闭后包级日志函数变为空操作；生产代码建议改用 `Shutdown`） |
+| `Shutdown` | `func Shutdown(ctx context.Context) error` | 优雅关闭（带超时） |
 
 ## Writer 管理（包级）
 
@@ -243,11 +246,12 @@ dd.WithField("request_id", "abc123").Info("处理请求")
 | 函数 | 签名 | 说明 |
 |------|------|------|
 | `DefaultSecurityConfig` | `func DefaultSecurityConfig() *SecurityConfig` | 默认安全配置（基础过滤） |
-| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | 完整安全配置 |
+| `DefaultSecureConfig` <Badge type="warning" text="已弃用" /> | `func DefaultSecureConfig() *SecurityConfig` | 完整安全配置（与 `DefaultSecurityConfig` 近义但过滤强度不同，易混淆；**改用 `SecurityConfigForLevel(dd.SecurityLevelStandard)`**） |
 | `HealthcareConfig` | `func HealthcareConfig() *SecurityConfig` | HIPAA 合规配置 |
 | `FinancialConfig` | `func FinancialConfig() *SecurityConfig` | PCI-DSS 合规配置 |
 | `GovernmentConfig` | `func GovernmentConfig() *SecurityConfig` | 政府标准配置 |
 | `SecurityConfigForLevel` | `func SecurityConfigForLevel(level SecurityLevel) *SecurityConfig` | 按级别获取安全配置 |
+| `DefaultRateLimitConfig` | `func DefaultRateLimitConfig() *RateLimitConfig` | 默认限流配置（10,000 条/秒、10MB/秒、突发 1,000 条、Drop 策略、采样率 1/100；详见[安全过滤](../security-audit/security)） |
 
 ## 敏感数据过滤构造器
 

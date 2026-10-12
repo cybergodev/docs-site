@@ -1,8 +1,8 @@
 ---
 sidebar_label: "文件操作"
-title: "文件操作函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 文件操作函数：LoadFromFile/SaveToFile 读写、LoadFromReader/SaveToWriter 流式 I/O 与 MarshalToFile/UnmarshalFromFile 序列化。"
-sidebar_position: 9
+title: "文件操作函数 - CyberGo JSON | LoadFromFile 与 SaveToFile"
+description: "CyberGo JSON 是提供文件读写的 Go 库，LoadFromFile 原样加载、SaveToFile 原子写入并自动建目录，配合 LoadFromReader/SaveToWriter 流式 I/O 与结构体便捷序列化，读写前均执行路径安全校验，帮助开发者安全读写 JSON 文件。"
+sidebar_position: 90
 ---
 
 # 文件操作函数
@@ -315,7 +315,7 @@ data, err := json.LoadFromFile("config/app.json")
 
 ## 文件迭代函数
 
-json 包提供 `ForeachFile` 系列函数，直接从文件迭代 JSON 数组 / 对象，无需手动读取+解析：
+json 包提供 `ForeachFile` 系列函数，直接从文件迭代 JSON 数组 / 对象，无需手动读取 + 解析：
 
 | 函数 | 用途 |
 |------|------|

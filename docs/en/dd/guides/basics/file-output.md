@@ -1,7 +1,7 @@
 ---
 sidebar_label: "File Output & Rotation"
 title: "File Output & Rotation - CyberGo DD | File Logging Guide"
-description: "CyberGo DD file output and log-rotation configuration guide, covering FileWriter size rotation and time cleanup, BufferedWriter buffered-write optimization, MultiWriter multi-target fan-out, dynamic Writer management, and production best practices to help you build a highly reliable file-logging system."
+description: "CyberGo DD file logging: FileWriter size rotation and time cleanup, BufferedWriter optimization, MultiWriter fan-out, and production best practices."
 sidebar_position: 4
 ---
 
@@ -17,35 +17,35 @@ DD provides flexible file-output capabilities, supporting automatic rotation, bu
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    logger, err := dd.New(dd.Config{
-        Targets: []dd.OutputTarget{
-            dd.FileOutput("logs/app.log"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	cfg := dd.DefaultConfig()
+	cfg.Targets = []dd.OutputTarget{
+		dd.FileOutput("logs/app.log"),
+	}
+	logger, err := dd.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    logger.Info("log will be written to a file") // Written to logs/app.log
+	logger.Info("log will be written to a file") // Written to logs/app.log
 }
 ```
 
 ### Console + File Dual Output
 
 ```go
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.log"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.log"),
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -80,9 +80,10 @@ fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
 if err != nil {
     log.Fatal(err)
 }
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
-})
+
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -92,12 +93,12 @@ defer logger.Close()
 ### JSON-format Log File
 
 ```go
-logger, err := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.FileOutput("logs/app.json"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.FileOutput("logs/app.json"),
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -108,13 +109,15 @@ Rotated file naming rules:
 
 ```text
 logs/app.log           <- current log
-logs/app_log_1.log     <- first rotation (newest backup)
-logs/app_log_2.log     <- older backup
+logs/app_log_1.log     <- first rotation (older backup)
+logs/app_log_2.log     <- second rotation (newest backup)
 logs/app_log_1.log.gz  <- old backups are compressed to .gz when Compress is enabled
 ```
 
+Each rotation uses a new monotonically increasing index (`maxIndex + 1`), so the **highest index is the newest backup**; when `MaxBackups` is exceeded, cleanup **deletes the lowest indices first**.
+
 :::info Compression and Backups Do Not Coexist
-When `Compress` is enabled, compression happens after rotation in a separate goroutine, asynchronously; when compression finishes, the original `.log` backup is **renamed** to `.log.gz` — the two do not coexist.
+When `Compress` is enabled, compression happens after rotation in a separate goroutine, asynchronously; the backup is compressed into a `.log.gz` file (written to a temp file and verified), then the original `.log` backup is deleted — the two do not coexist.
 :::
 
 ## BufferedWriter Buffered Writes
@@ -138,9 +141,9 @@ if err != nil {
     log.Fatal(err)
 }
 
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(bw)},
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(bw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -151,10 +154,10 @@ defer logger.Close() // Close auto-flushes
 
 | Scenario | BufferSize | FlushTime | Description |
 |----------|-----------|-----------|-------------|
-| Low-latency | 512 | 50ms | Fast flush, lower latency |
+| Low-latency | 1024 | 10ms | Default buffer + frequent flush (BufferSize below 1024 is clamped up to the default) |
 | General | 1024 | 100ms | Defaults; balances latency and throughput |
 | High-throughput | 4096 | 500ms | Large buffer, maximizes throughput |
-| Batch processing | 8192 | 1000ms | Max buffer; suitable for offline processing |
+| Batch processing | 8192 | 1000ms | Large buffer; suitable for offline processing (hard cap is 10MB) |
 
 :::warning Data Safety
 BufferedWriter flushes when the buffer is half-full (reaches BufferSize/2) or on a timer tick. Abnormal program exits may lose data still in the buffer. Be sure to call `Close()` or `Flush()` to ensure data integrity.
@@ -172,9 +175,9 @@ remote := &RemoteLogWriter{endpoint: "http://log-service/ingest"}
 
 mw := dd.NewMultiWriter(fw, remote)
 
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(mw)},
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(mw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -228,16 +231,15 @@ func (w *LogstashWriter) Write(p []byte) (n int, err error) {
 }
 
 // Use the custom Writer
-logger, err := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.FileOutput("logs/app.json"),
-        dd.CustomOutput(&LogstashWriter{
-            endpoint: "http://logstash:5044",
-            client:   &http.Client{Timeout: 5 * time.Second},
-        }),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.FileOutput("logs/app.json"),
+    dd.CustomOutput(&LogstashWriter{
+        endpoint: "http://logstash:5044",
+        client:   &http.Client{Timeout: 5 * time.Second},
+    }),
+}
 if err != nil {
     log.Fatal(err)
 }
@@ -266,20 +268,20 @@ func NewProductionLogger() (*dd.Logger, error) {
         return nil, err
     }
 
-    return dd.New(dd.Config{
-        Level:  dd.LevelInfo,
-        Format: dd.FormatJSON,
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.CustomOutput(bw),
-        },
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Targets = []dd.OutputTarget{
+        dd.ConsoleOutput(),
+        dd.CustomOutput(bw),
+    }
+    return dd.New(cfg)
 }
 ```
 
 ## Next Steps
 
 - [Structured Logging](./structured-logging) -- Fields and chaining
-- [Sensitive Data Filtering](../security/sensitive-filtering) -- Auto-redaction
+- [Log Sampling](../operations/sampling) -- Volume control for high-throughput scenarios
 - [API Reference - Writers](../../api-reference/output-integration/writers) -- Complete Writer API
 - [Performance Tuning](../../advanced/performance) -- Performance tuning advice

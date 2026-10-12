@@ -1,8 +1,8 @@
 ---
 sidebar_label: "高级示例"
 title: "高级示例 - CyberGo HTTPC | 生产级代码"
-description: "HTTPC 高级示例集：自定义 RetryPolicy 重试策略、超时与重试组合、请求响应回调、完整中间件链、RESTful 客户端封装、域名客户端自定义配置、Cookie 与 SessionManager 会话、worker pool 并发模式与 HMAC 请求签名中间件。"
-sidebar_position: 2
+description: "HTTPC 高级示例集：自定义 RetryPolicy 重试策略、超时与重试组合、请求响应回调、完整中间件链、RESTful 客户端封装、域名客户端配置、Cookie 与 SessionManager 会话、worker pool 并发与 HMAC 签名中间件。"
+sidebar_position: 20
 ---
 
 # 高级示例
@@ -55,32 +55,32 @@ cfg.Retry.CustomPolicy = &selectiveRetry{maxAttempts: 5, baseDelay: time.Second}
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Retry.MaxRetries = 5
-    cfg.Retry.Delay = 500 * time.Millisecond
-    cfg.Retry.BackoffFactor = 1.5
-    cfg.Retry.EnableJitter = true
+	cfg := httpc.DefaultConfig()
+	cfg.Retry.MaxRetries = 5
+	cfg.Retry.Delay = 500 * time.Millisecond
+	cfg.Retry.BackoffFactor = 1.5
+	cfg.Retry.EnableJitter = true
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/unstable")
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := client.Get("https://api.example.com/unstable")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.StatusCode())
+	fmt.Println(result.StatusCode())
 }
 ```
 
@@ -92,38 +92,38 @@ func main() {
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // ctx 30s：含全部重试与退避等待的总预算
-    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancel()
+	// ctx 30s：含全部重试与退避等待的总预算
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-    result, err := client.Post("https://httpbin.org/post",
-        httpc.WithJSON(map[string]string{"data": "important"}),
-        httpc.WithContext(ctx),           // 总预算
-        httpc.WithTimeout(10*time.Second), // 单次尝试上限
-        httpc.WithMaxRetries(3),           // 最多重试 3 次
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := client.Post("https://httpbin.org/post",
+		httpc.WithJSON(map[string]string{"data": "important"}),
+		httpc.WithContext(ctx),            // 总预算
+		httpc.WithTimeout(10*time.Second), // 单次尝试上限
+		httpc.WithMaxRetries(3),           // 最多重试 3 次
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.StatusCode())            // 输出：200
-    fmt.Println("尝试次数:", result.Meta.Attempts) // 输出：尝试次数: 1（失败重试后增加）
-    fmt.Println("总耗时:", result.Meta.Duration)
+	fmt.Println(result.StatusCode())           // 输出：200
+	fmt.Println("尝试次数：", result.Meta.Attempts) // 输出：尝试次数：1（失败重试后增加）
+	fmt.Println("总耗时：", result.Meta.Duration)
 }
 ```
 
@@ -142,62 +142,62 @@ result, err := client.Post("https://httpbin.org/post",
 package main
 
 import (
-    "encoding/json"
-    "log"
-    "sync/atomic"
-    "time"
+	"encoding/json"
+	"log"
+	"sync/atomic"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // 请求计数器
-    var requestCount int64
+	// 请求计数器
+	var requestCount int64
 
-    // 指标收集
-    metricsMiddleware := httpc.MetricsMiddleware(
-        &httpc.MetricsConfig{OnMetrics: func(method, url string, statusCode int, duration time.Duration, err error) {
-            atomic.AddInt64(&requestCount, 1)
-            log.Printf("[METRICS] %s %s -> %d (%v)", method, url, statusCode, duration)
-        }},
-    )
+	// 指标收集
+	metricsMiddleware := httpc.MetricsMiddleware(
+		&httpc.MetricsConfig{OnMetrics: func(method, url string, statusCode int, duration time.Duration, err error) {
+			atomic.AddInt64(&requestCount, 1)
+			log.Printf("[METRICS] %s %s -> %d (%v)", method, url, statusCode, duration)
+		}},
+	)
 
-    // 审计日志（JSON 格式）
-    auditCfg := httpc.DefaultAuditConfig()
-    auditCfg.Format = "json"
-    auditCfg.IncludeHeaders = true
-    auditCfg.MaskHeaders = []string{"Authorization", "Cookie"}
-    auditCfg.SanitizeError = true
-    auditCfg.OnAudit = func(event httpc.AuditEvent) {
-        data, _ := json.Marshal(event)
-        log.Printf("[AUDIT] %s", data)
-    }
-    auditMiddleware := httpc.AuditMiddleware(auditCfg)
+	// 审计日志（JSON 格式）
+	auditCfg := httpc.DefaultAuditConfig()
+	auditCfg.Format = "json"
+	auditCfg.IncludeHeaders = true
+	auditCfg.MaskHeaders = []string{"Authorization", "Cookie"}
+	auditCfg.SanitizeError = true
+	auditCfg.OnAudit = func(event httpc.AuditEvent) {
+		data, _ := json.Marshal(event)
+		log.Printf("[AUDIT] %s", data)
+	}
+	auditMiddleware := httpc.AuditMiddleware(auditCfg)
 
-    cfg := httpc.DefaultConfig()
-    cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-        httpc.RecoveryMiddleware(),                              // panic 恢复
-        httpc.TimeoutMiddleware(&httpc.TimeoutMiddlewareConfig{Duration: 30 * time.Second}), // 强制超时
-        httpc.RequestIDMiddleware(httpc.DefaultRequestIDConfig()),                            // 请求 ID
-        httpc.LoggingMiddleware(&httpc.LoggingConfig{LogFunc: func(format string, args ...any) {
-            log.Printf("[HTTP] "+format, args...)
-        }}),
-        metricsMiddleware,
-        auditMiddleware,
-    }
+	cfg := httpc.DefaultConfig()
+	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
+		httpc.RecoveryMiddleware(), // panic 恢复
+		httpc.TimeoutMiddleware(&httpc.TimeoutMiddlewareConfig{Duration: 30 * time.Second}), // 强制超时
+		httpc.RequestIDMiddleware(httpc.DefaultRequestIDConfig()),                           // 请求 ID
+		httpc.LoggingMiddleware(&httpc.LoggingConfig{LogFunc: func(format string, args ...any) {
+			log.Printf("[HTTP] "+format, args...)
+		}}),
+		metricsMiddleware,
+		auditMiddleware,
+	}
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    _, err = client.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
+	_, err = client.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    log.Printf("总请求数：%d", atomic.LoadInt64(&requestCount))
+	log.Printf("总请求数：%d", atomic.LoadInt64(&requestCount))
 }
 ```
 
@@ -209,40 +209,40 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    onRequest := func(req httpc.RequestMutator) error {
-        fmt.Printf("[请求] %s %s（携带 %d 个请求头）\n",
-            req.Method(), req.URL(), len(req.Headers()))
-        return nil // 返回非 nil error 会中止请求
-    }
+	onRequest := func(req httpc.RequestMutator) error {
+		fmt.Printf("[请求] %s %s（携带 %d 个请求头）\n",
+			req.Method(), req.URL(), len(req.Headers()))
+		return nil // 返回非 nil error 会中止请求
+	}
 
-    onResponse := func(resp httpc.ResponseMutator) error {
-        fmt.Printf("[响应] %d %s，耗时 %v，尝试 %d 次\n",
-            resp.StatusCode(), resp.Status(), resp.Duration(), resp.Attempts())
-        return nil
-    }
+	onResponse := func(resp httpc.ResponseMutator) error {
+		fmt.Printf("[响应] %d %s，耗时 %v，尝试 %d 次\n",
+			resp.StatusCode(), resp.Status(), resp.Duration(), resp.Attempts())
+		return nil
+	}
 
-    result, err := client.Get("https://httpbin.org/get",
-        httpc.WithOnRequest(onRequest),
-        httpc.WithOnResponse(onResponse),
-        httpc.WithQuery("test", "callbacks"),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("状态码:", result.StatusCode()) // 输出：状态码: 200
+	result, err := client.Get("https://httpbin.org/get",
+		httpc.WithOnRequest(onRequest),
+		httpc.WithOnResponse(onResponse),
+		httpc.WithQuery("test", "callbacks"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("状态码：", result.StatusCode()) // 输出：状态码：200
 }
 ```
 
@@ -254,99 +254,99 @@ func main() {
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 type APIClient struct {
-    dc httpc.DomainClienter
+	dc httpc.DomainClienter
 }
 
 type User struct {
-    ID   int    `json:"id"`
-    Name string `json:"name"`
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 func NewAPIClient(baseURL, token string) (*APIClient, error) {
-    dc, err := httpc.NewDomainDefault(baseURL)
-    if err != nil {
-        return nil, err
-    }
-    if err := dc.SetHeader("Authorization", "Bearer "+token); err != nil {
-        dc.Close()
-        return nil, err
-    }
-    if err := dc.SetHeader("Accept", "application/json"); err != nil {
-        dc.Close()
-        return nil, err
-    }
+	dc, err := httpc.NewDomainDefault(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	if err := dc.SetHeader("Authorization", "Bearer "+token); err != nil {
+		dc.Close()
+		return nil, err
+	}
+	if err := dc.SetHeader("Accept", "application/json"); err != nil {
+		dc.Close()
+		return nil, err
+	}
 
-    return &APIClient{dc: dc}, nil
+	return &APIClient{dc: dc}, nil
 }
 
 func (c *APIClient) GetUser(ctx context.Context, id int) (*User, error) {
-    result, err := c.dc.Request(ctx, "GET", fmt.Sprintf("/users/%d", id))
-    if err != nil {
-        return nil, err
-    }
+	result, err := c.dc.Request(ctx, "GET", fmt.Sprintf("/users/%d", id))
+	if err != nil {
+		return nil, err
+	}
 
-    if !result.IsSuccess() {
-        return nil, fmt.Errorf("API error: %d", result.StatusCode())
-    }
+	if !result.IsSuccess() {
+		return nil, fmt.Errorf("API error: %d", result.StatusCode())
+	}
 
-    var user User
-    if err := result.Unmarshal(&user); err != nil {
-        return nil, err
-    }
-    return &user, nil
+	var user User
+	if err := result.Unmarshal(&user); err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (c *APIClient) CreateUser(ctx context.Context, name string) (*User, error) {
-    result, err := c.dc.Request(ctx, "POST", "/users",
-        httpc.WithJSON(map[string]string{"name": name}),
-    )
-    if err != nil {
-        return nil, err
-    }
+	result, err := c.dc.Request(ctx, "POST", "/users",
+		httpc.WithJSON(map[string]string{"name": name}),
+	)
+	if err != nil {
+		return nil, err
+	}
 
-    var user User
-    if err := result.Unmarshal(&user); err != nil {
-        return nil, err
-    }
-    return &user, nil
+	var user User
+	if err := result.Unmarshal(&user); err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (c *APIClient) Close() error {
-    return c.dc.Close()
+	return c.dc.Close()
 }
 
 func main() {
-    api, err := NewAPIClient("https://api.example.com", "my-token")
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer api.Close()
+	api, err := NewAPIClient("https://api.example.com", "my-token")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer api.Close()
 
-    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-    // 创建用户
-    user, err := api.CreateUser(ctx, "Alice")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Printf("创建：%+v\n", user)
+	// 创建用户
+	user, err := api.CreateUser(ctx, "Alice")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("创建：%+v\n", user)
 
-    // 获取用户
-    user, err = api.GetUser(ctx, user.ID)
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Printf("获取：%+v\n", user)
+	// 获取用户
+	user, err = api.GetUser(ctx, user.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("获取：%+v\n", user)
 }
 ```
 
@@ -358,65 +358,65 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/http"
-    "time"
+	"fmt"
+	"log"
+	"net/http"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // 在默认配置基础上逐字段定制
-    cfg := httpc.DefaultConfig()
-    cfg.Timeouts.Request = 15 * time.Second
-    cfg.Retry.MaxRetries = 2
-    cfg.Defaults.UserAgent = "domain-client-demo/1.0"
+	// 在默认配置基础上逐字段定制
+	cfg := httpc.DefaultConfig()
+	cfg.Timeouts.Request = 15 * time.Second
+	cfg.Retry.MaxRetries = 2
+	cfg.Defaults.UserAgent = "domain-client-demo/1.0"
 
-    dc, err := httpc.NewDomain("https://httpbin.org", cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer dc.Close()
+	dc, err := httpc.NewDomain("https://httpbin.org", cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dc.Close()
 
-    fmt.Println("Base URL:", dc.URL())  // 输出：Base URL: https://httpbin.org
-    fmt.Println("Domain:", dc.Domain()) // 输出：Domain: httpbin.org
+	fmt.Println("Base URL:", dc.URL())  // 输出：Base URL: https://httpbin.org
+	fmt.Println("Domain:", dc.Domain()) // 输出：Domain: httpbin.org
 
-    // 会话头：随该域名下的每个请求自动携带
-    if err := dc.SetHeaders(map[string]string{
-        "X-API-Version": "v1",
-        "X-Client-ID":   "client-123",
-    }); err != nil {
-        log.Fatal(err)
-    }
+	// 会话头：随该域名下的每个请求自动携带
+	if err := dc.SetHeaders(map[string]string{
+		"X-API-Version": "v1",
+		"X-Client-ID":   "client-123",
+	}); err != nil {
+		log.Fatal(err)
+	}
 
-    // 单次请求覆盖会话头，不影响持久会话
-    resp, err := dc.Get("/get",
-        httpc.WithHeader("X-API-Version", "v2"), // 仅本次请求生效
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("请求状态:", resp.StatusCode())      // 输出：请求状态: 200
-    fmt.Println("会话头数量:", len(dc.GetHeaders())) // 输出：会话头数量: 2
+	// 单次请求覆盖会话头，不影响持久会话
+	resp, err := dc.Get("/get",
+		httpc.WithHeader("X-API-Version", "v2"), // 仅本次请求生效
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("请求状态：", resp.StatusCode())     // 输出：请求状态：200
+	fmt.Println("会话头数量：", len(dc.GetHeaders())) // 输出：会话头数量：2
 
-    // 手动注入会话 Cookie；响应 Cookie 也会自动并入会话
-    if err := dc.SetCookies([]*http.Cookie{
-        {Name: "session", Value: "abc123"},
-    }); err != nil {
-        log.Fatal(err)
-    }
+	// 手动注入会话 Cookie；响应 Cookie 也会自动并入会话
+	if err := dc.SetCookies([]*http.Cookie{
+		{Name: "session", Value: "abc123"},
+	}); err != nil {
+		log.Fatal(err)
+	}
 
-    resp2, err := dc.Get("/cookies") // 会话 Cookie 自动随请求发送
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("第二次请求:", resp2.StatusCode()) // 输出：第二次请求: 200
+	resp2, err := dc.Get("/cookies") // 会话 Cookie 自动随请求发送
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("第二次请求：", resp2.StatusCode()) // 输出：第二次请求：200
 
-    // Session() 拿到底层 SessionManager（下一节演示其独立用法）
-    session := dc.Session()
-    session.UpdateFromResult(resp2) // 把本次响应的 Cookie 合并进会话
-    fmt.Println("会话 Cookie 数量:", len(session.GetCookies()))
+	// Session() 拿到底层 SessionManager（下一节演示其独立用法）
+	session := dc.Session()
+	session.UpdateFromResult(resp2) // 把本次响应的 Cookie 合并进会话
+	fmt.Println("会话 Cookie 数量：", len(session.GetCookies()))
 }
 ```
 
@@ -426,36 +426,27 @@ func main() {
 
 ## Cookie 高级用法
 
-### 五种发送 Cookie 的方式
+### 四种发送 Cookie 的方式
 
 ```go
-// 1. 单个 Cookie（完整 http.Cookie 结构，可带属性）
+// 1. WithCookies（完整 http.Cookie 结构，可带属性；单个 Cookie 传单元素切片）
 result, err := client.Get("https://httpbin.org/cookies",
-    httpc.WithCookie(http.Cookie{
+    httpc.WithCookies([]http.Cookie{{
         Name:     "auth_token",
         Value:    "xyz789",
         Path:     "/api",
         Expires:  time.Now().Add(24 * time.Hour),
         Secure:   true,
         HttpOnly: true,
-    }),
+    }}),
 )
 
-// 2. 批量（推荐，一次序列化）
-result, err = client.Get("https://httpbin.org/cookies",
-    httpc.WithCookies([]http.Cookie{
-        {Name: "session_id", Value: "abc123"},
-        {Name: "user_pref", Value: "dark_mode"},
-        {Name: "lang", Value: "en"},
-    }),
-)
-
-// 3. Cookie 字符串（从浏览器 DevTools 直接复制）
+// 2. Cookie 字符串（从浏览器 DevTools 直接复制）
 result, err = client.Get("https://httpbin.org/cookies",
     httpc.WithCookieString("cookie1=value1; cookie2=value2"),
 )
 
-// 4. Cookie map
+// 3. Cookie map
 result, err = client.Get("https://httpbin.org/cookies",
     httpc.WithCookieMap(map[string]string{
         "theme": "dark",
@@ -463,10 +454,10 @@ result, err = client.Get("https://httpbin.org/cookies",
     }),
 )
 
-// 5. 多种方式组合使用
+// 4. 多种方式组合使用
 result, err = client.Get("https://httpbin.org/cookies",
     httpc.WithCookieString("session=abc123"),
-    httpc.WithCookie(http.Cookie{Name: "manual", Value: "cookie"}),
+    httpc.WithCookies([]http.Cookie{{Name: "manual", Value: "cookie"}}),
 )
 ```
 
@@ -502,55 +493,55 @@ fmt.Println(resp.StatusCode()) // 输出：200
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/http"
+	"fmt"
+	"log"
+	"net/http"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    session, err := httpc.NewSessionManagerDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
+	session, err := httpc.NewSessionManagerDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 持久头：应用到走这个会话的所有请求
-    if err := session.SetHeader("Authorization", "Bearer my-token"); err != nil {
-        log.Fatal(err)
-    }
-    if err := session.SetHeaders(map[string]string{
-        "X-API-Version": "v2",
-        "X-Client-ID":   "session-demo",
-    }); err != nil {
-        log.Fatal(err)
-    }
+	// 持久头：应用到走这个会话的所有请求
+	if err := session.SetHeader("Authorization", "Bearer my-token"); err != nil {
+		log.Fatal(err)
+	}
+	if err := session.SetHeaders(map[string]string{
+		"X-API-Version": "v2",
+		"X-Client-ID":   "session-demo",
+	}); err != nil {
+		log.Fatal(err)
+	}
 
-    // 持久 Cookie
-    if err := session.SetCookies([]*http.Cookie{
-        {Name: "session_id", Value: "abc123"},
-        {Name: "preferences", Value: "theme_dark"},
-    }); err != nil {
-        log.Fatal(err)
-    }
+	// 持久 Cookie
+	if err := session.SetCookies([]*http.Cookie{
+		{Name: "session_id", Value: "abc123"},
+		{Name: "preferences", Value: "theme_dark"},
+	}); err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("会话头:", len(session.GetHeaders()))   // 输出：会话头: 3
-    fmt.Println("会话 Cookie:", len(session.GetCookies())) // 输出：会话 Cookie: 2
+	fmt.Println("会话头：", len(session.GetHeaders()))       // 输出：会话头：3
+	fmt.Println("会话 Cookie:", len(session.GetCookies())) // 输出：会话 Cookie: 2
 
-    if c := session.GetCookie("session_id"); c != nil {
-        fmt.Printf("找到 Cookie: %s = %s\n", c.Name, c.Value) // 输出：找到 Cookie: session_id = abc123
-    }
+	if c := session.GetCookie("session_id"); c != nil {
+		fmt.Printf("找到 Cookie: %s = %s\n", c.Name, c.Value) // 输出：找到 Cookie: session_id = abc123
+	}
 
-    // 选择性删除与整体清空
-    session.DeleteHeader("X-API-Version")
-    session.DeleteCookie("preferences")
-    fmt.Println("删除后头/Cookie:", len(session.GetHeaders()), "/", len(session.GetCookies()))
-    // 输出：删除后头/Cookie: 2 / 1
+	// 选择性删除与整体清空
+	session.DeleteHeader("X-API-Version")
+	session.DeleteCookie("preferences")
+	fmt.Println("删除后头/Cookie:", len(session.GetHeaders()), "/", len(session.GetCookies()))
+	// 输出：删除后头/Cookie: 2 / 1
 
-    session.ClearHeaders()
-    session.ClearCookies()
-    fmt.Println("清空后头/Cookie:", len(session.GetHeaders()), "/", len(session.GetCookies()))
-    // 输出：清空后头/Cookie: 0 / 0
+	session.ClearHeaders()
+	session.ClearCookies()
+	fmt.Println("清空后头/Cookie:", len(session.GetHeaders()), "/", len(session.GetCookies()))
+	// 输出：清空后头/Cookie: 0 / 0
 }
 ```
 
@@ -560,58 +551,58 @@ func main() {
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "sync"
-    "sync/atomic"
+	"context"
+	"fmt"
+	"log"
+	"sync"
+	"sync/atomic"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    urls := map[string]string{
-        "file1.zip": "https://example.com/files/file1.zip",
-        "file2.zip": "https://example.com/files/file2.zip",
-        "file3.zip": "https://example.com/files/file3.zip",
-    }
+	urls := map[string]string{
+		"file1.zip": "https://example.com/files/file1.zip",
+		"file2.zip": "https://example.com/files/file2.zip",
+		"file3.zip": "https://example.com/files/file3.zip",
+	}
 
-    client, _ := httpc.NewDefault()
-    defer client.Close()
+	client, _ := httpc.NewDefault()
+	defer client.Close()
 
-    var successCount int64
-    var totalBytes int64
-    var wg sync.WaitGroup
+	var successCount int64
+	var totalBytes int64
+	var wg sync.WaitGroup
 
-    for filename, url := range urls {
-        wg.Add(1)
-        go func(name, u string) {
-            defer wg.Done()
+	for filename, url := range urls {
+		wg.Add(1)
+		go func(name, u string) {
+			defer wg.Done()
 
-            cfg := httpc.DefaultDownloadConfig()
-            cfg.FilePath = "/tmp/" + name
-            cfg.Overwrite = true
-            cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
-                fmt.Printf("\r%s: %.1f%% (%s/s)", name,
-                    float64(downloaded)/float64(total)*100,
-                    float64(speed)/1024/1024)
-            }
+			cfg := httpc.DefaultDownloadConfig()
+			cfg.FilePath = "/tmp/" + name
+			cfg.Overwrite = true
+			cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
+				fmt.Printf("\r%s: %.1f%% (%s/s)", name,
+					float64(downloaded)/float64(total)*100,
+					float64(speed)/1024/1024)
+			}
 
-            result, err := client.Download(context.Background(), u, cfg)
-            if err != nil {
-                log.Printf("%s 下载失败: %v", name, err)
-                return
-            }
+			result, err := client.Download(context.Background(), u, cfg)
+			if err != nil {
+				log.Printf("%s 下载失败: %v", name, err)
+				return
+			}
 
-            atomic.AddInt64(&successCount, 1)
-            atomic.AddInt64(&totalBytes, result.BytesWritten)
-            fmt.Printf("\n%s 完成: %d\n", name, result.BytesWritten)
-        }(filename, url)
-    }
+			atomic.AddInt64(&successCount, 1)
+			atomic.AddInt64(&totalBytes, result.BytesWritten)
+			fmt.Printf("\n%s 完成: %d\n", name, result.BytesWritten)
+		}(filename, url)
+	}
 
-    wg.Wait()
-    fmt.Printf("\n下载完成：%d/%d, 总计 %d\n",
-        successCount, len(urls), totalBytes)
+	wg.Wait()
+	fmt.Printf("\n下载完成：%d/%d, 总计 %d\n",
+		successCount, len(urls), totalBytes)
 }
 ```
 
@@ -623,103 +614,103 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/http"
-    "net/http/httptest"
-    "sync"
-    "sync/atomic"
-    "time"
+	"fmt"
+	"log"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"sync/atomic"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // 本地模拟服务器：每个请求耗时 20ms
-    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        time.Sleep(20 * time.Millisecond)
-        w.WriteHeader(http.StatusOK)
-    }))
-    defer server.Close()
+	// 本地模拟服务器：每个请求耗时 20ms
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(20 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
 
-    cfg := httpc.DefaultConfig()
-    cfg.Security.AllowPrivateIPs = true // 允许 127.0.0.1 本地服务器
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	cfg := httpc.DefaultConfig()
+	cfg.Security.AllowPrivateIPs = true // 允许 127.0.0.1 本地服务器
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    const (
-        numWorkers = 5
-        numJobs    = 20
-    )
+	const (
+		numWorkers = 5
+		numJobs    = 20
+	)
 
-    jobs := make(chan string, numJobs)
-    results := make(chan int, numJobs)
+	jobs := make(chan string, numJobs)
+	results := make(chan int, numJobs)
 
-    // 固定数量 worker 消费任务：并发度恒为 numWorkers
-    var wg sync.WaitGroup
-    for w := 0; w < numWorkers; w++ {
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            for url := range jobs {
-                resp, err := client.Get(url)
-                if err != nil {
-                    log.Printf("请求失败: %v", err)
-                    results <- 0
-                    continue
-                }
-                results <- resp.StatusCode()
-            }
-        }()
-    }
+	// 固定数量 worker 消费任务：并发度恒为 numWorkers
+	var wg sync.WaitGroup
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for url := range jobs {
+				resp, err := client.Get(url)
+				if err != nil {
+					log.Printf("请求失败: %v", err)
+					results <- 0
+					continue
+				}
+				results <- resp.StatusCode()
+			}
+		}()
+	}
 
-    start := time.Now()
-    for i := 0; i < numJobs; i++ {
-        jobs <- fmt.Sprintf("%s/api/item/%d", server.URL, i)
-    }
-    close(jobs)
-    wg.Wait()
-    close(results)
+	start := time.Now()
+	for i := 0; i < numJobs; i++ {
+		jobs <- fmt.Sprintf("%s/api/item/%d", server.URL, i)
+	}
+	close(jobs)
+	wg.Wait()
+	close(results)
 
-    var okCount int64
-    for status := range results {
-        if status >= 200 && status < 300 {
-            okCount++
-        }
-    }
-    fmt.Printf("worker pool：%d/%d 成功，耗时 %v（串行约需 %v）\n",
-        okCount, numJobs, time.Since(start), numJobs*20*time.Millisecond)
-    // 输出示例：worker pool：20/20 成功，耗时约 90ms（串行约需 400ms）
+	var okCount int64
+	for status := range results {
+		if status >= 200 && status < 300 {
+			okCount++
+		}
+	}
+	fmt.Printf("worker pool：%d/%d 成功，耗时 %v（串行约需 %v）\n",
+		okCount, numJobs, time.Since(start), numJobs*20*time.Millisecond)
+	// 输出示例：worker pool：20/20 成功，耗时约 90ms（串行约需 400ms）
 
-    // 信号量模式：goroutine 数可以多，但在途请求最多 maxInFlight 个
-    const maxInFlight = 3
-    sem := make(chan struct{}, maxInFlight)
-    var wg2 sync.WaitGroup
-    var okCount2 int64
-    start = time.Now()
+	// 信号量模式：goroutine 数可以多，但在途请求最多 maxInFlight 个
+	const maxInFlight = 3
+	sem := make(chan struct{}, maxInFlight)
+	var wg2 sync.WaitGroup
+	var okCount2 int64
+	start = time.Now()
 
-    for i := 0; i < numJobs; i++ {
-        wg2.Add(1)
-        go func(id int) {
-            defer wg2.Done()
-            sem <- struct{}{}
-            defer func() { <-sem }()
+	for i := 0; i < numJobs; i++ {
+		wg2.Add(1)
+		go func(id int) {
+			defer wg2.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
-            resp, err := client.Get(fmt.Sprintf("%s/api/request/%d", server.URL, id))
-            if err != nil {
-                return
-            }
-            if resp.IsSuccess() {
-                atomic.AddInt64(&okCount2, 1)
-            }
-        }(i)
-    }
-    wg2.Wait()
-    fmt.Printf("信号量：%d/%d 成功，耗时 %v\n", okCount2, numJobs, time.Since(start))
-    // 输出示例：信号量：20/20 成功，耗时约 140ms
+			resp, err := client.Get(fmt.Sprintf("%s/api/request/%d", server.URL, id))
+			if err != nil {
+				return
+			}
+			if resp.IsSuccess() {
+				atomic.AddInt64(&okCount2, 1)
+			}
+		}(i)
+	}
+	wg2.Wait()
+	fmt.Printf("信号量：%d/%d 成功，耗时 %v\n", okCount2, numJobs, time.Since(start))
+	// 输出示例：信号量：20/20 成功，耗时约 140ms
 }
 ```
 
@@ -735,57 +726,57 @@ worker 数/信号量上限不要长期显著超过 `Connection.MaxConnsPerHost`�
 package main
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 1 纳秒超时：稳定触发超时错误用于演示
-    _, err = client.Get("https://httpbin.org/get",
-        httpc.WithTimeout(1*time.Nanosecond),
-    )
-    if err == nil {
-        log.Fatal("expected timeout error")
-    }
+	// 1 纳秒超时：稳定触发超时错误用于演示
+	_, err = client.Get("https://httpbin.org/get",
+		httpc.WithTimeout(1*time.Nanosecond),
+	)
+	if err == nil {
+		log.Fatal("expected timeout error")
+	}
 
-    // errors.Is：哨兵错误判定（context 错误经 Unwrap 透传）
-    switch {
-    case errors.Is(err, context.DeadlineExceeded):
-        fmt.Println("请求超时，考虑放宽超时或检查网络")
-    case errors.Is(err, context.Canceled):
-        fmt.Println("请求被取消")
-    }
+	// errors.Is：哨兵错误判定（context 错误经 Unwrap 透传）
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		fmt.Println("请求超时，考虑放宽超时或检查网络")
+	case errors.Is(err, context.Canceled):
+		fmt.Println("请求被取消")
+	}
 
-    // errors.As：提取结构化错误
-    var clientErr *httpc.ClientError
-    if errors.As(err, &clientErr) {
-        fmt.Println("Code:", clientErr.Code())         // 输出：Code: TIMEOUT
-        fmt.Println("Method:", clientErr.Method)        // 输出：Method: GET
-        fmt.Println("Attempts:", clientErr.Attempts)    // 输出：Attempts: 1
-        fmt.Println("Retryable:", clientErr.IsRetryable()) // 输出：Retryable: false
+	// errors.As：提取结构化错误
+	var clientErr *httpc.ClientError
+	if errors.As(err, &clientErr) {
+		fmt.Println("Code:", clientErr.Code())             // 输出：Code: TIMEOUT
+		fmt.Println("Method:", clientErr.Method)           // 输出：Method: GET
+		fmt.Println("Attempts:", clientErr.Attempts)       // 输出：Attempts: 1
+		fmt.Println("Retryable:", clientErr.IsRetryable()) // 输出：Retryable: false
 
-        switch clientErr.Code() {
-        case "TIMEOUT":
-            fmt.Println("→ 分支：超时，可放宽预算后重试")
-        case "NETWORK_ERROR", "DNS_ERROR":
-            fmt.Println("→ 分支：网络/DNS 故障，检查连通性")
-        case "TLS_ERROR", "CERTIFICATE":
-            fmt.Println("→ 分支：证书问题，校验 CA 与系统时间")
-        case "RETRY_EXHAUSTED":
-            fmt.Println("→ 分支：重试耗尽，进入降级逻辑")
-        }
-    }
+		switch clientErr.Code() {
+		case "TIMEOUT":
+			fmt.Println("→ 分支：超时，可放宽预算后重试")
+		case "NETWORK_ERROR", "DNS_ERROR":
+			fmt.Println("→ 分支：网络/DNS 故障，检查连通性")
+		case "TLS_ERROR", "CERTIFICATE":
+			fmt.Println("→ 分支：证书问题，校验 CA 与系统时间")
+		case "RETRY_EXHAUSTED":
+			fmt.Println("→ 分支：重试耗尽，进入降级逻辑")
+		}
+	}
 }
 ```
 
@@ -799,42 +790,42 @@ HTTP 状态码错误（4xx/5xx 响应被归类为 `HTTP_ERROR`）同样携带 `c
 package main
 
 import (
-    "context"
-    "log"
+	"context"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 响应体已在内存：直接落盘（路径走与 Download 相同的安全校验）
-    result, err := client.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
-    if err := result.SaveToFile("response.json"); err != nil {
-        log.Fatal(err)
-    }
+	// 响应体已在内存：直接落盘（路径走与 Download 相同的安全校验）
+	result, err := client.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := result.SaveToFile("response.json"); err != nil {
+		log.Fatal(err)
+	}
 
-    // 大文件：Download 流式写盘 + SHA-256 校验（不匹配自动删文件）
-    cfg := httpc.DefaultDownloadConfig()
-    cfg.FilePath = "large-file.bin"
-    cfg.Overwrite = true
-    cfg.Checksum = "从发布清单等可信渠道获取的 SHA-256 hex"
+	// 大文件：Download 流式写盘 + SHA-256 校验（不匹配自动删文件）
+	cfg := httpc.DefaultDownloadConfig()
+	cfg.FilePath = "large-file.bin"
+	cfg.Overwrite = true
+	cfg.Checksum = "从发布清单等可信渠道获取的 SHA-256 hex"
 
-    if _, err := client.Download(
-        context.Background(), // 无需取消/超时时传 Background，勿传 nil
-        "https://example.com/large-file.bin",
-        cfg,
-    ); err != nil {
-        log.Fatal(err)
-    }
-    log.Println("落盘完成")
+	if _, err := client.Download(
+		context.Background(), // 无需取消/超时时传 Background，勿传 nil
+		"https://example.com/large-file.bin",
+		cfg,
+	); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("落盘完成")
 }
 ```
 
@@ -846,43 +837,43 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // 从默认配置出发，只改需要的字段
-    cfg := httpc.DefaultConfig()
-    cfg.Timeouts.Request = 5 * time.Second
-    cfg.Retry.MaxRetries = 0
+	// 从默认配置出发，只改需要的字段
+	cfg := httpc.DefaultConfig()
+	cfg.Timeouts.Request = 5 * time.Second
+	cfg.Retry.MaxRetries = 0
 
-    customClient, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
+	customClient, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 设为默认客户端：此后包级函数全部走新配置（旧默认客户端自动关闭）
-    if err := httpc.SetDefaultClient(customClient); err != nil {
-        log.Fatal(err)
-    }
+	// 设为默认客户端：此后包级函数全部走新配置（旧默认客户端自动关闭）
+	if err := httpc.SetDefaultClient(customClient); err != nil {
+		log.Fatal(err)
+	}
 
-    result, err := httpc.Get("https://httpbin.org/get") // 使用 5s 超时、0 重试
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.StatusCode()) // 输出：200
+	result, err := httpc.Get("https://httpbin.org/get") // 使用 5s 超时、0 重试
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.StatusCode()) // 输出：200
 
-    // 收尾：关闭默认客户端释放连接池
-    if err := httpc.CloseDefaultClient(); err != nil {
-        log.Fatal(err)
-    }
+	// 收尾：关闭默认客户端释放连接池
+	if err := httpc.CloseDefaultClient(); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
 
-适用场景：应用启动时统一定制全局行为、按环境（开发/生产）切换配置。注意 `SetDefaultClient` 只接受 `httpc.New` 创建的客户端，且不能传入已关闭的实例。
+适用场景：应用启动时统一定制全局行为、按环境（开发/生产）切换配置。注意 `SetDefaultClient` 只接受 `httpc.New` 创建的客户端，且不能传入已关闭的实例；替换会关闭旧默认客户端并中断其仍在途的请求（并发调用方可能观察到连接错误），应只在启动期或静默期调用，勿在活跃流量下替换。
 
 ## 自定义中间件：请求签名
 
@@ -890,50 +881,50 @@ func main() {
 package main
 
 import (
-    "context"
-    "crypto/hmac"
-    "crypto/sha256"
-    "encoding/hex"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func SigningMiddleware(secret string) httpc.MiddlewareFunc {
-    return func(next httpc.Handler) httpc.Handler {
-        return func(ctx context.Context, req httpc.RequestMutator) (httpc.ResponseMutator, error) {
-            timestamp := time.Now().Unix()
-            message := fmt.Sprintf("%s%s%d", req.Method(), req.URL(), timestamp)
+	return func(next httpc.Handler) httpc.Handler {
+		return func(ctx context.Context, req httpc.RequestMutator) (httpc.ResponseMutator, error) {
+			timestamp := time.Now().Unix()
+			message := fmt.Sprintf("%s%s%d", req.Method(), req.URL(), timestamp)
 
-            mac := hmac.New(sha256.New, []byte(secret))
-            mac.Write([]byte(message))
-            signature := hex.EncodeToString(mac.Sum(nil))
+			mac := hmac.New(sha256.New, []byte(secret))
+			mac.Write([]byte(message))
+			signature := hex.EncodeToString(mac.Sum(nil))
 
-            req.SetHeader("X-Timestamp", fmt.Sprintf("%d", timestamp))
-            req.SetHeader("X-Signature", signature)
+			req.SetHeader("X-Timestamp", fmt.Sprintf("%d", timestamp))
+			req.SetHeader("X-Signature", signature)
 
-            return next(ctx, req)
-        }
-    }
+			return next(ctx, req)
+		}
+	}
 }
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-        httpc.RecoveryMiddleware(),
-        SigningMiddleware("my-secret-key"),
-    }
+	cfg := httpc.DefaultConfig()
+	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
+		httpc.RecoveryMiddleware(),
+		SigningMiddleware("my-secret-key"),
+	}
 
-    client, _ := httpc.New(cfg)
-    defer client.Close()
+	client, _ := httpc.New(cfg)
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/protected")
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Println(result.StatusCode())
+	result, err := client.Get("https://api.example.com/protected")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(result.StatusCode())
 }
 ```
 

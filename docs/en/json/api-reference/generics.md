@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Generics"
-title: "Generic Operations - CyberGo JSON | API Reference"
-description: "CyberGo JSON generic APIs: GetTyped[T] typed gets, Result[T], AccessResult dynamic access, Go 1.18+ compile-time type safety, defaults, array unwrapping."
-sidebar_position: 10
+title: "Generic Operations - CyberGo JSON | GetTyped[T] & Result[T]"
+description: "CyberGo JSON is a Go library for generic operations: GetTyped[T], AccessResult, StreamLinesInto[T] JSONL streaming and Result[T] compile-time type safety."
+sidebar_position: 110
 ---
 
 # Generic Operations

@@ -16,6 +16,7 @@ sidebar_position: 3
 | `DefaultWorkerPoolSize` | `int` | `4` | Worker pool size |
 | `DefaultCacheTTL` | `time.Duration` | `1h` | Cache expiration time |
 | `DefaultCacheCleanup` | `time.Duration` | `5m` | Cache cleanup interval |
+| `DefaultMaxAuditEntries` | `int` | `10000` | Default in-memory audit entry limit (used when `AuditConfig.MaxEntries` is 0) |
 | `DefaultMaxDepth` | `int` | `500` | Maximum DOM depth |
 | `DefaultProcessingTimeout` | `time.Duration` | `30s` | Processing timeout |
 
@@ -76,8 +77,22 @@ type InputError struct {
 }
 
 func (e *InputError) Error() string
-func (e *InputError) Unwrap() error // → InputErr (if non-nil) or ErrInputTooLarge
+func (e *InputError) Unwrap() []error // [InputErr, ErrInputTooLarge] if InputErr is non-nil, otherwise [ErrInputTooLarge]
 ```
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `InputError.Op` | `string` | Name of the failed operation (e.g. `"Extract"`, `"ExtractFromFile"`) |
+| `InputError.Size` | `int` | Actual input size |
+| `InputError.MaxSize` | `int` | Configured size limit |
+| `InputError.InputErr` | `error` | Underlying error (may be `nil`) |
+
+| Method | Description |
+|--------|-------------|
+| `InputError.Error` | Formats the error message (including actual/limit sizes) |
+| `InputError.Unwrap` | `[InputErr, ErrInputTooLarge]` when `InputErr` is non-nil, otherwise `[ErrInputTooLarge]` |
+
+`Unwrap` returns a **slice of errors** rather than a single error: whether or not an underlying error is carried, `ErrInputTooLarge` is always in the list — `errors.Is(err, ErrInputTooLarge)` holds for any `*InputError`.
 
 ### ConfigError
 
@@ -94,6 +109,17 @@ func (e *ConfigError) Error() string
 func (e *ConfigError) Unwrap() error // → ErrInvalidConfig
 ```
 
+| Member | Type | Description |
+|--------|------|-------------|
+| `ConfigError.Field` | `string` | Name of the invalid config field (e.g. `"MaxInputSize"`) |
+| `ConfigError.Value` | `any` | The rejected field value |
+| `ConfigError.Message` | `string` | Error description (e.g. `"must be positive"`) |
+
+| Method | Description |
+|--------|-------------|
+| `ConfigError.Error` | Formats as `html: invalid config: field=value, description` |
+| `ConfigError.Unwrap` | Returns `ErrInvalidConfig` |
+
 ### FileError
 
 File operation error with automatic path truncation to prevent leakage.
@@ -108,8 +134,21 @@ type FileError struct {
 func (e *FileError) Error() string        // Safe output (truncated path)
 func (e *FileError) SafePath() string     // Returns filename only
 func (e *FileError) Unwrap() error        // → ErrFileNotFound | original error | ErrInvalidFilePath
-func (e *FileError) MarshalJSON() ([]byte, error) // also truncates the path during JSON marshalling (prevents leakage via API responses)
+func (e *FileError) MarshalJSON() ([]byte, error) // designed for HTTP API responses: truncates Path via SafePath() when serialized to clients, preventing filesystem path leakage
 ```
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `FileError.Op` | `string` | Name of the failed operation (e.g. `"ExtractFromFile"`, `"ReadFile"`) |
+| `FileError.Path` | `string` | Full file path (internal debugging only; do not output directly) |
+| `FileError.FileErr` | `error` | Underlying filesystem error |
+
+| Method | Description |
+|--------|-------------|
+| `FileError.Error` | Safe output (path truncated to the filename; the underlying error message is sanitized as well) |
+| `FileError.SafePath` | Returns the filename only (returned as-is when there is no separator) |
+| `FileError.Unwrap` | → `ErrFileNotFound` \| the original error \| `ErrInvalidFilePath` |
+| `FileError.MarshalJSON` | Serializes as `{op, path, message}` with `path` truncated via `SafePath()`, preventing filesystem path leakage |
 
 :::tip Safe Paths
 Both `FileError.Error()` and `SafePath()` return truncated paths (filename only) to prevent path leakage. Access the `Path` field directly for internal debugging when the full path is needed.
@@ -127,6 +166,7 @@ The following constants define the library's runtime hard limits. They are **une
 | `maxConfigWorkerSize` | `256` | Upper bound for `WorkerPoolSize` |
 | `maxConfigDepth` | `500` | Upper bound for `MaxDepth` |
 | `maxConfigCacheEntries` | `100000` | Upper bound for `MaxCacheEntries` (~100MB, estimated at 1KB per entry) |
+| `maxConfigAuditEntries` | `100000` | Upper bound for `Audit.MaxEntries` (maximum entries retained in memory by `GetAuditLog`) |
 
 ### Processing Limits
 
@@ -142,7 +182,7 @@ The following constants define the library's runtime hard limits. They are **une
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `maxCacheKeySize` | `65536` (64KB) | Content size threshold for full hashing; above this, switches to 5-point sampling |
-| `cacheKeySample` | `4096` | Total byte budget for large-document sampling (5 points x ~820 bytes/point) |
+| `cacheKeySample` | `4096` | Total byte budget for large-document sampling (5 points x ~819 bytes/point) |
 
 :::tip
 These constants explain some "whys": why HTML over 1MB stops extracting bare video links (ReDoS protection), why batches over 10000 items fail entirely (OOM protection), and why 64KB is the cache-key strategy boundary (hash cost vs collision risk).

@@ -2,7 +2,7 @@
 sidebar_label: "路径表达式语法"
 title: "路径表达式语法 - CyberGo JSON | JSONPath 查询指南"
 description: "CyberGo JSON 路径表达式语法完整指南：属性访问、数组索引与负索引、切片步长、通配符收集、多字段与扁平化提取、追加与 JSON Pointer（RFC 6901），每个语法配输入输出对照，并汇总负索引越界、提取静默未命中等语法陷阱。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 路径表达式语法
@@ -405,7 +405,7 @@ b, _ := json.GetArray(symbols, "*.symbol")   // [AAPL GOOG]，与上等价
 ```
 
 ::: tip 与 Foreach 的分工
-`[*].field` 适合「只要一个字段」的收集；需要逐元素访问多个字段时，用 [`ForeachWithPath`](./processor-guide) 更直接。
+`[*].field` 适合「只要一个字段」的收集；需要逐元素访问多个字段时，用 [`ForeachWithPath`](../api-reference/functions/iterate) 更直接。
 :::
 
 ---
@@ -453,7 +453,7 @@ if err != nil {
 root, err = json.Get(data, ".") // 同上
 ```
 
-### JSON Pointer（RFC 6901）
+### JSON Pointer (RFC 6901)
 
 以 `/` 开头的路径按 JSON Pointer 语法解析（斜杠分隔），与点号语法是两套独立表示，不能混用：
 
@@ -520,7 +520,7 @@ bs := json.GetString(data, "config\\\\local")  // "backslash"
 
 ---
 
-## 语法陷阱
+## 有哪些语法陷阱？
 
 以下行为均来自库的实际实现，提前了解可以省去不少调试时间。
 

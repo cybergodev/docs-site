@@ -55,7 +55,7 @@ The HTML library provides the following core components:
 ### Module Information
 
 - **Module path**: `github.com/cybergodev/html`
-- **Go version**: 1.25+
+- **Go version**: 1.26+
 - **Dependencies**: `golang.org/x/net`, `golang.org/x/text`
 
 ## Core Type Quick Reference

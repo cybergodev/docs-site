@@ -1,7 +1,7 @@
 ---
 sidebar_label: "核心概念"
 title: "核心概念 - CyberGo DD | 架构与设计理念"
-description: "深入理解 CyberGo DD 日志库的核心架构与设计理念，包括 Logger 与 LoggerEntry 的关系与生命周期、结构化字段 Field 的类型安全使用模式、日志处理管道的完整处理流程、四层递进式接口设计以及线程安全并发模型，帮助开发者建立对 DD 库的系统性认知。"
+description: "CyberGo DD 核心架构与设计理念详解：Logger 与 LoggerEntry 的关系与生命周期、结构化字段 Field 的类型安全用法、日志处理管道流程、接口层次设计与线程安全并发模型。"
 sidebar_position: 1
 ---
 
@@ -159,7 +159,7 @@ requestLog.InfoWith("处理完成",
 ```
 
 :::info 性能设计
-级别检查（步骤 ①）使用原子操作，无需加锁，几乎零开销。安全过滤（步骤 ②）带超时保护，防止长时间阻塞主流程（大输入通过 goroutine + 超时保证最坏约 50ms 内返回）。Fatal 处理（步骤 ⑨）会异步触发 Logger 的 Close（含 flush 与 OnClose 钩子），最长等待 5s；用户 main 中的 defer 仍不执行，但 Logger 自身的 Close 会被调用。
+级别检查（步骤 ①）使用原子操作，无需加锁，几乎零开销。安全过滤（步骤 ②）带超时保护：正则在独立 goroutine 中执行，但**调用方会阻塞等待结果**（最坏等待时长随输入大小扩展：32KB 以内固定 50ms，超过后每 32KB 增加 200ms；超时返回 `[REDACTED]`）。Fatal 处理（步骤 ⑨）会异步触发 Logger 的 Close（含 flush 与 OnClose 钩子），最长等待 5s；用户 main 中的 defer 仍不执行，但 Logger 自身的 Close 会被调用。
 :::
 
 ## 接口层次
@@ -223,13 +223,13 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 DD 支持三种输出目标，可任意组合：
 
 ```go
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),                    // 控制台
-        dd.FileOutput("logs/app.log"),         // 文件（自动轮换）
-        dd.CustomOutput(customWriter),         // 自定义 io.Writer
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),                    // 控制台
+    dd.FileOutput("logs/app.log"),         // 文件（自动轮换）
+    dd.CustomOutput(customWriter),         // 自定义 io.Writer
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }

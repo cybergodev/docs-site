@@ -3,7 +3,6 @@ sidebar_label: "安全概述"
 title: "安全概述 - CyberGo env | 安全架构"
 description: "CyberGo env 安全架构概览，详解 SecureValue 内存锁定与自动清零、键值验证过滤控制字符与空字节、DefaultForbiddenKeys 禁止 PATH 与 LD_PRELOAD、IsSensitiveKey 自动检测、安全预设与审计追踪。"
 sidebar_position: 1
-sidebar_icon: "🛡️"
 ---
 
 # 安全概述
@@ -32,11 +31,11 @@ sidebar_icon: "🛡️"
 
 | 特性 | 说明 | 文档 |
 |------|------|------|
-| **SecureValue** | 敏感值内存保护、自动清零 | [SecureValue API](/zh/env/api-reference/secure-value) |
-| **禁止键** | 防止修改系统关键变量 | [常量与错误](/zh/env/api-reference/constants#defaultforbiddenkeys) |
-| **敏感键检测** | 自动识别敏感配置键，日志脱敏工具 | [敏感数据脱敏](/zh/env/security/data-masking) |
-| **值验证** | 检测控制字符、空字节等 | [Config API](/zh/env/api-reference/config) |
-| **审计日志** | 完整操作追踪 | [组件工厂](/zh/env/api-reference/factory#审计处理器工厂) |
+| **SecureValue** | 敏感值内存保护、自动清零 | [SecureValue API](../api-reference/secure-value) |
+| **禁止键** | 防止修改系统关键变量 | [常量与错误](../api-reference/constants#defaultforbiddenkeys) |
+| **敏感键检测** | 自动识别敏感配置键，日志脱敏工具 | [敏感数据脱敏](./data-masking) |
+| **值验证** | 检测控制字符、空字节等 | [Config API](../api-reference/config) |
+| **审计日志** | 完整操作追踪 | [组件工厂](../api-reference/factory#审计处理器工厂) |
 
 ## SecureValue 简介
 
@@ -53,13 +52,13 @@ password := secret.Reveal()  // 仅在需要明文时调用
 ```
 
 **核心功能：**
-- **内存锁定** - 防止交换到磁盘（Linux/macOS/Windows/FreeBSD）
+- **内存锁定** - 防止交换到磁盘（仅 Linux/macOS/Windows，其余平台 `IsMemoryLockSupported()` 返回 false、优雅降级）
 - **自动清零** - `Close()` 时安全擦除内存
 - **掩码显示** - `Masked()` 用于日志输出
 - **线程安全** - 支持并发读取
 
 ::: tip 完整 API
-详见 [SecureValue API](/zh/env/api-reference/secure-value)。
+详见 [SecureValue API](../api-reference/secure-value)。
 :::
 
 ## 日志安全
@@ -73,14 +72,14 @@ SecureValue 保护的是**内存中**的敏感值，而日志、错误信息和�
 ```go
 // 日志中安全输出配置，避免泄露明文
 log.Printf("加载配置: %s", env.MaskValue("DB_PASSWORD", password))
-// 输出: 加载配置: [MASKED:12 chars]
+// 输出：加载配置：[MASKED:12 chars]
 
 log.Printf("连接参数: %s", env.SanitizeForLog("user=admin password=s3cret"))
-// 输出: 连接参数: user=admin [MASKED]
+// 输出：连接参数：user=admin password=[MASKED]
 ```
 
 ::: tip 完整指南
-脱敏工具的完整用法详见 [敏感数据脱敏](/zh/env/security/data-masking)。
+脱敏工具的完整用法详见 [敏感数据脱敏](./data-masking)。
 :::
 
 ## 键/值验证
@@ -103,9 +102,10 @@ log.Printf("连接参数: %s", env.SanitizeForLog("user=admin password=s3cret"))
 | 动态链接 | `LD_PRELOAD`, `DYLD_INSERT_LIBRARIES` | 恶意库注入 |
 | Shell | `SHELL`, `IFS`, `BASH_ENV` | Shell 劫持 |
 | 语言运行时 | `PYTHONPATH`, `NODE_PATH` | 模块劫持 |
+| Windows 系统 | `COMSPEC`, `PATHEXT`, `SYSTEMROOT`, `WINDIR` | 命令解释器/系统路径劫持 |
 
 ::: tip 完整列表
-查看 [DefaultForbiddenKeys](/zh/env/api-reference/constants#defaultforbiddenkeys) 获取完整禁止键列表。
+查看 [DefaultForbiddenKeys](../api-reference/constants#defaultforbiddenkeys) 获取完整禁止键列表。
 :::
 
 ### 值验证
@@ -156,11 +156,11 @@ cfg.AllowedKeys = []string{"APP_NAME", "PORT", "DB_HOST", "API_KEY"}
 
 ## 展开作用域隔离
 
-变量展开默认按「先文件、后进程环境」解析。对不可信配置来源，`ExpansionScope: ExpansionFileOnly` 可将引用范围限制在文件内部，阻断配置文件对进程机密（云凭证、令牌等）的探测与捕获（SEC-03）。配置方式与攻击场景详见[变量展开 · 展开作用域](/zh/env/guides/variable-expansion)。
+变量展开默认按「先文件、后进程环境」解析。对不可信配置来源，`ExpansionScope: ExpansionFileOnly` 可将引用范围限制在文件内部，阻断配置文件对进程机密（云凭证、令牌等）的探测与捕获（SEC-03）。配置方式与攻击场景详见[变量展开 · 展开作用域](../guides/variable-expansion)。
 
 ## 相关文档
 
-- [SecureValue API](/zh/env/api-reference/secure-value) - 安全值处理完整 API
-- [内存锁定](/zh/env/security/memory-locking) - mlock 内存保护完整指南
-- [常量与错误](/zh/env/api-reference/constants) - 禁止键完整列表、敏感键模式
-- [生产检查清单](/zh/env/security/production-checklist) - 上线前安全检查
+- [SecureValue API](../api-reference/secure-value) - 安全值处理完整 API
+- [内存锁定](./memory-locking) - mlock 内存保护完整指南
+- [常量与错误](../api-reference/constants) - 禁止键完整列表、敏感键模式
+- [生产检查清单](./production-checklist) - 上线前安全检查

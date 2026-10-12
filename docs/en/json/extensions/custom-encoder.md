@@ -1,11 +1,11 @@
 ---
 sidebar_label: "Custom Encoder"
-title: "Custom Encoder - CyberGo JSON | Custom Encoding"
-description: "CyberGo JSON custom encoders: CustomEncoder and TypeEncoder, json.Marshaler and TextMarshaler, CustomEscapes escape maps, registering JSON serialization."
-sidebar_position: 2
+title: "Custom Encoder - CyberGo JSON | Custom Type Encoding"
+description: "CyberGo JSON custom encoders: json.Marshaler and TextMarshaler, Config.CustomEscapes escaping, time.Time built-in format, portable across encoding/json."
+sidebar_position: 30
 ---
 
-# Custom Encoding
+# Custom Encoder
 
 The json library stays encoding-compatible with the standard `encoding/json`, so a custom type's JSON shape is primarily customized by implementing the standard-library interfaces. This page covers the extension points that **actually take effect in the current version**:
 
@@ -181,7 +181,7 @@ func main() {
 		'©': "(c)",
 	}
 
-	out, err := json.EncodeWithConfig(map[string]string{"note": "Copyright © 2026"}, cfg)
+	out, err := json.Encode(map[string]string{"note": "Copyright © 2026"}, cfg)
 	if err != nil {
 		panic(err)
 	}

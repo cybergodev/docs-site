@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo HTTPC | Types & Sentinel Matching"
-description: "HTTPC error handling guide: the twelve ErrorType classifications, ClientError fields and IsRetryable checks, errors.Is/As sentinel-error matching, retry-exhaustion handling, context timeout and cancellation, unified error handling via middleware, and timeout-layering best practices."
-sidebar_position: 7
+description: "Handle HTTPC errors: ErrorType classes, ClientError fields and IsRetryable checks, errors.Is/As sentinel matching, retry exhaustion, and context timeouts."
+sidebar_position: 60
 ---
 
 # Error Handling
@@ -32,6 +32,40 @@ HTTPC defines 12 error types covering every failure scenario from the network la
 `IsRetryable()` is more fine-grained than the table suggests: `ErrorTypeDNS` is only retryable when `net.DNSError` is flagged temporary or timeout; `ErrorTypeNetwork` checks `syscall.Errno` (`ECONNREFUSED`/`ECONNRESET`/`EPIPE`/`ETIMEDOUT`/`ENETUNREACH`/`EHOSTUNREACH`) and error-message patterns; `ErrorTypeResponseRead` retries only on network errors from read operations (`read`/`readfrom`). See "Retryability Check" below.
 :::
 
+## Error Classification Decision Tree
+
+Every non-nil error entering the engine goes through the same classification flow, matched top-to-bottom by priority — first hit wins:
+
+```text
+Error err
+├─ errors.Is(err, context.Canceled)          → ContextCanceled "request was canceled"
+├─ errors.Is(err, context.DeadlineExceeded)  → Timeout "request timed out"
+├─ Pool exhausted (internal sentinel ErrPoolExhausted)  → Network "connection pool exhausted"
+├─ *url.Error (unwrapped first; classify by the inner error)
+│   ├─ Message contains "http2" + "invalid" → Validation "invalid HTTP/2 request header"
+│   ├─ Message contains "parse" / "invalid url" / "missing protocol" → Validation "URL validation failed"
+│   └─ Otherwise run the inner error through the branches below
+├─ *net.DNSError                             → DNS "DNS resolution timed out / failed"
+├─ *net.OpError                              → Network "network operation timed out / failed"
+├─ net.Error                                 → Timeout (timeout) / Network (other)
+└─ Error-message pattern matching (case-insensitive, selected)
+    ├─ "stopped after … redirect"            → Validation "redirect limit exceeded"
+    ├─ "circular redirect"                   → Validation "circular redirect detected"
+    ├─ "redirect blocked"                    → Validation "redirect blocked by policy"
+    ├─ "connection refused / reset / closed", "broken pipe" → Network
+    ├─ "no such host"                        → DNS
+    ├─ "tls" / "ssl" + "handshake"           → TLS
+    ├─ "certificate", "x509"                 → Certificate
+    ├─ "transport", "protocol error"         → Transport
+    ├─ "failed to read response body", "unexpected eof"   → ResponseRead
+    ├─ "http 4xx" / "http 5xx"               → HTTP (status code extracted as well)
+    └─ "timeout" / "timed out" (without "context")        → Timeout
+```
+
+:::tip Already-classified errors are not wrapped again
+If the error chain already contains a `ClientError` (e.g. an engine error returned by middleware), the classifier reuses its fields as-is and only fills in the URL/method/attempt count — no layer-upon-layer wrapping. A single `errors.As` hit on the outermost error yields the full context.
+:::
+
 ## ClientError Fields In Detail
 
 The `ClientError` struct carries the full context of a request failure:
@@ -47,54 +81,70 @@ The `ClientError` struct carries the full context of a request failure:
 | `StatusCode` | `int` | HTTP status code (only set for `ErrorTypeHTTP`) |
 | `Host` | `string` | Target hostname (for circuit breakers, etc.) |
 
+### Error() Output Format
+
+`ClientError.Error()` emits a fixed format (URL already sanitized):
+
+```text
+METHOD url: message: cause (attempt N)
+```
+
+Concrete example:
+
+```text
+GET https://api.example.com/data: network error occurred: dial tcp 1.2.3.4:443: connect: connection refused (attempt 4)
+```
+
+`Unwrap()` returns `Cause`, so every unwrap-through-the-wrapper idiom works — `errors.Is(err, context.DeadlineExceeded)`, `errors.As(err, &opErr)` (to extract `*net.OpError`), and so on. Logging `err` directly already carries the method, the sanitized URL, the cause chain, and the attempt count, so there is no need to assemble context by hand.
+
 ### Error Type Checking
 
 ```go
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            switch clientErr.Type {
-            case httpc.ErrorTypeTimeout:
-                log.Printf("request timed out (tried %d times): %v", clientErr.Attempts, err)
-            case httpc.ErrorTypeNetwork:
-                log.Printf("network error: %v", err)
-            case httpc.ErrorTypeDNS:
-                log.Printf("DNS resolution failed: %v", err)
-            case httpc.ErrorTypeTLS:
-                log.Printf("TLS handshake failed: %v", err)
-            case httpc.ErrorTypeCertificate:
-                log.Printf("certificate verification failed: %v", err)
-            case httpc.ErrorTypeRetryExhausted:
-                log.Printf("still failing after %d retries: %v", clientErr.Attempts, err)
-            case httpc.ErrorTypeValidation:
-                log.Printf("request validation failed: %v", err)
-            case httpc.ErrorTypeContextCanceled:
-                log.Printf("request canceled: %v", err)
-            default:
-                log.Printf("other error [%s]: %v", clientErr.Code(), err)
-            }
-        }
-        return
-    }
-    fmt.Printf("success: %d\n", result.StatusCode())
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			switch clientErr.Type {
+			case httpc.ErrorTypeTimeout:
+				log.Printf("request timed out (tried %d times): %v", clientErr.Attempts, err)
+			case httpc.ErrorTypeNetwork:
+				log.Printf("network error: %v", err)
+			case httpc.ErrorTypeDNS:
+				log.Printf("DNS resolution failed: %v", err)
+			case httpc.ErrorTypeTLS:
+				log.Printf("TLS handshake failed: %v", err)
+			case httpc.ErrorTypeCertificate:
+				log.Printf("certificate verification failed: %v", err)
+			case httpc.ErrorTypeRetryExhausted:
+				log.Printf("still failing after %d retries: %v", clientErr.Attempts, err)
+			case httpc.ErrorTypeValidation:
+				log.Printf("request validation failed: %v", err)
+			case httpc.ErrorTypeContextCanceled:
+				log.Printf("request canceled: %v", err)
+			default:
+				log.Printf("other error [%s]: %v", clientErr.Code(), err)
+			}
+		}
+		return
+	}
+	fmt.Printf("success: %d\n", result.StatusCode())
 }
 ```
 
@@ -106,37 +156,69 @@ func main() {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    _, err = client.Get("https://api.example.com/data")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            if clientErr.IsRetryable() {
-                fmt.Println("retryable error; upper layer may retry later")
-            } else {
-                fmt.Printf("non-retryable error [%s]; manual intervention needed\n", clientErr.Code())
-            }
-        }
-    }
+	_, err = client.Get("https://api.example.com/data")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			if clientErr.IsRetryable() {
+				fmt.Println("retryable error; upper layer may retry later")
+			} else {
+				fmt.Printf("non-retryable error [%s]; manual intervention needed\n", clientErr.Code())
+			}
+		}
+	}
 }
 ```
 
 :::warning IsRetryable vs automatic retry
 `IsRetryable()` answers "is this error worth retrying?" and is also used by HTTPC's internal retry engine. If you have configured automatic retries via `Retry.MaxRetries`, then by the time the error reaches your handler, a network/timeout error means retries are already exhausted. `IsRetryable()` is mainly for upper-layer decisions (e.g. circuit breakers, task queues).
 :::
+
+## Implementation Details of Retryability
+
+Below the type classification, `IsRetryable()` applies a second, cause-level layer of checks — this is where the retryability differences between types come from:
+
+### Network Errors: syscall and Message Patterns
+
+`ErrorTypeNetwork` inspects the error cause layer by layer; a hit at any layer marks the error retryable:
+
+| Check layer | Retryable condition |
+|-------------|----------------------|
+| `net.OpError.Timeout()` | Timeout → retry |
+| `syscall.Errno` (POSIX) | `ECONNREFUSED` / `ECONNRESET` / `EPIPE` / `ETIMEDOUT` / `ENETUNREACH` / `EHOSTUNREACH` |
+| Windows WSA error codes | 10054 (connection reset) / 10060 (connection timed out) / 10061 (connection refused) / 10051 (network unreachable) / 10065 (host unreachable) |
+| Error-message patterns | `connection reset` / `eof` / `connection closed` / `broken pipe` / `network error` / `transport failed` |
+| Other `net.Error` | Retry by default (server-initiated disconnects, EOF, and other transient faults) |
+
+:::tip Why Windows needs a dedicated WSA mapping table
+Since Go 1.25, POSIX-style `syscall.E*` constants on Windows carry a `1<<29` offset (e.g. `ECONNREFUSED = 536870934`), while the network stack actually returns raw WSA codes (e.g. `WSAECONNREFUSED = 10061`) — the two encodings never compare equal. HTTPC ships a built-in WSA code mapping table so that retryability decisions on Windows behave the same as on Unix — no need to worry about cross-platform retry divergence when deploying.
+:::
+
+### DNS: Retryable Only When Temporary/Timeout
+
+`ErrorTypeDNS` is retryable only when `net.DNSError` is flagged `IsTemporary` or `IsTimeout`. Permanent failures such as a nonexistent domain (NXDOMAIN) never waste retry attempts.
+
+### Response Body Reads: Retry Read Operations Only
+
+`ErrorTypeResponseRead` retries only network errors from **read-type** operations: `net.OpError` with the operation name `read` / `readfrom`, or an error message containing eof / connection / timeout. File errors and write errors are excluded.
+
+### HTTP Status Codes
+
+`ErrorTypeHTTP` consults the retryable-status table directly: 408/429/500/502/503/504 (plus extension codes injected by `ProxyRotateOnStatus`). When `StatusCode` is missing (= 0), it falls back to the `HTTP 4xx` / `HTTP 5xx` prefixes in the error message.
 
 ## Sentinel Errors Complete Reference
 
@@ -165,36 +247,36 @@ The `ErrInvalid*` family (`ErrInvalidHeader`/`ErrInvalidTimeout`/`ErrInvalidRetr
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
+	result, err := client.Get("https://api.example.com/data")
 
-    switch {
-    case errors.Is(err, httpc.ErrClientClosed):
-        fmt.Println("client is closed; recreate it")
-    case errors.Is(err, httpc.ErrResponseBodyTooLarge):
-        fmt.Println("response body too large; consider raising MaxResponseBodySize")
-    case errors.Is(err, httpc.ErrResponseBodyEmpty):
-        fmt.Println("response body empty; check RawBody before calling parsing methods")
-    case errors.Is(err, httpc.ErrInvalidHeader):
-        fmt.Println("invalid header; fix and retry")
-    }
+	switch {
+	case errors.Is(err, httpc.ErrClientClosed):
+		fmt.Println("client is closed; recreate it")
+	case errors.Is(err, httpc.ErrResponseBodyTooLarge):
+		fmt.Println("response body too large; consider raising MaxResponseBodySize")
+	case errors.Is(err, httpc.ErrResponseBodyEmpty):
+		fmt.Println("response body empty; check RawBody before calling parsing methods")
+	case errors.Is(err, httpc.ErrInvalidHeader):
+		fmt.Println("invalid header; fix and retry")
+	}
 
-    if result != nil {
-        fmt.Printf("status code: %d\n", result.StatusCode())
-    }
+	if result != nil {
+		fmt.Printf("status code: %d\n", result.StatusCode())
+	}
 }
 ```
 
@@ -206,29 +288,29 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // URL carries credentials
-    result, err := client.Get("https://admin:s3cret@api.example.com/data")
-    if err != nil {
-        // Credentials are auto-sanitized in the error message:
-        // "GET https://***:***@api.example.com/data: network error occurred"
-        fmt.Println(err)
-    }
-    if result != nil {
-        fmt.Println(result.StatusCode())
-    }
+	// URL carries credentials
+	result, err := client.Get("https://admin:s3cret@api.example.com/data")
+	if err != nil {
+		// Credentials are auto-sanitized in the error message:
+		// "GET https://***:***@api.example.com/data: network error occurred"
+		fmt.Println(err)
+	}
+	if result != nil {
+		fmt.Println(result.StatusCode())
+	}
 }
 ```
 
@@ -302,39 +384,39 @@ HTTPC's retry engine automatically handles retryable errors internally. Knowing 
 package main
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-    result, err := client.Request(ctx, "GET", "https://api.example.com/slow")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            if clientErr.Type == httpc.ErrorTypeContextCanceled {
-                // Context timed out or was manually canceled — not auto-retried
-                fmt.Println("request canceled (timeout or manual cancel); will not retry")
-            } else if clientErr.Type == httpc.ErrorTypeTimeout {
-                fmt.Println("request timed out; auto-retries still failed")
-            }
-        }
-        return
-    }
-    fmt.Println(result.StatusCode())
+	result, err := client.Request(ctx, "GET", "https://api.example.com/slow")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			if clientErr.Type == httpc.ErrorTypeContextCanceled {
+				// Context timed out or was manually canceled — not auto-retried
+				fmt.Println("request canceled (timeout or manual cancel); will not retry")
+			} else if clientErr.Type == httpc.ErrorTypeTimeout {
+				fmt.Println("request timed out; auto-retries still failed")
+			}
+		}
+		return
+	}
+	fmt.Println(result.StatusCode())
 }
 ```
 
@@ -346,36 +428,36 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        // Network-layer error — connection, TLS, DNS, etc.
-        log.Printf("network-layer error: %v", err)
-        return
-    }
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		// Network-layer error — connection, TLS, DNS, etc.
+		log.Printf("network-layer error: %v", err)
+		return
+	}
 
-    // HTTP-layer error — response received but status code is not 2xx
-    if result.IsClientError() {
-        // 4xx: the client request was wrong (bad params, insufficient permissions, etc.)
-        log.Printf("client error: %d", result.StatusCode())
-    } else if result.IsServerError() {
-        // 5xx: server failure (retries exhausted, upstream still unavailable)
-        log.Printf("server error: %d", result.StatusCode())
-    } else {
-        fmt.Printf("success: %d\n", result.StatusCode())
-    }
+	// HTTP-layer error — response received but status code is not 2xx
+	if result.IsClientError() {
+		// 4xx: the client request was wrong (bad params, insufficient permissions, etc.)
+		log.Printf("client error: %d", result.StatusCode())
+	} else if result.IsServerError() {
+		// 5xx: server failure (retries exhausted, upstream still unavailable)
+		log.Printf("server error: %d", result.StatusCode())
+	} else {
+		fmt.Printf("success: %d\n", result.StatusCode())
+	}
 }
 ```
 
@@ -479,43 +561,43 @@ func fetchWithFallback(client httpc.Client, url string, fallback []byte) []byte 
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-        httpc.RecoveryMiddleware(),
-        httpc.LoggingMiddleware(&httpc.LoggingConfig{
-            LogFunc: func(format string, args ...any) {
-                log.Printf("[HTTP] "+format, args...)
-            },
-        }),
-        httpc.MetricsMiddleware(&httpc.MetricsConfig{
-            OnMetrics: func(method, url string, statusCode int, duration time.Duration, err error) {
-                if err != nil {
-                    log.Printf("[METRICS] %s %s failed: %v (took %v)", method, url, err, duration)
-                } else {
-                    log.Printf("[METRICS] %s %s -> %d (took %v)", method, url, statusCode, duration)
-                }
-            },
-        }),
-    }
+	cfg := httpc.DefaultConfig()
+	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
+		httpc.RecoveryMiddleware(),
+		httpc.LoggingMiddleware(&httpc.LoggingConfig{
+			LogFunc: func(format string, args ...any) {
+				log.Printf("[HTTP] "+format, args...)
+			},
+		}),
+		httpc.MetricsMiddleware(&httpc.MetricsConfig{
+			OnMetrics: func(method, url string, statusCode int, duration time.Duration, err error) {
+				if err != nil {
+					log.Printf("[METRICS] %s %s failed: %v (took %v)", method, url, err, duration)
+				} else {
+					log.Printf("[METRICS] %s %s -> %d (took %v)", method, url, statusCode, duration)
+				}
+			},
+		}),
+	}
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("status code: %d", result.StatusCode())
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("status code: %d", result.StatusCode())
 }
 ```
 
@@ -529,12 +611,14 @@ HTTPC provides multiple levels of timeout control, from coarse to fine:
 cfg := httpc.DefaultConfig()
 cfg.Timeouts.Request = 30 * time.Second
 
-// Layer 2: middleware-enforced timeout (overrides the default)
+// Layer 2: middleware-enforced timeout (applies before the client's built-in timeout)
 timeoutMW := httpc.TimeoutMiddleware(&httpc.TimeoutMiddlewareConfig{
     Duration: 30 * time.Second,
 })
 
-// Layer 3: per-request override (WithTimeout overrides middleware and default)
+// Layer 3: per-request override (WithTimeout overrides only the client default;
+// the middleware timeout derives from the request's own Context(), and a
+// shorter middleware timeout cannot be extended by WithTimeout)
 result, err := client.Get(url, httpc.WithTimeout(10*time.Second))
 
 // Layer 4: context timeout (most precise; recommended for critical paths)

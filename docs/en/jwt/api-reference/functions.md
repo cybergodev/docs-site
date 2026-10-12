@@ -15,8 +15,6 @@ func New(cfg Config) (*Processor, error)
 
 Creates a new JWT Processor. Use `DefaultConfig()` to get default configuration, modify required fields, and pass it in.
 
-
-
 ### Parameters
 
 | Parameter | Type | Description |
@@ -36,22 +34,22 @@ Creates a new JWT Processor. Use `DefaultConfig()` to get default configuration,
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    fmt.Println("Processor created successfully")
+	fmt.Println("Processor created successfully")
 }
 ```
 
@@ -72,8 +70,6 @@ func DefaultConfig() Config
 ```
 
 Returns a configuration with sensible defaults.
-
-
 
 ### Returns
 
@@ -109,9 +105,7 @@ cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
 func DefaultBlacklistConfig() BlacklistConfig
 ```
 
-Returns a blacklist configuration with sensible defaults.
-
-
+Returns a blacklist configuration with sensible defaults. `DefaultBlacklistConfig` is the recommended starting point for customizing blacklist behavior: take the defaults, override the fields you need, and assign the result to [`Config.Blacklist`](./config#blacklistconfig).
 
 ### Returns
 
@@ -127,6 +121,28 @@ Returns a blacklist configuration with sensible defaults.
 | `MaxSize` | `100000` |
 | `EnableAutoCleanup` | `true` |
 
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/cybergodev/jwt"
+)
+
+func main() {
+	blacklist := jwt.DefaultBlacklistConfig()
+	blacklist.CleanupInterval = time.Minute // Override the field you need; keep the rest
+
+	fmt.Println(blacklist.CleanupInterval)   // Output: 1m0s
+	fmt.Println(blacklist.MaxSize)           // Output: 100000
+	fmt.Println(blacklist.EnableAutoCleanup) // Output: true
+}
+```
+
 ---
 
 ## NewNumericDate
@@ -135,9 +151,7 @@ Returns a blacklist configuration with sensible defaults.
 func NewNumericDate(t time.Time) NumericDate
 ```
 
-Creates a `NumericDate` from `time.Time`.
-
-
+Creates a `NumericDate` from `time.Time`. `NewNumericDate` is typically used to construct timestamp claims explicitly (such as `ExpiresAt`, `NotBefore`) on [`RegisteredClaims`](./claims#registeredclaims).
 
 ### Parameters
 
@@ -151,6 +165,29 @@ Creates a `NumericDate` from `time.Time`.
 |--------|------|-------------|
 | `date` | `NumericDate` | JWT numeric date |
 
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/cybergodev/jwt"
+)
+
+func main() {
+	date := jwt.NewNumericDate(time.Unix(1700000000, 0))
+
+	b, err := date.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(b)) // Output: 1700000000
+}
+```
+
 ---
 
 ## NewRateLimiter
@@ -160,8 +197,6 @@ func NewRateLimiter(maxRate int, window time.Duration) *RateLimiter
 ```
 
 Creates a token bucket rate limiter.
-
-
 
 ### Parameters
 

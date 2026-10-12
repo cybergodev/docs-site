@@ -46,7 +46,7 @@ HTTPC 构建在标准库 `net/http` 传输层之上：连接复用、HTTP/2 协�
 # 初始化模块（已有项目可跳过）
 go mod init example.com/demo
 
-# 安装 HTTPC（要求 Go 1.25+）
+# 安装 HTTPC（要求 Go 1.26+）
 go get github.com/cybergodev/httpc
 ```
 
@@ -62,17 +62,17 @@ import "github.com/cybergodev/httpc"
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/httpc"
+	"fmt"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/get")
-    if err != nil {
-        panic(err)
-    }
+	result, err := httpc.Get("https://httpbin.org/get")
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(result.StatusCode()) // 200
+	fmt.Println(result.StatusCode()) // 200
 }
 ```
 
@@ -118,6 +118,7 @@ HTTPC 的 API 分层刻意对应标准库，降低迁移与心智成本：
 | 性能调优 | [性能](./guides/performance) |
 | 了解安全特性 | [安全概述](./security/) |
 | 查 API 签名 | [API 参考](./api-reference/) |
+| 常见问题 | [FAQ](./faq/) |
 
 ## 核心概念
 

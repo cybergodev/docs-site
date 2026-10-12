@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Token Refresh & Rotation"
-title: "Token Refresh & Rotation - CyberGo JWT | Access and Refresh Token Strategy"
-description: "Token refresh and rotation guide: two-tier access/refresh token TTL design, CreateRefresh and Refresh flow, custom Claims with RefreshInto, reuse vs. one-time rotation strategies, and Refresh non-revocation security semantics."
+title: "Token Refresh & Rotation - CyberGo JWT | Rotation Strategy"
+description: "CyberGo JWT token refresh and rotation: two-tier TTL design, CreateRefresh/Refresh flow, RefreshInto claims, and reuse vs. one-time rotation via RotateRefreshTokens."
 sidebar_position: 25
 check_code: false
 ---
@@ -158,7 +158,33 @@ if err != nil {
 
 ### One-Time Rotation
 
-For higher-security scenarios, revoke the old refresh token immediately after each refresh to achieve one-time use:
+For higher-security scenarios, make each refresh token usable only once. Since v1.2.3, the recommended way is the built-in rotation switch `Config.RotateRefreshTokens` <Badge type="tip" text="v1.2.3+" />:
+
+```go
+cfg := jwt.DefaultConfig()
+// ...required config such as keys and TTLs
+cfg.RotateRefreshTokens = true // one-time use: Refresh revokes the old token before minting the new one
+
+processor, err := jwt.New(cfg)
+if err != nil {
+    panic(err)
+}
+
+// Refresh / RefreshInto automatically revoke the old refresh token
+// (blacklist its jti) before minting the new access token
+newAccessToken, err := processor.Refresh(refreshToken)
+if err != nil {
+    panic(err)
+}
+```
+
+::: warning Fail-Closed Semantics and Concurrency
+- **Revocation precedes minting**: the old token's jti is blacklisted **before** the new token is minted. If minting subsequently fails (e.g. the rate limit trips), the old token is already revoked and the subject must re-authenticate — a deliberate fail-closed design guaranteeing an accepted refresh token cannot be replayed after the fact.
+- **Errors**: if revoking the old token fails, `ErrRefreshRotationFailed` is returned (wrapping the underlying blacklist store error) and no new token is issued; a refresh token without a jti cannot be revoked and is rejected with `ErrTokenMissingID`; a processor without a configured blacklist returns `ErrBlacklistNotConfigured` (as does `Revoke()`). Processors built via `jwt.New()` always carry a blacklist — `DefaultConfig()` enables one by default and zero-valued fields are normalized in `New()` — so this error does not arise in normal use.
+- **Concurrency**: rotation narrows but does not eliminate the replay window — two concurrent `Refresh` calls can both pass validation before either revocation lands. A strict single-use guarantee requires an atomic check-and-add in a custom `BlacklistStore`.
+:::
+
+When you cannot change the configuration, manual `Refresh` + `Revoke` is an equivalent alternative:
 
 ```go
 // Refresh and immediately revoke the old token
@@ -173,6 +199,8 @@ if err := processor.Revoke(refreshToken); err != nil {
 }
 ```
 
+Note the manual approach leaves a window — the old token remains usable between a successful `Refresh` and the `Revoke` taking effect — and you must handle the case where the first step succeeds but the second fails.
+
 **Use cases**: Web applications, high-security systems. The old token becomes invalid immediately after each refresh, reducing the risk of token leakage.
 
 ### Strategy Comparison
@@ -181,7 +209,7 @@ if err := processor.Revoke(refreshToken); err != nil {
 |-----------|------------|-------------------|
 | Security | Lower (leaked tokens can be reused) | Higher (leaked tokens are single-use only) |
 | User experience | Better (no frequent re-authentication) | Average (refresh failure requires re-login) |
-| Implementation | No extra code | Requires calling `Revoke` |
+| Implementation | No extra code | One config switch (`RotateRefreshTokens`), or calling `Revoke` manually |
 | Blacklist pressure | Low | Higher (each refresh adds an entry) |
 
 ::: warning Refresh Token Leak Detection
@@ -204,7 +232,7 @@ Tokens without a `token_type` claim (issued by older versions) are accepted for 
 
 ## Security Notes
 
-- **Refresh does not auto-revoke**: The original refresh token remains valid after `Refresh`. Call `Revoke` manually for one-time rotation.
+- **Refresh does not auto-revoke by default**: The original refresh token remains valid after `Refresh`. For one-time-use semantics, enable `Config.RotateRefreshTokens` (recommended, see [One-Time Rotation](#one-time-rotation)) or call `Revoke` manually.
 - **Claims are not deeply validated**: `Refresh` validates standard JWT fields (signature, expiration, issuer, audience, blacklist) and basic structure (UserID or Username must be present), but does not re-check field length limits or injection patterns, trusting they were validated at creation.
 - **Signature consistency**: New access tokens use the same signing algorithm and key as the refresh token. Cross-algorithm refresh is not supported.
 

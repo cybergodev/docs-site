@@ -2,12 +2,12 @@
 title: "Migrating from encoding/json - CyberGo JSON | 3-Step Guide"
 description: "Migrate from encoding/json to CyberGo JSON: three-step import swap, Marshal/Encoder/Decoder and error-type compatibility, security behavior differences, FAQ."
 sidebar_label: "Migrating from the Standard Library"
-sidebar_position: 1.5
+sidebar_position: 60
 ---
 
 # Migrating from the Standard Library
 
-`cybergodev/json` is **100% compatible** with the standard `encoding/json` — just swap the import path and existing code compiles and runs without any changes (the few boundary differences from default input security validation are covered in [Behavioral Differences](#behavioral-differences) below). This page walks you through the migration and the incremental capabilities available afterwards.
+`cybergodev/json` is **100% compatible** with the standard `encoding/json` — just swap the import path and existing code compiles and runs without any changes (the few boundary differences from default input security validation are covered in [Behavioral Differences](#what-are-the-behavioral-differences-from-the-standard-library) below). This page walks you through the migration and the incremental capabilities available afterwards.
 
 ## Migration in Three Steps
 
@@ -71,7 +71,7 @@ The error structs' **locator fields** are likewise preserved; code that pinpoint
 When `UnmarshalTypeError`'s `Struct` / `Field` are non-empty, `Error()` prints `json: cannot unmarshal <value> into Go struct field <Struct>.<Field> of type <type>` — verbatim identical to the standard library.
 
 ::: tip Optional cfg parameters
-Every extra `cfg ...Config` parameter is **optional** (variadic). Without it, behavior on ordinary data matches the standard library (boundary differences of default input validation in [Behavioral Differences](#behavioral-differences) below); pass cfg only to enable security mode, caching, and other enhancements.
+Every extra `cfg ...Config` parameter is **optional** (variadic). Without it, behavior on ordinary data matches the standard library (boundary differences of default input validation in [Behavioral Differences](#what-are-the-behavioral-differences-from-the-standard-library) below); pass cfg only to enable security mode, caching, and other enhancements.
 
 Three **intentional exceptions** regarding cfg (from the library's design conventions):
 
@@ -140,7 +140,7 @@ After migrating, while keeping standard-library compatibility, you can adopt the
 | Security mode | `json.SecurityConfig()` | [Security Mode](../security/security-mode) |
 | Runtime stats / health | `json.GetStats()` / `json.GetHealthStatus()` | [Processor Guide](./processor-guide#monitoring-and-diagnostics) |
 
-## Behavioral Differences
+## What Are the Behavioral Differences from the Standard Library?
 
 For **ordinary data**, the default configuration behaves like `encoding/json`. What to note: `cybergodev/json` ships with a layer of **input security validation** by default (part of its positioning as a secure JSON library) and rejects oversized input or input containing dangerous patterns, where the standard library accepts everything. The differences:
 
@@ -176,7 +176,7 @@ Fully compatible. Both interfaces keep working; custom types implementing them b
 
 **Q: Can I use the incremental capabilities only in new code and leave old code untouched?**
 
-Yes — that is the design goal. Package-level functions cache the corresponding Processor by trailing cfg (see the cfg conventions above); calls without cfg go through the global processor with the default configuration — identical to the standard library for ordinary data, with differences limited to the default input validation (see the [Behavioral Differences](#behavioral-differences) table above).
+Yes — that is the design goal. Package-level functions cache the corresponding Processor by trailing cfg (see the cfg conventions above); calls without cfg go through the global processor with the default configuration — identical to the standard library for ordinary data, with differences limited to the default input validation (see the [Behavioral Differences](#what-are-the-behavioral-differences-from-the-standard-library) table above).
 
 **Q: `Unmarshal` rejected legitimate data containing words like `onload` or `eval(`. What now?**
 

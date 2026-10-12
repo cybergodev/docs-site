@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Migration Guide"
-title: "Migration Guide - CyberGo DD | Migrating From Other Log Libraries"
-description: "A complete side-by-side migration guide from the standard library log/slog and popular third-party log libraries (zap, logrus, zerolog) to CyberGo DD, with detailed API mapping tables, configuration-parameter comparisons, common migration patterns, and a progressive migration strategy to help you smoothly switch existing logging systems to DD with low risk."
+title: "Migration Guide - CyberGo DD | log, slog, zap, logrus"
+description: "CyberGo DD migration guide: migrate from Go's log, slog, zap, or logrus with API mapping tables, config comparisons, and a progressive low-risk strategy."
 sidebar_position: 2
 ---
 
@@ -47,6 +47,7 @@ log.SetOutput(file)
 log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 // After: DD
+// Note: a zero-value Config lacks timestamp/level/caller decorations; in production, start from DefaultConfig()
 logger, err := dd.New(dd.Config{
     Level:  dd.LevelInfo,
     Format: dd.FormatText,
@@ -124,6 +125,7 @@ cfg := zap.Config{
 logger, _ := cfg.Build()
 
 // After: DD
+// Note: a zero-value Config lacks timestamp/level/caller decorations; in production, start from DefaultConfig()
 logger, err := dd.New(dd.Config{
     Level:  dd.LevelInfo,
     Format: dd.FormatJSON,

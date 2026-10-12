@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Advanced Examples"
 title: "Advanced Examples - CyberGo JWT | Asymmetric"
-description: "Advanced examples: RSA and ECDSA asymmetric signing, key separation cross-service verification, PEM key loading, CustomClaims business claims, Redis blacklist backends, FixedClock testing, and unverified token parsing."
+description: "Advanced CyberGo JWT examples: RSA and ECDSA signing, cross-service key separation, PEM loading, CustomClaims, Redis blacklists, and FixedClock testing."
 sidebar_position: 20
 ---
 
@@ -15,45 +15,44 @@ Sign with RSA private key, verify with public key. Suitable for microservice arc
 package main
 
 import (
-    "crypto/rand"
-    "crypto/rsa"
-    "fmt"
-    "log"
+	"crypto/rand"
+	"crypto/rsa"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // Generate RSA key pair (load from file in production)
-    privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Generate RSA key pair (load from file in production)
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    cfg := jwt.DefaultConfig()
-    cfg.SigningMethod = jwt.SigningMethodRS256
-    cfg.SigningKey = privateKey
-    cfg.VerificationKey = &privateKey.PublicKey // Optional, defaults to SigningKey
+	cfg := jwt.DefaultConfig()
+	cfg.SigningMethod = jwt.SigningMethodRS256
+	cfg.SigningKey = privateKey
+	cfg.VerificationKey = &privateKey.PublicKey // Optional, defaults to SigningKey
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user456", Username: "bob"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("RSA Token:", token)
+	claims := &jwt.Claims{UserID: "user456", Username: "bob"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("RSA Token:", token)
 
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid)
-    fmt.Println("UserID:", parsed.UserID)
+	parsed, err := processor.Parse(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("UserID:", parsed.UserID)
 }
 ```
 
@@ -65,45 +64,44 @@ RSA-PSS (the modern replacement for RS256/384/512) uses Probabilistic Signature 
 package main
 
 import (
-    "crypto/rand"
-    "crypto/rsa"
-    "fmt"
-    "log"
+	"crypto/rand"
+	"crypto/rsa"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // Generate RSA key pair (RSA-PSS shares the same key type as RSA)
-    privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Generate RSA key pair (RSA-PSS shares the same key type as RSA)
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    cfg := jwt.DefaultConfig()
-    cfg.SigningMethod = jwt.SigningMethodPS256
-    cfg.SigningKey = privateKey
-    cfg.VerificationKey = &privateKey.PublicKey
+	cfg := jwt.DefaultConfig()
+	cfg.SigningMethod = jwt.SigningMethodPS256
+	cfg.SigningKey = privateKey
+	cfg.VerificationKey = &privateKey.PublicKey
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user_ps", Username: "diana"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("RSA-PSS Token:", token)
+	claims := &jwt.Claims{UserID: "user_ps", Username: "diana"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("RSA-PSS Token:", token)
 
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid) // Output: Valid: true
-    fmt.Println("UserID:", parsed.UserID)
+	parsed, err := processor.Parse(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("UserID:", parsed.UserID)
 }
 ```
 
@@ -119,38 +117,38 @@ Sign with ECDSA elliptic curve — shorter keys, better performance.
 package main
 
 import (
-    "crypto/ecdsa"
-    "crypto/elliptic"
-    "crypto/rand"
-    "fmt"
-    "log"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // Generate ECDSA key pair
-    privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Generate ECDSA key pair
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    cfg := jwt.DefaultConfig()
-    cfg.SigningMethod = jwt.SigningMethodES256
-    cfg.SigningKey = privateKey
+	cfg := jwt.DefaultConfig()
+	cfg.SigningMethod = jwt.SigningMethodES256
+	cfg.SigningKey = privateKey
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user789", Username: "charlie"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("ECDSA Token:", token)
+	claims := &jwt.Claims{UserID: "user789", Username: "charlie"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("ECDSA Token:", token)
 }
 ```
 
@@ -162,60 +160,60 @@ Simulates cross-service token verification in a microservice architecture: the a
 package main
 
 import (
-    "crypto/rand"
-    "crypto/rsa"
-    "fmt"
-    "log"
+	"crypto/rand"
+	"crypto/rsa"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // Generate RSA key pair
-    privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-    if err != nil {
-        log.Fatal(err)
-    }
-    publicKey := &privateKey.PublicKey
+	// Generate RSA key pair
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		log.Fatal(err)
+	}
+	publicKey := &privateKey.PublicKey
 
-    // --- Auth service: holds the private key, issues tokens ---
-    authCfg := jwt.DefaultConfig()
-    authCfg.SigningMethod = jwt.SigningMethodRS256
-    authCfg.SigningKey = privateKey
-    authCfg.Issuer = "auth-service"
+	// --- Auth service: holds the private key, issues tokens ---
+	authCfg := jwt.DefaultConfig()
+	authCfg.SigningMethod = jwt.SigningMethodRS256
+	authCfg.SigningKey = privateKey
+	authCfg.Issuer = "auth-service"
 
-    authProcessor, err := jwt.New(authCfg)
-    if err != nil {
-        panic(err)
-    }
-    defer authProcessor.Close()
+	authProcessor, err := jwt.New(authCfg)
+	if err != nil {
+		panic(err)
+	}
+	defer authProcessor.Close()
 
-    claims := &jwt.Claims{UserID: "user_dist", Username: "charlie"}
-    token, err := authProcessor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Auth service issued token (private key)")
+	claims := &jwt.Claims{UserID: "user_dist", Username: "charlie"}
+	token, err := authProcessor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Auth service issued token (private key)")
 
-    // --- API service: verifies tokens via the public key ---
-    apiCfg := jwt.DefaultConfig()
-    apiCfg.SigningMethod = jwt.SigningMethodRS256
-    apiCfg.SigningKey = privateKey     // Current API requires SigningKey to be non-empty
-    apiCfg.VerificationKey = publicKey // This public key is actually used for verification
-    apiCfg.Issuer = "auth-service"     // Must match the issuer
+	// --- API service: verifies tokens via the public key ---
+	apiCfg := jwt.DefaultConfig()
+	apiCfg.SigningMethod = jwt.SigningMethodRS256
+	apiCfg.SigningKey = privateKey     // Current API requires SigningKey to be non-empty
+	apiCfg.VerificationKey = publicKey // This public key is actually used for verification
+	apiCfg.Issuer = "auth-service"     // Must match the issuer
 
-    apiProcessor, err := jwt.New(apiCfg)
-    if err != nil {
-        panic(err)
-    }
-    defer apiProcessor.Close()
+	apiProcessor, err := jwt.New(apiCfg)
+	if err != nil {
+		panic(err)
+	}
+	defer apiProcessor.Close()
 
-    parsed, valid, err := apiProcessor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("API service verified (public key):", valid) // Output: API service verified (public key): true
-    fmt.Println("UserID:", parsed.UserID)
+	parsed, err := apiProcessor.Parse(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("API service verified (public key)") // Verified via the public key
+	fmt.Println("UserID:", parsed.UserID)
 }
 ```
 
@@ -320,78 +318,76 @@ Define your own Claims struct with business fields.
 package main
 
 import (
-    "errors"
-    "fmt"
+	"errors"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 // Custom Claims struct
 type MyClaims struct {
-    UserID string `json:"user_id"`
-    Email  string `json:"email"`
-    Role   string `json:"role"`
-    jwt.RegisteredClaims
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
 }
 
 func (c *MyClaims) GetRegisteredClaims() *jwt.RegisteredClaims {
-    return &c.RegisteredClaims
+	return &c.RegisteredClaims
 }
 
 func (c *MyClaims) Validate() error {
-    if c.UserID == "" {
-        return errors.New("user_id is required")
-    }
-    if c.Email == "" {
-        return errors.New("email is required")
-    }
-    return nil
+	if c.UserID == "" {
+		return errors.New("user_id is required")
+	}
+	if c.Email == "" {
+		return errors.New("email is required")
+	}
+	return nil
 }
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &MyClaims{
-        UserID: "user123",
-        Email:  "alice@example.com",
-        Role:   "admin",
-    }
+	claims := &MyClaims{
+		UserID: "user123",
+		Email:  "alice@example.com",
+		Role:   "admin",
+	}
 
-    // Create token
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token:", token)
+	// Create token
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token:", token)
 
-    // Validate into custom Claims
-    myClaims := &MyClaims{}
-    result, valid, err := processor.ValidateInto(token, myClaims)
-    if err != nil {
-        panic(err)
-    }
-    if valid {
-        parsed := result.(*MyClaims)
-        fmt.Println("UserID:", parsed.UserID) // Output: user123
-        fmt.Println("Email:", parsed.Email)   // Output: alice@example.com
-    }
+	// Validate into custom Claims
+	myClaims := &MyClaims{}
+	result, err := processor.ParseInto(token, myClaims)
+	if err != nil {
+		panic(err)
+	}
+	parsed := result.(*MyClaims)
+	fmt.Println("UserID:", parsed.UserID) // Output: user123
+	fmt.Println("Email:", parsed.Email)   // Output: alice@example.com
 
-    // Refresh into custom Claims
-    refreshToken, err := processor.CreateRefresh(claims)
-    if err != nil {
-        panic(err)
-    }
-    newToken, err := processor.RefreshInto(refreshToken, &MyClaims{})
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("New Token:", newToken)
+	// Refresh into custom Claims
+	refreshToken, err := processor.CreateRefresh(claims)
+	if err != nil {
+		panic(err)
+	}
+	newToken, err := processor.RefreshInto(refreshToken, &MyClaims{})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("New Token:", newToken)
 }
 ```
 
@@ -401,63 +397,63 @@ func main() {
 package main
 
 import (
-    "context"
-    "fmt"
-    "time"
+	"context"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 // RedisBlacklistStore implements BlacklistStore interface.
 // Note: Requires a Redis client (e.g., github.com/redis/go-redis) in production.
 type RedisBlacklistStore struct {
-    // client *redis.Client
+	// client *redis.Client
 }
 
 func (s *RedisBlacklistStore) Add(tokenID string, expiresAt time.Time) error {
-    ttl := time.Until(expiresAt)
-    if ttl <= 0 {
-        return nil
-    }
-    // return s.client.Set(context.Background(), "blacklist:"+tokenID, "1", ttl).Err()
-    fmt.Printf("Redis ADD: %s, TTL: %v\n", tokenID, ttl)
-    return nil
+	ttl := time.Until(expiresAt)
+	if ttl <= 0 {
+		return nil
+	}
+	// return s.client.Set(context.Background(), "blacklist:"+tokenID, "1", ttl).Err()
+	fmt.Printf("Redis ADD: %s, TTL: %v\n", tokenID, ttl)
+	return nil
 }
 
 func (s *RedisBlacklistStore) Contains(tokenID string) (bool, error) {
-    // return s.client.Exists(context.Background(), "blacklist:"+tokenID).Result()
-    return false, nil
+	// return s.client.Exists(context.Background(), "blacklist:"+tokenID).Result()
+	return false, nil
 }
 
 func (s *RedisBlacklistStore) Close() error {
-    // return s.client.Close()
-    return nil
+	// return s.client.Close()
+	return nil
 }
 
 func main() {
-    _ = context.Background() // Keeps context import available (uncomment Redis calls in production)
+	_ = context.Background() // Keeps context import available (uncomment Redis calls in production)
 
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    cfg.Blacklist.Store = &RedisBlacklistStore{}
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg.Blacklist.Store = &RedisBlacklistStore{}
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user123", Username: "alice"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	claims := &jwt.Claims{UserID: "user123", Username: "alice"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    err = processor.Revoke(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token revoked via Redis backend")
+	err = processor.Revoke(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token revoked via Redis backend")
 }
 ```
 
@@ -469,37 +465,37 @@ Use `FixedClock` to control time in tests.
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    cfg.Clock = jwt.FixedClock{T: fixedTime}
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg.Clock = jwt.FixedClock{T: fixedTime}
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user123", Username: "alice"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	claims := &jwt.Claims{UserID: "user123", Username: "alice"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    parsed, _, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("IssuedAt:", parsed.IssuedAt.Time)   // Output: 2026-01-01 00:00:00 +0000 UTC
-    fmt.Println("ExpiresAt:", parsed.ExpiresAt.Time) // Output: 2026-01-01 00:15:00 +0000 UTC
+	parsed, err := processor.Parse(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("IssuedAt:", parsed.IssuedAt.Time)   // Output: 2026-01-01 00:00:00 +0000 UTC
+	fmt.Println("ExpiresAt:", parsed.ExpiresAt.Time) // Output: 2026-01-01 00:15:00 +0000 UTC
 }
 ```
 
@@ -511,33 +507,33 @@ Extract Claims information without verifying the signature, for debugging or log
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user123", Username: "alice"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	claims := &jwt.Claims{UserID: "user123", Username: "alice"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    // Parse without signature verification
-    parsed := &jwt.Claims{}
-    err = processor.ParseUnverified(token, parsed)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("UserID (unverified):", parsed.UserID)
+	// Parse without signature verification
+	parsed := &jwt.Claims{}
+	err = processor.ParseUnverified(token, parsed)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("UserID (unverified):", parsed.UserID)
 }
 ```
 

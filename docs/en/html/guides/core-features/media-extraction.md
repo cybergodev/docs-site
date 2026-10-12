@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Media Extraction"
 title: "Media Extraction - CyberGo html | Video & Audio Guide"
-description: "CyberGo html media extraction: three video sources (raw HTML, DOM, regex fallback), dual audio sources, VideoInfo/AudioInfo fields, and Type (file vs embed)."
+description: "CyberGo html media extraction guide: three-source video (raw HTML, DOM, regex fallback) and dual-source audio, VideoInfo/AudioInfo fields, Type file vs embed."
 sidebar_position: 2
 ---
 
@@ -33,7 +33,7 @@ Embed tags such as `iframe`, `embed`, and `object` may be removed during safe sa
 
 ### Video extensions supported by the regex fallback
 
-```
+```text
 .mp4  .webm  .ogg  .mov  .avi  .wmv  .flv  .mkv  .m4v  .3gp
 ```
 
@@ -48,7 +48,7 @@ The regex only matches complete URLs starting with `http://` or `https://`, avoi
 
 ### Audio extensions supported by the regex fallback
 
-```
+```text
 .mp3  .wav  .ogg  .m4a  .aac  .flac  .wma  .opus  .oga
 ```
 
@@ -104,18 +104,18 @@ Embedding platforms supported by `embed` detection:
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    // HTML containing three media scenarios:
-    // 1. iframe YouTube embed (Type = "embed")
-    // 2. Native video with a <source> child (Type from the type attribute)
-    // 3. Audio with a <source> child (Type from the type attribute)
-    data := []byte(`<html><body><article>
+	// HTML containing three media scenarios:
+	// 1. iframe YouTube embed (Type = "embed")
+	// 2. Native video with a <source> child (Type from the type attribute)
+	// 3. Audio with a <source> child (Type from the type attribute)
+	data := []byte(`<html><body><article>
         <h1>Multimedia Page</h1>
         <p>This article covers video and audio techniques.</p>
         <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" width="560" height="315"></iframe>
@@ -127,37 +127,37 @@ func main() {
         </audio>
     </article></body></html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Printf("Videos: %d\n", len(result.Videos))
-    // Videos: 2
+	fmt.Printf("Videos: %d\n", len(result.Videos))
+	// Videos: 2
 
-    for i, v := range result.Videos {
-        fmt.Printf("  Video %d: %s\n", i+1, v.URL)
-        fmt.Printf("    Type: %s", v.Type)
-        if v.Poster != "" {
-            fmt.Printf(", poster: %s", v.Poster)
-        }
-        if v.Width != "" || v.Height != "" {
-            fmt.Printf(", size: %sx%s", v.Width, v.Height)
-        }
-        fmt.Println()
-    }
-    // Video 1: https://www.youtube.com/embed/dQw4w9WgXcQ
-    //   Type: embed, size: 560x315
-    // Video 2: https://example.com/trailer.mp4
-    //   Type: video/mp4, poster: poster.jpg, size: 640x360
+	for i, v := range result.Videos {
+		fmt.Printf("  Video %d: %s\n", i+1, v.URL)
+		fmt.Printf("    Type: %s", v.Type)
+		if v.Poster != "" {
+			fmt.Printf(", poster: %s", v.Poster)
+		}
+		if v.Width != "" || v.Height != "" {
+			fmt.Printf(", size: %sx%s", v.Width, v.Height)
+		}
+		fmt.Println()
+	}
+	// Video 1: https://www.youtube.com/embed/dQw4w9WgXcQ
+	//   Type: embed, size: 560x315
+	// Video 2: https://example.com/trailer.mp4
+	//   Type: video/mp4, poster: poster.jpg, size: 640x360
 
-    fmt.Printf("\nAudios: %d\n", len(result.Audios))
-    // Audios: 1
+	fmt.Printf("\nAudios: %d\n", len(result.Audios))
+	// Audios: 1
 
-    for i, a := range result.Audios {
-        fmt.Printf("  Audio %d: %s (Type: %s)\n", i+1, a.URL, a.Type)
-    }
-    // Audio 1: https://example.com/episode.mp3 (Type: audio/mpeg)
+	for i, a := range result.Audios {
+		fmt.Printf("  Audio %d: %s (Type: %s)\n", i+1, a.URL, a.Type)
+	}
+	// Audio 1: https://example.com/episode.mp3 (Type: audio/mpeg)
 }
 ```
 

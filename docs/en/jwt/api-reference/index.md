@@ -19,7 +19,7 @@ CyberGo JWT provides a complete JWT token lifecycle management API.
 | [Claims](./claims) | `Claims`, `RegisteredClaims` claim types | Token Claims |
 | [Interfaces](./interfaces) | `TokenManager`, `CustomClaims`, `BlacklistStore`, etc. | Extension Interfaces |
 | [Types & Constants](./types) | Signing method constants, `NumericDate`, `StringOrSlice`, etc. | Auxiliary Types |
-| [Errors](./errors) | **19** sentinel errors, `ValidationError` | Error Handling |
+| [Errors](./errors) | **20** sentinel errors, `ValidationError` | Error Handling |
 
 ## Quick Lookup
 
@@ -29,7 +29,7 @@ CyberGo JWT provides a complete JWT token lifecycle management API.
 |----------|-------------|
 | Create Processor | [`jwt.New()`](./functions#new), [`jwt.DefaultConfig()`](./functions#defaultconfig) |
 | Issue token | [`Processor.Create()`](./processor#create), [`Processor.CreateRefresh()`](./processor#createrefresh) |
-| Validate token | [`Processor.Validate()`](./processor#validate), [`Processor.ValidateInto()`](./processor#validateinto) |
+| Validate token | [`Processor.Parse()`](./processor#parse), [`Processor.ParseInto()`](./processor#parseinto) |
 | Refresh token | [`Processor.Refresh()`](./processor#refresh), [`Processor.RefreshInto()`](./processor#refreshinto) |
 | Revoke token | [`Processor.Revoke()`](./processor#revoke), [`Processor.IsRevoked()`](./processor#isrevoked) |
 | Configure signing algorithm | [`Config.SigningMethod`](./config#config) |

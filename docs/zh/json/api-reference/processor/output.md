@@ -1,8 +1,8 @@
 ---
 sidebar_label: "编码输出"
-title: "Processor 编码输出 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 输出方法：Encode、EncodePretty、EncodeWithConfig、EncodeBatch/EncodeFields 批量与 Compact/Indent/HTMLEscape 格式化。"
-sidebar_position: 5
+title: "Processor 编码输出 - CyberGo JSON | Marshal/Encode 方法"
+description: "CyberGo JSON 的 Processor 提供 Encode 与 EncodePretty 编码输出方法，Marshal/Unmarshal 兼容标准库接口，配合 EncodeBatch/EncodeFields 批量编码以及 Compact/Indent/HTMLEscape 格式化操作，一次调用即可美化或压缩输出，适合生成配置文件、API 响应与结构化日志的开发场景。"
+sidebar_position: 50
 ---
 
 # 输出方法
@@ -13,15 +13,9 @@ Processor 提供多种 JSON 编码输出方法。
 
 ### Encode
 
-<Badge type="danger" text="已废弃" />
+签名：`func (p *Processor) Encode(value any, cfg ...Config) (string, error)`
 
-签名：`func (p *Processor) Encode(value any, config ...Config) (string, error)`
-
-将任意值编码为 JSON 字符串。请使用 [`EncodeWithConfig`](#encodewithconfig)。
-
-::: warning 已废弃
-`Processor.Encode` 直接委托给 [`EncodeWithConfig`](#encodewithconfig)。请改用 `EncodeWithConfig`。`Encode` 将在未来的主版本中移除。
-:::
+将任意值编码为 JSON 字符串。这是返回 `string` 的**规范编码入口**（`Marshal` 是返回 `[]byte` 的 `encoding/json` drop-in）；可选的尾随 `Config` 控制本次调用的编码行为，省略时应用处理器默认配置。
 
 ```go
 result, err := p.Encode(map[string]any{"name": "CyberGo"})
@@ -33,7 +27,7 @@ fmt.Println(result)
 
 ### EncodePretty
 
-签名：`func (p *Processor) EncodePretty(value any, config ...Config) (string, error)`
+签名：`func (p *Processor) EncodePretty(value any, cfg ...Config) (string, error)`
 
 将任意值编码为格式化 JSON 字符串。
 
@@ -48,9 +42,15 @@ if err != nil {
 
 ### EncodeWithConfig
 
+<Badge type="danger" text="已废弃" />
+
 签名：`func (p *Processor) EncodeWithConfig(value any, cfg ...Config) (string, error)`
 
 使用指定配置编码值为 JSON 字符串。
+
+::: warning 已废弃
+`Processor.EncodeWithConfig` 与 [`Encode`](#encode) 完全等价（两者委托同一实现）——该命名早于 `Encode` 接受可选尾随 `Config`。新代码请使用 `p.Encode(value, cfg)`；需要 `[]byte` 输出时使用 [`Marshal`](#marshal)。`EncodeWithConfig` 在 v1 生命周期内保留、不会移除。
+:::
 
 **参数**
 
@@ -60,18 +60,8 @@ if err != nil {
 | `cfg` | `Config` | 否 | 编码配置（可选） |
 
 ```go
-// 使用 PrettyConfig
+// 与 p.Encode(data, json.PrettyConfig()) 完全等价
 result, err := p.EncodeWithConfig(data, json.PrettyConfig())
-
-// 使用 SecurityConfig
-result, err = p.EncodeWithConfig(data, json.SecurityConfig())
-
-// 使用自定义配置
-cfg := json.DefaultConfig()
-cfg.Pretty = true
-cfg.SortKeys = true
-cfg.EscapeHTML = true
-result, err = p.EncodeWithConfig(data, cfg)
 ```
 
 ### EncodeBatch
@@ -125,7 +115,7 @@ result, err := p.EncodeStream(values)
 将 Go 值编码为 JSON 字节切片。100% 兼容 `encoding/json.Marshal`。
 
 ::: tip 输出始终 HTML 转义
-与 `encoding/json.Marshal` 一致，本方法输出**始终** HTML 转义——即使传入的 `cfg` 设置 `EscapeHTML=false` 也会在该路径被覆盖。需要调用方控制转义时请用 [`EncodeWithConfig`](#encodewithconfig)。
+与 `encoding/json.Marshal` 一致，本方法输出**始终** HTML 转义——即使传入的 `cfg` 设置 `EscapeHTML=false` 也会在该路径被覆盖。需要调用方控制转义时请用 [`Encode`](#encode)。
 :::
 
 ```go
@@ -193,7 +183,7 @@ Print、PrintE、PrintPretty、PrintPrettyE 已从库中移除，不再提供。
 
 ```go
 // 紧凑输出
-s, err := p.EncodeWithConfig(data)
+s, err := p.Encode(data)
 if err != nil {
     log.Fatal(err)
 }
@@ -242,11 +232,22 @@ for _, ve := range errors {
 压缩 JSON 字符串，移除所有空白字符。
 
 ::: warning 方法与包级函数的命名差异
-「字符串进、字符串出」的压缩在两个入口下**名字不同**：包级是 `json.CompactString(s)`，方法版是 `p.Compact(s)`。包级 `json.Compact(dst, src)` 是 `encoding/json.Compact` 兼容的 **Buffer 形式**，对应的方法是 [`CompactBuffer`](#compactbuffer)，而非本方法。
+「字符串进、字符串出」的压缩在两个入口下**名字不同**：包级是 `json.CompactString(s)`，方法版的首选名是 `p.Compact(s)`（另提供等价的 [`CompactString`](#compactstring) 方法）。包级 `json.Compact(dst, src)` 是 `encoding/json.Compact` 兼容的 **Buffer 形式**，对应的方法是 [`CompactBuffer`](#compactbuffer)，而非本方法。
 :::
 
 ```go
 compact, err := p.Compact(`{"name": "CyberGo"}`)
+// 输出：{"name":"CyberGo"}
+```
+
+### CompactString
+
+签名：`func (p *Processor) CompactString(jsonStr string, cfg ...Config) (string, error)`
+
+以字符串入、字符串出的形式压缩 JSON，行为与 [`Compact`](#compact) 一致，是包级 [`json.CompactString`](../functions/output#compactstring) 的 Processor 镜像——需要与包级函数同名调用时使用。
+
+```go
+compact, err := p.CompactString(`{"name": "CyberGo"}`)
 // 输出：{"name":"CyberGo"}
 ```
 

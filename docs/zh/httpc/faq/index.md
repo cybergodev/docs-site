@@ -1,8 +1,8 @@
 ---
 sidebar_label: "常见问题"
 title: "常见问题 - CyberGo HTTPC | 疑问与解答"
-description: "HTTPC 常见问题解答：包级函数与客户端实例的选择依据、五种配置预设对比与适用场景、HTTP/SOCKS5 代理与 DoH 设置、Cookie 会话管理与重试配置、errors.Is/As 错误匹配模式与五级超时体系调优策略的详细解答与建议。"
-sidebar_position: 1
+description: "HTTPC 常见问题解答：包级函数与客户端实例的选择依据、五种配置预设对比与适用场景、HTTP/SOCKS5 代理与 DoH 设置、Cookie 会话管理与重试配置、errors.Is/As 错误匹配与五级超时体系调优策略。"
+sidebar_position: 10
 ---
 
 # 常见问题
@@ -34,7 +34,7 @@ defer func() { _ = client.Close() }()
 result, err := client.Get("https://api.example.com/data")
 ```
 
-如需让包级函数使用自定义配置，用 `SetDefaultClient` 替换全局客户端（旧的会自动关闭）：
+如需让包级函数使用自定义配置，用 `SetDefaultClient` 替换全局客户端（旧的会自动关闭，并中断旧实例的在途请求，宜在启动期调用）：
 
 ```go
 customClient, _ := httpc.New(httpc.SecureConfig())
@@ -62,7 +62,7 @@ if err := httpc.SetDefaultClient(customClient); err != nil {
 
 决策树：
 
-```
+```text
 是否处理用户提供的 URL？
 ├── 是 → SecureConfig()
 └── 否 → 是否需要高吞吐？
@@ -251,9 +251,9 @@ switch {
 case result.IsSuccess():      // 2xx
     handleSuccess(result)
 case result.IsClientError():  // 4xx
-    log.Printf("客户端错误: %d", result.StatusCode())
+    log.Printf("客户端错误：%d", result.StatusCode())
 case result.IsServerError():  // 5xx
-    log.Printf("服务端错误: %d", result.StatusCode())
+    log.Printf("服务端错误：%d", result.StatusCode())
 }
 ```
 
@@ -283,7 +283,7 @@ func main() {
 	cfg := httpc.DefaultDownloadConfig()
 	cfg.FilePath = "/tmp/large-file.zip"
 	cfg.Overwrite = true
-	cfg.ResumeDownload = true // 断点续传：中断后重下会从断点继续
+	cfg.ResumeDownload = true                            // 断点续传：中断后重下会从断点继续
 	cfg.Checksum = "e3b0c44298fc1c149afbf4c8996fb924..." // 预期 SHA-256
 	cfg.ChecksumAlgorithm = httpc.ChecksumSHA256
 	cfg.ProgressCallback = func(downloaded, total int64, speed float64) {
@@ -308,7 +308,7 @@ func main() {
 ```
 
 :::tip 路径安全
-Download 会校验 FilePath，拒绝目录路径（返回文件打开错误）和不支持的校验算法（在触碰目标文件之前拒绝）。断点续传依赖服务器支持 Range 请求——若服务器返回 200 而非 206，HTTPC 会正确处理（从头开始而非截断）。
+Download 会校验 FilePath，拒绝目录路径（返回文件打开错误）和不支持的校验算法（在触碰目标文件之前拒绝）。断点续传依赖服务器支持 Range 请求——若服务器返回 200 而非 206，HTTPC 会返回错误并保留已有的部分文件（不截断、也不会从头覆盖）。
 :::
 
 ## 证书固定怎么做？
@@ -402,7 +402,7 @@ cfg.Security.MaxRequestBodySize = 10 * 1024 * 1024 // 全局限制 10MB
 
 ## 如何抑制安全警告？
 
-**答：** `TestingConfig()` 等不安全配置在非测试环境使用时会通过 `log.Printf` 打印警告。如需抑制（如 CI 环境的特定场景），将警告输出重定向到 `io.Discard`：
+**答：** `TestingConfig()` 等不安全配置在非测试环境使用时会向默认的 `os.Stderr` 打印警告。如需抑制（如 CI 环境的特定场景），用 `SetSecurityWarnOutput(io.Writer)` 将警告输出重定向到 `io.Discard`：
 
 ```go
 // 抑制所有安全警告输出

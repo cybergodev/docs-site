@@ -17,13 +17,15 @@ type NumericDate struct {
 
 JWT 数字日期值（Unix 时间戳）。有效范围为 0 至 253402300799（9999-12-31 23:59:59 UTC）。
 
+结构体内嵌 `time.Time`（即 `Time` 字段），因此可以直接调用 `time.Time` 的方法（如 `Unix()`、`Before()`）参与时间比较与运算。
+
 <Badge type="info" text="struct" />
 
 ### 方法
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `MarshalJSON` | `func (date *NumericDate) MarshalJSON() ([]byte, error)` | 序列化为 Unix 时间戳 JSON 数字；零时间或超出有效范围时返回 `null` |
+| `MarshalJSON` | `func (date NumericDate) MarshalJSON() ([]byte, error)` | 序列化为 Unix 时间戳 JSON 数字；零时间或超出有效范围时返回 `null` |
 | `UnmarshalJSON` | `func (date *NumericDate) UnmarshalJSON(b []byte) error` | 从 JSON 数字或字符串解析 Unix 时间戳；拒绝负值和超出有效范围的值 |
 
 ---
@@ -69,16 +71,24 @@ type ValidationError struct {
 }
 ```
 
-字段级验证失败错误。
+字段级验证失败错误。在 [`Create`](./processor#create) / [`Parse`](./processor#parse) 路径中作为 [`ErrInvalidClaims`](./errors#哨兵错误) 的底层原因出现，可用 `errors.As` 提取，用法见[错误处理指南](../guides/error-handling)。
 
 <Badge type="info" text="struct" />
+
+### 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `Field` | `string` | 未通过验证的字段或声明名（如 `user_id`、`extra.color`） |
+| `Message` | `string` | 失败原因（如超出 256 字符上限、检测到可疑模式） |
+| `Err` | `error` | 可选的被包装底层错误；`Unwrap` 返回它，供 `errors.Is` / `errors.As` 解链，无底层原因时为 nil |
 
 ### 方法
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `Error` | `func (e *ValidationError) Error() string` | 错误消息 |
-| `Unwrap` | `func (e *ValidationError) Unwrap() error` | 解包内部错误 |
+| `Error` | `func (e *ValidationError) Error() string` | 错误消息（含字段名、原因与被包装错误） |
+| `Unwrap` | `func (e *ValidationError) Unwrap() error` | 返回 `Err` 字段保存的底层错误 |
 
 ---
 

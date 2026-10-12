@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Config"
 title: "Config - CyberGo html | Config Field Reference"
-description: "CyberGo html Config reference: 30+ fields in six categories, DefaultConfig and other presets, value constraints, zero-value semantics, and the Validate method."
+description: "CyberGo html Config reference: all 30 fields in six categories, four presets, value constraints, zero-value semantics, and the Validate method."
 sidebar_position: 3
 ---
 
@@ -11,16 +11,51 @@ sidebar_position: 3
 
 `Config` is the unified configuration struct for the HTML library, covering resource management, security, content extraction, output formats, and link filtering.
 
+All 30 fields at a glance (detailed constraints and descriptions in the grouped sections below):
+
+| Field | Type | Group | Default |
+|-------|------|-------|---------|
+| `Config.MaxInputSize` | `int` | Resource management | `52428800` (50MB) |
+| `Config.MaxCacheEntries` | `int` | Resource management | `2000` |
+| `Config.CacheTTL` | `time.Duration` | Resource management | `1h` |
+| `Config.CacheCleanup` | `time.Duration` | Resource management | `5m` |
+| `Config.WorkerPoolSize` | `int` | Resource management | `4` |
+| `Config.ProcessingTimeout` | `time.Duration` | Resource management | `30s` |
+| `Config.EnableSanitization` | `bool` | Security | `true` |
+| `Config.MaxDepth` | `int` | Security | `500` |
+| `Config.AllowedBaseDir` | `string` | Security | `""` |
+| `Config.Audit` | `AuditConfig` | Security | `DefaultAuditConfig()` |
+| `Config.ExtractArticle` | `bool` | Content extraction | `true` |
+| `Config.PreserveImages` | `bool` | Content extraction | `true` |
+| `Config.PreserveLinks` | `bool` | Content extraction | `true` |
+| `Config.PreserveVideos` | `bool` | Content extraction | `true` |
+| `Config.PreserveAudios` | `bool` | Content extraction | `true` |
+| `Config.InlineImageFormat` | `string` | Output format | `none` |
+| `Config.InlineLinkFormat` | `string` | Output format | `none` |
+| `Config.TableFormat` | `string` | Output format | `markdown` |
+| `Config.Encoding` | `string` | Output format | `""` (auto-detect) |
+| `Config.ResolveRelativeURLs` | `bool` | Link extraction | `true` |
+| `Config.BaseURL` | `string` | Link extraction | `""` |
+| `Config.IncludeImages` | `bool` | Link extraction | `true` |
+| `Config.IncludeVideos` | `bool` | Link extraction | `true` |
+| `Config.IncludeAudios` | `bool` | Link extraction | `true` |
+| `Config.IncludeCSS` | `bool` | Link extraction | `true` |
+| `Config.IncludeJS` | `bool` | Link extraction | `true` |
+| `Config.IncludeContentLinks` | `bool` | Link extraction | `true` |
+| `Config.IncludeExternalLinks` | `bool` | Link extraction | `true` |
+| `Config.IncludeIcons` | `bool` | Link extraction | `true` |
+| `Config.Scorer` | `Scorer` | Extension | `nil` (built-in default scorer) |
+
 ### Resource Management
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `MaxInputSize` | `int` | `52428800` (50MB) | Maximum input size in bytes |
-| `MaxCacheEntries` | `int` | `2000` | Maximum cache entries |
-| `CacheTTL` | `time.Duration` | `1h` | Cache expiration time |
-| `CacheCleanup` | `time.Duration` | `5m` | Cache cleanup interval |
-| `WorkerPoolSize` | `int` | `4` | Worker pool size |
-| `ProcessingTimeout` | `time.Duration` | `30s` | Processing timeout |
+| `MaxInputSize` | `int` | `52428800` (50MB) | Maximum input size in bytes; range `1`–`52428800` |
+| `MaxCacheEntries` | `int` | `2000` | Maximum cache entries; `0` disables the cache (upper bound `100000`) |
+| `CacheTTL` | `time.Duration` | `1h` | Cache expiration time; cannot be negative |
+| `CacheCleanup` | `time.Duration` | `5m` | Background cleanup interval for expired cache entries; `0` disables background cleanup |
+| `WorkerPoolSize` | `int` | `4` | Worker pool size for batch processing; range `1`–`256` |
+| `ProcessingTimeout` | `time.Duration` | `30s` | Per-document processing timeout; `0` means unlimited |
 
 :::tip
 Setting `MaxCacheEntries`, `CacheCleanup`, or `ProcessingTimeout` to `0` is not an error — each has a well-defined meaning (disable cache, disable background cleanup, and no timeout respectively). `MaxInputSize`, `WorkerPoolSize`, and `MaxDepth` must be positive, otherwise a `ConfigError` is returned.
@@ -33,7 +68,7 @@ Therefore **the zero value `Config{}` does not pass `Validate()` and must not be
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `EnableSanitization` | `bool` | `true` | Enable content sanitization; can be disabled only for trusted input |
-| `MaxDepth` | `int` | `500` | Maximum DOM depth |
+| `MaxDepth` | `int` | `500` | Maximum DOM depth, range `1`–`500` |
 | `AllowedBaseDir` | `string` | `""` | Restricts file operations to this directory; empty (default) means no restriction. Use it when accepting untrusted file-path input |
 | `Audit` | `AuditConfig` | `DefaultAuditConfig()` | Audit configuration |
 
@@ -81,7 +116,11 @@ Therefore **the zero value `Config{}` does not pass `Validate()` and must not be
 
 ### DefaultConfig
 
-Balanced configuration for general use.
+`DefaultConfig` returns a balanced configuration suited to general scenarios — the starting point for most applications.
+
+```go
+func DefaultConfig() Config
+```
 
 ```go
 cfg := html.DefaultConfig()
@@ -92,12 +131,20 @@ cfg := html.DefaultConfig()
 Extract plain text only, disabling all media and link preservation (`PreserveImages`, `PreserveLinks`, `PreserveVideos`, `PreserveAudios` all set to `false`).
 
 ```go
+func TextOnlyConfig() Config
+```
+
+```go
 cfg := html.TextOnlyConfig()
 ```
 
 ### MarkdownConfig
 
-Optimized for Markdown output, with inline images and links using Markdown format.
+`MarkdownConfig` builds on the default configuration and sets both `InlineImageFormat` and `InlineLinkFormat` to `markdown`, suited for output whose inline images and links use Markdown format.
+
+```go
+func MarkdownConfig() Config
+```
 
 ```go
 cfg := html.MarkdownConfig()
@@ -106,6 +153,10 @@ cfg := html.MarkdownConfig()
 ### HighSecurityConfig
 
 High-security configuration: reduced limits, shorter timeouts, full audit.
+
+```go
+func HighSecurityConfig() Config
+```
 
 ```go
 cfg := html.HighSecurityConfig()
@@ -126,7 +177,7 @@ Overrides compared to `DefaultConfig()`:
 
 ## Validate
 
-Validate the configuration.
+`Validate` checks the configuration for validity (value receiver, callable directly as `cfg.Validate()`); when invalid it returns a `*ConfigError` wrapping `ErrInvalidConfig`.
 
 ```go
 func (c Config) Validate() error
@@ -140,7 +191,7 @@ err := cfg.Validate() // Returns ConfigError
 
 ### Validation Constraints
 
-`Validate()` enforces the following value ranges on numeric fields (violations return a `ConfigError`, which can be checked via `errors.Is(err, html.ErrInvalidConfig)`):
+`Config.Validate` enforces the following value ranges on numeric fields (violations return a `ConfigError`, which can be checked via `errors.Is(err, html.ErrInvalidConfig)`):
 
 | Field | Constraint | Invalid example |
 |-------|------------|-----------------|
@@ -151,6 +202,7 @@ err := cfg.Validate() // Returns ConfigError
 | `WorkerPoolSize` | Positive and ≤ `256` | `0`, `512` |
 | `MaxDepth` | Positive and ≤ `500` | `0`, `1000` |
 | `ProcessingTimeout` | ≥ `0` | `-1 * time.Second` |
+| `Audit.MaxEntries` | ≥ `0` and ≤ `100000` (`0` means using the default of 10000) | `-1`, `200000` |
 | `InlineImageFormat` | Empty / `none` / `markdown` / `html` / `placeholder` | `"pdf"` |
 | `InlineLinkFormat` | Empty / `none` / `markdown` / `html` | `"pdf"` |
 | `TableFormat` | Empty / `markdown` / `html` | `"csv"` |

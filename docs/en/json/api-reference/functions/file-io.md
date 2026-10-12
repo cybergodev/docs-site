@@ -1,8 +1,8 @@
 ---
 sidebar_label: "File I/O"
-title: "File Operation Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON file functions: LoadFromFile/SaveToFile read and write, LoadFromReader/SaveToWriter streaming I/O, MarshalToFile/UnmarshalFromFile serialization."
-sidebar_position: 9
+title: "File Operation Functions - CyberGo JSON | LoadFromFile Usage"
+description: "CyberGo JSON is a Go library for file I/O, offering LoadFromFile, SaveToFile, LoadFromReader and SaveToWriter for atomic, validated JSON persistence."
+sidebar_position: 90
 ---
 
 # File Operation Functions
@@ -309,7 +309,7 @@ _, err := json.LoadFromFile("../../etc/passwd")
 data, err := json.LoadFromFile("config/app.json")
 ```
 
-::: warning
+::: warning Note
 File path validation always applies to file operations (`LoadFromReader` / `SaveToWriter` involve no paths, hence no validation). When handling user-supplied filenames, these checks are one layer of defense in depth — you should still enforce an allowlist at the application layer.
 :::
 

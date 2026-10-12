@@ -1,7 +1,7 @@
 ---
 sidebar_label: "链接提取实战"
 title: "链接提取实战 - CyberGo html | 资源收集指南"
-description: "CyberGo html 链接提取实战指南：ExtractAllLinks 提取脚本、样式与图片等资源链接、GroupLinksByType 按类型分组、Include 字段过滤、URL 规范化解析与 BaseURL 自动检测，适用于爬虫与资源收集场景。"
+description: "CyberGo html 链接提取实战指南：用 ExtractAllLinks 提取脚本、样式、图片、视频等八类资源链接，GroupLinksByType 按类型分组，Include 字段控制过滤范围，相对 URL 解析为绝对地址并支持 BaseURL 自动检测，适用于爬虫与资源收集场景。"
 sidebar_position: 4
 ---
 

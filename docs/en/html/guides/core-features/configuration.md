@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration Guide - CyberGo html | Config Field Selection"
-description: "CyberGo html configuration: DefaultConfig, HighSecurityConfig, TextOnlyConfig, MarkdownConfig presets, six field categories, combinations, and Validate checks."
+description: "CyberGo html configuration: DefaultConfig, HighSecurityConfig, TextOnlyConfig, MarkdownConfig presets by scenario, six field categories, Validate checks."
 sidebar_position: 6
 ---
 
@@ -24,29 +24,29 @@ The library provides four presets that cover most scenarios:
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html><body><h1>Title</h1><p>Body content</p></body></html>`)
+	data := []byte(`<html><body><h1>Title</h1><p>Body content</p></body></html>`)
 
-    // Most scenarios: use the default config directly
-    p1, _ := html.New()
-    defer p1.Close()
-    r1, _ := p1.Extract(data)
-    fmt.Println(r1.Title)
+	// Most scenarios: use the default config directly
+	p1, _ := html.New()
+	defer p1.Close()
+	r1, _ := p1.Extract(data)
+	fmt.Println(r1.Title)
 
-    // Only need plain text (e.g., search engine indexing)
-    p2, _ := html.New(html.TextOnlyConfig())
-    defer p2.Close()
+	// Only need plain text (e.g., search engine indexing)
+	p2, _ := html.New(html.TextOnlyConfig())
+	defer p2.Close()
 
-    // Output Markdown (e.g., CMS migration)
-    p3, _ := html.New(html.MarkdownConfig())
-    defer p3.Close()
-    md, _ := p3.ExtractToMarkdown(data)
-    fmt.Println(md)
+	// Output Markdown (e.g., CMS migration)
+	p3, _ := html.New(html.MarkdownConfig())
+	defer p3.Close()
+	md, _ := p3.ExtractToMarkdown(data)
+	fmt.Println(md)
 }
 ```
 
@@ -169,29 +169,29 @@ For high-frequency batch crawling, increase concurrency and shorten the timeout:
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.DefaultConfig()
-    cfg.WorkerPoolSize = 8                          // Increase batch concurrency
-    cfg.ProcessingTimeout = 10 * time.Second        // Shorten timeout
-    cfg.PreserveVideos = false                      // Crawler doesn't need videos
-    cfg.PreserveAudios = false
+	cfg := html.DefaultConfig()
+	cfg.WorkerPoolSize = 8                   // Increase batch concurrency
+	cfg.ProcessingTimeout = 10 * time.Second // Shorten timeout
+	cfg.PreserveVideos = false               // Crawler doesn't need videos
+	cfg.PreserveAudios = false
 
-    processor, err := html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer processor.Close()
+	processor, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer processor.Close()
 
-    // Batch extraction
-    pages := [][]byte{[]byte("<html><body>Page 1</body></html>")}
-    batch := processor.ExtractBatch(pages)
-    log.Printf("Success %d, Failed %d", batch.Success, batch.Failed)
+	// Batch extraction
+	pages := [][]byte{[]byte("<html><body>Page 1</body></html>")}
+	batch := processor.ExtractBatch(pages)
+	log.Printf("Success %d, Failed %d", batch.Success, batch.Failed)
 }
 ```
 
@@ -203,27 +203,27 @@ For processing user-submitted HTML, use the high-security config and restrict th
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.HighSecurityConfig()
-    cfg.AllowedBaseDir = "/var/www/uploads" // Restrict file directory
+	cfg := html.HighSecurityConfig()
+	cfg.AllowedBaseDir = "/var/www/uploads" // Restrict file directory
 
-    processor, err := html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer processor.Close()
+	processor, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer processor.Close()
 
-    // Process user-uploaded HTML files
-    result, err := processor.ExtractFromFile("/var/www/uploads/user.html")
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Println(result.Title)
+	// Process user-uploaded HTML files
+	result, err := processor.ExtractFromFile("/var/www/uploads/user.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(result.Title)
 }
 ```
 
@@ -235,29 +235,29 @@ To convert legacy site HTML to Markdown, preserving links and resolving relative
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.MarkdownConfig()
-    cfg.ResolveRelativeURLs = true
-    cfg.BaseURL = "https://old-site.example.com"
+	cfg := html.MarkdownConfig()
+	cfg.ResolveRelativeURLs = true
+	cfg.BaseURL = "https://old-site.example.com"
 
-    processor, err := html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer processor.Close()
+	processor, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer processor.Close()
 
-    data := []byte(`<html><body><article><h1>Old Article</h1><a href="/post/123">Link</a></article></body></html>`)
-    md, err := processor.ExtractToMarkdown(data)
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(md)
+	data := []byte(`<html><body><article><h1>Old Article</h1><a href="/post/123">Link</a></article></body></html>`)
+	md, err := processor.ExtractToMarkdown(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(md)
 }
 ```
 

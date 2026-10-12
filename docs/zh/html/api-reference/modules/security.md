@@ -1,7 +1,7 @@
 ---
 sidebar_label: "安全防护"
 title: "安全防护 - CyberGo html | 多层安全 API 参考"
-description: "CyberGo html 多层安全防护 API 参考：内容消毒、MaxInputSize 输入限制、MaxDepth DOM 深度、路径遍历防护与 AllowedBaseDir 文件沙箱，含 HighSecurityConfig 预设与 InputError 等安全错误类型。"
+description: "CyberGo html 多层安全防护 API 参考：内容消毒自动移除危险标签、事件属性与恶意协议，配合 MaxInputSize 输入限制、MaxDepth DOM 深度防护、路径遍历检测与 AllowedBaseDir 文件沙箱，含 HighSecurityConfig 高安全预设、panic 恢复机制及 InputError 等安全错误类型。"
 sidebar_position: 5
 ---
 
@@ -32,8 +32,8 @@ HTML 库内置多层安全防护，所有配置集中在 [Config](../core/config
 |--------|------|
 | 危险标签 | 移除 `<script>`、`<style>`、`<iframe>`、`<object>`、`<embed>` 等 |
 | 事件属性 | 移除所有 `on*` 属性（`onclick`、`onerror` 等） |
-| 危险协议 | 阻止 `javascript:`、`vbscript:` |
-| Data URL | 仅允许 `data:image/*`、`data:font/*`、`data:application/pdf` |
+| 危险协议 | 阻止 `javascript:`、`vbscript:`、`file:` 协议（含协议相对 `//` 形式的危险协议） |
+| Data URL | 仅允许 `data:image/*`（`image/svg+xml` 除外）、`data:font/*`、`data:application/pdf` |
 
 被阻止的内容通过审计系统记录（需启用审计）。
 

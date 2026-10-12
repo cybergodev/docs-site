@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Advanced Examples"
-title: "Advanced Examples - CyberGo JSON | Advanced Usage"
-description: "CyberGo JSON advanced examples: EncodeBatch encoding, EncodeFields filtering sensitive data, PreParse, SafeGet, WarmupCache, plus hooks and advanced config."
-sidebar_position: 2
+title: "Advanced Examples - CyberGo JSON | Batch Encoding & Warmup"
+description: "CyberGo JSON advanced examples: EncodeBatch, EncodeFields, PreParse, CompilePath, WarmupCache, and ProcessBatch to speed hot-path queries and batch encoding."
+sidebar_position: 50
 ---
 
 # Advanced Feature Examples

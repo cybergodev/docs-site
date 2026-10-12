@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Processor Guide"
-title: "Processor Guide - CyberGo JSON | When to Use"
-description: "CyberGo JSON Processor guide: package functions vs Processor, PreParse and CompilePath optimizations, sharing across goroutines, lifecycle, monitoring."
-sidebar_position: 3
+title: "Processor Guide - CyberGo JSON | When to Use a Processor"
+description: "CyberGo JSON Processor guide: package functions vs Processor, PreParse and CompilePath, goroutine sharing, lifecycle, monitoring for high-frequency queries."
+sidebar_position: 40
 ---
 
 # Processor Guide
@@ -334,7 +334,7 @@ Behavior details:
 
 ## Decision Tree
 
-```
+```text
 Need to work with JSON?
 ├── Occasional use, scripts and tools
 │   └── -> Use package functions json.GetString / json.Set / json.Marshal

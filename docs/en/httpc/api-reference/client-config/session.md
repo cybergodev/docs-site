@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Session Management"
 title: "Session Management - CyberGo HTTPC | SessionManager"
-description: "HTTPC SessionManager API reference: NewSessionManager creation, SessionConfig configuration, SetHeader header management, SetCookie methods, and SetCookieSecurity validation with complete usage details."
-sidebar_position: 3
+description: "HTTPC SessionManager API: NewSessionManager, SessionConfig, SetHeader and SetCookie management, plus SetCookieSecurity validation."
+sidebar_position: 30
 ---
 
 # Session Management
@@ -135,11 +135,13 @@ Returns a **deep-copy** of all session headers (a newly allocated map with copie
 
 | Method | Signature | Lock | Description |
 |------|------|----|------|
-| SetHeader | `(key, value string) error` | Write | Single set, with validation |
-| SetHeaders | `(headers map[string]string) error` | Write | Bulk set, atomic validation |
-| DeleteHeader | `(key string)` | Write | Delete by key |
-| ClearHeaders | `()` | Write | Clear all |
-| GetHeaders | `() map[string]string` | Read | Returns a deep-copy |
+| `SetHeader` | `(key, value string) error` | Write | Single set, with validation |
+| `SetHeaders` | `(headers map[string]string) error` | Write | Bulk set, atomic validation |
+| `DeleteHeader` | `(key string)` | Write | Delete by key |
+| `ClearHeaders` | `()` | Write | Clear all |
+| `GetHeaders` | `() map[string]string` | Read | Returns a deep-copy |
+
+The fully qualified method names are `SessionManager.SetHeader`, `SessionManager.SetHeaders`, `SessionManager.DeleteHeader`, `SessionManager.ClearHeaders`, and `SessionManager.GetHeaders`.
 
 ## Cookie Management
 
@@ -210,12 +212,14 @@ Returns a **deep-copy** of a cookie by name, or nil if it does not exist.
 
 | Method | Signature | Lock | Validation |
 |------|------|----|------|
-| SetCookie | `(cookie *http.Cookie) error` | Write | ValidateCookie + optional CookieSecurity |
-| SetCookies | `(cookies []*http.Cookie) error` | Write | Two-phase atomic validation |
-| DeleteCookie | `(name string)` | Write | None |
-| ClearCookies | `()` | Write | None |
-| GetCookies | `() []*http.Cookie` | Read | None (returns a deep-copy) |
-| GetCookie | `(name string) *http.Cookie` | Read | None (returns a deep-copy) |
+| `SetCookie` | `(cookie *http.Cookie) error` | Write | ValidateCookie + optional CookieSecurity |
+| `SetCookies` | `(cookies []*http.Cookie) error` | Write | Two-phase atomic validation |
+| `DeleteCookie` | `(name string)` | Write | None |
+| `ClearCookies` | `()` | Write | None |
+| `GetCookies` | `() []*http.Cookie` | Read | None (returns a deep-copy) |
+| `GetCookie` | `(name string) *http.Cookie` | Read | None (returns a deep-copy) |
+
+The fully qualified method names are `SessionManager.SetCookie`, `SessionManager.SetCookies`, `SessionManager.DeleteCookie`, `SessionManager.ClearCookies`, `SessionManager.GetCookies`, and `SessionManager.GetCookie`.
 
 ## Cookie Security
 
@@ -260,7 +264,7 @@ Available factory functions:
 func (s *SessionManager) UpdateFromResult(result *Result)
 ```
 
-Extracts cookies from a request result's (`*Result`) `Response.Cookies` and stores them in the session. If CookieSecurity is configured, insecure cookies are **silently skipped** (no error returned, just ignored); only cookies that pass validation are stored. Returns directly when result is nil, Response is nil, or Cookies is empty. DomainClient's `Request` method calls this automatically after every request.
+`SessionManager.UpdateFromResult` extracts cookies from a request result's (`*Result`) `Response.Cookies` and stores them in the session. If CookieSecurity is configured, insecure cookies are **silently skipped** (no error returned, just ignored); only cookies that pass validation are stored. Returns directly when result is nil, Response is nil, or Cookies is empty. DomainClient's `Request` method calls this automatically after every request.
 
 ### UpdateFromCookies
 
@@ -268,7 +272,7 @@ Extracts cookies from a request result's (`*Result`) `Response.Cookies` and stor
 func (s *SessionManager) UpdateFromCookies(cookies []*http.Cookie)
 ```
 
-Updates session cookies from a cookie slice. Same semantics as UpdateFromResult — insecure cookies are silently skipped. DomainClient's Download method captures download-response cookies through this method.
+`SessionManager.UpdateFromCookies` updates session cookies from a cookie slice. Same semantics as `SessionManager.UpdateFromResult` — insecure cookies are silently skipped. DomainClient's Download method captures download-response cookies through this method.
 
 ## Internal Mechanisms
 

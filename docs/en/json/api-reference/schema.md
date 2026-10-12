@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Schema Validation"
 title: "Schema Validation - CyberGo JSON | JSON Schema Guide"
-description: "CyberGo JSON Schema validation: ValidateSchema usage, constraint fields, Format checking, ValidationError handling, and NewSchemaWithConfig creation."
-sidebar_position: 4.5
+description: "CyberGo JSON Schema validation: NewSchema with Properties, Required, Pattern, Format, Enum, Minimum/Maximum — ValidateSchema returns ValidationError lists."
+sidebar_position: 50
 ---
 
 # Schema Validation
@@ -83,9 +83,9 @@ Constraint fields supported by `Schema` (grouped by category):
 | String | `MinLength` / `MaxLength` | `int` | string | Length range (counted by rune) |
 | String | `Pattern` | `string` | string | Regular expression |
 | String | `Format` | `string` | string | Semantic format (see the [Format value table](#supported-format-values)) |
-| Number | `Minimum` / `Maximum` | `float64` | number | Value range |
-| Number | `ExclusiveMinimum` / `ExclusiveMaximum` | `bool` | number | Excludes the boundary value |
-| Number | `MultipleOf` | `float64` | number | Must be a multiple of this value |
+| Number | `Minimum` / `Maximum` | `float64` | number / integer | Value range |
+| Number | `ExclusiveMinimum` / `ExclusiveMaximum` | `bool` | number / integer | Excludes the boundary value |
+| Number | `MultipleOf` | `float64` | number / integer | Must be a multiple of this value |
 | Array | `MinItems` / `MaxItems` | `int` | array | Element count range |
 | Array | `UniqueItems` | `bool` | array | `true` requires elements to be unique |
 | Value | `Enum` | `[]any` | All | List of allowed enum values |
@@ -94,10 +94,10 @@ Constraint fields supported by `Schema` (grouped by category):
 | Metadata | `Default` | `any` | — | Documentation metadata; not validated |
 | Metadata | `Examples` | `[]any` | — | Documentation metadata; not validated |
 
-Supported `Type` values: `object`, `array`, `string`, `number`, `boolean`, `null`.
+Supported `Type` values: `object`, `array`, `string`, `number`, `integer`, `boolean`, `null`.
 
-::: warning Use "number" for numeric types
-After JSON parsing, every number (integers included) is a `float64`, so numeric fields should use `Type: "number"`. The JSON Schema Draft 7 `integer` value is **not supported** — writing `"integer"` causes every value to fail with an `expected type integer` error. Numeric constraints such as `Minimum`/`Maximum`/`MultipleOf` also take effect only when `Type` is `number`.
+::: tip Choosing between "number" and "integer"
+After JSON parsing, every number (integers included) is a `float64`; `"number"` accepts every number. `"integer"` follows JSON Schema semantics and accepts values that are **mathematically integers** — `1`, `1.0`, and `1e2` all pass, while `1.5` fails with an `expected type integer, got float64` error. Numeric constraints such as `Minimum`/`Maximum`/`MultipleOf` take effect for both `number` and `integer`.
 :::
 
 ## Object Constraints: Required / Properties / AdditionalProperties
@@ -144,7 +144,7 @@ To allow extra properties, set `AdditionalProperties` to `true`, or construct wi
 
 ## String Constraints: MinLength / MaxLength / Pattern / Format
 
-Constraints such as `MinLength`, `MaxLength`, `Minimum`, `Maximum`, `MinItems`, `MaxItems` **take effect only when created via `NewSchemaWithConfig`** (see [Creating a Schema](#creating-a-schema) for why). The example below sets lengths via `SchemaConfig` pointer fields and restricts to lowercase letters with `Pattern`:
+Constraints such as `MinLength`, `MaxLength`, `Minimum`, `Maximum`, `MinItems`, `MaxItems` **take effect only when created via `NewSchema`** (see [Creating a Schema](#creating-a-schema) for why). The example below sets lengths via `SchemaConfig` pointer fields and restricts to lowercase letters with `Pattern`:
 
 ```go
 package main
@@ -162,7 +162,7 @@ func main() {
 	nameCfg.MinLength = &minLen
 	nameCfg.MaxLength = &maxLen
 	nameCfg.Pattern = `^[a-z]+$`
-	nameSchema := json.NewSchemaWithConfig(nameCfg)
+	nameSchema := json.NewSchema(nameCfg)
 
 	schema := &json.Schema{
 		Type:     "object",
@@ -209,7 +209,7 @@ func main() {
 	ageCfg.Maximum = &maxVal
 	mult := 5.0
 	ageCfg.MultipleOf = &mult
-	ageSchema := json.NewSchemaWithConfig(ageCfg)
+	ageSchema := json.NewSchema(ageCfg)
 
 	schema := &json.Schema{
 		Type: "object",
@@ -255,7 +255,7 @@ func main() {
 	tagsCfg.MaxItems = &maxItems
 	tagsCfg.UniqueItems = true
 	tagsCfg.Items = &json.Schema{Type: "string"}
-	tagsSchema := json.NewSchemaWithConfig(tagsCfg)
+	tagsSchema := json.NewSchema(tagsCfg)
 
 	schema := &json.Schema{
 		Type: "object",
@@ -288,7 +288,7 @@ func main() {
 
 ## Enum and Const: Enum / Const
 
-`Enum` restricts the value to one of a set; `Const` requires equality with a fixed value. Both work by direct comparison and need no `NewSchemaWithConfig`:
+`Enum` restricts the value to one of a set; `Const` requires equality with a fixed value. Both work by direct comparison and need no `NewSchema`:
 
 ```go
 package main
@@ -362,21 +362,52 @@ There are three ways to construct a `Schema`; **the key difference is whether le
 //    MinItems/MaxItems/ExclusiveMinimum/ExclusiveMaximum do not (see note below)
 schema := &json.Schema{Type: "string", Pattern: `^\d+$`}
 
-// 2) NewSchemaWithConfig: set constraints via SchemaConfig pointer fields; all
+// 2) NewSchema: set constraints via SchemaConfig pointer fields; all
 //    length/range constraints work
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "string"
 minLen := 1
 cfg.MinLength = &minLen
-schema := json.NewSchemaWithConfig(cfg)
+schema := json.NewSchema(cfg)
 
 // 3) DefaultSchema: returns a Schema with default values (AdditionalProperties true)
 schema := json.DefaultSchema()
 ```
 
-::: warning Length/range constraints require NewSchemaWithConfig
-`MinLength`, `MaxLength`, `Minimum`, `Maximum`, `MinItems`, `MaxItems`, `ExclusiveMinimum`, and `ExclusiveMaximum` rely on tracking flags inside `Schema` that cannot be set externally. Assigning these fields directly in an `&json.Schema{...}` literal **has no effect**; they are enabled only through `NewSchemaWithConfig` with the corresponding **pointer fields** (e.g. `cfg.MinLength = &v`). `Type`, `Required`, `Properties`, `Items`, `Pattern`, `Format`, `Enum`, `Const`, `UniqueItems`, and `MultipleOf` are not subject to this restriction and work both in literals and via `NewSchemaWithConfig`.
+::: warning Length/range constraints require NewSchema
+`MinLength`, `MaxLength`, `Minimum`, `Maximum`, `MinItems`, `MaxItems`, `ExclusiveMinimum`, and `ExclusiveMaximum` rely on tracking flags inside `Schema` that cannot be set externally. Assigning these fields directly in an `&json.Schema{...}` literal **has no effect**; they are enabled only through `NewSchema` (or its deprecated alias `NewSchemaWithConfig`) with the corresponding **pointer fields** (e.g. `cfg.MinLength = &v`). `Type`, `Required`, `Properties`, `Items`, `Pattern`, `Format`, `Enum`, `Const`, `UniqueItems`, and `MultipleOf` are not subject to this restriction and work both in literals and via `NewSchema`.
 :::
+
+### NewSchema
+
+Signature: `func NewSchema(cfg SchemaConfig) *Schema`
+
+`NewSchema` is the **canonical constructor** for a configured Schema (matching the naming of every other `New*(cfg)` constructor in the library): it enables length/range constraints via `SchemaConfig` pointer fields, initializes `Properties` / `Required` automatically, and applies the `AdditionalProperties` default.
+
+```go
+cfg := json.DefaultSchemaConfig()
+cfg.Type = "string"
+minLen := 1
+cfg.MinLength = &minLen
+schema := json.NewSchema(cfg)
+```
+
+### NewSchemaWithConfig
+
+<Badge type="danger" text="Deprecated" />
+
+Signature: `func NewSchemaWithConfig(cfg SchemaConfig) *Schema`
+
+Creates a Schema with the given configuration.
+
+::: warning Deprecated
+`NewSchemaWithConfig` is fully equivalent to [`NewSchema`](#newschema) (it delegates to the same implementation) — the "WithConfig" suffix predates the unified Config convention; no other constructor carries it. Use `NewSchema(cfg)` in new code. `NewSchemaWithConfig` will not be removed within v1.
+:::
+
+```go
+// Fully equivalent to json.NewSchema(cfg)
+schema := json.NewSchemaWithConfig(cfg)
+```
 
 ### DefaultSchema
 
@@ -388,13 +419,13 @@ Signature: `func DefaultSchema() *Schema`
 
 Signature: `func DefaultSchemaConfig() SchemaConfig`
 
-`DefaultSchemaConfig` returns the default input for `NewSchemaWithConfig`: only `AdditionalProperties` is preset to a pointer to `true`; every other field is the zero value. Set `Type` and the pointer fields on it, then create the Schema.
+`DefaultSchemaConfig` returns the default input for `NewSchema`: only `AdditionalProperties` is preset to a pointer to `true`; every other field is the zero value. Set `Type` and the pointer fields on it, then create the Schema.
 
-The two produce consistent results: `DefaultSchema()` equals `NewSchemaWithConfig(DefaultSchemaConfig())` — both allow extra properties by default.
+The two produce consistent results: `DefaultSchema()` equals `NewSchema(DefaultSchemaConfig())` — both allow extra properties by default.
 
 ### SchemaConfig Fields
 
-The fields of `SchemaConfig` correspond one-to-one with `Schema`; the numeric/boolean constraints are **pointer types** — `nil` means the constraint is unset, and `NewSchemaWithConfig` enables a constraint only when a non-`nil` pointer is passed (this is exactly why length/range constraints must go through `NewSchemaWithConfig`; see the [warning above](#creating-a-schema)).
+The fields of `SchemaConfig` correspond one-to-one with `Schema`; the numeric/boolean constraints are **pointer types** — `nil` means the constraint is unset, and `NewSchema` enables a constraint only when a non-`nil` pointer is passed (this is exactly why length/range constraints must go through `NewSchema`; see the [warning above](#creating-a-schema)).
 
 | Field                  | Type                 | Description                                                                          |
 | ----------------------- | -------------------- | ------------------------------------------------------------------------------------- |
@@ -422,7 +453,7 @@ The fields of `SchemaConfig` correspond one-to-one with `Schema`; the numeric/bo
 | `Default`               | `any`                | Default value (metadata)                                                              |
 | `Examples`              | `[]any`              | Example values (metadata)                                                             |
 
-Creating configured schemas via `NewSchemaWithConfig` (`func NewSchemaWithConfig(cfg SchemaConfig) *Schema`) is always recommended — it is the only reliable way to enable pointer constraints, and it initializes `Properties` / `Required` automatically and handles the `AdditionalProperties` default.
+Creating configured schemas via `NewSchema` (`func NewSchema(cfg SchemaConfig) *Schema`) is always recommended — it is the only reliable way to enable pointer constraints, and it initializes `Properties` / `Required` automatically and handles the `AdditionalProperties` default.
 
 ## Validation-Related Config Fields
 

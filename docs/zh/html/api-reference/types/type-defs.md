@@ -1,7 +1,7 @@
 ---
 sidebar_label: "数据类型"
 title: "类型定义 - CyberGo html | 数据类型参考"
-description: "CyberGo html 核心数据类型参考：Result、ImageInfo、LinkInfo、LinkResource、VideoInfo、AudioInfo、Statistics、BatchResult 等结构体字段说明，含自定义 MarshalJSON 序列化行为。"
+description: "CyberGo html 核心数据类型参考：详解 Result 内容提取结果、ImageInfo 图片信息、LinkInfo 链接信息、VideoInfo 与 AudioInfo 视频音频元数据、LinkResource 链接资源、Statistics 处理统计、BatchResult 批量结果、NodeAttr 节点属性等结构体的字段含义，含 MarshalJSON 自定义序列化行为说明。"
 sidebar_position: 2
 ---
 
@@ -25,9 +25,23 @@ type Result struct {
 }
 ```
 
+### 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `Result.Text` | `string` | 提取的正文纯文本 |
+| `Result.Title` | `string` | 文档标题（`<title>`，缺失时取首个 `<h1>`/`<h2>`） |
+| `Result.Images` | `[]ImageInfo` | 按文档顺序排列的图片；`PreserveImages=false` 时为空 |
+| `Result.Links` | `[]LinkInfo` | 按文档顺序排列的链接；`PreserveLinks=false` 时为空 |
+| `Result.Videos` | `[]VideoInfo` | 提取的视频源；`PreserveVideos=false` 时为空 |
+| `Result.Audios` | `[]AudioInfo` | 提取的音频源；`PreserveAudios=false` 时为空 |
+| `Result.ProcessingTime` | `time.Duration` | 本次提取的墙上时间（JSON 输出中为 `processing_time_ms`） |
+| `Result.WordCount` | `int` | `Text` 的词数（空白分词，CJK 字符逐字计数） |
+| `Result.ReadingTime` | `time.Duration` | 按 `WordCount` 与 200 词/分钟估算的阅读时间（JSON 输出中为 `reading_time_ms`） |
+
 ### MarshalJSON
 
-自定义 JSON 序列化，`ProcessingTime` 和 `ReadingTime` 虽有 `json:"-"` 标签（标准序列化会跳过），但通过自定义 `MarshalJSON()` 方法将它们转为毫秒数输出。
+自定义 JSON 序列化由 `Result.MarshalJSON` 实现：`ProcessingTime` 和 `ReadingTime` 虽有 `json:"-"` 标签（标准序列化会跳过），但 `Result.MarshalJSON` 会将它们转为毫秒数输出。
 
 ```go
 func (r *Result) MarshalJSON() ([]byte, error)
@@ -41,7 +55,7 @@ func (r *Result) MarshalJSON() ([]byte, error)
 
 ## ImageInfo
 
-图片信息。
+`Result.Images`（`[]ImageInfo`）的元素类型。`ImageInfo` 保存单个 `<img>` 的提取信息。
 
 ```go
 type ImageInfo struct {
@@ -54,6 +68,18 @@ type ImageInfo struct {
     Position     int    `json:"position"`      // 在文档中的位置
 }
 ```
+
+### 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `ImageInfo.URL` | `string` | 图片地址（`src` 属性） |
+| `ImageInfo.Alt` | `string` | 替代文本（`alt` 属性） |
+| `ImageInfo.Title` | `string` | 咨询标题（`title` 属性） |
+| `ImageInfo.Width` | `string` | 宽度属性原文（未解析为数字） |
+| `ImageInfo.Height` | `string` | 高度属性原文（未解析为数字） |
+| `ImageInfo.IsDecorative` | `bool` | `Alt` 为空时为 `true`（装饰性图片） |
+| `ImageInfo.Position` | `int` | 在提取内容中的 1-based 序号（未定位时为 `0`） |
 
 ### 字段语义
 
@@ -72,7 +98,7 @@ type ImageInfo struct {
 
 ## LinkInfo
 
-链接信息。
+`Result.Links`（`[]LinkInfo`）的元素类型，保存单个 `<a>` 的提取信息。
 
 ```go
 type LinkInfo struct {
@@ -84,6 +110,17 @@ type LinkInfo struct {
     Position   int    `json:"position"`    // 在文档中的位置
 }
 ```
+
+### 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `LinkInfo.URL` | `string` | 链接地址（`href` 属性） |
+| `LinkInfo.Text` | `string` | 链接可见文本（含嵌套标签内的文本） |
+| `LinkInfo.Title` | `string` | 咨询标题（`title` 属性，非链接文本） |
+| `LinkInfo.IsExternal` | `bool` | 是否为外部链接 |
+| `LinkInfo.IsNoFollow` | `bool` | `rel` 含 `nofollow` 时为 `true` |
+| `LinkInfo.Position` | `int` | 在提取内容中的 1-based 序号（无效 `<a>` 仍消耗序号，可能不连续） |
 
 ### 字段语义
 
@@ -98,7 +135,7 @@ type LinkInfo struct {
 
 ## VideoInfo
 
-视频信息。
+`Result.Videos`（`[]VideoInfo`）的元素类型。`VideoInfo` 保存单个视频源的提取信息。
 
 ```go
 type VideoInfo struct {
@@ -110,6 +147,17 @@ type VideoInfo struct {
     Duration string `json:"duration"` // 时长
 }
 ```
+
+### 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `VideoInfo.URL` | `string` | 视频源地址 |
+| `VideoInfo.Type` | `string` | 视频类型（文件容器 MIME 或 `"embed"`，见下方取值规则） |
+| `VideoInfo.Poster` | `string` | `<video>` 的封面帧地址（`poster` 属性） |
+| `VideoInfo.Width` | `string` | 宽度属性原文（未解析为数字） |
+| `VideoInfo.Height` | `string` | 高度属性原文（未解析为数字） |
+| `VideoInfo.Duration` | `string` | 时长属性原文（未解析为数字） |
 
 ### Type 字段取值规则
 
@@ -125,7 +173,7 @@ type VideoInfo struct {
 
 ## AudioInfo
 
-音频信息。
+`Result.Audios`（`[]AudioInfo`）的元素类型。`AudioInfo` 保存单个音频源的提取信息。
 
 ```go
 type AudioInfo struct {
@@ -134,6 +182,14 @@ type AudioInfo struct {
     Duration string `json:"duration"` // 时长
 }
 ```
+
+### 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `AudioInfo.URL` | `string` | 音频源地址 |
+| `AudioInfo.Type` | `string` | 音频类型（文件容器 MIME，见下方取值规则） |
+| `AudioInfo.Duration` | `string` | 时长属性原文（未解析为数字） |
 
 ### Type 字段取值规则
 
@@ -148,7 +204,7 @@ OGG 容器可承载视频或音频，`.ogg` URL 会同时出现在 `Videos` 和 
 
 ## LinkResource
 
-链接资源（用于链接提取 API）。
+链接资源，`ExtractAllLinks` 系列函数与 `GroupLinksByType` 的元素类型。
 
 ```go
 type LinkResource struct {
@@ -158,11 +214,19 @@ type LinkResource struct {
 }
 ```
 
+### 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `LinkResource.URL` | `string` | 资源地址；`ResolveRelativeURLs=true` 时已基于 `BaseURL` 解析为绝对地址 |
+| `LinkResource.Title` | `string` | 人类可读的资源标签 |
+| `LinkResource.Type` | `string` | 资源类型分类（`link`/`image`/`video`/`audio`/`css`/`js`/`icon`/`media`） |
+
 各 `Type` 取值对应的 HTML 标签来源与控制开关详见 [链接提取](../modules/links#链接类型详解)。
 
 ## Statistics
 
-处理统计信息。
+处理统计信息，由 `Processor.GetStatistics` 返回。
 
 ```go
 type Statistics struct {
@@ -174,9 +238,19 @@ type Statistics struct {
 }
 ```
 
+### 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `Statistics.TotalProcessed` | `int64` | 完成且无错误的提取次数（含缓存命中） |
+| `Statistics.CacheHits` | `int64` | 由缓存直接命中的次数 |
+| `Statistics.CacheMisses` | `int64` | 未命中、需完整处理的次数 |
+| `Statistics.ErrorCount` | `int64` | 返回错误的提取次数 |
+| `Statistics.AverageProcessTime` | `time.Duration` | 每次提取的平均墙上时间 |
+
 ## BatchResult
 
-批量处理结果。
+批量处理结果，`ExtractBatch` 系列函数与方法的返回类型。
 
 ```go
 type BatchResult struct {
@@ -188,9 +262,21 @@ type BatchResult struct {
 }
 ```
 
+### 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `BatchResult.Results` | `[]*Result` | 与输入一一对应的提取结果，失败/取消项为 `nil` |
+| `BatchResult.Errors` | `[]error` | 与输入一一对应的错误，成功项为 `nil` |
+| `BatchResult.Success` | `int` | 成功项计数 |
+| `BatchResult.Failed` | `int` | 失败项计数 |
+| `BatchResult.Cancelled` | `int` | 因 context 取消而未处理的项计数 |
+
+字段语义、取消行为与输入校验详见 [批量处理](../modules/batch)。
+
 ## NodeAttr
 
-HTML 节点属性。
+HTML 节点属性，`ContentNode.Attrs`（`[]NodeAttr`）的元素类型。`NodeAttr` 仅 `Key` 与 `Value` 两个字段。
 
 ```go
 type NodeAttr struct {
@@ -198,3 +284,10 @@ type NodeAttr struct {
     Value string // 属性值
 }
 ```
+
+### 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `NodeAttr.Key` | `string` | 属性名 |
+| `NodeAttr.Value` | `string` | 属性值 |

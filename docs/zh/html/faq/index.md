@@ -148,14 +148,14 @@ cfg.Scorer = &MyScorer{}
 
 ## 缓存 Key 是如何生成的？
 
-缓存 Key 基于编码转换后的 UTF-8 内容，采用 xxHash 风格算法生成 128 位（16 字节）哈希：
+缓存 Key 基于**原始输入字节**（而非编码转换后的 UTF-8 文本）生成，并混入处理器配置（`ExtractArticle`/`Preserve*` 等提取开关、`InlineImageFormat`/`InlineLinkFormat`/`TableFormat` 三个格式串以及 `Encoding` 强制编码设置）。算法为 hash/maphash（AES-NI 加速、进程级随机种子），64 位哈希结果经 splitmix64 扩展为 128 位（16 字节）Key：
 
 - 小于等于 64KB（`maxCacheKeySize`）：对完整内容计算
 - 大于 64KB：使用 5 点采样（头部、尾部、3 个均匀分布点），总采样预算 4096 字节（`cacheKeySample`，每点约 819 字节），并额外混入内容总长度以增强唯一性
-- 相同 UTF-8 内容（无论原始编码是 GBK、Shift_JIS 还是 Windows-1252）生成相同 Key
+- Key 基于原始字节计算——同一文档以不同编码存储（GBK、Shift_JIS、Windows-1252……）字节序列不同，生成**不同** Key
 
-:::tip 编码归一化的好处
-因为 Key 在编码检测与 UTF-8 转换**之后**计算，同一篇文档以不同字节编码存储也会命中同一缓存条目，缓存命中率不受输入编码影响。
+:::tip 为什么基于原始字节
+Key 在编码检测**之前**直接对原始字节计算，缓存命中时可以完全跳过编码检测扫描（重复提取热路径上最贵的步骤之一）。代价是：同一文档以不同编码存储会得到不同 Key，无法互相命中。`Encoding` 参与计算则是因为同一份字节在不同强制编码下解码结果不同，必须区分，否则会错误共享缓存。
 :::
 
 ## 为什么 ExtractAllLinks 和 Extract 的结果不同？
@@ -268,7 +268,7 @@ fmt.Println(br.Failed)             // == len(hugeSlice)
 | 维度 | 正面信号 | 负面信号 |
 |------|----------|----------|
 | 标签语义 | `<article>`(+1000)、`<main>`(+900)、`<section>`(+300) | `nav`/`aside`/`footer`/`header` 直接返回 0 |
-| class/id 模式 | `content`/`article`/`post`/`main`/`entry`（强正面）；`blog`/`news`/`detail`（中等正面） | `comment`/`sidebar`/`nav`/`ad`/`menu`（强负面）；`widget`/`share`/`social`（中等负面） |
+| class/id 模式 | `content`/`article`/`post`/`main`/`entry` 等（强正面）；`blog`/`news`/`detail` 等（中等正面） | `comment`/`sidebar`/`nav`/`ad`/`menu` 等（强负面）；`widget`/`share`/`social` 等（中等负面） |
 | 段落密度 | 子树中 `<p>` 数量 × 倍率加分 | — |
 | 文本长度 | 超过阈值的长文本加分；低于阈值的短文本扣分 | — |
 | 链接密度 | — | 文本短且链接密集时施加惩罚（可能是导航栏） |

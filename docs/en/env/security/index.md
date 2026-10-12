@@ -1,9 +1,8 @@
 ---
 sidebar_label: "Security Overview"
 title: "Security Overview - CyberGo env | Security Architecture"
-description: "Security architecture overview for CyberGo env: SecureValue memory locking and zeroing, key-value validation, sensitive-key detection, and audit tracking."
+description: "CyberGo env security architecture: SecureValue memory locking and zeroing, key/value validation, forbidden keys, sensitive-key detection, and audit tracking."
 sidebar_position: 1
-sidebar_icon: "🛡️"
 ---
 
 # Security Overview
@@ -32,11 +31,11 @@ Environment variables often store sensitive information, making secure handling 
 
 | Feature | Description | Documentation |
 |---------|-------------|---------------|
-| **SecureValue** | Memory protection and auto-zeroing for sensitive values | [SecureValue API](/en/env/api-reference/secure-value) |
-| **Forbidden keys** | Prevents modification of system-critical variables | [Constants & Errors](/en/env/api-reference/constants#defaultforbiddenkeys) |
-| **Sensitive key detection** | Auto-identifies sensitive config keys, log masking tools | [Data Masking](/en/env/security/data-masking) |
-| **Value validation** | Detects control characters, null bytes, etc. | [Config API](/en/env/api-reference/config) |
-| **Audit logging** | Complete operation tracking | [Component Factory](/en/env/api-reference/factory#audit-handler-factories) |
+| **SecureValue** | Memory protection and auto-zeroing for sensitive values | [SecureValue API](../api-reference/secure-value) |
+| **Forbidden keys** | Prevents modification of system-critical variables | [Constants & Errors](../api-reference/constants#defaultforbiddenkeys) |
+| **Sensitive key detection** | Auto-identifies sensitive config keys, log masking tools | [Data Masking](./data-masking) |
+| **Value validation** | Detects control characters, null bytes, etc. | [Config API](../api-reference/config) |
+| **Audit logging** | Complete operation tracking | [Component Factory](../api-reference/factory#audit-handler-factories) |
 
 ## SecureValue Overview
 
@@ -53,13 +52,13 @@ password := secret.Reveal()  // Only call when plaintext is needed
 ```
 
 **Core features:**
-- **Memory locking** - Prevents swapping to disk (Linux/macOS/Windows/FreeBSD)
+- **Memory locking** - Prevents swapping to disk (Linux/macOS/Windows only; on other platforms `IsMemoryLockSupported()` returns false with graceful degradation)
 - **Auto-zeroing** - Safely erases memory on `Close()`
 - **Masked display** - `Masked()` for log output
 - **Thread safety** - Supports concurrent reads
 
-:::tip
-See [SecureValue API](/en/env/api-reference/secure-value).
+:::tip Full API
+See [SecureValue API](../api-reference/secure-value).
 :::
 
 ## Log Security
@@ -76,11 +75,11 @@ log.Printf("Loading config: %s", env.MaskValue("DB_PASSWORD", password))
 // Output: Loading config: [MASKED:12 chars]
 
 log.Printf("Connection params: %s", env.SanitizeForLog("user=admin password=s3cret"))
-// Output: Connection params: user=admin [MASKED]
+// Output: Connection params: user=admin password=[MASKED]
 ```
 
-:::tip
-For complete usage of masking tools, see [Data Masking](/en/env/security/data-masking).
+:::tip Full guide
+For complete usage of masking tools, see [Data Masking](./data-masking).
 :::
 
 ## Key/Value Validation
@@ -103,9 +102,10 @@ Built-in forbidden keys prevent modification of system-critical variables:
 | Dynamic linking | `LD_PRELOAD`, `DYLD_INSERT_LIBRARIES` | Malicious library injection |
 | Shell | `SHELL`, `IFS`, `BASH_ENV` | Shell hijacking |
 | Language runtimes | `PYTHONPATH`, `NODE_PATH` | Module hijacking |
+| Windows system | `COMSPEC`, `PATHEXT`, `SYSTEMROOT`, `WINDIR` | Command interpreter / system path hijacking |
 
-:::tip
-See [DefaultForbiddenKeys](/en/env/api-reference/constants#defaultforbiddenkeys) for the complete forbidden keys list.
+:::tip Full list
+See [DefaultForbiddenKeys](../api-reference/constants#defaultforbiddenkeys) for the complete forbidden keys list.
 :::
 
 ### Value Validation
@@ -156,11 +156,11 @@ cfg.AllowedKeys = []string{"APP_NAME", "PORT", "DB_HOST", "API_KEY"}
 
 ## Expansion Scope Isolation
 
-Variable expansion resolves file-first, process-environment-second by default. For untrusted configuration sources, `ExpansionScope: ExpansionFileOnly` restricts references to inside the file, blocking a config file from probing and capturing process secrets (cloud credentials, tokens, etc.) (SEC-03). Configuration and attack scenarios are covered in [Variable Expansion · Expansion Scope](/en/env/guides/variable-expansion).
+Variable expansion resolves file-first, process-environment-second by default. For untrusted configuration sources, `ExpansionScope: ExpansionFileOnly` restricts references to inside the file, blocking a config file from probing and capturing process secrets (cloud credentials, tokens, etc.) (SEC-03). Configuration and attack scenarios are covered in [Variable Expansion · Expansion Scope](../guides/variable-expansion).
 
 ## Related Documentation
 
-- [SecureValue API](/en/env/api-reference/secure-value) - Complete API for secure value handling
-- [Memory Locking](/en/env/security/memory-locking) - Complete mlock memory protection guide
-- [Constants & Errors](/en/env/api-reference/constants) - Complete forbidden keys list, sensitive key patterns
-- [Production Checklist](/en/env/security/production-checklist) - Pre-launch security checks
+- [SecureValue API](../api-reference/secure-value) - Complete API for secure value handling
+- [Memory Locking](./memory-locking) - Complete mlock memory protection guide
+- [Constants & Errors](../api-reference/constants) - Complete forbidden keys list, sensitive key patterns
+- [Production Checklist](./production-checklist) - Pre-launch security checks

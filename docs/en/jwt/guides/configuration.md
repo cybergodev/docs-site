@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
-title: "Configuration - CyberGo JWT | Config Fields and Security Hardening"
-description: "Configuration guide: all Config fields including issuer/audience validation, clock skew tolerance, mandatory expiration, TTL design, and built-in input validation with length limits, injection detection, and ValidationError handling."
+title: "Configuration - CyberGo JWT | Config & Security Hardening"
+description: "CyberGo JWT configuration: issuer/audience validation, clock skew tolerance, mandatory expiration, TTL, and input validation with injection detection."
 sidebar_position: 15
 check_code: false
 ---
@@ -22,6 +22,8 @@ check_code: false
 | `SigningMethod` | `HS256` | Signing algorithm |
 | `ClockSkew` | 0 | Clock skew tolerance |
 | `RequireExpiration` | `false` | Whether `exp` claim is required |
+| `RejectRefreshAsAccess` | `false` | Reject refresh tokens being used as access tokens (new in v1.2.3) |
+| `RotateRefreshTokens` | `false` | Automatically revoke the old refresh token on refresh for one-time rotation (new in v1.2.3) |
 | `ExpectedAudience` | `""` (no check) | Expected audience |
 
 ### normalizeConfig Auto-fill Rules
@@ -99,8 +101,8 @@ func main() {
         panic(err)
     }
 
-    _, valid, _ := processor.Validate(token)
-    fmt.Println("Valid:", valid)
+    _, err = processor.Parse(token)
+    fmt.Println("Valid:", err == nil)
     // Output: Valid: true
 
     // Token with wrong audience is rejected
@@ -111,8 +113,8 @@ func main() {
         },
     }
     wrongToken, _ := processor.Create(wrongClaims)
-    _, valid, _ = processor.Validate(wrongToken)
-    fmt.Println("Wrong audience valid:", valid)
+    _, err = processor.Parse(wrongToken)
+    fmt.Println("Wrong audience valid:", err == nil)
     // Output: Wrong audience valid: false
 }
 ```
@@ -268,7 +270,7 @@ if err != nil {
 }
 ```
 
-`ValidationError` implements `Unwrap()`, enabling `errors.Is` and `errors.As` to traverse the underlying error. In the `Create` and `Validate` paths, validation errors are wrapped with `ErrInvalidClaims`.
+`ValidationError` implements `Unwrap()`, enabling `errors.Is` and `errors.As` to traverse the underlying error. In the `Create` and `Parse` paths, validation errors are wrapped with `ErrInvalidClaims`.
 
 ::: tip Custom Claims Validation
 Types implementing the `CustomClaims` interface are not deeply validated for custom fields — implementers must handle this in the `Validate()` method. Standard JWT fields (`iss`, `sub`, `jti`, etc.) are always validated for length and injection. See [Custom Claims](./custom-claims).

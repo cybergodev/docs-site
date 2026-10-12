@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概述"
 title: "结构化日志 - CyberGo DD | 高性能 Go 日志库"
-description: "CyberGo DD 是 CyberGo 组织推出的高性能 Go 结构化日志库，提供线程安全的日志记录、灵活的输出目标配置、文件自动轮换、敏感数据自动过滤、异步审计日志、HMAC 完整性签名和低分配优化，帮助开发者快速构建安全可靠的日志记录系统。"
+description: "CyberGo DD 是高性能 Go 结构化日志库，提供线程安全的日志记录、灵活的输出目标、文件自动轮换、敏感数据过滤、异步审计日志与 HMAC 完整性签名，助你构建安全可靠的日志系统。"
 ---
 
 # DD
@@ -33,27 +33,27 @@ go get github.com/cybergodev/dd
 package main
 
 import (
-    "time"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // 使用默认日志记录器
-    dd.Info("服务启动")
+	// 使用默认日志记录器
+	dd.Info("服务启动")
 
-    // 结构化日志
-    dd.InfoWith("请求处理完成",
-        dd.String("method", "GET"),
-        dd.Int("status", 200),
-        dd.Duration("elapsed", 150*time.Millisecond),
-    )
+	// 结构化日志
+	dd.InfoWith("请求处理完成",
+		dd.String("method", "GET"),
+		dd.Int("status", 200),
+		dd.Duration("elapsed", 150*time.Millisecond),
+	)
 
-    // 创建自定义日志记录器
-    logger, _ := dd.New(dd.DefaultConfig())
-    defer logger.Close()
+	// 创建自定义日志记录器
+	logger, _ := dd.New(dd.DefaultConfig())
+	defer logger.Close()
 
-    logger.Info("自定义日志记录器已创建")
+	logger.Info("自定义日志记录器已创建")
 }
 ```
 
@@ -65,12 +65,12 @@ func main() {
 | [配置详解](./guides/basics/configuration) | Config 结构体、预设方案、输出目标 |
 | [结构化日志](./guides/basics/structured-logging) | 字段构造器、链式调用 |
 | [文件输出与轮换](./guides/basics/file-output) | FileWriter、BufferedWriter |
-| [敏感数据过滤](./guides/security/sensitive-filtering) | 自动脱敏、安全等级 |
-| [字段验证](./guides/security/field-validation) | 命名约定校验、Log4Shell 防护 |
 | [日志采样](./guides/operations/sampling) | 高吞吐场景日志降量策略 |
-| [审计日志](./guides/security/audit-logging) | 异步审计事件、完整性签名 |
 | [钩子系统](./guides/operations/hooks) | 生命周期钩子扩展 |
 | [错误处理](./guides/operations/error-handling) | 结构化错误、哨兵错误、errors.Is |
+| [敏感数据过滤](./guides/security/sensitive-filtering) | 自动脱敏、安全等级 |
+| [字段验证](./guides/security/field-validation) | 命名约定校验、Log4Shell 防护 |
+| [审计日志](./guides/security/audit-logging) | 异步审计事件、完整性签名 |
 | [分布式追踪集成](./guides/integration/context-tracing) | TraceID/SpanID/RequestID |
 | [迁移指南](./guides/integration/migration) | 从 log/slog/zap/logrus 迁移 |
 

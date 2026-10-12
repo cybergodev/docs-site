@@ -1,8 +1,8 @@
 ---
 sidebar_label: "常量与错误"
 title: "常量与错误 - CyberGo DD | LogLevel、Format、SentinelErrors"
-description: "CyberGo DD 常量定义与错误类型完整文档，包括 LogLevel 日志级别常量（Debug/Info/Warn/Error/Fatal）、Format 输出格式常量和 SentinelErrors 哨兵错误定义，用于精确控制日志行为和错误处理，是理解 DD 日志库配置体系的核心基础。"
-sidebar_position: 6
+description: "CyberGo DD 常量定义与错误类型 API 文档：LogLevel 日志级别常量（Debug/Info/Warn/Error/Fatal）、Format 输出格式常量与 SentinelErrors 哨兵错误定义，用于精确控制日志行为与错误处理。"
+sidebar_position: 8
 ---
 
 # 常量与错误
@@ -49,8 +49,8 @@ type FieldValidationMode int // 字段键验证模式
 | 常量 | 值 | 说明 |
 |------|----|------|
 | `FieldValidationNone` | 0 | 禁用验证（默认） |
-| `FieldValidationWarn` | 1 | 验证失败时警告但仍接受 |
-| `FieldValidationStrict` | 2 | 严格模式，验证失败时记录错误 |
+| `FieldValidationWarn` | 1 | 验证失败时向 stderr 输出警告诊断（字段仍接受并记录） |
+| `FieldValidationStrict` | 2 | 严格模式，验证失败时向 stderr 输出错误诊断（日志条目仍正常写入） |
 
 ## 字段命名约定
 
@@ -75,6 +75,8 @@ type HashAlgorithm int // 完整性签名哈希算法
 | 常量 | 值 | 说明 |
 |------|----|------|
 | `HashAlgorithmSHA256` | 0 | SHA-256 算法（用于[完整性签名](../security-audit/integrity)） |
+
+`HashAlgorithm` 实现了 `String() string` 方法（返回 `"SHA256"`，未知值返回 `"Unknown"`）。
 
 ## 默认值
 

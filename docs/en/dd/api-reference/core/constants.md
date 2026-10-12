@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Constants & Errors"
-title: "Constants & Errors - CyberGo DD | LogLevel, Format, SentinelErrors"
-description: "Complete documentation of CyberGo DD's constants and error types, including LogLevel log-level constants (Debug/Info/Warn/Error/Fatal), Format output-format constants, and SentinelErrors sentinel error definitions. Used to precisely control log behavior and error handling; core foundation for understanding the DD logging library configuration system."
-sidebar_position: 6
+title: "Constants & Errors - CyberGo DD | LogLevel & SentinelErrors"
+description: "CyberGo DD constants and error types reference: LogLevel log-level constants, Format output formats, and SentinelErrors definitions."
+sidebar_position: 8
 ---
 
 # Constants & Errors
+
+> 🔧 **API Reference** · For a hands-on tutorial see [Error Handling](../../guides/operations/error-handling)
 
 DD defines a rich set of constants and error types for log-level control, formatting, and error handling.
 
@@ -47,8 +49,8 @@ type FieldValidationMode int // Field key validation mode
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `FieldValidationNone` | 0 | Disable validation (default) |
-| `FieldValidationWarn` | 1 | Warn on validation failure but still accept |
-| `FieldValidationStrict` | 2 | Strict mode; log an error on validation failure |
+| `FieldValidationWarn` | 1 | Emit a stderr warning diagnostic on failure (field is still accepted and logged) |
+| `FieldValidationStrict` | 2 | Strict mode; emit a stderr error diagnostic on failure (the log entry is still written normally, not rejected) |
 
 ## Field Naming Conventions
 
@@ -73,6 +75,8 @@ type HashAlgorithm int // Integrity signing hash algorithm
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `HashAlgorithmSHA256` | 0 | SHA-256 algorithm (used by [integrity signing](../security-audit/integrity)) |
+
+`HashAlgorithm` implements `String() string` (returns `"SHA256"`; unknown values return `"Unknown"`).
 
 ## Default Values
 

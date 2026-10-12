@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Iteration Methods"
-title: "Package Iteration Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON package-level iteration: Foreach, ForeachWithPath, ForeachNested recursion, ForeachWithError error control, and IterableValue access."
-sidebar_position: 10
+title: "Package Iteration Functions - CyberGo JSON | Foreach Usage"
+description: "CyberGo JSON is a Go library for traversal, offering ForeachWithPath, ForeachWithError and ForeachFile to help developers walk JSON in stable order."
+sidebar_position: 100
 ---
 
 # Package Iteration Functions
@@ -15,11 +15,18 @@ Object iteration follows key names in **lexicographic order**, arrays follow nat
 
 ## Foreach
 
+<Badge type="danger" text="Deprecated" />
+
 Signature: `func Foreach(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 Iterates a JSON array or object.
 
+::: warning Deprecated
+`Foreach` **silently drops errors**: when the document is invalid, or the processor is unavailable or closed, the callback is **skipped entirely** with no error returned — the caller cannot find out. Use [`ForeachWithError`](#foreachwitherror) instead — it returns the error, and its callback returns `nil` to continue iteration. `Foreach` will not be removed within v1.
+:::
+
 ```go
+// Deprecated: errors are silently dropped; new code should use ForeachWithError (below)
 json.Foreach(data, func(key any, item *json.IterableValue) {
     fmt.Printf("Key: %v, Value: %v\n", key, item.GetData())
 })
@@ -46,11 +53,18 @@ Good for:
 
 ## ForeachNested
 
+<Badge type="danger" text="Deprecated" />
+
 Signature: `func ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
 Recursively iterates all nested levels. The recursion depth cap is 200 (preventing stack overflow on deeply nested structures; subtrees beyond it are not descended into).
 
+::: warning Deprecated
+`ForeachNested` **silently drops errors** just like `Foreach`: on a failed parse or a closed processor the callback is skipped entirely, with no error returned. Use [`ForeachNestedWithError`](#foreachnestedwitherror) instead — it returns the error, and its callback returns `nil` to continue iteration. `ForeachNested` will not be removed within v1.
+:::
+
 ```go
+// Deprecated: errors are silently dropped; new code should use ForeachNestedWithError (below)
 json.ForeachNested(data, func(key any, item *json.IterableValue) {
     fmt.Printf("Key: %v, Value: %v\n", key, item.GetData())
 })
@@ -193,7 +207,7 @@ The `IterableValue` in iteration callbacks provides convenient value access; for
 
 ## File Iteration Functions
 
-The package level provides functions that iterate directly from a file — a good fit for large JSON files — mirroring the [Processor file iteration methods](../processor/iterate#file-iteration-methods).
+The package level provides functions that iterate directly from a file, mirroring the [Processor file iteration methods](../processor/iterate#file-iteration-methods). Note: they all load the **entire file into memory** first, then run item-by-item or batched callbacks (bounded by the `MaxJSONSize` cap, 100MB by default); for constant-memory large-file processing use the [streaming iterators such as StreamIterator](../../streaming/large-files#streaming-and-parallel-iterators).
 
 ### ForeachFile
 
@@ -265,8 +279,8 @@ err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.Iterab
 
 :::tip Use cases
 - Batch database inserts
-- Batched API calls
-- Large-file processing under memory constraints
+- Batched API calls (bulk persistence, batched callbacks)
+- Note: chunking does not save memory — the file is still fully loaded before batched callbacks; for constant-memory large-file processing use [StreamIterator](../../streaming/large-files)
 :::
 
 ---
@@ -319,7 +333,7 @@ Path: max, Type: float64
 |---------|:--------------:|:---------:|:-------:|----------|
 | `ForeachFile` | No | No | No | Simple file traversal |
 | `ForeachFileWithPath` | Yes | No | No | Targeted traversal |
-| `ForeachFileChunked` | No | No | **Yes** | Batch processing, memory-constrained |
+| `ForeachFileChunked` | No | No | **Yes** | Bulk loads, batched callbacks (file still fully loaded) |
 | `ForeachFileNested` | No | **Yes** | No | Deep traversal of all nodes |
 
 ---

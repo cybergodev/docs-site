@@ -2,7 +2,7 @@
 sidebar_label: "API Response Parsing"
 title: "API Response Parsing - CyberGo JSON | Pagination & Structs"
 description: "CyberGo JSON API responses: ParseAny, GetString/GetInt metadata, Get/GetArray nested data, path slices for pagination, GetTyped structs, ForeachWithPath."
-sidebar_position: 4
+sidebar_position: 30
 ---
 
 # API Response Parsing
@@ -78,7 +78,7 @@ func main() {
 //   - project-ten (312 stars)
 ```
 
-:::tip Note
+:::tip
 The path slice syntax `[start:end]` returns an array subset; you can also use `[start:end:step]` for stepped slices, `[-1]` for the last element, and `[*]` to walk all elements. Full syntax in [Path Expressions](../getting-started/path-syntax).
 
 When iterating arrays, **prefer `ForeachWithPath`** over looping with composed paths (querying `fmt.Sprintf("data.items.%d.name", i)` one by one): the former parses once and reads fields by name inside each element, with cleaner code; the latter issues a separate query per path.

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo JWT | Sentinels"
-description: "Categorize all 19 CyberGo JWT sentinel errors across config, token validation, rate limiting, and lifecycle with errors.Is matching and response practices."
+description: "Categorize all 20 CyberGo JWT sentinel errors across config, token validation, rate limiting, and lifecycle with errors.Is matching and response practices."
 sidebar_position: 50
 ---
 
@@ -12,7 +12,7 @@ CyberGo JWT uses the sentinel errors pattern. All errors are checked with `error
 ## Basic Pattern
 
 ```go
-claims, valid, err := processor.Validate(tokenString)
+claims, err := processor.Parse(tokenString)
 if err != nil {
     switch {
     case errors.Is(err, jwt.ErrTokenExpired):
@@ -54,24 +54,25 @@ Don't use `err == jwt.ErrTokenExpired` or string matching. `errors.Is()` correct
 | Error | Method | Suggestion |
 |-------|--------|------------|
 | `ErrEmptyToken` | All token operation methods | Check request header |
-| `ErrInvalidToken` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Signature mismatch, deny access |
-| `ErrAlgorithmMismatch` | Validate, Refresh, ValidateInto, RefreshInto | Token algorithm doesn't match config, deny access |
-| `ErrExpirationRequired` | Validate, Refresh, ValidateInto, RefreshInto | `RequireExpiration` enabled but token lacks `exp` claim |
-| `ErrTokenTypeMismatch` | Refresh, RefreshInto | Access token (`token_type=access`) used to refresh, deny access |
-| `ErrTokenExpired` | Validate, Refresh, ValidateInto, RefreshInto | Prompt user to refresh token |
-| `ErrTokenNotValidYet` | Validate, Refresh, ValidateInto, RefreshInto | Check clock synchronization |
-| `ErrTokenInvalidIssuer` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Issuer mismatch |
-| `ErrTokenInvalidAudience` | Validate, Refresh, ValidateInto, RefreshInto, Revoke, IsRevoked | Audience mismatch |
-| `ErrTokenRevoked` | Validate, Refresh, ValidateInto, RefreshInto | Token revoked, deny access |
-| `ErrInvalidClaims` | Create, CreateRefresh, Validate, Refresh, ValidateInto, RefreshInto | Business validation failed |
-| `ErrTokenMissingID` | Revoke, IsRevoked | Token missing jti |
+| `ErrInvalidToken` | Parse, Refresh, ParseInto, RefreshInto, Revoke, IsRevoked | Signature mismatch, deny access |
+| `ErrAlgorithmMismatch` | Parse, Refresh, ParseInto, RefreshInto | Token algorithm doesn't match config, deny access |
+| `ErrExpirationRequired` | Parse, Refresh, ParseInto, RefreshInto | `RequireExpiration` enabled but token lacks `exp` claim |
+| `ErrTokenTypeMismatch` | Refresh, RefreshInto; Parse / ParseInto when `RejectRefreshAsAccess` is enabled | Token type mismatch: access token used to refresh, or refresh token used as an access token, deny access |
+| `ErrTokenExpired` | Parse, Refresh, ParseInto, RefreshInto | Prompt user to refresh token |
+| `ErrTokenNotValidYet` | Parse, Refresh, ParseInto, RefreshInto | Check clock synchronization |
+| `ErrTokenInvalidIssuer` | Parse, Refresh, ParseInto, RefreshInto, Revoke, IsRevoked | Issuer mismatch |
+| `ErrTokenInvalidAudience` | Parse, Refresh, ParseInto, RefreshInto, Revoke, IsRevoked | Audience mismatch |
+| `ErrTokenRevoked` | Parse, Refresh, ParseInto, RefreshInto | Token revoked, deny access |
+| `ErrInvalidClaims` | Create, CreateRefresh, Parse, Refresh, ParseInto, RefreshInto | Business validation failed |
+| `ErrTokenMissingID` | Revoke, IsRevoked; Refresh / RefreshInto when `RotateRefreshTokens` is enabled | Token missing jti |
+| `ErrRefreshRotationFailed` | Refresh, RefreshInto (when `RotateRefreshTokens` is enabled) | Revoking the old refresh token failed; no new token was issued |
 
 ### Rate Limiting & Blacklist
 
 | Error | Method | Suggestion |
 |-------|--------|------------|
 | `ErrRateLimitExceeded` | Create, CreateRefresh, Refresh, RefreshInto | Return 429 |
-| `ErrBlacklistNotConfigured` | Revoke | Configure blacklist |
+| `ErrBlacklistNotConfigured` | Revoke; Refresh / RefreshInto when `RotateRefreshTokens` is enabled | Configure blacklist |
 
 ### Lifecycle
 
@@ -119,7 +120,7 @@ if err != nil {
 
 `Claims.Validate()` (or a custom Claims' `Validate()`) returns a **descriptive error** (e.g. `errors.New("user_id is required")`), not a sentinel error. The Processor wraps it as `ErrInvalidClaims`:
 
-```
+```text
 invalid claims: user_id is required
 └── ErrInvalidClaims (sentinel, outer layer)
     └── user_id is required (descriptive, inner layer)
@@ -186,7 +187,7 @@ In a RESTful API, mapping JWT errors to appropriate HTTP status codes is best pr
 
 ## Error Handling in Web Services
 
-The handler below covers all common errors that `Validate` may return, and returns appropriate responses per the [HTTP Status Code Mapping](#http-status-code-mapping):
+The handler below covers all common errors that `Parse` may return, and returns appropriate responses per the [HTTP Status Code Mapping](#http-status-code-mapping):
 
 <!-- check-code: skip -->
 ```go
@@ -310,13 +311,9 @@ func authError(w http.ResponseWriter, err error) {
 
 func handleProtected(w http.ResponseWriter, r *http.Request) {
     tokenString := extractToken(r)
-    claims, valid, err := processor.Validate(tokenString)
+    claims, err := processor.Parse(tokenString)
     if err != nil {
         authError(w, err)
-        return
-    }
-    if !valid {
-        authError(w, jwt.ErrInvalidToken)
         return
     }
     // Authenticated, process the request

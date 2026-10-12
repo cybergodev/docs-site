@@ -75,7 +75,7 @@ logger.InfoWith("请求完成",
 ```go
 level := logger.GetLevel()                    // 获取当前级别
 _ = logger.SetLevel(dd.LevelDebug)            // 设置级别
-enabled := logger.IsLevelEnabled(dd.LevelInfo)// 检查级别
+enabled := logger.IsLevelEnabled(dd.LevelInfo) // 检查级别
 
 // 快捷检查
 logger.IsDebugEnabled()
@@ -103,8 +103,8 @@ entry := logger.WithFields(
     dd.Int("version", 2),
 )
 
-// 单字段
-entry := logger.WithField("env", "prod")
+// 单字段（等价于只传一个字段的 WithFields）
+entry2 := logger.WithField("env", "prod")
 ```
 
 ## 输出目标管理

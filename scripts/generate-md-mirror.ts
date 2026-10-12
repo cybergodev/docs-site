@@ -10,7 +10,7 @@
  *   - /llms-full.txt → whole-site dump (aggregate)
  *   - /{page}.md     → per-page source (precision)  ← this script
  *
- * Mirrors every language tree (zh/en/ko/ja/ru) plus the root index.md,
+ * Mirrors every language tree (zh/en) plus the root index.md,
  * preserving the docs/ relative path (docs/zh/json/x.md → dist/zh/json/x.md).
  * Skips the .vitepress/ internals.
  *

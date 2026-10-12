@@ -1,7 +1,7 @@
 ---
 sidebar_label: "测试辅助"
 title: "测试辅助 - CyberGo DD | LoggerRecorder"
-description: "CyberGo DD 测试辅助工具 LoggerRecorder 完整 API 文档，专为单元测试场景设计，用于捕获和断言日志输出内容，支持按级别过滤日志条目、结构化字段值验证、条目计数统计和按序断言，显著提升日志相关单元测试的编写效率和可读性。"
+description: "CyberGo DD 测试辅助工具 LoggerRecorder API 文档：捕获并断言日志输出内容，支持按级别过滤条目、结构化字段值验证、计数统计与按序断言，提升日志单元测试的编写效率与可读性。"
 sidebar_position: 2
 ---
 
@@ -13,8 +13,8 @@ DD 提供 `LoggerRecorder` 用于测试场景，可捕获日志条目进行断�
 
 线程安全的日志记录器，用于测试中捕获和检查日志输出。
 
-:::warning 文本格式解析限制
-文本模式解析器假定使用默认时间格式（ISO 8601）和默认级别字符串（DEBUG/INFO/WARN/ERROR/FATAL）。如果自定义了 `TimeFormat`，文本模式可能无法正确提取级别和时间戳。对于自定义格式，建议使用 JSON 格式（`FormatJSON`），可通过 `SetFormat` 设置。
+:::warning 解析格式限制
+记录器默认按 `FormatText` 解析；若 Logger 输出 JSON，须先调用 `SetFormat(FormatJSON)`。文本模式假定默认时间格式（ISO 8601）与默认级别字符串（DEBUG/INFO/WARN/ERROR/FATAL）；JSON 模式假定默认字段名（`level`/`message`/`timestamp`）。自定义 `TimeFormat` 或 `JSONFieldNames` 后，对应模式的级别/时间戳提取可能失效——此时 `RawOutput` 仍保存完整原始输出，可直接断言。
 :::
 
 ### 创建
@@ -29,19 +29,21 @@ recorder := dd.NewLoggerRecorder()
 |------|------|------|
 | `Writer` | `() io.Writer` | 获取 io.Writer |
 | `SetFormat` | `(format LogFormat)` | 设置日志格式（用于解析） |
-| `NewLogger` | `(cfg ...Config) (*Logger, error)` | 创建写入此记录器的 Logger |
+| `NewLogger` | `(cfg ...Config) (*Logger, error)` | 创建写入此记录器的 Logger（无参用 `DefaultConfig`；多于 1 个配置返回 `ErrMultipleConfigs`） |
 | `Entries` | `() []LogEntry` | 获取所有日志条目 |
 | `Count` | `() int` | 条目数量 |
 | `Clear` | `()` | 清除所有条目 |
 | `HasEntries` | `() bool` | 是否有条目 |
-| `LastEntry` | `() *LogEntry` | 最近的条目（nil 安全） |
+| `LastEntry` | `() *LogEntry` | 最近的条目（无条目返回 `nil`） |
+
+`Entries()` 与 `LastEntry()` 返回**深拷贝**（条目结构体及其 `Fields` 切片均复制），修改返回值不会影响记录器内部状态。
 
 ### 断言方法
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
 | `EntriesAtLevel` | `(level LogLevel) []LogEntry` | 按级别过滤条目 |
-| `ContainsMessage` | `(msg string) bool` | 是否包含指定消息（精确匹配或子串匹配） |
+| `ContainsMessage` | `(msg string) bool` | 是否包含指定消息（子串匹配，含精确匹配情形） |
 | `ContainsField` | `(key string) bool` | 是否包含指定字段 |
 | `GetFieldValue` | `(key string) any` | 获取首个匹配字段的值 |
 
@@ -151,6 +153,17 @@ type LogEntry struct {
     RawOutput string
 }
 ```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `Level` | `LogLevel` | 解析出的日志级别 |
+| `Message` | `string` | 日志消息 |
+| `Fields` | `[]Field` | 解析出的结构化字段 |
+| `Timestamp` | `time.Time` | 解析出的时间戳 |
+| `Format` | `LogFormat` | 捕获时使用的解析格式（由 `SetFormat` 设定） |
+| `RawOutput` | `string` | 原始格式化输出行 |
+
+解析语义：JSON 模式下嵌套的 `fields` 对象会被展平为独立字段，保留键（`level`/`message`/`timestamp`/`time`/`caller`/`file`/`line`）不计入 `Fields`；文本模式按 `[时间戳 级别] 文件:行 消息 key=value` 布局解析，带引号的字段值会去除引号还原为原始值。
 
 ## 下一步
 

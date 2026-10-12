@@ -1,7 +1,7 @@
 ---
 sidebar_label: "配置详解"
 title: "配置详解 - CyberGo DD | Config 结构体与预设方案"
-description: "CyberGo DD 配置体系详解：DefaultConfig、DevelopmentConfig、JSONConfig 三种预设方案，Config 结构体全字段说明，多输出目标配置、JSON 格式定制与 Clone 深拷贝用法。"
+description: "CyberGo DD 配置体系详解：DefaultConfig、DevelopmentConfig、JSONConfig、ProductionConfig 四种预设方案，Config 结构体全字段说明，多输出目标配置、JSON 格式定制与 Clone 深拷贝用法。"
 sidebar_position: 2
 ---
 
@@ -11,16 +11,17 @@ sidebar_position: 2
 
 DD 使用结构体配置（`Config`），支持 IDE 自动补全，无需链式调用或选项函数。本文覆盖全部配置字段和常见组合方案。
 
-## 三种预设方案
+## 四种预设方案
 
 | 预设 | 级别 | 格式 | 安全过滤 | 典型场景 |
 |------|------|------|:--------:|----------|
 | `DefaultConfig()` | Info | Text | ✅ 基础 | 生产默认 |
 | `DevelopmentConfig()` | Debug | Text（简时间） | ✅ 基础 | 本地开发 |
 | `JSONConfig()` | Debug | JSON（RFC3339） | ✅ 基础 | 日志聚合系统 |
+| `ProductionConfig()` | Info | JSON（RFC3339） | ✅ 基础 | 生产环境（JSON 输出） |
 
 :::warning 安全过滤默认开启
-三种预设**均启用**基础敏感数据过滤（密码、API Key、信用卡号等）。即使开发模式也不关闭——以便尽早发现意外的敏感信息泄露。如需关闭，显式设置 `Security: &dd.SecurityConfig{}` 或使用 `SecurityLevelDevelopment`。
+四种预设**均启用**基础敏感数据过滤（密码、API Key、信用卡号等）。即使开发模式也不关闭——以便尽早发现意外的敏感信息泄露。如需关闭，显式设置 `Security: &dd.SecurityConfig{}` 或使用 `SecurityLevelDevelopment`。
 :::
 
 ## Config 全字段速览
@@ -35,7 +36,7 @@ type Config struct {
     IncludeLevel  bool         // 是否输出日志级别
 
     // ─── 调用者信息 ───
-    DynamicCaller bool         // 动态调用者检测（文件名:行号）
+    DynamicCaller bool         // 动态调用者检测（文件名：行号）
     FullPath      bool         // 使用完整文件路径（默认仅文件名）
 
     // ─── 输出目标 ───
@@ -51,6 +52,7 @@ type Config struct {
     // ─── 生命周期 ───
     FatalHandler      FatalHandler      // Fatal 时的自定义处理
     WriteErrorHandler WriteErrorHandler // 写入错误的回调
+    LevelResolver     LevelResolver     // 动态级别解析（每次日志与级别判断时调用，nil 禁用）
 
     // ─── 扩展 ───
     ContextExtractors []ContextExtractor // Context 字段提取器
@@ -70,31 +72,32 @@ type Config struct {
 package main
 
 import (
-    "log"
-    "os"
+	"log"
+	"os"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    cfg := dd.DefaultConfig()
-    cfg.Targets = []dd.OutputTarget{
-        dd.ConsoleOutput(),                          // 控制台
-        dd.FileOutput("logs/app.log"),               // 文件（默认 100MB/10备份/30天）
-        dd.CustomOutput(os.Stderr),                  // 自定义 Writer
-    }
+	cfg := dd.DefaultConfig()
+	cfg.Targets = []dd.OutputTarget{
+		dd.ConsoleOutput(),            // 控制台
+		dd.FileOutput("logs/app.log"), // 文件（默认 100MB/10备份/30天）
+		dd.CustomOutput(os.Stderr),    // 自定义 Writer
+	}
 
-    // 自定义文件轮换参数
-    fileTarget := dd.FileOutput("logs/app.log")
-    fileTarget.MaxSizeMB = 50     // 50MB 轮换
-    fileTarget.MaxBackups = 5     // 保留 5 个备份
-    fileTarget.MaxAge = 7 * 24    // 保留 7 天（hour granularity）
+	// 自定义文件轮换参数
+	fileTarget := dd.FileOutput("logs/app.log")
+	fileTarget.MaxSizeMB = 50              // 50MB 轮换
+	fileTarget.MaxBackups = 5              // 保留 5 个备份
+	fileTarget.MaxAge = 7 * 24 * time.Hour // 保留 7 天（MaxAge 是 time.Duration，必须带单位）
 
-    logger, err := dd.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	logger, err := dd.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 }
 ```
 
@@ -148,7 +151,7 @@ cfg.Security = &dd.SecurityConfig{
 ```go
 cfg := dd.DefaultConfig()
 cfg.FieldValidation = dd.StrictSnakeCaseConfig()
-// 所有字段键必须为 snake_case，否则输出警告
+// 所有字段键必须为 snake_case，否则向 stderr 输出诊断（字段仍会正常记录，日志方法不返回错误）
 ```
 
 详见 [字段验证](../security/field-validation)。

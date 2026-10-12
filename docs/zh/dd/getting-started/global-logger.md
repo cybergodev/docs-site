@@ -28,32 +28,32 @@ package main
 import "github.com/cybergodev/dd"
 
 func main() {
-    // 基础日志
-    dd.Debug("调试信息")
-    dd.Info("服务启动")
-    dd.Warn("内存使用率偏高")
-    dd.Error("请求失败")
-    // dd.Fatal("致命错误")  // ⚠️ 会调用 os.Exit(1)
+	// 基础日志
+	dd.Debug("调试信息")
+	dd.Info("服务启动")
+	dd.Warn("内存使用率偏高")
+	dd.Error("请求失败")
+	// dd.Fatal("致命错误")  // ⚠️ 会调用 os.Exit(1)
 
-    // 格式化
-    username := "alice"
-    dd.Infof("用户 %s 已登录", username)
+	// 格式化
+	username := "alice"
+	dd.Infof("用户 %s 已登录", username)
 
-    // 结构化日志
-    dd.InfoWith("请求处理完成",
-        dd.String("method", "GET"),
-        dd.Int("status", 200),
-    )
+	// 结构化日志
+	dd.InfoWith("请求处理完成",
+		dd.String("method", "GET"),
+		dd.Int("status", 200),
+	)
 
-    // 字段链式传递
-    dd.WithFields(dd.String("service", "api")).
-        Info("服务就绪")
+	// 字段链式传递
+	dd.WithFields(dd.String("service", "api")).
+		Info("服务就绪")
 
-    // 级别控制
-    dd.SetLevel(dd.LevelDebug)
-    if dd.IsDebugEnabled() {
-        dd.Debug("debug 已启用")
-    }
+	// 级别控制
+	dd.SetLevel(dd.LevelDebug)
+	if dd.IsDebugEnabled() {
+		dd.Debug("debug 已启用")
+	}
 }
 ```
 
@@ -81,22 +81,22 @@ logger.Info("hello") // 等价于 dd.Info("hello")
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    cfg := dd.DefaultConfig()
-    cfg.Level = dd.LevelDebug
-    cfg.Format = dd.FormatJSON
+	cfg := dd.DefaultConfig()
+	cfg.Level = dd.LevelDebug
+	cfg.Format = dd.FormatJSON
 
-    if err := dd.InitDefault(cfg); err != nil {
-        log.Fatalf("初始化日志失败: %v", err)
-    }
+	if err := dd.InitDefault(cfg); err != nil {
+		log.Fatalf("初始化日志失败: %v", err)
+	}
 
-    // 此后所有包级函数使用上述配置
-    dd.Info("全局 Logger 已初始化")
+	// 此后所有包级函数使用上述配置
+	dd.Info("全局 Logger 已初始化")
 }
 ```
 

@@ -1,21 +1,22 @@
 ---
 sidebar_label: "接口定义"
 title: "接口定义 - CyberGo DD | Logger 接口层次"
-description: "CyberGo DD 日志库接口层次定义完整文档，包括 CoreLogger 基础日志接口、LevelLogger 级别日志接口、ConfigurableLogger 可配置日志接口和 LogProvider 日志提供者接口，支持从简单到复杂的多层次日志抽象需求，便于自定义实现和依赖注入。"
-sidebar_position: 5
+description: "CyberGo DD 接口层次 API 文档：CoreLogger 基础日志接口、LevelLogger 级别日志接口、ConfigurableLogger 可配置接口与 LogProvider 日志提供者接口，支撑多层次日志抽象与依赖注入。"
+sidebar_position: 6
 ---
 
 # 接口定义
 
-DD 定义了层次化的日志接口，支持不同级别的抽象需求。
+DD 定义了一组分层日志接口与一个聚合全部功能的扁平接口（LogProvider），支持不同级别的抽象需求。
 
 ## 接口层次
 
 ```text
 CoreLogger                  基础日志方法
-├── LevelLogger             + 级别管理
-└── ConfigurableLogger      + 配置/生命周期/Writer/Hook
-    └── LogProvider         + 全部功能
+├── LevelLogger             + 级别管理（嵌入 CoreLogger）
+└── ConfigurableLogger      + 配置/生命周期/Writer/Hook（嵌入 CoreLogger）
+
+LogProvider                 独立扁平接口，聚合全部功能（不嵌入以上接口）
 ```
 
 ## CoreLogger
@@ -115,7 +116,7 @@ type ConfigurableLogger interface {
 
 ## LogProvider
 
-完整的日志接口，组合所有能力。`Logger` 类型实现了此接口。
+完整的日志接口，独立定义了全部方法（扁平接口，不嵌入其他接口）。`Logger` 类型实现了此接口。
 
 ```go
 type LogProvider interface {
@@ -223,7 +224,7 @@ type LogProvider interface {
 
 ## Flusher
 
-Writer 刷新接口。实现了此接口的 Writer 会在 `Logger.Flush()` 时被调用。
+Writer 刷新接口。实现了此接口的 Writer 会在 `Logger.Flush()` 时被调用，并在 `Logger.Close()` 关闭前先刷新缓冲数据（即使该 Writer 未实现 io.Closer 也不会丢失缓冲）。
 
 ```go
 type Flusher interface {

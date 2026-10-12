@@ -1,7 +1,7 @@
 ---
 sidebar_label: "AuditLogger"
 title: "审计日志 - CyberGo DD | AuditLogger"
-description: "CyberGo DD 审计日志完整 API 文档，包括 AuditLogger 异步审计事件记录器、AuditConfig 配置选项（输出目标、格式、签名）和审计条目结构化格式化，支持安全相关事件追踪记录，满足企业级合规审计和数据安全监管的各类需求。"
+description: "CyberGo DD 审计日志 API 文档：AuditLogger 异步审计事件记录器、AuditConfig 配置选项（输出目标、格式、签名）与审计条目结构化格式化，支持安全事件追踪与合规审计，满足数据安全监管需求。"
 sidebar_position: 3
 ---
 
@@ -40,7 +40,7 @@ auditLogger, _ := dd.NewAuditLogger(cfg)
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `Log` | `(event AuditEvent)` | 记录审计事件（异步） |
+| `Log` | `(event AuditEvent)` | 记录审计事件（异步；低于 `MinimumSeverity` 不记录，缓冲区满时丢弃并计入 `Dropped`，`Timestamp` 为零值时自动填充） |
 | `LogSensitiveDataRedaction` | `(pattern, field, message string)` | 敏感数据脱敏事件 |
 | `LogRateLimitExceeded` | `(message string, metadata map[string]any)` | 速率限制事件 |
 | `LogSecurityViolation` | `(violationType, message string, metadata map[string]any)` | 安全违规事件 |
@@ -48,7 +48,7 @@ auditLogger, _ := dd.NewAuditLogger(cfg)
 | `LogIntegrityViolation` | `(message string, metadata map[string]any)` | 完整性违规事件 |
 | `LogPathTraversalAttempt` | `(path, message string)` | 路径遍历事件 |
 | `Stats` | `() AuditStats` | 审计统计 |
-| `Close` | `() error` | 关闭并刷新剩余事件 |
+| `Close` | `() error` | 关闭并刷新剩余事件（可安全重复调用，幂等） |
 
 ### 使用示例
 
@@ -78,10 +78,10 @@ audit.LogSecurityViolation("sql_injection", "SQL 注入尝试", map[string]any{
 
 ```go
 type AuditConfig struct {
-    Enabled          bool             // 是否启用审计（默认 true）
+    Enabled          bool             // 是否启用审计（默认 true；false 时 Log 为静默 no-op，事件不计入统计）
     Output           *os.File         // 输出文件（默认 os.Stderr）；为 nil 时不产生输出，事件仅计入统计
-    BufferSize       int              // 异步事件缓冲区大小（默认 1000；为负数将校验失败）
-    IncludeTimestamp bool             // 是否包含时间戳（默认 true）
+    BufferSize       int              // 异步事件缓冲区大小（默认 1000；启用且留 0 时自动取 1000，负数校验失败）
+    IncludeTimestamp bool             // 文本输出是否包含时间戳（默认 true；JSON 输出始终包含时间戳字段）
     JSONFormat       bool             // JSON 格式输出（默认 true）
     MinimumSeverity  AuditSeverity    // 最低记录严重级别（默认 AuditSeverityInfo）
     IntegritySigner  *IntegritySigner // 完整性签名器（可选；配置后每条审计事件被签名）
@@ -119,7 +119,7 @@ type AuditEvent struct {
 }
 ```
 
-### AuditStats
+## AuditStats
 
 审计统计数据结构。
 
@@ -133,7 +133,7 @@ type AuditStats struct {
 }
 ```
 
-### AuditVerificationResult
+## AuditVerificationResult
 
 审计验证结果。
 
@@ -188,13 +188,34 @@ data, _ := json.Marshal(event)
 // Severity 序列化为 "CRITICAL"，而非 3
 ```
 
+### UnmarshalJSON
+
+```go
+func (s *AuditSeverity) UnmarshalJSON(data []byte) error
+```
+
+`*AuditSeverity` 实现了 `json.Unmarshaler` 接口，接受 `MarshalJSON` 输出的字符串形式（`"INFO"`、`"WARNING"`、`"ERROR"`、`"CRITICAL"`）并反序列化为对应常量；传入其他字符串返回 `unknown audit severity` 错误，传入非字符串 JSON 值同样报错。没有该方法时，`json.Unmarshal` 无法把 JSON 字符串解码进 `AuditSeverity` 的 int 底层类型，`VerifyAuditEvent` 解析出的 `Event` 字段将始终为 `nil`。
+
+```go
+var sev dd.AuditSeverity
+err := json.Unmarshal([]byte(`"CRITICAL"`), &sev)
+// err == nil，sev == dd.AuditSeverityCritical
+
+err = json.Unmarshal([]byte(`"FATAL"`), &sev)
+// err != nil：unknown audit severity "FATAL"
+```
+
+:::warning 序列化格式不对称
+`AuditEvent.Type` 序列化为**裸数字**，而 `AuditSeverity` 序列化为**字符串**（仅 Severity 有自定义字符串 Marshal/Unmarshal）。该行为是有意设计且被测试锁定；解析审计 JSON 时注意区分，人类可读的事件类型名需经 `AuditEventType.String()` 获取。
+:::
+
 ## 验证审计条目
 
 ```go
 func VerifyAuditEvent(entry string, signer *IntegritySigner) *AuditVerificationResult
 ```
 
-验证审计日志条目的完整性。
+验证审计日志条目的完整性。返回值恒非 `nil`：`signer` 为 `nil` 或内部验证出错时 `Valid=false` 且 `Error` 非空；签名不匹配时 `Valid=false`、`Error` 为 `nil`，`RawEvent` 为去除签名后的消息文本；验证通过且消息可解析为 JSON 时 `Event` 非空。
 
 ```go
 cfg, _ := dd.DefaultIntegrityConfigSafe()

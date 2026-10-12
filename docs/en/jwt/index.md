@@ -32,42 +32,41 @@ go get github.com/cybergodev/jwt
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // 1. Create config
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	// 1. Create config
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
 
-    // 2. Create Processor
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	// 2. Create Processor
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // 3. Issue token
-    claims := &jwt.Claims{
-        UserID:   "user123",
-        Username: "alice",
-        Role:     "admin",
-    }
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token:", token)
+	// 3. Issue token
+	claims := &jwt.Claims{
+		UserID:   "user123",
+		Username: "alice",
+		Role:     "admin",
+	}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token:", token)
 
-    // 4. Validate token
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid)
-    fmt.Println("UserID:", parsed.UserID)
+	// 4. Validate token
+	parsed, err := processor.Parse(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("UserID:", parsed.UserID)
 }
 ```
 
@@ -78,8 +77,8 @@ func main() {
 │                  Processor                      │
 │  (implements TokenManager interface)            │
 ├────────────────────────────────────────────────┤
-│  Create / Validate / Refresh / Revoke          │
-│  CreateRefresh / ValidateInto / RefreshInto    │
+│  Create / Parse / Refresh / Revoke             │
+│  CreateRefresh / ParseInto / RefreshInto       │
 │  ParseUnverified / IsRevoked / IsClosed / Close│
 ├──────────────────┬─────────────────────────────┤
 │  BlacklistManager│     RateLimiter              │
@@ -92,8 +91,8 @@ func main() {
 
 ## Next Steps
 
-- [Core Concepts](./getting-started/concepts) — Processor, token model, Claims architecture
 - [Getting Started](./getting-started/) — Detailed installation and configuration guide
+- [Core Concepts](./getting-started/concepts) — Processor, token model, Claims architecture
 - [Signing Algorithms](./guides/signing-algorithms) — HMAC, RSA, ECDSA selection guide
 - [Token Refresh & Rotation](./guides/token-refresh) — Two-tier tokens and rotation strategies
 - [Configuration](./guides/configuration) — Security config and input validation

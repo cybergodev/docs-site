@@ -1,8 +1,8 @@
 ---
 sidebar_label: "修改操作"
-title: "修改函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 修改函数：Set/SetMultiple 设置、MergeJSON/MergeMany 合并，支持自动路径创建、原子操作与联合、交集、差集三种 MergeMode 策略，数组路径支持索引替换与追加，修改返回新字符串不改动原输入。"
-sidebar_position: 3
+title: "修改函数 - CyberGo JSON | Set 与 MergeJSON 用法"
+description: "CyberGo JSON 是支持路径修改的 Go 库，提供 Set/SetMultiple 批量设置、MergeJSON/MergeMany 深度合并与 SetCreate 自动创建路径，支持联合、交集、差集三种合并模式与数组追加、通配符替换，帮助开发者以不可变方式更新 JSON 字段。"
+sidebar_position: 30
 ---
 
 # 修改函数

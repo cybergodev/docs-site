@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Performance"
 title: "Performance - CyberGo env | High-Concurrency Tuning"
-description: "Performance guide for CyberGo env: concurrency-safe sharded locks, sync.Pool object pooling, mlock overhead tradeoffs, and large-file streaming parsing."
+description: "CyberGo env performance guide: sharded locks for concurrency, sync.Pool reuse, mlock tradeoffs and streaming parsing of large files, with benchmarks."
 sidebar_position: 1
 ---
 
@@ -185,11 +185,10 @@ if env.IsMemoryLockSupported() {
 | Linux | ✅ |
 | macOS | ✅ |
 | Windows | ✅ |
-| FreeBSD | ✅ |
-| wasm | ❌ |
+| Other platforms (FreeBSD/other BSDs, Solaris, WASM, etc.) | ❌ |
 
 :::tip
-See [SecureValue API - Memory Lock Configuration](/en/env/api-reference/secure-value#memory-lock-configuration) for complete configuration documentation.
+See [SecureValue API - Memory Lock Configuration](../api-reference/secure-value#memory-lock-configuration) for complete configuration documentation.
 :::
 
 ### Strict Mode
@@ -428,20 +427,19 @@ loader.Close()  // Main goroutine closes
 
 ### Global Loader Reset
 
-```go
-// Not concurrency-safe: do not call at runtime
-env.ResetDefaultLoader()
+`ResetDefaultLoader` itself is safe for concurrent use (stated explicitly in the source comments) and returns the `error` from closing the old loader, which should be checked. Even so, prefer calling it only during tests or startup: between the reset and the next `Load`, global functions briefly fall back to the uninitialized state (returning `ErrNotInitialized`), and resetting at runtime exposes code that relies on the global loader to that window.
 
-// Safe: only call during tests or startup
-func init() {
-    env.ResetDefaultLoader()
-    env.Load(".env")
+```go
+// Concurrency-safe, but best limited to tests or startup; handle the returned error
+if err := env.ResetDefaultLoader(); err != nil {
+    fmt.Printf("failed to reset default loader: %v\n", err)
 }
+env.Load(".env")
 ```
 
 ## Concurrency Internals Deep Dive
 
-This section explains the library's concurrency optimizations at the source level to help with evaluation and tuning.
+This section explains the library's concurrency optimizations at the source level to help with evaluation and tuning. The quantitative figures quoted here (e.g. the 23.6% atomic-operations hotspot, the finalizer accounting for ~60% of creation cost) come from the v1.2.2/v1.2.3 benchmarks and profiles (see CHANGES.md).
 
 ### Sharded storage (secureMap)
 
@@ -472,6 +470,6 @@ With auditing enabled, the load path gains `time.Now` and event-construction ove
 
 ## Related Documentation
 
-- [SecureValue API](/en/env/api-reference/secure-value) - Secure value handling and memory locking
-- [Loader API](/en/env/api-reference/loader) - Loader methods
-- [Testing](/en/env/guides/testing) - Benchmark examples
+- [SecureValue API](../api-reference/secure-value) - Secure value handling and memory locking
+- [Loader API](../api-reference/loader) - Loader methods
+- [Testing](../guides/testing) - Benchmark examples

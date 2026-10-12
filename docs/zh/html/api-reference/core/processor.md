@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Processor"
 title: "Processor - CyberGo html | 用法、参数与示例"
-description: "CyberGo html Processor 处理器 API 参考：New 构造、Extract 方法族、ExtractText 等文本提取、ClearCache 清理、GetStatistics 统计与 Close 生命周期管理详解，复用缓存与编码检测器，适合高频调用场景。"
+description: "CyberGo html Processor 处理器 API 参考：New 构造、Extract 方法族、ExtractText 等文本提取、输出格式与批量处理方法、GetStatistics 统计、ClearCache 清理、GetAuditLog 审计查询及 Close 生命周期管理详解，实例复用缓存与编码检测器、并发安全共享，适合高频调用场景。"
 sidebar_position: 2
 ---
 
@@ -33,9 +33,9 @@ defer p.Close()
 
 `New` 并非简单赋值，它执行以下步骤保证返回的 Processor 立即可用：
 
-1. **校验配置**：调用 `Config.Validate()`，无效配置返回 `*ConfigError`（`errors.Is(err, ErrInvalidConfig)` 为真）。校验范围包括数值边界（`MaxInputSize`、`MaxCacheEntries`、`WorkerPoolSize`、`MaxDepth` 不能为负/超限）与格式字符串（`InlineImageFormat`/`InlineLinkFormat`/`TableFormat` 取值合法）。
+1. **校验配置**：调用 `Config.Validate()`，无效配置返回 `*ConfigError`（`errors.Is(err, ErrInvalidConfig)` 为真）。校验范围包括数值边界（`MaxInputSize`、`WorkerPoolSize`、`MaxDepth` 必须为正，`MaxCacheEntries` 不能为负——`0` 合法，表示禁用缓存，均不得超上限）与格式字符串（`InlineImageFormat`/`InlineLinkFormat`/`TableFormat` 取值合法）。
 2. **设置 Scorer**：配置了自定义 `Scorer` 时适配到内部接口（适配过程由库自动完成）；否则使用内置默认评分器（内部实现，不导出；只读、并发安全）。
-3. **预计算格式串**：把 `InlineImageFormat`/`InlineLinkFormat` 归一化（小写+去空格，空串映射为 `"none"`）并缓存到 `imageFormat`/`linkFormat` 字段，避免热路径中反复 `strings.ToLower`。
+3. **预计算格式串**：把 `InlineImageFormat`/`InlineLinkFormat` 归一化（小写 + 去空格，空串映射为 `"none"`）并缓存到 `imageFormat`/`linkFormat` 字段，避免热路径中反复 `strings.ToLower`。
 4. **启动缓存清理**：仅当 `CacheTTL>0` **且** `CacheCleanup>0` 时才启动后台清理 goroutine；两者任一为 0 都不会启动。
 
 ## 并发安全性
@@ -48,6 +48,43 @@ defer p.Close()
 - **缓存**：内部缓存自带锁，读写安全。缓存行为完全由公开 API 观测与控制：`Config.MaxCacheEntries = 0` 禁用缓存、`ClearCache()` 清空、`Statistics.CacheHits`/`CacheMisses` 观测命中情况。
 - **Scorer**：内置默认评分器（内部实现，不导出）只读。**自定义 `Scorer` 必须自行保证并发安全**（如内部持锁），因为单个 Processor 在并发 `Extract` 时会从多个 goroutine 调用其 `Score`/`ShouldRemove`。
 :::
+
+## 方法总览
+
+`Processor` 共 30 个导出方法，按功能分组如下（签名与行为详解见后续小节）：
+
+| 分组 | 方法 | 说明 |
+|------|------|------|
+| 内容提取 | `Processor.Extract` | 从 HTML 字节提取完整 `Result` |
+| 内容提取 | `Processor.ExtractWithContext` | 同上，支持 context 取消 |
+| 内容提取 | `Processor.ExtractFromFile` | 从 HTML 文件提取 |
+| 内容提取 | `Processor.ExtractFromFileWithContext` | 同上，支持 context 取消 |
+| 文本提取 | `Processor.ExtractText` | 仅提取纯文本 |
+| 文本提取 | `Processor.ExtractTextWithContext` | 同上，支持 context 取消 |
+| 文本提取 | `Processor.ExtractTextFromFile` | 从文件提取纯文本 |
+| 文本提取 | `Processor.ExtractTextFromFileWithContext` | 同上，支持 context 取消 |
+| 输出格式 | `Processor.ExtractToMarkdown` | 输出 Markdown（临时 Processor，不走主缓存） |
+| 输出格式 | `Processor.ExtractToMarkdownWithContext` | 同上，支持 context 取消 |
+| 输出格式 | `Processor.ExtractToMarkdownFromFile` | 从文件输出 Markdown |
+| 输出格式 | `Processor.ExtractToMarkdownFromFileWithContext` | 同上，支持 context 取消 |
+| 输出格式 | `Processor.ExtractToJSON` | 输出 JSON（走主缓存） |
+| 输出格式 | `Processor.ExtractToJSONWithContext` | 同上，支持 context 取消 |
+| 输出格式 | `Processor.ExtractToJSONFromFile` | 从文件输出 JSON |
+| 输出格式 | `Processor.ExtractToJSONFromFileWithContext` | 同上，支持 context 取消 |
+| 链接提取 | `Processor.ExtractAllLinks` | 提取所有链接资源（不应用清洗） |
+| 链接提取 | `Processor.ExtractAllLinksWithContext` | 同上，支持 context 取消 |
+| 链接提取 | `Processor.ExtractAllLinksFromFile` | 从文件提取链接 |
+| 链接提取 | `Processor.ExtractAllLinksFromFileWithContext` | 同上，支持 context 取消 |
+| 批量处理 | `Processor.ExtractBatch` | 并发批量提取（字节切片输入） |
+| 批量处理 | `Processor.ExtractBatchWithContext` | 同上，支持 context 取消 |
+| 批量处理 | `Processor.ExtractBatchFiles` | 并发批量提取（文件路径输入） |
+| 批量处理 | `Processor.ExtractBatchFilesWithContext` | 同上，支持 context 取消 |
+| 统计与缓存 | `Processor.GetStatistics` | 返回 `Statistics` 处理统计 |
+| 统计与缓存 | `Processor.ClearCache` | 清空缓存，保留累计统计 |
+| 统计与缓存 | `Processor.ResetStatistics` | 重置所有统计计数器 |
+| 审计 | `Processor.GetAuditLog` | 返回内存中的审计日志条目 |
+| 审计 | `Processor.ClearAuditLog` | 清空审计日志 |
+| 生命周期 | `Processor.Close` | 释放资源（幂等，关闭后所有方法返回 `ErrProcessorClosed`） |
 
 ## 内容提取
 
@@ -65,7 +102,7 @@ defer p.Close()
 | `ErrProcessingTimeout` | 处理耗时超过 `ProcessingTimeout` | `ProcessingTimeout=0` 表示不限时 |
 | `ErrInternalPanic` | 内部意外 panic 被恢复 | 兜底保护，不应在正常使用中出现 |
 
-带 `context` 的版本还会返回 `context.Canceled`（用户取消）或 `context.DeadlineExceeded`（上下文超时，已归一化为 `ErrProcessingTimeout`）。
+带 `context` 的版本：手动 `cancel()` → 返回 `context.Canceled`；用户 context 超时则取决于配置——已配置 `ProcessingTimeout` 时归一化为 `ErrProcessingTimeout`，未配置时透传 `context.DeadlineExceeded`（完整条件表见[常见问题](../../faq/#processingtimeout-和用户-context-超时有什么区别)）。
 
 ### Extract
 

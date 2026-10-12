@@ -1,0 +1,222 @@
+# Continuous Integration — quality gates for the docs site.
+#
+# Four independent jobs, all running in parallel (no needs: between them):
+#   check               typecheck + projects.yaml<->shared.ts sync + VitePress build + locale parity
+#   lint                CJK typography lint (autocorrect)
+#   audit-api           Go API drift: doc pages vs exported API of the 6 source repos
+#   check-code-samples  compile every ```go block in docs/{lang}/
+#
+# Production deploy is a separate pipeline: deploy.yml (FTPS to the
+# self-hosted server). See DEPLOY.md.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history: `lastUpdated` (page timestamps + sitemap <lastmod>)
+          # comes from per-file `git log`; a shallow clone would stamp every
+          # page with the HEAD commit time.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Check projects sync (projects.yaml <-> shared.ts)
+        run: npm run check:projects
+
+      - name: Build with VitePress
+        run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=7168
+
+      - name: Audit locale parity
+        run: npm run audit
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Why a pinned release binary instead of huacnlee/autocorrect-action@v1:
+      # the action's docker image is a FLOATING build — same version tag
+      # (v2.13.3) produced different digests across runs, and its engine
+      # matches no official release: on 2026-10-13 it flagged 20 violations
+      # inside inline code / link text that release binaries (2.13.3 AND
+      # 2.16.3) deliberately skip, and it ignored .autocorrectrc textRules
+      # exemptions. Pinning the official release keeps the CI verdict
+      # byte-identical to a local run of the same version. To upgrade: bump
+      # the version + sha256 here and re-verify locally with the matching
+      # release binary (kept at D:/MyProject/tools/autorrect-cli/).
+      - name: Install autocorrect (pinned v2.16.3)
+        run: |
+          curl -sfL -o /tmp/autocorrect.tar.gz \
+            https://github.com/huacnlee/autocorrect/releases/download/v2.16.3/autocorrect-linux-amd64.tar.gz
+          echo "9bef6fef5f30d6cfa2e5399ffc990672621ee8ea699d4feea75830264ed7a32e  /tmp/autocorrect.tar.gz" | sha256sum -c -
+          sudo tar -xzf /tmp/autocorrect.tar.gz -C /usr/local/bin
+          autocorrect --version
+
+      # Lint the whole tree — non-zero exit on any CJK typography violation,
+      # same engine and version as the local gate (`autocorrect --lint .`,
+      # or the weaker devDep-WASM `npm run lint:autocorrect`).
+      - name: Autocorrect lint
+        run: autocorrect ./ --lint
+
+  audit-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Source repos of the 6 libraries (single source of truth: repo-root
+      # projects.yaml global.github_base + shared.ts PROJECT_META).
+      # Checked out to src/{project}-dev — the layout scripts/audit-api.ts
+      # expects under CYBERGO_SOURCE_ROOT. audit-api.ts silently skips a
+      # missing source, so the checkout steps themselves are the gate: a
+      # private/renamed repo turns this job red instead of being skipped.
+      - name: Checkout json source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/json
+          path: src/json-dev
+
+      - name: Checkout jwt source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/jwt
+          path: src/jwt-dev
+
+      - name: Checkout httpc source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/httpc
+          path: src/httpc-dev
+
+      - name: Checkout html source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/html
+          path: src/html-dev
+
+      - name: Checkout dd source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/dd
+          path: src/dd-dev
+
+      - name: Checkout env source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/env
+          path: src/env-dev
+
+      # No go.sum at the repo root (sources live in src/*-dev) — skip
+      # setup-go's module cache resolution.
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Audit API drift
+        run: npm run audit:api
+        env:
+          CYBERGO_SOURCE_ROOT: src
+
+  check-code-samples:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Same source checkout as audit-api: scripts/check-code-samples.ts
+      # resolves `github.com/cybergodev/{project}` imports via replace
+      # directives pointing at CYBERGO_SOURCE_ROOT/{project}-dev.
+      - name: Checkout json source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/json
+          path: src/json-dev
+
+      - name: Checkout jwt source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/jwt
+          path: src/jwt-dev
+
+      - name: Checkout httpc source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/httpc
+          path: src/httpc-dev
+
+      - name: Checkout html source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/html
+          path: src/html-dev
+
+      - name: Checkout dd source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/dd
+          path: src/dd-dev
+
+      - name: Checkout env source
+        uses: actions/checkout@v4
+        with:
+          repository: cybergodev/env
+          path: src/env-dev
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Check code samples (all languages)
+        run: npm run check:code -- --all
+        env:
+          CYBERGO_SOURCE_ROOT: src

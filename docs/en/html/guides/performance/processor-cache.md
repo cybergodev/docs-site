@@ -84,11 +84,11 @@ cfg.CacheCleanup = 5 * time.Minute // Background cleanup interval
 
 ### Cache Key Generation
 
-Cache keys are generated from the UTF-8 converted content:
-- Content < 64KB: Hash computed over full content
-- Content > 64KB: 5-point sampling algorithm (head + tail + uniform sampling)
+Cache keys are generated from the **raw input bytes** (not the UTF-8 text after encoding conversion), mixed with the processor configuration (the `ExtractArticle`/`Preserve*` extraction switches, the three format strings `InlineImageFormat`/`InlineLinkFormat`/`TableFormat`, and the `Encoding` forced-encoding setting):
+- Content under 64KB: the hash is computed over the full content
+- Content over 64KB: 5-point sampling algorithm (head + tail + uniform sampling)
 
-Identical HTML content hits the cache on repeated calls, skipping parsing and extraction.
+Identical raw bytes plus an identical configuration hit the cache on repeated calls, skipping encoding detection, parsing, and extraction; the same document stored in a different encoding (or processed with a different `Encoding` setting) produces a different Key and cannot hit.
 
 ## Monitoring Cache Hit Rate
 

@@ -17,7 +17,7 @@ CyberGo 是 **6 个生产级、高性能 Go 开源库**的集合，本仓是其�
 | `dd` | 结构化日志（文件轮换、敏感数据过滤） | `github.com/cybergodev/dd` |
 | `env` | 多格式环境变量管理（安全存储） | `github.com/cybergodev/env` |
 
-文档支持 **5 种语言**：中文 `zh`（**主语言**）、English `en`、한국어 `ko`、日本語 `ja`、Русский `ru`。
+文档支持 **2 种语言**：中文 `zh`（**主语言**）与 English `en`。
 
 ---
 
@@ -66,10 +66,7 @@ docs/
 ├── public/              # 静态资源（logo、favicon、robots.txt）
 ├── index.md             # 根路径 / 的静态中文首页
 ├── zh/                  # 中文文档（主语言，优先完善）
-├── en/                  # English
-├── ko/                  # 한국어
-├── ja/                  # 日本語
-└── ru/                  # Русский
+└── en/                  # English
 ```
 
 每个语言目录下：
@@ -94,13 +91,13 @@ docs/{lang}/
 
 ### 主语言先行
 
-**先完善 `docs/zh/`**，确认无误后再同步翻译到 `en`/`ko`/`ja`/`ru`。5 种语言的页面集合必须一致（由 `npm run audit` 校验）。
+**先完善 `docs/zh/`**，确认无误后再同步翻译到 `en`。两种语言的页面集合必须一致（由 `npm run audit` 校验）。
 
 ### 加一个页面
 
 1. 在目标目录建 `.md` 文件（如 `docs/zh/json/guides/my-topic.md`）。
 2. 写好 frontmatter（见下方规范）。
-3. 在其余 4 种语言的对应路径同步建文件并翻译。
+3. 在 `en` 的对应路径同步建文件并翻译。
 
 ### 加一个分组
 
@@ -117,11 +114,11 @@ docs/{lang}/
 
    | 字段 | 必需 | 说明 |
    |------|:----:|------|
-   | `label` | 是 | 分组显示名（5 语言各自翻译） |
+   | `label` | 是 | 分组显示名（两种语言各自翻译） |
    | `position` | 是 | 排序，数字越小越靠前 |
    | `collapsed` | 否 | `true`=默认折叠；核心内容建议展开 |
 
-3. 5 语言目录同步建（含 `_category_.json`）。
+3. 两种语言目录同步建（含 `_category_.json`）。
 
 > 项目根目录（`docs/{lang}/{project}/`）**不放** `_category_.json`，仅子目录有。
 
@@ -149,7 +146,7 @@ sidebar_position: 2
 
 ### YAML 安全（重要）
 
-`title`/`description` 的值**必须用双引号包裹**。未加引号的值若包含 `: `（冒号 + 空格）会被 YAML 解析为嵌套键值对，导致构建失败（俄语 description 尤其常见）。
+`title`/`description` 的值**必须用双引号包裹**。未加引号的值若包含 `: `（冒号 + 空格）会被 YAML 解析为嵌套键值对，导致构建失败（历史踩坑案例：含冒号的俄语 description，该语言现已下线）。
 
 ```yaml
 # 正确 — 双引号包裹
@@ -234,16 +231,16 @@ import (
 注意事项：
 
 - **中文文档禁用 `/en/` 链接前缀**（语言隔离，各语言文档只链本语言）。
-- 锚点经 NFC 规范化，校验 `#anchor` 以此为准（ko/ja/ru 锚点由此正常工作）。
+- 锚点经 NFC 规范化，校验 `#anchor` 以此为准（非 ASCII/组合字符锚点由此正常工作）。
 - 禁止用绝对 URL 指向本站内部内容、禁止硬编码版本号。
 
 ---
 
 ## 术语一致性
 
-翻译时**先查** [`.claude/templates/glossary.md`](./.claude/templates/glossary.md)（5 语言术语对照表），确保：
+翻译时**先查** [`.claude/templates/glossary.md`](./.claude/templates/glossary.md)（多语言术语对照表），确保：
 
-- 分组名与页面名在 5 语言间**逐字对应**（仅翻译语义）。
+- 分组名与页面名在各语言间**逐字对应**（仅翻译语义）。
 - 裸名保持裸名，**不加额外后缀**（如勿给 `Processor`/`Loader`/`Config` 加「处理器」等译名或 " API" 后缀）。
 - 同义分组名全站统一（如 Advanced 在 zh 全站统一「进阶」，不与「高级」混用）。
 - 函数名、类型名、常量名、import 路径、URL 一律保持原形，不翻译。
@@ -302,19 +299,19 @@ npm run lint:autocorrect    # CJK 排版（需系统装 autocorrect）
 npm run check:code          # Go 代码示例编译（改了 ```go 示例后跑；需 Go+ 源码，可选）
 ```
 
-> 若本次改动包含 ```go 代码示例，且本地已具备 Go 工具链与 6 个源码 repo，建议跑 `npm run check:code`（或 `npm run check:code -- --all` 覆盖 5 语言）。**不可独立编译的教学片段**（渐进式披露、跨 package 多块演示、无 `func main()` 的方法/签名片段）用 go fence 紧前一行的 `<!-- check-code: skip -->` 标记豁免该块；整页都不参与校验则在 frontmatter 加 `check_code: false`。豁免仅用于这类合法场景，勿用以规避真实编译错误。
+> 若本次改动包含 ```go 代码示例，且本地已具备 Go 工具链与 6 个源码 repo，建议跑 `npm run check:code`（或 `npm run check:code -- --all` 覆盖两种语言）。**不可独立编译的教学片段**（渐进式披露、跨 package 多块演示、无 `func main()` 的方法/签名片段）用 go fence 紧前一行的 `<!-- check-code: skip -->` 标记豁免该块；整页都不参与校验则在 frontmatter 加 `check_code: false`。豁免仅用于这类合法场景，勿用以规避真实编译错误。
 
 确认无误后按常规 Git 流程提交：
 
 1. Fork 仓库并新建分支（`git checkout -b docs/your-topic`）。
 2. 提交改动（`git commit -m 'docs: 简述改动'`）。
-3. 推送并开 Pull Request，在 PR 描述中说明改了哪些页面、是否已 5 语言同步。
+3. 推送并开 Pull Request，在 PR 描述中说明改了哪些页面、是否已两种语言同步。
 
 ### 常见问题排查
 
 | 现象 | 原因 / 处理 |
 |------|-------------|
-| `npm run audit` 失败 | 某语言缺少对应页面；补齐 5 语言同步 |
+| `npm run audit` 失败 | 某语言缺少对应页面；补齐两种语言同步 |
 | 构建报 YAML 解析错误 | frontmatter 的 `title`/`description` 未加双引号（含 `: `） |
 | 侧边栏顺序混乱 | 同目录页面未写 `sidebar_position`，或分组未写 `position` |
 | CJK 与拉丁字符间距错乱 | 跑 `npm run fix:autocorrect` 自动修复 |

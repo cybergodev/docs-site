@@ -1,8 +1,8 @@
 ---
 sidebar_label: "重试与容错"
 title: "重试与容错 - CyberGo HTTPC | 退避与自动重试"
-description: "HTTPC 重试与容错指南：指数退避与 ±10% 抖动算法详解、408/429/5xx 与网络错误重试条件、Retry-After 自动解析与 60 秒安全上限、跨重试共享总超时预算、请求体重放缓冲、WithMaxRetries 按请求控制与代理池轮换联动。"
-sidebar_position: 8
+description: "HTTPC 重试与容错指南：指数退避与 ±10% 抖动、408/429/5xx 与网络错误重试条件、Retry-After 自动解析与 60 秒上限、跨重试共享总超时预算、请求体重放缓冲、WithMaxRetries 按请求控制与代理池轮换联动。"
+sidebar_position: 70
 ---
 
 # 重试与容错
@@ -17,31 +17,31 @@ HTTPC 的默认重试配置经过精心调优，开箱即用：
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Retry.MaxRetries = 3                  // 最多重试 3 次
-    cfg.Retry.Delay = 1 * time.Second         // 初始延迟 1s
-    cfg.Retry.BackoffFactor = 2.0             // 指数退避倍数 2x
-    cfg.Retry.EnableJitter = true             // 启用抖动
-    cfg.Retry.MaxRetryDelay = 30 * time.Second // 单次延迟上限
+	cfg := httpc.DefaultConfig()
+	cfg.Retry.MaxRetries = 3                   // 最多重试 3 次
+	cfg.Retry.Delay = 1 * time.Second          // 初始延迟 1s
+	cfg.Retry.BackoffFactor = 2.0              // 指数退避倍数 2x
+	cfg.Retry.EnableJitter = true              // 启用抖动
+	cfg.Retry.MaxRetryDelay = 30 * time.Second // 单次延迟上限
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("成功: %d", result.StatusCode())
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("成功：%d", result.StatusCode())
 }
 ```
 
@@ -89,11 +89,11 @@ func main() {
 
 ### 基础延迟计算
 
-```
+```text
 attempt 0: 1s × 2.0^0 = 1s
 attempt 1: 1s × 2.0^1 = 2s
 attempt 2: 1s × 2.0^2 = 4s
-attempt 3: 1s × 2.0^3 = 8s   （MaxRetries=3 时不会到这里）
+attempt 3: 1s × 2.0^3 = 8s（MaxRetries=3 时不会到这里）
 attempt 4: 1s × 2.0^4 = 16s
 attempt 5: 1s × 2.0^5 = 32s → 触发上限，截断为 30s
 ```
@@ -116,7 +116,7 @@ attempt 5: 1s × 2.0^5 = 32s → 触发上限，截断为 30s
 | 第 6 次重试（attempt 5） | 30s（截断后） | 27s ~ 33s |
 
 :::tip 为什么用迭代乘法而非 math.Pow
-HTTPC 使用循环乘法（`for i := 0; i < attempt; i++ { delay *= factor }`）而非 `math.Pow`。`math.Pow` 调用超越函数（指数+对数），开销远高于几次浮点乘法。同时循环内检查 `math.IsInf` 防止溢出，溢出时直接回退到 `MaxRetryDelay`。在重试热路径中，这种微优化是有意义的。
+HTTPC 使用循环乘法（`for i := 0; i < attempt; i++ { delay *= factor }`）而非 `math.Pow`。`math.Pow` 调用超越函数（指数 + 对数），开销远高于几次浮点乘法。同时循环内检查 `math.IsInf` 防止溢出，溢出时直接回退到 `MaxRetryDelay`。在重试热路径中，这种微优化是有意义的。
 :::
 
 :::warning Jitter 应用在上限之后
@@ -131,7 +131,7 @@ HTTPC 使用循环乘法（`for i := 0; i < attempt; i++ { delay *= factor }`）
 
 纯整数值，表示「N 秒后重试」：
 
-```
+```http
 HTTP/1.1 429 Too Many Requests
 Retry-After: 120
 ```
@@ -140,7 +140,7 @@ Retry-After: 120
 
 RFC 1123 日期，表示「在指定时间重试」：
 
-```
+```http
 HTTP/1.1 503 Service Unavailable
 Retry-After: Fri, 31 Jul 2026 15:00:00 GMT
 ```
@@ -151,7 +151,7 @@ HTTPC 同时支持标准 RFC1123（`Fri, 31 Jul 2026 15:00:00 GMT`）和带数�
 
 无论服务器指定多长时间，HTTPC 都将 `Retry-After` 延迟截断为最多 60 秒：
 
-```
+```text
 Retry-After: 120     →  截断为 60s（而非等待 120s）
 Retry-After: 3600    →  截断为 60s
 Retry-After: Fri, 31 Jul 2026 15:00:00 GMT（距今 2 小时）→ 截断为 60s
@@ -169,34 +169,34 @@ Retry-After: Fri, 31 Jul 2026 15:00:00 GMT（距今 2 小时）→ 截断为 60s
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Retry.MaxRetries = 3
-    // 指数退避延迟：1s → 2s → 4s
-    // 但如果服务器返回 Retry-After: 5，则第 1 次重试延迟变为 5s
-    // （不超过 60s 安全上限）
+	cfg := httpc.DefaultConfig()
+	cfg.Retry.MaxRetries = 3
+	// 指数退避延迟：1s → 2s → 4s
+	// 但如果服务器返回 Retry-After: 5，则第 1 次重试延迟变为 5s
+	// （不超过 60s 安全上限）
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    start := time.Now()
-    _, err = client.Get("https://api.example.com/rate-limited")
-    elapsed := time.Since(start)
+	start := time.Now()
+	_, err = client.Get("https://api.example.com/rate-limited")
+	elapsed := time.Since(start)
 
-    if err != nil {
-        log.Printf("重试耗尽，总耗时 %v: %v", elapsed, err)
-    } else {
-        log.Printf("成功，总耗时 %v", elapsed)
-    }
+	if err != nil {
+		log.Printf("重试耗尽，总耗时 %v: %v", elapsed, err)
+	} else {
+		log.Printf("成功，总耗时 %v", elapsed)
+	}
 }
 ```
 
@@ -327,38 +327,38 @@ func (p *GETOnlyRetryPolicy) MaxRetries() int {
 package main
 
 import (
-    "context"
-    "log"
-    "time"
+	"context"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 单个请求重试 5 次（覆盖客户端默认的 3 次）
-    _, err = client.Get("https://api.example.com/data", httpc.WithMaxRetries(5))
-    if err != nil {
-        log.Printf("请求失败: %v", err)
-    }
+	// 单个请求重试 5 次（覆盖客户端默认的 3 次）
+	_, err = client.Get("https://api.example.com/data", httpc.WithMaxRetries(5))
+	if err != nil {
+		log.Printf("请求失败: %v", err)
+	}
 
-    // 禁用重试（如非幂等的 POST 操作）
-    _, err = client.Post("https://api.example.com/create",
-        httpc.WithJSON(map[string]string{"name": "test"}),
-        httpc.WithMaxRetries(0),
-    )
+	// 禁用重试（如非幂等的 POST 操作）
+	_, err = client.Post("https://api.example.com/create",
+		httpc.WithJSON(map[string]string{"name": "test"}),
+		httpc.WithMaxRetries(0),
+	)
 
-    // 配合上下文超时
-    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancel()
-    _, err = client.Request(ctx, "GET", "https://api.example.com/data",
-        httpc.WithMaxRetries(3),
-    )
+	// 配合上下文超时
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, err = client.Request(ctx, "GET", "https://api.example.com/data",
+		httpc.WithMaxRetries(3),
+	)
 }
 ```
 
@@ -393,28 +393,28 @@ _, err := client.Post("https://api.example.com/upload",
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 每次重试尝试前都会执行
-    _, err = client.Get("https://api.example.com/data",
-        httpc.WithOnRequest(func(req httpc.RequestMutator) error {
-            log.Printf("发起尝试: %s %s", req.Method(), req.URL())
-            return nil
-        }),
-    )
-    if err != nil {
-        log.Printf("请求失败: %v", err)
-    }
+	// 每次重试尝试前都会执行
+	_, err = client.Get("https://api.example.com/data",
+		httpc.WithOnRequest(func(req httpc.RequestMutator) error {
+			log.Printf("发起尝试: %s %s", req.Method(), req.URL())
+			return nil
+		}),
+	)
+	if err != nil {
+		log.Printf("请求失败: %v", err)
+	}
 }
 ```
 
@@ -447,14 +447,14 @@ func main() {
 
 当配置了 `ProxyRotateOnStatus` 或 `ProxyRotatePerRequest` 时，HTTPC 会自动提高 `MaxRetries`，确保代理池中的每个代理至少被尝试一次。这是通过 `calculateMaxRetries` 实现的：
 
-```
+```text
 effective MaxRetries = max(配置的 MaxRetries, len(ProxyPool) - 1)
 （上限为 maxRetryAttempts = 10）
 ```
 
 **示例**：5 个代理，配置 `MaxRetries = 3`：
 
-```
+```text
 ProxyPool = [proxy1, proxy2, proxy3, proxy4, proxy5]
 ProxyRotateOnStatus = [403]   // 或 ProxyRotatePerRequest = true
 配置 MaxRetries = 3
@@ -476,37 +476,37 @@ ProxyRotateOnStatus = [403]   // 或 ProxyRotatePerRequest = true
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-        "http://proxy4:8080",
-        "http://proxy5:8080",
-    }
-    cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
-    cfg.Connection.ProxyRotateOnStatus = []int{403} // 403 触发代理轮换
-    cfg.Retry.MaxRetries = 3 // 自动提高到 4（= 5-1）
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+		"http://proxy4:8080",
+		"http://proxy5:8080",
+	}
+	cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
+	cfg.Connection.ProxyRotateOnStatus = []int{403} // 403 触发代理轮换
+	cfg.Retry.MaxRetries = 3                        // 自动提高到 4（= 5-1）
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 每次收到 403 自动换代理重试，最多尝试 5 个代理
-    result, err := client.Get("https://protected-site.example.com/data")
-    if err != nil {
-        log.Printf("所有代理均失败: %v", err)
-        return
-    }
-    log.Printf("成功（某个代理通过）: %d", result.StatusCode())
+	// 每次收到 403 自动换代理重试，最多尝试 5 个代理
+	result, err := client.Get("https://protected-site.example.com/data")
+	if err != nil {
+		log.Printf("所有代理均失败: %v", err)
+		return
+	}
+	log.Printf("成功（某个代理通过）: %d", result.StatusCode())
 }
 ```
 
@@ -520,7 +520,7 @@ func main() {
 
 ### 总最坏时间公式
 
-```
+```text
 总最坏时间 ≈ min(Timeouts.Request, WithTimeout / context 截止时间)
 ```
 
@@ -574,48 +574,48 @@ func (r *retryEngine) isRetryableError(err error) bool {
 package main
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 场景 1：手动取消——不会重试
-    ctx1, cancel1 := context.WithCancel(context.Background())
-    go func() {
-        time.Sleep(100 * time.Millisecond)
-        cancel1() // 100ms 后手动取消
-    }()
+	// 场景 1：手动取消——不会重试
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel1() // 100ms 后手动取消
+	}()
 
-    _, err = client.Request(ctx1, "GET", "https://api.example.com/slow")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeContextCanceled {
-            fmt.Println("请求被手动取消，未触发重试")
-        }
-    }
+	_, err = client.Request(ctx1, "GET", "https://api.example.com/slow")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeContextCanceled {
+			fmt.Println("请求被手动取消，未触发重试")
+		}
+	}
 
-    // 场景 2：context 超时——不会重试
-    ctx2, cancel2 := context.WithTimeout(context.Background(), 50*time.Millisecond)
-    defer cancel2()
+	// 场景 2：context 超时——不会重试
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel2()
 
-    _, err = client.Request(ctx2, "GET", "https://api.example.com/slow")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeTimeout {
-            fmt.Println("请求因 context 超时而终止，未触发重试")
-        }
-    }
+	_, err = client.Request(ctx2, "GET", "https://api.example.com/slow")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeTimeout {
+			fmt.Println("请求因 context 超时而终止，未触发重试")
+		}
+	}
 }
 ```
 
@@ -627,30 +627,30 @@ func main() {
 package main
 
 import (
-    "errors"
-    "log"
+	"errors"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    _, err = client.Get("https://api.example.com/flaky")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            log.Printf("失败类型: %s, 尝试次数: %d",
-                clientErr.Code(), clientErr.Attempts)
-            if clientErr.Attempts > 1 {
-                log.Println("（已自动重试但仍失败）")
-            }
-        }
-    }
+	_, err = client.Get("https://api.example.com/flaky")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			log.Printf("失败类型: %s, 尝试次数: %d",
+				clientErr.Code(), clientErr.Attempts)
+			if clientErr.Attempts > 1 {
+				log.Println("（已自动重试但仍失败）")
+			}
+		}
+	}
 }
 ```
 
@@ -669,14 +669,12 @@ func main() {
 | 微服务通信 | `MaxRetries=2, Delay=500ms, Backoff=2.0`（快速失败） |
 | 文件下载 | `MaxRetries=5, Delay=2s, Backoff=2.0`（容忍网络波动） |
 | 幂等操作（GET/PUT/DELETE） | 可放心重试 |
-| 非幂等操作（POST） | `WithMaxRetries(0)` 或自定义 `RetryPolicy` 收窄 |
+| 非幂等操作（POST） | 默认单次执行不重试；确需重试用 [`WithRetryNonIdempotent`](../api-reference/core/options#withretrynonidempotent) 显式开启 |
 | 限流 API | 依赖 `Retry-After` 自动解析（已内置） |
 | 代理池场景 | 配合 `ProxyRotateOnStatus`，重试次数自动提高 |
 
 :::warning 非幂等 POST 请求的重试
-默认情况下，非幂等的 POST 请求在收到可重试状态码（如 500/502/503/504）或网络错误时也会重试。如果服务端不能保证幂等性，重复提交可能导致副作用（如重复创建资源）。精确控制方案：
-1. 对 POST 请求使用 `WithMaxRetries(0)` 完全禁用重试
-2. 或自定义 `RetryPolicy` 仅在网络错误（非 HTTP 状态码）时重试
+默认情况下，非幂等方法（POST、PATCH 及自定义方法）**单次执行、不重试**——引擎直接清零这类方法的重试预算，因为超时或可重试 5xx 可能在服务端已提交操作后才到达，重放请求体会造成副作用（如重复下单、重复支付）。要为单个请求重开重试，使用 [`WithRetryNonIdempotent(true)`](../api-reference/core/options#withretrynonidempotent)（客户端级开关为 `Retry.RetryNonIdempotent`，请求级选项双向覆盖它）；仅对可容忍重放的端点启用，或以幂等键（Idempotency-Key）保护。注意自定义 `RetryPolicy` 同样只对幂等方法生效，无法单独为 POST 重开重试。
 :::
 
 ## 下一步

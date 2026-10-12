@@ -1,8 +1,8 @@
 ---
 sidebar_label: "工具函数"
-title: "工具函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 辅助函数：CompareJSON 忽略键序与数字精度差异、ClearCache/GetStats 缓存管理、GetHealthStatus 健康监控、全局处理器管理与 SafeError/RedactedPath 安全辅助，简化 Go 日常 JSON 操作。"
-sidebar_position: 8
+title: "工具函数 - CyberGo JSON | 辅助函数用法与示例"
+description: "CyberGo JSON 提供丰富辅助函数：CompareJSON/MergeJSON 比较与合并、ClearCache/GetStats 缓存统计、WarmupCache 预热与 RegisterDangerousPattern 全局危险模式注册，辅以 SafeError/RedactedPath 脱敏和 AccessResult 类型转换处理，帮助开发者完成 JSON 比较、缓存管理与安全监控等日常操作。"
+sidebar_position: 90
 ---
 
 # 工具函数
@@ -220,7 +220,7 @@ fmt.Printf("成功预热 %d 个路径\n", result.Successful)
 ## 输出函数
 
 ::: warning API 变更说明
-Print、PrintPretty、PrintE、PrintPrettyE 已从库中移除，不再提供。请使用 [EncodeWithConfig](./functions/output#encodewithconfig)、[EncodePretty](./functions/output#encodepretty) 或 [Prettify](./functions/output#prettify) 配合 `fmt.Println` 代替（`Encode` 已废弃）。详见 [格式化输出](../getting-started/print)。
+Print、PrintPretty、PrintE、PrintPrettyE 已从库中移除，不再提供。请使用 [Encode](./functions/output#encode)、[EncodePretty](./functions/output#encodepretty) 或 [Prettify](./functions/output#prettify) 配合 `fmt.Println` 代替（`EncodeWithConfig` 已废弃，与 `Encode` 等价）。详见 [格式化输出](../getting-started/print)。
 :::
 
 ---

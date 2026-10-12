@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Writers"
-title: "Output Targets - CyberGo DD | FileWriter, BufferedWriter, MultiWriter"
-description: "CyberGo DD output writer API: FileWriter with automatic size-based rotation and time-based cleanup of old backups, BufferedWriter for high-performance buffered writes (configurable buffer size and flush interval), and MultiWriter for parallel multi-target output. Covers development through production scenarios to help you build a reliable logging system."
+title: "Output Targets - CyberGo DD | FileWriter & BufferedWriter"
+description: "CyberGo DD writers: FileWriter with size-based rotation and backup cleanup, BufferedWriter for buffered writes, and MultiWriter for multi-target output."
 sidebar_position: 1
 ---
 
 # Output Targets
+
+> 🔧 **API Reference** · For a hands-on tutorial see [File Output & Rotation](../../guides/basics/file-output)
 
 DD provides 3 output writers supporting file rotation, buffered writes, and multi-target output.
 
@@ -21,7 +23,7 @@ func NewFileWriter(path string, cfg FileWriterConfig) (*FileWriter, error)
 
 The path goes through internal path-safety validation (path traversal, null bytes, overlong UTF-8), then `cfg.Validate()` checks the count caps, and falls back to default config for zero/negative values. Errors are returned when:
 
-- Path-related: `ErrEmptyFilePath` / `ErrNullByte` / `ErrPathTooLong` (>4096 bytes) / `ErrPathTraversal` / `ErrInvalidPath` / `ErrOverlongEncoding`
+- Path-related: `ErrEmptyFilePath` / `ErrNullByte` / `ErrPathTooLong` (>4096 bytes) / `ErrPathTraversal` / `ErrInvalidPath` / `ErrOverlongEncoding`, plus Windows reserved device names (`CON`, `NUL`, `COM1`, ...) and NTFS alternate data stream (`file:ads`) paths
 - Config-related: `ErrMaxSizeExceeded` (`MaxSizeMB > 10240`) / `ErrMaxBackupsExceeded` (`MaxBackups > 1000`)
 - I/O-related: directory creation failure (wrapped as `failed to create directory: …`) or file open failure (wrapped as `failed to open file …: %w`, including `ErrSymlinkNotAllowed` / `ErrHardlinkNotAllowed`)
 
@@ -68,7 +70,7 @@ Validates the file writer config. Returns an error when:
 - `MaxSizeMB` exceeds 10240 (returns `ErrMaxSizeExceeded`)
 - `MaxBackups` exceeds 1000 (returns `ErrMaxBackupsExceeded`)
 
-Negative values do not trigger a Validate error; among them, zero or negative `MaxSizeMB` falls back to 100MB when defaults are applied, while negative `MaxBackups` / `MaxAge` are kept as-is (see "Default value application rules" below).
+Negative values do not trigger a Validate error; among them, zero or negative `MaxSizeMB` falls back to 100MB when defaults are applied, while negative `MaxBackups` / `MaxAge` are first normalized to 0 and then follow the "Default value application rules" (e.g. setting only `MaxBackups=-5` normalizes to 0 and falls back to the default 10 via the "both zero" branch).
 
 ### Methods
 
@@ -107,7 +109,7 @@ fw.Write([]byte("log content\n"))
 
 FileWriter's rotation and cleanup run along two independent paths:
 
-- **Rotation**: triggered within the `Write` call when the current file size exceeds `MaxSizeMB` (default 100MB) — the old file is renamed to a backup, a new file is reopened with `O_EXCL` (prevents symlink TOCTOU), then `internal.RotateBackups` truncates the backup chain per `MaxBackups`, and when `Compress=true` a separate goroutine gzip-compresses the backups.
+- **Rotation**: triggered within the `Write` call when the current file size **plus the pending write length** would exceed `MaxSizeMB` (default 100MB) — i.e. rotation happens *before* a write would cross the cap — the old file is renamed to a backup, a new file is reopened with `O_EXCL` (prevents symlink TOCTOU), then `internal.RotateBackups` truncates the backup chain per `MaxBackups` (deleting the lowest indices first), and when `Compress=true` a separate goroutine gzip-compresses the backups.
 - **Cleanup**: only when `MaxAge > 0` and `MaxBackups > 0`, a background goroutine starts, scanning once per hour and calling `internal.CleanupOldFiles` to delete old backups older than `MaxAge` (default 30 days).
 
 :::tip Default-value application rules
@@ -123,8 +125,8 @@ fw.Write([]byte("log content\n"))
 
 // Files produced after rotation:
 // logs/app.log       (current file)
-// logs/app_log_1.log (newest backup)
-// logs/app_log_2.log (older backup)
+// logs/app_log_1.log (first rotation, older backup)
+// logs/app_log_2.log (second rotation, newest backup; each rotation takes a new increasing index)
 // With Compress enabled, old backups are asynchronously compressed to logs/app_log_1.log.gz
 ```
 
@@ -207,12 +209,12 @@ cfg.BufferSize = 8192
 bw, _ := dd.NewBufferedWriter(file, cfg)
 bw.Write([]byte("log line\n"))
 _ = bw.Flush()      // Explicit flush to underlying
-defer bw.Close()    // Close first Flush then closes the underlying Writer
+defer bw.Close()    // Close flushes the buffer first, then closes the underlying Writer
 ```
 
 ## MultiWriter
 
-Multi-writer manager that writes to multiple targets simultaneously.
+Multi-writer manager: a single `Write` fans out to all targets **sequentially in registration order** (not in parallel; a partial failure does not affect the remaining targets).
 
 ### Creation
 
@@ -232,12 +234,12 @@ mw := dd.NewMultiWriter(os.Stdout, fileWriter)
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `Write` | `(p []byte) (int, error)` | Writes to all targets (see error policy below) |
-| `AddWriter` | `(w io.Writer) error` | Dynamically add a target (duplicate writers are silently accepted) |
+| `AddWriter` | `(w io.Writer) error` | Dynamically add a target (a duplicate writer is a no-op — deduplicated, not an error, not added twice; by contrast, `Logger.AddWriter` accepts duplicates) |
 | `RemoveWriter` | `(w io.Writer) error` | Dynamically remove a target |
-| `Close` | `() error` | Close all underlying `io.Closer`s (except standard streams) |
+| `Close` | `() error` | First flushes writers implementing [Flusher](../core/interfaces#flusher) (prevents buffered-data loss), then closes all underlying `io.Closer`s (except standard streams) |
 
-`AddWriter` returns errors for: `ErrNilMultiWriter` (receiver is `nil`) / `ErrNilWriter` (argument is `nil`) / `ErrMaxWritersExceeded` (already has >= 100 registered).
-`RemoveWriter` returns errors for: `ErrNilMultiWriter` / `ErrWriterNotFound`.
+`AddWriter` returns errors for: `ErrNilMultiWriter` (receiver is `nil`) / `ErrNilWriter` (argument is `nil`) / `ErrMaxWritersExceeded` (already has >= 100 registered) / calls made after `Close` (an error wrapping `os.ErrClosed`).
+`RemoveWriter` returns errors for: `ErrNilMultiWriter` / `ErrWriterNotFound`. Note that unlike `AddWriter`, `RemoveWriter` performs no closed-state check — calling it after `Close` does not return `os.ErrClosed` (it still removes from the internal list, but the writer is not closed again).
 
 <!-- check-code: skip -->
 ```go

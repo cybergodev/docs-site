@@ -1,8 +1,8 @@
 ---
 title: "核心概念 - CyberGo HTTPC | 双层架构与配置体系"
-description: "HTTPC 核心概念详解：双层 API 架构与核心构件职责表（Client、Result、Session、中间件、Mutator）、Config 配置与 With* 请求选项分层、请求生命周期流程图、域名会话客户端与 ClientError 错误模型，帮助开发者建立整体认知。"
+description: "HTTPC 核心概念详解：双层 API 架构与核心构件职责表（Client、Result、Session、中间件、Mutator）、Config 配置与 With* 请求选项分层、请求生命周期流程图、域名会话客户端与 ClientError 错误模型。"
 sidebar_label: "核心概念"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 核心概念
@@ -25,6 +25,7 @@ sidebar_position: 2
 
 构件之间的关系：
 
+<!-- autocorrect-disable — 下面的 ASCII 架构图靠连续空格对齐三列，排版规则会压缩对齐空格，禁用。 -->
 ```text
 包级函数 ──共享──▶ 默认 Client ◀──创建── New(cfg)
                        │
@@ -39,6 +40,8 @@ sidebar_position: 2
 DomainClienter = Client + base URL + SessionManager
 （请求前注入会话头/Cookie，响应后回写 Set-Cookie）
 ```
+<!-- autocorrect-enable -->
+
 
 ## 双层 API 架构
 
@@ -58,7 +61,7 @@ defer func() { _ = client.Close() }()
 result, err := client.Get("https://api.example.com/data")
 ```
 
-两种方式接受相同的请求选项（`WithHeader`、`WithJSON`…），返回相同的 `*Result` 类型。包级函数是 Client 实例的薄封装。默认客户端可以替换：`SetDefaultClient(client)` 将自定义实例设为默认（旧实例自动关闭），`CloseDefaultClient()` 关闭并重置——关闭后下一次包级调用会自动重建。
+两种方式接受相同的请求选项（`WithHeader`、`WithJSON`…），返回相同的 `*Result` 类型。包级函数是 Client 实例的薄封装。默认客户端可以替换：`SetDefaultClient(client)` 将自定义实例设为默认（旧实例自动关闭），`CloseDefaultClient()` 关闭并重置——关闭后下一次包级调用会自动重建。注意：替换时会**关闭旧默认客户端并中断其上仍在途的请求**（并发的调用方可能观察到连接错误），应只在启动期或静默期调用，勿在活跃流量下替换。
 
 :::tip 何时用哪个？
 一次性请求或快速原型 → 包级函数。生产服务、需自定义配置或连接池管理 → Client 实例。
@@ -220,7 +223,7 @@ if err != nil {
 }
 // 请求成功完成 — 检查 HTTP 状态码
 if !result.IsSuccess() {
-    log.Printf("HTTP 错误: %d", result.StatusCode())
+    log.Printf("HTTP 错误：%d", result.StatusCode())
 }
 ```
 
@@ -247,3 +250,7 @@ if !result.IsSuccess() {
 - **显式 Close** — `client.Close()` 释放连接池与传输层资源；关闭后再发请求返回 `ErrClientClosed`。
 - **默认客户端自愈** — 包级函数使用的默认客户端可被 `SetDefaultClient()` 替换、`CloseDefaultClient()` 关闭；关闭后下一次包级调用自动重建。
 - **panic 安全网** — `Request` 内部有兜底 recover：执行路径上的意外 panic 会转换为带堆栈的 `error` 返回，而不是击穿调用方。
+
+## 下一步
+
+- [实战教程](../guides/tutorial) - 约 30 分钟按顺序把本页概念逐一上手

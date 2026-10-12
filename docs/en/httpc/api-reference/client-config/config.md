@@ -2,7 +2,7 @@
 sidebar_label: "Configuration"
 title: "Configuration - CyberGo HTTPC | Config & Presets"
 description: "HTTPC Config API reference: Timeouts, Connection, Security, Retry, and Middleware fields, five presets, ValidateConfig, and proxy-rotation retry derivation."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Configuration
@@ -21,6 +21,15 @@ type Config struct {
 ```
 
 The main configuration struct; the five sub-configs and `Defaults` are all **value types**. Use `DefaultConfig()` to obtain secure defaults — the returned Config can have its fields modified directly.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Config.Timeouts` | `TimeoutConfig` | Request/dial/TLS-handshake/response-header/idle-connection timeouts |
+| `Config.Connection` | `ConnectionConfig` | Connection pooling, proxies, HTTP/2, cookies, and DNS-over-HTTPS |
+| `Config.Security` | `SecurityConfig` | TLS, validation, and SSRF protection |
+| `Config.Retry` | `RetryConfig` | Automatic retries of transient failures |
+| `Config.Middleware` | `MiddlewareConfig` | Per-client middleware chain |
+| `Config.Defaults` | `RequestDefaults` | Per-request defaults (User-Agent, default headers, redirect policy) |
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -95,11 +104,35 @@ type ConnectionConfig struct {
     ProxyRotateOnStatus    []int         // HTTP status codes that trigger proxy rotation
     EnableHTTP2            bool          // Enable HTTP/2, default true
     EnableCookies          bool          // Enable cookie management, default false
+    PublicSuffixList       cookiejar.PublicSuffixList // Public-suffix database for the cookie jar, default nil
     EnableDoH              bool          // Enable DNS-over-HTTPS, default false
     DoHCacheTTL            time.Duration // DoH cache TTL, default 5min
-    MaxResponseHeaderBytes int64         // Max response-header bytes, default 0 (uses Go stdlib default 10MB)
+    MaxResponseHeaderBytes int64         // Max response-header bytes, default 0 (uses Go stdlib default 1MB)
 }
 ```
+
+### Field Overview
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `ConnectionConfig.MaxIdleConns` | `int` | 50 | Global maximum idle connections |
+| `ConnectionConfig.MaxConnsPerHost` | `int` | 10 | Maximum connections per host (idle + active) |
+| `ConnectionConfig.ProxyURL` | `string` | `""` | Explicit proxy address (e.g. `"http://proxy:8080"`); highest priority |
+| `ConnectionConfig.EnableSystemProxy` | `bool` | `false` | Auto-detect system proxy settings |
+| `ConnectionConfig.ProxyPool` | `[]string` | `nil` | Proxy-pool list for rotation |
+| `ConnectionConfig.ProxyPoolStrategy` | `ProxyStrategy` | `ProxyStrategyRoundRobin` | Proxy selection strategy |
+| `ConnectionConfig.ProxyFailureThreshold` | `int` | 3 (0 is treated as 3) | Consecutive-failure threshold before the proxy is circuit-broken |
+| `ConnectionConfig.ProxyCooldown` | `time.Duration` | 30s (0 is treated as 30s) | How long a circuit-broken proxy stays out of rotation |
+| `ConnectionConfig.ProxyRotatePerRequest` | `bool` | `false` | Force a different proxy for each independent request (requires `ProxyPool`) |
+| `ConnectionConfig.ProxyRotateOnStatus` | `[]int` | `nil` | HTTP status codes that trigger a proxy-switch retry (requires `Retry.MaxRetries > 0`) |
+| `ConnectionConfig.EnableHTTP2` | `bool` | `true` | Enable HTTP/2 |
+| `ConnectionConfig.EnableCookies` | `bool` | `false` | Enable automatic cookie handling with a cookie jar |
+| `ConnectionConfig.PublicSuffixList` | `cookiejar.PublicSuffixList` | `nil` | Supplies a public-suffix database to the cookie jar (recommended: `golang.org/x/net/publicsuffix.List`). Without one, the jar accepts cookies on public suffixes and applies looser domain matching, which can leak cookies across unrelated subdomains |
+| `ConnectionConfig.EnableDoH` | `bool` | `false` | Enable DNS-over-HTTPS resolution |
+| `ConnectionConfig.DoHCacheTTL` | `time.Duration` | 5min | Cache duration for DoH DNS responses |
+| `ConnectionConfig.MaxResponseHeaderBytes` | `int64` | 0 | Maximum response-header bytes; 0 uses the Go stdlib default of 1MB (`net/http.DefaultMaxHeaderBytes`), defending against malicious servers sending oversized headers |
+
+`PublicSuffixList` is only used when `EnableCookies` is on (i.e. the cookie jar is active); it is the recommended way to tighten cookie domain matching and prevent supercookie leakage.
 
 ### Proxy Pool
 
@@ -232,25 +265,31 @@ See [Redirects](../../guides/redirects) for the complete picture of redirect beh
 
 ```go
 type RetryConfig struct {
-    MaxRetries    int           // Max retry count, default 3
-    Delay         time.Duration // Initial retry delay, default 1s
-    BackoffFactor float64       // Backoff multiplier, default 2.0
-    EnableJitter  bool          // Enable jitter, default true
-    MaxRetryDelay time.Duration // Max retry-delay cap, default 30s
-    CustomPolicy  RetryPolicy   // Custom retry policy
+    MaxRetries         int           // Max retry count, default 3
+    Delay              time.Duration // Initial retry delay, default 1s
+    BackoffFactor      float64       // Backoff multiplier, default 2.0
+    EnableJitter       bool          // Enable jitter, default true
+    MaxRetryDelay      time.Duration // Max retry-delay cap, default 30s
+    RetryNonIdempotent bool          // Allow retrying non-idempotent methods (POST, PATCH, custom), default false
+    CustomPolicy       RetryPolicy   // Custom retry policy, default nil
 }
 ```
 
 | Field | Default | Range |
 |-------|---------|-------|
-| MaxRetries | 3 | 0-10 |
-| Delay | 1s | 0-30min |
-| BackoffFactor | 2.0 | 1.0-10.0 |
-| MaxRetryDelay | 30s | 0-30min |
+| `RetryConfig.MaxRetries` | 3 | 0-10 |
+| `RetryConfig.Delay` | 1s | 0-30min |
+| `RetryConfig.BackoffFactor` | 2.0 | 1.0-10.0 |
+| `RetryConfig.MaxRetryDelay` | 30s | 0-30min |
+| `RetryConfig.EnableJitter` | true | — |
+| `RetryConfig.RetryNonIdempotent` | false | — |
+| `RetryConfig.CustomPolicy` | nil | implement [`RetryPolicy`](../types/interfaces#retrypolicy) |
 
 Retry-delay formula: `min(Delay * BackoffFactor^attempt + jitter, MaxRetryDelay)`
 
-`CustomPolicy` implements the [`RetryPolicy`](../types/interfaces#retrypolicy) interface and replaces the built-in retry decisions wholesale; the default is `nil` (built-in policy). When proxy status-code rotation is configured, the effective retry count is raised automatically — see [Config Derivation and Internal Conversion](#config-derivation-and-internal-conversion).
+`CustomPolicy` implements the [`RetryPolicy`](../types/interfaces#retrypolicy) interface and replaces the built-in retry decisions wholesale; the default is `nil` (built-in policy). Like the built-in policy, `CustomPolicy` is only consulted for idempotent methods — to let it govern POST/PATCH retries you must also set `RetryNonIdempotent` (or use [`WithRetryNonIdempotent`](../core/options#withretrynonidempotent) per request). When proxy status-code rotation is configured, the effective retry count is raised automatically — see [Config Derivation and Internal Conversion](#config-derivation-and-internal-conversion).
+
+`RetryNonIdempotent` defaults to `false`: non-idempotent requests execute **exactly once** — a timeout or retryable 5xx may arrive after the server has already committed the operation, and replaying the body would duplicate it (duplicate payment, double insert, ...). Enable it only when the endpoint is known to tolerate replay, or guard it with an idempotency key. Idempotent methods (GET/HEAD/PUT/DELETE/OPTIONS/TRACE) are unaffected by this switch and are always retried subject to `MaxRetries`.
 
 ## MiddlewareConfig
 
@@ -260,7 +299,7 @@ type MiddlewareConfig struct {
 }
 ```
 
-Contains only the middleware chain. Request defaults (User-Agent, default headers, redirect policy) have been moved to [`RequestDefaults`](#requestdefaults).
+Contains only the `Middlewares` field. Request defaults (User-Agent, default headers, redirect policy) have been moved to [`RequestDefaults`](#requestdefaults).
 
 ## RequestDefaults
 
@@ -274,6 +313,13 @@ type RequestDefaults struct {
 ```
 
 The canonical location for per-request defaults: User-Agent, default headers, and redirect policy. Obtain sensible defaults via `DefaultConfig()` and modify as needed.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `RequestDefaults.UserAgent` | `string` | `"httpc/1.0"` | User-Agent header |
+| `RequestDefaults.Headers` | `map[string]string` | empty | Default headers added to every request |
+| `RequestDefaults.FollowRedirects` | `bool` | `true` | Whether to follow redirects automatically |
+| `RequestDefaults.MaxRedirects` | `int` | 10 | Cap on automatic redirects |
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -446,6 +492,15 @@ func ValidateConfig(cfg *Config) error
 
 Validates configuration. Called automatically inside `New()`, but can also be called explicitly.
 
+The equivalent method form `Config.Validate` (signature `func (c *Config) Validate() error`, delegating directly to `ValidateConfig`) is handier when you already hold a Config instance — calling `Validate` on it is the recommended form for new code:
+
+```go
+cfg := httpc.DefaultConfig()
+if err := cfg.Validate(); err != nil {
+    log.Fatal(err)
+}
+```
+
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Retry.MaxRetries = 100 // Out of range
@@ -513,11 +568,11 @@ Cookie security-attribute validation configuration.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| RequireSecure | `bool` | Require cookies to carry the Secure attribute |
-| RequireHttpOnly | `bool` | Require cookies to carry the HttpOnly attribute |
-| RequireSameSite | `string` | Required SameSite value, e.g. `"Strict"`, `"Lax"`; empty string means no check |
-| AllowSameSiteNone | `bool` | Whether SameSite=None is allowed; when `false` and `RequireSameSite` is empty, cookies with SameSite=None are rejected |
-| RequireSecureForSameSiteNone | `bool` | Force the Secure attribute when SameSite=None (`true` in `DefaultCookieSecurityConfig()`; `false` when constructing a zero-value struct directly — always prefer the factory constructors) |
+| `CookieSecurityConfig.RequireSecure` | `bool` | Require cookies to carry the Secure attribute |
+| `CookieSecurityConfig.RequireHttpOnly` | `bool` | Require cookies to carry the HttpOnly attribute |
+| `CookieSecurityConfig.RequireSameSite` | `string` | Required SameSite value, e.g. `"Strict"`, `"Lax"`; empty string means no check |
+| `CookieSecurityConfig.AllowSameSiteNone` | `bool` | Whether SameSite=None is allowed; when `false` and `RequireSameSite` is empty, cookies with SameSite=None are rejected |
+| `CookieSecurityConfig.RequireSecureForSameSiteNone` | `bool` | Force the Secure attribute when SameSite=None (`true` in `DefaultCookieSecurityConfig()`; `false` when constructing a zero-value struct directly — always prefer the factory constructors) |
 
 ### DefaultCookieSecurityConfig
 
@@ -544,8 +599,8 @@ Field-by-field comparison of the two factories:
 
 | Field | DefaultCookieSecurityConfig | StrictCookieSecurityConfig |
 |-------|------------------------------|----------------------------|
-| RequireSecure | `false` | `true` |
-| RequireHttpOnly | `false` | `true` |
-| RequireSameSite | `""` (not required) | `"Strict"` |
-| AllowSameSiteNone | `true` | `false` |
-| RequireSecureForSameSiteNone | `true` | `true` |
+| `RequireSecure` | `false` | `true` |
+| `RequireHttpOnly` | `false` | `true` |
+| `RequireSameSite` | `""` (not required) | `"Strict"` |
+| `AllowSameSiteNone` | `true` | `false` |
+| `RequireSecureForSameSiteNone` | `true` | `true` |

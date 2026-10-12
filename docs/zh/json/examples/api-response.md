@@ -1,8 +1,8 @@
 ---
 sidebar_label: "API 响应解析"
 title: "API 响应解析 - CyberGo JSON | 分页与结构体反序列化"
-description: "CyberGo JSON 解析 HTTP API 响应：ParseAny 解析任意值、GetString/GetInt 提取状态与分页元信息、Get/GetArray 提取嵌套数据、路径切片处理分页数组、GetTyped 反序列化到结构体，并以 ForeachWithPath 逐元素遍历条目。"
-sidebar_position: 4
+description: "CyberGo JSON 解析 HTTP API 响应：ParseAny 解析任意值、GetString/GetInt 提取状态与分页元信息、Get/GetArray 提取嵌套数据、路径切片处理分页数组、GetTyped 反序列化到结构体，并以 ForeachWithPath 逐元素遍历条目，单次解析、高效提取。"
+sidebar_position: 30
 ---
 
 # API 响应解析
@@ -48,7 +48,7 @@ func main() {
 
 	// 2. 获取整个数据数组
 	items := json.GetArray(apiResponse, "data.items")
-	fmt.Printf("本页条目数: %d\n", len(items))
+	fmt.Printf("本页条目数：%d\n", len(items))
 
 	// 3. 使用路径切片获取子集（取前 2 条）
 	firstTwo, err := json.Get(apiResponse, "data.items[0:2]")
@@ -67,9 +67,9 @@ func main() {
 }
 
 // 输出：
-// 状态: success, 第 2 页, 共 48 条
-// 本页条目数: 5
-// 前两条: [map[id:6 name:项目六 stars:120] map[id:7 name:项目七 stars:89]]
+// 状态：success, 第 2 页，共 48 条
+// 本页条目数：5
+// 前两条：[map[id:6 name:项目六 stars:120] map[id:7 name:项目七 stars:89]]
 //   - 项目六 (120 stars)
 //   - 项目七 (89 stars)
 //   - 项目八 (245 stars)
@@ -156,29 +156,29 @@ func main() {
 
 	// status 是数字（JSON 数字解析为 float64），Type 字段报告运行时类型
 	status := json.SafeGet(apiResponse, "status")
-	fmt.Println("status 类型:", status.Type)
+	fmt.Println("status 类型：", status.Type)
 	if code, err := status.AsInt(); err == nil {
-		fmt.Println("状态码:", code)
+		fmt.Println("状态码：", code)
 	}
 
 	// retry_after 是字符串形式的秒数
 	retry := json.SafeGet(apiResponse, "retry_after")
 	if secs, err := retry.AsString(); err == nil {
-		fmt.Println("重试等待(秒):", secs)
+		fmt.Println("重试等待 (秒):", secs)
 	}
 
 	// 不存在的路径：Ok() 为 false，UnwrapOr 兜底
 	deprecated := json.SafeGet(apiResponse, "deprecated_field")
-	fmt.Println("废弃字段存在:", deprecated.Ok())
-	fmt.Println("废弃字段兜底:", deprecated.UnwrapOr("none"))
+	fmt.Println("废弃字段存在：", deprecated.Ok())
+	fmt.Println("废弃字段兜底：", deprecated.UnwrapOr("none"))
 }
 
 // 输出：
-// status 类型: float64
-// 状态码: 200
-// 重试等待(秒): 30
-// 废弃字段存在: false
-// 废弃字段兜底: none
+// status 类型：float64
+// 状态码：200
+// 重试等待 (秒): 30
+// 废弃字段存在：false
+// 废弃字段兜底：none
 ```
 
 严格转换失败时 `As*` 方法返回错误而非静默零值，避免把「字段缺失」与「值为 0」混为一谈；需要宽松转换（如任意类型转字符串表示）时用 `AsStringConverted`。
@@ -236,23 +236,23 @@ func main() {
 
 	// 2. 对单个嵌套对象使用 GetTyped（解码子对象到结构体）
 	firstRepo := json.GetTyped[Repository](apiResponse, "data.items.0")
-	fmt.Printf("第一个仓库: %+v\n", firstRepo)
+	fmt.Printf("第一个仓库：%+v\n", firstRepo)
 
 	// 3. 使用 ParseAny 获取任意值（响应结构未知时适用）
 	parsed, err := json.ParseAny(apiResponse)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("解析类型: %T\n", parsed)
+	fmt.Printf("解析类型：%T\n", parsed)
 }
 
 // 输出：
-// 状态: success, 共 3 个仓库
+// 状态：success, 共 3 个仓库
 //   #1 cybergo-json (500 stars)
 //   #2 cybergo-jwt (320 stars)
 //   #3 cybergo-httpc (280 stars)
-// 第一个仓库: {ID:1 Name:cybergo-json Stars:500}
-// 解析类型: map[string]interface {}
+// 第一个仓库：{ID:1 Name:cybergo-json Stars:500}
+// 解析类型：map[string]interface {}
 ```
 
 ## 下一步

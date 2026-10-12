@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Config"
 title: "Config API - CyberGo env | 配置详解"
-description: "CyberGo env 的 Config 配置结构体 API 参考，含文件搜索路径、大小与数量限制、键值验证、JSON/YAML 解析选项、变量展开、审计配置及 Development/Production 预设模板，详解嵌套结构与字段提升两种访问方式。"
+description: "CyberGo env 的 Config 配置结构体 API 参考，含文件加载选项、大小与数量限制、键值验证、JSON/YAML 解析选项、变量展开、审计配置及 Development/Production 预设模板，详解嵌套结构与字段提升两种访问方式。"
 sidebar_position: 4
 ---
 
@@ -172,7 +172,7 @@ cfg.ExpandVariables = true
 | `${VAR:?error}` | 变量不存在或为空时报错 |
 
 ::: tip 空字符串的处理
-`${VAR:-default}` 与 `${VAR:=default}` 仅在变量**未设置**时使用默认值；若变量被显式设为空字符串（`VAR=`），则使用空字符串原值。仅 `${VAR:?error}` 会把空字符串视为错误。详见 [变量展开](/zh/env/guides/variable-expansion)。
+`${VAR:-default}` 与 `${VAR:=default}` 仅在变量**未设置**时使用默认值；若变量被显式设为空字符串（`VAR=`），则使用空字符串原值。仅 `${VAR:?error}` 会把空字符串视为错误。详见 [变量展开](../guides/variable-expansion)。
 :::
 
 ### 安全限制
@@ -297,7 +297,7 @@ cfg.ForbiddenKeys = []string{"CUSTOM_DANGEROUS_VAR"}
 ```
 
 ::: tip 内置禁止键
-库内置禁止 `PATH`、`LD_PRELOAD`、`LD_LIBRARY_PATH`、`DYLD_INSERT_LIBRARIES` 等系统关键变量。详见 [常量与错误](/zh/env/api-reference/constants#defaultforbiddenkeys)。
+库内置禁止 `PATH`、`LD_PRELOAD`、`LD_LIBRARY_PATH`、`DYLD_INSERT_LIBRARIES` 等系统关键变量。详见 [常量与错误](./constants#defaultforbiddenkeys)。
 :::
 
 ---
@@ -348,11 +348,15 @@ cfg.AllowExportPrefix = false  // 禁止 export 前缀
 
 #### `AllowYamlSyntax` bool
 
-允许 YAML 风格语法（`KEY: value`）。**默认 `false`**。
+允许 .env 文件的**值**按 YAML 标量语义解析（`null`/`~` 视为空字符串，YAML 布尔与数字字面量按其规则识别）。**默认 `false`**。
 
 ```go
 cfg.AllowYamlSyntax = true
 ```
+
+::: tip 提示
+`KEY: value` 的冒号分隔写法**始终可用**（行解析器无条件接受 `=` 与 `:` 作为分隔符），与本开关无关；本开关只影响值一侧的 YAML 标量语义。
+:::
 
 ### JSON 选项
 
@@ -455,7 +459,7 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
 ::: tip 详见
-[审计日志](/zh/env/guides/audit-logging) 获取完整审计配置说明。
+[审计日志](../guides/audit-logging) 获取完整审计配置说明。
 :::
 
 ### 高级选项
@@ -822,10 +826,26 @@ cfg.OverwriteExisting = true
 
 ### ExpansionScope
 
-参见[变量展开指南的「展开作用域」章节](/zh/env/guides/variable-expansion)。`ExpansionFileOnly` 用于不可信配置文件场景（SEC-03），阻止 `${VAR}` 引用读取进程环境。
+`ExpansionScope` 是一个 int 枚举类型，控制值中 `${VAR}`/`$VAR` 引用可解析的作用域（配置入口为 `ParsingConfig.ExpansionScope` 字段）：
+
+```go
+type ExpansionScope int
+
+const (
+    ExpansionFileThenProcess ExpansionScope = iota // 零值（默认）
+    ExpansionFileOnly                              // 仅文件内变量可见
+)
+```
+
+| 常量 | 语义 |
+|------|------|
+| `ExpansionFileThenProcess` | 零值（默认）。先查文件内变量，缺失时回退进程环境（`os.LookupEnv`），匹配传统 dotenv 语义 |
+| `ExpansionFileOnly` | 仅文件内变量可见，只存在于进程环境的引用展开为空字符串。用于不可信配置文件场景（SEC-03）：阻止 `${VAR}` 引用读取进程环境，防止云凭据、令牌等进程机密被「捕获」进变量值 |
+
+攻击场景分析与配置示例参见[变量展开指南的「展开作用域」章节](../guides/variable-expansion)。
 
 ## 相关文档
 
-- [Loader API](/zh/env/api-reference/loader) - 加载器方法
-- [常量与错误](/zh/env/api-reference/constants) - 限制常量与错误类型
-- [审计日志](/zh/env/guides/audit-logging) - 审计配置指南
+- [Loader API](./loader) - 加载器方法
+- [常量与错误](./constants) - 限制常量与错误类型
+- [审计日志](../guides/audit-logging) - 审计配置指南

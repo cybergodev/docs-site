@@ -29,10 +29,15 @@
  * 退出码：编译错误 → 1（CI gate）；豁免块绝不计为错误；gofmt 仅警告，不影响退出码；
  * 无错误 → 0。
  *
+ * --fix 模式：`npm run check:code -- --fix [lang|--all]` —— 对被 gofmt -l 标记的
+ * buildable 块，用 gofmt 标准输出**原地重写**该块代码（```go fence 与块前 skip
+ * 注释保留不动，块外内容零改动；gofmt 运行失败的块跳过并计数）。修复只动排版
+ * （4 空格缩进→tab 等），不改语义；退出码语义与 lint 模式一致（编译错误仍 gate，
+ * gofmt 仍 warning-only）。无 --fix 时行为与加入本模式前完全一致。
+ *
  * 依赖：Go 工具链（go 1.25）+ 6 个 cybergodev 源码 repo（位于
  * CYBERGO_SOURCE_ROOT/{project}-dev，同 audit-api.ts 约定）。
- * 本地：`npm run check:code`（默认 zh；CLI 参数指定 lang 或 `--all` 全 5 语言）。
- * CI：ci.yml 的 `check-code-samples` job（6 源码 checkout + setup-go 1.25）。
+ * 本地：`npm run check:code`（默认 zh；CLI 参数指定 lang 或 `--all` 全部语言 (zh/en)）。
  *
  * 与 audit-api.ts 的关系：audit-api 比对源码导出符号 vs 文档引用，查的是「文档
  * 提到了源码里不存在的东西」；本脚本查的是「文档里的示例代码本身能不能编译」。
@@ -52,7 +57,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..')
 
 // Root holding the {project}-dev source repos. Override with CYBERGO_SOURCE_ROOT
-// (CI: ${{ github.workspace }}/src). Same convention as audit-api.ts.
+// (CI sets it to the RELATIVE "src" — resolve it to absolute before handing
+// paths to go, which resolves them against its own CWD / the go.mod dir).
+// Same convention as audit-api.ts.
 const SOURCE_ROOT = process.env.CYBERGO_SOURCE_ROOT || 'D:/MyProject'
 
 // Temp module name (used in go.mod); subdir naming uses b{NNNN} so a 4-digit
@@ -64,18 +71,22 @@ const MODULE_NAME = 'codecheck'
 
 interface CliArgs {
   langs: Lang[]
+  /** --fix: rewrite gofmt-flagged buildable blocks in their source .md files. */
+  fix: boolean
 }
 
 function parseArgs(argv: string[]): CliArgs {
-  const rest = argv.slice(2) // drop `node` + script path
-  if (rest.length === 0) return { langs: [PRIMARY_LANG] }
-  if (rest[0] === '--all') return { langs: [...LANGS] }
+  const raw = argv.slice(2) // drop `node` + script path
+  const fix = raw.includes('--fix')
+  const rest = raw.filter((a) => a !== '--fix')
+  if (rest.length === 0) return { langs: [PRIMARY_LANG], fix }
+  if (rest[0] === '--all') return { langs: [...LANGS], fix }
   const lang = rest[0] as Lang
   if (!(LANGS as readonly string[]).includes(lang)) {
     console.error(`check-code: unknown lang "${rest[0]}". Valid: ${LANGS.join(', ')} or --all.`)
     process.exit(2)
   }
-  return { langs: [lang] }
+  return { langs: [lang], fix }
 }
 
 // --- Go block extraction --------------------------------------------------
@@ -134,6 +145,37 @@ function extractGoBlocks(content: string): GoBlock[] {
     i++
   }
   return blocks
+}
+
+// --- --fix helpers: locate a block's code region by character offset --------
+
+/** Offset of the first character of each line. LF-based indexing matches
+ *  extractGoBlocks' split(/\r?\n/) line numbers exactly (neither splits on a
+ *  lone \r), so fenceLine from a freshly-read file lines up with the original
+ *  extraction. */
+function computeLineStarts(content: string): number[] {
+  const starts = [0]
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === '\n') starts.push(i + 1)
+  }
+  return starts
+}
+
+/**
+ * Character range [start, end) of a go block's code within its source .md:
+ * from just after the opening ```go line's terminator to just before the
+ * closing fence line (or EOF when the block has no close fence). Replacing
+ * exactly this range preserves the fence lines themselves, any skip marker
+ * above them, and everything else in the file.
+ */
+function blockCodeRange(content: string, block: GoBlock): { start: number; end: number } {
+  const starts = computeLineStarts(content)
+  const fence = block.fenceLine - 1 // 0-indexed opening fence line
+  const codeLines = block.code.split('\n').length
+  return {
+    start: starts[fence + 1] ?? content.length,
+    end: starts[fence + 1 + codeLines] ?? content.length
+  }
 }
 
 // `package <name>` starting a line. Go permits leading whitespace (gofmt
@@ -273,7 +315,7 @@ function runGo(moduleDir: string): RunResult {
 // --- main -----------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const { langs } = parseArgs(process.argv)
+  const { langs, fix } = parseArgs(process.argv)
 
   if (!goAvailable()) {
     console.error('check-code: go toolchain not found on PATH. Install Go 1.25+.')
@@ -285,7 +327,7 @@ async function main(): Promise<void> {
   // instead of the audit silently passing).
   const availableProjects = new Set<string>()
   for (const p of PROJECTS) {
-    const path = join(SOURCE_ROOT, `${p}-dev`)
+    const path = resolve(SOURCE_ROOT, `${p}-dev`)
     if (existsSync(path)) {
       availableProjects.add(p)
     } else {
@@ -356,7 +398,10 @@ async function main(): Promise<void> {
     const replaceLines: string[] = []
     for (const p of PROJECTS) {
       if (availableProjects.has(p)) {
-        replaceLines.push(`\tgithub.com/cybergodev/${p} => ${join(SOURCE_ROOT, `${p}-dev`)}`)
+        // resolve (not join): a relative SOURCE_ROOT (CI sets CYBERGO_SOURCE_
+        // ROOT=src) must become absolute — go resolves replace targets against
+        // the go.mod's dir (a temp dir), not this process's CWD.
+        replaceLines.push(`\tgithub.com/cybergodev/${p} => ${resolve(SOURCE_ROOT, `${p}-dev`)}`)
       }
     }
     const goMod = [
@@ -407,6 +452,69 @@ async function main(): Promise<void> {
       for (const i of sortBlockIndices(gofmtIssues, buildBlocks)) {
         const b = buildBlocks[i]
         console.warn(`  ${relOf(b.file)}#${b.index + 1}  (line ${b.fenceLine})`)
+      }
+    }
+
+    // ---- --fix: rewrite flagged blocks in their source .md files ----
+    // Only blocks flagged by `gofmt -l` are rewritten: gofmt is idempotent, so
+    // for an already-clean block its stdout is byte-identical to the block and
+    // rewriting would be a no-op — skipping the write avoids touching files
+    // unnecessarily. Fences, skip markers, and all content outside the code
+    // region are preserved; gofmt failures (parse errors, empty output) are
+    // skipped and counted, never fatal.
+    if (fix) {
+      if (gofmtIssues.size === 0) {
+        console.log('\n--fix: every buildable block is already gofmt-clean; nothing to rewrite.')
+      } else {
+        // Group flagged blocks by source file; apply replacements
+        // back-to-front so earlier character offsets stay valid within a file.
+        const byFile = new Map<string, number[]>()
+        for (const i of gofmtIssues) {
+          const f = buildBlocks[i].file
+          if (!byFile.has(f)) byFile.set(f, [])
+          byFile.get(f)!.push(i)
+        }
+        let fixedBlocks = 0
+        let fixedFiles = 0
+        let skipped = 0
+        for (const [file, idxs] of byFile) {
+          const content = await readFile(file, 'utf8')
+          // Preserve the file's dominant line ending (gofmt always emits LF).
+          const eol = content.includes('\r\n') ? '\r\n' : '\n'
+          const replacements: { start: number; end: number; text: string }[] = []
+          for (const i of idxs) {
+            const b = buildBlocks[i]
+            const fmt = spawnSync('gofmt', [join(tmpRoot, subdirOf(i), 'main.go')], {
+              encoding: 'utf8',
+              windowsHide: true
+            })
+            if (fmt.status !== 0 || !fmt.stdout || !fmt.stdout.trim()) {
+              skipped++
+              console.warn(`check-code --fix: skipped ${relOf(file)}#${b.index + 1} (gofmt failed)`)
+              continue
+            }
+            const { start, end } = blockCodeRange(content, b)
+            replacements.push({
+              start,
+              end,
+              text: fmt.stdout.replace(/\r\n/g, '\n').replace(/\n/g, eol)
+            })
+          }
+          let updated = content
+          for (const r of replacements.sort((a, b) => b.start - a.start)) {
+            updated = updated.slice(0, r.start) + r.text + updated.slice(r.end)
+          }
+          if (updated !== content) {
+            await writeFile(file, updated, 'utf8')
+            fixedFiles++
+            fixedBlocks += replacements.length
+          }
+        }
+        console.log(
+          `\n--fix: rewrote ${fixedBlocks} block(s) in ${fixedFiles} file(s) with gofmt output` +
+            (skipped ? `; skipped ${skipped} (gofmt failed)` : '') +
+            '.'
+        )
       }
     }
 

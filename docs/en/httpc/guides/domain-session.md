@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Domain Client & Sessions"
 title: "Domain Client and Sessions - CyberGo HTTPC | Cookie Mgmt"
-description: "HTTPC domain client guide: NewDomain URL joining, path-traversal protection, SetHeader session headers, cookie auto-capture, and CookieSecurity validation."
-sidebar_position: 5
+description: "HTTPC domain client guide: NewDomain clients, URL joining with path-traversal protection, SetHeader headers, cookie auto-capture, CookieSecurity validation."
+sidebar_position: 40
 ---
 
 # Domain Client and Sessions
@@ -49,34 +49,34 @@ Three things happen automatically at creation:
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Timeouts.Request = 15 * time.Second
-    cfg.Retry.MaxRetries = 2
-    cfg.Defaults.UserAgent = "my-app/1.0"
+	cfg := httpc.DefaultConfig()
+	cfg.Timeouts.Request = 15 * time.Second
+	cfg.Retry.MaxRetries = 2
+	cfg.Defaults.UserAgent = "my-app/1.0"
 
-    dc, err := httpc.NewDomain("https://api.github.com", cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer dc.Close()
+	dc, err := httpc.NewDomain("https://api.github.com", cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dc.Close()
 
-    if err := dc.SetHeader("Accept", "application/vnd.github+json"); err != nil {
-        log.Fatal(err)
-    }
+	if err := dc.SetHeader("Accept", "application/vnd.github+json"); err != nil {
+		log.Fatal(err)
+	}
 
-    result, err := dc.Get("/repos/golang/go")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.StatusCode()) // 200
+	result, err := dc.Get("/repos/golang/go")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.StatusCode()) // 200
 }
 ```
 
@@ -163,7 +163,7 @@ After every request, cookies returned by the server are automatically updated in
 Automatic cookie maintenance covers three paths:
 
 - **Response write-back**: after each request finishes, `Set-Cookie` from the response is written into the session automatically (the `Download` method used for downloads captures response cookies as well)
-- **Validation**: before writing, the same validity checks as `WithCookie` apply; when a cookie security policy is configured (see "Cookie Security Validation" below), non-compliant cookies are **silently skipped** without affecting the others
+- **Validation**: before writing, the same validity checks as `WithCookies` apply; when a cookie security policy is configured (see "Cookie Security Validation" below), non-compliant cookies are **silently skipped** without affecting the others
 - **Copy semantics**: `GetCookie`/`GetCookies` return copies of the cookies — modifying the returned values does not pollute the session's internal state
 
 ### Automatic Persistence of Request Options
@@ -173,7 +173,7 @@ Cookies and headers passed via **request options** are also captured into the se
 ```go
 // First request: the cookie and header passed via options...
 _, err := dc.Get("/login",
-    httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"}),
+    httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc"}}),
     httpc.WithHeader("X-Client", "mobile"),
 )
 if err != nil {
@@ -273,7 +273,7 @@ session.UpdateFromResult(result)     // capture response cookies from the Result
 session.UpdateFromCookies(cookies)   // bulk update from []*http.Cookie
 ```
 
-Combined with a plain `Client`, you read `GetHeaders()`/`GetCookies()` yourself and turn them into `WithHeaderMap`/`WithCookie` options attached to requests (this is exactly how `DomainClient` injects session state into every request internally).
+Combined with a plain `Client`, you read `GetHeaders()`/`GetCookies()` yourself and turn them into `WithHeaderMap`/`WithCookies` options attached to requests (this is exactly how `DomainClient` injects session state into every request internally).
 
 ## Concurrency Semantics
 
@@ -343,54 +343,54 @@ dc.DeleteHeader("Authorization")
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    // Create the domain client
-    dc, err := httpc.NewDomainDefault("https://api.example.com")
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer dc.Close()
+	// Create the domain client
+	dc, err := httpc.NewDomainDefault("https://api.example.com")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dc.Close()
 
-    // Log in to get a token
-    loginResult, err := dc.Post("/auth/login", httpc.WithJSON(map[string]string{
-        "username": "admin",
-        "password": "secret",
-    }))
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Log in to get a token
+	loginResult, err := dc.Post("/auth/login", httpc.WithJSON(map[string]string{
+		"username": "admin",
+		"password": "secret",
+	}))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Parse the token from the response
-    var loginResp struct {
-        Token string `json:"token"`
-    }
-    if err := loginResult.Unmarshal(&loginResp); err != nil {
-        log.Fatal(err)
-    }
+	// Parse the token from the response
+	var loginResp struct {
+		Token string `json:"token"`
+	}
+	if err := loginResult.Unmarshal(&loginResp); err != nil {
+		log.Fatal(err)
+	}
 
-    // Set the session header
-    if err := dc.SetHeader("Authorization", "Bearer "+loginResp.Token); err != nil {
-        log.Fatal(err)
-    }
+	// Set the session header
+	if err := dc.SetHeader("Authorization", "Bearer "+loginResp.Token); err != nil {
+		log.Fatal(err)
+	}
 
-    // Subsequent requests automatically carry the token and cookies
-    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancel()
+	// Subsequent requests automatically carry the token and cookies
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-    users, err := dc.Request(ctx, "GET", "/users")
-    if err != nil {
-        log.Fatal(err)
-    }
+	users, err := dc.Request(ctx, "GET", "/users")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(users.StatusCode()) // 200
+	fmt.Println(users.StatusCode()) // 200
 }
 ```
 

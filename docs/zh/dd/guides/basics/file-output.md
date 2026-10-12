@@ -1,7 +1,7 @@
 ---
 sidebar_label: "文件输出与轮换"
 title: "文件输出与轮换 - CyberGo DD | 文件日志配置指南"
-description: "CyberGo DD 文件输出与日志轮换配置指南，涵盖 FileWriter 大小轮换与时间清理策略、BufferedWriter 缓冲写入优化、MultiWriter 多目标分发、动态 Writer 管理以及生产环境最佳实践，帮助开发者构建高可靠性的文件日志系统。"
+description: "CyberGo DD 文件输出与日志轮换配置指南：FileWriter 大小轮换与时间清理策略、BufferedWriter 缓冲写入优化、MultiWriter 多目标分发与动态 Writer 管理，构建高可靠的文件日志系统。"
 sidebar_position: 4
 ---
 
@@ -19,35 +19,35 @@ DD 提供灵活的文件输出能力，支持自动轮换、缓冲写入和多�
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    logger, err := dd.New(dd.Config{
-        Targets: []dd.OutputTarget{
-            dd.FileOutput("logs/app.log"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	cfg := dd.DefaultConfig()
+	cfg.Targets = []dd.OutputTarget{
+		dd.FileOutput("logs/app.log"),
+	}
+	logger, err := dd.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    logger.Info("日志将写入文件") // 日志将写入 logs/app.log
+	logger.Info("日志将写入文件") // 日志将写入 logs/app.log
 }
 ```
 
 ### 控制台 + 文件双输出
 
 ```go
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.log"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.log"),
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -82,9 +82,10 @@ fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
 if err != nil {
     log.Fatal(err)
 }
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
-})
+
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -94,12 +95,12 @@ defer logger.Close()
 ### JSON 格式日志文件
 
 ```go
-logger, err := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.FileOutput("logs/app.json"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.FileOutput("logs/app.json"),
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -110,13 +111,15 @@ defer logger.Close()
 
 ```text
 logs/app.log           ← 当前日志
-logs/app_log_1.log     ← 第一次轮换（最新的备份）
-logs/app_log_2.log     ← 更早的备份
+logs/app_log_1.log     ← 第一次轮换（较旧的备份）
+logs/app_log_2.log     ← 第二次轮换（最新的备份）
 logs/app_log_1.log.gz  ← 启用 Compress 后旧备份会被压缩为 .gz
 ```
 
+每次轮换使用比现有编号更大的新编号（`maxIndex + 1`），因此**编号最大的是最新备份**；清理超出 `MaxBackups` 的备份时**从最小编号开始删除**。
+
 :::info 压缩与备份不并存
-启用 `Compress` 后，压缩在轮换之后由单独 goroutine 异步进行；压缩完成时原 `.log` 备份会被**重命名**为 `.log.gz`，二者不会并存。
+启用 `Compress` 后，压缩在轮换之后由单独 goroutine 异步进行；压缩写入 `.log.gz` 临时文件并校验后再删除原 `.log` 备份，二者不会并存。
 :::
 
 ## BufferedWriter 缓冲写入
@@ -140,9 +143,9 @@ if err != nil {
     log.Fatal(err)
 }
 
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(bw)},
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(bw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -153,10 +156,10 @@ defer logger.Close() // Close 时自动 Flush
 
 | 场景 | BufferSize | FlushTime | 说明 |
 |------|-----------|-----------|------|
-| 低延迟要求 | 512 | 50ms | 快速刷新，减少延迟 |
+| 低延迟要求 | 1024 | 10ms | 默认缓冲 + 高频刷新，减少延迟（BufferSize 低于 1024 会被钳制到默认值） |
 | 通用场景 | 1024 | 100ms | 默认值，平衡延迟与吞吐 |
 | 高吞吐量 | 4096 | 500ms | 大缓冲，最大化吞吐 |
-| 批处理任务 | 8192 | 1000ms | 最大缓冲，适合离线处理 |
+| 批处理任务 | 8192 | 1000ms | 大缓冲，适合离线处理（上限为 10MB） |
 
 :::warning 数据安全
 BufferedWriter 在缓冲区半满（达 BufferSize/2）或定时器触发时刷新。程序异常退出可能导致缓冲区中的数据丢失。确保调用 `Close()` 或 `Flush()` 以保证数据完整。
@@ -174,9 +177,9 @@ remote := &RemoteLogWriter{endpoint: "http://log-service/ingest"}
 
 mw := dd.NewMultiWriter(fw, remote)
 
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(mw)},
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(mw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -230,16 +233,16 @@ func (w *LogstashWriter) Write(p []byte) (n int, err error) {
 }
 
 // 使用自定义 Writer
-logger, err := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.FileOutput("logs/app.json"),
-        dd.CustomOutput(&LogstashWriter{
-            endpoint: "http://logstash:5044",
-            client:   &http.Client{Timeout: 5 * time.Second},
-        }),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.FileOutput("logs/app.json"),
+    dd.CustomOutput(&LogstashWriter{
+        endpoint: "http://logstash:5044",
+        client:   &http.Client{Timeout: 5 * time.Second},
+    }),
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -268,20 +271,20 @@ func NewProductionLogger() (*dd.Logger, error) {
         return nil, err
     }
 
-    return dd.New(dd.Config{
-        Level:  dd.LevelInfo,
-        Format: dd.FormatJSON,
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.CustomOutput(bw),
-        },
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Targets = []dd.OutputTarget{
+        dd.ConsoleOutput(),
+        dd.CustomOutput(bw),
+    }
+    return dd.New(cfg)
 }
 ```
 
 ## 下一步
 
 - [结构化日志](./structured-logging) -- 字段与链式调用
-- [敏感数据过滤](../security/sensitive-filtering) -- 自动脱敏
+- [日志采样](../operations/sampling) -- 高吞吐场景降量
 - [API 参考 - Writers](../../api-reference/output-integration/writers) -- Writer 完整 API
 - [性能优化](../../advanced/performance) -- 性能调优建议

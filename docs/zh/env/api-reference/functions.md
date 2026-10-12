@@ -311,7 +311,7 @@ if secret != nil {
 :::
 
 ::: tip 详见
-[SecureValue API](/zh/env/api-reference/secure-value) 获取完整 API 文档。
+[SecureValue API](./secure-value) 获取完整 API 文档。
 :::
 
 ---
@@ -425,7 +425,7 @@ func Lookup(key string) (string, bool)
 - `key` - 键名（支持点号路径）
 
 **返回：**
-- `string` - 值（首尾空白已移除）
+- `string` - 值（返回存储原值，不做 trim：`.env` 值在解析期已去除首尾空白，JSON/YAML 值可能保留空白）
 - `bool` - 是否存在
 
 ```go
@@ -561,20 +561,21 @@ if err := env.Delete("TEMP_KEY"); err != nil {
 func Validate() error
 ```
 
-验证必需键是否存在。需要在 Config 中设置 RequiredKeys。
+验证必需键是否存在，委托给默认加载器（等价于 `Loader.Validate`）。`RequiredKeys` 需在初始化默认加载器时通过 `LoadWithConfig` 的 Config 设置。
 
 **返回：**
-- `error` - 验证错误
+- `error` - 验证错误；未初始化默认加载器时返回 `ErrNotInitialized`
 
 ```go
-// 需要先配置 RequiredKeys（通过自定义加载器）
+// RequiredKeys 经由 LoadWithConfig 配置到默认加载器
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-loader, _ := env.New(cfg)
-loader.LoadFiles(".env")
+if err := env.LoadWithConfig(cfg); err != nil {
+    log.Fatal(err)
+}
 
-if err := loader.Validate(); err != nil {
+if err := env.Validate(); err != nil {
     // 缺少必需键
 }
 ```
@@ -617,7 +618,7 @@ if err := env.ParseInto(&cfg); err != nil {
 切片字段默认按逗号 `,` 分隔（分隔符前后空格自动去除），无自定义分隔符标签。
 
 ::: tip 详见
-[结构体映射](/zh/env/guides/struct-mapping) 获取完整指南。
+[结构体映射](../guides/struct-mapping) 获取完整指南。
 :::
 
 ---
@@ -727,6 +728,8 @@ func Marshal(data any, format ...FileFormat) (string, error)
 - `FormatEnv` (默认) - .env 格式
 - `FormatJSON` - JSON 格式
 - `FormatYAML` - YAML 格式
+
+> JSON/YAML 输出的类型推断、下划线键重建嵌套、标量加引号保往返等行为详见[序列化 · 输出形态](../guides/serialization)。
 
 ```go
 // map 转 .env 格式
@@ -905,52 +908,52 @@ if env.IsMarshalError(err) {
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type AppConfig struct {
-    Host     string        `env:"APP_HOST" envDefault:"0.0.0.0"`
-    Port     int64         `env:"APP_PORT" envDefault:"8080"`
-    Debug    bool          `env:"DEBUG" envDefault:"false"`
-    Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"HOSTS"`
+	Host    string        `env:"APP_HOST" envDefault:"0.0.0.0"`
+	Port    int64         `env:"APP_PORT" envDefault:"8080"`
+	Debug   bool          `env:"DEBUG" envDefault:"false"`
+	Timeout time.Duration `env:"TIMEOUT" envDefault:"30s"`
+	Hosts   []string      `env:"HOSTS"`
 }
 
 func main() {
-    // 加载配置文件
-    if err := env.Load(".env"); err != nil {
-        log.Printf("Warning: %v", err)
-    }
+	// 加载配置文件
+	if err := env.Load(".env"); err != nil {
+		log.Printf("Warning: %v", err)
+	}
 
-    // 读取单个值
-    host := env.GetString("APP_HOST", "localhost")
-    port := env.GetInt("APP_PORT", 8080)
-    debug := env.GetBool("DEBUG", false)
-    timeout := env.GetDuration("TIMEOUT", 30*time.Second)
+	// 读取单个值
+	host := env.GetString("APP_HOST", "localhost")
+	port := env.GetInt("APP_PORT", 8080)
+	debug := env.GetBool("DEBUG", false)
+	timeout := env.GetDuration("TIMEOUT", 30*time.Second)
 
-    fmt.Printf("Server: %s:%d\n", host, port)
-    fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
+	fmt.Printf("Server: %s:%d\n", host, port)
+	fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
 
-    // 敏感数据
-    secret := env.GetSecure("API_KEY")
-    if secret != nil {
-        defer secret.Release()
-        fmt.Printf("API Key length: %d\n", secret.Length())
-    }
+	// 敏感数据
+	secret := env.GetSecure("API_KEY")
+	if secret != nil {
+		defer secret.Release()
+		fmt.Printf("API Key length: %d\n", secret.Length())
+	}
 
-    // 结构体映射
-    var cfg AppConfig
-    if err := env.ParseInto(&cfg); err != nil {
-        log.Fatal(err)
-    }
-    fmt.Printf("Config: %+v\n", cfg)
+	// 结构体映射
+	var cfg AppConfig
+	if err := env.ParseInto(&cfg); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Config: %+v\n", cfg)
 
-    // 所有变量
-    fmt.Printf("Loaded %d variables\n", env.Len())
+	// 所有变量
+	fmt.Printf("Loaded %d variables\n", env.Len())
 }
 ```
 
@@ -999,7 +1002,7 @@ f := loader.GetFloat64("SAMPLE_RATE", 0.5)
 
 ## 相关文档
 
-- [Loader API](/zh/env/api-reference/loader) - Loader 实例方法
-- [Config API](/zh/env/api-reference/config) - 配置选项
-- [SecureValue API](/zh/env/api-reference/secure-value) - 安全值处理
-- [结构体映射](/zh/env/guides/struct-mapping) - 结构体映射指南
+- [Loader API](./loader) - Loader 实例方法
+- [Config API](./config) - 配置选项
+- [SecureValue API](./secure-value) - 安全值处理
+- [结构体映射](../guides/struct-mapping) - 结构体映射指南

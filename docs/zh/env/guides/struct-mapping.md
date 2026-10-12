@@ -1,9 +1,8 @@
 ---
 sidebar_label: "结构体映射"
 title: "结构体映射 - CyberGo env | 环境变量到结构体"
-description: "CyberGo env 结构体映射指南，通过 env、envDefault 标签将环境变量自动映射到 Go 结构体字段，涵盖嵌套结构体、指针与切片、时间类型、自定义类型解码、字段忽略、默认值与必填验证，配合 ParseInto 与 Validate 实现类型安全的配置加载。"
+description: "CyberGo env 结构体映射指南，通过 env、envDefault 标签将环境变量自动映射到 Go 结构体字段，涵盖嵌套结构体、指针切片、时间与自定义类型、默认值与必填验证，配合 ParseInto 实现类型安全配置加载。"
 sidebar_position: 2
-sidebar_icon: "🔧"
 ---
 
 # 结构体映射
@@ -18,25 +17,25 @@ sidebar_icon: "🔧"
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host string `env:"SERVER_HOST"`
-    Port int64  `env:"SERVER_PORT"`
-    Debug bool  `env:"DEBUG"`
+	Host  string `env:"SERVER_HOST"`
+	Port  int64  `env:"SERVER_PORT"`
+	Debug bool   `env:"DEBUG"`
 }
 
 func main() {
-    env.Load(".env")
+	env.Load(".env")
 
-    cfg := Config{}
-    if err := env.ParseInto(&cfg); err != nil {
-        panic(err)
-    }
+	cfg := Config{}
+	if err := env.ParseInto(&cfg); err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", cfg)
+	fmt.Printf("%+v\n", cfg)
 }
 ```
 
@@ -75,6 +74,15 @@ type Config struct {
     Port    int64  `env:"PORT" envDefault:"8080"`
     Debug   bool   `env:"DEBUG" envDefault:"false"`
     Timeout int64  `env:"TIMEOUT" envDefault:"30"`
+}
+```
+
+默认值也可以内联写在 `env` 标签中——`env:"KEY,envDefault:VALUE"`，与独立的 `envDefault` 标签等价（两者同时存在时，独立标签优先）：
+
+```go
+type Config struct {
+    Host string `env:"HOST,envDefault:localhost"`
+    Port int64  `env:"PORT,envDefault:8080"`
 }
 ```
 
@@ -196,26 +204,31 @@ type Database struct {
 package main
 
 import (
-    "fmt"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host    *string `env:"HOST"`
-    Port    *int64  `env:"PORT"`
-    Enabled *bool   `env:"ENABLED"`
+	Host    *string `env:"HOST"`
+	Port    *int64  `env:"PORT"`
+	Enabled *bool   `env:"ENABLED"`
 }
 
 func main() {
-    cfg := Config{}
-    env.ParseInto(&cfg)
+	cfg := Config{}
+	if err := env.ParseInto(&cfg); err != nil {
+		log.Fatal(err)
+	}
 
-    if cfg.Port != nil {
-        fmt.Println("Port:", *cfg.Port)
-    }
+	if cfg.Port != nil {
+		fmt.Println("Port:", *cfg.Port)
+	}
 }
 ```
+
+指针字段可以区分「未设置」与「零值」：变量未设置（或值为空）时指针保持 `nil`；设置为 `PORT=0` 时 `cfg.Port` 非 `nil` 且 `*cfg.Port == 0`。值类型字段则无法区分这两种情况。
 
 ## 自定义类型
 
@@ -227,38 +240,38 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type LogLevel string
 
 // 实现 encoding.TextUnmarshaler —— 字段级别会被调用
 func (l *LogLevel) UnmarshalText(text []byte) error {
-    switch string(text) {
-    case "debug", "info", "warn", "error":
-        *l = LogLevel(text)
-        return nil
-    default:
-        return fmt.Errorf("invalid log level: %s", string(text))
-    }
+	switch string(text) {
+	case "debug", "info", "warn", "error":
+		*l = LogLevel(text)
+		return nil
+	default:
+		return fmt.Errorf("invalid log level: %s", string(text))
+	}
 }
 
 type Config struct {
-    Level LogLevel `env:"LOG_LEVEL"`
+	Level LogLevel `env:"LOG_LEVEL"`
 }
 
 func main() {
-    data := map[string]string{"LOG_LEVEL": "info"}
+	data := map[string]string{"LOG_LEVEL": "info"}
 
-    var cfg Config
-    if err := env.UnmarshalInto(data, &cfg); err != nil {
-        panic(err)
-    }
+	var cfg Config
+	if err := env.UnmarshalInto(data, &cfg); err != nil {
+		panic(err)
+	}
 
-    fmt.Println(cfg.Level)
-    // 输出：info
+	fmt.Println(cfg.Level)
+	// 输出：info
 }
 ```
 
@@ -294,33 +307,33 @@ func (p *Port) UnmarshalText(text []byte) error {
 package main
 
 import (
-    "errors"
-    "log"
+	"errors"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type ServerConfig struct {
-    Host string `env:"SERVER_HOST" envDefault:"0.0.0.0"`
-    Port int64  `env:"SERVER_PORT" envDefault:"8080"`
+	Host string `env:"SERVER_HOST" envDefault:"0.0.0.0"`
+	Port int64  `env:"SERVER_PORT" envDefault:"8080"`
 }
 
 func (c *ServerConfig) Validate() error {
-    if c.Port < 1024 || c.Port > 65535 {
-        return errors.New("port must be 1024-65535")
-    }
-    return nil
+	if c.Port < 1024 || c.Port > 65535 {
+		return errors.New("port must be 1024-65535")
+	}
+	return nil
 }
 
 func main() {
-    cfg := ServerConfig{}
-    if err := env.ParseInto(&cfg); err != nil {
-        log.Fatal(err)
-    }
+	cfg := ServerConfig{}
+	if err := env.ParseInto(&cfg); err != nil {
+		log.Fatal(err)
+	}
 
-    if err := cfg.Validate(); err != nil {
-        log.Fatal(err)
-    }
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
 
@@ -406,11 +419,15 @@ func LoadConfig() interface{} {
     switch os.Getenv("GO_ENV") {
     case "production":
         cfg := ProductionConfig{}
-        env.ParseInto(&cfg)
+        if err := env.ParseInto(&cfg); err != nil {
+            log.Printf("parse production config: %v", err)
+        }
         return cfg
     default:
         cfg := DevelopmentConfig{}
-        env.ParseInto(&cfg)
+        if err := env.ParseInto(&cfg); err != nil {
+            log.Printf("parse development config: %v", err)
+        }
         return cfg
     }
 }
@@ -420,16 +437,22 @@ func LoadConfig() interface{} {
 
 ### 解析错误
 
+`ParseInto` / `UnmarshalInto` 的类型转换失败统一返回 `*MarshalError`（v1.2.3 起错误消息不回显原始值，防止敏感值泄露），可用 `env.IsMarshalError` 判断或用 `errors.As` 提取字段信息：
+
 ```go
 cfg := Config{}
 if err := env.ParseInto(&cfg); err != nil {
-    var parseErr *env.ParseError
-    if errors.As(err, &parseErr) {
-        log.Fatalf("Parse error at %s:%d", parseErr.File, parseErr.Line)
+    if env.IsMarshalError(err) {
+        var marshalErr *env.MarshalError
+        if errors.As(err, &marshalErr) {
+            log.Fatalf("字段 %s 转换失败: %s", marshalErr.Field, marshalErr.Message)
+        }
     }
     log.Fatal(err)
 }
 ```
+
+注意：`*ParseError` 仅在**文件解析**场景（`LoadFiles` 解析 env/JSON/YAML 文件内容出错）返回；`ParseInto` 直接从已加载的键值填充结构体，不经过文件解析，不会返回 `*ParseError`。
 
 ### 类型转换错误
 
@@ -440,7 +463,7 @@ type Config struct {
 
 cfg := Config{}
 if err := env.ParseInto(&cfg); err != nil {
-    // 类型转换失败会返回错误
+    // 类型转换失败返回 *MarshalError（不回显原始值）
 }
 ```
 
@@ -450,91 +473,91 @@ if err := env.ParseInto(&cfg); err != nil {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
-    "time"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type ServerConfig struct {
-    Host         string        `env:"SERVER_HOST" envDefault:"0.0.0.0"`
-    Port         int64         `env:"SERVER_PORT" envDefault:"8080"`
-    ReadTimeout  time.Duration `env:"READ_TIMEOUT" envDefault:"30s"`
-    WriteTimeout time.Duration `env:"WRITE_TIMEOUT" envDefault:"30s"`
+	Host         string        `env:"SERVER_HOST" envDefault:"0.0.0.0"`
+	Port         int64         `env:"SERVER_PORT" envDefault:"8080"`
+	ReadTimeout  time.Duration `env:"READ_TIMEOUT" envDefault:"30s"`
+	WriteTimeout time.Duration `env:"WRITE_TIMEOUT" envDefault:"30s"`
 }
 
 func (c *ServerConfig) Validate() error {
-    if c.Port < 1024 || c.Port > 65535 {
-        return errors.New("port must be 1024-65535")
-    }
-    return nil
+	if c.Port < 1024 || c.Port > 65535 {
+		return errors.New("port must be 1024-65535")
+	}
+	return nil
 }
 
 type DatabaseConfig struct {
-    Host     string `env:"DB_HOST" envDefault:"localhost"`
-    Port     int64  `env:"DB_PORT" envDefault:"5432"`
-    User     string `env:"DB_USER" envDefault:"postgres"`
-    Password string `env:"DB_PASSWORD"`
-    Name     string `env:"DB_NAME" envDefault:"myapp"`
+	Host     string `env:"DB_HOST" envDefault:"localhost"`
+	Port     int64  `env:"DB_PORT" envDefault:"5432"`
+	User     string `env:"DB_USER" envDefault:"postgres"`
+	Password string `env:"DB_PASSWORD"`
+	Name     string `env:"DB_NAME" envDefault:"myapp"`
 }
 
 func (c *DatabaseConfig) Validate() error {
-    if c.Password == "" {
-        return errors.New("DB_PASSWORD is required")
-    }
-    return nil
+	if c.Password == "" {
+		return errors.New("DB_PASSWORD is required")
+	}
+	return nil
 }
 
 type Config struct {
-    Server   ServerConfig
-    Database DatabaseConfig
+	Server   ServerConfig
+	Database DatabaseConfig
 }
 
 func LoadConfig() (*Config, error) {
-    if err := env.Load(".env"); err != nil {
-        return nil, fmt.Errorf("load env: %w", err)
-    }
+	if err := env.Load(".env"); err != nil {
+		return nil, fmt.Errorf("load env: %w", err)
+	}
 
-    cfg := &Config{
-        Server:   ServerConfig{},
-        Database: DatabaseConfig{},
-    }
+	cfg := &Config{
+		Server:   ServerConfig{},
+		Database: DatabaseConfig{},
+	}
 
-    if err := env.ParseInto(cfg); err != nil {
-        return nil, fmt.Errorf("parse config: %w", err)
-    }
+	if err := env.ParseInto(cfg); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
 
-    if err := cfg.Server.Validate(); err != nil {
-        return nil, fmt.Errorf("server config: %w", err)
-    }
+	if err := cfg.Server.Validate(); err != nil {
+		return nil, fmt.Errorf("server config: %w", err)
+	}
 
-    if err := cfg.Database.Validate(); err != nil {
-        return nil, fmt.Errorf("database config: %w", err)
-    }
+	if err := cfg.Database.Validate(); err != nil {
+		return nil, fmt.Errorf("database config: %w", err)
+	}
 
-    return cfg, nil
+	return cfg, nil
 }
 
 func main() {
-    cfg, err := LoadConfig()
-    if err != nil {
-        log.Fatal(err)
-    }
+	cfg, err := LoadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Printf("Server: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
-    fmt.Printf("Database: %s@%s:%d/%s\n",
-        cfg.Database.User,
-        cfg.Database.Host,
-        cfg.Database.Port,
-        cfg.Database.Name,
-    )
+	fmt.Printf("Server: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
+	fmt.Printf("Database: %s@%s:%d/%s\n",
+		cfg.Database.User,
+		cfg.Database.Host,
+		cfg.Database.Port,
+		cfg.Database.Name,
+	)
 }
 ```
 
 ## 相关文档
 
-- [包函数 - ParseInto](/zh/env/api-reference/functions#parseinto) - ParseInto 函数参考
-- [Loader API - ParseInto](/zh/env/api-reference/loader#parseinto) - Loader 方法参考
-- [快速开始](/zh/env/getting-started/) - 基本用法
+- [包函数 - ParseInto](../api-reference/functions#parseinto) - ParseInto 函数参考
+- [Loader API - ParseInto](../api-reference/loader#parseinto) - Loader 方法参考
+- [快速开始](../getting-started/) - 基本用法

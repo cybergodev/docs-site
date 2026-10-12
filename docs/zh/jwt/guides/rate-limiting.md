@@ -59,7 +59,7 @@ cfg.RateLimitWindow = time.Minute    // 时间窗口
 | `RateLimitWindow` | `1m` | 时间窗口 |
 
 :::tip 注意
-限流对所有令牌签发方法生效：`Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()`。不影响 `Validate()` 和 `ValidateInto()`。
+限流对所有令牌签发方法生效：`Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()`。不影响 `Parse()` 和 `ParseInto()`。
 :::
 
 ## 限流 Key
@@ -68,7 +68,7 @@ cfg.RateLimitWindow = time.Minute    // 时间窗口
 
 1. `RegisteredClaims.Subject` — 如果非空
 2. `*Claims.UserID` — 仅对内置 Claims
-3. `RateLimitKey()` — 如果实现了 `RateLimitKeyer` 接口
+3. `RateLimitKey()` — 如果实现了 [`RateLimitKeyer`](../api-reference/interfaces#ratelimitkeyer) 接口
 4. 空字符串 — 跳过限流检查
 
 ### 自定义限流 Key
@@ -111,23 +111,23 @@ func (rl *RateLimiter) AllowN(key string, n int) bool
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    limiter := jwt.NewRateLimiter(100, time.Minute)
-    defer limiter.Close()
+	limiter := jwt.NewRateLimiter(100, time.Minute)
+	defer limiter.Close()
 
-    // 一次性申请 10 个配额（如批量签发 10 个令牌）
-    if limiter.AllowN("user:123", 10) {
-        fmt.Println("允许批量操作") // 输出：允许批量操作
-    }
+	// 一次性申请 10 个配额（如批量签发 10 个令牌）
+	if limiter.AllowN("user:123", 10) {
+		fmt.Println("允许批量操作") // 输出：允许批量操作
+	}
 
-    // 剩余 90 个令牌，申请 95 个则拒绝
-    fmt.Println(limiter.AllowN("user:123", 95)) // 输出：false
+	// 剩余 90 个令牌，申请 95 个则拒绝
+	fmt.Println(limiter.AllowN("user:123", 95)) // 输出：false
 }
 ```
 

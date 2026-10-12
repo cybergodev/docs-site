@@ -1,8 +1,8 @@
 ---
-sidebar_label: "Handler 管线与自定义中间件"
+sidebar_label: "Handler 与中间件链"
 title: "Handler 管线与自定义中间件 - CyberGo HTTPC | 请求处理管线"
 description: "HTTPC Handler 管线架构详解：双层设计中 Layer 1 方法 API 如何组装 MiddlewareFunc 洋葱链并执行 Handler，Chain 组合器原理、clientImpl.middlewareChain 实现机制与自定义中间件编写示例。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Handler 与中间件链
@@ -291,7 +291,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(result.StatusCode())
-	// 输出: 200
+	// 输出：200
 }
 ```
 
@@ -344,7 +344,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(result.Response.Headers.Get("X-Response-Time-Ms"))
-	// 输出示例: 156
+	// 输出示例：156
 }
 ```
 

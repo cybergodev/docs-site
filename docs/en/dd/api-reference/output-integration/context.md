@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Context"
 title: "Context Integration - CyberGo DD | Context Integration"
-description: "CyberGo DD context integration API: inject tracing identifiers via WithTraceID/WithSpanID/WithRequestID, with the ContextKey type-safe key and the ContextExtractor function type for automatic field extraction. Supports integration with distributed-tracing frameworks such as OpenTelemetry."
+description: "CyberGo DD context API: inject trace IDs with WithTraceID/WithSpanID/WithRequestID; ContextExtractor adds automatic fields for OpenTelemetry tracing."
 sidebar_position: 2
 ---
 
@@ -36,7 +36,7 @@ Three predefined key constants correspond to TraceID / SpanID / RequestID:
 | `GetSpanID` | `(ctx context.Context) string` | Read SpanID (returns `""` if missing) |
 | `GetRequestID` | `(ctx context.Context) string` | Read RequestID (returns `""` if missing) |
 
-The `With*` functions derive a new ctx based on `context.WithValue` (with the key being the corresponding `ContextKey` constant); the `Get*` functions retrieve the string value from the ctx. If the key does not exist or the value is not a string, they uniformly return an empty string.
+The `With*` functions derive a new ctx based on `context.WithValue` (with the key being the corresponding `ContextKey` constant); the `Get*` functions retrieve the string value from the ctx. If the key does not exist, the value is not a string, or the ctx is `nil`, they uniformly return an empty string.
 
 ### Usage Example
 
@@ -58,7 +58,7 @@ func handleRequest(ctx context.Context) {
 ```
 
 :::tip Batch extraction
-Manual `Get*` is suitable for one-off scenarios. If you need every log line to automatically carry **global/static** fields (such as service name or hostname), register a `ContextExtractor` on the Logger as shown below; the extractor runs on every `*With` call. Note: the extractor receives `context.Background()` and **cannot** automatically obtain request-scoped TraceIDs (see limitation below).
+Manual `Get*` is suitable for one-off scenarios. If you need every log line to automatically carry **global/static** fields (such as service name or hostname), register a `ContextExtractor` on the Logger as shown below; the extractor runs on every log entry (`Info`/`Error`/`*With` and all other entry points share the same pipeline). Note: the extractor receives `context.Background()` and **cannot** automatically obtain request-scoped TraceIDs (see limitation below).
 :::
 
 ## ContextExtractor
@@ -77,7 +77,7 @@ The extractor type itself is defined in this file; registration/management APIs 
 
 <!-- check-code: skip -->
 ```go
-// Append an extractor (returns an error; nil extractors are rejected)
+// Append an extractor; a nil extractor returns ErrNilExtractor, a closed logger returns ErrLoggerClosed
 err := logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
     return []dd.Field{
         dd.String("trace_id", dd.GetTraceID(ctx)),
@@ -85,7 +85,7 @@ err := logger.AddContextExtractor(func(ctx context.Context) []dd.Field {
     }
 })
 
-// Replace all extractors in batch
+// Replace all extractors in batch; a no-arg call clears them, a closed logger returns ErrLoggerClosed
 _ = logger.SetContextExtractors(extractor1, extractor2)
 
 // Read a snapshot of the currently registered extractors

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Recorder"
 title: "Test Helper - CyberGo DD | LoggerRecorder"
-description: "Complete API documentation for the CyberGo DD LoggerRecorder test helper, designed for unit-test scenarios. Captures and asserts on log output, supporting per-level entry filtering, structured-field value validation, entry-count statistics, and in-order assertions. Significantly improves the efficiency and readability of log-related unit tests."
+description: "CyberGo DD LoggerRecorder test helper: capture and assert log output in unit tests, with per-level filtering, field validation, and in-order assertions."
 sidebar_position: 2
 ---
 
@@ -13,8 +13,8 @@ DD provides `LoggerRecorder` for test scenarios, capturing log entries for asser
 
 Thread-safe log recorder for capturing and inspecting log output in tests.
 
-:::warning Text-format parsing limitation
-The text-mode parser assumes the default time format (ISO 8601) and the default level strings (DEBUG/INFO/WARN/ERROR/FATAL). If you customized `TimeFormat`, text mode may not correctly extract the level and timestamp. For custom formats, prefer JSON (`FormatJSON`), settable via `SetFormat`.
+:::warning Parsing-format limitations
+The recorder parses as `FormatText` by default; if the Logger outputs JSON, call `SetFormat(FormatJSON)` first. Text mode assumes the default time format (ISO 8601) and the default level strings (DEBUG/INFO/WARN/ERROR/FATAL); JSON mode assumes the default field names (`level`/`message`/`timestamp`). Customizing `TimeFormat` or `JSONFieldNames` may break level/timestamp extraction in the corresponding mode — `RawOutput` still holds the complete original output, which you can assert on directly.
 :::
 
 ### Creation
@@ -29,19 +29,21 @@ recorder := dd.NewLoggerRecorder()
 |--------|-----------|-------------|
 | `Writer` | `() io.Writer` | Get the io.Writer |
 | `SetFormat` | `(format LogFormat)` | Set the log format (for parsing) |
-| `NewLogger` | `(cfg ...Config) (*Logger, error)` | Create a Logger that writes to this recorder |
+| `NewLogger` | `(cfg ...Config) (*Logger, error)` | Create a Logger that writes to this recorder (no argument uses `DefaultConfig`; more than 1 config returns `ErrMultipleConfigs`) |
 | `Entries` | `() []LogEntry` | Get all log entries |
 | `Count` | `() int` | Entry count |
 | `Clear` | `()` | Clear all entries |
 | `HasEntries` | `() bool` | Whether there are entries |
-| `LastEntry` | `() *LogEntry` | Most recent entry (nil-safe) |
+| `LastEntry` | `() *LogEntry` | Most recent entry (`nil` if none) |
+
+`Entries()` and `LastEntry()` return **deep copies** (both the entry structs and their `Fields` slices are duplicated); mutating the returned values does not affect the recorder's internal state.
 
 ### Assertion Methods
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `EntriesAtLevel` | `(level LogLevel) []LogEntry` | Filter entries by level |
-| `ContainsMessage` | `(msg string) bool` | Whether it contains the specified message (exact or substring match) |
+| `ContainsMessage` | `(msg string) bool` | Whether any entry contains the specified message (substring match, including exact matches) |
 | `ContainsField` | `(key string) bool` | Whether it contains the specified field |
 | `GetFieldValue` | `(key string) any` | Get the value of the first matching field |
 
@@ -152,6 +154,17 @@ type LogEntry struct {
     RawOutput string
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Level` | `LogLevel` | Parsed log level |
+| `Message` | `string` | Log message |
+| `Fields` | `[]Field` | Parsed structured fields |
+| `Timestamp` | `time.Time` | Parsed timestamp |
+| `Format` | `LogFormat` | Parsing format in force at capture time (set via `SetFormat`) |
+| `RawOutput` | `string` | Original formatted output line |
+
+Parsing semantics: in JSON mode the nested `fields` object is flattened into individual fields, while reserved keys (`level`/`message`/`timestamp`/`time`/`caller`/`file`/`line`) are excluded from `Fields`; text mode parses the `[timestamp LEVEL] file:line message key=value` layout, and quoted field values are unquoted back to their original value.
 
 ## Next Steps
 

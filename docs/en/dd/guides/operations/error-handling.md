@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo DD | Logging Error Management"
-description: "A complete error-handling guide for the CyberGo DD logging library, covering structured error types and the hierarchy, error-code design, sentinel-error definitions and matching, errors.Is/As wrapping and unwrapping, custom error-handling strategies, error-recovery mechanisms, and error-hook callback configuration to help you precisely identify and handle all kinds of logging-related errors."
+description: "CyberGo DD error handling: error types and hierarchy, errors.Is matching, write and runtime error-handling patterns, hook errors, and global-logger errors."
 sidebar_position: 3
 ---
 
@@ -81,11 +81,11 @@ Methods: `HasErrors()`, `ErrorCount()`, `FirstError()`
 ```go
 logger, err := dd.New(config)
 if err != nil {
-    if errors.Is(err, dd.ErrNilConfig) {
-        // Handle nil config
+    if errors.Is(err, dd.ErrMultipleConfigs) {
+        // New(cfg1, cfg2) — only 0 or 1 Config is accepted
     }
     if errors.Is(err, dd.ErrInvalidLevel) {
-        // Handle invalid level
+        // Validation failed: Level outside LevelDebug~LevelFatal
     }
 }
 ```
@@ -95,7 +95,8 @@ if err != nil {
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
     // Custom write-error handling
-    // Note: this callback fires only when writer.Write() fails and is passed the writer's own error;
+    // Note: this callback fires when writer.Write() fails **or panics** (the panic is converted to an error)
+    // and is passed the writer's own error;
     // dd.ErrWriterNotFound is returned by RemoveWriter directly to its caller and is never delivered via this callback.
     if errors.Is(err, io.ErrShortWrite) {
         // Fewer bytes written than requested
@@ -178,9 +179,9 @@ registry := dd.NewHooksFromConfig(dd.HooksConfig{
         handleHookError(event.String(), err)
     },
 })
-logger, _ := dd.New(dd.Config{
-    Hooks: registry,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, _ := dd.New(cfg)
 ```
 
 ## Global Logger Errors

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
 title: "API Reference - CyberGo DD | Overview"
-description: "Complete API reference overview for the CyberGo DD structured logging library, covering the Logger core recorder, Config options, Writers output targets, Security filtering, Audit logging, the Hooks system, and Integrity signing."
+description: "CyberGo DD structured logging API reference overview: Logger, Config, writers, security filtering, audit logging, hooks, and integrity signing."
 sidebar_position: 1
 ---
 

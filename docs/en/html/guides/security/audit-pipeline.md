@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Audit Pipeline"
 title: "Audit Pipeline - CyberGo html | Pipeline Guide"
-description: "CyberGo html audit: from setup to multi-layer pipelines, 8 event types, built-in Sinks (Stderr, File, Channel), Info/Warn/Error filtering, custom AuditSink."
+description: "CyberGo html audit: setup to multi-layer pipelines, 8 event types, built-in Sinks (Stderr, File, Channel), info/warning/critical filtering, custom AuditSink."
 sidebar_position: 2
 ---
 

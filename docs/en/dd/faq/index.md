@@ -1,7 +1,7 @@
 ---
 sidebar_label: "FAQ"
 title: "FAQ - CyberGo DD | Frequently Asked Questions"
-description: "A collection of CyberGo DD logging-library FAQs with detailed answers, covering configuration tuning, performance optimization, sensitive-data security-filter rules, audit logging and compliance configuration, file-rotation strategy selection and tuning, error-handling best practices, and hook-system usage examples to help you quickly solve problems encountered in real projects."
+description: "CyberGo DD FAQ on basic usage, configuration and file rotation, performance, sensitive-data filtering and tamper protection, error handling, and testing."
 sidebar_position: 1
 ---
 
@@ -36,13 +36,13 @@ func init() {
 Or via `SetDefault`:
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.json"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.json"),
+}
+logger, _ := dd.New(cfg)
 dd.SetDefault(logger)
 ```
 
@@ -55,20 +55,21 @@ dd.SetDefault(logger)
 ### How do I output to both console and file?
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.log"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.log"),
+}
+logger, _ := dd.New(cfg)
+
 // Or JSON format
-logger, _ := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.json"),
-    },
-})
+cfg = dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.json"),
+}
+logger, _ = dd.New(cfg)
 ```
 
 ### How do I dynamically change the log level?
@@ -111,7 +112,7 @@ See [Performance Tuning](../advanced/performance).
 
 ### How does sensitive-data filtering work?
 
-`SensitiveDataFilter` uses regex pattern matching to automatically replace matching sensitive values with `[REDACTED]` before the log is written. Small inputs are processed synchronously; large inputs run in a separate goroutine with timeout protection, without blocking log writes.
+`SensitiveDataFilter` uses regex pattern matching to automatically replace matching sensitive values with `[REDACTED]` before the log is written. Small inputs are processed synchronously; for large inputs the regex scan runs in a separate goroutine, but the **caller blocks waiting for the result** (the wait scales with input size — a fixed 50ms for inputs up to 32KB, then +200ms per additional 32KB; on timeout it returns `[REDACTED]`).
 
 ### How do I customize sensitive-data patterns?
 

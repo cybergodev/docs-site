@@ -1,8 +1,8 @@
 ---
 title: "代理与代理池 - CyberGo HTTPC | 代理配置与轮换熔断"
-description: "HTTPC 代理与代理池完整指南：HTTP/HTTPS/SOCKS5 单代理配置、系统代理自动检测与 NO_PROXY 绕过规则、代理池轮询与随机策略、连接失败熔断与冷却恢复、ProxyRotateOnStatus 按状态码换 IP、每请求轮换与重试预算自动提升详解。"
+description: "HTTPC 代理与代理池完整指南：HTTP/HTTPS/SOCKS5 单代理配置、系统代理自动检测与 NO_PROXY 绕过规则、代理池轮询与随机策略、连接失败熔断与冷却恢复、ProxyRotateOnStatus 按状态码换 IP 及每请求轮换详解。"
 sidebar_label: "代理与代理池"
-sidebar_position: 11
+sidebar_position: 100
 ---
 
 # 代理与代理池
@@ -39,27 +39,27 @@ sidebar_position: 11
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyURL = "socks5://proxy.example.com:1080"
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyURL = "socks5://proxy.example.com:1080"
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    // 输出：状态: 200, 代理: socks5://proxy.example.com:1080
-    log.Printf("状态: %d, 代理: %s", result.StatusCode(), result.Meta.ProxyURL)
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// 输出：状态：200, 代理：socks5://proxy.example.com:1080
+	log.Printf("状态: %d, 代理: %s", result.StatusCode(), result.Meta.ProxyURL)
 }
 ```
 
@@ -149,32 +149,32 @@ $env:NO_PROXY = "localhost,127.0.0.1,.internal.corp.com"
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-    }
-    cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin // 默认值，可省略
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin // 默认值，可省略
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    // 输出：状态: 200, 代理: http://proxy1:8080（下一次请求自动轮到 proxy2）
-    log.Printf("状态: %d, 代理: %s", result.StatusCode(), result.Meta.ProxyURL)
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// 输出：状态：200, 代理：http://proxy1:8080（下一次请求自动轮到 proxy2）
+	log.Printf("状态: %d, 代理: %s", result.StatusCode(), result.Meta.ProxyURL)
 }
 ```
 
@@ -235,34 +235,34 @@ cfg.Connection.ProxyCooldown = 60 * time.Second // 冷却更久
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-    }
-    cfg.Connection.ProxyRotateOnStatus = []int{403} // 收到 403 时换代理重试
-    cfg.Retry.MaxRetries = 3                        // 必须启用重试
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	cfg.Connection.ProxyRotateOnStatus = []int{403} // 收到 403 时换代理重试
+	cfg.Retry.MaxRetries = 3                        // 必须启用重试
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://protected-site.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    // 输出：状态: 200, 代理: http://proxy2:8080, 尝试: 2
-    log.Printf("状态: %d, 代理: %s, 尝试: %d",
-        result.StatusCode(), result.Meta.ProxyURL, result.Meta.Attempts)
+	result, err := client.Get("https://protected-site.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// 输出：状态：200, 代理：http://proxy2:8080, 尝试：2
+	log.Printf("状态: %d, 代理: %s, 尝试: %d",
+		result.StatusCode(), result.Meta.ProxyURL, result.Meta.Attempts)
 }
 ```
 
@@ -276,40 +276,40 @@ func main() {
 
 `ProxyRotatePerRequest` 解决的是**连接复用**导致代理隧道固化的问题：HTTP 连接池会复用已建立的 TCP 连接，包括其代理隧道。这意味着对同一主机的连续请求会复用前一次请求的代理，即使 `ProxyPoolStrategy` 已轮换选择器游标。
 
-启用后，每次请求开始时关闭所有空闲连接，强制 Transport 重新评估代理池——代价是无连接复用（每次请求新建连接+代理隧道），但保证按请求轮换：
+启用后，每次请求开始时关闭所有空闲连接，强制 Transport 重新评估代理池——代价是无连接复用（每次请求新建连接 + 代理隧道），但保证按请求轮换：
 
 ```go
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-    }
-    cfg.Connection.ProxyRotatePerRequest = true // 每次请求换代理
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	cfg.Connection.ProxyRotatePerRequest = true // 每次请求换代理
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    for i := 0; i < 3; i++ {
-        result, err := client.Get("https://api.example.com/data")
-        if err != nil {
-            log.Fatal(err)
-        }
-        // 输出（依次）：http://proxy1:8080 / http://proxy2:8080 / http://proxy3:8080
-        log.Printf("第 %d 次请求经由: %s", i+1, result.Meta.ProxyURL)
-    }
+	for i := 0; i < 3; i++ {
+		result, err := client.Get("https://api.example.com/data")
+		if err != nil {
+			log.Fatal(err)
+		}
+		// 输出（依次）：http://proxy1:8080 / http://proxy2:8080 / http://proxy3:8080
+		log.Printf("第 %d 次请求经由: %s", i+1, result.Meta.ProxyURL)
+	}
 }
 ```
 
@@ -340,38 +340,38 @@ func main() {
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-    }
-    cfg.Connection.ProxyRotateOnStatus = []int{403}
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	cfg.Connection.ProxyRotateOnStatus = []int{403}
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://protected-site.example.com/data",
-        httpc.WithOnResponse(func(resp httpc.ResponseMutator) error {
-            log.Printf("第 %d 次尝试收到 %d", resp.Attempts(), resp.StatusCode())
-            return nil
-        }),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := client.Get("https://protected-site.example.com/data",
+		httpc.WithOnResponse(func(resp httpc.ResponseMutator) error {
+			log.Printf("第 %d 次尝试收到 %d", resp.Attempts(), resp.StatusCode())
+			return nil
+		}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 输出：最终代理: http://proxy2:8080, 总尝试: 2
-    log.Printf("最终代理: %s, 总尝试: %d", result.Meta.ProxyURL, result.Meta.Attempts)
+	// 输出：最终代理：http://proxy2:8080, 总尝试：2
+	log.Printf("最终代理: %s, 总尝试: %d", result.Meta.ProxyURL, result.Meta.Attempts)
 }
 ```
 

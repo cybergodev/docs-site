@@ -1,8 +1,8 @@
 ---
 sidebar_label: "文件操作"
-title: "Processor 文件操作方法 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 文件方法：LoadFromFile/LoadFromReader 加载、SaveToFile/MarshalToFile 保存、UnmarshalFromFile 读取、SaveToWriter 写入流。"
-sidebar_position: 9
+title: "Processor 文件操作 - CyberGo JSON | LoadFromFile/SaveToFile"
+description: "CyberGo JSON 的 Processor 提供 LoadFromFile/SaveToFile 文件读写方法，配合流式 I/O 与结构体序列化方法，写入前执行安全路径校验、读取字节数受 MaxJSONSize 限制，适合读写配置文件与处理 HTTP Body、管道等流式数据源的开发场景。"
+sidebar_position: 90
 ---
 
 # 文件操作方法

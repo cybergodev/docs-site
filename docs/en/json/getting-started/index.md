@@ -2,7 +2,7 @@
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo JSON | Get Started in 5 Minutes"
 description: "CyberGo JSON quick start: install, path queries GetString/GetInt, Set/Delete, Marshal/Unmarshal, iteration, error handling, plus first-hour FAQs."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Quick Start
@@ -14,6 +14,8 @@ This guide helps you get started quickly with the `github.com/cybergodev/json` l
 ```bash
 go get github.com/cybergodev/json
 ```
+
+**Requires Go 1.25+** (the source `go.mod` declares `go 1.25.0`; examples use generics and the `slices` standard library).
 
 ## Basic Usage
 
@@ -193,6 +195,14 @@ fmt.Println(json.Valid([]byte(invalid))) // false
 ### Formatting
 
 ```go
+// Fragments in this section rely on the imports below (likewise for other sections)
+import (
+    "bytes"
+    "fmt"
+
+    "github.com/cybergodev/json"
+)
+
 compact := `{"name":"test","nested":{"key":"value"}}`
 
 // Pretty-print
@@ -295,7 +305,7 @@ if err != nil {
 ```
 
 :::tip
-The `Foreach` family has 12 functions in total: use `ForeachWithError` when you need **early termination** (the callback returns an `error`; return `item.Break()` to stop). For deep nested traversal, carrying the current path, file iteration, and other variants, see the [Cheat Sheet](./cheatsheet#iteration-function-family).
+The `Foreach` family has 12 functions in total (including 4 file variants, `ForeachFile*`; see the full list in the [Cheat Sheet · Iteration Function Family](./cheatsheet#iteration-function-family)): use `ForeachWithError` when you need **early termination** (the callback returns an `error`; return `item.Break()` to stop). Deep nested traversal, carrying the current path, and other variants are covered in the same cheat-sheet section.
 :::
 
 ## Error Handling
@@ -339,7 +349,7 @@ It depends on the call, and "missing key" and "out-of-range index" behave differ
 | `json.GetString` and other typed functions | Zero value or the passed default | Zero value or the passed default |
 | `json.SafeGet` | `Exists: false` | `Exists: true` but the value is nil |
 
-When an array index is out of range, `Get` does not error (the result is nil), so to decide "does this element exist" you must look at the return value, not just err. Full rules in [Syntax Pitfalls](./path-syntax#syntax-pitfalls).
+When an array index is out of range, `Get` does not error (the result is nil), so to decide "does this element exist" you must look at the return value, not just err. Full rules in [Syntax Pitfalls](./path-syntax#what-are-the-syntax-pitfalls).
 
 **Q: Why is the number I got back a float64?**
 

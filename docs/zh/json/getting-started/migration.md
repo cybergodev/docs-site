@@ -2,12 +2,12 @@
 title: "从标准库迁移 - CyberGo JSON | encoding/json 兼容指南"
 description: "从标准库 encoding/json 迁移到 CyberGo JSON：三步完成、只改 import 即可编译，Marshal/Encoder/Decoder 方法与错误类型兼容清单逐项核对，附默认安全校验行为差异表、迁移 FAQ 与增量能力使用指南。"
 sidebar_label: "从标准库迁移"
-sidebar_position: 1.5
+sidebar_position: 60
 ---
 
 # 从标准库迁移
 
-`cybergodev/json` 与标准库 `encoding/json` **100% 兼容**——只需替换 import 路径，现有代码无需任何改动即可编译运行（默认输入安全校验带来的少量边界差异见下文[行为差异](#行为差异)）。本页帮助你完成迁移，并了解迁移后可用的增量能力。
+`cybergodev/json` 与标准库 `encoding/json` **100% 兼容**——只需替换 import 路径，现有代码无需任何改动即可编译运行（默认输入安全校验带来的少量边界差异见下文[行为差异](#与标准库有哪些行为差异)）。本页帮助你完成迁移，并了解迁移后可用的增量能力。
 
 ## 三步迁移
 
@@ -71,7 +71,7 @@ sidebar_position: 1.5
 `UnmarshalTypeError` 的 `Struct` / `Field` 非空时，`Error()` 输出 `json: cannot unmarshal <value> into Go struct field <Struct>.<Field> of type <type>`，与标准库逐字一致。
 
 ::: tip 可选的 cfg 参数
-所有额外的 `cfg ...Config` 参数都是**可选的**（variadic）。不传时，对常规数据的行为与标准库一致（默认输入校验的边界差异见下文[行为差异](#行为差异)）；需要启用安全模式、缓存等增强能力时才传入。
+所有额外的 `cfg ...Config` 参数都是**可选的**（variadic）。不传时，对常规数据的行为与标准库一致（默认输入校验的边界差异见下文[行为差异](#与标准库有哪些行为差异)）；需要启用安全模式、缓存等增强能力时才传入。
 
 关于 cfg 的三个**有意例外**（源自库的设计约定）：
 
@@ -140,7 +140,7 @@ func main() {
 | 安全模式 | `json.SecurityConfig()` | [安全模式](../security/security-mode) |
 | 运行统计/健康检查 | `json.GetStats()` / `json.GetHealthStatus()` | [Processor 入门](./processor-guide#监控与诊断) |
 
-## 行为差异
+## 与标准库有哪些行为差异？
 
 对**常规数据**，默认配置下的行为与 `encoding/json` 一致。需要留意的是：`cybergodev/json` 默认就带一层**输入安全校验**（这是它作为安全 JSON 库的定位），对超限或含危险模式的输入会拒绝，而标准库照单全收。差异集中在下表：
 
@@ -176,7 +176,7 @@ func main() {
 
 **Q：可以只在新代码里用增量能力、旧代码保持不动吗？**
 
-可以，这正是设计目标。包级函数按「尾参 cfg」缓存对应的 Processor（见上文 cfg 约定），不传 cfg 的调用走默认配置的全局处理器——对常规数据与标准库一致，默认输入校验的差异见上文[行为差异](#行为差异)表。
+可以，这正是设计目标。包级函数按「尾参 cfg」缓存对应的 Processor（见上文 cfg 约定），不传 cfg 的调用走默认配置的全局处理器——对常规数据与标准库一致，默认输入校验的差异见上文[行为差异](#与标准库有哪些行为差异)表。
 
 **Q：`Unmarshal` 拒绝了含 `onload`、`eval(` 等字样的合法数据，怎么办？**
 

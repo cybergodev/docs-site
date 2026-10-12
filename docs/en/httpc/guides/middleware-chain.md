@@ -2,7 +2,7 @@
 sidebar_label: "Middleware Chain"
 title: "Middleware Chain - CyberGo HTTPC | Onion Model Composition"
 description: "HTTPC middleware guide: onion-model execution order, seven built-in middleware, Chain composition, custom MiddlewareFunc, and circuit-breaker short circuits."
-sidebar_position: 9
+sidebar_position: 80
 ---
 
 # Middleware Chain
@@ -206,7 +206,7 @@ auditCfg.OnAudit = func(event httpc.AuditEvent) {
 httpc.AuditMiddleware(auditCfg)
 ```
 
-`AuditEvent` carries the timestamp, method, sanitized URL, status code, duration, attempt count, redirect chain, and other fields; with `SanitizeError = true`, errors are uniformly replaced with `[sanitized]` so error details cannot leak sensitive information. When serialized to JSON, `Duration` additionally emits a `durationMs` field (the millisecond count).
+`AuditEvent` carries the timestamp, method, sanitized URL, status code, duration, attempt count, redirect chain, and other fields; with `SanitizeError = true`, errors are uniformly replaced with `[sanitized]` so error details cannot leak sensitive information. When serialized to JSON, the duration is emitted as the `durationMs` field (the millisecond count) — `Duration` itself carries the `json:"-"` tag and is not serialized directly.
 
 Audit events support extracting SourceIP and UserID from the context:
 
@@ -261,56 +261,56 @@ A complete runnable example — a timing middleware that records duration and st
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 // timingMiddleware records the method, URL, status code, and duration of each request
 func timingMiddleware() httpc.MiddlewareFunc {
-    return func(next httpc.Handler) httpc.Handler {
-        return func(ctx context.Context, req httpc.RequestMutator) (httpc.ResponseMutator, error) {
-            start := time.Now()
+	return func(next httpc.Handler) httpc.Handler {
+		return func(ctx context.Context, req httpc.RequestMutator) (httpc.ResponseMutator, error) {
+			start := time.Now()
 
-            // Request phase: read/modify the request as needed
-            req.SetHeader("X-Client-Trace", "demo")
+			// Request phase: read/modify the request as needed
+			req.SetHeader("X-Client-Trace", "demo")
 
-            // Call the next layer (eventually reaching the engine)
-            resp, err := next(ctx, req)
+			// Call the next layer (eventually reaching the engine)
+			resp, err := next(ctx, req)
 
-            // Response phase: read/modify the response as needed
-            status := 0
-            if resp != nil {
-                status = resp.StatusCode()
-            }
-            log.Printf("%s %s -> %d (%v)", req.Method(), req.URL(), status, time.Since(start))
+			// Response phase: read/modify the response as needed
+			status := 0
+			if resp != nil {
+				status = resp.StatusCode()
+			}
+			log.Printf("%s %s -> %d (%v)", req.Method(), req.URL(), status, time.Since(start))
 
-            return resp, err
-        }
-    }
+			return resp, err
+		}
+	}
 }
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-        httpc.RecoveryMiddleware(),
-        timingMiddleware(),
-    }
+	cfg := httpc.DefaultConfig()
+	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
+		httpc.RecoveryMiddleware(),
+		timingMiddleware(),
+	}
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.StatusCode()) // 200
+	result, err := client.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.StatusCode()) // 200
 }
 ```
 

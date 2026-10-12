@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Core Concepts"
 title: "Core Concepts - CyberGo DD | Architecture & Design"
-description: "Deep dive into the core architecture and design philosophy of the CyberGo DD logging library, including the relationship and lifecycle of Logger and LoggerEntry, type-safe usage patterns for structured Field, the complete log-processing pipeline, the four-layer progressive interface design, and the thread-safe concurrency model, helping you build a systematic understanding of the DD library."
+description: "CyberGo DD architecture: Logger and LoggerEntry lifecycle, Field usage, the log pipeline, the interface hierarchy, and thread-safe concurrency model."
 sidebar_position: 1
 ---
 
@@ -159,7 +159,7 @@ User calls logger.InfoWith("msg", fields...)
 ```
 
 :::info Performance Design
-The level check (step 1) uses atomic operations without locking, at nearly zero cost. Security filtering (step 2) has timeout protection to avoid blocking the main flow for long (large inputs are guaranteed to return within ~50ms worst case via a goroutine + timeout). Fatal handling (step 9) asynchronously triggers the Logger's Close (including flush and OnClose hook), waiting up to 5s; deferred functions in the user's main still do not run, but the Logger's own Close is called.
+The level check (step 1) uses atomic operations without locking, at nearly zero cost. Security filtering (step 2) has timeout protection: the regex scan runs in a helper goroutine, but the **caller blocks waiting for its result** (the wait scales with input size — a fixed 50ms for inputs up to 32KB, then +200ms per additional 32KB; on timeout it returns `[REDACTED]`). Fatal handling (step 9) asynchronously triggers the Logger's Close (including flush and OnClose hook), waiting up to 5s; deferred functions in the user's main still do not run, but the Logger's own Close is called.
 :::
 
 ## Interface Hierarchy
@@ -223,13 +223,13 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 DD supports three output targets that can be combined freely:
 
 ```go
-logger, err := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),                    // Console
-        dd.FileOutput("logs/app.log"),         // File (auto-rotating)
-        dd.CustomOutput(customWriter),         // Custom io.Writer
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),                    // Console
+    dd.FileOutput("logs/app.log"),         // File (auto-rotating)
+    dd.CustomOutput(customWriter),         // Custom io.Writer
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }

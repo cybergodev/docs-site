@@ -1,8 +1,8 @@
 ---
 sidebar_label: "HookRegistry"
 title: "钩子系统 - CyberGo DD | HookRegistry"
-description: "CyberGo DD 生命周期钩子系统完整 API 文档，支持在日志写入前后（BeforeLog/AfterLog）、文件轮换（OnRotate）、错误发生（OnError）等关键事件上注册自定义回调函数，提供 HookRegistry 注册表和灵活的日志处理扩展机制。"
-sidebar_position: 5.5
+description: "CyberGo DD 生命周期钩子系统 API 文档：在日志写入前后（BeforeLog/AfterLog）、文件轮换（OnRotate）、错误发生（OnError）等事件上注册自定义回调，提供 HookRegistry 注册表与日志处理扩展机制。"
+sidebar_position: 7
 ---
 
 # 钩子系统
@@ -12,6 +12,14 @@ sidebar_position: 5.5
 DD 提供基于事件的钩子系统，可在日志生命周期的关键节点插入自定义逻辑。
 
 ## 钩子事件
+
+```go
+type HookEvent int
+
+func (e HookEvent) String() string
+```
+
+钩子事件类型，`String()` 返回事件名（未知值返回 `"Unknown"`）。
 
 | 常量 | String() | 触发时机 |
 |------|----------|----------|
@@ -74,7 +82,7 @@ reg := dd.NewHooksFromConfig(hooksConfig)
 | `Remove` | `(event HookEvent)` | 移除事件的所有钩子 |
 | `Trigger` | `(ctx, event, hookCtx) error` | 触发事件的所有钩子 |
 | `Clear` | `()` | 清除所有钩子 |
-| `ClearFor` | `(event HookEvent)` | 清除指定事件的钩子 |
+| `ClearFor` <Badge type="warning" text="已弃用" /> | `(event HookEvent)` | 清除指定事件的钩子（与 `Remove` 完全等价，保留仅为向后兼容；**改用 `Remove`**） |
 | `SetErrorHandler` | `(handler HookErrorHandler)` | 设置错误处理器 |
 
 ### 注册钩子

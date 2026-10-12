@@ -43,32 +43,32 @@ In production, generate keys from a cryptographically secure random source:
 package main
 
 import (
-    "crypto/rand"
-    "encoding/base64"
-    "fmt"
-    "log"
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // Generate a 32-byte random key using crypto/rand
-    raw := make([]byte, 32)
-    if _, err := rand.Read(raw); err != nil {
-        log.Fatal(err)
-    }
-    // Store and pass it base64-encoded
-    secret := base64.StdEncoding.EncodeToString(raw)
+	// Generate a 32-byte random key using crypto/rand
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		log.Fatal(err)
+	}
+	// Store and pass it base64-encoded
+	secret := base64.StdEncoding.EncodeToString(raw)
 
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = secret
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = secret
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer processor.Close()
 
-    fmt.Println("HMAC key ready, length (bytes):", len(secret)) // Output: HMAC key ready, length (bytes): 44
+	fmt.Println("HMAC key ready, length (bytes):", len(secret)) // Output: HMAC key ready, length (bytes): 44
 }
 ```
 
@@ -270,23 +270,23 @@ Pass keys via environment variables to avoid hardcoding them in source code:
 package main
 
 import (
-    "fmt"
-    "os"
+	"fmt"
+	"os"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    secret := os.Getenv("JWT_SECRET_KEY")
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = secret
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        fmt.Println("Invalid key:", err)
-        return
-    }
-    defer processor.Close()
-    fmt.Println("Processor ready") // Output: Processor ready
+	secret := os.Getenv("JWT_SECRET_KEY")
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = secret
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		fmt.Println("Invalid key:", err)
+		return
+	}
+	defer processor.Close()
+	fmt.Println("Processor ready") // Output: Processor ready
 }
 ```
 
@@ -298,44 +298,44 @@ In production, asymmetric keys are usually stored as PEM files and parsed at sta
 package main
 
 import (
-    "crypto/x509"
-    "encoding/pem"
-    "fmt"
-    "os"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
+	"os"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    // Read the private key PEM file
-    keyData, err := os.ReadFile("private_key.pem")
-    if err != nil {
-        fmt.Println("Failed to read private key:", err)
-        return
-    }
+	// Read the private key PEM file
+	keyData, err := os.ReadFile("private_key.pem")
+	if err != nil {
+		fmt.Println("Failed to read private key:", err)
+		return
+	}
 
-    block, _ := pem.Decode(keyData)
-    if block == nil {
-        fmt.Println("PEM decode failed")
-        return
-    }
+	block, _ := pem.Decode(keyData)
+	if block == nil {
+		fmt.Println("PEM decode failed")
+		return
+	}
 
-    privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-    if err != nil {
-        fmt.Println("Failed to parse private key:", err)
-        return
-    }
+	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		fmt.Println("Failed to parse private key:", err)
+		return
+	}
 
-    cfg := jwt.DefaultConfig()
-    cfg.SigningMethod = jwt.SigningMethodRS256
-    cfg.SigningKey = privateKey
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        fmt.Println("Initialization failed:", err)
-        return
-    }
-    defer processor.Close()
-    fmt.Println("RSA key loaded from PEM") // Output: RSA key loaded from PEM
+	cfg := jwt.DefaultConfig()
+	cfg.SigningMethod = jwt.SigningMethodRS256
+	cfg.SigningKey = privateKey
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		fmt.Println("Initialization failed:", err)
+		return
+	}
+	defer processor.Close()
+	fmt.Println("RSA key loaded from PEM") // Output: RSA key loaded from PEM
 }
 ```
 

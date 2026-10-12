@@ -1,8 +1,8 @@
 ---
 sidebar_label: "删除操作"
-title: "Processor 删除方法 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 删除方法：Delete 按路径删除、DeleteClean 删除后自动清理空值与空数组并级联移除空父节点，支持通配符、切片与多字段路径，缺失目标静默跳过，不可变返回新字符串，出错时返回原输入，保留链式调用能力。"
-sidebar_position: 4
+title: "Processor 删除方法 - CyberGo JSON | Delete 方法与示例"
+description: "CyberGo JSON 的 Processor 提供 Delete 按路径删除与 DeleteClean 清理空值，支持通配符、数组切片与多字段路径，缺失目标静默跳过，不可变地返回新字符串，适合清理配置冗余字段与修剪日志数据的开发场景。"
+sidebar_position: 40
 ---
 
 # 删除方法
@@ -72,7 +72,7 @@ func main() {
 
 ### 高级路径：通配符与切片
 
-`Delete` 复用与 Get/Set 相同的路径引擎，支持通配符、切片范围、多字段提取。批量路径（含 `*`、`{}`、`:`）对缺失目标静默跳过，不报错。
+`Delete` 复用与 Get/Set 相同的路径引擎，支持通配符、切片范围、多字段提取。批量路径（含 `*`、`{}`、`:`）对缺失目标静默跳过，不报错。路径语法的完整说明——通配符、切片、多字段以及 **JSON Pointer**（`/` 开头的 RFC 6901 路径，可删除键名本身含点号等特殊字符的键）——见[删除函数·高级路径删除](../functions/delete#高级路径删除)。
 
 ```go
 package main
@@ -212,16 +212,7 @@ func main() {
 
 ## Delete 与 DeleteClean 对比
 
-| 特性 | Delete | DeleteClean |
-|------|--------|-------------|
-| 删除目标节点 | 是 | 是 |
-| 数组元素移除后重排（无空洞） | 是 | 是 |
-| 精确路径缺失时报错 | 是（`ErrPathNotFound`） | 是（`ErrPathNotFound`） |
-| 清理删除产生的 `null` | 否 | 是 |
-| 清理空对象/空数组（级联） | 否 | 是（逐层向上） |
-| 扫除整棵树预存的 `null` | 否 | 是（全局清理） |
-| 等价配置 | 默认 | `CleanupNulls+CompactArrays` |
-| 相对开销 | 较低 | 略高（额外一次全树清理遍历） |
+两者的行为对照表（清理范围、级联语义、等价配置与开销对比）与包级函数页完全一致，见[删除函数·Delete 与 DeleteClean 对比](../functions/delete#delete-与-deleteclean-对比)。Processor 侧的差异仅在配置生效方式：清理行为由「调用参数 `cfg` 与处理器自身配置取并集」决定（见下节）。
 
 ## Config 对删除行为的影响
 
@@ -299,17 +290,7 @@ func main() {
 
 ## 常见陷阱
 
-::: warning 数组删除不留空洞
-`Delete` 删除数组元素时，元素被**整体移除**、后续元素自动前移，不会留下 `null` 占位或空洞。若你需要"删除后索引保持不变、留下空位"的语义，请改用 `Set` 将该位置设为 `null`。
-:::
-
-::: warning DeleteClean 可能误删"恰好为空"的合法数据
-`DeleteClean` 的级联清理会把所有空对象 `{}`、空数组 `[]` 视为需要清理的对象。若业务中"空数组"是有意义的状态（如 `"tags":[]` 表示"无标签"），`DeleteClean` 会将其连同键一起移除。需要保留这类字段时，请使用普通 `Delete`。
-:::
-
-::: warning 批量删除是容错的
-通配符/切片/多字段路径对缺失目标**静默跳过**，不返回错误。需要"目标必须存在"的强校验语义时，请改用精确路径（如 `items[1]` 而非 `items[*]`）。
-:::
+三条注意事项（数组删除不留空洞、`DeleteClean` 可能误删「恰好为空」的合法数据、批量删除对缺失目标容错跳过）同样适用于 Processor 方法，完整说明与示例见[删除函数·常见陷阱](../functions/delete#常见陷阱)。
 
 ## 相关
 

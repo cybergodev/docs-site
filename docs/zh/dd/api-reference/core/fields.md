@@ -2,7 +2,7 @@
 sidebar_label: "结构化字段"
 title: "结构化字段 - CyberGo DD | Field 构造器与校验"
 description: "CyberGo DD 结构化字段 API：20 种类型安全字段构造器（String/Int/Float/Bool/Time/Duration/Err 等）、Field 类型与字段键校验（命名约定与 Log4Shell 安全检测），支持自定义校验模式与预设配置。"
-sidebar_position: 3.5
+sidebar_position: 4
 ---
 
 # 结构化字段
@@ -25,7 +25,7 @@ type Field struct {
 }
 ```
 
-所有字段构造器返回 `Field` 值；格式化器（`internal.FormatFields`）按 `Key=Value` 形式输出。基础类型（string / 数值 / bool / `time.Duration` / `time.Time` / nil）走快速路径；切片、数组、map、struct 等「复杂类型」会回退到 JSON 序列化（`internal.IsComplexValue` 判定），其他类型（如实现 `fmt.Stringer` 或 `error` 接口的值）走 `fmt.Fprint`。
+所有字段构造器返回 `Field` 值；文本格式化器按 `Key=Value` 形式输出。基础类型（string / 数值 / bool / `time.Duration` / `time.Time` / nil）走快速路径；切片、数组、map、struct 等「复杂类型」会回退到 JSON 序列化（`internal.IsComplexValue` 判定），其他类型（如实现 `fmt.Stringer` 或 `error` 接口的值）走 `fmt.Fprint`。
 
 ## 基础字段
 
@@ -76,6 +76,8 @@ dd.ErrWithKey("db_error", err)
 dd.ErrWithStack(err)
 ```
 
+三个错误构造器均对 `Error()` 方法可能抛出的 panic 做了防护：panic 会被恢复为 `%!v(PANIC=Error method: ...)` 占位值，不会传播到调用方。
+
 ## 使用方式
 
 ### 与 InfoWith 组合
@@ -115,7 +117,7 @@ base.InfoWith("响应",
 
 ## 字段校验
 
-DD 提供字段键校验机制，支持命名约定检查与安全验证（Log4Shell 注入、同形异义攻击、overlong UTF-8）。校验配置 `FieldValidationConfig` 可挂在 [`Config.FieldValidation`](../core/config) 上随构造生效，或运行时由 [`Logger.SetFieldValidation`](../core/logger) 动态替换。每次 `*With` 调用会对每个字段的 Key 调用 `ValidateFieldKey`，Strict 模式下失败会以日志形式报错（日志方法本身不返回 error）。
+DD 提供字段键校验机制，支持命名约定检查与安全验证（Log4Shell 注入、同形异义攻击、overlong UTF-8）。校验配置 `FieldValidationConfig` 可挂在 [`Config.FieldValidation`](../core/config) 上随构造生效，或运行时由 [`Logger.SetFieldValidation`](../core/logger) 动态替换。每次 `*With` 调用会对每个字段的 Key 调用 `ValidateFieldKey`，Warn/Strict 模式下失败会向 stderr 输出诊断（字段仍正常记录，日志方法本身不返回 error）。
 
 ### FieldValidationMode
 
@@ -126,8 +128,8 @@ type FieldValidationMode int
 
 const (
     FieldValidationNone   FieldValidationMode = iota // 禁用校验（默认，短路所有检查）
-    FieldValidationWarn                              // 命名不匹配时记一条 warning 日志
-    FieldValidationStrict                            // 命名不匹配时记一条 error 日志
+    FieldValidationWarn                              // 命名不匹配时向 stderr 输出警告诊断（字段仍正常记录）
+    FieldValidationStrict                            // 命名不匹配时向 stderr 输出错误诊断（字段仍正常记录，仅措辞不同）
 )
 ```
 
@@ -201,43 +203,43 @@ func (c *FieldValidationConfig) ValidateFieldKey(key string) error
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // 严格 snake_case 预设
-    cfg := dd.StrictSnakeCaseConfig()
+	// 严格 snake_case 预设
+	cfg := dd.StrictSnakeCaseConfig()
 
-    if err := cfg.ValidateFieldKey("user_id"); err != nil {
-        fmt.Println("user_id:", err)
-    } else {
-        fmt.Println("user_id OK")
-        // 输出：user_id OK
-    }
+	if err := cfg.ValidateFieldKey("user_id"); err != nil {
+		fmt.Println("user_id:", err)
+	} else {
+		fmt.Println("user_id OK")
+		// 输出：user_id OK
+	}
 
-    if err := cfg.ValidateFieldKey("userId"); err != nil {
-        fmt.Println("userId:", err)
-        // 输出：userId: field key "userId" does not match snake_case convention
-    }
+	if err := cfg.ValidateFieldKey("userId"); err != nil {
+		fmt.Println("userId:", err)
+		// 输出：userId: field key "userId" does not match snake_case convention
+	}
 
-    // 常见缩写豁免：URL 不符合 snake_case，但命中缩写表故通过
-    if err := cfg.ValidateFieldKey("URL"); err != nil {
-        fmt.Println("URL:", err)
-    } else {
-        fmt.Println("URL OK (缩写豁免)")
-        // 输出：URL OK (缩写豁免)
-    }
+	// 常见缩写豁免：URL 不符合 snake_case，但命中缩写表故通过
+	if err := cfg.ValidateFieldKey("URL"); err != nil {
+		fmt.Println("URL:", err)
+	} else {
+		fmt.Println("URL OK (缩写豁免)")
+		// 输出：URL OK (缩写豁免)
+	}
 
-    // 默认配置 Mode=None，不校验命名
-    defaultCfg := dd.DefaultFieldValidationConfig()
-    if err := defaultCfg.ValidateFieldKey("anyKey"); err != nil {
-        fmt.Println("anyKey:", err)
-    } else {
-        fmt.Println("anyKey OK (Mode=None)")
-        // 输出：anyKey OK (Mode=None)
-    }
+	// 默认配置 Mode=None，不校验命名
+	defaultCfg := dd.DefaultFieldValidationConfig()
+	if err := defaultCfg.ValidateFieldKey("anyKey"); err != nil {
+		fmt.Println("anyKey:", err)
+	} else {
+		fmt.Println("anyKey OK (Mode=None)")
+		// 输出：anyKey OK (Mode=None)
+	}
 }
 ```
 

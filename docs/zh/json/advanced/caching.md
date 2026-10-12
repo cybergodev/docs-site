@@ -1,8 +1,8 @@
 ---
 sidebar_label: "缓存与预解析"
-title: "缓存与预解析 - CyberGo JSON | 缓存策略"
-description: "CyberGo JSON 内置缓存机制与预解析策略：EnableCache 自动缓存查询结果、GetStats 监控命中率、WarmupCache 预热、PreParse 一次解析多次查询、CacheSharedResults 零拷贝与 ClearCache 清理，附高频查询配方与选型决策。"
-sidebar_position: 3
+title: "缓存与预解析 - CyberGo JSON | 预解析与缓存策略"
+description: "CyberGo JSON 提供自动缓存与预解析策略，支持 EnableCache 内置缓存、GetStats 监控命中率、WarmupCache 启动预热与 PreParse 一次解析多次查询，帮助开发者消除重复解析开销、按负载调优缓存参数，显著提升高频查询响应速度。"
+sidebar_position: 30
 ---
 
 # 缓存与预解析策略

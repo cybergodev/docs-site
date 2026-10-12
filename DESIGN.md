@@ -2,7 +2,7 @@
 
 > **单一设计真相源（Single Source of Truth）。** 本文件沉淀站点所有视觉决策：颜色、间距、圆角、层级、明暗模式与组件约定。改动外观时**先读本文件**，避免每次修改导致视觉漂移。
 >
-> 代码层的真相源是 `docs/.vitepress/theme/style/tokens.css`；本文件是其语义说明与使用规则。二者必须同步——token 改了就改本文件，反之亦然。
+> 代码层的真相源是 `docs/.vitepress/theme/style/tokens.css`；本文件是其语义说明与使用规则。
 
 ---
 

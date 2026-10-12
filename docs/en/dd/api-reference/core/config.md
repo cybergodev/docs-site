@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Config"
 title: "Config - CyberGo DD | Config In Depth"
-description: "Complete API documentation for the CyberGo DD Config struct, including the DefaultConfig/DevelopmentConfig/JSONConfig preset factories, OutputTarget output-target configuration, field-validation rules, sampling control, formatter options, and the Validate method, providing flexible and type-safe logger behavior customization."
-sidebar_position: 4
+description: "CyberGo DD Config struct API reference: preset factories including ProductionConfig, output targets, field validation, sampling, and the Validate method."
+sidebar_position: 5
 ---
 
 # Config
+
+> 🔧 **API Reference** · For a hands-on tutorial see [Configuration](../../guides/basics/configuration)
 
 DD configures logger behavior via the `Config` struct, and provides several preset configuration factory functions.
 
@@ -31,9 +33,10 @@ cfgJSON := dd.JSONConfig()
 | `DefaultConfig()` | `Config` | Info | Text | Production |
 | `DevelopmentConfig()` | `Config` | Debug | Text | Development |
 | `JSONConfig()` | `Config` | Debug | JSON | Log collection |
+| `ProductionConfig()` | `Config` | Info | JSON (RFC3339) | Production (JSON output) |
 
 :::tip Security filtering is enabled by default
-All preset configs (`DefaultConfig`, `DevelopmentConfig`, `JSONConfig`) enable security filtering by default and automatically redact sensitive data such as passwords, API keys, and credit card numbers.
+All preset configs (`DefaultConfig`, `DevelopmentConfig`, `JSONConfig`, `ProductionConfig`) enable security filtering by default and automatically redact sensitive data such as passwords, API keys, and credit card numbers.
 :::
 
 ## Config Struct
@@ -68,6 +71,7 @@ type Config struct {
     // Lifecycle handlers
     FatalHandler      FatalHandler       // Custom Fatal-level handler
     WriteErrorHandler WriteErrorHandler  // Write-error callback
+    LevelResolver     LevelResolver      // Dynamic level resolver (nil disables; overrides Level when set)
 
     // Extensibility
     ContextExtractors []ContextExtractor // Context extractor list
@@ -83,6 +87,10 @@ type Config struct {
 When `Audit` is set, sensitive-data redaction, rate-limit, and violation events are recorded as audit events via the [AuditLogger](../security-audit/audit). See [Audit Logging](../security-audit/audit).
 :::
 
+::: warning Zero-value Config ≠ DefaultConfig
+The zero value `Config{}` is valid but is NOT equivalent to `DefaultConfig()`: it logs at `LevelDebug` with `IncludeTime`, `IncludeLevel`, and `DynamicCaller` disabled. Always start from `DefaultConfig()` or one of the presets (`DevelopmentConfig`/`JSONConfig`/`ProductionConfig`) and modify fields from there.
+:::
+
 ### Clone
 
 ```go
@@ -94,7 +102,7 @@ Creates a copy of the configuration that can be safely modified without affectin
 Copy strategy (consistent with the source `Clone` comments):
 
 - **Deep copy**: `Targets` (slice), `JSON` (including `JSONFieldNames`), `Security`, `Hooks`, `Sampling`, `Audit`
-- **Shallow copy**: `FatalHandler`, `WriteErrorHandler`, `FieldValidation` (functions/pointers are shared)
+- **Shallow copy**: `FatalHandler`, `WriteErrorHandler`, `LevelResolver` (function values are shared, not deep-copied), `FieldValidation` (the whole `*FieldValidationConfig` pointer is shared)
 - **Mixed**: the `ContextExtractors` slice is copied, but the extractor instances themselves are shared
 
 ```go
@@ -118,6 +126,7 @@ Validation checks:
 - When `IncludeTime=true` and `TimeFormat` is non-empty, validates the Go time reference layout (e.g. `time.RFC3339`)
 - Total `Targets` count must not exceed 100 (otherwise returns `ErrMaxWritersExceeded`)
 - Each `Targets` element: `OutputCustom` must have a non-nil `Writer`, `OutputFile` must have a non-empty `Path`
+- When `Audit` is non-nil, the audit config is validated (a negative `BufferSize` returns an error), so an invalid audit config fails at `New()` instead of being silently dropped
 
 ```go
 cfg := dd.DefaultConfig()
@@ -280,6 +289,26 @@ cfg.Sampling = &dd.SamplingConfig{
 logger, _ := dd.New(cfg)
 ```
 
+### DefaultSamplingConfig
+
+```go
+func DefaultSamplingConfig() SamplingConfig
+```
+
+Returns a sampling configuration with sensible defaults: `Initial=100`, `Thereafter=100`, `Tick=1s`. Counters reset every second, so the `Initial` allowance refreshes per second: traffic below 100 messages/second is never sampled, and only burst traffic beyond it is reduced to 1 in 100. Set `Tick` to `0` for process-lifetime counters (the first 100 messages ever, then 1 in 100 forever).
+
+:::tip Enabled defaults to true
+The returned config has `Enabled=true`, so assigning it to `Config.Sampling` activates sampling immediately; to use it as a template (modify fields first, enable later) you must set `Enabled=false` yourself.
+:::
+
+```go
+cfg := dd.DefaultConfig()
+sampling := dd.DefaultSamplingConfig()
+sampling.Initial = 10 // per second: log the first 10, then 1 in 10
+cfg.Sampling = &sampling
+logger, _ := dd.New(cfg)
+```
+
 ## FieldValidationConfig
 
 Field validation configuration, controlling naming conventions for field keys.
@@ -369,15 +398,17 @@ logger.InfoWith("fail", dd.String("userName", "admin"))
 ### Production
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Level:  dd.LevelInfo,
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.log"),
-    },
-    Security: dd.DefaultSecurityConfig(),
-})
+cfg := dd.ProductionConfig() // Info + JSON + RFC3339 + IncludeTime/IncludeLevel + FatalHandler
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.json"),
+}
+// DefaultSecurityConfig is built in; replace it wholesale for a higher security level:
+// cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+logger, err := dd.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ### Development

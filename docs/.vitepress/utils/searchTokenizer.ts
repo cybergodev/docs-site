@@ -32,12 +32,12 @@ const CJK_RUN_RE = /[㐀-鿿豈-﫿가-힯぀-ゟ゠-ヿ]+/g
 /**
  * A maximal run of non-CJK letters and digits — kept whole as a single token
  * (e.g. `GetString`, `TLS`, `1.2`). Covers Latin (basic + extended,
- * U+00C0–U+024F) AND Cyrillic (U+0400–U+052F, incl. supplement) so the
- * Russian (`ru`) tree is searchable — without this, Cyrillic runs produce
- * zero tokens and ru searches silently match nothing. CJK is handled
- * separately by CJK_RUN_RE (unigram+bigram), with which this never overlaps.
- * Case is folded by `cjkProcessTerm` at query time and matched against the
- * same fold applied at index time.
+ * U+00C0–U+024F) AND Cyrillic (U+0400–U+052F, incl. supplement) so
+ * non-Latin scripts (e.g. Cyrillic) stay searchable — without this, Cyrillic
+ * runs produce zero tokens and such searches silently match nothing. CJK is
+ * handled separately by CJK_RUN_RE (unigram+bigram), with which this never
+ * overlaps. Case is folded by `cjkProcessTerm` at query time and matched
+ * against the same fold applied at index time.
  */
 const WORD_RE = /[0-9A-Za-zÀ-ɏЀ-ԯ]+/g
 

@@ -58,9 +58,8 @@ func TestTokenExpiry(t *testing.T) {
     require.NoError(t, err)
 
     // 当前时刻验证 → 成功
-    _, valid, err := processor.Validate(token)
+    _, err = processor.Parse(token)
     require.NoError(t, err)
-    assert.True(t, valid)
 
     // 模拟时间流逝到过期后 → 使用新的 Processor
     expiredCfg := cfg
@@ -69,7 +68,7 @@ func TestTokenExpiry(t *testing.T) {
     require.NoError(t, err)
     defer expiredProcessor.Close()
 
-    _, _, err = expiredProcessor.Validate(token)
+    _, err = expiredProcessor.Parse(token)
     assert.True(t, errors.Is(err, jwt.ErrTokenExpired))
 }
 ```
@@ -106,9 +105,8 @@ func TestClockSkew(t *testing.T) {
     require.NoError(t, err)
     defer withinProc.Close()
 
-    _, valid, err := withinProc.Validate(token)
+    _, err = withinProc.Parse(token)
     require.NoError(t, err)
-    assert.True(t, valid)
 
     // exp + 40s 超出 30s 偏移窗口 → 过期
     beyondCfg := jwt.DefaultConfig()
@@ -119,7 +117,7 @@ func TestClockSkew(t *testing.T) {
     require.NoError(t, err)
     defer beyondProc.Close()
 
-    _, _, err = beyondProc.Validate(token)
+    _, err = beyondProc.Parse(token)
     assert.True(t, errors.Is(err, jwt.ErrTokenExpired))
 }
 ```
@@ -173,9 +171,8 @@ func TestCustomClaims(t *testing.T) {
     require.NoError(t, err)
 
     result := &MyClaims{}
-    parsed, valid, err := processor.ValidateInto(token, result)
+    parsed, err := processor.ParseInto(token, result)
     require.NoError(t, err)
-    assert.True(t, valid)
 
     myResult := parsed.(*MyClaims)
     assert.Equal(t, "user123", myResult.UserID)
@@ -248,7 +245,7 @@ func TestRevokeToken(t *testing.T) {
     require.NoError(t, err)
 
     // 验证应失败
-    _, _, err = processor.Validate(token)
+    _, err = processor.Parse(token)
     assert.True(t, errors.Is(err, jwt.ErrTokenRevoked))
 }
 ```
@@ -293,7 +290,7 @@ func TestRateLimit(t *testing.T) {
 
 ## 测试并发安全
 
-`Processor` 所有方法均为 goroutine 安全。使用 `sync.WaitGroup` 并发执行 `Create`/`Validate`，验证无 panic、无 data race：
+`Processor` 所有方法均为 goroutine 安全。使用 `sync.WaitGroup` 并发执行 `Create`/`Parse`，验证无 panic、无 data race：
 
 ```go
 func TestConcurrentSafety(t *testing.T) {
@@ -322,7 +319,7 @@ func TestConcurrentSafety(t *testing.T) {
                 if err != nil {
                     continue
                 }
-                if _, valid, err := processor.Validate(token); err == nil && valid {
+                if _, err := processor.Parse(token); err == nil {
                     success.Add(1)
                 }
             }
@@ -348,11 +345,11 @@ func TestConcurrentSafety(t *testing.T) {
 | 令牌过期 | `FixedClock` 固定签发时间，新 Processor 模拟过期 | `errors.Is(err, ErrTokenExpired)` |
 | 时钟偏移 | 设置 `ClockSkew`，验证窗口边界 | exp + skew 内有效 / 外过期 |
 | 刷新流程 | 创建刷新令牌后立即 `Refresh` | 返回的令牌非空 |
-| 自定义 Claims | `ValidateInto` 反序列化到目标类型 | 字段值匹配 |
+| 自定义 Claims | `ParseInto` 反序列化到目标类型 | 字段值匹配 |
 | 输入校验 | 超长字符串 / 注入模式 / 控制字符 | `errors.As` 提取 `ValidationError` |
 | 速率限制 | 小窗口 + 低速率 + 固定时钟 | 超额返回 `ErrRateLimitExceeded` |
 | 并发安全 | `goroutine` + `WaitGroup` 并发操作 | 无 panic、无 data race |
-| 令牌吊销 | `Revoke` 后 `Validate` | `errors.Is(err, ErrTokenRevoked)` |
+| 令牌吊销 | `Revoke` 后 `Parse` | `errors.Is(err, ErrTokenRevoked)` |
 
 :::tip 核心原则
 - 使用 `FixedClock` 确保测试**可重复**——不依赖系统时间

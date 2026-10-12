@@ -1,8 +1,8 @@
 ---
-title: "删除函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 删除函数：Delete 按路径删除、DeleteClean 删除后自动清理空值与空数组并级联移除空父节点，支持通配符、切片、多字段与 JSON Pointer 路径表达式，批量路径缺失静默跳过，不可变返回新字符串，保留链式调用能力。"
+title: "删除函数 - CyberGo JSON | Delete 用法与示例"
+description: "CyberGo JSON 是支持节点删除的 Go 库，Delete 按路径移除节点、DeleteClean 级联清理空对象与空数组，并支持通配符、切片范围、多字段与 JSON Pointer 删除，数组元素自动前移重排，帮助开发者不可变地删除字段并保持结构整洁。"
 sidebar_label: "删除操作"
-sidebar_position: 4
+sidebar_position: 40
 ---
 
 # 删除函数

@@ -27,6 +27,10 @@ type TokenManager interface {
 
 JWT 令牌操作核心接口。所有实现必须并发安全。默认实现为 [`*Processor`](./processor)。
 
+::: info 兼容性说明
+接口有意保留 `Validate` / `ValidateInto`——尽管二者已在 `*Processor` 上弃用（推荐改用 [`Parse`](./processor#parse) / [`ParseInto`](./processor#parseinto)）：在此处增删或替换方法会破坏第三方 `TokenManager` 实现。
+:::
+
 方法按职责分为三组：
 - **令牌创建**：`Create`、`CreateRefresh`
 - **验证与刷新**：`Validate`、`ValidateInto`、`Refresh`、`RefreshInto`
@@ -39,10 +43,10 @@ JWT 令牌操作核心接口。所有实现必须并发安全。默认实现为 
 | 方法 | 签名 | 说明 |
 |------|------|------|
 | `Create` | `Create(claims CustomClaims) (string, error)` | 创建访问令牌 |
-| `Validate` | `Validate(tokenString string) (Claims, bool, error)` | 验证令牌 |
+| `Validate` | `Validate(tokenString string) (Claims, bool, error)` | 验证令牌（已在 `*Processor` 上弃用，推荐 `Parse`） |
 | `CreateRefresh` | `CreateRefresh(claims CustomClaims) (string, error)` | 创建刷新令牌 |
 | `Refresh` | `Refresh(refreshTokenString string) (string, error)` | 刷新令牌 |
-| `ValidateInto` | `ValidateInto(tokenString string, claims CustomClaims) (CustomClaims, bool, error)` | 验证到自定义 Claims |
+| `ValidateInto` | `ValidateInto(tokenString string, claims CustomClaims) (CustomClaims, bool, error)` | 验证到自定义 Claims（已在 `*Processor` 上弃用，推荐 `ParseInto`） |
 | `RefreshInto` | `RefreshInto(refreshTokenString string, claims CustomClaims) (string, error)` | 刷新到自定义 Claims |
 | `Revoke` | `Revoke(tokenString string) error` | 吊销令牌 |
 | `IsRevoked` | `IsRevoked(tokenString string) (bool, error)` | 检查是否已吊销 |
@@ -67,7 +71,7 @@ type CustomClaims interface {
 }
 ```
 
-自定义 Claims 接口。用于 [`Create`](./processor#create)、[`ValidateInto`](./processor#validateinto)、[`RefreshInto`](./processor#refreshinto) 等方法。
+自定义 Claims 接口。用于 [`Create`](./processor#create)、[`ParseInto`](./processor#parseinto)、[`RefreshInto`](./processor#refreshinto) 等方法。
 
 <Badge type="info" text="interface" />
 
@@ -186,6 +190,12 @@ type RateLimitKeyer interface {
 }
 ```
 
-可选接口，自定义 Claims 可实现此接口提供限流 key。限流 key 查找优先级：`Subject` → `*Claims.UserID` → `RateLimitKey()`。
+可选接口，自定义 Claims 可实现此接口提供限流 key。限流 key 查找优先级：`Subject` → `*Claims.UserID` → `RateLimitKey()`；查得的 key 为空时跳过限流。
 
 <Badge type="info" text="interface" />
+
+### 方法
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `RateLimitKey` | `RateLimitKey() string` | 返回限流 key（`Subject` 与 `*Claims.UserID` 均为空时使用） |

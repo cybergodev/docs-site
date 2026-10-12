@@ -1,7 +1,7 @@
 ---
 sidebar_label: "SecureValue"
 title: "SecureValue API - CyberGo env | Secure Value Storage"
-description: "SecureValue API reference for CyberGo env: NewSecureValue creation with mlock locking, Reveal plaintext access, Masked display, and Release zeroing."
+description: "SecureValue API reference for CyberGo env: NewSecureValue creation, mlock locking, Reveal plaintext, Masked display, Release zeroing, IsSensitiveKey detection."
 sidebar_position: 5
 ---
 
@@ -66,22 +66,21 @@ defer secret.Release()  // or Close()
 func NewSecureValueStrict(value string) (*SecureValue, error)
 ```
 
-Creates a secure value, returning an error if memory locking fails.
+Creates a secure value, returning an error if memory locking is enabled and the lock attempt fails.
 
 **Parameters:**
 - `value` - string value to protect
 
 **Returns:**
-- `*SecureValue` - secure value object
-- `error` - memory locking error (strict mode only)
+- `*SecureValue` - secure value object (still valid and usable even when an error is returned; the data is simply not locked)
+- `error` - memory locking error (returned only when `SetMemoryLockEnabled(true)` is set and locking fails; independent of the `SetMemoryLockStrict` switch)
 
 ```go
 env.SetMemoryLockEnabled(true)
-env.SetMemoryLockStrict(true)
 
 secret, err := env.NewSecureValueStrict("my-secret")
 if err != nil {
-    // Memory locking failed
+    // Memory locking failed (secret is still usable, just not locked)
     log.Printf("Warning: %v", err)
 }
 if secret != nil {
@@ -113,7 +112,7 @@ if secret != nil {
 }
 ```
 
-:::tip
+:::tip Defensive copies
 `GetSecure` returns a copy of the original value, independent from the parent Loader. The caller is responsible for calling `Release()` or `Close()`.
 :::
 
@@ -167,7 +166,7 @@ if secret != nil {
 }
 ```
 
-:::danger
+:::danger Security warning
 `Reveal()` returns a **plaintext string**. Go strings are immutable and cannot be manually zeroed. Use only when necessary, and avoid logging or storing the return value.
 :::
 
@@ -262,11 +261,11 @@ type Response struct {
 
 resp := Response{APIKey: env.NewSecureValue("sk-1234567890")}
 data, _ := json.Marshal(resp)
-// {"api_key":"[SECURE:16 bytes]"}
+// {"api_key":"[SECURE:13 bytes]"}
 // Plaintext does not appear in output
 ```
 
-:::tip
+:::tip Security design
 `MarshalJSON` ensures that even when `SecureValue` is embedded in a struct and JSON-serialized, the plaintext is not leaked. The output is consistent with `String()` / `Masked()`.
 :::
 
@@ -332,8 +331,8 @@ Zeros memory and returns to the object pool.
 
 **Behavior:**
 - Securely zeros internal data
-- Clears GC finalizer
-- Returns to the object pool for reuse
+- Marks as closed and returns to the object pool for reuse
+- Does **not** clear the GC finalizer: it stays set for the object's entire lifetime, and if the runtime later evicts a pooled object and finalizes it, finalize() observes the closed state and is a no-op
 
 ```go
 secret := env.GetSecure("KEY")
@@ -343,7 +342,7 @@ if secret != nil {
 }
 ```
 
-:::tip
+:::tip Close vs Release
 - `Close()` - zeros only, does not return to pool
 - `Release()` - zeros and returns to pool (recommended for high-frequency scenarios)
 :::
@@ -426,10 +425,10 @@ package main
 import "github.com/cybergodev/env"
 
 func main() {
-    // Enable at application startup
-    env.SetMemoryLockEnabled(true)
+	// Enable at application startup
+	env.SetMemoryLockEnabled(true)
 
-    // All subsequent SecureValues will attempt to lock
+	// All subsequent SecureValues will attempt to lock
 }
 ```
 
@@ -460,7 +459,7 @@ if env.IsMemoryLockEnabled() {
 func SetMemoryLockStrict(strict bool)
 ```
 
-Sets strict mode. When enabled, `NewSecureValueStrict` returns an error on locking failure.
+Sets strict mode. When enabled, any memory locking failure emits a security warning to the standard logger (stderr), regardless of which construction path it came from; non-strict constructors (`NewSecureValue`, etc.) cannot return an error, so this warning is their only failure signal. The error return of `NewSecureValueStrict` is unaffected by this switch (see the Creation section above).
 
 **Parameters:**
 - `strict` - whether to enable strict mode
@@ -469,10 +468,9 @@ Sets strict mode. When enabled, `NewSecureValueStrict` returns an error on locki
 env.SetMemoryLockEnabled(true)
 env.SetMemoryLockStrict(true)
 
-secret, err := env.NewSecureValueStrict("sensitive-data")
-if err != nil {
-    // Locking failed
-}
+// NewSecureValue cannot return an error; on lock failure it prints:
+// env: memory lock failed in strict mode: ...
+secret := env.NewSecureValue("sensitive-data")
 ```
 
 ---
@@ -510,8 +508,12 @@ Checks whether the current platform supports memory locking.
 | Linux | ✅ |
 | macOS | ✅ |
 | Windows | ✅ |
-| FreeBSD | ✅ |
+| FreeBSD and other BSDs, Solaris | ❌ (no-op fallback) |
 | wasm | ❌ |
+
+:::tip Platform fallback
+Memory locking is implemented only on Linux, macOS, and Windows. All other platforms (FreeBSD and other BSDs, Solaris, wasm, etc.) take the no-op fallback: `IsMemoryLockSupported()` returns false, and `SecureValue` still works normally — but with memory locking enabled the lock attempt fails and `Masked()` shows the `lock-failed` suffix (no status suffix when locking is not enabled).
+:::
 
 :::warning
 Returning `true` only means the platform supports it, not that the process has sufficient permissions. Linux requires `CAP_IPC_LOCK` or root privileges.
@@ -652,7 +654,7 @@ clean := env.SanitizeForLog(msg)
 func MaskSensitiveInString(s string) string
 ```
 
-Masks potential sensitive content in a string. Truncates strings longer than 50 characters.
+Masks potential sensitive content in a string: strings longer than 50 characters are truncated first (keeping the first 47 characters and appending `...`), then `key=value`-style sensitive values in the truncated result are masked. Truncation alone would let `password=...` pairs slip through unmasked, so both steps are required.
 
 **Parameters:**
 - `s` - original string
@@ -667,8 +669,8 @@ clean := env.MaskSensitiveInString(long)
 // Returns: "This is a very long string that exceeds 50 char..."
 ```
 
-:::tip
-Used for truncating long strings that may contain sensitive data. To auto-mask sensitive key-value pairs, use `SanitizeForLog`.
+:::tip Use cases
+Suited for long strings that may carry sensitive data, such as error details or parsed content (truncation plus key-value masking in a single step). To mask `key=value` pairs without truncating, use `SanitizeForLog` directly.
 :::
 
 ---
@@ -679,57 +681,57 @@ Used for truncating long strings that may contain sensitive data. To auto-mask s
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Check and enable memory locking
-    if env.IsMemoryLockSupported() {
-        env.SetMemoryLockEnabled(true)
-        fmt.Println("Memory locking enabled")
-    }
+	// Check and enable memory locking
+	if env.IsMemoryLockSupported() {
+		env.SetMemoryLockEnabled(true)
+		fmt.Println("Memory locking enabled")
+	}
 
-    // Load environment variables
-    if err := env.Load(".env"); err != nil {
-        log.Printf("Warning: %v", err)
-    }
+	// Load environment variables
+	if err := env.Load(".env"); err != nil {
+		log.Printf("Warning: %v", err)
+	}
 
-    // Securely get sensitive value
-    apiKey := env.GetSecure("API_KEY")
-    if apiKey == nil {
-        log.Fatal("API_KEY not found")
-    }
-    defer apiKey.Release()
+	// Securely get sensitive value
+	apiKey := env.GetSecure("API_KEY")
+	if apiKey == nil {
+		log.Fatal("API_KEY not found")
+	}
+	defer apiKey.Release()
 
-    // Safe usage
-    fmt.Printf("API Key length: %d\n", apiKey.Length())
-    fmt.Printf("API Key (masked): %s\n", apiKey.Masked())
+	// Safe usage
+	fmt.Printf("API Key length: %d\n", apiKey.Length())
+	fmt.Printf("API Key (masked): %s\n", apiKey.Masked())
 
-    // Check memory lock status
-    if apiKey.IsMemoryLocked() {
-        fmt.Println("Memory is locked")
-    }
+	// Check memory lock status
+	if apiKey.IsMemoryLocked() {
+		fmt.Println("Memory is locked")
+	}
 
-    // Check locking error
-    if err := apiKey.MemoryLockError(); err != nil {
-        fmt.Printf("Memory lock warning: %v\n", err)
-    }
+	// Check locking error
+	if err := apiKey.MemoryLockError(); err != nil {
+		fmt.Printf("Memory lock warning: %v\n", err)
+	}
 
-    // Pass to other functions
-    connectAPI(apiKey.Reveal())
+	// Pass to other functions
+	connectAPI(apiKey.Reveal())
 
-    // Use security utility functions
-    logMessage := "Processing with API_KEY=secret"
-    safeMessage := env.SanitizeForLog(logMessage)
-    fmt.Println(safeMessage)  // Processing with API_KEY=[MASKED]
+	// Use security utility functions
+	logMessage := "Processing with API_KEY=secret"
+	safeMessage := env.SanitizeForLog(logMessage)
+	fmt.Println(safeMessage) // Processing with API_KEY=[MASKED]
 }
 
 func connectAPI(key string) {
-    // Connect with key...
-    fmt.Printf("Connecting with key of length %d\n", len(key))
+	// Connect with key...
+	fmt.Printf("Connecting with key of length %d\n", len(key))
 }
 ```
 
@@ -743,8 +745,10 @@ func connectAPI(key string) {
 
 ```go
 var secureValuePool = sync.Pool{
-    New: func() interface{} {
-        return &SecureValue{}
+    New: func() any {
+        sv := &SecureValue{}
+        runtime.SetFinalizer(sv, (*SecureValue).finalize) // set once at first creation, kept for life
+        return sv
     },
 }
 ```
@@ -801,10 +805,10 @@ The only explicit path to the plaintext is `Reveal()` (or the `Bytes()` copy).
 
 | Method | Zeros data | Returns to pool | Use |
 |--------|:----------:|:---------------:|-----|
-| `Close()` | Y | N | Regular one-shot usage |
-| `Release()` | Y | Y | High-frequency create/destroy cycles (reuse cuts allocations) |
+| `Close()` | ✅ | ❌ | Regular one-shot usage |
+| `Release()` | ✅ | ✅ | High-frequency create/destroy cycles (reuse cuts allocations) |
 
-Both are safe to call repeatedly with no side effects. Abandoned unclosed objects are still covered: the GC finalizer zeroes the data when the object becomes unreachable (`runtime.SetFinalizer` is installed once at first creation; pool cycles don't repay that cost).
+Both are safe to call repeatedly with no side effects. Abandoned unclosed objects are still covered: the GC finalizer zeroes the data when the object becomes unreachable (`runtime.SetFinalizer` is installed once at first creation; pooled reuse doesn't pay that cost again).
 
 ### Masked output format
 
@@ -854,7 +858,7 @@ func main() {
 
 ## Related Documentation
 
-- [Constants & Errors](/en/env/api-reference/constants) - Forbidden keys, sensitive key patterns, error types
-- [Security Overview](/en/env/security/) - Security architecture and core features
-- [Production Checklist](/en/env/security/production-checklist) - Pre-launch security checks
-- [Loader API](/en/env/api-reference/loader) - GetSecure method
+- [Constants & Errors](./constants) - Forbidden keys, sensitive key patterns, error types
+- [Security Overview](../security/) - Security architecture and core features
+- [Production Checklist](../security/production-checklist) - Pre-launch security checks
+- [Loader API](./loader) - GetSecure method

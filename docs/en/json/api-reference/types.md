@@ -1,8 +1,8 @@
 ---
-sidebar_label: "Types"
-title: "Type Definitions - CyberGo JSON | API Reference"
-description: "CyberGo JSON core types: Result[T] generics, AccessResult access, BatchOperation, BatchResult, Schema, Stats, IterableValue, and CompiledPath precompiled paths."
-sidebar_position: 5
+sidebar_label: "Type Definitions"
+title: "Type Definitions - CyberGo JSON | Core Types Overview"
+description: "CyberGo JSON: Result[T], AccessResult, CompiledPath, BatchOperation/BatchResult, ValidationError/SyntaxError, HealthStatus, IterableValue, Encoder/Decoder."
+sidebar_position: 60
 ---
 
 # Type Definitions
@@ -106,7 +106,7 @@ if err != nil {
     panic(err)
 }
 // compiled can be reused in later operations
-val, err := processor.GetCompiled(data, compiled)
+val, err := processor.GetCompiled(jsonStr, compiled)
 ```
 
 :::tip Performance hint
@@ -118,15 +118,15 @@ For high-frequency repeated path access, pre-compiling the path significantly cu
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `Get` | `func (cp *CompiledPath) Get(data any) (any, error)` | Gets the value at the compiled path from already-parsed JSON data |
-| `GetFromRaw` | `func (cp *CompiledPath) GetFromRaw(raw []byte) (any, error)` | Gets the value from raw JSON bytes (deserializes internally, then navigates) |
 | `Exists` | `func (cp *CompiledPath) Exists(data any) bool` | Checks whether the path has a value in the parsed data |
 | `Len` | `func (cp *CompiledPath) Len() int` | Returns the number of path segments |
 | `IsEmpty` | `func (cp *CompiledPath) IsEmpty() bool` | Returns true when the path has no segments |
-| `Hash` | `func (cp *CompiledPath) Hash() uint64` | Returns the path hash precomputed at compile time (FNV-1a), usable for custom cache keys |
 | `Path` | `func (cp *CompiledPath) Path() string` | Returns the original path string from compile time |
 | `String` | `func (cp *CompiledPath) String() string` | String representation, equivalent to `Path` |
 | `Segments` | `func (cp *CompiledPath) Segments() []PathSegment` | Returns the parsed path segments (see the PathSegment section below) |
 | `Release` | `func (cp *CompiledPath) Release()` | Returns the instance to the object pool; do not use it afterwards |
+
+A path hash (FNV-1a) is also precomputed at compile time — it is an internal cache key only, with no public accessor.
 
 ### Usage Example
 
@@ -152,8 +152,8 @@ func main() {
 	}
 	defer cp.Release()
 
-	// Read straight from raw JSON bytes, no need to parse into a Go value first
-	val, err := cp.GetFromRaw([]byte(`{"user": {"name": "CyberGo"}}`))
+	// GetCompiled takes a raw JSON string, no need to parse into a Go value first
+	val, err := p.GetCompiled(`{"user": {"name": "CyberGo"}}`, cp)
 	if err != nil {
 		panic(err)
 	}
@@ -161,8 +161,8 @@ func main() {
 }
 ```
 
-:::tip Choosing between GetFromRaw and PreParse
-`GetFromRaw` fully deserializes the input bytes on every call — a good fit for one-off queries. When querying the same document repeatedly, use `PreParse` to get a `ParsedJSON` and call `Get`, or use `GetFromParsed` directly, to avoid repeated parsing.
+:::tip Choosing between GetCompiled and PreParse
+`GetCompiled` fully parses the input string on every call — a good fit for one-off queries. When querying the same document repeatedly, use `PreParse` to get a `ParsedJSON` and call `GetFromParsed`, or `Parse` first and then `cp.Get(data)`, to avoid repeated parsing.
 :::
 
 ---
@@ -322,7 +322,7 @@ fmt.Println("Type:", result.Type)
 | `AsBool()` | `(bool, error)` | Converts to a boolean |
 | `Ok()` | `bool` | Checks whether the path exists |
 
-::: warning Note
+:::warning Note
 The `AsInt64()`, `AsArray()`, and `AsObject()` methods have been removed. Use `GetTyped[T]` for those types.
 :::
 
@@ -431,18 +431,22 @@ schema := &json.Schema{
 ```
 
 ::: warning Two hard restrictions
-- `Type` supports only six values: `object`/`array`/`string`/`number`/`boolean`/`null` — JSON Schema's `integer` is **not supported** (integers also parse as `float64`; write `"number"`).
-- Assigning `MinLength`/`MaxLength`/`Minimum`/`Maximum`/`MinItems`/`MaxItems`/`ExclusiveMinimum`/`ExclusiveMaximum` through a struct literal **has no effect**; they must be enabled via the pointer fields of `NewSchemaWithConfig`. See [Schema Validation](./schema#creating-a-schema).
+- `Type` supports seven values: `object`/`array`/`string`/`number`/`integer`/`boolean`/`null`; `integer` follows JSON Schema semantics and accepts values that are mathematically integers (`1` and `1.0` pass, `1.5` fails with an `expected type integer` error). See [Schema Validation](./schema#schema-constraint-fields-overview).
+- Assigning `MinLength`/`MaxLength`/`Minimum`/`Maximum`/`MinItems`/`MaxItems`/`ExclusiveMinimum`/`ExclusiveMaximum` through a struct literal **has no effect**; they must be enabled via the pointer fields of `NewSchema` (deprecated alias: `NewSchemaWithConfig`). See [Schema Validation](./schema#creating-a-schema).
 :::
 
-#### Using NewSchemaWithConfig
+#### Using NewSchema
+
+Signature: `func NewSchema(cfg SchemaConfig) *Schema` — the **canonical constructor** for a configured Schema; length/range pointer constraints are enabled through it.
 
 ```go
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
-schema := json.NewSchemaWithConfig(cfg)
+schema := json.NewSchema(cfg)
 ```
+
+The older name `NewSchemaWithConfig(cfg)` is fully equivalent to `NewSchema` and **deprecated** (retained within v1); use `NewSchema(cfg)` in new code.
 
 #### Using DefaultSchema
 
@@ -503,7 +507,7 @@ Returns a SchemaConfig with defaults (`AdditionalProperties` points to `true`; t
 cfg := json.DefaultSchemaConfig()
 cfg.Type = "object"
 cfg.Required = []string{"name", "email"}
-schema := json.NewSchemaWithConfig(cfg)
+schema := json.NewSchema(cfg)
 ```
 
 ### Usage Example
@@ -517,7 +521,7 @@ import (
 )
 
 func main() {
-	// Length/range constraints enabled via NewSchemaWithConfig pointer fields
+	// Length/range constraints enabled via NewSchema pointer fields
 	minLen, maxLen := 1, 100
 	minAge, maxAge := 0.0, 150.0
 
@@ -527,7 +531,7 @@ func main() {
 	nameCfg.MaxLength = &maxLen
 
 	ageCfg := json.DefaultSchemaConfig()
-	ageCfg.Type = "number" // numbers always use "number" ("integer" unsupported)
+	ageCfg.Type = "number" // "number" accepts every number; use "integer" for integers only
 	ageCfg.Minimum = &minAge
 	ageCfg.Maximum = &maxAge
 
@@ -535,9 +539,9 @@ func main() {
 		Type:     "object",
 		Required: []string{"name", "email"},
 		Properties: map[string]*json.Schema{
-			"name":  json.NewSchemaWithConfig(nameCfg),
+			"name":  json.NewSchema(nameCfg),
 			"email": {Type: "string", Format: "email"},
-			"age":   json.NewSchemaWithConfig(ageCfg),
+			"age":   json.NewSchema(ageCfg),
 		},
 	}
 
@@ -775,41 +779,28 @@ type Stats struct {
 | `CacheTTL` | `time.Duration` | Current cache entry TTL |
 | `CacheEnabled` | `bool` | Whether the cache is enabled |
 | `IsClosed` | `bool` | Whether the processor has been `Close`d |
-| `MemoryEfficiency` | `float64` | Memory efficiency metric (0–1) |
+| `MemoryEfficiency` | `float64` | Memory efficiency metric (cache hit count / MB of cache memory; may exceed 1) |
 | `OperationCount` | `int64` | Cumulative operation count of the processor |
 | `ErrorCount` | `int64` | Cumulative error count of the processor |
 
 ---
 
-## SecurityLimits
+## Config Security Fields Overview
 
-`SecurityLimits` gathers the security-related limit fields of Config as a read-only snapshot view (fields map one to one).
+Security limits have no separate aggregate type — they are provided directly as fields of [`Config`](./config#the-config-struct):
 
-### Struct Definition
+| Config field | Type | Default | Description |
+|-------------|------|---------|-------------|
+| `MaxJSONSize` | `int64` | 100MB (`DefaultMaxJSONSize`) | Cap on input JSON size; exceeding it returns `ErrSizeLimit` |
+| `MaxPathDepth` | `int` | 50 (`DefaultMaxPathDepth`) | Cap on path segment count; exceeding it returns `ErrInvalidPath` |
+| `MaxBatchSize` | `int` | 2000 (`DefaultMaxBatchSize`) | Cap on operations per batch; exceeding it returns `ErrSizeLimit` |
+| `MaxNestingDepthSecurity` | `int` | 200 (`DefaultMaxNestingDepth`) | Cap on input nesting depth (for security scanning); exceeding it returns `ErrDepthLimit`; do not confuse with `Config.MaxDepth` (encoding/decoding nesting depth, default 100) |
+| `MaxSecurityValidationSize` | `int64` | 10MB (`DefaultMaxSecuritySize`) | Size threshold for security validation (threshold type) |
+| `MaxObjectKeys` | `int` | 100000 (`DefaultMaxObjectKeys`) | Maximum object key count; exceeding it returns `ErrSizeLimit` |
+| `MaxArrayElements` | `int` | 100000 (`DefaultMaxArrayElements`) | Maximum array element count; exceeding it returns `ErrSizeLimit` |
+| `FullSecurityScan` | `bool` | `false` (tiered scanning) | Whether to fully security-scan all input (set to `true` for full scanning) |
 
-```go
-type SecurityLimits struct {
-    MaxNestingDepth           int   `json:"max_nesting_depth"`
-    MaxSecurityValidationSize int64 `json:"max_security_validation_size"`
-    MaxObjectKeys             int   `json:"max_object_keys"`
-    MaxArrayElements          int   `json:"max_array_elements"`
-    MaxJSONSize               int64 `json:"max_json_size"`
-    MaxPathDepth              int   `json:"max_path_depth"`
-}
-```
-
-### Mapping to Config Fields
-
-| SecurityLimits field | Source Config field |
-|----------------------|---------------------|
-| `MaxNestingDepth` | `MaxNestingDepthSecurity` |
-| `MaxSecurityValidationSize` | `MaxSecurityValidationSize` |
-| `MaxObjectKeys` | `MaxObjectKeys` |
-| `MaxArrayElements` | `MaxArrayElements` |
-| `MaxJSONSize` | `MaxJSONSize` |
-| `MaxPathDepth` | `MaxPathDepth` |
-
-The library uses this type internally when gathering security limits (zero value means a nil Config); for field meanings and ranges see [Config](./config#the-config-struct).
+`Config.Validate` clamps out-of-range values back into the legal ranges (e.g. `MaxNestingDepthSecurity` clamped to 10–200, `MaxObjectKeys` to 100–100000); use `ValidateWithWarnings` to see the adjustments. For the full semantics of each field see [Config](./config#the-config-struct).
 
 ---
 

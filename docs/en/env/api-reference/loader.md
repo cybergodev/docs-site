@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Loader"
 title: "Loader API - CyberGo env | Loader Reference"
-description: "Loader API reference for CyberGo env: multi-format LoadFiles, type-safe GetString/GetInt/GetSlice reads, Set/Delete, Validate, and Close, all thread-safe."
+description: "CyberGo env Loader API reference: multi-format LoadFiles, type-safe GetString/GetInt/GetSlice, Set/Delete, Validate, serialization, Close lifecycle, thread-safe."
 sidebar_position: 3
 ---
 
@@ -9,7 +9,7 @@ sidebar_position: 3
 
 Complete method reference for the `Loader` type. Loader is the core type of the env library, providing environment variable loading, storage, and access functionality.
 
-:::tip
+:::tip Thread safety
 All methods of Loader are thread-safe and can be called concurrently from multiple goroutines.
 :::
 
@@ -85,7 +85,7 @@ Loads one or more configuration files.
 - `error` - load error
 
 **Behavior:**
-- Loads in order; later files overwrite earlier ones (controlled by `OverwriteExisting` config)
+- Loads files in order; by default (`OverwriteExisting=false`) the **first-loaded file wins** — same-name keys in later files are skipped; with `OverwriteExisting=true`, later files overwrite earlier ones (built into the Dev/Testing presets)
 - Auto-detects file format (.env, JSON, YAML)
 - Determines behavior for missing files based on `FailOnMissingFile` config
 - If `AutoApply` is true, automatically applies after loading
@@ -330,12 +330,12 @@ if secret != nil {
 You must call `Release()` or `Close()` after use to release resources.
 :::
 
-:::tip
+:::tip Defensive copies
 `GetSecure` returns a copy of the original value, independent from the parent Loader. The caller is responsible for calling `Release()` or `Close()`.
 :::
 
 :::tip
-See [SecureValue API](/en/env/api-reference/secure-value) for complete documentation.
+See [SecureValue API](./secure-value) for complete documentation.
 :::
 
 ---
@@ -354,7 +354,7 @@ portsInt := env.GetSliceFrom[int](loader, "PORTS")  // also supports int
 **Supported types:** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
 
 :::tip
-See [Package Functions - GetSliceFrom](/en/env/api-reference/functions#getslicefrom-t) for complete documentation.
+See [Package Functions - GetSliceFrom](./functions#getslicefrom-t) for complete documentation.
 :::
 
 ---
@@ -371,7 +371,7 @@ Checks whether a key exists and gets its value. Supports dot-path resolution.
 - `key` - key name (supports dot path)
 
 **Returns:**
-- `string` - value (leading/trailing whitespace removed)
+- `string` - value (returned as stored, no trimming: `.env` values are trimmed at parse time, JSON/YAML values may keep surrounding whitespace)
 - `bool` - whether it exists
 
 ```go
@@ -605,7 +605,7 @@ Returns the loader's configuration.
 - `Config` - configuration (should be treated as read-only)
 
 :::warning
-The returned Config should be treated as read-only. Modifying fields like `KeyPattern`, `AllowedKeys`, `ForbiddenKeys`, `RequiredKeys` may affect loader behavior. For a safe mutable copy, manually copy the required fields.
+`Config()` returns a **copy** of the configuration for read-only use: value fields are isolated copies, but pointer/interface fields such as `KeyPattern`, `FileSystem`, and `AuditHandler` (as well as slice fields like `AllowedKeys` and `RequiredKeys`) **share their underlying objects** with the running loader — mutating them affects loader behavior, so do not modify them. For a safe mutable copy, manually copy the required fields.
 :::
 
 ```go
@@ -713,7 +713,7 @@ defer loader.Close()
 // Use loader...
 ```
 
-:::warning
+:::warning Behavior after Close
 After closing, all operations return errors or zero values:
 - `LoadFiles` → `ErrClosed`
 - `GetString` → returns empty value
@@ -749,65 +749,65 @@ if loader.IsClosed() {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
-    "os"
-    "time"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // Create production configuration
-    cfg := env.ProductionConfig()
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
-    cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+	// Create production configuration
+	cfg := env.ProductionConfig()
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 
-    // Create loader
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	// Create loader
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // Load files
-    if err := loader.LoadFiles(".env", ".env.production"); err != nil {
-        if errors.Is(err, env.ErrFileNotFound) {
-            log.Fatal("Configuration file not found")
-        }
-        log.Fatal(err)
-    }
+	// Load files
+	if err := loader.LoadFiles(".env", ".env.production"); err != nil {
+		if errors.Is(err, env.ErrFileNotFound) {
+			log.Fatal("Configuration file not found")
+		}
+		log.Fatal(err)
+	}
 
-    // Validate required keys
-    if err := loader.Validate(); err != nil {
-        log.Fatal("Missing required configuration:", err)
-    }
+	// Validate required keys
+	if err := loader.Validate(); err != nil {
+		log.Fatal("Missing required configuration:", err)
+	}
 
-    // Read configuration
-    host := loader.GetString("DB_HOST")
-    port := loader.GetInt("DB_PORT", 5432)
-    debug := loader.GetBool("DEBUG", false)
-    timeout := loader.GetDuration("TIMEOUT", 30*time.Second)
+	// Read configuration
+	host := loader.GetString("DB_HOST")
+	port := loader.GetInt("DB_PORT", 5432)
+	debug := loader.GetBool("DEBUG", false)
+	timeout := loader.GetDuration("TIMEOUT", 30*time.Second)
 
-    fmt.Printf("Server: %s:%d\n", host, port)
-    fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
+	fmt.Printf("Server: %s:%d\n", host, port)
+	fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
 
-    // Sensitive data
-    secret := loader.GetSecure("API_KEY")
-    if secret != nil {
-        defer secret.Release()
-        fmt.Printf("API Key length: %d\n", secret.Length())
-    }
+	// Sensitive data
+	secret := loader.GetSecure("API_KEY")
+	if secret != nil {
+		defer secret.Release()
+		fmt.Printf("API Key length: %d\n", secret.Length())
+	}
 
-    // Apply to system environment
-    if err := loader.Apply(); err != nil {
-        log.Fatal(err)
-    }
+	// Apply to system environment
+	if err := loader.Apply(); err != nil {
+		log.Fatal(err)
+	}
 
-    // All variables
-    fmt.Printf("Loaded %d variables\n", loader.Len())
-    fmt.Printf("Load time: %v\n", loader.LoadTime())
+	// All variables
+	fmt.Printf("Loaded %d variables\n", loader.Len())
+	fmt.Printf("Load time: %v\n", loader.LoadTime())
 }
 ```
 
@@ -835,7 +835,7 @@ The loader records which keys **it** wrote to the process environment (`appliedK
 
 | Method | Description |
 |--------|-------------|
-| `Config()` | Read-only snapshot of the loader's configuration; mutating the return value does not affect the running loader |
+| `Config()` | Returns a copy of the configuration for read-only use; value fields are copied, but pointer/interface fields such as `KeyPattern`, `FileSystem`, and `AuditHandler` share their underlying objects, and mutating them affects the running loader |
 | `IsClosed()` | Whether the loader is closed (nil receiver returns true) |
 | `IsApplied()` | Whether variables have been applied to os.Environ |
 | `LoadTime()` | Time of the most recent load (zero value if never loaded) |
@@ -857,7 +857,7 @@ Between the `Stat()` size check and the actual read there is a theoretical repla
 
 ## Related Documentation
 
-- [Package Functions](/en/env/api-reference/functions) - Package-level convenience functions
-- [Config API](/en/env/api-reference/config) - Configuration options
-- [SecureValue API](/en/env/api-reference/secure-value) - Secure value handling
-- [Interfaces](/en/env/api-reference/interfaces) - All interface definitions
+- [Package Functions](./functions) - Package-level convenience functions
+- [Config API](./config) - Configuration options
+- [SecureValue API](./secure-value) - Secure value handling
+- [Interfaces](./interfaces) - All interface definitions

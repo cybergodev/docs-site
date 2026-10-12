@@ -1,7 +1,7 @@
 ---
 sidebar_label: "LoggerEntry"
 title: "LoggerEntry - CyberGo DD | Preset-Field Logger"
-description: "Complete API documentation for CyberGo DD's LoggerEntry type, used to create chained loggers with preset fields. Passing at least one field returns a new immutable Entry instance (passing none returns the original Entry), supporting field accumulation and composition, context-bound propagation, and level inheritance. Suitable for request-scoped log tracing and context correlation."
+description: "CyberGo DD LoggerEntry API: chained loggers with preset fields. Each call returns a new immutable Entry for request-scoped tracing and context correlation."
 sidebar_position: 3
 ---
 
@@ -83,9 +83,9 @@ All Logger logging methods are also available on the Entry; emitted logs automat
 
 | Method | Description |
 |--------|-------------|
-| `Print(args ...any)` | Output to the Writer (LevelInfo, subject to security filtering) |
+| `Print(args ...any)` | Output to the Writer (LevelInfo, includes caller info, subject to security filtering) |
 | `Println(args ...any)` | Same behavior as Print |
-| `Printf(format string, args ...any)` | Formatted output (LevelInfo, subject to security filtering) |
+| `Printf(format string, args ...any)` | Formatted output (LevelInfo, includes caller info, subject to security filtering) |
 
 ### Field Chaining
 

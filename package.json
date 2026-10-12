@@ -17,8 +17,8 @@
     "check:code": "tsx scripts/check-code-samples.ts",
     "audit": "tsx scripts/audit-locales.ts",
     "audit:api": "tsx scripts/audit-api.ts",
-    "lint:autocorrect": "autocorrect --lint",
-    "fix:autocorrect": "autocorrect --fix"
+    "lint:autocorrect": "tsx scripts/lint-autocorrect.ts",
+    "fix:autocorrect": "tsx scripts/lint-autocorrect.ts --fix"
   },
   "keywords": [
     "go",
@@ -29,17 +29,16 @@
   "author": "CyberGo",
   "license": "MIT",
   "devDependencies": {
+    "@huacnlee/autocorrect": "^2.16.2",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^26.1.1",
-    "js-yaml": "^5.2.1",
+    "@types/node": "^26.6.4",
+    "ignore": "^7.0.12",
+    "js-yaml": "^5.4.3",
     "minisearch": "^7.2.0",
-    "png-to-ico": "^3.0.1",
-    "prettier": "^3.4.2",
-    "sharp": "^0.34.5",
-    "tsx": "^4.23.1",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitepress": "^1.6.4",
-    "vitepress-plugin-mermaid": "^2.0.17",
-    "vue-tsc": "^3.3.7"
+    "vue-tsc": "^3.3.12"
   }
 }

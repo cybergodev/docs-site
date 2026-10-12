@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Configuration Files"
-title: "Configuration Files - CyberGo JSON | Load & Merge"
+title: "Configuration Files - CyberGo JSON | Read, Modify & Save"
 description: "CyberGo JSON config files: LoadFromFile, GetString/GetInt nested reads, Set/SetCreate writes, SaveToFile with PrettyConfig, MergeJSON config merging."
-sidebar_position: 3
+sidebar_position: 20
 ---
 
 # Configuration File Handling
@@ -141,7 +141,7 @@ func main() {
 // Metrics endpoint: /metrics
 ```
 
-:::tip Note
+:::tip
 `MergeJSON` is a deep recursive merge: object keys merge level by level, while arrays and scalar values are replaced outright. To merge multiple config sources, `MergeMany([]string{...})` merges them all in one call.
 :::
 
@@ -208,7 +208,7 @@ func main() {
 }
 ```
 
-:::tip Note
+:::tip
 `MergeMany` also reads `cfg.MergeMode` (merging left to right one by one). The full effect of union mode is in the previous section; both non-default modes take the "first argument as the base" perspective: intersection answers "what changed", difference answers "what is still unchanged".
 :::
 

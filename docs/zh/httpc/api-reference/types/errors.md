@@ -2,7 +2,7 @@
 sidebar_label: "错误类型"
 title: "错误类型 - CyberGo HTTPC | ClientError 详解"
 description: "HTTPC 错误类型 API 参考：ClientError 结构体八字段及 Code、IsRetryable、Unwrap 等方法、ErrorTypeNetwork 等十二种错误分类枚举、ErrNilConfig 等哨兵错误变量与 errors.Is/As 匹配示例。"
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # 错误类型
@@ -34,31 +34,35 @@ type ClientError struct {
 
 | 字段 | 类型 | 说明 | 典型值 |
 |------|------|------|--------|
-| Type | `ErrorType` | 错误分类，用于 switch 判断 | `ErrorTypeNetwork`、`ErrorTypeTimeout` |
-| Message | `string` | 错误描述信息 | `"network operation failed"` |
-| Cause | `error` | 底层错误，可通过 `Unwrap()` 获取 | `*net.OpError`、`*net.DNSError` |
-| `URL` | `string` | 请求 URL（凭据已脱敏） | `"https://example.com/path"` |
-| `Method` | `string` | HTTP 方法 | `"GET"`、`"POST"` |
-| `Attempts` | `int` | 已尝试次数（含首次请求） | `1`（首次失败）、`4`（重试 3 次后） |
-| `StatusCode` | `int` | HTTP 状态码（非 HTTP 错误时为 0） | `0`（网络错误）、`503`（服务端错误） |
-| Host | `string` | 请求主机名（用于断路器） | `"example.com"` |
+| `ClientError.Type` | `ErrorType` | 错误分类，用于 switch 判断 | `ErrorTypeNetwork`、`ErrorTypeTimeout` |
+| `ClientError.Message` | `string` | 错误描述信息 | `"network operation failed"` |
+| `ClientError.Cause` | `error` | 底层错误，可通过 `Unwrap()` 获取 | `*net.OpError`、`*net.DNSError` |
+| `ClientError.URL` | `string` | 请求 URL（凭据已脱敏） | `"https://example.com/path"` |
+| `ClientError.Method` | `string` | HTTP 方法 | `"GET"`、`"POST"` |
+| `ClientError.Attempts` | `int` | 已尝试次数（含首次请求） | `1`（首次失败）、`4`（重试 3 次后） |
+| `ClientError.StatusCode` | `int` | HTTP 状态码（非 HTTP 错误时为 0） | `0`（网络错误）、`503`（服务端错误） |
+| `ClientError.Host` | `string` | 请求主机名（用于断路器） | `"example.com"` |
+
+其中 `Host` 供断路器按主机维度统计失败，`Message` 适合直接进日志，`Cause` 保留底层错误供 `errors.As` 深挖。
 
 ### 方法
 
-| 方法 | 返回值 | 说明 |
-|------|--------|------|
-| `Error()` | `string` | 格式化为 `"METHOD url: message: cause (attempt N)"` |
-| `Code()` | `string` | 返回短错误码，如 `"NETWORK_ERROR"`、`"TIMEOUT"` |
-| `IsRetryable()` | `bool` | 判断该错误是否值得重试 |
-| `Unwrap()` | `error` | 返回 Cause，支持 `errors.Is`/`errors.As` 遍历错误链 |
-| `WithType(t ErrorType)` | `*ClientError` | 返回设置错误类型的**副本**（不修改原始） |
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `func (e *ClientError) Error() string` | 格式化为 `"METHOD url: message: cause (attempt N)"` |
+| `Code` | `func (e *ClientError) Code() string` | 返回短错误码，如 `"NETWORK_ERROR"`、`"TIMEOUT"` |
+| `IsRetryable` | `func (e *ClientError) IsRetryable() bool` | 判断该错误是否值得重试 |
+| `Unwrap` | `func (e *ClientError) Unwrap() error` | 返回 `ClientError.Cause`，支持 `errors.Is`/`errors.As` 遍历错误链 |
+| `WithType` | `func (e *ClientError) WithType(t ErrorType) *ClientError` | 返回设置错误类型的**副本**（不修改原始） |
+
+五个方法均以 `*ClientError` 指针接收者定义：`ClientError.Error` 实现 `error` 接口；`ClientError.Code` 与 `ClientError.IsRetryable` 供日志分类与重试决策使用；`ClientError.Unwrap` 暴露底层原因；`ClientError.WithType` 返回改写类型后的副本，不修改原始错误。
 
 ### Error() 格式化
 
 `Error()` 方法将错误格式化为可读字符串：
 
 - 同时有 URL 和 Method：`"GET https://example.com: network operation failed: dial tcp ... (attempt 1)"`
-- 仅有 Message：直接输出 Message
+- 仅有 `Message`：直接输出 `Message`
 - 有 Cause：追加 `": " + Cause.Error()`
 - 有 Attempts（>0）：追加 `" (attempt N)"`
 
@@ -237,6 +241,16 @@ if err != nil {
 | `ErrFileExists` | `"file already exists"` | 文件已存在且 Overwrite=false 且 ResumeDownload=false |
 | `ErrResponseBodyEmpty` | `"response body is empty"` | 对空响应体调用 Unmarshal 等解析方法 |
 | `ErrResponseBodyTooLarge` | `"response body too large"` | 响应体超过 MaxResponseBodySize |
+| `ErrInvalidMaxRedirects` | `"invalid max redirects"` | [`WithMaxRedirects`](../core/options#withmaxredirects) 传入负数或超过 50 |
+| `ErrInvalidCredentials` | `"invalid credentials"` | [`WithBasicAuth`](../core/options#withbasicauth)/[`WithBearerToken`](../core/options#withbearertoken) 凭据为空、超长或含非法字符 |
+| `ErrStreamBodyRequiresDownload` | `"WithStreamBody requires Download; standard request methods buffer the response body"` | [`WithStreamBody`](../core/options#withstreambody)(true) 与标准请求方法（Get/Post/…/Request）搭配——流式仅在 `Download` 路径生效，其他路径拒绝请求而非静默返回空响应体 |
+
+### 下载与代理错误
+
+| 变量 | 错误消息 | 触发条件 |
+|------|----------|----------|
+| `ErrDownloadInProgress` | `"download already in progress for this file path"` | 同一进程内已有针对同一文件路径的下载正在进行——两个并发下载写同一目标会互相破坏，第二个调用方立即失败而非阻塞；首个下载结束后可重试。互斥锁仅在进程内生效，跨进程协调由调用方负责 |
+| `ErrProxyConnectionFailed` | `"proxy connection failed"` | 配置的代理无法拨号（连接失败、地址非法、被拒绝等）。与底层原因一同包装进错误链，可用 `errors.Is(err, httpc.ErrProxyConnectionFailed)` 检测；重试引擎也用它判断是否换下一个代理重试 |
 
 ### 客户端错误
 

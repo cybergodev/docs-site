@@ -28,20 +28,21 @@ DD 的安全体系由三个独立但互补的组件构成，覆盖从数据脱�
        │         │
        │         └─→ AuditLogger ──→ 异步记录脱敏事件（哪条日志被过滤了什么）
        │
-       ├─→ 格式化输出
-       │
-       └─→ IntegritySigner ──→ HMAC 签名（防篡改）
+       └─→ 格式化输出
+
+  AuditLogger（可选 IntegritySigner）──→ HMAC 签名审计事件（防篡改）
 ```
 
 - **SensitiveDataFilter** 在日志写入**前**拦截敏感数据
 - **AuditLogger** 异步记录安全事件，不影响主日志性能
-- **IntegritySigner** 在日志写入**后**签名，保证日志链完整性
+- **IntegritySigner** **不在普通日志的写入路径上**：它仅对**审计事件**签名（通过 `AuditConfig.IntegritySigner` 接入），或由用户手动调用 `Sign`/`SignFields` 签名任意内容
 
 ## 快速选择
 
 | 需求 | 推荐组件 |
 |------|----------|
 | 防止密码/密钥泄露 | [SensitiveDataFilter](./security) |
+| 防止日志洪泛（DoS） | `SecurityConfig.RateLimitConfig`，见 [安全过滤](./security) |
 | 记录谁在何时做了什么 | [AuditLogger](./audit) |
 | 确保日志未被篡改 | [IntegritySigner](./integrity) |
 | 满足 HIPAA/PCI-DSS 合规 | 三者配合使用，见 [行业合规配置](../../guides/security/compliance) |

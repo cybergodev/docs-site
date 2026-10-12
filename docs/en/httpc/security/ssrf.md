@@ -2,7 +2,7 @@
 sidebar_label: "SSRF Protection"
 title: "SSRF Protection - CyberGo HTTPC | Private IPs & Metadata"
 description: "HTTPC SSRF protection: blocking IPv4/IPv6 private IPs and cloud metadata, SSRFExemptCIDRs exemptions, DNS rebinding defense, and RedirectWhitelist control."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # SSRF Protection
@@ -373,6 +373,10 @@ With URL validation off (not recommended; outside `TestingConfig` there is almos
 ### Legacy IP Literals Are Intercepted Before DNS Resolution
 
 Notations like `2130706433`, `0x7f000001`, and `0177.0.0.1` are rejected by `net.ParseIP`, yet may be accepted by the `getaddrinfo` resolver in cgo builds and mapped to private IPs. HTTPC recognizes and intercepts these forms at the pre-flight layer with `looksLikeLegacyIPLiteral` (detection rules: `0x` prefix, dot-free all-digits, and leading-zero octal or hexadecimal segments in multi-dot forms), independent of platform resolver behavior.
+
+### 198.18.0.0/15 Is Deliberately Allowed
+
+The RFC 2544 benchmarking range `198.18.0.0/15` is reserved address space, yet it is **deliberately allowed** rather than blocked: Clash/Surge-style proxy tools allocate their fake-IP pool in this range, and blocking it would break normal requests in such proxy environments (see the comment on `isPrivateOrReservedIP` in `internal/validation/netutil.go` and the corresponding cases in `netutil_test`). If your environment does not use fake-IP proxies and needs this range restricted, you must validate destination IPs yourself at the caller or in a custom middleware layer.
 
 ## Best Practices
 

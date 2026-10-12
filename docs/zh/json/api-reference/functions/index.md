@@ -1,8 +1,8 @@
 ---
 sidebar_label: "概述"
-title: "包函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 包级函数：Get/GetString/GetInt 路径查询、Set/Delete/MergeJSON 修改、Marshal/Unmarshal 编解码与 ParseJSONL/ProcessBatch 批量处理。"
-sidebar_position: 1
+title: "包函数 - CyberGo JSON | 完整函数清单"
+description: "CyberGo JSON 是 json 包级函数的 Go 总览页，按查询、修改、删除、编码、解析、批量与文件迭代等分类列出 Get/Set/Marshal/ProcessBatch 等函数清单，并提供快速导航表帮助开发者按用途定位目标函数。"
+sidebar_position: 10
 ---
 
 # 包函数
@@ -31,7 +31,7 @@ json 包提供的顶级函数，无需创建 Processor 实例即可直接调用�
 
 序列化、反序列化、流式编码解码函数。
 
-**主要函数**：[`Marshal`](./output#marshal) · [`Unmarshal`](./output#unmarshal) · [`MarshalIndent`](./output#marshalindent) · [`Encode`](./output#encode) · [`EncodePretty`](./output#encodepretty) · [`EncodeWithConfig`](./output#encodewithconfig) · [`Prettify`](./output#prettify) · [`Compact`](./output#compact) · [`CompactString`](./output#compactstring) · [`Indent`](./output#indent) · [`HTMLEscape`](./output#htmlescape) · [`NewEncoder`](../types#encoder-json-编码器) · [`NewDecoder`](../types#decoder-json-解码器) · [`EncodeBatch`](../processor/output#encodebatch) · [`EncodeFields`](../processor/output#encodefields) · [`EncodeStream`](../processor/output#encodestream) · [`SaveToWriter`](./file-io#savetowriter)
+**主要函数**：[`Marshal`](./output#marshal) · [`Unmarshal`](./output#unmarshal) · [`MarshalIndent`](./output#marshalindent) · [`Encode`](./output#encode) · [`EncodePretty`](./output#encodepretty) · [`EncodeWithConfig`](./output#encodewithconfig)（已废弃） · [`Prettify`](./output#prettify) · [`Compact`](./output#compact) · [`CompactString`](./output#compactstring) · [`Indent`](./output#indent) · [`HTMLEscape`](./output#htmlescape) · [`NewEncoder`](../types#encoder-json-编码器) · [`NewDecoder`](../types#decoder-json-解码器) · [`EncodeBatch`](../processor/output#encodebatch) · [`EncodeFields`](../processor/output#encodefields) · [`EncodeStream`](../processor/output#encodestream) · [`SaveToWriter`](./file-io#savetowriter)
 
 ## [解析验证](./parse)
 
@@ -73,7 +73,7 @@ JSONL（JSON Lines）解析、流式读取、转换和写入函数。
 
 类型转换、比较、缓存管理、错误处理等工具函数。
 
-**主要函数**：[`CompareJSON`](../helpers#comparejson) · [`MergeJSON`](../helpers#mergejson) · [`MergeMany`](../helpers#mergemany) · [`ClearCache`](../helpers#clearcache-包级函数) · [`GetStats`](../helpers#getstats-包级函数) · [`GetHealthStatus`](../helpers#gethealthstatus-包级函数) · [`SetGlobalProcessor`](../helpers#setglobalprocessor) · [`ShutdownGlobalProcessor`](../helpers#shutdownglobalprocessor) · [`SafeError`](../helpers#safeerror) · [`RedactedPath`](../helpers#redactedpath) · [`WarmupCache`](../helpers#warmupcache)
+**主要函数**：[`CompareJSON`](../helpers#comparejson) · [`MergeJSON`](../helpers#mergejson) · [`MergeMany`](../helpers#mergemany) · [`ClearCache`](../helpers#clearcache-包级函数) · [`GetStats`](../helpers#getstats-包级函数) · [`GetHealthStatus`](../helpers#gethealthstatus-包级函数) · [`SetGlobalProcessor`](../helpers#全局处理器管理) · [`ShutdownGlobalProcessor`](../helpers#全局处理器管理) · [`SafeError`](../helpers#safeerror) · [`RedactedPath`](../helpers#redactedpath) · [`WarmupCache`](../helpers#warmupcache)
 
 ---
 

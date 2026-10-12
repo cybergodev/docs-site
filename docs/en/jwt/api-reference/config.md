@@ -16,12 +16,14 @@ type Config struct {
     VerificationKey any
     SigningMethod   SigningMethod
 
-    AccessTokenTTL    time.Duration
-    RefreshTokenTTL   time.Duration
-    Issuer            string
-    ExpectedAudience  string
-    RequireExpiration bool
-    ClockSkew         time.Duration
+    AccessTokenTTL        time.Duration
+    RefreshTokenTTL       time.Duration
+    Issuer                string
+    ExpectedAudience      string
+    RequireExpiration     bool
+    RejectRefreshAsAccess bool
+    RotateRefreshTokens   bool
+    ClockSkew             time.Duration
 
     Blacklist BlacklistConfig
 
@@ -57,6 +59,8 @@ Unified configuration for the JWT Processor. Zero-value fields are automatically
 | `Issuer` | `string` | `"jwt-service"` | Issuer |
 | `ExpectedAudience` | `string` | — | Expected audience (optional) |
 | `RequireExpiration` | `bool` | `false` | When `true`, rejects tokens lacking an `exp` claim during validation (returns [`ErrExpirationRequired`](./errors#sentinel-errors)) |
+| `RejectRefreshAsAccess` | `bool` | `false` | (New in v1.2.3) When `true`, [`Parse`](./processor#parse) / [`ParseInto`](./processor#parseinto) reject `token_type=refresh` tokens being used as access credentials (returns [`ErrTokenTypeMismatch`](./errors#sentinel-errors)); `Refresh` / `RefreshInto` are never affected |
+| `RotateRefreshTokens` | `bool` | `false` | (New in v1.2.3) When `true`, `Refresh` / `RefreshInto` revoke the supplied refresh token (by jti) before minting the new token, giving one-time-use semantics (fail-closed: revocation failure returns [`ErrRefreshRotationFailed`](./errors#sentinel-errors); a missing jti returns `ErrTokenMissingID`). See [Token Refresh & Rotation](../guides/token-refresh#one-time-rotation) |
 | `ClockSkew` | `time.Duration` | `0` | Clock skew leeway applied to exp/nbf during validation (tolerates clock drift between issuer and validator); negative values are rejected by `Validate()` |
 | `Blacklist` | `BlacklistConfig` | — | Blacklist configuration |
 | `EnableRateLimit` | `bool` | `false` | Enable rate limiting |

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Error Handling"
-title: "Error Handling - CyberGo JSON | Best Practices"
-description: "CyberGo JSON error handling: JsonsError type checks, errors.Is/As matching, SafeError/RedactedPath redaction, Op/Path failure location, default-value fallbacks."
-sidebar_position: 2
+title: "Error Handling - CyberGo JSON | Error Types and Checks"
+description: "CyberGo JSON offers errors.Is checks for ErrPathNotFound, ErrTypeMismatch, and JsonsError Op/Path context to classify failures and apply safe fallbacks."
+sidebar_position: 10
 ---
 
 # Error Handling

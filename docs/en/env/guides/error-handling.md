@@ -1,9 +1,8 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo env | Sentinel Errors and Recovery"
-description: "Error handling guide for CyberGo env: errors.Is for 16 sentinel errors, errors.As for structured context, Unwrap tracing, and recovery strategies."
+description: "CyberGo env error handling guide: errors.Is for 16 sentinel errors, errors.As context from ParseError and SecurityError, Unwrap tracing, recovery strategies."
 sidebar_position: 5
-sidebar_icon: "🔧"
 ---
 
 # Error Handling
@@ -131,7 +130,7 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 }
 ```
 
-:::tip
+:::tip Solution
 Implement the `Validator` interface (which includes ValidateKey, ValidateValue, and ValidateRequired methods) instead of just `KeyValidator`.
 :::
 
@@ -263,7 +262,7 @@ JSON parse error:
 
 ```go
 type JSONError struct {
-    Path    string  // File path
+    Path    string  // Path within the JSON document (error location)
     Message string  // Error message
     Err     error   // Original error
 }
@@ -284,7 +283,7 @@ YAML parse error:
 
 ```go
 type YAMLError struct {
-    Path    string  // File path
+    Path    string  // Path within the YAML document (error location)
     Line    int     // Line number
     Column  int     // Column number
     Message string  // Error message
@@ -462,12 +461,17 @@ func loadConfig() *Config {
 }
 ```
 
+:::tip ProductionConfig audit behavior
+`ProductionConfig` enables auditing by default (`AuditEnabled=true`); when no `AuditHandler` is configured, audit logs are written to stderr with an `[AUDIT]` prefix. To persist them to a file, set `cfg.AuditHandler` explicitly (e.g., `env.NewJSONAuditHandler(file)`).
+:::
+
 ### Retry Pattern
 
 ```go
 func loadWithRetry(filenames []string, maxRetries int) error {
     cfg := env.DefaultConfig()
     cfg.Filenames = nil
+    cfg.FailOnMissingFile = true // missing files return ErrFileNotFound instead of being silently skipped
     loader, err := env.New(cfg)
     if err != nil {
         return err
@@ -492,82 +496,84 @@ func loadWithRetry(filenames []string, maxRetries int) error {
 }
 ```
 
+Trigger condition: by default (`FailOnMissingFile=false`), `LoadFiles` **silently skips** missing files — the `ErrFileNotFound` branch above is only reachable when `FailOnMissingFile=true` (the `ProductionConfig` preset enables it by default).
+
 ## Complete Example
 
 ```go
 package main
 
 import (
-    "errors"
-    "log"
+	"errors"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    cfg := env.ProductionConfig()
-    cfg.Filenames = nil
-    cfg.FailOnMissingFile = true
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	cfg := env.ProductionConfig()
+	cfg.Filenames = nil
+	cfg.FailOnMissingFile = true
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        handleLoadError(err)
-    }
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		handleLoadError(err)
+	}
 
-    if err := loader.Validate(); err != nil {
-        handleValidationError(err)
-    }
+	if err := loader.Validate(); err != nil {
+		handleValidationError(err)
+	}
 
-    log.Println("Configuration loaded successfully")
+	log.Println("Configuration loaded successfully")
 }
 
 func handleLoadError(err error) {
-    switch {
-    case errors.Is(err, env.ErrFileNotFound):
-        log.Fatal("Configuration file not found")
+	switch {
+	case errors.Is(err, env.ErrFileNotFound):
+		log.Fatal("Configuration file not found")
 
-    case errors.Is(err, env.ErrFileTooLarge):
-        var fileErr *env.FileError
-        errors.As(err, &fileErr)
-        log.Fatalf("File too large: %s (%d bytes)", fileErr.Path, fileErr.Size)
+	case errors.Is(err, env.ErrFileTooLarge):
+		var fileErr *env.FileError
+		errors.As(err, &fileErr)
+		log.Fatalf("File too large: %s (%d bytes)", fileErr.Path, fileErr.Size)
 
-    case errors.Is(err, env.ErrSecurityViolation):
-        log.Fatal("Forbidden key detected")
-    }
+	case errors.Is(err, env.ErrSecurityViolation):
+		log.Fatal("Forbidden key detected")
+	}
 
-    // Structured errors
-    var parseErr *env.ParseError
-    if errors.As(err, &parseErr) {
-        log.Fatalf("Parse error %s:%d - %v",
-            parseErr.File, parseErr.Line, parseErr.Err)
-    }
+	// Structured errors
+	var parseErr *env.ParseError
+	if errors.As(err, &parseErr) {
+		log.Fatalf("Parse error %s:%d - %v",
+			parseErr.File, parseErr.Line, parseErr.Err)
+	}
 
-    var secErr *env.SecurityError
-    if errors.As(err, &secErr) {
-        log.Fatalf("Security error: %s - %s", secErr.Action, secErr.Reason)
-    }
+	var secErr *env.SecurityError
+	if errors.As(err, &secErr) {
+		log.Fatalf("Security error: %s - %s", secErr.Action, secErr.Reason)
+	}
 
-    log.Fatalf("Load failed: %v", err)
+	log.Fatalf("Load failed: %v", err)
 }
 
 func handleValidationError(err error) {
-    var valErr *env.ValidationError
-    if errors.As(err, &valErr) {
-        if valErr.Rule == "required" {
-            // Missing required keys: valErr.Message contains the list of missing keys
-            log.Fatalf("Missing required keys: %s", valErr.Message)
-        }
-        log.Fatalf("Validation failed: %s - %s", valErr.Field, valErr.Message)
-    }
+	var valErr *env.ValidationError
+	if errors.As(err, &valErr) {
+		if valErr.Rule == "required" {
+			// Missing required keys: valErr.Message contains the list of missing keys
+			log.Fatalf("Missing required keys: %s", valErr.Message)
+		}
+		log.Fatalf("Validation failed: %s - %s", valErr.Field, valErr.Message)
+	}
 
-    log.Fatalf("Validation failed: %v", err)
+	log.Fatalf("Validation failed: %v", err)
 }
 ```
 
@@ -595,7 +601,7 @@ All structured error types can be unwrapped with `errors.As` for context:
 | `ExpansionDepthKind` | Recursion depth exceeded or cycle detected |
 | `ExpansionRequiredKind` | Variable referenced by `${VAR:?message}` is unset |
 
-### Additional sentinel errors
+### Additional Sentinel Errors
 
 Beyond the common items listed in the [sentinel errors](#sentinel-errors) section:
 
@@ -607,12 +613,12 @@ Beyond the common items listed in the [sentinel errors](#sentinel-errors) sectio
 | `ErrAlreadyInitialized` | Calling `Load()` again after the default loader is initialized |
 | `ErrDuplicateKey` | Reserved: duplicate keys are currently silently skipped when `OverwriteExisting=false`; no code path returns it yet |
 
-### Helper predicates
+### Helper Predicates
 
 `IsMarshalError(err)` uses `errors.As` to test whether an error is a `*MarshalError` — no manual assertion needed.
 
 ## Related Documentation
 
-- [Constants & Errors](/en/env/api-reference/constants) - Complete error list
-- [Config API](/en/env/api-reference/config) - Configuration limit settings
-- [Security Overview](/en/env/security/) - Security error handling
+- [Constants & Errors](../api-reference/constants) - Complete error list
+- [Config API](../api-reference/config) - Configuration limit settings
+- [Security Overview](../security/) - Security error handling

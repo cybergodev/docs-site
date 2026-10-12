@@ -1,7 +1,7 @@
 ---
 sidebar_label: "包函数"
 title: "包函数 - CyberGo html | 用法、参数与示例"
-description: "CyberGo html 包级便捷函数参考：Extract、ExtractText、ExtractToMarkdown、ExtractToJSON 与 ExtractBatch 等签名详解，内部经 sync.Pool 复用 Processor 并禁用缓存，适合一次性低频调用场景。"
+description: "CyberGo html 包级便捷函数参考：详解 Extract、ExtractText、ExtractToMarkdown、ExtractToJSON 与 ExtractBatch 等函数签名，均有 WithContext 上下文变体；内部经 sync.Pool 池化复用 Processor 并禁用缓存，归还时清空统计与审计，传入自定义 Config 则改用临时实例，适合一次性低频调用场景。"
 sidebar_position: 1
 ---
 
@@ -26,7 +26,7 @@ sidebar_position: 1
 
 | 传入参数 | 行为 | 是否走池化 |
 |----------|------|:----------:|
-| 不传 | 使用 `DefaultConfig()` | 是（`pooled=true`） |
+| 不传 | 使用 `DefaultConfig` 默认配置 | 是（`pooled=true`） |
 | 传 1 个 | 使用该 `Config` | **否**（`pooled=false`） |
 | 传 ≥2 个 | 返回 `ErrMultipleConfigs` | — |
 
@@ -95,13 +95,13 @@ func main() {
 		log.Fatalf("提取失败: %v", err)
 	}
 
-	fmt.Println("标题:", result.Title)
-	fmt.Println("字数:", result.WordCount)
-	fmt.Println("链接数:", len(result.Links))
+	fmt.Println("标题：", result.Title)
+	fmt.Println("字数：", result.WordCount)
+	fmt.Println("链接数：", len(result.Links))
 	// 输出：
-	// 标题: 示例页面
-	// 字数: 4
-	// 链接数: 1
+	// 标题：示例页面
+	// 字数：9
+	// 链接数：1
 }
 ```
 
@@ -134,7 +134,7 @@ func ExtractText(htmlBytes []byte, cfg ...Config) (string, error)
 
 ### ExtractTextFromFile
 
-从文件提取纯文本。
+`ExtractTextFromFile` 是 `ExtractText` 的文件版本，从磁盘上的 HTML 文件提取纯文本；文件访问错误同样包裹为 `*FileError`（`ErrFileNotFound`、`ErrInvalidFilePath` 或路径遍历拒绝）。
 
 ```go
 func ExtractTextFromFile(filePath string, cfg ...Config) (string, error)
@@ -212,7 +212,7 @@ func GroupLinksByType(links []LinkResource) map[string][]LinkResource
 | 缓存 | **无**（池化配置 `MaxCacheEntries=0`） | 有（命中返回深拷贝） |
 | 统计 | 每次重置（归还时 `ResetStatistics`） | 累积，可随时 `GetStatistics` |
 | 审计日志 | 每次清空（归还时 `ClearAuditLog`） | 累积，可 `GetAuditLog` 查询 |
-| 自定义 `Config` | 每次创建+销毁临时 Processor | 复用同一实例 |
+| 自定义 `Config` | 每次创建 + 销毁临时 Processor | 复用同一实例 |
 | 生命周期 | 自动管理（池/临时实例） | 需手动 `defer Close()` |
 | 适用场景 | 一次性调用、脚本、低频请求 | 高频调用、长驻服务、需缓存 |
 

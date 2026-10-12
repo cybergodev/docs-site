@@ -1,7 +1,7 @@
 ---
 sidebar_label: "结构化日志"
 title: "结构化日志 - CyberGo DD | 字段与链式调用"
-description: "CyberGo DD 结构化日志使用指南，详细介绍 20 种类型安全的字段构造器、Field 链式传递模式、LoggerEntry 不可变设计原理、字段命名规范与验证规则，以及结构化日志的最佳实践和常见使用模式，帮助开发者在项目中有效使用高性能的结构化日志记录方案。"
+description: "CyberGo DD 结构化日志使用指南：20 种类型安全的字段构造器、Field 链式传递模式、LoggerEntry 不可变设计、字段命名规范与验证规则及最佳实践，在项目中高效使用结构化日志记录。"
 sidebar_position: 3
 ---
 
@@ -139,9 +139,9 @@ cfg := dd.DefaultFieldValidationConfig()
 ### 在配置中启用
 
 ```go
-logger, err := dd.New(dd.Config{
-    FieldValidation: dd.StrictSnakeCaseConfig(),
-})
+cfg := dd.DefaultConfig()
+cfg.FieldValidation = dd.StrictSnakeCaseConfig()
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -234,11 +234,11 @@ reqLog := logger.WithFields(dd.String("request_id", reqID))
 ### 文本格式（默认）
 
 ```text
-[2026-04-16T21:16:48+08:00   INFO] logger.go:1567 请求完成 method=GET status=200 elapsed=150ms
+[2026-04-16T21:16:48+08:00   INFO] main.go:42 请求完成 method=GET status=200 elapsed=150ms
 ```
 
 :::info caller 字段说明
-`caller` 字段记录调用位置；通过 `*Logger` 方法（如 `logger.InfoWith(...)`）调用时，caller 解析到库内调用帧（如 `logger.go:1567`）；通过包级函数（如 `dd.InfoWith`）调用时则解析到用户代码。
+`caller` 字段记录**用户代码的调用位置**。无论通过 `*Logger` 方法（如 `logger.InfoWith(...)`）还是包级函数（如 `dd.InfoWith`）调用，caller 都解析到用户调用点（示例中的 `main.go:42`）；捕获逻辑使用固定跳帧数并主动拒绝 dd 内部帧，因此不会报告 `logger.go` 之类的库内位置。
 :::
 
 ### JSON 格式
@@ -256,7 +256,7 @@ logger.InfoWith("请求完成",
 ```
 
 ```json
-{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"logger.go:1567","message":"请求完成","fields":{"method":"GET","status":200}}
+{"timestamp":"2026-04-16T21:16:48+08:00","level":"INFO","caller":"main.go:42","message":"请求完成","fields":{"method":"GET","status":200}}
 ```
 
 ## 下一步

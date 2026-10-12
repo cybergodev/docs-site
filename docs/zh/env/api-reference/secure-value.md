@@ -66,22 +66,21 @@ defer secret.Release()  // 或 Close()
 func NewSecureValueStrict(value string) (*SecureValue, error)
 ```
 
-创建安全值，如果内存锁定失败则返回错误。
+创建安全值，如果已启用内存锁定且锁定失败则返回错误。
 
 **参数：**
 - `value` - 要保护的字符串值
 
 **返回：**
-- `*SecureValue` - 安全值对象
-- `error` - 内存锁定错误（仅严格模式）
+- `*SecureValue` - 安全值对象（即使返回错误，对象仍有效可用，只是数据未被锁定）
+- `error` - 内存锁定错误（仅当 `SetMemoryLockEnabled(true)` 后锁定失败时返回，与 `SetMemoryLockStrict` 开关无关）
 
 ```go
 env.SetMemoryLockEnabled(true)
-env.SetMemoryLockStrict(true)
 
 secret, err := env.NewSecureValueStrict("my-secret")
 if err != nil {
-    // 内存锁定失败
+    // 内存锁定失败（secret 仍有效，只是未被锁定）
     log.Printf("Warning: %v", err)
 }
 if secret != nil {
@@ -262,7 +261,7 @@ type Response struct {
 
 resp := Response{APIKey: env.NewSecureValue("sk-1234567890")}
 data, _ := json.Marshal(resp)
-// {"api_key":"[SECURE:16 bytes]"}
+// {"api_key":"[SECURE:13 bytes]"}
 // 明文不会出现在输出中
 ```
 
@@ -332,8 +331,8 @@ func (sv *SecureValue) Release()
 
 **行为：**
 - 安全清零内部数据
-- 清除 GC 终结器
-- 归还到对象池供重用
+- 标记为已关闭，归还到对象池供重用
+- **不**清除 GC 终结器：终结器在对象整个生命周期保持设置；池化对象被 runtime 逐出后即使触发 finalize，也因已处于 closed 状态而为 no-op
 
 ```go
 secret := env.GetSecure("KEY")
@@ -426,10 +425,10 @@ package main
 import "github.com/cybergodev/env"
 
 func main() {
-    // 应用启动时启用
-    env.SetMemoryLockEnabled(true)
+	// 应用启动时启用
+	env.SetMemoryLockEnabled(true)
 
-    // 后续所有 SecureValue 都会尝试锁定
+	// 后续所有 SecureValue 都会尝试锁定
 }
 ```
 
@@ -460,7 +459,7 @@ if env.IsMemoryLockEnabled() {
 func SetMemoryLockStrict(strict bool)
 ```
 
-设置严格模式。启用后，`NewSecureValueStrict` 在锁定失败时返回错误。
+设置严格模式。启用后，任何内存锁定失败都会向标准日志（stderr）输出安全告警（无论经哪条构造路径）；非严格构造器（`NewSecureValue` 等）无法返回错误，这条告警是其唯一的失败信号。`NewSecureValueStrict` 的错误返回不受此开关影响（见上文「创建」一节）。
 
 **参数：**
 - `strict` - 是否启用严格模式
@@ -469,10 +468,9 @@ func SetMemoryLockStrict(strict bool)
 env.SetMemoryLockEnabled(true)
 env.SetMemoryLockStrict(true)
 
-secret, err := env.NewSecureValueStrict("sensitive-data")
-if err != nil {
-    // 锁定失败
-}
+// NewSecureValue 无法返回错误；若锁定失败，输出：
+// env: memory lock failed in strict mode: ...
+secret := env.NewSecureValue("sensitive-data")
 ```
 
 ---
@@ -510,8 +508,12 @@ func IsMemoryLockSupported() bool
 | Linux | ✅ |
 | macOS | ✅ |
 | Windows | ✅ |
-| FreeBSD | ✅ |
+| FreeBSD 及其他 BSD、Solaris | ❌（no-op 降级） |
 | wasm | ❌ |
+
+::: tip 平台降级
+内存锁定仅在 Linux、macOS、Windows 上实现；其余平台（FreeBSD 及其他 BSD、Solaris、wasm 等）为 no-op 降级——`IsMemoryLockSupported()` 返回 false，`SecureValue` 仍可正常创建与使用，但启用内存锁定时锁定尝试会失败，`Masked()` 显示 `lock-failed` 后缀（未启用锁定时无状态后缀）。
+:::
 
 ::: warning 注意
 返回 `true` 只表示平台支持，不表示进程有足够权限。Linux 需要 `CAP_IPC_LOCK` 或 root 权限。
@@ -652,7 +654,7 @@ clean := env.SanitizeForLog(msg)
 func MaskSensitiveInString(s string) string
 ```
 
-掩码字符串中的潜在敏感内容。截断超过 50 字符的字符串。
+掩码字符串中的潜在敏感内容：先截断超过 50 字符的字符串（保留前 47 个字符并追加 `...`），再对截断结果掩码 `key=value` 形式的敏感值。仅截断会让 `password=...` 这类键值对原样漏出，因此两步缺一不可。
 
 **参数：**
 - `s` - 原始字符串
@@ -668,7 +670,7 @@ clean := env.MaskSensitiveInString(long)
 ```
 
 ::: tip 使用场景
-用于截断可能包含敏感数据的长字符串。如需自动掩码敏感键值对，使用 `SanitizeForLog`。
+用于错误详情、解析内容等可能夹带敏感数据的长字符串（截断 + 键值对掩码一步完成）。如只需掩码 `key=value` 而不截断，直接使用 `SanitizeForLog`。
 :::
 
 ---
@@ -679,57 +681,57 @@ clean := env.MaskSensitiveInString(long)
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 检查并启用内存锁定
-    if env.IsMemoryLockSupported() {
-        env.SetMemoryLockEnabled(true)
-        fmt.Println("Memory locking enabled")
-    }
+	// 检查并启用内存锁定
+	if env.IsMemoryLockSupported() {
+		env.SetMemoryLockEnabled(true)
+		fmt.Println("Memory locking enabled")
+	}
 
-    // 加载环境变量
-    if err := env.Load(".env"); err != nil {
-        log.Printf("Warning: %v", err)
-    }
+	// 加载环境变量
+	if err := env.Load(".env"); err != nil {
+		log.Printf("Warning: %v", err)
+	}
 
-    // 安全获取敏感值
-    apiKey := env.GetSecure("API_KEY")
-    if apiKey == nil {
-        log.Fatal("API_KEY not found")
-    }
-    defer apiKey.Release()
+	// 安全获取敏感值
+	apiKey := env.GetSecure("API_KEY")
+	if apiKey == nil {
+		log.Fatal("API_KEY not found")
+	}
+	defer apiKey.Release()
 
-    // 安全使用
-    fmt.Printf("API Key length: %d\n", apiKey.Length())
-    fmt.Printf("API Key (masked): %s\n", apiKey.Masked())
+	// 安全使用
+	fmt.Printf("API Key length: %d\n", apiKey.Length())
+	fmt.Printf("API Key (masked): %s\n", apiKey.Masked())
 
-    // 检查内存锁定状态
-    if apiKey.IsMemoryLocked() {
-        fmt.Println("Memory is locked")
-    }
+	// 检查内存锁定状态
+	if apiKey.IsMemoryLocked() {
+		fmt.Println("Memory is locked")
+	}
 
-    // 检查锁定错误
-    if err := apiKey.MemoryLockError(); err != nil {
-        fmt.Printf("Memory lock warning: %v\n", err)
-    }
+	// 检查锁定错误
+	if err := apiKey.MemoryLockError(); err != nil {
+		fmt.Printf("Memory lock warning: %v\n", err)
+	}
 
-    // 传递给其他函数
-    connectAPI(apiKey.Reveal())
+	// 传递给其他函数
+	connectAPI(apiKey.Reveal())
 
-    // 使用安全工具函数
-    logMessage := "Processing with API_KEY=secret"
-    safeMessage := env.SanitizeForLog(logMessage)
-    fmt.Println(safeMessage)  // Processing with API_KEY=[MASKED]
+	// 使用安全工具函数
+	logMessage := "Processing with API_KEY=secret"
+	safeMessage := env.SanitizeForLog(logMessage)
+	fmt.Println(safeMessage) // Processing with API_KEY=[MASKED]
 }
 
 func connectAPI(key string) {
-    // 使用密钥连接...
-    fmt.Printf("Connecting with key of length %d\n", len(key))
+	// 使用密钥连接...
+	fmt.Printf("Connecting with key of length %d\n", len(key))
 }
 ```
 
@@ -743,8 +745,10 @@ func connectAPI(key string) {
 
 ```go
 var secureValuePool = sync.Pool{
-    New: func() interface{} {
-        return &SecureValue{}
+    New: func() any {
+        sv := &SecureValue{}
+        runtime.SetFinalizer(sv, (*SecureValue).finalize) // 对象首次创建时设置一次，终身保持
+        return sv
     },
 }
 ```
@@ -854,7 +858,7 @@ func main() {
 
 ## 相关文档
 
-- [常量与错误](/zh/env/api-reference/constants) - 禁止键、敏感键模式、错误类型
-- [安全概述](/zh/env/security/) - 安全架构与核心特性
-- [生产检查清单](/zh/env/security/production-checklist) - 上线前安全检查
-- [Loader API](/zh/env/api-reference/loader) - GetSecure 方法
+- [常量与错误](./constants) - 禁止键、敏感键模式、错误类型
+- [安全概述](../security/) - 安全架构与核心特性
+- [生产检查清单](../security/production-checklist) - 上线前安全检查
+- [Loader API](./loader) - GetSecure 方法

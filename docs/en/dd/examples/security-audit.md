@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Security & Audit"
-title: "Security & Audit in Practice - CyberGo DD | Security Logging Example"
-description: "A complete set of practical examples for CyberGo DD security filtering and audit logging, covering sensitive-data filtering rule configuration, HMAC integrity signing and verification, audit-event recording and batch verification, industry-compliance configuration (HIPAA/PCI-DSS), and best practices and caveats for designing and deploying production-grade secure logging architectures."
+title: "Security & Audit - CyberGo DD | Secure Logging Examples"
+description: "CyberGo DD security examples: sensitive-data filtering rules, HMAC signing, audit events with batch verify, and HIPAA/PCI-DSS compliance configs."
 sidebar_position: 3
 ---
 
@@ -17,27 +17,27 @@ This example shows how to configure DD's security filtering, audit logging, and 
 package main
 
 import (
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    logger, _ := dd.New(dd.Config{
-        Security: dd.DefaultSecurityConfig(),
-        Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-    })
-    defer logger.Close()
+	cfg := dd.DefaultConfig()
+	cfg.Security = dd.DefaultSecurityConfig()
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+	logger, _ := dd.New(cfg)
+	defer logger.Close()
 
-    // Password auto-redacted
-    logger.InfoWith("user login",
-        dd.String("username", "alice"),
-        dd.String("password", "s3cr3t123"),    // -> password=[REDACTED]
-    )
+	// Password auto-redacted
+	logger.InfoWith("user login",
+		dd.String("username", "alice"),
+		dd.String("password", "s3cr3t123"), // -> password=[REDACTED]
+	)
 
-    // API Key auto-redacted (note: endpoint is also a sensitive key name and is redacted)
-    logger.InfoWith("API call",
-        dd.String("endpoint", "/api/data"),      // -> endpoint=[REDACTED] ("endpoint" is also a sensitive key name)
-        dd.String("api_key", "sk-abc123xyz"),   // -> api_key=[REDACTED]
-    )
+	// API Key auto-redacted (note: endpoint is also a sensitive key name and is redacted)
+	logger.InfoWith("API call",
+		dd.String("endpoint", "/api/data"),   // -> endpoint=[REDACTED] ("endpoint" is also a sensitive key name)
+		dd.String("api_key", "sk-abc123xyz"), // -> api_key=[REDACTED]
+	)
 }
 ```
 
@@ -45,11 +45,11 @@ func main() {
 
 ```go
 // HIPAA medical compliance
-medicalLogger, _ := dd.New(dd.Config{
-    Format:   dd.FormatJSON,
-    Security: dd.HealthcareConfig(),
-    Targets:  []dd.OutputTarget{dd.FileOutput("logs/medical.json")},
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.HealthcareConfig()
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/medical.json")}
+medicalLogger, _ := dd.New(cfg)
 
 medicalLogger.InfoWith("patient visit",
     dd.String("password", "s3cr3t123"),        // -> [REDACTED] (sensitive key name)
@@ -57,11 +57,11 @@ medicalLogger.InfoWith("patient visit",
 )
 
 // PCI-DSS financial compliance
-paymentLogger, _ := dd.New(dd.Config{
-    Format:   dd.FormatJSON,
-    Security: dd.FinancialConfig(),
-    Targets:  []dd.OutputTarget{dd.FileOutput("logs/payment.json")},
-})
+cfg = dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.FinancialConfig()
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/payment.json")}
+paymentLogger, _ := dd.New(cfg)
 
 paymentLogger.InfoWith("payment processing",
     dd.String("card_number", "4111111111111111"),  // -> [REDACTED]
@@ -77,50 +77,52 @@ paymentLogger.InfoWith("payment processing",
 package main
 
 import (
-    "os"
+	"os"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // Audit log file
-    auditFile, _ := os.Create("logs/audit.json")
-    defer auditFile.Close()
+	// Audit log file
+	auditFile, _ := os.Create("logs/audit.json")
+	defer auditFile.Close()
 
-    // HMAC signer (tamper protection)
-    integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
-    signer, _ := dd.NewIntegritySigner(integrityCfg)
+	// HMAC signer (tamper protection)
+	integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
+	signer, _ := dd.NewIntegritySigner(integrityCfg)
 
-    // AuditLogger
-    auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
-        Enabled:          true,
-        Output:           auditFile,
-        JSONFormat:       true,
-        BufferSize:       1000,
-        MinimumSeverity:  dd.AuditSeverityInfo,
-        IntegritySigner:  signer,
-    })
-    defer auditLogger.Close()
+	// AuditLogger
+	auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+		Enabled:         true,
+		Output:          auditFile,
+		JSONFormat:      true,
+		BufferSize:      1000,
+		MinimumSeverity: dd.AuditSeverityInfo,
+		IntegritySigner: signer,
+	})
+	defer auditLogger.Close()
 
-    // Business Logger
-    logger, _ := dd.New(dd.Config{
-        Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
-        Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-        // Note: Audit is not configured here, so the business logger's redaction/security
-        // events do NOT automatically flow into the auditLogger above.
-        // To have security events auto-routed to audit, configure the Audit field here
-        // (e.g. pass the AuditConfig of the auditLogger above via Audit: &auditCfg),
-        // or call auditLogger.LogX(...) explicitly to record events.
-    })
-    defer logger.Close()
+	// Business Logger
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+	// Note: Audit is not configured here, so the business logger's redaction/security
+	// events do NOT automatically flow into the auditLogger above.
+	// To have security events auto-routed to audit, configure the Audit field here —
+	// dd.New builds the logger's OWN internal AuditLogger from that AuditConfig
+	// (events do not flow into the separately constructed auditLogger above; if both
+	// write to the same file, coordinate them yourself),
+	// or call auditLogger.LogX(...) explicitly to record events.
+	logger, _ := dd.New(cfg)
+	defer logger.Close()
 
-    // Normal business operations (redaction handled by Security, but not auto-written to the audit log)
-    logger.InfoWith("transaction processed",
-        dd.String("transaction_id", "TXN-001"),
-        dd.String("amount", "1500.00"),
-        dd.String("card_number", "4111111111111111"),  // -> [REDACTED]
-    )
+	// Normal business operations (redaction handled by Security, but not auto-written to the audit log)
+	logger.InfoWith("transaction processed",
+		dd.String("transaction_id", "TXN-001"),
+		dd.String("amount", "1500.00"),
+		dd.String("card_number", "4111111111111111"), // -> [REDACTED]
+	)
 }
 ```
 
@@ -132,37 +134,37 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // Create the signer
-    signer, err := dd.NewIntegritySigner(dd.IntegrityConfig{
-        SecretKey:       []byte("your-32-byte-secret-key-here-1234"),
-        IncludeTimestamp: true,
-        IncludeSequence:  true,
-    })
-    if err != nil {
-        panic(err)
-    }
+	// Create the signer
+	signer, err := dd.NewIntegritySigner(dd.IntegrityConfig{
+		SecretKey:        []byte("your-32-byte-secret-key-here-1234"),
+		IncludeTimestamp: true,
+		IncludeSequence:  true,
+	})
+	if err != nil {
+		panic(err)
+	}
 
-    // Sign a log entry
-    logEntry := `{"level":"info","message":"important action","user":"admin"}`
-    signature := signer.Sign(logEntry)
-    signedEntry := logEntry + signature
+	// Sign a log entry
+	logEntry := `{"level":"info","message":"important action","user":"admin"}`
+	signature := signer.Sign(logEntry)
+	signedEntry := logEntry + signature
 
-    // Verify log integrity
-    result, err := signer.Verify(signedEntry)
-    if err != nil {
-        fmt.Printf("verification error: %v\n", err)
-    } else if result.Valid {
-        fmt.Printf("verified - timestamp: %s, sequence: %d\n",
-            result.Timestamp, result.Sequence)
-    } else {
-        fmt.Printf("verification failed: log may have been tampered with\n")
-    }
+	// Verify log integrity
+	result, err := signer.Verify(signedEntry)
+	if err != nil {
+		fmt.Printf("verification error: %v\n", err)
+	} else if result.Valid {
+		fmt.Printf("verified - timestamp: %s, sequence: %d\n",
+			result.Timestamp, result.Sequence)
+	} else {
+		fmt.Printf("verification failed: log may have been tampered with\n")
+	}
 }
 ```
 
@@ -219,12 +221,12 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
     fwCfg.Compress = true
     fw, _ := dd.NewFileWriter("logs/app.json", fwCfg)
 
-    logger, _ := dd.New(dd.Config{
-        Level:    dd.LevelInfo,
-        Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
-        Targets:  []dd.OutputTarget{dd.CustomOutput(fw)},
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+    cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+    logger, _ := dd.New(cfg)
 
     return logger, auditLogger, nil
 }

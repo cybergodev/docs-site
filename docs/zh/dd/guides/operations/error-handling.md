@@ -1,7 +1,7 @@
 ---
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo DD | 日志错误管理"
-description: "CyberGo DD 日志库错误处理完整指南，详解结构化错误类型与层级体系、错误码设计、哨兵错误定义与判断方法、errors.Is/As 错误包装与拆包、自定义错误处理策略实现、错误恢复机制和错误钩子回调配置，帮助开发者精确识别和处理各类日志相关错误。"
+description: "CyberGo DD 错误处理指南：结构化错误类型与层级体系、errors.Is 错误匹配、写入与运行时错误处理模式、钩子错误与全局日志记录器错误，精确识别和处理各类日志错误。"
 sidebar_position: 3
 ---
 
@@ -83,11 +83,11 @@ type MultiWriterError struct { ... }
 ```go
 logger, err := dd.New(config)
 if err != nil {
-    if errors.Is(err, dd.ErrNilConfig) {
-        // 处理配置为空
+    if errors.Is(err, dd.ErrMultipleConfigs) {
+        // New(cfg1, cfg2) 传了多个 Config（0 或 1 个才合法）
     }
     if errors.Is(err, dd.ErrInvalidLevel) {
-        // 处理无效级别
+        // 配置校验失败：Level 超出 LevelDebug~LevelFatal 范围
     }
 }
 ```
@@ -97,7 +97,7 @@ if err != nil {
 ```go
 logger.SetWriteErrorHandler(func(w io.Writer, err error) {
     // 自定义写入错误处理
-    // 注意：此回调仅在 writer.Write() 失败时触发，传入的是 writer 自身错误；
+    // 注意：此回调在 writer.Write() 失败**或 panic**（panic 会被转为错误）时触发，传入的是 writer 自身错误；
     // dd.ErrWriterNotFound 由 RemoveWriter 直接返回给调用者，不会经此回调传递。
     if errors.Is(err, io.ErrShortWrite) {
         // 写入字节数不足
@@ -180,9 +180,9 @@ registry := dd.NewHooksFromConfig(dd.HooksConfig{
         handleHookError(event.String(), err)
     },
 })
-logger, _ := dd.New(dd.Config{
-    Hooks: registry,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, _ := dd.New(cfg)
 ```
 
 ## 全局日志记录器错误

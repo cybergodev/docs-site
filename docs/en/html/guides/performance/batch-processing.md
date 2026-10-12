@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Batch Processing"
 title: "Batch Processing - CyberGo html | Concurrency Guide"
-description: "CyberGo html batch processing: four APIs incl. ExtractBatch, BatchResult, WorkerPoolSize concurrency, context cancellation, partial failures, and scale tuning."
+description: "CyberGo html batch processing: four APIs incl. ExtractBatch, package vs instance cache differences, BatchResult, WorkerPoolSize concurrency, 10000-item cap."
 sidebar_position: 2
 ---
 
@@ -56,35 +56,35 @@ Batch extract three HTML byte slices:
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    pages := [][]byte{
-        []byte(`<html><body><article><h1>Page One</h1><p>Go language tutorial.</p></article></body></html>`),
-        []byte(`<html><body><article><h1>Page Two</h1><p>Concurrency guide.</p></article></body></html>`),
-        []byte(`<html><body><article><h1>Page Three</h1><p>Performance optimization tips.</p></article></body></html>`),
-    }
+	pages := [][]byte{
+		[]byte(`<html><body><article><h1>Page One</h1><p>Go language tutorial.</p></article></body></html>`),
+		[]byte(`<html><body><article><h1>Page Two</h1><p>Concurrency guide.</p></article></body></html>`),
+		[]byte(`<html><body><article><h1>Page Three</h1><p>Performance optimization tips.</p></article></body></html>`),
+	}
 
-    // Batch concurrent extraction (using the package function)
-    br := html.ExtractBatch(pages)
+	// Batch concurrent extraction (using the package function)
+	br := html.ExtractBatch(pages)
 
-    fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n", br.Success, br.Failed, br.Cancelled)
-    // Success: 3, Failed: 0, Cancelled: 0
+	fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n", br.Success, br.Failed, br.Cancelled)
+	// Success: 3, Failed: 0, Cancelled: 0
 
-    // Iterate results (index corresponds to input)
-    for i, result := range br.Results {
-        if result != nil {
-            fmt.Printf("  [%d] Title: %s\n", i+1, result.Title)
-        } else if br.Errors[i] != nil {
-            fmt.Printf("  [%d] Error: %v\n", i+1, br.Errors[i])
-        }
-    }
-    // [1] Title: Page One
-    // [2] Title: Page Two
-    // [3] Title: Page Three
+	// Iterate results (index corresponds to input)
+	for i, result := range br.Results {
+		if result != nil {
+			fmt.Printf("  [%d] Title: %s\n", i+1, result.Title)
+		} else if br.Errors[i] != nil {
+			fmt.Printf("  [%d] Error: %v\n", i+1, br.Errors[i])
+		}
+	}
+	// [1] Title: Page One
+	// [2] Title: Page Two
+	// [3] Title: Page Three
 }
 ```
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
 title: "Structured Logging - CyberGo DD | High-Performance Go Logger"
-description: "CyberGo DD is a high-performance Go structured logging library from the CyberGo organization, offering thread-safe logging, flexible output targets, automatic file rotation, sensitive-data redaction, async audit logging, HMAC integrity signing, and low-allocation optimization."
+description: "CyberGo DD is a structured logging library for Go: thread-safe output, file rotation, sensitive-data redaction, audit logging, and HMAC integrity signing."
 ---
 
 # DD
@@ -33,27 +33,27 @@ go get github.com/cybergodev/dd
 package main
 
 import (
-    "time"
+	"time"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // Use the default logger
-    dd.Info("service started")
+	// Use the default logger
+	dd.Info("service started")
 
-    // Structured logging
-    dd.InfoWith("request completed",
-        dd.String("method", "GET"),
-        dd.Int("status", 200),
-        dd.Duration("elapsed", 150*time.Millisecond),
-    )
+	// Structured logging
+	dd.InfoWith("request completed",
+		dd.String("method", "GET"),
+		dd.Int("status", 200),
+		dd.Duration("elapsed", 150*time.Millisecond),
+	)
 
-    // Create a custom logger
-    logger, _ := dd.New(dd.DefaultConfig())
-    defer logger.Close()
+	// Create a custom logger
+	logger, _ := dd.New(dd.DefaultConfig())
+	defer logger.Close()
 
-    logger.Info("custom logger created")
+	logger.Info("custom logger created")
 }
 ```
 
@@ -65,12 +65,12 @@ func main() {
 | [Configuration](./guides/basics/configuration) | Config struct, presets, output targets |
 | [Structured Logging](./guides/basics/structured-logging) | Field constructors, method chaining |
 | [File Output & Rotation](./guides/basics/file-output) | FileWriter, BufferedWriter |
-| [Sensitive Data Filtering](./guides/security/sensitive-filtering) | Auto-redaction, security levels |
-| [Field Validation](./guides/security/field-validation) | Naming convention checks, Log4Shell protection |
 | [Log Sampling](./guides/operations/sampling) | High-throughput log volume reduction |
-| [Audit Logging](./guides/security/audit-logging) | Asynchronous audit events, integrity signing |
 | [Hook System](./guides/operations/hooks) | Lifecycle hook extensions |
 | [Error Handling](./guides/operations/error-handling) | Structured errors, sentinel errors, errors.Is |
+| [Sensitive Data Filtering](./guides/security/sensitive-filtering) | Auto-redaction, security levels |
+| [Field Validation](./guides/security/field-validation) | Naming convention checks, Log4Shell protection |
+| [Audit Logging](./guides/security/audit-logging) | Asynchronous audit events, integrity signing |
 | [Distributed Tracing](./guides/integration/context-tracing) | TraceID/SpanID/RequestID |
 | [Migration Guide](./guides/integration/migration) | Migrate from log/slog/zap/logrus |
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Performance"
 title: "Performance Tuning - CyberGo DD | High-Performance Logging"
-description: "A complete performance-tuning guide for the CyberGo DD logging library, covering low-allocation optimization, BufferedWriter buffered-write configuration, log-sampling strategy and frequency control, early level-check to avoid wasteful allocations, sync.Pool object-pool reuse, and benchmark-analysis methods, helping you achieve extreme logging performance in high-concurrency scenarios."
+description: "CyberGo DD performance tuning: low-allocation optimization, level checks, buffered writes, sampling, and file-write and field optimization."
 sidebar_position: 1
 ---
 
@@ -46,9 +46,9 @@ bwCfg := dd.DefaultBufferedWriterConfig()
 bwCfg.BufferSize = 8192
 bw, _ := dd.NewBufferedWriter(fw, bwCfg)  // 8KB buffer
 
-logger, _ := dd.New(dd.Config{
-    Targets: []dd.OutputTarget{dd.CustomOutput(bw)},
-})
+cfg := dd.DefaultConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(bw)}
+logger, _ := dd.New(cfg)
 defer logger.Close()  // Close auto-flushes
 ```
 

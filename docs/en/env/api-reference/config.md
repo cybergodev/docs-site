@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Config"
 title: "Config API - CyberGo env | Configuration Reference"
-description: "Config struct API reference for CyberGo env: search paths, size and count limits, key validation, JSON/YAML options, and Development/Production presets."
+description: "Config API reference for CyberGo env: file loading options, size limits, key validation, JSON/YAML options, variable expansion, audit config, and presets."
 sidebar_position: 4
 ---
 
@@ -171,8 +171,8 @@ Supported expansion syntax:
 | `${VAR:=default}` | Same as `${VAR:-default}` (uses default if variable doesn't exist, does not write back to storage) |
 | `${VAR:?error}` | Error if variable doesn't exist or is empty |
 
-:::tip
-`${VAR:-default}` and `${VAR:=default}` use the default value only when the variable is **not set**; if the variable is explicitly set to an empty string (`VAR=`), the empty string original value is used. Only `${VAR:?error}` treats an empty string as an error. See [Variable Expansion](/en/env/guides/variable-expansion).
+:::tip Empty-string handling
+`${VAR:-default}` and `${VAR:=default}` use the default value only when the variable is **not set**; if the variable is explicitly set to an empty string (`VAR=`), the empty string original value is used. Only `${VAR:?error}` treats an empty string as an error. See [Variable Expansion](../guides/variable-expansion).
 :::
 
 ### Security Limits
@@ -265,7 +265,7 @@ cfg.MaxExpansionDepth = 10
 
 Custom key name match pattern. **Default `nil`** (uses fast byte-level validation).
 
-:::tip
+:::tip Performance
 `nil` enables fast byte-level validation (about 10x performance improvement). Default validation rule: starts with a letter, contains only letters, numbers, and underscores.
 :::
 
@@ -296,8 +296,8 @@ Additional forbidden keys list (added to built-in forbidden keys).
 cfg.ForbiddenKeys = []string{"CUSTOM_DANGEROUS_VAR"}
 ```
 
-:::tip
-The library has built-in forbidden keys including `PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES` and other system-critical variables. See [Constants & Errors](/en/env/api-reference/constants#defaultforbiddenkeys).
+:::tip Built-in forbidden keys
+The library has built-in forbidden keys including `PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES` and other system-critical variables. See [Constants & Errors](./constants#defaultforbiddenkeys).
 :::
 
 ---
@@ -316,7 +316,7 @@ cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
 Validate value safety (control characters, null bytes, etc.). **Default `true`**.
 
-:::warning
+:::warning Security recommendations
 It is recommended to keep this enabled. Disable only in special scenarios (e.g., when you need to store values containing control characters).
 :::
 
@@ -348,11 +348,15 @@ cfg.AllowExportPrefix = false  // Disallow export prefix
 
 #### `AllowYamlSyntax` bool
 
-Allow YAML-style syntax (`KEY: value`). **Default `false`**.
+Parse the **values** in .env files with YAML scalar semantics (`null`/`~` are treated as empty strings; YAML boolean and number literals are recognized per YAML rules). **Default `false`**.
 
 ```go
 cfg.AllowYamlSyntax = true
 ```
+
+:::tip
+The `KEY: value` colon-separated form is **always available** (the line parser unconditionally accepts both `=` and `:` as separators) and is unrelated to this switch; this switch only affects YAML scalar semantics on the value side.
+:::
 
 ### JSON Options
 
@@ -455,7 +459,7 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
 :::tip
-See [Audit Logging](/en/env/guides/audit-logging) for complete audit configuration documentation.
+See [Audit Logging](../guides/audit-logging) for complete audit configuration documentation.
 :::
 
 ### Advanced Options
@@ -566,7 +570,7 @@ Returns development environment configuration (relaxed limits).
 - `AllowYamlSyntax`: `true`
 - `MaxFileSize`: 10MB
 
-:::tip
+:::tip Security guarantees
 `ValidateValues` remains `true` in all preset configurations (consistent with the default), ensuring security regardless of environment.
 :::
 
@@ -638,7 +642,7 @@ loader, _ := env.New(cfg)
 | Forbidden key check | ✓ | ✓ | ✓ | ✓ |
 | Value validation | ✓ | ✓ | ✓ | ✓ |
 
-:::tip
+:::tip How to choose
 - **Development**: Use `DevelopmentConfig()` with relaxed limits for fast iteration
 - **Testing**: Use `TestingConfig()` with overwrite support for test isolation
 - **Production**: Use `ProductionConfig()` with audit and strict validation
@@ -822,10 +826,26 @@ A custom `KeyPattern` is probed four ways by `Config.Validate()`; failing any pr
 
 ### ExpansionScope
 
-See the "Expansion Scope" section of the [variable expansion guide](/en/env/guides/variable-expansion). `ExpansionFileOnly` is for untrusted config files (SEC-03) and stops `${VAR}` references from reading the process environment.
+`ExpansionScope` is an int enum that controls which scopes `${VAR}`/`$VAR` references in values can resolve against (configured via the `ParsingConfig.ExpansionScope` field):
+
+```go
+type ExpansionScope int
+
+const (
+    ExpansionFileThenProcess ExpansionScope = iota // zero value (default)
+    ExpansionFileOnly                              // file-defined variables only
+)
+```
+
+| Constant | Semantics |
+|----------|-----------|
+| `ExpansionFileThenProcess` | Zero value (default). Resolves against file-defined variables first, then falls back to the process environment (`os.LookupEnv`), matching traditional dotenv semantics |
+| `ExpansionFileOnly` | Only file-defined variables are visible; references that exist only in the process environment expand to the empty string. For untrusted config files (SEC-03): stops `${VAR}` references from reading the process environment and capturing unrelated process secrets (cloud credentials, tokens) into values |
+
+For the attack-scenario analysis and configuration examples, see the ["Expansion Scope" section of the variable expansion guide](../guides/variable-expansion).
 
 ## Related Documentation
 
-- [Loader API](/en/env/api-reference/loader) - Loader methods
-- [Constants & Errors](/en/env/api-reference/constants) - Limit constants and error types
-- [Audit Logging](/en/env/guides/audit-logging) - Audit configuration guide
+- [Loader API](./loader) - Loader methods
+- [Constants & Errors](./constants) - Limit constants and error types
+- [Audit Logging](../guides/audit-logging) - Audit configuration guide

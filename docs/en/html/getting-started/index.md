@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo html | Get Started in 5 Minutes"
-description: "CyberGo html quick start in 5 minutes: install on Go 1.25+, extraction, four Config presets, text/Markdown/JSON output, and concurrency-safe Processor use."
+description: "CyberGo html quick start in 5 minutes: install on Go 1.26+, extraction, four Config presets, text/Markdown/JSON output, and concurrency-safe Processor use."
 sidebar_position: 1
 ---
 
@@ -13,7 +13,7 @@ sidebar_position: 1
 go get github.com/cybergodev/html
 ```
 
-Requires Go 1.25+.
+Requires Go 1.26+.
 
 ## Basic Extraction
 
@@ -23,14 +23,14 @@ Extract content from HTML bytes:
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html>
+	data := []byte(`<html>
         <head><title>Go Tutorial</title></head>
         <body>
             <article>
@@ -42,16 +42,16 @@ func main() {
         </body>
     </html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("Title:", result.Title)
-    fmt.Println("Text:", result.Text)
-    fmt.Println("Images:", len(result.Images))
-    fmt.Println("Links:", len(result.Links))
-    fmt.Println("Words:", result.WordCount)
+	fmt.Println("Title:", result.Title)
+	fmt.Println("Text:", result.Text)
+	fmt.Println("Images:", len(result.Images))
+	fmt.Println("Links:", len(result.Links))
+	fmt.Println("Words:", result.WordCount)
 }
 ```
 

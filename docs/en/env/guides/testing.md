@@ -1,9 +1,8 @@
 ---
 sidebar_label: "Testing"
 title: "Testing - CyberGo env | Unit Test Best Practices"
-description: "Testing guide for CyberGo env: TestingConfig with OverwriteExisting for isolation, in-memory FileSystem mocking, and ResetDefaultLoader cleanup."
+description: "CyberGo env testing guide: TestingConfig and OverwriteExisting isolation, FileSystem mocking, table-driven tests, benchmarks, and ResetDefaultLoader cleanup."
 sidebar_position: 7
-sidebar_icon: "🧪"
 ---
 
 # Testing
@@ -18,6 +17,9 @@ TestingConfig overwrites existing environment variables, suitable for test isola
 
 ```go
 func TestWithTestingConfig(t *testing.T) {
+    // TestingConfig inherits Filenames ([".env"]) from DefaultConfig;
+    // point it at a test-specific file to avoid implicitly reading
+    // the real .env in the cwd
     cfg := env.TestingConfig()
     cfg.Filenames = []string{".env.test"}
 
@@ -25,7 +27,8 @@ func TestWithTestingConfig(t *testing.T) {
     require.NoError(t, err)
     defer loader.Close()
 
-    // Use test configuration
+    // Use test configuration (FailOnMissingFile=false: a missing
+    // .env.test is silently skipped, no error)
     host := loader.GetString("DB_HOST")
 }
 ```
@@ -34,11 +37,19 @@ func TestWithTestingConfig(t *testing.T) {
 TestingConfig sets `OverwriteExisting: true` to ensure test isolation. If you need to preserve existing variables, manually set `cfg.OverwriteExisting = false`.
 :::
 
+:::warning Implicit loading and testify dependency
+- `TestingConfig` inherits `Filenames: [".env"]` from `DefaultConfig`, and `New(cfg)` **auto-loads** those files whenever Filenames is non-empty — if you don't clear it, the real `.env` in the cwd is implicitly loaded and pollutes the test. Set `cfg.Filenames = nil` when no file should be loaded.
+- The `require` / `assert` calls in the examples on this page come from the third-party library `github.com/stretchr/testify`.
+:::
+
 ### Per-test Independent Loader
 
 ```go
 func TestDatabase(t *testing.T) {
-    loader, err := env.New(env.TestingConfig())
+    cfg := env.TestingConfig()
+    cfg.Filenames = nil // clear, avoid implicitly loading the cwd .env
+
+    loader, err := env.New(cfg)
     require.NoError(t, err)
     defer loader.Close()
 
@@ -93,7 +104,50 @@ func (m *MockFileSystem) Getenv(key string) string            { return m.env[key
 func (m *MockFileSystem) Setenv(key, value string) error      { m.env[key] = value; return nil }
 func (m *MockFileSystem) Unsetenv(key string) error           { delete(m.env, key); return nil }
 func (m *MockFileSystem) LookupEnv(key string) (string, bool) { val, ok := m.env[key]; return val, ok }
+
+// MockFile is an in-memory implementation of env.File
+// (Read/Write/Close/Sync/Stat). The loader calls Stat() right after
+// opening for a size pre-check; a missing Stat would panic.
+type MockFile struct {
+    content string
+    offset  int64 // read offset, supports chunked reads
+}
+
+func (f *MockFile) Read(p []byte) (int, error) {
+    if f.offset >= int64(len(f.content)) {
+        return 0, io.EOF
+    }
+    n := copy(p, f.content[f.offset:])
+    f.offset += int64(n)
+    return n, nil
+}
+
+// Read-only mock: the load path never writes
+func (f *MockFile) Write(p []byte) (int, error) { return len(p), nil }
+
+func (f *MockFile) Close() error { return nil }
+func (f *MockFile) Sync() error  { return nil }
+
+// Size must equal len(content); otherwise loadFileLocked's
+// MaxFileSize pre-check misjudges the file size
+func (f *MockFile) Stat() (os.FileInfo, error) {
+    return mockFileInfo{size: int64(len(f.content))}, nil
+}
+
+// mockFileInfo minimally implements os.FileInfo; only Size carries meaning
+type mockFileInfo struct {
+    size int64
+}
+
+func (i mockFileInfo) Name() string       { return "mock" }
+func (i mockFileInfo) Size() int64        { return i.size }
+func (i mockFileInfo) Mode() os.FileMode  { return 0444 }
+func (i mockFileInfo) ModTime() time.Time { return time.Time{} }
+func (i mockFileInfo) IsDir() bool        { return false }
+func (i mockFileInfo) Sys() any           { return nil }
 ```
+
+The MockFile returned by `Open` must implement all five methods of the `env.File` interface: Read, Write, `Close`, `Sync`, and `Stat`. `Stat` is not optional: before reading a file, the loader calls `file.Stat()` for a size pre-check (returning `ErrFileTooLarge` when `Size()` exceeds `MaxFileSize`), so `mockFileInfo`'s `Size()` must return `len(content)`.
 
 ### Using in Tests
 
@@ -127,20 +181,27 @@ func TestWithMockFS(t *testing.T) {
 
 ```go
 func TestMain(m *testing.M) {
-    // Reset before running tests
-    env.ResetDefaultLoader()
+    // Reset before running tests (returns the error from closing
+    // the old default loader)
+    if err := env.ResetDefaultLoader(); err != nil {
+        log.Printf("reset default loader: %v", err)
+    }
 
     os.Exit(m.Run())
 }
 
 func TestExample(t *testing.T) {
     // Each test can also reset
-    env.ResetDefaultLoader()
+    if err := env.ResetDefaultLoader(); err != nil {
+        t.Logf("reset default loader: %v", err)
+    }
 
     // Use package-level functions
     env.Load(".env.test")
 }
 ```
+
+`ResetDefaultLoader` returns an `error`: it clears and closes the global default loader, and the return value is the old loader's `Close()` error (non-nil when cleanup during close fails); it returns nil when no global loader has been initialized yet. Ignoring the error only means the old loader's cleanup failed — the global state is still cleared, so `env.Load()` can be called again afterwards.
 
 ### Cleaning Up Environment Variables
 
@@ -187,7 +248,10 @@ func TestTypeConversion(t *testing.T) {
 
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            loader, _ := env.New(env.TestingConfig())
+            cfg := env.TestingConfig()
+            cfg.Filenames = nil
+
+            loader, _ := env.New(cfg)
             defer loader.Close()
 
             loader.Set("VALUE", tt.envValue)
@@ -227,6 +291,7 @@ func TestValidation(t *testing.T) {
         t.Run(tt.name, func(t *testing.T) {
             cfg := env.TestingConfig()
             cfg.RequiredKeys = tt.required
+            cfg.Filenames = nil
 
             loader, _ := env.New(cfg)
             defer loader.Close()
@@ -266,6 +331,7 @@ DEBUG=true
 
     // Load configuration
     cfg := env.TestingConfig()
+    cfg.Filenames = nil // clear; the temp file is loaded explicitly below
     loader, err := env.New(cfg)
     require.NoError(t, err)
     defer loader.Close()
@@ -289,7 +355,10 @@ func TestStructMapping(t *testing.T) {
         Port int64  `env:"PORT" envDefault:"8080"`
     }
 
-    loader, _ := env.New(env.TestingConfig())
+    loaderCfg := env.TestingConfig()
+    loaderCfg.Filenames = nil // clear, avoid implicitly loading the cwd .env
+
+    loader, _ := env.New(loaderCfg)
     defer loader.Close()
 
     loader.Set("HOST", "example.com")
@@ -308,7 +377,10 @@ func TestStructMapping(t *testing.T) {
 
 ```go
 func TestConcurrentAccess(t *testing.T) {
-    loader, _ := env.New(env.TestingConfig())
+    cfg := env.TestingConfig()
+    cfg.Filenames = nil // clear, avoid implicitly loading the cwd .env
+
+    loader, _ := env.New(cfg)
     defer loader.Close()
 
     var wg sync.WaitGroup
@@ -343,7 +415,10 @@ func TestConcurrentAccess(t *testing.T) {
 
 ```go
 func BenchmarkGetString(b *testing.B) {
-    loader, _ := env.New(env.TestingConfig())
+    cfg := env.TestingConfig()
+    cfg.Filenames = nil // clear, avoid implicitly loading the cwd .env
+
+    loader, _ := env.New(cfg)
     defer loader.Close()
 
     loader.Set("KEY", "value")
@@ -369,9 +444,12 @@ func BenchmarkLoadFile(b *testing.B) {
     }
     os.WriteFile(envFile, []byte(content.String()), 0644)
 
+    cfg := env.TestingConfig()
+    cfg.Filenames = nil // clear; the temp file is loaded explicitly, keeping implicit .env reads out of the timing
+
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
-        loader, _ := env.New(env.TestingConfig())
+        loader, _ := env.New(cfg)
         loader.LoadFiles(envFile)
         loader.Close()
     }
@@ -387,46 +465,49 @@ Create test helper functions:
 package testutil
 
 import (
-    "os"
-    "testing"
+	"os"
+	"testing"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func NewTestLoader(t *testing.T, values map[string]string) *env.Loader {
-    t.Helper()
+	t.Helper()
 
-    loader, err := env.New(env.TestingConfig())
-    if err != nil {
-        t.Fatalf("failed to create loader: %v", err)
-    }
+	cfg := env.TestingConfig()
+	cfg.Filenames = nil // clear, avoid implicitly loading the cwd .env
 
-    t.Cleanup(func() {
-        loader.Close()
-    })
+	loader, err := env.New(cfg)
+	if err != nil {
+		t.Fatalf("failed to create loader: %v", err)
+	}
 
-    for k, v := range values {
-        if err := loader.Set(k, v); err != nil {
-            t.Fatalf("failed to set %s: %v", k, err)
-        }
-    }
+	t.Cleanup(func() {
+		loader.Close()
+	})
 
-    return loader
+	for k, v := range values {
+		if err := loader.Set(k, v); err != nil {
+			t.Fatalf("failed to set %s: %v", k, err)
+		}
+	}
+
+	return loader
 }
 
 func SetTestEnv(t *testing.T, key, value string) {
-    t.Helper()
+	t.Helper()
 
-    original := os.Getenv(key)
-    os.Setenv(key, value)
+	original := os.Getenv(key)
+	os.Setenv(key, value)
 
-    t.Cleanup(func() {
-        if original == "" {
-            os.Unsetenv(key)
-        } else {
-            os.Setenv(key, original)
-        }
-    })
+	t.Cleanup(func() {
+		if original == "" {
+			os.Unsetenv(key)
+		} else {
+			os.Setenv(key, original)
+		}
+	})
 }
 ```
 
@@ -446,7 +527,7 @@ func TestWithHelper(t *testing.T) {
 
 ## Related Documentation
 
-- [Config API - TestingConfig](/en/env/api-reference/config#testingconfig) - Test configuration reference
-- [Loader API](/en/env/api-reference/loader) - Complete Loader methods
-- [Interfaces - FileSystem](/en/env/api-reference/interfaces) - Custom filesystem interface
-- [Performance](/en/env/advanced/performance) - Benchmark data
+- [Config API - TestingConfig](../api-reference/config#testingconfig) - Test configuration reference
+- [Loader API](../api-reference/loader) - Complete Loader methods
+- [Interfaces - FileSystem](../api-reference/interfaces) - Custom filesystem interface
+- [Performance](../advanced/performance) - Benchmark data

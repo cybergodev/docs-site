@@ -1,7 +1,7 @@
 ---
 sidebar_label: "调试输出"
 title: "调试输出 - CyberGo DD | Print/JSON/Text/Exit"
-description: "CyberGo DD 调试可视化输出函数完整 API 文档，包括 Print 格式化打印、JSON 结构化输出、Text 纯文本输出和 Exit 致命退出等快速调试函数，支持直接通过包级函数调用，无需创建 Logger 实例即可使用，大幅简化开发调试流程。"
+description: "CyberGo DD 调试输出函数 API 文档：Print 格式化打印、JSON 结构化输出、Text 纯文本输出与 Exit 致命退出，包级函数直接调用，无需创建 Logger 实例。"
 sidebar_position: 1
 ---
 
@@ -52,8 +52,8 @@ dd.JSON(user)
 
 | 函数 | 签名 | 说明 |
 |------|------|------|
-| `Text` | `(data ...any)` | 美化打印格式输出到 stdout |
-| `Textf` | `(format string, args ...any)` | 格式化文本输出到 stdout |
+| `Text` | `(data ...any)` | 美化打印格式输出到 stdout（不含调用者信息前缀） |
+| `Textf` | `(format string, args ...any)` | 格式化文本输出到 stdout（不含调用者信息前缀） |
 
 ```go
 dd.Text(complexData)
@@ -97,7 +97,7 @@ logger.Text(data)
 |------|----------|
 | 快速打印值 | `dd.Print()` |
 | 查看结构体 | `dd.JSON()` |
-| 格式化输出 | `dd.Text()` |
+| 格式化输出 | `dd.Textf()` |
 | 调试断点 | `dd.Exit()` |
 | 可能含敏感信息 | `dd.Print()`（自动过滤） |
 | 性能分析数据 | `dd.JSON()` |

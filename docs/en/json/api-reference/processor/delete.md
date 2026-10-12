@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Delete Operations"
-title: "Processor Delete Methods - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor delete: Delete removes by path and DeleteClean cleans empty values/arrays/parents, with wildcard, slice, multi-field paths."
-sidebar_position: 4
+title: "Processor Delete Methods - CyberGo JSON | Delete Examples"
+description: "CyberGo JSON Processor deletion: Delete removes paths while DeleteClean prunes empty values, arrays, and parents — ideal for cleaning configs and logs."
+sidebar_position: 40
 ---
 
 # Delete Methods
@@ -72,7 +72,7 @@ func main() {
 
 ### Advanced Paths: Wildcards and Slices
 
-`Delete` reuses the same path engine as Get/Set, supporting wildcards, slice ranges, and multi-field extraction. Batch paths (containing `*`, `{}`, `:`) silently skip missing targets without error.
+`Delete` reuses the same path engine as Get/Set, supporting wildcards, slice ranges, and multi-field extraction. Batch paths (containing `*`, `{}`, `:`) silently skip missing targets without error. For the complete path-syntax reference — wildcards, slices, multi-field, and **JSON Pointer** (RFC 6901 paths starting with `/`, which can delete keys whose names contain dots and other special characters) — see [Delete Functions - Advanced Path Deletion](../functions/delete#advanced-path-deletion).
 
 ```go
 package main
@@ -212,16 +212,7 @@ func main() {
 
 ## Delete vs DeleteClean Comparison
 
-| Feature | Delete | DeleteClean |
-|---------|--------|-------------|
-| Deletes the target node | Yes | Yes |
-| Array elements removed and reordered (no gaps) | Yes | Yes |
-| Errors on missing exact path | Yes (`ErrPathNotFound`) | Yes (`ErrPathNotFound`) |
-| Cleans `null` produced by deletion | No | Yes |
-| Cleans empty objects/empty arrays (cascade) | No | Yes (upward level by level) |
-| Sweeps pre-existing `null` across the tree | No | Yes (global cleanup) |
-| Equivalent configuration | Default | `CleanupNulls+CompactArrays` |
-| Relative overhead | Lower | Slightly higher (one extra full-tree cleanup traversal) |
+The behavior comparison table (cleanup scope, cascade semantics, equivalent configuration, and overhead) is identical to the package-level page — see [Delete Functions - Delete vs DeleteClean Comparison](../functions/delete#delete-vs-deleteclean-comparison). The Processor-side difference is only in how configuration takes effect: cleanup behavior is determined by the **union of the call argument `cfg` and the processor's own configuration** (see the next section).
 
 ## Effect of Config on Deletion Behavior
 
@@ -299,17 +290,7 @@ func main() {
 
 ## Common Pitfalls
 
-::: warning Array deletion leaves no gaps
-When `Delete` removes an array element, the element is **entirely removed** and subsequent elements shift forward automatically, leaving no `null` placeholder or gap. If you need "indices remain unchanged after deletion, leaving holes" semantics, use `Set` to set that position to `null` instead.
-:::
-
-::: warning DeleteClean may remove legitimately empty data
-`DeleteClean` cascade cleanup treats all empty objects `{}` and empty arrays `[]` as things to clean up. If in your business "empty array" is a meaningful state (e.g. `"tags":[]` means "no tags"), `DeleteClean` will remove it along with its key. Use plain `Delete` when you need to keep such fields.
-:::
-
-::: warning Batch deletion is fault-tolerant
-Wildcard/slice/multi-field paths **silently skip** missing targets without returning an error. When you need "target must exist" strict validation semantics, use an exact path instead (e.g. `items[1]` rather than `items[*]`).
-:::
+The three caveats (array deletion leaves no gaps, `DeleteClean` may remove legitimately empty data, and batch deletion fault-tolerantly skips missing targets) apply equally to the Processor methods — full explanations and examples in [Delete Functions - Common Pitfalls](../functions/delete#common-pitfalls).
 
 ## See Also
 

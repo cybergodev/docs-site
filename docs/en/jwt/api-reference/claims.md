@@ -63,6 +63,8 @@ The Processor performs additional deep validation during token creation and vali
 | `GetRegisteredClaims` | `func (c *Claims) GetRegisteredClaims() *RegisteredClaims` | Returns the embedded standard fields |
 | `Validate` | `func (c *Claims) Validate() error` | Checks that at least one of UserID or Username is non-empty |
 
+Beyond the two business methods above, `Claims` also implements the serialization-pipeline interfaces such as `json.Marshaler` / `json.Unmarshaler`: `MarshalJSON`, `UnmarshalJSON`, `AppendJSON` (appends the encoding into a reusable buffer for the signing pipeline), and `UnmarshalFastJSON` (an internal fast-decode hook). They are invoked automatically by the library's signing and parsing pipelines; regular business code rarely needs to call them directly. See the source (`claims_json.go`) for details.
+
 ---
 
 ## RegisteredClaims

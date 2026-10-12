@@ -1,7 +1,7 @@
 ---
 sidebar_label: "性能优化"
 title: "性能优化 - CyberGo html | 吞吐量提升指南"
-description: "CyberGo html 性能优化总览：sync.Pool 复用 Processor、缓存命中率监控、批量并发控制、WorkerPoolSize 调优、ProcessingTimeout 超时设置与反模式规避，系统提升 HTML 处理吞吐量。"
+description: "CyberGo html 性能优化总览：解析 sync.Pool 复用、缓存 Key 生成与命中率监控、批量并发控制、WorkerPoolSize 并发与 ProcessingTimeout 超时设置等内部机制，归纳输入控制、常见反模式与规避做法，并附基准测试建议，系统提升 HTML 处理吞吐量。"
 sidebar_position: 3
 ---
 
@@ -42,15 +42,16 @@ html.Extract(data)
 
 缓存 Key 是一个 `[16]byte`（128 位）值，直接用作 `map` 键，**生成 Key 不产生堆分配**。Key 的计算输入包括：
 
-- 编码转换后的 **UTF-8 内容**（而非原始字节）——相同内容用不同编码声明输入会命中同一缓存项；
+- **原始输入字节**（而非编码转换后的 UTF-8 文本）——缓存命中可跳过整个编码检测步骤；同一文档以不同编码存储会得到不同的 Key，无法互相命中；
 - 内容提取开关（`ExtractArticle`、`PreserveImages` 等 5 个布尔位）打包进一个 `uint8`；
-- 格式选项（`InlineImageFormat`、`InlineLinkFormat`、`TableFormat`）。
+- 格式选项（`InlineImageFormat`、`InlineLinkFormat`、`TableFormat`）；
+- `Encoding` 强制编码设置——同一份字节在不同 `Encoding` 配置下解码结果不同，必须区分。
 
 针对不同大小的内容，Key 生成采用两种策略：
 
 | 内容大小 | 策略 | 说明 |
 |----------|------|------|
-| ≤ 64 KB | 完整内容哈希 | 对全部字节做 xxHash 风格计算，无碰撞风险 |
+| ≤ 64 KB | 完整内容哈希 | 对全部字节做 hash/maphash 计算（AES-NI 加速），64 位结果经 splitmix64 扩展为 128 位 |
 | > 64 KB | 5 点采样 | 头部 + 尾部 + 3 个均匀分布的采样点，总采样预算 4096 字节（每点约 819 字节） |
 
 大文档采样是为了限制哈希成本——对 10 MB 文档做完整哈希会抵消缓存带来的收益。5 点采样兼顾了**抗哈希洪泛**（文档任意位置的修改都大概率改变 Key）与**吞吐量**。
@@ -97,7 +98,8 @@ html.Extract(data)
 两个输入产生**相同缓存 Key** 才会命中，这意味着：
 
 - 相同内容 + 相同配置 → 命中；
-- 相同内容的字节序列，但声明了不同编码（如一份带 `charset=gbk`、一份带 `charset=utf-8` 的相同正文）→ **命中**（Key 基于编码转换后的 UTF-8 文本计算）；
+- 同一正文以不同编码存储（如一份 GBK、一份 UTF-8）→ **不命中**（Key 基于原始输入字节计算，不同编码的字节序列不同）；
+- 相同字节但 `Encoding` 配置不同 → **不命中**（`Encoding` 参与 Key 计算）；
 - 相同内容但 `PreserveImages` 等开关不同 → **不命中**（开关位参与 Key 计算）。
 
 ### 命中后的克隆成本
@@ -116,31 +118,31 @@ html.Extract(data)
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    // 爬虫处理海量互不相同的页面：禁用缓存省去哈希计算与内存占用
-    cfg := html.DefaultConfig()
-    cfg.MaxCacheEntries = 0 // 零开销跳过整个缓存层
-    cfg.CacheTTL = 0         // 同时禁用后台清理 goroutine
-    cfg.CacheCleanup = 0
+	// 爬虫处理海量互不相同的页面：禁用缓存省去哈希计算与内存占用
+	cfg := html.DefaultConfig()
+	cfg.MaxCacheEntries = 0 // 零开销跳过整个缓存层
+	cfg.CacheTTL = 0        // 同时禁用后台清理 goroutine
+	cfg.CacheCleanup = 0
 
-    p, err := html.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer p.Close()
+	p, err := html.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer p.Close()
 
-    // eachPage 来自真实抓取流，几乎不会重复
-    result, err := p.Extract([]byte("<html><body>每个页面都不同</body></html>"))
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("文本长度：", len(result.Text))
-    // 输出：文本长度：...
+	// eachPage 来自真实抓取流，几乎不会重复
+	result, err := p.Extract([]byte("<html><body>每个页面都不同</body></html>"))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("文本长度：", len(result.Text))
+	// 输出：文本长度：...
 }
 ```
 
@@ -192,41 +194,41 @@ func main() {
 package main
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.DefaultConfig()
-    cfg.ProcessingTimeout = 5 * time.Second // 库内超时
-    p, err := html.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer p.Close()
+	cfg := html.DefaultConfig()
+	cfg.ProcessingTimeout = 5 * time.Second // 库内超时
+	p, err := html.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer p.Close()
 
-    // 外层 context 再加一道保险（可短于库内超时）
-    ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-    defer cancel()
+	// 外层 context 再加一道保险（可短于库内超时）
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
 
-    result, err := p.ExtractWithContext(ctx, []byte("<html></html>"))
-    switch {
-    case errors.Is(err, html.ErrProcessingTimeout):
-        fmt.Println("库内处理超时：考虑调大 ProcessingTimeout 或减小输入")
-    case errors.Is(err, context.DeadlineExceeded):
-        fmt.Println("外层 context 超时")
-    case errors.Is(err, context.Canceled):
-        fmt.Println("调用方主动取消")
-    case err != nil:
-        fmt.Println("其他错误：", err)
-    default:
-        fmt.Println("成功，文本长度：", len(result.Text))
-    }
-    // 输出：成功，文本长度：...
+	result, err := p.ExtractWithContext(ctx, []byte("<html></html>"))
+	switch {
+	case errors.Is(err, html.ErrProcessingTimeout):
+		fmt.Println("库内处理超时：考虑调大 ProcessingTimeout 或减小输入")
+	case errors.Is(err, context.DeadlineExceeded):
+		fmt.Println("外层 context 超时")
+	case errors.Is(err, context.Canceled):
+		fmt.Println("调用方主动取消")
+	case err != nil:
+		fmt.Println("其他错误：", err)
+	default:
+		fmt.Println("成功，文本长度：", len(result.Text))
+	}
+	// 输出：成功，文本长度：...
 }
 ```
 
@@ -251,33 +253,33 @@ ExtractBatch(items)
 package main
 
 import (
-    "fmt"
-    "runtime"
+	"fmt"
+	"runtime"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.DefaultConfig()
-    // WorkerPoolSize 上限为 256，高核数机器需封顶
-    n := runtime.NumCPU()
-    if n > 256 {
-        n = 256
-    }
-    cfg.WorkerPoolSize = n
-    p, err := html.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer p.Close()
+	cfg := html.DefaultConfig()
+	// WorkerPoolSize 上限为 256，高核数机器需封顶
+	n := runtime.NumCPU()
+	if n > 256 {
+		n = 256
+	}
+	cfg.WorkerPoolSize = n
+	p, err := html.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer p.Close()
 
-    pages := [][]byte{
-        []byte("<html><body>页面 A</body></html>"),
-        []byte("<html><body>页面 B</body></html>"),
-    }
-    br := p.ExtractBatch(pages)
-    fmt.Printf("成功 %d，失败 %d\n", br.Success, br.Failed)
-    // 输出：成功 2，失败 0
+	pages := [][]byte{
+		[]byte("<html><body>页面 A</body></html>"),
+		[]byte("<html><body>页面 B</body></html>"),
+	}
+	br := p.ExtractBatch(pages)
+	fmt.Printf("成功 %d，失败 %d\n", br.Success, br.Failed)
+	// 输出：成功 2，失败 0
 }
 ```
 
@@ -304,29 +306,29 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    // TextOnlyConfig 已禁用所有媒体保留，无需额外设置
-    cfg := html.TextOnlyConfig()
-    cfg.MaxInputSize = 10 * 1024 * 1024 // 10MB，拒绝超大输入
-    cfg.ExtractArticle = false           // 关闭文章识别，纯文本提取更快
+	// TextOnlyConfig 已禁用所有媒体保留，无需额外设置
+	cfg := html.TextOnlyConfig()
+	cfg.MaxInputSize = 10 * 1024 * 1024 // 10MB，拒绝超大输入
+	cfg.ExtractArticle = false          // 关闭文章识别，纯文本提取更快
 
-    p, err := html.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer p.Close()
+	p, err := html.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer p.Close()
 
-    result, err := p.Extract([]byte("<html><body><p>仅需纯文本</p></body></html>"))
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println(result.Text)
-    // 输出：仅需纯文本
+	result, err := p.Extract([]byte("<html><body><p>仅需纯文本</p></body></html>"))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(result.Text)
+	// 输出：仅需纯文本
 }
 ```
 
@@ -336,7 +338,7 @@ func main() {
 
 | 反模式 | 问题 | 正确做法 |
 |--------|------|----------|
-| 循环里每次 `html.New()` | 每次创建+销毁 Processor，重建编码检测器、评分器等 | 循环外创建一个实例，循环内复用 |
+| 循环里每次 `html.New()` | 每次创建 + 销毁 Processor，重建编码检测器、评分器等 | 循环外创建一个实例，循环内复用 |
 | 包级函数期望缓存命中 | 池化 Processor 禁用缓存，永远 miss | 用 `Processor` 实例 |
 | 大量不同内容却开大缓存 | 缓存膨胀、命中率极低，徒增内存与哈希开销 | `MaxCacheEntries = 0` 禁用缓存 |
 | `ExtractToMarkdown` 期望命中主缓存 | 格式转换用禁用缓存的临时 Processor | 配置 `InlineImageFormat="markdown"` 后用 `Extract` |
@@ -449,7 +451,7 @@ func BenchmarkConfigs(b *testing.B) {
 :::tip 解读 benchmark 结果
 - `ns/op`：单次提取耗时，越小越快；
 - `B/op` 和 `allocs/op`：每次提取的堆分配字节与次数，是判断「池化是否生效」「缓存是否命中」的核心指标——缓存命中时 `allocs/op` 会显著下降；
-- 对比 `CacheHit` 与 `NoCache`：若两者接近，说明你的内容**没有重复**，缓存纯属负担，应禁用。
+- 对比缓存命中场景（默认配置预热后 `stats.CacheHits` > 0，注意统计字段为复数 `CacheHits`）与 `NoCache`：若两者接近，说明你的内容**没有重复**，缓存纯属负担，应禁用。
 :::
 
 运行基准：

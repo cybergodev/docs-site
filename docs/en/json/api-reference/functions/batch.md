@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Batch Operations"
-title: "Batch Operations - CyberGo JSON | API Reference"
-description: "CyberGo JSON batch operations: ProcessBatch runs get/set/delete/validate in one call via BatchOperation/BatchResult, failures never abort the batch."
-sidebar_position: 7
+title: "Batch Operations - CyberGo JSON | ProcessBatch Usage"
+description: "CyberGo JSON is a Go library for batch processing, offering ProcessBatch get/set/delete/validate bounded by MaxBatchSize, plus WarmupCache for hot paths."
+sidebar_position: 70
 ---
 
 # Batch Operation Functions

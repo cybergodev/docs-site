@@ -1,8 +1,8 @@
 ---
 sidebar_label: "完整性签名"
 title: "HMAC 签名实战 - CyberGo DD | 日志完整性保护"
-description: "CyberGo DD HMAC-SHA256 日志完整性签名实战指南，涵盖 IntegritySigner 创建与初始化配置、签名与验签完整流程、时间戳与序列号递增机制、防篡改检测策略、与审计日志系统集成方案以及生产环境部署最佳实践，确保日志链路的完整性与可追溯性。"
-sidebar_position: 4.5
+description: "CyberGo DD HMAC-SHA256 日志完整性签名实战指南：IntegritySigner 创建配置、签名与验签流程、时间戳与序列号递增机制、防篡改检测策略与生产环境部署实践，确保日志链路完整可追溯。"
+sidebar_position: 4
 ---
 
 # HMAC 签名实战
@@ -13,7 +13,7 @@ DD 的 `IntegritySigner` 使用 HMAC-SHA256 对日志条目进行签名，确保
 
 ```text
 签名流程：
-  原始日志 → HMAC-SHA256(密钥 + 时间戳 + 序列号) → 签名后日志
+  原始日志 → HMAC-SHA256(密钥，消息 | 时间戳 | 序列号) → 签名后日志
 
 验证流程：
   签名后日志 → 提取签名 → 重新计算 HMAC → 对比签名 → 判断完整性

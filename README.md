@@ -32,21 +32,18 @@ CyberGo is a collection of production-ready, high-performance Go open source lib
 
 ## Languages
 
-The documentation is available in 5 languages:
+The documentation is available in 2 languages:
 
 | Language | Code | Path |
 |----------|------|------|
 | 简体中文 | `zh` | [/zh/](https://www.cybergo.dev/zh/) |
 | English | `en` | [/en/](https://www.cybergo.dev/en/) |
-| 한국어 | `ko` | [/ko/](https://www.cybergo.dev/ko/) |
-| 日本語 | `ja` | [/ja/](https://www.cybergo.dev/ja/) |
-| Русский | `ru` | [/ru/](https://www.cybergo.dev/ru/) |
 
 ## Features
 
 - **Unified Language Switching** — A language menu on every page, a one-time browser-language hint, and language-aware routing for bare paths; the homepage stays static for SEO
 - **Dynamic GitHub Links** — Project pages link directly to the corresponding source repository
-- **Full-Text Search** — Algolia DocSearch across all libraries, localized for 5 languages
+- **Full-Text Search** — Local minisearch-based search across all libraries, with CJK-aware tokenization and per-language indexes
 - **SEO Optimized** — Auto-generated canonical URLs, hreflang alternates, and Open Graph / Twitter meta tags
 - **Responsive Design** — Fully responsive with dark mode support
 - **Custom Components** — 404 page, footer, doc feedback widget, and project card grid
@@ -104,7 +101,7 @@ docs/
 ├── .vitepress/
 │   ├── config.mts              # VitePress config (SEO, locales, redirect)
 │   ├── shared.ts               # Shared constants
-│   ├── locales/                # Locale configs (zh, en, ko, ja, ru)
+│   ├── locales/                # Locale configs (zh, en)
 │   │   └── sidebars/           # Sidebar configs per language
 │   └── theme/                  # Custom theme
 │       ├── index.ts            # Dynamic GitHub links, title, layout
@@ -113,10 +110,7 @@ docs/
 │       └── composables/        # Composables (language detection, project path)
 ├── public/                     # Static assets (logo, favicon, robots.txt)
 ├── zh/                         # Chinese documentation
-├── en/                         # English documentation
-├── ko/                         # Korean documentation
-├── ja/                         # Japanese documentation
-└── ru/                         # Russian documentation
+└── en/                         # English documentation
 ```
 
 ## Contributing

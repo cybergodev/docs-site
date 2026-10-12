@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Overview"
-title: "Package Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON package-level functions: Get/GetString/GetInt path queries, Set/Delete/MergeJSON modification, Marshal/Unmarshal, ParseJSONL and ProcessBatch."
-sidebar_position: 1
+title: "Package Functions - CyberGo JSON | Complete Function List"
+description: "CyberGo JSON is a Go catalog of package-level functions, offering categorized Get/Set/Marshal/ProcessBatch lists to help developers find the right function."
+sidebar_position: 10
 ---
 
 # Package Functions
@@ -31,7 +31,7 @@ Functions for deleting nodes of JSON data.
 
 Serialization, deserialization, and streaming encode/decode functions.
 
-**Key functions**: [`Marshal`](./output#marshal) · [`Unmarshal`](./output#unmarshal) · [`MarshalIndent`](./output#marshalindent) · [`Encode`](./output#encode) · [`EncodePretty`](./output#encodepretty) · [`EncodeWithConfig`](./output#encodewithconfig) · [`Prettify`](./output#prettify) · [`Compact`](./output#compact) · [`CompactString`](./output#compactstring) · [`Indent`](./output#indent) · [`HTMLEscape`](./output#htmlescape) · [`NewEncoder`](../types#encoder-json-encoder) · [`NewDecoder`](../types#decoder-json-decoder) · [`EncodeBatch`](../processor/output#encodebatch) · [`EncodeFields`](../processor/output#encodefields) · [`EncodeStream`](../processor/output#encodestream) · [`SaveToWriter`](./file-io#savetowriter)
+**Key functions**: [`Marshal`](./output#marshal) · [`Unmarshal`](./output#unmarshal) · [`MarshalIndent`](./output#marshalindent) · [`Encode`](./output#encode) · [`EncodePretty`](./output#encodepretty) · [`EncodeWithConfig`](./output#encodewithconfig) (deprecated) · [`Prettify`](./output#prettify) · [`Compact`](./output#compact) · [`CompactString`](./output#compactstring) · [`Indent`](./output#indent) · [`HTMLEscape`](./output#htmlescape) · [`NewEncoder`](../types#encoder-json-encoder) · [`NewDecoder`](../types#decoder-json-decoder) · [`EncodeBatch`](../processor/output#encodebatch) · [`EncodeFields`](../processor/output#encodefields) · [`EncodeStream`](../processor/output#encodestream) · [`SaveToWriter`](./file-io#savetowriter)
 
 ## [Parse & Validate](./parse)
 
@@ -73,7 +73,7 @@ Guides and practices for streaming file iteration scenarios (API reference for t
 
 Utility functions for type conversion, comparison, cache management, error handling, and more.
 
-**Key functions**: [`CompareJSON`](../helpers#comparejson) · [`MergeJSON`](../helpers#mergejson) · [`MergeMany`](../helpers#mergemany) · [`ClearCache`](../helpers#clearcache-package-level-function) · [`GetStats`](../helpers#getstats-package-level-function) · [`GetHealthStatus`](../helpers#gethealthstatus-package-level-function) · [`SetGlobalProcessor`](../helpers#setglobalprocessor) · [`ShutdownGlobalProcessor`](../helpers#shutdownglobalprocessor) · [`SafeError`](../helpers#safeerror) · [`RedactedPath`](../helpers#redactedpath) · [`WarmupCache`](../helpers#warmupcache)
+**Key functions**: [`CompareJSON`](../helpers#comparejson) · [`MergeJSON`](../helpers#mergejson) · [`MergeMany`](../helpers#mergemany) · [`ClearCache`](../helpers#clearcache-package-level-function) · [`GetStats`](../helpers#getstats-package-level-function) · [`GetHealthStatus`](../helpers#gethealthstatus-package-level-function) · [`SetGlobalProcessor`](../helpers#global-processor-management) · [`ShutdownGlobalProcessor`](../helpers#global-processor-management) · [`SafeError`](../helpers#safeerror) · [`RedactedPath`](../helpers#redactedpath) · [`WarmupCache`](../helpers#warmupcache)
 
 ---
 

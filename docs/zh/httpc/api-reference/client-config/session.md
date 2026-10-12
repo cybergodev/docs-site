@@ -2,7 +2,7 @@
 sidebar_label: "会话管理"
 title: "会话管理 - CyberGo HTTPC | SessionManager"
 description: "HTTPC SessionManager API 参考：NewSessionManager 创建、SessionConfig 配置、SetHeader 头管理、SetCookie 方法与 SetCookieSecurity 验证的完整用法。"
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # 会话管理
@@ -139,11 +139,13 @@ func (s *SessionManager) GetHeaders() map[string]string
 
 | 方法 | 签名 | 锁 | 说明 |
 |------|------|----|------|
-| SetHeader | `(key, value string) error` | 写锁 | 单个设置，含校验 |
-| SetHeaders | `(headers map[string]string) error` | 写锁 | 批量设置，原子校验 |
-| DeleteHeader | `(key string)` | 写锁 | 按 key 删除 |
-| ClearHeaders | `()` | 写锁 | 清空全部 |
-| GetHeaders | `() map[string]string` | 读锁 | 返回深拷贝副本 |
+| `SetHeader` | `(key, value string) error` | 写锁 | 单个设置，含校验 |
+| `SetHeaders` | `(headers map[string]string) error` | 写锁 | 批量设置，原子校验 |
+| `DeleteHeader` | `(key string)` | 写锁 | 按 key 删除 |
+| `ClearHeaders` | `()` | 写锁 | 清空全部 |
+| `GetHeaders` | `() map[string]string` | 读锁 | 返回深拷贝副本 |
+
+完整方法名为 `SessionManager.SetHeader`、`SessionManager.SetHeaders`、`SessionManager.DeleteHeader`、`SessionManager.ClearHeaders`、`SessionManager.GetHeaders`。
 
 ## Cookie 管理
 
@@ -216,12 +218,14 @@ func (s *SessionManager) GetCookie(name string) *http.Cookie
 
 | 方法 | 签名 | 锁 | 校验 |
 |------|------|----|------|
-| SetCookie | `(cookie *http.Cookie) error` | 写锁 | ValidateCookie + 可选 CookieSecurity |
-| SetCookies | `(cookies []*http.Cookie) error` | 写锁 | 两阶段原子校验 |
-| DeleteCookie | `(name string)` | 写锁 | 无 |
-| ClearCookies | `()` | 写锁 | 无 |
-| GetCookies | `() []*http.Cookie` | 读锁 | 无（返回深拷贝） |
-| GetCookie | `(name string) *http.Cookie` | 读锁 | 无（返回深拷贝） |
+| `SetCookie` | `(cookie *http.Cookie) error` | 写锁 | ValidateCookie + 可选 CookieSecurity |
+| `SetCookies` | `(cookies []*http.Cookie) error` | 写锁 | 两阶段原子校验 |
+| `DeleteCookie` | `(name string)` | 写锁 | 无 |
+| `ClearCookies` | `()` | 写锁 | 无 |
+| `GetCookies` | `() []*http.Cookie` | 读锁 | 无（返回深拷贝） |
+| `GetCookie` | `(name string) *http.Cookie` | 读锁 | 无（返回深拷贝） |
+
+完整方法名为 `SessionManager.SetCookie`、`SessionManager.SetCookies`、`SessionManager.DeleteCookie`、`SessionManager.ClearCookies`、`SessionManager.GetCookies`、`SessionManager.GetCookie`。
 
 ## Cookie 安全
 
@@ -266,7 +270,7 @@ type CookieSecurityConfig struct {
 func (s *SessionManager) UpdateFromResult(result *Result)
 ```
 
-从请求结果（`*Result`）的 Response.Cookies 中提取 Cookie 并存入会话。若配置了 CookieSecurity，不安全的 Cookie 会被**静默跳过**（不返回错误，直接忽略），仅存储通过校验的 Cookie。result 为 nil、Response 为 nil 或 Cookies 为空时直接返回。DomainClient 的 `Request` 方法在每次请求后自动调用此方法。
+`SessionManager.UpdateFromResult` 从请求结果（`*Result`）的 Response.Cookies 中提取 Cookie 并存入会话。若配置了 CookieSecurity，不安全的 Cookie 会被**静默跳过**（不返回错误，直接忽略），仅存储通过校验的 Cookie。result 为 nil、Response 为 nil 或 Cookies 为空时直接返回。DomainClient 的 `Request` 方法在每次请求后自动调用此方法。
 
 ### UpdateFromCookies
 
@@ -274,7 +278,7 @@ func (s *SessionManager) UpdateFromResult(result *Result)
 func (s *SessionManager) UpdateFromCookies(cookies []*http.Cookie)
 ```
 
-从 Cookie 切片中更新会话 Cookie。语义与 UpdateFromResult 一致——不安全 Cookie 静默跳过。DomainClient 的 Download 方法通过此方法捕获下载响应中的 Cookie。
+`SessionManager.UpdateFromCookies` 从 Cookie 切片中更新会话 Cookie。语义与 `SessionManager.UpdateFromResult` 一致——不安全 Cookie 静默跳过。DomainClient 的 Download 方法通过此方法捕获下载响应中的 Cookie。
 
 ## 内部机制
 

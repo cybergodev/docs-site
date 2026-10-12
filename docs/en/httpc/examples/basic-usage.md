@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Basic Usage"
 title: "Basic Usage - CyberGo HTTPC | Runnable Examples"
-description: "HTTPC basics: all HTTP methods, query params and auth, XML/binary bodies, the Result triple, DefaultConfig, proxy, middleware, and progress-callback downloads."
-sidebar_position: 1
+description: "HTTPC basics: all HTTP methods, query params/auth, XML/binary bodies, status checks and the Result triple, DefaultConfig, proxy, middleware, and downloads."
+sidebar_position: 10
 ---
 
 # Basic Usage
@@ -15,20 +15,20 @@ sidebar_position: 1
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.StatusCode()) // 200
-    fmt.Println(result.Body())
+	fmt.Println(result.StatusCode()) // 200
+	fmt.Println(result.Body())
 }
 ```
 
@@ -197,61 +197,61 @@ PUT, DELETE, HEAD, PATCH, OPTIONS, and the generic `Request` are all available. 
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // PUT: replace the resource entirely
-    put, err := client.Put("https://httpbin.org/put",
-        httpc.WithJSON(map[string]string{"name": "Jane", "status": "active"}),
-        httpc.WithBearerToken("your-token"),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("PUT:", put.StatusCode()) // Output: PUT: 200
+	// PUT: replace the resource entirely
+	put, err := client.Put("https://httpbin.org/put",
+		httpc.WithJSON(map[string]string{"name": "Jane", "status": "active"}),
+		httpc.WithBearerToken("your-token"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("PUT:", put.StatusCode()) // Output: PUT: 200
 
-    // DELETE: remove a resource
-    del, err := client.Delete("https://httpbin.org/delete",
-        httpc.WithHeader("X-Request-ID", "delete-123"),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("DELETE:", del.StatusCode()) // Output: DELETE: 200
+	// DELETE: remove a resource
+	del, err := client.Delete("https://httpbin.org/delete",
+		httpc.WithHeader("X-Request-ID", "delete-123"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("DELETE:", del.StatusCode()) // Output: DELETE: 200
 
-    // HEAD: fetch headers only (no body), ideal for probing existence and size
-    head, err := client.Head("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("HEAD:", head.StatusCode())                                 // Output: HEAD: 200
-    fmt.Println("Content-Type:", head.Response.Headers.Get("Content-Type")) // Output: Content-Type: application/json
+	// HEAD: fetch headers only (no body), ideal for probing existence and size
+	head, err := client.Head("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("HEAD:", head.StatusCode())                                 // Output: HEAD: 200
+	fmt.Println("Content-Type:", head.Response.Headers.Get("Content-Type")) // Output: Content-Type: application/json
 
-    // PATCH: partial update (submit only the changed fields)
-    patch, err := client.Patch("https://httpbin.org/patch",
-        httpc.WithJSON(map[string]string{"status": "inactive"}),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("PATCH:", patch.StatusCode()) // Output: PATCH: 200
+	// PATCH: partial update (submit only the changed fields)
+	patch, err := client.Patch("https://httpbin.org/patch",
+		httpc.WithJSON(map[string]string{"status": "inactive"}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("PATCH:", patch.StatusCode()) // Output: PATCH: 200
 
-    // OPTIONS: discover the methods the server allows (same idea as a CORS preflight)
-    opt, err := client.Options("https://httpbin.org/post")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("OPTIONS:", opt.StatusCode()) // Output: OPTIONS: 200
+	// OPTIONS: discover the methods the server allows (same idea as a CORS preflight)
+	opt, err := client.Options("https://httpbin.org/post")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("OPTIONS:", opt.StatusCode()) // Output: OPTIONS: 200
 }
 ```
 

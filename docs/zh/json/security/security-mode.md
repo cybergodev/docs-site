@@ -1,8 +1,8 @@
 ---
 sidebar_label: "安全模式"
-title: "安全模式 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 安全 API：安全配置、AddDangerousPattern 注册自定义危险模式、PatternLevel 三级严重度与内置危险模式，配合输入验证防御 JSON 注入、原型污染与 XSS 等威胁，命中即拒绝且匹配大小写不敏感。"
-sidebar_position: 2
+title: "安全模式 - CyberGo JSON | 危险模式检测与防护"
+description: "CyberGo JSON 安全模式指南：安全配置、AddDangerousPattern 注册自定义危险模式、PatternLevel 三级严重度与内置危险模式，配合输入验证防御 JSON 注入、原型污染与 XSS 等威胁，命中即拒绝且匹配大小写不敏感。"
+sidebar_position: 20
 ---
 
 # 安全模式
@@ -132,15 +132,15 @@ GetCriticalPatterns 已转为内部函数，不再作为公开 API 导出。关�
 
 ---
 
-## 模式注册方法
+## 自定义模式注册
 
-危险模式通过 `Config` 结构体进行配置，而不是全局注册函数。
+自定义危险模式有两条注册途径：**Config 追加**（实例级，构造时固化进处理器的安全校验器）与**全局注册**（进程级，对所有 Processor 生效）。两者的作用域、移除方式与适用场景对照见[全局注册 vs Config 追加](#全局注册-vs-config-追加)。
 
-### Config.AddDangerousPattern
+### Config 追加（实例级）
+
+`Config.AddDangerousPattern` 方法向配置添加自定义危险模式：
 
 签名：`func (c *Config) AddDangerousPattern(pattern DangerousPattern)`
-
-添加自定义危险模式到配置中。
 
 ```go
 cfg := json.DefaultConfig()
@@ -157,9 +157,7 @@ if err != nil {
 defer processor.Close()
 ```
 
-### Config.AdditionalDangerousPatterns
-
-也可以直接设置 `Config.AdditionalDangerousPatterns` 字段：
+也可以一次传入多个模式——直接设置 `Config.AdditionalDangerousPatterns` 字段：
 
 ```go
 cfg := json.DefaultConfig()
@@ -169,28 +167,7 @@ cfg.AdditionalDangerousPatterns = []json.DangerousPattern{
 }
 ```
 
----
-
-## Config 配置方法
-
-### AddDangerousPattern
-
-向配置中添加安全模式。
-
-```go
-func (c *Config) AddDangerousPattern(pattern DangerousPattern)
-```
-
-```go
-cfg := json.DefaultConfig()
-cfg.AddDangerousPattern(json.DangerousPattern{
-    Pattern: "custom_dangerous_string",
-    Name:    "自定义危险字符串",
-    Level:   json.PatternLevelWarning,
-})
-```
-
-### 配置字段
+相关配置字段：
 
 ```go
 type Config struct {
@@ -206,13 +183,11 @@ type Config struct {
 }
 ```
 
----
-
-## 全局模式注册
+### 全局注册（进程级）
 
 除了通过 `Config` 配置实例级模式外，还可以通过包级函数管理全局模式注册表。全局注册表中的模式在所有 Processor 实例中生效。
 
-### RegisterDangerousPattern
+#### RegisterDangerousPattern
 
 签名：`func RegisterDangerousPattern(pattern DangerousPattern)`
 
@@ -226,7 +201,7 @@ json.RegisterDangerousPattern(json.DangerousPattern{
 })
 ```
 
-### UnregisterDangerousPattern
+#### UnregisterDangerousPattern
 
 签名：`func UnregisterDangerousPattern(pattern string)`
 
@@ -236,7 +211,7 @@ json.RegisterDangerousPattern(json.DangerousPattern{
 json.UnregisterDangerousPattern("malicious_keyword")
 ```
 
-### ListDangerousPatterns
+#### ListDangerousPatterns
 
 签名：`func ListDangerousPatterns() []DangerousPattern`
 
@@ -303,13 +278,13 @@ func main() {
 	_, err2 := withoutCfg.Get(`{"v": "project_secret"}`, "v")
 	_, err3 := withoutCfg.Get(`{"v": "internal_only"}`, "v")
 
-	fmt.Println("局部模式拦截配置处理器:", err1 != nil)
-	fmt.Println("局部模式拦截普通处理器:", err2 != nil)
-	fmt.Println("全局模式拦截普通处理器:", err3 != nil)
+	fmt.Println("局部模式拦截配置处理器：", err1 != nil)
+	fmt.Println("局部模式拦截普通处理器：", err2 != nil)
+	fmt.Println("全局模式拦截普通处理器：", err3 != nil)
 	// 输出：
-	// 局部模式拦截配置处理器: true
-	// 局部模式拦截普通处理器: false
-	// 全局模式拦截普通处理器: true
+	// 局部模式拦截配置处理器：true
+	// 局部模式拦截普通处理器：false
+	// 全局模式拦截普通处理器：true
 }
 ```
 
@@ -349,8 +324,8 @@ func main() {
 
 	// 测试危险模式检测（模式作为整词匹配：两侧不能紧邻字母/数字/下划线）
 	_, err = p.Get(`{"data": "company_secret"}`, "data")
-	fmt.Println("检测到危险模式:", err != nil)
-	// 输出：检测到危险模式: true
+	fmt.Println("检测到危险模式：", err != nil)
+	// 输出：检测到危险模式：true
 
 	// 查看已注册的模式
 	fmt.Printf("自定义模式数量：%d\n", len(cfg.AdditionalDangerousPatterns))

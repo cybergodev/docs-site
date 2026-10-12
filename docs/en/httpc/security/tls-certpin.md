@@ -1,8 +1,8 @@
 ---
 sidebar_label: "TLS & Certificate Pinning"
 title: "TLS & Certificate Pinning - CyberGo HTTPC | Crypto & Pinning"
-description: "HTTPC TLS and certificate pinning guide: TLS 1.2-1.3 version control, SPKI hash generation steps and key rotation, comparison of three Pinner constructors, custom CertificatePinner, mTLS mutual authentication, custom CA certificates, and Let's Encrypt short-lifetime certificate pinning strategies."
-sidebar_position: 3
+description: "HTTPC TLS and certificate pinning: TLS 1.2-1.3 control, SPKI hash generation and rotation, Pinner constructors, mTLS, and custom CA certificates."
+sidebar_position: 30
 ---
 
 # TLS and Certificate Pinning
@@ -149,7 +149,7 @@ Certificate pinning layers an additional check **on top of** standard certificat
 
 Standard TLS validation: the client trusts any certificate signed by a trusted CA. Certificate pinning: the client additionally requires the certificate's public-key hash to match a pre-stored value.
 
-```
+```text
 Standard validation:  trust CA -> trust any certificate signed by that CA
 Certificate pinning:  trust CA + certificate's public key must match the pre-stored hash
 ```

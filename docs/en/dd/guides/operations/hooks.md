@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Hook System"
 title: "Hook System - CyberGo DD | Lifecycle Hooks Guide"
-description: "CyberGo DD hook system guide: 6 lifecycle events (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), the HookRegistry registry, the HookContext context, and common extension scenarios."
+description: "CyberGo DD hook system: 6 lifecycle events (BeforeLog, AfterLog, OnFilter, OnRotate, OnClose, OnError), HookRegistry, and HookContext usage scenarios."
 sidebar_position: 2
 ---
 
@@ -17,7 +17,7 @@ DD provides 6 lifecycle hook events:
 |-------|----------------|-------------|
 | `HookBeforeLog` | Before a log is formatted (fields already filtered) | Conditional skip, sampling |
 | `HookAfterLog` | After a log write completes | Update metrics, send notifications |
-| `HookOnFilter` | When a field value is redacted (message-text redaction does not trigger this; the hook receives only the field key, not the original value) | Record redaction events, audit |
+| `HookOnFilter` | When sensitive data is redacted: field-value redaction (the hook receives the field key) or message-text redaction (empty key); the hook receives only the key, **never the original value** | Record redaction events, audit |
 | `HookOnRotate` | After file rotation completes | Notify ops, upload old files |
 | `HookOnClose` | When the Logger closes | Clean up resources, send final reports |
 | `HookOnError` | When a write error occurs | Alerting, graceful degradation |
@@ -38,9 +38,9 @@ hooks := dd.NewHooksFromConfig(dd.HooksConfig{
     }},
 })
 
-logger, err := dd.New(dd.Config{
-    Hooks: hooks,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = hooks
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -67,9 +67,9 @@ registry.Add(dd.HookOnRotate, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, err := dd.New(dd.Config{
-    Hooks: registry,
-})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -114,7 +114,9 @@ registry.Add(dd.HookAfterLog, func(ctx context.Context, hCtx *dd.HookContext) er
     return nil
 })
 
-logger, err := dd.New(dd.Config{Hooks: registry})
+cfg := dd.DefaultConfig()
+cfg.Hooks = registry
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -192,16 +194,23 @@ registry.Add(dd.HookBeforeLog, func(ctx context.Context, hCtx *dd.HookContext) e
 ```
 
 :::warning Panics in Hooks
-If a hook function panics, DD recovers automatically without affecting the main flow. The panic value is passed to the ErrorHandler.
+If a hook function panics, DD recovers automatically and converts the panic to an error. When an `ErrorHandler` is configured, the error is passed to it and execution continues with the next hook; without one, hook execution stops and the error is returned (a `HookBeforeLog` error also aborts that log entry). The main flow is never affected.
 :::
 
 ## Dynamic Registration
 
 ```go
-// Register a new hook at runtime
-registry.Add(dd.HookAfterLog, newHookFunc)
+// To add a hook to an already-created Logger at runtime, the right way is logger.AddHook (Clone-Modify-Store, thread-safe)
+if err := logger.AddHook(dd.HookAfterLog, newHookFunc); err != nil {
+    log.Printf("failed to register hook: %v", err) // ErrNilHook or ErrLoggerClosed
+}
 
-// Remove at runtime (via HookRegistry methods)
+// Remove at runtime: HookRegistry.Remove clears ALL hooks for the event (a single hook cannot be removed individually).
+// For an already-created Logger: GetHooks() for a copy, Remove, then SetHooks() to write it back
+if hooks := logger.GetHooks(); hooks != nil {
+    hooks.Remove(dd.HookAfterLog)
+    _ = logger.SetHooks(hooks)
+}
 ```
 
 :::warning registry cloning

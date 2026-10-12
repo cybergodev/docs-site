@@ -1,7 +1,7 @@
 ---
 sidebar_label: "令牌刷新与轮换"
 title: "令牌刷新与轮换 - CyberGo JWT | 访问与刷新令牌策略"
-description: "令牌刷新与轮换指南：讲解访问令牌与刷新令牌的双层 TTL 设计、CreateRefresh 签发与 Refresh 轮换流程、自定义 Claims 的 RefreshInto 用法、重用与一次性轮换策略对比及 Refresh 不自动吊销的安全语义。"
+description: "令牌刷新与轮换指南：讲解访问令牌与刷新令牌的双层 TTL 设计、CreateRefresh 签发与 Refresh 轮换流程、自定义 Claims 的 RefreshInto 用法，以及重用（默认不自动吊销）与一次性轮换（内建 RotateRefreshTokens 开关）两种策略。"
 sidebar_position: 25
 check_code: false
 ---
@@ -158,7 +158,32 @@ if err != nil {
 
 ### 一次性轮换
 
-对安全性要求更高的场景，每次刷新后立即吊销旧刷新令牌，实现一次性使用：
+对安全性要求更高的场景，让每个刷新令牌仅能使用一次。v1.2.3 起推荐启用内建轮换开关 `Config.RotateRefreshTokens` <Badge type="tip" text="v1.2.3+" />：
+
+```go
+cfg := jwt.DefaultConfig()
+// ...密钥与 TTL 等必要配置
+cfg.RotateRefreshTokens = true // 一次性使用：Refresh 先吊销旧令牌再签发新令牌
+
+processor, err := jwt.New(cfg)
+if err != nil {
+    panic(err)
+}
+
+// Refresh / RefreshInto 会自动吊销旧刷新令牌（按 jti 拉黑）再签发新访问令牌
+newAccessToken, err := processor.Refresh(refreshToken)
+if err != nil {
+    panic(err)
+}
+```
+
+::: warning fail-closed 语义与并发窗口
+- **吊销先于签发**：旧令牌的 jti 会在新令牌铸造**之前**被拉黑。若随后签发失败（如触发限流），旧令牌已失效，用户须重新认证——这是刻意的 fail-closed 设计，保证已接受的刷新令牌无法事后重放。
+- **错误**：吊销旧令牌失败时返回 `ErrRefreshRotationFailed`（包装底层黑名单存储错误），且不会有新令牌签发；缺少 `jti` 的刷新令牌无法吊销，直接返回 `ErrTokenMissingID`；未配置黑名单的处理器则返回 `ErrBlacklistNotConfigured`（`Revoke()` 同样如此）。经 `jwt.New()` 构建的处理器总是自带黑名单——`DefaultConfig()` 默认启用，零值字段也会在 `New()` 中补全默认——常规使用不会遇到该错误。
+- **并发**：轮换收窄但不消除重放窗口——两个并发的 `Refresh` 可能都在吊销生效前通过验证。如需严格的单次使用保证，请自定义 `BlacklistStore` 实现原子 check-and-add。
+:::
+
+无法调整配置时，手动 `Refresh` + `Revoke` 是等效的替代方案：
 
 ```go
 // 刷新并立即吊销旧令牌
@@ -173,6 +198,8 @@ if err := processor.Revoke(refreshToken); err != nil {
 }
 ```
 
+注意：手动方案存在窗口期——`Refresh` 成功到 `Revoke` 生效之间旧令牌仍可使用；且第一步成功、第二步失败时需自行处理。
+
 **适用场景**：Web 应用、高安全要求系统。每次刷新后旧令牌立即失效，降低令牌泄露风险。
 
 ### 策略对比
@@ -181,7 +208,7 @@ if err := processor.Revoke(refreshToken); err != nil {
 |------|----------|------------|
 | 安全性 | 较低（令牌泄露后可反复使用） | 较高（泄露令牌仅限单次使用） |
 | 用户体验 | 较好（无需频繁重新登录） | 一般（刷新失败需重新登录） |
-| 实现复杂度 | 零额外代码 | 需调用 `Revoke` |
+| 实现复杂度 | 零额外代码 | 一个配置开关（`RotateRefreshTokens`），或手动调用 `Revoke` |
 | 黑名单压力 | 低 | 较高（每次刷新产生一条记录） |
 
 ::: warning 刷新令牌泄露检测
@@ -204,7 +231,7 @@ _, err := processor.Refresh(accessToken)
 
 ## 安全注意事项
 
-- **Refresh 不自动吊销**：原刷新令牌在 `Refresh` 后仍然有效，需要手动调用 `Revoke` 实现一次性轮换。
+- **Refresh 默认不自动吊销**：原刷新令牌在 `Refresh` 后仍然有效。如需一次性使用语义，启用 `Config.RotateRefreshTokens`（推荐，见[一次性轮换](#一次性轮换)）或手动调用 `Revoke`。
 - **Claims 不深度校验**：`Refresh` 验证标准 JWT 字段（签名、过期、签发者、受众、黑名单）和基本结构（UserID 或 Username 非空），但不重新检查字段长度限制和注入模式，信任创建时已校验。
 - **签名一致性**：新访问令牌使用与刷新令牌相同的签名算法和密钥，不支持跨算法刷新。
 

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo DD | 5 分钟入门指南"
-description: "快速上手 CyberGo DD 高性能结构化日志库的完整入门教程，从安装依赖到首次输出日志，逐步学习创建日志记录器、配置输出目标与文件轮换策略、使用结构化字段记录请求上下文信息和钩子系统扩展功能，5 分钟即可掌握核心用法并应用到实际项目中。"
-sidebar_position: 2
+description: "CyberGo DD 快速上手入门教程：从安装到首次输出日志，逐步学习创建日志记录器、日志级别控制、结构化日志与字段链式传递、文件轮换及敏感数据过滤，5 分钟掌握核心用法。"
+sidebar_position: 1
 ---
 
 # 快速开始
@@ -15,64 +15,64 @@ DD 提供多种便捷构造函数，满足不同场景需求：
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // 方式一：默认全局日志记录器（零配置）
-    dd.Info("使用全局日志记录器")
+	// 方式一：默认全局日志记录器（零配置）
+	dd.Info("使用全局日志记录器")
 
-    // 方式二：开发模式（DEBUG 级别，带 caller）
-    dev, err := dd.New(dd.DevelopmentConfig())
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer dev.Close()
-    dev.Info("开发模式输出")
+	// 方式二：开发模式（DEBUG 级别，带 caller）
+	dev, err := dd.New(dd.DevelopmentConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dev.Close()
+	dev.Info("开发模式输出")
 
-    // 方式三：输出到文件
-    file, err := dd.New(dd.Config{
-        Targets: []dd.OutputTarget{dd.FileOutput("logs/app.log")},
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer file.Close()
-    file.Info("文件输出")
+	// 方式三：输出到文件
+	file, err := dd.New(dd.Config{
+		Targets: []dd.OutputTarget{dd.FileOutput("logs/app.log")},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Info("文件输出")
 
-    // 方式四：同时输出到控制台和文件
-    all, err := dd.New(dd.Config{
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.log"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer all.Close()
-    all.Info("双目标输出")
+	// 方式四：同时输出到控制台和文件
+	all, err := dd.New(dd.Config{
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.log"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer all.Close()
+	all.Info("双目标输出")
 
-    // 方式五：JSON 格式双目标输出
-    jsonLogger, err := dd.New(dd.Config{
-        Format: dd.FormatJSON,
-        Targets: []dd.OutputTarget{
-            dd.ConsoleOutput(),
-            dd.FileOutput("logs/app.json"),
-        },
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer jsonLogger.Close()
-    jsonLogger.Info("JSON 格式输出")
+	// 方式五：JSON 格式双目标输出
+	jsonLogger, err := dd.New(dd.Config{
+		Format: dd.FormatJSON,
+		Targets: []dd.OutputTarget{
+			dd.ConsoleOutput(),
+			dd.FileOutput("logs/app.json"),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer jsonLogger.Close()
+	jsonLogger.Info("JSON 格式输出")
 }
 ```
 
 :::warning 零值 Config 陷阱
-上面方式三/四/五直接使用 `dd.Config{...}` 字面量，仅显式设置了 `Targets`/`Format`，其余字段保持零值：`Level=Debug`（不过滤）、`IncludeTime=false`（无时间戳）、`IncludeLevel=false`（无级别）、`DynamicCaller=false`（无调用者）、`Security=nil`（回退到 `DefaultSecurityConfig()` 基础过滤，仍开启约 36 类脱敏；如需关闭需显式 `&dd.SecurityConfig{}` 或 `SecurityLevelDevelopment`）。输出会缺失时间戳与级别等关键信息。
+上面方式三/四/五直接使用 `dd.Config{...}` 字面量，仅显式设置了 `Targets`/`Format`，其余字段保持零值：`Level=Debug`（不过滤）、`IncludeTime=false`（无时间戳）、`IncludeLevel=false`（无级别）、`DynamicCaller=false`（无调用者）、`Security=nil`（回退到 `DefaultSecurityConfig()` 基础过滤，仍开启 38 条基础脱敏模式；如需关闭需显式 `&dd.SecurityConfig{}` 或 `SecurityLevelDevelopment`）。输出会缺失时间戳与级别等关键信息。
 
 **生产推荐**：以 `dd.DefaultConfig()` 作为基础再修改字段，可一次性获得时间戳、级别、调用者与默认安全过滤：
 
@@ -160,10 +160,9 @@ fw, err := dd.NewFileWriter("logs/app.log", fwCfg)
 if err != nil {
     log.Fatal(err)
 }
-logger, err := dd.New(dd.Config{
-    Level: dd.LevelInfo,
-    Targets: []dd.OutputTarget{dd.CustomOutput(fw)},
-})
+cfg := dd.DefaultConfig() // Level 已是 Info
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }

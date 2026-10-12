@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Security Overview"
 title: "Security Overview - CyberGo html | Protection Overview"
-description: "CyberGo html security: defense in depth (input/processing/audit), MaxInputSize/MaxDepth, path traversal, panic recovery, sanitization, HighSecurityConfig."
+description: "CyberGo html security overview: defense in depth (input/processing/audit), MaxInputSize/MaxDepth, sanitization, AllowedBaseDir sandbox, HighSecurityConfig."
 sidebar_position: 1
 ---
 

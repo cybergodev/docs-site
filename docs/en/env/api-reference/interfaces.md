@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Interfaces"
 title: "Interfaces - CyberGo env | Core Interface Hierarchy"
-description: "Core interface definitions for CyberGo env: EnvLoader composite plus EnvFileLoader, EnvGetter, EnvSetter, Validator, and EnvParser sub-interfaces for DI."
+description: "Fine-grained DI interfaces for CyberGo env: EnvLoader composite with EnvFileLoader, EnvGetter, EnvSetter, Validator, FullAuditLogger, EnvParser, FileSystem."
 sidebar_position: 6
 ---
 
@@ -580,8 +580,10 @@ handler := env.NewLogAuditHandler(logger)
 
 **Output example:**
 ```text
-[AUDIT] 2024/01/15 10:30:00 load .env success
+[AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env
 ```
+
+Events are emitted as key-value pairs (`action`, `key`, `success`, `reason`, plus optional `file` / `duration`); the prefix and timestamp depend on the `log.Logger` passed in. See [NewLogAuditHandler](./factory#newlogaudithandler) for the full format.
 
 ---
 
@@ -596,8 +598,8 @@ func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 **Parameters:**
 - `ch` - audit event channel
 
-:::warning
-`ChannelAuditHandler` does **not own** the channel, and `Close()` will **not** close the underlying channel. The caller must close the channel themselves to signal the receiver to stop. Additionally, when the channel buffer is full, `Log()` will block — a buffered channel is recommended. For automatic channel lifecycle management, use [NewCloseableChannelHandler](/en/env/api-reference/factory#newcloseablechannelhandler).
+:::warning Channel ownership
+`ChannelAuditHandler` does **not own** the channel, and `Close()` will **not** close the underlying channel. The caller must close the channel themselves to signal the receiver to stop. Additionally, when the channel buffer is full, `Log()` will block — a buffered channel is recommended. For automatic channel lifecycle management, use [NewCloseableChannelHandler](./factory#newcloseablechannelhandler).
 :::
 
 ```go
@@ -651,6 +653,8 @@ const (
 )
 ```
 
+The ten action constants map to: `ActionLoad` file loading, `ActionParse` parsing, `ActionGet` variable reads, `ActionSet` variable writes, `ActionDelete` variable deletion, `ActionValidate` key/value validation, `ActionExpand` variable expansion, `ActionSecurity` security events, `ActionError` error events, and `ActionFileAccess` path-access checks.
+
 ---
 
 ### AuditEvent
@@ -697,7 +701,7 @@ func (f *ComponentFactory) Close() error
 func (f *ComponentFactory) IsClosed() bool
 ```
 
-**Use case:** Internal use, automatically managed when creating a Loader. See [ComponentFactory API](/en/env/api-reference/factory).
+**Use case:** Internal use, automatically managed when creating a Loader. See [ComponentFactory API](./factory).
 
 ---
 
@@ -709,39 +713,39 @@ func (f *ComponentFactory) IsClosed() bool
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // Custom audit handler
 type CustomAuditHandler struct {
-    events []env.AuditEvent
+	events []env.AuditEvent
 }
 
 func (h *CustomAuditHandler) Log(event env.AuditEvent) error {
-    h.events = append(h.events, event)
-    return nil
+	h.events = append(h.events, event)
+	return nil
 }
 
 func (h *CustomAuditHandler) Close() error {
-    return nil
+	return nil
 }
 
 func main() {
-    cfg := env.ProductionConfig()
-    cfg.AuditEnabled = true
-    handler := &CustomAuditHandler{}
-    cfg.AuditHandler = handler
+	cfg := env.ProductionConfig()
+	cfg.AuditEnabled = true
+	handler := &CustomAuditHandler{}
+	cfg.AuditHandler = handler
 
-    loader, _ := env.New(cfg)
-    defer loader.Close()
-    // Use loader...
+	loader, _ := env.New(cfg)
+	defer loader.Close()
+	// Use loader...
 
-    // View audit events
-    for _, event := range handler.events {
-        fmt.Printf("%s: %s - %s\n", event.Action, event.Key, event.Reason)
-    }
+	// View audit events
+	for _, event := range handler.events {
+		fmt.Printf("%s: %s - %s\n", event.Action, event.Key, event.Reason)
+	}
 }
 ```
 
@@ -751,42 +755,42 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 // Only needs read capability
 func printConfig(getter env.EnvGetter) {
-    for _, key := range getter.Keys() {
-        value, _ := getter.Lookup(key)
-        fmt.Printf("%s = %s\n", key, value)
-    }
+	for _, key := range getter.Keys() {
+		value, _ := getter.Lookup(key)
+		fmt.Printf("%s = %s\n", key, value)
+	}
 }
 
 // Only needs write capability
 func setDefaults(setter env.EnvSetter) error {
-    return setter.Set("DEFAULT_KEY", "default_value")
+	return setter.Set("DEFAULT_KEY", "default_value")
 }
 
 // Only needs load capability
 func loadConfig(loader env.EnvFileLoader) error {
-    return loader.LoadFiles(".env")
+	return loader.LoadFiles(".env")
 }
 
 func main() {
-    cfg := env.DefaultConfig()
-    loader, _ := env.New(cfg)
-    defer loader.Close()
+	cfg := env.DefaultConfig()
+	loader, _ := env.New(cfg)
+	defer loader.Close()
 
-    // Use fine-grained interfaces
-    loadConfig(loader)
-    setDefaults(loader)
-    printConfig(loader)
+	// Use fine-grained interfaces
+	loadConfig(loader)
+	setDefaults(loader)
+	printConfig(loader)
 }
 ```
 
 ## Related Documentation
 
-- [Loader API](/en/env/api-reference/loader) - Loader instance methods
-- [ComponentFactory API](/en/env/api-reference/factory) - Component factory
-- [Custom Parser](/en/env/guides/custom-parser) - Custom parser guide
+- [Loader API](./loader) - Loader instance methods
+- [ComponentFactory API](./factory) - Component factory
+- [Custom Parser](../guides/custom-parser) - Custom parser guide

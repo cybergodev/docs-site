@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Retry & Fault Tolerance"
 title: "Retry & Fault Tolerance - CyberGo HTTPC | Backoff Strategy"
-description: "HTTPC retry and fault tolerance guide: default exponential-backoff retry strategy and RetryConfig configuration, automatic retry conditions for 408/429/5xx, the custom RetryPolicy interface, automatic Retry-After response-header parsing, backoff-strategy selection, and per-request WithMaxRetries control best practices."
-sidebar_position: 8
+description: "HTTPC retries: exponential backoff with jitter, auto-retry on 408/429/5xx, Retry-After parsing with a 60s cap, shared timeout budgets, WithMaxRetries."
+sidebar_position: 70
 ---
 
 # Retry and Fault Tolerance
@@ -17,31 +17,31 @@ HTTPC's default retry configuration is carefully tuned and works out of the box:
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Retry.MaxRetries = 3                  // Max 3 retries
-    cfg.Retry.Delay = 1 * time.Second         // Initial delay 1s
-    cfg.Retry.BackoffFactor = 2.0             // Exponential backoff factor 2x
-    cfg.Retry.EnableJitter = true             // Enable jitter
-    cfg.Retry.MaxRetryDelay = 30 * time.Second // Per-delay ceiling
+	cfg := httpc.DefaultConfig()
+	cfg.Retry.MaxRetries = 3                   // Max 3 retries
+	cfg.Retry.Delay = 1 * time.Second          // Initial delay 1s
+	cfg.Retry.BackoffFactor = 2.0              // Exponential backoff factor 2x
+	cfg.Retry.EnableJitter = true              // Enable jitter
+	cfg.Retry.MaxRetryDelay = 30 * time.Second // Per-delay ceiling
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("success: %d", result.StatusCode())
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("success: %d", result.StatusCode())
 }
 ```
 
@@ -75,7 +75,7 @@ Using the defaults (`Delay=1s`, `BackoffFactor=2.0`, `MaxRetryDelay=30s`, `Enabl
 
 ### Base Delay Computation
 
-```
+```text
 attempt 0: 1s × 2.0^0 = 1s
 attempt 1: 1s × 2.0^1 = 2s
 attempt 2: 1s × 2.0^2 = 4s
@@ -117,7 +117,7 @@ When a server returns 429 (Too Many Requests) or 503 (Service Unavailable), it u
 
 A plain integer meaning "retry after N seconds":
 
-```
+```http
 HTTP/1.1 429 Too Many Requests
 Retry-After: 120
 ```
@@ -126,7 +126,7 @@ Retry-After: 120
 
 An RFC 1123 date meaning "retry at the specified time":
 
-```
+```http
 HTTP/1.1 503 Service Unavailable
 Retry-After: Fri, 31 Jul 2026 15:00:00 GMT
 ```
@@ -137,7 +137,7 @@ HTTPC supports both standard RFC1123 (`Fri, 31 Jul 2026 15:00:00 GMT`) and RFC11
 
 No matter how long the server specifies, HTTPC truncates the `Retry-After` delay to at most 60 seconds:
 
-```
+```text
 Retry-After: 120     ->  truncated to 60s (rather than waiting 120s)
 Retry-After: 3600    ->  truncated to 60s
 Retry-After: Fri, 31 Jul 2026 15:00:00 GMT (2 hours away) ->  truncated to 60s
@@ -155,34 +155,34 @@ The `Retry-After` header takes **higher** priority than the exponential backoff 
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Retry.MaxRetries = 3
-    // Exponential backoff delays: 1s -> 2s -> 4s
-    // But if the server returns Retry-After: 5, the first retry delay becomes 5s
-    // (not exceeding the 60s safety cap)
+	cfg := httpc.DefaultConfig()
+	cfg.Retry.MaxRetries = 3
+	// Exponential backoff delays: 1s -> 2s -> 4s
+	// But if the server returns Retry-After: 5, the first retry delay becomes 5s
+	// (not exceeding the 60s safety cap)
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    start := time.Now()
-    _, err = client.Get("https://api.example.com/rate-limited")
-    elapsed := time.Since(start)
+	start := time.Now()
+	_, err = client.Get("https://api.example.com/rate-limited")
+	elapsed := time.Since(start)
 
-    if err != nil {
-        log.Printf("retries exhausted, total time %v: %v", elapsed, err)
-    } else {
-        log.Printf("success, total time %v", elapsed)
-    }
+	if err != nil {
+		log.Printf("retries exhausted, total time %v: %v", elapsed, err)
+	} else {
+		log.Printf("success, total time %v", elapsed)
+	}
 }
 ```
 
@@ -313,38 +313,38 @@ In addition to client-level configuration, you can override the retry count for 
 package main
 
 import (
-    "context"
-    "log"
-    "time"
+	"context"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // Retry a single request 5 times (overriding the client default of 3)
-    _, err = client.Get("https://api.example.com/data", httpc.WithMaxRetries(5))
-    if err != nil {
-        log.Printf("request failed: %v", err)
-    }
+	// Retry a single request 5 times (overriding the client default of 3)
+	_, err = client.Get("https://api.example.com/data", httpc.WithMaxRetries(5))
+	if err != nil {
+		log.Printf("request failed: %v", err)
+	}
 
-    // Disable retries (e.g. for a non-idempotent POST)
-    _, err = client.Post("https://api.example.com/create",
-        httpc.WithJSON(map[string]string{"name": "test"}),
-        httpc.WithMaxRetries(0),
-    )
+	// Disable retries (e.g. for a non-idempotent POST)
+	_, err = client.Post("https://api.example.com/create",
+		httpc.WithJSON(map[string]string{"name": "test"}),
+		httpc.WithMaxRetries(0),
+	)
 
-    // Combined with a context timeout
-    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancel()
-    _, err = client.Request(ctx, "GET", "https://api.example.com/data",
-        httpc.WithMaxRetries(3),
-    )
+	// Combined with a context timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, err = client.Request(ctx, "GET", "https://api.example.com/data",
+		httpc.WithMaxRetries(3),
+	)
 }
 ```
 
@@ -352,14 +352,14 @@ func main() {
 
 When `ProxyRotateOnStatus` or `ProxyRotatePerRequest` is configured, HTTPC automatically raises `MaxRetries` to ensure every proxy in the pool is tried at least once. This is implemented by `calculateMaxRetries`:
 
-```
+```text
 effective MaxRetries = max(configured MaxRetries, len(ProxyPool) - 1)
 (capped at maxRetryAttempts = 10)
 ```
 
 **Example**: 5 proxies, configured `MaxRetries = 3`:
 
-```
+```text
 ProxyPool = [proxy1, proxy2, proxy3, proxy4, proxy5]
 ProxyRotateOnStatus = [403]   // or ProxyRotatePerRequest = true
 configured MaxRetries = 3
@@ -381,76 +381,70 @@ The first request uses the first proxy and does not count as a retry. To try all
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Connection.ProxyPool = []string{
-        "http://proxy1:8080",
-        "http://proxy2:8080",
-        "http://proxy3:8080",
-        "http://proxy4:8080",
-        "http://proxy5:8080",
-    }
-    cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
-    cfg.Connection.ProxyRotateOnStatus = []int{403} // 403 triggers proxy rotation
-    cfg.Retry.MaxRetries = 3 // Auto-raised to 4 (= 5-1)
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+		"http://proxy4:8080",
+		"http://proxy5:8080",
+	}
+	cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
+	cfg.Connection.ProxyRotateOnStatus = []int{403} // 403 triggers proxy rotation
+	cfg.Retry.MaxRetries = 3                        // Auto-raised to 4 (= 5-1)
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // Every 403 auto-rotates the proxy and retries; up to 5 proxies tried
-    result, err := client.Get("https://protected-site.example.com/data")
-    if err != nil {
-        log.Printf("all proxies failed: %v", err)
-        return
-    }
-    log.Printf("success (one proxy worked): %d", result.StatusCode())
+	// Every 403 auto-rotates the proxy and retries; up to 5 proxies tried
+	result, err := client.Get("https://protected-site.example.com/data")
+	if err != nil {
+		log.Printf("all proxies failed: %v", err)
+		return
+	}
+	log.Printf("success (one proxy worked): %d", result.StatusCode())
 }
 ```
 
 ## Retry Budget Considerations
 
-Retries extend a request's total duration. When designing timeouts, you must budget for retry delays.
+Retries extend a request's total duration. HTTPC's timeout is a **total budget shared across all retry attempts**: before the first attempt the engine creates a timeout context covering the entire retry loop, and both the network requests and the backoff waits are charged against that same budget — there is no "each of the 3 retries gets a fresh full timeout" amplification.
 
 ### Total Worst-Case Time Formula
 
-```
-total worst-case time = (MaxRetries + 1) × request timeout + Σ(per-retry delay caps)
+```text
+total worst-case time ≈ min(Timeouts.Request, WithTimeout / context deadline)
 ```
 
-Using the default config (`MaxRetries=3`, `Request=180s`, `Delay=1s`, `Backoff=2.0`, `Jitter`):
-
-```
-Request-timeout portion: 4 × 180s = 720s (initial + 3 retries, each waits up to 180s)
-Retry-delay portion: 1.1 + 2.2 + 4.4 ≈ 7.7s (sum of the jitter upper bounds for 3 delays)
-Total worst-case time: ≈ 727.7s (about 12 minutes)
-```
+With the default config (`MaxRetries=3`, `Request=180s`, `Delay=1s`, `Backoff=2.0`, `EnableJitter=true`): no matter how many retries occur or how long the backoff waits are, the whole "initial request + 3 retries + all backoff" takes at most about 180s. Once the budget is exhausted, the remaining attempts fail immediately with `ErrorTypeTimeout`, and requests waiting in backoff are woken up and terminated instead of sleeping on.
 
 ### Ways to Shorten Total Duration
 
 | Adjustment | Effect |
 |------|------|
-| Reduce `MaxRetries` | Fewer retries; total time drops linearly |
-| Reduce `Timeouts.Request` | Each attempt fails faster |
-| Reduce `Retry.Delay` | Shorter intervals between retries |
-| Reduce `BackoffFactor` | Slower delay growth; earlier retries are faster |
-| Override with `context.WithTimeout` | Precisely control the total ceiling of a single request |
+| Reduce `MaxRetries` | Fewer retries; the budget is left for effective attempts |
+| Reduce `Timeouts.Request` | Directly compresses the total budget ceiling |
+| Reduce `Retry.Delay` | Shorter intervals; more of the budget goes to the requests themselves |
+| Reduce `BackoffFactor` | Slower delay growth; earlier retries happen sooner |
+| Override with `context.WithTimeout` | Precisely control this request's total budget |
 
-:::warning Retry vs timeout conflict
-The deadline set by `context.WithTimeout` is hard — even if retries are not exhausted, the context expiry terminates immediately. This means the actual retry count may be less than `MaxRetries`. If your application must "ensure N retries", make sure the context timeout is long enough:
+:::warning Total budget vs retry count
+The total budget is hard — once it is exhausted, the request terminates immediately even if retries are not used up, so the actual retry count may be less than `MaxRetries`. The default 180s comfortably fits 3 retries plus roughly 7.7s of backoff; but if you shrink the timeout a lot (say 5s) while keeping the default retries, little budget may remain after the first backoff (about 1s). When you need to "ensure N retries", reserve a budget of N+1 request durations plus the sum of backoff delays:
 
 <!-- check-code: skip -->
 ```go
 // Reserve enough time: 3 retries + delays + per-request time
 ctx, cancel := context.WithTimeout(context.Background(),
-    3*requestTimeout + 10*time.Second)
+    4*requestTimeout + 10*time.Second)
 ```
 :::
 
@@ -481,48 +475,48 @@ This means:
 package main
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // Scenario 1: manual cancel — will not retry
-    ctx1, cancel1 := context.WithCancel(context.Background())
-    go func() {
-        time.Sleep(100 * time.Millisecond)
-        cancel1() // Manually cancel after 100ms
-    }()
+	// Scenario 1: manual cancel — will not retry
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel1() // Manually cancel after 100ms
+	}()
 
-    _, err = client.Request(ctx1, "GET", "https://api.example.com/slow")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeContextCanceled {
-            fmt.Println("request manually canceled; no retry triggered")
-        }
-    }
+	_, err = client.Request(ctx1, "GET", "https://api.example.com/slow")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeContextCanceled {
+			fmt.Println("request manually canceled; no retry triggered")
+		}
+	}
 
-    // Scenario 2: context timeout — will not retry
-    ctx2, cancel2 := context.WithTimeout(context.Background(), 50*time.Millisecond)
-    defer cancel2()
+	// Scenario 2: context timeout — will not retry
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel2()
 
-    _, err = client.Request(ctx2, "GET", "https://api.example.com/slow")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeTimeout {
-            fmt.Println("request terminated by context timeout; no retry triggered")
-        }
-    }
+	_, err = client.Request(ctx2, "GET", "https://api.example.com/slow")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) && clientErr.Type == httpc.ErrorTypeTimeout {
+			fmt.Println("request terminated by context timeout; no retry triggered")
+		}
+	}
 }
 ```
 
@@ -534,30 +528,30 @@ After retries are exhausted, the error is returned via `ClientError` with `Type`
 package main
 
 import (
-    "errors"
-    "log"
+	"errors"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    _, err = client.Get("https://api.example.com/flaky")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            log.Printf("failure type: %s, attempts: %d",
-                clientErr.Code(), clientErr.Attempts)
-            if clientErr.Attempts > 1 {
-                log.Println("(auto-retried but still failed)")
-            }
-        }
-    }
+	_, err = client.Get("https://api.example.com/flaky")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			log.Printf("failure type: %s, attempts: %d",
+				clientErr.Code(), clientErr.Attempts)
+			if clientErr.Attempts > 1 {
+				log.Println("(auto-retried but still failed)")
+			}
+		}
+	}
 }
 ```
 
@@ -569,14 +563,12 @@ func main() {
 | Microservice communication | `MaxRetries=2, Delay=500ms, Backoff=2.0` (fast failure) |
 | File downloads | `MaxRetries=5, Delay=2s, Backoff=2.0` (tolerate network fluctuation) |
 | Idempotent operations (GET/PUT/DELETE) | Safe to retry freely |
-| Non-idempotent operations (POST) | `WithMaxRetries(0)` or a custom `RetryPolicy` to narrow scope |
+| Non-idempotent operations (POST) | Executed once by default (no retries); opt in explicitly with [`WithRetryNonIdempotent`](../api-reference/core/options#withretrynonidempotent) |
 | Rate-limited APIs | Rely on automatic `Retry-After` parsing (built in) |
 | Proxy-pool scenarios | Combine with `ProxyRotateOnStatus`; retry count auto-raised |
 
 :::warning Retrying non-idempotent POST requests
-By default, non-idempotent POST requests are also retried on retryable status codes (e.g. 500/502/503/504) or network errors. If the server cannot guarantee idempotency, duplicate submissions may cause side effects (e.g. duplicate resource creation). Options for precise control:
-1. Use `WithMaxRetries(0)` on POST requests to disable retries entirely
-2. Or implement a custom `RetryPolicy` that retries only on network errors (not HTTP status codes)
+By default, non-idempotent methods (POST, PATCH, and custom methods) **execute exactly once and are never retried** — the engine zeroes their retry budget, because a timeout or a retryable 5xx may arrive after the server has already committed the operation, and replaying the body would cause side effects (duplicate orders, duplicate payments). To re-enable retries for a single request, pass [`WithRetryNonIdempotent(true)`](../api-reference/core/options#withretrynonidempotent) (the client-level switch is `Retry.RetryNonIdempotent`, which the request-level option overrides in both directions). Enable it only for endpoints that tolerate replay, or guard them with an idempotency key. Note that a custom `RetryPolicy` is likewise consulted only for idempotent methods — it cannot re-enable POST retries on its own.
 :::
 
 ## Next Steps

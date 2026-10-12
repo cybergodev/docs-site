@@ -1,7 +1,7 @@
 ---
 sidebar_label: "生产检查清单"
 title: "生产检查清单 - CyberGo html | 上线安全核对"
-description: "CyberGo html 生产部署安全核对清单：按 P0/P1/P2 优先级分级检查，涵盖 HighSecurityConfig 预设、Processor 生命周期管理、审计监控启用、context 超时控制、错误处理与资源释放等上线必查项。"
+description: "CyberGo html 生产部署安全核对清单：按 P0/P1/P2 优先级分级检查 HighSecurityConfig 预设、基础配置、Processor 生命周期、审计监控、context 超时控制、错误处理、文件路径沙箱与资源释放等上线必查项，附自检脚本、运行时监控指标与配置速查矩阵。"
 sidebar_position: 3
 ---
 
@@ -184,43 +184,43 @@ case errors.Is(err, html.ErrFileNotFound),
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.HighSecurityConfig()
+	cfg := html.HighSecurityConfig()
 
-    // 1. 配置合法性校验（New 内部会调 Validate）
-    p, err := html.New(cfg)
-    if err != nil {
-        log.Fatalf("配置非法: %v", err)
-    }
-    defer p.Close()
+	// 1. 配置合法性校验（New 内部会调 Validate）
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatalf("配置非法: %v", err)
+	}
+	defer p.Close()
 
-    // 2. 关键配置项核对
-    fmt.Printf("MaxInputSize      = %d bytes\n", cfg.MaxInputSize)
-    fmt.Printf("MaxDepth          = %d\n", cfg.MaxDepth)
-    fmt.Printf("ProcessingTimeout = %v\n", cfg.ProcessingTimeout)
-    fmt.Printf("WorkerPoolSize    = %d\n", cfg.WorkerPoolSize)
-    fmt.Printf("Audit.Enabled     = %v\n", cfg.Audit.Enabled)
+	// 2. 关键配置项核对
+	fmt.Printf("MaxInputSize      = %d bytes\n", cfg.MaxInputSize)
+	fmt.Printf("MaxDepth          = %d\n", cfg.MaxDepth)
+	fmt.Printf("ProcessingTimeout = %v\n", cfg.ProcessingTimeout)
+	fmt.Printf("WorkerPoolSize    = %d\n", cfg.WorkerPoolSize)
+	fmt.Printf("Audit.Enabled     = %v\n", cfg.Audit.Enabled)
 
-    // 3. 实际提取测试
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
+	// 3. 实际提取测试
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-    sample := []byte("<html><body><h1>自检</h1><p>生产就绪</p></body></html>")
-    result, err := p.ExtractWithContext(ctx, sample)
-    if err != nil {
-        log.Fatalf("提取失败: %v", err)
-    }
-    fmt.Printf("提取成功，文本长度: %d\n", len(result.Text))
+	sample := []byte("<html><body><h1>自检</h1><p>生产就绪</p></body></html>")
+	result, err := p.ExtractWithContext(ctx, sample)
+	if err != nil {
+		log.Fatalf("提取失败: %v", err)
+	}
+	fmt.Printf("提取成功，文本长度：%d\n", len(result.Text))
 
-    fmt.Println("✓ 配置自检通过")
+	fmt.Println("✓ 配置自检通过")
 }
 ```
 

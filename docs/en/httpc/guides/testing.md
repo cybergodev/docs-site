@@ -2,7 +2,7 @@
 sidebar_label: "Testing Guide"
 title: "Testing Guide - CyberGo HTTPC | httptest & Assertions"
 description: "HTTPC testing guide: TestingConfig, httptest mock servers, Doer mock injection, error/delay/redirect scenarios, deterministic retries, table-driven tests."
-sidebar_position: 13
+sidebar_position: 120
 ---
 
 # Testing Guide
@@ -117,60 +117,60 @@ Custom transport injection (replacing the underlying `http.RoundTripper`) is cur
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
+	"context"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 // fakeDoer implements httpc.Doer: no network, returns a preset result directly
 type fakeDoer struct {
-    result *httpc.Result
-    err    error
+	result *httpc.Result
+	err    error
 }
 
 func (f *fakeDoer) Request(ctx context.Context, method, url string, options ...httpc.RequestOption) (*httpc.Result, error) {
-    return f.result, f.err
+	return f.result, f.err
 }
 
 // getUser is the business function under test: it depends on httpc.Doer, not a concrete Client
 func getUser(d httpc.Doer, id int) (string, error) {
-    result, err := d.Request(context.Background(), "GET", fmt.Sprintf("https://api.example.com/users/%d", id))
-    if err != nil {
-        return "", err
-    }
-    if !result.IsSuccess() {
-        return "", fmt.Errorf("API error: %d", result.StatusCode())
-    }
-    var name struct {
-        Name string `json:"name"`
-    }
-    if err := result.Unmarshal(&name); err != nil {
-        return "", err
-    }
-    return name.Name, nil
+	result, err := d.Request(context.Background(), "GET", fmt.Sprintf("https://api.example.com/users/%d", id))
+	if err != nil {
+		return "", err
+	}
+	if !result.IsSuccess() {
+		return "", fmt.Errorf("API error: %d", result.StatusCode())
+	}
+	var name struct {
+		Name string `json:"name"`
+	}
+	if err := result.Unmarshal(&name); err != nil {
+		return "", err
+	}
+	return name.Name, nil
 }
 
 func main() {
-    fake := &fakeDoer{
-        result: &httpc.Result{
-            Response: &httpc.ResponseInfo{
-                StatusCode: 200,
-                Status:     "200 OK",
-                Body:       `{"name":"Test User"}`,
-                RawBody:    []byte(`{"name":"Test User"}`),
-                Headers:    map[string][]string{"Content-Type": {"application/json"}},
-            },
-            Meta: &httpc.RequestMeta{Attempts: 1},
-        },
-    }
+	fake := &fakeDoer{
+		result: &httpc.Result{
+			Response: &httpc.ResponseInfo{
+				StatusCode: 200,
+				Status:     "200 OK",
+				Body:       `{"name":"Test User"}`,
+				RawBody:    []byte(`{"name":"Test User"}`),
+				Headers:    map[string][]string{"Content-Type": {"application/json"}},
+			},
+			Meta: &httpc.RequestMeta{Attempts: 1},
+		},
+	}
 
-    name, err := getUser(fake, 1)
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(name) // Output: Test User
+	name, err := getUser(fake, 1)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(name) // Output: Test User
 }
 ```
 
@@ -452,3 +452,4 @@ func TestHTTPMethods(t *testing.T) {
 - [Middleware Chain](./middleware-chain) - Middleware testing patterns
 - [File Upload and Download](./file-transfer) - Download semantics in depth (expanding this page's "Testing File Downloads")
 - [Advanced Examples](../examples/advanced-usage) - Production-grade code patterns
+- [Migrating from net/http](./migration) - Behavioral differences and a pitfalls checklist for projects moving off the standard library

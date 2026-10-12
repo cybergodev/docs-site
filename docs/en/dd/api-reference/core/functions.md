@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Package Functions"
-title: "Package Functions - CyberGo DD | Global Functions & Constructors"
-description: "Complete API documentation for CyberGo DD's package-level functions, including the New logger constructor, Default/SetDefault/InitDefault global logger management, DefaultConfig/DevelopmentConfig/JSONConfig configuration presets, and all constructor factories, callable directly via the dd. prefix."
+title: "Package Functions - CyberGo DD | Global API & Constructors"
+description: "CyberGo DD package-level functions: New constructor, global logger management, config presets, and constructor factories via the dd. prefix."
 sidebar_position: 1
 ---
 
 # Package Functions
 
-DD provides a rich set of package-level functions callable directly via the `dd.` prefix. All of them execute through the global logger (`Default()`).
+DD provides a rich set of package-level functions callable directly via the `dd.` prefix. Logging functions execute through the global logger (`Default()`); the exception is the debug-output functions `JSON`/`JSONF`/`Text`/`Textf`/`Exit`/`Exitf`, which bypass the output targets configured in `Config.Targets`, write directly to `os.Stdout`, and do not go through security filtering.
 
 ## Logger Creation
 
@@ -75,7 +75,8 @@ if err != nil {
 |----------|-----------|-------------|
 | `DefaultConfig` | `func DefaultConfig() Config` | Default config (Info level, text format) |
 | `DevelopmentConfig` | `func DevelopmentConfig() Config` | Development config (Debug level) |
-| `JSONConfig` | `func JSONConfig() Config` | JSON output config |
+| `JSONConfig` | `func JSONConfig() Config` | JSON output config (Debug level) |
+| `ProductionConfig` | `func ProductionConfig() Config` | Production config (Info level, JSON format, RFC3339 timestamps) |
 
 ```go
 cfg := dd.DefaultConfig()
@@ -212,6 +213,8 @@ dd.WithField("request_id", "abc123").Info("processing request")
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `Flush` | `func Flush() error` | Flush the global logger buffers |
+| `Close` | `func Close() error` | Close the global logger (after Close, package-level log functions become no-ops; prefer `Shutdown` in production code) |
+| `Shutdown` | `func Shutdown(ctx context.Context) error` | Graceful shutdown with timeout |
 
 ## Writer Management (Package-level)
 
@@ -243,11 +246,12 @@ dd.WithField("request_id", "abc123").Info("processing request")
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `DefaultSecurityConfig` | `func DefaultSecurityConfig() *SecurityConfig` | Default security config (basic filtering) |
-| `DefaultSecureConfig` | `func DefaultSecureConfig() *SecurityConfig` | Complete security config |
+| `DefaultSecureConfig` <Badge type="warning" text="Deprecated" /> | `func DefaultSecureConfig() *SecurityConfig` | Complete security config (a near-homonym of `DefaultSecurityConfig` with a different filtering strength, easy to confuse; **use `SecurityConfigForLevel(dd.SecurityLevelStandard)` instead**) |
 | `HealthcareConfig` | `func HealthcareConfig() *SecurityConfig` | HIPAA-compliant config |
 | `FinancialConfig` | `func FinancialConfig() *SecurityConfig` | PCI-DSS-compliant config |
 | `GovernmentConfig` | `func GovernmentConfig() *SecurityConfig` | Government-standard config |
 | `SecurityConfigForLevel` | `func SecurityConfigForLevel(level SecurityLevel) *SecurityConfig` | Get security config by level |
+| `DefaultRateLimitConfig` | `func DefaultRateLimitConfig() *RateLimitConfig` | Default rate-limit config (10,000 messages/s, 10MB/s, burst of 1,000 messages, drop strategy, 1-in-100 sampling rate; see [Security Filtering](../security-audit/security)) |
 
 ## Sensitive-Data Filter Constructors
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "安全概述"
 title: "安全概述 - CyberGo html | 安全防护总览"
-description: "CyberGo html 安全防护总览：深度防御三层架构（输入层、处理层、审计层）、MaxInputSize 与 MaxDepth 限制、路径遍历防护、panic 恢复机制、HTML 内容清洗与 HighSecurityConfig 高安全预设应用。"
+description: "CyberGo html 安全防护总览：解析深度防御三层架构（输入层、处理层、审计层），涵盖 MaxInputSize 与 MaxDepth 输入边界限制、HTML 内容清洗与 URL 多层校验、路径遍历防护、AllowedBaseDir 沙箱、panic 恢复、八种审计事件及 HighSecurityConfig 高安全预设应用。"
 sidebar_position: 1
 ---
 
@@ -140,7 +140,7 @@ URI 属性的值经由 `isSafeURIWithAudit` 的多层管道校验。每一层都
   │
   ├─ 1. NFC 规范化           归一全角/组合字符
   ├─ 2. TrimSpace            去首尾空白
-  ├─ 3. 剥离 C0 控制符+空格   去首尾 U+0000–U+001F 及空格
+  ├─ 3. 剥离 C0 控制符 + 空格   去首尾 U+0000–U+001F 及空格
   ├─ 4. 剥离 tab/LF/CR       去 URL 内部的 \t \n \r
   ├─ 5. ToLower              大小写归一
   ├─ 6. 长度上限             非 data URL 受 MaxURLLength(2000) 约束

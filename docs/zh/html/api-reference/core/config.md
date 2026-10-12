@@ -1,7 +1,7 @@
 ---
 sidebar_label: "配置"
 title: "配置 - CyberGo html | Config 字段详解"
-description: "CyberGo html Config 配置结构体字段详解：覆盖资源管理、安全防护、内容提取、输出格式与链接过滤六大类共 30+ 字段，含 DefaultConfig 等四种预设配置、取值约束、零值语义与 Validate 验证方法，便于精准定制提取行为。"
+description: "CyberGo html Config 配置结构体字段详解：覆盖资源管理、安全、内容提取、输出格式、链接提取与扩展六大类共 30 个字段，含 DefaultConfig 等四种预设配置、取值约束、零值语义与 Validate 验证方法，便于精准定制提取行为。"
 sidebar_position: 3
 ---
 
@@ -10,6 +10,41 @@ sidebar_position: 3
 ## Config 结构体
 
 `Config` 是 HTML 库的统一配置结构体，涵盖资源管理、安全、内容提取、输出格式和链接过滤。
+
+全部 30 个字段一览（详细约束与说明见下方分组小节）：
+
+| 字段 | 类型 | 分组 | 默认值 |
+|------|------|------|--------|
+| `Config.MaxInputSize` | `int` | 资源管理 | `52428800`（50MB） |
+| `Config.MaxCacheEntries` | `int` | 资源管理 | `2000` |
+| `Config.CacheTTL` | `time.Duration` | 资源管理 | `1h` |
+| `Config.CacheCleanup` | `time.Duration` | 资源管理 | `5m` |
+| `Config.WorkerPoolSize` | `int` | 资源管理 | `4` |
+| `Config.ProcessingTimeout` | `time.Duration` | 资源管理 | `30s` |
+| `Config.EnableSanitization` | `bool` | 安全 | `true` |
+| `Config.MaxDepth` | `int` | 安全 | `500` |
+| `Config.AllowedBaseDir` | `string` | 安全 | `""` |
+| `Config.Audit` | `AuditConfig` | 安全 | `DefaultAuditConfig()` |
+| `Config.ExtractArticle` | `bool` | 内容提取 | `true` |
+| `Config.PreserveImages` | `bool` | 内容提取 | `true` |
+| `Config.PreserveLinks` | `bool` | 内容提取 | `true` |
+| `Config.PreserveVideos` | `bool` | 内容提取 | `true` |
+| `Config.PreserveAudios` | `bool` | 内容提取 | `true` |
+| `Config.InlineImageFormat` | `string` | 输出格式 | `none` |
+| `Config.InlineLinkFormat` | `string` | 输出格式 | `none` |
+| `Config.TableFormat` | `string` | 输出格式 | `markdown` |
+| `Config.Encoding` | `string` | 输出格式 | `""`（自动检测） |
+| `Config.ResolveRelativeURLs` | `bool` | 链接提取 | `true` |
+| `Config.BaseURL` | `string` | 链接提取 | `""` |
+| `Config.IncludeImages` | `bool` | 链接提取 | `true` |
+| `Config.IncludeVideos` | `bool` | 链接提取 | `true` |
+| `Config.IncludeAudios` | `bool` | 链接提取 | `true` |
+| `Config.IncludeCSS` | `bool` | 链接提取 | `true` |
+| `Config.IncludeJS` | `bool` | 链接提取 | `true` |
+| `Config.IncludeContentLinks` | `bool` | 链接提取 | `true` |
+| `Config.IncludeExternalLinks` | `bool` | 链接提取 | `true` |
+| `Config.IncludeIcons` | `bool` | 链接提取 | `true` |
+| `Config.Scorer` | `Scorer` | 扩展 | `nil`（内置默认评分器） |
 
 ### 资源管理
 
@@ -81,7 +116,11 @@ sidebar_position: 3
 
 ### DefaultConfig
 
-均衡配置，适合通用场景。
+`DefaultConfig` 返回均衡配置，适合通用场景，是绝大多数应用的起点。
+
+```go
+func DefaultConfig() Config
+```
 
 ```go
 cfg := html.DefaultConfig()
@@ -92,12 +131,20 @@ cfg := html.DefaultConfig()
 仅提取纯文本，禁用所有媒体和链接保留（`PreserveImages`、`PreserveLinks`、`PreserveVideos`、`PreserveAudios` 均设为 `false`）。
 
 ```go
+func TextOnlyConfig() Config
+```
+
+```go
 cfg := html.TextOnlyConfig()
 ```
 
 ### MarkdownConfig
 
-优化 Markdown 输出，内联图片和链接使用 Markdown 格式。
+`MarkdownConfig` 在默认配置基础上将 `InlineImageFormat` 与 `InlineLinkFormat` 均设为 `markdown`，适合内联图片和链接使用 Markdown 格式的输出。
+
+```go
+func MarkdownConfig() Config
+```
 
 ```go
 cfg := html.MarkdownConfig()
@@ -106,6 +153,10 @@ cfg := html.MarkdownConfig()
 ### HighSecurityConfig
 
 高安全配置：缩减限制、更短超时、完整审计。
+
+```go
+func HighSecurityConfig() Config
+```
 
 ```go
 cfg := html.HighSecurityConfig()
@@ -126,7 +177,7 @@ cfg := html.HighSecurityConfig()
 
 ## Validate
 
-验证配置的有效性。
+`Validate` 验证配置的有效性（值接收者，可直接 `cfg.Validate()` 调用），无效时返回包裹 `ErrInvalidConfig` 的 `*ConfigError`。
 
 ```go
 func (c Config) Validate() error
@@ -140,7 +191,7 @@ err := cfg.Validate() // 返回 ConfigError
 
 ### 验证约束
 
-`Validate()` 对数值字段强制的取值范围（违反时返回 `ConfigError`，可经 `errors.Is(err, html.ErrInvalidConfig)` 判断）：
+`Config.Validate` 对数值字段强制以下取值范围（违反时返回 `ConfigError`，可经 `errors.Is(err, html.ErrInvalidConfig)` 判断）：
 
 | 字段 | 约束 | 非法示例 |
 |------|------|----------|
@@ -151,6 +202,7 @@ err := cfg.Validate() // 返回 ConfigError
 | `WorkerPoolSize` | 正数且 ≤ `256` | `0`、`512` |
 | `MaxDepth` | 正数且 ≤ `500` | `0`、`1000` |
 | `ProcessingTimeout` | ≥ `0` | `-1 * time.Second` |
+| `Audit.MaxEntries` | ≥ `0` 且 ≤ `100000`（`0` 表示使用默认值 10000） | `-1`、`200000` |
 | `InlineImageFormat` | 空 / `none` / `markdown` / `html` / `placeholder` | `"pdf"` |
 | `InlineLinkFormat` | 空 / `none` / `markdown` / `html` | `"pdf"` |
 | `TableFormat` | 空 / `markdown` / `html` | `"csv"` |

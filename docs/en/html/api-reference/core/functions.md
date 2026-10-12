@@ -100,7 +100,7 @@ func main() {
 	fmt.Println("Links:", len(result.Links))
 	// Output:
 	// Title: Example Page
-	// Words: 4
+	// Words: 5
 	// Links: 1
 }
 ```
@@ -134,7 +134,7 @@ func ExtractText(htmlBytes []byte, cfg ...Config) (string, error)
 
 ### ExtractTextFromFile
 
-Extract plain text from a file.
+`ExtractTextFromFile` is the file-based variant of `ExtractText`, extracting plain text from an HTML file on disk; file-access errors are likewise wrapped into a `*FileError` (`ErrFileNotFound`, `ErrInvalidFilePath`, or a path-traversal denial).
 
 ```go
 func ExtractTextFromFile(filePath string, cfg ...Config) (string, error)

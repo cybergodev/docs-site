@@ -1,8 +1,8 @@
 ---
 sidebar_label: "批量操作"
-title: "批量操作函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 批量操作函数：ProcessBatch 一次性处理多个 JSON 操作，配合 BatchOperation 描述结构与 BatchResult 结果结构，支持 get/set/delete/validate 四类操作且单条失败不中断批次。"
-sidebar_position: 7
+title: "批量操作函数 - CyberGo JSON | ProcessBatch 用法与示例"
+description: "CyberGo JSON 是支持批量处理的 Go 库，提供 ProcessBatch 一次执行 get/set/delete/validate 多类操作，结果按 ID 关联且顺序一致，批量上限由 MaxBatchSize 控制，另有 WarmupCache 缓存预热，帮助开发者单次调用完成批量读写与校验。"
+sidebar_position: 70
 ---
 
 # 批量操作函数
@@ -45,8 +45,8 @@ func main() {
 }
 
 // 输出：
-// 操作 op1 结果: CyberGo
-// 操作 op2 结果: {"user":{"age":30,"name":"CyberGo"}}
+// 操作 op1 结果：CyberGo
+// 操作 op2 结果：{"user":{"age":30,"name":"CyberGo"}}
 ```
 
 ### 支持的操作类型
@@ -228,7 +228,7 @@ func main() {
 // 输出：
 // ok: valid=true
 // broken: valid=false
-// broken 错误: invalid JSON: ...
+// broken 错误：invalid JSON: ...
 ```
 
 ## 错误处理与容错

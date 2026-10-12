@@ -1,11 +1,26 @@
 ---
 sidebar_label: "Interfaces"
 title: "Interface Definitions - CyberGo HTTPC | Core Interfaces"
-description: "HTTPC core interfaces API reference: the full-capability Client interface, the minimal Doer execution interface, the DomainClienter domain client, the RetryPolicy retry strategy, and the RequestMutator/ResponseMutator middleware interface definitions."
-sidebar_position: 1
+description: "HTTPC core interfaces: full-capability Client, minimal Doer, DomainClienter domain client, RetryPolicy strategy, and RequestMutator/ResponseMutator."
+sidebar_position: 10
 ---
 
 # Interface Definitions
+
+## Interface Overview
+
+| Interface / type | Category | Implemented by | Extension-point purpose |
+|-----------|------|--------|-----------|
+| `Client` | Main client interface | `clientImpl` (returned by `New`/`NewDefault`) | Parameter type constraint for consumers |
+| `Doer` | Minimal execution interface | `clientImpl`; also user-implementable | Mock testing, decorator wrapping |
+| `DomainClienter` | Domain client interface | `DomainClient` (returned by `NewDomain`/`NewDomainDefault`) | Domain-scoped session management |
+| `RequestMutator` | Request mutator interface | `*engine.Request` (internal) | Middleware read/write access to requests |
+| `ResponseMutator` | Response mutator interface | `*engine.Response` (internal) | Middleware read/write access to responses |
+| `Handler` | Request handler function type | `finalHandler`, middleware-wrapped products | Core signature for custom middleware |
+| `MiddlewareFunc` | Middleware function type | 7 built-in middleware factories, user-defined ones | Intercepting/rewriting requests and responses |
+| `RetryPolicy` | Retry policy interface | User implementations (httpc module only, see warning below) | Custom retry decisions |
+| `CertificatePinner` | Certificate pinning interface | `NewSPKIHashPinner` and other constructors, user-defined | Custom pinning strategies |
+| `RequestOption` | Request option function type | `WithXxx` factory functions | Per-request configuration |
 
 ## Client
 
@@ -40,7 +55,7 @@ type Doer interface {
 }
 ```
 
-Minimal interface containing only the core `Request` method. Suitable for custom implementations.
+Minimal interface containing only the core method `Doer.Request` (the `Request` shown above). Suitable for custom implementations — any type satisfying this single method can be injected wherever a `Doer` is accepted.
 
 ```go
 type MyDoer struct{}
@@ -100,6 +115,8 @@ Custom retry strategy interface.
 | `ShouldRetry(resp, err, attempt)` | Determines whether to retry; `attempt` starts from 0 |
 | `GetDelay(attempt)` | Returns the wait time before the next retry |
 | `MaxRetries()` | Returns the maximum retry count |
+
+The three methods correspond to the interface definitions `RetryPolicy.ShouldRetry`, `RetryPolicy.GetDelay`, and `RetryPolicy.MaxRetries`.
 
 :::warning Internal Type Limitation
 The `resp` parameter type ResponseReader in ShouldRetry is an internal interface (located in the `internal/types` package) that external code cannot reference directly. Therefore, `RetryPolicy` can only be implemented within the same module. Most scenarios can be satisfied through `RetryConfig` configuration and the `WithMaxRetries` option. If you need a custom policy, implement the `RetryPolicy` interface within your project's internal package.
@@ -231,7 +248,15 @@ Request handler function signature.
 type MiddlewareFunc func(Handler) Handler
 ```
 
-Middleware function signature that receives the next Handler and returns a wrapped Handler.
+Middleware function signature that receives the next Handler and returns a wrapped Handler. `Handler`/`MiddlewareFunc` are aliases of the same-named types in the internal `types` package (`types.go`); see [Handler Pipeline](../handler/handler-chain) for chain assembly and customization rules.
+
+### RequestOption
+
+```go
+type RequestOption = engine.RequestOption
+```
+
+Request option function type — a type alias of the internal `engine.RequestOption` (whose underlying type is `func(*engine.Request) error`), declared in `types.go`. Users do not construct this function directly; they use `WithXxx` factories such as `WithHeader`, `WithJSON`, and `WithOnRequest`. See [Request Options](../core/options) for the per-option reference.
 
 ## Certificate Pinning
 
@@ -243,7 +268,29 @@ Certificate Pinning validates at the TLS handshake stage whether the server cert
 type CertificatePinner = security.CertificatePinner
 ```
 
-The certificate pinner interface. Create one via the constructors below and assign it to the `SecurityConfig.CertificatePinner` field (accessed via `Config.Security`):
+The certificate pinner interface, a type alias of the internal `security.CertificatePinner`. Method set:
+
+<!-- check-code: skip -->
+```go
+type CertificatePinner interface {
+    // Pin returns a string representation of the pin, for logging and debugging
+    Pin() string
+
+    // VerifyPeerCertificate checks whether the peer certificate chain matches
+    // the pin. rawCerts are ASN.1 DER-encoded certificates; verifiedChains are
+    // the verified chains (may be nil when regular verification was skipped)
+    VerifyPeerCertificate(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error
+}
+```
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `Pin` | `Pin() string` | Returns a string representation of the pin, for logging and debugging (`CertificatePinner.Pin`) |
+| `VerifyPeerCertificate` | `VerifyPeerCertificate(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error` | Checks whether the peer certificate chain matches the pin (`CertificatePinner.VerifyPeerCertificate`) |
+
+`VerifyPeerCertificate`'s signature matches the `crypto/tls.Config.VerifyPeerCertificate` callback, so a custom implementation plugs directly into the TLS handshake flow.
+
+Create one via the constructors below and assign it to the `SecurityConfig.CertificatePinner` field (accessed via `Config.Security`):
 
 ```go
 pinner, err := httpc.NewSPKIHashPinner(

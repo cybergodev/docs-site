@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Utility Functions"
-title: "Utility Functions - CyberGo JSON | API Reference"
-description: "CyberGo JSON utility functions: CompareJSON ignores key order/precision, ClearCache/GetStats cache, GetHealthStatus health, SafeError/RedactedPath helpers."
-sidebar_position: 8
+title: "Utility Functions - CyberGo JSON | Helper Usage & Examples"
+description: "CyberGo JSON utility helpers: CompareJSON, MergeJSON, ClearCache/GetStats, WarmupCache, SafeError, RedactedPath, AccessResult and RegisterDangerousPattern."
+sidebar_position: 90
 ---
 
 # Utility Functions
@@ -220,7 +220,7 @@ For complete examples and lifecycle management of the global processor, see [Pro
 ## Output Functions
 
 ::: warning API change notice
-Print, PrintPretty, PrintE, and PrintPrettyE have been removed from the library and are no longer provided. Use [EncodeWithConfig](./functions/output#encodewithconfig), [EncodePretty](./functions/output#encodepretty), or [Prettify](./functions/output#prettify) together with `fmt.Println` instead (`Encode` is deprecated). See [Formatted Output](../getting-started/print).
+Print, PrintPretty, PrintE, and PrintPrettyE have been removed from the library and are no longer provided. Use [Encode](./functions/output#encode), [EncodePretty](./functions/output#encodepretty), or [Prettify](./functions/output#prettify) together with `fmt.Println` instead (`EncodeWithConfig` is deprecated, equivalent to `Encode`). See [Formatted Output](../getting-started/print).
 :::
 
 ---
@@ -388,9 +388,9 @@ Returns all patterns in the global registry, i.e. the **custom patterns** regist
 
 **Returns**
 
-| Return value | Type | Description |
-|--------------|------|-------------|
-| Single return value | `[]DangerousPattern` | All registered custom patterns (an empty slice when the registry is empty) |
+| Type | Description |
+|------|-------------|
+| `[]DangerousPattern` | All registered custom patterns (an empty slice when the registry is empty) |
 
 ```go
 package main

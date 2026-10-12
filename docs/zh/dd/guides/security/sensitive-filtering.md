@@ -1,7 +1,7 @@
 ---
 sidebar_label: "敏感数据过滤"
 title: "敏感数据过滤 - CyberGo DD | 自动脱敏配置指南"
-description: "CyberGo DD 敏感数据过滤配置指南，涵盖内置过滤模式（密码、API Key、信用卡、SSN、JWT 等）、自定义正则模式、五级安全等级、行业合规预设（HIPAA、PCI-DSS、政府标准）以及过滤统计与监控，帮助开发者构建合规的日志脱敏方案。"
+description: "CyberGo DD 敏感数据过滤配置指南：内置过滤模式（密码、API Key、信用卡、SSN、JWT 等）、自定义正则模式、安全等级、行业合规预设（HIPAA、PCI-DSS、政府标准）及过滤统计，构建合规的日志脱敏方案。"
 sidebar_position: 2
 ---
 
@@ -14,9 +14,9 @@ DD 内置敏感数据自动过滤，在日志写入前将密码、API Key、信�
 ## 快速启用
 
 ```go
-logger, err := dd.New(dd.Config{
-    Security: dd.DefaultSecurityConfig(),
-})
+cfg := dd.DefaultConfig()
+cfg.Security = dd.DefaultSecurityConfig() // 基础过滤（DefaultConfig 默认已含，此处显式强调）
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -41,7 +41,7 @@ logger.InfoWith("用户登录",
 | SSN | 美国社会安全号码格式 |
 | 电话号码 | 全球电话号码格式（含国际格式） |
 
-`DefaultSecureConfig()` 使用**全量模式集**（含基础全部，再加以下常见类别）：
+`SecurityConfigForLevel(dd.SecurityLevelStandard)` 使用**全量模式集**（含基础全部，再加以下常见类别；原 `DefaultSecureConfig()` 已弃用，两者返回等价配置）：
 
 | 类别 | 匹配目标 |
 |------|----------|
@@ -51,7 +51,7 @@ logger.InfoWith("用户登录",
 | 连接字符串 | 数据库连接字符串中的密码 |
 
 :::info 模式覆盖范围
-上表仅列出常见类别示例。`DefaultSecurityConfig()` 实际内置约 36 条模式，行业预设（如 `HealthcareConfig()`）可达 71 条，还涵盖 AWS 密钥、Stripe/GitHub/Slack 令牌、IBAN、多国税务号、Log4Shell 等。完整模式集见源码 `internal/patterns.go`。
+上表仅列出常见类别示例。`DefaultSecurityConfig()`（基础集）实际内置 **38** 条模式，涵盖 AWS 密钥、Stripe/GitHub/Slack 令牌、Log4Shell 等；行业预设更高：`HealthcareConfig()` 73 条、`FinancialConfig()` 74 条、`GovernmentConfig()` 75 条。注意：IBAN 与多国税务号（ABN/NZ-IRD/RUT/CPF/RFC）属于**全量集与行业预设**，不在基础集内。完整模式集见源码 `internal/patterns.go`。
 :::
 
 ## 自定义过滤模式
@@ -65,11 +65,11 @@ filter := dd.NewEmptySensitiveDataFilter()
 _ = filter.AddPattern(`(?i)credit_card\s*[:=]\s*\d+`)
 _ = filter.AddPattern(`(?i)phone\s*[:=]\s*\d{11}`)
 
-logger, err := dd.New(dd.Config{
-    Security: &dd.SecurityConfig{
-        SensitiveFilter: filter,
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Security = &dd.SecurityConfig{
+    SensitiveFilter: filter,
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -141,13 +141,13 @@ cfg := dd.GovernmentConfig()
 
 ```go
 // 医疗系统：使用 HIPAA 合规配置
-logger, err := dd.New(dd.Config{
-    Format:   dd.FormatJSON,
-    Security: dd.HealthcareConfig(),
-    Targets: []dd.OutputTarget{
-        dd.FileOutput("logs/hipaa-audit.json"),
-    },
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.HealthcareConfig()
+cfg.Targets = []dd.OutputTarget{
+    dd.FileOutput("logs/hipaa-audit.json"),
+}
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -181,19 +181,19 @@ fmt.Printf("超时次数：%d\n", stats.TotalTimeouts)
 
 ```go
 // 使用 Development 安全等级（无敏感数据过滤）
-logger, err := dd.New(dd.Config{
-    Security: dd.SecurityConfigForLevel(dd.SecurityLevelDevelopment),
-})
+cfg := dd.DefaultConfig()
+cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelDevelopment)
+logger, err := dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
 
 // 或手动设置空的 SensitiveFilter
-logger, err = dd.New(dd.Config{
-    Security: &dd.SecurityConfig{
-        SensitiveFilter: nil,
-    },
-})
+cfg = dd.DefaultConfig()
+cfg.Security = &dd.SecurityConfig{
+    SensitiveFilter: nil,
+}
+logger, err = dd.New(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -206,7 +206,8 @@ defer logger.Close()
 
 ## 下一步
 
-- [审计日志](./audit-logging) -- 安全事件审计
-- [行业合规配置](../security/compliance) -- HIPAA/PCI-DSS 详解
+- [字段验证](./field-validation) -- 键名规范与注入防护
+- [完整性签名](./integrity) -- HMAC 防篡改
+- [行业合规配置](./compliance) -- HIPAA/PCI-DSS 详解
 - [API 参考 - Security](../../api-reference/security-audit/security) -- 安全 API 完整文档
-- [生产检查清单](../security/production-checklist) -- 上线前检查
+- [生产检查清单](./production-checklist) -- 上线前检查

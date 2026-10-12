@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Loader"
 title: "Loader API - CyberGo env | 加载器详解"
-description: "CyberGo env 的 Loader 加载器 API 参考，核心类型提供多格式 LoadFiles 加载、GetString/GetInt/GetSlice 类型安全读取、Set/Delete 增删改、Validate 验证、序列化导出与 Close 生命周期管理，所有方法线程安全。"
+description: "CyberGo env Loader 加载器 API 参考，提供多格式 LoadFiles 加载、GetString/GetInt/GetSlice 类型安全读取、Set/Delete 增删改、Validate 验证、序列化导出与 Close 生命周期，所有方法线程安全。"
 sidebar_position: 3
 ---
 
@@ -85,7 +85,7 @@ func (l *Loader) LoadFiles(filenames ...string) error
 - `error` - 加载错误
 
 **行为：**
-- 按顺序加载，后加载的覆盖先加载的（受 `OverwriteExisting` 配置控制）
+- 按顺序加载；默认（`OverwriteExisting=false`）**先加载的文件优先**，后加载文件中的同名键被跳过；`OverwriteExisting=true` 时后加载覆盖先加载的（Dev/Testing 预设内置）
 - 自动检测文件格式（.env、JSON、YAML）
 - 根据 `FailOnMissingFile` 配置决定文件不存在时的行为
 - 如果 `AutoApply` 为 true，加载后自动应用
@@ -335,7 +335,7 @@ if secret != nil {
 :::
 
 ::: tip 详见
-[SecureValue API](/zh/env/api-reference/secure-value) 获取完整文档。
+[SecureValue API](./secure-value) 获取完整文档。
 :::
 
 ---
@@ -354,7 +354,7 @@ portsInt := env.GetSliceFrom[int](loader, "PORTS")  // 也支持 int
 **支持的类型：** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
 
 ::: tip 详见
-[包函数 - GetSliceFrom](/zh/env/api-reference/functions#getslicefrom-t) 获取完整文档。
+[包函数 - GetSliceFrom](./functions#getslicefrom-t) 获取完整文档。
 :::
 
 ---
@@ -371,7 +371,7 @@ func (l *Loader) Lookup(key string) (string, bool)
 - `key` - 键名（支持点号路径）
 
 **返回：**
-- `string` - 值（首尾空白已移除）
+- `string` - 值（返回存储原值，不做 trim：`.env` 值在解析期已去除首尾空白，JSON/YAML 值可能保留空白）
 - `bool` - 是否存在
 
 ```go
@@ -605,7 +605,7 @@ func (l *Loader) Config() Config
 - `Config` - 配置（应视为只读）
 
 ::: warning 注意
-返回的 Config 应被视为只读。修改 `KeyPattern`、`AllowedKeys`、`ForbiddenKeys`、`RequiredKeys` 等字段可能影响加载器行为。如需安全的可变副本，请手动复制所需字段。
+`Config()` 返回配置**副本**供只读：值字段已拷贝隔离，但 `KeyPattern`、`FileSystem`、`AuditHandler` 等指针/接口字段（以及 `AllowedKeys`、`RequiredKeys` 等切片字段）与运行中的 loader **共享底层对象**，修改会影响 loader 行为，勿改。如需安全的可变副本，请手动复制所需字段。
 :::
 
 ```go
@@ -749,65 +749,65 @@ if loader.IsClosed() {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
-    "os"
-    "time"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 创建生产环境配置
-    cfg := env.ProductionConfig()
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
-    cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+	// 创建生产环境配置
+	cfg := env.ProductionConfig()
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 
-    // 创建加载器
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	// 创建加载器
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // 加载文件
-    if err := loader.LoadFiles(".env", ".env.production"); err != nil {
-        if errors.Is(err, env.ErrFileNotFound) {
-            log.Fatal("配置文件不存在")
-        }
-        log.Fatal(err)
-    }
+	// 加载文件
+	if err := loader.LoadFiles(".env", ".env.production"); err != nil {
+		if errors.Is(err, env.ErrFileNotFound) {
+			log.Fatal("配置文件不存在")
+		}
+		log.Fatal(err)
+	}
 
-    // 验证必需键
-    if err := loader.Validate(); err != nil {
-        log.Fatal("缺少必需配置：", err)
-    }
+	// 验证必需键
+	if err := loader.Validate(); err != nil {
+		log.Fatal("缺少必需配置：", err)
+	}
 
-    // 读取配置
-    host := loader.GetString("DB_HOST")
-    port := loader.GetInt("DB_PORT", 5432)
-    debug := loader.GetBool("DEBUG", false)
-    timeout := loader.GetDuration("TIMEOUT", 30*time.Second)
+	// 读取配置
+	host := loader.GetString("DB_HOST")
+	port := loader.GetInt("DB_PORT", 5432)
+	debug := loader.GetBool("DEBUG", false)
+	timeout := loader.GetDuration("TIMEOUT", 30*time.Second)
 
-    fmt.Printf("Server: %s:%d\n", host, port)
-    fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
+	fmt.Printf("Server: %s:%d\n", host, port)
+	fmt.Printf("Debug: %v, Timeout: %v\n", debug, timeout)
 
-    // 敏感数据
-    secret := loader.GetSecure("API_KEY")
-    if secret != nil {
-        defer secret.Release()
-        fmt.Printf("API Key length: %d\n", secret.Length())
-    }
+	// 敏感数据
+	secret := loader.GetSecure("API_KEY")
+	if secret != nil {
+		defer secret.Release()
+		fmt.Printf("API Key length: %d\n", secret.Length())
+	}
 
-    // 应用到系统环境
-    if err := loader.Apply(); err != nil {
-        log.Fatal(err)
-    }
+	// 应用到系统环境
+	if err := loader.Apply(); err != nil {
+		log.Fatal(err)
+	}
 
-    // 所有变量
-    fmt.Printf("Loaded %d variables\n", loader.Len())
-    fmt.Printf("Load time: %v\n", loader.LoadTime())
+	// 所有变量
+	fmt.Printf("Loaded %d variables\n", loader.Len())
+	fmt.Printf("Load time: %v\n", loader.LoadTime())
 }
 ```
 
@@ -835,7 +835,7 @@ Loader 记录**自己**写入进程环境的键（`appliedKeys`）。`Delete` �
 
 | 方法 | 说明 |
 |------|------|
-| `Config()` | 返回 loader 的只读配置快照；修改返回值不影响运行中的 loader |
+| `Config()` | 返回配置副本供只读；值字段已拷贝，但 `KeyPattern`、`FileSystem`、`AuditHandler` 等指针/接口字段共享底层对象，修改会影响运行中的 loader |
 | `IsClosed()` | loader 是否已关闭（nil receiver 返回 true） |
 | `IsApplied()` | 变量是否已应用到 os.Environ |
 | `LoadTime()` | 最近一次加载完成的时间（未加载过返回零值） |
@@ -857,7 +857,7 @@ Loader 记录**自己**写入进程环境的键（`appliedKeys`）。`Delete` �
 
 ## 相关文档
 
-- [包函数](/zh/env/api-reference/functions) - 包级便捷函数
-- [Config API](/zh/env/api-reference/config) - 配置选项
-- [SecureValue API](/zh/env/api-reference/secure-value) - 安全值处理
-- [接口定义](/zh/env/api-reference/interfaces) - 所有接口定义
+- [包函数](./functions) - 包级便捷函数
+- [Config API](./config) - 配置选项
+- [SecureValue API](./secure-value) - 安全值处理
+- [接口定义](./interfaces) - 所有接口定义

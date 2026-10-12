@@ -1,7 +1,7 @@
 ---
 sidebar_label: "安全与审计实战"
 title: "安全与审计实战 - CyberGo DD | 安全日志示例"
-description: "CyberGo DD 安全过滤与审计日志的完整实战示例集合，涵盖敏感数据过滤规则配置、HMAC 完整性签名与验签、审计事件记录与批量验证、行业合规配置方案（HIPAA/PCI-DSS）以及生产环境安全日志架构设计与部署的最佳实践建议和注意事项。"
+description: "CyberGo DD 安全过滤与审计日志实战示例：敏感数据过滤规则配置、HMAC 完整性签名与验签、审计事件记录与批量验证、行业合规配置（HIPAA/PCI-DSS）等场景。"
 sidebar_position: 3
 ---
 
@@ -17,27 +17,27 @@ sidebar_position: 3
 package main
 
 import (
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    logger, _ := dd.New(dd.Config{
-        Security: dd.DefaultSecurityConfig(),
-        Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-    })
-    defer logger.Close()
+	cfg := dd.DefaultConfig()
+	cfg.Security = dd.DefaultSecurityConfig()
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+	logger, _ := dd.New(cfg)
+	defer logger.Close()
 
-    // 密码自动脱敏
-    logger.InfoWith("用户登录",
-        dd.String("username", "alice"),
-        dd.String("password", "s3cr3t123"),    // → password=[REDACTED]
-    )
+	// 密码自动脱敏
+	logger.InfoWith("用户登录",
+		dd.String("username", "alice"),
+		dd.String("password", "s3cr3t123"), // → password=[REDACTED]
+	)
 
-    // API Key 自动脱敏（注意：endpoint 同属敏感键名，也会被脱敏）
-    logger.InfoWith("API 调用",
-        dd.String("endpoint", "/api/data"),      // → endpoint=[REDACTED]（"endpoint" 同属敏感键名）
-        dd.String("api_key", "sk-abc123xyz"),   // → api_key=[REDACTED]
-    )
+	// API Key 自动脱敏（注意：endpoint 同属敏感键名，也会被脱敏）
+	logger.InfoWith("API 调用",
+		dd.String("endpoint", "/api/data"),   // → endpoint=[REDACTED]（"endpoint" 同属敏感键名）
+		dd.String("api_key", "sk-abc123xyz"), // → api_key=[REDACTED]
+	)
 }
 ```
 
@@ -45,11 +45,11 @@ func main() {
 
 ```go
 // HIPAA 医疗合规
-medicalLogger, _ := dd.New(dd.Config{
-    Format:   dd.FormatJSON,
-    Security: dd.HealthcareConfig(),
-    Targets:  []dd.OutputTarget{dd.FileOutput("logs/medical.json")},
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.HealthcareConfig()
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/medical.json")}
+medicalLogger, _ := dd.New(cfg)
 
 medicalLogger.InfoWith("患者就诊",
     dd.String("password", "s3cr3t123"),        // → [REDACTED]（键名敏感）
@@ -57,11 +57,11 @@ medicalLogger.InfoWith("患者就诊",
 )
 
 // PCI-DSS 金融合规
-paymentLogger, _ := dd.New(dd.Config{
-    Format:   dd.FormatJSON,
-    Security: dd.FinancialConfig(),
-    Targets:  []dd.OutputTarget{dd.FileOutput("logs/payment.json")},
-})
+cfg = dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.FinancialConfig()
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/payment.json")}
+paymentLogger, _ := dd.New(cfg)
 
 paymentLogger.InfoWith("支付处理",
     dd.String("card_number", "4111111111111111"),  // → [REDACTED]
@@ -77,48 +77,49 @@ paymentLogger.InfoWith("支付处理",
 package main
 
 import (
-    "os"
+	"os"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // 审计日志文件
-    auditFile, _ := os.Create("logs/audit.json")
-    defer auditFile.Close()
+	// 审计日志文件
+	auditFile, _ := os.Create("logs/audit.json")
+	defer auditFile.Close()
 
-    // HMAC 签名器（防篡改）
-    integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
-    signer, _ := dd.NewIntegritySigner(integrityCfg)
+	// HMAC 签名器（防篡改）
+	integrityCfg, _ := dd.DefaultIntegrityConfigSafe()
+	signer, _ := dd.NewIntegritySigner(integrityCfg)
 
-    // 审计 Logger
-    auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
-        Enabled:          true,
-        Output:           auditFile,
-        JSONFormat:       true,
-        BufferSize:       1000,
-        MinimumSeverity:  dd.AuditSeverityInfo,
-        IntegritySigner:  signer,
-    })
-    defer auditLogger.Close()
+	// 审计 Logger
+	auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
+		Enabled:         true,
+		Output:          auditFile,
+		JSONFormat:      true,
+		BufferSize:      1000,
+		MinimumSeverity: dd.AuditSeverityInfo,
+		IntegritySigner: signer,
+	})
+	defer auditLogger.Close()
 
-    // 业务 Logger
-    logger, _ := dd.New(dd.Config{
-        Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
-        Targets:  []dd.OutputTarget{dd.ConsoleOutput()},
-        // 注意：此处未配置 Audit，业务 logger 的脱敏/安全事件不会自动进入上面的 auditLogger。
-        // 若要让安全事件自动入审计，需在此配置 Audit 字段（例如把上方 auditLogger 对应的
-        // AuditConfig 经 Audit: &auditCfg 传入），或通过显式调用 auditLogger.LogX(...) 记录事件。
-    })
-    defer logger.Close()
+	// 业务 Logger
+	cfg := dd.DefaultConfig()
+	cfg.Format = dd.FormatJSON
+	cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+	cfg.Targets = []dd.OutputTarget{dd.ConsoleOutput()}
+	// 注意：此处未配置 Audit，业务 logger 的脱敏/安全事件不会自动进入上面的 auditLogger。
+	// 若要让安全事件自动入审计，需在此配置 Audit 字段——dd.New 会根据该 AuditConfig 构建
+	// logger 自己的内部 AuditLogger（事件不会流入上方单独构造的 auditLogger 实例，避免
+	// 双写；两者若输出同一文件需自行协调），或通过显式调用 auditLogger.LogX(...) 记录事件。
+	logger, _ := dd.New(cfg)
+	defer logger.Close()
 
-    // 正常业务操作（脱敏由 Security 处理，但不会自动写入审计日志）
-    logger.InfoWith("交易处理",
-        dd.String("transaction_id", "TXN-001"),
-        dd.String("amount", "1500.00"),
-        dd.String("card_number", "4111111111111111"),  // → [REDACTED]
-    )
+	// 正常业务操作（脱敏由 Security 处理，但不会自动写入审计日志）
+	logger.InfoWith("交易处理",
+		dd.String("transaction_id", "TXN-001"),
+		dd.String("amount", "1500.00"),
+		dd.String("card_number", "4111111111111111"), // → [REDACTED]
+	)
 }
 ```
 
@@ -130,37 +131,37 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    // 创建签名器
-    signer, err := dd.NewIntegritySigner(dd.IntegrityConfig{
-        SecretKey:       []byte("your-32-byte-secret-key-here-1234"),
-        IncludeTimestamp: true,
-        IncludeSequence:  true,
-    })
-    if err != nil {
-        panic(err)
-    }
+	// 创建签名器
+	signer, err := dd.NewIntegritySigner(dd.IntegrityConfig{
+		SecretKey:        []byte("your-32-byte-secret-key-here-1234"),
+		IncludeTimestamp: true,
+		IncludeSequence:  true,
+	})
+	if err != nil {
+		panic(err)
+	}
 
-    // 签名日志条目
-    logEntry := `{"level":"info","message":"重要操作","user":"admin"}`
-    signature := signer.Sign(logEntry)
-    signedEntry := logEntry + signature
+	// 签名日志条目
+	logEntry := `{"level":"info","message":"重要操作","user":"admin"}`
+	signature := signer.Sign(logEntry)
+	signedEntry := logEntry + signature
 
-    // 验证日志完整性
-    result, err := signer.Verify(signedEntry)
-    if err != nil {
-        fmt.Printf("验证错误: %v\n", err)
-    } else if result.Valid {
-        fmt.Printf("验证通过 - 时间戳: %s, 序列号: %d\n",
-            result.Timestamp, result.Sequence)
-    } else {
-        fmt.Printf("验证失败：日志可能被篡改\n")
-    }
+	// 验证日志完整性
+	result, err := signer.Verify(signedEntry)
+	if err != nil {
+		fmt.Printf("验证错误: %v\n", err)
+	} else if result.Valid {
+		fmt.Printf("验证通过 - 时间戳: %s, 序列号: %d\n",
+			result.Timestamp, result.Sequence)
+	} else {
+		fmt.Printf("验证失败：日志可能被篡改\n")
+	}
 }
 ```
 
@@ -217,12 +218,12 @@ func NewSecureLogger() (*dd.Logger, *dd.AuditLogger, error) {
     fwCfg.Compress = true
     fw, _ := dd.NewFileWriter("logs/app.json", fwCfg)
 
-    logger, _ := dd.New(dd.Config{
-        Level:    dd.LevelInfo,
-        Format:   dd.FormatJSON,
-        Security: dd.DefaultSecureConfig(),
-        Targets:  []dd.OutputTarget{dd.CustomOutput(fw)},
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+    cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+    logger, _ := dd.New(cfg)
 
     return logger, auditLogger, nil
 }

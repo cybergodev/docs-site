@@ -3,7 +3,6 @@ sidebar_label: "序列化"
 title: "序列化 - CyberGo env | 多格式转换"
 description: "CyberGo env 序列化指南，详解 .env、JSON、YAML 间的 Map 与结构体转换，含 Marshal/Unmarshal 函数族、Marshaler/Unmarshaler 自定义接口与 DetectFormat 自动检测，覆盖配置导出与格式迁移等实用场景。"
 sidebar_position: 4
-sidebar_icon: "🔧"
 ---
 
 # 序列化
@@ -101,9 +100,87 @@ func main() {
 	// 输出：
 	// DATABASE_HOST: localhost
 	// DATABASE_NAME: myapp
-	// DATABASE_PORT: 5432
+	// DATABASE_PORT: "5432"
 }
 ```
+
+## 输出形态
+
+Marshal 的输出不是「扁平键原样输出」：两种结构化格式都会对键值做加工，了解这些行为才能正确解读导出结果。
+
+### JSON：下划线键重建嵌套对象
+
+Marshal 到 JSON 时，含下划线的键按 `_` 拆分重建为嵌套对象（`DATABASE_HOST` → `{"DATABASE": {"HOST": ...}}`）；叶子值经类型推断还原——`"8080"` 回到 number、`"true"` 回到 bool、`"null"` 回到 null，浮点同样还原。
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/cybergodev/env"
+)
+
+func main() {
+	data := map[string]string{
+		"DATABASE_HOST": "localhost",
+		"DATABASE_PORT": "5432",
+		"DEBUG":         "true",
+	}
+
+	result, err := env.Marshal(data, env.FormatJSON)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(result)
+	// 输出（键按字典序排序）：
+	// {
+	//   "DATABASE": {
+	//     "HOST": "localhost",
+	//     "PORT": 5432
+	//   },
+	//   "DEBUG": true
+	// }
+}
+```
+
+这与加载方向对称：加载 JSON 时嵌套对象被扁平化为 `DATABASE_HOST`，Marshal 回 JSON 时再重建嵌套，往返后结构一致。
+
+### YAML：标量加引号保往返
+
+Marshal 到 YAML 时键保持扁平，但对读回时会被 YAML 强制转换类型的标量（数字、`true`/`false`、`null`/`~` 等）自动加双引号，保证 Marshal → Unmarshal 往返后值仍为字符串：
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/cybergodev/env"
+)
+
+func main() {
+	data := map[string]string{
+		"HOST":  "localhost",
+		"PORT":  "8080",
+		"DEBUG": "true",
+	}
+
+	result, err := env.Marshal(data, env.FormatYAML)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(result)
+	// 输出（键按字典序排序）：
+	// DEBUG: "true"
+	// HOST: localhost
+	// PORT: "8080"
+}
+```
+
+这是 v1.2.3 起的行为：此前 `PORT: 8080` 不加引号，读回时会被 YAML 解析为数字，导致往返后类型漂移。
 
 ## 结构体序列化
 
@@ -113,34 +190,34 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host string `env:"HOST"`
-    Port int64  `env:"PORT"`
-    Debug bool  `env:"DEBUG"`
+	Host  string `env:"HOST"`
+	Port  int64  `env:"PORT"`
+	Debug bool   `env:"DEBUG"`
 }
 
 func main() {
-    cfg := Config{
-        Host:  "localhost",
-        Port:  8080,
-        Debug: true,
-    }
+	cfg := Config{
+		Host:  "localhost",
+		Port:  8080,
+		Debug: true,
+	}
 
-    // 序列化结构体为 .env 格式
-    result, err := env.Marshal(cfg, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	// 序列化结构体为 .env 格式
+	result, err := env.Marshal(cfg, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(result)
-    // 输出：
-    // DEBUG=true
-    // HOST=localhost
-    // PORT=8080
+	fmt.Println(result)
+	// 输出：
+	// DEBUG=true
+	// HOST=localhost
+	// PORT=8080
 }
 ```
 
@@ -150,35 +227,35 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 type DatabaseConfig struct {
-    Host string `env:"DB_HOST"`
-    Port int64  `env:"DB_PORT"`
+	Host string `env:"DB_HOST"`
+	Port int64  `env:"DB_PORT"`
 }
 
 type AppConfig struct {
-    Name     string         `env:"APP_NAME"`
-    Database DatabaseConfig
+	Name     string `env:"APP_NAME"`
+	Database DatabaseConfig
 }
 
 func main() {
-    cfg := AppConfig{
-        Name: "my-app",
-        Database: DatabaseConfig{
-            Host: "localhost",
-            Port: 5432,
-        },
-    }
+	cfg := AppConfig{
+		Name: "my-app",
+		Database: DatabaseConfig{
+			Host: "localhost",
+			Port: 5432,
+		},
+	}
 
-    result, err := env.Marshal(cfg, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	result, err := env.Marshal(cfg, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(result)
+	fmt.Println(result)
 }
 ```
 
@@ -206,9 +283,9 @@ import (
 )
 
 type Config struct {
-	Host string `env:"HOST"`
-	Port int64  `env:"PORT"`
-	Debug bool  `env:"DEBUG"`
+	Host  string `env:"HOST"`
+	Port  int64  `env:"PORT"`
+	Debug bool   `env:"DEBUG"`
 }
 
 func main() {
@@ -241,26 +318,26 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // .env 格式字符串
-    data := `
+	// .env 格式字符串
+	data := `
 HOST=localhost
 PORT=8080
 DEBUG=true
 `
 
-    // 反序列化为 map
-    result, err := env.UnmarshalMap(data, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	// 反序列化为 map
+	result, err := env.UnmarshalMap(data, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", result)
-    // 输出：map[DEBUG:true HOST:localhost PORT:8080]
+	fmt.Printf("%+v\n", result)
+	// 输出：map[DEBUG:true HOST:localhost PORT:8080]
 }
 ```
 
@@ -270,23 +347,24 @@ DEBUG=true
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    jsonData := `{
+	jsonData := `{
         "API_KEY": "secret123",
         "API_URL": "https://api.example.com",
         "TIMEOUT": "30"
     }`
 
-    result, err := env.UnmarshalMap(jsonData, env.FormatJSON)
-    if err != nil {
-        panic(err)
-    }
+	result, err := env.UnmarshalMap(jsonData, env.FormatJSON)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", result)
+	fmt.Printf("%+v\n", result)
+	// 输出：map[API_KEY:secret123 API_URL:https://api.example.com TIMEOUT:30]
 }
 ```
 
@@ -296,23 +374,24 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    yamlData := `
+	yamlData := `
 DATABASE_HOST: localhost
 DATABASE_PORT: "5432"
 DATABASE_USER: postgres
 `
 
-    result, err := env.UnmarshalMap(yamlData, env.FormatYAML)
-    if err != nil {
-        panic(err)
-    }
+	result, err := env.UnmarshalMap(yamlData, env.FormatYAML)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", result)
+	fmt.Printf("%+v\n", result)
+	// 输出：map[DATABASE_HOST:localhost DATABASE_PORT:5432 DATABASE_USER:postgres]
 }
 ```
 
@@ -324,29 +403,29 @@ DATABASE_USER: postgres
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host string `env:"HOST"`
-    Port int64  `env:"PORT"`
+	Host string `env:"HOST"`
+	Port int64  `env:"PORT"`
 }
 
 func main() {
-    data := map[string]string{
-        "HOST": "example.com",
-        "PORT": "443",
-    }
+	data := map[string]string{
+		"HOST": "example.com",
+		"PORT": "443",
+	}
 
-    var cfg Config
-    err := env.UnmarshalInto(data, &cfg)
-    if err != nil {
-        panic(err)
-    }
+	var cfg Config
+	err := env.UnmarshalInto(data, &cfg)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", cfg)
-    // 输出：{Host:example.com Port:443}
+	fmt.Printf("%+v\n", cfg)
+	// 输出：{Host:example.com Port:443}
 }
 ```
 
@@ -356,30 +435,31 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 type ServerConfig struct {
-    Host    string `env:"SERVER_HOST"`
-    Port    int64  `env:"SERVER_PORT"`
-    Enabled bool   `env:"ENABLED"`
+	Host    string `env:"SERVER_HOST"`
+	Port    int64  `env:"SERVER_PORT"`
+	Enabled bool   `env:"ENABLED"`
 }
 
 func main() {
-    envData := `
+	envData := `
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
 ENABLED=true
 `
 
-    var cfg ServerConfig
-    err := env.UnmarshalStruct(envData, &cfg, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	var cfg ServerConfig
+	err := env.UnmarshalStruct(envData, &cfg, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", cfg)
+	fmt.Printf("%+v\n", cfg)
+	// 输出：{Host:0.0.0.0 Port:8080 Enabled:true}
 }
 ```
 
@@ -396,35 +476,35 @@ ENABLED=true
 package main
 
 import (
-    "fmt"
-    "strings"
+	"fmt"
+	"strings"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type LogLevel string
 
 // 实现 encoding.TextMarshaler —— 作为结构体字段序列化时会被调用
 func (l LogLevel) MarshalText() ([]byte, error) {
-    return []byte(strings.ToUpper(string(l))), nil
+	return []byte(strings.ToUpper(string(l))), nil
 }
 
 type LogConfig struct {
-    Level LogLevel `env:"LOG_LEVEL"`
+	Level LogLevel `env:"LOG_LEVEL"`
 }
 
 func main() {
-    cfg := LogConfig{
-        Level: LogLevel("debug"),
-    }
+	cfg := LogConfig{
+		Level: LogLevel("debug"),
+	}
 
-    result, err := env.Marshal(cfg, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	result, err := env.Marshal(cfg, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(result)
-    // 输出：LOG_LEVEL=DEBUG
+	fmt.Println(result)
+	// 输出：LOG_LEVEL=DEBUG
 }
 ```
 
@@ -434,41 +514,41 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type LogLevel string
 
 // 实现 encoding.TextUnmarshaler —— 作为结构体字段反序列化时会被调用
 func (l *LogLevel) UnmarshalText(text []byte) error {
-    switch string(text) {
-    case "debug", "info", "warn", "error":
-        *l = LogLevel(text)
-        return nil
-    default:
-        return fmt.Errorf("invalid log level: %s", string(text))
-    }
+	switch string(text) {
+	case "debug", "info", "warn", "error":
+		*l = LogLevel(text)
+		return nil
+	default:
+		return fmt.Errorf("invalid log level: %s", string(text))
+	}
 }
 
 type LogConfig struct {
-    Level LogLevel `env:"LOG_LEVEL"`
+	Level LogLevel `env:"LOG_LEVEL"`
 }
 
 func main() {
-    data := map[string]string{
-        "LOG_LEVEL": "info",
-    }
+	data := map[string]string{
+		"LOG_LEVEL": "info",
+	}
 
-    var cfg LogConfig
-    err := env.UnmarshalInto(data, &cfg)
-    if err != nil {
-        panic(err)
-    }
+	var cfg LogConfig
+	err := env.UnmarshalInto(data, &cfg)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("Level: %s\n", cfg.Level)
-    // 输出：Level: info
+	fmt.Printf("Level: %s\n", cfg.Level)
+	// 输出：Level: info
 }
 ```
 
@@ -480,30 +560,30 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 // 顶层类型直接实现 env.Marshaler
 type EnvBlob string
 
 func (e EnvBlob) MarshalEnv() ([]byte, error) {
-    // 自定义整体序列化输出
-    return []byte("APP_NAME=custom\nAPP_VERSION=2.0.0"), nil
+	// 自定义整体序列化输出
+	return []byte("APP_NAME=custom\nAPP_VERSION=2.0.0"), nil
 }
 
 func main() {
-    // 直接序列化顶层值（不是外层结构体的字段）
-    result, err := env.Marshal(EnvBlob(""), env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	// 直接序列化顶层值（不是外层结构体的字段）
+	result, err := env.Marshal(EnvBlob(""), env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(result)
-    // 输出：
-    // APP_NAME=custom
-    // APP_VERSION=2.0.0
+	fmt.Println(result)
+	// 输出：
+	// APP_NAME=custom
+	// APP_VERSION=2.0.0
 }
 ```
 
@@ -515,25 +595,25 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 自动检测格式
-    format := env.DetectFormat("config.json")
-    fmt.Println(format.String()) // json
+	// 自动检测格式
+	format := env.DetectFormat("config.json")
+	fmt.Println(format.String()) // json
 
-    format = env.DetectFormat("settings.yaml")
-    fmt.Println(format.String()) // yaml
+	format = env.DetectFormat("settings.yaml")
+	fmt.Println(format.String()) // yaml
 
-    format = env.DetectFormat(".env")
-    fmt.Println(format.String()) // dotenv
+	format = env.DetectFormat(".env")
+	fmt.Println(format.String()) // dotenv
 
-    // 使用 FormatAuto 自动检测
-    data := `{"KEY": "value"}`
-    result, _ := env.UnmarshalMap(data, env.FormatAuto)
-    fmt.Println(result)
+	// 使用 FormatAuto 自动检测
+	data := `{"KEY": "value"}`
+	result, _ := env.UnmarshalMap(data, env.FormatAuto)
+	fmt.Println(result)
 }
 ```
 
@@ -545,27 +625,27 @@ func main() {
 package main
 
 import (
-    "os"
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
+	"os"
 )
 
 func main() {
-    cfg := map[string]string{
-        "HOST": "localhost",
-        "PORT": "8080",
-    }
+	cfg := map[string]string{
+		"HOST": "localhost",
+		"PORT": "8080",
+	}
 
-    // 序列化
-    content, err := env.Marshal(cfg, env.FormatEnv)
-    if err != nil {
-        panic(err)
-    }
+	// 序列化
+	content, err := env.Marshal(cfg, env.FormatEnv)
+	if err != nil {
+		panic(err)
+	}
 
-    // 写入文件
-    err = os.WriteFile(".env", []byte(content), 0644)
-    if err != nil {
-        panic(err)
-    }
+	// 写入文件
+	err = os.WriteFile(".env", []byte(content), 0644)
+	if err != nil {
+		panic(err)
+	}
 }
 ```
 
@@ -575,27 +655,27 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "os"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
+	"os"
 )
 
 func main() {
-    env.Load(".env")
+	env.Load(".env")
 
-    // 获取所有环境变量
-    all := env.All()
+	// 获取所有环境变量
+	all := env.All()
 
-    // 导出为 JSON
-    content, err := env.Marshal(all, env.FormatJSON)
-    if err != nil {
-        panic(err)
-    }
+	// 导出为 JSON
+	content, err := env.Marshal(all, env.FormatJSON)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println(content)
+	fmt.Println(content)
 
-    // 或写入文件
-    os.WriteFile("env-export.json", []byte(content), 0644)
+	// 或写入文件
+	os.WriteFile("env-export.json", []byte(content), 0644)
 }
 ```
 
@@ -606,8 +686,8 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"github.com/cybergodev/env"
+	"os"
 )
 
 func main() {
@@ -679,7 +759,7 @@ func main() {
 |------|------|
 | 空白输入 | `.env` |
 | 首字符为 `{` 或 `[` | JSON |
-| 首个有效行以 `- ` 开头，或包含 `: `（冒号+空格） | YAML |
+| 首个有效行以 `- ` 开头，或包含 `: `（冒号 + 空格） | YAML |
 | 包含 `=` | `.env` |
 
 注意 `: ` 优先于 `=` 判定：形如 `connection: host=db port=5432` 的行会被判为 YAML（而非 `.env`）。
@@ -697,6 +777,6 @@ if _, err := env.Marshal(data); err != nil {
 
 ## 相关文档
 
-- [包函数](/zh/env/api-reference/functions) - Marshal、UnmarshalMap 等函数参考
-- [多格式配置](/zh/env/guides/multi-format) - 多格式加载指南
-- [结构体映射](/zh/env/guides/struct-mapping) - 结构体映射指南
+- [包函数](../api-reference/functions) - Marshal、UnmarshalMap 等函数参考
+- [多格式配置](./multi-format) - 多格式加载指南
+- [结构体映射](./struct-mapping) - 结构体映射指南

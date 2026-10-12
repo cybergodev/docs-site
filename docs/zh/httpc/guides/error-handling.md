@@ -2,7 +2,7 @@
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo HTTPC | 分类与哨兵匹配"
 description: "HTTPC 错误处理指南：ErrorType 十二种错误分类与错误分类决策树、ClientError 字段与 IsRetryable 细粒度判定、平台 syscall 可重试映射、哨兵错误匹配、panic 恢复与中间件统一错误处理、超时分层最佳实践。"
-sidebar_position: 7
+sidebar_position: 60
 ---
 
 # 错误处理
@@ -103,48 +103,48 @@ GET https://api.example.com/data: network error occurred: dial tcp 1.2.3.4:443: 
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            switch clientErr.Type {
-            case httpc.ErrorTypeTimeout:
-                log.Printf("请求超时（已尝试 %d 次）: %v", clientErr.Attempts, err)
-            case httpc.ErrorTypeNetwork:
-                log.Printf("网络错误: %v", err)
-            case httpc.ErrorTypeDNS:
-                log.Printf("DNS 解析失败: %v", err)
-            case httpc.ErrorTypeTLS:
-                log.Printf("TLS 握手失败: %v", err)
-            case httpc.ErrorTypeCertificate:
-                log.Printf("证书验证失败: %v", err)
-            case httpc.ErrorTypeRetryExhausted:
-                log.Printf("重试 %d 次后仍失败: %v", clientErr.Attempts, err)
-            case httpc.ErrorTypeValidation:
-                log.Printf("请求验证失败: %v", err)
-            case httpc.ErrorTypeContextCanceled:
-                log.Printf("请求已取消: %v", err)
-            default:
-                log.Printf("其他错误 [%s]: %v", clientErr.Code(), err)
-            }
-        }
-        return
-    }
-    fmt.Printf("成功: %d\n", result.StatusCode())
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			switch clientErr.Type {
+			case httpc.ErrorTypeTimeout:
+				log.Printf("请求超时（已尝试 %d 次）: %v", clientErr.Attempts, err)
+			case httpc.ErrorTypeNetwork:
+				log.Printf("网络错误: %v", err)
+			case httpc.ErrorTypeDNS:
+				log.Printf("DNS 解析失败: %v", err)
+			case httpc.ErrorTypeTLS:
+				log.Printf("TLS 握手失败: %v", err)
+			case httpc.ErrorTypeCertificate:
+				log.Printf("证书验证失败: %v", err)
+			case httpc.ErrorTypeRetryExhausted:
+				log.Printf("重试 %d 次后仍失败: %v", clientErr.Attempts, err)
+			case httpc.ErrorTypeValidation:
+				log.Printf("请求验证失败: %v", err)
+			case httpc.ErrorTypeContextCanceled:
+				log.Printf("请求已取消: %v", err)
+			default:
+				log.Printf("其他错误 [%s]: %v", clientErr.Code(), err)
+			}
+		}
+		return
+	}
+	fmt.Printf("成功：%d\n", result.StatusCode())
 }
 ```
 
@@ -156,31 +156,31 @@ func main() {
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    _, err = client.Get("https://api.example.com/data")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            if clientErr.IsRetryable() {
-                fmt.Println("可重试错误，上层逻辑可稍后重试")
-            } else {
-                fmt.Printf("不可重试错误 [%s]，需人工介入\n", clientErr.Code())
-            }
-        }
-    }
+	_, err = client.Get("https://api.example.com/data")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			if clientErr.IsRetryable() {
+				fmt.Println("可重试错误，上层逻辑可稍后重试")
+			} else {
+				fmt.Printf("不可重试错误 [%s]，需人工介入\n", clientErr.Code())
+			}
+		}
+	}
 }
 ```
 
@@ -247,36 +247,36 @@ HTTPC 定义了以下哨兵错误变量，可通过 `errors.Is` 精确匹配：
 package main
 
 import (
-    "errors"
-    "fmt"
-    "log"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
+	result, err := client.Get("https://api.example.com/data")
 
-    switch {
-    case errors.Is(err, httpc.ErrClientClosed):
-        fmt.Println("客户端已关闭，需重新创建")
-    case errors.Is(err, httpc.ErrResponseBodyTooLarge):
-        fmt.Println("响应体过大，考虑增大 MaxResponseBodySize")
-    case errors.Is(err, httpc.ErrResponseBodyEmpty):
-        fmt.Println("响应体为空，调用解析方法前先检查 RawBody")
-    case errors.Is(err, httpc.ErrInvalidHeader):
-        fmt.Println("请求头无效，修正后重试")
-    }
+	switch {
+	case errors.Is(err, httpc.ErrClientClosed):
+		fmt.Println("客户端已关闭，需重新创建")
+	case errors.Is(err, httpc.ErrResponseBodyTooLarge):
+		fmt.Println("响应体过大，考虑增大 MaxResponseBodySize")
+	case errors.Is(err, httpc.ErrResponseBodyEmpty):
+		fmt.Println("响应体为空，调用解析方法前先检查 RawBody")
+	case errors.Is(err, httpc.ErrInvalidHeader):
+		fmt.Println("请求头无效，修正后重试")
+	}
 
-    if result != nil {
-        fmt.Printf("状态码: %d\n", result.StatusCode())
-    }
+	if result != nil {
+		fmt.Printf("状态码：%d\n", result.StatusCode())
+	}
 }
 ```
 
@@ -288,29 +288,29 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // URL 中包含凭证信息
-    result, err := client.Get("https://admin:s3cret@api.example.com/data")
-    if err != nil {
-        // 错误消息中的凭证被自动脱敏：
-        // "GET https://***:***@api.example.com/data: network error occurred"
-        fmt.Println(err)
-    }
-    if result != nil {
-        fmt.Println(result.StatusCode())
-    }
+	// URL 中包含凭证信息
+	result, err := client.Get("https://admin:s3cret@api.example.com/data")
+	if err != nil {
+		// 错误消息中的凭证被自动脱敏：
+		// "GET https://***:***@api.example.com/data: network error occurred"
+		fmt.Println(err)
+	}
+	if result != nil {
+		fmt.Println(result.StatusCode())
+	}
 }
 ```
 
@@ -384,39 +384,39 @@ HTTPC 的重试引擎在内部自动处理可重试错误。了解哪些错误�
 package main
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-    result, err := client.Request(ctx, "GET", "https://api.example.com/slow")
-    if err != nil {
-        var clientErr *httpc.ClientError
-        if errors.As(err, &clientErr) {
-            if clientErr.Type == httpc.ErrorTypeContextCanceled {
-                // context 超时或手动取消，不会被自动重试
-                fmt.Println("请求被取消（超时或手动取消），不会重试")
-            } else if clientErr.Type == httpc.ErrorTypeTimeout {
-                fmt.Println("请求超时，已自动重试仍失败")
-            }
-        }
-        return
-    }
-    fmt.Println(result.StatusCode())
+	result, err := client.Request(ctx, "GET", "https://api.example.com/slow")
+	if err != nil {
+		var clientErr *httpc.ClientError
+		if errors.As(err, &clientErr) {
+			if clientErr.Type == httpc.ErrorTypeContextCanceled {
+				// context 超时或手动取消，不会被自动重试
+				fmt.Println("请求被取消（超时或手动取消），不会重试")
+			} else if clientErr.Type == httpc.ErrorTypeTimeout {
+				fmt.Println("请求超时，已自动重试仍失败")
+			}
+		}
+		return
+	}
+	fmt.Println(result.StatusCode())
 }
 ```
 
@@ -428,36 +428,36 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        // 网络层错误——连接、TLS、DNS 等问题
-        log.Printf("网络层错误: %v", err)
-        return
-    }
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		// 网络层错误——连接、TLS、DNS 等问题
+		log.Printf("网络层错误: %v", err)
+		return
+	}
 
-    // HTTP 层错误——收到了响应但状态码非 2xx
-    if result.IsClientError() {
-        // 4xx：客户端请求有误（参数错误、权限不足等）
-        log.Printf("客户端错误: %d", result.StatusCode())
-    } else if result.IsServerError() {
-        // 5xx：服务端故障（重试已耗尽，上游仍不可用）
-        log.Printf("服务端错误: %d", result.StatusCode())
-    } else {
-        fmt.Printf("成功: %d\n", result.StatusCode())
-    }
+	// HTTP 层错误——收到了响应但状态码非 2xx
+	if result.IsClientError() {
+		// 4xx：客户端请求有误（参数错误、权限不足等）
+		log.Printf("客户端错误：%d", result.StatusCode())
+	} else if result.IsServerError() {
+		// 5xx：服务端故障（重试已耗尽，上游仍不可用）
+		log.Printf("服务端错误：%d", result.StatusCode())
+	} else {
+		fmt.Printf("成功：%d\n", result.StatusCode())
+	}
 }
 ```
 
@@ -561,43 +561,43 @@ func fetchWithFallback(client httpc.Client, url string, fallback []byte) []byte 
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-        httpc.RecoveryMiddleware(),
-        httpc.LoggingMiddleware(&httpc.LoggingConfig{
-            LogFunc: func(format string, args ...any) {
-                log.Printf("[HTTP] "+format, args...)
-            },
-        }),
-        httpc.MetricsMiddleware(&httpc.MetricsConfig{
-            OnMetrics: func(method, url string, statusCode int, duration time.Duration, err error) {
-                if err != nil {
-                    log.Printf("[METRICS] %s %s 失败: %v (耗时 %v)", method, url, err, duration)
-                } else {
-                    log.Printf("[METRICS] %s %s -> %d (耗时 %v)", method, url, statusCode, duration)
-                }
-            },
-        }),
-    }
+	cfg := httpc.DefaultConfig()
+	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
+		httpc.RecoveryMiddleware(),
+		httpc.LoggingMiddleware(&httpc.LoggingConfig{
+			LogFunc: func(format string, args ...any) {
+				log.Printf("[HTTP] "+format, args...)
+			},
+		}),
+		httpc.MetricsMiddleware(&httpc.MetricsConfig{
+			OnMetrics: func(method, url string, statusCode int, duration time.Duration, err error) {
+				if err != nil {
+					log.Printf("[METRICS] %s %s 失败: %v (耗时 %v)", method, url, err, duration)
+				} else {
+					log.Printf("[METRICS] %s %s -> %d (耗时 %v)", method, url, statusCode, duration)
+				}
+			},
+		}),
+	}
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://api.example.com/data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("状态码: %d", result.StatusCode())
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("状态码：%d", result.StatusCode())
 }
 ```
 
@@ -611,12 +611,13 @@ HTTPC 提供多个层级的超时控制，从粗到细：
 cfg := httpc.DefaultConfig()
 cfg.Timeouts.Request = 30 * time.Second
 
-// 第二层：中间件强制超时（覆盖默认）
+// 第二层：中间件强制超时（在客户端内置超时之前生效）
 timeoutMW := httpc.TimeoutMiddleware(&httpc.TimeoutMiddlewareConfig{
     Duration: 30 * time.Second,
 })
 
-// 第三层：单请求覆盖（WithTimeout 覆盖中间件和默认）
+// 第三层：单请求覆盖（WithTimeout 只覆盖客户端默认超时；
+// 中间件超时从请求自身的 Context() 派生，更短的中间件超时无法被 WithTimeout 延长）
 result, err := client.Get(url, httpc.WithTimeout(10*time.Second))
 
 // 第四层：context 超时（最精确，推荐用于关键路径）

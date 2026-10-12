@@ -2,7 +2,7 @@
 sidebar_label: "Quick Start"
 title: "Getting Started - CyberGo JWT | Quick Start Guide"
 description: "Install CyberGo JWT and create a Processor to issue, validate, refresh, and revoke access and refresh tokens, with a guide to advanced features."
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # Getting Started
@@ -23,22 +23,22 @@ Requires Go 1.25+.
 package main
 
 import (
-    "time"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!" // HMAC requires at least 32 bytes
-    cfg.AccessTokenTTL = 15 * time.Minute
-    cfg.RefreshTokenTTL = 7 * 24 * time.Hour
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!" // HMAC requires at least 32 bytes
+	cfg.AccessTokenTTL = 15 * time.Minute
+	cfg.RefreshTokenTTL = 7 * 24 * time.Hour
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close() // Securely clear keys
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close() // Securely clear keys
 }
 ```
 
@@ -68,21 +68,21 @@ if err != nil {
 ### 3. Validate Token
 
 ```go
-parsed, valid, err := processor.Validate(accessToken)
+// This step uses fmt; make sure "fmt" is imported
+parsed, err := processor.Parse(accessToken)
 if err != nil {
     // Handle error: expired, invalid signature, etc.
     panic(err)
 }
-if valid {
-    fmt.Println("UserID:", parsed.UserID)
-    fmt.Println("Role:", parsed.Role)
-    fmt.Println("ExpiresAt:", parsed.ExpiresAt.Time)
-}
+fmt.Println("UserID:", parsed.UserID)
+fmt.Println("Role:", parsed.Role)
+fmt.Println("ExpiresAt:", parsed.ExpiresAt.Time)
 ```
 
 ### 4. Refresh Token
 
 ```go
+// This step uses fmt; make sure "fmt" is imported
 newAccessToken, err := processor.Refresh(refreshToken)
 if err != nil {
     panic(err)
@@ -93,6 +93,8 @@ fmt.Println("New Access Token:", newAccessToken)
 ### 5. Revoke Token
 
 ```go
+// This step uses fmt; make sure "fmt" is imported
+
 // Add token to blacklist
 err := processor.Revoke(accessToken)
 if err != nil {
@@ -119,7 +121,7 @@ The steps above cover the core token lifecycle. CyberGo JWT also provides the fo
 | Token Blacklist | Revocation, built-in memory store, and Redis custom backends | [Token Blacklist](../guides/blacklist) |
 | Rate Limiting | Token bucket algorithm to prevent abuse of issuance endpoints | [Rate Limiting](../guides/rate-limiting) |
 | Configuration | Issuer/audience validation, clock skew, mandatory expiration, input validation | [Configuration](../guides/configuration) |
-| Error Handling | 19 sentinel error categories and `errors.Is` matching | [Error Handling](../guides/error-handling) |
+| Error Handling | 20 sentinel error categories and `errors.Is` matching | [Error Handling](../guides/error-handling) |
 | Testing & Clock Injection | `FixedClock` for deterministic, sleep-free time control in tests | [Testing & Clock Injection](../guides/testing) |
 
 ## Next Steps

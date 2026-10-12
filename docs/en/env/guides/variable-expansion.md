@@ -1,9 +1,8 @@
 ---
 sidebar_label: "Variable Expansion"
-title: "Variable Expansion - CyberGo env | ${VAR} and Defaults"
-description: "Variable expansion syntax for CyberGo env: ${VAR} and ${VAR:-default} references, ${VAR:?error} validation, and circular reference detection."
+title: "Variable Expansion - CyberGo env | ${VAR} and Default Syntax"
+description: "CyberGo env variable expansion: ${VAR} and ${VAR:-default} references, ${VAR:=default} defaults, ${VAR:?error} checks, $VAR shorthand, cycle and depth limits."
 sidebar_position: 3
-sidebar_icon: "🔧"
 ---
 
 # Variable Expansion
@@ -44,7 +43,7 @@ URL=$HOST:8080
 | `${VAR:=default}` | If VAR doesn't exist, use default (same as `:-`) |
 | `${VAR:?error}` | If VAR doesn't exist or is empty, return error |
 
-:::warning
+:::warning Self-reference restriction
 Variables referenced by `:-`, `:=`, `:?` must be **different** from the key being assigned. Self-references like `KEY=${KEY:-default}` are detected as circular references and produce an `ErrExpansionDepth` error during loading. To set a default value for a key, assign a literal directly (`KEY=default`), or reference another variable (see examples below).
 :::
 
@@ -91,7 +90,7 @@ DEBUG_VALUE=${DEBUG:=false}
 CACHE_TTL_VALUE=${CACHE_TTL:=3600}
 ```
 
-:::info
+:::info Relation to `:-`
 `${VAR:=default}` behaves exactly the same as `${VAR:-default}` in this library. When the variable doesn't exist, the default value is used as the expansion result. `:=` does not write the default value back to variable storage.
 :::
 
@@ -238,30 +237,30 @@ PRICE=$$99.99
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    cfg := env.DefaultConfig()
-    cfg.ExpandVariables = true
+	cfg := env.DefaultConfig()
+	cfg.ExpandVariables = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        log.Fatal(err)
-    }
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("DB_URL:", loader.GetString("DB_URL"))
-    fmt.Println("API_URL:", loader.GetString("API_URL"))
-    fmt.Println("PRICE:", loader.GetString("PRICE"))
+	fmt.Println("DB_URL:", loader.GetString("DB_URL"))
+	fmt.Println("API_URL:", loader.GetString("API_URL"))
+	fmt.Println("PRICE:", loader.GetString("PRICE"))
 }
 ```
 
@@ -294,6 +293,6 @@ Note: `ExpansionScope` is an enum, not a boolean field. Even if it is the only f
 
 ## Related Documentation
 
-- [Quick Start](/en/env/getting-started/) - Basic usage
-- [Config API](/en/env/api-reference/config) - ExpandVariables configuration
-- [Constants & Errors](/en/env/api-reference/constants) - Expansion depth limits
+- [Quick Start](../getting-started/) - Basic usage
+- [Config API](../api-reference/config) - ExpandVariables configuration
+- [Constants & Errors](../api-reference/constants) - Expansion depth limits

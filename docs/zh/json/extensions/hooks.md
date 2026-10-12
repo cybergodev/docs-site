@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Hook 钩子系统"
-title: "Hook 钩子系统 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Hook 钩子系统：Hook 接口、LoggingHook、TimingHook、ValidationHook、ErrorHook 与自定义钩子，经 Before/After 与 HookContext 上下文在 JSON 操作前后插入自定义逻辑。"
-sidebar_position: 1
+title: "Hook 钩子系统 - CyberGo JSON | 拦截、监控与审计指南"
+description: "CyberGo JSON 钩子系统：Hook 接口、LoggingHook、TimingHook、ValidationHook、ErrorHook 与自定义钩子，经 Before/After 与 HookContext 上下文在 JSON 操作前后插入日志、计时、校验、审计等自定义逻辑，实现拦截、监控、审计等能力。"
+sidebar_position: 20
 ---
 
 # Hook 钩子系统
@@ -158,8 +158,8 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("日志调用次数:", logger.calls)
-	// 输出：日志调用次数: 2  （Before 与 After 各一次）
+	fmt.Println("日志调用次数：", logger.calls)
+	// 输出：日志调用次数：2（Before 与 After 各一次）
 }
 ```
 
@@ -217,11 +217,11 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("get 计时记录:", recorder.count["get"])
-	fmt.Println("set 计时记录:", recorder.count["set"])
+	fmt.Println("get 计时记录：", recorder.count["get"])
+	fmt.Println("set 计时记录：", recorder.count["set"])
 	// 输出：
-	// get 计时记录: 1
-	// set 计时记录: 1
+	// get 计时记录：1
+	// set 计时记录：1
 }
 ```
 
@@ -264,19 +264,19 @@ func main() {
 
 	p.AddHook(json.ValidationHook(func(jsonStr, path string) error {
 		if strings.HasPrefix(path, "secret.") {
-			return errors.New("禁止访问敏感路径: " + path)
+			return errors.New("禁止访问敏感路径：" + path)
 		}
 		return nil
 	}))
 
 	_, err = p.Get(`{"name": "Alice", "secret": {"token": "t"}}`, "name")
-	fmt.Println("普通路径被拒绝:", err != nil)
+	fmt.Println("普通路径被拒绝：", err != nil)
 
 	_, err = p.Get(`{"name": "Alice", "secret": {"token": "t"}}`, "secret.token")
-	fmt.Println("敏感路径被拒绝:", err != nil)
+	fmt.Println("敏感路径被拒绝：", err != nil)
 	// 输出：
-	// 普通路径被拒绝: false
-	// 敏感路径被拒绝: true
+	// 普通路径被拒绝：false
+	// 敏感路径被拒绝：true
 }
 ```
 
@@ -319,11 +319,11 @@ func main() {
 	}))
 
 	_, err = p.Get(`{"name": "Alice"}`, "missing")
-	fmt.Println("出错:", err != nil)
-	fmt.Println("已附加上下文:", strings.HasPrefix(err.Error(), "[audit] op=get path=missing"))
+	fmt.Println("出错：", err != nil)
+	fmt.Println("已附加上下文：", strings.HasPrefix(err.Error(), "[audit] op=get path=missing"))
 	// 输出：
-	// 出错: true
-	// 已附加上下文: true
+	// 出错：true
+	// 已附加上下文：true
 }
 ```
 

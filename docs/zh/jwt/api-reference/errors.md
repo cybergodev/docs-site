@@ -1,7 +1,7 @@
 ---
 sidebar_label: "错误"
 title: "错误参考 - CyberGo JWT | 哨兵错误清单"
-description: "错误参考：CyberGo JWT 定义 19 个哨兵错误，覆盖配置校验、令牌验证、签名算法、过期、签发者与受众、黑名单、速率限制与生命周期场景，全部支持 errors.Is 匹配。"
+description: "错误参考：CyberGo JWT 定义 20 个哨兵错误，覆盖配置校验、令牌验证、签名算法、过期、签发者与受众、黑名单、速率限制与生命周期场景，全部支持 errors.Is 匹配。"
 sidebar_position: 70
 ---
 
@@ -23,6 +23,7 @@ var (
     ErrTokenRevoked          = errors.New("token revoked")
     ErrTokenMissingID        = errors.New("token missing ID")
     ErrTokenTypeMismatch     = errors.New("token type mismatch")
+    ErrRefreshRotationFailed = errors.New("refresh rotation failed")
     ErrTokenExpired          = errors.New("token expired")
     ErrTokenNotValidYet      = errors.New("token not valid yet")
     ErrTokenInvalidIssuer    = errors.New("token invalid issuer")
@@ -47,20 +48,21 @@ var (
 | `ErrInvalidConfig` | 配置无效 | `New()`、`Config.Validate()` |
 | `ErrInvalidSecretKey` | 密钥无效 | `New()` |
 | `ErrInvalidSigningMethod` | 签名方法无效 | `New()` |
-| `ErrInvalidToken` | 令牌无效（签名错误等） | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` |
+| `ErrInvalidToken` | 令牌无效（签名错误等） | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` |
 | `ErrEmptyToken` | 令牌为空 | 所有令牌操作方法 |
-| `ErrAlgorithmMismatch` | 令牌算法与配置不匹配 | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
-| `ErrTokenRevoked` | 令牌已吊销 | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
-| `ErrTokenMissingID` | 令牌缺少 ID | `Revoke()`、`IsRevoked()` |
-| `ErrTokenTypeMismatch` | 令牌类型不匹配（用访问令牌刷新） | `Refresh()`、`RefreshInto()` |
-| `ErrTokenExpired` | 令牌过期 | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
-| `ErrTokenNotValidYet` | 令牌尚未生效 | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
-| `ErrTokenInvalidIssuer` | 签发者不匹配 | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` |
-| `ErrTokenInvalidAudience` | 受众不匹配 | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` |
-| `ErrExpirationRequired` | 启用 `RequireExpiration` 但令牌缺少 `exp` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
-| `ErrInvalidClaims` | Claims 验证失败 | `Create()`、`CreateRefresh()`、`Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` |
+| `ErrAlgorithmMismatch` | 令牌算法与配置不匹配 | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
+| `ErrTokenRevoked` | 令牌已吊销 | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
+| `ErrTokenMissingID` | 令牌缺少 ID | `Revoke()`、`IsRevoked()`；启用 `RotateRefreshTokens` 时的 `Refresh()` / `RefreshInto()` |
+| `ErrTokenTypeMismatch` | 令牌类型不匹配（用访问令牌刷新，或用刷新令牌访问） | `Refresh()`、`RefreshInto()`；启用 `RejectRefreshAsAccess` 时的 `Parse()` / `ParseInto()` |
+| `ErrRefreshRotationFailed` | 刷新令牌轮换失败（包装底层黑名单存储错误） | `Refresh()`、`RefreshInto()`（启用 `RotateRefreshTokens` 时） |
+| `ErrTokenExpired` | 令牌过期 | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
+| `ErrTokenNotValidYet` | 令牌尚未生效 | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
+| `ErrTokenInvalidIssuer` | 签发者不匹配 | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` |
+| `ErrTokenInvalidAudience` | 受众不匹配 | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` |
+| `ErrExpirationRequired` | 启用 `RequireExpiration` 但令牌缺少 `exp` | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
+| `ErrInvalidClaims` | Claims 验证失败 | `Create()`、`CreateRefresh()`、`Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
 | `ErrRateLimitExceeded` | 超出限流 | `Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()` |
-| `ErrBlacklistNotConfigured` | 黑名单未配置 | `Revoke()` |
+| `ErrBlacklistNotConfigured` | 黑名单未配置 | `Revoke()`；启用 `RotateRefreshTokens` 时的 `Refresh()` / `RefreshInto()` |
 | `ErrProcessorClosed` | Processor 已关闭 | 所有方法 |
 | `ErrStoreClosed` | 存储已关闭 | `Revoke()` 等 |
 
@@ -79,24 +81,25 @@ var (
 | 错误 | 触发方法 | 典型原因 |
 |------|----------|----------|
 | `ErrEmptyToken` | 所有令牌操作方法 | 传入空字符串 |
-| `ErrInvalidToken` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` | 签名不匹配或格式错误 |
-| `ErrAlgorithmMismatch` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | 令牌 header 中的算法与配置不匹配 |
-| `ErrExpirationRequired` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | 启用 `RequireExpiration` 但令牌缺少 `exp` 声明 |
-| `ErrTokenExpired` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | 超过 `exp` 时间 |
-| `ErrTokenNotValidYet` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | 尚未到达 `nbf` 时间 |
-| `ErrTokenInvalidIssuer` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` | `iss` 与 `Config.Issuer` 不匹配 |
-| `ErrTokenInvalidAudience` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` | `aud` 与 `Config.ExpectedAudience` 不匹配 |
-| `ErrTokenRevoked` | `Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | 令牌在黑名单中 |
-| `ErrTokenTypeMismatch` | `Refresh()`、`RefreshInto()` | 用访问令牌（`token_type=access`）尝试刷新 |
-| `ErrInvalidClaims` | `Create()`、`CreateRefresh()`、`Validate()`、`Refresh()`、`ValidateInto()`、`RefreshInto()` | 业务验证失败 |
-| `ErrTokenMissingID` | `Revoke()`、`IsRevoked()` | 令牌缺少 `jti` 字段 |
+| `ErrInvalidToken` | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` | 签名不匹配或格式错误 |
+| `ErrAlgorithmMismatch` | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` | 令牌 header 中的算法与配置不匹配 |
+| `ErrExpirationRequired` | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` | 启用 `RequireExpiration` 但令牌缺少 `exp` 声明 |
+| `ErrTokenExpired` | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` | 超过 `exp` 时间 |
+| `ErrTokenNotValidYet` | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` | 尚未到达 `nbf` 时间 |
+| `ErrTokenInvalidIssuer` | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` | `iss` 与 `Config.Issuer` 不匹配 |
+| `ErrTokenInvalidAudience` | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` | `aud` 与 `Config.ExpectedAudience` 不匹配 |
+| `ErrTokenRevoked` | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` | 令牌在黑名单中 |
+| `ErrTokenTypeMismatch` | `Refresh()`、`RefreshInto()`；启用 `RejectRefreshAsAccess` 时的 `Parse()` / `ParseInto()` | 用访问令牌（`token_type=access`）尝试刷新，或刷新令牌被用作访问令牌 |
+| `ErrInvalidClaims` | `Create()`、`CreateRefresh()`、`Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` | 业务验证失败 |
+| `ErrTokenMissingID` | `Revoke()`、`IsRevoked()`；启用 `RotateRefreshTokens` 时的 `Refresh()` / `RefreshInto()` | 令牌缺少 `jti` 字段 |
 
 #### 限流与黑名单
 
 | 错误 | 触发方法 | 典型原因 |
 |------|----------|----------|
 | `ErrRateLimitExceeded` | `Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()` | 超出窗口内请求上限 |
-| `ErrBlacklistNotConfigured` | `Revoke()` | 未配置黑名单存储 |
+| `ErrBlacklistNotConfigured` | `Revoke()`；启用 `RotateRefreshTokens` 时的 `Refresh()` / `RefreshInto()` | 未配置黑名单存储 |
+| `ErrRefreshRotationFailed` | `Refresh()`、`RefreshInto()`（启用 `RotateRefreshTokens` 时） | 吊销旧刷新令牌失败（包装底层黑名单存储错误），无新令牌签发 |
 | `ErrTokenMissingID` | `Revoke()`、`IsRevoked()` | 令牌缺少 `jti` 字段 |
 
 #### 生命周期
@@ -113,7 +116,7 @@ var (
 ```go
 import "errors"
 
-claims, valid, err := processor.Validate(tokenString)
+claims, err := processor.Parse(tokenString)
 if err != nil {
     switch {
     case errors.Is(err, jwt.ErrTokenExpired):
@@ -144,5 +147,5 @@ type ValidationError struct {
 }
 ```
 
-字段级验证失败错误。详见 [类型与常量 → ValidationError](./types#validationerror)。
+字段级验证失败错误，通常被 `ErrInvalidClaims` 包装，用 `errors.As` 提取。`Err` 字段保存可选的底层错误，`Unwrap` 方法返回它，因此 `errors.Is` / `errors.As` 可以继续解链到更深层原因。字段与方法详情见 [类型与常量 → ValidationError](./types#validationerror)。
 

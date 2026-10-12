@@ -2,7 +2,7 @@
 sidebar_label: "安装"
 title: "安装 - CyberGo DD | 环境要求与集成"
 description: "CyberGo DD 日志库安装指南，涵盖 Go 版本要求、go get 安装、Go Module 集成、CI/CD 配置建议以及常见安装问题排查，帮助开发者快速将 DD 集成到项目中。"
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # 安装
@@ -50,7 +50,7 @@ package main
 import "github.com/cybergodev/dd"
 
 func main() {
-    dd.Info("DD 安装成功！")
+	dd.Info("DD 安装成功！")
 }
 ```
 

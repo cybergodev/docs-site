@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Security Mode"
-title: "Security Mode - CyberGo JSON | API Reference"
+title: "Security Mode - CyberGo JSON | Pattern Detection & Defense"
 description: "CyberGo JSON security mode: AddDangerousPattern registration, PatternLevel severity, input validation against JSON injection, prototype pollution, and XSS."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Security Mode
@@ -132,15 +132,15 @@ The following critical patterns are always fully scanned regardless of JSON size
 
 ---
 
-## Pattern Registration Methods
+## Custom Pattern Registration
 
-Dangerous patterns are configured through the `Config` struct rather than global registration functions.
+There are two routes for registering custom dangerous patterns: **Config append** (instance-level, fixed into the processor's security validator at construction) and **global registration** (process-level, effective for all Processors). For their scope, removal, and typical use cases see [Global Registration vs Config Append](#global-registration-vs-config-append).
 
-### Config.AddDangerousPattern
+### Config Append (Instance-Level)
+
+The `Config.AddDangerousPattern` method adds a custom dangerous pattern to the configuration:
 
 Signature: `func (c *Config) AddDangerousPattern(pattern DangerousPattern)`
-
-Adds a custom dangerous pattern to the configuration.
 
 ```go
 cfg := json.DefaultConfig()
@@ -157,9 +157,7 @@ if err != nil {
 defer processor.Close()
 ```
 
-### Config.AdditionalDangerousPatterns
-
-You can also set the `Config.AdditionalDangerousPatterns` field directly:
+You can also pass several patterns at once by setting the `Config.AdditionalDangerousPatterns` field directly:
 
 ```go
 cfg := json.DefaultConfig()
@@ -169,28 +167,7 @@ cfg.AdditionalDangerousPatterns = []json.DangerousPattern{
 }
 ```
 
----
-
-## Config Configuration Methods
-
-### AddDangerousPattern
-
-Adds a security pattern to the configuration.
-
-```go
-func (c *Config) AddDangerousPattern(pattern DangerousPattern)
-```
-
-```go
-cfg := json.DefaultConfig()
-cfg.AddDangerousPattern(json.DangerousPattern{
-    Pattern: "custom_dangerous_string",
-    Name:    "custom dangerous string",
-    Level:   json.PatternLevelWarning,
-})
-```
-
-### Configuration Fields
+Related configuration fields:
 
 ```go
 type Config struct {
@@ -207,13 +184,11 @@ type Config struct {
 }
 ```
 
----
-
-## Global Pattern Registration
+### Global Registration (Process-Level)
 
 Beyond instance-level patterns configured via `Config`, package-level functions manage a global pattern registry. Patterns in the global registry apply to all Processor instances.
 
-### RegisterDangerousPattern
+#### RegisterDangerousPattern
 
 Signature: `func RegisterDangerousPattern(pattern DangerousPattern)`
 
@@ -227,7 +202,7 @@ json.RegisterDangerousPattern(json.DangerousPattern{
 })
 ```
 
-### UnregisterDangerousPattern
+#### UnregisterDangerousPattern
 
 Signature: `func UnregisterDangerousPattern(pattern string)`
 
@@ -237,7 +212,7 @@ Removes a pattern from the global registry.
 json.UnregisterDangerousPattern("malicious_keyword")
 ```
 
-### ListDangerousPatterns
+#### ListDangerousPatterns
 
 Signature: `func ListDangerousPatterns() []DangerousPattern`
 

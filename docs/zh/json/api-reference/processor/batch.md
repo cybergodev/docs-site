@@ -1,8 +1,8 @@
 ---
 sidebar_label: "批量操作"
-title: "Processor 批量操作 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 批量操作：ProcessBatch 一次调用处理 get/set/delete/validate 多类操作、BatchOperation 与 BatchResult 类型，按 Config 定制批次并适合复用实例的批量处理。"
-sidebar_position: 7
+title: "Processor 批量操作 - CyberGo JSON | ProcessBatch 方法与配置"
+description: "CyberGo JSON 的 Processor 提供 ProcessBatch 批量操作，一次调用完成 get/set/delete/validate 四类任务，结果按 ID 关联且顺序一致，可借 Config 定制美化输出与批量上限，适合网关聚合、数据管道等高吞吐批处理场景。"
+sidebar_position: 70
 ---
 
 # 批量操作方法
@@ -50,16 +50,7 @@ func main() {
 
 ### 支持的操作类型
 
-| `Type` | 作用 | `Result` 内容 | 典型错误 |
-|--------|------|---------------|----------|
-| `get` | 读取路径上的值 | 路径处的值（`any`） | `ErrPathNotFound`、`ErrInvalidJSON` |
-| `set` | 设置路径的值 | **修改后的完整 JSON 字符串** | `ErrPathNotFound`（未开 `CreatePaths`）、`ErrInvalidPath` |
-| `delete` | 删除路径上的节点 | **删除后的完整 JSON 字符串** | `ErrPathNotFound`、`ErrInvalidPath` |
-| `validate` | 验证 JSON 是否合法 | `map[string]any{"valid": bool}` | 无效 JSON 时 `Result.valid=false` 且 `Error` 非空 |
-
-::: warning 操作互不链式
-每个 `BatchOperation` 都**独立**作用于各自的 `JSONStr` 输入，操作之间**不会**链式叠加。对同一文档先 `set` 再 `delete` 会得到两个独立结果，而非「先改再删」的叠加态。若需对单个文档做多步变换，请在代码中将上一步的输出喂给下一步，或改用 [`SetMultiple`](./modify#setmultiple) 等单文档多路径方法。
-:::
+四类操作（`get`/`set`/`delete`/`validate`）各自的 `Result` 内容与典型错误对照，以及「操作互不链式」的语义说明，与包级函数完全一致——完整表格见[批量操作函数·支持的操作类型](../functions/batch#支持的操作类型)。Processor 侧的差异只在配置生效方式（`cfg` 按调用覆盖处理器自身配置，见下节）。
 
 ### 批量大小限制
 
@@ -221,7 +212,7 @@ func main() {
 // 输出：
 // ok: valid=true
 // broken: valid=false
-// broken 错误: invalid JSON: ...
+// broken 错误：invalid JSON: ...
 ```
 
 ### 混合操作
@@ -265,7 +256,7 @@ func main() {
 }
 
 // 输出：
-// 验证结果: true
+// 验证结果：true
 // name: CyberGo
 // mark: {"processed":true,"user":{"name":"CyberGo"}}
 ```

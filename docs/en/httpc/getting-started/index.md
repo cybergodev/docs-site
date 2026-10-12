@@ -2,7 +2,7 @@
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo HTTPC | 5-Minute Setup"
 description: "HTTPC quick start: go get install, GET/POST requests, five config presets, JSON parsing, Bearer Token auth, and ClientError classification in 5 minutes."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Quick Start
@@ -24,7 +24,7 @@ Import it in your code:
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC requires Go 1.25 or later; apart from `golang.org/x/sys` it has no other third-party dependencies, and you can send your first request without any configuration.
+HTTPC requires Go 1.26 or later; apart from `golang.org/x/sys` it has no other third-party dependencies, and you can send your first request without any configuration.
 
 ## Basic Requests
 
@@ -34,20 +34,20 @@ No client needed — use the package-level functions directly:
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.StatusCode()) // 200
-    fmt.Println(result.Body())       // Response body
+	fmt.Println(result.StatusCode()) // 200
+	fmt.Println(result.Body())       // Response body
 }
 ```
 
@@ -225,51 +225,52 @@ Here is a complete example you can run directly with `go run`: it queries reposi
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 // Repo maps the GitHub API repository response
 type Repo struct {
-    Name        string `json:"name"`
-    Description string `json:"description"`
-    Stars       int    `json:"stargazers_count"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Stars       int    `json:"stargazers_count"`
 }
 
 func main() {
-    // 1. Create a client (default config: TLS 1.2+, SSRF protection, up to 3 retries)
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	// 1. Create a client (default config: TLS 1.2+, SSRF protection, up to 3 retries)
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // 2. Send the request: default headers + per-request timeout
-    result, err := client.Get("https://api.github.com/repos/golang/go",
-        httpc.WithUserAgent("httpc-demo/1.0"),
-        httpc.WithTimeout(15*time.Second),
-    )
-    if err != nil {
-        log.Fatal(err) // Network-layer error (connection/timeout/TLS, etc.)
-    }
+	// 2. Send the request: default headers + per-request timeout
+	result, err := client.Get("https://api.github.com/repos/golang/go",
+		httpc.WithUserAgent("httpc-demo/1.0"),
+		httpc.WithTimeout(15*time.Second),
+	)
+	if err != nil {
+		log.Fatal(err) // Network-layer error (connection/timeout/TLS, etc.)
+	}
 
-    // 3. Check the HTTP status code (4xx/5xx are not errors; check manually)
-    if !result.IsSuccess() {
-        log.Fatalf("HTTP error: %d", result.StatusCode())
-    }
+	// 3. Check the HTTP status code (4xx/5xx are not errors; check manually)
+	if !result.IsSuccess() {
+		log.Fatalf("HTTP error: %d", result.StatusCode())
+	}
 
-    // 4. Parse the JSON into a struct
-    var repo Repo
-    if err := result.Unmarshal(&repo); err != nil {
-        log.Fatal(err)
-    }
+	// 4. Parse the JSON into a struct
+	var repo Repo
+	if err := result.Unmarshal(&repo); err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Printf("%s: %s (%d stars)\n", repo.Name, repo.Description, repo.Stars)
-    fmt.Printf("Duration %v, attempts %d\n", result.Meta.Duration, result.Meta.Attempts)
+	fmt.Printf("%s: %s (%d stars)\n", repo.Name, repo.Description, repo.Stars)
+	fmt.Printf("Duration %v, attempts %d\n", result.Meta.Duration, result.Meta.Attempts)
 }
+
 // Output (star count and duration vary with the real API):
 // go: The Go programming language (124000 stars)
 // Duration 350ms, attempts 1
@@ -293,37 +294,38 @@ result, err := client.Get("https://api.example.com/v1/issues",
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Timeouts.Request = 30 * time.Second // Overall timeout budget (includes all retries)
-    cfg.Retry.MaxRetries = 3                // Up to 3 retries (0 disables)
-    cfg.Retry.Delay = time.Second           // Initial backoff of 1s
-    cfg.Retry.BackoffFactor = 2.0           // Backoff ×2 each retry (1s -> 2s -> 4s)
-    cfg.Retry.EnableJitter = true           // Jitter to avoid thundering herds
+	cfg := httpc.DefaultConfig()
+	cfg.Timeouts.Request = 30 * time.Second // Overall timeout budget (includes all retries)
+	cfg.Retry.MaxRetries = 3                // Up to 3 retries (0 disables)
+	cfg.Retry.Delay = time.Second           // Initial backoff of 1s
+	cfg.Retry.BackoffFactor = 2.0           // Backoff ×2 each retry (1s -> 2s -> 4s)
+	cfg.Retry.EnableJitter = true           // Jitter to avoid thundering herds
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // httpbin's /status/503 always returns 503 (a retryable status code)
-    result, err := client.Get("https://httpbin.org/status/503")
-    if err != nil {
-        log.Fatal(err) // Network-layer error
-    }
+	// httpbin's /status/503 always returns 503 (a retryable status code)
+	result, err := client.Get("https://httpbin.org/status/503")
+	if err != nil {
+		log.Fatal(err) // Network-layer error
+	}
 
-    // 503 is retryable: once retries are exhausted the last response is returned (not an error)
-    fmt.Println("Status code:", result.StatusCode())   // 503
-    fmt.Println("Attempts:", result.Meta.Attempts) // 4 (first try + 3 retries)
+	// 503 is retryable: once retries are exhausted the last response is returned (not an error)
+	fmt.Println("Status code:", result.StatusCode()) // 503
+	fmt.Println("Attempts:", result.Meta.Attempts)   // 4 (first try + 3 retries)
 }
+
 // Output:
 // Status code: 503
 // Attempts: 4
@@ -374,4 +376,6 @@ See [SSRF Protection](../security/ssrf) for details.
 
 - **[Tutorial](../guides/tutorial)** - Build a GitHub API client in 30 minutes
 - **[Cheat Sheet](./cheatsheet)** - Quick reference for common operations
+- **[Basic Examples](../examples/basic-usage)** - Runnable minimal examples
+- **[API Reference Overview](../api-reference/)** - Index of all public APIs
 - **[Security](../security/)** - Security best practices and the production checklist

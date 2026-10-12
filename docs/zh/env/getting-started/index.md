@@ -1,7 +1,7 @@
 ---
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo env | 5 分钟入门指南"
-description: "5 分钟上手 CyberGo env 环境变量管理库，涵盖 go get 安装、.env 加载、类型安全读取、GetSecure 安全值、结构体映射、变量展开与 errors.Is 错误处理，并讲解四种配置预设与多环境多文件加载，附完整可运行代码示例助您快速入门。"
+description: "5 分钟上手 CyberGo env 环境变量管理库，涵盖 go get 安装、.env 加载、类型安全读取、GetSecure 安全值、结构体映射、变量展开与 errors.Is 错误处理，并讲解四种配置预设与多环境多文件加载。"
 sidebar_position: 1
 ---
 
@@ -40,7 +40,7 @@ ALLOWED_HOSTS=localhost,example.com,api.example.com
 ```
 
 ::: tip 完整语法参考
-`.env` 文件的引号、转义、多行值等完整语法规则，参见[文件格式](/zh/env/reference/file-format)。
+`.env` 文件的引号、转义、多行值等完整语法规则，参见[文件格式](../reference/file-format)。
 :::
 
 ## 最简用法
@@ -49,21 +49,22 @@ ALLOWED_HOSTS=localhost,example.com,api.example.com
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 加载 .env 文件并应用到系统环境
-    if err := env.Load(".env"); err != nil {
-        panic(err)
-    }
+	// 加载 .env 文件并应用到系统环境
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
-    // 获取环境变量
-    host := env.GetString("DB_HOST", "localhost")
-    port := env.GetInt("DB_PORT", 5432)
+	// 获取环境变量
+	host := env.GetString("DB_HOST", "localhost")
+	port := env.GetInt("DB_PORT", 5432)
 
-    fmt.Printf("Server: %s:%d\n", host, port)
+	fmt.Printf("Server: %s:%d\n", host, port)
+	// 输出：Server: localhost:5432
 }
 ```
 
@@ -79,6 +80,8 @@ env 提供两种使用方式：
 全局模式使用包级函数，内部维护一个默认 Loader 单例——调用 `env.Load()` 后，所有 `env.GetXxx()` 自动使用该实例。实例模式通过 `env.New()` 创建独立 Loader，适合需要隔离或同时管理多套配置的场景。
 
 本文档示例默认使用全局模式，实例模式的完整用法见[多环境配置](#多环境配置)章节。
+
+注意：忘记调用 `Load()` 并不会报错——未初始化时 `Get*`/`Lookup` 会静默返回默认值或零值，而 `Set`/`Delete`/`Validate`/`ParseInto` 会返回 `ErrNotInitialized`。详见[包函数](../api-reference/functions)。
 :::
 
 ## 读取值 - 所有类型
@@ -94,13 +97,20 @@ host := env.GetString("HOST", "localhost")
 // 整数 (int64) - 未找到时返回默认值 8080
 port := env.GetInt("PORT", 8080)
 
+// 浮点数 (float64) - 未找到时返回默认值 0.99
+rate := env.GetFloat64("RATE", 0.99)
+
+// 无符号整数 (uint64) - 未找到时返回默认值 4096
+size := env.GetUint64("MAX_SIZE", 4096)
+
 // 布尔值 - 未找到时返回默认值 false
 debug := env.GetBool("DEBUG", false)
 
 // 时间间隔 - 未找到时返回默认值 30s
 timeout := env.GetDuration("TIMEOUT", 30*time.Second)
+```
 
-
+```go
 // === 不带默认值 ===
 
 // 字符串 - 未找到时返回空字符串 ""
@@ -125,8 +135,8 @@ timeout := env.GetDuration("TIMEOUT")
 
 // 以下方式都能访问到该值
 name := env.GetString("APP_NAME")      // 扁平化键名（推荐）
-name := env.GetString("app.name")      // 点号路径（自动转换）
-name := env.GetString("APP.NAME")      // 大写点号路径
+name = env.GetString("app.name")       // 点号路径（自动转换）
+name = env.GetString("APP.NAME")       // 大写点号路径
 ```
 
 **解析规则：**
@@ -220,35 +230,36 @@ if secret != nil {
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 type Config struct {
-    Host     string        `env:"DB_HOST" envDefault:"localhost"`
-    Port     int64         `env:"DB_PORT" envDefault:"5432"`
-    Password string        `env:"DB_PASSWORD"`
-    Debug    bool          `env:"DEBUG" envDefault:"false"`
-    Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
-    Hosts    []string      `env:"ALLOWED_HOSTS"`
+	Host     string        `env:"DB_HOST" envDefault:"localhost"`
+	Port     int64         `env:"DB_PORT" envDefault:"5432"`
+	Password string        `env:"DB_PASSWORD"`
+	Debug    bool          `env:"DEBUG" envDefault:"false"`
+	Timeout  time.Duration `env:"TIMEOUT" envDefault:"30s"`
+	Hosts    []string      `env:"ALLOWED_HOSTS"`
 }
 
 func main() {
-    env.Load(".env")
+	env.Load(".env")
 
-    var cfg Config
-    if err := env.ParseInto(&cfg); err != nil {
-        panic(err)
-    }
+	var cfg Config
+	if err := env.ParseInto(&cfg); err != nil {
+		panic(err)
+	}
 
-    fmt.Printf("%+v\n", cfg)
+	fmt.Printf("%+v\n", cfg)
+	// 输出：{Host:localhost Port:5432 Password:secret Debug:true Timeout:30s Hosts:[localhost example.com api.example.com]}
 }
 ```
 
 ::: details 详见
-[结构体映射](/zh/env/guides/struct-mapping) 指南。
+[结构体映射](../guides/struct-mapping) 指南。
 :::
 
 ## 配置预设
@@ -303,9 +314,19 @@ if goEnv == "" {
     goEnv = "development"
 }
 
-// 单次调用加载所有配置文件（按顺序，后加载的覆盖先加载的）
+// 默认：先加载的文件优先（.env 中已存在的键不会被后续文件覆盖）
 env.Load(".env", ".env."+goEnv, ".env.local")
+
+// 需要「后加载覆盖」（如 .env.local 覆盖 .env）时：
+cfg := env.DefaultConfig()
+cfg.OverwriteExisting = true
+cfg.Filenames = []string{".env", ".env." + goEnv, ".env.local"}
+if err := env.LoadWithConfig(cfg); err != nil { log.Fatal(err) }
 ```
+
+::: tip 覆盖语义
+默认配置（`DefaultConfig()`）与 `ProductionConfig()` 均为「先加载的文件胜出」：后加载文件中与已加载同名的键会被跳过，防止运行时意外覆盖已加载的配置。`DevelopmentConfig()` 与 `TestingConfig()` 预设已内置 `OverwriteExisting=true`，仅在这些预设（或手动开启该选项）下，后加载的文件才会覆盖先加载的。
+:::
 
 ### 使用 Loader 实例
 
@@ -315,35 +336,35 @@ env.Load(".env", ".env."+goEnv, ".env.local")
 package main
 
 import (
-    "fmt"
-    "github.com/cybergodev/env"
+	"fmt"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    // 创建配置
-    cfg := env.ProductionConfig()
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	// 创建配置
+	cfg := env.ProductionConfig()
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-    // 创建加载器
-    loader, err := env.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer loader.Close()
+	// 创建加载器
+	loader, err := env.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer loader.Close()
 
-    // 加载文件（按顺序，后加载的覆盖先加载的）
-    if err := loader.LoadFiles(".env", ".env.production"); err != nil {
-        panic(err)
-    }
+	// 加载文件（按顺序；ProductionConfig 下先加载的胜出，已存在的键不会被覆盖）
+	if err := loader.LoadFiles(".env", ".env.production"); err != nil {
+		panic(err)
+	}
 
-    // 验证必需键
-    if err := loader.Validate(); err != nil {
-        panic(err)
-    }
+	// 验证必需键
+	if err := loader.Validate(); err != nil {
+		panic(err)
+	}
 
-    // 使用
-    host := loader.GetString("DB_HOST")
-    fmt.Println("Host:", host)
+	// 使用
+	host := loader.GetString("DB_HOST")
+	fmt.Println("Host:", host)
 }
 ```
 
@@ -351,7 +372,7 @@ func main() {
 
 ### 多文件加载
 
-按顺序加载，后加载的覆盖先加载的：
+按顺序加载。默认（`DefaultConfig()`）**先加载的文件胜出**：后加载文件中已存在的同名键会被跳过；需要「后加载覆盖」时设置 `OverwriteExisting = true`（`DevelopmentConfig()`/`TestingConfig()` 预设已内置）：
 
 ::: code-group
 
@@ -431,21 +452,17 @@ if errors.As(err, &secErr) {
 
 ## 下一步
 
-<div class="vp-features">
-
 ### 深入学习
-- [结构体映射](/zh/env/guides/struct-mapping) - 详细的配置绑定
-- [序列化](/zh/env/guides/serialization) - 配置序列化与反序列化
-- [多格式配置](/zh/env/guides/multi-format) - JSON/YAML 详解
-- [测试场景](/zh/env/guides/testing) - 测试中的使用方法
+- [结构体映射](../guides/struct-mapping) - 详细的配置绑定
+- [序列化](../guides/serialization) - 配置序列化与反序列化
+- [多格式配置](../guides/multi-format) - JSON/YAML 详解
+- [测试场景](../guides/testing) - 测试中的使用方法
 
 ### API 参考
-- [包函数](/zh/env/api-reference/functions) - 包级函数完整列表
-- [Loader API](/zh/env/api-reference/loader) - 加载器方法
-- [Config API](/zh/env/api-reference/config) - 配置选项
+- [包函数](../api-reference/functions) - 包级函数完整列表
+- [Loader API](../api-reference/loader) - 加载器方法
+- [Config API](../api-reference/config) - 配置选项
 
 ### 安全
-- [安全概述](/zh/env/security/) - 安全架构与最佳实践
-- [SecureValue API](/zh/env/api-reference/secure-value) - 安全值处理
-
-</div>
+- [安全概述](../security/) - 安全架构与最佳实践
+- [SecureValue API](../api-reference/secure-value) - 安全值处理

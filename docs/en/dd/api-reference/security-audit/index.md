@@ -28,20 +28,21 @@ Log write pipeline:
        │         │
        │         └─→ AuditLogger ──→ Async record redaction events
        │
-       ├─→ Format output
-       │
-       └─→ IntegritySigner ──→ HMAC sign (tamper protection)
+       └─→ Format output
+
+  AuditLogger (optional IntegritySigner) ──→ HMAC-sign audit events (tamper protection)
 ```
 
 - **SensitiveDataFilter** intercepts sensitive data **before** logs are written
 - **AuditLogger** records security events asynchronously without impacting log performance
-- **IntegritySigner** signs logs **after** writing to ensure chain integrity
+- **IntegritySigner** is **not wired into the regular log write path**: it signs only **audit events** (via `AuditConfig.IntegritySigner`) or content you sign manually with `Sign`/`SignFields`
 
 ## Quick Selection
 
 | Need | Recommended |
 |------|------------|
 | Prevent password/key leakage | [SensitiveDataFilter](./security) |
+| Prevent log flooding (DoS) | `SecurityConfig.RateLimitConfig` — see [Security Filtering](./security) |
 | Record who did what and when | [AuditLogger](./audit) |
 | Ensure logs haven't been tampered | [IntegritySigner](./integrity) |
 | Meet HIPAA/PCI-DSS compliance | All three together — see [Compliance](../../guides/security/compliance) |

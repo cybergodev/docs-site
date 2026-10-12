@@ -1,8 +1,8 @@
 ---
 sidebar_label: "File Download"
 title: "File Download - CyberGo HTTPC | Download & Verification"
-description: "HTTPC file download API reference: the unified Download entry-point function, DownloadConfig configuration struct, DownloadProgressCallback progress callback, DownloadResult result type, SHA-256 checksum verification, and six layers of file-path security protection including UNC-path blocking."
-sidebar_position: 4
+description: "HTTPC file download API: Download, DownloadConfig, progress callbacks, DownloadResult, SHA-256 checksum verification, and multi-layer path security."
+sidebar_position: 40
 ---
 
 # File Download
@@ -47,12 +47,12 @@ func DefaultDownloadConfig() *DownloadConfig
 
 | Field | Type | Default | Description |
 |------|------|--------|------|
-| `FilePath` | `string` | — | File save path (**required**, cannot be empty) |
-| `ProgressCallback` | `DownloadProgressCallback` | `nil` | Progress callback function; nil disables progress reporting |
-| `Overwrite` | `bool` | `false` | Whether to overwrite an existing file. When false, returns `ErrFileExists` if the file exists |
-| `ResumeDownload` | `bool` | `false` | Whether to enable resumable download. When true, reuses the existing partial file |
-| `Checksum` | `string` | `""` | Expected hex-encoded checksum. When set, verified automatically on completion |
-| `ChecksumAlgorithm` | `ChecksumAlgorithm` | `"sha256"` | Checksum algorithm (currently only SHA-256 is supported) |
+| `DownloadConfig.FilePath` | `string` | — | File save path (**required**, cannot be empty) |
+| `DownloadConfig.ProgressCallback` | `DownloadProgressCallback` | `nil` | Progress callback function; nil disables progress reporting |
+| `DownloadConfig.Overwrite` | `bool` | `false` | Whether to overwrite an existing file. When false, returns `ErrFileExists` if the file exists |
+| `DownloadConfig.ResumeDownload` | `bool` | `false` | Whether to enable resumable download. When true, reuses the existing partial file |
+| `DownloadConfig.Checksum` | `string` | `""` | Expected hex-encoded checksum. When set, verified automatically on completion |
+| `DownloadConfig.ChecksumAlgorithm` | `ChecksumAlgorithm` | `"sha256"` | Checksum algorithm (currently only SHA-256 is supported) |
 
 :::tip Priority of Overwrite and ResumeDownload
 When the file exists and both are true, `ResumeDownload` takes priority — the existing file is **appended to** rather than replaced. When the file does not exist, both behave the same (a normal download).
@@ -64,7 +64,7 @@ When the file exists and both are true, `ResumeDownload` takes priority — the 
 func DefaultDownloadConfig() *DownloadConfig
 ```
 
-Returns the default download config: `Overwrite` and `ResumeDownload` both false, `ChecksumAlgorithm` set to `ChecksumSHA256`. The caller must set `FilePath` before use.
+Returns the default download config: `Overwrite` and `ResumeDownload` both false, `ChecksumAlgorithm` set to `ChecksumSHA256`. The caller must set `FilePath` before use; `ProgressCallback`, `Overwrite`, `ResumeDownload`, and `Checksum` can be set as needed.
 
 ## DownloadProgressCallback
 
@@ -125,20 +125,20 @@ type DownloadResult struct {
 
 | Field | Type | Description |
 |------|------|------|
-| `FilePath` | `string` | The **absolute path** where the file was actually saved (the path after `prepareFilePath` validation) |
-| `BytesWritten` | `int64` | Bytes written this session (during resume, the appended amount, not the total file size) |
-| `Duration` | `time.Duration` | Download duration (from start of writing to file close) |
-| `AverageSpeed` | `float64` | Average speed (bytes/second, = BytesWritten / Duration) |
-| `StatusCode` | `int` | HTTP status code (200 or 206) |
-| `ContentLength` | `int64` | Content-Length reported by the server (during resume, the remaining-part length) |
-| `Resumed` | `bool` | Whether completed via resume (Range requested and 206 received) |
-| `ResponseCookies` | `[]*http.Cookie` | Response cookies |
-| `ActualChecksum` | `string` | Actually computed checksum (filled only when `Checksum` is set) |
-| `Proto` | `string` | HTTP protocol version (e.g. `"HTTP/1.1"`, `"HTTP/2.0"`) |
-| `ResponseHeaders` | `http.Header` | Response headers |
-| `RequestURL` | `string` | Actual request URL |
-| `RequestMethod` | `string` | Request HTTP method (always `"GET"`) |
-| `RequestHeaders` | `http.Header` | Request headers actually sent |
+| `DownloadResult.FilePath` | `string` | The **absolute path** where the file was actually saved (the path after `prepareFilePath` validation) |
+| `DownloadResult.BytesWritten` | `int64` | Bytes written this session (during resume, the appended amount, not the total file size) |
+| `DownloadResult.Duration` | `time.Duration` | Download duration (from start of writing to file close) |
+| `DownloadResult.AverageSpeed` | `float64` | Average speed (bytes/second, = BytesWritten / Duration) |
+| `DownloadResult.StatusCode` | `int` | HTTP status code (200 or 206) |
+| `DownloadResult.ContentLength` | `int64` | Content-Length reported by the server (during resume, the remaining-part length) |
+| `DownloadResult.Resumed` | `bool` | Whether completed via resume (Range requested and 206 received) |
+| `DownloadResult.ResponseCookies` | `[]*http.Cookie` | Response cookies |
+| `DownloadResult.ActualChecksum` | `string` | Actually computed checksum (filled only when `Checksum` is set) |
+| `DownloadResult.Proto` | `string` | HTTP protocol version (e.g. `"HTTP/1.1"`, `"HTTP/2.0"`) |
+| `DownloadResult.ResponseHeaders` | `http.Header` | Response headers |
+| `DownloadResult.RequestURL` | `string` | Actual request URL |
+| `DownloadResult.RequestMethod` | `string` | Request HTTP method (always `"GET"`) |
+| `DownloadResult.RequestHeaders` | `http.Header` | Request headers actually sent |
 
 ```go
 fmt.Printf("download complete: %s, duration %v, average speed %s\n",
@@ -228,7 +228,7 @@ prepareResumeState(filePath, opts, options):
 | Server returns | Handling |
 |-----------|------|
 | `206 Partial Content` | Resume succeeded: `O_APPEND` append-mode write, `Resumed = true` |
-| `200 OK` (Range not supported) | **Return error**: the server ignored the Range request; resuming would truncate existing data. Drain the response body, then error |
+| `200 OK` (Range not supported) | **Return error**: the server ignored the Range request; writing on would overwrite the existing partial file from scratch, so HTTPC errors out and leaves the partial data intact (no truncation). Drain the response body, then error |
 | `416 Range Not Satisfiable` | **Return error**: the requested offset exceeds the file size. Drain the response body, then error |
 | Other status codes (4xx/5xx) | Return error, with a preview of the first 200 characters of the response body |
 
@@ -273,6 +273,15 @@ Streaming download data path:
 | Zero memory buffering | Data flows from network directly to disk, without passing through a full memory buffer |
 | Streaming hash | Checksum computation happens in sync with writing, no second read needed |
 | Auto-release | The response-body reader is closed via `defer`; the engine response is returned to the object pool via `defer` |
+
+:::warning Downloads are bounded by MaxResponseBodySize
+Streaming to disk only removes the full-body memory buffer — it is **not an unbounded size cap exemption**: the download body is still subject to the client's `Security.MaxResponseBodySize` — 10MB by default with `DefaultConfig` (other presets: `SecureConfig` 5MB, `PerformanceConfig` 50MB, `MinimalConfig` 1MB). A body over the limit fails the download with `ErrResponseBodyTooLarge` rather than being silently truncated at the limit; raise the value before downloading large files:
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.MaxResponseBodySize = 200 << 20 // 200MB, adjust as needed
+```
+:::
 
 :::warning Middleware compatibility
 Download needs direct access to `*engine.Response`'s `RawBodyReader()`. If middleware **wraps** the `ResponseMutator` with a custom type (rather than mutating the engine response in place), the download returns an error: `download is not compatible with middleware that wraps ResponseMutator`. All built-in middleware mutates in place and does not trigger this error.

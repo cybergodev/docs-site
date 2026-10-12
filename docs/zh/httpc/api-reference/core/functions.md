@@ -2,7 +2,7 @@
 sidebar_label: "函数与方法"
 title: "包级函数与客户端方法 - CyberGo HTTPC | HTTP 方法 API"
 description: "HTTPC 包级函数与客户端方法 API 参考：Get/Post 等七种 HTTP 方法、New 客户端创建、Download 统一下载入口、FormatBytes/FormatSpeed 工具与 NewDomain 域名客户端创建，配合请求选项实现灵活配置。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 包级函数与客户端方法
@@ -138,6 +138,8 @@ result, err := client.Head(url, options...)
 result, err := client.Options(url, options...)
 result, err := client.Request(ctx, "GET", url, options...)
 ```
+
+`Client` 接口的完整方法集：七个动词便捷方法 `Client.Get`、`Client.Post`、`Client.Put`、`Client.Patch`、`Client.Delete`、`Client.Head`、`Client.Options`（签名均为 `(url string, options ...RequestOption) (*Result, error)`），加上经 `Doer` 接口嵌入获得的 `Doer.Request`、`Client.Download` 与生命周期方法 `Client.Close`。
 
 ### Close
 

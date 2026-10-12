@@ -1,7 +1,7 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo DD | 常用 API 速查"
-description: "CyberGo DD 日志库常用 API 速查表，涵盖日志记录器创建与克隆、日志级别控制、结构化字段构造、文件输出轮换与缓冲配置、敏感数据安全过滤规则、钩子注册与回调处理函数、审计日志记录和完整性签名验证等高频操作，方便开发者快速查阅和使用。"
+description: "CyberGo DD 常用 API 速查表：日志记录器创建与预设配置、日志级别、字段构造器与字段链、输出目标、上下文集成、安全配置、生命周期钩子与调试输出等高频操作，便于快速查阅使用。"
 sidebar_position: 4
 ---
 
@@ -95,7 +95,7 @@ dd.GetRequestID(ctx)   // "req-456"
 
 ```go
 dd.DefaultSecurityConfig()   // 基础过滤（推荐）
-dd.DefaultSecureConfig()     // 完整过滤
+dd.DefaultSecureConfig()     // 完整过滤（已弃用：改用 SecurityConfigForLevel(dd.SecurityLevelStandard)）
 dd.HealthcareConfig()        // HIPAA 合规
 dd.FinancialConfig()         // PCI-DSS 合规
 dd.GovernmentConfig()        // 政府标准

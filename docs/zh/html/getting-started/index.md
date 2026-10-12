@@ -1,7 +1,7 @@
 ---
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo html | 5 分钟入门指南"
-description: "CyberGo html 快速入门指南：5 分钟掌握 Go 1.25+ 环境下的安装、基本内容提取、DefaultConfig 等四种 Config 预设选择，以及纯文本、Markdown、JSON 三种输出格式与 Processor 并发安全调用实践。"
+description: "CyberGo html 快速入门指南：5 分钟掌握 Go 1.26+ 环境下的安装、从字节与文件的基本内容提取、DefaultConfig 等四种 Config 预设选择、15+ 编码自动检测，以及纯文本、Markdown、JSON 三种输出格式、WithContext 超时控制与 Processor 并发安全调用实践。"
 sidebar_position: 1
 ---
 
@@ -13,7 +13,7 @@ sidebar_position: 1
 go get github.com/cybergodev/html
 ```
 
-要求 Go 1.25+。
+要求 Go 1.26+。
 
 ## 基本提取
 
@@ -23,14 +23,14 @@ go get github.com/cybergodev/html
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html>
+	data := []byte(`<html>
         <head><title>Go 语言教程</title></head>
         <body>
             <article>
@@ -42,16 +42,16 @@ func main() {
         </body>
     </html>`)
 
-    result, err := html.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := html.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println("标题：", result.Title)
-    fmt.Println("正文：", result.Text)
-    fmt.Println("图片数：", len(result.Images))
-    fmt.Println("链接数：", len(result.Links))
-    fmt.Println("字数：", result.WordCount)
+	fmt.Println("标题：", result.Title)
+	fmt.Println("正文：", result.Text)
+	fmt.Println("图片数：", len(result.Images))
+	fmt.Println("链接数：", len(result.Links))
+	fmt.Println("字数：", result.WordCount)
 }
 ```
 
@@ -66,7 +66,7 @@ Go 是一门静态类型的编译语言。
 Go 官网
 图片数：1
 链接数：1
-字数：6
+字数：22
 ```
 
 ## 从文件提取

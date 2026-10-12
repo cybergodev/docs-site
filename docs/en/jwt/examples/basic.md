@@ -15,44 +15,43 @@ The most common approach using symmetric key for signing and verification.
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    cfg.AccessTokenTTL = 15 * time.Minute
-    cfg.RefreshTokenTTL = 7 * 24 * time.Hour
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg.AccessTokenTTL = 15 * time.Minute
+	cfg.RefreshTokenTTL = 7 * 24 * time.Hour
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // Issue
-    claims := &jwt.Claims{
-        UserID:      "user123",
-        Username:    "alice",
-        Role:        "admin",
-        Permissions: []string{"read", "write", "delete"},
-    }
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Access Token:", token)
+	// Issue
+	claims := &jwt.Claims{
+		UserID:      "user123",
+		Username:    "alice",
+		Role:        "admin",
+		Permissions: []string{"read", "write", "delete"},
+	}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Access Token:", token)
 
-    // Validate
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid)          // Output: true
-    fmt.Println("UserID:", parsed.UserID) // Output: user123
+	// Validate
+	parsed, err := processor.Parse(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("UserID:", parsed.UserID) // Output: user123
 }
 ```
 
@@ -62,46 +61,46 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{
-        UserID:   "user123",
-        Username: "alice",
-    }
+	claims := &jwt.Claims{
+		UserID:   "user123",
+		Username: "alice",
+	}
 
-    // Create access token (short-lived)
-    accessToken, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	// Create access token (short-lived)
+	accessToken, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    // Create refresh token (long-lived)
-    refreshToken, err := processor.CreateRefresh(claims)
-    if err != nil {
-        panic(err)
-    }
+	// Create refresh token (long-lived)
+	refreshToken, err := processor.CreateRefresh(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    fmt.Println("Access Token:", accessToken)
-    fmt.Println("Refresh Token:", refreshToken)
+	fmt.Println("Access Token:", accessToken)
+	fmt.Println("Refresh Token:", refreshToken)
 
-    // Use refresh token to get new access token
-    newAccessToken, err := processor.Refresh(refreshToken)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("New Access Token:", newAccessToken)
+	// Use refresh token to get new access token
+	newAccessToken, err := processor.Refresh(refreshToken)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("New Access Token:", newAccessToken)
 }
 ```
 
@@ -111,43 +110,43 @@ func main() {
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user123", Username: "alice"}
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	claims := &jwt.Claims{UserID: "user123", Username: "alice"}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    // Revoke token
-    err = processor.Revoke(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Token revoked")
+	// Revoke token
+	err = processor.Revoke(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Token revoked")
 
-    // Validation will fail
-    _, _, err = processor.Validate(token)
-    fmt.Println("Validate error:", err) // token revoked
+	// Validation will fail
+	_, err = processor.Parse(token)
+	fmt.Println("Parse error:", err) // token revoked
 
-    // Check if revoked
-    revoked, err := processor.IsRevoked(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Is revoked:", revoked) // Output: true
+	// Check if revoked
+	revoked, err := processor.IsRevoked(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Is revoked:", revoked) // Output: true
 }
 ```
 
@@ -157,40 +156,40 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    cfg.EnableRateLimit = true
-    cfg.RateLimitRate = 5              // Max 5 per minute
-    cfg.RateLimitWindow = time.Minute
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg.EnableRateLimit = true
+	cfg.RateLimitRate = 5 // Max 5 per minute
+	cfg.RateLimitWindow = time.Minute
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    claims := &jwt.Claims{UserID: "user123", Username: "alice"}
+	claims := &jwt.Claims{UserID: "user123", Username: "alice"}
 
-    // Normal requests
-    for i := 0; i < 5; i++ {
-        _, err := processor.Create(claims)
-        if err != nil {
-            fmt.Printf("Request %d: %v\n", i+1, err)
-        } else {
-            fmt.Printf("Request %d: success\n", i+1)
-        }
-    }
+	// Normal requests
+	for i := 0; i < 5; i++ {
+		_, err := processor.Create(claims)
+		if err != nil {
+			fmt.Printf("Request %d: %v\n", i+1, err)
+		} else {
+			fmt.Printf("Request %d: success\n", i+1)
+		}
+	}
 
-    // 6th request is rate limited
-    _, err = processor.Create(claims)
-    fmt.Println("Request 6:", err) // rate limit exceeded
+	// 6th request is rate limited
+	_, err = processor.Create(claims)
+	fmt.Println("Request 6:", err) // rate limit exceeded
 }
 ```
 
@@ -202,58 +201,58 @@ When `ExpectedAudience` is set, only tokens whose `aud` claim contains that valu
 package main
 
 import (
-    "errors"
-    "fmt"
+	"errors"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    cfg.ExpectedAudience = "billing-api" // Only accept tokens for billing-api
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	cfg.ExpectedAudience = "billing-api" // Only accept tokens for billing-api
 
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // Token with matching audience
-    validClaims := &jwt.Claims{
-        UserID: "user1",
-        RegisteredClaims: jwt.RegisteredClaims{
-            Audience: jwt.StringOrSlice{"billing-api"},
-        },
-    }
-    validToken, err := processor.Create(validClaims)
-    if err != nil {
-        panic(err)
-    }
+	// Token with matching audience
+	validClaims := &jwt.Claims{
+		UserID: "user1",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.StringOrSlice{"billing-api"},
+		},
+	}
+	validToken, err := processor.Create(validClaims)
+	if err != nil {
+		panic(err)
+	}
 
-    _, valid, err := processor.Validate(validToken)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Matching audience valid:", valid) // Output: true
+	_, err = processor.Parse(validToken)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Matching audience valid:", err == nil) // Output: true
 
-    // Token with wrong audience is rejected
-    wrongClaims := &jwt.Claims{
-        UserID: "user2",
-        RegisteredClaims: jwt.RegisteredClaims{
-            Audience: jwt.StringOrSlice{"admin-api"},
-        },
-    }
-    wrongToken, err := processor.Create(wrongClaims)
-    if err != nil {
-        panic(err)
-    }
+	// Token with wrong audience is rejected
+	wrongClaims := &jwt.Claims{
+		UserID: "user2",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.StringOrSlice{"admin-api"},
+		},
+	}
+	wrongToken, err := processor.Create(wrongClaims)
+	if err != nil {
+		panic(err)
+	}
 
-    _, valid, err = processor.Validate(wrongToken)
-    fmt.Println("Wrong audience valid:", valid) // Output: false
-    fmt.Println("Wrong audience error:", err)   // Output: token invalid audience
-    fmt.Println("Is audience error:",
-        errors.Is(err, jwt.ErrTokenInvalidAudience)) // Output: true
+	_, err = processor.Parse(wrongToken)
+	fmt.Println("Wrong audience valid:", err == nil) // Output: false
+	fmt.Println("Wrong audience error:", err)        // Output: token invalid audience
+	fmt.Println("Is audience error:",
+		errors.Is(err, jwt.ErrTokenInvalidAudience)) // Output: true
 }
 ```
 
@@ -269,54 +268,53 @@ The built-in `Claims.Extra` is a `map[string]any` for storing a small amount of 
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/jwt"
+	"github.com/cybergodev/jwt"
 )
 
 func main() {
-    cfg := jwt.DefaultConfig()
-    cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
-    processor, err := jwt.New(cfg)
-    if err != nil {
-        panic(err)
-    }
-    defer processor.Close()
+	cfg := jwt.DefaultConfig()
+	cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
+	processor, err := jwt.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer processor.Close()
 
-    // Store additional business fields in Extra (only string and []string values supported)
-    claims := &jwt.Claims{
-        UserID:   "user123",
-        Username: "alice",
-        Role:     "engineer",
-        Extra: map[string]any{
-            "team_id": "team-backend",
-            "level":   "senior",
-            "tags":    []string{"onboarding", "mentor"},
-        },
-    }
-    token, err := processor.Create(claims)
-    if err != nil {
-        panic(err)
-    }
+	// Store additional business fields in Extra (only string and []string values supported)
+	claims := &jwt.Claims{
+		UserID:   "user123",
+		Username: "alice",
+		Role:     "engineer",
+		Extra: map[string]any{
+			"team_id": "team-backend",
+			"level":   "senior",
+			"tags":    []string{"onboarding", "mentor"},
+		},
+	}
+	token, err := processor.Create(claims)
+	if err != nil {
+		panic(err)
+	}
 
-    // Read Extra fields after validation
-    parsed, valid, err := processor.Validate(token)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Valid:", valid)            // Output: true
-    fmt.Println("UserID:", parsed.UserID)   // Output: user123
+	// Read Extra fields after validation
+	parsed, err := processor.Parse(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("UserID:", parsed.UserID) // Output: user123
 
-    // Type-assert to read Extra values
-    if teamID, ok := parsed.Extra["team_id"].(string); ok {
-        fmt.Println("TeamID:", teamID) // Output: team-backend
-    }
-    if level, ok := parsed.Extra["level"].(string); ok {
-        fmt.Println("Level:", level) // Output: senior
-    }
-    if tags, ok := parsed.Extra["tags"].([]string); ok {
-        fmt.Println("Tags:", tags) // Output: [onboarding mentor]
-    }
+	// Type-assert to read Extra values
+	if teamID, ok := parsed.Extra["team_id"].(string); ok {
+		fmt.Println("TeamID:", teamID) // Output: team-backend
+	}
+	if level, ok := parsed.Extra["level"].(string); ok {
+		fmt.Println("Level:", level) // Output: senior
+	}
+	if tags, ok := parsed.Extra["tags"].([]string); ok {
+		fmt.Println("Tags:", tags) // Output: [onboarding mentor]
+	}
 }
 ```
 

@@ -27,6 +27,10 @@ type TokenManager interface {
 
 Core JWT token operations interface. All implementations must be concurrency-safe. The default implementation is [`*Processor`](./processor).
 
+::: info Compatibility Note
+The interface deliberately still carries `Validate` / `ValidateInto` — although both are deprecated on `*Processor` in favor of [`Parse`](./processor#parse) / [`ParseInto`](./processor#parseinto) — because adding or swapping methods here would break third-party `TokenManager` implementations.
+:::
+
 Methods are grouped by responsibility:
 - **Token Creation**: `Create`, `CreateRefresh`
 - **Validation & Refresh**: `Validate`, `ValidateInto`, `Refresh`, `RefreshInto`
@@ -39,10 +43,10 @@ Methods are grouped by responsibility:
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `Create` | `Create(claims CustomClaims) (string, error)` | Create access token |
-| `Validate` | `Validate(tokenString string) (Claims, bool, error)` | Validate token |
+| `Validate` | `Validate(tokenString string) (Claims, bool, error)` | Validate token (deprecated on `*Processor`; prefer `Parse`) |
 | `CreateRefresh` | `CreateRefresh(claims CustomClaims) (string, error)` | Create refresh token |
 | `Refresh` | `Refresh(refreshTokenString string) (string, error)` | Refresh token |
-| `ValidateInto` | `ValidateInto(tokenString string, claims CustomClaims) (CustomClaims, bool, error)` | Validate into custom Claims |
+| `ValidateInto` | `ValidateInto(tokenString string, claims CustomClaims) (CustomClaims, bool, error)` | Validate into custom Claims (deprecated on `*Processor`; prefer `ParseInto`) |
 | `RefreshInto` | `RefreshInto(refreshTokenString string, claims CustomClaims) (string, error)` | Refresh into custom Claims |
 | `Revoke` | `Revoke(tokenString string) error` | Revoke token |
 | `IsRevoked` | `IsRevoked(tokenString string) (bool, error)` | Check if revoked |
@@ -67,7 +71,7 @@ type CustomClaims interface {
 }
 ```
 
-Custom Claims interface. Used with [`Create`](./processor#create), [`ValidateInto`](./processor#validateinto), [`RefreshInto`](./processor#refreshinto) and other methods.
+Custom Claims interface. Used with [`Create`](./processor#create), [`ParseInto`](./processor#parseinto), [`RefreshInto`](./processor#refreshinto) and other methods.
 
 <Badge type="info" text="interface" />
 
@@ -80,7 +84,7 @@ The Processor applies different validation paths for `*Claims` versus other type
 | `*Claims` | Deep validation: all fields (length limits, injection patterns, control characters) |
 | Other types | Calls `Validate()` + registered claims string sanitization (Issuer, Subject, ID, TokenType, Audience) |
 
-:::warning Note
+:::warning
 For non-`*Claims` types, custom struct fields are **not** deep-validated. Implementers must validate all business fields in the `Validate()` method.
 :::
 
@@ -186,6 +190,12 @@ type RateLimitKeyer interface {
 }
 ```
 
-Optional interface. Custom Claims can implement this to provide a rate limit key. Key lookup priority: `Subject` → `*Claims.UserID` → `RateLimitKey()`.
+Optional interface. Custom Claims can implement this to provide a rate limit key. Key lookup priority: `Subject` → `*Claims.UserID` → `RateLimitKey()`; when the resolved key is empty, rate limiting is skipped.
 
 <Badge type="info" text="interface" />
+
+### Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `RateLimitKey` | `RateLimitKey() string` | Returns the rate limit key (used when both `Subject` and `*Claims.UserID` are empty) |

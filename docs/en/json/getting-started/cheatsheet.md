@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Cheat Sheet"
-title: "Cheat Sheet - CyberGo JSON | Quick API Reference"
-description: "CyberGo JSON cheat sheet: 47 package functions — path queries, Set/Delete, batch operations, serialization, file I/O, validation, iteration, JSONL streaming."
-sidebar_position: 4
+title: "Cheat Sheet - CyberGo JSON | Common Functions & Examples"
+description: "CyberGo JSON cheat sheet: all package functions — path queries, Set/Delete, batch operations, serialization, file I/O, validation, iteration, JSONL streaming."
+sidebar_position: 50
 ---
 
 # Cheat Sheet
@@ -88,7 +88,7 @@ for _, r := range results {
 | Operation | Function | Example |
 |-----------|----------|---------|
 | Encode (`[]byte` output) | `Marshal` | `json.Marshal(data)` |
-| Encode (`string` output) | `EncodeWithConfig` | `json.EncodeWithConfig(data)` |
+| Encode (`string` output) | `Encode` | `json.Encode(data)` |
 | Pretty encoding (`[]byte`) | `MarshalIndent` | `json.MarshalIndent(data, "", "  ")` |
 | Pretty encoding (`string`) | `EncodePretty` | `json.EncodePretty(data)` |
 | Decode | `Unmarshal` | `json.Unmarshal(bytes, &v)` |
@@ -103,7 +103,7 @@ for _, r := range results {
 | Encode selected fields | `EncodeFields` | `json.EncodeFields(user, []string{"name"})` |
 | Encode a value list into an array | `EncodeStream` | `json.EncodeStream([]any{1, 2})` |
 
-`json.Encode` is deprecated (equivalent to `EncodeWithConfig`; will be removed in a future major version) — use `Marshal` or `EncodeWithConfig` in new code. For detailed formatting-function choices see [Formatted Output](./print).
+`json.EncodeWithConfig` is deprecated (equivalent to `Encode`; retained within v1) — use `Encode` or `Marshal` in new code. For detailed formatting-function choices see [Formatted Output](./print).
 
 ```go
 // Encode
@@ -261,10 +261,16 @@ processor, err = json.New(cfg)
 | Traverse with interruption | `ForeachWithError` | Callback returns `error` / `item.Break()` |
 | Traverse at a given path | `ForeachWithPath` | The explicit-path version of `Foreach(data, path, ...)` |
 | Deep nested traversal | `ForeachNested` | Recurses all levels |
+| Deep traversal with interruption | `ForeachNestedWithError` | The error-returning version of `ForeachNested` |
 | Traverse and rewrite | `ForeachReturn` | Returns modified new JSON |
 | Carries the current path | `ForeachWithPathAndIterator` | Callback gets `currentPath`; can break |
-| Traverse large files | `ForeachFile` | Streams; never loads fully into memory |
-| Chunked file traversal | `ForeachFileChunked` | Batched callbacks of `chunkSize` |
+| Raw-value traversal control | `ForeachWithPathAndControl` | Callback receives raw values; `IteratorControl` steers the flow |
+| Traverse large files | `ForeachFile` | Loads the whole file first; use StreamIterator for constant memory |
+| Traverse a path inside a file | `ForeachFileWithPath` | Iterates the collection at a given path in the file (whole file loaded) |
+| Chunked file traversal | `ForeachFileChunked` | Batched callbacks of `chunkSize` (file still fully loaded) |
+| Recursive file traversal | `ForeachFileNested` | Recurses all nested structures in the file (whole file loaded) |
+
+Twelve iteration functions in total: the first eight operate on JSON strings in memory, the last four (`ForeachFile*`) operate on files (loaded fully before iterating, bounded by the `MaxJSONSize` cap).
 
 ```go
 data := `{"users":[{"name":"Alice"},{"name":"Bob"}]}`
@@ -370,7 +376,7 @@ err = json.StreamJSONLParallel(file, 4, func(lineNum int, item *json.IterableVal
     return nil
 })
 
-// NDJSONProcessor: line numbers, per-object callbacks
+// NDJSONProcessor: line numbers, per-object callbacks (deprecated; use the StreamJSONL family in new code)
 np := json.NewNDJSONProcessor()
 err = np.ProcessFile("events.ndjson", func(lineNum int, obj map[string]any) error {
     fmt.Println(lineNum, obj)
@@ -383,8 +389,8 @@ err = np.ProcessFile("events.ndjson", func(lineNum int, obj map[string]any) erro
 ```go
 // Recommended: start from the default configuration and modify
 cfg := json.DefaultConfig()
-cfg.MaxJSONSize = 200 * 1024 * 1024 // Custom size limit
-cfg.FullSecurityScan = true          // Enable full security scanning
+cfg.MaxJSONSize = 50 * 1024 * 1024 // Custom size limit (validation range 1MB-100MB; larger values are clamped back to 100MB)
+cfg.FullSecurityScan = true        // Enable full security scanning
 ```
 
 ### Configuration Presets

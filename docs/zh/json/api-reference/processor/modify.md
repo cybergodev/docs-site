@@ -1,8 +1,8 @@
 ---
 sidebar_label: "修改操作"
-title: "Processor 数据修改 - CyberGo JSON | API 参考"
-description: "CyberGo JSON Processor 修改方法：Set 设置、SetMultiple 批量、SetCreate 自动创建路径、SetMultipleCreate 批量创建，不可变返回新字符串，配合 SetFromParsed 预解析连续修改，所有方法支持链式调用。"
-sidebar_position: 3
+title: "Processor 数据修改 - CyberGo JSON | Set/SetMultiple 方法用法"
+description: "CyberGo JSON 的 Processor 提供 Set/SetMultiple 数据修改与 SetCreate 自动创建路径，所有方法不可变地返回新 JSON 字符串并支持链式调用，配合 SetFromParsed 预解析与 MergeJSON 合并，适合连续多步修改同一份数据的写入场景。"
+sidebar_position: 30
 ---
 
 # 数据修改方法
@@ -358,7 +358,7 @@ Processor 提供与包级 [MergeJSON](../functions/modify#mergejson)、[MergeMan
 
 签名：`func (p *Processor) MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
 
-从 cfg 解析选项（**省略 cfg 时使用 DefaultConfig，而非处理器自身配置**——若处理器以自定义 MergeMode 创建，需显式传入 cfg 才能应用该模式），按 `Config.MergeMode` 深度合并两个对象，再用本处理器重新编码结果。
+从 cfg 解析选项，按 `Config.MergeMode` 深度合并两个对象，再用本处理器重新编码结果。**省略 cfg 时使用处理器自身配置**——`New(cfg)` 时固化的 `MergeMode` 与编码选项直接生效，无需再次传入；传入 cfg 时则按 cfg 的 `MergeMode` 执行。
 
 与包级函数一样，`Processor.MergeJSON` 不执行安全验证——它是仅做解码、深合并、再编码的结构性工具。需要安全验证时请使用 `CompareJSON`（始终执行安全验证；传入 cfg 时按 cfg，否则按处理器自身配置）。
 

@@ -2,7 +2,7 @@
 sidebar_label: "接口定义"
 title: "接口定义 - CyberGo HTTPC | 核心接口"
 description: "HTTPC 核心接口 API 参考：Client 全功能接口、Doer 最小执行接口、DomainClienter 域名客户端、RetryPolicy 重试策略与 RequestMutator/ResponseMutator 中间件接口定义。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 接口定义
@@ -55,7 +55,7 @@ type Doer interface {
 }
 ```
 
-最小接口，仅包含核心 `Request` 方法。适合自定义实现。
+最小接口，仅包含核心方法 `Doer.Request`（即上面的 `Request`）。适合自定义实现——任何满足此单一方法的类型都可作为 `Doer` 注入接受它的代码。
 
 ```go
 type MyDoer struct{}
@@ -115,6 +115,8 @@ type RetryPolicy interface {
 | `ShouldRetry(resp, err, attempt)` | 判断是否重试，`attempt` 从 0 开始 |
 | `GetDelay(attempt)` | 返回下次重试前的等待时间 |
 | `MaxRetries()` | 返回最大重试次数 |
+
+三个方法对应的接口定义为 `RetryPolicy.ShouldRetry`、`RetryPolicy.GetDelay` 与 `RetryPolicy.MaxRetries`。
 
 :::warning 内部类型限制
 ShouldRetry 的 `resp` 参数类型 ResponseReader 是内部接口（位于 `internal/types` 包），外部代码无法直接引用，因此 `RetryPolicy` 仅可在同一模块内实现。大多数场景可通过 `RetryConfig` 配置和 `WithMaxRetries` 选项满足重试需求。如需自定义策略，请在项目内部包中实现 `RetryPolicy` 接口。
@@ -282,6 +284,11 @@ type CertificatePinner interface {
 ```
 
 `VerifyPeerCertificate` 的签名与 `crypto/tls.Config.VerifyPeerCertificate` 回调一致，自定义实现可直接接入 TLS 握手流程。
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Pin` | `Pin() string` | 返回锁定值的字符串表示，用于日志与调试（`CertificatePinner.Pin`） |
+| `VerifyPeerCertificate` | `VerifyPeerCertificate(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error` | 校验对端证书链是否匹配锁定值（`CertificatePinner.VerifyPeerCertificate`） |
 
 通过下方构造函数创建后赋值给 `SecurityConfig.CertificatePinner` 字段（经 `Config.Security` 访问）：
 

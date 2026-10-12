@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Processor 入门"
-title: "Processor 入门 - CyberGo JSON | 何时使用处理器"
-description: "CyberGo JSON Processor 入门：包函数与 Processor 选型对比、PreParse 预解析与 CompilePath 路径预编译、多 goroutine 共享、生命周期管理、监控统计与全局处理器配置，掌握高性能 JSON 处理。"
-sidebar_position: 3
+title: "Processor 入门 - CyberGo JSON | 何时使用 Processor"
+description: "CyberGo JSON Processor 入门指南：对比包函数与 Processor 的选型差异，讲解 PreParse 预解析、CompilePath 路径预编译、多 goroutine 共享、生命周期管理与监控统计，帮助开发者在高频 JSON 查询场景获得更高性能。"
+sidebar_position: 40
 ---
 
 # Processor 入门
@@ -203,14 +203,14 @@ func main() {
 	wg.Wait()
 
 	stats := p.GetStats()
-	fmt.Println("累计操作数:", stats.OperationCount)
+	fmt.Println("累计操作数：", stats.OperationCount)
 }
 
 // 输出（goroutine 顺序不确定）：
 // goroutine 5: Alice (30)
 // goroutine 2: Alice (30)
 // ...
-// 累计操作数: 16
+// 累计操作数：16
 ```
 
 ::: tip MaxConcurrency 是软限制
@@ -281,14 +281,14 @@ func main() {
 
 	// 健康检查：缓存、内存等逐项检查结果
 	health := p.GetHealthStatus()
-	fmt.Println("健康:", health.Healthy)
+	fmt.Println("健康：", health.Healthy)
 	for name, check := range health.Checks {
 		fmt.Printf("  %s: %s\n", name, check.Message)
 	}
 
 	// 读取当前配置（返回副本，修改不会影响 Processor）
 	cfg := p.GetConfig()
-	fmt.Println("缓存启用:", cfg.EnableCache)
+	fmt.Println("缓存启用：", cfg.EnableCache)
 }
 ```
 
@@ -332,7 +332,7 @@ defer json.ShutdownGlobalProcessor()
 
 ## 选择决策树
 
-```
+```text
 需要操作 JSON？
 ├── 偶尔使用、脚本工具
 │   └── → 用包函数 json.GetString / json.Set / json.Marshal

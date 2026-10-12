@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Overview"
-title: "Processor - CyberGo JSON | API Reference"
-description: "CyberGo JSON Processor: New, GetString/Set/Delete, Foreach iteration, Encode, Close lifecycle, with built-in caching, chaining, global processor management."
-sidebar_position: 1
+title: "Processor - CyberGo JSON | Chaining & Lifecycle"
+description: "CyberGo JSON Processor: parse once, operate many times — GetString/Set/Delete, Foreach, Encode, caching, Close lifecycle — ideal for reusable data sources."
+sidebar_position: 10
 ---
 
 # Processor
@@ -61,10 +61,10 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 | [Query & Get](./query) | GetString/Int/Float/Bool/Get/GetWithContext/SafeGet/GetArray/GetObject/GetMultiple/CompilePath/GetCompiled/PreParse/GetFromParsed |
 | [Modification Operations](./modify) | Set/SetMultiple/SetCreate/SetMultipleCreate/MergeJSON/MergeMany/CompareJSON |
 | [Delete Operations](./delete) | Delete/DeleteClean |
-| [Encoding Output](./output) | Encode/EncodePretty/EncodeWithConfig/MarshalIndent/Prettify/Compact/CompactBuffer/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream/ValidateSchema |
+| [Encoding Output](./output) | Encode/EncodePretty/EncodeWithConfig (deprecated)/MarshalIndent/Prettify/Compact/CompactString/CompactBuffer/Indent/HTMLEscape/EncodeBatch/EncodeFields/EncodeStream/ValidateSchema |
 | [Parse & Validate](./parse) | Parse/ParseAny/Valid/ValidBytes/Marshal/Unmarshal |
 | [Batch Operations](./batch) | ProcessBatch/WarmupCache |
-| [JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL |
+| [JSONL](./jsonl) | StreamJSONL/StreamJSONLParallel/StreamJSONLParallelWithContext/StreamJSONLChunked/StreamJSONLFile/ForeachJSONL/MapJSONL/ReduceJSONL/FilterJSONL/CollectJSONL/FirstJSONL/ParseJSONL/ToJSONL/ToJSONLString |
 | [File I/O](./file-io) | LoadFromFile/LoadFromReader/SaveToFile/MarshalToFile/SaveToWriter/UnmarshalFromFile/ForeachFile family |
 | [Iteration Methods](./iterate) | Foreach/ForeachWithPath/ForeachNested/ForeachReturn/ForeachWithError/ForeachNestedWithError/ForeachWithPathAndIterator/ForeachWithPathAndControl/ForeachFile/ForeachFileWithPath/ForeachFileChunked/ForeachFileNested |
 | [Lifecycle](./lifecycle) | Close/IsClosed/GetConfig/AddHook/SetLogger/ClearCache/WarmupCache/GetStats/GetHealthStatus/SetGlobalProcessor/ShutdownGlobalProcessor |
@@ -112,7 +112,7 @@ func main() {
 }
 ```
 
-::: warning
+::: warning Note
 - Passing `nil` does nothing
 - The previous global processor is closed automatically
 - This function is thread-safe

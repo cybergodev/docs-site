@@ -1,7 +1,7 @@
 ---
 sidebar_label: "配置实战"
 title: "配置实战 - CyberGo html | Config 字段选择指南"
-description: "CyberGo html 配置实战指南：DefaultConfig、HighSecurityConfig、TextOnlyConfig、MarkdownConfig 四种预设选择建议、六大类字段导览、常见配置组合与 Validate 验证，助新手快速选型。"
+description: "CyberGo html 配置实战指南：对比 DefaultConfig、HighSecurityConfig、TextOnlyConfig、MarkdownConfig 四种预设的适用场景，导览资源管理、安全、内容提取、输出格式、链接提取与扩展六大类字段，附爬虫、API 后端等常见配置组合与 Validate 验证方法，助新手快速选型。"
 sidebar_position: 6
 ---
 
@@ -24,29 +24,29 @@ sidebar_position: 6
 package main
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    data := []byte(`<html><body><h1>标题</h1><p>正文内容</p></body></html>`)
+	data := []byte(`<html><body><h1>标题</h1><p>正文内容</p></body></html>`)
 
-    // 大多数场景：直接用默认配置
-    p1, _ := html.New()
-    defer p1.Close()
-    r1, _ := p1.Extract(data)
-    fmt.Println(r1.Title)
+	// 大多数场景：直接用默认配置
+	p1, _ := html.New()
+	defer p1.Close()
+	r1, _ := p1.Extract(data)
+	fmt.Println(r1.Title)
 
-    // 只需要纯文本（如搜索引擎索引）
-    p2, _ := html.New(html.TextOnlyConfig())
-    defer p2.Close()
+	// 只需要纯文本（如搜索引擎索引）
+	p2, _ := html.New(html.TextOnlyConfig())
+	defer p2.Close()
 
-    // 输出 Markdown（如 CMS 迁移）
-    p3, _ := html.New(html.MarkdownConfig())
-    defer p3.Close()
-    md, _ := p3.ExtractToMarkdown(data)
-    fmt.Println(md)
+	// 输出 Markdown（如 CMS 迁移）
+	p3, _ := html.New(html.MarkdownConfig())
+	defer p3.Close()
+	md, _ := p3.ExtractToMarkdown(data)
+	fmt.Println(md)
 }
 ```
 
@@ -169,29 +169,29 @@ cfg.PreserveAudios = false
 package main
 
 import (
-    "log"
-    "time"
+	"log"
+	"time"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.DefaultConfig()
-    cfg.WorkerPoolSize = 8                          // 提高批量并发
-    cfg.ProcessingTimeout = 10 * time.Second        // 缩短超时
-    cfg.PreserveVideos = false                      // 爬虫不需要视频
-    cfg.PreserveAudios = false
+	cfg := html.DefaultConfig()
+	cfg.WorkerPoolSize = 8                   // 提高批量并发
+	cfg.ProcessingTimeout = 10 * time.Second // 缩短超时
+	cfg.PreserveVideos = false               // 爬虫不需要视频
+	cfg.PreserveAudios = false
 
-    processor, err := html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer processor.Close()
+	processor, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer processor.Close()
 
-    // 批量提取
-    pages := [][]byte{[]byte("<html><body>页面1</body></html>")}
-    batch := processor.ExtractBatch(pages)
-    log.Printf("成功 %d, 失败 %d", batch.Success, batch.Failed)
+	// 批量提取
+	pages := [][]byte{[]byte("<html><body>页面 1</body></html>")}
+	batch := processor.ExtractBatch(pages)
+	log.Printf("成功 %d, 失败 %d", batch.Success, batch.Failed)
 }
 ```
 
@@ -203,27 +203,27 @@ func main() {
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.HighSecurityConfig()
-    cfg.AllowedBaseDir = "/var/www/uploads" // 限制文件目录
+	cfg := html.HighSecurityConfig()
+	cfg.AllowedBaseDir = "/var/www/uploads" // 限制文件目录
 
-    processor, err := html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer processor.Close()
+	processor, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer processor.Close()
 
-    // 处理用户上传的 HTML 文件
-    result, err := processor.ExtractFromFile("/var/www/uploads/user.html")
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Println(result.Title)
+	// 处理用户上传的 HTML 文件
+	result, err := processor.ExtractFromFile("/var/www/uploads/user.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(result.Title)
 }
 ```
 
@@ -235,29 +235,29 @@ func main() {
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 func main() {
-    cfg := html.MarkdownConfig()
-    cfg.ResolveRelativeURLs = true
-    cfg.BaseURL = "https://old-site.example.com"
+	cfg := html.MarkdownConfig()
+	cfg.ResolveRelativeURLs = true
+	cfg.BaseURL = "https://old-site.example.com"
 
-    processor, err := html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer processor.Close()
+	processor, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer processor.Close()
 
-    data := []byte(`<html><body><article><h1>旧文章</h1><a href="/post/123">链接</a></article></body></html>`)
-    md, err := processor.ExtractToMarkdown(data)
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(md)
+	data := []byte(`<html><body><article><h1>旧文章</h1><a href="/post/123">链接</a></article></body></html>`)
+	md, err := processor.ExtractToMarkdown(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(md)
 }
 ```
 

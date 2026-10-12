@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Security Overview"
 title: "Security Overview - CyberGo HTTPC | Security Features"
-description: "HTTPC security overview: layered defense map, default vs opt-in behavior, SSRF blocking and CIDR exemptions, TLS hardening, and decompression-bomb defense."
-sidebar_position: 1
+description: "HTTPC security overview: layered defense map, default vs opt-in behaviors, SSRF blocking with CIDR exemptions, TLS hardening, cert pinning, CRLF injection."
+sidebar_position: 10
 ---
 
 # Security Overview
@@ -29,7 +29,7 @@ The table below summarizes each security feature, the corresponding `Config` fie
 | Response body size limit | `SecurityConfig.MaxResponseBodySize` | 10MB | — |
 | Request body size limit | `SecurityConfig.MaxRequestBodySize` | 0 (unlimited) | Must be set explicitly |
 | Decompression-bomb defense | `SecurityConfig.MaxDecompressedBodySize` | 100MB | — |
-| Response header size limit | `ConnectionConfig.MaxResponseHeaderBytes` | 0 (Go default 10MB) | — |
+| Response header size limit | `ConnectionConfig.MaxResponseHeaderBytes` | 0 (Go default 1MB) | — |
 | Redirect whitelist | `SecurityConfig.RedirectWhitelist` | `nil` (allow all) | — |
 | Redirect count limit | `RequestDefaults.MaxRedirects` | 10 | `WithMaxRedirects` |
 | Follow redirects | `RequestDefaults.FollowRedirects` | `true` | `WithFollowRedirects` |
@@ -240,15 +240,15 @@ security := &httpc.CookieSecurityConfig{
     RequireSecure:   true,
     RequireHttpOnly: true,
 }
-// Note: WithSecureCookie must come after WithCookie; it only validates cookies present at apply time
+// Note: WithSecureCookie must come after WithCookies; it only validates cookies present at apply time
 result, err := client.Get("https://api.example.com",
-    httpc.WithCookie(sessionCookie),
+    httpc.WithCookies(sessionCookies),
     httpc.WithSecureCookie(security),
 )
 ```
 
 :::warning
-`WithSecureCookie` is a request-level "after-the-fact" check: it validates only the cookies that exist when it is applied. Always place it after all `WithCookie` options. For order-independent global validation, use config-level `CookieSecurity` or session-level `SetCookieSecurity`.
+`WithSecureCookie` is a request-level "after-the-fact" check: it validates only the cookies that exist when it is applied. Always place it after all cookie-adding options (`WithCookies` etc.). For order-independent global validation, use config-level `CookieSecurity` or session-level `SetCookieSecurity`.
 :::
 
 ## Decompression-Bomb Defense
@@ -320,10 +320,10 @@ For redirect-following control, chain tracking, and manual handling, see the [Re
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Connection.MaxResponseHeaderBytes = 1 * 1024 * 1024 // 1MB response header cap
+cfg.Connection.MaxResponseHeaderBytes = 512 * 1024 // 512KB, stricter than the default
 ```
 
-The default 0 means the Go standard library default (10MB) is used. High-security deployments should tighten this to 1MB.
+The default 0 means the Go standard library default (`net/http.DefaultMaxHeaderBytes`, 1MB) is used, so protection is in place without explicit configuration. High-security deployments can tighten it further (e.g., 512KB).
 
 ## Security Warning Mechanism
 

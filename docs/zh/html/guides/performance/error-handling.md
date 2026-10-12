@@ -168,8 +168,8 @@ func main() {
 	fmt.Printf("文本: %s\n", result.Text)
 	// 输出：
 	// 自动检测失败（encoding detection failed: ...），使用编码 "gbk" 重试...
-	// 标题: 测试
-	// 文本: 标题 你世界
+	// 标题：测试
+	// 文本：标题 你世界
 }
 ```
 
@@ -288,7 +288,7 @@ func main() {
 
 | 类型 | `Unwrap()` 返回值 | 说明 |
 |------|-------------------|------|
-| `*InputError` | `InputErr`（非 nil 时）→ 否则 `ErrInputTooLarge` | 有底层错误时优先暴露它；否则回退到哨兵 |
+| `*InputError` | 签名为 `Unwrap() []error`：`InputErr` 非 nil 时 → `[InputErr, ErrInputTooLarge]`，否则 → `[ErrInputTooLarge]` | 无论是否携带底层错误，`ErrInputTooLarge` 恒在列表中——`errors.Is(err, ErrInputTooLarge)` 对任意 `*InputError` 为真 |
 | `*ConfigError` | 始终 `ErrInvalidConfig` | 固定映射到配置哨兵 |
 | `*FileError` | ① 若 `FileErr` 包装了 `ErrFileNotFound` → `ErrFileNotFound`；② 否则若 `FileErr != nil` → `FileErr`（原始错误）；③ 否则 → `ErrInvalidFilePath` | 三级回退：文件不存在 → 原始错误 → 路径无效 |
 
@@ -428,7 +428,7 @@ func extractHandler(w http.ResponseWriter, r *http.Request) {
 			// MarshalJSON 自动用 SafePath() 脱敏，可安全返回客户端
 			fileErrJSON, _ := json.Marshal(fileErr)
 			fmt.Fprintf(w, `{"error":"file_error","detail":%s}`, fileErrJSON)
-			// 客户端看到: {"error":"file_error","detail":{"op":"ReadFile","path":"secret.html","message":"file not found"}}
+			// 客户端看到：{"error":"file_error","detail":{"op":"ReadFile","path":"secret.html","message":"file not found"}}
 			// 而非完整的服务器路径 /var/www/uploads/secret.html
 		} else {
 			json.NewEncoder(w).Encode(apiResponse{Error: "extraction_failed"})
@@ -578,7 +578,7 @@ func main() {
 
 遇到错误时，按以下优先级顺序判断（从最严重到最轻微）：
 
-```
+```text
 error != nil ?
 │
 ├── errors.Is(err, ErrProcessorClosed)

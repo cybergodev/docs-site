@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Field Validation"
-title: "Field Validation - CyberGo DD | Key Naming Conventions and Security Checks"
-description: "CyberGo DD field validation guide: snake_case, camelCase, PascalCase, kebab-case naming convention checks, three validation modes (off/warn/strict), built-in Log4Shell injection protection and homograph detection."
+title: "Field Validation - CyberGo DD | Key Naming Conventions"
+description: "CyberGo DD field validation: naming checks (snake_case, camelCase, PascalCase, kebab-case), modes (off/warn/strict), Log4Shell and homograph protection."
 sidebar_position: 3
 ---
 
@@ -39,32 +39,32 @@ Since logging methods (`InfoWith`, etc.) don't return error, validation failures
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/cybergodev/dd"
+	"github.com/cybergodev/dd"
 )
 
 func main() {
-    cfg := dd.DefaultConfig()
-    cfg.FieldValidation = dd.StrictSnakeCaseConfig()
-    // Equivalent to:
-    // &dd.FieldValidationConfig{
-    //     Mode:                     dd.FieldValidationStrict,
-    //     Convention:               dd.NamingConventionSnakeCase,
-    //     AllowCommonAbbreviations: true,
-    //     EnableSecurityValidation: true,
-    // }
+	cfg := dd.DefaultConfig()
+	cfg.FieldValidation = dd.StrictSnakeCaseConfig()
+	// Equivalent to:
+	// &dd.FieldValidationConfig{
+	//     Mode:                     dd.FieldValidationStrict,
+	//     Convention:               dd.NamingConventionSnakeCase,
+	//     AllowCommonAbbreviations: true,
+	//     EnableSecurityValidation: true,
+	// }
 
-    logger, err := dd.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer logger.Close()
+	logger, err := dd.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Close()
 
-    logger.InfoWith("user action",
-        dd.String("user_id", "123"),    // ✅ valid snake_case
-        dd.String("userName", "alice"), // ⚠️ invalid, stderr error
-    )
+	logger.InfoWith("user action",
+		dd.String("user_id", "123"),    // ✅ valid snake_case
+		dd.String("userName", "alice"), // ⚠️ invalid, stderr error
+	)
 }
 ```
 
@@ -142,13 +142,14 @@ Specific rules for each naming convention:
 
 | Convention | Rules |
 |------------|-------|
-| snake_case | lowercase + digits + underscores; no leading/trailing `_`; no consecutive `__` |
+| snake_case | lowercase + digits + underscores; **first char must be a lowercase letter** (not a digit or `_`); no trailing `_`; no consecutive `__` |
 | camelCase | letters + digits; first char is lowercase letter |
 | PascalCase | letters + digits; first char is uppercase letter |
-| kebab-case | lowercase + digits + hyphens; no leading/trailing `-`; no consecutive `--` |
+| kebab-case | lowercase + digits + hyphens; **first char must be a lowercase letter** (not a digit or `-`); no trailing `-`; no consecutive `--` |
 
 ## Next Steps
 
+- [Integrity](./integrity) -- Tamper-proofing with HMAC
 - [Structured Logging](../basics/structured-logging) -- Field constructors and chaining
 - [Configuration](../basics/configuration) -- Full Config field reference
 - [Security Overview](../security/) -- Complete security feature overview

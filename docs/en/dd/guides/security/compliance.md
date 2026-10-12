@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Industry Compliance"
-title: "Industry Compliance Configuration - CyberGo DD | HIPAA PCI-DSS Government"
-description: "CyberGo DD industry-compliance logging configuration, detailing HIPAA medical, PCI-DSS financial-payment, and government-standard sensitive-data filtering rules, audit-log requirements, log-retention and rotation policies, and complete compliance configuration examples to help you build secure, reliable logging systems under strict compliance requirements."
-sidebar_position: 5
+title: "Industry Compliance - CyberGo DD | HIPAA PCI-DSS Government"
+description: "CyberGo DD compliance logging: HIPAA, PCI-DSS, and government filtering rules, audit-log requirements, retention and rotation policies."
+sidebar_position: 6
 ---
 
 # Industry Compliance Configuration
@@ -20,27 +20,27 @@ DD provides three industry-compliance preset configurations covering medical, fi
 
 ### Filtering Rules
 
-`HealthcareConfig()` filters additionally on top of `DefaultSecureConfig()` (the full pattern set):
+`HealthcareConfig()` filters additionally on top of `SecurityConfigForLevel(dd.SecurityLevelStandard)` (the full pattern set; the former `DefaultSecureConfig()` is deprecated and is equivalent):
 
 | Data Type | Pattern | Example |
 |-----------|---------|---------|
 | ICD-10 codes | Diagnostic-code format in log messages | `diagnosis=J18.9` |
-| Medical Record Number (MRN) | Medical record identifier in log messages | `mrn=MRN-123456` |
+| Medical Record Number (MRN) | Medical record identifier in log messages | `mrn=MRN123456` |
 | Health Insurance Claim Number (HICN) | HICN identifier in log messages | `hicn=123456789A` |
-| Patient identifier | Patient identifier in log messages | `patient_id=PAT-123456` |
+| Patient identifier | Patient identifier in log messages | `patient_id=PAT123456` |
 
 ### Configuration Example
 
 ```go
 func NewHIPAACompliantLogger() (*dd.Logger, error) {
-    return dd.New(dd.Config{
-        Level:    dd.LevelInfo,
-        Format:   dd.FormatJSON,
-        Security: dd.HealthcareConfig(),
-        Targets: []dd.OutputTarget{
-            dd.FileOutput("logs/hipaa-audit.json"),
-        },
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.HealthcareConfig()
+    cfg.Targets = []dd.OutputTarget{
+        dd.FileOutput("logs/hipaa-audit.json"),
+    }
+    return dd.New(cfg)
 }
 ```
 
@@ -74,7 +74,7 @@ auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
 
 ### Filtering Rules
 
-`FinancialConfig()` filters additionally on top of `DefaultSecureConfig()` (the full pattern set):
+`FinancialConfig()` filters additionally on top of `SecurityConfigForLevel(dd.SecurityLevelStandard)` (the full pattern set):
 
 | Data Type | Pattern | Example |
 |-----------|---------|---------|
@@ -88,14 +88,14 @@ auditLogger, _ := dd.NewAuditLogger(dd.AuditConfig{
 
 ```go
 func NewPCICompliantLogger() (*dd.Logger, error) {
-    return dd.New(dd.Config{
-        Level:    dd.LevelInfo,
-        Format:   dd.FormatJSON,
-        Security: dd.FinancialConfig(),
-        Targets: []dd.OutputTarget{
-            dd.FileOutput("logs/pci-audit.json"),
-        },
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.FinancialConfig()
+    cfg.Targets = []dd.OutputTarget{
+        dd.FileOutput("logs/pci-audit.json"),
+    }
+    return dd.New(cfg)
 }
 ```
 
@@ -109,12 +109,13 @@ fwCfg.MaxBackups = 50    // Keep plenty of backups
 fwCfg.Compress = true    // Compress old files to save space
 
 fw, _ := dd.NewFileWriter("logs/pci-audit.json", fwCfg)
-logger, _ := dd.New(dd.Config{
-    Level:    dd.LevelInfo,
-    Format:   dd.FormatJSON,
-    Security: dd.FinancialConfig(),
-    Targets:  []dd.OutputTarget{dd.CustomOutput(fw)},
-})
+
+cfg := dd.DefaultConfig()
+cfg.Level = dd.LevelInfo
+cfg.Format = dd.FormatJSON
+cfg.Security = dd.FinancialConfig()
+cfg.Targets = []dd.OutputTarget{dd.CustomOutput(fw)}
+logger, _ := dd.New(cfg)
 ```
 
 ## Government Standard
@@ -128,29 +129,29 @@ logger, _ := dd.New(dd.Config{
 
 ### Filtering Rules
 
-`GovernmentConfig()` filters additionally on top of `DefaultSecureConfig()` (the full pattern set):
+`GovernmentConfig()` filters additionally on top of `SecurityConfigForLevel(dd.SecurityLevelStandard)` (the full pattern set):
 
 | Data Type | Pattern | Example |
 |-----------|---------|---------|
-| Passport number | Passport identifier in log messages | `passport_number=E12345678` |
+| Passport number | Passport identifier in log messages | `passport_number=123456789` |
 | Driver's license number | Driver's license identifier in log messages | `dl_number=D123456789` |
 | US Federal Tax ID (EIN) | EIN format in log messages | `12-3456789` |
 | UK National Insurance Number | NINo format in log messages | `AB123456C` |
 | Canadian Social Insurance Number | SIN format in log messages | `123 456 789` |
-| Case number | Case identifier in log messages | `case_number=CR-2024-00123` |
+| Case number | Case identifier in log messages | `case_number=CR202400123` |
 
 ### Configuration Example
 
 ```go
 func NewGovernmentLogger() (*dd.Logger, error) {
-    return dd.New(dd.Config{
-        Level:    dd.LevelInfo,
-        Format:   dd.FormatJSON,
-        Security: dd.GovernmentConfig(),
-        Targets: []dd.OutputTarget{
-            dd.FileOutput("logs/gov-audit.json"),
-        },
-    })
+    cfg := dd.DefaultConfig()
+    cfg.Level = dd.LevelInfo
+    cfg.Format = dd.FormatJSON
+    cfg.Security = dd.GovernmentConfig()
+    cfg.Targets = []dd.OutputTarget{
+        dd.FileOutput("logs/gov-audit.json"),
+    }
+    return dd.New(cfg)
 }
 ```
 
@@ -170,19 +171,22 @@ When a preset does not fully meet your needs, you can compose custom configurati
 
 ```go
 // Add custom patterns
-filter, _ := dd.NewCustomSensitiveDataFilter(
+filter, err := dd.NewCustomSensitiveDataFilter(
     // Custom medical-system-specific patterns
     `(?i)insurance_id\s*[:=]\s*\S+`,
     `(?i)prescription\s*[:=]\s*\S+`,
 )
+if err != nil {
+    log.Fatal(err) // Regex safety validation failed
+}
 
-logger, _ := dd.New(dd.Config{
-    Format: dd.FormatJSON,
-    Security: &dd.SecurityConfig{
-        SensitiveFilter: filter,
-    },
-    Targets: []dd.OutputTarget{dd.FileOutput("logs/custom.json")},
-})
+cfg := dd.DefaultConfig()
+cfg.Format = dd.FormatJSON
+cfg.Security = &dd.SecurityConfig{
+    SensitiveFilter: filter,
+}
+cfg.Targets = []dd.OutputTarget{dd.FileOutput("logs/custom.json")}
+logger, _ := dd.New(cfg)
 ```
 
 ## Next Steps

@@ -1,8 +1,8 @@
 ---
 sidebar_label: "配置"
 title: "配置 - CyberGo DD | Config 详解"
-description: "CyberGo DD Config 结构体完整 API 文档，包含 DefaultConfig/DevelopmentConfig/JSONConfig 预设配置函数、OutputTarget 输出目标配置、字段验证规则、采样控制、格式化选项和 Validate 验证方法，提供灵活且类型安全的日志记录器行为定制能力。"
-sidebar_position: 4
+description: "CyberGo DD Config 结构体 API 文档：DefaultConfig/DevelopmentConfig/JSONConfig/ProductionConfig 预设函数、OutputTarget 输出目标、采样控制、格式化选项与 Validate 验证方法，灵活定制日志记录器行为。"
+sidebar_position: 5
 ---
 
 # 配置
@@ -33,9 +33,10 @@ cfgJSON := dd.JSONConfig()
 | `DefaultConfig()` | `Config` | Info | Text | 生产环境 |
 | `DevelopmentConfig()` | `Config` | Debug | Text | 开发环境 |
 | `JSONConfig()` | `Config` | Debug | JSON | 日志采集 |
+| `ProductionConfig()` | `Config` | Info | JSON（RFC3339） | 生产环境 JSON 输出 |
 
 :::tip 安全过滤默认启用
-所有预设配置（`DefaultConfig`、`DevelopmentConfig`、`JSONConfig`）均默认启用安全过滤，自动对密码、API Key、信用卡号等敏感数据进行脱敏。
+所有预设配置（`DefaultConfig`、`DevelopmentConfig`、`JSONConfig`、`ProductionConfig`）均默认启用安全过滤，自动对密码、API Key、信用卡号等敏感数据进行脱敏。
 :::
 
 ## Config 结构体
@@ -70,6 +71,7 @@ type Config struct {
     // 生命周期处理器
     FatalHandler      FatalHandler       // Fatal 级别自定义处理函数
     WriteErrorHandler WriteErrorHandler  // 写入错误回调
+    LevelResolver     LevelResolver      // 动态级别解析器（nil 禁用；生效时覆盖 Level）
 
     // 扩展性
     ContextExtractors []ContextExtractor // 上下文提取器列表
@@ -85,6 +87,10 @@ type Config struct {
 设置 `Audit` 后，敏感数据脱敏、速率限制和违规事件会通过 [AuditLogger](../security-audit/audit) 记录为审计事件。详见 [审计日志](../security-audit/audit)。
 :::
 
+::: warning 零值 Config ≠ DefaultConfig
+`Config{}` 零值合法但不等价于 `DefaultConfig()`：零值以 `LevelDebug` 级别记录日志，且 `IncludeTime`、`IncludeLevel`、`DynamicCaller` 均处于关闭状态。请始终从 `DefaultConfig()` 或预设（`DevelopmentConfig`/`JSONConfig`/`ProductionConfig`）出发再修改字段。
+:::
+
 ### Clone
 
 ```go
@@ -96,7 +102,7 @@ func (c *Config) Clone() Config
 拷贝策略（与源码 `Clone` 注释一致）：
 
 - **深拷贝**：`Targets`（切片）、`JSON`（含 `JSONFieldNames`）、`Security`、`Hooks`、`Sampling`、`Audit`
-- **浅拷贝**：`FatalHandler`、`WriteErrorHandler`、`FieldValidation`（函数/指针共享）
+- **浅拷贝**：`FatalHandler`、`WriteErrorHandler`、`LevelResolver`（函数值共享，非深拷贝）、`FieldValidation`（整个 `*FieldValidationConfig` 指针共享）
 - **混合**：`ContextExtractors` 切片被复制，但提取器实例本身共享
 
 ```go
@@ -120,6 +126,7 @@ func (c Config) Validate() error
 - 当 `IncludeTime=true` 且 `TimeFormat` 非空时，校验 Go 时间参考布局（如 `time.RFC3339`）
 - `Targets` 总数不超过 100（超出返回 `ErrMaxWritersExceeded`）
 - 每个 `Targets` 元素：`OutputCustom` 必须有非 nil 的 `Writer`，`OutputFile` 必须有非空的 `Path`
+- `Audit` 非 nil 时校验审计配置（`BufferSize` 为负返回错误），使非法审计配置在 `New` 时即失败，而非被静默忽略
 
 ```go
 cfg := dd.DefaultConfig()
@@ -282,6 +289,26 @@ cfg.Sampling = &dd.SamplingConfig{
 logger, _ := dd.New(cfg)
 ```
 
+### DefaultSamplingConfig
+
+```go
+func DefaultSamplingConfig() SamplingConfig
+```
+
+返回带合理默认值的采样配置：`Initial=100`、`Thereafter=100`、`Tick=1s`。计数器每秒重置，`Initial` 配额按秒刷新：低于 100 条/秒的流量永远不会被采样，仅超出部分的突发流量缩减为 1/100；如需进程生命周期计数器（有史以来前 100 条必记、此后 1/100），将 `Tick` 置 `0`。
+
+:::tip Enabled 默认为 true
+返回值的 `Enabled` 为 `true`，直接赋给 `Config.Sampling` 即激活采样；当模板使用（按需修改字段后再启用）须手动置 `Enabled=false`。
+:::
+
+```go
+cfg := dd.DefaultConfig()
+sampling := dd.DefaultSamplingConfig()
+sampling.Initial = 10 // 每秒：前 10 条必记，此后每 10 条记 1 条
+cfg.Sampling = &sampling
+logger, _ := dd.New(cfg)
+```
+
 ## FieldValidationConfig
 
 字段验证配置，控制字段键名的命名规范。
@@ -371,15 +398,17 @@ logger.InfoWith("fail", dd.String("userName", "admin"))
 ### 生产环境
 
 ```go
-logger, _ := dd.New(dd.Config{
-    Level:  dd.LevelInfo,
-    Format: dd.FormatJSON,
-    Targets: []dd.OutputTarget{
-        dd.ConsoleOutput(),
-        dd.FileOutput("logs/app.log"),
-    },
-    Security: dd.DefaultSecurityConfig(),
-})
+cfg := dd.ProductionConfig() // Info + JSON + RFC3339 + IncludeTime/IncludeLevel + FatalHandler
+cfg.Targets = []dd.OutputTarget{
+    dd.ConsoleOutput(),
+    dd.FileOutput("logs/app.json"),
+}
+// DefaultSecurityConfig 已内置；如需更高安全级别可整体替换：
+// cfg.Security = dd.SecurityConfigForLevel(dd.SecurityLevelStandard)
+logger, err := dd.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ### 开发环境

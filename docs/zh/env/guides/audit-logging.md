@@ -3,7 +3,6 @@ sidebar_label: "审计日志"
 title: "审计日志 - CyberGo env | 安全审计配置"
 description: "CyberGo env 审计日志配置指南，涵盖 JSONAuditHandler、LogAuditHandler 与 ChannelAuditHandler 三种处理器，及自定义 AuditHandler 记录变量加载、读取、修改与删除操作，用于安全审计、合规检查与问题排查。"
 sidebar_position: 6
-sidebar_icon: "🔧"
 ---
 
 # 审计日志
@@ -50,7 +49,7 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
-**输出示例：**
+**输出示例**（节选，省略 `reason` 字段与逐键 `ActionSet` 事件）：
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
@@ -114,7 +113,10 @@ go func() {
 
 空操作处理器，丢弃所有事件：
 
+<!-- check-code: skip -->
 ```go
+cfg := env.DefaultConfig()
+cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewNopAuditHandler()
 ```
 
@@ -144,18 +146,7 @@ type AuditEvent struct {
 
 ### AuditAction 操作类型
 
-| 常量 | 值 | 说明 |
-|------|---|------|
-| `ActionLoad` | `load` | 文件加载 |
-| `ActionParse` | `parse` | 解析操作 |
-| `ActionGet` | `get` | 变量读取 |
-| `ActionSet` | `set` | 变量设置 |
-| `ActionDelete` | `delete` | 变量删除 |
-| `ActionValidate` | `validate` | 验证操作 |
-| `ActionExpand` | `expand` | 变量展开 |
-| `ActionSecurity` | `security` | 安全事件 |
-| `ActionError` | `error` | 错误事件 |
-| `ActionFileAccess` | `file_access` | 文件访问 |
+操作类型常量共 10 个，完整清单（含字符串值与各动作语义）统一列于页末[审计动作](#审计动作)一节。
 
 ---
 
@@ -181,49 +172,49 @@ type FullAuditLogger interface {
 package myhandler
 
 import (
-    "database/sql"
-    "time"
-    "github.com/cybergodev/env"
+	"database/sql"
+	"github.com/cybergodev/env"
+	"time"
 )
 
 type DatabaseAuditHandler struct {
-    db *sql.DB
+	db *sql.DB
 }
 
 func NewDatabaseAuditHandler(db *sql.DB) *DatabaseAuditHandler {
-    return &DatabaseAuditHandler{db: db}
+	return &DatabaseAuditHandler{db: db}
 }
 
 func (h *DatabaseAuditHandler) Log(action env.AuditAction, key, reason string, success bool) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, reason, success)
         VALUES (?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, reason, success)
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) LogError(action env.AuditAction, key, errMsg string) error {
-    return h.Log(action, key, errMsg, false)
+	return h.Log(action, key, errMsg, false)
 }
 
 func (h *DatabaseAuditHandler) LogWithFile(action env.AuditAction, key, file, reason string, success bool) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, file, reason, success)
         VALUES (?, ?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, file, reason, success)
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) LogWithDuration(action env.AuditAction, key, reason string, success bool, duration time.Duration) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, reason, success, duration_ms)
         VALUES (?, ?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, reason, success, duration.Milliseconds())
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) Close() error {
-    return nil
+	return nil
 }
 ```
 
@@ -237,47 +228,47 @@ func (h *DatabaseAuditHandler) Close() error {
 package main
 
 import (
-    "log"
-    "os"
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
+	"log"
+	"os"
 )
 
 func main() {
-    // 创建审计日志文件
-    auditFile, err := os.OpenFile("/var/log/app/env-audit.log",
-        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer auditFile.Close()
+	// 创建审计日志文件
+	auditFile, err := os.OpenFile("/var/log/app/env-audit.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer auditFile.Close()
 
-    // 配置
-    cfg := env.ProductionConfig()
-    cfg.AuditEnabled = true
-    cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	// 配置
+	cfg := env.ProductionConfig()
+	cfg.AuditEnabled = true
+	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-    // 创建加载器
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	// 创建加载器
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // 加载配置
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 加载配置
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 验证
-    err = loader.Validate()
-    if err != nil {
-        log.Fatal(err)
-    }
+	// 验证
+	err = loader.Validate()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // 使用配置
-    log.Println("Configuration loaded successfully")
+	// 使用配置
+	log.Println("Configuration loaded successfully")
 }
 ```
 
@@ -287,47 +278,60 @@ func main() {
 package main
 
 import (
-    "encoding/json"
-    "log"
-    "os"
-    "github.com/cybergodev/env"
+	"encoding/json"
+	"github.com/cybergodev/env"
+	"log"
+	"os"
 )
 
 func main() {
-    // 创建审计事件通道
-    auditChan := make(chan env.AuditEvent, 1000)
+	// 创建审计事件通道
+	auditChan := make(chan env.AuditEvent, 1000)
 
-    // 启动异步处理器
-    go processAuditEvents(auditChan)
+	// 启动异步处理器；done 在消费 goroutine 退出时关闭
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		processAuditEvents(auditChan)
+	}()
 
-    // 配置
-    cfg := env.ProductionConfig()
-    cfg.AuditEnabled = true
-    cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
+	// 配置
+	cfg := env.ProductionConfig()
+	cfg.AuditEnabled = true
+	cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
 
-    loader, _ := env.New(cfg)
-    defer loader.Close()
+	loader, _ := env.New(cfg)
 
-    // 正常使用...
+	// 正常使用...
+
+	// ChannelAuditHandler 不拥有通道：loader.Close() 不会关闭 auditChan，
+	// 必须由调用方 close，向消费 goroutine 发送 EOF
+	loader.Close()
+	close(auditChan)
+
+	// 等待消费 goroutine 处理完剩余事件后退出
+	<-done
 }
 
 func processAuditEvents(ch chan env.AuditEvent) {
-    file, _ := os.OpenFile("/var/log/app/audit.log",
-        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-    defer file.Close()
+	file, _ := os.OpenFile("/var/log/app/audit.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	defer file.Close()
 
-    encoder := json.NewEncoder(file)
+	encoder := json.NewEncoder(file)
 
-    for event := range ch {
-        // 可添加过滤、聚合等逻辑
-        if event.Action == env.ActionError {
-            log.Printf("Audit error: %+v", event)
-        }
+	for event := range ch {
+		// 可添加过滤、聚合等逻辑
+		if event.Action == env.ActionError {
+			log.Printf("Audit error: %+v", event)
+		}
 
-        encoder.Encode(event)
-    }
+		encoder.Encode(event)
+	}
 }
 ```
+
+上例的关键收尾逻辑：`ChannelAuditHandler` **不拥有通道**——`Close()` 是空操作，通道必须由调用方 `close(auditChan)` 才能让 `for range` 消费 goroutine 收到 EOF；缓冲满时发送会阻塞。若希望处理器自管通道生命周期（`Close()` 即关闭通道、消费方经 `Channel()` 接收），见下文「更多内置处理器」中的 CloseableChannelHandler。
 
 ---
 
@@ -423,37 +427,30 @@ func main() {
 
 ### NopAuditHandler（空操作）
 
-丢弃所有审计事件，适用于测试或临时静默审计输出的场景：
+丢弃所有审计事件，适用于测试或临时静默审计输出，用法见[上文 NopAuditHandler](#nopaudithandler)。
 
-<!-- check-code: skip -->
-```go
-cfg := env.DefaultConfig()
-cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewNopAuditHandler()
-```
+## 审计动作
 
-## 审计动作（AuditAction）
+审计事件按动作分类（类型为 `AuditAction`）。自定义处理器可通过 `AuditAction` 常量过滤关注的事件类型：
 
-审计事件按动作分类。自定义处理器可通过 `AuditAction` 常量过滤关注的事件类型：
-
-| 常量 | 含义 |
-|------|------|
-| `ActionLoad` | 文件加载 |
-| `ActionParse` | env/JSON/YAML 文件解析 |
-| `ActionGet` | 变量读取（含类型解析失败记录） |
-| `ActionSet` | 变量设置、应用到进程环境或按策略跳过 |
-| `ActionDelete` | 变量删除 |
-| `ActionValidate` | 校验操作 |
-| `ActionExpand` | 变量展开 |
-| `ActionSecurity` | 安全事件（路径校验失败、禁止键等） |
-| `ActionError` | 错误条件 |
-| `ActionFileAccess` | 文件系统访问 |
+| 常量 | 值 | 含义 |
+|------|---|------|
+| `ActionLoad` | `load` | 文件加载 |
+| `ActionParse` | `parse` | env/JSON/YAML 文件解析 |
+| `ActionGet` | `get` | 变量读取（含类型解析失败记录） |
+| `ActionSet` | `set` | 变量设置、应用到进程环境或按策略跳过 |
+| `ActionDelete` | `delete` | 变量删除 |
+| `ActionValidate` | `validate` | 校验操作 |
+| `ActionExpand` | `expand` | 变量展开 |
+| `ActionSecurity` | `security` | 安全事件（路径校验失败、禁止键等） |
+| `ActionError` | `error` | 错误条件 |
+| `ActionFileAccess` | `file_access` | 文件系统访问 |
 
 `AuditEvent` 为结构化事件（含时间戳、动作、键、原因、成败与耗时等字段）。敏感键在进入事件前已被 `MaskKey` 掩码为 `[MASKED:N chars]`（N 为键长），非敏感键原样保留。
 
 ## 相关文档
 
-- [安全概述](/zh/env/security/) - 安全架构与核心特性
-- [生产检查清单](/zh/env/security/production-checklist) - 审计配置检查
-- [接口定义](/zh/env/api-reference/interfaces) - AuditLogger 接口
-- [组件工厂](/zh/env/api-reference/factory) - 审计处理器工厂
+- [安全概述](../security/) - 安全架构与核心特性
+- [生产检查清单](../security/production-checklist) - 审计配置检查
+- [接口定义](../api-reference/interfaces) - AuditLogger 接口
+- [组件工厂](../api-reference/factory) - 审计处理器工厂

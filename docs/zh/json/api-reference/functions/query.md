@@ -1,8 +1,8 @@
 ---
 sidebar_label: "查询获取"
-title: "查询与获取函数 - CyberGo JSON | API 参考"
-description: "CyberGo JSON 查询与获取函数：Get/GetString/GetInt 类型安全获取、GetTyped[T] 泛型、GetMultiple 批量与 SafeGet 安全访问，支持 JSONPath 通配符、切片、默认值回退与 GetWithContext 超时取消。"
-sidebar_position: 2
+title: "查询与获取函数 - CyberGo JSON | Get/GetInt 用法与示例"
+description: "CyberGo JSON 是 JSONPath 路径查询的 Go 库，提供 Get/GetInt 类型安全获取、GetTyped[T] 泛型、SafeGet 安全访问与 GetMultiple 批量读取，路径缺失时自动回退默认值，GetWithContext 支持超时取消，帮助开发者稳健提取深层嵌套字段。"
+sidebar_position: 20
 ---
 
 # 查询与获取函数
@@ -90,6 +90,20 @@ func main() {
 
 按路径获取字符串值。
 
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...string` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `string` | 路径处的字符串值；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `""`） |
+
 ```go
 package main
 
@@ -115,6 +129,20 @@ func main() {
 签名：`func GetInt(jsonStr, path string, defaultValue ...int) int`
 
 按路径获取整数值。
+
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...int` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `int` | 路径处的整数值（宽松转换，如字符串 `"42"` 可转 `42`）；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `0`） |
 
 ```go
 package main
@@ -145,6 +173,20 @@ func main() {
 
 按路径获取浮点数值。
 
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...float64` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `float64` | 路径处的浮点数值（整数会被提升为 `float64`）；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `0`） |
+
 ```go
 package main
 
@@ -173,6 +215,20 @@ func main() {
 签名：`func GetBool(jsonStr, path string, defaultValue ...bool) bool`
 
 按路径获取布尔值。
+
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...bool` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `bool` | 路径处的布尔值；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `false`） |
 
 ```go
 package main
@@ -203,6 +259,20 @@ func main() {
 
 按路径获取数组。
 
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...[]any` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `[]any` | 路径处的数组（元素保持解析后的原生类型，数字默认为 `float64`）；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `nil`） |
+
 ```go
 package main
 
@@ -230,6 +300,20 @@ func main() {
 签名：`func GetObject(jsonStr, path string, defaultValue ...map[string]any) map[string]any`
 
 按路径获取对象。
+
+**参数**
+
+| 名称 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `jsonStr` | `string` | 是 | JSON 字符串 |
+| `path` | `string` | 是 | 路径表达式 |
+| `defaultValue` | `...map[string]any` | 否 | 可选默认值，路径不存在、值为 null 或类型转换失败时返回 |
+
+**返回值**
+
+| 返回值 | 类型 | 说明 |
+|--------|------|------|
+| 唯一返回值 | `map[string]any` | 路径处的对象（数字默认为 `float64`）；路径不存在、值为 null 或转换失败时返回 `defaultValue`（未提供则返回零值 `nil`） |
 
 ```go
 package main

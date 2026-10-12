@@ -1,8 +1,8 @@
 ---
 sidebar_label: "并发与并行处理"
-title: "并发与并行处理 - CyberGo JSON | 实战指南"
-description: "CyberGo JSON 并发与并行处理：Processor 线程安全保证、ParallelIterator 并行迭代器、StreamJSONLParallel 并行 JSONL、SetGlobalProcessor 全局共享与 MaxConcurrency 并发限制，附并发处理大型数据集配方。"
-sidebar_position: 4
+title: "并发与并行处理 - CyberGo JSON | goroutine 安全实战"
+description: "CyberGo JSON 提供线程安全的并发与并行处理能力，支持单个 Processor 实例跨 goroutine 共享、ParallelIterator 多核并行迭代与 StreamJSONLParallel 并行 JSONL 流，帮助开发者安全利用多核加速大批量数据处理并管控并发上限。"
+sidebar_position: 40
 ---
 
 # 并发与并行处理
@@ -144,7 +144,7 @@ func main() {
 	err = iter.ForEachBatchWithContext(ctx, 100, func(batchIdx int, batch []any) error {
 		return nil // 模拟单批处理
 	})
-	fmt.Println("带超时批处理完成，错误:", err)
+	fmt.Println("带超时批处理完成，错误：", err)
 }
 
 // 输出：
@@ -152,7 +152,7 @@ func main() {
 // 批次 1 小计 = 150
 // 批次 2 小计 = 240
 // 批次 3 小计 = 100
-// 带超时批处理完成，错误: <nil>
+// 带超时批处理完成，错误：<nil>
 ```
 
 `batchSize <= 0` 时按 100 处理。回调返回错误与 `ForEach` 相同：首个错误胜出并停止派发新批次；批次的**派发**顺序与输入一致（`batchIdx` 递增），但**执行**顺序不保证——保序输出的做法即上例：按下标落位、完成后顺序消费。

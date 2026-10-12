@@ -63,6 +63,8 @@ Processor 在令牌创建和验证时会执行额外的深度验证（通过内�
 | `GetRegisteredClaims` | `func (c *Claims) GetRegisteredClaims() *RegisteredClaims` | 返回嵌入的标准字段 |
 | `Validate` | `func (c *Claims) Validate() error` | 检查 UserID 或 Username 至少有一个非空 |
 
+除上表两个业务方法外，`Claims` 还实现了 `json.Marshaler` / `json.Unmarshaler` 等序列化管道方法：`MarshalJSON`、`UnmarshalJSON`、`AppendJSON`（向可复用缓冲区追加编码，供签名管道使用）与 `UnmarshalFastJSON`（内部快速解码钩子）。它们由库的签名与解析管道自动调用，常规业务代码无需直接调用，细节见源码 `claims_json.go`。
+
 ---
 
 ## RegisteredClaims

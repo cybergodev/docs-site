@@ -2,7 +2,7 @@
 sidebar_label: "中间件链"
 title: "中间件链 - CyberGo HTTPC | 洋葱模型与链组合"
 description: "HTTPC 中间件链指南：洋葱模型与完整执行顺序语义、请求/响应双向处理、与请求选项及重试的关系、Recovery/Logging 等七个内置中间件、Chain 组合、自定义 MiddlewareFunc 与断路器短路示例，构建可观测请求管道。"
-sidebar_position: 9
+sidebar_position: 80
 ---
 
 # 中间件链
@@ -206,7 +206,7 @@ auditCfg.OnAudit = func(event httpc.AuditEvent) {
 httpc.AuditMiddleware(auditCfg)
 ```
 
-`AuditEvent` 携带时间戳、方法、脱敏 URL、状态码、耗时、尝试次数、重定向链等字段；`SanitizeError = true` 时错误统一替换为 `[sanitized]`，避免错误细节泄露敏感信息。JSON 序列化时 `Duration` 会额外输出 `durationMs` 字段（毫秒数）。
+`AuditEvent` 携带时间戳、方法、脱敏 URL、状态码、耗时、尝试次数、重定向链等字段；`SanitizeError = true` 时错误统一替换为 `[sanitized]`，避免错误细节泄露敏感信息。JSON 序列化时耗时以 `durationMs` 字段（毫秒数）输出——`Duration` 本身带 `json:"-"` 标签，不直接序列化。
 
 审计事件支持从上下文提取 SourceIP 和 UserID：
 
@@ -261,56 +261,56 @@ func CORSMiddleware(origin string) httpc.MiddlewareFunc {
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 // timingMiddleware 记录每个请求的方法、URL、状态码与耗时
 func timingMiddleware() httpc.MiddlewareFunc {
-    return func(next httpc.Handler) httpc.Handler {
-        return func(ctx context.Context, req httpc.RequestMutator) (httpc.ResponseMutator, error) {
-            start := time.Now()
+	return func(next httpc.Handler) httpc.Handler {
+		return func(ctx context.Context, req httpc.RequestMutator) (httpc.ResponseMutator, error) {
+			start := time.Now()
 
-            // 请求阶段：可读取/修改请求
-            req.SetHeader("X-Client-Trace", "demo")
+			// 请求阶段：可读取/修改请求
+			req.SetHeader("X-Client-Trace", "demo")
 
-            // 调用下一层（最终到达引擎）
-            resp, err := next(ctx, req)
+			// 调用下一层（最终到达引擎）
+			resp, err := next(ctx, req)
 
-            // 响应阶段：可读取/修改响应
-            status := 0
-            if resp != nil {
-                status = resp.StatusCode()
-            }
-            log.Printf("%s %s -> %d (%v)", req.Method(), req.URL(), status, time.Since(start))
+			// 响应阶段：可读取/修改响应
+			status := 0
+			if resp != nil {
+				status = resp.StatusCode()
+			}
+			log.Printf("%s %s -> %d (%v)", req.Method(), req.URL(), status, time.Since(start))
 
-            return resp, err
-        }
-    }
+			return resp, err
+		}
+	}
 }
 
 func main() {
-    cfg := httpc.DefaultConfig()
-    cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
-        httpc.RecoveryMiddleware(),
-        timingMiddleware(),
-    }
+	cfg := httpc.DefaultConfig()
+	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
+		httpc.RecoveryMiddleware(),
+		timingMiddleware(),
+	}
 
-    client, err := httpc.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    result, err := client.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.StatusCode()) // 200
+	result, err := client.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.StatusCode()) // 200
 }
 ```
 

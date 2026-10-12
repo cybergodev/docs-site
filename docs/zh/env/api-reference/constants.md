@@ -35,6 +35,8 @@ const (
 )
 ```
 
+六个默认限制常量——`DefaultMaxFileSize`、`DefaultMaxLineLength`、`DefaultMaxKeyLength`、`DefaultMaxValueLength`、`DefaultMaxVariables`、`DefaultMaxExpansionDepth`——分别对应单文件大小、单行长度、键名长度、值长度、每文件变量数与变量展开深度，均可通过 `Config` 的同名字段覆盖。
+
 ### 硬性上限
 
 ::: warning 注意
@@ -63,8 +65,8 @@ if err := cfg.Validate(); err != nil {
 
 ## 哨兵错误
 
-::: warning 注意
-以下哨兵均为预定义符号，但当前实现中部分场景**不通过 `errors.Is` 匹配这些哨兵**：禁止键返回 `*SecurityError`（用 `errors.Is(err, ErrSecurityViolation)` 匹配），键格式非法与缺少必需键返回 `*ValidationError`（用 `errors.As` 提取）。详见各错误类型章节。
+::: tip 匹配方式
+上述哨兵均可通过 `errors.Is` 匹配——`*ValidationError` 与 `*SecurityError` 内部实现了 `Is()` 布线，按 Rule/Action 映射到 `ErrInvalidKey`、`ErrMissingRequired`、`ErrMaxVariables`、`ErrInvalidValue`、`ErrForbiddenKey`、`ErrSecurityViolation` 等哨兵。需要文件/行号/字段等详情时，再用 `errors.As` 提取结构化错误；两种方式互补，并非二选一。详见各错误类型章节。
 :::
 
 ### 文件错误
@@ -93,6 +95,10 @@ var ErrLineTooLong = errors.New("line exceeds maximum length limit")
 var ErrInvalidKey = errors.New("invalid key format")
 var ErrDuplicateKey = errors.New("duplicate key encountered")
 ```
+
+::: tip 保留哨兵
+`ErrDuplicateKey` 为保留哨兵：当前重复键按跳过处理而非报错，暂无代码路径返回该错误。
+:::
 
 ### 安全错误
 
@@ -151,10 +157,20 @@ if errors.Is(err, env.ErrNotInitialized) {
     // 需要先调用 env.Load() 或 env.LoadWithConfig()
 }
 
-// 检查必需键是否缺失（实际返回 *ValidationError{Rule:"required"}）
-var valErr *env.ValidationError
-if errors.As(err, &valErr) && valErr.Rule == "required" {
+// 检查键格式是否非法（*ValidationError 经 Is() 布线匹配哨兵）
+if errors.Is(err, env.ErrInvalidKey) {
+    // 键格式非法
+}
+
+// 检查必需键是否缺失
+if errors.Is(err, env.ErrMissingRequired) {
     // 缺少必需键
+}
+
+// 可选：需要字段/规则等详情时，用 errors.As 提取结构化错误
+var valErr *env.ValidationError
+if errors.As(err, &valErr) {
+    // valErr.Field / valErr.Rule 提供详细定位
 }
 ```
 
@@ -197,6 +213,13 @@ type ParseError struct {
 }
 ```
 
+**方法：**
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `func (e *ParseError) Error() string` | 实现 `error` 接口，输出含文件名与行号（无文件名时省略文件段） |
+| `Unwrap` | `func (e *ParseError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
+
 使用示例：
 
 ```go
@@ -221,6 +244,13 @@ type ValidationError struct {
 }
 ```
 
+**方法：**
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `func (e *ValidationError) Error() string` | 实现 `error` 接口，含字段名与消息 |
+| `Is` | `func (e *ValidationError) Is(target error) bool` | 按 `Rule` 映射哨兵：值类规则（`value`/`null_byte`/`control_char`/`utf8`）→ `ErrInvalidValue`；键类规则（Field 为 `key`：`non_empty`/`max_length`/`ascii_only`/`pattern`）→ `ErrInvalidKey`；`required` → `ErrMissingRequired`；`max_variables` → `ErrMaxVariables` |
+
 ### SecurityError
 
 安全错误：
@@ -233,6 +263,13 @@ type SecurityError struct {
     Details string  // 额外详情
 }
 ```
+
+**方法：**
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `func (e *SecurityError) Error() string` | 实现 `error` 接口，含被阻止的操作与原因 |
+| `Is` | `func (e *SecurityError) Is(target error) bool` | 匹配 `ErrSecurityViolation`；禁止键/白名单拒绝（Action 为 `key_access`）另匹配 `ErrForbiddenKey` |
 
 使用示例：
 
@@ -250,12 +287,19 @@ if errors.As(err, &secErr) {
 ```go
 type FileError struct {
     Path  string  // 文件路径
-    Op    string  // 操作（open, stat, size_check）
+    Op    string  // 失败的操作（open、stat、size_check、parse）
     Err   error   // 原始错误
     Size  int64   // 文件大小（Size 检查时）
     Limit int64   // 限制（Size 检查时）
 }
 ```
+
+**方法：**
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `func (e *FileError) Error() string` | 实现 `error` 接口；`Size` 与 `Limit` 均为正时附带 `(size N exceeds limit M)` 细节 |
+| `Unwrap` | `func (e *FileError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
 
 使用示例：
 
@@ -280,6 +324,13 @@ type ExpansionError struct {
     Kind  ExpansionErrorKind // 错误原因类别（零值 = 深度/循环）
 }
 ```
+
+**方法：**
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `func (e *ExpansionError) Error() string` | 实现 `error` 接口；输出中的键名已掩码（仅保留前 2 个字符，后接 `***`） |
+| `Is` | `func (e *ExpansionError) Is(target error) bool` | 仅 `Kind != ExpansionRequiredKind` 时匹配 `ErrExpansionDepth`（语义见下方「`errors.Is` 行为」） |
 
 **错误分类（Kind 字段）：**
 
@@ -322,11 +373,18 @@ JSON 解析错误：
 
 ```go
 type JSONError struct {
-    Path    string  // 文件路径
+    Path    string  // JSON 文档内路径（非文件路径）
     Message string  // 错误消息
     Err     error   // 原始错误
 }
 ```
+
+**方法：**
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `func (e *JSONError) Error() string` | 实现 `error` 接口，含文档内路径 |
+| `Unwrap` | `func (e *JSONError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
 
 ### YAMLError
 
@@ -334,13 +392,20 @@ YAML 解析错误：
 
 ```go
 type YAMLError struct {
-    Path    string  // 文件路径
+    Path    string  // YAML 文档内路径（非文件路径）
     Line    int     // 行号
     Column  int     // 列号
     Message string  // 错误消息
     Err     error   // 原始错误
 }
 ```
+
+**方法：**
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `func (e *YAMLError) Error() string` | 实现 `error` 接口，含文档内路径与行列号 |
+| `Unwrap` | `func (e *YAMLError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
 
 ### MarshalError
 
@@ -354,6 +419,14 @@ type MarshalError struct {
 
 func IsMarshalError(err error) bool  // 检查函数
 ```
+
+**方法：**
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `func (e *MarshalError) Error() string` | 实现 `error` 接口，含字段名与消息 |
+
+`MarshalError` 的字段均为普通值，没有 `Unwrap` 方法——不存在可解包的底层错误。
 
 ## 预定义变量
 
@@ -408,7 +481,7 @@ cfg.ForbiddenKeys = []string{"MY_SENSITIVE_VAR"}
 敏感键模式列表，用于自动检测敏感配置。键名包含这些模式（不区分大小写）时会被识别为敏感：
 
 ::: warning 注意
-`sensitiveKeyPatterns` 为库内部变量（未导出），通过 `IsSensitiveKey()` 函数间接访问。以下为主要敏感模式类别，供参考。
+敏感模式列表为库内部变量 `internal.Patterns`（未从 env 包导出），通过 `IsSensitiveKey()` 函数间接访问。以下为主要敏感模式类别，供参考。
 :::
 
 **主要敏感模式类别：**
@@ -465,141 +538,7 @@ cfg.KeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]{1,63}$`)
 
 ## 安全工具函数
 
-::: tip 完整文档
-`IsSensitiveKey`、`MaskValue`、`SanitizeForLog` 等安全工具函数的完整文档也可在 [SecureValue API](./secure-value#安全工具函数) 中查看。
-:::
-
-### IsSensitiveKey
-
-```go
-func IsSensitiveKey(key string) bool
-```
-
-检查键名是否匹配敏感模式。
-
-```go
-if env.IsSensitiveKey("DB_PASSWORD") {
-    // 敏感键，使用安全方式处理
-    secret := env.GetSecure("DB_PASSWORD")
-    defer secret.Release()
-}
-```
-
-### MaskValue
-
-```go
-func MaskValue(key, value string) string
-```
-
-根据键的敏感性返回掩码值。
-
-```go
-// 敏感键 - 返回 [MASKED:N chars] 格式
-masked := env.MaskValue("API_KEY", "secret123")
-// 返回：[MASKED:9 chars]
-
-// 非敏感键 - 返回原值（超过 20 字符则截断）
-masked := env.MaskValue("APP_NAME", "myapp")
-// 返回：myapp
-masked := env.MaskValue("DESCRIPTION", "this is a very long description text")
-// 返回：this is a very lo...
-```
-
-### MaskKey
-
-```go
-func MaskKey(key string) string
-```
-
-掩码键名用于日志。
-
-```go
-masked := env.MaskKey("DB_PASSWORD")
-// 返回：DB***
-```
-
-### MaskSensitiveInString
-
-```go
-func MaskSensitiveInString(s string) string
-```
-
-掩码字符串中的潜在敏感内容。截断超过 50 字符的字符串。
-
-**参数：**
-- `s` - 原始字符串
-
-**返回：**
-- `string` - 掩码后的字符串
-
-```go
-// 长字符串会被截断
-log := "This is a very long log message that exceeds 50 characters and will be truncated"
-clean := env.MaskSensitiveInString(log)
-// 返回："This is a very long log message that exceeds 50..."
-
-// 短字符串保持不变
-short := "Short message"
-clean := env.MaskSensitiveInString(short)
-// 返回："Short message"
-```
-
-::: warning 注意
-此函数主要用于截断长字符串。如需自动掩码敏感键值对，请使用 `SanitizeForLog`。
-:::
-
-### SanitizeForLog
-
-```go
-func SanitizeForLog(s string) string
-```
-
-清理字符串中的敏感键值对信息。自动检测并掩码 `key=value` 格式中的敏感值。
-
-**参数：**
-- `s` - 原始字符串
-
-**返回：**
-- `string` - 清理后的字符串
-
-**检测的敏感键模式：**
-- `password=`, `secret=`, `token=`, `auth=`, `credential=`, `passphrase=`, `session=`, `cookie=`
-- `api_key=`, `apikey=`, `access_key=`, `secret_key=`, `private_key=`, `public_key=`
-- `encrypt_key=`, `decrypt_key=`, `signing_key=`
-- `ssn=`, `credit_card=`, `card_number=`, `cvv=`, `cvc=`
-- `mnemonic=`, `seed=`, `recovery=`, `wallet=`
-- `connection_string=`, `database_url=`, `db_password=`
-
-```go
-// 自动掩码敏感键值对
-msg := "Connected with password=secret123 api_key=abc123"
-clean := env.SanitizeForLog(msg)
-// 返回："Connected with password=[MASKED] api_key=[MASKED]"
-
-// 非敏感键值对保持不变
-msg := "Config loaded: app_name=myapp port=8080"
-clean := env.SanitizeForLog(msg)
-// 返回："Config loaded: app_name=myapp port=8080"
-```
-
-::: tip 使用场景
-适用于日志输出、错误消息、调试信息等需要自动过滤敏感键值对的场景。
-:::
-
-### ClearBytes
-
-```go
-func ClearBytes(b []byte)
-```
-
-安全清零字节切片。
-
-```go
-sensitive := []byte("secret-data")
-// 使用...
-env.ClearBytes(sensitive)
-// sensitive 现在全是 0
-```
+`IsSensitiveKey`、`MaskValue`、`MaskKey`、`MaskSensitiveInString`、`SanitizeForLog` 与 `ClearBytes` 六个安全工具函数的完整签名、参数与示例统一维护在 [SecureValue API 的「安全工具函数」](./secure-value#安全工具函数)一节。简要分工：`IsSensitiveKey` 判定键名是否敏感；`MaskValue` 与 `MaskKey` 按键名敏感性掩码值与键名；`SanitizeForLog` 与 `MaskSensitiveInString` 用于日志脱敏与长字符串截断；`ClearBytes` 负责字节切片的安全清零。
 
 ## FileFormat 常量
 
@@ -680,104 +619,80 @@ if errors.As(err, &secErr) {
 package main
 
 import (
-    "errors"
-    "log"
+	"errors"
+	"log"
 
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
 )
 
 func main() {
-    cfg := env.ProductionConfig()
-    cfg.FailOnMissingFile = true
+	cfg := env.ProductionConfig()
+	cfg.FailOnMissingFile = true
 
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        switch {
-        case errors.Is(err, env.ErrFileNotFound):
-            log.Fatal("配置文件不存在")
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		switch {
+		case errors.Is(err, env.ErrFileNotFound):
+			log.Fatal("配置文件不存在")
 
-        case errors.Is(err, env.ErrFileTooLarge):
-            log.Fatal("配置文件过大")
+		case errors.Is(err, env.ErrFileTooLarge):
+			log.Fatal("配置文件过大")
 
-        case errors.Is(err, env.ErrClosed):
-            log.Fatal("加载器已关闭")
+		case errors.Is(err, env.ErrClosed):
+			log.Fatal("加载器已关闭")
 
-        default:
-            var parseErr *env.ParseError
-            if errors.As(err, &parseErr) {
-                log.Fatalf("解析错误 %s:%d - %v",
-                    parseErr.File, parseErr.Line, parseErr.Err)
-            }
+		default:
+			var parseErr *env.ParseError
+			if errors.As(err, &parseErr) {
+				log.Fatalf("解析错误 %s:%d - %v",
+					parseErr.File, parseErr.Line, parseErr.Err)
+			}
 
-            var fileErr *env.FileError
-            if errors.As(err, &fileErr) {
-                log.Fatalf("文件错误 %s - %v", fileErr.Path, fileErr.Err)
-            }
+			var fileErr *env.FileError
+			if errors.As(err, &fileErr) {
+				log.Fatalf("文件错误 %s - %v", fileErr.Path, fileErr.Err)
+			}
 
-            var secErr *env.SecurityError
-            if errors.As(err, &secErr) {
-                log.Fatalf("安全错误: %s - %s", secErr.Action, secErr.Reason)
-            }
+			var secErr *env.SecurityError
+			if errors.As(err, &secErr) {
+				log.Fatalf("安全错误: %s - %s", secErr.Action, secErr.Reason)
+			}
 
-            var jsonErr *env.JSONError
-            if errors.As(err, &jsonErr) {
-                log.Fatalf("JSON 错误 %s: %s", jsonErr.Path, jsonErr.Message)
-            }
+			var jsonErr *env.JSONError
+			if errors.As(err, &jsonErr) {
+				log.Fatalf("JSON 错误 %s: %s", jsonErr.Path, jsonErr.Message)
+			}
 
-            var yamlErr *env.YAMLError
-            if errors.As(err, &yamlErr) {
-                log.Fatalf("YAML 错误 %s:%d:%d - %s",
-                    yamlErr.Path, yamlErr.Line, yamlErr.Column, yamlErr.Message)
-            }
+			var yamlErr *env.YAMLError
+			if errors.As(err, &yamlErr) {
+				log.Fatalf("YAML 错误 %s:%d:%d - %s",
+					yamlErr.Path, yamlErr.Line, yamlErr.Column, yamlErr.Message)
+			}
 
-            log.Fatal(err)
-        }
-    }
+			log.Fatal(err)
+		}
+	}
 
-    // 验证必需键
-    if err := loader.Validate(); err != nil {
-        var valErr *env.ValidationError
-        if errors.As(err, &valErr) {
-            log.Fatalf("验证失败: %s - %s", valErr.Field, valErr.Message)
-        }
-        log.Fatal(err)
-    }
+	// 验证必需键
+	if err := loader.Validate(); err != nil {
+		var valErr *env.ValidationError
+		if errors.As(err, &valErr) {
+			log.Fatalf("验证失败: %s - %s", valErr.Field, valErr.Message)
+		}
+		log.Fatal(err)
+	}
 }
 ```
 
-## 默认禁止键与键名模式
-
-### DefaultForbiddenKeys 完整清单
-
-库默认拒绝写入以下系统关键变量，按攻击面分类：
-
-| 类别 | 键 | 防御目标 |
-|------|-----|----------|
-| 路径注入 | `PATH` | 劫持可执行文件查找路径 |
-| 动态链接器（Linux/macOS） | `LD_PRELOAD`、`LD_LIBRARY_PATH`、`LD_DEBUG`、`LD_AUDIT`、`LD_PRELOAD_32`、`LD_PRELOAD_64`、`LD_LIBRARY_PATH_32`、`LD_LIBRARY_PATH_64`、`DYLD_INSERT_LIBRARIES`、`DYLD_LIBRARY_PATH` | 库预加载攻击 |
-| Shell 逃逸 | `SHELL`、`ENV`、`BASH_ENV`、`IFS` | Shell 注入 |
-| 解释器注入 | `PYTHONPATH`、`PERL5OPT`、`RUBYLIB`、`NODE_PATH` | 语言运行时代码注入 |
-| Windows 特有 | `COMSPEC`、`PATHEXT`、`SYSTEMROOT`、`WINDIR` | Windows 系统变量劫持 |
-
-自定义追加用 `ValidationConfig.ForbiddenKeys`；放开内置限制需自行提供替换验证器。
-
-### DefaultKeyPattern
-
-`DefaultKeyPattern` 导出为 `nil`——默认键校验走**字节级快速路径**（等价正则 `^[A-Za-z][A-Za-z0-9_]*$`），较正则实现约快一个数量级。设置自定义 `KeyPattern` 后切换为正则校验，并接受 [KeyPattern 安全校验](/zh/env/api-reference/config)的四类探针检查。
-
-### ExpansionErrorKind
-
-`ExpansionError.Kind` 的两个取值：`ExpansionDepthKind`（深度超限/循环引用）与 `ExpansionRequiredKind`（`${VAR:?}` 必填变量未设置），详见[错误处理指南](/zh/env/guides/error-handling)。
-
 ## 相关文档
 
-- [SecureValue API](/zh/env/api-reference/secure-value) - 安全工具函数完整 API
-- [Config API](/zh/env/api-reference/config) - 配置选项与限制设置
-- [安全概述](/zh/env/security/) - 安全架构与核心特性
-- [生产检查清单](/zh/env/security/production-checklist) - 上线前安全检查
+- [SecureValue API](./secure-value) - 安全工具函数完整 API
+- [Config API](./config) - 配置选项与限制设置
+- [安全概述](../security/) - 安全架构与核心特性
+- [生产检查清单](../security/production-checklist) - 上线前安全检查

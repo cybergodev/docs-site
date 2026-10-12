@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Basic Examples"
-title: "Usage Examples - CyberGo JSON | Practical Code Examples"
+title: "Usage Examples - CyberGo JSON | Real-World Scenario Code"
 description: "CyberGo JSON examples: path queries, Marshal/Unmarshal, generics, Processor reuse, iteration, JSONL streaming, Hooks, Schema validation, error handling."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Usage Examples
@@ -692,6 +692,8 @@ Bulk data can go through one `WriteAll([]any{...})` call; the first error is cac
 
 ### Streaming a Large JSON File
 
+`ForeachFile` provides callback-based item-by-item traversal, but it loads the **entire file into memory** before iterating (this holds for the whole family, `ForeachFileChunked` included); for constant-memory processing of very large files use `StreamIterator` / `StreamObjectIterator` or the JSONL streaming family (see [Large File Handling](../streaming/large-files)).
+
 ```go
 package main
 
@@ -708,7 +710,8 @@ func main() {
 	}
 	defer processor.Close()
 
-	// Stream the large file with ForeachFile
+	// Traverse the file's array item by item with ForeachFile
+	// (the whole file is loaded into memory first; use StreamIterator for constant memory)
 	count := 0
 	err = processor.ForeachFile("large-array.json", func(key any, item *json.IterableValue) error {
 		count++
@@ -974,6 +977,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/cybergodev/json"
 )
 
@@ -989,12 +994,15 @@ func main() {
 	defer p.Close()
 
 	// Simulate untrusted input
-	// Note: real attacks may try much larger payloads (e.g. 100MB+);
-	// the security configuration blocks anything above MaxJSONSize
+	// Note: real attacks may try much larger payloads (e.g. 100MB+).
+	// Both malicious inputs below are structurally valid JSON and genuinely
+	// trigger the size and depth limits respectively.
 	untrustedInputs := []string{
 		`{"data": "normal"}`,
-		`{"huge": "` + string(make([]byte, 2*1024*1024)) + `"}`,                                      // 2MB input (exceeds the 1MB cap)
-		`{"nested": {{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}`, // excessively nested
+		// Valid JSON string, but ~2MB in total, above the 1MB MaxJSONSize → ErrSizeLimit
+		`{"huge": "` + strings.Repeat("a", 2*1024*1024) + `"}`,
+		// Valid JSON, but nested 50 levels deep, above SecurityConfig's MaxNestingDepthSecurity (30) → ErrDepthLimit
+		strings.Repeat(`{"a":`, 50) + "1" + strings.Repeat(`}`, 50),
 	}
 
 	for i, input := range untrustedInputs {
@@ -1010,6 +1018,11 @@ func main() {
 		}
 	}
 }
+
+// Output:
+// Input 0 processed successfully
+// Input 1 error: JSON validate_json_input failed: size 2097164 exceeds limit 1048576 (caused by: size limit exceeded)
+// Input 2 error: JSON validate_nesting_depth failed: nesting depth 31 exceeds maximum 30 (caused by: depth limit exceeded)
 ```
 
 ## Utility Functions

@@ -1,9 +1,8 @@
 ---
 sidebar_label: "Audit Logging"
 title: "Audit Logging - CyberGo env | Security Audit Configuration"
-description: "Audit logging guide for CyberGo env: JSONAuditHandler, LogAuditHandler, and ChannelAuditHandler record variable loads, reads, and changes for auditing."
+description: "CyberGo env audit logging: JSONAuditHandler, LogAuditHandler, ChannelAuditHandler and custom handlers record variable operations for security and compliance."
 sidebar_position: 6
-sidebar_icon: "🔧"
 ---
 
 # Audit Logging
@@ -37,7 +36,7 @@ loader, _ := env.New(cfg)
 
 ### JSONAuditHandler
 
-Outputs JSON format logs:
+Outputs logs in JSON format:
 
 ```go
 import (
@@ -50,7 +49,7 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
-**Output example:**
+**Output example** (excerpt: the `reason` field and per-key `ActionSet` events are omitted):
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
@@ -114,7 +113,10 @@ go func() {
 
 No-op handler, discards all events:
 
+<!-- check-code: skip -->
 ```go
+cfg := env.DefaultConfig()
+cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewNopAuditHandler()
 ```
 
@@ -144,18 +146,7 @@ type AuditEvent struct {
 
 ### AuditAction Types
 
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `ActionLoad` | `load` | File loading |
-| `ActionParse` | `parse` | Parsing operation |
-| `ActionGet` | `get` | Variable reading |
-| `ActionSet` | `set` | Variable setting |
-| `ActionDelete` | `delete` | Variable deletion |
-| `ActionValidate` | `validate` | Validation operation |
-| `ActionExpand` | `expand` | Variable expansion |
-| `ActionSecurity` | `security` | Security event |
-| `ActionError` | `error` | Error event |
-| `ActionFileAccess` | `file_access` | File access |
+There are 10 action constants in total; the complete list (string values and per-action semantics) is consolidated in the [Audit Actions](#audit-actions) section at the end of this page.
 
 ---
 
@@ -181,49 +172,49 @@ type FullAuditLogger interface {
 package myhandler
 
 import (
-    "database/sql"
-    "time"
-    "github.com/cybergodev/env"
+	"database/sql"
+	"github.com/cybergodev/env"
+	"time"
 )
 
 type DatabaseAuditHandler struct {
-    db *sql.DB
+	db *sql.DB
 }
 
 func NewDatabaseAuditHandler(db *sql.DB) *DatabaseAuditHandler {
-    return &DatabaseAuditHandler{db: db}
+	return &DatabaseAuditHandler{db: db}
 }
 
 func (h *DatabaseAuditHandler) Log(action env.AuditAction, key, reason string, success bool) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, reason, success)
         VALUES (?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, reason, success)
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) LogError(action env.AuditAction, key, errMsg string) error {
-    return h.Log(action, key, errMsg, false)
+	return h.Log(action, key, errMsg, false)
 }
 
 func (h *DatabaseAuditHandler) LogWithFile(action env.AuditAction, key, file, reason string, success bool) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, file, reason, success)
         VALUES (?, ?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, file, reason, success)
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) LogWithDuration(action env.AuditAction, key, reason string, success bool, duration time.Duration) error {
-    _, err := h.db.Exec(`
+	_, err := h.db.Exec(`
         INSERT INTO audit_log (timestamp, action, key, reason, success, duration_ms)
         VALUES (?, ?, ?, ?, ?, ?)
     `, time.Now(), string(action), key, reason, success, duration.Milliseconds())
-    return err
+	return err
 }
 
 func (h *DatabaseAuditHandler) Close() error {
-    return nil
+	return nil
 }
 ```
 
@@ -237,47 +228,47 @@ func (h *DatabaseAuditHandler) Close() error {
 package main
 
 import (
-    "log"
-    "os"
-    "github.com/cybergodev/env"
+	"github.com/cybergodev/env"
+	"log"
+	"os"
 )
 
 func main() {
-    // Create audit log file
-    auditFile, err := os.OpenFile("/var/log/app/env-audit.log",
-        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer auditFile.Close()
+	// Create audit log file
+	auditFile, err := os.OpenFile("/var/log/app/env-audit.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer auditFile.Close()
 
-    // Configuration
-    cfg := env.ProductionConfig()
-    cfg.AuditEnabled = true
-    cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
-    cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+	// Configuration
+	cfg := env.ProductionConfig()
+	cfg.AuditEnabled = true
+	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
+	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-    // Create loader
-    loader, err := env.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer loader.Close()
+	// Create loader
+	loader, err := env.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer loader.Close()
 
-    // Load configuration
-    err = loader.LoadFiles(".env")
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Load configuration
+	err = loader.LoadFiles(".env")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Validate
-    err = loader.Validate()
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Validate
+	err = loader.Validate()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Use configuration
-    log.Println("Configuration loaded successfully")
+	// Use configuration
+	log.Println("Configuration loaded successfully")
 }
 ```
 
@@ -287,47 +278,60 @@ func main() {
 package main
 
 import (
-    "encoding/json"
-    "log"
-    "os"
-    "github.com/cybergodev/env"
+	"encoding/json"
+	"github.com/cybergodev/env"
+	"log"
+	"os"
 )
 
 func main() {
-    // Create audit event channel
-    auditChan := make(chan env.AuditEvent, 1000)
+	// Create audit event channel
+	auditChan := make(chan env.AuditEvent, 1000)
 
-    // Start async processor
-    go processAuditEvents(auditChan)
+	// Start async processor; done is closed when the consumer goroutine exits
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		processAuditEvents(auditChan)
+	}()
 
-    // Configuration
-    cfg := env.ProductionConfig()
-    cfg.AuditEnabled = true
-    cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
+	// Configuration
+	cfg := env.ProductionConfig()
+	cfg.AuditEnabled = true
+	cfg.AuditHandler = env.NewChannelAuditHandler(auditChan)
 
-    loader, _ := env.New(cfg)
-    defer loader.Close()
+	loader, _ := env.New(cfg)
 
-    // Normal usage...
+	// Normal usage...
+
+	// ChannelAuditHandler does not own the channel: loader.Close() does not
+	// close auditChan — the caller must close it to send EOF to the consumer
+	loader.Close()
+	close(auditChan)
+
+	// Wait for the consumer goroutine to drain remaining events
+	<-done
 }
 
 func processAuditEvents(ch chan env.AuditEvent) {
-    file, _ := os.OpenFile("/var/log/app/audit.log",
-        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-    defer file.Close()
+	file, _ := os.OpenFile("/var/log/app/audit.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	defer file.Close()
 
-    encoder := json.NewEncoder(file)
+	encoder := json.NewEncoder(file)
 
-    for event := range ch {
-        // Can add filtering, aggregation, etc.
-        if event.Action == env.ActionError {
-            log.Printf("Audit error: %+v", event)
-        }
+	for event := range ch {
+		// Can add filtering, aggregation, etc.
+		if event.Action == env.ActionError {
+			log.Printf("Audit error: %+v", event)
+		}
 
-        encoder.Encode(event)
-    }
+		encoder.Encode(event)
+	}
 }
 ```
+
+The key shutdown sequence: `ChannelAuditHandler` does **not** own the channel — its `Close()` is a no-op, so the caller must `close(auditChan)` for the `for range` consumer to see EOF; sends block when the buffer is full. If you prefer a handler that manages the channel lifecycle itself (`Close()` closes the channel; consumers receive via `Channel()`), see CloseableChannelHandler under "More Built-in Handlers" below.
 
 ---
 
@@ -423,37 +427,30 @@ func main() {
 
 ### NopAuditHandler (no-op)
 
-Discards all audit events — useful for tests or temporarily silencing audit output:
+Discards all audit events — useful for tests or temporarily silencing audit output. See [NopAuditHandler above](#nopaudithandler) for usage.
 
-<!-- check-code: skip -->
-```go
-cfg := env.DefaultConfig()
-cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewNopAuditHandler()
-```
+## Audit Actions
 
-## Audit Actions (AuditAction)
+Audit events are categorized by action (type `AuditAction`). Custom handlers can filter the event types they care about using the `AuditAction` constants:
 
-Audit events are categorized by action. Custom handlers can filter the event types they care about using the `AuditAction` constants:
-
-| Constant | Meaning |
-|----------|---------|
-| `ActionLoad` | File loading |
-| `ActionParse` | env/JSON/YAML file parsing |
-| `ActionGet` | Variable retrieval (including type parse-failure records) |
-| `ActionSet` | Variable set, applied to process environment, or skipped by policy |
-| `ActionDelete` | Variable deletion |
-| `ActionValidate` | Validation operations |
-| `ActionExpand` | Variable expansion |
-| `ActionSecurity` | Security events (path validation failures, forbidden keys, etc.) |
-| `ActionError` | Error conditions |
-| `ActionFileAccess` | File system access |
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `ActionLoad` | `load` | File loading |
+| `ActionParse` | `parse` | env/JSON/YAML file parsing |
+| `ActionGet` | `get` | Variable retrieval (including type parse-failure records) |
+| `ActionSet` | `set` | Variable set, applied to process environment, or skipped by policy |
+| `ActionDelete` | `delete` | Variable deletion |
+| `ActionValidate` | `validate` | Validation operations |
+| `ActionExpand` | `expand` | Variable expansion |
+| `ActionSecurity` | `security` | Security events (path validation failures, forbidden keys, etc.) |
+| `ActionError` | `error` | Error conditions |
+| `ActionFileAccess` | `file_access` | File system access |
 
 `AuditEvent` is a structured event (timestamp, action, key, reason, success/failure, duration, and more). Sensitive keys are masked by `MaskKey` into `[MASKED:N chars]` (N = key length) before entering the event; non-sensitive keys are kept as-is.
 
 ## Related Documentation
 
-- [Security Overview](/en/env/security/) - Security architecture and core features
-- [Production Checklist](/en/env/security/production-checklist) - Audit configuration checks
-- [Interfaces](/en/env/api-reference/interfaces) - AuditLogger interface
-- [Component Factory](/en/env/api-reference/factory) - Audit handler factories
+- [Security Overview](../security/) - Security architecture and core features
+- [Production Checklist](../security/production-checklist) - Audit configuration checks
+- [Interfaces](../api-reference/interfaces) - AuditLogger interface
+- [Component Factory](../api-reference/factory) - Audit handler factories

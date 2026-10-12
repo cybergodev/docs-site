@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Data Types"
 title: "Types - CyberGo html | Data Type Reference"
-description: "CyberGo html data types: field reference for Result, ImageInfo, LinkInfo, LinkResource, VideoInfo, AudioInfo, Statistics, BatchResult, plus custom MarshalJSON."
+description: "CyberGo html data types: fields of Result, ImageInfo, LinkInfo, LinkResource, VideoInfo, AudioInfo, Statistics, BatchResult, NodeAttr, plus custom MarshalJSON."
 sidebar_position: 2
 ---
 
@@ -25,9 +25,23 @@ type Result struct {
 }
 ```
 
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Result.Text` | `string` | Extracted plain-text body |
+| `Result.Title` | `string` | Document title (`<title>`; falls back to the first `<h1>`/`<h2>` when missing) |
+| `Result.Images` | `[]ImageInfo` | Images in document order; empty when `PreserveImages=false` |
+| `Result.Links` | `[]LinkInfo` | Links in document order; empty when `PreserveLinks=false` |
+| `Result.Videos` | `[]VideoInfo` | Extracted video sources; empty when `PreserveVideos=false` |
+| `Result.Audios` | `[]AudioInfo` | Extracted audio sources; empty when `PreserveAudios=false` |
+| `Result.ProcessingTime` | `time.Duration` | Wall-clock time of this extraction (`processing_time_ms` in JSON output) |
+| `Result.WordCount` | `int` | Word count of `Text` (whitespace tokenization; CJK characters counted one by one) |
+| `Result.ReadingTime` | `time.Duration` | Reading time estimated from `WordCount` at 200 words per minute (`reading_time_ms` in JSON output) |
+
 ### MarshalJSON
 
-Custom JSON serialization. `ProcessingTime` and `ReadingTime` have `json:"-"` tags (standard serialization skips them), but the custom `MarshalJSON()` method includes them as millisecond values.
+Custom JSON serialization is implemented by `Result.MarshalJSON`: `ProcessingTime` and `ReadingTime` carry `json:"-"` tags (standard serialization skips them), but `Result.MarshalJSON` emits them as millisecond values.
 
 ```go
 func (r *Result) MarshalJSON() ([]byte, error)
@@ -41,7 +55,7 @@ This is **intentional**: the JSON format is designed for external consumption (e
 
 ## ImageInfo
 
-Image information.
+Element type of `Result.Images` (`[]ImageInfo`). `ImageInfo` holds the extraction information of a single `<img>`.
 
 ```go
 type ImageInfo struct {
@@ -54,6 +68,18 @@ type ImageInfo struct {
     Position     int    `json:"position"`      // Position in the document
 }
 ```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ImageInfo.URL` | `string` | Image URL (`src` attribute) |
+| `ImageInfo.Alt` | `string` | Alternative text (`alt` attribute) |
+| `ImageInfo.Title` | `string` | Advisory title (`title` attribute) |
+| `ImageInfo.Width` | `string` | Raw width attribute (not parsed into a number) |
+| `ImageInfo.Height` | `string` | Raw height attribute (not parsed into a number) |
+| `ImageInfo.IsDecorative` | `bool` | `true` when `Alt` is empty (decorative image) |
+| `ImageInfo.Position` | `int` | 1-based index in the extracted content (`0` when not located) |
 
 ### Field Semantics
 
@@ -72,7 +98,7 @@ type ImageInfo struct {
 
 ## LinkInfo
 
-Link information.
+Element type of `Result.Links` (`[]LinkInfo`). `LinkInfo` holds the extraction information of a single `<a>`.
 
 ```go
 type LinkInfo struct {
@@ -84,6 +110,17 @@ type LinkInfo struct {
     Position   int    `json:"position"`    // Position in the document
 }
 ```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `LinkInfo.URL` | `string` | Link URL (`href` attribute) |
+| `LinkInfo.Text` | `string` | Visible link text (including text inside nested tags) |
+| `LinkInfo.Title` | `string` | Advisory title (`title` attribute, not the link text) |
+| `LinkInfo.IsExternal` | `bool` | Whether the link is external |
+| `LinkInfo.IsNoFollow` | `bool` | `true` when `rel` contains `nofollow` |
+| `LinkInfo.Position` | `int` | 1-based index in the extracted content (invalid `<a>` still consume index numbers, so values may be non-contiguous) |
 
 ### Field Semantics
 
@@ -98,7 +135,7 @@ type LinkInfo struct {
 
 ## VideoInfo
 
-Video information.
+Element type of `Result.Videos` (`[]VideoInfo`). `VideoInfo` holds the extraction information of a single video source.
 
 ```go
 type VideoInfo struct {
@@ -110,6 +147,17 @@ type VideoInfo struct {
     Duration string `json:"duration"` // Duration
 }
 ```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `VideoInfo.URL` | `string` | Video source URL |
+| `VideoInfo.Type` | `string` | Video type (file-container MIME or `"embed"`; see the value rules below) |
+| `VideoInfo.Poster` | `string` | Poster frame URL of the `<video>` (`poster` attribute) |
+| `VideoInfo.Width` | `string` | Raw width attribute (not parsed into a number) |
+| `VideoInfo.Height` | `string` | Raw height attribute (not parsed into a number) |
+| `VideoInfo.Duration` | `string` | Raw duration attribute (not parsed into a number) |
 
 ### Type Field Value Rules
 
@@ -125,7 +173,7 @@ Video extraction runs in three steps — raw HTML scan, DOM traversal, regex fal
 
 ## AudioInfo
 
-Audio information.
+Element type of `Result.Audios` (`[]AudioInfo`). `AudioInfo` holds the extraction information of a single audio source.
 
 ```go
 type AudioInfo struct {
@@ -134,6 +182,14 @@ type AudioInfo struct {
     Duration string `json:"duration"` // Duration
 }
 ```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `AudioInfo.URL` | `string` | Audio source URL |
+| `AudioInfo.Type` | `string` | Audio type (file-container MIME; see the value rules below) |
+| `AudioInfo.Duration` | `string` | Raw duration attribute (not parsed into a number) |
 
 ### Type Field Value Rules
 
@@ -148,7 +204,7 @@ An OGG container can carry video or audio; a `.ogg` URL will appear in both `Vid
 
 ## LinkResource
 
-Link resource (used by link extraction API).
+Link resource, the element type of the `ExtractAllLinks` function family and `GroupLinksByType`.
 
 ```go
 type LinkResource struct {
@@ -158,25 +214,43 @@ type LinkResource struct {
 }
 ```
 
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `LinkResource.URL` | `string` | Resource URL; resolved into an absolute address against `BaseURL` when `ResolveRelativeURLs=true` |
+| `LinkResource.Title` | `string` | Human-readable resource label |
+| `LinkResource.Type` | `string` | Resource type category (`link`/`image`/`video`/`audio`/`css`/`js`/`icon`/`media`) |
+
 For the HTML tag sources and control switches corresponding to each `Type` value, see [Link Extraction](../modules/links#link-type-reference).
 
 ## Statistics
 
-Processing statistics.
+Processing statistics, returned by `Processor.GetStatistics`.
 
 ```go
 type Statistics struct {
-    TotalProcessed    int64         // Total processed count
-    CacheHits         int64         // Cache hit count
-    CacheMisses       int64         // Cache miss count
-    ErrorCount        int64         // Error count
+    TotalProcessed     int64         // Total processed count
+    CacheHits          int64         // Cache hit count
+    CacheMisses        int64         // Cache miss count
+    ErrorCount         int64         // Error count
     AverageProcessTime time.Duration // Average processing time
 }
 ```
 
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Statistics.TotalProcessed` | `int64` | Number of extractions that completed without error (including cache hits) |
+| `Statistics.CacheHits` | `int64` | Number of times served directly from the cache |
+| `Statistics.CacheMisses` | `int64` | Number of misses requiring full processing |
+| `Statistics.ErrorCount` | `int64` | Number of extractions that returned an error |
+| `Statistics.AverageProcessTime` | `time.Duration` | Average wall-clock time per extraction |
+
 ## BatchResult
 
-Batch processing result.
+Batch processing result, the return type of the `ExtractBatch` function family and methods.
 
 ```go
 type BatchResult struct {
@@ -188,9 +262,21 @@ type BatchResult struct {
 }
 ```
 
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `BatchResult.Results` | `[]*Result` | Extraction results in one-to-one correspondence with the input; failed/cancelled items are `nil` |
+| `BatchResult.Errors` | `[]error` | Errors in one-to-one correspondence with the input; successful items are `nil` |
+| `BatchResult.Success` | `int` | Count of successful items |
+| `BatchResult.Failed` | `int` | Count of failed items |
+| `BatchResult.Cancelled` | `int` | Count of items left unprocessed due to context cancellation |
+
+For field semantics, cancellation behavior, and input validation see [Batch Processing](../modules/batch).
+
 ## NodeAttr
 
-HTML node attribute.
+HTML node attribute, the element type of `ContentNode.Attrs` (`[]NodeAttr`). `NodeAttr` has only two fields, `Key` and `Value`.
 
 ```go
 type NodeAttr struct {
@@ -198,3 +284,10 @@ type NodeAttr struct {
     Value string // Attribute value
 }
 ```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `NodeAttr.Key` | `string` | Attribute name |
+| `NodeAttr.Value` | `string` | Attribute value |

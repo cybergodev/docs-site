@@ -1,8 +1,8 @@
 ---
 sidebar_label: "Request & Response"
 title: "Request and Response - CyberGo HTTPC | Options & Responses"
-description: "HTTPC request and response guide: request bodies, WithQuery parameters, cookies and auth options, Result parsing, streaming uploads, and decompression limits."
-sidebar_position: 3
+description: "HTTPC request/response guide: package functions, WithJSON/WithForm/WithBody, WithQuery, cookies/auth, Result parsing, streaming uploads, size limits."
+sidebar_position: 20
 ---
 
 # Request and Response
@@ -203,13 +203,13 @@ Both options validate their input: `WithBearerToken` fails on an empty token or 
 
 ```go
 result, err := client.Get(url,
-    httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"}),
+    httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc"}}),
     httpc.WithCookieMap(map[string]string{"session": "abc", "lang": "en"}),
     httpc.WithCookieString("session=abc; lang=en"),
 )
 ```
 
-For bulk setting, `WithCookies` takes a slice in a single call and is more efficient than repeated `WithCookie` (one pre-allocation, one validation pass):
+For bulk setting, `WithCookies` takes the whole slice in a single call (one pre-allocation, one validation pass):
 
 ```go
 result, err := client.Get(url, httpc.WithCookies([]http.Cookie{
@@ -222,7 +222,7 @@ To validate cookie security attributes, `WithSecureCookie` **must come after all
 
 ```go
 result, err := client.Get(url,
-    httpc.WithCookie(http.Cookie{Name: "session", Value: "abc"}),
+    httpc.WithCookies([]http.Cookie{{Name: "session", Value: "abc"}}),
     httpc.WithSecureCookie(httpc.StrictCookieSecurityConfig()), // requires Secure/HttpOnly/SameSite=Strict
 )
 ```

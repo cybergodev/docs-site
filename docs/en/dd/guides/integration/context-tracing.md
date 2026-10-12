@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Distributed Tracing"
-title: "Distributed Tracing Integration - CyberGo DD | Context & Tracing Guide"
-description: "CyberGo DD distributed-tracing integration guide: TraceID, SpanID, RequestID context propagation, ContextExtractor custom extractors, HTTP middleware integration, request-scoped logging, and integration with OpenTelemetry distributed-tracing systems."
+title: "Distributed Tracing - CyberGo DD | Context & Tracing Guide"
+description: "CyberGo DD distributed tracing: TraceID/SpanID/RequestID propagation, custom ContextExtractor, HTTP middleware, and request-scoped logging in microservices."
 sidebar_position: 1
 ---
 
@@ -40,7 +40,7 @@ requestID := dd.GetRequestID(ctx) // "req-789"
 ### Why It Cannot Be "Auto-extracted" Into Logs
 
 :::warning Current Limitation
-DD's log methods (`Info`, `InfoWith`, etc.) do not directly accept a `context.Context` parameter. Context extractors are invoked internally with `context.Background()` (`logger.go:1414`), so they cannot directly read TraceID and similar values from the request-scoped context. The recommended approach is to pass fields manually (see HTTP middleware integration below).
+DD's log methods (`Info`, `InfoWith`, etc.) do not directly accept a `context.Context` parameter. Context extractors are invoked internally with `context.Background()`, so they cannot directly read TraceID and similar values from the request-scoped context. The recommended approach is to pass fields manually (see HTTP middleware integration below).
 :::
 
 ```go

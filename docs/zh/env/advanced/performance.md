@@ -1,7 +1,7 @@
 ---
 sidebar_label: "性能优化"
 title: "性能优化 - CyberGo env | 高并发读写调优"
-description: "CyberGo env 性能优化指南，详解 RWMutex 读写锁与分片锁的并发安全机制、sync.Pool 对象池复用显著减少分配、mlock 内存锁定开销权衡与大文件流式解析，附基准测试对比、并发吞吐量分析与 MaxFileSize/MaxVariables 参数调优建议。"
+description: "CyberGo env 性能优化指南，详解 RWMutex 读写锁与分片锁的并发安全机制、sync.Pool 对象池复用减少分配、mlock 内存锁定开销权衡与大文件流式解析，附基准测试与 MaxFileSize/MaxVariables 调优建议。"
 sidebar_position: 1
 ---
 
@@ -185,11 +185,10 @@ if env.IsMemoryLockSupported() {
 | Linux | ✅ |
 | macOS | ✅ |
 | Windows | ✅ |
-| FreeBSD | ✅ |
-| wasm | ❌ |
+| 其他平台（FreeBSD/其他 BSD、Solaris、WASM 等） | ❌ |
 
 ::: tip 详见
-[SecureValue API - 内存锁定配置](/zh/env/api-reference/secure-value#内存锁定配置) 获取完整配置说明。
+[SecureValue API - 内存锁定配置](../api-reference/secure-value#内存锁定配置) 获取完整配置说明。
 :::
 
 ### 严格模式
@@ -428,20 +427,19 @@ loader.Close()  // 主 goroutine 关闭
 
 ### 全局加载器重置
 
-```go
-// 并发不安全：不要在运行时调用
-env.ResetDefaultLoader()
+`ResetDefaultLoader` 本身是并发安全的（源码注释明示），返回关闭旧 loader 的 `error`，应检查处理。但仍建议仅在测试或启动阶段调用：重置后到下一次 `Load` 之前，全局函数会短暂回到未初始化状态（返回 `ErrNotInitialized`），运行中重置会让依赖全局加载器的代码撞上这一窗口。
 
-// 安全：仅在测试或启动时调用
-func init() {
-    env.ResetDefaultLoader()
-    env.Load(".env")
+```go
+// 并发安全，但建议仅在测试或启动阶段调用；返回的 error 应处理
+if err := env.ResetDefaultLoader(); err != nil {
+    fmt.Printf("重置默认加载器失败: %v\n", err)
 }
+env.Load(".env")
 ```
 
 ## 内部并发实现深读
 
-本节从源码层面说明库的并发优化手段，帮助评估与调优。
+本节从源码层面说明库的并发优化手段，帮助评估与调优。文中引用的量化数字（如 23.6% 原子操作热点、终结器约占创建成本 60%）来自 v1.2.2/v1.2.3 的基准测试与性能剖析（见 CHANGES.md）。
 
 ### 分片存储（secureMap）
 
@@ -472,6 +470,6 @@ func init() {
 
 ## 相关文档
 
-- [SecureValue API](/zh/env/api-reference/secure-value) - 安全值处理和内存锁定
-- [Loader API](/zh/env/api-reference/loader) - 加载器方法
-- [测试场景](/zh/env/guides/testing) - 基准测试示例
+- [SecureValue API](../api-reference/secure-value) - 安全值处理和内存锁定
+- [Loader API](../api-reference/loader) - 加载器方法
+- [测试场景](../guides/testing) - 基准测试示例

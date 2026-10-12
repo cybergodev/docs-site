@@ -35,99 +35,99 @@ type Scorer interface {
 package main
 
 import (
-    "fmt"
-    "log"
-    "strings"
+	"fmt"
+	"log"
+	"strings"
 
-    "github.com/cybergodev/html"
+	"github.com/cybergodev/html"
 )
 
 // blogScorer 针对博客类网站优化的评分器
 type blogScorer struct{}
 
 func (s blogScorer) Score(node html.ContentNode) int {
-    if node == nil {
-        return 0
-    }
+	if node == nil {
+		return 0
+	}
 
-    score := 0
-    class := strings.ToLower(node.AttrValue("class"))
-    id := strings.ToLower(node.AttrValue("id"))
-    tag := node.Data()
+	score := 0
+	class := strings.ToLower(node.AttrValue("class"))
+	id := strings.ToLower(node.AttrValue("id"))
+	tag := node.Data()
 
-    // 正面信号：文章相关 class/id
-    if containsAny(class, "article", "post", "content", "entry") {
-        score += 50
-    }
-    if containsAny(id, "article", "post", "content") {
-        score += 60
-    }
+	// 正面信号：文章相关 class/id
+	if containsAny(class, "article", "post", "content", "entry") {
+		score += 50
+	}
+	if containsAny(id, "article", "post", "content") {
+		score += 60
+	}
 
-    // 语义化标签加分
-    switch tag {
-    case "article":
-        score += 80
-    case "main":
-        score += 70
-    case "section":
-        score += 30
-    }
+	// 语义化标签加分
+	switch tag {
+	case "article":
+		score += 80
+	case "main":
+		score += 70
+	case "section":
+		score += 30
+	}
 
-    // 负面信号
-    if containsAny(class, "sidebar", "comment", "footer", "nav", "menu") {
-        score -= 50
-    }
-    if containsAny(id, "sidebar", "comments", "footer") {
-        score -= 60
-    }
+	// 负面信号
+	if containsAny(class, "sidebar", "comment", "footer", "nav", "menu") {
+		score -= 50
+	}
+	if containsAny(id, "sidebar", "comments", "footer") {
+		score -= 60
+	}
 
-    return score
+	return score
 }
 
 func (s blogScorer) ShouldRemove(node html.ContentNode) bool {
-    if node == nil {
-        return false
-    }
+	if node == nil {
+		return false
+	}
 
-    // 移除导航和页脚
-    switch node.Data() {
-    case "nav", "footer", "header":
-        return true
-    }
+	// 移除导航和页脚
+	switch node.Data() {
+	case "nav", "footer", "header":
+		return true
+	}
 
-    // 移除广告和评论区域
-    class := strings.ToLower(node.AttrValue("class"))
-    return containsAny(class, "ad", "advertisement", "comment", "social-share")
+	// 移除广告和评论区域
+	class := strings.ToLower(node.AttrValue("class"))
+	return containsAny(class, "ad", "advertisement", "comment", "social-share")
 }
 
 func containsAny(s string, keywords ...string) bool {
-    for _, kw := range keywords {
-        if strings.Contains(s, kw) {
-            return true
-        }
-    }
-    return false
+	for _, kw := range keywords {
+		if strings.Contains(s, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
-    cfg := html.DefaultConfig()
-    cfg.Scorer = blogScorer{}
+	cfg := html.DefaultConfig()
+	cfg.Scorer = blogScorer{}
 
-    p, err := html.New(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer p.Close()
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer p.Close()
 
-    data := []byte(`<html><body>
+	data := []byte(`<html><body>
         <article class="post"><h1>测试文章</h1><p>正文内容</p></article>
     </body></html>`)
 
-    result, err := p.Extract(data)
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(result.Text)
+	result, err := p.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.Text)
 }
 ```
 

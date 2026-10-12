@@ -1,8 +1,8 @@
 ---
 sidebar_label: "基础示例"
 title: "基础用法 - CyberGo HTTPC | 可运行示例"
-description: "HTTPC 基础用法示例集：GET/POST/PUT/DELETE/HEAD/PATCH 全方法示例、XML 与二进制请求体、查询参数与认证、响应状态判定与 Result 三元组、DefaultConfig 自定义配置、代理、中间件与带进度回调的文件下载完整可运行代码。"
-sidebar_position: 1
+description: "HTTPC 基础用法示例集：GET/POST/PUT/DELETE/HEAD/PATCH 全方法、XML 与二进制请求体、查询参数与认证、响应状态判定与 Result 三元组、DefaultConfig 配置、代理、中间件与进度回调文件下载可运行示例。"
+sidebar_position: 10
 ---
 
 # 基础用法
@@ -15,20 +15,20 @@ sidebar_position: 1
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    result, err := httpc.Get("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := httpc.Get("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.StatusCode()) // 200
-    fmt.Println(result.Body())
+	fmt.Println(result.StatusCode()) // 200
+	fmt.Println(result.Body())
 }
 ```
 
@@ -197,61 +197,61 @@ PUT、DELETE、HEAD、PATCH、OPTIONS 与通用 `Request` 全部可用。下面�
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/cybergodev/httpc"
+	"github.com/cybergodev/httpc"
 )
 
 func main() {
-    client, err := httpc.NewDefault()
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
 
-    // PUT：整体替换资源
-    put, err := client.Put("https://httpbin.org/put",
-        httpc.WithJSON(map[string]string{"name": "Jane", "status": "active"}),
-        httpc.WithBearerToken("your-token"),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("PUT:", put.StatusCode()) // 输出：PUT: 200
+	// PUT：整体替换资源
+	put, err := client.Put("https://httpbin.org/put",
+		httpc.WithJSON(map[string]string{"name": "Jane", "status": "active"}),
+		httpc.WithBearerToken("your-token"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("PUT:", put.StatusCode()) // 输出：PUT: 200
 
-    // DELETE：删除资源
-    del, err := client.Delete("https://httpbin.org/delete",
-        httpc.WithHeader("X-Request-ID", "delete-123"),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("DELETE:", del.StatusCode()) // 输出：DELETE: 200
+	// DELETE：删除资源
+	del, err := client.Delete("https://httpbin.org/delete",
+		httpc.WithHeader("X-Request-ID", "delete-123"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("DELETE:", del.StatusCode()) // 输出：DELETE: 200
 
-    // HEAD：只取响应头（无响应体），适合探测资源存在性与大小
-    head, err := client.Head("https://httpbin.org/get")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("HEAD:", head.StatusCode())                                 // 输出：HEAD: 200
-    fmt.Println("Content-Type:", head.Response.Headers.Get("Content-Type")) // 输出：Content-Type: application/json
+	// HEAD：只取响应头（无响应体），适合探测资源存在性与大小
+	head, err := client.Head("https://httpbin.org/get")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("HEAD:", head.StatusCode())                                 // 输出：HEAD: 200
+	fmt.Println("Content-Type:", head.Response.Headers.Get("Content-Type")) // 输出：Content-Type: application/json
 
-    // PATCH：部分更新（只提交变化的字段）
-    patch, err := client.Patch("https://httpbin.org/patch",
-        httpc.WithJSON(map[string]string{"status": "inactive"}),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("PATCH:", patch.StatusCode()) // 输出：PATCH: 200
+	// PATCH：部分更新（只提交变化的字段）
+	patch, err := client.Patch("https://httpbin.org/patch",
+		httpc.WithJSON(map[string]string{"status": "inactive"}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("PATCH:", patch.StatusCode()) // 输出：PATCH: 200
 
-    // OPTIONS：探测服务端允许的方法（CORS 预检同款）
-    opt, err := client.Options("https://httpbin.org/post")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("OPTIONS:", opt.StatusCode()) // 输出：OPTIONS: 200
+	// OPTIONS：探测服务端允许的方法（CORS 预检同款）
+	opt, err := client.Options("https://httpbin.org/post")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("OPTIONS:", opt.StatusCode()) // 输出：OPTIONS: 200
 }
 ```
 
@@ -312,11 +312,11 @@ switch {
 case result.IsSuccess():     // 2xx
     fmt.Println("成功")
 case result.IsRedirect():    // 3xx（未跟随重定向时）
-    fmt.Println("重定向到:", result.Response.Headers.Get("Location"))
+    fmt.Println("重定向到：", result.Response.Headers.Get("Location"))
 case result.IsClientError(): // 4xx
     fmt.Println("客户端错误，检查请求参数/认证")
     if result.StatusCode() == http.StatusTooManyRequests {
-        fmt.Println("被限流，稍后重试:", result.Response.Headers.Get("Retry-After"))
+        fmt.Println("被限流，稍后重试：", result.Response.Headers.Get("Retry-After"))
     }
 case result.IsServerError(): // 5xx
     fmt.Println("服务端错误，重试可能有帮助")
