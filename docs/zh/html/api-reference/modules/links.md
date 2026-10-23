@@ -2,7 +2,7 @@
 sidebar_label: "链接提取"
 title: "链接提取 - CyberGo html | 资源链接提取 API"
 description: "CyberGo html 链接提取 API 参考：ExtractAllLinks 系列与 GroupLinksByType 详解，不应用 HTML 清洗、完整提取脚本、样式、图片等八类资源链接并按类型分组，支持 Include 字段配置过滤、相对 URL 解析与 BaseURL 自动检测，结果按 URL 排序去重，适用于爬虫与资源收集场景。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 链接提取
@@ -181,3 +181,8 @@ func main() {
 	}
 }
 ```
+
+## 相关文档
+
+- [链接提取实战](../../guides/core-features/link-extraction) — 链接提取的场景化用法
+- [配置](../core/config) — `Include*`/`BaseURL` 等链接过滤字段

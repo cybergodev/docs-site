@@ -2,7 +2,7 @@
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo html | Get Started in 5 Minutes"
 description: "CyberGo html quick start in 5 minutes: install on Go 1.26+, extraction, four Config presets, text/Markdown/JSON output, and concurrency-safe Processor use."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Quick Start

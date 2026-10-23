@@ -2,7 +2,7 @@
 sidebar_label: "Security"
 title: "Security - CyberGo html | Multi-layer Security API Reference"
 description: "CyberGo html security API: sanitization, MaxInputSize, MaxDepth, path traversal protection, AllowedBaseDir sandbox, HighSecurityConfig, InputError types."
-sidebar_position: 5
+sidebar_position: 50
 ---
 
 # Security

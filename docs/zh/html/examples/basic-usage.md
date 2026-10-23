@@ -2,7 +2,7 @@
 sidebar_label: "基础用法"
 title: "基础用法 - CyberGo html | 典型场景代码速查"
 description: "CyberGo html 基础用法场景代码速查页：正文提取与纯文本输出、文件读取、Markdown 与 JSON 转换、链接分组、媒体信息、批量并发与超时控制六类典型场景，每类附完整可编译的最小示例与详解入口，新手可直接抄代码上手并按需深入学习。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 基础用法

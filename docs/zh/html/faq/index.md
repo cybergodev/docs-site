@@ -2,7 +2,7 @@
 sidebar_label: "常见问题"
 title: "常见问题 - CyberGo html | 高频问题解答"
 description: "CyberGo html 常见问题高频解答：包函数与 Processor 如何选择、15+ 编码自动检测原理、输入大小限制与 DOM 深度防护、空文本结果排查、GetStatistics 统计监控启用、审计日志配置与缓存命中率优化等典型疑问的解决方案。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 常见问题
@@ -128,7 +128,7 @@ func (s *MyScorer) Score(node html.ContentNode) int {
 }
 
 func (s *MyScorer) ShouldRemove(node html.ContentNode) bool {
-    // 自定义移除逻辑
+    // 预留：当前版本不被库调用
     return false
 }
 
@@ -140,7 +140,7 @@ cfg.Scorer = &MyScorer{}
 
 ## 自定义 Scorer 是否需要并发安全？
 
-需要。当单个 Processor 被多个并发 `Extract` 调用共享时，`Score`/`ShouldRemove` 会从多个 goroutine 同时触发。自定义 Scorer 若持有可变状态（缓存、计数器），必须自行加锁同步。库内置的默认评分器（内部实现，不导出）只读、天然并发安全。
+需要。当单个 Processor 被多个并发 `Extract` 调用共享时，`Score` 会从多个 goroutine 同时触发（`ShouldRemove` 为接口预留方法，当前版本不被库调用）。自定义 Scorer 若持有可变状态（缓存、计数器），必须自行加锁同步。库内置的默认评分器（内部实现，不导出）只读、天然并发安全。
 
 :::warning 无状态优先
 推荐将自定义 Scorer 设计为无状态（仅依据传入的 `ContentNode` 计算），既避免锁开销，也从根本上消除并发问题。需要聚合统计时，把结果写回 `Processor` 的统计通道而非 Scorer 自身。

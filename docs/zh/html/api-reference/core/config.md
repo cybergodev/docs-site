@@ -2,7 +2,7 @@
 sidebar_label: "配置"
 title: "配置 - CyberGo html | Config 字段详解"
 description: "CyberGo html Config 配置结构体字段详解：覆盖资源管理、安全、内容提取、输出格式、链接提取与扩展六大类共 30 个字段，含 DefaultConfig 等四种预设配置、取值约束、零值语义与 Validate 验证方法，便于精准定制提取行为。"
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # 配置
@@ -191,7 +191,7 @@ err := cfg.Validate() // 返回 ConfigError
 
 ### 验证约束
 
-`Config.Validate` 对数值字段强制以下取值范围（违反时返回 `ConfigError`，可经 `errors.Is(err, html.ErrInvalidConfig)` 判断）：
+`Config.Validate` 对数值字段与格式字符串强制以下约束（违反时返回 `ConfigError`，可经 `errors.Is(err, html.ErrInvalidConfig)` 判断）：
 
 | 字段 | 约束 | 非法示例 |
 |------|------|----------|
@@ -208,3 +208,10 @@ err := cfg.Validate() // 返回 ConfigError
 | `TableFormat` | 空 / `markdown` / `html` | `"csv"` |
 
 格式字符串大小写不敏感且空值视为默认（`InlineImageFormat`/`InlineLinkFormat` → `none`，`TableFormat` → `markdown`）。`New()` 在创建 Processor 前会先调用 `Validate()`，因此无效配置不会产出可用的 Processor。
+
+## 相关文档
+
+- [配置实战](../../guides/core-features/configuration) — 预设选择与常见配置组合
+- [包函数](./functions) — 包级便捷函数参考
+- [Processor](./processor) — 配置的消费方与并发语义
+- [常量与错误](../types/constants) — 哨兵错误与错误类型

@@ -2,7 +2,7 @@
 sidebar_label: "Processor 复用与缓存"
 title: "Processor 复用与缓存 - CyberGo html | 复用指南"
 description: "CyberGo html Processor 复用与缓存指南：剖析包函数与 Processor 实例的核心区别及按场景选择策略、sync.Pool 内部复用机制、缓存 Key 生成与策略配置、GetStatistics 命中率监控，并给出 Web 服务单例、爬虫批量与定期维护等最佳实践。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Processor 复用与缓存

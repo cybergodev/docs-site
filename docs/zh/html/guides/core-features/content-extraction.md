@@ -2,7 +2,7 @@
 sidebar_label: "内容提取实战"
 title: "内容提取实战 - CyberGo html | 提取流程指南"
 description: "CyberGo html 内容提取实战指南：详解完整提取流程（输入校验、编码检测、DOM 解析、安全清洗、文章智能识别与格式化）、候选节点评分算法原理、Result 结构体各字段含义、自定义 Scorer 评分器与编码自动检测机制及最佳实践。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 内容提取实战
@@ -165,7 +165,7 @@ func (s myScorer) Score(node html.ContentNode) int {
 }
 
 func (s myScorer) ShouldRemove(node html.ContentNode) bool {
-    // 返回 true 表示移除该节点
+    // 预留：当前版本不被库调用（实现以满足接口要求）
     return node.Data() == "nav" || node.Data() == "footer"
 }
 ```

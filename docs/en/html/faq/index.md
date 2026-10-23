@@ -2,7 +2,7 @@
 sidebar_label: "FAQ"
 title: "FAQ - CyberGo html | Top Questions & Answers"
 description: "CyberGo html FAQ: package functions vs Processor, 15+ encoding detection, input/depth limits, empty-text fixes, GetStatistics, audit setup, cache hit-rate."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # FAQ
@@ -128,7 +128,7 @@ func (s *MyScorer) Score(node html.ContentNode) int {
 }
 
 func (s *MyScorer) ShouldRemove(node html.ContentNode) bool {
-    // Custom removal logic
+    // Reserved: not called by the library in the current version
     return false
 }
 
@@ -140,7 +140,7 @@ See [Interfaces](../api-reference/types/interfaces) for details.
 
 ## Does a custom Scorer need to be concurrent-safe?
 
-Yes. When a single Processor is shared by multiple concurrent `Extract` calls, `Score`/`ShouldRemove` are invoked from multiple goroutines simultaneously. A custom Scorer that holds mutable state (caches, counters) must handle its own locking and synchronization. The library's built-in default scorer (internal implementation, not exported) is read-only and inherently concurrent-safe.
+Yes. When a single Processor is shared by multiple concurrent `Extract` calls, `Score` is invoked from multiple goroutines simultaneously (`ShouldRemove` is a reserved interface method and is not called by the current library version). A custom Scorer that holds mutable state (caches, counters) must handle its own locking and synchronization. The library's built-in default scorer (internal implementation, not exported) is read-only and inherently concurrent-safe.
 
 :::warning Stateless preferred
 We recommend designing custom Scorers to be stateless (computing only from the incoming `ContentNode`). This avoids lock overhead and eliminates concurrency issues at the root. When you need aggregated statistics, write the results back to the `Processor`'s statistics channel rather than to the Scorer itself.

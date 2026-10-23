@@ -2,7 +2,7 @@
 sidebar_label: "Interfaces"
 title: "Interfaces - CyberGo html | Core Interface Reference"
 description: "CyberGo html core interfaces: Extractor, StatsProvider, ContentNode, Scorer, and AuditSink for extension, custom implementations, integration, and testing."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Interfaces
@@ -210,7 +210,7 @@ Content scoring algorithm interface for customizing article recognition strategi
 ```go
 type Scorer interface {
     Score(node ContentNode) int          // Calculate node relevance score
-    ShouldRemove(node ContentNode) bool  // Determine if node should be removed
+    ShouldRemove(node ContentNode) bool  // Reserved: not called by the library in the current version
 }
 ```
 
@@ -219,10 +219,10 @@ type Scorer interface {
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `Scorer.Score` | `Score(node ContentNode) int` | Compute the content-relevance score of a node |
-| `Scorer.ShouldRemove` | `ShouldRemove(node ContentNode) bool` | Decide whether a node should be removed from the content tree |
+| `Scorer.ShouldRemove` | `ShouldRemove(node ContentNode) bool` | Reserved method of the `Scorer` interface: custom Scorers must implement it to satisfy the interface, but the current library version only calls `Score`, so its return value has no effect (it can be implemented to always return `false`). To exclude nodes, return a low/negative score from `Score` |
 
 :::warning
-When a single `Processor` is shared across concurrent `Extract` calls, `Score`/`ShouldRemove` may be invoked **from multiple goroutines simultaneously**. Therefore, any `Scorer` implementation must **ensure its own concurrency safety**.
+When a single `Processor` is shared across concurrent `Extract` calls, `Score` may be invoked **from multiple goroutines simultaneously**. Therefore, any `Scorer` implementation must **ensure its own concurrency safety**. `ShouldRemove` is a reserved interface method and is not called by the current library version.
 
 The library's built-in default scorer is read-only and inherently concurrency-safe; **a custom `Scorer` that holds mutable state (such as a cache or counter) must perform its own locking and synchronization**.
 :::
@@ -238,7 +238,7 @@ func (s *MyScorer) Score(node html.ContentNode) int {
 }
 
 func (s *MyScorer) ShouldRemove(node html.ContentNode) bool {
-    // Custom removal logic
+    // Reserved: not called by the library in the current version
     return false
 }
 

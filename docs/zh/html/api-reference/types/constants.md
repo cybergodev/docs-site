@@ -2,7 +2,7 @@
 sidebar_label: "常量与错误"
 title: "常量与错误 - CyberGo html | 默认值与错误类型"
 description: "CyberGo html 常量与错误类型参考：汇总默认值常量（MaxInputSize、CacheTTL 等）、八种审计事件常量与三级审计级别、十个哨兵错误及 InputError、ConfigError、FileError 结构化错误的字段定义，支持 errors.Is 与 errors.As 精准判断，并解读批量上限等内部限制常量。"
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # 常量与错误

@@ -2,7 +2,7 @@
 sidebar_label: "编码检测实战"
 title: "编码检测实战 - CyberGo html | 字符编码自动识别指南"
 description: "CyberGo html 字符编码自动识别指南：从 HTML 字节识别编码并转 UTF-8，详解五级检测优先级（手动指定、UTF-8 快路径、BOM 与 meta 声明、统计算法采样、Windows-1252 兜底）、15+ 编码支持与别名归一化，附 GBK、Shift_JIS、Windows-1252 自动检测与 Config.Encoding 手动指定示例。"
-sidebar_position: 5
+sidebar_position: 50
 ---
 
 # 编码检测实战

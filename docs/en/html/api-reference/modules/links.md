@@ -2,7 +2,7 @@
 sidebar_label: "Link Extraction"
 title: "Link Extraction - CyberGo html | Resource Link API"
 description: "CyberGo html link extraction API: ExtractAllLinks family and GroupLinksByType for script, style, and image links, type grouping, filtering, URL dedup, sorting."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Link Extraction
@@ -181,3 +181,8 @@ func main() {
 	}
 }
 ```
+
+## Related Documentation
+
+- [Link Extraction](../../guides/core-features/link-extraction) — Scenario-based link extraction usage
+- [Config](../core/config) — Link filtering fields such as `Include*` and `BaseURL`

@@ -2,7 +2,7 @@
 sidebar_label: "Processor"
 title: "Processor - CyberGo html | Usage, Parameters & Examples"
 description: "CyberGo html Processor API: New, Extract method family, ClearCache, GetStatistics, Close lifecycle, cache and encoding-detector reuse for high-frequency calls."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Processor
@@ -46,7 +46,7 @@ A `Processor` can be safely shared across multiple goroutines without additional
 - **Immutable config**: `config` is immutable after `New()` (the `*Config` pointer is never reassigned or mutated), so format methods such as `ExtractToMarkdown` can safely make value copies to spawn a temporary Processor without any lock — format overrides never write back to the shared config.
 - **Statistics counters**: `TotalProcessed`/`CacheHits`/`CacheMisses`/`ErrorCount`/`totalProcessTime` all use `atomic` operations.
 - **Cache**: the internal cache carries its own lock and is safe to read and write. Cache behavior is observed and controlled entirely through the public API: `Config.MaxCacheEntries = 0` disables the cache, `ClearCache()` empties it, and `Statistics.CacheHits`/`CacheMisses` observe hit counts.
-- **Scorer**: the built-in default scorer (internal implementation, not exported) is read-only. **A custom `Scorer` must ensure its own concurrency safety** (e.g. by holding an internal lock), because a single Processor will invoke its `Score`/`ShouldRemove` from multiple goroutines during concurrent `Extract`.
+- **Scorer**: the built-in default scorer (internal implementation, not exported) is read-only. **A custom `Scorer` must ensure its own concurrency safety** (e.g. by holding an internal lock), because a single Processor will invoke its `Score` from multiple goroutines during concurrent `Extract` (`ShouldRemove` is a reserved interface method, not called by the current library version).
 :::
 
 ## Method Overview

@@ -2,7 +2,7 @@
 sidebar_label: "Constants & Errors"
 title: "Constants & Errors - CyberGo html | Defaults & Error Types"
 description: "CyberGo html constants and errors: MaxInputSize/CacheTTL defaults, audit event constants, sentinel errors, InputError/ConfigError/FileError for errors.Is/As."
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # Constants & Errors

@@ -2,7 +2,7 @@
 sidebar_label: "Performance"
 title: "Performance - CyberGo html | Throughput Guide"
 description: "CyberGo html performance: sync.Pool Processor reuse, cache hit-rate monitoring, batch concurrency, WorkerPoolSize/ProcessingTimeout tuning, and anti-patterns."
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # Performance

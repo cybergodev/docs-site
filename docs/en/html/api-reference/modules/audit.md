@@ -2,7 +2,7 @@
 sidebar_label: "Audit System"
 title: "Audit System - CyberGo html | Pluggable Audit API"
 description: "CyberGo html audit API: AuditConfig, 8 event types, info/warning/critical levels, AuditEntry, six sinks (Logger/Writer/Channel/Filtered/LevelFiltered/Multi)."
-sidebar_position: 4
+sidebar_position: 40
 ---
 
 # Audit System
@@ -302,3 +302,9 @@ for _, e := range entries {
     fmt.Printf("[%s] %s: %s\n", e.Level, e.EventType, e.Message)
 }
 ```
+
+## Related Documentation
+
+- [Audit Pipeline](../../guides/security/audit-pipeline) — Guide to building audit pipelines
+- [Security Overview](../../guides/security/) — Conceptual introduction and best practices
+- [Production Checklist](../../guides/security/production-checklist) — Pre-launch security checklist

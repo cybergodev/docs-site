@@ -2,7 +2,7 @@
 sidebar_label: "速查表"
 title: "速查表 - CyberGo html | API 一页速查"
 description: "CyberGo html 常用 API 一页速查表：汇总 Extract、ExtractText、ExtractToMarkdown 等包级函数、Processor 方法与生命周期管理、四种 Config 预设、常用配置项、编码检测、媒体提取、AuditConfig 审计配置与内置 Sink 及 errors.Is 错误判断写法，覆盖核心函数签名与典型用法。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 速查表

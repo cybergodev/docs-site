@@ -2,7 +2,7 @@
 sidebar_label: "Package Functions"
 title: "Package Functions - CyberGo html | Usage & Examples"
 description: "CyberGo html package-level functions: Extract, ExtractText, ExtractToMarkdown, ExtractToJSON, ExtractBatch; sync.Pool reuse, cache disabled, one-off calls."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Package Functions

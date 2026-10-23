@@ -2,7 +2,7 @@
 sidebar_label: "HTTP 集成"
 title: "HTTP 集成 - CyberGo html | Web 服务实战"
 description: "CyberGo html 与标准库 net/http 集成实战指南：单页抓取与内容提取、并发批量抓取处理、Processor 单例复用 Web 服务模式、指数退避重试策略、超时控制、GBK 编码自动检测等生产级 HTTP 网页内容采集与服务部署最佳实践。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # HTTP 集成

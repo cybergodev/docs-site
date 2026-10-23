@@ -2,7 +2,7 @@
 sidebar_label: "Media Extraction"
 title: "Media Extraction - CyberGo html | Video & Audio Guide"
 description: "CyberGo html media extraction guide: three-source video (raw HTML, DOM, regex fallback) and dual-source audio, VideoInfo/AudioInfo fields, Type file vs embed."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Media Extraction Guide

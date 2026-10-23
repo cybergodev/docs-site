@@ -2,7 +2,7 @@
 sidebar_label: "输出格式"
 title: "输出格式 - CyberGo html | Markdown 与 JSON 输出"
 description: "CyberGo html 输出格式 API 参考：详解 ExtractToMarkdown 与 ExtractToJSON 的包函数及 Processor 方法签名，均有 WithContext 上下文变体，支持从字节或文件提取并转换为 Markdown、JSON 格式，说明 Markdown 临时 Processor 缓存隔离、占位符替换与防注入转义原理及 JSON 输出结构。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 输出格式

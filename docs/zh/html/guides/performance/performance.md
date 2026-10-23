@@ -2,7 +2,7 @@
 sidebar_label: "性能优化"
 title: "性能优化 - CyberGo html | 吞吐量提升指南"
 description: "CyberGo html 性能优化总览：解析 sync.Pool 复用、缓存 Key 生成与命中率监控、批量并发控制、WorkerPoolSize 并发与 ProcessingTimeout 超时设置等内部机制，归纳输入控制、常见反模式与规避做法，并附基准测试建议，系统提升 HTML 处理吞吐量。"
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # 性能优化

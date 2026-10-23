@@ -2,7 +2,7 @@
 sidebar_label: "安全防护"
 title: "安全防护 - CyberGo html | 多层安全 API 参考"
 description: "CyberGo html 多层安全防护 API 参考：内容消毒自动移除危险标签、事件属性与恶意协议，配合 MaxInputSize 输入限制、MaxDepth DOM 深度防护、路径遍历检测与 AllowedBaseDir 文件沙箱，含 HighSecurityConfig 高安全预设、panic 恢复机制及 InputError 等安全错误类型。"
-sidebar_position: 5
+sidebar_position: 50
 ---
 
 # 安全防护

@@ -2,7 +2,7 @@
 sidebar_label: "Data Types"
 title: "Types - CyberGo html | Data Type Reference"
 description: "CyberGo html data types: fields of Result, ImageInfo, LinkInfo, LinkResource, VideoInfo, AudioInfo, Statistics, BatchResult, NodeAttr, plus custom MarshalJSON."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Types

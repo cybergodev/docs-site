@@ -2,7 +2,7 @@
 sidebar_label: "Processor"
 title: "Processor - CyberGo html | 用法、参数与示例"
 description: "CyberGo html Processor 处理器 API 参考：New 构造、Extract 方法族、ExtractText 等文本提取、输出格式与批量处理方法、GetStatistics 统计、ClearCache 清理、GetAuditLog 审计查询及 Close 生命周期管理详解，实例复用缓存与编码检测器、并发安全共享，适合高频调用场景。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Processor
@@ -46,7 +46,7 @@ defer p.Close()
 - **配置不可变**：`config` 在 `New()` 后不可变（`*Config` 指针永不被重新赋值或修改），因此 `ExtractToMarkdown` 等格式方法可以安全地做值拷贝生成临时 Processor，无需任何锁——格式覆盖不会回写到共享配置。
 - **统计计数器**：`TotalProcessed`/`CacheHits`/`CacheMisses`/`ErrorCount`/`totalProcessTime` 全部使用 `atomic` 操作。
 - **缓存**：内部缓存自带锁，读写安全。缓存行为完全由公开 API 观测与控制：`Config.MaxCacheEntries = 0` 禁用缓存、`ClearCache()` 清空、`Statistics.CacheHits`/`CacheMisses` 观测命中情况。
-- **Scorer**：内置默认评分器（内部实现，不导出）只读。**自定义 `Scorer` 必须自行保证并发安全**（如内部持锁），因为单个 Processor 在并发 `Extract` 时会从多个 goroutine 调用其 `Score`/`ShouldRemove`。
+- **Scorer**：内置默认评分器（内部实现，不导出）只读。**自定义 `Scorer` 必须自行保证并发安全**（如内部持锁），因为单个 Processor 在并发 `Extract` 时会从多个 goroutine 调用其 `Score`（`ShouldRemove` 为接口预留方法，当前版本不被库调用）。
 :::
 
 ## 方法总览

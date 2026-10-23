@@ -2,7 +2,7 @@
 sidebar_label: "Batch Processing"
 title: "Batch Processing - CyberGo html | Concurrent Batch API"
 description: "CyberGo html concurrent batch API: ExtractBatch, ExtractBatchFiles, WithContext variants, WorkerPoolSize concurrency, 10000-item cap, BatchResult structure."
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # Batch Processing
@@ -162,3 +162,8 @@ func main() {
 :::warning
 A single batch supports up to 10000 items. Exceeding this limit returns a `*BatchResult` in which every item failed (each `Errors` entry is `html: batch size N exceeds maximum 10000`); no panic is triggered.
 :::
+
+## Related Documentation
+
+- [Batch Processing](../../guides/performance/batch-processing) — Batch extraction scenarios and tuning
+- [Processor Reuse & Caching](../../guides/performance/processor-cache) — Reusing Processors to boost throughput

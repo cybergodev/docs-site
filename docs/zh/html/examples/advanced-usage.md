@@ -1,8 +1,8 @@
 ---
-sidebar_label: "高级示例"
+sidebar_label: "高级用法"
 title: "高级示例 - CyberGo html | 进阶场景示例"
 description: "CyberGo html 高级进阶可运行示例集：自定义 Scorer 内容评分算法、多 Sink 审计管道构建、批量文件并发处理、Processor 池化复用、缓存命中率优化与 Web 服务单例模式等复杂场景代码，助你应对生产级内容采集需求。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 高级示例
@@ -39,6 +39,7 @@ func (s myScorer) Score(node html.ContentNode) int {
 	return 0
 }
 
+// ShouldRemove 当前版本不被库调用（实现以满足接口要求）
 func (s myScorer) ShouldRemove(node html.ContentNode) bool {
 	switch node.Data() {
 	case "nav", "footer", "header":

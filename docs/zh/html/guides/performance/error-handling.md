@@ -2,7 +2,7 @@
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo html | 健壮错误处理指南"
 description: "CyberGo html 健壮错误处理指南：五类错误分类（输入、配置、文件、处理、系统）、errors.Is 哨兵错误判断、errors.As 结构化错误字段提取、context 超时取消、批量处理部分失败与 panic 恢复的应对策略与最佳实践。"
-sidebar_position: 4
+sidebar_position: 40
 ---
 
 # 错误处理

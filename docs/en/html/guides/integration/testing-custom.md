@@ -1,8 +1,8 @@
 ---
-sidebar_label: "Testing & Custom"
+sidebar_label: "Testing & Custom Extensions"
 title: "Testing & Custom Extensions - CyberGo html | Testing Guide"
 description: "CyberGo html testing and custom extensions: custom Scorer implementation, ContentNode traversal, test organization, mock data, Extractor mocks for unit tests."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Testing & Custom Extensions
@@ -11,7 +11,7 @@ This guide covers customizing content scoring algorithms and writing tests for c
 
 ## Custom Scorer
 
-The `Scorer` interface controls two core decisions: how to identify body content, and which nodes to remove.
+The `Scorer` interface controls the core decision of how to identify body content: the higher the score returned by `Score`, the more likely a node is to be selected as the body container.
 
 ### Interface Definition
 
@@ -23,7 +23,7 @@ type Scorer interface {
 ```
 
 - `Score`: Score a node; higher scores are more likely to be selected as the body container
-- `ShouldRemove`: Return `true` to remove a node before extraction
+- `ShouldRemove`: Reserved method of the `Scorer` interface — a custom Scorer must implement it to satisfy the interface, but the current library version only calls `Score`, so its return value has no effect (the implementation can simply return `false`). To exclude specific nodes, return a low/negative score from `Score`
 
 ### Default Behavior
 
@@ -84,6 +84,7 @@ func (s blogScorer) Score(node html.ContentNode) int {
 	return score
 }
 
+// ShouldRemove is not called by the library in the current version (implemented to satisfy the interface)
 func (s blogScorer) ShouldRemove(node html.ContentNode) bool {
 	if node == nil {
 		return false

@@ -2,7 +2,7 @@
 sidebar_label: "Advanced Usage"
 title: "Advanced Usage - CyberGo html | Advanced Scenarios"
 description: "CyberGo html advanced examples: custom Scorer, multi-Sink audit pipeline, batch concurrency, Processor pooling, cache hit-rate, and web-service singletons."
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # Advanced Usage
@@ -39,6 +39,7 @@ func (s myScorer) Score(node html.ContentNode) int {
 	return 0
 }
 
+// ShouldRemove is not called by the library in the current version (implemented to satisfy the interface)
 func (s myScorer) ShouldRemove(node html.ContentNode) bool {
 	switch node.Data() {
 	case "nav", "footer", "header":

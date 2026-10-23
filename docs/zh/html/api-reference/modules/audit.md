@@ -2,7 +2,7 @@
 sidebar_label: "审计系统"
 title: "审计系统 - CyberGo html | 可插拔审计 API"
 description: "CyberGo html 可插拔审计系统 API 参考：AuditConfig 全字段配置与默认、高安全两种预设，8 种审计事件类型（阻止标签、属性、URL、输入违规等）、info/warning/critical 三个严重级别、AuditEntry 条目结构与 Logger、Writer、Channel 等六种内置 Sink，支持扇出、谓词与级别过滤管道。"
-sidebar_position: 4
+sidebar_position: 40
 ---
 
 # 审计系统
@@ -302,3 +302,9 @@ for _, e := range entries {
     fmt.Printf("[%s] %s: %s\n", e.Level, e.EventType, e.Message)
 }
 ```
+
+## 相关文档
+
+- [审计系统实战](../../guides/security/audit-pipeline) — 审计管道构建指南
+- [安全概述](../../guides/security/) — 安全特性的概念介绍与最佳实践
+- [生产检查清单](../../guides/security/production-checklist) — 上线安全核对

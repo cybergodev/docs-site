@@ -2,7 +2,7 @@
 sidebar_label: "Config"
 title: "Config - CyberGo html | Config Field Reference"
 description: "CyberGo html Config reference: all 30 fields in six categories, four presets, value constraints, zero-value semantics, and the Validate method."
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # Configuration
@@ -206,5 +206,12 @@ err := cfg.Validate() // Returns ConfigError
 | `InlineImageFormat` | Empty / `none` / `markdown` / `html` / `placeholder` | `"pdf"` |
 | `InlineLinkFormat` | Empty / `none` / `markdown` / `html` | `"pdf"` |
 | `TableFormat` | Empty / `markdown` / `html` | `"csv"` |
+
+## Related Documentation
+
+- [Configuration Guide](../../guides/core-features/configuration) — Preset selection and common configuration recipes
+- [Package Functions](./functions) — Package-level convenience functions
+- [Processor](./processor) — Where configs are consumed, plus concurrency semantics
+- [Constants & Errors](../types/constants) — Sentinel errors and error types
 
 Format strings are case-insensitive, and an empty value is treated as the default (`InlineImageFormat`/`InlineLinkFormat` → `none`, `TableFormat` → `markdown`). `New()` calls `Validate()` before creating the Processor, so an invalid configuration never produces a usable Processor.

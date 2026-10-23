@@ -2,7 +2,7 @@
 sidebar_label: "媒体提取实战"
 title: "媒体提取实战 - CyberGo html | 视频与音频提取指南"
 description: "CyberGo html 媒体提取实战指南：详解视频三源扫描机制（原始 HTML 扫描、DOM 遍历、正则兜底）与音频双源提取策略，解析 VideoInfo、AudioInfo 结构体字段含义、Type 字段区分文件来源与 embed 嵌入类型，并说明 .ogg 双重性及 Preserve 开关配置。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 媒体提取实战

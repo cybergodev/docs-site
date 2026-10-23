@@ -2,7 +2,7 @@
 sidebar_label: "接口定义"
 title: "接口定义 - CyberGo html | 核心接口参考"
 description: "CyberGo html 核心接口参考：Extractor 内容提取主接口、StatsProvider 统计与缓存管理接口、ContentNode 节点抽象接口、Scorer 内容评分接口与 AuditSink 审计输出接口，用于依赖注入、Mock 单元测试、自定义评分算法扩展与第三方系统集成。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 接口定义
@@ -210,7 +210,7 @@ type ContentNode interface {
 ```go
 type Scorer interface {
     Score(node ContentNode) int          // 计算节点相关性分数
-    ShouldRemove(node ContentNode) bool  // 判断节点是否应移除
+    ShouldRemove(node ContentNode) bool  // 预留：当前版本不被库调用
 }
 ```
 
@@ -219,10 +219,10 @@ type Scorer interface {
 | 方法 | 签名 | 说明 |
 |------|------|------|
 | `Scorer.Score` | `Score(node ContentNode) int` | 计算节点的内容相关性分数 |
-| `Scorer.ShouldRemove` | `ShouldRemove(node ContentNode) bool` | 判断节点是否应从内容树移除 |
+| `Scorer.ShouldRemove` | `ShouldRemove(node ContentNode) bool` | `Scorer` 接口的预留方法：自定义 Scorer 必须实现它以满足接口，但当前版本库只调用 `Score`，其返回值不会生效（可实现为固定返回 `false`）。要排除节点，请在 `Score` 中返回低分/负分 |
 
 :::warning 注意：实现必须并发安全
-当单个 `Processor` 被多个并发 `Extract` 调用共享时，会从**多个 goroutine 同时**触发 `Score`/`ShouldRemove`。因此任何 `Scorer` 实现都必须**自身保证并发安全**。
+当单个 `Processor` 被多个并发 `Extract` 调用共享时，会从**多个 goroutine 同时**触发 `Score`。因此任何 `Scorer` 实现都必须**自身保证并发安全**。`ShouldRemove` 为接口预留方法，当前版本不被库调用。
 
 库内置的默认评分器只读、天然满足并发安全；**自定义 `Scorer` 若持有可变状态（如缓存、计数器），必须自行加锁同步**。
 :::
@@ -238,7 +238,7 @@ func (s *MyScorer) Score(node html.ContentNode) int {
 }
 
 func (s *MyScorer) ShouldRemove(node html.ContentNode) bool {
-    // 自定义移除逻辑
+    // 预留：当前版本不被库调用
     return false
 }
 

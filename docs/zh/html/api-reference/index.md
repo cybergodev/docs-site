@@ -2,7 +2,7 @@
 sidebar_label: "概览"
 title: "API 参考 - CyberGo html | 完整函数与类型清单"
 description: "CyberGo html 完整 API 参考索引：对比包函数与 Processor 两种调用模式，导航至内容提取、输出格式转换、链接提取、批量并发处理、Config 配置、多层安全防护、可插拔审计系统、核心接口、数据类型定义与错误常量等核心模块文档，便于快速定位。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # API 参考

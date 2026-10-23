@@ -2,7 +2,7 @@
 sidebar_label: "Encoding Detection"
 title: "Encoding Detection - CyberGo html | Charset Detection Guide"
 description: "CyberGo html charset detection: five-level priority (manual, UTF-8 fast path, BOM/meta, statistical, Windows-1252), 15+ encodings, Config.Encoding override."
-sidebar_position: 5
+sidebar_position: 50
 ---
 
 # Encoding Detection Guide

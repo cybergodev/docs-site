@@ -2,7 +2,7 @@
 sidebar_label: "Configuration"
 title: "Configuration Guide - CyberGo html | Config Field Selection"
 description: "CyberGo html configuration: DefaultConfig, HighSecurityConfig, TextOnlyConfig, MarkdownConfig presets by scenario, six field categories, Validate checks."
-sidebar_position: 6
+sidebar_position: 60
 ---
 
 # Configuration Guide
@@ -275,3 +275,9 @@ if err := cfg.Validate(); err != nil {
 ```
 
 Validation rules include field range checks and format string validation. An invalid configuration returns `*ConfigError`, which you can check with `errors.Is(err, html.ErrInvalidConfig)`. For complete field constraints, see [API Reference — Config](../../api-reference/core/config).
+
+## Next Steps
+
+- [Processor Reuse & Caching](../performance/processor-cache) - Performance optimization for high-frequency calls
+- [Security Overview](../security/) - Security features and production best practices
+- [API Reference: Config](../../api-reference/core/config) - Complete field reference and constraints

@@ -2,7 +2,7 @@
 sidebar_label: "配置实战"
 title: "配置实战 - CyberGo html | Config 字段选择指南"
 description: "CyberGo html 配置实战指南：对比 DefaultConfig、HighSecurityConfig、TextOnlyConfig、MarkdownConfig 四种预设的适用场景，导览资源管理、安全、内容提取、输出格式、链接提取与扩展六大类字段，附爬虫、API 后端等常见配置组合与 Validate 验证方法，助新手快速选型。"
-sidebar_position: 6
+sidebar_position: 60
 ---
 
 # 配置实战
@@ -275,3 +275,9 @@ if err := cfg.Validate(); err != nil {
 ```
 
 验证规则包括字段范围检查和格式字符串校验。无效配置返回 `*ConfigError`，可用 `errors.Is(err, html.ErrInvalidConfig)` 判断。完整字段约束详见 [API 参考 — 配置](../../api-reference/core/config)。
+
+## 下一步
+
+- [Processor 复用与缓存](../performance/processor-cache) - 高频调用的性能优化
+- [安全概述](../security/) - 安全特性与生产环境最佳实践
+- [API 参考：配置](../../api-reference/core/config) - 完整字段参考与约束

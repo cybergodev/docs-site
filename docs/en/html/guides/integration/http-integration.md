@@ -2,7 +2,7 @@
 sidebar_label: "HTTP Integration"
 title: "HTTP Integration - CyberGo html | Web Service Guide"
 description: "CyberGo html with net/http: single-page scraping, concurrent batch fetching, Processor-singleton web services, exponential backoff, and timeout control."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # HTTP Integration

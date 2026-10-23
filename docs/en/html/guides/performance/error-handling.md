@@ -2,7 +2,7 @@
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo html | Robust Error Guide"
 description: "CyberGo html error handling: five categories (input, config, file, processing, system), errors.Is/As, context timeouts, batch partial failures, panic recovery."
-sidebar_position: 4
+sidebar_position: 40
 ---
 
 # Error Handling

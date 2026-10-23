@@ -2,7 +2,7 @@
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo html | 5 分钟入门指南"
 description: "CyberGo html 快速入门指南：5 分钟掌握 Go 1.26+ 环境下的安装、从字节与文件的基本内容提取、DefaultConfig 等四种 Config 预设选择、15+ 编码自动检测，以及纯文本、Markdown、JSON 三种输出格式、WithContext 超时控制与 Processor 并发安全调用实践。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 快速开始

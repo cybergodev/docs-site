@@ -2,7 +2,7 @@
 sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo html | Launch Safety Review"
 description: "CyberGo html production checklist by P0/P1/P2 priority: HighSecurityConfig, Processor lifecycle, auditing, context timeouts, sandboxing, resource release."
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # Production Checklist

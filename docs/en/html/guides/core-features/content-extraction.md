@@ -2,7 +2,7 @@
 sidebar_label: "Content Extraction"
 title: "Content Extraction - CyberGo html | Workflow Guide"
 description: "CyberGo html content extraction: full pipeline of validation, encoding detection, DOM parsing, sanitization, article recognition, Result fields, custom Scorer."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Content Extraction Guide
@@ -165,7 +165,7 @@ func (s myScorer) Score(node html.ContentNode) int {
 }
 
 func (s myScorer) ShouldRemove(node html.ContentNode) bool {
-    // Return true to remove the node
+    // Reserved: not called by the library in the current version (implemented to satisfy the interface)
     return node.Data() == "nav" || node.Data() == "footer"
 }
 ```

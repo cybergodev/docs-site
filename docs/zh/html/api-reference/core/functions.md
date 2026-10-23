@@ -2,7 +2,7 @@
 sidebar_label: "包函数"
 title: "包函数 - CyberGo html | 用法、参数与示例"
 description: "CyberGo html 包级便捷函数参考：详解 Extract、ExtractText、ExtractToMarkdown、ExtractToJSON 与 ExtractBatch 等函数签名，均有 WithContext 上下文变体；内部经 sync.Pool 池化复用 Processor 并禁用缓存，归还时清空统计与审计，传入自定义 Config 则改用临时实例，适合一次性低频调用场景。"
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # 包函数

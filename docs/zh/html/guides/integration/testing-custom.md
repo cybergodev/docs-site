@@ -2,7 +2,7 @@
 sidebar_label: "测试与自定义扩展"
 title: "测试与自定义扩展 - CyberGo html | 测试体系指南"
 description: "CyberGo html 测试与自定义扩展指南：自定义 Scorer 内容评分算法实现、ContentNode 节点遍历、测试组织模式与 mock 数据构造、Extractor 接口 mock 示例，助你定制内容识别逻辑与编写可靠的单元测试。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 测试与自定义扩展
@@ -11,7 +11,7 @@ sidebar_position: 2
 
 ## 自定义 Scorer
 
-`Scorer` 接口控制两个核心决策：如何识别正文内容，以及哪些节点应该移除。
+`Scorer` 接口控制的核心决策是如何识别正文内容：`Score` 返回的分数越高，节点越可能被选为正文容器。
 
 ### 接口定义
 
@@ -23,7 +23,7 @@ type Scorer interface {
 ```
 
 - `Score`：为节点评分，分数越高越可能被选为正文容器
-- `ShouldRemove`：返回 `true` 表示在提取前移除该节点
+- `ShouldRemove`：`Scorer` 接口的预留方法——自定义 Scorer 必须实现它以满足接口，但当前版本库只调用 `Score`，其返回值不会生效（实现可固定返回 `false`）。要排除特定节点，请在 `Score` 中返回低分/负分
 
 ### 默认行为
 
@@ -84,6 +84,7 @@ func (s blogScorer) Score(node html.ContentNode) int {
 	return score
 }
 
+// ShouldRemove 当前版本不被库调用（实现以满足接口要求）
 func (s blogScorer) ShouldRemove(node html.ContentNode) bool {
 	if node == nil {
 		return false

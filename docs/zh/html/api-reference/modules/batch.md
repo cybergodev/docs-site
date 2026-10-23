@@ -2,7 +2,7 @@
 sidebar_label: "批量处理"
 title: "批量处理 - CyberGo html | 并发批量提取 API"
 description: "CyberGo html 并发批量提取 API 参考：详解 ExtractBatch、ExtractBatchFiles 及其 WithContext 上下文版本签名，并发度由 WorkerPoolSize 信号量控制，单批上限 10000 项，含 BatchResult 逐项结果结构、上下文取消后保留已完成结果、部分失败隔离与超限整批报错机制。"
-sidebar_position: 3
+sidebar_position: 30
 ---
 
 # 批量处理
@@ -162,3 +162,8 @@ func main() {
 :::warning 批量限制
 单次批量最多 10000 个项目，超出时返回一个所有项均失败的 `*BatchResult`（每项 `Errors` 填充 `html: batch size N exceeds maximum 10000`），不会触发 panic。
 :::
+
+## 相关文档
+
+- [批量处理实战](../../guides/performance/batch-processing) — 批量提取的场景与调优
+- [Processor 复用与缓存](../../guides/performance/processor-cache) — 复用 Processor 提升吞吐

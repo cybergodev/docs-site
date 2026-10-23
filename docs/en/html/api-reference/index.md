@@ -2,7 +2,7 @@
 sidebar_label: "Overview"
 title: "API Reference - CyberGo html | Function & Type Index"
 description: "CyberGo html API index: package functions vs Processor modes plus extraction, output, links, batch, config, security, audit, interfaces, types, and errors."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # API Reference

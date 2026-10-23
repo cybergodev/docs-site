@@ -2,7 +2,7 @@
 sidebar_label: "Basic Usage"
 title: "Basic Usage - CyberGo html | Typical Scenario Examples"
 description: "CyberGo html basic usage in six scenarios: text and file extraction, Markdown/JSON output, link grouping, media info, and batch concurrency with timeouts."
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Basic Usage

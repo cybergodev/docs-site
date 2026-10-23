@@ -2,7 +2,7 @@
 sidebar_label: "数据类型"
 title: "类型定义 - CyberGo html | 数据类型参考"
 description: "CyberGo html 核心数据类型参考：详解 Result 内容提取结果、ImageInfo 图片信息、LinkInfo 链接信息、VideoInfo 与 AudioInfo 视频音频元数据、LinkResource 链接资源、Statistics 处理统计、BatchResult 批量结果、NodeAttr 节点属性等结构体的字段含义，含 MarshalJSON 自定义序列化行为说明。"
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # 类型定义
