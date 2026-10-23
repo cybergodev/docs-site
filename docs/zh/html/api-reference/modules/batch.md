@@ -89,7 +89,7 @@ type BatchResult struct {
 
 | 情况 | 返回 |
 |------|------|
-| 批量超过 `10000` 项 | 每项 `Errors[i]` 填充同一错误，`Failed = N`，不 panic |
+| 批量超过 `10000` 项 | 每项 `Errors[i]` 填充同一错误，`Failed = N`，不 panic；可用 `errors.Is(err, html.ErrBatchTooLarge)` 判断 |
 | Processor 为 `nil` 或已 `Close` | 每项 `Errors[i]` 填充 `ErrProcessorClosed`，`Failed = N` |
 | 输入切片为空（0 项） | 空的 `BatchResult`（`Results`/`Errors` 为空切片） |
 | 包函数传入无效 `Config` | 每项填充配置错误 |
@@ -160,7 +160,7 @@ func main() {
 ```
 
 :::warning 批量限制
-单次批量最多 10000 个项目，超出时返回一个所有项均失败的 `*BatchResult`（每项 `Errors` 填充 `html: batch size N exceeds maximum 10000`），不会触发 panic。
+单次批量最多 10000 个项目，超出时返回一个所有项均失败的 `*BatchResult`（每项 `Errors` 填充 `html: batch size exceeds maximum: N exceeds maximum 10000`，可用 `errors.Is(err, html.ErrBatchTooLarge)` 判断），不会触发 panic。
 :::
 
 ## 相关文档

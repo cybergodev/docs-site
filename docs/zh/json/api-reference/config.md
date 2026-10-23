@@ -74,7 +74,7 @@ type Config struct {
 
     // ===== 可观测性 =====
     EnableMetrics     bool `json:"enable_metrics"`      // 启用指标收集
-    EnableHealthCheck bool `json:"enable_health_check"` // 启用健康检查
+    EnableHealthCheck bool `json:"enable_health_check"` // 启用健康检查（已废弃，不被读取）
 
     // ===== 大文件处理 =====
     ChunkSize       int64 `json:"chunk_size"`       // 分块大小（已废弃，不被读取）
@@ -101,9 +101,9 @@ type Config struct {
     AllowedFileDirs []string `json:"allowed_file_dirs,omitempty"` // 文件操作目录白名单（空 = 仅内置拦截）
 
     // ===== 扩展点（无 JSON tag，不参与序列化） =====
-    CustomEncoder               CustomEncoder                // 自定义编码器
-    CustomTypeEncoders          map[reflect.Type]TypeEncoder // 自定义类型编码器
-    CustomValidators            []Validator                  // 自定义验证器
+    CustomEncoder               CustomEncoder                // 自定义编码器（已废弃，未挂接）
+    CustomTypeEncoders          map[reflect.Type]TypeEncoder // 自定义类型编码器（已废弃，未挂接）
+    CustomValidators            []Validator                  // 自定义验证器（已废弃，不会执行）
     AdditionalDangerousPatterns []DangerousPattern           // 额外危险模式
     DisableDefaultPatterns      bool                         // 禁用默认警告级模式
     Hooks                       []Hook                       // 操作钩子
@@ -116,9 +116,9 @@ type Config struct {
 :::
 
 ::: warning 扩展字段挂接状态
-`CustomEncoder`、`CustomTypeEncoders`、`CustomValidators` 三个接口字段当前版本已声明但**尚未在编码/操作流水线中挂接**，设置后不会产生效果，是为未来版本预留的接口。`CustomPathParser` **已挂接**：设置后所有路径类操作都会调用自定义解析器替代内置解析器（见[接口定义](./interfaces#pathparser)）。当前可用的扩展方式：
+`CustomEncoder`、`CustomTypeEncoders`、`CustomValidators` 三个接口字段**已废弃**（源码标注 Deprecated）：已声明并参与配置克隆与缓存键计算，但编码器/验证器**从未在编码/操作流水线中执行**，设置后不会产生效果；内置编码器不可替换。三者均在 v1 生命周期内保留。`CustomPathParser` **已挂接**：设置后所有路径类操作都会调用自定义解析器替代内置解析器（见[接口定义](./interfaces#pathparser)）。当前可用的扩展方式：
 
-- 编码行为微调 → `CustomEscapes`（**已生效**，见下方编码选项）或实现 `json.Marshaler`/`encoding.TextMarshaler`（见[自定义编码器](../extensions/custom-encoder)）
+- 编码行为定制 → `CustomEscapes`（**已生效**，见下方编码选项）或实现 `json.Marshaler`/`encoding.TextMarshaler`（见[自定义编码器](../extensions/custom-encoder)）
 - 操作拦截 → `Hooks` + `AddHook`（**已生效**，见 [Hook 钩子系统](../extensions/hooks)）
 - 自定义路径语法 → `CustomPathParser`（**已生效**，见[接口定义](./interfaces#pathparser)）
 - 输入验证 → `ValidateSchema`（见[Schema 校验](./schema)）
@@ -213,7 +213,7 @@ type Config struct {
 | 字段                | 类型   | 默认值 | 说明                                                         |
 | ------------------- | ------ | ------ | ------------------------------------------------------------ |
 | `EnableMetrics`     | `bool` | false  | 启用指标收集（`GetStats` / `GetHealthStatus` 才有数据）      |
-| `EnableHealthCheck` | `bool` | false  | 启用健康检查（预留字段，当前不改变行为）                     |
+| `EnableHealthCheck` | `bool` | false  | 已废弃：不被读取（`GetHealthStatus`/`GetStats` 不受此开关控制，是否有数据取决于 `EnableMetrics`），仅参与配置缓存键 |
 
 ### 大文件处理（采样与流式）
 
@@ -263,9 +263,9 @@ cfg.AllowedFileDirs = []string{"/var/lib/myapp/data"}
 
 | 字段                          | 类型                               | 默认值 | 说明                                             |
 | ----------------------------- | ---------------------------------- | ------ | ------------------------------------------------ |
-| `CustomEncoder`               | `CustomEncoder`                    | nil    | 自定义编码器，替换默认编码器（预留）             |
-| `CustomTypeEncoders`          | `map[reflect.Type]TypeEncoder`     | nil    | 按 Go 类型注册的编码器（预留）                   |
-| `CustomValidators`            | `[]Validator`                      | nil    | 操作前运行的自定义验证器（预留）                 |
+| `CustomEncoder`               | `CustomEncoder`                    | nil    | 自定义编码器（已废弃：未挂接，设置后无效；用 `json.Marshaler` 替代） |
+| `CustomTypeEncoders`          | `map[reflect.Type]TypeEncoder`     | nil    | 按 Go 类型注册的编码器（已废弃：未挂接，设置后无效） |
+| `CustomValidators`            | `[]Validator`                      | nil    | 操作前运行的自定义验证器（已废弃：从不执行；用 `AddHook` + Before 钩子替代） |
 | `AdditionalDangerousPatterns` | `[]DangerousPattern`               | nil    | 在内置模式之外追加的危险模式                     |
 | `DisableDefaultPatterns`      | `bool`                             | false  | 禁用内置警告级模式（关键模式始终强制，不可禁用） |
 | `Hooks`                       | `[]Hook`                           | nil    | 操作前后钩子（已生效）                           |
@@ -380,8 +380,8 @@ defer processor.Close()
 | EnableCache | true | 启用缓存 |
 | CacheResults | true | 缓存操作结果 |
 | CacheSharedResults | false | 共享缓存结果（高性能只读场景） |
-| EnableValidation | true | 启用验证 |
-| StrictMode | false | 非严格模式 |
+| EnableValidation | true | 启用验证（已废弃，不被读取） |
+| StrictMode | false | 非严格模式（已废弃，不被读取） |
 | FullSecurityScan | false | 采样安全扫描（非全量） |
 | ValidateInput | true | 验证输入（已废弃，不被读取） |
 | ValidateFilePath | true | 验证文件路径 |
@@ -444,8 +444,8 @@ defer processor.Close()
 | MaxJSONSize | 10MB | 保守大小限制 |
 | MaxPathDepth | 30 | 保守路径深度 |
 | FullSecurityScan | true | 完整安全扫描 |
-| StrictMode | true | 严格模式 |
-| EnableValidation | true | 启用验证 |
+| StrictMode | true | 严格模式（已废弃字段：`SecurityConfig` 会置 `true`，但不被任何解析器读取，无实际影响） |
+| EnableValidation | true | 启用验证（已废弃字段：`SecurityConfig` 会置 `true`，但不被任何操作读取，无实际影响） |
 | EnableCache | true | 启用缓存 |
 | MaxCacheSize | 256 | 缓存大小 |
 | CacheTTL | 3 分钟 | 较短 TTL |
@@ -471,7 +471,7 @@ result, err := json.Encode(data, json.PrettyConfig())
 ```go
 cfg := json.DefaultConfig()
 cfgCopy := cfg.Clone()
-cfgCopy.EnableValidation = true // 不影响原配置
+cfgCopy.EnableMetrics = true // 不影响原配置
 ```
 
 ### Validate
@@ -652,13 +652,13 @@ cfg := json.DefaultConfig()
 // 安全设置
 cfg.MaxJSONSize = 10 * 1024 * 1024 // 10MB
 cfg.MaxNestingDepthSecurity = 50
-cfg.EnableValidation = true
+cfg.FullSecurityScan = true
 
-// 钩子
-cfg.Hooks = []json.Hook{json.LoggingHook(slog.Default())}
-
-// 验证器
-cfg.CustomValidators = []json.Validator{&MyValidator{}}
+// 钩子（操作拦截与自定义校验的推荐方式）
+cfg.AddHook(json.LoggingHook(slog.Default()))
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+    return nil // 自定义检查
+}))
 
 processor, err := json.New(cfg)
 if err != nil {
@@ -679,7 +679,7 @@ devCfg.EnableMetrics = true
 
 // 变体 2：生产配置
 prodCfg := base.Clone()
-prodCfg.EnableValidation = true
+prodCfg.FullSecurityScan = true
 ```
 
 ## 配置常量

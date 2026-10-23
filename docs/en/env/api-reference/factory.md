@@ -28,6 +28,16 @@ type ComponentFactory struct {
 
 ## Methods
 
+`ComponentFactory` provides five methods (qualified names like `ComponentFactory.Validator`):
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `ComponentFactory.Validator` | `Validator` | Shared key/value validator |
+| `ComponentFactory.Auditor` | `FullAuditLogger` | Shared audit logger |
+| `ComponentFactory.Expander` | `VariableExpander` | Shared variable expander |
+| `ComponentFactory.Close` | `error` | Release resources (idempotent, safe to call repeatedly) |
+| `ComponentFactory.IsClosed` | `bool` | Whether the factory has been closed |
+
 ### Validator
 
 ```go
@@ -313,19 +323,23 @@ go func() {
 
 #### CloseableChannelHandler Methods
 
-In addition to implementing the `AuditHandler` interface (`Log` / `Close`), `CloseableChannelHandler` provides the following specific methods:
+`CloseableChannelHandler` implements the `AuditHandler` interface (`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`) and provides the following additional methods:
 
 ```go
 func (h *CloseableChannelHandler) Channel() <-chan AuditEvent
+func (h *CloseableChannelHandler) DroppedEvents() int64
 func (h *CloseableChannelHandler) IsClosed() bool
 ```
 
 **Method description:**
 
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `Channel` | `func (h *CloseableChannelHandler) Channel() <-chan AuditEvent` | Returns the internal read-only channel for consuming audit events. The channel is closed when `Close()` is called, and the `range` loop exits accordingly |
-| `IsClosed` | `func (h *CloseableChannelHandler) IsClosed() bool` | Checks whether the handler has been closed (thread-safe, can be called concurrently) |
+| Method | Purpose |
+|--------|---------|
+| `CloseableChannelHandler.Log` | Sends an event: **non-blocking with a drop** (and an error) when the buffered channel is full; unbuffered (capacity 0) sends block until a receiver is ready or the handler closes |
+| `CloseableChannelHandler.Close` | Shuts the handler down and closes its owned channel (`range` consumer loops exit accordingly); safe to call repeatedly |
+| `CloseableChannelHandler.Channel` | Returns the internal read-only channel for consuming audit events |
+| `CloseableChannelHandler.IsClosed` | Checks whether the handler has been closed (thread-safe, can be called concurrently) |
+| `CloseableChannelHandler.DroppedEvents` | Returns the cumulative count of dropped events (full-buffer drops or sends attempted after Close); the counter never resets |
 
 ```go
 handler := env.NewCloseableChannelHandler(64)
@@ -372,6 +386,8 @@ func (fs OSFileSystem) Setenv(key, value string) error
 func (fs OSFileSystem) Unsetenv(key string) error
 func (fs OSFileSystem) LookupEnv(key string) (string, bool)
 ```
+
+**Mapping to the standard library:** `OSFileSystem.Open`, `OSFileSystem.OpenFile`, `OSFileSystem.Stat`, `OSFileSystem.MkdirAll`, `OSFileSystem.Remove`, and `OSFileSystem.Rename` each forward to the same-named call in the os package; `OSFileSystem.Getenv`, `OSFileSystem.Setenv`, `OSFileSystem.Unsetenv`, and `OSFileSystem.LookupEnv` forward to process environment variable operations. The zero value is valid and safe for concurrent use.
 
 ---
 
@@ -531,7 +547,7 @@ const (
 func (f FileFormat) String() string
 ```
 
-Returns the string representation of a format.
+Returns the string representation of a format (`FileFormat.String`).
 
 ```go
 fmt.Println(env.FormatJSON.String())  // "json"

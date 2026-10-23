@@ -263,7 +263,7 @@ HTTP/2 默认开启（`EnableHTTP2 = true`），提供三大性能提升：
 | 连接复用 | Keep-alive 串行 | 并行流（stream） |
 
 :::tip HTTP/2 与连接池的关系
-HTTP/2 的多路复用让单个 TCP 连接可以同时承载多个请求，大幅减少连接建立开销。在高并发对同一主机的场景下，HTTP/2 的吞吐量远超 HTTP/1.1。仅在使用 `TestingConfig()`（显式关闭 HTTP/2）或连接不支持 ALPN 协商时才会回退到 HTTP/1.1。
+HTTP/2 的多路复用让单个 TCP 连接可以同时承载多个请求，大幅减少连接建立开销。在高并发对同一主机的场景下，HTTP/2 的吞吐量远超 HTTP/1.1。仅在三处会回退到 HTTP/1.1：使用 `TestingConfig()`（显式关闭 HTTP/2）、连接不支持 ALPN 协商，以及多代理轮换池激活时被自动强制（设 `EnableProxyPoolHTTP2` 可恢复，见[代理与代理池](./proxy#代理池与-http-2-enableproxypoolhttp2)）。
 :::
 
 ```go

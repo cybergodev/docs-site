@@ -72,7 +72,7 @@ SecureValue 保护的是**内存中**的敏感值，而日志、错误信息和�
 ```go
 // 日志中安全输出配置，避免泄露明文
 log.Printf("加载配置: %s", env.MaskValue("DB_PASSWORD", password))
-// 输出：加载配置：[MASKED:12 chars]
+// 输出：加载配置：[MASKED]
 
 log.Printf("连接参数: %s", env.SanitizeForLog("user=admin password=s3cret"))
 // 输出：连接参数：user=admin password=[MASKED]
@@ -156,7 +156,7 @@ cfg.AllowedKeys = []string{"APP_NAME", "PORT", "DB_HOST", "API_KEY"}
 
 ## 展开作用域隔离
 
-变量展开默认按「先文件、后进程环境」解析。对不可信配置来源，`ExpansionScope: ExpansionFileOnly` 可将引用范围限制在文件内部，阻断配置文件对进程机密（云凭证、令牌等）的探测与捕获（SEC-03）。配置方式与攻击场景详见[变量展开 · 展开作用域](../guides/variable-expansion)。
+`DefaultConfig()` 默认把展开作用域设为 `ExpansionFileOnly`——变量展开仅解析文件内引用，阻断对进程环境（云凭证、令牌等）的回退读取与捕获（SEC-03）。若显式需要传统 dotenv 的「先文件、后进程」回退语义，才改设 `ExpansionScope: ExpansionFileThenProcess`。配置方式与攻击场景详见[变量展开 · 展开作用域](../guides/variable-expansion)。
 
 ## 相关文档
 

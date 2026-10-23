@@ -305,7 +305,7 @@ if err != nil {
 ```
 
 ::: tip
-`Foreach` 系列共 12 个函数（含 4 个文件变体 `ForeachFile*`，完整清单见[速查表·迭代函数族](./cheatsheet#迭代函数族)）：需要**提前终止**时用 `ForeachWithError`（回调返回 `error`，返回 `item.Break()` 即中断）；深度嵌套遍历、携带当前路径等变体见速查表同节。
+`Foreach*` 函数族共 12 个（含 4 个文件变体 `ForeachFile*`，完整清单见[速查表·迭代函数族](./cheatsheet#迭代函数族)）：需要**提前终止**时用 `ForeachWithError`（回调返回 `error`，返回 `item.Break()` 即中断）；深度嵌套遍历、携带当前路径等变体见速查表同节。
 :::
 
 ## 错误处理
@@ -331,7 +331,7 @@ if err != nil {
 不想逐个判断时，带默认值的类型化函数（`GetString`/`GetInt` 等）会静默返回零值或默认值，适合非关键读取。
 
 ::: tip ErrTypeMismatch 用在哪里？
-普通 `Get` 遇到类型冲突（如对字符串路径用数组索引）返回的是携带上下文的描述性错误，**不是** `ErrTypeMismatch` 哨兵。`ErrTypeMismatch` 主要出现在三处：`SafeGet` 结果的 `AsString()`/`AsInt()` 等转换方法、`GetCompiled` 的预编译路径导航，以及对不可迭代值调用 `Foreach` 系列。
+普通 `Get` 遇到类型冲突（如对字符串路径用数组索引）返回的是携带上下文的描述性错误，**不是** `ErrTypeMismatch` 哨兵。`ErrTypeMismatch` 主要出现在三处：`SafeGet` 结果的 `AsString()`/`AsInt()` 等转换方法、`GetCompiled` 的预编译路径导航，以及对不可迭代值调用 `Foreach*` 系列函数。
 :::
 
 ## 常见第一小时问题

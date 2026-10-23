@@ -154,6 +154,8 @@ HTTP/2 features:
 
 When disabled, the transport no longer attempts HTTP/2 negotiation at all (including the forced attempt for custom TLS configurations); plaintext HTTP/2 (h2c) is not supported. Note that HTTP/2 multiplexing means "concurrent requests to the same host share one connection" — exactly why proxy-rotation scenarios need idle connections closed (see per-request rotation in [Proxy & Proxy Pool](./proxy)).
 
+One exception: while a multi-proxy rotation pool is active (`ProxyPool` with more than one entry and no `ProxyURL`), HTTP/2 is **automatically disabled** and requests are forced onto HTTP/1.1 — preventing the shared h2 connection pool from pinning requests to a single proxy tunnel and silently bypassing rotation; set `Connection.EnableProxyPoolHTTP2 = true` to restore multiplexing in that scenario (requires `EnableHTTP2`, on by default) — see [Proxy Pools and HTTP/2](./proxy#proxy-pools-and-http-2-enableproxypoolhttp2).
+
 ## Object Pool Reuse
 
 Internally, HTTPC reuses engine response objects and string builders via sync.Pool to reduce GC pressure; Result itself is created fresh per request and reclaimed by GC.

@@ -34,7 +34,7 @@ defer processor.Close()
 
 // 使用自定义配置
 cfg := json.DefaultConfig()
-cfg.StrictMode = true
+cfg.FullSecurityScan = true
 processor, err = json.New(cfg)
 
 // 使用安全配置

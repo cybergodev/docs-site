@@ -1,7 +1,7 @@
 ---
 sidebar_label: "请求选项"
 title: "请求选项 - CyberGo HTTPC | WithXxx 选项"
-description: "HTTPC 请求选项 API 参考：完整覆盖 29 个 WithXxx 函数——WithHeader 请求头、WithBearerToken 认证、WithJSON/WithForm/WithFile 请求体、Cookie 校验与回调，并注明各选项覆盖的 Config 默认值与校验规则。"
+description: "HTTPC 请求选项 API 参考：系统梳理全部 32 个 WithXxx 函数，覆盖请求头设置、认证凭据、请求体编码、Cookie 校验、回调触发以及包级路由等场景，并逐一说明各选项覆盖的 Config 默认值与校验规则。"
 sidebar_position: 20
 ---
 
@@ -29,6 +29,7 @@ result, err := client.Post(url,
 | [查询参数](#查询参数) | `WithQuery`、`WithQueryMap` |
 | [Cookie](#cookie) | `WithCookies`、`WithCookieMap`、`WithCookieString`、`WithSecureCookie` |
 | [请求控制](#请求控制) | `WithContext`、`WithTimeout`、`WithNoTimeout`、`WithMaxRetries`、`WithRetryNonIdempotent`、`WithFollowRedirects`、`WithMaxRedirects`、`WithAllowPrivateIPs`、`WithStreamBody` |
+| [包级路由](#包级路由) | `WithProxy`、`WithSystemProxy`、`WithTLSFingerprint` |
 | [回调](#回调) | `WithOnRequest`、`WithOnResponse` |
 
 部分选项可覆盖客户端配置（`Config`）中的同名默认值：
@@ -41,8 +42,8 @@ result, err := client.Post(url,
 | `WithNoTimeout` | `Timeouts.Request`（解除该默认上限） |
 | `WithMaxRetries` | `Retry.MaxRetries`（3） |
 | `WithRetryNonIdempotent` | `Retry.RetryNonIdempotent`（false） |
-| `WithFollowRedirects` | `Defaults.FollowRedirects`（true） |
-| `WithMaxRedirects` | `Defaults.MaxRedirects`（10） |
+| `WithFollowRedirects` | `Security.FollowRedirects`（true） |
+| `WithMaxRedirects` | `Security.MaxRedirects`（10） |
 | `WithAllowPrivateIPs` | `Security.AllowPrivateIPs`（false） |
 
 :::tip
@@ -475,7 +476,7 @@ result, err := client.Post(orderURL,
 func WithFollowRedirects(follow bool) RequestOption
 ```
 
-控制是否跟随重定向，覆盖 `Config.Defaults.FollowRedirects`（默认 true）。
+控制是否跟随重定向，覆盖 `Config.Security.FollowRedirects`（默认 true）。
 
 ```go
 // 禁止跟随重定向
@@ -488,7 +489,7 @@ result, err := client.Get(url, httpc.WithFollowRedirects(false))
 func WithMaxRedirects(maxRedirects int) RequestOption
 ```
 
-设置单次请求最大重定向次数，覆盖 `Config.Defaults.MaxRedirects`（默认 10）。范围：0-50，负数或超过 50 报错。
+设置单次请求最大重定向次数，覆盖 `Config.Security.MaxRedirects`（默认 10）。范围：0-50，负数或超过 50 报错。
 
 :::warning 0 值语义
 `0` **不会**禁用重定向。引擎将 `0` 视为「未显式设置」的哨兵值，回退到默认上限（10），因此 `WithMaxRedirects(0)` 等价于省略该选项。要完全禁用重定向跟随，请改用 `WithFollowRedirects(false)`。
@@ -529,6 +530,54 @@ func WithStreamBody(stream bool) RequestOption
 要真正流式下载大文件而不缓存到内存，请使用 `Download`。
 :::
 
+## 包级路由
+
+三个**包级函数专属**的路由选项：`WithProxy`、`WithSystemProxy`、`WithTLSFingerprint`。它们把一个包级调用路由到**专用客户端**（独立的连接池，继承默认客户端的安全默认值——SSRF 防护、TLS 1.2+、超时、重试），而共享默认客户端与其它在途调用不受影响。每个不同的 `(proxy, fingerprint)` 组合被缓存为各自的客户端，可用 `CloseRoutedClients` 一并关闭（详见[包级函数与客户端方法](./functions#closeroutedclients)）。
+
+:::warning 仅包级函数
+这三个选项只对包级函数（`Get`/`Post`/`Request`/`Download` 等）有意义；在显式 `Client` 实例上使用会返回错误——实例场景请改用 `Config.Connection.ProxyURL` / `Config.Connection.EnableSystemProxy` / `Config.Security.TLSFingerprint`。
+:::
+
+### WithProxy
+
+```go
+func WithProxy(proxyURL string) RequestOption
+```
+
+把本次调用路由到显式代理（支持 `http`/`https`/`socks5`/`socks5h`），优先级高于默认客户端自身的代理配置。代理 URL 可携带凭据，httpc 不会记录它们。
+
+```go
+result, err := httpc.Get("https://example.com",
+    httpc.WithProxy("http://127.0.0.1:7890"),
+)
+```
+
+### WithSystemProxy
+
+```go
+func WithSystemProxy() RequestOption
+```
+
+把本次调用路由到启用系统代理检测的客户端（`Connection.EnableSystemProxy`）：读取环境变量（`HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`）与平台设置（Windows 注册表、macOS 系统配置），`localhost`/回环与 NO_PROXY 豁免主机按 `net/http` 语义绕过代理。未配置系统代理时直连。与 `WithProxy` 同时出现时 `WithProxy` 胜出。
+
+```go
+result, err := httpc.Get("https://example.com", httpc.WithSystemProxy())
+```
+
+### WithTLSFingerprint
+
+```go
+func WithTLSFingerprint(preset string) RequestOption
+```
+
+把本次调用路由到浏览器 TLS 指纹客户端（等价 `Config.Security.TLSFingerprint`）。值须为已知预设（大小写不敏感、自动去空白）：`chrome` / `firefox` 及其 OS/版本别名，未知预设使请求以 `ErrInvalidSecurity` 失败。完整预设清单与行为语义见 [TLS 指纹指南](../../guides/tls-fingerprint)。
+
+```go
+result, err := httpc.Get("https://example.com",
+    httpc.WithTLSFingerprint("chrome-windows"),
+)
+```
+
 ## 回调
 
 ### WithOnRequest
@@ -564,6 +613,27 @@ result, err := client.Get(url,
     }),
 )
 ```
+
+## 自定义选项
+
+### RequestOptionFunc
+
+```go
+type RequestOptionFunc func(RequestMutator) error
+```
+
+把函数字面量适配为 `RequestOption` 接口的公开适配器类型，镜像 net/http 的 Handler/HandlerFunc 拆分——`RequestOption` 的 `apply` 方法未导出，包外无法直接实现该接口，自定义逐请求选项统一经 `RequestOptionFunc` 表达，无需命名内部请求类型：
+
+```go
+result, err := client.Get(url,
+    httpc.RequestOptionFunc(func(req httpc.RequestMutator) error {
+        req.SetHeader("X-Custom", "value")
+        return nil
+    }),
+)
+```
+
+nil 的 `RequestOptionFunc` 是 no-op，应用时直接跳过、不报错。
 
 ## 另见
 

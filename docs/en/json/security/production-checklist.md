@@ -42,7 +42,7 @@ cfg := json.DefaultConfig()
 cfg.MaxJSONSize = int64(json.DefaultMaxJSONSize) / 10 // Tighten from the default 100MB
 ```
 
-`json.SecurityConfig()` presets every field to the "recommended production values" above, and additionally enables `FullSecurityScan` and `StrictMode` — for untrusted input, start from it and fine-tune.
+`json.SecurityConfig()` presets every field to the "recommended production values" above and additionally enables `FullSecurityScan` (it also sets the deprecated, unread `StrictMode`/`EnableValidation` to `true` — neither has any actual effect) — for untrusted input, start from it and fine-tune.
 
 ## Input Validation
 
@@ -52,16 +52,13 @@ cfg.MaxJSONSize = int64(json.DefaultMaxJSONSize) / 10 // Tighten from the defaul
 - [ ] Verify field types are correct
 
 ```go
-// Example custom validator
-type RequiredFieldValidator struct{}
-
-func (v *RequiredFieldValidator) Validate(jsonStr string) error {
-    // Check that required fields exist
-    return nil
-}
-
+// Custom required-field checks: register a ValidationHook
+// (the Validator interface is deprecated and never executed)
 cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+    // Check that required fields exist (ValidateSchema also works for structural checks)
+    return nil
+}))
 ```
 
 ### Format Validation
@@ -71,10 +68,10 @@ cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
 - [ ] Validate custom formats
 
 ```go
-// Custom format validator
-type EmailValidator struct{}
-
-func (v *EmailValidator) Validate(jsonStr string) error {
+// Custom format check: register a ValidationHook
+// (the Validator interface is deprecated and never executed)
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
     var data map[string]any
     if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
         return nil
@@ -85,10 +82,7 @@ func (v *EmailValidator) Validate(jsonStr string) error {
         return errors.New("invalid email format")
     }
     return nil
-}
-
-cfg := json.DefaultConfig()
-cfg.CustomValidators = append(cfg.CustomValidators, &EmailValidator{})
+}))
 ```
 
 ### Range Validation
@@ -369,8 +363,10 @@ func ProductionConfig() json.Config {
     // Resource limits (SecurityConfig already presets safe defaults)
     cfg.MaxMemory = 100 * 1024 * 1024
 
-    // Custom validators
-    cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
+    // Custom input checks (ValidationHook; the Validator interface is deprecated and never executed)
+    cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+        return nil // custom required-field/format checks
+    }))
 
     // Audit hooks
     cfg.Hooks = []json.Hook{&AuditHook{logger: prodLogger}}

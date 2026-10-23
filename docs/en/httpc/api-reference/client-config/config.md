@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration - CyberGo HTTPC | Config & Presets"
-description: "HTTPC Config API reference: Timeouts, Connection, Security, Retry, and Middleware fields, five presets, ValidateConfig, and proxy-rotation retry derivation."
+description: "HTTPC Config API reference: Timeouts, Connection, Security, Retry, Middleware, EnableProxyPoolHTTP2, SensitiveHeaders, ValidateConfig, proxy-rotation retry rules."
 sidebar_position: 10
 ---
 
@@ -29,7 +29,7 @@ The main configuration struct; the five sub-configs and `Defaults` are all **val
 | `Config.Security` | `SecurityConfig` | TLS, validation, and SSRF protection |
 | `Config.Retry` | `RetryConfig` | Automatic retries of transient failures |
 | `Config.Middleware` | `MiddlewareConfig` | Per-client middleware chain |
-| `Config.Defaults` | `RequestDefaults` | Per-request defaults (User-Agent, default headers, redirect policy) |
+| `Config.Defaults` | `RequestDefaults` | Per-request defaults (User-Agent, default headers) |
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -102,7 +102,8 @@ type ConnectionConfig struct {
     ProxyCooldown          time.Duration // Circuit-break cooldown, 0 defaults to 30s
     ProxyRotatePerRequest  bool          // Force a different proxy for each independent request, default false
     ProxyRotateOnStatus    []int         // HTTP status codes that trigger proxy rotation
-    EnableHTTP2            bool          // Enable HTTP/2, default true
+    EnableProxyPoolHTTP2   bool          // Restore HTTP/2 for a multi-proxy pool (per-proxy transports), default false
+    EnableHTTP2            bool          // Enable HTTP/2, default true; forced off under a rotating multi-proxy pool unless EnableProxyPoolHTTP2 is set
     EnableCookies          bool          // Enable cookie management, default false
     PublicSuffixList       cookiejar.PublicSuffixList // Public-suffix database for the cookie jar, default nil
     EnableDoH              bool          // Enable DNS-over-HTTPS, default false
@@ -125,7 +126,8 @@ type ConnectionConfig struct {
 | `ConnectionConfig.ProxyCooldown` | `time.Duration` | 30s (0 is treated as 30s) | How long a circuit-broken proxy stays out of rotation |
 | `ConnectionConfig.ProxyRotatePerRequest` | `bool` | `false` | Force a different proxy for each independent request (requires `ProxyPool`) |
 | `ConnectionConfig.ProxyRotateOnStatus` | `[]int` | `nil` | HTTP status codes that trigger a proxy-switch retry (requires `Retry.MaxRetries > 0`) |
-| `ConnectionConfig.EnableHTTP2` | `bool` | `true` | Enable HTTP/2 |
+| `ConnectionConfig.EnableProxyPoolHTTP2` | `bool` | `false` | Restore HTTP/2 for a multi-proxy pool (per-proxy transports); requires `EnableHTTP2=true` — see [Proxy Pool and HTTP/2](#proxy-pool-and-http-2-enableproxypoolhttp2) |
+| `ConnectionConfig.EnableHTTP2` | `bool` | `true` | Enable HTTP/2; automatically forced off under a rotating multi-proxy pool unless `EnableProxyPoolHTTP2` is set |
 | `ConnectionConfig.EnableCookies` | `bool` | `false` | Enable automatic cookie handling with a cookie jar |
 | `ConnectionConfig.PublicSuffixList` | `cookiejar.PublicSuffixList` | `nil` | Supplies a public-suffix database to the cookie jar (recommended: `golang.org/x/net/publicsuffix.List`). Without one, the jar accepts cookies on public suffixes and applies looser domain matching, which can leak cookies across unrelated subdomains |
 | `ConnectionConfig.EnableDoH` | `bool` | `false` | Enable DNS-over-HTTPS resolution |
@@ -161,6 +163,32 @@ cfg.Connection.ProxyCooldown = 30 * time.Second
 cfg.Connection.ProxyRotateOnStatus = []int{403}
 ```
 
+#### Proxy Pool and HTTP/2 (`EnableProxyPoolHTTP2`)
+
+While a multi-proxy pool is active (`ProxyPool` with more than one entry and no `ProxyURL`), HTTP/2 is **automatically disabled** and the pool is forced onto HTTP/1.1: net/http's h2 connection pool is keyed by target host only, so with several proxies sharing one pool every request would be pinned to whichever proxy's tunnel connected first, silently bypassing rotation and load dispersion.
+
+`EnableProxyPoolHTTP2 = true` restores HTTP/2: each proxy gets its own transport (its own h2 connection pool) behind a per-request dispatcher. Proxy rotation, `ProxyRotateOnStatus`, and `Meta.ProxyURL` reporting behave exactly as with the default forced HTTP/1; the difference is that concurrent requests routed to the same proxy multiplex over one HTTP/2 tunnel instead of opening one HTTP/1 connection each.
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Connection.ProxyPool = []string{
+    "http://proxy1:8080",
+    "http://proxy2:8080",
+    "http://proxy3:8080",
+}
+cfg.Connection.EnableHTTP2 = true          // prerequisite (DefaultConfig already sets it)
+cfg.Connection.EnableProxyPoolHTTP2 = true // restore HTTP/2 for the pool
+
+client, err := httpc.New(cfg)
+```
+
+Two trade-offs:
+
+- **Request correlation**: requests routed to the same proxy share that proxy's connections — **including concurrent ones** (an in-flight tunnel is joined by the next same-proxy request), which correlates them at the network level. Leave this off when requests must not be correlatable; `ProxyRotatePerRequest` alone does **not** prevent the sharing — rotation indexes repeat every pool-size requests, and its idle-connection drain only reaches connections that are no longer in flight.
+- **Connection-limit multiplication**: `MaxConnsPerHost` and the derived per-host idle limit apply per proxy transport; the process-wide ceiling becomes limit × pool size (total dials are still capped by the engine-level global limit).
+
+Validation and exception: requires `EnableHTTP2 = true`, otherwise `New()` returns `ErrInvalidConnection` (asking for pool HTTP/2 while the master switch is off is always a configuration mistake); the `Security.TLSFingerprint` path ignores the field (the fingerprint stack ships its own per-proxy backends). For the full mechanics see [Proxy & Proxy Pool](../../guides/proxy#proxy-pools-and-http-2-enableproxypoolhttp2).
+
 ### DNS-over-HTTPS
 
 Enable DoH to reduce DNS resolution latency and prevent DNS hijacking:
@@ -181,6 +209,8 @@ type SecurityConfig struct {
     MinTLSVersion           uint16                // Minimum TLS version, default TLS 1.2
     MaxTLSVersion           uint16                // Maximum TLS version, default TLS 1.3
     InsecureSkipVerify      bool                  // Skip certificate verification (testing only)
+    TLSFingerprint          string                // Browser TLS fingerprint preset, default "" (standard stack, no spoofing)
+    TLSFingerprintDisableSessionTickets bool      // Disable TLS session-ticket caching/resumption on the fingerprint path, default false
     MaxResponseBodySize     int64                 // Response body size limit, default 10MB
     MaxRequestBodySize      int64                 // Request body size limit, default 0 (no limit on request body size; unlike MaxResponseBodySize, no automatic fallback)
     MaxDecompressedBodySize int64                 // Decompressed body size limit, default 100MB
@@ -189,9 +219,11 @@ type SecurityConfig struct {
     ValidateURL             bool                  // URL validation, default true
     ValidateHeaders         bool                  // Header validation, default true
     StrictContentLength     bool                  // Strict Content-Length, default true
-    CookieSecurity          *CookieSecurityConfig // Cookie security validation
     CertificatePinner       CertificatePinner     // Certificate pinning (SPKI hash/public key), default nil (disabled)
     RedirectWhitelist       []string              // Redirect-whitelist domains
+    SensitiveHeaders        []string              // Extra header names stripped as credentials on cross-origin redirects, default nil
+    FollowRedirects         bool                  // Follow redirects, default true
+    MaxRedirects            int                   // Max redirect count, default 10 (0 is the "unset" sentinel, falls back to 10)
 }
 ```
 
@@ -247,9 +279,25 @@ cfg.Security.SSRFExemptCIDRs = []string{
 
 Invalid CIDRs make `New()` return an error immediately (`invalid configuration: ...`); they are not silently ignored.
 
+### TLS Fingerprinting (TLSFingerprint)
+
+`TLSFingerprint` enables browser transport-layer fingerprinting: the TLS ClientHello (JA3/JA4), HTTP/2 frames (SETTINGS order and values, connection window, initial stream ID, pseudo-header order), and an ordered header block (browser-exact casing plus a version-matched User-Agent) are all spoofed at once. The value is a preset name (case-insensitive); `""` (default) uses the standard stack with no spoofing. See the [TLS Fingerprinting guide](../../guides/tls-fingerprint) for the full preset list and behavior semantics.
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.TLSFingerprint = "chrome-latest" // or "chrome-windows", "firefox-latest", ...
+client, err := httpc.New(cfg)
+```
+
+:::warning Mutually exclusive with TLSConfig
+`Security.TLSConfig` is mutually exclusive with this field (validation rejects the combination); `MinTLSVersion`/`MaxTLSVersion` are silently ignored when it is set — the preset's ClientHello dictates the version range. See the [TLS Fingerprinting guide](../../guides/tls-fingerprint).
+:::
+
+Setting `TLSFingerprintDisableSessionTickets` to `true` forces a full handshake on every connection of the fingerprint path; the default is `false` — the Chrome profiles cache TLS session tickets per connection pool and resume repeat connections with a PSK, exactly like a real browser revisiting a host. See [Session Resumption](../../guides/tls-fingerprint#session-resumption) for the mechanism.
+
 ### Redirect Whitelist
 
-`RedirectWhitelist` restricts redirects to the listed domains only; the default is `nil` (all redirect targets allowed). This is the gate against "redirect-based SSRF" — a more conservative alternative is `Defaults.FollowRedirects = false` (which is what `SecureConfig()` uses).
+`RedirectWhitelist` restricts redirects to the listed domains only; the default is `nil` (all redirect targets allowed). This is the gate against "redirect-based SSRF" — a more conservative alternative is `Security.FollowRedirects = false` (which is what `SecureConfig()` uses).
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -260,6 +308,21 @@ cfg.Security.RedirectWhitelist = []string{
 ```
 
 See [Redirects](../../guides/redirects) for the complete picture of redirect behavior.
+
+### Sensitive Header Stripping (SensitiveHeaders)
+
+`SensitiveHeaders` extends the set of header names treated as **credentials** when a redirect carries the request to a different origin: the built-in set `Authorization`, `Proxy-Authorization`, `Cookie`, `X-Api-Key`, and `X-Auth-Token` is always stripped on cross-origin hops (net/http itself covers only the first three), whereas a custom credential header such as `X-Secret-Key` would otherwise be forwarded verbatim to whatever the `Location` header points at — an open-redirect credential leak (CWE-525). Entries are canonicalized (matching is case-insensitive) and deduped; the built-in set is always stripped regardless. Default: `nil`.
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.SensitiveHeaders = []string{"X-Secret-Key", "X-Tenant-Token"}
+```
+
+Invalid header names make `New()` return `ErrInvalidSecurity` (the same key rules as `WithHeader`). For the full semantics of cross-origin credential stripping see [Redirects](../../guides/redirects).
+
+:::warning Masking scope
+Masking in `Result.String()` and audit output covers only the built-in sensitive names — custom headers listed here **remain visible** in those outputs; do not rely on them for credential hiding.
+:::
 
 ## RetryConfig
 
@@ -299,33 +362,28 @@ type MiddlewareConfig struct {
 }
 ```
 
-Contains only the `Middlewares` field. Request defaults (User-Agent, default headers, redirect policy) have been moved to [`RequestDefaults`](#requestdefaults).
+Contains only the `Middlewares` field. Request defaults (User-Agent, default headers) live on [`RequestDefaults`](#requestdefaults); the redirect policy lives on [`SecurityConfig`](#securityconfig).
 
 ## RequestDefaults
 
 ```go
 type RequestDefaults struct {
-    UserAgent       string            // User-Agent, default "httpc/1.0"
-    Headers         map[string]string // Default request headers, default empty
-    FollowRedirects bool              // Follow redirects, default true
-    MaxRedirects    int               // Max redirect count, default 10
+    UserAgent string            // User-Agent, default "httpc/1.0"
+    Headers   map[string]string // Default request headers, default empty
 }
 ```
 
-The canonical location for per-request defaults: User-Agent, default headers, and redirect policy. Obtain sensible defaults via `DefaultConfig()` and modify as needed.
+The canonical location for per-request defaults: User-Agent and default headers. Obtain sensible defaults via `DefaultConfig()` and modify as needed.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `RequestDefaults.UserAgent` | `string` | `"httpc/1.0"` | User-Agent header |
 | `RequestDefaults.Headers` | `map[string]string` | empty | Default headers added to every request |
-| `RequestDefaults.FollowRedirects` | `bool` | `true` | Whether to follow redirects automatically |
-| `RequestDefaults.MaxRedirects` | `int` | 10 | Cap on automatic redirects |
 
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Defaults.UserAgent = "myapp/2.0"
 cfg.Defaults.Headers = map[string]string{"Accept": "application/json"}
-cfg.Defaults.MaxRedirects = 5
 ```
 
 ## Configuration Presets
@@ -521,6 +579,7 @@ Validation rules at a glance (passing `nil` returns `ErrNilConfig`):
 | `Connection.ProxyFailureThreshold` | ≥ 0 |
 | `Connection.ProxyCooldown` | 0 – 30min |
 | `Connection.ProxyRotateOnStatus` | Each status code within 100 – 599 |
+| `Connection.EnableProxyPoolHTTP2` | Requires `Connection.EnableHTTP2` to be set as well (the contradictory combination is `ErrInvalidConnection`) |
 | `Connection.DoHCacheTTL` | ≥ 0 |
 | `Connection.MaxResponseHeaderBytes` | ≥ 0 |
 | `Security.MaxResponseBodySize` | 0 – 1GB |
@@ -528,11 +587,12 @@ Validation rules at a glance (passing `nil` returns `ErrNilConfig`):
 | `Security.MaxRequestBodySize` | 0 – 1GB |
 | `Security.MinTLSVersion` / `MaxTLSVersion` | When both non-zero, Min ≤ Max |
 | `Security.SSRFExemptCIDRs` | Each entry must be a valid CIDR |
+| `Security.SensitiveHeaders` | Each entry must pass header-name validation (same key rules as `WithHeader`) |
 | `Retry.MaxRetries` | 0 – 10 |
 | `Retry.Delay` | 0 – 30min |
 | `Retry.BackoffFactor` | 1.0 – 10.0 |
 | `Retry.MaxRetryDelay` | 0 – 30min |
-| `Defaults.MaxRedirects` | 0 – 50 |
+| `Security.MaxRedirects` | 0 – 50 |
 | `Defaults.UserAgent` | ≤ 512 characters, no control characters |
 | `Defaults.Headers` | Every key/value pair passes header-validity validation |
 
@@ -591,8 +651,8 @@ func StrictCookieSecurityConfig() *CookieSecurityConfig
 Strict cookie security configuration. Requires Secure, HttpOnly, and SameSite=Strict.
 
 ```go
-cfg := httpc.DefaultConfig()
-cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
+cfg := httpc.DefaultSessionConfig()
+cfg.CookieSecurity = httpc.StrictCookieSecurityConfig()
 ```
 
 Field-by-field comparison of the two factories:

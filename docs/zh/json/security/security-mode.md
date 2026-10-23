@@ -70,7 +70,7 @@ func (pl PatternLevel) String() string
 | 级别 | 语义意图（接口文档） | 当前实现的实际行为 |
 |------|----------------------|--------------------|
 | `PatternLevelCritical` | 始终阻止操作 | 命中即拒绝（`ErrSecurityViolation`） |
-| `PatternLevelWarning` | 严格模式下阻止，宽松模式记录警告 | **同样命中即拒绝**——`StrictMode` 字段当前不参与模式拦截决策 |
+| `PatternLevelWarning` | 严格模式下阻止，宽松模式记录警告 | **同样命中即拒绝**——`StrictMode` 字段已废弃、不被任何解析器读取，不参与模式拦截决策 |
 | `PatternLevelInfo` | 仅记录，从不阻止 | **同样命中即拒绝** |
 
 ::: warning 请按「会拦截」规划 Warning/Info 模式

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "大文件处理指南"
 title: "大文件处理 - CyberGo JSON | 流式解析与内存控制"
-description: "CyberGo JSON 提供大文件分级处理方案，支持 ForeachFile 系列结构化迭代、StreamIterator 流式解码与 StreamJSONL 逐行消费，配合 ChunkSize、MaxMemory 等配置，帮助开发者让内存占用与文件体积解耦、稳定处理日志与 ETL 数据。"
+description: "CyberGo JSON 提供大文件分级处理方案，支持 ForeachFile 系列结构化迭代、StreamIterator 流式解码与 StreamJSONL 逐行消费，配合 MaxMemory、BufferSize 等配置，帮助开发者让内存占用与文件体积解耦、稳定处理日志与 ETL 数据。"
 sidebar_position: 10
 ---
 
@@ -49,17 +49,14 @@ sidebar_position: 10
 type Config struct {
     // ... 其他配置 ...
 
-    // 大文件处理配置
-    ChunkSize       int64 // 分块大小（默认 1MB）
-    MaxMemory       int64 // 最大内存使用（默认 100MB）
-    BufferSize      int   // 读取缓冲区大小（默认 64KB）
-    SamplingEnabled bool  // 是否启用采样（默认 true）
-    SampleSize      int   // 采样数量（默认 1000）
+    // 大文件处理配置（生效字段）
+    MaxMemory  int64 // 最大内存使用（默认 100MB）
+    BufferSize int   // 读取缓冲区大小（默认 64KB）
 }
 ```
 
-::: tip 两个「ChunkSize」不要混淆
-`Config.ChunkSize`（`int64`，单位字节）是大文件读取的分块尺寸；而 [`ForeachFileChunked`](#批量处理) 的参数 `chunkSize`（`int`）是**每批元素数量**，二者互不影响——`ForeachFileChunked` 的分批粒度只由它自己的参数决定（≤0 时按 100 处理）。
+::: warning 已废弃字段不要混淆
+`Config.ChunkSize`、`SamplingEnabled`、`SampleSize` 均已废弃——不被任何代码路径读取（安全扫描是否采样由 `FullSecurityScan` 决定），设置后不改变行为。历史语境中的 `ChunkSize` 指「字节分块尺寸」，而 [`ForeachFileChunked`](#批量处理) 的参数 `chunkSize`（`int`）是**每批元素数量**，二者互不影响——`ForeachFileChunked` 的分批粒度只由它自己的参数决定（≤0 时按 100 处理）。
 :::
 
 ### 基本使用
@@ -157,7 +154,6 @@ err := processor.ForeachFile("config-map.json", func(key any, item *json.Iterabl
 ```go
 // 自定义大文件处理配置
 cfg := json.DefaultConfig()
-cfg.ChunkSize = 10 * 1024 * 1024   // 10MB 分块
 cfg.MaxMemory = 500 * 1024 * 1024  // 500MB 内存限制
 cfg.BufferSize = 128 * 1024        // 128KB 缓冲区
 
@@ -206,7 +202,7 @@ nested := item.GetString("data.items[0].name")      // 复杂路径
 |------|--------------------------|------|
 | `MaxJSONSize` | 100MB（`DefaultMaxJSONSize`） | 文件/Reader 读取的总字节上限。`LoadFromFile`/`UnmarshalFromFile`/`LoadFromReader` 在**读取期间**用 `io.LimitReader` 强制执行（读取上限 +1 字节以检测截断，避免 TOCTOU 竞态），`ForeachFile*` 系列经由 `LoadFromFile` 自动继承；传给流式迭代器构造函数的 `cfg.MaxJSONSize > 0` 时对整个流封顶 |
 | `BufferSize` | 64KB | `StreamIterator`/`StreamObjectIterator` 的读取缓冲；传入 `cfg` 但其 `BufferSize <= 0` 时回退 32KB |
-| `ChunkSize` | 1MB | 大文件分块尺寸（校验范围 64KB–100MB） |
+| `ChunkSize` | 1MB | 已废弃：不被任何代码路径读取（流式读取用 `BufferSize`；校验仍将其钳制在 64KB–100MB），仅参与配置缓存键 |
 | `MaxMemory` | 100MB | 总内存上限（校验范围 10MB–1GB）；JSONL 流式的内存上限回退链为 `JSONLMaxMemory` → `MaxMemory` |
 | `MaxNestingDepthSecurity` | 200（`DefaultMaxNestingDepth`） | JSONL 每行的嵌套深度上限，解析前逐行检查 |
 | `ValidateFilePath` | `true` | 字段已声明但当前**不作为开关**：文件路径安全校验（路径遍历、符号链接、平台限制）在读取/写入时无条件执行 |
@@ -217,7 +213,6 @@ nested := item.GetString("data.items[0].name")      // 复杂路径
 cfg := json.DefaultConfig()
 
 // 大文件处理配置
-cfg.ChunkSize = 10 * 1024 * 1024   // 10MB 分块
 cfg.MaxMemory = 500 * 1024 * 1024  // 500MB 内存限制
 cfg.BufferSize = 128 * 1024        // 128KB 缓冲区
 
@@ -469,7 +464,6 @@ func main() {
 // 根据可用内存配置
 cfg := json.DefaultConfig()
 cfg.MaxMemory = 500 * 1024 * 1024 // 500MB
-cfg.ChunkSize = 10 * 1024 * 1024  // 10MB
 
 processor, err := json.New(cfg)
 if err != nil {

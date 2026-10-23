@@ -154,6 +154,8 @@ HTTP/2 特性：
 
 禁用时传输层完全不再尝试 HTTP/2 协商（含自定义 TLS 配置场景的强制尝试），明文 HTTP/2（h2c）不受支持。注意 HTTP/2 多路复用会让「同一主机的并发请求共享一条连接」——这正是代理轮换场景需要关闭空闲连接的原因（见[代理与代理池](./proxy)的每请求轮换）。
 
+一个例外：多代理轮换池（`ProxyPool` 多于 1 条且未设 `ProxyURL`）激活时，HTTP/2 会被**自动禁用**、强制走 HTTP/1.1——防止共享的 h2 连接池把请求钉死在单一代理隧道、绕过轮换；该场景需要多路复用可设 `Connection.EnableProxyPoolHTTP2 = true`（前提 `EnableHTTP2`，默认已开启），详见[代理与代理池](./proxy#代理池与-http-2-enableproxypoolhttp2)。
+
 ## 对象池复用
 
 HTTPC 内部对引擎响应对象与字符串构建器复用 sync.Pool，减少 GC 压力；Result 则每次请求新建、由 GC 自动回收。

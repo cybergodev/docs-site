@@ -300,7 +300,7 @@ This means that even if your custom Sink has a bug, the idiomatic `defer process
 
 ### Goroutine Leak Protection
 
-Each `withTimeout` call spawns a worker goroutine waiting for the deadline. To prevent goroutine runaway under high concurrency, the global counter `activeTimeoutGoroutines` limits the concurrency to `maxTimeoutGoroutines` (1000). When the limit is exceeded, new requests return `ErrProcessingTimeout` immediately instead of accumulating goroutines indefinitely (estimating ~1MB stack per goroutine, 1000 ≈ 1GB upper bound).
+Each `withTimeout` call spawns a worker goroutine waiting for the deadline. To prevent goroutine runaway under high concurrency, the global counter `activeTimeoutGoroutines` limits the concurrency to `maxTimeoutGoroutines` (1000). When the limit is exceeded, new requests return `ErrTooManyConcurrentOps` immediately instead of accumulating goroutines indefinitely (estimating ~1MB stack per goroutine, 1000 ≈ 1GB upper bound).
 
 ### Audit Raw Value Log Injection Protection
 

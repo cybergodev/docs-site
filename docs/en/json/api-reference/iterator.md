@@ -7,7 +7,7 @@ sidebar_position: 100
 
 # Iterator Types
 
-The json package provides a variety of iterator types covering sequential traversal, streaming, batch processing, and parallel processing. For iteration **functions** (`Foreach`/`ForeachFile`, etc.) see [Package Iteration Functions](./functions/iterate) and [Processor Iteration Methods](./processor/iterate).
+The json package provides a variety of iterator types covering sequential traversal, streaming, batch processing, and parallel processing. For iteration **functions** (`Foreach*`/`ForeachFile*`, etc.) see [Package Iteration Functions](./functions/iterate) and [Processor Iteration Methods](./processor/iterate).
 
 ## IteratorControl Constants
 
@@ -98,7 +98,7 @@ for it.HasNext() {
 
 ## IterableValue Type
 
-IterableValue wraps the current element during iteration and provides convenient value-access methods. Callbacks of the `Foreach` family receive a `*IterableValue`.
+IterableValue wraps the current element during iteration and provides convenient value-access methods. Callbacks of the `Foreach*` family receive a `*IterableValue`.
 
 ### Methods
 
@@ -336,11 +336,12 @@ Signature: `func (iv *IterableValue) Release()`
 Returns the IterableValue to the object pool, releasing internal data references.
 
 ```go
-json.Foreach(data, func(key any, item *json.IterableValue) {
+err := json.ForeachWithError(data, ".", func(key any, item *json.IterableValue) error {
     // Process the data...
     fmt.Println(item.GetData())
     // Release after processing to reduce GC pressure
     item.Release()
+    return nil
 })
 ```
 
@@ -794,7 +795,7 @@ func main() {
 2. **Use streaming iterators for large datasets** - `StreamIterator`/`StreamObjectIterator` process element by element, memory-friendly
 3. **Reduce overhead with batching** - `BatchIterator` processes per batch, lowering per-element overhead
 4. **Parallelize CPU-bound tasks** - `ParallelIterator` exploits multiple cores
-5. **Release IterableValue** - Call `Release()` after processing in `Foreach` callbacks to reduce GC pressure
+5. **Release IterableValue** - Call `Release()` after processing in `Foreach*` callbacks to reduce GC pressure
 
 ---
 

@@ -330,7 +330,7 @@ func getConfig(data string) Config {
     cfg := json.DefaultConfig()
 
     // Use type-safe getters with built-in defaults
-    cfg.StrictMode = json.GetBool(data, "config.strict", true)
+    cfg.EnableMetrics = json.GetBool(data, "config.metrics", true)
 
     return cfg
 }

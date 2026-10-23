@@ -20,19 +20,20 @@ HTTPC 遵循「默认安全」（Secure by Default）原则：所有关键安全
 | 自定义 TLS 配置 | `SecurityConfig.TLSConfig` | `nil`（用默认） | — |
 | 跳过证书验证 | `SecurityConfig.InsecureSkipVerify` | `false` | 仅测试用 |
 | 证书固定 | `SecurityConfig.CertificatePinner` | `nil`（禁用） | `NewSPKIHashPinner` 等 |
+| TLS 指纹（浏览器伪装） | `SecurityConfig.TLSFingerprint` | `""`（标准栈） | `WithTLSFingerprint`（包级） |
 | SSRF 防护 | `SecurityConfig.AllowPrivateIPs` | `false`（开启） | `WithAllowPrivateIPs` |
 | SSRF 精确豁免 | `SecurityConfig.SSRFExemptCIDRs` | `nil` | — |
 | URL 验证 | `SecurityConfig.ValidateURL` | `true` | — |
 | 请求头验证 | `SecurityConfig.ValidateHeaders` | `true` | — |
 | Content-Length 严格检查 | `SecurityConfig.StrictContentLength` | `true` | — |
-| Cookie 安全验证 | `SecurityConfig.CookieSecurity` | `nil`（不验证） | `StrictCookieSecurityConfig`、`WithSecureCookie` |
+| Cookie 安全验证 | `SessionConfig.CookieSecurity` | `nil`（不验证） | `StrictCookieSecurityConfig`、`WithSecureCookie` |
 | 响应体大小限制 | `SecurityConfig.MaxResponseBodySize` | 10MB | — |
 | 请求体大小限制 | `SecurityConfig.MaxRequestBodySize` | 0（不限制） | 需显式设置 |
 | 解压炸弹防护 | `SecurityConfig.MaxDecompressedBodySize` | 100MB | — |
 | 响应头大小限制 | `ConnectionConfig.MaxResponseHeaderBytes` | 0（Go 默认 1MB） | — |
 | 重定向白名单 | `SecurityConfig.RedirectWhitelist` | `nil`（全部允许） | — |
-| 重定向次数限制 | `RequestDefaults.MaxRedirects` | 10 | `WithMaxRedirects` |
-| 是否跟随重定向 | `RequestDefaults.FollowRedirects` | `true` | `WithFollowRedirects` |
+| 重定向次数限制 | `SecurityConfig.MaxRedirects` | 10 | `WithMaxRedirects` |
+| 是否跟随重定向 | `SecurityConfig.FollowRedirects` | `true` | `WithFollowRedirects` |
 
 :::tip
 处理用户提供的 URL 时，直接使用 `httpc.SecureConfig()` 即可获得最严格的安全基线：关闭重定向、5MB 响应上限、更短超时、开启 URL/请求头验证。
@@ -83,7 +84,8 @@ HTTPC 的安全能力分布在请求生命周期的多个层级，任何一层�
 | 能力 | 默认值 | 开启方式 |
 |------|--------|----------|
 | 证书固定 | `CertificatePinner = nil` | `NewSPKIHashPinner` 等构造后赋值，见 [TLS 与证书固定](./tls-certpin) |
-| Cookie 安全验证 | `CookieSecurity = nil`（不验证） | `StrictCookieSecurityConfig()` |
+| TLS 指纹（浏览器伪装） | `TLSFingerprint = ""` | 设 `chrome`/`firefox` 等预设，见 [TLS 指纹](../guides/tls-fingerprint) |
+| Cookie 安全验证 | `SessionConfig.CookieSecurity = nil`（不验证） | `StrictCookieSecurityConfig()` |
 | 重定向域名白名单 | `RedirectWhitelist = nil`（全部允许） | 配置域名/通配符列表 |
 | 请求体上限 | `MaxRequestBodySize = 0`（不限制，无回退） | 显式设置字节数 |
 | transport 级响应头超时 | `ResponseHeader = 0`（禁用） | 需要抗 slowloris 纵深防御时设置 |
@@ -196,7 +198,7 @@ HTTPC 在**输出侧**同样有防护：所有进入日志、错误信息、审�
 
 ## Cookie 安全
 
-HTTPC 提供三层 Cookie 安全控制：配置级（全局）、会话级（`SessionManager`）、请求级（`WithSecureCookie`）。
+HTTPC 提供两层 Cookie 安全控制：会话级（`SessionManager`）与请求级（`WithSecureCookie`）。
 
 ### CookieSecurityConfig
 
@@ -210,15 +212,15 @@ HTTPC 提供三层 Cookie 安全控制：配置级（全局）、会话级（`Se
 | AllowSameSiteNone | 允许 SameSite=None | `true` | `false` |
 | RequireSecureForSameSiteNone | None 必须带 Secure | `true` | `true` |
 
-### 配置级验证（全局）
+### 会话配置级
 
 ```go
-cfg := httpc.DefaultConfig()
+cfg := httpc.DefaultSessionConfig()
 // 严格模式：要求 Secure + HttpOnly + SameSite=Strict
-cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
+cfg.CookieSecurity = httpc.StrictCookieSecurityConfig()
 
 // 或自定义
-cfg.Security.CookieSecurity = &httpc.CookieSecurityConfig{
+cfg.CookieSecurity = &httpc.CookieSecurityConfig{
     RequireSecure:   true,
     RequireHttpOnly: true,
     RequireSameSite: "Lax",
@@ -248,7 +250,7 @@ result, err := client.Get("https://api.example.com",
 ```
 
 :::warning
-`WithSecureCookie` 是请求级「事后校验」：它只验证在它应用时已存在的 Cookie。务必将其放在所有 Cookie 添加选项（`WithCookies` 等）之后。需要忽略添加顺序的全局校验，请用配置级 `CookieSecurity` 或会话级 `SetCookieSecurity`。
+`WithSecureCookie` 是请求级「事后校验」：它只验证在它应用时已存在的 Cookie。务必将其放在所有 Cookie 添加选项（`WithCookies` 等）之后。需要忽略添加顺序的全局校验，请用会话配置级 `SessionConfig.CookieSecurity` 或会话级 `SetCookieSecurity`。
 :::
 
 ## 解压炸弹防护
@@ -389,4 +391,5 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{auditMiddleware}
 
 - [SSRF 防护](./ssrf) - SSRF 防护详解、CIDR 豁免与云元数据保护
 - [TLS 与证书固定](./tls-certpin) - TLS 配置、证书固定与 mTLS
+- [TLS 指纹](../guides/tls-fingerprint) - 浏览器传输层指纹伪装（JA3/JA4、HTTP/2 帧、有序头块）
 - [生产检查清单](./production-checklist) - 上线前分类核查项与验证方法

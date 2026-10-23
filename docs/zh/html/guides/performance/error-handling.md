@@ -13,11 +13,11 @@ HTML 库的错误分为以下几类：
 
 | 类别 | 哨兵错误 | 说明 |
 |------|----------|------|
-| 输入错误 | `ErrInputTooLarge`, `ErrInvalidHTML` | 输入内容问题 |
+| 输入错误 | `ErrInputTooLarge`, `ErrInvalidHTML`, `ErrBatchTooLarge` | 输入内容问题 |
 | 配置错误 | `ErrInvalidConfig`, `ErrMultipleConfigs` | 配置问题 |
 | 文件错误 | `ErrFileNotFound`, `ErrInvalidFilePath` | 文件操作问题 |
 | 处理错误 | `ErrProcessingTimeout`, `ErrMaxDepthExceeded` | 处理过程问题 |
-| 系统错误 | `ErrProcessorClosed`, `ErrInternalPanic` | 内部状态问题 |
+| 系统错误 | `ErrProcessorClosed`, `ErrInternalPanic`, `ErrTooManyConcurrentOps` | 内部状态问题 |
 
 ## errors.Is 模式
 

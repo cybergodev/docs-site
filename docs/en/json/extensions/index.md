@@ -38,8 +38,8 @@ Three channels **actually take effect in the current version** for changing "wha
 | Implement `encoding.TextMarshaler` (`MarshalText`) | Textual representation, encoded as a JSON string |
 | `Config.CustomEscapes` | Globally rewrite the escaping of certain characters |
 
-::: warning Config.CustomEncoder is not wired up
-`Config.CustomEncoder` and `Config.CustomTypeEncoders` are declared but **not yet wired into the encoding pipeline**; setting them does not change output today. Use the three channels above for now.
+::: warning Config.CustomEncoder is deprecated
+`Config.CustomEncoder` and `Config.CustomTypeEncoders` are **deprecated**: declared but never wired into the encoding pipeline, setting them does not change output today (kept within v1). Use the three channels above instead.
 :::
 
 For complete examples and selection guidance, see [Custom Encoder](./custom-encoder).

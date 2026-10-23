@@ -269,16 +269,18 @@ func DevelopmentConfig() json.Config {
 
 ## Input Validation
 
-### Custom Validators
+### Custom Validation Hooks
 
-Implement the `Validator` interface (`Validate(jsonStr string) error`) for input validation:
+::: warning The `Validator` interface is deprecated
+The old approach of registering custom validators via the `Validator` interface (`Config.CustomValidators` / `Config.AddValidator`) is **deprecated** — registered validators are never executed. For pre-operation input checks use `AddHook` with `ValidationHook` instead (a Before hook; returning an error aborts the operation); for structural validation use `ValidateSchema`.
+:::
+
+Use `ValidationHook` to validate input content before an operation (returning an error from the callback aborts that operation):
 
 ```go
-// Implement a custom validator
-type EmailValidator struct{}
-
-func (v *EmailValidator) Validate(jsonStr string) error {
-    // Validate the JSON string content
+// Register a validation hook: check the email field format
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
     var data map[string]any
     if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
         return err
@@ -291,11 +293,7 @@ func (v *EmailValidator) Validate(jsonStr string) error {
         return errors.New("invalid email format")
     }
     return nil
-}
-
-// Use the custom validator
-cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&EmailValidator{}}
+}))
 ```
 
 ### Schema Validation

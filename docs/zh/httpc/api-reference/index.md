@@ -1,13 +1,13 @@
 ---
 sidebar_label: "概览"
 title: "API 参考 - CyberGo HTTPC | API 总索引"
-description: "HTTPC API 参考总索引：核心函数、请求选项、Result、Config 配置、中间件、类型与错误等九组完整 API 地图，覆盖 29 个 WithXxx 选项、5 个配置预设、7 个内置中间件与 17 个错误变量，附快速上手示例。"
+description: "HTTPC API 参考总索引：核心函数、请求选项、Result、Config 配置、中间件、类型与错误等九组完整 API 地图，覆盖 32 个 WithXxx 选项、5 个配置预设、7 个内置中间件与 17 个错误变量，附快速上手示例。"
 sidebar_position: 10
 ---
 
 # API 参考
 
-HTTPC 提供 29 个请求选项函数、5 个配置预设、7 个内置中间件和完整的下载支持。
+HTTPC 提供 32 个请求选项函数、5 个配置预设、7 个内置中间件和完整的下载支持。
 
 ## 核心架构
 
@@ -41,7 +41,7 @@ HTTPC 双层架构
 
 | 模块 | 说明 |
 |------|------|
-| [请求选项](./core/options) | 29 个 WithXxx 请求选项函数（请求头、请求体、认证、Cookie、回调等） |
+| [请求选项](./core/options) | 32 个 WithXxx 请求选项函数（请求头、请求体、认证、Cookie、回调、包级路由等） |
 | [内置中间件](./client-config/middleware) | Chain 组合、7 个内置中间件工厂和审计事件类型 |
 | [错误类型](./types/errors) | ClientError、12 种 ErrorType 枚举和 17 个错误变量 |
 
@@ -66,11 +66,12 @@ HTTPC 双层架构
 | [`Get`](./core/functions#get) / `Post` / `Put` / `Patch` / `Delete` / `Head` / `Options` / [`Request`](./core/functions#request) | 包级 HTTP 方法（共享内部默认客户端） |
 | [`Download`](./core/functions#download) | 统一文件下载入口（包级函数 / Client / DomainClient 三处同名同签名） |
 | [`SetDefaultClient`](./core/functions#setdefaultclient) / [`CloseDefaultClient`](./core/functions#closedefaultclient) | 默认客户端替换与关闭 |
+| [`CloseRoutedClients`](./core/functions#closeroutedclients) | 关闭全部包级路由客户端（`WithProxy`/`WithSystemProxy`/`WithTLSFingerprint` 缓存） |
 | [`NewDomain`](./core/functions#newdomain) / [`NewDomainDefault`](./core/functions#newdomaindefault) | 域名作用域客户端 |
 | [`SetSecurityWarnOutput`](./core/functions#setsecuritywarnoutput) | 安全警告输出重定向 |
 | [`FormatBytes`](./core/functions#formatbytes) / [`FormatSpeed`](./core/functions#formatspeed) | 字节数 / 速率格式化 |
 
-### 请求选项（29 个）
+### 请求选项（32 个）
 
 | 分组 | 选项 |
 |------|------|
@@ -80,6 +81,7 @@ HTTPC 双层架构
 | 查询参数（2） | `WithQuery`、`WithQueryMap` |
 | Cookie（4） | `WithCookies`、`WithCookieMap`、`WithCookieString`、`WithSecureCookie` |
 | 请求控制（9） | `WithContext`、`WithTimeout`、`WithNoTimeout`、`WithMaxRetries`、`WithRetryNonIdempotent`、`WithFollowRedirects`、`WithMaxRedirects`、`WithAllowPrivateIPs`、`WithStreamBody` |
+| 包级路由（3） | `WithProxy`、`WithSystemProxy`、`WithTLSFingerprint` |
 | 回调（2） | `WithOnRequest`、`WithOnResponse` |
 
 全部选项的签名、校验规则与覆盖的 Config 默认值见[请求选项](./core/options)。
@@ -182,7 +184,7 @@ result.Meta.Attempts          // 重试次数
 
 ## 版本兼容性
 
-- **Go 版本**：要求 Go 1.26 及以上（`go.mod` 声明 `go 1.26.0`）。
+- **Go 版本**：要求 Go 1.27 及以上（`go.mod` 声明 `go 1.27`）。
 - **导入路径**：`github.com/cybergodev/httpc`（包名 `httpc`，无需别名）。
-- **直接依赖**：仅 `golang.org/x/sys`（用于各平台系统代理检测，覆盖 Linux/macOS/Windows），无其他第三方依赖。
+- **直接依赖**：7 个直接模块——`golang.org/x/net` 与 `golang.org/x/sys` 用于标准路径，brotli / compress / uTLS / tls-client / fhttp 仅在启用 `Security.TLSFingerprint` 时被拉入（用于浏览器传输层指纹伪装）。
 - **API 状态**：当前全部导出符号均无 `Deprecated` 标记，处于活跃维护状态。

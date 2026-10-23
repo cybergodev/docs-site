@@ -119,12 +119,12 @@ cfg.Connection.MaxResponseHeaderBytes = 512 * 1024       // 512KB 响应头（�
 | 检查项 | 默认值 | 推荐生产值 | 验证方法 |
 |--------|--------|-----------|----------|
 | `MaxRetries` | 3 | 不超过 5 | 代码审查 |
-| 非幂等请求重试 | — | POST/PUT/PATCH 谨慎 | 代码审查幂等性 |
+| 非幂等请求重试 | 默认关闭（单次执行） | 保持关闭；确需重试走幂等键 | 代码审查幂等性 |
 | `EnableJitter` | `true` | `true`（防惊群） | `grep EnableJitter` |
 | `MaxRetryDelay` | 30s | 30s | — |
 
 :::warning
-非幂等请求（POST 创建资源、PUT 部分更新）的重试可能导致重复创建或重复扣款。若业务非幂等，应对该类请求设置 `WithMaxRetries(0)`，或在服务端实现幂等键。
+非幂等请求（POST 创建资源、PATCH 部分更新）默认**单次执行、不重试**，本身不会重复提交。但一旦用 `WithRetryNonIdempotent(true)` 显式开启非幂等重试，就可能造成重复创建或重复扣款——此时应在服务端实现幂等键，或保持默认不开启。
 :::
 
 ### 重试风暴控制
@@ -158,12 +158,13 @@ cfg.Retry.EnableJitter = true              // 默认已开，显式写出便于�
 
 | 检查项 | 默认值 | 推荐生产值 | 验证方法 |
 |--------|--------|-----------|----------|
-| `CookieSecurity` | `nil`（不验证） | `StrictCookieSecurityConfig()` | `grep CookieSecurity` |
+| `SessionConfig.CookieSecurity` / `SetCookieSecurity` | `nil`（不验证） | `StrictCookieSecurityConfig()` | `grep CookieSecurity` |
 | `WithSecureCookie` 顺序 | — | 放在所有 Cookie 添加选项（`WithCookies` 等）之后 | 代码审查 |
 
 ```go
-cfg := httpc.DefaultConfig()
-cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
+cfg := httpc.DefaultSessionConfig()
+cfg.CookieSecurity = httpc.StrictCookieSecurityConfig()
+sm, err := httpc.NewSessionManager(cfg)
 // 要求 Secure + HttpOnly + SameSite=Strict
 ```
 
@@ -336,8 +337,8 @@ func main() {
 
 	// 请求默认值
 	cfg.Defaults.UserAgent = "my-service/1.0"
-	cfg.Defaults.FollowRedirects = true
-	cfg.Defaults.MaxRedirects = 5
+	cfg.Security.FollowRedirects = true
+	cfg.Security.MaxRedirects = 5
 
 	// 中间件
 	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
@@ -360,7 +361,7 @@ func main() {
 ```go
 func createSecureClient() (httpc.Client, error) {
 	cfg := httpc.SecureConfig()
-	cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
+	// Cookie 安全在会话级配置：SessionConfig.CookieSecurity / SessionManager.SetCookieSecurity
 	cfg.Security.RedirectWhitelist = []string{"api.example.com"}
 	// SecureConfig 已设 FollowRedirects = false、AllowPrivateIPs = false、5MB 响应上限
 	return httpc.New(cfg)

@@ -24,7 +24,7 @@ Import it in your code:
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC requires Go 1.26 or later; apart from `golang.org/x/sys` it has no other third-party dependencies, and you can send your first request without any configuration.
+HTTPC requires Go 1.27 or later; it has 7 direct dependencies (`golang.org/x/net` + `golang.org/x/sys` for the standard path, with brotli / compress / uTLS / tls-client / fhttp pulled in only when `Security.TLSFingerprint` is enabled). Without the fingerprint feature the standard stack is used, and you can send your first request without any configuration.
 
 ## Basic Requests
 
@@ -58,7 +58,7 @@ Supported HTTP methods: `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Option
 - Package-level functions use a **lazily-initialized shared default client** internally — created on the first call, reused afterwards, and safe for concurrent use;
 - The returned `*Result` aggregates the status code, response headers, response body, and request metadata (duration, attempts, redirect chain);
 - `err != nil` indicates a **network-layer error** only (connection failure, timeout, TLS error, etc.); 4xx/5xx status codes must be checked yourself via methods like `result.IsSuccess()`;
-- The default configuration ships TLS 1.2+, SSRF protection, a 10MB response-body cap, and up to 3 smart retries — no extra setup required.
+- The default configuration ships TLS 1.2+, SSRF protection, a 10MB response-body cap, and up to 3 smart retries (idempotent requests only; POST/PATCH execute exactly once by default) — no extra setup required.
 
 ## Creating a Client
 
@@ -99,7 +99,7 @@ You can also set defaults that apply to every request (User-Agent, default heade
 cfg := httpc.DefaultConfig()
 cfg.Defaults.UserAgent = "myapp/2.0"
 cfg.Defaults.Headers["Authorization"] = "Bearer " + token
-cfg.Defaults.FollowRedirects = false
+cfg.Security.FollowRedirects = false
 
 client, err := httpc.New(cfg)
 ```
@@ -240,7 +240,7 @@ type Repo struct {
 }
 
 func main() {
-	// 1. Create a client (default config: TLS 1.2+, SSRF protection, up to 3 retries)
+	// 1. Create a client (default config: TLS 1.2+, SSRF protection, up to 3 retries for idempotent requests)
 	client, err := httpc.NewDefault()
 	if err != nil {
 		log.Fatal(err)

@@ -77,13 +77,14 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
       en: 'Modern high-performance HTTP client. Supports TLS 1.2+, SSRF protection, middleware chain, smart retry, zero-allocation pooling, reducing GC by 90%.'
     },
     features: {
-      zh: ['TLS 1.2+', 'SSRF 防护', '中间件链', '连接池管理', '请求重试'],
+      zh: ['TLS 1.2+', 'SSRF 防护', '中间件链', '连接池管理', '请求重试', 'TLS 指纹'],
       en: [
         'TLS 1.2+',
         'SSRF protection',
         'Middleware chain',
         'Connection pool management',
-        'Request retry'
+        'Request retry',
+        'TLS fingerprinting'
       ]
     }
   },

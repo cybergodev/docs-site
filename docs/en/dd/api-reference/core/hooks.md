@@ -19,7 +19,7 @@ type HookEvent int
 func (e HookEvent) String() string
 ```
 
-Hook event type; `String()` returns the event name (unknown values return `"Unknown"`).
+`HookEvent` is the hook event type; `String()` returns the event name (unknown values return `"Unknown"`).
 
 | Constant | String() | When triggered |
 |----------|----------|----------------|
@@ -144,7 +144,7 @@ type HookContext struct {
 
 ## HooksConfig
 
-Structured hook configuration, recommended for batch hook registration.
+`HooksConfig` is the structured hook configuration, recommended for batch hook registration.
 
 ```go
 type HooksConfig struct {

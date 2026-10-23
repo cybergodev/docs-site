@@ -242,7 +242,7 @@ Markdown 格式转换只是输出形式不同，提取本身的结果不应污�
 
 ## 批量处理超过 10000 项会怎样？
 
-整批失败（不会部分处理）。`maxBatchSize` 上限为 10000，超限时每项的 `Errors` 都填充 `html: batch size N exceeds maximum 10000`，`Failed` 计数等于输入数量，`Results` 全为 `nil`。
+整批失败（不会部分处理）。`maxBatchSize` 上限为 10000，超限时每项的 `Errors` 都填充 `html: batch size exceeds maximum: N exceeds maximum 10000`（可用 `errors.Is(err, html.ErrBatchTooLarge)` 判断），`Failed` 计数等于输入数量，`Results` 全为 `nil`。
 
 <!-- check-code: skip -->
 ```go
@@ -263,18 +263,7 @@ fmt.Println(br.Failed)             // == len(hugeSlice)
 
 ## 文章智能识别（ExtractArticle）的评分算法是怎样的？
 
-内置默认评分器（内部实现，不导出）基于多维信号计算每个元素节点的内容相关性分数，选取得分最高的节点作为文章容器。评分维度包括：
-
-| 维度 | 正面信号 | 负面信号 |
-|------|----------|----------|
-| 标签语义 | `<article>`(+1000)、`<main>`(+900)、`<section>`(+300) | `nav`/`aside`/`footer`/`header` 直接返回 0 |
-| class/id 模式 | `content`/`article`/`post`/`main`/`entry` 等（强正面）；`blog`/`news`/`detail` 等（中等正面） | `comment`/`sidebar`/`nav`/`ad`/`menu` 等（强负面）；`widget`/`share`/`social` 等（中等负面） |
-| 段落密度 | 子树中 `<p>` 数量 × 倍率加分 | — |
-| 文本长度 | 超过阈值的长文本加分；低于阈值的短文本扣分 | — |
-| 链接密度 | — | 文本短且链接密集时施加惩罚（可能是导航栏） |
-| 标点特征 | 逗号密集（`,` 或 `，`）暗示散文体，加分 | — |
-| 内容密度 | 文本/标签比高时乘以放大系数 | 比例低时乘以衰减系数 |
-| ARIA role | `role="main"`/`role="article"`(+500) | `role="navigation"`/`role="complementary"`(-400) |
+内置默认评分器（内部实现，不导出）基于多维信号计算每个元素节点的内容相关性分数，选取得分最高的节点作为文章容器。评分维度涵盖：标签语义（`<article>`/`<main>`/`<section>` 加分，`nav`/`aside`/`footer` 等直接归零）、class/id 模式（`content`/`article`/`post` 等正面词加分，`comment`/`sidebar`/`ad` 等负面词扣分）、段落密度、文本长度、链接密度、标点特征、内容密度与 ARIA role。完整维度与分值权重表见 [内容提取实战](../guides/core-features/content-extraction)。
 
 :::tip 布局包装器的特殊处理
 当 class/id 同时含内容信号（`content`/`article`）和移除信号（如 `sidebar`）时——典型如 CSS 布局类 `content-sidebar`——评分器**不会**移除该节点，因为它包裹着主内容。语义标签 `<article>`/`<main>` 一律豁免 class/id 移除启发式。

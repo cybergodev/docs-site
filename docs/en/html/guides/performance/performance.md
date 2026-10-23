@@ -174,7 +174,7 @@ If the deadline has been reached, processing stops at the **next checkpoint** an
 
 ### Global Limit for Timeout Goroutines
 
-Each extraction with a timeout occupies one goroutine until completion or timeout. To prevent goroutine leaks from exhausting resources, the library enforces a global limit of `maxTimeoutGoroutines = 1000`. When the number of concurrent timeout operations reaches the limit, new extractions **immediately** return `ErrProcessingTimeout` (instead of queuing).
+Each extraction with a timeout occupies one goroutine until completion or timeout. To prevent goroutine leaks from exhausting resources, the library enforces a global limit of `maxTimeoutGoroutines = 1000`. When the number of concurrent timeout operations reaches the limit, new extractions **immediately** return `ErrTooManyConcurrentOps` (instead of queuing).
 
 :::warning Concurrency limit in batch scenarios
 The concurrency of batch extraction (`ExtractBatch`) is limited by `WorkerPoolSize` (default 4, max 256), typically well below the 1000 goroutine limit. However, if you concurrently call large numbers of `ExtractWithContext` with timeouts at the application level, be aware of this global limit — it is process-level and shared across all Processors.

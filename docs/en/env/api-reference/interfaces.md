@@ -37,7 +37,7 @@ type EnvFileLoader interface {
 }
 ```
 
-**Use case:** Scenarios that only need file loading capability.
+**Use case:** Scenarios that only need file loading capability. The interface has a single method, `EnvFileLoader.LoadFiles`.
 
 ```go
 func loadConfig(loader env.EnvFileLoader) error {
@@ -60,7 +60,14 @@ type EnvGetter interface {
 }
 ```
 
-**Use case:** Read-only configuration access (minimal interface).
+**Use case:** Read-only configuration access (minimal interface). Its four methods (qualified names):
+
+| Method | Description |
+|--------|-------------|
+| `EnvGetter.GetString` | Read a string by key (with optional default) |
+| `EnvGetter.Lookup` | Look up a key, returning the value and whether it exists |
+| `EnvGetter.Keys` | Return all keys |
+| `EnvGetter.All` | Return a snapshot of all key-value pairs |
 
 ```go
 func readConfig(getter env.EnvGetter) {
@@ -98,7 +105,7 @@ type EnvSetter interface {
 }
 ```
 
-**Use case:** Scenarios that only need set/delete capability.
+**Use case:** Scenarios that only need set/delete capability. Both methods carry validation semantics: `EnvSetter.Set` validates the key/value, writes it, and returns an error, while `EnvSetter.Delete` removes a key (unlike the plain storage operation `EnvStorage.Set`).
 
 ```go
 func updateConfig(setter env.EnvSetter) error {
@@ -121,7 +128,7 @@ type EnvApplicator interface {
 }
 ```
 
-**Use case:** Applying loaded variables to `os.Environ`.
+**Use case:** Applying loaded variables to `os.Environ`; the single method is `EnvApplicator.Apply`.
 
 ```go
 func applyToSystem(applicator env.EnvApplicator) error {
@@ -141,7 +148,7 @@ type EnvCloser interface {
 }
 ```
 
-**Use case:** Releasing loader resources.
+**Use case:** Releasing loader resources; the single method is `EnvCloser.Close`.
 
 ---
 
@@ -175,7 +182,7 @@ type RequiredValidator interface {
 }
 ```
 
-Validates that all required keys exist.
+Validates that all required keys exist. The single method is `RequiredValidator.ValidateRequired`.
 
 ---
 
@@ -189,7 +196,7 @@ type KeyValidator interface {
 }
 ```
 
-Validates whether a key name conforms to rules (length, format, forbidden keys, etc.).
+Validates whether a key name conforms to rules (length, format, forbidden keys, etc.). The single method is `KeyValidator.ValidateKey`.
 
 ---
 
@@ -203,7 +210,7 @@ type ValueValidator interface {
 }
 ```
 
-Validates whether a value is safe (no null bytes, control characters, etc.).
+Validates whether a value is safe (no null bytes, control characters, etc.). The single method is `ValueValidator.ValidateValue`.
 
 ---
 
@@ -219,7 +226,7 @@ type AuditLogger interface {
 }
 ```
 
-**Use case:** Minimal interface for implementing custom audit loggers. For full audit capability, use `FullAuditLogger`.
+**Use case:** Minimal interface for implementing custom audit loggers. It has a single method, `AuditLogger.LogError`; for full audit capability, use `FullAuditLogger`.
 
 ---
 
@@ -243,11 +250,11 @@ type FullAuditLogger interface {
 
 | Method | Purpose |
 |--------|---------|
-| LogError | Log error events (inherited from AuditLogger) |
-| `Log` | Log general audit events |
-| `LogWithFile` | Log events including file information |
-| `LogWithDuration` | Log events including duration |
-| `Close` | Close the audit log |
+| `AuditLogger.LogError` | Inherited via the embedded `AuditLogger`; logs error events |
+| `FullAuditLogger.Log` | Log general audit events |
+| `FullAuditLogger.LogWithFile` | Log events including file information |
+| `FullAuditLogger.LogWithDuration` | Log events including duration |
+| `FullAuditLogger.Close` | Close the audit log |
 
 ---
 
@@ -262,14 +269,14 @@ type AuditHandler interface {
 }
 ```
 
-**Use case:** Implement this interface to customize how audit events are processed. Unlike the `AuditLogger` interface, `AuditHandler` requires both `Log` and `Close` methods, used for receiving processed audit events and releasing resources.
+**Use case:** Implement this interface to customize how audit events are processed. Unlike the `AuditLogger` interface, `AuditHandler` requires two methods (`AuditHandler.Log` receives audit events and `AuditHandler.Close` releases resources); `AuditHandler.Log` may be invoked from concurrent goroutines, so implementations must be safe for concurrent use.
 
 **Built-in implementations:**
-- `JSONAuditHandler` - outputs JSON format logs
-- `LogAuditHandler` - outputs using the standard log package
-- `ChannelAuditHandler` - sends to a channel
-- `CloseableChannelHandler` - closeable handler with its own buffered channel
-- `NopAuditHandler` - no-op handler
+- `JSONAuditHandler` - outputs JSON format logs (`JSONAuditHandler.Log` / `JSONAuditHandler.Close`)
+- `LogAuditHandler` - outputs using the standard log package (`LogAuditHandler.Log` / `LogAuditHandler.Close`)
+- `ChannelAuditHandler` - sends to a channel (`ChannelAuditHandler.Log` / `ChannelAuditHandler.Close`; Close does not close the external channel)
+- `CloseableChannelHandler` - closeable handler with its own buffered channel (`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`)
+- `NopAuditHandler` - no-op handler (`NopAuditHandler.Log` / `NopAuditHandler.Close`)
 
 ---
 
@@ -285,7 +292,7 @@ type VariableExpander interface {
 }
 ```
 
-**Use case:** Custom variable expansion logic, supporting `${VAR}`, `${VAR:-default}` and other syntaxes.
+**Use case:** Custom variable expansion logic; the single method is `VariableExpander.Expand`, supporting `${VAR}`, `${VAR:-default}` and other syntaxes.
 
 ```go
 expanded, err := expander.Expand("${BASE_URL}/api")
@@ -313,7 +320,7 @@ type EnvParser interface {
 - `map[string]string` - parsed key-value pairs
 - `error` - parse error
 
-**Use case:** Custom file format parser.
+**Use case:** Custom file format parser; the single method is `EnvParser.Parse`.
 
 ---
 
@@ -335,19 +342,19 @@ type EnvStorage interface {
 }
 ```
 
-**Use case:** Custom storage backend.
+**Use case:** Custom storage backend. The library's internal sharded secure storage satisfies it as a compile-time contract; no library API currently accepts an `EnvStorage`, so implement it only when substituting your own storage type.
 
 **Method descriptions:**
 
 | Method | Purpose |
 |--------|---------|
-| `Get` | Get value, returns value and whether it exists |
-| `Set` | Set key-value pair |
-| `Delete` | Delete key |
-| `Keys` | Return all key names |
-| `Len` | Return key-value pair count |
-| `ToMap` | Return a copy of all key-value pairs |
-| `Clear` | Clear all data |
+| `EnvStorage.Get` | Get value, returns value and whether it exists |
+| `EnvStorage.Set` | Set key-value pair |
+| `EnvStorage.Delete` | Delete key |
+| `EnvStorage.Keys` | Return all key names |
+| `EnvStorage.Len` | Return key-value pair count |
+| `EnvStorage.ToMap` | Return a copy of all key-value pairs |
+| `EnvStorage.Clear` | Clear all data |
 
 ---
 
@@ -363,7 +370,7 @@ type Marshaler interface {
 }
 ```
 
-**Use case:** Serialization of custom types.
+**Use case:** Serialization of custom types; the single method is `Marshaler.MarshalEnv`.
 
 ```go
 type LogLevel string
@@ -389,7 +396,7 @@ type Unmarshaler interface {
 }
 ```
 
-**Use case:** Deserialization of custom types.
+**Use case:** Deserialization of custom types; the single method is `Unmarshaler.UnmarshalEnv`.
 
 ```go
 type Config struct {
@@ -433,6 +440,23 @@ type FileSystem interface {
 ```
 
 **Use case:** Mocking a filesystem during testing.
+
+**Methods (qualified names) and library usage:**
+
+| Method | Used by library | Description |
+|--------|:---------------:|-------------|
+| `FileSystem.Open` | ✓ | Open a file for reading (the file-loading entry point) |
+| `FileSystem.LookupEnv` | ✓ | Distinguish "not set" from "explicitly empty" |
+| `FileSystem.Setenv` | ✓ | Write a process environment variable |
+| `FileSystem.Unsetenv` | ✓ | Remove a process environment variable |
+| `FileSystem.OpenFile` | — | Open a file with flags and permissions |
+| `FileSystem.Stat` | — | Query file info by path |
+| `FileSystem.MkdirAll` | — | Create directories recursively |
+| `FileSystem.Remove` | — | Remove a file |
+| `FileSystem.Rename` | — | Rename a file |
+| `FileSystem.Getenv` | — | Read a process environment variable (library reads go through `FileSystem.LookupEnv`) |
+
+The library itself calls only the first four methods (file-size checks go through `File.Stat` on the handle returned by `Open`); the remaining methods exist for callers that wrap `FileSystem` in their own code. A minimal in-memory mock only has to implement the four core methods plus `Open` returning a `File`.
 
 ```go
 type MockFileSystem struct {
@@ -514,8 +538,10 @@ type File interface {
 | Read | Read data |
 | Write | Write data |
 | Close | Close file |
-| Stat | Get file info |
-| Sync | Sync to disk |
+| `File.Stat` | Get file info (used by the library for size checks) |
+| `File.Sync` | Sync to disk |
+
+Read/Write/`Close` come from the embedded io interfaces; the file-specific operations are `File.Stat` and `File.Sync`.
 
 ---
 
@@ -665,19 +691,19 @@ Audit event structure:
 type AuditEvent = internal.Event
 ```
 
-**Fields:**
+**Fields (qualified names):**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Timestamp | `time.Time` | Timestamp |
-| Action | `AuditAction` | Action type |
-| Key | `string` | Key name (masked) |
-| File | `string` | File name |
-| Reason | `string` | Reason/description |
-| Success | `bool` | Whether successful |
-| Masked | `bool` | Whether masked |
-| Details | `string` | Details |
-| Duration | `int64` | Duration (nanoseconds) |
+| `AuditEvent.Timestamp` | `time.Time` | Event timestamp |
+| `AuditEvent.Action` | `AuditAction` | Action type |
+| `AuditEvent.Key` | `string` | Key name (sensitive keys masked) |
+| `AuditEvent.File` | `string` | Related file name |
+| `AuditEvent.Reason` | `string` | Reason/description |
+| `AuditEvent.Success` | `bool` | Whether the operation succeeded |
+| `AuditEvent.Masked` | `bool` | Whether the key was masked |
+| `AuditEvent.Details` | `string` | Reserved free-form context (not populated by the built-in auditor) |
+| `AuditEvent.Duration` | `int64` | Duration (nanoseconds) |
 
 ---
 

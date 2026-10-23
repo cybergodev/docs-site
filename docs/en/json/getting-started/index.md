@@ -305,7 +305,7 @@ if err != nil {
 ```
 
 :::tip
-The `Foreach` family has 12 functions in total (including 4 file variants, `ForeachFile*`; see the full list in the [Cheat Sheet · Iteration Function Family](./cheatsheet#iteration-function-family)): use `ForeachWithError` when you need **early termination** (the callback returns an `error`; return `item.Break()` to stop). Deep nested traversal, carrying the current path, and other variants are covered in the same cheat-sheet section.
+The `Foreach*` function family has 12 members in total (including 4 file variants, `ForeachFile*`; see the full list in the [Cheat Sheet · Iteration Function Family](./cheatsheet#iteration-function-family)): use `ForeachWithError` when you need **early termination** (the callback returns an `error`; return `item.Break()` to stop). Deep nested traversal, carrying the current path, and other variants are covered in the same cheat-sheet section.
 :::
 
 ## Error Handling
@@ -332,7 +332,7 @@ if err != nil {
 If you would rather not check each case, typed functions with default values (`GetString`/`GetInt`, etc.) silently return the zero value or the default, which suits non-critical reads.
 
 :::tip Where does ErrTypeMismatch apply?
-When a plain `Get` hits a type conflict (e.g. an array index applied to a string path), it returns a descriptive error carrying context, **not** the `ErrTypeMismatch` sentinel. `ErrTypeMismatch` mainly appears in three places: the `AsString()`/`AsInt()` conversion methods on `SafeGet` results, navigation of pre-compiled paths in `GetCompiled`, and calling the `Foreach` family on non-iterable values.
+When a plain `Get` hits a type conflict (e.g. an array index applied to a string path), it returns a descriptive error carrying context, **not** the `ErrTypeMismatch` sentinel. `ErrTypeMismatch` mainly appears in three places: the `AsString()`/`AsInt()` conversion methods on `SafeGet` results, navigation of pre-compiled paths in `GetCompiled`, and calling the `Foreach*` family on non-iterable values.
 :::
 
 ## Common First-Hour Questions

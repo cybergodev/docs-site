@@ -38,8 +38,8 @@ p.AddHook(json.LoggingHook(slog.Default()))
 | 实现 `encoding.TextMarshaler`（`MarshalText`） | 以文本表达形态，编码为 JSON 字符串 |
 | `Config.CustomEscapes` | 全局改写某些字符的转义 |
 
-::: warning Config.CustomEncoder 未挂接
-`Config.CustomEncoder` 与 `Config.CustomTypeEncoders` 已声明但**尚未接入编码流水线**，当前设置不会改变输出；请先使用上表三条通道。
+::: warning Config.CustomEncoder 已废弃
+`Config.CustomEncoder` 与 `Config.CustomTypeEncoders` **已废弃**：已声明但从未接入编码流水线，当前设置不会改变输出（v1 生命周期内保留）；请使用上表三条通道。
 :::
 
 三条通道的完整示例与选型建议见[自定义编码器](./custom-encoder)。

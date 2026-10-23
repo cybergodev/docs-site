@@ -331,7 +331,7 @@ err := json.ForeachFile("users.json", func(key any, item *json.IterableValue) er
 })
 ```
 
-这些函数是 `LoadFromFile` + `Foreach` 的便捷组合，适合处理大集合。流式处理与内存优化细节见[流式处理](../../streaming/large-files)。
+这些函数是 `LoadFromFile` 与逐条迭代回调的便捷组合，适合处理大集合。流式处理与内存优化细节见[流式处理](../../streaming/large-files)。
 
 ## 方法选择
 

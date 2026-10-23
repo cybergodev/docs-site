@@ -89,7 +89,7 @@ Batch methods perform upfront validation before dispatching tasks; on failure th
 
 | Case | Return |
 |------|--------|
-| Batch exceeds `10000` items | Each `Errors[i]` filled with the same error, `Failed = N`; does not panic |
+| Batch exceeds `10000` items | Each `Errors[i]` filled with the same error, `Failed = N`; does not panic; check with `errors.Is(err, html.ErrBatchTooLarge)` |
 | Processor is `nil` or already `Close`d | Each `Errors[i]` filled with `ErrProcessorClosed`, `Failed = N` |
 | Empty input slice (0 items) | An empty `BatchResult` (`Results`/`Errors` are empty slices) |
 | Package function passed an invalid `Config` | Each item filled with the configuration error |
@@ -160,7 +160,7 @@ func main() {
 ```
 
 :::warning
-A single batch supports up to 10000 items. Exceeding this limit returns a `*BatchResult` in which every item failed (each `Errors` entry is `html: batch size N exceeds maximum 10000`); no panic is triggered.
+A single batch supports up to 10000 items. Exceeding this limit returns a `*BatchResult` in which every item failed (each `Errors` entry is `html: batch size exceeds maximum: N exceeds maximum 10000`, check with `errors.Is(err, html.ErrBatchTooLarge)`); no panic is triggered.
 :::
 
 ## Related Documentation

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "JSONL 数据管道"
 title: "JSONL 数据管道 - CyberGo JSON | ETL 流式转换"
-description: "CyberGo JSON 构建 JSONL 数据管道：StreamLinesInto 流式读取并在回调中转换字段、ToJSONL/ToJSONLString 批量写回、NDJSONProcessor 与 ForeachFile 迭代处理大文件，实现字段富化与级别分类，适合日志清洗与分析等流式处理场景。"
+description: "CyberGo JSON 构建 JSONL 数据管道：StreamLinesInto 流式读取并在回调中转换字段、ToJSONL/ToJSONLString 批量写回、StreamJSONLFile 与 ForeachFile 迭代处理大文件，实现字段富化与级别分类，适合日志清洗与分析等流式处理场景。"
 sidebar_position: 40
 ---
 
@@ -89,7 +89,7 @@ func main() {
 
 ## 处理 JSONL 文件
 
-`NDJSONProcessor` 逐行处理 JSONL 文件，回调返回 `map[string]any`（适合字段不固定的场景）。聚合结果用 `ToJSONL` 批量转为 JSONL 字节。
+`Processor.StreamJSONLFile` 逐行处理 JSONL 文件，回调收到 `*IterableValue`（`GetData()` 返回该行的 `map[string]any`，适合字段不固定的场景）。聚合结果用 `ToJSONL` 批量转为 JSONL 字节。（遗留的 `NDJSONProcessor` 已弃用，见[JSONL 流式处理](../streaming/jsonl#ndjsonprocessor)。）
 
 ```go
 package main
@@ -119,10 +119,16 @@ func main() {
 		panic(err)
 	}
 
-	// 1. 用 NDJSONProcessor 逐行处理（每行解析为 map[string]any）
-	processor := json.NewNDJSONProcessor()
+	// 1. 用 Processor.StreamJSONLFile 逐行处理（item.GetData() 返回 map[string]any）
+	p, err := json.New()
+	if err != nil {
+		panic(err)
+	}
+	defer p.Close()
+
 	loginCount := 0
-	err = processor.ProcessFile(jsonlPath, func(lineNum int, obj map[string]any) error {
+	err = p.StreamJSONLFile(jsonlPath, func(lineNum int, item *json.IterableValue) error {
+		obj := item.GetData().(map[string]any)
 		event, _ := obj["event"].(string)
 		user, _ := obj["user"].(string)
 		fmt.Printf("第 %d 行: %s by %s\n", lineNum, event, user)

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Large Files Guide"
 title: "Large File Handling - CyberGo JSON | Stream & Memory Control"
-description: "CyberGo JSON offers large-file handling with ForeachFile, StreamIterator and StreamJSONL streaming, ChunkSize batching and MaxMemory caps for logs and ETL."
+description: "CyberGo JSON offers large-file handling with ForeachFile, StreamIterator and StreamJSONL streaming, plus MaxMemory and BufferSize caps for logs and ETL."
 sidebar_position: 10
 ---
 
@@ -49,17 +49,14 @@ Large-file handling configuration is integrated into `Config`:
 type Config struct {
     // ... other configuration ...
 
-    // Large-file handling configuration
-    ChunkSize       int64 // Chunk size (default 1MB)
-    MaxMemory       int64 // Maximum memory usage (default 100MB)
-    BufferSize      int   // Read buffer size (default 64KB)
-    SamplingEnabled bool  // Whether sampling is enabled (default true)
-    SampleSize      int   // Sample count (default 1000)
+    // Large-file handling configuration (effective fields)
+    MaxMemory  int64 // Maximum memory usage (default 100MB)
+    BufferSize int   // Read buffer size (default 64KB)
 }
 ```
 
-::: tip Don't confuse the two "chunk sizes"
-`Config.ChunkSize` (`int64`, in bytes) is the chunk size for large-file reads, while the `chunkSize` parameter (`int`) of [`ForeachFileChunked`](#batch-processing) is the **number of elements per batch** — the two do not affect each other; the batching granularity of `ForeachFileChunked` is decided solely by its own parameter (treated as 100 when ≤0).
+::: warning Don't confuse the deprecated fields
+`Config.ChunkSize`, `SamplingEnabled`, and `SampleSize` are all **deprecated** — they are not read by any code path (whether security scanning samples is decided by `FullSecurityScan`), so setting them changes nothing. In historical wording, `ChunkSize` meant a "byte chunk size", while the `chunkSize` parameter (`int`) of [`ForeachFileChunked`](#batch-processing) is the **number of elements per batch** — the two do not affect each other; the batching granularity of `ForeachFileChunked` is decided solely by its own parameter (treated as 100 when ≤0).
 :::
 
 ### Basic Usage
@@ -160,7 +157,6 @@ err := processor.ForeachFile("config-map.json", func(key any, item *json.Iterabl
 ```go
 // Custom large-file configuration
 cfg := json.DefaultConfig()
-cfg.ChunkSize = 10 * 1024 * 1024   // 10MB chunks
 cfg.MaxMemory = 500 * 1024 * 1024  // 500MB memory cap
 cfg.BufferSize = 128 * 1024        // 128KB buffer
 
@@ -210,7 +206,7 @@ Configure streaming parameters via `Config`. The fields directly relevant to str
 |-------|---------------------------|----------|
 | `MaxJSONSize` | 100MB (`DefaultMaxJSONSize`) | Total byte cap for file/Reader reads. `LoadFromFile`/`UnmarshalFromFile`/`LoadFromReader` enforce it **during the read** with `io.LimitReader` (reading cap+1 bytes to detect truncation, avoiding TOCTOU races); the `ForeachFile*` family inherits it via `LoadFromFile`; a `cfg.MaxJSONSize > 0` passed to streaming iterator constructors caps the whole stream |
 | `BufferSize` | 64KB | Read buffer for `StreamIterator`/`StreamObjectIterator`; falls back to 32KB when `cfg` is passed with `BufferSize <= 0` |
-| `ChunkSize` | 1MB | Large-file chunk size (validation range 64KB–100MB) |
+| `ChunkSize` | 1MB | Deprecated: not read by any code path (streaming reads use `BufferSize`; validation still clamps it to 64KB–100MB); only takes part in the config cache key |
 | `MaxMemory` | 100MB | Total memory cap (validation range 10MB–1GB); the JSONL streaming memory fallback chain is `JSONLMaxMemory` -> `MaxMemory` |
 | `MaxNestingDepthSecurity` | 200 (`DefaultMaxNestingDepth`) | Per-line nesting depth cap for JSONL, checked line by line before parsing |
 | `ValidateFilePath` | `true` | Declared but currently **not a switch**: file-path security validation (traversal, symlinks, platform restrictions) runs unconditionally at read/write time |
@@ -221,7 +217,6 @@ Configure streaming parameters via `Config`. The fields directly relevant to str
 cfg := json.DefaultConfig()
 
 // Large-file configuration
-cfg.ChunkSize = 10 * 1024 * 1024   // 10MB chunks
 cfg.MaxMemory = 500 * 1024 * 1024  // 500MB memory cap
 cfg.BufferSize = 128 * 1024        // 128KB buffer
 
@@ -474,7 +469,6 @@ In `ForEach`/`ForEachWithContext`, any callback error stops dispatching new task
 // Configure per available memory
 cfg := json.DefaultConfig()
 cfg.MaxMemory = 500 * 1024 * 1024 // 500MB
-cfg.ChunkSize = 10 * 1024 * 1024  // 10MB
 
 processor, err := json.New(cfg)
 if err != nil {

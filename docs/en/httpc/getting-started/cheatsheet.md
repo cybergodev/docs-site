@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo HTTPC | Common Code Reference"
-description: "HTTPC cheat sheet: client creation and presets, request methods, 29 WithXxx options, Result handling, middleware, ClientError, downloads, domain clients."
+description: "HTTPC cheat sheet: client creation and presets, request methods, 32 WithXxx options, Result handling, middleware, ClientError, downloads, domain clients."
 sidebar_position: 30
 ---
 
@@ -34,8 +34,8 @@ client, _ = httpc.New(httpc.MinimalConfig())     // Lightweight: no retries, no 
 cfg := httpc.DefaultConfig()
 cfg.Defaults.UserAgent = "myapp/2.0"
 cfg.Defaults.Headers["Authorization"] = "Bearer " + token
-cfg.Defaults.FollowRedirects = false
-cfg.Defaults.MaxRedirects = 5
+cfg.Security.FollowRedirects = false
+cfg.Security.MaxRedirects = 5
 client, _ := httpc.New(cfg)
 
 // Manage the package-level default client

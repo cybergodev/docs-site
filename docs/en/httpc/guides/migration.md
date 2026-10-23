@@ -96,7 +96,7 @@ The migrated code is shorter, and it now carries the TLS policy, SSRF protection
 | `req.AddCookie(&http.Cookie{...})` | <code v-pre>httpc.WithCookies([]http.Cookie{{...}})</code> | Takes a cookie slice (a single cookie is a one-element slice); name-value only via `WithCookieMap`, raw header string via `WithCookieString` |
 | `req.URL.Query()` string assembly | `httpc.WithQuery(k, v)` / `WithQueryMap(m)` | Values support common scalars and `fmt.Stringer`; encoded and merged into the URL automatically |
 | `jar, _ := cookiejar.New(nil)` on `client.Jar` | `cfg.Connection.EnableCookies = true` | Or use a `DomainClient` that maintains cookies and common headers automatically (see [Domain Sessions](./domain-session)) |
-| `client.CheckRedirect = func(...)` | `cfg.Defaults.FollowRedirects` / `MaxRedirects` | Per-request `WithFollowRedirects(false)`; redirect domain whitelist via `Security.RedirectWhitelist` (see [Redirects](./redirects)) |
+| `client.CheckRedirect = func(...)` | `cfg.Security.FollowRedirects` / `MaxRedirects` | Per-request `WithFollowRedirects(false)`; redirect domain whitelist via `Security.RedirectWhitelist` (see [Redirects](./redirects)) |
 | Proxy: `Transport.Proxy` | `cfg.Connection.ProxyURL` / `ProxyPool` / `EnableSystemProxy` | The three modes take effect by priority; see [Proxy & Proxy Pool](./proxy) |
 
 ### Response Handling
@@ -352,7 +352,7 @@ The `http.Transport` tuning fields commonly used with the standard library all m
 | `ForceAttemptHTTP2` | `Connection.EnableHTTP2` | true |
 | `ResponseHeaderTimeout` | `Timeouts.ResponseHeader` | 0 (disabled) |
 | `MaxResponseHeaderBytes` | `Connection.MaxResponseHeaderBytes` | 0 (standard-library default 1MB) |
-| `CheckRedirect` | `Defaults.FollowRedirects` / `MaxRedirects` + `Security.RedirectWhitelist` | true / 10 |
+| `CheckRedirect` | `Security.FollowRedirects` / `MaxRedirects` + `Security.RedirectWhitelist` | true / 10 |
 | Custom `DialContext` (dialer) | No direct entry point | SSRF validation is wrapped into the dial layer |
 
 Existing `tls.Config` knowledge (mTLS, custom CAs, cipher suites) carries over unchanged:
@@ -409,22 +409,22 @@ These behavioral differences cause the most trouble when moving from `net/http`:
 
 What `Result` holds is the already-read and copied bytes — HTTPC performs the read, drain, and close internally, and the underlying connection is managed by the pool. When migrating, **delete every `defer resp.Body.Close()`** and do not look for a close hook. See the FAQ entry ["Do I need to close the response body manually?"](../faq/#do-i-need-to-close-the-response-body-manually) for details.
 
-**2. Retries are on by default — non-idempotent POSTs may be submitted twice**
+**2. Retries are on by default — but only for idempotent requests**
 
-`net/http` never retries; HTTPC by default retries timeouts/transport errors and 408/429/500/502/503/504 up to 3 times, **regardless of the request method**. Order-placement and payment-style endpoints must handle this:
+`net/http` never retries; HTTPC by default retries timeouts/transport errors and 408/429/500/502/503/504 up to 3 times, but **only for idempotent requests** (GET/HEAD/PUT/DELETE/OPTIONS/TRACE) — POST, PATCH, and custom methods **execute exactly once and are never retried**. The real thing to watch for: once you explicitly opt into non-idempotent retries with `WithRetryNonIdempotent(true)`, order-placement and payment-style endpoints are at risk of duplicate submissions and must be handled:
 
 <!-- check-code: skip -->
 ```go
-// Dangerous: up to 3 retries by default, and POST takes part in them
-result, err := client.Post("https://api.example.com/orders", httpc.WithJSON(order))
-
-// Safe (option 1): disable retries per request on non-idempotent endpoints
-result, err = client.Post("https://api.example.com/orders",
+// Dangerous: once opted in, POST takes part in the (up to 3) retries
+result, err := client.Post("https://api.example.com/orders",
     httpc.WithJSON(order),
-    httpc.WithMaxRetries(0),
+    httpc.WithRetryNonIdempotent(true),
 )
 
-// Safe (option 2): deduplicate via a server-side idempotency key (recommended)
+// Safe (option 1): keep the default — non-idempotent endpoints execute once (recommended, no handling needed)
+result, err := client.Post("https://api.example.com/orders", httpc.WithJSON(order))
+
+// Safe (option 2): if you do need retries, deduplicate via a server-side idempotency key (recommended)
 result, err = client.Post("https://api.example.com/orders",
     httpc.WithJSON(order),
     httpc.WithHeader("Idempotency-Key", orderID),
@@ -485,7 +485,7 @@ Regular requests cap the response body at 10MB by default and the decompressed b
 
 **7. Redirect behavior is predictable but has defaults**
 
-Redirects are followed by default (up to 10). Note that `WithMaxRedirects(0)` / `MaxRedirects = 0` is the "unset" sentinel value, not a disable — to stop following, use `WithFollowRedirects(false)` or `Defaults.FollowRedirects = false`. See [Redirects](./redirects).
+Redirects are followed by default (up to 10). Note that `WithMaxRedirects(0)` / `MaxRedirects = 0` is the "unset" sentinel value, not a disable — to stop following, use `WithFollowRedirects(false)` or `Security.FollowRedirects = false`. See [Redirects](./redirects).
 
 ## Step-by-Step Migration Checklist
 
@@ -498,7 +498,7 @@ Execute in order; every step can be verified independently:
 5. **Map timeouts** — `http.Client.Timeout` → `cfg.Timeouts.Request`; per-request differences via `WithTimeout`; place former Transport-level timeouts per [Timeout System Comparison](#timeout-system-comparison).
 6. **Migrate Transport tuning** — pool sizes, proxies, TLS, and HTTP/2 land in `Config.Connection` / `Config.Security` per the table above; move `tls.Config` into `Security.TLSConfig`.
 7. **Handle the secure defaults** — add SSRF exemptions for internal-network/localhost calls; confirm the response-body caps fit the payload sizes your APIs return.
-8. **Review the retry impact** — add an idempotency key or `WithMaxRetries(0)` for non-idempotent POSTs; make sure the retry budget matches your business timeouts.
+8. **Review the retry impact** — non-idempotent POSTs execute exactly once by default, so no handling is needed; if you do enable retries, add an idempotency key; make sure the retry budget matches your business timeouts.
 9. **Finish lifecycle housekeeping** — long-running services use an explicit instance + `defer client.Close()`; confirm no client is created per request on the hot path.
 10. **Regression-test** — run your existing integration tests; focus on error paths (network loss/timeouts/4xx/5xx) and large-response scenarios.
 

@@ -362,8 +362,8 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
 }
 cfg.Defaults.UserAgent = "my-app/1.0"
 cfg.Defaults.Headers = map[string]string{"X-App": "my-app"}
-cfg.Defaults.FollowRedirects = true
-cfg.Defaults.MaxRedirects = 10
+cfg.Security.FollowRedirects = true
+cfg.Security.MaxRedirects = 10
 
 client, err := httpc.New(cfg)
 if err != nil {

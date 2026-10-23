@@ -263,7 +263,7 @@ func main() {
 
 ## 文件迭代
 
-Processor 提供 `ForeachFile` 系列方法，直接从文件迭代 JSON 集合，是 `LoadFromFile` + `Foreach` 的便捷组合：
+Processor 提供 `ForeachFile` 系列方法，直接从文件迭代 JSON 集合，是 `LoadFromFile` 与逐条迭代回调的便捷组合：
 
 | 方法 | 用途 |
 |------|------|

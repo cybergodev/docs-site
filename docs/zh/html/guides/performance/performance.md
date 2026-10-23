@@ -174,7 +174,7 @@ func main() {
 
 ### 超时 goroutine 的全局上限
 
-每个带超时的提取会占用一个 goroutine 直到完成或超时。为防止 goroutine 泄漏耗尽资源，库设置了全局上限 `maxTimeoutGoroutines = 1000`。当并发超时操作数达到上限时，新的提取会**立即**返回 `ErrProcessingTimeout`（而非排队等待）。
+每个带超时的提取会占用一个 goroutine 直到完成或超时。为防止 goroutine 泄漏耗尽资源，库设置了全局上限 `maxTimeoutGoroutines = 1000`。当并发超时操作数达到上限时，新的提取会**立即**返回 `ErrTooManyConcurrentOps`（而非排队等待）。
 
 :::warning 批量场景的并发上限
 批量提取（`ExtractBatch`）的并发受 `WorkerPoolSize`（默认 4，上限 256）限制，通常远低于 1000 的 goroutine 上限。但若你在应用层自行并发调用大量带超时的 `ExtractWithContext`，需留意这个全局上限——它是进程级的，跨所有 Processor 共享。

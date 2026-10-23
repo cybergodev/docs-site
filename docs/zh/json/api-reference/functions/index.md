@@ -61,7 +61,7 @@ JSONL（JSON Lines）解析、流式读取、转换和写入函数。
 
 遍历 JSON 数组、对象、嵌套结构与文件的迭代函数。
 
-**主要函数**：[`Foreach`](./iterate#foreach) · [`ForeachWithPath`](./iterate#foreachwithpath) · [`ForeachNested`](./iterate#foreachnested) · [`ForeachReturn`](./iterate#foreachreturn) · [`ForeachWithError`](./iterate#foreachwitherror) · [`ForeachNestedWithError`](./iterate#foreachnestedwitherror) · [`ForeachWithPathAndIterator`](./iterate#foreachwithpathanditerator) · [`ForeachWithPathAndControl`](./iterate#foreachwithpathandcontrol) · [`ForeachFile`](./iterate#foreachfile) · [`ForeachFileWithPath`](./iterate#foreachfilewithpath) · [`ForeachFileChunked`](./iterate#foreachfilechunked) · [`ForeachFileNested`](./iterate#foreachfilenested)
+**主要函数**：[`Foreach`](./iterate#foreach)（已废弃） · [`ForeachWithPath`](./iterate#foreachwithpath) · [`ForeachNested`](./iterate#foreachnested)（已废弃） · [`ForeachReturn`](./iterate#foreachreturn) · [`ForeachWithError`](./iterate#foreachwitherror) · [`ForeachNestedWithError`](./iterate#foreachnestedwitherror) · [`ForeachWithPathAndIterator`](./iterate#foreachwithpathanditerator) · [`ForeachWithPathAndControl`](./iterate#foreachwithpathandcontrol) · [`ForeachFile`](./iterate#foreachfile) · [`ForeachFileWithPath`](./iterate#foreachfilewithpath) · [`ForeachFileChunked`](./iterate#foreachfilechunked) · [`ForeachFileNested`](./iterate#foreachfilenested)
 
 ## [文件迭代](../../streaming/large-files)
 
@@ -101,7 +101,7 @@ JSONL（JSON Lines）解析、流式读取、转换和写入函数。
 | 文件读写 | `LoadFromFile`, `SaveToFile` | [文件操作](./file-io#文件读写) |
 | 文件读写（结构体） | `MarshalToFile`, `UnmarshalFromFile` | [文件操作](./file-io#序列化便捷方法) |
 | 流式 I/O | `LoadFromReader`, `SaveToWriter` | [文件操作](./file-io#流式-i-o) |
-| 迭代遍历 | `Foreach`, `ForeachWithPath`, `ForeachNested` | [迭代方法](./iterate#方法对比) |
+| 迭代遍历 | `ForeachWithError`, `ForeachWithPath`, `ForeachNestedWithError` | [迭代方法](./iterate#方法对比) |
 | 文件迭代 | `ForeachFile`, `ForeachFileChunked` | [迭代方法](./iterate#文件迭代方法对比) |
 | JSONL 处理 | `ParseJSONL`, `ToJSONL` | [JSONL](./jsonl#jsonl-处理函数) |
 | JSONL 流式处理 | `StreamJSONL`, `StreamLinesInto[T]`, `FirstJSONL` | [JSONL](./jsonl#jsonl-流式处理函数-包级) |

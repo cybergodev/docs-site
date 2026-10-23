@@ -40,7 +40,7 @@ URL=$HOST:8080
 | 语法 | 说明 |
 |------|------|
 | `${VAR:-default}` | 如果 VAR 不存在，使用 default |
-| `${VAR:=default}` | 如果 VAR 不存在，使用 default（同 `:-`） |
+| `${VAR:=default}` | 如果 VAR 不存在，使用 default 并写回该变量 |
 | `${VAR:?error}` | 如果 VAR 不存在或为空，返回错误 |
 
 ::: warning 自引用限制
@@ -78,20 +78,18 @@ DB_URL=${DB_HOST}:${DB_PORT:-5432}
 
 ---
 
-### `${VAR:=default}` - 使用默认值
+### `${VAR:=default}` - 使用默认值并写回
 
-行为与 `${VAR:-default}` 相同，当变量不存在时使用默认值：
+与 `${VAR:-default}` 的区别在于：`:=` 会把展开后的默认值**赋值写回**该变量——写回后对同一文件内的后续引用可见，并出现在加载后的 map 中；而已存在的变量（文件内或进程环境）不会被重新赋值。
 
 ```bash
-# DEBUG 未定义时使用 "false"
-DEBUG_VALUE=${DEBUG:=false}
-
-# CACHE_TTL 未定义时使用默认值
-CACHE_TTL_VALUE=${CACHE_TTL:=3600}
+# ASSIGNED 未定义时被写回为 "created"，B 展开为 "created"
+B=${ASSIGNED:=created}
+# 结果：B="created" 且 ASSIGNED="created"
 ```
 
 ::: info 与 `:-` 的关系
-`${VAR:=default}` 在本库中与 `${VAR:-default}` 行为完全相同。当变量不存在时，使用默认值作为展开结果。`:=` 不会将默认值写回变量存储。
+`${VAR:-default}` 仅返回默认值、不写回变量；`${VAR:=default}` 在变量不存在时既返回默认值，又把该默认值**赋值写回**变量存储（写回后对同一文件内的后续引用、`Get`/`Apply` 均可见，按键名排序确定性处理）。若变量已存在（无论来自文件内还是进程环境），`:=` 不会重新赋值，行为退化为返回原值。
 :::
 
 ---
@@ -268,28 +266,26 @@ func main() {
 
 ## 展开作用域（安全隔离）
 
-默认情况下，变量展开按「先文件、后进程环境」的顺序解析引用——`${VAR}` 在文件内找不到时，会回退到进程环境（`os.LookupEnv`）继续查找。这对传统 dotenv 语义是正确的，但当配置文件来自**不完全可信的来源**（用户上传、外部系统下发）时会带来风险：文件中写入 `${AWS_SECRET_ACCESS_KEY}`，加载后即可把进程中无关的机密「捕获」进变量值，随后可能被日志、序列化或导出操作带出。
-
-`ParsingConfig.ExpansionScope` 用于控制这一行为：
+`ParsingConfig.ExpansionScope` 控制 `${VAR}` 引用可解析的作用域。`ExpansionFileThenProcess` 是 Go `iota` 枚举的**零值**（`= iota` 这一句），但用户实际运行时走 `DefaultConfig()`——`New()` 会对零值 `Config` 套用 `DefaultConfig()`，而 `DefaultConfig()` 显式把 `ExpansionScope` 设为 `ExpansionFileOnly`（SEC-003，默认阻断 `${VAR}` 回退读进程环境）。因此**运行时默认 = FileOnly**：「零值」与「DefaultConfig 默认」是两回事。
 
 | 取值 | 行为 | 适用场景 |
 |------|------|----------|
-| `ExpansionFileThenProcess`（默认） | 先查文件内变量，缺失时回退进程环境 | 可信配置文件，传统 dotenv 语义 |
-| `ExpansionFileOnly` | 仅文件内变量可见；进程环境引用展开为空字符串 | 不可信配置来源，防止机密探测（SEC-03） |
+| `ExpansionFileOnly`（运行时默认） | 仅文件内变量可见；进程环境引用展开为空字符串 | 默认行为；防止机密探测（SEC-03） |
+| `ExpansionFileThenProcess`（枚举零值） | 先查文件内变量，缺失时回退进程环境 | 仅当显式设置，用于可信配置文件、传统 dotenv 语义 |
 
 <!-- check-code: skip -->
 ```go
 cfg := env.DefaultConfig()
-// 仅允许引用文件内变量，阻断对进程环境的读取
+// DefaultConfig 默认已是 ExpansionFileOnly，此处为显式声明
 cfg.ExpansionScope = env.ExpansionFileOnly
 loader, _ := env.New(cfg)
 ```
 
 ::: warning SEC-03
-`ExpansionFileOnly` 是防止配置文件「窃取」进程机密的安全开关。若你的应用会加载外部提供的配置文件，建议始终启用该作用域。
+`DefaultConfig()` 默认把展开作用域设为 `ExpansionFileOnly`——`${VAR}` 引用仅在文件内解析，阻断对进程环境的回退读取。若你的应用会加载外部提供的配置文件，请保持这一默认值，不要显式改回 `ExpansionFileThenProcess`。
 :::
 
-注意：`ExpansionScope` 是枚举而非布尔字段，即使 `Config` 只设置了这一个字段，`IsZero()` 也会正确识别其为已初始化的配置，不会被默认值静默覆盖。
+注意：`ExpansionScope` 是枚举而非布尔字段，即使 `Config` 只设置了这一个字段，`IsZero()` 也会正确识别其为已初始化的配置，不会被默认值静默覆盖。但需区分「枚举零值」与「DefaultConfig 默认值」：`ExpansionFileThenProcess` 是枚举零值，`DefaultConfig()` 显式设为 `ExpansionFileOnly`，两者并不相同。
 
 ## 相关文档
 

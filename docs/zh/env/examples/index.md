@@ -1,13 +1,13 @@
 ---
 sidebar_label: "示例概览"
 title: "示例 - CyberGo env | Go 配置库可运行示例合集"
-description: "CyberGo env 官方示例导览：覆盖快速上手、Loader 配置预设、全类型读取、结构体映射、SecureValue 敏感值保护、审计日志、多格式互转与并发访问等 11 个可运行 Go 示例，附 go run 运行说明。"
+description: "CyberGo env 官方示例导览：覆盖快速上手、Loader 配置预设、全类型读取、结构体映射、SecureValue 敏感值保护、审计日志、多格式互转、并发访问与可扩展性等 13 个可运行 Go 示例，附 go run 运行说明。"
 sidebar_position: 1
 ---
 
 # 示例
 
-env 库在源码仓库的 `examples/` 目录下提供 11 个可运行示例。每个示例都是独立完整的 `main` 程序，从全局模式快速上手一路覆盖到安全特性与高级特性；所有示例均包含在常规构建（`go build ./...`）中。
+env 库在源码仓库的 `examples/` 目录下提供 13 个可运行示例。每个示例都是独立完整的 `main` 程序，从全局模式快速上手一路覆盖到安全特性与高级特性；所有示例均包含在常规构建（`go build ./...`）中。
 
 ## 运行方式
 
@@ -44,7 +44,9 @@ go run ./examples/01_quickstart/
 | 09 | `09_error_handling/` | 哨兵错误（`errors.Is`）与类型化错误（`errors.As`），覆盖文件缺失与加载器已关闭场景 | [错误处理](../guides/error-handling) |
 | 10 | `10_concurrency/` | 并发读、并发写与读写混合访问，演示分片锁保证的并发安全 | [并发访问](../guides/concurrency) |
 | 11 | `11_advanced/` | 变量展开（`$VAR` 与 `${VAR}`）、多文件加载覆盖、前缀过滤 | [变量展开](../guides/variable-expansion) |
+| 12 | `12_extensibility/` | 自定义解析器注册 `RegisterParser`、接口式消费 `EnvGetter`（依赖注入与测试替身）、自定义组件（`CustomAuditor` 审计计数） | [自定义解析器](../guides/custom-parser)、[接口定义](../api-reference/interfaces) |
+| 13 | `13_customization/` | 自定义 Validator/Expander/FileSystem、fail-closed 审计（`ErrAuditFailed`）、自定义 Marshaler/Unmarshaler、花括号运算符 | [接口定义](../api-reference/interfaces)、[审计日志](../guides/audit-logging)、[序列化](../guides/serialization) |
 
 ## 阅读建议
 
-建议按编号顺序阅读：01–03 掌握全局与实例两种使用模式及类型化读取，04–07 熟悉结构体映射、敏感值保护与审计等生产特性，08–11 进阶到工具函数、错误处理与高级特性。每个示例都可直接 `go run` 运行验证，结合上方对应文档页面阅读效果更佳。
+建议按编号顺序阅读：01–03 掌握全局与实例两种使用模式及类型化读取，04–07 熟悉结构体映射、敏感值保护与审计等生产特性，08–13 进阶到工具函数、错误处理、高级特性与可扩展性。每个示例都可直接 `go run` 运行验证，结合上方对应文档页面阅读效果更佳。

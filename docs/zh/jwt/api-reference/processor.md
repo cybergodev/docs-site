@@ -11,6 +11,24 @@ Processor 是 JWT 操作的核心类型，实现了 [`TokenManager`](./interface
 
 通过 [`jwt.New(cfg)`](./functions#new) 创建实例。
 
+## 方法一览
+
+| 方法 | 说明 |
+|------|------|
+| [`Processor.Create`](#create) | 创建访问令牌 |
+| [`Processor.CreateRefresh`](#createrefresh) | 创建刷新令牌 |
+| [`Processor.Parse`](#parse) | 验证并解析访问令牌（v1.2.3+） |
+| [`Processor.ParseInto`](#parseinto) | 验证并原地填充自定义 Claims（v1.2.3+） |
+| [`Processor.Refresh`](#refresh) | 用刷新令牌换取新访问令牌 |
+| [`Processor.RefreshInto`](#refreshinto) | 以自定义 Claims 刷新令牌 |
+| [`Processor.Revoke`](#revoke) | 吊销令牌（写入黑名单） |
+| [`Processor.IsRevoked`](#isrevoked) | 检查令牌是否已吊销 |
+| [`Processor.ParseUnverified`](#parseunverified) | 不验签解析（仅限调试/日志） |
+| [`Processor.Close`](#close) | 释放资源并安全清除密钥 |
+| [`Processor.IsClosed`](#isclosed) | 检查是否已关闭 |
+
+已弃用的 `Validate` / `ValidateInto` 仍可用，请分别迁移到 `Parse` / `ParseInto`（见[从 Validate 迁移到 Parse](#从-validate-迁移到-parse)）。
+
 ## Create
 
 ```go
@@ -349,14 +367,22 @@ func (p *Processor) ValidateInto(tokenString string, claims CustomClaims) (Custo
 | `valid` | `bool` | 是否有效（恒等于 `err == nil`） |
 | `err` | `error` | 验证失败时返回错误 |
 
-### 示例
+### 从 ValidateInto 迁移到 ParseInto
 
 ```go
-myClaims := &MyClaims{}
+// 旧写法（已弃用）
 result, valid, err := processor.ValidateInto(tokenString, myClaims)
 if valid {
     fmt.Println(result.(*MyClaims).UserID)
 }
+
+// 新写法：err 为 nil 即有效
+result, err := processor.ParseInto(tokenString, myClaims)
+if err != nil {
+    // 处理错误
+    return
+}
+fmt.Println(result.(*MyClaims).UserID)
 ```
 
 ### 错误

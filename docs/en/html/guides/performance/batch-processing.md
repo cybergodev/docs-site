@@ -169,11 +169,11 @@ fmt.Printf("Failed: %d\n", br.Failed)
 // Failed: 10001
 
 fmt.Printf("First error: %v\n", br.Errors[0])
-// First error: html: batch size 10001 exceeds maximum 10000
+// First error: html: batch size exceeds maximum: 10001 exceeds maximum 10000
 ```
 
 :::warning Over-limit behavior
-`maxBatchSize = 10000` is a hard limit. When exceeded, no items are processed; instead, a uniform error is returned for all inputs. To process more, call in chunks.
+`maxBatchSize = 10000` is a hard limit. When exceeded, no items are processed; instead, a uniform error is returned for all inputs. This error can be checked with `errors.Is(err, html.ErrBatchTooLarge)`. To process more, call in chunks.
 :::
 
 ## Context Cancellation

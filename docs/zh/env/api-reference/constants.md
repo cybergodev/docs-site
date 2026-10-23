@@ -16,19 +16,19 @@ sidebar_position: 7
 ```go
 const (
     // DefaultMaxFileSize - 单文件最大字节数
-    DefaultMaxFileSize int64 = 2 * 1024 * 1024  // 2 MB
+    DefaultMaxFileSize int64 = 8 * 1024 * 1024  // 8 MB
 
     // DefaultMaxLineLength - 单行最大长度
-    DefaultMaxLineLength int = 1024  // 1 KB
+    DefaultMaxLineLength int = 8192  // 8 KB
 
     // DefaultMaxKeyLength - 键名最大长度
-    DefaultMaxKeyLength int = 64
+    DefaultMaxKeyLength int = 128
 
     // DefaultMaxValueLength - 值最大长度
-    DefaultMaxValueLength int = 4096  // 4 KB
+    DefaultMaxValueLength int = 8192  // 8 KB
 
     // DefaultMaxVariables - 每文件最大变量数
-    DefaultMaxVariables int = 500
+    DefaultMaxVariables int = 1000
 
     // DefaultMaxExpansionDepth - 变量展开最大深度
     DefaultMaxExpansionDepth int = 5
@@ -96,8 +96,8 @@ var ErrInvalidKey = errors.New("invalid key format")
 var ErrDuplicateKey = errors.New("duplicate key encountered")
 ```
 
-::: tip 保留哨兵
-`ErrDuplicateKey` 为保留哨兵：当前重复键按跳过处理而非报错，暂无代码路径返回该错误。
+::: tip 触发条件
+`ErrDuplicateKey` 由 `DuplicateKeyPolicy = DuplicateKeyError`（.env/YAML/JSON 单文档重复键，含 YAML 内联 JSON）与 YAML/JSON 展平时的扁平键冲突返回，`errors.Is` 可匹配。默认（`DuplicateKeyInherit`）下重复键按跳过/覆盖处理、不报错。
 :::
 
 ### 安全错误
@@ -137,7 +137,10 @@ var ErrInvalidConfig = errors.New("invalid configuration")
 var ErrAlreadyInitialized = errors.New("default loader already initialized")
 var ErrNotInitialized = errors.New("default loader not initialized; call Load() first")
 var ErrMissingRequired = errors.New("required key is missing")
+var ErrAuditFailed = errors.New("audit logging failed") // 审计事件丢失（fail-closed 审计启用时）
 ```
+
+`ErrAuditFailed` 在启用 fail-closed 审计（`Config.AuditFailClosed = true`）时返回：处理器报错、panic 或满通道丢事件都会使产生该事件的操作返回此错误。参见 [Config API](./config#auditfailclosed-bool)。
 
 **检查方式：**
 
@@ -195,30 +198,25 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 ::: tip 解决方法
-实现 `Validator` 接口（包含 ValidateKey、ValidateValue、ValidateRequired 三个方法）而非仅实现 `KeyValidator`。
+实现 `Validator` 接口（包含 `ValidateKey`、`ValidateValue`、`ValidateRequired` 三个方法）而非仅实现 `KeyValidator`。
 :::
 
 ## 错误类型
+
+以下类型均为 internal 包同名类型的公开别名。所有类型都实现 `Error` 方法；携带底层错误的类型（`ParseError`、`FileError`、`JSONError`、`YAMLError`）另实现 `Unwrap`，参与哨兵映射的类型（`ValidationError`、`SecurityError`、`ExpansionError`）另实现 `Is`。各类型的成员以下表限定名（形如 `ParseError.File`）索引。
 
 ### ParseError
 
 解析错误，包含位置信息：
 
-```go
-type ParseError struct {
-    File    string  // 文件名
-    Line    int     // 行号
-    Content string  // 错误内容（已掩码）
-    Err     error   // 原始错误
-}
-```
-
-**方法：**
-
-| 方法 | 签名 | 说明 |
-|------|------|------|
-| `Error` | `func (e *ParseError) Error() string` | 实现 `error` 接口，输出含文件名与行号（无文件名时省略文件段） |
-| `Unwrap` | `func (e *ParseError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
+| 成员 | 类型/签名 | 说明 |
+|------|-----------|------|
+| `ParseError.File` | `string` | 出错的文件名 |
+| `ParseError.Line` | `int` | 行号 |
+| `ParseError.Content` | `string` | 错误内容（已掩码） |
+| `ParseError.Err` | `error` | 原始错误 |
+| `ParseError.Error` | `func (e *ParseError) Error() string` | 实现 `error` 接口，输出含文件名与行号（无文件名时省略文件段） |
+| `ParseError.Unwrap` | `func (e *ParseError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
 
 使用示例：
 
@@ -235,41 +233,27 @@ if errors.As(err, &parseErr) {
 
 验证错误：
 
-```go
-type ValidationError struct {
-    Field   string  // 字段名
-    Value   string  // 值（已掩码）
-    Rule    string  // 规则
-    Message string  // 消息
-}
-```
-
-**方法：**
-
-| 方法 | 签名 | 说明 |
-|------|------|------|
-| `Error` | `func (e *ValidationError) Error() string` | 实现 `error` 接口，含字段名与消息 |
-| `Is` | `func (e *ValidationError) Is(target error) bool` | 按 `Rule` 映射哨兵：值类规则（`value`/`null_byte`/`control_char`/`utf8`）→ `ErrInvalidValue`；键类规则（Field 为 `key`：`non_empty`/`max_length`/`ascii_only`/`pattern`）→ `ErrInvalidKey`；`required` → `ErrMissingRequired`；`max_variables` → `ErrMaxVariables` |
+| 成员 | 类型/签名 | 说明 |
+|------|-----------|------|
+| `ValidationError.Field` | `string` | 失败的配置字段或键名字段 |
+| `ValidationError.Value` | `string` | 值（已掩码） |
+| `ValidationError.Rule` | `string` | 违反的规则 |
+| `ValidationError.Message` | `string` | 人类可读说明 |
+| `ValidationError.Error` | `func (e *ValidationError) Error() string` | 实现 `error` 接口，含字段名与消息 |
+| `ValidationError.Is` | `func (e *ValidationError) Is(target error) bool` | 按 `Rule` 映射哨兵：值类规则（`value`/`null_byte`/`control_char`/`utf8`）→ `ErrInvalidValue`；键类规则（Field 为 `key`：`non_empty`/`max_length`/`ascii_only`/`pattern`）→ `ErrInvalidKey`；`required` → `ErrMissingRequired`；`max_variables` → `ErrMaxVariables` |
 
 ### SecurityError
 
 安全错误：
 
-```go
-type SecurityError struct {
-    Action  string  // 操作
-    Reason  string  // 原因
-    Key     string  // 键名（已掩码）
-    Details string  // 额外详情
-}
-```
-
-**方法：**
-
-| 方法 | 签名 | 说明 |
-|------|------|------|
-| `Error` | `func (e *SecurityError) Error() string` | 实现 `error` 接口，含被阻止的操作与原因 |
-| `Is` | `func (e *SecurityError) Is(target error) bool` | 匹配 `ErrSecurityViolation`；禁止键/白名单拒绝（Action 为 `key_access`）另匹配 `ErrForbiddenKey` |
+| 成员 | 类型/签名 | 说明 |
+|------|-----------|------|
+| `SecurityError.Action` | `string` | 被阻止的操作 |
+| `SecurityError.Reason` | `string` | 阻止原因 |
+| `SecurityError.Key` | `string` | 涉及的键名（已掩码） |
+| `SecurityError.Details` | `string` | 额外详情（已掩码） |
+| `SecurityError.Error` | `func (e *SecurityError) Error() string` | 实现 `error` 接口，含被阻止的操作与原因 |
+| `SecurityError.Is` | `func (e *SecurityError) Is(target error) bool` | 匹配 `ErrSecurityViolation`；禁止键/白名单拒绝（Action 为 `key_access`）另匹配 `ErrForbiddenKey` |
 
 使用示例：
 
@@ -284,22 +268,15 @@ if errors.As(err, &secErr) {
 
 文件操作错误：
 
-```go
-type FileError struct {
-    Path  string  // 文件路径
-    Op    string  // 失败的操作（open、stat、size_check、parse）
-    Err   error   // 原始错误
-    Size  int64   // 文件大小（Size 检查时）
-    Limit int64   // 限制（Size 检查时）
-}
-```
-
-**方法：**
-
-| 方法 | 签名 | 说明 |
-|------|------|------|
-| `Error` | `func (e *FileError) Error() string` | 实现 `error` 接口；`Size` 与 `Limit` 均为正时附带 `(size N exceeds limit M)` 细节 |
-| `Unwrap` | `func (e *FileError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
+| 成员 | 类型/签名 | 说明 |
+|------|-----------|------|
+| `FileError.Path` | `string` | 文件路径 |
+| `FileError.Op` | `string` | 失败的操作（open、stat、size_check、parse） |
+| `FileError.Err` | `error` | 原始错误 |
+| `FileError.Size` | `int64` | 文件大小（大小检查时） |
+| `FileError.Limit` | `int64` | 超出的限制（大小检查时） |
+| `FileError.Error` | `func (e *FileError) Error() string` | 实现 `error` 接口；`Size` 与 `Limit` 均为正时附带 `(size N exceeds limit M)` 细节 |
+| `FileError.Unwrap` | `func (e *FileError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
 
 使用示例：
 
@@ -315,22 +292,15 @@ if errors.As(err, &fileErr) {
 
 变量展开错误：
 
-```go
-type ExpansionError struct {
-    Key   string             // 键名
-    Depth int                // 当前深度
-    Limit int                // 限制
-    Chain string             // 展开链（已脱敏）
-    Kind  ExpansionErrorKind // 错误原因类别（零值 = 深度/循环）
-}
-```
-
-**方法：**
-
-| 方法 | 签名 | 说明 |
-|------|------|------|
-| `Error` | `func (e *ExpansionError) Error() string` | 实现 `error` 接口；输出中的键名已掩码（仅保留前 2 个字符，后接 `***`） |
-| `Is` | `func (e *ExpansionError) Is(target error) bool` | 仅 `Kind != ExpansionRequiredKind` 时匹配 `ErrExpansionDepth`（语义见下方「`errors.Is` 行为」） |
+| 成员 | 类型/签名 | 说明 |
+|------|-----------|------|
+| `ExpansionError.Key` | `string` | 被展开的键名（输出时掩码） |
+| `ExpansionError.Depth` | `int` | 当前展开深度 |
+| `ExpansionError.Limit` | `int` | 深度上限 |
+| `ExpansionError.Chain` | `string` | 展开链（已脱敏） |
+| `ExpansionError.Kind` | `ExpansionErrorKind` | 错误原因类别（零值 = 深度/循环） |
+| `ExpansionError.Error` | `func (e *ExpansionError) Error() string` | 实现 `error` 接口；输出中的键名已掩码（仅保留前 2 个字符，后接 `***`） |
+| `ExpansionError.Is` | `func (e *ExpansionError) Is(target error) bool` | 仅 `Kind != ExpansionRequiredKind` 时匹配 `ErrExpansionDepth`（语义见下方「`errors.Is` 行为」） |
 
 **错误分类（Kind 字段）：**
 
@@ -371,60 +341,37 @@ if errors.As(err, &expErr) {
 
 JSON 解析错误：
 
-```go
-type JSONError struct {
-    Path    string  // JSON 文档内路径（非文件路径）
-    Message string  // 错误消息
-    Err     error   // 原始错误
-}
-```
-
-**方法：**
-
-| 方法 | 签名 | 说明 |
-|------|------|------|
-| `Error` | `func (e *JSONError) Error() string` | 实现 `error` 接口，含文档内路径 |
-| `Unwrap` | `func (e *JSONError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
+| 成员 | 类型/签名 | 说明 |
+|------|-----------|------|
+| `JSONError.Path` | `string` | JSON 文档内路径（非文件路径） |
+| `JSONError.Message` | `string` | 错误消息 |
+| `JSONError.Err` | `error` | 原始错误 |
+| `JSONError.Error` | `func (e *JSONError) Error() string` | 实现 `error` 接口，含文档内路径 |
+| `JSONError.Unwrap` | `func (e *JSONError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
 
 ### YAMLError
 
 YAML 解析错误：
 
-```go
-type YAMLError struct {
-    Path    string  // YAML 文档内路径（非文件路径）
-    Line    int     // 行号
-    Column  int     // 列号
-    Message string  // 错误消息
-    Err     error   // 原始错误
-}
-```
-
-**方法：**
-
-| 方法 | 签名 | 说明 |
-|------|------|------|
-| `Error` | `func (e *YAMLError) Error() string` | 实现 `error` 接口，含文档内路径与行列号 |
-| `Unwrap` | `func (e *YAMLError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
+| 成员 | 类型/签名 | 说明 |
+|------|-----------|------|
+| `YAMLError.Path` | `string` | YAML 文档内路径（非文件路径） |
+| `YAMLError.Line` | `int` | 行号 |
+| `YAMLError.Column` | `int` | 列号 |
+| `YAMLError.Message` | `string` | 错误消息 |
+| `YAMLError.Err` | `error` | 原始错误 |
+| `YAMLError.Error` | `func (e *YAMLError) Error() string` | 实现 `error` 接口，含文档内路径与行列号 |
+| `YAMLError.Unwrap` | `func (e *YAMLError) Unwrap() error` | 返回底层 `Err`，供 `errors.Is` / `errors.As` 穿透 |
 
 ### MarshalError
 
-序列化错误：
+序列化错误（检查函数 `IsMarshalError(err error) bool`）：
 
-```go
-type MarshalError struct {
-    Field   string  // 字段名
-    Message string  // 错误消息
-}
-
-func IsMarshalError(err error) bool  // 检查函数
-```
-
-**方法：**
-
-| 方法 | 签名 | 说明 |
-|------|------|------|
-| `Error` | `func (e *MarshalError) Error() string` | 实现 `error` 接口，含字段名与消息 |
+| 成员 | 类型/签名 | 说明 |
+|------|-----------|------|
+| `MarshalError.Field` | `string` | 出错的字段名 |
+| `MarshalError.Message` | `string` | 错误消息 |
+| `MarshalError.Error` | `func (e *MarshalError) Error() string` | 实现 `error` 接口，含字段名与消息 |
 
 `MarshalError` 的字段均为普通值，没有 `Unwrap` 方法——不存在可解包的底层错误。
 

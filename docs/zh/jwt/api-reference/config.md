@@ -42,6 +42,7 @@ JWT Processor 的统一配置。零值字段会在 `New()` 中自动填充默认
 - `RateLimitRate`、`RateLimitWindow` 仅在 `EnableRateLimit = true` 时填充
 - 内置黑名单存储的 `EnableAutoCleanup` 始终强制为 `true`（防止无限增长）
 - `SecretKey`、`SigningKey`、`VerificationKey` 不会自动填充，必须手动设置
+- 显式提供 `RateLimiter` 视为明确意图，无视 `EnableRateLimit` 开关始终生效
 :::
 
 <Badge type="info" text="struct" />
@@ -68,6 +69,10 @@ JWT Processor 的统一配置。零值字段会在 `New()` 中自动填充默认
 | `RateLimitWindow` | `time.Duration` | `1m` | 限流窗口 |
 | `RateLimiter` | `RateLimitProvider` | — | 自定义限流器（可选） |
 | `Clock` | `ClockProvider` | `SystemClock{}` | 时钟提供者 |
+
+:::warning 所有权与级联关闭
+`Processor.Close` 会关闭通过 `Config.RateLimiter` 注入的限流器，也会关闭 `BlacklistConfig.Store` 提供的自定义黑名单存储。不要在生命周期可能互相超越的多个 Processor 之间共享同一实例——其中一个 Processor 关闭共享限流器后，其 `Allow` 恒返回 `false`，其余实例的令牌创建将以 `ErrRateLimitExceeded` 失败。
+:::
 
 ### 方法
 
@@ -99,7 +104,7 @@ type BlacklistConfig struct {
 }
 ```
 
-黑名单配置。
+黑名单配置。`BlacklistConfig.Store` 提供自定义存储后端（如 Redis），设置后 `CleanupInterval`、`MaxSize`、`EnableAutoCleanup` 均被忽略；`Processor.Close` 会级联关闭该存储（见上方所有权说明）。
 
 <Badge type="info" text="struct" />
 

@@ -86,7 +86,7 @@ func MaskValue(key, value string) string
 
 | 条件 | 返回值 |
 |------|--------|
-| `IsSensitiveKey(key)` 为 true | `[MASKED:N chars]`（N = `len(value)`） |
+| `IsSensitiveKey(key)` 为 true | `[MASKED]`（固定掩码，不暴露长度） |
 | 非敏感且 `len(value) ≤ 20` | 原始值 |
 | 非敏感且 `len(value) > 20` | `value[:17] + "..."` |
 
@@ -100,9 +100,9 @@ import (
 )
 
 func main() {
-	// 敏感值 → 脱敏（保留长度信息便于排查）
+	// 敏感值 → 固定掩码（不暴露长度）
 	fmt.Println(env.MaskValue("DB_PASSWORD", "p@ssw0rd123"))
-	// 输出：[MASKED:11 chars]
+	// 输出：[MASKED]
 
 	// 非敏感短值 → 原样返回
 	fmt.Println(env.MaskValue("PORT", "8080"))
@@ -114,8 +114,8 @@ func main() {
 }
 ```
 
-::: tip 保留长度的用意
-`[MASKED:N chars]` 暴露的是值的长度而非内容。这在排查「密码是否被截断」「密钥是否完整」时很有用，同时不泄露明文。
+::: tip 固定掩码
+敏感值统一返回固定字符串 `[MASKED]`，不暴露值的长度，避免通过长度差异反推机密内容。非敏感长值仍保留截断处理（`value[:17] + "..."`）。
 :::
 
 ### MaskKey
@@ -124,12 +124,11 @@ func main() {
 func MaskKey(key string) string
 ```
 
-脱敏键名本身，用于需要展示键存在但不暴露键含义的场景（公开 API `MaskKey` 即内部脱敏例程的包装，与错误报告共用同一实现；审计日志不使用 `MaskKey`——审计中的键值掩码走 `MaskValue` 的 `[MASKED:N chars]`）：
+脱敏键名本身，用于需要展示键存在但不暴露键含义的场景（公开 API `MaskKey` 即内部脱敏例程的包装，与错误报告共用同一实现；审计日志中的键值掩码走 `MaskValue`，同样返回固定 `[MASKED]`）：
 
 | 条件 | 返回值 |
 |------|--------|
-| `len(key) ≤ 3` | `***` |
-| `len(key) > 3` | `key[:2] + "***"` |
+| 任意键名 | `[MASKED]`（固定掩码） |
 
 ```go
 package main
@@ -141,16 +140,16 @@ import (
 )
 
 func main() {
-	fmt.Println(env.MaskKey("DB_PASSWORD")) // DB***
-	fmt.Println(env.MaskKey("API_KEY"))     // AP***
-	fmt.Println(env.MaskKey("TOKEN"))       // TO***
-	fmt.Println(env.MaskKey("AB"))          // ***
-	fmt.Println(env.MaskKey("XYZ"))         // ***（长度 ≤ 3）
+	fmt.Println(env.MaskKey("DB_PASSWORD")) // [MASKED]
+	fmt.Println(env.MaskKey("API_KEY"))     // [MASKED]
+	fmt.Println(env.MaskKey("TOKEN"))       // [MASKED]
+	fmt.Println(env.MaskKey("AB"))          // [MASKED]
+	fmt.Println(env.MaskKey("XYZ"))         // [MASKED]
 }
 ```
 
 ::: warning 与 MaskValue 的搭配
-`MaskKey` 只取键名前 2 个字符，因此 `DB_HOST` 和 `DB_PASSWORD` 都会变成 `DB***`。若需在日志中区分两者，请配合 `MaskValue` 一同输出，或仅在键名无关紧要时单独使用。
+`MaskKey` 返回固定 `[MASKED]`，`DB_HOST` 和 `DB_PASSWORD` 都会变成同一串掩码，无法区分。若需在日志中区分两者，请配合 `MaskValue` 一同输出，或仅在键名无关紧要时单独使用。
 :::
 
 ### MaskSensitiveInString
@@ -308,15 +307,15 @@ func main() {
 === 启动配置（已脱敏）===
 PORT            = 8080
 DB_HOST         = localhost
-DB_PASSWORD     = [MASKED:16 chars]
-API_KEY         = [MASKED:24 chars]
+DB_PASSWORD     = [MASKED]
+API_KEY         = [MASKED]
 
 === 错误日志（自动脱敏）===
 failed to connect: user=admin password=[MASKED] host=db.local
 
 === 敏感键清单（键名脱敏）===
-敏感配置：DB***
-敏感配置：AP***
+敏感配置：[MASKED]
+敏感配置：[MASKED]
 ```
 
 ## 与 SecureValue 的关系

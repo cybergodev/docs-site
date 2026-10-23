@@ -365,12 +365,12 @@ if err != nil {
 
 ## MaxRedirects(0) 为什么不禁止重定向？
 
-**答：** `MaxRedirects = 0` 是"未设置"哨兵值，而非"禁止重定向"。`DefaultConfig()` 中 `MaxRedirects` 默认为 10。要真正禁止重定向，使用 `WithFollowRedirects(false)` 或设置 `Config.Defaults.FollowRedirects = false`：
+**答：** `MaxRedirects = 0` 是"未设置"哨兵值，而非"禁止重定向"。`DefaultConfig()` 中 `MaxRedirects` 默认为 10。要真正禁止重定向，使用 `WithFollowRedirects(false)` 或设置 `Config.Security.FollowRedirects = false`：
 
 ```go
 // 方式一：配置级禁止
 cfg := httpc.DefaultConfig()
-cfg.Defaults.FollowRedirects = false
+cfg.Security.FollowRedirects = false
 client, _ := httpc.New(cfg)
 
 // 方式二：请求级禁止
@@ -476,19 +476,19 @@ result, err := client.Get(url, httpc.WithTimeout(30*time.Second))
 
 ## 重试会导致 POST 重复提交吗？
 
-**答：** 可能。HTTPC 对 408/429/500/502/503/504 与网络层瞬时错误自动重试，**不区分请求方法**——POST 与 GET 同样重试。若首次请求已到达服务端并成功处理（但响应丢失或超时），重试会造成重复创建、重复扣款。
+**答：** 默认**不会**。HTTPC 对 408/429/500/502/503/504 与网络层瞬时错误自动重试，但**只作用于幂等请求**（GET/HEAD/PUT/DELETE/OPTIONS/TRACE）——POST、PATCH 及自定义方法默认**单次执行、不重试**，因为超时或可重试 5xx 可能在服务端已提交操作后才到达，重放请求体会造成重复创建、重复扣款。
 
-缓解方式（按优先级）：
+只有当你显式启用非幂等重试时才有风险：
 
 ```go
-// 1. 服务端幂等键（推荐）：业务侧用 Idempotency-Key 去重
+// 显式开启非幂等重试：请求体可能被发送不止一次（警惕重复提交）
+client.Post(url, httpc.WithJSON(order), httpc.WithRetryNonIdempotent(true))
+
+// 推荐：服务端幂等键去重（即便开启重试也安全）
 client.Post(url,
     httpc.WithJSON(order),
     httpc.WithHeader("Idempotency-Key", orderID),
 )
-
-// 2. 请求级关闭非幂等接口的重试
-client.Post(url, httpc.WithJSON(payment), httpc.WithMaxRetries(0))
 ```
 
 补充两点：`io.Reader` 请求体为支持重试重放会被完整缓冲（上限 100MB，超出报错），因此重试发送的 body 与首次一致；`context.Canceled`/`DeadlineExceeded` 永不重试，主动取消不会触发重复提交。详见 [重试与容错](../guides/retry-fault-tolerance)。

@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Package Functions"
-title: "Package Functions - CyberGo env | Global Convenience Functions"
+title: "Package Functions - CyberGo env | Global Functions Reference"
 description: "CyberGo env package function API reference: Load, GetString, GetInt, GetBool, GetDuration, GetSlice, GetSecure, Lookup, Keys and ParseInto, all thread-safe."
 sidebar_position: 2
 ---
@@ -704,6 +704,32 @@ This function forces `cfg.AutoApply` to `true`, ensuring variables are applied t
 
 ---
 
+### Overload
+
+```go
+func Overload(filenames ...string) error
+```
+
+`Load`'s last-file-wins variant: initializes the default loader with `OverwriteExisting = true`. When several files define the same key, the **later file wins**, and loaded values replace variables that already exist in the process environment (the godotenv Overload convention).
+
+**Security note:** `Load` never touches existing process-environment variables — deployment-injected variables (container secrets, CI variables) always win over file values; `Overload` removes that protection (a file value replaces an existing process variable of the same name). When in doubt, prefer `Load` and order files by priority. Within a single file the duplicate-key semantics are unchanged (see `DuplicateKeyPolicy` in [Config API](./config#duplicatekeypolicy-in-document-duplicate-keys)).
+
+**Parameters:**
+- `filenames` - file paths; defaults to `.env` when omitted
+
+**Returns:**
+- `error` - load error; returns `ErrAlreadyInitialized` if the default loader is already initialized
+
+```go
+// config.yaml values override config.json values for shared keys
+if err := env.Overload("config.json", "config.yaml"); err != nil {
+    log.Fatal(err)
+}
+key := env.GetString("deepseek.key", "")
+```
+
+---
+
 ## Serialization Functions
 
 ### Marshal
@@ -785,6 +811,33 @@ m, _ := env.UnmarshalMap(jsonString, env.FormatAuto)
 
 ---
 
+### UnmarshalMapWithConfig
+
+```go
+func UnmarshalMapWithConfig(cfg Config, data string, format ...FileFormat) (map[string]string, error)
+```
+
+`UnmarshalMap` with full `Config` semantics: `LimitsConfig` (file size, line/key/value length, variable count), `ParsingConfig` (duplicate-key policy; variable expansion — applies to `.env` input only, JSON/YAML values are never expanded), `JSONConfig`/`YAMLConfig` format options, `ValidationConfig` (key and value rules, `RequiredKeys`), and `ComponentConfig` (custom validator/expander/auditor; `Prefix` filters parsed keys by the same rule as file loading) all take effect. `FileConfig` (`Filenames`/`FailOnMissingFile`/`OverwriteExisting`/`AutoApply`) has no one-shot counterpart and is ignored.
+
+`cfg` follows the standard zero-value contract: a fully zero `Config` means `DefaultConfig()`; a partially-set Config is rejected with `ErrInvalidConfig` — always start from `DefaultConfig()`. `UnmarshalMap` is the no-config shortcut that runs this function's `DefaultConfig` pipeline (SEC-002: every format applies the forbidden-key policy and key validation uniformly).
+
+**Parameters:**
+- `cfg` - full configuration (start from `DefaultConfig()` or a preset)
+- `data` - formatted string
+- `format` - optional format, defaults to `FormatEnv`; `FormatAuto` auto-detects from data
+
+**Returns:**
+- `map[string]string` - parsed key-value pairs
+- `error` - parse error
+
+```go
+cfg := env.DefaultConfig()
+cfg.DuplicateKeyPolicy = env.DuplicateKeyError
+m, err := env.UnmarshalMapWithConfig(cfg, yamlData, env.FormatYAML)
+```
+
+---
+
 ### UnmarshalStruct
 
 ```go
@@ -813,6 +866,34 @@ err := env.UnmarshalStruct("SERVER_HOST=localhost\nSERVER_PORT=8080", &cfg)
 
 // Parse from JSON
 err = env.UnmarshalStruct(`{"server": {"host": "localhost"}}`, &cfg, env.FormatJSON)
+```
+
+---
+
+### UnmarshalStructWithConfig
+
+```go
+func UnmarshalStructWithConfig(cfg Config, data string, v any, format ...FileFormat) error
+```
+
+The config-driven counterpart of `UnmarshalStruct`: it parses the string under `cfg`'s full parsing rules (limits, duplicate-key policy, expansion, validation, custom components — same as [UnmarshalMapWithConfig](#unmarshalmapwithconfig)) and then fills the struct.
+
+**Parameters:**
+- `cfg` - full configuration
+- `data` - formatted string
+- `v` - struct pointer
+- `format` - optional format, defaults to `FormatEnv`; `FormatAuto` auto-detects from data
+
+**Returns:**
+- `error` - parse or fill error
+
+```go
+cfg := env.DefaultConfig()
+cfg.DuplicateKeyPolicy = env.DuplicateKeyError
+var out Config
+if err := env.UnmarshalStructWithConfig(cfg, yamlData, &out, env.FormatYAML); err != nil {
+    log.Fatal(err)
+}
 ```
 
 ---

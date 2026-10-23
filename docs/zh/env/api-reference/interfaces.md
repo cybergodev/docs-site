@@ -37,7 +37,7 @@ type EnvFileLoader interface {
 }
 ```
 
-**用途：** 仅需要加载文件能力的场景。
+**用途：** 仅需要加载文件能力的场景。接口只含一个方法 `EnvFileLoader.LoadFiles`。
 
 ```go
 func loadConfig(loader env.EnvFileLoader) error {
@@ -60,7 +60,14 @@ type EnvGetter interface {
 }
 ```
 
-**用途：** 只读配置访问（最小接口）。
+**用途：** 只读配置访问（最小接口）。四个方法（限定名）：
+
+| 方法 | 说明 |
+|------|------|
+| `EnvGetter.GetString` | 按键读取字符串（可带默认值） |
+| `EnvGetter.Lookup` | 按键查询，返回值与是否存在 |
+| `EnvGetter.Keys` | 返回所有键 |
+| `EnvGetter.All` | 返回全部键值快照 |
 
 ```go
 func readConfig(getter env.EnvGetter) {
@@ -98,7 +105,7 @@ type EnvSetter interface {
 }
 ```
 
-**用途：** 仅需要设置/删除能力的场景。
+**用途：** 仅需要设置/删除能力的场景。两个方法均带验证语义：`EnvSetter.Set` 校验键值后写入并返回错误，`EnvSetter.Delete` 删除键（与 `EnvStorage.Set` 的纯存储操作不同）。
 
 ```go
 func updateConfig(setter env.EnvSetter) error {
@@ -121,7 +128,7 @@ type EnvApplicator interface {
 }
 ```
 
-**用途：** 将加载的变量应用到 `os.Environ`。
+**用途：** 将加载的变量应用到 `os.Environ`，唯一方法为 `EnvApplicator.Apply`。
 
 ```go
 func applyToSystem(applicator env.EnvApplicator) error {
@@ -141,7 +148,7 @@ type EnvCloser interface {
 }
 ```
 
-**用途：** 释放加载器资源。
+**用途：** 释放加载器资源，唯一方法为 `EnvCloser.Close`。
 
 ---
 
@@ -175,7 +182,7 @@ type RequiredValidator interface {
 }
 ```
 
-验证所有必需的键是否存在。
+验证所有必需的键是否存在。唯一方法为 `RequiredValidator.ValidateRequired`。
 
 ---
 
@@ -189,7 +196,7 @@ type KeyValidator interface {
 }
 ```
 
-验证键名是否符合规则（长度、格式、禁止键等）。
+验证键名是否符合规则（长度、格式、禁止键等）。唯一方法为 `KeyValidator.ValidateKey`。
 
 ---
 
@@ -203,7 +210,7 @@ type ValueValidator interface {
 }
 ```
 
-验证值是否安全（无空字节、控制字符等）。
+验证值是否安全（无空字节、控制字符等）。唯一方法为 `ValueValidator.ValidateValue`。
 
 ---
 
@@ -219,7 +226,7 @@ type AuditLogger interface {
 }
 ```
 
-**用途：** 最小化接口，便于实现自定义审计日志器。如需完整审计能力，请使用 `FullAuditLogger`。
+**用途：** 最小化接口，便于实现自定义审计日志器。接口只含一个方法 `AuditLogger.LogError`；如需完整审计能力，请使用 `FullAuditLogger`。
 
 ---
 
@@ -243,11 +250,11 @@ type FullAuditLogger interface {
 
 | 方法 | 用途 |
 |------|------|
-| LogError | 记录错误事件（继承自 AuditLogger） |
-| `Log` | 记录一般审计事件 |
-| `LogWithFile` | 记录包含文件信息的事件 |
-| `LogWithDuration` | 记录包含耗时的事件 |
-| `Close` | 关闭审计日志 |
+| `AuditLogger.LogError` | 经内嵌 `AuditLogger` 继承，记录错误事件 |
+| `FullAuditLogger.Log` | 记录一般审计事件 |
+| `FullAuditLogger.LogWithFile` | 记录包含文件信息的事件 |
+| `FullAuditLogger.LogWithDuration` | 记录包含耗时的事件 |
+| `FullAuditLogger.Close` | 关闭审计日志 |
 
 ---
 
@@ -262,14 +269,14 @@ type AuditHandler interface {
 }
 ```
 
-**用途：** 实现此接口可自定义审计事件处理方式。与 `AuditLogger` 接口不同，`AuditHandler` 需要 `Log` 和 `Close` 两个方法，用于接收处理审计事件和释放资源。
+**用途：** 实现此接口可自定义审计事件处理方式。与 `AuditLogger` 接口不同，`AuditHandler` 需要两个方法（`AuditHandler.Log` 接收处理审计事件、`AuditHandler.Close` 释放资源）；`AuditHandler.Log` 可能被多个 goroutine 并发调用，实现必须并发安全。
 
 **内置实现：**
-- `JSONAuditHandler` - 输出 JSON 格式日志
-- `LogAuditHandler` - 使用标准 log 包输出
-- `ChannelAuditHandler` - 发送到通道
-- `CloseableChannelHandler` - 拥有自有缓冲通道的可关闭处理器
-- `NopAuditHandler` - 空操作处理器
+- `JSONAuditHandler` - 输出 JSON 格式日志（`JSONAuditHandler.Log` / `JSONAuditHandler.Close`）
+- `LogAuditHandler` - 使用标准 log 包输出（`LogAuditHandler.Log` / `LogAuditHandler.Close`）
+- `ChannelAuditHandler` - 发送到通道（`ChannelAuditHandler.Log` / `ChannelAuditHandler.Close`；Close 不关闭外部通道）
+- `CloseableChannelHandler` - 拥有自有缓冲通道的可关闭处理器（`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`）
+- `NopAuditHandler` - 空操作处理器（`NopAuditHandler.Log` / `NopAuditHandler.Close`）
 
 ---
 
@@ -285,7 +292,7 @@ type VariableExpander interface {
 }
 ```
 
-**用途：** 自定义变量展开逻辑，支持 `${VAR}`、`${VAR:-default}` 等语法。
+**用途：** 自定义变量展开逻辑，唯一方法为 `VariableExpander.Expand`，支持 `${VAR}`、`${VAR:-default}` 等语法。
 
 ```go
 expanded, err := expander.Expand("${BASE_URL}/api")
@@ -313,7 +320,7 @@ type EnvParser interface {
 - `map[string]string` - 解析后的键值对
 - `error` - 解析错误
 
-**用途：** 自定义文件格式解析器。
+**用途：** 自定义文件格式解析器，唯一方法为 `EnvParser.Parse`。
 
 ---
 
@@ -335,19 +342,19 @@ type EnvStorage interface {
 }
 ```
 
-**用途：** 自定义存储后端。
+**用途：** 自定义存储后端。库内部的分片安全存储以编译期契约满足此接口；当前没有库 API 接受 `EnvStorage` 参数，仅在替换自己的存储类型时需要实现它。
 
 **方法说明：**
 
 | 方法 | 用途 |
 |------|------|
-| `Get` | 获取值，返回值和是否存在 |
-| `Set` | 设置键值对 |
-| `Delete` | 删除键 |
-| `Keys` | 返回所有键名 |
-| `Len` | 返回键值对数量 |
-| `ToMap` | 返回所有键值对的副本 |
-| `Clear` | 清空所有数据 |
+| `EnvStorage.Get` | 获取值，返回值和是否存在 |
+| `EnvStorage.Set` | 设置键值对 |
+| `EnvStorage.Delete` | 删除键 |
+| `EnvStorage.Keys` | 返回所有键名 |
+| `EnvStorage.Len` | 返回键值对数量 |
+| `EnvStorage.ToMap` | 返回所有键值对的副本 |
+| `EnvStorage.Clear` | 清空所有数据 |
 
 ---
 
@@ -363,7 +370,7 @@ type Marshaler interface {
 }
 ```
 
-**用途：** 自定义类型的序列化。
+**用途：** 自定义类型的序列化，唯一方法为 `Marshaler.MarshalEnv`。
 
 ```go
 type LogLevel string
@@ -389,7 +396,7 @@ type Unmarshaler interface {
 }
 ```
 
-**用途：** 自定义类型的反序列化。
+**用途：** 自定义类型的反序列化，唯一方法为 `Unmarshaler.UnmarshalEnv`。
 
 ```go
 type Config struct {
@@ -433,6 +440,23 @@ type FileSystem interface {
 ```
 
 **用途：** 测试时模拟文件系统。
+
+**方法（限定名）与库内使用情况：**
+
+| 方法 | 库内调用 | 说明 |
+|------|:--------:|------|
+| `FileSystem.Open` | ✓ | 打开文件用于读取（文件加载入口） |
+| `FileSystem.LookupEnv` | ✓ | 区分「未设置」与「显式空值」 |
+| `FileSystem.Setenv` | ✓ | 写入进程环境变量 |
+| `FileSystem.Unsetenv` | ✓ | 删除进程环境变量 |
+| `FileSystem.OpenFile` | — | 按标志与权限打开文件 |
+| `FileSystem.Stat` | — | 按路径查询文件信息 |
+| `FileSystem.MkdirAll` | — | 递归创建目录 |
+| `FileSystem.Remove` | — | 删除文件 |
+| `FileSystem.Rename` | — | 重命名文件 |
+| `FileSystem.Getenv` | — | 读进程环境变量（库内读取统一走 `FileSystem.LookupEnv`） |
+
+库本身只调用前四个方法（文件大小检查经 `Open` 返回句柄的 `File.Stat` 进行）；其余方法供调用方在封装 `FileSystem` 的自有代码中使用，最小化的内存 mock 只需实现四个核心方法并让 `Open` 返回一个 `File`。
 
 ```go
 type MockFileSystem struct {
@@ -514,8 +538,10 @@ type File interface {
 | Read | 读取数据 |
 | Write | 写入数据 |
 | Close | 关闭文件 |
-| Stat | 获取文件信息 |
-| Sync | 同步到磁盘 |
+| `File.Stat` | 获取文件信息（库内用于大小检查） |
+| `File.Sync` | 同步到磁盘 |
+
+其中 Read/Write/`Close` 来自内嵌的 io 接口；文件特有操作为 `File.Stat` 与 `File.Sync`。
 
 ---
 
@@ -665,19 +691,19 @@ const (
 type AuditEvent = internal.Event
 ```
 
-**字段：**
+**字段（限定名）：**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| Timestamp | `time.Time` | 时间戳 |
-| Action | `AuditAction` | 操作类型 |
-| Key | `string` | 键名（已掩码） |
-| File | `string` | 文件名 |
-| Reason | `string` | 原因/描述 |
-| Success | `bool` | 是否成功 |
-| Masked | `bool` | 是否已掩码 |
-| Details | `string` | 详情 |
-| Duration | `int64` | 耗时（纳秒） |
+| `AuditEvent.Timestamp` | `time.Time` | 事件时间戳 |
+| `AuditEvent.Action` | `AuditAction` | 操作类型 |
+| `AuditEvent.Key` | `string` | 键名（敏感键已掩码） |
+| `AuditEvent.File` | `string` | 相关文件名 |
+| `AuditEvent.Reason` | `string` | 原因/描述 |
+| `AuditEvent.Success` | `bool` | 操作是否成功 |
+| `AuditEvent.Masked` | `bool` | 键名是否已掩码 |
+| `AuditEvent.Details` | `string` | 预留的自由上下文（内置审计器当前不填充） |
+| `AuditEvent.Duration` | `int64` | 耗时（纳秒） |
 
 ---
 

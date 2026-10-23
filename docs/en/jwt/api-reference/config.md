@@ -42,6 +42,7 @@ Unified configuration for the JWT Processor. Zero-value fields are automatically
 - `RateLimitRate` and `RateLimitWindow` are only populated when `EnableRateLimit = true`
 - Built-in blacklist store's `EnableAutoCleanup` is always forced to `true` (to prevent unbounded growth)
 - `SecretKey`, `SigningKey`, and `VerificationKey` are not auto-populated; they must be set manually
+- An explicitly provided `RateLimiter` always takes effect regardless of `EnableRateLimit` — supplying one is treated as explicit intent
 :::
 
 <Badge type="info" text="struct" />
@@ -68,6 +69,10 @@ Unified configuration for the JWT Processor. Zero-value fields are automatically
 | `RateLimitWindow` | `time.Duration` | `1m` | Rate limit window |
 | `RateLimiter` | `RateLimitProvider` | — | Custom rate limiter (optional) |
 | `Clock` | `ClockProvider` | `SystemClock{}` | Clock provider |
+
+:::warning Ownership and Cascade Close
+`Processor.Close` closes the limiter injected via `Config.RateLimiter` and also closes the custom blacklist store supplied through `BlacklistConfig.Store`. Do not share one instance across processors that may outlive each other — after one processor closes a shared limiter, its `Allow` always returns `false` and the other processors' token creation fails with `ErrRateLimitExceeded`.
+:::
 
 ### Methods
 
@@ -99,7 +104,7 @@ type BlacklistConfig struct {
 }
 ```
 
-Blacklist configuration.
+Blacklist configuration. `BlacklistConfig.Store` supplies a custom storage backend (e.g. Redis) — once set, `CleanupInterval`, `MaxSize`, and `EnableAutoCleanup` are all ignored, and `Processor.Close` cascades a close to that store (see the ownership note above).
 
 <Badge type="info" text="struct" />
 

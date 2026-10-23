@@ -257,10 +257,10 @@ processor, err = json.New(cfg)
 
 | 操作 | 函数 | 特点 |
 |------|------|------|
-| 遍历数组/对象 | `Foreach` | 最简单，无错误返回 |
+| 遍历数组/对象 | `ForeachWithError` | 推荐：回调返回 `error` / `item.Break()`（`Foreach` 已废弃：静默丢弃错误） |
 | 遍历并可中断 | `ForeachWithError` | 回调返回 `error` / `item.Break()` |
-| 指定路径遍历 | `ForeachWithPath` | 等价 `Foreach(data, path, ...)` 的显式路径版 |
-| 深度遍历嵌套 | `ForeachNested` | 递归所有层级 |
+| 指定路径遍历 | `ForeachWithPath` | 显式路径版（返回 `error`） |
+| 深度遍历嵌套 | `ForeachNestedWithError` | 推荐：递归所有层级并返回 `error`（`ForeachNested` 已废弃：静默丢弃错误） |
 | 深度遍历并可中断 | `ForeachNestedWithError` | `ForeachNested` 的错误返回版 |
 | 遍历并改写 | `ForeachReturn` | 返回修改后的新 JSON |
 | 携带当前路径 | `ForeachWithPathAndIterator` | 回调含 `currentPath`，可控制中断 |
@@ -270,7 +270,7 @@ processor, err = json.New(cfg)
 | 分块遍历文件 | `ForeachFileChunked` | 按 `chunkSize` 批量回调（文件仍整载内存） |
 | 递归遍历文件 | `ForeachFileNested` | 递归文件内所有嵌套结构（文件仍整载内存） |
 
-以上共 12 个迭代函数：前 8 个作用于内存中的 JSON 字符串，后 4 个（`ForeachFile*`）作用于文件（先整载再迭代，受 `MaxJSONSize` 上限约束）。
+以上共 12 个迭代函数（含已废弃的 `Foreach`/`ForeachNested` 两个 void 变体）：前 8 个作用于内存中的 JSON 字符串，后 4 个（`ForeachFile*`）作用于文件（先整载再迭代，受 `MaxJSONSize` 上限约束）。
 
 ```go
 data := `{"users":[{"name":"Alice"},{"name":"Bob"}]}`
@@ -375,10 +375,10 @@ err = json.StreamJSONLParallel(file, 4, func(lineNum int, item *json.IterableVal
     return nil
 })
 
-// NDJSONProcessor：带行号、按对象回调（已弃用，新代码用 StreamJSONL 家族）
-np := json.NewNDJSONProcessor()
-err = np.ProcessFile("events.ndjson", func(lineNum int, obj map[string]any) error {
-    fmt.Println(lineNum, obj)
+// 流式逐行处理文件（带行号，item.GetData() 取该行解析值）
+err = json.StreamJSONLFile("events.ndjson", func(lineNum int, item *json.IterableValue) error {
+    row, _ := item.GetData().(map[string]any)
+    _ = row // 逐行处理
     return nil
 })
 ```

@@ -68,7 +68,7 @@ The pattern-registration APIs (`NewCustomSensitiveDataFilter` / `AddPattern` / `
 
 ## SecurityConfig
 
-Security configuration struct controlling filter behavior and security level.
+`SecurityConfig` is the security configuration struct controlling filter behavior and security level.
 
 ```go
 type SecurityConfig struct {
@@ -129,7 +129,7 @@ Rate-limit strategy enum that determines how over-limit messages are handled (th
 
 ### FilterStats
 
-Filter statistics struct, used for monitoring and observability.
+`FilterStats` is the filter statistics struct, used for monitoring and observability, returned by `GetFilterStats`.
 
 ```go
 type FilterStats struct {
@@ -149,7 +149,7 @@ type FilterStats struct {
 
 ### SecurityLevel
 
-Security level enum, used with `SecurityConfigForLevel` to quickly obtain preset configurations.
+`SecurityLevel` is the security level enum, used with `SecurityConfigForLevel` to quickly obtain preset configurations.
 
 ```go
 type SecurityLevel int

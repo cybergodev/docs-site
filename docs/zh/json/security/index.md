@@ -268,16 +268,18 @@ func DevelopmentConfig() json.Config {
 
 ## 输入验证
 
-### 自定义验证器
+### 自定义验证钩子
 
-实现 `Validator` 接口（`Validate(jsonStr string) error`）进行输入验证：
+::: warning `Validator` 接口已废弃
+旧版通过 `Validator` 接口（`Config.CustomValidators` / `Config.AddValidator`）注册自定义验证器的做法**已废弃**——注册的验证器从不被执行。操作前的输入检查请改用 `AddHook` + `ValidationHook`（Before 钩子，返回错误即中止操作）；结构校验用 `ValidateSchema`。
+:::
+
+用 `ValidationHook` 在操作前验证输入内容（回调返回错误即中止该操作）：
 
 ```go
-// 实现自定义验证器
-type EmailValidator struct{}
-
-func (v *EmailValidator) Validate(jsonStr string) error {
-    // 验证 JSON 字符串内容
+// 注册验证钩子：检查 email 字段格式
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
     var data map[string]any
     if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
         return err
@@ -290,11 +292,7 @@ func (v *EmailValidator) Validate(jsonStr string) error {
         return errors.New("invalid email format")
     }
     return nil
-}
-
-// 使用自定义验证器
-cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&EmailValidator{}}
+}))
 ```
 
 ### Schema 验证

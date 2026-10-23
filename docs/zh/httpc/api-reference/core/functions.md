@@ -185,6 +185,14 @@ func CloseDefaultClient() error
 
 关闭默认客户端并重置。下次调用包级函数时会创建新客户端。该函数并发安全；若默认客户端已被直接 `Close`，下次包级调用同样会自动重建（自愈）。
 
+### CloseRoutedClients
+
+```go
+func CloseRoutedClients() error
+```
+
+关闭并释放全部包级路由客户端（`WithProxy`、`WithSystemProxy`、`WithTLSFingerprint` 缓存的专用客户端）并清空缓存。幂等且并发安全。与 `CloseDefaultClient` 的两点差异：不关闭默认客户端（那仍归 `CloseDefaultClient` 管）；不返回首个关闭错误——尽可能多关闭，任一失败时以 `errors.Join` 汇总全部关闭错误返回。
+
 ## 下载函数
 
 包级下载函数使用默认客户端，Client 接口与 DomainClient 也提供同名方法，三者签名一致。

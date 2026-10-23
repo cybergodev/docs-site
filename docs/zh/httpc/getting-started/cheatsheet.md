@@ -1,7 +1,7 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo HTTPC | 常用代码速查"
-description: "HTTPC 速查表：客户端创建与五种配置预设、Get/Post 等七种请求方法、29 个 WithXxx 请求选项、Result 响应处理、中间件链组合、ClientError 错误分类、文件下载与域名客户端操作的完整可复用代码片段。"
+description: "HTTPC 速查表：客户端创建与五种配置预设、Get/Post 等七种请求方法、32 个 WithXxx 请求选项、Result 响应处理、中间件链组合、ClientError 错误分类、文件下载与域名客户端操作的完整可复用代码片段。"
 sidebar_position: 30
 ---
 
@@ -34,8 +34,8 @@ client, _ = httpc.New(httpc.MinimalConfig())     // 轻量：无重试、无重�
 cfg := httpc.DefaultConfig()
 cfg.Defaults.UserAgent = "myapp/2.0"
 cfg.Defaults.Headers["Authorization"] = "Bearer " + token
-cfg.Defaults.FollowRedirects = false
-cfg.Defaults.MaxRedirects = 5
+cfg.Security.FollowRedirects = false
+cfg.Security.MaxRedirects = 5
 client, _ = httpc.New(cfg)
 
 // 管理包级默认客户端

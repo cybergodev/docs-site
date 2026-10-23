@@ -7,7 +7,7 @@ sidebar_position: 20
 
 # 请求与响应变更器
 
-中间件不直接操作底层请求/响应对象，而是通过**变更器（Mutator）**接口读写。中间件收到的始终是完整的读写变更器（`RequestMutator` / `ResponseMutator`）；下文按「读取方法」「写入方法」分组列出，仅是为了便于阅读，并非独立的导出接口。
+中间件不直接操作底层请求/响应对象，而是通过**变更器（Mutator）**接口读写。中间件收到的始终是完整的读写变更器（`RequestMutator` / `ResponseMutator`）；下文按「读取方法」「写入方法」分组列出，仅是为了便于阅读。
 
 ```text
 RequestMutator  =  读取方法  +  写入方法
@@ -61,7 +61,7 @@ ResponseMutator =  读取方法  +  写入方法
 
 ### RequestMutator
 
-`RequestMutator` 是 httpc 暴露的读写请求变更器接口，涵盖上方「读取方法」与「写入方法」两张表的全部方法。其内部的读/写分体接口位于 `internal/types` 包，未单独导出，外部统一以 `RequestMutator` 引用。中间件在请求发出前经它检视并改写请求属性。
+`RequestMutator` 是 httpc 暴露的读写请求变更器接口，涵盖上方「读取方法」与「写入方法」两张表的全部方法。它由 `RequestReader` 与 `RequestWriter` 两个分体接口组合而成，两者均已由 `httpc` 包作为公开类型别名导出（`httpc.RequestReader` / `httpc.RequestWriter`，完整方法清单见 [读写分体接口](../types/interfaces)）。中间件在请求发出前经它检视并改写请求属性。
 
 ## 中间件中 RequestMutator 的典型操作
 
@@ -132,7 +132,7 @@ req.SetHeader("X-Trace-ID", generateTraceID())
 
 ### ResponseMutator
 
-`ResponseMutator` 是 httpc 暴露的读写响应变更器接口，涵盖上方「读取方法」与「写入方法」两张表的全部方法。其内部的读/写分体接口位于 `internal/types` 包，未单独导出，外部统一以 `ResponseMutator` 引用。中间件在请求完成后经它读取或改写响应，常用于响应缓存、内容转换（如 JSON 美化）、编解码与响应过滤。
+`ResponseMutator` 是 httpc 暴露的读写响应变更器接口，涵盖上方「读取方法」与「写入方法」两张表的全部方法。它由 `ResponseReader` 与 `ResponseWriter` 两个分体接口组合而成，两者均已由 `httpc` 包作为公开类型别名导出（`httpc.ResponseReader` / `httpc.ResponseWriter`，完整方法清单见 [读写分体接口](../types/interfaces)）。中间件在请求完成后经它读取或改写响应，常用于响应缓存、内容转换（如 JSON 美化）、编解码与响应过滤。
 
 ## 中间件中 ResponseMutator 的典型操作
 

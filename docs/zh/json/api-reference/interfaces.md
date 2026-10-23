@@ -1,7 +1,7 @@
 ---
 sidebar_label: "接口定义"
 title: "接口定义 - CyberGo JSON | 扩展接口与 Hook 钩子"
-description: "CyberGo JSON 接口定义汇总扩展契约：Hook/HookContext 钩子拦截与 LoggingHook 等预定义钩子、PathParser 自定义路径解析、DangerousPattern/PatternLevel 安全级别、CustomEncoder/Validator 预留接口及 Marshaler 标准库兼容接口，帮助开发者定制并扩展 JSON 处理与编码行为。"
+description: "CyberGo JSON 接口定义汇总扩展契约：Hook/HookContext 钩子拦截与 LoggingHook 等预定义钩子、PathParser 自定义路径解析、DangerousPattern/PatternLevel 安全级别、CustomEncoder/Validator 已废弃接口及 Marshaler 标准库兼容接口，帮助开发者定制并扩展 JSON 处理与编码行为。"
 sidebar_position: 70
 ---
 
@@ -11,13 +11,15 @@ json 包提供多个扩展接口，允许自定义 JSON 处理行为。
 
 ## 编码器接口
 
-::: warning 未连接的扩展字段
-`CustomEncoder` 和 `TypeEncoder` 接口当前版本**已声明但尚未在编码流水线中挂接**。通过 `Config.CustomEncoder` / `Config.CustomTypeEncoders` 设置后不会产生效果，是为未来版本预留的。当前可用的编码自定义方式是实现 `json.Marshaler` 或 `encoding.TextMarshaler` 接口（见[自定义编码器](../extensions/custom-encoder)）。
+::: warning 已废弃的扩展接口
+`CustomEncoder` 和 `TypeEncoder` 接口**已废弃**（源码标注 Deprecated）：通过 `Config.CustomEncoder` / `Config.CustomTypeEncoders` 设置的实现**从未被编码流水线调用**，内置编码器不可替换。两个接口在 v1 生命周期内保留。编码自定义请实现 `json.Marshaler` 或 `encoding.TextMarshaler` 接口（见[自定义编码器](../extensions/custom-encoder)）。
 :::
 
 ### CustomEncoder
 
-自定义 JSON 编码器接口。
+<Badge type="danger" text="已废弃" />
+
+自定义 JSON 编码器接口。实现本接口并赋给 `Config.CustomEncoder` **不会生效**（见上方警告）。
 
 ```go
 type CustomEncoder interface {
@@ -26,40 +28,24 @@ type CustomEncoder interface {
 }
 ```
 
-**使用示例**
+**替代写法**：在自定义类型上实现 `MarshalJSON`，编码时完全接管该类型的 JSON 形态：
 
 ```go
-import stdjson "encoding/json"
+type UpperString string
 
-type UpperCaseEncoder struct{}
-
-func (e *UpperCaseEncoder) Encode(value any) (string, error) {
-    // 自定义编码逻辑
-    switch v := value.(type) {
-    case string:
-        return fmt.Sprintf(`"%s"`, strings.ToUpper(v)), nil
-    default:
-        // 使用标准编码（避免无限递归）
-        data, err := stdjson.Marshal(v)
-        if err != nil {
-            return "", err
-        }
-        return string(data), nil
-    }
+func (s UpperString) MarshalJSON() ([]byte, error) {
+    return []byte(fmt.Sprintf(`"%s"`, strings.ToUpper(string(s)))), nil
 }
 
-// 配置使用
-cfg := json.DefaultConfig()
-cfg.CustomEncoder = &UpperCaseEncoder{}
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
+out, err := json.Marshal(map[string]any{"key": UpperString("value")})
+// out: {"key":"VALUE"} — 无需任何 Config 设置
 ```
 
 ### TypeEncoder
 
-特定类型的编码器接口。
+<Badge type="danger" text="已废弃" />
+
+特定类型的编码器接口。注册到 `Config.CustomTypeEncoders` **不会被编码流水线查询**（见上方警告）。
 
 ```go
 type TypeEncoder interface {
@@ -68,37 +54,17 @@ type TypeEncoder interface {
 }
 ```
 
-**使用示例**
-
-```go
-type TimeEncoder struct{}
-
-func (e *TimeEncoder) Encode(v reflect.Value) (string, error) {
-    if v.Type() == reflect.TypeOf(time.Time{}) {
-        t := v.Interface().(time.Time)
-        return fmt.Sprintf(`"%s"`, t.Format(time.RFC3339)), nil
-    }
-    return "", fmt.Errorf("不支持的类型: %v", v.Type())
-}
-
-// 注册类型编码器
-cfg := json.DefaultConfig()
-cfg.CustomTypeEncoders = map[reflect.Type]json.TypeEncoder{
-    reflect.TypeOf(time.Time{}): &TimeEncoder{},
-}
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
-```
+**替代写法**：按类型定制编码同样走 `MarshalJSON`/`MarshalText`——例如给自定义时间类型实现 `MarshalJSON` 以覆盖默认的 RFC3339Nano 输出（完整示例见[自定义编码器](../extensions/custom-encoder)）。
 
 ## 验证器接口
 
-::: warning 未连接的扩展字段
-`Validator` 接口当前版本**已声明但尚未在操作流水线中挂接**。通过 `Config.CustomValidators` 或 `Config.AddValidator()` 设置后不会产生效果，是为未来版本预留的。当前可用的验证方式是 `ValidateSchema`（见[Schema 校验](./schema)）。
+::: warning 已废弃的扩展接口
+`Validator` 接口**已废弃**（源码标注 Deprecated）：通过 `Config.CustomValidators` 或 `Config.AddValidator()` 注册的验证器**从不被任何公开操作执行**。接口在 v1 生命周期内保留。操作前的自定义检查请用 `Config.AddHook` + Before 钩子（如 [`ValidationHook`](../extensions/hooks)），结构校验用 `ValidateSchema`（见[Schema 校验](./schema)）。
 :::
 
 ### Validator
+
+<Badge type="danger" text="已废弃" />
 
 JSON 验证器接口。
 
@@ -110,28 +76,16 @@ type Validator interface {
 }
 ```
 
-**使用示例**
+**替代写法**：用 `ValidationHook` 在操作前执行自定义检查，返回错误即中止操作：
 
 ```go
-type SizeValidator struct {
-    MaxSize int64
-}
-
-func (v *SizeValidator) Validate(jsonStr string) error {
-    // 检查输入数据的大小
-    if int64(len(jsonStr)) > v.MaxSize {
-        return fmt.Errorf("JSON 超过最大大小：%d", v.MaxSize)
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+    if len(jsonStr) > 1024*1024 { // 1MB
+        return fmt.Errorf("JSON 超过最大大小")
     }
     return nil
-}
-
-// 设置验证器
-cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&SizeValidator{MaxSize: 1024 * 1024}} // 1MB
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
+}))
 ```
 
 ## 钩子接口
@@ -399,7 +353,7 @@ func (p *CustomPathParser) ParsePath(path string) ([]json.PathSegment, error) {
 ```
 
 ::: tip 已挂接的扩展点
-`CustomPathParser` 当前版本**已在路径解析流水线中挂接**：通过 `Config.CustomPathParser` 设置后，所有路径类操作（Get/Set/Delete/迭代）都会调用 `ParsePath` **完全替代**内置解析器；解析结果不进入全局路径段缓存，携带自定义解析器的配置也不会进入处理器配置缓存。解析器 panic 会被捕获并转换为错误，不会击穿进程。与仍属预留的 `CustomEncoder`、`CustomValidators` 不同，本接口可直接使用。
+`CustomPathParser` 当前版本**已在路径解析流水线中挂接**：通过 `Config.CustomPathParser` 设置后，所有路径类操作（Get/Set/Delete/迭代）都会调用 `ParsePath` **完全替代**内置解析器；解析结果不进入全局路径段缓存，携带自定义解析器的配置也不会进入处理器配置缓存。解析器 panic 会被捕获并转换为错误，不会击穿进程。与已废弃、不生效的 `CustomEncoder`、`CustomValidators` 不同，本接口可直接使用。
 :::
 
 ## 基础类型

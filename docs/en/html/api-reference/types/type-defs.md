@@ -39,6 +39,10 @@ type Result struct {
 | `Result.WordCount` | `int` | Word count of `Text` (whitespace tokenization; CJK characters counted one by one) |
 | `Result.ReadingTime` | `time.Duration` | Reading time estimated from `WordCount` at 200 words per minute (`reading_time_ms` in JSON output) |
 
+:::tip CJK word count and reading time
+`WordCount` counts CJK text (Chinese, Japanese, etc.) **character by character** — each character counts as 1 "word" rather than whitespace-delimited tokens. `ReadingTime` uses a 200 words-per-minute **English reading-rate baseline**. For CJK content, the word count is therefore overestimated, and the reading-time estimate is correspondingly **longer**. The word count / reading time values shown in documentation examples are illustrative outputs under the current algorithm and may change as the algorithm version is updated.
+:::
+
 ### MarshalJSON
 
 Custom JSON serialization is implemented by `Result.MarshalJSON`: `ProcessingTime` and `ReadingTime` carry `json:"-"` tags (standard serialization skips them), but `Result.MarshalJSON` emits them as millisecond values.

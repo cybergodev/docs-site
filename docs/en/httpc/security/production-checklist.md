@@ -119,12 +119,12 @@ cfg.Connection.MaxResponseHeaderBytes = 512 * 1024       // 512KB response heade
 | Check item | Default | Recommended production value | Verification method |
 |--------|--------|-----------|----------|
 | `MaxRetries` | 3 | No more than 5 | Code review |
-| Retrying non-idempotent requests | — | Be cautious with POST/PUT/PATCH | Code review for idempotency |
+| Retrying non-idempotent requests | Off by default (execute exactly once) | Keep off; use an idempotency key if you do need retries | Code review for idempotency |
 | `EnableJitter` | `true` | `true` (prevents thundering herd) | `grep EnableJitter` |
 | `MaxRetryDelay` | 30s | 30s | — |
 
 :::warning
-Retrying non-idempotent requests (POST creating a resource, PUT partial update) may cause duplicate creation or duplicate charges. If the operation is not idempotent, set `WithMaxRetries(0)` for such requests, or implement an idempotency key on the server side.
+Non-idempotent requests (POST creating a resource, PATCH partial update) execute exactly once by default and are not retried, so they cannot by themselves cause duplicates. But once you explicitly opt in with `WithRetryNonIdempotent(true)`, they may cause duplicate creation or duplicate charges — in that case implement an idempotency key on the server side, or leave the default off.
 :::
 
 ### Retry Storm Control
@@ -158,12 +158,13 @@ Two more pitfalls to avoid: `io.Reader` request bodies are fully buffered to sup
 
 | Check item | Default | Recommended production value | Verification method |
 |--------|--------|-----------|----------|
-| `CookieSecurity` | `nil` (no validation) | `StrictCookieSecurityConfig()` | `grep CookieSecurity` |
+| `SessionConfig.CookieSecurity` / `SetCookieSecurity` | `nil` (no validation) | `StrictCookieSecurityConfig()` | `grep CookieSecurity` |
 | `WithSecureCookie` ordering | — | After all cookie-adding options (`WithCookies` etc.) | Code review |
 
 ```go
-cfg := httpc.DefaultConfig()
-cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
+cfg := httpc.DefaultSessionConfig()
+cfg.CookieSecurity = httpc.StrictCookieSecurityConfig()
+sm, err := httpc.NewSessionManager(cfg)
 // Requires Secure + HttpOnly + SameSite=Strict
 ```
 
@@ -336,8 +337,8 @@ func main() {
 
 	// Request defaults
 	cfg.Defaults.UserAgent = "my-service/1.0"
-	cfg.Defaults.FollowRedirects = true
-	cfg.Defaults.MaxRedirects = 5
+	cfg.Security.FollowRedirects = true
+	cfg.Security.MaxRedirects = 5
 
 	// Middleware
 	cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
@@ -360,7 +361,7 @@ func main() {
 ```go
 func createSecureClient() (httpc.Client, error) {
 	cfg := httpc.SecureConfig()
-	cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
+	// Cookie security is configured at the session level: SessionConfig.CookieSecurity / SessionManager.SetCookieSecurity
 	cfg.Security.RedirectWhitelist = []string{"api.example.com"}
 	// SecureConfig already sets FollowRedirects = false, AllowPrivateIPs = false, and a 5MB response cap
 	return httpc.New(cfg)

@@ -11,14 +11,13 @@ sidebar_position: 20
 
 仅对 502/503/504 重试，使用固定延迟：
 
-:::warning 内部类型
-RetryPolicy.ShouldRetry 的 `resp` 参数类型 ResponseReader 为内部接口（定义在 `internal/types` 包中），外部包无法直接引用。自定义 `RetryPolicy` 必须在与 `httpc` 同一模块内的包中实现。大多数场景可通过 `RetryConfig` 配置满足需求。以下示例展示实现模式，实际代码需在 `httpc` 模块内部编译。
+:::tip 类型已公开导出
+RetryPolicy.ShouldRetry 的 `resp` 参数类型 `ResponseReader` 已由 `httpc` 包通过公开类型别名导出（`httpc.ResponseReader`），外部包可直接引用。自定义 `RetryPolicy` 可在任何业务包中实现，以下示例可直接编译使用。多数场景仍可通过 `RetryConfig` 配置满足需求。
 :::
 
 ```go
-// 注意：ResponseReader 是内部类型（internal/types 包）。
-// 此代码仅能在 github.com/cybergodev/httpc 模块内部编译。
-// 大多数用户应通过 RetryConfig 和 WithMaxRetries 配置重试。
+// ResponseReader 已由 httpc 包公开导出（httpc.ResponseReader）。
+// 本示例可在任何导入 github.com/cybergodev/httpc 的业务包中直接编译。
 
 type selectiveRetry struct {
     maxAttempts int
@@ -26,7 +25,7 @@ type selectiveRetry struct {
 }
 
 // 判断是否应该重试
-func (p *selectiveRetry) ShouldRetry(resp ResponseReader, err error, attempt int) bool {
+func (p *selectiveRetry) ShouldRetry(resp httpc.ResponseReader, err error, attempt int) bool {
     if attempt >= p.maxAttempts {
         return false
     }
@@ -49,7 +48,7 @@ cfg := httpc.DefaultConfig()
 cfg.Retry.CustomPolicy = &selectiveRetry{maxAttempts: 5, baseDelay: time.Second}
 ```
 
-外部项目的替代方案 — 使用 `RetryConfig` 配置：
+无需自定义策略时的替代方案 — 使用 `RetryConfig` 配置：
 
 ```go
 package main

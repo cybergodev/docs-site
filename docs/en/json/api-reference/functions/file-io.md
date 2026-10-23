@@ -331,7 +331,7 @@ err := json.ForeachFile("users.json", func(key any, item *json.IterableValue) er
 })
 ```
 
-These functions are a convenience combo of `LoadFromFile` + `Foreach`, well suited to large collections. For streaming and memory-optimization details see [Streaming](../../streaming/large-files).
+These functions are a convenience combo of `LoadFromFile` plus a per-item iteration callback, well suited to large collections. For streaming and memory-optimization details see [Streaming](../../streaming/large-files).
 
 ## Choosing a Method
 

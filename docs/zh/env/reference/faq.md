@@ -214,7 +214,7 @@ log.Printf("API Key: %s", sv.Masked())    // [SECURE:32 bytes locked]
 log.Printf("API Key: %s", sv)              // 同上（String() 返回 Masked()）
 
 // ✅ 安全 — 掩码工具
-masked := env.MaskValue("API_KEY", "sk-xxx") // [MASKED:6 chars]（敏感键 → 按值长度掩码）
+masked := env.MaskValue("API_KEY", "sk-xxx") // [MASKED]（敏感键 → 固定掩码）
 clean := env.SanitizeForLog(logMessage)       // 自动检测并掩码
 
 // ❌ 危险 — 明文泄露
@@ -325,12 +325,12 @@ func TestGlobalMode(t *testing.T) {
 
 ### 如何防止配置文件读取进程中的机密？
 
-配置文件来自不可信来源（用户上传、外部下发）时，默认的展开作用域允许 `${VAR}` 回退读取进程环境，存在机密被捕获进变量值的风险。启用文件内作用域即可阻断：
+配置文件来自不可信来源（用户上传、外部下发）时，若展开作用域允许 `${VAR}` 回退读取进程环境，存在机密被捕获进变量值的风险。`DefaultConfig()` 默认已是文件内作用域（`ExpansionFileOnly`），阻断该回退；此处显式声明仅作说明：
 
 <!-- check-code: skip -->
 ```go
 cfg := env.DefaultConfig()
-cfg.ExpansionScope = env.ExpansionFileOnly // ${VAR} 仅解析文件内变量
+cfg.ExpansionScope = env.ExpansionFileOnly // ${VAR} 仅解析文件内变量（默认已如此）
 ```
 
 详见[变量展开 · 展开作用域](../guides/variable-expansion)。

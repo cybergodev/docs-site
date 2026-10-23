@@ -140,7 +140,7 @@ if err := cfg.Validate(); err != nil {
 
 ### OutputType
 
-Enumeration of output target types.
+`OutputType` is the enumeration of output target types; the `OutputTarget.Type` field takes the constants below.
 
 ```go
 type OutputType int
@@ -267,7 +267,7 @@ logger, _ := dd.New(dd.Config{
 
 ## SamplingConfig
 
-Sampling configuration for reducing log volume in high-throughput scenarios.
+`SamplingConfig` is the sampling configuration for reducing log volume in high-throughput scenarios.
 
 ```go
 type SamplingConfig struct {

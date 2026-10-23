@@ -39,6 +39,10 @@ type Result struct {
 | `Result.WordCount` | `int` | `Text` 的词数（空白分词，CJK 字符逐字计数） |
 | `Result.ReadingTime` | `time.Duration` | 按 `WordCount` 与 200 词/分钟估算的阅读时间（JSON 输出中为 `reading_time_ms`） |
 
+:::tip CJK 词数与阅读时间
+`WordCount` 对 CJK 文本（中文/日文等）**逐字计数**——每个字符计为 1「词」，而非按空格分词；`ReadingTime` 采用 200 词/分钟的**英文阅读速率基准**。因此对 CJK 内容，词数会被高估，阅读时间估算相应**偏长**。文档示例中出现的字数/阅读时间数值为当前算法下的示意输出，随算法版本调整可能变化。
+:::
+
 ### MarshalJSON
 
 自定义 JSON 序列化由 `Result.MarshalJSON` 实现：`ProcessingTime` 和 `ReadingTime` 虽有 `json:"-"` 标签（标准序列化会跳过），但 `Result.MarshalJSON` 会将它们转为毫秒数输出。

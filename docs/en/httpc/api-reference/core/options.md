@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Request Options"
 title: "Request Options - CyberGo HTTPC | WithXxx Options"
-description: "HTTPC request options reference: all 29 WithXxx functions covering headers, auth, bodies, cookies, request control, and callbacks, with Config overrides."
+description: "HTTPC request options reference: all 32 WithXxx functions for headers, auth, bodies, cookies, request control, callbacks, and routing, with Config overrides."
 sidebar_position: 20
 ---
 
@@ -29,6 +29,7 @@ All options can be freely combined and are applied in the order they are passed.
 | [Query Parameters](#query-parameters) | `WithQuery`, `WithQueryMap` |
 | [Cookies](#cookies) | `WithCookies`, `WithCookieMap`, `WithCookieString`, `WithSecureCookie` |
 | [Request Control](#request-control) | `WithContext`, `WithTimeout`, `WithNoTimeout`, `WithMaxRetries`, `WithRetryNonIdempotent`, `WithFollowRedirects`, `WithMaxRedirects`, `WithAllowPrivateIPs`, `WithStreamBody` |
+| [Package-level Routing](#package-level-routing) | `WithProxy`, `WithSystemProxy`, `WithTLSFingerprint` |
 | [Callbacks](#callbacks) | `WithOnRequest`, `WithOnResponse` |
 
 Some options override same-named defaults in the client configuration (`Config`):
@@ -41,8 +42,8 @@ Some options override same-named defaults in the client configuration (`Config`)
 | `WithNoTimeout` | `Timeouts.Request` (lifts the default ceiling) |
 | `WithMaxRetries` | `Retry.MaxRetries` (3) |
 | `WithRetryNonIdempotent` | `Retry.RetryNonIdempotent` (false) |
-| `WithFollowRedirects` | `Defaults.FollowRedirects` (true) |
-| `WithMaxRedirects` | `Defaults.MaxRedirects` (10) |
+| `WithFollowRedirects` | `Security.FollowRedirects` (true) |
+| `WithMaxRedirects` | `Security.MaxRedirects` (10) |
 | `WithAllowPrivateIPs` | `Security.AllowPrivateIPs` (false) |
 
 :::tip
@@ -523,6 +524,54 @@ Streaming mode **only takes effect via [`Download`](./functions#download)**. Whe
 To actually stream-download large files without caching them in memory, use `Download`.
 :::
 
+## Package-level Routing
+
+Three **package-level-only** routing options: `WithProxy`, `WithSystemProxy`, and `WithTLSFingerprint`. Each routes a single package-level call to a dedicated client (isolated pools, inheriting the default client's secure defaults — SSRF protection, TLS 1.2+, timeouts, retries), leaving the shared default client and any other in-flight calls untouched. Each distinct `(proxy, fingerprint)` combination is cached as its own client; close them all with `CloseRoutedClients` (see [Package Functions & Client Methods](./functions#closeroutedclients)).
+
+:::warning Package-level only
+These options only make sense on package-level functions (`Get`/`Post`/`Request`/`Download`, etc.). On an explicit `Client` instance they return an error — use `Config.Connection.ProxyURL` / `Config.Connection.EnableSystemProxy` / `Config.Security.TLSFingerprint` there instead.
+:::
+
+### WithProxy
+
+```go
+func WithProxy(proxyURL string) RequestOption
+```
+
+Routes this call through an explicit proxy (`http`/`https`/`socks5`/`socks5h`), taking precedence over the default client's own proxy configuration. The proxy URL may carry credentials; httpc never logs them.
+
+```go
+result, err := httpc.Get("https://example.com",
+    httpc.WithProxy("http://127.0.0.1:7890"),
+)
+```
+
+### WithSystemProxy
+
+```go
+func WithSystemProxy() RequestOption
+```
+
+Routes this call through a client with automatic system-proxy detection (`Connection.EnableSystemProxy`): it reads environment variables (`HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`) and platform settings (Windows registry, macOS system configuration). Requests to `localhost`/loopback and NO_PROXY-exempt hosts bypass the proxy, matching `net/http` behavior; with no system proxy configured, the request connects directly. When combined with `WithProxy`, `WithProxy` wins.
+
+```go
+result, err := httpc.Get("https://example.com", httpc.WithSystemProxy())
+```
+
+### WithTLSFingerprint
+
+```go
+func WithTLSFingerprint(preset string) RequestOption
+```
+
+Routes this call to a browser TLS-fingerprint client (equivalent to `Config.Security.TLSFingerprint`). The value must be a known preset (case-insensitive, whitespace-trimmed): `chrome` / `firefox` and their OS/version aliases; an unknown preset fails the request with `ErrInvalidSecurity`. See the [TLS Fingerprinting guide](../../guides/tls-fingerprint) for the full preset list and behavior semantics.
+
+```go
+result, err := httpc.Get("https://example.com",
+    httpc.WithTLSFingerprint("chrome-windows"),
+)
+```
+
 ## Callbacks
 
 ### WithOnRequest
@@ -559,8 +608,30 @@ result, err := client.Get(url,
 )
 ```
 
+## Custom Options
+
+### RequestOptionFunc
+
+```go
+type RequestOptionFunc func(RequestMutator) error
+```
+
+A public adapter type that turns a function literal into the `RequestOption` interface, mirroring net/http's Handler/HandlerFunc split — `RequestOption`'s `apply` method is unexported, so the interface cannot be implemented outside the package; custom per-request options are expressed through `RequestOptionFunc`, without naming the internal request type:
+
+```go
+result, err := client.Get(url,
+    httpc.RequestOptionFunc(func(req httpc.RequestMutator) error {
+        req.SetHeader("X-Custom", "value")
+        return nil
+    }),
+)
+```
+
+A nil `RequestOptionFunc` is a no-op — it is skipped silently when applied.
+
 ## See Also
 
 - [Constants and Types](../types/constants) - BodyKind constants and type aliases
 - [Interface Definitions](../types/interfaces) - RequestMutator, ResponseMutator interfaces
+- [Request and Response Mutators](../handler/mutators) - The full read/write contract of RequestMutator/ResponseMutator
 - [Request and Response](../../guides/request-response) - Request options usage guide

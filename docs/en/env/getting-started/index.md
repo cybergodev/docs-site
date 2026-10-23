@@ -291,8 +291,8 @@ cfg := env.ProductionConfig()
 | Error on missing file | ✗ | ✗ | ✗ | ✓ |
 | Audit logging | ✗ | ✗ | ✗ | ✓ |
 | YAML syntax | ✗ | ✓ | ✗ | ✗ |
-| File size limit | 2MB | 10MB | 64KB | 64KB |
-| Max variables | 500 | 500 | 50 | 50 |
+| File size limit | 8MB | 10MB | 64KB | 64KB |
+| Max variables | 1000 | 1000 | 50 | 50 |
 | Forbidden key check | ✓ | ✓ | ✓ | ✓ |
 | Value validation | ✓ | ✓ | ✓ | ✓ |
 

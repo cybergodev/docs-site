@@ -11,6 +11,24 @@ Processor is the core JWT operation type, implementing the [`TokenManager`](./in
 
 Create an instance via [`jwt.New(cfg)`](./functions#new).
 
+## Method Index
+
+| Method | Description |
+|--------|-------------|
+| [`Processor.Create`](#create) | Create an access token |
+| [`Processor.CreateRefresh`](#createrefresh) | Create a refresh token |
+| [`Processor.Parse`](#parse) | Verify and parse an access token (v1.2.3+) |
+| [`Processor.ParseInto`](#parseinto) | Verify and populate custom Claims in place (v1.2.3+) |
+| [`Processor.Refresh`](#refresh) | Exchange a refresh token for a new access token |
+| [`Processor.RefreshInto`](#refreshinto) | Refresh with custom Claims |
+| [`Processor.Revoke`](#revoke) | Revoke a token (blacklist it) |
+| [`Processor.IsRevoked`](#isrevoked) | Check whether a token has been revoked |
+| [`Processor.ParseUnverified`](#parseunverified) | Parse without signature verification (debug/logging only) |
+| [`Processor.Close`](#close) | Release resources and securely clear keys |
+| [`Processor.IsClosed`](#isclosed) | Check whether the processor is closed |
+
+The deprecated `Validate` / `ValidateInto` methods remain available — migrate to `Parse` / `ParseInto` respectively (see [Migrating from Validate to Parse](#migrating-from-validate-to-parse)).
+
 ## Create
 
 ```go
@@ -349,14 +367,22 @@ Validates a token and populates a custom Claims struct. Returns the same pointer
 | `valid` | `bool` | Whether valid (always equal to `err == nil`) |
 | `err` | `error` | Error on validation failure |
 
-### Example
+### Migrating from ValidateInto to ParseInto
 
 ```go
-myClaims := &MyClaims{}
+// Old style (deprecated)
 result, valid, err := processor.ValidateInto(tokenString, myClaims)
 if valid {
     fmt.Println(result.(*MyClaims).UserID)
 }
+
+// New style: nil err means valid
+result, err := processor.ParseInto(tokenString, myClaims)
+if err != nil {
+    // Handle error
+    return
+}
+fmt.Println(result.(*MyClaims).UserID)
 ```
 
 ### Errors

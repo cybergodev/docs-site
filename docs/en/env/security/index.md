@@ -72,7 +72,7 @@ SecureValue protects sensitive values **in memory**, but logs, error messages, a
 ```go
 // Safely output configuration in logs, avoiding plaintext leakage
 log.Printf("Loading config: %s", env.MaskValue("DB_PASSWORD", password))
-// Output: Loading config: [MASKED:12 chars]
+// Output: Loading config: [MASKED]
 
 log.Printf("Connection params: %s", env.SanitizeForLog("user=admin password=s3cret"))
 // Output: Connection params: user=admin password=[MASKED]
@@ -156,7 +156,7 @@ cfg.AllowedKeys = []string{"APP_NAME", "PORT", "DB_HOST", "API_KEY"}
 
 ## Expansion Scope Isolation
 
-Variable expansion resolves file-first, process-environment-second by default. For untrusted configuration sources, `ExpansionScope: ExpansionFileOnly` restricts references to inside the file, blocking a config file from probing and capturing process secrets (cloud credentials, tokens, etc.) (SEC-03). Configuration and attack scenarios are covered in [Variable Expansion · Expansion Scope](../guides/variable-expansion).
+`DefaultConfig()` defaults the expansion scope to `ExpansionFileOnly` — variable expansion resolves only file-local references, blocking fallback reads and capture of process secrets (cloud credentials, tokens, etc.) (SEC-03). Switch to `ExpansionScope: ExpansionFileThenProcess` only if you explicitly need the traditional dotenv file-first, process-second fallback semantics. Configuration and attack scenarios are covered in [Variable Expansion · Expansion Scope](../guides/variable-expansion).
 
 ## Related Documentation
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "JSONL Data Pipeline"
 title: "JSONL Data Pipeline - CyberGo JSON | ETL & Streaming"
-description: "CyberGo JSON JSONL data pipelines: StreamLinesInto streaming, ToJSONL/ToJSONLString batch format conversion, NDJSONProcessor and ForeachFile for large files."
+description: "CyberGo JSON JSONL data pipelines: StreamLinesInto streaming, ToJSONL/ToJSONLString batch format conversion, StreamJSONLFile and ForeachFile for large files."
 sidebar_position: 40
 ---
 
@@ -89,7 +89,7 @@ func main() {
 
 ## Processing JSONL Files
 
-`NDJSONProcessor` processes a JSONL file line by line, handing the callback a `map[string]any` (suited to non-fixed fields). Aggregate results become JSONL bytes in bulk via `ToJSONL`.
+`Processor.StreamJSONLFile` processes a JSONL file line by line, handing the callback an `*IterableValue` (`GetData()` returns the line's `map[string]any`, suited to non-fixed fields). Aggregate results become JSONL bytes in bulk via `ToJSONL`. (The legacy `NDJSONProcessor` is deprecated; see [JSONL Streaming](../streaming/jsonl#ndjsonprocessor).)
 
 ```go
 package main
@@ -119,10 +119,17 @@ func main() {
 		panic(err)
 	}
 
-	// 1. Process line by line with NDJSONProcessor (each line parsed as map[string]any)
-	processor := json.NewNDJSONProcessor()
+	// 1. Process line by line with Processor.StreamJSONLFile
+	//    (item.GetData() returns the line's map[string]any)
+	p, err := json.New()
+	if err != nil {
+		panic(err)
+	}
+	defer p.Close()
+
 	loginCount := 0
-	err = processor.ProcessFile(jsonlPath, func(lineNum int, obj map[string]any) error {
+	err = p.StreamJSONLFile(jsonlPath, func(lineNum int, item *json.IterableValue) error {
+		obj := item.GetData().(map[string]any)
 		event, _ := obj["event"].(string)
 		user, _ := obj["user"].(string)
 		fmt.Printf("Line %d: %s by %s\n", lineNum, event, user)

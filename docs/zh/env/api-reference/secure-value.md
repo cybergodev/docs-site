@@ -32,6 +32,25 @@ if secret != nil {
 `Close()` 和 `Release()` 只应调用一次。重复调用是安全的但无效。
 :::
 
+## 方法总览
+
+`SecureValue` 的全部方法（限定名形如 `SecureValue.Reveal`），详见下文各小节：
+
+| 方法 | 说明 |
+|------|------|
+| `SecureValue.String` | 掩码表示（实现 `fmt.Stringer`，用于格式化输出） |
+| `SecureValue.Reveal` | 返回明文字符串 |
+| `SecureValue.Bytes` | 返回字节切片副本（用后以 `ClearBytes` 清零） |
+| `SecureValue.Length` | 值长度（不暴露内容） |
+| `SecureValue.Masked` | 掩码表示（携带锁定状态后缀） |
+| `SecureValue.MarshalJSON` | JSON 序列化输出掩码（实现 `json.Marshaler`） |
+| `SecureValue.MarshalText` | 文本编码输出掩码（实现 `encoding.TextMarshaler`） |
+| `SecureValue.Close` | 清零数据，不归还对象池 |
+| `SecureValue.Release` | 清零数据并归还对象池 |
+| `SecureValue.IsClosed` | 是否已关闭 |
+| `SecureValue.IsMemoryLocked` | 内存是否处于锁定状态 |
+| `SecureValue.MemoryLockError` | 最近一次锁定失败的错误 |
+
 ## 创建
 
 ### NewSecureValue
@@ -593,9 +612,9 @@ func MaskValue(key, value string) string
 - `string` - 掩码后的值
 
 ```go
-// 敏感键 - 返回 [MASKED:N chars] 格式
+// 敏感键 - 返回固定 [MASKED] 格式
 masked := env.MaskValue("API_KEY", "secret123")
-// 返回：[MASKED:9 chars]
+// 返回：[MASKED]
 
 // 非敏感键 - 返回原值（超过 20 字符则截断）
 masked := env.MaskValue("APP_NAME", "myapp")
@@ -620,7 +639,7 @@ func MaskKey(key string) string
 
 ```go
 masked := env.MaskKey("DB_PASSWORD")
-// 返回：DB***
+// 返回：[MASKED]
 ```
 
 ---

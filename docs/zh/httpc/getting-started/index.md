@@ -24,7 +24,7 @@ go get github.com/cybergodev/httpc
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC 要求 Go 1.26 及以上版本；除 `golang.org/x/sys` 外没有其他第三方依赖，无需任何配置即可发起第一个请求。
+HTTPC 要求 Go 1.27 及以上版本；共 7 个直接依赖（`golang.org/x/net` + `golang.org/x/sys` 用于标准路径，brotli / compress / uTLS / tls-client / fhttp 仅在启用 `Security.TLSFingerprint` 时被拉入），不启用指纹特性时按标准栈运行，无需任何配置即可发起第一个请求。
 
 ## 基本请求
 
@@ -58,7 +58,7 @@ func main() {
 - 包级函数内部使用**惰性初始化的共享默认客户端**——首次调用时创建，之后复用，并发安全；
 - 返回值 `*Result` 聚合了状态码、响应头、响应体以及请求元信息（耗时、尝试次数、重定向链）；
 - `err != nil` 只代表**网络层错误**（连接失败、超时、TLS 错误等）；4xx/5xx 状态码需用 `result.IsSuccess()` 等方法自行检查；
-- 默认配置自带 TLS 1.2+、SSRF 防护、响应体 10MB 上限与最多 3 次智能重试，无需额外设置。
+- 默认配置自带 TLS 1.2+、SSRF 防护、响应体 10MB 上限与最多 3 次智能重试（仅幂等请求；POST/PATCH 默认单次执行），无需额外设置。
 
 ## 创建客户端
 
@@ -99,7 +99,7 @@ client, err := httpc.New(cfg)
 cfg := httpc.DefaultConfig()
 cfg.Defaults.UserAgent = "myapp/2.0"
 cfg.Defaults.Headers["Authorization"] = "Bearer " + token
-cfg.Defaults.FollowRedirects = false
+cfg.Security.FollowRedirects = false
 
 client, err := httpc.New(cfg)
 ```
@@ -240,7 +240,7 @@ type Repo struct {
 }
 
 func main() {
-	// 1. 创建客户端（默认配置：TLS 1.2+、SSRF 防护、最多重试 3 次）
+	// 1. 创建客户端（默认配置：TLS 1.2+、SSRF 防护、幂等请求最多重试 3 次）
 	client, err := httpc.NewDefault()
 	if err != nil {
 		log.Fatal(err)

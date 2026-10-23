@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Interfaces"
 title: "Interface Definitions - CyberGo JSON | Extension & Hook APIs"
-description: "CyberGo JSON extension interfaces: Hook/HookContext, LoggingHook, PathParser, DangerousPattern with PatternLevel, CustomEncoder, Validator and Marshaler."
+description: "CyberGo JSON extension interfaces: Hook/HookContext, LoggingHook, PathParser, DangerousPattern with PatternLevel, the deprecated CustomEncoder/Validator interfaces, and Marshaler."
 sidebar_position: 70
 ---
 
@@ -11,13 +11,15 @@ The json package provides multiple extension interfaces for customizing JSON pro
 
 ## Encoder Interfaces
 
-::: warning Extension fields not yet wired
-The `CustomEncoder` and `TypeEncoder` interfaces are **declared but not yet wired into the encoding pipeline** in the current version. Setting them via `Config.CustomEncoder` / `Config.CustomTypeEncoders` has no effect — they are reserved for future releases. The currently available way to customize encoding is to implement the `json.Marshaler` or `encoding.TextMarshaler` interfaces (see [Custom Encoders](../extensions/custom-encoder)).
+::: warning Deprecated extension interfaces
+The `CustomEncoder` and `TypeEncoder` interfaces are **deprecated** (marked Deprecated in the source): implementations set via `Config.CustomEncoder` / `Config.CustomTypeEncoders` are **never invoked by the encoding pipeline**, and the built-in encoder cannot be replaced. Both interfaces are kept within v1. To customize encoding, implement the `json.Marshaler` or `encoding.TextMarshaler` interfaces (see [Custom Encoders](../extensions/custom-encoder)).
 :::
 
 ### CustomEncoder
 
-The custom JSON encoder interface.
+<Badge type="danger" text="Deprecated" />
+
+The custom JSON encoder interface. Implementing it and assigning to `Config.CustomEncoder` **has no effect** (see the warning above).
 
 ```go
 type CustomEncoder interface {
@@ -26,40 +28,24 @@ type CustomEncoder interface {
 }
 ```
 
-**Usage example**
+**Replacement**: implement `MarshalJSON` on your custom type — encoding then fully takes over that type's JSON representation:
 
 ```go
-import stdjson "encoding/json"
+type UpperString string
 
-type UpperCaseEncoder struct{}
-
-func (e *UpperCaseEncoder) Encode(value any) (string, error) {
-    // Custom encoding logic
-    switch v := value.(type) {
-    case string:
-        return fmt.Sprintf(`"%s"`, strings.ToUpper(v)), nil
-    default:
-        // Use standard encoding (avoids infinite recursion)
-        data, err := stdjson.Marshal(v)
-        if err != nil {
-            return "", err
-        }
-        return string(data), nil
-    }
+func (s UpperString) MarshalJSON() ([]byte, error) {
+    return []byte(fmt.Sprintf(`"%s"`, strings.ToUpper(string(s)))), nil
 }
 
-// Configure and use
-cfg := json.DefaultConfig()
-cfg.CustomEncoder = &UpperCaseEncoder{}
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
+out, err := json.Marshal(map[string]any{"key": UpperString("value")})
+// out: {"key":"VALUE"} — no Config setup needed
 ```
 
 ### TypeEncoder
 
-The per-type encoder interface.
+<Badge type="danger" text="Deprecated" />
+
+The per-type encoder interface. Registrations in `Config.CustomTypeEncoders` are **never consulted by the encoding pipeline** (see the warning above).
 
 ```go
 type TypeEncoder interface {
@@ -68,37 +54,17 @@ type TypeEncoder interface {
 }
 ```
 
-**Usage example**
-
-```go
-type TimeEncoder struct{}
-
-func (e *TimeEncoder) Encode(v reflect.Value) (string, error) {
-    if v.Type() == reflect.TypeOf(time.Time{}) {
-        t := v.Interface().(time.Time)
-        return fmt.Sprintf(`"%s"`, t.Format(time.RFC3339)), nil
-    }
-    return "", fmt.Errorf("unsupported type: %v", v.Type())
-}
-
-// Register the type encoder
-cfg := json.DefaultConfig()
-cfg.CustomTypeEncoders = map[reflect.Type]json.TypeEncoder{
-    reflect.TypeOf(time.Time{}): &TimeEncoder{},
-}
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
-```
+**Replacement**: per-type encoding customization likewise goes through `MarshalJSON`/`MarshalText` — e.g. implement `MarshalJSON` on a custom time type to override the default RFC3339Nano output (full example in [Custom Encoders](../extensions/custom-encoder)).
 
 ## Validator Interfaces
 
-::: warning Extension fields not yet wired
-The `Validator` interface is **declared but not yet wired into the operation pipeline** in the current version. Setting it via `Config.CustomValidators` or `Config.AddValidator()` has no effect — it is reserved for future releases. The currently available validation mechanism is `ValidateSchema` (see [Schema Validation](./schema)).
+::: warning Deprecated extension interface
+The `Validator` interface is **deprecated** (marked Deprecated in the source): validators registered via `Config.CustomValidators` or `Config.AddValidator()` are **never executed by any public operation**. The interface is kept within v1. For custom pre-operation checks use `Config.AddHook` with a Before hook (e.g. [`ValidationHook`](../extensions/hooks)); for structural validation use `ValidateSchema` (see [Schema Validation](./schema)).
 :::
 
 ### Validator
+
+<Badge type="danger" text="Deprecated" />
 
 The JSON validator interface.
 
@@ -110,28 +76,16 @@ type Validator interface {
 }
 ```
 
-**Usage example**
+**Replacement**: use `ValidationHook` to run custom checks before an operation; returning an error aborts it:
 
 ```go
-type SizeValidator struct {
-    MaxSize int64
-}
-
-func (v *SizeValidator) Validate(jsonStr string) error {
-    // Check the size of the input data
-    if int64(len(jsonStr)) > v.MaxSize {
-        return fmt.Errorf("JSON exceeds maximum size: %d", v.MaxSize)
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+    if len(jsonStr) > 1024*1024 { // 1MB
+        return fmt.Errorf("JSON exceeds maximum size")
     }
     return nil
-}
-
-// Set the validator
-cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&SizeValidator{MaxSize: 1024 * 1024}} // 1MB
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
+}))
 ```
 
 ## Hook Interfaces
@@ -399,7 +353,7 @@ func (p *CustomPathParser) ParsePath(path string) ([]json.PathSegment, error) {
 ```
 
 ::: tip A wired extension point
-`CustomPathParser` **is wired into the path-parsing pipeline** in the current version: once set via `Config.CustomPathParser`, all path-based operations (Get/Set/Delete/iteration) call `ParsePath` as a **complete replacement** for the built-in parser; parsed results bypass the global path-segment cache, and configurations carrying a custom parser also bypass the processor configuration cache. Panics inside the parser are caught and converted to errors, never crashing the process. Unlike the still-reserved `CustomEncoder` and `CustomValidators`, this interface is ready to use.
+`CustomPathParser` **is wired into the path-parsing pipeline** in the current version: once set via `Config.CustomPathParser`, all path-based operations (Get/Set/Delete/iteration) call `ParsePath` as a **complete replacement** for the built-in parser; parsed results bypass the global path-segment cache, and configurations carrying a custom parser also bypass the processor configuration cache. Panics inside the parser are caught and converted to errors, never crashing the process. Unlike the deprecated, ineffective `CustomEncoder` and `CustomValidators`, this interface is ready to use.
 :::
 
 ## Basic Types

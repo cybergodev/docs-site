@@ -108,7 +108,7 @@ sidebar_position: 10
 
 | 函数 | 说明 |
 |------|------|
-| [`Foreach`](./functions/iterate#foreach), [`ForeachWithError`](./functions/iterate#foreachwitherror), `ForeachNested`, `ForeachNestedWithError` | 遍历数组/对象（含深度遍历） |
+| [`Foreach`](./functions/iterate#foreach)（已废弃）, [`ForeachWithError`](./functions/iterate#foreachwitherror), `ForeachNested`（已废弃）, `ForeachNestedWithError` | 遍历数组/对象（含深度遍历；void 变体已废弃，推荐 `*WithError`） |
 | [`ForeachWithPath`](./functions/iterate#foreachwithpath), `ForeachWithPathAndIterator`, `ForeachWithPathAndControl` | 指定路径遍历（携带当前路径/可控制中断） |
 | [`ForeachReturn`](./functions/iterate#foreachreturn) | 遍历并返回修改后的 JSON |
 | [`ForeachFile`](./functions/iterate#foreachfile), `ForeachFileWithPath`, `ForeachFileChunked`, `ForeachFileNested` | 文件逐条迭代（整载内存后逐条/分批回调） |

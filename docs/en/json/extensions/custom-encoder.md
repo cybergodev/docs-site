@@ -221,14 +221,14 @@ Setting `CustomEscapes` (non-nil) activates the custom encoding path. That path 
 | `FloatPrecision` | `int` | Float precision (`-1` for default) |
 | `IncludeNulls` | `bool` | Whether to include null-valued fields |
 
-## Extension Fields Not Yet Wired (Reserved)
+## Deprecated Extension Fields
 
-::: warning Extension fields not yet wired
-`Config.CustomEncoder` (the `CustomEncoder` interface) and `Config.CustomTypeEncoders` (the `TypeEncoder` interface) are **declared and take part in config cloning and cache-key computation, but are not yet wired into the encoding pipeline** in the current version. Setting these fields **does not change encoding output**. They are reserved for future releases; until then, use the effective mechanisms above (`MarshalJSON`/`MarshalText`/`CustomEscapes`).
+::: warning Deprecated extension fields
+`Config.CustomEncoder` (the `CustomEncoder` interface) and `Config.CustomTypeEncoders` (the `TypeEncoder` interface) are **deprecated** (marked Deprecated in the source): they are declared and take part in config cloning and cache-key computation, but are **never invoked by the encoding pipeline** — setting them does not change encoding output, and the built-in encoder cannot be replaced. Both are kept within v1. To customize encoding, use the effective mechanisms above (`MarshalJSON`/`MarshalText`/`CustomEscapes`).
 
 ```go
-// Current version: the two fields below are declared but not wired; setting
-// them has no effect (reserved interfaces)
+// Deprecated: the two fields below are declared but not wired; setting
+// them has no effect
 type CustomEncoder interface {
     Encode(value any) (string, error)
 }

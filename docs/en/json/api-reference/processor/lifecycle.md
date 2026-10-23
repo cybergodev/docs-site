@@ -180,7 +180,7 @@ type CheckResult struct {
 | `Message` | `string` | Status message (failure reason, etc.) |
 
 :::tip Interpretation
-`Checks` maps each individual check (metrics collection, etc.); if any check is unhealthy, `Healthy=false`. A nil processor or an uninitialized metrics collector returns `Healthy=false` directly, with the reason given in `Checks` (e.g. `processor is nil`). The metrics collector is created only when `EnableMetrics=true` — without it, `GetHealthStatus` returns `Healthy=false` and notes `Metrics collector not initialized` in `Checks`; the `Config.EnableHealthCheck` field is reserved and does not affect this behavior (see [Config](../config#input-and-observability-toggles)).
+`Checks` maps each individual check (metrics collection, etc.); if any check is unhealthy, `Healthy=false`. A nil processor or an uninitialized metrics collector returns `Healthy=false` directly, with the reason given in `Checks` (e.g. `processor is nil`). The metrics collector is created only when `EnableMetrics=true` — without it, `GetHealthStatus` returns `Healthy=false` and notes `Metrics collector not initialized` in `Checks`; the `Config.EnableHealthCheck` field is deprecated and not read, so it does not affect this behavior (see [Config](../config#input-and-observability-toggles)).
 :::
 
 ## Extension Hooks

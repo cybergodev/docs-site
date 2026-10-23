@@ -155,6 +155,8 @@ if errors.Is(err, dd.ErrPathTraversal) {
 
 ### LoggerError
 
+`LoggerError` 是 DD 内部错误的标准承载类型，包含机器可读错误码、消息、原因与上下文。
+
 ```go
 type LoggerError struct {
     Code    string
@@ -164,7 +166,13 @@ type LoggerError struct {
 }
 ```
 
-方法：`Error()`、`Unwrap()`、`Is(target)`、`WithContext(key, value)`、`WithField(key, value)`
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `() string` | 格式化为 `[Code] Message: Cause`（无 Cause 时省略后段） |
+| `Unwrap` | `() error` | 返回 `Cause`，供 `errors.Is`/`errors.As` 链式匹配 |
+| `Is` | `(target error) bool` | 按 `Code` 匹配对应哨兵错误（如 `ErrLoggerClosed`），支持 `errors.Is` |
+| `WithContext` | `(key string, value any) *LoggerError` | 返回附加上下文键值的副本（不改原错误） |
+| `WithField` | `(key string, value any) *LoggerError` | `WithContext` 的别名（日志字段语义） |
 
 ```go
 // LoggerError 包含错误码、消息、原因和上下文
@@ -176,6 +184,8 @@ if errors.Is(err, dd.ErrLoggerClosed) {
 
 ### WriterError
 
+`WriterError` 表示单个 Writer 的写入错误，标记出错 Writer 在 [MultiWriter](../output-integration/writers) 中的下标。
+
 ```go
 type WriterError struct {
     Index  int
@@ -184,9 +194,14 @@ type WriterError struct {
 }
 ```
 
-方法：`Error()`、`Unwrap()`
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `() string` | 形如 `writer[i]: <err>` |
+| `Unwrap` | `() error` | 返回 `Err`，供 `errors.Is` 链式匹配 |
 
 ### MultiWriterError
+
+`MultiWriterError` 聚合一次 `Write` 中多个 Writer 的错误。
 
 ```go
 type MultiWriterError struct {
@@ -194,7 +209,13 @@ type MultiWriterError struct {
 }
 ```
 
-方法：`Error()`、`Unwrap()`、`HasErrors()`、`ErrorCount()`、`FirstError()`
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `Error` | `() string` | 单条错误直接返回；多条拼接为 `multiple writer errors: [...]` |
+| `Unwrap` | `() []error` | 返回全部底层错误，供 `errors.As`/`errors.Is` 匹配 |
+| `HasErrors` | `() bool` | 是否收集到错误 |
+| `ErrorCount` | `() int` | 错误数量 |
+| `FirstError` | `() error` | 第一条错误（`*WriterError`），无则 `nil` |
 
 ## 下一步
 

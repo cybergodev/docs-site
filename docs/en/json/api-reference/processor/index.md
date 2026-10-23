@@ -34,7 +34,7 @@ defer processor.Close()
 
 // With a custom configuration
 cfg := json.DefaultConfig()
-cfg.StrictMode = true
+cfg.FullSecurityScan = true
 processor, err = json.New(cfg)
 
 // With the security configuration

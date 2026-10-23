@@ -11,14 +11,13 @@ sidebar_position: 20
 
 Retry only on 502/503/504 with a fixed delay:
 
-:::warning Internal Type
-The `resp` parameter type ResponseReader in RetryPolicy.ShouldRetry is an internal interface (defined in the `internal/types` package) that external packages cannot reference directly. A custom `RetryPolicy` must be implemented in a package within the same module as `httpc`. Most scenarios can be satisfied through `RetryConfig` configuration. The following example demonstrates the implementation pattern; actual code must compile within the `httpc` module.
+:::tip Type Publicly Exported
+The `resp` parameter type `ResponseReader` in RetryPolicy.ShouldRetry is exported by the `httpc` package as a public type alias (`httpc.ResponseReader`), so external packages can reference it directly. A custom `RetryPolicy` can be implemented in any business package; the example below compiles as-is. Most scenarios can still be satisfied through `RetryConfig` configuration.
 :::
 
 ```go
-// Note: ResponseReader is an internal type (internal/types package).
-// This code can only compile within the github.com/cybergodev/httpc module.
-// Most users should configure retries via RetryConfig and WithMaxRetries.
+// ResponseReader is publicly exported by the httpc package (httpc.ResponseReader).
+// This example compiles in any package that imports github.com/cybergodev/httpc.
 
 type selectiveRetry struct {
     maxAttempts int
@@ -26,7 +25,7 @@ type selectiveRetry struct {
 }
 
 // Determine whether to retry
-func (p *selectiveRetry) ShouldRetry(resp ResponseReader, err error, attempt int) bool {
+func (p *selectiveRetry) ShouldRetry(resp httpc.ResponseReader, err error, attempt int) bool {
     if attempt >= p.maxAttempts {
         return false
     }
@@ -49,7 +48,7 @@ cfg := httpc.DefaultConfig()
 cfg.Retry.CustomPolicy = &selectiveRetry{maxAttempts: 5, baseDelay: time.Second}
 ```
 
-The alternative for external projects — configure via `RetryConfig`:
+The alternative when you don't need a custom strategy — configure via `RetryConfig`:
 
 ```go
 package main

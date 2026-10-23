@@ -17,6 +17,7 @@ sidebar_position: 30
 | `DefaultCacheTTL` | `time.Duration` | `1h` | 缓存过期时间 |
 | `DefaultCacheCleanup` | `time.Duration` | `5m` | 缓存清理间隔 |
 | `DefaultMaxAuditEntries` | `int` | `10000` | 内存审计条目上限默认值（`AuditConfig.MaxEntries` 为 0 时使用） |
+| `DefaultMaxRawValueLength` | `int` | `200` | 审计 RawValue 字符串默认长度上限（`AuditConfig.MaxRawValueLength` 使用） |
 | `DefaultMaxDepth` | `int` | `500` | 最大 DOM 深度 |
 | `DefaultProcessingTimeout` | `time.Duration` | `30s` | 处理超时时间 |
 
@@ -61,6 +62,8 @@ sidebar_position: 30
 | `ErrInvalidFilePath` | `html: invalid file path` | 无效文件路径 |
 | `ErrInternalPanic` | `html: internal panic recovered` | 内部恐慌已恢复 |
 | `ErrMultipleConfigs` | `html: at most one Config may be provided` | 最多一个 Config |
+| `ErrBatchTooLarge` | `html: batch size exceeds maximum` | 批量项数超过单批上限（10000） |
+| `ErrTooManyConcurrentOps` | `html: too many concurrent operations` | 并发超时 watchdog 达到全局上限（1000），"太忙"状态，区别于 `ErrProcessingTimeout`（未发生超时） |
 
 ## 错误类型
 
@@ -173,7 +176,7 @@ func (e *FileError) MarshalJSON() ([]byte, error) // 专为 HTTP API 响应场�
 | 常量 | 值 | 说明 |
 |------|----|------|
 | `maxBatchSize` | `10000` | 单次批量最大项数；超限整批返回错误（非 panic） |
-| `maxTimeoutGoroutines` | `1000` | 全局并发超时 goroutine 上限；超限新请求直接返回 `ErrProcessingTimeout` |
+| `maxTimeoutGoroutines` | `1000` | 全局并发超时 goroutine 上限；超限新请求直接返回 `ErrTooManyConcurrentOps` |
 | `maxHTMLForRegex` | `1000000` (1MB) | 媒体 URL 正则扫描的 HTML 大小上限；超过此值跳过正则兜底（防 ReDoS） |
 | `maxRegexMatches` | `1000` | 单次正则扫描的最大匹配数；防止媒体密集页面产生过量分配 |
 

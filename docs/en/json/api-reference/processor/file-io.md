@@ -263,7 +263,7 @@ func main() {
 
 ## File Iteration
 
-The Processor provides the `ForeachFile` family, which iterates a JSON collection directly from a file — a convenience combo of `LoadFromFile` + `Foreach`:
+The Processor provides the `ForeachFile` family, which iterates a JSON collection directly from a file — a convenience combo of `LoadFromFile` plus a per-item iteration callback:
 
 | Method | Purpose |
 |--------|---------|

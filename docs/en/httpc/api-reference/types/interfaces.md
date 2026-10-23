@@ -18,7 +18,7 @@ sidebar_position: 10
 | `ResponseMutator` | Response mutator interface | `*engine.Response` (internal) | Middleware read/write access to responses |
 | `Handler` | Request handler function type | `finalHandler`, middleware-wrapped products | Core signature for custom middleware |
 | `MiddlewareFunc` | Middleware function type | 7 built-in middleware factories, user-defined ones | Intercepting/rewriting requests and responses |
-| `RetryPolicy` | Retry policy interface | User implementations (httpc module only, see warning below) | Custom retry decisions |
+| `RetryPolicy` | Retry policy interface | User implementations (any external package, see note below) | Custom retry decisions |
 | `CertificatePinner` | Certificate pinning interface | `NewSPKIHashPinner` and other constructors, user-defined | Custom pinning strategies |
 | `RequestOption` | Request option function type | `WithXxx` factory functions | Per-request configuration |
 
@@ -118,22 +118,21 @@ Custom retry strategy interface.
 
 The three methods correspond to the interface definitions `RetryPolicy.ShouldRetry`, `RetryPolicy.GetDelay`, and `RetryPolicy.MaxRetries`.
 
-:::warning Internal Type Limitation
-The `resp` parameter type ResponseReader in ShouldRetry is an internal interface (located in the `internal/types` package) that external code cannot reference directly. Therefore, `RetryPolicy` can only be implemented within the same module. Most scenarios can be satisfied through `RetryConfig` configuration and the `WithMaxRetries` option. If you need a custom policy, implement the `RetryPolicy` interface within your project's internal package.
+:::tip Type Publicly Exported
+The `resp` parameter type `ResponseReader` in ShouldRetry is exported by the `httpc` package as a public type alias (`httpc.ResponseReader`, declared in `types.go`), so external packages can reference it directly. A custom `RetryPolicy` can therefore be implemented in any business package, not only inside the httpc module. Most scenarios can still be satisfied through `RetryConfig` configuration and the `WithMaxRetries` option.
 :::
 
-The following example demonstrates the `RetryPolicy` implementation pattern. Note that ResponseReader is an internal type -- this code can only compile within the `httpc` module:
+The following example demonstrates the `RetryPolicy` implementation pattern and compiles as-is in any business package that imports `httpc`:
 
 ```go
-// Note: ResponseReader is an internal type (internal/types package).
-// This code cannot compile outside the httpc module.
-// Most users should configure retries via RetryConfig and WithMaxRetries.
+// ResponseReader is publicly exported by the httpc package (httpc.ResponseReader).
+// This example compiles in any package that imports github.com/cybergodev/httpc.
 
 type MyRetryPolicy struct {
     maxRetries int
 }
 
-func (p *MyRetryPolicy) ShouldRetry(resp ResponseReader, err error, attempt int) bool {
+func (p *MyRetryPolicy) ShouldRetry(resp httpc.ResponseReader, err error, attempt int) bool {
     if attempt >= p.maxRetries {
         return false
     }
@@ -189,7 +188,7 @@ type RequestMutator interface {
 }
 ```
 
-Used in middleware to provide read-write access to requests. Composed from internal interfaces RequestReader and RequestWriter. For the full method contract and a read/write example, see [Request & Response Mutators](../handler/mutators).
+Used in middleware to provide read-write access to requests. Composed from the two split interfaces `RequestReader` and `RequestWriter`, both exported by the `httpc` package as public type aliases (`httpc.RequestReader` / `httpc.RequestWriter`). For the full method contract and a read/write example, see [Request & Response Mutators](../handler/mutators).
 
 ### ResponseMutator
 
@@ -232,7 +231,101 @@ type ResponseMutator interface {
 }
 ```
 
-Used in middleware to provide read-write access to responses. Composed from internal interfaces ResponseReader and ResponseWriter. For the full method contract, see [Request & Response Mutators](../handler/mutators).
+Used in middleware to provide read-write access to responses. Composed from the two split interfaces `ResponseReader` and `ResponseWriter`, both exported by the `httpc` package as public type aliases (`httpc.ResponseReader` / `httpc.ResponseWriter`). For the full method contract, see [Request & Response Mutators](../handler/mutators).
+
+### Reader/Writer Split Interfaces: RequestReader / RequestWriter / ResponseReader / ResponseWriter
+
+`RequestMutator` and `ResponseMutator` are each composed from a pair of reader/writer split interfaces: `RequestMutator = RequestReader + RequestWriter` and `ResponseMutator = ResponseReader + ResponseWriter`. The four method sets are defined in `internal/types/interfaces.go`, and the `httpc` package exports all four as public type aliases in `types.go`, so external packages can reference them directly (e.g. `httpc.ResponseReader`).
+
+These four interfaces are the underlying read/write surfaces for middleware and retry policies: declare a `*Reader` when you only inspect and a `*Writer` when you only modify — the `resp` parameter of `RetryPolicy.ShouldRetry` takes the read-only `ResponseReader`. Everyday code can simply use the aggregate interfaces `RequestMutator` / `ResponseMutator`; for grouped method contracts and read/write examples, see [Request & Response Mutators](../handler/mutators).
+
+#### RequestReader
+
+Read-only access to request data:
+
+| Method | Signature | Description |
+|------|------|------|
+| `Method` | `Method() string` | HTTP method |
+| `URL` | `URL() string` | Request URL |
+| `Headers` | `Headers() map[string]string` | All request headers (key → single value) |
+| `QueryParams` | `QueryParams() map[string]any` | Query parameters |
+| `Body` | `Body() any` | Request body |
+| `Timeout` | `Timeout() time.Duration` | Request timeout |
+| `MaxRetries` | `MaxRetries() int` | Maximum retry count |
+| `Context` | `Context() context.Context` | Request context |
+| `Cookies` | `Cookies() []http.Cookie` | Request cookies |
+| `FollowRedirects` | `FollowRedirects() *bool` | Whether to follow redirects (nil means use the default) |
+| `MaxRedirects` | `MaxRedirects() *int` | Maximum redirect count (nil means use the default) |
+| `StreamBody` | `StreamBody() bool` | Whether to stream the request body |
+
+#### RequestWriter
+
+Write-only access to request data, mirroring the read methods of `RequestReader`:
+
+| Method | Signature | Description |
+|------|------|------|
+| `SetMethod` | `SetMethod(string)` | Set the HTTP method |
+| `SetURL` | `SetURL(string)` | Set the URL |
+| `SetHeaders` | `SetHeaders(map[string]string)` | Set all request headers (full replacement) |
+| `SetHeader` | `SetHeader(key, value string)` | Set a single request header (add/modify; key canonicalized) |
+| `SetQueryParams` | `SetQueryParams(map[string]any)` | Set query parameters |
+| `SetBody` | `SetBody(any)` | Set the request body |
+| `SetTimeout` | `SetTimeout(time.Duration)` | Set the timeout |
+| `SetMaxRetries` | `SetMaxRetries(int)` | Set the maximum retry count |
+| `SetContext` | `SetContext(context.Context)` | Set the context |
+| `SetCookies` | `SetCookies([]http.Cookie)` | Set cookies |
+| `SetFollowRedirects` | `SetFollowRedirects(*bool)` | Set whether to follow redirects |
+| `SetMaxRedirects` | `SetMaxRedirects(*int)` | Set the maximum redirect count |
+| `SetStreamBody` | `SetStreamBody(bool)` | Set whether to stream the body |
+
+#### ResponseReader
+
+Read-only access to response data; also the parameter type of `RetryPolicy.ShouldRetry`:
+
+| Method | Signature | Description |
+|------|------|------|
+| `StatusCode` | `StatusCode() int` | Status code |
+| `Status` | `Status() string` | Status text (e.g. `"200 OK"`) |
+| `Proto` | `Proto() string` | Protocol version (e.g. `"HTTP/1.1"`) |
+| `Headers` | `Headers() http.Header` | Response headers |
+| `Body` | `Body() string` | Response body (string) |
+| `RawBody` | `RawBody() []byte` | Response body (bytes) |
+| `ContentLength` | `ContentLength() int64` | Content length |
+| `Duration` | `Duration() time.Duration` | Request duration |
+| `Attempts` | `Attempts() int` | Attempt count (including retries) |
+| `Cookies` | `Cookies() []*http.Cookie` | Response cookies |
+| `RedirectChain` | `RedirectChain() []string` | Redirect chain (URL of each hop) |
+| `RedirectCount` | `RedirectCount() int` | Redirect count |
+| `RequestHeaders` | `RequestHeaders() http.Header` | Request headers actually sent |
+| `RequestURL` | `RequestURL() string` | Actual request URL (including the final URL after redirects) |
+| `RequestMethod` | `RequestMethod() string` | Request method |
+
+#### ResponseWriter
+
+Write-only access to response data:
+
+| Method | Signature | Description |
+|------|------|------|
+| `SetStatusCode` | `SetStatusCode(int)` | Set the status code |
+| `SetStatus` | `SetStatus(string)` | Set the status text |
+| `SetProto` | `SetProto(string)` | Set the protocol version |
+| `SetHeaders` | `SetHeaders(http.Header)` | Set response headers (full replacement) |
+| `SetBody` | `SetBody(string)` | Set the response body |
+| `SetRawBody` | `SetRawBody([]byte)` | Set the response body (bytes) |
+| `SetContentLength` | `SetContentLength(int64)` | Set the content length |
+| `SetDuration` | `SetDuration(time.Duration)` | Set the duration |
+| `SetAttempts` | `SetAttempts(int)` | Set the attempt count |
+| `SetCookies` | `SetCookies([]*http.Cookie)` | Set cookies |
+| `SetRedirectChain` | `SetRedirectChain([]string)` | Set the redirect chain |
+| `SetRedirectCount` | `SetRedirectCount(int)` | Set the redirect count |
+| `SetRequestHeaders` | `SetRequestHeaders(http.Header)` | Set the request headers |
+| `SetRequestURL` | `SetRequestURL(string)` | Set the request URL |
+| `SetRequestMethod` | `SetRequestMethod(string)` | Set the request method |
+| `SetHeader` | `SetHeader(key string, values ...string)` | Set a single response header (add/modify) |
+
+:::tip ResponseWriter.SetHeader does not canonicalize keys
+`ResponseWriter.SetHeader` stores the key **exactly as given — it is NOT canonicalized** (unlike the request-side `RequestWriter.SetHeader`): writing `content-type` alongside a server-sent canonical `Content-Type` yields two distinct entries. To replace an existing response header, pass the `http.CanonicalMIMEHeaderKey` spelling.
+:::
 
 ### Handler
 

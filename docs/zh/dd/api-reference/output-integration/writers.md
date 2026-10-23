@@ -40,7 +40,7 @@ fw, _ = dd.NewFileWriter("logs/app.log", cfg)
 
 ### FileWriterConfig
 
-文件写入器配置。
+`FileWriterConfig` 是文件写入器配置。
 
 ```go
 type FileWriterConfig struct {
@@ -163,7 +163,7 @@ bw, _ = dd.NewBufferedWriter(os.Stdout, cfg)
 
 ### BufferedWriterConfig
 
-缓冲写入器配置。
+`BufferedWriterConfig` 是缓冲写入器配置。
 
 ```go
 type BufferedWriterConfig struct {

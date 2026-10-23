@@ -458,15 +458,15 @@ schema := json.NewSchemaWithConfig(cfg)
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `EnableValidation` | `bool` | 启用输入验证（影响操作前的安全/结构校验） |
-| `ValidateInput` | `bool` | 校验输入 JSON |
+| `EnableValidation` | `bool` | 已废弃：不被任何操作读取（校验默认始终执行，除非 `SkipValidation`），仅参与配置缓存键 |
+| `ValidateInput` | `bool` | 已废弃：不被任何操作读取，设置后不改变行为 |
 | `SkipValidation` | `bool` | 跳过非必要校验（仅用于可信输入） |
 
-::: warning 未连接的扩展字段
-`Config.CustomValidators`（`[]Validator`）与 `Validator` 接口在当前版本中**已声明并参与配置克隆与缓存键计算，但尚未在操作流水线中挂接**。通过 `Config.CustomValidators`（或 `Config.AddValidator`）注册验证器**不会影响任何操作的执行**——操作不会被自定义验证器拒绝。`Validator` 接口当前为预留接口：
+::: warning 已废弃的扩展字段
+`Config.CustomValidators`（`[]Validator`）与 `Validator` 接口**已废弃**（源码标注 Deprecated）：已声明并参与配置克隆与缓存键计算，但验证器**从不被任何公开操作执行**。通过 `Config.CustomValidators`（或 `Config.AddValidator`）注册验证器不会影响任何操作的执行——操作不会被自定义验证器拒绝。两者在 v1 生命周期内保留：
 
 ```go
-// 当前版本：已声明但未挂接，注册后对操作无影响（预留接口）
+// 已废弃：已声明但从不执行，注册后对操作无影响
 type Validator interface {
     Validate(jsonStr string) error
 }
@@ -477,7 +477,7 @@ type Validator interface {
 
 ## 相关
 
-- [接口定义](./interfaces) - `Validator` 接口（预留）与 `Schema` 相关类型
+- [接口定义](./interfaces) - `Validator` 接口（已废弃）与 `Schema` 相关类型
 - [类型定义](./types) - 核心类型（Config / Schema / Stats / AccessResult）
 - [解析验证](./functions/parse) - Parse / Valid / ValidateSchema 函数
 - [配置选项](./config) - 验证相关配置字段

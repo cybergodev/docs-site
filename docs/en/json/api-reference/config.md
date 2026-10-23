@@ -74,7 +74,7 @@ type Config struct {
 
     // ===== Observability =====
     EnableMetrics     bool `json:"enable_metrics"`      // Enable metrics collection
-    EnableHealthCheck bool `json:"enable_health_check"` // Enable health checks
+    EnableHealthCheck bool `json:"enable_health_check"` // Enable health checks (deprecated, not read)
 
     // ===== Large file handling =====
     ChunkSize       int64 `json:"chunk_size"`       // Chunk size (deprecated, not read)
@@ -101,9 +101,9 @@ type Config struct {
     AllowedFileDirs []string `json:"allowed_file_dirs,omitempty"` // Directory whitelist for file operations (empty = built-in blocking only)
 
     // ===== Extension points (no JSON tags, not serialized) =====
-    CustomEncoder               CustomEncoder                // Custom encoder
-    CustomTypeEncoders          map[reflect.Type]TypeEncoder // Custom type encoders
-    CustomValidators            []Validator                  // Custom validators
+    CustomEncoder               CustomEncoder                // Custom encoder (deprecated, not wired)
+    CustomTypeEncoders          map[reflect.Type]TypeEncoder // Custom type encoders (deprecated, not wired)
+    CustomValidators            []Validator                  // Custom validators (deprecated, never executed)
     AdditionalDangerousPatterns []DangerousPattern           // Additional dangerous patterns
     DisableDefaultPatterns      bool                         // Disable default warning-level patterns
     Hooks                       []Hook                       // Operation hooks
@@ -116,9 +116,9 @@ When `CacheSharedResults` is `true`, cache hits in `Get`/`GetFromParsed` **retur
 :::
 
 ::: warning Extension field wiring status
-The three interface fields `CustomEncoder`, `CustomTypeEncoders`, and `CustomValidators` are declared in the current version but **not yet wired into the encode/operation pipelines** — setting them has no effect; they are reserved for future releases. `CustomPathParser` **is wired**: once set, all path-based operations call the custom parser in place of the built-in one (see [Interface Definitions](./interfaces#pathparser)). Currently available extension points:
+The three interface fields `CustomEncoder`, `CustomTypeEncoders`, and `CustomValidators` are **deprecated** (marked Deprecated in the source): they are declared and take part in config cloning and cache-key computation, but the encoders/validators are **never invoked by the encode/operation pipelines** — setting them has no effect, and the built-in encoder cannot be replaced. All three are kept within v1. `CustomPathParser` **is wired**: once set, all path-based operations call the custom parser in place of the built-in one (see [Interface Definitions](./interfaces#pathparser)). Currently available extension points:
 
-- Fine-tuning encoding behavior → `CustomEscapes` (**effective**, see the encoding options below) or implementing `json.Marshaler`/`encoding.TextMarshaler` (see [Custom Encoders](../extensions/custom-encoder))
+- Customizing encoding → `CustomEscapes` (**effective**, see the encoding options below) or implementing `json.Marshaler`/`encoding.TextMarshaler` (see [Custom Encoders](../extensions/custom-encoder))
 - Operation interception → `Hooks` + `AddHook` (**effective**, see the [Hook System](../extensions/hooks))
 - Custom path syntax → `CustomPathParser` (**effective**, see [Interface Definitions](./interfaces#pathparser))
 - Input validation → `ValidateSchema` (see [Schema Validation](./schema))
@@ -213,7 +213,7 @@ All exported `Config` fields are listed below, grouped by purpose. Defaults are 
 | Field                | Type   | Default | Description                                                                       |
 | -------------------- | ------ | ------- | ---------------------------------------------------------------------------------- |
 | `EnableMetrics`      | `bool` | false   | Enable metrics collection (`GetStats` / `GetHealthStatus` need it to have data)    |
-| `EnableHealthCheck`  | `bool` | false   | Enable health checks (reserved field, does not change behavior currently)          |
+| `EnableHealthCheck`  | `bool` | false   | Deprecated: not read (`GetHealthStatus`/`GetStats` ignore this toggle; whether there is data depends on `EnableMetrics`); only takes part in the config cache key |
 
 ### Large File Handling (Sampling and Streaming)
 
@@ -263,9 +263,9 @@ The following fields have no JSON tags and are not serialized; wiring status in 
 
 | Field                       | Type                               | Default | Description                                                                        |
 | ---------------------------- | ---------------------------------- | ------- | ------------------------------------------------------------------------------------ |
-| `CustomEncoder`              | `CustomEncoder`                    | nil     | Custom encoder replacing the default encoder (reserved)                             |
-| `CustomTypeEncoders`         | `map[reflect.Type]TypeEncoder`     | nil     | Encoders registered per Go type (reserved)                                          |
-| `CustomValidators`           | `[]Validator`                      | nil     | Custom validators run before operations (reserved)                                  |
+| `CustomEncoder`              | `CustomEncoder`                    | nil     | Custom encoder (deprecated: not wired, setting it has no effect; use `json.Marshaler` instead) |
+| `CustomTypeEncoders`         | `map[reflect.Type]TypeEncoder`     | nil     | Encoders registered per Go type (deprecated: not wired, setting it has no effect)   |
+| `CustomValidators`           | `[]Validator`                      | nil     | Custom validators run before operations (deprecated: never executed; use `AddHook` with a Before hook instead) |
 | `AdditionalDangerousPatterns` | `[]DangerousPattern`              | nil     | Dangerous patterns appended on top of the built-in ones                             |
 | `DisableDefaultPatterns`     | `bool`                             | false   | Disable built-in warning-level patterns (critical patterns are always enforced and cannot be disabled) |
 | `Hooks`                      | `[]Hook`                           | nil     | Before/after operation hooks (effective)                                            |
@@ -380,8 +380,8 @@ defer processor.Close()
 | EnableCache | true | Enable cache |
 | CacheResults | true | Cache operation results |
 | CacheSharedResults | false | Share cached results (high-performance read-only scenarios) |
-| EnableValidation | true | Enable validation |
-| StrictMode | false | Non-strict mode |
+| EnableValidation | true | Enable validation (deprecated, not read) |
+| StrictMode | false | Non-strict mode (deprecated, not read) |
 | FullSecurityScan | false | Sampled security scanning (not full) |
 | ValidateInput | true | Validate input (deprecated, not read) |
 | ValidateFilePath | true | Validate file paths |
@@ -444,8 +444,8 @@ defer processor.Close()
 | MaxJSONSize | 10MB | Conservative size limit |
 | MaxPathDepth | 30 | Conservative path depth |
 | FullSecurityScan | true | Full security scanning |
-| StrictMode | true | Strict mode |
-| EnableValidation | true | Enable validation |
+| StrictMode | true | Strict mode (deprecated field: `SecurityConfig` sets it to `true`, but it is not read by any parser — no actual effect) |
+| EnableValidation | true | Enable validation (deprecated field: `SecurityConfig` sets it to `true`, but it is not read by any operation — no actual effect) |
 | EnableCache | true | Enable cache |
 | MaxCacheSize | 256 | Cache size |
 | CacheTTL | 3 minutes | Shorter TTL |
@@ -471,7 +471,7 @@ Deep-copies the configuration (`Config.Clone` returns a new `*Config`; modifying
 ```go
 cfg := json.DefaultConfig()
 cfgCopy := cfg.Clone()
-cfgCopy.EnableValidation = true // Does not affect the original config
+cfgCopy.EnableMetrics = true // Does not affect the original config
 ```
 
 ### Validate
@@ -652,13 +652,13 @@ cfg := json.DefaultConfig()
 // Security settings
 cfg.MaxJSONSize = 10 * 1024 * 1024 // 10MB
 cfg.MaxNestingDepthSecurity = 50
-cfg.EnableValidation = true
+cfg.FullSecurityScan = true
 
-// Hooks
-cfg.Hooks = []json.Hook{json.LoggingHook(slog.Default())}
-
-// Validators
-cfg.CustomValidators = []json.Validator{&MyValidator{}}
+// Hooks (the recommended way to intercept operations and run custom checks)
+cfg.AddHook(json.LoggingHook(slog.Default()))
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+    return nil // custom checks
+}))
 
 processor, err := json.New(cfg)
 if err != nil {
@@ -679,7 +679,7 @@ devCfg.EnableMetrics = true
 
 // Variant 2: production configuration
 prodCfg := base.Clone()
-prodCfg.EnableValidation = true
+prodCfg.FullSecurityScan = true
 ```
 
 ## Configuration Constants

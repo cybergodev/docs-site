@@ -22,6 +22,7 @@ HTTPC 构建在标准库 `net/http` 传输层之上：连接复用、HTTP/2 协�
 - **对象池复用** - 内部响应对象与字符串构建器通过 sync.Pool 复用，减少 GC 压力
 - **代理与代理池** - 单代理、系统代理、代理池轮换（顺序/随机），支持失败熔断与按状态码换 IP
 - **证书锁定** - SPKI 哈希/公钥锁定，即使受信 CA 被攻破也能防御中间人攻击
+- **TLS 指纹** - 浏览器传输层指纹伪装（JA3/JA4 + HTTP/2 帧 + 有序头块），覆盖 Chrome/Firefox/Safari 预设
 - **域名会话** - DomainClient 绑定 base URL，SessionManager 自动维护 Cookie 与公共请求头
 - **重定向管控** - 跟随开关、次数上限与目标域名白名单
 
@@ -29,10 +30,11 @@ HTTPC 构建在标准库 `net/http` 传输层之上：连接复用、HTTP/2 协�
 
 | 能力 | 默认行为 | 主要定制点 | 延伸阅读 |
 |------|----------|------------|----------|
-| 重试与容错 | 最多重试 3 次，指数退避（1s 起、×2、单次上限 30s）+ 抖动，尊重 `Retry-After` | 次数/退避参数/自定义策略/请求级覆盖 | [重试与容错](./guides/retry-fault-tolerance) |
+| 重试与容错 | 幂等请求最多重试 3 次（POST/PATCH 默认单次执行不重试），指数退避（1s 起、×2、单次上限 30s）+ 抖动，尊重 `Retry-After` | 次数/退避参数/自定义策略/`WithRetryNonIdempotent` 开启非幂等重试 | [重试与容错](./guides/retry-fault-tolerance) |
 | 中间件链 | 不启用 | 日志/指标/审计/恢复/请求 ID/超时/静态头，支持自定义 | [中间件链](./guides/middleware-chain) |
 | SSRF 防护 | 阻止私有/保留 IP（127.0.0.1、10.x、192.168.x 等） | `SSRFExemptCIDRs` 精确豁免/按请求豁免/整体关闭 | [SSRF 防护](./security/ssrf) |
 | TLS 与证书锁定 | TLS 1.2–1.3 | 版本上下限、自定义 `tls.Config`、SPKI/公钥锁定 | [TLS 与证书锁定](./security/tls-certpin) |
+| TLS 指纹（浏览器伪装） | 关闭（标准栈） | `Security.TLSFingerprint` 预设 + 包级 `WithTLSFingerprint` 路由 | [TLS 指纹](./guides/tls-fingerprint) |
 | 连接池与 HTTP/2 | 空闲连接 50、每主机 10，HTTP/2 开启 | 池大小、空闲时长、响应头大小限制 | [连接池](./guides/connection-pool) |
 | 代理与代理池 | 不使用代理 | 单代理/系统代理/池轮换/失败熔断/按状态码换 IP | [代理与代理池](./guides/proxy) |
 | DNS-over-HTTPS | 关闭 | `EnableDoH`、缓存 TTL（默认 5 分钟） | [连接池](./guides/connection-pool) |
@@ -46,7 +48,7 @@ HTTPC 构建在标准库 `net/http` 传输层之上：连接复用、HTTP/2 协�
 # 初始化模块（已有项目可跳过）
 go mod init example.com/demo
 
-# 安装 HTTPC（要求 Go 1.26+）
+# 安装 HTTPC（要求 Go 1.27+）
 go get github.com/cybergodev/httpc
 ```
 
@@ -54,7 +56,7 @@ go get github.com/cybergodev/httpc
 import "github.com/cybergodev/httpc"
 ```
 
-除 `golang.org/x/sys` 外无其他第三方依赖，导入即可使用，无需任何初始化配置。
+共 7 个直接依赖：`golang.org/x/net` 与 `golang.org/x/sys` 用于标准路径，brotli / compress / uTLS / tls-client / fhttp 仅在启用 `Security.TLSFingerprint` 时被拉入。不启用指纹特性时按标准栈运行，导入即可使用，无需任何初始化配置。
 
 ## 30 秒体验
 
@@ -80,7 +82,7 @@ func main() {
 
 1. `httpc.Get` 内部解析到共享的默认客户端（首次调用惰性创建，之后复用，并发安全）；
 2. 请求经过 CRLF 注入防护、SSRF 检查与 TLS 1.2+ 握手后发出；
-3. 遇到可重试错误（超时、408/429/5xx 等）时按指数退避自动重试，最多 3 次；
+3. 遇到可重试错误（超时、408/429/5xx 等）时按指数退避自动重试，最多 3 次（`Get` 为幂等请求；POST/PATCH 默认不重试）；
 4. 响应封装为 `*Result` 返回——状态码、响应体与重试统计一站式读取。
 
 :::tip
@@ -116,6 +118,7 @@ HTTPC 的 API 分层刻意对应标准库，降低迁移与心智成本：
 | 会话与 Cookie | [域名会话](./guides/domain-session) |
 | 重定向控制 | [重定向](./guides/redirects) |
 | 性能调优 | [性能](./guides/performance) |
+| 浏览器 TLS 指纹伪装 | [TLS 指纹](./guides/tls-fingerprint) |
 | 了解安全特性 | [安全概述](./security/) |
 | 查 API 签名 | [API 参考](./api-reference/) |
 | 常见问题 | [FAQ](./faq/) |

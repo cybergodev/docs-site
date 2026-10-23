@@ -16,19 +16,19 @@ Constants, error types, sentinel errors, and predefined variables defined by the
 ```go
 const (
     // DefaultMaxFileSize - max bytes per file
-    DefaultMaxFileSize int64 = 2 * 1024 * 1024  // 2 MB
+    DefaultMaxFileSize int64 = 8 * 1024 * 1024  // 8 MB
 
     // DefaultMaxLineLength - max single line length
-    DefaultMaxLineLength int = 1024  // 1 KB
+    DefaultMaxLineLength int = 8192  // 8 KB
 
     // DefaultMaxKeyLength - max key name length
-    DefaultMaxKeyLength int = 64
+    DefaultMaxKeyLength int = 128
 
     // DefaultMaxValueLength - max value length
-    DefaultMaxValueLength int = 4096  // 4 KB
+    DefaultMaxValueLength int = 8192  // 8 KB
 
     // DefaultMaxVariables - max variables per file
-    DefaultMaxVariables int = 500
+    DefaultMaxVariables int = 1000
 
     // DefaultMaxExpansionDepth - max variable expansion depth
     DefaultMaxExpansionDepth int = 5
@@ -96,8 +96,8 @@ var ErrInvalidKey = errors.New("invalid key format")
 var ErrDuplicateKey = errors.New("duplicate key encountered")
 ```
 
-:::tip Retained sentinels
-`ErrDuplicateKey` is a reserved sentinel: duplicate keys are currently skipped rather than treated as errors, and no code path returns this error yet.
+:::tip Trigger conditions
+`ErrDuplicateKey` is returned under `DuplicateKeyPolicy = DuplicateKeyError` (duplicate keys in a single .env/YAML/JSON document, including inline JSON inside YAML) and by flat-key collisions in YAML/JSON flattening; both match via `errors.Is`. Under the default (`DuplicateKeyInherit`), duplicate keys are skipped/overwritten rather than errored.
 :::
 
 ### Security Errors
@@ -137,7 +137,10 @@ var ErrInvalidConfig = errors.New("invalid configuration")
 var ErrAlreadyInitialized = errors.New("default loader already initialized")
 var ErrNotInitialized = errors.New("default loader not initialized; call Load() first")
 var ErrMissingRequired = errors.New("required key is missing")
+var ErrAuditFailed = errors.New("audit logging failed") // audit event lost while fail-closed auditing was enabled
 ```
+
+`ErrAuditFailed` is returned when fail-closed auditing (`Config.AuditFailClosed = true`) is enabled: a handler error, panic, or dropped channel event makes the emitting operation return this error. See [Config API](./config#auditfailclosed-bool).
 
 **How to check:**
 
@@ -195,30 +198,25 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 :::tip Solution
-Implement the `Validator` interface (which includes ValidateKey, ValidateValue, and ValidateRequired methods) instead of just `KeyValidator`.
+Implement the `Validator` interface (which includes the `ValidateKey`, `ValidateValue`, and `ValidateRequired` methods) instead of just `KeyValidator`.
 :::
 
 ## Error Types
+
+The following types are public aliases of same-named internal types. Every type implements `Error`; the types carrying an underlying error (`ParseError`, `FileError`, `JSONError`, `YAMLError`) additionally implement `Unwrap`, and the types participating in sentinel mapping (`ValidationError`, `SecurityError`, `ExpansionError`) additionally implement `Is`. Members are indexed below by qualified name (e.g. `ParseError.File`).
 
 ### ParseError
 
 Parse error with location information:
 
-```go
-type ParseError struct {
-    File    string  // File name
-    Line    int     // Line number
-    Content string  // Error content (masked)
-    Err     error   // Original error
-}
-```
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `Error` | `func (e *ParseError) Error() string` | Implements the `error` interface; the output includes the file name and line number (the file part is omitted when there is no file name) |
-| `Unwrap` | `func (e *ParseError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
+| Member | Type/Signature | Description |
+|--------|----------------|-------------|
+| `ParseError.File` | `string` | File being parsed |
+| `ParseError.Line` | `int` | Line number |
+| `ParseError.Content` | `string` | Error content (masked) |
+| `ParseError.Err` | `error` | Original error |
+| `ParseError.Error` | `func (e *ParseError) Error() string` | Implements the `error` interface; the output includes the file name and line number (the file part is omitted when there is no file name) |
+| `ParseError.Unwrap` | `func (e *ParseError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
 
 Usage example:
 
@@ -235,41 +233,27 @@ if errors.As(err, &parseErr) {
 
 Validation error:
 
-```go
-type ValidationError struct {
-    Field   string  // Field name
-    Value   string  // Value (masked)
-    Rule    string  // Rule
-    Message string  // Message
-}
-```
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `Error` | `func (e *ValidationError) Error() string` | Implements the `error` interface; includes the field name and message |
-| `Is` | `func (e *ValidationError) Is(target error) bool` | Maps sentinels by `Rule`: value rules (`value`/`null_byte`/`control_char`/`utf8`) → `ErrInvalidValue`; key rules (Field is `key`: `non_empty`/`max_length`/`ascii_only`/`pattern`) → `ErrInvalidKey`; `required` → `ErrMissingRequired`; `max_variables` → `ErrMaxVariables` |
+| Member | Type/Signature | Description |
+|--------|----------------|-------------|
+| `ValidationError.Field` | `string` | The configuration field or key field that failed |
+| `ValidationError.Value` | `string` | Value (masked) |
+| `ValidationError.Rule` | `string` | The violated rule |
+| `ValidationError.Message` | `string` | Human-readable explanation |
+| `ValidationError.Error` | `func (e *ValidationError) Error() string` | Implements the `error` interface; includes the field name and message |
+| `ValidationError.Is` | `func (e *ValidationError) Is(target error) bool` | Maps sentinels by `Rule`: value rules (`value`/`null_byte`/`control_char`/`utf8`) → `ErrInvalidValue`; key rules (Field is `key`: `non_empty`/`max_length`/`ascii_only`/`pattern`) → `ErrInvalidKey`; `required` → `ErrMissingRequired`; `max_variables` → `ErrMaxVariables` |
 
 ### SecurityError
 
 Security error:
 
-```go
-type SecurityError struct {
-    Action  string  // Operation
-    Reason  string  // Reason
-    Key     string  // Key name (masked)
-    Details string  // Additional details
-}
-```
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `Error` | `func (e *SecurityError) Error() string` | Implements the `error` interface; includes the blocked action and reason |
-| `Is` | `func (e *SecurityError) Is(target error) bool` | Matches `ErrSecurityViolation`; forbidden-key/allowlist rejections (Action is `key_access`) additionally match `ErrForbiddenKey` |
+| Member | Type/Signature | Description |
+|--------|----------------|-------------|
+| `SecurityError.Action` | `string` | The blocked operation |
+| `SecurityError.Reason` | `string` | Security reason for blocking |
+| `SecurityError.Key` | `string` | Key involved (masked) |
+| `SecurityError.Details` | `string` | Additional sanitized details |
+| `SecurityError.Error` | `func (e *SecurityError) Error() string` | Implements the `error` interface; includes the blocked action and reason |
+| `SecurityError.Is` | `func (e *SecurityError) Is(target error) bool` | Matches `ErrSecurityViolation`; forbidden-key/allowlist rejections (Action is `key_access`) additionally match `ErrForbiddenKey` |
 
 Usage example:
 
@@ -284,22 +268,15 @@ if errors.As(err, &secErr) {
 
 File operation error:
 
-```go
-type FileError struct {
-    Path  string  // File path
-    Op    string  // The operation that failed (open, stat, size_check, parse)
-    Err   error   // Original error
-    Size  int64   // File size (during Size check)
-    Limit int64   // Limit (during Size check)
-}
-```
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `Error` | `func (e *FileError) Error() string` | Implements the `error` interface; appends the `(size N exceeds limit M)` detail when both `Size` and `Limit` are positive |
-| `Unwrap` | `func (e *FileError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
+| Member | Type/Signature | Description |
+|--------|----------------|-------------|
+| `FileError.Path` | `string` | File path |
+| `FileError.Op` | `string` | The operation that failed (open, stat, size_check, parse) |
+| `FileError.Err` | `error` | Original error |
+| `FileError.Size` | `int64` | File size (during size checks) |
+| `FileError.Limit` | `int64` | The limit exceeded (during size checks) |
+| `FileError.Error` | `func (e *FileError) Error() string` | Implements the `error` interface; appends the `(size N exceeds limit M)` detail when both `Size` and `Limit` are positive |
+| `FileError.Unwrap` | `func (e *FileError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
 
 Usage example:
 
@@ -315,22 +292,15 @@ if errors.As(err, &fileErr) {
 
 Variable expansion error:
 
-```go
-type ExpansionError struct {
-    Key   string             // Key name
-    Depth int                // Current depth
-    Limit int                // Limit
-    Chain string             // Expansion chain (sanitized)
-    Kind  ExpansionErrorKind // Error reason category (zero value = depth/cycle)
-}
-```
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `Error` | `func (e *ExpansionError) Error() string` | Implements the `error` interface; key names in the output are masked (only the first 2 characters kept, followed by `***`) |
-| `Is` | `func (e *ExpansionError) Is(target error) bool` | Matches `ErrExpansionDepth` only when `Kind != ExpansionRequiredKind` (semantics in "`errors.Is` behavior" below) |
+| Member | Type/Signature | Description |
+|--------|----------------|-------------|
+| `ExpansionError.Key` | `string` | Key being expanded (masked in output) |
+| `ExpansionError.Depth` | `int` | Current expansion depth |
+| `ExpansionError.Limit` | `int` | Depth limit |
+| `ExpansionError.Chain` | `string` | Expansion chain (sanitized) |
+| `ExpansionError.Kind` | `ExpansionErrorKind` | Error reason category (zero value = depth/cycle) |
+| `ExpansionError.Error` | `func (e *ExpansionError) Error() string` | Implements the `error` interface; key names in the output are masked (only the first 2 characters kept, followed by `***`) |
+| `ExpansionError.Is` | `func (e *ExpansionError) Is(target error) bool` | Matches `ErrExpansionDepth` only when `Kind != ExpansionRequiredKind` (semantics in "`errors.Is` behavior" below) |
 
 **Error classification (Kind field):**
 
@@ -372,60 +342,37 @@ if errors.As(err, &expErr) {
 
 JSON parse error:
 
-```go
-type JSONError struct {
-    Path    string  // Path inside the JSON document (not a file path)
-    Message string  // Error message
-    Err     error   // Original error
-}
-```
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `Error` | `func (e *JSONError) Error() string` | Implements the `error` interface; includes the in-document path |
-| `Unwrap` | `func (e *JSONError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
+| Member | Type/Signature | Description |
+|--------|----------------|-------------|
+| `JSONError.Path` | `string` | Path inside the JSON document (not a file path) |
+| `JSONError.Message` | `string` | Error message |
+| `JSONError.Err` | `error` | Original error |
+| `JSONError.Error` | `func (e *JSONError) Error() string` | Implements the `error` interface; includes the in-document path |
+| `JSONError.Unwrap` | `func (e *JSONError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
 
 ### YAMLError
 
 YAML parse error:
 
-```go
-type YAMLError struct {
-    Path    string  // Path inside the YAML document (not a file path)
-    Line    int     // Line number
-    Column  int     // Column number
-    Message string  // Error message
-    Err     error   // Original error
-}
-```
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `Error` | `func (e *YAMLError) Error() string` | Implements the `error` interface; includes the in-document path with line and column numbers |
-| `Unwrap` | `func (e *YAMLError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
+| Member | Type/Signature | Description |
+|--------|----------------|-------------|
+| `YAMLError.Path` | `string` | Path inside the YAML document (not a file path) |
+| `YAMLError.Line` | `int` | Line number |
+| `YAMLError.Column` | `int` | Column number |
+| `YAMLError.Message` | `string` | Error message |
+| `YAMLError.Err` | `error` | Original error |
+| `YAMLError.Error` | `func (e *YAMLError) Error() string` | Implements the `error` interface; includes the in-document path with line and column numbers |
+| `YAMLError.Unwrap` | `func (e *YAMLError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
 
 ### MarshalError
 
-Serialization error:
+Serialization error (check function `IsMarshalError(err error) bool`):
 
-```go
-type MarshalError struct {
-    Field   string  // Field name
-    Message string  // Error message
-}
-
-func IsMarshalError(err error) bool  // Check function
-```
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `Error` | `func (e *MarshalError) Error() string` | Implements the `error` interface; includes the field name and message |
+| Member | Type/Signature | Description |
+|--------|----------------|-------------|
+| `MarshalError.Field` | `string` | Field name that failed |
+| `MarshalError.Message` | `string` | Error message |
+| `MarshalError.Error` | `func (e *MarshalError) Error() string` | Implements the `error` interface; includes the field name and message |
 
 `MarshalError` holds only plain-value fields and has no `Unwrap` method — there is no underlying error to unwrap.
 

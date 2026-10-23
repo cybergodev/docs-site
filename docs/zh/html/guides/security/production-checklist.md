@@ -117,7 +117,7 @@ result, err := p.ExtractWithContext(ctx, data)
 
 - 库有两层超时：`Config.ProcessingTimeout`（默认 30s，对单文档生效）和调用方传入的 `context.Context`。两者**叠加生效**——先到期的先生效。即便不传超时 context，`ProcessingTimeout` 也会兜底；传了更短的 context 则以 context 为准。
 - 批量提取（`ExtractBatch`）应为整批设一个总超时 context，避免某一批耗时失控。单项失败不应阻塞整批——批量方法内部对每项独立 recover。
-- 超时机制通过独立 goroutine + context deadline 实现，全局受 `maxTimeoutGoroutines`（1000）保护。极高并发下若超限，新请求会直接返回 `ErrProcessingTimeout` 而不是无限堆积 goroutine。
+- 超时机制通过独立 goroutine + context deadline 实现，全局受 `maxTimeoutGoroutines`（1000）保护。极高并发下若超限，新请求会直接返回 `ErrTooManyConcurrentOps` 而不是无限堆积 goroutine。
 
 ## 错误处理
 

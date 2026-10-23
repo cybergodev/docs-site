@@ -42,7 +42,7 @@ cfg := json.DefaultConfig()
 cfg.MaxJSONSize = int64(json.DefaultMaxJSONSize) / 10 // 在默认 100MB 基础上收紧
 ```
 
-`json.SecurityConfig()` 已按上表「建议生产值」预设全部字段，并额外开启 `FullSecurityScan` 与 `StrictMode`——面向不可信输入时优先从它出发再微调。
+`json.SecurityConfig()` 已按上表「建议生产值」预设全部字段，并额外开启 `FullSecurityScan`（同时把已废弃、不被读取的 `StrictMode`/`EnableValidation` 置为 `true`，二者无实际影响）——面向不可信输入时优先从它出发再微调。
 
 ## 输入验证
 
@@ -52,16 +52,12 @@ cfg.MaxJSONSize = int64(json.DefaultMaxJSONSize) / 10 // 在默认 100MB 基础�
 - [ ] 验证字段类型正确
 
 ```go
-// 自定义验证器示例
-type RequiredFieldValidator struct{}
-
-func (v *RequiredFieldValidator) Validate(jsonStr string) error {
-    // 检查必填字段是否存在
-    return nil
-}
-
+// 自定义必填字段检查：注册 ValidationHook（Validator 接口已废弃、从不执行）
 cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+    // 检查必填字段是否存在（结构化检查也可用 ValidateSchema）
+    return nil
+}))
 ```
 
 ### 格式验证
@@ -71,10 +67,9 @@ cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
 - [ ] 验证自定义格式
 
 ```go
-// 自定义格式验证器
-type EmailValidator struct{}
-
-func (v *EmailValidator) Validate(jsonStr string) error {
+// 自定义格式检查：注册 ValidationHook（Validator 接口已废弃、从不执行）
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
     var data map[string]any
     if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
         return nil
@@ -85,10 +80,7 @@ func (v *EmailValidator) Validate(jsonStr string) error {
         return errors.New("invalid email format")
     }
     return nil
-}
-
-cfg := json.DefaultConfig()
-cfg.CustomValidators = append(cfg.CustomValidators, &EmailValidator{})
+}))
 ```
 
 ### 范围验证
@@ -367,8 +359,10 @@ func ProductionConfig() json.Config {
     // 资源限制（SecurityConfig 已预设安全默认值）
     cfg.MaxMemory = 100 * 1024 * 1024
 
-    // 自定义验证器
-    cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
+    // 自定义输入检查（ValidationHook；Validator 接口已废弃、从不执行）
+    cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+        return nil // 自定义必填/格式检查
+    }))
 
     // 审计 Hook
     cfg.Hooks = []json.Hook{&AuditHook{logger: prodLogger}}

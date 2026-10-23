@@ -7,7 +7,7 @@ sidebar_position: 100
 
 # 迭代器类型
 
-json 包提供多种迭代器类型，覆盖顺序遍历、流式处理、批量处理和并行处理场景。迭代**函数**（`Foreach`/`ForeachFile` 等）见 [包级迭代函数](./functions/iterate) 与 [Processor 迭代方法](./processor/iterate)。
+json 包提供多种迭代器类型，覆盖顺序遍历、流式处理、批量处理和并行处理场景。迭代**函数**（`Foreach*`/`ForeachFile*` 等）见 [包级迭代函数](./functions/iterate) 与 [Processor 迭代方法](./processor/iterate)。
 
 ## IteratorControl 常量
 
@@ -98,7 +98,7 @@ for it.HasNext() {
 
 ## IterableValue 类型
 
-IterableValue 封装了迭代过程中的当前元素，提供便捷的值访问方法。`Foreach` 系列函数的回调即接收 `*IterableValue`。
+IterableValue 封装了迭代过程中的当前元素，提供便捷的值访问方法。`Foreach*` 系列函数的回调即接收 `*IterableValue`。
 
 ### 方法
 
@@ -335,11 +335,12 @@ err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue)
 将 IterableValue 归还到对象池，释放内部数据引用。
 
 ```go
-json.Foreach(data, func(key any, item *json.IterableValue) {
+err := json.ForeachWithError(data, ".", func(key any, item *json.IterableValue) error {
     // 处理数据...
     fmt.Println(item.GetData())
     // 处理完毕后释放，减轻 GC 压力
     item.Release()
+    return nil
 })
 ```
 
@@ -793,7 +794,7 @@ func main() {
 2. **大数据集使用流式迭代器** - `StreamIterator`/`StreamObjectIterator` 逐元素处理，内存友好
 3. **批量处理减少开销** - `BatchIterator` 按批处理，降低单元素开销
 4. **CPU 密集型任务并行处理** - `ParallelIterator` 利用多核加速
-5. **释放 IterableValue** - 在 `Foreach` 回调中处理完毕后调用 `Release()` 减轻 GC 压力
+5. **释放 IterableValue** - 在 `Foreach*` 回调中处理完毕后调用 `Release()` 减轻 GC 压力
 
 ---
 

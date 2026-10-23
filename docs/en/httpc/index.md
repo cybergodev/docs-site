@@ -22,6 +22,7 @@ HTTPC is built on top of the standard-library `net/http` transport: connection r
 - **Object Pool Reuse** - Internal response objects and string builders are pooled via sync.Pool to reduce GC pressure
 - **Proxy & Proxy Pool** - Single proxy, system proxy, and pool rotation (round-robin/random), with failure-based circuit breaking and status-code-driven IP rotation
 - **Certificate Pinning** - SPKI-hash/public-key pinning that defends against MITM attacks even if a trusted CA is compromised
+- **TLS Fingerprinting** - Browser transport-layer fingerprint spoofing (JA3/JA4 + HTTP/2 frames + ordered header block) with Chrome/Firefox/Safari presets
 - **Domain Sessions** - DomainClient binds a base URL; SessionManager automatically maintains cookies and common request headers
 - **Redirect Control** - Follow toggle, hop limit, and a target-domain whitelist
 
@@ -29,10 +30,11 @@ HTTPC is built on top of the standard-library `net/http` transport: connection r
 
 | Capability | Default Behavior | Main Customization Points | Further Reading |
 |------|----------|------------|----------|
-| Retry & fault tolerance | Up to 3 retries with exponential backoff (1s base, ×2, 30s cap per wait) + jitter; honors `Retry-After` | Count/backoff parameters/custom strategies/per-request overrides | [Retry & Fault Tolerance](./guides/retry-fault-tolerance) |
+| Retry & fault tolerance | Idempotent requests retry up to 3 times (POST/PATCH execute exactly once by default), exponential backoff (1s base, ×2, 30s cap per wait) + jitter; honors `Retry-After` | Count/backoff parameters/custom strategies/`WithRetryNonIdempotent` to opt into non-idempotent retries | [Retry & Fault Tolerance](./guides/retry-fault-tolerance) |
 | Middleware chain | Not enabled | Logging/metrics/audit/recovery/request ID/timeout/static headers, plus custom middleware | [Middleware Chain](./guides/middleware-chain) |
 | SSRF protection | Blocks private/reserved IPs (127.0.0.1, 10.x, 192.168.x, etc.) | Precise `SSRFExemptCIDRs` exemptions/per-request exemption/disable entirely | [SSRF Protection](./security/ssrf) |
 | TLS & certificate pinning | TLS 1.2-1.3 | Version floor/ceiling, custom `tls.Config`, SPKI/public-key pinning | [TLS & Certificate Pinning](./security/tls-certpin) |
+| TLS fingerprinting (browser spoofing) | Off (standard stack) | `Security.TLSFingerprint` preset + package-level `WithTLSFingerprint` routing | [TLS Fingerprinting](./guides/tls-fingerprint) |
 | Connection pool & HTTP/2 | 50 idle connections, 10 per host, HTTP/2 enabled | Pool sizes, idle duration, response-header size limit | [Connection Pool](./guides/connection-pool) |
 | Proxy & proxy pool | No proxy used | Single proxy/system proxy/pool rotation/failure circuit breaking/status-code IP rotation | [Proxy & Proxy Pool](./guides/proxy) |
 | DNS-over-HTTPS | Off | `EnableDoH`, cache TTL (5 minutes by default) | [Connection Pool](./guides/connection-pool) |
@@ -46,7 +48,7 @@ HTTPC is built on top of the standard-library `net/http` transport: connection r
 # Initialize a module (skip if you already have a project)
 go mod init example.com/demo
 
-# Install HTTPC (requires Go 1.26+)
+# Install HTTPC (requires Go 1.27+)
 go get github.com/cybergodev/httpc
 ```
 
@@ -54,7 +56,7 @@ go get github.com/cybergodev/httpc
 import "github.com/cybergodev/httpc"
 ```
 
-Apart from `golang.org/x/sys` there are no other third-party dependencies — import it and you are ready to go, with no initialization or configuration required.
+7 direct dependencies: `golang.org/x/net` and `golang.org/x/sys` for the standard path, with brotli / compress / uTLS / tls-client / fhttp pulled in only when `Security.TLSFingerprint` is enabled. Without the fingerprint feature the standard stack is used — import it and you are ready to go, with no initialization or configuration required.
 
 ## 30-Second Experience
 
@@ -80,7 +82,7 @@ What happens behind that one line:
 
 1. `httpc.Get` internally resolves to a shared default client (created lazily on the first call, reused afterwards, safe for concurrent use);
 2. The request goes out after CRLF-injection protection, SSRF checks, and a TLS 1.2+ handshake;
-3. Retryable errors (timeouts, 408/429/5xx, etc.) are retried automatically with exponential backoff, up to 3 times;
+3. Retryable errors (timeouts, 408/429/5xx, etc.) are retried automatically with exponential backoff, up to 3 times (`Get` is idempotent; POST/PATCH are not retried by default);
 4. The response comes back wrapped in a `*Result` — status code, body, and retry statistics in one place.
 
 :::tip
@@ -116,6 +118,7 @@ Choose a reading path based on your goal:
 | Sessions & cookies | [Domain Client & Sessions](./guides/domain-session) |
 | Redirect control | [Redirects](./guides/redirects) |
 | Performance tuning | [Performance](./guides/performance) |
+| Browser TLS fingerprint spoofing | [TLS Fingerprinting](./guides/tls-fingerprint) |
 | Learn about security features | [Security Overview](./security/) |
 | Look up API signatures | [API Reference](./api-reference/) |
 | Frequent questions | [FAQ](./faq/) |

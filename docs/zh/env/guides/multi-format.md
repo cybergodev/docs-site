@@ -179,7 +179,7 @@ cfg.JSONNumberAsString = true
 // 布尔值转为字符串（默认 true）
 cfg.JSONBoolAsString = true
 
-// 最大嵌套深度（默认 10）
+// 最大嵌套深度（默认 16）
 cfg.JSONMaxDepth = 20
 ```
 
@@ -275,7 +275,7 @@ cfg.YAMLNumberAsString = true
 // 布尔值转为字符串（默认 true）
 cfg.YAMLBoolAsString = true
 
-// 最大嵌套深度（默认 10）
+// 最大嵌套深度（默认 16）
 cfg.YAMLMaxDepth = 15
 ```
 
@@ -547,7 +547,7 @@ func main() {
 | 数组元素使用 `键_索引` | `{"hosts": ["a", "b"]}` → `HOSTS_0`、`HOSTS_1` |
 | `null` 转为空字符串 | `{"name": null}` → `NAME=""` |
 | 数字与布尔转为字符串 | `{"port": 5432}` → `PORT="5432"` |
-| 嵌套深度上限默认 10 | 由 `JSONMaxDepth`/`YAMLMaxDepth` 控制（1–100） |
+| 嵌套深度上限默认 16 | 由 `JSONMaxDepth`/`YAMLMaxDepth` 控制（1–100） |
 
 文件加载时的转换行为受 `Config` 的 `JSONConfig`/`YAMLConfig` 控制（如 `JSONNullAsEmpty`、`JSONNumberAsString`）；而 `UnmarshalMap`/`UnmarshalStruct` 的字符串解析路径使用内置默认规则，不读取这些配置。
 

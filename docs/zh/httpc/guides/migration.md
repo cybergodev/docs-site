@@ -96,7 +96,7 @@ func main() {
 | `req.AddCookie(&http.Cookie{...})` | <code v-pre>httpc.WithCookies([]http.Cookie{{...}})</code> | 接受 Cookie 切片（单个也传单元素切片）；仅 name-value 用 `WithCookieMap`、原始头字符串用 `WithCookieString` |
 | `req.URL.Query()` 拼接查询串 | `httpc.WithQuery(k, v)` / `WithQueryMap(m)` | 值支持常见标量与 `fmt.Stringer`，自动编码合并进 URL |
 | `jar, _ := cookiejar.New(nil)` 挂到 `client.Jar` | `cfg.Connection.EnableCookies = true` | 或用 `DomainClient` 自动维护 Cookie 与公共头（见[域名会话](./domain-session)） |
-| `client.CheckRedirect = func(...)` | `cfg.Defaults.FollowRedirects` / `MaxRedirects` | 请求级 `WithFollowRedirects(false)`；重定向域名白名单 `Security.RedirectWhitelist`（见[重定向](./redirects)） |
+| `client.CheckRedirect = func(...)` | `cfg.Security.FollowRedirects` / `MaxRedirects` | 请求级 `WithFollowRedirects(false)`；重定向域名白名单 `Security.RedirectWhitelist`（见[重定向](./redirects)） |
 | 代理：`Transport.Proxy` | `cfg.Connection.ProxyURL` / `ProxyPool` / `EnableSystemProxy` | 三种方式按优先级生效，详见[代理与代理池](./proxy) |
 
 ### 响应处理
@@ -347,7 +347,7 @@ result, err := client.Get(url, httpc.WithTimeout(30*time.Second)) // 本次请�
 | `ForceAttemptHTTP2` | `Connection.EnableHTTP2` | true |
 | `ResponseHeaderTimeout` | `Timeouts.ResponseHeader` | 0（禁用） |
 | `MaxResponseHeaderBytes` | `Connection.MaxResponseHeaderBytes` | 0（标准库默认 1MB） |
-| `CheckRedirect` | `Defaults.FollowRedirects` / `MaxRedirects` + `Security.RedirectWhitelist` | true / 10 |
+| `CheckRedirect` | `Security.FollowRedirects` / `MaxRedirects` + `Security.RedirectWhitelist` | true / 10 |
 | 自定义 `DialContext`（拨号器） | 无直接入口 | SSRF 校验包装在拨号层 |
 
 已有的 `tls.Config` 知识（mTLS、自定义 CA、密码套件）可原样迁入：
@@ -403,22 +403,22 @@ func main() {
 
 `Result` 持有的是已读取并复制的字节，HTTPC 在内部完成读取、排空与关闭，底层连接由连接池管理。迁移时**删除所有 `defer resp.Body.Close()`**，也不要寻找关闭入口。详见[常见问题「响应 Body 需要手动关闭吗？」](../faq/#响应-body-需要手动关闭吗)。
 
-**2. 默认开启重试——非幂等 POST 可能重复提交**
+**2. 默认开启重试——但仅限幂等请求**
 
-`net/http` 从不重试；HTTPC 默认对超时/传输错误与 408/429/500/502/503/504 自动重试最多 3 次，**不区分请求方法**。下单、扣款类接口必须处理：
+`net/http` 从不重试；HTTPC 默认对超时/传输错误与 408/429/500/502/503/504 自动重试最多 3 次，但**只作用于幂等请求**（GET/HEAD/PUT/DELETE/OPTIONS/TRACE）——POST、PATCH 及自定义方法默认**单次执行、不重试**。真正需要警惕的是：一旦用 `WithRetryNonIdempotent(true)` 显式开启非幂等重试，下单、扣款类接口就有重复提交风险，必须处理：
 
 <!-- check-code: skip -->
 ```go
-// 危险：默认最多重试 3 次，POST 同样参与重试
-result, err := client.Post("https://api.example.com/orders", httpc.WithJSON(order))
-
-// 安全（一）：非幂等接口请求级关闭重试
-result, err = client.Post("https://api.example.com/orders",
+// 危险：显式开启非幂等重试后，POST 也参与重试（最多 3 次）
+result, err := client.Post("https://api.example.com/orders",
     httpc.WithJSON(order),
-    httpc.WithMaxRetries(0),
+    httpc.WithRetryNonIdempotent(true),
 )
 
-// 安全（二）：服务端幂等键去重（推荐）
+// 安全（一）：保持默认，非幂等接口单次执行（推荐，无需任何处理）
+result, err = client.Post("https://api.example.com/orders", httpc.WithJSON(order))
+
+// 安全（二）：确需重试时，服务端幂等键去重（推荐）
 result, err = client.Post("https://api.example.com/orders",
     httpc.WithJSON(order),
     httpc.WithHeader("Idempotency-Key", orderID),
@@ -478,7 +478,7 @@ if err := httpc.SetDefaultClient(custom); err != nil {
 
 **7. 重定向行为可预期但也有默认值**
 
-默认跟随重定向（上限 10 次）。注意 `WithMaxRedirects(0)` / `MaxRedirects = 0` 是「未设置」哨兵值而非禁用——要禁止跟随用 `WithFollowRedirects(false)` 或 `Defaults.FollowRedirects = false`。详见[重定向](./redirects)。
+默认跟随重定向（上限 10 次）。注意 `WithMaxRedirects(0)` / `MaxRedirects = 0` 是「未设置」哨兵值而非禁用——要禁止跟随用 `WithFollowRedirects(false)` 或 `Security.FollowRedirects = false`。详见[重定向](./redirects)。
 
 ## 分步迁移检查清单
 
@@ -491,7 +491,7 @@ if err := httpc.SetDefaultClient(custom); err != nil {
 5. **映射超时** — `http.Client.Timeout` → `cfg.Timeouts.Request`；请求级差异用 `WithTimeout`；原 Transport 级超时按[超时体系对照](#超时体系对照)落位。
 6. **迁移 Transport 调优** — 池大小、代理、TLS、HTTP/2 按上表落位到 `Config.Connection` / `Config.Security`；`tls.Config` 迁入 `Security.TLSConfig`。
 7. **处理安全默认值** — 内网/localhost 调用加 SSRF 豁免；确认响应体上限满足接口的返回体量。
-8. **审视重试影响** — 非幂等 POST 加幂等键或 `WithMaxRetries(0)`；确认重试预算与业务超时匹配。
+8. **审视重试影响** — 非幂等 POST 默认单次执行、无需处理；确需重试时加幂等键；确认重试预算与业务超时匹配。
 9. **收尾生命周期** — 长期服务用显式实例 + `defer client.Close()`；确认没有在请求路径上重复创建客户端。
 10. **回归验证** — 跑既有集成测试；重点覆盖错误路径（断网/超时/4xx/5xx）与大响应体场景。
 

@@ -365,12 +365,12 @@ if err != nil {
 
 ## Why doesn't MaxRedirects(0) disable redirects?
 
-**Answer:** `MaxRedirects = 0` is the "unset" sentinel value, not "disable redirects". In `DefaultConfig()`, `MaxRedirects` defaults to 10. To truly disable redirects, use `WithFollowRedirects(false)` or set `Config.Defaults.FollowRedirects = false`:
+**Answer:** `MaxRedirects = 0` is the "unset" sentinel value, not "disable redirects". In `DefaultConfig()`, `MaxRedirects` defaults to 10. To truly disable redirects, use `WithFollowRedirects(false)` or set `Config.Security.FollowRedirects = false`:
 
 ```go
 // Method 1: disable at config level
 cfg := httpc.DefaultConfig()
-cfg.Defaults.FollowRedirects = false
+cfg.Security.FollowRedirects = false
 client, _ := httpc.New(cfg)
 
 // Method 2: disable per request
@@ -476,20 +476,19 @@ Two caveats: backoff waits also consume the budget, so a budget that is too tigh
 
 ## Can retries cause duplicate POST submissions?
 
-**Answer:** It can. HTTPC automatically retries 408/429/500/502/503/504 and network-layer transient errors **regardless of the request method** — POST is retried just like GET. If the first request already reached the server and was processed successfully (but the response was lost or timed out), the retry can cause duplicate creation or duplicate charges.
+**Answer:** By default, no. HTTPC automatically retries 408/429/500/502/503/504 and network-layer transient errors, but **only for idempotent requests** (GET/HEAD/PUT/DELETE/OPTIONS/TRACE) — POST, PATCH, and custom methods **execute exactly once and are never retried**, because a timeout or retryable 5xx may arrive after the server has already committed the operation and replaying the body would duplicate it.
 
-Mitigations (by priority):
+The risk only appears once you explicitly opt into non-idempotent retries:
 
 ```go
-// 1. Server-side idempotency key (recommended): the business side
-//    deduplicates via Idempotency-Key
+// Explicitly opt in: the request body may be sent more than once (beware duplicates)
+client.Post(url, httpc.WithJSON(order), httpc.WithRetryNonIdempotent(true))
+
+// Recommended: a server-side idempotency key makes even opted-in retries safe
 client.Post(url,
     httpc.WithJSON(order),
     httpc.WithHeader("Idempotency-Key", orderID),
 )
-
-// 2. Disable retries per request on non-idempotent endpoints
-client.Post(url, httpc.WithJSON(payment), httpc.WithMaxRetries(0))
 ```
 
 Two additional notes: `io.Reader` request bodies are fully buffered to support retry replay (capped at 100MB, exceeding it errors out), so the body sent on retry is identical to the first one; and `context.Canceled`/`DeadlineExceeded` are never retried, so an active cancellation cannot trigger a duplicate submission. See [Retry and Fault Tolerance](../guides/retry-fault-tolerance).

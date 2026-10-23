@@ -32,6 +32,25 @@ if secret != nil {
 `Close()` and `Release()` should only be called once. Repeated calls are safe but no-ops.
 :::
 
+## Method Overview
+
+All `SecureValue` methods (qualified names like `SecureValue.Reveal`); see the sections below for details:
+
+| Method | Description |
+|--------|-------------|
+| `SecureValue.String` | Masked representation (implements `fmt.Stringer`, safe for formatting) |
+| `SecureValue.Reveal` | Returns the plaintext string |
+| `SecureValue.Bytes` | Returns a byte-slice copy (zero it with `ClearBytes` afterwards) |
+| `SecureValue.Length` | Value length without exposing content |
+| `SecureValue.Masked` | Masked representation (carries lock-state suffix) |
+| `SecureValue.MarshalJSON` | JSON serialization outputs the mask (implements `json.Marshaler`) |
+| `SecureValue.MarshalText` | Text encoding outputs the mask (implements `encoding.TextMarshaler`) |
+| `SecureValue.Close` | Zero the data; does not return the object to the pool |
+| `SecureValue.Release` | Zero the data and return the object to the pool |
+| `SecureValue.IsClosed` | Whether the value has been closed |
+| `SecureValue.IsMemoryLocked` | Whether the memory is currently locked |
+| `SecureValue.MemoryLockError` | Error from the most recent lock attempt failure |
+
 ## Creation
 
 ### NewSecureValue
@@ -593,9 +612,9 @@ Returns a masked value based on the key's sensitivity.
 - `string` - masked value
 
 ```go
-// Sensitive key - returns [MASKED:N chars] format
+// Sensitive key - returns the fixed [MASKED] format
 masked := env.MaskValue("API_KEY", "secret123")
-// Returns: [MASKED:9 chars]
+// Returns: [MASKED]
 
 // Non-sensitive key - returns original value (truncated if over 20 chars)
 masked := env.MaskValue("APP_NAME", "myapp")
@@ -620,7 +639,7 @@ Masks a key name for logging.
 
 ```go
 masked := env.MaskKey("DB_PASSWORD")
-// Returns: DB***
+// Returns: [MASKED]
 ```
 
 ---

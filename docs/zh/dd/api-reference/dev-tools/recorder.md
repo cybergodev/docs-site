@@ -141,7 +141,7 @@ func TestLastEntry(t *testing.T) {
 
 ## LogEntry
 
-捕获的日志条目结构。
+`LogEntry` 是捕获的日志条目结构，由 `Entries`/`LastEntry` 等方法返回。
 
 ```go
 type LogEntry struct {

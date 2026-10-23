@@ -209,7 +209,7 @@ Key defaults of `DefaultConfig()` (see the [Configuration API](../api-reference/
 | `Security.MaxResponseBodySize` | 10MB | Response body size cap |
 | `Security.MaxDecompressedBodySize` | 100MB | Decompressed response body cap |
 | `Defaults.UserAgent` | `httpc/1.0` | Default User-Agent |
-| `Defaults.FollowRedirects` / `MaxRedirects` | true / 10 | Redirect following policy |
+| `Security.FollowRedirects` / `MaxRedirects` | true / 10 | Redirect following policy |
 
 ## Query Parameters and Request Options
 

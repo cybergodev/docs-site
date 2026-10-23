@@ -257,10 +257,10 @@ processor, err = json.New(cfg)
 
 | Operation | Function | Characteristics |
 |-----------|----------|-----------------|
-| Traverse array/object | `Foreach` | Simplest; no error return |
+| Traverse array/object | `ForeachWithError` | Recommended: callback returns `error` / `item.Break()` (`Foreach` is deprecated: silently drops errors) |
 | Traverse with interruption | `ForeachWithError` | Callback returns `error` / `item.Break()` |
-| Traverse at a given path | `ForeachWithPath` | The explicit-path version of `Foreach(data, path, ...)` |
-| Deep nested traversal | `ForeachNested` | Recurses all levels |
+| Traverse at a given path | `ForeachWithPath` | The explicit-path version (returns `error`) |
+| Deep nested traversal | `ForeachNestedWithError` | Recommended: recurses all levels and returns `error` (`ForeachNested` is deprecated: silently drops errors) |
 | Deep traversal with interruption | `ForeachNestedWithError` | The error-returning version of `ForeachNested` |
 | Traverse and rewrite | `ForeachReturn` | Returns modified new JSON |
 | Carries the current path | `ForeachWithPathAndIterator` | Callback gets `currentPath`; can break |
@@ -270,7 +270,7 @@ processor, err = json.New(cfg)
 | Chunked file traversal | `ForeachFileChunked` | Batched callbacks of `chunkSize` (file still fully loaded) |
 | Recursive file traversal | `ForeachFileNested` | Recurses all nested structures in the file (whole file loaded) |
 
-Twelve iteration functions in total: the first eight operate on JSON strings in memory, the last four (`ForeachFile*`) operate on files (loaded fully before iterating, bounded by the `MaxJSONSize` cap).
+Twelve iteration functions in total (including the deprecated void variants `Foreach`/`ForeachNested`): the first eight operate on JSON strings in memory, the last four (`ForeachFile*`) operate on files (loaded fully before iterating, bounded by the `MaxJSONSize` cap).
 
 ```go
 data := `{"users":[{"name":"Alice"},{"name":"Bob"}]}`
@@ -376,10 +376,10 @@ err = json.StreamJSONLParallel(file, 4, func(lineNum int, item *json.IterableVal
     return nil
 })
 
-// NDJSONProcessor: line numbers, per-object callbacks (deprecated; use the StreamJSONL family in new code)
-np := json.NewNDJSONProcessor()
-err = np.ProcessFile("events.ndjson", func(lineNum int, obj map[string]any) error {
-    fmt.Println(lineNum, obj)
+// Stream a file line by line (with line numbers; item.GetData() returns the parsed value)
+err = json.StreamJSONLFile("events.ndjson", func(lineNum int, item *json.IterableValue) error {
+    row, _ := item.GetData().(map[string]any)
+    _ = row // process each line
     return nil
 })
 ```

@@ -459,15 +459,15 @@ Creating configured schemas via `NewSchema` (`func NewSchema(cfg SchemaConfig) *
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `EnableValidation` | `bool` | Enables input validation (affects pre-operation security/structure checks) |
-| `ValidateInput` | `bool` | Validates the input JSON |
+| `EnableValidation` | `bool` | Deprecated: not read by any operation (validation always runs by default unless `SkipValidation`); only takes part in the config cache key |
+| `ValidateInput` | `bool` | Deprecated: not read by any operation; setting it changes nothing |
 | `SkipValidation` | `bool` | Skips non-essential validation (trusted input only) |
 
-::: warning Extension fields not yet wired
-`Config.CustomValidators` (`[]Validator`) and the `Validator` interface are **declared and take part in config cloning and cache-key computation, but are not yet wired into the operation pipeline** in the current version. Registering validators via `Config.CustomValidators` (or `Config.AddValidator`) **does not affect the execution of any operation** — operations are never rejected by custom validators. The `Validator` interface is currently reserved:
+::: warning Deprecated extension fields
+`Config.CustomValidators` (`[]Validator`) and the `Validator` interface are **deprecated** (marked Deprecated in the source): they are declared and take part in config cloning and cache-key computation, but validators are **never executed by any public operation**. Registering validators via `Config.CustomValidators` (or `Config.AddValidator`) does not affect the execution of any operation — operations are never rejected by custom validators. Both are kept within v1:
 
 ```go
-// Current version: declared but not wired; registering has no effect (reserved interface)
+// Deprecated: declared but never executed; registering has no effect
 type Validator interface {
     Validate(jsonStr string) error
 }
@@ -478,7 +478,7 @@ For custom validation before/after operations, use the effective [Hooks](../exte
 
 ## See Also
 
-- [Interface Definitions](./interfaces) - The (reserved) `Validator` interface and `Schema`-related types
+- [Interface Definitions](./interfaces) - The (deprecated) `Validator` interface and `Schema`-related types
 - [Type Definitions](./types) - Core types (Config / Schema / Stats / AccessResult)
 - [Parse & Validate](./functions/parse) - Parse / Valid / ValidateSchema functions
 - [Config](./config) - Validation-related configuration fields

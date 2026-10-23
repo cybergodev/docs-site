@@ -208,7 +208,7 @@ func main() {
 | `Security.MaxResponseBodySize` | 10MB | 响应体大小上限 |
 | `Security.MaxDecompressedBodySize` | 100MB | 解压后响应体上限 |
 | `Defaults.UserAgent` | `httpc/1.0` | 默认 User-Agent |
-| `Defaults.FollowRedirects` / `MaxRedirects` | true / 10 | 重定向跟随策略 |
+| `Security.FollowRedirects` / `MaxRedirects` | true / 10 | 重定向跟随策略 |
 
 ## 查询参数与请求选项
 

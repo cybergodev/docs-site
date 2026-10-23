@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Overview"
 title: "API Reference - CyberGo HTTPC | Full API Index"
-description: "HTTPC API index: full API map incl. core functions, options, Result, Config, and middleware, with 29 WithXxx options, 5 presets, and 17 error variables."
+description: "HTTPC API index: full API map incl. core functions, options, Result, Config, and middleware, with 32 WithXxx options, 5 presets, and 17 error variables."
 sidebar_position: 10
 ---
 
 # API Reference
 
-HTTPC provides 29 request-option functions, 5 configuration presets, 7 built-in middleware, and complete download support.
+HTTPC provides 32 request-option functions, 5 configuration presets, 7 built-in middleware, and complete download support.
 
 ## Core Architecture
 
@@ -41,7 +41,7 @@ HTTPC two-layer architecture
 
 | Module | Description |
 |--------|-------------|
-| [Request Options](./core/options) | 29 WithXxx request-option functions (headers, body, authentication, cookies, callbacks, etc.) |
+| [Request Options](./core/options) | 32 WithXxx request-option functions (headers, body, authentication, cookies, callbacks, package-level routing, etc.) |
 | [Built-in Middleware](./client-config/middleware) | Chain composition, 7 built-in middleware factories, and audit event types |
 | [Error Types](./types/errors) | ClientError, 12 ErrorType enums, and 17 error variables |
 
@@ -66,11 +66,12 @@ A complete index grouped by symbol type, mapping one-to-one to the exported surf
 | [`Get`](./core/functions#get) / `Post` / `Put` / `Patch` / `Delete` / `Head` / `Options` / [`Request`](./core/functions#request) | Package-level HTTP methods (share the internal default client) |
 | [`Download`](./core/functions#download) | Unified file-download entry (same name and signature on the package function / Client / DomainClient) |
 | [`SetDefaultClient`](./core/functions#setdefaultclient) / [`CloseDefaultClient`](./core/functions#closedefaultclient) | Replace and close the default client |
+| [`CloseRoutedClients`](./core/functions#closeroutedclients) | Close every package-level routed client (cached for `WithProxy`/`WithSystemProxy`/`WithTLSFingerprint`) |
 | [`NewDomain`](./core/functions#newdomain) / [`NewDomainDefault`](./core/functions#newdomaindefault) | Domain-scoped clients |
 | [`SetSecurityWarnOutput`](./core/functions#setsecuritywarnoutput) | Redirect security-warning output |
 | [`FormatBytes`](./core/functions#formatbytes) / [`FormatSpeed`](./core/functions#formatspeed) | Format byte counts / speeds |
 
-### Request Options (29)
+### Request Options (32)
 
 | Group | Options |
 |-------|---------|
@@ -80,6 +81,7 @@ A complete index grouped by symbol type, mapping one-to-one to the exported surf
 | Query parameters (2) | `WithQuery`, `WithQueryMap` |
 | Cookies (4) | `WithCookies`, `WithCookieMap`, `WithCookieString`, `WithSecureCookie` |
 | Request control (9) | `WithContext`, `WithTimeout`, `WithNoTimeout`, `WithMaxRetries`, `WithRetryNonIdempotent`, `WithFollowRedirects`, `WithMaxRedirects`, `WithAllowPrivateIPs`, `WithStreamBody` |
+| Package-level routing (3) | `WithProxy`, `WithSystemProxy`, `WithTLSFingerprint` |
 | Callbacks (2) | `WithOnRequest`, `WithOnResponse` |
 
 For the signatures, validation rules, and Config defaults overridden by all options, see [Request Options](./core/options).
@@ -182,7 +184,7 @@ result.Meta.Attempts          // Retry count
 
 ## Version Compatibility
 
-- **Go version**: requires Go 1.26 or later (`go.mod` declares `go 1.26.0`).
+- **Go version**: requires Go 1.27 or later (`go.mod` declares `go 1.27`).
 - **Import path**: `github.com/cybergodev/httpc` (package name `httpc`, no alias needed).
-- **Direct dependencies**: only `golang.org/x/sys` (for per-platform system-proxy detection, covering Linux/macOS/Windows); no other third-party dependencies.
+- **Direct dependencies**: 7 direct modules — `golang.org/x/net` and `golang.org/x/sys` for the standard path, with brotli / compress / uTLS / tls-client / fhttp pulled in only when `Security.TLSFingerprint` is enabled (browser transport fingerprinting).
 - **API status**: no exported symbol currently carries a `Deprecated` marker; the library is under active maintenance.

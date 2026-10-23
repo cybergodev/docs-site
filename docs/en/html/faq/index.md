@@ -242,7 +242,7 @@ Blocked URLs are recorded as audit events — the configured `AuditSink` receive
 
 ## What happens if a batch exceeds 10000 items?
 
-The entire batch fails (no partial processing). The `maxBatchSize` limit is 10000. When exceeded, every item's `Errors` is populated with `html: batch size N exceeds maximum 10000`, the `Failed` count equals the input count, and all `Results` are `nil`.
+The entire batch fails (no partial processing). The `maxBatchSize` limit is 10000. When exceeded, every item's `Errors` is populated with `html: batch size exceeds maximum: N exceeds maximum 10000` (check with `errors.Is(err, html.ErrBatchTooLarge)`), the `Failed` count equals the input count, and all `Results` are `nil`.
 
 <!-- check-code: skip -->
 ```go
@@ -263,18 +263,7 @@ It returns `ErrProcessorClosed`. The Processor uses an `atomic.Bool` internally 
 
 ## What is the article recognition (ExtractArticle) scoring algorithm?
 
-The built-in default scorer (internal implementation, not exported) calculates a content relevance score for each element node based on multi-dimensional signals, selecting the highest-scoring node as the article container. Scoring dimensions include:
-
-| Dimension | Positive signals | Negative signals |
-|-----------|-----------------|------------------|
-| Tag semantics | `<article>`(+1000), `<main>`(+900), `<section>`(+300) | `nav`/`aside`/`footer`/`header` return 0 directly |
-| class/id patterns | `content`/`article`/`post`/`main`/`entry` etc. (strong positive); `blog`/`news`/`detail` etc. (moderate positive) | `comment`/`sidebar`/`nav`/`ad`/`menu` etc. (strong negative); `widget`/`share`/`social` etc. (moderate negative) |
-| Paragraph density | `<p>` count in subtree multiplied by a rate bonus | — |
-| Text length | Long text above a threshold gets bonus; short text gets penalized | — |
-| Link density | — | Short text with dense links gets penalized (likely navigation) |
-| Punctuation features | Dense commas (`,` or `，`) indicate prose, gets bonus | — |
-| Content density | High text/tag ratio gets a boost multiplier | Low ratio gets a decay factor |
-| ARIA role | `role="main"`/`role="article"`(+500) | `role="navigation"`/`role="complementary"`(-400) |
+The built-in default scorer (internal implementation, not exported) calculates a content relevance score for each element node based on multi-dimensional signals, selecting the highest-scoring node as the article container. Scoring dimensions cover: tag semantics (`<article>`/`<main>`/`<section>` get bonuses; `nav`/`aside`/`footer` and similar are zeroed out directly), class/id patterns (positive words such as `content`/`article`/`post` get bonuses; negative words such as `comment`/`sidebar`/`ad` are penalized), paragraph density, text length, link density, punctuation features, content density, and ARIA role. For the full dimension list and score weights, see [Content Extraction](../guides/core-features/content-extraction).
 
 :::tip Layout wrapper special handling
 When class/id contains both content signals (`content`/`article`) and removal signals (e.g. `sidebar`) — typically CSS layout classes like `content-sidebar` — the scorer **does not** remove the node, because it wraps the main content. Semantic tags `<article>`/`<main>` are always exempt from class/id removal heuristics.

@@ -32,6 +32,7 @@ The major symbols from every API reference page, grouped by function, each linki
 |--------|-------------|------|
 | `Load` | Init default loader | [functions](./functions#load) |
 | `LoadWithConfig` | Init with Config | [functions](./functions#loadwithconfig) |
+| `Overload` | last-file-wins initializer | [functions](./functions#overload) |
 | `ResetDefaultLoader` | Reset default loader | [functions](./functions#resetdefaultloader) |
 | `GetString` | Read string | [functions](./functions#getstring) |
 | `GetInt` | Read int64 | [functions](./functions#getint) |
@@ -53,6 +54,8 @@ The major symbols from every API reference page, grouped by function, each linki
 | `Marshal` | Serialize to string | [functions](./functions#marshal) |
 | `UnmarshalMap` | Parse to map | [functions](./functions#unmarshalmap) |
 | `UnmarshalStruct` | Parse into struct | [functions](./functions#unmarshalstruct) |
+| `UnmarshalMapWithConfig` | Parse to map with config | [functions](./functions#unmarshalmapwithconfig) |
+| `UnmarshalStructWithConfig` | Parse into struct with config | [functions](./functions#unmarshalstructwithconfig) |
 | `UnmarshalInto` | Fill struct from map | [functions](./functions#unmarshalinto) |
 | `MarshalStruct` | Struct to map | [functions](./functions#marshalstruct) |
 | `IsMarshalError` | Marshal error check | [functions](./functions#ismarshalerror) |
@@ -96,6 +99,9 @@ The major symbols from every API reference page, grouped by function, each linki
 | `IsZero` | Zero-value check | [config](./config#iszero) |
 | `ExpansionScope` | Expansion scope enum | [config](./config#expansionscope) |
 | `ExpansionFileThenProcess`, `ExpansionFileOnly` | Scope constants | [config](./config#expansionscope) |
+| `DuplicateKeyPolicy` | In-document duplicate-key enum | [config](./config#duplicatekeypolicy-in-document-duplicate-keys) |
+| `DuplicateKeyInherit`, `DuplicateKeyFirstWins`, `DuplicateKeyLastWins`, `DuplicateKeyError` | Duplicate-key policy constants | [config](./config#duplicatekeypolicy-in-document-duplicate-keys) |
+| `AuditFailClosed` | Fail-closed audit switch | [config](./config#auditfailclosed-bool) |
 
 ### Presets, Factory, and Formats
 
@@ -184,6 +190,7 @@ The major symbols from every API reference page, grouped by function, each linki
 | `ErrExpansionDepth` | Expansion sentinel | [constants](./constants#expansion-errors) |
 | `ErrMaxVariables` | Limit sentinel | [constants](./constants#limit-errors) |
 | `ErrClosed`, `ErrInvalidConfig`, `ErrAlreadyInitialized`, `ErrNotInitialized`, `ErrMissingRequired` | State sentinels | [constants](./constants#state-errors) |
+| `ErrAuditFailed` | audit-failure sentinel | [constants](./constants#state-errors) |
 | `ErrValidateRequiredUnsupported` | Adapter sentinel | [constants](./constants#adapter-errors) |
 | `ParseError` | Parse error type | [constants](./constants#parseerror) |
 | `ValidationError` | Validation error type | [constants](./constants#validationerror) |

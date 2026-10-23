@@ -169,11 +169,11 @@ fmt.Printf("失败：%d\n", br.Failed)
 // 失败：10001
 
 fmt.Printf("第一项错误：%v\n", br.Errors[0])
-// 第一项错误：html: batch size 10001 exceeds maximum 10000
+// 第一项错误：html: batch size exceeds maximum: 10001 exceeds maximum 10000
 ```
 
 :::warning 超限行为
-`maxBatchSize = 10000` 是硬上限。超限时不会处理任何项，而是对全部输入返回统一错误。如需处理更多，请分批调用。
+`maxBatchSize = 10000` 是硬上限。超限时不会处理任何项，而是对全部输入返回统一错误。该错误可用 `errors.Is(err, html.ErrBatchTooLarge)` 判断。如需处理更多，请分批调用。
 :::
 
 ## 上下文取消

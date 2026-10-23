@@ -704,6 +704,32 @@ port := env.GetInt("PORT", 8080)
 
 ---
 
+### Overload
+
+```go
+func Overload(filenames ...string) error
+```
+
+`Load` 的「后加载覆盖」变体：以 `OverwriteExisting = true` 初始化默认加载器。当多个文件定义同名键时**后加载的文件胜出**，且加载值会替换**进程环境中已存在**的同名变量（godotenv 的 Overload 约定）。
+
+**安全提示：** `Load` 从不改动进程中已存在的变量——部署注入的变量（容器密钥、CI 变量）始终优先于文件值；`Overload` 会移除这一保护（文件值覆盖同名进程变量）。存疑时优先用 `Load` 并按优先级排序文件。单文件内的重复键语义仍由 `DuplicateKeyPolicy` 决定（见 [Config API](./config#duplicatekeypolicy-单文档内重复键)）。
+
+**参数：**
+- `filenames` - 文件路径列表，未提供时默认加载 `.env`
+
+**返回：**
+- `error` - 加载错误；默认加载器已初始化时返回 `ErrAlreadyInitialized`
+
+```go
+// config.yaml 的值覆盖 config.json 的同名键
+if err := env.Overload("config.json", "config.yaml"); err != nil {
+    log.Fatal(err)
+}
+key := env.GetString("deepseek.key", "")
+```
+
+---
+
 ## 序列化函数
 
 ### Marshal
@@ -785,6 +811,33 @@ m, _ := env.UnmarshalMap(jsonString, env.FormatAuto)
 
 ---
 
+### UnmarshalMapWithConfig
+
+```go
+func UnmarshalMapWithConfig(cfg Config, data string, format ...FileFormat) (map[string]string, error)
+```
+
+带完整 `Config` 语义的 `UnmarshalMap`：`LimitsConfig`（文件大小、行/键/值长度、变量数）、`ParsingConfig`（重复键策略；变量展开——仅作用于 `.env` 输入，JSON/YAML 值从不展开）、`JSONConfig`/`YAMLConfig` 格式选项、`ValidationConfig`（键值规则、`RequiredKeys`）与 `ComponentConfig`（自定义验证器/展开器/审计器；`Prefix` 按文件加载同规则过滤键）全部生效。`FileConfig`（`Filenames`/`FailOnMissingFile`/`OverwriteExisting`/`AutoApply`）无一次性对应，被忽略。
+
+`cfg` 遵循标准零值约定：全零 `Config` 视为 `DefaultConfig()`；部分设置会被 `ErrInvalidConfig` 拒绝——始终从 `DefaultConfig()` 开始。`UnmarshalMap` 是无配置快捷方式，内部即走此函数的 `DefaultConfig` 管线（SEC-002：各格式统一应用禁止键策略与键验证）。
+
+**参数：**
+- `cfg` - 完整配置（从 `DefaultConfig()` 或预设开始）
+- `data` - 格式化字符串
+- `format` - 可选格式，默认 `FormatEnv`；`FormatAuto` 从数据自动检测
+
+**返回：**
+- `map[string]string` - 解析后的键值对
+- `error` - 解析错误
+
+```go
+cfg := env.DefaultConfig()
+cfg.DuplicateKeyPolicy = env.DuplicateKeyError
+m, err := env.UnmarshalMapWithConfig(cfg, yamlData, env.FormatYAML)
+```
+
+---
+
 ### UnmarshalStruct
 
 ```go
@@ -813,6 +866,34 @@ err := env.UnmarshalStruct("SERVER_HOST=localhost\nSERVER_PORT=8080", &cfg)
 
 // 从 JSON 解析
 err = env.UnmarshalStruct(`{"server": {"host": "localhost"}}`, &cfg, env.FormatJSON)
+```
+
+---
+
+### UnmarshalStructWithConfig
+
+```go
+func UnmarshalStructWithConfig(cfg Config, data string, v any, format ...FileFormat) error
+```
+
+`UnmarshalStruct` 的配置驱动版本：先按 `cfg` 的全部解析规则（限制、重复键策略、展开、验证、自定义组件，同 [UnmarshalMapWithConfig](#unmarshalmapwithconfig)）解析字符串为 map，再填入结构体。
+
+**参数：**
+- `cfg` - 完整配置
+- `data` - 格式化字符串
+- `v` - 结构体指针
+- `format` - 可选格式，默认 `FormatEnv`；`FormatAuto` 从数据自动检测
+
+**返回：**
+- `error` - 解析或填充错误
+
+```go
+cfg := env.DefaultConfig()
+cfg.DuplicateKeyPolicy = env.DuplicateKeyError
+var out Config
+if err := env.UnmarshalStructWithConfig(cfg, yamlData, &out, env.FormatYAML); err != nil {
+    log.Fatal(err)
+}
 ```
 
 ---

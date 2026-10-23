@@ -201,7 +201,7 @@ cfg.JSONNumberAsString = false
 ### 深度限制
 
 ```go
-cfg.JSONMaxDepth = 10  // 最大嵌套深度
+cfg.JSONMaxDepth = 10  // 最大嵌套深度（默认 16）
 ```
 
 ## YAML 格式
@@ -270,7 +270,7 @@ description: "Line1\nLine2\nLine3"
 
 ### 类型转换选项
 
-`YAMLNullAsEmpty` / `YAMLNumberAsString` / `YAMLBoolAsString` 同样**默认均为 true（已开启）**，需要关闭时显式设为 false；`YAMLMaxDepth` 默认 10，需要更深嵌套时再调整：
+`YAMLNullAsEmpty` / `YAMLNumberAsString` / `YAMLBoolAsString` 同样**默认均为 true（已开启）**，需要关闭时显式设为 false；`YAMLMaxDepth` 默认 16，需要更深嵌套时再调整：
 
 ```go
 cfg := env.DefaultConfig()

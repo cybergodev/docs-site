@@ -20,19 +20,20 @@ The table below summarizes each security feature, the corresponding `Config` fie
 | Custom TLS config | `SecurityConfig.TLSConfig` | `nil` (use defaults) | — |
 | Skip certificate verification | `SecurityConfig.InsecureSkipVerify` | `false` | Testing only |
 | Certificate pinning | `SecurityConfig.CertificatePinner` | `nil` (disabled) | `NewSPKIHashPinner`, etc. |
+| TLS fingerprinting (browser spoofing) | `SecurityConfig.TLSFingerprint` | `""` (standard stack) | `WithTLSFingerprint` (package-level) |
 | SSRF protection | `SecurityConfig.AllowPrivateIPs` | `false` (on) | `WithAllowPrivateIPs` |
 | Precise SSRF exemption | `SecurityConfig.SSRFExemptCIDRs` | `nil` | — |
 | URL validation | `SecurityConfig.ValidateURL` | `true` | — |
 | Header validation | `SecurityConfig.ValidateHeaders` | `true` | — |
 | Strict Content-Length check | `SecurityConfig.StrictContentLength` | `true` | — |
-| Cookie security validation | `SecurityConfig.CookieSecurity` | `nil` (no validation) | `StrictCookieSecurityConfig`, `WithSecureCookie` |
+| Cookie security validation | `SessionConfig.CookieSecurity` | `nil` (no validation) | `StrictCookieSecurityConfig`, `WithSecureCookie` |
 | Response body size limit | `SecurityConfig.MaxResponseBodySize` | 10MB | — |
 | Request body size limit | `SecurityConfig.MaxRequestBodySize` | 0 (unlimited) | Must be set explicitly |
 | Decompression-bomb defense | `SecurityConfig.MaxDecompressedBodySize` | 100MB | — |
 | Response header size limit | `ConnectionConfig.MaxResponseHeaderBytes` | 0 (Go default 1MB) | — |
 | Redirect whitelist | `SecurityConfig.RedirectWhitelist` | `nil` (allow all) | — |
-| Redirect count limit | `RequestDefaults.MaxRedirects` | 10 | `WithMaxRedirects` |
-| Follow redirects | `RequestDefaults.FollowRedirects` | `true` | `WithFollowRedirects` |
+| Redirect count limit | `SecurityConfig.MaxRedirects` | 10 | `WithMaxRedirects` |
+| Follow redirects | `SecurityConfig.FollowRedirects` | `true` | `WithFollowRedirects` |
 
 :::tip
 When handling user-provided URLs, just use `httpc.SecureConfig()` for the strictest security baseline: redirects disabled, a 5MB response cap, shorter timeouts, and URL/header validation enabled.
@@ -83,7 +84,8 @@ Each item below follows the source-code defaults (`DefaultConfig()` in `types.go
 | Capability | Default | How to enable |
 |------|--------|----------|
 | Certificate pinning | `CertificatePinner = nil` | Build with `NewSPKIHashPinner`, etc. and assign; see [TLS and Certificate Pinning](./tls-certpin) |
-| Cookie security validation | `CookieSecurity = nil` (no validation) | `StrictCookieSecurityConfig()` |
+| TLS fingerprinting (browser spoofing) | `TLSFingerprint = ""` | Set a preset such as `chrome`/`firefox`; see [TLS Fingerprinting](../guides/tls-fingerprint) |
+| Cookie security validation | `SessionConfig.CookieSecurity = nil` (no validation) | `StrictCookieSecurityConfig()` |
 | Redirect domain whitelist | `RedirectWhitelist = nil` (allow all) | Configure a domain/wildcard list |
 | Request body cap | `MaxRequestBodySize = 0` (unlimited, no fallback) | Set an explicit byte count |
 | Transport-level response-header timeout | `ResponseHeader = 0` (disabled) | Set when you need defense in depth against Slowloris |
@@ -196,7 +198,7 @@ This layer defends against **secondary leakage** — even when an attack has alr
 
 ## Cookie Security
 
-HTTPC provides three levels of cookie security control: config-level (global), session-level (`SessionManager`), and request-level (`WithSecureCookie`).
+HTTPC provides two levels of cookie security control: session-level (`SessionManager`) and request-level (`WithSecureCookie`).
 
 ### CookieSecurityConfig
 
@@ -210,15 +212,15 @@ HTTPC provides three levels of cookie security control: config-level (global), s
 | AllowSameSiteNone | Allow SameSite=None | `true` | `false` |
 | RequireSecureForSameSiteNone | None must carry Secure | `true` | `true` |
 
-### Config-Level Validation (Global)
+### Session Configuration Level
 
 ```go
-cfg := httpc.DefaultConfig()
+cfg := httpc.DefaultSessionConfig()
 // Strict mode: require Secure + HttpOnly + SameSite=Strict
-cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
+cfg.CookieSecurity = httpc.StrictCookieSecurityConfig()
 
 // Or customize
-cfg.Security.CookieSecurity = &httpc.CookieSecurityConfig{
+cfg.CookieSecurity = &httpc.CookieSecurityConfig{
     RequireSecure:   true,
     RequireHttpOnly: true,
     RequireSameSite: "Lax",
@@ -248,7 +250,7 @@ result, err := client.Get("https://api.example.com",
 ```
 
 :::warning
-`WithSecureCookie` is a request-level "after-the-fact" check: it validates only the cookies that exist when it is applied. Always place it after all cookie-adding options (`WithCookies` etc.). For order-independent global validation, use config-level `CookieSecurity` or session-level `SetCookieSecurity`.
+`WithSecureCookie` is a request-level "after-the-fact" check: it validates only the cookies that exist when it is applied. Always place it after all cookie-adding options (`WithCookies` etc.). For order-independent global validation, use the session-config-level `SessionConfig.CookieSecurity` or session-level `SetCookieSecurity`.
 :::
 
 ## Decompression-Bomb Defense
@@ -389,4 +391,5 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{auditMiddleware}
 
 - [SSRF Protection](./ssrf) - SSRF defense in depth, CIDR exemptions, and cloud-metadata protection
 - [TLS and Certificate Pinning](./tls-certpin) - TLS configuration, certificate pinning, and mTLS
+- [TLS Fingerprinting](../guides/tls-fingerprint) - Browser transport-layer fingerprint spoofing (JA3/JA4, HTTP/2 frames, ordered header block)
 - [Production Checklist](./production-checklist) - Categorized pre-launch checks and verification methods

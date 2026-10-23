@@ -70,7 +70,7 @@ Returns the string form of a PatternLevel (`"critical"`, `"warning"`, `"info"`; 
 | Level | Semantic intent (interface docs) | Actual behavior of the current implementation |
 |-------|----------------------------------|-----------------------------------------------|
 | `PatternLevelCritical` | Always blocks the operation | Rejects on any hit (`ErrSecurityViolation`) |
-| `PatternLevelWarning` | Blocks in strict mode, logs in lenient mode | **Also rejects on any hit** — the `StrictMode` field currently plays no part in pattern-blocking decisions |
+| `PatternLevelWarning` | Blocks in strict mode, logs in lenient mode | **Also rejects on any hit** — the `StrictMode` field is deprecated and not read by any parser, so it plays no part in pattern-blocking decisions |
 | `PatternLevelInfo` | Logs only, never blocks | **Also rejects on any hit** |
 
 ::: warning Plan for Warning/Info patterns as "will block"

@@ -173,6 +173,14 @@ func CloseDefaultClient() error
 
 Closes and resets the default client. A new client will be created on the next package-level function call.
 
+### CloseRoutedClients
+
+```go
+func CloseRoutedClients() error
+```
+
+Closes every cached package-level routed client (the dedicated clients cached by `WithProxy`, `WithSystemProxy`, and `WithTLSFingerprint`) and clears the cache. Idempotent and safe for concurrent use. Two differences from `CloseDefaultClient`: it does not close the default client (that remains `CloseDefaultClient`'s job), and instead of returning the first close error it closes as many clients as possible and returns a joined error (`errors.Join`) when any close fails.
+
 ## Download Functions
 
 Package-level download functions use the default client. The Client interface and DomainClient also provide methods of the same name; all three share an identical signature.

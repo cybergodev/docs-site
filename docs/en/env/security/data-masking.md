@@ -86,7 +86,7 @@ Masks `value` based on the sensitivity of `key`, suitable for logging configurat
 
 | Condition | Return Value |
 |-----------|-------------|
-| `IsSensitiveKey(key)` is true | `[MASKED:N chars]` (N = `len(value)`) |
+| `IsSensitiveKey(key)` is true | `[MASKED]` (fixed mask, does not reveal length) |
 | Non-sensitive and `len(value) ≤ 20` | Original value |
 | Non-sensitive and `len(value) > 20` | `value[:17] + "..."` |
 
@@ -100,9 +100,9 @@ import (
 )
 
 func main() {
-	// Sensitive value → masked (preserves length info for troubleshooting)
+	// Sensitive value → fixed mask (does not reveal length)
 	fmt.Println(env.MaskValue("DB_PASSWORD", "p@ssw0rd123"))
-	// Output: [MASKED:11 chars]
+	// Output: [MASKED]
 
 	// Non-sensitive short value → returned as-is
 	fmt.Println(env.MaskValue("PORT", "8080"))
@@ -114,8 +114,8 @@ func main() {
 }
 ```
 
-:::tip Why length is preserved
-`[MASKED:N chars]` exposes the value's length but not its content. This is useful for troubleshooting "was the password truncated" or "is the key complete" without leaking plaintext.
+:::tip Fixed mask
+Sensitive values always return the fixed string `[MASKED]`, revealing nothing about the value's length and preventing length-based inference of the secret. Non-sensitive long values still get the truncation treatment (`value[:17] + "..."`).
 :::
 
 ### MaskKey
@@ -124,12 +124,11 @@ func main() {
 func MaskKey(key string) string
 ```
 
-Masks the key name itself, for scenarios where you need to show a key exists but don't want to expose its meaning (the public API `MaskKey` is a wrapper around the internal masking routine, sharing one implementation with error reporting; audit logs do not use `MaskKey` — key/value masking in audits goes through `MaskValue`'s `[MASKED:N chars]`):
+Masks the key name itself, for scenarios where you need to show a key exists but don't want to expose its meaning (the public API `MaskKey` is a wrapper around the internal masking routine, sharing one implementation with error reporting; key masking in audits goes through `MaskValue`, which also returns the fixed `[MASKED]`):
 
 | Condition | Return Value |
 |-----------|-------------|
-| `len(key) ≤ 3` | `***` |
-| `len(key) > 3` | `key[:2] + "***"` |
+| Any key name | `[MASKED]` (fixed mask) |
 
 ```go
 package main
@@ -141,16 +140,16 @@ import (
 )
 
 func main() {
-	fmt.Println(env.MaskKey("DB_PASSWORD")) // DB***
-	fmt.Println(env.MaskKey("API_KEY"))     // AP***
-	fmt.Println(env.MaskKey("TOKEN"))       // TO***
-	fmt.Println(env.MaskKey("AB"))          // ***
-	fmt.Println(env.MaskKey("XYZ"))         // *** (length ≤ 3)
+	fmt.Println(env.MaskKey("DB_PASSWORD")) // [MASKED]
+	fmt.Println(env.MaskKey("API_KEY"))     // [MASKED]
+	fmt.Println(env.MaskKey("TOKEN"))       // [MASKED]
+	fmt.Println(env.MaskKey("AB"))          // [MASKED]
+	fmt.Println(env.MaskKey("XYZ"))         // [MASKED]
 }
 ```
 
 :::warning Combining with MaskValue
-`MaskKey` only takes the first 2 characters of the key name, so `DB_HOST` and `DB_PASSWORD` both become `DB***`. If you need to distinguish them in logs, output alongside `MaskValue`, or only use `MaskKey` alone when the key name doesn't matter.
+`MaskKey` returns the fixed `[MASKED]`, so `DB_HOST` and `DB_PASSWORD` both become the same mask and cannot be distinguished. If you need to tell them apart in logs, output alongside `MaskValue`, or only use `MaskKey` alone when the key name doesn't matter.
 :::
 
 ### MaskSensitiveInString
@@ -308,15 +307,15 @@ Output:
 === Startup Config (masked) ===
 PORT            = 8080
 DB_HOST         = localhost
-DB_PASSWORD     = [MASKED:16 chars]
-API_KEY         = [MASKED:24 chars]
+DB_PASSWORD     = [MASKED]
+API_KEY         = [MASKED]
 
 === Error Log (auto-masked) ===
 failed to connect: user=admin password=[MASKED] host=db.local
 
 === Sensitive Key List (key names masked) ===
-Sensitive config: DB***
-Sensitive config: AP***
+Sensitive config: [MASKED]
+Sensitive config: [MASKED]
 ```
 
 ## Relationship with SecureValue

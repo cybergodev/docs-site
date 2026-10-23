@@ -13,11 +13,11 @@ HTML library errors fall into the following categories:
 
 | Category | Sentinel Errors | Description |
 |----------|----------------|-------------|
-| Input errors | `ErrInputTooLarge`, `ErrInvalidHTML` | Input content issues |
+| Input errors | `ErrInputTooLarge`, `ErrInvalidHTML`, `ErrBatchTooLarge` | Input content issues |
 | Config errors | `ErrInvalidConfig`, `ErrMultipleConfigs` | Configuration issues |
 | File errors | `ErrFileNotFound`, `ErrInvalidFilePath` | File operation issues |
 | Processing errors | `ErrProcessingTimeout`, `ErrMaxDepthExceeded` | Processing issues |
-| System errors | `ErrProcessorClosed`, `ErrInternalPanic` | Internal state issues |
+| System errors | `ErrProcessorClosed`, `ErrInternalPanic`, `ErrTooManyConcurrentOps` | Internal state issues |
 
 ## errors.Is Pattern
 

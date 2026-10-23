@@ -54,7 +54,7 @@ type CoreLogger interface {
 
 ## LevelLogger
 
-Extends `CoreLogger` with level-management capabilities.
+`LevelLogger` extends `CoreLogger` with level-management capabilities.
 
 ```go
 type LevelLogger interface {
@@ -73,7 +73,7 @@ type LevelLogger interface {
 
 ## ConfigurableLogger
 
-Extends `CoreLogger` with configuration, lifecycle, Writer, context-extractor, hook, and sampling management.
+`ConfigurableLogger` extends `CoreLogger` with configuration, lifecycle, Writer, context-extractor, hook, and sampling management.
 
 ```go
 type ConfigurableLogger interface {
@@ -116,7 +116,7 @@ type ConfigurableLogger interface {
 
 ## LogProvider
 
-The complete logger interface, defining all methods on its own (a flat interface that embeds no other interface). The `Logger` type implements this interface.
+`LogProvider` is the complete logger interface, defining all methods on its own (a flat interface that embeds no other interface). The `Logger` type implements this interface.
 
 ```go
 type LogProvider interface {
@@ -224,7 +224,7 @@ These methods are documented on the [Logger](./logger) page.
 
 ## Flusher
 
-Writer flush interface. Writers implementing this interface are invoked during `Logger.Flush()` and are flushed before `Logger.Close()` closes them (buffered data is not lost even if the writer does not implement io.Closer).
+`Flusher` is the Writer flush interface. Writers implementing it are invoked during `Logger.Flush()` and are flushed before `Logger.Close()` closes them (buffered data is not lost even if the writer does not implement io.Closer).
 
 ```go
 type Flusher interface {

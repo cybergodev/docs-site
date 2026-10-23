@@ -40,7 +40,7 @@ URL=$HOST:8080
 | Syntax | Description |
 |--------|-------------|
 | `${VAR:-default}` | If VAR doesn't exist, use default |
-| `${VAR:=default}` | If VAR doesn't exist, use default (same as `:-`) |
+| `${VAR:=default}` | If VAR doesn't exist, use default and assign it back to the variable |
 | `${VAR:?error}` | If VAR doesn't exist or is empty, return error |
 
 :::warning Self-reference restriction
@@ -78,20 +78,18 @@ DB_URL=${DB_HOST}:${DB_PORT:-5432}
 
 ---
 
-### `${VAR:=default}` - Use Default Value
+### `${VAR:=default}` - Use Default Value and Assign Back
 
-Behaves the same as `${VAR:-default}`, using the default value when the variable doesn't exist:
+The difference from `${VAR:-default}` is that `:=` **assigns** the expanded default value back to the variable — the write-back is visible to subsequent references within the same file and appears in the map after loading; variables that already exist (from the file or the process environment) are not reassigned.
 
 ```bash
-# When DEBUG is undefined, use "false"
-DEBUG_VALUE=${DEBUG:=false}
-
-# When CACHE_TTL is undefined, use default value
-CACHE_TTL_VALUE=${CACHE_TTL:=3600}
+# ASSIGNED is written back as "created" when undefined, and B expands to "created"
+B=${ASSIGNED:=created}
+# Result: B="created" and ASSIGNED="created"
 ```
 
 :::info Relation to `:-`
-`${VAR:=default}` behaves exactly the same as `${VAR:-default}` in this library. When the variable doesn't exist, the default value is used as the expansion result. `:=` does not write the default value back to variable storage.
+`${VAR:-default}` only returns the default value without writing it back; `${VAR:=default}` both returns the default value and **assigns it back** to the variable store when the variable doesn't exist (the write-back is visible to later references within the same file and to `Get`/`Apply`, processed deterministically by key-name sort order). If the variable already exists (whether from the file or the process environment), `:=` does not reassign it and behaves as returning the original value.
 :::
 
 ---
@@ -268,28 +266,26 @@ func main() {
 
 ## Expansion Scope (Security Isolation)
 
-By default, variable expansion resolves references file-first, then process environment — when `${VAR}` is not found in the file, lookup falls back to the process environment (`os.LookupEnv`). This matches traditional dotenv semantics, but it becomes a risk when the configuration file comes from a **not fully trusted source** (user uploads, files delivered by external systems): a file containing `${AWS_SECRET_ACCESS_KEY}` can capture unrelated process secrets into variable values, which may then leak out through logging, serialization, or export operations.
-
-`ParsingConfig.ExpansionScope` controls this behavior:
+`ParsingConfig.ExpansionScope` controls which scopes `${VAR}` references can resolve against. `ExpansionFileThenProcess` is the **zero value** of the Go `iota` enum (`= iota`), but what users actually get at runtime comes from `DefaultConfig()` — `New()` applies `DefaultConfig()` to a zero-valued `Config`, and `DefaultConfig()` explicitly sets `ExpansionScope` to `ExpansionFileOnly` (SEC-003, blocking the `${VAR}` fallback to process-environment reads by default). Therefore **the runtime default = FileOnly**: the "zero value" and the "DefaultConfig default" are two different things.
 
 | Value | Behavior | Use case |
 |-------|----------|----------|
-| `ExpansionFileThenProcess` (default) | File-local variables first, process environment fallback | Trusted config files, traditional dotenv semantics |
-| `ExpansionFileOnly` | Only file-local variables are visible; process-environment references expand to empty strings | Untrusted config sources, secret probing prevention (SEC-03) |
+| `ExpansionFileOnly` (runtime default) | Only file-local variables are visible; process-environment references expand to empty strings | Default behavior; secret probing prevention (SEC-03) |
+| `ExpansionFileThenProcess` (enum zero value) | File-local variables first, process environment fallback | Only when set explicitly, for trusted config files and traditional dotenv semantics |
 
 <!-- check-code: skip -->
 ```go
 cfg := env.DefaultConfig()
-// Only allow references to file-local variables; block process-environment reads
+// DefaultConfig already defaults to ExpansionFileOnly; this is an explicit declaration
 cfg.ExpansionScope = env.ExpansionFileOnly
 loader, _ := env.New(cfg)
 ```
 
 ::: warning SEC-03
-`ExpansionFileOnly` is the security switch that prevents configuration files from "harvesting" process secrets. If your application loads externally provided configuration files, keep this scope enabled at all times.
+`DefaultConfig()` defaults the expansion scope to `ExpansionFileOnly` — `${VAR}` references resolve only within the file, blocking fallback reads from the process environment. If your application loads externally provided configuration files, keep this default and do not explicitly switch back to `ExpansionFileThenProcess`.
 :::
 
-Note: `ExpansionScope` is an enum, not a boolean field. Even if it is the only field set on a `Config`, `IsZero()` correctly recognizes the Config as initialized and it will not be silently replaced by defaults.
+Note: `ExpansionScope` is an enum, not a boolean field. Even if it is the only field set on a `Config`, `IsZero()` correctly recognizes the Config as initialized and it will not be silently replaced by defaults. But distinguish the "enum zero value" from the "DefaultConfig default": `ExpansionFileThenProcess` is the enum zero value, while `DefaultConfig()` explicitly sets `ExpansionFileOnly` — the two are not the same.
 
 ## Related Documentation
 

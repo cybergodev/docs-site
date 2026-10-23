@@ -274,24 +274,23 @@ type RetryPolicy interface {
 }
 ```
 
-:::warning 内部类型限制
-`RetryPolicy.ShouldRetry` 的 `resp` 参数类型 ResponseReader 是内部接口（定义在 `internal/types` 包中），外部包无法直接引用。因此自定义 `RetryPolicy` 只能在 `github.com/cybergodev/httpc` 模块内部实现。大多数场景下，通过 `RetryConfig` 字段和 `ProxyRotateOnStatus` 配置即可满足需求，无需自定义策略。
+:::tip 类型已公开导出
+`RetryPolicy.ShouldRetry` 的 `resp` 参数类型 `ResponseReader` 已由 `httpc` 包通过公开类型别名导出（`httpc.ResponseReader`），外部包可直接引用。自定义 `RetryPolicy` 可在任何业务包中实现，无需局限在 `github.com/cybergodev/httpc` 模块内部。当然，大多数场景下通过 `RetryConfig` 字段和 `ProxyRotateOnStatus` 配置即可满足需求，无需自定义策略。
 :::
 
-以下示例展示了仅重试 GET 请求的自定义策略（仅可在模块内部编译）：
+以下示例展示了仅重试 GET 请求的自定义策略，可在任何导入 `httpc` 的业务包中直接使用：
 
 <!-- check-code: skip -->
 ```go
-// 注意：ResponseReader 是内部类型（internal/types 包）。
-// 此代码仅能在 github.com/cybergodev/httpc 模块内部编译。
-// 大多数用户应通过 RetryConfig 和 WithMaxRetries 配置重试。
+// ResponseReader 已由 httpc 包公开导出（httpc.ResponseReader）。
+// 本示例可在任何导入 github.com/cybergodev/httpc 的业务包中直接编译。
 
 // GETOnlyRetryPolicy 仅对 GET 请求重试，且仅在网络错误和 502/503/504 时重试
 type GETOnlyRetryPolicy struct {
     maxAttempts int
 }
 
-func (p *GETOnlyRetryPolicy) ShouldRetry(resp ResponseReader, err error, attempt int) bool {
+func (p *GETOnlyRetryPolicy) ShouldRetry(resp httpc.ResponseReader, err error, attempt int) bool {
     if attempt >= p.maxAttempts {
         return false
     }

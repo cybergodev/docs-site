@@ -1,6 +1,6 @@
 ---
 title: "重定向 - CyberGo HTTPC | 跟随控制与安全白名单"
-description: "HTTPC 重定向指南：自动跟随与 10 次上限、WithFollowRedirects/WithMaxRedirects 请求级控制、RedirectChain 链路追踪、301/302/303/307/308 方法语义、凭据剥离与 RedirectWhitelist 白名单防开放重定向。"
+description: "HTTPC 重定向指南：自动跟随与 10 次上限、WithFollowRedirects/WithMaxRedirects 请求级控制、RedirectChain 链路追踪、301-308 方法语义、凭据剥离、SensitiveHeaders 自定义凭据头与 RedirectWhitelist 白名单防开放重定向。"
 sidebar_label: "重定向"
 sidebar_position: 30
 ---
@@ -71,18 +71,18 @@ func main() {
 
 | 层级 | 配置 | 作用范围 |
 |------|------|----------|
-| 客户端级 | `Config.Defaults.FollowRedirects` / `MaxRedirects` | 整个客户端的所有请求 |
+| 客户端级 | `Config.Security.FollowRedirects` / `MaxRedirects` | 整个客户端的所有请求 |
 | 请求级 | `WithFollowRedirects(bool)` / `WithMaxRedirects(n)` | 单次请求，覆盖客户端配置 |
 | 预设 | `SecureConfig()`、`MinimalConfig()`（均置 `FollowRedirects=false`） | 安全/极简场景默认不跟随 |
 
 ### 客户端级
 
-`Config.Defaults`（`RequestDefaults`）为整个客户端设置重定向策略：
+`Config.Security`（`SecurityConfig`）为整个客户端设置重定向策略：
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Defaults.FollowRedirects = true  // 默认：跟随
-cfg.Defaults.MaxRedirects = 5        // 默认：10
+cfg.Security.FollowRedirects = true  // 默认：跟随
+cfg.Security.MaxRedirects = 5        // 默认：10
 
 client, err := httpc.New(cfg)
 ```
@@ -105,7 +105,7 @@ result, err = httpc.Get(url, httpc.WithMaxRedirects(3))
 ```
 
 :::warning MaxRedirects(0) 不是禁用
-`0` 是「未设置」哨兵值——引擎回退到默认值 10，而不是禁止重定向。要禁止跟随，用 `WithFollowRedirects(false)` 或 `Config.Defaults.FollowRedirects = false`。
+`0` 是「未设置」哨兵值——引擎回退到默认值 10，而不是禁止重定向。要禁止跟随，用 `WithFollowRedirects(false)` 或 `Config.Security.FollowRedirects = false`。
 :::
 
 :::tip SecureConfig 默认禁止重定向
@@ -164,7 +164,11 @@ func main() {
 | `Authorization` | 保留 | 删除 |
 | `Proxy-Authorization` | 保留 | 删除 |
 | `Cookie` | 保留 | 删除 |
-| 其他自定义头 | 保留 | 保留 |
+| `X-Api-Key` | 保留 | 删除 |
+| `X-Auth-Token` | 保留 | 删除 |
+| 其他自定义头（未列入 `Security.SensitiveHeaders` 时） | 保留 | 保留 |
+
+内置剥离集共**五个**请求头：net/http 自身只覆盖前三个（`Authorization` / `Proxy-Authorization` / `Cookie`），HTTPC 额外把 `X-Api-Key` 与 `X-Auth-Token` 也纳入了跨域剥离。
 
 判定细节：
 
@@ -172,6 +176,25 @@ func main() {
 - 剥离独立于 cookie jar：即使未启用 `EnableCookies`，手工设置的 `Cookie` 请求头在跨域跳转时同样被删除。
 
 配合 `WithBasicAuth` / `WithBearerToken` 使用时无需额外处理——令牌只发往原始主机，不会随跳转带给第三方域。
+
+### 自定义凭据头：SensitiveHeaders
+
+业务专用的凭据头（如 `X-Secret-Key`）不在内置剥离集内——不额外配置时，它会**原样转发**给 `Location` 指向的任意目标，构成开放重定向凭据泄漏（CWE-525）。`Security.SensitiveHeaders` 把这类自定义凭据头追加进跨域剥离集：
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.SensitiveHeaders = []string{"X-Secret-Key", "X-Internal-Token"}
+
+client, err := httpc.New(cfg)
+```
+
+- 条目匹配大小写不敏感（内部按规范化头名比较）且自动去重；
+- 内置五个敏感头（上表前五行）**始终剥离**，与该字段是否设置无关；
+- 字段级参考见[配置 API](../api-reference/client-config/config)。
+
+:::warning 脱敏掩码不覆盖 SensitiveHeaders
+`Result.String()` 与审计输出的脱敏掩码只覆盖**内置**敏感头名——`SensitiveHeaders` 列出的头在这些输出中仍以明文可见。排查日志与审计泄漏时请注意这一差异。
+:::
 
 ## 环形重定向检测
 
@@ -208,7 +231,7 @@ import (
 
 func main() {
 	cfg := httpc.DefaultConfig()
-	cfg.Defaults.MaxRedirects = 2 // 只允许跟随 2 次
+	cfg.Security.MaxRedirects = 2 // 只允许跟随 2 次
 
 	client, err := httpc.New(cfg)
 	if err != nil {
@@ -269,7 +292,7 @@ import (
 
 func main() {
 	cfg := httpc.DefaultConfig()
-	cfg.Defaults.FollowRedirects = false
+	cfg.Security.FollowRedirects = false
 
 	client, err := httpc.New(cfg)
 	if err != nil {

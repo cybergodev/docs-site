@@ -221,13 +221,13 @@ func main() {
 | `FloatPrecision` | `int` | 浮点精度（`-1` 为默认） |
 | `IncludeNulls` | `bool` | 是否包含空值字段 |
 
-## 未连接的扩展字段（预留）
+## 已废弃的扩展字段
 
-::: warning 未连接的扩展字段
-`Config.CustomEncoder`（`CustomEncoder` 接口）与 `Config.CustomTypeEncoders`（`TypeEncoder` 接口）在当前版本中**已声明并参与配置克隆与缓存键计算，但尚未在编码流水线中挂接**。设置这两个字段**不会改变编码输出**。它们是为未来版本预留的扩展点；在此之前，请使用上文 `MarshalJSON`/`MarshalText`/`CustomEscapes` 等已生效的机制。
+::: warning 已废弃的扩展字段
+`Config.CustomEncoder`（`CustomEncoder` 接口）与 `Config.CustomTypeEncoders`（`TypeEncoder` 接口）**已废弃**（源码标注 Deprecated）：二者已声明并参与配置克隆与缓存键计算，但**从未被编码流水线调用**，设置后不会改变编码输出；内置编码器不可替换。两者在 v1 生命周期内保留。编码定制请使用上文 `MarshalJSON`/`MarshalText`/`CustomEscapes` 等已生效的机制。
 
 ```go
-// 当前版本：以下两个字段已声明但未挂接，设置后无效果（预留接口）
+// 已废弃：以下两个字段已声明但不挂接，设置后无效果
 type CustomEncoder interface {
     Encode(value any) (string, error)
 }

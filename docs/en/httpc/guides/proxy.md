@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Proxy & Proxy Pool"
 title: "Proxy & Proxy Pool - CyberGo HTTPC | Proxy Config & Rotation"
-description: "HTTPC proxy guide: HTTP/HTTPS/SOCKS5 single proxy, system proxy with NO_PROXY, pool strategies, circuit breaking, cooldown recovery, per-request rotation."
+description: "HTTPC proxy guide: HTTP/HTTPS/SOCKS5 proxy, system proxy with NO_PROXY, pool strategies, circuit breaking, EnableProxyPoolHTTP2 HTTP/2, per-request rotation."
 sidebar_position: 100
 ---
 
@@ -329,6 +329,54 @@ Status-code rotation retries differ from ordinary retries: the engine reserves a
 
 In addition, connection failures of the proxy itself (dial/TLS failures) are **always retryable** while rotation is active — even when the regular classification says non-retryable (e.g. a permanent address error), the next attempt switches proxies and tries again, and passive circuit breaking naturally weeds out bad proxies. For the retry-side details, see [Retry and Fault Tolerance](./retry-fault-tolerance).
 
+### Proxy Pools and HTTP/2 (`EnableProxyPoolHTTP2`)
+
+While a multi-proxy pool is active (`ProxyPool` with more than one entry and no `ProxyURL`), HTTP/2 is **automatically disabled** and the pool is forced onto HTTP/1.1. The reason lies in net/http's connection-reuse model: the h2 connection pool is keyed by target host only, so with several proxies sharing one pool, every request gets pinned to whichever proxy's tunnel connected first — rotation and load dispersion are silently bypassed, and hard to notice. On HTTP/1 every new connection re-consults the pool, so rotation stays reliable.
+
+`Connection.EnableProxyPoolHTTP2 = true` restores HTTP/2 for the pool: each proxy gets its **own transport** (its own h2 connection pool) behind a per-request dispatcher. Rotation, `ProxyRotateOnStatus`, circuit breaking, and `Meta.ProxyURL` reporting behave exactly as with the default forced HTTP/1; the only difference is that concurrent requests routed to the **same proxy** multiplex over one HTTP/2 tunnel instead of each opening an HTTP/1 connection.
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/cybergodev/httpc"
+)
+
+func main() {
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	// EnableHTTP2 is already true (DefaultConfig) — the prerequisite for this flag
+	cfg.Connection.EnableProxyPoolHTTP2 = true
+
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
+
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Output: status: 200, proxy: http://proxy1:8080, protocol: HTTP/2.0
+	log.Printf("status: %d, proxy: %s, protocol: %s",
+		result.StatusCode(), result.Meta.ProxyURL, result.Proto())
+}
+```
+
+:::warning Two trade-offs
+- **Request correlation**: requests routed to the same proxy share that proxy's connections — **including concurrent ones** (an in-flight tunnel is joined by the next same-proxy request), which correlates them at the network level. Leave this off when requests must not be correlatable; `ProxyRotatePerRequest` does **not** prevent the sharing — rotation indexes repeat every pool-size requests, and its idle-connection drain only reaches connections that are no longer in flight.
+- **Connection-limit multiplication**: `MaxConnsPerHost` and the derived per-host idle limit apply per proxy transport; the process-wide ceiling becomes limit × pool size (total dials are still capped by the engine-level global limit).
+:::
+
+Validation and exception: the field requires `Connection.EnableHTTP2 = true` (the default), otherwise `New()` returns `ErrInvalidConnection` outright; the `Security.TLSFingerprint` path ignores it — the fingerprint stack ships its own per-proxy backends and supports HTTP/2 natively. For the field-level reference see the [Configuration API](../api-reference/client-config/config#proxy-pool-and-http-2-enableproxypoolhttp2).
+
 ## Finding Out Which Proxy a Request Used
 
 Proxy-pool setups often need to audit "which egress this request actually used". Two tools work together:
@@ -417,6 +465,7 @@ Relationship with TLS: an HTTPS request through an HTTP proxy's CONNECT tunnel i
 | System proxy not detected | Environment variables missing and platform settings off | Verify `HTTP_PROXY`/`HTTPS_PROXY` or the system proxy switch |
 | Localhost proxy blocked by SSRF | The system proxy's exemption list is probed only at construction | Set `Connection.ProxyURL` explicitly (always exempt) or configure `SSRFExemptCIDRs` |
 | Was the proxy circuit-broken after a 403 switch? | Mistakenly assuming status codes trigger circuit breaking | No — status-code rotation never breaks a proxy; only connection-level failures do |
+| Why is the pool running HTTP/1.1? | A multi-proxy pool forces HTTP/1 by default, preventing the shared h2 pool from pinning every request to the first proxy | Set `Connection.EnableProxyPoolHTTP2 = true` when you need multiplexing (requires `EnableHTTP2`) — see [Proxy Pools and HTTP/2](#proxy-pools-and-http-2-enableproxypoolhttp2) |
 | `Meta.ProxyURL` always empty | Only the system proxy is in effect — `EnableSystemProxy` is not recorded in this field | Use an explicit `ProxyURL` or `ProxyPool` when you need to observe the egress |
 
 For the complete field reference, see [Configuration API — Proxy Pool](../api-reference/client-config/config#proxy-pool).

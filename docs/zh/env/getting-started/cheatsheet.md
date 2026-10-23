@@ -186,7 +186,7 @@ env.ClearBytes(sensitiveData)
 clean := env.SanitizeForLog(msg)
 
 // 键名掩码
-masked := env.MaskKey("DB_PASSWORD")  // "DB***"
+masked := env.MaskKey("DB_PASSWORD")  // "[MASKED]"
 ```
 
 ## 多环境
@@ -253,11 +253,11 @@ DURATION=1h30m
 
 | 限制项 | 默认值 | 硬性上限 |
 |--------|--------|----------|
-| 文件大小 | 2 MB | 100 MB |
-| 行长度 | 1 KB | 64 KB |
-| 键长度 | 64 | 1024 |
-| 值长度 | 4 KB | 1 MB |
-| 变量数 | 500 | 10000 |
+| 文件大小 | 8 MB | 100 MB |
+| 行长度 | 8 KB | 64 KB |
+| 键长度 | 128 | 1024 |
+| 值长度 | 8 KB | 1 MB |
+| 变量数 | 1000 | 10000 |
 | 展开深度 | 5 | 20 |
 
 ## 测试

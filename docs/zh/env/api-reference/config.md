@@ -90,6 +90,7 @@ type ParsingConfig struct {
     AllowYamlSyntax   bool            // 允许 YAML 风格值
     ExpandVariables   bool            // 是否展开 ${VAR} 引用
     ExpansionScope    ExpansionScope  // ${VAR} 引用可解析的作用域
+    DuplicateKeyPolicy DuplicateKeyPolicy // 单文档内重复键解析策略
 }
 
 // ComponentConfig 自定义组件和高级选项
@@ -100,9 +101,86 @@ type ComponentConfig struct {
     FileSystem      FileSystem       // 自定义文件系统（用于测试）
     AuditHandler    AuditHandler     // 自定义审计处理器
     AuditEnabled    bool             // 启用审计日志
+    AuditFailClosed  bool             // 审计事件丢失时使操作失败
     Prefix          string           // 只处理带有此前缀的变量
 }
 ```
+
+### 字段速查（限定名）
+
+七个嵌入段以 `Config.FileConfig`、`Config.ValidationConfig`、`Config.LimitsConfig`、`Config.JSONConfig`、`Config.YAMLConfig`、`Config.ParsingConfig`、`Config.ComponentConfig` 暴露。下表按段列出全部字段的限定名、默认值与一句话说明，详细语义见「配置字段」一节的对应小节。
+
+**`FileConfig`（文件加载）**
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `FileConfig.Filenames` | `[".env"]` | 要加载的文件列表 |
+| `FileConfig.FailOnMissingFile` | `false` | 文件不存在时报错（否则静默跳过） |
+| `FileConfig.OverwriteExisting` | `false` | 是否覆盖已存在的变量 |
+| `FileConfig.AutoApply` | `false` | 加载后自动应用到进程环境 |
+
+**`ValidationConfig`（键值验证）**
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `ValidationConfig.RequiredKeys` | `nil` | 必需键列表，由 `Validate` 检查 |
+| `ValidationConfig.AllowedKeys` | `nil` | 键白名单（空 = 全部允许） |
+| `ValidationConfig.ForbiddenKeys` | `nil` | 额外禁止键（叠加内置列表） |
+| `ValidationConfig.KeyPattern` | `nil` | 自定义键名正则（nil = 快速字节级校验） |
+| `ValidationConfig.ValidateValues` | `true` | 值安全性检查（控制字符、空字节等） |
+| `ValidationConfig.ValidateUTF8` | `false` | 值 UTF-8 有效性检查 |
+
+**`LimitsConfig`（大小与数量限制）**
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `LimitsConfig.MaxFileSize` | 8MB | 单文件最大字节数（硬上限 100MB） |
+| `LimitsConfig.MaxVariables` | 1000 | 每文件最大变量数（硬上限 10000） |
+| `LimitsConfig.MaxLineLength` | 8192 | 单行最大长度（硬上限 64KB；对所有格式生效） |
+| `LimitsConfig.MaxKeyLength` | 128 | 键名最大长度（硬上限 1024） |
+| `LimitsConfig.MaxValueLength` | 8192 | 值最大长度（硬上限 1MB） |
+| `LimitsConfig.MaxExpansionDepth` | 5 | 变量展开最大深度（硬上限 20） |
+
+**`JSONConfig`（JSON 解析）**
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `JSONConfig.JSONNullAsEmpty` | `true` | `null` 转为空字符串 |
+| `JSONConfig.JSONNumberAsString` | `true` | 数字按规范十进制字符串渲染 |
+| `JSONConfig.JSONBoolAsString` | `true` | 仅为对称保留，对 JSON 输出无效果 |
+| `JSONConfig.JSONMaxDepth` | 16 | 最大嵌套深度（有效范围 1–100） |
+
+**`YAMLConfig`（YAML 解析）**
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `YAMLConfig.YAMLNullAsEmpty` | `true` | `null`/`~` 转为空字符串 |
+| `YAMLConfig.YAMLNumberAsString` | `true` | 数字形标量规范化（`007` → `7`） |
+| `YAMLConfig.YAMLBoolAsString` | `true` | 布尔转字符串（关闭时布尔值报错） |
+| `YAMLConfig.YAMLMaxDepth` | 16 | 最大嵌套深度（有效范围 1–100） |
+
+**`ParsingConfig`（.env 解析行为）**
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `ParsingConfig.AllowExportPrefix` | `true` | 允许 `export KEY=value` 语法 |
+| `ParsingConfig.AllowYamlSyntax` | `false` | .env 值按 YAML 标量语义解析 |
+| `ParsingConfig.ExpandVariables` | `true` | 启用 `${VAR}` 展开（仅作用于 .env） |
+| `ParsingConfig.ExpansionScope` | `ExpansionFileOnly` | 展开引用的可见作用域 |
+| `ParsingConfig.DuplicateKeyPolicy` | `DuplicateKeyInherit` | 单文档内重复键策略 |
+
+**`ComponentConfig`（组件与高级选项）**
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `ComponentConfig.CustomValidator` | `nil` | 自定义键/值验证器 |
+| `ComponentConfig.CustomExpander` | `nil` | 自定义变量展开器 |
+| `ComponentConfig.CustomAuditor` | `nil` | 自定义审计日志器 |
+| `ComponentConfig.FileSystem` | `nil` | 自定义文件系统（nil = `DefaultFileSystem`） |
+| `ComponentConfig.AuditHandler` | `nil` | 审计事件处理器 |
+| `ComponentConfig.AuditEnabled` | `false` | 启用审计日志 |
+| `ComponentConfig.AuditFailClosed` | `false` | 审计事件丢失时使操作失败 |
+| `ComponentConfig.Prefix` | `""` | 只处理带此前缀的变量（ASCII 大小写不敏感） |
 
 ## 配置字段
 
@@ -168,7 +246,7 @@ cfg.ExpandVariables = true
 |------|------|
 | `${VAR}` | 引用变量 |
 | `${VAR:-default}` | 变量不存在时使用默认值（变量存在即使为空也用原值） |
-| `${VAR:=default}` | 同 `${VAR:-default}`（变量不存在时使用默认值，不写回存储） |
+| `${VAR:=default}` | 同 `${VAR:-default}`（变量不存在时使用默认值，并把默认值赋值写回该变量） |
 | `${VAR:?error}` | 变量不存在或为空时报错 |
 
 ::: tip 空字符串的处理
@@ -179,7 +257,7 @@ cfg.ExpandVariables = true
 
 #### `MaxFileSize` int64
 
-单文件最大字节数。**默认 2MB**，硬性上限 100MB。
+单文件最大字节数。**默认 8MB**，硬性上限 100MB。
 
 ```go
 cfg.MaxFileSize = 10 * 1024 * 1024 // 10 MB
@@ -187,13 +265,13 @@ cfg.MaxFileSize = 10 * 1024 * 1024 // 10 MB
 
 | 配置 | 默认值 | 硬性上限 |
 |------|--------|----------|
-| `MaxFileSize` | 2MB (2097152) | 100MB |
+| `MaxFileSize` | 8MB (8388608) | 100MB |
 
 ---
 
 #### `MaxLineLength` int
 
-单行最大长度。**默认 1024**，硬性上限 64KB。
+单行最大长度。**默认 8192**，硬性上限 64KB。对**所有格式**生效（含 JSON/YAML）：压缩成单行的 JSON 文档按一行计，必须落在此限制内——硬上限 64KB 无法仅靠调大配置突破，请改用格式化输出。
 
 ```go
 cfg.MaxLineLength = 2048
@@ -201,13 +279,13 @@ cfg.MaxLineLength = 2048
 
 | 配置 | 默认值 | 硬性上限 |
 |------|--------|----------|
-| `MaxLineLength` | 1024 | 65536 (64KB) |
+| `MaxLineLength` | 8192 | 65536 (64KB) |
 
 ---
 
 #### `MaxKeyLength` int
 
-键名最大长度。**默认 64**，硬性上限 1024。
+键名最大长度。**默认 128**，硬性上限 1024。
 
 ```go
 cfg.MaxKeyLength = 128
@@ -215,13 +293,13 @@ cfg.MaxKeyLength = 128
 
 | 配置 | 默认值 | 硬性上限 |
 |------|--------|----------|
-| `MaxKeyLength` | 64 | 1024 |
+| `MaxKeyLength` | 128 | 1024 |
 
 ---
 
 #### `MaxValueLength` int
 
-值最大长度。**默认 4096**，硬性上限 1MB。
+值最大长度。**默认 8192**，硬性上限 1MB。
 
 ```go
 cfg.MaxValueLength = 8192
@@ -229,13 +307,13 @@ cfg.MaxValueLength = 8192
 
 | 配置 | 默认值 | 硬性上限 |
 |------|--------|----------|
-| `MaxValueLength` | 4096 | 1048576 (1MB) |
+| `MaxValueLength` | 8192 | 1048576 (1MB) |
 
 ---
 
 #### `MaxVariables` int
 
-每文件最大变量数。**默认 500**，硬性上限 10000。
+每文件最大变量数。**默认 1000**，硬性上限 10000。
 
 ```go
 cfg.MaxVariables = 1000
@@ -243,7 +321,7 @@ cfg.MaxVariables = 1000
 
 | 配置 | 默认值 | 硬性上限 |
 |------|--------|----------|
-| `MaxVariables` | 500 | 10000 |
+| `MaxVariables` | 1000 | 10000 |
 
 ---
 
@@ -372,7 +450,7 @@ cfg.JSONNullAsEmpty = true
 
 #### `JSONNumberAsString` bool
 
-JSON 数字转为字符串。**默认 `true`**。
+JSON 数字按规范十进制字符串渲染（`8080`、`0.5`）。**默认 `true`**。关闭时数字仍会加载，但按 Go 默认浮点格式渲染（如 1e21 变为 `1e+21`）——数字在任何设置下都不会被拒绝。
 
 ```go
 cfg.JSONNumberAsString = true
@@ -382,7 +460,7 @@ cfg.JSONNumberAsString = true
 
 #### `JSONBoolAsString` bool
 
-JSON 布尔值转为字符串。**默认 `true`**。
+仅为与 `YAMLBoolAsString` 对称而保留，**对 JSON 输出没有实际效果**：JSON 布尔解码后没有可保留的原始文本，始终渲染规范的 `true`/`false`。不要依赖它控制 JSON 布尔行为。**默认 `true`**。
 
 ```go
 cfg.JSONBoolAsString = true
@@ -392,7 +470,7 @@ cfg.JSONBoolAsString = true
 
 #### `JSONMaxDepth` int
 
-JSON 最大嵌套深度。**默认 10**。
+JSON 最大嵌套深度。**默认 16**。
 
 ```go
 cfg.JSONMaxDepth = 20
@@ -412,7 +490,7 @@ cfg.YAMLNullAsEmpty = true
 
 #### `YAMLNumberAsString` bool
 
-YAML 数字转为字符串。**默认 `true`**。
+YAML 数字形标量规范化渲染（`007` 变为 `7`）。**默认 `true`**。关闭时标量按书写原样保留；值在任何设置下都不会被拒绝。
 
 ```go
 cfg.YAMLNumberAsString = true
@@ -432,7 +510,7 @@ cfg.YAMLBoolAsString = true
 
 #### `YAMLMaxDepth` int
 
-YAML 最大嵌套深度。**默认 10**。
+YAML 最大嵌套深度。**默认 16**。
 
 ```go
 cfg.YAMLMaxDepth = 15
@@ -461,6 +539,15 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ::: tip 详见
 [审计日志](../guides/audit-logging) 获取完整审计配置说明。
 :::
+
+#### `AuditFailClosed` bool
+
+启用审计后，丢失的审计事件（处理器报错、panic、或满通道丢事件）会使**产生该事件的操作**返回错误（匹配 `ErrAuditFailed`），从 `LoadFiles`/`Apply`/`Set`/`Delete` 表面化，而非静默丢弃。内置审计器闩锁首个失败；自定义 `CustomAuditor` 通过实现 `TakeFailure() error` 参与。默认 `false`（fail-open，操作结果不依赖审计管线）。
+
+```go
+cfg := env.ProductionConfig()
+cfg.AuditFailClosed = true // 审计事件丢失时，产生它的操作返回 ErrAuditFailed
+```
 
 ### 高级选项
 
@@ -533,11 +620,11 @@ func DefaultConfig() Config
 | `OverwriteExisting` | `false` |
 | `AutoApply` | `false` |
 | `ExpandVariables` | `true` |
-| `MaxFileSize` | 2MB |
-| `MaxLineLength` | 1024 |
-| `MaxKeyLength` | 64 |
-| `MaxValueLength` | 4096 |
-| `MaxVariables` | 500 |
+| `MaxFileSize` | 8MB |
+| `MaxLineLength` | 8192 |
+| `MaxKeyLength` | 128 |
+| `MaxValueLength` | 8192 |
+| `MaxVariables` | 1000 |
 | `MaxExpansionDepth` | 5 |
 | `ValidateValues` | `true` |
 | `KeyPattern` | `nil` (快速验证) |
@@ -546,11 +633,11 @@ func DefaultConfig() Config
 | `JSONNullAsEmpty` | `true` |
 | `JSONNumberAsString` | `true` |
 | `JSONBoolAsString` | `true` |
-| `JSONMaxDepth` | 10 |
+| `JSONMaxDepth` | 16 |
 | `YAMLNullAsEmpty` | `true` |
 | `YAMLNumberAsString` | `true` |
 | `YAMLBoolAsString` | `true` |
-| `YAMLMaxDepth` | 10 |
+| `YAMLMaxDepth` | 16 |
 | `ValidateUTF8` | `false` |
 | `AuditEnabled` | `false` |
 | `Prefix` | `""` |
@@ -637,8 +724,8 @@ loader, _ := env.New(cfg)
 | 文件不存在时报错 | ✗ | ✗ | ✗ | ✓ |
 | 审计日志 | ✗ | ✗ | ✗ | ✓ |
 | YAML 语法 | ✗ | ✓ | ✗ | ✗ |
-| 文件大小限制 | 2MB | 10MB | 64KB | 64KB |
-| 最大变量数 | 500 | 500 | 50 | 50 |
+| 文件大小限制 | 8MB | 10MB | 64KB | 64KB |
+| 最大变量数 | 1000 | 1000 | 50 | 50 |
 | 禁止键检查 | ✓ | ✓ | ✓ | ✓ |
 | 值验证 | ✓ | ✓ | ✓ | ✓ |
 
@@ -651,6 +738,8 @@ loader, _ := env.New(cfg)
 ---
 
 ## 方法
+
+Config 提供两个方法：`Config.Validate` 与 `Config.IsZero`。
 
 ### Validate
 
@@ -787,9 +876,9 @@ loader, _ := env.New(cfg)
 | `AllowExportPrefix` | true | true | true | true |
 | `AllowYamlSyntax` | false | **true** | false | false |
 | `ExpandVariables` | true | true | true | true |
-| `MaxFileSize` | 2 MB | 10 MB | 64 KB | 64 KB |
-| `MaxVariables` | 500 | 500 | 50 | 50 |
-| `JSONMaxDepth`/`YAMLMaxDepth` | 10 | 10 | 10 | 10 |
+| `MaxFileSize` | 8 MB | 10 MB | 64 KB | 64 KB |
+| `MaxVariables` | 1000 | 1000 | 50 | 50 |
+| `JSONMaxDepth`/`YAMLMaxDepth` | 16 | 16 | 16 | 16 |
 | `AuditEnabled` | false | false | false | **true** |
 
 要点：`DevelopmentConfig` 放宽的是**便利性**（覆盖、YAML 语法、文件大小），值校验始终开启——任何预设都不会牺牲注入防护。
@@ -801,7 +890,7 @@ loader, _ := env.New(cfg)
 | 键名模式 | 内置字节级校验（等价 `^[A-Za-z][A-Za-z0-9_]*$`） |
 | `ValidateValues` | true |
 | `JSONNullAsEmpty`/`JSONNumberAsString`/`JSONBoolAsString` | true |
-| `ExpandVariables` | true（作用域 `ExpansionFileThenProcess`） |
+| `ExpandVariables` | true（作用域 `ExpansionFileOnly`） |
 | `Prefix` | 空（不过滤） |
 
 ### IsZero 陷阱：始终从 DefaultConfig() 开始改
@@ -832,17 +921,53 @@ cfg.OverwriteExisting = true
 type ExpansionScope int
 
 const (
-    ExpansionFileThenProcess ExpansionScope = iota // 零值（默认）
-    ExpansionFileOnly                              // 仅文件内变量可见
+    ExpansionFileThenProcess ExpansionScope = iota // 枚举零值（非运行时默认）
+    ExpansionFileOnly                              // 仅文件内变量可见（DefaultConfig 默认）
 )
 ```
 
 | 常量 | 语义 |
 |------|------|
-| `ExpansionFileThenProcess` | 零值（默认）。先查文件内变量，缺失时回退进程环境（`os.LookupEnv`），匹配传统 dotenv 语义 |
-| `ExpansionFileOnly` | 仅文件内变量可见，只存在于进程环境的引用展开为空字符串。用于不可信配置文件场景（SEC-03）：阻止 `${VAR}` 引用读取进程环境，防止云凭据、令牌等进程机密被「捕获」进变量值 |
+| `ExpansionFileThenProcess` | 枚举零值（`iota`）。先查文件内变量，缺失时回退进程环境（`os.LookupEnv`），匹配传统 dotenv 语义。**仅在显式设置时生效**——`DefaultConfig()` 并不采用它 |
+| `ExpansionFileOnly` | 仅文件内变量可见，只存在于进程环境的引用展开为空字符串。`DefaultConfig()` 的默认值（SEC-03）：阻止 `${VAR}` 引用读取进程环境，防止云凭据、令牌等进程机密被「捕获」进变量值 |
 
 攻击场景分析与配置示例参见[变量展开指南的「展开作用域」章节](../guides/variable-expansion)。
+
+### DuplicateKeyPolicy（单文档内重复键）
+
+`DuplicateKeyPolicy` 是 int 枚举，控制**单个源文档内**重复键的解析方式（经 `ParsingConfig.DuplicateKeyPolicy` 配置）：
+
+```go
+type DuplicateKeyPolicy = internal.DuplicateKeyPolicy
+
+const (
+    DuplicateKeyInherit   // 零值（默认）：沿用各格式历史行为
+    DuplicateKeyFirstWins // .env/YAML 保留首次出现
+    DuplicateKeyLastWins  // 所有格式均保留末次出现
+    DuplicateKeyError     // 文档含重复键即报错（errors.Is 匹配 ErrDuplicateKey）
+)
+```
+
+| 常量 | 语义 |
+|------|------|
+| `DuplicateKeyInherit` | 零值（默认）。`.env` 跟随 `OverwriteExisting`（false 首次胜出 / true 末次胜出）；YAML 末次胜出；JSON 末次胜出（`encoding/json` 解码顺序） |
+| `DuplicateKeyFirstWins` | `.env` 与 YAML 保留首次出现。JSON 数据（含 YAML 内联 JSON）若经与 `DuplicateKeyError` 相同的预扫描检测到重复键则报错——`encoding/json` 解码时会丢弃较早出现者，策略无法对 JSON 生效；无重复键的 JSON 文档不受影响 |
+| `DuplicateKeyLastWins` | 所有格式均保留末次出现，与 `OverwriteExisting` 无关 |
+| `DuplicateKeyError` | 同一对象/映射（或同一 `.env` 文件）内出现重复键即报错，`errors.Is` 匹配 `ErrDuplicateKey`。JSON 数据经保守的原始字节预扫描检测重复；仅转义拼写不同的等价键无法检出，回退末次胜出 |
+
+**两条不受本策略管辖的行为：**
+
+- **跨文件合并**：遵循文件顺序与 `OverwriteExisting`（默认 false 首次胜出、true 后加载覆盖），本策略不参与。
+- **扁平键冲突始终报错**：YAML/JSON 展平时两个不同源路径塌缩到同一键（如 `a_b: 1` 与 `a: {b: 2}`，或字面 `a_0` 与数组 `a`）一律报错，`errors.Is` 匹配 `ErrDuplicateKey`。
+
+```go
+cfg := env.DefaultConfig()
+cfg.DuplicateKeyPolicy = env.DuplicateKeyError // 重复键报错
+```
+
+大小写说明：YAML/JSON 键展平时转大写，`.env` 键按原样存储，因此仅大小写不同的键（`.env` 的 `db_host` 与 YAML 的 `db: {host: ...}` → `DB_HOST`）不会冲突、可在存储中共存。
+
+`DuplicateKeyPolicy.String` 返回策略的可读名称：`inherit`、`first-wins`、`last-wins`、`error`（未知值返回 `unknown`）。
 
 ## 相关文档
 

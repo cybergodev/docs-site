@@ -300,7 +300,7 @@ func recoverPanic[T any](fn func() (T, error)) (result T, err error) {
 
 ### Goroutine 泄漏防护
 
-`withTimeout` 每次调用会起一个 worker goroutine 等待 deadline。为防止高并发下 goroutine 失控，全局计数器 `activeTimeoutGoroutines` 限制并发上限为 `maxTimeoutGoroutines`（1000）。超限时新请求直接返回 `ErrProcessingTimeout`，而不是无限堆积 goroutine（按每 goroutine ~1MB 栈估算，1000 ≈ 1GB 上限）。
+`withTimeout` 每次调用会起一个 worker goroutine 等待 deadline。为防止高并发下 goroutine 失控，全局计数器 `activeTimeoutGoroutines` 限制并发上限为 `maxTimeoutGoroutines`（1000）。超限时新请求直接返回 `ErrTooManyConcurrentOps`，而不是无限堆积 goroutine（按每 goroutine ~1MB 栈估算，1000 ≈ 1GB 上限）。
 
 ### 审计原始值的日志注入防护
 

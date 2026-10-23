@@ -32,6 +32,7 @@ env 库的完整 API 参考文档。
 |------|------|------|
 | `Load` | 初始化默认加载器 | [包函数](./functions#load) |
 | `LoadWithConfig` | 按配置初始化 | [包函数](./functions#loadwithconfig) |
+| `Overload` | 后加载覆盖初始化 | [包函数](./functions#overload) |
 | `ResetDefaultLoader` | 重置默认加载器 | [包函数](./functions#resetdefaultloader) |
 | `GetString` | 读字符串值 | [包函数](./functions#getstring) |
 | `GetInt` | 读 int64 | [包函数](./functions#getint) |
@@ -53,6 +54,8 @@ env 库的完整 API 参考文档。
 | `Marshal` | 序列化为字符串 | [包函数](./functions#marshal) |
 | `UnmarshalMap` | 解析为 map | [包函数](./functions#unmarshalmap) |
 | `UnmarshalStruct` | 解析到结构体 | [包函数](./functions#unmarshalstruct) |
+| `UnmarshalMapWithConfig` | 带配置解析为 map | [包函数](./functions#unmarshalmapwithconfig) |
+| `UnmarshalStructWithConfig` | 带配置解析到结构体 | [包函数](./functions#unmarshalstructwithconfig) |
 | `UnmarshalInto` | map 填入结构体 | [包函数](./functions#unmarshalinto) |
 | `MarshalStruct` | 结构体转 map | [包函数](./functions#marshalstruct) |
 | `IsMarshalError` | 判断序列化错误 | [包函数](./functions#ismarshalerror) |
@@ -96,6 +99,9 @@ env 库的完整 API 参考文档。
 | `IsZero` | 是否零值配置 | [Config](./config#iszero) |
 | `ExpansionScope` | 展开作用域枚举 | [Config](./config#expansionscope) |
 | `ExpansionFileThenProcess`、`ExpansionFileOnly` | 作用域常量 | [Config](./config#expansionscope) |
+| `DuplicateKeyPolicy` | 单文档重复键枚举 | [Config](./config#duplicatekeypolicy-单文档内重复键) |
+| `DuplicateKeyInherit`、`DuplicateKeyFirstWins`、`DuplicateKeyLastWins`、`DuplicateKeyError` | 重复键策略常量 | [Config](./config#duplicatekeypolicy-单文档内重复键) |
+| `AuditFailClosed` | fail-closed 审计开关 | [Config](./config#auditfailclosed-bool) |
 
 ### 预设、工厂与格式
 
@@ -184,6 +190,7 @@ env 库的完整 API 参考文档。
 | `ErrExpansionDepth` | 展开哨兵 | [常量与错误](./constants#展开错误) |
 | `ErrMaxVariables` | 限制哨兵 | [常量与错误](./constants#限制错误) |
 | `ErrClosed`、`ErrInvalidConfig`、`ErrAlreadyInitialized`、`ErrNotInitialized`、`ErrMissingRequired` | 状态哨兵 | [常量与错误](./constants#状态错误) |
+| `ErrAuditFailed` | 审计失败哨兵 | [常量与错误](./constants#状态错误) |
 | `ErrValidateRequiredUnsupported` | 适配器哨兵 | [常量与错误](./constants#适配器错误) |
 | `ParseError` | 解析错误类型 | [常量与错误](./constants#parseerror) |
 | `ValidationError` | 验证错误类型 | [常量与错误](./constants#validationerror) |

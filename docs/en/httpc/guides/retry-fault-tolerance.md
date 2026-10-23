@@ -260,24 +260,23 @@ type RetryPolicy interface {
 }
 ```
 
-:::warning Internal-type limitation
-The `resp` parameter type of `RetryPolicy.ShouldRetry`, `ResponseReader`, is an internal interface (defined in the `internal/types` package) that external packages cannot reference directly. Therefore a custom `RetryPolicy` can only be implemented inside the `github.com/cybergodev/httpc` module. In most scenarios, the `RetryConfig` fields and `ProxyRotateOnStatus` configuration are sufficient — no custom policy needed.
+:::tip Type publicly exported
+The `resp` parameter type of `RetryPolicy.ShouldRetry`, `ResponseReader`, is exported by the `httpc` package as a public type alias (`httpc.ResponseReader`), so external packages can reference it directly. A custom `RetryPolicy` can be implemented in any business package — no need to stay inside the `github.com/cybergodev/httpc` module. That said, in most scenarios the `RetryConfig` fields and `ProxyRotateOnStatus` configuration are sufficient — no custom policy needed.
 :::
 
-The example below shows a custom policy that retries only GET requests (compilable only inside the module):
+The example below shows a custom policy that retries only GET requests, usable as-is in any business package that imports `httpc`:
 
 <!-- check-code: skip -->
 ```go
-// Note: ResponseReader is an internal type (internal/types package).
-// This code can only compile within the github.com/cybergodev/httpc module.
-// Most users should configure retries via RetryConfig and WithMaxRetries.
+// ResponseReader is publicly exported by the httpc package (httpc.ResponseReader).
+// This example compiles in any package that imports github.com/cybergodev/httpc.
 
 // GETOnlyRetryPolicy retries only GET requests, and only on network errors and 502/503/504
 type GETOnlyRetryPolicy struct {
     maxAttempts int
 }
 
-func (p *GETOnlyRetryPolicy) ShouldRetry(resp ResponseReader, err error, attempt int) bool {
+func (p *GETOnlyRetryPolicy) ShouldRetry(resp httpc.ResponseReader, err error, attempt int) bool {
     if attempt >= p.maxAttempts {
         return false
     }

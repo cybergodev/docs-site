@@ -61,7 +61,7 @@ File reading/writing and streaming I/O functions.
 
 Iteration functions over JSON arrays, objects, nested structures, and files.
 
-**Key functions**: [`Foreach`](./iterate#foreach) · [`ForeachWithPath`](./iterate#foreachwithpath) · [`ForeachNested`](./iterate#foreachnested) · [`ForeachReturn`](./iterate#foreachreturn) · [`ForeachWithError`](./iterate#foreachwitherror) · [`ForeachNestedWithError`](./iterate#foreachnestedwitherror) · [`ForeachWithPathAndIterator`](./iterate#foreachwithpathanditerator) · [`ForeachWithPathAndControl`](./iterate#foreachwithpathandcontrol) · [`ForeachFile`](./iterate#foreachfile) · [`ForeachFileWithPath`](./iterate#foreachfilewithpath) · [`ForeachFileChunked`](./iterate#foreachfilechunked) · [`ForeachFileNested`](./iterate#foreachfilenested)
+**Key functions**: [`Foreach`](./iterate#foreach) (deprecated) · [`ForeachWithPath`](./iterate#foreachwithpath) · [`ForeachNested`](./iterate#foreachnested) (deprecated) · [`ForeachReturn`](./iterate#foreachreturn) · [`ForeachWithError`](./iterate#foreachwitherror) · [`ForeachNestedWithError`](./iterate#foreachnestedwitherror) · [`ForeachWithPathAndIterator`](./iterate#foreachwithpathanditerator) · [`ForeachWithPathAndControl`](./iterate#foreachwithpathandcontrol) · [`ForeachFile`](./iterate#foreachfile) · [`ForeachFileWithPath`](./iterate#foreachfilewithpath) · [`ForeachFileChunked`](./iterate#foreachfilechunked) · [`ForeachFileNested`](./iterate#foreachfilenested)
 
 ## [File Iteration](../../streaming/large-files)
 
@@ -101,7 +101,7 @@ Utility functions for type conversion, comparison, cache management, error handl
 | File read/write | `LoadFromFile`, `SaveToFile` | [File I/O](./file-io#file-reading-and-writing) |
 | File read/write (structs) | `MarshalToFile`, `UnmarshalFromFile` | [File I/O](./file-io#serialization-convenience-methods) |
 | Streaming I/O | `LoadFromReader`, `SaveToWriter` | [File I/O](./file-io#streaming-i-o) |
-| Iterate | `Foreach`, `ForeachWithPath`, `ForeachNested` | [Iteration Methods](./iterate#method-comparison) |
+| Iterate | `ForeachWithError`, `ForeachWithPath`, `ForeachNestedWithError` | [Iteration Methods](./iterate#method-comparison) |
 | File iteration | `ForeachFile`, `ForeachFileChunked` | [Iteration Methods](./iterate#file-iteration-method-comparison) |
 | JSONL processing | `ParseJSONL`, `ToJSONL` | [JSONL](./jsonl#jsonl-processing-functions) |
 | JSONL streaming | `StreamJSONL`, `StreamLinesInto[T]`, `FirstJSONL` | [JSONL](./jsonl#jsonl-streaming-functions-package-level) |

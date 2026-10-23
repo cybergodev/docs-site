@@ -155,7 +155,7 @@ if err != nil {
 
 ## LogIntegrity
 
-日志完整性验证结果。
+`LogIntegrity` 是日志完整性验证结果，由 `Verify` 方法返回。
 
 ```go
 type LogIntegrity struct {
@@ -168,7 +168,7 @@ type LogIntegrity struct {
 
 ## IntegrityStats
 
-签名统计数据。
+`IntegrityStats` 是签名统计数据，由 `Stats` 方法返回。
 
 ```go
 type IntegrityStats struct {

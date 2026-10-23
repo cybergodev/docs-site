@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Examples Overview"
 title: "Examples - CyberGo env | Runnable Go Config Examples"
-description: "CyberGo env examples: 11 runnable Go programs covering quick start, config presets, struct mapping, SecureValue, audit logging and multi-format conversion."
+description: "CyberGo env examples: 13 runnable Go programs covering quick start, config presets, SecureValue, audit logging, multi-format conversion and extensibility."
 sidebar_position: 1
 ---
 
 # Examples
 
-The env library ships 11 runnable examples in the `examples/` directory of the source repository. Each example is a self-contained `main` program, covering everything from global-mode basics to security features and advanced capabilities. All examples are included in normal builds (`go build ./...`).
+The env library ships 13 runnable examples in the `examples/` directory of the source repository. Each example is a self-contained `main` program, covering everything from global-mode basics to security features and advanced capabilities. All examples are included in normal builds (`go build ./...`).
 
 ## Running the Examples
 
@@ -44,7 +44,9 @@ Examples reference shared configuration files under `examples/data/` using relat
 | 09 | `09_error_handling/` | Sentinel errors (`errors.Is`) and typed errors (`errors.As`), including missing-file and closed-loader cases | [Error Handling](../guides/error-handling) |
 | 10 | `10_concurrency/` | Concurrent reads, writes, and mixed access, demonstrating shard-lock concurrency safety | [Concurrency](../guides/concurrency) |
 | 11 | `11_advanced/` | Variable expansion (`$VAR` and `${VAR}`), multiple file loading with override, and prefix filtering | [Variable Expansion](../guides/variable-expansion) |
+| 12 | `12_extensibility/` | Registering a custom parser with `RegisterParser`, interface-segregated consumption via `EnvGetter` (dependency injection and test doubles), and custom components (`CustomAuditor` counting audit events) | [Custom Parser](../guides/custom-parser), [Interfaces](../api-reference/interfaces) |
+| 13 | `13_customization/` | Custom Validator/Expander/FileSystem, fail-closed auditing (`ErrAuditFailed`), custom Marshaler/Unmarshaler, and brace operators | [Interfaces](../api-reference/interfaces), [Audit Logging](../guides/audit-logging), [Serialization](../guides/serialization) |
 
 ## Reading Order
 
-We recommend reading the examples in numeric order: 01–03 cover the global and instance modes plus typed access, 04–07 introduce production features such as struct mapping, secure values, and auditing, and 08–11 move on to utilities, error handling, and advanced features. Every example can be verified directly with `go run` and pairs well with its linked documentation page.
+We recommend reading the examples in numeric order: 01–03 cover the global and instance modes plus typed access, 04–07 introduce production features such as struct mapping, secure values, and auditing, and 08–13 move on to utilities, error handling, advanced features, and extensibility. Every example can be verified directly with `go run` and pairs well with its linked documentation page.

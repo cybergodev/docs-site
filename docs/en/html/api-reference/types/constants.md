@@ -17,6 +17,7 @@ sidebar_position: 30
 | `DefaultCacheTTL` | `time.Duration` | `1h` | Cache expiration time |
 | `DefaultCacheCleanup` | `time.Duration` | `5m` | Cache cleanup interval |
 | `DefaultMaxAuditEntries` | `int` | `10000` | Default in-memory audit entry limit (used when `AuditConfig.MaxEntries` is 0) |
+| `DefaultMaxRawValueLength` | `int` | `200` | Default maximum length of the audit RawValue string (used by `AuditConfig.MaxRawValueLength`) |
 | `DefaultMaxDepth` | `int` | `500` | Maximum DOM depth |
 | `DefaultProcessingTimeout` | `time.Duration` | `30s` | Processing timeout |
 
@@ -61,6 +62,8 @@ For detailed audit system usage and Sink types, see [Audit System](../modules/au
 | `ErrInvalidFilePath` | `html: invalid file path` | Invalid file path |
 | `ErrInternalPanic` | `html: internal panic recovered` | Internal panic recovered |
 | `ErrMultipleConfigs` | `html: at most one Config may be provided` | At most one Config |
+| `ErrBatchTooLarge` | `html: batch size exceeds maximum` | Batch item count exceeds the single-batch limit (10000) |
+| `ErrTooManyConcurrentOps` | `html: too many concurrent operations` | Concurrent timeout watchdog reached the global limit (1000); a "too busy" state, distinct from `ErrProcessingTimeout` (no timeout occurred) |
 
 ## Error Types
 
@@ -173,7 +176,7 @@ The following constants define the library's runtime hard limits. They are **une
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `maxBatchSize` | `10000` | Maximum items per batch; exceeding this fails the entire batch (not a panic) |
-| `maxTimeoutGoroutines` | `1000` | Global concurrent timeout goroutine limit; exceeding it causes new requests to immediately return `ErrProcessingTimeout` |
+| `maxTimeoutGoroutines` | `1000` | Global concurrent timeout goroutine limit; exceeding it causes new requests to immediately return `ErrTooManyConcurrentOps` |
 | `maxHTMLForRegex` | `1000000` (1MB) | Upper bound on HTML size for media-URL regex scanning; above this the regex fallback is skipped (ReDoS prevention) |
 | `maxRegexMatches` | `1000` | Maximum matches per regex scan; prevents excessive allocations on media-dense pages |
 

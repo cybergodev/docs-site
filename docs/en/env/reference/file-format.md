@@ -202,7 +202,7 @@ cfg.JSONNumberAsString = false
 ### Depth Limit
 
 ```go
-cfg.JSONMaxDepth = 10  // Max nesting depth
+cfg.JSONMaxDepth = 10  // Max nesting depth (default 16)
 ```
 
 ## YAML Format
@@ -271,7 +271,7 @@ Or extend block scalar support via a custom parser.
 
 ### Type Conversion Options
 
-`YAMLNullAsEmpty` / `YAMLNumberAsString` / `YAMLBoolAsString` likewise **default to true (enabled)**; set them to false explicitly only when you want to disable a conversion. `YAMLMaxDepth` defaults to 10 — adjust it only when you need deeper nesting:
+`YAMLNullAsEmpty` / `YAMLNumberAsString` / `YAMLBoolAsString` likewise **default to true (enabled)**; set them to false explicitly only when you want to disable a conversion. `YAMLMaxDepth` defaults to 16 — adjust it only when you need deeper nesting:
 
 ```go
 cfg := env.DefaultConfig()

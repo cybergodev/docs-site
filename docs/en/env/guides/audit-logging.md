@@ -53,11 +53,11 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
-{"timestamp":"2024-01-15T10:30:01Z","action":"set","key":"[MASKED:7 chars]","success":true,"masked":true}
+{"timestamp":"2024-01-15T10:30:01Z","action":"set","key":"[MASKED]","success":true,"masked":true}
 {"timestamp":"2024-01-15T10:30:02Z","action":"set","key":"CUSTOM_VAR","success":true}
 ```
 
-Sensitive keys (e.g., `API_KEY`) are automatically masked as `[MASKED:N chars]` (N = key length) in the audit log's `key` field; non-sensitive keys (e.g., `CUSTOM_VAR`) are shown as-is.
+Sensitive keys (e.g., `API_KEY`) are automatically masked as `[MASKED]` in the audit log's `key` field; non-sensitive keys (e.g., `CUSTOM_VAR`) are shown as-is.
 
 ---
 
@@ -80,7 +80,7 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 
 ```text
 [AUDIT] 2024/01/15 10:30:00 action=load success=true reason="" file=.env duration=1.23ms
-[AUDIT] 2024/01/15 10:30:01 action=set key=[MASKED:7 chars] success=true reason=""
+[AUDIT] 2024/01/15 10:30:01 action=set key=[MASKED] success=true reason=""
 [AUDIT] 2024/01/15 10:30:02 action=set key=CUSTOM_VAR success=true reason=""
 ```
 
@@ -339,14 +339,14 @@ The key shutdown sequence: `ChannelAuditHandler` does **not** own the channel â€
 
 ### Audit Recording and Masking
 
-The audit log automatically masks the `key` field for sensitive keys (shown as `[MASKED:N chars]` by default, where N is the number of characters in the key name; non-sensitive keys are shown as-is). **Only write operations record audit events**: `Set` / `Delete` / `LoadFiles` etc. trigger `ActionSet` / `ActionDelete` / `ActionLoad` events, recording the masked key name.
+The audit log automatically masks the `key` field for sensitive keys (shown as `[MASKED]` by default; non-sensitive keys are shown as-is). **Only write operations record audit events**: `Set` / `Delete` / `LoadFiles` etc. trigger `ActionSet` / `ActionDelete` / `ActionLoad` events, recording the masked key name.
 
 Read operations do not produce audit entries: `Get` / `GetString` / `GetInt` / `GetSecure` etc. **do not record audit logs during normal reads**. `ActionGet` events are only triggered in the error path when type conversion **parsing fails** (e.g., in `GetInt` / `GetBool` / `GetFloat64`), with `success=false`. For example:
 
 ```go
 // Write operation: records audit event (sensitive key recorded after masking)
 _ = loader.Set("API_KEY", "sk-1234567890")
-// Audit record: {"action":"set","key":"[MASKED:7 chars]","success":true,"masked":true}
+// Audit record: {"action":"set","key":"[MASKED]","success":true,"masked":true}
 
 // Read operation: normal reads don't produce audit
 secret := loader.GetSecure("API_KEY") // No audit log produced
@@ -446,7 +446,7 @@ Audit events are categorized by action (type `AuditAction`). Custom handlers can
 | `ActionError` | `error` | Error conditions |
 | `ActionFileAccess` | `file_access` | File system access |
 
-`AuditEvent` is a structured event (timestamp, action, key, reason, success/failure, duration, and more). Sensitive keys are masked by `MaskKey` into `[MASKED:N chars]` (N = key length) before entering the event; non-sensitive keys are kept as-is.
+`AuditEvent` is a structured event (timestamp, action, key, reason, success/failure, duration, and more). Sensitive keys are masked into `[MASKED]` before entering the event; non-sensitive keys are kept as-is.
 
 ## Related Documentation
 

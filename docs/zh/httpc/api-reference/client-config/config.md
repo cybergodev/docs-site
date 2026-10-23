@@ -1,7 +1,7 @@
 ---
 sidebar_label: "配置"
 title: "配置 - CyberGo HTTPC | Config 与预设"
-description: "HTTPC 配置系统 API 参考：Config 及 Timeouts、Connection、Security、Retry、Middleware 子配置全字段说明，DefaultConfig 等五种预设、ValidateConfig 校验范围与代理轮换自动提升重试等派生规则。"
+description: "HTTPC 配置系统 API 参考：Timeouts、Connection、Security、Retry、Middleware 全字段说明，DefaultConfig 预设、EnableProxyPoolHTTP2、SensitiveHeaders 关键字段、ValidateConfig 校验与代理轮换重试派生规则。"
 sidebar_position: 10
 ---
 
@@ -29,7 +29,7 @@ type Config struct {
 | `Config.Security` | `SecurityConfig` | TLS、校验与 SSRF 防护 |
 | `Config.Retry` | `RetryConfig` | 瞬态失败自动重试 |
 | `Config.Middleware` | `MiddlewareConfig` | 每客户端中间件链 |
-| `Config.Defaults` | `RequestDefaults` | 每请求默认值（User-Agent、默认请求头、重定向策略） |
+| `Config.Defaults` | `RequestDefaults` | 每请求默认值（User-Agent、默认请求头） |
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -102,7 +102,8 @@ type ConnectionConfig struct {
     ProxyCooldown            time.Duration // 断路冷却时间，0 默认为 30s
     ProxyRotatePerRequest    bool          // 每次独立请求强制换代理，默认 false
     ProxyRotateOnStatus      []int         // 触发代理轮换的 HTTP 状态码
-    EnableHTTP2            bool          // 启用 HTTP/2，默认 true
+    EnableProxyPoolHTTP2   bool          // 多代理池下恢复 HTTP/2（每代理独立传输），默认 false
+    EnableHTTP2            bool          // 启用 HTTP/2，默认 true；多代理轮换池激活时自动强制 HTTP/1，除非设 EnableProxyPoolHTTP2
     EnableCookies          bool          // 启用 Cookie 管理，默认 false
     PublicSuffixList       cookiejar.PublicSuffixList // Cookie jar 的 Public Suffix 数据库，默认 nil
     EnableDoH              bool          // 启用 DNS-over-HTTPS，默认 false
@@ -125,7 +126,8 @@ type ConnectionConfig struct {
 | `ConnectionConfig.ProxyCooldown` | `time.Duration` | 30s（0 视为 30s） | 熔断代理的冷却时长 |
 | `ConnectionConfig.ProxyRotatePerRequest` | `bool` | `false` | 每次独立请求强制换代理（需设置 `ProxyPool`） |
 | `ConnectionConfig.ProxyRotateOnStatus` | `[]int` | `nil` | 触发换代理重试的 HTTP 状态码（需 `Retry.MaxRetries > 0`） |
-| `ConnectionConfig.EnableHTTP2` | `bool` | `true` | 启用 HTTP/2 |
+| `ConnectionConfig.EnableProxyPoolHTTP2` | `bool` | `false` | 多代理池下恢复 HTTP/2（每代理独立传输），需 `EnableHTTP2=true`；详见[代理池与 HTTP/2](#代理池与-http-2-enableproxypoolhttp2) |
+| `ConnectionConfig.EnableHTTP2` | `bool` | `true` | 启用 HTTP/2；多代理轮换池激活时自动强制 HTTP/1，除非设 `EnableProxyPoolHTTP2` |
 | `ConnectionConfig.EnableCookies` | `bool` | `false` | 启用 Cookie jar 自动管理 |
 | `ConnectionConfig.PublicSuffixList` | `cookiejar.PublicSuffixList` | `nil` | 为 Cookie jar 提供 Public Suffix 数据库（推荐 `golang.org/x/net/publicsuffix.List`）。未提供时 jar 会接受公共后缀上的 Cookie 并采用宽松的域匹配，可能让 Cookie 泄漏到不相关子域 |
 | `ConnectionConfig.EnableDoH` | `bool` | `false` | 启用 DNS-over-HTTPS 解析 |
@@ -161,6 +163,32 @@ cfg.Connection.ProxyCooldown = 30 * time.Second
 cfg.Connection.ProxyRotateOnStatus = []int{403}
 ```
 
+#### 代理池与 HTTP/2 (`EnableProxyPoolHTTP2`)
+
+多代理池（`ProxyPool` 多于 1 条且未设 `ProxyURL`）激活时，HTTP/2 会被**自动禁用**、强制走 HTTP/1.1：net/http 的 h2 连接池只按目标主机键控，多个代理共用一个池时，所有请求会被钉死在第一个建立隧道的代理上，静默绕过轮换与负载分散。
+
+`EnableProxyPoolHTTP2 = true` 可恢复 HTTP/2：每个代理获得独立传输（独立的 h2 连接池），由每请求分发器路由。轮换、`ProxyRotateOnStatus` 与 `Meta.ProxyURL` 上报与默认 HTTP/1 模式完全一致；差异是路由到同一代理的并发请求在一条 HTTP/2 隧道上多路复用，而非各自新开一条 HTTP/1 连接。
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Connection.ProxyPool = []string{
+    "http://proxy1:8080",
+    "http://proxy2:8080",
+    "http://proxy3:8080",
+}
+cfg.Connection.EnableHTTP2 = true          // 前提（DefaultConfig 默认即 true）
+cfg.Connection.EnableProxyPoolHTTP2 = true // 恢复代理池的 HTTP/2
+
+client, err := httpc.New(cfg)
+```
+
+两个权衡：
+
+- **请求关联性**：路由到同一代理的请求共享该代理的连接——**含并发请求**（在途隧道会被下一个同代理请求加入），网络层可据此关联它们。要求请求间不可关联时保持关闭；`ProxyRotatePerRequest` **不能**防止该共享——轮换索引每池大小次请求就重复一次，其空闲连接排空也只触及不再在途的连接。
+- **连接限额放大**：`MaxConnsPerHost` 与派生的 MaxIdleConnsPerHost 按每代理传输独立计算，进程级上限 = 限额 × 池大小（全部拨号总数仍受引擎级全局上限约束）。
+
+校验与例外：需 `EnableHTTP2 = true`，否则 `New()` 返回 `ErrInvalidConnection`（要为池恢复 HTTP/2 却关着总开关必是配置错误）；`Security.TLSFingerprint` 路径忽略该字段（指纹栈自带每代理后端）。完整机制说明见[代理与代理池](../../guides/proxy#代理池与-http-2-enableproxypoolhttp2)。
+
 ### DNS-over-HTTPS
 
 启用 DoH 减少 DNS 解析延迟和防止 DNS 劫持：
@@ -181,6 +209,8 @@ type SecurityConfig struct {
     MinTLSVersion           uint16                // 最低 TLS 版本，默认 TLS 1.2
     MaxTLSVersion           uint16                // 最高 TLS 版本，默认 TLS 1.3
     InsecureSkipVerify      bool                  // 跳过证书验证（仅测试用）
+    TLSFingerprint          string                // 浏览器 TLS 指纹预设，默认 ""（标准栈，无伪装）
+    TLSFingerprintDisableSessionTickets bool      // 禁用指纹路径的 TLS 会话票据缓存/恢复，默认 false
     MaxResponseBodySize     int64                 // 响应体大小限制，默认 10MB
     MaxRequestBodySize      int64                 // 请求体大小限制，默认 0（不限制请求体大小；与 MaxResponseBodySize 不同，无自动回退）
     MaxDecompressedBodySize int64                 // 解压后大小限制，默认 100MB
@@ -189,9 +219,11 @@ type SecurityConfig struct {
     ValidateURL             bool                  // URL 验证，默认 true
     ValidateHeaders         bool                  // 请求头验证，默认 true
     StrictContentLength     bool                  // 严格 Content-Length，默认 true
-    CookieSecurity          *CookieSecurityConfig // Cookie 安全验证
     CertificatePinner       CertificatePinner     // 证书固定（SPKI 哈希/公钥），默认 nil（禁用）
     RedirectWhitelist       []string              // 重定向白名单域名
+    SensitiveHeaders        []string              // 跨域重定向跳转时按凭据剥离的附加头名，默认 nil
+    FollowRedirects         bool                  // 跟随重定向，默认 true
+    MaxRedirects            int                   // 最大重定向次数，默认 10（0 为「未设置」哨兵值，回退默认 10）
 }
 ```
 
@@ -247,9 +279,25 @@ cfg.Security.SSRFExemptCIDRs = []string{
 
 非法 CIDR 会使 `New()` 直接返回错误（`invalid configuration: ...`），不会静默忽略。
 
+### TLS 指纹（TLSFingerprint）
+
+`TLSFingerprint` 启用浏览器传输层指纹伪装：TLS ClientHello（JA3/JA4）、HTTP/2 帧（SETTINGS 顺序与值、连接窗口、初始流 ID、伪头顺序）与有序头块（浏览器原样大小写 + 版本匹配的 User-Agent）一次性全部模拟。值取预设名（大小写不敏感），`""`（默认）走标准栈、无伪装。完整预设清单与行为语义见 [TLS 指纹指南](../../guides/tls-fingerprint)。
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.TLSFingerprint = "chrome-latest" // 或 "chrome-windows"、"firefox-latest" 等
+client, err := httpc.New(cfg)
+```
+
+:::warning 与 TLSConfig 互斥
+`Security.TLSConfig` 与该字段互斥（校验拒绝组合）；`MinTLSVersion`/`MaxTLSVersion` 在该字段设置后**被静默忽略**——由预设的 ClientHello 决定版本范围。详见 [TLS 指纹指南](../../guides/tls-fingerprint)。
+:::
+
+`TLSFingerprintDisableSessionTickets` 置 `true` 时强制指纹路径每次连接都完整握手，默认 `false`——Chrome 预设默认按连接池缓存 TLS 会话票据、以 PSK 恢复重复连接（如同真实浏览器重访同一主机）。会话恢复机制详见 [TLS 指纹指南](../../guides/tls-fingerprint#会话恢复)。
+
 ### 重定向白名单
 
-`RedirectWhitelist` 限制重定向只允许跳往列出的域名，默认 `nil`（允许所有重定向目标）。这是防「重定向型 SSRF」的闸门——更保守的替代方案是 `Defaults.FollowRedirects = false`（`SecureConfig()` 即采用）。
+`RedirectWhitelist` 限制重定向只允许跳往列出的域名，默认 `nil`（允许所有重定向目标）。这是防「重定向型 SSRF」的闸门——更保守的替代方案是 `Security.FollowRedirects = false`（`SecureConfig()` 即采用）。
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -260,6 +308,21 @@ cfg.Security.RedirectWhitelist = []string{
 ```
 
 重定向行为的完整说明见[重定向控制](../../guides/redirects)。
+
+### 敏感头剥离（SensitiveHeaders）
+
+`SensitiveHeaders` 扩展跨域重定向跳转时**按凭据处理**的头名集合：内置集 `Authorization`、`Proxy-Authorization`、`Cookie`、`X-Api-Key`、`X-Auth-Token` 在跨源跳转时始终剥离（net/http 自身只覆盖前三个），而自定义凭据头（如 `X-Secret-Key`）若不在此列出，会被原样转发给 `Location` 指向的任意目标——开放重定向凭据泄漏（CWE-525）。条目按规范形式匹配（大小写不敏感）并自动去重；内置集无论是否列出都始终剥离。默认 `nil`。
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.SensitiveHeaders = []string{"X-Secret-Key", "X-Tenant-Token"}
+```
+
+非法头名使 `New()` 返回 `ErrInvalidSecurity`（与 `WithHeader` 相同的键校验规则）。跨域凭据剥离的完整语义见[重定向控制](../../guides/redirects)。
+
+:::warning 掩码范围
+`Result.String()` 与审计输出的脱敏只覆盖内置敏感头名——此处列出的自定义头在那些输出中**仍可见**，不要依赖它们做凭据隐藏。
+:::
 
 ## RetryConfig
 
@@ -299,33 +362,28 @@ type MiddlewareConfig struct {
 }
 ```
 
-仅包含 `Middlewares` 一个字段。请求默认值（User-Agent、默认请求头、重定向策略）已移至 [`RequestDefaults`](#requestdefaults)。
+仅包含 `Middlewares` 一个字段。请求默认值（User-Agent、默认请求头）位于 [`RequestDefaults`](#requestdefaults)；重定向策略位于 [`SecurityConfig`](#securityconfig)。
 
 ## RequestDefaults
 
 ```go
 type RequestDefaults struct {
-    UserAgent       string            // User-Agent，默认 "httpc/1.0"
-    Headers         map[string]string // 默认请求头，默认空
-    FollowRedirects bool              // 跟随重定向，默认 true
-    MaxRedirects    int               // 最大重定向次数，默认 10
+    UserAgent string            // User-Agent，默认 "httpc/1.0"
+    Headers   map[string]string // 默认请求头，默认空
 }
 ```
 
-每请求默认值的规范位置：User-Agent、默认请求头、重定向策略。通过 `DefaultConfig()` 获取合理默认值后按需修改。
+每请求默认值的规范位置：User-Agent 与默认请求头。通过 `DefaultConfig()` 获取合理默认值后按需修改。
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `RequestDefaults.UserAgent` | `string` | `"httpc/1.0"` | User-Agent 请求头 |
 | `RequestDefaults.Headers` | `map[string]string` | 空 | 添加到每个请求的默认请求头 |
-| `RequestDefaults.FollowRedirects` | `bool` | `true` | 是否自动跟随重定向 |
-| `RequestDefaults.MaxRedirects` | `int` | 10 | 自动重定向次数上限 |
 
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Defaults.UserAgent = "myapp/2.0"
 cfg.Defaults.Headers = map[string]string{"Accept": "application/json"}
-cfg.Defaults.MaxRedirects = 5
 ```
 
 ## 配置预设
@@ -521,6 +579,7 @@ if err := httpc.ValidateConfig(&cfg); err != nil {
 | `Connection.ProxyFailureThreshold` | ≥ 0 |
 | `Connection.ProxyCooldown` | 0 – 30min |
 | `Connection.ProxyRotateOnStatus` | 每个状态码在 100 – 599 |
+| `Connection.EnableProxyPoolHTTP2` | 需同时设置 `Connection.EnableHTTP2`（组合矛盾即 `ErrInvalidConnection`） |
 | `Connection.DoHCacheTTL` | ≥ 0 |
 | `Connection.MaxResponseHeaderBytes` | ≥ 0 |
 | `Security.MaxResponseBodySize` | 0 – 1GB |
@@ -528,11 +587,12 @@ if err := httpc.ValidateConfig(&cfg); err != nil {
 | `Security.MaxRequestBodySize` | 0 – 1GB |
 | `Security.MinTLSVersion` / `MaxTLSVersion` | 两者均非 0 时 Min ≤ Max |
 | `Security.SSRFExemptCIDRs` | 每项必须是合法 CIDR |
+| `Security.SensitiveHeaders` | 每项须通过头名合法性校验（同 `WithHeader` 键规则） |
 | `Retry.MaxRetries` | 0 – 10 |
 | `Retry.Delay` | 0 – 30min |
 | `Retry.BackoffFactor` | 1.0 – 10.0 |
 | `Retry.MaxRetryDelay` | 0 – 30min |
-| `Defaults.MaxRedirects` | 0 – 50 |
+| `Security.MaxRedirects` | 0 – 50 |
 | `Defaults.UserAgent` | ≤ 512 字符且不含控制字符 |
 | `Defaults.Headers` | 每组键值均通过头部合法性校验 |
 
@@ -591,8 +651,8 @@ func StrictCookieSecurityConfig() *CookieSecurityConfig
 严格 Cookie 安全配置。要求 Secure、HttpOnly 和 SameSite=Strict。
 
 ```go
-cfg := httpc.DefaultConfig()
-cfg.Security.CookieSecurity = httpc.StrictCookieSecurityConfig()
+cfg := httpc.DefaultSessionConfig()
+cfg.CookieSecurity = httpc.StrictCookieSecurityConfig()
 ```
 
 两个工厂的字段取值对比：

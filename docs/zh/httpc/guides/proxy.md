@@ -1,6 +1,6 @@
 ---
 title: "代理与代理池 - CyberGo HTTPC | 代理配置与轮换熔断"
-description: "HTTPC 代理与代理池完整指南：HTTP/HTTPS/SOCKS5 单代理配置、系统代理自动检测与 NO_PROXY 绕过规则、代理池轮询与随机策略、连接失败熔断与冷却恢复、ProxyRotateOnStatus 按状态码换 IP 及每请求轮换详解。"
+description: "HTTPC 代理与代理池完整指南：HTTP/HTTPS/SOCKS5 单代理配置、系统代理与 NO_PROXY 绕过、代理池轮询与随机策略、ProxyRotateOnStatus 按状态码换 IP、EnableProxyPoolHTTP2 代理池 HTTP/2 多路复用、每请求轮换与熔断恢复详解。"
 sidebar_label: "代理与代理池"
 sidebar_position: 100
 ---
@@ -329,6 +329,54 @@ func main() {
 
 此外，代理本身的连接失败（拨号/TLS 失败）在轮换激活时**总是可重试**——即使常规分类判定不可重试（如永久性地址错误），下一次也会换代理再试，配合被动熔断把坏代理自然淘汰。重试侧细节见[重试与容错](./retry-fault-tolerance)。
 
+### 代理池与 HTTP/2 (`EnableProxyPoolHTTP2`)
+
+多代理池激活（`ProxyPool` 多于 1 条且未设 `ProxyURL`）时，HTTP/2 会被**自动禁用**、强制走 HTTP/1.1。原因在 net/http 的连接复用模型：h2 连接池只按目标主机键控，多个代理共用一个池时，所有请求会被钉死在第一个建立隧道的代理上——轮换与负载分散被静默绕过，且难以察觉。HTTP/1 下每条新连接都会重新咨询代理池，轮换因此可靠。
+
+`Connection.EnableProxyPoolHTTP2 = true` 为代理池恢复 HTTP/2：每个代理获得**独立传输**（各自的 h2 连接池），由每请求分发器路由。轮换、`ProxyRotateOnStatus`、熔断与 `Meta.ProxyURL` 上报与默认 HTTP/1 模式完全一致；唯一差异是路由到**同一代理**的并发请求在一条 HTTP/2 隧道上多路复用，而不是各自新开一条 HTTP/1 连接。
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/cybergodev/httpc"
+)
+
+func main() {
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	// EnableHTTP2 已默认 true（DefaultConfig），是本字段的前提
+	cfg.Connection.EnableProxyPoolHTTP2 = true
+
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
+
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// 输出：状态：200, 代理：http://proxy1:8080, 协议：HTTP/2.0
+	log.Printf("状态: %d, 代理: %s, 协议: %s",
+		result.StatusCode(), result.Meta.ProxyURL, result.Proto())
+}
+```
+
+:::warning 两个权衡
+- **请求关联性**：路由到同一代理的请求共享该代理的连接——**包括并发请求**（在途隧道会被下一个同代理请求加入），网络层可将它们关联起来。要求请求间不可关联时保持关闭；`ProxyRotatePerRequest` **不能**防止这种共享——轮换索引每池大小次请求就重复一次，其空闲连接排空也只触及不再在途的连接。
+- **连接限额放大**：`MaxConnsPerHost` 与派生的每主机空闲连接上限按每代理传输独立计算，进程级上限 = 限额 × 池大小（全部拨号总数仍受引擎级全局上限约束）。
+:::
+
+校验与例外：该字段需 `Connection.EnableHTTP2 = true`（默认即 true），否则 `New()` 直接返回 `ErrInvalidConnection`；`Security.TLSFingerprint` 路径忽略此字段——指纹栈自带每代理后端，本就支持 HTTP/2。字段级参考见[配置 API](../api-reference/client-config/config#代理池与-http-2-enableproxypoolhttp2)。
+
 ## 查询本次请求使用的代理
 
 代理池场景常需要审计「这次请求到底用了哪个出口」。两个工具配合：
@@ -417,6 +465,7 @@ func main() {
 | 系统代理没被检测到 | 环境变量缺失且平台设置未开启 | 确认 `HTTP_PROXY`/`HTTPS_PROXY` 或系统代理开关 |
 | localhost 代理被 SSRF 拦截 | 系统代理的豁免名单只在构建时探测一次 | 显式设置 `Connection.ProxyURL`（始终豁免）或配置 `SSRFExemptCIDRs` |
 | 收到 403 换代理后代理被熔断了吗 | 误以为状态码会触发熔断 | 不会——状态码轮换不熔断代理，仅连接层失败才熔断 |
+| 代理池下为什么走了 HTTP/1.1 | 多代理池默认强制 HTTP/1，防止共享 h2 连接池把所有请求钉死在第一个代理上 | 需要多路复用时设 `Connection.EnableProxyPoolHTTP2 = true`（需 `EnableHTTP2`），见[代理池与 HTTP/2](#代理池与-http-2-enableproxypoolhttp2) |
 | `Meta.ProxyURL` 一直为空 | 仅系统代理生效——`EnableSystemProxy` 不记录到该字段 | 需要观测出口时改用显式 `ProxyURL` 或 `ProxyPool` |
 
 完整的字段说明见 [配置 API — 代理池](../api-reference/client-config/config#代理池)。

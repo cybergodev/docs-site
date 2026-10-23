@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Loader"
 title: "Loader API - CyberGo env | Loader Reference"
-description: "CyberGo env Loader API reference: multi-format LoadFiles, type-safe GetString/GetInt/GetSlice, Set/Delete, Validate, serialization, Close lifecycle, thread-safe."
+description: "CyberGo env Loader API reference: multi-format LoadFiles, type-safe GetString/GetInt/GetSlice, Set/Delete, Validate, serialization and thread-safe lifecycle."
 sidebar_position: 3
 ---
 
@@ -24,6 +24,25 @@ type Loader struct {
 var _ EnvLoader = (*Loader)(nil)
 var _ io.Closer = (*Loader)(nil)
 ```
+
+---
+
+## Method Overview
+
+All `Loader` methods grouped as follows (qualified names like `Loader.GetString`); see the corresponding sections below for details:
+
+| Method | Description |
+|--------|-------------|
+| `Loader.LoadFiles` | Load multiple files in order (.env/JSON/YAML auto-detected) |
+| `Loader.GetString` / `Loader.Lookup` | String read and existence lookup |
+| `Loader.GetInt` / `Loader.GetUint64` / `Loader.GetFloat64` / `Loader.GetBool` / `Loader.GetDuration` | Typed reads |
+| `Loader.GetSecure` | Defensive copy of a sensitive value |
+| `Loader.Set` / `Loader.Delete` | Write and delete (with key/value validation) |
+| `Loader.Keys` / `Loader.All` / `Loader.Len` | Collection views |
+| `Loader.Apply` / `Loader.IsApplied` | Apply to the process environment and state query |
+| `Loader.LoadTime` / `Loader.Config` | Load time and read-only config copy |
+| `Loader.Validate` / `Loader.ParseInto` | Required-key validation and struct mapping |
+| `Loader.Close` / `Loader.IsClosed` | Lifecycle: zero storage and close |
 
 ---
 

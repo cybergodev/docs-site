@@ -179,7 +179,7 @@ cfg.JSONNumberAsString = true
 // booleans convert to strings (default true)
 cfg.JSONBoolAsString = true
 
-// Max nesting depth (default 10)
+// Max nesting depth (default 16)
 cfg.JSONMaxDepth = 20
 ```
 
@@ -275,7 +275,7 @@ cfg.YAMLNumberAsString = true
 // booleans convert to strings (default true)
 cfg.YAMLBoolAsString = true
 
-// Max nesting depth (default 10)
+// Max nesting depth (default 16)
 cfg.YAMLMaxDepth = 15
 ```
 
@@ -548,7 +548,7 @@ Nested structures are flattened into environment variable keys on load, with the
 | Array elements use `key_index` | `{"hosts": ["a", "b"]}` → `HOSTS_0`, `HOSTS_1` |
 | `null` becomes an empty string | `{"name": null}` → `NAME=""` |
 | Numbers and booleans become strings | `{"port": 5432}` → `PORT="5432"` |
-| Nesting depth cap defaults to 10 | Controlled by `JSONMaxDepth`/`YAMLMaxDepth` (1–100) |
+| Nesting depth cap defaults to 16 | Controlled by `JSONMaxDepth`/`YAMLMaxDepth` (1–100) |
 
 During file loading, conversion behavior is controlled by `Config`'s `JSONConfig`/`YAMLConfig` (e.g. `JSONNullAsEmpty`, `JSONNumberAsString`); the string-parsing paths of `UnmarshalMap`/`UnmarshalStruct` use built-in default rules and do not read these settings.
 

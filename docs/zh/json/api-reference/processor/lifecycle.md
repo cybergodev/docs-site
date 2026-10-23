@@ -180,7 +180,7 @@ type CheckResult struct {
 | `Message` | `string` | 状态消息（失败原因等） |
 
 ::: tip 解读
-`Checks` 是各分项检查（指标采集等）的结果映射，任一分项不健康则 `Healthy=false`。nil 处理器或指标采集器未初始化时直接返回 `Healthy=false`，并在 `Checks` 中给出原因（如 `processor is nil`）。指标采集器在 `EnableMetrics=true` 时才创建——未开启时 `GetHealthStatus` 返回 `Healthy=false` 并在 `Checks` 中注明 `Metrics collector not initialized`；`Config.EnableHealthCheck` 字段为预留，不影响此行为（见 [Config](../config#输入与可观测性开关)）。
+`Checks` 是各分项检查（指标采集等）的结果映射，任一分项不健康则 `Healthy=false`。nil 处理器或指标采集器未初始化时直接返回 `Healthy=false`，并在 `Checks` 中给出原因（如 `processor is nil`）。指标采集器在 `EnableMetrics=true` 时才创建——未开启时 `GetHealthStatus` 返回 `Healthy=false` 并在 `Checks` 中注明 `Metrics collector not initialized`；`Config.EnableHealthCheck` 字段已废弃、不被读取，不影响此行为（见 [Config](../config#输入与可观测性开关)）。
 :::
 
 ## 扩展钩子

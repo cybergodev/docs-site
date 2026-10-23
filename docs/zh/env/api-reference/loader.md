@@ -27,6 +27,25 @@ var _ io.Closer = (*Loader)(nil)
 
 ---
 
+## 方法总览
+
+`Loader` 的全部方法按下表分组（限定名形如 `Loader.GetString`），各方法详见下文对应小节：
+
+| 方法 | 说明 |
+|------|------|
+| `Loader.LoadFiles` | 按顺序加载多个文件（.env/JSON/YAML 自动检测） |
+| `Loader.GetString` / `Loader.Lookup` | 字符串读取与存在性查询 |
+| `Loader.GetInt` / `Loader.GetUint64` / `Loader.GetFloat64` / `Loader.GetBool` / `Loader.GetDuration` | 类型化读取 |
+| `Loader.GetSecure` | 读取敏感值的防御性副本 |
+| `Loader.Set` / `Loader.Delete` | 写入与删除（含键值验证） |
+| `Loader.Keys` / `Loader.All` / `Loader.Len` | 集合视图 |
+| `Loader.Apply` / `Loader.IsApplied` | 应用到进程环境与状态查询 |
+| `Loader.LoadTime` / `Loader.Config` | 加载时间与配置只读副本 |
+| `Loader.Validate` / `Loader.ParseInto` | 必需键校验与结构体映射 |
+| `Loader.Close` / `Loader.IsClosed` | 生命周期：清零存储并关闭 |
+
+---
+
 ## 创建
 
 ### New

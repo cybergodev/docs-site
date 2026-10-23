@@ -108,7 +108,7 @@ The library offers two API surfaces: **package-level functions** (e.g. `json.Get
 
 | Function | Description |
 |----------|-------------|
-| [`Foreach`](./functions/iterate#foreach), [`ForeachWithError`](./functions/iterate#foreachwitherror), `ForeachNested`, `ForeachNestedWithError` | Iterate arrays/objects (incl. deep traversal) |
+| [`Foreach`](./functions/iterate#foreach) (deprecated), [`ForeachWithError`](./functions/iterate#foreachwitherror), `ForeachNested` (deprecated), `ForeachNestedWithError` | Iterate arrays/objects (incl. deep traversal; the void variants are deprecated — prefer `*WithError`) |
 | [`ForeachWithPath`](./functions/iterate#foreachwithpath), `ForeachWithPathAndIterator`, `ForeachWithPathAndControl` | Iterate at a given path (carrying the current path / with break control) |
 | [`ForeachReturn`](./functions/iterate#foreachreturn) | Iterate and return the modified JSON |
 | [`ForeachFile`](./functions/iterate#foreachfile), `ForeachFileWithPath`, `ForeachFileChunked`, `ForeachFileNested` | Item-by-item file iteration (fully loaded, then item-by-item/batched callbacks) |

@@ -1,6 +1,6 @@
 ---
 title: "Redirects - CyberGo HTTPC | Following & Whitelist"
-description: "HTTPC redirect guide: following control, RedirectChain tracking, 301-308 method semantics, credential stripping, RedirectWhitelist open-redirect defense."
+description: "HTTPC redirect guide: follow control, RedirectChain, 301-308 method semantics, credential stripping, SensitiveHeaders, RedirectWhitelist open-redirect defense."
 sidebar_label: "Redirects"
 sidebar_position: 30
 ---
@@ -71,18 +71,18 @@ Redirect configuration lives on three levels, from widest to narrowest scope:
 
 | Level | Configuration | Scope |
 |-------|---------------|-------|
-| Client level | `Config.Defaults.FollowRedirects` / `MaxRedirects` | All requests of the whole client |
+| Client level | `Config.Security.FollowRedirects` / `MaxRedirects` | All requests of the whole client |
 | Request level | `WithFollowRedirects(bool)` / `WithMaxRedirects(n)` | A single request, overriding the client configuration |
 | Preset | `SecureConfig()`, `MinimalConfig()` (both set `FollowRedirects=false`) | Security/minimal scenarios default to not following |
 
 ### Client Level
 
-`Config.Defaults` (`RequestDefaults`) sets the redirect policy for the entire client:
+`Config.Security` (`SecurityConfig`) sets the redirect policy for the entire client:
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Defaults.FollowRedirects = true  // default: follow
-cfg.Defaults.MaxRedirects = 5        // default: 10
+cfg.Security.FollowRedirects = true  // default: follow
+cfg.Security.MaxRedirects = 5        // default: 10
 
 client, err := httpc.New(cfg)
 ```
@@ -105,7 +105,7 @@ result, err = httpc.Get(url, httpc.WithMaxRedirects(3))
 ```
 
 :::warning MaxRedirects(0) is not "disable"
-`0` is the "unset" sentinel — the engine falls back to the default of 10 instead of disabling redirects. To disable following, use `WithFollowRedirects(false)` or `Config.Defaults.FollowRedirects = false`.
+`0` is the "unset" sentinel — the engine falls back to the default of 10 instead of disabling redirects. To disable following, use `WithFollowRedirects(false)` or `Config.Security.FollowRedirects = false`.
 :::
 
 :::tip SecureConfig disables redirects by default
@@ -164,7 +164,11 @@ While following redirects, the engine checks the target hostname at every hop: w
 | `Authorization` | Kept | Removed |
 | `Proxy-Authorization` | Kept | Removed |
 | `Cookie` | Kept | Removed |
-| Other custom headers | Kept | Kept |
+| `X-Api-Key` | Kept | Removed |
+| `X-Auth-Token` | Kept | Removed |
+| Other custom headers (when not listed in `Security.SensitiveHeaders`) | Kept | Kept |
+
+The built-in stripping set contains **five** headers: net/http itself only covers the first three (`Authorization` / `Proxy-Authorization` / `Cookie`); HTTPC additionally extends cross-origin stripping to `X-Api-Key` and `X-Auth-Token`.
 
 Matching details:
 
@@ -172,6 +176,25 @@ Matching details:
 - Stripping is independent of the cookie jar: even with `EnableCookies` off, a manually set `Cookie` request header is still removed on cross-origin jumps.
 
 No extra handling is needed alongside `WithBasicAuth` / `WithBearerToken` — the token only goes to the original host and is not forwarded to third-party domains by the jumps.
+
+### Custom credential headers: SensitiveHeaders
+
+Business-specific credential headers (e.g. `X-Secret-Key`) are not in the built-in stripping set — without extra configuration they are **forwarded verbatim** to whatever the `Location` header points at, an open-redirect credential leak (CWE-525). `Security.SensitiveHeaders` appends such custom credential headers to the cross-origin stripping set:
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.SensitiveHeaders = []string{"X-Secret-Key", "X-Internal-Token"}
+
+client, err := httpc.New(cfg)
+```
+
+- Entries match case-insensitively (compared by canonicalized header name internally) and are deduplicated;
+- The five built-in sensitive headers (the first five rows above) are **always stripped**, regardless of this field;
+- For the field-level reference, see [Configuration API](../api-reference/client-config/config).
+
+:::warning Masking does not cover SensitiveHeaders
+The masking in `Result.String()` and audit output covers only the **built-in** sensitive header names — headers listed in `SensitiveHeaders` remain visible in plain text in those outputs. Keep this difference in mind when auditing logs for leaks.
+:::
 
 ## Circular Redirect Detection
 
@@ -208,7 +231,7 @@ import (
 
 func main() {
 	cfg := httpc.DefaultConfig()
-	cfg.Defaults.MaxRedirects = 2 // only allow 2 follows
+	cfg.Security.MaxRedirects = 2 // only allow 2 follows
 
 	client, err := httpc.New(cfg)
 	if err != nil {
@@ -269,7 +292,7 @@ import (
 
 func main() {
 	cfg := httpc.DefaultConfig()
-	cfg.Defaults.FollowRedirects = false
+	cfg.Security.FollowRedirects = false
 
 	client, err := httpc.New(cfg)
 	if err != nil {

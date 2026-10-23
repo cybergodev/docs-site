@@ -117,7 +117,7 @@ result, err := p.ExtractWithContext(ctx, data)
 
 - The library has two timeout layers: `Config.ProcessingTimeout` (default 30s, applies to a single document) and the `context.Context` passed by the caller. The two **stack** — whichever expires first takes effect. Even without a timeout context, `ProcessingTimeout` is the backstop; a shorter context wins.
 - Batch extraction (`ExtractBatch`) should have a single overall timeout context for the whole batch to keep runaway batches in check. A single item failure should not block the whole batch — batch methods recover each item independently.
-- The timeout mechanism is implemented via a dedicated goroutine + context deadline, guarded globally by `maxTimeoutGoroutines` (1000). Under extreme concurrency, once the limit is exceeded, new requests return `ErrProcessingTimeout` directly rather than piling up goroutines indefinitely.
+- The timeout mechanism is implemented via a dedicated goroutine + context deadline, guarded globally by `maxTimeoutGoroutines` (1000). Under extreme concurrency, once the limit is exceeded, new requests return `ErrTooManyConcurrentOps` directly rather than piling up goroutines indefinitely.
 
 ## Error Handling
 

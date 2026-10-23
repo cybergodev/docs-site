@@ -28,6 +28,16 @@ type ComponentFactory struct {
 
 ## 方法
 
+`ComponentFactory` 提供五个方法（限定名形如 `ComponentFactory.Validator`）：
+
+| 方法 | 返回 | 说明 |
+|------|------|------|
+| `ComponentFactory.Validator` | `Validator` | 共享的键/值验证器 |
+| `ComponentFactory.Auditor` | `FullAuditLogger` | 共享的审计日志器 |
+| `ComponentFactory.Expander` | `VariableExpander` | 共享的变量展开器 |
+| `ComponentFactory.Close` | `error` | 释放资源（幂等，可重复调用） |
+| `ComponentFactory.IsClosed` | `bool` | 工厂是否已关闭 |
+
 ### Validator
 
 ```go
@@ -313,19 +323,23 @@ go func() {
 
 #### CloseableChannelHandler 方法
 
-`CloseableChannelHandler` 除实现 `AuditHandler` 接口（`Log` / `Close`）外，还提供以下特有方法：
+`CloseableChannelHandler` 实现 `AuditHandler` 接口（`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`），并提供以下特有方法：
 
 ```go
 func (h *CloseableChannelHandler) Channel() <-chan AuditEvent
+func (h *CloseableChannelHandler) DroppedEvents() int64
 func (h *CloseableChannelHandler) IsClosed() bool
 ```
 
 **方法说明：**
 
-| 方法 | 签名 | 用途 |
-|------|------|------|
-| `Channel` | `func (h *CloseableChannelHandler) Channel() <-chan AuditEvent` | 返回内部只读通道，用于消费审计事件。`Close()` 调用后该通道会被关闭，`range` 循环随之退出 |
-| `IsClosed` | `func (h *CloseableChannelHandler) IsClosed() bool` | 检查处理器是否已关闭（线程安全，可并发调用） |
+| 方法 | 用途 |
+|------|------|
+| `CloseableChannelHandler.Log` | 发送事件：带缓冲通道满时**非阻塞丢弃**并返回错误；无缓冲（容量 0）时阻塞直至接收就绪或处理器关闭 |
+| `CloseableChannelHandler.Close` | 关闭处理器并关闭自有通道（`range` 消费循环随之退出）；可安全重复调用 |
+| `CloseableChannelHandler.Channel` | 返回内部只读通道，用于消费审计事件 |
+| `CloseableChannelHandler.IsClosed` | 检查处理器是否已关闭（线程安全，可并发调用） |
+| `CloseableChannelHandler.DroppedEvents` | 返回累计丢弃的事件数（满通道丢弃或关闭后的发送尝试）；计数只增不复位 |
 
 ```go
 handler := env.NewCloseableChannelHandler(64)
@@ -372,6 +386,8 @@ func (fs OSFileSystem) Setenv(key, value string) error
 func (fs OSFileSystem) Unsetenv(key string) error
 func (fs OSFileSystem) LookupEnv(key string) (string, bool)
 ```
+
+**与标准库的对应：** `OSFileSystem.Open`、`OSFileSystem.OpenFile`、`OSFileSystem.Stat`、`OSFileSystem.MkdirAll`、`OSFileSystem.Remove`、`OSFileSystem.Rename` 分别直通 os 包的同名调用；`OSFileSystem.Getenv`、`OSFileSystem.Setenv`、`OSFileSystem.Unsetenv`、`OSFileSystem.LookupEnv` 直通进程环境变量操作。零值即可使用，且并发安全。
 
 ---
 
@@ -531,7 +547,7 @@ const (
 func (f FileFormat) String() string
 ```
 
-返回格式的字符串表示。
+返回格式的字符串表示（`FileFormat.String`）。
 
 ```go
 fmt.Println(env.FormatJSON.String())  // "json"

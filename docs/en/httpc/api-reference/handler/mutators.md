@@ -7,7 +7,7 @@ sidebar_position: 20
 
 # Request & Response Mutators
 
-Middleware does not touch the underlying request/response objects directly; it reads and writes through **mutator** interfaces. Middleware always receives the full read-write mutator (`RequestMutator` / `ResponseMutator`); the read/write grouping below is for readability only and does not represent separate exported interfaces.
+Middleware does not touch the underlying request/response objects directly; it reads and writes through **mutator** interfaces. Middleware always receives the full read-write mutator (`RequestMutator` / `ResponseMutator`); the read/write grouping below is for readability only.
 
 ```text
 RequestMutator  =  Read methods  +  Write methods
@@ -62,7 +62,7 @@ The following methods modify request data. Call them when middleware only needs 
 
 ### RequestMutator
 
-`RequestMutator` is the read-write request mutator interface that httpc exposes, covering every method in the Read methods and Write methods tables above. Its internal read/write sub-interfaces live in the `internal/types` package and are not exported separately; externally they are referenced uniformly as `RequestMutator`. Middleware inspects and rewrites request properties through it before the request is sent.
+`RequestMutator` is the read-write request mutator interface that httpc exposes, covering every method in the Read methods and Write methods tables above. It is composed from the two split interfaces `RequestReader` and `RequestWriter`, both exported by the `httpc` package as public type aliases (`httpc.RequestReader` / `httpc.RequestWriter`; full method tables in [Reader/Writer Split Interfaces](../types/interfaces)). Middleware inspects and rewrites request properties through it before the request is sent.
 
 ## Typical RequestMutator Operations in Middleware
 
@@ -133,7 +133,7 @@ The following methods modify response data.
 
 ### ResponseMutator
 
-`ResponseMutator` is the read-write response mutator interface that httpc exposes, covering every method in the Read methods and Write methods tables above. Its internal read/write sub-interfaces live in the `internal/types` package and are not exported separately; externally they are referenced uniformly as `ResponseMutator`. Middleware reads or rewrites the response through it after the request completes — commonly used for response caching, content transformation (e.g. JSON pretty-printing), encoding/decoding, and response filtering.
+`ResponseMutator` is the read-write response mutator interface that httpc exposes, covering every method in the Read methods and Write methods tables above. It is composed from the two split interfaces `ResponseReader` and `ResponseWriter`, both exported by the `httpc` package as public type aliases (`httpc.ResponseReader` / `httpc.ResponseWriter`; full method tables in [Reader/Writer Split Interfaces](../types/interfaces)). Middleware reads or rewrites the response through it after the request completes — commonly used for response caching, content transformation (e.g. JSON pretty-printing), encoding/decoding, and response filtering.
 
 ## Typical ResponseMutator Operations in Middleware
 

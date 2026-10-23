@@ -186,7 +186,7 @@ env.ClearBytes(sensitiveData)
 clean := env.SanitizeForLog(msg)
 
 // Key name masking
-masked := env.MaskKey("DB_PASSWORD")  // "DB***"
+masked := env.MaskKey("DB_PASSWORD")  // "[MASKED]"
 ```
 
 ## Multi-environment
@@ -253,11 +253,11 @@ DURATION=1h30m
 
 | Limit | Default | Hard Max |
 |-------|---------|----------|
-| File size | 2 MB | 100 MB |
-| Line length | 1 KB | 64 KB |
-| Key length | 64 | 1024 |
-| Value length | 4 KB | 1 MB |
-| Variable count | 500 | 10000 |
+| File size | 8 MB | 100 MB |
+| Line length | 8 KB | 64 KB |
+| Key length | 128 | 1024 |
+| Value length | 8 KB | 1 MB |
+| Variable count | 1000 | 10000 |
 | Expansion depth | 5 | 20 |
 
 ## Testing

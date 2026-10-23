@@ -214,7 +214,7 @@ log.Printf("API Key: %s", sv.Masked())    // [SECURE:32 bytes locked]
 log.Printf("API Key: %s", sv)              // Same (String() returns Masked())
 
 // ✅ Safe — masking tools
-masked := env.MaskValue("API_KEY", "sk-xxx") // [MASKED:6 chars] (sensitive key → masked by value length)
+masked := env.MaskValue("API_KEY", "sk-xxx") // [MASKED] (sensitive key → fixed mask)
 clean := env.SanitizeForLog(logMessage)       // Auto-detect and mask
 
 // ❌ Dangerous — plaintext leak
@@ -325,12 +325,12 @@ See the [Testing](../guides/testing) guide for complete testing documentation.
 
 ### How do I stop a configuration file from reading process secrets?
 
-When the configuration file comes from an untrusted source (user uploads, external delivery), the default expansion scope lets `${VAR}` fall back to the process environment, risking secrets being captured into variable values. Enable the file-only scope to block it:
+When the configuration file comes from an untrusted source (user uploads, external delivery), an expansion scope that lets `${VAR}` fall back to the process environment risks secrets being captured into variable values. `DefaultConfig()` already defaults to the file-only scope (`ExpansionFileOnly`), blocking that fallback; the explicit assignment here is only for illustration:
 
 <!-- check-code: skip -->
 ```go
 cfg := env.DefaultConfig()
-cfg.ExpansionScope = env.ExpansionFileOnly // ${VAR} resolves file-local variables only
+cfg.ExpansionScope = env.ExpansionFileOnly // ${VAR} resolves file-local variables only (already the default)
 ```
 
 See [Variable Expansion · Expansion Scope](../guides/variable-expansion).
