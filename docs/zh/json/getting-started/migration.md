@@ -1,13 +1,13 @@
 ---
 title: "从标准库迁移 - CyberGo JSON | encoding/json 兼容指南"
-description: "从标准库 encoding/json 迁移到 CyberGo JSON：三步完成、只改 import 即可编译，Marshal/Encoder/Decoder 方法与错误类型兼容清单逐项核对，附默认安全校验行为差异表、迁移 FAQ 与增量能力使用指南。"
+description: "CyberGo JSON 与 encoding/json 的迁移说明：签名兼容、Encoder/Decoder 与错误类型对照，以及默认安全校验带来的行为差异。"
 sidebar_label: "从标准库迁移"
 sidebar_position: 60
 ---
 
 # 从标准库迁移
 
-`cybergodev/json` 与标准库 `encoding/json` **100% 兼容**——只需替换 import 路径，现有代码无需任何改动即可编译运行（默认输入安全校验带来的少量边界差异见下文[行为差异](#与标准库有哪些行为差异)）。本页帮助你完成迁移，并了解迁移后可用的增量能力。
+`cybergodev/json` 与标准库 `encoding/json` 的**函数签名一致**：替换 import 路径后即可编译。语义上有一处刻意差异：本库默认对输入做安全校验，超限或含危险模式的数据会被拒绝，标准库则照单全收。详见[行为差异](#与标准库有哪些行为差异)。本页给出三步迁移流程、API 对照表与增量能力。
 
 ## 三步迁移
 
@@ -27,38 +27,38 @@ sidebar_position: 60
    import "github.com/cybergodev/json"
    ```
 
-3. **完成**：编译通过，所有现有代码无需修改。
+3. **编译**：签名一致，代码可直接编译；运行期若输入含 `onload`、`eval(` 等字样或超过 100MB，会被默认安全校验拦截，处理方式见[迁移 FAQ](#迁移-faq)。
 
-## 完全兼容的 API
+## 签名兼容的 API
 
-下表列出 `encoding/json` 与 `cybergodev/json` 的对应关系：
+下表列出 `encoding/json` 与 `cybergodev/json` 的对应关系。标「签名兼容」的条目在函数签名层面可直接替换，行为差异（默认安全校验）统一列在[行为差异](#与标准库有哪些行为差异)一节：
 
 | encoding/json | cybergodev/json | 说明 |
 |---|---|---|
-| `Marshal(v)` | `Marshal(v, cfg...)` | 签名兼容，额外可选 cfg 参数 |
-| `Unmarshal(data, &v)` | `Unmarshal(data, &v, cfg...)` | 同上 |
-| `MarshalIndent(v, prefix, indent)` | 同名 | 完全兼容 |
-| `Compact(dst, src)` | 同名 | 完全兼容 |
-| `Indent(dst, src, prefix, indent)` | 同名 | 完全兼容 |
-| `HTMLEscape(dst, src)` | 同名 | 完全兼容 |
-| `Valid(data)` | `Valid(data, cfg...)` | 签名兼容 |
+| `Marshal(v)` | `Marshal(v, cfg...)` | 签名兼容，额外可选 cfg 参数；输出超过 `MaxJSONSize` 返回 `ErrSizeLimit` |
+| `Unmarshal(data, &v)` | `Unmarshal(data, &v, cfg...)` | 签名兼容；默认做输入安全校验 |
+| `MarshalIndent(v, prefix, indent)` | 同名 | 签名兼容，输出字节与标准库一致（典型值） |
+| `Compact(dst, src)` | 同名 | 签名兼容；默认做输入安全校验 |
+| `Indent(dst, src, prefix, indent)` | 同名 | 签名兼容；默认做输入安全校验 |
+| `HTMLEscape(dst, src)` | 同名 | 签名兼容 |
+| `Valid(data)` | `Valid(data, cfg...)` | 签名兼容；除语法外还检查大小、UTF-8 与危险模式 |
 | `NewEncoder(w)` | `NewEncoder(w, cfg...)` | 签名兼容 |
 | `NewDecoder(r)` | `NewDecoder(r, cfg...)` | 签名兼容 |
 | `Number` | `Number` | 类型兼容（`String`/`Int64`/`Float64`/`MarshalJSON` 全保留） |
 | `Delim` | `Delim` | 类型兼容（`String()` 保留） |
 | `Token` | `Token` | 类型兼容 |
 
-`Encoder` 与 `Decoder` 的**方法级**兼容同样完整——迁移后流式代码无需任何修改：
+`Encoder` 与 `Decoder` 的**方法级**签名同样一一对应：
 
 | 方法 | 所属 | 兼容性 |
 |---|---|---|
-| `Encode(v)` / `SetIndent(prefix, indent)` / `SetEscapeHTML(on)` | `*Encoder` | 完全兼容 |
-| `Decode(v)` / `Token()` / `More()` / `Buffered()` / `InputOffset()` | `*Decoder` | 完全兼容 |
-| `UseNumber()` / `DisallowUnknownFields()` | `*Decoder` | 完全兼容 |
+| `Encode(v)` / `SetIndent(prefix, indent)` / `SetEscapeHTML(on)` | `*Encoder` | 签名兼容 |
+| `Decode(v)` / `Token()` / `More()` / `Buffered()` / `InputOffset()` | `*Decoder` | 签名兼容 |
+| `UseNumber()` / `DisallowUnknownFields()` | `*Decoder` | 签名兼容；`DisallowUnknownFields` 在默认解码路径下已生效 |
 
-错误类型也一一对应，依赖 `errors.As` / 类型断言的代码可直接工作：`SyntaxError`、`UnmarshalTypeError`、`InvalidUnmarshalError`、`MarshalerError`、`UnsupportedTypeError`、`UnsupportedValueError` 均存在且行为一致（详见[错误类型](../api-reference/constants#错误变量)）。
+错误类型也一一对应，依赖 `errors.As` / 类型断言的代码可直接工作：`SyntaxError`、`UnmarshalTypeError`、`InvalidUnmarshalError`、`MarshalerError`、`UnsupportedTypeError`、`UnsupportedValueError` 均存在，类型与字段布局一致（详见[错误类型](../api-reference/constants#错误变量)）。
 
-错误结构体的**定位字段**也逐一保留，依赖字段做出错定位或分类统计的代码无需修改：
+错误结构体的**定位字段**也逐一保留，依赖这些字段做出错定位或分类统计的代码可直接沿用：
 
 | 类型 | 字段 | 类型 | 说明 |
 |------|------|------|------|
@@ -71,18 +71,18 @@ sidebar_position: 60
 `UnmarshalTypeError` 的 `Struct` / `Field` 非空时，`Error()` 输出 `json: cannot unmarshal <value> into Go struct field <Struct>.<Field> of type <type>`，与标准库逐字一致。
 
 ::: tip 可选的 cfg 参数
-所有额外的 `cfg ...Config` 参数都是**可选的**（variadic）。不传时，对常规数据的行为与标准库一致（默认输入校验的边界差异见下文[行为差异](#与标准库有哪些行为差异)）；需要启用安全模式、缓存等增强能力时才传入。
+所有额外的 `cfg ...Config` 参数都是**可选的**（variadic）。不传时走默认配置，大部分常规数据的结果与标准库相同，差异只来自默认输入安全校验（见下文[行为差异](#与标准库有哪些行为差异)）；需要启用安全模式、缓存等能力时才传入。
 
 关于 cfg 的三个**有意例外**（源自库的设计约定）：
 
 - **类型化读取函数**（`GetTyped`、`GetString`、`GetInt` 等）的可变参是**默认值**而非 cfg——Go 只允许一个可变参。需要配置化的类型读取时，改用 `SafeGet` 或 `New(cfg)` 创建的 Processor 上的类型化读取方法（如 `GetString`、`GetInt`）。
-- **便捷变体**（`SetCreate`、`SetMultipleCreate`、`DeleteClean`）等价于强制开启 `CreatePaths`（或 `CleanupNulls` + `CompactArrays`）标志的普通版本。
+- **标志预设变体**（`SetCreate`、`SetMultipleCreate`、`DeleteClean`）等价于强制开启 `CreatePaths`（或 `CleanupNulls` + `CompactArrays`）的普通版本。
 - `Valid` 返回单个 `bool`（标准库签名）；需要失败原因时用 `ValidWithConfig`（返回 `bool, error`）。
 :::
 
 ## 代码示例：只改 import
 
-下面的示例展示「只改 import」的替换效果，编码、解码与结构体标签（struct tag）用法与 `encoding/json` 完全相同：
+下面展示只替换 import 的效果：编码、解码与结构体标签（struct tag）用法不变：
 
 ```go
 package main
@@ -100,7 +100,7 @@ func main() {
 		Tags []string `json:"tags"`
 	}
 
-	// 编码 — 与 encoding/json 完全相同
+	// 编码 — 签名与行为均与 encoding/json 一致
 	user := User{Name: "Alice", Age: 30, Tags: []string{"go", "json"}}
 	b, err := json.Marshal(user)
 	if err != nil {
@@ -109,7 +109,7 @@ func main() {
 	fmt.Println(string(b))
 	// 输出：{"name":"Alice","age":30,"tags":["go","json"]}
 
-	// 解码 — 与 encoding/json 完全相同
+	// 解码 — 字节输入未命中校验规则时，结果与 encoding/json 相同
 	var u User
 	if err := json.Unmarshal(b, &u); err != nil {
 		panic(err)
@@ -121,7 +121,7 @@ func main() {
 
 ## 增量能力
 
-迁移后，你在保持标准库兼容的同时，还能按需使用以下标准库做不到的能力：
+迁移后可以在保留标准库签名兼容的前提下，按需使用以下标准库没有的能力：
 
 | 能力 | 示例 | 了解更多 |
 |---|---|---|
@@ -142,21 +142,23 @@ func main() {
 
 ## 与标准库有哪些行为差异？
 
-对**常规数据**，默认配置下的行为与 `encoding/json` 一致。需要留意的是：`cybergodev/json` 默认就带一层**输入安全校验**（这是它作为安全 JSON 库的定位），对超限或含危险模式的输入会拒绝，而标准库照单全收。差异集中在下表：
+对于不含危险模式、未超限、编码合法的输入，默认配置下的结果与 `encoding/json` 相同。差异来自默认开启的**输入安全校验**：超限或含危险模式的数据会被拒绝，标准库照单全收。差异集中在下表：
 
 | 差异点 | encoding/json | CyberGo 默认行为 | 需要不同行为时 |
 |---|---|---|---|
 | 输入大小 | 无限制 | 超过 100MB（`MaxJSONSize`）返回 `ErrSizeLimit` | 调大 `cfg.MaxJSONSize` |
-| 嵌套深度 | 无显式限制 | 超过 200 层返回 `ErrDepthLimit` | 调整 `MaxNestingDepthSecurity` |
-| 危险内容模式 | 不检查 | 28 个内置模式默认拦截（`__proto__`、`<script`、`javascript:`、`eval(`、`onload` 等），返回 `ErrSecurityViolation` | 确认可信后设 `cfg.DisableDefaultPatterns = true`（`__proto__` 等关键模式仍拦截） |
-| 容器宽度 | 无限制 | 单对象 ≤ 10 万键、单数组 ≤ 10 万元素 | 调整 `MaxObjectKeys` / `MaxArrayElements` |
-| 无效 UTF-8 | 解码时替换为 U+FFFD | 直接拒绝（`ErrInvalidJSON`） | 预先修复输入编码 |
+| 嵌套深度 | 无显式限制 | 超过 200 层（`MaxNestingDepthSecurity`）返回 `ErrDepthLimit` | 调整 `MaxNestingDepthSecurity` |
+| 危险内容模式 | 不检查 | 28 个内置模式默认拦截（`__proto__`、`<script`、`javascript:`、`eval(`、`onload` 等），返回 `ErrSecurityViolation` | 确认可信后设 `cfg.DisableDefaultPatterns = true`（`__proto__` 等 3 个关键模式仍拦截） |
+| 容器宽度 | 无限制 | 单对象 ≤ 10 万键、单数组 ≤ 10 万元素（超限返回 `ErrSizeLimit`） | 调整 `MaxObjectKeys` / `MaxArrayElements` |
+| 无效 UTF-8 | 解码时替换为 U+FFFD | 直接拒绝（`ErrInvalidJSON`；`Valid` 返回 false） | 预先修复输入编码 |
 | BOM 前缀 | 语法错误 | 拒绝（`ErrInvalidJSON`） | 预处理去掉 BOM |
+| `Marshal` 输出上限 | 无上限 | 输出超过 `MaxJSONSize` 返回 `ErrSizeLimit` | 调大 `cfg.MaxJSONSize` |
+| `Marshal` 嵌套深度 | 不限制 | 超过 `MaxDepth`（默认 100）返回 `ErrDepthLimit` | 调大 `cfg.MaxDepth`，或设为 0 取消限制 |
 
-两类容易误解的点：
+两点容易误解：
 
-1. **错误信息更丰富**：路径操作失败时返回的 `JsonsError` 会携带操作名、路径与底层原因（支持 `errors.Is`/`errors.As` 与 `Unwrap`），但**不会**改变标准库兼容函数（`Unmarshal`/`Decode` 等）的错误类型——它们仍返回 `SyntaxError`、`UnmarshalTypeError` 等标准形态。
-2. **校验只作用于输入**：上述限制针对 JSON 文本输入（`Unmarshal`、`Get`、`Parse`、`Valid` 等）；`Marshal`/`Encode` 编码 Go 值不做内容校验。
+1. **路径操作的错误类型更细**：路径查询/修改失败时返回的 `JsonsError` 携带操作名、路径与底层原因，支持 `errors.Is`/`errors.As` 与 `Unwrap`。标准库兼容函数（`Unmarshal`/`Decode` 等）不受影响，仍返回 `SyntaxError`、`UnmarshalTypeError` 等标准形态。
+2. **校验范围**：内容模式校验只针对 JSON 文本输入（`Unmarshal`、`Get`、`Parse`、`Valid` 等）；`Marshal`/`Encode` 编码 Go 值不做内容模式校验，但仍受输出大小（`MaxJSONSize`）与嵌套深度（`MaxDepth`，默认 100）约束。
 
 处理不可信输入时，建议直接用 `json.SecurityConfig()` 预设（更紧的限制 + 完整扫描），详见[安全模式](../security/security-mode)。
 
@@ -168,15 +170,15 @@ func main() {
 
 **Q：HTML 转义默认行为一致吗？**
 
-一致。`Marshal`/`Encode` 默认转义 `<`、`>`、`&`（与标准库相同），`Encoder.SetEscapeHTML(false)` 可关闭——行为与签名均兼容。
+一致。`Marshal`/`Encode` 默认转义 `<`、`>`、`&`（与标准库相同），`Encoder.SetEscapeHTML(false)` 可关闭。注意 `Marshal` 始终转义，即使 `cfg.EscapeHTML=false`；需要按配置关闭时用 `Encode`。
 
 **Q：现有代码用 `json.Marshaler`/`json.Unmarshaler` 自定义类型呢？**
 
-完全兼容。两个接口照常生效，实现它们的自定义类型在编码/解码路径上行为一致。
+签名兼容。两个接口照常生效，实现它们的自定义类型在编码/解码路径上行为一致。
 
 **Q：可以只在新代码里用增量能力、旧代码保持不动吗？**
 
-可以，这正是设计目标。包级函数按「尾参 cfg」缓存对应的 Processor（见上文 cfg 约定），不传 cfg 的调用走默认配置的全局处理器——对常规数据与标准库一致，默认输入校验的差异见上文[行为差异](#与标准库有哪些行为差异)表。
+可以。包级函数按「尾参 cfg」缓存对应的 Processor（见上文 cfg 约定），不传 cfg 的调用走默认配置的全局处理器。输入未触发安全校验时，结果与标准库相同；差异见上文[行为差异](#与标准库有哪些行为差异)表。
 
 **Q：`Unmarshal` 拒绝了含 `onload`、`eval(` 等字样的合法数据，怎么办？**
 

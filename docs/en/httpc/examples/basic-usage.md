@@ -7,6 +7,8 @@ sidebar_position: 10
 
 # Basic Usage
 
+This page provides runnable examples of basic HTTPC usage: each HTTP method, request-body types, query parameters, authentication, response-status checks, and configuration presets.
+
 ## GET Requests
 
 ### Basic GET
@@ -53,7 +55,7 @@ result, err := httpc.Get("https://api.example.com/me",
 )
 ```
 
-Besides Bearer tokens, three more authentication/header patterns are common:
+Beyond a Bearer token, HTTPC provides three authentication and header patterns.
 
 ```go
 // Basic authentication
@@ -163,7 +165,7 @@ fmt.Println(result.StatusCode()) // 200
 
 ### Plain Text and Binary
 
-String request bodies are sent as `text/plain` automatically; for binary data, an explicit MIME type is recommended:
+String request bodies are sent as `text/plain`; binary data requires an explicit MIME type:
 
 ```go
 // Plain text: Content-Type is set to text/plain automatically
@@ -180,7 +182,7 @@ result, err = httpc.Post("https://httpbin.org/post",
 
 ### Forcing the Body Type (BodyKind)
 
-`WithBody` infers the encoding from the input type by default; the second argument forces a specific kind:
+`WithBody` infers the encoding from the input type; the second argument forces a specific kind:
 
 ```go
 // The map is forced through JSON encoding (instead of the generic formatting branch)
@@ -191,7 +193,7 @@ result, err := httpc.Post("https://httpbin.org/post",
 
 ## Other HTTP Methods
 
-PUT, DELETE, HEAD, PATCH, OPTIONS, and the generic `Request` are all available. Here is a complete example covering every method:
+PUT, DELETE, HEAD, PATCH, OPTIONS, and the generic `Request` are all available. The example below demonstrates every method in turn:
 
 ```go
 package main
@@ -269,7 +271,7 @@ Method quick reference:
 
 ### Generic Request Method
 
-When the HTTP method is only known at runtime (from configuration, a request builder, or proxy forwarding), use `Request(ctx, method, url, options...)`:
+When the HTTP method is only known at runtime (from configuration, a request builder, or proxy forwarding), call `Request(ctx, method, url, options...)`:
 
 ```go
 ctx := context.Background()
@@ -292,7 +294,7 @@ for _, m := range []struct{ method, url string }{
 
 ## Response Handling
 
-The `*Result` returned by every request is a request/response/metadata triple: the three nested structs are allocated together and share a single block of memory:
+The `*Result` returned by every request is a request/response/metadata triple. The three nested structs are allocated together and share a single block of memory:
 
 | Group | Key Fields | Description |
 |-------|------------|-------------|
@@ -324,14 +326,14 @@ case result.IsServerError(): // 5xx
 ```
 
 :::tip err and status codes are two separate error layers
-Transport-level failures (DNS, timeout, TLS) surface as `err != nil`; HTTP 4xx/5xx does **not** count as `err` — the response arrives normally, and you classify it yourself with methods like `IsSuccess()`. Handling the two layers separately is the most common correct approach.
+Transport-level failures (DNS, timeout, TLS) surface as `err != nil`. HTTP 4xx/5xx does **not** count as `err`: the response arrives normally, and the caller classifies it with methods like `IsSuccess()`.
 :::
 
 ### Choosing Between Body / RawBody / String
 
 | Method | Returns | Best For |
 |--------|---------|----------|
-| `result.Body()` | `string` (pre-read) | Reading text directly; zero extra cost |
+| `result.Body()` | `string` (pre-read) | Reading text directly; no extra cost |
 | `result.RawBody()` | `[]byte` (raw) | Feeding APIs that take a byte slice (hashing, re-decoding) |
 | `result.String()` | Formatted summary | Debug printing (status, headers, body summary); the most expensive — keep it off hot paths |
 

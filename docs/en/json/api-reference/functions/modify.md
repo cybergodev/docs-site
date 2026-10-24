@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Modification Operations"
 title: "Modification Functions - CyberGo JSON | Set/MergeJSON Usage"
-description: "CyberGo JSON is a Go library for path-based editing, offering Set, SetCreate, SetMultiple and MergeJSON/MergeMany merges to update nested fields immutably."
+description: "Modifying JSON: Set/SetMultiple create missing nodes, SetCreate forces CreatePaths, MergeJSON deep-merges under MergeMode, and every call returns a new string."
 sidebar_position: 30
 ---
 
 # Modification Functions
 
-The JSON modification functions of the json package support path-based setting, batch updates, and merge operations.
+The JSON modification functions of the json package: path setting, batch updates, and merging. Every function returns a new string and leaves the input unchanged.
 
 ## Set Functions
 
@@ -35,7 +35,8 @@ On success, returns the modified JSON string and `nil`; on failure, returns the 
 | `ErrInvalidJSON` | `jsonStr` is not valid JSON |
 | `ErrInvalidPath` | The path expression has illegal syntax |
 | `ErrPathNotFound` | The path does not exist and `CreatePaths = false` |
-| `ErrTypeMismatch` | A type conflict exists at the target location, so the value cannot be written |
+
+When the target location has a type conflict (for example `a` is a number and you write `a.b`), the return is a plain `JsonsError` and `errors.Is(err, ErrTypeMismatch)` is `false`. Judge such failures by the message or `JsonsError.Op`, not by the sentinel.
 
 **Example**
 
@@ -111,16 +112,14 @@ if err != nil {
 fmt.Println(result)
 ```
 
-**Performance advantage**
-
-For multiple modifications, `SetMultiple` is more efficient than repeated `Set` calls:
+**Performance**: for several modifications, `SetMultiple` parses the document once and writes each path into the same tree; repeated `Set` calls re-parse on every step. Updates are applied in sorted path order, so overlapping paths such as `a` and `a.b` produce a deterministic result (`a` is written first, then `a.b`):
 
 ```go
 // Recommended: one call
 updates := map[string]any{"a": 1, "b": 2, "c": 3}
 result, err := json.SetMultiple(data, updates)
 
-// Not recommended: repeated calls
+// Repeated calls parse the document again on every step
 result, err = json.Set(data, "a", 1)
 result, err = json.Set(result, "b", 2)
 result, err = json.Set(result, "c", 3)
@@ -130,7 +129,7 @@ result, err = json.Set(result, "c", 3)
 
 Signature: `func SetCreate(jsonStr, path string, value any, cfg ...Config) (string, error)`
 
-Sets a value and automatically creates missing intermediate paths. Equivalent to `Set` with `CreatePaths` **forced on**: even with an extra `cfg`, the other fields merge as usual, but `CreatePaths` is always forced to `true` (explicitly self-documenting "path creation is allowed here"). The default `Config.CreatePaths` is already `true`, so without cfg, `SetCreate` behaves the same as `Set`.
+Sets a value and automatically creates missing intermediate paths. Equivalent to `Set` with `CreatePaths` **forced on**: even with an extra `cfg`, the other fields merge as usual but `CreatePaths` is always `true`. The default `Config.CreatePaths` is already `true`, so without cfg `SetCreate` behaves the same as `Set`; its value is marking the intent ("creating paths is allowed here") and overriding a processor built with `CreatePaths=false`.
 
 ```go
 // Intermediate paths are created automatically when missing
@@ -178,7 +177,7 @@ r6, _ := json.SetCreate(`{}`, "users[0].profile.bio", "Developer")
 ```
 
 ::: warning Limitation of slice segments
-**Slice segments** like `items[1:3]` are fine for queries (they return a sub-array), but as the **last segment** of a `Set`/`Delete` path the current version returns an error ("distributed set ops on slices not yet supported") — i.e. the "rewrite every element in the range" distributed modification is not supported. When you need that effect, use `ForeachReturn` or a wildcard path instead.
+**Slice segments** like `items[1:3]` are fine for queries (they return a sub-array), but as the **last segment** of a `Set`/`Delete` path the current version returns an error (`distributed set ops on slices not yet supported`) — the "rewrite every element in the range" operation is not supported. When you need that effect, use `ForeachReturn` or a wildcard path instead.
 :::
 
 ## Merge Functions
@@ -187,7 +186,7 @@ r6, _ := json.SetCreate(`{}`, "users[0].profile.bio", "Developer")
 
 Signature: `func MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
 
-Merges two JSON objects with a deep-merge strategy. Nested objects have their keys merged recursively according to the mode specified by `Config.MergeMode`. For primitive values and arrays, the patch value wins.
+Merges two JSON objects with a deep-merge strategy. Nested objects have their keys merged recursively under the mode given by `Config.MergeMode`; on primitive conflicts the patch value wins, and arrays are merged by element according to the mode (see the table), not overwritten by index.
 
 **Parameters**
 
@@ -263,14 +262,14 @@ func main() {
 ```
 
 ::: warning Top-level inputs must be JSON objects
-`MergeJSON` requires both top-level inputs to be JSON objects (`{...}`); if either side is an array or a scalar, an error is returned (`first JSON is not an object` / `second JSON is not an object`). The "array behavior" in the table above applies to **arrays inside object fields** — when the same-named field is an array on both sides, elements are deduplicated/intersected/differenced (in difference mode the key is kept even if the result is an empty array). When the same-named field has mismatched types on the two sides (e.g. an array on one side, a scalar on the other): union/intersection take the override's value, while difference drops the key entirely.
+`MergeJSON` requires both top-level inputs to be JSON objects (`{...}`); if either side is an array or a scalar, an error is returned (`first JSON is not an object` / `second JSON is not an object`). The "array behavior" in the table applies to **arrays inside object fields**: when the same-named field is an array on both sides, elements are deduplicated, intersected, or differenced (in difference mode the key is kept even if the result is an empty array). When the same-named field has mismatched types (an array on one side, a scalar on the other): union/intersection take the override's value, while difference drops the key entirely.
 :::
 
 ### MergeMany
 
 Signature: `func MergeMany(jsons []string, cfg ...Config) (string, error)`
 
-Merges multiple JSON objects. Requires at least 2 JSON strings. The merge mode can be set via `Config.MergeMode`.
+Merges multiple JSON objects; at least 2 inputs are required. The merge mode is likewise set by `Config.MergeMode`.
 
 **Parameters**
 
@@ -289,7 +288,7 @@ result, err := json.MergeMany([]string{config1, config2, config3})
 // Result: {"api":"v1","timeout":60,"retries":5,"debug":true}
 ```
 
-**Merge order and errors**: folds left to right — `MergeMany([a, b, c])` equals `MergeJSON(MergeJSON(a, b), c)`, with the right-hand (higher-index) value winning conflicts. Fewer than 2 inputs is an immediate error; if any step fails, an error wrapping the failing index is returned (`merge failed at index i: ...`) and no partial result is produced.
+**Merge order and errors**: folds left to right, `MergeMany([a, b, c])` equals `MergeJSON(MergeJSON(a, b), c)`, with the right-hand (higher-index) value winning conflicts. Fewer than 2 inputs is an immediate error; if any step fails, an error carrying the failing index is returned (`merge failed at index i: ...`) and no partial result is produced.
 
 ## Processor Methods
 
@@ -327,7 +326,7 @@ final := parsed3.Data() // any (map[string]any / []any)
 ```
 
 :::tip
-`SetFromParsed` returns a **new** `*ParsedJSON` (intermediate results do not affect each other) — a good fit for "many consecutive modifications on the same large JSON". Pairs with `GetFromParsed`; see [Processor Parse Methods](../processor/parse#setfromparsed).
+`SetFromParsed` returns a **new** `*ParsedJSON` (intermediate results do not affect each other), which fits consecutive modifications on the same large JSON. Pairs with `GetFromParsed`; see [Processor Parse Methods](../processor/parse#setfromparsed).
 :::
 
 `MergeJSON` and `MergeMany` also have Processor counterparts with the same signatures as the package-level functions, convenient for reusing a configured Processor:
@@ -337,8 +336,8 @@ result, err := p.MergeJSON(base, override)
 
 merged, err := p.MergeMany([]string{config1, config2, config3})
 
-// CompareJSON also has a Processor method (note: Processor.CompareJSON always
-// runs security validation, unlike the package-level no-cfg path)
+// CompareJSON also has a Processor method; Processor.CompareJSON always
+// runs security validation, unlike the package-level no-cfg path
 equal, err := p.CompareJSON(a, b)
 ```
 

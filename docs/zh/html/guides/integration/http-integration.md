@@ -1,13 +1,13 @@
 ---
 sidebar_label: "HTTP 集成"
 title: "HTTP 集成 - CyberGo html | Web 服务实战"
-description: "CyberGo html 与标准库 net/http 集成实战指南：单页抓取与内容提取、并发批量抓取处理、Processor 单例复用 Web 服务模式、指数退避重试策略、超时控制、GBK 编码自动检测等生产级 HTTP 网页内容采集与服务部署最佳实践。"
+description: "CyberGo html 与标准库 net/http 集成：单页抓取与提取、并发抓取多个 URL、Processor 单例复用、指数退避重试、批量与上下文取消，以及从 Content-Type 头读取 charset 显式指定编码的写法。"
 sidebar_position: 10
 ---
 
 # HTTP 集成
 
-HTML 库不内置 HTTP 客户端，而是与标准库 `net/http` 无缝配合。本文展示常见的集成模式。
+html 库不提供 HTTP 客户端；把 `net/http` 抓回的响应体交给 `Extract` 即可。以下是常见的集成写法。
 
 ## 基本抓取与提取
 
@@ -51,8 +51,8 @@ func main() {
 }
 ```
 
-:::tip 优化建议
-对输入大小做好限制，防止内存溢出：
+:::tip 读取前先限流
+`io.LimitReader` 把响应体截断在 50MB（`DefaultMaxInputSize`），避免先把超大页面读进内存再被库拒绝：
 
 ```go
 body, err := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024)) // 50MB
@@ -142,13 +142,13 @@ func main() {
 }
 ```
 
-:::warning 输入验证
-Web 服务中务必限制请求体大小，防止恶意大文件攻击。使用 `io.LimitReader` 或 `http.MaxBytesReader`。
+:::warning 输入大小限制
+Web 服务必须限制请求体大小，否则恶意大文件会耗尽内存。使用 `io.LimitReader` 或 `http.MaxBytesReader`。
 :::
 
 ## 并发抓取多个 URL
 
-结合 Processor 的并发安全性，高效处理多个页面：
+`Processor` 并发安全，可以同时处理多个页面：
 
 ```go
 type URLResult struct {
@@ -251,71 +251,77 @@ func fetchWithRetry(client *http.Client, url string, maxRetries int) ([]byte, er
 ```
 
 :::tip 重试策略
-- 4xx 错误不要重试（客户端问题）
-- 5xx 和网络错误可重试
-- 使用指数退避：1s、2s、4s
-- 设置最大重试次数（通常 3 次）
+- 4xx（除 408、429）不重试，重试也不会改变结果
+- 5xx 与网络错误可以重试
+- 退避间隔翻倍（1s、2s、4s），并设上限
+- 重试次数设上限，常用 3 次
 :::
 
 ## 批量 + 上下文取消
 
-对大批量 URL 使用带上下文的批量处理，支持超时取消：
+给整批任务设一个总超时，超时后未开始的任务计入 `Cancelled`：
 
 ```go
 func batchProcessURLs(processor *html.Processor, urls []string) {
-    // 设置总超时
-    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 
-    // 抓取所有页面
-    pages := make([][]byte, len(urls))
-    for i, u := range urls {
-        select {
-        case <-ctx.Done():
-            fmt.Println("抓取超时，已取消")
-            return
-        default:
-            body, err := fetchWithRetry(http.DefaultClient, u, 2)
-            if err != nil {
-                log.Printf("跳过 %s: %v", u, err)
-                continue
-            }
-            pages[i] = body
-        }
-    }
+	// 只收集抓取成功的页面：nil 或空输入会被当成空文档正常提取，
+	// 混进批次会让失败在统计里显示为成功
+	pages := make([][]byte, 0, len(urls))
+	for _, u := range urls {
+		if ctx.Err() != nil {
+			log.Println("抓取超时，停止取数")
+			break
+		}
+		body, err := fetchWithRetry(http.DefaultClient, u, 2)
+		if err != nil {
+			log.Printf("跳过 %s: %v", u, err)
+			continue
+		}
+		pages = append(pages, body)
+	}
 
-    // 批量提取
-    batch := processor.ExtractBatchWithContext(ctx, pages)
-    fmt.Printf("成功：%d, 失败：%d, 取消：%d\n",
-        batch.Success, batch.Failed, batch.Cancelled)
+	batch := processor.ExtractBatchWithContext(ctx, pages)
+	fmt.Printf("成功：%d, 失败：%d, 取消：%d\n",
+		batch.Success, batch.Failed, batch.Cancelled)
 }
 ```
+
+抓取失败与提取失败是两回事：前者由调用方自己记录（上面的 `log.Printf`），后者才进 `BatchResult.Failed`。
 
 ## 编码处理
 
-HTTP 响应可能使用非 UTF-8 编码，HTML 库会自动检测并处理：
+库只从 HTML 字节本身判断编码（BOM、`<meta charset>`、UTF-8 合法性、统计采样），**不读取 HTTP `Content-Type` 头**。因此响应头声明了 `charset=gbk`、而 HTML 里又没有 `<meta charset>` 时，库会把字节当作 windows-1252 解码，结果是乱码且不报错。
+
+可靠的写法是从响应头取 charset 后显式传给 `Config.Encoding`：
 
 ```go
-// 即使响应是 GBK 编码，也能正确提取
-resp, _ := http.Get("https://example.cn/page")
-body, _ := io.ReadAll(resp.Body)
-result, _ := html.Extract(body) // 自动检测编码
-```
+resp, err := http.Get("https://example.cn/page")
+if err != nil {
+    log.Fatal(err)
+}
+defer resp.Body.Close()
 
-也可从 `Content-Type` 头获取编码信息后手动指定：
-
-```go
-charset := "utf-8" // 从 Content-Type 解析
-if ct := resp.Header.Get("Content-Type"); ct != "" {
-    if idx := strings.Index(ct, "charset="); idx != -1 {
-        charset = ct[idx+8:]
-    }
+body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
+if err != nil {
+    log.Fatal(err)
 }
 
 cfg := html.DefaultConfig()
-cfg.Encoding = charset
-result, _ := html.Extract(body, cfg)
+if ct := resp.Header.Get("Content-Type"); ct != "" {
+    if _, params, err := mime.ParseMediaType(ct); err == nil {
+        cfg.Encoding = params["charset"] // 为空时留空，走自动检测
+    }
+}
+
+result, err := html.Extract(body, cfg)
+if err != nil {
+    log.Fatal(err)
+}
 ```
+
+若响应头不带 charset，而站点已知使用 GBK 等非 UTF-8 编码，直接在 `cfg.Encoding` 中写死该编码即可。详见 [编码检测实战](../core-features/encoding-detection)。
 
 ## 最佳实践
 
@@ -325,7 +331,7 @@ result, _ := html.Extract(body, cfg)
 | Web 服务 | Processor 单例 + `ExtractWithContext()` |
 | 批量抓取 | `processURLs()` + Processor 复用 |
 | 不可信来源 | `HighSecurityConfig()` + `io.LimitReader()` |
-| 编码不确定 | 依赖自动检测，或从 Content-Type 头指定 |
+| 编码不确定 | 从 `Content-Type` 取 charset 显式指定；留空时依赖自动检测 |
 
 ## 下一步
 

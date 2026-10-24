@@ -7,27 +7,29 @@ sidebar_position: 10
 
 # Handler 与中间件链
 
+Handler 管线是 HTTPC 的请求处理引擎：方法 API 组装一条 `MiddlewareFunc` 链并执行，链的终点把请求交给引擎。本页说明管线类型、执行顺序与 Mutator 契约。
+
 ## 管线导出符号总览
 
 Handler 管线相关的全部导出符号及其在本参考中的位置：
 
 | 导出符号 | 类别 | 说明 | 详细参考 |
 |----------|------|------|----------|
-| `Handler` | 函数类型别名 | 请求处理核心签名 | 本文 [Handler](#handler) |
-| `MiddlewareFunc` | 函数类型别名 | 中间件签名 | 本文 [MiddlewareFunc](#middlewarefunc) |
-| `Chain` | 组合函数 | 将多个中间件组合为单个中间件 | 本文 [Chain](#chain) |
-| `RecoveryMiddleware` / `LoggingMiddleware` / `RequestIDMiddleware` / `TimeoutMiddleware` / `HeaderMiddleware` / `MetricsMiddleware` / `AuditMiddleware` | 中间件工厂（7 个） | 开箱即用的内置中间件 | [内置中间件](../client-config/middleware) |
+| `Handler` | 函数类型别名 | 请求处理核心签名 | 见下文 [Handler](#handler) |
+| `MiddlewareFunc` | 函数类型别名 | 中间件签名 | 见下文 [MiddlewareFunc](#middlewarefunc) |
+| `Chain` | 组合函数 | 将多个中间件组合为单个中间件 | 见下文 [Chain](#chain) |
+| `RecoveryMiddleware` / `LoggingMiddleware` / `RequestIDMiddleware` / `TimeoutMiddleware` / `HeaderMiddleware` / `MetricsMiddleware` / `AuditMiddleware` | 中间件工厂（7 个） | 内置中间件工厂 | [内置中间件](../client-config/middleware) |
 | `LoggingConfig`/`DefaultLoggingConfig`、`RequestIDConfig`/`DefaultRequestIDConfig`、`TimeoutMiddlewareConfig`/`DefaultTimeoutMiddlewareConfig`、`HeaderConfig`/`DefaultHeaderConfig`、`MetricsConfig`/`DefaultMetricsConfig` | 配置结构体与默认值构造（5 组） | 各中间件的配置与默认值 | [内置中间件](../client-config/middleware) |
 | `AuditEvent`（含 `MarshalJSON` 方法）、`AuditConfig`/`DefaultAuditConfig` | 审计类型与配置 | 安全审计事件与配置 | [常量与类型](../types/constants) |
 | `SourceIPKey` / `UserIDKey` | 上下文键常量 | 审计事件的源 IP 与用户 ID 键 | [常量与类型](../types/constants) |
 
 ## 双层架构
 
-HTTPC 的请求处理由两层协作完成：Layer 1 的方法 API 是**薄封装**，真正处理请求的引擎是 Layer 2 的 Handler 管线。每个请求的执行都归结为「组装并执行一条 Handler 链」。
+HTTPC 的请求处理由两层协作完成：Layer 1 的方法 API 是**轻量封装**，真正处理请求的引擎是 Layer 2 的 Handler 管线。每个请求的执行都归结为「组装并执行一条 Handler 链」。
 
 ```text
 HTTPC 双层架构
-├── Layer 1  方法 API（薄封装）
+├── Layer 1  方法 API（轻量封装）
 │     包级函数 httpc.Get/Post/... + Client 方法 + 请求选项
 │     → 内部统一走 client.Request → executeRequest
 │
@@ -36,7 +38,9 @@ HTTPC 双层架构
       MiddlewareFunc(Handler) 洋葱链 → 组装 → 执行
 ```
 
-当客户端配置了中间件时，`executeRequest` 会把请求选项应用到一个 `RequestMutator` 上，再交由 `clientImpl.middlewareChain` 执行；若未配置中间件，则直接走引擎发请求。这条链就是 `buildMiddlewareChain` 在 `New()` 时一次性组装、缓存在 `clientImpl.middlewareChain` 字段上的 Handler。
+配置了中间件时，`executeRequest` 把请求选项应用到一个 `RequestMutator` 上，再交由 `clientImpl.middlewareChain` 执行；未配置中间件时，请求直接走引擎。
+
+这条链由 `buildMiddlewareChain` 在 `New()` 时一次性组装，缓存在 `clientImpl.middlewareChain` 字段上。
 
 ## 执行流程详解
 
@@ -65,12 +69,12 @@ httpc.Get(url, opts...)              ← Layer 1 包级函数
 关键细节：
 
 - **对象池复用**：有中间件时，`executeRequest` 从引擎的共享对象池获取一个 `*engine.Request`（经 `acquireMiddlewareRequest()`），应用完请求选项后作为 `RequestMutator` 传给中间件链。整个链**同步执行**完毕后，`defer` 将请求对象归还对象池。
-- **无中间件直连**：未配置任何中间件时跳过池化和链组装，请求选项直接传给引擎——零开销的快速路径。
-- **默认 panic 安全网**：`clientImpl.Request` 自带 `recover`，将执行路径中任何意外的 panic 转为 error 返回，而不是崩溃调用方。这与 `RecoveryMiddleware` 形成双重保障。
+- **无中间件直连**：未配置任何中间件时跳过池化和链组装，请求选项直接传给引擎（快速路径，无额外开销）。
+- **默认 panic 安全网**：`clientImpl.Request` 自带 `recover`，将执行路径中任何意外的 panic 转为 error 返回，而非使调用方崩溃。这与 `RecoveryMiddleware` 构成双重保障。
 
 ## 中间件链组装过程
 
-`buildMiddlewareChain` 在 `New()` 时**一次性组装**整条链并缓存到 `clientImpl.middlewareChain` 字段。组装过程分两步：
+`buildMiddlewareChain` 在 `New()` 时**一次性组装**整条链，缓存到 `clientImpl.middlewareChain` 字段。组装分两步：
 
 ```text
 buildMiddlewareChain(middlewares):
@@ -85,7 +89,9 @@ buildMiddlewareChain(middlewares):
      切片 [mwA, mwB, mwC] → mwA(mwB(mwC(finalHandler)))
 ```
 
-切片顺序与执行顺序的对应关系：切片中**靠前**的中间件处于链的**最外层**（最先进入、最后退出）；**靠后**的中间件紧贴 `finalHandler`（最内层）。`Chain` 组合器从切片末尾开始反向遍历（`for i := len-1; i >= 0; i--`），将每个中间件依次包在前一层外面。
+切片顺序与执行顺序的对应关系：切片中**靠前**的中间件处于链的**最外层**（最先进入、最后退出）；**靠后**的中间件紧贴 `finalHandler`（最内层）。
+
+`Chain` 组合器从切片末尾开始反向遍历（`for i := len-1; i >= 0; i--`），将每个中间件依次包在前一层外面。
 
 ## Handler
 
@@ -93,7 +99,7 @@ buildMiddlewareChain(middlewares):
 type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, error)
 ```
 
-请求处理的核心函数签名，是内部 `types.Handler` 的类型别名（定义于 `types.go`）。接收上下文与请求变更器，返回响应变更器或错误。链的末端 Handler（`finalHandler`）负责把中间件改写后的请求字段转发给底层引擎真正发出网络请求。
+请求处理的核心函数签名，是内部 `types.Handler` 的类型别名（定义于 `types.go`）。接收上下文与请求变更器，返回响应变更器或错误。链末端 Handler（`finalHandler`）把中间件改写后的请求字段转发给底层引擎，由引擎真正发出网络请求。
 
 | 参数/返回值 | 类型 | 说明 |
 |-------------|------|------|
@@ -108,7 +114,7 @@ type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, err
 type MiddlewareFunc func(Handler) Handler
 ```
 
-中间件函数签名，是内部 `types.MiddlewareFunc` 的类型别名（定义于 `types.go`）。接收「下一个 Handler」并返回包装后的 Handler。中间件可在调用 `next` 前后插入逻辑（改写请求、记录响应、捕获 panic 等），形成洋葱模型：第一个中间件最外层、最先进入最后退出。
+中间件函数签名，是内部 `types.MiddlewareFunc` 的类型别名（定义于 `types.go`）。接收「下一个 Handler」并返回包装后的 Handler。中间件可在调用 `next` 前后插入逻辑（改写请求、记录响应、捕获 panic 等），形成洋葱模型：第一个中间件最外层，最先进入、最后退出。
 
 ## 洋葱模型执行顺序
 
@@ -139,9 +145,9 @@ type MiddlewareFunc func(Handler) Handler
 func Chain(middlewares ...MiddlewareFunc) MiddlewareFunc
 ```
 
-将多个中间件组合为单个中间件。返回的组合器接收最终 Handler，按传入顺序从外到内嵌套：切片第一个中间件包在最外层（最先执行），最后一个紧贴最终 Handler。HTTPC 内部正是用它把 `MiddlewareConfig.Middlewares` 组装成链。
+将多个中间件组合为单个中间件。返回的组合器接收最终 Handler，按传入顺序从外到内嵌套：切片第一个中间件包在最外层（最先执行），最后一个紧贴最终 Handler。HTTPC 内部用该组合器把 `MiddlewareConfig.Middlewares` 组装成链。
 
-`Chain` 是 HTTPC 唯一导出的链式组装 API——没有 `Append`/`Use` 之类的可变链构建器。整条链在 `New()` 时经 `buildMiddlewareChain` 一次性组装并缓存在 `clientImpl.middlewareChain` 字段上，之后不可再增删中间件；运行期需要动态行为时，应在中间件内部用条件逻辑实现，而非修改链结构。
+`Chain` 是 HTTPC 唯一导出的链式组装 API，没有 `Append`/`Use` 之类的可变链构建器。整条链在 `New()` 时经 `buildMiddlewareChain` 一次性组装，缓存在 `clientImpl.middlewareChain` 字段上，之后不可再增删中间件。运行期需要动态行为时，应在中间件内部用条件逻辑实现，而非修改链结构。
 
 ```go
 // 三段等价：Chain 组合后一次性注入，与逐层手动嵌套结果相同
@@ -153,12 +159,12 @@ chain := mwA(mwB(mwC(finalHandler)))
 ```
 
 :::tip Chain 的用途
-`Chain` 主要供 HTTPC 内部在 `buildMiddlewareChain` 中使用，但你也可以在自定义中间件内部用它把多个子中间件打包成单个中间件，实现中间件复用与组合。
+`Chain` 主要供 HTTPC 内部在 `buildMiddlewareChain` 中使用。调用方也可在自定义中间件内部用它把多个子中间件打包成单个中间件，实现中间件复用与组合。
 :::
 
 ## finalHandler 终端处理器
 
-`finalHandler` 是中间件链的**终端 Handler**——所有中间件执行完毕后，由它把中间件修改过的请求字段转发给底层引擎真正发出网络请求。它是双层架构中 Layer 2 与引擎之间的桥梁。
+`finalHandler` 是中间件链的**终端 Handler**：所有中间件执行完毕后，由它把中间件修改过的请求字段转发给底层引擎，由引擎真正发出网络请求。它是双层架构中 Layer 2 与引擎之间的桥梁。
 
 finalHandler 的工作分三步：
 
@@ -182,12 +188,14 @@ finalHandler(ctx, req):
 ```
 
 :::warning 类型断言的边界
-回调（OnRequest/OnResponse）和每请求 SSRF 覆盖（`AllowPrivateIPs`）存在于具体类型 `*engine.Request` 上，而非 `RequestMutator` 接口上。`finalHandler` 经类型断言读取这些钩子。如果自定义中间件将 `req` **替换**为非 `*engine.Request` 类型，类型断言失败，这些钩子会被**静默跳过**。所有内置中间件都是就地修改请求（不替换），因此断言总是成功。
+回调（OnRequest/OnResponse）和每请求 SSRF 覆盖（`AllowPrivateIPs`）存在于具体类型 `*engine.Request` 上，而非 `RequestMutator` 接口上；`finalHandler` 经类型断言读取这些钩子。
+
+若自定义中间件将 `req` **替换**为非 `*engine.Request` 类型，类型断言失败，这些钩子被**静默跳过**。所有内置中间件都就地修改请求（不替换），因此断言总是成功。
 :::
 
 ## 内置中间件
 
-HTTPC 内置 7 个开箱即用的中间件工厂，通过 `MiddlewareConfig.Middlewares` 注入客户端。每个工厂接受一个 `*XxxConfig` 指针，传 `nil` 时使用默认配置。
+HTTPC 内置 7 个中间件工厂，通过 `MiddlewareConfig.Middlewares` 注入客户端。每个工厂接受一个 `*XxxConfig` 指针，传 `nil` 时使用默认配置。
 
 | 中间件 | 工厂签名 | 作用 |
 |--------|----------|------|
@@ -245,7 +253,7 @@ func myMiddleware(/* 外层：捕获配置参数 */) httpc.MiddlewareFunc {
 
 - **前置阶段返回错误**：请求不再发出，`(nil, err)` 沿链向外层中间件传递，最终交给调用方。
 - **后置阶段返回错误**：错误同样向外传递。若中间件既持有 `next` 返回的响应又返回错误，`executeRequest` 的安全网会代为释放该响应（防止对象池泄漏），但不应依赖此行为。
-- **上下文传递**：`finalHandler` 优先使用 `req.Context()`（nil 时回退链路 `ctx`）。中间件派生超时/取消上下文时必须经 `req.SetContext` 写回——`TimeoutMiddleware` 正是先 `SetContext` 再调用 `next` 的。
+- **上下文传递**：`finalHandler` 优先使用 `req.Context()`（nil 时回退链路 `ctx`）。中间件派生超时/取消上下文时必须经 `req.SetContext` 写回；`TimeoutMiddleware` 即先 `SetContext` 再调用 `next`。
 
 ## 自定义中间件示例
 
@@ -297,7 +305,7 @@ func main() {
 
 ### 示例 2：响应头注入中间件
 
-在响应中追加处理耗时。演示 `next(ctx, req)` **之后**的响应后处理模式——经 `ResponseMutator` 读取并修改响应。
+在响应中追加处理耗时。演示 `next(ctx, req)` **之后**的响应后处理模式：经 `ResponseMutator` 读取并修改响应。
 
 ```go
 package main
@@ -350,7 +358,7 @@ func main() {
 
 ### 响应缓存中间件（概念）
 
-响应缓存是 `ResponseMutator` 的典型高级用例：对 GET 请求命中缓存时短路返回，不调用 `next`。但构造完整的缓存响应需自定义类型实现 `ResponseMutator` 的全部方法（31 个读写方法），代码量较大。核心模式如下：
+响应缓存是 `ResponseMutator` 的典型高级用例：GET 请求命中缓存时短路返回，不调用 `next`。但构造完整的缓存响应需自定义类型实现 `ResponseMutator` 的全部方法（31 个读写方法），代码量较大。核心模式如下：
 
 <!-- check-code: skip -->
 ```go
@@ -385,15 +393,15 @@ func cacheMiddleware(cache Cache) httpc.MiddlewareFunc {
 | **必须调用 `next()`** | 不调用 `next` 则请求永远不会发出（短路中间件除外，如缓存命中）。`next` 返回的响应是后续链路与引擎的最终结果。 |
 | **响应必须返回或释放** | `next` 返回的 `resp` 必须原样返回（或经后续 `next` 传回），否则会泄漏引擎对象池中的响应。返回 `(nil, error)` 且持有未释放响应会导致池泄漏（`executeRequest` 的安全网会代为释放「同时返回 resp 与 err」的响应，但不应依赖此行为）。 |
 | **panic 被 RecoveryMiddleware 捕获** | 中间件中的 panic 会被 `RecoveryMiddleware`（若配置）或 `clientImpl.Request` 的默认安全网捕获并转为 error，不会传播给调用方。 |
-| **同步执行** | 中间件链**同步执行**——`next` 返回时整个内层链已完成。不支持异步中间件；若引入异步，对象池复用模式会产生数据竞争。 |
+| **同步执行** | 中间件链**同步执行**：`next` 返回时整个内层链已完成。不支持异步中间件；引入异步会使对象池复用模式产生数据竞争。 |
 | **不替换请求对象** | 自定义中间件应**就地修改** `req`（经 SetHeader/SetBody 等），不要用新对象替换 `req`。替换会导致 `finalHandler` 的类型断言失败，回调与 SSRF 覆盖被静默跳过。 |
 
 :::warning 对象池泄漏风险
-`executeRequest` 从引擎对象池获取 `*engine.Request` 传给中间件链，链返回后经 `defer` 归还。如果中间件返回了 `next` 给的响应但额外持有了一份引用（例如存入全局缓存），该响应会在归还对象池后被复用，导致跨请求数据泄漏。缓存中间件必须深拷贝响应数据。
+`executeRequest` 从引擎对象池获取 `*engine.Request` 传给中间件链，链返回后经 `defer` 归还。若中间件返回了 `next` 给的响应但额外持有了一份引用（例如存入全局缓存），该响应会在归还对象池后被复用，导致跨请求数据泄漏。缓存中间件必须深拷贝响应数据。
 :::
 
 ## 另见
 
-- [内置中间件](../client-config/middleware) — Recovery/Logging/Timeout 等 7 个开箱即用的中间件工厂
+- [内置中间件](../client-config/middleware) — Recovery/Logging/Timeout 等 7 个中间件工厂
 - [请求与响应变更器](./mutators) — `RequestMutator`/`ResponseMutator` 完整方法契约
 - [接口定义](../types/interfaces) — `Handler`/`MiddlewareFunc` 的类型别名定义

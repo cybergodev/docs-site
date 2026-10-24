@@ -1,15 +1,17 @@
 ---
 sidebar_label: "Middleware Chain"
 title: "Middleware Chain - CyberGo HTTPC | Onion Model Composition"
-description: "HTTPC middleware guide: onion-model execution order, seven built-in middleware, Chain composition, custom MiddlewareFunc, and circuit-breaker short circuits."
+description: "HTTPC middleware chain: onion model and execution order, request and response phases, retry interaction, built-in middleware, Chain, and custom MiddlewareFunc."
 sidebar_position: 80
 ---
 
 # Middleware Chain
 
+The middleware chain is HTTPC's request interception pipeline. Each middleware wraps the next handler and runs once in the request phase and once in the response phase.
+
 ## Onion Model
 
-HTTPC middleware follows an onion model — requests travel from outer to inner, responses from inner to outer:
+HTTPC middleware follows an onion model: requests travel from outer to inner, responses from inner to outer.
 
 ```text
 Request →  Recovery  →  Logging  →  RequestID  → Handler
@@ -46,7 +48,7 @@ type MiddlewareFunc func(Handler) Handler
 
 ### Complete Execution Order
 
-Zooming out, the full pipeline a request passes through is:
+The full pipeline a request passes through:
 
 ```text
 client.Get(url, opts...)
@@ -66,22 +68,22 @@ client.Get(url, opts...)
 
 Key takeaways:
 
-- **Request options run before middleware**: middleware sees the request with options already applied, and may override any field the options set (headers, query parameters, timeouts, redirect policy, etc.)
-- **Options do not run twice**: the terminal handler copies the middleware-mutated request fields into a brand-new engine request and sends that — it does not re-run the options
-- Client defaults such as `Defaults.Headers` / `Defaults.UserAgent` are applied when the engine builds the final request on a "fill only if unset" basis, so a header with the same name set by middleware takes precedence
+- **Request options run before middleware**: middleware sees a request with options already applied. It may override any field the options set (headers, query parameters, timeouts, redirect policy, etc.)
+- **Options do not run twice**: the terminal handler copies the middleware-mutated request fields into a new engine request and sends that; the options are not re-run
+- Client defaults such as `Defaults.Headers` / `Defaults.UserAgent` are applied when the engine builds the final request, only where the field is unset. A header with the same name set by middleware takes precedence.
 
 ### Middleware and Retries
 
-The middleware chain wraps the **entire retry cycle**: no matter how many times a logical request retries, middleware executes only once and sees the response of the final attempt — `Meta.Attempts` is what reflects the total number of attempts.
+The middleware chain wraps the **entire retry cycle**: however many times a logical request retries, middleware runs once and sees the response of the final attempt. `Meta.Attempts` reports the total number of attempts.
 
-For hooks with per-attempt granularity, use the [`WithOnRequest`/`WithOnResponse` callbacks](./request-response#callbacks): they fire inside the engine on every attempt (retries included).
+For per-attempt granularity, use the [`WithOnRequest`/`WithOnResponse` callbacks](./request-response#callbacks): they fire inside the engine on every attempt, retries included.
 
 ### Error Propagation and Short Circuits
 
-- If any middleware returns an error, the chain breaks immediately: inner middleware no longer executes, and the error is passed back to the caller unchanged
-- A middleware that returns a response (or an error) **without calling `next()`** is a "short circuit" — the response phase of outer middleware still runs (Recovery's defer, for example), while inner layers and the engine never execute; this is how cache hits and open circuit breakers are implemented
-- If a middleware returns both `(resp, err)`, the client releases the response as a fallback to avoid leaking the object pool; but discarding the response obtained from `next()` and then returning `(nil, err)` does leak — never swallow the response (see the warning under custom middleware below)
-- Panics have two lines of defense: `RecoveryMiddleware` recovers panics inside the chain; the `Request` method itself has an additional default recover that converts any escaped panic into an error instead of crashing the process
+- If any middleware returns an error, the chain stops immediately: inner middleware does not run, and the error is returned to the caller unchanged
+- A middleware that returns a response (or an error) **without calling `next()`** is a short circuit. The response phase of outer middleware still runs (Recovery's defer, for example), while inner layers and the engine never execute. Cache hits and open circuit breakers are implemented this way
+- When middleware returns both `(resp, err)`, the client releases the response as a fallback to avoid leaking the object pool. Discarding the response obtained from `next()` and returning `(nil, err)` does leak; never swallow the response (see the warning under custom middleware below)
+- Panics have two lines of defense: `RecoveryMiddleware` recovers panics inside the chain, and the `Request` method has an additional default recover that converts any escaped panic into an error instead of crashing the process
 
 ## Built-in Middleware
 
@@ -93,11 +95,11 @@ Panic recovery to prevent process crashes:
 httpc.RecoveryMiddleware()
 ```
 
-The panic value is converted into an error containing the stack trace. Usually placed as the **outermost** layer of the chain, protecting every layer after it.
+The panic value is converted into an error containing the stack trace. Place this middleware as the **outermost** layer of the chain so it protects every layer after it.
 
 ### LoggingMiddleware
 
-Request/response logging with automatic URL masking:
+Request and response logging, with credentials in the URL masked before logging:
 
 ```go
 httpc.LoggingMiddleware(&httpc.LoggingConfig{LogFunc: func(format string, args ...any) {
@@ -106,7 +108,7 @@ httpc.LoggingMiddleware(&httpc.LoggingConfig{LogFunc: func(format string, args .
 // Sample output: [HTTP] GET https://api.example.com/data -> 200 (150ms) (status code and duration are measured values, not fixed)
 ```
 
-Passing a nil config, or a config with a nil `LogFunc`, disables logging (the middleware becomes a pass-through). Credentials embedded in the URL (`user:pass@host`) are scrubbed before logging.
+Passing a nil config, or a config with a nil `LogFunc`, disables logging and the middleware becomes a pass-through. Credentials embedded in the URL (`user:pass@host`) are scrubbed before logging.
 
 ### RequestIDMiddleware
 
@@ -124,7 +126,7 @@ httpc.RequestIDMiddleware(&httpc.RequestIDConfig{
 })
 ```
 
-If the request already carries a header with the same name (for example, injected by an upstream gateway), the middleware **does not overwrite** the existing value — convenient for propagating tracing end to end.
+If the request already carries a header with the same name (for example, injected by an upstream gateway), the middleware **does not overwrite** the existing value, so tracing propagates end to end.
 
 ### TimeoutMiddleware
 
@@ -134,10 +136,12 @@ Middleware-level timeout enforced ahead of the client timeout:
 httpc.TimeoutMiddleware(&httpc.TimeoutMiddlewareConfig{Duration: 30 * time.Second})
 ```
 
-The timeout derives from the request's own context (preserving any deadline or cancellation signal already set); once it expires, the context is canceled and a timeout error is returned. A `Duration` of zero or negative disables it (pass-through).
+The timeout derives from the request's own context, preserving any deadline or cancellation signal already set. Once it expires, the context is canceled and a timeout error is returned. A `Duration` of zero or negative disables the middleware, which becomes a pass-through.
 
 :::warning Do not use for Download or streaming requests
-`TimeoutMiddleware`'s `defer cancel()` fires immediately after the handler returns (i.e., once the response headers have been received), so for `Download` or `WithStreamBody` requests it cancels the context before the response body is read, producing a "context canceled" error. For streaming/download scenarios, use the [`WithTimeout`](../api-reference/core/options#withtimeout) option instead.
+`TimeoutMiddleware`'s `defer cancel()` fires immediately after the handler returns (once the response headers are received), which is before the response body has been read. The middleware therefore rejects streaming requests on entry: a `Download` or `WithStreamBody` request returns `TimeoutMiddleware is incompatible with streaming responses` without reaching the read stage.
+
+For streaming and download scenarios, use the [`WithTimeout`](../api-reference/core/options#withtimeout) option instead.
 :::
 
 ### HeaderMiddleware
@@ -151,7 +155,7 @@ httpc.HeaderMiddleware(&httpc.HeaderConfig{Headers: map[string]string{
 }})
 ```
 
-The header map is CRLF-validated and defensively copied **when the middleware is created** — mutating the passed-in map afterwards has no effect on the middleware; if validation fails, the middleware returns an error for every request. Existing headers with the same name are overwritten.
+The header map is CRLF-validated and defensively copied **when the middleware is created**, so mutating the passed-in map afterwards has no effect on the middleware. If validation fails, the middleware returns an error for every request. Existing headers with the same name are overwritten.
 
 ### MetricsMiddleware
 
@@ -167,7 +171,7 @@ httpc.MetricsMiddleware(&httpc.MetricsConfig{OnMetrics: func(method, url string,
 }})
 ```
 
-Both the URL and the error passed to the callback are sanitized (URL credentials scrubbed, raw URLs inside error messages replaced with sanitized versions), so sensitive data never reaches your metrics system. When a request fails, `statusCode` is 0.
+Both the URL and the error passed to the callback are sanitized (URL credentials scrubbed, raw URLs inside error messages replaced with sanitized versions), so sensitive data does not reach the metrics system. When a request fails, `statusCode` is 0.
 
 ### AuditMiddleware
 
@@ -182,11 +186,11 @@ auditCfg.OnAudit = func(event httpc.AuditEvent) {
 httpc.AuditMiddleware(auditCfg)
 ```
 
-When `OnAudit` is nil, the middleware is a no-op (a direct pass-through).
+When `OnAudit` is nil, the middleware passes requests through directly.
 
 ### Configuring Audit Options
 
-Use `DefaultAuditConfig()` to obtain the default configuration, then modify fields to control the output format, header logging, and masking:
+`DefaultAuditConfig()` returns the default configuration; modify its fields to control the output format, header logging, and masking:
 
 ```go
 auditCfg := httpc.DefaultAuditConfig()
@@ -206,9 +210,9 @@ auditCfg.OnAudit = func(event httpc.AuditEvent) {
 httpc.AuditMiddleware(auditCfg)
 ```
 
-`AuditEvent` carries the timestamp, method, sanitized URL, status code, duration, attempt count, redirect chain, and other fields; with `SanitizeError = true`, errors are uniformly replaced with `[sanitized]` so error details cannot leak sensitive information. When serialized to JSON, the duration is emitted as the `durationMs` field (the millisecond count) — `Duration` itself carries the `json:"-"` tag and is not serialized directly.
+`AuditEvent` carries the timestamp, method, sanitized URL, status code, duration, attempt count, redirect chain, and other fields. With `SanitizeError = true`, errors are replaced with `[sanitized]` so error details cannot leak sensitive information. In JSON output the duration is emitted as the `durationMs` field (the millisecond count); `Duration` itself carries the `json:"-"` tag and is not serialized directly.
 
-Audit events support extracting SourceIP and UserID from the context:
+Audit events can extract SourceIP and UserID from the context:
 
 ```go
 ctx := context.WithValue(context.Background(), httpc.SourceIPKey, "192.168.1.1")
@@ -230,7 +234,7 @@ cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{middleware}
 ```
 
-`Chain` wraps layer by layer from the last middleware forward, so **slice order = execution order from outer to inner**: the first element is the outermost layer (the first to see the request, the last to see the response). `Chain` collapses multiple middleware into a single `MiddlewareFunc` — handy for reuse as a library or for assembling different combinations on demand.
+`Chain` wraps layer by layer from the last middleware forward, so **slice order = execution order from outer to inner**: the first element is the outermost layer, the first to see the request and the last to see the response. `Chain` merges multiple middleware into a single `MiddlewareFunc`, which is convenient for reuse as a library or for assembling combinations on demand.
 
 ## Custom Middleware
 
@@ -255,7 +259,7 @@ func CORSMiddleware(origin string) httpc.MiddlewareFunc {
 }
 ```
 
-A complete runnable example — a timing middleware that records duration and status:
+A complete runnable example: a timing middleware that records duration and status:
 
 ```go
 package main
@@ -315,11 +319,11 @@ func main() {
 ```
 
 :::warning Do not swallow the response from next()
-After `next()` returns a non-nil response, either return it unchanged, or keep calling deeper layers and return the inner response. Discarding the response and returning `(nil, err)` leaks the engine's object pool; if you return `(resp, err)` together, the client releases the response as a fallback, but passing it through unchanged is still preferred.
+After `next()` returns a non-nil response, return it unchanged. Discarding the response and returning `(nil, err)` leaks the engine's object pool; returning `(resp, err)` together makes the client release the response as a fallback, but passing it through unchanged is still preferred.
 :::
 
 :::warning Middleware state and concurrency
-A middleware instance is assembled once at client creation and is **shared by all concurrent requests**. Mutable state captured in the closure (counters, breaker thresholds, etc.) must be protected with a mutex, as in the circuit-breaker example below; stateless middleware needs nothing extra.
+A middleware instance is assembled once at client creation and is **shared by all concurrent requests**. Mutable state captured in the closure (counters, breaker thresholds, etc.) must be protected with a mutex, as in the circuit-breaker example below. Stateless middleware needs no extra handling.
 :::
 
 ### Short-Circuit Middleware
@@ -350,7 +354,7 @@ func CircuitBreakerMiddleware(threshold int) httpc.MiddlewareFunc {
 }
 ```
 
-A short circuit that returns `(nil, err)` **never called `next()`**, so it holds no response that needs releasing — no leak is possible. You can also short-circuit with a synthesized response (a cache-hit scenario, for example) — implement the `ResponseMutator` interface and return it, and the engine response is replaced as usual.
+A short circuit that returns `(nil, err)` never called `next()`, so it holds no response that needs releasing and cannot leak. A short circuit can also return a synthesized response (a cache-hit scenario, for example): implement the `ResponseMutator` interface and return it, and the engine response is replaced as usual.
 
 ## Middleware Configuration
 
@@ -372,7 +376,7 @@ if err != nil {
 defer client.Close()
 ```
 
-Note the distinction between the two kinds of "defaults": `Middleware.Middlewares` is the interception pipeline; `Defaults.*` are static defaults filled in when the engine builds the request (applied only when the request leaves them unset — lower priority than options and middleware).
+Note the distinction between the two kinds of defaults: `Middleware.Middlewares` is the interception pipeline; `Defaults.*` are static defaults filled in when the engine builds the request. They apply only where the request leaves a field unset, so their priority is lower than options and middleware.
 
 ## Next Steps
 

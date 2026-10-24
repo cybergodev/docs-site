@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Constants & Errors"
 title: "Constants & Errors - CyberGo html | Defaults & Error Types"
-description: "CyberGo html constants and errors: MaxInputSize/CacheTTL defaults, audit event constants, sentinel errors, InputError/ConfigError/FileError for errors.Is/As."
+description: "CyberGo html constants and errors: default constants, 8 audit events, 3 audit levels, 12 sentinel errors, and InputError/ConfigError/FileError types."
 sidebar_position: 30
 ---
 
@@ -12,12 +12,12 @@ sidebar_position: 30
 | Constant | Type | Value | Description |
 |----------|------|-------|-------------|
 | `DefaultMaxInputSize` | `int` | `52428800` | Maximum input size (50MB) |
-| `DefaultMaxCacheEntries` | `int` | `2000` | Maximum cache entries |
+| `DefaultMaxCacheEntries` | `int` | `2000` | Cache entry limit |
 | `DefaultWorkerPoolSize` | `int` | `4` | Worker pool size |
 | `DefaultCacheTTL` | `time.Duration` | `1h` | Cache expiration time |
 | `DefaultCacheCleanup` | `time.Duration` | `5m` | Cache cleanup interval |
-| `DefaultMaxAuditEntries` | `int` | `10000` | Default in-memory audit entry limit (used when `AuditConfig.MaxEntries` is 0) |
-| `DefaultMaxRawValueLength` | `int` | `200` | Default maximum length of the audit RawValue string (used by `AuditConfig.MaxRawValueLength`) |
+| `DefaultMaxAuditEntries` | `int` | `10000` | In-memory audit entry limit (used when `AuditConfig.MaxEntries` is 0) |
+| `DefaultMaxRawValueLength` | `int` | `200` | Maximum length of the audit `RawValue` string |
 | `DefaultMaxDepth` | `int` | `500` | Maximum DOM depth |
 | `DefaultProcessingTimeout` | `time.Duration` | `30s` | Processing timeout |
 
@@ -44,39 +44,39 @@ sidebar_position: 30
 | `AuditLevelWarning` | `AuditLevel` | `"warning"` | Warning level |
 | `AuditLevelCritical` | `AuditLevel` | `"critical"` | Critical level |
 
-:::info
-For detailed audit system usage and Sink types, see [Audit System](../modules/audit).
-:::
+For audit usage and Sink types see [Audit System](../modules/audit).
 
 ## Sentinel Errors
 
 | Error | Message | Description |
 |-------|---------|-------------|
-| `ErrInputTooLarge` | `html: input size exceeds maximum` | Input exceeds size limit |
+| `ErrInputTooLarge` | `html: input size exceeds maximum` | Input exceeds the size limit |
 | `ErrInvalidHTML` | `html: invalid HTML` | Invalid HTML content |
 | `ErrProcessorClosed` | `html: processor closed` | Processor is closed |
 | `ErrMaxDepthExceeded` | `html: max depth exceeded` | Maximum depth exceeded |
 | `ErrInvalidConfig` | `html: invalid config` | Invalid configuration |
-| `ErrProcessingTimeout` | `html: processing timeout exceeded` | Processing timeout |
+| `ErrProcessingTimeout` | `html: processing timeout exceeded` | The library's processing timeout elapsed |
 | `ErrFileNotFound` | `html: file not found` | File not found |
 | `ErrInvalidFilePath` | `html: invalid file path` | Invalid file path |
 | `ErrInternalPanic` | `html: internal panic recovered` | Internal panic recovered |
-| `ErrMultipleConfigs` | `html: at most one Config may be provided` | At most one Config |
-| `ErrBatchTooLarge` | `html: batch size exceeds maximum` | Batch item count exceeds the single-batch limit (10000) |
-| `ErrTooManyConcurrentOps` | `html: too many concurrent operations` | Concurrent timeout watchdog reached the global limit (1000); a "too busy" state, distinct from `ErrProcessingTimeout` (no timeout occurred) |
+| `ErrMultipleConfigs` | `html: at most one Config may be provided` | More than one Config passed |
+| `ErrBatchTooLarge` | `html: batch size exceeds maximum` | Batch item count exceeds the per-batch limit (10000) |
+| `ErrTooManyConcurrentOps` | `html: too many concurrent operations` | Timeout watchdog reached its global limit (1000); no timeout occurred |
+
+When the user's context deadline expires, the call returns `context.DeadlineExceeded`, which is not normalized to `ErrProcessingTimeout`.
 
 ## Error Types
 
 ### InputError
 
-Input-related error carrying size information.
+`InputError` is the error type for input problems, carrying size information.
 
 ```go
 type InputError struct {
-    Op       string // Operation name
-    Size     int    // Actual size
-    MaxSize  int    // Maximum limit
-    InputErr error  // Original error
+	Op       string // Operation name
+	Size     int    // Actual size
+	MaxSize  int    // Maximum limit
+	InputErr error  // Original error
 }
 
 func (e *InputError) Error() string
@@ -92,20 +92,20 @@ func (e *InputError) Unwrap() []error // [InputErr, ErrInputTooLarge] if InputEr
 
 | Method | Description |
 |--------|-------------|
-| `InputError.Error` | Formats the error message (including actual/limit sizes) |
+| `InputError.Error` | Formats the message, including actual and limit sizes |
 | `InputError.Unwrap` | `[InputErr, ErrInputTooLarge]` when `InputErr` is non-nil, otherwise `[ErrInputTooLarge]` |
 
-`Unwrap` returns a **slice of errors** rather than a single error: whether or not an underlying error is carried, `ErrInputTooLarge` is always in the list — `errors.Is(err, ErrInputTooLarge)` holds for any `*InputError`.
+`Unwrap` returns a **slice of errors**, not a single error. `ErrInputTooLarge` is always in the list, whether or not an underlying error is carried, so `errors.Is(err, ErrInputTooLarge)` holds for any `*InputError`.
 
 ### ConfigError
 
-Configuration validation error carrying field information.
+`ConfigError` is the error type for configuration validation, carrying field information.
 
 ```go
 type ConfigError struct {
-    Field   string // Field name
-    Value   any    // Invalid value
-    Message string // Error description
+	Field   string // Field name
+	Value   any    // Invalid value
+	Message string // Error description
 }
 
 func (e *ConfigError) Error() string
@@ -125,94 +125,94 @@ func (e *ConfigError) Unwrap() error // → ErrInvalidConfig
 
 ### FileError
 
-File operation error with automatic path truncation to prevent leakage.
+`FileError` is the error type for file operations; it truncates paths on output.
 
 ```go
 type FileError struct {
-    Op      string // Operation name
-    Path    string // File path
-    FileErr error  // Original error
+	Op      string // Operation name
+	Path    string // File path
+	FileErr error  // Original error
 }
 
-func (e *FileError) Error() string        // Safe output (truncated path)
-func (e *FileError) SafePath() string     // Returns filename only
-func (e *FileError) Unwrap() error        // → ErrFileNotFound | original error | ErrInvalidFilePath
-func (e *FileError) MarshalJSON() ([]byte, error) // designed for HTTP API responses: truncates Path via SafePath() when serialized to clients, preventing filesystem path leakage
+func (e *FileError) Error() string                // Safe output (truncated path)
+func (e *FileError) SafePath() string             // Filename only
+func (e *FileError) Unwrap() error                // → ErrFileNotFound | original error | ErrInvalidFilePath
+func (e *FileError) MarshalJSON() ([]byte, error) // Truncates Path via SafePath() when serialized
 ```
 
 | Member | Type | Description |
 |--------|------|-------------|
 | `FileError.Op` | `string` | Name of the failed operation (e.g. `"ExtractFromFile"`, `"ReadFile"`) |
-| `FileError.Path` | `string` | Full file path (internal debugging only; do not output directly) |
+| `FileError.Path` | `string` | Full file path (debugging only; do not output directly) |
 | `FileError.FileErr` | `error` | Underlying filesystem error |
 
 | Method | Description |
 |--------|-------------|
-| `FileError.Error` | Safe output (path truncated to the filename; the underlying error message is sanitized as well) |
+| `FileError.Error` | Safe output (path truncated to the filename; the underlying message is sanitized too) |
 | `FileError.SafePath` | Returns the filename only (returned as-is when there is no separator) |
 | `FileError.Unwrap` | → `ErrFileNotFound` \| the original error \| `ErrInvalidFilePath` |
-| `FileError.MarshalJSON` | Serializes as `{op, path, message}` with `path` truncated via `SafePath()`, preventing filesystem path leakage |
+| `FileError.MarshalJSON` | Serializes as `{op, path, message}` with `path` truncated via `SafePath()` |
 
-:::tip Safe Paths
-Both `FileError.Error()` and `SafePath()` return truncated paths (filename only) to prevent path leakage. Access the `Path` field directly for internal debugging when the full path is needed.
+:::tip A safe default when emitting paths
+`FileError.Error()` and `SafePath()` both return only the filename, so they are safe to put in HTTP responses or logs. Read the `Path` field for the full path, and only for internal debugging.
 :::
 
 ## Internal Limit Constants
 
-The following constants define the library's runtime hard limits. They are **unexported** (lowercase) and cannot be referenced directly, but they affect runtime behavior — understanding these values helps you reason about the library's boundary conditions and error scenarios.
+The constants below define runtime hard limits. They are **unexported** (lowercase) and cannot be referenced directly, but they determine boundary behavior.
 
 ### Configuration Upper Bounds
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `maxConfigInputSize` | `52428800` (50MB) | Upper bound for `MaxInputSize`; even if a larger value is set, `Validate()` rejects it |
+| `maxConfigInputSize` | `52428800` (50MB) | Upper bound for `MaxInputSize`; larger values are rejected by `Validate()` |
 | `maxConfigWorkerSize` | `256` | Upper bound for `WorkerPoolSize` |
 | `maxConfigDepth` | `500` | Upper bound for `MaxDepth` |
-| `maxConfigCacheEntries` | `100000` | Upper bound for `MaxCacheEntries` (~100MB, estimated at 1KB per entry) |
-| `maxConfigAuditEntries` | `100000` | Upper bound for `Audit.MaxEntries` (maximum entries retained in memory by `GetAuditLog`) |
+| `maxConfigCacheEntries` | `100000` | Upper bound for `MaxCacheEntries` (about 100MB at 1KB per entry) |
+| `maxConfigAuditEntries` | `100000` | Upper bound for `Audit.MaxEntries`; the in-memory limit of `GetAuditLog` |
 
 ### Processing Limits
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `maxBatchSize` | `10000` | Maximum items per batch; exceeding this fails the entire batch (not a panic) |
-| `maxTimeoutGoroutines` | `1000` | Global concurrent timeout goroutine limit; exceeding it causes new requests to immediately return `ErrTooManyConcurrentOps` |
-| `maxHTMLForRegex` | `1000000` (1MB) | Upper bound on HTML size for media-URL regex scanning; above this the regex fallback is skipped (ReDoS prevention) |
-| `maxRegexMatches` | `1000` | Maximum matches per regex scan; prevents excessive allocations on media-dense pages |
+| `maxBatchSize` | `10000` | Maximum items per batch; exceeding it fails the whole batch |
+| `maxTimeoutGoroutines` | `1000` | Global limit on concurrent timeout goroutines; new requests beyond it return `ErrTooManyConcurrentOps` |
+| `maxHTMLForRegex` | `1000000` (1MB) | Size limit for the raw-HTML media scan; above it the whole scan is skipped (ReDoS prevention) |
+| `maxRegexMatches` | `1000` | Maximum media-URL matches per scan; prevents excessive allocation on media-dense pages |
 
-### Cache Key Generation
+How these limits play out:
 
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `maxCacheKeySize` | `65536` (64KB) | Content size threshold for full hashing; above this, switches to 5-point sampling |
-| `cacheKeySample` | `4096` | Total byte budget for large-document sampling (5 points x ~819 bytes/point) |
-
-:::tip
-These constants explain some "whys": why HTML over 1MB stops extracting bare video links (ReDoS protection), why batches over 10000 items fail entirely (OOM protection), and why 64KB is the cache-key strategy boundary (hash cost vs collision risk).
-:::
+- For HTML over 1MB, the raw-HTML scan (`<iframe>`/`<embed>`/`<object>` tag attributes and bare media URLs) does not run; the DOM walk still extracts `<video>`/`<audio>`.
+- A batch over 10000 items fails as a whole (returning `ErrBatchTooLarge`, not a panic); it does not process the first 10000 only.
+- With more than 1000 concurrent timed calls, new calls return `ErrTooManyConcurrentOps` immediately; retry after in-flight operations drain.
 
 ## Error Handling Patterns
 
 ```go
 result, err := html.Extract(data)
 if err != nil {
-    var inputErr *html.InputError
-    var configErr *html.ConfigError
-    var fileErr *html.FileError
+	var inputErr *html.InputError
+	var configErr *html.ConfigError
+	var fileErr *html.FileError
 
-    switch {
-    case errors.Is(err, html.ErrInputTooLarge):
-        // Input too large
-    case errors.Is(err, html.ErrInvalidHTML):
-        // Invalid HTML
-    case errors.Is(err, html.ErrFileNotFound):
-        // File not found
-    case errors.As(err, &inputErr):
-        fmt.Printf("Size %d exceeds limit %d\n", inputErr.Size, inputErr.MaxSize)
-    case errors.As(err, &configErr):
-        fmt.Printf("Config field %s invalid: %s\n", configErr.Field, configErr.Message)
-    case errors.As(err, &fileErr):
-        fmt.Printf("File: %s\n", fileErr.SafePath())
-    }
+	switch {
+	case errors.Is(err, html.ErrInvalidConfig):
+		// Config error: errors.As yields the offending field and reason
+		if errors.As(err, &configErr) {
+			fmt.Printf("Config field %s invalid: %s\n", configErr.Field, configErr.Message)
+		}
+	case errors.Is(err, html.ErrInputTooLarge):
+		// Input too large: errors.As yields the actual size and limit
+		if errors.As(err, &inputErr) {
+			fmt.Printf("Size %d exceeds limit %d\n", inputErr.Size, inputErr.MaxSize)
+		}
+	case errors.Is(err, html.ErrInvalidHTML):
+		// Invalid HTML
+	case errors.Is(err, html.ErrFileNotFound):
+		// File not found
+	case errors.As(err, &fileErr):
+		// Other file errors, including path traversal (which matches no sentinel)
+		fmt.Println("File:", fileErr.SafePath())
+	}
 }
 ```

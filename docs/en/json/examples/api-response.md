@@ -7,7 +7,7 @@ sidebar_position: 30
 
 # API Response Parsing
 
-This page shows how to parse typical HTTP API JSON responses with CyberGo JSON: extracting response status and pagination metadata, handling arrays with path slices, and deserializing into structs.
+HTTP API JSON responses usually raise three needs: reading status and pagination metadata, slicing arrays by path, and deserializing into structs. The examples below cover all three and state when each API fits.
 
 ## Parsing a Paginated API Response
 
@@ -48,7 +48,7 @@ func main() {
 
 	// 2. Get the whole data array
 	items := json.GetArray(apiResponse, "data.items")
-	fmt.Printf("Items on this page: %d\n", len(items))
+	fmt.Printf("Items in this response: %d\n", len(items))
 
 	// 3. Take a subset with a path slice (the first 2)
 	firstTwo, err := json.Get(apiResponse, "data.items[0:2]")
@@ -58,7 +58,7 @@ func main() {
 	fmt.Printf("First two: %v\n", firstTwo)
 
 	// 4. Iterate the array and extract each element's fields
-	// (ForeachWithPath recommended: one parse, per-element access)
+	// (ForeachWithPath: one parse, per-element field access)
 	err = json.ForeachWithPath(apiResponse, "data.items", func(key any, item *json.IterableValue) {
 		fmt.Printf("  - %s (%d stars)\n", item.GetString("name"), item.GetInt("stars"))
 	})
@@ -69,7 +69,7 @@ func main() {
 
 // Output:
 // Status: success, page 2, 48 items in total
-// Items on this page: 5
+// Items in this response: 5
 // First two: [map[id:6 name:project-six stars:120] map[id:7 name:project-seven stars:89]]
 //   - project-six (120 stars)
 //   - project-seven (89 stars)
@@ -81,12 +81,12 @@ func main() {
 :::tip
 The path slice syntax `[start:end]` returns an array subset; you can also use `[start:end:step]` for stepped slices, `[-1]` for the last element, and `[*]` to walk all elements. Full syntax in [Path Expressions](../getting-started/path-syntax).
 
-When iterating arrays, **prefer `ForeachWithPath`** over looping with composed paths (querying `fmt.Sprintf("data.items.%d.name", i)` one by one): the former parses once and reads fields by name inside each element, with cleaner code; the latter issues a separate query per path.
+When iterating arrays, use `ForeachWithPath` instead of looping over composed paths (querying `fmt.Sprintf("data.items.%d.name", i)` one by one): the former parses once and reads fields by name inside each element; the latter issues a separate query per path.
 :::
 
 ## Fetching Multiple Fields at Once
 
-When a response has many fields to extract, `GetMultiple` parses once and retrieves all paths (the result map is keyed by path), cheaper than repeated `Get` calls:
+When a response has many fields to extract, `GetMultiple` parses once and retrieves all paths (the result map is keyed by path):
 
 ```go
 package main
@@ -136,7 +136,7 @@ If any path fails (missing or invalid), `GetMultiple` returns the **first** erro
 
 ## Safe Access with SafeGet
 
-`SafeGet` returns an `AccessResult` instead of an error: `Ok()` checks existence, `AsInt`/`AsString` convert on demand, and `UnwrapOr` supplies a default — a good fit for third-party responses with unstable or optional field types, with no panics anywhere:
+`SafeGet` returns an `AccessResult` instead of an error: `Ok()` checks existence, `AsInt`/`AsString` convert on demand, and `UnwrapOr` supplies a default. It fits third-party responses with unstable or optional field types, and no call panics:
 
 ```go
 package main

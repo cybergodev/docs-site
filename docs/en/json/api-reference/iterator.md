@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Iterators & Streaming Iterators"
 title: "Iterators & IterableValue - CyberGo JSON | Stream & Parallel"
-description: "CyberGo JSON iterators: Iterator, StreamIterator, BatchIterator, ParallelIterator and IterableValue with Map/Filter for arrays, objects and large files."
+description: "CyberGo JSON iterators: Iterator, StreamIterator/StreamObjectIterator streaming reads, BatchIterator batches and ParallelIterator Map/Filter."
 sidebar_position: 100
 ---
 
 # Iterator Types
 
-The json package provides a variety of iterator types covering sequential traversal, streaming, batch processing, and parallel processing. For iteration **functions** (`Foreach*`/`ForeachFile*`, etc.) see [Package Iteration Functions](./functions/iterate) and [Processor Iteration Methods](./processor/iterate).
+The iterator objects on this page cover ordered traversal, streaming reads, batching, and parallel execution. For iteration **functions** (`Foreach*`/`ForeachFile*`, etc.) see [Package Iteration Functions](./functions/iterate) and [Processor Iteration Methods](./processor/iterate).
 
 ## IteratorControl Constants
 
@@ -16,7 +16,7 @@ The json package provides a variety of iterator types covering sequential traver
 | Constant | Description |
 |----------|-------------|
 | `IteratorNormal` | Continue iterating normally (the default; the zero value) |
-| `IteratorContinue` | Continue iterating. Equivalent to `IteratorNormal` (an alias kept for API symmetry) — "skip the current item" is implicit; iteration always continues |
+| `IteratorContinue` | Continue iterating. An alias of `IteratorNormal`, kept for API symmetry |
 | `IteratorBreak` | Stop iterating |
 
 **When to use what**
@@ -24,21 +24,23 @@ The json package provides a variety of iterator types covering sequential traver
 | Scenario | Recommended return | Notes |
 |----------|--------------------|-------|
 | Processing elements normally | `IteratorNormal` | Continue with the next element |
-| Filtering invalid data | `IteratorContinue` | Skip the current element without interrupting iteration |
+| Stating "continue" explicitly in code | `IteratorContinue` | Same behavior as `IteratorNormal`, just more explicit |
 | Exit after finding the target | `IteratorBreak` | Stop immediately once the needed data is found |
 | Abort on error | `IteratorBreak` | Stop iterating on a serious error |
+
+None of the three constants means "skip the current element": skipping is done by returning without acting in the callback, and iteration still advances.
 
 ---
 
 ## The Iterator Type
 
-`Iterator` is the low-level iterator for traversing JSON arrays or objects, created by `NewIterator`.
+`Iterator` traverses a JSON array or object in order and is created by `NewIterator`. It accepts only an already-parsed `[]any` or `map[string]any`; for any other type `HasNext()` always returns `false`.
 
 ### NewIterator
 
 Signature: `func NewIterator(data any, cfg ...Config) *Iterator`
 
-Creates an iterator instance. The optional `cfg` parameter is kept for API consistency and does not currently affect iterator behavior.
+Creates an iterator. The optional `cfg` parameter is kept for API consistency and is never read by the source, so it changes no behavior.
 
 ```go
 data := []any{"apple", "banana", "cherry"}
@@ -50,21 +52,21 @@ for it.HasNext() {
 ```
 
 :::tip Iteration order is deterministic
-When traversing an object, keys are yielded in **sorted** order (native Go map iteration is random; determinism is enforced here); arrays are traversed in index order. For arrays, `Next()` returns the element itself; for objects it returns the **value** of the current key (not the key).
+When traversing an object, keys are yielded in **lexicographic order** (native Go map iteration is random; the iterator sorts and caches the keys on first access); arrays are traversed in index order. For arrays, `Next()` returns the element itself; for objects it returns the **value** of the current key (not the key).
 :::
 
 ### Methods
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `HasNext` | `func (it *Iterator) HasNext() bool` | Checks whether more elements remain |
-| `Next` | `func (it *Iterator) Next() (any, bool)` | Gets the next element |
-| `Reset` | `func (it *Iterator) Reset()` | Clears iterator state and cache for reuse |
-| `ResetWith` | `func (it *Iterator) ResetWith(data any)` | Clears state and re-initializes with new data |
+| `HasNext` | `func (it *Iterator) HasNext() bool` | Checks whether another element remains; always `false` when the data is neither `[]any` nor `map[string]any` |
+| `Next` | `func (it *Iterator) Next() (any, bool)` | Returns the next element; `(nil, false)` once exhausted |
+| `Reset` | `func (it *Iterator) Reset()` | Drops the data reference, position, and cached keys for reuse |
+| `ResetWith` | `func (it *Iterator) ResetWith(data any)` | Clears state and switches to new data |
 
 ### Reset
 
-Clears iterator state and releases cached keys. Afterwards, re-initialize with `ResetWith`.
+Clears iterator state and releases the cached keys and data reference. Afterwards `HasNext()` returns `false`; re-initialize with `ResetWith`.
 
 ```go
 it := json.NewIterator(data1)
@@ -81,7 +83,7 @@ it.Reset() // Clear the cache
 
 ### ResetWith
 
-Clears iterator state and re-initializes with new data, enabling iterator reuse. Same concurrency constraints as `Reset`.
+Clears state and switches to new data for reuse; the cached key list is reset, so object keys of the new data are sorted again. Same concurrency constraints as `Reset`.
 
 ```go
 it := json.NewIterator(data1)
@@ -98,7 +100,7 @@ for it.HasNext() {
 
 ## IterableValue Type
 
-IterableValue wraps the current element during iteration and provides convenient value-access methods. Callbacks of the `Foreach*` family receive a `*IterableValue`.
+`IterableValue` wraps the current element during iteration so the callback can read values by key or path. Callbacks of the `Foreach*` family receive a `*IterableValue`; instances come from a pool and the iteration loop recycles them after the callback returns.
 
 ### Methods
 
@@ -113,13 +115,13 @@ IterableValue wraps the current element during iteration and provides convenient
 
 Signature: `func (iv *IterableValue) GetData() any`
 
-Returns the underlying data.
+Returns the underlying data; `nil` after `Release()` or once the iteration loop has recycled the value.
 
 #### Get
 
 Signature: `func (iv *IterableValue) Get(path string) any`
 
-Gets a value by path (dot notation and array indices supported).
+Gets a value by path, supporting dot notation and array indices. An empty path or `"."` returns the current element; a path that fails to parse or does not exist returns `nil`.
 
 ```go
 val := iv.Get("user.address.city")
@@ -130,7 +132,7 @@ val = iv.Get("users[0].name")
 
 Signature: `func (iv *IterableValue) GetString(key string) string`
 
-Gets a string value.
+Gets a string value. A missing key or a `null` value returns an empty string; non-string values are formatted into a string (the number `30` yields `"30"`), which differs from the strict `AccessResult.AsString`.
 
 ```go
 name := item.GetString("name")
@@ -140,7 +142,7 @@ name := item.GetString("name")
 
 Signature: `func (iv *IterableValue) GetInt(key string) int`
 
-Gets an integer value.
+Gets an integer value. A missing key, `null`, or an unconvertible value returns 0. Conversion accepts integers, floats with integral values, and parseable decimal strings, and maps `bool` as `true→1`, `false→0` (more permissive than `AccessResult.AsInt`).
 
 ```go
 age := item.GetInt("age")
@@ -150,7 +152,7 @@ age := item.GetInt("age")
 
 Signature: `func (iv *IterableValue) GetFloat64(key string) float64`
 
-Gets a float value.
+Gets a float value; a missing key, `null`, or an unconvertible value returns 0.
 
 ```go
 price := item.GetFloat64("price")
@@ -160,7 +162,7 @@ price := item.GetFloat64("price")
 
 Signature: `func (iv *IterableValue) GetBool(key string) bool`
 
-Gets a boolean value.
+Gets a boolean value. A missing key or `null` returns `false`. Conversion accepts `bool`; numbers map 0→`false` and non-zero→`true`; strings go through `strconv.ParseBool` first, with `yes`/`on` → `true` and `no`/`off`/empty → `false` added.
 
 ```go
 enabled := item.GetBool("enabled")
@@ -170,7 +172,7 @@ enabled := item.GetBool("enabled")
 
 Signature: `func (iv *IterableValue) GetArray(key string) []any`
 
-Gets an array value.
+Gets an array value. A value that is not `[]any` (missing or `null` included) returns `nil`; no type conversion is attempted.
 
 ```go
 items := item.GetArray("items")
@@ -180,7 +182,7 @@ items := item.GetArray("items")
 
 Signature: `func (iv *IterableValue) GetObject(key string) map[string]any`
 
-Gets an object value.
+Gets an object value. A value that is not `map[string]any` (missing or `null` included) returns `nil`; no type conversion is attempted.
 
 ```go
 profile := item.GetObject("profile")
@@ -190,7 +192,7 @@ profile := item.GetObject("profile")
 
 Signature: `func (iv *IterableValue) GetWithDefault(key string, defaultValue any) any`
 
-Gets a value, returning the default when the key does not exist.
+Gets a value; a missing key or path, or a `null` value, returns `defaultValue`.
 
 ```go
 // Get an optional field, falling back to a default when absent
@@ -202,7 +204,7 @@ mode := item.GetWithDefault("mode", "default")
 
 Signature: `func (iv *IterableValue) GetStringWithDefault(key string, defaultValue string) string`
 
-Gets a string value, returning the default when the key does not exist.
+Gets a string value; a missing key, `null`, or a non-string value returns `defaultValue` (no type conversion here).
 
 ```go
 name := item.GetStringWithDefault("name", "unknown")
@@ -212,7 +214,7 @@ name := item.GetStringWithDefault("name", "unknown")
 
 Signature: `func (iv *IterableValue) GetIntWithDefault(key string, defaultValue int) int`
 
-Gets an integer value, returning the default when the key does not exist.
+Gets an integer value; a missing key, `null`, or an unconvertible value returns `defaultValue`.
 
 ```go
 age := item.GetIntWithDefault("age", 0)
@@ -223,7 +225,7 @@ port := item.GetIntWithDefault("port", 8080)
 
 Signature: `func (iv *IterableValue) GetFloat64WithDefault(key string, defaultValue float64) float64`
 
-Gets a float value, returning the default when the key does not exist.
+Gets a float value; a missing key, `null`, or an unconvertible value returns `defaultValue`.
 
 ```go
 price := item.GetFloat64WithDefault("price", 0.0)
@@ -234,7 +236,7 @@ rate := item.GetFloat64WithDefault("rate", 1.0)
 
 Signature: `func (iv *IterableValue) GetBoolWithDefault(key string, defaultValue bool) bool`
 
-Gets a boolean value, returning the default when the key does not exist.
+Gets a boolean value; a missing key, `null`, or an unconvertible value returns `defaultValue`.
 
 ```go
 enabled := item.GetBoolWithDefault("enabled", false)
@@ -245,7 +247,7 @@ debug := item.GetBoolWithDefault("debug", true)
 
 Signature: `func (iv *IterableValue) Exists(key string) bool`
 
-Checks whether the given key exists.
+Checks whether the given key or path exists. For a **simple key** (no `.`, `[`, or `]`) it does a direct map lookup, so an existing key returns `true` even when its value is `null`. For a key containing path syntax the result comes from `Get`, so a path resolving to `null` returns `false`.
 
 ```go
 if item.Exists("email") {
@@ -276,7 +278,7 @@ if item.IsNullData() {
 
 Signature: `func (iv *IterableValue) IsNull(key string) bool`
 
-Checks whether the value of the given key is null.
+Checks whether the value of the given key is `null`. A missing key **also returns `true`**: the method treats "absent" and "explicit null" alike, so use `Exists` to tell them apart.
 
 ```go
 if item.IsNull("optional_field") {
@@ -288,7 +290,7 @@ if item.IsNull("optional_field") {
 
 Signature: `func (iv *IterableValue) IsEmptyData() bool`
 
-Checks whether the entire value is empty (nil, empty string, empty array, or empty object).
+Checks whether the entire value is empty: `nil`, an empty string, an empty array, or an empty object returns `true`; every other type (numbers, booleans included) returns `false`.
 
 ```go
 if item.IsEmptyData() {
@@ -300,7 +302,7 @@ if item.IsEmptyData() {
 
 Signature: `func (iv *IterableValue) IsEmpty(key string) bool`
 
-Checks whether the value of the given key is empty.
+Checks whether the value of the given key is empty. A missing key, a `null` value, or a value equal to its type's zero value — empty string, zero-length array/object, numeric 0, `false`, empty `Number` — returns `true`; other types return `false`.
 
 ```go
 if item.IsEmpty("tags") {
@@ -312,7 +314,7 @@ if item.IsEmpty("tags") {
 
 Signature: `func (iv *IterableValue) Break() error`
 
-Returns the stop-iteration signal. Calling it inside an iteration callback terminates the traversal early.
+Returns an unexported sentinel error meaning "stop normally". Returning it from a callback that returns `error` ends the traversal early; the `Foreach*WithError` family recognizes the signal and returns `nil` instead of an error.
 
 ```go
 // Note: Break() takes effect only in iteration functions whose callbacks
@@ -333,20 +335,20 @@ err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue)
 
 Signature: `func (iv *IterableValue) Release()`
 
-Returns the IterableValue to the object pool, releasing internal data references.
+Clears the data reference held by the `IterableValue` immediately (`iv.data = nil`), letting large parsed payloads be collected before iteration ends. It does **not** return the object to the pool — recycling is always done by the iteration loop after the callback returns.
 
 ```go
 err := json.ForeachWithError(data, ".", func(key any, item *json.IterableValue) error {
     // Process the data...
     fmt.Println(item.GetData())
-    // Release after processing to reduce GC pressure
+    // Clear the reference after processing to reduce GC pressure
     item.Release()
     return nil
 })
 ```
 
-:::tip Release is optional
-Iteration functions **automatically** return every `IterableValue` to the object pool after the callback returns; an explicit `Release()` inside the callback is redundant but harmless (double-return protection is built in). Note that the internal data is cleared once the callback returns, so do **not** stash the `*IterableValue` for use beyond the callback — copy the data from `GetData()` if you need to keep it.
+:::tip When Release matters
+The `Foreach*` family and the chunked JSONL APIs (`StreamJSONLChunked`, `ForeachFileChunked`) recycle every `IterableValue` after its callback returns, so an explicit `Release()` inside the callback is redundant but harmless. The serial JSONL APIs (`StreamJSONL` and friends) do not recycle: the values belong to the caller and are safe to retain — there `Release()` merely clears the data. In both cases do **not** stash the `*IterableValue` beyond a callback that recycles it; copy the data from `GetData()` if you need to keep it.
 :::
 
 ### Complete IterableValue Example
@@ -398,13 +400,13 @@ func main() {
 
 ## The StreamIterator Type
 
-StreamIterator provides memory-efficient streaming iteration for large JSON arrays. Elements are processed one by one, without loading the entire array into memory.
+`StreamIterator` decodes a JSON array element by element from an `io.Reader`: a `bufio.Reader` plus `json.Decoder` stream the tokens, so it holds one element at a time instead of loading the whole array.
 
 ### NewStreamIterator
 
 Signature: `func NewStreamIterator(reader io.Reader, cfg ...Config) *StreamIterator`
 
-Creates a streaming iterator. The buffer comes from `Config.BufferSize` (64KB from `DefaultConfig` when cfg is absent; falls back to 32KB when cfg is passed with `BufferSize <= 0`); `MaxJSONSize` always applies to the **total byte count of the whole stream** (capped at `DefaultMaxJSONSize` = 100MB when cfg is absent) and errors when exceeded.
+Creates a streaming iterator. The buffer size comes from `Config.BufferSize`: 64KB from `DefaultConfig` when cfg is absent, falling back to 32KB when cfg is passed with `BufferSize <= 0`. `MaxJSONSize` applies to the **total byte count of the whole stream** and caps at `DefaultMaxJSONSize` (100MB) when cfg is absent or the field is non-positive; exceeding it is an error.
 
 ```go
 file, _ := os.Open("large-array.json")
@@ -427,23 +429,23 @@ it2 := json.NewStreamIterator(file, cfg)
 ```
 
 :::tip Top-level input shape
-`StreamIterator` targets JSON **arrays**. If the top level is a single scalar (e.g. `"hello"`, `42`), it is yielded once as the only element; if the top level is an object or starts with another delimiter, `Next()` returns false and `Err()` reports an "expects a JSON array" error.
+`StreamIterator` targets JSON **arrays**. If the top level is a single scalar (e.g. `"hello"`, `42`), it is yielded once as the only element; if the top level is an object, or starts with a delimiter other than `[`, `Next()` returns false and `Err()` reports an "expects a JSON array" error. An empty stream is not an error: `Next()` returns false and `Err()` stays `nil`.
 :::
 
 ### Methods
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `Next` | `func (si *StreamIterator) Next() bool` | Advances to the next element |
+| `Next` | `func (si *StreamIterator) Next() bool` | Advances to the next element; false means the end or an error |
 | `Value` | `func (si *StreamIterator) Value() any` | Returns the current element |
-| `Index` | `func (si *StreamIterator) Index() int` | Returns the current index (starting at 0) |
+| `Index` | `func (si *StreamIterator) Index() int` | Returns the current index, starting at 0; -1 before the first element |
 | `Err` | `func (si *StreamIterator) Err() error` | Returns any iteration error |
 
 ---
 
 ## The StreamObjectIterator Type
 
-StreamObjectIterator provides memory-efficient streaming iteration for large JSON objects.
+`StreamObjectIterator` decodes the key-value pairs of a JSON object one at a time from an `io.Reader`: again a `bufio.Reader` plus `json.Decoder`, holding a single pair at any instant.
 
 ### NewStreamObjectIterator
 
@@ -465,7 +467,7 @@ if err := it.Err(); err != nil {
 ```
 
 :::tip Accepts only top-level objects
-If the first token is not `{`, `Next()` returns false and `Err()` reports an "expects a JSON object" error; non-string keys likewise end with an error (no longer silently). Key-value pairs are yielded in **stream order** (no sorting).
+If the first token is not `{`, `Next()` returns false and `Err()` reports an "expects a JSON object" error; a non-string key likewise ends with an error. Key-value pairs are yielded in **stream order**, with no sorting.
 :::
 
 ### Methods
@@ -481,13 +483,13 @@ If the first token is not `{`, `Next()` returns false and `Err()` reports an "ex
 
 ## The BatchIterator Type
 
-BatchIterator enables efficient batch processing of large arrays, cutting per-element overhead; created by `NewBatchIterator`.
+`BatchIterator` slices a `[]any` into fixed-size batches yielded in order, for workloads that submit work per batch (bulk database writes, batched requests). It only produces slice views; it neither copies nor re-parses the data.
 
 ### NewBatchIterator
 
 Signature: `func NewBatchIterator(data []any, cfg ...Config) *BatchIterator`
 
-Creates a batch iterator. `Config.MaxBatchSize` sets the batch size (2000 from `DefaultConfig` when cfg is absent; falls back to 100 elements per batch when cfg is passed with `MaxBatchSize <= 0`).
+Creates a batch iterator. The batch size comes from `Config.MaxBatchSize`: 2000 from `DefaultConfig` when cfg is absent, falling back to 100 elements per batch when cfg is passed with `MaxBatchSize <= 0`.
 
 :::tip How batches are sliced
 `NextBatch` returns a **view** of the underlying array slice (`data[current:end]`) — no copy; the last batch may be shorter than batchSize, and modifying view elements affects the original array.
@@ -523,13 +525,13 @@ for it.HasNext() {
 
 ## The ParallelIterator Type
 
-ParallelIterator processes arrays in parallel, exploiting multi-core CPUs for speed.
+`ParallelIterator` runs a fixed pool of worker goroutines over a `[]any`, for CPU-bound per-element work. The callback itself must be thread-safe (guard shared state with `sync/atomic` or a mutex).
 
 ### NewParallelIterator
 
 Signature: `func NewParallelIterator(data []any, cfg ...Config) *ParallelIterator`
 
-Creates a parallel iterator. `Config.MaxConcurrency` sets the worker goroutine count (50 from `DefaultConfig` when cfg is absent; falls back to 4 when cfg is passed with `MaxConcurrency <= 0`; the actual count never exceeds `len(data)`, and is 1 for empty data).
+Creates a parallel iterator. The worker count comes from `Config.MaxConcurrency`: 50 from `DefaultConfig` when cfg is absent, falling back to 4 when cfg is passed with `MaxConcurrency <= 0`. The effective concurrency never exceeds `len(data)` and is 1 for empty data.
 
 ```go
 data := make([]any, 10000)
@@ -551,7 +553,7 @@ if err != nil {
 
 Signature: `func (it *ParallelIterator) ForEach(fn func(int, any) error) error`
 
-Processes every element in parallel and returns the first error encountered.
+Processes every element in parallel and returns the first error encountered. Internally it dispatches elements by index with up to `MaxConcurrency` workers.
 
 ```go
 err := it.ForEach(func(idx int, val any) error {
@@ -561,14 +563,14 @@ err := it.ForEach(func(idx int, val any) error {
 ```
 
 :::tip Error and termination semantics
-After any callback returns an error, the remaining workers stop dispatching as soon as possible and the **first** error is returned; calls after `Close` return nil directly (callbacks not executed); callback panics are caught and converted into returned errors — the process is never taken down.
+Once any callback returns an error, dispatch stops, the remaining workers exit as soon as possible, and the **first** error is returned. Calls after `Close` return `nil` without running callbacks. Callback panics are caught and converted into returned errors, so the process is never taken down.
 :::
 
 ### ForEachWithContext
 
 Signature: `func (it *ParallelIterator) ForEachWithContext(ctx context.Context, fn func(int, any) error) error`
 
-Context-aware parallel processing with cancellation support. Returns `ctx.Err()` when the context is cancelled.
+Context-aware parallel processing. Returns `ctx.Err()` when the context is cancelled during dispatch; after `Close` it returns `nil` without running callbacks.
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -588,7 +590,7 @@ err := it.ForEachWithContext(ctx, func(idx int, val any) error {
 
 Signature: `func (it *ParallelIterator) ForEachBatch(batchSize int, fn func(int, []any) error) error`
 
-Parallel batch processing. Each batch is handled by a single goroutine; `batchSize <= 0` is treated as 100; the callback receives the **batch ordinal** (which batch) and that batch's elements.
+Parallel batch processing. Each batch is handled by a single goroutine; `batchSize <= 0` is treated as 100; the callback receives the **batch ordinal** (0-based) and that batch's elements.
 
 ```go
 err := it.ForEachBatch(100, func(batchIdx int, batch []any) error {
@@ -601,7 +603,7 @@ err := it.ForEachBatch(100, func(batchIdx int, batch []any) error {
 
 Signature: `func (it *ParallelIterator) ForEachBatchWithContext(ctx context.Context, batchSize int, fn func(int, []any) error) error`
 
-Context-aware parallel batch processing. Returns `ctx.Err()` on cancellation; nil after Close.
+Context-aware parallel batch processing. Returns `ctx.Err()` on cancellation; after `Close` it returns `nil` without running callbacks.
 
 ### Map
 
@@ -622,7 +624,7 @@ results, err := it.Map(func(idx int, val any) (any, error) {
 
 Signature: `func (it *ParallelIterator) Filter(predicate func(int, any) bool) []any`
 
-Filters elements in parallel and returns the slice of matches. **Input order is preserved** (not completion order); the predicate returns no error, and callback panics are logged rather than aborting.
+Filters elements in parallel and returns the slice of matches in **input order** (not completion order). The `predicate` returns no error, so the result carries none; a callback panic is caught internally and logged without aborting the call.
 
 ```go
 even := it.Filter(func(idx int, val any) bool {
@@ -637,7 +639,7 @@ even := it.Filter(func(idx int, val any) bool {
 
 Signature: `func (it *ParallelIterator) Close()`
 
-Releases the ParallelIterator's resources: notifies running goroutines to stop and waits for them to exit. CAS-based — **safe to call repeatedly and from multiple goroutines**.
+Releases the ParallelIterator's resources: it sets the closed flag and closes the `done` channel to notify running goroutines to stop. CAS-based — **safe to call repeatedly and from multiple goroutines**. After `Close`, the `ForEach` family returns `nil` directly without running callbacks.
 
 ```go
 it := json.NewParallelIterator(data, cfg)
@@ -791,17 +793,17 @@ func main() {
 
 ## Performance Recommendations
 
-1. **Reuse iterators** - Use `Reset`/`ResetWith` to avoid repeated allocation in multi-pass scenarios
-2. **Use streaming iterators for large datasets** - `StreamIterator`/`StreamObjectIterator` process element by element, memory-friendly
-3. **Reduce overhead with batching** - `BatchIterator` processes per batch, lowering per-element overhead
-4. **Parallelize CPU-bound tasks** - `ParallelIterator` exploits multiple cores
-5. **Release IterableValue** - Call `Release()` after processing in `Foreach*` callbacks to reduce GC pressure
+1. **Reuse iterators**: `Reset`/`ResetWith` avoid repeated allocation when traversing more than once
+2. **Use streaming iterators for large datasets**: `StreamIterator`/`StreamObjectIterator` hold one element at a time, so memory does not grow with array length
+3. **Process per batch to cut per-call overhead**: `BatchIterator` only slices views, which suits batched submissions
+4. **Parallelize CPU-bound work**: `ParallelIterator` sizes its worker pool from `Config.MaxConcurrency` (default 50, capped by `len(data)`)
+5. **Release large payloads early**: call `Release()` in `Foreach*` callbacks for payloads you no longer need, so the reference is dropped before iteration ends
 
 ---
 
 ## See Also
 
-- [Package Iteration Functions](./functions/iterate) - Foreach/ForeachFile and other iteration functions
-- [Processor Iteration Methods](./processor/iterate) - The corresponding processor iteration methods
-- [Large File Handling](../streaming/large-files) - Large-file guide and API reference
-- [JSONL Streaming](../streaming/jsonl) - JSONL/NDJSON streaming
+- [Package Iteration Functions](./functions/iterate): `Foreach`/`ForeachFile` and other iteration functions
+- [Processor Iteration Methods](./processor/iterate): the corresponding processor iteration methods
+- [Large File Handling](../streaming/large-files): large-file guide and API reference
+- [JSONL Streaming](../streaming/jsonl): JSONL/NDJSON streaming

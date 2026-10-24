@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo html | Get Started in 5 Minutes"
-description: "CyberGo html quick start in 5 minutes: install on Go 1.26+, extraction, four Config presets, text/Markdown/JSON output, and concurrency-safe Processor use."
+description: "CyberGo html quick start: install, extract from bytes or files, choose a Config preset, know encoding detection limits, and output text, Markdown or JSON."
 sidebar_position: 10
 ---
 
 # Quick Start
+
+Install the library, run a first extraction, then pick a configuration preset and output format for your case.
 
 ## Installation
 
@@ -69,6 +71,8 @@ Links: 1
 Words: 14
 ```
 
+`WordCount` splits on whitespace and counts each CJK character as one additional word.
+
 ## Extract from File
 
 ```go
@@ -98,9 +102,9 @@ result, err := p.Extract(data)
 | Preset | Function | Description |
 |--------|----------|-------------|
 | Default | `DefaultConfig()` | Balanced configuration for general use |
-| Text | `TextOnlyConfig()` | Extract plain text only, disable media |
-| Markdown | `MarkdownConfig()` | Optimized for Markdown output |
-| High Security | `HighSecurityConfig()` | Strict limits, full audit |
+| Text | `TextOnlyConfig()` | Keeps no images, links, videos, or audio; the `Include*` switches of `ExtractAllLinks` are unaffected |
+| Markdown | `MarkdownConfig()` | Sets `InlineImageFormat` and `InlineLinkFormat` to `markdown`; `ExtractToMarkdown` always emits Markdown and does not need it |
+| High Security | `HighSecurityConfig()` | Tightens input size, depth, and timeout limits and enables full audit |
 
 ## Output Formats
 
@@ -115,9 +119,11 @@ md, err := html.ExtractToMarkdown(data)
 jsonBytes, err := html.ExtractToJSON(data)
 ```
 
+`ExtractText` calls `Extract` internally and returns `.Text`, so its performance path is the same as `Extract`.
+
 ## Context Support
 
-All extraction functions have variants with the `*WithContext` suffix (e.g., `ExtractWithContext`, `ExtractTextWithContext`) that support cancellation and timeout:
+Extraction functions have variants with the `*WithContext` suffix (for example `ExtractWithContext`, `ExtractTextWithContext`) that support cancellation and timeouts:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -126,11 +132,13 @@ defer cancel()
 result, err := html.ExtractWithContext(ctx, data)
 ```
 
-## Key Notes
+When the library's own `ProcessingTimeout` expires you get `ErrProcessingTimeout`; when the caller's context expires the original `context.DeadlineExceeded` is returned unchanged. See [the FAQ](../faq/#what-s-the-difference-between-processingtimeout-and-user-context-timeout) for the full table.
+
+## Usage Notes
 
 ### Concurrency Safety
 
-`Processor` instances are concurrent-safe and can be shared across goroutines:
+`Processor` instances are concurrency-safe and can be shared across goroutines:
 
 ```go
 p, err := html.New(html.DefaultConfig())
@@ -152,26 +160,26 @@ for _, url := range urls {
 wg.Wait()
 ```
 
-Package-level functions are also concurrent-safe (internally use a Processor pool).
+Package-level functions are also concurrency-safe: they take a Processor from an internal pool and clear its cache on return, so a pooled instance gains nothing from caching. Use `html.New(cfg)` for a long-lived Processor when you need cache hits.
 
 ### Encoding Detection
 
-The library automatically detects HTML encoding — no manual handling needed:
+The library decides the encoding from a BOM, a `<meta charset>` declaration, and byte statistics:
 
 ```go
-// GBK-encoded HTML is automatically detected and correctly extracted
-result, err := html.Extract(gbkData)
+// Auto-detection works when the encoding is declared or the bytes are conclusive
+result, err := html.Extract(pageData)
 
-// You can also manually specify encoding via Config.Encoding
+// When the source encoding is known, set it explicitly — the most reliable option
 cfg := html.DefaultConfig()
 cfg.Encoding = "gbk"
 ```
 
-Supports UTF-8, GBK, GB18030, Shift_JIS, EUC-JP, Windows-1252, and 15+ encodings.
+Supported encodings include UTF-8, GBK, Shift_JIS, EUC-JP, Windows-1252, and 15+ others. A GBK or Shift_JIS page without `<meta charset>` is decoded as windows-1252, producing mojibake with no error — set `Config.Encoding` explicitly in production. See [Encoding Detection](../guides/core-features/encoding-detection).
 
 ## Next Steps
 
-- [Content Extraction Guide](../guides/core-features/content-extraction) - Deep dive into extraction and article recognition
-- [Output Formats](../guides/core-features/output-formats) - Choose the right output format for your use case
-- [Processor Cache & Reuse](../guides/performance/processor-cache) - Performance optimization for high-frequency calls
+- [Content Extraction](../guides/core-features/content-extraction) - Extraction pipeline and article detection
+- [Output Formats](../guides/core-features/output-formats) - Choose the right output format for your case
+- [Processor Cache & Reuse](../guides/performance/processor-cache) - Performance tuning for high-frequency calls
 - [Cheat Sheet](./cheatsheet) - Common API quick reference

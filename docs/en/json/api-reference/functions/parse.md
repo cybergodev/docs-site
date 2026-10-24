@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Parse & Validate"
 title: "Parse & Validate Functions - CyberGo JSON | Valid & Parse"
-description: "CyberGo JSON is a Go library for parsing and validation, offering Parse/ParseAny, Valid, ValidWithConfig and ValidateSchema to handle untrusted input."
+description: "Parsing and validation: Parse/ParseAny decode into structs or any, Valid checks validity with security limits, ValidateSchema returns every ValidationError."
 sidebar_position: 60
 ---
 
 # Parse and Validate Functions
 
-Parse and validate functions of the json package: parsing JSON into target objects, parsing through a Processor instance, JSON validity checking, and JSON Schema validation.
+Parse and validate functions of the json package: decoding JSON into target objects, parsing through a Processor instance, JSON validity checking, and JSON Schema validation.
 
 ## Parse Functions
 
@@ -15,7 +15,7 @@ Parse and validate functions of the json package: parsing JSON into target objec
 
 Signature: `func Parse(jsonStr string, target any, cfg ...Config) error`
 
-Parses a JSON string into the object pointed to by `target`. `target` must be a **non-nil pointer** (passing `nil` or a non-pointer returns an argument error). Consistent with `Get`, `Parse` runs security validation on the input before parsing (size, nesting depth, dangerous patterns, bounded by `cfg` and the processor configuration).
+Parses a JSON string into the object pointed to by `target`. `target` must be a **non-nil pointer**; passing `nil` or a non-pointer returns an argument error. Like `Get`, `Parse` runs security validation on the input before parsing (size, nesting depth, dangerous patterns), bounded by `cfg` and the processor configuration.
 
 **Parameters**
 
@@ -95,7 +95,7 @@ func main() {
 
 Signature: `func ParseAny(jsonStr string, cfg ...Config) (any, error)`
 
-Parses a JSON string and returns the root value as `any` — no target variable needs to be declared up front.
+Parses a JSON string and returns the root as `any`, with no target variable to declare.
 
 ```go
 package main
@@ -163,9 +163,9 @@ See [Processor Parse Methods](../processor/parse#parse-methods).
 
 Signature: `func Valid(data []byte, cfg ...Config) bool`
 
-Checks whether a JSON byte slice is valid. 100% compatible with `encoding/json.Valid`: calling `json.Valid(data)` without cfg is fully identical to the standard library and returns a plain `bool`.
+Checks whether a JSON byte slice is valid and returns a plain `bool`. The signature matches `encoding/json.Valid`, so existing code compiles after swapping the import; however, a no-cfg call does **not** stop at syntax. It routes through the default processor's security validation, so input that is syntactically valid still returns `false` when it exceeds `MaxJSONSize` (default 100MB), contains invalid UTF-8, or has a dangerous pattern (e.g. `__proto__`, `<script`) in a string value.
 
-The optional trailing `Config` applies security limits (size, nesting depth, full security scanning, etc.). When cfg is passed, `Valid` delegates to `Processor.Valid` and folds any error into `false`.
+The optional trailing `Config` applies security limits (size, nesting depth, full security scanning, etc.). With cfg, `Valid` delegates to `Processor.Valid` and folds any error into `false`. For a syntax-only check like the standard library, use `encoding/json.Valid`; or pass a `Config` with `SkipValidation: true` to `ValidWithConfig` (which keeps only basic size and depth checks).
 
 ```go
 package main
@@ -177,12 +177,12 @@ import (
 
 func main() {
 	data := []byte(`{"name": "test"}`)
-	// encoding/json compatible (no cfg)
+	// Same signature as encoding/json (no cfg)
 	if json.Valid(data) {
 		fmt.Println("Valid JSON")
 	}
 
-	// With configuration (non-breaking optional parameter)
+	// With configuration (optional trailing argument)
 	if json.Valid(data, json.SecurityConfig()) {
 		fmt.Println("Passed security validation")
 	}
@@ -226,7 +226,7 @@ func main() {
 
 Signature: `func ValidateSchema(jsonStr string, schema *Schema, cfg ...Config) ([]ValidationError, error)`
 
-Validates JSON data against a JSON Schema. Returns the list of all validation errors.
+Parses JSON data against a JSON Schema and returns every validation error. A non-nil second return value means the check itself failed (e.g. input is not valid JSON, or the schema is nil), in which case the error list is meaningless.
 
 ```go
 package main

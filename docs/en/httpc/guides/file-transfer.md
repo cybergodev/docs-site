@@ -1,11 +1,13 @@
 ---
 sidebar_label: "File Upload & Download"
 title: "File Upload and Download - CyberGo HTTPC | Upload/Download"
-description: "HTTPC file guide: WithFile and WithFormData uploads, streaming Download with progress callbacks, ResumeDownload, SHA-256 checksums, and UNC-path blocking."
+description: "HTTPC file transfer: WithFile and WithFormData uploads, streaming Download with progress callbacks, resume, SHA-256 checksums, and path security checks."
 sidebar_position: 50
 ---
 
 # File Upload and Download
+
+File transfer means sending file content in a request body, or streaming a response body to local disk.
 
 ## File Upload
 
@@ -107,7 +109,7 @@ if err != nil {
 
 ### Streaming Upload (Large Files)
 
-`WithBody` accepts an `io.Reader` directly, so the whole file never has to be read into memory. Content-Type is not auto-detected for Reader bodies — set it explicitly:
+`WithBody` accepts an `io.Reader` directly, so the whole file never has to be read into memory. Content-Type is not auto-detected for Reader bodies; set it explicitly:
 
 ```go
 file, err := os.Open("large-video.mp4")
@@ -122,7 +124,7 @@ result, err := httpc.Post("https://api.example.com/upload",
 )
 ```
 
-Combine with `io.Pipe` for zero-copy streaming uploads — a producer goroutine sends data as it generates it, while the HTTP transport consumes concurrently:
+Combine with `io.Pipe` for a streaming upload: a producer goroutine writes chunks while the HTTP transport consumes them, with no whole-body buffering.
 
 ```go
 pr, pw := io.Pipe()
@@ -138,8 +140,8 @@ result, err := httpc.Post("https://api.example.com/upload",
 )
 ```
 
-:::warning Reader bodies bypass size validation
-An `io.Reader` has no way to know its length in advance, so HTTPC **does not size-validate** it. Wrap untrusted data with `io.LimitReader`, or set a global cap via `Security.MaxRequestBodySize`:
+:::warning Reader body size validation depends on MaxRequestBodySize
+An `io.Reader` has no way to know its length in advance, so by default (`MaxRequestBodySize = 0`) it is **not size-validated**. With `Security.MaxRequestBodySize > 0`, a counting reader aborts the transfer when the limit is exceeded and returns `request body exceeds limit of N bytes`. For untrusted data, wrapping it with `io.LimitReader` is still recommended, since that limits the data at the source:
 
 ```go
 result, err := httpc.Post(url,
@@ -151,12 +153,14 @@ result, err := httpc.Post(url,
 
 ## File Download
 
-`Download(ctx, url, cfg, options...)` is the single canonical download entry point shared across the package-level function, `Client`, and `DomainClient`.
+`Download(ctx, url, cfg, options...)` is the download entry point shared by the package-level function, `Client`, and `DomainClient`.
 
-Downloads **always stream**: `WithStreamBody(true)` is attached automatically, the response body flows from the network straight to disk (`io.Copy`), and the file is never buffered whole in memory; when a checksum is enabled, the hash is computed on the fly during writing — no second pass over the file.
+Downloads **always stream**: `WithStreamBody(true)` is attached automatically, and the response body flows from the network straight to disk (`io.Copy`) without buffering the whole file in memory. When a checksum is enabled, the hash is computed during writing, with no second pass over the file.
 
 :::warning Downloads are bounded by MaxResponseBodySize
-Streaming to disk **does not mean unbounded size**: the download body is still subject to the client's `Security.MaxResponseBodySize` — 10MB by default with `DefaultConfig` (other presets: `SecureConfig` 5MB, `PerformanceConfig` 50MB, `MinimalConfig` 1MB). A body over the limit fails the download with `ErrResponseBodyTooLarge`; the file is **never** silently truncated at the limit. Raise the value before downloading large files:
+Streaming to disk **does not mean unbounded size**: the download body is still subject to the client's `Security.MaxResponseBodySize`. `DefaultConfig` uses 10MB; the other presets are `SecureConfig` 5MB, `PerformanceConfig` 50MB, and `MinimalConfig` 1MB.
+
+A body over the limit fails the download with `ErrResponseBodyTooLarge`; the file is **never** silently truncated at the limit. Raise the value before downloading large files:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -204,15 +208,15 @@ fmt.Printf("\nDownload complete: %s, average speed %s\n",
 :::tip How progress callbacks fire
 The callback signature is `(bytes downloaded, total bytes, current speed)`, and the cadence is guaranteed by the implementation:
 
-- **Minimum 200ms interval**: on fast networks, high-frequency callbacks never slow down disk writes; on slow networks, refreshes stay steady.
-- **One final callback at the end**: at that point `downloaded` equals the total byte count and `speed` is the average speed — handy for CLI newline cleanup.
-- **Where `total` comes from**: the `Content-Length` returned by the server; on resumed downloads the server reports only the remaining bytes for a Range request, and HTTPC automatically adds the existing file offset to obtain the full size.
-- **`total` may be 0 or negative**: when the server omits Content-Length (chunked transfer), the total is unknown — check `total > 0` in the callback before computing percentages.
+- **Minimum 200ms interval**: on fast networks, frequent callbacks do not slow down disk writes; on slow networks, refreshes stay steady.
+- **One final callback at the end**: at that point `downloaded` equals the total byte count and `speed` is the average speed, which helps with CLI newline cleanup.
+- **Where `total` comes from**: the `Content-Length` returned by the server. On a resumed download the server reports only the remaining bytes for a Range request, and HTTPC adds the existing file offset to obtain the full size.
+- **When `total` is 0 or negative**: the server omitted Content-Length (chunked transfer), so the total is unknown. Check `total > 0` in the callback before computing percentages.
 :::
 
 ### With Authentication and Custom Headers
 
-The variadic arguments of `Download` are ordinary `RequestOption`s, so auth headers, query parameters, and per-request timeouts can all be attached directly:
+The variadic arguments of `Download` are ordinary `RequestOption`s, so auth headers, query parameters, and per-request timeouts can be attached directly:
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -246,20 +250,20 @@ if result.Resumed {
 ```
 
 :::tip
-Resumable downloads depend on server support for the Range request header. If the server does not support it (returns 200 instead of 206), an error is returned to protect the existing partial file.
+Resumable downloads depend on server support for the Range request header. If the server does not support it and returns 200 instead of 206, HTTPC returns an error to protect the existing partial file.
 :::
 
-The complete resume decision logic:
+The resume decision logic:
 
 | Server response | Behavior |
 |-----------------|----------|
 | `206 Partial Content` | Appends to the existing file with `O_APPEND`; `result.Resumed` is `true` |
 | `200 OK` (Range unsupported) | Returns the error `server does not support range requests`; the existing partial file is **not truncated** |
-| `416 Range Not Satisfiable` | Returns an error (typically because the local file is already complete, or the server-side resource shrank) |
+| `416 Range Not Satisfiable` | Returns an error; typical causes are a locally complete file or a server-side resource that shrank |
 | Any other non-2xx status | Returns an `unexpected status code` error whose message includes a preview of the first 200 bytes of the response body |
 
 :::warning When Overwrite and ResumeDownload are both true
-`ResumeDownload` wins — the existing file is **extended by appending** rather than replaced. Additionally, on a mid-write failure in resume mode, the bytes already on disk are kept (for the next resume attempt); in non-resume mode a failure deletes the half-written file so no corrupt artifact is left behind.
+`ResumeDownload` wins: the existing file is **extended by appending** rather than replaced. On a mid-write failure in resume mode, the bytes already on disk are kept for the next resume attempt. In non-resume mode a failure deletes the half-written file so no corrupt artifact is left behind.
 :::
 
 ### Checksum Verification (SHA-256)
@@ -267,9 +271,9 @@ The complete resume decision logic:
 Once `Checksum` is set, HTTPC computes SHA-256 over the data as it streams to disk and compares it against the expected value when the download finishes:
 
 - the comparison is **case-insensitive** (the expected value is normalized to lowercase internally);
-- **mismatch → the downloaded file is deleted and an error returned** — no tainted artifact is left behind;
-- on success, `result.ActualChecksum` carries the actually computed hash, ready for logging;
-- algorithm validity is checked **before the target file is opened** — a misconfiguration (such as an unknown `ChecksumAlgorithm`) never truncates an existing file on disk.
+- **on mismatch the downloaded file is deleted and an error returned**, so no tainted artifact is left behind;
+- on success, `result.ActualChecksum` carries the computed hash for logging;
+- algorithm validity is checked **before the target file is opened**, so a misconfiguration (such as an unknown `ChecksumAlgorithm`) never truncates an existing file on disk.
 
 ```go
 package main
@@ -341,21 +345,21 @@ if err != nil {
 
 ### File Conflict and Cleanup Semantics
 
-A summary of how downloads treat the target file (pair with the `ErrFileExists` and `ErrEmptyFilePath` sentinel errors via `errors.Is`):
+A summary of how downloads treat the target file. Pair with the `ErrFileExists` and `ErrEmptyFilePath` sentinel errors via `errors.Is`:
 
 | Scenario | Behavior |
 |----------|----------|
-| Target file exists, both `Overwrite`/`ResumeDownload` false | Returns `ErrFileExists`; file untouched |
+| Target file exists, both `Overwrite`/`ResumeDownload` false | Returns `ErrFileExists`; the file is not modified |
 | Target path is a directory | Returns an error |
 | `Overwrite = true` (non-resume) | Overwrites via `O_TRUNC` |
 | `ResumeDownload = true` and the server supports Range | Appends via `O_APPEND` |
 | Write/flush (sync/close) failure | Non-resume: the partial file is deleted; resume: existing bytes are kept |
 | Checksum mismatch | The downloaded file is deleted |
-| Requested algorithm unsupported (SHA-256 only) | Error returned **before** the file is opened; existing files are never truncated |
+| Requested algorithm unsupported (SHA-256 only) | Error returned **before** the file is opened; existing files are not truncated |
 | Target directory missing | Created recursively (mode 0755); file mode 0644 |
 | Empty path | Returns `ErrEmptyFilePath` |
 
-On error status codes (anything other than 200/206), the error message includes a preview of the first 200 bytes of the response body for troubleshooting; up to 1MiB of the body is also drained so the connection can return to the pool for reuse.
+On error status codes (anything other than 200/206), the error message includes a preview of the first 200 bytes of the response body for troubleshooting. Up to 1MiB of the body is also drained so the connection can return to the pool for reuse.
 
 ### Download vs SaveToFile
 
@@ -364,7 +368,7 @@ On error status codes (anything other than 200/206), the error message includes 
 | Method | Best for | Notes |
 |--------|----------|-------|
 | `result.SaveToFile(path)` | Small-to-medium bodies (already in memory) | The path goes through the same safety checks as Download; an empty body returns `ErrResponseBodyEmpty` |
-| `client.Download(ctx, url, cfg)` | Large files | Streaming writes with progress/resume/checksum support; memory use is independent of file size |
+| `client.Download(ctx, url, cfg)` | Large files | Streaming writes with progress, resume, and checksum support; memory use is independent of file size |
 
 ```go
 // Response body already in memory: write it straight to disk
@@ -399,7 +403,7 @@ Besides the usual byte count and duration, the `DownloadResult` returned by `Dow
 
 ## Security Protection
 
-File downloads include multiple layers of built-in security, all applied **before the target file is opened**:
+File downloads include several built-in security layers, all applied **before the target file is opened**:
 
 | Protection layer | Details |
 |------------------|---------|
@@ -410,7 +414,7 @@ File downloads include multiple layers of built-in security, all applied **befor
 | File size limit | Subject to the `MaxResponseBodySize` limit |
 
 :::tip Directories are validated too
-Automatic parent-directory creation (`MkdirAll`) happens **after** path validation, so no directory level in `FilePath` can bypass protection via a system path or a symlink. `Result.SaveToFile` reuses the same checks.
+Automatic parent-directory creation (`MkdirAll`) happens **after** path validation, so no directory level in `FilePath` can bypass protection through a system path or a symlink. `Result.SaveToFile` reuses the same checks.
 :::
 
 ## Domain Client Downloads
@@ -437,8 +441,8 @@ if err != nil {
 ```
 
 :::warning Two caveats for domain clients
-- **Request options execute twice** (once to capture session state, once for the real request). Avoid passing options with side effects (counters, random-nonce generators, etc.); when you truly need them, download directly with the underlying `Client`.
-- **Download is incompatible with custom middleware that wraps the response object**: the download path needs direct access to the raw response stream — if custom middleware replaces the `ResponseMutator` with a wrapper type, `Download` returns an explicit error. Built-in middleware (Recovery/Logging/Metrics, etc.) all pass through and are unaffected.
+- **Request options execute twice**: once to capture session state, once for the real request. Avoid options with side effects (counters, random-nonce generators, etc.); when such options are needed, download directly with the underlying `Client`.
+- **Download is incompatible with custom middleware that wraps the response object**: the download path needs direct access to the raw response stream. If custom middleware replaces the `ResponseMutator` with a wrapper type, `Download` returns an explicit error. Built-in middleware (Recovery/Logging/Metrics, etc.) all pass through and are unaffected.
 :::
 
 ## Next Steps

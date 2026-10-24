@@ -1,13 +1,13 @@
 ---
 sidebar_label: "JSONL Streaming"
 title: "JSONL Streaming - CyberGo JSON | NDJSON Stream Read/Write"
-description: "CyberGo JSON offers JSONL streaming with StreamJSONL, StreamJSONLParallel, MapJSONL and JSONLWriter writing to process large NDJSON under bounded memory."
+description: "CyberGo JSON JSONL processing: StreamJSONL line reads, StreamJSONLParallel, MapJSONL/ReduceJSONL transforms, and JSONLWriter output."
 sidebar_position: 20
 ---
 
 # JSONL Streaming
 
-JSONL (JSON Lines) or NDJSON (Newline Delimited JSON) is a format with one JSON object per line. The library provides complete JSONL processing through both `Processor` methods and package-level functions.
+JSONL (JSON Lines) or NDJSON (Newline Delimited JSON) is a format with one JSON object per line. The library provides reading, parallel, chunked, functional-transform, and writing capabilities through both `Processor` methods and package-level functions.
 
 ## Format Specification
 
@@ -110,7 +110,7 @@ err = p.StreamJSONLParallel(file, 8, func(lineNum int, item *json.IterableValue)
 ```
 
 ::: tip Performance hint
-For CPU-bound work (data transformation, computation), parallel processing improves performance significantly. For I/O-bound work, prefer single-threaded processing.
+Whether parallelizing pays off depends on the per-line cost: when the line does CPU work (transformation, computation), multiple workers spread that cost; when the line mostly waits on I/O, a single thread suffices and extra workers only add scheduling and synchronization overhead.
 :::
 
 A callback returning `item.Break()` is a clean stop: scanning and the workers wind down early and the method returns `nil`; returning any other error ends the method with that error. Callback panics are recovered into errors and never take down the process.
@@ -150,7 +150,7 @@ err = p.StreamJSONLParallelWithContext(ctx, file, 8, func(lineNum int, item *jso
 
 Signature: `func (p *Processor) StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
 
-Processes JSONL data in batches of a given element count.
+Processes JSONL data in batches of a given element count. A `chunkSize <= 0` falls back to 1000 (the same value as the `Config.JSONLChunkSize` default, but the fallback is a fixed constant and does not read that field).
 
 ```go
 p, err := json.New()

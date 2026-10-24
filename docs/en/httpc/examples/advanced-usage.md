@@ -7,12 +7,14 @@ sidebar_position: 20
 
 # Advanced Examples
 
+This page provides runnable examples for advanced HTTPC scenarios: custom retry policies, timeout and retry combinations, request/response callbacks, a full middleware chain, a REST client wrapper, and concurrency control.
+
 ## Custom Retry Strategy
 
 Retry only on 502/503/504 with a fixed delay:
 
 :::tip Type Publicly Exported
-The `resp` parameter type `ResponseReader` in RetryPolicy.ShouldRetry is exported by the `httpc` package as a public type alias (`httpc.ResponseReader`), so external packages can reference it directly. A custom `RetryPolicy` can be implemented in any business package; the example below compiles as-is. Most scenarios can still be satisfied through `RetryConfig` configuration.
+The `resp` parameter type `ResponseReader` in RetryPolicy.ShouldRetry is exported by the `httpc` package as a public type alias (`httpc.ResponseReader`), so external packages can reference it directly. A custom `RetryPolicy` can be implemented in any business package, and the example below compiles as-is. When a custom `RetryPolicy` is not needed, configure the `RetryConfig` fields instead.
 :::
 
 ```go
@@ -48,7 +50,7 @@ cfg := httpc.DefaultConfig()
 cfg.Retry.CustomPolicy = &selectiveRetry{maxAttempts: 5, baseDelay: time.Second}
 ```
 
-The alternative when you don't need a custom strategy — configure via `RetryConfig`:
+The alternative when no custom strategy is needed — configure via `RetryConfig`:
 
 ```go
 package main
@@ -85,7 +87,7 @@ func main() {
 
 ## Combining Timeouts and Retries
 
-Three layers of time control, each with its own job: the context manages the total budget for the whole group of attempts, `WithTimeout` caps a single attempt, and `WithMaxRetries` limits the number of attempts:
+The three layers of time control cover different scopes: the context manages the total budget for the whole group of attempts, `WithTimeout` caps a single attempt, and `WithMaxRetries` limits the number of attempts.
 
 ```go
 package main
@@ -202,7 +204,7 @@ func main() {
 
 ## Request/Response Callbacks
 
-When you do not need a full middleware, the two per-request callbacks `WithOnRequest` / `WithOnResponse` cover lightweight observation and debugging needs — a mutable request before it is sent, and a readable response once it completes:
+When a full middleware is not needed, the two per-request callbacks `WithOnRequest` / `WithOnResponse` cover lightweight observation and debugging. The request callback receives a mutable request before it is sent; the response callback receives a readable response once it completes:
 
 ```go
 package main
@@ -245,7 +247,7 @@ func main() {
 }
 ```
 
-Division of labor with middleware: callbacks are convenient **single-request** hooks (logging, debugging, simple metrics); for composable, short-circuiting pipeline processing across all requests, use the [middleware chain](../guides/middleware-chain).
+Division of labor with middleware: callbacks are **single-request** hooks (logging, debugging, simple metrics); composable, short-circuiting pipeline processing across all requests belongs to the [middleware chain](../guides/middleware-chain).
 
 ## REST API Client Wrapper
 
@@ -351,7 +353,7 @@ func main() {
 
 ## Domain Client (Custom Configuration)
 
-Besides `NewDomainDefault(baseURL)`, `NewDomain(baseURL, cfg)` accepts a full `Config` — presets, timeouts, retries, and proxies are all customizable. The domain client manages session headers and cookies automatically, and a single request can temporarily override session headers:
+Besides `NewDomainDefault(baseURL)`, `NewDomain(baseURL, cfg)` accepts a full `Config`: presets, timeouts, retries, and proxies are all customizable. The domain client manages session headers and cookies automatically, and a single request can temporarily override session headers:
 
 ```go
 package main
@@ -420,7 +422,7 @@ func main() {
 ```
 
 :::warning Relative paths and option side effects
-A relative `path` (such as `/get`) is joined with the baseURL automatically; a full URL (with scheme) is used as-is. Also note that the domain client executes request options **twice** (once to capture session state, once for the actual request), so avoid passing options with side effects such as counters or nonces.
+A relative `path` (such as `/get`) is joined with the baseURL automatically; a full URL (with scheme) is used as-is. The domain client also executes request options **twice** (once to capture session state, once for the actual request), so options with side effects such as counters or nonces should not be passed in.
 :::
 
 ## Advanced Cookie Usage
@@ -486,7 +488,7 @@ For session-level cookies and security validation (`WithSecureCookie` + `StrictC
 
 ## Standalone SessionManager Sessions
 
-A session (persistent headers + cookies) is not tied to the domain client: it can be created standalone and injected into any request. A good fit for scenarios such as multiple identities against the same service, or hand-orchestrated request options:
+A session (persistent headers + cookies) is not tied to the domain client: it can be created standalone and injected into any request. It fits scenarios such as multiple identities against the same service, or manually orchestrated request options:
 
 ```go
 package main
@@ -607,7 +609,7 @@ func main() {
 
 ## Concurrent Requests: Worker Pools and Semaphores
 
-When fetching large batches of URLs, a worker pool pins concurrency at the worker count, while the semaphore pattern lets the workload flex dynamically but caps how many requests are in flight at once. Both share a single `Client` (HTTPC's Client is safe for concurrent use, and its connection pool is reused across goroutines):
+When fetching batches of URLs, a worker pool fixes concurrency at the worker count, while the semaphore pattern lets the workload flex dynamically but caps how many requests are in flight at once. Both use a single `Client` (HTTPC's Client is safe for concurrent use, and its connection pool is reused across goroutines):
 
 ```go
 package main
@@ -714,7 +716,7 @@ func main() {
 ```
 
 :::tip Matching concurrency to the connection pool
-Do not keep the worker count or semaphore limit significantly above `Connection.MaxConnsPerHost` for long (in HTTP/1.1 scenarios), otherwise requests queue at the transport layer and total throughput stops improving; with HTTP/2 (enabled by default) the same host shares a multiplexed connection and is less affected. See [Performance](../guides/performance) for details.
+In HTTP/1.1 scenarios, when the worker count or semaphore limit stays above `Connection.MaxConnsPerHost`, requests queue at the transport layer and total throughput stops improving. With HTTP/2 (enabled by default) the same host shares a multiplexed connection and is less affected. See [Performance](../guides/performance).
 :::
 
 ## Structured Error Handling
@@ -783,7 +785,7 @@ HTTP status-code errors (4xx/5xx responses classified as `HTTP_ERROR`) also carr
 
 ## Saving Responses to Disk: SaveToFile and Download
 
-When a small body is already in memory, `SaveToFile` writes it to disk in one line; for large files, `Download` streams to disk with progress, resumption, and checksum support:
+When the response body is already in memory, `SaveToFile` writes it to disk; for large files, `Download` streams to disk with progress, resumption, and checksum support:
 
 ```go
 package main
@@ -830,7 +832,7 @@ func main() {
 
 ## Default Client Management
 
-Behind the package-level functions (`httpc.Get` and friends) sits a lazily initialized shared default client. `SetDefaultClient` swaps in an instance with your own configuration (the old instance is closed automatically) so that global calls follow the new configuration:
+Behind the package-level functions (`httpc.Get` and friends) sits a lazily initialized default client. `SetDefaultClient` swaps in an instance with custom configuration (the old instance is closed automatically), after which all package-level calls use the new configuration:
 
 ```go
 package main
@@ -872,7 +874,9 @@ func main() {
 }
 ```
 
-Typical scenarios: customizing global behavior once at application startup, or switching configuration per environment (development/production). Note that `SetDefaultClient` only accepts clients created by `httpc.New`, and you cannot pass an already-closed instance; a swap closes the old default client and aborts any of its in-flight requests (concurrent callers may observe connection errors), so call it only at startup or during a quiescent window, never under live traffic.
+Typical scenarios: customizing global behavior once at application startup, or switching configuration per environment (development/production).
+
+`SetDefaultClient` only accepts clients created by `httpc.New`, and it rejects an already-closed instance. A swap closes the old default client and aborts its in-flight requests (concurrent callers observe connection errors), so call it only at startup or during a quiescent window, never under live traffic. For lazy creation and recreation of the default client, see [Core Concepts](../getting-started/concepts).
 
 ## Custom Middleware: Request Signing
 

@@ -7,11 +7,11 @@ sidebar_position: 4
 
 # Config API
 
-Complete configuration options reference for the `Config` struct.
+`Config` is the single settings struct for a `Loader`: which files to load, the size and count limits, key and value validation, format options, variable expansion, and audit wiring.
 
 ## Struct Definition
 
-Config uses nested structs to organize settings while maintaining backward compatibility through Go's field promotion:
+`Config` uses nested structs so related settings stay grouped, while Go's field promotion keeps flat access working:
 
 ```go
 type Config struct {
@@ -25,14 +25,14 @@ type Config struct {
 }
 ```
 
-**Two access methods:**
+**Two ways to set a field:**
 
 ```go
-// Old way (via field promotion, still works)
+// Promoted access — still supported
 cfg.Filenames = []string{".env"}
 cfg.MaxFileSize = 1024
 
-// New way (recommended, clearer)
+// Qualified access — recommended, shows which section owns the field
 cfg.FileConfig.Filenames = []string{".env"}
 cfg.LimitsConfig.MaxFileSize = 1024
 ```
@@ -71,23 +71,23 @@ type LimitsConfig struct {
 // JSONConfig controls JSON parsing behavior
 type JSONConfig struct {
     JSONNullAsEmpty    bool // null converts to empty string
-    JSONNumberAsString bool // numbers convert to strings
-    JSONBoolAsString   bool // booleans convert to strings
+    JSONNumberAsString bool // numbers render as canonical decimal strings
+    JSONBoolAsString   bool // no effect; kept for symmetry with YAMLBoolAsString
     JSONMaxDepth       int  // Max nesting depth
 }
 
 // YAMLConfig controls YAML parsing behavior
 type YAMLConfig struct {
     YAMLNullAsEmpty    bool // null/~ converts to empty string
-    YAMLNumberAsString bool // numbers convert to strings
-    YAMLBoolAsString   bool // booleans convert to strings
+    YAMLNumberAsString bool // number-like scalars are canonicalized (007 becomes 7)
+    YAMLBoolAsString   bool // booleans render as canonical true/false
     YAMLMaxDepth       int  // Max nesting depth
 }
 
 // ParsingConfig controls general parsing behavior
 type ParsingConfig struct {
     AllowExportPrefix bool            // Allow export KEY=value syntax
-    AllowYamlSyntax   bool            // Allow YAML-style values
+    AllowYamlSyntax   bool            // Allow ':' as a separator and parse values as YAML scalars
     ExpandVariables   bool            // Whether to expand ${VAR} references
     ExpansionScope    ExpansionScope  // Scope from which ${VAR} references can be resolved
     DuplicateKeyPolicy DuplicateKeyPolicy // In-document duplicate-key resolution policy
@@ -98,7 +98,7 @@ type ComponentConfig struct {
     CustomValidator Validator        // Custom key/value validator
     CustomExpander  VariableExpander // Custom variable expander
     CustomAuditor   AuditLogger      // Custom audit logger
-    FileSystem      FileSystem       // Custom filesystem (for testing)
+    FileSystem      FileSystem       // Filesystem implementation (inject a mock in tests)
     AuditHandler    AuditHandler     // Custom audit handler
     AuditEnabled    bool             // Enable audit logging
     AuditFailClosed  bool             // Fail the operation when an audit event is lost
@@ -108,27 +108,37 @@ type ComponentConfig struct {
 
 ### Field Quick Reference (Qualified Names)
 
-The seven embedded sections are exposed as `Config.FileConfig`, `Config.ValidationConfig`, `Config.LimitsConfig`, `Config.JSONConfig`, `Config.YAMLConfig`, `Config.ParsingConfig`, and `Config.ComponentConfig`. The tables below list every field's qualified name, default, and a one-line summary; see the corresponding subsection under "Configuration Fields" for full semantics.
+Each of the seven embedded sections supplies its own group of qualified field names, with the prefixes below. The tables that follow list every field's qualified name, its default, and a one-line summary. For full semantics, see the matching subsection under "Configuration Fields".
+
+| Section | Prefix |
+|---------|--------|
+| File loading | `Config.FileConfig` |
+| Key/value validation | `Config.ValidationConfig` |
+| Size and count limits | `Config.LimitsConfig` |
+| JSON parsing | `Config.JSONConfig` |
+| YAML parsing | `Config.YAMLConfig` |
+| General parsing | `Config.ParsingConfig` |
+| Components and advanced options | `Config.ComponentConfig` |
 
 **`FileConfig` (file loading)**
 
 | Field | Default | Description |
 |-------|---------|-------------|
 | `FileConfig.Filenames` | `[".env"]` | List of files to load |
-| `FileConfig.FailOnMissingFile` | `false` | Error on missing file (otherwise skip silently) |
-| `FileConfig.OverwriteExisting` | `false` | Whether to overwrite existing variables |
-| `FileConfig.AutoApply` | `false` | Auto-apply to the process environment after loading |
+| `FileConfig.FailOnMissingFile` | `false` | Error on a missing file (otherwise skip it silently) |
+| `FileConfig.OverwriteExisting` | `false` | Whether to overwrite an existing variable |
+| `FileConfig.AutoApply` | `false` | Apply to the process environment after loading |
 
 **`ValidationConfig` (key/value validation)**
 
 | Field | Default | Description |
 |-------|---------|-------------|
 | `ValidationConfig.RequiredKeys` | `nil` | Required keys, checked by `Validate` |
-| `ValidationConfig.AllowedKeys` | `nil` | Key whitelist (empty = allow all) |
-| `ValidationConfig.ForbiddenKeys` | `nil` | Extra forbidden keys (merged with the built-in list) |
-| `ValidationConfig.KeyPattern` | `nil` | Custom key regexp (nil = fast byte-level validation) |
-| `ValidationConfig.ValidateValues` | `true` | Value safety checks (control chars, null bytes, ...) |
-| `ValidationConfig.ValidateUTF8` | `false` | Value UTF-8 validity check |
+| `ValidationConfig.AllowedKeys` | `nil` | Key whitelist; empty allows every key |
+| `ValidationConfig.ForbiddenKeys` | `nil` | Extra forbidden keys, merged with the built-in list |
+| `ValidationConfig.KeyPattern` | `nil` | Custom key regexp; `nil` selects fast byte-level validation |
+| `ValidationConfig.ValidateValues` | `true` | Value safety checks: control characters, null bytes, and similar |
+| `ValidationConfig.ValidateUTF8` | `false` | Check that values are valid UTF-8 |
 
 **`LimitsConfig` (size and count limits)**
 
@@ -136,7 +146,7 @@ The seven embedded sections are exposed as `Config.FileConfig`, `Config.Validati
 |-------|---------|-------------|
 | `LimitsConfig.MaxFileSize` | 8MB | Max bytes per file (hard cap 100MB) |
 | `LimitsConfig.MaxVariables` | 1000 | Max variables per file (hard cap 10000) |
-| `LimitsConfig.MaxLineLength` | 8192 | Max line length (hard cap 64KB; enforced for all formats) |
+| `LimitsConfig.MaxLineLength` | 8192 | Max line length (hard cap 64KB; applies to every format) |
 | `LimitsConfig.MaxKeyLength` | 128 | Max key length (hard cap 1024) |
 | `LimitsConfig.MaxValueLength` | 8192 | Max value length (hard cap 1MB) |
 | `LimitsConfig.MaxExpansionDepth` | 5 | Max expansion depth (hard cap 20) |
@@ -147,7 +157,7 @@ The seven embedded sections are exposed as `Config.FileConfig`, `Config.Validati
 |-------|---------|-------------|
 | `JSONConfig.JSONNullAsEmpty` | `true` | `null` becomes an empty string |
 | `JSONConfig.JSONNumberAsString` | `true` | Numbers render as canonical decimal strings |
-| `JSONConfig.JSONBoolAsString` | `true` | Retained for symmetry only; no effect on JSON output |
+| `JSONConfig.JSONBoolAsString` | `true` | Kept for symmetry with `YAMLBoolAsString`; no effect on JSON output |
 | `JSONConfig.JSONMaxDepth` | 16 | Max nesting depth (valid range 1–100) |
 
 **`YAMLConfig` (YAML parsing)**
@@ -155,8 +165,8 @@ The seven embedded sections are exposed as `Config.FileConfig`, `Config.Validati
 | Field | Default | Description |
 |-------|---------|-------------|
 | `YAMLConfig.YAMLNullAsEmpty` | `true` | `null`/`~` becomes an empty string |
-| `YAMLConfig.YAMLNumberAsString` | `true` | Number-like scalars canonicalized (`007` → `7`) |
-| `YAMLConfig.YAMLBoolAsString` | `true` | Booleans convert to strings (rejected when off) |
+| `YAMLConfig.YAMLNumberAsString` | `true` | Number-like scalars are canonicalized (`007` → `7`) |
+| `YAMLConfig.YAMLBoolAsString` | `true` | Booleans render as canonical `true`/`false` (when off, the source spelling is kept) |
 | `YAMLConfig.YAMLMaxDepth` | 16 | Max nesting depth (valid range 1–100) |
 
 **`ParsingConfig` (.env parsing behavior)**
@@ -164,9 +174,9 @@ The seven embedded sections are exposed as `Config.FileConfig`, `Config.Validati
 | Field | Default | Description |
 |-------|---------|-------------|
 | `ParsingConfig.AllowExportPrefix` | `true` | Allow `export KEY=value` syntax |
-| `ParsingConfig.AllowYamlSyntax` | `false` | Parse .env values with YAML scalar semantics |
-| `ParsingConfig.ExpandVariables` | `true` | Enable `${VAR}` expansion (.env only) |
-| `ParsingConfig.ExpansionScope` | `ExpansionFileOnly` | Visible scope for expansion references |
+| `ParsingConfig.AllowYamlSyntax` | `false` | Parse `.env` lines with YAML semantics: `:` also separates key and value, and values follow YAML scalar rules |
+| `ParsingConfig.ExpandVariables` | `true` | Enable `${VAR}` expansion (`.env` input only) |
+| `ParsingConfig.ExpansionScope` | `ExpansionFileOnly` | Which sources expansion references can resolve against |
 | `ParsingConfig.DuplicateKeyPolicy` | `DuplicateKeyInherit` | In-document duplicate-key policy |
 
 **`ComponentConfig` (components and advanced options)**
@@ -176,11 +186,11 @@ The seven embedded sections are exposed as `Config.FileConfig`, `Config.Validati
 | `ComponentConfig.CustomValidator` | `nil` | Custom key/value validator |
 | `ComponentConfig.CustomExpander` | `nil` | Custom variable expander |
 | `ComponentConfig.CustomAuditor` | `nil` | Custom audit logger |
-| `ComponentConfig.FileSystem` | `nil` | Custom filesystem (nil = `DefaultFileSystem`) |
+| `ComponentConfig.FileSystem` | `nil` | Filesystem implementation; `nil` means `DefaultFileSystem` |
 | `ComponentConfig.AuditHandler` | `nil` | Audit event handler |
-| `ComponentConfig.AuditEnabled` | `false` | Enable audit logging |
-| `ComponentConfig.AuditFailClosed` | `false` | Fail operations when audit events are lost |
-| `ComponentConfig.Prefix` | `""` | Only process variables with this prefix (ASCII case-insensitive) |
+| `ComponentConfig.AuditEnabled` | `false` | Turn audit logging on |
+| `ComponentConfig.AuditFailClosed` | `false` | Fail the operation when an audit event is lost |
+| `ComponentConfig.Prefix` | `""` | Process only variables with this prefix (ASCII case-insensitive) |
 
 ## Configuration Fields
 
@@ -200,7 +210,7 @@ cfg.Filenames = []string{".env", ".env.local"}
 
 #### `FailOnMissingFile` bool
 
-Whether to return an error when a file doesn't exist. **Default `false`** (silent skip).
+Whether a missing file is an error. **Default `false`**, which skips the file silently.
 
 ```go
 cfg.FailOnMissingFile = true  // Error on missing file
@@ -210,7 +220,7 @@ cfg.FailOnMissingFile = true  // Error on missing file
 
 #### `OverwriteExisting` bool
 
-Whether to overwrite existing environment variables. **Default `false`**.
+Whether a value from a file or from `Set` may replace an existing variable. **Default `false`**, which keeps the first value.
 
 ```go
 cfg.OverwriteExisting = true  // Allow overwriting
@@ -220,21 +230,21 @@ cfg.OverwriteExisting = true  // Allow overwriting
 
 #### `AutoApply` bool
 
-Automatically apply to the system environment (`os.Environ`) after loading. **Default `false`**.
+Applies the loaded variables to the process environment (`os.Environ`) after loading. **Default `false`**.
 
 ```go
 cfg.AutoApply = true  // Auto-apply after loading
 ```
 
 :::tip
-The package-level `Load()` function automatically sets `AutoApply = true`. When using `New()` to create a Loader, you need to set it manually.
+`Load()` sets `AutoApply = true` automatically. When you create the loader with `New()`, set it yourself.
 :::
 
 ### Variable Expansion
 
 #### `ExpandVariables` bool
 
-Enable `${VAR}` syntax variable expansion. **Default `true`**.
+Enables `${VAR}` expansion. **Default `true`**. Applies to `.env` input only; JSON and YAML values are never expanded.
 
 ```go
 cfg.ExpandVariables = true
@@ -245,12 +255,14 @@ Supported expansion syntax:
 | Syntax | Description |
 |--------|-------------|
 | `${VAR}` | Reference a variable |
-| `${VAR:-default}` | Use default if variable doesn't exist (uses original value if it exists even if empty) |
-| `${VAR:=default}` | Same as `${VAR:-default}` (uses default if variable doesn't exist, and assigns the default back to the variable) |
+| `${VAR:-default}` | Use the default if the variable is not set; keep the original value if it exists, even when empty |
+| `${VAR:=default}` | Use the default if the variable is not set, and assign that default back to the variable |
 | `${VAR:?error}` | Error if variable doesn't exist or is empty |
 
 :::tip Empty-string handling
-`${VAR:-default}` and `${VAR:=default}` use the default value only when the variable is **not set**; if the variable is explicitly set to an empty string (`VAR=`), the empty string original value is used. Only `${VAR:?error}` treats an empty string as an error. See [Variable Expansion](../guides/variable-expansion).
+`${VAR:-default}` and `${VAR:=default}` use the default value only when the variable is **not set**.
+
+If the variable is explicitly set to an empty string (`VAR=`), that empty string is the value. Only `${VAR:?error}` treats an empty string as an error. See [Variable Expansion](../guides/variable-expansion).
 :::
 
 ### Security Limits
@@ -271,7 +283,9 @@ cfg.MaxFileSize = 10 * 1024 * 1024 // 10 MB
 
 #### `MaxLineLength` int
 
-Maximum length of a single line. **Default 8192**, hard limit 64KB. Enforced for **all formats** (including JSON/YAML): a minified single-line JSON document counts as one line and must fit within this limit — the 64KB hard cap cannot be exceeded by config alone; pretty-print the document instead.
+Maximum length of a single line. **Default 8192**, hard limit 64KB.
+
+The limit applies to **all formats**, including JSON and YAML, because a minified single-line JSON document counts as one line. You cannot raise the 64KB hard cap: `Validate()` rejects any higher value. Pretty-print the document instead.
 
 ```go
 cfg.MaxLineLength = 2048
@@ -341,10 +355,10 @@ cfg.MaxExpansionDepth = 10
 
 #### `KeyPattern` *regexp.Regexp
 
-Custom key name match pattern. **Default `nil`** (uses fast byte-level validation).
+Regexp every key name must match. **Default `nil`**, which uses fast byte-level validation instead.
 
 :::tip Performance
-`nil` enables fast byte-level validation (about 10x performance improvement). Default validation rule: starts with a letter, contains only letters, numbers, and underscores.
+`nil` selects fast byte-level validation, roughly 10x faster than a regexp. The default rule accepts a key that starts with a letter and contains only letters, digits, and underscores.
 :::
 
 ```go
@@ -358,7 +372,7 @@ cfg.KeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 
 #### `AllowedKeys` []string
 
-Whitelist of allowed key names. When empty, all keys are allowed (except forbidden keys).
+Whitelist of allowed key names. An empty list allows every key except the forbidden ones.
 
 ```go
 cfg.AllowedKeys = []string{"APP_NAME", "APP_VERSION", "PORT"}
@@ -368,14 +382,14 @@ cfg.AllowedKeys = []string{"APP_NAME", "APP_VERSION", "PORT"}
 
 #### `ForbiddenKeys` []string
 
-Additional forbidden keys list (added to built-in forbidden keys).
+Extra forbidden keys, added to the built-in list.
 
 ```go
 cfg.ForbiddenKeys = []string{"CUSTOM_DANGEROUS_VAR"}
 ```
 
 :::tip Built-in forbidden keys
-The library has built-in forbidden keys including `PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES` and other system-critical variables. See [Constants & Errors](./constants#defaultforbiddenkeys).
+The library already forbids system-critical variables such as `PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH`, and `DYLD_INSERT_LIBRARIES`. See [Constants & Errors](./constants#defaultforbiddenkeys) for the full list.
 :::
 
 ---
@@ -392,10 +406,10 @@ cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
 #### `ValidateValues` bool
 
-Validate value safety (control characters, null bytes, etc.). **Default `true`**.
+Validate value safety: control characters, null bytes, and similar. **Default `true`**.
 
 :::warning Security recommendations
-It is recommended to keep this enabled. Disable only in special scenarios (e.g., when you need to store values containing control characters).
+Keep this enabled. Disable it only when you must store values that legitimately contain control characters.
 :::
 
 ```go
@@ -406,7 +420,7 @@ cfg.ValidateValues = true  // Enabled by default
 
 #### `ValidateUTF8` bool
 
-Validate that values are valid UTF-8 encoded. **Default `false`**.
+Validate that every value is valid UTF-8. **Default `false`**.
 
 ```go
 cfg.ValidateUTF8 = true  // Enable UTF-8 validation
@@ -426,14 +440,21 @@ cfg.AllowExportPrefix = false  // Disallow export prefix
 
 #### `AllowYamlSyntax` bool
 
-Parse the **values** in .env files with YAML scalar semantics (`null`/`~` are treated as empty strings; YAML boolean and number literals are recognized per YAML rules). **Default `false`**.
+Parse `.env` lines with YAML semantics. Two things change:
+
+- `:` separates key from value, in addition to `=`.
+- A value that is a YAML null literal (`null`, `Null`, `NULL`) or `~` becomes an empty string. Boolean and number literals are recognized as scalars and kept as written.
+
+**Default `false`.** With the flag off, only `=` separates, so a `KEY: value` line is skipped (and audited when auditing is on).
 
 ```go
 cfg.AllowYamlSyntax = true
 ```
 
-:::tip
-The `KEY: value` colon-separated form is **always available** (the line parser unconditionally accepts both `=` and `:` as separators) and is unrelated to this switch; this switch only affects YAML scalar semantics on the value side.
+:::tip What changes in practice
+`DB_HOST=localhost` parses under both settings.
+
+With the flag off, `DB_HOST: localhost` is dropped. With it on, the same line yields key `DB_HOST` and value `localhost`, and `TOKEN=null` yields an empty string instead of the text `null`.
 :::
 
 ### JSON Options
@@ -450,7 +471,9 @@ cfg.JSONNullAsEmpty = true
 
 #### `JSONNumberAsString` bool
 
-Render JSON numbers as canonical decimal strings (`8080`, `0.5`). **Default `true`**. When disabled, numbers still load but render with Go's default float formatting (1e21 becomes `1e+21`) — numbers are never rejected under either setting.
+Render JSON numbers as canonical decimal strings (`8080`, `0.5`). **Default `true`**.
+
+When disabled, numbers still load, but they render with Go's default float formatting: `1e21` becomes `1e+21`. Neither setting rejects a number.
 
 ```go
 cfg.JSONNumberAsString = true
@@ -460,7 +483,7 @@ cfg.JSONNumberAsString = true
 
 #### `JSONBoolAsString` bool
 
-Retained for symmetry with `YAMLBoolAsString` and has **no effect on JSON output**: a decoded JSON bool carries no raw source text to preserve, so JSON booleans always render the canonical `true`/`false`. Do not rely on it to gate JSON bool handling. **Default `true`**.
+Retained for symmetry with `YAMLBoolAsString`. The field has **no effect on JSON output**: a decoded JSON bool carries no raw source text, so JSON booleans always render as the canonical `true`/`false`. **Default `true`**.
 
 ```go
 cfg.JSONBoolAsString = true
@@ -490,7 +513,9 @@ cfg.YAMLNullAsEmpty = true
 
 #### `YAMLNumberAsString` bool
 
-Canonicalize number-looking YAML scalars (`007` becomes `7`). **Default `true`**. When disabled, scalars are kept verbatim as written; values are never rejected under either setting.
+Canonicalize number-looking YAML scalars, so `007` becomes `7`. **Default `true`**.
+
+When disabled, scalars are kept exactly as written. Neither setting rejects a value.
 
 ```go
 cfg.YAMLNumberAsString = true
@@ -500,7 +525,7 @@ cfg.YAMLNumberAsString = true
 
 #### `YAMLBoolAsString` bool
 
-Convert YAML booleans to strings. **Default `true`**.
+Render YAML booleans as canonical lowercase strings (`true`/`false`). **Default `true`**. When disabled, the boolean keeps the spelling used in the source (`TRUE` stays `TRUE`).
 
 ```go
 cfg.YAMLBoolAsString = true
@@ -520,7 +545,7 @@ cfg.YAMLMaxDepth = 15
 
 #### `AuditEnabled` bool
 
-Enable audit logging. **Default `false`**.
+Turns audit logging on. **Default `false`**.
 
 ```go
 cfg.AuditEnabled = true
@@ -537,12 +562,23 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 ```
 
 :::tip
-See [Audit Logging](../guides/audit-logging) for complete audit configuration documentation.
+See [Audit Logging](../guides/audit-logging) for the full set of audit options.
 :::
 
 #### `AuditFailClosed` bool
 
-When auditing is enabled, a lost audit event (handler error, handler panic, or an event dropped on a full channel) makes the operation that emitted it return an error (matching `ErrAuditFailed`) from `LoadFiles`/`Apply`/`Set`/`Delete` instead of being silently discarded. The built-in auditor latches the first failure; a custom `CustomAuditor` participates by implementing `TakeFailure() error`. Defaults to `false` (fail-open — operation results never depend on the audit pipeline).
+When auditing is enabled, `AuditFailClosed` decides what a lost audit event does to the operation that emitted it. A lost event is any of these:
+
+- a handler error
+- a handler panic
+- an event dropped on a full channel
+
+The flag then has two settings:
+
+- `false` (default, fail-open): the operation still succeeds. Its result never depends on the audit pipeline.
+- `true` (fail-closed): `LoadFiles`, `Apply`, `Set`, and `Delete` return an error matching `ErrAuditFailed`.
+
+The built-in auditor latches the first failure. A custom `CustomAuditor` joins in by implementing `TakeFailure() error`.
 
 ```go
 cfg := env.ProductionConfig()
@@ -553,7 +589,7 @@ cfg.AuditFailClosed = true // a lost audit event fails the operation that emitte
 
 #### `Prefix` string
 
-Only process variables with this prefix. **Default `""`** (process all variables).
+On file loads, keep only variables whose key starts with this prefix. The match is ASCII case-insensitive. **Default `""`**, which keeps every variable. `Set` and `Delete` are not affected.
 
 ```go
 cfg.Prefix = "MYAPP_"  // Only load variables starting with MYAPP_
@@ -563,7 +599,7 @@ cfg.Prefix = "MYAPP_"  // Only load variables starting with MYAPP_
 
 #### `FileSystem` FileSystem
 
-Custom filesystem interface (for testing).
+Filesystem implementation the loader reads through. Use it to inject an in-memory filesystem in tests.
 
 ```go
 cfg.FileSystem = &MockFileSystem{}
@@ -573,7 +609,7 @@ cfg.FileSystem = &MockFileSystem{}
 
 #### `CustomValidator` Validator
 
-Custom key/value validator. Overrides the built-in validator.
+Custom key/value validator. Replaces the built-in validator.
 
 ```go
 cfg.CustomValidator = &MyValidator{}
@@ -583,7 +619,7 @@ cfg.CustomValidator = &MyValidator{}
 
 #### `CustomExpander` VariableExpander
 
-Custom variable expander. Overrides the built-in expander.
+Custom variable expander. Replaces the built-in expander.
 
 ```go
 cfg.CustomExpander = &MyExpander{}
@@ -593,7 +629,7 @@ cfg.CustomExpander = &MyExpander{}
 
 #### `CustomAuditor` AuditLogger
 
-Custom audit logger. Overrides the built-in auditor.
+Custom audit logger. Replaces the built-in auditor.
 
 ```go
 cfg.CustomAuditor = &MyAuditLogger{}
@@ -609,7 +645,7 @@ cfg.CustomAuditor = &MyAuditLogger{}
 func DefaultConfig() Config
 ```
 
-Returns safe default configuration.
+Returns the default, security-oriented configuration.
 
 **Default values:**
 
@@ -650,15 +686,18 @@ Returns safe default configuration.
 func DevelopmentConfig() Config
 ```
 
-Returns development environment configuration (relaxed limits).
+Returns the development configuration, with relaxed limits for fast iteration.
 
-**Differences from default config:**
-- `OverwriteExisting`: `true`
-- `AllowYamlSyntax`: `true`
-- `MaxFileSize`: 10MB
+**Differences from `DefaultConfig()`:**
+
+| Field | Default | Development |
+|-------|---------|-------------|
+| `OverwriteExisting` | `false` | `true` |
+| `AllowYamlSyntax` | `false` | `true` |
+| `MaxFileSize` | 8MB | 10MB |
 
 :::tip Security guarantees
-`ValidateValues` remains `true` in all preset configurations (consistent with the default), ensuring security regardless of environment.
+`ValidateValues` stays `true` in every preset, matching the default. No preset weakens value validation.
 :::
 
 ```go
@@ -675,12 +714,17 @@ loader, _ := env.New(cfg)
 func TestingConfig() Config
 ```
 
-Returns testing environment configuration.
+Returns the testing configuration, sized for isolated test runs.
 
-**Differences from default config:**
-- `OverwriteExisting`: `true`
-- `MaxFileSize`: 64KB
-- `MaxVariables`: 50
+**Differences from `DefaultConfig()`:**
+
+| Field | Default | Testing |
+|-------|---------|---------|
+| `OverwriteExisting` | `false` | `true` |
+| `MaxFileSize` | 8MB | 64KB |
+| `MaxVariables` | 1000 | 50 |
+
+Every other field matches the default, including `AuditEnabled=false` (no audit noise in tests) and `FailOnMissingFile=false`.
 
 ```go
 func TestSomething(t *testing.T) {
@@ -699,13 +743,16 @@ func TestSomething(t *testing.T) {
 func ProductionConfig() Config
 ```
 
-Returns production environment configuration (strict validation + audit).
+Returns the production configuration: strict validation plus auditing.
 
-**Differences from default config:**
-- `FailOnMissingFile`: `true`
-- `AuditEnabled`: `true`
-- `MaxFileSize`: 64KB
-- `MaxVariables`: 50
+**Differences from `DefaultConfig()`:**
+
+| Field | Default | Production |
+|-------|---------|------------|
+| `FailOnMissingFile` | `false` | `true` |
+| `AuditEnabled` | `false` | `true` |
+| `MaxFileSize` | 8MB | 64KB |
+| `MaxVariables` | 1000 | 50 |
 
 ```go
 cfg := env.ProductionConfig()
@@ -726,20 +773,18 @@ loader, _ := env.New(cfg)
 | YAML syntax | ✗ | ✓ | ✗ | ✗ |
 | File size limit | 8MB | 10MB | 64KB | 64KB |
 | Max variables | 1000 | 1000 | 50 | 50 |
-| Forbidden key check | ✓ | ✓ | ✓ | ✓ |
-| Value validation | ✓ | ✓ | ✓ | ✓ |
 
 :::tip How to choose
-- **Development**: Use `DevelopmentConfig()` with relaxed limits for fast iteration
-- **Testing**: Use `TestingConfig()` with overwrite support for test isolation
-- **Production**: Use `ProductionConfig()` with audit and strict validation
+- **Development**: `DevelopmentConfig()` relaxes limits for fast iteration.
+- **Testing**: `TestingConfig()` allows overwriting, so each test starts from a clean slate.
+- **Production**: `ProductionConfig()` enables auditing and treats a missing file as an error.
 :::
 
 ---
 
 ## Methods
 
-Config provides two methods: `Config.Validate` and `Config.IsZero`.
+`Config` has two methods: `Config.Validate` and `Config.IsZero`.
 
 ### Validate
 
@@ -747,7 +792,7 @@ Config provides two methods: `Config.Validate` and `Config.IsZero`.
 func (c *Config) Validate() error
 ```
 
-Validates configuration validity. Checks that all limit values are within valid ranges.
+Checks the configuration for consistency. It validates every limit against its allowed range, plus `JSONMaxDepth`, `YAMLMaxDepth`, `ExpansionScope`, and `DuplicateKeyPolicy`. When `KeyPattern` is set, it validates that too.
 
 ```go
 cfg := env.DefaultConfig()
@@ -759,10 +804,12 @@ if err := cfg.Validate(); err != nil {
 ```
 
 **Validation rules:**
-- All limit values must be positive
-- All limit values must not exceed hard limits
-- If `KeyPattern` is non-nil, it must match a valid key name (e.g., `TEST_KEY`), must not match empty string, and must not match keys starting with a digit
-- `JSONMaxDepth` and `YAMLMaxDepth` must be between 1-100
+- Every limit value must be positive
+- No limit value may exceed its hard limit
+- `JSONMaxDepth` and `YAMLMaxDepth` must be between 1 and 100
+- `ExpansionScope` must be one of the two defined constants
+- `DuplicateKeyPolicy` must be one of the four defined constants
+- If `KeyPattern` is non-nil, it must pass four probes (see [KeyPattern security probes](#keypattern-security-probes-sec-06))
 
 ---
 
@@ -772,26 +819,29 @@ if err := cfg.Validate(); err != nil {
 func (c *Config) IsZero() bool
 ```
 
-Checks whether the Config is an uninitialized zero value. Used to determine whether `DefaultConfig()` should be used.
+Reports whether the Config is an uninitialized zero value. `New()` uses this to decide whether to apply `DefaultConfig()`.
 
 **Returns:**
 - `bool` - whether it's a zero-value configuration
 
-**Detection scope:**
-- Numeric limits (MaxFileSize, MaxVariables, etc.)
-- Boolean fields (ValidateValues, AutoApply, etc.)
-- Pointer/interface fields (KeyPattern, FileSystem, etc.)
-- Slice fields (Filenames, RequiredKeys, etc.)
+**Detection scope (since v1.3.0, every field):**
+- Numeric limits, such as `MaxFileSize` and `MaxVariables`
+- Boolean fields, such as `ValidateValues` and `AutoApply`
+- Enum fields: `ExpansionScope`, `DuplicateKeyPolicy`
+- Pointer and interface fields, such as `KeyPattern` and `FileSystem`
+- String and slice fields, such as `Prefix`, `Filenames`, and `RequiredKeys`
+
+A partially set Config is therefore **not** treated as zero. `New()` keeps it as given, then validates it, and returns `ErrInvalidConfig` when a required limit is zero or out of range.
 
 :::warning
-A partially initialized Config may not be detected as zero value. Always start customizing from `DefaultConfig()`:
+Start from `DefaultConfig()` so every field you do not touch keeps a valid value:
 
 ```go
 // Recommended
 cfg := env.DefaultConfig()
 cfg.Filenames = []string{".env.production"}
 
-// Not recommended (some fields will be zero)
+// Not recommended (unset limit fields stay zero and fail Validate)
 var cfg env.Config
 cfg.Filenames = []string{".env.production"}
 ```
@@ -866,22 +916,21 @@ loader, _ := env.New(cfg)
 
 ## Preset Comparison and Configuration Pitfalls
 
-### Full differences among the four presets
+### Fields the comparison table does not cover
+
+The "Detailed Preset Comparison" table lists only the options whose values **differ** between presets. The table below covers the remaining fields, which are identical across all four:
 
 | Option | Default | Development | Testing | Production |
 |--------|---------|-------------|---------|------------|
-| `FailOnMissingFile` | false | false | false | **true** |
-| `OverwriteExisting` | false | **true** | **true** | false |
 | `ValidateValues` | true | true | true | true |
 | `AllowExportPrefix` | true | true | true | true |
 | `AllowYamlSyntax` | false | **true** | false | false |
 | `ExpandVariables` | true | true | true | true |
-| `MaxFileSize` | 8 MB | 10 MB | 64 KB | 64 KB |
-| `MaxVariables` | 1000 | 1000 | 50 | 50 |
 | `JSONMaxDepth`/`YAMLMaxDepth` | 16 | 16 | 16 | 16 |
-| `AuditEnabled` | false | false | false | **true** |
 
-Key point: `DevelopmentConfig` relaxes **convenience** (overwriting, YAML syntax, file size) — value validation stays on in every preset; no preset ever sacrifices injection protection.
+The built-in forbidden-key check (`PATH`, `LD_PRELOAD`, and so on) is not affected by presets and stays on in all four.
+
+Key point: `DevelopmentConfig` relaxes **convenience** only: overwriting, YAML syntax, and the file-size ceiling. Value validation stays on in every preset, so no preset weakens injection protection.
 
 ### Key DefaultConfig values
 
@@ -895,7 +944,7 @@ Key point: `DevelopmentConfig` relaxes **convenience** (overwriting, YAML syntax
 
 ### The IsZero pitfall: always start from DefaultConfig()
 
-`New()` automatically applies `DefaultConfig()` to a **zero-valued** Config. `IsZero()` decides based on "are the common default fields all zero" — a Config with only a few fields set is not misjudged as zero, but the rule depends on the field inventory, and **assigning fields one by one from a zero struct** easily hits edge cases. The recommended pattern is always:
+The zero-value rules and their consequences are covered in the warning under [IsZero](#iszero) above. The one rule: build on `DefaultConfig()` instead of assigning field by field on a zero-value `Config`.
 
 <!-- check-code: skip -->
 ```go
@@ -906,16 +955,16 @@ cfg.OverwriteExisting = true
 
 ### KeyPattern security probes (SEC-06)
 
-A custom `KeyPattern` is probed four ways by `Config.Validate()`; failing any probe rejects the configuration:
+A custom `KeyPattern` goes through four probes in `Config.Validate()`. Failing any probe rejects the configuration:
 
 1. It must match a valid key (e.g. `TEST_KEY`)
 2. It must reject the empty string
 3. It must reject keys starting with a digit (e.g. `123_INVALID`)
-4. It must reject keys containing `=`, `:`, newlines, or control characters — preventing keys that carry separators from re-parsing into **different lines** after a serialization round-trip (round-trip injection)
+4. It must reject keys containing `=`, `:`, a newline, or a control character. Otherwise a key that carries a separator would re-parse as **different lines** after a serialization round trip (round-trip injection).
 
 ### ExpansionScope
 
-`ExpansionScope` is an int enum that controls which scopes `${VAR}`/`$VAR` references in values can resolve against (configured via the `ParsingConfig.ExpansionScope` field):
+`ExpansionScope` is an int enum. It controls which sources a `${VAR}` or `$VAR` reference in a value can resolve against. Set it with `ParsingConfig.ExpansionScope`.
 
 ```go
 type ExpansionScope int
@@ -928,14 +977,14 @@ const (
 
 | Constant | Semantics |
 |----------|-----------|
-| `ExpansionFileThenProcess` | Enum zero value (`iota`). Resolves against file-defined variables first, then falls back to the process environment (`os.LookupEnv`), matching traditional dotenv semantics. **Effective only when set explicitly** — `DefaultConfig()` does not use it |
-| `ExpansionFileOnly` | Only file-defined variables are visible; references that exist only in the process environment expand to the empty string. The `DefaultConfig()` default (SEC-03): stops `${VAR}` references from reading the process environment and capturing unrelated process secrets (cloud credentials, tokens) into values |
+| `ExpansionFileThenProcess` | Enum zero value (`iota`). Resolves file-defined variables first, then falls back to the process environment (`os.LookupEnv`), matching traditional dotenv semantics. It takes effect only when set explicitly; `DefaultConfig()` does not use it. |
+| `ExpansionFileOnly` | Only file-defined variables are visible; a reference that exists only in the process environment expands to the empty string. This is the `DefaultConfig()` default (SEC-03). It keeps `${VAR}` references from reading the process environment, so unrelated secrets (cloud credentials, tokens) cannot be copied into values. |
 
-For the attack-scenario analysis and configuration examples, see the ["Expansion Scope" section of the variable expansion guide](../guides/variable-expansion).
+For the attack scenarios and configuration examples, see the ["Expansion Scope" section of the variable expansion guide](../guides/variable-expansion).
 
 ### DuplicateKeyPolicy (in-document duplicate keys)
 
-`DuplicateKeyPolicy` is an int enum that controls how duplicate keys **within a single source document** are resolved (configured via `ParsingConfig.DuplicateKeyPolicy`):
+`DuplicateKeyPolicy` is an int enum. It controls how duplicate keys **within a single source document** are resolved. Set it with `ParsingConfig.DuplicateKeyPolicy`.
 
 ```go
 type DuplicateKeyPolicy = internal.DuplicateKeyPolicy
@@ -950,22 +999,22 @@ const (
 
 | Constant | Semantics |
 |----------|-----------|
-| `DuplicateKeyInherit` | Zero value (default). `.env` follows `OverwriteExisting` (first wins when false / last wins when true); YAML keeps the last occurrence; JSON keeps the last occurrence (`encoding/json` decode order) |
-| `DuplicateKeyFirstWins` | `.env` and YAML keep the first occurrence. JSON data (including inline JSON inside YAML) whose duplicates are detected by the same pre-scan `DuplicateKeyError` uses is rejected — `encoding/json` discards earlier occurrences, so the policy cannot be honored for it; JSON documents without duplicates load unchanged |
+| `DuplicateKeyInherit` | Zero value (default). `.env` follows `OverwriteExisting`: first wins when false, last wins when true. YAML keeps the last occurrence. JSON keeps the last occurrence (`encoding/json` decode order) |
+| `DuplicateKeyFirstWins` | `.env` and YAML keep the first occurrence. JSON data with duplicates is rejected, including inline JSON inside YAML: the same pre-scan that backs `DuplicateKeyError` detects them. `encoding/json` discards earlier occurrences, so this policy cannot be honored for JSON. JSON documents without duplicates load unchanged. |
 | `DuplicateKeyLastWins` | Every format keeps the last occurrence, independent of `OverwriteExisting` |
-| `DuplicateKeyError` | Any duplicate key in the same object/mapping (or the same `.env` file) errors, matching `ErrDuplicateKey` via `errors.Is`. JSON data is scanned conservatively by raw key bytes; keys spelled with different escape sequences are not detected and fall back to last-wins |
+| `DuplicateKeyError` | Any duplicate key in the same object or mapping (or in the same `.env` file) errors with `ErrDuplicateKey`, matchable via `errors.Is`. JSON is scanned conservatively by raw key bytes: keys spelled with different escape sequences are not detected, and those fall back to last-wins. |
 
-**Two related behaviors NOT governed by this policy:**
+**Two related behaviors not governed by this policy:**
 
-- **Cross-file merging** follows file order and `OverwriteExisting` (default false = first wins, true = later files override).
-- **Flat-key collisions always error**: when two different source paths collapse onto the same flattened key in YAML/JSON (e.g. `a_b: 1` next to `a: {b: 2}`, or a literal `a_0` next to an array `a`), the error matches `ErrDuplicateKey` via `errors.Is`.
+- **Cross-file merging** follows file order and `OverwriteExisting`: default `false` = first wins, `true` = later files override.
+- **Flat-key collisions always error.** Two different source paths can collapse onto the same flattened key in YAML or JSON, for example `a_b: 1` next to `a: {b: 2}`, or a literal `a_0` next to an array `a`. The error matches `ErrDuplicateKey` via `errors.Is`.
 
 ```go
 cfg := env.DefaultConfig()
 cfg.DuplicateKeyPolicy = env.DuplicateKeyError // reject duplicate keys
 ```
 
-Case note: YAML/JSON keys are uppercased when flattened, while `.env` keys are stored as written — so keys differing only in case (a `.env` `db_host` and a YAML `db: {host: ...}` → `DB_HOST`) do not collide and coexist in the store.
+Case note: YAML and JSON keys are uppercased when flattened, while `.env` keys are stored as written. Keys that differ only in case therefore do not collide: a `.env` `db_host` and a YAML `db: {host: ...}` (which flattens to `DB_HOST`) coexist in the store.
 
 `DuplicateKeyPolicy.String` returns a human-readable name for the policy: `inherit`, `first-wins`, `last-wins`, or `error` (unknown values return `unknown`).
 

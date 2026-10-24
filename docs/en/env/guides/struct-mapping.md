@@ -7,7 +7,7 @@ sidebar_position: 2
 
 # Struct Mapping
 
-Use struct tags to automatically map environment variables to Go structs, enabling type-safe configuration management.
+`env.ParseInto` fills a Go struct from loaded environment variables, using `env` and `envDefault` tags. This gives you typed configuration instead of string lookups at every call site.
 
 ## Basic Mapping
 
@@ -55,7 +55,7 @@ if err := loader.ParseInto(&cfg); err != nil {
 
 ### env Tag
 
-Specifies the environment variable name:
+`env` names the environment variable a field maps to:
 
 ```go
 type Config struct {
@@ -66,7 +66,7 @@ type Config struct {
 
 ### envDefault Tag
 
-Sets a default value:
+`envDefault` supplies the value used when the variable is missing. A key that exists but is empty does not trigger the default: a string field takes `""`, and a non-string field keeps its zero value.
 
 ```go
 type Config struct {
@@ -77,7 +77,7 @@ type Config struct {
 }
 ```
 
-The default can also be written inline in the `env` tag — `env:"KEY,envDefault:VALUE"` — which is equivalent to the standalone `envDefault` tag (when both are present, the standalone tag takes precedence):
+You can also write the default inline in the `env` tag as `env:"KEY,envDefault:VALUE"`. This is equivalent to the standalone `envDefault` tag, and when both are present the standalone tag takes precedence:
 
 ```go
 type Config struct {
@@ -136,7 +136,7 @@ Supported formats:
 
 ### Slice Types
 
-Slice fields are separated by commas (`,`); spaces around the separator are trimmed automatically.
+Slice fields are split on commas (`,`) and spaces around the separator are trimmed.
 
 ```go
 type Config struct {
@@ -154,25 +154,28 @@ PORTS=80,443,8080
 
 ## Nested Structs
 
+Nested fields take the outer field's name as a key prefix, and prefixes accumulate. The outer key is the field's `env` tag, or the upper-cased field name when untagged: Host (untagged) under Database (untagged) reads `DATABASE_HOST`. The type name of the struct passed to `ParseInto` does not become a prefix.
+
+An `env` tag on an inner field is still prefixed: `env:"DB_HOST"` under Database reads `DATABASE_DB_HOST`. To read `DB_HOST` directly, put that field in the top-level struct.
+
 ### Basic Nesting
 
 ```go
 type DatabaseConfig struct {
-    Host string `env:"DB_HOST" envDefault:"localhost"`
-    Port int64  `env:"DB_PORT" envDefault:"5432"`
-    User string `env:"DB_USER"`
-    Password string `env:"DB_PASSWORD"`
+    Host string `envDefault:"localhost"` // DATABASE_HOST
+    Port int64  `envDefault:"5432"`      // DATABASE_PORT
+    User string                          // DATABASE_USER
 }
 
 type RedisConfig struct {
-    Host string `env:"REDIS_HOST" envDefault:"localhost"`
-    Port int64  `env:"REDIS_PORT" envDefault:"6379"`
+    Host string `envDefault:"localhost"` // REDIS_HOST
+    Port int64  `envDefault:"6379"`      // REDIS_PORT
 }
 
 type AppConfig struct {
     Database DatabaseConfig
     Redis    RedisConfig
-    Debug    bool `env:"DEBUG" envDefault:"false"`
+    Debug    bool `env:"DEBUG" envDefault:"false"` // top-level fields carry no prefix
 }
 ```
 
@@ -180,19 +183,24 @@ type AppConfig struct {
 
 ```go
 type Credentials struct {
-    Username string `env:"DB_USER"`
-    Password string `env:"DB_PASSWORD"`
+    Username string // DATABASE_CONNECTION_CREDENTIALS_USERNAME
+    Password string // DATABASE_CONNECTION_CREDENTIALS_PASSWORD
 }
 
 type Connection struct {
-    Host        string      `env:"DB_HOST"`
-    Port        int64       `env:"DB_PORT"`
+    Host        string // DATABASE_CONNECTION_HOST
+    Port        int64  // DATABASE_CONNECTION_PORT
     Credentials Credentials
 }
 
 type Database struct {
     Connection Connection
-    Name       string `env:"DB_NAME"`
+    Name       string // DATABASE_NAME
+}
+
+// The struct passed to ParseInto; its type name adds no prefix.
+type AppConfig struct {
+    Database Database
 }
 ```
 
@@ -228,13 +236,13 @@ func main() {
 }
 ```
 
-Pointer fields distinguish "unset" from "zero value": when the variable is unset (or its value is empty) the pointer stays `nil`; when set to `PORT=0`, `cfg.Port` is non-`nil` with `*cfg.Port == 0`. Value-typed fields cannot tell these two cases apart.
+Pointer fields distinguish "unset" from "zero value". When the variable is missing or empty, the pointer stays `nil`. When the variable is `PORT=0`, `cfg.Port` is non-`nil` with `*cfg.Port == 0`. A value-typed field cannot tell these two cases apart.
 
 ## Custom Types
 
 ### Implementing encoding.TextUnmarshaler Interface
 
-Custom decoding of struct fields is done by implementing the standard library `encoding.TextUnmarshaler` interface — this is the interface that **actually gets called** during field-by-field population.
+The field-by-field population logic decodes custom struct fields through the standard library `encoding.TextUnmarshaler` interface. That is the interface actually called during population.
 
 ```go
 package main
@@ -296,7 +304,7 @@ func (p *Port) UnmarshalText(text []byte) error {
 ```
 
 :::tip About env.Marshaler / env.Unmarshaler
-`env.Marshaler` (`MarshalEnv()`) and `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) interfaces **only take effect on the top-level value passed to `env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto`**, and are not called by the field-by-field population logic. For custom encoding/decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler`, which are recognized at the field level.
+The `env.Marshaler` (`MarshalEnv()`) and `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) interfaces take effect **only on the top-level value passed to `env.Marshal`, `env.MarshalStruct`, or `env.UnmarshalInto`**. The field-by-field population logic never calls them. For custom encoding or decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler`, which are recognized at the field level.
 :::
 
 ## Configuration Validation
@@ -397,19 +405,21 @@ func Load() (*Config, error) {
 
 ### Environment Differentiation
 
+To split configuration by environment, put the shared fields in a named nested struct; the key prefix comes from that field name (Base here), and inner tags stay short:
+
 ```go
 type BaseConfig struct {
-    AppName string `env:"APP_NAME"`
-    Version string `env:"APP_VERSION"`
+    AppName string `env:"APP_NAME"`    // reads BASE_APP_NAME
+    Version string `env:"APP_VERSION"` // reads BASE_APP_VERSION
 }
 
 type DevelopmentConfig struct {
-    BaseConfig
+    Base  BaseConfig
     Debug bool `env:"DEBUG" envDefault:"true"`
 }
 
 type ProductionConfig struct {
-    BaseConfig
+    Base  BaseConfig
     Debug bool `env:"DEBUG" envDefault:"false"`
 }
 
@@ -437,7 +447,7 @@ func LoadConfig() interface{} {
 
 ### Parse Errors
 
-Type conversion failures from `ParseInto` / `UnmarshalInto` uniformly return `*MarshalError` (since v1.2.3 the error message does not echo the original value, preventing sensitive values from leaking). Use `env.IsMarshalError` to test it, or `errors.As` to extract field details:
+Type conversion failures from `ParseInto` and `UnmarshalInto` return `*MarshalError`. Since v1.2.3 the error message does not echo the original value, which keeps sensitive values out of logs. Test with `env.IsMarshalError`, or use `errors.As` to extract field details:
 
 ```go
 cfg := Config{}
@@ -452,7 +462,7 @@ if err := env.ParseInto(&cfg); err != nil {
 }
 ```
 
-Note: `*ParseError` is only returned in **file parsing** scenarios (when `LoadFiles` fails to parse env/JSON/YAML file content); `ParseInto` populates the struct directly from already-loaded key-value pairs and never goes through file parsing, so it does not return `*ParseError`.
+`*ParseError` is returned only in **file parsing** scenarios, when `LoadFiles` fails to parse env, JSON, or YAML file content. `ParseInto` populates the struct from key-value pairs that are already loaded, so it never goes through file parsing and does not return `*ParseError`.
 
 ### Type Conversion Errors
 
@@ -469,6 +479,8 @@ if err := env.ParseInto(&cfg); err != nil {
 
 ## Complete Example
 
+A nested field's key is the parent field's prefix plus its own key, so inner fields carry short names: `env:"HOST"` under Server reads `SERVER_HOST`, while `env:"SERVER_HOST"` would read `SERVER_SERVER_HOST`.
+
 ```go
 package main
 
@@ -482,8 +494,8 @@ import (
 )
 
 type ServerConfig struct {
-	Host         string        `env:"SERVER_HOST" envDefault:"0.0.0.0"`
-	Port         int64         `env:"SERVER_PORT" envDefault:"8080"`
+	Host         string        `env:"HOST" envDefault:"0.0.0.0"`
+	Port         int64         `env:"PORT" envDefault:"8080"`
 	ReadTimeout  time.Duration `env:"READ_TIMEOUT" envDefault:"30s"`
 	WriteTimeout time.Duration `env:"WRITE_TIMEOUT" envDefault:"30s"`
 }
@@ -496,11 +508,11 @@ func (c *ServerConfig) Validate() error {
 }
 
 type DatabaseConfig struct {
-	Host     string `env:"DB_HOST" envDefault:"localhost"`
-	Port     int64  `env:"DB_PORT" envDefault:"5432"`
-	User     string `env:"DB_USER" envDefault:"postgres"`
-	Password string `env:"DB_PASSWORD"`
-	Name     string `env:"DB_NAME" envDefault:"myapp"`
+	Host     string `env:"HOST" envDefault:"localhost"`
+	Port     int64  `env:"PORT" envDefault:"5432"`
+	User     string `env:"USER" envDefault:"postgres"`
+	Password string `env:"PASSWORD"`
+	Name     string `env:"NAME" envDefault:"myapp"`
 }
 
 func (c *DatabaseConfig) Validate() error {

@@ -1,11 +1,13 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo HTTPC | 常用代码速查"
-description: "HTTPC 速查表：客户端创建与五种配置预设、Get/Post 等七种请求方法、32 个 WithXxx 请求选项、Result 响应处理、中间件链组合、ClientError 错误分类、文件下载与域名客户端操作的完整可复用代码片段。"
+description: "HTTPC 速查表：客户端创建与五种配置预设、七种请求方法、32 个 WithXxx 请求选项、Result 处理和中间件组合的常用代码片段。"
 sidebar_position: 30
 ---
 
 # 速查表
+
+速查表按主题汇总 HTTPC 常用代码片段，每个小节链接到对应的详解页面。
 
 ## 创建客户端
 
@@ -91,7 +93,14 @@ httpc.WithBody(data)                    // 自动检测类型
 httpc.WithBody(data, httpc.BodyJSON)    // 显式指定：BodyJSON/BodyXML/BodyForm/BodyBinary/BodyMultipart
 ```
 
-`WithBody` 自动检测规则（`BodyAuto`，默认）：`string` → text/plain；`[]byte` → octet-stream；`map[string]string` → form；`*FormData` → multipart；`io.Reader` → 原样透传（不设 Content-Type）；其他类型 → JSON。
+`WithBody` 默认按 `BodyAuto` 自动检测类型：
+
+- `string` → text/plain
+- `[]byte` → octet-stream
+- `map[string]string` → form
+- `*FormData` → multipart
+- `io.Reader` → 原样透传（不设 Content-Type）
+- 其他类型 → JSON
 
 ### 查询参数
 
@@ -286,7 +295,7 @@ func traceMiddleware(next httpc.Handler) httpc.Handler {
 ```
 
 :::warning 注意
-`TimeoutMiddleware` 不要用于 `Download` 或 `WithStreamBody(true)` 请求（收到响应头即取消上下文，响应体读取会报 "context canceled"），此类场景改用 `WithTimeout`。
+`TimeoutMiddleware` 不适用于 `Download` 或 `WithStreamBody(true)` 请求：中间件在请求进入时即拒绝流式请求，返回 `TimeoutMiddleware is incompatible with streaming responses`。此类场景改用 `WithTimeout`。
 :::
 
 ## 错误处理
@@ -419,7 +428,7 @@ sm.UpdateFromResult(result) // 从响应提取 Set-Cookie
 ```
 
 :::warning 选项执行两次
-`DomainClient` 的请求选项内部会应用两次（会话捕获 + 真实请求），避免放带副作用的选项（计数器、一次性 nonce）。
+`DomainClient` 的请求选项内部会应用两次（会话捕获 + 真实请求）。选项中不应放置带副作用的逻辑（计数器、一次性 nonce）。
 :::
 
 ## 场景速配

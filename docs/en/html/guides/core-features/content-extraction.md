@@ -1,30 +1,30 @@
 ---
 sidebar_label: "Content Extraction"
 title: "Content Extraction - CyberGo html | Workflow Guide"
-description: "CyberGo html content extraction: full pipeline of validation, encoding detection, DOM parsing, sanitization, article recognition, Result fields, custom Scorer."
+description: "CyberGo html content extraction: the Extract pipeline, Result fields, article detection signals, custom Scorer, table rendering, and encoding handling."
 sidebar_position: 10
 ---
 
-# Content Extraction Guide
+# Content Extraction
 
-This guide helps you understand how HTML content extraction works and best practices through practical scenarios.
+`Extract` pulls body text, title, images, links, and media from HTML bytes. This page covers the processing pipeline, `Result` fields, and the article-detection algorithm.
 
-## Extraction Flow Overview
+## Extraction Pipeline
 
-When you call `Extract`, the library performs the following steps:
+The steps `Extract` performs:
 
 ```text
-HTML input → input validation → encoding detection (auto-convert to UTF-8) → DOM parsing → depth validation
-    → safe sanitization (optional) → article detection (optional) → content extraction → formatting → return Result
+HTML input → input validation → encoding detection (convert to UTF-8) → DOM parsing → depth validation
+    → sanitization (optional) → article detection (optional) → content extraction → formatting → Result
 ```
 
-Depth validation runs **before** sanitization: it first validates the DOM depth iteratively (avoiding stack overflow from recursive traversal), then performs safe sanitization on the parsed DOM tree. Both operate on the parsed node tree, so DOM parsing always precedes both of them.
+Depth validation runs **before** sanitization. It checks DOM depth iteratively first, so recursive traversal cannot overflow the stack; sanitization then runs on the parsed tree. Both operate on parsed nodes, so DOM parsing always comes first.
 
-Each step can be customized via [Configuration](../../api-reference/core/config).
+Every step can be customized via [Configuration](../../api-reference/core/config).
 
 ## Basic Text Extraction
 
-The simplest usage is extracting content from HTML bytes:
+Extract content from HTML bytes:
 
 ```go
 package main
@@ -68,7 +68,7 @@ func main() {
 	// Words: 30
 
 	fmt.Println("Reading Time:", result.ReadingTime)
-	// Reading Time: 9s (calculated at 200 words/minute)
+	// Reading Time: 9s
 
 	fmt.Println("Images:", len(result.Images))
 	// Images: 1
@@ -78,25 +78,27 @@ func main() {
 }
 ```
 
-## Understanding Extraction Results
+## Result Fields
 
-`Result` contains the following fields:
+`Result` carries the following fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `Title` | `string` | Page title, prefers `<title>`, then `<h1>`, `<h2>` |
-| `Text` | `string` | Body content (sanitized, tags and excess whitespace removed) |
-| `Images` | `[]ImageInfo` | Extracted image list |
-| `Links` | `[]LinkInfo` | Extracted link list |
-| `Videos` | `[]VideoInfo` | Extracted video list |
-| `Audios` | `[]AudioInfo` | Extracted audio list |
+| `Title` | `string` | Page title: the first `<title>`, else the first `<h1>` or `<h2>` |
+| `Text` | `string` | Body text (sanitized; tags and excess whitespace removed) |
+| `Images` | `[]ImageInfo` | Extracted images |
+| `Links` | `[]LinkInfo` | Extracted links |
+| `Videos` | `[]VideoInfo` | Extracted videos |
+| `Audios` | `[]AudioInfo` | Extracted audio |
 | `WordCount` | `int` | Body word count |
-| `ReadingTime` | `time.Duration` | Estimated reading time (200 words/minute) |
+| `ReadingTime` | `time.Duration` | Estimated reading time |
 | `ProcessingTime` | `time.Duration` | Processing duration |
+
+`WordCount` splits on whitespace and counts each CJK character as one word. `ReadingTime` divides by 200 words per minute and is an estimate only.
 
 ## Extracting from Files
 
-Use `ExtractFromFile` when processing local HTML files:
+Use `ExtractFromFile` for local HTML files:
 
 ```go
 result, err := html.ExtractFromFile("article.html")
@@ -106,54 +108,55 @@ if err != nil {
 fmt.Println("Title:", result.Title)
 ```
 
-File operations include built-in safety checks:
-- Automatic path traversal attack detection (e.g., `../../../etc/passwd`)
+File access performs three checks:
+
+- Path traversal detection (e.g. `../../../etc/passwd`)
 - File size limited by `MaxInputSize`
-- Error messages use `SafePath()` to hide full paths
+- Error messages pass through `SafePath()`, which hides the full path
 
-## Article Recognition Algorithm
+## Article Detection
 
-When `ExtractArticle` is `true` (default), the library automatically identifies the "main content area" on the page.
+With `ExtractArticle` set to `true` (the default), the library locates the page's main content area.
 
 ### How It Works
 
-1. **Candidate Node Scoring**: Traverses the DOM tree, scoring each element node for content relevance
-2. **Best Candidate Selection**: Selects the highest-scoring node as the article container
-3. **Fallback Mechanism**: Falls back to the `<body>` node if no suitable candidate is found
+1. **Candidate scoring**: walk the DOM, score non-inline element nodes for content relevance, and keep those scoring above 0.
+2. **Best candidate**: the highest-scoring node becomes the article container.
+3. **Fallback**: fall back to `<body>` when no candidate qualifies.
 
-### Default Scorer Signal Dimensions
+### Default Scorer Signals
 
-The built-in default scorer (internal implementation, not exported) scores based on multiple signals, selecting the highest-scoring container:
+The built-in scorer (internal, not exported) combines several signals and picks the highest-scoring container:
 
 | Dimension | Positive signals | Negative signals |
 |-----------|-----------------|------------------|
 | **Tag semantics** | `<article>`(+1000), `<main>`(+900), `<section>`(+300), `<body>`(+100) | `nav`/`aside`/`footer`/`header`/`script`/`style` return 0 directly |
 | **class/id patterns** | `content`/`article`/`post`/`main`/`entry`/`story` etc. (strong positive); `blog`/`news`/`detail`/`page` etc. (moderate positive) | `comment`/`sidebar`/`nav`/`ad`/`menu` etc. (strong negative); `widget`/`share`/`social`/`related` etc. (moderate negative); `promo`/`banner`/`sponsor` etc. (weak negative) |
-| **Paragraph density** | `<p>` count in subtree multiplied by a rate bonus (more paragraphs = more likely body content) | — |
-| **Text length** | Long text above a threshold gets bonus; short text below threshold gets penalized | — |
+| **Paragraph density** | `<p>` count in the subtree multiplied by a rate bonus | — |
+| **Text length** | Long text above a threshold scores higher; short text below it is penalized | — |
 | **Content density** | High text/tag ratio gets a multiplier boost | Low ratio gets a decay factor |
-| **Link density** | — | Short text with dense links gets penalized (likely navigation or sitemap) |
-| **Punctuation features** | Dense commas (including CJK comma `，`) indicate prose, gets bonus | — |
+| **Link density** | — | Short text with dense links is penalized (likely navigation or a sitemap) |
+| **Punctuation** | Dense commas (including the CJK comma `，`) indicate prose and score higher | — |
 | **ARIA role** | `role="main"`/`role="article"`(+500) | `role="navigation"`/`role="complementary"`(-400) |
-| **Hidden elements** | — | Nodes with `style="display:none"`/`visibility:hidden` or `hidden` attribute are removed |
+| **Hidden elements** | — | Nodes with `style="display:none"`/`visibility:hidden` or a `hidden` attribute are removed |
 
 :::tip Layout wrapper exemption
-When class/id contains both content signals (`content`/`article`) and removal signals (e.g. `sidebar`) — typically seen with CSS layout classes like `content-sidebar` — the scorer does **not** remove the node, because it wraps the main content. Semantic tags `<article>`/`<main>` (or `role="main"`/`role="article"`) are always exempt from class/id removal heuristics, ensuring `<article class="post-with-sidebar">` is not mistakenly deleted.
+When class/id carries both a content signal (`content`/`article`) and a removal signal (e.g. `sidebar`) — a layout class like `content-sidebar` is typical — the scorer keeps the node because it wraps the main content. Semantic tags `<article>`/`<main>` (or `role="main"`/`role="article"`) are always exempt from class/id removal heuristics, so `<article class="post-with-sidebar">` is never dropped.
 :::
 
-:::warning Article recognition is not infallible
-Article recognition works best for news, blogs, documentation, and other pages with a clear "body area." For navigation pages, list pages, image galleries, and other non-article pages, it may not accurately locate the body — in that case, set `ExtractArticle = false` to extract the entire `<body>` content.
+:::warning Where article detection applies
+Article detection fits news, blogs, documentation, and other pages with a clear body area. Navigation pages, list pages, and image galleries usually have no such container, and the result may drift. Set `ExtractArticle` to `false` to extract the whole `<body>` instead.
 :::
 
 ### Custom Scoring
 
-Implement the `Scorer` interface for custom scoring logic:
+Implement the `Scorer` interface to replace the scoring logic:
 
 ```go
 type myScorer struct{}
 
 func (s myScorer) Score(node html.ContentNode) int {
-    // Return score based on node characteristics
+    // Return a score based on node characteristics
     class := node.AttrValue("class")
     if strings.Contains(class, "article") || strings.Contains(class, "post") {
         return 100
@@ -170,13 +173,11 @@ func (s myScorer) ShouldRemove(node html.ContentNode) bool {
 }
 ```
 
-:::tip Note
-`strings.Contains` in this example is from the standard library `strings` package. For a complete runnable example, see [Testing & Custom Extensions](../integration/testing-custom).
-:::
+`strings.Contains` comes from the standard `strings` package. `ShouldRemove` is required by the interface, but the library currently calls only `Score`. For a complete runnable example, see [Testing & Custom Extensions](../integration/testing-custom).
 
 ## Text-Only Extraction
 
-When you only need plain text without metadata like images and links:
+When you need plain text without image or link metadata:
 
 ```go
 text, err := html.ExtractText(data)
@@ -186,11 +187,11 @@ if err != nil {
 fmt.Println(text)
 ```
 
-This is useful for text analysis, search index building, and similar scenarios.
+`ExtractText` calls `Extract` internally and returns `.Text`. It saves the field access; the processing pipeline is identical.
 
 ## Table Rendering
 
-HTML `<table>` elements are rendered into the extracted text according to the `TableFormat` config:
+HTML `<table>` elements are rendered into the text according to `TableFormat`. The value is case-insensitive (`"Markdown"` equals `"markdown"`), and an empty value falls back to `"markdown"`:
 
 ```go
 cfg := html.DefaultConfig()
@@ -199,14 +200,10 @@ cfg.TableFormat = "markdown" // default; or "html"
 
 | Format | Rendering | Use case |
 |--------|-----------|----------|
-| `"markdown"` | Markdown table (with header separator row); `colspan` expanded into repeated cells; structure-only rows with width definitions are skipped | Human reading, Markdown consumption |
-| `"html"` | Preserves the original HTML `<table>` tags (`colspan`/`rowspan` kept as-is); structure rows preserved | Downstream processing that needs exact table structure |
+| `"markdown"` | Markdown table with a header separator row; `colspan` expands into repeated cells; structure-only rows with width definitions are skipped | Human reading, Markdown consumption |
+| `"html"` | Keeps the original `<table>` tags (`colspan`/`rowspan` preserved as-is); structure rows preserved | Downstream processing that needs the exact table structure |
 
-:::tip Format is case-insensitive
-The `TableFormat` value is case-insensitive (`"Markdown"` and `"markdown"` are equivalent); an empty value falls back to `"markdown"`.
-:::
-
-Example — extracting HTML containing a table:
+Example — extracting HTML that contains a table:
 
 ```go
 package main
@@ -233,7 +230,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println(result.Text)
-	// Output (when TableFormat = "markdown"):
+	// Output (with TableFormat = "markdown"):
 	// Price List
 	//
 	// | Product | Price   |
@@ -243,36 +240,42 @@ func main() {
 }
 ```
 
-## Handling Non-UTF-8 Encoding
+## Non-UTF-8 Input
 
-The library automatically detects 15+ character encodings (including UTF-8, GBK, Shift_JIS, Windows-1252, etc.) and converts to UTF-8.
+Encoding order: `Config.Encoding` → BOM → pure ASCII (meta declaration if present) → valid UTF-8 → meta declaration → windows-1252 fallback.
 
 ```go
-// Auto-detect encoding
+// data holds GBK bytes; extraction works as-is when the meta tag declares charset=gbk
 result, err := html.Extract(gbkEncodedData)
 
-// Manually specify encoding
+// No declaration, or a known encoding: specify it and skip detection
 cfg := html.DefaultConfig()
 cfg.Encoding = "gbk"
 result, err = html.Extract(gbkEncodedData, cfg)
 ```
 
-## Context & Timeout
+:::warning Pages without a declared charset decode to mojibake
+When a GBK or Shift_JIS page has no `<meta charset>`, basic detection falls back to windows-1252 and the measured result is mojibake with **no error returned**. Set `cfg.Encoding` whenever the source encoding is known. See [Encoding Detection](./encoding-detection).
+:::
 
-For large files or untrusted HTML sources, use the context-aware versions:
+## Context and Timeouts
+
+Use the context-aware variant for large files or untrusted HTML:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 defer cancel()
 
 result, err := html.ExtractWithContext(ctx, data)
-if errors.Is(err, html.ErrProcessingTimeout) {
-    log.Println("Processing timed out")
+if errors.Is(err, context.DeadlineExceeded) {
+    log.Println("processing timed out")
 }
 ```
 
+A user-context deadline returns `context.DeadlineExceeded` unchanged; `ErrProcessingTimeout` is returned only when the library's own `ProcessingTimeout` fires.
+
 ## Next Steps
 
-- [Output Formats](./output-formats) - Choose the right output format
+- [Output Formats](./output-formats) - Differences and trade-offs between the three output formats
 - [Processor Cache & Reuse](../performance/processor-cache) - Performance optimization for high-frequency calls
 - [API Reference: Functions](../../api-reference/core/functions) - Complete function signatures

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "配置"
 title: "配置 - CyberGo html | Config 字段详解"
-description: "CyberGo html Config 配置结构体字段详解：覆盖资源管理、安全、内容提取、输出格式、链接提取与扩展六大类共 30 个字段，含 DefaultConfig 等四种预设配置、取值约束、零值语义与 Validate 验证方法，便于精准定制提取行为。"
+description: "CyberGo html Config 配置参考：30 个字段按资源管理、安全、内容提取、输出格式、链接提取与扩展分组列出默认值，附 DefaultConfig 等四种预设、零值语义与预设起点、Validate 校验约束及 MaxInputSize 等字段的取值上限。"
 sidebar_position: 30
 ---
 
@@ -9,9 +9,7 @@ sidebar_position: 30
 
 ## Config 结构体
 
-`Config` 是 HTML 库的统一配置结构体，涵盖资源管理、安全、内容提取、输出格式和链接过滤。
-
-全部 30 个字段一览（详细约束与说明见下方分组小节）：
+`Config` 是 HTML 库的统一配置结构体，涵盖资源管理、安全、内容提取、输出格式与链接过滤。共 30 个字段：
 
 | 字段 | 类型 | 分组 | 默认值 |
 |------|------|------|--------|
@@ -50,33 +48,35 @@ sidebar_position: 30
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `MaxInputSize` | `int` | `52428800` (50MB) | 最大输入大小（字节），取值范围 `1`–`52428800` |
-| `MaxCacheEntries` | `int` | `2000` | 缓存最大条目数，设为 `0` 禁用缓存（上限 `100000`） |
+| `MaxInputSize` | `int` | `52428800` (50MB) | 最大输入字节数，范围 `1`–`52428800` |
+| `MaxCacheEntries` | `int` | `2000` | 缓存条目上限，`0` 禁用缓存（上限 `100000`） |
 | `CacheTTL` | `time.Duration` | `1h` | 缓存过期时间，不能为负 |
-| `CacheCleanup` | `time.Duration` | `5m` | 过期缓存的后台清理间隔，设为 `0` 禁用后台清理 |
-| `WorkerPoolSize` | `int` | `4` | 批量处理的工作池大小，取值范围 `1`–`256` |
-| `ProcessingTimeout` | `time.Duration` | `30s` | 单文档处理超时，设为 `0` 表示不限时 |
+| `CacheCleanup` | `time.Duration` | `5m` | 过期缓存清理间隔，`0` 禁用后台清理 |
+| `WorkerPoolSize` | `int` | `4` | 批量处理工作池大小，范围 `1`–`256` |
+| `ProcessingTimeout` | `time.Duration` | `30s` | 单文档处理超时，`0` 表示不限时 |
 
-:::tip 零值语义
-`MaxCacheEntries`、`CacheCleanup`、`ProcessingTimeout` 设为 `0` 不是错误，而是有明确语义（分别表示禁用缓存、禁用后台清理、不限时）。`MaxInputSize`、`WorkerPoolSize`、`MaxDepth` 则必须为正数，否则触发 `ConfigError`。
+:::tip 零值语义与预设起点
+`MaxCacheEntries`、`CacheCleanup`、`ProcessingTimeout` 设为 `0` 有明确语义：禁用缓存、禁用后台清理、不限时。`MaxInputSize`、`WorkerPoolSize`、`MaxDepth` 必须为正，否则返回 `*ConfigError`。
 
-因此**零值 `Config{}` 无法通过 `Validate()`，不可直接使用**——请始终从 `DefaultConfig()`（或其它预设）出发，按需覆写字段。
+因此**零值 `Config{}` 无法通过 `Validate()`，不可直接使用**。请从 `DefaultConfig()` 或其它预设出发，再覆写字段。`html.New()` 不传参时内部使用 `DefaultConfig()` 并在返回前调用 `Validate()`，始终安全。
 :::
 
 ### 安全
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `EnableSanitization` | `bool` | `true` | 启用内容清洗，仅对可信输入可禁用 |
-| `MaxDepth` | `int` | `500` | 最大 DOM 深度，取值范围 `1`–`500` |
-| `AllowedBaseDir` | `string` | `""` | 限制文件操作到此目录，留空（默认）表示不限制；接收不可信输入的文件路径时使用 |
+| `EnableSanitization` | `bool` | `true` | 启用内容清洗，仅可信输入可禁用 |
+| `MaxDepth` | `int` | `500` | 最大 DOM 深度，范围 `1`–`500` |
+| `AllowedBaseDir` | `string` | `""` | 文件操作限定在该目录，留空表示不限制 |
 | `Audit` | `AuditConfig` | `DefaultAuditConfig()` | 审计配置 |
+
+`AllowedBaseDir` 在文件路径来自不可信输入时必须设置。
 
 ### 内容提取
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `ExtractArticle` | `bool` | `true` | 启用智能文章识别 |
+| `ExtractArticle` | `bool` | `true` | 启用文章识别 |
 | `PreserveImages` | `bool` | `true` | 保留图片信息 |
 | `PreserveLinks` | `bool` | `true` | 保留链接信息 |
 | `PreserveVideos` | `bool` | `true` | 保留视频信息 |
@@ -89,14 +89,14 @@ sidebar_position: 30
 | `InlineImageFormat` | `string` | `none` | `none`, `markdown`, `html`, `placeholder` | 内联图片格式 |
 | `InlineLinkFormat` | `string` | `none` | `none`, `markdown`, `html` | 内联链接格式 |
 | `TableFormat` | `string` | `markdown` | `markdown`, `html` | 表格格式 |
-| `Encoding` | `string` | `""` | - | 指定编码（留空自动检测） |
+| `Encoding` | `string` | `""` | - | 指定编码，留空自动检测 |
 
 ### 链接提取
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `ResolveRelativeURLs` | `bool` | `true` | 解析相对 URL，需要设置 BaseURL |
-| `BaseURL` | `string` | `""` | 基础 URL（用于解析相对路径） |
+| `ResolveRelativeURLs` | `bool` | `true` | 解析相对 URL；`BaseURL` 为空时从文档自动推导基准 |
+| `BaseURL` | `string` | `""` | 解析相对路径的基础 URL |
 | `IncludeImages` | `bool` | `true` | 包含图片链接 |
 | `IncludeVideos` | `bool` | `true` | 包含视频链接 |
 | `IncludeAudios` | `bool` | `true` | 包含音频链接 |
@@ -110,13 +110,13 @@ sidebar_position: 30
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `Scorer` | `Scorer` | `nil` | 自定义内容评分器，为空时使用默认评分器 |
+| `Scorer` | `Scorer` | `nil` | 自定义内容评分器，为空时用内置评分器 |
 
 ## 预设配置
 
 ### DefaultConfig
 
-`DefaultConfig` 返回均衡配置，适合通用场景，是绝大多数应用的起点。
+返回均衡配置，是多数应用的起点。
 
 ```go
 func DefaultConfig() Config
@@ -128,7 +128,7 @@ cfg := html.DefaultConfig()
 
 ### TextOnlyConfig
 
-仅提取纯文本，禁用所有媒体和链接保留（`PreserveImages`、`PreserveLinks`、`PreserveVideos`、`PreserveAudios` 均设为 `false`）。
+在默认配置基础上把 `PreserveImages`、`PreserveLinks`、`PreserveVideos`、`PreserveAudios` 全部设为 `false`，即不保留任何媒体与链接信息。`ExtractAllLinks` 的 `Include*` 过滤不受此预设影响。
 
 ```go
 func TextOnlyConfig() Config
@@ -140,7 +140,7 @@ cfg := html.TextOnlyConfig()
 
 ### MarkdownConfig
 
-`MarkdownConfig` 在默认配置基础上将 `InlineImageFormat` 与 `InlineLinkFormat` 均设为 `markdown`，适合内联图片和链接使用 Markdown 格式的输出。
+在默认配置基础上把 `InlineImageFormat` 与 `InlineLinkFormat` 设为 `markdown`，用于正文中内联图片与链接的 Markdown 渲染。`ExtractToMarkdown` 固定输出 Markdown，无需该预设。
 
 ```go
 func MarkdownConfig() Config
@@ -152,7 +152,7 @@ cfg := html.MarkdownConfig()
 
 ### HighSecurityConfig
 
-高安全配置：缩减限制、更短超时、完整审计。
+收紧限额、缩短超时、开启完整审计。
 
 ```go
 func HighSecurityConfig() Config
@@ -162,7 +162,7 @@ func HighSecurityConfig() Config
 cfg := html.HighSecurityConfig()
 ```
 
-相比 `DefaultConfig()` 的覆盖值：
+与 `DefaultConfig()` 的差异：
 
 | 字段 | 默认值 | 高安全值 |
 |------|--------|----------|
@@ -177,7 +177,7 @@ cfg := html.HighSecurityConfig()
 
 ## Validate
 
-`Validate` 验证配置的有效性（值接收者，可直接 `cfg.Validate()` 调用），无效时返回包裹 `ErrInvalidConfig` 的 `*ConfigError`。
+校验配置有效性（值接收者，可直接 `cfg.Validate()` 调用）。无效时返回包裹 `ErrInvalidConfig` 的 `*ConfigError`。
 
 ```go
 func (c Config) Validate() error
@@ -191,7 +191,7 @@ err := cfg.Validate() // 返回 ConfigError
 
 ### 验证约束
 
-`Config.Validate` 对数值字段与格式字符串强制以下约束（违反时返回 `ConfigError`，可经 `errors.Is(err, html.ErrInvalidConfig)` 判断）：
+`Config.Validate` 对数值字段与格式字符串强制以下约束，违反时返回 `ConfigError`（可用 `errors.Is(err, html.ErrInvalidConfig)` 判断）：
 
 | 字段 | 约束 | 非法示例 |
 |------|------|----------|
@@ -203,11 +203,12 @@ err := cfg.Validate() // 返回 ConfigError
 | `MaxDepth` | 正数且 ≤ `500` | `0`、`1000` |
 | `ProcessingTimeout` | ≥ `0` | `-1 * time.Second` |
 | `Audit.MaxEntries` | ≥ `0` 且 ≤ `100000`（`0` 表示使用默认值 10000） | `-1`、`200000` |
+| `Audit.MaxRawValueLength` | ≥ `0`（`0` 表示使用默认值 200） | `-1` |
 | `InlineImageFormat` | 空 / `none` / `markdown` / `html` / `placeholder` | `"pdf"` |
 | `InlineLinkFormat` | 空 / `none` / `markdown` / `html` | `"pdf"` |
 | `TableFormat` | 空 / `markdown` / `html` | `"csv"` |
 
-格式字符串大小写不敏感且空值视为默认（`InlineImageFormat`/`InlineLinkFormat` → `none`，`TableFormat` → `markdown`）。`New()` 在创建 Processor 前会先调用 `Validate()`，因此无效配置不会产出可用的 Processor。
+格式字符串大小写不敏感，空值视为默认（`InlineImageFormat`/`InlineLinkFormat` → `none`，`TableFormat` → `markdown`）。`New()` 在返回前调用 `Validate()`，无效配置不会产出可用的 `Processor`。
 
 ## 相关文档
 

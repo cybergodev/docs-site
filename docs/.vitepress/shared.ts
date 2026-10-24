@@ -42,12 +42,12 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
     icon: '📦',
     github: 'https://github.com/cybergodev/json',
     desc: {
-      zh: '高性能、线程安全的 JSON 处理库。提供丰富的 JSON 操作功能，包括解析、查询、修改、验证和格式化。',
-      en: 'High-performance, thread-safe JSON processing library. Provides rich JSON operations including parsing, querying, modifying, validating, and formatting.'
+      zh: '线程安全的 Go JSON 处理库，签名为 encoding/json 的超集。支持路径表达式查询与修改、流式迭代、类型化获取与 Schema 校验。',
+      en: 'Thread-safe Go JSON processing library with encoding/json-compatible signatures. Path queries and edits, streaming iteration, typed getters, and Schema validation.'
     },
     features: {
-      zh: ['JSONPath 路径查询', '流式处理', '类型安全转换', '零分配提取'],
-      en: ['JSONPath queries', 'Streaming', 'Type-safe conversion', 'Zero-allocation extraction']
+      zh: ['路径表达式查询', '流式与 JSONL', '类型化获取', '预编译路径'],
+      en: ['Path queries', 'Streaming & JSONL', 'Typed getters', 'Compiled paths']
     }
   },
   jwt: {
@@ -92,25 +92,25 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
     icon: '📄',
     github: 'https://github.com/cybergodev/html',
     desc: {
-      zh: '生产级 HTML 内容提取工具。支持智能文章识别，可提取带元数据的图片、视频、音频及链接。',
-      en: 'Production-grade HTML content extraction tool. Supports intelligent article recognition, extracting images, videos, audio, and links with metadata.'
+      zh: 'Go 语言 HTML 内容提取与清洗库。识别页面正文，提取标题、图片、链接、视频与音频，支持 15+ 编码检测与多种输出格式。',
+      en: 'Go library for extracting and cleaning HTML content. Identifies the page body and extracts titles, images, links, videos, and audio, with 15+ encoding detection and multiple output formats.'
     },
     features: {
       zh: [
-        '智能文章识别',
+        '文章识别',
         '元数据提取',
         '内容清洗',
-        '自动编码检测',
+        '编码检测',
         '多格式输出',
         '批量处理',
         '链接提取',
         '审计系统'
       ],
       en: [
-        'Smart article recognition',
+        'Article detection',
         'Metadata extraction',
         'Content cleaning',
-        'Auto encoding detection',
+        'Encoding detection',
         'Multi-format output',
         'Batch processing',
         'Link extraction',
@@ -158,12 +158,12 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
     icon: '⚙️',
     github: 'https://github.com/cybergodev/env',
     desc: {
-      zh: '生产就绪的环境变量管理库。支持内存锁定、审计日志记录和高并发，零依赖设计。',
-      en: 'Production-ready environment variable management library. Supports memory locking, audit logging, and high concurrency with zero-dependency design.'
+      zh: 'Go 环境变量管理库。加载 .env、JSON、YAML 配置，把值转换为 Go 类型，保护敏感值内存，并记录审计事件；无外部依赖。',
+      en: 'Go library for managing environment variables. Loads .env, JSON, and YAML config, converts values to Go types, protects sensitive values in memory, and records audit events, with no external dependencies.'
     },
     features: {
-      zh: ['.env 文件支持', '类型转换', '安全存储', '审计日志'],
-      en: ['.env file support', 'Type conversion', 'Secure storage', 'Audit logging']
+      zh: ['多格式加载', '类型转换', '内存锁定', '审计日志'],
+      en: ['Multi-format loading', 'Type conversion', 'Memory locking', 'Audit logging']
     }
   }
 }

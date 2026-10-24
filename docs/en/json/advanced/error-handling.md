@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo JSON | Error Types and Checks"
-description: "CyberGo JSON offers errors.Is checks for ErrPathNotFound, ErrTypeMismatch, and JsonsError Op/Path context to classify failures and apply safe fallbacks."
+description: "CyberGo JSON error handling: errors.Is for ErrPathNotFound, errors.As for JsonsError Op/Path, plus fallback, retry, and log-redaction patterns."
 sidebar_position: 10
 ---
 
 # Error Handling
 
-Handle errors from JSON operations correctly.
+JSON errors come in two shapes: sentinel errors you test with `errors.Is`, and `JsonsError` values that carry context you read with `errors.As` (`Op`/`Path`). The sections below give the classification table, the check patterns, and fallback, retry, and redaction recipes.
 
 ## Error Types
 
@@ -25,6 +25,7 @@ var (
     ErrProcessorClosed    = errors.New("processor is closed")
     ErrConcurrencyLimit   = errors.New("concurrency limit exceeded")
     ErrUnsupportedPath    = errors.New("unsupported path operation")
+    ErrDuplicateKey       = errors.New("duplicate object key")
     ErrOperationTimeout   = errors.New("operation timeout")           // Deprecated
     ErrResourceExhausted  = errors.New("system resources exhausted")  // Deprecated
 )
@@ -32,39 +33,48 @@ var (
 
 ### Sentinel Error Classification
 
-The 12 exported sentinel errors fall into four categories by **how to handle them**:
+The 13 exported sentinel errors fall into four categories by **how to handle them**:
 
 | Error | Meaning / typical trigger | Category | Handling advice |
 |-------|---------------------------|----------|-----------------|
 | `ErrInvalidJSON` | Input is not valid JSON (syntax error, invalid UTF-8) | User input | Return a friendly message and ask for corrected data |
 | `ErrPathNotFound` | Path does not exist (missing nested key, array index out of range) | User input | Fall back to a default or apply business semantics |
-| `ErrTypeMismatch` | Value at the path does not match the expected type | User input | Report a field type error |
-| `ErrInvalidPath` | Illegal path syntax (e.g. `a..b`) | User input | Report a path format error |
-| `ErrUnsupportedPath` | The path operation is unsupported | User input | Check the path/operation combination |
+| `ErrTypeMismatch` | Value type differs from what was expected (`AsString` conversion failure, type mismatch mid-path in `GetCompiled`, non-object passed to `EncodeFields`, non-array root in `ForeachFileChunked`) | User input | Report a field type error; `GetTyped[T]` builds this sentinel internally but returns only the value |
+| `ErrInvalidPath` | Illegal index content (`a[b]`, `a[]`, `a[-]`, `a[0:2:x]`), or a path longer than 5000 bytes | User input | Report a path format error |
+| `ErrUnsupportedPath` | — (kept for compatibility, deprecated) | Deprecated | No operation returns it today; do not branch on it |
+| `ErrDuplicateKey` | Input object has a repeated key when `Config.DetectDuplicateKeys` is on | User input | Reject the input; with the default off, the last key wins, matching `encoding/json` |
 | `ErrSizeLimit` | Input exceeds `Config.MaxJSONSize` | Security limit | Reject and apply rate-limit policy |
 | `ErrDepthLimit` | Nesting depth exceeds `MaxNestingDepthSecurity` | Security limit | Reject (deep nesting often signals malicious input) |
 | `ErrSecurityViolation` | Dangerous pattern detected (prototype pollution, etc.) | Security limit | Log and reject; do not echo details |
 | `ErrConcurrencyLimit` | In-flight operations reached `MaxConcurrency` (soft cap — immediate rejection, no blocking) | Transient system | **Retryable** — retry shortly or raise the cap |
 | `ErrProcessorClosed` | Methods called after the processor was Closed | System state | Rebuild the `Processor` or check the lifecycle |
-| `ErrOperationTimeout` | — (kept for compatibility) | Deprecated | No operation returns it today; do not branch on it |
-| `ErrResourceExhausted` | — (kept for compatibility) | Deprecated | No operation returns it today; do not branch on it |
+| `ErrOperationTimeout` | — (kept for compatibility, deprecated) | Deprecated | No operation returns it today; do not branch on it |
+| `ErrResourceExhausted` | — (kept for compatibility, deprecated) | Deprecated | No operation returns it today; do not branch on it |
 
 ### Error Checking
 
+A failing `Get` only produces input-class errors such as `ErrPathNotFound` and `ErrInvalidJSON` — type problems never surface there, because `Get` returns `any` and the caller decides how to interpret it. To get a typed error, use `SafeGet(...).AsString()` (which wraps `ErrTypeMismatch`) or `GetCompiled`:
+
 ```go
-val, err := json.Get(data, "user.name")
+// Missing path: Get returns (nil, ErrPathNotFound)
+_, err := json.Get(data, "user.name")
 if err != nil {
     if errors.Is(err, json.ErrPathNotFound) {
-        // Path does not exist
         return defaultName
     }
+    return "", err
+}
+
+// Type mismatch: SafeGet + AsString wraps ErrTypeMismatch
+if _, err := json.SafeGet(data, "user.name").AsString(); err != nil {
     if errors.Is(err, json.ErrTypeMismatch) {
-        // Type mismatch
         return "", fmt.Errorf("field type error: %w", err)
     }
     return "", err
 }
 ```
+
+Two failure modes differ here: when the path does not exist, every `As*` method returns `ErrPathNotFound`; when the path exists but the type does not match, only `AsString` wraps `ErrTypeMismatch`, while `AsInt`/`AsFloat64`/`AsBool` return a plain error (`errors.Is(err, ErrTypeMismatch)` is false).
 
 ## JsonsError
 
@@ -90,15 +100,15 @@ func (e *JsonsError) Is(target error) bool
 ```go
 val, err := json.Get(data, "user.name")
 if err != nil {
-    // Check the error type with errors.Is
+    // errors.Is: classify by sentinel
     if errors.Is(err, json.ErrPathNotFound) {
         // Path does not exist
     }
-    if errors.Is(err, json.ErrTypeMismatch) {
-        // Type mismatch
+    if errors.Is(err, json.ErrInvalidJSON) {
+        // Input is not valid JSON
     }
 
-    // Get detailed context with errors.As
+    // errors.As: extract the contextual JsonsError
     var jsonErr *json.JsonsError
     if errors.As(err, &jsonErr) {
         fmt.Printf("Operation: %s\n", jsonErr.Op)
@@ -350,20 +360,16 @@ if err != nil {
         // Malformed JSON
         return fmt.Errorf("malformed data: %w", err)
     case errors.Is(err, json.ErrPathNotFound):
-        // Path does not exist
+        // Path does not exist (including an out-of-range array index)
         return fmt.Errorf("field does not exist: %w", err)
-    case errors.Is(err, json.ErrTypeMismatch):
-        // Type mismatch
-        return fmt.Errorf("type error: %w", err)
     case errors.Is(err, json.ErrInvalidPath):
         // Path syntax error
         return fmt.Errorf("path syntax error: %w", err)
-    case errors.Is(err, json.ErrUnsupportedPath):
-        // Unsupported path operation
-        return fmt.Errorf("unsupported operation: %w", err)
     }
 }
 ```
+
+`Get` can also return `ErrInvalidJSON`, `ErrPathNotFound`, `ErrInvalidPath`, `ErrSizeLimit`, `ErrDepthLimit`, `ErrSecurityViolation`, `ErrConcurrencyLimit`, and `ErrProcessorClosed`. `ErrTypeMismatch` never appears on `Get` — to branch on type semantics, use `SafeGet(...).AsString()` or `GetCompiled`, whose failures wrap that sentinel (see [Error Checking](#error-checking)). No operation returns `ErrUnsupportedPath`, so it needs no branch.
 
 ### Security-Related Errors
 
@@ -426,19 +432,16 @@ func processJSON(data string) error {
         switch {
         case errors.Is(err, json.ErrInvalidJSON),
             errors.Is(err, json.ErrPathNotFound),
-            errors.Is(err, json.ErrTypeMismatch),
             errors.Is(err, json.ErrInvalidPath):
             // User input error: return a friendly message
             return fmt.Errorf("malformed data: %w", err)
-        case errors.Is(err, json.ErrSecurityViolation):
-            // Security error: log and reject
+        case errors.Is(err, json.ErrSecurityViolation), errors.Is(err, json.ErrSizeLimit):
+            // Security limit: log and reject
             log.Warn("security violation", "error", err)
             return errors.New("invalid input")
         case errors.Is(err, json.ErrConcurrencyLimit):
             // Concurrency cap: retryable later
             return fmt.Errorf("system busy, please retry later: %w", err)
-        case errors.Is(err, json.ErrOperationTimeout): // Deprecated (never returned today; kept for compatibility)
-            return fmt.Errorf("transient error, please retry: %w", err)
         default:
             // System error
             log.Error("system error", "error", err)

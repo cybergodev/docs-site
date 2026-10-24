@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
 title: "API Reference - CyberGo HTTPC | Full API Index"
-description: "HTTPC API index: full API map incl. core functions, options, Result, Config, and middleware, with 32 WithXxx options, 5 presets, and 17 error variables."
+description: "HTTPC API index: request options, Result, Config, middleware, and error types, including 32 WithXxx options and 5 configuration presets."
 sidebar_position: 10
 ---
 
@@ -11,11 +11,11 @@ HTTPC provides 32 request-option functions, 5 configuration presets, 7 built-in 
 
 ## Core Architecture
 
-HTTPC uses a two-layer design: the Layer 1 method API is a thin wrapper, while the real request-processing engine is the Layer 2 Handler pipeline.
+HTTPC uses a two-layer design: the Layer 1 method API is a lightweight wrapper, while requests are processed by the Layer 2 Handler pipeline.
 
 ```text
 HTTPC two-layer architecture
-├── Layer 1  Method API (thin wrapper)
+├── Layer 1  Method API (lightweight wrapper)
 │     Package functions httpc.Get/Post/... + Client methods + request options → Result
 │
 └── Layer 2  Handler pipeline (request-processing engine)
@@ -56,7 +56,7 @@ HTTPC two-layer architecture
 
 ## API Map
 
-A complete index grouped by symbol type, mapping one-to-one to the exported surface of the `github.com/cybergodev/httpc` package — click any entry to jump to its detail page.
+A complete index grouped by symbol type, matching the exported surface of the `github.com/cybergodev/httpc` package one-to-one. Each entry links to its detail page.
 
 ### Client and Package-Level Functions
 
@@ -66,8 +66,8 @@ A complete index grouped by symbol type, mapping one-to-one to the exported surf
 | [`Get`](./core/functions#get) / `Post` / `Put` / `Patch` / `Delete` / `Head` / `Options` / [`Request`](./core/functions#request) | Package-level HTTP methods (share the internal default client) |
 | [`Download`](./core/functions#download) | Unified file-download entry (same name and signature on the package function / Client / DomainClient) |
 | [`SetDefaultClient`](./core/functions#setdefaultclient) / [`CloseDefaultClient`](./core/functions#closedefaultclient) | Replace and close the default client |
-| [`CloseRoutedClients`](./core/functions#closeroutedclients) | Close every package-level routed client (cached for `WithProxy`/`WithSystemProxy`/`WithTLSFingerprint`) |
-| [`NewDomain`](./core/functions#newdomain) / [`NewDomainDefault`](./core/functions#newdomaindefault) | Domain-scoped clients |
+| [`CloseRoutedClients`](./core/functions#closeroutedclients) | Close every package-level routed client (created and cached by `WithProxy`/`WithSystemProxy`/`WithTLSFingerprint`) |
+| [`NewDomain`](./core/functions#newdomain) / [`NewDomainDefault`](./core/functions#newdomaindefault) | Create domain clients |
 | [`SetSecurityWarnOutput`](./core/functions#setsecuritywarnoutput) | Redirect security-warning output |
 | [`FormatBytes`](./core/functions#formatbytes) / [`FormatSpeed`](./core/functions#formatspeed) | Format byte counts / speeds |
 
@@ -84,7 +84,7 @@ A complete index grouped by symbol type, mapping one-to-one to the exported surf
 | Package-level routing (3) | `WithProxy`, `WithSystemProxy`, `WithTLSFingerprint` |
 | Callbacks (2) | `WithOnRequest`, `WithOnResponse` |
 
-For the signatures, validation rules, and Config defaults overridden by all options, see [Request Options](./core/options).
+For signatures, validation rules, and the Config defaults overridden by each option, see [Request Options](./core/options).
 
 ### Result Family
 
@@ -103,7 +103,7 @@ See [Result](./core/result) for details.
 
 | Category | Symbols |
 |----------|---------|
-| Main type | `Config` (`Timeouts` / `Connection` / `Security` / `Retry` / `Middleware` / `Defaults` — six groups) |
+| Main type | `Config` (with six groups: `Timeouts` / `Connection` / `Security` / `Retry` / `Middleware` / `Defaults`) |
 | Sub-config types | `TimeoutConfig`, `ConnectionConfig`, `SecurityConfig`, `RetryConfig`, `MiddlewareConfig`, `RequestDefaults` |
 | Presets (5) | `DefaultConfig`, `SecureConfig`, `PerformanceConfig`, `TestingConfig`, `MinimalConfig` |
 | Validation and output | `ValidateConfig`, `Config.String` |
@@ -120,7 +120,7 @@ See [Configuration](./client-config/config), [File Download](./client-config/dow
 | Pipeline types | `Handler`, `MiddlewareFunc`, `Chain` |
 | Middleware factories (7) | `LoggingMiddleware`, `RecoveryMiddleware`, `RequestIDMiddleware`, `TimeoutMiddleware`, `HeaderMiddleware`, `MetricsMiddleware`, `AuditMiddleware` |
 | Middleware configs | `LoggingConfig`, `RequestIDConfig`, `TimeoutMiddlewareConfig`, `HeaderConfig`, `MetricsConfig`, `AuditConfig` (each with a `Default*Config()` constructor) |
-| Mutators | `RequestMutator`, `ResponseMutator` (the contract through which middleware reads/writes requests and responses) |
+| Mutators | `RequestMutator`, `ResponseMutator` (the interface contract by which middleware reads and writes requests and responses) |
 
 See [Handler Pipeline](./handler/handler-chain), [Built-in Middleware](./client-config/middleware), and [Mutators](./handler/mutators) for details.
 
@@ -131,7 +131,7 @@ See [Handler Pipeline](./handler/handler-chain), [Built-in Middleware](./client-
 | Core interfaces | `Client`, `Doer`, `DomainClienter`, `RetryPolicy` |
 | Type aliases | `RequestOption`, `ClientError`, `ErrorType`, `CertificatePinner`, `ProxyStrategy` |
 | Certificate pinning | `NewSPKIHashPinner`, `NewPublicKeyPinner`, `NewCertificatePinnerChain` |
-| Session and domain | `SessionManager`, `DomainClient` (recommended for use via the `DomainClienter` interface) |
+| Session and domain | `SessionManager`, `DomainClient` (recommended for use through the `DomainClienter` interface) |
 | Data types | `FormData`, `FileData`, `AuditEvent` |
 
 See [Interfaces](./types/interfaces), [Domain Client](./client-config/domain-client), [Session Management](./client-config/session), and [Constants and Types](./types/constants) for details.
@@ -186,5 +186,5 @@ result.Meta.Attempts          // Retry count
 
 - **Go version**: requires Go 1.27 or later (`go.mod` declares `go 1.27`).
 - **Import path**: `github.com/cybergodev/httpc` (package name `httpc`, no alias needed).
-- **Direct dependencies**: 7 direct modules — `golang.org/x/net` and `golang.org/x/sys` for the standard path, with brotli / compress / uTLS / tls-client / fhttp pulled in only when `Security.TLSFingerprint` is enabled (browser transport fingerprinting).
+- **Direct dependencies**: 7 direct modules. `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp are pulled in only when `Security.TLSFingerprint` is enabled, for browser transport fingerprinting.
 - **API status**: no exported symbol currently carries a `Deprecated` marker; the library is under active maintenance.

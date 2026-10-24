@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo html | API at a Glance"
-description: "CyberGo html API cheat sheet: Extract, ExtractText, ExtractToMarkdown, Processor methods, four Config presets, encoding detection, AuditConfig, errors.Is."
+description: "CyberGo html API cheat sheet: Extract, ExtractText, ExtractToMarkdown, Processor methods, four Config presets, common options, encoding detection, and audit."
 sidebar_position: 20
 ---
 
 # Cheat Sheet
+
+Common APIs at a glance; full signatures and parameter descriptions are in the [API Reference](../api-reference/).
 
 ## Package Functions
 
@@ -20,7 +22,7 @@ result, err := html.ExtractFromFile("page.html")
 
 // Extract text only
 text, err := html.ExtractText(data)
-text, err := html.ExtractTextFromFile("page.html")
+text, err = html.ExtractTextFromFile("page.html")
 ```
 
 ### Output Formats
@@ -47,7 +49,7 @@ batch := html.ExtractBatchFiles(paths)
 
 ### Context Variants
 
-All functions have `*WithContext` variants:
+Extraction functions have `*WithContext` variants (`GroupLinksByType` is an in-memory grouping helper and has none):
 
 ```go
 result, err := html.ExtractWithContext(ctx, data)
@@ -94,9 +96,9 @@ p.ClearAuditLog()
 
 ```go
 html.DefaultConfig()       // Default configuration
-html.TextOnlyConfig()      // Text only
-html.MarkdownConfig()      // Markdown output
-html.HighSecurityConfig()  // High security
+html.TextOnlyConfig()      // Keeps no images, links, videos, or audio
+html.MarkdownConfig()      // Renders inline images and links as Markdown
+html.HighSecurityConfig()  // Tightened limits with full audit
 ```
 
 ## Common Configuration Options
@@ -110,7 +112,7 @@ cfg.ProcessingTimeout = time.Minute   // Processing timeout
 cfg.MaxDepth = 200                    // Max DOM depth
 
 // Content control
-cfg.ExtractArticle = true             // Intelligent article recognition
+cfg.ExtractArticle = true             // Article detection
 cfg.PreserveImages = true             // Preserve images
 cfg.PreserveLinks = true              // Preserve links
 cfg.PreserveVideos = false            // Don't preserve videos
@@ -143,7 +145,7 @@ if err != nil {
     case errors.Is(err, html.ErrInvalidHTML):
         // Invalid HTML
     case errors.Is(err, html.ErrProcessingTimeout):
-        // Processing timeout
+        // Library ProcessingTimeout expired
     case errors.Is(err, html.ErrFileNotFound):
         // File not found
     case errors.Is(err, html.ErrInvalidConfig):
@@ -160,18 +162,20 @@ if err != nil {
 }
 ```
 
+An expired caller context returns `context.DeadlineExceeded` and a manual `cancel()` returns `context.Canceled`; neither is normalized to `ErrProcessingTimeout`.
+
 ## Encoding Detection
 
 ```go
 // Auto-detect encoding (default, supports 15+ encodings)
-result, err := html.Extract(gbkData)
+result, err := html.Extract(pageData)
 
 // Manually specify encoding
 cfg := html.DefaultConfig()
 cfg.Encoding = "shift_jis"
 ```
 
-Supports UTF-8, GBK, Shift_JIS, EUC-JP, Windows-1252, and 15+ encodings.
+Supported encodings include UTF-8, GBK, Shift_JIS, EUC-JP, Windows-1252, and 15+ others. Legacy pages without a `<meta charset>` declaration fall back to windows-1252, so set the encoding explicitly when the source is known.
 
 ## Media Extraction
 
@@ -188,9 +192,8 @@ for _, a := range result.Audios {
     fmt.Println(a.URL, a.Type)
 }
 
-// Disable media extraction
-cfg := html.TextOnlyConfig()
-// Or control individually
+// Turn off media only (images and links are still kept)
+cfg := html.DefaultConfig()
 cfg.PreserveVideos = false
 cfg.PreserveAudios = false
 ```
@@ -202,14 +205,14 @@ cfg := html.DefaultConfig()
 cfg.Audit = html.DefaultAuditConfig()
 cfg.Audit.Enabled = true
 
-// Use custom Sink
+// Use a custom Sink
 sink := html.NewWriterAuditSink(os.Stdout)
 cfg.Audit.Sink = sink
 
 p, _ := html.New(cfg)
 defer p.Close()
 
-// Get audit log after processing
+// Get the audit log after processing
 entries := p.GetAuditLog()
 ```
 
@@ -246,6 +249,6 @@ p.ResetStatistics()           // reset stat counters (preserves cache)
 
 ## Next Steps
 
-- [Content Extraction](../guides/core-features/content-extraction) - Extraction workflow and article recognition
+- [Content Extraction](../guides/core-features/content-extraction) - Extraction pipeline and article detection
 - [Processor & Cache](../guides/performance/processor-cache) - Lifecycle and cache tuning
 - [API Reference](../api-reference/) - Complete API documentation

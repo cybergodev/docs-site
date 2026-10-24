@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo HTTPC | Common Code Reference"
-description: "HTTPC cheat sheet: client creation and presets, request methods, 32 WithXxx options, Result handling, middleware, ClientError, downloads, domain clients."
+description: "HTTPC cheat sheet: client creation and presets, request methods, WithXxx options, Result handling, and middleware examples."
 sidebar_position: 30
 ---
 
 # Cheat Sheet
+
+The cheat sheet groups common HTTPC code snippets by topic; each section links to the corresponding detailed page.
 
 ## Creating a Client
 
@@ -91,7 +93,14 @@ httpc.WithBody(data)                    // Auto-detect type
 httpc.WithBody(data, httpc.BodyJSON)    // Explicit: BodyJSON/BodyXML/BodyForm/BodyBinary/BodyMultipart
 ```
 
-`WithBody` auto-detection rules (`BodyAuto`, the default): `string` -> text/plain; `[]byte` -> octet-stream; `map[string]string` -> form; `*FormData` -> multipart; `io.Reader` -> passed through as-is (no Content-Type set); other types -> JSON.
+`WithBody` auto-detects the type by default (`BodyAuto`):
+
+- `string` -> text/plain
+- `[]byte` -> octet-stream
+- `map[string]string` -> form
+- `*FormData` -> multipart
+- `io.Reader` -> passed through as-is (no Content-Type set)
+- other types -> JSON
 
 ### Query Parameters
 
@@ -286,7 +295,7 @@ func traceMiddleware(next httpc.Handler) httpc.Handler {
 ```
 
 :::warning Do not use for Download or streaming requests
-`TimeoutMiddleware` must not be used for `Download` or `WithStreamBody(true)` requests (it cancels the context as soon as the response headers arrive, making the body read fail with "context canceled"); use `WithTimeout` for such cases instead.
+`TimeoutMiddleware` is not suitable for `Download` or `WithStreamBody(true)` requests: the middleware rejects streaming requests on entry, returning `TimeoutMiddleware is incompatible with streaming responses`. Use `WithTimeout` for such cases instead.
 :::
 
 ## Error Handling
@@ -419,7 +428,7 @@ sm.UpdateFromResult(result) // Extracts Set-Cookie from the response
 ```
 
 :::warning Request options are applied twice
-Request options passed to a `DomainClient` are applied twice internally (session capture + the real request); avoid options with side effects (counters, one-time nonces).
+Request options passed to a `DomainClient` are applied twice internally (session capture + the real request). Options should not contain side-effecting logic (counters, one-time nonces).
 :::
 
 ## Scenario Recipes

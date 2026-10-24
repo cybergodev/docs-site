@@ -7,11 +7,11 @@ sidebar_position: 60
 
 # Error Handling
 
-HTTPC wraps all errors uniformly as `ClientError`, providing type classification, retryability checks, and rich context. Combined with the Go standard library's `errors.Is`/`errors.As`, you can match sentinel errors precisely or handle them flexibly by category.
+HTTPC wraps request failures uniformly as `ClientError`, which carries the error classification, a retryability check, and request context. Combined with `errors.Is`/`errors.As`, sentinel errors can be matched directly, or errors can be handled by category.
 
 ## ErrorType Complete Reference
 
-HTTPC defines 12 error types covering every failure scenario from the network layer to the application layer:
+HTTPC defines 12 error types covering failure scenarios from the network layer to the application layer:
 
 | ErrorType | Code() | Meaning | Typical Scenario | Retryable |
 |-----------|--------|------|----------|--------|
@@ -29,12 +29,18 @@ HTTPC defines 12 error types covering every failure scenario from the network la
 | `ErrorTypeUnknown` | `UNKNOWN_ERROR` | Unclassified error | Other unmatched exceptions | No |
 
 :::tip Full rules for retryability
-`IsRetryable()` is more fine-grained than the table suggests: `ErrorTypeDNS` is only retryable when `net.DNSError` is flagged temporary or timeout; `ErrorTypeNetwork` checks `syscall.Errno` (`ECONNREFUSED`/`ECONNRESET`/`EPIPE`/`ETIMEDOUT`/`ENETUNREACH`/`EHOSTUNREACH`) and error-message patterns; `ErrorTypeResponseRead` retries only on network errors from read operations (`read`/`readfrom`). See "Retryability Check" below.
+`IsRetryable()` is more fine-grained than the table suggests:
+
+- `ErrorTypeDNS` is retryable only when `net.DNSError` is flagged temporary or timeout.
+- `ErrorTypeNetwork` checks `syscall.Errno` (`ECONNREFUSED`/`ECONNRESET`/`EPIPE`/`ETIMEDOUT`/`ENETUNREACH`/`EHOSTUNREACH`) and error-message patterns.
+- `ErrorTypeResponseRead` retries only network errors from `read`/`readfrom` operations.
+
+See "Implementation Details of Retryability" below.
 :::
 
 ## Error Classification Decision Tree
 
-Every non-nil error entering the engine goes through the same classification flow, matched top-to-bottom by priority — first hit wins:
+A non-nil error entering the engine goes through the same classification flow, matched top-to-bottom by priority; the first hit wins:
 
 ```text
 Error err
@@ -63,12 +69,12 @@ Error err
 ```
 
 :::tip Already-classified errors are not wrapped again
-If the error chain already contains a `ClientError` (e.g. an engine error returned by middleware), the classifier reuses its fields as-is and only fills in the URL/method/attempt count — no layer-upon-layer wrapping. A single `errors.As` hit on the outermost error yields the full context.
+When the error chain already contains a `ClientError` (e.g. an engine error returned by middleware), the classifier reuses its fields and only fills in the URL, method, and attempt count; no additional wrapping layer is added. A single `errors.As` hit on the outermost error yields the full context.
 :::
 
 ## ClientError Fields In Detail
 
-The `ClientError` struct carries the full context of a request failure:
+`ClientError` carries the full context of a request failure:
 
 | Field | Type | Purpose |
 |------|------|------|
@@ -95,7 +101,7 @@ Concrete example:
 GET https://api.example.com/data: network error occurred: dial tcp 1.2.3.4:443: connect: connection refused (attempt 4)
 ```
 
-`Unwrap()` returns `Cause`, so every unwrap-through-the-wrapper idiom works — `errors.Is(err, context.DeadlineExceeded)`, `errors.As(err, &opErr)` (to extract `*net.OpError`), and so on. Logging `err` directly already carries the method, the sanitized URL, the cause chain, and the attempt count, so there is no need to assemble context by hand.
+`Unwrap()` returns `Cause`, so unwrapping through the wrapper works: `errors.Is(err, context.DeadlineExceeded)`, `errors.As(err, &opErr)` (to extract `*net.OpError`). Logging `err` directly already includes the method, sanitized URL, cause chain, and attempt count.
 
 ### Error Type Checking
 
@@ -185,12 +191,12 @@ func main() {
 ```
 
 :::warning IsRetryable vs automatic retry
-`IsRetryable()` answers "is this error worth retrying?" and is also used by HTTPC's internal retry engine. If you have configured automatic retries via `Retry.MaxRetries`, then by the time the error reaches your handler, a network/timeout error means retries are already exhausted. `IsRetryable()` is mainly for upper-layer decisions (e.g. circuit breakers, task queues).
+`IsRetryable()` reports whether the error is worth retrying, and HTTPC's retry engine uses the same check. With `Retry.MaxRetries` configured, a network or timeout error reaching the caller means retries are already exhausted. Upper layers (circuit breakers, task queues) can use `IsRetryable()` to decide whether to send another request.
 :::
 
 ## Implementation Details of Retryability
 
-Below the type classification, `IsRetryable()` applies a second, cause-level layer of checks — this is where the retryability differences between types come from:
+Below the type classification, `IsRetryable()` applies a second, cause-level layer of checks; this is where the retryability differences between types come from.
 
 ### Network Errors: syscall and Message Patterns
 
@@ -205,31 +211,33 @@ Below the type classification, `IsRetryable()` applies a second, cause-level lay
 | Other `net.Error` | Retry by default (server-initiated disconnects, EOF, and other transient faults) |
 
 :::tip Why Windows needs a dedicated WSA mapping table
-Since Go 1.25, POSIX-style `syscall.E*` constants on Windows carry a `1<<29` offset (e.g. `ECONNREFUSED = 536870934`), while the network stack actually returns raw WSA codes (e.g. `WSAECONNREFUSED = 10061`) — the two encodings never compare equal. HTTPC ships a built-in WSA code mapping table so that retryability decisions on Windows behave the same as on Unix — no need to worry about cross-platform retry divergence when deploying.
+Since Go 1.25, POSIX-style `syscall.E*` constants on Windows carry a `1<<29` offset (e.g. `ECONNREFUSED = 536870934`), while the network stack returns raw WSA codes (e.g. `WSAECONNREFUSED = 10061`); the two encodings never compare equal.
+
+HTTPC includes a WSA code mapping table so that retry decisions on Windows match Unix.
 :::
 
 ### DNS: Retryable Only When Temporary/Timeout
 
-`ErrorTypeDNS` is retryable only when `net.DNSError` is flagged `IsTemporary` or `IsTimeout`. Permanent failures such as a nonexistent domain (NXDOMAIN) never waste retry attempts.
+`ErrorTypeDNS` is retryable only when `net.DNSError` is flagged `IsTemporary` or `IsTimeout`. Permanent failures such as a nonexistent domain (NXDOMAIN) do not consume retry attempts.
 
 ### Response Body Reads: Retry Read Operations Only
 
-`ErrorTypeResponseRead` retries only network errors from **read-type** operations: `net.OpError` with the operation name `read` / `readfrom`, or an error message containing eof / connection / timeout. File errors and write errors are excluded.
+`ErrorTypeResponseRead` retries only read-type network errors: `net.OpError` with the operation name `read` / `readfrom`, or an error message containing eof / connection / timeout. File errors and write errors are excluded.
 
 ### HTTP Status Codes
 
-`ErrorTypeHTTP` consults the retryable-status table directly: 408/429/500/502/503/504 (plus extension codes injected by `ProxyRotateOnStatus`). When `StatusCode` is missing (= 0), it falls back to the `HTTP 4xx` / `HTTP 5xx` prefixes in the error message.
+`ErrorTypeHTTP` consults the retryable-status table directly: 408/429/500/502/503/504 (including extension codes injected by `ProxyRotateOnStatus`). When `StatusCode` is missing (= 0), it falls back to the `HTTP 4xx` / `HTTP 5xx` prefixes in the error message.
 
 ## Sentinel Errors Complete Reference
 
-HTTPC defines the following sentinel error variables, matchable precisely via `errors.Is`:
+HTTPC defines the following sentinel error variables, matchable with `errors.Is`:
 
 | Sentinel variable | Trigger condition | Recommended handling |
 |----------|----------|----------|
 | `ErrClientClosed` | Using a client after `client.Close()` | Initialize a new Client or fix lifecycle management |
 | `ErrNilConfig` | The Config pointer passed to `New()` is nil | Use `DefaultConfig()` for defaults |
 | `ErrInvalidHeader` | Header validation failed (control characters or illegal format) | Fix the header value and retry |
-| `ErrInvalidTimeout` | Timeout value is negative or exceeds the 30-minute cap | Adjust to the valid range `[0, 30min]` |
+| `ErrInvalidTimeout` | Timeout value is negative, zero, or exceeds the 30-minute cap | Use a valid value; call `WithNoTimeout()` to remove the timeout |
 | `ErrInvalidRetry` | Invalid retry config (MaxRetries outside 0–10, BackoffFactor outside 1.0–10.0) | Fix retry parameters |
 | `ErrInvalidConnection` | Invalid connection config (pool size out of range, malformed proxy URL) | Fix connection parameters |
 | `ErrInvalidSecurity` | Invalid security config (response body size limit out of range) | Fix security parameters |
@@ -240,7 +248,9 @@ HTTPC defines the following sentinel error variables, matchable precisely via `e
 | `ErrResponseBodyTooLarge` | Response body exceeds `MaxResponseBodySize` | Raise the limit or switch to a paginated API |
 
 :::tip Config errors vs runtime errors
-The `ErrInvalid*` family (`ErrInvalidHeader`/`ErrInvalidTimeout`/`ErrInvalidRetry`/`ErrInvalidConnection`/`ErrInvalidSecurity`/`ErrInvalidMiddleware`) are configuration-validation errors returned at `New()` time and should never appear on the request hot path. Runtime errors are handled via `ClientError` classification.
+The `ErrInvalid*` family (`ErrInvalidHeader`/`ErrInvalidTimeout`/`ErrInvalidRetry`/`ErrInvalidConnection`/`ErrInvalidSecurity`/`ErrInvalidMiddleware`) are configuration-validation errors returned at `New()` time; they do not appear on the request hot path.
+
+Runtime errors are handled through `ClientError` classification.
 :::
 
 ```go
@@ -282,7 +292,7 @@ func main() {
 
 ## Automatic URL Sanitization
 
-`ClientError.Error()` automatically strips sensitive information from the URL. URLs containing a username/password (such as `https://user:pass@host/path`) are sanitized to `https://***:***@host/path`, ensuring credentials are never leaked into logs and error messages:
+`ClientError.Error()` strips sensitive information from the URL: a URL containing a username and password (such as `https://user:pass@host/path`) is sanitized to `https://***:***@host/path`, so credentials never appear in logs or error messages.
 
 ```go
 package main
@@ -315,12 +325,12 @@ func main() {
 ```
 
 :::tip Scope of sanitization
-Sanitization removes not only `user:pass@host` credentials but also sensitive query parameters (such as `token`, `key`, `secret`, etc.). For URLs without credentials or sensitive parameters, a fast path skips parsing to avoid unnecessary `url.Parse` overhead.
+Sanitization removes `user:pass@host` credentials and also handles sensitive query parameters (such as `token`, `key`, `secret`). URLs without credentials or sensitive parameters take a fast path that skips parsing, avoiding `url.Parse` overhead.
 :::
 
 ## Panic Recovery Safety Net
 
-HTTPC builds a panic safety net into the `Request()` and `Download()` methods. Any unexpected panic (from the engine, transport, TLS library, or middleware) is caught and converted into a `ClientError` instead of crashing the caller's process:
+`Request()` and `Download()` include a panic safety net: an unexpected panic from the engine, transport, TLS library, or middleware is caught and converted into a `ClientError`, so the caller's process does not crash:
 
 <!-- check-code: skip -->
 ```go
@@ -337,7 +347,7 @@ func (c *clientImpl) Request(ctx context.Context, method, url string, ...) (*Res
 ```
 
 :::warning The safety net does not replace middleware recovery
-The built-in safety net is the last line of defense — it turns a panic into an error rather than a crash. But if your middleware may trigger panics, consider additionally using `RecoveryMiddleware()` — it catches panics earlier in the chain and provides richer logging context:
+The built-in safety net is the last line of defense: it turns a panic into an error rather than a crash. When middleware itself can panic, use `RecoveryMiddleware()` as well; it catches panics earlier in the chain and keeps fuller logging context:
 
 <!-- check-code: skip -->
 ```go
@@ -352,7 +362,7 @@ cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{
 
 ## Automatic Retry and Errors
 
-HTTPC's retry engine automatically handles retryable errors internally. Knowing which errors are auto-retried helps you avoid redundant retries at the application layer.
+HTTPC's retry engine handles retryable errors automatically; the application layer can use that to avoid duplicate retries. Full retry conditions and backoff policy are in [Retry and Fault Tolerance](./retry-fault-tolerance).
 
 ### Auto-Retried Errors
 
@@ -377,7 +387,7 @@ HTTPC's retry engine automatically handles retryable errors internally. Knowing 
 | Other 4xx client errors | No | e.g. 400/401/403/404 |
 
 :::tip Context cancellation is a fast path
-`isRetryableError` checks `context.Canceled` and `context.DeadlineExceeded` before classification — if they match, it returns false immediately, skipping the full error-classification logic. This avoids wasting resources on retry checks when the context is already canceled.
+`isRetryableError` checks `context.Canceled` and `context.DeadlineExceeded` first and returns false on a match, skipping the full classification.
 :::
 
 ```go
@@ -424,6 +434,8 @@ func main() {
 
 ### 1. Distinguish Client Errors from Server Errors
 
+`err != nil` means no response was obtained (network-layer failure); a 4xx/5xx status on `Result` means a response arrived with a non-2xx status.
+
 ```go
 package main
 
@@ -463,7 +475,7 @@ func main() {
 
 ### 2. Circuit Breaker Pattern
 
-When a service keeps failing, a circuit breaker temporarily stops requests to avoid cascading failures and wasted resources:
+When a service keeps failing, a circuit breaker pauses requests to avoid cascading failures and wasted resources:
 
 <!-- check-code: skip -->
 ```go
@@ -521,7 +533,7 @@ func requestWithBreaker(client httpc.Client, cb *CircuitBreaker, url string) err
 
 ### 3. Fallback / Degradation
 
-When the primary service is unavailable, fall back to a cache or default value:
+When the primary service is unavailable, fall back to a cache or a default value:
 
 <!-- check-code: skip -->
 ```go
@@ -628,7 +640,7 @@ result, err := client.Request(ctx, "GET", url)
 ```
 
 :::warning ResponseHeader timeout vs WithTimeout interaction
-When `Timeouts.ResponseHeader = 0` (default), the transport layer does not enforce a response-header timeout, and `WithTimeout` has full control. But if set to a positive value (e.g. `SecureConfig()`'s 10s), it is enforced at the transport layer for all requests, and `WithTimeout` cannot extend it — this is by design to defend against slowloris attacks. For long-response scenarios like AI APIs, keep `ResponseHeader = 0`.
+When `Timeouts.ResponseHeader = 0` (default), the transport layer does not enforce a response-header timeout, and `WithTimeout` has full control. When set to a positive value (e.g. `SecureConfig()`'s 10s), it is enforced at the transport layer for all requests, and `WithTimeout` cannot extend it. See the [Configuration API](../api-reference/client-config/config) for the rationale.
 :::
 
 ## Next Steps

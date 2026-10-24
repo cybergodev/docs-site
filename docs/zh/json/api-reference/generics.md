@@ -1,19 +1,21 @@
 ---
 sidebar_label: "泛型操作"
 title: "泛型操作 - CyberGo JSON | GetTyped 泛型获取"
-description: "CyberGo JSON 泛型操作基于 Go 1.18+ 泛型实现编译期类型安全：GetTyped[T] 泛型获取支持默认值回退与单元素数组解包，StreamLinesInto[T] 流式逐行解析 JSONL，配合 Result[T] 与 AccessResult 结果类型，帮助开发者写出类型安全的 JSON 读取代码。"
+description: "CyberGo JSON 泛型操作：GetTyped[T] 类型化获取、StreamLinesInto[T] 解析 JSONL 与 Result[T] 结果类型。"
 sidebar_position: 110
 ---
 
 # 泛型操作
 
-json 库提供泛型类型安全操作，使用 Go 1.18+ 泛型特性实现编译时类型检查。
+泛型操作基于 Go 1.18+ 泛型，在编译期确定目标类型 `T`。
 
 ## GetTyped
 
 签名：`func GetTyped[T any](jsonStr, path string, defaultValue ...T) T`
 
-从 JSON 中获取指定类型的值。支持自定义类型。返回 `T`，无 error。路径不存在或类型转换失败时返回零值或通过 `defaultValue` 指定的默认值。
+从 JSON 中按路径取值并转换为 `T`，支持自定义类型。返回 `T`，**不返回 error**：路径不存在、值为 `null`、或转换失败时，返回 `defaultValue`（若给出），否则返回 `T` 的零值。
+
+三种落默认值的情况：`Get` 返回错误（含 `ErrPathNotFound`）、取到的值是 `null`、内部类型转换失败。第三种在内部构造包装 `ErrTypeMismatch` 的 error，随后被丢弃，调用方只能看到默认值。需要区分「缺失」与「零值」时，改用 `SafeGet` 或 `Get`。
 
 **参数**
 
@@ -31,13 +33,12 @@ json 库提供泛型类型安全操作，使用 Go 1.18+ 泛型特性实现编�
 
 **支持的类型**
 
-- 基本类型：`string`, `int`, `int64`, `float64`, `bool`
-- 切片类型：`[]any`
-- 映射类型：`map[string]any`
-- 自定义结构体
+- 基本类型：`string`、`int`、`int64`、`uint64`、`float64`、`bool`
+- 切片与映射：`[]any`、元素可逐个转换的 `[]T`、`map[string]any`
+- 其他类型（指针 `*T`、`int8`/`int32` 等其他位宽整数、自定义结构体）：走 re-marshal 回退路径
 
 ::: tip 单元素数组自动解包
-目标类型为非切片时，若取到的值是**恰好一个元素的数组**，会自动解包取其元素再转换（服务于分布式路径访问，如 `choices.message.content` 场景）。目标为切片类型时不解包。
+目标类型不是切片、而取到的是**恰好一个元素的数组**时，先解包该元素再转换。这条规则服务于分布式路径访问（如 `choices.message.content` 这类路径会返回单元素数组）；`GetString`、`GetInt` 等类型化 getter 同样适用，目标类型是切片时不拆包。
 :::
 
 ```go
@@ -74,7 +75,7 @@ func main() {
 
 ## AccessResult
 
-`AccessResult` 是动态类型访问结果，提供类型转换方法用于动态类型处理。通过 `SafeGet()` 获取。
+`AccessResult` 是动态类型访问的结果，由 `SafeGet()` 返回；类型转换方法把 `any` 收敛到具体类型。
 
 ### 结构定义
 
@@ -92,7 +93,7 @@ type AccessResult struct {
 
 签名：`func (r AccessResult) Ok() bool`
 
-判断值是否存在。
+判断路径是否存在，等价于直接读 `Exists` 字段。
 
 ```go
 result := json.SafeGet(data, "user.name")
@@ -105,7 +106,7 @@ if result.Ok() {
 
 签名：`func (r AccessResult) Unwrap() any`
 
-获取值，不存在时返回 nil。
+获取值，`Exists` 为 `false` 时返回 `nil`。
 
 ```go
 value := result.Unwrap()
@@ -115,7 +116,7 @@ value := result.Unwrap()
 
 签名：`func (r AccessResult) UnwrapOr(defaultValue any) any`
 
-获取值或默认值。
+获取值，`Exists` 为 `false` 时返回 `defaultValue`。
 
 ```go
 value := result.UnwrapOr("default")
@@ -125,7 +126,7 @@ value := result.UnwrapOr("default")
 
 签名：`func (r AccessResult) AsString() (string, error)`
 
-安全转换为字符串。仅当值本身是 string 类型时成功。
+安全转换为字符串。仅当值本身是 `string` 时成功；其他类型返回包装 `ErrTypeMismatch` 的错误，路径不存在返回 `ErrPathNotFound`。
 
 ```go
 result := json.SafeGet(data, "user.name")
@@ -139,23 +140,23 @@ if err != nil {
 
 签名：`func (r AccessResult) AsInt() (int, error)`
 
-安全转换为整数。支持所有整数类型和 float（如果是整数值）。**注意：bool 不会转换为 int。**
+安全转换为整数。接受所有整数类型、值为整数的浮点数、可解析的十进制字符串与 `json.Number`。`bool` 不转换：`AsInt` 在进入通用转换前先拒绝 `bool` 并返回错误。
 
 #### AsFloat64
 
 签名：`func (r AccessResult) AsFloat64() (float64, error)`
 
-安全转换为浮点数。支持所有数值类型。**注意：bool 不会转换为 float64。**
+安全转换为浮点数。接受所有数值类型与可解析的字符串。`bool` 不转换，返回错误。
 
 #### AsBool
 
 签名：`func (r AccessResult) AsBool() (bool, error)`
 
-安全转换为布尔值。支持 bool 和 string 类型（"true", "false", "1", "0" 等）。
+安全转换为布尔值。仅接受 `bool` 类型，以及能被 `strconv.ParseBool` 解析的字符串（`1/t/true/True/TRUE`、`0/f/false/False/FALSE`）。
 
-### 链式类型转换方法
+### 类型转换方法一览
 
-`AccessResult` 提供以下类型转换方法：
+`AccessResult` 的转换方法都返回 `(值, error)`，需要串联时逐个接住结果：
 
 | 方法 | 返回类型 | 说明 |
 |------|----------|------|
@@ -189,7 +190,7 @@ idStr, err := result.AsStringConverted()
 
 签名：`func StreamLinesInto[T any](reader io.Reader, fn func(lineNum int, data T) error, cfg ...Config) ([]T, error)`
 
-从 `io.Reader` 逐行读取 JSON，将每行解析为类型 `T` 并调用回调函数。适合处理 JSONL 格式的大文件。
+从 `io.Reader` 逐行读取 JSON，把每行解析为 `T` 后调用回调，最后返回全部成功解析的结果。用于 JSONL 格式的大文件。
 
 **参数**
 
@@ -208,10 +209,11 @@ idStr, err := result.AsStringConverted()
 
 **行为细节**（均由 JSONL 相关 Config 字段控制，见 [Config](./config#config-结构体)）：
 
-- 空行默认跳过（`JSONLSkipEmpty: true`）；`JSONLSkipComments: true` 时跳过 `#`/`//` 开头的行
+- 空白行（仅含空白的行）始终跳过；`JSONLSkipComments: true` 时额外跳过 `#` 与 `//` 开头的行
 - 某行解析失败：默认返回 `line N: <原因>` 错误且结果为 nil；`JSONLContinueOnErr: true` 时跳过该行继续
 - 回调返回错误：立即停止并返回该错误（结果为 nil）；回调 panic 被捕获转为错误，不会击穿进程
 - 读取缓冲与单行上限由 `JSONLBufferSize`（64KB）与 `JSONLMaxLineSize`（1MB）控制
+- 累计处理的字节数上限由 `JSONLMaxMemory` 控制（未设置时回退到 `MaxMemory`；两者都为 0 则不限制），超出返回包装 `ErrSizeLimit` 的错误
 - 无 cfg 时走全局默认处理器（受 `SetGlobalProcessor` 影响）；传 cfg 时按该配置选取处理器
 
 ```go
@@ -347,24 +349,24 @@ func main() {
 
 ## 性能说明
 
-`GetTyped[T]` 的转换分两级：**基本类型**（string/int/float64/bool 及其切片映射）走内部快速路径直接转换；**自定义结构体等复杂类型**回退到「重新 Marshal → Unmarshal」的通用路径，因此比类型特定的 getter（`GetString`、`GetInt` 等）略慢。
+`GetTyped[T]` 的转换分两级：基本类型（string/int/float64/bool 及其切片、映射）走内部的直接转换快速路径；自定义结构体等复杂类型回退到「重新 `Marshal` → `Unmarshal`」，因此比类型特定的 getter（`GetString`、`GetInt` 等）慢。
 
-| 方法 | 性能 | 推荐场景 |
-|------|------|----------|
-| `GetString`, `GetInt` 等 | 最快（基本类型专用） | 性能敏感、类型已知 |
-| `GetTyped[T]`（基本类型） | 快（快速转换路径） | 泛型代码中的基本类型读取 |
-| `GetTyped[T]`（结构体） | 中等（经 re-marshal 转换） | 配置解析、一次性读取 |
-| `SafeGet` + `AccessResult` | 中等 | 动态类型处理 |
+| 方法 | 转换路径 | 适用场景 |
+|------|----------|----------|
+| `GetString`、`GetInt` 等 | 直接类型断言与转换，无 re-marshal 回退 | 类型已知、调用频繁 |
+| `GetTyped[T]`（基本类型） | 直接转换快速路径 | 泛型代码中的基本类型读取 |
+| `GetTyped[T]`（结构体） | 一次 re-marshal + unmarshal | 配置解析、一次性读取 |
+| `SafeGet` + `AccessResult` | 取值即返回，转换在调用 `As*` 时发生 | 动态类型处理 |
 
 ::: tip
-热路径上反复读取同一结构体时，更快的做法是 `Parse`/`Unmarshal` 一次到结构体，或 `GetTyped` 一次后复用结果，而不是每条路径各调一次 `GetTyped[Struct]`。
+热路径上反复读取同一结构体时，用 `Parse`/`Unmarshal` 一次解析到结构体，或 `GetTyped` 一次后复用结果，可省去每条路径上重复的 re-marshal 转换。
 :::
 
 ---
 
 ## Result[T] 类型
 
-`Result[T]` 是类型安全的泛型操作结果，用于需要明确类型且需要错误处理的场景。
+`Result[T]` 是带类型参数的操作结果，把「值 + 是否存在 + 错误」合成一个返回值。
 
 ### 结构定义
 
@@ -420,7 +422,7 @@ func main() {
 	}
 
 	missing := readConfig(data, "region")
-	fmt.Println(missing.Exists, errors.Is(missing.Error, nil)) // 输出：false true
+	fmt.Println(missing.Exists, errors.Is(missing.Error, nil)) // 输出：false false
 	fmt.Println(missing.UnwrapOr("cn-north-1"))                // 输出：cn-north-1
 }
 ```
@@ -434,21 +436,20 @@ func main() {
 | 类型安全 | 泛型 T | any 类型 |
 | 存在判断 | `Exists bool` | `Exists bool` |
 | 错误处理 | 内置 Error 字段 | 类型转换方法返回 error |
-| 链式调用 | 不支持 | 支持链式类型转换 |
+| 类型转换 | 无 | 内置 `AsString`/`AsInt` 等方法 |
 | 获取方式 | 手动构造（无库函数入口） | `SafeGet()` |
 | 适用场景 | 封装自己的查询函数 | 动态类型处理 |
 
 ### 选择建议
 
 - **已知类型、不关心错误细节**：`GetTyped[T]`（零值/默认值兜底）
-- **动态类型**：使用 `AccessResult` 和 `SafeGet()`
-- **需要链式转换**：使用 `AccessResult`
+- **需要按需转换动态值**：使用 `AccessResult` + `SafeGet()`
 - **封装统一返回形态**：用 `Result[T]` 作为自己函数的返回类型
 
 ---
 
 ## 相关
 
-- [包函数](./functions/) - 类型特定的 getter 函数
-- [类型定义](./types) - AccessResult 详细定义
-- [配置](./config) - Config 配置选项
+- [包函数](./functions/)：类型特定的 getter 函数
+- [类型定义](./types)：`AccessResult` 详细定义
+- [配置](./config)：`Config` 字段说明

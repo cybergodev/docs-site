@@ -1,13 +1,13 @@
 ---
 sidebar_label: "编码输出"
 title: "编码输出函数 - CyberGo JSON | Marshal 与 Encode 用法"
-description: "CyberGo JSON 是提供编码输出的 Go 库，Marshal/Unmarshal 兼容标准库、Encode/Compact/Indent 配置化格式化，另有 Prettify 美化、HTMLEscape 转义与批量编码函数，无配置调用可作标准库的直接替换，帮助开发者灵活序列化与美化 JSON 输出。"
+description: "编码与格式化：Marshal/Unmarshal 签名兼容 encoding/json，Encode 系列配置化编码，Compact/Indent/Prettify 重排版。"
 sidebar_position: 50
 ---
 
 # 编码输出函数
 
-json 包提供的编码解码函数，包括序列化、反序列化、格式化和配置化编码。
+json 包的编码解码函数，覆盖序列化、反序列化、格式化与配置化编码。
 
 ## 序列化函数
 
@@ -15,59 +15,65 @@ json 包提供的编码解码函数，包括序列化、反序列化、格式化
 
 签名：`func Marshal(value any, cfg ...Config) ([]byte, error)`
 
-将 Go 值序列化为 JSON 字节切片。100% 兼容 `encoding/json.Marshal`：无 cfg 调用 `json.Marshal(v)` 与标准库完全一致。
+将 Go 值序列化为 JSON 字节切片。签名与 `encoding/json.Marshal` 一致，现有代码换 import 即可编译，典型值的输出字节相同；差异是输出受 `Config.MaxJSONSize` 限制（默认 100MB），超限返回 `ErrSizeLimit`，标准库没有这个上限。
 
-通过可选的尾随 `Config` 可控制编码行为（缩进、数字处理等），与 `Processor.Marshal` 形成包级/实例级镜像。
+可选的结尾 `Config` 参数控制编码行为（缩进、数字处理等），与 `Processor.Marshal` 形成包级/实例级镜像。
 
 ```go
-// 兼容 encoding/json（无 cfg）
+// 与 encoding/json 签名一致（无 cfg）
 data, err := json.Marshal(map[string]any{"name": "test"})
 if err != nil {
     panic(err)
 }
 fmt.Println(string(data)) // {"name":"test"}
 
-// 带配置（非破坏性可选参数）
+// 带配置（可选尾参）
 data, err = json.Marshal(value, json.PrettyConfig())
 ```
 
 ::: warning Marshal 输出始终 HTML 转义
-与 `encoding/json.Marshal` 一致，`Marshal` 的输出**总是**经过 HTML 转义——即使传入 `cfg.EscapeHTML = false`，该路径也会将其覆盖为开启。需要由调用方控制转义行为时，改用 [`Encode`](#encode)。
+与 `encoding/json.Marshal` 一致，`Marshal` 的输出**总是**经过 HTML 转义：即使传入 `cfg.EscapeHTML = false`，该路径也会把它改为开启。需要由调用方控制转义行为时，改用 [`Encode`](#encode)。
 :::
 
 ### Unmarshal
 
 签名：`func Unmarshal(data []byte, value any, cfg ...Config) error`
 
-将 JSON 字节切片反序列化到 Go 值。100% 兼容 `encoding/json.Unmarshal`：无 cfg 调用 `json.Unmarshal(data, &v)` 与标准库完全一致。
+将 JSON 字节切片反序列化到 Go 值。签名与 `encoding/json.Unmarshal` 一致，现有代码换 import 即可编译；无 cfg 调用会额外做默认安全校验，与标准库存在少量行为差异（见下方 tip）。
 
-通过可选的尾随 `Config` 可控制安全限制、数字保留等，与 `Processor.Unmarshal` 形成镜像。
+可选的结尾 `Config` 参数控制安全限制、数字保留等，与 `Processor.Unmarshal` 形成镜像。
 
 ```go
 var result struct {
     Name string `json:"name"`
 }
-// 兼容 encoding/json（无 cfg）
+// 与 encoding/json 签名一致（无 cfg）
 err := json.Unmarshal([]byte(`{"name":"test"}`), &result)
 
 // 带配置
 err = json.Unmarshal(data, &v, json.SecurityConfig())
 ```
 
-::: tip 无 cfg 快速路径仍执行安全校验
-无 cfg 调用时，`Unmarshal` 在委托 `encoding/json` 之前，仍会按处理器内置的安全限制（大小、嵌套深度、危险模式）校验输入——即作为标准库的 drop-in 替换也不会绕过安全防线。
+::: tip 无 cfg 路径仍执行安全校验
+无 cfg 调用时，`Unmarshal` 在委托 `encoding/json` 前仍按处理器的内置安全限制校验输入。与标准库的三处差异：
+
+- 输入超过 `Config.MaxJSONSize`（默认 100MB）→ 返回 `ErrSizeLimit`
+- 字符串值含危险模式（如 `__proto__`、`<script`）→ 返回安全违规错误，标准库只当普通数据接受
+- 字符串值含非法 UTF-8 → 拒绝，标准库替换为 U+FFFD
+
+可信输入上需要标准库那种宽松行为时，传入 `SkipValidation: true` 的 `Config`。
 :::
 
 ### MarshalIndent
 
 签名：`func MarshalIndent(v any, prefix, indent string, cfg ...Config) ([]byte, error)`
 
-带缩进的序列化。100% 兼容 `encoding/json.MarshalIndent`：无 cfg 调用 `json.MarshalIndent(v, prefix, indent)` 与标准库完全一致。
+带缩进的序列化。签名与 `encoding/json.MarshalIndent` 一致，现有代码换 import 即可编译，典型值的输出字节相同；与 `Marshal` 一样，输出受 `Config.MaxJSONSize` 限制，超限返回 `ErrSizeLimit`。
 
-通过可选的尾随 `Config` 可附加配置；`prefix` 与 `indent` 参数会覆盖 `Config` 中的对应字段。
+可选的结尾 `Config` 参数附加配置；`prefix` 与 `indent` 参数会覆盖 `Config` 中的对应字段。
 
 ```go
-// 兼容 encoding/json（无 cfg）
+// 与 encoding/json 签名一致（无 cfg）
 data, err := json.MarshalIndent(user, "", "  ")
 if err != nil {
     panic(err)
@@ -84,7 +90,7 @@ data, err = json.MarshalIndent(v, "", "  ", json.SecurityConfig())
 
 签名：`func Compact(dst *bytes.Buffer, src []byte, cfg ...Config) error`
 
-压缩 JSON，移除不必要的空白字符，将结果写入 `dst`。兼容 `encoding/json.Compact`（buffer 形式）。
+压缩 JSON，移除多余的空白字符，结果写入 `dst`。签名对应 `encoding/json.Compact` 的 buffer 形式，现有代码换 import 即可编译；默认输入同样做安全校验（危险模式、非法 UTF-8 会被拒绝）。
 
 ```go
 var buf bytes.Buffer
@@ -99,10 +105,10 @@ fmt.Println(buf.String()) // {"name":"test"}
 
 签名：`func CompactString(jsonStr string, cfg ...Config) (string, error)`
 
-以字符串输入/字符串输出形式压缩 JSON，移除不必要的空白字符。是 `Processor.Compact` 的包级镜像，与 `Prettify`（镜像 `Processor.Prettify`）对称。
+以字符串输入/字符串输出形式压缩 JSON，移除多余的空白字符。是 `Processor.Compact` 的包级镜像，与 `Prettify`（镜像 `Processor.Prettify`）对称。
 
 ::: info 签名不对称：Compact 家族与 Processor 的镜像关系
-包级 `Compact` 保留的是 `encoding/json.Compact` 的兼容签名（buffer 入参），因此它与 Processor 方法版**名字错位**——Processor 的 `Compact(jsonStr) (string, error)` 在包级叫 `CompactString`，其 buffer 形式叫 `CompactBuffer`：
+包级 `Compact` 保留的是 `encoding/json.Compact` 的兼容签名（buffer 入参），因此与 Processor 方法版**名字错位**：Processor 的 `Compact(jsonStr) (string, error)` 在包级叫 `CompactString`，其 buffer 形式叫 `CompactBuffer`：
 
 | 包级函数 | 签名形式 | 镜像的 Processor 方法 |
 |----------|----------|------------------------|
@@ -128,7 +134,7 @@ compact, err = json.CompactString(jsonStr, cfg)
 
 签名：`func Indent(dst *bytes.Buffer, src []byte, prefix, indent string, cfg ...Config) error`
 
-格式化 JSON 并添加缩进，将结果写入 `dst`。兼容 `encoding/json.Indent`。
+格式化 JSON 并添加缩进，结果写入 `dst`。签名对应 `encoding/json.Indent`；内部先按本库的输入校验规则解码再重排版，因此危险模式与非法 UTF-8 会被拒绝。
 
 ```go
 var buf bytes.Buffer
@@ -159,7 +165,7 @@ fmt.Println(buf.String())
 
 签名：`func Prettify(jsonStr string, cfg ...Config) (string, error)`
 
-使用默认的漂亮打印缩进格式化 JSON 字符串，返回格式化后的字符串。
+用两个空格（或 `cfg.Indent`）缩进格式化 JSON 字符串，只改空白：键顺序、数字字面量与已有转义原样保留。输入不是合法 JSON 时返回包裹 `ErrInvalidJSON` 的错误。
 
 ```go
 pretty, err := json.Prettify(`{"name":"Alice","age":30}`)
@@ -179,7 +185,7 @@ fmt.Println(pretty)
 
 签名：`func Encode(value any, cfg ...Config) (string, error)`
 
-将 Go 值编码为 JSON 字符串。这是返回 `string` 的**规范编码入口**（`Marshal` 是返回 `[]byte` 的 `encoding/json` drop-in）；可选的尾随 `Config` 控制本次调用的编码行为（`Pretty`、`EscapeHTML`、`SortKeys`、`FloatPrecision` 等），省略时应用默认配置。
+将 Go 值编码为 JSON 字符串。这是返回 `string` 的**规范编码入口**；`Marshal` 是返回 `[]byte`、签名与 `encoding/json` 一致的版本。可选的结尾 `Config` 参数控制本次调用的编码行为（`Pretty`、`EscapeHTML`、`SortKeys`、`FloatPrecision` 等），省略时应用默认配置。与 `Marshal` 不同，`Encode` 遵循 `cfg.EscapeHTML`。
 
 ```go
 result, err := json.Encode(user)
@@ -199,7 +205,7 @@ result, err := json.Encode(user, json.SecurityConfig())
 
 签名：`func EncodePretty(value any, cfg ...Config) (string, error)`
 
-将 Go 值编码为格式化的 JSON 字符串（带缩进），支持可选配置参数。
+将 Go 值编码为带缩进的 JSON 字符串。无 cfg 时强制 `Pretty=true`，缩进取处理器配置（默认两空格）。传入 cfg 时按原样使用该 cfg，不再强制 `Pretty`；需要缩进就在 cfg 里设置 `Pretty: true`（例如用 `json.PrettyConfig()`）。
 
 ```go
 result, err := json.EncodePretty(user)
@@ -221,10 +227,10 @@ result, err := json.EncodePretty(user, json.PrettyConfig())
 
 签名：`func EncodeWithConfig(value any, cfg ...Config) (string, error)`
 
-使用指定配置将 Go 值编码为 JSON 字符串。
+使用指定配置将 Go 值编码为 JSON 字符串。与 `Encode` 等价，仅为兼容旧代码保留。
 
 ::: warning 已废弃
-`EncodeWithConfig` 与 [`Encode`](#encode) 完全等价（两者委托同一实现）——该命名早于 `Encode` 接受可选尾随 `Config`。新代码请使用 `Encode(value, cfg)`；需要 `[]byte` 输出时使用 [`Marshal`](#marshal)。`EncodeWithConfig` 在 v1 生命周期内保留、不会移除。
+`EncodeWithConfig` 与 [`Encode`](#encode) 完全等价（两者委托同一实现），该命名早于 `Encode` 接受可选的结尾 `Config`。新代码用 `Encode(value, cfg)`；需要 `[]byte` 输出时用 [`Marshal`](#marshal)。`EncodeWithConfig` 在 v1 生命周期内保留，不会移除。
 :::
 
 ```go
@@ -242,7 +248,7 @@ fmt.Println(result)
 
 签名：`func EncodeBatch(pairs map[string]any, cfg ...Config) (string, error)`
 
-将键值对批量编码为 JSON 对象字符串。等价于 `Encode(map[string]any(pairs), cfg)`，键按字典序输出（与 `encoding/json` 一致）。
+将键值对编码为一个 JSON 对象字符串。等价于 `Encode(map[string]any(pairs), cfg)`；键按字典序输出。
 
 ```go
 result, err := json.EncodeBatch(map[string]any{
@@ -350,7 +356,7 @@ p.HTMLEscape(&buf, []byte(`{"html":"<script>"}`))
 
 ## 流式编解码
 
-`NewEncoder(w)` / `NewDecoder(r)` 与 `encoding/json` 完全兼容（含 `SetIndent`、`SetEscapeHTML`、`UseNumber`、`Token` 等方法），支持从 `io.Writer`/`io.Reader` 流式编解码：
+`NewEncoder(w)` / `NewDecoder(r)` 的签名与方法集与 `encoding/json` 一一对应（含 `SetIndent`、`SetEscapeHTML`、`UseNumber`、`Token` 等），支持从 `io.Writer`/`io.Reader` 流式编解码；解码同样受本库的输入校验约束，`Decoder.DisallowUnknownFields` 在默认解码路径下即生效：
 
 ```go
 // 流式编码到 stdout

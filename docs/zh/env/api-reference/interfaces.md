@@ -7,7 +7,7 @@ sidebar_position: 6
 
 # 接口定义
 
-env 库使用细粒度接口设计，支持依赖注入和灵活组合。
+env 库的接口按职责拆得很细，便于按需注入与组合。
 
 ## 核心接口
 
@@ -66,8 +66,8 @@ type EnvGetter interface {
 |------|------|
 | `EnvGetter.GetString` | 按键读取字符串（可带默认值） |
 | `EnvGetter.Lookup` | 按键查询，返回值与是否存在 |
-| `EnvGetter.Keys` | 返回所有键 |
-| `EnvGetter.All` | 返回全部键值快照 |
+| `EnvGetter.Keys` | 返回所有键名 |
+| `EnvGetter.All` | 返回全部键值对的副本 |
 
 ```go
 func readConfig(getter env.EnvGetter) {
@@ -78,10 +78,9 @@ func readConfig(getter env.EnvGetter) {
 ```
 
 ::: warning 注意
-`GetInt`、`GetBool`、`GetUint64`、`GetFloat64`、`GetDuration`、`GetSecure`、`Len` **不是** `EnvGetter` 接口的一部分。
-这些方法在 `*Loader` 类型上实现，但不在最小接口中。
+`GetInt`、`GetBool`、`GetUint64`、`GetFloat64`、`GetDuration`、`GetSecure`、`Len` **不是** `EnvGetter` 接口的一部分。这些方法在 `*Loader` 类型上实现，不在最小接口中。
 
-如需完整读取能力，请直接使用 `*Loader` 类型：
+需要完整读取能力时，直接用 `*Loader` 类型：
 
 ```go
 func readFullConfig(loader *env.Loader) {
@@ -105,7 +104,7 @@ type EnvSetter interface {
 }
 ```
 
-**用途：** 仅需要设置/删除能力的场景。两个方法均带验证语义：`EnvSetter.Set` 校验键值后写入并返回错误，`EnvSetter.Delete` 删除键（与 `EnvStorage.Set` 的纯存储操作不同）。
+**用途：** 仅需要设置/删除能力的场景。两个方法都带验证语义：`EnvSetter.Set` 校验键值后写入并返回错误；`EnvSetter.Delete` 删除键。两者不同于 `EnvStorage.Set` 的纯存储操作。
 
 ```go
 func updateConfig(setter env.EnvSetter) error {
@@ -167,7 +166,7 @@ type Validator interface {
 ```
 
 ::: tip 注意
-`Validator` 通过嵌入 `RequiredValidator` 提供 `ValidateRequired` 方法。仅实现 `KeyValidator` 的自定义验证器在调用 `ValidateRequired` 时会返回 `ErrValidateRequiredUnsupported`。
+`Validator` 通过嵌入 `RequiredValidator` 提供 `ValidateRequired` 方法。只实现 `KeyValidator` 的自定义验证器，在调用 `ValidateRequired` 时返回 `ErrValidateRequiredUnsupported`。
 :::
 
 ---
@@ -226,7 +225,7 @@ type AuditLogger interface {
 }
 ```
 
-**用途：** 最小化接口，便于实现自定义审计日志器。接口只含一个方法 `AuditLogger.LogError`；如需完整审计能力，请使用 `FullAuditLogger`。
+**用途：** 最小化接口，便于实现自定义审计日志器。接口只含一个方法 `AuditLogger.LogError`；需要完整审计能力时改用 `FullAuditLogger`。
 
 ---
 
@@ -269,7 +268,9 @@ type AuditHandler interface {
 }
 ```
 
-**用途：** 实现此接口可自定义审计事件处理方式。与 `AuditLogger` 接口不同，`AuditHandler` 需要两个方法（`AuditHandler.Log` 接收处理审计事件、`AuditHandler.Close` 释放资源）；`AuditHandler.Log` 可能被多个 goroutine 并发调用，实现必须并发安全。
+**用途：** 实现此接口可自定义审计事件的处理方式。它与 `AuditLogger` 不同，需要两个方法：`AuditHandler.Log` 接收并处理审计事件，`AuditHandler.Close` 释放资源。
+
+`AuditHandler.Log` 会被多个 goroutine 并发调用，实现必须并发安全。
 
 **内置实现：**
 - `JSONAuditHandler` - 输出 JSON 格式日志（`JSONAuditHandler.Log` / `JSONAuditHandler.Close`）
@@ -342,7 +343,7 @@ type EnvStorage interface {
 }
 ```
 
-**用途：** 自定义存储后端。库内部的分片安全存储以编译期契约满足此接口；当前没有库 API 接受 `EnvStorage` 参数，仅在替换自己的存储类型时需要实现它。
+**用途：** 自定义存储后端。库内部的分片安全存储以编译期契约满足此接口。当前没有库 API 接受 `EnvStorage` 参数，只有替换自己的存储类型时才需要实现它。
 
 **方法说明：**
 
@@ -456,7 +457,9 @@ type FileSystem interface {
 | `FileSystem.Rename` | — | 重命名文件 |
 | `FileSystem.Getenv` | — | 读进程环境变量（库内读取统一走 `FileSystem.LookupEnv`） |
 
-库本身只调用前四个方法（文件大小检查经 `Open` 返回句柄的 `File.Stat` 进行）；其余方法供调用方在封装 `FileSystem` 的自有代码中使用，最小化的内存 mock 只需实现四个核心方法并让 `Open` 返回一个 `File`。
+库本身只调用前四个方法，其中文件大小检查经 `Open` 返回句柄的 `File.Stat` 进行。其余方法供调用方在封装 `FileSystem` 的自有代码中使用。
+
+最小化的内存 mock 只需实现这四个核心方法，并让 `Open` 返回一个 `File`。
 
 ```go
 type MockFileSystem struct {
@@ -541,7 +544,7 @@ type File interface {
 | `File.Stat` | 获取文件信息（库内用于大小检查） |
 | `File.Sync` | 同步到磁盘 |
 
-其中 Read/Write/`Close` 来自内嵌的 io 接口；文件特有操作为 `File.Stat` 与 `File.Sync`。
+其中 Read、Write、`Close` 来自内嵌的 io 接口，文件特有操作为 `File.Stat` 与 `File.Sync`。
 
 ---
 
@@ -595,7 +598,7 @@ func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
 ```
 
 **参数：**
-- `logger` - 标准 log.Logger 实例
+- `logger` - 标准 `log.Logger` 实例；传 nil 时用默认 logger（stderr、`[AUDIT] ` 前缀、带时间戳）
 
 ```go
 import "log"
@@ -609,7 +612,9 @@ handler := env.NewLogAuditHandler(logger)
 [AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env
 ```
 
-事件以键值对输出（`action`、`key`、`success`、`reason`，可选 `file` / `duration`）；前缀与时间戳取决于传入的 `log.Logger`。完整格式说明见 [NewLogAuditHandler](./factory#newlogaudithandler)。
+事件以键值对输出：`action`、`success`、`reason`（带引号），以及可选的 `key`、`file`（带引号）与 `duration`。前缀和时间戳取决于传入的 `log.Logger`。
+
+完整格式说明见 [NewLogAuditHandler](./factory#newlogaudithandler)。
 
 ---
 
@@ -625,7 +630,7 @@ func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 - `ch` - 审计事件通道
 
 ::: warning 通道所有权
-`ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道。调用者必须自行关闭通道以通知接收方结束。此外，当通道缓冲区满时，`Log()` 会阻塞——建议使用带缓冲的通道。如需自动管理通道生命周期，使用 [NewCloseableChannelHandler](./factory#newcloseablechannelhandler)。
+`ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道，调用者必须自行关闭通道以通知接收方结束。通道缓冲区满时 `Log()` 会阻塞，建议使用带缓冲的通道。需要自动管理通道生命周期时，改用 [NewCloseableChannelHandler](./factory#newcloseablechannelhandler)。
 :::
 
 ```go
@@ -679,7 +684,20 @@ const (
 )
 ```
 
-十个动作常量分别对应：`ActionLoad` 文件加载、`ActionParse` 解析操作、`ActionGet` 变量读取、`ActionSet` 变量设置、`ActionDelete` 变量删除、`ActionValidate` 键值验证、`ActionExpand` 变量展开、`ActionSecurity` 安全事件、`ActionError` 错误事件、`ActionFileAccess` 路径访问检查。
+十个动作常量的含义：
+
+| 常量 | 含义 |
+|------|------|
+| `ActionLoad` | 文件加载 |
+| `ActionParse` | 解析操作 |
+| `ActionGet` | 变量读取 |
+| `ActionSet` | 变量设置 |
+| `ActionDelete` | 变量删除 |
+| `ActionValidate` | 键值验证 |
+| `ActionExpand` | 变量展开 |
+| `ActionSecurity` | 安全事件 |
+| `ActionError` | 错误事件 |
+| `ActionFileAccess` | 路径访问检查 |
 
 ---
 

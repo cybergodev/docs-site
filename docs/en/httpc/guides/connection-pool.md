@@ -7,9 +7,11 @@ sidebar_position: 90
 
 # Connection Pool & DNS
 
+The connection pool determines how HTTPC reuses TCP connections, and DNS resolution determines which address a connection targets; together they set concurrency capacity and connection latency. This page covers the parameters, derived rules, and DoH behavior.
+
 ## Connection Pool Configuration
 
-The connection pool is a key factor in HTTP client performance. HTTPC manages it through `ConnectionConfig`.
+HTTPC manages the connection pool through `ConnectionConfig`.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -62,9 +64,15 @@ The 30s TCP keep-alive probe maintains a TCP-layer heartbeat — preventing NAT 
 
 ### When the Pool Exhausts and How to Mitigate It
 
-The total-connection cap (1000) is enforced by an atomic admission counter **at dial time**: every new connection reserves a slot first, and the slot is returned when the connection closes; the count covers both **active and idle** connections. When no slot is available, the dial fails immediately with an error classified as `ClientError` (`ErrorTypeNetwork`, message `connection pool exhausted`, with the underlying cause retaining the `(max 1000)` wording); see the classification flow in [Error Types](../api-reference/types/errors#error-classification-flow).
+The total-connection cap (1000) is enforced by an atomic admission counter **at dial time**: every new connection reserves a slot first, and the slot is returned when the connection closes. The count covers both **active and idle** connections.
 
-**When it actually happens**: the cap is counted per client, across all hosts. With the default `MaxConnsPerHost=10`, roughly 100 hosts would have to be saturated simultaneously (100 × 10) to hit the ceiling — and the vast majority of those must be in-flight active connections (idle ones are separately capped by `MaxIdleConns=50`). Ordinary services will essentially never trigger it; the realistic scenario is a high-fanout crawler hammering hundreds of hosts in parallel through a single client.
+When no slot is available, the dial fails immediately with an error classified as `ClientError` (`ErrorTypeNetwork`, message `connection pool exhausted`, with the underlying cause retaining the `(max 1000)` wording).
+
+See the classification flow in [Error Types](../api-reference/types/errors#error-classification-flow).
+
+The cap is an internal fixed value — `ConnectionConfig` exposes no field for it. It guards against extreme concurrency rather than serving as a tuning knob.
+
+**Trigger condition**: the cap is counted per client, across all hosts. With the default `MaxConnsPerHost=10`, roughly 100 hosts must be saturated simultaneously (100 × 10) to hit the ceiling. Most of those must be in-flight active connections; idle connections are separately capped by `MaxIdleConns=50`. The realistic trigger is a high-fanout crawler hitting hundreds of hosts in parallel through a single client.
 
 **Mitigations** (in order of preference):
 
@@ -72,11 +80,13 @@ The total-connection cap (1000) is enforced by an atomic admission counter **at 
 2. **Shorten `IdleConn`**: idle connections close sooner and return their slots earlier;
 3. **Cap concurrency**: limit in-flight requests with a semaphore or worker pool.
 
-The cap is an internal fixed value — `ConnectionConfig` exposes no field for it. It is a last line of defense under extreme concurrency, not a tuning knob. For error matching patterns and handling practice, see [Error Handling](./error-handling).
+For error matching patterns and handling practice, see [Error Handling](./error-handling).
 
 ### Multi-IP Dialing and IPv6 Fallback
 
-Whether or not DoH is enabled, dialing never binds to a single resolution result: all IPs the hostname resolves to are first run through the SSRF filter and then **tried in sequence** until one connects (typical case: automatic fallback to IPv4 when local IPv6 is broken). If every candidate fails, an aggregate error is returned whose message carries the number of addresses tried (e.g. `connection failed after trying 2 address(es): ...`).
+Whether or not DoH is enabled, dialing never binds to a single resolution result. All IPs the hostname resolves to are first run through the SSRF filter, then **tried in sequence** until one connects. A typical case is falling back to IPv4 when local IPv6 is broken.
+
+If every candidate fails, an aggregate error is returned whose message carries the number of addresses tried (e.g. `connection failed after trying 2 address(es): ...`).
 
 - Each candidate IP's dial is individually bounded by the `Dial` timeout (default 10s): the more candidates, the longer the worst-case total connection time. For slow failures caused by a broken IPv6 environment, fix DNS/routing first instead of raising timeouts.
 - On the standard DNS path, the resolution timeout is `min(Dial, 10s)` and is derived from the request context — canceling the request aborts the lookup immediately; the DoH path honors the context natively.
@@ -87,11 +97,13 @@ Whether or not DoH is enabled, dialing never binds to a single resolution result
 - **Active cleanup during proxy rotation**: enabling `ProxyRotatePerRequest` or the retry path of status-code rotation **automatically closes all idle connections**, forcing the next request to re-select a proxy — otherwise HTTP/2 connection reuse through CONNECT tunnels would bypass proxy selection and defeat the rotation. For proxy configuration and rotation strategies, see [Proxy & Proxy Pool](./proxy).
 - **`client.Close()`**: closes all idle connections, the DoH resolver, and internal resources; requests afterwards return `ErrClientClosed`.
 - **Exceeding the global `MaxIdleConns` cap**: when an idle connection is returned and the cap is full, the least-recently-used idle connection is evicted immediately (LRU) — idle connections do not necessarily survive until the `IdleConn` timeout.
-- **TLS session resumption cheapens rebuilds**: when an expired idle connection has to be re-established, the built-in TLS session-ticket cache (LRU, capacity 256) skips the full handshake, making rebuilds significantly faster than the first connection — a complement to raising `IdleConn`.
+- **TLS session resumption cheapens rebuilds**: when an expired idle connection has to be re-established, the built-in TLS session-ticket cache (LRU, capacity 256) skips the full handshake, so a rebuild is faster than the first connection — a complement to raising `IdleConn`.
 
 ### Response Decompression Handling
 
-The transport layer **disables the standard library's transparent decompression**; HTTPC handles `gzip` / `deflate` manually at the response-processing layer: decompression is bounded by `Security.MaxDecompressedBodySize` (default 100MB), defending against decompression-bomb attacks. Day to day you do not need to think about this layer — just know that `Result.RawBody()` already returns decompressed bytes.
+The transport layer **disables the standard library's transparent decompression**; HTTPC handles `gzip` / `deflate` manually at the response-processing layer. Decompression is bounded by `Security.MaxDecompressedBodySize` (default 100MB), defending against decompression-bomb attacks.
+
+The standard path decompresses only these two encodings. A response with `br`, `zstd`, or an unknown `Content-Encoding` fails outright on the standard path. `br` / `zstd` are available only on the `Security.TLSFingerprint` path, which advertises `gzip, deflate, br, zstd`. `Result.RawBody()` returns decompressed bytes.
 
 ## DNS-over-HTTPS
 
@@ -114,8 +126,8 @@ Default DoH providers (in priority order):
 ### How It Works
 
 - **Parallel A + AAAA queries**: every resolution queries IPv4 and IPv6 records simultaneously and merges the results.
-- **Dual-format parsing**: picks JSON (Google/AliDNS style) or RFC 1035 wire format (Cloudflare style) automatically based on the response `Content-Type`; when missing or unrecognized, it tries JSON first, then wire, staying compatible with misconfigured servers.
-- **Concurrent merging**: concurrent cache misses for the same host collapse into a single network round trip (singleflight), preventing cache stampedes from hammering providers.
+- **Dual-format parsing**: picks JSON (Google/AliDNS style) or RFC 1035 wire format (Cloudflare style) from the response `Content-Type`. When it is missing or unrecognized, JSON is tried first, then wire, staying compatible with misconfigured servers.
+- **Concurrent merging**: concurrent cache misses for the same host collapse into a single network round trip (singleflight), preventing cache stampedes from overloading providers.
 - **Dedicated internal client**: DoH requests go through a dedicated HTTP client (5s timeout, HTTP/2 enabled) that does not consume the business connection pool or the request timeout budget.
 
 ### Fallback Chain
@@ -132,11 +144,13 @@ The first successful provider wins; if all fail, it automatically falls back to 
 |------|-------|
 | TTL | `DoHCacheTTL` (default 5 minutes) |
 | Capacity cap | 1000 entries; when full, expired entries are evicted first, then the ones closest to expiry |
-| Response size cap | 64KB (protects against malicious DNS responses blowing up memory) |
+| Response size cap | 64KB (protects against malicious DNS responses consuming excess memory) |
 
 ### Interaction with SSRF Protection
 
-IPs resolved by DoH are first run through the SSRF filter (dropping private/reserved addresses, honoring `SSRFExemptCIDRs`), then **dialed directly to the validated IP** — there is no second DNS resolution between validation and dialing, which defeats DNS rebinding attacks at the root. Proxy addresses do not go through DoH resolution (proxies are configured explicitly by the developer and dialed directly; see [Proxy & Proxy Pool](./proxy)). For the full picture, see [SSRF Protection](../security/ssrf).
+IPs resolved by DoH are first run through the SSRF filter (dropping private/reserved addresses, honoring `SSRFExemptCIDRs`), then **dialed directly to the validated IP**. There is no second DNS resolution between validation and dialing, so DNS rebinding cannot take effect.
+
+Proxy addresses do not go through DoH resolution: proxies are configured explicitly by the developer and dialed directly (see [Proxy & Proxy Pool](./proxy)). For the full picture, see [SSRF Protection](../security/ssrf).
 
 ## HTTP/2
 
@@ -148,13 +162,18 @@ cfg.Connection.EnableHTTP2 = false // disable HTTP/2
 ```
 
 HTTP/2 features:
-- Multiplexing: a single connection handles multiple concurrent requests
-- Header compression: reduces repeated header transmission
-- Server push
 
-When disabled, the transport no longer attempts HTTP/2 negotiation at all (including the forced attempt for custom TLS configurations); plaintext HTTP/2 (h2c) is not supported. Note that HTTP/2 multiplexing means "concurrent requests to the same host share one connection" — exactly why proxy-rotation scenarios need idle connections closed (see per-request rotation in [Proxy & Proxy Pool](./proxy)).
+- **Multiplexing**: a single connection handles multiple concurrent requests
+- **Header compression**: reduces repeated header transmission
+- **Server push**
 
-One exception: while a multi-proxy rotation pool is active (`ProxyPool` with more than one entry and no `ProxyURL`), HTTP/2 is **automatically disabled** and requests are forced onto HTTP/1.1 — preventing the shared h2 connection pool from pinning requests to a single proxy tunnel and silently bypassing rotation; set `Connection.EnableProxyPoolHTTP2 = true` to restore multiplexing in that scenario (requires `EnableHTTP2`, on by default) — see [Proxy Pools and HTTP/2](./proxy#proxy-pools-and-http-2-enableproxypoolhttp2).
+When disabled, the transport no longer attempts HTTP/2 negotiation (including the forced attempt for custom TLS configurations); plaintext HTTP/2 (h2c) is not supported.
+
+HTTP/2 multiplexing means concurrent requests to the same host share one connection — exactly why proxy-rotation scenarios need idle connections closed (see per-request rotation in [Proxy & Proxy Pool](./proxy)).
+
+One exception: while a multi-proxy rotation pool is active (`ProxyPool` with more than one entry and no `ProxyURL`), HTTP/2 is **automatically disabled** and requests are forced onto HTTP/1.1, so the shared h2 connection pool cannot pin requests to a single proxy tunnel and bypass rotation.
+
+To restore multiplexing in that scenario, set `Connection.EnableProxyPoolHTTP2 = true` (requires `EnableHTTP2`, on by default) — see [Proxy Pools and HTTP/2](./proxy#proxy-pools-and-http-2-enableproxypoolhttp2).
 
 ## Object Pool Reuse
 
@@ -168,7 +187,7 @@ if err != nil {
 // Result is created fresh per request, reclaimed by GC, no manual release needed
 ```
 
-In high-concurrency scenarios, internal object-pool reuse significantly reduces GC pressure.
+For the list of pooled objects and the capacity guards, see [Performance Optimization](./performance#memory-optimization-mechanisms).
 
 ## Concurrent Request Pattern
 
@@ -202,7 +221,7 @@ func fetchAll(ctx context.Context, urls []string) ([]*httpc.Result, error) {
 
 | Problem | Cause | Solution |
 |---------|-------|----------|
-| Many TIME_WAIT | Idle connection timeout too short | Increase the `IdleConn` timeout |
+| High TIME_WAIT count | Idle connection timeout too short | Increase the `IdleConn` timeout |
 | Connection refused | Insufficient connections per host | Increase `MaxConnsPerHost` |
 | Requests queuing | Connection pool too small | Increase `MaxIdleConns` |
 | Want to control idle connections per host | No dedicated configuration field | Derived from `MaxConnsPerHost` (÷2, clamped to 2–10) |

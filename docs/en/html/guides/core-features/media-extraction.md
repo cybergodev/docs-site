@@ -1,59 +1,57 @@
 ---
 sidebar_label: "Media Extraction"
 title: "Media Extraction - CyberGo html | Video & Audio Guide"
-description: "CyberGo html media extraction guide: three-source video (raw HTML, DOM, regex fallback) and dual-source audio, VideoInfo/AudioInfo fields, Type file vs embed."
+description: "CyberGo html media extraction: the three video sources and two audio sources in Extract, VideoInfo and AudioInfo fields, Type values, and the .ogg overlap."
 sidebar_position: 20
 ---
 
-# Media Extraction Guide
+# Media Extraction
 
-Beyond text, images, and links, the library can also extract video and audio resources from HTML. This guide details the extraction mechanism and field meanings.
+`Extract` collects videos and audio alongside text, storing them in `Result.Videos` and `Result.Audios`. This page covers where each comes from, how deduplication works, and what the fields mean.
 
-## Extraction Overview
+## Extraction Order
 
-When you call `Extract`, video and audio extraction runs after DOM parsing and before content formatting. The results are stored in `Result.Videos` and `Result.Audios`, respectively.
+Media extraction runs after DOM parsing and before content formatting:
 
 ```text
-DOM parsing → video extraction (3 sources) → audio extraction (2 sources) → formatting → Result
+DOM parsing → video extraction (three sources) → audio extraction (two sources) → formatting → Result
 ```
 
-## Video Extraction (Three Sources)
+Each URL is deduplicated per media kind, so the same address is collected once.
 
-Video extraction runs in the following order; each URL is deduplicated so nothing is captured twice:
+## Video (Three Sources)
 
-| Order | Source | Scanned targets | Description |
+| Order | Source | Scanned | Notes |
 |------|------|----------|------|
-| ① | Raw HTML scan | `src`/`data` attributes of `iframe`/`embed`/`object` | Runs **before** safe sanitization, ensuring sanitized embed tags are not lost |
-| ② | DOM traversal | `video`/`iframe`/`embed`/`object` elements | Traverses the parsed DOM tree, reading element attributes and `<source>` children |
-| ③ | Regex fallback | Video file URLs | Scans the HTML text for bare video links |
+| ① | Raw HTML scan | `src` of `iframe`/`embed`, `data` of `embed`/`object` | Runs **before** sanitization — those tags are removed by cleaning, so the raw markup is the only place they can be read |
+| ② | DOM traversal | `video`/`iframe`/`embed`/`object` elements | Reads element attributes and `<source>` children |
+| ③ | Regex fallback | Bare video URLs in the HTML text | Covers references that never become media elements, such as addresses inside comments or JSON payloads |
 
-:::tip Why scan the raw HTML
-Embed tags such as `iframe`, `embed`, and `object` may be removed during safe sanitization. The library extracts these tags' media URLs from the raw HTML string **before** sanitization, ensuring embedded videos are not lost to cleaning.
-:::
+The raw HTML scan and the regex fallback run only when the input is at most 1,000,000 bytes, and the regex matches at most 1000 entries per media kind; larger documents use the DOM traversal alone.
 
-### Video extensions supported by the regex fallback
+### Video extensions matched by the regex fallback
 
 ```text
 .mp4  .webm  .ogg  .mov  .avi  .wmv  .flv  .mkv  .m4v  .3gp
 ```
 
-The regex only matches complete URLs starting with `http://` or `https://`, avoiding false matches on filename fragments.
+The regex matches only complete URLs starting with `http://` or `https://`, so filename fragments are not mistaken for resources.
 
-## Audio Extraction (Two Sources)
+## Audio (Two Sources)
 
-| Order | Source | Scanned targets | Description |
+| Order | Source | Scanned | Notes |
 |------|------|----------|------|
-| ① | DOM traversal | `audio` elements and their `<source>` children | Reads the `src` attribute or the `src`/`type` of child `<source>` elements |
-| ② | Regex fallback | Audio file URLs | Scans the HTML text for bare audio links |
+| ① | DOM traversal | `audio` elements and their `<source>` children | Reads the `src` attribute or the `src`/`type` of a child `<source>` |
+| ② | Regex fallback | Bare audio URLs in the HTML text | Same mechanism as the video fallback |
 
-### Audio extensions supported by the regex fallback
+### Audio extensions matched by the regex fallback
 
 ```text
 .mp3  .wav  .ogg  .m4a  .aac  .flac  .wma  .opus  .oga
 ```
 
-:::warning The .ogg extension appears in both the video and audio lists
-OGG is a container format that can carry video (Theora) or audio (Vorbis/Opus). A URL with the `.ogg` extension is detected as **both video and audio** and may appear in both `Result.Videos` and `Result.Audios`. The audio-only variant `.oga` appears only in the audio list.
+:::warning .ogg lands in both Videos and Audios
+OGG is a container that can carry video (Theora) or audio (Vorbis/Opus), and the extension alone cannot tell them apart. A `.ogg` URL is therefore classified as both video and audio and appears in `Result.Videos` and `Result.Audios`. The audio-only variant `.oga` appears in the audio list only.
 :::
 
 ## Field Reference
@@ -61,33 +59,44 @@ OGG is a container format that can carry video (Theora) or audio (Vorbis/Opus). 
 ### VideoInfo
 
 | Field | Type | Description |
-|------|------|------|
+|-------|------|-------------|
 | `URL` | `string` | Video source URL |
-| `Type` | `string` | Detected type: a MIME type (e.g. `video/mp4`) or `embed` (an iframe embedding a page) |
+| `Type` | `string` | Container type: a MIME type (e.g. `video/mp4`) or `embed` for an embedded page |
 | `Poster` | `string` | The `poster` attribute of `<video>` (cover image URL) |
-| `Width` | `string` | Width attribute (raw string, not parsed into a number) |
-| `Height` | `string` | Height attribute (raw string, not parsed into a number) |
-| `Duration` | `string` | Duration attribute (raw string, not parsed into a number) |
+| `Width` | `string` | Width attribute, as an unparsed string |
+| `Height` | `string` | Height attribute, as an unparsed string |
+| `Duration` | `string` | Duration attribute, as an unparsed string |
 
 ### AudioInfo
 
 | Field | Type | Description |
-|------|------|------|
+|-------|------|-------------|
 | `URL` | `string` | Audio source URL |
-| `Type` | `string` | Detected type: a MIME type (e.g. `audio/mpeg`) |
-| `Duration` | `string` | Duration attribute (raw string, not parsed into a number) |
+| `Type` | `string` | Container type: a MIME type (e.g. `audio/mpeg`) |
+| `Duration` | `string` | Duration attribute, as an unparsed string |
 
-### How the Type field is determined
+### How Type Is Determined
 
-The `Type` field distinguishes two categories of video sources:
+`Type` follows this priority:
+
+1. The markup declares a `type` (`<source type>` or `<embed type>`) → use the declared value. A server may serve a different container than the extension suggests, so the declaration wins.
+2. Otherwise the URL decides: a recognizable extension → the matching MIME type (`a.mp4` → `video/mp4`); an embed-platform pattern in the URL → `embed`. A `<video src="...">` that names its source directly takes this path too.
+3. An `iframe` read through the DOM walk is `embed`, since the frame itself is not a media container. This only applies when the iframe is still in the DOM: with sanitization on (the default) it has already been removed, so only `EnableSanitization = false` input reaches this rule.
+4. If none applies, the field is empty (e.g. `<video src="/stream/abc">`).
+
+:::warning Documents over 1 MB lose media held in iframes
+The raw HTML scan and the bare-URL scan stop above 1,000,000 bytes, while sanitization removes `iframe`/`embed`/`object` from the DOM. Together, under the default configuration, video inside an iframe in a document over 1 MB is **not collected** (measured: both a YouTube iframe and `<iframe src="clip.mp4">` produce empty results). `<video>`/`<audio>` elements go through the DOM walk and are unaffected.
+
+To capture embedded media in large documents, split the input or disable sanitization for trusted content.
+:::
 
 | Type value | Meaning | When it occurs |
 |---------|------|----------|
-| `embed` | A video page referenced by an iframe | Embedded players such as YouTube, Vimeo, Youku, and Bilibili |
-| MIME type (e.g. `video/mp4`) | A video file container | A bare URL matched by the regex fallback, or the value of a `<source type="...">` attribute |
-| Empty string | No type detected | `<video src="...">` specifying the source directly (when there is no `<source>` child) |
+| `embed` | An embedded page, not a media file | An `iframe`, or an `<embed>`/`<object>`/bare URL matching an embed-platform pattern (YouTube, Vimeo, Youku, Bilibili, and so on) |
+| MIME type (e.g. `video/mp4`) | A video file container | A declared `<source type>`/`<embed type>` value, or derived from the extension |
+| Empty string | No type identified | The URL has no recognizable extension and the markup declares no `type` |
 
-Embedding platforms supported by `embed` detection:
+Embedding platforms recognized as `embed`:
 
 | Platform | URL pattern |
 |------|----------|
@@ -111,9 +120,9 @@ import (
 )
 
 func main() {
-	// HTML containing three media scenarios:
-	// 1. iframe YouTube embed (Type = "embed")
-	// 2. Native video with a <source> child (Type from the type attribute)
+	// Three media scenarios:
+	// 1. A YouTube iframe (Type = "embed", found by the raw HTML scan)
+	// 2. A native video with a <source> child (Type from the type attribute)
 	// 3. Audio with a <source> child (Type from the type attribute)
 	data := []byte(`<html><body><article>
         <h1>Multimedia Page</h1>
@@ -147,7 +156,7 @@ func main() {
 		fmt.Println()
 	}
 	// Video 1: https://www.youtube.com/embed/dQw4w9WgXcQ
-	//   Type: embed, size: 560x315
+	//   Type: embed
 	// Video 2: https://example.com/trailer.mp4
 	//   Type: video/mp4, poster: poster.jpg, size: 640x360
 
@@ -161,45 +170,45 @@ func main() {
 }
 ```
 
+Video records are deduplicated by URL; the raw HTML scan runs before the DOM walk, so the first path to see an address decides its shape. The scan records only `URL` and `Type`, which is why the first video above has no size or poster.
+
 ## Configuration Control
 
 ### Preserve* Options
 
-`PreserveVideos` and `PreserveAudios` control whether media is included in the `Extract` result:
-
 | Config field | Default | Effect |
 |----------|--------|------|
-| `PreserveVideos` | `true` | When `false`, `Result.Videos` is an empty slice |
-| `PreserveAudios` | `true` | When `false`, `Result.Audios` is an empty slice |
+| `PreserveVideos` | `true` | When `false`, `Result.Videos` stays nil and is omitted from JSON |
+| `PreserveAudios` | `true` | When `false`, `Result.Audios` stays nil and is omitted from JSON |
 
 ```go
 cfg := html.DefaultConfig()
 
-// Disable video and audio extraction (keep only text, images, and links)
+// Disable video and audio extraction (keep text, images, and links)
 cfg.PreserveVideos = false
 cfg.PreserveAudios = false
 
 result, err := html.Extract(data, cfg)
-// result.Videos → []
-// result.Audios → []
+// result.Videos → nil
+// result.Audios → nil
 ```
 
 ### Preserve* vs Include*
 
-These two groups of options work independently and control different APIs:
+The two groups are independent and drive different APIs:
 
-| Option group | API controlled | Description |
+| Option group | API affected | Effect |
 |--------|-----------|------|
-| `PreserveVideos`/`PreserveAudios` | `Extract` | Controls whether `Result.Videos`/`Result.Audios` are populated |
-| `IncludeVideos`/`IncludeAudios` | `ExtractAllLinks` | Controls whether video/audio URLs are included in link enumeration |
+| `PreserveVideos`/`PreserveAudios` | `Extract` | Whether `Result.Videos`/`Result.Audios` are populated |
+| `IncludeVideos`/`IncludeAudios` | `ExtractAllLinks` | Whether video/audio URLs appear in the link enumeration |
 
-:::warning The two are independent
-Turning off `PreserveVideos` does not affect `IncludeVideos` in `ExtractAllLinks`, and vice versa. Configure the option that matches the API you are using.
+:::warning The two groups do not affect each other
+Turning off `PreserveVideos` does not change `IncludeVideos` in `ExtractAllLinks`, and vice versa. Configure the option that matches the API you call.
 :::
 
-### TextOnlyConfig Performance Preset
+### TextOnlyConfig Preset
 
-When you only need text, `TextOnlyConfig()` already disables all `Preserve*` options, so no manual setup is required:
+When you need text only, `TextOnlyConfig()` already turns off every `Preserve*` option:
 
 ```go
 cfg := html.TextOnlyConfig()
@@ -209,11 +218,13 @@ cfg := html.TextOnlyConfig()
 // PreserveAudios = false
 
 result, err := html.Extract(data, cfg)
-// Skips all media extraction for best performance
+// Skips all media extraction
 ```
+
+The preset changes only those four fields; the `Include*` filters used by `ExtractAllLinks` keep their defaults.
 
 ## Next Steps
 
-- [Content Extraction](./content-extraction) - Extraction workflow and article recognition
+- [Content Extraction](./content-extraction) - Extraction pipeline and article detection
 - [Output Formats](./output-formats) - Plain text, Markdown, and JSON compared
-- [API Reference: Data Types](../../api-reference/types/type-defs) - Full definitions of VideoInfo/AudioInfo
+- [API Reference: Data Types](../../api-reference/types/type-defs) - Full VideoInfo/AudioInfo definitions

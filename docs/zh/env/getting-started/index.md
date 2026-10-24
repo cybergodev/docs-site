@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # 快速开始
 
-5 分钟上手 env 库，从安装到实际使用。
+env 是 Go 的环境变量管理库：从 `.env`、JSON、YAML 加载配置，按类型读取值，并映射到结构体。
 
 ## 安装
 
@@ -77,11 +77,11 @@ env 提供两种使用方式：
 | **全局模式** | `env.Load()` + `env.GetString()` | 简单应用、脚本、快速原型 |
 | **实例模式** | `env.New()` + `loader.GetString()` | 多实例、测试隔离、精细控制生命周期 |
 
-全局模式使用包级函数，内部维护一个默认 Loader 单例——调用 `env.Load()` 后，所有 `env.GetXxx()` 自动使用该实例。实例模式通过 `env.New()` 创建独立 Loader，适合需要隔离或同时管理多套配置的场景。
+全局模式使用包级函数，内部维护一个默认 Loader 单例：调用 `env.Load()` 后，所有 `env.GetXxx()` 都使用该实例。实例模式通过 `env.New()` 创建独立 Loader，用于需要隔离或同时管理多套配置的场景。
 
-本文档示例默认使用全局模式，实例模式的完整用法见[多环境配置](#多环境配置)章节。
+下文示例默认使用全局模式，实例模式的完整用法见[多环境配置](#多环境配置)一节。
 
-注意：忘记调用 `Load()` 并不会报错——未初始化时 `Get*`/`Lookup` 会静默返回默认值或零值，而 `Set`/`Delete`/`Validate`/`ParseInto` 会返回 `ErrNotInitialized`。详见[包函数](../api-reference/functions)。
+未调用 `Load()` 时不报错，但各函数行为不同：`Get*` 返回默认值或零值，`Lookup` 返回 `("", false)`，`Keys`/`All` 返回 nil、`Len` 返回 0，`Set`/`Delete`/`Validate`/`ParseInto` 返回 `ErrNotInitialized`。详见[包函数](../api-reference/functions)。
 :::
 
 ## 读取值 - 所有类型
@@ -127,7 +127,7 @@ timeout := env.GetDuration("TIMEOUT")
 ```
 
 ::: tip 键名解析
-库支持多种键名访问方式：
+同一批键可以换用不同写法访问：
 
 ```go
 // JSON: {"app": {"name": "myapp"}}
@@ -140,18 +140,20 @@ name = env.GetString("APP.NAME")       // 大写点号路径
 ```
 
 **解析规则：**
-1. **精确匹配**：优先查找精确键名 `KEY`
-2. **大写转换**：小写键名尝试大写版本 `key` → `KEY`
-3. **路径解析**：点号路径转换为下划线 `app.name` → `APP_NAME`
+1. **精确匹配**：优先查找精确键名 `KEY`，包括本身带点的字面键名（如 YAML 顶层键 apnews.com 存储为 APNEWS.COM）
+2. **大写回退**：精确匹配失败时，把键名转为大写再查，`key` → `KEY`
+3. **路径解析**：点号路径转换为下划线，`app.name` → `APP_NAME`
 :::
 
 ### 布尔值支持
 
-`GetBool` 支持以下值（不区分大小写）：
+`GetBool` 接受的字符串（不区分大小写）：
 
 | 真值 | 假值 |
 |------|------|
 | `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
+
+键存在但值为空字符串时按 `false` 处理，不返回默认值；键存在且内容无法识别时记审计事件并返回默认值。这一点与 `GetInt`、`GetFloat64`、`GetDuration` 不同，后三者的空值解析失败，会回退到默认值。
 
 ### 切片类型
 
@@ -175,7 +177,9 @@ timeouts := env.GetSlice[time.Duration]("TIMEOUTS")
 
 **解析顺序：**
 1. 优先查找索引键 `KEY_0`, `KEY_1`, `KEY_2`...
-2. 若无索引键，则按逗号分隔解析 `KEY` 的值
+2. 没有索引键时，按逗号分隔解析 `KEY` 的值
+
+索引键逐个解析，某个元素失败时记审计事件并跳过它。若跳过之后一个元素都没剩下，按「没有索引键」处理，继续尝试逗号分隔；逗号分隔解析失败时整个列表作废，直接返回调用方给的默认值，不再尝试其他候选键。
 
 ```go
 // 方式一：索引键（推荐）
@@ -217,8 +221,9 @@ if secret != nil {
     // 获取原始值（仅在需要明文时调用，如加解密、API 调用）
     value := secret.Reveal()
 
-    // 日志使用掩码（防止泄露）
-    log.Printf("API Key: %s", secret.Masked())  // 输出：[SECURE:32 bytes]
+    // 日志使用掩码（防止泄露）；方括号里的数字是值长度，
+    // API_KEY 为 32 字节时输出：[SECURE:32 bytes]
+    log.Printf("API Key: %s", secret.Masked())
 }
 ```
 
@@ -264,7 +269,7 @@ func main() {
 
 ## 配置预设
 
-库提供四种预设配置，适用于不同场景：
+库提供四种预设配置，对应不同运行场景：
 
 | 预设 | 用途 | 特点 |
 |------|------|------|
@@ -314,7 +319,7 @@ if goEnv == "" {
     goEnv = "development"
 }
 
-// 默认：先加载的文件优先（.env 中已存在的键不会被后续文件覆盖）
+// 默认（DefaultConfig）：先加载的文件优先，.env 中已存在的键不会被后续文件覆盖
 env.Load(".env", ".env."+goEnv, ".env.local")
 
 // 需要「后加载覆盖」（如 .env.local 覆盖 .env）时：
@@ -325,7 +330,7 @@ if err := env.LoadWithConfig(cfg); err != nil { log.Fatal(err) }
 ```
 
 ::: tip 覆盖语义
-默认配置（`DefaultConfig()`）与 `ProductionConfig()` 均为「先加载的文件胜出」：后加载文件中与已加载同名的键会被跳过，防止运行时意外覆盖已加载的配置。`DevelopmentConfig()` 与 `TestingConfig()` 预设已内置 `OverwriteExisting=true`，仅在这些预设（或手动开启该选项）下，后加载的文件才会覆盖先加载的。
+默认配置（`DefaultConfig()`）与 `ProductionConfig()` 均为「先加载的文件胜出」：后加载文件中与已加载同名的键会被跳过，防止运行时覆盖已加载的配置。`DevelopmentConfig()` 与 `TestingConfig()` 预设已内置 `OverwriteExisting=true`，只有这两类预设（或手动开启该选项）才会让后加载的文件覆盖先加载的。
 :::
 
 ### 使用 Loader 实例
@@ -372,7 +377,7 @@ func main() {
 
 ### 多文件加载
 
-按顺序加载。默认（`DefaultConfig()`）**先加载的文件胜出**：后加载文件中已存在的同名键会被跳过；需要「后加载覆盖」时设置 `OverwriteExisting = true`（`DevelopmentConfig()`/`TestingConfig()` 预设已内置）：
+按参数顺序加载。默认（`DefaultConfig()`）**先加载的文件胜出**：后加载文件中与已有键同名的条目会被跳过。需要「后加载覆盖」时设置 `OverwriteExisting = true`（`DevelopmentConfig()`/`TestingConfig()` 预设已内置）：
 
 ::: code-group
 
@@ -388,7 +393,7 @@ loader.LoadFiles(".env", ".env.local")
 
 ### 多格式支持
 
-自动检测文件格式：
+一次加载中混用不同格式，按扩展名自动选择解析器：
 
 ```go
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")

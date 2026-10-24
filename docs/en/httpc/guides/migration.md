@@ -1,28 +1,30 @@
 ---
 sidebar_label: "Migrating from net/http"
 title: "Migrating from net/http - CyberGo HTTPC | Migration Guide"
-description: "Migrate from net/http to CyberGo HTTPC: full API mapping tables, error-model differences, five-level timeouts, Transport tuning, and a pitfalls checklist."
+description: "Migrate from net/http to CyberGo HTTPC: full API mapping tables, error-model differences, five-level timeouts, Transport mapping, and a step-by-step checklist."
 sidebar_position: 130
 ---
 
 # Migrating from net/http
 
-Already familiar with `net/http`? This guide maps your existing standard-library experience to HTTPC item by item: which idioms can be replaced mechanically, which semantics changed, and which defaults deserve a second look. All behavior descriptions follow the source code.
+Migrating from `net/http` to HTTPC involves three kinds of differences: idioms that can be replaced mechanically, APIs whose semantics changed, and default behaviors that need re-checking. Each is mapped below, and all behavior descriptions follow the source code.
 
 ## Compatibility Overview: Built on Top of net/http
 
-HTTPC is not a replacement for `net/http` — it is an enhancement layer built on top of its transport. The underlying engine is still `http.Client` and `http.Transport`: connection reuse, HTTP/2 negotiation, TLS sessions, and proxy tunnels are all executed by the standard library; HTTPC layers security validation, a retry engine, a middleware chain, and the `Result` transformation on top (see the FAQ entry ["How does HTTPC relate to net/http?"](../faq/#how-does-httpc-relate-to-net-http)).
+HTTPC is not a replacement for `net/http`; it is an enhancement layer built on top of its transport. The underlying engine is still `http.Client` and `http.Transport`: connection reuse, HTTP/2 negotiation, TLS sessions, and proxy tunnels are all executed by the standard library.
+
+HTTPC layers security validation, a retry engine, a middleware chain, and the `Result` transformation on top (see the FAQ entry ["How does HTTPC relate to net/http?"](../faq/#how-does-httpc-relate-to-net-http)).
 
 **What stays the same after migration:**
 
-- **Transport-layer behavior** — connection-pool reuse, HTTP/2 negotiation, and TLS session resumption match the standard library, so performance characteristics do not degrade by switching;
+- **Transport-layer behavior** — connection-pool reuse, HTTP/2 negotiation, and TLS session resumption match the standard library, so migration does not change performance characteristics;
 - **Types are reused as-is** — `http.Cookie`, `tls.Config`, `context.Context`, `io.Reader`, and `http.Header` are used unchanged, with no adapter layer;
 - **Mental model** — package-level functions correspond to `http.Get`, a Client instance corresponds to `http.Client`, and context is passed the same way (see the two-layer API architecture in [Core Concepts](../getting-started/concepts)).
 
-**What you gain after migration:**
+**What migration adds:**
 
 - Enforced TLS 1.2+, SSRF protection, CRLF-injection validation, and response-body size limits (secure by default);
-- Smart retries with exponential backoff (honors `Retry-After`; the timeout budget is shared across retries);
+- Retries with exponential backoff (honors `Retry-After`; the timeout budget is shared across retries);
 - An onion-model middleware chain (logging/metrics/audit/request ID);
 - A one-stop `Result` wrapper — the response-body lifecycle is managed automatically, no `Close()` needed.
 
@@ -74,7 +76,7 @@ func main() {
 }
 ```
 
-The migrated code is shorter, and it now carries the TLS policy, SSRF protection, and up to 3 smart retries by default.
+The migrated code is shorter, and TLS policy, SSRF protection, and up to 3 retries are enabled by default.
 
 ## API Mapping Tables
 
@@ -118,7 +120,7 @@ The migrated code is shorter, and it now carries the TLS policy, SSRF protection
 
 ## Error-Model Differences
 
-This is the part where migration **bites hardest**. Start with what is the same: neither library treats 4xx/5xx as an `error` — `err` only means the request could not be completed successfully. The real differences are the shape of `err`, the response-body lifecycle, and retry behavior:
+This is the part where migration most often goes wrong. Start with what is the same: neither library treats 4xx/5xx as an `error` — `err` only means the request could not be completed successfully. The differences are the shape of `err`, the response-body lifecycle, and retry behavior:
 
 | Dimension | net/http | HTTPC |
 |-----------|----------|-------|
@@ -128,7 +130,7 @@ This is the part where migration **bites hardest**. Start with what is the same:
 | Body read errors | Surface at `io.ReadAll` / `Decode` time (`io.EOF`, `unexpected EOF`) | Already read during the request phase; a read failure is returned as a `ClientError` (`ErrorTypeResponseRead`) with `err` |
 | Empty body + JSON decode | `Decode` returns `io.EOF` | `Unmarshal` returns `ErrResponseBodyEmpty` |
 | Retries | None — errors go straight to the caller | Timeouts/transport errors and 408/429/500/502/503/504 are retried automatically; exhausted network errors return an `error`, exhausted retryable status codes return the **last response** |
-| URLs in error messages | Printed as-is (may contain credentials) | Sanitized automatically (credentials `***:***`, sensitive params `[REDACTED]`) |
+| URLs in error messages | Printed as-is (including credentials when present) | Sanitized automatically (credentials `***:***`, sensitive params `[REDACTED]`) |
 
 Typical error handling before migration:
 
@@ -222,7 +224,7 @@ func main() {
 
 Common error-classification scenarios side by side (`clientErr` is the `*httpc.ClientError` extracted via `errors.As`):
 
-| What you want to detect | net/http idiom | HTTPC idiom |
+| What to detect | net/http idiom | HTTPC idiom |
 |-------------------------|----------------|-------------|
 | Timeout | `var ne net.Error` + `ne.Timeout()` | `clientErr.Type == httpc.ErrorTypeTimeout` |
 | DNS failure | `var de *net.DNSError` + `errors.As` | `httpc.ErrorTypeDNS` |
@@ -235,7 +237,7 @@ For the complete picture of error classification, retryability, and sentinel err
 
 ## Request Body, Header, and Context Migration
 
-The three-step `net/http` flow — "build the request → set fields one by one → Do" — collapses into "verb method + declarative options" in HTTPC.
+The three-step `net/http` flow — "build the request → set fields one by one → Do" — becomes "verb method + declarative options" in HTTPC.
 
 <!-- check-code: skip -->
 ```go
@@ -278,9 +280,9 @@ Mapping of standard-library operations to request options:
 | `req.Header.Set(k, v)` | `WithHeader(k, v)` / `WithHeaderMap(m)` |
 | `req.SetBasicAuth` / hand-assembled Bearer | `WithBasicAuth(u, p)` / `WithBearerToken(t)` |
 | `req.AddCookie` | `WithCookies(cs)` / `WithCookieMap(m)` / `WithCookieString(s)` |
-| `io.Reader` streaming request body | `WithBody(reader)` (passed through as-is; **bypasses size validation** — wrap with `io.LimitReader`) |
+| `io.Reader` streaming request body | `WithBody(reader)` (passed through as-is; unlimited with the default `Security.MaxRequestBodySize = 0`, enforced at send time once a limit is set; `io.LimitReader` is still recommended for untrusted sources) |
 
-Context usage matches the standard library — `context.Context` is still the carrier of timeouts and cancellation; only where you pass it changes:
+Context usage matches the standard library: `context.Context` is still the carrier of timeouts and cancellation, and only the position where it is passed differs:
 
 <!-- check-code: skip -->
 ```go
@@ -330,17 +332,17 @@ client, _ := httpc.New(cfg)
 result, err := client.Get(url, httpc.WithTimeout(30*time.Second)) // override for this request
 ```
 
-Three semantic differences to keep in mind:
+Three semantic differences:
 
 - **The total budget is shared across retries** — `Timeouts.Request` / `WithTimeout` covers all retry attempts and backoff waits; the clock does not restart per attempt;
-- **`ResponseHeader` is special** — defaults to 0 (disabled), leaving the total budget fully in charge; once set to a positive value it applies to **all requests** sharing the same client and, when shorter, overrides `WithTimeout` (defense-in-depth against slowloris; `SecureConfig()` ships it configured);
-- **Long-running responses** — for APIs that need long waits (AI APIs and the like), simply give `WithTimeout` enough budget; by default there is no "response-header timeout cuts off slow responses" problem.
+- **`ResponseHeader` is special** — defaults to 0 (disabled), leaving the total budget fully in charge; once set to a positive value it applies to **all requests** sharing the same client and, when shorter than `WithTimeout`, fires before it (defense-in-depth against slowloris; `SecureConfig()` ships it configured);
+- **Long-running responses** — for APIs that need long waits (AI APIs and the like), give `WithTimeout` enough budget; with the default configuration, a response-header timeout does not cut off slow responses.
 
 See the timeout section of [Request and Response](./request-response) and the FAQ entry [How do I choose timeouts?](../faq/#how-do-i-choose-timeouts).
 
 ## Transport Customization Migration
 
-The `http.Transport` tuning fields commonly used with the standard library all map to the corresponding sub-structures of `Config`:
+The commonly used `http.Transport` tuning fields map to the corresponding sub-structures of `Config` in HTTPC:
 
 | `http.Transport` / `http.Client` field | HTTPC configuration | Default |
 |------------------------------------------|----------------------|---------|
@@ -355,7 +357,7 @@ The `http.Transport` tuning fields commonly used with the standard library all m
 | `CheckRedirect` | `Security.FollowRedirects` / `MaxRedirects` + `Security.RedirectWhitelist` | true / 10 |
 | Custom `DialContext` (dialer) | No direct entry point | SSRF validation is wrapped into the dial layer |
 
-Existing `tls.Config` knowledge (mTLS, custom CAs, cipher suites) carries over unchanged:
+An existing `tls.Config` (mTLS, custom CAs, cipher suites) migrates as-is:
 
 ```go
 package main
@@ -392,26 +394,28 @@ func main() {
 }
 ```
 
-:::warning
-Once `Security.TLSConfig` is set, the `MinTLSVersion` / `MaxTLSVersion` fields are ignored — the TLS version policy follows the `tls.Config` you pass in (set `MinVersion` yourself and keep it at TLS 1.2 or higher).
+:::warning Source of the TLS version policy
+Once `Security.TLSConfig` is set, the `MinTLSVersion` / `MaxTLSVersion` fields are ignored and the TLS version policy follows the `tls.Config` that was passed in. In that case set `MinVersion` explicitly and keep it at TLS 1.2 or higher.
 :::
 
-Two boundaries worth knowing:
+Two boundaries:
 
-- **No custom-Transport injection point** — HTTPC creates and manages the `*http.Transport` itself (SSRF validation is wrapped into the dial function, redirect policy is injected via `CheckRedirect`); `Config` does not expose the whole Transport. If you need extreme dial customization, first check whether `Config.Connection` / `Config.Security` already covers it.
-- **Use `Doer` to replace the whole implementation** — a test mock or alternate implementation only needs the single-method interface `Doer` (`Request(ctx, method, url, opts...)`), without wiring up the full `Client` interface; see [Testing](./testing).
+- **No custom-Transport injection point** — HTTPC creates and manages the `*http.Transport` itself (SSRF validation is wrapped into the dial function, redirect policy is injected via `CheckRedirect`); `Config` does not expose the whole Transport. For extreme dial customization, first check whether `Config.Connection` / `Config.Security` already covers it.
+- **Use `Doer` to replace the whole implementation** — a test mock or alternate implementation only needs the single-method interface `Doer` (`Request(ctx, method, url, opts...)`), without implementing the full `Client` interface; see [Testing](./testing).
 
 ## Migration Pitfalls Checklist
 
-These behavioral differences cause the most trouble when moving from `net/http`:
+These behavioral differences most often cause problems when moving from `net/http`:
 
 **1. `resp.Body` does not need (and must not) be closed manually**
 
-What `Result` holds is the already-read and copied bytes — HTTPC performs the read, drain, and close internally, and the underlying connection is managed by the pool. When migrating, **delete every `defer resp.Body.Close()`** and do not look for a close hook. See the FAQ entry ["Do I need to close the response body manually?"](../faq/#do-i-need-to-close-the-response-body-manually) for details.
+What `Result` holds is the already-read and copied bytes. HTTPC performs the read, drain, and close internally, and the underlying connection is managed by the pool. When migrating, **delete every `defer resp.Body.Close()`** and do not look for a close hook. See the FAQ entry ["Do I need to close the response body manually?"](../faq/#do-i-need-to-close-the-response-body-manually) for details.
 
 **2. Retries are on by default — but only for idempotent requests**
 
-`net/http` never retries; HTTPC by default retries timeouts/transport errors and 408/429/500/502/503/504 up to 3 times, but **only for idempotent requests** (GET/HEAD/PUT/DELETE/OPTIONS/TRACE) — POST, PATCH, and custom methods **execute exactly once and are never retried**. The real thing to watch for: once you explicitly opt into non-idempotent retries with `WithRetryNonIdempotent(true)`, order-placement and payment-style endpoints are at risk of duplicate submissions and must be handled:
+`net/http` never retries. HTTPC by default retries timeouts/transport errors and 408/429/500/502/503/504, up to 3 times, and **only for idempotent requests** (GET/HEAD/PUT/DELETE/OPTIONS/TRACE). POST, PATCH, and custom methods **execute exactly once and are never retried**.
+
+One risk needs handling: after opting into non-idempotent retries with `WithRetryNonIdempotent(true)`, order-placement and payment-style endpoints can receive duplicate submissions and must be handled:
 
 <!-- check-code: skip -->
 ```go
@@ -435,7 +439,7 @@ For mitigation strategies, see the FAQ entry ["Can retries cause duplicate POST 
 
 **3. SSRF protection is on by default — internal networks and localhost are blocked**
 
-After migrating from `net/http`, accessing `127.0.0.1`, `10.x`, `192.168.x`, and other private/reserved addresses fails outright (`net/http` has no such restriction). For local development, pick the option with the smallest blast radius first:
+After migrating from `net/http`, accessing `127.0.0.1`, `10.x`, `192.168.x`, and other private/reserved addresses fails outright (`net/http` has no such restriction). For local development, choose in order of increasing blast radius:
 
 <!-- check-code: skip -->
 ```go
@@ -453,7 +457,7 @@ For the full policy, see [SSRF Protection](../security/ssrf).
 
 **4. The default client is a lazy singleton — use an explicit instance for long-running services**
 
-Package-level functions share an internally managed default client (auto-rebuilt after being closed). Production services should create an explicit instance to control configuration and lifecycle; requests after `Close()` return `ErrClientClosed`:
+Package-level functions share an internally managed default client (rebuilt automatically after being closed). Production services should create an explicit instance to control configuration and lifecycle; requests after `Close()` return `ErrClientClosed`:
 
 <!-- check-code: skip -->
 ```go
@@ -477,15 +481,17 @@ if err := httpc.SetDefaultClient(custom); err != nil {
 
 **5. Match sentinel errors with `errors.Is` / `errors.As`, not string matching**
 
-Sentinel errors such as `ErrClientClosed`, `ErrResponseBodyEmpty`, `ErrResponseBodyTooLarge`, and `ErrInvalidHeader` should be tested with `errors.Is`; classified errors are extracted as `*ClientError` with `errors.As`. The error chain unwraps down to the underlying cause (`Cause`).
+Sentinel errors such as `ErrClientClosed`, `ErrResponseBodyEmpty`, `ErrResponseBodyTooLarge`, and `ErrInvalidHeader` are tested with `errors.Is`; classified errors are extracted as `*ClientError` with `errors.As`. The error chain unwraps down to the underlying cause (`Cause`).
 
 **6. Response bodies have default caps**
 
-Regular requests cap the response body at 10MB by default and the decompressed body at 100MB (guarding against memory exhaustion and decompression bombs); exceeding them errors out. Old code that downloaded large files with `http.Get` + `io.Copy` should switch to `Download` (streams to disk, resumable, progress callbacks). The caps are adjustable via `Security.MaxResponseBodySize` / `MaxDecompressedBodySize`.
+Regular requests cap the response body at 10MB by default and the decompressed body at 100MB (guarding against memory exhaustion and decompression bombs); exceeding a cap returns an error.
 
-**7. Redirect behavior is predictable but has defaults**
+Old code that downloads large files with `http.Get` + `io.Copy` should switch to `Download` (streams to disk, resumable, progress callbacks). The caps are adjustable via `Security.MaxResponseBodySize` / `MaxDecompressedBodySize`.
 
-Redirects are followed by default (up to 10). Note that `WithMaxRedirects(0)` / `MaxRedirects = 0` is the "unset" sentinel value, not a disable — to stop following, use `WithFollowRedirects(false)` or `Security.FollowRedirects = false`. See [Redirects](./redirects).
+**7. Redirects have defaults**
+
+Redirects are followed by default (up to 10). `WithMaxRedirects(0)` / `MaxRedirects = 0` is the "unset" sentinel value, not a disable. To stop following, use `WithFollowRedirects(false)` or `Security.FollowRedirects = false`. See [Redirects](./redirects).
 
 ## Step-by-Step Migration Checklist
 
@@ -497,10 +503,10 @@ Execute in order; every step can be verified independently:
 4. **Rework error handling** — in the `err` branch, extract `ClientError` with `errors.As` as needed; turn status-code checks into the `result.IsSuccess()` family; replace the `io.EOF` empty-body branch with `errors.Is(err, httpc.ErrResponseBodyEmpty)`.
 5. **Map timeouts** — `http.Client.Timeout` → `cfg.Timeouts.Request`; per-request differences via `WithTimeout`; place former Transport-level timeouts per [Timeout System Comparison](#timeout-system-comparison).
 6. **Migrate Transport tuning** — pool sizes, proxies, TLS, and HTTP/2 land in `Config.Connection` / `Config.Security` per the table above; move `tls.Config` into `Security.TLSConfig`.
-7. **Handle the secure defaults** — add SSRF exemptions for internal-network/localhost calls; confirm the response-body caps fit the payload sizes your APIs return.
-8. **Review the retry impact** — non-idempotent POSTs execute exactly once by default, so no handling is needed; if you do enable retries, add an idempotency key; make sure the retry budget matches your business timeouts.
-9. **Finish lifecycle housekeeping** — long-running services use an explicit instance + `defer client.Close()`; confirm no client is created per request on the hot path.
-10. **Regression-test** — run your existing integration tests; focus on error paths (network loss/timeouts/4xx/5xx) and large-response scenarios.
+7. **Handle the secure defaults** — add SSRF exemptions for internal-network/localhost calls; confirm the response-body caps fit the response sizes of the APIs in use.
+8. **Review the retry impact** — non-idempotent POSTs execute exactly once by default, so no handling is needed; if retries are enabled, add an idempotency key; confirm the retry budget matches the service timeouts.
+9. **Finish lifecycle housekeeping** — long-running services use an explicit instance + `defer client.Close()`; confirm no client is created per request on the request path.
+10. **Regression-test** — run the existing integration tests; focus on error paths (network loss/timeouts/4xx/5xx) and large-response scenarios.
 
 ## Next Steps
 

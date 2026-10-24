@@ -7,9 +7,11 @@ sidebar_position: 30
 
 # TLS 与证书固定
 
+TLS 配置决定握手时使用的协议版本与密码套件，证书固定在此之上增加对端身份的额外校验。本页说明版本控制、套件注入规则、三种 Pinner 构造器与密钥轮换。
+
 ## TLS 版本控制
 
-HTTPC 默认要求 TLS 1.2+，拒绝已被证明不安全的 TLS 1.0/1.1。推荐 TLS 1.3 以获得更强的前向保密与更简的握手：
+HTTPC 默认要求 TLS 1.2+，拒绝不安全的 TLS 1.0/1.1。推荐 TLS 1.3，以获得更强的前向保密与更简的握手：
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -17,7 +19,7 @@ cfg.Security.MinTLSVersion = tls.VersionTLS12  // 默认
 cfg.Security.MaxTLSVersion = tls.VersionTLS13  // 默认
 ```
 
-版本值遵循两条规则：字段为 `0` 时自动回退 TLS 1.2/1.3（显式置 0 与不设置等效）；`MinTLSVersion > MaxTLSVersion` 无法通过 `httpc.New()` 的配置校验，启动期即报错。
+版本值遵循两条规则：字段为 `0` 时回退 TLS 1.2/1.3（显式置 0 与不设置等效）；`MinTLSVersion > MaxTLSVersion` 无法通过 `httpc.New()` 的配置校验，启动期即报错。
 
 ### 版本说明
 
@@ -29,11 +31,11 @@ cfg.Security.MaxTLSVersion = tls.VersionTLS13  // 默认
 | TLS 1.3 | 最安全，推荐（强制前向保密） | 支持 |
 
 :::tip
-若需强制仅 TLS 1.3（更高安全、更简握手），设 `MinTLSVersion = tls.VersionTLS13` 即可。注意部分旧客户端/代理可能不支持 TLS 1.3，启用前确认目标服务兼容。
+需要强制仅 TLS 1.3 时（更高安全要求、更简握手），设置 `MinTLSVersion = tls.VersionTLS13`。部分旧客户端与代理不支持 TLS 1.3，启用前确认目标服务兼容。
 :::
 
 :::warning
-设置 `SecurityConfig.TLSConfig` 后，`MinTLSVersion` 与 `MaxTLSVersion` **将被忽略**，以 `TLSConfig` 中的设置为准。如需在自定义 `TLSConfig` 中控制版本，设置 TLSConfig 的 MinVersion / MaxVersion 字段。
+设置 `SecurityConfig.TLSConfig` 后，`MinTLSVersion` 与 `MaxTLSVersion` **被忽略**，以 `TLSConfig` 中的设置为准。在自定义 `TLSConfig` 中控制版本需设置其 MinVersion / MaxVersion 字段。
 :::
 
 ## 密码套件
@@ -51,7 +53,9 @@ cfg.Security.MaxTLSVersion = tls.VersionTLS13  // 默认
 
 TLS 1.3 的密码套件由协议自动协商，不受 CipherSuites 字段控制。
 
-上述套件仅在未设置自定义 `TLSConfig` 时生效（由 HTTPC 构建 transport 时注入，见 `internal/connection/pool.go` 的 `createTLSConfig`）。同时注入的还有：椭圆曲线偏好（X25519 / P-256 / P-384）、`RenegotiateNever`（禁止重协商）、会话票证 LRU 缓存（256 条，加速重复握手）。设置 `TLSConfig` 后以你的配置为准。
+上述套件仅在未设置自定义 `TLSConfig` 时生效（由 HTTPC 构建 transport 时注入，见 `internal/connection/pool.go` 的 `createTLSConfig`）。
+
+同时注入的还有：椭圆曲线偏好（X25519 / P-256 / P-384）、`RenegotiateNever`（禁止重协商）、会话票证 LRU 缓存（256 条，减少重复握手开销）。设置 `TLSConfig` 后以自定义配置为准。
 
 ## 自定义 TLS 配置
 
@@ -147,7 +151,7 @@ mTLS 常用于零信任网络、服务网格内部认证、金融 API。服务�
 
 ## 证书固定
 
-证书固定（Certificate Pinning）在标准证书链验证**之上**叠加一层校验：要求服务端证书链中存在已知的固定公钥/证书。即使可信 CA 被攻破或被胁迫签发伪造证书，攻击者仍无法中间人——因为其证书的公钥不匹配固定值。
+证书固定（Certificate Pinning）在标准证书链验证**之上**叠加一层校验：要求服务端证书链中存在已知的固定公钥或证书。可信 CA 被攻破或被胁迫签发伪造证书时，攻击者仍无法完成中间人攻击，因为其证书的公钥不匹配固定值。
 
 ### 工作原理
 
@@ -158,7 +162,7 @@ mTLS 常用于零信任网络、服务网格内部认证、金融 API。服务�
 证书固定：信任 CA + 证书公钥必须匹配预存哈希
 ```
 
-固定叠加在标准验证之上，无需设置 `InsecureSkipVerify`。HTTPC 校验证书链中**任意一层**证书，因此固定中间证书时，叶子证书续期后仍可继续生效。
+固定叠加在标准验证之上，无需设置 `InsecureSkipVerify`。HTTPC 校验证书链中**任意一层**证书，固定中间证书时，叶子证书续期后固定值仍然有效。
 
 ### SPKI 哈希生成步骤
 
@@ -191,12 +195,12 @@ openssl x509 -in cert.pem -pubkey -noout | \
 | 哈希编码 | `openssl dgst -sha256 -binary \| openssl enc -base64` | SHA-256 后 base64 编码 |
 
 :::tip
-推荐固定**中间证书**的 SPKI，而非叶子证书。中间证书有效期长（通常 5-10 年），叶子证书续期（如 Let's Encrypt 90 天）时中间证书不变，固定值无需频繁更新。
+推荐固定**中间证书**的 SPKI，而非叶子证书。中间证书有效期长（5-10 年），叶子证书续期（如 Let's Encrypt 90 天）时中间证书不变，固定值无需频繁更新。
 :::
 
 ### SPKI 哈希固定（推荐）
 
-`NewSPKIHashPinner` 接受一个或多个 base64 编码的 SHA-256 SPKI 哈希。提供多个哈希可支持密钥轮换——任一匹配即通过：
+`NewSPKIHashPinner` 接受一个或多个 base64 编码的 SHA-256 SPKI 哈希。提供多个哈希即支持密钥轮换，任一匹配即通过：
 
 ```go
 package main
@@ -229,10 +233,10 @@ func main() {
 }
 ```
 
-`NewSPKIHashPinner` 在哈希为空或非合法 base64 时返回错误，启动期即暴露配置问题。校验逻辑：遍历服务端证书链每层证书，计算其 SPKI 的 SHA-256，与任一固定哈希匹配即通过。
+`NewSPKIHashPinner` 在哈希为空或非合法 base64 时返回错误，配置问题在启动期即暴露。校验逻辑：遍历服务端证书链每层证书，计算其 SPKI 的 SHA-256，与任一固定哈希匹配即通过。
 
 :::tip
-`CertificatePinner` 在标准 TLS 链验证**之上**叠加固定校验，无需设置 `InsecureSkipVerify`。校验对证书链中任意一层证书生效，因此固定中间证书可在叶子证书续期后继续生效。
+`CertificatePinner` 在标准 TLS 链验证**之上**叠加固定校验，无需设置 `InsecureSkipVerify`。校验对证书链中任意一层证书生效，固定中间证书可在叶子证书续期后继续生效。
 :::
 
 ### 三种 Pinner 构造器对比
@@ -260,25 +264,27 @@ cfg.Security.CertificatePinner = chainPinner
 ```
 
 :::warning
-`NewCertificatePinnerChain` 无参数调用**不会报错**，返回的空链 Pinner 在 `VerifyPeerCertificate` 中直接返回 nil——即**不执行任何固定校验**（等效于未启用固定；标准证书链验证仍生效）。这是当前实现的实际行为，构造时务必传入至少一个 Pinner，不要依赖空链充当「拒绝所有」的安全默认。
+`NewCertificatePinnerChain` 无参数调用**不报错**，但返回的空链 Pinner 采用 fail-closed 策略：`VerifyPeerCertificate` 返回 `certificate pinning failed: no pinners configured`，即**拒绝所有连接**。
+
+全部元素为 nil 时同样拒绝，错误为 `no pinner matched`。公开 API 文档将其描述为「accepts nothing」。构造时须传入至少一个 Pinner。
 :::
 
 ### Pinner 校验细节与失败行为
 
-以源码（`internal/security/certpin.go`）为准的固定校验语义：
+固定校验语义以源码（`internal/security/certpin.go`）为准：
 
 | 方面 | 行为 |
 |------|------|
 | 匹配范围 | 遍历服务端证书链**每一层**证书（`rawCerts`），任一层 SPKI 哈希命中任一固定值即通过 |
 | 失败行为 | 全链无匹配 → 握手被拒，错误形如 `certificate pinning failed: no matching SPKI hash found` |
 | 空证书链 | 服务端未提供证书 → `no peer certificates provided` |
-| 解析容错 | 链中无法解析或密钥类型不支持的证书被跳过（不导致失败），继续尝试下一层 |
+| 解析容错 | 链中无法解析或密钥类型不支持的证书被跳过，不影响其余证书的匹配 |
 | 构造校验 | 哈希先 `TrimSpace`；非 base64 报 `invalid base64 hash`；无有效哈希报 `at least one valid SPKI hash is required` |
 | 性能 | 证书指纹 → SPKI 哈希的 LRU 缓存（1024 条），重复连接不重复解析证书 |
 | 并发安全 | Pinner 内部有读写锁，可被多个 Client 共享；`Config` 深拷贝时 Pinner 按引用共享（不复制） |
 | 调试描述 | `Pin()` 返回如 `spki-pins:2`、`public-key-pins:2`、`chain:[spki-pins:1,spki-pins:1]`，可写入日志 |
 
-`NewPublicKeyPinner` 内部对每个 DER PKIX 公钥计算 SHA-256 后委托给 SPKI 哈希固定器，两者匹配语义完全一致；无有效公钥时报 `no valid public keys provided`。
+`NewPublicKeyPinner` 内部对每个 DER PKIX 公钥计算 SHA-256，再委托给 SPKI 哈希固定器，两者匹配语义一致；无有效公钥时报 `no valid public keys provided`。
 
 ```go
 package main
@@ -305,10 +311,10 @@ func main() {
 
 ### 与自定义 TLSConfig 的协作
 
-设置 `Security.TLSConfig` 后，HTTPC 会 `Clone()` 你的配置并**叠加注入** `VerifyPeerCertificate` 固定回调——你的 RootCAs、mTLS 证书、密码套件等设置全部保留，固定校验照常生效（见 `internal/connection/pool.go` 的 `createTLSConfig`）。
+设置 `Security.TLSConfig` 后，HTTPC 会 `Clone()` 自定义配置并**叠加注入** `VerifyPeerCertificate` 固定回调。RootCAs、mTLS 证书、密码套件等设置全部保留，固定校验照常生效（见 `internal/connection/pool.go` 的 `createTLSConfig`）。
 
 :::warning
-`Security.InsecureSkipVerify` 只作用于 HTTPC **默认** TLS 配置路径。设置了自定义 `TLSConfig` 时该开关被忽略——需要跳过验证必须（不建议）在 `TLSConfig` 内部设置 `InsecureSkipVerify` 字段。
+`Security.InsecureSkipVerify` 只作用于 HTTPC **默认** TLS 配置路径。设置自定义 `TLSConfig` 时该开关被忽略；跳过验证需（不建议）在 `TLSConfig` 内部设置 `InsecureSkipVerify` 字段。
 :::
 
 ### 自定义 CertificatePinner
@@ -382,12 +388,12 @@ func main() {
 ```
 
 :::warning
-实现自定义 `CertificatePinner` 时，务必在标准证书链验证（`verifiedChains`）通过的基础上叠加固定校验。切勿用它替代标准验证——始终保留 `InsecureSkipVerify = false`。
+实现自定义 `CertificatePinner` 时，须在标准证书链验证（`verifiedChains`）通过的基础上叠加固定校验。不可用它替代标准验证，始终保留 `InsecureSkipVerify = false`。
 :::
 
 ## 多哈希与密钥轮换
 
-`NewSPKIHashPinner` 与 `NewPublicKeyPinner` 均接受多个值，任一匹配即通过。这是密钥轮换的关键：同时固定新旧公钥，轮换期间新旧证书均可通过，无需停机切换。
+`NewSPKIHashPinner` 与 `NewPublicKeyPinner` 均接受多个值，任一匹配即通过。密钥轮换依赖这一点：同时固定新旧公钥，轮换期间新旧证书均可通过，无需停机切换。
 
 轮换流程：
 
@@ -404,7 +410,7 @@ func main() {
 5. 观察一段时间无故障后，从固定值移除旧哈希
 
 :::danger
-证书固定失效（固定值不匹配）会导致连接完全失败，且无法自动恢复。务必：
+证书固定失效（固定值不匹配）会使连接完全失败，且无法自动恢复。要求：
 - **始终保留至少一个备份固定值**，防主密钥意外损坏
 - 轮换采用「先加新、后删旧」的双窗口策略
 - 建立监控，固定失败时快速回滚客户端配置
@@ -412,15 +418,15 @@ func main() {
 
 ## 证书固定与 Let's Encrypt
 
-Let's Encrypt 证书有效期仅 90 天，频繁续期。直接固定叶子证书会导致每 90 天更新固定值，维护成本高。推荐策略：
+Let's Encrypt 证书有效期仅 90 天，续期频繁。直接固定叶子证书需每 90 天更新固定值，维护成本高。推荐策略：
 
 | 固定对象 | 有效期 | 续期影响 | 推荐度 |
 |---------|--------|---------|--------|
 | 叶子证书 | 90 天 | 每次续期须更新固定值 | 低 |
 | Let's Encrypt 中间证书 | 约 5 年 | 中间证书轮换（数年一次）才需更新 | 推荐 |
-| 你的域名公钥（若自托管） | 由你控制 | 仅你主动轮换密钥时更新 | 视情况 |
+| 自有域名公钥（若自托管） | 由站点方控制 | 仅主动轮换密钥时更新 | 视情况 |
 
-Let's Encrypt 的中间证书（如 R3、R10、R11）有效期数年，固定中间证书 SPKI 可兼顾安全与低维护成本。Let's Encrypt 轮换中间证书时会提前公布，可从容更新固定值。
+Let's Encrypt 的中间证书（如 R3、R10、R11）有效期数年，固定中间证书 SPKI 可兼顾安全与低维护成本。Let's Encrypt 轮换中间证书时提前公布，可从容更新固定值。
 
 ```go
 // 固定 Let's Encrypt 中间证书（推荐）
@@ -431,7 +437,7 @@ pinner, err := httpc.NewSPKIHashPinner(
 ```
 
 :::tip
-Let's Encrypt 的中间证书公钥在轮换时通常保持不变（仅签发新证书，公钥复用）。固定公钥 SPKI 比固定完整中间证书更稳定——公钥不变时 SPKI 哈希不变。
+Let's Encrypt 的中间证书公钥在轮换时保持不变（仅签发新证书，公钥复用）。固定公钥 SPKI 比固定完整中间证书更稳定：公钥不变时 SPKI 哈希不变。
 :::
 
 ## 证书固定的安全考量
@@ -444,7 +450,7 @@ Let's Encrypt 的中间证书公钥在轮换时通常保持不变（仅签发新
 | 仅固定一层 | 单点失效 | 固定多层（叶子 + 中间） |
 
 :::warning
-证书固定是「双刃剑」：大幅提升对 MITM/CA 攻破的防御，但固定失效会导致硬故障。采用前确保：
+证书固定同时带来两类后果：提升对 MITM 与 CA 攻破的防御，固定失效则造成硬故障。采用前须确保：
 1. 有可靠的固定值更新与分发机制
 2. 监控固定失败率，设告警
 3. 保留应急「关闭固定」开关（虽降低安全性）
@@ -457,7 +463,7 @@ Let's Encrypt 的中间证书公钥在轮换时通常保持不变（仅签发新
 | 固定根证书 | 低 | 低 | 仅防篡改，CA 范围太广 |
 | 固定中间证书 | 中 | 中 | **推荐**，兼顾安全与维护 |
 | 固定叶子证书 | 高 | 高 | 高安全、证书可控场景 |
-| 固定多个层级 | 高 | 中 | 最佳，多层冗余 |
+| 固定多个层级 | 高 | 中 | 多层冗余，推荐 |
 
 ## InsecureSkipVerify
 
@@ -472,7 +478,9 @@ cfg := httpc.TestingConfig()
 HTTPC 在 `httpc.New()` 中检测到 `InsecureSkipVerify = true` 且非测试环境时，向 `stderr` 打印警告（每进程一次）。测试环境判定：可执行文件以 `.test` 结尾，或设置了 `GO_TEST` / `GOTEST=1`。
 
 :::danger
-`InsecureSkipVerify = true` 会跳过证书链与主机名校验，仅在测试环境使用。一个容易被误解的细节：若同时配置了证书固定，SPKI 哈希校验**仍会执行**（Go 在跳过链校验时仍把对端证书传给固定回调，固定成为唯一验证关卡）——但证书链有效性（过期、吊销、CA 签发）与主机名校验全部丢失。生产环境永远不要设为 `true`。若需自定义验证逻辑（如固定完整证书），应实现 `CertificatePinner` 接口，而非跳过验证。
+`InsecureSkipVerify = true` 会跳过证书链与主机名校验，仅在测试环境使用。若同时配置了证书固定，SPKI 哈希校验**仍会执行**：Go 在跳过链校验时仍把对端证书传给固定回调，固定成为唯一验证关卡。此时证书链有效性（过期、吊销、CA 签发）与主机名校验全部缺失。
+
+生产环境不得设为 `true`。需要自定义验证逻辑（如固定完整证书）时，实现 `CertificatePinner` 接口，而非跳过验证。
 :::
 
 ## HTTP/2
@@ -485,7 +493,7 @@ cfg.Connection.EnableHTTP2 = false // 禁用 HTTP/2（仅 HTTP/1.1）
 ```
 
 :::tip
-启用证书固定或自定义 `TLSConfig` 时，HTTP/2 的 ALPN 协商仍正常工作。如需禁用 HTTP/2（如调试或兼容旧代理），设 `EnableHTTP2 = false`。
+启用证书固定或自定义 `TLSConfig` 时，HTTP/2 的 ALPN 协商仍正常工作。需要禁用 HTTP/2（如调试或兼容旧代理）时，设 `EnableHTTP2 = false`。
 :::
 
 ## 最佳实践
@@ -495,7 +503,7 @@ cfg.Connection.EnableHTTP2 = false // 禁用 HTTP/2（仅 HTTP/1.1）
 3. 多哈希支持密钥轮换，采用「先加新、后删旧」策略
 4. 定期更新固定值，与服务端证书续期同步
 5. 使用 `SecureConfig()` 作为安全基线
-6. 永远不要在生产环境设置 `InsecureSkipVerify`
+6. 生产环境不得设置 `InsecureSkipVerify`
 7. 高安全场景固定多层证书（叶子 + 中间），增加冗余
 
 ## 下一步

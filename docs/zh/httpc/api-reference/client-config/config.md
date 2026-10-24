@@ -7,6 +7,8 @@ sidebar_position: 10
 
 # 配置
 
+`Config` 是 HTTPC 的主配置结构体，由五个子配置与 `Defaults` 组成；本页列出各字段的类型、默认值与校验边界，以及五个预设配置的取值。
+
 ## Config
 
 ```go
@@ -20,7 +22,7 @@ type Config struct {
 }
 ```
 
-主配置结构体，五个子配置与 `Defaults` 均为**值类型**。通过 `DefaultConfig()` 获取安全默认值，返回的 Config 可直接修改字段。
+五个子配置与 `Defaults` 均为**值类型**。`DefaultConfig()` 返回带安全默认值的 Config，调用方可直接修改字段。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -38,10 +40,15 @@ cfg.Retry.MaxRetries = 5
 client, err := httpc.New(cfg)
 ```
 
-`New()` 内部对 Config 做深拷贝（含 `Defaults.Headers` map 与 `Middleware.Middlewares` 切片），客户端创建后再修改原 `cfg` 不影响其行为。两个例外按**引用共享**：`Retry.CustomPolicy` 与 `Security.CertificatePinner` 不做深拷贝——pinner 实现约定为并发安全，但若自定义重试策略带有可变状态，不要将同一 Config 实例并发传给多个 `New()`。
+`New()` 内部对 Config 做深拷贝（含 `Defaults.Headers` map 与 `Middleware.Middlewares` 切片）。客户端创建后再修改原 `cfg` 不影响该客户端行为。
+
+两个字段按**引用共享**、不做深拷贝：
+
+- `Retry.CustomPolicy`：若自定义重试策略带有可变状态，不要将同一 Config 实例并发传给多个 `New()`。
+- `Security.CertificatePinner`：pinner 实现约定为并发安全，可跨客户端共享。
 
 :::tip 相关类型
-请求级细粒度控制使用 `RequestOption` 函数选项（见 [Options 详解](../core/options)）；自定义重试策略实现 [`RetryPolicy`](../types/interfaces#retrypolicy) 接口。
+请求级细粒度控制使用 `RequestOption` 函数选项（见 [Options 详解](../core/options)）；自定义重试策略需实现 [`RetryPolicy`](../types/interfaces#retrypolicy) 接口。
 :::
 
 ## TimeoutConfig
@@ -64,10 +71,15 @@ type TimeoutConfig struct {
 | ResponseHeader | 0 | 30min |
 | IdleConn | 90s | 30min |
 
-设为 0 表示无超时（生产环境不推荐）。
+设为 0 表示不设超时上限（生产环境不推荐）。`ResponseHeader` 的默认值 0 即禁用该超时。
 
 :::tip ResponseHeader 设计
-`ResponseHeader` 默认为 0（禁用），此时使用 `TimeoutConfig.Request` 或 `WithTimeout()` 作为唯一的超时机制，确保 `WithTimeout()` 对请求持续时间有完全控制。此设计适合 AI API 和长轮询等需要扩展响应时间的场景。仅在需要传输层硬性上限（如防御 Slowloris 攻击）时设为正值，但需注意：该超时在 Transport 层生效，作用于**共享同一客户端的所有请求**，且当其值短于 `WithTimeout` 设定的截止时间时会提前生效。
+`ResponseHeader` 默认为 0（禁用）。此时 `TimeoutConfig.Request` 或 `WithTimeout()` 是唯一的超时机制，`WithTimeout()` 对请求持续时间有完全控制权。该设计适合 AI API 和长轮询等需要延长响应时间的场景。
+
+仅在需要传输层硬性上限（如防御 Slowloris 攻击）时设为正值。此时需注意两点：
+
+- 该超时在 Transport 层生效，作用于**共享同一客户端的所有请求**。
+- 当其值短于 `WithTimeout` 设定的截止时间时，它会提前生效。
 :::
 
 ## ProxyStrategy
@@ -129,25 +141,37 @@ type ConnectionConfig struct {
 | `ConnectionConfig.EnableProxyPoolHTTP2` | `bool` | `false` | 多代理池下恢复 HTTP/2（每代理独立传输），需 `EnableHTTP2=true`；详见[代理池与 HTTP/2](#代理池与-http-2-enableproxypoolhttp2) |
 | `ConnectionConfig.EnableHTTP2` | `bool` | `true` | 启用 HTTP/2；多代理轮换池激活时自动强制 HTTP/1，除非设 `EnableProxyPoolHTTP2` |
 | `ConnectionConfig.EnableCookies` | `bool` | `false` | 启用 Cookie jar 自动管理 |
-| `ConnectionConfig.PublicSuffixList` | `cookiejar.PublicSuffixList` | `nil` | 为 Cookie jar 提供 Public Suffix 数据库（推荐 `golang.org/x/net/publicsuffix.List`）。未提供时 jar 会接受公共后缀上的 Cookie 并采用宽松的域匹配，可能让 Cookie 泄漏到不相关子域 |
+| `ConnectionConfig.PublicSuffixList` | `cookiejar.PublicSuffixList` | `nil` | 为 Cookie jar 提供 Public Suffix 数据库（推荐 `golang.org/x/net/publicsuffix.List`）。未提供时 jar 会接受公共后缀上的 Cookie 并采用宽松的域匹配，Cookie 因此可被发送到不相关子域 |
 | `ConnectionConfig.EnableDoH` | `bool` | `false` | 启用 DNS-over-HTTPS 解析 |
 | `ConnectionConfig.DoHCacheTTL` | `time.Duration` | 5min | DoH DNS 响应缓存时长 |
 | `ConnectionConfig.MaxResponseHeaderBytes` | `int64` | 0 | 响应头最大字节数；0 使用 Go 标准库默认 1MB（`net/http.DefaultMaxHeaderBytes`），防御恶意服务器发送超大响应头 |
 
-`PublicSuffixList` 仅在 `EnableCookies` 开启（Cookie jar 生效）时被使用，是收紧 Cookie 域匹配、防「超级 Cookie」泄漏的推荐配置。
+`PublicSuffixList` 仅在 `EnableCookies` 开启（Cookie jar 生效）时被使用。提供该列表可收紧 Cookie 域匹配，防止「超级 Cookie」泄漏。
 
 ### 代理池
 
-`ProxyPool` 指定一组代理服务器，请求按 `ProxyPoolStrategy` 在代理间分发。连接失败（dial/TLS）会触发被动熔断：累计 `ProxyFailureThreshold` 次失败后，该代理临时移出轮换，`ProxyCooldown` 后恢复（半开探测）。
+`ProxyPool` 指定一组代理服务器，请求按 `ProxyPoolStrategy` 在代理间分发。连接失败（dial/TLS）触发被动熔断，规则如下：
+
+- 累计 `ProxyFailureThreshold` 次失败后，该代理临时移出轮换。
+- `ProxyCooldown` 后该代理恢复（半开探测）。
 
 优先级：低于 `ProxyURL`，高于 `EnableSystemProxy`。若同时设置 `ProxyURL` 和 `ProxyPool`，`ProxyURL` 生效（单代理模式）。
 
-`ProxyRotateOnStatus` 指定触发换代理重试的 HTTP 状态码（如 `[]int{403}` 用于 CF/WAF 基于 IP 的封锁）。与连接失败不同，状态码轮换**不会**熔断代理——封锁往往是目标特定的（一个代理在某站点被封，在另一站点可能正常）。需 `Retry.MaxRetries > 0` 才生效。
+`ProxyRotateOnStatus` 指定触发换代理重试的 HTTP 状态码（如 `[]int{403}` 用于 CF/WAF 基于 IP 的封锁）。该字段需 `Retry.MaxRetries > 0` 才生效。
 
-`ProxyRotatePerRequest` 确保每个独立请求（如每次 `Get`/`Post` 调用）使用不同的代理。不启用时，HTTP 连接复用会导致对同一主机的连续请求复用前一次请求的代理隧道，绕过代理池选择。启用后，每次请求开始时关闭空闲连接，强制 Transport 重新评估代理池——这增加了少量开销（无连接复用），但保证按请求轮换。需设置 `ProxyPool` 才生效；对 `ProxyURL` 或无代理池配置无效。
+与连接失败不同，状态码轮换**不会**熔断代理。原因是封锁属目标特定：同一代理在某站点被封，在另一站点仍可正常使用。
+
+`ProxyRotatePerRequest` 确保每个独立请求（如每次 `Get`/`Post` 调用）使用不同的代理。不启用时，HTTP 连接复用会让对同一主机的连续请求沿用前一次请求的代理隧道，绕过代理池选择。启用后，每次请求开始时关闭空闲连接，强制 Transport 重新评估代理池。
+
+该开关增加少量开销（无连接复用），换取按请求轮换。需设置 `ProxyPool` 才生效；对 `ProxyURL` 或无代理池配置无效。
 
 :::tip ProxyRotatePerRequest vs ProxyRotateOnStatus
-两者都用于代理轮换，但触发机制不同：`ProxyRotateOnStatus` 在**收到特定状态码**时触发重试轮换（被动，需配合重试），`ProxyRotatePerRequest` 在**每次请求开始**时主动切换代理（无需重试）。对同一主机的爬虫/数据采集场景，`ProxyRotatePerRequest` 可确保每次请求的源 IP 不同。
+两者都用于代理轮换，触发机制不同：
+
+- `ProxyRotateOnStatus`：**收到特定状态码**时触发重试轮换，属被动方式，需配合重试。
+- `ProxyRotatePerRequest`：**每次请求开始**时主动切换代理，无需重试。
+
+对同一主机的爬虫/数据采集场景，`ProxyRotatePerRequest` 可确保每次请求的源 IP 不同。
 :::
 
 ```go
@@ -165,9 +189,11 @@ cfg.Connection.ProxyRotateOnStatus = []int{403}
 
 #### 代理池与 HTTP/2 (`EnableProxyPoolHTTP2`)
 
-多代理池（`ProxyPool` 多于 1 条且未设 `ProxyURL`）激活时，HTTP/2 会被**自动禁用**、强制走 HTTP/1.1：net/http 的 h2 连接池只按目标主机键控，多个代理共用一个池时，所有请求会被钉死在第一个建立隧道的代理上，静默绕过轮换与负载分散。
+多代理池（`ProxyPool` 多于 1 条且未设 `ProxyURL`）激活时，HTTP/2 被**自动禁用**，强制走 HTTP/1.1。原因是 net/http 的 h2 连接池只按目标主机键控。
 
-`EnableProxyPoolHTTP2 = true` 可恢复 HTTP/2：每个代理获得独立传输（独立的 h2 连接池），由每请求分发器路由。轮换、`ProxyRotateOnStatus` 与 `Meta.ProxyURL` 上报与默认 HTTP/1 模式完全一致；差异是路由到同一代理的并发请求在一条 HTTP/2 隧道上多路复用，而非各自新开一条 HTTP/1 连接。
+多个代理共用一个池时，所有请求会被钉死在第一个建立隧道的代理上，轮换与负载分散因此被静默绕过。
+
+`EnableProxyPoolHTTP2 = true` 可恢复 HTTP/2：每个代理获得独立传输（独立的 h2 连接池），由每请求分发器路由。轮换、`ProxyRotateOnStatus` 与 `Meta.ProxyURL` 上报与默认 HTTP/1 模式完全一致。差异在于：路由到同一代理的并发请求在一条 HTTP/2 隧道上多路复用，而非各自新开一条 HTTP/1 连接。
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -184,14 +210,20 @@ client, err := httpc.New(cfg)
 
 两个权衡：
 
-- **请求关联性**：路由到同一代理的请求共享该代理的连接——**含并发请求**（在途隧道会被下一个同代理请求加入），网络层可据此关联它们。要求请求间不可关联时保持关闭；`ProxyRotatePerRequest` **不能**防止该共享——轮换索引每池大小次请求就重复一次，其空闲连接排空也只触及不再在途的连接。
-- **连接限额放大**：`MaxConnsPerHost` 与派生的 MaxIdleConnsPerHost 按每代理传输独立计算，进程级上限 = 限额 × 池大小（全部拨号总数仍受引擎级全局上限约束）。
+- **请求关联性**：路由到同一代理的请求共享该代理的连接，**含并发请求**（在途隧道会被下一个同代理请求加入），网络层可据此关联这些请求。要求请求间不可关联时保持该开关关闭。
+  - `ProxyRotatePerRequest` **不能**防止此共享：轮换索引每池大小次请求重复一次，其空闲连接排空也只触及不再在途的连接。
+- **连接限额放大**：`MaxConnsPerHost` 与派生的 MaxIdleConnsPerHost 按每代理传输独立计算。进程级上限 = 限额 × 池大小；全部拨号总数仍受引擎级全局上限约束。
 
-校验与例外：需 `EnableHTTP2 = true`，否则 `New()` 返回 `ErrInvalidConnection`（要为池恢复 HTTP/2 却关着总开关必是配置错误）；`Security.TLSFingerprint` 路径忽略该字段（指纹栈自带每代理后端）。完整机制说明见[代理与代理池](../../guides/proxy#代理池与-http-2-enableproxypoolhttp2)。
+校验与例外：
+
+- 该字段需 `EnableHTTP2 = true`，否则 `New()` 返回 `ErrInvalidConnection`。要为池恢复 HTTP/2 却关闭总开关，属配置错误。
+- `Security.TLSFingerprint` 路径忽略该字段（指纹栈自带每代理后端）。
+
+完整机制说明见[代理与代理池](../../guides/proxy#代理池与-http-2-enableproxypoolhttp2)。
 
 ### DNS-over-HTTPS
 
-启用 DoH 减少 DNS 解析延迟和防止 DNS 劫持：
+启用 DoH 可减少 DNS 解析延迟并防止 DNS 劫持：
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -237,7 +269,7 @@ type SecurityConfig struct {
 
 ### 证书固定（CertificatePinner）
 
-`CertificatePinner` 启用证书固定：TLS 握手在服务端未提供已固定密钥/证书时将被拒绝，即便受信任 CA 被攻破也可防御中间人攻击。默认 `nil`（禁用）。通过以下构造函数创建：
+`CertificatePinner` 启用证书固定：服务端未提供已固定密钥/证书时，TLS 握手被拒绝。即便受信任 CA 被攻破，该机制仍可防御中间人攻击。默认 `nil`（禁用）。使用以下构造函数创建：
 
 | 构造函数 | 说明 |
 |----------|------|
@@ -260,11 +292,15 @@ client, err := httpc.New(cfg)
 ```
 
 :::warning 维护成本
-证书固定要求在服务端更换证书（如 Let's Encrypt 续期）时同步更新固定值。建议固定多个哈希（当前 + 备用）并建立更新机制，避免因密钥轮换导致连接中断。
+证书固定要求在服务端更换证书（如 Let's Encrypt 续期）时同步更新固定值。应固定多个哈希（当前 + 备用）并建立更新机制，避免因密钥轮换导致连接中断。
 :::
 
 :::warning SSRF 防护
-`AllowPrivateIPs` 默认为 `false`，阻止连接到私有/保留 IP（127.0.0.1、10.x、192.168.x、169.254.x 等，覆盖 localhost、回环、链路本地与私有/保留段）。设为 `true` 将**完全绕过连接级 SSRF 拨号校验**（不只是放行私有 IP 段），仅在连接内部服务（VPN、代理、企业内网）时使用；选择性放行请改用 `SSRFExemptCIDRs`。详见 [SSRF 防护](../../security/ssrf)。
+`AllowPrivateIPs` 默认为 `false`，阻止连接到私有/保留 IP（127.0.0.1、10.x、192.168.x、169.254.x 等，覆盖 localhost、回环、链路本地与私有/保留段）。
+
+设为 `true` 将**完全绕过连接级 SSRF 拨号校验**（不只是放行私有 IP 段）。该设置仅在连接内部服务（VPN、代理、企业内网）时使用；选择性放行请改用 `SSRFExemptCIDRs`。
+
+详见 [SSRF 防护](../../security/ssrf)。
 :::
 
 ### SSRF 豁免示例
@@ -277,11 +313,17 @@ cfg.Security.SSRFExemptCIDRs = []string{
 }
 ```
 
-非法 CIDR 会使 `New()` 直接返回错误（`invalid configuration: ...`），不会静默忽略。
+非法 CIDR 使 `New()` 直接返回错误（`invalid configuration: ...`），不会被静默忽略。
 
 ### TLS 指纹（TLSFingerprint）
 
-`TLSFingerprint` 启用浏览器传输层指纹伪装：TLS ClientHello（JA3/JA4）、HTTP/2 帧（SETTINGS 顺序与值、连接窗口、初始流 ID、伪头顺序）与有序头块（浏览器原样大小写 + 版本匹配的 User-Agent）一次性全部模拟。值取预设名（大小写不敏感），`""`（默认）走标准栈、无伪装。完整预设清单与行为语义见 [TLS 指纹指南](../../guides/tls-fingerprint)。
+`TLSFingerprint` 启用浏览器传输层指纹伪装，一次性模拟以下三部分：
+
+- TLS ClientHello（JA3/JA4）。
+- HTTP/2 帧（SETTINGS 顺序与值、连接窗口、初始流 ID、伪头顺序）。
+- 有序头块（浏览器原样大小写 + 版本匹配的 User-Agent）。
+
+值为预设名（大小写不敏感）。`""`（默认）走标准栈、无伪装。完整预设清单与行为语义见 [TLS 指纹指南](../../guides/tls-fingerprint)。
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -290,14 +332,14 @@ client, err := httpc.New(cfg)
 ```
 
 :::warning 与 TLSConfig 互斥
-`Security.TLSConfig` 与该字段互斥（校验拒绝组合）；`MinTLSVersion`/`MaxTLSVersion` 在该字段设置后**被静默忽略**——由预设的 ClientHello 决定版本范围。详见 [TLS 指纹指南](../../guides/tls-fingerprint)。
+`Security.TLSConfig` 与该字段互斥（同时设置时校验拒绝）。设置该字段后，`MinTLSVersion`/`MaxTLSVersion` **被静默忽略**，版本范围由预设的 ClientHello 决定。详见 [TLS 指纹指南](../../guides/tls-fingerprint)。
 :::
 
-`TLSFingerprintDisableSessionTickets` 置 `true` 时强制指纹路径每次连接都完整握手，默认 `false`——Chrome 预设默认按连接池缓存 TLS 会话票据、以 PSK 恢复重复连接（如同真实浏览器重访同一主机）。会话恢复机制详见 [TLS 指纹指南](../../guides/tls-fingerprint#会话恢复)。
+`TLSFingerprintDisableSessionTickets` 置 `true` 时，指纹路径每次连接都完整握手；默认 `false`，此时 Chrome 预设按连接池缓存 TLS 会话票据，以 PSK 恢复重复连接（与真实浏览器重访同一主机的行为一致）。会话恢复机制详见 [TLS 指纹指南](../../guides/tls-fingerprint#会话恢复)。
 
 ### 重定向白名单
 
-`RedirectWhitelist` 限制重定向只允许跳往列出的域名，默认 `nil`（允许所有重定向目标）。这是防「重定向型 SSRF」的闸门——更保守的替代方案是 `Security.FollowRedirects = false`（`SecureConfig()` 即采用）。
+`RedirectWhitelist` 限制重定向只允许跳往列出的域名，默认 `nil`（允许所有重定向目标）。该字段是防「重定向型 SSRF」的闸门。更保守的替代方案是 `Security.FollowRedirects = false`（`SecureConfig()` 即采用）。
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -311,7 +353,13 @@ cfg.Security.RedirectWhitelist = []string{
 
 ### 敏感头剥离（SensitiveHeaders）
 
-`SensitiveHeaders` 扩展跨域重定向跳转时**按凭据处理**的头名集合：内置集 `Authorization`、`Proxy-Authorization`、`Cookie`、`X-Api-Key`、`X-Auth-Token` 在跨源跳转时始终剥离（net/http 自身只覆盖前三个），而自定义凭据头（如 `X-Secret-Key`）若不在此列出，会被原样转发给 `Location` 指向的任意目标——开放重定向凭据泄漏（CWE-525）。条目按规范形式匹配（大小写不敏感）并自动去重；内置集无论是否列出都始终剥离。默认 `nil`。
+`SensitiveHeaders` 扩展跨域重定向跳转时**按凭据处理**的头名集合，规则如下：
+
+- **内置集始终剥离**：`Authorization`、`Proxy-Authorization`、`Cookie`、`X-Api-Key`、`X-Auth-Token` 在跨源跳转时始终剥离（net/http 自身只覆盖前三个），无论是否列出。
+- **自定义凭据头需显式列出**：如 `X-Secret-Key` 不在此列出时，会被原样转发给 `Location` 指向的任意目标，构成开放重定向凭据泄漏（CWE-525）。
+- **条目匹配**：按规范形式匹配（大小写不敏感），并自动去重。
+
+默认 `nil`。
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -321,7 +369,7 @@ cfg.Security.SensitiveHeaders = []string{"X-Secret-Key", "X-Tenant-Token"}
 非法头名使 `New()` 返回 `ErrInvalidSecurity`（与 `WithHeader` 相同的键校验规则）。跨域凭据剥离的完整语义见[重定向控制](../../guides/redirects)。
 
 :::warning 掩码范围
-`Result.String()` 与审计输出的脱敏只覆盖内置敏感头名——此处列出的自定义头在那些输出中**仍可见**，不要依赖它们做凭据隐藏。
+`Result.String()` 与审计输出的脱敏只覆盖内置敏感头名。此处列出的自定义头在那些输出中**仍可见**，不能依赖它们隐藏凭据。
 :::
 
 ## RetryConfig
@@ -350,9 +398,13 @@ type RetryConfig struct {
 
 重试延迟公式：`min(Delay * BackoffFactor^attempt + jitter, MaxRetryDelay)`
 
-`CustomPolicy` 实现 [`RetryPolicy`](../types/interfaces#retrypolicy) 接口，可整体替换内置重试判定；默认 `nil`（使用内置策略）。与内置策略一样，`CustomPolicy` 仅对幂等方法生效——要让它接管 POST/PATCH 的重试，仍需同时设置 `RetryNonIdempotent`（或逐请求使用 [`WithRetryNonIdempotent`](../core/options#withretrynonidempotent)）。配置代理状态码轮换时，有效重试次数会被自动提升，见[配置派生与内部换算](#配置派生与内部换算)。
+`CustomPolicy` 实现 [`RetryPolicy`](../types/interfaces#retrypolicy) 接口，可整体替换内置重试判定；默认 `nil`（使用内置策略）。
 
-`RetryNonIdempotent` 默认 `false`：非幂等请求**恰好执行一次**——超时或可重试 5xx 可能在服务端已提交操作后才到达，重放请求体会造成重复（重复支付、重复插入……）。仅当端点已知可容忍重放、或以幂等键保护时启用；幂等方法（GET/HEAD/PUT/DELETE/OPTIONS/TRACE）不受此开关影响，始终按 `MaxRetries` 重试。
+与内置策略一样，`CustomPolicy` 仅对幂等方法生效。要让它接管 POST/PATCH 的重试，需同时设置 `RetryNonIdempotent`，或逐请求使用 [`WithRetryNonIdempotent`](../core/options#withretrynonidempotent)。
+
+配置代理状态码轮换时，有效重试次数会被自动提升，见[配置派生与内部换算](#配置派生与内部换算)。
+
+`RetryNonIdempotent` 默认 `false`，此时非幂等请求**恰好执行一次**。超时或可重试 5xx 可能在服务端已提交操作后才到达；若重放请求体，会造成重复（重复支付、重复插入等）。仅当端点已知可容忍重放、或以幂等键保护时才启用该开关。幂等方法（GET/HEAD/PUT/DELETE/OPTIONS/TRACE）不受此开关影响，始终按 `MaxRetries` 重试。
 
 ## MiddlewareConfig
 
@@ -362,7 +414,7 @@ type MiddlewareConfig struct {
 }
 ```
 
-仅包含 `Middlewares` 一个字段。请求默认值（User-Agent、默认请求头）位于 [`RequestDefaults`](#requestdefaults)；重定向策略位于 [`SecurityConfig`](#securityconfig)。
+`MiddlewareConfig` 仅包含 `Middlewares` 一个字段。请求默认值（User-Agent、默认请求头）位于 [`RequestDefaults`](#requestdefaults)；重定向策略位于 [`SecurityConfig`](#securityconfig)。
 
 ## RequestDefaults
 
@@ -373,7 +425,7 @@ type RequestDefaults struct {
 }
 ```
 
-每请求默认值的规范位置：User-Agent 与默认请求头。通过 `DefaultConfig()` 获取合理默认值后按需修改。
+`RequestDefaults` 是每请求默认值的规范位置：User-Agent 与默认请求头。`DefaultConfig()` 已提供合理默认值，调用方按需修改。
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
@@ -394,7 +446,7 @@ cfg.Defaults.Headers = map[string]string{"Accept": "application/json"}
 func DefaultConfig() Config
 ```
 
-安全默认配置。SSRF 防护默认开启。
+安全默认配置，SSRF 防护默认开启。
 
 ### SecureConfig
 
@@ -402,7 +454,7 @@ func DefaultConfig() Config
 func SecureConfig() Config
 ```
 
-安全优先配置。更短的超时、禁用自动重定向、严格的 SSRF 防护。
+安全优先配置：更短的超时、禁用自动重定向、严格的 SSRF 防护。
 
 | 配置项 | 值 |
 |--------|-----|
@@ -425,10 +477,10 @@ func SecureConfig() Config
 func PerformanceConfig() Config
 ```
 
-高吞吐配置。更大连接池、更长超时，保持安全验证。
+高吞吐配置：更大连接池、更长超时，保持安全验证。
 
 :::tip
-PerformanceConfig 保持 `ValidateURL` 和 `ValidateHeaders` 开启以确保安全性。在可信环境中如需最大性能，可手动关闭：`cfg.Security.ValidateURL = false`，但需注意安全风险（注入攻击、SSRF）。
+`PerformanceConfig` 保持 `ValidateURL` 和 `ValidateHeaders` 开启以确保安全性。在可信环境中如需最大性能，可手动关闭：`cfg.Security.ValidateURL = false`。关闭后需自行承担安全风险（注入攻击、SSRF）。
 :::
 
 | 配置项 | 值 |
@@ -455,7 +507,7 @@ PerformanceConfig 保持 `ValidateURL` 和 `ValidateHeaders` 开启以确保安�
 func TestingConfig() Config
 ```
 
-测试环境配置。禁用安全检查、短超时。
+测试环境配置：禁用安全检查、短超时。
 
 | 配置项 | 值 |
 |--------|-----|
@@ -486,7 +538,7 @@ func TestingConfig() Config
 func MinimalConfig() Config
 ```
 
-轻量级配置。禁用重试和重定向，最小连接池。
+轻量级配置：禁用重试和重定向，最小连接池。
 
 | 配置项 | 值 |
 |--------|-----|
@@ -505,7 +557,7 @@ func MinimalConfig() Config
 
 ## 配置派生与内部换算
 
-`New()` 把公开 Config 换算为引擎配置时，部分零值字段会回退到内置默认，另有几条派生规则会改变实际行为：
+`New()` 把公开 Config 换算为引擎配置时，部分零值字段会回退到内置默认。以下派生规则会改变实际行为：
 
 | 派生项 | 规则 |
 |--------|------|
@@ -517,7 +569,9 @@ func MinimalConfig() Config
 | ProxyRotateOnStatus | 作为「额外可重试状态码」传入引擎，命中即消耗一次重试预算换代理 |
 
 :::tip 为什么需要自动提升重试
-默认 `MaxRetries = 3` 时，5 个代理的池子在遇到 403 后只能试到第 4 个代理就放弃。既然配置了状态码轮换，意图就是遍历整个代理池，因此重试预算被提升到「池大小 − 1」；若你显式设置了更大的 MaxRetries，则保持你的值不变。
+默认 `MaxRetries = 3` 时，5 个代理的池子在遇到 403 后只能试到第 4 个代理就放弃。设置 `ProxyRotateOnStatus` 或 `ProxyRotatePerRequest` 的意图是遍历整个代理池，因此有效重试预算被提升到「池大小 − 1」。
+
+若 `Retry.MaxRetries` 已显式设为更大的值，则保持该值不变（自动提升只会调高，不会调低）。
 :::
 
 ## 安全警告输出
@@ -528,7 +582,12 @@ func MinimalConfig() Config
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-重定向安全警告的输出目标。当使用 `TestingConfig()` 或将 `SecurityConfig.InsecureSkipVerify`（`Config.Security`）设为 `true` 时，httpc 会向该 writer 打印 `[SECURITY WARNING]` 级别的告警（每种警告每进程最多打印一次）。默认输出到 `os.Stderr`；传入 `io.Discard` 可完全抑制警告，便于测试或已知安全的内部场景静默运行。
+`SetSecurityWarnOutput` 设置安全警告的输出目标。进程不在测试环境（可执行文件名含 `.test`，或设置了 `GO_TEST`、`GOTEST=1`）时，以下情况会向该 writer 打印 `[SECURITY WARNING]` 级别的告警：
+
+- 使用 `TestingConfig()`。
+- `SecurityConfig.InsecureSkipVerify`（`Config.Security`）或 `SecurityConfig.TLSConfig.InsecureSkipVerify` 为 `true`。
+
+两种告警各自独立计数，每种每进程最多打印一次。默认输出到 `os.Stderr`；传入 `io.Discard` 可完全抑制警告，适合测试或已知安全的内部场景。传入 `nil` 会被归一化为 `io.Discard`。
 
 ```go
 // 测试中抑制安全警告
@@ -537,7 +596,7 @@ cfg := httpc.TestingConfig()
 ```
 
 :::tip 影响范围
-此设置是进程级全局状态，影响所有后续创建的客户端。`TestingConfig` 与 `InsecureSkipVerify` 两种告警各自独立计数（互不影响触发），但共享同一输出 writer。
+该设置为进程级全局状态，影响所有后续创建的客户端。`TestingConfig` 与 `InsecureSkipVerify` 两种告警共享同一输出 writer。
 :::
 
 ## 验证
@@ -548,9 +607,9 @@ cfg := httpc.TestingConfig()
 func ValidateConfig(cfg *Config) error
 ```
 
-验证配置有效性。`New()` 内部会自动调用，也可显式调用。
+校验配置有效性。`New()` 内部自动调用，也可显式调用。
 
-等价的方法形式 `Config.Validate`（签名 `func (c *Config) Validate() error`，内部直接委托 `ValidateConfig`）在已有 Config 实例时直接调用 `Validate` 更顺手，新代码推荐优先使用：
+等价的方法形式 `Config.Validate`（签名 `func (c *Config) Validate() error`，内部直接委托 `ValidateConfig`）适用于已持有 Config 实例的场景，新代码推荐使用该方法：
 
 ```go
 cfg := httpc.DefaultConfig()

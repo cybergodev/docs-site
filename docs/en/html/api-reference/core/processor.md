@@ -1,19 +1,19 @@
 ---
 sidebar_label: "Processor"
-title: "Processor - CyberGo html | Usage, Parameters & Examples"
-description: "CyberGo html Processor API: New, Extract method family, ClearCache, GetStatistics, Close lifecycle, cache and encoding-detector reuse for high-frequency calls."
+title: "Processor - CyberGo html | Methods & Lifecycle"
+description: "CyberGo html Processor reference: New steps, 30 exported methods, error returns, context timeout rules, cache copies, and Close."
 sidebar_position: 20
 ---
 
 # Processor
 
-`Processor` is the core processing engine of the HTML library. Compared to package functions, the Processor reuses internal resources (cache, encoding detector) and is suited for high-frequency call scenarios.
+`Processor` is the core processing engine of the HTML library. It reuses internal resources (cache, encoding detector) and suits high-frequency calls; for one-off calls use the [package functions](./functions).
 
 ## Creation
 
 ### New
 
-Create a Processor instance, optionally passing a configuration.
+Create a `Processor` instance, optionally passing a configuration.
 
 ```go
 func New(cfg ...Config) (*Processor, error)
@@ -24,34 +24,34 @@ func New(cfg ...Config) (*Processor, error)
 ```go
 p, err := html.New(html.DefaultConfig())
 if err != nil {
-    log.Fatal(err)
+	log.Fatal(err)
 }
 defer p.Close()
 ```
 
 **Internal initialization**:
 
-`New` is not a simple assignment; it performs the following steps to ensure the returned Processor is immediately usable:
+`New` performs these steps in order:
 
-1. **Validates the config**: calls `Config.Validate()`; an invalid config returns `*ConfigError` (`errors.Is(err, ErrInvalidConfig)` is true). Validation covers numeric bounds (`MaxInputSize`, `WorkerPoolSize`, `MaxDepth` must be positive; `MaxCacheEntries` cannot be negative — `0` is legal and disables the cache; all are bounded above) and format strings (the values of `InlineImageFormat`/`InlineLinkFormat`/`TableFormat` must be legal).
-2. **Sets the Scorer**: when a custom `Scorer` is configured it is adapted to the internal interface (the adaptation is performed automatically by the library); otherwise the built-in default scorer is used (internal implementation, not exported; read-only, concurrency-safe).
-3. **Pre-computes the format strings**: `InlineImageFormat`/`InlineLinkFormat` are normalized (lowercased and whitespace-stripped; an empty string maps to `"none"`) and cached in the `imageFormat`/`linkFormat` fields to avoid repeated `strings.ToLower` in the hot path.
-4. **Starts cache cleanup**: a background cleanup goroutine is started only when `CacheTTL>0` **and** `CacheCleanup>0`; if either is 0, nothing is started.
+1. **Validates the config**: calls `Config.Validate()`; an invalid config returns `*ConfigError` (`errors.Is(err, ErrInvalidConfig)` is true). It checks numeric bounds and format strings: `MaxInputSize`, `WorkerPoolSize`, and `MaxDepth` must be positive; `MaxCacheEntries` cannot be negative (`0` is legal and disables the cache); none may exceed its upper bound.
+2. **Pre-computes the format strings**: `InlineImageFormat`/`InlineLinkFormat` are normalized (lowercased, whitespace-stripped, empty mapped to `"none"`) and cached in `imageFormat`/`linkFormat`, avoiding repeated `strings.ToLower` in the hot path.
+3. **Sets the Scorer**: a custom `Scorer` is adapted to the internal interface automatically; otherwise the built-in default scorer is used (unexported, read-only, concurrency-safe).
+4. **Starts cache cleanup**: the background cleanup goroutine starts only when `CacheTTL>0` **and** `CacheCleanup>0`; if either is 0, it does not start.
 
 ## Concurrency Safety
 
-:::tip
-A `Processor` can be safely shared across multiple goroutines without additional locking. The concurrency guarantees come from:
+:::tip What makes sharing safe
+A `Processor` can be shared across goroutines without extra locking, for four reasons:
 
-- **Immutable config**: `config` is immutable after `New()` (the `*Config` pointer is never reassigned or mutated), so format methods such as `ExtractToMarkdown` can safely make value copies to spawn a temporary Processor without any lock — format overrides never write back to the shared config.
+- **Immutable config**: `config` never changes after `New()`, so format methods such as `ExtractToMarkdown` can copy it into a temporary Processor without a lock, and format overrides never write back to the shared config.
 - **Statistics counters**: `TotalProcessed`/`CacheHits`/`CacheMisses`/`ErrorCount`/`totalProcessTime` all use `atomic` operations.
-- **Cache**: the internal cache carries its own lock and is safe to read and write. Cache behavior is observed and controlled entirely through the public API: `Config.MaxCacheEntries = 0` disables the cache, `ClearCache()` empties it, and `Statistics.CacheHits`/`CacheMisses` observe hit counts.
-- **Scorer**: the built-in default scorer (internal implementation, not exported) is read-only. **A custom `Scorer` must ensure its own concurrency safety** (e.g. by holding an internal lock), because a single Processor will invoke its `Score` from multiple goroutines during concurrent `Extract` (`ShouldRemove` is a reserved interface method, not called by the current library version).
+- **Cache**: the internal cache carries its own lock. Cache behavior is observed and controlled through the public API: `Config.MaxCacheEntries = 0` disables it, `ClearCache()` empties it, and `Statistics.CacheHits`/`CacheMisses` report hits.
+- **Scorer**: the built-in default scorer is read-only. **A custom `Scorer` must ensure its own concurrency safety**: one Processor calls its `Score` from multiple goroutines during concurrent `Extract`. `ShouldRemove` is a reserved interface method and is not called by the current library version.
 :::
 
 ## Method Overview
 
-`Processor` has 30 exported methods, grouped by function as follows (signatures and behavior details in the sections below):
+`Processor` has 30 exported methods, grouped by function (signatures and behavior follow):
 
 | Group | Method | Description |
 |-------|--------|-------------|
@@ -84,26 +84,35 @@ A `Processor` can be safely shared across multiple goroutines without additional
 | Statistics & cache | `Processor.ResetStatistics` | Reset all statistics counters |
 | Audit | `Processor.GetAuditLog` | Return audit log entries held in memory |
 | Audit | `Processor.ClearAuditLog` | Clear the audit log |
-| Lifecycle | `Processor.Close` | Release resources (idempotent; all methods return `ErrProcessorClosed` after close) |
+| Lifecycle | `Processor.Close` | Release resources (idempotent). After close, extracting methods that return a value report `ErrProcessorClosed` |
 
 ## Content Extraction
 
 ### Error Returns
 
-The `Extract` method family returns clear sentinel errors at each processing stage, which can be checked precisely with `errors.Is`:
+The `Extract` method family returns explicit sentinel errors at each stage; check them with `errors.Is`:
 
 | Error | Trigger | Note |
 |-------|---------|------|
-| `ErrProcessorClosed` | `p` is `nil` or already `Close`d | Shared by all methods |
-| `ErrInputTooLarge` | Input bytes exceed `MaxInputSize` | Wrapped in `*InputError`, includes actual/limit sizes |
+| `ErrProcessorClosed` | `p` is `nil` or already `Close`d | Shared by the extraction, formatting, link, and batch methods |
+| `ErrInputTooLarge` | Input bytes exceed `MaxInputSize` | Wrapped in `*InputError` with actual/limit sizes |
 | Encoding detection error | Encoding detection or UTF-8 conversion fails | The underlying error is wrapped |
-| `ErrInvalidHTML` | Bytes cannot be parsed as HTML | The underlying parse error is wrapped as well |
-| `ErrMaxDepthExceeded` | Element nesting depth exceeds `MaxDepth` | Iterative check; prevents stack overflow |
-| `ErrProcessingTimeout` | Processing time exceeds `ProcessingTimeout` | `ProcessingTimeout=0` means unlimited |
-| `ErrInternalPanic` | An unexpected internal panic was recovered | Fallback protection; should not occur in normal use |
-| `ErrTooManyConcurrentOps` | Concurrent timeout watchdog reached the global limit (1000) | A "too busy" state, distinct from `ErrProcessingTimeout` (no timeout occurred) |
+| `ErrInvalidHTML` | Bytes cannot be parsed as HTML | The parse error is wrapped too |
+| `ErrMaxDepthExceeded` | Element nesting exceeds `MaxDepth` | Iterative check; prevents stack overflow |
+| `ErrProcessingTimeout` | The library's processing timeout elapsed | `ProcessingTimeout=0` means unlimited |
+| `ErrInternalPanic` | An unexpected internal panic was recovered | Safety net; should not occur in normal use |
+| `ErrTooManyConcurrentOps` | The timeout watchdog hit its global limit (1000) | A "too busy" state; no timeout occurred |
 
-The `context`-aware variants: manual `cancel()` returns `context.Canceled`; a user-context timeout depends on configuration — when `ProcessingTimeout` is configured it is normalized to `ErrProcessingTimeout`, otherwise `context.DeadlineExceeded` is passed through unchanged (see the [FAQ](../../faq/#what-s-the-difference-between-processingtimeout-and-user-context-timeout) for the full condition table).
+The `context`-aware variants return errors by these rules:
+
+| Scenario | Returned error |
+|----------|----------------|
+| The library's `ProcessingTimeout` elapses (user ctx still live) | `ErrProcessingTimeout` |
+| The user ctx deadline fires first (or at the same time) | `context.DeadlineExceeded`, passed through unchanged, **not** normalized |
+| The user calls `cancel()` | `context.Canceled` |
+| `ProcessingTimeout=0` (unlimited) and the user ctx expires | `context.DeadlineExceeded` (no timeout goroutine is started) |
+
+When the library timeout fires, the extraction goroutine exits at its next cooperative check. When the user ctx expires, the library returns immediately; the inner checks see the same ctx and stop as well, but the goroutine is not forcibly killed.
 
 ### Extract
 
@@ -111,7 +120,7 @@ The `context`-aware variants: manual `cancel()` returns `context.Canceled`; a us
 func (p *Processor) Extract(htmlBytes []byte) (*Result, error)
 ```
 
-Extract content from HTML bytes, with automatic encoding detection.
+Extract content from HTML bytes, detecting the encoding automatically.
 
 ### ExtractFromFile
 
@@ -127,7 +136,7 @@ Extract content from a file.
 func (p *Processor) ExtractText(htmlBytes []byte) (string, error)
 ```
 
-Return only the plain text.
+Return the plain text only.
 
 ### ExtractTextFromFile
 
@@ -139,7 +148,7 @@ Extract plain text from a file.
 
 ## Context Variants
 
-All extraction methods have `ExtractWithContext` variants:
+Extraction, text, output, link, and batch methods all have `context.Context` variants:
 
 ```go
 func (p *Processor) ExtractWithContext(ctx context.Context, htmlBytes []byte) (*Result, error)
@@ -166,13 +175,11 @@ func (p *Processor) ExtractToJSONWithContext(ctx context.Context, htmlBytes []by
 func (p *Processor) ExtractToJSONFromFileWithContext(ctx context.Context, filePath string) ([]byte, error)
 ```
 
-:::warning
-The two differ sharply in cache handling:
+:::warning The two output formats treat the cache differently
+- **`ExtractToMarkdown`** builds a temporary Processor (copying the immutable `config`, with `MaxCacheEntries` zeroed) and **does not touch the main cache**; Markdown results are not cached. Statistics and audit still flow into the parent Processor's counters and log.
+- **`ExtractToJSON`** calls `p.Extract` directly and **goes through the normal cache path**, hitting/writing the main cache and updating statistics.
 
-- **`ExtractToMarkdown`** builds a temporary Processor (copying the immutable `config`, but with `MaxCacheEntries` zeroed and audit disabled) and **does not read or write the main cache**, so it neither pollutes nor hits the main Processor's cache. Markdown-format results are not cached either.
-- **`ExtractToJSON`** calls `p.Extract` directly and **goes through the normal cache path** — it hits/writes the main cache, and statistics counters are updated accordingly.
-
-If you want Markdown output to benefit from the cache too, create a dedicated Processor with `MarkdownConfig()` and call `Extract`, or cache its output yourself.
+To have Markdown output cached as well, create a dedicated Processor with `MarkdownConfig()` and call `Extract`, or cache the output yourself.
 :::
 
 ## Link Extraction
@@ -197,11 +204,11 @@ func (p *Processor) ExtractBatchFilesWithContext(ctx context.Context, filePaths 
 
 ### Cache Behavior in Detail
 
-When `MaxCacheEntries > 0`, `Extract` enables the cache:
+With `MaxCacheEntries > 0`, `Extract` enables the cache:
 
-- **Hit path**: after detecting a cache entry, `CacheHits` and `TotalProcessed` are each incremented by 1, and what is returned is `cloneResult` — a deep copy that `copy`s slices such as `Images`/`Links`/`Videos`/`Audios`. Mutations by the caller **do not** affect the cached entry and also avoid data races during concurrent hit reads.
-- **Miss path**: once processing completes, the result is written to the cache and a `cloneResult` (again a deep copy) is returned. So the cache entry and the return value never alias each other.
-- **Disabling the cache**: with `MaxCacheEntries = 0`, `Extract` skips cache-key generation and cache reads/writes (short-circuit), with no cache overhead at all.
+- **Hit path**: `CacheHits` and `TotalProcessed` each increment by 1, and `cloneResult` is returned — a deep copy that `copy`s slices such as `Images`/`Links`/`Videos`/`Audios`. Caller mutations do not affect the cached entry, which also avoids data races on concurrent hits.
+- **Miss path**: the result is written to the cache, then a `cloneResult` is returned. The cache entry and the return value never alias.
+- **Cache disabled**: with `MaxCacheEntries = 0`, cache-key generation and cache reads/writes are skipped entirely, at no cache cost.
 
 ### GetStatistics
 
@@ -211,20 +218,20 @@ Return the current processing statistics.
 func (p *Processor) GetStatistics() Statistics
 ```
 
-Meaning of each `Statistics` field:
+`Statistics` fields:
 
 | Field | Description |
 |-------|-------------|
-| `TotalProcessed` | Number of extractions that completed without error, **including cache hits** |
-| `CacheHits` | Number of times served directly from the cache |
-| `CacheMisses` | Number of misses requiring full processing |
-| `ErrorCount` | Number of extractions that returned an error |
+| `TotalProcessed` | Extractions that completed without error, **including cache hits** |
+| `CacheHits` | Times served directly from the cache |
+| `CacheMisses` | Misses that required full processing |
+| `ErrorCount` | Extractions that returned an error |
 | `AverageProcessTime` | Average wall-clock time per extraction (0 when `TotalProcessed` is 0) |
 
 ```go
 stats := p.GetStatistics()
 fmt.Printf("Processed: %d, Cache hits: %d\n",
-    stats.TotalProcessed, stats.CacheHits)
+	stats.TotalProcessed, stats.CacheHits)
 ```
 
 ### ClearCache
@@ -247,7 +254,7 @@ func (p *Processor) ResetStatistics()
 
 ### GetAuditLog
 
-Retrieve audit log entries.
+Retrieve the audit log entries held in memory.
 
 ```go
 func (p *Processor) GetAuditLog() []AuditEntry
@@ -265,7 +272,7 @@ func (p *Processor) ClearAuditLog()
 
 ### Close
 
-Release the resources held by the Processor. Must be called when done.
+Release the resources held by the Processor. Call it when you are done.
 
 ```go
 func (p *Processor) Close() error
@@ -277,8 +284,8 @@ defer p.Close()
 // ... use p to extract
 ```
 
-:::tip
-- **Singleton reuse**: in a long-running service (HTTP handler, worker), create one Processor and share it across concurrent requests, pairing it with the cache to maximize gains. The Processor itself is concurrency-safe; there is no need to create one per request.
-- **`defer Close()`**: place `defer p.Close()` right after creation so that even an exceptional path releases the background cleanup goroutine and audit resources. `Close` stops the cache cleanup goroutine, clears the cache, and closes the audit sink.
-- **Do not use after Close**: calling any method after `Close` returns `ErrProcessorClosed`. `Close` guarantees idempotency via an atomic CAS operation (an internal implementation detail); repeated calls are safe but pointless.
+:::tip Lifecycle essentials
+- **Reuse one instance**: in a long-running service (HTTP handler, worker), create one Processor and share it across concurrent requests; it is concurrency-safe, so there is no need for one per request.
+- **`defer Close()` immediately**: place `defer p.Close()` right after creation so exceptional paths still stop the cleanup goroutine, clear the cache, and close the audit sink.
+- **Never use after Close**: extraction, formatting, link, and batch methods return `ErrProcessorClosed` after `Close`. `Close` is idempotent; repeated calls are safe but pointless.
 :::

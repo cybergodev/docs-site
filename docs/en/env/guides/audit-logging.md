@@ -7,7 +7,7 @@ sidebar_position: 6
 
 # Audit Logging
 
-The audit logging feature records all environment variable operations for security auditing, compliance checking, and troubleshooting.
+Audit logging records variable operations — loads, sets, deletes, validation, and security events — as structured events. Use it for security auditing, compliance, and troubleshooting.
 
 ## Enabling Audit
 
@@ -57,7 +57,7 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 {"timestamp":"2024-01-15T10:30:02Z","action":"set","key":"CUSTOM_VAR","success":true}
 ```
 
-Sensitive keys (e.g., `API_KEY`) are automatically masked as `[MASKED]` in the audit log's `key` field; non-sensitive keys (e.g., `CUSTOM_VAR`) are shown as-is.
+Sensitive keys (for example `API_KEY`) appear as `[MASKED]` in the `key` field of the audit log; non-sensitive keys (for example `CUSTOM_VAR`) appear as-is.
 
 ---
 
@@ -146,7 +146,7 @@ type AuditEvent struct {
 
 ### AuditAction Types
 
-There are 10 action constants in total; the complete list (string values and per-action semantics) is consolidated in the [Audit Actions](#audit-actions) section at the end of this page.
+There are 10 action constants. The full list with string values and per-action semantics is in [Audit Actions](#audit-actions) at the end of this page.
 
 ---
 
@@ -154,7 +154,7 @@ There are 10 action constants in total; the complete list (string values and per
 
 ### Implementing the FullAuditLogger Interface
 
-`FullAuditLogger` is the complete audit logging interface, extending the minimal `AuditLogger` interface (which only contains the LogError method):
+`FullAuditLogger` is the complete audit logging interface. It extends the minimal `AuditLogger` interface, which contains only the `LogError` method:
 
 ```go
 type FullAuditLogger interface {
@@ -331,7 +331,7 @@ func processAuditEvents(ch chan env.AuditEvent) {
 }
 ```
 
-The key shutdown sequence: `ChannelAuditHandler` does **not** own the channel — its `Close()` is a no-op, so the caller must `close(auditChan)` for the `for range` consumer to see EOF; sends block when the buffer is full. If you prefer a handler that manages the channel lifecycle itself (`Close()` closes the channel; consumers receive via `Channel()`), see CloseableChannelHandler under "More Built-in Handlers" below.
+The shutdown sequence matters: `ChannelAuditHandler` does **not** own the channel. Its `Close()` is a no-op, so the caller must call `close(auditChan)` for the `for range` consumer to see EOF. Sends block when the buffer is full. If you prefer a handler that manages the channel lifecycle itself (`Close()` closes the channel; consumers read from `Channel()`), see `CloseableChannelHandler` under [More Built-in Handlers](#more-built-in-handlers).
 
 ---
 
@@ -339,9 +339,9 @@ The key shutdown sequence: `ChannelAuditHandler` does **not** own the channel �
 
 ### Audit Recording and Masking
 
-The audit log automatically masks the `key` field for sensitive keys (shown as `[MASKED]` by default; non-sensitive keys are shown as-is). **Only write operations record audit events**: `Set` / `Delete` / `LoadFiles` etc. trigger `ActionSet` / `ActionDelete` / `ActionLoad` events, recording the masked key name.
+Audit events mask a sensitive `key` as `[MASKED]` and keep a non-sensitive key as-is. Key-level events come from write operations: `Set`, `Delete`, and `LoadFiles` record `ActionSet`, `ActionDelete`, and `ActionLoad` with the masked key name. Parse, validation, expansion, security, and file-access events pass through the same masking.
 
-Read operations do not produce audit entries: `Get` / `GetString` / `GetInt` / `GetSecure` etc. **do not record audit logs during normal reads**. `ActionGet` events are only triggered in the error path when type conversion **parsing fails** (e.g., in `GetInt` / `GetBool` / `GetFloat64`), with `success=false`. For example:
+Read operations do not produce audit entries. `Get`, `GetString`, `GetInt`, and `GetSecure` record nothing on a successful read. An `ActionGet` event appears only when type conversion **parsing fails** (in `GetInt`, `GetBool`, `GetFloat64`, and so on), and it carries `success=false`. For example:
 
 ```go
 // Write operation: records audit event (sensitive key recorded after masking)
@@ -366,7 +366,7 @@ chown app:app /var/log/app/env-audit.log
 
 ### Log Rotation
 
-Recommend using logrotate to manage audit logs:
+Recommend logrotate for audit log management:
 
 ```bash
 # /etc/logrotate.d/app-env-audit
@@ -385,11 +385,11 @@ Recommend using logrotate to manage audit logs:
 
 ## More Built-in Handlers
 
-Beyond the three common handlers (JSON/Log/Channel), the library ships two additional ready-to-use implementations.
+Beyond the three common handlers (JSON, Log, Channel), env ships two more ready-to-use implementations.
 
 ### CloseableChannelHandler (self-managed channel)
 
-Unlike `ChannelAuditHandler`, which accepts an external channel, `CloseableChannelHandler` creates and owns a buffered channel with full lifecycle management — `Close()` shuts the handler down and closes the channel; consumers receive events via `Channel()`:
+`ChannelAuditHandler` accepts an external channel; `CloseableChannelHandler` creates and owns a buffered channel instead. `Close()` shuts the handler down and closes the channel, and consumers receive events via `Channel()`:
 
 ```go
 package main
@@ -427,11 +427,11 @@ func main() {
 
 ### NopAuditHandler (no-op)
 
-Discards all audit events — useful for tests or temporarily silencing audit output. See [NopAuditHandler above](#nopaudithandler) for usage.
+Discards all audit events. Use it for tests or to silence audit output temporarily. See [NopAuditHandler above](#nopaudithandler) for usage.
 
 ## Audit Actions
 
-Audit events are categorized by action (type `AuditAction`). Custom handlers can filter the event types they care about using the `AuditAction` constants:
+Audit events are categorized by action (type `AuditAction`). A custom handler can filter the event types it cares about using the `AuditAction` constants:
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
@@ -446,11 +446,11 @@ Audit events are categorized by action (type `AuditAction`). Custom handlers can
 | `ActionError` | `error` | Error conditions |
 | `ActionFileAccess` | `file_access` | File system access |
 
-`AuditEvent` is a structured event (timestamp, action, key, reason, success/failure, duration, and more). Sensitive keys are masked into `[MASKED]` before entering the event; non-sensitive keys are kept as-is.
+`AuditEvent` carries the timestamp, action, key, reason, success flag, duration, and other fields. Sensitive keys are masked to `[MASKED]` before entering the event; non-sensitive keys are kept as-is.
 
 ## Related Documentation
 
-- [Security Overview](../security/) - Security architecture and core features
-- [Production Checklist](../security/production-checklist) - Audit configuration checks
+- [Security Overview](../security/) - security architecture and core features
+- [Production Checklist](../security/production-checklist) - audit configuration checks
 - [Interfaces](../api-reference/interfaces) - AuditLogger interface
-- [Component Factory](../api-reference/factory) - Audit handler factories
+- [Component Factory](../api-reference/factory) - audit handler factories

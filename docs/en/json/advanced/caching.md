@@ -1,16 +1,16 @@
 ---
 sidebar_label: "Caching & Pre-Parsing"
 title: "Caching & Pre-Parsing - CyberGo JSON | Pre-Parse & Caching"
-description: "CyberGo JSON offers automatic caching with EnableCache, WarmupCache, and PreParse to track GetStats hit ratios, warm up hot paths, and cut repeated parsing."
+description: "CyberGo JSON caching and pre-parsing: EnableCache parse/result caches, GetStats hit ratios, WarmupCache, and PreParse with the CacheSharedResults contract."
 sidebar_position: 30
 ---
 
 # Caching and Pre-Parsing Strategies
 
-CyberGo JSON ships with an **automatic caching subsystem**: parse results and path query results are cached automatically — no hand-rolled `sync.Map` needed. This page covers configuring, monitoring, and warming the built-in cache plus the PreParse pattern, and closes with a selection guide.
+CyberGo JSON has an **automatic caching subsystem**: parse results and path query results are cached automatically — no hand-rolled `sync.Map` needed. The sections below cover configuring, monitoring, and warming the built-in cache, the PreParse pattern, and a selection guide.
 
 :::tip Division of labor with the performance page
-The "caching strategy" section of [Performance Optimization](./performance) shows a **user-built** `sync.Map` cache; this page documents the **library-built-in** cache (`EnableCache`/`WarmupCache`/`PreParse`) — the two complement each other.
+The "caching strategy" section of [Performance Optimization](./performance) shows a **user-built** `sync.Map` cache; the sections below document the **library-built-in** cache (`EnableCache`/`WarmupCache`/`PreParse`) — the two complement each other.
 :::
 
 ## How the Built-in Cache Works
@@ -23,7 +23,7 @@ When `Config.EnableCache` is `true` (default) and `CacheResults` is `true` (defa
 The second query against the same JSON skips parsing and goes straight to path navigation; an identical `(JSON, path)` combination returns the cached result directly.
 
 :::warning Writes invalidate automatically
-Mutating operations such as `Set`/`Delete` **automatically invalidate** the related cache entries (bulk-cleared by JSON-hash prefix) — no manual intervention needed. Manual `ClearCache` is only needed when an external data source changes or memory pressure is high.
+Mutating operations such as `Set`/`Delete` **automatically invalidate** the related cache entries (the document's FNV-1a hash clears every entry for that document) — no manual intervention needed. Manual `ClearCache` is only needed when an external data source changes or memory pressure is high.
 :::
 
 ## Monitoring the Cache Hit Ratio
@@ -243,7 +243,7 @@ cfg.CacheSharedResults = true
 
 ### The CacheSharedResults Zero-Copy Contract
 
-With `CacheSharedResults = true`, cache hits in `Get`/`GetFromParsed` **return the cached value directly**, skipping the defensive deep copy and significantly cutting the cost of repeatedly reading large objects.
+With `CacheSharedResults = true`, cache hits in `Get`/`GetFromParsed` **return the cached value directly**, skipping the defensive deep copy, so repeated reads of the same large subtree avoid one copy allocation per call.
 
 :::danger Read-only contract
 Once enabled, **callers must not mutate** the returned `map[string]any` / `[]any`; otherwise the shared cache is corrupted and subsequent reads polluted. Primitives (`bool`/`float64`/`string`/`json.Number`/`nil`) are immutable and always safe. Enable only when callers treat results as read-only (e.g. analytical loads repeatedly reading the same large subtree).
@@ -254,7 +254,7 @@ Once enabled, **callers must not mutate** the returned `map[string]any` / `[]any
 | Operation | API | When it fires |
 |-----------|-----|---------------|
 | Manual clear | `processor.ClearCache()` | Data source changed, memory pressure, forced refresh needed |
-| Automatic invalidation after writes | Internal to `Set`/`Delete` | No manual cleanup after mutations; entries clear automatically by JSON-hash prefix |
+| Automatic invalidation after writes | Internal to `Set`/`Delete` | No manual cleanup after mutations; the document hash clears that document's entries |
 
 `ClearCache` suits the "one long-lived Processor with rotating data sources" scenario. One-off scripts need no manual cleanup — `Close()` reclaims all resources.
 

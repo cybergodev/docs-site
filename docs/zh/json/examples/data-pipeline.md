@@ -1,13 +1,13 @@
 ---
 sidebar_label: "JSONL 数据管道"
 title: "JSONL 数据管道 - CyberGo JSON | ETL 流式转换"
-description: "CyberGo JSON 构建 JSONL 数据管道：StreamLinesInto 流式读取并在回调中转换字段、ToJSONL/ToJSONLString 批量写回、StreamJSONLFile 与 ForeachFile 迭代处理大文件，实现字段富化与级别分类，适合日志清洗与分析等流式处理场景。"
+description: "CyberGo JSON 的 JSONL 数据管道：StreamLinesInto 流式转换、ToJSONL 批量写回与 StreamJSONLFile 处理文件。"
 sidebar_position: 40
 ---
 
 # JSONL 数据管道
 
-本文演示如何用 CyberGo JSON 构建 JSONL（换行分隔 JSON）数据管道：流式读取、转换字段、批量格式转换，以及处理大文件。
+JSONL 管道由三段构成：流式读取、转换字段、按目标格式写回。下面的示例覆盖这三种形态：顺序流、并行流，以及单文件大数组。
 
 ## 流式读取并转换 JSONL
 
@@ -248,14 +248,18 @@ func main() {
 ```
 
 :::tip 并行管道要点
-- **顺序**：并行回调的执行顺序不保证，但 `lineNum` 始终对应原始行号——按行号收集、排序后写出即可保序。
-- **worker 数**：由第二个参数显式指定（示例为 4）；需要超时/取消时改用 `StreamJSONLParallelWithContext(ctx, reader, workers, fn)`。
-- **吞吐**：与串行 `StreamJSONL` 相比，收益取决于单行处理开销——纯提取类轻回调提升有限，富化/校验类重回调提升明显。
+- **顺序**：并行回调的执行顺序不保证，但 `lineNum` 始终对应原始行号。按行号收集、排序后写出即可保序。
+- **worker 数**：由第二个参数显式指定（示例为 4）。需要超时或取消时改用 `StreamJSONLParallelWithContext(ctx, reader, workers, fn)`。
+- **吞吐**：收益取决于单行处理开销。纯提取类轻回调几乎没有提升，富化/校验类重回调才能摊薄调度成本。
 :::
 
 ## 遍历大型 JSON 数组文件
 
-对于**单文件大 JSON 数组**（非 JSONL），`ForeachFile` 提供带回调的逐元素遍历。注意其内存语义：迭代前**整个文件会先载入内存**（`ForeachFileChunked` 的「分块」只改变内存中数据的迭代分组，同样整载）；需要恒定内存处理超大数组时，改用 `StreamIterator`（见[大文件处理](../streaming/large-files#流式迭代器与并行迭代器)），或将数据转为 JSONL 后走 `StreamJSONL` 家族。
+对**单文件大 JSON 数组**（非 JSONL），`ForeachFile` 提供带回调的逐元素遍历。
+
+其内存语义是：迭代前**整个文件会先载入内存**（`ForeachFileChunked` 的「分块」只改变内存中数据的迭代分组，同样整载）。
+
+需要恒定内存处理超大数组时，改用 `StreamIterator`（见[大文件处理](../streaming/large-files#流式迭代器与并行迭代器)），或将数据转为 JSONL 后走 `StreamJSONL` 家族。
 
 ```go
 package main

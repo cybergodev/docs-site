@@ -1,19 +1,19 @@
 ---
 sidebar_label: "Advanced Examples"
 title: "Advanced Examples - CyberGo JSON | Batch Encoding & Warmup"
-description: "CyberGo JSON advanced examples: EncodeBatch, EncodeFields, PreParse, CompilePath, WarmupCache, and ProcessBatch to speed hot-path queries and batch encoding."
+description: "CyberGo JSON advanced examples: EncodeBatch, EncodeFields field filtering, PreParse, CompilePath pre-compiled paths, WarmupCache, and ProcessBatch."
 sidebar_position: 50
 ---
 
 # Advanced Feature Examples
 
-This document provides complete examples of advanced features: batch encoding, pre-parsing, hooks, advanced configuration, and more.
+The examples below cover batch encoding, field selection, pre-parsing, path pre-compilation, safe access, cache warm-up, and batch operations. Each is a standalone `main` package.
 
 ## Batch Encoding
 
 ### EncodeBatch
 
-Quickly encode multiple key-value pairs into a JSON object:
+`EncodeBatch` encodes a set of key-value pairs into one JSON object (keys are emitted in lexicographic order):
 
 ```go
 package main
@@ -54,7 +54,7 @@ func main() {
 
 ### EncodeFields
 
-Encode only the specified fields of a struct — good for filtering sensitive information from API responses:
+`EncodeFields` encodes only the named struct fields, which strips sensitive information from API responses:
 
 ```go
 package main
@@ -96,7 +96,7 @@ func main() {
 
 ### PreParse
 
-Pre-parse JSON to avoid repeated parsing and speed up multiple queries:
+`PreParse` parses the JSON once; later queries reuse the same parse tree:
 
 ```go
 package main
@@ -208,7 +208,7 @@ func main() {
 
 ### SafeGet
 
-Returns a structured result supporting chained calls and type conversion:
+`SafeGet` returns an `AccessResult` and never panics; conversion methods are called on demand:
 
 ```go
 package main
@@ -270,7 +270,7 @@ func main() {
 
 ### WarmupCache
 
-Warm up the cache of commonly used paths to speed up later queries:
+`WarmupCache` fills hot paths into the cache before business queries, removing the cold-start cost of the first requests:
 
 ```go
 package main
@@ -333,7 +333,7 @@ func main() {
 
 ### ProcessBatch
 
-Execute multiple operations in one batch for efficiency:
+`ProcessBatch` runs every operation in order; a failing entry only records `Error` on its own result:
 
 ```go
 package main
@@ -372,21 +372,21 @@ func main() {
 }
 ```
 
-## Key/Value Memory Optimization
+## Memory Behavior of Batch Encoding
 
-The library internally uses a string interning pool to automatically reduce memory used by repeated keys and values. No manual management needed.
+`Marshal` routes maps, slices, and primitives through the FastEncoder (no reflection) and takes its output buffers from an encoder pool, returning them after use. There is no switch or pool to manage manually.
 
 ```go
 package main
 
 import (
 	"fmt"
+
 	"github.com/cybergodev/json"
 )
 
 func main() {
-	// The library automatically interns repeated key/value strings
-	// When processing large volumes, repeated string keys reuse memory
+	// Ten thousand uniform records with repeated key names
 	records := make([]map[string]any, 10000)
 	for i := range records {
 		records[i] = map[string]any{
@@ -396,15 +396,21 @@ func main() {
 		}
 	}
 
-	// Memory is optimized internally during batch encoding
-	result, _ := json.Marshal(map[string]any{
-		"status": "active",
-		"type":   "user",
-	})
+	// Encode one record; map keys are not interned or shared across documents
+	result, err := json.Marshal(records[0])
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println("Sample:", string(result))
+	// Output: Sample: {"role":"member","status":"active","type":"user"}
+	// Object keys are emitted in lexicographic order, as in encoding/json
 }
 ```
+
+::: warning String interning is not enabled
+The StringIntern and KeyIntern helpers in `internal/string_intern.go` are not wired into any parse or encode path (the file header marks them D-002/R8 M5), so the library does not share repeated key names across documents. To lower the memory cost of repeated keys, reuse the same JSON and keep caching on, rather than relying on interning.
+:::
 
 ## Next Steps
 

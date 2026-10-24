@@ -7,7 +7,7 @@ sidebar_position: 5
 
 # Error Handling
 
-The env library provides a structured error handling mechanism, supporting both `errors.Is` and `errors.As` patterns.
+env returns sentinel errors for common failures and structured error types for context. Match sentinels with `errors.Is`; extract details with `errors.As`.
 
 ## Sentinel Errors
 
@@ -119,7 +119,7 @@ var ErrValidateRequiredUnsupported = errors.New(
 )
 ```
 
-When a custom validator only implements the `KeyValidator` interface but not the full `Validator` interface, calling `ValidateRequired` returns this error.
+When a custom validator implements only the `KeyValidator` interface and not the full `Validator` interface, calling `ValidateRequired` returns this error.
 
 **How to check:**
 
@@ -131,14 +131,14 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 :::tip Solution
-Implement the `Validator` interface (which includes ValidateKey, ValidateValue, and ValidateRequired methods) instead of just `KeyValidator`.
+Implement the `Validator` interface (ValidateKey, ValidateValue, and ValidateRequired) instead of only `KeyValidator`.
 :::
 
 ## Structured Error Types
 
 ### ParseError
 
-Parse error with location information:
+A parse error that carries its location:
 
 ```go
 type ParseError struct {
@@ -164,7 +164,7 @@ if errors.As(err, &parseErr) {
 
 ### FileError
 
-File operation error:
+A file operation error:
 
 ```go
 type FileError struct {
@@ -190,7 +190,7 @@ if errors.As(err, &fileErr) {
 
 ### SecurityError
 
-Security error:
+A security policy violation:
 
 ```go
 type SecurityError struct {
@@ -213,7 +213,7 @@ if errors.As(err, &secErr) {
 
 ### ValidationError
 
-Validation error:
+A config, key, or value validation failure:
 
 ```go
 type ValidationError struct {
@@ -235,7 +235,7 @@ if errors.As(err, &valErr) {
 
 ### ExpansionError
 
-Variable expansion error:
+A variable expansion failure:
 
 ```go
 type ExpansionError struct {
@@ -258,7 +258,7 @@ if errors.As(err, &expErr) {
 
 ### JSONError
 
-JSON parse error:
+A JSON parse error:
 
 ```go
 type JSONError struct {
@@ -279,7 +279,7 @@ if errors.As(err, &jsonErr) {
 
 ### YAMLError
 
-YAML parse error:
+A YAML parse error:
 
 ```go
 type YAMLError struct {
@@ -303,7 +303,7 @@ if errors.As(err, &yamlErr) {
 
 ### MarshalError
 
-Serialization/deserialization error:
+A serialization or deserialization error:
 
 ```go
 type MarshalError struct {
@@ -328,7 +328,7 @@ if err != nil && env.IsMarshalError(err) {
 
 ### errors.Is Pattern
 
-Check sentinel errors:
+Match sentinel errors:
 
 ```go
 err := loader.LoadFiles(".env")
@@ -462,7 +462,7 @@ func loadConfig() *Config {
 ```
 
 :::tip ProductionConfig audit behavior
-`ProductionConfig` enables auditing by default (`AuditEnabled=true`); when no `AuditHandler` is configured, audit logs are written to stderr with an `[AUDIT]` prefix. To persist them to a file, set `cfg.AuditHandler` explicitly (e.g., `env.NewJSONAuditHandler(file)`).
+`ProductionConfig` sets `AuditEnabled=true`. With no `AuditHandler` configured, audit logs go to stderr with an `[AUDIT]` prefix. To persist them, set `cfg.AuditHandler` explicitly (for example `env.NewJSONAuditHandler(file)`).
 :::
 
 ### Retry Pattern
@@ -496,7 +496,7 @@ func loadWithRetry(filenames []string, maxRetries int) error {
 }
 ```
 
-Trigger condition: by default (`FailOnMissingFile=false`), `LoadFiles` **silently skips** missing files — the `ErrFileNotFound` branch above is only reachable when `FailOnMissingFile=true` (the `ProductionConfig` preset enables it by default).
+Trigger condition: by default (`FailOnMissingFile=false`), `LoadFiles` **silently skips** missing files, so the `ErrFileNotFound` branch above is reachable only with `FailOnMissingFile=true` (the `ProductionConfig` preset sets it).
 
 ## Complete Example
 
@@ -579,7 +579,7 @@ func handleValidationError(err error) {
 
 ## Complete Error Type Reference
 
-All structured error types can be unwrapped with `errors.As` for context:
+Every structured error type supports `errors.As` for context extraction:
 
 | Type | Scenario | Key information |
 |------|----------|-----------------|
@@ -611,7 +611,7 @@ Beyond the common items listed in the [sentinel errors](#sentinel-errors) sectio
 | `ErrInvalidConfig` | Invalid configuration; `New()` wraps the specific validation error |
 | `ErrNotInitialized` | Using write functions in global mode before calling `Load()` |
 | `ErrAlreadyInitialized` | Calling `Load()` again after the default loader is initialized |
-| `ErrDuplicateKey` | Reserved: duplicate keys are currently silently skipped when `OverwriteExisting=false`; no code path returns it yet |
+| `ErrDuplicateKey` | Reserved: with `OverwriteExisting=false`, duplicate keys are silently skipped and no code path returns this sentinel yet |
 
 ### Helper Predicates
 
@@ -619,6 +619,6 @@ Beyond the common items listed in the [sentinel errors](#sentinel-errors) sectio
 
 ## Related Documentation
 
-- [Constants & Errors](../api-reference/constants) - Complete error list
-- [Config API](../api-reference/config) - Configuration limit settings
-- [Security Overview](../security/) - Security error handling
+- [Constants & Errors](../api-reference/constants) - complete error list
+- [Config API](../api-reference/config) - configuration limit settings
+- [Security Overview](../security/) - security error handling

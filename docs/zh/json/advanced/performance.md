@@ -1,13 +1,13 @@
 ---
 sidebar_label: "性能优化"
 title: "性能优化 - CyberGo JSON | 基准测试与零分配"
-description: "CyberGo JSON 提供面向高频场景的性能优化手段，支持 CompilePath 预编译路径、PreParse 预解析、对象池复用与 ParallelThreshold 并行加速，配合基准测试与 GetStats 命中率分析，帮助开发者以数据驱动方式实现零分配的高速 JSON 处理。"
+description: "CyberGo JSON 性能优化：CompilePath 预编译路径、PreParse 预解析、对象池与 ParallelThreshold 并行阈值。"
 sidebar_position: 20
 ---
 
 # 性能优化
 
-优化 JSON 处理性能的策略和技巧。
+JSON 处理的性能由处理器复用、路径预编译、预解析与并行度四个维度决定。本页给出各机制的适用信号、基准测试写法与配置文件。
 
 ## 处理器复用
 
@@ -43,7 +43,7 @@ for _, item := range dataList {
 | 编译路径缓存 | 常用路径的解析结果全局缓存 | 高频路径用 [`CompilePath`](../api-reference/processor/query#compilepath) |
 
 ::: tip CacheSharedResults：读多写少场景的零拷贝开关
-`Config.CacheSharedResults = true` 时，缓存命中的 `Get` 直接返回共享值，**跳过防御性深拷贝**——重复读取大型子树的分配与 CPU 开销显著下降。契约是**调用方不得修改**返回的 `map[string]any`/`[]any`（原始值始终安全）。默认关闭（读时拷贝），按负载特征显式开启。
+`Config.CacheSharedResults = true` 时，缓存命中的 `Get` 直接返回共享值，**跳过防御性深拷贝**——重复读取大型子树时省去每次的拷贝分配。契约是**调用方不得修改**返回的 `map[string]any`/`[]any`（原始值始终安全）。默认关闭（读时拷贝），按负载特征显式开启。
 :::
 
 ## 优化决策路径
@@ -164,7 +164,7 @@ wg.Wait()
 ```
 
 ::: tip 并行阈值
-`Config.ParallelThreshold`（默认 10）控制库内部并行路径的触发下限；JSONL 并行处理的 worker 数由 `Config.JSONLWorkers`（默认 4）或 `StreamJSONLParallel(reader, workers, ...)` 的参数控制。详见[并发处理](./concurrency)。
+`Config.ParallelThreshold`（默认 10）控制库内部并行路径的触发下限；JSONL 并行处理的 worker 数由 `StreamJSONLParallel(reader, workers, ...)` 的参数决定，`Config.JSONLWorkers` 当前不被读取。详见[并发处理](./concurrency)。
 :::
 
 ## 配置优化
@@ -312,7 +312,9 @@ func TestMemoryUsage(t *testing.T) {
 
 ## 如何自行基准测试
 
-性能结论依赖数据形状与硬件，本页不罗列具体数字；需要数字时请在自己的负载上实测。库源码自带的 `benchmark_test.go` 覆盖了与 `encoding/json` 的热路径对照（快速编码器、路径 `Get`、数组切片、字段提取等），以及 `StreamIterator` 流式迭代、`PreParse` 预解析、并发 `Get`/`Set`/`Marshal` 等场景：
+性能结论依赖数据形状与硬件，这里不罗列具体数字；需要数字时请在自己的负载上实测。
+
+库源码自带的 `benchmark_test.go` 覆盖两类场景：与 `encoding/json` 的热路径对照（快速编码器、路径 `Get`、数组切片、字段提取），以及 `StreamIterator` 流式迭代、`PreParse` 预解析、并发 `Get`/`Set`/`Marshal`：
 
 ```bash
 # 在库源码根目录运行完整基准套件（含分配统计）

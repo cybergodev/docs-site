@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Schema Validation"
 title: "Schema Validation - CyberGo JSON | JSON Schema Guide"
-description: "CyberGo JSON Schema validation: NewSchema with Properties, Required, Pattern, Format, Enum, Minimum/Maximum — ValidateSchema returns ValidationError lists."
+description: "CyberGo JSON Schema validation: ValidateSchema returns ValidationError lists for Required/Properties, Pattern/Format, Minimum/Maximum and Enum/Const."
 sidebar_position: 50
 ---
 
 # Schema Validation
 
-The json library provides data validation based on JSON Schema: define a `Schema` describing the structure and constraints your data must satisfy, then validate a piece of JSON with `ValidateSchema`. This is the **feature-complete** validation system in the current version.
+Schema validation has two steps: define a `Schema` describing the structure and constraints your data must satisfy, then validate a piece of JSON with `ValidateSchema`. Constraint violations come back as a `[]ValidationError` slice, not as an `error`.
 
 ## The ValidateSchema Function
 
@@ -30,7 +30,7 @@ Return value semantics:
 | `(nil, error)` | Parsing or a precondition failed (e.g. invalid JSON, nil `schema`, limit exceeded) |
 
 :::tip The key distinction
-Constraint violations are expressed via the **returned slice** (`error` stays `nil`); only parse failures, a nil `schema`, exceeding size limits, and the like produce a non-`nil` `error`. So "did validation pass" is `len(errs) == 0`, not `err != nil`.
+Constraint violations live in the **returned slice** (`error` stays `nil`); only parse failures, a nil `schema`, exceeding size limits, and the like produce a non-`nil` `error`. Decide "did validation pass" with `len(errs) == 0`, not `err != nil`.
 :::
 
 ## Basic Example: Object Structure and Required Fields
@@ -97,7 +97,7 @@ Constraint fields supported by `Schema` (grouped by category):
 Supported `Type` values: `object`, `array`, `string`, `number`, `integer`, `boolean`, `null`.
 
 ::: tip Choosing between "number" and "integer"
-After JSON parsing, every number (integers included) is a `float64`; `"number"` accepts every number. `"integer"` follows JSON Schema semantics and accepts values that are **mathematically integers** — `1`, `1.0`, and `1e2` all pass, while `1.5` fails with an `expected type integer, got float64` error. Numeric constraints such as `Minimum`/`Maximum`/`MultipleOf` take effect for both `number` and `integer`.
+After JSON parsing every number (integers included) is a `float64`, so `"number"` accepts every number. `"integer"` follows JSON Schema semantics and accepts values that are **mathematically integers**: `1`, `1.0`, and `1e2` all pass, while `1.5` fails with an `expected type integer, got float64` error. Numeric constraints such as `Minimum`/`Maximum`/`MultipleOf` take effect for both `number` and `integer`.
 :::
 
 ## Object Constraints: Required / Properties / AdditionalProperties
@@ -144,7 +144,7 @@ To allow extra properties, set `AdditionalProperties` to `true`, or construct wi
 
 ## String Constraints: MinLength / MaxLength / Pattern / Format
 
-Constraints such as `MinLength`, `MaxLength`, `Minimum`, `Maximum`, `MinItems`, `MaxItems` **take effect only when created via `NewSchema`** (see [Creating a Schema](#creating-a-schema) for why). The example below sets lengths via `SchemaConfig` pointer fields and restricts to lowercase letters with `Pattern`:
+Constraints such as `MinLength`, `MaxLength`, `Minimum`, `Maximum`, `MinItems`, `MaxItems` **take effect only when the schema is created with `NewSchema`** (see [Creating a Schema](#creating-a-schema) for why). The example sets lengths through `SchemaConfig` pointer fields and restricts values to lowercase letters with `Pattern`:
 
 ```go
 package main
@@ -234,7 +234,7 @@ func main() {
 }
 ```
 
-`ExclusiveMinimum` / `ExclusiveMaximum` must be set together with `Minimum` / `Maximum` via `SchemaConfig` (also pointer fields) to exclude the boundary value itself. `MultipleOf` compares with a float tolerance (epsilon 1e-9), so IEEE 754 precision cases like `0.1 + 0.2` produce no false positives.
+`ExclusiveMinimum` / `ExclusiveMaximum` must be set together with `Minimum` / `Maximum`, also through `SchemaConfig` pointer fields, to exclude the boundary value itself. `MultipleOf` compares with a float tolerance (epsilon 1e-9), so IEEE 754 precision cases like `0.1 + 0.2` produce no false positives.
 
 ## Array Constraints: Items / MinItems / MaxItems / UniqueItems
 
@@ -350,7 +350,7 @@ type ValidationError struct {
 func (ve *ValidationError) Error() string
 ```
 
-Since `ValidateSchema` returns a `[]ValidationError` slice, simply iterate and read `Path` / `Message`; the `Error()` method formats a single error as a string (e.g. for logging).
+Since `ValidateSchema` returns a `[]ValidationError` slice, iterate it and read `Path` / `Message`; the `Error()` method formats a single error as a string (e.g. for logging).
 
 ## Creating a Schema
 
@@ -375,14 +375,16 @@ schema := json.DefaultSchema()
 ```
 
 ::: warning Length/range constraints require NewSchema
-`MinLength`, `MaxLength`, `Minimum`, `Maximum`, `MinItems`, `MaxItems`, `ExclusiveMinimum`, and `ExclusiveMaximum` rely on tracking flags inside `Schema` that cannot be set externally. Assigning these fields directly in an `&json.Schema{...}` literal **has no effect**; they are enabled only through `NewSchema` (or its deprecated alias `NewSchemaWithConfig`) with the corresponding **pointer fields** (e.g. `cfg.MinLength = &v`). `Type`, `Required`, `Properties`, `Items`, `Pattern`, `Format`, `Enum`, `Const`, `UniqueItems`, and `MultipleOf` are not subject to this restriction and work both in literals and via `NewSchema`.
+`MinLength`, `MaxLength`, `Minimum`, `Maximum`, `MinItems`, `MaxItems`, `ExclusiveMinimum`, and `ExclusiveMaximum` rely on tracking flags inside `Schema` that cannot be set externally. Assigning these fields directly in an `&json.Schema{...}` literal **has no effect**. There is exactly one way to enable them: use `NewSchema` (or its deprecated alias `NewSchemaWithConfig`) and pass the constraint as the corresponding **pointer field** (e.g. `cfg.MinLength = &v`).
+
+`Type`, `Required`, `Properties`, `Items`, `Pattern`, `Format`, `Enum`, `Const`, `UniqueItems`, and `MultipleOf` are exempt: both literals and `NewSchema` handle them.
 :::
 
 ### NewSchema
 
 Signature: `func NewSchema(cfg SchemaConfig) *Schema`
 
-`NewSchema` is the **canonical constructor** for a configured Schema (matching the naming of every other `New*(cfg)` constructor in the library): it enables length/range constraints via `SchemaConfig` pointer fields, initializes `Properties` / `Required` automatically, and applies the `AdditionalProperties` default.
+`NewSchema` is the **canonical constructor** for a configured Schema, named like every other `New*(cfg)` constructor in the library. It does three things: enables length/range constraints from the `SchemaConfig` pointer fields, initializes `Properties` / `Required`, and applies the `AdditionalProperties` default.
 
 ```go
 cfg := json.DefaultSchemaConfig()
@@ -398,10 +400,10 @@ schema := json.NewSchema(cfg)
 
 Signature: `func NewSchemaWithConfig(cfg SchemaConfig) *Schema`
 
-Creates a Schema with the given configuration.
+A deprecated alias with the same signature as `NewSchema`.
 
 ::: warning Deprecated
-`NewSchemaWithConfig` is fully equivalent to [`NewSchema`](#newschema) (it delegates to the same implementation) — the "WithConfig" suffix predates the unified Config convention; no other constructor carries it. Use `NewSchema(cfg)` in new code. `NewSchemaWithConfig` will not be removed within v1.
+`NewSchemaWithConfig` is fully equivalent to [`NewSchema`](#newschema) — it delegates to the same implementation. The "WithConfig" suffix predates the unified Config convention; no other constructor carries it. Use `NewSchema(cfg)` in new code; `NewSchemaWithConfig` will not be removed within v1.
 :::
 
 ```go
@@ -425,7 +427,7 @@ The two produce consistent results: `DefaultSchema()` equals `NewSchema(DefaultS
 
 ### SchemaConfig Fields
 
-The fields of `SchemaConfig` correspond one-to-one with `Schema`; the numeric/boolean constraints are **pointer types** — `nil` means the constraint is unset, and `NewSchema` enables a constraint only when a non-`nil` pointer is passed (this is exactly why length/range constraints must go through `NewSchema`; see the [warning above](#creating-a-schema)).
+The fields of `SchemaConfig` correspond one-to-one with `Schema`, and the numeric/boolean constraints are **pointer types**: `nil` means the constraint is unset, and `NewSchema` enables it only when a non-`nil` pointer is passed. That is exactly why length/range constraints must go through `NewSchema`; see the [warning above](#creating-a-schema).
 
 | Field                  | Type                 | Description                                                                          |
 | ----------------------- | -------------------- | ------------------------------------------------------------------------------------- |
@@ -453,7 +455,7 @@ The fields of `SchemaConfig` correspond one-to-one with `Schema`; the numeric/bo
 | `Default`               | `any`                | Default value (metadata)                                                              |
 | `Examples`              | `[]any`              | Example values (metadata)                                                             |
 
-Creating configured schemas via `NewSchema` (`func NewSchema(cfg SchemaConfig) *Schema`) is always recommended — it is the only reliable way to enable pointer constraints, and it initializes `Properties` / `Required` automatically and handles the `AdditionalProperties` default.
+Always create configured schemas with `NewSchema` (`func NewSchema(cfg SchemaConfig) *Schema`): it is the only way to enable pointer constraints, and it initializes `Properties` / `Required` automatically and applies the `AdditionalProperties` default.
 
 ## Validation-Related Config Fields
 
@@ -464,7 +466,7 @@ Creating configured schemas via `NewSchema` (`func NewSchema(cfg SchemaConfig) *
 | `SkipValidation` | `bool` | Skips non-essential validation (trusted input only) |
 
 ::: warning Deprecated extension fields
-`Config.CustomValidators` (`[]Validator`) and the `Validator` interface are **deprecated** (marked Deprecated in the source): they are declared and take part in config cloning and cache-key computation, but validators are **never executed by any public operation**. Registering validators via `Config.CustomValidators` (or `Config.AddValidator`) does not affect the execution of any operation — operations are never rejected by custom validators. Both are kept within v1:
+`Config.CustomValidators` (`[]Validator`) and the `Validator` interface are **deprecated** (marked Deprecated in the source): the field is declared and takes part in config cloning and cache-key computation, but validators are **never executed by any public operation**. Registering validators via `Config.CustomValidators` (or `Config.AddValidator`) changes no operation's behavior, and no operation is rejected because of a custom validator. Both are kept within v1:
 
 ```go
 // Deprecated: declared but never executed; registering has no effect
@@ -478,8 +480,8 @@ For custom validation before/after operations, use the effective [Hooks](../exte
 
 ## See Also
 
-- [Interface Definitions](./interfaces) - The (deprecated) `Validator` interface and `Schema`-related types
-- [Type Definitions](./types) - Core types (Config / Schema / Stats / AccessResult)
-- [Parse & Validate](./functions/parse) - Parse / Valid / ValidateSchema functions
-- [Config](./config) - Validation-related configuration fields
-- [Hooks](../extensions/hooks) - The effective pre/post interception mechanism (incl. `ValidationHook`)
+- [Interface Definitions](./interfaces): the (deprecated) `Validator` interface and `Schema`-related types
+- [Type Definitions](./types): core types (`Config` / `Schema` / `Stats` / `AccessResult`)
+- [Parse & Validate](./functions/parse): `Parse` / `Valid` / `ValidateSchema` functions
+- [Config](./config): validation-related configuration fields
+- [Hooks](../extensions/hooks): the effective pre/post interception mechanism (incl. `ValidationHook`)

@@ -1,19 +1,19 @@
 ---
 sidebar_label: "Performance"
 title: "Performance - CyberGo env | High-Concurrency Tuning"
-description: "CyberGo env performance guide: sharded locks for concurrency, sync.Pool reuse, mlock tradeoffs and streaming parsing of large files, with benchmarks."
+description: "CyberGo env performance guide: 32-shard locks for concurrency, sync.Pool reuse of SecureValue, mlock tradeoffs, high-throughput patterns and benchmarks."
 sidebar_position: 1
 ---
 
 # Performance
 
-The env library is optimized for high-performance scenarios. This document covers performance-related features including concurrency safety, object pooling, and memory management.
+env is built around sharded storage, an object pool for `SecureValue`, and a lock-free fast path for single-key reads. The sections below describe those mechanisms, the patterns that use them well, and the benchmark code to measure them.
 
 ## Concurrency Safety
 
 ### Thread Safety Guarantee
 
-All methods of `Loader` are thread-safe:
+All `Loader` methods are thread-safe:
 
 ```go
 loader, _ := env.New(env.DefaultConfig())
@@ -44,7 +44,7 @@ wg.Wait()
 
 ### Package-level Function Thread Safety
 
-Package-level functions use the global loader and are equally thread-safe:
+Package-level functions operate on the global loader and are equally thread-safe:
 
 ```go
 var wg sync.WaitGroup
@@ -62,29 +62,29 @@ wg.Wait()
 
 ### Internal Implementation
 
-The library uses sharded storage to reduce lock contention:
+The library spreads all variables across 32 shards to reduce lock contention:
 
 ```text
-┌─────────────────────────────────────────┐
-│          Loader (8 shards)              │
-├─────────────────────────────────────────┤
-│  ┌─────────┐ ┌─────────┐    ┌────────┐ │
-│  │ Shard 0 │ │ Shard 1 │... │ Shard 7│ │
-│  │  Lock   │ │  Lock   │    │  Lock  │ │
-│  │  Data   │ │  Data   │    │  Data  │ │
-│  └─────────┘ └─────────┘    └────────┘ │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│              Loader (32 shards)              │
+├──────────────────────────────────────────────┤
+│  ┌─────────┐ ┌─────────┐        ┌──────────┐ │
+│  │ Shard 0 │ │ Shard 1 │  ...   │ Shard 31 │ │
+│  │  Lock   │ │  Lock   │        │   Lock   │ │
+│  │  Data   │ │  Data   │        │   Data   │ │
+│  └─────────┘ └─────────┘        └──────────┘ │
+└──────────────────────────────────────────────┘
 ```
 
-- Keys are distributed across shards based on hash value
-- Each shard has an independent lock
-- Reduces lock contention, improves concurrency performance
+- `internal.HashKey` selects the shard: a multiplicative hash for short keys, FNV-1a sampling for longer ones
+- Each shard has its own lock
+- Reads and writes on different shards proceed in parallel, so contention spreads over 32 locks
 
 ## Object Pool
 
 ### Why Use Object Pooling
 
-Frequent creation and destruction of objects increases GC pressure:
+Frequent creation and destruction of objects raises GC pressure:
 
 ```text
 Without object pool:
@@ -96,17 +96,17 @@ Create object → Use → Return to pool → Get → Use → Return to pool ...
 
 ### SecureValue Pool
 
-`SecureValue` objects use pool management:
+`SecureValue` objects are pooled:
 
 ```go
-// Get a SecureValue (may be reused from pool)
+// Get a SecureValue (reused from the pool when one is available, else allocated)
 secret := env.GetSecure("API_KEY")
 
-// Use (Reveal returns plaintext, String/Masked return masks)
+// Use (Reveal returns plaintext; String and Masked return masks)
 value := secret.Reveal()
 
-// Release back to pool
-secret.Close()  // or secret.Release()
+// Return to the pool
+secret.Release()  // zeroes, unlocks, and returns to the pool; Close() zeroes but keeps it out of the pool
 ```
 
 ### Proper Object Pool Usage
@@ -116,7 +116,7 @@ secret.Close()  // or secret.Release()
 ```go
 func processData() {
     secret := env.GetSecure("SECRET")
-    defer secret.Close()  // Ensure release
+    defer secret.Release()  // Zeroes, unlocks, returns to the pool
 
     // Use secret...
 }
@@ -125,23 +125,24 @@ func processData() {
 **Do not hold references:**
 
 ```go
-// Wrong: holding a reference to a released object
+// Wrong: keeping a reference to an object returned to the pool
 var globalSecret *env.SecureValue
 
 func init() {
     globalSecret = env.GetSecure("KEY")
-    globalSecret.Close()  // After release, the object may be reused
+    globalSecret.Release()  // zeroes and returns the object to sync.Pool
 }
 
 func later() {
-    // Dangerous: globalSecret may already be in use by other code
-    globalSecret.String()
+    // Dangerous: another goroutine may already have taken this object from the
+    // pool and written a different value into it, so the read below can return
+    // someone else's data
 }
 
-// Correct: get it each time it's needed
+// Correct: get it each time it is needed
 func getSecret() string {
     secret := env.GetSecure("KEY")
-    defer secret.Close()
+    defer secret.Release()
     return secret.Reveal()
 }
 ```
@@ -153,7 +154,7 @@ secret := env.GetSecure("KEY")
 
 // Check before use
 if secret.IsClosed() {
-    // Object has been closed, cannot be used
+    // Object has been closed and cannot be used
 }
 
 // Close after use
@@ -169,7 +170,7 @@ if secret.IsClosed() {
 
 ### Memory Locking
 
-Enable memory locking to prevent sensitive data from being swapped to disk:
+Memory locking prevents sensitive data from being swapped to disk:
 
 ```go
 // Check platform support
@@ -185,28 +186,33 @@ if env.IsMemoryLockSupported() {
 | Linux | ✅ |
 | macOS | ✅ |
 | Windows | ✅ |
-| Other platforms (FreeBSD/other BSDs, Solaris, WASM, etc.) | ❌ |
+| Other platforms (FreeBSD and other BSDs, Solaris, WASM) | ❌ |
 
 :::tip
-See [SecureValue API - Memory Lock Configuration](../api-reference/secure-value#memory-lock-configuration) for complete configuration documentation.
+See [SecureValue API - Memory Lock Configuration](../api-reference/secure-value#memory-lock-configuration) for the complete configuration reference.
 :::
 
 ### Strict Mode
 
-In strict mode, memory locking failure causes an error:
+By default a memory-locking failure is silent: the value stays usable but is not locked. `SetMemoryLockStrict(true)` makes the failure observable through the default handler, which writes to stderr. It does not change whether values work.
+
+`NewSecureValueStrict` returns an error only when locking is enabled and the lock failed. The strict switch has no effect on that return value:
 
 ```go
+env.SetMemoryLockEnabled(true)
 env.SetMemoryLockStrict(true)
 
 secret, err := env.NewSecureValueStrict("sensitive_data")
 if err != nil {
-    // Memory locking failed
+    // Locking is enabled, but the mlock / VirtualLock call failed
 }
 ```
 
+With locking enabled but failed, `Masked()` reports `[SECURE:N bytes lock-failed]`. On platforms other than Linux, macOS, and Windows, `IsMemoryLockSupported()` returns false and the lock call degrades to a no-op.
+
 ### Secure Zeroing
 
-`SecureValue` automatically zeros memory when closed:
+`SecureValue` zeros its memory when closed:
 
 ```go
 secret := env.GetSecure("PASSWORD")
@@ -228,7 +234,7 @@ env.ClearBytes(sensitiveBytes)
 
 ### Read-only After Initialization
 
-The most efficient pattern: load configuration at startup, read-only at runtime:
+The most efficient pattern is to load configuration at startup and only read it afterwards:
 
 ```go
 var config *Config
@@ -248,7 +254,7 @@ func getValue() string {
 
 ### Dynamic Configuration Refresh
 
-Pattern for when you need to dynamically update configuration:
+To update configuration at runtime, wrap the loader with a mutex:
 
 ```go
 type ConfigManager struct {
@@ -273,25 +279,31 @@ func (m *ConfigManager) Get(key string) string {
 
 ### Reduce Lock Hold Time
 
+A single `GetString` takes the lock-free fast path, so the lock that can actually block other goroutines is your own. Hold it long enough to read, then process outside it:
+
 ```go
-// Not recommended: time-consuming operations inside lock
-func (l *Loader) ProcessValue(key string) {
-    value := l.GetString(key)
-    // Time-consuming operations...
-    processValue(value)
+// Not recommended: the slow work runs while the caller's lock is held
+func (s *Service) ProcessValue(key string) {
+    s.mu.Lock()
+    value := s.loader.GetString(key)
+    processValue(value) // the lock stays held for the whole call
+    s.mu.Unlock()
 }
 
-// Recommended: quick read, process outside lock
-func ProcessValue(key string) {
-    value := loader.GetString(key)  // Quick get
-    go processValue(value)          // Async processing
+// Recommended: read under the lock, process outside it
+func (s *Service) ProcessValue(key string) {
+    s.mu.Lock()
+    value := s.loader.GetString(key)
+    s.mu.Unlock()
+
+    processValue(value)
 }
 ```
 
 ### Batch Operations
 
 ```go
-// Get all needed values at once
+// Read all needed values in one pass
 func LoadAllConfig(loader *env.Loader) *Config {
     return &Config{
         Host:    loader.GetString("HOST"),
@@ -304,10 +316,12 @@ func LoadAllConfig(loader *env.Loader) *Config {
 
 ### Avoid Frequent Calls
 
+A single-key read takes no loader-level lock, but every call still resolves the key name. On a hot path, cache the value in a local variable or a struct field:
+
 ```go
-// Not recommended: reading on every request
+// Not recommended: every request repeats the key lookup
 func Handler(w http.ResponseWriter, r *http.Request) {
-    apiKey := env.GetString("API_KEY")  // Locks on every request
+    apiKey := env.GetString("API_KEY")  // Lookup on every request
     // ...
 }
 
@@ -320,7 +334,7 @@ func init() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-    // Use cached value directly
+    // Use the cached value
     // ...
 }
 ```
@@ -331,13 +345,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 | Operation | Without Pool | With Pool |
 |-----------|-------------|-----------|
-| Allocations | N | ~constant |
-| GC pressure | High | Low |
-| Latency | Unstable | Stable |
+| Allocations per value | One per creation | Near zero once the pool is warm |
+| GC pressure | Proportional to the creation rate | Lower |
+| Latency | Varies with GC cycles | More stable |
 
 ### Memory Locking Overhead
 
-Memory locking (Linux `mlock` / Windows `VirtualLock`) incurs a one-time extra syscall overhead only when creating a `SecureValue`; read operations (`Reveal` / `String` / `Masked`) have no difference. It is recommended to keep `SecureValue` small and short-lived — call `Close()` / `Release()` immediately after use to return to the object pool, avoiding holding large blocks of locked memory for extended periods.
+Memory locking (Linux `mlock`, Windows `VirtualLock`) adds a one-time syscall cost when a `SecureValue` is created. Read operations (`Reveal`, `String`, `Masked`) are unaffected. Keep each `SecureValue` small and short-lived: call `Close()` or `Release()` immediately after use, which returns the object to the pool and releases the locked memory.
 
 ## Benchmarks
 
@@ -395,21 +409,27 @@ func BenchmarkMixedReadWrite(b *testing.B) {
 
 ## Caveats
 
-### Avoid Blocking Inside Locks
+### Write-path lock windows
+
+`Set`, `Delete`, `Apply`, and `LoadFiles` all take the loader write lock, so they run one at a time. A single `Set` takes a read-lock fast path only when `OverwriteExisting = true` and `AutoApply` is off; every other write waits for the write lock.
+
+`computeValue()` written as a `Set` argument is evaluated before `Set` is entered, so the computation itself does not hold the loader lock. What matters is how many times you acquire the write lock, which grows when you import many keys one call at a time (and with `AutoApply` on, each call also makes its own `Setenv`):
 
 ```go
-// Dangerous: may cause deadlock
-func (l *Loader) BadMethod() {
-    // Calling potentially blocking operations inside lock
-    l.Set("KEY", computeValue())  // computeValue may be slow
+// Not recommended: one write-lock acquisition per key
+for key, value := range values {
+    if err := loader.Set(key, value); err != nil {
+        return err
+    }
 }
 
-// Safe: compute first, then set
-func GoodMethod() {
-    value := computeValue()  // Compute outside lock
-    loader.Set("KEY", value)  // Quick set
+// Recommended: write the file once, then import the whole batch with one LoadFiles call
+if err := loader.LoadFiles("batch.env"); err != nil {
+    return err
 }
 ```
+
+If you also wrap writes in your own mutex, that lock is the one to watch — see [Reduce Lock Hold Time](#reduce-lock-hold-time).
 
 ### Concurrent Access After Close
 
@@ -419,7 +439,7 @@ loader, _ := env.New(cfg)
 // Start goroutine
 go func() {
     time.Sleep(1 * time.Second)
-    loader.GetString("KEY")  // Returns empty string (GetString doesn't return error)
+    loader.GetString("KEY")  // Returns an empty string (GetString has no error return)
 }()
 
 loader.Close()  // Main goroutine closes
@@ -427,7 +447,7 @@ loader.Close()  // Main goroutine closes
 
 ### Global Loader Reset
 
-`ResetDefaultLoader` itself is safe for concurrent use (stated explicitly in the source comments) and returns the `error` from closing the old loader, which should be checked. Even so, prefer calling it only during tests or startup: between the reset and the next `Load`, global functions briefly fall back to the uninitialized state (returning `ErrNotInitialized`), and resetting at runtime exposes code that relies on the global loader to that window.
+`ResetDefaultLoader` is safe for concurrent use and returns the `error` from closing the old loader, which you should check. Even so, call it only during tests or startup: between the reset and the next `Load`, global functions behave as uninitialized (returning `ErrNotInitialized`), and resetting at runtime exposes code that relies on the global loader to that window.
 
 ```go
 // Concurrency-safe, but best limited to tests or startup; handle the returned error
@@ -437,39 +457,39 @@ if err := env.ResetDefaultLoader(); err != nil {
 env.Load(".env")
 ```
 
-## Concurrency Internals Deep Dive
+## Concurrency Internals
 
-This section explains the library's concurrency optimizations at the source level to help with evaluation and tuning. The quantitative figures quoted here (e.g. the 23.6% atomic-operations hotspot, the finalizer accounting for ~60% of creation cost) come from the v1.2.2/v1.2.3 benchmarks and profiles (see CHANGES.md).
+The concurrency optimizations below are described at the source level. The quantitative figures (the 23.6% atomic-operations hotspot, the finalizer at about 60% of creation cost) come from the v1.2.2/v1.2.3 benchmarks and profiles recorded in CHANGES.md.
 
 ### Sharded storage (secureMap)
 
-All variables are stored as `SecureValue` in 8 shards; keys are placed by FNV-1a hash and each shard holds its own `sync.RWMutex` — reads and writes on different shards proceed fully in parallel, spreading lock contention.
+All variables are stored as `SecureValue` in **32 shards** (raised from 8 in v1.3.0). `internal.HashKey` selects the shard: a multiplicative hash for keys of 8 bytes or fewer, and FNV-1a sampling for longer keys. Each shard holds its own `sync.RWMutex`, so reads and writes on different shards proceed in parallel.
 
 ### Bucketed batch writes
 
-`secureMap.SetAll`/`secureMap.SetAllIfAbsent` (the file-loading path) bucket the whole batch into a single flat allocation and then lock **each shard only once** for the entire batch; existing keys are updated in place (reusing the `SecureValue` object), avoiding pool round-trips and extra allocations.
+`secureMap.SetAll` and `secureMap.SetAllIfAbsent` (the file-loading path) put the whole batch into a single flat allocation and then lock **each shard only once** for that batch. Existing keys are updated in place, reusing the `SecureValue` object, which avoids pool round trips and extra allocations.
 
 ### Lock optimizations on the read path
 
-- **Lock-free single-key reads**: `Lookup`/`GetSecure` bypass the loader-level read lock via an atomic closed flag — under high concurrency the RWMutex's own reader count is the bottleneck
-- **Zero-allocation `secureMap.Has`**: reads only the closed flag atomically, never copying the value string
-- **`Get` skips a second lock**: the shard read lock already guarantees `SecureValue` data stability, so the object-level lock is skipped (that lock was once a 23.6% atomic-operations hotspot in profiles)
-- **`Set` fast path**: with `OverwriteExisting=true` and `AutoApply` off, only a read lock is needed — concurrent `Set` calls don't serialize on the loader mutex
+- **Lock-free single-key reads**: `Lookup` and `GetSecure` bypass the loader-level read lock through an atomic closed flag. Under high concurrency the RWMutex's own reader count is the bottleneck.
+- **Zero-allocation `secureMap.Has`**: reads only the closed flag atomically and never copies the value string.
+- **`Get` skips a second lock**: the shard read lock already keeps `SecureValue` data stable, so the object-level lock is skipped. That lock was once a 23.6% atomic-operations hotspot in profiles.
+- **`Set` fast path**: with `OverwriteExisting=true` and `AutoApply` off, only a read lock is needed, so concurrent `Set` calls do not serialize on the loader mutex.
 
 ### Object pool and finalizer
 
-`SecureValue` is reused through `sync.Pool`; the GC finalizer is installed **once at first creation** (~60% of the creation cost) and pool cycles don't repay it. Overwriting an existing key resets in place, further reducing allocations.
+`SecureValue` is reused through `sync.Pool`. The GC finalizer is installed **once at first creation** (about 60% of the creation cost) and pool cycles do not repay it. Overwriting an existing key resets in place, which reduces allocations further.
 
 ### Approximate snapshot semantics
 
-`Len` returns in O(1) via an atomic counter; `Keys`/`ToMap` size their allocation from the counter then sweep the shards. Under concurrent writes the result may be a **slightly stale approximation** (modifications during the sweep aren't guaranteed visible) — synchronize externally if you need an exact snapshot.
+`Len` is O(1) via an atomic counter. `Keys` and `ToMap` size their allocation from the counter, then sweep the shards. Each shard is read-locked individually, so the result is a **per-shard, approximate snapshot**: writes that happen during the sweep are not guaranteed to appear, and the shards are not read at a single point in time. Synchronize externally if you need an exact, cross-shard-consistent snapshot.
 
 ### Performance awareness for auditing
 
-With auditing enabled, the load path gains `time.Now` and event-construction overhead (entirely avoided when disabled). For high-throughput scenarios, enable auditing only under the Production preset, or consume asynchronously with `ChannelAuditHandler`.
+With auditing enabled, the load path adds `time.Now` and event-construction overhead; with auditing disabled that cost is entirely avoided. In high-throughput scenarios, enable auditing only under the production preset, or consume events asynchronously with `ChannelAuditHandler`.
 
 ## Related Documentation
 
-- [SecureValue API](../api-reference/secure-value) - Secure value handling and memory locking
+- [SecureValue API](../api-reference/secure-value) - secure value handling and memory locking
 - [Loader API](../api-reference/loader) - Loader methods
-- [Testing](../guides/testing) - Benchmark examples
+- [Testing](../guides/testing) - benchmark examples

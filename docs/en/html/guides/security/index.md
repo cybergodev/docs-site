@@ -1,19 +1,19 @@
 ---
 sidebar_label: "Security Overview"
-title: "Security Overview - CyberGo html | Protection Overview"
-description: "CyberGo html security overview: defense in depth (input/processing/audit), MaxInputSize/MaxDepth, sanitization, AllowedBaseDir sandbox, HighSecurityConfig."
+title: "Security Overview - CyberGo html | Defense in Depth"
+description: "CyberGo html security overview: input layer limits, sanitization, context cancellation, panic recovery, audit events, and the HighSecurityConfig preset."
 sidebar_position: 10
 ---
 
 # Security Overview
 
-The HTML library processes untrusted input from the internet, so security is the first priority by design. The library has multiple independent layers of protection built in, following the **Defense in Depth** philosophy: each layer assumes other layers may fail, and a single layer being bypassed does not lead to total compromise.
+CyberGo html is a Go library for HTML content extraction and sanitization that processes untrusted input from the internet, so security is the first design constraint. The library ships multiple independent layers of protection following **defense in depth**: each layer stands on its own, and one layer failing does not disable the protection as a whole.
 
-This page is an overview of security features. If you want to jump straight to configuring the audit pipeline or reviewing the production checklist, go to [Next Steps](#next-steps) at the bottom.
+This page explains what each layer does and where its failure boundary lies; to configure an audit pipeline or review the launch checklist, see [Next Steps](#next-steps) at the end.
 
 ## Defense in Depth Architecture
 
-The library's security protections are distributed across three independent layers, each with its own failure modes and recovery strategies:
+The three layers are split by failure mode, not by code location: the input layer rejects before parsing, the processing layer sanitizes after parsing and honors cancellation and panics, and the audit layer only records and isolates.
 
 ```text
 Input Layer Protection (reject before processing)
@@ -27,7 +27,7 @@ Processing Layer Protection (sanitization and cancellation)
 ├── HTML sanitization        Multi-dimensional filtering of tags / attributes / URLs / CSS
 ├── Cooperative context cancellation  ExtractWithContext responds to ctx.Done()
 ├── Panic recovery           recoverPanic generic wrapper, returns ErrInternalPanic
-└── Goroutine leak protection  maxTimeoutGoroutines (limit 1000)
+└── Goroutine leak protection  maxTimeoutGoroutines (concurrency limit 1000)
 
 Audit Layer Protection (observability + isolation)
 ├── AuditSink panic isolation SEC-003 (audit subsystem is best-effort)
@@ -35,65 +35,74 @@ Audit Layer Protection (observability + isolation)
 └── Raw value HTML escaping   Prevents audit logs from triggering XSS in SIEM dashboards
 ```
 
-:::tip Why "independent" matters
-The value of defense in depth lies in the assumption of no coupling between layers. For example, even if the sanitization layer misses a malicious URL (processing layer failure), the input layer's `MaxInputSize` still blocks oversized payloads; even if an AuditSink itself panics (audit layer failure), `recoverPanic` still ensures the main flow does not crash.
+:::tip No coupling assumptions between layers
+If the sanitizer misses a malicious URL, the input layer's `MaxInputSize` still blocks an oversized payload; if an `AuditSink` panics, `recoverPanic` still keeps the main flow from crashing.
 :::
 
 ## Input Boundary Protection
 
 ### Input Size Limit
 
-Default maximum input is 50MB (`DefaultMaxInputSize`), preventing memory exhaustion attacks. The configuration upper bound is also constrained by `maxConfigInputSize` (also 50MB), meaning it cannot be raised to unsafe values through configuration:
+The default ceiling is 50MB (`DefaultMaxInputSize`), which blocks memory-exhaustion input. The configured value is additionally bounded by `maxConfigInputSize` (also 50MB), so it cannot be raised to a less safe value:
 
 ```go
 cfg := html.DefaultConfig()
 cfg.MaxInputSize = 10 * 1024 * 1024 // Tighten to 10MB
 ```
 
-File paths have an additional **pre-check**: after `os.Stat` retrieves the size, oversized files are rejected before `io.ReadAll` loads the content into memory, closing the memory peak window of "finish reading before discovering it's oversized."
+File reads get one more **pre-check**: after `os.Stat` reports the size, an oversized file is rejected before `io.ReadAll` pulls it into memory, so the process never loads a whole file only to discover it is over the limit.
 
 ### DOM Depth Limit
 
-Default maximum depth is 500 (`DefaultMaxDepth`), preventing stack overflow bombs from recursively nested constructs:
+The default ceiling is 500 (`DefaultMaxDepth`); the configuration ceiling is also 500 (`maxConfigDepth`). Validation walks the tree **iteratively**, so deeply nested input cannot exhaust the call stack:
 
 ```go
 cfg.MaxDepth = 200 // Stricter
 ```
 
-Depth validation uses **iterative** traversal rather than recursion, so it does not overflow its own stack from deeply nested input.
+:::warning Depth violations come from two sources
+The `golang.org/x/net/html` parser itself fails at roughly 512 unclosed elements, returning `ErrInvalidHTML` (measured: 520 levels → `html: invalid HTML: open stack of elements exceeds 512 nodes`). Only after parsing succeeds does the library apply `MaxDepth` and return `ErrMaxDepthExceeded`. The default of 500 sits close to the parser threshold, so check both sentinel errors when diagnosing a depth problem.
+:::
 
 ### Processing Timeout
 
-Configurable processing timeout prevents malicious HTML from triggering exponential processing time:
+A configurable per-document timeout bounds documents whose cost grows with input structure:
 
 ```go
 cfg.ProcessingTimeout = 10 * time.Second
 ```
 
-The timeout mechanism is implemented via an independent goroutine + context deadline, protected by the `maxTimeoutGoroutines` (1000) limit to prevent goroutine runaway under high concurrency. Combined with `ExtractWithContext`, the caller's cancellation signal can be layered on top.
+The timeout runs on a dedicated goroutine plus a context deadline and is capped by the process-wide counter `activeTimeoutGoroutines` (limit 1000), which prevents unbounded goroutine buildup under high concurrency. When an `ExtractWithContext` call also carries a caller context, the earlier deadline wins, but the **error type depends on which source fired** — there is no normalization:
 
-## Content Sanitization in Detail
+| Source | Returned error |
+|--------|----------------|
+| The library's `ProcessingTimeout` fires (caller ctx still live) | `ErrProcessingTimeout` |
+| The caller's ctx deadline fires first | `context.DeadlineExceeded` (passed through unchanged) |
+| The caller calls `cancel()` | `context.Canceled` |
+| `ProcessingTimeout = 0` (no limit) and ctx expires | `context.DeadlineExceeded` (no timeout goroutine is started) |
 
-Sanitization is controlled by `EnableSanitization` (default `true`). It modifies the parsed DOM tree in place to remove potentially malicious content. The entire flow is implemented in `internal/sanitize.go`, and every interception is written to the audit log.
+## Content Sanitization
 
-:::warning When to turn off sanitization
-Only consider `EnableSanitization = false` when the input is **fully trusted** internal data. It should always remain enabled when processing any HTML from user uploads, web scraping, or third-party APIs.
+Sanitization is controlled by `EnableSanitization` (default `true`). It edits the parsed DOM in place to remove potentially malicious content, and every interception is written to the audit log (auditing must be enabled).
+
+:::warning Only disable sanitization for fully trusted input
+Consider `EnableSanitization = false` only when the input is **fully trusted** internal data. Keep it on for user uploads, web scraping, and third-party API responses.
 :::
 
 ### Removed Tags
 
-The following tags are removed along with their entire subtrees:
+The following tags are removed together with their entire subtree:
 
 | Tag | Reason for removal |
 |-----|-------------------|
-| `<script>`, `<style>`, `<noscript>` | Script and style containers, can execute code or hide payloads |
-| `<iframe>`, `<embed>`, `<object>` | External content embedding, classic XSS and phishing vectors |
-| `<input>`, `<button>` | Form controls, can be used for CSRF or UI spoofing |
+| `<script>`, `<style>`, `<noscript>` | Script and style containers; can execute code or hide payloads |
+| `<iframe>`, `<embed>`, `<object>` | External content embedding; a common XSS and phishing vector |
+| `<input>`, `<button>` | Form controls; usable for CSRF or UI spoofing |
 | `<svg>` | Can embed JavaScript and event handlers |
-| `<math>` | MathML, can be abused to execute scripts in some browsers |
+| `<math>` | MathML; abused to execute scripts in some browsers |
 
-:::tip Why `<form>` is not removed
-The `<form>` tag is **intentionally preserved**. Server-side frameworks like ASP.NET WebForms, JSF, and JSP wrap the entire `<body>` inside a single `<form>`. Removing `<form>` would discard all visible page content. Text extraction scenarios neither render nor submit forms, so the CSRF/UI spoofing rationale that applies to `<input>`/`<button>` does not apply to the `<form>` container itself.
+:::tip Why `<form>` is deliberately kept
+Server-side frameworks (ASP.NET WebForms, JSF, JSP) wrap the entire `<body>` in a single `<form>`, so removing `<form>` would discard all visible page content. Text extraction neither renders nor submits forms, so the CSRF/UI-spoofing rationale that applies to `<input>`/`<button>` does not apply to the `<form>` container itself.
 :::
 
 ### Removed Attributes
@@ -101,14 +110,14 @@ The `<form>` tag is **intentionally preserved**. Server-side frameworks like ASP
 | Attribute category | Detection method | Examples |
 |-------------------|------------------|----------|
 | Event handlers | Prefix match `on*` | `onclick`, `onerror`, `onmouseover` |
-| Form action override | Exact match | `formaction` (can hijack form submission target) |
-| Autofocus | Exact match | `autofocus` (can be used for phishing click induction) |
+| Form action override | Exact match | `formaction` (can hijack the form submission target) |
+| Autofocus | Exact match | `autofocus` (can be used to induce clicks) |
 
-Event handler detection uses prefix matching (attribute names starting with `on`), so it covers all current and future `on*` variants rather than relying on a fixed blocklist.
+Event handlers are matched by prefix (attribute names starting with `on`), which covers every current and future `on*` variant instead of relying on a fixed blocklist.
 
-### CSS Dangerous Patterns
+### Dangerous CSS Patterns
 
-The value of `style` attributes is checked for the following dangerous substrings. If any is found, the **entire style is stripped** (retaining safe CSS properties for metadata extraction requires separate evaluation; the current strategy is to discard entirely once any danger is detected):
+When a `style` attribute value contains any of the following substrings, the **entire style is stripped** (the current strategy discards the whole value once any pattern matches; safe properties are not kept):
 
 - `expression(` — legacy IE dynamic expressions
 - `behavior:` — IE behavior binding
@@ -118,130 +127,111 @@ The value of `style` attributes is checked for the following dangerous substring
 
 ### Inspected URI Attributes
 
-The values of the following attributes enter the [URL Security Protection](#url-security-protection-in-depth) pipeline for protocol and data URL validation:
+The values of these attributes enter the [URL Security Protection](#url-security-protection-in-depth) pipeline for scheme and data URL validation:
 
 ```text
 href  src  cite  action  data  poster  background
 longdesc  usemap  profile  xlink:href
 ```
 
-:::tip Already-blocked attributes are not re-validated
-`formaction` is already blocked entirely in "Removed Attributes" and does not enter the URI validation pipeline — avoiding redundant checks on the same attribute.
+:::tip Attributes already blocked are not validated again
+`formaction` is already blocked outright under "Removed Attributes", so it never enters the URI validation pipeline.
 :::
 
 ## URL Security Protection in Depth
 
-URI attribute values are validated through a multi-layer pipeline in `isSafeURIWithAudit`. Each layer addresses a known browser parsing behavior or attack bypass technique — none can be omitted.
-
-### Multi-Layer Validation Pipeline
+URI attribute values pass through a fixed pipeline in `isSafeURIWithAudit`. The pipeline exists for one reason: browsers parse URLs far more leniently than `strings.HasPrefix`, and each step below mirrors a normalization a browser performs but a naive string comparison does not.
 
 ```text
 Raw URI
   │
-  ├─ 1. NFC normalization       Normalize fullwidth/composing characters
-  ├─ 2. TrimSpace               Remove leading/trailing whitespace
-  ├─ 3. Strip C0 controls+space  Remove leading/trailing U+0000–U+001F and spaces
-  ├─ 4. Strip tab/LF/CR         Remove \t \n \r within the URL
-  ├─ 5. ToLower                 Normalize case
-  ├─ 6. Length limit            Non-data URLs constrained by MaxURLLength(2000)
-  ├─ 7. Dangerous scheme detection  javascript: / vbscript: / file: + fullwidth variants
-  ├─ 8. Protocol-relative URL detection  //javascript: etc.
-  └─ 9. data URL whitelist      Images/fonts/PDF only, block svg and empty MIME
+  ├─ 1. NFC normalization
+  ├─ 2. TrimSpace
+  ├─ 3. Strip C0 controls and spaces
+  ├─ 4. Strip tab/LF/CR
+  ├─ 5. ToLower
+  ├─ 6. Length limit (non-data URLs ≤ 2000)
+  ├─ 7. Dangerous scheme detection
+  ├─ 8. Protocol-relative URL detection
+  └─ 9. data URL whitelist
 ```
 
-### Unicode Normalization (NFC)
+1. **NFC normalization**: folds fullwidth and composing characters so variants such as `ｊａｖａｓｃｒｉｐｔ：` cannot disguise a scheme.
+2. **Leading/trailing whitespace**: removes Unicode whitespace so a leading space cannot defeat the prefix comparison.
+3. **C0 controls and spaces**: browsers strip U+0000–U+001F before scheme resolution; without the same step, `\x01javascript:` slips past detection.
+4. **tab / LF / CR**: browsers reassemble `java\tscript:` into `javascript:` before executing it.
+5. **Case normalization**: schemes are case-insensitive, so `JavaScript:` equals `javascript:`.
+6. **Length limit**: non-data URLs longer than 2000 characters are rejected; data URLs have a separate 100KB ceiling.
+7. **Dangerous scheme detection**: `javascript:`, `vbscript:`, `file:`, plus a second ASCII fold for fullwidth Latin characters (U+FF01–U+FF5E).
+8. **Protocol-relative forms**: `//javascript:` drops the `//` and leading whitespace, then runs the same scheme policy.
+9. **data URL whitelist**: only explicit image, font, and PDF MIME types pass.
 
-The first step applies NFC normalization to the URI (`normalizeURIForSecurity`), preventing the use of Unicode variants to disguise dangerous protocols:
-
-- Fullwidth characters `ｊａｖａｓｃｒｉｐｔ：` are mapped back to ASCII
-- Composing characters and cross-script similar characters are normalized to a single representation
-
-On top of this, `isDangerousScheme` also performs a dedicated ASCII folding for fullwidth Latin characters (U+FF01–U+FF5E) via `normalizeFullwidthToASCII` — double insurance. Even if certain browsers/parsers treat fullwidth forms as ASCII, the library can still identify them.
-
-### Whitespace and Control Character Stripping
-
-Browsers strip certain control characters when parsing URLs (following the WHATWG URL standard). The library must simulate the same stripping **before** protocol detection; otherwise attackers can use these characters to break up dangerous protocol names and bypass detection:
-
-- **tab / LF / CR**: `java\tscript:` would be reassembled by browsers into `javascript:` and executed. The library uses `stripURLWhitespace` to remove these three bytes before protocol detection.
-- **C0 control characters (U+0000–U+001F) + ASCII space**: browsers strip these from the beginning and end of the string before scheme parsing. `strings.TrimSpace` only covers Unicode whitespace, not most C0 control characters, so the library uses a dedicated `c0ControlOrSpace` set to explicitly strip them. Otherwise `\x01javascript:…` could fool all `strings.HasPrefix` checks.
-
-### Dangerous Protocol Detection
-
-| Protocol | Blocking method |
-|----------|----------------|
-| `javascript:` | Direct match + fullwidth character normalization |
-| `vbscript:` | Same as above |
-| `file:` | Same as above (local filesystem access) |
-| `//javascript:`, `//vbscript:`, `//data:`, `//file:` | Protocol-relative forms detected separately |
-
-Detection of protocol-relative forms (starting with `//`) first strips leading whitespace after `//`, then applies the same dangerous protocol determination, ensuring that variants like `// javascript:` cannot bypass detection.
+The order is what makes this work: every strip and normalization happens before scheme detection, so detection sees what the browser will eventually see. Plain printable-ASCII URIs take a fast path of direct scheme prefix checks; only URIs containing whitespace, control characters, or non-ASCII bytes run the full pipeline — the only place disguise techniques can appear.
 
 ### data URL Whitelist
 
-data URLs only allow the following explicitly declared MIME types:
+Only three MIME categories are allowed for data URLs:
 
 | Category | Allowed MIME types |
-|----------|-------------------|
+|----------|--------------------|
 | Images | `image/gif`, `image/jpeg`, `image/jpg`, `image/png`, `image/webp`, `image/bmp`, `image/x-icon`, `image/vnd.microsoft.icon`, `image/avif`, `image/apng` |
 | Fonts | `font/woff`, `font/woff2`, `font/ttf`, `font/otf`, `application/font-woff`, `application/font-woff2` |
 | Documents | `application/pdf` |
 
-Explicitly blocked:
+Everything else is rejected:
 
-- **`image/svg+xml`**: SVG can embed JavaScript, serving as a defense-in-depth patch after the tag itself is removed.
-- **Empty media types**: e.g., `data:;base64,<payload>` or `data:;,...`. These forms could previously bypass the whitelist; they are now rejected outright.
-- **Overly long data URLs**: constrained by an internal limit (100KB), preventing large base64 payloads from exhausting memory (this limit is not configurable).
-- **Illegal base64 characters**: the base64 portion is validated byte-by-byte for character set legality.
+- **`image/svg+xml`**: SVG can embed JavaScript; this is a patch on top of removing the `<svg>` tag.
+- **Empty media type**: forms such as `data:;base64,<payload>` or `data:;,...` that declare no MIME type.
+- **Oversized data URLs**: bounded by an internal 100KB ceiling so a large base64 blob cannot exhaust memory; the ceiling is not configurable.
+- **Invalid base64 characters**: the base64 portion is validated byte by byte against the character set.
 
-:::tip Audit log truncates data URLs
-data URLs may contain large base64 segments. Writing them in full to audit logs wastes space and may leak embedded sensitive content. Audit records truncate data URLs to 256 characters via `truncateAuditURL`.
+:::tip Audit logs truncate data URLs to 256 characters
+A data URL may carry a large base64 payload; writing it in full wastes space and can leak embedded content, so `truncateAuditURL` cuts it before recording.
 :::
 
 ### Paths That Bypass the Sanitizer
 
-A few code paths (such as `ExtractAllLinks`, and video/audio scanning in raw HTML) read **unsanitized** HTML. These paths are guarded by `containsDangerousScheme` — it reuses the exact same normalization pipeline as the sanitizer (NFC, trim, C0 stripping, tab/LF/CR stripping, fullwidth folding), ensuring that both paths enforce the **same protocol policy**. There is no inconsistency where the sanitizer blocks something but this path allows it.
+`ExtractAllLinks` and the raw-HTML video/audio scan read **unsanitized** text, so both are guarded by `containsDangerousScheme`: it reuses the sanitizer's normalization pipeline (NFC, trim, C0 stripping, tab/LF/CR stripping, fullwidth folding), so both paths enforce one scheme policy. A payload such as `javascript:alert(1).mp4`, disguised as a media URL, is blocked there.
 
-For example, a payload like `javascript:alert(1).mp4` disguised as a media URL could previously pass simple validation because the first character `j` is a letter. It is now caught by `containsDangerousScheme`.
+## AllowedBaseDir Sandbox
 
-## AllowedBaseDir Sandbox Mechanism
-
-When processing file paths from untrusted sources via `ExtractFromFile`, `AllowedBaseDir` limits the readable range to a specified directory. This mechanism is implemented by `readContained` / `realPath` / `pathWithin` in `processor.go`.
+When `ExtractFromFile` receives a file path from an untrusted source, `AllowedBaseDir` restricts reads to a designated directory. The mechanism lives in `readContained` / `realPath` / `pathWithin` in `processor.go`.
 
 ### Why OS File Handle Resolution Is Needed
 
-Plain `filepath.EvalSymlinks` **cannot** resolve Windows directory junctions and reparse points — both of which can be created without any privileges and are the primary means of bypassing path restrictions on Windows. The library's approach:
+`filepath.EvalSymlinks` **cannot** resolve Windows directory junctions and reparse points — both are creatable without privileges and are the main way to bypass path restrictions on Windows. The library instead:
 
-1. `os.Open()` opens the target file, obtaining an OS file handle
-2. `realPath(f)` resolves the real on-disk path from the **already-open handle**
-3. `pathWithin(realBase, realTarget)` determines whether the real path falls within the allowed directory
-4. Reads content via `io.ReadAll` from the **same verified handle**
+1. Opens the target with `os.Open()`, obtaining an OS file handle
+2. Resolves the real on-disk path from the **already-open handle** via `realPath(f)`
+3. Checks containment with `pathWithin(realBase, realTarget)`
+4. Reads the content with `io.ReadAll` from the **same verified handle**
 
-Performing both validation and reading from the same handle closes the TOCTOU (check-time-to-use-time) race window — a path substitution via symlink after validation but before reading cannot affect the result, because the read uses the same inode that was validated.
+Validation and reading share one handle, which closes the TOCTOU (check-time-to-use-time) window: swapping the path for a symlink after validation cannot affect the result, because the read uses the inode that was validated.
 
 ### Cross-Platform Real Path Resolution
 
-| Platform | Resolution method | Covered redirect types |
-|----------|------------------|----------------------|
+| Platform | Resolution method | Redirect types covered |
+|----------|------------------|------------------------|
 | Linux | Read the link at `/proc/self/fd/<fd>` | Symlinks (race-free) |
 | macOS / BSD | Read the link at `/dev/fd/<fd>` | Symlinks (race-free) |
-| Other Unix | Fallback to `filepath.EvalSymlinks` | Symlinks (slight residual TOCTOU) |
+| Other Unix | Fall back to `filepath.EvalSymlinks` | Symlinks (minor residual TOCTOU) |
 | Windows | `GetFinalPathNameByHandleW` | Symlinks + junctions + all reparse points |
 
-After resolution on Windows, the `\\?\` extended-length prefix is stripped and the path is passed through `filepath.Clean` to match the output format of `filepath.Abs`, ensuring accurate subsequent containment comparison.
+On Windows the returned path has the `\\?\` extended-length prefix stripped and is passed through `filepath.Clean` so it matches the form produced by `filepath.Abs`, which keeps the containment comparison exact.
 
 ### Protection Layers
 
-File reading in `AllowedBaseDir` mode stacks four independent checks:
+File reads in `AllowedBaseDir` mode stack four independent checks:
 
-1. **Path traversal detection**: checks for `..` components after `filepath.Clean`
-2. **OS handle sandbox**: `realPath` resolves the real path, `pathWithin` determines containment
-3. **Size pre-check**: `os.Stat` on the verified handle checks the size; rejects files exceeding `MaxInputSize` before `io.ReadAll`
-4. **Byte-level limit**: after reading, `validateInput` re-checks the byte count
+1. **Path traversal detection**: look for `..` components after `filepath.Clean`
+2. **OS handle sandbox**: `realPath` resolves the real path, `pathWithin` decides containment
+3. **Size pre-check**: `os.Stat` on the verified handle rejects files over `MaxInputSize` before `io.ReadAll`
+4. **Byte-level ceiling**: `validateInput` re-checks the byte count after reading
 
-Even if a file is within the allowed directory, `AllowedBaseDir` constrains "which file can be read," and `MaxInputSize` constrains "how large the file can be." The two are orthogonal and do not substitute for each other.
+`AllowedBaseDir` constrains *which file* can be read; `MaxInputSize` constrains *how large* it can be. The two are orthogonal and do not replace each other.
 
-:::warning Empty AllowedBaseDir = sandbox not enabled
-`AllowedBaseDir` defaults to an empty string, meaning **no directory restriction** (only the `..` traversal check remains). As long as your file paths come from user input, you should explicitly set this.
+:::warning An empty AllowedBaseDir disables the sandbox
+`AllowedBaseDir` defaults to the empty string, meaning **no directory restriction** (only the `..` component check remains). Set it explicitly whenever the file path comes from user input.
 :::
 
 ### Configuration Example
@@ -253,101 +243,95 @@ cfg.AllowedBaseDir = "/var/app/uploads"
 
 p, err := html.New(cfg)
 if err != nil {
-    log.Fatal(err)
+	log.Fatal(err)
 }
 defer p.Close()
 
 // OK: file is within the allowed directory
-result, err := p.ExtractFromFile("/var/app/uploads/page.html")
+_, err = p.ExtractFromFile("/var/app/uploads/page.html")
 
 // Rejected: points outside via symlink/junction
-_, err = p.ExtractFromFile("/var/app/uploads/escape.txt") // If it's a junction → /etc
+_, err = p.ExtractFromFile("/var/app/uploads/escape.txt") // if it is a junction → /etc
 ```
 
-Rejected out-of-bounds access logs an `AuditEventPathTraversal` audit event and returns a `*FileError` wrapping "path outside allowed directory." The error **does not include** the resolved real path (to avoid leaking the filesystem layout).
+An out-of-bounds access records an `AuditEventPathTraversal` audit event and returns a `*FileError` wrapping "path outside allowed directory"; the error **does not include** the resolved real path, so the filesystem layout is not leaked.
 
 ## Panic Recovery and Isolation
 
-All public extraction methods are wrapped by the `recoverPanic[T]` generic function. Panics are caught and converted into `ErrInternalPanic` errors, ensuring that malicious input does not crash the caller's process.
+Every public extraction method is wrapped by the generic `recoverPanic[T]`, which catches panics and converts them into `ErrInternalPanic`, so malicious input cannot crash the caller's process.
 
 ```go
 func recoverPanic[T any](fn func() (T, error)) (result T, err error) {
-    defer func() {
-        if r := recover(); r != nil {
-            err = fmt.Errorf("%w: %v", ErrInternalPanic, r)
-        }
-    }()
-    return fn()
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%w: %v", ErrInternalPanic, r)
+		}
+	}()
+	return fn()
 }
 ```
 
-### Multi-Layer Isolation Boundaries
+### Isolation Boundaries
 
-| Isolation boundary | Behavior | Location |
-|-------------------|----------|----------|
+| Boundary | Behavior | Location |
+|----------|----------|----------|
 | Single extraction | panic → `ErrInternalPanic` | `extract.go` `recoverPanic` |
-| Batch single item | Each item independently recovered; one item's panic does not affect others | `batch.go` |
-| Timeout goroutine | The worker goroutine in `withTimeout` is independently recovered | `extract.go` |
-| AuditSink write | Sink's own panic is swallowed (SEC-003) | `audit.go` `Record` |
-| AuditSink close | `sink.Close` panic is converted to `ErrInternalPanic` and returned via error | `audit.go` `Close` |
+| One batch item | Each item recovers independently; one panic does not affect the others | `batch.go` |
+| Timeout goroutine | The worker goroutine in `withTimeout` recovers independently | `extract.go` |
+| AuditSink write | The sink's own panic is swallowed (SEC-003) | `audit.go` `Record` |
+| AuditSink close | `sink.Close` panic becomes `ErrInternalPanic`, returned as an error | `audit.go` `Close` |
 | Pooled Processor creation | `sync.Pool.New` panic → `ErrInternalPanic` | `processor_pool.go` |
 
-### SEC-003: Audit Subsystem Is Best-Effort
+### SEC-003: The Audit Subsystem Is Best-Effort
 
-The audit subsystem **must never** propagate panics to public API callers. User-provided `AuditSink` implementations (which may be hand-written, may wrap filters/multiplexers) may panic on any path in their `Write()`. `Record` uses `defer recover()` to swallow such panics (the recovered value is discarded — the audit path itself has no safe reporting channel); `Close`, because it has an error return value, wraps the recovered value in `ErrInternalPanic` and returns it.
+The audit subsystem **must never** propagate a panic to public API callers. A caller-supplied `AuditSink` (hand-written, or wrapped in filters or fan-out) may panic on any path inside `Write()`. `Record` swallows such panics with `defer recover()` and discards the recovered value — the audit path has no safe reporting channel of its own; `Close`, which returns an error, wraps the value in `ErrInternalPanic`.
 
-This means that even if your custom Sink has a bug, the idiomatic `defer processor.Close()` will not crash the process.
+A custom `Sink` that panics therefore never reaches the caller through `Close()` or an extraction call.
 
 ### Goroutine Leak Protection
 
-Each `withTimeout` call spawns a worker goroutine waiting for the deadline. To prevent goroutine runaway under high concurrency, the global counter `activeTimeoutGoroutines` limits the concurrency to `maxTimeoutGoroutines` (1000). When the limit is exceeded, new requests return `ErrTooManyConcurrentOps` immediately instead of accumulating goroutines indefinitely (estimating ~1MB stack per goroutine, 1000 ≈ 1GB upper bound).
+Each `withTimeout` call starts a worker goroutine that waits for the deadline. To keep goroutines from piling up without bound, the process-wide counter `activeTimeoutGoroutines` limits how many can be waiting at once to `maxTimeoutGoroutines` (1000); past the limit, new requests return `ErrTooManyConcurrentOps` immediately.
+
+The cap bounds concurrency, not a fixed amount of memory — Go grows goroutine stacks on demand from a few KB.
 
 ### Audit Raw Value Log Injection Protection
 
-When `AuditConfig.IncludeRawValues = true`, audit entries include the raw values of intercepted attributes/URLs. These values are HTML-escaped (`&` `<` `>` `"` `'`) via `sanitizeRawValue` to prevent stored XSS when audit logs are rendered in browsers or SIEM dashboards.
+With `AuditConfig.IncludeRawValues = true`, audit entries carry the raw values of blocked attributes and URLs. Those values go through HTML escaping (`&` `<` `>` `"` `'`) in `sanitizeRawValue`, so rendering the audit log in a browser or SIEM dashboard cannot trigger stored XSS.
 
 ## Audit System
 
-Security events are recorded through the audit system, supporting 8 event types, multiple built-in sinks, and level filtering. For full configuration, see [Audit System in Practice](./audit-pipeline).
-
-| Event | Description |
-|-------|-------------|
-| `AuditEventBlockedTag` | Blocked HTML tag |
-| `AuditEventBlockedAttr` | Blocked attribute |
-| `AuditEventBlockedURL` | Blocked URL |
-| `AuditEventInputViolation` | Input size violation |
-| `AuditEventDepthViolation` | DOM depth violation |
-| `AuditEventPathTraversal` | Path traversal attempt (including AllowedBaseDir out-of-bounds) |
-| `AuditEventTimeout` | Processing timeout |
-| `AuditEventEncodingIssue` | Encoding anomaly |
+The audit system records security events: 8 event types (blocked tag, blocked attribute, blocked URL, input violation, depth violation, timeout, encoding issue, path traversal), 3 levels (`info` / `warning` / `critical`), and 7 built-in Sink constructors. See [Audit Pipeline](./audit-pipeline) for the event-to-level mapping and Sink composition, and the [Audit System reference](../../api-reference/modules/audit) for full signatures.
 
 ## Security Configuration Decision Table
 
 | Scenario | Recommended config | Notes |
 |----------|-------------------|-------|
-| Fully trusted internal data | `DefaultConfig()` + optional `EnableSanitization = false` | Performance priority; only disable sanitization when confirmed no external input |
+| Fully trusted internal data | `DefaultConfig()` + optional `EnableSanitization = false` | Performance first; disable sanitization only when no external input is confirmed |
 | User-uploaded HTML | `HighSecurityConfig()` | Full protection: tightened limits + complete auditing |
 | Processing external web pages | `DefaultConfig()` | Default sanitization already covers common threats |
-| Processing user-supplied file paths | Set `AllowedBaseDir` | Enable OS handle sandbox to prevent symlink/junction escape |
-| High-throughput crawler | Reduce `MaxInputSize` + tighten `ProcessingTimeout` | Prevent malicious pages from stalling workers |
+| Processing user-supplied file paths | Set `AllowedBaseDir` | Enable the OS handle sandbox against symlink/junction escapes |
+| High-throughput crawler | Lower `MaxInputSize` + tighten `ProcessingTimeout` | Keep malicious pages from stalling workers |
 
 ## High-Security Configuration
 
-`HighSecurityConfig()` is a preset that tightens all limits and enables full auditing in one step:
+`HighSecurityConfig()` is a preset that tightens every limit and enables full auditing in one step:
 
 ```go
 cfg := html.HighSecurityConfig()
-// Automatically sets:
+// Changes relative to DefaultConfig():
 //   MaxInputSize      = 10MB (default 50MB)
 //   MaxDepth          = 100 (default 500)
 //   ProcessingTimeout = 10s (default 30s)
 //   WorkerPoolSize    = 2 (default 4)
+//   MaxCacheEntries   = 500 (default 2000)
+//   CacheTTL          = 30m (default 1h)
+//   CacheCleanup      = 1m (default 5m)
 //   Audit             = HighSecurityAuditConfig() (enabled + includes raw values)
 ```
 
 ## Error Handling
 
-All security violations return clear sentinel errors supporting `errors.Is` for category determination:
+Security violations return sentinel errors, matched by category with `errors.Is`. Depth problems have two sources; the example below triggers each one:
 
 ```go
 package main
@@ -355,36 +339,61 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
+	"strings"
 
 	"github.com/cybergodev/html"
 )
 
-func main() {
-	data := []byte(`<html><body>Maliciously crafted ultra-deep nesting</body></html>`)
-	_, err := html.Extract(data)
-	if err != nil {
-		switch {
-		case errors.Is(err, html.ErrInputTooLarge):
-			// Input exceeds limit, log and reject
-			fmt.Println("Input too large")
-		case errors.Is(err, html.ErrMaxDepthExceeded):
-			// Possibly a recursive bomb
-			fmt.Println("Depth violation")
-		case errors.Is(err, html.ErrInternalPanic):
-			// Panic recovered, investigate input and report
-			fmt.Println("Internal panic recovered")
-		}
+func classify(err error) {
+	switch {
+	case err == nil:
+		return
+	case errors.Is(err, html.ErrInputTooLarge):
+		fmt.Println("input too large")
+	case errors.Is(err, html.ErrMaxDepthExceeded):
+		fmt.Println("depth violation")
+	case errors.Is(err, html.ErrInvalidHTML):
+		fmt.Println("parse failure")
+	case errors.Is(err, html.ErrInternalPanic):
+		fmt.Println("internal panic recovered")
 	}
-	// Output: Depth violation (example, actual result depends on input)
+}
+
+func main() {
+	// 600 unclosed <div> levels: the parser itself fails at 512 unclosed elements
+	deep := []byte("<html><body>" + strings.Repeat("<div>", 600) + "</body></html>")
+	_, err := html.Extract(deep)
+	classify(err)
+	// Output: parse failure
+
+	// 300 levels stay below the parser threshold; the library's iterative depth
+	// check rejects them against MaxDepth
+	cfg := html.DefaultConfig()
+	cfg.MaxDepth = 200
+
+	data := []byte("<html><body>" +
+		strings.Repeat("<div>", 300) + "deep" + strings.Repeat("</div>", 300) +
+		"</body></html>")
+
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer p.Close()
+
+	_, err = p.Extract(data)
+	classify(err)
+	// Output: depth violation
 }
 ```
 
 :::tip Use SafePath for file errors
-For `*FileError`, use `SafePath()` to get a sanitized path string instead of printing the raw error — to avoid leaking the resolved real path into logs.
+For a `*FileError`, call `SafePath()` to get the redacted path string instead of printing the raw error — that keeps the resolved real path out of your logs.
 :::
 
 ## Next Steps
 
-- [Audit System in Practice](./audit-pipeline) — 8 event types, built-in sink comparison, tiered routing pipeline
+- [Audit Pipeline](./audit-pipeline) — 8 event types, built-in Sink comparison, tiered routing pipeline
 - [Production Checklist](./production-checklist) — security checklist before deployment
 - [API Reference: Audit System](../../api-reference/modules/audit) — complete API signatures

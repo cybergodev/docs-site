@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Batch Processing"
 title: "Batch Processing - CyberGo html | Concurrent Batch API"
-description: "CyberGo html concurrent batch API: ExtractBatch, ExtractBatchFiles, WithContext variants, WorkerPoolSize concurrency, 10000-item cap, BatchResult structure."
+description: "CyberGo html batch API: ExtractBatch and ExtractBatchFiles with context variants, WorkerPoolSize concurrency, 10000-item cap, and BatchResult layout."
 sidebar_position: 30
 ---
 
 # Batch Processing
 
-Batch extraction supports concurrent processing of multiple HTML documents, with a maximum of 10000 items per batch.
+The batch API processes multiple HTML documents concurrently, up to 10000 items per call. `WorkerPoolSize` bounds concurrency, and each item is extracted and reported independently.
 
 ## Package Functions
 
@@ -31,68 +31,70 @@ func (p *Processor) ExtractBatchFilesWithContext(ctx context.Context, filePaths 
 
 ```go
 type BatchResult struct {
-    Results   []*Result  // result for each input item, indexed by input order; nil on failure or cancellation
-    Errors    []error    // error for each input item; index corresponds one-to-one with Results
-    Success   int        // number of successful items
-    Failed    int        // number of failed items
-    Cancelled int        // number of items left unprocessed due to context cancellation
+	Results   []*Result // result per input item, indexed by input order; nil on failure or cancellation
+	Errors    []error   // error per input item, index-aligned with Results
+	Success   int       // number of successful items
+	Failed    int       // number of failed items
+	Cancelled int       // number of items not processed because the context was cancelled
 }
 ```
 
 ## Concurrency Mechanism
 
-Batch extraction controls concurrency through a **semaphore pattern** (buffered channel `chan struct{}`) rather than launching all goroutines at once:
+Batch extraction uses a **semaphore** (a buffered `chan struct{}`) to bound concurrency; it never launches every goroutine at once:
 
-- **Concurrency** is controlled by `Config.WorkerPoolSize`, default `4` (`DefaultWorkerPoolSize`), range `1–256`
-- The semaphore capacity equals `WorkerPoolSize`: each goroutine must acquire a slot (`sem <- struct{}{}`) before starting and releases it (`<-sem`) upon completion, strictly limiting the **number of simultaneously running goroutines** to `WorkerPoolSize`
-- Even with tens of thousands of input items, only `WorkerPoolSize` extraction tasks execute at any moment, preventing goroutine explosion
-- **Each extraction item runs independently**: automatic encoding detection and per-item error isolation mean a single item failure does not affect others
-- **The Processor is safe for concurrent sharing**: multiple goroutines calling `Extract` concurrently is thread-safe, and batch methods reuse the same Processor instance
+- Concurrency is set by `Config.WorkerPoolSize`, default `4` (`DefaultWorkerPoolSize`), valid range `1–256`
+- The semaphore capacity equals `WorkerPoolSize`: each goroutine acquires a slot (`sem <- struct{}{}`) before starting and releases it (`<-sem`) when done, so at most `WorkerPoolSize` extractions run at any moment
+- With tens of thousands of input items, still only `WorkerPoolSize` tasks run concurrently, so goroutine count does not grow with input size
+- **Each item runs independently**: it does its own encoding detection and reports its own error, so one failure does not affect the others
+- **A Processor can be shared across goroutines**: concurrent `Extract` calls are thread-safe, and the batch methods reuse one Processor instance
 
-:::tip WorkerPoolSize Tuning
-Batch processing is mostly I/O-intensive when the input is files; increasing `WorkerPoolSize` (e.g. `8–16`) can improve throughput. For pure CPU-bound parsing scenarios, it should not exceed `runtime.NumCPU()`. Values above `256` are rejected during config validation.
+:::tip Choosing WorkerPoolSize
+File input is mostly I/O-bound, so raising it to `8–16` can improve throughput; for CPU-bound parsing keep it at or below `runtime.NumCPU()`. Values above `256` are rejected during config validation.
 :::
 
-## BatchResult Field Reference
+## BatchResult Fields
 
-The `Results` and `Errors` slices both have **length equal to the number of input items**, and their **indices correspond one-to-one**:
+`Results` and `Errors` both have **length equal to the number of input items**, with **matching indices**:
 
 | Field | Description |
 |-------|-------------|
-| `Results[i]` | Extraction result for the `i`-th input; `nil` when that item failed or was cancelled |
-| `Errors[i]` | Error for the `i`-th input; `nil` on success, the extraction error on failure, or `ctx.Err()` on cancellation |
+| `Results[i]` | Extraction result for input `i`; `nil` when that item failed or was cancelled |
+| `Errors[i]` | Error for input `i`; `nil` on success, the extraction error on failure, `ctx.Err()` on cancellation |
 | `Success` | Count of successful items, equal to the number of non-nil elements in `Results` |
-| `Failed` | Count of failed items (the extraction process returned an error) |
-| `Cancelled` | Count of items left unprocessed due to context cancellation |
+| `Failed` | Count of failed items (extraction returned an error) |
+| `Cancelled` | Count of items not processed because the context was cancelled |
 
 Identity: `Success + Failed + Cancelled == number of input items`.
 
-## Context Cancellation Behavior
+## Context Cancellation
 
-`ExtractBatchWithContext` / `ExtractBatchFilesWithContext` cooperatively respond to context cancellation at three checkpoints:
+`ExtractBatchWithContext` / `ExtractBatchFilesWithContext` check for cancellation cooperatively at three points:
 
 | Checkpoint | Behavior |
 |------------|----------|
-| Before dispatching a task | If `ctx` is already cancelled, the item is marked `Cancelled`, `Errors[i] = ctx.Err()`, and no goroutine is started |
-| After acquiring the semaphore (before goroutine start) | If cancelled while waiting for the semaphore, the item is likewise marked `Cancelled` |
-| Inside the goroutine before processing | Checked again right before executing extraction; if cancelled, marked `Cancelled` and returns immediately |
+| Before dispatching a task | If `ctx` is already cancelled, the item is marked `Cancelled` with `Errors[i] = ctx.Err()`, and no goroutine starts |
+| After acquiring the semaphore | If cancelled while waiting for a slot, the item is likewise marked `Cancelled` |
+| Inside the goroutine, before extraction | Checked once more; if cancelled, the item is marked `Cancelled` and returns immediately |
 
-Semantics after cancellation:
+After cancellation:
 
-- **Completed results are preserved unchanged** — cancellation only affects tasks that have not yet started
-- **Tasks that never started** are counted in `Cancelled`, and their `Errors[i]` is populated with `ctx.Err()` (typically `context.Canceled` or `context.DeadlineExceeded`)
-- The variants without the `WithContext` suffix use `context.Background()` internally and never cancel
+- **Completed results stay intact** — cancellation only affects tasks that have not started
+- **Tasks that never started** are counted in `Cancelled`, and their `Errors[i]` is `ctx.Err()` (usually `context.Canceled` or `context.DeadlineExceeded`)
+- Variants without `WithContext` use `context.Background()` internally and never cancel
 
 ## Input Validation
 
-Batch methods perform upfront validation before dispatching tasks; on failure they return a populated `BatchResult` (rather than an `error`):
+Batch methods validate inputs before dispatching and return a populated `BatchResult` rather than an `error`. The checks run in this order — processor state, item cap, empty input — and the first hit returns:
 
-| Case | Return |
+| Case | Result |
 |------|--------|
-| Batch exceeds `10000` items | Each `Errors[i]` filled with the same error, `Failed = N`; does not panic; check with `errors.Is(err, html.ErrBatchTooLarge)` |
-| Processor is `nil` or already `Close`d | Each `Errors[i]` filled with `ErrProcessorClosed`, `Failed = N` |
+| Processor is `nil` or already `Close`d | Every `Errors[i]` holds `ErrProcessorClosed` and `Failed = N` |
+| More than `10000` items | Every `Errors[i]` holds the same error and `Failed = N`; no panic; test with `errors.Is(err, html.ErrBatchTooLarge)` |
 | Empty input slice (0 items) | An empty `BatchResult` (`Results`/`Errors` are empty slices) |
-| Package function passed an invalid `Config` | Each item filled with the configuration error |
+| Package function given an invalid `Config` | Every item holds the configuration error |
+
+An empty byte slice (`[]byte("")`) is not a failure: extraction returns an empty `Result` and the item counts as `Success`.
 
 ## Examples
 
@@ -118,7 +120,7 @@ func main() {
 	fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n", batch.Success, batch.Failed, batch.Cancelled)
 	// Output: Success: 3, Failed: 0, Cancelled: 0
 
-	// Results indices correspond one-to-one with the input slice
+	// Results indices align one-to-one with the input slice
 	for i, result := range batch.Results {
 		if result != nil {
 			fmt.Printf("  [%d] Title: %s, Words: %d\n", i, result.Title, result.WordCount)
@@ -145,7 +147,7 @@ func main() {
 		pages[i] = []byte("<html><head><title>Page</title></head><body><p>Body content.</p></body></html>")
 	}
 
-	// Cancel the context immediately to simulate early termination
+	// Cancel immediately to simulate early termination
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -153,17 +155,17 @@ func main() {
 	fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n", batch.Success, batch.Failed, batch.Cancelled)
 	// Output: Success: 0, Failed: 0, Cancelled: 20
 
-	// Cancelled items: Results[i] is nil, Errors[i] is filled with ctx.Err()
+	// Cancelled items: Results[i] is nil and Errors[i] holds ctx.Err()
 	fmt.Printf("First item error: %v\n", batch.Errors[0])
 	// Output: First item error: context canceled
 }
 ```
 
-:::warning
-A single batch supports up to 10000 items. Exceeding this limit returns a `*BatchResult` in which every item failed (each `Errors` entry is `html: batch size exceeds maximum: N exceeds maximum 10000`, check with `errors.Is(err, html.ErrBatchTooLarge)`); no panic is triggered.
+:::warning Per-call limit
+A single call accepts at most 10000 items. Above that, the returned `*BatchResult` marks every item as failed (`Errors[i]` is `html: batch size exceeds maximum: N exceeds maximum 10000`; check with `errors.Is(err, html.ErrBatchTooLarge)`), and no panic occurs. Split larger workloads into chunks yourself.
 :::
 
 ## Related Documentation
 
-- [Batch Processing](../../guides/performance/batch-processing) — Batch extraction scenarios and tuning
-- [Processor Reuse & Caching](../../guides/performance/processor-cache) — Reusing Processors to boost throughput
+- [Batch Processing](../../guides/performance/batch-processing) — Scenarios and tuning
+- [Processor Reuse & Caching](../../guides/performance/processor-cache) — Reusing a Processor to raise throughput

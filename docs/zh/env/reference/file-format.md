@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # 文件格式
 
-env 库支持多种配置文件格式：`.env`、JSON 和 YAML。
+env 库支持三种配置文件格式：`.env`、JSON 和 YAML。三种格式最终都解析成扁平的 `KEY=value` 键值对，差别在语法与嵌套结构的处理方式。
 
 ## .env 格式
 
@@ -33,9 +33,9 @@ URL=https://example.com?foo=bar
 MESSAGE="Hello World"
 PATH="/usr/local/bin"
 
-# 单引号：不处理转义（原样保留反斜杠序列）
-# 注意：单引号不阻止变量展开——展开在引号剥离后统一进行
+# 单引号：不处理转义（原样保留反斜杠序列），值内变量也不展开
 LITERAL='no escaping here: \n stays literal'
+# 上例的 LITERAL 就是字面文本；写 '${HOME}' 也不会被展开
 
 # 无引号
 SIMPLE=value
@@ -69,7 +69,7 @@ PRICE="Price: \$100"
 
 ### 变量展开
 
-`ExpandVariables` 默认开启（`DefaultConfig` 为 true，可用 `cfg.ExpandVariables = false` 关闭），支持：
+`ExpandVariables` 默认开启（`DefaultConfig` 为 `true`，可用 `cfg.ExpandVariables = false` 关闭），支持：
 
 ```bash
 # 引用其他变量
@@ -89,7 +89,7 @@ SERVICE=${CLUSTER:-default}-${REGION:-us-east}
 
 ### export 语法
 
-`AllowExportPrefix` 默认开启（true），支持：
+`AllowExportPrefix` 默认开启（`true`），支持：
 
 ```bash
 # Bash 风格导出
@@ -99,30 +99,40 @@ export ANOTHER="quoted value"
 
 ### YAML 风格
 
-`KEY: value` 的冒号分隔写法**始终可用**——行解析器无条件接受 `=` 与 `:` 作为分隔符，无需任何开关：
+`.env` 行解析器默认只把 `=` 当作分隔符。`AllowYamlSyntax` 为 `false`（`DefaultConfig` 的默认值）时，`KEY: value` 这类行找不到分隔符，整行被跳过；启用审计时，每条被跳过的行记一条审计事件，行内容先经掩码处理。
 
 ```bash
-# 冒号分隔键值对（无需 AllowYamlSyntax）
+# 默认（AllowYamlSyntax = false）：这行没有 '='，整行被跳过
+KEY: value
+```
+
+把 `AllowYamlSyntax` 设为 `true` 后，`:` 才作分隔符，同时值的解析切换到 YAML 标量语义：`null`/`~` 视为空字符串，YAML 布尔与数字字面量按其规则识别。`DevelopmentConfig()` 已将该开关设为 `true`，`DefaultConfig()` 与 `ProductionConfig()` 保持 `false`。
+
+```go
+cfg := env.DefaultConfig()
+cfg.AllowYamlSyntax = true
+```
+
+```bash
+# AllowYamlSyntax = true 时：冒号分隔生效
 KEY: value
 ANOTHER: "quoted value"
 ```
 
-`AllowYamlSyntax` 默认关闭（false——解析类开关中唯一的默认例外），开启后影响的是**值**的解析：按 YAML 标量语义处理，`null`/`~` 视为空字符串，YAML 布尔与数字字面量按其规则识别。
-
 ### 多行值
 
-`.env` 解析器按行扫描，每行独立解析，**不支持跨多行的引号字符串**——双引号值必须在一行内闭合，否则会报 `ErrInvalidValue`。需要换行时用 `\n` 转义（仅在双引号中有效，单引号不处理转义）：
+`.env` 解析器按行扫描，每行独立解析，**不支持跨多行的引号字符串**：双引号值必须在一行内闭合，否则报 `ErrInvalidValue`。需要换行时用 `\n` 转义（仅在双引号中有效，单引号不处理转义）：
 
 ```bash
 # 双引号内的 \n 会被解析为换行符
 LINES="line1\nline2\nline3"
 # 实际值为三行文本：line1 / line2 / line3
 
-# PRIVATE_KEY 等多行证书建议用 \n 拼接
+# PRIVATE_KEY 等多行证书用 \n 拼接
 PRIVATE_KEY="-----BEGIN KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END KEY-----"
 ```
 
-如需真正的跨行字符串，请改用 [JSON 或 YAML 格式](#格式检测)，或通过自定义解析器扩展多行支持。
+需要真正的跨行字符串时，改用 [JSON 或 YAML 格式](#格式检测)，或通过自定义解析器扩展多行支持。
 
 ## JSON 格式
 
@@ -179,17 +189,17 @@ PORTS_2=8080
 ```
 
 ::: tip 访问数组元素
-使用 `GetSlice[T]` 函数或点号路径访问索引键：
+用 `GetSlice[T]` 或点号路径读取索引键：
 ```go
 hosts := env.GetSlice[string]("ALLOWED_HOSTS")
 port0 := env.GetInt("PORTS_0")  // 80
 ```
-详见 [GetSlice 文档](../api-reference/functions#getslice-t)。
+完整规则见 [GetSlice 文档](../api-reference/functions#getslice-t)。
 :::
 
 ### 类型转换选项
 
-`JSONNullAsEmpty` / `JSONNumberAsString` / `JSONBoolAsString` 在 `DefaultConfig` 中**默认均为 true（已开启）**，无需逐项手动赋 true；仅当需要关闭对应转换时才显式设为 false：
+`JSONNullAsEmpty` / `JSONNumberAsString` / `JSONBoolAsString` 在 `DefaultConfig` 中**默认均为 `true`**，无需逐项手动赋值；只有需要关闭对应转换时才显式设为 `false`：
 
 ```go
 cfg := env.DefaultConfig()
@@ -257,10 +267,10 @@ ALLOWED_HOSTS_2=api.example.com
 ### 多行字符串
 
 ::: warning 注意
-YAML 块标量（字面量块 `|` 与折叠块 `>`）**当前不支持**。解析器会将 `|`/`>` 当作普通标量字符存储，后续缩进行会破坏键值解析。
+YAML 块标量（字面量块 `|` 与折叠块 `>`）**当前不支持**。解析器把 `|`/`>` 当作普通标量字符存储，后续缩进行会破坏键值解析。
 :::
 
-需要保留换行的值，请用双引号加 `\n` 转义：
+需要保留换行的值，改用双引号加 `\n` 转义：
 
 ```yaml
 description: "Line1\nLine2\nLine3"
@@ -270,7 +280,7 @@ description: "Line1\nLine2\nLine3"
 
 ### 类型转换选项
 
-`YAMLNullAsEmpty` / `YAMLNumberAsString` / `YAMLBoolAsString` 同样**默认均为 true（已开启）**，需要关闭时显式设为 false；`YAMLMaxDepth` 默认 16，需要更深嵌套时再调整：
+`YAMLNullAsEmpty` / `YAMLNumberAsString` / `YAMLBoolAsString` 同样**默认均为 `true`**，需要关闭时显式设为 `false`；`YAMLMaxDepth` 默认 16，仅在嵌套更深时调整：
 
 ```go
 cfg := env.DefaultConfig()

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "路径表达式语法"
 title: "路径表达式语法 - CyberGo JSON | JSONPath 查询指南"
-description: "CyberGo JSON 路径表达式语法完整指南：属性访问、数组索引与负索引、切片步长、通配符收集、多字段与扁平化提取、追加与 JSON Pointer（RFC 6901），每个语法配输入输出对照，并汇总负索引越界、提取静默未命中等语法陷阱。"
+description: "CyberGo JSON 路径表达式语法：属性访问、数组索引与负索引、切片、通配符、字段提取与 JSON Pointer，越界返回 ErrPathNotFound。"
 sidebar_position: 20
 ---
 
 # 路径表达式语法
 
-json 库支持丰富的路径表达式语法，用于定位和操作 JSON 数据中的任意节点。
+路径表达式是一个字符串，用于定位 JSON 文档中的节点；查询（`Get*`）与修改（`Set`/`Delete`）共用同一套语法。本页列出全部段类型、越界语义与常见陷阱。
 
 ## 基本语法
 
@@ -88,34 +88,39 @@ val = json.GetInt(data, "matrix[-1][-1]")  // 9
 
 #### 边界行为
 
-越界索引不会 panic，也不会报错——类型安全的获取函数返回零值，`Get` 返回 nil 结果：
+正索引与负索引越界都不会 panic。`Get` 返回包裹 `ErrPathNotFound` 的错误，类型化获取函数不返回错误，直接落零值或默认值：
 
 ```go
 data := `{"items": ["a", "b", "c"]}`
 
-// 正索引越界 → 零值 / nil，均不报错
+// 正索引越界 → Get 报 ErrPathNotFound，类型化函数落零值
 json.GetString(data, "items[10]")   // ""   (空字符串)
 json.GetInt(data, "items[10]")      // 0
-json.Get(data, "items[10]")         // nil, nil（注意：err 也是 nil）
 
-// 负索引越界 → 同样返回零值
+if _, err := json.Get(data, "items[10]"); err != nil {
+    // err 消息：array index 10 out of bounds (length 3)
+    // errors.Is(err, json.ErrPathNotFound) == true
+}
+
+// 负索引越界 → 同上
 json.GetString(data, "items[-10]")  // ""   (空字符串)
 json.GetInt(data, "items[-10]")     // 0
 ```
 
-| 函数 | 越界返回值 |
+| 函数 | 越界行为 |
 |------|-----------|
-| `Get` | `(nil, nil)` — 不报错 |
-| `GetString` | `""` |
-| `GetInt` | `0` |
-| `GetFloat` | `0.0` |
-| `GetBool` | `false` |
-| `GetArray` | `nil` |
+| `Get` | `(nil, ErrPathNotFound)` — 错误消息带下标与数组长度 |
+| `GetString` | `""`（或传入的默认值） |
+| `GetInt` | `0`（或传入的默认值） |
+| `GetFloat` | `0.0`（或传入的默认值） |
+| `GetBool` | `false`（或传入的默认值） |
+| `GetArray` | `nil`（或传入的默认值） |
+| `SafeGet` | `Exists: false`、`Value: nil` |
 
 ::: tip 索引边界
-- 正索引必须在 `[0, len)` 范围内，负索引经过转换后（`len + index`）同理
-- 越界访问返回零值 / nil，不会 panic，不会报错
-- 「对象键不存在」才返回 `ErrPathNotFound`（如 `json.Get(data, "nosuchkey")`）；判断数组元素是否存在要结合返回值，不能只看 err
+- 正索引必须落在 `[0, len)`；负索引先按 `len + index` 换算，再按同一区间判断
+- 越界返回 `ErrPathNotFound`，与「对象键不存在」同一哨兵，仅消息不同
+- 需要「缺失即默认值」时用类型化函数或 `SafeGet`，不要用 `Get` 的 err 分支兜底
 :::
 
 ---
@@ -228,7 +233,7 @@ json.GetArray(data, "items[3:1]")     // []
 ```
 
 ::: warning 切片 vs 索引的边界处理差异
-- **索引越界**（如 `items[10]`）返回对应类型的零值，不报错
+- **索引越界**（如 `items[10]`）返回 `ErrPathNotFound`；类型化获取函数落零值
 - **切片越界**（如 `items[10:20]`）自动裁剪，返回空数组，不报错
 :::
 
@@ -252,7 +257,7 @@ extracted, err := json.Get(data, "user{id,name}")
 if err != nil {
     panic(err)
 }
-// 结果：{"id": 1001, "name": "Alice"}
+// 结果：{"id":1001,"name":"Alice"}
 ```
 
 ### 扁平化提取 `{flat:field}`
@@ -337,20 +342,20 @@ updated, err := json.Set(data, "items[+]", 4)
 if err != nil {
     panic(err)
 }
-// 结果：{"items": [1, 2, 3, 4]}
+// 结果：{"items":[1,2,3,4]}
 
 updated, err = json.Set(updated, "items[+]", 5)
 if err != nil {
     panic(err)
 }
-// 结果：{"items": [1, 2, 3, 4, 5]}
+// 结果：{"items":[1,2,3,4,5]}
 
 // 追加切片值会展开为多个元素，而不是变成嵌套数组
 updated, err = json.Set(updated, "items[+]", []any{6, 7})
 if err != nil {
     panic(err)
 }
-// 结果：{"items": [1, 2, 3, 4, 5, 6, 7]}
+// 结果：{"items":[1,2,3,4,5,6,7]}
 ```
 
 ::: warning [+] 的前置路径必须是已存在的数组
@@ -368,7 +373,7 @@ updated, err := json.Set(data, "items[*]", 0)
 if err != nil {
     panic(err)
 }
-// 结果：{"items": [0, 0, 0]}
+// 结果：{"items":[0,0,0]}
 ```
 
 #### 查询场景：收集字段
@@ -412,7 +417,7 @@ b, _ := json.GetArray(symbols, "*.symbol")   // [AAPL GOOG]，与上等价
 
 ## 路径验证
 
-### 通过 Processor 验证路径
+### 用 Processor 验证路径
 
 使用 `Processor.CompilePath` 验证路径格式是否正确：
 
@@ -421,16 +426,21 @@ p, err := json.New()
 if err != nil {
     panic(err)
 }
+defer p.Close()
 
-// 编译路径（自动验证格式）
+// 编译路径（解析并校验格式）；失败说明语法有误
 cp, err := p.CompilePath("user.profile.name")
 if err != nil {
     fmt.Println("Invalid path:", err)
+} else {
+    defer cp.Release() // 归还对象池
 }
 
-cp, err = p.CompilePath("items[0:10:2]")
+cp2, err := p.CompilePath("items[0:10:2]")
 if err != nil {
     fmt.Println("Invalid path:", err)
+} else {
+    defer cp2.Release()
 }
 ```
 
@@ -440,7 +450,7 @@ if err != nil {
 
 ### 根路径
 
-空字符串 `""` 或 `"."` 表示根：
+查询时用空字符串 `""` 或 `"."` 表示根；`Set` 额外接受 `"/"`，`Delete` 拒绝根：
 
 ```go
 data := `{"name": "test"}`
@@ -451,7 +461,16 @@ if err != nil {
     panic(err)
 }
 root, err = json.Get(data, ".") // 同上
+
+// 修改：""、"."、"/" 都会整体替换文档
+replaced, err := json.Set(data, "/", map[string]any{"version": 2})
+fmt.Println(replaced) // {"version":2}
+
+// 删除根：报错 "cannot delete root"
+_, err = json.Delete(data, "/")
 ```
+
+注意 `SafeGet` 把空字符串视为「未提供路径」并直接返回 `Exists: false`；要从 `SafeGet` 取整份文档，根路径写 `"."`。
 
 ### JSON Pointer (RFC 6901)
 
@@ -465,40 +484,61 @@ item := json.GetString(data, "/items/0")   // "a"
 ```
 
 - 键名包含 `/` 或 `~` 时用 `~1`、`~0` 转义（`a~1b` 表示键 `a/b`）
-- 数组下标必须是**非负**整数：Pointer 模式不支持负索引，`/items/-1` 找不到目标；`/items/-` 指向末尾尚未存在的位置，同样找不到
+- 负索引语义与点号语法一致：`/a/-1` 取末元素，`/a/-2` 取倒数第二个
+- `Get` 的根用 `""` 或 `"."`；单独的 `/` 按**空键名**处理，对象中没有空键名时返回 `ErrPathNotFound`
+- `Set` 的根可用 `"/"`，效果是整文档替换；`Delete` 对 `"/"` 报错 `cannot delete root`
 - `Set` 经 JSON Pointer 不能扩容数组（越界直接报错）；需要越界写入时改用点号路径
-- 单独的 `/` 表示根，与 `""`、`.` 等价
+- `/a/-` 作用于数组时返回等长的 null 数组，不是取末元素；取末元素请写 `/a/-1`
 
 ### 路径转义
 
-如果键名包含特殊字符，用反斜杠转义。可转义的字符共 6 个：
+键名含特殊字符时，能否用反斜杠转义取决于字符本身：点号与右括号可以，成对的方括号与花括号不行。
 
-| 转义写法 | 匹配的键名字符 |
-|----------|----------------|
-| `\\.` | 字面量点号 `.` |
-| `\\\\` | 字面量反斜杠 `\` |
-| `\\[` / `\\]` | 字面量方括号 `[` `]` |
-| `\\{` / `\\}` | 字面量花括号 `{` `}` |
+| 键名含 | 可用写法 | 示例 |
+|--------|----------|------|
+| 点号 `.` | 反斜杠转义，或 JSON Pointer | `user\.name`、`/user.name` |
+| 右方括号 `]`、右花括号 `}` | 直接写，或加反斜杠 | `a]b`、`a\]b` |
+| 反斜杠 `\` | 直接写（不参与转义） | `config\local` |
+| 成对花括号 `{…}` | 只能用 JSON Pointer | `/a{b}` |
+| 成对方括号且内容为数字 `[…]` | 只能用 JSON Pointer | `/a[0]` |
+| 成对方括号且内容非数字 | 无路径语法可用，改用通配符或迭代 | 见下 |
 
 ```go
 data := `{
     "user.name": "Alice",
-    "a[b]": "bracket",
-    "config\\local": "backslash"
+    "config\\local": "backslash",
+    "a{b}": "brace",
+    "a[0]": "zero"
 }`
 
-// 包含点的键名
-name := json.GetString(data, "user\\.name")    // "Alice"
+name := json.GetString(data, "user\\.name")  // "Alice" — 点号可用反斜杠
+name = json.GetString(data, "/user.name")    // "Alice" — 或改用 Pointer
 
-// 包含方括号的键名
-bracket := json.GetString(data, "a\\[b\\]")    // "bracket"
+bs := json.GetString(data, "config\\local")  // "backslash" — 反斜杠直接写
 
-// 包含反斜杠的键名
-bs := json.GetString(data, "config\\\\local")  // "backslash"
+brace := json.GetString(data, "/a{b}")       // "brace" — 花括号必须走 Pointer
+zero := json.GetString(data, "/a[0]")        // "zero" — 方括号必须走 Pointer
 ```
 
 ::: warning Go 字符串与路径转义是两层
-上例写在 Go 源码里是**双反斜杠**（`"user\\.name"`）——Go 字符串字面量先消费一层，路径解析器收到 `user\.name` 再消费一层。若路径来自运行时变量（非字面量），只需单层转义：`"user\\.name"` 字面量 == 运行时的 `user\.name`。
+写在 Go 源码里的 `"user\\.name"` 由 Go 字面量先消费一层，路径解析器收到 `user\.name` 再消费一层。若路径来自运行时变量（非字面量），只需单层：`"user\\.name"` 字面量 == 运行时的 `user\.name`。
+:::
+
+::: danger 方括号内含非数字的键名无法用路径访问
+`a[b]` 这类键名，点号语法、反斜杠转义与 JSON Pointer 都会把它当作数组下标解析并报 `invalid array index`。取这类键只能遍历对象再按键名匹配：
+
+```go
+data := `{"a[b]": 1}`
+
+var value any
+_ = json.ForeachWithPath(data, ".", func(key any, item *json.IterableValue) {
+    if fmt.Sprint(key) == "a[b]" {
+        value = item.GetData()
+    }
+})
+```
+
+若键名可以重新设计，避免在键名中使用成对方括号。
 :::
 
 ---
@@ -522,7 +562,7 @@ bs := json.GetString(data, "config\\\\local")  // "backslash"
 
 ## 有哪些语法陷阱？
 
-以下行为均来自库的实际实现，提前了解可以省去不少调试时间。
+以下行为均来自库的实际实现，与直觉不符的地方逐条给出实测结果。
 
 ### 提取未命中不报错
 
@@ -581,8 +621,8 @@ json.GetArray(data, "users{name}")
 
 | 操作 | 越界行为 |
 |------|----------|
-| 索引查询 `items[10]` | 返回零值 / `(nil, nil)`，不报错 |
-| 切片查询 `items[10:20]` | 自动裁剪到有效范围，返回空数组 `[]` |
+| 索引查询 `items[10]` | `Get` 返回 `ErrPathNotFound`（消息含下标与长度），类型化函数落零值 |
+| 切片查询 `items[10:20]` | 自动裁剪到有效范围，返回空数组 `[]`，不报错 |
 | 修改 `Set(data, "items[5]", v)`（len=3） | 默认配置下数组以 `null` 填充扩展到下标 5 |
 
 ### JSON Pointer 与点号语法不能混用

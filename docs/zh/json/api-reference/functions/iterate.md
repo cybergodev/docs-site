@@ -1,16 +1,16 @@
 ---
 sidebar_label: "迭代方法"
 title: "包级迭代函数 - CyberGo JSON | Foreach 遍历用法"
-description: "CyberGo JSON 是包级迭代的 Go 库，ForeachWithPath 按路径遍历、ForeachWithError 错误可控、ForeachFile 迭代文件，对象按键名字典序遍历、顺序确定可复现，并支持嵌套递归与文件分块处理，帮助开发者按序遍历数组与对象。"
+description: "包级迭代：ForeachWithError 按路径遍历并回传错误，ForeachNestedWithError 递归遍历，ForeachFile 系列直接读文件迭代；对象按键名字典序、数组按自然序。"
 sidebar_position: 100
 ---
 
 # 包级迭代函数
 
-无需创建 Processor 实例，直接调用的迭代函数。与 [Processor 迭代方法](../processor/iterate) 一一对应（双层设计）。
+无需创建 Processor 实例即可直接调用的迭代函数，与 [Processor 迭代方法](../processor/iterate) 一一对应（双层设计）。
 
 ::: tip 迭代顺序确定
-对象迭代按键名**字典序**进行，数组按自然顺序——Go map 原生迭代顺序是随机的，库内部做了排序，因此同一输入的回调顺序可复现、输出可测试。
+对象按键名**字典序**迭代，数组按自然序。Go map 原生迭代顺序是随机的，库内部做了排序，因此同一输入的回调顺序可复现，输出可测试。
 :::
 
 ## Foreach
@@ -22,7 +22,7 @@ sidebar_position: 100
 迭代 JSON 数组或对象。
 
 ::: warning 已废弃
-`Foreach` 会**静默丢弃错误**：文档非法、处理器不可用或已关闭时，回调被**整体跳过**且不返回任何错误，调用方无从得知。请改用 [`ForeachWithError`](#foreachwitherror)——它把错误正常返回，且回调返回 `nil` 表示继续迭代。`Foreach` 在 v1 生命周期内保留、不会移除。
+`Foreach` 会**静默丢弃错误**：文档非法、处理器不可用或已关闭时，回调被**整体跳过**且不返回任何错误，调用方无从得知。改用 [`ForeachWithError`](#foreachwitherror)：它返回 error，回调返回 `nil` 表示继续迭代。`Foreach` 在 v1 生命周期内保留。
 :::
 
 ```go
@@ -39,7 +39,7 @@ json.Foreach(data, func(key any, item *json.IterableValue) {
 
 签名：`func ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue), cfg ...Config) error`
 
-按路径迭代，返回错误。
+按路径迭代，回调无返回值，错误由函数返回。
 
 ```go
 err := json.ForeachWithPath(data, "items", func(key any, item *json.IterableValue) {
@@ -57,10 +57,10 @@ err := json.ForeachWithPath(data, "items", func(key any, item *json.IterableValu
 
 签名：`func ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
-递归迭代所有嵌套层级。递归深度上限为 200（防止深嵌套结构导致栈溢出，超出的子树不再深入）。
+递归迭代所有嵌套层级。递归深度上限为 200，超出的子树不再深入（void 变体静默停止，带 error 的变体返回错误）。
 
 ::: warning 已废弃
-`ForeachNested` 与 `Foreach` 一样**静默丢弃错误**：解析失败或处理器已关闭时回调被整体跳过，不返回任何错误。请改用 [`ForeachNestedWithError`](#foreachnestedwitherror)——它把错误正常返回，且回调返回 `nil` 表示继续迭代。`ForeachNested` 在 v1 生命周期内保留、不会移除。
+`ForeachNested` 与 `Foreach` 一样**静默丢弃错误**：解析失败或处理器已关闭时回调被整体跳过，不返回任何错误。改用 [`ForeachNestedWithError`](#foreachnestedwitherror)：它返回 error，回调返回 `nil` 表示继续迭代。`ForeachNested` 在 v1 生命周期内保留。
 :::
 
 ```go
@@ -99,7 +99,7 @@ json.ForeachNested(data, func(key any, item *json.IterableValue) {
 
 签名：`func ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
 
-迭代 JSON 数据并通过回调访问每个元素，返回重新序列化后的 JSON 字符串。回调可经由 `GetData()` 对 map/slice 做修改，修改会反映到返回值。注意两点：只能改动**容器内部**（map 增删键、slice 改元素）——无法通过 `IterableValue` 原地替换标量元素；迭代运行在解析结果的**深拷贝**上，不会污染处理器缓存。
+迭代 JSON 数据并通过回调访问每个元素，返回重新序列化后的 JSON 字符串。回调可经 `GetData()` 修改 map/slice，修改会反映到返回值。两点限制：只能改动**容器内部**（map 增删键、slice 改元素），无法通过 `IterableValue` 原地替换标量元素；迭代运行在解析结果的**深拷贝**上，不会污染处理器缓存。
 
 ```go
 result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) {
@@ -168,7 +168,7 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 
 ## IterableValue
 
-迭代回调中的 `IterableValue` 提供便捷的值访问能力，完整方法定义详见 [迭代器类型](../iterator#iterablevalue-类型)。
+迭代回调中的 `IterableValue` 封装了当前元素，提供带类型的取值方法，完整定义见 [迭代器类型](../iterator#iterablevalue-类型)。
 
 | 方法 | 说明 |
 |------|------|
@@ -200,14 +200,14 @@ err := json.ForeachWithPathAndControl(data, "items", func(key any, value any) js
 | `ForeachWithPathAndControl` | 有 | 否 | error | IteratorControl |
 
 ::: warning void 变体不报错
-`Foreach` / `ForeachNested` 返回值为空：处理器不可用等设置错误被静默忽略，回调 panic 被捕获并记录日志后停止迭代（不会击穿进程）。error 变体（`*WithError` 系列）则把回调 panic 转换为错误返回。需要错误信息时，一律用带 `error` 返回值的变体。
+`Foreach` / `ForeachNested` 没有返回值：处理器不可用等设置错误被静默忽略，回调 panic 被捕获并记录日志后停止迭代，进程不会因此退出。带 error 返回值的变体（`*WithError` 系列）则把回调 panic 转换为错误返回。需要错误信息时，一律用带 `error` 返回值的变体。
 :::
 
 ---
 
 ## 文件迭代函数
 
-包级提供直接从文件迭代的函数，与 [Processor 文件迭代方法](../processor/iterate#文件迭代方法) 对应。注意：它们都会先把**整个文件加载进内存**再逐条/分批回调（受 `MaxJSONSize` 上限约束，默认 100MB），恒定内存的大文件处理请改用 [StreamIterator 等流式迭代器](../../streaming/large-files#流式迭代器与并行迭代器)。
+包级提供直接从文件迭代的函数，与 [Processor 文件迭代方法](../processor/iterate#文件迭代方法) 对应。它们都会先把**整个文件加载进内存**再逐条或分批回调，受 `MaxJSONSize` 上限约束（默认 100MB）。需要恒定内存处理大文件时，改用 [StreamIterator 等流式迭代器](../../streaming/large-files#流式迭代器与并行迭代器)。
 
 ### ForeachFile
 
@@ -252,7 +252,7 @@ err := json.ForeachFileWithPath("data.json", ".users", func(key any, item *json.
 
 签名：`func ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
 
-分块迭代文件中的 JSON 数组，适合批量处理大数据集。
+按 `chunkSize` 分块迭代文件中的 JSON 数组，适合批量处理大数据集。`chunkSize <= 0` 时按 100 处理；根节点不是数组时返回包裹 `ErrTypeMismatch` 的错误。
 
 **参数**
 
@@ -279,8 +279,8 @@ err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.Iterab
 
 ::: tip 使用场景
 - 批量数据库插入
-- 分批 API 调用（批量落库、分批回调）
-- 注意：分块不省内存——文件仍会整载后才分批回调；恒定内存的大文件处理请改用 [StreamIterator](../../streaming/large-files)
+- 分批 API 调用
+- 分块不省内存：文件仍整载后才分批回调；恒定内存处理大文件改用 [StreamIterator](../../streaming/large-files)
 :::
 
 ---
@@ -347,7 +347,7 @@ err := json.ForeachFileNested("config.json", func(key any, item *json.IterableVa
 | 常量 | 说明 |
 |------|------|
 | `IteratorNormal` | 正常继续迭代 |
-| `IteratorContinue` | `IteratorNormal` 的 no-op 别名（为 API 对称保留）——「跳过当前项」是隐式的：不产生任何副作用，迭代照常继续 |
+| `IteratorContinue` | `IteratorNormal` 的 no-op 别名（为 API 对称保留）：不产生任何副作用，迭代照常继续 |
 | `IteratorBreak` | 停止迭代 |
 
 ### 中断迭代

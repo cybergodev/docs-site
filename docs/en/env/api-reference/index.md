@@ -7,24 +7,26 @@ sidebar_position: 1
 
 # API Reference
 
-Complete API reference documentation for the env library.
+API reference for the `env` package: package functions, the `Loader` and `Config` types, `SecureValue`, interfaces, and error types.
 
 ## Core API
 
-- [Package Functions](./functions) - Complete list of package-level convenience functions
+- [Package Functions](./functions) - Package-level convenience functions
 - [Loader API](./loader) - Loader type and methods
 - [Config API](./config) - Configuration options and presets
 - [SecureValue API](./secure-value) - Secure value handling
 
 ## Types and Interfaces
 
-- [Interfaces](./interfaces) - All interface type definitions
+- [Interfaces](./interfaces) - Interface type definitions
 - [Constants & Errors](./constants) - Constants, sentinel errors, and error types
 - [Component Factory](./factory) - ComponentFactory and extension points
 
 ## Symbol Index
 
-The major symbols from every API reference page, grouped by function, each linking straight to its documentation. Same-named methods and package functions (e.g. `GetString`) get one row each under "Package-Level Functions" and "Loader Methods"; symbols marked (unexported) are internal library names that cannot be referenced through the `env` package.
+Every major symbol from the API reference pages, grouped by function. Each row links to its own documentation.
+
+Same-named methods and package functions (e.g. `GetString`) get one row each under "Package-Level Functions" and "Loader Methods". Symbols marked (unexported) are internal library names; you cannot reference them through the `env` package.
 
 ### Package-Level Functions
 
@@ -208,7 +210,7 @@ The major symbols from every API reference page, grouped by function, each linki
 |--------|-------------|------|
 | `DefaultMaxFileSize`, `DefaultMaxLineLength`, `DefaultMaxKeyLength`, `DefaultMaxValueLength`, `DefaultMaxVariables`, `DefaultMaxExpansionDepth` | Default limit constants | [constants](./constants#default-limits) |
 | `DefaultKeyPattern` | Default key pattern | [constants](./constants#defaultkeypattern) |
-| `defaultForbiddenKeys` (unexported) | Builtin forbidden keys | [constants](./constants#defaultforbiddenkeys) |
+| `defaultForbiddenKeysSlice` (unexported) | Builtin forbidden keys | [constants](./constants#defaultforbiddenkeys) |
 | `internal.Patterns` (unexported) | Sensitive key patterns | [constants](./constants#sensitivekeypatterns) |
 | Hard limits (unexported) | 100MB, 64KB, etc. | [constants](./constants#hard-limits) |
 

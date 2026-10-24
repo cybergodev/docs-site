@@ -1,22 +1,22 @@
 ---
 sidebar_label: "性能优化"
-title: "性能优化 - CyberGo html | 吞吐量提升指南"
-description: "CyberGo html 性能优化总览：解析 sync.Pool 复用、缓存 Key 生成与命中率监控、批量并发控制、WorkerPoolSize 并发与 ProcessingTimeout 超时设置等内部机制，归纳输入控制、常见反模式与规避做法，并附基准测试建议，系统提升 HTML 处理吞吐量。"
+title: "性能优化 - CyberGo html | 吞吐量与调优指南"
+description: "CyberGo html 性能总览：sync.Pool 复用 Processor、缓存 Key 的全量哈希与命中条件、批量并发与 WorkerPoolSize 调优、ProcessingTimeout 的超时语义与错误类型、输入控制、常见反模式与基准测试方法。"
 sidebar_position: 30
 ---
 
 # 性能优化
 
-本页是 html 库的性能调优总览：先讲库**内部已实现的优化机制**（帮你理解性能特征），再给出**配置层调优**、**反模式规避**和**基准测试方法**。
+CyberGo html 是一个 Go 语言 HTML 内容提取与清洗库。它的提取开销取决于三件事：库内已实现的优化、配置层的取舍、输入本身的规模。下面依次说明这三层，并给出反模式与基准测试方法。
 
-若你需要某一主题的完整细节，参见同分组的专题页：
+专题页：
 
-- [Processor 复用与缓存](./processor-cache) —— 包级函数 vs 实例、`sync.Pool` 机制、缓存策略与命中率监控
-- [批量处理实战](./batch-processing) —— 四个批量 API、`BatchResult` 结构、并发控制与部分失败处理
+- [Processor 复用与缓存](./processor-cache) —— 包级函数与实例的区别、`sync.Pool` 机制、缓存 Key 与命中率监控
+- [批量处理实战](./batch-processing) —— 批量 API、`BatchResult` 结构、并发控制与部分失败处理
 
 ## 内部优化机制
 
-html 库在热路径上做了大量零分配与复用优化，理解这些机制能帮助你预判不同用法的性能特征，避免与库的优化「打架」。
+热路径上的零分配与复用优化决定了不同用法的性能特征。按库的优化方式使用，这些优化才会生效。
 
 ### sync.Pool 复用 Processor
 
@@ -29,102 +29,85 @@ html.Extract(data)
   → 归还到 sync.Pool（归零统计 + 清空审计日志 + 清空缓存）
 ```
 
-池化 Processor 有两个关键设计：
+池化 Processor 有两个设计：
 
-- **禁用缓存**：池化实例的 `MaxCacheEntries`、`CacheTTL`、`CacheCleanup` 全部置零。因为池化实例每次归还都会 `ClearCache()`，开启缓存只会白白付出哈希计算和后台清理 goroutine 的代价（`Get` 永远 miss），却永远无法命中。
-- **传自定义 Config 不走池化**：当你调用 `html.Extract(data, cfg)` 传入自定义配置时，库会创建一个**临时 Processor**（用完即 `Close()`），而非复用池中实例——因为池中实例固定使用默认配置。
+- **禁用缓存**：池化实例的 `MaxCacheEntries`、`CacheTTL`、`CacheCleanup` 全部为 0，且每次归还都会 `ClearCache()`。开启缓存只会增加哈希与 map 写入开销（`Get` 始终 miss），并额外启动一个清理空缓存的 goroutine。
+- **传自定义 Config 不走池化**：调用 `html.Extract(data, cfg)` 传入自定义配置时，库创建一个一次性 Processor（用完即 `Close()`），并把其中的缓存字段强制置零——一次性实例的缓存不会被再次读取。
 
-:::tip 何时该自己创建实例
-池化实例禁用了缓存。如果你在循环里反复处理**可能重复**的内容（爬虫去重、缓存层下游的服务），用 `html.New()` 创建一个常驻 `Processor` 实例才能享受缓存命中。详见 [Processor 复用与缓存](./processor-cache)。
+:::tip 何时自己创建实例
+循环中反复处理重复内容（爬虫去重、缓存层下游服务）时，用 `html.New()` 创建常驻 `Processor` 实例才能获得缓存命中。详见 [Processor 复用与缓存](./processor-cache)。
 :::
 
-### 缓存 Key 生成策略
+### 缓存 Key 生成
 
-缓存 Key 是一个 `[16]byte`（128 位）值，直接用作 `map` 键，**生成 Key 不产生堆分配**。Key 的计算输入包括：
+缓存 Key 是一个 `[16]byte` 值，直接用作 `map` 键，生成 Key 不产生堆分配。Key 的输入有两部分：
 
-- **原始输入字节**（而非编码转换后的 UTF-8 文本）——缓存命中可跳过整个编码检测步骤；同一文档以不同编码存储会得到不同的 Key，无法互相命中；
-- 内容提取开关（`ExtractArticle`、`PreserveImages` 等 5 个布尔位）打包进一个 `uint8`；
-- 格式选项（`InlineImageFormat`、`InlineLinkFormat`、`TableFormat`）；
-- `Encoding` 强制编码设置——同一份字节在不同 `Encoding` 配置下解码结果不同，必须区分。
+- **完整原始输入字节**：用 `hash/maphash` 对全部字节做哈希（amd64 上使用 AES-NI 加速，种子在进程启动时随机生成）。全量哈希意味着文档任意位置的字节改动都会改变 Key；同一文档以不同编码存储，字节不同，Key 也不同。
+- **配置项**：5 个布尔开关（`ExtractArticle`、`PreserveImages`、`PreserveLinks`、`PreserveVideos`、`PreserveAudios`）打包成 1 字节，随后混入三个格式串（`InlineImageFormat`、`InlineLinkFormat`、`TableFormat`）和 `Encoding`。同一份字节在不同 `Encoding` 下解码结果不同，因此必须区分。
 
-针对不同大小的内容，Key 生成采用两种策略：
-
-| 内容大小 | 策略 | 说明 |
-|----------|------|------|
-| ≤ 64 KB | 完整内容哈希 | 对全部字节做 hash/maphash 计算（AES-NI 加速），64 位结果经 splitmix64 扩展为 128 位 |
-| > 64 KB | 5 点采样 | 头部 + 尾部 + 3 个均匀分布的采样点，总采样预算 4096 字节（每点约 819 字节） |
-
-大文档采样是为了限制哈希成本——对 10 MB 文档做完整哈希会抵消缓存带来的收益。5 点采样兼顾了**抗哈希洪泛**（文档任意位置的修改都大概率改变 Key）与**吞吐量**。
+maphash 输出 64 位，经 splitmix64 扩散得到第二个 64 位，拼成 128 位 Key。Key 的宽度是 128 位，但有效碰撞强度约为 64 位——splitmix64 只分离输出空间，不增加熵。对内容缓存而言这个强度足够。全零 Key（`[16]byte{}`）被缓存视为「无 Key」，对应输入每次都 miss。Key 的完整说明见 [Processor 复用与缓存](./processor-cache#缓存-key-生成)。
 
 ### 预分配与对象池化
 
-提取过程中最频繁分配的对象都已被池化或预分配：
+提取过程中最频繁分配的对象都已池化：
 
 | 对象 | 机制 | 作用 |
 |------|------|------|
-| 池化文本构建器（内部实现） | `sync.Pool` | 跨调用复用底层 `[]byte` 容量，避免每次提取从零增长到文档长度 |
-| 链接结果切片 | 预分配容量 128 | 覆盖典型页面的链接数量，避免 `append` 触发底层数组拷贝 |
-| 深度验证栈（`depthStackEntry`） | `sync.Pool` | 迭代式深度校验的栈复用，避免每次提取分配栈 |
+| 文本构建器 | `sync.Pool` | 保留底层 `[]byte` 容量，避免每次提取从零增长到文档长度 |
+| 图片/链接结果切片 | 池化 scratch 切片 | 追加写入可复用的池化切片，最后按精确长度拷出，返回的切片不带多余容量 |
+| 深度验证栈 | `sync.Pool` | 迭代式深度校验的栈复用，避免每次提取分配栈 |
 | `[]byte` 临时缓冲区 | `sync.Pool` | 编码转换、文本拼接等高频小缓冲复用 |
 
 :::warning 超大缓冲会被池丢弃
-为防止「一次提取超大文档 → 池永久持有超大缓冲 → 后续小请求都拿到大缓冲」的经典 `sync.Pool` 陷阱，容量超过 64 KiB 的缓冲在归还时会被**丢弃**而非放回池中。这意味着处理超大文档不会获得池化收益，属正常现象。
+一次提取超大文档会使池长期持有超大缓冲，后续小请求都拿到它。因此超出上限的缓冲在归还时被丢弃：`[]byte` 与文本构建器为 64 KiB，结果 scratch 切片为 512 个元素，节点切片为 8192 个条目。处理超大文档时不获得池化收益，属预期行为。
 :::
 
 ### 预计算格式字符串
 
-`New()` 时会把 `InlineImageFormat`/`InlineLinkFormat` 经 `normalizeInlineFormat`（小写化 + trim + 空值归一为 `"none"`）预计算后存入 `Processor` 字段。提取的热路径直接比较预计算值，**避免每次提取都做 `strings.ToLower`**。
+`New()` 会把 `InlineImageFormat`/`InlineLinkFormat` 做小写化与 trim（空值归一为 `"none"`）后存入 `Processor` 字段。提取的热路径直接比较预计算值，不再每次提取都做 `strings.ToLower`。
 
-这个优化对单次提取影响微小，但在批量处理上万文档时累积可观。
+单次提取看不出差别；批量处理上万文档时，这部分省下的 CPU 才会累积成可观的差异。
 
 ### 媒体提取的惰性分配
 
-视频/音频提取采用两级门控，让「无媒体内容」的常见场景几乎零开销：
+视频/音频提取分三层。无媒体引用的页面在媒体环节只付一次字节扫描；内容超过 1 MB 时连这次扫描也跳过：
 
-1. **前置正则门控**：先用内部媒体引用检测（regex 门控）快速扫描，确认内容**不包含**任何媒体引用时，直接跳过所有正则扫描与 iframe/embed/object 属性提取。
-2. **大小门控**：内容超过 1 MB（`maxHTMLForRegex`）时跳过正则扫描——超大文档上跑正则既慢又有 ReDoS 风险。
-3. **惰性初始化**：`ensureDedup` 在首个媒体匹配出现时才分配结果切片和去重 map。无媒体的文档全程零分配。
+1. **前置扫描门控**：先逐字节查表判断内容是否含媒体引用。不含时直接跳过全部媒体扫描与 iframe/embed/object 属性提取。
+2. **大小门控**：内容超过 1 MB 时跳过原始 HTML 的媒体扫描。超限文档的媒体 URL 只来自 DOM 遍历。
+3. **惰性初始化**：某一类媒体（视频或音频）出现首个匹配时才分配结果切片和去重 map。某类媒体没有匹配，就不为它分配。
 
 :::tip 纯文本场景的最优配置
-若你只关心正文文本、不需要图片/视频/音频信息，用 [`TextOnlyConfig()`](../../api-reference/core/config#预设配置) 一步关闭所有媒体保留，配合这里描述的惰性机制，媒体相关开销趋近于零。
+只需正文文本、不需要图片/视频/音频信息时，用 [`TextOnlyConfig()`](../../api-reference/core/config#预设配置) 关闭全部媒体保留：`PreserveVideos`/`PreserveAudios` 为 false 时媒体提取整段不执行。
 :::
 
-## 缓存深度调优
+## 缓存调优
 
-[Processor 复用与缓存](./processor-cache) 介绍了缓存基础用法与命中率监控。这里补充几个影响缓存行为的关键细节。
-
-### 命中条件
-
-两个输入产生**相同缓存 Key** 才会命中，这意味着：
-
-- 相同内容 + 相同配置 → 命中；
-- 同一正文以不同编码存储（如一份 GBK、一份 UTF-8）→ **不命中**（Key 基于原始输入字节计算，不同编码的字节序列不同）；
-- 相同字节但 `Encoding` 配置不同 → **不命中**（`Encoding` 参与 Key 计算）；
-- 相同内容但 `PreserveImages` 等开关不同 → **不命中**（开关位参与 Key 计算）。
+缓存的基础用法与命中率监控见 [Processor 复用与缓存](./processor-cache)，Key 的计算输入见上文[缓存 Key 生成](#缓存-key-生成)。
 
 ### 命中后的克隆成本
 
-每次缓存命中都返回 `cloneResult`（深拷贝整个 `Result`，包括 Images/Links/Videos/Audios 切片）。这是**必须的**——缓存中的条目会被并发读取，若直接返回指针，调用方修改结果会通过别名污染缓存。
+每次缓存命中都返回 `cloneResult`（深拷贝整个 `Result`，包括 Images/Links/Videos/Audios 切片）。这一步不可省略：缓存条目会被并发读取，直接返回指针时，调用方的修改会经由别名污染缓存。
 
-代价是：当 `Result` 包含大量链接/图片时，克隆本身有一定开销。在「缓存命中率极高 + 单次结果很大」的场景（如反复提取同一个链接密集的大文档），这部分成本可能显现。
+克隆开销与结果规模成正比。只有「同一输入重复出现」时，命中省下的解析与提取成本才大于克隆成本；结果很大、重复很少时，缓存只会把内存占用和克隆成本一起放大。
 
 ### 何时禁用缓存
 
-`MaxCacheEntries = 0` 时，`Extract` 会**完全跳过 Key 生成**（不计算哈希、不查表、不写入），是真正的零开销，而非「开了缓存但永远 miss」。
+`MaxCacheEntries = 0` 时，`Extract` 完全跳过 Key 生成：不计算哈希、不查表、不写入。
 
-禁用缓存适合**一次性处理大量不同内容**的场景：
+禁用缓存适合一次性处理互不相同内容的场景：
 
 ```go
 package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/cybergodev/html"
 )
 
 func main() {
-	// 爬虫处理海量互不相同的页面：禁用缓存省去哈希计算与内存占用
+	// 输入互不相同的页面：禁用缓存省去哈希计算与内存占用
 	cfg := html.DefaultConfig()
 	cfg.MaxCacheEntries = 0 // 零开销跳过整个缓存层
 	cfg.CacheTTL = 0        // 同时禁用后台清理 goroutine
@@ -132,63 +115,68 @@ func main() {
 
 	p, err := html.New(cfg)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer p.Close()
 
-	// eachPage 来自真实抓取流，几乎不会重复
+	// 输入来自真实抓取流，重复极少
 	result, err := p.Extract([]byte("<html><body>每个页面都不同</body></html>"))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	fmt.Println("文本长度：", len(result.Text))
-	// 输出：文本长度：...
+	fmt.Println("文本：", result.Text)
+	// 输出：文本： 每个页面都不同
 }
 ```
 
-### 格式转换不走主缓存
+### 格式转换不经过主缓存
 
-`ExtractToMarkdown` / `ExtractToMarkdownFromFile` 内部通过 `buildFormatProcessor` 创建一个**禁用缓存的临时 Processor** 来执行格式转换。这意味着：
+`ExtractToMarkdown` / `ExtractToMarkdownFromFile` 内部创建一个禁用缓存的临时 Processor 来执行转换。该临时 Processor 复制主 Processor 的配置，只改写两个内联格式字段：
 
-- Markdown 转换**不读取**也**不写入**主 Processor 的缓存——即使你之前用 `Extract` 提取过同一内容，`ExtractToMarkdown` 也不会命中；
-- 同一内容多次调用 `ExtractToMarkdown` 也不会互相命中。
+- Markdown 转换既不读也不写主 Processor 的缓存——即使此前用 `Extract` 提取过同一内容，`ExtractToMarkdown` 也不会命中；
+- 多次调用 `ExtractToMarkdown` 之间也不会互相命中。
 
-:::warning 别期待格式转换命中缓存
-如果你需要对同一内容反复取 Markdown，与其多次调用 `ExtractToMarkdown`，不如调用一次 `Extract`（配置 `InlineImageFormat`/`InlineLinkFormat` 为 `"markdown"`）——这样结果会进主缓存，重复输入可命中。
+`ExtractToJSON` 走的是 `p.Extract` 再序列化，因此读写主缓存。临时 Processor 的审计事件与统计仍计入主 Processor。
+
+:::warning 反复取 Markdown 时改用 Extract
+需要对同一内容反复取 Markdown 时，用 `Extract` 并在配置中设置 `InlineImageFormat`/`InlineLinkFormat` 为 `"markdown"`——结果会进入主缓存，重复输入可命中。不必多次调用 `ExtractToMarkdown`。
 :::
 
 ## 超时与 Goroutine 管理
 
-`ProcessingTimeout` 是协作式超时，不是强制 kill。理解它的协作点与错误语义，有助于正确处理超时与用户取消。
+`ProcessingTimeout` 是协作式超时，不是强制 kill。它决定在哪些点检查截止时间，以及超时返回哪一种错误。
 
-### 协作式取消机制
+### 协作式取消
 
-`ProcessingTimeout > 0` 时，库从传入的 context 派生一个带截止时间的子 context，处理函数在**关键检查点**轮询 `ctx.Done()`：
+`ProcessingTimeout > 0` 时，库从传入的 context 派生一个带截止时间的子 context，处理过程在固定检查点轮询 `ctx.Done()`：
 
-- 编码检测前
-- DOM 解析前
-- 深度验证前
-- 内容提取前
+- 提取入口、编码检测之前
+- DOM 解析之前
+- 深度校验之前
+- 内容提取之前
 
-如果截止时间已到，处理会在**下一个检查点**中止并返回错误。这意味着超时不是瞬时生效的——两个检查点之间的工作（如解析一个超大文档）会跑完。
+截止时间到后，处理在下一个检查点中止并返回错误。超时不会瞬时生效：两个检查点之间的工作（例如解析一个超大文档）会先执行完，而调用方拿到超时错误不必等它结束。
 
-### 超时 goroutine 的全局上限
+### 超时 goroutine 的进程级上限
 
-每个带超时的提取会占用一个 goroutine 直到完成或超时。为防止 goroutine 泄漏耗尽资源，库设置了全局上限 `maxTimeoutGoroutines = 1000`。当并发超时操作数达到上限时，新的提取会**立即**返回 `ErrTooManyConcurrentOps`（而非排队等待）。
+每个带超时的提取会占用一个看门 goroutine，直到提取完成或超时。库用进程级计数器 `activeTimeoutGoroutines` 把并发数限制在 1000（`maxTimeoutGoroutines`）。计数器跨所有 Processor 共享，达到上限时新的提取立即返回一个包装了 `ErrTooManyConcurrentOps` 的错误，不排队等待。
 
-:::warning 批量场景的并发上限
-批量提取（`ExtractBatch`）的并发受 `WorkerPoolSize`（默认 4，上限 256）限制，通常远低于 1000 的 goroutine 上限。但若你在应用层自行并发调用大量带超时的 `ExtractWithContext`，需留意这个全局上限——它是进程级的，跨所有 Processor 共享。
-:::
+批量提取的并发由 `WorkerPoolSize`（默认 4，上限 256）限制，远低于 1000。只有应用层自行并发调用许多带超时的 `ExtractWithContext` 时，才会先触到 1000 这个上限。
 
-### 区分三种取消来源
+### 区分三种超时来源
 
-应用层处理超时/取消时，应根据错误类型区分来源：
+区分来源只依赖错误类型：
 
-| 触发条件 | 返回错误 | 含义 |
-|----------|----------|------|
-| 库内 `ProcessingTimeout` 到期 | `ErrProcessingTimeout` | 单文档处理超过配置的超时 |
-| 用户 context 的 deadline 到期 | `context.DeadlineExceeded` | 外层 context 超时（被库原样透传） |
-| 用户手动取消 context | `context.Canceled` | 外层主动取消（被库原样透传） |
+| 场景 | 返回错误 |
+|------|----------|
+| 库内 `ProcessingTimeout` 到期（用户 ctx 仍有效） | `ErrProcessingTimeout` |
+| 用户 ctx 的 deadline 早于或等于库内超时到期 | `context.DeadlineExceeded`（原样返回，不归一化） |
+| 用户主动 `cancel()` | `context.Canceled` |
+| `ProcessingTimeout = 0`（不限时）且用户 ctx 到期 | `context.DeadlineExceeded`（库不启动看门 goroutine） |
+
+库只把「派生 deadline 触发且 `ctx.Err() == nil`」的情形归一化为 `ErrProcessingTimeout`；用户 ctx 自己到期或取消时，错误原样返回。用 `errors.Is` 判断时要同时检查这两种错误。
+
+报 `ErrProcessingTimeout` 时，库立刻把错误返回给调用方，提取 goroutine 在下一个协作检查点退出。用户 ctx 到期时，内层检查点看到同一个 ctx 而中止——两者都在检查点退出，不是强制终止。
 
 ```go
 package main
@@ -197,6 +185,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/cybergodev/html"
@@ -207,11 +196,11 @@ func main() {
 	cfg.ProcessingTimeout = 5 * time.Second // 库内超时
 	p, err := html.New(cfg)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer p.Close()
 
-	// 外层 context 再加一道保险（可短于库内超时）
+	// 外层 context 作为兜底；这里设为 8s，比库内超时更宽松
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 
@@ -228,32 +217,33 @@ func main() {
 	default:
 		fmt.Println("成功，文本长度：", len(result.Text))
 	}
-	// 输出：成功，文本长度：...
+	// 输出：成功，文本长度： 0
 }
 ```
 
 ## 批量处理性能调优
 
-[批量处理实战](./batch-processing) 详细介绍了批量 API 的用法。这里聚焦影响吞吐量的几个调优点。
+批量 API 的用法见 [批量处理实战](./batch-processing)。以下是影响吞吐量的调优点。
 
 ### WorkerPoolSize 的作用
 
-`WorkerPoolSize` 通过 **semaphore**（带缓冲 channel）限制并发 goroutine 数，而非无限制 spawn：
+`WorkerPoolSize` 用信号量（带缓冲 channel）限制并发 goroutine 数：
 
 ```text
 ExtractBatch(items)
-  → 为每项创建 extractor
-  → 循环：先获取 semaphore 槽位（满则阻塞）→ 再 spawn goroutine
+  → 为每项创建提取函数
+  → 循环：先获取信号量槽位（满则阻塞）→ 再启动 goroutine
   → goroutine 完成后释放槽位
 ```
 
-因此无论批量多大，**同时在运行的提取数**始终不超过 `WorkerPoolSize`。默认值 4 适合 I/O 混合场景；纯 CPU 密集的提取可设到接近 `runtime.NumCPU()`（上限 256）。
+因此同时运行的提取数始终不超过 `WorkerPoolSize`。默认 4；纯 CPU 密集的提取可设到 `runtime.NumCPU()`（上限 256）。超出槽位数的项排队等待，并发度由槽位数决定，不随项数增长。
 
 ```go
 package main
 
 import (
 	"fmt"
+	"log"
 	"runtime"
 
 	"github.com/cybergodev/html"
@@ -269,7 +259,7 @@ func main() {
 	cfg.WorkerPoolSize = n
 	p, err := html.New(cfg)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer p.Close()
 
@@ -287,67 +277,71 @@ func main() {
 
 | 约束 | 值 | 行为 |
 |------|----|------|
-| 单批最大项数 | 10000 | 超限时**整批失败**（每项都返回错误），不部分处理 |
-| 单项 panic 隔离 | — | 某项提取 panic 会被 `recover`，仅标记该项失败，不影响其他项 |
+| 单批最大项数 | 10000 | 超限时整批失败，每项的错误都包装了 `ErrBatchTooLarge`，不部分处理 |
+| 单项 panic 隔离 | — | 某项提取 panic 会被 `recover`，返回包装了 `ErrInternalPanic` 的错误，仅标记该项失败 |
+| 上下文取消 | — | `ExtractBatchWithContext` 在 ctx 取消后跳过未开始项，计入 `Cancelled`，`Errors[i]` 为该 ctx 错误 |
 
 :::tip 实例批量方法复用缓存
-`Processor` 实例的批量方法（`p.ExtractBatch`）内部调用 `p.Extract`，因此**共享并写入主缓存**——批量处理中若出现重复内容，后续命中缓存。包级 `html.ExtractBatch` 用的是禁用缓存的池化实例，无此效果。需要批量去重加速时，优先用实例方法。
+`p.ExtractBatch` 内部逐项调用 `p.Extract`，因此共享并写入主缓存：批量中出现重复内容时，后续项命中缓存。包级 `html.ExtractBatch` 使用禁用缓存的池化实例（或一次性实例），没有这个效果。需要在批量内去重时用实例方法。
 :::
 
 ## 输入控制
 
-减小提取的工作量是最直接的优化手段：
+减小单次提取的工作量是最直接的优化手段：
 
-- **限制 `MaxInputSize`**：拒绝过大的文档，避免无谓的解析开销。默认 50 MB，多数场景可调小到 5–10 MB。
-- **关闭不需要的提取开关**：`PreserveImages`/`PreserveVideos`/`PreserveAudios` 等关闭后，配合媒体惰性机制可跳过相应开销。
-- **纯文本用 `TextOnlyConfig()`**：已禁用所有媒体保留，再关闭 `ExtractArticle` 可进一步提升纯文本提取速度。
+- **限制 `MaxInputSize`**：拒绝过大的文档，省去解析开销。默认 50 MB，上限也是 50 MB；多数场景可调到 5–10 MB。
+- **关闭不需要的提取开关**：`PreserveImages`/`PreserveVideos`/`PreserveAudios` 关闭后，对应环节由媒体的惰性机制跳过。
+- **纯文本用 `TextOnlyConfig()`**：已关闭全部媒体保留；再关闭 `ExtractArticle` 可省去文章识别评分。
 
 ```go
 package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/cybergodev/html"
 )
 
 func main() {
-	// TextOnlyConfig 已禁用所有媒体保留，无需额外设置
+	// TextOnlyConfig 已关闭全部媒体保留，无需额外设置
 	cfg := html.TextOnlyConfig()
 	cfg.MaxInputSize = 10 * 1024 * 1024 // 10MB，拒绝超大输入
-	cfg.ExtractArticle = false          // 关闭文章识别，纯文本提取更快
+	cfg.ExtractArticle = false          // 关闭文章识别，省去评分开销
 
 	p, err := html.New(cfg)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer p.Close()
 
 	result, err := p.Extract([]byte("<html><body><p>仅需纯文本</p></body></html>"))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	fmt.Println(result.Text)
 	// 输出：仅需纯文本
 }
 ```
 
+`ExtractText` 内部就是 `Extract` 后取 `result.Text`，省掉的只是调用方取字段的代码。提取路径与 `Extract` 相同，不会更快，也不会少占内存。
+
 ## 性能反模式
 
-以下是常见但会拖累性能的用法，对照表帮你快速避坑：
+常见反模式与对应做法：
 
 | 反模式 | 问题 | 正确做法 |
 |--------|------|----------|
 | 循环里每次 `html.New()` | 每次创建 + 销毁 Processor，重建编码检测器、评分器等 | 循环外创建一个实例，循环内复用 |
-| 包级函数期望缓存命中 | 池化 Processor 禁用缓存，永远 miss | 用 `Processor` 实例 |
-| 大量不同内容却开大缓存 | 缓存膨胀、命中率极低，徒增内存与哈希开销 | `MaxCacheEntries = 0` 禁用缓存 |
+| 包级函数期望缓存命中 | 池化实例禁用缓存，`Get` 始终 miss | 用 `Processor` 实例 |
+| 内容互不相同却开大缓存 | 命中率低，缓存条目只占内存并带来哈希开销 | `MaxCacheEntries = 0` 禁用缓存 |
 | `ExtractToMarkdown` 期望命中主缓存 | 格式转换用禁用缓存的临时 Processor | 配置 `InlineImageFormat="markdown"` 后用 `Extract` |
-| 超大 HTML 不设超时 | 恶意/畸形输入可能长时间占用资源 | 设 `ProcessingTimeout` 或用 `ExtractWithContext` |
-| 批量项数远超 `WorkerPoolSize` 却期望线性加速 | semaphore 限制实际并发，项数再多也不加速 | 按 CPU 核数调 `WorkerPoolSize`，分批提交 |
+| 超大 HTML 不设超时 | 畸形输入可长时间占用 CPU | 设 `ProcessingTimeout` 或用 `ExtractWithContext` |
+| 批量项数远超 `WorkerPoolSize` 却期望线性加速 | 信号量限制实际并发，槽位数不变则吞吐不变 | 按 CPU 核数设 `WorkerPoolSize`，分批提交 |
 
-## 基准测试建议
+## 基准测试
 
-用 Go benchmark 量化配置变更和缓存命中的效果，是性能调优最可靠的依据。
+用 Go benchmark 量化配置变更和缓存命中的效果，是调优的判断依据。
 
 ### 基础提取基准
 
@@ -370,7 +364,7 @@ func BenchmarkExtract(b *testing.B) {
     p, _ := html.New(html.DefaultConfig())
     defer p.Close()
 
-    b.ReportAllocs() // 关键：观察每次提取的堆分配数
+    b.ReportAllocs() // 观察每次提取的堆分配数
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         _, err := p.Extract(benchDoc)
@@ -383,7 +377,7 @@ func BenchmarkExtract(b *testing.B) {
 
 ### 测量缓存命中的收益
 
-对比「相同内容重复提取」与「每次不同内容」，能看出缓存是否真的在帮你：
+对比「相同内容重复提取」与「每次不同内容」，可以判断缓存是否带来收益：
 
 <!-- check-code: skip -->
 ```go
@@ -417,7 +411,7 @@ func BenchmarkExtractNoCache(b *testing.B) {
 
 ### 对比不同配置
 
-用 `b.Run` 子测试在一份基准里对比多种配置，便于横向比较：
+用 `b.Run` 子测试在一份基准里对比多种配置：
 
 <!-- check-code: skip -->
 ```go
@@ -450,20 +444,20 @@ func BenchmarkConfigs(b *testing.B) {
 
 :::tip 解读 benchmark 结果
 - `ns/op`：单次提取耗时，越小越快；
-- `B/op` 和 `allocs/op`：每次提取的堆分配字节与次数，是判断「池化是否生效」「缓存是否命中」的核心指标——缓存命中时 `allocs/op` 会显著下降；
-- 对比缓存命中场景（默认配置预热后 `stats.CacheHits` > 0，注意统计字段为复数 `CacheHits`）与 `NoCache`：若两者接近，说明你的内容**没有重复**，缓存纯属负担，应禁用。
+- `B/op` 与 `allocs/op`：每次提取的堆分配字节与次数，用来判断池化是否生效、缓存是否命中；缓存命中时 `allocs/op` 明显下降；
+- 对比命中场景（预热后 `GetStatistics().CacheHits` 大于 0）与 `NoCache`：两者接近说明内容没有重复，缓存没有收益，应禁用。
 :::
 
 运行基准：
 
 ```bash
-go test -bench=. -benchmem ./...          # 运行所有 benchmark，报告内存分配
-go test -bench=BenchmarkExtract -count=5  # 多次运行以观察波动
+go test -bench=. -benchmem ./...             # 运行全部 benchmark，报告内存分配
+go test -bench=Extract -benchmem -count=5 ./... # 只跑提取基准，重复 5 次以观察波动
 ```
 
 ## 下一步
 
-- [Processor 复用与缓存](./processor-cache) —— 深入 `sync.Pool` 机制与缓存命中率监控
-- [批量处理实战](./batch-processing) —— 批量 API 的完整用法与并发控制
+- [Processor 复用与缓存](./processor-cache) —— `sync.Pool` 机制与缓存命中率监控
+- [批量处理实战](./batch-processing) —— 批量 API 用法与并发控制
 - [配置参考](../../api-reference/core/config) —— 所有 `Config` 字段与取值约束
-- [安全生产检查清单](../security/production-checklist) —— 性能之外的生产就绪要点
+- [安全生产检查清单](../security/production-checklist) —— 性能之外的上线要点

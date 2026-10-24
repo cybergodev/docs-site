@@ -7,7 +7,7 @@ sidebar_position: 3
 
 # 变量展开
 
-env 库支持在配置文件中使用变量引用，实现配置复用和动态值替换。
+变量展开让 `.env` 文件中的值可以引用同文件内的其他变量，把重复的配置片段合成一处定义。
 
 ## 启用变量展开
 
@@ -39,12 +39,12 @@ URL=$HOST:8080
 
 | 语法 | 说明 |
 |------|------|
-| `${VAR:-default}` | 如果 VAR 不存在，使用 default |
-| `${VAR:=default}` | 如果 VAR 不存在，使用 default 并写回该变量 |
-| `${VAR:?error}` | 如果 VAR 不存在或为空，返回错误 |
+| `${VAR:-default}` | VAR 未定义时使用 default；已定义（含空串）时保留原值，不写回 |
+| `${VAR:=default}` | VAR 未定义时使用 default 并写回该变量；已定义时不写回 |
+| `${VAR:?error}` | VAR 未定义或值为空时返回错误 |
 
 ::: warning 自引用限制
-`:-`、`:=`、`:?` 引用的变量必须与被赋值的键**不同**。形如 `KEY=${KEY:-default}` 的自引用会被识别为循环引用，加载时报 `ErrExpansionDepth` 错误。为某键设置默认值请直接赋值字面量（`KEY=default`），或引用其他变量（见下方示例）。
+`:-`、`:=`、`:?` 引用的变量必须与被赋值的键**不同**。形如 `KEY=${KEY:-default}` 的自引用按循环引用处理，加载时报匹配 `ErrExpansionDepth` 的错误。为某键设置默认值，直接赋值字面量（`KEY=default`），或引用其他变量（示例见「语法详解」）。
 :::
 
 ---
@@ -53,7 +53,7 @@ URL=$HOST:8080
 
 ### `${VAR:-default}` - 使用默认值
 
-最常见的默认值语法。当变量不存在时使用默认值，变量存在（即使值为空）则使用原值：
+变量未定义时返回 default；变量已定义（即使值为空字符串）时返回原值：
 
 ```bash
 # HOST 已定义，使用其值
@@ -65,7 +65,7 @@ PRIMARY_HOST=${HOST:-127.0.0.1}
 TIMEOUT_VALUE=${TIMEOUT:-30s}
 # TIMEOUT_VALUE 展开为: 30s
 
-# 嵌套默认值
+# 默认值里可以引用其他变量
 DB_HOST=localhost
 DB_URL=${DB_HOST}:${DB_PORT:-5432}
 # DB_HOST=localhost 且 DB_PORT 未定义时
@@ -74,13 +74,13 @@ DB_URL=${DB_HOST}:${DB_PORT:-5432}
 
 **使用场景：**
 - 可选配置项的默认值
-- 开发/生产环境统一配置
+- 开发与生产环境共用的配置模板
 
 ---
 
 ### `${VAR:=default}` - 使用默认值并写回
 
-与 `${VAR:-default}` 的区别在于：`:=` 会把展开后的默认值**赋值写回**该变量——写回后对同一文件内的后续引用可见，并出现在加载后的 map 中；而已存在的变量（文件内或进程环境）不会被重新赋值。
+`:=` 与 `:-` 的区别在于写回：变量未定义时，`:=` 把默认值同时返回给引用处，并写进变量存储。写回的值对同一文件内后续被处理的键可见（按排序顺序），也出现在加载后的 map 中。变量已定义时不写回，行为等同于返回原值。
 
 ```bash
 # ASSIGNED 未定义时被写回为 "created"，B 展开为 "created"
@@ -89,26 +89,28 @@ B=${ASSIGNED:=created}
 ```
 
 ::: info 与 `:-` 的关系
-`${VAR:-default}` 仅返回默认值、不写回变量；`${VAR:=default}` 在变量不存在时既返回默认值，又把该默认值**赋值写回**变量存储（写回后对同一文件内的后续引用、`Get`/`Apply` 均可见，按键名排序确定性处理）。若变量已存在（无论来自文件内还是进程环境），`:=` 不会重新赋值，行为退化为返回原值。
+`${VAR:-default}` 只返回默认值，不写回变量。`${VAR:=default}` 在变量未定义时既返回默认值，又把默认值写回变量存储；变量已定义时（无论来自文件内还是进程环境）不写回，退化为返回原值。写回的默认值本身也会先展开。
 :::
 
 ---
 
 ### `${VAR:?error}` - 错误提示
 
-如果变量不存在或为空则返回错误：
+变量未定义或值为空字符串时返回错误，加载失败：
 
 ```bash
-# 如果 DATABASE_URL 未定义，加载失败并显示错误
+# DATABASE_URL 未定义时加载失败
 DB_URL=${DATABASE_URL:?Database URL is required}
 
-# 如果 API_TOKEN 未定义，报错
+# API_TOKEN 未定义或为空时加载失败
 AUTH_TOKEN=${API_TOKEN:?API_TOKEN must be set}
 ```
 
+错误类型为 `*ExpansionError`（`Kind == ExpansionRequiredKind`），`errors.Is(err, env.ErrExpansionDepth)` 对它返回 false。冒号后的提示文本不会进入错误消息，错误中只出现变量名（敏感键名按掩码输出）。
+
 **使用场景：**
-- 必需配置项验证
-- 早期失败，避免运行时错误
+- 必需配置项校验
+- 尽早失败，避免错误推迟到运行时
 
 ---
 
@@ -130,25 +132,33 @@ MESSAGE=Price is $$100
 
 ### 引号与展开
 
-变量展开发生在引号剥离之后的统一后处理阶段，**单引号与双引号都不影响变量展开**。例如 `SINGLE='${BASE}'`（`BASE=hello`）展开后的值为 `hello`，与双引号行为一致；若被引用的变量未定义（如 `LITERAL='${NO_EXPANSION}'`），结果为空字符串，而非保留 `${NO_EXPANSION}` 字面量。
+**单引号的值不参与变量展开**，与 bash 的单引号语义一致。`PASSWORD='my$ecret'` 加载后就是字面文本 `my$ecret`；`SINGLE='${BASE}'` 加载后是字面文本 `${BASE}`，不会替换成 `BASE` 的值。
 
-单引号与双引号的区别仅在**字面解析**：双引号处理 `\n`、`\t` 等转义序列，单引号原样保留（不转义）。
+双引号与无引号的值照常展开：`GREET="hello $NAME"`（`NAME=world`）展开后为 `hello world`。
+
+引号还影响**字面解析**：双引号处理 `\n`、`\r`、`\t` 转义与 `\"`、`\\`，单引号原样保留反斜杠序列。
 
 ::: warning 注意
-不要用引号来"禁止展开"。如需保留 `${VAR}` 字面量，请使用以下方式：
-:::
+保留 `${VAR}` 字面量有三种写法：
 
 ```bash
-# 方式一：转义美元符号（$$ 展开为字面 $）
-LITERAL='$${NO_EXPANSION}'
+# 方式一：单引号（整个值不展开）
+LITERAL='${NO_EXPANSION}'
+# 值为: ${NO_EXPANSION}
+```
+
+```bash
+# 方式二：双引号或无引号，用 $$ 转义美元符号
+LITERAL="$${NO_EXPANSION}"
 # 值为: ${NO_EXPANSION}
 ```
 
 ```go
-// 方式二：关闭全局变量展开
+// 方式三：关闭全局变量展开
 cfg := env.DefaultConfig()
 cfg.ExpandVariables = false
 ```
+:::
 
 ---
 
@@ -173,25 +183,25 @@ API_URL=https://${APP_NAME}.${DEPLOY_ENV}.api.example.com
 
 ## 循环检测
 
-库自动检测循环引用并返回错误：
+引用成环时（如 `A=${B}` 与 `B=${A}`），加载返回匹配 `ErrExpansionDepth` 的错误。自引用 `KEY=${KEY}`、`KEY=${KEY:-default}` 同样按循环处理。
 
 ```bash
 # 循环引用（错误）
 A=${B}
 B=${A}
 
-# 加载时会返回 ErrExpansionDepth 错误
+# 加载时会返回匹配 ErrExpansionDepth 的错误
 ```
 
 ---
 
 ## 展开深度限制
 
-默认最大展开深度为 5，硬性上限为 20：
+默认最大展开深度为 5，硬性上限为 20。`MaxExpansionDepth` 设为超过 20 的值会让 `Config.Validate()` 返回 `ValidationError`（`Field == "MaxExpansionDepth"`），`New()` 随之失败：
 
 ```go
 cfg := env.DefaultConfig()
-cfg.MaxExpansionDepth = 10  // 自定义深度
+cfg.MaxExpansionDepth = 10  // 自定义深度，取值 1–20
 ```
 
 | 常量 | 值 | 说明 |
@@ -199,7 +209,7 @@ cfg.MaxExpansionDepth = 10  // 自定义深度
 | `DefaultMaxExpansionDepth` | 5 | 默认值（公开 API） |
 
 ::: info 提示
-硬性上限为 20（内部限制）。配置的 `MaxExpansionDepth` 不能超过此限制。
+硬性上限 20 是内部限制（`internal.HardMaxExpansionDepth`）。配置的 `MaxExpansionDepth` 超过它不会自动截断，而是配置校验失败。
 :::
 
 ---
@@ -266,12 +276,17 @@ func main() {
 
 ## 展开作用域（安全隔离）
 
-`ParsingConfig.ExpansionScope` 控制 `${VAR}` 引用可解析的作用域。`ExpansionFileThenProcess` 是 Go `iota` 枚举的**零值**（`= iota` 这一句），但用户实际运行时走 `DefaultConfig()`——`New()` 会对零值 `Config` 套用 `DefaultConfig()`，而 `DefaultConfig()` 显式把 `ExpansionScope` 设为 `ExpansionFileOnly`（SEC-003，默认阻断 `${VAR}` 回退读进程环境）。因此**运行时默认 = FileOnly**：「零值」与「DefaultConfig 默认」是两回事。
+`ParsingConfig.ExpansionScope` 决定 `${VAR}` 能从哪里取值，有两个取值：
 
 | 取值 | 行为 | 适用场景 |
 |------|------|----------|
-| `ExpansionFileOnly`（运行时默认） | 仅文件内变量可见；进程环境引用展开为空字符串 | 默认行为；防止机密探测（SEC-03） |
-| `ExpansionFileThenProcess`（枚举零值） | 先查文件内变量，缺失时回退进程环境 | 仅当显式设置，用于可信配置文件、传统 dotenv 语义 |
+| `ExpansionFileOnly`（运行时默认） | 只解析文件内定义的变量；未定义的引用展开为空字符串 | 默认行为，阻断借配置文件探测进程环境中的机密（SEC-03） |
+| `ExpansionFileThenProcess`（枚举零值） | 先查文件内变量，缺失时回退读进程环境 | 需显式设置；用于可信配置文件、沿用传统 dotenv 语义 |
+
+两个容易混淆的点：
+
+1. **枚举零值不是运行时默认值。** `ExpansionFileThenProcess` 是 `iota` 枚举的零值，但 `New()` 收到零值 `Config` 时会换成 `DefaultConfig()`，而 `DefaultConfig()` 显式设 `ExpansionScope = ExpansionFileOnly`。所以 `env.New(env.Config{})` 的实际作用域是 FileOnly。
+2. **只设置部分字段的 `Config` 不会被当成零值。** v1.3.0 起 `Config.IsZero()` 覆盖全部字段（含 `ExpansionScope` 这类枚举），这类配置不会被静默替换成 `DefaultConfig()`。但 `New()` 随后会调用 `Config.Validate()`：未设置的必需限制（`MaxFileSize` 等）仍为零，校验失败，`New()` 返回包装了 `ErrInvalidConfig` 的错误。自定义配置始终从 `env.DefaultConfig()` 或某个预设开始改。
 
 <!-- check-code: skip -->
 ```go
@@ -282,10 +297,8 @@ loader, _ := env.New(cfg)
 ```
 
 ::: warning SEC-03
-`DefaultConfig()` 默认把展开作用域设为 `ExpansionFileOnly`——`${VAR}` 引用仅在文件内解析，阻断对进程环境的回退读取。若你的应用会加载外部提供的配置文件，请保持这一默认值，不要显式改回 `ExpansionFileThenProcess`。
+`DefaultConfig()` 默认把展开作用域设为 `ExpansionFileOnly`：`${VAR}` 引用只在文件内解析，不回退读进程环境。应用会加载外部提供的配置文件时保持这一默认值，不要改成 `ExpansionFileThenProcess`。
 :::
-
-注意：`ExpansionScope` 是枚举而非布尔字段，即使 `Config` 只设置了这一个字段，`IsZero()` 也会正确识别其为已初始化的配置，不会被默认值静默覆盖。但需区分「枚举零值」与「DefaultConfig 默认值」：`ExpansionFileThenProcess` 是枚举零值，`DefaultConfig()` 显式设为 `ExpansionFileOnly`，两者并不相同。
 
 ## 相关文档
 

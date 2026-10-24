@@ -7,13 +7,11 @@ sidebar_position: 10
 
 # Security Overview
 
-HTTPC follows the "Secure by Default" principle: every critical security feature works out of the box, defending against common attack surfaces with no extra configuration. When handling user-provided URLs, calling external untrusted services, or running in high-security environments (finance, healthcare, government), HTTPC's layered defenses serve as a reliable baseline.
+HTTPC follows the "Secure by Default" principle: critical security features are enabled by default and block common attacks with no extra configuration. When handling untrusted URLs, calling external untrusted services, or running in high-security environments (finance, healthcare, government), HTTPC's layered defenses serve as a baseline.
 
 ## Security Feature Matrix
 
-The table below summarizes each security feature, the corresponding `Config` field, its default value, and related functions/options, so you can locate configuration entry points quickly.
-
-| Feature | Config field | Default | Related functions / options |
+| Feature | `Config` field | Default | Related functions / options |
 |------|-------------|--------|------------------|
 | TLS minimum version | `SecurityConfig.MinTLSVersion` | TLS 1.2 | — |
 | TLS maximum version | `SecurityConfig.MaxTLSVersion` | TLS 1.3 | — |
@@ -36,12 +34,12 @@ The table below summarizes each security feature, the corresponding `Config` fie
 | Follow redirects | `SecurityConfig.FollowRedirects` | `true` | `WithFollowRedirects` |
 
 :::tip
-When handling user-provided URLs, just use `httpc.SecureConfig()` for the strictest security baseline: redirects disabled, a 5MB response cap, shorter timeouts, and URL/header validation enabled.
+When handling untrusted URLs, `httpc.SecureConfig()` provides the strictest security baseline: redirects disabled, a 5MB response cap, shorter timeouts, and URL/header validation enabled.
 :::
 
 ## Defense-in-Depth Map
 
-HTTPC's security capabilities are spread across multiple layers of the request lifecycle; if any single layer is bypassed, the next one backs it up:
+HTTPC's security capabilities span multiple layers of the request lifecycle. When one layer is bypassed, the next one takes over:
 
 | Layer | When | What it covers | Implementation |
 |------|------|----------|----------|
@@ -53,11 +51,11 @@ HTTPC's security capabilities are spread across multiple layers of the request l
 | Output sanitization layer | When logs/errors/audit events are emitted | URL credential masking, sensitive query parameters `[REDACTED]`, sensitive header masking | `internal/validation/sanitize.go` |
 | Download layer | When writing files | Five layers of path defense (UNC/control characters/system directories/traversal/symlinks) and SHA-256 integrity verification | `download.go` |
 
-Three layers working together, using SSRF as the example: the pre-flight layer first rejects `localhost` and private-IP literals by hostname (no DNS resolution, zero network cost); the redirect layer repeats the validation for every hop target; the connection layer resolves DNS and validates the real IP before dialing, so even DNS rebinding by an attacker is hard to slip through. See [SSRF Protection](./ssrf) for details.
+Take SSRF as the example. The pre-flight layer rejects `localhost` and private-IP literals by hostname, with no DNS resolution and no network cost. The redirect layer repeats the validation for every hop target. The connection layer resolves DNS and validates the real IP before dialing, so DNS rebinding by an attacker is difficult to slip through. See [SSRF Protection](./ssrf) for details.
 
 ## Default Behavior: On by Default vs Manual Opt-In
 
-Each item below follows the source-code defaults (`DefaultConfig()` in `types.go`).
+Each default below follows the source code (`DefaultConfig()` in `types.go`).
 
 ### On by Default (No Configuration Needed)
 
@@ -93,12 +91,12 @@ Each item below follows the source-code defaults (`DefaultConfig()` in `types.go
 | DoH | `EnableDoH = false` | Set to true |
 
 :::tip
-The "off by default" items are not flaws — they are options whose business requirements cannot be predicted: certificate pinning needs the real fingerprint of the target service, and a request-body cap depends on your message sizes. When handling untrusted URLs, `SecureConfig()` tightens several of them at once (no redirects, 5MB response cap, shorter timeouts).
+The "off by default" items are not flaws: they are options whose business requirements cannot be predicted in advance. Certificate pinning needs the real fingerprint of the target service, and a request-body cap depends on message sizes. When handling untrusted URLs, `SecureConfig()` tightens several of them at once (no redirects, 5MB response cap, shorter timeouts).
 :::
 
 ## TLS Security
 
-HTTPC requires TLS 1.2+ by default, rejecting the proven-insecure TLS 1.0/1.1:
+HTTPC requires TLS 1.2+ by default and rejects the insecure TLS 1.0/1.1:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -107,7 +105,7 @@ cfg.Security.MinTLSVersion = tls.VersionTLS12
 cfg.Security.MaxTLSVersion = tls.VersionTLS13
 ```
 
-To force TLS 1.3 (higher security requirements, with both client and server supporting it), just set `MinTLSVersion = tls.VersionTLS13`. Once `TLSConfig` is set, `MinTLSVersion`/`MaxTLSVersion` are ignored — `TLSConfig` takes precedence.
+To force TLS 1.3 (both client and server must support it), set `MinTLSVersion = tls.VersionTLS13`. Once `TLSConfig` is set, `MinTLSVersion`/`MaxTLSVersion` are ignored and `TLSConfig` takes precedence.
 
 The default TLS configuration (when `TLSConfig` is not set) also includes these hardening measures:
 
@@ -116,17 +114,17 @@ The default TLS configuration (when `TLSConfig` is not set) also includes these 
 - **No renegotiation**: `RenegotiateNever`, defending against renegotiation attacks
 - **Session resumption**: an LRU cache of client session tickets (256 entries), speeding up handshakes for repeated connections
 
-These hardening measures are injected uniformly when HTTPC builds the transport (`createTLSConfig` in `internal/connection/pool.go`); if you set a custom `TLSConfig`, your configuration wins — certificate pinning is still injected on top, but the remaining suite/curve settings no longer apply.
+These hardening measures are injected uniformly when HTTPC builds the transport (`createTLSConfig` in `internal/connection/pool.go`). With a custom `TLSConfig`, the custom configuration takes precedence: certificate pinning is still injected on top, but the cipher-suite and curve settings no longer apply.
 
 :::warning
-`InsecureSkipVerify` is for testing only. Never set it to `true` in production, or TLS encryption becomes pointless and a man-in-the-middle can eavesdrop and tamper at will. When set, HTTPC prints a security warning to `stderr` in non-test environments (see "Security Warning Mechanism" below).
+`InsecureSkipVerify` is for testing only. Never set it to `true` in production: TLS encryption becomes ineffective, and a man-in-the-middle can eavesdrop and tamper. When it is `true`, HTTPC prints a security warning to `stderr` in non-test environments (see "Security Warning Mechanism" below).
 :::
 
 For more TLS details (cipher suites, certificate pinning, mTLS, custom CAs), see [TLS and Certificate Pinning](./tls-certpin).
 
 ## SSRF Protection
 
-SSRF (Server-Side Request Forgery) is an attack in which the attacker tricks the server into making requests against the internal network — stealing cloud-metadata credentials, scanning internal ports, or reaching unauthenticated internal admin interfaces. HTTPC enables SSRF protection by default, blocking connections to private/reserved IP ranges.
+SSRF (Server-Side Request Forgery) is an attack in which the attacker induces the server to send requests into the internal network, enabling theft of cloud-metadata credentials, internal port scans, and access to internal admin interfaces. HTTPC enables SSRF protection by default and blocks connections to private/reserved IP ranges.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -159,11 +157,11 @@ client, _ := httpc.New(httpc.SecureConfig())
 | IPv6 unique local | `fc00::/7` | Internal network |
 | IPv6 link-local | `fe80::/10` | Auto-configuration |
 
-> The table above lists the main ranges; the full list (including IPv4-mapped IPv6, NAT64 `64:ff9b::/96`, the IPv6 documentation prefix `2001:db8::/32`, etc.) is in the source `isPrivateOrReservedIP`. HTTPC also blocks legacy IP literals in decimal/hexadecimal/octal notation (such as `2130706433`, `0x7f000001`) to prevent bypass. See [SSRF Protection](./ssrf).
+> The table above lists the main ranges. The full list (including IPv4-mapped IPv6, NAT64 `64:ff9b::/96`, the IPv6 documentation prefix `2001:db8::/32`, etc.) is in the source `isPrivateOrReservedIP`. HTTPC also blocks legacy IP literals in decimal, hexadecimal, and octal notation (such as `2130706433`, `0x7f000001`) to prevent bypass. See [SSRF Protection](./ssrf).
 
 ## Header Validation
 
-`ValidateHeaders` (on by default) automatically prevents CRLF injection and request smuggling — it rejects header values containing carriage returns, line feeds, null bytes, and other control characters:
+`ValidateHeaders` (on by default) prevents CRLF injection and request smuggling: header values containing carriage returns, line feeds, null bytes, or other control characters are rejected.
 
 ```go
 // These headers are rejected
@@ -172,12 +170,11 @@ httpc.WithHeader("X-Bad", "value\x00null")                // Control characters
 ```
 
 Validation uses an O(1) lookup table, so the overhead is negligible; `PerformanceConfig()` keeps this validation on as well.
-
-Beyond CRLF and control characters, multi-token headers (RFC 9110 syntax) also undergo **token-whitelist validation**: `Connection` allows only `keep-alive`/`close`/`upgrade`, and `Transfer-Encoding` allows only `chunked`/`compress`/`deflate`/`gzip`/`identity`, preventing request smuggling.
+Beyond CRLF and control characters, multi-token headers (RFC 9110 syntax) also undergo **token-whitelist validation**: `Connection` allows only `keep-alive`/`close`/`upgrade`, and `Transfer-Encoding` allows only `chunked`/`compress`/`deflate`/`gzip`/`identity`. This prevents request smuggling.
 
 ## Input Sanitization and Log Redaction
 
-HTTPC also protects the **output side**: every URL that reaches logs, error messages, or audit events passes through `SanitizeURL` (`internal/validation/sanitize.go`), preventing secondary leakage of credentials and sensitive parameters:
+HTTPC also protects the **output side**. Every URL that reaches logs, error messages, or audit events passes through `SanitizeURL` (`internal/validation/sanitize.go`), preventing secondary leakage of credentials and sensitive parameters:
 
 ```go
 // Before sanitization: https://user:pass@example.com/api?token=abc123&file=1
@@ -190,10 +187,10 @@ HTTPC also protects the **output side**: every URL that reaches logs, error mess
 | Sensitive query-parameter redaction | 20+ parameter names such as `token`, `access_token`, `api_key`, `password`, `signature` (case-insensitive) → `[REDACTED]` |
 | Fragment removal | Keeps OAuth implicit-grant fragments out of logs |
 
-This sanitization is applied automatically to: URLs during error classification (raw credentials never appear in `ClientError`), request logs from `LoggingMiddleware`, audit events from `AuditMiddleware`, and proxy-credential masking in `Config.String()`.
+Sanitization is applied automatically in four places: URLs during error classification (raw credentials never appear in `ClientError`), request logs from `LoggingMiddleware`, audit events from `AuditMiddleware`, and proxy-credential masking in `Config.String()`.
 
 :::tip
-This layer defends against **secondary leakage** — even when an attack has already been stopped by other layers, log and error aggregation systems (ELK, Sentry) can still become gathering points for credentials. HTTPC redacts at the source by default, with no extra configuration.
+This layer targets **secondary leakage**: an attack may already be stopped by other layers, yet log and error aggregation systems (ELK, Sentry) can still collect credentials. HTTPC redacts at the source, with no extra configuration.
 :::
 
 ## Cookie Security
@@ -250,12 +247,12 @@ result, err := client.Get("https://api.example.com",
 ```
 
 :::warning
-`WithSecureCookie` is a request-level "after-the-fact" check: it validates only the cookies that exist when it is applied. Always place it after all cookie-adding options (`WithCookies` etc.). For order-independent global validation, use the session-config-level `SessionConfig.CookieSecurity` or session-level `SetCookieSecurity`.
+`WithSecureCookie` is a request-level "after-the-fact" check: it validates only the cookies that exist when it is applied. Place it after all cookie-adding options (`WithCookies` etc.). For validation independent of insertion order, use the session-config-level `SessionConfig.CookieSecurity` or session-level `SetCookieSecurity`.
 :::
 
 ## Decompression-Bomb Defense
 
-An attacker can exhaust memory with a highly compressed gzip/deflate response (e.g. 10MB of compressed data decompressing into gigabytes). `MaxDecompressedBodySize` (default 100MB) caps the actual decompressed size, stopping decompression bombs at the source.
+An attacker can exhaust memory with a highly compressed gzip/deflate response (e.g. 10MB of compressed data decompressing into gigabytes). `MaxDecompressedBodySize` (default 100MB) caps the actual decompressed size and stops decompression bombs.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -271,7 +268,7 @@ cfg.Security.MaxDecompressedBodySize = 50 * 1024 * 1024 // 50MB decompressed cap
 | Both set | The smaller (stricter) one wins |
 
 :::tip
-`MaxResponseBodySize` limits pre-decompression transfer bytes, while `MaxDecompressedBodySize` limits post-decompression actual bytes. Together they provide dual-layer protection.
+`MaxResponseBodySize` limits pre-decompression transfer bytes; `MaxDecompressedBodySize` limits post-decompression actual bytes. Together they provide dual-layer protection.
 :::
 
 ## Request Body Size Limit
@@ -284,7 +281,7 @@ cfg.Security.MaxRequestBodySize = 5 * 1024 * 1024 // 5MB upload cap
 ```
 
 :::warning
-Unlike `MaxResponseBodySize` (default 10MB), `MaxRequestBodySize` defaults to **0 (unlimited)** and has **no automatic fallback**. When handling user uploads or proxying forwarded requests, always set an explicit cap.
+Unlike `MaxResponseBodySize` (default 10MB), `MaxRequestBodySize` defaults to **0 (unlimited)** with **no automatic fallback**. When handling uploads or proxied forwarded requests, set an explicit cap.
 :::
 
 ## Redirect Security
@@ -304,14 +301,14 @@ cfg.Security.RedirectWhitelist = []string{
 }
 ```
 
-`RedirectWhitelist` supports exact matching and wildcards: `*.example.com` matches strict subdomains such as `api.example.com` but not the bare domain `example.com` (list both separately if needed). Redirects to non-whitelisted domains are blocked. Redirect targets also pass SSRF IP validation.
+`RedirectWhitelist` supports exact matching and wildcards: `*.example.com` matches strict subdomains such as `api.example.com` but not the bare domain `example.com` (list both separately if needed). Redirects to non-whitelisted domains are blocked, and redirect targets also pass SSRF IP validation.
 
-Beyond the whitelist, every redirect hop is checked in order (any failure rejects that hop; see `checkRedirect` in `internal/engine/transport.go`):
+Beyond the whitelist, each redirect hop passes the following checks in order; any failure rejects the hop (implemented in `checkRedirect` in `internal/engine/transport.go`):
 
 1. **Scheme check**: only http/https allowed; other schemes such as `file://` are rejected
 2. **SSRF target validation**: the redirect host is validated against SSRF rules — targets like `http://169.254.169.254/` are rejected outright
-3. **Cross-origin sensitive-header stripping**: when the target host differs from the original host, `Authorization`, `Cookie`, and `Proxy-Authorization` are removed automatically — even if the redirect is allowed, credentials are never carried to a third-party domain
-4. **Redirect-loop detection**: detects A→B→A cycles and errors out (A→A with consecutive identical URLs does not count as a loop, since the server may return different responses each time)
+3. **Cross-origin sensitive-header stripping**: when the target host differs from the original host, `Authorization`, `Cookie`, and `Proxy-Authorization` are removed. Even when the redirect is allowed, credentials are never carried to a third-party domain
+4. **Redirect-loop detection**: detects A→B→A cycles and errors out. Consecutive identical URLs (A→A) do not count as a loop, because the server may return different responses each time
 5. **Hop-count cap**: 10 by default, with a configuration hard cap of 50 (`MaxRedirects`); no "unlimited" mode exists
 
 For redirect-following control, chain tracking, and manual handling, see the [Redirects guide](../guides/redirects).
@@ -325,18 +322,18 @@ cfg := httpc.DefaultConfig()
 cfg.Connection.MaxResponseHeaderBytes = 512 * 1024 // 512KB, stricter than the default
 ```
 
-The default 0 means the Go standard library default (`net/http.DefaultMaxHeaderBytes`, 1MB) is used, so protection is in place without explicit configuration. High-security deployments can tighten it further (e.g., 512KB).
+The default 0 means the Go standard library default (`net/http.DefaultMaxHeaderBytes`, 1MB) applies, so protection is in place without explicit configuration. High-security deployments can tighten it further (e.g., 512KB).
 
 ## Security Warning Mechanism
 
-HTTPC emits `stderr` warnings for high-risk configurations in non-test environments, prompting developers to fix them promptly. Two configuration categories trigger warnings:
+HTTPC emits `stderr` warnings for high-risk configurations in non-test environments so that developers can correct them. Two configuration categories trigger warnings:
 
 | Configuration | Warning trigger | Warning content |
 |------|-------------|----------|
 | `InsecureSkipVerify = true` | Detected inside `httpc.New()`, non-test environment | TLS certificate verification disabled |
 | `TestingConfig()` | Detected at call time, non-test environment | TLS verification, SSRF protection, URL/header validation disabled |
 
-Warnings use `sync.Once` so each fires at most once per process, avoiding log spam. A test environment is identified by an executable suffix of `.test` / `.test.exe`, or the `GO_TEST` / `GOTEST=1` environment variable being set.
+Warnings use `sync.Once`, so each fires once per process and log spam is avoided. A test environment is identified by an executable suffix of `.test` / `.test.exe`, or by the `GO_TEST` / `GOTEST=1` environment variable.
 
 ### Redirecting or Suppressing Warnings
 
@@ -349,12 +346,12 @@ httpc.SetSecurityWarnOutput(io.Discard)
 ```
 
 :::warning
-`SetSecurityWarnOutput(io.Discard)` silently swallows security warnings. Use it only after the configuration has been fully audited (e.g. confirming `TestingConfig` is used only by test binaries); never use it to mask warnings in a production deployment.
+`SetSecurityWarnOutput(io.Discard)` silently discards security warnings. Use it only after the configuration has been fully audited (e.g. confirming `TestingConfig` is used only by test binaries); never mask warnings with it in a production deployment.
 :::
 
 ## File Download Security
 
-The file path for `Download` passes through five layers of defense in `prepareFilePath`, guarding against path traversal and file-overwrite attacks:
+The file path for `Download` passes through five layers of defense in `prepareFilePath`, blocking path traversal and file-overwrite attacks:
 
 1. **UNC path blocking**: rejects network paths such as `\\server\share`
 2. **Control-character filtering**: rejects paths containing control characters (`< 0x20`, `0x7F`, `0x00`)
@@ -362,11 +359,11 @@ The file path for `Download` passes through five layers of defense in `prepareFi
 4. **Path-traversal detection**: after `filepath.Clean`, blocks `../` escaping the working directory
 5. **Symlink defense**: rejects paths whose target is a symlink and recursively checks parent directories to prevent TOCTOU attacks
 
-After the download completes, you can verify file integrity via the `Checksum` field (SHA-256); on verification failure the downloaded file is automatically deleted.
+After the download completes, file integrity can be verified via the `Checksum` field (SHA-256); on verification failure the downloaded file is deleted automatically.
 
 ## Audit Middleware
 
-`AuditMiddleware` produces a structured audit event for each request/response cycle — a good fit for compliance-heavy environments (finance, healthcare, government). The URL is sanitized automatically (credentials removed), and sensitive request headers (Authorization, Cookie, etc.) are masked by default.
+`AuditMiddleware` produces a structured audit event for each request/response cycle, suited to compliance-heavy environments such as finance, healthcare, and government. The URL is sanitized automatically (credentials removed), and sensitive request headers (Authorization, Cookie, etc.) are masked by default.
 
 ```go
 auditMiddleware := httpc.AuditMiddleware(&httpc.AuditConfig{
@@ -385,7 +382,7 @@ cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{auditMiddleware}
 ```
 
-`SourceIP` and `UserID` are injected via context keys: `httpc.SourceIPKey`, `httpc.UserIDKey`. For the full audit fields, configuration options, and production practices, see the [Production Checklist](./production-checklist).
+`SourceIP` and `UserID` are injected via context keys: `httpc.SourceIPKey`, `httpc.UserIDKey`. For audit fields, configuration options, and production practices, see the [Production Checklist](./production-checklist).
 
 ## Next Steps
 

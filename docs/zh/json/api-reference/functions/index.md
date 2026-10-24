@@ -1,13 +1,13 @@
 ---
 sidebar_label: "概述"
 title: "包函数 - CyberGo JSON | 完整函数清单"
-description: "CyberGo JSON 是 json 包级函数的 Go 总览页，按查询、修改、删除、编码、解析、批量与文件迭代等分类列出 Get/Set/Marshal/ProcessBatch 等函数清单，并提供快速导航表帮助开发者按用途定位目标函数。"
+description: "json 包级函数总览：按查询、修改、删除、编码、解析、批量、JSONL、文件与迭代分类列出 Get/Set/Marshal/ProcessBatch，并附用途导航表。"
 sidebar_position: 10
 ---
 
 # 包函数
 
-json 包提供的顶级函数，无需创建 Processor 实例即可直接调用。按功能分类如下：
+json 包的顶级函数，无需创建 Processor 实例即可调用。分类如下：
 
 ## [查询获取](./query)
 
@@ -81,8 +81,8 @@ JSONL（JSON Lines）解析、流式读取、转换和写入函数。
 
 | 用途 | 推荐函数 | 文档 |
 |------|----------|------|
-| 获取单个值 | `GetString`, `GetInt`, `GetFloat`, `GetBool` | [查询获取](./query#路径查询函数) |
-| 获取任意类型 | `Get`, `GetTyped[T]` | [查询获取](./query#泛型获取函数) |
+| 获取单个值 | `GetString`, `GetInt`, `GetFloat`, `GetBool` | [查询获取](./query#类型安全获取函数) |
+| 获取任意类型 | `Get`, `GetTyped[T]` | [查询获取](./query#路径查询函数) · [泛型获取](./query#泛型获取函数) |
 | 带默认值获取 | `GetString(data, path, "default")` | [查询获取](./query#类型安全获取函数) |
 | 泛型获取 | `GetTyped[T](data, path, defaultValue...)` | [查询获取](./query#泛型获取函数) |
 | 批量获取 | `GetMultiple` | [查询获取](./query#processor-扩展方法) |
@@ -99,7 +99,7 @@ JSONL（JSON Lines）解析、流式读取、转换和写入函数。
 | JSON Schema 验证 | `ValidateSchema` | [解析验证](./parse#validateschema) |
 | Schema 默认配置 | `DefaultSchema`, `DefaultSchemaConfig` | [Schema 校验](../schema#defaultschema) |
 | 文件读写 | `LoadFromFile`, `SaveToFile` | [文件操作](./file-io#文件读写) |
-| 文件读写（结构体） | `MarshalToFile`, `UnmarshalFromFile` | [文件操作](./file-io#序列化便捷方法) |
+| 文件读写（结构体） | `MarshalToFile`, `UnmarshalFromFile` | [文件操作](./file-io#结构体序列化) |
 | 流式 I/O | `LoadFromReader`, `SaveToWriter` | [文件操作](./file-io#流式-i-o) |
 | 迭代遍历 | `ForeachWithError`, `ForeachWithPath`, `ForeachNestedWithError` | [迭代方法](./iterate#方法对比) |
 | 文件迭代 | `ForeachFile`, `ForeachFileChunked` | [迭代方法](./iterate#文件迭代方法对比) |

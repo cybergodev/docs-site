@@ -1,23 +1,25 @@
 ---
 sidebar_label: "概述"
 title: "JSON 处理库 - CyberGo JSON | JSONPath 查询与流式处理"
-description: "CyberGo JSON 是高性能、线程安全的 Go JSON 处理库，支持 JSONPath 路径查询、流式处理、泛型 API、Schema 验证与钩子扩展，内置输入校验、危险模式检测与智能缓存，100% 兼容 encoding/json，可无缝替换标准库。"
+description: "CyberGo JSON 是 Go 的 JSON 库：Get/Set 路径查询、StreamJSONL 流式处理与泛型 GetTyped，签名兼容 encoding/json。"
 ---
 
 # JSON 处理库
 
-`github.com/cybergodev/json` 是一个高性能、线程安全的 Go JSON 处理库。它提供了丰富的 JSON 操作功能，包括解析、查询、修改、验证和格式化，同时保持与标准库 `encoding/json` 的 100% 兼容性。
+`github.com/cybergodev/json` 是 Go 的 JSON 处理库，提供解析、路径查询、修改、校验与格式化，以及大文件与 JSONL 流式处理。
+
+函数签名与 `encoding/json` 一致，替换 import 后现有代码可直接编译。默认输入会做安全校验，与标准库存在少量行为差异（见[与标准库对比](#与标准库对比)）。
 
 ## 核心特性
 
-- **100% encoding/json 兼容** — 无缝替换标准库，无需修改现有代码
-- **线程安全** — 所有操作并发安全，支持高并发场景
-- **路径查询** — 支持 JSONPath 风格的路径表达式，包括通配符、切片
-- **类型安全获取** — 泛型 API (`GetTyped[T]`) 和类型断言方法 (`SafeGet`)
-- **流式处理** — 支持大文件和 JSONL/NDJSON 格式流式处理
-- **安全防护** — 内置输入验证、深度限制、危险模式检测
-- **高性能缓存** — 智能缓存、预解析优化、对象池复用
-- **可扩展** — 钩子系统、自定义编码器、验证器
+- **签名兼容 encoding/json** — `Marshal`/`Unmarshal`/`Valid`/`Compact`/`Indent` 与 `Encoder`/`Decoder` 方法与标准库同名同签名，替换 import 即可编译；默认输入校验带来少量行为差异
+- **线程安全** — 单个 `Processor` 可被多个 goroutine 共享，所有公开方法内部有并发保护
+- **路径查询** — 点号语法、数组索引、切片、通配符与 JSON Pointer 都可用一条路径表达
+- **类型安全获取** — `GetTyped[T]` 泛型解码，`SafeGet` 返回可链式转换的 `AccessResult`
+- **流式处理** — `StreamIterator`/`StreamObjectIterator` 逐元素解码，JSONL 系列逐行处理
+- **安全防护** — 默认校验输入体积、嵌套深度、非法 UTF-8 与危险模式
+- **缓存** — 解析缓存与结果缓存默认开启，`WarmupCache` 可预热高频路径
+- **可扩展** — `Hook` 拦截 `Get`/`Set`/`Delete`；自定义编码经 `MarshalJSON`、`MarshalText` 或 `CustomEscapes`
 
 ## 安装
 
@@ -85,7 +87,7 @@ func main() {
 
 | 功能 | 函数 | 说明 |
 |------|------|------|
-| 编码 | `Marshal`, `MarshalIndent` | 100% 兼容 encoding/json |
+| 编码 | `Marshal`, `MarshalIndent` | 输出字节与标准库一致（典型值） |
 | 解码 | `Unmarshal`, `Parse`, `ParseAny` | 支持泛型和类型安全 |
 | 格式化 | `Prettify`, `Compact` | JSON 美化/压缩 |
 
@@ -110,32 +112,32 @@ func main() {
 | [路径表达式语法](./getting-started/path-syntax) | 路径查询、切片、通配符、字段提取 |
 | [Processor 入门](./getting-started/processor-guide) | 何时使用 Processor、预解析优化、生命周期 |
 | [API 文档](./api-reference/) | 完整 API 参考 |
-| [大文件处理](./streaming/large-files) | 文件逐条迭代、流式迭代器与内存优化 |
-| [扩展接口](./extensions/) | Hook 钩子系统拦截 Get/Set/Delete 全流程，自定义编码走 `json.Marshaler`/`CustomEscapes` |
+| [大文件处理](./streaming/large-files) | 文件逐条迭代、流式迭代器与读取上限 |
+| [扩展接口](./extensions/) | Hook 拦截 Get/Set/Delete 全流程；自定义编码走 `MarshalJSON`、`MarshalText` 或 `CustomEscapes` |
 | [安全](./security/) | 默认开启输入安全校验（体积/深度/UTF-8/危险模式），`SecurityConfig()` 预设面向不可信输入，附生产检查清单 |
-| [使用示例](./examples/) | 实战代码示例 |
-| [高级功能示例](./examples/examples-advanced) | 批量编码、预解析、钩子系统 |
+| [使用示例](./examples/) | 路径、编解码、迭代与 JSONL 的可运行示例 |
+| [高级功能示例](./examples/examples-advanced) | 批量编码、字段筛选、预解析、路径预编译、缓存预热 |
 
 ## 性能特性
 
-- **零分配快速路径** — 单键访问与缓存键构建走栈上缓冲，减少堆分配
-- **智能缓存** — 自动缓存热点路径，支持缓存预热
-- **对象池** — 复用中间对象，降低 GC 压力
+- **零分配快速路径** — 缓存键由可比较结构体构成，不在每次操作时拼接字符串；缓存关闭时单键属性访问直接读根对象，绕过递归处理器
+- **缓存** — 解析结果与查询结果默认缓存（`EnableCache`/`CacheResults`），`WarmupCache` 可预热高频路径
+- **对象池** — 复用 `IterableValue`、编码缓冲与排序键切片等中间对象，降低 GC 压力
 - **并行流处理** — JSONL 流式处理支持多 worker 并行（`StreamJSONLParallel`）
-- **预解析优化** — 大型 JSON 一次解析多次查询
+- **预解析** — `PreParse` 让同一份 JSON 只解析一次，多个路径共享解析树
 
 ## 与标准库对比
 
 | 特性 | encoding/json | cybergodev/json |
 |------|---------------|-----------------|
-| 基本编解码 | ✅ | ✅ 100% 兼容 |
+| 基本编解码 | ✅ | ✅ 签名一致，默认输入额外做安全校验 |
 | 路径查询 | ❌ | ✅ 点号/方括号语法 |
 | 类型安全获取 | ❌ | ✅ 泛型 API |
-| 流式处理 | 基础 | ✅ 增强 |
+| 流式处理 | 基础流式解码 | ✅ 逐元素/逐行迭代器 |
 | JSONL 支持 | ❌ | ✅ 原生支持 |
-| 安全验证 | ❌ | ✅ 内置防护 |
+| 安全验证 | ❌ | ✅ 默认开启 |
 | 钩子系统 | ❌ | ✅ 可扩展 |
-| 缓存优化 | ❌ | ✅ 智能缓存 |
+| 缓存优化 | ❌ | ✅ 解析与结果缓存 |
 
 ## 快速决策指南
 
@@ -153,8 +155,8 @@ func main() {
 
 ## 下一步
 
-- [快速开始](./getting-started/) — 5 分钟上手
+- [快速开始](./getting-started/) — 安装与最小示例
 - [Processor 入门](./getting-started/processor-guide) — 何时使用处理器
 - [路径表达式语法](./getting-started/path-syntax) — 完整路径语法
-- [使用示例](./examples/) — 更多实战示例
+- [使用示例](./examples/) — 更多可运行示例
 - [安全](./security/) — 默认输入安全校验与不可信输入防护

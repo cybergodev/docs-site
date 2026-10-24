@@ -1,17 +1,17 @@
 ---
 sidebar_label: "Testing & Custom Extensions"
-title: "Testing & Custom Extensions - CyberGo html | Testing Guide"
-description: "CyberGo html testing and custom extensions: custom Scorer implementation, ContentNode traversal, test organization, mock data, Extractor mocks for unit tests."
+title: "Testing & Custom Extensions - CyberGo html | Scorer & Mocks"
+description: "CyberGo html testing and extensions: custom Scorer implementation, ContentNode traversal, Extractor mocks, and test configuration (cache/sanitization off)."
 sidebar_position: 20
 ---
 
 # Testing & Custom Extensions
 
-This guide covers customizing content scoring algorithms and writing tests for code that uses the HTML library.
+How to implement a custom `Scorer`, and how to decouple business code behind the `Extractor` interface so it can be unit-tested.
 
 ## Custom Scorer
 
-The `Scorer` interface controls the core decision of how to identify body content: the higher the score returned by `Score`, the more likely a node is to be selected as the body container.
+`Scorer` decides which container becomes the body: the higher the score returned by `Score`, the more likely a node is selected.
 
 ### Interface Definition
 
@@ -22,12 +22,12 @@ type Scorer interface {
 }
 ```
 
-- `Score`: Score a node; higher scores are more likely to be selected as the body container
-- `ShouldRemove`: Reserved method of the `Scorer` interface — a custom Scorer must implement it to satisfy the interface, but the current library version only calls `Score`, so its return value has no effect (the implementation can simply return `false`). To exclude specific nodes, return a low/negative score from `Score`
+- `Score`: Scores a node; higher scores are more likely to be selected as the body container
+- `ShouldRemove`: Reserved interface method. A custom Scorer must implement it to satisfy the interface, but the current library version **never calls it** and its return value has no effect (returning `false` is fine). To exclude a node, return a low or negative score from `Score`
 
 ### Default Behavior
 
-When no `Scorer` is configured, the built-in default scorer is used. It calculates scores based on node characteristics (text density, paragraph ratio, tag semantics, etc.).
+With no `Scorer` configured, the built-in default scorer runs. It scores nodes by tag semantics, class/id patterns, paragraph density, and text length. See [Content Extraction](../core-features/content-extraction#default-scorer-signals) for the full table.
 
 ### Implementing a Custom Scorer
 
@@ -84,19 +84,19 @@ func (s blogScorer) Score(node html.ContentNode) int {
 	return score
 }
 
-// ShouldRemove is not called by the library in the current version (implemented to satisfy the interface)
+// ShouldRemove is never called by the library in the current version, so the logic below never runs;
+// it exists only to satisfy the interface. To exclude nodes, return a low score from Score.
 func (s blogScorer) ShouldRemove(node html.ContentNode) bool {
 	if node == nil {
 		return false
 	}
 
-	// Remove navigation and footer
+	// Never executed
 	switch node.Data() {
 	case "nav", "footer", "header":
 		return true
 	}
 
-	// Remove ads and comments
 	class := strings.ToLower(node.AttrValue("class"))
 	return containsAny(class, "ad", "advertisement", "comment", "social-share")
 }
@@ -134,66 +134,70 @@ func main() {
 
 ## ContentNode Interface
 
-`ContentNode` is the node abstraction used by the `Scorer` interface, shielding from the underlying HTML parser's concrete types:
+`ContentNode` is the node abstraction handed to `Scorer`. It hides the underlying `golang.org/x/net/html` types, so a custom Scorer needs no parser imports:
 
 ```go
 type ContentNode interface {
-    Type() string                        // "element", "text", "comment", etc.
-    Data() string                        // Tag name or text content
-    AttrValue(key string) string         // Get attribute value
-    Attrs() []NodeAttr                   // Get all attributes
-    FirstChild() ContentNode             // First child node
-    NextSibling() ContentNode            // Next sibling node
-    Parent() ContentNode                 // Parent node
+	Type() string                // Node type: "element", "text", "comment", etc.
+	Data() string                // Tag name for elements, text for text nodes
+	AttrValue(key string) string // Attribute value, or "" when absent
+	Attrs() []NodeAttr           // All attributes
+	FirstChild() ContentNode     // First child, or nil
+	NextSibling() ContentNode    // Next sibling, or nil
+	Parent() ContentNode         // Parent, or nil at the root
 }
 ```
 
-### Traversing Nodes
+### Traversing Children
+
+Every accessor can return `nil`, so check before dereferencing:
 
 ```go
 func (s myScorer) Score(root html.ContentNode) int {
-    score := 0
-    // Traverse child nodes
-    for child := root.FirstChild(); child != nil; child = child.NextSibling() {
-        if child.Type() == "element" {
-            // Check nested text density
-            textLen := countTextLength(child)
-            if textLen > 200 {
-                score += 10
-            }
-        }
-    }
-    return score
+	if root == nil {
+		return 0
+	}
+	score := 0
+	for child := root.FirstChild(); child != nil; child = child.NextSibling() {
+		if child.Type() == "element" && textLength(child) > 200 {
+			score += 10
+		}
+	}
+	return score
 }
 ```
 
-## Test Mode
+:::warning Keep each call cheap
+`Score` runs once per non-inline element, so its cost scales with the element count. Re-walking the whole subtree inside `Score` makes extraction O(N²); read only the node's own tag, attributes, and immediate children. See [Interfaces](../../api-reference/types/interfaces#scorer) for the full complexity contract.
+:::
+
+## Test Configuration
 
 ### Disable Cache
 
-Tests typically don't need caching. Disabling it ensures each call is "clean":
+Tests rarely need caching. `MaxCacheEntries = 0` reprocesses on every call, so cases cannot affect each other:
 
 ```go
 cfg := html.DefaultConfig()
-cfg.MaxCacheEntries = 0 // Disable cache
+cfg.MaxCacheEntries = 0
 ```
 
 ### Disable Sanitization
 
-For trusted input, you can disable security sanitization to ensure test HTML isn't modified:
+For trusted input, turning off sanitization keeps the test markup unmodified:
 
 ```go
 cfg := html.DefaultConfig()
 cfg.EnableSanitization = false
 ```
 
-:::warning Test Only
-Always keep `EnableSanitization = true` in production.
+:::warning Test only
+Keep `EnableSanitization = true` in production.
 :::
 
 ### Use TextOnlyConfig
 
-When testing text extraction logic, use `TextOnlyConfig` to reduce noise:
+To assert on text alone, `TextOnlyConfig` skips images, links, and media, so unrelated fields cannot pollute the assertion:
 
 ```go
 result, err := html.Extract(data, html.TextOnlyConfig())
@@ -239,6 +243,7 @@ func TestBlogScorer(t *testing.T) {
     result, err := p.Extract(data)
     require.NoError(t, err)
     assert.Contains(t, result.Text, "Blog body content")
+    // Navigation and sidebar are dropped by sanitization and candidate filtering, not by ShouldRemove
     assert.NotContains(t, result.Text, "Sidebar")
     assert.NotContains(t, result.Text, "Home")
 }
@@ -283,44 +288,45 @@ func TestAuditLog(t *testing.T) {
 
 ## Common Extension Scenarios
 
-### Site-Specific Extraction
+### Choosing a Scorer per Site
 
 ```go
 func newSiteScorer(site string) html.Scorer {
-    switch site {
-    case "github.com":
-        return githubScorer{}
-    case "medium.com":
-        return mediumScorer{}
-    default:
-        return nil // Use default scorer
-    }
+	switch site {
+	case "github.com":
+		return githubScorer{}
+	case "medium.com":
+		return mediumScorer{}
+	default:
+		return nil // nil falls back to the built-in default scorer
+	}
 }
 ```
 
-### Analyzing Node Attribute Distribution
+### Counting Tags in a Subtree
 
 ```go
-func analyzeStructure(node html.ContentNode) map[string]int {
-    counts := make(map[string]int)
-    walk(node, counts)
-    return counts
+func analyzeStructure(root html.ContentNode) map[string]int {
+	counts := make(map[string]int)
+	walk(root, counts)
+	return counts
 }
 
+// walk counts tag names across root's subtree and its following siblings.
 func walk(node html.ContentNode, counts map[string]int) {
-    if node == nil {
-        return
-    }
-    if node.Type() == "element" {
-        counts[node.Data()]++
-    }
-    walk(node.FirstChild(), counts)
-    walk(node.NextSibling(), counts)
+	if node == nil {
+		return
+	}
+	if node.Type() == "element" {
+		counts[node.Data()]++
+	}
+	walk(node.FirstChild(), counts)
+	walk(node.NextSibling(), counts)
 }
 ```
 
 ## Next Steps
 
-- [API Reference: Interfaces](../../api-reference/types/interfaces) - Scorer and ContentNode complete definitions
-- [API Reference: Config](../../api-reference/core/config) - Scorer config field
-- [FAQ](../../faq/) - Frequently asked questions
+- [Interfaces](../../api-reference/types/interfaces) — full `Scorer` and `ContentNode` signatures
+- [Config](../../api-reference/core/config) — the `Config.Scorer` field
+- [FAQ](../../faq/) — common questions and troubleshooting

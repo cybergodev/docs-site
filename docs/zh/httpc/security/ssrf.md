@@ -7,7 +7,7 @@ sidebar_position: 20
 
 # SSRF 防护
 
-SSRF（Server-Side Request Forgery，服务端请求伪造）是攻击者诱导服务器向内网发起请求的攻击方式。危害包括：窃取云实例元数据凭据（IAM 角色 token）、扫描内网端口与服务、访问无鉴权的内部管理接口、绕过防火墙访问受保护资源。HTTPC 默认开启 SSRF 防护，阻止连接私有/保留 IP 段。
+SSRF（Server-Side Request Forgery，服务端请求伪造）是攻击者诱导服务器向内网发起请求的攻击方式。危害包括：窃取云实例元数据凭据（IAM 角色 token）、扫描内网端口与服务、访问无鉴权的内部管理接口、绕过防火墙访问受保护资源。HTTPC 默认启用 SSRF 防护，阻止连接私有 IP 与保留 IP 段，`198.18.0.0/15` 除外（见下文「已知边界」）。
 
 ## 默认行为
 
@@ -16,11 +16,11 @@ cfg := httpc.DefaultConfig()
 // AllowPrivateIPs = false（默认）→ 阻止所有私有/保留 IP
 ```
 
-`AllowPrivateIPs` 默认为 `false`，拨号器层面的 SSRF 验证完全开启。这与仅验证 URL 中的主机名不同——HTTPC 在实际建立 TCP 连接时验证解析后的 IP，可防御 DNS 重绑定（见下文）。
+`AllowPrivateIPs` 默认为 `false`，拨号器层面的 SSRF 验证完全开启。与仅校验 URL 主机名不同，HTTPC 在实际建立 TCP 连接时校验解析后的 IP，可防御 DNS 重绑定（见下文）。
 
 ## 验证在哪里执行：三层防线
 
-SSRF 校验分布在三个层级，任何一层被绕过都有下一层兜底：
+SSRF 校验分布在三个层级。某一层被绕过时，由下一层兜底：
 
 | 防线 | 执行时机 | 行为 | 实现位置 |
 |------|----------|------|----------|
@@ -28,7 +28,7 @@ SSRF 校验分布在三个层级，任何一层被绕过都有下一层兜底：
 | 2. 重定向层 | 每一跳 30x | 对重定向目标主机名重复校验（先查域名白名单，再做 SSRF 校验） | `internal/engine/transport.go` |
 | 3. 连接层（拨号器） | 建立 TCP 连接前 | **解析 DNS → 逐个校验 IP → 过滤私有地址 → 直连已验证 IP**，防 DNS 重绑定 | `internal/connection/pool.go` |
 
-预检层按主机名形态给出的典型拒绝（请求根本不会发起连接）：
+预检层按主机名形态拒绝以下目标（请求不会发起连接）：
 
 | 目标主机 | 拒绝原因 |
 |----------|----------|
@@ -63,15 +63,15 @@ func main() {
 }
 ```
 
-连接层是最终防线：即使 `ValidateURL = false` 关闭了预检层，拨号器仍会解析域名并校验真实 IP——域名解析结果全部为私有地址时返回 `domain resolves only to blocked addresses` 类错误。DNS 解析超时为 `min(10s, Timeouts.Dial)`。
+连接层是最终防线。即使 `ValidateURL = false` 关闭了预检层，拨号器仍会解析域名并校验真实 IP；解析结果全部为私有地址时，返回 `domain resolves only to blocked addresses` 类错误。DNS 解析超时为 `min(10s, Timeouts.Dial)`。
 
 :::tip
-预检层有 URL 级缓存（1024 条，超限淘汰最旧的 25%），重复请求同一 URL 不会重复解析校验。使用 `WithAllowPrivateIPs` 按请求覆盖时自动绕过缓存（同一 URL 的校验结果不再稳定，不能复用）。
+预检层有 URL 级缓存（1024 条，超限淘汰最旧的 25%），重复请求同一 URL 不会重复解析与校验。使用 `WithAllowPrivateIPs` 按请求覆盖时绕过缓存，因为同一 URL 的校验结果不再稳定，不能复用。
 :::
 
 ## 被阻止的 IP 范围
 
-HTTPC 阻止所有不适合公网通信的 IP 地址，覆盖 IPv4、IPv6 及其绕过变体。
+HTTPC 阻止不适合公网通信的 IP 地址，覆盖 IPv4、IPv6 及其绕过变体。`198.18.0.0/15` 为例外，默认放行（理由见「已知边界」）。
 
 ### IPv4 阻止范围
 
@@ -91,7 +91,7 @@ HTTPC 阻止所有不适合公网通信的 IP 地址，覆盖 IPv4、IPv6 及其
 | TEST-NET-3 | `203.0.113.0/24` | 文档用途（RFC 5737） |
 | 6to4 中继 | `192.88.99.0/24` | 已废弃任播 |
 
-此外，IPv6 回环（`::1`）、唯一本地（`fc00::/7`）、链路本地（`fe80::/10`）等范围同样被阻止——HTTPC 的 IP 校验覆盖回环、私有、链路本地单播/多播、多播、未指定等全部保留类别。
+此外，IPv6 回环（`::1`）、唯一本地（`fc00::/7`）、链路本地（`fe80::/10`）等范围同样被阻止。IP 校验覆盖回环、私有、链路本地单播与多播、多播、未指定等保留类别。
 
 ### IPv6 阻止范围
 
@@ -105,7 +105,7 @@ HTTPC 阻止所有不适合公网通信的 IP 地址，覆盖 IPv4、IPv6 及其
 
 ### 绕过防护
 
-HTTPC 额外阻止以下常见 SSRF 绕过手法：
+HTTPC 额外阻止以下 SSRF 绕过手法：
 
 | 手法 | 示例 | 防护 |
 |------|------|------|
@@ -116,7 +116,7 @@ HTTPC 额外阻止以下常见 SSRF 绕过手法：
 | NAT64 内嵌 | `64:ff9b::7f00:1` | 递归校验内嵌 IPv4 |
 
 :::tip
-这些绕过防护在 cgo 构建下尤为重要：`getaddrinfo` 可能接受传统 IP 字面量并映射到私有 IP。HTTPC 在 DNS 解析前即拦截这些形式。
+这些绕过防护在 cgo 构建下尤为重要：`getaddrinfo` 可接受传统 IP 字面量并映射到私有 IP。HTTPC 在 DNS 解析前拦截这些形式。
 :::
 
 ## 云元数据端点防护
@@ -131,19 +131,21 @@ HTTPC 额外阻止以下常见 SSRF 绕过手法：
 | 阿里云 | `100.100.100.200` | CGNAT `100.64.0.0/10` 阻止 |
 
 :::warning
-AWS 元数据 IMDSv2 虽要求 token，但 SSRF 仍可能先获取 token 再访问数据。HTTPC 的 IP 级阻止比 IMDSv2 更底层，直接拦截连接。建议两者并用：HTTPC 阻止 + 启用 IMDSv2 纵深防御。
+AWS 元数据 IMDSv2 要求先获取 token，但攻击者仍可能借此完成 SSRF 访问。HTTPC 的 IP 级阻止位于 IMDSv2 之下，直接拦截连接。建议两者并用：HTTPC 阻止与 IMDSv2 构成纵深防御。
 :::
 
 :::warning
-阿里云元数据（`100.100.100.200`）位于 CGNAT 范围（`100.64.0.0/10`），HTTPC **默认阻止该范围**。若因 Tailscale/WireGuard 等 VPN 或内部路由确需访问 `100.64.0.0/10`，须显式通过 `SSRFExemptCIDRs: []string{"100.64.0.0/10"}` 豁免——豁免后该范围内的阿里云元数据也将可达，请评估风险。
+阿里云元数据（`100.100.100.200`）位于 CGNAT 范围（`100.64.0.0/10`），HTTPC **默认阻止该范围**。
+
+Tailscale/WireGuard 等 VPN 或内部路由确需访问 `100.64.0.0/10` 时，须显式设置 `SSRFExemptCIDRs: []string{"100.64.0.0/10"}` 豁免。豁免后该范围内的阿里云元数据同样可达，须评估风险。
+
 :::
 
 ## DNS 重绑定防护
 
-DNS 重绑定（DNS Rebinding）是绕过 SSRF 校验的经典手法。攻击者控制域名的 DNS 服务器，让首次解析返回公网 IP（通过校验），实际连接时返回 `127.0.0.1`（绕过校验）。
+DNS 重绑定（DNS Rebinding）是绕过 SSRF 校验的常用手法。攻击者控制域名的 DNS 服务器，使首次解析返回公网 IP（通过校验），实际连接时返回 `127.0.0.1`。
 
 HTTPC 采用「解析 - 验证 - 直连」模式防御此类攻击：
-
 1. **解析**：将域名解析为 IP 列表
 2. **验证**：逐一校验每个 IP 是否为私有/保留地址
 3. **过滤**：移除被阻止的 IP，仅保留允许的 IP
@@ -159,14 +161,16 @@ HTTPC 采用「解析 - 验证 - 直连」模式防御此类攻击：
 ```
 
 :::tip
-「Split-Horizon DNS」（同一域名解析到公网与内网 IP）环境下，HTTPC 会自动过滤掉私有 IP，仅用公网 IP 建立连接，而非直接拒绝整个域名。
+「Split-Horizon DNS」（同一域名解析到公网与内网 IP）环境下，HTTPC 过滤私有 IP，仅用公网 IP 建立连接，不拒绝整个域名。
 :::
 
-启用 DoH（`Connection.EnableDoH = true`）时走同一条防线：DoH 解析结果先经同样的 IP 过滤，全部被阻止时报 `SSRF protection: domain resolves only to blocked addresses`，然后才逐个尝试拨号允许的 IP。DNS 解析超时从请求 context 派生并封顶 10s（`min(10s, Timeouts.Dial)`），请求取消会即时中止解析。
+启用 DoH（`Connection.EnableDoH = true`）时走同一条防线。DoH 解析结果先经同样的 IP 过滤：全部被阻止时返回 `SSRF protection: domain resolves only to blocked addresses`，不再尝试拨号；否则逐个尝试拨号允许的 IP。
+
+DNS 解析超时从请求 context 派生并封顶 10s（`min(10s, Timeouts.Dial)`），请求取消会立即中止解析。
 
 ## SSRFExemptCIDRs 精确豁免
 
-微服务环境中常需访问 VPC、Kubernetes Service 或 VPN 内的服务。`SSRFExemptCIDRs` 允许精确豁免特定 CIDR 范围，保留对其他私有 IP 的阻止——这是推荐的内部服务访问方式。
+微服务环境常需访问 VPC、Kubernetes Service 或 VPN 内的服务。`SSRFExemptCIDRs` 允许精确豁免特定 CIDR，对其余私有 IP 继续阻止，是访问内部服务的推荐方式。
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -187,15 +191,15 @@ client, _ := httpc.New(cfg)
 | Kubernetes | `172.20.0.0/16` 等 | Pod/Service CIDR |
 | WireGuard | `10.13.0.0/16` 等 | 自定义 VPN 网段 |
 
-无效 CIDR 会导致 `httpc.New()` 返回错误（如 `SSRFExemptCIDRs: invalid CIDR "10.0.0/8"`），配置在启动期即失败，而非运行时静默放过。
+无效 CIDR 会使 `httpc.New()` 返回错误（如 `SSRFExemptCIDRs: invalid CIDR "10.0.0/8"`），配置在启动期即失败，不会在运行时静默放过。
 
 :::warning
-豁免 CIDR 应尽量精确。避免使用过大的范围（如 `0.0.0.0/0`），否则等于完全禁用 SSRF 防护。即便是 `10.0.0.0/8` 也应评估是否可收窄到实际使用的子网。
+豁免 CIDR 应尽量精确。`0.0.0.0/0` 这类过大范围等于完全禁用 SSRF 防护；`10.0.0.0/8` 也应评估能否收窄到实际使用的子网。
 :::
 
 ## AllowPrivateIPs vs SSRFExemptCIDRs 对比
 
-两者都能放行内部服务，但安全语义截然不同：
+两者都能放行内部服务，安全语义不同：
 
 | 维度 | `AllowPrivateIPs = true` | `SSRFExemptCIDRs` |
 |------|--------------------------|--------------------|
@@ -207,12 +211,12 @@ client, _ := httpc.New(cfg)
 | 推荐度 | 仅测试/全内网客户端 | 生产推荐 |
 
 :::danger
-`AllowPrivateIPs = true` 完全绕过拨号器层面的 SSRF 验证（不仅仅是「允许私有 IP」），包括 localhost 检查、链路本地检查、所有保留地址检查。生产环境处理任何不可信 URL 时绝不可用。如需访问内部服务，优先使用 `SSRFExemptCIDRs`。
+`AllowPrivateIPs = true` 完全绕过拨号器层面的 SSRF 验证，包括 localhost 检查、链路本地检查与所有保留地址检查，不仅是「允许私有 IP」。生产环境处理不可信 URL 时不得使用。需要访问内部服务时，优先使用 `SSRFExemptCIDRs`。
 :::
 
 ## 按请求豁免私有 IP
 
-若客户端整体使用安全默认（`AllowPrivateIPs = false`），仅个别请求需访问内网（如 `localhost` 健康检查端点），可用 `WithAllowPrivateIPs` 请求选项按请求放行，不必全局放松安全策略：
+客户端整体使用安全默认（`AllowPrivateIPs = false`）、仅个别请求需访问内网（如 `localhost` 健康检查端点）时，可用请求选项 `WithAllowPrivateIPs` 按请求放行，不必全局放松安全策略：
 
 ```go
 package main
@@ -237,14 +241,14 @@ func main() {
 ```
 
 :::warning
-仅对**可信且非来自用户输入**的 URL 启用 `WithAllowPrivateIPs(true)`。SSRF 防护的目的是防止攻击者诱导你的进程访问内网端点；按请求禁用会为该次调用重新引入此风险。若整个客户端都需要访问内部服务，请在 `Config` 上设置 `Security.AllowPrivateIPs = true`。
+仅对**可信且非来自调用方输入**的 URL 启用 `WithAllowPrivateIPs(true)`。SSRF 防护用于阻止攻击者诱导进程访问内网端点，按请求禁用会为该次调用重新引入此风险。整个客户端都需访问内部服务时，在 `Config` 上设置 `Security.AllowPrivateIPs = true`。
 :::
 
-反向用法同样有效：客户端配置了 `AllowPrivateIPs = true`（如纯内网客户端），但单个请求需强制开启 SSRF 校验，可用 `WithAllowPrivateIPs(false)`。
+反向用法同样有效：客户端配置了 `AllowPrivateIPs = true`（如纯内网客户端），单个请求需强制开启 SSRF 校验时，使用 `WithAllowPrivateIPs(false)`。
 
 ## 重定向中的 SSRF 检查
 
-重定向是 SSRF 攻击的重要载体：公开服务可能 302 跳转到 `http://169.254.169.254/`（云元数据）或内网地址。HTTPC 对重定向目标同样执行 SSRF IP 验证。
+重定向是 SSRF 攻击的重要载体：公开服务可被配置为 302 跳转到 `http://169.254.169.254/`（云元数据）或内网地址。HTTPC 对重定向目标同样执行 SSRF IP 校验。
 
 | 客户端配置 | 重定向到私有 IP 的行为 |
 |-----------|----------------------|
@@ -258,22 +262,22 @@ func main() {
 // HTTPC 验证重定向目标的 IP，阻止对云元数据服务的访问
 ```
 
-每一跳重定向按以下顺序检查（任一步失败即拒绝该跳，实现见 `internal/engine/transport.go` 的 `checkRedirect`）：
+每一跳重定向按以下顺序检查，任一步失败即拒绝该跳（实现见 `internal/engine/transport.go` 的 `checkRedirect`）：
 
-1. **域名白名单**（若配置 `RedirectWhitelist`）
-2. **协议检查**：仅允许 http/https（拒绝 `file://`、`gopher://` 等）
+1. **域名白名单**（配置 `RedirectWhitelist` 时）
+2. **协议检查**：仅允许 http/https，拒绝 `file://`、`gopher://` 等
 3. **SSRF 主机校验**：目标主机名按私网/回环/保留规则校验
-4. **跨域剥除敏感头**：目标主机不同于起始主机时，移除 `Authorization`、`Cookie`、`Proxy-Authorization`——即使重定向被允许，凭据也不会被带去第三方域
-5. **循环重定向检测**：A→B→A 式环路报错（连续同 URL 的 A→A 除外）
+4. **跨域剥除敏感头**：目标主机不同于起始主机时，移除 `Authorization`、`Cookie`、`Proxy-Authorization`。重定向即使被允许，凭据也不会被带到第三方域
+5. **循环重定向检测**：A→B→A 式环路报错，连续同 URL 的 A→A 除外
 6. **次数上限**：默认 10 次，配置硬上限 50
 
-重定向层只做主机名快查（不解析 DNS，避免与拨号层重复解析引入新的 TOCTOU 窗口）；目标域名的真实 IP 由拨号层在连接时再次校验——两层配合，重定向无法绕过 DNS 重绑定防护。
+重定向层只做主机名快查，不解析 DNS，避免与拨号层重复解析引入新的 TOCTOU 窗口。目标域名的真实 IP 由拨号层在连接时再次校验，因此重定向无法绕过 DNS 重绑定防护。
 
-`WithAllowPrivateIPs` 的按请求覆盖同样作用于重定向校验：覆盖值经 context 传播到重定向验证器与拨号器（`internal/connection/ssrf_context.go`），该请求的重定向目标也按覆盖后的策略判断。
+`WithAllowPrivateIPs` 的按请求覆盖同样作用于重定向校验：覆盖值经 context 传播到重定向验证器与拨号器（`internal/connection/ssrf_context.go`），该请求的重定向目标按覆盖后的策略判断。
 
 ### 重定向域名白名单
 
-`RedirectWhitelist` 在 IP 验证之上叠加域名级控制，防止开放重定向漏洞：
+`RedirectWhitelist` 在 IP 校验之上叠加域名级控制，防止开放重定向漏洞：
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -285,13 +289,13 @@ cfg.Security.RedirectWhitelist = []string{
 // 非白名单域名的重定向被阻止
 ```
 
-通配符 `*.example.com` 匹配 `api.example.com`、`static.cdn.example.com` 等严格子域，但**不匹配**裸域 `example.com`（需单独列出）。白名单为 `nil` 时全部允许（默认行为）。
+通配符 `*.example.com` 匹配 `api.example.com`、`static.cdn.example.com` 等严格子域，**不匹配**裸域 `example.com`（需单独列出）。白名单为 `nil` 时全部允许，这是默认值。
 
 ## 配置示例
 
-### 安全配置（处理用户 URL）
+### 安全配置（处理不可信 URL）
 
-处理用户提供的 URL 时，使用 `SecureConfig()` 获得最严格的 SSRF 防护：
+处理不可信 URL 时，使用 `SecureConfig()` 获得最严格的 SSRF 防护：
 
 ```go
 cfg := httpc.SecureConfig()
@@ -333,7 +337,6 @@ client, _ := httpc.New(cfg)
 ## 完全禁用 SSRF 防护
 
 仅在测试环境使用。两种方式：
-
 ```go
 // 方式一：TestingConfig（同时禁用 TLS 验证等多项安全特性）
 client, _ := httpc.New(httpc.TestingConfig())
@@ -347,43 +350,53 @@ client, _ := httpc.New(cfg)
 `TestingConfig()` 在非测试环境会向 `stderr` 打印安全警告（见 [安全概述](./)）。
 
 :::danger
-生产环境永远不要设置 `AllowPrivateIPs = true`。这等于完全放弃 SSRF 防护，攻击者可借此访问云元数据、内网服务、管理接口。
+生产环境不得设置 `AllowPrivateIPs = true`。该设置等于放弃 SSRF 防护，攻击者可借此访问云元数据、内网服务与管理接口。
 :::
 
 ## 已知边界与绕过面
 
-以源码为准，SSRF 防护有以下已知边界，配置前应知悉：
+SSRF 防护有以下已知边界，配置前需知悉（描述以源码为准）：
 
 ### localhost 无法通过 CIDR 豁免
 
-预检层的 `isLocalhost` 主机名检查**先于** CIDR 豁免匹配执行（`internal/validation/netutil.go` 的 `ValidateSSRFHost`：先查 localhost，再查 IP 豁免）。因此把 `127.0.0.0/8` 加入 `SSRFExemptCIDRs` 并不能放行 `localhost` 或 `127.x.x.x`——请求仍在预检层被拒绝。确需访问回环地址时，使用 `WithAllowPrivateIPs(true)`（请求级）或 `AllowPrivateIPs = true`（客户端级）。
+预检层的 `isLocalhost` 主机名检查**先于** CIDR 豁免匹配执行（`internal/validation/netutil.go` 的 `ValidateSSRFHost`：先查 localhost，再查 IP 豁免）。
+
+因此把 `127.0.0.0/8` 加入 `SSRFExemptCIDRs` 不能放行 `localhost` 或 `127.x.x.x`，请求仍在预检层被拒绝。确需访问回环地址时，使用 `WithAllowPrivateIPs(true)`（请求级）或 `AllowPrivateIPs = true`（客户端级）。
 
 ### 显式配置的代理不做 SSRF 校验
 
-`ProxyURL` 与 `ProxyPool` 中的代理主机地址视为**开发者配置的基础设施**，拨号时跳过 SSRF 校验与 DoH 解析（`internal/connection/pool.go`）。这是有意设计：能配置代理的开发者本就可以直连任意地址，拦截代理主机不增加实质安全。但系统代理有一个限制：`EnableSystemProxy` 只在客户端构建时探测一次代理地址（用于 SSRF 豁免）；若此后环境变量才解析出 localhost 代理（如 `127.0.0.1:7890`），该代理可能被 SSRF 防护阻止。动态变化的本地代理请显式设置 `ProxyURL`。
+`ProxyURL` 与 `ProxyPool` 中的代理主机地址视为**开发者配置的基础设施**，拨号时跳过 SSRF 校验与 DoH 解析（`internal/connection/pool.go`）。这是有意设计：能配置代理的开发者本就可直连任意地址，拦截代理主机不增加实质安全。
+
+系统代理有一项限制：`EnableSystemProxy` 只在客户端构建时探测一次代理地址（用于 SSRF 豁免）。若环境变量在此后才解析出 localhost 代理（如 `127.0.0.1:7890`），该代理会被 SSRF 防护阻止。动态变化的本地代理须显式设置 `ProxyURL`。
 
 ### localhost.\* 任意子域按普通域名处理
 
-`localhost.example.com` 这类 `localhost.*` 子域**不**按 localhost 处理——它们可能是合法的公网域名。但若其 DNS 解析到回环 IP，仍会被连接层拦截，只是不再享受预检层的免解析快查。
+`localhost.example.com` 这类 `localhost.*` 子域**不**按 localhost 处理，它们可以是合法的公网域名。若其 DNS 解析到回环 IP，连接层仍会拦截，只是不再享受预检层的免解析快查。
 
 ### 关闭 ValidateURL 后由重定向层与连接层兜底
 
-关闭 URL 验证（不建议，`TestingConfig` 之外几乎没有正当理由）后，预检层不再运行；重定向层与连接层仍然有效。此时 URL 中的 `localhost` 字面量要等 DNS 解析出回环 IP 后才在拨号层被拦截，错误信息也不同（`domain resolves only to blocked addresses`），且传统 IP 字面量快查随之失效。
+关闭 URL 验证（不建议，`TestingConfig` 之外缺少正当理由）后，预检层不再运行，重定向层与连接层仍然有效。此时 URL 中的 `localhost` 字面量要等 DNS 解析出回环 IP 后才在拨号层被拦截，传统 IP 字面量快查同时失效。
+
+被拦截时返回的错误信息为 `domain resolves only to blocked addresses`。
 
 ### 传统 IP 字面量在 DNS 解析前拦截
 
-`2130706433`、`0x7f000001`、`0177.0.0.1` 等记法被 `net.ParseIP` 拒绝，却在 cgo 构建的 `getaddrinfo` 解析器中可能被接受并映射到私有 IP。HTTPC 在预检层用 `looksLikeLegacyIPLiteral` 识别并拦截这些形式（识别规则：`0x` 前缀、纯数字无点、多点形式中的前导零八进制或十六进制段），不依赖平台解析器行为。
+`2130706433`、`0x7f000001`、`0177.0.0.1` 等记法被 `net.ParseIP` 拒绝，cgo 构建的 `getaddrinfo` 解析器却可接受并映射到私有 IP。HTTPC 在预检层用 `looksLikeLegacyIPLiteral` 识别并拦截这些形式，不依赖平台解析器行为。识别规则：`0x` 前缀、纯数字无点、多点形式中的前导零八进制或十六进制段。
 
 ### 198.18.0.0/15 保留段默认放行
 
-RFC 2544 基准测试段 `198.18.0.0/15` 虽属保留地址，但被**特意放行**而非拦截：Clash/Surge 类代理工具把 fake-IP 池分配在该段，拦截它会导致这类代理环境下的正常请求被 SSRF 防护误杀（见 `internal/validation/netutil.go` 中 `isPrivateOrReservedIP` 的注释与 `netutil_test` 的对应用例）。若你的环境不使用 fake-IP 代理且需要收紧该段，须在调用方或自定义中间件层自行校验目标 IP。
+RFC 2544 基准测试段 `198.18.0.0/15` 属保留地址，但被**特意放行**：Clash/Surge 类代理工具把 fake-IP 池分配在该段，拦截它会使这类代理环境下的正常请求被 SSRF 防护误拒。
+
+源码依据见 `internal/validation/netutil.go` 中 `isPrivateOrReservedIP` 的注释与 `netutil_test` 的对应用例。
+
+环境不使用 fake-IP 代理、需要收紧该段时，须在调用方或自定义中间件层自行校验目标 IP。
 
 ## 最佳实践
 
 1. 使用 `SecureConfig()` 作为处理不可信 URL 的安全基线
 2. 仅用 `SSRFExemptCIDRs` 精确豁免必要的 CIDR 范围，避免 `AllowPrivateIPs`
 3. 配置 `RedirectWhitelist` 限制重定向目标域名
-4. 处理用户 URL 时禁用重定向（`FollowRedirects = false`）
+4. 处理不可信 URL 时禁用重定向（`FollowRedirects = false`）
 5. 定期审计 `SSRFExemptCIDRs` 配置，移除不再使用的网段
 6. 使用 `AuditMiddleware` 记录所有请求，便于事后追溯 SSRF 攻击尝试
 

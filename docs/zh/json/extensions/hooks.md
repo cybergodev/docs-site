@@ -1,16 +1,16 @@
 ---
 sidebar_label: "Hook 钩子系统"
 title: "Hook 钩子系统 - CyberGo JSON | 拦截、监控与审计指南"
-description: "CyberGo JSON 钩子系统：Hook 接口、LoggingHook、TimingHook、ValidationHook、ErrorHook 与自定义钩子，经 Before/After 与 HookContext 上下文在 JSON 操作前后插入日志、计时、校验、审计等自定义逻辑，实现拦截、监控、审计等能力。"
+description: "CyberGo JSON 钩子系统：Hook 接口、LoggingHook/TimingHook/ValidationHook/ErrorHook 工厂与 HookFunc 适配器。"
 sidebar_position: 20
 ---
 
 # Hook 钩子系统
 
-Hook 允许在 JSON 操作前后插入自定义逻辑，实现日志记录、性能监控、验证等功能。
+Hook 在 JSON 操作前后插入自定义逻辑，用于日志记录、性能监控与输入验证。
 
 ::: tip 接口签名参考
-Hook 接口的完整类型签名（`Hook`、`HookContext`、`HookFunc`）参阅 [接口定义](../api-reference/interfaces#钩子接口)。本页侧重使用指南与最佳实践。
+Hook 接口的完整类型签名（`Hook`、`HookContext`、`HookFunc`）参阅 [接口定义](../api-reference/interfaces#钩子接口)。下面的内容侧重使用方式与执行顺序。
 :::
 
 ## Hook 接口
@@ -111,7 +111,7 @@ p.AddHook(&json.HookFunc{
 
 ---
 
-## 便捷 Hook 工厂函数
+## Hook 工厂函数
 
 ### LoggingHook
 
@@ -282,7 +282,9 @@ func main() {
 
 ### ErrorHook
 
-`ErrorHook` 基于 `HookFunc` 的 After 阶段实现，拦截并处理错误：仅当操作**确实出错**（`err != nil`）时调用 handler，操作成功时直通放行。handler 返回的错误会**替换**原错误向上传播（可用于上报后原样返回，或转换为对外安全的错误）；返回 `nil` 则会吞掉本次错误（调用方视为成功），仅在明确需要时使用。
+`ErrorHook` 基于 `HookFunc` 的 After 阶段实现，拦截并处理错误：仅当操作**确实出错**（`err != nil`）时调用 handler，操作成功时直通放行。
+
+handler 返回的错误会**替换**原错误向上传播（可用于上报后原样返回，或转换为对外安全的错误）。返回 `nil` 会吞掉本次错误（调用方视为成功），仅在明确需要时使用。
 
 ```go
 func ErrorHook(handler func(ctx HookContext, err error) error) Hook
@@ -398,7 +400,7 @@ p.AddHook(&json.HookFunc{
 
 ## 配置 Hook
 
-### 通过 Config 添加
+### 在 Config 中添加
 
 ```go
 cfg := json.DefaultConfig()
@@ -412,7 +414,7 @@ if err != nil {
 }
 ```
 
-### 通过 Processor 添加
+### 在 Processor 上添加
 
 ```go
 p, err := json.New()

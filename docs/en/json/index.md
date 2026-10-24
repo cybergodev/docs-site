@@ -1,23 +1,23 @@
 ---
 sidebar_label: "Overview"
 title: "JSON Library - CyberGo JSON | JSONPath Queries & Streaming"
-description: "CyberGo JSON: high-performance, thread-safe Go JSON with JSONPath queries, streaming, generics, Schema validation, hooks, and 100% encoding/json compatibility."
+description: "CyberGo JSON is a Go JSON library: Get/Set path queries, StreamJSONL streaming, generic GetTyped, and default input validation. Signatures match encoding/json."
 ---
 
 # JSON Library
 
-`github.com/cybergodev/json` is a high-performance, thread-safe Go JSON processing library. It provides a rich set of JSON operations — parsing, querying, modifying, validating, and formatting — while maintaining 100% compatibility with the standard library `encoding/json`.
+`github.com/cybergodev/json` is a Go JSON library for parsing, path queries, modification, validation, formatting, and streaming of large files and JSONL. Function signatures match `encoding/json`, so existing code compiles after swapping the import; input is validated by default, which introduces a few behavioral differences from the standard library (see [Comparison with the Standard Library](#comparison-with-the-standard-library)).
 
 ## Core Features
 
-- **100% encoding/json compatible** — a drop-in replacement for the standard library, no changes to existing code required
-- **Thread-safe** — all operations are concurrency-safe, suited to high-concurrency workloads
-- **Path queries** — JSONPath-style path expressions, including wildcards and slices
-- **Type-safe access** — generic API (`GetTyped[T]`) and type-assertion methods (`SafeGet`)
-- **Streaming** — streaming processing for large files and the JSONL/NDJSON format
-- **Security hardening** — built-in input validation, depth limits, and dangerous-pattern detection
-- **High-performance caching** — smart caching, pre-parse optimization, object-pool reuse
-- **Extensible** — hook system, custom encoders, validators
+- **Signature-compatible with encoding/json** — `Marshal`/`Unmarshal`/`Valid`/`Compact`/`Indent` and the `Encoder`/`Decoder` methods share names and signatures with the standard library; swapping the import is enough to compile. Default input validation introduces a few behavioral differences.
+- **Thread-safe** — one `Processor` can be shared across goroutines; every public method is protected internally.
+- **Path queries** — dot notation, array indices, slices, wildcards, and JSON Pointer each express a lookup in one path string.
+- **Type-safe access** — `GetTyped[T]` for generic decoding; `SafeGet` returns an `AccessResult` you can chain conversions on.
+- **Streaming** — `StreamIterator`/`StreamObjectIterator` decode element by element; the JSONL family processes line by line.
+- **Security** — input size, nesting depth, invalid UTF-8, and dangerous patterns are validated by default.
+- **Caching** — parse and result caches are on by default; `WarmupCache` pre-fills hot paths.
+- **Extensible** — `Hook` intercepts `Get`/`Set`/`Delete`; custom encoding goes through `MarshalJSON`, `MarshalText`, or `CustomEscapes`.
 
 ## Installation
 
@@ -85,7 +85,7 @@ func main() {
 
 | Feature | Functions | Description |
 |---------|-----------|-------------|
-| Encode | `Marshal`, `MarshalIndent` | 100% encoding/json compatible |
+| Encode | `Marshal`, `MarshalIndent` | Output bytes match the standard library (typical values) |
 | Decode | `Unmarshal`, `Parse`, `ParseAny` | Generics and type safety supported |
 | Format | `Prettify`, `Compact` | JSON pretty-print / compaction |
 
@@ -110,32 +110,32 @@ func main() {
 | [Path Expression Syntax](./getting-started/path-syntax) | Path queries, slices, wildcards, field extraction |
 | [Processor Guide](./getting-started/processor-guide) | When to use a Processor, pre-parse optimization, lifecycle |
 | [API Reference](./api-reference/) | Complete API reference |
-| [Large File Handling](./streaming/large-files) | Item-by-item file iteration, streaming iterators, memory optimization |
-| [Extension Interfaces](./extensions/) | Hook system intercepting the full Get/Set/Delete flow; custom encoding via `json.Marshaler`/`CustomEscapes` |
+| [Large File Handling](./streaming/large-files) | Item-by-item file iteration, streaming iterators, read caps |
+| [Extension Interfaces](./extensions/) | Hooks intercept the full Get/Set/Delete flow; custom encoding via `MarshalJSON`, `MarshalText`, or `CustomEscapes` |
 | [Security](./security/) | Input validation on by default (size/depth/UTF-8/dangerous patterns); `SecurityConfig()` preset for untrusted input, with a production checklist |
-| [Examples](./examples/) | Real-world code examples |
-| [Advanced Examples](./examples/examples-advanced) | Batch encoding, pre-parsing, hook system |
+| [Examples](./examples/) | Runnable examples for paths, codecs, iteration, and JSONL |
+| [Advanced Examples](./examples/examples-advanced) | Batch encoding, field selection, pre-parsing, compiled paths, cache warm-up |
 
 ## Performance Characteristics
 
-- **Zero-allocation fast paths** — single-key access and cache-key building use on-stack buffers to reduce heap allocations
-- **Smart caching** — hot paths are cached automatically, with cache warm-up support
-- **Object pools** — reuse of intermediate objects to reduce GC pressure
+- **Zero-allocation fast paths** — cache keys are comparable structs, so no string is concatenated per operation; with the cache off, single-key property access reads the root object directly and bypasses the recursive processor
+- **Caching** — parse results and query results are cached by default (`EnableCache`/`CacheResults`); `WarmupCache` pre-fills hot paths
+- **Object pools** — `IterableValue`, encoder buffers, and sorted-key slices are reused to reduce GC pressure
 - **Parallel streaming** — JSONL streaming supports multiple parallel workers (`StreamJSONLParallel`)
-- **Pre-parse optimization** — parse large JSON once, query many times
+- **Pre-parsing** — `PreParse` parses one JSON document once and shares the parse tree across paths
 
 ## Comparison with the Standard Library
 
 | Feature | encoding/json | cybergodev/json |
 |---------|---------------|-----------------|
-| Basic encoding/decoding | ✅ | ✅ 100% compatible |
+| Basic encoding/decoding | ✅ | ✅ same signatures, plus default input validation |
 | Path queries | ❌ | ✅ dot/bracket syntax |
 | Type-safe access | ❌ | ✅ generic API |
-| Streaming | Basic | ✅ enhanced |
+| Streaming | basic streaming decoder | ✅ element/line iterators |
 | JSONL support | ❌ | ✅ native support |
-| Security validation | ❌ | ✅ built-in protection |
+| Security validation | ❌ | ✅ on by default |
 | Hook system | ❌ | ✅ extensible |
-| Cache optimization | ❌ | ✅ smart caching |
+| Cache optimization | ❌ | ✅ parse and result caches |
 
 ## Quick Decision Guide
 
@@ -153,8 +153,8 @@ func main() {
 
 ## Next Steps
 
-- [Quick Start](./getting-started/) — up and running in 5 minutes
+- [Quick Start](./getting-started/) — installation and a minimal example
 - [Processor Guide](./getting-started/processor-guide) — when to use a processor
 - [Path Expression Syntax](./getting-started/path-syntax) — the complete path syntax
-- [Examples](./examples/) — more real-world examples
+- [Examples](./examples/) — more runnable examples
 - [Security](./security/) — built-in input validation and untrusted-input hardening

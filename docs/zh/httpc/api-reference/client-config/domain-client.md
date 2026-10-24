@@ -7,7 +7,7 @@ sidebar_position: 20
 
 # 域名客户端
 
-域名客户端（`DomainClient`）提供针对特定域名的请求管理，自动维护 Cookie 和请求头。它解决了普通 `Client` 在多请求间需要手动传递认证头、追踪 Cookie 的痛点——会话状态自动注入每个请求，响应 Cookie 自动捕获。
+域名客户端（`DomainClient`）管理针对特定域名的请求，并维护会话 Cookie 与会话请求头。普通 `Client` 在多请求间需手动传递认证头、追踪 Cookie。`DomainClient` 把这些状态放入会话：请求前注入会话状态，响应后捕获 Cookie。
 
 ```text
 DomainClient 架构
@@ -46,7 +46,7 @@ type DomainClienter interface {
 }
 ```
 
-`DomainClienter` 同时实现 `Client` 接口（含 `Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`/`Download`/`Close`）和会话管理方法。推荐使用接口类型而非具体类型，便于测试和替换实现。
+`DomainClienter` 同时实现 `Client` 接口（含 `Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`/`Download`/`Close`）和会话管理方法。测试与替换实现时，使用接口类型比具体类型更方便。
 
 ### 完整方法表
 
@@ -65,7 +65,7 @@ type DomainClienter interface {
 | `Download` | `(ctx, path string, cfg *DownloadConfig, opts ...RequestOption) (*DownloadResult, error)` | 文件下载 |
 | `Close` | `() error` | 关闭客户端释放资源 |
 
-具体类型 `*DomainClient` 为上述全部方法提供实现：`DomainClient.Get`、`DomainClient.Post`、`DomainClient.Put`、`DomainClient.Patch`、`DomainClient.Delete`、`DomainClient.Head`、`DomainClient.Options`、`DomainClient.Request`、`DomainClient.Download` 与 `DomainClient.Close`（后两者详见下文专节）。
+具体类型 `*DomainClient` 实现了上表全部方法，方法名与接口签名一一对应。`Download` 与 `Close` 详见下文专节。
 
 #### URL 访问方法
 
@@ -89,7 +89,9 @@ type DomainClienter interface {
 | `ClearHeaders` | `()` | 清空全部会话头 |
 | `GetHeaders` | `() map[string]string` | 获取会话头副本 |
 
-五个方法在接口上定义为 `DomainClienter.SetHeader`、`DomainClienter.SetHeaders`、`DomainClienter.DeleteHeader`、`DomainClienter.ClearHeaders`、`DomainClienter.GetHeaders`，实现委托给内嵌的 `SessionManager`（见[会话管理](./session)）。
+五个方法在接口上定义为 `DomainClienter.SetHeader`、`DomainClienter.SetHeaders`、`DomainClienter.DeleteHeader`、`DomainClienter.ClearHeaders`、`DomainClienter.GetHeaders`。
+
+实现委托给内嵌的 `SessionManager`（见[会话管理](./session)）。
 
 #### 会话 Cookie 管理
 
@@ -102,7 +104,7 @@ type DomainClienter interface {
 | `GetCookies` | `() []*http.Cookie` | 获取全部 Cookie 副本 |
 | `GetCookie` | `(name string) *http.Cookie` | 按名称获取 Cookie 副本 |
 
-对应接口定义为 `DomainClienter.SetCookie`、`DomainClienter.SetCookies`、`DomainClienter.DeleteCookie`、`DomainClienter.ClearCookies`、`DomainClienter.GetCookies`、`DomainClienter.GetCookie`，同样委托给 `SessionManager`。
+对应接口方法定义在 `DomainClienter` 上（`SetCookie`、`SetCookies`、`DeleteCookie`、`ClearCookies`、`GetCookies`、`GetCookie`），实现同样委托给 `SessionManager`。
 
 ## NewDomain
 
@@ -110,7 +112,7 @@ type DomainClienter interface {
 func NewDomain(baseURL string, cfg Config) (DomainClienter, error)
 ```
 
-创建域名作用域客户端。Cookie 自动启用。传入 `Config` 值，或使用 `NewDomainDefault(baseURL)` 作为零参快捷方式。
+创建域名作用域客户端。该客户端内置 `SessionManager`，会话 Cookie 由其独立存储与回放。传入 `Config` 值，或使用 `NewDomainDefault(baseURL)` 作为零参快捷方式。
 
 ```go
 // 使用默认配置（或调用 NewDomainDefault 效果相同）
@@ -148,12 +150,12 @@ defer dc.Close()
 | 配置校验失败（含 `SSRFExemptCIDRs` 非法 CIDR） | `invalid configuration: ...` |
 | 底层客户端 / 会话创建失败 | `failed to create domain client: ...` / `failed to create session: ...` |
 
-:::tip Cookie 自动启用
-`NewDomain` 内部强制设置 `cfg.Connection.EnableCookies = true`，无论你传入的 `cfg` 是否启用 Cookie。这是因为域名客户端的核心价值就是跨请求维护 Cookie 会话。
+:::tip Cookie 会话由 SessionManager 维护
+`NewDomain` 创建的 DomainClient 内置一个 `SessionManager`：请求前注入会话头与 Cookie，响应后回写 `Set-Cookie`。该会话存储独立于 `Connection.EnableCookies`；`NewDomain` 不修改 `cfg.Connection.EnableCookies`。
 :::
 
 :::tip 配置在构造时固化
-与 `New()` 一致，`NewDomain` 对传入的 Config 做深拷贝，构造完成后再修改原 `cfg` 不影响该客户端。`DomainClient` 不提供运行时改配置的方法——超时等按请求控制请使用 [`WithTimeout`](../core/options#withtimeout) 等请求选项。
+与 `New()` 一致，`NewDomain` 对传入的 Config 做深拷贝，构造完成后再修改原 `cfg` 不影响该客户端。`DomainClient` 不提供运行时改配置的方法；超时等按请求控制请使用 [`WithTimeout`](../core/options#withtimeout) 等请求选项。
 :::
 
 ## NewDomainDefault
@@ -255,7 +257,7 @@ path    = ../admin/delete       ← path.Join 清理后为 /admin/delete
 ```
 
 :::warning 绝对 URL 识别
-只有 `http://` 和 `https://` 开头的路径会被识别为绝对 URL；其他协议（如 `ftp://`）不会被识别为绝对路径，会按相对路径拼接，通常导致请求失败。base 路径为空或 `/` 时不做作用域检查。
+只有 `http://` 和 `https://` 开头的路径会被识别为绝对 URL。其他协议（如 `ftp://`）不会被识别为绝对路径，而会按相对路径拼接，请求因此失败。base 路径为空或 `/` 时不做作用域检查。
 :::
 
 ## 会话自动管理
@@ -298,12 +300,12 @@ dc.GetHeaders()          // → map[string]string 副本
 ```
 
 :::tip 线程安全
-`SessionManager` 内部使用 `sync.RWMutex` 保护，`SetHeader`/`SetCookie`/`GetCookie` 等方法可安全并发调用。`prepareOptions` 采用读后写的非原子序列——会话状态设计为最终一致，并发请求可能在 `prepareOptions` 时交错，但每个请求在 `prepareOptions` 时刻捕获的是一致的快照。
+`SessionManager` 内部使用 `sync.RWMutex` 保护，`SetHeader`/`SetCookie`/`GetCookie` 等方法可安全并发调用。`prepareOptions` 采用读后写的非原子序列：会话状态设计为最终一致，并发请求会在 `prepareOptions` 时交错，但每个请求在 `prepareOptions` 时刻捕获到一致快照。
 :::
 
 ## 选项双重执行注意事项
 
-`prepareSessionOptions` 在请求发送前对用户传入的 `RequestOption` **应用两次**：一次在 `captureFromOptions` 中用于捕获会话状态，一次在 `client.Request` 中用于实际请求。
+`prepareSessionOptions` 在请求发送前对调用方传入的 `RequestOption` **应用两次**：一次在 `captureFromOptions` 中用于捕获会话状态，一次在 `client.Request` 中用于实际请求。
 
 ```text
 prepareSessionOptions(options):
@@ -331,7 +333,7 @@ prepareSessionOptions(options):
 func (dc *DomainClient) Download(ctx context.Context, path string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-下载文件到 `cfg.FilePath`，`path` 相对于 `baseURL` 拼接。与包级 `Download` 和 `Client.Download` 签名一致——`Download` 是贯穿三者的唯一规范下载入口。`cfg` 不能为 nil，`cfg.FilePath` 必须设置（否则返回 `ErrEmptyFilePath`）。
+下载文件到 `cfg.FilePath`，`path` 相对于 `baseURL` 拼接。签名与包级 `Download`、`Client.Download` 一致：`Download` 是贯穿三者的唯一规范下载入口。`cfg` 不能为 nil，`cfg.FilePath` 必须设置（否则返回 `ErrEmptyFilePath`）。
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -360,7 +362,7 @@ var _ DomainClienter = (*DomainClient)(nil)   // 实现 DomainClienter 接口
                 └── *DomainClient          ← 具体实现
 ```
 
-`DomainClienter` 内嵌 `Client`，因此任何接受 `Client` 参数的函数都能接受 `DomainClienter`。这使得 `DomainClient` 可在需要 `Client` 的地方无缝使用，同时提供额外的会话管理能力。
+`DomainClienter` 内嵌 `Client`，因此任何接受 `Client` 参数的函数也能接受 `DomainClienter`。`DomainClient` 因此可直接用于需要 `Client` 的位置，并额外提供会话管理能力。
 
 ## 完整 REST API 客户端封装示例
 

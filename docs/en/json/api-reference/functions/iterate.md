@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Iteration Methods"
 title: "Package Iteration Functions - CyberGo JSON | Foreach Usage"
-description: "CyberGo JSON is a Go library for traversal, offering ForeachWithPath, ForeachWithError and ForeachFile to help developers walk JSON in stable order."
+description: "Package iteration: ForeachWithError returns errors, ForeachNestedWithError recurses, ForeachFile reads a file, and object keys iterate in lexicographic order."
 sidebar_position: 100
 ---
 
@@ -10,7 +10,7 @@ sidebar_position: 100
 Iteration functions callable directly, without creating a Processor instance. They map one-to-one with the [Processor iteration methods](../processor/iterate) (two-layer design).
 
 :::tip Iteration order is deterministic
-Object iteration follows key names in **lexicographic order**, arrays follow natural order — Go map iteration order is natively random, but the library sorts internally, so callback order is reproducible for the same input and outputs are testable.
+Object iteration follows **lexicographic** key order and arrays follow natural order. Go map iteration is random by default, but the library sorts internally, so callback order is reproducible for the same input and outputs are testable.
 :::
 
 ## Foreach
@@ -22,7 +22,7 @@ Signature: `func Foreach(jsonStr string, fn func(key any, item *IterableValue), 
 Iterates a JSON array or object.
 
 ::: warning Deprecated
-`Foreach` **silently drops errors**: when the document is invalid, or the processor is unavailable or closed, the callback is **skipped entirely** with no error returned — the caller cannot find out. Use [`ForeachWithError`](#foreachwitherror) instead — it returns the error, and its callback returns `nil` to continue iteration. `Foreach` will not be removed within v1.
+`Foreach` **silently drops errors**: when the document is invalid, or the processor is unavailable or closed, the callback is **skipped entirely** with no error returned, so the caller cannot find out. Use [`ForeachWithError`](#foreachwitherror) instead: it returns the error, and its callback returns `nil` to continue. `Foreach` will not be removed within v1.
 :::
 
 ```go
@@ -39,7 +39,7 @@ json.Foreach(data, func(key any, item *json.IterableValue) {
 
 Signature: `func ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue), cfg ...Config) error`
 
-Iterates at a given path and returns an error.
+Iterates at a path; the callback returns nothing and errors come back from the function.
 
 ```go
 err := json.ForeachWithPath(data, "items", func(key any, item *json.IterableValue) {
@@ -57,10 +57,10 @@ Good for:
 
 Signature: `func ForeachNested(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config)`
 
-Recursively iterates all nested levels. The recursion depth cap is 200 (preventing stack overflow on deeply nested structures; subtrees beyond it are not descended into).
+Recursively iterates all nested levels. The recursion depth cap is 200; subtrees beyond it are not descended into (the void variant stops silently, the error variant returns an error).
 
 ::: warning Deprecated
-`ForeachNested` **silently drops errors** just like `Foreach`: on a failed parse or a closed processor the callback is skipped entirely, with no error returned. Use [`ForeachNestedWithError`](#foreachnestedwitherror) instead — it returns the error, and its callback returns `nil` to continue iteration. `ForeachNested` will not be removed within v1.
+`ForeachNested` **silently drops errors** just like `Foreach`: on a failed parse or a closed processor the callback is skipped entirely with no error returned. Use [`ForeachNestedWithError`](#foreachnestedwitherror) instead: it returns the error, and its callback returns `nil` to continue. `ForeachNested` will not be removed within v1.
 :::
 
 ```go
@@ -99,7 +99,7 @@ Key: tags, Value: []any{...}
 
 Signature: `func ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
 
-Iterates JSON data, visits each element through the callback, and returns the re-serialized JSON string. The callback can modify maps/slices via `GetData()`, and the modifications are reflected in the return value. Two caveats: you can only mutate **inside containers** (add/remove keys on a map, change elements of a slice) — scalar elements cannot be replaced in place through `IterableValue`; and iteration runs on a **deep copy** of the parse result, so the processor cache is never polluted.
+Iterates JSON data, visiting each element through the callback, and returns the re-serialized JSON string. The callback can modify maps and slices via `GetData()`, and those modifications appear in the return value. Two limits: you can only mutate **inside containers** (add or remove keys on a map, change elements of a slice) — scalar elements cannot be replaced in place through `IterableValue`; and iteration runs on a **deep copy** of the parse result, so the processor cache is never polluted.
 
 ```go
 result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) {
@@ -107,7 +107,7 @@ result, err := json.ForeachReturn(data, func(key any, item *json.IterableValue) 
 })
 ```
 
-Good for scenarios where you keep chaining operations after iteration.
+Good for keeping chained operations after iteration.
 
 ## ForeachWithError
 
@@ -200,14 +200,14 @@ The `IterableValue` in iteration callbacks provides convenient value access; for
 | `ForeachWithPathAndControl` | Yes | No | error | IteratorControl |
 
 ::: warning Void variants do not report errors
-`Foreach` / `ForeachNested` return nothing: setup errors such as an unavailable processor are silently ignored, and callback panics are caught, logged, and iteration stops (the process is never taken down). The error variants (the `*WithError` series) convert callback panics into returned errors. Whenever you need error information, use a variant that returns `error`.
+`Foreach` / `ForeachNested` return nothing: setup errors such as an unavailable processor are silently ignored, and a callback panic is caught, logged, and stops iteration (the process survives). The error-returning variants (the `*WithError` series) turn a callback panic into a returned error. Whenever you need error information, use a variant that returns `error`.
 :::
 
 ---
 
 ## File Iteration Functions
 
-The package level provides functions that iterate directly from a file, mirroring the [Processor file iteration methods](../processor/iterate#file-iteration-methods). Note: they all load the **entire file into memory** first, then run item-by-item or batched callbacks (bounded by the `MaxJSONSize` cap, 100MB by default); for constant-memory large-file processing use the [streaming iterators such as StreamIterator](../../streaming/large-files#streaming-and-parallel-iterators).
+The package level provides functions that iterate directly from a file, mirroring the [Processor file iteration methods](../processor/iterate#file-iteration-methods). Note that they all load the **entire file into memory** first and then run per-item or batched callbacks (bounded by `MaxJSONSize`, 100MB by default); for constant-memory processing of large files use the [streaming iterators such as StreamIterator](../../streaming/large-files#streaming-and-parallel-iterators).
 
 ### ForeachFile
 
@@ -252,7 +252,7 @@ err := json.ForeachFileWithPath("data.json", ".users", func(key any, item *json.
 
 Signature: `func ForeachFileChunked(filePath string, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
 
-Iterates a JSON array from a file in chunks — well suited to batch-processing large datasets.
+Iterates a JSON array from a file in chunks — suited to batch-processing large datasets. `chunkSize <= 0` is treated as 100; a root that is not an array returns an error wrapping `ErrTypeMismatch`.
 
 **Parameters**
 
@@ -279,8 +279,8 @@ err := json.ForeachFileChunked("large_data.json", 100, func(chunk []*json.Iterab
 
 :::tip Use cases
 - Batch database inserts
-- Batched API calls (bulk persistence, batched callbacks)
-- Note: chunking does not save memory — the file is still fully loaded before batched callbacks; for constant-memory large-file processing use [StreamIterator](../../streaming/large-files)
+- Batched API calls
+- Chunking does not save memory: the file is fully loaded before batched callbacks; for constant-memory processing use [StreamIterator](../../streaming/large-files)
 :::
 
 ---
@@ -347,7 +347,7 @@ Path: max, Type: float64
 | Constant | Description |
 |----------|-------------|
 | `IteratorNormal` | Continue iterating normally |
-| `IteratorContinue` | A no-op alias of `IteratorNormal` (kept for API symmetry) — "skip the current item" is implicit: no side effect is produced and iteration just continues |
+| `IteratorContinue` | A no-op alias of `IteratorNormal` (kept for API symmetry): no side effect, iteration continues |
 | `IteratorBreak` | Stop iterating |
 
 ### Breaking iteration

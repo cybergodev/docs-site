@@ -1,13 +1,15 @@
 ---
 sidebar_label: "Error Types"
 title: "Error Types - CyberGo HTTPC | ClientError In Detail"
-description: "HTTPC error types: eight-field ClientError with Code, IsRetryable, and Unwrap methods, twelve ErrorType enums, sentinel errors, and errors.Is/As matching."
+description: "HTTPC error types: the ClientError fields and Code, IsRetryable, and Unwrap methods, 12 ErrorType enums, 17 sentinel errors, and errors.Is/As matching."
 sidebar_position: 30
 ---
 
 # Error Types
 
-HTTPC uses a two-layer error model: the lower layer is the standard `error` interface, and the upper layer is the classified `ClientError` struct. All request failures (network layer) are mapped by `classifyError` to a context-carrying `ClientError`, providing an error type, a retryability check, and structured fields. HTTP-layer errors (4xx/5xx) are not returned as errors but checked via `Result.StatusCode()`.
+HTTPC uses a two-layer error model: the lower layer is the standard `error` interface, and the upper layer is the classified `ClientError` struct. Network-layer request failures are mapped by `classifyError` to a context-carrying `ClientError`, which provides an error type, a retryability check, and structured fields.
+
+HTTP-layer errors (4xx/5xx) are not returned as errors; check them via `Result.StatusCode()`.
 
 ## ClientError
 
@@ -43,7 +45,7 @@ type ClientError struct {
 | `ClientError.StatusCode` | `int` | HTTP status code (0 for non-HTTP errors) | `0` (network error), `503` (server error) |
 | `ClientError.Host` | `string` | Request hostname (for circuit breakers) | `"example.com"` |
 
-Among them, `Host` lets circuit breakers track failures per hostname, `Message` is suitable for direct logging, and `Cause` preserves the underlying error for `errors.As` inspection.
+`Host` lets circuit breakers track failures per hostname, `Message` can be logged directly, and `Cause` preserves the underlying error for `errors.As` inspection.
 
 ### Methods
 
@@ -51,11 +53,11 @@ Among them, `Host` lets circuit breakers track failures per hostname, `Message` 
 |------|------|------|
 | `Error` | `func (e *ClientError) Error() string` | Formatted as `"METHOD url: message: cause (attempt N)"` |
 | `Code` | `func (e *ClientError) Code() string` | Returns a short error code, e.g. `"NETWORK_ERROR"`, `"TIMEOUT"` |
-| `IsRetryable` | `func (e *ClientError) IsRetryable() bool` | Whether this error is worth retrying |
+| `IsRetryable` | `func (e *ClientError) IsRetryable() bool` | Returns whether this error is retryable |
 | `Unwrap` | `func (e *ClientError) Unwrap() error` | Returns `ClientError.Cause`, supporting `errors.Is`/`errors.As` traversal of the error chain |
-| `WithType` | `func (e *ClientError) WithType(t ErrorType) *ClientError` | Returns a **copy** with the error type set (does not modify the original) |
+| `WithType` | `func (e *ClientError) WithType(t ErrorType) *ClientError` | Returns a **copy** with the error type set, leaving the original unchanged |
 
-All five methods are defined on the `*ClientError` pointer receiver: `ClientError.Error` implements the `error` interface; `ClientError.Code` and `ClientError.IsRetryable` serve log classification and retry decisions; `ClientError.Unwrap` exposes the underlying cause; `ClientError.WithType` returns a copy with the type rewritten, leaving the original error untouched.
+All five methods are defined on the `*ClientError` pointer receiver. `ClientError.Error` implements the `error` interface; `ClientError.Code` and `ClientError.IsRetryable` serve log classification and retry decisions; `ClientError.Unwrap` exposes the underlying cause; `ClientError.WithType` returns a copy with the type rewritten.
 
 ### Error() Formatting
 
@@ -66,11 +68,11 @@ All five methods are defined on the `*ClientError` pointer receiver: `ClientErro
 - Has Cause: appends `": " + Cause.Error()`
 - Has Attempts (>0): appends `" (attempt N)"`
 
-The URL is automatically sanitized via `SanitizeURL` (credentials removed) before output. Errors produced by the engine classification path are pre-sanitized (`urlSanitized=true`), skipping the redundant url.Parse call to avoid allocations.
+The URL is sanitized via `SanitizeURL` (credentials removed) before output. Errors produced by the engine classification path are pre-sanitized (`urlSanitized=true`), so the redundant url.Parse call is skipped and no allocation occurs per log output.
 
 ### Code() Error Codes
 
-`Code()` returns a short string identifying the error type, convenient for log classification and monitoring alerts:
+`Code()` returns a short string identifying the error type, used for log classification and monitoring alerts:
 
 | ErrorType | Code() return value |
 |-----------|---------------|
@@ -97,10 +99,10 @@ if errors.As(err, &clientErr) {
 
 ## IsRetryable Decision Logic
 
-`IsRetryable()` is the core decision method for HTTPC's retry mechanism. Decision flow:
+`IsRetryable()` decides whether a single error is retryable: it checks context errors first, then dispatches by `ErrorType`. The table below is the complete rule set; for the retry strategy as a whole, see [Retry and Fault Tolerance](../../guides/retry-fault-tolerance).
 
-1. **Check context errors first**: if Cause is `context.Canceled` or `context.DeadlineExceeded`, returns false immediately (never retried)
-2. **Dispatch by ErrorType**:
+1. **Context errors first**: if Cause is `context.Canceled` or `context.DeadlineExceeded`, return false immediately and never retry.
+2. **Dispatch by ErrorType**: see the table.
 
 | ErrorType | Retryable | Decision logic |
 |-----------|:----------:|----------|
@@ -108,14 +110,14 @@ if errors.As(err, &clientErr) {
 | `ErrorTypeTimeout` | Yes | All transport-layer timeouts are retryable |
 | `ErrorTypeTransport` | Yes | HTTP transport-layer errors |
 | `ErrorTypeResponseRead` | Conditional | Only read operations (`Op == "read"` or `"readfrom"`) are retryable; write operations are not |
-| `ErrorTypeDNS` | Conditional | When Cause is `*net.DNSError`, retries only if `IsTemporary` or `IsTimeout` is true |
+| `ErrorTypeDNS` | Conditional | When Cause is `*net.DNSError`, retry only if `IsTemporary` or `IsTimeout` is true |
 | `ErrorTypeHTTP` | Conditional | Retryable when StatusCode hits `retryableStatusCodes` (408/429/500/502/503/504) |
-| `ErrorTypeContextCanceled` | No | User-initiated cancellation |
-| `ErrorTypeValidation` | No | The request itself is invalid; retrying is pointless |
-| `ErrorTypeTLS` | No | TLS protocol errors usually do not self-heal |
-| `ErrorTypeCertificate` | No | Certificate verification failed; retrying is pointless |
+| `ErrorTypeContextCanceled` | No | Canceled by the caller |
+| `ErrorTypeValidation` | No | The request itself is invalid; retrying cannot help |
+| `ErrorTypeTLS` | No | TLS protocol error; retrying cannot help |
+| `ErrorTypeCertificate` | No | Certificate verification failed; retrying cannot help |
 | `ErrorTypeRetryExhausted` | No | Retries already exhausted |
-| `ErrorTypeUnknown` | No | Unknown error; conservatively not retried |
+| `ErrorTypeUnknown` | No | Unknown error; not retried by default |
 
 ### retryableStatusCodes
 
@@ -130,10 +132,10 @@ var retryableStatusCodes = map[int]bool{
 }
 ```
 
-This is the single source of truth for HTTP-status-code-triggered retries, used by both the retry logic and `IsRetryable()`.
+This is the single source of truth for HTTP-status-code-triggered retries, shared by the retry logic and `IsRetryable()`.
 
 :::tip Subtle distinction among timeout types
-`ErrorTypeTimeout` is retryable, but **timeouts triggered by a context deadline are not retryable** — because `context.DeadlineExceeded` is intercepted at step 1 (returns false). Only transport-layer timeouts (e.g. `net.OpError.Timeout()`) reach step 2 and are deemed retryable. This ensures the user's `WithTimeout` is not breached by retries.
+`ErrorTypeTimeout` is retryable, but **timeouts triggered by a context deadline are not**: `context.DeadlineExceeded` is intercepted at step 1 and returns false. Only transport-layer timeouts (e.g. `net.OpError.Timeout()`) reach step 2 and count as retryable, so a `WithTimeout` deadline is never exceeded by retries.
 :::
 
 ## ErrorType
@@ -193,22 +195,22 @@ if err != nil {
 
 ## URL Sanitization Mechanism
 
-`ClientError.Error()` automatically calls `validation.SanitizeURL` when formatting to remove credentials from the URL (`user:pass@host` -> `***:***@host`), preventing sensitive information from leaking into logs and error messages.
+`ClientError.Error()` calls `validation.SanitizeURL` when formatting to remove credentials from the URL (`user:pass@host` -> `***:***@host`), keeping sensitive data out of logs and error messages.
 
 ```go
 // Original URL: https://admin:secret@api.example.com/data
 // Error() output: GET https://***:***@api.example.com/data: ...
 ```
 
-The engine classification path (`classifyErrorWithSanitizedURL`) performs sanitization at first classification and sets `urlSanitized=true`; subsequent `Error()` calls skip the redundant url.Parse to avoid allocations on every log output.
+The engine classification path (`classifyErrorWithSanitizedURL`) sanitizes at first classification and sets `urlSanitized=true`, so later `Error()` calls skip the redundant url.Parse and allocate nothing per log output.
 
 :::tip Error sanitization in callbacks
-In callbacks for middleware such as `MetricsMiddleware` and `LoggingMiddleware`, HTTPC additionally checks error messages of non-ClientError errors, replacing the original URL with a sanitized version to ensure callbacks never leak credentials.
+In callbacks of middleware such as `MetricsMiddleware` and `LoggingMiddleware`, HTTPC additionally inspects the messages of non-`ClientError` errors and replaces any original URL with a sanitized version, so callbacks do not leak credentials.
 :::
 
 ## Error Classification Flow
 
-`classifyError` is the core function that maps an underlying `error` to a `*ClientError`, checking layer by layer in this order:
+`classifyError` maps an underlying `error` to a `*ClientError`, checking layer by layer in this order:
 
 1. **Context errors**: `context.Canceled` -> `ErrorTypeContextCanceled`; `context.DeadlineExceeded` -> `ErrorTypeTimeout`
 2. **Connection-pool exhaustion**: `connection.ErrPoolExhausted` -> `ErrorTypeNetwork`
@@ -226,11 +228,11 @@ In callbacks for middleware such as `MetricsMiddleware` and `LoggingMiddleware`,
 | Variable | Error message | Trigger condition |
 |------|----------|----------|
 | `ErrNilConfig` | `"config cannot be nil"` | nil Config passed to `New`/`ValidateConfig` |
-| `ErrInvalidTimeout` | `"invalid timeout"` | Timeout value is negative or exceeds the 30-minute cap |
+| `ErrInvalidTimeout` | `"invalid timeout"` | Timeout value is 0, negative, or above the 30-minute cap (`WithTimeout`); for no timeout use `WithNoTimeout` |
 | `ErrInvalidRetry` | `"invalid retry configuration"` | MaxRetries outside 0-10, BackoffFactor outside 1.0-10.0 |
 | `ErrInvalidConnection` | `"invalid connection configuration"` | MaxIdleConns/MaxConnsPerHost out of range, malformed ProxyURL |
-| `ErrInvalidSecurity` | `"invalid security configuration"` | MaxResponseBodySize outside the 0-1GB range |
-| `ErrInvalidMiddleware` | `"invalid middleware configuration"` | MaxRedirects outside 0-50, UserAgent too long or contains control characters |
+| `ErrInvalidSecurity` | `"invalid security configuration"` | A body-size cap is out of range, a TLS version is invalid or min exceeds max, `SSRFExemptCIDRs` holds an invalid CIDR, a `SensitiveHeaders` key is invalid, or `TLSFingerprint` is unknown or combined with `TLSConfig` |
+| `ErrInvalidMiddleware` | `"invalid middleware configuration"` | `Defaults.UserAgent` exceeds 512 characters or contains control characters |
 | `ErrInvalidHeader` | `"invalid header"` | Header key-value contains control characters or exceeds the size limit |
 
 ### Request and Response Errors
@@ -241,16 +243,16 @@ In callbacks for middleware such as `MetricsMiddleware` and `LoggingMiddleware`,
 | `ErrFileExists` | `"file already exists"` | File exists and Overwrite=false and ResumeDownload=false |
 | `ErrResponseBodyEmpty` | `"response body is empty"` | Calling Unmarshal or similar parsing methods on an empty body |
 | `ErrResponseBodyTooLarge` | `"response body too large"` | Response body exceeds MaxResponseBodySize |
-| `ErrInvalidMaxRedirects` | `"invalid max redirects"` | [`WithMaxRedirects`](../core/options#withmaxredirects) passed a negative value or one exceeding 50 |
+| `ErrInvalidMaxRedirects` | `"invalid max redirects"` | [`WithMaxRedirects`](../core/options#withmaxredirects) passed a negative value or one exceeding 50, or `Security.MaxRedirects` outside 0-50 |
 | `ErrInvalidCredentials` | `"invalid credentials"` | [`WithBasicAuth`](../core/options#withbasicauth)/[`WithBearerToken`](../core/options#withbearertoken) credentials empty, oversized, or containing invalid characters |
-| `ErrStreamBodyRequiresDownload` | `"WithStreamBody requires Download; standard request methods buffer the response body"` | [`WithStreamBody`](../core/options#withstreambody)(true) combined with the standard request methods (Get/Post/.../Request) — streaming only takes effect on the `Download` path; every other path rejects the request instead of silently returning an empty body |
+| `ErrStreamBodyRequiresDownload` | `"WithStreamBody requires Download; standard request methods buffer the response body"` | [`WithStreamBody`](../core/options#withstreambody)(true) combined with the standard request methods (Get/Post/.../Request); streaming works only on the `Download` path |
 
 ### Download and Proxy Errors
 
 | Variable | Error message | Trigger condition |
 |------|----------|----------|
-| `ErrDownloadInProgress` | `"download already in progress for this file path"` | A download targeting the same file path is already running in this process — two concurrent downloads to one destination would corrupt each other's writes, so the second caller fails fast instead of blocking; retry once the first download finishes. The mutex is in-process only; coordinating downloads across separate processes is the caller's responsibility |
-| `ErrProxyConnectionFailed` | `"proxy connection failed"` | A configured proxy could not be dialed (dial failure, invalid address, refused connection, etc.). Wrapped alongside the underlying cause in the error chain and detectable with `errors.Is(err, httpc.ErrProxyConnectionFailed)`; the retry engine also uses it to decide whether to retry with the next proxy in the pool |
+| `ErrDownloadInProgress` | `"download already in progress for this file path"` | A download to the same file path is already running in this process; the second caller fails immediately instead of blocking, and can retry once the first download finishes. The mutex is in-process only; cross-process coordination is the caller's responsibility |
+| `ErrProxyConnectionFailed` | `"proxy connection failed"` | A configured proxy could not be dialed (dial failure, invalid address, refused connection, etc.); wrapped with the underlying cause in the error chain and detectable via `errors.Is`. The retry engine uses it to move to the next proxy |
 
 ### Client Errors
 
@@ -267,7 +269,7 @@ In callbacks for middleware such as `MetricsMiddleware` and `LoggingMiddleware`,
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-Redirects the output target of security warnings (default `os.Stderr`); defined in `warnings.go`. Passing `io.Discard` suppresses the warnings entirely. Test environments are detected by the executable file name (`.test` suffix) and the `GO_TEST`/`GOTEST` environment variables.
+Redirects the output target of security warnings (default `os.Stderr`); defined in `warnings.go`. Passing `io.Discard` suppresses all warnings. A test environment is detected from the executable name (`.test` suffix) and the `GO_TEST`/`GOTEST` environment variables.
 
 Two categories of dangerous configuration trigger warnings in **non-test environments**, each printed at most once per process (`sync.Once`):
 
@@ -285,7 +287,7 @@ httpc.SetSecurityWarnOutput(log.Writer())
 ```
 
 :::warning Don't overuse suppression
-`SetSecurityWarnOutput(io.Discard)` silently swallows security warnings. Use it only after fully auditing your configuration (e.g. confirming that `TestingConfig` is only used in test binaries), and never to mask warnings in a production deployment. For the complete list of security practices, see the [Security Overview](../../security/).
+`SetSecurityWarnOutput(io.Discard)` silently swallows security warnings. Use it only after fully auditing the configuration (e.g. confirming that `TestingConfig` is used only in test binaries); do not use it to mask warnings in a production deployment. For the complete list of security practices, see the [Security Overview](../../security/).
 :::
 
 ## Practical Matching Patterns
@@ -342,9 +344,9 @@ if errors.As(err, &clientErr) {
 ```
 
 :::tip Choosing among the three matching styles
-- `errors.As`: when you need to access ClientError's structured fields (Type/Code/URL/Attempts, etc.)
-- `errors.Is`: to match sentinel errors (config/file errors like ErrClientClosed)
-- `errors.Unwrap`: when you need to reach the bottom-level net/error for system-level diagnostics
+- `errors.As`: to access structured `ClientError` fields (Type/Code/URL/Attempts, etc.).
+- `errors.Is`: to match sentinel errors (config and file errors such as `ErrClientClosed`).
+- `errors.Unwrap`: to reach the bottom-level net/error for system-level diagnostics.
 :::
 
 ## See Also

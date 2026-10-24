@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Lifecycle"
 title: "Processor Lifecycle - CyberGo JSON | Close & GetStats"
-description: "CyberGo JSON Processor lifecycle: Close, IsClosed, ClearCache/WarmupCache, GetStats, GetHealthStatus and ShutdownGlobalProcessor for safe shutdown."
+description: "Processor lifecycle: Close drains in-flight work then releases resources, IsClosed, ClearCache, GetStats and GetHealthStatus gated by EnableMetrics."
 sidebar_position: 110
 ---
 
 # Lifecycle & Statistics
 
-The Processor provides complete lifecycle management, cache control, and health monitoring.
+Lifecycle methods cover creating, observing and releasing a processor instance: `Close` drains in-flight operations before releasing resources, and `GetStats` / `GetHealthStatus` expose runtime metrics.
 
 ## Lifecycle
 
@@ -15,7 +15,7 @@ The Processor provides complete lifecycle management, cache control, and health 
 
 Signature: `func (p *Processor) Close() error`
 
-Closes the processor and releases resources (cache, security validators, hook references). Call this method after using the Processor.
+Closes the processor and releases resources (cache, security validator, hook references). Call it when you are done with the Processor.
 
 ```go
 processor, _ := json.New(json.DefaultConfig())
@@ -24,9 +24,9 @@ defer processor.Close()
 
 :::tip Close semantics
 - **Idempotent and thread-safe**: repeated `Close` calls take effect only once.
-- **Drains in-flight operations first**: `Close` waits for ongoing operations to finish (with a timeout cap); after the timeout, the processor rejects new operations (`IsClosed()` returns `true`) but resources stay intact so in-flight operations run to completion undisturbed.
-- After closing, all operations return `ErrProcessorClosed`.
-- `Close` does **not** clean up global caches shared across instances (path-type cache, struct encoder cache); for full cleanup before process exit, use [`ShutdownGlobalProcessor`](#global-processor-management).
+- **Drains in-flight operations first**: `Close` waits for running operations to finish, with a timeout cap. After the timeout the processor rejects new operations (`IsClosed()` returns `true`), but resources stay intact so in-flight operations finish undisturbed; they are released once all of them complete.
+- After closing, every operation returns `ErrProcessorClosed`.
+- `Close` does **not** clean up global caches shared across instances (path-type cache, struct encoder cache). For full cleanup before process exit use [`ShutdownGlobalProcessor`](#global-processor-management).
 :::
 
 ### IsClosed
@@ -47,22 +47,17 @@ if processor.IsClosed() {
 
 Signature: `func (p *Processor) ClearCache()`
 
-Clears the processor's internal cache.
+Clears the processor's result cache and parse cache. Use it after the data source changed, when memory use is high, or when you need a forced refresh.
 
 ```go
 processor.ClearCache()
 ```
 
-Useful for:
-- The data source has changed
-- Memory usage is too high
-- A forced refresh is needed
-
 ### WarmupCache
 
 Signature: `func (p *Processor) WarmupCache(jsonStr string, paths []string, cfg ...Config) (*WarmupResult, error)`
 
-Warms up the cache to improve subsequent operation performance. Requires the processor's cache to be enabled (it is by default); otherwise returns an error. For full examples and the `WarmupResult` fields see [Batch Operations](./batch#cache-warm-up-warmupcache).
+Pre-evaluates hot paths so later first reads hit the cache. Requires the processor's cache to be enabled (it is by default); otherwise returns an error. For full examples and the `WarmupResult` fields see [Batch Operations](./batch#cache-warm-up-warmupcache).
 
 ```go
 paths := []string{"user.name", "user.email", "items[*].id"}
@@ -79,7 +74,7 @@ fmt.Printf("Successfully warmed up %d paths\n", result.Successful)
 
 Signature: `func (p *Processor) GetStats() Stats`
 
-Gets the processor's statistics.
+Returns the processor's statistics: live cache figures (`CacheSize` / `CacheMemory` / hit counters), configured caps (`MaxCacheSize` / `CacheTTL`), and the operation and error counters.
 
 ```go
 stats := processor.GetStats()
@@ -123,10 +118,10 @@ type Stats struct {
 
 **Reading the fields**:
 
-- `OperationCount` / `ErrorCount`: accumulated by read/write operations (`Get` / `GetMultiple` / `Set` / `SetMultiple` / `Delete`, etc.); lifecycle rejections (processor closed, concurrency limit exceeded) are not counted as errors.
-- `HitRatio`: in the 0–1 range (0.85 means 85%); no hit data when `CacheEnabled=false`.
+- `OperationCount` / `ErrorCount`: incremented on every `Get`, `GetMultiple`, `Set`, `SetMultiple` and `Delete` call, **regardless of `EnableMetrics`** (that switch only gates latency and concurrency metric collection). Lifecycle rejections (processor closed, concurrency limit exceeded) are not counted as errors.
+- `HitRatio`: 0–1 range (0.85 means 85%); no hit data when `CacheEnabled=false`.
 - `CacheSize` / `CacheMemory` are live cache figures; `MaxCacheSize` / `CacheTTL` are configured caps (see [Config](../config)).
-- `IsClosed`: consistent with [`IsClosed()`](#isclosed); useful in monitoring to detect unexpectedly closed processors.
+- `IsClosed`: consistent with [`IsClosed()`](#isclosed); useful in monitoring to spot a processor that was closed unexpectedly.
 
 ## Health Check
 
@@ -134,7 +129,7 @@ type Stats struct {
 
 Signature: `func (p *Processor) GetHealthStatus() HealthStatus`
 
-Gets the processor's health status.
+Returns the processor's health status: `Checks` holds each individual check, and any unhealthy entry makes the overall `Healthy` false.
 
 ```go
 status := processor.GetHealthStatus()
@@ -180,7 +175,16 @@ type CheckResult struct {
 | `Message` | `string` | Status message (failure reason, etc.) |
 
 :::tip Interpretation
-`Checks` maps each individual check (metrics collection, etc.); if any check is unhealthy, `Healthy=false`. A nil processor or an uninitialized metrics collector returns `Healthy=false` directly, with the reason given in `Checks` (e.g. `processor is nil`). The metrics collector is created only when `EnableMetrics=true` — without it, `GetHealthStatus` returns `Healthy=false` and notes `Metrics collector not initialized` in `Checks`; the `Config.EnableHealthCheck` field is deprecated and not read, so it does not affect this behavior (see [Config](../config#input-and-observability-toggles)).
+`Checks` maps each individual check, and any unhealthy entry makes `Healthy=false`. A nil processor returns `Healthy=false` with `processor: processor is nil` in `Checks`.
+
+`EnableMetrics` decides whether the metrics collector exists, which in turn decides the health result:
+
+| `EnableMetrics` | Metrics collector | `GetHealthStatus()` |
+|:---:|:---:|------|
+| `false` (default) | Not created | `Healthy=false`, `Checks["metrics"].Message` is `Metrics collector not initialized` |
+| `true` | Created | Computed from the `metrics`, `memory` and `error_rate` checks; any unhealthy one makes `Healthy=false` |
+
+`Healthy=false` does not mean the processor is unusable. With `EnableMetrics` off, `GetStats()` still accumulates `OperationCount` / `ErrorCount`, and reads and writes work normally. Set `EnableMetrics=true` at construction when you need a usable health signal. `Config.EnableHealthCheck` is deprecated and never read, so it does not affect this behavior (see [Config](../config#input-and-observability-toggles)).
 :::
 
 ## Extension Hooks
@@ -196,11 +200,7 @@ processor.AddHook(&LoggingHook{})
 processor.AddHook(json.TimingHook(&MetricsRecorder{}))
 ```
 
-Hooks are called before and after each operation, useful for:
-- Logging
-- Performance monitoring
-- Metrics collection
-- Audit trailing
+Hooks run before and after each operation: for logging, performance monitoring, metrics collection and audit trails.
 
 ### SetLogger
 
@@ -248,7 +248,7 @@ defer processor.Close()  // Ensure resources are released
 // Use processor...
 ```
 
-### Performance Optimization
+### Statistics and Warm-Up
 
 ```go
 // Warm up frequently used paths
@@ -267,7 +267,14 @@ if stats.HitRatio < 0.5 {
 
 ### Monitoring Integration
 
+The health check below requires the processor to be created with `EnableMetrics=true`; otherwise `status.Healthy` is always `false`:
+
 ```go
+cfg := json.DefaultConfig()
+cfg.EnableMetrics = true
+processor, _ := json.New(cfg)
+defer processor.Close()
+
 // Periodic health checks
 go func() {
     ticker := time.NewTicker(30 * time.Second)

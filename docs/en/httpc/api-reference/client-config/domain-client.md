@@ -7,7 +7,7 @@ sidebar_position: 20
 
 # Domain Client
 
-The domain client (`DomainClient`) provides request management for a specific domain, automatically maintaining cookies and headers. It solves the pain point of manually passing auth headers and tracking cookies across multiple requests with a plain `Client` — session state is injected into every request automatically, and response cookies are captured automatically.
+The domain client (`DomainClient`) manages requests for a specific domain and maintains session cookies and session headers. A plain `Client` requires auth headers to be passed and cookies to be tracked manually across requests; `DomainClient` moves that state into a session: it injects session state before each request and captures cookies from each response.
 
 ```text
 DomainClient architecture
@@ -46,7 +46,7 @@ type DomainClienter interface {
 }
 ```
 
-`DomainClienter` implements both the `Client` interface (with `Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`/`Download`/`Close`) and the session-management methods. Using the interface type rather than the concrete type is recommended for easier testing and implementation swapping.
+`DomainClienter` implements both the `Client` interface (with `Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`/`Download`/`Close`) and the session-management methods. Using the interface type rather than the concrete type makes testing and implementation swapping easier.
 
 ### Complete Method Table
 
@@ -65,7 +65,7 @@ type DomainClienter interface {
 | `Download` | `(ctx, path string, cfg *DownloadConfig, opts ...RequestOption) (*DownloadResult, error)` | File download |
 | `Close` | `() error` | Close the client and release resources |
 
-The concrete type `*DomainClient` provides implementations for all of the above: `DomainClient.Get`, `DomainClient.Post`, `DomainClient.Put`, `DomainClient.Patch`, `DomainClient.Delete`, `DomainClient.Head`, `DomainClient.Options`, `DomainClient.Request`, `DomainClient.Download`, and `DomainClient.Close` (the last two are detailed in their own sections below).
+The concrete type `*DomainClient` implements every method in the table above, one for one with the interface signatures. `Download` and `Close` are detailed in their own sections below.
 
 #### URL Access Methods
 
@@ -102,7 +102,7 @@ On the interface these are defined as `DomainClienter.SetHeader`, `DomainCliente
 | `GetCookies` | `() []*http.Cookie` | Get a copy of all cookies |
 | `GetCookie` | `(name string) *http.Cookie` | Get a copy of a cookie by name |
 
-The corresponding interface definitions are `DomainClienter.SetCookie`, `DomainClienter.SetCookies`, `DomainClienter.DeleteCookie`, `DomainClienter.ClearCookies`, `DomainClienter.GetCookies`, and `DomainClienter.GetCookie`, likewise delegating to the `SessionManager`.
+The corresponding methods are declared on `DomainClienter` (`SetCookie`, `SetCookies`, `DeleteCookie`, `ClearCookies`, `GetCookies`, `GetCookie`), likewise delegating to the `SessionManager`.
 
 ## NewDomain
 
@@ -110,7 +110,7 @@ The corresponding interface definitions are `DomainClienter.SetCookie`, `DomainC
 func NewDomain(baseURL string, cfg Config) (DomainClienter, error)
 ```
 
-Creates a domain-scoped client. Cookies are automatically enabled. Pass a `Config` value, or use `NewDomainDefault(baseURL)` as a zero-argument shortcut.
+Creates a domain-scoped client. The client embeds a `SessionManager` that stores and replays session cookies independently. Pass a `Config` value, or use `NewDomainDefault(baseURL)` as a zero-argument shortcut.
 
 ```go
 // Using default config (or call NewDomainDefault for the same effect)
@@ -135,7 +135,7 @@ defer dc.Close()
 | Parameter | Type | Description |
 |------|------|------|
 | `baseURL` | `string` | Base URL (must include scheme and host) |
-| `cfg` | `Config` | Configuration value (recommended: obtain via `DefaultConfig()` or a preset function) |
+| `cfg` | `Config` | Configuration value (use `DefaultConfig()` or a preset function) |
 
 **Returns:** `DomainClienter` interface (not the concrete `*DomainClient` type).
 
@@ -143,11 +143,17 @@ defer dc.Close()
 
 | Condition | Error message |
 |------|----------|
+| `baseURL` cannot be parsed | `invalid base URL: ...` |
 | `baseURL` missing scheme or host | `base URL must include scheme and host` |
-| Configuration validation failure | `invalid configuration: ...` |
+| Configuration validation failure (including an invalid `SSRFExemptCIDRs` CIDR) | `invalid configuration: ...` |
+| Underlying client / session creation failure | `failed to create domain client: ...` / `failed to create session: ...` |
 
-:::tip Cookies are auto-enabled
-`NewDomain` internally forces `cfg.Connection.EnableCookies = true`, regardless of whether your passed-in `cfg` enables cookies. This is because the core value of the domain client is maintaining a cookie session across requests.
+:::tip Cookie sessions live in the SessionManager
+The DomainClient created by `NewDomain` embeds a `SessionManager`: session headers and cookies are injected before each request, and `Set-Cookie` is captured from each response. This session store is independent of `Connection.EnableCookies`; `NewDomain` does not modify `cfg.Connection.EnableCookies`.
+:::
+
+:::tip Configuration is frozen at construction
+As with `New()`, `NewDomain` deep-copies the passed Config, so modifying the original `cfg` after construction does not affect that client. `DomainClient` exposes no method for changing configuration at runtime; use request options such as [`WithTimeout`](../core/options#withtimeout) for per-request control.
 :::
 
 ## NewDomainDefault
@@ -168,7 +174,7 @@ defer dc.Close()
 
 ## HTTP Methods
 
-All methods accept relative paths or absolute URLs:
+All methods accept relative paths or absolute URLs. The convenience methods use `context.Background()` internally; use [`Request`](#request) with an explicit ctx when timeout or cancellation control is needed:
 
 ```go
 // Relative path: auto-concatenated with baseURL
@@ -220,8 +226,11 @@ buildURL(pathStr):
 | `users` | `https://api.example.com/v1/users` |
 | `/users/` | `https://api.example.com/v1/users/` (trailing slash preserved) |
 | `/users?page=1` | `https://api.example.com/v1/users?page=1` |
+| `?page=2` | `https://api.example.com/v1?page=2` (query only, empty path) |
 | `search?q=go` | `https://api.example.com/v1/search?q=go` |
 | `https://other.com/api` | `https://other.com/api` (absolute URL used directly) |
+
+If `baseURL` itself ends with `/` (e.g. `https://api.example.com/v1/`), relative paths are joined and normalized by `path.Join` (`users` → `.../v1/users`); when the request path is empty or contains only query parameters, the base trailing slash is kept (`""` → `.../v1/`, `?page=2` → `.../v1/?page=2`).
 
 ### Query-Parameter Merge
 
@@ -246,7 +255,7 @@ Result: no -> returns error "path escapes base URL scope"
 ```
 
 :::warning Absolute-URL recognition
-Only paths prefixed with `http://` or `https://` are recognized as absolute URLs; other protocols (e.g. `ftp://`) are not recognized as absolute, are joined as relative paths, and usually cause the request to fail. No scope check is performed when the base path is empty or `/`.
+Only paths prefixed with `http://` or `https://` are recognized as absolute URLs. Other protocols (e.g. `ftp://`) are not recognized as absolute, are joined as relative paths, and the request therefore fails. No scope check is performed when the base path is empty or `/`.
 :::
 
 ## Automatic Session Management
@@ -289,12 +298,12 @@ dc.GetHeaders()          // -> map[string]string copy
 ```
 
 :::tip Thread safety
-`SessionManager` is protected internally by a `sync.RWMutex`; `SetHeader`/`SetCookie`/`GetCookie` and similar methods can be called concurrently safely. `prepareOptions` uses a read-then-write non-atomic sequence — the session state is designed for eventual consistency. Concurrent requests may interleave during `prepareOptions`, but each request captures a consistent snapshot at its `prepareOptions` moment.
+`SessionManager` is protected internally by a `sync.RWMutex`; `SetHeader`/`SetCookie`/`GetCookie` and similar methods can be called concurrently. `prepareOptions` uses a read-then-write non-atomic sequence: the session state is designed for eventual consistency, so concurrent requests interleave during `prepareOptions`, but each request captures a consistent snapshot at its `prepareOptions` moment.
 :::
 
 ## Double-Option-Execution Caveat
 
-`prepareSessionOptions` applies the user-supplied `RequestOption` **twice** before the request is sent: once in `captureFromOptions` to capture session state, and once in `client.Request` for the actual request.
+`prepareSessionOptions` applies the caller-supplied `RequestOption` **twice** before the request is sent: once in `captureFromOptions` to capture session state, and once in `client.Request` for the actual request.
 
 ```text
 prepareSessionOptions(options):
@@ -322,7 +331,7 @@ If you need side-effect options, use the underlying `Client` to send the request
 func (dc *DomainClient) Download(ctx context.Context, path string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-Downloads a file to `cfg.FilePath`; `path` is resolved relative to `baseURL`. The signature matches the package-level `Download` and `Client.Download` — `Download` is the single canonical download entry point across all three. `cfg` must not be nil, and `cfg.FilePath` must be set (otherwise `ErrEmptyFilePath` is returned).
+Downloads a file to `cfg.FilePath`; `path` is resolved relative to `baseURL`. The signature matches the package-level `Download` and `Client.Download`: `Download` is the single canonical download entry point across all three. `cfg` must not be nil, and `cfg.FilePath` must be set (otherwise `ErrEmptyFilePath` is returned).
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -351,7 +360,7 @@ Interface hierarchy:
                 └── *DomainClient          <- concrete implementation
 ```
 
-`DomainClienter` embeds `Client`, so any function that accepts a `Client` parameter also accepts a `DomainClienter`. This lets `DomainClient` be used seamlessly wherever a `Client` is expected, while providing additional session-management capabilities.
+`DomainClienter` embeds `Client`, so any function that accepts a `Client` parameter also accepts a `DomainClienter`. `DomainClient` can therefore be used wherever a `Client` is expected, while providing additional session-management capabilities.
 
 ## Complete REST API Client Wrapper Example
 

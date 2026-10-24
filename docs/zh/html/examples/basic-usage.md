@@ -1,13 +1,13 @@
 ---
 sidebar_label: "基础用法"
-title: "基础用法 - CyberGo html | 典型场景代码速查"
-description: "CyberGo html 基础用法场景代码速查页：正文提取与纯文本输出、文件读取、Markdown 与 JSON 转换、链接分组、媒体信息、批量并发与超时控制六类典型场景，每类附完整可编译的最小示例与详解入口，新手可直接抄代码上手并按需深入学习。"
+title: "基础用法 - CyberGo html | 典型场景代码示例"
+description: "CyberGo html 基础用法示例：正文与纯文本提取、文件读取、Markdown 与 JSON 输出、链接分组、媒体信息、批量并发与超时控制六类常见场景，每类给出可独立编译的最小示例与预期输出注释，原理与进阶配置见各节末尾的「深入」链接，便于按需深读。"
 sidebar_position: 10
 ---
 
 # 基础用法
 
-本页是**按场景抄代码**的速查索引：每个场景只给最小可运行骨架，复制即可上手；原理讲解与进阶配置请沿各节末尾的「深入」链接阅读对应指南。
+本页按场景给出最小可运行示例；原理与进阶配置见各节「深入」链接。
 
 | 场景 | 核心调用 | 详解页 |
 |------|----------|--------|
@@ -20,7 +20,7 @@ sidebar_position: 10
 
 ## 正文与纯文本
 
-`Extract` 一次取回完整 `Result`；只要纯文本时用近亲函数 `ExtractText`，直接返回 `string`：
+`Extract` 一次取回完整 `Result`；只要纯文本时用 `ExtractText`，它直接返回 `string`：
 
 ```go
 package main
@@ -47,7 +47,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(len(text) > 0) // 输出：true（非空）
+	fmt.Println(len(text) > 0) // 输出：true
 }
 ```
 
@@ -55,7 +55,7 @@ func main() {
 
 ## 从文件提取
 
-处理磁盘文件用 `ExtractFromFile`，内置路径穿越防护与文件大小限制：
+磁盘文件用 `ExtractFromFile` 读取，它内置路径穿越防护与文件大小限制：
 
 ```go
 package main
@@ -72,7 +72,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.Title) // 输出：article.html 的 <title> 内容
+	fmt.Println(result.Title) // 输出：article.html 中 <title> 的内容
 }
 ```
 
@@ -80,7 +80,7 @@ func main() {
 
 ## Markdown / JSON 输出
 
-内容迁移转 Markdown，程序间传输转 JSON：
+内容迁移用 Markdown，程序间传输用 JSON：
 
 ```go
 package main
@@ -94,19 +94,22 @@ import (
 
 func main() {
 	data := []byte(`<article><h1>Go 入门指南</h1><p>Go 是一门编译语言。</p><img src="gopher.png" alt="Gopher" /><a href="https://go.dev">Go 官网</a></article>`)
-	// 转 Markdown：图片与链接自动变为 ![]() 与 []() 语法
+
+	// 转 Markdown：图片与链接变为 ![]() 与 []() 语法
 	md, err := html.ExtractToMarkdown(data)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(md)
 	// 输出：Go 入门指南\n\nGo 是一门编译语言。\n\n![Gopher](gopher.png)\n[Go 官网](https://go.dev)
-	jsonBytes, err := html.ExtractToJSON(data) // 转 JSON：保留全部元数据字段
+
+	// 转 JSON：保留全部元数据字段
+	jsonBytes, err := html.ExtractToJSON(data)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("JSON 字节数：", len(jsonBytes))
-	// JSON 字节数随内容而定（含 text/title/images/links 等字段）
+	// 输出：一个数值，大小随内容而定（JSON 含 text/title/images/links 等字段）
 }
 ```
 
@@ -114,7 +117,7 @@ func main() {
 
 ## 链接提取
 
-独立于正文的链接提取 API，还能按类型分组：
+`ExtractAllLinks` 独立于正文提取，按类型给出页面引用的全部资源：
 
 ```go
 package main
@@ -137,9 +140,10 @@ func main() {
 		fmt.Printf("[%s] %s - %s\n", link.Type, link.Title, link.URL)
 	}
 	// 输出：[link] Go 官网 - https://go.dev
+
 	groups := html.GroupLinksByType(links) // 按类型分组
 	fmt.Println("link 组：", len(groups["link"]))
-	// 输出：link 组：1
+	// 输出：link 组： 1
 }
 ```
 
@@ -164,6 +168,7 @@ func main() {
 <video poster="cover.jpg"><source src="https://example.com/video.mp4" type="video/mp4"></video>
 <audio><source src="https://example.com/audio.mp3" type="audio/mpeg"></audio>
 </article></body></html>`)
+
 	result, err := html.Extract(data)
 	if err != nil {
 		log.Fatal(err)
@@ -184,7 +189,7 @@ func main() {
 
 ## 批量、超时与 Processor 复用
 
-服务端典型姿势：创建可全局复用的 `Processor`，批量并发提取，并用 context 控制单批时间：
+服务端常用写法：创建一个全局复用的 `Processor`，批量并发提取，用 context 限定单批时间。
 
 ```go
 package main
@@ -207,11 +212,12 @@ func main() {
 		log.Fatal(err)
 	}
 	defer p.Close()
+
 	pages := [][]byte{
 		[]byte(`<html><body><article><h1>页面一</h1></article></body></html>`),
 		[]byte(`<html><body><article><h1>页面二</h1></article></body></html>`),
 	}
-	batch := p.ExtractBatchWithContext(ctx, pages) // context 到期的未完成项计入 Cancelled
+	batch := p.ExtractBatchWithContext(ctx, pages) // context 到期时未开始的项计入 Cancelled
 	fmt.Printf("成功：%d，失败：%d\n", batch.Success, batch.Failed)
 	// 输出：成功：2，失败：0
 }

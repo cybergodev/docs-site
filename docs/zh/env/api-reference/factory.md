@@ -7,7 +7,7 @@ sidebar_position: 8
 
 # ComponentFactory API
 
-`ComponentFactory` 创建和管理 Loader 与 Parser 共享的组件，提供清晰的生命周期管理。
+`ComponentFactory` 创建并持有 Loader 与 Parser 共享的组件（验证器、审计器、展开器），并管理它们的生命周期。
 
 ## 类型定义
 
@@ -22,7 +22,7 @@ type ComponentFactory struct {
 - 管理组件生命周期
 - 支持自定义解析器访问内部组件
 
-**线程安全：** ComponentFactory 的所有方法都是线程安全的。
+**线程安全：** 所有方法线程安全。
 
 ---
 
@@ -44,7 +44,7 @@ type ComponentFactory struct {
 func (f *ComponentFactory) Validator() Validator
 ```
 
-返回验证器组件，用于键名和值的验证。
+返回验证器组件，用于键名和值的验证。nil 接收者返回 nil。
 
 ```go
 // 在自定义解析器中使用
@@ -100,12 +100,15 @@ expanded, err := expander.Expand("${BASE_URL}/api")
 func (f *ComponentFactory) Close() error
 ```
 
-释放工厂持有的资源。关闭后不应再使用工厂及通过它创建的组件。
+释放工厂持有的资源。调用后不得再使用工厂，也不得再使用由它创建的组件。
+
+**返回：**
+- `error` - 审计器 `Close()` 的错误；已关闭或 nil 接收者返回 nil
 
 **行为：**
-- 安全关闭，多次调用返回 nil
-- 释放审计器资源
-- 使用原子操作保证线程安全
+- 幂等，多次调用返回 nil（第二次起不做任何事）
+- 关闭审计器（审计器实现 `io.Closer` 时）
+- 内部用原子操作切换状态，线程安全
 
 ```go
 // 通常由 Loader 自动管理
@@ -121,7 +124,7 @@ defer loader.Close()  // 自动关闭 ComponentFactory
 func (f *ComponentFactory) IsClosed() bool
 ```
 
-检查工厂是否已关闭。
+检查工厂是否已关闭。nil 接收者返回 true。
 
 ```go
 if factory.IsClosed() {
@@ -195,9 +198,10 @@ Validator  Auditor  Expander
 ```
 
 ::: warning 注意
-- 每个 Loader 通常拥有自己的 ComponentFactory
-- 调用 Close() 后，所有通过该工厂创建的组件都不应再使用
-- 工厂是线程安全的，可并发访问
+- 每次 `New(cfg)` 都新建一个 ComponentFactory，由该 Loader 独占并在 `Close()` 时关闭
+- `ComponentConfig.CustomValidator` / `CustomAuditor` / `CustomExpander` 指向的对象会被多个 Loader 共享，实现必须并发安全
+- 调用 Close() 后，所有由该工厂创建的组件都不应再使用
+- 工厂线程安全，可并发访问
 :::
 
 ---
@@ -237,7 +241,7 @@ func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
 创建标准日志格式的审计处理器。
 
 **参数：**
-- `logger` - 标准 log.Logger 实例
+- `logger` - 标准 `log.Logger` 实例。传 nil 时使用默认 logger：输出到 stderr，前缀 `[AUDIT] `，带日期时间（等价 `log.New(os.Stderr, "[AUDIT] ", log.LstdFlags)`）
 
 ```go
 import "log"
@@ -251,7 +255,7 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 [AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env duration=1.23ms
 ```
 
-事件以键值对输出：`action`、`key`（事件无键名时省略）、`success`、`reason`（带引号），以及可选的 `file` 与 `duration`（小于 1ms 以 μs 显示，否则以 ms 显示）；`[AUDIT]` 前缀与时间戳来自传入的 `log.Logger`。
+事件以键值对输出：`action`、`success`、`reason`（带引号），以及可选的 `key`、`file`（带引号）与 `duration`。`key` 在事件无键名时省略。`duration` 仅在大于 0 时输出：小于 1ms 以 μs 显示，否则以 ms 显示（两位小数）。`[AUDIT]` 前缀与时间戳来自传入的 `log.Logger`。
 
 ---
 
@@ -267,7 +271,7 @@ func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 - `ch` - 审计事件通道
 
 ::: warning 通道所有权
-`ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道。调用者必须自行关闭通道以通知接收方结束。此外，当通道缓冲区满时，`Log()` 会阻塞——建议使用带缓冲的通道。
+`ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道。调用者必须自行关闭通道，以通知接收方结束。通道缓冲区满时，`Log()` 会阻塞，建议使用带缓冲的通道。
 :::
 
 ```go
@@ -305,7 +309,7 @@ cfg.AuditHandler = env.NewNopAuditHandler() // 不记录任何日志
 func NewCloseableChannelHandler(bufferSize int) *CloseableChannelHandler
 ```
 
-创建拥有自有缓冲通道的可关闭审计处理器。与 `ChannelAuditHandler` 接受外部通道不同，`CloseableChannelHandler` 创建并拥有自己的缓冲通道。调用 `Close()` 关闭处理器并关闭通道。使用 `Channel()` 接收事件。
+创建拥有自有缓冲通道的可关闭审计处理器。与接受外部通道的 `ChannelAuditHandler` 不同，它自己创建并拥有缓冲通道：`Close()` 关闭处理器与通道，`Channel()` 用于接收事件。
 
 **参数：**
 - `bufferSize` - 缓冲通道大小（负数会被视为 0）
@@ -323,7 +327,7 @@ go func() {
 
 #### CloseableChannelHandler 方法
 
-`CloseableChannelHandler` 实现 `AuditHandler` 接口（`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`），并提供以下特有方法：
+`CloseableChannelHandler` 实现 `AuditHandler` 接口（`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`），另有以下特有方法：
 
 ```go
 func (h *CloseableChannelHandler) Channel() <-chan AuditEvent
@@ -335,11 +339,11 @@ func (h *CloseableChannelHandler) IsClosed() bool
 
 | 方法 | 用途 |
 |------|------|
-| `CloseableChannelHandler.Log` | 发送事件：带缓冲通道满时**非阻塞丢弃**并返回错误；无缓冲（容量 0）时阻塞直至接收就绪或处理器关闭 |
+| `CloseableChannelHandler.Log` | 发送事件。带缓冲通道满时**非阻塞丢弃**并返回错误；无缓冲（容量 0）时阻塞，直至接收就绪或处理器关闭 |
 | `CloseableChannelHandler.Close` | 关闭处理器并关闭自有通道（`range` 消费循环随之退出）；可安全重复调用 |
 | `CloseableChannelHandler.Channel` | 返回内部只读通道，用于消费审计事件 |
 | `CloseableChannelHandler.IsClosed` | 检查处理器是否已关闭（线程安全，可并发调用） |
-| `CloseableChannelHandler.DroppedEvents` | 返回累计丢弃的事件数（满通道丢弃或关闭后的发送尝试）；计数只增不复位 |
+| `CloseableChannelHandler.DroppedEvents` | 返回累计丢弃的事件数（满通道丢弃，以及关闭后的发送尝试）；计数只增不复位 |
 
 ```go
 handler := env.NewCloseableChannelHandler(64)
@@ -387,7 +391,12 @@ func (fs OSFileSystem) Unsetenv(key string) error
 func (fs OSFileSystem) LookupEnv(key string) (string, bool)
 ```
 
-**与标准库的对应：** `OSFileSystem.Open`、`OSFileSystem.OpenFile`、`OSFileSystem.Stat`、`OSFileSystem.MkdirAll`、`OSFileSystem.Remove`、`OSFileSystem.Rename` 分别直通 os 包的同名调用；`OSFileSystem.Getenv`、`OSFileSystem.Setenv`、`OSFileSystem.Unsetenv`、`OSFileSystem.LookupEnv` 直通进程环境变量操作。零值即可使用，且并发安全。
+**与标准库的对应：** 文件操作方法与环境变量方法都直通标准库同名调用。
+
+- `OSFileSystem.Open`、`OSFileSystem.OpenFile`、`OSFileSystem.Stat`、`OSFileSystem.MkdirAll`、`OSFileSystem.Remove`、`OSFileSystem.Rename` 直通 os 包同名函数
+- `OSFileSystem.Getenv`、`OSFileSystem.Setenv`、`OSFileSystem.Unsetenv`、`OSFileSystem.LookupEnv` 直通进程环境变量操作
+
+零值即可使用，并发安全。
 
 ---
 
@@ -397,7 +406,7 @@ func (fs OSFileSystem) LookupEnv(key string) (string, bool)
 var DefaultFileSystem FileSystem = OSFileSystem{}
 ```
 
-全局默认文件系统实例。`DefaultFileSystem` 是包级导出变量，值为 `OSFileSystem{}`，`Config` 经嵌入 `ComponentConfig` 提供的 `FileSystem` 字段未显式设置时即使用它。
+全局默认文件系统实例，是包级导出变量，值为 `OSFileSystem{}`。`Config` 中由 `ComponentConfig` 提供的 `FileSystem` 字段未显式设置时，即使用该实例。
 
 ---
 
@@ -504,7 +513,7 @@ format := env.DetectFormat("config.json")   // FormatJSON
 format := env.DetectFormat("settings.yaml") // FormatYAML
 format := env.DetectFormat("app.yml")       // FormatYAML
 format := env.DetectFormat(".env")          // FormatEnv
-format := env.DetectFormat(".env.local")    // FormatAuto (实际按 .env 处理)
+format := env.DetectFormat(".env.local")    // FormatAuto（加载时按 .env 解析）
 format := env.DetectFormat("unknown.txt")   // FormatAuto
 ```
 
@@ -577,13 +586,13 @@ func RegisterParser(format FileFormat, factory ParserFactory) error
 - `error` - 注册失败时返回错误
 
 **错误情况：**
-- 内置格式（FormatEnv、FormatJSON、FormatYAML）无法被覆盖
+- 内置格式（FormatEnv、FormatJSON、FormatYAML）无法被覆盖；确需覆盖时用 `ForceRegisterParser`
 - 格式已注册
 - `factory` 为 nil
 
 **注意事项：**
-- 必须在调用 `env.New()` 之前注册
-- 建议使用 100+ 的格式值避免与内置格式冲突
+- 必须在调用 `env.New()` 之前注册：注册表是进程级全局，Loader 在创建时对注册表做快照
+- 建议使用 100+ 的格式值，避免与内置格式冲突
 - 工厂函数应返回线程安全的解析器
 
 ```go
@@ -645,17 +654,17 @@ func main() {
 func ForceRegisterParser(format FileFormat, factory ParserFactory) error
 ```
 
-强制注册解析器，允许覆盖内置解析器。
+强制注册解析器，允许覆盖内置解析器，同样在 Loader 创建时被快照。
 
 **参数：**
 - `format` - 文件格式常量
 - `factory` - 解析器工厂函数
 
 **返回：**
-- `error` - 注册失败时返回错误（`factory` 为 nil 时）
+- `error` - `factory` 为 nil 时返回错误，其余情况返回 nil
 
 ::: danger 警告
-谨慎使用。覆盖内置解析器可能引入安全漏洞，如果替换解析器未实现相同的安全检查（键验证、值验证、大小限制等）。
+谨慎使用。替换后的解析器若未实现同等安全检查（键验证、值验证、大小限制等），会引入安全漏洞。
 
 适用于以下高级场景：
 - 为内置解析器添加自定义安全检查
@@ -681,15 +690,15 @@ err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.Compon
 type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error)
 ```
 
-解析器工厂函数签名。
+解析器工厂函数签名。每个 Loader 构造时调用一次，为每种格式各产出一个解析器实例。
 
 **参数：**
-- `cfg` - 配置对象，包含限制和安全设置
-- `factory` - 组件工厂，可获取验证器和审计器
+- `cfg` - 配置对象，包含限制与安全设置
+- `factory` - 组件工厂，可获取验证器与审计器
 
 **返回：**
 - `EnvParser` - 解析器实例
-- `error` - 创建错误
+- `error` - 创建错误；返回错误会中止 Loader 构造
 
 ---
 
@@ -701,7 +710,7 @@ type EnvParser interface {
 }
 ```
 
-解析器必须实现的接口。
+解析器必须实现的接口。返回的键值对会交给 Loader 的验证与写入流程处理。
 
 **参数：**
 - `r` - 文件内容读取器
@@ -732,7 +741,7 @@ JSON 格式解析器，支持：
 - 键值对对象
 - 嵌套结构（扁平化处理）
 - 数字、字符串、布尔值转换
-- 数组（扁平化为 `KEY_0`, `KEY_1`...）
+- 数组（扁平化为 `KEY_0`、`KEY_1`……）
 
 ### YAML Parser
 

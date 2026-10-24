@@ -1,13 +1,13 @@
 ---
 title: "Core Concepts - CyberGo HTTPC | Two-Layer API & Config"
-description: "HTTPC core concepts: two-layer API architecture, core building blocks, Config vs With* options, request lifecycle, domain clients, and ClientError model."
+description: "HTTPC core concepts: two-layer API architecture, building blocks, Config vs With* options, request lifecycle, domain client sessions, and the ClientError model."
 sidebar_label: "Core Concepts"
 sidebar_position: 20
 ---
 
 # Core Concepts
 
-Understanding the following concepts will give you a quick, holistic grasp of HTTPC.
+HTTPC is an HTTP client library built on the standard-library `net/http` transport. It consists of client instances, request options, a middleware chain, and the `Result` response wrapper. This page describes each component's role, the configuration layers, and how a request is processed.
 
 ## Core Building Blocks at a Glance
 
@@ -23,7 +23,7 @@ Understanding the following concepts will give you a quick, holistic grasp of HT
 | `Result` | Response wrapper | Three-part structure (request/response/metadata); nil-safe accessors; reclaimed by GC automatically |
 | `ClientError` | Network-layer error classification | Extract with `errors.As`; `Code()` / `IsRetryable()` / `Attempts` |
 
-How the components relate:
+How the components relate to each other:
 
 ```text
 Package-level functions ──share──▶ default Client ◀──creates── New(cfg)
@@ -43,9 +43,9 @@ DomainClienter = Client + base URL + SessionManager
 
 ## Two-Layer API Architecture
 
-HTTPC provides two equivalent ways to make requests, mirroring the relationship between `http.Get` and `http.Client` in the standard library `net/http`:
+HTTPC provides two request styles that mirror the relationship between `http.Get` and `http.Client` in the standard library `net/http`:
 
-**Package-level functions** — zero configuration; they share a lazily-initialized default client internally. Suitable for scripts and one-off requests:
+**Package-level functions** — need no extra configuration; they use a lazily-initialized default client internally. Suitable for scripts and one-off requests:
 
 ```go
 result, err := httpc.Get("https://api.example.com/data")
@@ -59,9 +59,13 @@ defer func() { _ = client.Close() }()
 result, err := client.Get("https://api.example.com/data")
 ```
 
-Both approaches accept the same request options (`WithHeader`, `WithJSON`, ...) and return the same `*Result` type. Package-level functions are thin wrappers around Client instances. The default client is replaceable: `SetDefaultClient(client)` installs a custom instance as the default (the old instance is closed automatically), and `CloseDefaultClient()` closes and resets it — after a close, the next package-level call rebuilds it automatically. Note that a swap **closes the old default client and aborts any of its requests still in flight** (concurrent callers may observe connection errors); swap only at startup or during a quiescent window, never under live traffic.
+Both styles accept the same request options (`WithHeader`, `WithJSON`, ...) and return the same `*Result` type. Package-level functions are a lightweight wrapper around Client instances.
 
-:::tip When to use which?
+The default client is replaceable: `SetDefaultClient(client)` installs a custom instance as the default (the old instance is closed automatically), and `CloseDefaultClient()` closes and resets it. After a close, the next package-level call rebuilds it automatically.
+
+Replacing the default client **closes the old instance and aborts its in-flight requests**, so concurrent callers observe connection errors. Call it only at startup or during a quiescent window, never under live traffic.
+
+:::tip Which to use
 One-off requests or quick prototypes -> package-level functions. Production services, custom configuration, or connection-pool management -> Client instances.
 :::
 
@@ -92,9 +96,15 @@ result, err := client.Get(url,
 )
 ```
 
-You can also start from preset configurations (`SecureConfig()`, `PerformanceConfig()`, etc.). See the [Config API](../api-reference/client-config/config).
+Starting from preset configurations (`SecureConfig()`, `PerformanceConfig()`, etc.) is also supported. See the [Config API](../api-reference/client-config/config).
 
-Configuration across the library follows one convention: the main `Config` and `SessionConfig` are **passed by value** (required); middleware configs are **passed by pointer**, where passing `nil` means using the defaults; `DownloadConfig` is passed by pointer and requires `FilePath` to be set. Every `XxxConfig` has a matching `DefaultXxxConfig()` constructor — start from the defaults and adjust fields as needed. This is the consistent HTTPC configuration idiom.
+Configuration across the library follows one convention:
+
+- the main `Config` and `SessionConfig` are **passed by value** (required);
+- middleware configs are **passed by pointer**, where passing `nil` means using the defaults;
+- `DownloadConfig` is passed by pointer and requires `FilePath` to be set.
+
+Every `XxxConfig` has a matching `DefaultXxxConfig()` constructor: start from the defaults and adjust fields as needed.
 
 ## Request Lifecycle
 
@@ -109,9 +119,9 @@ Options applied -> Middleware chain (if any) -> Engine execution -> Retry (if ne
 Stage-by-stage details:
 
 - **Options applied** — `With*` functions set request headers, body, timeouts, and so on; they run in the order passed, and any option returning an error (e.g. a header failing CRLF validation) fails the request immediately.
-- **Middleware chain** — active when `Config.Middleware.Middlewares` is configured; the request passes through middleware in registration order, and the terminal Handler hands the (possibly modified) request to the engine. With no middleware configured, the request goes straight to the engine with zero extra overhead.
-- **Engine execution** — URL/header validation (on by default) -> SSRF dial check (private IPs blocked by default) -> DNS resolution (optional DoH) -> take a connection from the pool (create one if short, bounded by `MaxConnsPerHost`) -> TLS handshake (version policy, optional certificate pinning) -> send the request -> read the response (response-body size and decompression caps checked).
-- **Retry** — Retryable conditions: timeouts, transport errors, most transient network errors, plus status codes 408/429/500/502/503/504. Backoff is `Delay × BackoffFactor^n` plus jitter, with each wait capped at `MaxRetryDelay`; a `Retry-After` response header takes precedence (capped at 60s). The total duration is bounded by `Timeouts.Request` or `WithTimeout` — **the timeout budget is shared across retries** and does not reset each round.
+- **Middleware chain** — active when `Config.Middleware.Middlewares` is configured. The request passes through middleware in registration order, and the terminal Handler hands the middleware-processed request to the engine. With no middleware configured, the request goes straight to the engine with no extra overhead.
+- **Engine execution** — runs these steps in order: URL and header validation (on by default), SSRF dial check (private IPs blocked by default), and DNS resolution (optional DoH). It then takes a connection from the pool (creating one if short, bounded by `MaxConnsPerHost`), performs the TLS handshake (version policy, optional certificate pinning), and sends the request. Reading the response checks the body size and decompression caps.
+- **Retry** — Retryable conditions: timeouts, transport errors, transient network errors, plus status codes 408/429/500/502/503/504. Backoff is `Delay × BackoffFactor^n` plus jitter, with each wait capped at `MaxRetryDelay`. A `Retry-After` response header takes precedence, capped at 60s. The total duration is bounded by `Timeouts.Request` or `WithTimeout`: **the timeout budget is shared across retries** and does not reset each round.
 - **Result** — carries the response data, request metadata, and retry statistics; internal engine objects are pooled but transparent to callers, and `Result` is reclaimed by GC automatically — no manual release required.
 
 Exhausted retries end one of two ways:
@@ -128,7 +138,7 @@ type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, err
 type MiddlewareFunc func(Handler) Handler
 ```
 
-Middleware is registered on `Config.Middleware.Middlewares` and composed into an onion model by `Chain(middlewares...)`: **wrapped in registration order** — the first middleware is the outermost layer; the request phase runs in order, the response phase in reverse.
+Middleware is registered on `Config.Middleware.Middlewares` and composed into an onion model by `Chain(middlewares...)`. The first middleware is the outermost layer: the request phase runs in registration order, the response phase in reverse.
 
 Skeleton of a custom middleware:
 
@@ -158,7 +168,7 @@ Built-in middleware at a glance:
 | `HeaderMiddleware` | Attaches static headers to every request (CRLF validated at creation) | No headers (passthrough) |
 
 :::warning Do not use for Download or streaming requests
-`TimeoutMiddleware` is not suitable for `Download` or `WithStreamBody(true)` requests — it cancels the context as soon as the handler returns (once the response headers have been received), which makes reading the response body fail with "context canceled". Use `WithTimeout` for such cases instead.
+`TimeoutMiddleware` is not suitable for `Download` or `WithStreamBody(true)` requests: the middleware rejects streaming requests on entry, returning `TimeoutMiddleware is incompatible with streaming responses`. Use `WithTimeout` for such cases instead.
 :::
 
 ## Sessions and the Domain Client
@@ -180,21 +190,21 @@ _, _ = dc.Get("/me")                            // Session cookies attached auto
 
 Division of labor between the two components:
 
-- **`DomainClient`** — binds a base URL; relative paths are joined automatically (`/users` -> `https://api.example.com/users`), while full `http(s)://` URLs are used as-is; it has built-in path-traversal protection (an error is returned if the joined result escapes the base path). A cookie jar is enabled automatically at creation.
-- **`SessionManager`** — a thread-safe session-state store (cookies + headers); `DomainClient` embeds it: before each request it injects session state into the request options, and after the response it writes `Set-Cookie` back. It can also be used standalone (`NewSessionManagerDefault()`).
+- **`DomainClient`** — binds a base URL. Relative paths are joined automatically (`/users` -> `https://api.example.com/users`), while full `http(s)://` URLs are used as-is. It has built-in path-traversal protection: an error is returned if the joined result escapes the base path. Session cookies are stored in the embedded `SessionManager`, independent of `Connection.EnableCookies`.
+- **`SessionManager`** — a thread-safe session-state store (cookies + headers). `DomainClient` embeds it: before each request it injects session state, and after the response it writes `Set-Cookie` back. `SessionManager` can also be used standalone (`NewSessionManagerDefault()`).
 
 :::warning Request options are applied twice
-Request options passed to a `DomainClient` are applied **twice** internally — once to capture session state (cookies/headers) and once to perform the real request. Avoid placing side-effecting logic in options (counters, one-time nonces, etc.).
+Request options passed to a `DomainClient` are applied **twice** internally: once to capture session state (cookies/headers) and once to perform the real request. Do not place side-effecting logic in options (counters, one-time nonces, etc.).
 :::
 
 See the [Domain Client & Sessions guide](../guides/domain-session).
 
 ## Secure Defaults
 
-HTTPC is secure by default and requires no extra configuration to gain:
+The default configuration enables the following without extra setup:
 
 - **TLS 1.2+** enforced encryption
-- **SSRF protection** — blocks connections to private/reserved IP addresses (`127.0.0.1`, `10.x`, `192.168.x`, etc.)
+- **SSRF protection** — blocks connections to private IP addresses, for example `127.0.0.1`, `10.x`, and `192.168.x`
 - **CRLF injection protection** — automatic validation of request headers and URLs
 - **Response body size limit** — 10MB by default, preventing memory exhaustion
 - **Decompression-bomb guardrail** — decompressed response bodies capped at 100MB by default
@@ -231,23 +241,29 @@ The context carried by `ClientError`:
 |------|------|
 | `Type` | Error classification (`ErrorTypeTimeout`, `ErrorTypeNetwork`, etc. — a 12-value enum) |
 | `Code()` | Short code string: `TIMEOUT`, `NETWORK_ERROR`, `TLS_ERROR`, `DNS_ERROR`, `CONTEXT_CANCELED`, `VALIDATION_ERROR`, `HTTP_ERROR`, etc. |
-| `IsRetryable()` | Whether a retry is worthwhile (context cancellation/validation/TLS/certificate always false; timeout/transport always true; network/DNS/5xx depend on the cause) |
+| `IsRetryable()` | Whether a retry can succeed (context cancellation/validation/TLS/certificate always false; timeout/transport always true; network/DNS/5xx depend on the cause) |
 | `Attempts` | Attempts made so far (including the first) |
 | `StatusCode` | Associated HTTP status code (if applicable) |
 | `Cause` | Underlying error; transparent to `errors.Is` / `errors.As` |
 | `URL` / `Method` | Redacted request URL and request method |
 
-Common sentinel errors can be matched with `errors.Is`: `ErrClientClosed` (using a closed client), `ErrResponseBodyEmpty` (`Unmarshal` on an empty body), `ErrResponseBodyTooLarge` (parse body over 50MB), and more — see [Error Types](../api-reference/types/errors) for the full list.
+Common sentinel errors can be matched with `errors.Is`:
+
+- `ErrClientClosed`: the client is already closed
+- `ErrResponseBodyEmpty`: `Unmarshal` on an empty body
+- `ErrResponseBodyTooLarge`: the body to parse exceeds 50MB
+
+See [Error Types](../api-reference/types/errors) for the full list.
 
 See [Error Handling](../guides/error-handling).
 
 ## Concurrency and Resource Management
 
-- **Client concurrency safety** — one client can be shared by any number of goroutines; the connection pool is managed per host internally, so there is no need to create separate clients for concurrency.
-- **Result is independent and release-free** — every request returns a brand-new `*Result` (allocated once together with its three metadata structs); holding it carries no lifecycle burden — leave it to the GC.
+- **Client concurrency safety** — one client can be shared by any number of goroutines; the connection pool is managed per host internally, so no separate clients are needed for concurrency.
+- **Result is independent and release-free** — every request returns a brand-new `*Result`, allocated once together with its three metadata structs. Holding it carries no lifecycle burden, so the GC reclaims it.
 - **Explicit Close** — `client.Close()` releases the connection pool and transport resources; requests after a close return `ErrClientClosed`.
-- **Self-healing default client** — the default client behind package-level functions can be replaced with `SetDefaultClient()` and closed with `CloseDefaultClient()`; after a close, the next package-level call rebuilds it automatically.
-- **Panic safety net** — `Request` has an internal recover fallback: unexpected panics on the execution path are converted into an `error` with a stack trace instead of crashing through to the caller.
+- **Default client rebuild** — the default client behind package-level functions can be replaced with `SetDefaultClient()` and closed with `CloseDefaultClient()`; after a close, the next package-level call rebuilds it automatically.
+- **Panic safety net** — `Request` has an internal recover fallback: unexpected panics on the execution path are converted into an `error` with a stack trace instead of propagating to the caller.
 
 ## Next Steps
 

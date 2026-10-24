@@ -7,13 +7,13 @@ sidebar_position: 8
 
 # Custom Parser
 
-This guide covers how to create and register custom file format parsers, extending the configuration formats supported by the env library.
+A custom parser implements the `EnvParser` interface and turns a file's contents into `map[string]string`. You register it with `RegisterParser`. A registered parser runs only when a file is routed to it, so read the routing restriction under [Registering a Parser](#registering-a-parser) before choosing a file extension.
 
 ## Parser Interface
 
 ### EnvParser
 
-All parsers must implement this interface:
+Every parser, built-in or custom, implements this interface:
 
 ```go
 type EnvParser interface {
@@ -23,7 +23,7 @@ type EnvParser interface {
 
 **Parameters:**
 - `r` - file content reader
-- `filename` - file name (for error messages)
+- `filename` - file name, used in error messages
 
 **Returns:**
 - `map[string]string` - parsed key-value pairs
@@ -259,11 +259,11 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
 type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error)
 ```
 
-The factory function receives Config and ComponentFactory, returning a parser instance.
+The factory function receives `Config` and `ComponentFactory` and returns a parser instance.
 
-**Parameter descriptions:**
-- `cfg` - configuration object containing all limits and security settings
-- `factory` - component factory, can get Validator, Auditor, and other components
+**Parameters:**
+- `cfg` - configuration object with all limits and security settings
+- `factory` - component factory; use it to obtain the Validator, Auditor, and other components
 
 ### RegisterParser Function
 
@@ -274,23 +274,23 @@ func RegisterParser(format FileFormat, factory ParserFactory) error
 Registers a custom format parser.
 
 **Parameters:**
-- `format` - file format constant (recommend using 100+ values to avoid conflicts)
+- `format` - file format constant (use values of 100 or above to avoid conflicts)
 - `factory` - parser factory function
 
 **Returns:**
-- `error` - returns error on registration failure
+- `error` - non-nil when registration fails
 
 **Error cases:**
-- Built-in formats (FormatEnv, FormatJSON, FormatYAML) cannot be overridden
-- Format already registered
+- The built-in formats (`FormatEnv`, `FormatJSON`, `FormatYAML`) cannot be overridden
+- The format is already registered
 
 **Notes:**
-- Must be registered before calling `env.New()`
-- Recommend registering in an `init()` function
+- Register before calling `env.New()`
+- Registering from an `init()` function is the common pattern
 
 ### Using ComponentFactory
 
-Get the validator and auditor via ComponentFactory:
+Obtain the validator and auditor from the `ComponentFactory`:
 
 ```go
 type SecureParser struct {
@@ -367,14 +367,13 @@ func init() {
 }
 
 func main() {
-    // Registration must be done before New (already done in init).
+    // Registration must happen before New (init already did it).
     //
-    // Important limitation: LoadFiles will NOT auto-route to the above
-    // TOMLParser based on the .toml extension — DetectFormat only
-    // recognizes .env/.json/.yaml/.yml; other extensions fall back to
-    // the built-in dotenv parser (see format.go's DetectFormat). To make
-    // LoadFiles actually invoke TOMLParser, use ForceRegisterParser to
-    // override FormatEnv, and name your file *.env:
+    // Limitation: LoadFiles does NOT route to TOMLParser by the .toml
+    // extension. DetectFormat recognizes only .env/.json/.yaml/.yml;
+    // every other extension falls back to the built-in dotenv parser
+    // (see DetectFormat in format.go). To make LoadFiles invoke TOMLParser,
+    // replace FormatEnv with ForceRegisterParser and name the file *.env:
     err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
         return &TOMLParser{
             cfg:       cfg,
@@ -398,12 +397,13 @@ func main() {
 ```
 
 :::warning LoadFiles routing restriction
-Custom format numbers registered via `RegisterParser` (e.g., `FormatTOML = 100`) are **not auto-recognized by `LoadFiles` based on file extension**. `LoadFiles` internally calls `DetectFormat(filename)` to select a parser, but `DetectFormat` only recognizes the four extensions `.env` / `.json` / `.yaml` / `.yml`; other extensions return `FormatAuto`, which falls back to the built-in dotenv parser — the custom parser is never invoked.
+A custom format number registered through `RegisterParser` (for example `FormatTOML = 100`) is **not selected by file extension in `LoadFiles`**. `LoadFiles` calls `DetectFormat(filename)` to choose a parser, and `DetectFormat` recognizes only `.env`, `.json`, `.yaml`, and `.yml`. Every other extension returns `FormatAuto`, which falls back to the built-in dotenv parser, so the custom parser is never invoked.
 
-Two paths for loading custom format files:
+Three ways to load a custom format file:
 
-1. **`.env` extension + `ForceRegisterParser`** (recommended): Name your custom format file `*.env`, and use `env.ForceRegisterParser(env.FormatEnv, ...)` to override the built-in dotenv parser. Make sure to preserve key name/value/size security checks, otherwise you will introduce security vulnerabilities.
-2. **Call the parser manually**: Read the file to get an `io.Reader`, construct the parser instance yourself and call `parser.Parse(reader, filename)` to get `map[string]string`, then write each entry with `loader.Set`. Note that the parser's internal `validator`/`auditor` typically depend on `*ComponentFactory`, which must be obtained and passed in when registering the factory.
+1. **`.env` extension + `ForceRegisterParser`** (recommended): name the file `*.env` and call `env.ForceRegisterParser(env.FormatEnv, ...)` to replace the built-in dotenv parser. Keep the key-name, value, and size checks in your parser, or you introduce security holes.
+2. **Register for `FormatAuto`**: `env.RegisterParser(env.FormatAuto, factory)` makes every file with an unrecognized extension go through your parser, so names like `config.toml` or `config.conf` work unchanged.
+3. **Call the parser manually**: read the file into an `io.Reader`, construct the parser instance yourself, call `parser.Parse(reader, filename)` to get the `map[string]string`, then write each entry with `loader.Set`. A parser's internal `validator` and `auditor` come from `*ComponentFactory`, which has no public constructor, so a manual-path parser must avoid depending on them.
 :::
 
 ---
@@ -608,9 +608,9 @@ func init() {
 }
 
 func main() {
-	// LoadFiles will NOT auto-route to the XML parser based on the .xml extension —
-	// DetectFormat only recognizes .env/.json/.yaml/.yml. Here we use
-	// ForceRegisterParser to override FormatEnv, loading the file with a .env
+	// LoadFiles does NOT route to the XML parser by the .xml extension:
+	// DetectFormat only recognizes .env/.json/.yaml/.yml. This example uses
+	// ForceRegisterParser to replace FormatEnv, then loads a file with a .env
 	// extension (content in XML format):
 	err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
 		return &XMLParser{
@@ -648,7 +648,7 @@ func main() {
 
 ## Overriding Built-in Parsers (ForceRegisterParser)
 
-For security reasons, `RegisterParser` **refuses** to override the three built-in formats (`FormatEnv`, `FormatJSON`, `FormatYAML`); registering the same custom format twice also returns an error. If you genuinely need to replace a built-in parser — for example to add multi-line value syntax to `.env`, attach custom security checks, or inject a mock parser in tests — use `ForceRegisterParser`:
+For security, `RegisterParser` **refuses** to override the three built-in formats (`FormatEnv`, `FormatJSON`, `FormatYAML`), and registering the same custom format twice returns an error. To replace a built-in parser — to add multi-line value syntax to `.env`, attach custom security checks, or inject a mock parser in tests — use `ForceRegisterParser`:
 
 <!-- check-code: skip -->
 ```go
@@ -661,14 +661,14 @@ err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, factory *env.
 ```
 
 :::warning Security warning
-Overriding built-in parsers can introduce vulnerabilities: if the replacement lacks key validation, value validation, or size limits, you lose the library's default protections. Only use this when your parser implements equivalent security checks in full.
+Replacing a built-in parser can introduce vulnerabilities. If the replacement lacks key validation, value validation, or size limits, you lose the library's default protections. Use this only when your parser implements equivalent checks in full.
 :::
 
-**Registration timing**: parser factories are snapshotted when a Loader is created (`createParsers` inside `New()`), so `RegisterParser`/`ForceRegisterParser` must be called before `env.New()`; already-created Loaders are unaffected by later registrations.
+**Registration timing**: parser factories are snapshotted when a Loader is created (`createParsers` inside `New()`). Call `RegisterParser`/`ForceRegisterParser` before `env.New()`; a Loader that already exists is unaffected by later registrations.
 
 ## Related Documentation
 
 - [ComponentFactory API](../api-reference/factory) - ComponentFactory and RegisterParser
 - [Interfaces](../api-reference/interfaces) - EnvParser interface definition
-- [Config API](../api-reference/config) - Configuration options in detail
+- [Config API](../api-reference/config) - configuration options in detail
 - [Multi-format Config](./multi-format) - JSON/YAML formats in detail

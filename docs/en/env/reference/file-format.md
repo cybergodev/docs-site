@@ -1,13 +1,13 @@
 ---
 sidebar_label: "File Format"
 title: "File Format - CyberGo env | .env/JSON/YAML Syntax"
-description: "File format reference for CyberGo env: .env, JSON, and YAML syntax, quoting, export prefixes, ${VAR} expansion, multi-line values, flattening, and DetectFormat."
+description: "File format reference for CyberGo env: .env, JSON and YAML syntax, quoting, export prefixes, ${VAR} expansion, AllowYamlSyntax and key flattening."
 sidebar_position: 1
 ---
 
 # File Format
 
-The env library supports multiple configuration file formats: `.env`, JSON, and YAML.
+env reads three configuration file formats: `.env`, JSON, and YAML. The file extension selects the parser, and every format flattens into the same flat key-value store.
 
 ## .env Format
 
@@ -33,9 +33,10 @@ URL=https://example.com?foo=bar
 MESSAGE="Hello World"
 PATH="/usr/local/bin"
 
-# Single quotes: no escape processing (backslash sequences preserved as-is)
-# Note: single quotes do not prevent variable expansion — expansion happens after quote stripping
+# Single quotes: no escape processing (backslash sequences preserved as-is),
+# and values inside them are not expanded
 LITERAL='no escaping here: \n stays literal'
+# Note: '${HOME}' inside single quotes also stays literal
 
 # No quotes
 SIMPLE=value
@@ -69,7 +70,7 @@ PRICE="Price: \$100"
 
 ### Variable Expansion
 
-`ExpandVariables` is enabled by default (`DefaultConfig` sets it to true; disable with `cfg.ExpandVariables = false`). Supported syntax:
+`ExpandVariables` is enabled by default: `DefaultConfig` sets it to true, and `cfg.ExpandVariables = false` disables it. Supported syntax:
 
 ```bash
 # Reference other variables
@@ -99,19 +100,21 @@ export ANOTHER="quoted value"
 
 ### YAML Style
 
-The `KEY: value` colon-separated form is **always available** — the line parser unconditionally accepts both `=` and `:` as separators, no switch required:
+With the default `AllowYamlSyntax = false`, only `=` separates a key from its value. A `KEY: value` line has no separator, so the parser skips it; when auditing is on, that skip is recorded as an audit event.
+
+Set `AllowYamlSyntax = true` to treat `:` as a separator as well. Values then follow YAML scalar semantics: `null` and `~` become empty strings, and YAML boolean and number literals are recognized per YAML rules.
 
 ```bash
-# Colon-separated key-value pairs (no AllowYamlSyntax needed)
+# Colon-separated key-value pairs (requires AllowYamlSyntax = true)
 KEY: value
 ANOTHER: "quoted value"
 ```
 
-`AllowYamlSyntax` is disabled by default (false — the only parsing switch that defaults to off); when enabled, it affects how **values** are parsed: they follow YAML scalar semantics, where `null`/`~` are treated as empty strings and YAML boolean and number literals are recognized per YAML rules.
+`AllowYamlSyntax` is the only parsing switch that defaults to off, so `.env` files that use `:` as a separator need this setting before they load.
 
 ### Multi-line Values
 
-The `.env` parser scans line by line, parsing each line independently, and **does not support quoted strings spanning multiple lines** — double-quoted values must close on a single line, otherwise `ErrInvalidValue` is returned. For line breaks, use `\n` escapes (only effective in double quotes; single quotes don't process escapes):
+The `.env` parser reads line by line and parses each line on its own. It **does not support quoted strings that span multiple lines**: a double-quoted value must close on the same line, otherwise the parser returns `ErrInvalidValue`. For a line break inside a value, use a `\n` escape, which works only inside double quotes:
 
 ```bash
 # \n inside double quotes is parsed as a newline character
@@ -122,7 +125,7 @@ LINES="line1\nline2\nline3"
 PRIVATE_KEY="-----BEGIN KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END KEY-----"
 ```
 
-For true multi-line strings, use [JSON or YAML format](#format-detection) instead, or extend multi-line support via a custom parser.
+For real multi-line strings, use [JSON or YAML format](#format-detection), or add multi-line support with a custom parser.
 
 ## JSON Format
 
@@ -179,7 +182,7 @@ PORTS_2=8080
 ```
 
 :::tip Accessing array elements
-Use the `GetSlice[T]` function or dot-path to access indexed keys:
+Use `GetSlice[T]` or a dot path to reach indexed keys:
 ```go
 hosts := env.GetSlice[string]("ALLOWED_HOSTS")
 port0 := env.GetInt("PORTS_0")  // 80
@@ -189,13 +192,13 @@ See [GetSlice documentation](../api-reference/functions#getslice-t).
 
 ### Type Conversion Options
 
-`JSONNullAsEmpty` / `JSONNumberAsString` / `JSONBoolAsString` all **default to true (enabled)** in `DefaultConfig` — there is no need to assign true one by one; only set them explicitly when you want to disable a conversion:
+`JSONNullAsEmpty`, `JSONNumberAsString`, and `JSONBoolAsString` all **default to true** in `DefaultConfig`. There is no need to set them individually; set one to false only when you want to disable that conversion:
 
 ```go
 cfg := env.DefaultConfig()
 
-// Example: disable "numbers convert to strings" so JSON numbers
-// keep their original type semantics
+// Disable "numbers convert to strings" so JSON numbers keep their
+// original type semantics
 cfg.JSONNumberAsString = false
 ```
 
@@ -258,28 +261,28 @@ ALLOWED_HOSTS_2=api.example.com
 ### Multi-line Strings
 
 :::warning
-YAML block scalars (literal block `|` and folded block `>`) are **currently not supported**. The parser treats `|`/`>` as ordinary scalar characters, and subsequent indented lines will break key-value parsing.
+YAML block scalars (literal block `|` and folded block `>`) are **not supported**. The parser treats `|` and `>` as ordinary scalar characters, and the following indented lines break key-value parsing.
 :::
 
-For values that need to preserve line breaks, use double quotes with `\n` escapes:
+For values that must preserve line breaks, use a double-quoted value with `\n` escapes:
 
 ```yaml
 description: "Line1\nLine2\nLine3"
 ```
 
-Or extend block scalar support via a custom parser.
+Or add block-scalar support with a custom parser.
 
 ### Type Conversion Options
 
-`YAMLNullAsEmpty` / `YAMLNumberAsString` / `YAMLBoolAsString` likewise **default to true (enabled)**; set them to false explicitly only when you want to disable a conversion. `YAMLMaxDepth` defaults to 16 — adjust it only when you need deeper nesting:
+`YAMLNullAsEmpty`, `YAMLNumberAsString`, and `YAMLBoolAsString` likewise **default to true**; set one to false only to disable that conversion. `YAMLMaxDepth` defaults to 16; adjust it only when you need deeper nesting:
 
 ```go
 cfg := env.DefaultConfig()
 
-// Example: disable "booleans convert to strings"
+// Disable "booleans convert to strings"
 cfg.YAMLBoolAsString = false
 
-// Example: relax the nesting depth
+// Relax the nesting depth
 cfg.YAMLMaxDepth = 20
 ```
 
@@ -293,7 +296,7 @@ format := env.DetectFormat("config.json")   // FormatJSON
 format = env.DetectFormat("settings.yaml")  // FormatYAML
 format = env.DetectFormat(".env")           // FormatEnv
 
-// Returns FormatAuto when no matching extension (defaults to .env parser)
+// Returns FormatAuto when no extension matches (the loader falls back to the .env parser)
 format = env.DetectFormat("config")  // FormatAuto
 ```
 
@@ -341,7 +344,7 @@ fmt.Println(format.String())  // Output: json
 ### Mixed Usage
 
 ```go
-// You can mix different formats
+// Different formats can be mixed in one call
 loader.LoadFiles(
     "base.env",           // Base configuration
     "database.json",      // Database configuration
@@ -365,6 +368,6 @@ secrets.yaml
 
 ## Related Documentation
 
-- [Multi-format Config](../guides/multi-format) - Multi-format loading guide
+- [Multi-format Config](../guides/multi-format) - multi-format loading
 - [ComponentFactory API](../api-reference/factory) - DetectFormat function reference
 - [Config API](../api-reference/config) - JSON/YAML parsing options

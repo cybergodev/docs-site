@@ -1,56 +1,43 @@
 ---
 sidebar_label: "Batch Processing"
-title: "Batch Processing - CyberGo html | Concurrency Guide"
-description: "CyberGo html batch processing: four APIs incl. ExtractBatch, package vs instance cache differences, BatchResult, WorkerPoolSize concurrency, 10000-item cap."
+title: "Batch Processing - CyberGo html | Concurrency & Isolation"
+description: "CyberGo html batch processing: four batch APIs, package vs Processor caching, WorkerPoolSize concurrency, the 10000-item cap, cancellation, failure isolation."
 sidebar_position: 20
 ---
 
-# Batch Processing Guide
+# Batch Processing in Practice
 
-When processing large numbers of HTML documents, the batch APIs execute concurrently and automatically, running several times faster than calling extraction one by one in a loop. This guide covers the four batch APIs, the result structure, and concurrency tuning.
+The batch APIs process multiple documents in parallel using `WorkerPoolSize` concurrency slots, with a 10000-item cap per batch. This page covers the four batch functions, concurrency control, cancellation semantics, and failure isolation; field definitions and full signatures are in [API Reference: Batch](../../api-reference/modules/batch).
 
-## Batch API Overview
+## The Four Batch APIs
 
-The library provides four batch functions, corresponding to byte input/file input crossed with no context/with context:
+They combine input type with optional context:
 
-| API | Input | Context | Description |
-|-----|------|--------|------|
-| `ExtractBatch` | `[][]byte` | None | Batch extract from byte slices |
-| `ExtractBatchFiles` | `[]string` | None | Batch extract from file paths |
-| `ExtractBatchWithContext` | `[][]byte` | Yes | Supports timeout/cancellation |
-| `ExtractBatchFilesWithContext` | `[]string` | Yes | Supports timeout/cancellation |
+| API | Input | Context |
+|-----|-------|---------|
+| `ExtractBatch` | `[][]byte` | None |
+| `ExtractBatchFiles` | `[]string` | None |
+| `ExtractBatchWithContext` | `[][]byte` | Yes |
+| `ExtractBatchFilesWithContext` | `[]string` | Yes |
 
-All functions can be called at the package level or on a `Processor` instance:
+Each has both a package-level and a `Processor` form, and all return `*BatchResult`:
 
 ```go
-// Package level (uses an internally pooled Processor)
+// Package level (internally pooled Processor, cache disabled)
 br := html.ExtractBatch(pages)
 
 // Processor instance (reuses the cache)
-p, _ := html.New()
+p, err := html.New()
+if err != nil {
+	log.Fatal(err)
+}
 defer p.Close()
-br := p.ExtractBatch(pages)
+br = p.ExtractBatch(pages)
 ```
 
-## BatchResult Structure
-
-Batch operations return a `*BatchResult` containing per-item results and aggregate counts:
-
-| Field | Type | Description |
-|------|------|------|
-| `Results` | `[]*Result` | Extraction result for each item; `nil` for failed or cancelled items |
-| `Errors` | `[]error` | Error for each item; `nil` for successful items; indices correspond to the input |
-| `Success` | `int` | Number of successful extractions |
-| `Failed` | `int` | Number of failed extractions |
-| `Cancelled` | `int` | Number of items skipped due to context cancellation |
-
-:::tip Index correspondence
-`Results[i]` and `Errors[i]` correspond one-to-one with the `i`-th input item. On success, `Results[i]` is non-nil and `Errors[i]` is nil; on failure, the reverse is true.
-:::
+`Results[i]` and `Errors[i]` correspond to the `i`-th input: on success `Results[i]` is non-nil and `Errors[i]` is nil; on failure or cancellation `Results[i]` is nil. Always `Success + Failed + Cancelled == len(input)`.
 
 ## Basic Example
-
-Batch extract three HTML byte slices:
 
 ```go
 package main
@@ -68,117 +55,115 @@ func main() {
 		[]byte(`<html><body><article><h1>Page Three</h1><p>Performance optimization tips.</p></article></body></html>`),
 	}
 
-	// Batch concurrent extraction (using the package function)
 	br := html.ExtractBatch(pages)
 
 	fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n", br.Success, br.Failed, br.Cancelled)
-	// Success: 3, Failed: 0, Cancelled: 0
+	// Output: Success: 3, Failed: 0, Cancelled: 0
 
-	// Iterate results (index corresponds to input)
 	for i, result := range br.Results {
 		if result != nil {
-			fmt.Printf("  [%d] Title: %s\n", i+1, result.Title)
-		} else if br.Errors[i] != nil {
-			fmt.Printf("  [%d] Error: %v\n", i+1, br.Errors[i])
+			fmt.Printf("[%d] Title: %s\n", i, result.Title)
 		}
 	}
-	// [1] Title: Page One
-	// [2] Title: Page Two
-	// [3] Title: Page Three
-}
-```
-
-## Batch Extracting from Files
-
-```go
-files := []string{"page1.html", "page2.html", "page3.html"}
-
-br := html.ExtractBatchFiles(files)
-
-fmt.Printf("Success: %d, Failed: %d\n", br.Success, br.Failed)
-
-for i, err := range br.Errors {
-    if err != nil {
-        fmt.Printf("File %s failed: %v\n", files[i], err)
-    }
+	// Output:
+	// [0] Title: Page One
+	// [1] Title: Page Two
+	// [2] Title: Page Three
 }
 ```
 
 ## Package Functions vs Processor Instances
 
-The two calling modes differ in caching behavior:
+| Call form | Cache | Use case |
+|-----------|-------|----------|
+| `html.ExtractBatch(pages)` | Disabled: the pooled Processor has `MaxCacheEntries = 0`, and the cache is cleared on return | One-off batch jobs |
+| `p.ExtractBatch(pages)` | Enabled: reuses the Processor cache | High-frequency batches with repeated content |
 
-| Calling mode | Cache | Use case |
-|----------|------|----------|
-| `html.ExtractBatch(pages)` | Disabled (pooled Processor clears cache each time) | One-off batch tasks |
-| `p.ExtractBatch(pages)` | Enabled (reuses the Processor cache) | High-frequency batches, repeated content |
+:::warning Package functions never cache
 
-:::warning Package functions do not cache
-Package functions use a Processor managed by an internal `sync.Pool` whose config disables caching (`MaxCacheEntries = 0`) and clears the cache on return. If your batch contains repeated content, use a Processor instance to benefit from cache acceleration. See [Processor Cache & Reuse](./processor-cache).
+A call with no arguments uses a Processor from `sync.Pool` whose cache config is always 0, and `ClearCache()` runs on every return; passing a `Config` switches to a one-shot Processor whose cache is also disabled. When a batch contains repeated content, only a long-lived instance you create with `html.New()` can hit the cache. See [Processor Cache & Reuse](./processor-cache) for the mechanism.
+
 :::
 
 ```go
-// Recommended: reuse a Processor for high-frequency batch workloads
-p, _ := html.New()
+p, err := html.New()
+if err != nil {
+	log.Fatal(err)
+}
 defer p.Close()
 
 for batch := range batchQueue {
-    br := p.ExtractBatch(batch) // Cache is active; duplicate content hits directly
-    processResult(br)
+	br := p.ExtractBatch(batch) // The same Processor's cache carries across batches
+	processResult(br)
 }
 ```
 
 ## Concurrency Control
 
-`WorkerPoolSize` controls the number of concurrent workers for batch processing (default 4, maximum 256):
+`WorkerPoolSize` is the concurrency cap. The batch methods use a buffered channel as a semaphore: a task must acquire a slot before its goroutine starts, so at most `WorkerPoolSize` tasks run at once regardless of input size.
 
 ```go
 cfg := html.DefaultConfig()
 
-// Set concurrency to the number of CPU cores (capped at 256)
 n := runtime.NumCPU()
 if n > 256 {
-    n = 256
+	n = 256
 }
 cfg.WorkerPoolSize = n
 
-p, _ := html.New(cfg)
+p, err := html.New(cfg)
+if err != nil {
+	log.Fatal(err)
+}
 defer p.Close()
 
 br := p.ExtractBatch(pages)
 ```
 
-| Config | Default | Upper limit | Description |
-|------|--------|------|------|
-| `WorkerPoolSize` | 4 | 256 | Number of concurrent workers; must be a positive integer |
+| Config | Default | Range |
+|--------|---------|-------|
+| `WorkerPoolSize` | 4 | 1–256 (values outside the range are rejected by `Validate()`) |
 
-:::tip WorkerPoolSize tuning
-Set it to the number of CPU cores for CPU-bound tasks; increase it moderately for I/O-bound tasks (such as file reading). Values above 256 are rejected by config validation.
+:::tip Pick a value by workload type
+
+Use `runtime.NumCPU()` for pure CPU parsing; file-heavy jobs such as `ExtractBatchFiles` can go higher (8–16). Values above 256 fail config validation instead of being silently clamped.
+
 :::
 
-## Batch Size Limit
+## The 10000-Item Batch Cap
 
-A single batch supports up to 10000 items. When exceeded, **all items** return an error (rather than partial processing):
+Above `maxBatchSize` (10000) the batch processes nothing; instead every `Errors[i]` receives the same error and `Failed` equals the input count:
 
 ```go
-huge := make([][]byte, 10001) // Exceeds the limit
+huge := make([][]byte, 10001)
 
 br := html.ExtractBatch(huge)
 
 fmt.Printf("Failed: %d\n", br.Failed)
-// Failed: 10001
+// Output: Failed: 10001
 
-fmt.Printf("First error: %v\n", br.Errors[0])
-// First error: html: batch size exceeds maximum: 10001 exceeds maximum 10000
+fmt.Println(br.Errors[0])
+// Output: html: batch size exceeds maximum: 10001 exceeds maximum 10000
+
+fmt.Println(errors.Is(br.Errors[0], html.ErrBatchTooLarge))
+// Output: true
 ```
 
-:::warning Over-limit behavior
-`maxBatchSize = 10000` is a hard limit. When exceeded, no items are processed; instead, a uniform error is returned for all inputs. This error can be checked with `errors.Is(err, html.ErrBatchTooLarge)`. To process more, call in chunks.
+:::warning Over the cap fails the whole batch, not the process
+
+`maxBatchSize = 10000` is a hard limit with no config knob. The call returns normally with `Failed` equal to the input count. To process more, call in chunks of ≤10000; test the error with `errors.Is(err, html.ErrBatchTooLarge)` rather than comparing strings.
+
 :::
 
 ## Context Cancellation
 
-`ExtractBatchWithContext` terminates gracefully when the context is cancelled:
+`ExtractBatchWithContext` / `ExtractBatchFilesWithContext` check `ctx` in three places: before dispatching a task, after acquiring a semaphore slot, and inside the goroutine before extraction. Once cancelled:
+
+| Item state | Handling |
+|------------|----------|
+| Completed | Result kept in `Results` |
+| Running | Runs to completion and records its result |
+| Not started | Skipped, `Cancelled` incremented, `Errors[i] = ctx.Err()` |
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -186,76 +171,113 @@ defer cancel()
 
 br := p.ExtractBatchWithContext(ctx, pages)
 
-fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n",
-    br.Success, br.Failed, br.Cancelled)
+fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n", br.Success, br.Failed, br.Cancelled)
 ```
 
-| Item status | Handling |
-|----------|----------|
-| Completed | Result retained in `Results` |
-| In progress | Recorded normally after completion |
-| Not started | Skipped, counted in `Cancelled`, `Errors[i]` set to `ctx.Err()` |
+:::tip Completed results survive cancellation
 
-:::tip Partial results are available
-After context cancellation, results for completed items are still retained in `br.Results` (non-nil). You can safely use the completed results without discarding all output due to cancellation.
+Cancellation only affects tasks that have not started. Completed `Results[i]` entries stay non-nil and remain usable, so there is no need to discard the whole batch.
+
 :::
 
-## Partial Failure Handling
+## Partial Failure Isolation
 
-Batches are **partially successful** — a single item's failure does not affect the others:
+One item's failure does not interrupt the batch. The example below uses file input: the second path does not exist, so only that item fails, `Errors[1]` matches `ErrFileNotFound`, and the other two return results.
 
 ```go
-pages := [][]byte{
-    validHTML,   // Valid
-    []byte(""),  // Empty input, triggers an error
-    validHTML2,  // Valid
-}
+package main
 
-br := p.ExtractBatch(pages)
+import (
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 
-// Item 2 fails; items 1 and 3 still succeed
-fmt.Printf("Success: %d, Failed: %d\n", br.Success, br.Failed)
-// Success: 2, Failed: 1
+	"github.com/cybergodev/html"
+)
 
-// Process item by item, skipping failures
-for i, result := range br.Results {
-    if result == nil {
-        fmt.Printf("[%d] Failed: %v\n", i, br.Errors[i])
-        continue
-    }
-    fmt.Printf("[%d] Title: %s\n", i, result.Title)
+func main() {
+	dir, err := os.MkdirTemp("", "html-batch")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	content := map[string]string{
+		"a.html": `<html><body><article><h1>Page One</h1><p>Body.</p></article></body></html>`,
+		"b.html": `<html><body><article><h1>Page Two</h1><p>Body.</p></article></body></html>`,
+	}
+	for name, body := range content {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	files := []string{
+		filepath.Join(dir, "a.html"),
+		filepath.Join(dir, "missing.html"), // does not exist
+		filepath.Join(dir, "b.html"),
+	}
+
+	p, err := html.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer p.Close()
+
+	br := p.ExtractBatchFiles(files)
+
+	fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n", br.Success, br.Failed, br.Cancelled)
+	// Output: Success: 2, Failed: 1, Cancelled: 0
+
+	for i, result := range br.Results {
+		if result == nil {
+			fmt.Printf("[%d] Failed: %v (ErrFileNotFound=%v)\n",
+				i, br.Errors[i], errors.Is(br.Errors[i], html.ErrFileNotFound))
+			continue
+		}
+		fmt.Printf("[%d] Title: %s\n", i, result.Title)
+	}
+	// Output:
+	// [0] Title: Page One
+	// [1] Failed: html: ReadFile "missing.html": file not found (ErrFileNotFound=true)
+	// [2] Title: Page Two
 }
 ```
 
-## Performance Recommendations
+:::warning Empty input is not a failure
 
-| Document count | Recommended strategy | Description |
-|----------|----------|------|
-| 1–10 | Individual `Extract` calls | Batch scheduling overhead may exceed concurrency gains |
-| 10–1000 | `ExtractBatch` + package function | Automatic concurrency, no Processor management |
-| 1000+ | `p.ExtractBatch` + Processor instance | Reuses cache; process in chunks to avoid memory spikes |
-| 10000+ | Chunking (≤10000 per batch) + Processor instance | Exceeds the single-batch limit; shard the work |
+`[]byte("")` and whitespace-only input do not error: extraction returns an empty `Result`, and the item counts as `Success` in a batch. An empty input slice returns an empty `BatchResult` with empty (non-nil) `Results` / `Errors`. Whole-batch failures (more than 10000 items, a closed Processor, an invalid `Config` passed to a package-level function) put the same error in every item.
+
+:::
+
+## Chunking
+
+| Document count | Recommended approach | Notes |
+|----------------|----------------------|-------|
+| 1–10 | Individual `Extract` calls | Batch scheduling costs more than concurrency saves |
+| 10–10000 | `ExtractBatch` | Package function is enough; no Processor management |
+| 10000+ | Chunks of ≤10000 + Processor instance | Exceeds the per-batch cap; chunking also avoids holding every result at once |
 
 ```go
-// Large-scale chunked batch processing example
-p, _ := html.New()
+p, err := html.New()
+if err != nil {
+	log.Fatal(err)
+}
 defer p.Close()
 
 const batchSize = 5000
 for i := 0; i < len(allPages); i += batchSize {
-    end := i + batchSize
-    if end > len(allPages) {
-        end = len(allPages)
-    }
+	end := min(i+batchSize, len(allPages))
 
-    br := p.ExtractBatch(allPages[i:end])
-    // Process this batch's results...
+	br := p.ExtractBatch(allPages[i:end])
+	// Process this chunk's results...
 }
 ```
 
 ## Next Steps
 
 - [Processor Cache & Reuse](./processor-cache) - Cache differences between package functions and instances
-- [Performance](./performance) - Throughput improvements and timeout settings
-- [Error Handling](./error-handling) - Sentinel errors and batch error handling
-- [API Reference: Batch Processing](../../api-reference/modules/batch) - Complete API signatures
+- [Error Handling](./error-handling) - Sentinel errors, timeout semantics, and batch errors
+- [API Reference: Batch](../../api-reference/modules/batch) - Full signatures and `BatchResult` fields

@@ -7,7 +7,7 @@ sidebar_position: 20
 
 # Request Options
 
-Request options are functional configuration items passed to request methods via the `RequestOption` type, enabling fine-grained request control.
+Request options are functional configuration items passed to request methods through the `RequestOption` type; they control the behavior of a single request.
 
 ```go
 result, err := client.Post(url,
@@ -47,7 +47,7 @@ Some options override same-named defaults in the client configuration (`Config`)
 | `WithAllowPrivateIPs` | `Security.AllowPrivateIPs` (false) |
 
 :::tip
-`nil` options are silently skipped instead of raising an error — handy for conditionally assembling option slices. Any option that returns an error aborts the request (wrapped uniformly as `failed to apply request option`).
+`nil` options are skipped silently instead of raising an error, which makes conditional option slices straightforward. Any option that returns an error aborts the request (wrapped uniformly as `failed to apply request option`).
 :::
 
 ## Headers
@@ -58,7 +58,7 @@ Some options override same-named defaults in the client configuration (`Config`)
 func WithHeader(key, value string) RequestOption
 ```
 
-Sets a single request header. Keys and values are security-validated (CRLF injection protection).
+Sets a single request header. Keys and values are security-validated (CRLF injection protection): keys ≤256 characters, values ≤8192 characters, control characters rejected (an error wrapping `ErrInvalidHeader` is returned). A same-named default header in `Config.Defaults.Headers` is overridden.
 
 ```go
 result, err := client.Get(url,
@@ -72,7 +72,7 @@ result, err := client.Get(url,
 func WithHeaderMap(headers map[string]string) RequestOption
 ```
 
-Sets multiple request headers at once.
+Sets multiple request headers at once. Each entry runs the same validation as `WithHeader`; the first invalid key or value aborts with an error naming the offending key.
 
 ```go
 result, err := client.Get(url,
@@ -89,7 +89,7 @@ result, err := client.Get(url,
 func WithUserAgent(userAgent string) RequestOption
 ```
 
-Sets the User-Agent header. This is a convenience wrapper for `WithHeader("User-Agent", ...)`.
+Sets the User-Agent header. A convenience wrapper for `WithHeader("User-Agent", ...)`, overriding `Config.Defaults.UserAgent` (`"httpc/1.0"`).
 
 ## Authentication
 
@@ -99,7 +99,7 @@ Sets the User-Agent header. This is a convenience wrapper for `WithHeader("User-
 func WithBasicAuth(username, password string) RequestOption
 ```
 
-Sets HTTP Basic authentication. The username cannot be empty and credential length is limited.
+Sets HTTP Basic authentication and generates an `Authorization: Basic <base64>` header. Username and password cannot be empty, are limited to 255 characters, and must not contain control characters; the username must not contain a colon (`:`).
 
 ```go
 result, err := client.Get(url,
@@ -113,7 +113,7 @@ result, err := client.Get(url,
 func WithBearerToken(token string) RequestOption
 ```
 
-Sets the `Authorization: Bearer <token>` header. The token cannot be empty.
+Sets the `Authorization: Bearer <token>` header. The token cannot be empty, is limited to 2048 characters, and must not contain spaces or control characters (RFC 6750 constraints).
 
 ```go
 result, err := client.Get(url,
@@ -129,7 +129,7 @@ result, err := client.Get(url,
 func WithJSON(data any) RequestOption
 ```
 
-Sets a JSON request body, automatically adding `Content-Type: application/json`.
+Sets a JSON request body and adds `Content-Type: application/json` automatically. A nil `data` returns an error; equivalent to `WithBody(data, BodyJSON)`.
 
 ```go
 result, err := client.Post(url,
@@ -146,7 +146,7 @@ result, err := client.Post(url,
 func WithXML(data any) RequestOption
 ```
 
-Sets an XML request body, automatically adding `Content-Type: application/xml`.
+Sets an XML request body and adds `Content-Type: application/xml` automatically. A nil `data` returns an error; equivalent to `WithBody(data, BodyXML)`.
 
 ### WithForm
 
@@ -154,7 +154,11 @@ Sets an XML request body, automatically adding `Content-Type: application/xml`.
 func WithForm(data map[string]string) RequestOption
 ```
 
-Sets a URL-encoded form request body, automatically adding `Content-Type: application/x-www-form-urlencoded`.
+Sets a URL-encoded form body and adds `Content-Type: application/x-www-form-urlencoded` automatically.
+
+Each field key (≤256 characters) and value (≤8192 characters) is validated for control characters and length. Keys are encoded in alphabetical order, so the same input always produces the same body, which helps with testing and request signing.
+
+Only `map[string]string` is accepted. To submit `url.Values`, use `WithBody(data, BodyForm)`; both share the same validation and encoding path.
 
 ```go
 result, err := client.Post(url,
@@ -171,7 +175,7 @@ result, err := client.Post(url,
 func WithFormData(data *FormData) RequestOption
 ```
 
-Sets a `multipart/form-data` request body, supporting mixed file and field uploads.
+Sets a `multipart/form-data` body for mixed file and field uploads. A nil `data` returns an error; equivalent to `WithBody(data, BodyMultipart)`.
 
 ```go
 result, err := client.Post(url,
@@ -190,7 +194,13 @@ result, err := client.Post(url,
 func WithFile(fieldName, filename string, content []byte) RequestOption
 ```
 
-Convenient file upload. Automatically builds a multipart request body. The filename is processed for path-traversal protection.
+Uploads a single file as multipart. `fieldName` and `filename` cannot be empty, are limited to 256 characters, and must not contain path separators (`/`, `\`), `..`, quotes, angle brackets, or similar dangerous characters.
+
+The actual filename is `filepath.Base(filename)`, which strips the path to prevent traversal; a result of `"."`, `".."`, or empty returns an error.
+
+:::warning Mutually exclusive with other body options
+`WithFile` replaces the entire request body. When `WithFile` is called more than once, or combined with other body options (`WithFormData`, `WithJSON`, etc.), later options override earlier ones. For multi-file or file-plus-field uploads, build a single `*FormData` and use `WithFormData`.
+:::
 
 ```go
 result, err := client.Post(url,
@@ -204,7 +214,9 @@ result, err := client.Post(url,
 func WithBinary(data []byte, contentType ...string) RequestOption
 ```
 
-Sets a binary request body. The default Content-Type is `application/octet-stream`, customizable.
+Sets a binary request body. A nil `data` returns an error; a non-nil empty slice is accepted and sends an empty body. The default Content-Type is `application/octet-stream` and can be overridden by the second argument (an empty string falls back to the default).
+
+Unlike `WithBody(data, BodyBinary)`, this option takes only `[]byte`; `WithBody` also accepts `string` input and rejects empty data.
 
 ```go
 result, err := client.Post(url,
@@ -218,7 +230,7 @@ result, err := client.Post(url,
 func WithBody(data any, kind ...BodyKind) RequestOption
 ```
 
-Generic request-body setter, supporting auto-detection and explicit type specification.
+Generic request-body setter with auto-detection and explicit type specification. When `kind` is omitted, `BodyAuto` is used.
 
 **Auto-detection rules** (default `BodyAuto`):
 
@@ -264,8 +276,10 @@ result, _ := client.Post(url, httpc.WithBody(data, httpc.BodyXML))
 
 A type mismatch (e.g., passing a non-`*FormData` to `BodyMultipart`) or a nil `data` returns an error.
 
-:::warning io.Reader bypasses size validation
-`io.Reader` request bodies bypass request-body size validation. When reading from an untrusted source, wrap it with `io.LimitReader` to prevent resource exhaustion:
+:::warning io.Reader and the request-body size cap
+`io.Reader` cannot report its length, so with the default `Security.MaxRequestBodySize = 0` no limit is applied.
+
+Once `MaxRequestBodySize` is set, the engine wraps the `io.Reader` in a counting reader at send time; reading past the cap aborts the transfer and returns `request body exceeds limit of N bytes`. For untrusted sources, capping the stream at the call site with `io.LimitReader` is still recommended:
 
 ```go
 limited := io.LimitReader(untrustedReader, 10<<20) // cap at 10 MB
@@ -280,7 +294,9 @@ limited := io.LimitReader(untrustedReader, 10<<20) // cap at 10 MB
 func WithQuery(key string, value any) RequestOption
 ```
 
-Sets a single query parameter.
+Sets a single query parameter. The key cannot be empty, is limited to 256 characters, and must not contain control characters or reserved characters (`&`, `=`, `#`, `?`); the formatted value is limited to 8192 characters.
+
+A nil `value` skips the parameter entirely (it is not rendered as `<nil>`). Common types such as `string`, `bool`, integers, and floats are supported; other types use the generic formatting path (e.g. `fmt.Stringer` implementers).
 
 ```go
 result, err := client.Get(url,
@@ -295,7 +311,7 @@ result, err := client.Get(url,
 func WithQueryMap(params map[string]any) RequestOption
 ```
 
-Sets multiple query parameters at once.
+Sets multiple query parameters at once. Validation rules match `WithQuery`. Entries with nil values are skipped; a nil map adds no parameters.
 
 ```go
 result, err := client.Get(url,
@@ -340,7 +356,7 @@ result, err = client.Get("https://api.example.com",
 func WithCookieMap(cookies map[string]string) RequestOption
 ```
 
-Adds simple cookies in bulk. Suitable for scenarios requiring only name-value pairs.
+Adds simple cookies in bulk. Suitable when cookies carry only name-value pairs.
 
 ```go
 result, err := client.Get(url,
@@ -357,7 +373,7 @@ result, err := client.Get(url,
 func WithCookieString(cookieString string) RequestOption
 ```
 
-Adds cookies from a raw Cookie header string.
+Adds cookies from a raw Cookie header string. An empty string is a no-op; a missing `=` separator or an empty name before `=` returns an error. Each parsed cookie is validated the same way as with `WithCookies`.
 
 ```go
 result, err := client.Get(url,
@@ -371,10 +387,10 @@ result, err := client.Get(url,
 func WithSecureCookie(securityConfig *CookieSecurityConfig) RequestOption
 ```
 
-Enforces validation of the security attributes (Secure, HttpOnly, SameSite) of request cookies.
+Validates, when applied, the security attributes (Secure, HttpOnly, SameSite) of cookies present at that moment.
 
-:::warning
-This option **only validates cookies that already exist at the time it is applied**. You must place `WithSecureCookie` **after** all `WithCookies`/`WithCookieMap`/`WithCookieString` calls; otherwise cookies added later will not be validated. For session-level cookie-security validation that is not subject to ordering, use `SessionManager.SetCookieSecurity`.
+:::warning Option order
+`WithSecureCookie` **validates only cookies that exist when it is applied**. Place it **after** all `WithCookies`/`WithCookieMap`/`WithCookieString` calls; otherwise later cookies are not validated. For session-level cookie validation that does not depend on order, use `SessionManager.SetCookieSecurity`.
 :::
 
 ```go
@@ -394,7 +410,7 @@ result, err := client.Get(url,
 func WithContext(ctx context.Context) RequestOption
 ```
 
-Sets the request context, supporting timeout and cancellation. The context cannot be nil.
+Sets the request context with timeout and cancellation support. The context cannot be nil. A deadline set on the context overrides the client default timeout (`Timeouts.Request`) for this request.
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -409,7 +425,7 @@ result, err := client.Get(url, httpc.WithContext(ctx))
 func WithTimeout(timeout time.Duration) RequestOption
 ```
 
-Sets a per-request timeout, overriding the client default. Range: 0 to 30 minutes.
+Sets a per-request timeout, overriding `Config.Timeouts.Request` (default 180s, covering the whole request including retries). The value must be greater than 0 and at most 30 minutes: `0`, negative values, and values above 30 minutes return `ErrInvalidTimeout`. For no timeout, use [`WithNoTimeout`](#withnotimeout).
 
 ```go
 result, err := client.Get(url, httpc.WithTimeout(5*time.Second))
@@ -421,7 +437,12 @@ result, err := client.Get(url, httpc.WithTimeout(5*time.Second))
 func WithNoTimeout() RequestOption
 ```
 
-Lifts the client-level default request timeout (`Config.Timeouts.Request`, default 180s) for this single request, letting a slow call run for as long as the server takes. Only the client default is lifted: an explicit [`WithTimeout`](#withtimeout) on the same request takes precedence, and any deadline on the caller-provided context (`WithContext` or the ctx parameter) is always honored. Dial/TLS/response-header timeouts are unaffected.
+Lifts the client-level default request timeout (`Config.Timeouts.Request`, default 180s) for this single request, so a slow call can run until the server finishes. Only the client default is lifted; two limits still apply:
+
+- An explicit [`WithTimeout`](#withtimeout) on the same request takes precedence.
+- A deadline set by the caller's context (`WithContext` or the ctx parameter) is always honored.
+
+Dial, TLS, and response-header timeouts are unaffected.
 
 ```go
 // Lift the default 180s ceiling for long calls (large uploads, slow reports)
@@ -437,7 +458,7 @@ result, err := client.Post(uploadURL,
 func WithMaxRetries(maxRetries int) RequestOption
 ```
 
-Sets the per-request maximum retry count, overriding the client configuration. Range: 0-10.
+Sets the per-request maximum retry count, overriding `Config.Retry.MaxRetries` (default 3). Range: 0-10; values outside the range return `ErrInvalidRetry`.
 
 ```go
 result, err := client.Get(url, httpc.WithMaxRetries(3))
@@ -449,10 +470,15 @@ result, err := client.Get(url, httpc.WithMaxRetries(3))
 func WithRetryNonIdempotent(allow bool) RequestOption
 ```
 
-Overrides, for this single request, whether non-idempotent methods (POST, PATCH, and custom methods) may be retried, in **both** directions over the client-level `Config.Retry.RetryNonIdempotent` (default false): `true` retries a POST on a client that otherwise forbids it; `false` pins a single attempt on a client that allows it. Idempotent methods (GET/HEAD, etc.) are unaffected, and the [`WithMaxRetries`](#withmaxretries) cap still applies.
+Overrides, for this single request, whether non-idempotent methods (POST, PATCH, and custom methods) may be retried. The override is **bidirectional** over the client-level `Config.Retry.RetryNonIdempotent` (default false):
+
+- `true`: retries a POST on a client that otherwise forbids it.
+- `false`: pins a single attempt on a client that allows retries.
+
+Idempotent methods (GET/HEAD, etc.) are unaffected, and the [`WithMaxRetries`](#withmaxretries) cap still applies.
 
 :::warning
-Enabling retries for a non-idempotent request means a timeout or retryable 5xx may send the request body more than once (duplicate orders, duplicate payments). Use it only against endpoints that tolerate replay, or guard them with an idempotency key.
+Enabling retries for a non-idempotent request means a timeout or retryable 5xx may send the request body more than once (duplicate orders, duplicate payments). Enable it only for endpoints that tolerate replay, or protect them with an idempotency key.
 :::
 
 ```go
@@ -470,7 +496,7 @@ result, err := client.Post(orderURL,
 func WithFollowRedirects(follow bool) RequestOption
 ```
 
-Controls whether to follow redirects.
+Controls whether redirects are followed, overriding `Config.Security.FollowRedirects` (default true).
 
 ```go
 // Disable following redirects
@@ -483,7 +509,7 @@ result, err := client.Get(url, httpc.WithFollowRedirects(false))
 func WithMaxRedirects(maxRedirects int) RequestOption
 ```
 
-Sets the per-request maximum redirect count. Range: 0-50.
+Sets the per-request maximum redirect count, overriding `Config.Security.MaxRedirects` (default 10). Range: 0-50; negative values or values above 50 return `ErrInvalidMaxRedirects`.
 
 :::warning
 `0` does **not** disable redirects. The engine treats `0` as an "unset" sentinel and falls back to the default cap (10), so `WithMaxRedirects(0)` is equivalent to omitting the option. To fully disable redirect following, use `WithFollowRedirects(false)` instead.
@@ -495,12 +521,15 @@ Sets the per-request maximum redirect count. Range: 0-50.
 func WithAllowPrivateIPs(allow bool) RequestOption
 ```
 
-Overrides the client's SSRF policy for a single request. When `allow` is `true`, the request may access localhost and private/reserved IP ranges (127.0.0.0/8, 10.0.0.0/8, 192.168.0.0/16, 169.254.0.0/16, etc.) and follow redirects to such addresses; when `false`, SSRF protection is enforced for this request even if the client is configured with `Security.AllowPrivateIPs=true`.
+Overrides the SSRF policy of the client for a single request (corresponds to `Config.Security.AllowPrivateIPs`, default false).
+
+- `true`: the request may access localhost and private/reserved IP ranges (127.0.0.0/8, 10.0.0.0/8, 192.168.0.0/16, 169.254.0.0/16, etc.) and follow redirects to such addresses.
+- `false`: SSRF protection is enforced for this request even when the client sets `Security.AllowPrivateIPs=true`.
 
 :::warning
-This is a **per-request escape hatch** from SSRF protection, suited for cases where a default-secure client (`AllowPrivateIPs=false`) occasionally needs to reach internal services, loopback addresses, or a local dev server.
+This option is a **single-request exemption** from SSRF protection. It suits a default-secure client (`AllowPrivateIPs=false`) that occasionally needs to reach internal services, loopback addresses, or a local dev server.
 
-Enable it only when the request URL is trusted and **not** derived from untrusted user input. To allow internal access for an entire client, set `Security.AllowPrivateIPs=true` on `Config` directly.
+Enable it only when the request URL is trusted and **not** derived from untrusted external input. To allow internal access for an entire client, set `Security.AllowPrivateIPs=true` on `Config`.
 :::
 
 ```go
@@ -516,20 +545,22 @@ result, err := httpc.Get("http://localhost:8080/health",
 func WithStreamBody(stream bool) RequestOption
 ```
 
-Enables streaming mode; the response body is not cached in memory.
+Enables streaming mode so the response body is not buffered in memory.
 
 :::warning
-Streaming mode **only takes effect via [`Download`](./functions#download)**. When used with the standard request methods (`Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`), the response body is read in full and converted into a `Result`, after which the underlying stream is closed — the returned `Result` body is empty and the caller cannot consume the stream.
+Streaming mode **takes effect only on the [`Download`](./functions#download) path**. When `WithStreamBody(true)` is used with the standard request methods (`Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`), the request fails with `ErrStreamBodyRequiresDownload`. Those methods buffer the body into a `Result` and cannot hand the stream to the caller.
 
-To actually stream-download large files without caching them in memory, use `Download`.
+To stream-download large files without buffering them in memory, use `Download`.
 :::
 
 ## Package-level Routing
 
-Three **package-level-only** routing options: `WithProxy`, `WithSystemProxy`, and `WithTLSFingerprint`. Each routes a single package-level call to a dedicated client (isolated pools, inheriting the default client's secure defaults — SSRF protection, TLS 1.2+, timeouts, retries), leaving the shared default client and any other in-flight calls untouched. Each distinct `(proxy, fingerprint)` combination is cached as its own client; close them all with `CloseRoutedClients` (see [Package Functions & Client Methods](./functions#closeroutedclients)).
+`WithProxy`, `WithSystemProxy`, and `WithTLSFingerprint` are three **package-level-only** routing options. Each routes a single package-level call to a dedicated client.
+
+The dedicated client has its own connection pool and inherits the default client's secure defaults (SSRF protection, TLS 1.2+, timeouts, retries). The shared default client and any other in-flight calls are unaffected. Each distinct `(proxy, fingerprint)` combination is cached as its own client; close them all with `CloseRoutedClients` (see [Package Functions & Client Methods](./functions#closeroutedclients)).
 
 :::warning Package-level only
-These options only make sense on package-level functions (`Get`/`Post`/`Request`/`Download`, etc.). On an explicit `Client` instance they return an error — use `Config.Connection.ProxyURL` / `Config.Connection.EnableSystemProxy` / `Config.Security.TLSFingerprint` there instead.
+These options apply only to package-level functions (`Get`/`Post`/`Request`/`Download`, etc.). On an explicit `Client` instance they return an error; use `Config.Connection.ProxyURL` / `Config.Connection.EnableSystemProxy` / `Config.Security.TLSFingerprint` there instead.
 :::
 
 ### WithProxy
@@ -538,7 +569,7 @@ These options only make sense on package-level functions (`Get`/`Post`/`Request`
 func WithProxy(proxyURL string) RequestOption
 ```
 
-Routes this call through an explicit proxy (`http`/`https`/`socks5`/`socks5h`), taking precedence over the default client's own proxy configuration. The proxy URL may carry credentials; httpc never logs them.
+Routes this call through an explicit proxy (`http`/`https`/`socks5`/`socks5h`), taking precedence over the default client's own proxy configuration. The proxy URL may carry credentials; httpc does not log them.
 
 ```go
 result, err := httpc.Get("https://example.com",
@@ -552,7 +583,7 @@ result, err := httpc.Get("https://example.com",
 func WithSystemProxy() RequestOption
 ```
 
-Routes this call through a client with automatic system-proxy detection (`Connection.EnableSystemProxy`): it reads environment variables (`HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`) and platform settings (Windows registry, macOS system configuration). Requests to `localhost`/loopback and NO_PROXY-exempt hosts bypass the proxy, matching `net/http` behavior; with no system proxy configured, the request connects directly. When combined with `WithProxy`, `WithProxy` wins.
+Routes this call through a client with system-proxy detection (`Connection.EnableSystemProxy`). That client reads environment variables (`HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`) and platform settings (Windows registry, macOS system configuration). Requests to `localhost`/loopback and NO_PROXY-exempt hosts bypass the proxy, following `net/http` semantics; with no system proxy configured, the request connects directly. When combined with `WithProxy`, `WithProxy` takes precedence.
 
 ```go
 result, err := httpc.Get("https://example.com", httpc.WithSystemProxy())
@@ -564,7 +595,7 @@ result, err := httpc.Get("https://example.com", httpc.WithSystemProxy())
 func WithTLSFingerprint(preset string) RequestOption
 ```
 
-Routes this call to a browser TLS-fingerprint client (equivalent to `Config.Security.TLSFingerprint`). The value must be a known preset (case-insensitive, whitespace-trimmed): `chrome` / `firefox` and their OS/version aliases; an unknown preset fails the request with `ErrInvalidSecurity`. See the [TLS Fingerprinting guide](../../guides/tls-fingerprint) for the full preset list and behavior semantics.
+Routes this call to a browser TLS-fingerprint client (equivalent to `Config.Security.TLSFingerprint`). The value must be a known preset (case-insensitive, whitespace-trimmed): `chrome` / `firefox` and their OS/version aliases. An unknown preset fails the request with `ErrInvalidSecurity`. See the [TLS Fingerprinting guide](../../guides/tls-fingerprint) for the full preset list and behavior.
 
 ```go
 result, err := httpc.Get("https://example.com",
@@ -580,7 +611,7 @@ result, err := httpc.Get("https://example.com",
 func WithOnRequest(callback func(req RequestMutator) error) RequestOption
 ```
 
-Registers a pre-send callback. Multiple callbacks can be chained and execute in the order they are added. Returning an error aborts the request.
+Registers a pre-send callback. Multiple callbacks can be chained and run in the order they are added. A returned error aborts the request; a nil `callback` returns an error.
 
 ```go
 result, err := client.Get(url,
@@ -597,7 +628,7 @@ result, err := client.Get(url,
 func WithOnResponse(callback func(resp ResponseMutator) error) RequestOption
 ```
 
-Registers a post-receive callback. Multiple callbacks can be chained and execute in the order they are added.
+Registers a post-receive callback. Multiple callbacks can be chained and run in the order they are added. Any callback that returns an error fails the request with that error; a nil `callback` returns an error.
 
 ```go
 result, err := client.Get(url,
@@ -616,7 +647,7 @@ result, err := client.Get(url,
 type RequestOptionFunc func(RequestMutator) error
 ```
 
-A public adapter type that turns a function literal into the `RequestOption` interface, mirroring net/http's Handler/HandlerFunc split — `RequestOption`'s `apply` method is unexported, so the interface cannot be implemented outside the package; custom per-request options are expressed through `RequestOptionFunc`, without naming the internal request type:
+A public adapter type that turns a function literal into the `RequestOption` interface, mirroring net/http's Handler/HandlerFunc split. The `apply` method of `RequestOption` is unexported, so the interface cannot be implemented outside the package; express custom per-request options through `RequestOptionFunc` instead, without naming the internal request type.
 
 ```go
 result, err := client.Get(url,
@@ -627,7 +658,7 @@ result, err := client.Get(url,
 )
 ```
 
-A nil `RequestOptionFunc` is a no-op — it is skipped silently when applied.
+A nil `RequestOptionFunc` is a no-op and is skipped silently when applied.
 
 ## See Also
 

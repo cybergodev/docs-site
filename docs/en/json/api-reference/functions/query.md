@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Query & Get"
 title: "Query & Get Functions - CyberGo JSON | Get/GetInt Usage"
-description: "CyberGo JSON is a Go library for JSONPath queries, offering type-safe Get/GetInt, GetTyped[T], SafeGet, GetWithContext and GetMultiple for nested values."
+description: "Path query: Get/GetWithContext return sentinel errors, GetString and other typed getters fall back to defaults, SafeGet keeps Exists, GetMultiple parses once."
 sidebar_position: 20
 ---
 
 # Query and Get Functions
 
-Query and get functions of the json package, supporting path expressions, type-safe access, and batch operations.
+Path queries, type-safe getters, safe access and batch retrieval. `Get` returns an error on failure; typed getters such as `GetString` return no error and fall back to the default. The two differ in error semantics; see the selection notes below.
 
 ## Path Query Functions
 
@@ -15,7 +15,7 @@ Query and get functions of the json package, supporting path expressions, type-s
 
 Signature: `func Get(jsonStr, path string, cfg ...Config) (any, error)`
 
-Gets a value of any type by path.
+Gets a value of any type by path. A missing key or an out-of-bounds array index returns an error matching `errors.Is(err, ErrPathNotFound)`; invalid JSON matches `ErrInvalidJSON`. The error may be the bare sentinel or a `JsonsError` wrapping it, so always test with `errors.Is`. For default-value fallback use a typed getter or `SafeGet` instead of branching on `Get`'s error.
 
 **Parameters**
 
@@ -48,14 +48,15 @@ func main() {
 
 Signature: `func GetWithContext(ctx context.Context, jsonStr, path string, cfg ...Config) (any, error)`
 
-Context-aware get by path. Supports timeout and cancellation. The context-aware version of `Get`.
+Context-aware version of `Get`, supporting timeout and cancellation.
 
 ::: info Cancellation semantics: boundary-level checks
-The Context is checked only **before the operation starts** and **after it finishes**, not during parsing/navigation:
+The Context is checked only **before the operation starts** and **after it finishes**, not during parsing or navigation:
 
-- Already cancelled/timed out before the start: returns `ctx.Err()` directly (`context.Canceled` / `context.DeadlineExceeded`), with no parsing performed
-- Timeout detected only after the operation completes: likewise returns `ctx.Err()` — even a successfully retrieved value is discarded
-- This function is therefore suited as a **guard at call boundaries** — avoiding wasted work on already-expired requests; but parsing itself cannot be cut short mid-flight, so for extremely large JSON documents a timeout does not bound the duration of a single parse
+- Already cancelled or timed out before the start: returns `ctx.Err()` directly (`context.Canceled` / `context.DeadlineExceeded`), with no parsing performed
+- Timeout detected only after the operation completes: likewise returns `ctx.Err()`; even a successfully retrieved value is discarded
+- This function therefore suits **guarding call boundaries**, avoiding wasted work on already-expired requests
+- Parsing itself cannot be cut short mid-flight: for very large JSON documents a timeout does not bound the duration of a single parse
 :::
 
 ```go
@@ -82,7 +83,7 @@ func main() {
 
 ## Type-Safe Get Functions
 
-Type-safe get functions provide zero-value fallbacks through the `defaultValue` variadic parameter. When the path does not exist, the value is null, or the type conversion fails, `defaultValue` is returned (or the zero value of the type when not provided).
+Type-safe getters fall back through the `defaultValue` variadic parameter: when the path does not exist, the value is null, or the conversion fails, `defaultValue` is returned; without one they return the zero value of the type. Their variadic parameter is taken by `defaultValue`, so they **do not accept a `Config`** and always use the default processor.
 
 ### GetString
 
@@ -341,9 +342,9 @@ func main() {
 
 Signature: `func GetTyped[T any](jsonStr, path string, defaultValue ...T) T`
 
-Generic get function supporting custom types. When the path does not exist, the value is null, or the type conversion fails, `defaultValue` is returned (or the zero value of `T` when not provided).
+Generic get function supporting custom types. Returns `defaultValue` when the path does not exist, the value is null, or the conversion fails; without one it returns the zero value of `T`.
 
-**Naming note**: `GetTyped[T]` has the same semantics as `GetAs[T]` — it gets the JSON value and converts it to the given type `T`.
+**Naming note**: `GetTyped[T]` means "get the JSON value and convert it to type `T`". This library exposes no GetAs-style generic alias; generic retrieval always goes through `GetTyped[T]`.
 
 ```go
 package main
@@ -384,7 +385,7 @@ func main() {
 
 Signature: `func SafeGet(jsonStr, path string, cfg ...Config) AccessResult`
 
-Performs a type-safe get and returns an `AccessResult` providing conversion methods (`AsString`, `AsInt`, `AsFloat64`, `AsBool`).
+Performs a type-safe get and returns an `AccessResult`. When the path is missing, parsing fails, or the processor is unavailable, `Exists` is `false` and no error is returned. The result exposes `AsString`, `AsInt`, `AsFloat64`, and `AsBool` conversion methods.
 
 ```go
 package main
@@ -413,7 +414,7 @@ func main() {
 
 Signature: `func (p *Processor) SafeGet(jsonStr, path string, cfg ...Config) AccessResult`
 
-Performs a type-safe get through a Processor instance.
+Performs a type-safe get through a Processor instance; behaves the same as the package-level `SafeGet`.
 
 ```go
 p, err := json.New()
@@ -432,9 +433,9 @@ if result.Exists {
 ```
 
 :::tip Choosing: the GetTyped family or SafeGet
-- **Config support**: typed functions such as `GetString`/`GetInt`/`GetTyped[T]` **cannot take a Config** — the variadic parameter is already occupied by `defaultValue` (Go allows only one variadic parameter per function) — so they always use the default processor. To customize security limits, validation, or caching per call, use `SafeGet(jsonStr, path, cfg)` instead, or create a dedicated Processor with `json.New(cfg)` and call its `GetString` and other methods.
-- **Conversion leniency**: typed functions use lenient conversion (the string `"42"` converts to `int`, the boolean `true` to `1`); `SafeGet`'s `AsInt`/`AsFloat64` reject boolean input, and `AsString` requires the original value to already be a string (use `AsStringConverted` when you need explicit stringification).
-- **Error semantics**: typed functions **silently fall back** to the default/zero value; `SafeGet` preserves both "does it exist" (`Exists`/`Ok()`) and "did the conversion fail" (the `AsInt`/`AsString` conversion methods return an error), which makes the two cases easy to handle separately.
+- **Config support**: typed functions such as `GetString`/`GetInt`/`GetTyped[T]` **cannot take a Config**, because the variadic parameter is taken by `defaultValue` (Go allows only one variadic parameter per function); they always use the default processor. To customize security limits, validation, or caching per call, use `SafeGet(jsonStr, path, cfg)`; or create a dedicated Processor with `json.New(cfg)` and call its `GetString` and other methods.
+- **Conversion leniency**: typed functions use lenient conversion (the string `"42"` becomes `int`, the boolean `true` becomes `1`). `SafeGet`'s `AsInt`/`AsFloat64` reject boolean input, and `AsString` requires the original value to already be a string; use `AsStringConverted` when you want explicit stringification.
+- **Error semantics**: typed functions **silently fall back** to the default or zero value. `SafeGet` keeps both "does it exist" (`Exists`/`Ok()`) and "did the conversion fail" (the `AsInt`/`AsString` methods return an error), so the two cases can be handled separately.
 :::
 
 ## Processor Extension Methods
@@ -449,9 +450,9 @@ Batch-gets the values at multiple paths (package-level function — no Processor
 
 **Return value semantics**
 
-- The JSON is parsed only **once**, then each path is evaluated (more efficient than repeated `Get` calls)
+- The JSON is parsed only **once**, then each path is evaluated; repeated `Get` calls re-parse for every path
 - The returned map is keyed by the **path string itself** (e.g. `"user.name"`), corresponding one-to-one with the input `paths`
-- **Partial failure**: when a path fails, its key is `nil` in the map and the function returns the **first** error encountered (`map` and `err` are both non-nil) — results of the already-successful paths remain usable
+- **Partial failure**: when a path fails, its key is `nil` in the map and the function returns the **first** error encountered (`map` and `err` are both non-nil); results of already-successful paths remain usable
 - If any path has **illegal syntax**, the whole call fails (returns `nil, err`); an empty `paths` slice returns an empty map and `nil`
 
 ```go
@@ -511,7 +512,7 @@ fmt.Println(values["user.name"]) // Output: CyberGo
 
 ## Error Handling
 
-Failures of `Get`/`GetWithContext` are distinguished by sentinel errors, checked with `errors.Is`; typed functions (`GetString`, etc.) return no error and silently fall back to the zero value/default:
+Failures of `Get`/`GetWithContext` return sentinel errors checked with `errors.Is`. Typed getters (`GetString`, etc.) return no error and fall back to the zero value or default. Both a missing object key and an out-of-bounds array index map to `ErrPathNotFound`:
 
 ```go
 package main
@@ -524,19 +525,28 @@ import (
 )
 
 func main() {
-	data := `{"user": {"name": "Alice"}}`
+	data := `{"user": {"name": "Alice"}, "items": ["a", "b", "c"]}`
 
+	// A missing key and an out-of-bounds index both return ErrPathNotFound
 	if _, err := json.Get(data, "user.age"); errors.Is(err, json.ErrPathNotFound) {
-		fmt.Println("Path not found; fall back to default-value logic")
+		fmt.Println("path not found")
 	}
-	if _, err := json.Get(`{"name": "x"}`, "name[0]"); errors.Is(err, json.ErrTypeMismatch) {
-		fmt.Println("Type mismatch: strings do not support indexing")
+	if _, err := json.Get(data, "items[10]"); errors.Is(err, json.ErrPathNotFound) {
+		fmt.Println("index out of bounds")
 	}
+
+	// AsString on a non-string value wraps ErrTypeMismatch
+	if _, err := json.SafeGet(`{"age": 30}`, "age").AsString(); errors.Is(err, json.ErrTypeMismatch) {
+		fmt.Println("type mismatch: a number cannot become a string")
+	}
+
 	if _, err := json.Get(`{"name": }`, "name"); errors.Is(err, json.ErrInvalidJSON) {
-		fmt.Println("Input is not valid JSON")
+		fmt.Println("input is not valid JSON")
 	}
 }
 ```
+
+Indexing a string value (e.g. `name[0]`) returns a plain `JsonsError`: `errors.Is(err, ErrTypeMismatch)` is `false`, because type errors from `Get` do not wrap the sentinel. When you need "missing means default", use a typed getter or `SafeGet` rather than branching on `Get`'s error.
 
 :::tip Performance entry points
 For repeated queries on the same path use [`CompilePath`/`GetCompiled`](../processor/query#compilepath); for multi-path queries on the same JSON use [`PreParse`/`GetFromParsed`](../processor/query#preparse) — both in the Processor query reference.

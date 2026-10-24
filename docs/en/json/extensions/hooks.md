@@ -1,16 +1,16 @@
 ---
 sidebar_label: "Hook System"
 title: "Hook System - CyberGo JSON | Intercept, Monitor & Audit"
-description: "CyberGo JSON hook system: Hook interface, LoggingHook, TimingHook, ValidationHook, ErrorHook, and custom hooks — Before/After stages with HookContext."
+description: "CyberGo JSON hooks: the Hook interface, LoggingHook/TimingHook/ValidationHook/ErrorHook factories, HookFunc adapter, and Before/After with HookContext."
 sidebar_position: 20
 ---
 
 # Hook System
 
-Hooks let you insert custom logic before and after JSON operations — logging, performance monitoring, validation, and more.
+Hooks insert custom logic before and after JSON operations — for logging, performance monitoring, and input validation.
 
 :::tip Interface signature reference
-For the complete type signatures (`Hook`, `HookContext`, `HookFunc`) see [Interface Definitions](../api-reference/interfaces#hook-interfaces). This page focuses on usage guidance and best practices.
+For the complete type signatures (`Hook`, `HookContext`, `HookFunc`) see [Interface Definitions](../api-reference/interfaces#hook-interfaces). The rest of this page covers usage and execution order.
 :::
 
 ## The Hook Interface
@@ -111,7 +111,7 @@ Unset functions in `HookFunc` are no-ops: a missing `BeforeFn` lets the Before p
 
 ---
 
-## Convenience Hook Factories
+## Hook Factories
 
 ### LoggingHook
 
@@ -398,7 +398,7 @@ p.AddHook(&json.HookFunc{
 
 ## Configuring Hooks
 
-### Adding via Config
+### Adding on Config
 
 ```go
 cfg := json.DefaultConfig()
@@ -412,7 +412,7 @@ if err != nil {
 }
 ```
 
-### Adding via the Processor
+### Adding on the Processor
 
 ```go
 p, err := json.New()

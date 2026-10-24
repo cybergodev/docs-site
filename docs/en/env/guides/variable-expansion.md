@@ -7,7 +7,7 @@ sidebar_position: 3
 
 # Variable Expansion
 
-The env library supports variable references in configuration files, enabling configuration reuse and dynamic value substitution.
+With `ExpandVariables` enabled, a `.env` value can reference another variable, which lets you define a value once and reuse it. Expansion runs as a post-processing pass after a line is parsed and its quotes are stripped.
 
 ## Enabling Variable Expansion
 
@@ -39,12 +39,12 @@ URL=$HOST:8080
 
 | Syntax | Description |
 |--------|-------------|
-| `${VAR:-default}` | If VAR doesn't exist, use default |
-| `${VAR:=default}` | If VAR doesn't exist, use default and assign it back to the variable |
-| `${VAR:?error}` | If VAR doesn't exist or is empty, return error |
+| `${VAR:-default}` | Use default if VAR doesn't exist |
+| `${VAR:=default}` | Use default if VAR doesn't exist, and assign it back to the variable |
+| `${VAR:?error}` | Return an error if VAR doesn't exist or is empty |
 
 :::warning Self-reference restriction
-Variables referenced by `:-`, `:=`, `:?` must be **different** from the key being assigned. Self-references like `KEY=${KEY:-default}` are detected as circular references and produce an `ErrExpansionDepth` error during loading. To set a default value for a key, assign a literal directly (`KEY=default`), or reference another variable (see examples below).
+The variable referenced by `:-`, `:=`, or `:?` must be **different** from the key being assigned. A self-reference like `KEY=${KEY:-default}` counts as a circular reference and fails loading with `ErrExpansionDepth`. To give a key a default, assign a literal directly (`KEY=default`) or reference another variable.
 :::
 
 ---
@@ -53,7 +53,7 @@ Variables referenced by `:-`, `:=`, `:?` must be **different** from the key bein
 
 ### `${VAR:-default}` - Use Default Value
 
-The most common default value syntax. Uses the default value when the variable doesn't exist; uses the original value when the variable exists (even if empty):
+`${VAR:-default}` uses the default when the variable doesn't exist, and the original value when it does — even if that value is empty:
 
 ```bash
 # HOST is defined, use its value
@@ -80,7 +80,7 @@ DB_URL=${DB_HOST}:${DB_PORT:-5432}
 
 ### `${VAR:=default}` - Use Default Value and Assign Back
 
-The difference from `${VAR:-default}` is that `:=` **assigns** the expanded default value back to the variable — the write-back is visible to subsequent references within the same file and appears in the map after loading; variables that already exist (from the file or the process environment) are not reassigned.
+Unlike `${VAR:-default}`, `:=` **assigns** the expanded default back to the variable. Later references in the same file see the written value, and it appears in the map after loading. A variable that already exists — from the file or from the process environment — is not reassigned.
 
 ```bash
 # ASSIGNED is written back as "created" when undefined, and B expands to "created"
@@ -89,7 +89,7 @@ B=${ASSIGNED:=created}
 ```
 
 :::info Relation to `:-`
-`${VAR:-default}` only returns the default value without writing it back; `${VAR:=default}` both returns the default value and **assigns it back** to the variable store when the variable doesn't exist (the write-back is visible to later references within the same file and to `Get`/`Apply`, processed deterministically by key-name sort order). If the variable already exists (whether from the file or the process environment), `:=` does not reassign it and behaves as returning the original value.
+`${VAR:-default}` only returns the default value without writing it back. `${VAR:=default}` returns the default and **assigns it back** to the variable store when the variable doesn't exist; the write-back is visible to later references in the same file and to `Get`/`Apply`, and processing follows key-name sort order. If the variable already exists, `:=` returns the original value and does not reassign.
 :::
 
 ---
@@ -130,22 +130,30 @@ MESSAGE=Price is $$100
 
 ### Quotes and Expansion
 
-Variable expansion happens in a unified post-processing stage after quote stripping, so **neither single quotes nor double quotes affect variable expansion**. For example, `SINGLE='${BASE}'` (with `BASE=hello`) expands to `hello`, consistent with double-quote behavior; if the referenced variable is undefined (e.g., `LITERAL='${NO_EXPANSION}'`), the result is an empty string rather than preserving the `${NO_EXPANSION}` literal.
+**Values in single quotes are not expanded**, matching bash's single-quote semantics. `PASSWORD='my$ecret'` loads as the literal text `my$ecret`, and `SINGLE='${BASE}'` loads as the literal `${BASE}` rather than the value of `BASE`.
 
-The difference between single and double quotes only matters for **literal parsing**: double quotes process escape sequences like `\n`, `\t`, while single quotes preserve them as-is (no escaping).
+Double-quoted and unquoted values are expanded as usual: `GREET="hello $NAME"` (with `NAME=world`) becomes `hello world`.
+
+Quotes also affect **literal parsing**: double quotes process `\n`, `\r`, `\t`, `\"`, and `\\`, while single quotes keep every backslash sequence as written.
 
 :::warning
-Do not use quotes to "disable expansion." To preserve the `${VAR}` literal, use the following methods:
+Three ways to keep a `${VAR}` literal:
 :::
 
 ```bash
-# Method 1: Escape the dollar sign ($$ expands to literal $)
-LITERAL='$${NO_EXPANSION}'
+# Method 1: single quotes (the whole value is not expanded)
+LITERAL='${NO_EXPANSION}'
+# Value: ${NO_EXPANSION}
+```
+
+```bash
+# Method 2: double quotes or no quotes, escaping the dollar sign with $$
+LITERAL="$${NO_EXPANSION}"
 # Value: ${NO_EXPANSION}
 ```
 
 ```go
-// Method 2: Disable global variable expansion
+// Method 3: disable expansion globally
 cfg := env.DefaultConfig()
 cfg.ExpandVariables = false
 ```
@@ -154,7 +162,7 @@ cfg.ExpandVariables = false
 
 ## Nested Expansion
 
-Variables can be nested references:
+References can be nested:
 
 ```bash
 # Base configuration (avoid the built-in forbidden key ENV, use DEPLOY_ENV instead)
@@ -173,7 +181,7 @@ API_URL=https://${APP_NAME}.${DEPLOY_ENV}.api.example.com
 
 ## Circular Detection
 
-The library automatically detects circular references and returns an error:
+Circular references are detected and fail loading:
 
 ```bash
 # Circular reference (error)
@@ -187,7 +195,7 @@ B=${A}
 
 ## Expansion Depth Limit
 
-The default maximum expansion depth is 5, with a hard limit of 20:
+The default maximum expansion depth is 5, and the hard limit is 20:
 
 ```go
 cfg := env.DefaultConfig()
@@ -199,7 +207,7 @@ cfg.MaxExpansionDepth = 10  // Custom depth
 | `DefaultMaxExpansionDepth` | 5 | Default value (public API) |
 
 :::info
-The hard limit is 20 (internal limit). The configured `MaxExpansionDepth` cannot exceed this limit.
+The hard limit is 20 (an internal limit). A configured `MaxExpansionDepth` cannot exceed it.
 :::
 
 ---
@@ -266,29 +274,31 @@ func main() {
 
 ## Expansion Scope (Security Isolation)
 
-`ParsingConfig.ExpansionScope` controls which scopes `${VAR}` references can resolve against. `ExpansionFileThenProcess` is the **zero value** of the Go `iota` enum (`= iota`), but what users actually get at runtime comes from `DefaultConfig()` — `New()` applies `DefaultConfig()` to a zero-valued `Config`, and `DefaultConfig()` explicitly sets `ExpansionScope` to `ExpansionFileOnly` (SEC-003, blocking the `${VAR}` fallback to process-environment reads by default). Therefore **the runtime default = FileOnly**: the "zero value" and the "DefaultConfig default" are two different things.
+`ParsingConfig.ExpansionScope` controls which variables a `${VAR}` reference can resolve against.
+
+The enum's zero value is `ExpansionFileThenProcess` (`= iota`), but the runtime default is `ExpansionFileOnly`: `New()` applies `DefaultConfig()` to a zero-value `Config`, and `DefaultConfig()` sets `ExpansionScope = ExpansionFileOnly` explicitly (SEC-003). The zero value and the `DefaultConfig` default are therefore two different things.
 
 | Value | Behavior | Use case |
 |-------|----------|----------|
-| `ExpansionFileOnly` (runtime default) | Only file-local variables are visible; process-environment references expand to empty strings | Default behavior; secret probing prevention (SEC-03) |
-| `ExpansionFileThenProcess` (enum zero value) | File-local variables first, process environment fallback | Only when set explicitly, for trusted config files and traditional dotenv semantics |
+| `ExpansionFileOnly` (runtime default) | Only file-local variables are visible; process-environment references expand to empty strings | Default behavior; blocks secret probing (SEC-03) |
+| `ExpansionFileThenProcess` (enum zero value) | File-local variables first, then the process environment | Set explicitly, for trusted config files and traditional dotenv semantics |
 
 <!-- check-code: skip -->
 ```go
 cfg := env.DefaultConfig()
-// DefaultConfig already defaults to ExpansionFileOnly; this is an explicit declaration
+// DefaultConfig already selects ExpansionFileOnly; this is an explicit declaration
 cfg.ExpansionScope = env.ExpansionFileOnly
 loader, _ := env.New(cfg)
 ```
 
 ::: warning SEC-03
-`DefaultConfig()` defaults the expansion scope to `ExpansionFileOnly` — `${VAR}` references resolve only within the file, blocking fallback reads from the process environment. If your application loads externally provided configuration files, keep this default and do not explicitly switch back to `ExpansionFileThenProcess`.
+`DefaultConfig()` sets the expansion scope to `ExpansionFileOnly`, so `${VAR}` references resolve only within the file. If your application loads externally provided configuration files, keep this default and do not switch back to `ExpansionFileThenProcess`.
 :::
 
-Note: `ExpansionScope` is an enum, not a boolean field. Even if it is the only field set on a `Config`, `IsZero()` correctly recognizes the Config as initialized and it will not be silently replaced by defaults. But distinguish the "enum zero value" from the "DefaultConfig default": `ExpansionFileThenProcess` is the enum zero value, while `DefaultConfig()` explicitly sets `ExpansionFileOnly` — the two are not the same.
+`ExpansionScope` is an enum field, not a boolean. If it is the only field you set on a `Config`, `IsZero()` still reports the Config as initialized, so it is not replaced by defaults.
 
 ## Related Documentation
 
-- [Quick Start](../getting-started/) - Basic usage
+- [Quick Start](../getting-started/) - basic usage
 - [Config API](../api-reference/config) - ExpandVariables configuration
-- [Constants & Errors](../api-reference/constants) - Expansion depth limits
+- [Constants & Errors](../api-reference/constants) - expansion depth limits

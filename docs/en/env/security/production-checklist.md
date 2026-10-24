@@ -1,16 +1,16 @@
 ---
 sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo env | Security Launch Check"
-description: "Production checklist for CyberGo env security: .env 600 permissions, .gitignore, RequiredKeys/AllowedKeys, audit logging, SecureValue, and performance tuning."
+description: "Production checklist for CyberGo env security: .env 600 permissions, .gitignore, RequiredKeys/AllowedKeys, audit logging, SecureValue and expansion scope."
 sidebar_position: 4
 ---
 
 # Production Checklist
 
-A checklist to run through before deploying your application to production.
+Run through this list before deploying an application that uses env.
 
 :::tip Security concepts
-For security architecture and core features, see [Security Overview](./).
+For the security architecture and built-in defaults, see [Security Overview](./).
 :::
 
 ## Pre-deployment Checks
@@ -65,15 +65,15 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ```
 
-:::warning "Enabled" ≠ "flushed to disk"
-**"Enabled" is not "persisted".** `ProductionConfig()` enables `AuditEnabled = true` by default; without an `AuditHandler` configured, audit events go to the stderr `[AUDIT]` standard log instead of a file. After launch, confirm the audit log file is actually growing.
+:::warning "Enabled" is not "persisted"
+`ProductionConfig()` sets `AuditEnabled = true`. With no `AuditHandler` configured, audit events go to the stderr `[AUDIT]` log instead of a file. After launch, confirm that the audit log file is actually growing.
 :::
 
 ### Sensitive Data Handling
 
-- [ ] Sensitive values obtained with `GetSecure`
-- [ ] `Release()` called promptly to release resources (zeroes and returns to the object pool; `Close()` does not return to the pool)
-- [ ] Logs do not output raw sensitive values
+- [ ] Sensitive values read with `GetSecure`
+- [ ] `Release()` called promptly (it zeroes the value and returns it to the pool; `Close()` does not return to the pool)
+- [ ] Logs do not contain raw sensitive values
 
 ```go
 secret := loader.GetSecure("DB_PASSWORD")
@@ -85,9 +85,9 @@ log.Printf("Password length: %d", secret.Length())
 
 - [ ] `AllowedKeys` whitelist set (recommended)
 - [ ] `ValidateValues` enabled
-- [ ] Reasonable size limits set
+- [ ] Size limits appropriate for your configuration
 - [ ] Configuration file paths are all **relative** — `Filenames` rejects absolute paths, UNC paths, URL-encoded `%`, and `..` traversal
-- [ ] `ExpansionScope: ExpansionFileOnly` set for untrusted configuration sources, preventing .env expansion from capturing process secrets (SEC-03)
+- [ ] `ExpansionScope: ExpansionFileOnly` set for untrusted configuration sources, so `.env` expansion cannot capture process secrets (SEC-03)
 - [ ] Audit handler is not connected to `os.Stdout` — `loader.Close()` closes the handler and, with it, the underlying writer
 
 ```go
@@ -101,24 +101,24 @@ cfg.MaxVariables = 50 // ProductionConfig defaults to 50; raise only if you have
 - [ ] Configuration files loaded from a secure location
 - [ ] Application validates configuration at startup
 - [ ] Application refuses to start on configuration error
-- [ ] Sensitive information is not output to logs
+- [ ] No sensitive information in logs
 
 ## Post-deployment Checks
 
 - [ ] Application runs normally
-- [ ] Audit logs are being written correctly
+- [ ] Audit logs are being written
 - [ ] No sensitive information leaked
-- [ ] Monitoring for configuration-related errors
+- [ ] Monitoring covers configuration-related errors
 
 ```bash
 # Health check: confirm the application is alive
 curl -fsS http://localhost:8080/healthz > /dev/null && echo "OK: health check passed"
 
-# Confirm audit logs are actually persisted (not just the stderr [AUDIT] fallback)
+# Confirm the audit log file is actually receiving lines (not just the stderr [AUDIT] fallback)
 tail -n 5 /var/log/app/audit.log
 ```
 
-## Quick Check Script
+## Pre-deploy Check Script
 
 ```bash
 #!/bin/bash
@@ -149,6 +149,6 @@ echo "=== All checks passed ==="
 
 ## Related Documentation
 
-- [Security Overview](./) - Security architecture and core features
-- [SecureValue API](../api-reference/secure-value) - Secure value handling
-- [Constants & Errors](../api-reference/constants) - Forbidden keys list
+- [Security Overview](./) - security architecture and built-in defaults
+- [SecureValue API](../api-reference/secure-value) - secure value handling
+- [Constants & Errors](../api-reference/constants) - forbidden keys list

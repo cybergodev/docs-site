@@ -7,13 +7,15 @@ sidebar_position: 2
 
 # 常见问题
 
+env 库的高频疑问集中在全局与实例模式的选择、类型转换与泛型、并发访问、SecureValue 生命周期，以及配置验证与进程环境处理。
+
 ## 基础使用
 
 ### Load() 和 New() 应该选哪个？
 
-**`env.Load()`**（全局模式）适合简单应用：一次加载，全局使用包级函数。它会自动将变量应用到 `os.Environ`。
+**`env.Load()`**（全局模式）用于单进程、单套配置的应用：一次加载，之后全部通过包级函数读取，变量自动应用到 `os.Environ`。
 
-**`env.New()`**（实例模式）适合测试和多配置场景：创建隔离实例，不自动应用，需要显式 `Close()`。
+**`env.New()`**（实例模式）用于测试和多配置场景：创建隔离实例，不自动应用，用完显式 `Close()`。
 
 ```go
 // 简单应用 → 全局模式
@@ -27,12 +29,12 @@ port := loader.GetInt("PORT", 8080)
 ```
 
 ::: tip 选择建议
-如果不确定，先用 `env.Load()`。当遇到测试隔离或多配置需求时，再切换到 `env.New()`。
+进程内只有一套配置时用 `env.Load()`。需要测试隔离、或同时持有多个配置实例时，用 `env.New()`。
 :::
 
 ### 为什么 Load() 只能调用一次？
 
-`Load()` 设置全局默认加载器（单例模式），重复调用返回 `ErrAlreadyInitialized`。这是设计决策：避免在运行时意外覆盖已加载的配置。
+`Load()` 设置全局默认加载器（单例），重复调用返回 `ErrAlreadyInitialized`，避免运行时意外覆盖已加载的配置。
 
 ```go
 // 第一次调用 — 成功
@@ -56,15 +58,15 @@ env.Load(".env.production")
 
 ### .env 文件不存在时会怎样？
 
-默认行为：**静默跳过**，不报错。这是为了支持「有则加载，无则忽略」的灵活部署。
+默认行为是不报错：文件不存在时直接跳过，以便同一份配置在「有则加载，无则忽略」的部署里通用。
 
 ```go
-// DefaultConfig — 文件不存在时静默跳过
+// DefaultConfig：文件不存在时直接跳过
 env.Load(".env", ".env.local")
 // 即使两个文件都不存在，也不会报错
 ```
 
-如果希望文件不存在时报错（生产环境推荐）：
+如果希望文件不存在时报错，用生产预设：
 
 ```go
 cfg := env.ProductionConfig()
@@ -136,17 +138,19 @@ hosts := env.GetSlice[string]("HOSTS") // ["localhost", "example.com"]
 
 ### 支持哪些布尔值格式？
 
-`GetBool` 不区分大小写，支持以下值：
+`GetBool` 不区分大小写，只识别下表这些写法：
 
 | 真值 | 假值 |
 |------|------|
 | `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
 
+空字符串按 `false` 处理。其他无法识别的值不报错：启用审计时记一条审计事件，并返回调用方传入的默认值（未传默认值时返回 `false`）。
+
 ## 并发与线程安全
 
 ### 可以从多个 goroutine 同时调用 Get 吗？
 
-**可以。** Loader 的所有方法都是线程安全的。库使用分片锁（sharded locks）优化高并发场景下的读写性能。
+**可以。** Loader 的所有方法都是线程安全的，内部用分片锁（sharded locks）降低高并发读写时的锁争用。
 
 ```go
 // 安全的并发访问
@@ -163,7 +167,7 @@ wg.Wait()
 
 ### Loader.Close() 后调用 Get 会怎样？
 
-返回零值，不 panic。Loader 在关闭后进入只读降级模式：
+返回零值，不 panic。Loader 关闭后转为只读降级：读方法继续返回零值，写方法返回 `ErrClosed`。
 
 ```go
 loader, _ := env.New()
@@ -185,11 +189,11 @@ err := loader.Set("KEY", "v")  // 返回 ErrClosed
 | `Release()` | ✅ | ✅ | ✅ |
 | `Close()` | ✅ | ✅ | ❌ |
 
-**推荐使用 `Release()`**，它将对象归还到对象池，减少 GC 压力。`Close()` 适用于不需要池化的场景。
+**推荐使用 `Release()`**：它把对象归还对象池，减少 GC 压力。`Close()` 用于不需要池化的场景。
 
 ### SecureValue 被 GC 回收时会自动清零吗？
 
-**会。** SecureValue 设置了 finalizer，在垃圾回收时自动清零内存。但建议显式调用 `Release()` 或 `Close()` 以确保及时清理，不要依赖 GC 的不确定时机。
+**会。** SecureValue 在首次创建时设置 finalizer，垃圾回收时自动清零内存。但应显式调用 `Release()` 或 `Close()` 以及时清理，不要依赖 GC 的回收时机。
 
 ```go
 // ✅ 推荐：显式释放
@@ -203,7 +207,7 @@ sv := env.GetSecure("API_KEY")
 
 ### 如何安全地记录日志？
 
-使用 `Masked()` 或掩码工具函数，切勿直接输出 `Reveal()` 的值：
+使用 `Masked()` 或掩码工具函数，不要直接输出 `Reveal()` 的值：
 
 ```go
 sv := env.GetSecure("API_KEY")
@@ -244,7 +248,7 @@ OTHER_KEY=value         # ❌ 忽略（无 MYAPP_ 前缀）
 
 ### 如何防止配置覆盖？
 
-`OverwriteExisting` 控制是否覆盖已存在的变量：
+`OverwriteExisting` 控制加载时是否覆盖已存在的变量。`DefaultConfig()` 为 `false`，`DevelopmentConfig()` 与 `TestingConfig()` 为 `true`：
 
 ```go
 // 默认：不覆盖（安全）
@@ -258,7 +262,7 @@ cfg := env.DevelopmentConfig()
 
 ### RequiredKeys 验证什么时候执行？
 
-仅在显式调用 `Validate()` 时检查，不在加载时自动触发：
+仅在显式调用 `Validate()` 时检查，`LoadFiles` 不会自动触发：
 
 ```go
 cfg := env.ProductionConfig()
@@ -314,18 +318,18 @@ func TestGlobalMode(t *testing.T) {
 ```
 
 ::: tip 完整测试指南
-详见 [测试场景](../guides/testing) 指南。
+参见 [测试场景](../guides/testing)。
 :::
 
 ## 安全与生命周期
 
 ### Close 后进程环境里的变量还在吗？
 
-**在。** `Close()` 只清零内存副本，不 unset 此前应用到 `os.Environ` 的变量（这是刻意设计：进程环境可能已被子进程继承，回滚语义不可靠）。需要移除时在关闭前逐键 `Delete`——只有本 loader 写入的键才会被 unset。
+**在。** `Close()` 只清零内存副本，不 unset 此前应用到 `os.Environ` 的变量。这是刻意设计：进程环境没有回滚语义，值写入后无法判断是否已被其他代码读取，也无法收回子进程已继承的副本。需要移除时，在关闭前逐键 `Delete`，且只有本 loader 写入的键会被 unset。`ResetDefaultLoader()` 同样不撤销已应用的变量。
 
 ### 如何防止配置文件读取进程中的机密？
 
-配置文件来自不可信来源（用户上传、外部下发）时，若展开作用域允许 `${VAR}` 回退读取进程环境，存在机密被捕获进变量值的风险。`DefaultConfig()` 默认已是文件内作用域（`ExpansionFileOnly`），阻断该回退；此处显式声明仅作说明：
+配置文件来自不可信来源（用户上传、外部下发）时，展开作用域决定了 `${VAR}` 能否回退读取进程环境。允许回退时，文件里写一行 `LEAK=${PROCESS_SECRET}` 就会把进程机密写入变量值。`DefaultConfig()` 默认已是文件内作用域（`ExpansionFileOnly`），该回退被阻断；下面是这一默认值的显式写法，仅为说明：
 
 <!-- check-code: skip -->
 ```go
@@ -333,15 +337,15 @@ cfg := env.DefaultConfig()
 cfg.ExpansionScope = env.ExpansionFileOnly // ${VAR} 仅解析文件内变量（默认已如此）
 ```
 
-详见[变量展开 · 展开作用域](../guides/variable-expansion)。
+展开作用域的完整规则见[变量展开](../guides/variable-expansion)。
 
 ### 值里的 `$` 读回来为什么变了？
 
-默认开启变量展开时，`$VAR`/`${VAR}` 序列在加载期会被展开。若值本身含有美元符字面量（价格、模板字符串），请用 `cfg.ExpandVariables = false` 加载，或参见[序列化 · 往返陷阱](../guides/serialization)了解 `Marshal` 输出再读回的同类问题。
+默认开启变量展开时，`$VAR`/`${VAR}` 序列在加载期就会被展开。若值本身含美元符字面量（价格、模板字符串），用 `cfg.ExpandVariables = false` 加载。经 `Marshal` 写出的 `.env` 不受影响：库会把含 `$` 的值加引号、把 `$` 转义成 `\$`，读回后仍是字面美元符。只有手工拼接 `.env` 文本才需要自己处理，见[序列化 · 往返行为](../guides/serialization)。
 
 ## 相关文档
 
-- [快速开始](../getting-started/) — 5 分钟入门
-- [速查表](../getting-started/cheatsheet) — 高频代码片段
-- [错误处理](../guides/error-handling) — 哨兵错误与恢复策略
-- [文件格式](./file-format) — .env/JSON/YAML 语法
+- [快速开始](../getting-started/) - 5 分钟入门
+- [速查表](../getting-started/cheatsheet) - 高频代码片段
+- [错误处理](../guides/error-handling) - 哨兵错误与恢复策略
+- [文件格式](./file-format) - .env/JSON/YAML 语法

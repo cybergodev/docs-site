@@ -1,13 +1,13 @@
 ---
 sidebar_label: "HTTP Integration"
 title: "HTTP Integration - CyberGo html | Web Service Guide"
-description: "CyberGo html with net/http: single-page scraping, concurrent batch fetching, Processor-singleton web services, exponential backoff, and timeout control."
+description: "CyberGo html with net/http: single-page fetch and extract, concurrent URL fetching, Processor singleton, exponential backoff, batch cancellation, charset handling."
 sidebar_position: 10
 ---
 
 # HTTP Integration
 
-The HTML library does not include an HTTP client — it integrates seamlessly with the standard library `net/http`. This guide demonstrates common integration patterns.
+The html library does not ship an HTTP client; pass the response body you fetched with `net/http` to `Extract`. The patterns below cover the common integrations.
 
 ## Basic Fetch & Extract
 
@@ -51,8 +51,8 @@ func main() {
 }
 ```
 
-:::tip Optimization
-Limit input size to prevent memory issues:
+:::tip Bound the read
+`io.LimitReader` caps the body at 50MB (`DefaultMaxInputSize`), so an oversized page is truncated before it is read into memory rather than after the library rejects it:
 
 ```go
 body, err := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024)) // 50MB
@@ -148,7 +148,7 @@ Always limit request body size in web services to prevent malicious large file a
 
 ## Concurrent URL Fetching
 
-Leverage Processor's concurrency safety for efficient multi-page processing:
+`Processor` is safe for concurrent use, so several pages can be processed at once:
 
 ```go
 type URLResult struct {
@@ -251,71 +251,77 @@ func fetchWithRetry(client *http.Client, url string, maxRetries int) ([]byte, er
 ```
 
 :::tip Retry Strategy
-- Don't retry 4xx errors (client issues)
+- Do not retry 4xx (except 408 and 429): retrying will not change the result
 - Retry 5xx and network errors
-- Use exponential backoff: 1s, 2s, 4s
-- Set max retry count (usually 3)
+- Double the backoff each attempt (1s, 2s, 4s) and cap it
+- Set a retry limit; 3 attempts is typical
 :::
 
 ## Batch + Context Cancellation
 
-Use context-aware batch processing for large URL sets, supporting timeout cancellation:
+Give the whole batch one deadline; items not yet started when it fires count as `Cancelled`:
 
 ```go
 func batchProcessURLs(processor *html.Processor, urls []string) {
-    // Set total timeout
-    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 
-    // Fetch all pages
-    pages := make([][]byte, len(urls))
-    for i, u := range urls {
-        select {
-        case <-ctx.Done():
-            fmt.Println("Fetch timeout, cancelled")
-            return
-        default:
-            body, err := fetchWithRetry(http.DefaultClient, u, 2)
-            if err != nil {
-                log.Printf("Skipping %s: %v", u, err)
-                continue
-            }
-            pages[i] = body
-        }
-    }
+	// Collect only successfully fetched pages: nil or empty input is extracted as an
+	// empty document, so mixing failures into the batch reports them as successes.
+	pages := make([][]byte, 0, len(urls))
+	for _, u := range urls {
+		if ctx.Err() != nil {
+			log.Println("Fetch deadline reached, stopping")
+			break
+		}
+		body, err := fetchWithRetry(http.DefaultClient, u, 2)
+		if err != nil {
+			log.Printf("Skipping %s: %v", u, err)
+			continue
+		}
+		pages = append(pages, body)
+	}
 
-    // Batch extract
-    batch := processor.ExtractBatchWithContext(ctx, pages)
-    fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n",
-        batch.Success, batch.Failed, batch.Cancelled)
+	batch := processor.ExtractBatchWithContext(ctx, pages)
+	fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n",
+		batch.Success, batch.Failed, batch.Cancelled)
 }
 ```
+
+A fetch failure and an extraction failure are different things: the caller records the former (the `log.Printf` above), and only the latter lands in `BatchResult.Failed`.
 
 ## Encoding Handling
 
-HTTP responses may use non-UTF-8 encoding. The HTML library auto-detects and handles this:
+The library determines encoding from the HTML bytes alone (BOM, `<meta charset>`, UTF-8 validity, statistical sampling). It does **not** read the HTTP `Content-Type` header. When a response declares `charset=gbk` but the markup carries no `<meta charset>`, the library decodes the bytes as windows-1252: the text comes back mojibake with no error.
+
+Read the charset from the response header and pass it explicitly:
 
 ```go
-// Even GBK-encoded responses are correctly extracted
-resp, _ := http.Get("https://example.cn/page")
-body, _ := io.ReadAll(resp.Body)
-result, _ := html.Extract(body) // Auto-detect encoding
-```
+resp, err := http.Get("https://example.cn/page")
+if err != nil {
+    log.Fatal(err)
+}
+defer resp.Body.Close()
 
-You can also extract encoding from the `Content-Type` header:
-
-```go
-charset := "utf-8" // Parse from Content-Type
-if ct := resp.Header.Get("Content-Type"); ct != "" {
-    if idx := strings.Index(ct, "charset="); idx != -1 {
-        charset = ct[idx+8:]
-    }
+body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
+if err != nil {
+    log.Fatal(err)
 }
 
 cfg := html.DefaultConfig()
-cfg.Encoding = charset
-result, _ := html.Extract(body, cfg)
+if ct := resp.Header.Get("Content-Type"); ct != "" {
+    if _, params, err := mime.ParseMediaType(ct); err == nil {
+        cfg.Encoding = params["charset"] // Empty leaves auto-detection in charge
+    }
+}
+
+result, err := html.Extract(body, cfg)
+if err != nil {
+    log.Fatal(err)
+}
 ```
+
+If the header carries no charset and the site is known to use GBK or another non-UTF-8 encoding, set `cfg.Encoding` to that encoding directly. See [Encoding Detection](../core-features/encoding-detection).
 
 ## Best Practices
 
@@ -325,7 +331,7 @@ result, _ := html.Extract(body, cfg)
 | Web service | Processor singleton + `ExtractWithContext()` |
 | Batch crawling | `processURLs()` + Processor reuse |
 | Untrusted sources | `HighSecurityConfig()` + `io.LimitReader()` |
-| Uncertain encoding | Rely on auto-detection, or specify from Content-Type |
+| Uncertain encoding | Pass the charset from `Content-Type` explicitly; leave empty to auto-detect |
 
 ## Next Steps
 

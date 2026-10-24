@@ -1,21 +1,21 @@
 ---
 sidebar_label: "链接提取"
 title: "链接提取 - CyberGo html | 资源链接提取 API"
-description: "CyberGo html 链接提取 API 参考：ExtractAllLinks 系列与 GroupLinksByType 详解，不应用 HTML 清洗、完整提取脚本、样式、图片等八类资源链接并按类型分组，支持 Include 字段配置过滤、相对 URL 解析与 BaseURL 自动检测，结果按 URL 排序去重，适用于爬虫与资源收集场景。"
+description: "CyberGo html 链接提取 API 参考：ExtractAllLinks 与 GroupLinksByType 的签名，八类资源链接、内外链判定规则、Include 字段过滤、相对 URL 解析、BaseURL 自动检测与结果排序去重。"
 sidebar_position: 20
 ---
 
 # 链接提取
 
-独立的链接提取 API，可从 HTML 中提取所有链接资源并按类型分组。
+`ExtractAllLinks` 枚举 HTML 文档引用的全部资源链接，每条记录带类型标签，可用 `GroupLinksByType` 分组。它与 `Extract` 的正文提取互不影响，也不受 HTML 清洗约束。
 
-:::tip 与 Extract 的关键区别
-`ExtractAllLinks` **不会应用 HTML 清洗**（`EnableSanitization` 在此无效），因此位于 `<script src>`、`<iframe>`、`<link>`、`<embed>` 等标签中的资源链接也会被完整提取。这是为了让这些资源链接能够被枚举出来——它们在 `Extract` 路径中通常会被清洗过程移除。
-:::
+## 与 Extract 的关键区别
 
-:::info 结果排序与去重
-`ExtractAllLinks` 返回的结果**按 URL 升序排列**，并按 URL 去重。因此对相同输入多次调用会得到完全一致的输出，便于结果比较、缓存复用与可重现的下游处理。同一 URL 出现在多个标签中时仅保留一条记录。
-:::
+`ExtractAllLinks` **不应用 HTML 清洗**（`EnableSanitization` 在此无效），因此 `<script src>`、`<iframe>`、`<link>`、`<embed>` 等标签中的资源链接也会完整提取。这些链接在 `Extract` 路径中通常已被清洗移除。
+
+## 结果排序与去重
+
+返回结果**按 URL 升序排列**，并按 URL 去重。对相同输入多次调用会得到完全一致的输出，便于结果比较与缓存复用。同一 URL 出现在多个标签中时只保留一条记录。
 
 ## 包函数
 
@@ -46,11 +46,14 @@ func GroupLinksByType(links []LinkResource) map[string][]LinkResource
 ```
 
 ```go
-links, _ := html.ExtractAllLinks(data)
+links, err := html.ExtractAllLinks(data)
+if err != nil {
+	log.Fatal(err)
+}
 groups := html.GroupLinksByType(links)
 
 for typ, items := range groups {
-    fmt.Printf("类型 %s: %d 个\n", typ, len(items))
+	fmt.Printf("类型 %s: %d 个\n", typ, len(items))
 }
 ```
 
@@ -58,9 +61,9 @@ for typ, items := range groups {
 
 ```go
 type LinkResource struct {
-    URL   string // 链接地址
-    Title string // 链接标题
-    Type  string // 链接类型（link, image, video, audio, media, css, js, icon）
+	URL   string // 链接地址
+	Title string // 链接标题
+	Type  string // 链接类型（link, image, video, audio, media, css, js, icon）
 }
 ```
 
@@ -79,8 +82,8 @@ type LinkResource struct {
 | `js` | `<script src>` | `IncludeJS` |
 | `icon` | `<link rel="icon">`、`<link rel="apple-touch-icon">` 等 | `IncludeIcons` |
 
-:::info embed 链接的特殊处理
-`<iframe>`、`<embed>`、`<object>` 的 `src`/`data` 只有在判定为**视频 URL**（含 YouTube、Vimeo、Dailymotion 等嵌入模式）时才会被提取，类型记为 `video`。非视频 URL 不会被收录。
+:::info embed 链接的收录条件
+`<iframe>`、`<embed>`、`<object>` 的 `src`/`data` 只有在判定为**视频 URL**（含 YouTube、Vimeo、Dailymotion 等嵌入模式）时才被提取，类型记为 `video`。非视频 URL 不会被收录。
 :::
 
 ## 配置
@@ -99,22 +102,24 @@ cfg.BaseURL = "https://example.com"
 
 ### 相对 URL 解析
 
-当 `ResolveRelativeURLs=true`（默认）时，所有类型的相对 URL 会基于 `BaseURL` 统一解析为绝对 URL：
+当 `ResolveRelativeURLs=true`（默认）时，所有类型的相对 URL 都会基于 `BaseURL` 解析为绝对 URL：
 
-- 解析逻辑由库内部统一集中处理（不导出），对内容链接、图片、媒体、source、script、embed、link 标签**一视同仁**
-- 显式设置 `BaseURL` 会**跳过自动检测**，直接使用调用方提供的值
-- `BaseURL` 为空且 `ResolveRelativeURLs=true` 时，从文档自动推导 BaseURL（见下方提示）
+- 解析逻辑由库内部统一处理（不导出），对内容链接、图片、媒体、source、script、embed、link 标签**一视同仁**
+- 显式设置 `BaseURL` 会跳过自动检测，直接使用你提供的值
+- `BaseURL` 为空时从文档自动推导（见「BaseURL 自动检测」）
 
 ### 内部与外部链接
 
-内容链接（`<a href>`）通过两组开关分别控制内部与外部链接：
+内容链接（`<a href>`）由两个开关分别控制内部与外部链接。判定只看**原始 href 的写法**，不比较域名：
 
 | 开关 | 控制范围 | 判定方式 |
 |------|----------|----------|
-| `IncludeContentLinks` | 内部链接 | URL 本身为相对路径（设置 `BaseURL` 时解析后与之同域） |
-| `IncludeExternalLinks` | 外部链接 | URL 本身为绝对外部地址（`http(s)://` 或协议相对 `//`）——无论是否与 `BaseURL` 同域，一律按外部链接处理 |
+| `IncludeContentLinks` | 内部链接 | 原始 href 是相对路径（如 `/about`、`page.html`） |
+| `IncludeExternalLinks` | 外部链接 | 原始 href 以 `http://`、`https://`（不区分大小写）或协议相对 `//` 开头 |
 
-默认两者均为 `true`（提取全部内容链接）。其余资源类型（图片、CSS、JS 等）不受内/外区分，仅由各自的 `Include*` 开关控制。
+若你把 `BaseURL` 设为 `https://example.com`，同域的绝对链接 `<a href="https://example.com/about">` 仍由 `IncludeExternalLinks` 控制；要计入内部链接，需写成 `<a href="/about">`。
+
+默认两者均为 `true`（提取全部内容链接）。图片、CSS、JS 等其余资源类型不区分内/外，只由各自的 `Include*` 开关控制。
 
 ### preload / prefetch 处理
 
@@ -128,18 +133,16 @@ cfg.BaseURL = "https://example.com"
 | `video` | `video` | `IncludeVideos` |
 | `audio` | `audio` | `IncludeAudios` |
 
-`dns-prefetch`、`preconnect` 同样走此路由，但通常不带 `as` 属性，故不会被收录。
+`dns-prefetch`、`preconnect` 同样走此路由，但一般不带 `as` 属性，故不会被收录。
 
-:::tip BaseURL 自动检测
-当 `ResolveRelativeURLs=true` 且 `BaseURL` **为空**时，库会从 HTML 文档本身自动推导 BaseURL，按以下**优先级**逐项尝试，命中即返回：
+### BaseURL 自动检测
+
+当 `ResolveRelativeURLs=true` 且 `BaseURL` **为空**时，库会从 HTML 文档本身推导 BaseURL，按以下顺序逐项尝试，命中即返回：
 
 1. `<base href>` 标签；
 2. `<meta property="og:url">` 或 `<meta property="canonical">` 的 `content`；
 3. `<link rel="canonical" href>`；
 4. 文档中出现的首个绝对 URL（从其 `href`/`src` 提取 base）。
-
-显式设置 `BaseURL` 会**跳过自动检测**，优先使用调用方提供的值。
-:::
 
 ## 示例
 
@@ -179,6 +182,10 @@ func main() {
 			fmt.Printf("  - %s [%s]\n", l.URL, l.Title)
 		}
 	}
+	// 输出：共 6 个链接（link、image、video、css、js、icon 各 1 个）；
+	//       组间顺序不确定（map 遍历）；URL 均已解析为 https://example.com/...
+	//       link 组是 /about 解析后的 https://example.com/about，
+	//       video 组的 Title 取自最后一段路径 intro.mp4
 }
 ```
 

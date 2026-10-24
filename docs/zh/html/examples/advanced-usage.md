@@ -1,15 +1,17 @@
 ---
 sidebar_label: "高级用法"
 title: "高级示例 - CyberGo html | 进阶场景示例"
-description: "CyberGo html 高级进阶可运行示例集：自定义 Scorer 内容评分算法、多 Sink 审计管道构建、批量文件并发处理、Processor 池化复用、缓存命中率优化与 Web 服务单例模式等复杂场景代码，助你应对生产级内容采集需求。"
+description: "CyberGo html 进阶示例集：自定义 Scorer、多 Sink 审计管道、批量文件并发处理、Processor 池化复用与统计、HTTP 服务优雅关闭、AllowedBaseDir 文件沙箱与按来源指定编码，每个示例均为可编译的完整程序。"
 sidebar_position: 20
 ---
 
 # 高级示例
 
+生产场景的进阶用法：自定义评分、审计管道、批量文件、服务端复用与安全文件处理。
+
 ## 自定义 Scorer
 
-针对特定网站结构定制内容识别逻辑。完整实现请参考 [测试与自定义扩展](../guides/integration/testing-custom)，以下展示核心用法：
+针对特定网站结构定制内容识别逻辑。完整实现见 [测试与自定义扩展](../guides/integration/testing-custom)，以下为核心用法：
 
 ```go
 package main
@@ -22,7 +24,7 @@ import (
 	"github.com/cybergodev/html"
 )
 
-// 实现自定义 Scorer（完整示例见 guides/integration/testing-custom）
+// myScorer 按 class 属性给节点打分
 type myScorer struct{}
 
 func (s myScorer) Score(node html.ContentNode) int {
@@ -39,8 +41,11 @@ func (s myScorer) Score(node html.ContentNode) int {
 	return 0
 }
 
-// ShouldRemove 当前版本不被库调用（实现以满足接口要求）
+// ShouldRemove 是接口的预留方法：当前版本不会被库调用，此处的逻辑不会生效
 func (s myScorer) ShouldRemove(node html.ContentNode) bool {
+	if node == nil {
+		return false
+	}
 	switch node.Data() {
 	case "nav", "footer", "header":
 		return true
@@ -73,11 +78,13 @@ func main() {
 	}
 
 	fmt.Println("正文：", result.Text)
-	// 正文：深入理解 Go 并发
+	// 输出：正文： 深入理解 Go 并发
 	//
 	// goroutine 是 Go 的轻量级线程。
 }
 ```
+
+导航与侧栏的移除来自库的默认清洗与评分器候选过滤，不是上面 `ShouldRemove` 的效果。
 
 ## 多 Sink 审计管道
 
@@ -95,13 +102,18 @@ import (
 )
 
 func main() {
-	// 创建输出目标
-	allFile, _ := os.Create("audit-all.jsonl")
-	criticalFile, _ := os.Create("audit-critical.jsonl")
+	allFile, err := os.Create("audit-all.jsonl")
+	if err != nil {
+		log.Fatal(err)
+	}
+	criticalFile, err := os.Create("audit-critical.jsonl")
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer allFile.Close()
 	defer criticalFile.Close()
 
-	// 构建多层级管道
+	// 管道：全部事件写 allFile，critical 另写一份，同时输出到 stderr
 	allSink := html.NewWriterAuditSink(allFile)
 	criticalSink := html.NewFilteredSink(
 		html.NewWriterAuditSink(criticalFile),
@@ -110,12 +122,9 @@ func main() {
 		},
 	)
 	loggerSink := html.NewLoggerAuditSink()
-
 	pipeline := html.NewMultiSink(allSink, criticalSink, loggerSink)
 
-	// 配置
-	cfg := html.HighSecurityConfig()
-	cfg.Audit = html.HighSecurityAuditConfig()
+	cfg := html.HighSecurityConfig() // 已启用 HighSecurityAuditConfig
 	cfg.Audit.Sink = pipeline
 
 	p, err := html.New(cfg)
@@ -124,7 +133,6 @@ func main() {
 	}
 	defer p.Close()
 
-	// 处理内容
 	data := []byte(`<html><body>
         <script>alert('xss')</script>
         <article><p>安全的内容</p></article>
@@ -136,20 +144,21 @@ func main() {
 	}
 
 	fmt.Println("正文：", result.Text)
-	// 审计日志自动记录到文件和 stderr
+	// 输出：正文： 安全的内容
 }
 ```
 
 ## 批量文件处理
 
-批量处理目录下的 HTML 文件，收集结果和错误：
+批量处理目录下的 HTML 文件，分别收集结果与错误：
 
 ```go
 package main
 
 import (
 	"fmt"
-	"os"
+	"io/fs"
+	"log"
 	"path/filepath"
 
 	"github.com/cybergodev/html"
@@ -158,39 +167,44 @@ import (
 func main() {
 	// 收集文件路径
 	var files []string
-	filepath.Walk("./pages", func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir("./pages", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
+			return nil // 跳过无法访问的条目
+		}
+		if d.IsDir() {
 			return nil
 		}
-		if filepath.Ext(path) == ".html" || filepath.Ext(path) == ".htm" {
+		switch filepath.Ext(path) {
+		case ".html", ".htm":
 			files = append(files, path)
 		}
 		return nil
 	})
-
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("发现 %d 个文件\n", len(files))
 
-	// 批量处理
-	p, _ := html.New(html.TextOnlyConfig())
+	p, err := html.New(html.TextOnlyConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p.Close()
 
 	// 单批上限 10000；超出会整批失败，需调用方自行分批
 	batch := p.ExtractBatchFiles(files)
-
-	fmt.Printf("成功：%d, 失败：%d, 取消：%d\n",
+	fmt.Printf("成功：%d，失败：%d，取消：%d\n",
 		batch.Success, batch.Failed, batch.Cancelled)
 
-	// 处理结果
 	for i, result := range batch.Results {
 		if result != nil {
-			fmt.Printf("[%d] %s (字数: %d)\n", i, result.Title, result.WordCount)
+			fmt.Printf("[%d] %s（字数：%d）\n", i, result.Title, result.WordCount)
 		}
 	}
 
-	// 检查错误
 	for i, err := range batch.Errors {
 		if err != nil {
-			fmt.Printf("[%d] 错误: %v\n", i, err)
+			fmt.Printf("[%d] 错误：%v\n", i, err)
 		}
 	}
 }
@@ -198,7 +212,7 @@ func main() {
 
 ## 带超时的 Processor 复用
 
-Web 服务场景下的 Processor 单例模式：
+Web 服务中的 Processor 单例：进程启动时创建一次，所有请求共享。
 
 ```go
 package main
@@ -266,7 +280,7 @@ func main() {
 
 ## 提取并生成 Markdown 文件
 
-从 HTML 页面提取内容并保存为 Markdown 文件：
+把一批 HTML 文件转为 Markdown 文件：
 
 ```go
 package main
@@ -281,28 +295,27 @@ import (
 )
 
 func main() {
-	p, err := html.New(html.MarkdownConfig())
+	p, err := html.New(html.DefaultConfig())
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer p.Close()
 
-	urls := []string{
+	paths := []string{
 		"downloaded/page1.html",
 		"downloaded/page2.html",
 		"downloaded/page3.html",
 	}
 
-	for _, path := range urls {
+	for _, path := range paths {
 		md, err := p.ExtractToMarkdownFromFile(path)
 		if err != nil {
 			log.Printf("处理 %s 失败: %v", path, err)
 			continue
 		}
 
-		// 生成输出文件名
 		outPath := strings.Replace(path, ".html", ".md", 1)
-		if err := os.WriteFile(outPath, []byte(md), 0644); err != nil {
+		if err := os.WriteFile(outPath, []byte(md), 0o644); err != nil {
 			log.Printf("写入 %s 失败: %v", outPath, err)
 			continue
 		}
@@ -313,15 +326,16 @@ func main() {
 
 ## 上下文取消与优雅关闭
 
-在 HTTP 服务中使用 context 控制提取超时，支持请求级取消：
+在 HTTP 服务中用 context 控制提取超时，支持请求级取消与信号触发的优雅关闭：
 
 ```go
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -346,22 +360,19 @@ func init() {
 }
 
 func extractHandler(w http.ResponseWriter, r *http.Request) {
-	// 请求级超时（5s），与 ProcessingTimeout（10s）叠加，先到先生效
+	// 请求级超时 5s：先于 ProcessingTimeout（10s）到期时返回 context.DeadlineExceeded
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	body := make([]byte, 0)
-	buf := make([]byte, 4096)
-	for {
-		n, err := r.Body.Read(buf)
-		body = append(body, buf[:n]...)
-		if err != nil {
-			break
-		}
-		if len(body) > 10*1024*1024 {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 10*1024*1024))
+	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
 			http.Error(w, "请求体过大", http.StatusRequestEntityTooLarge)
 			return
 		}
+		http.Error(w, "读取请求体失败", http.StatusBadRequest)
+		return
 	}
 
 	result, err := processor.ExtractWithContext(ctx, body)
@@ -369,6 +380,8 @@ func extractHandler(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, html.ErrProcessingTimeout):
 			http.Error(w, "处理超时", http.StatusGatewayTimeout)
+		case errors.Is(err, context.DeadlineExceeded):
+			http.Error(w, "请求超时", http.StatusGatewayTimeout)
 		case errors.Is(err, html.ErrInputTooLarge):
 			http.Error(w, "输入过大", http.StatusRequestEntityTooLarge)
 		default:
@@ -378,16 +391,17 @@ func extractHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"title":"%s","word_count":%d}`, result.Title, result.WordCount)
+	json.NewEncoder(w).Encode(map[string]any{
+		"title":      result.Title,
+		"word_count": result.WordCount,
+	})
 }
 
 func main() {
-	defer processor.Close()
-
 	server := &http.Server{Addr: ":8080"}
 	http.HandleFunc("/extract", extractHandler)
 
-	// 优雅关闭：收到信号后关闭 Processor 和 HTTP 服务
+	// 收到信号后先关 Processor，再关 HTTP 服务
 	go func() {
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -404,7 +418,7 @@ func main() {
 
 ## 安全文件处理
 
-使用 `AllowedBaseDir` 沙箱处理用户提供的文件路径：
+用 `AllowedBaseDir` 沙箱处理用户提供的文件路径：
 
 ```go
 package main
@@ -420,7 +434,7 @@ import (
 func main() {
 	cfg := html.HighSecurityConfig()
 	// 限制文件读取到此目录及其子目录
-	// 通过 OS 文件句柄解析真实路径，防 symlink/junction 绕过
+	// 通过已打开的文件句柄解析真实路径，防 symlink/junction 绕过
 	cfg.AllowedBaseDir = "/var/www/uploads"
 
 	p, err := html.New(cfg)
@@ -454,9 +468,9 @@ func main() {
 }
 ```
 
-## 编码检测回退
+## 按来源指定编码
 
-自动检测失败时回退到手动指定编码：
+没有 `<meta charset>` 的 GBK/Shift_JIS 字节不会报错，而是按 windows-1252 兜底解码成乱码。因此编码应由来源决定：HTTP `Content-Type` 头、站点约定或探测结果。下面的示例演示强制指定了错误编码时如何捕获错误并改用正确编码：
 
 ```go
 package main
@@ -469,32 +483,36 @@ import (
 	"github.com/cybergodev/html"
 )
 
-// extractWithFallback 先自动检测，失败后用指定编码重试
-func extractWithFallback(data []byte, fallback string) (*html.Result, error) {
-	result, err := html.Extract(data)
-	if err == nil {
-		return result, nil
-	}
-	if strings.Contains(err.Error(), "encoding detection failed") {
-		cfg := html.DefaultConfig()
-		cfg.Encoding = fallback
-		return html.Extract(data, cfg)
-	}
-	return nil, err
+// extractWithEncoding 用指定编码提取，便于对比不同编码的结果
+func extractWithEncoding(data []byte, encoding string) (*html.Result, error) {
+	cfg := html.DefaultConfig()
+	cfg.Encoding = encoding
+	return html.Extract(data, cfg)
 }
 
 func main() {
-	// 模拟来源未知的 GBK 编码 HTML（无 meta charset）
-	data := []byte{0xbb, 0xb9, 0xca, 0xc7, 0xd3, 0xd0, 0xd2, 0xbb, 0xb8, 0xf6}
+	// 一段 GBK 编码的 HTML，不含 <meta charset>
+	data := []byte("<html><body><h1>" + string([]byte{0xc4, 0xe3, 0xba, 0xc3}) + "</h1></body></html>")
 
-	result, err := extractWithFallback(data, "gbk")
+	// 错误地按 utf-8 解码 → 报错
+	_, err := extractWithEncoding(data, "utf-8")
+	if err == nil {
+		log.Fatal("预期应出现编码错误")
+	}
+	fmt.Println("首次失败：", strings.HasPrefix(err.Error(), "encoding detection failed"))
+	// 输出：首次失败： true
+
+	// 按来源改用 gbk 解码 → 成功
+	result, err := extractWithEncoding(data, "gbk")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Printf("标题：%s\n文本长度：%d\n", result.Title, len(result.Text))
+	fmt.Println("标题：", result.Title)
+	// 输出：标题： 你好
 }
 ```
+
+编码错误没有对应的哨兵错误，`errors.Is` 无法判定；需要区分时，检查 `err.Error()` 是否以 `encoding detection failed` 开头。
 
 ## 下一步
 

@@ -7,7 +7,9 @@ sidebar_position: 30
 
 # 重定向
 
-HTTPC 默认自动跟随 HTTP 重定向（最多 10 次），并记录完整的重定向链。本页覆盖跟随控制、次数限制、链路追踪、状态码方法语义、跨域凭据剥离、环形重定向检测、域名白名单以及与 SSRF 防护的联动。
+HTTPC 默认自动跟随 HTTP 重定向，最多 10 次，并记录完整的重定向链。跟随策略由 `Security.FollowRedirects` 与 `MaxRedirects` 控制，可作用于客户端级、请求级与预设级。
+
+跨域跳转时敏感请求头被剥离。环形链路、白名单外的目标与 SSRF 校验失败的目标都会被拒绝。
 
 ## 默认行为
 
@@ -38,7 +40,7 @@ func main() {
 
 | 状态码 | 方法处理 |
 |--------|----------|
-| 301 / 302 / 303 | 可能将 POST 改写为 GET（规范允许） |
+| 301 / 302 / 303 | 301/302 将 POST 等改写为 GET；303 一律改写为 GET |
 | 307 / 308 | 保持原方法与请求体重发 |
 
 ### 状态码语义（301/302/303/307/308）
@@ -54,15 +56,19 @@ func main() {
 | 308 | 永久重定向 | 保持原方法 | 保留重发 | 需重发 body 的永久跳转 |
 
 :::warning 带请求体的 307/308 不会自动跟随
-307/308 要求按原方法**重放请求体**。底层 net/http 只有在请求体可重放（设置了 `GetBody`）时才会跟随，而 HTTPC 构建请求时未设置该函数——因此携带非空请求体的请求收到 307/308 时**不自动跟随，3xx 响应原样返回**（不报错）。需要跟随这类跳转时，用 `WithFollowRedirects(false)` 手动循环处理，或让服务端改用 302/303。
+307/308 要求按原方法**重放请求体**。底层 net/http 只在请求体可重放（设置了 `GetBody`）时跟随，而 HTTPC 构建请求时未设置该函数。
+
+因此携带非空请求体的请求收到 307/308 时**不自动跟随，3xx 响应原样返回**（不报错）。需要跟随这类跳转时，用 `WithFollowRedirects(false)` 手动循环处理，或让服务端改用 302/303。
 :::
 
 :::tip 300/304 与其他 3xx 不在跟随范围
-即使携带 `Location` 头，引擎也只跟随 301/302/303/307/308；300（Multiple Choices）、304（Not Modified）及其他 3xx 响应原样返回，由调用方自行处理。注意 `Result.IsRedirect()` 判断的是整个 300–399 区间，与是否自动跟随无关。
+即使携带 `Location` 头，引擎也只跟随 301/302/303/307/308。300（Multiple Choices）、304（Not Modified）及其他 3xx 响应原样返回，由调用方处理。
+
+`Result.IsRedirect()` 判断的是整个 300–399 区间，与是否自动跟随无关。
 :::
 
 :::tip 超出上限即报错
-重定向次数超过 `MaxRedirects` 时请求以错误结束（错误信息形如 `stopped after 3 redirects`），不会无限循环。`MaxRedirects` 合法范围 0-50，越界会在配置校验时报错。
+重定向次数超过 `MaxRedirects` 时请求以错误结束（错误信息形如 `stopped after 3 redirects`），不会无限循环。`MaxRedirects` 合法范围为 0–50，越界时配置校验报错。
 :::
 
 ## 控制跟随
@@ -73,7 +79,7 @@ func main() {
 |------|------|----------|
 | 客户端级 | `Config.Security.FollowRedirects` / `MaxRedirects` | 整个客户端的所有请求 |
 | 请求级 | `WithFollowRedirects(bool)` / `WithMaxRedirects(n)` | 单次请求，覆盖客户端配置 |
-| 预设 | `SecureConfig()`、`MinimalConfig()`（均置 `FollowRedirects=false`） | 安全/极简场景默认不跟随 |
+| 预设 | `SecureConfig()`、`MinimalConfig()`（均置 `FollowRedirects=false`） | 使用这两个预设时默认不跟随 |
 
 ### 客户端级
 
@@ -157,7 +163,7 @@ func main() {
 
 ## 跨域凭据自动剥离
 
-跟随重定向时，引擎在每一跳检查目标主机名：与**初始请求**的主机名不一致（跨域跳转）时，自动删除敏感请求头，防止凭据泄露给重定向目标：
+跟随重定向时，引擎在每一跳检查目标主机名。目标主机名与**初始请求**的主机名不一致（跨域跳转）时，自动删除敏感请求头，避免凭据泄露给重定向目标：
 
 | 请求头 | 目标主机 = 初始请求主机 | 目标主机 ≠ 初始请求主机 |
 |--------|------------------------|------------------------|
@@ -168,18 +174,20 @@ func main() {
 | `X-Auth-Token` | 保留 | 删除 |
 | 其他自定义头（未列入 `Security.SensitiveHeaders` 时） | 保留 | 保留 |
 
-内置剥离集共**五个**请求头：net/http 自身只覆盖前三个（`Authorization` / `Proxy-Authorization` / `Cookie`），HTTPC 额外把 `X-Api-Key` 与 `X-Auth-Token` 也纳入了跨域剥离。
+内置剥离集共**五个**请求头。net/http 自身只覆盖前三个（`Authorization` / `Proxy-Authorization` / `Cookie`）。HTTPC 额外把 `X-Api-Key` 与 `X-Auth-Token` 纳入跨域剥离。
 
 判定细节：
 
 - 比较基准是**初始请求**的主机名（第一跳的 `via[0]`），不是上一跳。`api.example.com → www.example.com` 属于跨域（精确主机名比较，子域不同也算）；`A → B → A` 回到初始主机则不剥离。
 - 剥离独立于 cookie jar：即使未启用 `EnableCookies`，手工设置的 `Cookie` 请求头在跨域跳转时同样被删除。
 
-配合 `WithBasicAuth` / `WithBearerToken` 使用时无需额外处理——令牌只发往原始主机，不会随跳转带给第三方域。
+配合 `WithBasicAuth` / `WithBearerToken` 使用时无需额外处理：令牌只发往原始主机，不会随跳转带给第三方域。
 
 ### 自定义凭据头：SensitiveHeaders
 
-业务专用的凭据头（如 `X-Secret-Key`）不在内置剥离集内——不额外配置时，它会**原样转发**给 `Location` 指向的任意目标，构成开放重定向凭据泄漏（CWE-525）。`Security.SensitiveHeaders` 把这类自定义凭据头追加进跨域剥离集：
+业务专用的凭据头（如 `X-Secret-Key`）不在内置剥离集内。不额外配置时，这类请求头会**原样转发**给 `Location` 指向的任意目标，构成开放重定向凭据泄漏（CWE-525）。
+
+`Security.SensitiveHeaders` 把这类自定义凭据头追加进跨域剥离集：
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -188,24 +196,24 @@ cfg.Security.SensitiveHeaders = []string{"X-Secret-Key", "X-Internal-Token"}
 client, err := httpc.New(cfg)
 ```
 
-- 条目匹配大小写不敏感（内部按规范化头名比较）且自动去重；
+- 条目匹配大小写不敏感（内部按规范化头名比较），并自动去重；
 - 内置五个敏感头（上表前五行）**始终剥离**，与该字段是否设置无关；
 - 字段级参考见[配置 API](../api-reference/client-config/config)。
 
 :::warning 脱敏掩码不覆盖 SensitiveHeaders
-`Result.String()` 与审计输出的脱敏掩码只覆盖**内置**敏感头名——`SensitiveHeaders` 列出的头在这些输出中仍以明文可见。排查日志与审计泄漏时请注意这一差异。
+`Result.String()` 与审计输出的脱敏掩码只覆盖**内置**敏感头名。`SensitiveHeaders` 列出的头在这些输出中仍以明文可见。排查日志与审计泄漏时需注意这一差异。
 :::
 
 ## 环形重定向检测
 
-除次数上限外，引擎还检测**环形重定向**（跳转目标此前已在链路中出现过）。命中时请求立即以错误结束，不必等次数用尽：
+除次数上限外，引擎还检测**环形重定向**（跳转目标此前已在链路中出现过）。命中时请求立即以错误结束，无需等次数用尽：
 
 ```text
 A → B → A     环形：报错 circular redirect detected: A
 A → A → A     连续同 URL：不算环形（服务器可能每次返回不同响应）
 ```
 
-环形检测与 `MaxRedirects` 次数上限互为补充：次数上限兜住一切循环，环形检测把「明显绕圈」的链路提前识破，减少无谓的请求。
+环形检测与 `MaxRedirects` 次数上限互为补充：次数上限覆盖所有循环，环形检测提前识别绕圈的链路，减少无效请求。
 
 ## 重定向错误归类
 
@@ -214,7 +222,7 @@ A → A → A     连续同 URL：不算环形（服务器可能每次返回不�
 | 底层错误信息 | Message 字段 | 触发条件 |
 |--------------|--------------|----------|
 | `stopped after N redirects` | `redirect limit exceeded` | 跳转次数达到 `MaxRedirects`（或默认 10） |
-| `circular redirect detected: <URL>` | `circular redirect detected` | 目标 URL 早已出现在跳转链中 |
+| `circular redirect detected: <URL>` | `circular redirect detected` | 目标 URL 已出现在跳转链中 |
 | `redirect blocked by whitelist: ...` | `redirect blocked by policy` | 目标域名不在 `RedirectWhitelist` 内 |
 | `redirect blocked: ...` | `redirect blocked by policy` | 目标主机被 SSRF 防护拦截 |
 
@@ -251,11 +259,13 @@ func main() {
 }
 ```
 
-重定向目标的 SSRF 校验还包含两条硬性规则：**只允许 http/https 协议**（`ftp://`、自定义协议的 `Location` 被拒绝）与**目标主机不得为空**。校验阶段不做 DNS 解析——完整的 IP 验证与 DNS rebinding 防护在连接建立时由拨号器执行（详见 [SSRF 防护](../security/ssrf)）。
+重定向目标的 SSRF 校验还包含两条硬性规则：**只允许 http/https 协议**（`ftp://`、自定义协议的 `Location` 被拒绝）、**目标主机不得为空**。
+
+校验阶段不做 DNS 解析。完整的 IP 验证与 DNS rebinding 防护在连接建立时由拨号器执行（详见 [SSRF 防护](../security/ssrf)）。
 
 ## 域名白名单
 
-`Security.RedirectWhitelist` 将重定向目标限制在受信域名内，防御开放重定向攻击：
+`Security.RedirectWhitelist` 将重定向目标限制在受信域名内，用于防御开放重定向攻击：
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -273,11 +283,13 @@ client, err := httpc.New(cfg)
 - **通配符**：`*.cdn.example.com` 匹配**严格子域**（如 `img.cdn.example.com`），不匹配裸域 `cdn.example.com`；两者都要放行需同时列出。
 - 比较对象是 `Location` 目标的**主机名**（不含端口与协议），比较前做归一化：忽略首尾空白、大小写不敏感。
 
-设置后，重定向到白名单之外域名的请求会被拒绝；重定向目标同时经过 SSRF IP 验证。处理用户提供的 URL 时，建议配合 `SecureConfig` 或白名单使用。
+设置后，重定向到白名单之外域名的请求会被拒绝；重定向目标同时经过 SSRF IP 验证。处理不可信 URL 时，建议配合 `SecureConfig` 或白名单使用。
 
 ## 手动处理重定向
 
-需要逐跳检查、按条件跟随或自定义日志时，禁止自动跟随并循环处理。注意两点：`Location` 可能是**相对地址**，需按当前 URL 解析成绝对地址；手动循环不经过白名单检查，但每一跳建连时连接层的 SSRF IP 校验照常生效。
+逐跳检查、按条件跟随或自定义日志时，禁止自动跟随并自行循环处理。两点约束：`Location` 未携带 scheme 与 host 时是相对地址，需按当前 URL 解析为绝对地址。
+
+手动循环不经过白名单检查，但每一跳建连时连接层的 SSRF IP 校验照常生效。
 
 ```go
 package main
@@ -336,7 +348,7 @@ func main() {
 ```
 
 :::tip 手动循环中的安全责任
-自动跟随时的白名单与重定向目标预检不会作用于手动循环。处理不可信来源的 `Location` 时，建议在循环里自行校验目标域名（或复用白名单逻辑）；连接层的 SSRF 校验仍然兜底，但域级控制需要自己做。
+自动跟随时的白名单与重定向目标预检不作用于手动循环。处理不可信来源的 `Location` 时，需在循环内自行校验目标域名（或复用白名单逻辑）。连接层的 SSRF 校验仍然生效，但域级控制由调用方负责。
 :::
 
 ## 常见问题
@@ -347,7 +359,7 @@ func main() {
 | `WithMaxRedirects(0)` 没有禁用跟随 | `0` 是「未设置」哨兵值，回退默认 10 | 用 `WithFollowRedirects(false)` |
 | 带 `Location` 的 300/399 没有跳转 | 引擎只跟随 301/302/303/307/308 | 用 `IsRedirect()` + `Location` 自行处理 |
 | 跳转后查询参数「丢失」 | 目标查询串完全由 `Location` 决定，客户端不合并原请求参数 | 服务端在 `Location` 中带上需要的参数 |
-| 想知道最终落在哪个域名 | `RedirectChain` 不含最终 URL | 读 `result.Request.URL` |
+| 确认最终落在哪个域名 | `RedirectChain` 不含最终 URL | 读 `result.Request.URL` |
 | 跨域跳转后请求 401 | `Authorization`/`Cookie` 被跨域剥离（安全设计） | 对新域名重新认证，或让服务端同域跳转 |
 
 ## 下一步

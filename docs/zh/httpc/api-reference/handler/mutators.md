@@ -7,7 +7,7 @@ sidebar_position: 20
 
 # 请求与响应变更器
 
-中间件不直接操作底层请求/响应对象，而是通过**变更器（Mutator）**接口读写。中间件收到的始终是完整的读写变更器（`RequestMutator` / `ResponseMutator`）；下文按「读取方法」「写入方法」分组列出，仅是为了便于阅读。
+中间件不直接操作底层请求/响应对象，而是通过**变更器（Mutator）**接口读写。中间件收到的始终是完整的读写变更器（`RequestMutator` / `ResponseMutator`）；下文按「读取方法」「写入方法」分组列出，仅为便于阅读。
 
 ```text
 RequestMutator  =  读取方法  +  写入方法
@@ -16,7 +16,7 @@ ResponseMutator =  读取方法  +  写入方法
   中间件经 RequestMutator 改写请求     中间件经 ResponseMutator 读取/改写响应
 ```
 
-`Handler` 的签名 `func(ctx, RequestMutator) (ResponseMutator, error)` 正是把这两个变更器作为中间件的入口与出口。
+`Handler` 的签名 `func(ctx, RequestMutator) (ResponseMutator, error)` 把这两个变更器分别作为中间件的入口与出口。
 
 ## 请求变更器
 
@@ -61,7 +61,9 @@ ResponseMutator =  读取方法  +  写入方法
 
 ### RequestMutator
 
-`RequestMutator` 是 httpc 暴露的读写请求变更器接口，涵盖上方「读取方法」与「写入方法」两张表的全部方法。它由 `RequestReader` 与 `RequestWriter` 两个分体接口组合而成，两者均已由 `httpc` 包作为公开类型别名导出（`httpc.RequestReader` / `httpc.RequestWriter`，完整方法清单见 [读写分体接口](../types/interfaces)）。中间件在请求发出前经它检视并改写请求属性。
+`RequestMutator` 是 httpc 暴露的读写请求变更器接口，涵盖上方「读取方法」与「写入方法」两张表的全部方法。中间件在请求发出前经 `RequestMutator` 检视并改写请求属性。
+
+该接口由 `RequestReader` 与 `RequestWriter` 两个分体接口组合而成，两者均由 `httpc` 包作为公开类型别名导出（`httpc.RequestReader` / `httpc.RequestWriter`，完整方法清单见 [读写分体接口](../types/interfaces)）。
 
 ## 中间件中 RequestMutator 的典型操作
 
@@ -132,7 +134,9 @@ req.SetHeader("X-Trace-ID", generateTraceID())
 
 ### ResponseMutator
 
-`ResponseMutator` 是 httpc 暴露的读写响应变更器接口，涵盖上方「读取方法」与「写入方法」两张表的全部方法。它由 `ResponseReader` 与 `ResponseWriter` 两个分体接口组合而成，两者均已由 `httpc` 包作为公开类型别名导出（`httpc.ResponseReader` / `httpc.ResponseWriter`，完整方法清单见 [读写分体接口](../types/interfaces)）。中间件在请求完成后经它读取或改写响应，常用于响应缓存、内容转换（如 JSON 美化）、编解码与响应过滤。
+`ResponseMutator` 是 httpc 暴露的读写响应变更器接口，涵盖上方「读取方法」与「写入方法」两张表的全部方法。中间件在请求完成后经 `ResponseMutator` 读取或改写响应，常见用途包括响应缓存、内容转换（如 JSON 美化）、编解码与响应过滤。
+
+该接口由 `ResponseReader` 与 `ResponseWriter` 两个分体接口组合而成，两者均由 `httpc` 包作为公开类型别名导出（`httpc.ResponseReader` / `httpc.ResponseWriter`，完整方法清单见 [读写分体接口](../types/interfaces)）。
 
 ## 中间件中 ResponseMutator 的典型操作
 
@@ -149,7 +153,7 @@ req.SetHeader("X-Trace-ID", generateTraceID())
 中间件收到的 `RequestMutator` 在运行时实际是 `*engine.Request` 类型（引擎的具体请求结构）。`finalHandler` 通过类型断言从它读取三个**不在接口上**的引擎特有钩子。自定义中间件如需访问这些钩子，同样需要类型断言。
 
 :::warning 接口边界
-OnRequest/OnResponse 回调和 `AllowPrivateIPs` 不在 `RequestMutator` 接口上——它们的签名引用内部包 `engine` 的类型（`*engine.Request`/`*engine.Response`），暴露到公开接口会造成循环导入。因此只能经 `*engine.Request` 类型断言访问。
+OnRequest/OnResponse 回调和 `AllowPrivateIPs` 不在 `RequestMutator` 接口上：它们的签名引用内部包 `engine` 的类型（`*engine.Request`/`*engine.Response`），暴露到公开接口会造成循环导入。因此只能经 `*engine.Request` 类型断言访问。
 :::
 
 这些引擎特有方法包括：
@@ -162,11 +166,11 @@ OnRequest/OnResponse 回调和 `AllowPrivateIPs` 不在 `RequestMutator` 接口�
 | `SetOnRequest(func)` / `SetOnResponse(func)` | 设置回调 |
 | `SetAllowPrivateIPs(*bool)` | 设置 SSRF 覆盖 |
 
-绝大多数中间件**不需要**类型断言——`RequestMutator`/`ResponseMutator` 接口已涵盖所有常用读写操作。仅在需要回调或 SSRF 覆盖时才需断言到具体类型。
+除需要回调或 SSRF 覆盖的场景外，中间件无需类型断言：`RequestMutator`/`ResponseMutator` 接口已涵盖常用读写操作。
 
 ## 请求选项回调：WithOnRequest / WithOnResponse
 
-除中间件外，还有一对与变更器直接相关的请求选项：`WithOnRequest` 在请求发出前回调，参数就是 `RequestMutator`；`WithOnResponse` 在响应收到后回调，参数就是 `ResponseMutator`。不编写中间件也能拿到变更器做检视或轻量改写。
+除中间件外，还有一对与变更器直接相关的请求选项：`WithOnRequest` 在请求发出前回调，参数为 `RequestMutator`；`WithOnResponse` 在响应收到后回调，参数为 `ResponseMutator`。不编写中间件也能拿到变更器做检视或轻量改写。
 
 <!-- check-code: skip -->
 ```go
@@ -179,10 +183,10 @@ func WithOnResponse(callback func(resp ResponseMutator) error) RequestOption
 | `WithOnRequest` | 请求发出前 | `RequestMutator` | 任一回调返回错误则请求中止 |
 | `WithOnResponse` | 响应收到后 | `ResponseMutator` | 任一回调返回错误则请求以该错误失败 |
 
-多个回调可链式注册，按添加顺序依次执行；传入 nil 回调会在应用选项时返回错误（`"onRequest callback cannot be nil"` / `"onResponse callback cannot be nil"`）。
+多个回调可链式注册，按添加顺序依次执行。传入 nil 回调会在应用选项时返回错误（`"onRequest callback cannot be nil"` / `"onResponse callback cannot be nil"`）。
 
 :::tip 回调与中间件的取舍
-回调没有 `next`，不能短路请求、也不能在响应阶段做包装——它只适合「检视 + 轻量改写」。需要控制执行顺序、短路返回或包装响应时，请编写中间件（见 [Handler 与中间件链](./handler-chain)）。
+回调没有 `next`，因此不能短路请求，也不能在响应阶段做包装；它只适合「检视 + 轻量改写」。需要控制执行顺序、短路返回或包装响应时，应编写中间件（见 [Handler 与中间件链](./handler-chain)）。
 :::
 
 ```go
@@ -230,7 +234,7 @@ func main() {
 
 ## SanitizedURL 缓存
 
-多个中间件可能都需要记录脱敏 URL（移除凭据信息的 URL）。为避免重复计算，HTTPC 在请求对象上缓存脱敏结果，供同一请求的多个中间件共享。
+多个中间件都需要记录脱敏 URL（移除凭据信息的 URL）时，重复计算会产生开销。HTTPC 因此把脱敏结果缓存在请求对象上，供同一请求的多个中间件共享。
 
 ```text
 getOrComputeSanitizedURL(req):
@@ -240,10 +244,10 @@ getOrComputeSanitizedURL(req):
   ③ 未缓存？ → 计算 SanitizeURL(req.URL())，缓存后返回
 ```
 
-内置的 `LoggingMiddleware`、`MetricsMiddleware` 和 `AuditMiddleware` 都使用 `getOrComputeSanitizedURL` 共享脱敏结果，使 URL 脱敏在整个链路中**只计算一次**。自定义中间件记录 URL 时也应使用此机制，而非直接调用 `req.URL()`（可能含凭据）。
+内置的 `LoggingMiddleware`、`MetricsMiddleware` 和 `AuditMiddleware` 都使用 `getOrComputeSanitizedURL` 共享脱敏结果，URL 脱敏在整个链路中**只计算一次**。自定义中间件记录 URL 时也应使用该机制，而非直接调用 `req.URL()`（其结果含凭据）。
 
 :::tip URL 脱敏
-日志/指标中间件中记录 URL 时，切勿直接使用 `req.URL()`——如果 URL 含有 `user:pass@host` 形式的凭据，会泄漏到日志中。内置中间件经 `getOrComputeSanitizedURL` 自动移除凭据部分。
+日志/指标中间件中记录 URL 时，不能直接使用 `req.URL()`。若 URL 含有 `user:pass@host` 形式的凭据，凭据会泄漏到日志中。内置中间件经 `getOrComputeSanitizedURL` 自动移除凭据部分。
 :::
 
 ## 示例：经变更器读写请求响应
@@ -305,7 +309,7 @@ func main() {
 
 ## 实战示例：请求/响应日志中间件
 
-一个完整的日志中间件，同时展示 `RequestMutator` 与 `ResponseMutator` 的读写能力——经变更器读取请求方法/URL 和响应状态码/耗时/重试信息，统一格式化输出。
+一个完整的日志中间件，同时展示 `RequestMutator` 与 `ResponseMutator` 的读写能力：经变更器读取请求方法/URL 和响应状态码/耗时/重试信息，统一格式化输出。
 
 ```go
 package main

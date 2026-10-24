@@ -1,23 +1,23 @@
 ---
 sidebar_label: "包函数"
-title: "包函数 - CyberGo html | 用法、参数与示例"
-description: "CyberGo html 包级便捷函数参考：详解 Extract、ExtractText、ExtractToMarkdown、ExtractToJSON 与 ExtractBatch 等函数签名，均有 WithContext 上下文变体；内部经 sync.Pool 池化复用 Processor 并禁用缓存，归还时清空统计与审计，传入自定义 Config 则改用临时实例，适合一次性低频调用场景。"
+title: "包函数 - CyberGo html | 签名、参数与示例"
+description: "CyberGo html 包级函数参考：Extract、ExtractText、ExtractToMarkdown 与 ExtractBatch 等函数的签名、参数、示例与错误返回；说明 sync.Pool 池化复用机制，以及传入自定义 Config 时改为一次性实例的行为差异。"
 sidebar_position: 10
 ---
 
 # 包函数
 
-包级函数适合一次性调用场景，内部使用 `sync.Pool` 复用 Processor，无需手动管理生命周期。注意：池化 Processor 已禁用缓存与审计保留；需要缓存/统计/审计请用 [html.New](./processor) 创建独立 Processor。
+包级函数是 `github.com/cybergodev/html` 提供的一次性调用入口：内部通过 `sync.Pool` 复用 `Processor`，你无需管理生命周期。池化实例禁用缓存，归还时重置统计并清空审计日志；需要缓存、统计或审计时，用 [html.New](./processor) 创建独立的 `Processor`。
 
 ## 内部机制
 
-:::info 池化设计
-包函数底层维护一个 `sync.Pool`，在每次调用之间复用 `Processor` 实例，避免重复分配。关键实现细节：
+:::info 包函数底层的池化设计
+包函数维护一个 `sync.Pool`，在调用之间复用 `Processor` 实例，避免重复分配。实现上有四点：
 
-- **池化配置禁用缓存**：池用的配置（`poolCfg`）以 `DefaultConfig()` 为基础，但显式置零三个缓存相关字段——`MaxCacheEntries=0`、`CacheTTL=0`、`CacheCleanup=0`。因此**包函数无法利用缓存**，每次都是完整处理。这样设计是因为池化 Processor 每次归还时都会清空缓存，开启缓存只会白白付出哈希与 map 写入开销，永远命中不了。
-- **归还时重置状态**：每次调用结束归还 Processor 前，依次执行 `ResetStatistics`、`audit.Wait()`、`ClearAuditLog`、`ClearCache`，防止跨调用的统计、审计、缓存状态泄漏。
-- **已关闭的 Processor 不归还**：若 Processor 在使用过程中被关闭（属于误用），归还逻辑会直接丢弃它而不放回池中（`sync.Pool` 允许缺失 `Put`，下次 `Get` 由 `pool.New` 重建）。
-- **panic 兜底**：`pool.New` 仅在库不变量被破坏时 panic（`poolCfg` 由 `DefaultConfig()` 派生，按构造即合法）；此 panic 经 `getPooledProcessorSafe` 捕获并包装为 `ErrInternalPanic` 返回，不会逃逸到公开 API。
+- **池化配置禁用缓存**：池用配置（`poolCfg`）以 `DefaultConfig()` 为基础，但显式置零 `MaxCacheEntries`、`CacheTTL`、`CacheCleanup`。池化实例每次归还都会调用 `ClearCache()`，缓存本就为空；若开启缓存，只会付出哈希与 map 写入开销（`Get` 始终 miss），并额外启动一个清扫空缓存的 goroutine。
+- **归还时重置状态**：归还前依次执行 `ResetStatistics`、`audit.Wait()`、`ClearAuditLog`、`ClearCache`，避免统计、审计与缓存状态跨调用泄漏。
+- **已关闭的实例不归还**：使用过程中被关闭的 `Processor`（属于误用）会被丢弃，不放回池中；`sync.Pool` 允许缺少 `Put`，下次 `Get` 时由 `pool.New` 重建。
+- **panic 兜底**：`pool.New` 仅在库不变量被破坏时 panic（`poolCfg` 由 `DefaultConfig()` 派生，构造即合法）。该 panic 由 `getPooledProcessorSafe` 捕获并包装为 `ErrInternalPanic` 返回，不会逃逸到公开 API。
 :::
 
 ## 配置参数解析
@@ -26,25 +26,25 @@ sidebar_position: 10
 
 | 传入参数 | 行为 | 是否走池化 |
 |----------|------|:----------:|
-| 不传 | 使用 `DefaultConfig` 默认配置 | 是（`pooled=true`） |
-| 传 1 个 | 使用该 `Config` | **否**（`pooled=false`） |
+| 不传 | 使用 `DefaultConfig()` | 是（`pooled=true`） |
+| 传 1 个 | 使用该 `Config`，创建一次性 Processor | **否**（`pooled=false`） |
 | 传 ≥2 个 | 返回 `ErrMultipleConfigs` | — |
 
-:::warning 关键差异
-传入自定义 `Config` 时**不走 `sync.Pool`**——池只存储基于 `DefaultConfig()` 的 Processor，无法安全复用配置不同的实例。此时每次调用都会 `New` 一个临时 Processor，用完即 `Close`。若需在高频调用中复用自定义配置，请直接创建 [Processor](./processor)。
+:::warning 传入自定义 Config 时不走池化
+池中只存放基于 `DefaultConfig()` 的实例，无法安全复用配置不同的实例。传入自定义 `Config` 时，每次调用都会 `New` 一个一次性 Processor，用完即 `Close`；同时 `MaxCacheEntries`、`CacheTTL`、`CacheCleanup` 被强制置零，因此该实例同样没有缓存。需要在高频调用中复用自定义配置时，直接创建 [Processor](./processor)。
 :::
 
 ## 构造函数
 
 ### New
 
-创建独立的 `Processor` 实例，是缓存、统计与审计能力的唯一入口。
+创建独立的 `Processor` 实例。缓存、累计统计与审计日志都只在实例上保留，可随时查询。
 
 ```go
 func New(cfg ...Config) (*Processor, error)
 ```
 
-`cfg ...Config` 同样遵循上表的解析规则（不传用 `DefaultConfig()`，传 ≥2 个返回 `ErrMultipleConfigs`），随后执行 `Config.Validate()`。与包函数的池化/临时实例不同，`New` 返回的实例**长期持有缓存与累计统计**。完整方法列表与生命周期见 [Processor](./processor)。
+`cfg ...Config` 遵循上表的解析规则（不传用 `DefaultConfig()`，传 ≥2 个返回 `ErrMultipleConfigs`），随后执行 `Config.Validate()`。与包函数的池化实例、一次性实例不同，`New` 返回的实例长期持有缓存与累计统计。方法列表与生命周期见 [Processor](./processor)。
 
 ## 内容提取
 
@@ -68,12 +68,12 @@ func Extract(htmlBytes []byte, cfg ...Config) (*Result, error)
 ```go
 result, err := html.Extract(data)
 if err != nil {
-    log.Fatal(err)
+	log.Fatal(err)
 }
 fmt.Println(result.Title, result.Text)
 ```
 
-完整可运行示例（展示字段访问与错误处理）：
+完整示例（字段访问与错误处理）：
 
 ```go
 package main
@@ -92,7 +92,7 @@ func main() {
 	// 不传 Config，走池化路径
 	result, err := html.Extract(data)
 	if err != nil {
-		log.Fatalf("提取失败: %v", err)
+		log.Fatalf("提取失败：%v", err)
 	}
 
 	fmt.Println("标题：", result.Title)
@@ -105,7 +105,7 @@ func main() {
 }
 ```
 
-**错误返回**：`Extract` 返回与 [Processor.Extract](./processor#错误返回) 相同的错误，并额外可能返回：
+**错误返回**：`Extract` 返回与 [Processor.Extract](./processor#错误返回) 相同的错误，另有两种包函数特有的错误：
 
 | 错误 | 条件 |
 |------|------|
@@ -120,13 +120,13 @@ func main() {
 func ExtractFromFile(filePath string, cfg ...Config) (*Result, error)
 ```
 
-**错误返回**：除 `Extract` 的错误外，文件访问可能返回 `*FileError`，包裹 `ErrFileNotFound`、`ErrInvalidFilePath` 或路径遍历拒绝（见 [安全防护](../modules/security) 的 `AllowedBaseDir`）。
+**错误返回**：除 `Extract` 的错误外，文件访问还可能返回 `*FileError`，包裹 `ErrFileNotFound`、`ErrInvalidFilePath` 或路径遍历拒绝（见 [安全防护](../modules/security) 的 `AllowedBaseDir`）。
 
 ## 文本提取
 
 ### ExtractText
 
-仅提取纯文本内容。
+仅提取纯文本。
 
 ```go
 func ExtractText(htmlBytes []byte, cfg ...Config) (string, error)
@@ -134,7 +134,7 @@ func ExtractText(htmlBytes []byte, cfg ...Config) (string, error)
 
 ### ExtractTextFromFile
 
-`ExtractTextFromFile` 是 `ExtractText` 的文件版本，从磁盘上的 HTML 文件提取纯文本；文件访问错误同样包裹为 `*FileError`（`ErrFileNotFound`、`ErrInvalidFilePath` 或路径遍历拒绝）。
+`ExtractText` 的文件版本，从磁盘上的 HTML 文件提取纯文本；文件访问错误同样包裹为 `*FileError`（`ErrFileNotFound`、`ErrInvalidFilePath` 或路径遍历拒绝）。
 
 ```go
 func ExtractTextFromFile(filePath string, cfg ...Config) (string, error)
@@ -142,7 +142,7 @@ func ExtractTextFromFile(filePath string, cfg ...Config) (string, error)
 
 ## 上下文版本
 
-所有函数都支持带 `context.Context` 的版本，用于取消和超时控制：
+提取、输出、链接与批量函数都有带 `context.Context` 的版本，用于取消与超时控制；`New` 与 `GroupLinksByType` 没有对应变体。
 
 | 函数 | 签名 |
 |------|------|
@@ -171,7 +171,7 @@ result, err := html.ExtractWithContext(ctx, data)
 | `ExtractToJSONWithContext` | `(ctx context.Context, htmlBytes []byte, cfg ...Config) ([]byte, error)` | 带上下文 |
 | `ExtractToJSONFromFileWithContext` | `(ctx context.Context, filePath string, cfg ...Config) ([]byte, error)` | 文件 + 上下文 |
 
-详细用法和示例详见 [输出格式](../modules/output)。
+用法与示例见 [输出格式](../modules/output)。
 
 ## 链接提取
 
@@ -188,9 +188,9 @@ result, err := html.ExtractWithContext(ctx, data)
 func GroupLinksByType(links []LinkResource) map[string][]LinkResource
 ```
 
-按 `LinkResource.Type` 字段（`link`/`image`/`css` 等）把链接资源分组为 `map[类型][]LinkResource`。
+按 `LinkResource.Type`（`link`/`image`/`css` 等）把链接资源分组为 `map[类型][]LinkResource`。
 
-详细用法和示例详见 [链接提取](../modules/links)。
+用法与示例见 [链接提取](../modules/links)。
 
 ## 批量处理
 
@@ -201,21 +201,21 @@ func GroupLinksByType(links []LinkResource) map[string][]LinkResource
 | `ExtractBatchFiles` | `(filePaths []string, cfg ...Config) *BatchResult` | 批量文件提取 |
 | `ExtractBatchFilesWithContext` | `(ctx context.Context, filePaths []string, cfg ...Config) *BatchResult` | 文件 + 上下文 |
 
-详细用法和示例详见 [批量处理](../modules/batch)。
+用法与示例见 [批量处理](../modules/batch)。
 
 ## 包函数 vs Processor
 
-两者底层都调用 `Processor`，但在资源复用与状态保留上差异明显：
+两者底层都调用 `Processor`，差异在资源复用与状态保留：
 
 | 维度 | 包函数 | [Processor](./processor) |
 |------|--------|--------------------------|
 | 缓存 | **无**（池化配置 `MaxCacheEntries=0`） | 有（命中返回深拷贝） |
 | 统计 | 每次重置（归还时 `ResetStatistics`） | 累积，可随时 `GetStatistics` |
 | 审计日志 | 每次清空（归还时 `ClearAuditLog`） | 累积，可 `GetAuditLog` 查询 |
-| 自定义 `Config` | 每次创建 + 销毁临时 Processor | 复用同一实例 |
-| 生命周期 | 自动管理（池/临时实例） | 需手动 `defer Close()` |
+| 自定义 `Config` | 每次创建并销毁一次性 Processor（缓存字段置零） | 复用同一实例 |
+| 生命周期 | 自动管理（池或一次性实例） | 需手动 `defer Close()` |
 | 适用场景 | 一次性调用、脚本、低频请求 | 高频调用、长驻服务、需缓存 |
 
-:::tip 选择建议
-单次提取或偶发调用用包函数最省心；若要在循环、HTTP handler、批处理中反复提取，创建一个长生命周期的 `Processor` 并复用，可借助缓存显著降低开销。
+:::tip 何时改用 Processor
+单次或偶发调用用包函数即可。在循环、HTTP handler 或批处理中反复提取时，创建一个长生命周期的 `Processor` 并复用；此时缓存才会产生收益。
 :::

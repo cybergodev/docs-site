@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Config"
 title: "Config - CyberGo JSON | Fields & Presets"
-description: "CyberGo JSON Config reference: DefaultConfig, PrettyConfig, MergeMode, SecurityConfig, Validate, Clone and AddHook for tuning cache, security and encoding."
+description: "CyberGo JSON Config reference: DefaultConfig, SecurityConfig and PrettyConfig presets, every field default, Validate clamping ranges, and MergeMode."
 sidebar_position: 40
 ---
 
@@ -22,15 +22,15 @@ type Config struct {
 
     // ===== Size limits =====
     MaxJSONSize  int64 `json:"max_json_size"`  // Maximum JSON size (bytes)
-    MaxPathDepth int   `json:"max_path_depth"` // Maximum path depth
+    MaxPathDepth int   `json:"max_path_depth"` // Path depth cap (reserved field: does not change behavior)
     MaxBatchSize int   `json:"max_batch_size"` // Maximum batch operation count
 
     // ===== Security limits =====
     MaxNestingDepthSecurity   int   `json:"max_nesting_depth"`           // Maximum nesting depth
-    MaxSecurityValidationSize int64 `json:"max_security_validation_size"` // Maximum size for security validation
+    MaxSecurityValidationSize int64 `json:"max_security_validation_size"` // Security validation size (reserved field: does not change behavior)
     MaxObjectKeys             int   `json:"max_object_keys"`             // Maximum object key count
     MaxArrayElements          int   `json:"max_array_elements"`          // Maximum array element count
-    FullSecurityScan          bool  `json:"full_security_scan"`          // Enable full security scanning
+    FullSecurityScan          bool  `json:"full_security_scan"`          // Enable a single full security scan
 
     // ===== Concurrency =====
     MaxConcurrency    int `json:"max_concurrency"`    // Maximum concurrency
@@ -132,7 +132,7 @@ All exported `Config` fields are listed below, grouped by purpose. Defaults are 
 
 | Field                 | Type            | Default | Description                                                                        |
 | --------------------- | --------------- | ------- | ---------------------------------------------------------------------------------- |
-| `MaxCacheSize`        | `int`           | 128     | Maximum cache entries (0 disables the cache)                                       |
+| `MaxCacheSize`        | `int`           | 128     | Maximum cache entries; at 0 each shard still holds 1 entry — set `EnableCache = false` to turn caching off |
 | `CacheTTL`            | `time.Duration` | 5 minutes | Cache entry lifetime                                                             |
 | `EnableCache`         | `bool`          | true    | Whether to enable the cache                                                        |
 | `CacheResults`        | `bool`          | true    | Whether to cache operation results (cached per operation)                          |
@@ -142,19 +142,19 @@ All exported `Config` fields are listed below, grouped by purpose. Defaults are 
 
 | Field          | Type    | Default | Description                                                    |
 | -------------- | ------- | ------- | -------------------------------------------------------------- |
-| `MaxJSONSize`  | `int64` | 100MB   | Maximum JSON input size (bytes)                                |
-| `MaxPathDepth` | `int`   | 50      | Maximum path depth                                             |
-| `MaxBatchSize` | `int`   | 2000    | Cap on operations per batch (exceeding it is rejected, preventing memory exhaustion) |
+| `MaxJSONSize`  | `int64` | 100MB   | Maximum JSON input size (bytes); exceeding it returns `ErrSizeLimit` |
+| `MaxPathDepth` | `int`   | 50      | Reserved field: does not change behavior today; only feeds the config cache key and the `Validate` clamp (10–200). Path segment count is actually capped at 100 segments internally; exceeding it produces the error message `path too deep` |
+| `MaxBatchSize` | `int`   | 2000    | Cap on operations per batch (`ProcessBatch`, `SetMultiple`); exceeding it returns `ErrSizeLimit` |
 
 ### Security Limits
 
 | Field                       | Type    | Default | Description                                                                                                                             |
 | --------------------------- | ------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `MaxNestingDepthSecurity`   | `int`   | 200     | Maximum nesting depth                                                                                                                   |
-| `MaxSecurityValidationSize` | `int64` | 10MB    | Maximum size for security validation (above it, scanning follows the sampling strategy unless `FullSecurityScan` is true)                |
-| `MaxObjectKeys`             | `int`   | 100000  | Maximum key count per object                                                                                                            |
-| `MaxArrayElements`          | `int`   | 100000  | Maximum element count per array                                                                                                         |
-| `FullSecurityScan`          | `bool`  | false   | When true, full (non-sampled) security scanning for all input; when false, large input (>4KB) uses rolling-window + sampled scanning, while critical patterns (`__proto__`, etc.) are still fully scanned |
+| `MaxNestingDepthSecurity`   | `int`   | 200     | Maximum nesting depth; exceeding it returns `ErrDepthLimit`                                                                               |
+| `MaxSecurityValidationSize` | `int64` | 10MB    | Reserved field: does not change behavior today; only feeds the config cache key and the `Validate` clamp (1MB–100MB). Security scanning does not switch strategy based on this value |
+| `MaxObjectKeys`             | `int`   | 100000  | Maximum key count per object; exceeding it returns `ErrSizeLimit`                                                                         |
+| `MaxArrayElements`          | `int`   | 100000  | Maximum element count per array; exceeding it returns `ErrSizeLimit`                                                                      |
+| `FullSecurityScan`          | `bool`  | false   | false (default): input under 4KB is scanned in full; 4KB and above uses a 32KB rolling window covering every byte, plus a suspicious-character density check on 4KB samples from the beginning, middle, and end. true: a single full scan instead |
 
 ### Concurrency
 
@@ -223,7 +223,7 @@ All exported `Config` fields are listed below, grouped by purpose. Defaults are 
 | `MaxMemory`       | `int64` | 100MB   | Maximum memory for large-file processing                          |
 | `BufferSize`      | `int`   | 64KB    | Large-file read buffer size                                       |
 | `SaveFileMode`    | `os.FileMode` | 0 (falls back to 0644) | Permission bits for files **newly created** by `SaveToFile` / `MarshalToFile`; existing files keep their permissions (consistent with `os.WriteFile`). Prefer `0600` for sensitive data; `Validate` masks it to permission bits ≤ 0777 |
-| `SamplingEnabled` | `bool`  | true    | Deprecated: not read (whether security scanning samples is decided by `FullSecurityScan` and `MaxSecurityValidationSize`); only takes part in the config cache key |
+| `SamplingEnabled` | `bool`  | true    | Deprecated: not read (the rolling-window mode is selected by input size; `FullSecurityScan` only toggles between window and full scanning); only takes part in the config cache key |
 | `SampleSize`      | `int`   | 1000    | Deprecated: not read by any code path; only takes part in the config cache key |
 
 ### JSONL Configuration
@@ -235,8 +235,8 @@ All exported `Config` fields are listed below, grouped by purpose. Defaults are 
 | `JSONLSkipEmpty`      | `bool`  | true    | Skip empty lines                                 |
 | `JSONLSkipComments`   | `bool`  | false   | Skip `#` / `//` comment lines                    |
 | `JSONLContinueOnErr`  | `bool`  | false   | Continue with subsequent lines on parse errors   |
-| `JSONLWorkers`        | `int`   | 4       | JSONL parallel worker count                      |
-| `JSONLChunkSize`      | `int`   | 1000    | Batch chunk size (lines)                         |
+| `JSONLWorkers`        | `int`   | 4       | Reserved: no code reads it; the parallel worker count comes from the `workers` argument of `StreamJSONLParallel` |
+| `JSONLChunkSize`      | `int`   | 1000    | Reserved: no code reads it; the chunk size comes from the `chunkSize` argument of `StreamJSONLChunked` |
 | `JSONLMaxMemory`      | `int64` | 100MB   | Maximum memory for JSONL processing              |
 
 ### Merge Options
@@ -273,7 +273,7 @@ The following fields have no JSON tags and are not serialized; wiring status in 
 
 ## Encoding Options in Detail
 
-Encoding options (`Pretty`/`Indent`/`EscapeHTML`/`SortKeys`/`FloatPrecision`, etc.) control the output shape of the `Marshal`/`Encode` families. Defaults align with the standard library (e.g. `EscapeHTML: true`, `IncludeNulls: true`); whenever any "non-default" encoding option is set, the library automatically switches to its custom encoder path internally — no manual intervention needed.
+Encoding options (`Pretty`/`Indent`/`EscapeHTML`/`SortKeys`/`FloatPrecision`, etc.) control the output shape of the `Marshal`/`Encode` families. Defaults align with the standard library (e.g. `EscapeHTML: true`, `IncludeNulls: true`). When any non-default encoding option is set, the library switches to its custom encoder path internally.
 
 ### Key Sorting (SortKeys)
 
@@ -332,7 +332,7 @@ The following fields control decoding strictness and runtime observability (defa
 | `SamplingEnabled` | `true` | Deprecated | Not read (see note below) |
 
 ::: warning Reserved/deprecated field notes
-The following fields are declared and take part in config comparison and hashing (so they do distinguish processor caches for different cfgs), but are **not read by the corresponding pipelines** — setting them changes nothing (`ValidateUTF8` is a reserved field; the others are all marked Deprecated in the source — all are kept within v1):
+The following fields are declared and take part in config comparison and hashing (so they do distinguish processor caches for different cfgs), but are **not read by the corresponding pipelines** — setting them changes nothing. `ValidateUTF8`, `MaxPathDepth`, and `MaxSecurityValidationSize` are not marked Deprecated in the source and are reserved fields; the rest are marked Deprecated. All are kept within v1:
 
 - `EnableValidation`: validation always runs by default unless `SkipValidation` is `true` — this toggle is not read by any operation.
 - `StrictMode`: not read by any parser or operation.
@@ -340,7 +340,9 @@ The following fields are declared and take part in config comparison and hashing
 - `ValidateInput`: not read by any operation.
 - `EnableHealthCheck`: health checks are on-demand via `GetHealthStatus`; whether there is data depends on `EnableMetrics` (see [Lifecycle and Statistics](./processor/lifecycle#health-check)).
 - `ChunkSize`: not read by any code path; streaming reads actually use `BufferSize`.
-- `SamplingEnabled` / `SampleSize`: whether security scanning of large inputs is sampled is decided by `FullSecurityScan` and `MaxSecurityValidationSize`, unrelated to these two fields.
+- `SamplingEnabled` / `SampleSize`: these two fields play no part in security scanning; the scan mode is decided by input size and `FullSecurityScan`.
+- `MaxPathDepth`: imposes no cap on path segment count. The segment limit is 100 internally and exceeding it produces the error message `path too deep`; the path string limit is 5000 bytes, returning `ErrInvalidPath` when validation is on and it is exceeded.
+- `MaxSecurityValidationSize`: plays no part in security scanning. The threshold is fixed by input size: under 4KB is scanned in full, 4KB and above uses the 32KB rolling window.
 - `ValidateUTF8`: on the input side, rejecting invalid UTF-8 is unconditional security behavior; on the output side, standard-library semantics apply — neither is affected by this toggle.
 :::
 
@@ -367,8 +369,8 @@ defer processor.Close()
 |-------|-------|-------------|
 | MaxJSONSize | 100MB | JSON size limit |
 | MaxNestingDepthSecurity | 200 | Nesting depth |
-| MaxPathDepth | 50 | Path depth |
-| MaxSecurityValidationSize | 10MB | Security validation size cap |
+| MaxPathDepth | 50 | Path depth (reserved field, does not change behavior) |
+| MaxSecurityValidationSize | 10MB | Security validation size cap (reserved field, does not change behavior) |
 | MaxObjectKeys | 100000 | Maximum object key count |
 | MaxArrayElements | 100000 | Maximum array element count |
 | MaxConcurrency | 50 | Concurrency |
@@ -382,7 +384,7 @@ defer processor.Close()
 | CacheSharedResults | false | Share cached results (high-performance read-only scenarios) |
 | EnableValidation | true | Enable validation (deprecated, not read) |
 | StrictMode | false | Non-strict mode (deprecated, not read) |
-| FullSecurityScan | false | Sampled security scanning (not full) |
+| FullSecurityScan | false | Full scan for small input; 4KB and above uses the rolling window (see the security limits table) |
 | ValidateInput | true | Validate input (deprecated, not read) |
 | ValidateFilePath | true | Validate file paths |
 | DetectDuplicateKeys | false | No duplicate-key detection (last duplicate key wins) |
@@ -407,8 +409,8 @@ defer processor.Close()
 | JSONLSkipEmpty | true | Skip empty lines |
 | JSONLSkipComments | false | Do not skip comments |
 | JSONLContinueOnErr | false | Stop on errors |
-| JSONLWorkers | 4 | Parallel worker count |
-| JSONLChunkSize | 1000 | JSONL chunk size |
+| JSONLWorkers | 4 | Reserved, does not change behavior |
+| JSONLChunkSize | 1000 | Reserved, does not change behavior |
 | JSONLMaxMemory | 100MB | JSONL maximum memory |
 | MergeMode | MergeUnion | Union merge |
 
@@ -438,12 +440,12 @@ defer processor.Close()
 | Field | Value | Description |
 |-------|-------|-------------|
 | MaxNestingDepthSecurity | 30 | Conservative nesting depth |
-| MaxSecurityValidationSize | 10MB | Security validation size |
+| MaxSecurityValidationSize | 10MB | Security validation size (reserved field, does not change behavior) |
 | MaxObjectKeys | 5000 | Conservative key limit |
 | MaxArrayElements | 5000 | Conservative element limit |
 | MaxJSONSize | 10MB | Conservative size limit |
-| MaxPathDepth | 30 | Conservative path depth |
-| FullSecurityScan | true | Full security scanning |
+| MaxPathDepth | 30 | Conservative path depth (reserved field, does not change behavior) |
+| FullSecurityScan | true | Single full scan for every input |
 | StrictMode | true | Strict mode (deprecated field: `SecurityConfig` sets it to `true`, but it is not read by any parser — no actual effect) |
 | EnableValidation | true | Enable validation (deprecated field: `SecurityConfig` sets it to `true`, but it is not read by any operation — no actual effect) |
 | EnableCache | true | Enable cache |
@@ -509,15 +511,15 @@ for _, w := range warnings {
 | Field | Valid range (lower–upper) | Notes |
 |-------|---------------------------|-------|
 | `MaxJSONSize` | 1MB – 100MB | int64 |
-| `MaxPathDepth` | 10 – 200 | |
+| `MaxPathDepth` | 10 – 200 | Reserved field; remains inert after clamping |
 | `MaxNestingDepthSecurity` | 10 – 200 | |
 | `MaxConcurrency` | 1 – 200 | ≤0 resets to the default 50 (not the lower bound 1) |
 | `ParallelThreshold` | 1 – 50 | |
 | `MaxObjectKeys` | 100 – 100000 | |
 | `MaxArrayElements` | 100 – 100000 | |
-| `MaxSecurityValidationSize` | 1MB – 100MB | int64 |
+| `MaxSecurityValidationSize` | 1MB – 100MB | int64; reserved field, remains inert after clamping |
 | `MaxBatchSize` | 10 – 10000 | |
-| `MaxCacheSize` | 0 – 2000 (only negatives are invalid) | When negative, set to 0 and **EnableCache is also turned off** (0 disables the cache, which is legal) |
+| `MaxCacheSize` | 0 – 2000 (only negatives are invalid) | When negative, set to 0 and **EnableCache is also turned off**; 0 itself is legal but does not disable caching |
 | `CacheTTL` | ≤0 invalid, reset to `DefaultCacheTTL` (5 minutes) | |
 | `MaxDepth` | [0, 1000], out-of-range reset to 100 | 0 means unlimited depth; negative is invalid |
 | `FloatPrecision` | [-1, 15], out-of-range reset to -1 | -1 is the automatic-precision sentinel |
@@ -561,13 +563,13 @@ Security limits have no separate aggregate type — they are provided directly a
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `MaxJSONSize` | `int64` | 100MB | Cap on input JSON size (`ErrSizeLimit`) |
-| `MaxPathDepth` | `int` | 50 | Cap on path segment count (`ErrInvalidPath`) |
+| `MaxPathDepth` | `int` | 50 | Reserved field, does not change behavior today (only feeds the config cache key and the `Validate` clamp 10–200) |
 | `MaxBatchSize` | `int` | 2000 | Cap on operations per batch (`ErrSizeLimit`) |
 | `MaxNestingDepthSecurity` | `int` | 200 (`DefaultMaxNestingDepth`, Validate clamps to 10–200) | Cap on input nesting depth (`ErrDepthLimit`); semantically distinct from `MaxDepth`, the encoding/decoding nesting depth (default 100) — do not confuse them |
-| `MaxSecurityValidationSize` | `int64` | 10MB | Size threshold for security validation (threshold type) |
+| `MaxSecurityValidationSize` | `int64` | 10MB | Reserved field, does not change behavior today (only feeds the config cache key and the `Validate` clamp 1MB–100MB) |
 | `MaxObjectKeys` | `int` | 100000 | Maximum object key count (`ErrSizeLimit`) |
 | `MaxArrayElements` | `int` | 100000 | Maximum array element count (`ErrSizeLimit`) |
-| `FullSecurityScan` | `bool` | `false` (tiered scanning) | Whether to fully security-scan all input (set to `true` for full scanning) |
+| `FullSecurityScan` | `bool` | `false` (scan mode follows input size) | `false`: under 4KB scanned in full, 4KB and above uses a 32KB rolling window covering every byte; `true`: every input is scanned in a single full pass |
 
 ### AddHook
 
@@ -774,9 +776,9 @@ result, err := json.MergeJSON(
 |---------|-------------------|-------|
 | MaxJSONSize | 10-100MB | Tune to your server memory |
 | MaxNestingDepthSecurity | 30-50 | Prevents deep-nesting attacks |
-| MaxPathDepth | 30-50 | Limits path complexity |
+| MaxPathDepth | any (reserved field) | Does not change behavior; the path string cap is 5000 bytes (returning `ErrInvalidPath` when validation is on and it is exceeded) and the segment cap is 100 internally |
 | SkipValidation | false | Keep input validation on (it is on by default — do not turn it off; EnableValidation is deprecated and not read) |
-| FullSecurityScan | true (untrusted input) | Full security scanning |
+| FullSecurityScan | true (untrusted input) | Switches to a single full scan, so the outcome no longer depends on where a payload sits; the default rolling window already covers every byte |
 
 ## See Also
 

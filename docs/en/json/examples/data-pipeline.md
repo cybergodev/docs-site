@@ -1,13 +1,13 @@
 ---
 sidebar_label: "JSONL Data Pipeline"
 title: "JSONL Data Pipeline - CyberGo JSON | ETL & Streaming"
-description: "CyberGo JSON JSONL data pipelines: StreamLinesInto streaming, ToJSONL/ToJSONLString batch format conversion, StreamJSONLFile and ForeachFile for large files."
+description: "CyberGo JSON JSONL pipelines: StreamLinesInto streaming reads with per-line transforms, ToJSONL/ToJSONLString output, and StreamJSONLFile or ForeachFile."
 sidebar_position: 40
 ---
 
 # JSONL Data Pipelines
 
-This page shows how to build JSONL (newline-delimited JSON) data pipelines with CyberGo JSON: streaming reads, field transformation, batch format conversion, and large-file handling.
+A JSONL pipeline has three stages: stream in, transform fields, write back in the target format. The examples below cover the three shapes: sequential stream, parallel stream, and a single large array file.
 
 ## Streaming Reads with Conversion
 
@@ -254,12 +254,14 @@ func main() {
 :::tip Parallel pipeline essentials
 - **Ordering**: parallel callbacks have no guaranteed execution order, but `lineNum` always maps to the original line number — collect by line number, sort, then write to preserve order.
 - **Worker count**: given explicitly by the second argument (4 in the example); for timeout/cancellation use `StreamJSONLParallelWithContext(ctx, reader, workers, fn)`.
-- **Throughput**: versus serial `StreamJSONL`, the gain depends on per-line cost — light extraction-only callbacks improve little, while heavy enrichment/validation callbacks improve markedly.
+- **Throughput**: versus serial `StreamJSONL`, the gain depends on per-line cost — light extraction-only callbacks finish in about the same time, while heavy enrichment/validation callbacks amortize the scheduling overhead.
 :::
 
 ## Traversing Large JSON Array Files
 
-For a **large JSON array in a single file** (not JSONL), `ForeachFile` provides callback-based element-by-element traversal. Note its memory semantics: the **entire file is loaded into memory first** (`ForeachFileChunked`'s "chunking" only changes how the in-memory data is grouped for iteration — it loads fully too); for constant-memory processing of very large arrays use `StreamIterator` (see [Large File Handling](../streaming/large-files#streaming-and-parallel-iterators)), or convert the data to JSONL and use the `StreamJSONL` family.
+For a **large JSON array in a single file** (not JSONL), `ForeachFile` provides callback-based element-by-element traversal.
+
+Its memory semantics: the **entire file is loaded into memory first** (`ForeachFileChunked`'s "chunking" only changes how the in-memory data is grouped for iteration — it loads fully too). For constant-memory processing of very large arrays use `StreamIterator` (see [Large File Handling](../streaming/large-files#streaming-and-parallel-iterators)), or convert the data to JSONL and use the `StreamJSONL` family.
 
 ```go
 package main

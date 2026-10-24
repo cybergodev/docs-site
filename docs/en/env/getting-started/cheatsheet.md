@@ -7,16 +7,16 @@ sidebar_position: 2
 
 # Cheat Sheet
 
-Quick reference for commonly used code snippets, assuming you already understand the library.
+Reference snippets for the most common tasks: loading files, reading typed values, mapping structs, masking secrets, and serializing configuration.
 
 ## Loading Configuration
 
 ```go
-// Load via package-level functions
+// Package-level functions
 env.Load(".env")                                        // Load .env file
 env.Load(".env", ".env.local", "config.json")          // Multiple files
 
-// Load via loader instance
+// Loader instance
 loader, _ := env.New()
 loader.LoadFiles("config.json")                         // JSON
 loader.LoadFiles("config.yaml")                         // YAML
@@ -32,7 +32,7 @@ env.GetInt("PORT", 8080)              // Returns int64
 env.GetBool("DEBUG", false)
 env.GetDuration("TIMEOUT", 30*time.Second)
 
-// Slices (supports KEY_0,KEY_1 index format or comma-separated)
+// Slices (KEY_0, KEY_1 index keys, or comma-separated)
 env.GetSlice[string]("HOSTS", []string{"localhost"})
 env.GetSlice[int64]("PORTS", []int64{80})
 env.GetSlice[int]("PORTS", []int{80})          // also supports int
@@ -63,7 +63,7 @@ if secret != nil {
 // JSON: {"app": {"name": "myapp"}}
 // Stored as: APP_NAME=myapp
 
-// All of these work
+// All of these read the same value
 env.GetString("APP_NAME")      // Flat key (recommended)
 env.GetString("app.name")      // Dot path
 env.GetString("APP.NAME")      // Uppercase dot path
@@ -71,6 +71,8 @@ env.GetString("APP.NAME")      // Uppercase dot path
 // Array index
 env.GetString("servers.0.host")  // SERVERS_0_HOST
 ```
+
+A key ending in a numeric segment (`HOSTS.1`) also falls back to that element of the comma-separated value of the base key when no indexed key exists.
 
 | Input | Converted to |
 |-------|---------------|
@@ -97,9 +99,9 @@ env.ParseInto(&cfg)
 
 | Preset | Purpose | Characteristics |
 |--------|---------|-----------------|
-| `DefaultConfig()` | General | Safe defaults |
-| `DevelopmentConfig()` | Development | Relaxed limits, allows overwriting, YAML syntax support, 10MB file limit |
-| `TestingConfig()` | Testing | Overwrites existing variables, test isolation, 64KB file limit |
+| `DefaultConfig()` | General | Safe defaults, no overwriting |
+| `DevelopmentConfig()` | Development | Relaxed limits, overwrites, YAML syntax, 10MB file limit |
+| `TestingConfig()` | Testing | Overwrites, test isolation, 64KB file limit |
 | `ProductionConfig()` | Production | Strict validation + audit, no overwriting, 64KB file limit |
 
 ```go
@@ -113,7 +115,7 @@ cfg.AllowedKeys = []string{"APP_NAME", "PORT"}
 ```go
 loader, err := env.New(cfg)
 if err != nil {
-    log.Fatal(err)  // Abort on creation failure (e.g. invalid config)
+    log.Fatal(err)  // Abort on creation failure (for example an invalid config)
 }
 defer loader.Close()
 
@@ -124,12 +126,12 @@ loader.Delete("KEY")
 loader.Keys()
 loader.All()
 loader.Validate()
-loader.Apply()  // Apply to os.Environ
-loader.Len()    // Variable count
-loader.LoadTime() // Last load time
-loader.IsApplied() // Whether applied to system environment
+loader.Apply()     // Write to the process environment
+loader.Len()       // Variable count (O(1))
+loader.LoadTime()  // Last load time
+loader.IsApplied() // Whether written to the process environment
 loader.IsClosed()  // Whether closed
-loader.Config()    // Get configuration
+loader.Config()    // Current configuration
 ```
 
 ## Error Handling
@@ -194,7 +196,7 @@ masked := env.MaskKey("DB_PASSWORD")  // "[MASKED]"
 ```go
 goEnv := os.Getenv("GO_ENV")
 if goEnv == "" { goEnv = "development" }
-env.Load(".env", ".env."+goEnv, ".env.local")  // Single call; first file wins by default, set OverwriteExisting=true for last-file-wins
+env.Load(".env", ".env."+goEnv, ".env.local")  // First file wins by default; set OverwriteExisting=true for last-file-wins
 ```
 
 ## Multi-format
@@ -207,7 +209,7 @@ loader.LoadFiles("config.env", "config.json", "config.yaml")
 format := env.DetectFormat("config.json")  // FormatJSON
 
 // Serialize
-env.Marshal(data, env.FormatEnv)
+env.Marshal(data, env.FormatEnv)   // values are quoted and escaped as needed
 env.Marshal(data, env.FormatJSON)
 env.Marshal(data, env.FormatYAML)
 
@@ -222,17 +224,19 @@ env.UnmarshalMap(data, env.FormatAuto)  // Auto-detect
 # Comment
 KEY=value
 KEY="value with spaces"
-KEY='literal \n value'     # Single quotes skip escape processing but do NOT prevent expansion (see tip below)
+KEY='literal \n value'     # Single quotes skip escapes and are not expanded (see tip below)
 KEY=${OTHER_KEY}           # Variable reference
-KEY=${MISSING:-default}    # Default value (used when variable doesn't exist)
-KEY=${MISSING:=default}    # Default value (used when variable doesn't exist, same as :-)
-KEY=${MISSING:?error}      # Error message (errors when variable doesn't exist or is empty)
+KEY=${MISSING:-default}    # Default value (used when the variable doesn't exist)
+KEY=${MISSING:=default}    # Default value, also assigned back to MISSING
+KEY=${MISSING:?error}      # Error when the variable doesn't exist or is empty
 export KEY=value           # bash style
 KEY=$$                     # Escaped dollar sign (yields a literal $)
 ```
 
 ::: tip Variable expansion and literal $
-Single quotes do **not** prevent variable expansion — `${UNDEF}` inside `KEY='a ${UNDEF}'` is still expanded, yielding an empty string when undefined. Use `$$` to escape a literal `$`, or set `cfg.ExpandVariables = false` to disable expansion. See [File Format](../reference/file-format) for the complete rules.
+Single-quoted values are **not** expanded: `KEY='a ${UNDEF}'` loads as the literal text `a ${UNDEF}`. For a literal `$` in a double-quoted or unquoted value, escape it as `$$`, or set `cfg.ExpandVariables = false` to disable expansion. See [File Format](../reference/file-format) for the complete rules.
+
+`KEY: value` lines are skipped unless `cfg.AllowYamlSyntax = true`; only `=` separates by default.
 :::
 
 ## Boolean Values
@@ -265,6 +269,7 @@ DURATION=1h30m
 ```go
 func TestExample(t *testing.T) {
     cfg := env.TestingConfig()
+    cfg.Filenames = nil // don't auto-load the cwd .env
     loader, _ := env.New(cfg)
     defer loader.Close()
 
@@ -282,7 +287,7 @@ func TestMain(m *testing.M) {
 
 ## Built-in Forbidden Keys
 
-The following keys are forbidden by default:
+These keys are forbidden by default:
 
 | Category | Keys |
 |----------|------|
@@ -304,13 +309,13 @@ The following keys are forbidden by default:
 // env.EnvCloser        // Close
 
 // Composite interface
-// env.EnvLoader        // Combines all of the above
+// env.EnvLoader        // combines all of the above
 ```
 
 ## Related Documentation
 
-- [Quick Start](./) - Full tutorial
-- [Package Functions](../api-reference/functions) - Detailed API
+- [Quick Start](./) - full tutorial
+- [Package Functions](../api-reference/functions) - detailed API
 - [Loader API](../api-reference/loader) - Loader methods
-- [Config API](../api-reference/config) - Configuration options
-- [Error Handling](../guides/error-handling) - Error handling patterns
+- [Config API](../api-reference/config) - configuration options
+- [Error Handling](../guides/error-handling) - error handling patterns

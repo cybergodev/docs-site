@@ -1,20 +1,20 @@
 ---
 sidebar_label: "概述"
 title: "Processor 处理器 - CyberGo JSON | 链式处理与生命周期"
-description: "CyberGo JSON 的 Processor 是一次解析、多次操作的链式处理器，提供 GetString/Set/Delete 查询修改、Foreach 迭代与 Encode 编码全套方法，内置缓存加速重复操作，配套 Close 生命周期与全局处理器管理，适合高频复用同一数据源的开发场景。"
+description: "Processor 是复用同一数据源的处理器实例：提供 Get/Set/Delete 查询修改、Foreach 迭代与 Encode 编码，内置结果缓存与 Close 生命周期。"
 sidebar_position: 10
 ---
 
 # Processor
 
-Processor 提供高性能、可自定义性、更灵活的复用能力，适合多次操作同一数据源。
+`Processor` 是持有配置、缓存与钩子的处理器实例。每次方法调用仍接收 JSON 字符串，但安全校验、编码选项与结果缓存由同一个实例统一决定。
 
 ## 特点
 
-- **高性能**：内部缓存机制，重复操作更高效
-- **可配置**：支持多种配置选项
-- **链式调用**：方法返回修改后的 JSON，支持连续操作
-- **资源管理**：显式生命周期控制
+- **缓存**：命中结果缓存时跳过重复的解析与路径求值
+- **可配置**：`New(cfg)` 固化安全校验、编码与缓存参数
+- **不可变返回**：修改方法返回新字符串，可链式串联
+- **显式生命周期**：`Close` 释放缓存、校验器与钩子引用
 
 ## 创建 Processor
 
@@ -22,7 +22,7 @@ Processor 提供高性能、可自定义性、更灵活的复用能力，适合�
 
 签名：`func New(cfg ...Config) (*Processor, error)`
 
-创建 Processor 实例。使用可选的 Config 参数配置处理器。
+创建 Processor 实例。省略 `cfg` 时使用 `DefaultConfig()`；传入的配置先经 `Validate` 校验并钳制越界字段。
 
 ```go
 // 使用默认配置
@@ -43,7 +43,7 @@ processor, err = json.New(json.SecurityConfig())
 
 ## 链式调用
 
-Processor 方法返回修改后的 JSON 字符串，支持连续操作：
+修改方法与删除方法返回新的 JSON 字符串，上一个结果可以直接作为下一个调用的输入：
 
 ```go
 processor, _ := json.New()
@@ -73,13 +73,13 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 
 ## 全局处理器管理
 
-包级函数使用内部全局处理器。可以通过以下函数管理：
+包级函数使用内部全局处理器，用以下两个函数管理：
 
 ### SetGlobalProcessor
 
 签名：`func SetGlobalProcessor(processor *Processor)`
 
-设置自定义全局处理器。所有包级函数（Get、Set、Marshal 等）将使用此处理器。
+设置自定义全局处理器。所有包级函数（`Get`、`Set`、`Marshal` 等）改用此实例。
 
 **参数**
 
@@ -122,7 +122,7 @@ func main() {
 
 签名：`func ShutdownGlobalProcessor()`
 
-关闭并移除全局处理器。后续包级操作将创建新的默认处理器。
+关闭并移除全局处理器，同时清理它的缓存。后续包级操作会新建默认处理器。
 
 ```go
 package main

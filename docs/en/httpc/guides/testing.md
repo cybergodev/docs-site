@@ -1,15 +1,17 @@
 ---
 sidebar_label: "Testing Guide"
 title: "Testing Guide - CyberGo HTTPC | httptest & Assertions"
-description: "HTTPC testing guide: TestingConfig, httptest mock servers, Doer mock injection, error/delay/redirect scenarios, deterministic retries, table-driven tests."
+description: "HTTPC testing guide: TestingConfig, httptest mock servers, Doer doubles, error/delay/redirect scenarios, deterministic retries, and download tests."
 sidebar_position: 120
 ---
 
 # Testing Guide
 
+HTTPC testing has two layers. Integration tests drive the full request pipeline through an `httptest` mock server; unit tests construct `Result` values directly through a `Doer` double. Both start from the `TestingConfig()` preset.
+
 ## TestingConfig
 
-`TestingConfig()` is designed specifically for testing environments: it disables security checks and shortens connection/handshake timeouts (Request stays at the default 180s):
+`TestingConfig()` targets test environments: security checks are disabled and connection and handshake timeouts are shortened (`Request` stays at the default 180s).
 
 ```go
 func TestAPI(t *testing.T) {
@@ -25,18 +27,23 @@ func TestAPI(t *testing.T) {
 ```
 
 :::danger
-`TestingConfig` disables TLS verification, SSRF protection, and other security features — **for testing environments only**. Using it in a non-test environment prints a security warning.
+`TestingConfig` disables TLS verification, SSRF protection, and other security features; it is for test environments only. Using it outside a test process prints one security warning to stderr.
 :::
 
-The key values of `TestingConfig` (overridden on top of `DefaultConfig`): `InsecureSkipVerify=true`, `AllowPrivateIPs=true`, `ValidateURL=false`, `ValidateHeaders=false` (allows 127.0.0.1/intranet httptest servers); `EnableHTTP2=false` (simpler protocol behavior, easier to assert on); `MaxRetries=1`, `EnableJitter=false` (deterministic retry cadence); connection/handshake timeouts shortened to 5s, while `Request` stays at the default 180s.
+The key values of `TestingConfig` (overridden on top of `DefaultConfig`):
+
+- `InsecureSkipVerify=true`, `AllowPrivateIPs=true`, `ValidateURL=false`, `ValidateHeaders=false`: allows 127.0.0.1/intranet httptest servers;
+- `EnableHTTP2=false`: simpler protocol behavior, easier to assert on;
+- `MaxRetries=1`, `EnableJitter=false`: deterministic retry cadence;
+- connection and handshake timeouts shortened to 5s, while `Request` stays at the default 180s.
 
 :::tip About the security warning
-The warning detects test environments by checking for the `.test` binary and the `GO_TEST` environment variable — tests run by `go test` do **not** trigger it. If you temporarily use it in a non-test process such as a local development script, silence the output with `httpc.SetSecurityWarnOutput(io.Discard)` (`io` being the standard library `io` package).
+The warning identifies test processes by checking for a `.test` executable name and the `GO_TEST`/`GOTEST` environment variables; tests run by `go test` do not trigger it. When used temporarily in a non-test process such as a local development script, silence the output with `httpc.SetSecurityWarnOutput(io.Discard)`, where `io` is the standard library `io` package.
 :::
 
 ## httptest.Server Integration
 
-Use the standard library `net/http/httptest` to create mock servers for integration testing without a real backend:
+Use the standard library `net/http/httptest` to create mock servers for integration tests without a real backend:
 
 <!-- check-code: skip -->
 ```go
@@ -104,14 +111,14 @@ func TestGetUser(t *testing.T) {
 
 ## Mock and Transport Injection
 
-Custom transport injection (replacing the underlying `http.RoundTripper`) is currently an **internal mechanism** of HTTPC — the engine's transport interface and mocks exist only for the library's own tests, and the root `httpc` package exports no injection point. Users have two recommended paths:
+Custom transport injection (replacing the underlying `http.RoundTripper`) is an internal mechanism of HTTPC. The engine's transport interface and mocks serve only the library's own tests, and the root `httpc` package exports no injection point. Two paths are available:
 
 | Approach | Level | Characteristics |
 |------|----------|------|
-| `httptest.Server` | Integration tests | Exercises the **complete** request pipeline (security validation, retries, middleware, connection pool) — closest to real behavior |
-| Implement the minimal `httpc.Doer` interface | Unit tests | No server, no network traffic; returns a constructed `*Result` directly — nanosecond-fast and fully deterministic |
+| `httptest.Server` | Integration tests | Exercises the full request pipeline (security validation, retries, middleware, connection pool); closest to real behavior |
+| Implement the minimal `httpc.Doer` interface | Unit tests | No server and no network traffic; returns a constructed `*Result` directly, with no network overhead and fully deterministic |
 
-`Doer` is an interface with a single `Request` method; the `Request`/`Response`/`Meta` fields of `Result` are exported precisely so callers can construct them directly in tests:
+`Doer` is an interface with a single `Request` method. The `Request`/`Response`/`Meta` fields of `Result` are exported so callers can construct them directly in tests:
 
 ```go
 package main
@@ -175,7 +182,7 @@ func main() {
 ```
 
 :::tip Populate both Body and RawBody when constructing a Result
-`Body()` returns a pre-stored string and `RawBody()` the byte slice, while `Unmarshal` goes through the raw bytes — fill in both in your mock so every accessor works as expected.
+`Body()` returns a pre-stored string and `RawBody()` the byte slice, while `Unmarshal` reads the raw bytes. Fill in both fields in the mock so every accessor returns consistent results.
 :::
 
 ## Simulating Different Scenarios
@@ -258,7 +265,7 @@ defer server.Close()
 
 ### Simulating a TLS Server
 
-`httptest.NewTLSServer` uses a self-signed certificate. `TestingConfig` already sets `InsecureSkipVerify=true`, so you can request it directly with no extra TLS configuration:
+`httptest.NewTLSServer` uses a self-signed certificate. `TestingConfig` already sets `InsecureSkipVerify=true`, so the server can be requested directly with no extra TLS configuration:
 
 ```go
 server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -275,7 +282,7 @@ result, err := client.Get(server.URL) // request the self-signed TLS server dire
 
 ### Deterministic Retry Tests
 
-Have the server **return a retryable status code (408/429/500/502/503/504) for the first N calls, then succeed** — this verifies retry behavior without depending on timers or real network jitter, and lets you assert the actual attempt count via `result.Meta.Attempts`:
+Have the server return a retryable status code (408/429/500/502/503/504) for the first N calls and then succeed. This verifies retry behavior without timers or network jitter; `result.Meta.Attempts` reports the actual attempt count:
 
 ```go
 func TestRetry(t *testing.T) {
@@ -308,12 +315,12 @@ func TestRetry(t *testing.T) {
 ```
 
 :::tip Pin retry parameters explicitly in tests
-`TestingConfig` defaults to `MaxRetries=1` with no jitter; pass `WithMaxRetries(N)` explicitly with the expected value so assertions stay stable.
+`TestingConfig` defaults to `MaxRetries=1` with no jitter. Pass `WithMaxRetries(N)` explicitly with the expected value so assertions stay stable.
 :::
 
 ## Testing File Downloads
 
-`Download` is equally coverable with httptest: the server writes known content, `DownloadConfig.FilePath` points into `t.TempDir()` (cleaned up automatically when the test ends), then assert on the byte count and checksum:
+`Download` is covered by httptest the same way: the server writes known content, `DownloadConfig.FilePath` points into `t.TempDir()` (cleaned up automatically when the test ends), and the test asserts the byte count and checksum:
 
 ```go
 func TestDownload(t *testing.T) {
@@ -353,7 +360,7 @@ func TestDownload(t *testing.T) {
 
 ## Cookie and Session Assertions
 
-Cookie behavior can be asserted from both ends: on the **server side**, read the cookies actually received in the request (verifying the client really sent them); on the **client side**, use `result.GetCookie`/`HasCookie` to verify response cookies, or verify automatic session capture on a `DomainClient`:
+Cookie behavior can be asserted from both ends. The server side reads the cookies actually received in the request, confirming the client sent them. The client side uses `result.GetCookie`/`HasCookie` for response cookies, or checks automatic session capture on a `DomainClient`:
 
 ```go
 func TestCookieSession(t *testing.T) {
@@ -438,12 +445,12 @@ func TestHTTPMethods(t *testing.T) {
 |----------|-------------|
 | Use `httptest.Server` | Simulates real HTTP behavior with no network dependency; covers the full request pipeline |
 | Use `TestingConfig()` | Disables security checks so local connections aren't blocked by SSRF protection |
-| Depend on the `Doer` interface in business code | A minimal interface dependency lets unit tests use fake doubles with no server |
-| Deterministic retries | Server returns 503 for the first N calls then succeeds; assert with `Meta.Attempts` |
-| Use `t.TempDir()` in download tests | Files are cleaned up automatically when the test ends, and the path passes safety validation naturally |
+| Depend on the `Doer` interface in business code | A minimal interface dependency lets unit tests use doubles with no server |
+| Deterministic retries | Server returns 503 for the first N calls, then succeeds; assert with `Meta.Attempts` |
+| Use `t.TempDir()` in download tests | Files are cleaned up automatically when the test ends, and the path passes safety validation |
 | Use `defer` | Ensures resources are released even when tests fail |
-| Table-driven | Covers many inputs with concise code |
-| Pin retry/timeout parameters explicitly | Declare `WithMaxRetries(N)` and friends explicitly so assertions stay stable |
+| Table-driven | Covers many inputs with one code path |
+| Pin retry and timeout parameters explicitly | Declare `WithMaxRetries(N)` and similar explicitly so assertions stay stable |
 
 ## Next Steps
 
@@ -452,4 +459,4 @@ func TestHTTPMethods(t *testing.T) {
 - [Middleware Chain](./middleware-chain) - Middleware testing patterns
 - [File Upload and Download](./file-transfer) - Download semantics in depth (expanding this page's "Testing File Downloads")
 - [Advanced Examples](../examples/advanced-usage) - Production-grade code patterns
-- [Migrating from net/http](./migration) - Behavioral differences and a pitfalls checklist for projects moving off the standard library
+- [Migrating from net/http](./migration) - Behavioral differences and a pitfall list for projects moving off the standard library

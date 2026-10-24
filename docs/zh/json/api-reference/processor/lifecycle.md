@@ -1,13 +1,13 @@
 ---
 sidebar_label: "生命周期"
 title: "Processor 生命周期 - CyberGo JSON | Close 幂等关闭与统计"
-description: "CyberGo JSON 的 Processor 提供 Close 幂等关闭与 IsClosed 状态检查，先排空在途操作再释放资源，配合 ClearCache/WarmupCache 缓存管理、GetStats 统计与 GetHealthStatus 健康监控，退出前可用 ShutdownGlobalProcessor 清理全局缓存，适合长期驻留服务的并发安全管理。"
+description: "Processor 生命周期：Close 幂等关闭、IsClosed 状态检查、ClearCache 清缓存与 GetStats/GetHealthStatus 观测。"
 sidebar_position: 110
 ---
 
 # 生命周期与统计
 
-Processor 提供完整的生命周期管理、缓存控制和健康监控能力。
+生命周期方法管理处理器实例的创建、观测与释放：`Close` 排空在途操作后释放资源，`GetStats` 与 `GetHealthStatus` 暴露运行指标。
 
 ## 生命周期
 
@@ -15,7 +15,7 @@ Processor 提供完整的生命周期管理、缓存控制和健康监控能力�
 
 签名：`func (p *Processor) Close() error`
 
-关闭处理器并释放资源（缓存、安全校验器、钩子引用）。使用完 Processor 后应调用此方法。
+关闭处理器并释放资源（缓存、安全校验器、钩子引用）。使用完 Processor 后调用此方法。
 
 ```go
 processor, _ := json.New(json.DefaultConfig())
@@ -23,10 +23,10 @@ defer processor.Close()
 ```
 
 ::: tip 关闭语义
-- **幂等且线程安全**：重复调用 `Close` 只生效一次。
-- **先排空在途操作**：`Close` 会等待正在进行中的操作结束（有超时上限）；超时后处理器拒绝新操作（`IsClosed()` 返回 `true`），但资源保持完整，让在途操作在未受扰动的状态下跑完。
+- **幂等且线程安全**：多次调用 `Close` 只生效一次。
+- **先排空在途操作**：`Close` 等待进行中的操作结束（有超时上限）。超时后处理器拒绝新操作（`IsClosed()` 返回 `true`），但资源保持完整，让在途操作在未受扰动的状态下跑完，全部结束后再释放。
 - 关闭后所有操作返回 `ErrProcessorClosed`。
-- `Close` **不清理**跨实例共享的全局缓存（路径类型缓存、结构体编码器缓存）；进程退出前的完整清理用 [`ShutdownGlobalProcessor`](#全局处理器管理)。
+- `Close` **不清理**跨实例共享的全局缓存（路径类型缓存、结构体编码器缓存）。退出进程前的完整清理用 [`ShutdownGlobalProcessor`](#全局处理器管理)。
 :::
 
 ### IsClosed
@@ -47,22 +47,17 @@ if processor.IsClosed() {
 
 签名：`func (p *Processor) ClearCache()`
 
-清除处理器的内部缓存。
+清除处理器的结果缓存与解析缓存。适用于数据源已变化、内存占用偏高，或需要强制刷新的场景。
 
 ```go
 processor.ClearCache()
 ```
 
-适用于：
-- 数据源发生变化
-- 内存使用过高
-- 需要强制刷新
-
 ### WarmupCache
 
 签名：`func (p *Processor) WarmupCache(jsonStr string, paths []string, cfg ...Config) (*WarmupResult, error)`
 
-预热缓存以提高后续操作性能。要求处理器开启缓存（默认开启），否则返回错误。完整示例与 `WarmupResult` 字段说明见[批量操作](./batch#缓存预热-warmupcache)。
+预热缓存以提高后续热点路径的首次命中率。要求处理器开启缓存（默认开启），否则返回错误。完整示例与 `WarmupResult` 字段说明见[批量操作](./batch#缓存预热-warmupcache)。
 
 ```go
 paths := []string{"user.name", "user.email", "items[*].id"}
@@ -79,7 +74,7 @@ fmt.Printf("成功预热 %d 个路径\n", result.Successful)
 
 签名：`func (p *Processor) GetStats() Stats`
 
-获取处理器的统计信息。
+获取处理器的统计信息：缓存实况（`CacheSize` / `CacheMemory` / 命中计数）、配置上限（`MaxCacheSize` / `CacheTTL`）以及操作与错误计数。
 
 ```go
 stats := processor.GetStats()
@@ -123,10 +118,10 @@ type Stats struct {
 
 **字段解读**：
 
-- `OperationCount` / `ErrorCount`：读写操作（`Get` / `GetMultiple` / `Set` / `SetMultiple` / `Delete` 等）均会累计；生命周期类拒绝（处理器已关闭、并发超限）不计入错误数。
+- `OperationCount` / `ErrorCount`：`Get` / `GetMultiple` / `Set` / `SetMultiple` / `Delete` 每次调用都会累计，**与 `EnableMetrics` 无关**（该开关只控制耗时与并发指标采集）。生命周期类拒绝（处理器已关闭、并发超限）不计入错误数。
 - `HitRatio`：0–1 区间（0.85 即 85%）；`CacheEnabled=false` 时无命中数据。
 - `CacheSize` / `CacheMemory` 是缓存实况，`MaxCacheSize` / `CacheTTL` 是配置上限（见 [Config](../config)）。
-- `IsClosed`：与 [`IsClosed()`](#isclosed) 一致，可在监控中探测处理器是否被意外关闭。
+- `IsClosed`：与 [`IsClosed()`](#isclosed) 一致，可在监控中发现被意外关闭的处理器。
 
 ## 健康检查
 
@@ -134,7 +129,7 @@ type Stats struct {
 
 签名：`func (p *Processor) GetHealthStatus() HealthStatus`
 
-获取处理器的健康状态。
+获取处理器的健康状态：`Checks` 保存各分项检查结果，任一项不健康则整体 `Healthy=false`。
 
 ```go
 status := processor.GetHealthStatus()
@@ -180,7 +175,16 @@ type CheckResult struct {
 | `Message` | `string` | 状态消息（失败原因等） |
 
 ::: tip 解读
-`Checks` 是各分项检查（指标采集等）的结果映射，任一分项不健康则 `Healthy=false`。nil 处理器或指标采集器未初始化时直接返回 `Healthy=false`，并在 `Checks` 中给出原因（如 `processor is nil`）。指标采集器在 `EnableMetrics=true` 时才创建——未开启时 `GetHealthStatus` 返回 `Healthy=false` 并在 `Checks` 中注明 `Metrics collector not initialized`；`Config.EnableHealthCheck` 字段已废弃、不被读取，不影响此行为（见 [Config](../config#输入与可观测性开关)）。
+`Checks` 是各分项检查的结果映射，任一分项不健康则 `Healthy=false`。nil 处理器直接返回 `Healthy=false`，并在 `Checks` 中给出 `processor: processor is nil`。
+
+`EnableMetrics` 决定指标采集器是否存在，进而决定健康检查的结果：
+
+| `EnableMetrics` | 指标采集器 | `GetHealthStatus()` |
+|:---:|:---:|------|
+| `false`（默认） | 不创建 | `Healthy=false`，`Checks["metrics"].Message` 为 `Metrics collector not initialized` |
+| `true` | 创建 | 按 `metrics`、`memory`、`error_rate` 三项计算，任一不健康则 `Healthy=false` |
+
+`Healthy=false` 不代表处理器不可用。`EnableMetrics` 关闭时，`GetStats()` 的 `OperationCount` / `ErrorCount` 仍在累计，查询与修改操作都正常。需要可用的健康信号时，创建处理器时设置 `EnableMetrics=true`。`Config.EnableHealthCheck` 已废弃、不被读取，不影响此行为（见 [Config](../config#输入与可观测性开关)）。
 :::
 
 ## 扩展钩子
@@ -196,17 +200,13 @@ processor.AddHook(&LoggingHook{})
 processor.AddHook(json.TimingHook(&MetricsRecorder{}))
 ```
 
-钩子会在每次操作前后被调用，可用于：
-- 日志记录
-- 性能监控
-- 指标收集
-- 审计追踪
+钩子在每次操作前后被调用，用于日志记录、性能监控、指标收集与审计追踪。
 
 ### SetLogger
 
 签名：`func (p *Processor) SetLogger(logger *slog.Logger)`
 
-`SetLogger` 原子替换处理器的结构化日志记录器（自动附加 `component=json-processor` 字段），传入 `nil` 时回退 `slog.Default()`。用于调试和运行时诊断。
+`SetLogger` 原子替换处理器的结构化日志记录器（自动附加 `component=json-processor` 字段），传入 `nil` 时回退 `slog.Default()`，用于调试与运行时诊断。
 
 ```go
 processor, _ := json.New()
@@ -248,7 +248,7 @@ defer processor.Close()  // 确保释放资源
 // 使用 processor...
 ```
 
-### 性能优化
+### 统计与预热
 
 ```go
 // 预热常用路径
@@ -267,7 +267,14 @@ if stats.HitRatio < 0.5 {
 
 ### 监控集成
 
+下面的健康检查要求处理器以 `EnableMetrics=true` 创建，否则 `status.Healthy` 恒为 `false`：
+
 ```go
+cfg := json.DefaultConfig()
+cfg.EnableMetrics = true
+processor, _ := json.New(cfg)
+defer processor.Close()
+
 // 定期健康检查
 go func() {
     ticker := time.NewTicker(30 * time.Second)

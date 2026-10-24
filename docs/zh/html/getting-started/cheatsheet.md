@@ -1,11 +1,13 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo html | API 一页速查"
-description: "CyberGo html 常用 API 一页速查表：汇总 Extract、ExtractText、ExtractToMarkdown 等包级函数、Processor 方法与生命周期管理、四种 Config 预设、常用配置项、编码检测、媒体提取、AuditConfig 审计配置与内置 Sink 及 errors.Is 错误判断写法，覆盖核心函数签名与典型用法。"
+description: "CyberGo html 常用 API 一页速查：Extract、ExtractText、ExtractToMarkdown 等包级函数，Processor 方法与生命周期，四种 Config 预设与常用配置项，编码检测、媒体提取、审计 Sink 与 errors.Is 错误判断写法。"
 sidebar_position: 20
 ---
 
 # 速查表
+
+常用 API 一览；完整签名与参数说明见 [API 参考](../api-reference/)。
 
 ## 包函数
 
@@ -20,7 +22,7 @@ result, err := html.ExtractFromFile("page.html")
 
 // 仅提取文本
 text, err := html.ExtractText(data)
-text, err := html.ExtractTextFromFile("page.html")
+text, err = html.ExtractTextFromFile("page.html")
 ```
 
 ### 输出格式
@@ -47,7 +49,7 @@ batch := html.ExtractBatchFiles(paths)
 
 ### 带上下文版本
 
-所有函数都有 `*WithContext` 变体：
+提取类函数都有 `*WithContext` 变体（`GroupLinksByType` 是纯内存分组工具，没有该变体）：
 
 ```go
 result, err := html.ExtractWithContext(ctx, data)
@@ -94,9 +96,9 @@ p.ClearAuditLog()
 
 ```go
 html.DefaultConfig()       // 默认配置
-html.TextOnlyConfig()      // 仅文本
-html.MarkdownConfig()      // Markdown 输出
-html.HighSecurityConfig()  // 高安全
+html.TextOnlyConfig()      // 图片、链接、视频、音频均不保留
+html.MarkdownConfig()      // 内联图片与链接输出为 Markdown
+html.HighSecurityConfig()  // 收紧限制并启用完整审计
 ```
 
 ## 常用配置项
@@ -110,7 +112,7 @@ cfg.ProcessingTimeout = time.Minute   // 处理超时
 cfg.MaxDepth = 200                    // 最大 DOM 深度
 
 // 内容控制
-cfg.ExtractArticle = true             // 智能文章识别
+cfg.ExtractArticle = true             // 文章识别
 cfg.PreserveImages = true             // 保留图片
 cfg.PreserveLinks = true              // 保留链接
 cfg.PreserveVideos = false            // 不保留视频
@@ -143,7 +145,7 @@ if err != nil {
     case errors.Is(err, html.ErrInvalidHTML):
         // 无效 HTML
     case errors.Is(err, html.ErrProcessingTimeout):
-        // 处理超时
+        // 库内 ProcessingTimeout 到期
     case errors.Is(err, html.ErrFileNotFound):
         // 文件未找到
     case errors.Is(err, html.ErrInvalidConfig):
@@ -160,18 +162,20 @@ if err != nil {
 }
 ```
 
+用户 ctx 到期返回 `context.DeadlineExceeded`，手动 `cancel()` 返回 `context.Canceled`，两者都不归一化为 `ErrProcessingTimeout`。
+
 ## 编码检测
 
 ```go
-// 自动检测编码（默认行为，支持 15+ 编码）
-result, err := html.Extract(gbkData)
+// 自动检测（默认行为，支持 15+ 编码）
+result, err := html.Extract(pageData)
 
 // 手动指定编码
 cfg := html.DefaultConfig()
 cfg.Encoding = "shift_jis"
 ```
 
-支持 UTF-8、GBK、Shift_JIS、EUC-JP、Windows-1252 等 15+ 编码。
+支持 UTF-8、GBK、Shift_JIS、EUC-JP、Windows-1252 等 15+ 编码。没有 `<meta charset>` 声明的旧页面会按 windows-1252 兜底解码，因此已知来源编码时应显式指定。
 
 ## 媒体提取
 
@@ -188,9 +192,8 @@ for _, a := range result.Audios {
     fmt.Println(a.URL, a.Type)
 }
 
-// 禁用媒体提取
-cfg := html.TextOnlyConfig()
-// 或单独控制
+// 只关闭媒体（图片与链接照常保留）
+cfg := html.DefaultConfig()
 cfg.PreserveVideos = false
 cfg.PreserveAudios = false
 ```
@@ -246,6 +249,6 @@ p.ResetStatistics()           // 重置统计计数器（保留缓存）
 
 ## 下一步
 
-- [内容提取实战](../guides/core-features/content-extraction) - 提取流程与文章识别
+- [内容提取](../guides/core-features/content-extraction) - 提取流程与文章识别
 - [Processor 复用与缓存](../guides/performance/processor-cache) - 生命周期与缓存调优
 - [API 参考](../api-reference/) - 完整 API 文档

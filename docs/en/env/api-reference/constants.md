@@ -7,7 +7,7 @@ sidebar_position: 7
 
 # Constants & Errors
 
-Constants, error types, sentinel errors, and predefined variables defined by the library.
+`env` exports limit constants, sentinel errors, structured error types, and the key lists and patterns behind key validation and masking.
 
 ## Security Limit Constants
 
@@ -35,12 +35,21 @@ const (
 )
 ```
 
-The six default limit constants — `DefaultMaxFileSize`, `DefaultMaxLineLength`, `DefaultMaxKeyLength`, `DefaultMaxValueLength`, `DefaultMaxVariables`, and `DefaultMaxExpansionDepth` — cover per-file size, single-line length, key-name length, value length, variables per file, and expansion depth respectively; each can be overridden via the same-named field on `Config`.
+The six default limit constants map one-to-one onto `Config` fields of the same name, and each can be overridden there:
+
+| Constant | Bound |
+|----------|-------|
+| `DefaultMaxFileSize` | bytes per file |
+| `DefaultMaxLineLength` | single-line length |
+| `DefaultMaxKeyLength` | key-name length |
+| `DefaultMaxValueLength` | value length |
+| `DefaultMaxVariables` | variables per file |
+| `DefaultMaxExpansionDepth` | expansion depth |
 
 ### Hard Limits
 
 :::warning
-The following are internal hard limits (not exported), used by `Config.Validate()` for internal checks. Users cannot reference these constants directly, but `cfg.Validate()` will automatically check whether the configuration exceeds these limits.
+`Config.Validate()` checks these limits for you. The constants themselves are not exported, so you cannot reference them directly, but `cfg.Validate()` rejects any configuration that exceeds one of them.
 :::
 
 | Constant | Value | Description |
@@ -52,7 +61,7 @@ The following are internal hard limits (not exported), used by `Config.Validate(
 | HardMaxVariables | 10000 | Hard limit on variable count |
 | HardMaxExpansionDepth | 20 | Hard limit on expansion depth |
 
-Configuration validation checks whether hard limits are exceeded:
+`Config.Validate()` rejects any configuration that exceeds a hard limit:
 
 ```go
 cfg := env.DefaultConfig()
@@ -66,7 +75,9 @@ if err := cfg.Validate(); err != nil {
 ## Sentinel Errors
 
 :::tip How matching works
-All the sentinels above can be matched via `errors.Is` — `*ValidationError` and `*SecurityError` implement internal `Is()` wiring that maps Rule/Action to sentinels such as `ErrInvalidKey`, `ErrMissingRequired`, `ErrMaxVariables`, `ErrInvalidValue`, `ErrForbiddenKey`, and `ErrSecurityViolation`. When you need details such as file, line, or field, use `errors.As` to extract the structured error; the two approaches are complementary rather than mutually exclusive. See each error type section for details.
+Match every sentinel below with `errors.Is`. `*ValidationError` and `*SecurityError` implement an internal `Is()` that maps Rule/Action to sentinels: `ErrInvalidKey`, `ErrMissingRequired`, `ErrMaxVariables`, `ErrInvalidValue`, `ErrForbiddenKey`, and `ErrSecurityViolation`.
+
+When you need file, line, or field details, use `errors.As` to extract the structured error. The two approaches complement each other rather than replace each other. See each error type section below.
 :::
 
 ### File Errors
@@ -97,7 +108,12 @@ var ErrDuplicateKey = errors.New("duplicate key encountered")
 ```
 
 :::tip Trigger conditions
-`ErrDuplicateKey` is returned under `DuplicateKeyPolicy = DuplicateKeyError` (duplicate keys in a single .env/YAML/JSON document, including inline JSON inside YAML) and by flat-key collisions in YAML/JSON flattening; both match via `errors.Is`. Under the default (`DuplicateKeyInherit`), duplicate keys are skipped/overwritten rather than errored.
+`ErrDuplicateKey` is returned in two cases:
+
+- `DuplicateKeyPolicy = DuplicateKeyError` and a single .env/YAML/JSON document (including inline JSON inside YAML) repeats a key.
+- YAML/JSON flattening produces a flat-key collision.
+
+Both match via `errors.Is`. Under the default (`DuplicateKeyInherit`), duplicates are skipped or overwritten instead of raising an error.
 :::
 
 ### Security Errors
@@ -140,7 +156,7 @@ var ErrMissingRequired = errors.New("required key is missing")
 var ErrAuditFailed = errors.New("audit logging failed") // audit event lost while fail-closed auditing was enabled
 ```
 
-`ErrAuditFailed` is returned when fail-closed auditing (`Config.AuditFailClosed = true`) is enabled: a handler error, panic, or dropped channel event makes the emitting operation return this error. See [Config API](./config#auditfailclosed-bool).
+`ErrAuditFailed` is returned only when fail-closed auditing is on (`Config.AuditFailClosed = true`). A handler error, a handler panic, or a dropped channel event makes the emitting operation return this error. See [Config API](./config#auditfailclosed-bool).
 
 **How to check:**
 
@@ -186,7 +202,7 @@ var ErrValidateRequiredUnsupported = errors.New(
 )
 ```
 
-When a custom validator only implements the `KeyValidator` interface but not the full `Validator` interface, calling `ValidateRequired` returns this error.
+When a custom validator implements `KeyValidator` but not the full `Validator` interface, calling `ValidateRequired` returns this error.
 
 **How to check:**
 
@@ -198,16 +214,21 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 :::tip Solution
-Implement the `Validator` interface (which includes the `ValidateKey`, `ValidateValue`, and `ValidateRequired` methods) instead of just `KeyValidator`.
+Implement the full `Validator` interface, which embeds `KeyValidator`, `ValueValidator`, and `RequiredValidator`, instead of `KeyValidator` alone.
 :::
 
 ## Error Types
 
-The following types are public aliases of same-named internal types. Every type implements `Error`; the types carrying an underlying error (`ParseError`, `FileError`, `JSONError`, `YAMLError`) additionally implement `Unwrap`, and the types participating in sentinel mapping (`ValidationError`, `SecurityError`, `ExpansionError`) additionally implement `Is`. Members are indexed below by qualified name (e.g. `ParseError.File`).
+The types below are public aliases of same-named internal types. Every type implements `Error`.
+
+- Types carrying an underlying error (`ParseError`, `FileError`, `JSONError`, `YAMLError`) also implement `Unwrap`.
+- Types that participate in sentinel mapping (`ValidationError`, `SecurityError`, `ExpansionError`) also implement `Is`.
+
+Members are indexed by qualified name (e.g. `ParseError.File`).
 
 ### ParseError
 
-Parse error with location information:
+A parse failure, carrying its location:
 
 | Member | Type/Signature | Description |
 |--------|----------------|-------------|
@@ -215,7 +236,7 @@ Parse error with location information:
 | `ParseError.Line` | `int` | Line number |
 | `ParseError.Content` | `string` | Error content (masked) |
 | `ParseError.Err` | `error` | Original error |
-| `ParseError.Error` | `func (e *ParseError) Error() string` | Implements the `error` interface; the output includes the file name and line number (the file part is omitted when there is no file name) |
+| `ParseError.Error` | `func (e *ParseError) Error() string` | Implements the `error` interface. The output includes the file name and line number; the file part is omitted when there is no file name. |
 | `ParseError.Unwrap` | `func (e *ParseError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
 
 Usage example:
@@ -239,21 +260,21 @@ Validation error:
 | `ValidationError.Value` | `string` | Value (masked) |
 | `ValidationError.Rule` | `string` | The violated rule |
 | `ValidationError.Message` | `string` | Human-readable explanation |
-| `ValidationError.Error` | `func (e *ValidationError) Error() string` | Implements the `error` interface; includes the field name and message |
-| `ValidationError.Is` | `func (e *ValidationError) Is(target error) bool` | Maps sentinels by `Rule`: value rules (`value`/`null_byte`/`control_char`/`utf8`) → `ErrInvalidValue`; key rules (Field is `key`: `non_empty`/`max_length`/`ascii_only`/`pattern`) → `ErrInvalidKey`; `required` → `ErrMissingRequired`; `max_variables` → `ErrMaxVariables` |
+| `ValidationError.Error` | `func (e *ValidationError) Error() string` | Implements the `error` interface. Includes the field name and message |
+| `ValidationError.Is` | `func (e *ValidationError) Is(target error) bool` | Maps sentinels by `Rule`: value rules (`value`, `null_byte`, `control_char`, `utf8`) → `ErrInvalidValue`; key rules with `Field == "key"` (`non_empty`, `max_length`, `ascii_only`, `pattern`) → `ErrInvalidKey`; `required` → `ErrMissingRequired`; `max_variables` → `ErrMaxVariables` |
 
 ### SecurityError
 
-Security error:
+A blocked operation, with the reason it was blocked:
 
 | Member | Type/Signature | Description |
 |--------|----------------|-------------|
 | `SecurityError.Action` | `string` | The blocked operation |
-| `SecurityError.Reason` | `string` | Security reason for blocking |
+| `SecurityError.Reason` | `string` | Why the operation was blocked |
 | `SecurityError.Key` | `string` | Key involved (masked) |
 | `SecurityError.Details` | `string` | Additional sanitized details |
-| `SecurityError.Error` | `func (e *SecurityError) Error() string` | Implements the `error` interface; includes the blocked action and reason |
-| `SecurityError.Is` | `func (e *SecurityError) Is(target error) bool` | Matches `ErrSecurityViolation`; forbidden-key/allowlist rejections (Action is `key_access`) additionally match `ErrForbiddenKey` |
+| `SecurityError.Error` | `func (e *SecurityError) Error() string` | Implements the `error` interface. Includes the blocked action and reason. |
+| `SecurityError.Is` | `func (e *SecurityError) Is(target error) bool` | Matches `ErrSecurityViolation`. Forbidden-key and allowlist rejections (`Action == "key_access"`) additionally match `ErrForbiddenKey`. |
 
 Usage example:
 
@@ -266,16 +287,16 @@ if errors.As(err, &secErr) {
 
 ### FileError
 
-File operation error:
+A failed file operation:
 
 | Member | Type/Signature | Description |
 |--------|----------------|-------------|
 | `FileError.Path` | `string` | File path |
-| `FileError.Op` | `string` | The operation that failed (open, stat, size_check, parse) |
+| `FileError.Op` | `string` | The operation that failed (`open`, `stat`, `size_check`, `parse`) |
 | `FileError.Err` | `error` | Original error |
-| `FileError.Size` | `int64` | File size (during size checks) |
-| `FileError.Limit` | `int64` | The limit exceeded (during size checks) |
-| `FileError.Error` | `func (e *FileError) Error() string` | Implements the `error` interface; appends the `(size N exceeds limit M)` detail when both `Size` and `Limit` are positive |
+| `FileError.Size` | `int64` | File size, during size checks |
+| `FileError.Limit` | `int64` | The limit exceeded, during size checks |
+| `FileError.Error` | `func (e *FileError) Error() string` | Implements the `error` interface. Appends the `(size N exceeds limit M)` detail when both `Size` and `Limit` are positive. |
 | `FileError.Unwrap` | `func (e *FileError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
 
 Usage example:
@@ -290,7 +311,7 @@ if errors.As(err, &fileErr) {
 
 ### ExpansionError
 
-Variable expansion error:
+A failed `${VAR}` expansion:
 
 | Member | Type/Signature | Description |
 |--------|----------------|-------------|
@@ -298,9 +319,9 @@ Variable expansion error:
 | `ExpansionError.Depth` | `int` | Current expansion depth |
 | `ExpansionError.Limit` | `int` | Depth limit |
 | `ExpansionError.Chain` | `string` | Expansion chain (sanitized) |
-| `ExpansionError.Kind` | `ExpansionErrorKind` | Error reason category (zero value = depth/cycle) |
-| `ExpansionError.Error` | `func (e *ExpansionError) Error() string` | Implements the `error` interface; key names in the output are masked (only the first 2 characters kept, followed by `***`) |
-| `ExpansionError.Is` | `func (e *ExpansionError) Is(target error) bool` | Matches `ErrExpansionDepth` only when `Kind != ExpansionRequiredKind` (semantics in "`errors.Is` behavior" below) |
+| `ExpansionError.Kind` | `ExpansionErrorKind` | Error reason category; the zero value means depth overflow or a cycle |
+| `ExpansionError.Error` | `func (e *ExpansionError) Error() string` | Implements the `error` interface. Key names in the output are masked: only the first 2 characters are kept, followed by `***`. |
+| `ExpansionError.Is` | `func (e *ExpansionError) Is(target error) bool` | Matches `ErrExpansionDepth` only when `Kind != ExpansionRequiredKind` (see "`errors.Is` behavior" below) |
 
 **Error classification (Kind field):**
 
@@ -320,7 +341,7 @@ const (
 )
 ```
 
-**`errors.Is` behavior:** `*ExpansionError` matches `ErrExpansionDepth` only when `Kind != ExpansionRequiredKind`. Required variable errors are a separate failure mode not matched by `ErrExpansionDepth`.
+**`errors.Is` behavior:** `*ExpansionError` matches `ErrExpansionDepth` only when `Kind != ExpansionRequiredKind`. A missing required variable is a separate failure mode, so `ErrExpansionDepth` does not match it.
 
 Usage example:
 
@@ -340,50 +361,50 @@ if errors.As(err, &expErr) {
 
 ### JSONError
 
-JSON parse error:
+A JSON parse failure:
 
 | Member | Type/Signature | Description |
 |--------|----------------|-------------|
-| `JSONError.Path` | `string` | Path inside the JSON document (not a file path) |
+| `JSONError.Path` | `string` | Path inside the JSON document, not a file path |
 | `JSONError.Message` | `string` | Error message |
 | `JSONError.Err` | `error` | Original error |
-| `JSONError.Error` | `func (e *JSONError) Error() string` | Implements the `error` interface; includes the in-document path |
+| `JSONError.Error` | `func (e *JSONError) Error() string` | Implements the `error` interface. Includes the in-document path. |
 | `JSONError.Unwrap` | `func (e *JSONError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
 
 ### YAMLError
 
-YAML parse error:
+A YAML parse failure:
 
 | Member | Type/Signature | Description |
 |--------|----------------|-------------|
-| `YAMLError.Path` | `string` | Path inside the YAML document (not a file path) |
+| `YAMLError.Path` | `string` | Path inside the YAML document, not a file path |
 | `YAMLError.Line` | `int` | Line number |
 | `YAMLError.Column` | `int` | Column number |
 | `YAMLError.Message` | `string` | Error message |
 | `YAMLError.Err` | `error` | Original error |
-| `YAMLError.Error` | `func (e *YAMLError) Error() string` | Implements the `error` interface; includes the in-document path with line and column numbers |
+| `YAMLError.Error` | `func (e *YAMLError) Error() string` | Implements the `error` interface. Includes the in-document path with line and column numbers. |
 | `YAMLError.Unwrap` | `func (e *YAMLError) Unwrap() error` | Returns the underlying `Err`, letting `errors.Is` / `errors.As` pass through |
 
 ### MarshalError
 
-Serialization error (check function `IsMarshalError(err error) bool`):
+A serialization failure. Test for it with `IsMarshalError(err error) bool`.
 
 | Member | Type/Signature | Description |
 |--------|----------------|-------------|
 | `MarshalError.Field` | `string` | Field name that failed |
 | `MarshalError.Message` | `string` | Error message |
-| `MarshalError.Error` | `func (e *MarshalError) Error() string` | Implements the `error` interface; includes the field name and message |
+| `MarshalError.Error` | `func (e *MarshalError) Error() string` | Implements the `error` interface. Includes the field name and message. |
 
-`MarshalError` holds only plain-value fields and has no `Unwrap` method — there is no underlying error to unwrap.
+`MarshalError` holds plain-value fields only and has no `Unwrap` method, because there is no underlying error to unwrap.
 
 ## Predefined Variables
 
 ### DefaultForbiddenKeys
 
-Built-in forbidden keys list, preventing modification of system-critical variables:
+The built-in forbidden keys list, which blocks modification of system-critical variables:
 
 :::warning
-`defaultForbiddenKeys` is an internal library variable (not exported) and cannot be accessed directly via `env.DefaultForbiddenKeys`. The following is the complete list used internally, for reference.
+`defaultForbiddenKeysSlice` is internal and not exported, so you cannot reach it as `env.DefaultForbiddenKeys`. The list below is what the library uses internally, given here for reference.
 :::
 
 | Category | Forbidden Keys |
@@ -392,23 +413,29 @@ Built-in forbidden keys list, preventing modification of system-critical variabl
 | Dynamic linker (Linux) | `LD_PRELOAD`, `LD_PRELOAD_32`, `LD_PRELOAD_64`, `LD_LIBRARY_PATH`, `LD_LIBRARY_PATH_32`, `LD_LIBRARY_PATH_64`, `LD_AUDIT`, `LD_DEBUG` |
 | macOS | `DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH` |
 | Windows | `COMSPEC`, `PATHEXT`, `SYSTEMROOT`, `WINDIR` |
-| Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS` |
-| Language runtimes | `PYTHONPATH`, `NODE_PATH`, `PERL5OPT`, `RUBYLIB` |
+| Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS`, `PS4`, `SHELLOPTS`, `BASHOPTS` |
+| Python | `PYTHONPATH`, `PYTHONSTARTUP`, `PYTHONINSPECT` |
+| Node.js | `NODE_PATH`, `NODE_OPTIONS` |
+| Ruby | `RUBYLIB`, `RUBYOPT`, `GEM_PATH`, `GEM_HOME` |
+| Perl | `PERL5OPT`, `PERL5LIB` |
+| JVM | `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS`, `_JAVA_OPTIONS`, `CLASSPATH` |
+| Rust | `RUSTFLAGS` |
+| Git | `GIT_CONFIG_COUNT`, `GIT_PROXY_COMMAND` |
 
-**Risk description:**
+**Risk description:** what each key would let an attacker do if it were writable.
 
 | Key | Risk Type | Description |
 |----|-----------|-------------|
-| `PATH` | Command hijacking | Modifies command search path |
-| `LD_PRELOAD` | Library injection | Preloads malicious dynamic libraries |
-| `LD_LIBRARY_PATH` | Library hijacking | Modifies library search path |
+| `PATH` | Command hijacking | Changes the command search path |
+| `LD_PRELOAD` | Library injection | Preloads a malicious dynamic library |
+| `LD_LIBRARY_PATH` | Library hijacking | Changes the library search path |
 | `DYLD_INSERT_LIBRARIES` | Library injection | macOS library injection |
-| `COMSPEC` | Command hijacking | Windows command interpreter path override |
-| `PATHEXT` | Command hijacking | Windows executable extension tampering |
-| `SYSTEMROOT` | System corruption | Windows system root directory tampering |
-| `WINDIR` | System corruption | Windows directory tampering |
-| `PYTHONPATH` | Module hijacking | Python module search path |
-| `IFS` | Parsing attack | Modifies field separator |
+| `COMSPEC` | Command hijacking | Overrides the Windows command interpreter path |
+| `PATHEXT` | Command hijacking | Alters recognized Windows executable extensions |
+| `SYSTEMROOT` | System corruption | Substitutes the Windows system root directory |
+| `WINDIR` | System corruption | Substitutes the Windows directory |
+| `PYTHONPATH` | Module hijacking | Changes the Python module search path |
+| `IFS` | Parsing attack | Changes the shell field separator |
 
 **Usage example:**
 
@@ -426,10 +453,10 @@ cfg.ForbiddenKeys = []string{"MY_SENSITIVE_VAR"}
 
 ### SensitiveKeyPatterns
 
-Sensitive key pattern list for auto-detecting sensitive configuration. Key names containing these patterns (case-insensitive) are identified as sensitive:
+The patterns behind sensitive-key detection. A key name that contains one of them (case-insensitive) is treated as sensitive:
 
 :::warning
-The sensitive pattern list is the library-internal variable `internal.Patterns` (not exported from the env package), accessed indirectly through the `IsSensitiveKey()` function. The following are the main sensitive pattern categories, for reference.
+The list is the library-internal variable `internal.Patterns`, which is not exported from the `env` package. Reach it indirectly through `IsSensitiveKey()`. The categories below are the main ones, for reference.
 :::
 
 **Main sensitive pattern categories:**
@@ -445,15 +472,17 @@ The sensitive pattern list is the library-internal variable `internal.Patterns` 
 | Cloud Services | `AWS_SECRET`, `AZURE_KEY`, `GCP_KEY`, `SERVICE_ACCOUNT` |
 
 **Matching rules:**
-- Case-insensitive
-- A key name containing any pattern is identified as sensitive
+
+- Matching is case-insensitive.
+- A key name that contains any pattern is sensitive.
+- Exception (SEC-006): `AUTH`, `PAN`, `PWD`, and `USERNAME` match only at identifier boundaries, so benign keys such as `AUTHOR`, `COMPANY`, or `MONKEY` stay non-sensitive.
 
 **Usage example:**
 
 ```go
 // Check if a key is sensitive
 if env.IsSensitiveKey("DB_PASSWORD") {
-    // Handle securely
+    // Read it through GetSecure and release the copy when done
     secret := env.GetSecure("DB_PASSWORD")
     if secret != nil {
         defer secret.Release()
@@ -463,15 +492,14 @@ if env.IsSensitiveKey("DB_PASSWORD") {
 
 ### DefaultKeyPattern
 
-Default key name validation pattern:
+The exported default value for `Config.KeyPattern`. It is `nil`, which selects byte-level validation:
 
 ```go
 var DefaultKeyPattern *regexp.Regexp = nil
 ```
 
 :::tip Performance
-`nil` enables fast byte-level validation (about 10x performance improvement).
-Default validation rule: starts with a letter, contains only letters, numbers, and underscores.
+`nil` selects fast byte-level validation, roughly 10x faster than a regexp. The built-in rule accepts keys that start with a letter and contain only letters, digits, and underscores.
 :::
 
 **Custom pattern:**
@@ -486,7 +514,18 @@ cfg.KeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]{1,63}$`)
 
 ## Security Utility Functions
 
-The six security utility functions — `IsSensitiveKey`, `MaskValue`, `MaskKey`, `MaskSensitiveInString`, `SanitizeForLog`, and `ClearBytes` — are documented in full (signatures, parameters, and examples) in the ["Security Utility Functions" section of the SecureValue API](./secure-value#security-utility-functions). In brief: `IsSensitiveKey` tests whether a key name is sensitive; `MaskValue` and `MaskKey` mask values and key names based on key sensitivity; `SanitizeForLog` and `MaskSensitiveInString` handle log sanitization and long-string truncation; `ClearBytes` securely zeroes byte slices.
+Signatures, parameters, and examples for all six functions are in the ["Security Utility Functions" section of the SecureValue API](./secure-value#security-utility-functions): `IsSensitiveKey`, `MaskValue`, `MaskKey`, `MaskSensitiveInString`, `SanitizeForLog`, and `ClearBytes`.
+
+At a glance:
+
+| Function | Purpose |
+|----------|---------|
+| `IsSensitiveKey` | Decide whether a key name is sensitive |
+| `MaskValue` | Mask a value according to key sensitivity |
+| `MaskKey` | Mask a key name (always `[MASKED]`) |
+| `SanitizeForLog` | Sanitize log text, masking sensitive values in `key=value` and `key: value` |
+| `MaskSensitiveInString` | Truncate long strings, then sanitize for logs |
+| `ClearBytes` | Zero a byte slice |
 
 ## FileFormat Constants
 
@@ -520,7 +559,7 @@ fmt.Println(format.String())  // "json"
 
 ### errors.Is Pattern
 
-Check sentinel errors:
+Match a loaded error against the sentinels:
 
 ```go
 err := loader.LoadFiles(".env")
@@ -539,7 +578,7 @@ case errors.Is(err, env.ErrClosed):
 
 ### errors.As Pattern
 
-Extract detailed error information:
+Extract the structured detail from the error:
 
 ```go
 err := loader.LoadFiles(".env")
@@ -640,7 +679,7 @@ func main() {
 
 ## Related Documentation
 
-- [SecureValue API](./secure-value) - Complete API for security utility functions
+- [SecureValue API](./secure-value) - Full API for the security utility functions
 - [Config API](./config) - Configuration options and limit settings
 - [Security Overview](../security/) - Security architecture and core features
 - [Production Checklist](../security/production-checklist) - Pre-launch security checks

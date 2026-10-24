@@ -1,330 +1,155 @@
 ---
 sidebar_label: "常见问题"
-title: "常见问题 - CyberGo html | 高频问题解答"
-description: "CyberGo html 常见问题高频解答：包函数与 Processor 如何选择、15+ 编码自动检测原理、输入大小限制与 DOM 深度防护、空文本结果排查、GetStatistics 统计监控启用、审计日志配置与缓存命中率优化等典型疑问的解决方案。"
+title: "常见问题 - CyberGo html | 排查与行为差异"
+description: "CyberGo html 常见问题排查：提取文本为空的原因、中文乱码与编码兜底、ProcessingTimeout 与用户 context 超时的错误差异、缓存 Key 生成、panic 隔离、关闭后调用，以及批量与 data URL 等行为边界。"
 sidebar_position: 10
 ---
 
 # 常见问题
 
-## 包函数和 Processor 有什么区别？
-
-**包函数**（如 `html.Extract`）内部使用 `sync.Pool` 复用 Processor，适合低频、一次性调用。每次调用后 Processor 归还到池中。
-
-**Processor**（如 `p := html.New()`）适合高频调用，复用缓存和内部资源。还支持统计收集和审计日志。
-
-```go
-// 低频：包函数
-result, _ := html.Extract(data)
-
-// 高频：Processor
-p, _ := html.New(html.DefaultConfig())
-defer p.Close()
-for _, page := range pages {
-    p.Extract(page)
-}
-```
-
-## 如何处理编码问题？
-
-HTML 库自动检测 15+ 种编码（UTF-8、GBK、Shift_JIS、Windows-1252 等），通常不需要手动指定。
-
-如需强制指定编码：
-
-```go
-cfg := html.DefaultConfig()
-cfg.Encoding = "gbk"
-```
-
-## 输入大小限制是多少？
-
-默认最大 50MB（`DefaultMaxInputSize = 52428800`）。可通过配置调整：
-
-```go
-cfg.MaxInputSize = 10 * 1024 * 1024 // 10MB
-```
-
-## 如何获取 Markdown 格式的输出？
-
-```go
-md, err := html.ExtractToMarkdown(data)
-```
-
-或使用 Processor：
-
-```go
-p, _ := html.New()
-md, _ := p.ExtractToMarkdown(data)
-```
-
-## 批量处理最多支持多少条？
-
-单次批量最多 10000 个项目。更大的数据集请分批处理。
+以下问题按排查顺序排列：先确认是否拿到错误，再检查输入与配置。
 
 ## 为什么提取的文本为空？
 
-可能的原因：
+按以下顺序排查：
 
-1. **HTML 结构问题** - 内容在 `<script>` 或 `<style>` 标签中
-2. **清洗后内容为空** - 若正文仅存在于被清洗移除的标签（如 `<iframe>`、`<object>`）中，结果可能为空；可对可信输入临时设置 `EnableSanitization = false` 排查
-3. **输入为空** - 检查输入字节数组是否为空（空白内容会返回空 `Result`）
-4. **文章识别** - 尝试关闭 `ExtractArticle` 看是否能提取
-
-:::tip 注意区分错误与空结果
-DOM 嵌套超过 `MaxDepth` 不会产生空文本，而是返回 `ErrMaxDepthExceeded` 错误。若调用返回了 `error`，请优先用 `errors.Is` 判断错误类型，而非检查文本是否为空。
-:::
+1. **输入为空或全空白** - 空输入与纯空白输入直接返回空 `Result`，不报错
+2. **内容在不可见标签中** - `<script>`、`<style>` 中的文本不进入正文
+3. **内容被清洗移除** - 正文若只存在于被清洗的标签（如 `<iframe>`、`<object>`）中，结果为空；对可信输入可临时设 `EnableSanitization = false` 排查
+4. **文章识别选错了容器** - 关闭 `ExtractArticle` 后重试，看能否提取出内容；若能，说明评分器把非正文节点当成了主体
 
 ```go
 cfg := html.DefaultConfig()
-cfg.ExtractArticle = false // 关闭文章识别
+cfg.ExtractArticle = false // 关闭文章识别后重试
 ```
 
-## 如何监控处理统计？
+:::warning 嵌套过深会报错，而不是返回空文本
+超过 `MaxDepth`（默认 500）时库返回 `ErrMaxDepthExceeded`；但 `golang.org/x/net/html` 解析器自身在约 512 层未闭合标签时先失败，此时得到的是 `ErrInvalidHTML`。调用返回了 `error` 时先用 `errors.Is` 判断类型，不要只看文本是否为空。
+:::
 
-```go
-p, _ := html.New(html.DefaultConfig())
-defer p.Close()
+## 为什么提取的中文是乱码？
 
-// 处理一些内容后
-stats := p.GetStatistics()
-fmt.Printf("已处理：%d\n", stats.TotalProcessed)
-fmt.Printf("缓存命中：%d\n", stats.CacheHits)
-fmt.Printf("平均耗时: %v\n", stats.AverageProcessTime)
-fmt.Printf("错误数：%d\n", stats.ErrorCount)
-```
+自动检测只读 HTML 自身：BOM、`<meta charset>` 声明与字节统计。它**不读 HTTP 响应头**。
 
-## 如何启用审计？
+因此，没有 `<meta charset>` 的 GBK 或 Shift_JIS 页面会被按 windows-1252 兜底解码，得到乱码且 `err == nil`——没有任何错误信号。
 
 ```go
 cfg := html.DefaultConfig()
-cfg.Audit = html.DefaultAuditConfig()
-cfg.Audit.Enabled = true
-cfg.Audit.Sink = html.NewLoggerAuditSink()
+cfg.Encoding = "gbk" // 已知来源编码时显式指定
+result, err := html.Extract(pageData, cfg)
 ```
 
-详见 [审计系统](../api-reference/modules/audit)。
-
-## 文件路径安全吗？
-
-`FileError` 会自动截断完整路径，防止在错误消息中泄露服务器路径：
-
-```go
-var fileErr *html.FileError
-if errors.As(err, &fileErr) {
-    fmt.Println(fileErr.SafePath()) // 仅文件名，非完整路径
-}
-```
-
-## 如何实现自定义内容评分？
-
-实现 `Scorer` 接口：
-
-```go
-type MyScorer struct{}
-
-func (s *MyScorer) Score(node html.ContentNode) int {
-    // 自定义评分逻辑
-    return 0
-}
-
-func (s *MyScorer) ShouldRemove(node html.ContentNode) bool {
-    // 预留：当前版本不被库调用
-    return false
-}
-
-cfg := html.DefaultConfig()
-cfg.Scorer = &MyScorer{}
-```
-
-详见 [接口定义](../api-reference/types/interfaces)。
-
-## 自定义 Scorer 是否需要并发安全？
-
-需要。当单个 Processor 被多个并发 `Extract` 调用共享时，`Score` 会从多个 goroutine 同时触发（`ShouldRemove` 为接口预留方法，当前版本不被库调用）。自定义 Scorer 若持有可变状态（缓存、计数器），必须自行加锁同步。库内置的默认评分器（内部实现，不导出）只读、天然并发安全。
-
-:::warning 无状态优先
-推荐将自定义 Scorer 设计为无状态（仅依据传入的 `ContentNode` 计算），既避免锁开销，也从根本上消除并发问题。需要聚合统计时，把结果写回 `Processor` 的统计通道而非 Scorer 自身。
-:::
-
-## 缓存 Key 是如何生成的？
-
-缓存 Key 基于**原始输入字节**（而非编码转换后的 UTF-8 文本）生成，并混入处理器配置（`ExtractArticle`/`Preserve*` 等提取开关、`InlineImageFormat`/`InlineLinkFormat`/`TableFormat` 三个格式串以及 `Encoding` 强制编码设置）。算法为 hash/maphash（AES-NI 加速、进程级随机种子），64 位哈希结果经 splitmix64 扩展为 128 位（16 字节）Key：
-
-- 小于等于 64KB（`maxCacheKeySize`）：对完整内容计算
-- 大于 64KB：使用 5 点采样（头部、尾部、3 个均匀分布点），总采样预算 4096 字节（`cacheKeySample`，每点约 819 字节），并额外混入内容总长度以增强唯一性
-- Key 基于原始字节计算——同一文档以不同编码存储（GBK、Shift_JIS、Windows-1252……）字节序列不同，生成**不同** Key
-
-:::tip 为什么基于原始字节
-Key 在编码检测**之前**直接对原始字节计算，缓存命中时可以完全跳过编码检测扫描（重复提取热路径上最贵的步骤之一）。代价是：同一文档以不同编码存储会得到不同 Key，无法互相命中。`Encoding` 参与计算则是因为同一份字节在不同强制编码下解码结果不同，必须区分，否则会错误共享缓存。
-:::
-
-## 为什么 ExtractAllLinks 和 Extract 的结果不同？
-
-两者面向不同用途，处理路径与返回类型都不同：
-
-- `Extract` 会先应用 HTML 清洗（移除 `<script>`、`<iframe>` 等标签），再从清洗后的 DOM 提取链接，结果在 `Result.Links` 中，类型为 `LinkInfo`（带 `Position`、`IsExternal` 等字段）
-- `ExtractAllLinks` **不应用清洗**，枚举所有资源链接（包括 `<script src>`、`<iframe>`、`<link>`、`<embed>`），返回 `[]LinkResource`（带 `Type` 分类，如脚本、样式、媒体）
-
-简言之：`Extract` 给你「正文里的链接」，`ExtractAllLinks` 给你「页面引用的全部资源」。
-
-## 包级函数传入 Config 后还走池化吗？
-
-不走。`resolveConfig` 的逻辑是：
-
-- 无 Config → 用 `DefaultConfig()`，**走 `sync.Pool` 池化**
-- 1 个 Config → 用该 Config，**创建临时 Processor（不复用池）**
-
-因此 `html.Extract(data, cfg)` 每次都会新建并销毁一个 Processor。高频调用自定义配置时，应自行 `html.New(cfg)` 并复用 Processor 以获得缓存与统计收益。
-
-## 内部 panic 会有什么影响？
-
-所有提取操作都被 `recoverPanic` 包装，panic 不会逃逸到调用方，而是被恢复为 `ErrInternalPanic` 错误。隔离粒度如下：
-
-- 单次提取：panic → `ErrInternalPanic`
-- 批量处理：单项 panic 被独立 recover，只影响该项（记入 `Failed`），不影响其他项
-- 审计子系统：`AuditSink` 的 `Write`/`Close` panic 被隔离（审计是 best-effort，参见 SEC-003），不会中断主提取流程
-- 超时 goroutine：其内部 panic 也被独立 recover
-
-:::warning 看到 ErrInternalPanic 怎么办
-`ErrInternalPanic` 表示输入可能触发了库内部 bug。应记录原始输入（或最小复现样本）并上报，而不是简单重试——同一输入很可能再次触发。
-:::
-
-## 如何禁用缓存以节省内存？
-
-<!-- check-code: skip -->
-```go
-cfg := html.DefaultConfig()
-cfg.MaxCacheEntries = 0 // 禁用缓存，跳过 Key 生成（零开销）
-```
-
-禁用后每次提取都完整处理，但避免了缓存条目带来的内存开销。适合处理大量互不相同内容的场景（如一次性抓取海量不同页面）。
-
-:::tip 池化 Processor 已默认禁用缓存
-包级函数（如 `html.Extract`）使用的池化 Processor 配置 `MaxCacheEntries = 0`、`CacheTTL = 0`——因为每次归还池时都会清空缓存，开启缓存反而徒增哈希与 map 操作开销。需要缓存请显式 `html.New(cfg)`。
-:::
+生产环境建议按来源显式指定编码：HTTP `Content-Type` 头、站点白名单或离线探测结果。只有强制指定了错误编码时才会得到 `encoding detection failed: ...`。这类错误没有哨兵值，只能按消息前缀判断。详见[编码检测](../guides/core-features/encoding-detection)。
 
 ## ProcessingTimeout 和用户 context 超时有什么区别？
 
-库内超时与调用方 context 协同工作，错误类型取决于触发源与配置：
+错误类型取决于触发源：
 
-| 场景 | 错误类型 | 触发方 |
-|------|----------|--------|
-| 配置了 `ProcessingTimeout` 且先到期 | `ErrProcessingTimeout` | 库内超时 |
-| 用户 context 先于 `ProcessingTimeout` 到期 | `ErrProcessingTimeout`（被归一化） | 调用方超时 |
-| 未配置 `ProcessingTimeout`，用户 context 到期 | `context.DeadlineExceeded` | 调用方超时 |
-| 用户 `cancel()` | `context.Canceled` | 手动取消 |
+| 场景 | 返回错误 |
+|------|----------|
+| 库内 `ProcessingTimeout` 到期（用户 ctx 仍有效） | `ErrProcessingTimeout` |
+| 用户 ctx deadline 到期（早于或等于库内超时） | `context.DeadlineExceeded`（原样返回，**不**归一化） |
+| 用户主动 `cancel()` | `context.Canceled` |
+| `ProcessingTimeout = 0` 且用户 ctx 到期 | `context.DeadlineExceeded` |
 
-机制：当 `ProcessingTimeout > 0` 时，库用 `context.WithTimeout(parentCtx, ProcessingTimeout)` 派生新 deadline，取**两者中较早者**；无论哪个到期，都统一报 `ErrProcessingTimeout`。只有手动 `cancel()` 产生的 `context.Canceled` 原样返回。未配置 `ProcessingTimeout` 时，用户 context 的错误直接透传。
+`ProcessingTimeout > 0` 时，库用 `context.WithTimeout(parentCtx, ProcessingTimeout)` 派生子 ctx，取两者中较早的 deadline。只有子 ctx 先到期、且父 ctx 仍然有效时，错误才被归一化为 `ErrProcessingTimeout`。
 
-## ExtractToMarkdown 是否使用缓存？
+超时不会强制终止 goroutine：调用方先拿到错误，提取 goroutine 在下一个协作检查点退出。
 
-不使用。`ExtractToMarkdown` 内部通过 `buildFormatProcessor` 创建临时 Processor，该 Processor 显式禁用缓存（`MaxCacheEntries = 0`，内部以零容量缓存构造，不导出），既不读取也不写入主 Processor 的缓存。
+## 缓存 Key 是如何生成的？
 
-:::tip 为何如此设计
-Markdown 格式转换只是输出形式不同，提取本身的结果不应污染主缓存（否则同一内容会因格式不同缓存多份）。临时 Processor 复用主 Processor 的 `Scorer`，仅覆盖 `InlineImageFormat`/`InlineLinkFormat`，配置通过值拷贝隔离，避免并发修改共享状态。
+Key 对**完整原始输入字节**计算，并混入配置。算法是 hash/maphash（AES-NI 加速、进程级随机种子）：
+
+1. 写入一个字节的布尔开关位：`ExtractArticle` 与四个 `Preserve*`
+2. 写入三个格式串：`InlineImageFormat`、`InlineLinkFormat`、`TableFormat`
+3. 写入 `Encoding`（自动检测时为空串）
+4. 写入**全部**输入字节
+
+64 位结果经 splitmix64 扩散出第二个 64 位，拼成 128 位 Key。全量哈希意味着文档任意一处改动都会改变 Key；也意味着同一文档以不同编码存储时字节不同，无法互相命中。`Encoding` 参与计算，是为了区分同一份字节在不同强制编码下的解码结果。
+
+全零 Key（`[16]byte{}`）被缓存视为「无 Key」，对应输入恒 miss。
+
+## 为什么 `ExtractAllLinks` 和 `Extract` 的结果不同？
+
+`Extract` 先清洗 HTML，再取清洗后 DOM 中的 `<a>` 链接，返回 `Result.Links`（`LinkInfo`）。`ExtractAllLinks` 不清洗，枚举页面引用的全部资源（含 `<script src>`、`<link>`、`<iframe>`、`<embed>`），返回 `[]LinkResource`，带 `Type` 分类。
+
+概括：`Extract` 返回清洗后正文中的 `<a>` 链接，`ExtractAllLinks` 返回未清洗页面引用的全部资源。两者可先后调用，互不影响。
+
+:::tip 内外链判定只看 href 形式
+`ExtractAllLinks` 判断 `IsExternal` 时只看原始 href：`http(s)://` 或 `//` 开头算外部，相对路径算内部。它**不比较域名**，同域的绝对链接同样算外部。
 :::
 
-## 为什么 `<form>` 标签没有被清洗移除？
+## 内部 panic 会有什么影响？
 
-许多服务端框架（ASP.NET WebForms、JSF、JSP）将整个页面 `<body>` 包在单个 `<form>` 中。移除 `<form>` 会丢弃几乎所有可见内容。文本提取既不渲染也不提交表单，因此移除 `<form>` 的 CSRF/UI-redress 理由**不适用于容器本身**。但 `<input>` 和 `<button>` 等表单控件仍会被移除。
+所有提取调用都被 recover 包装，panic 不会逃逸到调用方，而是转成 `ErrInternalPanic`：
 
-## data URL 有什么限制？
+- 单次提取：panic → `ErrInternalPanic`
+- 批量处理：单项 panic 独立 recover，只让该项记入 `Failed`，不影响其他项
+- 审计 Sink：`Write`/`Close` 的 panic 被隔离，审计是 best-effort，不中断主流程
+- 超时 goroutine：内部 panic 也被独立 recover
 
-清洗器对 `data:` URL 执行多重校验：
-
-- 仅允许白名单 MIME 类型：图片（gif/jpeg/png/webp/bmp/avif 等）、字体（woff/woff2/ttf/otf）、PDF
-- **阻止 `image/svg+xml`**（SVG 可内嵌 JavaScript）
-- 阻止空媒体类型（如 `data:;base64,...`）
-- 有大小上限：受内部上限约束（100KB），不可通过配置调整
-- base64 编码部分验证字符合法性
-
-被拦截的 URL 会记录审计事件——配置的 `AuditSink` 会收到 `AuditEventBlockedURL` 类型的 `AuditEntry`，其 `Message` 携带拦截原因（如 `malformed data URL`、`unsafe media type in data URL`）。
-
-## 批量处理超过 10000 项会怎样？
-
-整批失败（不会部分处理）。`maxBatchSize` 上限为 10000，超限时每项的 `Errors` 都填充 `html: batch size exceeds maximum: N exceeds maximum 10000`（可用 `errors.Is(err, html.ErrBatchTooLarge)` 判断），`Failed` 计数等于输入数量，`Results` 全为 `nil`。
-
-<!-- check-code: skip -->
-```go
-// 超限返回的 BatchResult：Failed == len(inputs)，无部分成功
-br := html.ExtractBatch(hugeSlice) // len(hugeSlice) > 10000
-fmt.Println(br.Failed)             // == len(hugeSlice)
-```
-
-需要调用方自行分批（如每批 5000 项）处理更大数据集。
+:::warning 不要对 ErrInternalPanic 直接重试
+它表示输入触发了库内部缺陷。记录原始输入或最小复现样本并上报，不要直接重试：同一输入会再次走到同一路径。
+:::
 
 ## 关闭 Processor 后继续调用会怎样？
 
-返回 `ErrProcessorClosed`。Processor 内部用 `atomic.Bool` 标记关闭状态，所有提取/格式化方法入口都会检查它。行为要点：
+提取、格式化、链接与批量方法在入口检查关闭标记，返回 `ErrProcessorClosed`：
 
 - `Close()` 幂等，多次调用安全
-- 池化 Processor 在被关闭后**不会归还到池中**（避免下次 `Get` 拿到一个已关闭、缓存清理协程已停止的实例），而是直接丢弃，由 `sync.Pool` 在下次 `Get` 时重建
-- 批量方法在关闭的 Processor 上调用，返回的 `BatchResult` 中每项错误均为 `ErrProcessorClosed`
+- 已关闭的池化实例不会归还到池中（避免下次 `Get` 拿到缓存清理协程已停止的实例），由 `sync.Pool` 重建
+- 在已关闭实例上调用批量方法，`BatchResult` 中每项错误都是 `ErrProcessorClosed`
+- `GetStatistics`、`GetAuditLog`、`ClearCache`、`ClearAuditLog`、`ResetStatistics` 不检查关闭标记，仍可安全调用
 
-## 文章智能识别（ExtractArticle）的评分算法是怎样的？
+## 包级函数传入 Config 后还走池化吗？
 
-内置默认评分器（内部实现，不导出）基于多维信号计算每个元素节点的内容相关性分数，选取得分最高的节点作为文章容器。评分维度涵盖：标签语义（`<article>`/`<main>`/`<section>` 加分，`nav`/`aside`/`footer` 等直接归零）、class/id 模式（`content`/`article`/`post` 等正面词加分，`comment`/`sidebar`/`ad` 等负面词扣分）、段落密度、文本长度、链接密度、标点特征、内容密度与 ARIA role。完整维度与分值权重表见 [内容提取实战](../guides/core-features/content-extraction)。
+不走。不传 Config 时用内置默认配置（缓存已关闭）并从 `sync.Pool` 取实例；传一个 Config 时新建临时 Processor，用完即弃。因此 `html.Extract(data, cfg)` 每次都会新建并销毁实例。高频调用自定义配置时，应自行 `html.New(cfg)` 并复用。
 
-:::tip 布局包装器的特殊处理
-当 class/id 同时含内容信号（`content`/`article`）和移除信号（如 `sidebar`）时——典型如 CSS 布局类 `content-sidebar`——评分器**不会**移除该节点，因为它包裹着主内容。语义标签 `<article>`/`<main>` 一律豁免 class/id 移除启发式。
+## 批量处理超过 10000 项会怎样？
+
+整批失败，不做部分处理：`Failed` 等于输入数量，`Results` 全为 `nil`，每项 `Errors` 都是包装了 `ErrBatchTooLarge` 的错误。更大数据集请自行分批（如每批 5000 项）。字段与错误消息见[批量处理](../api-reference/modules/batch)。
+
+## data URL 有什么限制？
+
+清洗器只放行白名单 MIME（图片、字体、PDF），阻止 `image/svg+xml` 与空媒体类型。长度上限为 100KB 且不可配置；超限的 `<img>` 被**静默丢弃**（`Images` 中不出现，`err == nil`）。完整白名单与审计事件见[安全防护](../api-reference/modules/security)。
+
+## 为什么 `.ogg` URL 同时出现在 Videos 和 Audios 中？
+
+`.ogg` 是容器格式，可承载视频（Theora）或音频（Vorbis/Opus）。正则兜底扫描时，`.ogg` 同时匹配视频与音频扩展名列表，因此同时进入 `Result.Videos` 和 `Result.Audios`。仅音频的 `.oga` 只进音频列表。
+
+## 自定义 Scorer 需要注意什么？
+
+`Scorer.Score` 会被库调用。`ShouldRemove` 是接口预留方法，**当前版本不会被调用**，写在其中用来移除节点的逻辑不会生效。
+
+单个 Processor 被多个 goroutine 共享时，`Score` 会并发触发。持有可变状态（缓存、计数器）的实现必须自行加锁。
+
+:::warning 无状态 Scorer 不需要加锁
+只依据传入的 `ContentNode` 计算，可以免去锁开销。需要聚合统计时，在调用方加锁记录到自有结构——`Processor` 没有公开的统计写入口。
 :::
 
-如果默认评分器不适合你的目标网站，可实现自定义 `Scorer` 接口替换。详见 [测试与自定义扩展](../guides/integration/testing-custom)。
+接口签名见[接口定义](../api-reference/types/interfaces#scorer)，实现与测试写法见[测试与自定义](../guides/integration/testing-custom)。
 
-## TableFormat 如何影响表格输出？
+## TableFormat 怎么影响输出？
 
-`TableFormat` 控制提取的纯文本/Markdown 中 HTML `<table>` 的渲染方式：
+`TableFormat` 为 `"markdown"`（默认）时把 `<table>` 渲染成 Markdown 表格，`"html"` 时保留原始标签；格式串大小写不敏感，空值回退 `markdown`。取值与校验规则见[配置参考](../api-reference/core/config)。
 
-| 格式值 | 效果 | 适用场景 |
-|--------|------|----------|
-| `"markdown"`（默认） | 渲染为 Markdown 表格（含表头分隔行），`colspan` 展开为重复单元格，仅含宽度定义的结构行被跳过 | 人类阅读、Markdown 消费 |
-| `"html"` | 保留原始 HTML `<table>` 标签（`colspan`/`rowspan` 原样保留），结构行不跳过 | 需要精确表格结构的下游处理 |
+## AllowedBaseDir 跨平台行为一致吗？
 
-```go
-cfg := html.DefaultConfig()
-cfg.TableFormat = "html" // 保留 HTML 表格
-```
+一致。库从已打开的文件句柄解析真实路径，校验与读取共用同一句柄，堵住 TOCTOU 窗口。Linux/macOS 走 `/proc/self/fd` 与 `/dev/fd`；Windows 用 `GetFinalPathNameByHandleW` 解析 junction 与 reparse point。细节见[安全防护](../api-reference/modules/security#路径安全)。
 
-格式字符串大小写不敏感（`"Markdown"` 与 `"markdown"` 等效），空值回退到 `"markdown"`。
+## 缓存命中返回的是原始对象吗？
 
-## AllowedBaseDir 在不同平台上行为一致吗？
+不是。命中时返回 `cloneResult` 产生的深拷贝，切片都做了复制；未命中路径也是先写缓存再返回克隆。因此调用方修改结果不会污染缓存条目。
 
-是的，核心安全语义跨平台一致，但底层路径解析机制不同：
+## 其他常见问题
 
-| 平台 | 解析方式 | 覆盖的重定向 |
-|------|----------|-------------|
-| Linux | 读 `/proc/self/fd/<fd>` 的 link | 符号链接（race-free） |
-| macOS / BSD | 读 `/dev/fd/<fd>` 的 link | 符号链接（race-free） |
-| 其他 Unix | 回退 `filepath.EvalSymlinks` | 符号链接（残留轻微 TOCTOU） |
-| Windows | `GetFinalPathNameByHandleW` | 符号链接 + junction + 所有 reparse points |
-
-关键设计：库从**已打开的 OS 文件句柄**解析真实路径（而非路径字符串），关闭了 TOCTOU 竞态窗口——校验与读取使用同一个文件句柄，路径在两者之间被替换不会影响结果。Windows 上的 junction/reparse points 无需任何特权即可创建，`filepath.EvalSymlinks` 无法解析它们，因此库专门使用 `GetFinalPathNameByHandleW`。
-
-## 缓存命中时返回的是原始对象吗？
-
-不是。缓存命中时返回 `cloneResult` 产生的**深拷贝**——对 `Images`/`Links`/`Videos`/`Audios` 切片都做了 `copy`。这是必须的：缓存中的条目会被多个 goroutine 并发读取，直接返回指针会导致调用方修改结果时通过别名污染缓存。
-
-未命中路径同样先写入缓存再返回一份克隆，因此缓存条目与返回值互不别名。
-
-## 为什么同一个视频 URL 同时出现在 Videos 和 Audios 中？
-
-`.ogg` 是一种容器格式，可承载视频（Theora 编码）或音频（Vorbis/Opus 编码）。正则兜底扫描时，`.ogg` URL 同时匹配视频和音频扩展名列表，因此会分别出现在 `Result.Videos` 和 `Result.Audios` 中。仅音频变体 `.oga` 只出现在音频列表中。
-
-## ProcessingTimeout 设为 0 和不设置有什么区别？
-
-没有区别。`Config` 零值不可直接使用（需从 `DefaultConfig()` 开始），而 `DefaultConfig()` 将 `ProcessingTimeout` 设为 30 秒。手动设为 `0` 等价于「不限时」——`Extract` 不会启动超时 goroutine，也不会占用 `maxTimeoutGoroutines` 的配额。这在处理已知合法的超大文档时可以避免不必要的 goroutine 开销。
-
-## `Extract` 和 `ExtractAllLinks` 可以混用吗？
-
-可以，它们独立工作：
-
-- `Extract` 返回 `*Result`，其中 `Result.Links` 是**清洗后** DOM 中的 `<a>` 链接（`LinkInfo` 类型，带 `Position`/`IsExternal` 等字段）
-- `ExtractAllLinks` 返回 `[]LinkResource`，枚举**未清洗** HTML 中的所有资源链接（包括 `<script src>`、`<iframe>`、`<link>` 等），带 `Type` 分类
-
-两者可先后调用，互不影响。典型场景：先用 `Extract` 提取正文内容，再用 `ExtractAllLinks` 收集页面引用的全部资源。
+- **`ProcessingTimeout` 设为 `0` 是什么效果？** 不限时：库不启动超时 goroutine。它与「不修改默认值」不同——`DefaultConfig()` 的默认值是 30 秒。
+- **`ExtractToMarkdown` 用缓存吗？** 不用。它内部创建临时 Processor 完成格式转换，既不读也不写主 Processor 的缓存。见[输出格式](../api-reference/modules/output)。
+- **怎么监控处理情况？** 用 `p.GetStatistics()` 读 `TotalProcessed`、`CacheHits`、`AverageProcessTime` 等字段；包级函数不提供统计。字段含义见[类型定义](../api-reference/types/type-defs#statistics)。
+- **怎么启用审计？** 设 `cfg.Audit = html.DefaultAuditConfig()`，把 `cfg.Audit.Enabled` 置为 `true`，再用 `html.New(cfg)` 创建 Processor。Sink 与事件类型见[审计系统](../api-reference/modules/audit)。
 
 ## 相关文档
 
-- [概述](../) - 特性总览与架构概览
-- [快速开始](../getting-started/) - 5 分钟入门教程
-- [API 参考概览](../api-reference/) - 完整 API 文档入口
+- [概述](../) - 特性与架构
+- [快速开始](../getting-started/) - 安装与首次提取
+- [API 参考](../api-reference/) - 完整 API 文档

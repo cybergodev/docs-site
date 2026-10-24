@@ -1,13 +1,15 @@
 ---
 sidebar_label: "扩展概述"
 title: "扩展接口 - CyberGo JSON | Hook 钩子与自定义编码"
-description: "CyberGo JSON 扩展接口概览：Hook 钩子系统在 Get/Set/Delete 操作前后拦截，落地日志、计时、校验与审计，支持装配期 Config.Hooks 与运行期 AddHook 两种注册；自定义编码经 MarshalJSON、MarshalText 与 CustomEscapes 三条通道生效。"
+description: "CyberGo JSON 扩展接口：Hook 拦截 Get/Set/Delete，自定义编码走 MarshalJSON、MarshalText 与 CustomEscapes。"
 sidebar_position: 10
 ---
 
 # 扩展概述
 
-json 库提供两类互补的扩展接口：**Hook 钩子系统**在操作流程中插入自定义逻辑，**自定义编码**决定类型编码为 JSON 时的形态。两者可独立使用，也可叠加——例如用钩子审计写操作、用 `MarshalJSON` 定制同一份数据的输出格式。
+扩展点分两类：**Hook 钩子**在操作流程中插入自定义逻辑，**自定义编码**决定类型编码为 JSON 时的形态。
+
+两者独立可用，也可叠加——例如用钩子审计写操作、用 `MarshalJSON` 定制同一份数据的输出格式。
 
 ## Hook 钩子系统
 

@@ -7,13 +7,13 @@ sidebar_position: 7
 
 # Testing
 
-This guide covers how to use the env library in tests, including test environment isolation, filesystem mocking, and state cleanup.
+`TestingConfig()` returns a configuration preset for unit tests: it overwrites existing variables, applies compact limits, and skips auditing. Test isolation, filesystem mocking, and cleanup are covered below.
 
 ## Test Configuration
 
 ### Using TestingConfig
 
-TestingConfig overwrites existing environment variables, suitable for test isolation:
+`TestingConfig` overwrites existing environment variables, which makes tests independent of each other:
 
 ```go
 func TestWithTestingConfig(t *testing.T) {
@@ -34,12 +34,12 @@ func TestWithTestingConfig(t *testing.T) {
 ```
 
 :::tip
-TestingConfig sets `OverwriteExisting: true` to ensure test isolation. If you need to preserve existing variables, manually set `cfg.OverwriteExisting = false`.
+`TestingConfig` sets `OverwriteExisting: true` for test isolation. To preserve existing variables, set `cfg.OverwriteExisting = false` explicitly.
 :::
 
 :::warning Implicit loading and testify dependency
-- `TestingConfig` inherits `Filenames: [".env"]` from `DefaultConfig`, and `New(cfg)` **auto-loads** those files whenever Filenames is non-empty — if you don't clear it, the real `.env` in the cwd is implicitly loaded and pollutes the test. Set `cfg.Filenames = nil` when no file should be loaded.
-- The `require` / `assert` calls in the examples on this page come from the third-party library `github.com/stretchr/testify`.
+- `TestingConfig` inherits `Filenames: [".env"]` from `DefaultConfig`, and `New(cfg)` **auto-loads** those files whenever `Filenames` is non-empty. If you don't clear it, the real `.env` in the current directory is loaded and pollutes the test. Set `cfg.Filenames = nil` when no file should be loaded.
+- The `require` and `assert` calls on this page come from the third-party library `github.com/stretchr/testify`.
 :::
 
 ### Per-test Independent Loader
@@ -65,7 +65,7 @@ func TestDatabase(t *testing.T) {
 
 ### Custom FileSystem
 
-Use the `FileSystem` interface to mock files:
+Mock files through the `FileSystem` interface:
 
 ```go
 type MockFileSystem struct {
@@ -147,7 +147,7 @@ func (i mockFileInfo) IsDir() bool        { return false }
 func (i mockFileInfo) Sys() any           { return nil }
 ```
 
-The MockFile returned by `Open` must implement all five methods of the `env.File` interface: Read, Write, `Close`, `Sync`, and `Stat`. `Stat` is not optional: before reading a file, the loader calls `file.Stat()` for a size pre-check (returning `ErrFileTooLarge` when `Size()` exceeds `MaxFileSize`), so `mockFileInfo`'s `Size()` must return `len(content)`.
+The mock file returned by `Open` must implement all five methods of `env.File`: Read, Write, Close, Sync, and Stat (the interface itself declares only `Sync` and `Stat`; the other three come from the embedded `io.Reader`, `io.Writer`, and `io.Closer`). `Stat` is required: before reading a file, the loader calls `file.Stat()` for a size pre-check and returns `ErrFileTooLarge` when `Size()` exceeds `MaxFileSize`. `mockFileInfo.Size()` must therefore return `len(content)`.
 
 ### Using in Tests
 
@@ -201,7 +201,7 @@ func TestExample(t *testing.T) {
 }
 ```
 
-`ResetDefaultLoader` returns an `error`: it clears and closes the global default loader, and the return value is the old loader's `Close()` error (non-nil when cleanup during close fails); it returns nil when no global loader has been initialized yet. Ignoring the error only means the old loader's cleanup failed — the global state is still cleared, so `env.Load()` can be called again afterwards.
+`ResetDefaultLoader` returns an `error`. It clears and closes the global default loader, and the return value is the old loader's `Close()` error (non-nil when cleanup during close fails). It returns nil when no global loader has been initialized. Ignoring the error only means the old loader's cleanup failed: the global state is still cleared, so `env.Load()` can be called again afterwards.
 
 ### Cleaning Up Environment Variables
 
@@ -520,14 +520,14 @@ func TestWithHelper(t *testing.T) {
         "DB_PORT": "5432",
     })
 
-    // loader is automatically closed after the test
+    // NewTestLoader registers a t.Cleanup that closes the loader
     assert.Equal(t, "localhost", loader.GetString("DB_HOST"))
 }
 ```
 
 ## Related Documentation
 
-- [Config API - TestingConfig](../api-reference/config#testingconfig) - Test configuration reference
-- [Loader API](../api-reference/loader) - Complete Loader methods
-- [Interfaces - FileSystem](../api-reference/interfaces) - Custom filesystem interface
-- [Performance](../advanced/performance) - Benchmark data
+- [Config API - TestingConfig](../api-reference/config#testingconfig) - test configuration reference
+- [Loader API](../api-reference/loader) - complete Loader methods
+- [Interfaces - FileSystem](../api-reference/interfaces) - custom filesystem interface
+- [Performance](../advanced/performance) - benchmark data

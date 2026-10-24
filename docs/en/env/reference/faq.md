@@ -11,9 +11,9 @@ sidebar_position: 2
 
 ### Should I choose Load() or New()?
 
-**`env.Load()`** (global mode) is suitable for simple applications: load once, use package-level functions globally. It automatically applies variables to `os.Environ`.
+**`env.Load()`** (global mode) suits simple applications: load once, then use package-level functions. It applies variables to the process environment.
 
-**`env.New()`** (instance mode) is suitable for testing and multi-configuration scenarios: creates isolated instances, does not auto-apply, requires explicit `Close()`.
+**`env.New()`** (instance mode) suits tests and multi-configuration programs: it creates an isolated instance, applies nothing unless `cfg.AutoApply = true`, and requires an explicit `Close()`.
 
 ```go
 // Simple application → global mode
@@ -27,18 +27,18 @@ port := loader.GetInt("PORT", 8080)
 ```
 
 :::tip How to choose
-If unsure, start with `env.Load()`. Switch to `env.New()` when you encounter test isolation or multi-configuration needs.
+Start with `env.Load()`. Switch to `env.New()` when you need test isolation or more than one configuration at a time.
 :::
 
 ### Why can Load() only be called once?
 
-`Load()` sets the global default loader (singleton pattern); repeated calls return `ErrAlreadyInitialized`. This is a design decision: avoiding accidentally overwriting already-loaded configuration at runtime.
+`Load()` sets the global default loader (a singleton), and a second call returns `ErrAlreadyInitialized`. The restriction prevents a later load from silently replacing configuration that is already in use.
 
 ```go
-// First call — succeeds
+// First call: succeeds
 env.Load(".env")
 
-// Second call — returns error
+// Second call: returns an error
 err := env.Load(".env.production")
 // err == env.ErrAlreadyInitialized
 ```
@@ -56,25 +56,25 @@ env.Load(".env.production")
 
 ### What happens when the .env file doesn't exist?
 
-Default behavior: **silently skips**, no error. This supports the flexible "load if present, ignore if absent" deployment pattern.
+The default is to **skip a missing file without an error**, which supports the "load if present, ignore if absent" deployment pattern.
 
 ```go
-// DefaultConfig — silently skips when file doesn't exist
+// DefaultConfig: skips a missing file
 env.Load(".env", ".env.local")
-// Even if neither file exists, no error is returned
+// No error even when neither file exists
 ```
 
-If you want an error when the file doesn't exist (recommended for production):
+To get an error instead (recommended in production):
 
 ```go
 cfg := env.ProductionConfig()
-// FailOnMissingFile defaults to true (only for ProductionConfig)
+// FailOnMissingFile is true in this preset
 loader, _ := env.New(cfg)
 ```
 
 ### How to access nested JSON/YAML values?
 
-Nested JSON/YAML structures are automatically **flattened** to underscore-separated key names:
+Nested JSON/YAML structures are **flattened** to underscore-separated key names:
 
 ```json
 {
@@ -116,7 +116,7 @@ env.GetSlice[int]("PORTS")
 
 ### How does GetSlice parse slice values?
 
-Searches by priority:
+Two sources are tried in order:
 
 1. **Indexed keys** (recommended): `KEY_0`, `KEY_1`, `KEY_2`...
 2. **Comma-separated**: `KEY=val1,val2,val3`
@@ -136,17 +136,19 @@ hosts := env.GetSlice[string]("HOSTS") // ["localhost", "example.com"]
 
 ### What boolean value formats are supported?
 
-`GetBool` is case-insensitive and supports the following values:
+`GetBool` is case-insensitive and accepts these values:
 
 | Truthy | Falsy |
 |--------|-------|
 | `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
 
+An empty string parses as `false` rather than falling back to the default. Any other value is audited and returns the default.
+
 ## Concurrency and Thread Safety
 
 ### Can I call Get from multiple goroutines simultaneously?
 
-**Yes.** All Loader methods are thread-safe. The library uses sharded locks to optimize read/write performance in high-concurrency scenarios.
+**Yes.** All Loader methods are thread-safe. Sharded locks keep read and write contention low under concurrency.
 
 ```go
 // Safe concurrent access
@@ -163,13 +165,13 @@ wg.Wait()
 
 ### What happens when calling Get after Loader.Close()?
 
-Returns zero values, doesn't panic. The Loader enters a read-only degraded mode after closing:
+Getters return zero values and do not panic. Writes return `ErrClosed`.
 
 ```go
 loader, _ := env.New()
 defer loader.Close()
 
-val := loader.GetString("KEY") // Returns normally
+val := loader.GetString("KEY") // Returns a value
 
 // After Close()
 val = loader.GetString("KEY")  // Returns "" (zero value)
@@ -185,39 +187,39 @@ err := loader.Set("KEY", "v")  // Returns ErrClosed
 | `Release()` | ✅ | ✅ | ✅ |
 | `Close()` | ✅ | ✅ | ❌ |
 
-**Using `Release()` is recommended** — it returns the object to the pool, reducing GC pressure. `Close()` is for scenarios where pooling is not needed.
+**`Release()` is the usual choice** because it returns the object to the pool and reduces GC pressure. Use `Close()` when pooling is not needed.
 
 ### Does SecureValue auto-zero when garbage collected?
 
-**Yes.** SecureValue sets a finalizer that automatically zeros memory during garbage collection. However, it's recommended to explicitly call `Release()` or `Close()` to ensure timely cleanup, rather than relying on GC's non-deterministic timing.
+**Yes.** `SecureValue` installs a finalizer that zeroes the memory during garbage collection. Call `Release()` or `Close()` explicitly anyway, so cleanup happens at a known time instead of whenever the GC runs.
 
 ```go
 // ✅ Recommended: explicit release
 sv := env.GetSecure("API_KEY")
 defer sv.Release()
 
-// ⚠️ Relying on GC — not recommended but safe
+// ⚠️ Relying on GC: safe but not timely
 sv := env.GetSecure("API_KEY")
-// Eventually zeroed by GC, but timing is uncertain
+// Eventually zeroed by GC, but the timing is uncertain
 ```
 
 ### How to safely log?
 
-Use `Masked()` or masking utility functions; never directly output `Reveal()` values:
+Use `Masked()` or the masking functions, and never print a `Reveal()` value:
 
 ```go
 sv := env.GetSecure("API_KEY")
 defer sv.Release()
 
-// ✅ Safe — masked output
+// ✅ Safe: masked output
 log.Printf("API Key: %s", sv.Masked())    // [SECURE:32 bytes locked]
 log.Printf("API Key: %s", sv)              // Same (String() returns Masked())
 
-// ✅ Safe — masking tools
+// ✅ Safe: masking functions
 masked := env.MaskValue("API_KEY", "sk-xxx") // [MASKED] (sensitive key → fixed mask)
 clean := env.SanitizeForLog(logMessage)       // Auto-detect and mask
 
-// ❌ Dangerous — plaintext leak
+// ❌ Dangerous: plaintext leak
 plaintext := sv.Reveal()
 log.Printf("API Key: %s", plaintext) // Don't do this
 ```
@@ -244,7 +246,7 @@ OTHER_KEY=value         # ❌ Ignored (no MYAPP_ prefix)
 
 ### How to prevent configuration overrides?
 
-`OverwriteExisting` controls whether to overwrite existing variables:
+`OverwriteExisting` controls whether `Set` and file loads replace a key that already exists:
 
 ```go
 // Default: no overwriting (safe)
@@ -252,13 +254,13 @@ cfg := env.DefaultConfig()
 cfg.OverwriteExisting = false
 
 // Development: allow overwriting
-cfg := env.DevelopmentConfig()
+cfg = env.DevelopmentConfig()
 // OverwriteExisting = true
 ```
 
 ### When does RequiredKeys validation execute?
 
-Only checked when `Validate()` is explicitly called, not automatically triggered during loading:
+`RequiredKeys` is checked only when you call `Validate()`; loading does not trigger it:
 
 ```go
 cfg := env.ProductionConfig()
@@ -278,7 +280,7 @@ if err := loader.Validate(); err != nil {
 
 ### How to isolate the environment in tests?
 
-Use `TestingConfig()` + independent Loader instances:
+Use `TestingConfig()` with an independent Loader instance per test:
 
 ```go
 func TestConfig(t *testing.T) {
@@ -291,7 +293,7 @@ func TestConfig(t *testing.T) {
     }
     defer loader.Close()
 
-    // Each test is independent, no interference
+    // Each test gets its own loader
     loader.Set("KEY", "test-value")
     val := loader.GetString("KEY")
     // Test...
@@ -314,18 +316,18 @@ func TestGlobalMode(t *testing.T) {
 ```
 
 :::tip Full testing guide
-See the [Testing](../guides/testing) guide for complete testing documentation.
+See the [Testing](../guides/testing) guide.
 :::
 
 ## Security and Lifecycle
 
 ### Are process-environment variables still there after Close?
 
-**Yes.** `Close()` zeroes only the in-memory copies; it does not unset variables previously applied to `os.Environ` (deliberate design: the process environment may already have been inherited by child processes, so rollback semantics would be unreliable). To remove them, call `Delete` per key before closing — only keys this loader wrote get unset.
+**Yes.** `Close()` zeroes only the in-memory copies. It does not unset variables previously applied to the process environment. Removing them is deliberate caller work: the environment may already have been inherited by child processes, so automatic rollback is not attempted. Call `Delete` per key before closing; only keys this loader wrote get unset.
 
 ### How do I stop a configuration file from reading process secrets?
 
-When the configuration file comes from an untrusted source (user uploads, external delivery), an expansion scope that lets `${VAR}` fall back to the process environment risks secrets being captured into variable values. `DefaultConfig()` already defaults to the file-only scope (`ExpansionFileOnly`), blocking that fallback; the explicit assignment here is only for illustration:
+When a configuration file comes from an untrusted source (user uploads, external delivery), an expansion scope that lets `${VAR}` fall back to the process environment can capture secrets into variable values. `DefaultConfig()` already selects the file-only scope (`ExpansionFileOnly`), which blocks that fallback; the assignment below states the default explicitly:
 
 <!-- check-code: skip -->
 ```go
@@ -337,11 +339,11 @@ See [Variable Expansion · Expansion Scope](../guides/variable-expansion).
 
 ### Why did the `$` in my value change when read back?
 
-With variable expansion enabled by default, `$VAR`/`${VAR}` sequences are expanded at load time. If a value contains literal dollar signs (prices, template strings), load with `cfg.ExpandVariables = false`, or see [Serialization · Round-trip Pitfalls](../guides/serialization) for the analogous problem when Marshal output is read back.
+`ExpandVariables` is enabled by default, so `$VAR` and `${VAR}` sequences are expanded at load time. If a value contains literal dollar signs (prices, template strings), load it with `cfg.ExpandVariables = false`. `Marshal` output is not affected by this: the library escapes `$` as `\$`, so a Marshal → load round trip does not re-expand. See [Serialization](../guides/serialization#round-trip-behavior-and-format-auto-detection).
 
 ## Related Documentation
 
-- [Quick Start](../getting-started/) — 5-minute introduction
-- [Cheat Sheet](../getting-started/cheatsheet) — High-frequency code snippets
-- [Error Handling](../guides/error-handling) — Sentinel errors and recovery strategies
-- [File Format](./file-format) — .env/JSON/YAML syntax
+- [Quick Start](../getting-started/) - 5-minute introduction
+- [Cheat Sheet](../getting-started/cheatsheet) - high-frequency snippets
+- [Error Handling](../guides/error-handling) - sentinel errors and recovery strategies
+- [File Format](./file-format) - .env/JSON/YAML syntax

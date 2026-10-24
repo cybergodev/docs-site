@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # 示例
 
-env 库在源码仓库的 `examples/` 目录下提供 13 个可运行示例。每个示例都是独立完整的 `main` 程序，从全局模式快速上手一路覆盖到安全特性与高级特性；所有示例均包含在常规构建（`go build ./...`）中。
+env 库在源码仓库的 `examples/` 目录下提供 13 个可运行示例。每个示例都是独立完整的 `main` 程序，覆盖从全局模式快速上手到安全特性与高级特性的完整路径。所有示例都参与常规构建（`go build ./...`）。
 
 ## 运行方式
 
@@ -19,7 +19,7 @@ cd env
 go run ./examples/01_quickstart/
 ```
 
-示例以 `examples/data/` 下的相对路径引用共享配置文件，因此必须从项目根目录运行，否则数据文件路径无法解析。
+示例以 `examples/data/` 下的相对路径读取共享配置文件，因此必须在项目根目录执行 `go run`，在子目录运行会因路径无法解析而失败。
 
 ### 共享数据文件
 
@@ -47,6 +47,6 @@ go run ./examples/01_quickstart/
 | 12 | `12_extensibility/` | 自定义解析器注册 `RegisterParser`、接口式消费 `EnvGetter`（依赖注入与测试替身）、自定义组件（`CustomAuditor` 审计计数） | [自定义解析器](../guides/custom-parser)、[接口定义](../api-reference/interfaces) |
 | 13 | `13_customization/` | 自定义 Validator/Expander/FileSystem、fail-closed 审计（`ErrAuditFailed`）、自定义 Marshaler/Unmarshaler、花括号运算符 | [接口定义](../api-reference/interfaces)、[审计日志](../guides/audit-logging)、[序列化](../guides/serialization) |
 
-## 阅读建议
+## 阅读顺序
 
-建议按编号顺序阅读：01–03 掌握全局与实例两种使用模式及类型化读取，04–07 熟悉结构体映射、敏感值保护与审计等生产特性，08–13 进阶到工具函数、错误处理、高级特性与可扩展性。每个示例都可直接 `go run` 运行验证，结合上方对应文档页面阅读效果更佳。
+推荐按编号顺序阅读。01–03 覆盖全局与实例两种使用模式和类型化读取；04–07 进入结构体映射、敏感值保护、审计等生产特性；08–13 进阶到工具函数、错误处理、高级特性与可扩展性。每个示例都能直接 `go run` 验证，与上方对应文档页面配合阅读。

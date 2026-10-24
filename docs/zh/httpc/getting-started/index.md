@@ -1,11 +1,13 @@
 ---
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo HTTPC | 5 分钟上手"
-description: "HTTPC 快速开始指南：go get 安装与项目初始化、GET/POST 请求发送与响应处理、五种配置预设选型、JSON 解析与类型绑定、Bearer Token 认证与 ClientError 错误分类处理，五分钟上手安全 HTTP 客户端库。"
+description: "HTTPC 快速开始：go get 安装与项目初始化、包级函数与 Client 实例发送 GET/POST 请求、五种配置预设的选型、Result 响应处理与 JSON 解析、Bearer Token 认证，以及 ClientError 错误分类与 4xx/5xx 状态码检查。"
 sidebar_position: 10
 ---
 
 # 快速开始
+
+HTTPC 是构建在标准库 `net/http` 之上的 Go HTTP 客户端库，提供 TLS 策略、SSRF 防护、重试与 `Result` 响应封装。本页覆盖安装、首个请求、客户端创建、响应处理与错误分类。
 
 ## 安装
 
@@ -24,7 +26,7 @@ go get github.com/cybergodev/httpc
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC 要求 Go 1.27 及以上版本；共 7 个直接依赖（`golang.org/x/net` + `golang.org/x/sys` 用于标准路径，brotli / compress / uTLS / tls-client / fhttp 仅在启用 `Security.TLSFingerprint` 时被拉入），不启用指纹特性时按标准栈运行，无需任何配置即可发起第一个请求。
+HTTPC 要求 Go 1.27 及以上版本，共 7 个直接依赖。`golang.org/x/net` 与 `golang.org/x/sys` 用于标准路径；brotli / compress / uTLS / tls-client / fhttp 仅在启用 `Security.TLSFingerprint` 时被拉入。不启用指纹特性时按标准栈运行，无需配置即可发起请求。
 
 ## 基本请求
 
@@ -55,10 +57,10 @@ func main() {
 
 ### 发生了什么
 
-- 包级函数内部使用**惰性初始化的共享默认客户端**——首次调用时创建，之后复用，并发安全；
+- 包级函数使用**惰性初始化的默认客户端**：首次调用时创建，之后复用，并发安全；
 - 返回值 `*Result` 聚合了状态码、响应头、响应体以及请求元信息（耗时、尝试次数、重定向链）；
-- `err != nil` 只代表**网络层错误**（连接失败、超时、TLS 错误等）；4xx/5xx 状态码需用 `result.IsSuccess()` 等方法自行检查；
-- 默认配置自带 TLS 1.2+、SSRF 防护、响应体 10MB 上限与最多 3 次智能重试（仅幂等请求；POST/PATCH 默认单次执行），无需额外设置。
+- `err != nil` 只代表**网络层错误**（连接失败、超时、TLS 错误等）。4xx/5xx 状态码需用 `result.IsSuccess()` 等方法检查；
+- 默认配置启用 TLS 1.2+、SSRF 防护、响应体 10MB 上限与最多 3 次重试（仅幂等请求，POST/PATCH 默认单次执行），无需额外设置。
 
 ## 创建客户端
 
@@ -74,7 +76,7 @@ defer client.Close()
 result, err := client.Get("https://httpbin.org/get")
 ```
 
-客户端持有连接池等资源，用完记得 `Close()`。长期运行的服务通常在进程生命周期内只创建一次、全局共享——`Client` 是并发安全的，不需要按请求或按 goroutine 创建。
+客户端持有连接池等资源，使用完毕后调用 `Close()` 释放。长期运行的服务在进程生命周期内创建一次并复用：`Client` 并发安全，无需按请求或按 goroutine 创建。
 
 ### 预设配置
 
@@ -219,7 +221,7 @@ case result.IsServerError():
 
 ## 第一个完整程序
 
-下面是可直接 `go run` 的完整例子：调用 GitHub API 查询仓库信息，覆盖创建客户端、设置请求头、超时控制、状态检查与 JSON 解析：
+下面是可直接 `go run` 的完整示例：调用 GitHub API 查询仓库信息，覆盖创建客户端、设置请求头、超时控制、状态检查与 JSON 解析。
 
 ```go
 package main
@@ -333,7 +335,7 @@ func main() {
 
 ### 访问本地或内网服务
 
-默认配置会阻止连接 `127.0.0.1`、`10.x`、`192.168.x` 等私有/保留地址（SSRF 防护）。本地联调有三种打开方式：
+默认配置会阻止连接私有 IP 地址，例如 `127.0.0.1`、`10.x`、`192.168.x`（SSRF 防护）。本地联调可通过三种方式放开：
 
 ```go
 // 方式一：按请求豁免（推荐，影响面最小）

@@ -7,7 +7,7 @@ sidebar_position: 2
 
 # 速查表
 
-在对该库有所了解的前提下，快速参考高频使用的代码片段。
+熟悉 env 库基本用法后，用这页查高频代码片段。
 
 ## 加载配置
 
@@ -179,7 +179,7 @@ log.Printf("Key: %s", env.MaskValue("API_KEY", "secret"))
 
 // 检测
 env.IsSensitiveKey("PASSWORD")  // true
-env.IsMemoryLockSupported()     // Linux/macOS/Windows: true
+env.IsMemoryLockSupported()     // linux/darwin/Windows 为 true，其他平台为 false
 
 // 清理
 env.ClearBytes(sensitiveData)
@@ -194,7 +194,9 @@ masked := env.MaskKey("DB_PASSWORD")  // "[MASKED]"
 ```go
 goEnv := os.Getenv("GO_ENV")
 if goEnv == "" { goEnv = "development" }
-env.Load(".env", ".env."+goEnv, ".env.local")  // 单次调用；默认先加载的胜出，如需后覆盖设 OverwriteExisting=true
+// 默认（DefaultConfig）同名键以先加载的文件为准；要后者覆盖前者，
+// 改用 LoadWithConfig 并设 cfg.OverwriteExisting = true
+env.Load(".env", ".env."+goEnv, ".env.local")
 ```
 
 ## 多格式
@@ -213,7 +215,7 @@ env.Marshal(data, env.FormatYAML)
 
 // 反序列化
 env.UnmarshalMap(data, env.FormatEnv)
-env.UnmarshalMap(data, env.FormatAuto)  // 自动检测
+env.UnmarshalMap(data, env.FormatAuto)  // 按内容自动检测
 ```
 
 ## .env 语法
@@ -222,17 +224,17 @@ env.UnmarshalMap(data, env.FormatAuto)  // 自动检测
 # 注释
 KEY=value
 KEY="value with spaces"
-KEY='literal \n value'     # 单引号不处理转义，但不阻止变量展开（见下方提示）
+KEY='literal \n value'     # 单引号不处理转义，值也不参与变量展开
 KEY=${OTHER_KEY}           # 变量引用
-KEY=${MISSING:-default}    # 默认值（变量不存在时使用）
-KEY=${MISSING:=default}    # 默认值（变量不存在时使用，同 :-）
-KEY=${MISSING:?error}      # 错误提示（变量不存在或为空时报错）
+KEY=${MISSING:-default}    # 默认值（变量未定义时使用）
+KEY=${MISSING:=default}    # 默认值并写回变量（变量未定义时使用）
+KEY=${MISSING:?error}      # 变量未定义或为空时报错
 export KEY=value           # bash 风格
 KEY=$$                     # 转义美元符号（得到字面量 $）
 ```
 
 ::: tip 变量展开与字面量 $
-单引号**不阻止**变量展开——`KEY='a ${UNDEF}'` 中的 `${UNDEF}` 仍会展开，未定义时得到空串。需要字面量 `$` 时用 `$$` 转义，或设置 `cfg.ExpandVariables = false` 关闭展开。完整规则参见[文件格式](../reference/file-format)。
+单引号**阻止**变量展开：`KEY='a ${UNDEF}'` 的值就是字面文本 `a ${UNDEF}`。需要字面量 `$` 而使用双引号或无引号时，用 `$$` 转义，或设置 `cfg.ExpandVariables = false` 全局关闭展开。完整规则参见[文件格式](../reference/file-format)。
 :::
 
 ## 布尔值
@@ -240,6 +242,8 @@ KEY=$$                     # 转义美元符号（得到字面量 $）
 | 真值 | 假值 |
 |------|------|
 | `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
+
+值为空串时解析为 `false`（不取默认值），无法识别的值记审计并返回默认值。
 
 ## 时间格式
 
@@ -262,6 +266,8 @@ DURATION=1h30m
 
 ## 测试
 
+以 `TestingConfig()` 为每个测试建独立 Loader；需要清理包级单例时在 TestMain 里调用 `ResetDefaultLoader`：
+
 ```go
 func TestExample(t *testing.T) {
     cfg := env.TestingConfig()
@@ -273,6 +279,7 @@ func TestExample(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
+    // 关闭并清空包级默认 Loader，避免用例之间互相影响
     if err := env.ResetDefaultLoader(); err != nil {
         log.Printf("warning: %v", err)
     }

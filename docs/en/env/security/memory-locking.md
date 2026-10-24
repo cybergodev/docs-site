@@ -1,17 +1,17 @@
 ---
 sidebar_label: "Memory Locking"
 title: "Memory Locking - CyberGo env | mlock Memory Protection"
-description: "Memory locking guide for CyberGo env: SetMemoryLockEnabled, IsMemoryLockSupported, SetMemoryLockStrict strict mode, mlock principles, and SecureValue lifecycle."
+description: "Memory locking for CyberGo env: SetMemoryLockEnabled, IsMemoryLockSupported, strict mode, platform permissions, mask states and SecureValue lifecycle."
 sidebar_position: 3
 ---
 
 # Memory Locking
 
-Memory locking (mlock / VirtualLock) prevents sensitive data from being swapped to disk, and is one of the core defense lines of the SecureValue security system.
+Memory locking (`mlock` on Linux and macOS, `VirtualLock` on Windows) marks a memory range as non-swappable, so the operating system never writes it to the swap file or page file. It is one of the defenses `SecureValue` provides.
 
 ## Why Memory Locking Is Needed
 
-Under normal circumstances, the operating system swaps inactive memory pages to disk (swap file / page file). This means that even if you call `ClearBytes` to zero memory in your code, residual copies of sensitive data may still remain on disk.
+The operating system swaps inactive memory pages to disk. Zeroing memory with `ClearBytes` therefore does not remove a copy the OS wrote to disk earlier.
 
 ```text
 Memory (RAM)                   Disk (Swap/Page File)
@@ -23,7 +23,7 @@ Memory (RAM)                   Disk (Swap/Page File)
                                └──────────────┘
 ```
 
-After enabling memory locking, the OS guarantees these memory pages **will not be swapped out**:
+With memory locking enabled, the OS keeps those pages in RAM:
 
 ```text
 Memory (RAM)                   Disk (Swap/Page File)
@@ -40,9 +40,9 @@ Memory (RAM)                   Disk (Swap/Page File)
 | Linux | `mlock(2)` / `munlock(2)` | ✅ |
 | macOS | `mlock(2)` / `munlock(2)` | ✅ |
 | Windows | `VirtualLock` / `VirtualUnlock` | ✅ |
-| Other platforms (FreeBSD/other BSDs, Solaris, WASM, etc.) | N/A | ❌ (no-op fallback) |
+| Other platforms (FreeBSD and other BSDs, Solaris, WASM) | N/A | ❌ (no-op fallback) |
 
-Platforms other than Linux, macOS, and Windows fall back to a no-op: `IsMemoryLockSupported()` returns `false` and enabling locking has no effect (the lock attempt returns a "not supported on this platform" error) — SecureValue still works, but with locking enabled `Masked()` reports `lock-failed`; with locking disabled, no lock status is appended.
+On any platform other than Linux, macOS, and Windows, locking is a no-op: `IsMemoryLockSupported()` returns `false` and enabling locking has no effect. `SecureValue` still works. With locking enabled, `Masked()` reports `lock-failed`; with locking disabled, no lock status is appended.
 
 Runtime detection:
 
@@ -50,20 +50,20 @@ Runtime detection:
 if env.IsMemoryLockSupported() {
     fmt.Println("Current platform supports memory locking")
 } else {
-    fmt.Println("Current platform does not support memory locking (e.g., wasm)")
+    fmt.Println("Current platform does not support memory locking (e.g. wasm)")
 }
 ```
 
 ## Permission Requirements
 
-Memory locking involves system resource limits; different platforms require different permissions:
+Memory locking consumes a system resource, and each platform gates it differently.
 
 ### Linux
 
-Requires the `CAP_IPC_LOCK` capability:
+`mlock` requires the `CAP_IPC_LOCK` capability or root, and the total locked memory is bounded by `RLIMIT_MEMLOCK` (check it with `ulimit -l`):
 
 ```bash
-# Method 1: Grant via setcap to the binary
+# Method 1: Grant the capability to the binary
 sudo setcap cap_ipc_lock=ep ./myapp
 
 # Method 2: Via systemd service
@@ -72,7 +72,7 @@ sudo setcap cap_ipc_lock=ep ./myapp
 CapabilityBoundingSet=CAP_IPC_LOCK
 AmbientCapabilities=CAP_IPC_LOCK
 
-# Method 3: ulimit adjustment (RLIMIT_MEMLOCK)
+# Method 3: Raise RLIMIT_MEMLOCK
 # /etc/security/limits.conf
 *    soft    memlock    unlimited
 *    hard    memlock    unlimited
@@ -80,11 +80,11 @@ AmbientCapabilities=CAP_IPC_LOCK
 
 ### macOS
 
-Usually requires no special permissions, but is limited by `ulimit -l` (max locked memory).
+No special permission is required, but the total is bounded by `ulimit -l`.
 
 ### Windows
 
-`VirtualLock` requires the `SeLockMemoryPrivilege` ("Lock pages in memory") privilege only for allocations of **more than 30 pages**; smaller allocations can usually be locked directly without it:
+`VirtualLock` needs the `SeLockMemoryPrivilege` ("Lock pages in memory") only for allocations of **more than 30 pages**. Allocations of 30 pages or fewer are locked without the privilege; larger ones fail without it:
 
 ```text
 Group Policy → Computer Configuration → Windows Settings → Security Settings →
@@ -92,14 +92,14 @@ Local Policies → User Rights Assignment → "Lock pages in memory"
 ```
 
 :::warning Behavior without permission
-In default mode, memory locking failures are **silently ignored** — SecureValue still works, but the data is not locked. To ensure locking succeeds, use strict mode.
+By default, a memory-locking failure is **silent**: `SecureValue` still works, but the data is not locked. To see failures, enable strict mode.
 :::
 
 ## Basic Usage
 
 ### Enabling Memory Locking
 
-Call at application startup, before creating any SecureValue:
+Call this at application startup, before creating any `SecureValue`:
 
 ```go
 package main
@@ -123,11 +123,11 @@ func main() {
 		panic(err)
 	}
 
-	// All subsequent SecureValues will attempt memory locking
+	// Every SecureValue created from here on attempts memory locking
 	secret := env.GetSecure("API_KEY")
 	if secret != nil {
 		defer secret.Release()
-		fmt.Println(secret.Masked()) // [SECURE:32 bytes locked] (N depends on the actual value length)
+		fmt.Println(secret.Masked()) // [SECURE:32 bytes locked] (N is the actual value length)
 	}
 }
 ```
@@ -138,22 +138,22 @@ func main() {
 sv := env.GetSecure("DB_PASSWORD")
 defer sv.Release()
 
-// Check if locked
+// Check whether the value is locked
 if sv.IsMemoryLocked() {
-    fmt.Println("Memory is locked, will not be swapped to disk")
+	fmt.Println("Memory is locked, will not be swapped to disk")
 } else {
-    fmt.Println("Memory is not locked")
+	fmt.Println("Memory is not locked")
 }
 
-// Check locking error (if any)
+// Read the locking error, if any
 if err := sv.MemoryLockError(); err != nil {
-    fmt.Printf("Locking failed: %v\n", err)
+	fmt.Printf("Locking failed: %v\n", err)
 }
 ```
 
 ## Strict Mode
 
-In default mode, locking failures are silently ignored. Strict mode makes failures observable:
+By default, locking failures are silent. Strict mode makes them observable.
 
 ### Enabling Strict Mode
 
@@ -161,22 +161,22 @@ In default mode, locking failures are silently ignored. Strict mode makes failur
 env.SetMemoryLockEnabled(true)
 env.SetMemoryLockStrict(true)
 
-// Subsequent locking failures will be output to the standard logger:
+// A subsequent locking failure is written to the standard logger:
 // env: memory lock failed in strict mode: operation not permitted
 ```
 
 ### Explicit Error Handling
 
-Use `NewSecureValueStrict` to get the locking error at creation time:
+`NewSecureValueStrict` returns the locking error at creation time:
 
 ```go
-env.SetMemoryLockEnabled(true) // error return depends only on "locking enabled + lock failure"
+env.SetMemoryLockEnabled(true) // the error return depends only on "locking enabled + lock failure"
 
 sv, err := env.NewSecureValueStrict("my-api-key")
 if err != nil {
-    // Memory locking failed
-    // SecureValue is still valid, but data is not protected by locking
-    log.Printf("Security warning: memory locking failed: %v", err)
+	// Locking is enabled and the lock failed.
+	// sv is still valid and usable, but its data is not locked.
+	log.Printf("Security warning: memory locking failed: %v", err)
 }
 defer sv.Release()
 
@@ -185,16 +185,16 @@ fmt.Println(sv.Masked())
 ```
 
 :::tip Unrelated to SetMemoryLockStrict
-`NewSecureValueStrict`'s error return depends only on `SetMemoryLockEnabled(true)` plus a lock failure — it is unrelated to the strict-mode switch; `SetMemoryLockStrict` controls whether a lock failure emits the stderr warning (this applies to every construction path) — for non-strict constructors that cannot return an error (e.g., `NewSecureValue`), that warning is the only failure signal.
+The error from `NewSecureValueStrict` depends only on `SetMemoryLockEnabled(true)` plus a lock failure; the strict-mode switch has no effect on it. `SetMemoryLockStrict` controls whether a failure triggers the default handler, which writes a warning to stderr — this applies to every construction path. For constructors that cannot return an error (such as `NewSecureValue`), that warning is the only failure signal.
 :::
 
 :::tip Strict-mode behavior
-In strict mode, locking failure triggers the `onStrictLockFailure` callback (outputs to stderr by default). SecureValue itself always remains valid — strict mode just makes locking failures **observable**, rather than preventing usage.
+In strict mode, a locking failure triggers the `onStrictLockFailure` callback, which writes to stderr by default. The `SecureValue` itself remains valid and usable; strict mode only makes the failure **observable**.
 :::
 
 ## Masked Output and Lock Status
 
-`Masked()` includes lock status in the output — **the three lock states are appended only when `SetMemoryLockEnabled(true)`**; empty and closed values have their own outputs:
+`Masked()` appends lock status **only when `SetMemoryLockEnabled(true)` was called at creation time**. Empty and closed values have their own fixed outputs:
 
 ```go
 env.SetMemoryLockEnabled(true)
@@ -203,12 +203,13 @@ sv := env.GetSecure("API_KEY")
 defer sv.Release()
 
 fmt.Println(sv.Masked())
-// Lock succeeded:    [SECURE:32 bytes locked]      // locking enabled at creation and lock succeeded
+// Lock succeeded:    [SECURE:32 bytes locked]      // locking enabled at creation, lock succeeded
 // Lock failed:       [SECURE:32 bytes lock-failed] // locking enabled but failed (insufficient privilege / unsupported platform)
 // Never attempted:   [SECURE:32 bytes unlocked]    // value created before locking was enabled
 // Locking disabled:  [SECURE:32 bytes]             // no lock status appended
 // Empty value:       [SECURE:0 bytes]
 // Closed:            [CLOSED]
+// Nil:               [NIL]
 ```
 
 ## Complete Production Example
@@ -267,14 +268,14 @@ func main() {
 		}
 	}
 
-	// Only get plaintext when needed: Reveal returns a new string copy,
-	// not protected by memory locking and impossible to zero — discard once done, keep the window short
+	// Reveal returns a new string copy that is not mlock-protected and cannot
+	// be zeroed. Discard it as soon as the consumer is done with it.
 	password := dbPassword.Reveal()
-	_ = password // Used for database connection, etc.
+	_ = password // Used for the database connection, etc.
 
 	// Safe logging (no plaintext leakage)
 	log.Printf("Database password: %s", dbPassword.Masked())
-	// Output: Database password: [SECURE:12 bytes locked] (N depends on the actual value length)
+	// Output: Database password: [SECURE:12 bytes locked] (N is the actual value length)
 
 	_ = os.Stdout
 }
@@ -284,7 +285,7 @@ func main() {
 
 ### Release Promptly
 
-Locking memory increases memory pressure (cannot be swapped out), so release immediately after use. Even if you forget, an abandoned, unclosed SecureValue is zeroed by a GC finalizer as a last resort — but that is a safety net, not something to rely on; always `Release()` explicitly:
+Locked memory cannot be swapped out, so it adds memory pressure. Release each value as soon as you are done with it. An abandoned, unclosed `SecureValue` is eventually zeroed by a GC finalizer, but treat that as a last resort and always call `Release()` explicitly:
 
 ```go
 // ✅ Recommended: release as soon as done
@@ -292,25 +293,25 @@ sv := env.GetSecure("API_KEY")
 defer sv.Release()
 value := sv.Reveal()
 // Use value...
-// defer triggers auto-zeroing + unlocking + returning to object pool
+// The deferred call zeroes the data, unlocks the memory, and returns the object to the pool
 
-// ❌ Avoid: holding for long periods
+// ❌ Avoid: holding for a long time
 var globalSecret *env.SecureValue // Not recommended
 ```
 
 ### Keep Small and Short-lived
 
-Locking large blocks of memory affects system performance. Each SecureValue should only store the necessary sensitive value (password, key, token), not entire configuration blocks.
+Locking large blocks of memory affects system performance. Store only the sensitive value itself (password, key, token) in each `SecureValue`, not an entire configuration block.
 
 ### Plaintext Copies Are Not Lock-Protected
 
-`Reveal()` returns a **new string copy** — it is not protected by mlock and cannot be zeroed (strings are immutable). Discard plaintext **as soon as you are done** and keep the holding window short; when you need zeroable plaintext, use `Bytes()` for a `[]byte` copy and `ClearBytes` it when finished:
+`Reveal()` returns a **new string copy**. It is not protected by `mlock` and cannot be zeroed, because Go strings are immutable. Finish with the plaintext as soon as possible. When you need zeroable plaintext, use `Bytes()` to get a `[]byte` copy and pass it to `ClearBytes` when done:
 
 ```go
-// string copy: cannot be zeroed — discard promptly, keep the window short
+// string copy: cannot be zeroed — use it briefly, then drop it
 password := sv.Reveal()
 
-// When zeroing is required: Bytes() + ClearBytes
+// when zeroing is required: Bytes() + ClearBytes
 raw := sv.Bytes()
 defer env.ClearBytes(raw)
 ```
@@ -320,10 +321,10 @@ defer env.ClearBytes(raw)
 ```go
 sv := env.GetSecure("TOKEN")
 
-// ✅ Release: zeroing + unlocking + returning to object pool (recommended)
+// ✅ Release: zeroes, unlocks, and returns the object to the pool (recommended)
 defer sv.Release()
 
-// Close also works, but doesn't return to the object pool
+// Close also works but does not return the object to the pool
 // defer sv.Close()
 ```
 
@@ -331,14 +332,14 @@ defer sv.Release()
 
 | Problem | Possible Cause | Solution |
 |---------|---------------|----------|
-| `lock-failed` in Masked output | Insufficient permissions | Configure `CAP_IPC_LOCK` (Linux) or `SeLockMemoryPrivilege` (Windows) |
-| Strict mode log spam | Locking failure when creating many SecureValues | Check system `RLIMIT_MEMLOCK` limits, or use non-strict mode |
-| `IsMemoryLockSupported()` returns false | Any platform other than Linux/macOS/Windows (FreeBSD/other BSDs, Solaris, WASM, etc.) | These platforms don't support memory locking (no-op fallback); use other security measures (e.g., encrypted storage) |
-| Increased memory usage | Locked pages cannot be swapped out | Reduce SecureValue hold time, Release promptly |
+| `lock-failed` in `Masked()` output | Insufficient permissions or an unsupported platform | Grant `CAP_IPC_LOCK` (Linux) or `SeLockMemoryPrivilege` (Windows); on other platforms locking is unavailable |
+| Repeated strict-mode warnings | A locking failure on every `SecureValue` creation | Check `RLIMIT_MEMLOCK` (`ulimit -l`), or disable strict mode |
+| `IsMemoryLockSupported()` returns false | The platform is not Linux, macOS, or Windows (FreeBSD, other BSDs, Solaris, WASM) | Locking is a no-op there; use other measures such as encrypted storage |
+| Increased memory usage | Locked pages cannot be swapped out | Shorten the time each `SecureValue` is held; call `Release()` |
 
 ## Related Documentation
 
-- [Security Overview](./) - Security architecture overview
-- [SecureValue API](../api-reference/secure-value) - Complete SecureValue API (including memory locking functions)
-- [Performance](../advanced/performance) - Memory locking performance overhead analysis
-- [Production Checklist](./production-checklist) - Pre-launch security checks
+- [Security Overview](./) - security architecture overview
+- [SecureValue API](../api-reference/secure-value) - complete SecureValue API, including memory-locking functions
+- [Performance](../advanced/performance) - memory-locking overhead
+- [Production Checklist](./production-checklist) - pre-launch security checks

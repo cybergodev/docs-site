@@ -1,20 +1,24 @@
 ---
 sidebar_label: "大文件处理指南"
 title: "大文件处理 - CyberGo JSON | 流式解析与内存控制"
-description: "CyberGo JSON 提供大文件分级处理方案，支持 ForeachFile 系列结构化迭代、StreamIterator 流式解码与 StreamJSONL 逐行消费，配合 MaxMemory、BufferSize 等配置，帮助开发者让内存占用与文件体积解耦、稳定处理日志与 ETL 数据。"
+description: "CyberGo JSON 大文件处理：ForeachFile 迭代、StreamIterator 流式解码与 JSONL 逐行处理，受 MaxJSONSize 约束。"
 sidebar_position: 10
 ---
 
 # 大文件处理
 
-对于大型 JSON 文件（如日志、配置、数据导出），直接加载到内存可能导致内存溢出。json 库提供了多种高效的处理方式。
+JSON 文件大到不适合整块载入内存时，有三种读法：`ForeachFile` 系列先整载再逐条迭代、`StreamIterator`/`StreamObjectIterator` 边读边解码、JSONL 系列逐行处理。
+
+三者的内存占用与文件体积的关系不同，下面的内容给出各自的约束与选择依据。
 
 ::: tip 提示
 流式与并行迭代器（StreamIterator、StreamObjectIterator、BatchIterator、ParallelIterator）的类型级 API 参考见 [迭代器](../api-reference/iterator)，并行处理实践见 [并发与并行处理](../advanced/concurrency)。
 :::
 
 ::: warning
-`ForeachFile` 和 `ForeachFileChunked` 在迭代前会将整个文件加载到内存中。"分块"行为仅影响内存中数据的迭代方式，不影响文件的读取方式。对于真正需要控制内存的超大文件处理，请使用 `StreamJSONL` 家族配合 JSONL 格式，或使用 `StreamIterator`。
+`ForeachFile` 和 `ForeachFileChunked` 在迭代前会将整个文件加载到内存中。"分块"行为仅影响内存中数据的迭代方式，不影响文件的读取方式。
+
+需要内存占用与文件体积解耦时，用 `StreamJSONL` 家族配合 JSONL 格式，或使用 `StreamIterator`。
 :::
 
 ## 备选方案
@@ -43,20 +47,21 @@ sidebar_position: 10
 
 ### 配置选项
 
-大文件处理配置已集成到 `Config` 中：
+大文件处理的相关字段分布在 `Config` 中：
 
 ```go
 type Config struct {
     // ... 其他配置 ...
 
-    // 大文件处理配置（生效字段）
-    MaxMemory  int64 // 最大内存使用（默认 100MB）
-    BufferSize int   // 读取缓冲区大小（默认 64KB）
+    // 大文件/流式处理字段
+    MaxJSONSize int64 // 单次读取的总字节上限（默认 100MB）
+    MaxMemory   int64 // JSONL 流式的总字节上限（默认 100MB）
+    BufferSize  int   // 读取缓冲区大小（默认 64KB）
 }
 ```
 
 ::: warning 已废弃字段不要混淆
-`Config.ChunkSize`、`SamplingEnabled`、`SampleSize` 均已废弃——不被任何代码路径读取（安全扫描是否采样由 `FullSecurityScan` 决定），设置后不改变行为。历史语境中的 `ChunkSize` 指「字节分块尺寸」，而 [`ForeachFileChunked`](#批量处理) 的参数 `chunkSize`（`int`）是**每批元素数量**，二者互不影响——`ForeachFileChunked` 的分批粒度只由它自己的参数决定（≤0 时按 100 处理）。
+`Config.ChunkSize`、`SamplingEnabled`、`SampleSize` 均已废弃，不被任何代码路径读取（安全扫描是否采样由 `FullSecurityScan` 决定），设置后不改变行为。历史语境中的 `ChunkSize` 指「字节分块尺寸」；`ForeachFileChunked` 的参数 `chunkSize`（`int`）是**每批元素数量**。二者互不影响：`ForeachFileChunked` 的分批粒度只由它自己的参数决定（≤0 时按 100 处理）。
 :::
 
 ### 基本使用
@@ -82,7 +87,7 @@ func main() {
 	err = processor.ForeachFile("large-data.json", func(key any, item *json.IterableValue) error {
 		count++
 
-		// 使用 IterableValue 便捷访问字段
+		// 用 IterableValue 按字段访问
 		id := item.GetInt("id")
 		name := item.GetString("name")
 		email := item.GetString("email")
@@ -152,10 +157,11 @@ err := processor.ForeachFile("config-map.json", func(key any, item *json.Iterabl
 
 ### 自定义配置
 ```go
-// 自定义大文件处理配置
+// 自定义大文件读取配置
 cfg := json.DefaultConfig()
-cfg.MaxMemory = 500 * 1024 * 1024  // 500MB 内存限制
-cfg.BufferSize = 128 * 1024        // 128KB 缓冲区
+cfg.MaxJSONSize = 100 * 1024 * 1024 // 读取上限（ForeachFile* 与流式迭代器共用，默认 100MB）
+cfg.MaxMemory = 500 * 1024 * 1024   // JSONL 流式处理的总字节上限
+cfg.BufferSize = 128 * 1024         // 128KB 读取缓冲
 
 processor, err := json.New(cfg)
 if err != nil {
@@ -164,9 +170,9 @@ if err != nil {
 defer processor.Close()
 ```
 
-## IterableValue 便捷方法
+## IterableValue 字段访问方法
 
-`ForeachFile*` 系列方法提供 `IterableValue` 接口，支持便捷的数据访问：
+`ForeachFile*` 系列方法提供的回调参数是 `IterableValue` 接口，支持按字段访问：
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -196,7 +202,7 @@ nested := item.GetString("data.items[0].name")      // 复杂路径
 
 ## 流式处理配置
 
-通过 `Config` 配置流式处理参数。与流式读取直接相关的字段及其实际行为：
+`Config` 中与流式读取直接相关的字段及其实际行为：
 
 | 字段 | 默认值（`DefaultConfig`） | 行为 |
 |------|--------------------------|------|
@@ -212,9 +218,10 @@ nested := item.GetString("data.items[0].name")      // 复杂路径
 ```go
 cfg := json.DefaultConfig()
 
-// 大文件处理配置
-cfg.MaxMemory = 500 * 1024 * 1024  // 500MB 内存限制
-cfg.BufferSize = 128 * 1024        // 128KB 缓冲区
+// 流式处理参数
+cfg.MaxJSONSize = 100 * 1024 * 1024 // 读取上限（默认 100MB）
+cfg.MaxMemory = 500 * 1024 * 1024   // JSONL 流式总字节上限
+cfg.BufferSize = 128 * 1024         // 128KB 读取缓冲
 
 processor, err := json.New(cfg)
 if err != nil {
@@ -241,7 +248,7 @@ _, err := json.StreamLinesInto[User](file, func(lineNum int, user User) error {
 
 ### 并行处理
 
-对于可并行处理的任务，可以使用多 goroutine：
+需要多 goroutine 分担单条处理时，可自行搭 worker pool：
 
 ```go
 package main
@@ -286,11 +293,11 @@ func main() {
 }
 ```
 
-若数据已在内存中（`[]any`），也可直接使用库内置的 [ParallelIterator](../api-reference/iterator#paralleliterator-类型) 并行迭代器，免去手写 worker pool。
+若数据已在内存中（`[]any`），可直接使用库内置的 [ParallelIterator](../api-reference/iterator#paralleliterator-类型)，省去手写 worker pool。
 
 ## 流式迭代器与并行迭代器
 
-`ForeachFile*` 需要先加载整个文件；当文件大到不适合整载内存时，应改用本节的迭代器：`StreamIterator`/`StreamObjectIterator` 直接在 `io.Reader` 上边读边解码，内存占用与数据规模无关。类型级完整 API 见[迭代器](../api-reference/iterator)。
+`ForeachFile*` 需要先加载整个文件。文件大到不适合整载内存时，改用本节的迭代器：`StreamIterator`/`StreamObjectIterator` 直接在 `io.Reader` 上边读边解码，任意时刻内存中只有当前元素。类型级完整 API 见[迭代器](../api-reference/iterator)。
 
 ### StreamIterator：逐元素流式解码大数组
 
@@ -457,13 +464,15 @@ func main() {
 
 `ForEach`/`ForEachWithContext` 任一回调返回错误即停止派发新任务并返回该错误；回调 panic 会被恢复为错误而不是拖垮进程；`Close` 通知所有 worker 收尾，可安全并发调用。带取消/超时场景使用 `ForEachWithContext`/`ForEachBatchWithContext` 变体。
 
-## 性能优化建议
+## 性能建议
 
-### 内存控制
+### 内存上限
+
+`Config.MaxMemory` 作用于 JSONL 流式入口（作为总字节上限，校验范围 10MB–1GB）。`ForeachFile*` 与 `StreamIterator` 不受它约束：前者只受 `MaxJSONSize` 限制，后者按 `MaxJSONSize` 对整个流封顶。
+
 ```go
-// 根据可用内存配置
 cfg := json.DefaultConfig()
-cfg.MaxMemory = 500 * 1024 * 1024 // 500MB
+cfg.MaxMemory = 500 * 1024 * 1024 // JSONL 流式处理的总字节上限（500MB）
 
 processor, err := json.New(cfg)
 if err != nil {
@@ -472,12 +481,13 @@ if err != nil {
 defer processor.Close()
 ```
 
-### 最佳实践
-1. **预估文件大小**：处理前检查文件大小，选择合适的策略
-2. **设置内存限制**：使用 `MaxMemory` 防止 OOM
+### 落地要点
+
+1. **先看文件大小**：按下方[选择指南](#选择指南)选读法
+2. **设对上限**：`ForeachFile*` 受 `MaxJSONSize` 约束，JSONL 流式还看 `MaxMemory`
 3. **批量提交**：积累一定数量后批量写入数据库
-4. **错误处理**：实现 `JSONLContinueOnErr` 或记录失败条目
-5. **进度监控**：定期输出处理进度
+4. **容错**：需要跳过坏行时设 `JSONLContinueOnErr`，或自行记录失败条目
+5. **进度**：按固定条数间隔输出进度
 
 ## 选择指南
 
@@ -486,10 +496,12 @@ defer processor.Close()
 | < 10MB | 直接加载 | `json.ParseAny` + `Get` |
 | 10-100MB | Processor.ForeachFile | 整载内存后逐条迭代 |
 | 100MB-1GB | StreamIterator / StreamObjectIterator（或转为 JSONL 分行） | 恒定内存，边读边解码 |
-| > 1GB | JSONL 格式 + StreamJSONL 家族 | 真正的流式处理，内存可控 |
+| > 1GB | JSONL 格式 + StreamJSONL 家族 | 逐行处理，内存占用与文件体积无关 |
 
 ::: warning 不要对超过 100MB 的文件用 ForeachFile*
-`ForeachFile*` 系列（含 `ForeachFileChunked`）在迭代前会把**整个文件读入内存**（见本页开头的警告），且受 `MaxJSONSize` 读取上限约束：默认 100MB（`DefaultMaxJSONSize`），`Config.Validate` 会把更大的值钳回 100MB——因此超过 100MB 的文件会直接收到 `ErrSizeLimit`，无法通过调大配置让 `ForeachFile*` 处理。这类输入请改用 `StreamIterator` / `StreamObjectIterator`（恒定内存；传入 `cfg.MaxJSONSize > 0` 时按该值对整个流封顶，可高于 100MB，超限输入需在构造时显式调大）或将数据转为 JSONL 后走 `StreamJSONL` 家族。
+`ForeachFile*` 系列（含 `ForeachFileChunked`）在迭代前会把**整个文件读入内存**（见开头的警告），且受 `MaxJSONSize` 读取上限约束：默认 100MB（`DefaultMaxJSONSize`），`Config.Validate` 会把更大的值钳回 100MB。
+
+超过 100MB 的文件会直接收到 `ErrSizeLimit`，调大配置也不会让 `ForeachFile*` 处理它。这类输入改用 `StreamIterator` / `StreamObjectIterator`（恒定内存；传入 `cfg.MaxJSONSize > 0` 时按该值对整个流封顶，可高于 100MB），或将数据转为 JSONL 后走 `StreamJSONL` 家族。
 :::
 
 ## API 参考

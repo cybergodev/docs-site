@@ -1,46 +1,58 @@
 ---
 sidebar_label: "编码检测实战"
 title: "编码检测实战 - CyberGo html | 字符编码自动识别指南"
-description: "CyberGo html 字符编码自动识别指南：从 HTML 字节识别编码并转 UTF-8，详解五级检测优先级（手动指定、UTF-8 快路径、BOM 与 meta 声明、统计算法采样、Windows-1252 兜底）、15+ 编码支持与别名归一化，附 GBK、Shift_JIS、Windows-1252 自动检测与 Config.Encoding 手动指定示例。"
+description: "CyberGo html 编码检测实战：从 HTML 字节判定字符编码并转 UTF-8，说明 Config.Encoding、BOM、meta 声明、合法 UTF-8 快路径与 windows-1252 兜底的先后顺序，附 GBK、Shift_JIS 与 Windows-1252 示例及失败条件。"
 sidebar_position: 50
 ---
 
 # 编码检测实战
 
-HTML 文档可能使用各种字符编码（GBK、Shift_JIS、Windows-1252 等）。库内置自动编码检测，从 HTML 字节识别编码并转 UTF-8，支持 15+ 种编码，无需手动处理。
+HTML 文档的字符编码由 `Config.Encoding`、BOM、`<meta>` 声明或数据本身决定。本页说明判定顺序、支持的编码，以及无声明页面会得到什么结果。
 
 ## 检测优先级
 
-库按以下顺序确定输入编码，依次尝试，首个命中即生效：
+检测分两阶段：基础检测给出候选编码，随后对候选打分——得分 ≥90 直接采纳，否则可能由统计打分接管。
 
-| 优先级 | 来源 | 说明 |
-|--------|------|------|
-| ① 最高 | `Config.Encoding` 手动指定 | 非空时直接使用，跳过所有自动检测 |
-| ② | UTF-8 合法性快路径 | 整体为合法 UTF-8（含纯 ASCII）的输入优先按 UTF-8 处理——非 ASCII 的合法 UTF-8 优先于 meta 声明；纯 ASCII 无 meta 声明时亦然 |
-| ③ | 基础检测：BOM 与 meta 标签声明 | BOM 优先；`<meta charset>` 或 `http-equiv="content-type"`，扫描前 1024 字节 |
-| ④ | 统计算法智能检测 | 采样最多 10KB，对多种候选编码解码打分取最优；置信度过低时回落基础检测结果 |
-| ⑤ 兜底 | Windows-1252 | 以上均未确定编码时回退 Windows-1252（西文内容最常见兜底） |
+| 优先级 | 阶段 | 来源 | 说明 |
+|--------|------|------|------|
+| ① | 强制 | `Config.Encoding` | 非空时直接使用，跳过后续全部检测 |
+| ② | 基础 | BOM | UTF-8（`EF BB BF`）、UTF-16 LE（`FF FE`）、UTF-16 BE（`FE FF`） |
+| ③ | 基础 | 纯 ASCII | 有 `<meta>` 声明则用声明值，否则按 UTF-8 |
+| ④ | 基础 | 合法 UTF-8（含非 ASCII） | 直接按 UTF-8，**忽略** meta 声明 |
+| ⑤ | 基础 | meta 声明 | `<meta charset>` 或 `http-equiv="content-type"`，只扫描前 1024 字节 |
+| ⑥ | 基础 | windows-1252 兜底 | 以上都不成立时 |
+| ⑦ | 统计 | 13 个候选编码打分 | 基础结果得分不足 90 时启用（`utf-8` 候选 70–89 分直接采纳）；采样最多 10KB |
+
+第 ③ 与第 ④ 条要分清：纯 ASCII 数据本身不携带编码信息，所以先看声明；含非 ASCII 字节的合法 UTF-8 数据则直接采信数据——有页面声明 legacy 编码而实际输出 UTF-8。
 
 ```text
 Config.Encoding 非空？── 是 ──→ 直接使用
         │
         否
         │
-纯 ASCII / 合法 UTF-8？── 是 ──→ 按 UTF-8 处理
+BOM？── 是 ──→ 使用 BOM 编码
         │
         否
         │
-BOM / meta 标签声明？── 是 ──→ 使用声明值
+纯 ASCII？── 是 ──→ 有 meta 声明用声明值，否则 UTF-8
         │
         否
         │
-统计算法（≤10KB 采样打分）──→ 采纳最优候选
+合法 UTF-8？── 是 ──→ UTF-8（忽略 meta 声明）
         │
-        └──→ 兜底 Windows-1252
+        否
+        │
+meta 声明？── 是 ──→ 使用声明值
+        │
+        否
+        │
+windows-1252 兜底
 ```
 
-:::tip BOM 检测
-BOM（字节顺序标记）在基础检测中**最先**检查：UTF-8 BOM（`EF BB BF`）、UTF-16 LE BOM（`FF FE`）、UTF-16 BE BOM（`FE FF`）。BOM 存在时直接确定编码，优先于 meta 标签声明。
+基础检测得出的编码还要过一遍打分：得分 ≥90 直接采用；得分 70–89 且基础结果是 `utf-8` 时也采用；其余情况进入统计打分（采样 ≤10KB，对 13 个候选编码解码后打分），取最高分。
+
+:::tip BOM 优先于 meta 声明
+BOM 是数据自带的编码声明，在基础检测中最先检查。BOM 存在时直接确定编码，不再看 meta 声明。
 :::
 
 ## 支持的编码
@@ -61,7 +73,7 @@ BOM（字节顺序标记）在基础检测中**最先**检查：UTF-8 BOM（`EF 
 
 ### 编码别名归一化
 
-编码名称和别名**不区分大小写**，自动归一化为标准名：
+编码名称与别名**不区分大小写**，自动归一化为标准名：
 
 | 输入别名 | 归一化结果 |
 |----------|-----------|
@@ -72,9 +84,9 @@ BOM（字节顺序标记）在基础检测中**最先**检查：UTF-8 BOM（`EF 
 | `8859-1`、`iso88591` | `iso-8859-1` |
 | `cp1252`、`windows1252` | `windows-1252` |
 
-## 自动检测示例
+## 带 meta 声明的 GBK 页面
 
-GBK 编码的中文 HTML，通过 meta 标签声明自动识别：
+GBK 编码的中文页面在 `<meta charset>` 中声明编码，基础检测据此识别：
 
 ```go
 package main
@@ -100,7 +112,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// 自动检测编码并提取（从 meta charset 识别 GBK，转 UTF-8 后提取）
+	// 自动检测：从 meta charset 识别 GBK，转 UTF-8 后提取
 	result, err := html.Extract(gbkBytes)
 	if err != nil {
 		log.Fatal(err)
@@ -117,7 +129,7 @@ func main() {
 
 ## 手动指定编码
 
-当 meta 标签缺失、声明错误，或自动检测结果不确定时，通过 `Config.Encoding` 强制指定：
+meta 缺失、声明有误，或已知来源编码时，用 `Config.Encoding` 直接指定：
 
 ```go
 cfg := html.DefaultConfig()
@@ -128,17 +140,23 @@ result, err := html.Extract(gbkBytes, cfg)
 
 | 适用场景 | 说明 |
 |----------|------|
-| 已知来源编码 | 从 HTTP `Content-Type` 头获取编码，直接指定避免误检 |
-| meta 标签缺失 | 无 `<meta charset>` 声明的旧网页 |
-| 自动检测出错 | 统计算法置信度不足，结果不正确 |
+| 已知来源编码 | 从 HTTP `Content-Type` 头取到编码后直接指定 |
+| 无 meta 声明的旧页面 | GBK/Shift_JIS 页面缺少 `<meta charset>`，会被兜底成 windows-1252 乱码 |
+| 声明与数据不符 | meta 声明错误时以 `Config.Encoding` 为准 |
 
-:::tip Config.Encoding 优先级最高
-设置 `Config.Encoding` 后，库完全跳过自动检测，直接使用指定编码解码。适合确定性场景，避免统计检测的不确定性。
+:::tip Config.Encoding 会跳过全部检测
+设置 `Config.Encoding` 后，库不读 BOM、不看 meta、也不跑统计打分，直接按指定编码解码。它适合确定性场景；反过来，指定错误会直接得到乱码或报错。
 :::
 
-### Shift_JIS 自动检测实战
+### 无声明编码的页面会得到乱码
 
-日文网页常使用 Shift_JIS 编码。即使没有 meta 声明，统计算法也能识别：
+:::warning 缺少 meta 声明时不返回错误
+没有 `<meta charset>` 的 GBK 或 Shift_JIS 页面，基础检测兜底为 windows-1252。实测这类页面解码出乱码，且 `err == nil`——没有任何错误信号。统计打分能否纠正取决于页面内容的可识别程度，不能当作兜底手段。生产上应显式设置 `Config.Encoding`，或从 HTTP 响应头取得编码。
+:::
+
+### Shift_JIS 页面：靠 meta 声明识别
+
+Shift_JIS 编码的日文页面，声明 `<meta charset="shift_jis">` 后由基础检测识别：
 
 ```go
 package main
@@ -152,8 +170,9 @@ import (
 )
 
 func main() {
-	// Shift_JIS 编码的日文 HTML（无 meta charset 声明）
-	sjisHTML := `<html><head><title>日本語ページ</title></head>` +
+	// Shift_JIS 编码的日文 HTML（meta 声明 charset=shift_jis）
+	sjisHTML := `<html><head><meta charset="shift_jis">` +
+		`<title>日本語ページ</title></head>` +
 		`<body><article><h1>こんにちは</h1>` +
 		`<p>東京の天気は晴れです。</p></article></body></html>`
 
@@ -163,7 +182,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// 统计算法自动识别 Shift_JIS（采样字节分析日文字符分布）
+	// 基础检测读取 meta 声明，转 UTF-8 后提取
 	result, err := html.Extract(sjisBytes)
 	if err != nil {
 		log.Fatal(err)
@@ -176,6 +195,15 @@ func main() {
 	// 正文：こんにちは
 	//       東京の天気は晴れです。
 }
+```
+
+同样的字节去掉 meta 声明后，标题会变成乱码（形如 `“ъ–{ЊкѓyЃ[ѓW`），`err` 仍为 `nil`。若来源无法添加声明，就显式指定编码：
+
+```go
+cfg := html.DefaultConfig()
+cfg.Encoding = "shift_jis"
+
+result, err := html.Extract(sjisBytes, cfg)
 ```
 
 ### Windows-1252 手动指定
@@ -224,32 +252,32 @@ func main() {
 
 ## 编码检测失败
 
-当编码检测或转换失败时（如数据损坏、使用了不支持的编码），返回 wrapping error：
+`encoding detection failed` 只在**指定的编码与数据不符**时出现，也就是强制指定了错误编码。两种情况：
+
+| 情况 | 错误消息 |
+|------|----------|
+| 指定 `"utf-8"`，但数据不是合法 UTF-8 | `encoding detection failed: declared charset "utf-8" but data is not valid UTF-8` |
+| 指定了不支持的编码名，且数据不是合法 UTF-8 | `encoding detection failed: unsupported encoding "..."` |
 
 ```go
-result, err := html.Extract(data)
+// data 实际是 GBK，却强制按 UTF-8 解码
+cfg := html.DefaultConfig()
+cfg.Encoding = "utf-8"
+
+_, err := html.Extract(gbkBytes, cfg)
 if err != nil {
-    if strings.Contains(err.Error(), "encoding detection failed") {
-        // 编码检测失败，fallback 手动指定
-        cfg := html.DefaultConfig()
-        cfg.Encoding = "windows-1252"
-        result, err = html.Extract(data, cfg)
-        if err != nil {
-            log.Fatal(err)
-        }
-    } else {
-        log.Fatal(err)
-    }
+    log.Println(err)
+    // encoding detection failed: declared charset "utf-8" but data is not valid UTF-8
 }
 ```
 
-:::warning 错误消息格式
-编码检测失败的错误消息固定包含 `"encoding detection failed"` 前缀，可用 `strings.Contains` 匹配。检测失败时建议 fallback 到手动指定编码。
+:::warning 按消息前缀判断，没有哨兵错误
+这类错误没有可用的哨兵值，`errors.Is` 无法命中，只能按 `"encoding detection failed"` 前缀匹配。反过来，数据没有声明编码时库不会报这个错——它按 windows-1252 静默解码，得到乱码。因此「检测失败就回退重试」并不能发现乱码页面，编码应从来源确定。
 :::
 
 ## 审计记录
 
-启用审计后，编码检测问题会记录为 `AuditEventEncodingIssue`（info 级别）：
+启用审计后，编码转换失败会记为 `AuditEventEncodingIssue`（info 级别）：
 
 ```go
 package main
@@ -265,6 +293,7 @@ func main() {
 	cfg := html.DefaultConfig()
 	cfg.Audit = html.DefaultAuditConfig()
 	cfg.Audit.Enabled = true
+	cfg.Encoding = "utf-8" // 强制 UTF-8，让 GBK 字节转换失败
 	// LogEncodingIssues 默认为 true（DefaultAuditConfig 已启用）
 
 	p, err := html.New(cfg)
@@ -273,27 +302,28 @@ func main() {
 	}
 	defer p.Close()
 
-	// 处理 HTML（编码问题时自动记录到审计日志）
-	p.Extract([]byte(`<html><body><p>content</p></body></html>`))
+	// GBK 编码的「你好」，按 UTF-8 解码会失败并记入审计日志
+	gbkBytes := []byte{0xC4, 0xE3, 0xBA, 0xC3}
+	if _, err := p.Extract(gbkBytes); err != nil {
+		fmt.Println("提取失败：", err)
+		// 提取失败： encoding detection failed: declared charset "utf-8" but data is not valid UTF-8
+	}
 
-	// 查询审计日志中的编码事件
 	for _, entry := range p.GetAuditLog() {
 		if entry.EventType == html.AuditEventEncodingIssue {
 			fmt.Printf("[编码问题] %s\n", entry.Message)
+			// [编码问题] declared charset "utf-8" but data is not valid UTF-8
 		}
 	}
-
-	fmt.Println("编码事件检查完成")
-	// 编码事件检查完成
 }
 ```
 
-:::tip 触发条件
-`AuditEventEncodingIssue` 仅在编码检测或转换失败时记录（如使用了不支持的编码且数据非有效 UTF-8）。正常文档不会产生此事件。编码问题属于 `info` 级别（最低），表明数据可能未被完美解码但不影响安全性。如需过滤，使用 `LevelFilteredSink` 设置最低级别为 `warning` 即可排除。
+:::tip 何时记录该事件
+`AuditEventEncodingIssue` 只在编码转换失败时记录，也就是强制指定了错误编码的情况。正常文档不会产生此事件。该事件属于 `info` 级别（最低），表示解码结果不可靠，但不影响安全判定。需要过滤时用 `NewLevelFilteredSink` 把最低级别设为 `warning`。
 :::
 
 ## 下一步
 
 - [内容提取实战](./content-extraction) - 提取流程与文章识别
 - [错误处理](../performance/error-handling) - 哨兵错误与结构化错误处理
-- [API 参考：配置](../../api-reference/core/config) - Encoding 字段与所有配置选项
+- [API 参考：配置](../../api-reference/core/config) - Encoding 字段与全部配置项

@@ -7,14 +7,14 @@ sidebar_position: 2
 
 # 包函数
 
-包级便捷函数提供简洁的 API，适合大多数使用场景。这些函数使用全局默认加载器，所有函数都是线程安全的。
+包级函数直接操作全局默认加载器，省去传递 Loader 实例。所有函数都是线程安全的。
 
 ::: info 初始化要求
-全局默认加载器必须通过 `Load()` 或 `LoadWithConfig()` 显式初始化，**不会**在首次调用时自动创建。若未初始化，函数行为如下：
+全局默认加载器必须通过 `Load()`、`Overload()` 或 `LoadWithConfig()` 显式初始化，**不会**在首次调用时自动创建。未初始化时：
 
-- `Get*` 函数（`GetString`、`GetInt`、`GetBool` 等）：返回传入的默认值（或零值）
+- `Get*` 函数（`GetString`、`GetInt`、`GetBool` 等）：返回传入的默认值，未提供时为类型零值
 - `Lookup`：返回 `("", false)`
-- `Keys`/`All`/`Len`/`GetSecure`：返回 `nil`/`0`
+- `Keys`/`All`/`GetSecure` 返回 `nil`，`Len` 返回 `0`
 - `Set`/`Delete`/`Validate`/`ParseInto`：返回 `ErrNotInitialized`
 :::
 
@@ -29,17 +29,20 @@ func Load(filenames ...string) error
 加载环境变量文件并应用到系统环境。
 
 **参数：**
-- `filenames` - 文件路径列表。未提供时默认加载 `.env` 文件（使用 `DefaultConfig()` 的 `Filenames` 设置）。
+- `filenames` - 文件路径列表。未提供时默认加载 `.env`（沿用 `DefaultConfig()` 的 `Filenames`）。路径须为相对路径
 
 **返回：**
-- `error` - 加载错误
+- `error` - 加载错误；默认加载器已初始化时返回 `ErrAlreadyInitialized`
 
 **行为：**
-- 创建新的 Loader 实例并设为默认加载器
-- 自动应用到系统环境（`os.Environ`）
-- 后加载的文件可覆盖先加载的（受 `OverwriteExisting` 配置控制，`Load()` 默认 `false` 即不覆盖）
-- 返回 `ErrAlreadyInitialized` 如果默认加载器已初始化
+- 以 `DefaultConfig()` 为基础新建 Loader，设为默认加载器
+- 强制 `AutoApply = true`，加载后写入进程环境
+- `OverwriteExisting` 保持默认 `false`：先加载的文件胜出；要允许后加载覆盖先加载，用 `Overload`
 - 支持多格式（.env、JSON、YAML）
+
+::: warning 初始化失败也会留下进程环境变量
+`New()` 在构造期间就会把变量写入进程环境（`AutoApply=true`）。若随后安装默认加载器失败（例如并发 `Load` 返回 `ErrAlreadyInitialized`），内部 Loader 会被关闭，但已写入的进程变量**不会**被撤销。此时应把失败的 `Load` 理解为「默认加载器未改变」，而不是「进程环境未改变」。
+:::
 
 ```go
 // 加载 .env 文件
@@ -47,7 +50,7 @@ if err := env.Load(".env"); err != nil {
     log.Fatal(err)
 }
 
-// 加载指定文件（按顺序，如需覆盖需设置 OverwriteExisting）
+// 加载指定文件（按顺序；要允许后者覆盖前者需改用 Overload 或 LoadWithConfig）
 if err := env.Load(".env", ".env.local", "config.json"); err != nil {
     log.Fatal(err)
 }
@@ -63,7 +66,7 @@ port := env.GetInt("database.port")    // 5432
 
 ## 键名解析
 
-所有获取函数都支持智能键名解析，提供灵活的访问方式。
+所有获取函数都支持同一套键名解析规则：精确匹配、大写转换与点号路径。
 
 ### 解析规则
 
@@ -73,9 +76,9 @@ port := env.GetInt("database.port")    // 5432
 name := env.GetString("APP_NAME")  // "myapp"
 ```
 
-**2. 大写转换（简单键）**
+**2. 大写转换**
 ```go
-// 对于不含点号的键，自动尝试大写版本
+// 任意键名在精确匹配失败后，自动尝试大写版本
 name := env.GetString("app_name")  // 查找 app_name -> APP_NAME
 ```
 
@@ -101,18 +104,18 @@ name := env.GetString("APP.NAME")   // 大写点号路径
 
 ### 索引访问
 
-数组元素可通过索引访问，或回退到逗号分隔值：
+数组元素可通过索引访问。索引键未命中时，回退到逗号分隔值取对应元素：
 
 ```go
 // JSON: {"servers": [{"host": "a.com"}, {"host": "b.com"}]}
-// 存储为：SERVERS_0_HOST=a.com, SERVERS_1_HOST=b.com
+// 存储为：SERVERS_0_HOST=a.com、SERVERS_1_HOST=b.com
 
 host0 := env.GetString("servers.0.host")  // "a.com"
 host1 := env.GetString("servers.1.host")  // "b.com"
 
-// 如果键不存在但存在逗号分隔的基础值
+// 索引键不存在，但基础值是逗号分隔的
 // HOSTS=localhost,example.com
-host0 := env.GetString("hosts.0")  // "localhost" (从逗号分隔值解析)
+host0 := env.GetString("hosts.0")  // "localhost"
 ```
 
 ---
@@ -125,14 +128,14 @@ host0 := env.GetString("hosts.0")  // "localhost" (从逗号分隔值解析)
 func GetString(key string, defaultValue ...string) string
 ```
 
-获取字符串值。支持点号路径解析。
+获取字符串值，支持点号路径解析。返回值不做 trim：`.env` 值在解析期已去首尾空白，JSON/YAML 值保留首尾空白。
 
 **参数：**
 - `key` - 键名（支持精确匹配、大写转换、点号路径）
 - `defaultValue` - 可选默认值
 
 **返回：**
-- `string` - 值或默认值（未找到且无默认值时返回空字符串）
+- `string` - 键存在时返回存储原值（即使是空字符串）；键不存在时返回默认值，未提供默认值则返回 `""`
 
 ```go
 // 基本用法
@@ -154,7 +157,7 @@ value := env.GetString("NON_EXISTENT")  // ""
 func GetInt(key string, defaultValue ...int64) int64
 ```
 
-获取整数值。自动转换字符串为整数。支持点号路径解析。
+获取整数值。把字符串自动转为整数，支持点号路径解析。格式非法时记审计并返回默认值。
 
 **参数：**
 - `key` - 键名（支持点号路径）
@@ -179,10 +182,12 @@ value := env.GetInt("NON_EXISTENT")  // 0
 func GetBool(key string, defaultValue ...bool) bool
 ```
 
-获取布尔值。支持点号路径解析。
+获取布尔值。支持点号路径解析，比较不区分大小写（仅 ASCII）。
 
-- **真值（不区分大小写）：** `true`, `1`, `yes`, `on`, `enabled`
-- **假值（不区分大小写）：** `false`, `0`, `no`, `off`, `disabled`
+- **真值：** `true`、`1`、`yes`、`on`、`enabled`
+- **假值：** `false`、`0`、`no`、`off`、`disabled`
+- **空字符串**解析为 `false`，不会回落到默认值
+- **其他值**记审计事件并返回默认值
 
 **参数：**
 - `key` - 键名（支持点号路径）
@@ -207,7 +212,7 @@ value := env.GetBool("NON_EXISTENT")  // false
 func GetUint64(key string, defaultValue ...uint64) uint64
 ```
 
-获取无符号整数值。支持点号路径解析。
+获取无符号整数值，支持点号路径解析。负数或格式非法时记审计并返回默认值。
 
 **参数：**
 - `key` - 键名（支持点号路径）
@@ -232,7 +237,7 @@ value := env.GetUint64("NON_EXISTENT")  // 0
 func GetFloat64(key string, defaultValue ...float64) float64
 ```
 
-获取浮点数值。支持点号路径解析。
+获取浮点数值，支持点号路径解析。格式非法时记审计并返回默认值。
 
 **参数：**
 - `key` - 键名（支持点号路径）
@@ -257,7 +262,7 @@ value := env.GetFloat64("NON_EXISTENT")  // 0
 func GetDuration(key string, defaultValue ...time.Duration) time.Duration
 ```
 
-获取时间间隔值。支持点号路径解析。
+获取时间间隔值，支持点号路径解析。值须符合 Go `time.ParseDuration` 语法，否则记审计并返回默认值。
 
 **支持的格式：**
 - `300ms` - 毫秒
@@ -288,13 +293,13 @@ value := env.GetDuration("NON_EXISTENT")  // 0
 func GetSecure(key string) *SecureValue
 ```
 
-获取安全值（用于敏感数据）。
+获取安全值（用于敏感数据）。每次调用都返回新的防御性副本。
 
 **参数：**
 - `key` - 键名
 
 **返回：**
-- `*SecureValue` - 安全值包装器，键不存在或加载器不可用返回 nil
+- `*SecureValue` - 安全值包装器；键不存在、默认加载器未初始化或值已关闭时返回 nil
 
 ```go
 secret := env.GetSecure("API_KEY")
@@ -307,7 +312,7 @@ if secret != nil {
 ```
 
 ::: warning 重要
-使用后必须调用 `Release()` 或 `Close()` 释放资源。推荐使用 `defer` 确保释放。
+使用后必须调用 `Release()` 或 `Close()` 释放资源，推荐用 `defer`。
 :::
 
 ::: tip 详见
@@ -322,23 +327,25 @@ if secret != nil {
 func GetSlice[T sliceElement](key string, defaultValue ...[]T) []T
 ```
 
-泛型函数，获取切片值。
+泛型函数，从默认加载器获取切片值。
 
-**支持的类型：** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
+**支持的类型：** `string`、`int`、`int64`、`uint`、`uint64`、`bool`、`float64`、`time.Duration`
 
-**注意：** 这是一个泛型函数，不是 Loader 的方法。如需从指定 Loader 实例获取切片，使用 `GetSliceFrom[T]`。
+**注意：** 这是泛型函数，不是 Loader 的方法。要从指定 Loader 实例取切片，用 `GetSliceFrom[T]`。
 
 **解析顺序：**
-1. 优先查找索引键 `KEY_0`, `KEY_1`, `KEY_2`...
+1. 优先查找索引键 `KEY_0`、`KEY_1`、`KEY_2`……
 2. 若无索引键，则按逗号分隔解析 `KEY` 的值
 3. 支持点号路径解析
+
+两种来源的失败语义不同：索引键元素解析失败时记审计并跳过该元素，保留其余元素；全部索引键都失败时视为未命中，继续回退。逗号分隔回退解析失败时整个列表丢弃，返回默认值。详见下文「GetSliceFrom 的两套失败语义」。
 
 **参数：**
 - `key` - 键名
 - `defaultValue` - 可选默认值
 
 **返回：**
-- `[]T` - 切片值
+- `[]T` - 切片值；未命中且无默认值时返回 nil
 
 ```go
 // 索引键格式（推荐）
@@ -378,17 +385,17 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
-从指定 Loader 实例获取切片值。这是独立的泛型函数（不是 Loader 方法）。
+从指定 Loader 实例获取切片值。这是独立的泛型函数，不是 Loader 方法。
 
 **参数：**
-- `loader` - Loader 实例指针（如果为 nil，返回默认值）
+- `loader` - Loader 实例指针；为 nil 或已关闭时返回默认值
 - `key` - 键名
 - `defaultValue` - 可选默认值
 
 **返回：**
-- `[]T` - 切片值
+- `[]T` - 切片值；未命中且无默认值时返回 nil
 
-**支持的类型：** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
+**支持的类型：** `string`、`int`、`int64`、`uint`、`uint64`、`bool`、`float64`、`time.Duration`
 
 ```go
 loader, _ := env.New(cfg)
@@ -419,14 +426,14 @@ portsUint64 := env.GetSliceFrom[uint64](loader, "PORTS")
 func Lookup(key string) (string, bool)
 ```
 
-检查键是否存在并获取值。支持点号路径解析。
+检查键是否存在并获取值，支持点号路径解析。索引访问时同样回退到逗号分隔值。
 
 **参数：**
 - `key` - 键名（支持点号路径）
 
 **返回：**
-- `string` - 值（返回存储原值，不做 trim：`.env` 值在解析期已去除首尾空白，JSON/YAML 值可能保留空白）
-- `bool` - 是否存在
+- `string` - 值；返回存储原值，不做 trim。`.env` 值在解析期已去除首尾空白，JSON/YAML 值保留首尾空白
+- `bool` - 是否存在；默认加载器未初始化时返回 `("", false)`
 
 ```go
 value, exists := env.Lookup("API_KEY")
@@ -448,10 +455,10 @@ if value, exists := env.Lookup("database.host"); exists {
 func Keys() []string
 ```
 
-获取所有键名。
+获取所有键名。结果是近似快照（与 `Loader.Keys` 相同，逐分片遍历）。
 
 **返回：**
-- `[]string` - 键名列表，加载器不可用时返回 nil
+- `[]string` - 键名列表；默认加载器未初始化时返回 nil
 
 ```go
 keys := env.Keys()
@@ -468,10 +475,10 @@ for _, key := range keys {
 func All() map[string]string
 ```
 
-获取所有键值对。
+获取所有键值对。返回的 map 把值复制为普通字符串，不受 `SecureValue` 保护（SEC-010）；配置含机密时不要记录或长期保存这份快照。
 
 **返回：**
-- `map[string]string` - 键值映射，加载器不可用时返回 nil
+- `map[string]string` - 键值映射；默认加载器未初始化时返回 nil
 
 ```go
 all := env.All()
@@ -488,10 +495,10 @@ for key, value := range all {
 func Len() int
 ```
 
-获取变量数量。
+获取变量数量。基于原子计数，并发写入进行中时读数滞后于实际值。
 
 **返回：**
-- `int` - 变量数量，加载器不可用时返回 0
+- `int` - 变量数量；默认加载器未初始化时返回 0
 
 ```go
 count := env.Len()
@@ -508,24 +515,24 @@ fmt.Printf("已加载 %d 个环境变量\n", count)
 func Set(key, value string) error
 ```
 
-设置环境变量。
+设置环境变量，等价于 `Loader.Set`。跳过与写入的判定规则（`OverwriteExisting`、`AutoApply`）与实例方法一致。
 
 **参数：**
 - `key` - 键名
 - `value` - 值
 
 **返回：**
-- `error` - 设置错误
+- `error` - 设置错误；默认加载器未初始化时返回 `ErrNotInitialized`
 
 **错误类型：**
 - `*ValidationError` - 键名格式无效（Field="key"）
 - `*SecurityError` - 键被禁止（可用 `errors.Is(err, env.ErrSecurityViolation)` 匹配）
-- `ErrInvalidValue` - 值无效（当 `ValidateValues` 为 true 时，值包含空字节、控制字符等不安全内容）
+- `ErrInvalidValue` - 值无效（`ValidateValues` 为 true 时，值含空字节、控制字符等）
 - `ErrClosed` - 加载器已关闭
 
 ```go
 if err := env.Set("CUSTOM_KEY", "value"); err != nil {
-    // 可能是 *SecurityError（禁止键）或 *ValidationError（键格式）
+    // 按上面的错误类型分支：禁止键为 *SecurityError，键格式非法为 *ValidationError
 }
 ```
 
@@ -537,13 +544,13 @@ if err := env.Set("CUSTOM_KEY", "value"); err != nil {
 func Delete(key string) error
 ```
 
-删除环境变量。
+删除环境变量，等价于 `Loader.Delete`：只从内存删除并清零；若该键由默认加载器写入进程环境，也一并 unset。
 
 **参数：**
 - `key` - 键名
 
 **返回：**
-- `error` - 删除错误
+- `error` - 删除错误；默认加载器未初始化时返回 `ErrNotInitialized`
 
 ```go
 if err := env.Delete("TEMP_KEY"); err != nil {
@@ -588,13 +595,13 @@ if err := env.Validate(); err != nil {
 func ParseInto(v any) error
 ```
 
-将环境变量映射到结构体。
+将默认加载器中的环境变量映射到结构体，等价于 `Loader.ParseInto`。`v` 必须是结构体指针，否则返回 `*ValidationError`（Field 为 `value`）。
 
 **参数：**
 - `v` - 结构体指针
 
 **返回：**
-- `error` - 映射错误
+- `error` - 映射错误；默认加载器未初始化时返回 `ErrNotInitialized`
 
 ```go
 type Config struct {
@@ -634,12 +641,12 @@ func ResetDefaultLoader() error
 重置全局默认加载器。主要用于测试场景。
 
 **返回：**
-- `error` - 关闭旧加载器的错误（如果存在）；如果之前没有加载器或关闭成功则返回 nil
+- `error` - 关闭旧加载器的错误（如果存在）。此前没有加载器、或关闭成功时返回 nil
 
 **行为：**
-- 通过 `defaultMu.Lock()` 加锁后，使用 `defaultLoader.Swap(nil)` 原子地将默认加载器交换为 nil，然后立即释放锁
-- 在锁**外**关闭旧的加载器（避免在持有锁的状态下执行可能耗时的清理操作，防止 `Close()` 触发需要默认加载器的代码时发生死锁）
-- 重置后允许通过 `Load()` 或 `LoadWithConfig()` 创建新的默认加载器
+- 加锁后用 `defaultLoader.Swap(nil)` 原子地把默认加载器置为 nil，随即释放锁
+- 在锁**外**关闭旧加载器，避免持锁期间执行清理；否则 `Close()` 里若触发需要默认加载器的代码就会死锁
+- 重置后可通过 `Load()`、`Overload()` 或 `LoadWithConfig()` 创建新的默认加载器
 
 ```go
 func TestMain(m *testing.M) {
@@ -659,7 +666,7 @@ func TestSomething(t *testing.T) {
 ```
 
 ::: warning 注意
-此函数是并发安全的，但仅在测试或启动时调用以避免意外行为。
+该函数并发安全，但只在测试或启动阶段调用；运行期重置会让其他 goroutine 里已缓存的默认加载器引用失效。
 :::
 
 ---
@@ -673,19 +680,19 @@ func LoadWithConfig(cfg Config) error
 使用自定义配置初始化默认加载器。
 
 **参数：**
-- `cfg` - 自定义配置
+- `cfg` - 自定义配置。传全零值等价于 `DefaultConfig()`；从 `DefaultConfig()` 或预设开始改
 
 **返回：**
-- `error` - 初始化错误
+- `error` - 初始化错误；默认加载器已初始化时返回 `ErrAlreadyInitialized`
 
 **行为：**
-- 设置包级默认加载器（`GetString`、`GetInt` 等函数使用）
-- **强制** `AutoApply = true`（无论 cfg 中的设置）
-- 返回 `ErrAlreadyInitialized` 如果默认加载器已初始化
+- 设置包级默认加载器（供 `GetString`、`GetInt` 等函数使用）
+- **强制** `AutoApply = true`，忽略 cfg 中的设置
+- 配置非法时返回包装了 `ErrInvalidConfig` 的错误
 
 **与 Load 的区别：**
-- `Load()` - 仅接受文件名列表，使用默认配置
-- `LoadWithConfig()` - 接受完整 Config，支持所有配置选项
+- `Load()` - 只接受文件名列表，其余配置取默认值
+- `LoadWithConfig()` - 接受完整 Config，可设置所有配置项
 
 ```go
 cfg := env.DefaultConfig()
@@ -699,7 +706,7 @@ port := env.GetInt("PORT", 8080)
 ```
 
 ::: warning 注意
-此函数会强制将 `cfg.AutoApply` 设为 `true`，确保变量应用到系统环境。如需控制应用时机，请使用 `New()` 创建独立实例。
+本函数会强制把 `cfg.AutoApply` 设为 `true`，确保变量进入系统环境。需要控制应用时机时，用 `New()` 创建独立实例。
 :::
 
 ---
@@ -710,9 +717,11 @@ port := env.GetInt("PORT", 8080)
 func Overload(filenames ...string) error
 ```
 
-`Load` 的「后加载覆盖」变体：以 `OverwriteExisting = true` 初始化默认加载器。当多个文件定义同名键时**后加载的文件胜出**，且加载值会替换**进程环境中已存在**的同名变量（godotenv 的 Overload 约定）。
+`Load` 的「后加载覆盖」变体：以 `OverwriteExisting = true` 初始化默认加载器。多个文件定义同名键时**后加载的文件胜出**；加载的值还会替换**进程环境中已存在**的同名变量（godotenv 的 Overload 约定）。
 
-**安全提示：** `Load` 从不改动进程中已存在的变量——部署注入的变量（容器密钥、CI 变量）始终优先于文件值；`Overload` 会移除这一保护（文件值覆盖同名进程变量）。存疑时优先用 `Load` 并按优先级排序文件。单文件内的重复键语义仍由 `DuplicateKeyPolicy` 决定（见 [Config API](./config#duplicatekeypolicy-单文档内重复键)）。
+**安全提示：** `Load` 从不改动进程中已存在的变量，部署注入的变量（容器密钥、CI 变量）始终优先于文件值。`Overload` 会移除这一保护，文件值将覆盖同名进程变量。
+
+无法确定时优先用 `Load`，并按优先级排序文件。单文件内的重复键语义仍由 `DuplicateKeyPolicy` 决定（见 [Config API](./config#duplicatekeypolicy-单文档内重复键)）。
 
 **参数：**
 - `filenames` - 文件路径列表，未提供时默认加载 `.env`
@@ -738,9 +747,9 @@ key := env.GetString("deepseek.key", "")
 func Marshal(data any, format ...FileFormat) (string, error)
 ```
 
-将数据序列化为指定格式的字符串。支持 `map[string]string` 或结构体作为输入。
+将数据序列化为指定格式的字符串。输入可以是 `map[string]string` 或结构体。输出键始终按字典序排序。
 
-**接口集成：** 如果输入类型实现了 `Marshaler` 接口，优先调用 `MarshalEnv()` 方法进行序列化。
+**接口集成：** 输入类型实现 `Marshaler` 接口时，优先调用其 `MarshalEnv()` 方法进行序列化。
 
 **参数：**
 - `data` - 要序列化的数据（map 或结构体）
@@ -751,9 +760,16 @@ func Marshal(data any, format ...FileFormat) (string, error)
 - `error` - 序列化错误
 
 **支持格式：**
-- `FormatEnv` (默认) - .env 格式
+- `FormatEnv`（默认）- .env 格式
 - `FormatJSON` - JSON 格式
 - `FormatYAML` - YAML 格式
+
+`.env` 输出对需要保护的值加双引号并转义，保证 `Marshal` → `Load` 往返后取回原值：
+
+- 含 `$` 的值加引号，并把 `$` 转义为 `\$`（SEC-009）。否则再次加载时会被当作变量引用展开
+- 含空格、`#`、`'`、换行、制表符、`"` 或反斜杠的值按需加引号
+- 值为 `null` 或 `~` 时加引号，否则在 `AllowYamlSyntax=true` 下重载会被折叠为空字符串
+- 空值输出为 `""`
 
 > JSON/YAML 输出的类型推断、下划线键重建嵌套、标量加引号保往返等行为详见[序列化 · 输出形态](../guides/serialization)。
 
@@ -787,11 +803,11 @@ envStr, _ := env.Marshal(Config{Host: "localhost", Port: "8080"})
 func UnmarshalMap(data string, format ...FileFormat) (map[string]string, error)
 ```
 
-将格式化字符串解析为 map。支持自动格式检测。
+将格式化字符串解析为 map。`FormatAuto` 时按内容自动检测：空内容或首个非空行不像 JSON/YAML 时按 `.env` 处理。
 
 **参数：**
 - `data` - 格式化字符串
-- `format` - 可选格式，默认 `FormatEnv`；使用 `FormatAuto` 自动检测
+- `format` - 可选格式，默认 `FormatEnv`；传 `FormatAuto` 自动检测
 
 **返回：**
 - `map[string]string` - 解析后的键值对
@@ -817,9 +833,19 @@ m, _ := env.UnmarshalMap(jsonString, env.FormatAuto)
 func UnmarshalMapWithConfig(cfg Config, data string, format ...FileFormat) (map[string]string, error)
 ```
 
-带完整 `Config` 语义的 `UnmarshalMap`：`LimitsConfig`（文件大小、行/键/值长度、变量数）、`ParsingConfig`（重复键策略；变量展开——仅作用于 `.env` 输入，JSON/YAML 值从不展开）、`JSONConfig`/`YAMLConfig` 格式选项、`ValidationConfig`（键值规则、`RequiredKeys`）与 `ComponentConfig`（自定义验证器/展开器/审计器；`Prefix` 按文件加载同规则过滤键）全部生效。`FileConfig`（`Filenames`/`FailOnMissingFile`/`OverwriteExisting`/`AutoApply`）无一次性对应，被忽略。
+带完整 `Config` 语义的 `UnmarshalMap`。以下配置段全部生效：
 
-`cfg` 遵循标准零值约定：全零 `Config` 视为 `DefaultConfig()`；部分设置会被 `ErrInvalidConfig` 拒绝——始终从 `DefaultConfig()` 开始。`UnmarshalMap` 是无配置快捷方式，内部即走此函数的 `DefaultConfig` 管线（SEC-002：各格式统一应用禁止键策略与键验证）。
+- `LimitsConfig`：文件大小、行/键/值长度、变量数
+- `ParsingConfig`：重复键策略；变量展开仅作用于 `.env` 输入，JSON/YAML 值从不展开
+- `JSONConfig`/`YAMLConfig`：格式选项
+- `ValidationConfig`：键值规则与 `RequiredKeys`（解析结束时检查必需键是否齐备）
+- `ComponentConfig`：自定义验证器/展开器/审计器；`Prefix` 按文件加载的同一规则过滤键（前缀自动转大写后大小写不敏感比较）
+
+`FileConfig`（`Filenames`/`FailOnMissingFile`/`OverwriteExisting`/`AutoApply`）无一次性对应，被忽略。
+
+`cfg` 遵循标准零值约定：全零 `Config` 视为 `DefaultConfig()`；部分设置会被 `ErrInvalidConfig` 拒绝，所以始终从 `DefaultConfig()` 开始。
+
+`UnmarshalMap` 是无配置快捷方式，内部即走此函数的 `DefaultConfig` 管线（SEC-002：各格式统一应用禁止键策略与键验证）。
 
 **参数：**
 - `cfg` - 完整配置（从 `DefaultConfig()` 或预设开始）
@@ -844,15 +870,15 @@ m, err := env.UnmarshalMapWithConfig(cfg, yamlData, env.FormatYAML)
 func UnmarshalStruct(data string, v any, format ...FileFormat) error
 ```
 
-将格式化字符串解析并填充到结构体。
+将格式化字符串解析为 map，再填入结构体。内部走 `UnmarshalMap` 的 `DefaultConfig` 管线。
 
 **参数：**
 - `data` - 格式化字符串
 - `v` - 结构体指针
-- `format` - 可选格式，默认 `FormatEnv`
+- `format` - 可选格式，默认 `FormatEnv`；`FormatAuto` 从数据自动检测
 
 **返回：**
-- `error` - 解析错误
+- `error` - 解析或填充错误
 
 ```go
 type Config struct {
@@ -862,7 +888,7 @@ type Config struct {
 
 var cfg Config
 err := env.UnmarshalStruct("SERVER_HOST=localhost\nSERVER_PORT=8080", &cfg)
-// cfg.Host = "localhost", cfg.Port = 8080
+// cfg.Host = "localhost"，cfg.Port = 8080
 
 // 从 JSON 解析
 err = env.UnmarshalStruct(`{"server": {"host": "localhost"}}`, &cfg, env.FormatJSON)
@@ -876,7 +902,7 @@ err = env.UnmarshalStruct(`{"server": {"host": "localhost"}}`, &cfg, env.FormatJ
 func UnmarshalStructWithConfig(cfg Config, data string, v any, format ...FileFormat) error
 ```
 
-`UnmarshalStruct` 的配置驱动版本：先按 `cfg` 的全部解析规则（限制、重复键策略、展开、验证、自定义组件，同 [UnmarshalMapWithConfig](#unmarshalmapwithconfig)）解析字符串为 map，再填入结构体。
+`UnmarshalStruct` 的配置驱动版本。先按 `cfg` 的全部解析规则（限制、重复键策略、展开、验证、自定义组件，同 [UnmarshalMapWithConfig](#unmarshalmapwithconfig)）把字符串解析为 map，再填入结构体。
 
 **参数：**
 - `cfg` - 完整配置
@@ -904,9 +930,9 @@ if err := env.UnmarshalStructWithConfig(cfg, yamlData, &out, env.FormatYAML); er
 func UnmarshalInto(data map[string]string, v any) error
 ```
 
-将 map 填充到结构体。支持 `env` 和 `envDefault` 标签。
+将 map 填充到结构体。支持 `env` 与 `envDefault` 标签。`v` 为 nil 或非结构体指针时返回 `*ValidationError`（Field 为 `value`）。
 
-**接口集成：** 如果目标类型实现了 `Unmarshaler` 接口，优先调用 `UnmarshalEnv(data)` 方法。
+**接口集成：** 目标类型实现 `Unmarshaler` 接口时，优先调用其 `UnmarshalEnv(data)` 方法。
 
 **参数：**
 - `data` - 键值对映射
@@ -924,7 +950,7 @@ type Config struct {
 data := map[string]string{"HOST": "example.com"}
 var cfg Config
 err := env.UnmarshalInto(data, &cfg)
-// cfg.Host = "example.com", cfg.Port = 8080 (使用默认值)
+// cfg.Host = "example.com"，cfg.Port = 8080（取自 envDefault）
 ```
 
 ---
@@ -935,16 +961,16 @@ err := env.UnmarshalInto(data, &cfg)
 func MarshalStruct(v any) (map[string]string, error)
 ```
 
-将结构体转换为 map。支持 `env` 标签指定键名。
+将结构体转换为 `map[string]string`。支持 `env` 标签指定键名；未打标签的字段用字段名的大写形式作键。嵌套结构体按下划线拼接成扁平键，`env:"-"` 的字段跳过。
 
-**接口集成：** 如果输入类型实现了 `Marshaler` 接口，优先调用 `MarshalEnv()` 方法。
+**接口集成：** 输入类型实现 `Marshaler` 接口时，优先调用其 `MarshalEnv()` 方法，再把返回内容解析为 map。
 
 **参数：**
 - `v` - 结构体或结构体指针
 
 **返回：**
 - `map[string]string` - 键值对映射
-- `error` - 转换错误
+- `error` - 转换错误；`v` 不是结构体或结构体指针时返回 `*MarshalError`
 
 ```go
 type Config struct {
@@ -966,13 +992,13 @@ m, _ := env.MarshalStruct(cfg)
 func IsMarshalError(err error) bool
 ```
 
-检查错误是否为序列化/反序列化错误。
+检查错误链中是否含有 `*MarshalError`（内部用 `errors.As`）。
 
 **参数：**
-- `err` - 要检查的错误
+- `err` - 要检查的错误；nil 返回 false
 
 **返回：**
-- `bool` - 是否为 MarshalError 类型
+- `bool` - 是否为 `MarshalError` 类型
 
 ```go
 _, err := env.MarshalStruct(invalidData)
@@ -1042,7 +1068,7 @@ func main() {
 
 ### GetUint64 / GetFloat64
 
-除常用类型外，包级与 Loader 方法均提供无符号整数与浮点读取：
+除常用类型外，包级函数与 Loader 方法都提供无符号整数与浮点读取：
 
 <!-- check-code: skip -->
 ```go
@@ -1052,7 +1078,7 @@ u := loader.GetUint64("RATE_LIMIT", 1000)       // Loader 方法同签名
 f := loader.GetFloat64("SAMPLE_RATE", 0.5)
 ```
 
-### 布尔值的宽松解析
+### 布尔值的解析规则
 
 `GetBool` 大小写不敏感地接受以下写法：
 
@@ -1060,26 +1086,26 @@ f := loader.GetFloat64("SAMPLE_RATE", 0.5)
 |------|------|
 | `true`、`yes`、`on`、`1`、`enabled` | `false`、`no`、`off`、`0`、`disabled` |
 
-空字符串解析为 `false`；其余值触发 `ValidationError` 并**返回默认值**（同时记录审计事件）。
+空字符串解析为 `false`，不会回落到默认值。其余非法值记一条审计事件，并返回默认值。
 
 ### 解析失败与默认值的关系
 
-所有 `Get*` 函数在**键不存在**或**值解析失败**时都返回默认值（未提供则零值），不会 panic 或返回 error。解析失败会以 `parse failed` 记入审计日志，便于排查脏配置。
+所有 `Get*` 函数在**键不存在**或**值解析失败**时返回默认值（未提供时为类型零值），不会 panic，也不返回 error。解析失败会以 `parse failed` 记入审计日志，便于排查脏配置。
 
 ### GetSliceFrom 的两套失败语义
 
-实例模式下 `GetSliceFrom[T](loader, key)` 按索引键（`KEY_0`、`KEY_1`…）收集元素，未命中时回退逗号分隔值。两种来源的解析失败语义不同：
+实例模式下 `GetSliceFrom[T](loader, key)` 按索引键（`KEY_0`、`KEY_1`……）收集元素，未命中时回退逗号分隔值。两种来源的失败语义不同：
 
 | 来源 | 元素解析失败时 |
 |------|----------------|
-| 索引键（`KEY_0`…） | 记审计后**跳过该元素**，保留其余元素 |
+| 索引键（`KEY_0`……） | 记审计后**跳过该元素**，保留其余元素；若全部元素都失败，视为未命中，继续回退 |
 | 逗号分隔回退 | **整表失败**，返回默认值（或 nil） |
 
-泛型元素类型约束为：`string`、`int`、`int64`、`uint`、`uint64`、`bool`、`float64`、`time.Duration`。切片长度上限 10000（防御性限制，超限记录审计）。
+泛型元素类型约束为 `string`、`int`、`int64`、`uint`、`uint64`、`bool`、`float64`、`time.Duration`。切片长度上限 10000，这是防御性限制，超限记录审计。
 
 ### LoadWithConfig 强制 AutoApply
 
-`Load()` 与 `LoadWithConfig()` 都会**强制** `AutoApply=true`（无论传入配置如何）——包级便捷函数依赖变量已进入进程环境。需要手动控制应用时机时，使用 `New()` 实例模式。
+`Load()` 与 `LoadWithConfig()` 都会**强制** `AutoApply=true`，忽略传入配置：包级便捷函数依赖变量已进入进程环境。需要手动控制应用时机时，改用 `New()` 实例模式。
 
 ## 相关文档
 

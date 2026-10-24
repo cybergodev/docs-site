@@ -7,6 +7,8 @@ sidebar_position: 10
 
 # Configuration
 
+`Config` is HTTPC's main configuration struct, composed of five sub-configs plus `Defaults`. This page lists each field's type, default value, and validation bounds, together with the values of the five presets.
+
 ## Config
 
 ```go
@@ -20,7 +22,7 @@ type Config struct {
 }
 ```
 
-The main configuration struct; the five sub-configs and `Defaults` are all **value types**. Use `DefaultConfig()` to obtain secure defaults — the returned Config can have its fields modified directly.
+All five sub-configs and `Defaults` are **value types**. `DefaultConfig()` returns a Config with secure defaults; its fields can be modified directly.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -38,10 +40,15 @@ cfg.Retry.MaxRetries = 5
 client, err := httpc.New(cfg)
 ```
 
-`New()` deep-copies the Config internally (including the `Defaults.Headers` map and the `Middleware.Middlewares` slice), so modifying the original `cfg` after the client is created does not affect its behavior. Two exceptions are **shared by reference**: `Retry.CustomPolicy` and `Security.CertificatePinner` are not deep-copied — pinner implementations are expected to be concurrency-safe, but if your custom retry policy carries mutable state, do not pass the same Config instance concurrently to multiple `New()` calls.
+`New()` deep-copies the Config internally (including the `Defaults.Headers` map and the `Middleware.Middlewares` slice). Modifying the original `cfg` after the client is created does not affect that client's behavior.
+
+Two fields are **shared by reference** and are not deep-copied:
+
+- `Retry.CustomPolicy`: if the custom retry policy carries mutable state, do not pass the same Config instance concurrently to multiple `New()` calls.
+- `Security.CertificatePinner`: pinner implementations are expected to be concurrency-safe and can be shared across clients.
 
 :::tip Related types
-For request-level fine-grained control use the `RequestOption` function options (see [Request Options](../core/options)); to customize retry decisions, implement the [`RetryPolicy`](../types/interfaces#retrypolicy) interface.
+For request-level fine-grained control use the `RequestOption` function options (see [Request Options](../core/options)); a custom retry policy must implement the [`RetryPolicy`](../types/interfaces#retrypolicy) interface.
 :::
 
 ## TimeoutConfig
@@ -64,10 +71,15 @@ type TimeoutConfig struct {
 | ResponseHeader | 0 | 30min |
 | IdleConn | 90s | 30min |
 
-Setting a field to 0 means no timeout (not recommended for production).
+Setting a field to 0 means no timeout cap (not recommended for production). A `ResponseHeader` of 0 means that timeout is disabled.
 
 :::tip ResponseHeader design
-`ResponseHeader` defaults to 0 (disabled). In this case `TimeoutConfig.Request` or `WithTimeout()` serves as the sole timeout mechanism, ensuring `WithTimeout()` has full control over request duration. This design suits AI APIs, long polling, and other scenarios that need extended response times. Set it to a positive value only when you need a transport-layer hard cap (e.g. to defend against Slowloris attacks), but note: this timeout takes effect at the Transport layer, applies to **all requests sharing the same client**, and fires early when it is shorter than the deadline set by `WithTimeout`.
+`ResponseHeader` defaults to 0 (disabled). In this case `TimeoutConfig.Request` or `WithTimeout()` is the sole timeout mechanism, and `WithTimeout()` has full control over request duration. This design suits AI APIs, long polling, and other scenarios that need extended response times.
+
+Set it to a positive value only when a transport-layer hard cap is required (e.g. to defend against Slowloris attacks). Two caveats apply:
+
+- The timeout takes effect at the Transport layer and applies to **all requests sharing the same client**.
+- When it is shorter than the deadline set by `WithTimeout`, it fires first.
 :::
 
 ## ProxyStrategy
@@ -134,20 +146,32 @@ type ConnectionConfig struct {
 | `ConnectionConfig.DoHCacheTTL` | `time.Duration` | 5min | Cache duration for DoH DNS responses |
 | `ConnectionConfig.MaxResponseHeaderBytes` | `int64` | 0 | Maximum response-header bytes; 0 uses the Go stdlib default of 1MB (`net/http.DefaultMaxHeaderBytes`), defending against malicious servers sending oversized headers |
 
-`PublicSuffixList` is only used when `EnableCookies` is on (i.e. the cookie jar is active); it is the recommended way to tighten cookie domain matching and prevent supercookie leakage.
+`PublicSuffixList` is used only when `EnableCookies` is on (i.e. the cookie jar is active). Supplying it tightens cookie domain matching and prevents supercookie leakage.
 
 ### Proxy Pool
 
-`ProxyPool` specifies a set of proxy servers; requests are distributed among them according to `ProxyPoolStrategy`. Connection failures (dial/TLS) trigger passive circuit breaking: after accumulating `ProxyFailureThreshold` failures, the proxy is temporarily removed from rotation and recovers after `ProxyCooldown` (half-open probing).
+`ProxyPool` specifies a set of proxy servers; requests are distributed among them according to `ProxyPoolStrategy`. Connection failures (dial/TLS) trigger passive circuit breaking:
+
+- After `ProxyFailureThreshold` accumulated failures, the proxy is temporarily removed from rotation.
+- After `ProxyCooldown`, the proxy recovers (half-open probing).
 
 Priority: lower than `ProxyURL`, higher than `EnableSystemProxy`. If both `ProxyURL` and `ProxyPool` are set, `ProxyURL` takes effect (single-proxy mode).
 
-`ProxyRotateOnStatus` specifies HTTP status codes that trigger a proxy switch on retry (e.g. `[]int{403}` for CF/WAF IP-based blocking). Unlike connection failures, status-code rotation does **not** circuit-break the proxy — blocking is often target-specific (a proxy blocked on one site may work fine on another). Requires `Retry.MaxRetries > 0` to take effect.
+`ProxyRotateOnStatus` specifies HTTP status codes that trigger a proxy switch on retry (e.g. `[]int{403}` for CF/WAF IP-based blocking). The field requires `Retry.MaxRetries > 0`.
 
-`ProxyRotatePerRequest` ensures that each independent request (e.g. each `Get`/`Post` call) uses a different proxy. When disabled, HTTP connection reuse causes consecutive requests to the same host to reuse the previous request's proxy tunnel, bypassing proxy-pool selection. When enabled, idle connections are closed at the start of each request, forcing the Transport to re-evaluate the proxy pool — this adds a small overhead (no connection reuse) but guarantees per-request rotation. Requires `ProxyPool` to take effect; has no effect with `ProxyURL` or when no proxy pool is configured.
+Unlike connection failures, status-code rotation does **not** circuit-break the proxy. Blocking is target-specific: a proxy blocked on one site still works on another.
+
+`ProxyRotatePerRequest` makes each independent request (e.g. each `Get`/`Post` call) use a different proxy. When disabled, HTTP connection reuse causes consecutive requests to the same host to reuse the previous request's proxy tunnel, bypassing proxy-pool selection. When enabled, idle connections are closed at the start of each request, forcing the Transport to re-evaluate the proxy pool.
+
+The switch adds a small overhead (no connection reuse) in exchange for per-request rotation. It requires `ProxyPool`; it has no effect with `ProxyURL` or when no proxy pool is configured.
 
 :::tip ProxyRotatePerRequest vs ProxyRotateOnStatus
-Both are used for proxy rotation, but their trigger mechanisms differ: `ProxyRotateOnStatus` triggers rotation on retry when a **specific status code is received** (passive, requires retries), while `ProxyRotatePerRequest` actively switches the proxy **at the start of each request** (no retries needed). For scraping/data-collection scenarios targeting the same host, `ProxyRotatePerRequest` ensures each request has a different source IP.
+Both rotate proxies, but they trigger differently:
+
+- `ProxyRotateOnStatus` triggers a rotation retry when a **specific status code is received**. It is passive and requires retries.
+- `ProxyRotatePerRequest` switches the proxy **at the start of each request**. It is active and needs no retries.
+
+For scraping/data-collection scenarios targeting the same host, `ProxyRotatePerRequest` ensures each request has a different source IP.
 :::
 
 ```go
@@ -165,9 +189,9 @@ cfg.Connection.ProxyRotateOnStatus = []int{403}
 
 #### Proxy Pool and HTTP/2 (`EnableProxyPoolHTTP2`)
 
-While a multi-proxy pool is active (`ProxyPool` with more than one entry and no `ProxyURL`), HTTP/2 is **automatically disabled** and the pool is forced onto HTTP/1.1: net/http's h2 connection pool is keyed by target host only, so with several proxies sharing one pool every request would be pinned to whichever proxy's tunnel connected first, silently bypassing rotation and load dispersion.
+While a multi-proxy pool is active (`ProxyPool` with more than one entry and no `ProxyURL`), HTTP/2 is **automatically disabled** and the pool is forced onto HTTP/1.1. net/http's h2 connection pool is keyed by target host only. With several proxies sharing one pool, every request would be pinned to whichever proxy's tunnel connected first, and rotation and load dispersion would be silently bypassed.
 
-`EnableProxyPoolHTTP2 = true` restores HTTP/2: each proxy gets its own transport (its own h2 connection pool) behind a per-request dispatcher. Proxy rotation, `ProxyRotateOnStatus`, and `Meta.ProxyURL` reporting behave exactly as with the default forced HTTP/1; the difference is that concurrent requests routed to the same proxy multiplex over one HTTP/2 tunnel instead of opening one HTTP/1 connection each.
+`EnableProxyPoolHTTP2 = true` restores HTTP/2: each proxy gets its own transport (its own h2 connection pool) behind a per-request dispatcher. Proxy rotation, `ProxyRotateOnStatus`, and `Meta.ProxyURL` reporting behave exactly as with the default forced HTTP/1. The difference is that concurrent requests routed to the same proxy multiplex over one HTTP/2 tunnel instead of opening one HTTP/1 connection each.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -184,14 +208,20 @@ client, err := httpc.New(cfg)
 
 Two trade-offs:
 
-- **Request correlation**: requests routed to the same proxy share that proxy's connections — **including concurrent ones** (an in-flight tunnel is joined by the next same-proxy request), which correlates them at the network level. Leave this off when requests must not be correlatable; `ProxyRotatePerRequest` alone does **not** prevent the sharing — rotation indexes repeat every pool-size requests, and its idle-connection drain only reaches connections that are no longer in flight.
+- **Request correlation**: requests routed to the same proxy share that proxy's connections — **including concurrent ones** (an in-flight tunnel is joined by the next same-proxy request), which correlates them at the network level. Leave the switch off when requests must not be correlatable.
+  - `ProxyRotatePerRequest` does **not** prevent the sharing: rotation indexes repeat every pool-size requests, and its idle-connection drain only reaches connections that are no longer in flight.
 - **Connection-limit multiplication**: `MaxConnsPerHost` and the derived per-host idle limit apply per proxy transport; the process-wide ceiling becomes limit × pool size (total dials are still capped by the engine-level global limit).
 
-Validation and exception: requires `EnableHTTP2 = true`, otherwise `New()` returns `ErrInvalidConnection` (asking for pool HTTP/2 while the master switch is off is always a configuration mistake); the `Security.TLSFingerprint` path ignores the field (the fingerprint stack ships its own per-proxy backends). For the full mechanics see [Proxy & Proxy Pool](../../guides/proxy#proxy-pools-and-http-2-enableproxypoolhttp2).
+Validation and exceptions:
+
+- The field requires `EnableHTTP2 = true`; otherwise `New()` returns `ErrInvalidConnection`. Requesting pool HTTP/2 while the master switch is off is a configuration error.
+- The `Security.TLSFingerprint` path ignores the field (the fingerprint stack ships its own per-proxy backends).
+
+For the full mechanics see [Proxy & Proxy Pool](../../guides/proxy#proxy-pools-and-http-2-enableproxypoolhttp2).
 
 ### DNS-over-HTTPS
 
-Enable DoH to reduce DNS resolution latency and prevent DNS hijacking:
+Enabling DoH reduces DNS resolution latency and prevents DNS hijacking:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -237,7 +267,7 @@ type SecurityConfig struct {
 
 ### Certificate Pinning (CertificatePinner)
 
-`CertificatePinner` enables certificate pinning: the TLS handshake is rejected when the server does not present a pinned key/certificate, defending against man-in-the-middle attacks even if a trusted CA is compromised. Defaults to `nil` (disabled). Create one with the following constructors:
+`CertificatePinner` enables certificate pinning: the TLS handshake is rejected when the server does not present a pinned key/certificate. This defends against man-in-the-middle attacks even if a trusted CA is compromised. Defaults to `nil` (disabled). Create one with the following constructors:
 
 | Constructor | Description |
 |-------------|-------------|
@@ -264,7 +294,9 @@ Certificate pinning requires the pinned values to be updated in sync when the se
 :::
 
 :::warning SSRF protection
-`AllowPrivateIPs` defaults to `false`, blocking connections to private/reserved IPs (127.0.0.1, 10.x, 192.168.x, 169.254.x, etc. — covering localhost, loopback, link-local, and private/reserved ranges). Setting it to `true` **completely bypasses connection-level SSRF dial validation** (not just permitting private IP ranges); use it only when connecting to internal services (VPN, proxies, corporate intranets). For selective exemptions use `SSRFExemptCIDRs` instead. See [SSRF Protection](../../security/ssrf) for details.
+`AllowPrivateIPs` defaults to `false`, blocking connections to private/reserved IPs (127.0.0.1, 10.x, 192.168.x, 169.254.x, etc. — covering localhost, loopback, link-local, and private/reserved ranges).
+
+Setting it to `true` **completely bypasses connection-level SSRF dial validation** (not just permitting private IP ranges). Use it only when connecting to internal services (VPN, proxies, corporate intranets). For selective exemptions use `SSRFExemptCIDRs` instead. See [SSRF Protection](../../security/ssrf) for details.
 :::
 
 ### SSRF Exemption Example
@@ -281,7 +313,13 @@ Invalid CIDRs make `New()` return an error immediately (`invalid configuration: 
 
 ### TLS Fingerprinting (TLSFingerprint)
 
-`TLSFingerprint` enables browser transport-layer fingerprinting: the TLS ClientHello (JA3/JA4), HTTP/2 frames (SETTINGS order and values, connection window, initial stream ID, pseudo-header order), and an ordered header block (browser-exact casing plus a version-matched User-Agent) are all spoofed at once. The value is a preset name (case-insensitive); `""` (default) uses the standard stack with no spoofing. See the [TLS Fingerprinting guide](../../guides/tls-fingerprint) for the full preset list and behavior semantics.
+`TLSFingerprint` enables browser transport-layer fingerprint spoofing, simulating three parts at once:
+
+- TLS ClientHello (JA3/JA4).
+- HTTP/2 frames (SETTINGS order and values, connection window, initial stream ID, pseudo-header order).
+- An ordered header block (browser-exact casing plus a version-matched User-Agent).
+
+The value is a preset name (case-insensitive). `""` (default) uses the standard stack with no spoofing. See the [TLS Fingerprinting guide](../../guides/tls-fingerprint) for the full preset list and behavior semantics.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -290,14 +328,14 @@ client, err := httpc.New(cfg)
 ```
 
 :::warning Mutually exclusive with TLSConfig
-`Security.TLSConfig` is mutually exclusive with this field (validation rejects the combination); `MinTLSVersion`/`MaxTLSVersion` are silently ignored when it is set — the preset's ClientHello dictates the version range. See the [TLS Fingerprinting guide](../../guides/tls-fingerprint).
+`Security.TLSConfig` is mutually exclusive with this field (validation rejects the combination). When the field is set, `MinTLSVersion`/`MaxTLSVersion` are silently ignored: the preset's ClientHello dictates the version range. See the [TLS Fingerprinting guide](../../guides/tls-fingerprint).
 :::
 
-Setting `TLSFingerprintDisableSessionTickets` to `true` forces a full handshake on every connection of the fingerprint path; the default is `false` — the Chrome profiles cache TLS session tickets per connection pool and resume repeat connections with a PSK, exactly like a real browser revisiting a host. See [Session Resumption](../../guides/tls-fingerprint#session-resumption) for the mechanism.
+Setting `TLSFingerprintDisableSessionTickets` to `true` makes every connection on the fingerprint path perform a full handshake. The default is `false`: Chrome profiles cache TLS session tickets per connection pool and resume repeat connections with a PSK, matching how a real browser revisits a host. See [Session Resumption](../../guides/tls-fingerprint#session-resumption) for the mechanism.
 
 ### Redirect Whitelist
 
-`RedirectWhitelist` restricts redirects to the listed domains only; the default is `nil` (all redirect targets allowed). This is the gate against "redirect-based SSRF" — a more conservative alternative is `Security.FollowRedirects = false` (which is what `SecureConfig()` uses).
+`RedirectWhitelist` restricts redirects to the listed domains only; the default is `nil` (all redirect targets allowed). This field is the gate against "redirect-based SSRF". A more conservative alternative is `Security.FollowRedirects = false` (which is what `SecureConfig()` uses).
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -311,7 +349,13 @@ See [Redirects](../../guides/redirects) for the complete picture of redirect beh
 
 ### Sensitive Header Stripping (SensitiveHeaders)
 
-`SensitiveHeaders` extends the set of header names treated as **credentials** when a redirect carries the request to a different origin: the built-in set `Authorization`, `Proxy-Authorization`, `Cookie`, `X-Api-Key`, and `X-Auth-Token` is always stripped on cross-origin hops (net/http itself covers only the first three), whereas a custom credential header such as `X-Secret-Key` would otherwise be forwarded verbatim to whatever the `Location` header points at — an open-redirect credential leak (CWE-525). Entries are canonicalized (matching is case-insensitive) and deduped; the built-in set is always stripped regardless. Default: `nil`.
+`SensitiveHeaders` extends the set of header names treated as **credentials** when a redirect carries the request to a different origin:
+
+- **The built-in set is always stripped**: `Authorization`, `Proxy-Authorization`, `Cookie`, `X-Api-Key`, and `X-Auth-Token` are stripped on cross-origin hops regardless of whether they are listed (net/http itself covers only the first three).
+- **Custom credential headers must be listed explicitly**: a header such as `X-Secret-Key` that is not listed is forwarded verbatim to whatever the `Location` header points at, which is an open-redirect credential leak (CWE-525).
+- **Entry matching**: entries are canonicalized (case-insensitive matching) and deduped.
+
+Default: `nil`.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -321,7 +365,7 @@ cfg.Security.SensitiveHeaders = []string{"X-Secret-Key", "X-Tenant-Token"}
 Invalid header names make `New()` return `ErrInvalidSecurity` (the same key rules as `WithHeader`). For the full semantics of cross-origin credential stripping see [Redirects](../../guides/redirects).
 
 :::warning Masking scope
-Masking in `Result.String()` and audit output covers only the built-in sensitive names — custom headers listed here **remain visible** in those outputs; do not rely on them for credential hiding.
+Masking in `Result.String()` and audit output covers only the built-in sensitive names. Custom headers listed here **remain visible** in those outputs, so they cannot be relied on to hide credentials.
 :::
 
 ## RetryConfig
@@ -350,9 +394,15 @@ type RetryConfig struct {
 
 Retry-delay formula: `min(Delay * BackoffFactor^attempt + jitter, MaxRetryDelay)`
 
-`CustomPolicy` implements the [`RetryPolicy`](../types/interfaces#retrypolicy) interface and replaces the built-in retry decisions wholesale; the default is `nil` (built-in policy). Like the built-in policy, `CustomPolicy` is only consulted for idempotent methods — to let it govern POST/PATCH retries you must also set `RetryNonIdempotent` (or use [`WithRetryNonIdempotent`](../core/options#withretrynonidempotent) per request). When proxy status-code rotation is configured, the effective retry count is raised automatically — see [Config Derivation and Internal Conversion](#config-derivation-and-internal-conversion).
+`CustomPolicy` implements the [`RetryPolicy`](../types/interfaces#retrypolicy) interface and replaces the built-in retry decisions wholesale; the default is `nil` (built-in policy).
 
-`RetryNonIdempotent` defaults to `false`: non-idempotent requests execute **exactly once** — a timeout or retryable 5xx may arrive after the server has already committed the operation, and replaying the body would duplicate it (duplicate payment, double insert, ...). Enable it only when the endpoint is known to tolerate replay, or guard it with an idempotency key. Idempotent methods (GET/HEAD/PUT/DELETE/OPTIONS/TRACE) are unaffected by this switch and are always retried subject to `MaxRetries`.
+Like the built-in policy, `CustomPolicy` is consulted only for idempotent methods. To let it govern POST/PATCH retries, also set `RetryNonIdempotent`, or use [`WithRetryNonIdempotent`](../core/options#withretrynonidempotent) per request.
+
+When proxy status-code rotation is configured, the effective retry count is raised automatically — see [Config Derivation and Internal Conversion](#config-derivation-and-internal-conversion).
+
+`RetryNonIdempotent` defaults to `false`, which means non-idempotent requests execute **exactly once**. A timeout or retryable 5xx may arrive after the server has already committed the operation; replaying the body would then duplicate it (duplicate payment, double insert, and so on).
+
+Enable the switch only when the endpoint is known to tolerate replay or is guarded by an idempotency key. Idempotent methods (GET/HEAD/PUT/DELETE/OPTIONS/TRACE) are unaffected by this switch and are always retried subject to `MaxRetries`.
 
 ## MiddlewareConfig
 
@@ -373,7 +423,7 @@ type RequestDefaults struct {
 }
 ```
 
-The canonical location for per-request defaults: User-Agent and default headers. Obtain sensible defaults via `DefaultConfig()` and modify as needed.
+`RequestDefaults` is the canonical location for per-request defaults: User-Agent and default headers. `DefaultConfig()` already supplies sensible defaults; modify them as needed.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -394,7 +444,7 @@ cfg.Defaults.Headers = map[string]string{"Accept": "application/json"}
 func DefaultConfig() Config
 ```
 
-Secure default configuration. SSRF protection enabled by default.
+Secure default configuration; SSRF protection enabled by default.
 
 ### SecureConfig
 
@@ -402,7 +452,7 @@ Secure default configuration. SSRF protection enabled by default.
 func SecureConfig() Config
 ```
 
-Security-first configuration. Shorter timeouts, auto-redirect disabled, strict SSRF protection.
+Security-first configuration: shorter timeouts, auto-redirect disabled, strict SSRF protection.
 
 | Setting | Value |
 |---------|-------|
@@ -425,10 +475,10 @@ Security-first configuration. Shorter timeouts, auto-redirect disabled, strict S
 func PerformanceConfig() Config
 ```
 
-High-throughput configuration. Larger connection pool, longer timeouts, security validation preserved.
+High-throughput configuration: larger connection pool, longer timeouts, security validation preserved.
 
 :::tip
-PerformanceConfig keeps `ValidateURL` and `ValidateHeaders` enabled for security. For maximum performance in trusted environments, you can manually disable them: `cfg.Security.ValidateURL = false`, but be aware of the security risks (injection attacks, SSRF).
+`PerformanceConfig` keeps `ValidateURL` and `ValidateHeaders` enabled for security. For maximum performance in trusted environments they can be disabled manually: `cfg.Security.ValidateURL = false`. Doing so accepts the security risks (injection attacks, SSRF).
 :::
 
 | Setting | Value |
@@ -455,7 +505,7 @@ PerformanceConfig keeps `ValidateURL` and `ValidateHeaders` enabled for security
 func TestingConfig() Config
 ```
 
-Testing-environment configuration. Security checks disabled, short timeouts.
+Testing-environment configuration: security checks disabled, short timeouts.
 
 | Setting | Value |
 |---------|-------|
@@ -486,7 +536,7 @@ This configuration disables TLS verification and SSRF protection. **For testing 
 func MinimalConfig() Config
 ```
 
-Lightweight configuration. Retries and redirects disabled, minimal connection pool.
+Lightweight configuration: retries and redirects disabled, minimal connection pool.
 
 | Setting | Value |
 |---------|-------|
@@ -505,7 +555,7 @@ Lightweight configuration. Retries and redirects disabled, minimal connection po
 
 ## Config Derivation and Internal Conversion
 
-When `New()` converts the public Config into the engine configuration, some zero-value fields fall back to built-in defaults, and a few derivation rules change the actual behavior:
+When `New()` converts the public Config into the engine configuration, some zero-value fields fall back to built-in defaults. The following derivation rules change the actual behavior:
 
 | Derived item | Rule |
 |--------------|------|
@@ -517,7 +567,9 @@ When `New()` converts the public Config into the engine configuration, some zero
 | ProxyRotateOnStatus | Passed to the engine as "extra retryable status codes"; a hit consumes one retry budget to switch proxy |
 
 :::tip Why retries are auto-raised
-With the default `MaxRetries = 3`, a pool of 5 proxies can only try up to the 4th proxy after a 403 before giving up. Since you configured status-code rotation, the intent is to walk the entire proxy pool, so the retry budget is raised to "pool size − 1"; if you explicitly set a larger MaxRetries, your value is kept unchanged.
+With the default `MaxRetries = 3`, a pool of 5 proxies can try only up to the 4th proxy after a 403 before giving up. Setting `ProxyRotateOnStatus` or `ProxyRotatePerRequest` means walking the entire proxy pool, so the effective retry budget is raised to "pool size − 1".
+
+If `Retry.MaxRetries` is already set to a larger value, that value is kept (auto-raising only increases the budget, never decreases it).
 :::
 
 ## Security Warning Output
@@ -528,7 +580,12 @@ With the default `MaxRetries = 3`, a pool of 5 proxies can only try up to the 4t
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-Redirects where security warnings are printed. When you use `TestingConfig()` or set `SecurityConfig.InsecureSkipVerify` (`Config.Security`) to `true`, httpc prints a `[SECURITY WARNING]`-level alert to this writer (each type of warning is printed at most once per process). The default output is `os.Stderr`; pass `io.Discard` to fully suppress warnings — handy for silencing them in tests or known-safe internal scenarios.
+`SetSecurityWarnOutput` sets the destination for security warnings. When the process is not running in a test environment (executable name contains `.test`, or `GO_TEST` / `GOTEST=1` is set), a `[SECURITY WARNING]`-level alert is printed to this writer in either of these cases:
+
+- `TestingConfig()` is used.
+- `SecurityConfig.InsecureSkipVerify` (`Config.Security`) or `SecurityConfig.TLSConfig.InsecureSkipVerify` is `true`.
+
+Each warning type is counted independently and printed at most once per process. The default destination is `os.Stderr`; pass `io.Discard` to fully suppress warnings, for tests or known-safe internal scenarios. A `nil` writer is normalized to `io.Discard`.
 
 ```go
 // Suppress security warnings in tests
@@ -537,7 +594,7 @@ cfg := httpc.TestingConfig()
 ```
 
 :::tip Scope of effect
-This setting is process-level global state that affects all subsequently created clients. The `TestingConfig` and `InsecureSkipVerify` warnings are counted independently (neither affects the other's triggering), but they share the same output writer.
+This setting is process-level global state and affects all subsequently created clients. The `TestingConfig` and `InsecureSkipVerify` warnings share the same output writer.
 :::
 
 ## Validation
@@ -548,9 +605,9 @@ This setting is process-level global state that affects all subsequently created
 func ValidateConfig(cfg *Config) error
 ```
 
-Validates configuration. Called automatically inside `New()`, but can also be called explicitly.
+Validates a configuration. `New()` calls it internally; it can also be called explicitly.
 
-The equivalent method form `Config.Validate` (signature `func (c *Config) Validate() error`, delegating directly to `ValidateConfig`) is handier when you already hold a Config instance — calling `Validate` on it is the recommended form for new code:
+The equivalent method form `Config.Validate` (signature `func (c *Config) Validate() error`, delegating directly to `ValidateConfig`) suits code that already holds a Config instance and is the recommended form for new code:
 
 ```go
 cfg := httpc.DefaultConfig()

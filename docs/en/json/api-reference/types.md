@@ -1,17 +1,17 @@
 ---
 sidebar_label: "Type Definitions"
 title: "Type Definitions - CyberGo JSON | Core Types Overview"
-description: "CyberGo JSON: Result[T], AccessResult, CompiledPath, BatchOperation/BatchResult, ValidationError/SyntaxError, HealthStatus, IterableValue, Encoder/Decoder."
+description: "CyberGo JSON type reference: Result[T], AccessResult, CompiledPath, Schema and ValidationError, BatchOperation and BatchResult, plus Encoder/Decoder."
 sidebar_position: 60
 ---
 
 # Type Definitions
 
-The json package provides a variety of type-safe types for handling JSON operation results.
+The json package exports the types below, covering value results, pre-compiled paths, schema validation, batch operations, statistics, and stream encoding/decoding.
 
 ## Result[T] - Unified Result Type
 
-`Result[T]` is the generic operation result type, providing type-safe error handling and value access.
+`Result[T]` is a generic result wrapper built by the caller, offering type-safe error handling and value access.
 
 ### Struct Definition
 
@@ -66,15 +66,15 @@ func main() {
 ```
 
 :::tip Naming conventions
-- **GetTyped[T]** - Gets a value of the given type, returns `T`, supports a `defaultValue` parameter
-- **Result[T]** - Internal result type for scenarios needing fine-grained error handling
+- `GetTyped[T]` reads a value of the given type and returns `T` directly, with an optional `defaultValue` parameter
+- `Result[T]` is a general-purpose result wrapper constructed by the caller, for cases that must distinguish "no value" from "failed"
 :::
 
 ---
 
 ## CompiledPath - Pre-compiled Path
 
-`CompiledPath` is a type alias for a pre-compiled JSON path, used to avoid re-parsing the path string when the same path is accessed frequently, improving performance.
+`CompiledPath` is a type alias for a pre-compiled JSON path; it avoids re-parsing the path string when the same path is accessed repeatedly.
 
 ### Type Definition
 
@@ -110,7 +110,7 @@ val, err := processor.GetCompiled(jsonStr, compiled)
 ```
 
 :::tip Performance hint
-For high-frequency repeated path access, pre-compiling the path significantly cuts path-parsing overhead. Suited to batch operations, looped queries, and similar scenarios.
+For high-frequency access to the same path, pre-compiling removes the path-parsing step from each call. Suited to batch operations and looped queries.
 :::
 
 ### Methods
@@ -279,6 +279,8 @@ type AccessResult struct {
 | `Exists` | `bool` | Whether the path exists |
 | `Type` | `string` | Runtime type information (for debugging) |
 
+When the value is JSON `null`, `Exists` is `true`, `Type` is `"null"`, and `Value` is `nil` — `Exists` is what separates "present but empty" from "absent".
+
 ### Creation Methods
 
 #### Processor.SafeGet
@@ -321,6 +323,8 @@ fmt.Println("Type:", result.Type)
 | `AsFloat64()` | `(float64, error)` | Converts to float64 (bool not converted) |
 | `AsBool()` | `(bool, error)` | Converts to a boolean |
 | `Ok()` | `bool` | Checks whether the path exists |
+
+`AsString()` returns an error wrapping `ErrTypeMismatch` on a conversion failure (so `errors.Is` matches); `AsInt()`, `AsFloat64()`, and `AsBool()` return a plain error without the sentinel. When the path does not exist, each conversion method returns `ErrPathNotFound`.
 
 :::warning Note
 The `AsInt64()`, `AsArray()`, and `AsObject()` methods have been removed. Use `GetTyped[T]` for those types.
@@ -735,10 +739,10 @@ age, _ := processor.GetFromParsed(parsed, "user.age")
 |----------|-------------|
 | High-frequency queries | Avoids repeated parsing when querying the same JSON many times |
 | Batch path retrieval | Fetch multiple paths at once with `GetMultiple` |
-| Performance optimization | Queries after pre-parsing are significantly faster |
+| Performance optimization | Parses once; later queries skip the parse step |
 
 :::tip Performance hint
-For scenarios querying the same JSON string repeatedly, pre-parsing with `PreParse` significantly improves performance by avoiding repeated parsing overhead.
+When querying the same JSON string repeatedly, pre-parsing with `PreParse` removes the repeated parse.
 :::
 
 ---
@@ -792,13 +796,13 @@ Security limits have no separate aggregate type — they are provided directly a
 | Config field | Type | Default | Description |
 |-------------|------|---------|-------------|
 | `MaxJSONSize` | `int64` | 100MB (`DefaultMaxJSONSize`) | Cap on input JSON size; exceeding it returns `ErrSizeLimit` |
-| `MaxPathDepth` | `int` | 50 (`DefaultMaxPathDepth`) | Cap on path segment count; exceeding it returns `ErrInvalidPath` |
+| `MaxPathDepth` | `int` | 50 (`DefaultMaxPathDepth`) | Reserved field, does not change behavior today (only feeds the config cache key and `Validate` clamps). The segment cap is fixed at 100 internally and exceeding it produces the error message `path too deep`; the path string cap is 5000 bytes, returning `ErrInvalidPath` when validation is on and it is exceeded |
 | `MaxBatchSize` | `int` | 2000 (`DefaultMaxBatchSize`) | Cap on operations per batch; exceeding it returns `ErrSizeLimit` |
 | `MaxNestingDepthSecurity` | `int` | 200 (`DefaultMaxNestingDepth`) | Cap on input nesting depth (for security scanning); exceeding it returns `ErrDepthLimit`; do not confuse with `Config.MaxDepth` (encoding/decoding nesting depth, default 100) |
-| `MaxSecurityValidationSize` | `int64` | 10MB (`DefaultMaxSecuritySize`) | Size threshold for security validation (threshold type) |
+| `MaxSecurityValidationSize` | `int64` | 10MB (`DefaultMaxSecuritySize`) | Reserved field, does not change behavior today (only feeds the config cache key and `Validate` clamps); security scanning does not switch strategy based on it |
 | `MaxObjectKeys` | `int` | 100000 (`DefaultMaxObjectKeys`) | Maximum object key count; exceeding it returns `ErrSizeLimit` |
 | `MaxArrayElements` | `int` | 100000 (`DefaultMaxArrayElements`) | Maximum array element count; exceeding it returns `ErrSizeLimit` |
-| `FullSecurityScan` | `bool` | `false` (tiered scanning) | Whether to fully security-scan all input (set to `true` for full scanning) |
+| `FullSecurityScan` | `bool` | `false` (scan mode follows input size) | `false`: under 4KB scanned in full, 4KB and above uses a 32KB rolling window covering every byte plus a density check on 4KB samples from the beginning, middle, and end; `true`: every input is scanned in a single full pass |
 
 `Config.Validate` clamps out-of-range values back into the legal ranges (e.g. `MaxNestingDepthSecurity` clamped to 10–200, `MaxObjectKeys` to 100–100000); use `ValidateWithWarnings` to see the adjustments. For the full semantics of each field see [Config](./config#the-config-struct).
 
@@ -1084,7 +1088,7 @@ if marshalErr, ok := err.(*json.MarshalerError); ok {
 
 ## Encoder - JSON Encoder
 
-`Encoder` writes JSON values to an output stream. 100% compatible with `encoding/json.Encoder`.
+`Encoder` writes JSON values to an output stream. Its method signatures match `encoding/json.Encoder`, with an optional `Config` parameter added.
 
 ### Creation
 
@@ -1140,7 +1144,7 @@ func main() {
 
 ## Decoder - JSON Decoder
 
-`Decoder` reads and decodes JSON values from an input stream. 100% compatible with `encoding/json.Decoder`.
+`Decoder` reads and decodes JSON values from an input stream. Its method signatures match `encoding/json.Decoder`, with an optional `Config` parameter added.
 
 ### Creation
 

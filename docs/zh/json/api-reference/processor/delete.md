@@ -1,13 +1,13 @@
 ---
 sidebar_label: "删除操作"
 title: "Processor 删除方法 - CyberGo JSON | Delete 方法与示例"
-description: "CyberGo JSON 的 Processor 提供 Delete 按路径删除与 DeleteClean 清理空值，支持通配符、数组切片与多字段路径，缺失目标静默跳过，不可变地返回新字符串，适合清理配置冗余字段与修剪日志数据的开发场景。"
+description: "Processor 的删除方法：Delete 按路径删除、DeleteClean 递归清理空值，支持通配符与切片，返回新字符串，原输入不变。"
 sidebar_position: 40
 ---
 
 # 删除方法
 
-Processor 提供数据删除方法，删除指定路径的值并返回修改后的 JSON 字符串。所有方法都是**不可变**的——返回新字符串，原输入不变；出错时返回原输入。与[包级删除函数](../functions/delete)行为一致，区别在于实例方法可与处理器的自身配置、缓存、钩子协同。
+删除方法移除指定路径的值并返回修改后的 JSON 字符串。所有方法都**不可变**：返回新字符串，输入不变；出错时返回原输入。行为与[包级删除函数](../functions/delete)一致，差异在于实例方法会与处理器自身的配置、缓存、钩子协同。
 
 ## Delete
 
@@ -72,7 +72,7 @@ func main() {
 
 ### 高级路径：通配符与切片
 
-`Delete` 复用与 Get/Set 相同的路径引擎，支持通配符、切片范围、多字段提取。批量路径（含 `*`、`{}`、`:`）对缺失目标静默跳过，不报错。路径语法的完整说明——通配符、切片、多字段以及 **JSON Pointer**（`/` 开头的 RFC 6901 路径，可删除键名本身含点号等特殊字符的键）——见[删除函数·高级路径删除](../functions/delete#高级路径删除)。
+`Delete` 复用与 `Get`/`Set` 相同的路径引擎，支持通配符、切片范围、多字段提取。批量路径（含 `*`、`{}`、`:`）对缺失目标静默跳过，不报错。路径语法（通配符、切片、多字段以及 **JSON Pointer**：`/` 开头的 RFC 6901 路径，可删除键名含点号等特殊字符的键）的完整说明见[删除函数·高级路径删除](../functions/delete#高级路径删除)。
 
 ```go
 package main
@@ -145,7 +145,7 @@ func main() {
 
 签名：`func (p *Processor) DeleteClean(jsonStr, path string, cfg ...Config) (string, error)`
 
-删除指定路径并**递归清理**因删除产生的 `null` 值与空对象/空数组。等价于 `Delete` 强制开启 `CleanupNulls: true` + `CompactArrays: true`。
+删除指定路径并**递归清理**因删除产生的 `null` 值与空对象/空数组。等价于 `Delete` 强制开启 `CleanupNulls: true` 与 `CompactArrays: true`。
 
 ### 级联清理：父对象变空后自动移除
 
@@ -180,7 +180,7 @@ func main() {
 
 ### 清理 API 响应
 
-删除目标字段的同时，连带扫除整棵树中其他的 `null` 与残留空容器：
+删除目标字段，并连带清除整棵树中其他的 `null` 与残留空容器：
 
 ```go
 package main
@@ -212,11 +212,11 @@ func main() {
 
 ## Delete 与 DeleteClean 对比
 
-两者的行为对照表（清理范围、级联语义、等价配置与开销对比）与包级函数页完全一致，见[删除函数·Delete 与 DeleteClean 对比](../functions/delete#delete-与-deleteclean-对比)。Processor 侧的差异仅在配置生效方式：清理行为由「调用参数 `cfg` 与处理器自身配置取并集」决定（见下节）。
+两者的行为对照（清理范围、级联语义、等价配置与开销）见[删除函数·Delete 与 DeleteClean 对比](../functions/delete#delete-与-deleteclean-对比)。Processor 侧的差异只在配置生效方式：清理行为由「调用参数 `cfg` 与处理器自身配置取并集」决定（见下节）。
 
 ## Config 对删除行为的影响
 
-删除方法的清理行为由「**调用参数 `cfg` 与处理器自身配置取并集**」决定。也就是说，若创建处理器时已开启 `CleanupNulls`，则后续普通 `p.Delete(...)` 也会自动清理：
+清理行为由「**调用参数 `cfg` 与处理器自身配置取并集**」决定：任一来源开启即生效。若创建处理器时已开启 `CleanupNulls`，后续普通 `p.Delete(...)` 也会自动清理：
 
 ```go
 package main
@@ -257,11 +257,11 @@ func main() {
 | `CompactArrays` | `false` | 移除数组中的 `null`/空元素；开启时隐含 `CleanupNulls` |
 | `CreatePaths` | `true` | **不影响删除**（删除从不创建路径） |
 
-> 因此 `DeleteClean(s, p)` 与在 `CleanupNulls+CompactArrays` 处理器上调用 `Delete(s, p)` 效果相同——选择语义更清晰的写法即可。
+> 因此 `DeleteClean` 与在 `CleanupNulls+CompactArrays` 处理器上调用 `Delete` 效果相同，选择语义更清晰的写法即可。
 
 ## 链式删除
 
-删除方法返回新字符串，可直接喂给下一次调用，组合成链式修改流程：
+删除方法返回新字符串，可直接作为下一次调用的输入：
 
 ```go
 package main
@@ -290,7 +290,7 @@ func main() {
 
 ## 常见陷阱
 
-三条注意事项（数组删除不留空洞、`DeleteClean` 可能误删「恰好为空」的合法数据、批量删除对缺失目标容错跳过）同样适用于 Processor 方法，完整说明与示例见[删除函数·常见陷阱](../functions/delete#常见陷阱)。
+三条注意事项同样适用于 Processor 方法：数组删除不留空洞、`DeleteClean` 会连带删除「恰好为空」的合法数据、批量删除对缺失目标容错跳过。完整说明与示例见[删除函数·常见陷阱](../functions/delete#常见陷阱)。
 
 ## 相关
 

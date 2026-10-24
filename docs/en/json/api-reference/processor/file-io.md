@@ -1,13 +1,13 @@
 ---
 sidebar_label: "File I/O"
 title: "Processor File I/O - CyberGo JSON | LoadFromFile/SaveToFile"
-description: "CyberGo JSON Processor file I/O: LoadFromFile/SaveToFile, LoadFromReader/SaveToWriter and MarshalToFile, with path checks and MaxJSONSize bounds."
+description: "Processor file I/O: LoadFromFile/LoadFromReader raw reads, SaveToFile/MarshalToFile atomic writes, UnmarshalFromFile decode and ForeachFile iteration."
 sidebar_position: 90
 ---
 
 # File Operation Methods
 
-The Processor provides JSON file read/write and streaming-load methods covering three data sources: files, `io.Reader`, and `io.Writer`. File methods all run secure path validation before operating (see the [Function Reference](../functions/file-io#security-file-path-validation)).
+File methods cover files, `io.Reader` and `io.Writer`. Methods that take a file path validate it for security before operating (see the [Function Reference](../functions/file-io#security-file-path-validation)).
 
 ## File Loading
 
@@ -15,7 +15,7 @@ The Processor provides JSON file read/write and streaming-load methods covering 
 
 Signature: `func (p *Processor) LoadFromFile(filePath string, cfg ...Config) (string, error)`
 
-Loads JSON data from a file and returns the **raw string** (byte order and whitespace preserved, no re-encoding). Bytes read are bounded by `MaxJSONSize`.
+Loads JSON data from a file and returns the **raw string** (byte order and whitespace preserved, no re-encoding). Bytes read are bounded by `MaxJSONSize`; exceeding it returns `ErrSizeLimit`.
 
 ```go
 data, err := p.LoadFromFile("config.json")
@@ -51,7 +51,7 @@ if obj, ok := data.(map[string]any); ok {
 
 Signature: `func (p *Processor) LoadFromReader(reader io.Reader, cfg ...Config) (string, error)`
 
-Loads JSON data from an `io.Reader` and returns the raw string. Reads are bounded by `MaxJSONSize` — a good fit for streaming sources such as `os.File`, HTTP bodies, and pipes.
+Loads JSON data from an `io.Reader` and returns the raw string. Reads are bounded by `MaxJSONSize`; typical sources are `os.File`, HTTP bodies and pipes.
 
 ```go
 file, _ := os.Open("data.json")
@@ -142,7 +142,7 @@ func main() {
 
 Signature: `func (p *Processor) MarshalToFile(path string, data any, cfg ...Config) error`
 
-Encodes data as JSON and writes it to a file. Creates parent directories automatically; atomic writes. It **shares the same "encode + atomic write" pipeline** as `SaveToFile`: likewise pre-parses string / `[]byte` inputs to avoid double escaping, and likewise honors the passed `cfg` in full (`Pretty` / `Indent` / `EscapeHTML` etc. all take effect) — the two now differ only in the operation name inside error messages; the historical behavioral difference is gone.
+Encodes data as JSON and writes it to a file. Creates parent directories automatically; atomic writes. It **shares the same "encode + atomic write" pipeline** as `SaveToFile`: string / `[]byte` inputs are pre-parsed the same way, and the passed `cfg` is honored in full (`Pretty` / `Indent` / `EscapeHTML` all take effect). The two differ only in the operation name inside error messages.
 
 ```go
 err := p.MarshalToFile("output.json", data)
@@ -263,7 +263,7 @@ func main() {
 
 ## File Iteration
 
-The Processor provides the `ForeachFile` family, which iterates a JSON collection directly from a file — a convenience combo of `LoadFromFile` plus a per-item iteration callback:
+The `ForeachFile` family iterates a JSON collection straight from a file, equivalent to `LoadFromFile` followed by the matching `Foreach` method:
 
 | Method | Purpose |
 |--------|---------|

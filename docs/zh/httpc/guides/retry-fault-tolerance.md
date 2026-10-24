@@ -7,11 +7,11 @@ sidebar_position: 70
 
 # 重试与容错
 
-网络请求本质上不可靠——连接可能中断、服务器可能临时过载、DNS 解析可能超时。HTTPC 内置智能重试引擎，自动处理瞬时故障，让你专注于业务逻辑。
+重试是 HTTPC 对瞬时故障的自动恢复机制：请求因网络错误、超时或可重试状态码失败时，引擎按配置的退避策略重新发送，直至成功或预算耗尽。
 
 ## 默认重试
 
-HTTPC 的默认重试配置经过精心调优，开箱即用：
+`DefaultConfig()` 的重试参数如下：
 
 ```go
 package main
@@ -63,11 +63,11 @@ func main() {
 | 502 Bad Gateway | 是 | `retryableStatusCodes` |
 | 503 Service Unavailable | 是 | `retryableStatusCodes` |
 | 504 Gateway Timeout | 是 | `retryableStatusCodes` |
-| 其他 4xx 客户端错误（400/401/403/404…） | 否 | 客户端请求有误，重试无用 |
+| 其他 4xx 客户端错误（400/401/403/404…） | 否 | 请求本身无效，重试不改变结果 |
 | `context.Canceled` | 否 | 快速路径直接返回 |
 | `context.DeadlineExceeded` | 否 | 快速路径直接返回 |
-| TLS/证书错误 | 否 | 非瞬时故障，重试无用 |
-| 配置验证错误 | 否 | 本地 bug，需修正代码 |
+| TLS/证书错误 | 否 | 非瞬时故障，重试不改变结果 |
+| 配置验证错误 | 否 | 本地代码问题，需修正 |
 
 ### 配置校验
 
@@ -81,7 +81,7 @@ func main() {
 | `MaxRetryDelay` | 0–30min | 30s |
 | `EnableJitter` | 布尔 | true |
 
-`WithMaxRetries(n)` 在请求侧应用同样的 0–10 校验，越界直接报错而不是静默截断。另外，`Delay` / `BackoffFactor` 传 0 或负值时引擎会**回退默认值**（1s / 2.0）而不是报错——显式设置合法值才是可靠做法。
+`WithMaxRetries(n)` 在请求侧应用同样的 0–10 校验，越界直接报错。`Delay` / `BackoffFactor` 传 0 或负值时，引擎回退默认值（1s / 2.0），不报错；需要特定取值时应显式设置合法值。
 
 ## 退避数学详解
 
@@ -116,16 +116,16 @@ attempt 5: 1s × 2.0^5 = 32s → 触发上限，截断为 30s
 | 第 6 次重试（attempt 5） | 30s（截断后） | 27s ~ 33s |
 
 :::tip 为什么用迭代乘法而非 math.Pow
-HTTPC 使用循环乘法（`for i := 0; i < attempt; i++ { delay *= factor }`）而非 `math.Pow`。`math.Pow` 调用超越函数（指数 + 对数），开销远高于几次浮点乘法。同时循环内检查 `math.IsInf` 防止溢出，溢出时直接回退到 `MaxRetryDelay`。在重试热路径中，这种微优化是有意义的。
+HTTPC 使用循环乘法（`for i := 0; i < attempt; i++ { delay *= factor }`）而非 `math.Pow`。`math.Pow` 调用超越函数（指数与对数），开销高于几次浮点乘法。循环内同时检查 `math.IsInf` 防止溢出，溢出时回退到 `MaxRetryDelay`。该路径位于每次重试的热路径上。
 :::
 
 :::warning Jitter 应用在上限之后
-抖动是在 `MaxRetryDelay` 截断**之后**应用的。因此 `attempt 5` 的实际范围是 27s~33s，可能超过 30s 的上限。这是设计选择——抖动的目的是打散重试时机，略微超过上限无害，但保证不会大幅偏离。
+抖动在 `MaxRetryDelay` 截断**之后**施加，因此 `attempt 5` 的实际等待范围是 27s~33s，可超过 30s 上限约 10%。抖动的作用是打散重试时机，超出上限的幅度受抖动比例约束。
 :::
 
 ## Retry-After 头自动解析
 
-当服务器返回 429（Too Many Requests）或 503（Service Unavailable）时，通常附带 `Retry-After` 响应头告知客户端何时重试。HTTPC 自动解析这个头，支持两种格式：
+服务器返回 429（Too Many Requests）或 503（Service Unavailable）时，响应可携带 `Retry-After` 头告知何时可重试。HTTPC 自动解析该头，支持两种格式：
 
 ### delta-seconds 格式
 
@@ -158,12 +158,12 @@ Retry-After: Fri, 31 Jul 2026 15:00:00 GMT（距今 2 小时）→ 截断为 60s
 ```
 
 :::warning 为什么要截断
-恶意或配置错误的服务器可能返回极大的 `Retry-After` 值（如 `Retry-After: 999999`），导致客户端长时间挂起。60 秒上限是安全防御：即使服务器要求等 1 小时，HTTPC 也最多等 60 秒就重试。如果你的服务端有合理的限流策略（如每分钟 60 次），正常的 `Retry-After` 值通常远小于 60s，不受影响。
+恶意或配置错误的服务器可返回极大的 `Retry-After` 值（如 `Retry-After: 999999`），使客户端长时间挂起。60 秒上限即针对此情形：服务器要求等 1 小时时，HTTPC 最多等 60 秒即重试。该上限优先于 `MaxRetryDelay`，且抖动在截断之后施加。
 :::
 
 ### 优先级
 
-`Retry-After` 头的优先级**高于**指数退避延迟。当服务器返回了有效的 `Retry-After` 值时，直接使用该值（截断后），跳过指数退避计算。
+`Retry-After` 头的优先级高于指数退避延迟。服务器返回有效 `Retry-After` 值时，HTTPC 直接使用该值（截断后），跳过指数退避计算。
 
 ```go
 package main
@@ -201,14 +201,14 @@ func main() {
 ```
 
 :::tip Retry-After 对所有可重试状态码生效
-`Retry-After` 不限于 429/503，对所有可重试状态码（408/429/500/502/503/504）的响应都生效。只要响应头中包含 `Retry-After`，就会被解析并使用。
+`Retry-After` 不限于 429/503，对 408/429/500/502/503/504 的响应都生效。响应头含 `Retry-After` 时即被解析并使用。
 :::
 
 ## 退避策略
 
 ### 指数退避（默认）
 
-最常用的策略，延迟按倍数增长，快速但不过于激进：
+延迟按 `BackoffFactor` 逐次倍增，增长先快后缓：
 
 <!-- check-code: skip -->
 ```go
@@ -218,7 +218,7 @@ cfg.Retry.BackoffFactor = 2.0
 
 ### 温和指数退避
 
-`PerformanceConfig()` 使用 1.5 倍因子，增长更平缓，适合高吞吐场景：
+`PerformanceConfig()` 使用 1.5 的 `BackoffFactor`，延迟增长比默认值平缓：
 
 <!-- check-code: skip -->
 ```go
@@ -229,7 +229,7 @@ cfg.Retry.Delay = 500 * time.Millisecond
 
 ### 固定延迟
 
-每次重试间隔相同，适合有明确重试间隔要求的场景：
+`BackoffFactor = 1.0` 时每次重试间隔相同，用于有固定重试间隔要求的场景：
 
 <!-- check-code: skip -->
 ```go
@@ -239,7 +239,7 @@ cfg.Retry.BackoffFactor = 1.0
 
 ### 随机抖动
 
-启用抖动在基础延迟上添加 ±10% 随机偏移，防止「惊群效应」——多个客户端同时失败后同时重试，造成二次过载：
+抖动在基础延迟上施加 ±10% 的随机偏移，将同时失败后的重试时机打散，避免多个客户端在同一时刻重试造成二次过载：
 
 <!-- check-code: skip -->
 ```go
@@ -252,8 +252,8 @@ cfg.Retry.EnableJitter = true
 // 客户端 E: 1.08s 后重试
 ```
 
-:::tip 始终启用 Jitter
-除了测试场景（需要确定性的延迟），生产环境应始终启用 `EnableJitter = true`。这是分布式系统的最佳实践，能显著降低重试风暴的风险。
+:::tip 生产环境启用 Jitter
+需要确定性延迟的测试之外，生产环境应设置 `EnableJitter = true`，以降低多个客户端同时重试的风险。
 :::
 
 ## 自定义 RetryPolicy
@@ -275,7 +275,9 @@ type RetryPolicy interface {
 ```
 
 :::tip 类型已公开导出
-`RetryPolicy.ShouldRetry` 的 `resp` 参数类型 `ResponseReader` 已由 `httpc` 包通过公开类型别名导出（`httpc.ResponseReader`），外部包可直接引用。自定义 `RetryPolicy` 可在任何业务包中实现，无需局限在 `github.com/cybergodev/httpc` 模块内部。当然，大多数场景下通过 `RetryConfig` 字段和 `ProxyRotateOnStatus` 配置即可满足需求，无需自定义策略。
+`RetryPolicy.ShouldRetry` 的 `resp` 参数类型 `ResponseReader` 已由 `httpc` 包以公开类型别名导出（`httpc.ResponseReader`），外部包可直接引用，自定义 `RetryPolicy` 可在任何业务包中实现。
+
+通过 `RetryConfig` 字段与 `ProxyRotateOnStatus` 能满足的需求，无需自定义策略。
 :::
 
 以下示例展示了仅重试 GET 请求的自定义策略，可在任何导入 `httpc` 的业务包中直接使用：
@@ -320,7 +322,7 @@ func (p *GETOnlyRetryPolicy) MaxRetries() int {
 
 ## 按请求控制
 
-除了客户端级配置，可以通过 `WithMaxRetries` 在单个请求上覆盖重试次数：
+除客户端级配置外，`WithMaxRetries` 可覆盖单个请求的重试次数：
 
 ```go
 package main
@@ -361,7 +363,7 @@ func main() {
 }
 ```
 
-请求级 `WithMaxRetries` 未设置时，引擎使用客户端配置（或 `CustomPolicy` 的 `MaxRetries()`）——内部以 `-1` 作为「未设置」哨兵值区分「没配置」与「显式配置 0（禁用）」。
+请求级 `WithMaxRetries` 未设置时，引擎使用客户端配置（或 `CustomPolicy` 的 `MaxRetries()`）。内部以 `-1` 作为「未设置」哨兵，以区分未配置与显式配置 0（禁用）。
 
 ## 重试的请求体处理
 
@@ -369,12 +371,12 @@ func main() {
 
 | 请求体类型 | 重试行为 |
 |------------|----------|
-| `[]byte` / `string` / 结构体 / `map` / `*FormData` | 每次尝试重新构建 reader，天然可重放 |
+| `[]byte` / `string` / 结构体 / `map` / `*FormData` | 每次尝试重新构建 reader，可重放 |
 | `io.Reader` | 首次进入重试路径前**整体读入内存**缓冲，之后按字节重放 |
 | 超过 100MB 的 `io.Reader` | 直接报错：`retry not supported for streaming bodies exceeding ...` |
 
 :::warning 大流式 body 与重试互斥
-`io.Reader` 请求体会在重试路径被缓冲到内存，上限 100MB（防御 OOM）。更大的流要么拆分上传、要么对该请求 `WithMaxRetries(0)` 关闭重试：
+`io.Reader` 请求体在重试路径被缓冲到内存，上限 100MB（防御 OOM）。超过该上限的流需拆分上传，或对该请求设置 `WithMaxRetries(0)` 关闭重试：
 
 <!-- check-code: skip -->
 ```go
@@ -386,7 +388,7 @@ _, err := client.Post("https://api.example.com/upload",
 ```
 :::
 
-每次尝试都是**完整重建的请求**：headers、查询参数、cookies 在尝试间深拷贝隔离，互不污染；`WithOnRequest` 回调在**每次尝试前**都会触发——适合在回调里刷新即将过期的令牌：
+每次尝试都重建完整请求：headers、查询参数、cookies 在尝试间深拷贝隔离。`WithOnRequest` 回调在每次尝试前触发，可用于刷新即将过期的令牌：
 
 ```go
 package main
@@ -439,12 +441,12 @@ func main() {
 ```
 
 :::tip 用 HTTPC_DEBUG 观察重试过程
-设置环境变量 `HTTPC_DEBUG=1` 后，引擎把每次尝试的状态码、可重试判定与退避延迟打印到 stderr。排查「为什么没重试 / 为什么重试了这么多次」时不必再加日志中间件。
+设置环境变量 `HTTPC_DEBUG=1` 后，引擎将每次尝试的状态码、可重试判定与退避延迟打印到 stderr。排查重试次数或可重试判定时，无需额外添加日志中间件。
 :::
 
 ## 代理池与重试交互
 
-当配置了 `ProxyRotateOnStatus` 或 `ProxyRotatePerRequest` 时，HTTPC 会自动提高 `MaxRetries`，确保代理池中的每个代理至少被尝试一次。这是通过 `calculateMaxRetries` 实现的：
+配置了 `ProxyRotateOnStatus` 或 `ProxyRotatePerRequest` 时，HTTPC 会提高 `MaxRetries`，使代理池中的每个代理至少被尝试一次。计算由 `calculateMaxRetries` 完成：
 
 ```text
 effective MaxRetries = max(配置的 MaxRetries, len(ProxyPool) - 1)
@@ -468,7 +470,7 @@ ProxyRotateOnStatus = [403]   // 或 ProxyRotatePerRequest = true
 ```
 
 :::tip 为什么是 len(ProxyPool) - 1
-首次请求使用第 1 个代理，不算重试。要尝试全部 N 个代理，需要 N - 1 次重试。`calculateMaxRetries` 将 `MaxRetries` 提高到 `len(ProxyPool) - 1`（如果原配置更小），确保意图（轮换所有代理）被满足。如果用户配置的 `MaxRetries` 已经够大，则保持不变。
+首次请求使用第 1 个代理，不计入重试；尝试全部 N 个代理需要 N - 1 次重试。`calculateMaxRetries` 在配置值更小时将其提高到 `len(ProxyPool) - 1`，配置值更大时保持不变。代理轮换与重试预算的联动详见[代理与代理池](./proxy)。
 :::
 
 ```go
@@ -511,11 +513,11 @@ func main() {
 
 ### 代理连接失败强制重试
 
-启用代理轮换（`ProxyRotateOnStatus` / `ProxyRotatePerRequest`）后，**代理本身的连接失败**（拨号失败、TLS 失败）不再走常规的可重试分类，而是**强制进入下一次重试**并自动换到下一个代理。永久失效的代理（端口错误、主机不可达）无需人工预先剔除——强制重试 + 连续失败熔断会自然淘汰它们。详见[代理与代理池](./proxy)。
+启用代理轮换（`ProxyRotateOnStatus` / `ProxyRotatePerRequest`）后，代理自身的连接失败（拨号失败、TLS 失败）不走常规的可重试分类，而是强制进入下一次重试并切换到下一个代理。端口错误、主机不可达等永久失效的代理由强制重试与连续失败熔断共同剔除。详见[代理与代理池](./proxy)。
 
 ## 重试预算考量
 
-重试会延长请求的总耗时。HTTPC 的超时是**跨所有重试共享的总预算**：引擎在首次尝试前创建覆盖整个重试循环的超时 context，网络请求与退避等待都从同一份预算扣减——不会出现「3 次重试各拿一份完整超时」的放大效应。
+重试会延长请求的总耗时。HTTPC 的超时是跨所有重试共享的总预算：引擎在首次尝试前创建覆盖整个重试循环的超时 context，网络请求与退避等待从同一份预算扣减，不会出现每次重试各拿一份完整超时。
 
 ### 总最坏时间公式
 
@@ -523,7 +525,9 @@ func main() {
 总最坏时间 ≈ min(Timeouts.Request, WithTimeout / context 截止时间)
 ```
 
-以默认配置为例（`MaxRetries=3`、`Request=180s`、`Delay=1s`、`Backoff=2.0`、`EnableJitter=true`）：无论重试几次、退避多久，整个「初始请求 + 3 次重试 + 全部退避」最多约 180s。预算耗尽后，剩余的尝试立即以 `ErrorTypeTimeout` 失败；退避等待中的请求也会被唤醒并终止，不会傻等。
+以默认配置为例（`MaxRetries=3`、`Request=180s`、`Delay=1s`、`Backoff=2.0`、`EnableJitter=true`）：无论重试几次、退避多久，整个「初始请求 + 3 次重试 + 全部退避」最多约 180s。
+
+预算耗尽后，剩余尝试立即以 `ErrorTypeTimeout` 失败；处于退避等待中的请求被唤醒并终止。
 
 ### 缩短总耗时的方法
 
@@ -536,7 +540,9 @@ func main() {
 | 用 `context.WithTimeout` 覆盖 | 精确控制该请求的总预算 |
 
 :::warning 总预算对重试次数的影响
-总预算是硬性的——预算耗尽时即使重试次数没用完也会立即终止，实际重试次数可能少于 `MaxRetries`。默认 180s 足够容纳 3 次重试加约 7.7s 退避；但若把超时压得很低（如 5s）又保留默认重试，第一次退避（约 1s）之后预算可能已所剩无几。需要「确保重试 N 次」时，按 N+1 次请求耗时加退避总和预留预算：
+总预算是硬性的：预算耗尽时，即使重试次数未用完也会立即终止，实际重试次数少于 `MaxRetries`。默认 180s 足以容纳 3 次重试及约 7.7s 退避；若超时设为 5s 且保留默认重试，第一次退避（约 1s）后预算即所剩有限。
+
+需要确保重试 N 次时，按 N+1 次请求耗时加退避总和预留预算：
 
 <!-- check-code: skip -->
 ```go
@@ -548,7 +554,7 @@ ctx, cancel := context.WithTimeout(context.Background(),
 
 ## context 取消与重试
 
-HTTPC 的重试引擎对 context 取消有快速路径处理。当请求失败原因是 `context.Canceled` 或 `context.DeadlineExceeded` 时，`isRetryableError` 立即返回 false，跳过完整的错误分类逻辑：
+HTTPC 的重试引擎对 context 取消走快速路径：请求失败原因为 `context.Canceled` 或 `context.DeadlineExceeded` 时，`isRetryableError` 立即返回 false，跳过完整的错误分类逻辑：
 
 <!-- check-code: skip -->
 ```go
@@ -565,9 +571,9 @@ func (r *retryEngine) isRetryableError(err error) bool {
 
 这意味着：
 
-- **用户手动取消**（`cancel()`）：立即停止，不重试
-- **context 超时**：立即停止，不重试
-- **正在进行的请求被取消**：不会因为取消而触发额外重试
+- 手动取消（`cancel()`）：立即停止，不重试
+- context 超时：立即停止，不重试
+- 进行中的请求被取消：不因取消触发额外重试
 
 ```go
 package main
@@ -620,7 +626,7 @@ func main() {
 
 ## 错误处理与重试
 
-网络层错误重试耗尽后，错误通过 `ClientError` 返回——Type **保留最后一次失败的原始分类**（如 `ErrorTypeNetwork`、`ErrorTypeTimeout`），`Attempts` 字段记录总尝试次数：
+网络层错误重试耗尽后，错误以 `ClientError` 返回。`Type` 保留最后一次失败的原始分类（如 `ErrorTypeNetwork`、`ErrorTypeTimeout`），`Attempts` 记录总尝试次数：
 
 ```go
 package main
@@ -654,10 +660,10 @@ func main() {
 ```
 
 :::tip 两种「重试耗尽」的表现不同
-- **网络错误耗尽**：以 `ClientError` 返回（上面的示例），`Attempts > 1`。
-- **可重试状态码耗尽**（408/429/5xx）：**不报错**，最后一次响应原样返回——`err == nil`、`StatusCode() == 503` 等，调用方按普通响应分支处理即可。
+- 网络错误耗尽：以 `ClientError` 返回（见上方示例），`Attempts > 1`。
+- 可重试状态码耗尽（408/429/5xx）：不报错，最后一次响应原样返回，即 `err == nil`、`StatusCode() == 503`；调用方按普通响应分支处理。
 
-另外，`ErrorTypeRetryExhausted` 只在引擎的防御性兜底路径设置，常规使用中几乎不会遇到——判断「重试后仍失败」用 `Attempts` 字段更可靠。
+`ErrorTypeRetryExhausted` 的判定方式见[错误处理](./error-handling)；判断「重试后仍失败」使用 `Attempts` 字段。
 :::
 
 ## 最佳实践
@@ -666,14 +672,18 @@ func main() {
 |------|----------|
 | API 调用 | `MaxRetries=3, Delay=1s, Backoff=2.0`（默认） |
 | 微服务通信 | `MaxRetries=2, Delay=500ms, Backoff=2.0`（快速失败） |
-| 文件下载 | `MaxRetries=5, Delay=2s, Backoff=2.0`（容忍网络波动） |
-| 幂等操作（GET/PUT/DELETE） | 可放心重试 |
+| 文件下载 | 由调用方控制重试：`Download` 单次执行，不参与重试循环，`MaxRetries` 对它无效 |
+| 幂等操作（GET/PUT/DELETE） | 可重试 |
 | 非幂等操作（POST） | 默认单次执行不重试；确需重试用 [`WithRetryNonIdempotent`](../api-reference/core/options#withretrynonidempotent) 显式开启 |
 | 限流 API | 依赖 `Retry-After` 自动解析（已内置） |
 | 代理池场景 | 配合 `ProxyRotateOnStatus`，重试次数自动提高 |
 
 :::warning 非幂等 POST 请求的重试
-默认情况下，非幂等方法（POST、PATCH 及自定义方法）**单次执行、不重试**——引擎直接清零这类方法的重试预算，因为超时或可重试 5xx 可能在服务端已提交操作后才到达，重放请求体会造成副作用（如重复下单、重复支付）。要为单个请求重开重试，使用 [`WithRetryNonIdempotent(true)`](../api-reference/core/options#withretrynonidempotent)（客户端级开关为 `Retry.RetryNonIdempotent`，请求级选项双向覆盖它）；仅对可容忍重放的端点启用，或以幂等键（Idempotency-Key）保护。注意自定义 `RetryPolicy` 同样只对幂等方法生效，无法单独为 POST 重开重试。
+默认情况下，非幂等方法（POST、PATCH 及自定义方法）单次执行、不重试：引擎将这类方法的重试预算清零。原因在于超时或可重试 5xx 可能在服务端已提交操作后才到达，重放请求体会造成重复下单、重复支付等副作用。
+
+要为单个请求开启重试，使用 [`WithRetryNonIdempotent(true)`](../api-reference/core/options#withretrynonidempotent)；客户端级开关为 `Retry.RetryNonIdempotent`，请求级选项覆盖它。
+
+该开关仅用于可容忍重放的端点，或用幂等键（Idempotency-Key）保护。自定义 `RetryPolicy` 同样只对幂等方法生效，无法单独为 POST 开启重试。
 :::
 
 ## 下一步

@@ -7,7 +7,7 @@ sidebar_position: 40
 
 # 生产检查清单
 
-上线前逐项核查可有效消除常见安全配置缺陷。本清单按类别分组，每项标注默认值、推荐生产值与验证方法。建议在 CI 中用脚本（见文末）自动化检查高危项。
+本清单是 HTTPC 上线前的安全配置核查项集合，按类别分组，每项标注默认值、推荐生产值与验证方法。高危项建议在 CI 中用脚本自动检查（命令见文末）。
 
 ## TLS / 加密
 
@@ -20,10 +20,10 @@ sidebar_position: 40
 | 证书固定（高安全场景） | 未启用 | 推荐启用 | `grep CertificatePinner` |
 
 :::warning
-`InsecureSkipVerify = true` 会使所有 TLS 安全措施失效。HTTPC 会在非测试环境的 `stderr` 打印警告，上线前务必确认日志中无此警告。
+`InsecureSkipVerify = true` 会使所有 TLS 安全措施失效。HTTPC 在非测试环境向 `stderr` 打印警告，上线前须确认日志中无此警告。
 :::
 
-版本语义补充：`MinTLSVersion`/`MaxTLSVersion` 为 `0` 时自动回退 1.2/1.3；`Min > Max` 无法通过 `New()` 校验。设置 `TLSConfig` 后版本字段被忽略，且 `Security.InsecureSkipVerify` 不再生效（须在 `TLSConfig` 内控制）——审查自定义 `TLSConfig` 时按其自身字段核查。
+版本语义补充：`MinTLSVersion`/`MaxTLSVersion` 为 `0` 时回退 1.2/1.3；`Min > Max` 无法通过 `New()` 校验。设置 `TLSConfig` 后版本字段被忽略，`Security.InsecureSkipVerify` 也不再生效（须在 `TLSConfig` 内控制）。审查自定义 `TLSConfig` 时按其自身字段核查。
 
 ## SSRF 防护
 
@@ -31,8 +31,8 @@ sidebar_position: 40
 |--------|--------|-----------|----------|
 | `AllowPrivateIPs` | `false` | `false`（处理不可信 URL） | 代码搜索，见文末命令 |
 | `SSRFExemptCIDRs` | `nil` | 仅精确列出必要网段 | 审计网段是否可收窄 |
-| 处理用户 URL 用 `SecureConfig()` | — | 是 | 代码审查 |
-| `RedirectWhitelist` | `nil` | 处理用户 URL 时配置 | 代码审查 |
+| 处理不可信 URL 用 `SecureConfig()` | — | 是 | 代码审查 |
+| `RedirectWhitelist` | `nil` | 处理不可信 URL 时配置 | 代码审查 |
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -55,14 +55,16 @@ cfg.Security.RedirectWhitelist = []string{"api.example.com"}
 | `TimeoutConfig.IdleConn` | 90s | 60-120s | — |
 
 :::warning
-`TimeoutConfig.ResponseHeader` 是 transport 级硬上限，作用于该 client 的**所有请求**，**无法**用 `WithTimeout` 按请求覆盖。设为正值会覆盖较长的 `WithTimeout`。仅当需要抵御 Slowloris 的 transport 级独立防护时才设正值；AI API 等长响应场景应设为 0，依赖 `Request` 超时控制。
+`TimeoutConfig.ResponseHeader` 是 transport 级硬上限，作用于该 client 的**所有请求**，**无法**用 `WithTimeout` 按请求覆盖；设为正值且短于 `WithTimeout` 预算时，它会先触发。
+
+仅在需要抵御 Slowloris 的 transport 级独立防护时设正值；AI API 等长响应场景设为 0，依赖 `Request` 超时控制。
 :::
 
 ### 超时预算怎么算
 
-`Timeouts.Request`（默认 180s）与 `WithTimeout` 是**覆盖所有重试尝试与退避等待的总预算**：重试引擎为整个请求建立单一截止时间，而非每次尝试重新计时——`WithTimeout(30s)` + 3 次重试最多耗时 30s，而不是 4 倍。配置值与 `WithTimeout` 均有 30 分钟硬上限，超出即配置错误。
+`Timeouts.Request`（默认 180s）与 `WithTimeout` 是**覆盖所有重试尝试与退避等待的总预算**：重试引擎为整个请求建立单一截止时间，每次尝试不重新计时，因此 `WithTimeout(30s)` 加 3 次重试最多耗时 30s，而不是 4 倍。配置值与 `WithTimeout` 均有 30 分钟硬上限，超出即配置错误。
 
-单次尝试由更窄的超时约束：`Dial`（默认 10s）限制 TCP 建立，`TLSHandshake`（默认 10s）限制握手。推荐从下游 API 的 P99 出发倒推：
+单次尝试由更窄的超时约束：`Dial`（默认 10s）限制 TCP 建立，`TLSHandshake`（默认 10s）限制握手。推荐从下游 API 的 P99 倒推：
 
 ```go
 // 预算公式：Request ≥ Dial + TLSHandshake + 预期传输时间 × (1 + MaxRetries) + 退避总和
@@ -80,10 +82,10 @@ cfg.Timeouts.TLSHandshake = 5 * time.Second
 | `MaxIdleConnsPerHost`（单主机空闲） | 自动推导 | — | 由 `MaxConnsPerHost/2` 推导，钳制在 2-10 |
 | 连接池总量上限 | 1000 | — | 连接层内置，超限返回连接池耗尽错误 |
 
-配置校验硬上限：`MaxIdleConns` 与 `MaxConnsPerHost` 均为 0-1000（`ValidateConfig` 强制）。两个容易误解的语义：
+配置校验硬上限：`MaxIdleConns` 与 `MaxConnsPerHost` 均为 0-1000（`ValidateConfig` 强制）。两项语义需注意：
 
 - `MaxConnsPerHost = 0` 表示**不限制**（net/http 语义），不是「禁止连接」；默认配置为 10
-- 连接池总量上限（1000）不可通过公共 `Config` 修改；达到上限时新拨号直接失败而非排队等待
+- 连接池总量上限（1000）不可通过公共 `Config` 修改；达到上限时新拨号直接失败，不排队等待
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -111,7 +113,9 @@ cfg.Connection.MaxResponseHeaderBytes = 512 * 1024       // 512KB 响应头（�
 ```
 
 :::danger
-`MaxRequestBodySize` 默认为 0（不限制），且**无自动回退**。代理转发或处理用户上传时若不设置，攻击者可发送超大请求耗尽带宽与内存。务必显式设置。
+`MaxRequestBodySize` 默认为 0（不限制），且**无自动回退**。代理转发或处理上传时若不设置，攻击者可发送超大请求耗尽带宽与内存，须显式设置。
+
+该上限覆盖全部请求体类型：内存型请求体（`string`、`[]byte`、`url.Values`、`*FormData`）在发送前校验，`io.Reader` 由计数读取器在发送过程中强制。
 :::
 
 ## 重试策略
@@ -124,7 +128,7 @@ cfg.Connection.MaxResponseHeaderBytes = 512 * 1024       // 512KB 响应头（�
 | `MaxRetryDelay` | 30s | 30s | — |
 
 :::warning
-非幂等请求（POST 创建资源、PATCH 部分更新）默认**单次执行、不重试**，本身不会重复提交。但一旦用 `WithRetryNonIdempotent(true)` 显式开启非幂等重试，就可能造成重复创建或重复扣款——此时应在服务端实现幂等键，或保持默认不开启。
+非幂等请求（POST 创建资源、PATCH 部分更新）默认**单次执行、不重试**，不会重复提交。一旦用 `WithRetryNonIdempotent(true)` 显式开启非幂等重试，就会造成重复创建或重复扣款；此时应在服务端实现幂等键，或保持默认不开启。
 :::
 
 ### 重试风暴控制
@@ -133,10 +137,10 @@ cfg.Connection.MaxResponseHeaderBytes = 512 * 1024       // 512KB 响应头（�
 
 | 机制 | 默认值 | 作用 |
 |------|--------|------|
-| 指数退避 | `Delay=1s`、`BackoffFactor=2.0` | 拉大重试间隔，不给故障服务雪上加霜 |
+| 指数退避 | `Delay=1s`、`BackoffFactor=2.0` | 拉大重试间隔，避免加重故障服务的负载 |
 | 抖动 | `EnableJitter=true` | 打散并发重试的同步节奏，防惊群 |
 | 单次延迟上限 | `MaxRetryDelay=30s` | 退避不会无限放大 |
-| Retry-After 遵从 | 自动解析 | 按服务端指示等待，但**封顶 60s**——防止恶意服务器用超大 Retry-After 拖死客户端 |
+| Retry-After 遵从 | 自动解析 | 按服务端指示等待，但**封顶 60s**，防止恶意服务器用超大 Retry-After 拖住客户端 |
 | 总预算 | `WithTimeout` 覆盖全部尝试 | 重试无法突破请求总超时 |
 
 ```go
@@ -149,10 +153,10 @@ cfg.Retry.EnableJitter = true              // 默认已开，显式写出便于�
 ```
 
 :::tip
-配置 `ProxyRotateOnStatus`（按状态码换代理重试）时，`MaxRetries` 会被自动提升到 `len(ProxyPool)-1`（封顶 10），保证每个代理至少被尝试一次。
+配置 `ProxyRotateOnStatus`（按状态码换代理重试）时，`MaxRetries` 被提升到 `len(ProxyPool)-1`（封顶 10），保证每个代理至少被尝试一次。
 :::
 
-另有两个易踩的坑：`io.Reader` 请求体为支持重试重放会被完整缓冲，超过 100MB 直接报错（`retry not supported for streaming bodies`）；`context.Canceled`/`context.DeadlineExceeded` 永不重试，主动取消不会触发重复请求。
+另有两项边界：`io.Reader` 请求体为支持重试重放会被完整缓冲，超过 100MB 直接报错（`retry not supported for streaming bodies`）；`context.Canceled`/`context.DeadlineExceeded` 永不重试，主动取消不会触发重复请求。
 
 ## Cookie 安全
 
@@ -172,11 +176,11 @@ sm, err := httpc.NewSessionManager(cfg)
 
 | 检查项 | 默认值 | 推荐生产值 | 验证方法 |
 |--------|--------|-----------|----------|
-| 下载路径不可信 | — | 仅用可信路径，不拼用户输入 | 代码审查 |
+| 下载路径不可信 | — | 仅用可信路径，不拼接调用方输入 | 代码审查 |
 | `Checksum` 校验 | 未设置 | 关键文件设置 SHA-256 | `grep Checksum` |
 | `Overwrite` / `ResumeDownload` | `false` | 按需 | 代码审查 |
 
-HTTPC 的 `Download` 已内置五层路径防护（UNC 阻止、控制字符过滤、系统路径保护、路径穿越检测、符号链接防护），但仍应避免将用户输入直接作为 `FilePath`。
+HTTPC 的 `Download` 内置五层路径防护（UNC 阻止、控制字符过滤、系统路径保护、路径穿越检测、符号链接防护），仍应避免将调用方输入直接作为 `FilePath`。
 
 ## 资源管理
 
@@ -186,7 +190,7 @@ HTTPC 的 `Download` 已内置五层路径防护（UNC 阻止、控制字符过�
 | 默认客户端关闭 | — | 长服务退出时 `CloseDefaultClient()` | 代码审查 |
 | `WithContext` 传取消 | — | 是 | 代码审查 |
 | 响应 Body 释放 | 自动 | 普通请求无需手动关闭（也无法关闭） | 确认未自行持有流 |
-| Download 残留清理 | 自动 | 中断/校验失败自动删除残缺文件 | 确认未绕过 `Download` 自行写盘 |
+| Download 残留清理 | 自动 | 中断或校验失败时自动删除残缺文件 | 确认未绕过 `Download` 自行写盘 |
 
 ```go
 package main
@@ -226,20 +230,20 @@ func main() {
 ```
 
 :::tip
-使用包级函数（`httpc.Get` 等）时，默认客户端在程序退出时不会自动关闭连接。长运行服务应在优雅停机时调用 `httpc.CloseDefaultClient()` 释放连接池。生产服务推荐用显式 `httpc.New(cfg)` 创建客户端，掌控配置与生命周期。
+使用包级函数（`httpc.Get` 等）时，进程退出不会自动关闭默认客户端，其连接池也不会释放。长运行服务应在停机流程中调用 `httpc.CloseDefaultClient()`。生产服务推荐用显式 `httpc.New(cfg)` 创建客户端，掌控配置与生命周期。
 :::
 
 ### 响应 Body 与临时文件
 
-- **普通请求**：`Result` 持有的是已读取并复制的字节——HTTPC 在内部完成读取、排空（最多 `min(10MB, MaxResponseBodySize)`，便于连接复用）与关闭，没有需要（也没有入口）手动关闭的 Body
-- **大文件**：用 `Download` 而非普通请求——流式写盘、支持进度回调与断点续传；传输中断、校验失败、磁盘写错的残缺文件会被自动删除，不会留下半截文件
+- **普通请求**：`Result` 持有的是已读取并复制的字节。HTTPC 在内部完成读取、排空（最多 `min(10MB, MaxResponseBodySize)`，便于连接复用）与关闭，没有需要（也没有入口）手动关闭的 Body
+- **大文件**：用 `Download` 而非普通请求，它流式写盘并支持进度回调与断点续传；传输中断、校验失败、磁盘写错产生的残缺文件会被自动删除
 - **`client.Close()`**：关闭空闲连接、DoH 解析器与连接池，幂等可重复调用；关闭后的客户端再发请求返回 `ErrClientClosed`
 
 ## 监控与审计
 
 ### 审计中间件（高安全场景）
 
-`AuditMiddleware` 生成结构化审计事件，适用于合规要求严格的场景。事件中 URL 已脱敏（凭据移除），敏感请求头默认掩码。
+`AuditMiddleware` 生成结构化审计事件，适用于合规要求严格的场景。事件中 URL 自动脱敏（凭据移除），敏感请求头默认掩码。
 
 ```go
 auditCfg := httpc.DefaultAuditConfig()
@@ -254,7 +258,7 @@ auditCfg.MaskHeaders = []string{"Authorization", "Cookie", "Set-Cookie", "X-API-
 auditMiddleware := httpc.AuditMiddleware(auditCfg)
 ```
 
-`SourceIP` 与 `UserID` 通过 context 键 `httpc.SourceIPKey`、`httpc.UserIDKey` 注入，便于关联请求与调用方。`AuditEvent` 包含时间戳、方法、URL、状态码、耗时、重试次数、错误、重定向链、请求/响应头等字段。
+`SourceIP` 与 `UserID` 通过 context 键 `httpc.SourceIPKey`、`httpc.UserIDKey` 注入，用于关联请求与调用方。`AuditEvent` 包含时间戳、方法、URL、状态码、耗时、重试次数、错误、重定向链、请求头与响应头等字段。
 
 ### 日志与指标中间件
 
@@ -267,7 +271,7 @@ auditMiddleware := httpc.AuditMiddleware(auditCfg)
 
 ### 敏感信息日志脱敏
 
-HTTPC 默认对输出做多通道脱敏，上线前确认没有被绕过：
+HTTPC 默认对输出做多通道脱敏，上线前确认未被绕过：
 
 | 输出通道 | 脱敏行为 |
 |----------|----------|
@@ -276,7 +280,7 @@ HTTPC 默认对输出做多通道脱敏，上线前确认没有被绕过：
 | `AuditMiddleware` | 审计事件 URL 脱敏；`MaskHeaders` 列出的请求头掩码 |
 | `Config.String()` | 代理 URL 凭据掩码；请求头不打印 |
 
-检查点：自定义日志中间件若直接打印原始请求 URL，会绕过内置脱敏——应打印脱敏后的 URL 或直接复用 `LoggingMiddleware`；`MaskHeaders` 应覆盖业务自定义的敏感头（如 `X-API-Key`、`X-Auth-Token`）。
+检查点：自定义日志中间件若直接打印原始请求 URL，会绕过内置脱敏；应打印脱敏后的 URL 或复用 `LoggingMiddleware`。`MaskHeaders` 应覆盖业务自定义的敏感头（如 `X-API-Key`、`X-Auth-Token`）。
 
 ## 证书固定
 
@@ -356,7 +360,7 @@ func main() {
 }
 ```
 
-### 安全级客户端（处理用户 URL）
+### 安全级客户端（处理不可信 URL）
 
 ```go
 func createSecureClient() (httpc.Client, error) {
@@ -387,7 +391,7 @@ grep -rn "MaxRequestBodySize" --include="*.go" | grep -v "_test.go"
 ```
 
 :::tip
-建议将上述命令封装为 CI 步骤，高危配置（`TestingConfig`、`InsecureSkipVerify: true`、`AllowPrivateIPs: true` 出现在非测试代码）命中即阻断构建。
+建议将上述命令封装为 CI 步骤，高危配置（非测试代码中出现 `TestingConfig`、`InsecureSkipVerify: true`、`AllowPrivateIPs: true`）命中即阻断构建。
 :::
 
 ## 下一步

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo env | 哨兵错误与恢复策略"
-description: "CyberGo env 错误处理指南，详解 16 个哨兵错误的 errors.Is 精确匹配、ParseError/FileError/SecurityError 等结构化错误的 errors.As 上下文提取、恢复降级策略与错误链 Unwrap 追踪，附生产环境错误分类实践。"
+description: "CyberGo env 错误处理指南：哨兵错误用 errors.Is 精确匹配，ParseError、FileError、SecurityError 等结构化错误用 errors.As 提取上下文，附恢复降级策略、错误分类对照表与生产环境实践。"
 sidebar_position: 5
 ---
 
 # 错误处理
 
-env 库提供结构化的错误处理机制，支持 `errors.Is` 和 `errors.As` 模式。
+env 的错误体系分两层：哨兵错误用 `errors.Is` 匹配，结构化错误类型用 `errors.As` 提取上下文。
 
 ## 哨兵错误
 
@@ -103,10 +103,13 @@ if errors.Is(err, env.ErrNotInitialized) {
     // 需要先调用 env.Load() 或 env.LoadWithConfig()
 }
 
-// 检查必需键是否缺失（实际返回 *ValidationError，Rule=="required"）
-var valErr *env.ValidationError
-if errors.As(err, &valErr) && valErr.Rule == "required" {
-    // 缺少必需键：valErr.Message 含缺失键列表
+// 检查必需键是否缺失：errors.Is 匹配 ErrMissingRequired，
+// errors.As 可拿到 *ValidationError（Rule=="required"）里的缺失键列表
+if errors.Is(err, env.ErrMissingRequired) {
+    var valErr *env.ValidationError
+    if errors.As(err, &valErr) {
+        // valErr.Message 含缺失键列表
+    }
 }
 ```
 
@@ -119,7 +122,7 @@ var ErrValidateRequiredUnsupported = errors.New(
 )
 ```
 
-当自定义验证器仅实现 `KeyValidator` 接口而未实现完整 `Validator` 接口时，调用 `ValidateRequired` 会返回此错误。
+当自定义验证器只实现了 `KeyValidator` 接口、未实现完整的 `Validator` 接口时，调用 `ValidateRequired` 返回此错误。
 
 **检查方式：**
 
@@ -326,9 +329,9 @@ if err != nil && env.IsMarshalError(err) {
 
 ## 错误处理模式
 
-### errors.Is 模式
+### 用 errors.Is 匹配哨兵错误
 
-检查哨兵错误：
+`errors.Is` 只判断类别，适合作 `switch` 的分流条件：
 
 ```go
 err := loader.LoadFiles(".env")
@@ -358,9 +361,9 @@ if errors.As(err, &valErr) && valErr.Field == "key" {
 }
 ```
 
-### errors.As 模式
+### 查看结构化错误字段
 
-提取详细错误信息：
+`errors.As` 逐类尝试，命中后即可读取该类型的字段：
 
 ```go
 err := loader.LoadFiles(".env")
@@ -392,6 +395,8 @@ log.Fatalf("未知错误: %v", err)
 ```
 
 ### 组合处理
+
+先用哨兵错误分流，需要细节时再用 `errors.As` 取结构化字段：
 
 ```go
 func handleLoadError(err error) {
@@ -431,7 +436,9 @@ func handleLoadError(err error) {
 
 ## 恢复模式
 
-### 优雅降级
+### 降级到默认配置
+
+配置文件缺失时使用内置默认值，其余错误仍然致命。下例关闭了 `Filenames` 的自动加载，改由 `LoadFiles` 显式加载并单独处理 `ErrFileNotFound`：
 
 ```go
 func loadConfig() *Config {
@@ -462,10 +469,12 @@ func loadConfig() *Config {
 ```
 
 ::: tip 关于 ProductionConfig 的审计行为
-`ProductionConfig` 默认启用审计（`AuditEnabled=true`），未配置 `AuditHandler` 时审计日志会以 `[AUDIT]` 前缀写入 stderr；如需落盘，请显式设置 `cfg.AuditHandler`（例如 `env.NewJSONAuditHandler(file)`）。
+`ProductionConfig` 默认启用审计（`AuditEnabled=true`）。未配置 `AuditHandler` 时，审计日志以 `[AUDIT]` 前缀写入 stderr；需要落盘时显式设置 `cfg.AuditHandler`（例如 `env.NewJSONAuditHandler(file)`）。
 :::
 
 ### 重试模式
+
+`LoadFiles` 默认（`FailOnMissingFile=false`）对缺失文件**静默跳过**，此时 `ErrFileNotFound` 分支不可达。要重试缺失文件，必须先把 `FailOnMissingFile` 设为 `true`（`ProductionConfig` 预设已开启）：
 
 ```go
 func loadWithRetry(filenames []string, maxRetries int) error {
@@ -496,7 +505,7 @@ func loadWithRetry(filenames []string, maxRetries int) error {
 }
 ```
 
-触发条件说明：`LoadFiles` 默认（`FailOnMissingFile=false`）对缺失文件**静默跳过**，上例的 `ErrFileNotFound` 分支只有在 `FailOnMissingFile=true` 时才可达（`ProductionConfig` 预设默认开启该项）。
+上例的退避是线性的（第 i 次重试等待 i+1 秒），且只对 `ErrFileNotFound` 重试；文件过大、解析失败等错误立即返回。
 
 ## 完整示例
 
@@ -579,7 +588,7 @@ func handleValidationError(err error) {
 
 ## 错误类型完整对照
 
-库的结构化错误类型均可用 `errors.As` 提取上下文：
+`errors.As` 可提取全部结构化错误类型，用类型断言拿到各自字段：
 
 | 类型 | 场景 | 关键信息 |
 |------|------|----------|
@@ -594,7 +603,7 @@ func handleValidationError(err error) {
 
 ### ExpansionErrorKind
 
-`ExpansionError` 通过 `Kind` 字段区分两类失败，便于精确处理：
+`ExpansionError` 的 `Kind` 字段区分两类失败：
 
 | 常量 | 含义 |
 |------|------|
@@ -611,7 +620,7 @@ func handleValidationError(err error) {
 | `ErrInvalidConfig` | 配置无效，`New()` 返回时会包裹具体的校验错误 |
 | `ErrNotInitialized` | 全局模式下未先调用 `Load()` 即使用写入类函数 |
 | `ErrAlreadyInitialized` | 默认 Loader 已初始化，重复调用 `Load()` |
-| `ErrDuplicateKey` | 保留字段：当前重复键在 `OverwriteExisting=false` 时静默跳过，暂无代码路径返回 |
+| `ErrDuplicateKey` | 同一文档内出现重复键（`DuplicateKeyPolicy = DuplicateKeyError`），或 YAML/JSON 的两个不同路径扁平化后撞到同一个键名 |
 
 ### 判断辅助函数
 

@@ -1,30 +1,30 @@
 ---
 sidebar_label: "内容提取实战"
 title: "内容提取实战 - CyberGo html | 提取流程指南"
-description: "CyberGo html 内容提取实战指南：详解完整提取流程（输入校验、编码检测、DOM 解析、安全清洗、文章智能识别与格式化）、候选节点评分算法原理、Result 结构体各字段含义、自定义 Scorer 评分器与编码自动检测机制及最佳实践。"
+description: "CyberGo html 内容提取实战：Extract 的完整处理流程（输入校验、编码检测、DOM 解析、深度验证、安全清洗、文章识别、格式化）、Result 各字段含义、默认评分器的评分信号与自定义 Scorer 写法、表格渲染、非 UTF-8 编码与超时语义，附完整可编译示例。"
 sidebar_position: 10
 ---
 
 # 内容提取实战
 
-本指南通过实际场景，帮助你理解 HTML 内容提取的工作原理和最佳实践。
+`Extract` 从 HTML 字节中提取正文、标题、图片、链接与音视频。本页覆盖处理流程、`Result` 字段含义与文章识别算法。
 
-## 提取流程概览
+## 提取流程
 
-当你调用 `Extract` 时，库会执行以下步骤：
+`Extract` 的处理步骤：
 
 ```text
-HTML 输入 → 输入校验 → 编码检测 (自动转 UTF-8) → DOM 解析 → 深度验证
-    → 安全清洗 (可选) → 文章识别 (可选) → 内容提取 → 格式化 → 返回 Result
+HTML 输入 → 输入校验 → 编码检测（转 UTF-8） → DOM 解析 → 深度验证
+    → 安全清洗（可选） → 文章识别（可选） → 内容提取 → 格式化 → 返回 Result
 ```
 
-深度验证在清洗**之前**执行：先以迭代方式校验 DOM 深度（避免递归遍历导致栈溢出），再对已解析的 DOM 树进行安全清洗。两者均针对解析后的节点树，因此 DOM 解析始终先于二者。
+深度验证在清洗**之前**执行。先以迭代方式校验 DOM 深度，避免递归遍历导致栈溢出；再对已解析的 DOM 树做安全清洗。两者都作用于解析后的节点树，因此 DOM 解析始终在最前。
 
-每一步都可以通过 [配置](../../api-reference/core/config) 进行定制。
+每一步都可以通过 [配置](../../api-reference/core/config) 定制。
 
 ## 基础文本提取
 
-最简单的用法是从 HTML 字节中提取内容：
+从 HTML 字节中提取内容：
 
 ```go
 package main
@@ -68,7 +68,7 @@ func main() {
 	// 字数：51
 
 	fmt.Println("阅读时间：", result.ReadingTime)
-	// 阅读时间：15.3s（按 200 词/分钟计算）
+	// 阅读时间：15.3s
 
 	fmt.Println("图片：", len(result.Images))
 	// 图片：1
@@ -78,25 +78,27 @@ func main() {
 }
 ```
 
-## 理解提取结果
+## Result 字段
 
-`Result` 包含以下字段：
+`Result` 的字段：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `Title` | `string` | 页面标题，优先 `<title>`，其次 `<h1>`、`<h2>` |
-| `Text` | `string` | 正文内容（已清洗，去除标签和冗余空白） |
+| `Title` | `string` | 页面标题：优先首个 `<title>`，其次首个 `<h1>`、`<h2>` |
+| `Text` | `string` | 正文（已清洗，去除标签与多余空白） |
 | `Images` | `[]ImageInfo` | 提取的图片列表 |
 | `Links` | `[]LinkInfo` | 提取的链接列表 |
 | `Videos` | `[]VideoInfo` | 提取的视频列表 |
 | `Audios` | `[]AudioInfo` | 提取的音频列表 |
 | `WordCount` | `int` | 正文字数 |
-| `ReadingTime` | `time.Duration` | 预估阅读时间（200 词/分钟） |
+| `ReadingTime` | `time.Duration` | 预估阅读时间 |
 | `ProcessingTime` | `time.Duration` | 处理耗时 |
+
+`WordCount` 按空白分词，CJK 字符逐字计数；`ReadingTime` 以 200 词/分钟换算，仅作估算。
 
 ## 从文件提取
 
-处理本地 HTML 文件时，使用 `ExtractFromFile`：
+处理本地 HTML 文件时用 `ExtractFromFile`：
 
 ```go
 result, err := html.ExtractFromFile("article.html")
@@ -106,48 +108,49 @@ if err != nil {
 fmt.Println("标题：", result.Title)
 ```
 
-文件操作内置了安全检查：
-- 自动检测路径穿越攻击（如 `../../../etc/passwd`）
+文件操作内置三项检查：
+
+- 检测路径穿越（如 `../../../etc/passwd`）
 - 文件大小受 `MaxInputSize` 限制
-- 错误信息通过 `SafePath()` 隐藏完整路径
+- 错误信息经 `SafePath()` 隐藏完整路径
 
 ## 文章识别算法
 
-当 `ExtractArticle` 为 `true`（默认）时，库会自动识别页面中的"主内容区域"。
+`ExtractArticle` 为 `true`（默认）时，库会定位页面中的主内容区域。
 
 ### 工作原理
 
-1. **候选节点评分**：遍历 DOM 树，对每个元素节点进行内容相关性打分
-2. **选择最佳候选**：选取得分最高的节点作为文章容器
-3. **回退机制**：如果没有找到合适的候选，回退到 `<body>` 节点
+1. **候选节点评分**：遍历 DOM，对非行内元素节点计算内容相关性分数，得分大于 0 的进入候选。
+2. **选择最佳候选**：得分最高的节点作为文章容器。
+3. **回退**：没有合适候选时回退到 `<body>`。
 
 ### 默认评分器的信号维度
 
-内置默认评分器（内部实现，不导出）基于多维信号综合打分，选取得分最高的容器：
+内置默认评分器（内部实现，不导出）按多维信号打分，选取得分最高的容器：
 
 | 维度 | 正面信号 | 负面信号 |
 |------|----------|----------|
 | **标签语义** | `<article>`(+1000)、`<main>`(+900)、`<section>`(+300)、`<body>`(+100) | `nav`/`aside`/`footer`/`header`/`script`/`style` 直接返回 0 |
 | **class/id 模式** | `content`/`article`/`post`/`main`/`entry`/`story` 等（强正面）；`blog`/`news`/`detail`/`page` 等（中等正面） | `comment`/`sidebar`/`nav`/`ad`/`menu` 等（强负面）；`widget`/`share`/`social`/`related` 等（中等负面）；`promo`/`banner`/`sponsor` 等（弱负面） |
-| **段落密度** | 子树中 `<p>` 数量乘以倍率加分（段落越多越可能为正文） | — |
+| **段落密度** | 子树中 `<p>` 数量乘以倍率加分 | — |
 | **文本长度** | 超过阈值的长文本加分；低于阈值的短文本扣分 | — |
 | **内容密度** | 文本/标签比例高时乘以放大系数 | 比例低时乘以衰减系数 |
-| **链接密度** | — | 文本短且链接密集时施加惩罚（可能是导航栏或站点地图） |
+| **链接密度** | — | 文本短且链接密集时扣分（可能是导航栏或站点地图） |
 | **标点特征** | 逗号密集（含中文逗号 `，`）暗示散文体，加分 | — |
 | **ARIA role** | `role="main"`/`role="article"`(+500) | `role="navigation"`/`role="complementary"`(-400) |
-| **隐藏元素** | — | `style="display:none"`/`visibility:hidden` 或 `hidden` 属性的节点被移除 |
+| **隐藏元素** | — | `style="display:none"`/`visibility:hidden` 或带 `hidden` 属性的节点被移除 |
 
 :::tip 布局包装器的豁免
-当 class/id 同时含内容信号（`content`/`article`）和移除信号（如 `sidebar`）时——典型如 CSS 布局类 `content-sidebar`——评分器**不会**移除该节点，因为它包裹着主内容。语义标签 `<article>`/`<main>`（或 `role="main"`/`role="article"`）一律豁免 class/id 移除启发式，确保 `<article class="post-with-sidebar">` 不会被误删。
+class/id 同时含内容信号（`content`/`article`）与移除信号（如 `sidebar`）时，评分器不移除该节点——它包裹着主内容，典型如布局类 `content-sidebar`。语义标签 `<article>`/`<main>`（或 `role="main"`/`role="article"`）一律豁免 class/id 移除启发式，`<article class="post-with-sidebar">` 因此不会被误删。
 :::
 
-:::warning 文章识别不是万能的
-文章识别最适合新闻、博客、文档等有明确"正文区域"的页面。对于导航页、列表页、图库等非文章型页面，可能无法准确定位正文——此时可设 `ExtractArticle = false` 提取整个 `<body>` 内容。
+:::warning 文章识别的适用范围
+文章识别适用于新闻、博客、文档等有明确正文区域的页面。导航页、列表页、图库等页面往往没有正文容器，识别结果可能偏离。此时把 `ExtractArticle` 设为 `false`，库会提取整个 `<body>`。
 :::
 
 ### 自定义评分
 
-通过实现 `Scorer` 接口自定义评分逻辑：
+实现 `Scorer` 接口即可替换评分逻辑：
 
 ```go
 type myScorer struct{}
@@ -170,13 +173,11 @@ func (s myScorer) ShouldRemove(node html.ContentNode) bool {
 }
 ```
 
-:::tip 注意
-此示例中的 `strings.Contains` 来自标准库 `strings` 包。完整可运行示例请参考 [测试与自定义扩展](../integration/testing-custom)。
-:::
+示例中的 `strings.Contains` 来自标准库 `strings` 包；`ShouldRemove` 是接口要求，库当前只调用 `Score`。完整可运行示例见 [测试与自定义扩展](../integration/testing-custom)。
 
 ## 仅提取文本
 
-当你只需要纯文本，不需要图片、链接等元数据时：
+只需要纯文本、不需要图片/链接等元数据时：
 
 ```go
 text, err := html.ExtractText(data)
@@ -186,11 +187,11 @@ if err != nil {
 fmt.Println(text)
 ```
 
-这在文本分析、搜索索引构建等场景中非常实用。
+`ExtractText` 内部先调用 `Extract`，再返回 `.Text`。它省去的是取字段的代码，处理路径与 `Extract` 相同。
 
 ## 表格渲染
 
-HTML 中的 `<table>` 会按 `TableFormat` 配置渲染到提取的文本中：
+HTML 中的 `<table>` 按 `TableFormat` 渲染进文本。该值大小写不敏感（`"Markdown"` 与 `"markdown"` 等效），空值回退到 `"markdown"`：
 
 ```go
 cfg := html.DefaultConfig()
@@ -199,14 +200,10 @@ cfg.TableFormat = "markdown" // 默认；或 "html"
 
 | 格式 | 渲染效果 | 适用场景 |
 |------|----------|----------|
-| `"markdown"` | Markdown 表格（含表头分隔行）；`colspan` 展开为重复单元格；仅含宽度定义的结构行被跳略 | 人类阅读、Markdown 消费 |
-| `"html"` | 保留原始 HTML `<table>` 标签（`colspan`/`rowspan` 原样保留）；结构行保留 | 需精确表格结构的下游处理 |
+| `"markdown"` | Markdown 表格（含表头分隔行）；`colspan` 展开为重复单元格；仅含宽度定义的结构行被跳过 | 人类阅读、Markdown 消费 |
+| `"html"` | 保留原始 `<table>` 标签（`colspan`/`rowspan` 原样保留）；结构行保留 | 需要精确表格结构的下游处理 |
 
-:::tip 格式大小写不敏感
-`TableFormat` 值大小写不敏感（`"Markdown"` 与 `"markdown"` 等效），空值回退到 `"markdown"`。
-:::
-
-示例——提取包含表格的 HTML：
+示例——提取含表格的 HTML：
 
 ```go
 package main
@@ -245,34 +242,40 @@ func main() {
 
 ## 处理非 UTF-8 编码
 
-库自动检测 15+ 种字符编码（包括 UTF-8、GBK、Shift_JIS、Windows-1252 等），并自动转换为 UTF-8。
+编码判定顺序：`Config.Encoding` → BOM → 纯 ASCII（有 meta 声明则用声明）→ 合法 UTF-8 → meta 声明 → windows-1252 兜底。
 
 ```go
-// 自动检测编码
+// data 为 GBK 字节；meta 声明了 charset=gbk 时可直接提取
 result, err := html.Extract(gbkEncodedData)
 
-// 手动指定编码
+// 无声明或已知编码：显式指定，跳过检测
 cfg := html.DefaultConfig()
 cfg.Encoding = "gbk"
 result, err = html.Extract(gbkEncodedData, cfg)
 ```
 
+:::warning 无声明编码的页面会得到乱码
+GBK、Shift_JIS 等页面缺少 `<meta charset>` 时，基础检测兜底为 windows-1252，实测解码结果是乱码，但**不返回错误**。已知来源编码时显式设置 `cfg.Encoding`。详见 [编码检测实战](./encoding-detection)。
+:::
+
 ## 上下文与超时
 
-对于大文件或不可信来源的 HTML，建议使用带上下文的版本：
+大文件或不可信来源的 HTML 用带上下文的版本：
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 defer cancel()
 
 result, err := html.ExtractWithContext(ctx, data)
-if errors.Is(err, html.ErrProcessingTimeout) {
+if errors.Is(err, context.DeadlineExceeded) {
     log.Println("处理超时")
 }
 ```
 
+用户 context 到期时原样返回 `context.DeadlineExceeded`；库内 `ProcessingTimeout` 到期才返回 `ErrProcessingTimeout`。
+
 ## 下一步
 
-- [输出格式实战](./output-formats) - 选择适合场景的输出格式
+- [输出格式实战](./output-formats) - 三种输出格式的差异与取舍
 - [Processor 复用与缓存](../performance/processor-cache) - 高频调用的性能优化
 - [API 参考：包函数](../../api-reference/core/functions) - 完整函数签名

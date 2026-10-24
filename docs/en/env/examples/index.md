@@ -7,11 +7,11 @@ sidebar_position: 1
 
 # Examples
 
-The env library ships 13 runnable examples in the `examples/` directory of the source repository. Each example is a self-contained `main` program, covering everything from global-mode basics to security features and advanced capabilities. All examples are included in normal builds (`go build ./...`).
+The source repository ships 13 runnable examples under `examples/`, numbered 01 to 13. Each is a self-contained `main` program, covering global-mode basics, security features, and extensibility. All of them are included in `go build ./...`.
 
 ## Running the Examples
 
-Clone the repository at [github.com/cybergodev/env](https://github.com/cybergodev/env), then run `go run` from the **project root**:
+Clone [github.com/cybergodev/env](https://github.com/cybergodev/env), then run `go run` from the **project root**:
 
 ```bash
 git clone https://github.com/cybergodev/env.git
@@ -19,7 +19,7 @@ cd env
 go run ./examples/01_quickstart/
 ```
 
-Examples reference shared configuration files under `examples/data/` using relative paths, so they must be run from the project root for those paths to resolve.
+The examples read shared configuration files from `examples/data/` through relative paths, so they must be run from the project root.
 
 ### Shared Data Files
 
@@ -38,7 +38,7 @@ Examples reference shared configuration files under `examples/data/` using relat
 | 03 | `03_type_access/` | Every typed getter: string, int, bool, duration, float, uint, and slice, plus `Lookup`, including dot-notation paths | [Quick Start](../getting-started/) |
 | 04 | `04_struct_mapping/` | Struct mapping with `env` tags: nested structs, `envDefault` defaults, and marshaling | [Struct Mapping](../guides/struct-mapping) |
 | 05 | `05_secure_values/` | `SecureValue` lifecycle: `Close` vs `Release`, memory zeroing, and mlock memory locking | [Memory Locking](../security/memory-locking), [SecureValue](../api-reference/secure-value) |
-| 06 | `06_audit_logging/` | JSON, Channel, and Log audit handlers, automatically capturing read, write, and delete events | [Audit Logging](../guides/audit-logging) |
+| 06 | `06_audit_logging/` | JSON, Channel, and Log audit handlers, and the events each operation records | [Audit Logging](../guides/audit-logging) |
 | 07 | `07_marshal_unmarshal/` | Format conversion: map ↔ string, struct ↔ map, multi-format output, and round trips | [Serialization](../guides/serialization) |
 | 08 | `08_utilities/` | Utility functions: introspection (`Len`/`Keys`/`All`), key deletion, masking, and format detection | [Multi-format Config](../guides/multi-format) |
 | 09 | `09_error_handling/` | Sentinel errors (`errors.Is`) and typed errors (`errors.As`), including missing-file and closed-loader cases | [Error Handling](../guides/error-handling) |
@@ -49,4 +49,4 @@ Examples reference shared configuration files under `examples/data/` using relat
 
 ## Reading Order
 
-We recommend reading the examples in numeric order: 01–03 cover the global and instance modes plus typed access, 04–07 introduce production features such as struct mapping, secure values, and auditing, and 08–13 move on to utilities, error handling, advanced features, and extensibility. Every example can be verified directly with `go run` and pairs well with its linked documentation page.
+The examples build on each other in numeric order. 01–03 cover global and instance mode plus typed access. 04–07 introduce struct mapping, secure values, auditing, and serialization. 08–13 cover utilities, error handling, concurrency, variable expansion, and extensibility. Each example runs directly with `go run` and links to its documentation page above.

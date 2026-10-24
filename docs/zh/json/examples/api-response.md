@@ -1,13 +1,13 @@
 ---
 sidebar_label: "API 响应解析"
 title: "API 响应解析 - CyberGo JSON | 分页与结构体反序列化"
-description: "CyberGo JSON 解析 HTTP API 响应：ParseAny 解析任意值、GetString/GetInt 提取状态与分页元信息、Get/GetArray 提取嵌套数据、路径切片处理分页数组、GetTyped 反序列化到结构体，并以 ForeachWithPath 逐元素遍历条目，单次解析、高效提取。"
+description: "CyberGo JSON 解析 HTTP API 响应：ParseAny 解析任意值、GetString 取字段、路径切片处理分页数组、GetTyped 反序列化。"
 sidebar_position: 30
 ---
 
 # API 响应解析
 
-本文演示如何用 CyberGo JSON 解析典型的 HTTP API JSON 响应：提取响应状态与分页元信息、用路径切片处理数组、反序列化到结构体。
+HTTP API 的 JSON 响应常见三类需求：取状态与分页元信息、按路径切片处理数组、反序列化到结构体。下面的示例覆盖这三类，并给出每个 API 适合的场合。
 
 ## 解析分页 API 响应
 
@@ -48,7 +48,7 @@ func main() {
 
 	// 2. 获取整个数据数组
 	items := json.GetArray(apiResponse, "data.items")
-	fmt.Printf("本页条目数：%d\n", len(items))
+	fmt.Printf("当前页条目数：%d\n", len(items))
 
 	// 3. 使用路径切片获取子集（取前 2 条）
 	firstTwo, err := json.Get(apiResponse, "data.items[0:2]")
@@ -57,7 +57,7 @@ func main() {
 	}
 	fmt.Printf("前两条: %v\n", firstTwo)
 
-	// 4. 遍历数组提取每个元素的字段（推荐 ForeachWithPath：一次解析，逐元素访问）
+	// 4. 遍历数组提取字段：ForeachWithPath 一次解析，逐元素访问
 	err = json.ForeachWithPath(apiResponse, "data.items", func(key any, item *json.IterableValue) {
 		fmt.Printf("  - %s (%d stars)\n", item.GetString("name"), item.GetInt("stars"))
 	})
@@ -68,7 +68,7 @@ func main() {
 
 // 输出：
 // 状态：success, 第 2 页，共 48 条
-// 本页条目数：5
+// 当前页条目数：5
 // 前两条：[map[id:6 name:项目六 stars:120] map[id:7 name:项目七 stars:89]]
 //   - 项目六 (120 stars)
 //   - 项目七 (89 stars)
@@ -80,12 +80,12 @@ func main() {
 :::tip 提示
 路径切片语法 `[start:end]` 返回数组子集，也可用 `[start:end:step]` 带步长切片、`[-1]` 取末尾元素、`[*]` 通配符遍历所有元素。完整语法见[路径表达式](../getting-started/path-syntax)。
 
-遍历数组时**优先 `ForeachWithPath`** 而非循环拼路径（`fmt.Sprintf("data.items.%d.name", i)` 逐条查询）：前者只解析一次、每个元素内直接按字段名取值，代码也更简洁；后者每条路径都是一次独立查询。
+遍历数组时优先用 `ForeachWithPath`，不要循环拼路径（`fmt.Sprintf("data.items.%d.name", i)` 逐条查询）：前者只解析一次，且在元素内直接按字段名取值；后者每条路径都是一次独立查询。
 :::
 
 ## 一次获取多个字段
 
-响应里要提取的字段较多时，`GetMultiple` 只解析一次就取回所有路径的值（结果 map 以路径为键），比逐个 `Get` 更省：
+响应里要提取的字段较多时，`GetMultiple` 只解析一次就取回所有路径的值（结果 map 以路径为键）：
 
 ```go
 package main
@@ -135,7 +135,7 @@ func main() {
 
 ## SafeGet 安全访问
 
-`SafeGet` 不返回 error，而是返回 `AccessResult`：`Ok()` 判断存在性、`AsInt`/`AsString` 等方法按需转换、`UnwrapOr` 提供默认值——适合字段类型不稳定或可选的第三方响应，全程不会 panic：
+`SafeGet` 不返回 error，而是返回 `AccessResult`：`Ok()` 判断存在性、`AsInt`/`AsString` 等方法按需转换、`UnwrapOr` 提供默认值。字段类型不稳定或可选的第三方响应适合用它，调用过程不会 panic：
 
 ```go
 package main
@@ -181,7 +181,7 @@ func main() {
 // 废弃字段兜底：none
 ```
 
-严格转换失败时 `As*` 方法返回错误而非静默零值，避免把「字段缺失」与「值为 0」混为一谈；需要宽松转换（如任意类型转字符串表示）时用 `AsStringConverted`。
+严格转换失败时 `As*` 方法返回错误而非静默零值，避免把「字段缺失」与「值为 0」混为一谈。需要宽松转换（如任意类型转字符串表示）时用 `AsStringConverted`。
 
 ## 反序列化到结构体
 

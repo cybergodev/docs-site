@@ -7,14 +7,21 @@ sidebar_position: 30
 
 # 会话管理
 
-SessionManager 提供线程安全的 Cookie 和请求头存储，由 DomainClient 内部嵌入使用。它封装了一套基于 `sync.RWMutex` 的并发安全存储，所有读取操作使用读锁、写入操作使用写锁，适合在高并发场景下跨请求共享会话状态。
+`SessionManager` 提供线程安全的 Cookie 和请求头存储，由 DomainClient 内部嵌入使用。其存储基于 `sync.RWMutex`：所有读取操作使用读锁，写入操作使用写锁，因此可在高并发场景下跨请求共享会话状态。
 
 :::tip nil 接收者安全
-所有方法对 nil 接收者安全：返回 error 的方法（SetHeader/SetHeaders/SetCookie/SetCookies）返回 `"session manager is nil"`；其余方法静默返回零值（GetHeaders/GetCookies/GetCookie 返回 nil，SetCookieSecurity/Delete*/Clear*/UpdateFrom* 直接返回）。
+所有方法对 nil 接收者安全，行为分两类：
+
+- 返回 error 的方法（SetHeader/SetHeaders/SetCookie/SetCookies）返回 `"session manager is nil"`。
+- 其余方法静默返回零值：GetHeaders/GetCookies/GetCookie 返回 nil；SetCookieSecurity/Delete*/Clear*/UpdateFrom* 直接返回。
 :::
 
 :::tip 何时需要直接使用 SessionManager
-通常你无需手动创建 SessionManager——`NewDomain` 创建的 DomainClient 会自动嵌入一个。直接使用 SessionManager 的场景包括：需要在多个 DomainClient 之间共享会话、需要运行时切换 Cookie 安全策略、或者需要从响应中批量提取 Cookie。
+`NewDomain` 创建的 DomainClient 已自动嵌入一个 SessionManager。仅在以下场景需要手动创建 SessionManager：
+
+- 在多个 DomainClient 之间共享会话。
+- 运行时切换 Cookie 安全策略。
+- 从响应中批量提取 Cookie。
 :::
 
 ## SessionConfig
@@ -43,7 +50,7 @@ func DefaultSessionConfig() SessionConfig
 func NewSessionManager(cfg SessionConfig) (*SessionManager, error)
 ```
 
-创建会话管理器。传入 `SessionConfig` 值，或使用 `NewSessionManagerDefault()` 作为零参快捷方式。当前实现始终返回 nil error，error 返回值保留用于未来扩展的配置校验。
+创建会话管理器。传入 `SessionConfig` 值，或使用 `NewSessionManagerDefault()` 作为零参快捷方式。当前实现始终返回 nil error；error 返回值保留用于未来的配置校验扩展。
 
 ```go
 // 使用默认配置
@@ -151,7 +158,9 @@ func (s *SessionManager) GetHeaders() map[string]string
 
 SessionManager 通过以下方法维护跨请求的 Cookie。所有写入操作均通过 `validation.ValidateCookie` 校验合法性；若配置了 `CookieSecurity`，还会额外校验安全属性（Secure/HttpOnly/SameSite）。
 
-Cookie 字符串的底层解析遵循 RFC 6265：仅空格与水平制表符被视为合法的可选空白（OWS），解析按索引裁剪实现零额外字符串分配，且结果切片独立分配、不与内部对象池共享。[`WithCookieString`](../core/options#withcookiestring) 选项与请求 Cookie 头的提取共用这一解析器。
+Cookie 字符串的底层解析遵循 RFC 6265：仅空格与水平制表符被视为合法的可选空白（OWS）。解析按索引裁剪实现零额外字符串分配，结果切片独立分配、不与内部对象池共享。
+
+[`WithCookieString`](../core/options#withcookiestring) 选项与请求 Cookie 头的提取共用同一解析器。
 
 ### SetCookie
 
@@ -159,7 +168,7 @@ Cookie 字符串的底层解析遵循 RFC 6265：仅空格与水平制表符被�
 func (s *SessionManager) SetCookie(cookie *http.Cookie) error
 ```
 
-添加或更新单个会话 Cookie。校验流程：① nil cookie 检查；②基础格式校验；③ 若配置了 CookieSecurity，执行 `validateCookieSecurity`（在写锁内执行以保证线程安全）。任一校验失败返回包装错误，不修改存储。
+添加或更新单个会话 Cookie。校验分三步：① nil cookie 检查；② 基础格式校验；③ 若配置了 CookieSecurity，执行 `validateCookieSecurity`（在写锁内执行以保证线程安全）。任一校验失败返回包装错误，且不修改存储。
 
 ```go
 err := sm.SetCookie(&http.Cookie{
@@ -180,7 +189,13 @@ if err != nil {
 func (s *SessionManager) SetCookies(cookies []*http.Cookie) error
 ```
 
-批量设置 Cookie。采用**两阶段原子写入**：① 锁外预校验所有 cookie 的基础合法性（nil 检查 + ValidateCookie）；② 锁内逐项执行安全校验，任一失败立即返回错误（已校验的也不会写入）；③ 全部通过后才统一存储。这保证了批量操作的原子性——不会出现"部分写入"的中间状态。
+批量设置 Cookie，采用**两阶段原子写入**：
+
+1. 锁外预校验所有 cookie 的基础合法性（nil 检查 + ValidateCookie）。
+2. 锁内逐项执行安全校验；任一失败立即返回错误，已校验的也不会写入。
+3. 全部通过后才统一存储。
+
+批量操作因此具备原子性，不会出现「部分写入」的中间状态。
 
 ### DeleteCookie
 
@@ -204,7 +219,9 @@ func (s *SessionManager) ClearCookies()
 func (s *SessionManager) GetCookies() []*http.Cookie
 ```
 
-返回所有 Cookie 的**深拷贝**副本。采用连续 backing array 优化：预分配一个长度为 N 的 `[]http.Cookie` 连续数组，所有 Cookie 结构体在其中连续排列，返回的 `[]*http.Cookie` 指向该数组。这将 N 次独立堆分配降为 2 次（backing array + 指针切片），显著降低 GC 压力。空会话返回 nil。
+返回所有 Cookie 的**深拷贝**副本。实现采用连续 backing array 优化：预分配一个长度为 N 的 `[]http.Cookie` 连续数组，所有 Cookie 结构体在其中连续排列，返回的 `[]*http.Cookie` 指向该数组。
+
+N 次独立堆分配因此降为 2 次（backing array + 指针切片）。空会话返回 nil。
 
 ### GetCookie
 
@@ -235,7 +252,9 @@ func (s *SessionManager) GetCookie(name string) *http.Cookie
 func (s *SessionManager) SetCookieSecurity(config *CookieSecurityConfig)
 ```
 
-运行时更新 Cookie 安全验证配置，影响**后续所有** SetCookie/SetCookies/UpdateFromResult/UpdateFromCookies 调用。传 nil 可禁用安全验证。nil 接收者安全。这是切换安全策略的唯一入口——无需重建 SessionManager 即可在运行时从宽松切换到严格策略，或反之。
+运行时更新 Cookie 安全验证配置，影响**后续所有** SetCookie/SetCookies/UpdateFromResult/UpdateFromCookies 调用。传 nil 可禁用安全验证。nil 接收者安全。
+
+这是切换安全策略的唯一入口：无需重建 SessionManager，即可在运行时从宽松切换到严格策略，或反向切换。
 
 ```go
 // 运行时从宽松切换到严格
@@ -270,7 +289,9 @@ type CookieSecurityConfig struct {
 func (s *SessionManager) UpdateFromResult(result *Result)
 ```
 
-`SessionManager.UpdateFromResult` 从请求结果（`*Result`）的 Response.Cookies 中提取 Cookie 并存入会话。若配置了 CookieSecurity，不安全的 Cookie 会被**静默跳过**（不返回错误，直接忽略），仅存储通过校验的 Cookie。result 为 nil、Response 为 nil 或 Cookies 为空时直接返回。DomainClient 的 `Request` 方法在每次请求后自动调用此方法。
+`SessionManager.UpdateFromResult` 从请求结果（`*Result`）的 Response.Cookies 中提取 Cookie 并存入会话。若配置了 CookieSecurity，不安全的 Cookie 会被**静默跳过**（不返回错误，直接忽略），仅存储通过校验的 Cookie。
+
+result 为 nil、Response 为 nil 或 Cookies 为空时直接返回。DomainClient 的 `Request` 方法在每次请求后自动调用此方法。
 
 ### UpdateFromCookies
 
@@ -278,7 +299,7 @@ func (s *SessionManager) UpdateFromResult(result *Result)
 func (s *SessionManager) UpdateFromCookies(cookies []*http.Cookie)
 ```
 
-`SessionManager.UpdateFromCookies` 从 Cookie 切片中更新会话 Cookie。语义与 `SessionManager.UpdateFromResult` 一致——不安全 Cookie 静默跳过。DomainClient 的 Download 方法通过此方法捕获下载响应中的 Cookie。
+`SessionManager.UpdateFromCookies` 从 Cookie 切片中更新会话 Cookie，语义与 `SessionManager.UpdateFromResult` 一致：不安全的 Cookie 静默跳过。DomainClient 的 Download 方法通过此方法捕获下载响应中的 Cookie。
 
 ## 内部机制
 
@@ -288,15 +309,17 @@ func (s *SessionManager) UpdateFromCookies(cookies []*http.Cookie)
 func (s *SessionManager) captureFromOptions(options []RequestOption)
 ```
 
-DomainClient 的 `prepareSessionOptions` 内部调用此方法，从用户提供的 RequestOptions 中提取 Cookie 和 Header 存入会话。实现细节：
+DomainClient 的 `prepareSessionOptions` 内部调用此方法，从调用方提供的 RequestOptions 中提取 Cookie 和 Header 存入会话。实现细节：
 
-1. 使用对象池中的临时 `engine.Request`（`acquireMiddlewareRequest`/`releaseMiddlewareRequest`）减少热路径分配
-2. 逐个应用 option 到临时请求——**安全措施**：每个 option 应用前后清除 OnRequest/OnResponse 回调，防止 `WithOnRequest`/`WithOnResponse` 的闭包在捕获过程中累积触发副作用
-3. 提取临时请求上的 Cookie 和 Header，经校验后存入会话
-4. 只提取 Cookie 和 Header，其他数据（query params、body、callbacks）被丢弃
+1. 使用对象池中的临时 `engine.Request`（`acquireMiddlewareRequest`/`releaseMiddlewareRequest`）减少热路径分配。
+2. 逐个应用 option 到临时请求。**安全措施**：每个 option 应用前后清除 OnRequest/OnResponse 回调，防止 `WithOnRequest`/`WithOnResponse` 的闭包在捕获过程中累积触发副作用。
+3. 提取临时请求上的 Cookie 和 Header，经校验后存入会话。
+4. 只提取 Cookie 和 Header；其他数据（query params、body、callbacks）被丢弃。
 
 :::warning RequestOptions 执行两次
-DomainClient 的 Request/Download 会将 RequestOptions **执行两次**——一次用于会话捕获（captureFromOptions），一次用于实际请求。因此**避免使用有副作用的 option**（如计数器、nonce 生成、随机数）。如需副作用，请直接使用底层 Client。
+DomainClient 的 Request/Download 会将 RequestOptions **执行两次**：一次用于会话捕获（captureFromOptions），一次用于实际请求。因此**避免使用有副作用的 option**（如计数器、nonce 生成、随机数）。
+
+需要副作用时，直接使用底层 Client。
 :::
 
 ### prepareOptions
@@ -307,21 +330,23 @@ func (s *SessionManager) prepareOptions() []RequestOption
 
 DomainClient 每次请求前调用此方法，将当前会话状态注入为 RequestOptions：
 
-- **Cookie 批量注入**：将所有会话 Cookie 打包到一个闭包 option 中（`r.SetCookies(append(existing, cookies...))`），避免 N 次闭包分配
-- **Header map 注入**：通过 `WithHeaderMap` 一次性注入深拷贝的 header map
+- **Cookie 批量注入**：将所有会话 Cookie 打包到一个闭包 option 中（`r.SetCookies(append(existing, cookies...))`），避免 N 次闭包分配。
+- **Header map 注入**：通过 `WithHeaderMap` 一次性注入深拷贝的 header map。
 
-会话为空（无 Cookie 且无 Header）时返回 nil，零开销。
+会话为空（无 Cookie 且无 Header）时返回 nil，无额外开销。
 
 ### 线程安全模型
 
-SessionManager 通过单个 `sync.RWMutex` 保护所有状态：
+`SessionManager` 通过单个 `sync.RWMutex` 保护所有状态：
 
 | 操作类型 | 锁级别 | 方法 |
 |----------|--------|------|
 | 读取（GetHeaders/GetCookies/GetCookie/prepareOptions） | RLock | 可并发 |
 | 写入（Set*/Delete*/Clear*/UpdateFrom*/captureFromOptions/SetCookieSecurity） | Lock | 互斥 |
 
-DomainClient 的 `prepareSessionOptions` 采用"先读后写"的非原子序列：先读快照（prepareOptions）再写捕获（captureFromOptions），两步之间可能有并发请求交错。这是**最终一致性**设计——每个请求在 `prepareOptions()` 时刻捕获一致快照，跨请求的瞬时竞态不影响单次请求的正确性。
+DomainClient 的 `prepareSessionOptions` 采用「先读后写」的非原子序列：先读快照（prepareOptions），再写捕获（captureFromOptions）。并发请求会在这两步之间交错。
+
+该设计为**最终一致性**：每个请求在 `prepareOptions()` 时刻捕获一致快照，瞬时竞态不影响单次请求的正确性。
 
 ## 完整示例：登录会话维持
 
@@ -390,7 +415,7 @@ func main() {
 ```
 
 :::tip 手动管理 SessionManager
-你也可以独立创建 SessionManager 并在多个 DomainClient 之间共享。但通常 DomainClient 的自动管理已满足需求——每次请求后自动捕获响应 Cookie，请求前自动注入会话状态。
+也可以独立创建 SessionManager，并在多个 DomainClient 之间共享。DomainClient 的自动管理已覆盖常规用法：每次请求后自动捕获响应 Cookie，请求前自动注入会话状态。
 :::
 
 ## 另见

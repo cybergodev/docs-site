@@ -1,7 +1,7 @@
 ---
 sidebar_label: "常量与错误"
 title: "常量与错误 - CyberGo JSON | 错误变量与预定义常量"
-description: "CyberGo JSON 常量与错误参考：ErrPathNotFound、ErrTypeMismatch 等哨兵错误附触发场景速查，JsonsError 支持 errors.Is/As 链上溯，DefaultMaxJSONSize 等默认常量与 Config 字段对照，并含 DefaultConfig 配置预设与 MergeMode 合并模式，帮助开发者编写精确的错误处理分支。"
+description: "CyberGo JSON 常量与错误：ErrPathNotFound 等哨兵错误的触发场景、JsonsError 结构，以及默认常量与 Config 字段对照。"
 sidebar_position: 80
 ---
 
@@ -38,19 +38,19 @@ var (
 
 ### 触发场景速查
 
-每个哨兵错误的典型触发场景，便于按错误分支编写恢复逻辑：
+每个哨兵错误的典型触发场景，按错误分支编写恢复逻辑时对照下表：
 
 | 错误 | 典型触发场景 | 建议处理 |
 |------|--------------|----------|
 | `ErrInvalidJSON` | 输入不是合法 JSON（多余字符、未闭合等） | 拒绝输入，检查来源 |
-| `ErrPathNotFound` | `Get` 的路径在数据中不存在 | 业务常见，用默认值兜底 |
-| `ErrTypeMismatch` | 路径存在但类型不符（如对字符串路径用 `[0]`） | 检查数据结构假设 |
-| `ErrInvalidPath` | 路径语法错误（`CompilePath` / 路径解析失败） | 修正路径表达式 |
+| `ErrPathNotFound` | `Get` 的路径不存在；对象键缺失与数组下标越界都返回此哨兵。类型化获取函数（`GetString`、`GetInt` 等）不返回错误，落零值或默认值 | 用类型化获取函数或 `SafeGet` 取默认值，不要靠 `Get` 的 err 分支兜底 |
+| `ErrTypeMismatch` | `SafeGet(...).AsString()` 在非字符串值上；`GetCompiled` 路径导航中途类型不符；`EncodeFields` 传入非对象；`ForeachFileChunked` 根不是数组。其余 `As*` 方法（`AsInt`/`AsFloat64`/`AsBool`）转换失败返回普通 error，不包此哨兵；`Get` 对字符串用 `[0]`、`Set` 覆盖标量也不命中此哨兵。`GetTyped[T]` 兜底转换失败时内部会构造包装此哨兵的 `JsonsError`，但该函数只返回值，调用方拿不到错误 | 检查数据结构假设；需要哨兵时只对上述可观测场景用 `errors.Is` |
+| `ErrInvalidPath` | 路径语法解析失败；或校验开启（`SkipValidation` 为 `false`）且路径字符串超过 5000 字节。`CompilePath` 的解析失败返回普通 error（消息如 `path too deep`），不包此哨兵 | 修正路径表达式 |
 | `ErrProcessorClosed` | `Close()`（或关闭中）之后继续调用方法 | 检查生命周期，`IsClosed` 预判 |
-| `ErrSizeLimit` | 输入超过 `MaxJSONSize` / `MaxSecurityValidationSize` | 调大限制或拒绝超大输入 |
-| `ErrDepthLimit` | 嵌套超过 `MaxNestingDepthSecurity` | 拒绝深嵌套输入（可能是攻击） |
+| `ErrSizeLimit` | 输入超过 `MaxJSONSize`；`ProcessBatch` 操作数超过 `MaxBatchSize`；对象键数超过 `MaxObjectKeys` 或数组元素数超过 `MaxArrayElements` | 调大限制或拒绝超大输入 |
+| `ErrDepthLimit` | 嵌套超过 `MaxNestingDepthSecurity` | 拒绝深嵌套输入（常见于恶意构造的输入） |
 | `ErrConcurrencyLimit` | 受控操作并发超过 `MaxConcurrency` | 降低并发或调大限制 |
-| `ErrSecurityViolation` | 命中危险模式、超 `MaxObjectKeys`/`MaxArrayElements` | 记录审计日志并拒绝 |
+| `ErrSecurityViolation` | 命中危险模式（如 `__proto__`、`<script`） | 记录审计日志并拒绝 |
 | `ErrDuplicateKey` | `Config.DetectDuplicateKeys` 开启时，输入对象中存在重复键 | 拒绝输入（默认关闭时重复键后者胜出，与 `encoding/json` 一致） |
 | `ErrUnsupportedPath` | 预留，当前无操作返回（已废弃；不支持的路径段以 `ErrInvalidPath` 或 `ErrTypeMismatch` 形式出现） | 错误分支无需处理 |
 | `ErrOperationTimeout` | 预留，当前无操作返回（已废弃） | 错误分支无需处理 |
@@ -62,21 +62,23 @@ var (
 
 ### 错误检查
 
-使用 `errors.Is` 检查错误类型：
+`Get` 的错误分支常见为路径不存在与 JSON 格式错误；类型不符不在 `Get` 返回的哨兵之列，要按类型判断需用 `SafeGet` 的转换方法（见上表 `ErrTypeMismatch` 行）：
 
 ```go
-val, err := json.Get(data, "user.name")
+_, err := json.Get(data, "user.name")
 if err != nil {
     if errors.Is(err, json.ErrPathNotFound) {
-        // 路径不存在
+        // 路径不存在（含数组下标越界）
         fmt.Println("路径未找到")
-    } else if errors.Is(err, json.ErrTypeMismatch) {
-        // 类型不匹配
-        fmt.Println("类型不匹配")
     } else if errors.Is(err, json.ErrInvalidJSON) {
         // JSON 格式错误
         fmt.Println("无效的 JSON")
     }
+}
+
+// AsString 对非字符串值返回包装 ErrTypeMismatch 的错误
+if _, err := json.SafeGet(data, "user.age").AsString(); errors.Is(err, json.ErrTypeMismatch) {
+    fmt.Println("类型不匹配")
 }
 ```
 
@@ -172,13 +174,13 @@ const (
 |------|--------|------------------|------|
 | `DefaultMaxJSONSize` | 100MB | `MaxJSONSize` | 单个 JSON 输入的大小上限 |
 | `DefaultMaxNestingDepth` | 200 | `MaxNestingDepthSecurity` | JSON 嵌套深度上限 |
-| `DefaultMaxPathDepth` | 50 | `MaxPathDepth` | 路径段数量上限（如 `a.b.c.d...` 的层数） |
+| `DefaultMaxPathDepth` | 50 | `MaxPathDepth` | 预留字段的默认值，当前不改变行为（仅参与配置缓存键与 `Validate` 钳制 10–200） |
 | `DefaultMaxDepth` | 100 | `MaxDepth` | 编解码（Marshal/Unmarshal）默认嵌套深度 |
 | `DefaultMaxConcurrency` | 50 | `MaxConcurrency` | 并发操作数上限 |
-| `DefaultMaxSecuritySize` | 10MB | `MaxSecurityValidationSize` | 超过该大小的文档改用采样式安全检查 |
+| `DefaultMaxSecuritySize` | 10MB | `MaxSecurityValidationSize` | 预留字段的默认值，当前不改变行为（仅参与配置缓存键与 `Validate` 钳制 1MB–100MB） |
 | `DefaultMaxObjectKeys` | 100000 | `MaxObjectKeys` | 对象键数量上限 |
 | `DefaultMaxArrayElements` | 100000 | `MaxArrayElements` | 数组元素数量上限 |
-| `DefaultMaxBatchSize` | 2000 | `MaxBatchSize` | 单次 `ProcessBatch` 的操作数上限，超出返回 `ErrSizeLimit` |
+| `DefaultMaxBatchSize` | 2000 | `MaxBatchSize` | 单次 `ProcessBatch` / `SetMultiple` 的操作数上限，超出返回 `ErrSizeLimit` |
 | `DefaultParallelThreshold` | 10 | `ParallelThreshold` | 并行处理阈值：操作数低于该值时使用顺序处理 |
 | `DefaultCacheTTL` | 5 分钟 | `CacheTTL` | 缓存条目存活时间 |
 
@@ -222,10 +224,10 @@ defer processor.Close()
 
 **安全配置特点**：
 
-- 完整安全扫描
-- 严格模式
-- 保守的限制值
-- 启用缓存
+- `FullSecurityScan` 置 `true`，所有输入单次全量扫描
+- 保守限制值：`MaxJSONSize` 10MB、`MaxNestingDepthSecurity` 30、`MaxObjectKeys`/`MaxArrayElements` 5000
+- 启用缓存，`MaxCacheSize` 256、`CacheTTL` 3 分钟
+- `StrictMode`、`EnableValidation` 也被置 `true`，但这两个字段已废弃、不被读取，不产生实际影响
 
 ### PrettyConfig
 
@@ -270,9 +272,9 @@ type PathSegment = internal.PathSegment
 ```
 
 ::: warning 内部实现别名
-`PathSegment` 是 `internal.PathSegment` 的类型别名。其具体字段、字段类型（如 PathSegmentType、PathSegmentFlags）及方法均属于 `internal` 包，**未作为公开 API 导出**，可能随版本变化，请勿在业务代码中直接依赖其内部结构。
+`PathSegment` 是 `internal.PathSegment` 的类型别名。其具体字段、字段类型（如 PathSegmentType、PathSegmentFlags）及方法均属于 `internal` 包，**未作为公开 API 导出**，会随版本变化——不要在业务代码中依赖其内部结构。
 
-- 实现自定义路径语法时，通过 [`PathParser`](./interfaces#pathparser) 接口的 `ParsePath` 方法返回 `[]PathSegment`。
+- 实现自定义路径语法时，从 [`PathParser`](./interfaces#pathparser) 接口的 `ParsePath` 方法返回 `[]PathSegment`。
 - 预编译路径请使用 [`Processor.CompilePath`](./processor/query#compilepath)，返回 `*CompiledPath`。
 :::
 
@@ -307,15 +309,19 @@ type DangerousPattern struct {
 
 ### 使用 errors.Is 检查类型
 
+`Get` 的失败按哨兵分支处理，可命中的哨兵见上方[触发场景速查](#触发场景速查)：
+
 ```go
-result, err := json.Get(data, path)
+_, err := json.Get(data, path)
 if errors.Is(err, json.ErrPathNotFound) {
     return defaultValue
 }
-if errors.Is(err, json.ErrTypeMismatch) {
+if errors.Is(err, json.ErrInvalidPath) {
     return defaultValue
 }
 ```
+
+类型不符需经 `SafeGet` 的转换方法判断：只有 `AsString` 会包 `ErrTypeMismatch`，其余 `As*` 返回普通 error。完整示例见[错误检查](#错误检查)。
 
 ### 使用 errors.As 获取详情
 

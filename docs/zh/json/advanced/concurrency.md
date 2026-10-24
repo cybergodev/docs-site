@@ -1,16 +1,16 @@
 ---
 sidebar_label: "并发与并行处理"
 title: "并发与并行处理 - CyberGo JSON | goroutine 安全实战"
-description: "CyberGo JSON 提供线程安全的并发与并行处理能力，支持单个 Processor 实例跨 goroutine 共享、ParallelIterator 多核并行迭代与 StreamJSONLParallel 并行 JSONL 流，帮助开发者安全利用多核加速大批量数据处理并管控并发上限。"
+description: "CyberGo JSON 并发：跨 goroutine 共享 Processor 的线程安全语义、ParallelIterator 与 StreamJSONLParallel 并行。"
 sidebar_position: 40
 ---
 
 # 并发与并行处理
 
-CyberGo JSON 的所有操作都是**并发安全**的，并提供开箱即用的并行处理 API（`ParallelIterator`、并行 JSONL 流）。本页文档化线程安全语义、内置并行 API 与并发使用模式。
+CyberGo JSON 的所有操作都是**并发安全**的，并内置并行处理 API（`ParallelIterator`、并行 JSONL 流）。本页给出线程安全语义、内置并行 API 与并发使用模式。
 
 :::tip 与性能优化页的分工
-[性能优化](./performance) 的「并发处理」一节展示的是**通用 Go 模式**（`sync.WaitGroup` + 信号量 + Worker Pool）手动并发处理数组；本页文档化的是**库内置**并行 API，二者互补。
+[性能优化](./performance) 的「并发处理」一节展示的是**通用 Go 模式**（`sync.WaitGroup` + 信号量 + Worker Pool）手动并发处理数组；这里的 API 是**库内置**并行实现，二者互补。
 :::
 
 ## 线程安全保证
@@ -27,7 +27,7 @@ CyberGo JSON 的所有操作都是**并发安全**的，并提供开箱即用的
 
 ## ParallelIterator 并行迭代器
 
-`ParallelIterator` 利用多核 CPU 并行处理数组，内置 worker 池、错误聚合与 panic 恢复，比手写 goroutine 池更安全。
+`ParallelIterator` 用 worker 池并行处理数组，内置错误聚合与 panic 恢复。
 
 ### 基础并行遍历
 
@@ -173,7 +173,7 @@ func main() {
 完整签名与用法见 [迭代器类型](../api-reference/iterator#paralleliterator-类型)。
 
 :::tip 错误与 panic 处理
-`ForEach` 返回**首个**错误即停止派发新任务；worker 内的 panic 会被恢复（`recover`）并转为错误返回，不会击溃进程。需可取消时用 `ForEachWithContext`，在 `ctx.Done()` 时优雅退出。
+`ForEach` 返回**首个**错误即停止派发新任务；worker 内的 panic 会被恢复（`recover`）并转为错误返回，不会击溃进程。需可取消时用 `ForEachWithContext`，在 `ctx.Done()` 时停止派发并退出。
 :::
 
 ## 并行 JSONL 流处理

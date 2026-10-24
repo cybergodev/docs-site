@@ -18,7 +18,7 @@ type MiddlewareFunc func(Handler) Handler
 type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, error)
 ```
 
-Middleware is configured in `MiddlewareConfig.Middlewares` and executes in order. Each middleware factory accepts a `*XxxConfig` configuration pointer; pass `nil` to use the default config:
+Middleware is configured in `MiddlewareConfig.Middlewares` and executes in slice order. Each middleware factory accepts a `*XxxConfig` configuration pointer; pass `nil` to use the default config:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -57,7 +57,7 @@ combined := httpc.Chain(
 func RecoveryMiddleware() MiddlewareFunc
 ```
 
-Panic-recovery middleware. Catches panics in the processing chain and converts them to errors containing stack traces. It shares the same conversion logic with the client's built-in panic safety net (the `Request` / download paths), guaranteeing that the public API never propagates a panic to the caller.
+Panic-recovery middleware. Catches panics in the processing chain and converts them to errors containing stack traces. It shares the same conversion logic as the client's built-in panic safety net (the `Request` / download paths), so the public API never propagates a panic to the caller.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -73,9 +73,12 @@ client, _ := httpc.New(cfg)
 func LoggingMiddleware(config *LoggingConfig) MiddlewareFunc
 ```
 
-Request-logging middleware. Logs method, URL, status code, and duration. URLs are automatically masked (credentials removed). Pass `nil` to use [`DefaultLoggingConfig()`](#defaultloggingconfig) (logging disabled).
+Request-logging middleware. Logs method, URL, status code, and duration. URLs are masked automatically (credentials removed). Pass `nil` to use [`DefaultLoggingConfig()`](#defaultloggingconfig) (logging disabled).
 
-Output format: `METHOD URL -> STATUS (DURATION)` on success; `METHOD URL -> error: ERR (DURATION)` on failure.
+Output format:
+
+- Success: `METHOD URL -> STATUS (DURATION)`
+- Failure: `METHOD URL -> error: ERR (DURATION)`
 
 #### LoggingConfig
 
@@ -172,10 +175,14 @@ middleware := httpc.RequestIDMiddleware(&httpc.RequestIDConfig{
 func TimeoutMiddleware(config *TimeoutMiddlewareConfig) MiddlewareFunc
 ```
 
-Middleware-level timeout control. Pass `nil` to use [`DefaultTimeoutMiddlewareConfig()`](#defaulttimeoutmiddlewareconfig) (timeout disabled; middleware is a pass-through). If set to a positive value, it takes effect before the client's built-in timeout; on timeout it cancels the context and returns an error. The timeout context is derived from the **request's own** `Context()` (a cancel/deadline preset via `WithContext` is respected rather than overridden), and the derived deadline is written back to the request object passed to the engine.
+Middleware-level timeout control. Pass `nil` to use [`DefaultTimeoutMiddlewareConfig()`](#defaulttimeoutmiddlewareconfig) (timeout disabled; middleware is a pass-through). When set to a positive value, the timeout takes effect before the client's built-in timeout; on timeout it cancels the context and returns an error.
+
+The timeout context is derived from the **request's own** `Context()` (a cancel/deadline preset via `WithContext` is respected rather than overridden); the derived deadline is written back to the request object passed to the engine.
 
 :::warning
-`TimeoutMiddleware`'s `defer cancel()` fires immediately after the handler returns (i.e. once the response headers are received), so for `Download` or `WithStreamBody` requests it cancels the context before the response body is read, producing a "context canceled" error. For streaming/download scenarios, use [`WithTimeout`](../core/options#withtimeout) instead.
+`TimeoutMiddleware`'s `defer cancel()` fires immediately after the handler returns (once the response headers are received), before the response body has been read. The middleware therefore rejects streaming requests on entry: a `Download` or `WithStreamBody` request returns `TimeoutMiddleware is incompatible with streaming responses`.
+
+For streaming/download scenarios, use [`WithTimeout`](../core/options#withtimeout) instead.
 :::
 
 #### TimeoutMiddlewareConfig
@@ -219,7 +226,11 @@ client, _ := httpc.New(cfg)
 func HeaderMiddleware(config *HeaderConfig) MiddlewareFunc
 ```
 
-Adds static headers to every request. Pass `nil` to use [`DefaultHeaderConfig()`](#defaultheaderconfig) (no headers; middleware is a pass-through). Header safety is validated at creation time (CRLF injection protection); conflicts with existing same-name headers will overwrite them. The config map is **deep-copied** at creation time, so later changes to the caller's original map do not affect the middleware; if a header fails validation, creation does not panic — instead you get a middleware that returns that validation error for every request.
+Adds static headers to every request. Pass `nil` to use [`DefaultHeaderConfig()`](#defaultheaderconfig) (no headers; middleware is a pass-through).
+
+Header safety is validated at creation time (CRLF injection protection), and a conflicting same-name header in the request is overwritten. The config map is **deep-copied** at creation time, so later changes to the caller's original map do not affect the middleware.
+
+If a header fails validation, creation does not panic; instead the middleware returned returns that validation error for every request.
 
 #### HeaderConfig
 
@@ -264,7 +275,9 @@ client, _ := httpc.New(cfg)
 func MetricsMiddleware(config *MetricsConfig) MiddlewareFunc
 ```
 
-Metrics-collection middleware. Invokes the callback after each request completes, passing method, URL, status code, duration, and error. Pass `nil` to use [`DefaultMetricsConfig()`](#defaultmetricsconfig) (metrics disabled). The callback receives the **sanitized** URL; if an error message embeds the original URL (with credentials), it is likewise replaced with the sanitized version, preventing credential leaks into metrics pipelines.
+Metrics-collection middleware. Invokes the callback after each request completes, passing method, URL, status code, duration, and error. Pass `nil` to use [`DefaultMetricsConfig()`](#defaultmetricsconfig) (metrics disabled).
+
+The callback receives the **sanitized** URL. If an error message embeds the original URL (with credentials), it is likewise replaced with the sanitized version, preventing credential leaks into metrics pipelines.
 
 #### MetricsConfig
 
@@ -308,11 +321,21 @@ func AuditMiddleware(config *AuditConfig) MiddlewareFunc
 
 Security-audit middleware, suitable for financial, medical, government, and other compliance scenarios. Records request/response metadata (method, URL, status code, duration, retries, etc.) with automatic URL masking. The callback is provided via `config.OnAudit`; when nil, the middleware is a no-op. Pass `nil` to use [`DefaultAuditConfig()`](#defaultauditconfig).
 
-`SourceIP` and `UserID` are extracted from the request context via [`SourceIPKey`](#audit-context-keys) and [`UserIDKey`](#audit-context-keys). `Attempts` (the actual attempt count) and `RedirectChain` (the redirect chain) are extracted automatically from the response. Note: the middleware itself does **not** branch on `Format` when formatting — the event is handed to `OnAudit` as an `AuditEvent` struct as-is; `Format` is there for the callback to read when deciding the output style.
+`SourceIP` and `UserID` are extracted from the request context via [`SourceIPKey`](#audit-context-keys) and [`UserIDKey`](#audit-context-keys). `Attempts` (the actual attempt count) and `RedirectChain` (the redirect chain) are extracted automatically from the response.
+
+The middleware itself does **not** branch on `Format` when formatting: the event is handed to `OnAudit` as an `AuditEvent` struct as-is; `Format` is there for the callback to read when deciding the output style.
 
 #### AuditConfig
 
-The audit middleware's configuration struct, with 5 fields: `OnAudit` (audit callback; the middleware is a no-op when nil), `Format` (output-format hint, `"text"` / `"json"`, consumed by the callback), `IncludeHeaders` (whether to record headers), `MaskHeaders` (header names to mask; defaults to the six standard sensitive headers, matches replaced with `[REDACTED]`), and `SanitizeError` (whether to sanitize error messages). For the full type definition, field-by-field descriptions, and defaults, see [AuditConfig](../types/constants#auditconfig).
+The audit middleware's configuration struct, with 5 fields:
+
+- `OnAudit`: audit callback; the middleware is a no-op when nil.
+- `Format`: output-format hint (`"text"` / `"json"`), consumed by the callback.
+- `IncludeHeaders`: whether to record headers.
+- `MaskHeaders`: header names to mask; defaults to the six standard sensitive headers, with matches replaced by `[REDACTED]`.
+- `SanitizeError`: whether to sanitize error messages.
+
+For the full type definition, field-by-field descriptions, and defaults, see [AuditConfig](../types/constants#auditconfig).
 
 #### DefaultAuditConfig
 

@@ -1,27 +1,27 @@
 ---
 sidebar_label: "JSONL"
 title: "JSONL 处理函数 - CyberGo JSON | ParseJSONL 与 ToJSONL 用法"
-description: "CyberGo JSON 是处理 JSONL 行分隔格式的 Go 库，ParseJSONL 解析、StreamLinesInto[T] 泛型流式读取与 NewJSONLWriter 逐行写入，另有 ToJSONL 等批量格式转换函数，帮助开发者以行号回调方式高效处理日志、导出等行分隔数据。"
+description: "JSONL 处理：ParseJSONL/ToJSONL 整块转换，StreamLinesInto[T] 与 StreamJSONL 家族逐行读取，NewJSONLWriter 写行。"
 sidebar_position: 80
 ---
 
 # JSONL 处理函数
 
-json 包提供的 JSONL（JSON Lines）处理函数，支持解析、流式读取、转换和写入换行分隔的 JSON 数据。
+json 包的 JSONL（JSON Lines）处理函数，覆盖解析、流式读取、格式转换与逐行写入。
 
 ::: tip 完整教程
-需要了解 JSONL/NDJSON 的概念、流式处理模式和实战用法？参阅 [JSONL 流式处理](../../streaming/jsonl) 完整教程。
+JSONL/NDJSON 的概念、流式处理模式与实战用法见 [JSONL 流式处理](../../streaming/jsonl)。
 :::
 
 ## JSONL 处理函数
 
-JSONL（JSON Lines）是换行分隔的 JSON 格式，每行一个独立的 JSON 对象。
+JSONL（JSON Lines）是换行分隔的 JSON 格式，每行一个独立的 JSON 值。
 
 ### ParseJSONL
 
 签名：`func ParseJSONL(data []byte, cfg ...Config) ([]any, error)`
 
-解析 JSONL（换行分隔 JSON）数据。
+解析 JSONL（换行分隔 JSON）数据，返回每行解析结果的切片。任一坏行导致失败时返回 `nil` 与错误，不返回部分结果；`JSONLContinueOnErr=true` 时可跳过坏行继续。
 
 **参数**
 
@@ -56,7 +56,7 @@ func main() {
 
 签名：`func StreamLinesInto[T any](reader io.Reader, fn func(lineNum int, data T) error, cfg ...Config) ([]T, error)`
 
-从 io.Reader 流式读取 JSONL 数据并通过回调函数处理每一行。这是推荐的泛型 JSONL 处理方式。
+从 `io.Reader` 流式读取 JSONL，每行按目标类型 `T` 解码后传给回调；回调返回非 nil 错误即中断处理并作为函数返回值。这是泛型 JSONL 处理的首选入口。
 
 **参数**
 
@@ -174,7 +174,7 @@ func main() {
 
 ## JSONL 流式处理函数（包级）
 
-json 包提供的 JSONL 流式处理包级便捷函数，签名与对应 Processor 方法一致（同样在末尾接受可选的 `cfg ...Config` 尾参）；内部使用按 `cfg` 缓存的全局 Processor，因此无需手动创建实例，适合一次性处理场景。需要多次处理或共享同一份配置时，建议改用 [`json.New(cfg)`](../processor/#new) 创建独立 Processor。
+json 包的 JSONL 流式处理包级函数，签名与对应 Processor 方法一致（末尾同样接受可选的 `cfg ...Config`）。它们内部使用按 `cfg` 缓存的全局 Processor，无需手动创建实例，适合一次性处理；需要多次处理或共享同一份配置时，改用 [`json.New(cfg)`](../processor/#new) 创建独立 Processor。
 
 完整用法与示例见 [JSONL 流式处理指南](../../streaming/jsonl#包级函数) 与 [Processor JSONL 方法](../processor/jsonl)。
 
@@ -184,30 +184,30 @@ json 包提供的 JSONL 流式处理包级便捷函数，签名与对应 Process
 |------|------|
 | 逐行处理（顺序敏感） | `StreamJSONL` / `ForeachJSONL` |
 | CPU 密集的行处理（顺序不敏感） | `StreamJSONLParallel` |
-| 需要中途取消/超时 | `StreamJSONLParallelWithContext` |
+| 需要中途取消或超时 | `StreamJSONLParallelWithContext` |
 | 批量落库等分块消费 | `StreamJSONLChunked` |
 | 解码到具体结构体 `T` | `StreamLinesInto[T]` |
-| 转换 / 聚合 / 筛选 / 查找首个 | `MapJSONL` / `ReduceJSONL` / `FilterJSONL` / `FirstJSONL` |
+| 转换、聚合、筛选、查找首个 | `MapJSONL` / `ReduceJSONL` / `FilterJSONL` / `FirstJSONL` |
 | 全量收集 | `CollectJSONL`（全量驻留内存，大文件慎用） |
 
 **行为要点**
 
-- **坏行处理**：默认（`JSONLContinueOnErr=false`）遇到无法解析的行**立即中止**，返回 `line N: ...` 形式的错误；`JSONLContinueOnErr=true` 时所有 JSONL 引擎（`StreamJSONL` 家族、`StreamLinesInto`、`NDJSONProcessor`）均跳过坏行继续。
-- **深度护栏**：每行解析前执行嵌套深度检查（`MaxNestingDepthSecurity`，默认 200），防止深嵌套行导致栈溢出。
-- **并行语义**：`StreamJSONLParallel` 的 `workers <= 0` 时按 4 处理；回调在多个 goroutine 中并发执行，需自行保证并发安全。回调返回 `item.Break()` 是**正常**提前结束（返回 `nil`）；返回其他错误会取消其余任务并成为函数返回值。
+- **坏行处理**：默认（`JSONLContinueOnErr=false`）遇到无法解析的行**立即中止**，返回 `line N: ...` 形式的错误。`JSONLContinueOnErr=true` 时所有 JSONL 引擎（`StreamJSONL` 家族、`StreamLinesInto`、`NDJSONProcessor`）都跳过坏行继续。
+- **深度护栏**：每行解析前检查嵌套深度（`MaxNestingDepthSecurity`，默认 200），防止深嵌套行导致栈溢出。
+- **并行语义**：`StreamJSONLParallel` 在 `workers <= 0` 时按 4 处理；回调在多个 goroutine 中并发执行，并发安全由调用方负责。回调返回 `item.Break()` 是**正常**提前结束（函数返回 `nil`）；返回其他错误会取消其余任务并成为函数返回值。
 - **内存护栏**：`JSONLMaxMemory`（未设时回退 `MaxMemory`）限制已处理的总字节数，超限即中止。
 
 ### StreamJSONL
 
 签名：`func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-流式逐行处理 JSONL，每行解析为 `IterableValue` 后调用回调。
+流式逐行处理 JSONL，每行解析为 `IterableValue` 后调用回调；回调返回 `nil` 继续，返回 `item.Break()` 提前正常结束，返回其他错误即中止。
 
 ### StreamJSONLParallel
 
 签名：`func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-使用 `workers` 个并行 goroutine 处理 JSONL（CPU 密集型场景）。
+使用 `workers` 个 goroutine 并行处理 JSONL，适合 CPU 密集场景；`workers <= 0` 时按 4 处理。
 
 ### StreamJSONLParallelWithContext
 
@@ -225,7 +225,7 @@ json 包提供的 JSONL 流式处理包级便捷函数，签名与对应 Process
 
 签名：`func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-遍历 JSONL（行为与 `StreamJSONL` 相同的别名）。
+遍历 JSONL（`StreamJSONL` 的别名，行为相同）。
 
 ### MapJSONL
 
@@ -255,7 +255,7 @@ json 包提供的 JSONL 流式处理包级便捷函数，签名与对应 Process
 
 签名：`func CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
 
-读取全部 JSONL 行并收集为切片（注意：全量加载到内存，大文件建议用 `StreamJSONL`）。
+读取全部 JSONL 行并收集为切片（全量加载到内存，大文件用 `StreamJSONL`）。
 
 ### FirstJSONL
 
@@ -266,7 +266,7 @@ json 包提供的 JSONL 流式处理包级便捷函数，签名与对应 Process
 ## JSONL 配置
 
 ::: warning
-JSONLConfig 独立结构和 `DefaultJSONLConfig()` 函数已移除。JSONL 配置已统一集成到 `Config` 的 `JSONL*` 字段中。
+独立的 JSONLConfig 结构与 DefaultJSONLConfig 函数已移除。JSONL 配置统一放在 `Config` 的 `JSONL*` 字段中。
 :::
 
 ### 通过 Config 配置 JSONL
@@ -287,7 +287,7 @@ cfg.JSONLMaxMemory     = 100 * 1024 * 1024 // 最大内存 (默认：100MB)
 processor, err := json.New(cfg)
 ```
 
-详见 [Config 配置](../config#config-结构体)
+详见 [Config 配置](../config#config-结构体)。
 
 ## JSONL 写入器
 
@@ -295,7 +295,7 @@ processor, err := json.New(cfg)
 
 签名：`func NewJSONLWriter(writer io.Writer, cfg ...Config) *JSONLWriter`
 
-创建 JSONL 写入器。
+创建 JSONL 写入器，后续每次 `Write` 输出一行。
 
 ```go
 package main
@@ -439,10 +439,11 @@ type JSONLStats struct {
 
 **行为细节**
 
-- `Write`：将值编码为单行 JSON 后追加 `\n`；是否转义 `<`/`>`/`&` 由 `Config.EscapeHTML`（默认 `true`）决定
+- `Write`：将值编码为单行 JSON 后追加 `\n`；是否转义 `<`/`>`/`&` 由 `Config.EscapeHTML`（默认 `true`）决定。`NewJSONLWriter` 只读取该字段，`Pretty`/`Indent`/`FloatPrecision` 不影响输出。需要完整配置化编码时，先用 `Encode` 生成行，再交给 `WriteRaw`
 - `WriteRaw`：写入**已编码**的原始行以避免二次编码开销；行尾没有 `\n` 时自动补一个
-- **错误粘性**：任一次写入或编码出错后，错误被缓存在写入器上，后续 `Write`/`WriteRaw` 不再写底层 writer、直接返回该错误——避免在半写状态上继续追加
+- **错误粘性**：任一次写入或编码出错后，错误被缓存在写入器上，后续 `Write`/`WriteRaw` 不再写底层 writer、直接返回该错误，避免在半写状态上继续追加
 - `Err()` 读取缓存错误（无错为 `nil`）；`Stats()` 返回 `JSONLStats`，字段见上表
+- **并发**：`JSONLWriter` 不保证并发安全（错误与计数状态无锁保护）。每个 goroutine 各用一个写入器，或由调用方串行化 `Write`
 
 ### 使用示例
 

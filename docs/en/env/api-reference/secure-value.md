@@ -7,15 +7,19 @@ sidebar_position: 5
 
 # SecureValue API
 
-The `SecureValue` type is used for securely storing sensitive data, providing memory locking, auto-zeroing, and masking functionality.
+`SecureValue` holds a secret in a buffer it controls and keeps the plaintext out of ordinary strings.
+
+- It can lock the memory page so the secret cannot be swapped to disk.
+- It zeroes the buffer on release.
+- It renders itself as a mask whenever it is formatted, logged, or serialized.
 
 ## Thread Safety
 
-All methods of `SecureValue` are thread-safe and can be used concurrently from multiple goroutines:
+All methods of `SecureValue` are thread-safe and can be called concurrently from multiple goroutines:
 
-- **Read methods** (`String()`, `Bytes()`, `Length()`, `Masked()`) use read locks, supporting concurrent reads
-- **Close methods** (`Close()`, `Release()`) use write locks, ensuring safe zeroing
-- **Status checks** (`IsClosed()`, `IsMemoryLocked()`) use atomic operations
+- **Read methods** (`String()`, `Bytes()`, `Length()`, `Masked()`) take read locks, so concurrent reads are safe
+- **Close methods** (`Close()`, `Release()`) take write locks, so zeroing is safe
+- **Status checks**: `IsClosed()` reads the atomic closed bit; `IsMemoryLocked()` and `MemoryLockError()` take the read lock
 
 ```go
 secret := env.GetSecure("API_KEY")
@@ -29,7 +33,7 @@ if secret != nil {
 ```
 
 :::warning
-`Close()` and `Release()` should only be called once. Repeated calls are safe but no-ops.
+The first `Close()` or `Release()` does the work. Later calls are safe no-ops, so you do not need to guard against a double release.
 :::
 
 ## Method Overview
@@ -38,18 +42,18 @@ All `SecureValue` methods (qualified names like `SecureValue.Reveal`); see the s
 
 | Method | Description |
 |--------|-------------|
-| `SecureValue.String` | Masked representation (implements `fmt.Stringer`, safe for formatting) |
-| `SecureValue.Reveal` | Returns the plaintext string |
+| `SecureValue.String` | Masked representation (implements `fmt.Stringer`, so formatting is safe) |
+| `SecureValue.Reveal` | Returns a plaintext string copy |
 | `SecureValue.Bytes` | Returns a byte-slice copy (zero it with `ClearBytes` afterwards) |
-| `SecureValue.Length` | Value length without exposing content |
-| `SecureValue.Masked` | Masked representation (carries lock-state suffix) |
-| `SecureValue.MarshalJSON` | JSON serialization outputs the mask (implements `json.Marshaler`) |
-| `SecureValue.MarshalText` | Text encoding outputs the mask (implements `encoding.TextMarshaler`) |
-| `SecureValue.Close` | Zero the data; does not return the object to the pool |
-| `SecureValue.Release` | Zero the data and return the object to the pool |
+| `SecureValue.Length` | Value length, without exposing the content |
+| `SecureValue.Masked` | Masked representation, including a lock-state suffix |
+| `SecureValue.MarshalJSON` | JSON serialization emits the mask (implements `json.Marshaler`) |
+| `SecureValue.MarshalText` | Text encoding emits the mask (implements `encoding.TextMarshaler`) |
+| `SecureValue.Close` | Zeroes the data; does not return the object to the pool |
+| `SecureValue.Release` | Zeroes the data and returns the object to the pool |
 | `SecureValue.IsClosed` | Whether the value has been closed |
 | `SecureValue.IsMemoryLocked` | Whether the memory is currently locked |
-| `SecureValue.MemoryLockError` | Error from the most recent lock attempt failure |
+| `SecureValue.MemoryLockError` | Error from the most recent failed lock attempt |
 
 ## Creation
 
@@ -68,9 +72,9 @@ Creates a secure value wrapper.
 - `*SecureValue` - secure value object
 
 **Behavior:**
-- Uses an object pool to reduce allocations
-- Sets a GC finalizer for automatic zeroing
-- If memory locking is enabled, attempts to lock memory (silently ignored on failure)
+- Takes an object from a pool to reduce allocations
+- Sets a GC finalizer that zeroes the data
+- If memory locking is enabled, tries to lock the memory. A failure is silent here; use `NewSecureValueStrict` or strict mode to observe it.
 
 ```go
 secret := env.NewSecureValue("my-secret-password")
@@ -85,14 +89,14 @@ defer secret.Release()  // or Close()
 func NewSecureValueStrict(value string) (*SecureValue, error)
 ```
 
-Creates a secure value, returning an error if memory locking is enabled and the lock attempt fails.
+Creates a secure value. When memory locking is enabled and the lock attempt fails, it also returns an error.
 
 **Parameters:**
 - `value` - string value to protect
 
 **Returns:**
-- `*SecureValue` - secure value object (still valid and usable even when an error is returned; the data is simply not locked)
-- `error` - memory locking error (returned only when `SetMemoryLockEnabled(true)` is set and locking fails; independent of the `SetMemoryLockStrict` switch)
+- `*SecureValue` - secure value object. It is valid and usable even when an error is returned; the data is not locked.
+- `error` - memory locking error. Returned only when `SetMemoryLockEnabled(true)` is set and locking fails; the `SetMemoryLockStrict` switch does not affect it.
 
 ```go
 env.SetMemoryLockEnabled(true)
@@ -115,13 +119,13 @@ if secret != nil {
 func (l *Loader) GetSecure(key string) *SecureValue
 ```
 
-Gets a secure value from the loader.
+Returns a secure value from the loader.
 
 **Parameters:**
 - `key` - key name
 
 **Returns:**
-- `*SecureValue` - **defensive copy** of the secure value; caller is responsible for releasing; returns nil if the key doesn't exist or loader is closed
+- `*SecureValue` - a **defensive copy** of the stored value. You own it and must release it. Returns nil if the key does not exist or the loader is closed.
 
 ```go
 secret := loader.GetSecure("API_KEY")
@@ -132,7 +136,7 @@ if secret != nil {
 ```
 
 :::tip Defensive copies
-`GetSecure` returns a copy of the original value, independent from the parent Loader. The caller is responsible for calling `Release()` or `Close()`.
+`GetSecure` returns a copy of the original value, independent of the parent Loader. You are responsible for calling `Release()` or `Close()`.
 :::
 
 ---
@@ -145,10 +149,10 @@ if secret != nil {
 func (sv *SecureValue) String() string
 ```
 
-Returns a masked representation, safe for logging and formatting. Implements the `fmt.Stringer` interface, preventing accidental key leakage through `fmt.Printf`, `log.Println`, or error wrapping.
+Returns a masked representation, safe for logging and formatting. The `fmt.Stringer` implementation keeps the secret out of `fmt.Printf`, `log.Println`, and wrapped errors.
 
 **Returns:**
-- `string` - masked representation (e.g., `[SECURE:32 bytes]`); returns `[NIL]` when nil
+- `string` - masked representation (e.g. `[SECURE:32 bytes]`); `[NIL]` when the receiver is nil
 
 ```go
 secret := env.GetSecure("PASSWORD")
@@ -170,10 +174,12 @@ if secret != nil {
 func (sv *SecureValue) Reveal() string
 ```
 
-Returns the plaintext value. The caller is responsible for handling the returned string safely — avoid logging, serializing, or storing to persistent locations. Only use when the actual value is needed for cryptographic operations, API calls, or similar secure processing.
+Returns a new plaintext string copy of the value. You are responsible for handling it safely: do not log it, serialize it, or write it to persistent storage.
+
+Reach for `Reveal` only when an operation needs the actual bytes, such as a cryptographic call or an API request.
 
 **Returns:**
-- `string` - plaintext value; returns empty string when closed or nil
+- `string` - plaintext value; empty string when the value is closed, or when the receiver is nil
 
 ```go
 secret := env.GetSecure("API_KEY")
@@ -186,7 +192,9 @@ if secret != nil {
 ```
 
 :::danger Security warning
-`Reveal()` returns a **plaintext string**. Go strings are immutable and cannot be manually zeroed. Use only when necessary, and avoid logging or storing the return value.
+`Reveal()` returns a **plaintext string**, and every call returns a fresh copy. Go strings are immutable, so that copy cannot be zeroed and is not covered by memory locking.
+
+Use it only when necessary, and do not log or store the result.
 :::
 
 ---
@@ -197,10 +205,10 @@ if secret != nil {
 func (sv *SecureValue) Bytes() []byte
 ```
 
-Returns a byte slice copy of the value. The caller is responsible for zeroing it with `ClearBytes`.
+Returns a new byte-slice copy of the value. Zero it with `ClearBytes` when done.
 
 **Returns:**
-- `[]byte` - byte copy of the value; returns nil when closed
+- `[]byte` - byte copy of the value; nil when closed
 
 ```go
 secret := env.GetSecure("API_KEY")
@@ -219,10 +227,10 @@ if secret != nil {
 func (sv *SecureValue) Length() int
 ```
 
-Returns the length of the value without exposing content.
+Returns the length of the value without exposing its content.
 
 **Returns:**
-- `int` - value length; returns 0 when closed
+- `int` - value length; 0 when closed, or when the receiver is nil
 
 ```go
 secret := env.GetSecure("API_KEY")
@@ -239,23 +247,25 @@ if secret != nil {
 func (sv *SecureValue) Masked() string
 ```
 
-Returns a masked value for log output.
+Returns a masked value for log output. Unlike `String()`, it also reports the memory-lock state.
 
 **Returns:**
 - `string` - masked representation
 
 **Output formats:**
+- Nil receiver: `[NIL]`
 - Closed: `[CLOSED]`
 - Empty value: `[SECURE:0 bytes]`
-- Normal: `[SECURE:N bytes]` or `[SECURE:N bytes locked]` or `[SECURE:N bytes lock-failed]` or `[SECURE:N bytes unlocked]`
+- Non-empty: `[SECURE:N bytes]`, plus a lock suffix when memory locking is enabled: ` locked`, ` lock-failed`, or ` unlocked`
 
 ```go
 secret := env.GetSecure("API_KEY")
 if secret != nil {
     log.Printf("API Key: %s", secret.Masked())
     // Output: API Key: [SECURE:32 bytes]
-    // Note: Only when memory locking is enabled (SetMemoryLockEnabled(true)) and locking succeeds,
-    // the mask appends the " locked" suffix (also " lock-failed" / " unlocked")
+    // With memory locking enabled (SetMemoryLockEnabled(true)) and the lock held,
+    // the mask instead reads [SECURE:32 bytes locked].
+    // A failed attempt shows [SECURE:32 bytes lock-failed].
 }
 ```
 
@@ -267,11 +277,11 @@ if secret != nil {
 func (sv *SecureValue) MarshalJSON() ([]byte, error)
 ```
 
-Implements the `json.Marshaler` interface. Returns a masked representation, preventing accidental key leakage through reflection-based serializers like `json.Marshal`. The plaintext never appears in JSON output.
+Implements `json.Marshaler`. The output is the masked representation, so reflection-based serializers such as `json.Marshal` never emit the plaintext.
 
 **Returns:**
-- `[]byte` - JSON-safe masked string (e.g., `"[SECURE:32 bytes]"`); returns `"null"` when nil
-- `error` - always returns nil
+- `[]byte` - JSON-safe masked string, quoted (e.g. `"[SECURE:32 bytes]"`); the literal `null` when the receiver is nil
+- `error` - always nil
 
 ```go
 type Response struct {
@@ -296,11 +306,11 @@ data, _ := json.Marshal(resp)
 func (sv *SecureValue) MarshalText() ([]byte, error)
 ```
 
-Implements the `encoding.TextMarshaler` interface. Returns a masked representation consistent with `String()`, preventing accidental key leakage through text-based encoders like `encoding/xml`, `text/template`, structured logging, etc.
+Implements `encoding.TextMarshaler`. The output matches `String()`, so text-based encoders (`encoding/xml`, `text/template`, structured loggers) cannot leak the plaintext.
 
 **Returns:**
-- `[]byte` - masked string (e.g., `"[SECURE:32 bytes]"`); returns `"[NIL]"` when nil
-- `error` - always returns nil
+- `[]byte` - masked string (e.g. `"[SECURE:32 bytes]"`); `[NIL]` when the receiver is nil
+- `error` - always nil
 
 ```go
 type Config struct {
@@ -320,15 +330,15 @@ data, _ := xml.Marshal(cfg)
 func (sv *SecureValue) Close() error
 ```
 
-Securely zeros memory and closes the object.
+Zeroes the internal buffer and closes the object.
 
 **Returns:**
-- `error` - always returns nil
+- `error` - always nil
 
 **Behavior:**
-- Securely zeros internal data
-- Marks as closed
-- Does **not** return to the object pool
+- Zeroes the internal data
+- Marks the object as closed
+- Does **not** return it to the object pool
 
 ```go
 secret := env.GetSecure("TOKEN")
@@ -346,12 +356,12 @@ if secret != nil {
 func (sv *SecureValue) Release()
 ```
 
-Zeros memory and returns to the object pool.
+Zeroes the internal buffer and returns the object to the pool.
 
 **Behavior:**
-- Securely zeros internal data
-- Marks as closed and returns to the object pool for reuse
-- Does **not** clear the GC finalizer: it stays set for the object's entire lifetime, and if the runtime later evicts a pooled object and finalizes it, finalize() observes the closed state and is a no-op
+- Zeroes the internal data
+- Marks the object as closed and returns it to the pool for reuse
+- Leaves the GC finalizer in place. The finalizer is set once for the object's lifetime; if the runtime later finalizes a pooled object, it sees the closed state and does nothing.
 
 ```go
 secret := env.GetSecure("KEY")
@@ -362,8 +372,8 @@ if secret != nil {
 ```
 
 :::tip Close vs Release
-- `Close()` - zeros only, does not return to pool
-- `Release()` - zeros and returns to pool (recommended for high-frequency scenarios)
+- `Close()` - zeroes only; does not return the object to the pool
+- `Release()` - zeroes and returns the object to the pool; preferred in high-frequency paths
 :::
 
 ---
@@ -374,7 +384,7 @@ if secret != nil {
 func (sv *SecureValue) IsClosed() bool
 ```
 
-Checks whether the object has been closed.
+Reports whether the object has been closed.
 
 **Returns:**
 - `bool` - whether closed
@@ -393,10 +403,10 @@ if secret.IsClosed() {
 func (sv *SecureValue) IsMemoryLocked() bool
 ```
 
-Checks whether memory is locked (prevents swapping to disk).
+Reports whether the value's memory is currently locked, which prevents it from being swapped to disk. Returns false when memory locking is disabled or the lock attempt failed.
 
 **Returns:**
-- `bool` - whether locked
+- `bool` - whether the memory is locked
 
 ```go
 if secret.IsMemoryLocked() {
@@ -412,10 +422,10 @@ if secret.IsMemoryLocked() {
 func (sv *SecureValue) MemoryLockError() error
 ```
 
-Returns the error from the memory locking attempt (if any).
+Returns the error from the most recent memory-lock attempt, if there was one.
 
 **Returns:**
-- `error` - locking error; returns nil on success or if not attempted
+- `error` - the locking error; nil when locking succeeded or was not attempted
 
 ```go
 if err := secret.MemoryLockError(); err != nil {
@@ -433,10 +443,10 @@ if err := secret.MemoryLockError(); err != nil {
 func SetMemoryLockEnabled(enabled bool)
 ```
 
-Globally enables/disables memory locking. Affects all newly created SecureValues.
+Turns memory locking on or off globally. The setting affects every `SecureValue` created afterwards.
 
 **Parameters:**
-- `enabled` - whether to enable
+- `enabled` - whether to enable it
 
 ```go
 package main
@@ -447,7 +457,7 @@ func main() {
 	// Enable at application startup
 	env.SetMemoryLockEnabled(true)
 
-	// All subsequent SecureValues will attempt to lock
+	// Every SecureValue created from here on attempts to lock
 }
 ```
 
@@ -459,7 +469,7 @@ func main() {
 func IsMemoryLockEnabled() bool
 ```
 
-Checks whether memory locking is enabled.
+Reports whether memory locking is currently enabled globally.
 
 **Returns:**
 - `bool` - whether enabled
@@ -478,7 +488,9 @@ if env.IsMemoryLockEnabled() {
 func SetMemoryLockStrict(strict bool)
 ```
 
-Sets strict mode. When enabled, any memory locking failure emits a security warning to the standard logger (stderr), regardless of which construction path it came from; non-strict constructors (`NewSecureValue`, etc.) cannot return an error, so this warning is their only failure signal. The error return of `NewSecureValueStrict` is unaffected by this switch (see the Creation section above).
+Sets strict mode. When enabled, a failed memory lock writes a security warning to the standard logger (stderr), whichever constructor produced the value.
+
+For `NewSecureValue` and the other non-strict constructors, this warning is the only failure signal, because they cannot return an error. It does not affect the error returned by `NewSecureValueStrict` (see the Creation section).
 
 **Parameters:**
 - `strict` - whether to enable strict mode
@@ -500,7 +512,7 @@ secret := env.NewSecureValue("sensitive-data")
 func IsMemoryLockStrict() bool
 ```
 
-Checks whether strict mode is enabled.
+Reports whether strict mode is enabled.
 
 **Returns:**
 - `bool` - whether enabled
@@ -517,10 +529,10 @@ strict := env.IsMemoryLockStrict()
 func IsMemoryLockSupported() bool
 ```
 
-Checks whether the current platform supports memory locking.
+Reports whether the current platform supports memory locking.
 
 **Returns:**
-- `bool` - whether supported
+- `bool` - whether memory locking is supported
 
 | Platform | Supported |
 |----------|-----------|
@@ -531,11 +543,15 @@ Checks whether the current platform supports memory locking.
 | wasm | ❌ |
 
 :::tip Platform fallback
-Memory locking is implemented only on Linux, macOS, and Windows. All other platforms (FreeBSD and other BSDs, Solaris, wasm, etc.) take the no-op fallback: `IsMemoryLockSupported()` returns false, and `SecureValue` still works normally — but with memory locking enabled the lock attempt fails and `Masked()` shows the `lock-failed` suffix (no status suffix when locking is not enabled).
+Memory locking is implemented on Linux, macOS, and Windows only. Every other platform (FreeBSD and other BSDs, Solaris, wasm) takes a no-op fallback:
+
+- `IsMemoryLockSupported()` returns false.
+- `SecureValue` still works normally.
+- With memory locking enabled, the lock attempt fails and `Masked()` adds the `lock-failed` suffix. With locking disabled there is no suffix at all.
 :::
 
 :::warning
-Returning `true` only means the platform supports it, not that the process has sufficient permissions. Linux requires `CAP_IPC_LOCK` or root privileges.
+`true` means the platform supports memory locking, not that your process has permission to use it. Linux requires `CAP_IPC_LOCK` or root privileges.
 :::
 
 ```go
@@ -554,7 +570,7 @@ if env.IsMemoryLockSupported() {
 func ClearBytes(b []byte)
 ```
 
-Securely zeros a byte slice. Use to immediately zero sensitive data after use.
+Zeroes a byte slice in place. Call it as soon as you are done with sensitive data.
 
 **Parameters:**
 - `b` - byte slice to zero
@@ -574,13 +590,13 @@ env.ClearBytes(sensitive)
 func IsSensitiveKey(key string) bool
 ```
 
-Checks whether a key name matches sensitive patterns.
+Reports whether a key name matches one of the sensitive patterns.
 
 **Parameters:**
 - `key` - key name
 
 **Returns:**
-- `bool` - whether sensitive
+- `bool` - whether the key is sensitive
 
 ```go
 if env.IsSensitiveKey("DB_PASSWORD") {
@@ -592,7 +608,9 @@ if env.IsSensitiveKey("DB_PASSWORD") {
 }
 ```
 
-**Sensitive patterns:** password, secret, token, key, api_key, credential, etc.
+**Sensitive patterns:** `password`, `secret`, `token`, `api_key`, `credential`, `private_key`, and others. A bare `key` is not on the list, so `IsSensitiveKey("KEY")` returns false. Matching is case-insensitive and substring-based, with one exception: `AUTH`, `PAN`, `PWD`, and `USERNAME` match only at identifier boundaries, so keys such as `AUTHOR` or `COMPANY` stay non-sensitive (SEC-006).
+
+See [Constants & Errors](./constants#sensitivekeypatterns) for the full list.
 
 ---
 
@@ -602,7 +620,7 @@ if env.IsSensitiveKey("DB_PASSWORD") {
 func MaskValue(key, value string) string
 ```
 
-Returns a masked value based on the key's sensitivity.
+Masks a value according to the key's sensitivity. Non-sensitive values are also passed through `SanitizeForLog`, so an embedded `password=...` pair is masked even when the outer key is not sensitive.
 
 **Parameters:**
 - `key` - key name
@@ -611,12 +629,17 @@ Returns a masked value based on the key's sensitivity.
 **Returns:**
 - `string` - masked value
 
+**Behavior:**
+- Sensitive key: returns the fixed `[MASKED]` form, which reveals neither the value nor its length.
+- Non-sensitive key, value of 20 bytes or fewer: returns `SanitizeForLog(value)`.
+- Non-sensitive key, value longer than 20 bytes: keeps the first 17 bytes, appends `...`, and returns `SanitizeForLog` of that.
+
 ```go
-// Sensitive key - returns the fixed [MASKED] format
+// Sensitive key - returns the fixed [MASKED] form
 masked := env.MaskValue("API_KEY", "secret123")
 // Returns: [MASKED]
 
-// Non-sensitive key - returns original value (truncated if over 20 chars)
+// Non-sensitive key, short value - returned unchanged
 masked := env.MaskValue("APP_NAME", "myapp")
 // Returns: myapp
 ```
@@ -635,7 +658,9 @@ Masks a key name for logging.
 - `key` - key name
 
 **Returns:**
-- `string` - masked key name
+- `string` - the masked key name
+
+`MaskKey` always returns `[MASKED]`, regardless of the key's content:
 
 ```go
 masked := env.MaskKey("DB_PASSWORD")
@@ -650,13 +675,13 @@ masked := env.MaskKey("DB_PASSWORD")
 func SanitizeForLog(s string) string
 ```
 
-Cleans sensitive key-value pair information from a string. Auto-detects and masks sensitive values in `key=value` format.
+Masks sensitive values inside a string. It recognizes both `key=value` and YAML-style `key: value` pairs, keeps the key and the separator, and replaces the value with `[MASKED]`. Control characters are stripped; `\n` and `\t` are kept.
 
 **Parameters:**
 - `s` - original string
 
 **Returns:**
-- `string` - cleaned string
+- `string` - the sanitized string
 
 ```go
 // Auto-mask sensitive key-value pairs
@@ -673,13 +698,15 @@ clean := env.SanitizeForLog(msg)
 func MaskSensitiveInString(s string) string
 ```
 
-Masks potential sensitive content in a string: strings longer than 50 characters are truncated first (keeping the first 47 characters and appending `...`), then `key=value`-style sensitive values in the truncated result are masked. Truncation alone would let `password=...` pairs slip through unmasked, so both steps are required.
+Masks sensitive content in a string in two steps. First, a string longer than 50 bytes is truncated to its first 47 bytes plus `...`. Then `key=value`-style sensitive pairs in the result are masked.
+
+Both steps are needed. Truncation alone can leave a `password=...` pair in place, and masking alone leaves an oversized string intact.
 
 **Parameters:**
 - `s` - original string
 
 **Returns:**
-- `string` - masked string
+- `string` - the masked string
 
 ```go
 // Long strings are truncated (keeps first 47 characters and appends "...")
@@ -689,7 +716,7 @@ clean := env.MaskSensitiveInString(long)
 ```
 
 :::tip Use cases
-Suited for long strings that may carry sensitive data, such as error details or parsed content (truncation plus key-value masking in a single step). To mask `key=value` pairs without truncating, use `SanitizeForLog` directly.
+Use it for long strings that may carry secrets, such as error details or parsed content. To mask `key=value` pairs without truncating, call `SanitizeForLog` directly.
 :::
 
 ---
@@ -774,7 +801,7 @@ var secureValuePool = sync.Pool{
 
 ### GC Finalizer
 
-A GC finalizer is set at creation time, ensuring automatic zeroing during garbage collection:
+The finalizer is installed once, when the object is first created. It zeroes the data if the object becomes unreachable without being closed:
 
 ```go
 runtime.SetFinalizer(sv, (*SecureValue).finalize)
@@ -782,7 +809,7 @@ runtime.SetFinalizer(sv, (*SecureValue).finalize)
 
 ### Secure Zeroing
 
-Uses `unsafe.Pointer` to prevent compiler optimization (must be called while holding the `sv.mu` lock):
+The zeroing loop goes through `unsafe.Pointer` so the compiler cannot optimize it away. It must run with the `sv.mu` lock held:
 
 ```go
 func (sv *SecureValue) clearDataLocked() {
@@ -810,49 +837,50 @@ func (sv *SecureValue) clearDataLocked() {
 
 ### Safe stringification interfaces
 
-`SecureValue` implements a set of "safe stringification" interfaces so secrets **never** leak through the common formatting paths:
+`SecureValue` implements the standard "safe stringification" interfaces, so a secret does not leak through the usual formatting paths:
 
 | Interface | Behavior |
 |-----------|----------|
-| `fmt.Stringer` (`String()`) | Returns the masked form (same as `Masked()`); `fmt.Printf("%v")`, `log.Println` are safe |
+| `fmt.Stringer` (`String()`) | Returns the masked form (same as `Masked()`), so `fmt.Printf("%v")` and `log.Println` are safe |
 | `json.Marshaler` (`MarshalJSON()`) | JSON serialization emits the masked string; the plaintext never enters JSON |
 | `encoding.TextMarshaler` (`MarshalText()`) | Text encoders (XML, text/template, structured loggers) emit the mask |
 
-The only explicit path to the plaintext is `Reveal()` (or the `Bytes()` copy).
+The only way to reach the plaintext is `Reveal()`, or the copy returned by `Bytes()`.
 
 ### Close vs. Release
 
 | Method | Zeros data | Returns to pool | Use |
 |--------|:----------:|:---------------:|-----|
-| `Close()` | ✅ | ❌ | Regular one-shot usage |
-| `Release()` | ✅ | ✅ | High-frequency create/destroy cycles (reuse cuts allocations) |
+| `Close()` | ✅ | ❌ | One-shot usage |
+| `Release()` | ✅ | ✅ | High-frequency create/destroy cycles (reuse avoids allocations) |
 
-Both are safe to call repeatedly with no side effects. Abandoned unclosed objects are still covered: the GC finalizer zeroes the data when the object becomes unreachable (`runtime.SetFinalizer` is installed once at first creation; pooled reuse doesn't pay that cost again).
+Both are safe to call repeatedly, with no side effects. An object that is never closed is still covered: the GC finalizer zeroes the data once the object becomes unreachable. The finalizer is installed once, at first creation, so pooled reuse does not pay that cost again.
 
 ### Masked output format
 
-The masked representation carries lock status so you can verify protection from logs:
+The masked representation carries the lock status, so you can check protection from the logs:
 
 ```text
-[SECURE:24 bytes]            // memory locking not enabled
-[SECURE:24 bytes locked]     // locked
+[SECURE:24 bytes]             // memory locking not enabled
+[SECURE:24 bytes locked]      // locked
 [SECURE:24 bytes lock-failed] // lock failed (pair with MemoryLockError)
+[SECURE:24 bytes unlocked]    // locking enabled, not currently locked
 [CLOSED]                      // closed
 [NIL]                         // nil receiver
 ```
 
 ### Lock-status queries
 
-- `IsMemoryLocked()`: whether the value's memory is currently locked
-- `MemoryLockError()`: the error from the most recent lock attempt (nil on success or when not attempted); the first tool for diagnosing permission issues in strict mode
+- `IsMemoryLocked()`: whether the value's memory is currently locked.
+- `MemoryLockError()`: the error from the most recent lock attempt; nil on success or when no attempt was made. This is the first place to look when diagnosing permission problems in strict mode.
 
 ### GetSecure returns a defensive copy
 
-The `*SecureValue` returned by `Loader.GetSecure` is an **independent copy** of the stored value — its lifecycle is decoupled from the Loader. The caller owns `Close`/`Release`; the Loader's internal original is unaffected.
+The `*SecureValue` returned by `Loader.GetSecure` is an **independent copy** of the stored value, with a lifecycle decoupled from the Loader. You own `Close`/`Release`; the Loader's own copy is unaffected.
 
 ### ClearBytes
 
-The copy returned by `Bytes()` should be zeroed explicitly when done:
+Zero a copy returned by `Bytes()` explicitly once you are done with it:
 
 ```go
 package main

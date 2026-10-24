@@ -1,15 +1,17 @@
 ---
 sidebar_label: "Formatting Output"
 title: "Formatting Output - CyberGo JSON | Pretty & Compact JSON"
-description: "CyberGo JSON output formatting: EncodePretty, Prettify, MarshalIndent, Compact and HTMLEscape compared — custom indentation, streaming and Print migration."
+description: "CyberGo JSON output formatting: Prettify, EncodePretty, MarshalIndent, Compact and HTMLEscape compared, with indentation and streaming examples."
 sidebar_position: 30
 ---
 
 # Formatting Output
 
 ::: tip Migration note
-The Print / PrintPretty family of direct-print functions (Print, PrintE, PrintPretty, PrintPrettyE) was removed in an earlier release and is no longer provided; for migration details and replacements see the [historical note](#historical-note-the-removed-print-family) at the end of this page.
+The Print / PrintPretty family of direct-print functions (Print, PrintE, PrintPretty, PrintPrettyE) was removed in an earlier release and is no longer provided; for migration details and replacements see [the historical note](#historical-note-the-removed-print-family).
 :::
+
+`Marshal`/`Encode` and the other encoders return compact JSON. For indentation, re-indenting, or compacting existing text, pick a function from the table below by input type.
 
 ## Formatting Tool Comparison
 
@@ -30,7 +32,7 @@ Choose a tool by whether the input is a Go value or JSON text:
 
 ::: tip Three-step selection
 1. Input is a **Go value**: use `Marshal` for `[]byte`, `Encode` for `string`; switch to `MarshalIndent` / `EncodePretty` respectively when indentation is wanted
-2. Input is already **JSON text**: beautify with `Prettify`, compact with `CompactString`; use the buffer forms `Compact`/`Indent` when the standard-library signature must be matched exactly
+2. Input is already **JSON text**: beautify with `Prettify`, compact with `CompactString`; use the buffer forms `Compact`/`Indent` when the standard-library signature is required
 3. Output goes to a **stream** (file/network): `NewEncoder` + `SetIndent` writes record by record, avoiding one giant string
 :::
 
@@ -50,7 +52,7 @@ import (
 func main() {
 	data := map[string]any{"name": "Alice", "age": 30}
 
-	// Option 1: standard-library MarshalIndent (prefix usually left empty)
+	// Option 1: standard-library MarshalIndent (prefix left empty)
 	b, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
 		panic(err)
@@ -80,7 +82,7 @@ func main() {
 
 ## Working with Existing JSON Text
 
-When you already hold JSON text (logs, API responses), convert it in place with the formatting functions — no struct round-trip needed:
+When you already hold JSON text (logs, API responses), convert it in place with the formatting functions — no struct round-trip:
 
 ```go
 package main
@@ -152,7 +154,7 @@ func main() {
 ```
 
 ::: tip When is manual escaping needed?
-`Marshal`/`Encode` already enable HTML escaping by default (`Config.EscapeHTML: true`), so their output is inherently safe. `HTMLEscape` mainly serves **JSON text obtained externally** — e.g. when embedding a third-party JSON response verbatim into an HTML page, run it through first.
+`Marshal`/`Encode` already enable HTML escaping by default (`Config.EscapeHTML: true`), so their output is inherently safe. `HTMLEscape` serves **JSON text obtained externally** — e.g. when embedding a third-party JSON response verbatim into an HTML page, run it through first.
 :::
 
 ## Streaming Output to a Writer

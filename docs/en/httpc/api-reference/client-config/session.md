@@ -7,10 +7,21 @@ sidebar_position: 30
 
 # Session Management
 
-SessionManager provides thread-safe cookie and header storage, embedded internally by DomainClient. It encapsulates a concurrency-safe store based on `sync.RWMutex`: all read operations use a read lock and write operations use a write lock, making it suitable for sharing session state across requests in high-concurrency scenarios.
+`SessionManager` provides thread-safe cookie and header storage and is embedded internally by DomainClient. Its store is based on `sync.RWMutex`: read operations take a read lock and write operations take a write lock, so session state can be shared across requests in high-concurrency scenarios.
+
+:::tip Nil-receiver safety
+Every method is nil-receiver safe, in one of two ways:
+
+- Methods that return an error (SetHeader/SetHeaders/SetCookie/SetCookies) return `"session manager is nil"`.
+- All other methods silently return zero values: GetHeaders/GetCookies/GetCookie return nil; SetCookieSecurity/Delete*/Clear*/UpdateFrom* return immediately.
+:::
 
 :::tip When to use SessionManager directly
-You usually do not need to create a SessionManager manually — the DomainClient created by `NewDomain` embeds one automatically. Scenarios where you would use SessionManager directly include: sharing a session across multiple DomainClients, switching cookie security policy at runtime, or bulk-extracting cookies from responses.
+The DomainClient created by `NewDomain` already embeds a SessionManager; create one manually only in these cases:
+
+- share a session across multiple DomainClients;
+- switch the cookie security policy at runtime;
+- bulk-extract cookies from responses.
 :::
 
 ## SessionConfig
@@ -53,9 +64,9 @@ sm, err := httpc.NewSessionManager(cfg)
 
 ### NewSessionManager vs NewSessionManagerDefault
 
-| Constructor | Parameter | Applicable scenario |
+| Constructor | Parameter | Use case |
 |----------|------|----------|
-| `NewSessionManager(cfg)` | Explicit SessionConfig | When you need a custom CookieSecurity policy |
+| `NewSessionManager(cfg)` | Explicit SessionConfig | A custom CookieSecurity policy is needed |
 | `NewSessionManagerDefault()` | None | Default config (no cookie security validation) |
 
 `NewSessionManagerDefault()` is equivalent to `NewSessionManager(DefaultSessionConfig())`, symmetric with the main client's `NewDefault()` design.
@@ -132,7 +143,6 @@ func (s *SessionManager) GetHeaders() map[string]string
 Returns a **deep-copy** of all session headers (a newly allocated map with copied values); the caller can modify the copy without affecting internal state. An empty session returns an empty map (not nil).
 
 ### Header-Management Method Overview
-
 | Method | Signature | Lock | Description |
 |------|------|----|------|
 | `SetHeader` | `(key, value string) error` | Write | Single set, with validation |
@@ -153,7 +163,7 @@ SessionManager maintains cross-request cookies via the following methods. All wr
 func (s *SessionManager) SetCookie(cookie *http.Cookie) error
 ```
 
-Adds or updates a single session cookie. Validation flow: ① nil-cookie check; ② `ValidateCookie` basic validation; ③ if CookieSecurity is configured, run `validateCookieSecurity` (inside the write lock for thread safety). Any validation failure returns a wrapped error and does not modify storage.
+Adds or updates a single session cookie. Validation runs in three steps: ① nil-cookie check; ② `ValidateCookie` basic validation; ③ if CookieSecurity is configured, run `validateCookieSecurity` (inside the write lock for thread safety). Any validation failure returns a wrapped error and leaves storage unchanged.
 
 ```go
 err := sm.SetCookie(&http.Cookie{
@@ -174,7 +184,13 @@ if err != nil {
 func (s *SessionManager) SetCookies(cookies []*http.Cookie) error
 ```
 
-Sets cookies in bulk. Uses a **two-phase atomic write**: ① pre-validate the basic legality of every cookie outside the lock (nil check + ValidateCookie); ② run security validation item by item inside the lock — any failure returns an error immediately (already-validated items are not written either); ③ only after all pass are they stored uniformly. This guarantees atomicity for bulk operations — no "partial write" intermediate state.
+Sets cookies in bulk, using a **two-phase atomic write**:
+
+1. Pre-validate the basic legality of every cookie outside the lock (nil check + ValidateCookie).
+2. Run security validation item by item inside the lock; any failure returns an error immediately, and already-validated items are not written either.
+3. Store all of them only after every item passes.
+
+Bulk operations are therefore atomic: there is no "partial write" intermediate state.
 
 ### DeleteCookie
 
@@ -198,7 +214,9 @@ Clears all cookies, re-initializing to an empty map.
 func (s *SessionManager) GetCookies() []*http.Cookie
 ```
 
-Returns a **deep-copy** of all cookies. Uses a contiguous-backing-array optimization: pre-allocates an `[]http.Cookie` of length N with all cookie structs laid out contiguously, and the returned `[]*http.Cookie` points into that array. This reduces N independent heap allocations to 2 (the backing array + the pointer slice), significantly reducing GC pressure. An empty session returns nil.
+Returns a **deep-copy** of all cookies. The implementation uses a contiguous-backing-array optimization: it pre-allocates an `[]http.Cookie` of length N with all cookie structs laid out contiguously, and the returned `[]*http.Cookie` points into that array.
+
+N independent heap allocations therefore become 2 (the backing array + the pointer slice). An empty session returns nil.
 
 ### GetCookie
 
@@ -229,7 +247,9 @@ The fully qualified method names are `SessionManager.SetCookie`, `SessionManager
 func (s *SessionManager) SetCookieSecurity(config *CookieSecurityConfig)
 ```
 
-Updates the cookie security validation config at runtime, affecting **all subsequent** SetCookie/SetCookies/UpdateFromResult/UpdateFromCookies calls. Passing nil disables security validation. Nil-receiver safe. This is the sole entry point for switching security policy — you can switch from lenient to strict (or vice versa) at runtime without rebuilding the SessionManager.
+Updates the cookie security validation config at runtime, affecting **all subsequent** SetCookie/SetCookies/UpdateFromResult/UpdateFromCookies calls. Passing nil disables security validation. Nil-receiver safe.
+
+This is the only entry point for switching security policy: the SessionManager can move from lenient to strict (or back) at runtime without being rebuilt.
 
 ```go
 // Switch from lenient to strict at runtime
@@ -264,7 +284,9 @@ Available factory functions:
 func (s *SessionManager) UpdateFromResult(result *Result)
 ```
 
-`SessionManager.UpdateFromResult` extracts cookies from a request result's (`*Result`) `Response.Cookies` and stores them in the session. If CookieSecurity is configured, insecure cookies are **silently skipped** (no error returned, just ignored); only cookies that pass validation are stored. Returns directly when result is nil, Response is nil, or Cookies is empty. DomainClient's `Request` method calls this automatically after every request.
+`SessionManager.UpdateFromResult` extracts cookies from a request result's (`*Result`) `Response.Cookies` and stores them in the session. If CookieSecurity is configured, insecure cookies are **silently skipped** (no error returned, just ignored); only cookies that pass validation are stored.
+
+Returns directly when result is nil, Response is nil, or Cookies is empty. DomainClient's `Request` method calls this automatically after every request.
 
 ### UpdateFromCookies
 
@@ -272,7 +294,7 @@ func (s *SessionManager) UpdateFromResult(result *Result)
 func (s *SessionManager) UpdateFromCookies(cookies []*http.Cookie)
 ```
 
-`SessionManager.UpdateFromCookies` updates session cookies from a cookie slice. Same semantics as `SessionManager.UpdateFromResult` — insecure cookies are silently skipped. DomainClient's Download method captures download-response cookies through this method.
+`SessionManager.UpdateFromCookies` updates session cookies from a cookie slice, with the same semantics as `SessionManager.UpdateFromResult`: insecure cookies are silently skipped. DomainClient's Download method captures download-response cookies through this method.
 
 ## Internal Mechanisms
 
@@ -282,15 +304,15 @@ func (s *SessionManager) UpdateFromCookies(cookies []*http.Cookie)
 func (s *SessionManager) captureFromOptions(options []RequestOption)
 ```
 
-Called internally by DomainClient's `prepareSessionOptions` to extract cookies and headers from user-supplied RequestOptions into the session. Implementation details:
+Called internally by DomainClient's `prepareSessionOptions` to extract cookies and headers from caller-supplied RequestOptions into the session. Implementation details:
 
-1. Uses a temporary `engine.Request` from the object pool (`acquireMiddlewareRequest`/`releaseMiddlewareRequest`) to reduce hot-path allocations
-2. Applies each option to the temporary request one by one — **safety measure**: clears `OnRequest`/`OnResponse` callbacks before and after each option application, preventing `WithOnRequest`/`WithOnResponse` closures from accumulating side effects during capture
-3. Extracts cookies and headers from the temporary request, validates them, and stores them in the session
-4. Only cookies and headers are extracted; other data (query params, body, callbacks) is discarded
+1. Uses a temporary `engine.Request` from the object pool (`acquireMiddlewareRequest`/`releaseMiddlewareRequest`) to reduce hot-path allocations.
+2. Applies each option to the temporary request one by one. **Safety measure**: clears `OnRequest`/`OnResponse` callbacks before and after each option application, preventing `WithOnRequest`/`WithOnResponse` closures from accumulating side effects during capture.
+3. Extracts cookies and headers from the temporary request, validates them, and stores them in the session.
+4. Only cookies and headers are extracted; other data (query params, body, callbacks) is discarded.
 
 :::warning RequestOptions execute twice
-DomainClient's Request/Download executes RequestOptions **twice** — once for session capture (captureFromOptions) and once for the actual request. Therefore **avoid side-effect options** (e.g. counters, nonce generation, random numbers). If you need side effects, use the underlying Client directly.
+DomainClient's Request/Download executes RequestOptions **twice**: once for session capture (captureFromOptions) and once for the actual request. Therefore **avoid side-effect options** (e.g. counters, nonce generation, random numbers). When side effects are needed, use the underlying Client directly.
 :::
 
 ### prepareOptions
@@ -301,10 +323,10 @@ func (s *SessionManager) prepareOptions() []RequestOption
 
 Called by DomainClient before each request to inject the current session state as RequestOptions:
 
-- **Cookie bulk injection**: packs all session cookies into a single closure option (`r.SetCookies(append(existing, cookies...))`), avoiding N closure allocations
-- **Header map injection**: injects a deep-copied header map in one go via `WithHeaderMap`
+- **Cookie bulk injection**: packs all session cookies into a single closure option (`r.SetCookies(append(existing, cookies...))`), avoiding N closure allocations.
+- **Header map injection**: injects a deep-copied header map in one call via `WithHeaderMap`.
 
-Returns nil when the session is empty (no cookies and no headers) — zero overhead.
+Returns nil when the session is empty (no cookies and no headers), with no extra overhead.
 
 ### Thread-Safety Model
 
@@ -315,7 +337,9 @@ SessionManager protects all state with a single `sync.RWMutex`:
 | Read (GetHeaders/GetCookies/GetCookie/prepareOptions) | RLock | Concurrent |
 | Write (Set*/Delete*/Clear*/UpdateFrom*/captureFromOptions/SetCookieSecurity) | Lock | Mutually exclusive |
 
-DomainClient's `prepareSessionOptions` uses a non-atomic "read-then-write" sequence: it reads a snapshot first (prepareOptions) then writes the capture (captureFromOptions), and concurrent requests may interleave between the two steps. This is an **eventual-consistency** design — each request captures a consistent snapshot at its `prepareOptions()` moment, and transient cross-request races do not affect the correctness of a single request.
+DomainClient's `prepareSessionOptions` uses a non-atomic "read-then-write" sequence: it reads a snapshot first (prepareOptions) and then writes the capture (captureFromOptions). Concurrent requests interleave between the two steps.
+
+The design is **eventual consistency**: each request captures a consistent snapshot at its `prepareOptions()` moment, and transient cross-request races do not affect the correctness of a single request.
 
 ## Complete Example: Maintaining a Login Session
 
@@ -384,7 +408,7 @@ func main() {
 ```
 
 :::tip Manually managing SessionManager
-You can also create a SessionManager independently and share it across multiple DomainClients. But DomainClient's automatic management usually suffices — it captures response cookies automatically after each request and injects session state automatically before each request.
+A SessionManager can also be created independently and shared across multiple DomainClients. DomainClient's automatic management already covers standard usage: response cookies are captured after each request, and session state is injected before each request.
 :::
 
 ## See Also

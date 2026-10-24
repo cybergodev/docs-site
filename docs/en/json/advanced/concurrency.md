@@ -1,16 +1,16 @@
 ---
 sidebar_label: "Concurrency & Parallelism"
 title: "Concurrency & Parallelism - CyberGo JSON | Goroutine Safety"
-description: "CyberGo JSON offers goroutine-safe processing with shared Processor, ParallelIterator, and StreamJSONLParallel to parallelize batches within MaxConcurrency."
+description: "CyberGo JSON concurrency: the thread-safety contract for sharing one Processor across goroutines, plus ParallelIterator and StreamJSONLParallel usage."
 sidebar_position: 40
 ---
 
 # Concurrency and Parallel Processing
 
-All CyberGo JSON operations are **concurrency-safe**, and the library ships ready-to-use parallel APIs (`ParallelIterator`, parallel JSONL streams). This page documents the thread-safety semantics, built-in parallel APIs, and concurrent usage patterns.
+All CyberGo JSON operations are **concurrency-safe**, and the library includes parallel APIs (`ParallelIterator`, parallel JSONL streams). This page gives the thread-safety semantics, the built-in parallel APIs, and the concurrent usage patterns.
 
 :::tip Division of labor with the performance page
-The "concurrent processing" section of [Performance Optimization](./performance) shows **general Go patterns** (`sync.WaitGroup` + semaphore + worker pool) for manually concurrent array processing; this page documents the **library-built-in** parallel APIs — the two complement each other.
+The "concurrent processing" section of [Performance Optimization](./performance) shows **general Go patterns** (`sync.WaitGroup` + semaphore + worker pool) for manually concurrent array processing; the APIs below are the **library-built-in** parallel implementation — the two complement each other.
 :::
 
 ## Thread-Safety Guarantees
@@ -27,7 +27,7 @@ The `Processor` can be shared, but **do not share mutable Go containers across g
 
 ## ParallelIterator
 
-`ParallelIterator` processes arrays in parallel across CPU cores, with a built-in worker pool, error aggregation, and panic recovery — safer than a hand-rolled goroutine pool.
+`ParallelIterator` processes arrays in parallel with a worker pool, built-in error aggregation, and panic recovery.
 
 ### Basic Parallel Traversal
 
@@ -176,7 +176,7 @@ func main() {
 For full signatures and usage see [Iterator Types](../api-reference/iterator#the-paralleliterator-type).
 
 :::tip Error and panic handling
-`ForEach` stops dispatching new tasks after the **first** error; panics inside workers are recovered and converted into returned errors — the process is never killed. Use `ForEachWithContext` when cancellation matters, exiting gracefully on `ctx.Done()`.
+`ForEach` stops dispatching new tasks after the **first** error; panics inside workers are recovered and converted into returned errors — the process is never killed. Use `ForEachWithContext` when cancellation matters; it stops dispatching and returns on `ctx.Done()`.
 :::
 
 ## Parallel JSONL Stream Processing

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Overview"
 title: "Package Functions - CyberGo JSON | Complete Function List"
-description: "CyberGo JSON is a Go catalog of package-level functions, offering categorized Get/Set/Marshal/ProcessBatch lists to help developers find the right function."
+description: "Index of package-level JSON functions grouped by query, modify, delete, encode, parse, batch, JSONL, file and iteration, with a purpose-based navigation table."
 sidebar_position: 10
 ---
 
 # Package Functions
 
-Top-level functions of the json package, callable directly without creating a Processor instance. Grouped by feature:
+Top-level functions of the json package, callable without creating a Processor instance. Groups:
 
 ## [Query & Get](./query)
 
@@ -81,8 +81,8 @@ Utility functions for type conversion, comparison, cache management, error handl
 
 | Purpose | Recommended functions | Docs |
 |---------|------------------------|------|
-| Get a single value | `GetString`, `GetInt`, `GetFloat`, `GetBool` | [Query & Get](./query#path-query-functions) |
-| Get any type | `Get`, `GetTyped[T]` | [Query & Get](./query#generic-get-functions) |
+| Get a single value | `GetString`, `GetInt`, `GetFloat`, `GetBool` | [Query & Get](./query#type-safe-get-functions) |
+| Get any type | `Get`, `GetTyped[T]` | [Query & Get](./query#path-query-functions) · [Generic Get](./query#generic-get-functions) |
 | Get with a default | `GetString(data, path, "default")` | [Query & Get](./query#type-safe-get-functions) |
 | Generic get | `GetTyped[T](data, path, defaultValue...)` | [Query & Get](./query#generic-get-functions) |
 | Batch get | `GetMultiple` | [Query & Get](./query#processor-extension-methods) |
@@ -99,7 +99,7 @@ Utility functions for type conversion, comparison, cache management, error handl
 | JSON Schema validation | `ValidateSchema` | [Parse & Validate](./parse#validateschema) |
 | Schema defaults | `DefaultSchema`, `DefaultSchemaConfig` | [Schema Validation](../schema#defaultschema) |
 | File read/write | `LoadFromFile`, `SaveToFile` | [File I/O](./file-io#file-reading-and-writing) |
-| File read/write (structs) | `MarshalToFile`, `UnmarshalFromFile` | [File I/O](./file-io#serialization-convenience-methods) |
+| File read/write (structs) | `MarshalToFile`, `UnmarshalFromFile` | [File I/O](./file-io#serialization-of-structs) |
 | Streaming I/O | `LoadFromReader`, `SaveToWriter` | [File I/O](./file-io#streaming-i-o) |
 | Iterate | `ForeachWithError`, `ForeachWithPath`, `ForeachNestedWithError` | [Iteration Methods](./iterate#method-comparison) |
 | File iteration | `ForeachFile`, `ForeachFileChunked` | [Iteration Methods](./iterate#file-iteration-method-comparison) |

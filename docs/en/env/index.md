@@ -6,21 +6,19 @@ description: "CyberGo env: high-security Go environment variable library with .e
 
 # env
 
-A high-security Go environment variable management library supporting `.env`, JSON, and YAML formats, with thread safety, audit logging, and secure storage.
+env is a Go library for managing environment variables. It loads `.env`, JSON, and YAML files, converts values to Go types, protects sensitive values in memory, and records audit events.
 
 ## Core Features
 
-- **Multi-format support** - `.env`, JSON, YAML auto-detection
-- **Type safety** - automatic type conversion and validation
-- **Thread safety** - concurrent access with sharded locks
-- **Secure storage** - memory locking and auto-zeroing for sensitive values
-- **Audit logging** - complete operation tracking
-- **Variable expansion** - `${VAR}` syntax support
-- **Struct mapping** - tag-driven configuration binding
+- **Multi-format loading** - `.env`, JSON, and YAML, picked by file extension
+- **Type safety** - typed getters with conversion and validation
+- **Concurrency safety** - one `Loader` is safe to share across goroutines
+- **Secure storage** - memory locking and zeroing for sensitive values
+- **Audit logging** - records load, set, and delete operations
+- **Variable expansion** - `${VAR}` and `${VAR:-default}` references
+- **Struct mapping** - tag-driven binding into Go structs
 
 ## Navigate by Use Case
-
-Not sure where to start? Choose by your need:
 
 | I want to... | Where to look |
 |--------------|---------------|
@@ -40,25 +38,11 @@ Not sure where to start? Choose by your need:
 | See common code snippets | [Cheat Sheet](./getting-started/cheatsheet) |
 | Find answers to common questions | [FAQ](./reference/faq) |
 
-## Key Features Overview
+## Start Here
 
-| Feature | Description |
-|---------|-------------|
-| [Type Conversion](./getting-started/) | GetString, GetInt, GetBool, GetDuration, GetSlice |
-| [Struct Mapping](./guides/struct-mapping) | Tag-driven configuration binding |
-| [Secure Storage](./api-reference/secure-value) | Memory protection for sensitive values |
-| [Multi-format Loading](./guides/multi-format) | .env, JSON, YAML |
-
-## Quick Navigation
-
-### Getting Started
-- [Quick Start](./getting-started/) - 5-minute tutorial
-- [Cheat Sheet](./getting-started/cheatsheet) - Common code snippets
-
-### API Reference
-- [Package Functions](./api-reference/functions) - Complete API documentation
-- [Loader](./api-reference/loader) - Loader methods
-- [SecureValue](./api-reference/secure-value) - Secure value handling
-
-### Security
-- [Security Overview](./security/) - Security architecture and best practices
+- [Quick Start](./getting-started/) - install, load a `.env` file, read typed values
+- [Cheat Sheet](./getting-started/cheatsheet) - one-page snippet reference
+- [Package Functions](./api-reference/functions) - full function reference
+- [Loader](./api-reference/loader) - instance methods and lifecycle
+- [SecureValue](./api-reference/secure-value) - secure value handling
+- [Security Overview](./security/) - security architecture and defaults

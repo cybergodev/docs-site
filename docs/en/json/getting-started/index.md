@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo JSON | Get Started in 5 Minutes"
-description: "CyberGo JSON quick start: install, path queries GetString/GetInt, Set/Delete, Marshal/Unmarshal, iteration, error handling, plus first-hour FAQs."
+description: "CyberGo JSON quick start: installation, path queries with GetString/GetInt/SafeGet, Set and Delete, Marshal/Unmarshal, iteration, and first-hour FAQs."
 sidebar_position: 10
 ---
 
 # Quick Start
 
-This guide helps you get started quickly with the `github.com/cybergodev/json` library.
+`github.com/cybergodev/json` is a Go JSON library with `encoding/json`-compatible signatures plus path query and modification operations. This page walks from installation to reads and writes, encoding, iteration, and error handling, with a minimal runnable example for each.
 
 ## Installation
 
@@ -15,13 +15,13 @@ This guide helps you get started quickly with the `github.com/cybergodev/json` l
 go get github.com/cybergodev/json
 ```
 
-**Requires Go 1.25+** (the source `go.mod` declares `go 1.25.0`; examples use generics and the `slices` standard library).
+**Requires Go 1.25+** (the source `go.mod` declares `go 1.25.0`).
 
 ## Basic Usage
 
 ### Package-Level Functions
 
-The library provides a set of convenient package-level functions that require no processor instance:
+Package-level functions are called directly; no processor instance is needed:
 
 #### Getting Values
 
@@ -123,13 +123,20 @@ if err != nil {
 }
 fmt.Println(updated) // {"name":"old","version":1}
 
-// Set multiple fields one at a time (each call returns new JSON; check err)
-updated, err = json.Set(data, "name", "updated")
+// Chained modifications: each call returns new JSON, so take the result and check err
+updated, err = json.Set(updated, "name", "updated")
+if err != nil {
+    panic(err)
+}
 updated, err = json.Set(updated, "version", 2)
+if err != nil {
+    panic(err)
+}
 updated, err = json.Set(updated, "active", true)
 if err != nil {
     panic(err)
 }
+fmt.Println(updated) // {"active":true,"name":"updated","version":2}
 ```
 
 #### Deleting Values
@@ -147,7 +154,7 @@ fmt.Println(updated) // {"name":"test"}
 
 ### Encoding and Decoding
 
-Fully compatible with the standard library:
+`Marshal`/`Unmarshal`/`MarshalIndent` share the `encoding/json` signatures, and struct tags behave the same. The difference: input is security-validated by default (oversized input, dangerous patterns, and invalid UTF-8 are rejected). Details in [Migrating from the Standard Library](./migration#what-are-the-behavioral-differences-from-the-standard-library).
 
 ```go
 type User struct {
@@ -223,7 +230,7 @@ jsonStr := `{
   "name": "test"
 }`
 var buf bytes.Buffer
-err := json.Compact(&buf, []byte(jsonStr))
+err = json.Compact(&buf, []byte(jsonStr))
 if err != nil {
     panic(err)
 }
@@ -232,7 +239,7 @@ fmt.Println(buf.String()) // {"name":"test"}
 
 ## Using a Processor
 
-For frequent operations, use a `Processor` for better performance and caching:
+For repeated operations on the same data, use a `Processor`: it holds an independent cache, carries configuration, and supports pre-parsing and path pre-compilation.
 
 ```go
 package main
@@ -248,7 +255,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer p.Close() // Remember to close it to release resources
+	defer p.Close() // Release the cache and background goroutines
 
 	data := `{"name": "test", "value": 42}`
 
@@ -287,7 +294,7 @@ if err != nil {
 
 ## Iteration and Traversal
 
-Iterate over array elements and safely access their fields, without writing a full path for every element:
+Iterate over array elements and access their fields without building a full path per element:
 
 ```go
 data := `{"users": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]}`
@@ -305,7 +312,7 @@ if err != nil {
 ```
 
 :::tip
-The `Foreach*` function family has 12 members in total (including 4 file variants, `ForeachFile*`; see the full list in the [Cheat Sheet · Iteration Function Family](./cheatsheet#iteration-function-family)): use `ForeachWithError` when you need **early termination** (the callback returns an `error`; return `item.Break()` to stop). Deep nested traversal, carrying the current path, and other variants are covered in the same cheat-sheet section.
+The `Foreach*` function family has 12 members (including 4 file variants, `ForeachFile*`, and excluding the JSONL-specific `ForeachJSONL`; see the full list in the [Cheat Sheet · Iteration Function Family](./cheatsheet#iteration-function-family)). Use `ForeachWithError` when you need **early termination** (the callback returns an `error`; return `item.Break()` to stop). Deep nested traversal, carrying the current path, and other variants are covered in the same cheat-sheet section.
 :::
 
 ## Error Handling
@@ -317,7 +324,7 @@ val, err := json.Get(data, "user.profile.email")
 if err != nil {
     switch {
     case errors.Is(err, json.ErrPathNotFound):
-        // Key does not exist — common in practice; fall back to a default value
+        // Key missing or array index out of range — common in practice; fall back to a default value
     case errors.Is(err, json.ErrInvalidJSON):
         // The JSON itself is malformed
     default:
@@ -332,28 +339,35 @@ if err != nil {
 If you would rather not check each case, typed functions with default values (`GetString`/`GetInt`, etc.) silently return the zero value or the default, which suits non-critical reads.
 
 :::tip Where does ErrTypeMismatch apply?
-When a plain `Get` hits a type conflict (e.g. an array index applied to a string path), it returns a descriptive error carrying context, **not** the `ErrTypeMismatch` sentinel. `ErrTypeMismatch` mainly appears in three places: the `AsString()`/`AsInt()` conversion methods on `SafeGet` results, navigation of pre-compiled paths in `GetCompiled`, and calling the `Foreach*` family on non-iterable values.
+When a plain `Get` hits a type conflict (e.g. an array index applied to a string path), it returns a descriptive error carrying context, **not** the `ErrTypeMismatch` sentinel. The sentinel is raised here:
+
+- `SafeGet(...).AsString()` when the value is not a string wraps `ErrTypeMismatch`; failed `AsInt`/`AsFloat64`/`AsBool` conversions return a plain error that does not match the sentinel
+- `GetCompiled` navigation hitting a type conflict mid-path
+- `EncodeFields` given a non-object, and `ForeachFileChunked` when the root is not an array
+- `ForeachWithPathAndControl` / `ForeachWithPathAndIterator` when the target value is not iterable
+
+Note also that calling `ForeachWithError` or `ForeachWithPath` on a non-iterable value does **not** return `ErrTypeMismatch`: the callback runs zero times and `nil` is returned.
 :::
 
 ## Common First-Hour Questions
 
-The questions most often hit during the first hours, answered in one place; for path-syntax details see [Path Expression Syntax](./path-syntax).
+The questions that come up most in the first hours are collected here; path-syntax details are in [Path Expression Syntax](./path-syntax).
 
 **Q: What exactly is returned when a path is not found?**
 
-It depends on the call, and "missing key" and "out-of-range index" behave differently:
+A missing object key and an out-of-range array index both return `ErrPathNotFound`; only the message differs:
 
 | Call | Object key missing | Array index out of range |
 |------|--------------------|--------------------------|
-| `json.Get` | `(nil, ErrPathNotFound)` | `(nil, nil)`, **no error** |
+| `json.Get` | `(nil, ErrPathNotFound)` | `(nil, ErrPathNotFound)` with the message `array index 10 out of bounds (length 3)` |
 | `json.GetString` and other typed functions | Zero value or the passed default | Zero value or the passed default |
-| `json.SafeGet` | `Exists: false` | `Exists: true` but the value is nil |
+| `json.SafeGet` | `Exists: false` | `Exists: false` |
 
-When an array index is out of range, `Get` does not error (the result is nil), so to decide "does this element exist" you must look at the return value, not just err. Full rules in [Syntax Pitfalls](./path-syntax#what-are-the-syntax-pitfalls).
+To decide whether an element exists, check `err` directly: `errors.Is(err, json.ErrPathNotFound)` covers both "key missing" and "index out of range". When you want "missing means default", use a typed function or `SafeGet` rather than an err branch on `Get`. Slice bounds are the exception: `items[10:20]` clamps to an empty array with no error. Full rules in [Syntax Pitfalls](./path-syntax#what-are-the-syntax-pitfalls).
 
 **Q: Why is the number I got back a float64?**
 
-`Get` returns `any`, and JSON numbers always come out of the standard decoder as `float64`:
+`Get` returns `any`; under the default configuration, JSON numbers decode to `float64`:
 
 ```go
 data := `{"version": 1}`
@@ -362,11 +376,11 @@ val, _ := json.Get(data, "version") // val is float64(1), not int
 i := json.GetInt(data, "version")   // use a typed function when you need int
 ```
 
-Large integers beyond `float64` precision (e.g. snowflake IDs) get rounded — use `Config.PreserveNumbers` to keep the original number text, or `Decoder.UseNumber()` to get `json.Number`.
+Large integers beyond `float64` precision (e.g. snowflake IDs) get rounded. Use `Config.PreserveNumbers` to keep the original number text, or `Decoder.UseNumber()` to get `json.Number`.
 
 **Q: Why didn't the original JSON change after calling `Set`?**
 
-`Set`/`Delete` follow a pure-function style: they return a **new string** carrying the modification, leaving the original untouched. Discarding the return value is the most common beginner bug:
+`Set`/`Delete` follow a pure-function style: they return a **new string** carrying the modification and leave the original untouched. Discarding the return value is the most common beginner bug:
 
 ```go
 data := `{"name": "old"}`
@@ -381,29 +395,32 @@ if err != nil {
 }
 ```
 
-When modifying multiple places, use `SetMultiple` to do it in one shot — clearer than chained `Set` calls.
+When modifying multiple places, use `SetMultiple` to do it in one call; it is clearer than chained `Set` calls.
 
 **Q: What happens if `Set` uses an out-of-range index?**
 
-Unlike the query side's "zero value, no error" — under the default configuration (`CreatePaths: true`), `Set` pads the array with `null` up to the target index:
+Unlike the query side, which returns `ErrPathNotFound` — under the default configuration (`CreatePaths: true`), `Set` pads the array with `null` up to the target index:
 
 ```go
 updated, err := json.Set(`{"items":[1,2,3]}`, "items[5]", "x")
-// {"items":[1,2,3,null,null,"x"]}
+if err != nil {
+    panic(err)
+}
+fmt.Println(updated) // {"items":[1,2,3,null,null,"x"]}
 ```
 
 To append at the end, use `items[+]` instead of relying on out-of-range indices.
 
 **Q: Why is `defer p.Close()` needed everywhere?**
 
-A `Processor` internally holds a cache and a background cleanup goroutine; `Close` drains in-flight operations and releases these resources — creating processors at high frequency without closing them will keep accumulating. Package-level functions rely on a global processor whose lifecycle is managed for you, so you neither need to nor should call `Close` manually. See [Processor Guide](./processor-guide#lifecycle-management).
+A `Processor` internally holds a cache and a background cleanup goroutine; `Close` drains in-flight operations and releases these resources. Creating processors at high frequency without closing them keeps accumulating resources. Package-level functions rely on a global processor whose lifecycle is managed for you, so you do not need to and should not call `Close` manually. See [Processor Guide](./processor-guide#lifecycle-management).
 
 ## Next Steps
 
 - [Path Expression Syntax](./path-syntax) — learn the complete path query syntax
 - [Processor Guide](./processor-guide) — when to use a processor, pre-parse optimization
 - [Formatted Output](./print) — pretty-print and compact JSON
-- [Migrating from the Standard Library](./migration) — zero-cost encoding/json replacement
+- [Migrating from the Standard Library](./migration) — signature swap and default validation differences
 - [Cheat Sheet](./cheatsheet) — quick API reference
 - [Large File Handling](../streaming/large-files) — processing large JSON files
 - [API Reference](../api-reference/) — the complete API reference

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Serialization"
 title: "Serialization - CyberGo env | Multi-format Conversion"
-description: "CyberGo env serialization guide: map and struct conversion across .env/JSON/YAML, Marshal/Unmarshal, custom Marshaler, DetectFormat, config export/migration."
+description: "CyberGo env serialization guide: map and struct conversion across .env/JSON/YAML, Marshal/Unmarshal, custom Marshaler, quoting rules and FormatAuto detection."
 sidebar_position: 4
 ---
 
 # Serialization
 
-Use Marshal and Unmarshal functionality to serialize/deserialize environment variables, supporting `.env`, JSON, and YAML format conversion.
+`env.Marshal` and the `Unmarshal*` functions convert between key-value data and `.env`, JSON, and YAML. Use them to export a running configuration, migrate between formats, or feed a struct into a config file.
 
 ## Basic Serialization
 
@@ -106,11 +106,11 @@ func main() {
 
 ## Output Shape
 
-Marshal output is not a verbatim dump of flat keys: both structured formats process keys and values, and understanding this behavior is required to interpret export results correctly.
+Marshal output is not a verbatim dump of flat keys. Both structured formats transform keys and values, so you need to know the transformation to read an export correctly.
 
 ### JSON: underscore keys rebuild nested objects
 
-When marshaling to JSON, keys containing underscores are split on `_` and rebuilt as nested objects (`DATABASE_HOST` → `{"DATABASE": {"HOST": ...}}`); leaf values are restored via type inference — `"8080"` becomes a number again, `"true"` a bool, `"null"` null, and floats likewise.
+When marshaling to JSON, keys containing underscores are split on `_` and rebuilt as nested objects (`DATABASE_HOST` → `{"DATABASE": {"HOST": ...}}`). Leaf values are restored by type inference: `"8080"` becomes a number, `"true"` a bool, `"null"` null, and floats likewise.
 
 ```go
 package main
@@ -145,11 +145,11 @@ func main() {
 }
 ```
 
-This is symmetric with the loading direction: loading JSON flattens nested objects into `DATABASE_HOST`, and marshaling back to JSON rebuilds the nesting — the structure survives a round trip.
+This mirrors the loading direction: loading JSON flattens nested objects into `DATABASE_HOST`, and marshaling back to JSON rebuilds the nesting, so the structure survives a round trip.
 
 ### YAML: quoted scalars preserve round trips
 
-When marshaling to YAML, keys stay flat, but scalars that YAML would type-coerce when read back (numbers, `true`/`false`, `null`/`~`, etc.) are automatically double-quoted so that Marshal → Unmarshal round trips keep the value a string:
+When marshaling to YAML, keys stay flat. Scalars that YAML would type-coerce when read back (numbers, `true`/`false`, `null`/`~`, and similar) are double-quoted, so a Marshal → Unmarshal round trip keeps the value a string:
 
 ```go
 package main
@@ -180,7 +180,7 @@ func main() {
 }
 ```
 
-This behavior dates from v1.2.3: previously `PORT: 8080` was emitted unquoted and the YAML parser turned it back into a number on reload, causing type drift across round trips.
+This behavior dates from v1.2.3. Before that, `PORT: 8080` was emitted unquoted and the YAML parser turned it back into a number on reload, causing type drift across round trips.
 
 ## Struct Serialization
 
@@ -261,7 +261,7 @@ func main() {
 
 ### MarshalStruct Function
 
-Converts a struct to `map[string]string`:
+`MarshalStruct` converts a struct to `map[string]string`:
 
 ```go
 func MarshalStruct(v any) (map[string]string, error)
@@ -466,8 +466,8 @@ ENABLED=true
 ## Custom Serialization
 
 :::tip Scope of the two custom interfaces
-- **Field level**: Custom encoding/decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler` (`MarshalText()` / `UnmarshalText([]byte)`). When a struct is processed by `env.Marshal`/`env.UnmarshalInto`, the field-by-field logic recognizes these two interfaces.
-- **Top level**: `env.Marshaler` (`MarshalEnv()`) and `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) interfaces **only take effect on the top-level value directly passed to `env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto`**; if passed as a field within an outer struct, they will not be called.
+- **Field level**: to customize encoding or decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler` (`MarshalText()` / `UnmarshalText([]byte)`). The field-by-field logic in `env.Marshal` and `env.UnmarshalInto` recognizes both interfaces.
+- **Top level**: the `env.Marshaler` (`MarshalEnv()`) and `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) interfaces take effect **only on the top-level value passed directly to `env.Marshal`, `env.MarshalStruct`, or `env.UnmarshalInto`**. When the same type appears as a field of an outer struct, they are not called.
 :::
 
 ### Field level: Implement encoding.TextMarshaler
@@ -554,7 +554,7 @@ func main() {
 
 ### Top level: Implement env.Marshaler / env.Unmarshaler
 
-When you **directly** pass a type's value to `env.Marshal` / `env.UnmarshalInto` (rather than as a field of an outer struct), the `env.Marshaler` / `env.Unmarshaler` interfaces take effect on that top-level value:
+When you pass a type's value **directly** to `env.Marshal` or `env.UnmarshalInto` (not as a field of an outer struct), the `env.Marshaler` and `env.Unmarshaler` interfaces take effect on that top-level value:
 
 ```go
 package main
@@ -569,12 +569,12 @@ import (
 type EnvBlob string
 
 func (e EnvBlob) MarshalEnv() ([]byte, error) {
-	// Custom overall serialization output
+	// Custom serialization output for the whole value
 	return []byte("APP_NAME=custom\nAPP_VERSION=2.0.0"), nil
 }
 
 func main() {
-	// Directly serialize the top-level value (not a field of an outer struct)
+	// Top-level value, not a field of an outer struct
 	result, err := env.Marshal(EnvBlob(""), env.FormatEnv)
 	if err != nil {
 		panic(err)
@@ -713,11 +713,11 @@ func main() {
 }
 ```
 
-## Round-trip Pitfalls and Format Auto-Detection
+## Round-trip Behavior and Format Auto-Detection
 
-### `$` is not escaped: Marshal output may change when read back
+### `$` is escaped: Marshal output reloads unchanged
 
-`Marshal` does **not** escape `$` in values. If a value contains `$VAR` or `${VAR}` literals, re-parsing the Marshal output with `ExpandVariables` enabled (the default) expands those sequences as variable references:
+`Marshal` to `.env` quotes values that need it and writes `$` as `\$` (SEC-009, pinned by `TestMarshalEnv_ValueEscaping`). A Marshal → load round trip therefore does not expand the value again, even with `ExpandVariables` enabled.
 
 ```go
 package main
@@ -736,34 +736,35 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(out)
-	// Output: PRICE=100$USD
-	// Note: writing `out` back to a .env file and loading it with default
-	// config will attempt to expand $USD
+	// Output: PRICE="100\$USD"
 }
 ```
 
-Mitigations: set `cfg.ExpandVariables = false` on the reading side, or avoid `Marshal` round-trips for values containing `$`.
+A value is quoted when it contains a space, `#`, `'`, a newline, a carriage return, a tab, a double quote, or `$`, and when it is the literal `null` or `~`. An empty value is written as `""`. Inside a quoted value, `"` becomes `\"`, `\` becomes `\\`, and control characters become `\n`, `\r`, and `\t`. A value with no special character — including one whose only unusual character is a backslash, such as `path\to\file` — is emitted unquoted and unchanged.
 
 ### MarshalStruct field handling
 
-When marshaling a struct, fields whose value marshals to an **empty string are omitted** (empty strings, nil pointers, empty slices); scalar zero values (`0`, `false`) are **kept** — they do not marshal to an empty string. Align on the reading side with `envDefault` tags.
+When marshaling a struct, fields whose value marshals to an **empty string are omitted** (empty strings, nil pointers, empty slices). Scalar zero values (`0`, `false`) are **kept**, because they do not marshal to an empty string. Align the reading side with `envDefault` tags.
 
 ### Sorted-key guarantee
 
-`Marshal` output keys are **always sorted lexicographically**, regardless of input map/struct field order — output for the same configuration is stable, which suits diffing and caching.
+`Marshal` output keys are **always sorted lexicographically**, regardless of input map or struct field order. Output for the same configuration is stable, which suits diffing and caching.
 
 ### FormatAuto content-detection rules
 
-When `UnmarshalMap`/`UnmarshalStruct` receive `FormatAuto`, the format is detected by **content** (not extension):
+When `UnmarshalMap` or `UnmarshalStruct` receives `FormatAuto`, the format is detected by **content**, not by extension:
 
-| Signal | Verdict |
+| Signal (in check order) | Verdict |
 |--------|---------|
-| Whitespace-only input | `.env` |
+| Empty input | `.env` |
 | First character is `{` or `[` | JSON |
-| First non-empty line starts with `- `, or contains `: ` (colon+space) | YAML |
-| Contains `=` | `.env` |
+| First effective line starts with `- ` | YAML |
+| First effective line contains `": "` before any `=` (or has no `=`) | YAML |
+| First effective line contains `=` | `.env` |
+| First effective line is a bare `KEY:` (only whitespace after the colon) | YAML |
+| Nothing above matches | `.env` |
 
-Note that `: ` takes precedence over `=`: a line like `connection: host=db port=5432` is detected as YAML (not `.env`).
+Only the first effective line decides; blank lines and lines starting with `#` are skipped. The governing rule is **which separator appears first in that line**, not a blanket preference for `": "`: `GREETING=hello: world` has its `=` at index 8 and the `": "` after it, so it is `.env`; `connection: host=db port=5432` has the `": "` first, so it is YAML.
 
 ### IsMarshalError helper
 
@@ -778,6 +779,6 @@ if _, err := env.Marshal(data); err != nil {
 
 ## Related Documentation
 
-- [Package Functions](../api-reference/functions) - Marshal, UnmarshalMap and other function references
-- [Multi-format Config](./multi-format) - Multi-format loading guide
-- [Struct Mapping](./struct-mapping) - Struct mapping guide
+- [Package Functions](../api-reference/functions) - Marshal, UnmarshalMap, and other functions
+- [Multi-format Config](./multi-format) - multi-format loading
+- [Struct Mapping](./struct-mapping) - struct mapping
