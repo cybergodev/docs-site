@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概述"
 title: "JWT 认证库 - CyberGo JWT | 生产级令牌签发与验证"
-description: "CyberGo JWT 是面向 Go 的生产级 JWT 认证库，覆盖 HMAC、RSA、RSA-PSS、ECDSA 四类 12 种签名算法，提供令牌生成、验证、刷新、吊销、黑名单与速率限制，所有方法并发安全。"
+description: "CyberGo JWT 是面向 Go 语言的生产级 JWT 认证库，覆盖 HMAC、RSA、RSA-PSS、ECDSA 四类共 12 种签名算法，提供令牌签发、验证、刷新、吊销、黑名单管理与速率限制的完整能力，所有导出方法并发安全，关闭时可清除内存中的密钥。"
 ---
 
 # JWT - 生产级 JWT 认证库
@@ -11,14 +11,14 @@ CyberGo JWT 是一个为 Go 语言设计的高性能 JWT 认证库，提供了�
 ## 特性
 
 - **多算法支持** — HMAC (HS256/384/512)、RSA (RS256/384/512)、RSA-PSS (PS256/384/512)、ECDSA (ES256/384/512)
-- **令牌生命周期** — 创建、验证、刷新、吊销一站式管理
+- **令牌生命周期** — 创建、验证、刷新、吊销统一管理
 - **自定义 Claims** — 通过 `CustomClaims` 接口支持任意业务字段
 - **黑名单管理** — 内置内存存储，支持 Redis 等自定义后端
 - **限流保护** — 令牌桶算法，防止暴力破解
 - **输入验证** — 字段长度限制、注入模式检测、控制字符过滤
 - **时钟注入** — `ClockProvider` 接口支持测试场景
 - **并发安全** — 所有导出方法可安全并发调用
-- **零敏感数据泄露** — `Close()` 安全清除密钥
+- **密钥及时清理** — `Close()` 清零 HMAC 密钥字节并清空 hasher 池
 
 ## 安装
 
@@ -73,20 +73,20 @@ func main() {
 ## 架构概览
 
 ```text
-┌────────────────────────────────────────────────┐
-│                  Processor                      │
-│  (implements TokenManager interface)            │
-├────────────────────────────────────────────────┤
-│  Create / Parse / Refresh / Revoke             │
-│  CreateRefresh / ParseInto / RefreshInto       │
-│  ParseUnverified / IsRevoked / IsClosed / Close│
-├──────────────────┬─────────────────────────────┤
-│  BlacklistManager│     RateLimiter              │
-│  (optional)      │     (optional)               │
-├──────────────────┴─────────────────────────────┤
-│                Config                           │
-│  SigningMethod / TTL / Blacklist / Limit       │
-└────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│                    Processor                     │
+│       (implements TokenManager interface)        │
+├──────────────────────────────────────────────────┤
+│ Create / Parse / Refresh / Revoke                │
+│ CreateRefresh / ParseInto / RefreshInto          │
+│ ParseUnverified / IsRevoked / IsClosed / Close   │
+├──────────────────┬───────────────────────────────┤
+│ Blacklist        │ RateLimiter                   │
+│ (always on)      │ (optional)                    │
+├──────────────────┴───────────────────────────────┤
+│ Config                                           │
+│ SigningMethod / TTL / Blacklist / RateLimit      │
+└──────────────────────────────────────────────────┘
 ```
 
 ## 下一步

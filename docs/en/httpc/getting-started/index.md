@@ -26,7 +26,7 @@ Import it in your code:
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC requires Go 1.27 or later and has 7 direct dependencies. `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp are pulled in only when `Security.TLSFingerprint` is enabled. Without the fingerprint feature the standard stack is used, and no configuration is required to send a request.
+HTTPC requires Go 1.27 or later and has 7 direct dependencies, all compiled into the package (the source has no build tags). `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp serve the `Security.TLSFingerprint` path and simply do not run when fingerprinting is off. Without the fingerprint feature the standard stack is used, and no configuration is required to send a request.
 
 ## Basic Requests
 

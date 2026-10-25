@@ -462,7 +462,7 @@ if err != nil {
 }
 defer client.Close()
 
-// 需要让包级函数使用你的配置：接管默认客户端（旧实例自动关闭）
+// 让包级函数使用该配置：接管默认客户端（旧实例自动关闭）
 custom, err := httpc.New(httpc.SecureConfig())
 if err != nil {
     log.Fatal(err)

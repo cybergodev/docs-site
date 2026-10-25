@@ -366,9 +366,13 @@ const PROJECT_KNOWN_NOT_SYMBOLS: Record<string, Set<string>> = {
     'Proxy',
     'ProxyEnable',
     'ProxyServer',
+    // HTTP request header name (Range requests for resumed downloads).
+    'Range',
     'RenegotiateNever',
     'ResponseHeaderTimeout',
     'Secure',
+    // crypto/tls.Config field (SecurityConfig.TLSConfig is *tls.Config), not ours.
+    'SecurityConfig.TLSConfig.InsecureSkipVerify',
     'TLSClientConfig',
     'Transport.DialContext',
     'Transport.IdleConnTimeout',
@@ -398,7 +402,15 @@ const PROJECT_KNOWN_NOT_SYMBOLS: Record<string, Set<string>> = {
     'Record',
     'WithContext'
   ]),
-  dd: new Set(['CreatedAt', 'UserId'])
+  dd: new Set(['CreatedAt', 'UserId']),
+  env: new Set([
+    // Types defined inside doc code blocks (custom-parser / testing guides),
+    // not cybergodev exports. Keep this list minimal: an unused entry silently
+    // masks a future dangling reference to a symbol of the same name.
+    'INIParser',
+    'MockFile',
+    'TOMLParser'
+  ])
   // json needs no whitelist.
 }
 

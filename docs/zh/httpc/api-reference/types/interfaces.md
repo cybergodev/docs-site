@@ -22,7 +22,7 @@ sidebar_position: 10
 | `MiddlewareFunc` | 中间件函数类型 | 内置 7 个中间件工厂、调用方自定义 | 拦截或改写请求与响应 |
 | `RetryPolicy` | 重试策略接口 | 调用方实现（任意外部包均可，见下方说明） | 自定义重试决策 |
 | `CertificatePinner` | 证书锁定接口 | `NewSPKIHashPinner` 等构造器、调用方自定义 | 自定义锁定策略 |
-| `RequestOption` | 请求选项函数类型 | `WithXxx` 工厂函数 | 逐请求配置 |
+| `RequestOption` | 请求选项接口 | `WithXxx` 工厂函数、`RequestOptionFunc` | 逐请求配置 |
 
 ## Client
 
@@ -354,10 +354,12 @@ type MiddlewareFunc func(Handler) Handler
 ### RequestOption
 
 ```go
-type RequestOption = engine.RequestOption
+type RequestOption interface {
+    apply(RequestMutator) error
+}
 ```
 
-请求选项函数类型，是内部 `engine.RequestOption`（底层为 `func(*engine.Request) error`）的类型别名（`types.go`）。调用方不直接构造该函数，而是使用 `WithHeader`、`WithJSON`、`WithOnRequest` 等 `WithXxx` 工厂。全部选项的逐项参考见 [请求选项](../core/options)。
+公开接口，`apply` 未导出，因此包外无法直接实现——自定义逐请求选项统一用 `RequestOptionFunc`（`func(RequestMutator) error` 的函数字面量适配器，nil 为 no-op）。选项由 `WithHeader`、`WithJSON`、`WithOnRequest` 等 `WithXxx` 工厂构造。全部选项的逐项参考见 [请求选项](../core/options)。
 
 ## 证书锁定
 

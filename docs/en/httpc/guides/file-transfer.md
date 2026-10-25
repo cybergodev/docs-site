@@ -160,7 +160,7 @@ Downloads **always stream**: `WithStreamBody(true)` is attached automatically, a
 :::warning Downloads are bounded by MaxResponseBodySize
 Streaming to disk **does not mean unbounded size**: the download body is still subject to the client's `Security.MaxResponseBodySize`. `DefaultConfig` uses 10MB; the other presets are `SecureConfig` 5MB, `PerformanceConfig` 50MB, and `MinimalConfig` 1MB.
 
-A body over the limit fails the download with `ErrResponseBodyTooLarge`; the file is **never** silently truncated at the limit. Raise the value before downloading large files:
+A body over the limit fails the download with an error whose message contains `streamed response body exceeds size limit of N bytes` (wrapped as `failed to write file: ...`); it is **never** silently truncated into a success: a fresh download removes its temp file and leaves any existing destination untouched, while a resumed download keeps the appended bytes for the next attempt. This is **not** `ErrResponseBodyTooLarge`. Raise the value before downloading large files:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -182,6 +182,10 @@ if err != nil {
 fmt.Printf("Download complete: %s\n", httpc.FormatBytes(result.BytesWritten))
 fmt.Printf("Duration: %v\n", result.Duration)
 ```
+
+:::warning A 206 response to a download without Range
+When a download that did not request `Range` receives `206 Partial Content`, HTTPC saves the content and reports the download as successful (the source `download.go` comment states this behavior explicitly). The one exception is a `Content-Range: bytes 0-…/<total>` that declares its own total: when the received byte count does not match that total, the download is reported as truncated; a fresh download removes its temp file and leaves the destination untouched. A malformed, missing, non-zero-start, or `*`-total `Content-Range` is still saved as-is, so a non-conforming server can return only part of the content without an error; set `DownloadConfig.Checksum` when integrity matters.
+:::
 
 ### With Progress Callback
 
@@ -441,7 +445,7 @@ if err != nil {
 ```
 
 :::warning Two caveats for domain clients
-- **Request options execute twice**: once to capture session state, once for the real request. Avoid options with side effects (counters, random-nonce generators, etc.); when such options are needed, download directly with the underlying `Client`.
+- **Session capture from request options is static**: request options execute once, and only the headers and cookies carried by `WithHeader`/`WithHeaderMap`/`WithCookies`/`WithCookieMap`/`WithCookieString` are written to the session. `SetHeader`/`SetCookies` inside a custom `RequestOptionFunc` are not captured; use `dc.SetHeader`/`dc.SetCookie` for values that must persist.
 - **Download is incompatible with custom middleware that wraps the response object**: the download path needs direct access to the raw response stream. If custom middleware replaces the `ResponseMutator` with a wrapper type, `Download` returns an explicit error. Built-in middleware (Recovery/Logging/Metrics, etc.) all pass through and are unaffected.
 :::
 

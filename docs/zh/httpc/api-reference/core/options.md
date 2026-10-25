@@ -60,6 +60,8 @@ func WithHeader(key, value string) RequestOption
 
 设置单个请求头。键和值经过安全验证（CRLF 注入防护）：键 ≤256 字符、值 ≤8192 字符，控制字符被拒绝（返回 `ErrInvalidHeader` 包装错误）。同名默认头（`Config.Defaults.Headers`）会被覆盖。
 
+在 `DomainClient` 上该头会被捕获进会话，并对后续请求持续生效；需要一次性头时用自定义 `RequestOptionFunc`（不会被捕获）。
+
 ```go
 result, err := client.Get(url,
     httpc.WithHeader("X-Custom", "value"),
@@ -89,7 +91,7 @@ result, err := client.Get(url,
 func WithUserAgent(userAgent string) RequestOption
 ```
 
-设置 User-Agent 头。是 `WithHeader("User-Agent", ...)` 的便捷包装，覆盖 `Config.Defaults.UserAgent` 默认值（`"httpc/1.0"`）。
+设置 User-Agent 头。是 `WithHeader("User-Agent", ...)` 的便捷包装，覆盖 `Config.Defaults.UserAgent` 默认值（`"httpc/1.0"`）。因为它底层就是 `WithHeader`，在 `DomainClient` 上同样会被捕获进会话，并固定后续所有请求的 UA。
 
 ## 认证
 
@@ -100,6 +102,8 @@ func WithBasicAuth(username, password string) RequestOption
 ```
 
 设置 HTTP Basic 认证，生成 `Authorization: Basic <base64>` 头。用户名与密码均不能为空、≤255 字符且不含控制字符；用户名还不得包含冒号 `:`。
+
+在 `DomainClient` 上该选项**不会**被捕获进会话（凭据不持久化）；需要跨请求复用认证时改传 `WithHeader("Authorization", ...)`。
 
 ```go
 result, err := client.Get(url,
@@ -194,12 +198,14 @@ result, err := client.Post(url,
 func WithFile(fieldName, filename string, content []byte) RequestOption
 ```
 
-便捷的单文件 multipart 上传。`fieldName` 与 `filename` 不能为空、≤256 字符，且不得包含路径分隔符（`/`、`\`）、`..`、引号、尖括号等危险字符。
+便捷的单文件 multipart 上传。`fieldName` 与 `filename` 不能为空、≤256 字符，且必须是**单段名**：含 `/`、`\` 或 `..` 即报错（源码 `validation.ValidateFieldName`），此外引号、尖括号、`&` 等危险字符也被拒绝。
 
-实际使用的文件名取 `filepath.Base(filename)`，以剥离路径部分、防止路径遍历；结果为 `"."`/`".."`/空时报错。
+没有路径裁剪这一步——`filename` 原样写入 multipart 头；`"."` 同样报错。
 
-:::warning 与其他请求体选项互斥
-`WithFile` 会替换整个请求体。多次调用 `WithFile`，或与其他请求体选项（`WithFormData`/`WithJSON` 等）同时使用时，后应用的选项覆盖前者。需要多文件或「文件 + 字段」混合上传时，构建单个 `*FormData` 并使用 `WithFormData`。
+:::warning 多次 WithFile 合并，与其他请求体选项混用则替换
+多次 `WithFile` 会**合并**进同一个 multipart 请求体（源码行为，并由测试固定），可以一次上传多个文件。
+
+与 `WithJSON`/`WithBinary` 等其他请求体选项混用时，后应用者替换整个请求体；先 `WithFormData` 后 `WithFile` 时，文件会并入该 FormData。需要「文件 + 字段」混合上传时，构建单个 `*FormData` 并使用 `WithFormData`。
 :::
 
 ```go
@@ -214,9 +220,9 @@ result, err := client.Post(url,
 func WithBinary(data []byte, contentType ...string) RequestOption
 ```
 
-设置二进制请求体。`data` 为 nil 时报错；非 nil 的空切片允许通过，但会发送空请求体。默认 Content-Type 为 `application/octet-stream`，可通过第二个参数自定义（传空字符串回退默认值）。
+设置二进制请求体。`data` 为 nil **或零长度**均报错（`binary data cannot be empty`）。默认 Content-Type 为 `application/octet-stream`，可通过第二个参数自定义（传空字符串回退默认值）。
 
-与 `WithBody(data, BodyBinary)` 的区别：本选项只接受 `[]byte`，后者还接受 `string` 输入，且会拒绝空数据。
+与 `WithBody(data, BodyBinary)` 的区别：`WithBody(data, BodyBinary)` 同样拒绝空数据，另额外接受 `string` 输入。
 
 ```go
 result, err := client.Post(url,
@@ -410,7 +416,7 @@ result, err := client.Get(url,
 func WithContext(ctx context.Context) RequestOption
 ```
 
-设置请求上下文，支持超时和取消。上下文不能为 nil。上下文预设的截止时间会覆盖该请求的客户端默认超时（`Timeouts.Request`）。
+设置请求上下文，支持超时和取消。上下文不能为 nil。上下文截止时间只**收窄**客户端默认超时（`Timeouts.Request`），二者取较短者；没有截止时间的上下文不会解除该默认值（需要 `WithNoTimeout`）；显式 `WithTimeout` 覆盖客户端默认预算，但更近的上下文截止仍然优先。
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -458,7 +464,7 @@ result, err := client.Post(uploadURL,
 func WithMaxRetries(maxRetries int) RequestOption
 ```
 
-设置单次请求最大重试次数，覆盖 `Config.Retry.MaxRetries`（默认 3）。范围：0-10，越界返回 `ErrInvalidRetry`。
+设置单次请求最大重试次数，覆盖 `Config.Retry.MaxRetries`（默认 3）。范围：0-10，越界返回 `ErrInvalidRetry`。`0` 表示本次请求**禁用**重试（与 `WithMaxRedirects(0)` 的 no-op 语义不同）。
 
 ```go
 result, err := client.Get(url, httpc.WithMaxRetries(3))

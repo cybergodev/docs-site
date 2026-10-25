@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Types & Constants"
 title: "Types - CyberGo JWT | Types & Constants"
-description: "Types and constants: NumericDate, StringOrSlice serialization, SigningMethod, ValidationError, RateLimiter, SystemClock, FixedClock, and 12 algorithm constants."
+description: "Types and constants: NumericDate, StringOrSlice, SigningMethod, ValidationError, RateLimiter and clocks, plus 12 signing algorithm and 2 token type constants."
 sidebar_position: 60
 ---
 
@@ -79,8 +79,8 @@ Field-level validation failure error. On the [`Create`](./processor#create) / [`
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `Field` | `string` | Name of the field or claim that failed validation (e.g. `user_id`, `extra.color`) |
-| `Message` | `string` | Why the field is invalid (e.g. exceeds the 256-character limit, suspicious pattern detected) |
+| `Field` | `string` | Name of the field that failed validation. The built-in `Claims` uses Go field names (`UserID`, `Username`, `Role`, `SessionID`, `ClientID`), slice fields use lowercase names (`permissions`, `scopes`, `audience`), `Extra` entries use `extra.<key>`, and registered claims use `Issuer`, `Subject`, `ID`, `TokenType` |
+| `Message` | `string` | Why the field is invalid (e.g. exceeds the 256-byte limit, suspicious pattern detected) |
 | `Err` | `error` | Optional underlying error wrapped by this failure; `Unwrap` returns it so `errors.Is` / `errors.As` can traverse it; nil when there is no wrapped cause |
 
 ### Methods
@@ -100,9 +100,13 @@ type RateLimiter struct { ... }
 
 Token bucket rate limiter, implements [`RateLimitProvider`](./interfaces#ratelimitprovider).
 
-Uses the token bucket algorithm: tokens are **refilled proportionally** to elapsed time (rather than reset on a fixed window), and residual time is retained after refilling to keep the rate uniform; each request consumes a token, and requests are denied when tokens are insufficient.
+Uses the token bucket algorithm: tokens are **refilled proportionally** to elapsed time, rather than reset on a fixed window. Residual time is retained after refilling so the rate stays uniform. Each request consumes a token, and requests are denied when tokens are insufficient.
 
-Internally tracks at most 10,000 rate limit keys (`maxBuckets`). When the limit is reached, it first evicts expired buckets (inactive for more than 2× the window); if still full, it batch-evicts the approximately oldest 10%, amortizing the O(n) scan cost.
+Internally tracks at most 10,000 rate limit keys (`maxBuckets`). When the limit is reached, it first evicts expired buckets (inactive for more than 2× the window); if still full, it batch-evicts the oldest ~10%, amortizing the O(n) scan cost.
+
+::: info Nil Receiver Behavior
+`Allow` / `AllowN` on a nil `*RateLimiter` fail closed and return `false`; `Reset` and `Close` are no-ops on nil. After a limiter is closed, `Allow` always returns `false`.
+:::
 
 <Badge type="info" text="struct" />
 

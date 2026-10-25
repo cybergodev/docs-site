@@ -311,15 +311,12 @@ func (s *SessionManager) captureFromOptions(options []RequestOption)
 
 DomainClient 的 `prepareSessionOptions` 内部调用此方法，从调用方提供的 RequestOptions 中提取 Cookie 和 Header 存入会话。实现细节：
 
-1. 使用对象池中的临时 `engine.Request`（`acquireMiddlewareRequest`/`releaseMiddlewareRequest`）减少热路径分配。
-2. 逐个应用 option 到临时请求。**安全措施**：每个 option 应用前后清除 OnRequest/OnResponse 回调，防止 `WithOnRequest`/`WithOnResponse` 的闭包在捕获过程中累积触发副作用。
-3. 提取临时请求上的 Cookie 和 Header，经校验后存入会话。
-4. 只提取 Cookie 和 Header；其他数据（query params、body、callbacks）被丢弃。
+1. 静态类型断言遍历 option，**不执行选项闭包**：只识别 `WithHeader`/`WithHeaderMap`/`WithCookies`/`WithCookieMap`/`WithCookieString`，其余选项类型跳过。
+2. 提取这些选项上的 Cookie 和 Header，经校验后存入会话。
+3. 只提取 Cookie 和 Header；其他数据（query params、body、callbacks）不被捕获。
 
-:::warning RequestOptions 执行两次
-DomainClient 的 Request/Download 会将 RequestOptions **执行两次**：一次用于会话捕获（captureFromOptions），一次用于实际请求。因此**避免使用有副作用的 option**（如计数器、nonce 生成、随机数）。
-
-需要副作用时，直接使用底层 Client。
+:::warning 选项只执行一次，会话捕获是静态的
+DomainClient 的 Request/Download 中，RequestOptions 只执行一次（真实请求阶段）。会话捕获由 `captureFromOptions` 静态完成，因此自定义 `RequestOptionFunc` 里的 `SetHeader`/`SetCookies` 不会被捕获，也不会产生副作用；需要持久化会话状态时改用 `SetHeader`/`SetCookie`。
 :::
 
 ### prepareOptions

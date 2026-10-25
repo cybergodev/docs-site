@@ -323,17 +323,17 @@ Security-audit middleware, suitable for financial, medical, government, and othe
 
 `SourceIP` and `UserID` are extracted from the request context via [`SourceIPKey`](#audit-context-keys) and [`UserIDKey`](#audit-context-keys). `Attempts` (the actual attempt count) and `RedirectChain` (the redirect chain) are extracted automatically from the response.
 
-The middleware itself does **not** branch on `Format` when formatting: the event is handed to `OnAudit` as an `AuditEvent` struct as-is; `Format` is there for the callback to read when deciding the output style.
+The middleware renders nothing itself: the `AuditEvent` struct is handed to `OnAudit` as-is, and `Format` is a reserved field with no effect, so the output style (text, JSON, ...) is entirely the callback's decision.
 
 #### AuditConfig
 
 The audit middleware's configuration struct, with 5 fields:
 
 - `OnAudit`: audit callback; the middleware is a no-op when nil.
-- `Format`: output-format hint (`"text"` / `"json"`), consumed by the callback.
+- `Format`: reserved field with no effect — events reach `OnAudit` as `AuditEvent` values, and rendering is the callback's choice.
 - `IncludeHeaders`: whether to record headers.
 - `MaskHeaders`: header names to mask; defaults to the six standard sensitive headers, with matches replaced by `[REDACTED]`.
-- `SanitizeError`: whether to sanitize error messages.
+- `SanitizeError`: whether to redact raw request URLs (and sensitive query values) embedded in error messages; the redacted error still classifies through `errors.Is`/`errors.As`.
 
 For the full type definition, field-by-field descriptions, and defaults, see [AuditConfig](../types/constants#auditconfig).
 
@@ -343,16 +343,19 @@ For the full type definition, field-by-field descriptions, and defaults, see [Au
 func DefaultAuditConfig() *AuditConfig
 ```
 
-Returns the default audit config: `Format` is `"text"`, `IncludeHeaders` is `false`, `MaskHeaders` is the standard sensitive-header list, `SanitizeError` is `true`. Set the `OnAudit` field to enable the audit callback.
+Returns the default audit config: `Format` stays `""` (the reserved field is not initialized), `IncludeHeaders` is `false`, `MaskHeaders` is the standard sensitive-header list, `SanitizeError` is `true`. Set the `OnAudit` field to enable the audit callback.
 
 ```go
+// For JSON lines, serialize the AuditEvent inside the callback
 auditCfg := httpc.DefaultAuditConfig()
 auditCfg.OnAudit = func(event httpc.AuditEvent) {
-    log.Printf("[AUDIT] %s %s -> %d (%v) user=%s ip=%s",
-        event.Method, event.URL, event.StatusCode,
-        event.Duration, event.UserID, event.SourceIP)
+    data, err := json.Marshal(event)
+    if err != nil {
+        log.Printf("[AUDIT] marshal failed: %v", err)
+        return
+    }
+    log.Printf("%s", data)
 }
-auditCfg.Format = "json"
 auditCfg.IncludeHeaders = true
 
 cfg := httpc.DefaultConfig()

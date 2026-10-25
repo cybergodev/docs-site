@@ -29,7 +29,7 @@ if secret != nil {
 ```
 
 ::: warning 注意
-`Close()` 和 `Release()` 只应调用一次。重复调用不会出错，但也不产生额外效果。
+取得 `SecureValue` 的代码负责释放它。`Close()` 与 `Release()` 的差异见下文「Close 与 Release 的区别」。
 :::
 
 ## 方法总览
@@ -45,8 +45,8 @@ if secret != nil {
 | `SecureValue.Masked` | 掩码表示（携带锁定状态后缀） |
 | `SecureValue.MarshalJSON` | JSON 序列化输出掩码（实现 `json.Marshaler`） |
 | `SecureValue.MarshalText` | 文本编码输出掩码（实现 `encoding.TextMarshaler`） |
-| `SecureValue.Close` | 清零数据，不归还对象池 |
-| `SecureValue.Release` | 清零数据并归还对象池 |
+| `SecureValue.Close` | 清零并解锁数据，不归还对象池 |
+| `SecureValue.Release` | 清零、解锁数据并归还对象池 |
 | `SecureValue.IsClosed` | 是否已关闭 |
 | `SecureValue.IsMemoryLocked` | 内存是否处于锁定状态 |
 | `SecureValue.MemoryLockError` | 最近一次锁定失败的错误 |
@@ -247,16 +247,22 @@ func (sv *SecureValue) Masked() string
 **输出格式：**
 - nil 接收者：`[NIL]`
 - 已关闭：`[CLOSED]`
-- 空值：`[SECURE:0 bytes]`
-- 正常：`[SECURE:N bytes]`；内存锁定状态另加后缀，取值为 `locked`、`lock-failed` 或 `unlocked`
+- 空值：`[SECURE:0 bytes]`（即便启用了内存锁定也不带后缀）
+- 正常：`[SECURE:N bytes]`；调用时全局内存锁定开关为 true 才追加状态后缀，取值为 `locked`、`lock-failed` 或 `unlocked`
+
+后缀由**调用 `Masked()` 那一刻**的全局开关与该值自身的锁定结果共同决定；`IsMemoryLockEnabled()` 为 false 时一律不加后缀。各后缀的完整判定见下文「Masked 输出格式」。
+
+::: tip
+锁定状态后缀由**调用 `Masked()` 时**的全局开关决定：开关为 false 时不加任何后缀；为 true 时按该值自身的锁定结果给出 `locked`／`lock-failed`／`unlocked`（创建于启用之前的值为 `unlocked`）。状态判断与排查见[内存锁定](../security/memory-locking)。
+:::
 
 ```go
 secret := env.GetSecure("API_KEY")
 if secret != nil {
     log.Printf("API Key: %s", secret.Masked())
     // 输出：API Key: [SECURE:32 bytes]
-    // 注：仅当启用内存锁定（SetMemoryLockEnabled(true)）且锁定成功时，
-    // 掩码才追加 " locked" 后缀（另有 " lock-failed" / " unlocked"）
+    // 调用时若已启用内存锁定（SetMemoryLockEnabled(true)），掩码按该值的锁定结果
+    // 追加 " locked" / " lock-failed" / " unlocked" 后缀
 }
 ```
 
@@ -321,13 +327,13 @@ data, _ := xml.Marshal(cfg)
 func (sv *SecureValue) Close() error
 ```
 
-安全清零内存并关闭对象。
+先解锁内存（若已锁定），再安全清零内部数据并关闭对象。
 
 **返回：**
 - `error` - 总是返回 nil
 
 **行为：**
-- 安全清零内部数据
+- 若内存已锁定则先解锁，再安全清零内部数据
 - 标记为已关闭，**不**归还到对象池
 
 ```go
@@ -349,7 +355,7 @@ func (sv *SecureValue) Release()
 清零内存并归还到对象池。
 
 **行为：**
-- 安全清零内部数据
+- 若内存已锁定则先解锁，再安全清零内部数据
 - 标记为已关闭，并归还到对象池供重用
 - **不**清除 GC 终结器。终结器在对象首次创建时设置一次，之后终身保持；池化对象被 runtime 逐出后即使触发终结器，也因对象已是 closed 状态而成为空操作
 
@@ -362,8 +368,8 @@ if secret != nil {
 ```
 
 ::: tip Close vs Release
-- `Close()` - 仅清零，不归还池
-- `Release()` - 清零并归还池，高频创建场景优先用它
+- `Close()` - 解锁并清零，不归还池
+- `Release()` - 解锁、清零并归还池，高频创建场景优先用它
 :::
 
 ---
@@ -478,7 +484,7 @@ if env.IsMemoryLockEnabled() {
 func SetMemoryLockStrict(strict bool)
 ```
 
-设置严格模式。启用后，任何内存锁定失败都会向标准日志（stderr）输出安全告警，与构造路径无关。
+设置严格模式。启用后，任何内存锁定失败都会向 stderr 输出告警（`log.Printf` 默认目标），与构造路径无关。
 
 非严格构造器（如 `NewSecureValue`）无法返回错误，这条告警是它们唯一的失败信号；`NewSecureValueStrict` 的错误返回不受此开关影响（见上文「创建」一节）。
 
@@ -529,15 +535,15 @@ func IsMemoryLockSupported() bool
 | Linux | ✅ |
 | macOS | ✅ |
 | Windows | ✅ |
-| FreeBSD 及其他 BSD、Solaris | ❌（no-op 降级） |
+| FreeBSD 及其他 BSD、Solaris | ❌ |
 | wasm | ❌ |
 
 ::: tip 平台降级
-内存锁定只在 Linux、macOS、Windows 上实现，其余平台（FreeBSD 及其他 BSD、Solaris、wasm 等）降级为空操作：
+内存锁定只在 Linux、macOS、Windows 上实现，其余平台（FreeBSD 及其他 BSD、Solaris、wasm 等）没有锁定实现：
 
 - `IsMemoryLockSupported()` 返回 false
 - `SecureValue` 仍可正常创建与使用
-- 启用内存锁定时锁定尝试失败，`Masked()` 显示 `lock-failed` 后缀；未启用锁定时不带状态后缀
+- 启用内存锁定时锁定尝试失败并记录错误，`Masked()` 显示 `lock-failed` 后缀；未启用锁定时不带状态后缀
 :::
 
 ::: warning 注意
@@ -600,7 +606,7 @@ if env.IsSensitiveKey("DB_PASSWORD") {
 
 **敏感模式：** password、secret、token、api_key、credential 等，完整模式表见[常量与错误](./constants#sensitivekeypatterns)。
 
-匹配规则：键名包含任一模式即命中（子串匹配，不区分大小写）。短模式 `AUTH`、`PAN`、`PWD`、`USERNAME` 例外，只在**标识符边界**匹配（SEC-006），所以 `AUTHOR` 不会被判为敏感。
+匹配规则：键名包含任一模式即命中（子串匹配，不区分大小写）。短模式 `AUTH`、`PAN`、`PWD`、`USERNAME` 例外，只在**标识符边界**匹配（SEC-06），所以 `AUTHOR` 不会被判为敏感。
 
 ---
 
@@ -840,8 +846,8 @@ func (sv *SecureValue) clearDataLocked() {
 
 ### Close 与 Release 的区别
 
-| 方法 | 清零数据 | 返回对象池 | 适用 |
-|------|:--------:|:-----------:|------|
+| 方法 | 清零并解锁数据 | 返回对象池 | 适用 |
+|------|:--------------:|:-----------:|------|
 | `Close()` | ✅ | ❌ | 常规一次性使用 |
 | `Release()` | ✅ | ✅ | 高频创建/销毁场景（复用降低分配） |
 
@@ -852,13 +858,15 @@ func (sv *SecureValue) clearDataLocked() {
 掩码表示携带锁定状态，便于在日志中核对防护是否生效：
 
 ```text
-[SECURE:24 bytes]             // 未启用内存锁定
+[SECURE:24 bytes]             // 调用时全局未启用内存锁定（不加任何后缀）
 [SECURE:24 bytes locked]      // 已锁定
 [SECURE:24 bytes lock-failed] // 锁定失败（结合 MemoryLockError 排查）
-[SECURE:24 bytes unlocked]    // 已全局启用锁定，但该值没有锁定（也未记录错误）
+[SECURE:24 bytes unlocked]    // 调用时全局已启用锁定，但该值未锁定且未记录错误
 [CLOSED]                      // 已关闭
 [NIL]                         // nil 接收者
 ```
+
+`unlocked` 的含义是「全局已启用内存锁定，但该值没有锁定」——典型情况是该值创建于启用之前，创建时没有尝试锁定。后缀取决于调用时的全局开关：调用时开关为 false 就不加任何后缀，不要据此判断为 `unlocked`；完整的状态判定与排查见[内存锁定](../security/memory-locking)。
 
 ### 锁定状态查询
 

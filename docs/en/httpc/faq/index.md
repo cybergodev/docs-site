@@ -531,7 +531,7 @@ fmt.Println(len(result.RawBody())) // Bytes already in memory, no unclosed handl
 
 Do not read large files into memory with regular requests; use `Download` instead (streams to disk, progress callbacks, resumable).
 
-`WithStreamBody` only takes effect on the `Download` path: when used via regular request methods, the response is still fully read into `Result` and the stream closed. See the [File Transfer guide](../guides/file-transfer).
+`WithStreamBody` only takes effect on the `Download` path: combined with a regular request method (`Get`/`Post`/`Request`, ...), the request fails with `ErrStreamBodyRequiresDownload` instead of returning an empty body. See the [File Transfer guide](../guides/file-transfer).
 
 ## Why isn't my proxy working?
 

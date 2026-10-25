@@ -13,7 +13,7 @@ With `ExpandVariables` enabled, a `.env` value can reference another variable, w
 
 ```go
 cfg := env.DefaultConfig()
-cfg.ExpandVariables = true  // Enabled by default
+cfg.ExpandVariables = true  // Optional: DefaultConfig already enables it; shown explicitly
 
 loader, _ := env.New(cfg)
 loader.LoadFiles(".env")
@@ -138,7 +138,6 @@ Quotes also affect **literal parsing**: double quotes process `\n`, `\r`, `\t`, 
 
 :::warning
 Three ways to keep a `${VAR}` literal:
-:::
 
 ```bash
 # Method 1: single quotes (the whole value is not expanded)
@@ -157,6 +156,7 @@ LITERAL="$${NO_EXPANSION}"
 cfg := env.DefaultConfig()
 cfg.ExpandVariables = false
 ```
+:::
 
 ---
 
@@ -274,14 +274,17 @@ func main() {
 
 ## Expansion Scope (Security Isolation)
 
-`ParsingConfig.ExpansionScope` controls which variables a `${VAR}` reference can resolve against.
-
-The enum's zero value is `ExpansionFileThenProcess` (`= iota`), but the runtime default is `ExpansionFileOnly`: `New()` applies `DefaultConfig()` to a zero-value `Config`, and `DefaultConfig()` sets `ExpansionScope = ExpansionFileOnly` explicitly (SEC-003). The zero value and the `DefaultConfig` default are therefore two different things.
+`ParsingConfig.ExpansionScope` controls which variables a `${VAR}` reference can resolve against. It has two values:
 
 | Value | Behavior | Use case |
 |-------|----------|----------|
-| `ExpansionFileOnly` (runtime default) | Only file-local variables are visible; process-environment references expand to empty strings | Default behavior; blocks secret probing (SEC-03) |
+| `ExpansionFileOnly` (runtime default) | Only file-local variables are visible; process-environment references expand to empty strings | Default behavior; blocks secret probing via config files (SEC-03) |
 | `ExpansionFileThenProcess` (enum zero value) | File-local variables first, then the process environment | Set explicitly, for trusted config files and traditional dotenv semantics |
+
+Two points are easy to confuse:
+
+1. **The enum zero value is not the runtime default.** `ExpansionFileThenProcess` is the `iota` zero value, but `New()` replaces a zero-value `Config` with `DefaultConfig()`, and `DefaultConfig()` sets `ExpansionScope = ExpansionFileOnly` explicitly. So `env.New(env.Config{})` actually runs with FileOnly.
+2. **A partially filled `Config` is not treated as zero.** Since v1.3.0, `Config.IsZero()` covers every field (including enum fields such as `ExpansionScope`), so such a config is not silently replaced by `DefaultConfig()`. `New()` then calls `Config.Validate()`: unset required limits (`MaxFileSize` and others) are still zero, validation fails, and `New()` returns an error wrapping `ErrInvalidConfig`. Always start custom configs from `env.DefaultConfig()` or a preset.
 
 <!-- check-code: skip -->
 ```go
@@ -294,8 +297,6 @@ loader, _ := env.New(cfg)
 ::: warning SEC-03
 `DefaultConfig()` sets the expansion scope to `ExpansionFileOnly`, so `${VAR}` references resolve only within the file. If your application loads externally provided configuration files, keep this default and do not switch back to `ExpansionFileThenProcess`.
 :::
-
-`ExpansionScope` is an enum field, not a boolean. If it is the only field you set on a `Config`, `IsZero()` still reports the Config as initialized, so it is not replaced by defaults.
 
 ## Related Documentation
 

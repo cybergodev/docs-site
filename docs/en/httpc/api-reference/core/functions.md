@@ -252,13 +252,13 @@ The old download functions (DownloadFile, DownloadWithOptions, DownloadFileWithC
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-Redirects security-warning output (e.g. `TestingConfig`, `InsecureSkipVerify` warnings). Output goes to `os.Stderr` by default, and each warning type is printed at most once per process. Pass `io.Discard` to silence all warnings.
+Redirects security-warning output (three categories: `TestingConfig`, `InsecureSkipVerify`, and a hand-built all-off `Config`). Output goes to `os.Stderr` by default, and each warning type is printed at most once per process. Pass `io.Discard` to silence all warnings.
 
 ```go
 // Silence all security warnings
 httpc.SetSecurityWarnOutput(io.Discard)
 
-// Redirect to a custom log
+// Change the output to a custom log
 httpc.SetSecurityWarnOutput(log.Writer())
 ```
 

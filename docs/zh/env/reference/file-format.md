@@ -31,7 +31,7 @@ URL=https://example.com?foo=bar
 ```bash
 # 双引号：保留空格，支持转义
 MESSAGE="Hello World"
-PATH="/usr/local/bin"
+APP_PATH="/usr/local/bin"
 
 # 单引号：不处理转义（原样保留反斜杠序列），值内变量也不展开
 LITERAL='no escaping here: \n stays literal'
@@ -61,7 +61,7 @@ TABBED="col1\tcol2"
 QUOTED="He said \"Hello\""
 
 # 反斜杠
-PATH="C:\\Users\\name"
+APP_PATH="C:\\Users\\name"
 
 # 美元符号
 PRICE="Price: \$100"
@@ -79,9 +79,10 @@ API_URL=${BASE_URL}/v1
 # 简单语法
 URL=$BASE_URL/path
 
-# 默认值
-HOST=${HOST:-localhost}
-PORT=${PORT:-8080}
+# 默认值（引用的是同文件里先前定义的键，不能引用自身）
+HOST=example.com
+PRIMARY_HOST=${HOST:-localhost}
+TIMEOUT=${TIMEOUT_SECONDS:-30s}
 
 # 嵌套展开
 SERVICE=${CLUSTER:-default}-${REGION:-us-east}
@@ -106,7 +107,7 @@ export ANOTHER="quoted value"
 KEY: value
 ```
 
-把 `AllowYamlSyntax` 设为 `true` 后，`:` 才作分隔符，同时值的解析切换到 YAML 标量语义：`null`/`~` 视为空字符串，YAML 布尔与数字字面量按其规则识别。`DevelopmentConfig()` 已将该开关设为 `true`，`DefaultConfig()` 与 `ProductionConfig()` 保持 `false`。
+把 `AllowYamlSyntax` 设为 `true` 后，`:` 才作分隔符，同时值的解析切换到 YAML 标量语义：`null`/`~` 视为空字符串，YAML 布尔与数字字面量按其规则识别。四个预设中只有 `DevelopmentConfig()` 将该开关设为 `true`，`DefaultConfig()`、`TestingConfig()` 与 `ProductionConfig()` 都是 `false`。
 
 ```go
 cfg := env.DefaultConfig()
@@ -199,7 +200,7 @@ port0 := env.GetInt("PORTS_0")  // 80
 
 ### 类型转换选项
 
-`JSONNullAsEmpty` / `JSONNumberAsString` / `JSONBoolAsString` 在 `DefaultConfig` 中**默认均为 `true`**，无需逐项手动赋值；只有需要关闭对应转换时才显式设为 `false`：
+`JSONNullAsEmpty` 与 `JSONNumberAsString` 在 `DefaultConfig` 中**默认 `true`**；`JSONBoolAsString` 默认 `false`，且对 JSON 输出无效果（已标记 Deprecated）。前两者无需逐项手动赋值，需要关闭其中一项的转换时再显式设为 `false`：
 
 ```go
 cfg := env.DefaultConfig()
@@ -302,7 +303,7 @@ format := env.DetectFormat("config.json")   // FormatJSON
 format = env.DetectFormat("settings.yaml")  // FormatYAML
 format = env.DetectFormat(".env")           // FormatEnv
 
-// 无匹配扩展名时返回 FormatAuto（默认使用 .env 解析器）
+// 无匹配扩展名时返回 FormatAuto（加载器在该格式未注册解析器时回退 .env 解析器）
 format = env.DetectFormat("config")  // FormatAuto
 ```
 

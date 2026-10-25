@@ -31,6 +31,7 @@ type ClientError struct {
     Attempts   int        // 已尝试次数
     StatusCode int        // HTTP 状态码（如适用）
     Host       string     // 主机名（用于断路器）
+    ProxyURL   string     // 最后一次尝试所用代理的脱敏 URL（直连、发送前错误与系统代理时为空）
 }
 ```
 
@@ -44,8 +45,9 @@ type ClientError struct {
 | `ClientError.Attempts` | `int` | 已尝试次数（含首次请求） | `1`（首次失败）、`4`（重试 3 次后） |
 | `ClientError.StatusCode` | `int` | HTTP 状态码（非 HTTP 错误时为 0） | `0`（网络错误）、`503`（服务端错误） |
 | `ClientError.Host` | `string` | 请求主机名（用于断路器） | `"example.com"` |
+| `ClientError.ProxyURL` | `string` | 最后一次尝试所用代理的脱敏 URL（密码已掩码，可直接写日志）；直连、发送前错误（校验或回调失败）与 `EnableSystemProxy` 时为空；代理轮换时报告最后一次尝试的代理 | `"http://proxy:8080"` |
 
-`Host` 供断路器按主机维度统计失败，`Message` 可直接写入日志，`Cause` 保留底层错误供 `errors.As` 深挖。
+`Host` 供断路器按主机维度统计失败，`Message` 可直接写入日志，`Cause` 保留底层错误供 `errors.As` 深挖。`ProxyURL` 记录的是传输层在选择代理时登记的值，与成功路径的 `Result.Meta.ProxyURL` 同源，因此即使是拨号失败也能知道当时用的是哪个代理。
 
 ### 方法
 
@@ -55,9 +57,8 @@ type ClientError struct {
 | `Code` | `func (e *ClientError) Code() string` | 返回短错误码，如 `"NETWORK_ERROR"`、`"TIMEOUT"` |
 | `IsRetryable` | `func (e *ClientError) IsRetryable() bool` | 返回该错误是否可重试 |
 | `Unwrap` | `func (e *ClientError) Unwrap() error` | 返回 `ClientError.Cause`，支持 `errors.Is`/`errors.As` 遍历错误链 |
-| `WithType` | `func (e *ClientError) WithType(t ErrorType) *ClientError` | 返回设置了错误类型的**副本**，不修改原始错误 |
 
-五个方法均以 `*ClientError` 指针接收者定义。`ClientError.Error` 实现 `error` 接口；`ClientError.Code` 与 `ClientError.IsRetryable` 供日志分类与重试决策使用；`ClientError.Unwrap` 暴露底层原因；`ClientError.WithType` 返回改写类型后的副本。
+四个方法均以 `*ClientError` 指针接收者定义。`ClientError.Error` 实现 `error` 接口；`ClientError.Code` 与 `ClientError.IsRetryable` 供日志分类与重试决策使用；`ClientError.Unwrap` 暴露底层原因。
 
 ### Error() 格式化
 
@@ -159,7 +160,7 @@ type ErrorType = engine.ErrorType
 | `ErrorTypeCertificate` | 8 | 证书验证错误 | x509 证书过期/不受信任 | 否 |
 | `ErrorTypeDNS` | 9 | DNS 解析错误 | 域名不存在、DNS 超时 | 视情况 |
 | `ErrorTypeValidation` | 10 | 请求验证错误 | URL 格式错误、重定向超限、CRLF 注入 | 否 |
-| `ErrorTypeHTTP` | 11 | HTTP 层错误 | 4xx/5xx 响应（仅重试场景产生） | 视情况 |
+| `ErrorTypeHTTP` | 11 | HTTP 层错误 | 仅由分类器的**错误消息模式匹配**归入（消息含 `HTTP 4xx`/`HTTP 5xx`）。常规请求的 4xx/5xx 不作为 error 返回；自定义中间件返回的 error **不经过**分类器，因此不会得到该类型 | 视情况 |
 
 > ¹ 由上下文截止（`WithTimeout`、`TimeoutConfig.Request`）触发的超时**不会**重试；仅传输层超时（如 `net.OpError` 超时）才会重试。
 > ² 详见上方 [IsRetryable 判断逻辑](#isretryable-判断逻辑)。
@@ -242,7 +243,7 @@ if err != nil {
 | `ErrEmptyFilePath` | `"file path cannot be empty"` | DownloadConfig.FilePath 为空 |
 | `ErrFileExists` | `"file already exists"` | 文件已存在且 Overwrite=false 且 ResumeDownload=false |
 | `ErrResponseBodyEmpty` | `"response body is empty"` | 对空响应体调用 Unmarshal 等解析方法 |
-| `ErrResponseBodyTooLarge` | `"response body too large"` | 响应体超过 MaxResponseBodySize |
+| `ErrResponseBodyTooLarge` | `"response body too large"` | `Result.Unmarshal` 解析的响应体超过 50MB JSON 上限。引擎侧体积上限（`Security.MaxResponseBodySize`）另报 `response body exceeds limit of N bytes`，**不是**该哨兵 |
 | `ErrInvalidMaxRedirects` | `"invalid max redirects"` | [`WithMaxRedirects`](../core/options#withmaxredirects) 传入负数或超过 50，或 `Security.MaxRedirects` 不在 0–50 |
 | `ErrInvalidCredentials` | `"invalid credentials"` | [`WithBasicAuth`](../core/options#withbasicauth)/[`WithBearerToken`](../core/options#withbearertoken) 凭据为空、超长或含非法字符 |
 | `ErrStreamBodyRequiresDownload` | `"WithStreamBody requires Download; standard request methods buffer the response body"` | [`WithStreamBody`](../core/options#withstreambody)(true) 与标准请求方法（Get/Post/…/Request）搭配；流式仅在 `Download` 路径生效 |
@@ -269,20 +270,21 @@ if err != nil {
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-重定向安全警告的输出目标（默认 `os.Stderr`），定义于 `warnings.go`。传入 `io.Discard` 可抑制全部警告。测试环境的判定依据是可执行文件名（`.test` 后缀）与 `GO_TEST`/`GOTEST` 环境变量。
+安全警告的输出目标（默认 `os.Stderr`），定义于 `warnings.go`。传入 `io.Discard` 可抑制全部警告。测试环境的判定依据是可执行文件名（`.test` 后缀）与 `GO_TEST`/`GOTEST` 环境变量。
 
-两类危险配置会在**非测试环境**触发警告，每类每进程至多打印一次（`sync.Once`）：
+三类配置会在**非测试环境**触发警告，每类每进程至多打印一次（`sync.Once`）：
 
 | 触发条件 | 警告要点 |
 |---------|---------|
 | `TestingConfig()` 创建的客户端用于非测试环境 | 提示 TLS 证书验证、SSRF 防护、URL/Header 验证均被禁用，应改用 `SecureConfig()` 或 `DefaultConfig()` |
 | `Security.InsecureSkipVerify=true` 且非测试环境 | 提示 TLS 证书验证被禁用，仅应在测试中使用，生产应用 `SecureConfig()` |
+| 手写 `Config` 命中全关签名（`ValidateURL`/`ValidateHeaders`/`StrictContentLength`/`FollowRedirects`/`EnableHTTP2` 全为 false 且 `Security.MaxResponseBodySize == 0`） | 打印 `[CONFIG WARNING]`：这些 `Default: true` 字段只在 `DefaultConfig()`/预设中为 true，结构体字面量会清零它们；应从 `DefaultConfig()` 起步 |
 
 ```go
 // 抑制安全警告（仅在已确认配置安全时使用）
 httpc.SetSecurityWarnOutput(io.Discard)
 
-// 重定向到自定义日志输出
+// 输出改写为自定义日志
 httpc.SetSecurityWarnOutput(log.Writer())
 ```
 

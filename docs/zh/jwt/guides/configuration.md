@@ -1,7 +1,7 @@
 ---
 sidebar_label: "配置详解"
 title: "配置详解 - CyberGo JWT | 配置字段与安全加固"
-description: "配置详解指南：讲解 Config 全部字段含签发者受众校验、时钟偏移容忍、强制过期、TTL 设计，以及内置输入校验的长度限制、注入模式检测与 ValidationError 错误处理。"
+description: "配置详解指南：逐项讲解 Config 字段，涵盖签发者与受众校验、时钟偏移容忍、强制过期与 TTL 设计、速率限制上界，以及内置输入校验的长度与注入检测规则和 ValidationError 错误处理。"
 sidebar_position: 15
 check_code: false
 ---
@@ -40,14 +40,14 @@ check_code: false
 | `RateLimitWindow == 0` | 1 分钟 | 仅 `EnableRateLimit == true` |
 | `Blacklist.MaxSize == 0` | 100000 | 仅内置存储（`Store == nil`） |
 | `Blacklist.CleanupInterval == 0` | 5 分钟 | 仅内置存储 |
-| `Blacklist.EnableAutoCleanup` | 强制 `true` | 仅内置存储 |
+| `Blacklist.EnableAutoCleanup` | 强制 `true` | 内置存储恒为开启；字段本身仅自定义 `Store` 生效 |
 
 ::: tip 何时触发速率限制默认值
 `RateLimitRate` 和 `RateLimitWindow` 的默认值**仅在 `EnableRateLimit` 为 `true` 时**填充。若 `EnableRateLimit` 为 `false`（默认），速率限制不启用，这两个字段被忽略。详见 [速率限制](./rate-limiting)。
 :::
 
 ::: warning 自定义 BlacklistStore 跳过填充
-当 `Blacklist.Store` 不为 `nil`（使用自定义存储后端）时，`MaxSize`、`CleanupInterval`、`EnableAutoCleanup` 三个字段均被忽略——存储管理由后端自行负责。内置存储的 `EnableAutoCleanup` 被强制为 `true` 以防止无限内存增长。
+当 `Blacklist.Store` 不为 `nil`（使用自定义存储后端）时，`MaxSize` 与 `CleanupInterval` 被忽略，存储管理由后端自行负责。`EnableAutoCleanup` 则只在自定义 `Store` 时生效；内置存储恒为开启（归一化阶段强制为 `true`，防止内存无限增长）。
 :::
 
 ## 签发者与受众校验
@@ -64,6 +64,10 @@ cfg.Issuer = "my-app-v1" // 令牌将携带 iss: "my-app-v1"
 
 验证时，如果令牌的 `iss` 不等于配置值，返回 `ErrTokenInvalidIssuer`。
 
+::: warning 库只补零值
+库只补零值：调用方显式赋值的 `iss`/`exp`/`iat`/`jti` 会原样使用，覆盖配置与 TTL。以上面为例，若 `claims.RegisteredClaims.Issuer` 已被赋值为 `"other-app"`，签发时不会写入 `cfg.Issuer`。验证时会因 `iss` 不匹配返回 `ErrTokenInvalidIssuer`，形成自签自验失败。统一签发方时不要手工设置 `Issuer` 字段。
+:::
+
 ### ExpectedAudience（预期受众）
 
 设置 `ExpectedAudience` 后，验证时检查令牌的 `aud` 声明是否包含此值：
@@ -73,7 +77,6 @@ package main
 
 import (
     "fmt"
-    "time"
 
     "github.com/cybergodev/jwt"
 )
@@ -171,7 +174,7 @@ cfg.RequireExpiration = true // 拒绝没有 exp 的令牌
 ```
 
 ::: tip 安全加固
-本库签发的令牌总是携带 `exp`（从 TTL 派生），因此 `RequireExpiration` 主要影响来自其他签发方的令牌或缺少 `exp` 的旧令牌。生产环境建议启用。
+本库签发的令牌总是携带 `exp`：零值时由 TTL 派生。因此 `RequireExpiration` 主要影响来自其他签发方的令牌或缺少 `exp` 的旧令牌。生产环境建议启用。该开关只判断 `exp` 是否存在，不检查其值是否合理。
 :::
 
 ## 令牌 TTL 设计
@@ -189,9 +192,15 @@ cfg.RequireExpiration = true // 拒绝没有 exp 的令牌
 `Config.Validate()` 要求 `AccessTokenTTL < RefreshTokenTTL`，且两者必须为正数。
 :::
 
+::: warning TTL 只作用于未显式设置的 exp
+库只补零值：调用方显式赋值的 `iss`/`exp`/`iat`/`jti` 会原样使用，覆盖配置与 TTL。若在 Claims 中显式设置 `ExpiresAt`（例如设为 1 年后），令牌有效期就是这个值，`AccessTokenTTL` 不再生效，上面的 TTL 设计同时失效。业务代码不要直接写 `ExpiresAt`。
+:::
+
 ## 配置校验矩阵
 
 `Config.Validate()` 在 `New()` 中于 `normalizeConfig` 之后执行，返回三类错误：`ErrInvalidConfig`、`ErrInvalidSecretKey`、`ErrInvalidSigningMethod`。
+
+直接调用 `Validate()` 与经 `New()` 校验不等价：`New()` 会先补零值默认，直接调用则不会。同一份配置可能 `Validate()` 返回 `TTL must be positive` 而 `New()` 构造成功。需要与 `New()` 一致时，从 `DefaultConfig()` 出发。
 
 ### 签名密钥校验（按算法）
 
@@ -224,25 +233,34 @@ cfg.RequireExpiration = true // 拒绝没有 exp 的令牌
 | RefreshTokenTTL | `<= 0` | `ErrInvalidConfig` |
 | TTL 关系 | `AccessTokenTTL >= RefreshTokenTTL` | `ErrInvalidConfig` |
 | ClockSkew | `< 0` | `ErrInvalidConfig` |
+| 限流参数符号 | `EnableRateLimit == true` 且 `RateLimitRate < 0` 或 `RateLimitWindow < 0` | `ErrInvalidConfig` |
+| RateLimitRate 上界 | `EnableRateLimit == true` 且 `RateLimitRate > 1000000` | `ErrInvalidConfig` |
+| RateLimitWindow 上界 | `EnableRateLimit == true` 且 `RateLimitWindow > 30 天` | `ErrInvalidConfig` |
 | Blacklist MaxSize | `<= 0`（仅内置存储） | `ErrInvalidConfig` |
 | Blacklist CleanupInterval | `<= 0`（仅内置存储） | `ErrInvalidConfig` |
 
 ::: tip 校验顺序
-`Validate()` 先校验签名密钥（返回 `ErrInvalidSecretKey` 或 `ErrInvalidSigningMethod`），再校验 TTL、ClockSkew 和 Blacklist 配置（返回 `ErrInvalidConfig`）。若密钥不合法，后续检查不会执行——修复第一个报错后重新测试。
+`Validate()` 先校验签名密钥（返回 `ErrInvalidSecretKey` 或 `ErrInvalidSigningMethod`），再校验 TTL、ClockSkew、限流参数和 Blacklist 配置（返回 `ErrInvalidConfig`）。若密钥不合法，后续检查不会执行；修复第一个报错后重新测试即可。
+:::
+
+::: tip 限流上界的意义
+`EnableRateLimit == true` 时，限流参数必须非负，且每窗口次数不超过 1000000、窗口不超过 30 天，否则 `New()` 直接返回 `ErrInvalidConfig`。这些边界用于快速暴露配置错误；`AllowN` 内部另有溢出保护。详见 [速率限制](./rate-limiting)。
 :::
 
 ## 输入校验与安全加固
 
-CyberGo JWT 对 [`Claims`](../api-reference/claims) 字段实施多层输入校验，防止注入攻击和异常数据。
+CyberGo JWT 对 [`Claims`](../api-reference/claims) 字段实施多层输入校验，防止注入攻击和异常数据。深度字段校验只在令牌创建时执行。验证路径只调用 `Validate()`（必填字段）并清洗标准声明字符串。
 
 ### 字段约束
 
 | 校验项 | 限制 | 触发错误 |
 |--------|------|----------|
-| 字符串字段长度 | ≤ 256 字符 | `ValidationError` |
+| 字符串字段长度 | ≤ 256 字节（UTF-8 编码后，中文约 85 字） | `ValidationError` |
 | 数组大小（permissions、scopes、audience） | ≤ 100 项 | `ValidationError` |
 | Extra 字段数量 | ≤ 50 个 | `ValidationError` |
 | Extra 值类型 | `string`、`[]string` | `ValidationError`（拒绝嵌套 map） |
+
+长度按字节计算：Go 的 `len(string)` 返回字节数，一个汉字在 UTF-8 下占 3 字节。85 个汉字为 255 字节可通过，86 个汉字为 258 字节会被拒绝。
 
 受校验的字符串字段包括 `UserID`、`Username`、`Role`、`SessionID`、`ClientID` 以及 `RegisteredClaims` 中的 `Issuer`、`Subject`、`ID`、`TokenType`。
 
@@ -265,15 +283,15 @@ if err != nil {
     var ve *jwt.ValidationError
     if errors.As(err, &ve) {
         fmt.Printf("字段: %s, 原因: %s\n", ve.Field, ve.Message)
-        // 字段：user_id, 原因：suspicious pattern detected
+        // 字段：UserID, 原因：suspicious pattern detected
     }
 }
 ```
 
-`ValidationError` 同时实现了 `Unwrap()`，可以通过 `errors.Is` 和 `errors.As` 链式查找底层错误。在 `Create` 和 `Parse` 路径中，校验错误会被 `ErrInvalidClaims` 包装。
+`ValidationError` 同时实现了 `Unwrap()`，可以通过 `errors.Is` 和 `errors.As` 链式查找底层错误。在 `Create` 路径中，深度校验产生的 `ValidationError` 会被 `ErrInvalidClaims` 包装；验证路径中 `Validate()` 失败同样包装为 `ErrInvalidClaims`。
 
 ::: tip 自定义 Claims 校验
-实现 `CustomClaims` 接口的类型，其自定义字段不会被深度校验——实现者需在 `Validate()` 方法中自行处理。标准 JWT 字段（`iss`、`sub`、`jti` 等）的长度和注入校验始终执行。详见 [自定义 Claims](./custom-claims)。
+实现 `CustomClaims` 接口的类型，其自定义字段不会被深度校验，实现者需在 `Validate()` 方法中自行处理。深度字段校验只在令牌创建时执行，验证路径只调用 `Validate()`（必填字段）并清洗标准声明字符串。因此创建时通过校验的令牌，解析时不会再被长度或注入规则拦截。详见 [自定义 Claims](./custom-claims)。
 :::
 
 ## 下一步

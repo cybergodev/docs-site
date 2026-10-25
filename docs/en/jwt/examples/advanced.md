@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Advanced Examples"
 title: "Advanced Examples - CyberGo JWT | Asymmetric"
-description: "Advanced CyberGo JWT examples: RSA and ECDSA signing, cross-service key separation, PEM loading, CustomClaims, Redis blacklists, and FixedClock testing."
+description: "Advanced CyberGo JWT examples: RSA, ECDSA signing, placeholder-key separation, PEM loading, custom Claims, Redis blacklist, clock injection."
 sidebar_position: 20
 ---
 
@@ -9,7 +9,7 @@ sidebar_position: 20
 
 ## RSA Asymmetric Signing
 
-Sign with RSA private key, verify with public key. Suitable for microservice architectures where the verifying party doesn't need the private key.
+RSA signs with a private key and verifies with a public key. It suits microservice architectures where the verifying side does not hold the private key.
 
 ```go
 package main
@@ -58,7 +58,7 @@ func main() {
 
 ## RSA-PSS Signing
 
-RSA-PSS (the modern replacement for RS256/384/512) uses Probabilistic Signature Scheme (PSS) padding, offering better security than PKCS#1 v1.5. The keys are identical to RSA — no additional key generation needed.
+RSA-PSS (the modern replacement for RS256/384/512) uses Probabilistic Signature Scheme (PSS) padding and offers better security than PKCS#1 v1.5. The keys are identical to RSA, so no additional key generation is needed.
 
 ```go
 package main
@@ -111,7 +111,7 @@ New projects should prefer RSA-PSS (PS256/384/512). PSS padding offers stronger 
 
 ## ECDSA Asymmetric Signing
 
-Sign with ECDSA elliptic curve — shorter keys, better performance.
+ECDSA elliptic curve signing uses shorter keys and performs better.
 
 ```go
 package main
@@ -154,7 +154,7 @@ func main() {
 
 ## Key Separation Mode
 
-Simulates cross-service token verification in a microservice architecture: the auth service holds the private key to issue tokens, and the API service verifies them via the public key.
+Simulates cross-service token verification in a microservice architecture: the auth service holds the private key and issues tokens, and the API service verifies them with the public key.
 
 ```go
 package main
@@ -169,7 +169,7 @@ import (
 )
 
 func main() {
-	// Generate RSA key pair
+	// Generate an RSA key pair
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		log.Fatal(err)
@@ -195,10 +195,18 @@ func main() {
 	}
 	fmt.Println("Auth service issued token (private key)")
 
-	// --- API service: verifies tokens via the public key ---
+	// --- API service: verifies tokens with the public key ---
+	// The current API requires SigningKey to be non-empty, so a placeholder
+	// private key is supplied; once VerificationKey is set, only that public
+	// key is used for verification and the placeholder plays no part.
+	placeholderKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	apiCfg := jwt.DefaultConfig()
 	apiCfg.SigningMethod = jwt.SigningMethodRS256
-	apiCfg.SigningKey = privateKey     // Current API requires SigningKey to be non-empty
+	apiCfg.SigningKey = placeholderKey // Placeholder, not used for verification
 	apiCfg.VerificationKey = publicKey // This public key is actually used for verification
 	apiCfg.Issuer = "auth-service"     // Must match the issuer
 
@@ -212,13 +220,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("API service verified (public key)") // Verified via the public key
-	fmt.Println("UserID:", parsed.UserID)
+	fmt.Println("API service verified (public key)")
+	fmt.Println("UserID:", parsed.UserID) // Output: user_dist
 }
 ```
 
-:::warning SigningKey Is Required
-The current API requires `SigningKey` to be non-empty (enforced during validation), so the API service's config must still include the private key. However, once `VerificationKey` is set, the verification flow uses only the public key. A verify-only Processor must not call `Create` / `CreateRefresh`.
+:::warning Do Not Issue Tokens from a Verification-Only Instance
+The current API requires `SigningKey` to be non-empty and to be a valid `*rsa.PrivateKey`, so the API service still supplies a private key. A placeholder is sufficient: verification uses only `VerificationKey`, unrelated to the signing key. A verification-only Processor should not call `Create` / `CreateRefresh`, since that would sign with the placeholder key and produce tokens nobody can verify.
 :::
 
 ## Loading Keys from PEM Files
@@ -312,7 +320,7 @@ func main() {
 
 ## Custom Claims
 
-Define your own Claims struct with business fields.
+Define a custom Claims structure with business fields.
 
 ```go
 package main
@@ -460,7 +468,6 @@ func main() {
 ## Clock Injection (Testing)
 
 Use `FixedClock` to control time in tests.
-
 ```go
 package main
 

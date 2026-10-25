@@ -77,7 +77,7 @@ env 提供两种使用方式：
 | **全局模式** | `env.Load()` + `env.GetString()` | 简单应用、脚本、快速原型 |
 | **实例模式** | `env.New()` + `loader.GetString()` | 多实例、测试隔离、精细控制生命周期 |
 
-全局模式使用包级函数，内部维护一个默认 Loader 单例：调用 `env.Load()` 后，所有 `env.GetXxx()` 都使用该实例。实例模式通过 `env.New()` 创建独立 Loader，用于需要隔离或同时管理多套配置的场景。
+全局模式使用包级函数，内部维护一个默认加载器单例：调用 `env.Load()` 后，所有 `env.GetXxx()` 都使用该实例。实例模式通过 `env.New()` 创建独立 Loader，用于需要隔离或同时管理多套配置的场景。
 
 下文示例默认使用全局模式，实例模式的完整用法见[多环境配置](#多环境配置)一节。
 
@@ -133,27 +133,26 @@ timeout := env.GetDuration("TIMEOUT")
 // JSON: {"app": {"name": "myapp"}}
 // 存储为：APP_NAME=myapp
 
-// 以下方式都能访问到该值
-name := env.GetString("APP_NAME")      // 扁平化键名（推荐）
-name = env.GetString("app.name")       // 点号路径（自动转换）
-name = env.GetString("APP.NAME")       // 大写点号路径
+// 以下方式都能访问到该值（变量名不同，仅作演示）
+nameFlat := env.GetString("APP_NAME")  // 扁平化键名（推荐）
+nameDot := env.GetString("app.name")   // 点号路径（自动转换）
+nameUpper := env.GetString("APP.NAME") // 大写点号路径
+
+fmt.Println(nameFlat, nameDot, nameUpper) // 三者相同
 ```
 
 **解析规则：**
 1. **精确匹配**：优先查找精确键名 `KEY`，包括本身带点的字面键名（如 YAML 顶层键 apnews.com 存储为 APNEWS.COM）
 2. **大写回退**：精确匹配失败时，把键名转为大写再查，`key` → `KEY`
 3. **路径解析**：点号路径转换为下划线，`app.name` → `APP_NAME`
+4. **数字索引**：以索引结尾的键（`hosts.0`）取逗号分隔值中对应位置的元素
 :::
 
 ### 布尔值支持
 
-`GetBool` 接受的字符串（不区分大小写）：
+`GetBool` 不区分大小写，真值为 `true`/`1`/`yes`/`on`/`enabled`，假值为 `false`/`0`/`no`/`off`/`disabled`。
 
-| 真值 | 假值 |
-|------|------|
-| `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
-
-键存在但值为空字符串时按 `false` 处理，不返回默认值；键存在且内容无法识别时记审计事件并返回默认值。这一点与 `GetInt`、`GetFloat64`、`GetDuration` 不同，后三者的空值解析失败，会回退到默认值。
+空串按 `false` 处理而不取默认值，无法识别的值记审计并返回默认值；`GetInt`、`GetFloat64`、`GetDuration` 的空值则解析失败、回退到默认值。完整对照表见[常见问题 · 支持哪些布尔值格式](../reference/faq#支持哪些布尔值格式)。
 
 ### 切片类型
 
@@ -222,7 +221,7 @@ if secret != nil {
     value := secret.Reveal()
 
     // 日志使用掩码（防止泄露）；方括号里的数字是值长度，
-    // API_KEY 为 32 字节时输出：[SECURE:32 bytes]
+    // API_KEY 为 32 字节时输出：[SECURE:32 bytes]（启用内存锁定后会附带锁定状态）
     log.Printf("API Key: %s", secret.Masked())
 }
 ```
@@ -251,7 +250,9 @@ type Config struct {
 }
 
 func main() {
-	env.Load(".env")
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
 	var cfg Config
 	if err := env.ParseInto(&cfg); err != nil {
@@ -297,7 +298,7 @@ cfg := env.ProductionConfig()
 | 文件不存在时报错 | ✗ | ✗ | ✗ | ✓ |
 | 审计日志 | ✗ | ✗ | ✗ | ✓ |
 | YAML 语法 | ✗ | ✓ | ✗ | ✗ |
-| 文件大小限制 | 8MB | 10MB | 64KB | 64KB |
+| 文件大小限制 | 8 MB | 10 MB | 64 KB | 64 KB |
 | 最大变量数 | 1000 | 1000 | 50 | 50 |
 | 禁止键检查 | ✓ | ✓ | ✓ | ✓ |
 | 值验证 | ✓ | ✓ | ✓ | ✓ |
@@ -346,8 +347,9 @@ import (
 )
 
 func main() {
-	// 创建配置
+	// 创建配置（清空 Filenames，避免 New 阶段就自动加载并校验必需键）
 	cfg := env.ProductionConfig()
+	cfg.Filenames = nil
 	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
 	// 创建加载器
@@ -362,7 +364,7 @@ func main() {
 		panic(err)
 	}
 
-	// 验证必需键
+	// 验证必需键（加载结束时已检查过一次，这里按当前存储再确认）
 	if err := loader.Validate(); err != nil {
 		panic(err)
 	}

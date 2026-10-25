@@ -263,8 +263,8 @@ type SecurityConfig struct {
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
-| `MaxResponseBodySize` | 10MB | 限制（压缩传输时的）原始响应体字节数 |
-| `MaxDecompressedBodySize` | 100MB | 限制**解压后**的响应体字节数（防解压炸弹）；未设置（≤0）时回退 `MaxResponseBodySize` |
+| `MaxResponseBodySize` | 10MB | 限制**未压缩（identity）**响应体字节数；压缩响应按解压后大小受 `MaxDecompressedBodySize` 约束（该字段为 0 时回退到这里） |
+| `MaxDecompressedBodySize` | 100MB | 限制压缩响应**解压后**的字节数（防解压炸弹）；未设置（≤0）时回退 `MaxResponseBodySize`。压缩输入本身另有固定的 100MB 上限，不可配置 |
 | `MaxRequestBodySize` | 0（不限制） | 上传请求体上限；与响应侧不同**无自动回退**，需显式设置才生效 |
 
 ### 证书固定（CertificatePinner）
@@ -397,6 +397,8 @@ type RetryConfig struct {
 | `RetryConfig.CustomPolicy` | nil | 实现 [`RetryPolicy`](../types/interfaces#retrypolicy) 即可 |
 
 重试延迟公式：`min(Delay * BackoffFactor^attempt + jitter, MaxRetryDelay)`
+
+响应携带 `Retry-After` 时以其为准（上限 60s），优先于上述退避序列与 `MaxRetryDelay`（源码 `internal/engine/retry.go` 中带 Retry-After 的延迟计算路径）；退避公式的钳制只作用于指数退避回退路径。
 
 `CustomPolicy` 实现 [`RetryPolicy`](../types/interfaces#retrypolicy) 接口，可整体替换内置重试判定；默认 `nil`（使用内置策略）。
 
@@ -582,12 +584,13 @@ func MinimalConfig() Config
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-`SetSecurityWarnOutput` 设置安全警告的输出目标。进程不在测试环境（可执行文件名含 `.test`，或设置了 `GO_TEST`、`GOTEST=1`）时，以下情况会向该 writer 打印 `[SECURITY WARNING]` 级别的告警：
+`SetSecurityWarnOutput` 设置安全警告的输出目标。进程不在测试环境（可执行文件名含 `.test`，或设置了 `GO_TEST`、`GOTEST=1`）时，以下情况会向该 writer 打印告警：
 
-- 使用 `TestingConfig()`。
-- `SecurityConfig.InsecureSkipVerify`（`Config.Security`）或 `SecurityConfig.TLSConfig.InsecureSkipVerify` 为 `true`。
+- 打印 `[SECURITY WARNING]`：使用 `TestingConfig()`。
+- 打印 `[SECURITY WARNING]`：`SecurityConfig.InsecureSkipVerify`（`Config.Security`）或 `SecurityConfig.TLSConfig.InsecureSkipVerify` 为 `true`。
+- 打印 `[CONFIG WARNING]`：手写 `Config` 结构体字面量恰好命中全关签名——`ValidateURL`、`ValidateHeaders`、`StrictContentLength`、`FollowRedirects`、`EnableHTTP2` 全为 false，且 `Security.MaxResponseBodySize == 0`。这些字段文档标注 `Default: true`，但只在 `DefaultConfig()`/预设中为 true，结构体字面量会把它们清零；提示应从 `DefaultConfig()` 起步再改字段（源码 `client.go` 的 `newFromConfig`）。
 
-两种告警各自独立计数，每种每进程最多打印一次。默认输出到 `os.Stderr`；传入 `io.Discard` 可完全抑制警告，适合测试或已知安全的内部场景。传入 `nil` 会被归一化为 `io.Discard`。
+三类告警共用同一 writer，各自每进程最多打印一次。默认输出到 `os.Stderr`；传入 `io.Discard` 可完全抑制警告，适合测试或已知安全的内部场景。传入 `nil` 会被归一化为 `io.Discard`。
 
 ```go
 // 测试中抑制安全警告
@@ -596,7 +599,7 @@ cfg := httpc.TestingConfig()
 ```
 
 :::tip 影响范围
-该设置为进程级全局状态，影响所有后续创建的客户端。`TestingConfig` 与 `InsecureSkipVerify` 两种告警共享同一输出 writer。
+该设置为进程级全局状态，影响所有后续创建的客户端。`TestingConfig`、`InsecureSkipVerify` 与手写 `Config` 三类告警共享同一输出 writer。
 :::
 
 ## 验证

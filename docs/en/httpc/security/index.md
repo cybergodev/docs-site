@@ -326,19 +326,20 @@ The default 0 means the Go standard library default (`net/http.DefaultMaxHeaderB
 
 ## Security Warning Mechanism
 
-HTTPC emits `stderr` warnings for high-risk configurations in non-test environments so that developers can correct them. Two configuration categories trigger warnings:
+HTTPC emits `stderr` warnings for high-risk configurations in non-test environments so that developers can correct them. Three configuration categories trigger warnings:
 
 | Configuration | Warning trigger | Warning content |
 |------|-------------|----------|
 | `InsecureSkipVerify = true` | Detected inside `httpc.New()`, non-test environment | TLS certificate verification disabled |
 | `TestingConfig()` | Detected at call time, non-test environment | TLS verification, SSRF protection, URL/header validation disabled |
+| A hand-built `Config` literal with the all-off signature (`ValidateURL`/`ValidateHeaders`/`StrictContentLength`/`FollowRedirects`/`EnableHTTP2` all false and `Security.MaxResponseBodySize == 0`) | Detected inside `httpc.New()`, non-test environment | `[CONFIG WARNING]`: those `Default: true` fields are true only in `DefaultConfig()`/presets, so start from `DefaultConfig()` |
 
 Warnings use `sync.Once`, so each fires once per process and log spam is avoided. A test environment is identified by an executable suffix of `.test` / `.test.exe`, or by the `GO_TEST` / `GOTEST=1` environment variable.
 
-### Redirecting or Suppressing Warnings
+### Changing the Warning Output or Suppressing Warnings
 
 ```go
-// Redirect to a custom writer (e.g. structured logging)
+// Change the output to a custom writer (e.g. structured logging)
 httpc.SetSecurityWarnOutput(os.Stdout)
 
 // Suppress entirely (not recommended — warnings are safety guardrails and should not be silenced)

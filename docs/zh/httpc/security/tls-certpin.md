@@ -470,7 +470,7 @@ Let's Encrypt 的中间证书公钥在轮换时保持不变（仅签发新证书
 `InsecureSkipVerify` 跳过全部 TLS 证书链验证，仅用于测试：
 
 ```go
-// 仅用于测试！
+// 仅用于测试
 cfg := httpc.TestingConfig()
 // InsecureSkipVerify = true → 跳过 TLS 证书验证
 ```

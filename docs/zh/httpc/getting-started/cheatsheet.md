@@ -137,9 +137,19 @@ httpc.WithMaxRetries(3)          // 0 禁用重试；上限 10
 httpc.WithRetryNonIdempotent(true) // 允许重试 POST/PATCH 等非幂等请求（请求级双向覆盖客户端策略；警惕重复提交副作用，如重复支付）
 httpc.WithFollowRedirects(false) // 禁止跟随重定向
 httpc.WithMaxRedirects(5)        // 注意：0 等同未设置（回退默认 10），禁用跟随请用上一行
-httpc.WithStreamBody(true)       // 仅对 Download 生效（普通请求的响应体仍会完整读入 Result）
+httpc.WithStreamBody(true)       // 仅对 Download 生效（普通请求用它会以 ErrStreamBodyRequiresDownload 失败）
 httpc.WithAllowPrivateIPs(true)  // 按请求豁免 SSRF（访问内网/localhost）
 ```
+
+### 包级路由（仅包级函数）
+
+```go
+httpc.WithProxy("http://127.0.0.1:7890")  // 本次调用走该代理
+httpc.WithSystemProxy()                   // 本次调用读取系统/环境变量代理
+httpc.WithTLSFingerprint("chrome-windows") // 本次调用使用浏览器 TLS 指纹
+```
+
+在显式 `Client` 实例上使用这三个选项会返回错误，实例场景改用 `Config.Connection.ProxyURL` / `EnableSystemProxy` / `Security.TLSFingerprint`（见[请求选项](../api-reference/core/options)）。
 
 ### 回调
 
@@ -427,8 +437,8 @@ sm.SetHeader("X-App", "demo")
 sm.UpdateFromResult(result) // 从响应提取 Set-Cookie
 ```
 
-:::warning 选项执行两次
-`DomainClient` 的请求选项内部会应用两次（会话捕获 + 真实请求）。选项中不应放置带副作用的逻辑（计数器、一次性 nonce）。
+:::warning 选项只执行一次，会话捕获是静态的
+`DomainClient` 的请求选项只执行一次。会话捕获由 `SessionManager` 静态完成：只识别 `WithHeader`/`WithHeaderMap`/`WithCookies`/`WithCookieMap`/`WithCookieString`，其头与 Cookie 会持久化进会话；自定义 `RequestOptionFunc` 里的 `SetHeader`/`SetCookies` 不会被捕获，需改用 `dc.SetHeader`/`dc.SetCookie`。
 :::
 
 ## 场景速配

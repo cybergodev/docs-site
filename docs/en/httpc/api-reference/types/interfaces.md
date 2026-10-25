@@ -22,7 +22,7 @@ The interface definitions describe HTTPC's extension points and implementation c
 | `MiddlewareFunc` | Middleware function type | 7 built-in middleware factories, caller-defined ones | Intercepting or rewriting requests and responses |
 | `RetryPolicy` | Retry policy interface | Caller implementations (any external package, see note below) | Custom retry decisions |
 | `CertificatePinner` | Certificate pinning interface | `NewSPKIHashPinner` and other constructors, caller-defined | Custom pinning strategies |
-| `RequestOption` | Request option function type | `WithXxx` factory functions | Per-request configuration |
+| `RequestOption` | Request option interface | `WithXxx` factory functions, `RequestOptionFunc` | Per-request configuration |
 
 ## Client
 
@@ -352,10 +352,12 @@ Middleware function signature that receives the next Handler and returns a wrapp
 ### RequestOption
 
 ```go
-type RequestOption = engine.RequestOption
+type RequestOption interface {
+    apply(RequestMutator) error
+}
 ```
 
-Request option function type: a type alias of the internal `engine.RequestOption` (underlying type `func(*engine.Request) error`), declared in `types.go`. Callers do not construct this function directly; they use `WithXxx` factories such as `WithHeader`, `WithJSON`, and `WithOnRequest`. See [Request Options](../core/options) for the per-option reference.
+A public interface whose `apply` method is unexported, so it cannot be implemented outside the package; express custom per-request options with `RequestOptionFunc` (an adapter for `func(RequestMutator) error` literals, where nil is a no-op). Options themselves come from `WithXxx` factories such as `WithHeader`, `WithJSON`, and `WithOnRequest`. See [Request Options](../core/options) for the per-option reference.
 
 ## Certificate Pinning
 

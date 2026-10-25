@@ -268,7 +268,7 @@ func main() {
 ```
 
 :::warning ClearBytes limitations
-`ClearBytes` zeros only the slice you pass in. If the same value was copied elsewhere — for example by converting between `string` and `[]byte` — those copies are untouched. Copy sensitive data as little as possible, and use `Reveal()` on a `SecureValue` only for the short window in which you need it. `Bytes()` returns a `[]byte` copy that `ClearBytes` can zero.
+`ClearBytes` zeros only the slice you pass in. If the same value was copied elsewhere — for example by converting between `string` and `[]byte` — those copies are untouched. Copy sensitive data as little as possible, call `Release()` on a `SecureValue` when done (see [Memory Locking](./memory-locking#prefer-release-over-close)), and prefer `Bytes()` over `Reveal()` when you need a `[]byte` that `ClearBytes` can zero.
 :::
 
 ## Practical Example
@@ -351,7 +351,7 @@ log.Printf("Config %s", env.MaskValue("API_KEY", key))
 ```
 
 :::tip Division of labor
-- `SecureValue.Masked()` produces output like `[SECURE:32 bytes locked]` and applies only to the value it manages.
+- `SecureValue.Masked()` produces output like `[SECURE:32 bytes]`, plus a lock status (` locked` / ` lock-failed` / ` unlocked`) when memory locking is enabled. It applies only to the value it manages.
 - The masking functions (`MaskValue` and others) accept values from **any source** — no `SecureValue` and no Loader required.
 :::
 

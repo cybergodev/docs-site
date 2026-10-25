@@ -7,10 +7,10 @@ sidebar_position: 2
 
 # Package Functions
 
-Package-level functions are the simple path for most programs. They all read from one process-global default loader, and all are thread-safe.
+Package-level functions are the simple path for most programs. They all read from one package-level default loader (the "default loader" below), and all are thread-safe.
 
 :::info Initialization requirements
-You must initialize the global default loader explicitly with `Load()` or `LoadWithConfig()`. It is **not** created on first use. Before initialization, the functions behave as follows:
+You must initialize the default loader explicitly with `Load()`, `Overload()`, or `LoadWithConfig()`. It is **not** created on first use. Before initialization, the functions behave as follows:
 
 - `Get*` functions (`GetString`, `GetInt`, `GetBool`, etc.): return the default you passed, or the zero value
 - `Lookup`: returns `("", false)`
@@ -35,11 +35,15 @@ Loads environment variable files and applies them to the process environment.
 - `error` - load error
 
 **Behavior:**
-- Creates a new Loader and makes it the default loader
-- Applies the variables to the process environment (`os.Environ`)
+- Creates a new Loader from `DefaultConfig()` and makes it the default loader
+- Forces `AutoApply = true`, so the values reach the process environment (rationale in [LoadWithConfig forces AutoApply](#loadwithconfig-forces-autoapply))
 - Reads files in the order given. With the `Load()` default of `OverwriteExisting=false`, the first file wins. Pass a `Config` with `OverwriteExisting=true` to `LoadWithConfig` if later files should override earlier ones.
 - Returns `ErrAlreadyInitialized` if a default loader already exists
 - Accepts .env, JSON, and YAML files
+
+:::warning A failed initialization can still leave process variables behind
+`New()` applies variables to the process environment during construction (`AutoApply=true`). If installing the default loader then fails (for example a concurrent `Load` returns `ErrAlreadyInitialized`), the internal Loader is closed, but the process variables already written are **not** reverted. Read a failed `Load` as "the default loader is unchanged", not as "the process environment is unchanged".
+:::
 
 ```go
 // Load .env file
@@ -70,13 +74,13 @@ Every getter resolves keys the same way, so a flat key and its dot path both wor
 **1. Exact match (highest priority)**
 ```go
 // .env: APP_NAME=myapp
-name := env.GetString("APP_NAME")  // "myapp"
+nameExact := env.GetString("APP_NAME")  // "myapp"
 ```
 
 **2. Uppercase conversion (simple keys)**
 ```go
 // For a key without dots, the uppercase form is tried automatically
-name := env.GetString("app_name")  // Looks up app_name, then APP_NAME
+nameUpper := env.GetString("app_name")  // Looks up app_name, then APP_NAME
 ```
 
 **3. Dot-path resolution (nested keys)**
@@ -85,9 +89,9 @@ name := env.GetString("app_name")  // Looks up app_name, then APP_NAME
 // Stored as: APP_NAME=myapp
 
 // Each of these returns the same value
-name := env.GetString("APP_NAME")   // Flat key (recommended)
-name := env.GetString("app.name")   // Dot path (converted automatically)
-name := env.GetString("APP.NAME")   // Uppercase dot path
+nameFlat := env.GetString("APP_NAME")     // Flat key (recommended)
+nameDot := env.GetString("app.name")      // Dot path (converted automatically)
+nameUpperDot := env.GetString("APP.NAME") // Uppercase dot path
 ```
 
 ### Path Conversion Table
@@ -112,7 +116,7 @@ host1 := env.GetString("servers.1.host")  // "b.com"
 
 // If the key doesn't exist but there's a comma-separated base value
 // HOSTS=localhost,example.com
-host0 := env.GetString("hosts.0")  // "localhost" (parsed from comma-separated value)
+firstHost := env.GetString("hosts.0")  // "localhost" (parsed from comma-separated value)
 ```
 
 ---
@@ -125,26 +129,14 @@ host0 := env.GetString("hosts.0")  // "localhost" (parsed from comma-separated v
 func GetString(key string, defaultValue ...string) string
 ```
 
-Reads a string value. Supports dot-path resolution.
-
-**Parameters:**
-- `key` - key name (supports exact match, uppercase conversion, dot path)
-- `defaultValue` - optional default value
-
-**Returns:**
-- `string` - the value, or the default; an empty string when the key is missing and no default was given
+Reads a string from the default loader. The value is not trimmed here: `.env` values were trimmed at parse time, while JSON and YAML values keep surrounding whitespace. With no default loader, it returns the default you passed, or `""`.
 
 ```go
-// Basic usage
 host := env.GetString("HOST", "localhost")
-
-// Dot-path access (JSON/YAML nested structures)
-dbHost := env.GetString("database.host", "localhost")
-appName := env.GetString("app.name")
-
-// Returns empty string when no default
-value := env.GetString("NON_EXISTENT")  // ""
+appName := env.GetString("app.name")  // dot path into nested keys
 ```
+
+The instance method behaves the same, including the empty-string case; see [Loader · GetString](./loader#getstring).
 
 ---
 
@@ -154,22 +146,14 @@ value := env.GetString("NON_EXISTENT")  // ""
 func GetInt(key string, defaultValue ...int64) int64
 ```
 
-Reads an integer value, converting the stored string. Supports dot-path resolution.
-
-**Parameters:**
-- `key` - key name (supports dot path)
-- `defaultValue` - optional default value, type `int64`
-
-**Returns:**
-- `int64` - the value, or the default; 0 when the key is missing and no default was given
+Reads an integer from the default loader. A value that does not parse as an integer is audited and the default is returned (0 when no default was passed). With no default loader, the default (or 0) is returned as well.
 
 ```go
 port := env.GetInt("PORT", 8080)
 maxConn := env.GetInt("database.max_connections", 10)
-
-// Returns 0 when no default
-value := env.GetInt("NON_EXISTENT")  // 0
 ```
+
+The instance method behaves the same; see [Loader · GetInt](./loader#getint).
 
 ---
 
@@ -179,27 +163,22 @@ value := env.GetInt("NON_EXISTENT")  // 0
 func GetBool(key string, defaultValue ...bool) bool
 ```
 
-Reads a boolean value. Supports dot-path resolution.
+Reads a boolean from the default loader. Matching is case-insensitive (ASCII only).
 
-- **Truthy (case-insensitive):** `true`, `1`, `yes`, `on`, `enabled`
-- **Falsy (case-insensitive):** `false`, `0`, `no`, `off`, `disabled`
+| Truthy | Falsy |
+|--------|-------|
+| `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
 
-Any other non-empty value is invalid: it is audited and the function returns the default. An empty string is valid and parses as `false`, so it does **not** fall back to the default.
-
-**Parameters:**
-- `key` - key name (supports dot path)
-- `defaultValue` - optional default value
-
-**Returns:**
-- `bool` - the value, or the default; false when the key is missing and no default was given
+- **Key exists with an empty value**: parses as `false` and does **not** fall back to the default.
+- **Any other invalid value**: audited, and the default is returned.
+- **No default loader**: the default is returned (`false` when none was passed).
 
 ```go
 debug := env.GetBool("DEBUG", false)
 cacheEnabled := env.GetBool("cache.enabled", true)
-
-// Returns false when no default
-value := env.GetBool("NON_EXISTENT")  // false
 ```
+
+The instance method behaves the same; see [Loader · GetBool](./loader#getbool).
 
 ---
 
@@ -209,22 +188,14 @@ value := env.GetBool("NON_EXISTENT")  // false
 func GetUint64(key string, defaultValue ...uint64) uint64
 ```
 
-Reads an unsigned integer value. Supports dot-path resolution.
-
-**Parameters:**
-- `key` - key name (supports dot path)
-- `defaultValue` - optional default value, type `uint64`
-
-**Returns:**
-- `uint64` - the value, or the default; 0 when the key is missing and no default was given
+Reads an unsigned integer from the default loader. A negative or malformed value is audited and the default is returned (0 when no default was passed). With no default loader, the default (or 0) is returned as well.
 
 ```go
 port := env.GetUint64("PORT", 8080)
 maxSize := env.GetUint64("MAX_SIZE", 1024)
-
-// Returns 0 when no default
-value := env.GetUint64("NON_EXISTENT")  // 0
 ```
+
+The instance method behaves the same; see [Loader · GetUint64](./loader#getuint64).
 
 ---
 
@@ -234,22 +205,14 @@ value := env.GetUint64("NON_EXISTENT")  // 0
 func GetFloat64(key string, defaultValue ...float64) float64
 ```
 
-Reads a floating-point value. Supports dot-path resolution.
-
-**Parameters:**
-- `key` - key name (supports dot path)
-- `defaultValue` - optional default value, type `float64`
-
-**Returns:**
-- `float64` - the value, or the default; 0 when the key is missing and no default was given
+Reads a floating-point value from the default loader. A malformed value is audited and the default is returned (0 when no default was passed). With no default loader, the default (or 0) is returned as well.
 
 ```go
 rate := env.GetFloat64("RATE", 0.5)
 threshold := env.GetFloat64("THRESHOLD")
-
-// Returns 0 when no default
-value := env.GetFloat64("NON_EXISTENT")  // 0
 ```
+
+The instance method behaves the same; see [Loader · GetFloat64](./loader#getfloat64).
 
 ---
 
@@ -259,28 +222,21 @@ value := env.GetFloat64("NON_EXISTENT")  // 0
 func GetDuration(key string, defaultValue ...time.Duration) time.Duration
 ```
 
-Reads a duration value. Supports dot-path resolution.
+Reads a duration from the default loader. The value must follow Go's `time.ParseDuration` syntax; otherwise it is audited and the default is returned (0 when no default was passed). With no default loader, the default (or 0) is returned as well.
 
-**Supported formats:**
-- `300ms` - milliseconds
-- `1.5s` - seconds
-- `2m30s` - minutes + seconds
-- `1h30m` - hours + minutes
-
-**Parameters:**
-- `key` - key name (supports dot path)
-- `defaultValue` - optional default value
-
-**Returns:**
-- `time.Duration` - the value, or the default; 0 when the key is missing and no default was given
+| Example | Meaning |
+|---------|---------|
+| `300ms` | milliseconds |
+| `1.5s` | seconds |
+| `2m30s` | minutes + seconds |
+| `1h30m` | hours + minutes |
 
 ```go
 timeout := env.GetDuration("TIMEOUT", 30*time.Second)
 interval := env.GetDuration("INTERVAL", 5*time.Minute)
-
-// Returns 0 when no default
-value := env.GetDuration("NON_EXISTENT")  // 0
 ```
+
+The instance method behaves the same; see [Loader · GetDuration](./loader#getduration).
 
 ---
 
@@ -290,13 +246,7 @@ value := env.GetDuration("NON_EXISTENT")  // 0
 func GetSecure(key string) *SecureValue
 ```
 
-Returns a `SecureValue` for the key, for sensitive data.
-
-**Parameters:**
-- `key` - key name
-
-**Returns:**
-- `*SecureValue` - secure value wrapper, returns nil when key doesn't exist or loader unavailable
+Returns a defensive copy of a sensitive value from the default loader; every call returns a new copy. Returns nil when the key does not exist, the default loader is not initialized, or the stored value is already closed.
 
 ```go
 secret := env.GetSecure("API_KEY")
@@ -312,9 +262,7 @@ if secret != nil {
 Call `Release()` or `Close()` after use to release the resources. Use `defer` so the call always runs.
 :::
 
-:::tip
-See [SecureValue API](./secure-value) for the full reference.
-:::
+The instance method behaves the same, including key resolution and the `nil` cases; see [Loader · GetSecure](./loader#getsecure). For the full type reference, see [SecureValue API](./secure-value).
 
 ---
 
@@ -335,12 +283,14 @@ Generic function that reads a slice value from the default loader.
 2. If no indexed keys exist, split the `KEY` value on commas
 3. Both forms support dot-path resolution
 
+The two sources fail differently: in indexed keys a bad element is audited and skipped while the rest are kept, and if every indexed element fails the source counts as a miss so the fallback continues. In the comma-separated fallback a single bad element discards the whole list and the default is returned. See "Two failure semantics of GetSliceFrom" below.
+
 **Parameters:**
 - `key` - key name
 - `defaultValue` - optional default value
 
 **Returns:**
-- `[]T` - slice value
+- `[]T` - slice value; nil when it misses and no default was given
 
 ```go
 // Indexed key format (recommended)
@@ -362,7 +312,7 @@ flags := env.GetSlice[bool]("FLAGS")
 timeouts := env.GetSlice[time.Duration]("TIMEOUTS")
 
 // Unsigned integer slice
-ports := env.GetSlice[uint]("PORTS")
+portsUint := env.GetSlice[uint]("PORTS")
 port64s := env.GetSlice[uint64]("PORTS")
 
 // int type
@@ -380,7 +330,7 @@ value := env.GetSlice[string]("NON_EXISTENT")  // nil
 func GetSliceFrom[T sliceElement](loader *Loader, key string, defaultValue ...[]T) []T
 ```
 
-Reads a slice value from a specific Loader instance. This is a standalone generic function, not a `Loader` method.
+Reads a slice value from a specific Loader instance. This is a standalone generic function, not a `Loader` method. Element sources and failure semantics match `GetSlice[T]` (indexed keys first, comma fallback); see "Two failure semantics of GetSliceFrom" below.
 
 **Parameters:**
 - `loader` - Loader instance pointer; a nil pointer returns the default value
@@ -388,7 +338,7 @@ Reads a slice value from a specific Loader instance. This is a standalone generi
 - `defaultValue` - optional default value
 
 **Returns:**
-- `[]T` - slice value
+- `[]T` - slice value; nil when it misses and no default was given
 
 **Supported types:** `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`
 
@@ -421,26 +371,18 @@ portsUint64 := env.GetSliceFrom[uint64](loader, "PORTS")
 func Lookup(key string) (string, bool)
 ```
 
-Reports whether a key exists and returns its value. Supports dot-path resolution.
+Reports whether a key exists in the default loader and returns its value, with dot-path resolution. Index access falls back to the comma-separated value. The value is returned as stored, with no trimming applied here: `.env` values were trimmed at parse time; JSON and YAML values keep any surrounding whitespace.
 
-**Parameters:**
-- `key` - key name (supports dot paths)
-
-**Returns:**
-- `string` - the value as stored, with no trimming applied here. `.env` values were trimmed at parse time; JSON and YAML values keep any surrounding whitespace.
-- `bool` - whether the key exists
+Returns `("", false)` when the default loader is not initialized or is closed.
 
 ```go
 value, exists := env.Lookup("API_KEY")
 if !exists {
     // key does not exist
 }
-
-// Dot path
-if value, exists := env.Lookup("database.host"); exists {
-    fmt.Println(value)
-}
 ```
+
+The instance method behaves the same; see [Loader · Lookup](./loader#lookup).
 
 ---
 
@@ -450,12 +392,7 @@ if value, exists := env.Lookup("database.host"); exists {
 func Keys() []string
 ```
 
-Returns every key name in the default loader.
-
-The result is an **approximate** snapshot: keys are collected shard by shard under per-shard read locks, so a write that lands during the sweep may or may not appear. For an exact snapshot, synchronize externally.
-
-**Returns:**
-- `[]string` - the key names in unspecified order; nil when no default loader exists or it is closed
+Returns every key name from the default loader. Like `Loader.Keys`, the result is an **approximate** snapshot (collected shard by shard, with no cross-shard consistency); nil when the default loader is not initialized or is closed.
 
 ```go
 keys := env.Keys()
@@ -463,6 +400,8 @@ for _, key := range keys {
     fmt.Println(key)
 }
 ```
+
+The instance method behaves the same; see [Loader · Keys](./loader#keys).
 
 ---
 
@@ -472,12 +411,7 @@ for _, key := range keys {
 func All() map[string]string
 ```
 
-Returns every key-value pair in the default loader, as an **approximate** snapshot (same collection path as `Keys`).
-
-Each value is an ordinary Go string outside `SecureValue`'s protection (SEC-010). For secrets, use `GetSecure`.
-
-**Returns:**
-- `map[string]string` - the key-value mapping; nil when no default loader exists or it is closed
+Returns every key-value pair from the default loader, also an approximate snapshot. Each value is an ordinary Go string outside `SecureValue`'s protection (SEC-010), so do not log or retain this map when it can hold secrets. Nil when the default loader is not initialized or is closed.
 
 ```go
 all := env.All()
@@ -485,6 +419,8 @@ for key, value := range all {
     fmt.Printf("%s=%s\n", key, value)
 }
 ```
+
+The instance method behaves the same; see [Loader · All](./loader#all).
 
 ---
 
@@ -494,15 +430,14 @@ for key, value := range all {
 func Len() int
 ```
 
-Returns the variable count of the default loader. O(1), from an atomic counter.
-
-**Returns:**
-- `int` - variable count; 0 when no default loader exists or it is closed
+Returns the variable count of the default loader. O(1), read from an atomic counter, so a concurrent write may not be reflected yet. Returns 0 when the default loader is not initialized or is closed.
 
 ```go
 count := env.Len()
 fmt.Printf("Loaded %d environment variables\n", count)
 ```
+
+The instance method behaves the same; see [Loader · Len](./loader#len).
 
 ---
 
@@ -514,26 +449,23 @@ fmt.Printf("Loaded %d environment variables\n", count)
 func Set(key, value string) error
 ```
 
-Sets an environment variable.
-
-**Parameters:**
-- `key` - key name
-- `value` - value
-
-**Returns:**
-- `error` - set error
+Sets an environment variable on the default loader (same as `Loader.Set`). The skip and write rules (`OverwriteExisting`, `AutoApply`) match the instance method; the only package-level difference is that an uninitialized default loader returns `ErrNotInitialized`.
 
 **Error types:**
 - `*ValidationError` - invalid key name format (`Field == "key"`)
 - `*SecurityError` - the key is forbidden (matchable with `errors.Is(err, env.ErrSecurityViolation)`)
-- `ErrInvalidValue` - the value is unsafe: null bytes, control characters, or other invalid content. This case arises only when `ValidateValues` is true.
+- `ErrInvalidValue` - invalid value content: null bytes or control characters (always checked with the built-in validator). A value over `MaxValueLength` yields a `*ValidationError` with `Rule == "max_length"`, which does **not** match `ErrInvalidValue`
 - `ErrClosed` - the loader has been closed
+- `ErrAuditFailed` - fail-closed auditing is on and an audit event was lost
+- `ErrNotInitialized` - the default loader is not initialized
 
 ```go
 if err := env.Set("CUSTOM_KEY", "value"); err != nil {
     // Branch on the error types above: a forbidden key is *SecurityError, a malformed key is *ValidationError
 }
 ```
+
+The instance method behaves the same, including the key rules and the `Setenv` failure path; see [Loader · Set](./loader#set).
 
 ---
 
@@ -543,19 +475,15 @@ if err := env.Set("CUSTOM_KEY", "value"); err != nil {
 func Delete(key string) error
 ```
 
-Deletes an environment variable from the default loader. If the variable was applied to the process environment, it is removed there too.
-
-**Parameters:**
-- `key` - key name
-
-**Returns:**
-- `error` - delete error
+Deletes an environment variable from the default loader (same as `Loader.Delete`): the in-memory value is removed and zeroed, and if this key was written to the process environment by the default loader it is unset there too. Returns `ErrNotInitialized` when the default loader is not initialized.
 
 ```go
 if err := env.Delete("TEMP_KEY"); err != nil {
     panic(err)
 }
 ```
+
+The instance method behaves the same, including the state left behind when the unset fails; see [Loader · Delete](./loader#delete).
 
 ---
 
@@ -567,26 +495,35 @@ if err := env.Delete("TEMP_KEY"); err != nil {
 func Validate() error
 ```
 
-Checks that the required keys exist, delegating to the default loader (same behavior as `Loader.Validate`).
-
-The keys checked are the `RequiredKeys` on the Config that `LoadWithConfig` used to initialize the default loader.
-
-**Returns:**
-- `error` - validation error; returns `ErrNotInitialized` if the default loader has not been initialized
+Checks that the required keys exist, delegating to the default loader (same as `Loader.Validate`). The keys checked are the `RequiredKeys` on the Config that `LoadWithConfig` used to initialize the default loader. Returns `ErrNotInitialized` when the default loader is not initialized.
 
 ```go
 // RequiredKeys is configured on the default loader via LoadWithConfig
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+// Construction (New) validates required keys at the end of each file's parse,
+// so a missing key makes LoadWithConfig fail. Clear Filenames here and supply
+// the keys with Set instead
+cfg.Filenames = nil
 
 if err := env.LoadWithConfig(cfg); err != nil {
     log.Fatal(err)
 }
 
+// In a real project the config files supply these keys
+if err := env.Set("DB_HOST", "localhost"); err != nil {
+    log.Fatal(err)
+}
+if err := env.Set("API_KEY", "example-key"); err != nil {
+    log.Fatal(err)
+}
+
 if err := env.Validate(); err != nil {
-    // Missing required keys
+    // Missing required keys; errors.Is(err, env.ErrMissingRequired) is true
 }
 ```
+
+The instance method behaves the same, including the `Rule` and `Field` of the `*ValidationError`; see [Loader · Validate](./loader#validate).
 
 ---
 
@@ -596,13 +533,7 @@ if err := env.Validate(); err != nil {
 func ParseInto(v any) error
 ```
 
-Maps the variables in the default loader onto a struct.
-
-**Parameters:**
-- `v` - struct pointer
-
-**Returns:**
-- `error` - mapping error
+Maps the default loader's variables onto a struct (same as `Loader.ParseInto`). `v` must be a pointer to a struct, otherwise `*ValidationError` (`Field` is `value`) is returned; tag parsing or type conversion failures return `*MarshalError`; an uninitialized default loader returns `ErrNotInitialized`.
 
 ```go
 type Config struct {
@@ -625,9 +556,7 @@ if err := env.ParseInto(&cfg); err != nil {
 
 Slice fields split on a comma `,` by default; whitespace around each separator is stripped. There is no tag for a custom separator.
 
-:::tip
-See [Struct Mapping](../guides/struct-mapping) for the full guide.
-:::
+The instance method behaves the same; see [Loader · ParseInto](./loader#parseinto). For the full guide, see [Struct Mapping](../guides/struct-mapping).
 
 ---
 
@@ -639,7 +568,7 @@ See [Struct Mapping](../guides/struct-mapping) for the full guide.
 func ResetDefaultLoader() error
 ```
 
-Resets the global default loader. Use it mainly in tests.
+Resets the default loader. Use it mainly in tests.
 
 **Returns:**
 - `error` - error from closing the old loader, if any; nil when there was no loader or closing succeeded
@@ -681,15 +610,15 @@ func LoadWithConfig(cfg Config) error
 Initializes the default loader from a full configuration.
 
 **Parameters:**
-- `cfg` - custom configuration
+- `cfg` - custom configuration. A **fully zero `Config` is rejected** and is not "equivalent to `DefaultConfig()`": this function sets `AutoApply` to `true` first, so `IsZero()` no longer holds, and `Validate` then fails because limits such as `MaxFileSize` are zero. `env.LoadWithConfig(env.Config{})` returns `invalid configuration: validation error on field "MaxFileSize": must be positive`, and `errors.Is(err, ErrInvalidConfig)` is `true`. Always start from `DefaultConfig()` or a preset. `New()`, `UnmarshalMapWithConfig`, and `UnmarshalStructWithConfig` (along with `UnmarshalMap` / `UnmarshalStruct`, which build on them) treat a fully zero `Config` as `DefaultConfig()`.
 
 **Returns:**
-- `error` - initialization error
+- `error` - initialization error; `ErrAlreadyInitialized` when a default loader already exists
 
 **Behavior:**
-- Sets the package-level default loader (the one `GetString`, `GetInt`, and the other package functions read)
-- **Forces** `AutoApply = true`, whatever `cfg` says
-- Returns `ErrAlreadyInitialized` if a default loader already exists
+- Sets the default loader (the one `GetString`, `GetInt`, and the other package functions read)
+- **Forces** `AutoApply = true`, whatever `cfg` says (rationale in [LoadWithConfig forces AutoApply](#loadwithconfig-forces-autoapply))
+- Returns an error wrapping `ErrInvalidConfig` when the configuration is invalid
 
 **Difference from Load:**
 - `Load()` accepts only a file name list and uses the default config.
@@ -706,10 +635,6 @@ if err := env.LoadWithConfig(cfg); err != nil {
 port := env.GetInt("PORT", 8080)
 ```
 
-:::warning
-This function forces `cfg.AutoApply` to `true`, so the variables always reach the process environment. To control when they are applied, create an independent instance with `New()`.
-:::
-
 ---
 
 ### Overload
@@ -718,7 +643,7 @@ This function forces `cfg.AutoApply` to `true`, so the variables always reach th
 func Overload(filenames ...string) error
 ```
 
-`Load` with last-file-wins semantics. It initializes the default loader with `OverwriteExisting = true`, so when several files define the same key the **later file wins**. Like `Load`, it forces `AutoApply = true`. Loaded values also replace variables that already exist in the process environment (the godotenv Overload convention).
+`Load` with last-file-wins semantics. It initializes the default loader with `OverwriteExisting = true`, so when several files define the same key the **later file wins**. Like `Load`, it forces `AutoApply = true` (see [LoadWithConfig forces AutoApply](#loadwithconfig-forces-autoapply)). Loaded values also replace variables that already exist in the process environment (the godotenv Overload convention).
 
 **Security note:** `Load` never touches existing process-environment variables, so deployment-injected values (container secrets, CI variables) always win over file values. `Overload` removes that protection: a file value replaces an existing process variable of the same name.
 
@@ -735,8 +660,29 @@ When in doubt, prefer `Load` and order files by priority. Within a single file, 
 if err := env.Overload("config.json", "config.yaml"); err != nil {
     log.Fatal(err)
 }
-key := env.GetString("deepseek.key", "")
+key := env.GetString("database.host", "")
 ```
+
+---
+
+### ClearInternCache
+
+```go
+func ClearInternCache()
+```
+
+Releases the memory held by the `.env` key-interning cache.
+
+Parsing `.env` content interns key strings in a **bounded process-wide cache** so repeated keys are not reallocated. The cache has a fixed ceiling and cannot grow without bound, but a long-running application that parses in bursts can call this between bursts to drop the retained keys early.
+
+```go
+env.ClearInternCache() // call between parsing bursts
+```
+
+**Points to know:**
+- Safe for concurrent use. Like the other process-wide knobs, it is **not** part of `Config` and applies to every loader.
+- It releases only the cache itself; **already-loaded values are unaffected**, so `GetString` and friends keep working.
+- A later `.env` parse repopulates the cache, so there is no need to call it after every parse.
 
 ---
 
@@ -758,7 +704,12 @@ Serializes `map[string]string` or a struct into a string. Output keys are always
 
 **Returns:**
 - `string` - serialized string (keys sorted)
-- `error` - serialization error
+- `error` - serialization error, with these concrete types:
+  - `data` is `nil` -> `*ValidationError` (`Field` is `data`, not `*MarshalError`)
+  - `data` is neither `map[string]string` nor a struct/struct pointer -> `*MarshalError`
+  - nesting deeper than 100 levels or a cyclic reference -> `*MarshalError` (message contains `maximum struct nesting depth (100) exceeded`)
+
+Use `env.IsMarshalError(err)` to tell the last two apart from non-marshal errors.
 
 **Supported formats:**
 - `FormatEnv` (default) - .env format
@@ -847,7 +798,7 @@ func UnmarshalMapWithConfig(cfg Config, data string, format ...FileFormat) (map[
 
 `cfg` follows the standard zero-value contract:
 
-- A fully zero `Config` means `DefaultConfig()`.
+- A fully zero `Config` means `DefaultConfig()` (shared with `New`, `UnmarshalMapWithConfig`, and `UnmarshalStructWithConfig`, and therefore with `UnmarshalMap` / `UnmarshalStruct`; not shared with `LoadWithConfig`, which rejects a zero Config).
 - A partially set Config is rejected with `ErrInvalidConfig`. Start from `DefaultConfig()` or a preset.
 
 `UnmarshalMap` is the no-config shortcut that runs this same `DefaultConfig` pipeline. Every format applies the forbidden-key policy and key validation uniformly (SEC-002).
@@ -945,6 +896,8 @@ Fills a struct from a map. Honors the `env` and `envDefault` tags.
 
 **Returns:**
 - `error` - fill error
+  - `*ValidationError` - `v` is nil or not a non-nil struct pointer (`Field` is `value`)
+  - `*MarshalError` - tag parsing or type conversion failed. **A cyclic reference or nesting beyond 100 levels** also returns it (message contains `maximum struct nesting depth (100) exceeded`), which keeps a self-referential type such as `type Node struct { Next *Node }` from recursing until the stack overflows.
 
 Slice fields split the value on commas. For string slices, empty elements are kept (`"a,,b"` yields three elements). For numeric and boolean slices, an empty element is a conversion error.
 
@@ -976,8 +929,10 @@ Converts a struct into a map. `env` tags supply the key names.
 - `v` - struct or struct pointer
 
 **Returns:**
-- `map[string]string` - key-value mapping
+- `map[string]string` - key-value mapping; when `v` is `nil`, an empty map (`nil`) and a `nil` error are returned — not a failure
 - `error` - conversion error
+  - `*MarshalError` - `v` is not a struct or struct pointer
+  - `*MarshalError` - nesting beyond 100 levels or a cyclic reference (message contains `maximum struct nesting depth (100) exceeded`)
 
 ```go
 type Config struct {
@@ -1008,11 +963,13 @@ Reports whether an error is a serialization or deserialization error.
 - `bool` - whether it is a `MarshalError`
 
 ```go
-_, err := env.MarshalStruct(invalidData)
+_, err := env.Marshal(make(chan int)) // a channel is neither a map nor a struct
 if env.IsMarshalError(err) {
     // Handle serialization error
 }
 ```
+
+Note that `Marshal(nil)` returns a `*ValidationError` (`Field` is `data`), for which `IsMarshalError` is `false`.
 
 ---
 
@@ -1087,19 +1044,21 @@ f := loader.GetFloat64("SAMPLE_RATE", 0.5)
 
 ### Lenient boolean parsing
 
-`GetBool` accepts these spellings, case-insensitively:
-
-| Truthy | Falsy |
-|--------|-------|
-| `true`, `yes`, `on`, `1`, `enabled` | `false`, `no`, `off`, `0`, `disabled` |
-
-An empty string parses as `false`. Any other value raises a `ValidationError`, records an audit event, and **returns the default**.
+`GetBool` accepts `true`/`yes`/`on`/`1`/`enabled` and `false`/`no`/`off`/`0`/`disabled`, case-insensitively. An empty string parses as `false`; any other invalid value is audited and the default is returned. The full rules are under [GetBool](#getbool) above; the instance method's accepted values and audit behavior are in [Loader · GetBool](./loader#getbool).
 
 ### Parse failures vs. defaults
 
-All `Get*` functions return the default (or zero value) in two cases: the key is **missing**, or the value **fails to parse**. They never panic and never return an error.
+The `Get*` functions return the default (or zero value) in two cases: the key is **missing**, or the value **fails to parse**. They never panic and never return an error.
 
 Each parse failure is recorded in the audit log as `parse failed`, so broken configuration shows up there.
+
+One exception: when the key **exists with an empty value**, `GetBool` returns `false` rather than the default — an empty string is a valid explicit value that parses as `false`. `GetInt`, `GetUint64`, `GetFloat64`, and `GetDuration` have no such exception: their empty values fail to parse and fall back to the default as usual.
+
+```go
+// DEBUG= (explicitly empty)
+debug := env.GetBool("DEBUG", true) // false, not true
+port := env.GetInt("PORT", 8080)    // PORT= falls back to 8080
+```
 
 ### Two failure semantics of GetSliceFrom
 
@@ -1107,14 +1066,56 @@ Each parse failure is recorded in the audit log as `parse failed`, so broken con
 
 | Source | On element parse failure |
 |--------|--------------------------|
-| Indexed keys (`KEY_0`...) | The element is **skipped** after an audit record; the remaining elements are kept |
+| Indexed keys (`KEY_0`...) | The element is **skipped** after an audit record; the remaining elements are kept. If every element fails, it counts as a miss and the fallback continues |
 | Comma-separated fallback | The **whole list is discarded**; the default (or nil) is returned |
+
+The difference is directly observable: in an indexed key only the bad element is dropped, while a comma-separated value with one bad element fails as a whole.
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/cybergodev/env"
+)
+
+func main() {
+	cfg := env.DefaultConfig()
+	cfg.Filenames = nil // no file loading; the demo data comes from Set
+
+	loader, err := env.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer loader.Close()
+
+	// Case one: indexed keys, where PORTS_1 is the bad element
+	if err := loader.Set("PORTS_0", "80"); err != nil {
+		panic(err)
+	}
+	if err := loader.Set("PORTS_1", "abc"); err != nil {
+		panic(err)
+	}
+	fmt.Println(env.GetSliceFrom[int64](loader, "PORTS")) // Output: [80]
+
+	// Case two: comma-separated, where "abc" fails the whole list and the default wins
+	if err := loader.Set("LIMITS", "80,abc"); err != nil {
+		panic(err)
+	}
+	fmt.Println(env.GetSliceFrom[int64](loader, "LIMITS", []int64{443})) // Output: [443]
+}
+```
+
+The two cases use different key names because indexed keys take precedence over the comma-separated value: once `KEY_0`, `KEY_1` exist, the fallback is never reached.
 
 The element type must be one of: `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`. Slice length is capped at 10000; going over the cap is audited.
 
 ### LoadWithConfig forces AutoApply
 
-Both `Load()` and `LoadWithConfig()` **force** `AutoApply=true`, whatever the passed configuration says, because package-level functions rely on the variables being in the process environment. To control when variables are applied, use `New()` and call `Apply()` yourself.
+`Load()`, `Overload()`, and `LoadWithConfig()` all **force** `AutoApply=true`, whatever the passed configuration says. Package-level convenience functions (`GetString`, `GetInt`, ...) read the loader's memory, while external readers such as `os.Getenv` need the variables in the process environment; forcing the apply makes one initialization satisfy both.
+
+Two consequences follow. First, `LoadWithConfig(env.Config{})` stops looking like a zero-value Config once `AutoApply` is set, so it is rejected for having zero limits. Second, when you need to control exactly when variables are applied, use `New()` and call `Apply()` yourself.
 
 ## Related Documentation
 

@@ -303,28 +303,24 @@ dc.GetHeaders()          // → map[string]string 副本
 `SessionManager` 内部使用 `sync.RWMutex` 保护，`SetHeader`/`SetCookie`/`GetCookie` 等方法可安全并发调用。`prepareOptions` 采用读后写的非原子序列：会话状态设计为最终一致，并发请求会在 `prepareOptions` 时交错，但每个请求在 `prepareOptions` 时刻捕获到一致快照。
 :::
 
-## 选项双重执行注意事项
+## 选项执行与会话捕获
 
-`prepareSessionOptions` 在请求发送前对调用方传入的 `RequestOption` **应用两次**：一次在 `captureFromOptions` 中用于捕获会话状态，一次在 `client.Request` 中用于实际请求。
+请求选项在 `DomainClient` 上**只执行一次**：捕获阶段不执行选项闭包，执行发生在 `client.Request` 阶段。
+
+会话捕获由 `SessionManager` 内部完成，方式是**静态类型断言**：它按具体选项类型提取头与 Cookie，从不调用 `apply`。因此只有内置的命名选项类型会被识别——`WithHeader`、`WithHeaderMap`、`WithCookies`、`WithCookieMap`、`WithCookieString`；这些头与 Cookie 会持久化进会话，对后续请求持续生效。
 
 ```text
 prepareSessionOptions(options):
   ① managedOptions = prepareOptions()        ← 读取会话状态
   ② allOptions = managedOptions + options    ← 合并
-  ③ captureFromOptions(options)              ← 对临时请求应用一次（捕获会话）
-  ④ return allOptions → client.Request()     ← 对实际请求应用第二次
+  ③ captureFromOptions(options)              ← 静态断言取头/Cookie，不执行闭包
+  ④ return allOptions → client.Request()     ← 唯一的执行点
 ```
 
-::: warning 避免带副作用的选项
-以下选项在 `DomainClient` 中会执行两次，导致非预期行为：
+::: warning 自定义选项里的头与 Cookie 不进会话
+`RequestOptionFunc` 等自定义选项里调用的 `SetHeader`/`SetCookies` **不会被捕获**——静态断言识别不了它们。需要持久化会话状态时用 `dc.SetHeader`/`dc.SetCookie`（或 `SessionManager` 的对应方法）。
 
-| 有问题的选项 | 原因 |
-|------------|------|
-| 计数器递增 | 每次请求递增两次 |
-| nonce 随机生成 | 捕获阶段和请求阶段生成不同值 |
-| `WithOnRequest` / `WithOnResponse` | 回调被显式清除，不会重复触发（安全） |
-
-如需带副作用的选项，请改用底层 `Client` 直接发请求，或在选项外部管理状态。
+由于选项只执行一次，`WithOnRequest`/`WithOnResponse` 回调也只会触发一次。
 :::
 
 ## Download 方法
@@ -343,7 +339,7 @@ cfg.Overwrite = true
 result, err := dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
-下载的响应 Cookie 会自动捕获到会话中（经 `UpdateFromCookies`）。与 `Request` 一样，请求选项会应用两次。
+下载的响应 Cookie 会自动捕获到会话中（经 `UpdateFromCookies`）。选项同样只执行一次；响应 Cookie 仅在最终 URL（重定向后）仍落在 base origin 时回填会话。
 
 ## 与 Client 接口的关系
 

@@ -43,7 +43,7 @@ For sensitive data, use `GetSecure` instead of `GetString`:
 
 ```go
 // Not recommended
-password := env.GetString("DB_PASSWORD")
+plainPassword := env.GetString("DB_PASSWORD")
 
 // Recommended
 secret := env.GetSecure("DB_PASSWORD")
@@ -52,8 +52,8 @@ password := secret.Reveal()   // Only call when plaintext is needed
 ```
 
 **Core features:**
-- **Memory locking** - prevents swapping to disk on Linux, macOS, and Windows; on other platforms `IsMemoryLockSupported()` returns false and locking is a no-op
-- **Auto-zeroing** - erases memory on `Close()` and `Release()`
+- **Memory locking** - prevents swapping to disk on Linux, macOS, and Windows; on other platforms `IsMemoryLockSupported()` returns false, the locking attempt fails and records the error (`Masked()` reports `lock-failed`), and the `SecureValue` remains usable
+- **Auto-zeroing** - erases memory on `Release()` and `Close()`
 - **Masked display** - `Masked()` for log output
 - **Thread safety** - concurrent reads and releases are safe
 
@@ -110,11 +110,11 @@ See [DefaultForbiddenKeys](../api-reference/constants#defaultforbiddenkeys) for 
 
 ### Value Validation
 
-`ValidateValues` checks values for control characters and null bytes. `ProductionConfig` enables it by default:
+Value validation has two layers. The first is the baseline the built-in validator **always** enforces (length ceiling, control-character and null-byte rejection, and the UTF-8 check when `ValidateUTF8` is on); no write path bypasses it. The second is the `ValidateValues` switch, which only matters for custom validators that lack the baseline capability — those skip value validation entirely when it is off.
 
 ```go
 cfg := env.ProductionConfig()
-cfg.ValidateValues = true  // detect control characters, null bytes, and so on
+cfg.ValidateValues = true // only relevant when your custom validator lacks the baseline capability
 ```
 
 ## File Security Basics

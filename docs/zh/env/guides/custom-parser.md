@@ -275,7 +275,7 @@ func RegisterParser(format FileFormat, factory ParserFactory) error
 注册自定义格式解析器。
 
 **参数：**
-- `format` - 文件格式常量（`FileFormat` 是 `int` 别名，自定义格式建议取 100 以上，避开内置的 0–3）
+- `format` - 文件格式常量（`FileFormat` 是 `int` 别名，自定义格式号建议取 100 以上，避开内置的 0–3；注意该号不会被 `LoadFiles` 按扩展名命中，见下方「LoadFiles 路由限制」）
 - `factory` - 解析器工厂函数
 
 **返回：**
@@ -338,17 +338,14 @@ import (
     "github.com/cybergodev/env"
 )
 
-// 1. 定义格式常量（建议使用 100+ 的值）
-const (
-    FormatTOML env.FileFormat = 100
-    FormatINI  env.FileFormat = 101
-    FormatXML  env.FileFormat = 102
-)
-
-// 2. 在 init 中注册
+// 在 init 中注册。
+//
+// 关键：注册到 FormatAuto，而不是 100+ 的私有格式号。
+// DetectFormat 只识别 .env/.json/.yaml/.yml，其余扩展名（含 .toml）
+// 一律返回 FormatAuto；只有 FormatAuto 上挂了解析器，LoadFiles 才会
+// 把 .toml 文件交给 TOMLParser 解析。私有格式号不会被按扩展名命中。
 func init() {
-    // 注册 TOML 解析器
-    err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+    err := env.RegisterParser(env.FormatAuto, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
         return &TOMLParser{
             cfg:       cfg,
             validator: f.Validator(),
@@ -358,48 +355,29 @@ func init() {
     if err != nil {
         panic(err) // 格式已注册或其他错误
     }
-
-    // 注册 INI 解析器
-    if err := env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
-        return &INIParser{
-            cfg:       cfg,
-            validator: f.Validator(),
-            auditor:   f.Auditor(),
-        }, nil
-    }); err != nil {
-        panic(err) // 例如 101 已被注册
-    }
 }
 
 func main() {
     // 注册必须在 New 之前完成（已在 init 中完成）。
-    //
-    // 重要限制：LoadFiles 不会按 .toml 扩展名自动路由到上面的
-    // TOMLParser。DetectFormat 只识别 .env/.json/.yaml/.yml，其他
-    // 扩展名返回 FormatAuto；未给 FormatAuto 注册解析器时，加载器
-    // 回退到内置 dotenv 解析器。要让 LoadFiles 实际调用 TOMLParser，
-    // 需用 ForceRegisterParser 覆盖 FormatEnv，并把文件命名为 *.env：
-    err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
-        return &TOMLParser{
-            cfg:       cfg,
-            validator: f.Validator(),
-            auditor:   f.Auditor(),
-        }, nil
-    })
-    if err != nil {
-        panic(err)
-    }
-
     cfg := env.DefaultConfig()
     loader, _ := env.New(cfg)
     defer loader.Close()
 
-    // 文件扩展名须为 .env（内容为 TOML 格式）才会路由到覆盖后的解析器
-    if err := loader.LoadFiles("config.env"); err != nil {
+    // config.toml 的扩展名未知 → DetectFormat 返回 FormatAuto
+    // → 命中上面注册的 TOMLParser，文件名可以保持 .toml 原样
+    if err := loader.LoadFiles("config.toml"); err != nil {
         panic(err)
     }
 }
 ```
+
+`FormatAuto` 只有一个槽位：注册后所有未知扩展名都走同一个解析器。需要并存多种自定义格式时，用 `ForceRegisterParser` 分别覆盖内置格式号（一个格式号一个槽位，例如 `FormatEnv` 配 `*.env`、`FormatJSON` 配 `*.json`），或手动调用解析器。仅用于演示私有格式号的写法如下，注意它**不会被 `LoadFiles` 命中**：
+
+```go
+const FormatTOML env.FileFormat = 100 // 仅演示私有格式号，不会被 LoadFiles 按扩展名命中
+```
+
+INI 解析器同理：单独使用时把 `TOMLParser` 换成 `INIParser` 注册到 `FormatAuto` 即可；`FormatAuto` 只有一个槽位，不能与 TOML 并存。
 
 ::: warning LoadFiles 路由限制
 `RegisterParser` 注册的自定义格式号（如 `FormatTOML = 100`）**不会被 `LoadFiles` 按文件扩展名命中**。`LoadFiles` 用 `DetectFormat(filename)` 的结果去查解析器表，而 `DetectFormat` 只认识 `.env` / `.json` / `.yaml` / `.yml` 四种扩展名，其余扩展名一律返回 `FormatAuto`。只注册 100 号解析器时，`.toml` 文件会命中 `FormatAuto` 条目；该条目未注册，于是回退到内置 dotenv 解析器按行解析。
@@ -407,7 +385,7 @@ func main() {
 加载自定义格式文件有三条路径：
 
 1. **`.env` 扩展名 + `ForceRegisterParser`**（推荐）：把自定义格式文件命名为 `*.env`，用 `env.ForceRegisterParser(env.FormatEnv, ...)` 覆盖内置 dotenv 解析器。实现里要保留键名、值、大小等安全校验，否则会绕过库的默认防护。
-2. **注册到 `FormatAuto`**：`env.RegisterParser(env.FormatAuto, factory)` 后，所有未知扩展名的文件都会走该解析器，文件名可以保持 `.toml`、`.conf` 等原样。
+2. **注册到 `FormatAuto`**（上文「完整注册示例」即用此路径）：`env.RegisterParser(env.FormatAuto, factory)` 后，所有未知扩展名的文件都会走该解析器，文件名可以保持 `.toml`、`.conf` 等原样。
 3. **手动调用解析器**：自行打开文件得到 `io.Reader`，构造解析器实例并调用 `parser.Parse(reader, filename)` 拿到 `map[string]string`，再用 `loader.Set` 逐条写入。解析器内部的 `validator`/`auditor` 来自 `*ComponentFactory`，而该类型没有公开构造函数，手动路径下只能改用不依赖它们的实现。
 :::
 
@@ -453,12 +431,11 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
         }
     }
 
-    // 验证所有值（`ValidateValues = true` 时；DefaultConfig 与各预设均为 true）
-    if p.cfg.ValidateValues {
-        for key, value := range result {
-            if err := p.validator.ValidateValue(value); err != nil {
-                return nil, fmt.Errorf("invalid value for %q: %w", key, err)
-            }
+    // 验证所有值。内置解析器的基础值校验始终执行，自定义解析器应保持一致，
+    // 因此这里不按 ValidateValues 开关跳过
+    for key, value := range result {
+        if err := p.validator.ValidateValue(value); err != nil {
+            return nil, fmt.Errorf("invalid value for %q: %w", key, err)
         }
     }
 
@@ -600,11 +577,11 @@ func (p *XMLParser) Parse(r io.Reader, filename string) (map[string]string, erro
 	return result, nil
 }
 
-// 定义 XML 格式常量
+// 定义 XML 格式常量（私有格式号，仅用于演示；LoadFiles 不会按扩展名命中它）
 const FormatXML env.FileFormat = 102
 
 func init() {
-	// 注册 XML 解析器
+	// 注册 XML 解析器（102 号不会被 LoadFiles 命中，真正生效的是下方 main 里的覆盖）
 	env.RegisterParser(FormatXML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
 		return &XMLParser{
 			cfg:       cfg,
@@ -667,7 +644,7 @@ err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, factory *env.
 ```
 
 ::: warning 安全警告
-替换实现若缺少键名校验、值校验、大小限制等安全检查，库的默认防护就全部失效。只在你的解析器完整实现了等价检查时使用 `ForceRegisterParser`。
+替换实现若缺少键名校验、值校验、大小限制等安全检查，库的默认防护就全部失效。仅当自定义解析器实现了等价的校验时使用 `ForceRegisterParser`。
 :::
 
 **注册时机**：`New()` 构造 Loader 时快照解析器注册表，因此 `RegisterParser` / `ForceRegisterParser` 必须在 `env.New()` 之前完成；已创建的 Loader 不受后续注册影响。

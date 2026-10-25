@@ -166,9 +166,19 @@ Cookie 的自动维护覆盖三条路径：
 - **校验**：写入前做与 `WithCookies` 相同的合法性校验。配置了 Cookie 安全策略（见下方「Cookie 安全验证」）时，不合规的 Cookie 被**静默跳过**，不影响其余 Cookie
 - **副本语义**：`GetCookie`/`GetCookies` 返回 Cookie 的副本，修改返回值不会影响会话内部状态
 
-### 请求选项自动持久化
+### 请求选项如何持久化
 
-通过**请求选项**传入的 Cookie 和请求头同样被捕获进会话，对后续请求持续生效：
+通过**请求选项**传入的 Cookie 和请求头会被捕获进会话，对后续请求持续生效。捕获是**静态的**：会话只识别以下选项类型并读取其中携带的头与 Cookie，不执行选项闭包——
+
+| 选项 | 捕获内容 |
+|------|----------|
+| `WithHeader` | 单个请求头 |
+| `WithHeaderMap` | 一组请求头 |
+| `WithCookies` | Cookie 列表 |
+| `WithCookieMap` | 名称—值对形式的 Cookie |
+| `WithCookieString` | 原始 `Cookie` 头字符串解析出的 Cookie |
+
+自定义 `RequestOptionFunc` 里的 `SetHeader`/`SetCookies` 不属于上述类型，不会被捕获；需要持久化时用 `dc.SetHeader`/`dc.SetCookie`。`WithBasicAuth`/`WithBearerToken` 同理——它们生成的是 Authorization 头，但凭据被刻意排除在会话之外，需要在每次请求上重复传入。
 
 ```go
 // 第一次请求：选项传入的 Cookie 与请求头……
@@ -188,8 +198,10 @@ fmt.Println(dc.GetHeaders()["X-Client"])   // 输出：mobile
 _, err = dc.Get("/profile")
 ```
 
-:::warning 临时头请勿用选项传
-选项中的头与 Cookie 会持久化到会话，对**所有后续请求**生效。每次取值不同的一次性头（如递增的 trace ID、随机 nonce）用完后需 `DeleteHeader`/`DeleteCookie` 移除，或改用底层 `Client` 发送该请求。
+请求选项只对本次请求**执行一次**，捕获过程不重复执行任何选项闭包。
+
+:::warning 一次性头请勿用选项传
+上表中的选项携带的头与 Cookie 会持久化到会话，对**所有后续请求**生效。每次取值不同的一次性头（如递增的 trace ID、随机 nonce）用完后需 `DeleteHeader`/`DeleteCookie` 移除，或改用底层 `Client` 发送该请求。
 :::
 
 ## 请求方式
@@ -210,10 +222,6 @@ result, _ := dc.Request(ctx, "GET", "/users")
 // 绝对 URL（跳过 base URL 拼接）
 result, _ := dc.Get("https://other-api.com/data")
 ```
-
-:::warning 请求选项会应用两次
-域名客户端在内部对请求选项**应用两次**：一次捕获会话状态，一次实际请求。避免使用带副作用的选项（如计数器、nonce 生成）；此类选项改用底层 `Client`。
-:::
 
 `Download` 方法与 `Client.Download` 签名一致，路径同样相对于 base URL 解析。下载完成后，响应 Cookie 被捕获进会话：
 

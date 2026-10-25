@@ -20,8 +20,8 @@ env is a Go library for managing environment variables. It loads `.env`, JSON, a
 
 ## Navigate by Use Case
 
-| I want to... | Where to look |
-|--------------|---------------|
+| Need | Entry point |
+|------|-------------|
 | Get started in 5 minutes | [Quick Start](./getting-started/) |
 | Store passwords and keys securely | [Security Overview](./security/) → [SecureValue](./api-reference/secure-value) |
 | Prevent sensitive data from being swapped to disk | [Memory Locking](./security/memory-locking) |
@@ -32,8 +32,11 @@ env is a Go library for managing environment variables. It loads `.env`, JSON, a
 | Serialize/export configuration | [Serialization](./guides/serialization) |
 | Record security audit logs | [Audit Logging](./guides/audit-logging) |
 | Handle and match errors | [Error Handling](./guides/error-handling) |
+| Share a loader across goroutines and manage its lifecycle | [Concurrency & Lifecycle](./guides/concurrency) |
 | Write unit tests | [Testing](./guides/testing) |
 | Extend with custom file formats | [Custom Parser](./guides/custom-parser) |
+| Review performance data and tuning | [Performance](./advanced/performance) |
+| Run the official examples | [Examples](./examples/) |
 | Security checks before going live | [Production Checklist](./security/production-checklist) |
 | See common code snippets | [Cheat Sheet](./getting-started/cheatsheet) |
 | Find answers to common questions | [FAQ](./reference/faq) |

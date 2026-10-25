@@ -327,19 +327,20 @@ cfg.Connection.MaxResponseHeaderBytes = 512 * 1024 // 512KB，比默认更严格
 
 ## 安全警告机制
 
-HTTPC 在非测试环境对高危配置输出 `stderr` 警告，提示开发者修正。两类配置触发警告：
+HTTPC 在非测试环境对高危配置输出 `stderr` 警告，提示开发者修正。三类配置触发警告：
 
 | 配置 | 警告触发条件 | 警告内容 |
 |------|-------------|----------|
 | `InsecureSkipVerify = true` | 在 `httpc.New()` 中检测到，非测试环境 | TLS 证书验证已禁用 |
 | `TestingConfig()` | 调用时即检测，非测试环境 | 已禁用 TLS 验证、SSRF 防护、URL/请求头验证 |
+| 手写 `Config` 字面量命中全关签名（`ValidateURL`/`ValidateHeaders`/`StrictContentLength`/`FollowRedirects`/`EnableHTTP2` 全为 false 且 `Security.MaxResponseBodySize == 0`） | 在 `httpc.New()` 中检测到，非测试环境 | `[CONFIG WARNING]`：这些 `Default: true` 字段只在 `DefaultConfig()`/预设中为真，应从 `DefaultConfig()` 起步 |
 
 警告通过 `sync.Once` 保证每个进程各触发一次，避免日志刷屏。测试环境判定条件：可执行文件后缀为 `.test` / `.test.exe`，或设置了 `GO_TEST` / `GOTEST=1` 环境变量。
 
-### 重定向或抑制警告
+### 改变警告输出或抑制警告
 
 ```go
-// 重定向到自定义 writer（如结构化日志）
+// 输出改写为自定义 writer（如结构化日志）
 httpc.SetSecurityWarnOutput(os.Stdout)
 
 // 完全抑制（不推荐——警告是安全护栏，不应静默）

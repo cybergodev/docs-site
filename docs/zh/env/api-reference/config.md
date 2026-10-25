@@ -72,7 +72,7 @@ type LimitsConfig struct {
 type JSONConfig struct {
     JSONNullAsEmpty    bool // null 转为空字符串
     JSONNumberAsString bool // 数字按规范十进制字符串渲染
-    JSONBoolAsString   bool // 仅为对称保留，无实际效果
+    JSONBoolAsString   bool // 仅为对称保留，对 JSON 输出无效果（Deprecated）
     JSONMaxDepth       int  // 最大嵌套深度
 }
 
@@ -133,7 +133,7 @@ type ComponentConfig struct {
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
-| `ValidationConfig.RequiredKeys` | `nil` | 必需键列表，由 `Validate` 与每次解析结束时检查 |
+| `ValidationConfig.RequiredKeys` | `nil` | 必需键列表，由 `Validate` 与每次解析结束时检查（逐文件检查：必需键须在单个文件内全部满足） |
 | `ValidationConfig.AllowedKeys` | `nil` | 键白名单（空 = 全部允许） |
 | `ValidationConfig.ForbiddenKeys` | `nil` | 额外禁止键（叠加内置列表） |
 | `ValidationConfig.KeyPattern` | `nil` | 自定义键名正则（nil = 快速字节级校验） |
@@ -144,11 +144,11 @@ type ComponentConfig struct {
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
-| `LimitsConfig.MaxFileSize` | 8MB | 单文件最大字节数（硬上限 100MB） |
+| `LimitsConfig.MaxFileSize` | 8 MB | 单文件最大字节数（硬上限 100 MB） |
 | `LimitsConfig.MaxVariables` | 1000 | 每文件最大变量数（硬上限 10000） |
-| `LimitsConfig.MaxLineLength` | 8192 | 单行最大长度（硬上限 64KB；对所有格式生效） |
+| `LimitsConfig.MaxLineLength` | 8192 | 单行最大长度（硬上限 64 KB；对所有格式生效） |
 | `LimitsConfig.MaxKeyLength` | 128 | 键名最大长度（硬上限 1024） |
-| `LimitsConfig.MaxValueLength` | 8192 | 值最大长度（硬上限 1MB） |
+| `LimitsConfig.MaxValueLength` | 8192 | 值最大长度（硬上限 1 MB） |
 | `LimitsConfig.MaxExpansionDepth` | 5 | 变量展开最大深度（硬上限 20） |
 
 **`JSONConfig`（JSON 解析）**
@@ -157,7 +157,7 @@ type ComponentConfig struct {
 |------|--------|------|
 | `JSONConfig.JSONNullAsEmpty` | `true` | `null` 转为空字符串 |
 | `JSONConfig.JSONNumberAsString` | `true` | 数字按规范十进制字符串渲染 |
-| `JSONConfig.JSONBoolAsString` | `true` | 仅为对称保留，对 JSON 输出无效果 |
+| `JSONConfig.JSONBoolAsString` | `false` | 仅为对称保留，对 JSON 输出无效果（已标记 Deprecated） |
 | `JSONConfig.JSONMaxDepth` | 16 | 最大嵌套深度（有效范围 1–100） |
 
 **`YAMLConfig`（YAML 解析）**
@@ -169,7 +169,7 @@ type ComponentConfig struct {
 | `YAMLConfig.YAMLBoolAsString` | `true` | 布尔转规范小写（关闭时保留书写原样） |
 | `YAMLConfig.YAMLMaxDepth` | 16 | 最大嵌套深度（有效范围 1–100） |
 
-**`ParsingConfig`（.env 解析行为）**
+**`ParsingConfig`（通用解析）**
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
@@ -194,7 +194,7 @@ type ComponentConfig struct {
 
 ## 配置字段
 
-### 文件处理
+### 文件加载
 
 这些字段控制文件加载行为。
 
@@ -273,7 +273,7 @@ cfg.ExpandVariables = true
 
 #### `MaxFileSize` int64
 
-单文件最大字节数。**默认 8MB**，硬性上限 100MB。
+单文件最大字节数。**默认 8 MB**（8388608 字节），硬性上限 100 MB。
 
 ```go
 cfg.MaxFileSize = 10 * 1024 * 1024 // 10 MB
@@ -281,15 +281,15 @@ cfg.MaxFileSize = 10 * 1024 * 1024 // 10 MB
 
 | 配置 | 默认值 | 硬性上限 |
 |------|--------|----------|
-| `MaxFileSize` | 8MB (8388608) | 100MB |
+| `MaxFileSize` | 8 MB（8388608 字节） | 100 MB |
 
 ---
 
 #### `MaxLineLength` int
 
-单行最大长度。**默认 8192**，硬性上限 64KB。该限制对**所有格式**生效，含 JSON 与 YAML：压缩成单行的 JSON 文档按一行计，必须落在此限制内。
+单行最大长度。**默认 8192**，硬性上限 64 KB。该限制对**所有格式**生效，含 JSON 与 YAML：压缩成单行的 JSON 文档按一行计，必须落在此限制内。
 
-64KB 是硬上限，调大配置也无法突破。单行超长时改用格式化输出。
+64 KB 是硬上限，调大配置也无法突破。单行超长时改用格式化输出。
 
 ```go
 cfg.MaxLineLength = 2048
@@ -297,7 +297,7 @@ cfg.MaxLineLength = 2048
 
 | 配置 | 默认值 | 硬性上限 |
 |------|--------|----------|
-| `MaxLineLength` | 8192 | 65536 (64KB) |
+| `MaxLineLength` | 8192 | 65536（64 KB） |
 
 ---
 
@@ -317,7 +317,7 @@ cfg.MaxKeyLength = 128
 
 #### `MaxValueLength` int
 
-值最大长度。**默认 8192**，硬性上限 1MB。
+值最大长度。**默认 8192**，硬性上限 1 MB。
 
 ```go
 cfg.MaxValueLength = 8192
@@ -325,7 +325,7 @@ cfg.MaxValueLength = 8192
 
 | 配置 | 默认值 | 硬性上限 |
 |------|--------|----------|
-| `MaxValueLength` | 8192 | 1048576 (1MB) |
+| `MaxValueLength` | 8192 | 1048576（1 MB） |
 
 ---
 
@@ -362,9 +362,9 @@ cfg.MaxExpansionDepth = 10
 自定义键名匹配模式。**默认 `nil`**（使用快速字节级验证）。
 
 ::: tip 性能优化
-`nil` 值启用快速字节级验证，比正则约快 10 倍。内置规则：以字母开头，只含字母、数字、下划线。
+`nil` 启用快速字节级校验（见[常量与错误](./constants#defaultkeypattern)）。内置规则：以字母开头，只含字母、数字、下划线。
 
-`Config.Validate()` 会拿自定义模式做探针测试（合法键、空串、数字开头、含 `=`/`:`/换行/控制字符）。任一不过即拒绝该配置。
+`Config.Validate()` 会拿自定义模式做探针测试，具体规则见下文「KeyPattern 的安全校验」。
 :::
 
 ```go
@@ -402,7 +402,9 @@ cfg.ForbiddenKeys = []string{"CUSTOM_DANGEROUS_VAR"}
 
 #### `RequiredKeys` []string
 
-必需的键名列表，由 `Validate()` 检查。**默认 `nil`**（不检查）。匹配时键名按大写比较。
+必需的键名列表，由 `Validate()` 与每次解析/加载结束时检查。**默认 `nil`**（不检查）。匹配时键名按大写比较。
+
+检查发生在**每个文件的解析结束时**，因此必需键必须能在单个文件中全部满足，不要跨多个文件拆分。
 
 ```go
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
@@ -414,8 +416,10 @@ cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
 验证值的安全性（控制字符、空字节等）。**默认 `true`**。
 
+内置验证器下这个开关不再起关闭作用：基础校验（值长度上限、控制字符拒绝，以及 `ValidateUTF8` 开启时的 UTF-8 检查）在所有写入路径上始终执行，与 `.env` 行解析保持一致。设为 `false` 也不会放过含控制字符的值。开关仍对**未实现基础校验能力的自定义验证器**有效——这类验证器在开关关闭时会完全跳过值校验。
+
 ::: warning 安全建议
-保持启用。只在确实需要存储含控制字符的值时才禁用。
+保持 `true`。自定义验证器不具备基础校验能力时，关闭它等于放弃值校验。
 :::
 
 ```go
@@ -482,10 +486,10 @@ cfg.JSONNumberAsString = true
 
 #### `JSONBoolAsString` bool
 
-仅为与 `YAMLBoolAsString` 对称而保留，**对 JSON 输出没有实际效果**：JSON 布尔解码后不再保留原始文本，始终渲染规范的 `true`/`false`。不要用它控制 JSON 布尔行为。**默认 `true`**。
+仅为与 `YAMLBoolAsString` 对称而保留，**对 JSON 输出没有实际效果**：JSON 布尔解码后不再保留原始文本，始终渲染规范的 `true`/`false`。不要用它控制 JSON 布尔行为。**默认 `false`**，该字段已标记 Deprecated。
 
 ```go
-cfg.JSONBoolAsString = true
+cfg.JSONBoolAsString = false
 ```
 
 ---
@@ -552,10 +556,14 @@ cfg.AuditEnabled = true
 
 #### `AuditHandler` AuditHandler
 
-自定义审计处理器。
+自定义审计处理器。注意 `loader.Close()` 会关闭处理器，`JSONAuditHandler` 还会关闭底层 writer，因此不要传 `os.Stdout` 或仍需使用的 writer。
 
 ```go
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ```
 
 ::: tip 详见
@@ -653,7 +661,7 @@ func DefaultConfig() Config
 | `OverwriteExisting` | `false` |
 | `AutoApply` | `false` |
 | `ExpandVariables` | `true` |
-| `MaxFileSize` | 8MB |
+| `MaxFileSize` | 8 MB |
 | `MaxLineLength` | 8192 |
 | `MaxKeyLength` | 128 |
 | `MaxValueLength` | 8192 |
@@ -665,7 +673,7 @@ func DefaultConfig() Config
 | `AllowYamlSyntax` | `false` |
 | `JSONNullAsEmpty` | `true` |
 | `JSONNumberAsString` | `true` |
-| `JSONBoolAsString` | `true` |
+| `JSONBoolAsString` | `false`（已标记 Deprecated，对 JSON 输出无效果） |
 | `JSONMaxDepth` | 16 |
 | `YAMLNullAsEmpty` | `true` |
 | `YAMLNumberAsString` | `true` |
@@ -691,7 +699,7 @@ func DevelopmentConfig() Config
 |------|---------|-------------|
 | `OverwriteExisting` | `false` | `true` |
 | `AllowYamlSyntax` | `false` | `true` |
-| `MaxFileSize` | 8MB | 10MB |
+| `MaxFileSize` | 8 MB | 10 MB |
 
 ::: tip 安全保障
 `ValidateValues` 在所有预设中都是 `true`（与默认值一致），环境不同不降低值校验强度。
@@ -718,7 +726,7 @@ func TestingConfig() Config
 | 字段 | Default | Testing |
 |------|---------|---------|
 | `OverwriteExisting` | `false` | `true` |
-| `MaxFileSize` | 8MB | 64KB |
+| `MaxFileSize` | 8 MB | 64 KB |
 | `MaxVariables` | 1000 | 50 |
 
 其余字段与默认值一致，包括 `AuditEnabled=false`（测试中不产生审计噪声）与 `FailOnMissingFile=false`。
@@ -748,14 +756,23 @@ func ProductionConfig() Config
 |------|---------|------------|
 | `FailOnMissingFile` | `false` | `true` |
 | `AuditEnabled` | `false` | `true` |
-| `MaxFileSize` | 8MB | 64KB |
+| `MaxFileSize` | 8 MB | 64 KB |
 | `MaxVariables` | 1000 | 50 |
 
 ```go
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
-loader, _ := env.New(cfg)
+// 审计处理器会被 loader.Close() 关闭（JSONAuditHandler 还会关闭 writer），用文件而非 os.Stdout
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
+loader, err := env.New(cfg)
+if err != nil {
+    auditFile.Close() // New 失败时处理器未接管文件，需要自行关闭
+    log.Fatal(err)
+}
 ```
 
 ---
@@ -768,7 +785,7 @@ loader, _ := env.New(cfg)
 | 文件不存在时报错 | ✗ | ✗ | ✗ | ✓ |
 | 审计日志 | ✗ | ✗ | ✗ | ✓ |
 | YAML 语法 | ✗ | ✓ | ✗ | ✗ |
-| 文件大小限制 | 8MB | 10MB | 64KB | 64KB |
+| 文件大小限制 | 8 MB | 10 MB | 64 KB | 64 KB |
 | 最大变量数 | 1000 | 1000 | 50 | 50 |
 
 ::: tip 选择建议
@@ -802,7 +819,7 @@ if err := cfg.Validate(); err != nil {
 
 **验证规则：**
 - 所有限制值必须为正数，且不超过硬性上限
-- `KeyPattern` 非 nil 时必须满足四条：能匹配有效键名（如 `TEST_KEY`）；不匹配空字符串；不匹配数字开头的键名；不匹配含 `=`、`:`、换行或控制字符的键名
+- `KeyPattern` 非 nil 时必须满足三类探针：不匹配空字符串；不匹配数字开头的键名；不匹配含 `=`、`:`、换行或控制字符的键名
 - `JSONMaxDepth` 与 `YAMLMaxDepth` 必须在 1–100 之间
 - `ExpansionScope` 必须是 `ExpansionFileThenProcess` 或 `ExpansionFileOnly`
 - `DuplicateKeyPolicy` 必须是四个已定义常量之一
@@ -829,22 +846,7 @@ func (c *Config) IsZero() bool
 - 切片字段（Filenames、RequiredKeys 等）
 
 ::: tip 零值检测
-只设置部分字段的 Config 不算零值，不会被替换为 `DefaultConfig()`。后果有两条：
-
-- 未设置的字段保持各自零值
-- `New()` 随后调用 `Config.Validate()`；限制字段仍为零时，返回包装了 `ErrInvalidConfig` 的错误（如 `MaxFileSize must be positive`）
-
-自定义配置从 `DefaultConfig()` 开始改：
-
-```go
-// 推荐
-cfg := env.DefaultConfig()
-cfg.Filenames = []string{".env.production"}
-
-// 不推荐：其余字段保持零值，New() 校验失败
-var cfg env.Config
-cfg.Filenames = []string{".env.production"}
-```
+只设置部分字段的 Config 不算零值，不会被替换为 `DefaultConfig()`：未设置的限制字段会让 `Validate()` 返回包装了 `ErrInvalidConfig` 的错误（如 `MaxFileSize must be positive`）。规避方式见下文「IsZero 陷阱」。
 :::
 
 ---
@@ -870,10 +872,15 @@ defer loader.Close()
 ```go
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "DB_PORT", "API_KEY"}
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 
 loader, err := env.New(cfg)
 if err != nil {
+    auditFile.Close() // New 失败时处理器未接管文件，需要自行关闭
     log.Fatal(err)
 }
 defer loader.Close()
@@ -918,7 +925,7 @@ loader, _ := env.New(cfg)
 
 ### 其余字段在预设间的取值
 
-「预设详细对比」表只列四个预设**取值不同**的项；下表补齐其余字段，四个预设在这些项上取值相同：
+「预设详细对比」表只列四个预设**取值不同**的项；下表补齐其余字段的取值（四个预设的 `AllowYamlSyntax` 并不相同，一并列出以供核对）：
 
 | 配置项 | Default | Development | Testing | Production |
 |--------|---------|-------------|---------|------------|
@@ -938,13 +945,14 @@ loader, _ := env.New(cfg)
 |----|------|
 | 键名模式 | 内置字节级校验（等价 `^[A-Za-z][A-Za-z0-9_]*$`） |
 | `ValidateValues` | true |
-| `JSONNullAsEmpty`/`JSONNumberAsString`/`JSONBoolAsString` | true |
+| `JSONNullAsEmpty`/`JSONNumberAsString` | true |
+| `JSONBoolAsString` | false（对 JSON 输出无效果） |
 | `ExpandVariables` | true（作用域 `ExpansionFileOnly`） |
 | `Prefix` | 空（不过滤） |
 
 ### IsZero 陷阱：始终从 DefaultConfig() 开始改
 
-零值判定与部分配置的后果见上文「`IsZero`」一节的提示。做法只有一条：从 `DefaultConfig()` 开始改，不要从零值 `Config` 逐个字段赋值。
+做法只有一条：从 `DefaultConfig()` 开始改，不要从零值 `Config` 逐个字段赋值。
 
 <!-- check-code: skip -->
 ```go
@@ -955,12 +963,13 @@ cfg.OverwriteExisting = true
 
 ### KeyPattern 的安全校验（SEC-06）
 
-自定义 `KeyPattern` 在 `Config.Validate()` 时会接受四类探针测试，任一不过即拒绝配置：
+自定义 `KeyPattern` 在 `Config.Validate()` 时会接受三类探针测试，任一不过即拒绝配置：
 
-1. 必须能匹配合法键（如 `TEST_KEY`）
-2. 必须拒绝空字符串
-3. 必须拒绝数字开头的键（如 `123_INVALID`）
-4. 必须拒绝含 `=`、`:`、换行或控制字符的键。这类键会让序列化往返后重新解析出**不同的行**，即往返注入
+1. 必须拒绝空字符串
+2. 必须拒绝数字开头的键（如 `123_INVALID`）
+3. 必须拒绝含 `=`、`:`、换行或控制字符的键。这类键会让序列化往返后重新解析出**不同的行**，即往返注入
+
+校验不检查正则能否匹配某个示例键——匹配不到任何键只会让所有键校验失败，不构成安全风险。因此 `^ZZZ_[A-Z0-9]*$` 这类只匹配特定命名空间的正则会被接受。
 
 ### ExpansionScope
 

@@ -25,7 +25,7 @@ HTTPC 定义了 12 种错误类型，覆盖网络层到应用层的失败场景�
 | `ErrorTypeResponseRead` | `RESPONSE_READ_ERROR` | 响应体读取错误 | 连接中断导致 EOF、读取超时 | 视原因而定 |
 | `ErrorTypeRetryExhausted` | `RETRY_EXHAUSTED` | 重试耗尽 | 达到 `MaxRetries` 上限后仍失败 | 否 |
 | `ErrorTypeValidation` | `VALIDATION_ERROR` | 请求验证失败 | URL 格式非法、HTTP 头含控制字符 | 否 |
-| `ErrorTypeHTTP` | `HTTP_ERROR` | HTTP 状态码错误 | 4xx/5xx 响应 | 按状态码判断 |
+| `ErrorTypeHTTP` | `HTTP_ERROR` | HTTP 状态码错误 | 错误消息含 `HTTP 4xx`/`HTTP 5xx` 时由分类器归入（常规 4xx/5xx 不作为 error 返回） | 按状态码判断 |
 | `ErrorTypeUnknown` | `UNKNOWN_ERROR` | 未分类错误 | 其他未匹配的异常 | 否 |
 
 :::tip 可重试判断的完整规则
@@ -84,8 +84,9 @@ HTTPC 定义了 12 种错误类型，覆盖网络层到应用层的失败场景�
 | `URL` | `string` | 请求的 URL（已脱敏，见下方） |
 | `Method` | `string` | HTTP 方法（GET/POST/...） |
 | `Attempts` | `int` | 已尝试次数（含首次），重试耗尽时 > 1 |
-| `StatusCode` | `int` | HTTP 状态码（仅 `ErrorTypeHTTP` 有值） |
+| `StatusCode` | `int` | HTTP 状态码；仅 `ErrorTypeHTTP` 会填充，其余分类为 0 |
 | Host | `string` | 目标主机名（用于断路器等） |
+| `ProxyURL` | `string` | 最后一次尝试所用代理的脱敏 URL；直连、发送前错误与系统代理时为空 |
 
 ### Error() 输出格式
 
@@ -239,16 +240,19 @@ HTTPC 定义以下哨兵错误变量，可通过 `errors.Is` 精确匹配：
 | `ErrInvalidHeader` | HTTP 头校验失败（含控制字符或格式非法） | 修正 Header 值后重试 |
 | `ErrInvalidTimeout` | 超时值非法：负值、0 或超过 30 分钟上限 | 调整到合法区间；解除超时用 `WithNoTimeout()` |
 | `ErrInvalidRetry` | 重试配置非法（MaxRetries 不在 0-10，BackoffFactor 不在 1.0-10.0） | 修正重试参数 |
+| `ErrInvalidMaxRedirects` | 重定向次数非法：请求级 `WithMaxRedirects` 为负或超过 50，或配置级 `Security.MaxRedirects` 为负或超过 50 | 调整到 0–50 区间 |
 | `ErrInvalidConnection` | 连接配置非法（连接池大小超出范围、代理 URL 格式错误） | 修正连接参数 |
-| `ErrInvalidSecurity` | 安全配置非法（响应体大小限制超出范围） | 修正安全参数 |
-| `ErrInvalidMiddleware` | 中间件配置非法（重定向次数超 50、UserAgent 过长或含控制字符） | 修正中间件参数 |
+| `ErrInvalidSecurity` | 安全配置非法：响应体/解压后/请求体大小上限越界、TLS 版本非法或 min>max、`SSRFExemptCIDRs` 含非法 CIDR、`SensitiveHeaders` 键非法、`TLSFingerprint` 预设未知或与 `TLSConfig` 同设 | 修正安全参数 |
+| `ErrInvalidMiddleware` | `Defaults.UserAgent` 超过 512 字符或含控制字符（名称属历史遗留，**不覆盖**中间件配置；重定向次数超限属 `ErrInvalidMaxRedirects`） | 修正 `Defaults.UserAgent` |
 | `ErrEmptyFilePath` | 下载时未指定文件路径 | 设置 `DownloadConfig.FilePath` |
 | `ErrFileExists` | 目标文件已存在且 `Overwrite=false`、`ResumeDownload=false` | 设置覆盖或续传，或换路径 |
 | `ErrResponseBodyEmpty` | 响应体为空时调用 `Unmarshal()` 等解析方法 | 先检查 `RawBody` 再解析 |
-| `ErrResponseBodyTooLarge` | 响应体超过 `MaxResponseBodySize` 限制 | 增大限制或分页获取 |
+| `ErrResponseBodyTooLarge` | `Result.Unmarshal` 解析的响应体超过 50MB JSON 上限 | 改用流式处理或自行解析 |
+
+引擎侧读取响应体时的 `MaxResponseBodySize` 上限不包装该哨兵：超限请求以 `ErrorTypeResponseRead` 的 `ClientError` 结束，错误信息形如 `failed to read response body: response body exceeds limit of N bytes`，需按错误消息判断。
 
 :::tip 配置类错误 vs 运行时错误
-`ErrInvalid*` 系列（`ErrInvalidHeader`/`ErrInvalidTimeout`/`ErrInvalidRetry`/`ErrInvalidConnection`/`ErrInvalidSecurity`/`ErrInvalidMiddleware`）是配置验证错误，在 `New()` 调用时返回，不出现在请求热路径中。
+`ErrInvalid*` 系列（`ErrInvalidHeader`/`ErrInvalidTimeout`/`ErrInvalidRetry`/`ErrInvalidConnection`/`ErrInvalidSecurity`/`ErrInvalidMiddleware`）属配置类错误，通常由 `New()` 的校验返回。它们在请求路径上也可能出现，但来源是**选项本身非法**而非服务端行为：`WithHeader`/`WithHeaderMap` 返回 `ErrInvalidHeader`，`WithTimeout` 返回 `ErrInvalidTimeout`，`WithMaxRedirects` 返回 `ErrInvalidMaxRedirects`，`WithBasicAuth`/`WithBearerToken` 返回 `ErrInvalidCredentials`——这类错误在应用选项时即返回，不会发出请求。
 
 运行时错误通过 `ClientError` 分类处理。
 :::
@@ -277,7 +281,7 @@ func main() {
 	case errors.Is(err, httpc.ErrClientClosed):
 		fmt.Println("客户端已关闭，需重新创建")
 	case errors.Is(err, httpc.ErrResponseBodyTooLarge):
-		fmt.Println("响应体过大，考虑增大 MaxResponseBodySize")
+		fmt.Println("Unmarshal 的响应体超过 50MB 上限，改用流式处理")
 	case errors.Is(err, httpc.ErrResponseBodyEmpty):
 		fmt.Println("响应体为空，调用解析方法前先检查 RawBody")
 	case errors.Is(err, httpc.ErrInvalidHeader):
@@ -330,7 +334,11 @@ func main() {
 
 ## panic 恢复安全网
 
-`Request()` 与 `Download()` 内置 panic 安全网：来自引擎、传输层、TLS 库或中间件的意外 panic 会被捕获并转换为 `ClientError`，调用方进程不会崩溃：
+`Request()` 与 `Download()` 内置 panic 安全网：来自引擎、传输层、TLS 库或中间件的意外 panic 会被捕获并转换为**普通 `error`**（文本形如 `panic recovered: <原因>`，附完整堆栈），调用方进程不会崩溃。
+
+:::warning 兜底 panic 不是 `ClientError`
+兜底 recover 位于 `clientImpl.Request`/`Download` 的最外层，转换后的错误**不会再经过分类器**，因此 `errors.As(err, &clientErr)` 匹配不到它，也没有 `Code()`/`IsRetryable()`。`RecoveryMiddleware` 同理（同样调用 `panicToError`）。需要分类信息时，应在外层自行判断或用 `errors.Is` 匹配具体原因。
+:::
 
 <!-- check-code: skip -->
 ```go
@@ -339,7 +347,7 @@ func (c *clientImpl) Request(ctx context.Context, method, url string, ...) (*Res
     defer func() {
         if r := recover(); r != nil {
             result = nil
-            err = panicToError(r) // 转换为 ClientError
+            err = panicToError(r) // 转换为普通 error（不经过分类器）
         }
     }()
     // ... 正常请求逻辑

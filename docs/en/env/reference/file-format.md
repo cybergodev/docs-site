@@ -31,7 +31,7 @@ URL=https://example.com?foo=bar
 ```bash
 # Double quotes: preserve spaces, support escapes
 MESSAGE="Hello World"
-PATH="/usr/local/bin"
+APP_PATH="/usr/local/bin"
 
 # Single quotes: no escape processing (backslash sequences preserved as-is),
 # and values inside them are not expanded
@@ -62,7 +62,7 @@ TABBED="col1\tcol2"
 QUOTED="He said \"Hello\""
 
 # Backslash
-PATH="C:\\Users\\name"
+APP_PATH="C:\\Users\\name"
 
 # Dollar sign
 PRICE="Price: \$100"
@@ -80,9 +80,10 @@ API_URL=${BASE_URL}/v1
 # Simple syntax
 URL=$BASE_URL/path
 
-# Default values
-HOST=${HOST:-localhost}
-PORT=${PORT:-8080}
+# Default values (reference earlier keys; a key cannot reference itself)
+HOST=example.com
+PRIMARY_HOST=${HOST:-localhost}
+TIMEOUT=${TIMEOUT_SECONDS:-30s}
 
 # Nested expansion
 SERVICE=${CLUSTER:-default}-${REGION:-us-east}
@@ -105,12 +106,22 @@ With the default `AllowYamlSyntax = false`, only `=` separates a key from its va
 Set `AllowYamlSyntax = true` to treat `:` as a separator as well. Values then follow YAML scalar semantics: `null` and `~` become empty strings, and YAML boolean and number literals are recognized per YAML rules.
 
 ```bash
-# Colon-separated key-value pairs (requires AllowYamlSyntax = true)
+# Default (AllowYamlSyntax = false): no '=' on this line, so the whole line is skipped
+KEY: value
+```
+
+```go
+cfg := env.DefaultConfig()
+cfg.AllowYamlSyntax = true
+```
+
+```bash
+# With AllowYamlSyntax = true: the colon separator takes effect
 KEY: value
 ANOTHER: "quoted value"
 ```
 
-`AllowYamlSyntax` is the only parsing switch that defaults to off, so `.env` files that use `:` as a separator need this setting before they load.
+`AllowYamlSyntax` is the only parsing switch that defaults to off, so `.env` files that use `:` as a separator need this setting before they load. Of the four presets, only `DevelopmentConfig()` turns it on: `DefaultConfig()`, `TestingConfig()`, and `ProductionConfig()` all keep it `false`.
 
 ### Multi-line Values
 
@@ -192,7 +203,7 @@ See [GetSlice documentation](../api-reference/functions#getslice-t).
 
 ### Type Conversion Options
 
-`JSONNullAsEmpty`, `JSONNumberAsString`, and `JSONBoolAsString` all **default to true** in `DefaultConfig`. There is no need to set them individually; set one to false only when you want to disable that conversion:
+`JSONNullAsEmpty` and `JSONNumberAsString` **default to true** in `DefaultConfig`; `JSONBoolAsString` defaults to `false` and has no effect on JSON output (it is marked Deprecated). The first two need no explicit assignment; set one of them to false only when you want to disable that conversion:
 
 ```go
 cfg := env.DefaultConfig()
@@ -296,7 +307,8 @@ format := env.DetectFormat("config.json")   // FormatJSON
 format = env.DetectFormat("settings.yaml")  // FormatYAML
 format = env.DetectFormat(".env")           // FormatEnv
 
-// Returns FormatAuto when no extension matches (the loader falls back to the .env parser)
+// Returns FormatAuto when no extension matches (the loader falls back to the .env parser
+// when no parser is registered for that format)
 format = env.DetectFormat("config")  // FormatAuto
 ```
 

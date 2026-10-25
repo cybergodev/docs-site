@@ -421,8 +421,8 @@ func main() {
 }
 ```
 
-:::warning 相对路径与选项副作用
-`path` 参数为相对路径（如 `/get`）时自动拼接 baseURL；完整 URL（带 scheme）直接使用。域名客户端会把请求选项**执行两次**（一次捕获会话状态、一次实际请求），含计数器、nonce 等副作用的选项不应传入。
+:::warning 相对路径与会话捕获
+`path` 参数为相对路径（如 `/get`）时自动拼接 baseURL；完整 URL（带 scheme）直接使用。域名客户端的请求选项只执行一次，`WithHeader`/`WithCookies` 等会额外被静态捕获进会话；自定义 `RequestOptionFunc` 里的 `SetHeader`/`SetCookies` 不会被捕获。
 :::
 
 ## Cookie 高级用法

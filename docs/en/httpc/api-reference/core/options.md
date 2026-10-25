@@ -60,6 +60,8 @@ func WithHeader(key, value string) RequestOption
 
 Sets a single request header. Keys and values are security-validated (CRLF injection protection): keys ≤256 characters, values ≤8192 characters, control characters rejected (an error wrapping `ErrInvalidHeader` is returned). A same-named default header in `Config.Defaults.Headers` is overridden.
 
+On a `DomainClient` the header is captured into the session and persists on later requests; for a one-shot header use a custom `RequestOptionFunc` (never captured).
+
 ```go
 result, err := client.Get(url,
     httpc.WithHeader("X-Custom", "value"),
@@ -89,7 +91,7 @@ result, err := client.Get(url,
 func WithUserAgent(userAgent string) RequestOption
 ```
 
-Sets the User-Agent header. A convenience wrapper for `WithHeader("User-Agent", ...)`, overriding `Config.Defaults.UserAgent` (`"httpc/1.0"`).
+Sets the User-Agent header. A convenience wrapper for `WithHeader("User-Agent", ...)`, overriding `Config.Defaults.UserAgent` (`"httpc/1.0"`). Because it is a `WithHeader` passthrough, it is also captured into the session on a `DomainClient`, pinning the UA for every later request.
 
 ## Authentication
 
@@ -100,6 +102,8 @@ func WithBasicAuth(username, password string) RequestOption
 ```
 
 Sets HTTP Basic authentication and generates an `Authorization: Basic <base64>` header. Username and password cannot be empty, are limited to 255 characters, and must not contain control characters; the username must not contain a colon (`:`).
+
+On a `DomainClient` this option is **not** captured into the session (credentials never persist); use `WithHeader("Authorization", ...)` when the credential must be reused across requests.
 
 ```go
 result, err := client.Get(url,
@@ -114,6 +118,8 @@ func WithBearerToken(token string) RequestOption
 ```
 
 Sets the `Authorization: Bearer <token>` header. The token cannot be empty, is limited to 2048 characters, and must not contain spaces or control characters (RFC 6750 constraints).
+
+On a `DomainClient` this option is **not** captured into the session (credentials never persist); use `WithHeader("Authorization", ...)` when the credential must be reused across requests.
 
 ```go
 result, err := client.Get(url,
@@ -194,12 +200,14 @@ result, err := client.Post(url,
 func WithFile(fieldName, filename string, content []byte) RequestOption
 ```
 
-Uploads a single file as multipart. `fieldName` and `filename` cannot be empty, are limited to 256 characters, and must not contain path separators (`/`, `\`), `..`, quotes, angle brackets, or similar dangerous characters.
+Uploads a single file as multipart. `fieldName` and `filename` cannot be empty, are limited to 256 characters, and must be a **single path segment**: any `/`, `\`, or `..` is rejected (see `validation.ValidateFieldName`), along with quotes, angle brackets, `&`, and similar dangerous characters.
 
-The actual filename is `filepath.Base(filename)`, which strips the path to prevent traversal; a result of `"."`, `".."`, or empty returns an error.
+There is no path-stripping step — `filename` is written into the multipart header as given, and `"."` is also rejected.
 
-:::warning Mutually exclusive with other body options
-`WithFile` replaces the entire request body. When `WithFile` is called more than once, or combined with other body options (`WithFormData`, `WithJSON`, etc.), later options override earlier ones. For multi-file or file-plus-field uploads, build a single `*FormData` and use `WithFormData`.
+:::warning Repeated WithFile calls merge; mixing with other body options replaces
+Repeated `WithFile` calls are **merged** into one multipart body (source behavior, pinned by a test), so several files can be uploaded in a single request.
+
+Mixing with other body options such as `WithJSON`/`WithBinary` makes the later option replace the entire body; calling `WithFile` after `WithFormData` merges the files into that FormData. For file-plus-field uploads, build a single `*FormData` and use `WithFormData`.
 :::
 
 ```go
@@ -214,9 +222,9 @@ result, err := client.Post(url,
 func WithBinary(data []byte, contentType ...string) RequestOption
 ```
 
-Sets a binary request body. A nil `data` returns an error; a non-nil empty slice is accepted and sends an empty body. The default Content-Type is `application/octet-stream` and can be overridden by the second argument (an empty string falls back to the default).
+Sets a binary request body. A nil **or zero-length** `data` returns an error (`binary data cannot be empty`). The default Content-Type is `application/octet-stream` and can be overridden by the second argument (an empty string falls back to the default).
 
-Unlike `WithBody(data, BodyBinary)`, this option takes only `[]byte`; `WithBody` also accepts `string` input and rejects empty data.
+Unlike `WithBinary`, `WithBody(data, BodyBinary)` also rejects empty data but additionally accepts `string` input.
 
 ```go
 result, err := client.Post(url,
@@ -410,7 +418,7 @@ result, err := client.Get(url,
 func WithContext(ctx context.Context) RequestOption
 ```
 
-Sets the request context with timeout and cancellation support. The context cannot be nil. A deadline set on the context overrides the client default timeout (`Timeouts.Request`) for this request.
+Sets the request context with timeout and cancellation support. The context cannot be nil. A context deadline only **narrows** the client default timeout (`Timeouts.Request`) — the shorter of the two wins; a context without a deadline does not lift that default (use `WithNoTimeout` for that), and an explicit `WithTimeout` replaces the client default budget while a nearer context deadline still takes precedence.
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -458,7 +466,7 @@ result, err := client.Post(uploadURL,
 func WithMaxRetries(maxRetries int) RequestOption
 ```
 
-Sets the per-request maximum retry count, overriding `Config.Retry.MaxRetries` (default 3). Range: 0-10; values outside the range return `ErrInvalidRetry`.
+Sets the per-request maximum retry count, overriding `Config.Retry.MaxRetries` (default 3). Range: 0-10; values outside the range return `ErrInvalidRetry`. `0` **disables** retries for this request (unlike `WithMaxRedirects(0)`, which is a no-op).
 
 ```go
 result, err := client.Get(url, httpc.WithMaxRetries(3))

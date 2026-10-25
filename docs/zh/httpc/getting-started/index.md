@@ -26,7 +26,7 @@ go get github.com/cybergodev/httpc
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC 要求 Go 1.27 及以上版本，共 7 个直接依赖。`golang.org/x/net` 与 `golang.org/x/sys` 用于标准路径；brotli / compress / uTLS / tls-client / fhttp 仅在启用 `Security.TLSFingerprint` 时被拉入。不启用指纹特性时按标准栈运行，无需配置即可发起请求。
+HTTPC 要求 Go 1.27 及以上版本，共 7 个直接依赖，均随包编译（源码无构建标签）。`golang.org/x/net` 与 `golang.org/x/sys` 用于标准路径；brotli / compress / uTLS / tls-client / fhttp 服务于 `Security.TLSFingerprint` 路径，未启用指纹时只是不参与运行。不启用指纹特性时按标准栈运行，无需配置即可发起请求。
 
 ## 基本请求
 

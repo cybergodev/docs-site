@@ -459,7 +459,12 @@ type FileSystem interface {
 
 库本身只调用前四个方法，其中文件大小检查经 `Open` 返回句柄的 `File.Stat` 进行。其余方法供调用方在封装 `FileSystem` 的自有代码中使用。
 
-最小化的内存 mock 只需实现这四个核心方法，并让 `Open` 返回一个 `File`。
+`FileSystem.Stat` 与 `File.Stat` 是两个不同的方法，不要混淆：
+
+- `FileSystem.Stat` 按路径查询文件信息，库内**不调用**
+- `File.Stat` 取 `Open` 返回句柄的信息，库内**必调**：加载器在读取内容前用它拿 `Size()` 与 `MaxFileSize` 比较做预检
+
+最小化的内存 mock 只需实现 `Open`、`LookupEnv`、`Setenv`、`Unsetenv` 四个方法，但 `Open` 返回的 `File` 必须实现 `Stat` 并返回真实大小。返回 `(nil, nil)` 会在预检处解引用空指针而崩溃，返回错误（如 `errors.ErrUnsupported`）则该文件直接加载失败。
 
 ```go
 type MockFileSystem struct {
@@ -469,21 +474,40 @@ type MockFileSystem struct {
 
 // MockFile 实现 env.File 接口（用于测试）
 type MockFile struct {
+    name   string
+    size   int64
     reader *strings.Reader
 }
 
-func (f *MockFile) Read(p []byte) (n int, err error)   { return f.reader.Read(p) }
-func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, errors.ErrUnsupported }
-func (f *MockFile) Close() error                       { return nil }
-func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, errors.ErrUnsupported }
-func (f *MockFile) Sync() error                        { return nil }
+func (f *MockFile) Read(p []byte) (n int, err error)  { return f.reader.Read(p) }
+func (f *MockFile) Write(p []byte) (n int, err error) { return 0, errors.ErrUnsupported }
+func (f *MockFile) Close() error                      { return nil }
+func (f *MockFile) Sync() error                       { return nil }
+
+// Stat 必须返回真实大小：加载器用它做 MaxFileSize 预检
+func (f *MockFile) Stat() (os.FileInfo, error) {
+    return &mockFileInfo{name: f.name, size: f.size}, nil
+}
+
+// mockFileInfo 实现 os.FileInfo
+type mockFileInfo struct {
+    name string
+    size int64
+}
+
+func (i *mockFileInfo) Name() string       { return i.name }
+func (i *mockFileInfo) Size() int64        { return i.size }
+func (i *mockFileInfo) Mode() os.FileMode  { return 0644 }
+func (i *mockFileInfo) ModTime() time.Time { return time.Time{} }
+func (i *mockFileInfo) IsDir() bool        { return false }
+func (i *mockFileInfo) Sys() interface{}   { return nil }
 
 func (m *MockFileSystem) Open(name string) (env.File, error) {
     content, ok := m.files[name]
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{reader: strings.NewReader(content)}, nil
+    return &MockFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
@@ -491,10 +515,11 @@ func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.
 }
 
 func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
-    if _, ok := m.files[name]; !ok {
+    content, ok := m.files[name]
+    if !ok {
         return nil, os.ErrNotExist
     }
-    return nil, nil
+    return &mockFileInfo{name: name, size: int64(len(content))}, nil
 }
 
 func (m *MockFileSystem) MkdirAll(path string, perm os.FileMode) error { return nil }
@@ -546,6 +571,8 @@ type File interface {
 
 其中 Read、Write、`Close` 来自内嵌的 io 接口，文件特有操作为 `File.Stat` 与 `File.Sync`。
 
+`File.Stat` 不可省略：加载器在读取内容前用它做 `MaxFileSize` 预检，`Size()` 必须返回真实内容长度。
+
 ---
 
 ### DefaultFileSystem
@@ -576,15 +603,24 @@ func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
 ```
 
 **参数：**
-- `w` - 输出目标（如 `os.Stdout`、文件）
+- `w` - 输出目标（打开的文件等）。必须传非 nil writer：传 nil 时 `Log` 会因空指针 panic（经审计层调用时该 panic 被恢复成错误，事件随之丢失）
 
 ```go
-handler := env.NewJSONAuditHandler(os.Stdout)
+f, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+handler := env.NewJSONAuditHandler(f)
+// loader.Close() 会关闭 handler，进而关闭 f
 ```
+
+::: warning writer 会被关闭
+`JSONAuditHandler.Close()` 在 writer 实现 `io.Closer` 时调用其 `Close()`。不要传 `os.Stdout` 或其他还要继续使用的 writer，否则 `loader.Close()` 会把它一起关掉。`NewLogAuditHandler` 不关闭底层 writer。
+:::
 
 **输出示例：**
 ```json
-{"timestamp":"2024-01-15T10:30:00Z","action":"load","key":"API_KEY","success":true}
+{"timestamp":"2024-01-15T10:30:00Z","action":"set","key":"[MASKED]","success":true,"masked":true}
 ```
 
 ---
@@ -609,10 +645,13 @@ handler := env.NewLogAuditHandler(logger)
 
 **输出示例：**
 ```text
-[AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env
+[AUDIT] 2024/01/15 10:30:00 action=parse success=true reason="parsed: .env"
+[AUDIT] 2024/01/15 10:30:00 action=set key=[MASKED] success=true reason="loaded"
+[AUDIT] 2024/01/15 10:30:00 action=file_access success=true reason="file loaded: .env" duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="loaded files" duration=1.23ms
 ```
 
-事件以键值对输出：`action`、`success`、`reason`（带引号），以及可选的 `key`、`file`（带引号）与 `duration`。前缀和时间戳取决于传入的 `log.Logger`。
+事件以键值对输出：`action`、`success`、`reason`（带引号），以及可选的 `key`、`file`（带引号）与 `duration`。`ActionLoad` 与成功的 `ActionParse` 事件不带键名；带键名的是 `ActionSet`，以及解析报错时的 `ActionParse`（如重复键、键超长）。敏感键由 `MaskValue` 掩码为 `[MASKED]`。前缀和时间戳取决于传入的 `log.Logger`。
 
 完整格式说明见 [NewLogAuditHandler](./factory#newlogaudithandler)。
 
@@ -630,7 +669,9 @@ func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 - `ch` - 审计事件通道
 
 ::: warning 通道所有权
-`ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道，调用者必须自行关闭通道以通知接收方结束。通道缓冲区满时 `Log()` 会阻塞，建议使用带缓冲的通道。需要自动管理通道生命周期时，改用 [NewCloseableChannelHandler](./factory#newcloseablechannelhandler)。
+`ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道，调用者必须自行关闭通道以通知接收方结束。关闭通道的时机要在使用该处理器的 loader 关闭之后、且没有 `Log` 调用在途，否则会触发 send-on-closed-channel panic。
+
+通道为 nil 时，`Log()` 对每条事件返回错误而不是永久阻塞（错误只在启用 `AuditFailClosed` 时才会作为调用失败暴露）。通道缓冲区满时 `Log()` 会阻塞，建议使用带缓冲的通道。需要自动管理通道生命周期时，改用 [NewCloseableChannelHandler](./factory#newcloseablechannelhandler)。
 :::
 
 ```go

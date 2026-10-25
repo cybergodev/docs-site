@@ -9,10 +9,6 @@ sidebar_position: 4
 
 将应用部署到生产环境前逐项确认以下检查项。每项都对应一类已知的上线风险，未通过的项应在发布前处理。
 
-::: tip 安全概念
-安全架构和核心特性见 [安全概述](./)。
-:::
-
 ## 部署前检查
 
 ### 文件安全
@@ -65,16 +61,14 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ```
 
-<!-- autocorrect-disable — 容器标题 `::: warning 「…」` 的空格是 markdown-it-container 语法的一部分，删除空格会让 type 解析失败。 -->
-::: warning 「已启用」≠「已落盘」
-<!-- autocorrect-enable -->
+::: warning 审计已启用不等于已落盘
 - [ ] `ProductionConfig()` 默认 `AuditEnabled = true`，但未配置 `AuditHandler` 时审计事件只写入 stderr 的 `[AUDIT]` 标准日志。上线后确认审计日志文件确实在增长。
 :::
 
 ### 敏感数据处理
 
 - [ ] 敏感值使用 `GetSecure` 获取
-- [ ] 用完调用 `Release()` 释放（清零并归还对象池）；`Close()` 只清零，不归还池
+- [ ] 用完调用 `Release()` 释放：它清零、解锁并把对象归还对象池（`Close()` 不归还池，取舍见[内存锁定](./memory-locking#优先使用-release-而非-close)）
 - [ ] 日志不输出原始敏感值
 
 ```go
@@ -86,16 +80,16 @@ log.Printf("Password length: %d", secret.Length())
 ### 访问控制
 
 - [ ] 设置 `AllowedKeys` 白名单（推荐）
-- [ ] 启用 `ValidateValues`
+- [ ] 值校验到位：内置验证器的长度与控制字符校验始终生效；若换用自定义验证器，确认它实现了同等校验，否则必须保持 `ValidateValues = true`
 - [ ] 检查大小限制：`ProductionConfig()` 的 `MaxFileSize` 为 64 KB、`MaxVariables` 为 50；配置规模超出时按需调高
 - [ ] 配置文件路径全部为**相对路径**：`Filenames` 拒绝绝对路径、UNC 路径、URL 编码 `%` 与 `..` 目录穿越
 - [ ] 配置来源不可信时设置 `ExpansionScope: ExpansionFileOnly`，阻止 .env 展开读取进程环境机密（SEC-03）
-- [ ] 审计 handler 不要接 `os.Stdout`：`loader.Close()` 会关闭处理器，并连带关闭底层 writer
+- [ ] 审计 handler 不要接 `os.Stdout` 或共享 writer：`loader.Close()` 会关闭处理器；其中 `JSONAuditHandler` 还会关闭底层 writer，`LogAuditHandler` 不会
 
 ```go
 cfg.AllowedKeys = []string{"APP_NAME", "DB_HOST", "API_KEY"}
 cfg.ValidateValues = true
-cfg.MaxVariables = 50 // ProductionConfig 默认即为 50，键更多时才调高
+cfg.MaxVariables = 50 // 仅在键更多时调高
 ```
 
 ## 部署时检查
@@ -152,5 +146,7 @@ echo "=== All checks passed ==="
 ## 相关文档
 
 - [安全概述](./) - 安全架构与核心特性
+- [敏感数据脱敏](./data-masking) - 日志与错误输出中的敏感值处理
+- [内存锁定](./memory-locking) - mlock 内存保护与 `Release()` 生命周期
 - [SecureValue API](../api-reference/secure-value) - 安全值处理
 - [常量与错误](../api-reference/constants) - 禁止键列表与默认限制

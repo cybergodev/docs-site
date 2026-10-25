@@ -23,7 +23,7 @@ port := env.GetInt("PORT", 8080)
 // Testing / multi-configuration → instance mode
 loader, _ := env.New(env.TestingConfig())
 defer loader.Close()
-port := loader.GetInt("PORT", 8080)
+loaderPort := loader.GetInt("PORT", 8080)
 ```
 
 :::tip How to choose
@@ -32,7 +32,7 @@ Start with `env.Load()`. Switch to `env.New()` when you need test isolation or m
 
 ### Why can Load() only be called once?
 
-`Load()` sets the global default loader (a singleton), and a second call returns `ErrAlreadyInitialized`. The restriction prevents a later load from silently replacing configuration that is already in use.
+`Load()` sets the default loader, and a second call returns `ErrAlreadyInitialized`. The restriction prevents a later load from silently replacing configuration that is already in use.
 
 ```go
 // First call: succeeds
@@ -49,8 +49,10 @@ err := env.Load(".env.production")
 // Solution 1: Load multiple files at once (recommended)
 env.Load(".env", ".env.production")
 
-// Solution 2: Reset first when re-initialization is needed
-env.ResetDefaultLoader()  // Primarily for testing
+// Solution 2: Reset first when re-initialization is needed (mainly for tests)
+if err := env.ResetDefaultLoader(); err != nil {
+    log.Printf("warning: failed to reset loader: %v", err)
+}
 env.Load(".env.production")
 ```
 
@@ -89,13 +91,15 @@ Nested JSON/YAML structures are **flattened** to underscore-separated key names:
 Stored as: DATABASE_HOST=localhost, DATABASE_PORT=5432
 ```
 
-The three access methods are equivalent:
+The three forms are equivalent; distinct names only illustrate them:
 
 ```go
-host := env.GetString("DATABASE_HOST")  // Flat key (recommended)
-host := env.GetString("database.host")  // Dot path
-host := env.GetString("DATABASE.HOST")  // Uppercase dot path
+nameFlat := env.GetString("DATABASE_HOST")  // Flat key (recommended)
+nameDot := env.GetString("database.host")   // Dot path
+nameUpper := env.GetString("DATABASE.HOST") // Uppercase dot path
 ```
+
+The full conversion table is in [Multi-format Config · Key Resolution](../guides/multi-format#key-resolution).
 
 ## Types and Generics
 
@@ -163,6 +167,8 @@ for i := 0; i < 100; i++ {
 wg.Wait()
 ```
 
+A `Loader` instance (not just the package-level functions) can be shared the same way; see [Concurrency & Lifecycle](../guides/concurrency).
+
 ### What happens when calling Get after Loader.Close()?
 
 Getters return zero values and do not panic. Writes return `ErrClosed`.
@@ -176,18 +182,15 @@ val := loader.GetString("KEY") // Returns a value
 // After Close()
 val = loader.GetString("KEY")  // Returns "" (zero value)
 err := loader.Set("KEY", "v")  // Returns ErrClosed
+_ = val
+_ = err
 ```
 
 ## SecureValue
 
 ### What's the difference between Release and Close?
 
-| Method | Zeros Memory | Unlocks Memory | Returns to Pool |
-|--------|:------------:|:--------------:|:---------------:|
-| `Release()` | ✅ | ✅ | ✅ |
-| `Close()` | ✅ | ✅ | ❌ |
-
-**`Release()` is the usual choice** because it returns the object to the pool and reduces GC pressure. Use `Close()` when pooling is not needed.
+`Release()` zeroes the value, unlocks the memory, and returns the object to the pool; `Close()` zeroes and unlocks but does not return it to the pool. Use `Release()` by default. For the full comparison see [Memory Locking · Prefer Release Over Close](../security/memory-locking#prefer-release-over-close).
 
 ### Does SecureValue auto-zero when garbage collected?
 
@@ -199,8 +202,8 @@ sv := env.GetSecure("API_KEY")
 defer sv.Release()
 
 // ⚠️ Relying on GC: safe but not timely
-sv := env.GetSecure("API_KEY")
-// Eventually zeroed by GC, but the timing is uncertain
+svNoRelease := env.GetSecure("API_KEY")
+_ = svNoRelease // no Release call; the GC finalizer zeroes it eventually
 ```
 
 ### How to safely log?
@@ -212,8 +215,10 @@ sv := env.GetSecure("API_KEY")
 defer sv.Release()
 
 // ✅ Safe: masked output
-log.Printf("API Key: %s", sv.Masked())    // [SECURE:32 bytes locked]
+log.Printf("API Key: %s", sv.Masked())    // [SECURE:32 bytes]
 log.Printf("API Key: %s", sv)              // Same (String() returns Masked())
+// With memory locking disabled there is no status suffix; locking enabled and
+// successful yields [SECURE:32 bytes locked]
 
 // ✅ Safe: masking functions
 masked := env.MaskValue("API_KEY", "sk-xxx") // [MASKED] (sensitive key → fixed mask)
@@ -260,15 +265,26 @@ cfg = env.DevelopmentConfig()
 
 ### When does RequiredKeys validation execute?
 
-`RequiredKeys` is checked only when you call `Validate()`; loading does not trigger it:
+Required keys are checked once when parsing or loading finishes: `loader.LoadFiles(...)` returns `validation error on field "required_keys": missing required keys: ...` when a key is missing, and `env.New(cfg)` returns the same error when `Filenames` is non-empty. `Validate()` then checks the current store again, which is useful after setting extra values post-load:
 
 ```go
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
-loader, _ := env.New(cfg)
-loader.LoadFiles(".env")
+cfg.Filenames = nil // loaded explicitly below
 
-// Explicit validation
+loader, err := env.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Checked when loading finishes
+if err := loader.LoadFiles(".env"); err != nil {
+    if errors.Is(err, env.ErrMissingRequired) {
+        log.Fatal("Missing required environment variables")
+    }
+}
+
+// Explicit validation: checks the current store again
 if err := loader.Validate(); err != nil {
     if errors.Is(err, env.ErrMissingRequired) {
         log.Fatal("Missing required environment variables")
@@ -307,8 +323,14 @@ Use `ResetDefaultLoader()`:
 ```go
 func TestGlobalMode(t *testing.T) {
     // Clean up previous test state
-    env.ResetDefaultLoader()
-    defer env.ResetDefaultLoader()
+    if err := env.ResetDefaultLoader(); err != nil {
+        t.Logf("reset default loader: %v", err)
+    }
+    defer func() {
+        if err := env.ResetDefaultLoader(); err != nil {
+            t.Logf("reset default loader: %v", err)
+        }
+    }()
 
     env.Load(".env.test")
     // Test...
@@ -323,7 +345,7 @@ See the [Testing](../guides/testing) guide.
 
 ### Are process-environment variables still there after Close?
 
-**Yes.** `Close()` zeroes only the in-memory copies. It does not unset variables previously applied to the process environment. Removing them is deliberate caller work: the environment may already have been inherited by child processes, so automatic rollback is not attempted. Call `Delete` per key before closing; only keys this loader wrote get unset.
+**Yes.** `Close()` zeroes and unlocks the in-memory copies; it does not unset variables previously applied to the process environment. Removing them is deliberate caller work: the environment may already have been inherited by child processes, so automatic rollback is not attempted. Call `Delete` per key before closing; only keys this loader wrote get unset.
 
 ### How do I stop a configuration file from reading process secrets?
 

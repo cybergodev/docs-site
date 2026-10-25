@@ -306,13 +306,12 @@ func (s *SessionManager) captureFromOptions(options []RequestOption)
 
 Called internally by DomainClient's `prepareSessionOptions` to extract cookies and headers from caller-supplied RequestOptions into the session. Implementation details:
 
-1. Uses a temporary `engine.Request` from the object pool (`acquireMiddlewareRequest`/`releaseMiddlewareRequest`) to reduce hot-path allocations.
-2. Applies each option to the temporary request one by one. **Safety measure**: clears `OnRequest`/`OnResponse` callbacks before and after each option application, preventing `WithOnRequest`/`WithOnResponse` closures from accumulating side effects during capture.
-3. Extracts cookies and headers from the temporary request, validates them, and stores them in the session.
-4. Only cookies and headers are extracted; other data (query params, body, callbacks) is discarded.
+1. Walks the options with a static type switch and **never executes the option closures**: it recognizes only `WithHeader`/`WithHeaderMap`/`WithCookies`/`WithCookieMap`/`WithCookieString` and skips every other option type.
+2. Extracts cookies and headers from those options, validates them, and stores them in the session.
+3. Only cookies and headers are extracted; other data (query params, body, callbacks) is never captured.
 
-:::warning RequestOptions execute twice
-DomainClient's Request/Download executes RequestOptions **twice**: once for session capture (captureFromOptions) and once for the actual request. Therefore **avoid side-effect options** (e.g. counters, nonce generation, random numbers). When side effects are needed, use the underlying Client directly.
+:::warning Options run once; session capture is static
+A DomainClient's Request/Download executes RequestOptions once (on the actual request). Session capture is done statically by `captureFromOptions`, so a `SetHeader`/`SetCookies` call inside a custom `RequestOptionFunc` is neither captured nor a source of side effects; persist session state with `SetHeader`/`SetCookie` instead.
 :::
 
 ### prepareOptions

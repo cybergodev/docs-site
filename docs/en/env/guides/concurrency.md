@@ -37,13 +37,13 @@ Concurrent `Load()` calls from multiple goroutines are also safe: the mutex guar
 
 ### Behavior Before Initialization
 
-Using package-level functions before `Load()` or `LoadWithConfig()` splits into "reads return defaults, writes return errors":
+Using package-level functions before `Load()` or `LoadWithConfig()` splits into "reads return defaults, writes and validation return errors":
 
 | Operation | Behavior when not initialized |
 |-----------|-------------------------------|
 | `GetString` / `GetInt` / `GetBool` and other Get* | Returns the provided default (or zero value), **no error** |
 | `Lookup` | Returns `("", false)` |
-| `Keys` / `All` / `Len` / `GetSecure` | Returns `nil` / `0` / `nil` |
+| `Keys` / `All` / `Len` / `GetSecure` | Returns `nil` / `nil` / `0` / `nil`, in that order |
 | `Set` / `Delete` / `Validate` / `ParseInto` | Returns `ErrNotInitialized` |
 
 ::: warning
@@ -60,7 +60,7 @@ if err := env.ResetDefaultLoader(); err != nil {
 }
 ```
 
-After a reset you can call `Load()` again. Use this function for **test isolation and program startup**; a normally running application should initialize once and never reset. Between the reset and the next `Load()`, package-level functions behave as uninitialized: reads return defaults and writes return `ErrNotInitialized`.
+After a reset you can call `Load()` again. Use this function for **test isolation and program startup**; a normally running application should initialize once and never reset. Between the reset and the next `Load()`, package-level functions behave as uninitialized: reads return defaults and `Set`/`Delete`/`Validate`/`ParseInto` return `ErrNotInitialized`.
 
 ::: warning
 `ResetDefaultLoader()` closes the old loader but does **not** undo the variables it already applied to the process environment (see `Close()` below). Tests that need a clean process environment should also call `os.Unsetenv`, or switch to instance mode.
@@ -82,8 +82,11 @@ defer loader.Close()
 if err := loader.LoadFiles("app.env"); err != nil {
     log.Fatal(err)
 }
+// A failed Apply means "partially applied": keys written before the failure
+// are not rolled back and IsApplied() stays false. Log it and carry on here;
+// production code should Delete the written keys or fix the environment and retry.
 if err := loader.Apply(); err != nil {
-    log.Fatal(err)
+    log.Printf("apply failed (partially applied): %v", err)
 }
 // ... use loader ...
 ```
@@ -96,11 +99,13 @@ Every key this loader writes to the process environment is recorded in an intern
 
 With `AutoApply` enabled you don't call `Apply()` manually: loading files and individual `Set` calls sync to the process environment immediately.
 
+A failed `Apply()` means **partially applied**: keys written before the failure are not rolled back and `IsApplied()` stays `false`. Log the error and continue (or `Delete()` the keys you know were written and retry after fixing the environment) instead of panicking; see [Loader API · Apply](../api-reference/loader#apply) for the full semantics.
+
 ### Closing: Close()
 
-`Close()` zeroes all values stored in memory (sensitive values are wiped byte by byte) and closes the component factory if the loader owns it. It is idempotent: a second call on a closed or `nil` loader returns no error.
+`Close()` zeroes and unlocks every value stored in memory (sensitive values are wiped byte by byte, and unlocking happens before zeroing), and closes the component factory if the loader owns it. It is idempotent: a second call on a closed or `nil` loader returns no error.
 
-`Close()` clears memory only. It does **not** undo the process environment: variables previously written there via `Apply`, `AutoApply`, or `Set` with `AutoApply` stay in place. To remove them before shutdown, call `Delete()` per key.
+`Close()` zeroes and **unlocks** the in-memory copies. It does **not** undo the process environment: variables previously written there via `Apply`, `AutoApply`, or `Set` with `AutoApply` stay in place. To remove them before shutdown, call `Delete()` per key.
 
 Behavior after closing:
 
@@ -125,6 +130,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/cybergodev/env"
@@ -151,14 +157,16 @@ func main() {
 		panic(err)
 	}
 
-	// Apply to the process environment
+	// Apply to the process environment. A failure means "partially applied":
+	// keys already written are not rolled back and IsApplied() stays false,
+	// so log it and continue rather than panicking.
 	if err := loader.Apply(); err != nil {
-		panic(err)
+		log.Printf("apply failed (partially applied): %v", err)
 	}
 	mode, ok := os.LookupEnv("MY_APP_MODE")
 	fmt.Println("after Apply, in process:", mode, ok)
 
-	// Close: zeroes memory, but process-environment variables remain
+	// Close: zeroes and unlocks memory, but process-environment variables remain
 	if err := loader.Close(); err != nil {
 		panic(err)
 	}
@@ -339,7 +347,7 @@ func main() {
 	defer os.Remove(file)
 
 	// 1) Not yet initialized: reads silently return defaults,
-	//    writes return ErrNotInitialized
+	//    Set/Delete/Validate/ParseInto return ErrNotInitialized
 	fmt.Println("before Load, port =", env.GetInt("GL_PORT", 8080))
 	if err := env.Set("GL_PORT", "9090"); err != nil {
 		fmt.Println("before Load, Set is ErrNotInitialized:",
@@ -380,22 +388,13 @@ func main() {
 
 ## Resetting the Singleton Between Tests
 
-The global singleton outlives individual tests, so a loader from a previous `Load()` leaks into the next case as `ErrAlreadyInitialized` or stale values. Reset around the whole run in `TestMain`:
+The global singleton outlives individual tests, so a loader from a previous `Load()` leaks into the next case as `ErrAlreadyInitialized` or stale values. The essentials:
 
-```go
-func TestMain(m *testing.M) {
-	// Cleanup on entry: isolate any leftover singleton
-	_ = env.ResetDefaultLoader()
+- Reset once in TestMain, and check the error returned by `ResetDefaultLoader()`.
+- Cases that use global mode then call `Load()` themselves.
+- `Load` forces `AutoApply = true` and `Close` does not undo the process environment, so tests should also clean applied process variables in `t.Cleanup`.
 
-	code := m.Run()
-
-	// Cleanup on exit: close the loader these tests initialized
-	_ = env.ResetDefaultLoader()
-	os.Exit(code)
-}
-```
-
-Cases that use global mode then call `Load()` themselves. Because `Load` forces `AutoApply = true` and `Close` does not undo the process environment, tests should also clean applied process variables in `t.Cleanup`. For deeper isolation (independent instances, in-memory filesystems, table-driven tests), see [Testing](./testing).
+The full TestMain template and process-variable cleanup are in [Testing · Cleaning Up Test State](./testing#cleaning-up-test-state); the in-memory filesystem is in [Testing · Mocking Filesystem](./testing#mocking-filesystem).
 
 ## Common Pitfalls
 

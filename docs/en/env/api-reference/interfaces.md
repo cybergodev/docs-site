@@ -464,7 +464,12 @@ type FileSystem interface {
 
 The library calls only `Open`, `LookupEnv`, `Setenv`, and `Unsetenv`. Size and stat checks go through `File.Stat` on the handle that `Open` returned. The remaining methods exist for your own code that wraps `FileSystem`.
 
-A minimal in-memory mock therefore needs those four methods, plus an `Open` that returns a `File`.
+`FileSystem.Stat` and `File.Stat` are different methods and are easy to confuse:
+
+- `FileSystem.Stat` queries file info by path. The library does **not** call it.
+- `File.Stat` reports on the handle returned by `Open`. The library **always** calls it: before reading, the loader compares `Size()` against `MaxFileSize`.
+
+A minimal in-memory mock therefore needs `Open`, `LookupEnv`, `Setenv`, and `Unsetenv`, but the `File` returned by `Open` must implement `Stat` and report the real size. Returning `(nil, nil)` crashes the size pre-check with a nil pointer dereference; returning an error such as `errors.ErrUnsupported` makes the file fail to load.
 
 ```go
 type MockFileSystem struct {
@@ -474,21 +479,40 @@ type MockFileSystem struct {
 
 // MockFile implements env.File interface (for testing)
 type MockFile struct {
+    name   string
+    size   int64
     reader *strings.Reader
 }
 
-func (f *MockFile) Read(p []byte) (n int, err error)   { return f.reader.Read(p) }
-func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, errors.ErrUnsupported }
-func (f *MockFile) Close() error                       { return nil }
-func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, errors.ErrUnsupported }
-func (f *MockFile) Sync() error                        { return nil }
+func (f *MockFile) Read(p []byte) (n int, err error)  { return f.reader.Read(p) }
+func (f *MockFile) Write(p []byte) (n int, err error) { return 0, errors.ErrUnsupported }
+func (f *MockFile) Close() error                      { return nil }
+func (f *MockFile) Sync() error                       { return nil }
+
+// Stat must report the real size: the loader uses it for the MaxFileSize pre-check
+func (f *MockFile) Stat() (os.FileInfo, error) {
+    return &mockFileInfo{name: f.name, size: f.size}, nil
+}
+
+// mockFileInfo implements os.FileInfo
+type mockFileInfo struct {
+    name string
+    size int64
+}
+
+func (i *mockFileInfo) Name() string       { return i.name }
+func (i *mockFileInfo) Size() int64        { return i.size }
+func (i *mockFileInfo) Mode() os.FileMode  { return 0644 }
+func (i *mockFileInfo) ModTime() time.Time { return time.Time{} }
+func (i *mockFileInfo) IsDir() bool        { return false }
+func (i *mockFileInfo) Sys() interface{}   { return nil }
 
 func (m *MockFileSystem) Open(name string) (env.File, error) {
     content, ok := m.files[name]
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{reader: strings.NewReader(content)}, nil
+    return &MockFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
@@ -496,10 +520,11 @@ func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.
 }
 
 func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
-    if _, ok := m.files[name]; !ok {
+    content, ok := m.files[name]
+    if !ok {
         return nil, os.ErrNotExist
     }
-    return nil, nil
+    return &mockFileInfo{name: name, size: int64(len(content))}, nil
 }
 
 func (m *MockFileSystem) MkdirAll(path string, perm os.FileMode) error { return nil }
@@ -551,6 +576,8 @@ type File interface {
 
 Read, Write, and Close come from the embedded `io` interfaces. `File.Stat` and `File.Sync` are the file-specific operations.
 
+`File.Stat` is not optional: before reading, the loader uses it for the `MaxFileSize` pre-check, and `Size()` must report the real content length.
+
 ---
 
 ### DefaultFileSystem
@@ -581,15 +608,24 @@ func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
 ```
 
 **Parameters:**
-- `w` - output target (e.g. `os.Stdout`, a file)
+- `w` - output target such as an opened file. Must be a non-nil writer: passing nil makes `Log` panic with a nil pointer dereference (reached through the auditor, that panic is recovered as an error and the event is lost)
 
 ```go
-handler := env.NewJSONAuditHandler(os.Stdout)
+f, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+handler := env.NewJSONAuditHandler(f)
+// loader.Close() closes the handler, which in turn closes f
 ```
+
+::: warning The writer gets closed
+`JSONAuditHandler.Close()` calls `Close()` on the writer when it implements `io.Closer`. Do not pass `os.Stdout` or any other writer you still need afterwards, or `loader.Close()` closes it too. `NewLogAuditHandler` does not close the underlying writer.
+:::
 
 **Output example:**
 ```json
-{"timestamp":"2024-01-15T10:30:00Z","action":"load","key":"API_KEY","success":true}
+{"timestamp":"2024-01-15T10:30:00Z","action":"set","key":"[MASKED]","success":true,"masked":true}
 ```
 
 ---
@@ -614,10 +650,13 @@ handler := env.NewLogAuditHandler(logger)
 
 **Output example:**
 ```text
-[AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env
+[AUDIT] 2024/01/15 10:30:00 action=parse success=true reason="parsed: .env"
+[AUDIT] 2024/01/15 10:30:00 action=set key=[MASKED] success=true reason="loaded"
+[AUDIT] 2024/01/15 10:30:00 action=file_access success=true reason="file loaded: .env" duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="loaded files" duration=1.23ms
 ```
 
-Events are emitted as key-value pairs: `action`, `key`, `success`, `reason`, plus optional `file` and `duration`. The prefix and timestamp depend on the `log.Logger` you pass in. See [NewLogAuditHandler](./factory#newlogaudithandler) for the full format.
+Events are emitted as key-value pairs: `action`, `success`, `reason` (quoted), plus optional `key`, `file` (quoted), and `duration`. `ActionLoad` and successful `ActionParse` events carry no key name; `ActionSet` does, as does a failing `ActionParse` (a duplicate key or an over-long key). Sensitive keys are masked to `[MASKED]` by `MaskValue`. The prefix and timestamp depend on the `log.Logger` you pass in. See [NewLogAuditHandler](./factory#newlogaudithandler) for the full format.
 
 ---
 
@@ -633,9 +672,9 @@ func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 - `ch` - channel that receives the events
 
 :::warning Channel ownership
-`ChannelAuditHandler` does **not own** the channel, and `Close()` does **not** close it. The caller must close the channel to signal the receiver to stop.
+`ChannelAuditHandler` does **not own** the channel, and `Close()` does **not** close it. The caller must close the channel to signal the receiver to stop, and only after the loader using this handler is closed with no `Log` call in flight. Closing early makes the next `Log` panic with send on a closed channel.
 
-`Log()` blocks when the channel buffer is full, so pass a buffered channel. For automatic channel lifecycle management, use [NewCloseableChannelHandler](./factory#newcloseablechannelhandler).
+A nil channel does not block forever: `Log()` returns an error for every event and the event is dropped (the error only reaches callers when `AuditFailClosed` is enabled). With a full buffer, `Log()` blocks, so pass a buffered channel. For automatic channel lifecycle management, use [NewCloseableChannelHandler](./factory#newcloseablechannelhandler).
 :::
 
 ```go

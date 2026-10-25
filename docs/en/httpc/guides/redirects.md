@@ -55,10 +55,15 @@ The five status codes differ in method rewriting and body handling:
 | 307 | Temporary redirect | Original method kept | Resent | Temporary jumps that must resend the body |
 | 308 | Permanent redirect | Original method kept | Resent | Permanent jumps that must resend the body |
 
-:::warning 307/308 with a body is not followed automatically
-307/308 require **replaying the request body** with the original method. The underlying net/http follows only when the request body is replayable (`GetBody` set), and HTTPC does not set that function when building requests.
+:::warning 307/308 requires a replayable request body
+307/308 require **replaying the request body** with the original method, and net/http follows only when the body is replayable (`GetBody` set). HTTPC sets `GetBody` for:
 
-A request carrying a non-empty body that receives a 307/308 is therefore **not followed automatically; the 3xx response is returned as-is** (no error). To follow such jumps, disable following with `WithFollowRedirects(false)` and loop manually, or have the server use 302/303 instead.
+- `string`, `[]byte`, JSON, XML, and multipart bodies;
+- the three replayable readers `*strings.Reader`, `*bytes.Reader`, and `*bytes.Buffer`.
+
+Such requests **are followed on 307/308, replaying the body on every hop**.
+
+A generic `io.Reader` (including `io.Pipe`) denotes a stream that cannot be rewound, so `GetBody` cannot be derived from it directly. When retries are **actually in effect for that request**, such a body is buffered into `[]byte` first (up to 100MB), which makes it replayable and followed; when it is not buffered (`Retry.MaxRetries = 0`, or a non-idempotent method that is not retried because `RetryNonIdempotent` is off), a 307/308 is **not followed and the 3xx response is returned as-is** (no error). To follow such jumps, switch to a replayable body, enable retries for that request, disable following with `WithFollowRedirects(false)` and loop manually, or have the server use 302/303 instead.
 :::
 
 :::tip 300/304 and other 3xx are outside the follow set
@@ -355,7 +360,7 @@ The whitelist and redirect-target pre-checks that apply during automatic followi
 
 | Symptom | Cause | Solution |
 |---------|-------|----------|
-| POST receives 307/308 and is not followed | The body is not replayable (`GetBody` unset); per the spec it is not followed automatically | Loop manually, or have the server use 302/303 |
+| A generic `io.Reader` body receives 307/308 and is not followed | The stream cannot be rewound and the request has no retries in effect to buffer it into `[]byte`, so `GetBody` cannot be set (same as net/http) | Switch to a `[]byte`/string/JSON body, enable retries for that request, or loop manually |
 | `WithMaxRedirects(0)` did not disable following | `0` is the "unset" sentinel and falls back to the default of 10 | Use `WithFollowRedirects(false)` |
 | A 300/399 carrying `Location` did not jump | The engine only follows 301/302/303/307/308 | Handle it with `IsRedirect()` + `Location` |
 | Query parameters "lost" after a jump | The target query string is decided entirely by `Location`; the client does not merge the original request's parameters | Have the server include the needed parameters in `Location` |

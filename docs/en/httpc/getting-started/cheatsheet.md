@@ -137,9 +137,19 @@ httpc.WithMaxRetries(3)          // 0 disables retries; max 10
 httpc.WithRetryNonIdempotent(true) // Allow retrying non-idempotent POST/PATCH (per-request override, both directions; beware replay side effects such as duplicate payments)
 httpc.WithFollowRedirects(false) // Disable redirect following
 httpc.WithMaxRedirects(5)        // Note: 0 counts as unset (falls back to the default 10); use the line above to disable following
-httpc.WithStreamBody(true)       // Only affects Download (normal requests still read the body fully into Result)
+httpc.WithStreamBody(true)       // Only affects Download (a normal request fails with ErrStreamBodyRequiresDownload)
 httpc.WithAllowPrivateIPs(true)  // Per-request SSRF exemption (intranet/localhost access)
 ```
+
+### Package-Level Routing (package-level functions only)
+
+```go
+httpc.WithProxy("http://127.0.0.1:7890")   // Route this call through the proxy
+httpc.WithSystemProxy()                    // Use system/env proxy settings for this call
+httpc.WithTLSFingerprint("chrome-windows") // Use a browser TLS fingerprint for this call
+```
+
+On an explicit `Client` instance these three options return an error; set `Config.Connection.ProxyURL` / `EnableSystemProxy` / `Security.TLSFingerprint` instead (see [Request Options](../api-reference/core/options)).
 
 ### Callbacks
 
@@ -427,8 +437,8 @@ sm.SetHeader("X-App", "demo")
 sm.UpdateFromResult(result) // Extracts Set-Cookie from the response
 ```
 
-:::warning Request options are applied twice
-Request options passed to a `DomainClient` are applied twice internally (session capture + the real request). Options should not contain side-effecting logic (counters, one-time nonces).
+:::warning Options run once; session capture is static
+Request options passed to a `DomainClient` run once. Session capture is static: `SessionManager` recognizes only `WithHeader`/`WithHeaderMap`/`WithCookies`/`WithCookieMap`/`WithCookieString`, and the headers and cookies they carry persist into the session. A `SetHeader`/`SetCookies` call inside a custom `RequestOptionFunc` is not captured — use `dc.SetHeader`/`dc.SetCookie` instead.
 :::
 
 ## Scenario Recipes

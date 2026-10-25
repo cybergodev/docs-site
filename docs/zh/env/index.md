@@ -22,8 +22,8 @@ env 是 CyberGo 的 Go 环境变量管理库，加载 `.env`、JSON、YAML 三�
 
 按需求选择入口：
 
-| 我想要... | 去哪里看 |
-|-----------|---------|
+| 需求 | 入口 |
+|------|------|
 | 5 分钟快速上手 | [快速开始](./getting-started/) |
 | 安全存储密码、密钥 | [安全概述](./security/) → [SecureValue](./api-reference/secure-value) |
 | 防止敏感数据交换到磁盘 | [内存锁定](./security/memory-locking) |
@@ -34,8 +34,11 @@ env 是 CyberGo 的 Go 环境变量管理库，加载 `.env`、JSON、YAML 三�
 | 序列化/导出配置 | [序列化](./guides/serialization) |
 | 记录安全审计日志 | [审计日志](./guides/audit-logging) |
 | 处理和匹配错误 | [错误处理](./guides/error-handling) |
+| 并发访问与生命周期管理 | [并发与生命周期](./guides/concurrency) |
 | 编写单元测试 | [测试场景](./guides/testing) |
 | 扩展自定义文件格式 | [自定义解析器](./guides/custom-parser) |
+| 查看性能数据与调优 | [性能优化](./advanced/performance) |
+| 运行官方示例 | [示例](./examples/) |
 | 上线前安全检查 | [生产检查清单](./security/production-checklist) |
 | 查看常用代码片段 | [速查表](./getting-started/cheatsheet) |
 | 查找常见问题解答 | [FAQ](./reference/faq) |

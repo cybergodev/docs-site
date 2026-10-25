@@ -34,6 +34,7 @@ env 库公开 API 的完整参考，按功能模块给出入口，并在文末�
 | `LoadWithConfig` | 按配置初始化 | [包函数](./functions#loadwithconfig) |
 | `Overload` | 后加载覆盖初始化 | [包函数](./functions#overload) |
 | `ResetDefaultLoader` | 重置默认加载器 | [包函数](./functions#resetdefaultloader) |
+| `ClearInternCache` | 释放键驻留缓存 | [包函数](./functions#clearinterncache) |
 | `GetString` | 读字符串值 | [包函数](./functions#getstring) |
 | `GetInt` | 读 int64 | [包函数](./functions#getint) |
 | `GetBool` | 读布尔值 | [包函数](./functions#getbool) |
@@ -146,7 +147,7 @@ env 库公开 API 的完整参考，按功能模块给出入口，并在文末�
 | `IsClosed` | 是否已关闭 | [SecureValue](./secure-value#isclosed) |
 | `IsMemoryLocked` | 内存是否锁定 | [SecureValue](./secure-value#ismemorylocked) |
 | `MemoryLockError` | 锁定失败错误 | [SecureValue](./secure-value#memorylockerror) |
-| `SetMemoryLockEnabled` | 全局启用内存锁 | [SecureValue](./secure-value#setmemorylockenabled) |
+| `SetMemoryLockEnabled` | 全局启用内存锁定 | [SecureValue](./secure-value#setmemorylockenabled) |
 | `IsMemoryLockEnabled` | 查询全局开关 | [SecureValue](./secure-value#ismemorylockenabled) |
 | `SetMemoryLockStrict` | 严格模式告警 | [SecureValue](./secure-value#setmemorylockstrict) |
 | `IsMemoryLockStrict` | 查询严格模式 | [SecureValue](./secure-value#ismemorylockstrict) |
@@ -210,7 +211,7 @@ env 库公开 API 的完整参考，按功能模块给出入口，并在文末�
 | `DefaultKeyPattern` | 默认键名模式 | [常量与错误](./constants#defaultkeypattern) |
 | `defaultForbiddenKeysSlice`（未导出） | 内置禁止键 | [常量与错误](./constants#defaultforbiddenkeys) |
 | `internal.Patterns`（未导出） | 敏感键模式 | [常量与错误](./constants#sensitivekeypatterns) |
-| 硬性上限（未导出） | 100MB、64KB 等 | [常量与错误](./constants#硬性上限) |
+| 硬性上限（未导出） | 100 MB、64 KB 等 | [常量与错误](./constants#硬性上限) |
 
 ### 接口
 

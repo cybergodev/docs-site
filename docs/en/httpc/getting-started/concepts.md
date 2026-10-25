@@ -193,8 +193,8 @@ Division of labor between the two components:
 - **`DomainClient`** — binds a base URL. Relative paths are joined automatically (`/users` -> `https://api.example.com/users`), while full `http(s)://` URLs are used as-is. It has built-in path-traversal protection: an error is returned if the joined result escapes the base path. Session cookies are stored in the embedded `SessionManager`, independent of `Connection.EnableCookies`.
 - **`SessionManager`** — a thread-safe session-state store (cookies + headers). `DomainClient` embeds it: before each request it injects session state, and after the response it writes `Set-Cookie` back. `SessionManager` can also be used standalone (`NewSessionManagerDefault()`).
 
-:::warning Request options are applied twice
-Request options passed to a `DomainClient` are applied **twice** internally: once to capture session state (cookies/headers) and once to perform the real request. Do not place side-effecting logic in options (counters, one-time nonces, etc.).
+:::warning Options run once; session capture is static
+Request options passed to a `DomainClient` run once. Session capture is static: `SessionManager` recognizes only `WithHeader`/`WithHeaderMap`/`WithCookies`/`WithCookieMap`/`WithCookieString`, and the headers and cookies they carry persist into the session. A `SetHeader`/`SetCookies` call inside a custom `RequestOptionFunc` is not captured.
 :::
 
 See the [Domain Client & Sessions guide](../guides/domain-session).

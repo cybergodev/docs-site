@@ -56,7 +56,7 @@ HTTPC 双层架构
 
 ## API 地图
 
-按符号类型分组的完整索引，与 `github.com/cybergodev/httpc` 包的导出面一一对应。每个条目链接到对应的详情页。
+按符号类型分组的索引，覆盖 `github.com/cybergodev/httpc` 包的主要导出面：逐项列出类型、函数与关键常量，成组的枚举常量（`ErrorType*`、`BodyKind`）与 `Default*Config()` 构造函数以组名汇总，逐项说明见链接的详情页。
 
 ### 客户端与包级函数
 
@@ -119,8 +119,8 @@ HTTPC 双层架构
 |------|------|
 | 管线类型 | `Handler`、`MiddlewareFunc`、`Chain` |
 | 中间件工厂（7 个） | `LoggingMiddleware`、`RecoveryMiddleware`、`RequestIDMiddleware`、`TimeoutMiddleware`、`HeaderMiddleware`、`MetricsMiddleware`、`AuditMiddleware` |
-| 中间件配置 | `LoggingConfig`、`RequestIDConfig`、`TimeoutMiddlewareConfig`、`HeaderConfig`、`MetricsConfig`、`AuditConfig`（各含 `Default*Config()` 构造函数） |
-| 变更器 | `RequestMutator`、`ResponseMutator`（中间件读写请求与响应的接口契约） |
+| 中间件配置 | `LoggingConfig`、`RequestIDConfig`、`TimeoutMiddlewareConfig`、`HeaderConfig`、`MetricsConfig`、`AuditConfig`，以及各自的 `DefaultLoggingConfig`、`DefaultRequestIDConfig`、`DefaultTimeoutMiddlewareConfig`、`DefaultHeaderConfig`、`DefaultMetricsConfig`、`DefaultAuditConfig` |
+| 变更器 | `RequestMutator`、`ResponseMutator`（中间件读写接口），以及只读/只写分体别名 `RequestReader`、`RequestWriter`、`ResponseReader`、`ResponseWriter` |
 
 详见 [处理器](./handler/handler-chain)、[内置中间件](./client-config/middleware)、[变更器](./handler/mutators)。
 
@@ -129,7 +129,8 @@ HTTPC 双层架构
 | 分类 | 符号 |
 |------|------|
 | 核心接口 | `Client`、`Doer`、`DomainClienter`、`RetryPolicy` |
-| 类型别名 | `RequestOption`、`ClientError`、`ErrorType`、`CertificatePinner`、`ProxyStrategy` |
+| 选项类型 | `RequestOption`（接口）、`RequestOptionFunc`（函数适配器） |
+| 类型别名 | `ClientError`、`ErrorType`、`CertificatePinner`、`ProxyStrategy` |
 | 证书固定 | `NewSPKIHashPinner`、`NewPublicKeyPinner`、`NewCertificatePinnerChain` |
 | 会话与域名 | `SessionManager`、`DomainClient`（建议通过 `DomainClienter` 接口使用） |
 | 数据类型 | `FormData`、`FileData`、`AuditEvent` |
@@ -140,10 +141,10 @@ HTTPC 双层架构
 
 | 分类 | 符号 |
 |------|------|
-| 错误类型 | `ClientError`、`ErrorType`（12 种错误类别枚举） |
+| 错误类型 | `ClientError`、`ErrorType`（12 种错误类别枚举：`ErrorTypeUnknown`、`ErrorTypeNetwork`、`ErrorTypeTimeout`、`ErrorTypeContextCanceled`、`ErrorTypeResponseRead`、`ErrorTypeTransport`、`ErrorTypeRetryExhausted`、`ErrorTypeTLS`、`ErrorTypeCertificate`、`ErrorTypeDNS`、`ErrorTypeValidation`、`ErrorTypeHTTP`） |
 | 哨兵错误（17 个） | `ErrClientClosed`、`ErrNilConfig`、`ErrInvalidHeader`、`ErrInvalidTimeout`、`ErrInvalidRetry`、`ErrInvalidMaxRedirects`、`ErrInvalidCredentials`、`ErrInvalidConnection`、`ErrInvalidSecurity`、`ErrInvalidMiddleware`、`ErrEmptyFilePath`、`ErrFileExists`、`ErrResponseBodyEmpty`、`ErrResponseBodyTooLarge`、`ErrStreamBodyRequiresDownload`、`ErrDownloadInProgress`、`ErrProxyConnectionFailed` |
 | BodyKind（6 常量） | `BodyAuto`、`BodyJSON`、`BodyXML`、`BodyForm`、`BodyBinary`、`BodyMultipart` |
-| 其他常量 | `ProxyStrategyRoundRobin` / `ProxyStrategyRandom`、`ChecksumSHA256`、审计上下文键 |
+| 其他常量 | `ProxyStrategyRoundRobin` / `ProxyStrategyRandom`、`ChecksumSHA256`、审计上下文键 `SourceIPKey` / `UserIDKey` |
 
 详见 [错误类型](./types/errors)、[常量与类型](./types/constants)。
 
@@ -179,12 +180,12 @@ result.RawBody()              // 响应体（字节）
 result.Unmarshal(&data)       // JSON 解析
 result.IsSuccess()            // 是否 2xx
 result.Meta.Duration          // 请求耗时
-result.Meta.Attempts          // 重试次数
+result.Meta.Attempts          // 总尝试次数（含首次）
 ```
 
 ## 版本兼容性
 
 - **Go 版本**：要求 Go 1.27 及以上（`go.mod` 声明 `go 1.27`）。
 - **导入路径**：`github.com/cybergodev/httpc`（包名 `httpc`，无需别名）。
-- **直接依赖**：7 个直接模块。`golang.org/x/net` 与 `golang.org/x/sys` 用于标准路径；brotli / compress / uTLS / tls-client / fhttp 仅在启用 `Security.TLSFingerprint` 时引入，用于浏览器传输层指纹伪装。
+- **直接依赖**：7 个直接模块，源码无构建标签，随包一起编译。`golang.org/x/net` 与 `golang.org/x/sys` 服务标准路径；brotli / compress / uTLS / tls-client / fhttp 服务于传输层指纹路径——导入本包即会把它们编译进依赖图，未启用 `Security.TLSFingerprint` 时只是不参与运行。
 - **API 状态**：当前全部导出符号均无 `Deprecated` 标记，处于活跃维护状态。

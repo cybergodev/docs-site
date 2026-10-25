@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Claims"
 title: "Claims - CyberGo JWT | 内置声明结构"
-description: "Claims 是 CyberGo JWT 内置声明结构，含 UserID、Username、Role、权限、作用域等业务字段与 RFC 7519 RegisteredClaims，附带字段长度、数组大小与注入模式验证约束。"
+description: "Claims 是 CyberGo JWT 的内置声明结构，包含 UserID、Username、Role、权限列表、作用域、会话与客户端标识、Extra 扩展字段，并嵌入 RFC 7519 注册声明。本页说明各字段类型、创建时的深度校验规则与长度上限、Extra 数组值的回读类型，以及主要方法签名。"
 sidebar_position: 40
 ---
 
@@ -45,16 +45,18 @@ type Claims struct {
 
 `Validate()` 方法检查 `UserID` 或 `Username` 至少有一个非空。
 
-Processor 在令牌创建和验证时会执行额外的深度验证（通过内部 `validateClaims` 函数）：
+深度字段校验只在令牌创建时执行。验证路径只调用 `Validate()`（必填字段）并清洗标准声明字符串。深度校验规则如下：
 
 | 规则 | 限制 |
 |------|------|
-| 字符串字段长度 | 最大 256 字符 |
+| 字符串字段长度 | 不超过 256 字节（UTF-8 编码后）；中文约 85 字，英文约 256 字符 |
 | 数组字段大小 | 最大 100 项 |
 | `Extra` 字段数 | 最大 50 个键 |
 | `Extra` 值类型 | 仅允许 `string`、`[]string`，嵌套 map 和其他类型拒绝 |
 | 控制字符 | 除 tab、换行、回车外的控制字符拒绝 |
 | 注入模式检测 | 包含 HTML/SQL/路径遍历等危险模式时拒绝 |
+
+`Extra` 的数组值经 `Parse` 回读为 `[]any`，而不是写入时的 `[]string`。读取时应按 `[]any` 断言，再逐项转换为 `string`。
 
 ### 方法
 
@@ -62,8 +64,16 @@ Processor 在令牌创建和验证时会执行额外的深度验证（通过内�
 |------|------|------|
 | `GetRegisteredClaims` | `func (c *Claims) GetRegisteredClaims() *RegisteredClaims` | 返回嵌入的标准字段 |
 | `Validate` | `func (c *Claims) Validate() error` | 检查 UserID 或 Username 至少有一个非空 |
+| `MarshalJSON` | `func (c *Claims) MarshalJSON() ([]byte, error)` | 实现 `json.Marshaler`，字段顺序与 `omitempty` 行为同 `encoding/json` |
+| `UnmarshalJSON` | `func (c *Claims) UnmarshalJSON(data []byte) error` | 实现 `json.Unmarshaler`，先走快速扫描，必要时回退到 `encoding/json` |
+| `AppendJSON` | `func (c *Claims) AppendJSON(dst []byte) ([]byte, error)` | 高级 API，把编码追加到 `dst` 并返回扩展后的切片 |
+| `UnmarshalFastJSON` | `func (c *Claims) UnmarshalFastJSON(data []byte) error` | 高级 API，对解码后的 JWT 载荷运行快速扫描 |
 
-除上表两个业务方法外，`Claims` 还实现了 `json.Marshaler` / `json.Unmarshaler` 等序列化管道方法：`MarshalJSON`、`UnmarshalJSON`、`AppendJSON`（向可复用缓冲区追加编码，供签名管道使用）与 `UnmarshalFastJSON`（内部快速解码钩子）。它们由库的签名与解析管道自动调用，常规业务代码无需直接调用，细节见源码 `claims_json.go`。
+`MarshalJSON` / `UnmarshalJSON` 由 `encoding/json` 与库的签名、解析管道自动调用，常规业务代码无需直接调用。
+
+::: info 仅供高级用法
+`AppendJSON` 与 `UnmarshalFastJSON` 属于高级 API（Advanced API），供分配敏感路径使用。`AppendJSON` 的字节输出与 `json.Marshal(*Claims)` 一致，只追加、不改写 `dst` 中的已有字节。`UnmarshalFastJSON` 返回非 nil 错误时，调用方有义务用 `encoding/json` 重新解码，此时接收者内容状态未定义。常规代码应改用 `MarshalJSON` / `UnmarshalJSON`。
+:::
 
 ---
 

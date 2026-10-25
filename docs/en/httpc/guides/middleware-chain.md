@@ -210,7 +210,7 @@ auditCfg.OnAudit = func(event httpc.AuditEvent) {
 httpc.AuditMiddleware(auditCfg)
 ```
 
-`AuditEvent` carries the timestamp, method, sanitized URL, status code, duration, attempt count, redirect chain, and other fields. With `SanitizeError = true`, errors are replaced with `[sanitized]` so error details cannot leak sensitive information. In JSON output the duration is emitted as the `durationMs` field (the millisecond count); `Duration` itself carries the `json:"-"` tag and is not serialized directly.
+`AuditEvent` carries the timestamp, method, sanitized URL, status code, duration, attempt count, redirect chain, and other fields. With `SanitizeError = true` (the default), the **raw request URL embedded in an error message** (including sensitive query values) is redacted while the error identity is preserved, so `errors.Is`/`errors.As` still classify the original error — the error is no longer replaced wholesale with `[sanitized]`. In JSON output the duration is emitted as the `durationMs` field (the millisecond count); `Duration` itself carries the `json:"-"` tag and is not serialized directly.
 
 Audit events can extract SourceIP and UserID from the context:
 

@@ -51,32 +51,24 @@ count := env.Len()
 // 安全值
 secret := env.GetSecure("PASSWORD")
 if secret != nil {
-    defer secret.Release()  // 或 secret.Close()
+    defer secret.Release()     // 清零 + 解锁 + 归还对象池
     value := secret.Reveal()   // 明文值（仅在需要时使用）
     masked := secret.Masked()  // 掩码（用于日志）
 }
 ```
 
+`Release()` 与 `Close()` 的区别见[内存锁定 · 优先使用 Release 而非 Close](../security/memory-locking#优先使用-release-而非-close)：`Close()` 只清零解锁，不归还对象池。
+
 ## 键名解析
 
+扁平键名、点号路径、大写点号路径三种写法等价，数组索引用 `servers.0.host` 这类路径。完整规则与转换表见[多格式配置 · 键名解析](../guides/multi-format#键名解析)。
+
 ```go
-// JSON: {"app": {"name": "myapp"}}
-// 存储为：APP_NAME=myapp
-
-// 以下方式都能访问
-env.GetString("APP_NAME")      // 扁平化键名（推荐）
-env.GetString("app.name")      // 点号路径
-env.GetString("APP.NAME")      // 大写点号路径
-
-// 数组索引
-env.GetString("servers.0.host")  // SERVERS_0_HOST
+env.GetString("APP_NAME")        // 扁平化键名（推荐）
+env.GetString("app.name")        // 点号路径 → APP_NAME
+env.GetString("APP.NAME")        // 大写点号路径
+env.GetString("servers.0.host")  // 数组索引 → SERVERS_0_HOST
 ```
-
-| 输入 | 转换为 |
-|------|--------|
-| `"database.host"` | `"DATABASE_HOST"` |
-| `"servers.0.host"` | `"SERVERS_0_HOST"` |
-| `"app.config.name"` | `"APP_CONFIG_NAME"` |
 
 ## 结构体映射
 
@@ -98,9 +90,9 @@ env.ParseInto(&cfg)
 | 预设 | 用途 | 特点 |
 |------|------|------|
 | `DefaultConfig()` | 通用 | 安全默认值 |
-| `DevelopmentConfig()` | 开发 | 宽松限制、允许覆盖、支持 YAML 语法、10MB 文件上限 |
-| `TestingConfig()` | 测试 | 覆盖已存在变量、测试隔离、64KB 文件上限 |
-| `ProductionConfig()` | 生产 | 严格验证 + 审计、不覆盖已存在变量、64KB 文件上限 |
+| `DevelopmentConfig()` | 开发 | 宽松限制、允许覆盖、支持 YAML 语法、10 MB 文件上限 |
+| `TestingConfig()` | 测试 | 覆盖已存在变量、测试隔离、64 KB 文件上限 |
+| `ProductionConfig()` | 生产 | 严格验证 + 审计、不覆盖已存在变量、64 KB 文件上限 |
 
 ```go
 cfg := env.ProductionConfig()
@@ -239,11 +231,9 @@ KEY=$$                     # 转义美元符号（得到字面量 $）
 
 ## 布尔值
 
-| 真值 | 假值 |
-|------|------|
-| `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
+真值为 `true`/`1`/`yes`/`on`/`enabled`，假值为 `false`/`0`/`no`/`off`/`disabled`，均不区分大小写。
 
-值为空串时解析为 `false`（不取默认值），无法识别的值记审计并返回默认值。
+值为空串时解析为 `false`（不取默认值），无法识别的值记审计并返回默认值。完整对照见[常见问题 · 支持哪些布尔值格式](../reference/faq#支持哪些布尔值格式)。
 
 ## 时间格式
 
@@ -266,26 +256,17 @@ DURATION=1h30m
 
 ## 测试
 
-以 `TestingConfig()` 为每个测试建独立 Loader；需要清理包级单例时在 TestMain 里调用 `ResetDefaultLoader`：
+- 每个测试用 `env.TestingConfig()` 新建独立 Loader，并清空 `Filenames` 避免隐式加载 cwd 的 `.env`。
+- 需要清理包级单例时，在 TestMain 里检查 `env.ResetDefaultLoader()` 的返回错误。
 
 ```go
-func TestExample(t *testing.T) {
-    cfg := env.TestingConfig()
-    loader, _ := env.New(cfg)
-    defer loader.Close()
-
-    loader.Set("KEY", "value")
-    // 测试...
-}
-
-func TestMain(m *testing.M) {
-    // 关闭并清空包级默认 Loader，避免用例之间互相影响
-    if err := env.ResetDefaultLoader(); err != nil {
-        log.Printf("warning: %v", err)
-    }
-    os.Exit(m.Run())
-}
+cfg := env.TestingConfig()
+cfg.Filenames = nil
+loader, _ := env.New(cfg)
+defer loader.Close()
 ```
+
+完整的 TestMain 模板与进程变量清理见[测试场景 · 清理测试状态](../guides/testing#清理测试状态)，内存文件系统见[测试场景 · 模拟文件系统](../guides/testing#模拟文件系统)。
 
 ## 内置禁止键
 

@@ -182,9 +182,9 @@ type AuditEvent struct {
     Method        string              `json:"method"`
     URL           string              `json:"url"`           // Sanitized (credentials removed)
     StatusCode    int                 `json:"statusCode"`
-    Duration      time.Duration       `json:"-"`
+    Duration      time.Duration       `json:"-"` // emitted as durationMs by MarshalJSON
     Attempts      int                 `json:"attempts"`
-    Error         error               `json:"error,omitempty"`
+    Error         error               `json:"-"` // emitted as a string "error" by MarshalJSON
     SourceIP      string              `json:"sourceIP,omitempty"`
     UserID        string              `json:"userID,omitempty"`
     RedirectChain []string            `json:"redirectChain,omitempty"`
@@ -204,7 +204,7 @@ The timeline is reconstructed from `Timestamp` (request start time) plus `Durati
 | `AuditEvent.URL` | `string` | Request URL (sanitized, credentials removed) |
 | `AuditEvent.StatusCode` | `int` | Final response status code (0 when the request errored) |
 | `AuditEvent.Duration` | `time.Duration` | Total duration covering all attempts (including retry delays) |
-| `AuditEvent.Attempts` | `int` | Number of requests sent (1 when no retry occurred) |
+| `AuditEvent.Attempts` | `int` | Number of requests sent (1 when no retry occurred; 0 when the request failed before a response arrived) |
 | `AuditEvent.Error` | `error` | Request error; serialized as a string in JSON (sanitizable via `AuditConfig.SanitizeError`) |
 | `AuditEvent.SourceIP` | `string` | Source IP (injected into context by the application via `SourceIPKey`) |
 | `AuditEvent.UserID` | `string` | User ID (injected into context by the application via `UserIDKey`) |
@@ -228,10 +228,10 @@ The JSON output therefore carries a single, readable duration field, `durationMs
 ```go
 type AuditConfig struct {
     OnAudit        func(event AuditEvent) // Audit callback; nil means middleware is a no-op
-    Format         string                 // "text" or "json"
+    Format         string                 // Reserved, no effect: events reach OnAudit as AuditEvent, rendering is the callback's choice
     IncludeHeaders bool                   // Include request/response headers
     MaskHeaders    []string               // Header names to mask (e.g. "Authorization", "Cookie")
-    SanitizeError  bool                   // Sanitize error messages (replace with "[sanitized]")
+    SanitizeError  bool                   // Redact raw URLs and sensitive query values in error messages (keeps errors.Is/As classification)
 }
 ```
 
@@ -240,10 +240,10 @@ type AuditConfig struct {
 | Field | Default | Description |
 |-------|---------|-------------|
 | `AuditConfig.OnAudit` | `nil` | Audit callback; when nil, the middleware is a no-op |
-| `AuditConfig.Format` | `"text"` | Output-format hint (`"text"` / `"json"`), consumed by the callback; the middleware does not branch on it |
+| `AuditConfig.Format` | `""` | Reserved field, left uninitialized (no effect); the callback owns the output format, e.g. `json.Marshal(event)` |
 | `AuditConfig.IncludeHeaders` | `false` | Whether to include request/response headers in the audit log |
 | `AuditConfig.MaskHeaders` | Six standard sensitive headers | `Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `X-Auth-Token`, `Proxy-Authorization`; matches are replaced with `[REDACTED]` |
-| `AuditConfig.SanitizeError` | `true` | Error messages replaced with `[sanitized]` |
+| `AuditConfig.SanitizeError` | `true` | Redacts raw request URLs (and sensitive query values) embedded in error messages while preserving `errors.Is`/`errors.As` classification |
 
 ## Context Keys
 
@@ -270,9 +270,8 @@ func main() {
 	ctx := context.WithValue(context.Background(), httpc.SourceIPKey, "192.168.1.100")
 	ctx = context.WithValue(ctx, httpc.UserIDKey, "user-789")
 
-	// Configure the audit middleware
+	// Configure the audit middleware (the callback owns the output format)
 	auditCfg := httpc.DefaultAuditConfig()
-	auditCfg.Format = "json"
 	auditCfg.IncludeHeaders = true
 	auditCfg.OnAudit = func(event httpc.AuditEvent) {
 		fmt.Printf("[AUDIT] %s %s -> %d (%v) src=%s user=%s\n",

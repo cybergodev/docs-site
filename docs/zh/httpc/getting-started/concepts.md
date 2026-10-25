@@ -195,8 +195,8 @@ _, _ = dc.Get("/me")                            // 自动带上会话 Cookie
 - **`DomainClient`** — 绑定 base URL。相对路径自动拼接（`/users` → `https://api.example.com/users`），传入完整 `http(s)://` URL 时直接使用。内置路径穿越防护：拼接结果逃出 base 路径范围时返回错误。会话 Cookie 由内嵌的 `SessionManager` 存储，与 `Connection.EnableCookies` 无关。
 - **`SessionManager`** — 线程安全的会话状态存储（Cookie + 请求头）。`DomainClient` 内嵌它：请求前注入会话状态，响应后回写 `Set-Cookie`。`SessionManager` 也可脱离 `DomainClient` 单独使用（`NewSessionManagerDefault()`）。
 
-:::warning 选项会执行两次
-`DomainClient` 的请求选项在内部会被应用**两次**：一次捕获会话状态（Cookie/请求头），一次执行真实请求。不应在选项中放置带副作用的逻辑（计数器、一次性 nonce 等）。
+:::warning 选项只执行一次，会话捕获是静态的
+`DomainClient` 的请求选项只执行一次。会话捕获由 `SessionManager` 静态完成：只识别 `WithHeader`/`WithHeaderMap`/`WithCookies`/`WithCookieMap`/`WithCookieString`，这些头与 Cookie 会持久化进会话；自定义 `RequestOptionFunc` 里的 `SetHeader`/`SetCookies` 不会被捕获。
 :::
 
 详见 [域名会话指南](../guides/domain-session)。

@@ -78,18 +78,22 @@ func (m *MockFileSystem) Open(name string) (env.File, error) {
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{content: content}, nil
+    // Pass the real size: the loader uses Stat().Size() for the MaxFileSize pre-check
+    return &MockFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
     return m.Open(name)
 }
 
+// The library never calls MockFileSystem.Stat, but the return value must still
+// be safe to use — never return a nil FileInfo with a nil error
 func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
-    if _, ok := m.files[name]; !ok {
+    content, ok := m.files[name]
+    if !ok {
         return nil, os.ErrNotExist
     }
-    return nil, nil
+    return &mockFileInfo{name: name, size: int64(len(content))}, nil
 }
 
 func (m *MockFileSystem) MkdirAll(path string, perm os.FileMode) error { return nil }
@@ -106,48 +110,45 @@ func (m *MockFileSystem) Unsetenv(key string) error           { delete(m.env, ke
 func (m *MockFileSystem) LookupEnv(key string) (string, bool) { val, ok := m.env[key]; return val, ok }
 
 // MockFile is an in-memory implementation of env.File
-// (Read/Write/Close/Sync/Stat). The loader calls Stat() right after
-// opening for a size pre-check; a missing Stat would panic.
+// (Read/Write/Close/Sync/Stat). The loader calls MockFile.Stat() right after
+// opening for a size pre-check; returning an error there fails the load.
 type MockFile struct {
-    content string
-    offset  int64 // read offset, supports chunked reads
+    name   string
+    size   int64
+    reader *strings.Reader // strings.Reader tracks the read offset for chunked reads
 }
 
-func (f *MockFile) Read(p []byte) (int, error) {
-    if f.offset >= int64(len(f.content)) {
-        return 0, io.EOF
-    }
-    n := copy(p, f.content[f.offset:])
-    f.offset += int64(n)
-    return n, nil
-}
+func (f *MockFile) Read(p []byte) (int, error) { return f.reader.Read(p) }
 
 // Read-only mock: the load path never writes
-func (f *MockFile) Write(p []byte) (int, error) { return len(p), nil }
+func (f *MockFile) Write(p []byte) (int, error) { return 0, errors.ErrUnsupported }
 
 func (f *MockFile) Close() error { return nil }
 func (f *MockFile) Sync() error  { return nil }
 
-// Size must equal len(content); otherwise loadFileLocked's
-// MaxFileSize pre-check misjudges the file size
+// Stat must return the real size (Open passes size == len(content));
+// otherwise loadFileLocked's MaxFileSize pre-check misjudges the file size
 func (f *MockFile) Stat() (os.FileInfo, error) {
-    return mockFileInfo{size: int64(len(f.content))}, nil
+    return &mockFileInfo{name: f.name, size: f.size}, nil
 }
 
 // mockFileInfo minimally implements os.FileInfo; only Size carries meaning
 type mockFileInfo struct {
+    name string
     size int64
 }
 
-func (i mockFileInfo) Name() string       { return "mock" }
-func (i mockFileInfo) Size() int64        { return i.size }
-func (i mockFileInfo) Mode() os.FileMode  { return 0444 }
-func (i mockFileInfo) ModTime() time.Time { return time.Time{} }
-func (i mockFileInfo) IsDir() bool        { return false }
-func (i mockFileInfo) Sys() any           { return nil }
+func (i *mockFileInfo) Name() string       { return i.name }
+func (i *mockFileInfo) Size() int64        { return i.size }
+func (i *mockFileInfo) Mode() os.FileMode  { return 0444 }
+func (i *mockFileInfo) ModTime() time.Time { return time.Time{} }
+func (i *mockFileInfo) IsDir() bool        { return false }
+func (i *mockFileInfo) Sys() any           { return nil }
 ```
 
-The mock file returned by `Open` must implement all five methods of `env.File`: Read, Write, Close, Sync, and Stat (the interface itself declares only `Sync` and `Stat`; the other three come from the embedded `io.Reader`, `io.Writer`, and `io.Closer`). `Stat` is required: before reading a file, the loader calls `file.Stat()` for a size pre-check and returns `ErrFileTooLarge` when `Size()` exceeds `MaxFileSize`. `mockFileInfo.Size()` must therefore return `len(content)`.
+The mock file returned by `Open` must implement all five methods of `env.File`: Read, Write, Close, Sync, and Stat (the interface itself declares only `Sync` and `Stat`; the other three come from the embedded `io.Reader`, `io.Writer`, and `io.Closer`). `Stat` is required: before reading a file, the loader calls `file.Stat()` for a size pre-check and returns `ErrFileTooLarge` when `Size()` exceeds `MaxFileSize`. `Open` must therefore pass the real length as `MockFile.size`, which `mockFileInfo.Size()` returns.
+
+The [Interfaces](../api-reference/interfaces) and [Factory](../api-reference/factory) pages in api-reference use the same mock — read them side by side.
 
 ### Using in Tests
 
@@ -201,7 +202,7 @@ func TestExample(t *testing.T) {
 }
 ```
 
-`ResetDefaultLoader` returns an `error`. It clears and closes the global default loader, and the return value is the old loader's `Close()` error (non-nil when cleanup during close fails). It returns nil when no global loader has been initialized. Ignoring the error only means the old loader's cleanup failed: the global state is still cleared, so `env.Load()` can be called again afterwards.
+`ResetDefaultLoader` returns an `error`. It clears and closes the default loader, and the return value is the old loader's `Close()` error (non-nil when cleanup during close fails). It returns nil when no default loader has been initialized. Ignoring the error only means the old loader's cleanup failed: the global state is still cleared, so `env.Load()` can be called again afterwards.
 
 ### Cleaning Up Environment Variables
 

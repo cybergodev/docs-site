@@ -56,7 +56,7 @@ HTTPC two-layer architecture
 
 ## API Map
 
-A complete index grouped by symbol type, matching the exported surface of the `github.com/cybergodev/httpc` package one-to-one. Each entry links to its detail page.
+An index grouped by symbol type, covering the main exported surface of `github.com/cybergodev/httpc`: types, functions, and key constants are listed individually, while enumerations (`ErrorType*`, `BodyKind`) and the `Default*Config()` constructors are summarized as groups. Per-symbol details live on the linked pages.
 
 ### Client and Package-Level Functions
 
@@ -68,7 +68,7 @@ A complete index grouped by symbol type, matching the exported surface of the `g
 | [`SetDefaultClient`](./core/functions#setdefaultclient) / [`CloseDefaultClient`](./core/functions#closedefaultclient) | Replace and close the default client |
 | [`CloseRoutedClients`](./core/functions#closeroutedclients) | Close every package-level routed client (created and cached by `WithProxy`/`WithSystemProxy`/`WithTLSFingerprint`) |
 | [`NewDomain`](./core/functions#newdomain) / [`NewDomainDefault`](./core/functions#newdomaindefault) | Create domain clients |
-| [`SetSecurityWarnOutput`](./core/functions#setsecuritywarnoutput) | Redirect security-warning output |
+| [`SetSecurityWarnOutput`](./core/functions#setsecuritywarnoutput) | Change the destination of security-warning output |
 | [`FormatBytes`](./core/functions#formatbytes) / [`FormatSpeed`](./core/functions#formatspeed) | Format byte counts / speeds |
 
 ### Request Options (32)
@@ -119,8 +119,8 @@ See [Configuration](./client-config/config), [File Download](./client-config/dow
 |----------|---------|
 | Pipeline types | `Handler`, `MiddlewareFunc`, `Chain` |
 | Middleware factories (7) | `LoggingMiddleware`, `RecoveryMiddleware`, `RequestIDMiddleware`, `TimeoutMiddleware`, `HeaderMiddleware`, `MetricsMiddleware`, `AuditMiddleware` |
-| Middleware configs | `LoggingConfig`, `RequestIDConfig`, `TimeoutMiddlewareConfig`, `HeaderConfig`, `MetricsConfig`, `AuditConfig` (each with a `Default*Config()` constructor) |
-| Mutators | `RequestMutator`, `ResponseMutator` (the interface contract by which middleware reads and writes requests and responses) |
+| Middleware configs | `LoggingConfig`, `RequestIDConfig`, `TimeoutMiddlewareConfig`, `HeaderConfig`, `MetricsConfig`, `AuditConfig`, with their `DefaultLoggingConfig`, `DefaultRequestIDConfig`, `DefaultTimeoutMiddlewareConfig`, `DefaultHeaderConfig`, `DefaultMetricsConfig`, `DefaultAuditConfig` |
+| Mutators | `RequestMutator`, `ResponseMutator` (the interface contract by which middleware reads and writes requests and responses), plus the split aliases `RequestReader`, `RequestWriter`, `ResponseReader`, `ResponseWriter` |
 
 See [Handler Pipeline](./handler/handler-chain), [Built-in Middleware](./client-config/middleware), and [Mutators](./handler/mutators) for details.
 
@@ -129,7 +129,8 @@ See [Handler Pipeline](./handler/handler-chain), [Built-in Middleware](./client-
 | Category | Symbols |
 |----------|---------|
 | Core interfaces | `Client`, `Doer`, `DomainClienter`, `RetryPolicy` |
-| Type aliases | `RequestOption`, `ClientError`, `ErrorType`, `CertificatePinner`, `ProxyStrategy` |
+| Option types | `RequestOption` (interface), `RequestOptionFunc` (function adapter) |
+| Type aliases | `ClientError`, `ErrorType`, `CertificatePinner`, `ProxyStrategy` |
 | Certificate pinning | `NewSPKIHashPinner`, `NewPublicKeyPinner`, `NewCertificatePinnerChain` |
 | Session and domain | `SessionManager`, `DomainClient` (recommended for use through the `DomainClienter` interface) |
 | Data types | `FormData`, `FileData`, `AuditEvent` |
@@ -140,10 +141,10 @@ See [Interfaces](./types/interfaces), [Domain Client](./client-config/domain-cli
 
 | Category | Symbols |
 |----------|---------|
-| Error types | `ClientError`, `ErrorType` (enum of 12 error categories) |
+| Error types | `ClientError`, `ErrorType` (12 categories: `ErrorTypeUnknown`, `ErrorTypeNetwork`, `ErrorTypeTimeout`, `ErrorTypeContextCanceled`, `ErrorTypeResponseRead`, `ErrorTypeTransport`, `ErrorTypeRetryExhausted`, `ErrorTypeTLS`, `ErrorTypeCertificate`, `ErrorTypeDNS`, `ErrorTypeValidation`, `ErrorTypeHTTP`) |
 | Sentinel errors (17) | `ErrClientClosed`, `ErrNilConfig`, `ErrInvalidHeader`, `ErrInvalidTimeout`, `ErrInvalidRetry`, `ErrInvalidMaxRedirects`, `ErrInvalidCredentials`, `ErrInvalidConnection`, `ErrInvalidSecurity`, `ErrInvalidMiddleware`, `ErrEmptyFilePath`, `ErrFileExists`, `ErrResponseBodyEmpty`, `ErrResponseBodyTooLarge`, `ErrStreamBodyRequiresDownload`, `ErrDownloadInProgress`, `ErrProxyConnectionFailed` |
 | BodyKind (6 constants) | `BodyAuto`, `BodyJSON`, `BodyXML`, `BodyForm`, `BodyBinary`, `BodyMultipart` |
-| Other constants | `ProxyStrategyRoundRobin` / `ProxyStrategyRandom`, `ChecksumSHA256`, audit context keys |
+| Other constants | `ProxyStrategyRoundRobin` / `ProxyStrategyRandom`, `ChecksumSHA256`, audit context keys `SourceIPKey` / `UserIDKey` |
 
 See [Error Types](./types/errors) and [Constants and Types](./types/constants) for details.
 
@@ -179,12 +180,12 @@ result.RawBody()              // Response body (bytes)
 result.Unmarshal(&data)       // JSON parsing
 result.IsSuccess()            // Is 2xx
 result.Meta.Duration          // Request duration
-result.Meta.Attempts          // Retry count
+result.Meta.Attempts          // Total attempts (including the first)
 ```
 
 ## Version Compatibility
 
 - **Go version**: requires Go 1.27 or later (`go.mod` declares `go 1.27`).
 - **Import path**: `github.com/cybergodev/httpc` (package name `httpc`, no alias needed).
-- **Direct dependencies**: 7 direct modules. `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp are pulled in only when `Security.TLSFingerprint` is enabled, for browser transport fingerprinting.
+- **Direct dependencies**: 7 direct modules, all compiled with the package (the source has no build tags). `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp serve the transport-fingerprint path — importing the package puts them in the build graph, and they simply stay idle at runtime unless `Security.TLSFingerprint` is enabled.
 - **API status**: no exported symbol currently carries a `Deprecated` marker; the library is under active maintenance.

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "速率限制"
 title: "速率限制 - CyberGo JWT | 令牌桶限流"
-description: "速率限制指南：基于令牌桶配置签发接口每窗口最大请求数，讲解限流键的 Subject、UserID 与 RateLimitKeyer 优先级查找，支持内置与自定义分布式限流实现。"
+description: "速率限制指南：基于令牌桶配置签发接口每窗口的最大请求数，讲解限流键的 Subject、UserID 与 RateLimitKeyer 优先级、配置上界校验，并给出内置限流器容量策略与 Redis 分布式实现。"
 sidebar_position: 40
 ---
 
@@ -19,28 +19,13 @@ Create(claims) → 提取限流 key → 检查 RateLimitProvider → 允许/拒�
 
 ### 令牌桶算法详解
 
-内置 [`RateLimiter`](../api-reference/types#ratelimiter) 采用令牌桶（token bucket）算法，而非简单的固定窗口计数器。每个限流 key 对应一个独立的桶，桶内记录剩余令牌数 `tokens` 和上次补充时间 `lastRefill`。
-
-**按比例补充令牌**：每次请求时，根据自上次补充以来经过的时间按比例计算应补充的令牌数：
-
-```text
-tokensToAdd = (maxRate × elapsed) / window
-```
-
-其中 `elapsed` 是自上次补充以来的纳秒数，`window` 是限流窗口。补充后令牌数不超过 `maxRate`（上限），保证不会超出配置速率。
-
-**残余时间保留**：补充令牌后，`lastRefill` 并非重置为当前时间，而是只前进与所补充令牌对应的「已消耗」时间：
-
-```text
-consumedNano = (tokensToAdd × window) / maxRate
-lastRefill += consumedNano
-```
-
-这种机制避免了令牌补充不均匀——若每次都将 `lastRefill` 重置为 `now`，未计入的残余时间会被丢弃，导致实际补充速率偏高。
+内置 [`RateLimiter`](../api-reference/types#ratelimiter) 采用令牌桶算法：每个限流 key 一个桶，令牌按经过时间比例补充，上限为 `maxRate`。补充后只推进与已补充令牌对应的时间，保留残余时间，避免实际速率偏高。
 
 :::tip 令牌桶 vs 固定窗口
 固定窗口计数器在窗口边界处会突发放行 `maxRate` 个请求（如第 59 秒放行 100 次、第 1 秒又放行 100 次，瞬间 200 次）。令牌桶按比例持续补充令牌，流量曲线更平滑，更适合 API 限流场景。
 :::
+
+算法语义与 `Allow` / `AllowN` 的完整说明见 [内置类型 → RateLimiter](../api-reference/types#ratelimiter)。
 
 ## 配置
 
@@ -57,6 +42,14 @@ cfg.RateLimitWindow = time.Minute    // 时间窗口
 | `EnableRateLimit` | `false` | 是否启用限流 |
 | `RateLimitRate` | `100` | 窗口内最大请求数 |
 | `RateLimitWindow` | `1m` | 时间窗口 |
+
+`EnableRateLimit = true` 时，`Config.Validate()` 会拒绝以下配置（返回 `ErrInvalidConfig`）：
+
+| 检查 | 条件 |
+|------|------|
+| 负数 | `RateLimitRate < 0` 或 `RateLimitWindow < 0` |
+| 次数上界 | `RateLimitRate > 1000000` |
+| 窗口上界 | `RateLimitWindow > 30 天` |
 
 :::tip 注意
 限流对所有令牌签发方法生效：`Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()`。不影响 `Parse()` 和 `ParseInto()`。

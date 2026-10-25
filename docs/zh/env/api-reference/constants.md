@@ -65,7 +65,7 @@ const (
 
 ```go
 cfg := env.DefaultConfig()
-cfg.MaxFileSize = 200 * 1024 * 1024  // 超过 100MB 上限
+cfg.MaxFileSize = 200 * 1024 * 1024  // 超过 100 MB 上限
 
 if err := cfg.Validate(); err != nil {
     // 返回错误：MaxFileSize exceeds hard limit
@@ -481,7 +481,7 @@ cfg.ForbiddenKeys = []string{"MY_SENSITIVE_VAR"}
 
 **匹配规则：**
 - 键名包含任一模式即被识别为敏感（子串匹配）
-- 例外：短模式 `AUTH`、`PAN`、`PWD`、`USERNAME` 只在**标识符边界**匹配（SEC-006）
+- 例外：短模式 `AUTH`、`PAN`、`PWD`、`USERNAME` 只在**标识符边界**匹配（SEC-06）
 - 边界判定只看字母与数字，下划线算边界。`DB_AUTH`、`AUTH_TOKEN`、`MYSQL_PWD` 命中；`AUTHOR`、`AUTHORITY`、`COMPANY` 不命中
 
 **使用示例：**

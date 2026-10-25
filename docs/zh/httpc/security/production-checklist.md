@@ -108,7 +108,7 @@ cfg.Connection.MaxConnsPerHost = 10 // 单主机连接上限（idle + active）
 cfg := httpc.DefaultConfig()
 cfg.Security.MaxResponseBodySize = 5 * 1024 * 1024     // 5MB 响应
 cfg.Security.MaxDecompressedBodySize = 50 * 1024 * 1024 // 50MB 解压
-cfg.Security.MaxRequestBodySize = 2 * 1024 * 1024       // 2MB 上传（默认 0 不限制！）
+cfg.Security.MaxRequestBodySize = 2 * 1024 * 1024       // 2MB 上传（默认 0，即不限制）
 cfg.Connection.MaxResponseHeaderBytes = 512 * 1024       // 512KB 响应头（默认 0 = Go 标准 1MB）
 ```
 

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Custom Claims"
 title: "Custom Claims - CyberGo JWT | Business Claims"
-description: "Implement the CustomClaims interface to define business claim fields, contrast built-in Claims with custom validation, and apply ParseInto and RefreshInto."
+description: "Implement CustomClaims for business fields, compare built-in and custom Claims on type safety and validation, and use ParseInto and RefreshInto."
 sidebar_position: 20
 ---
 
 # Custom Claims
 
-The built-in [`Claims`](../api-reference/claims#claims) struct covers common scenarios, but business systems often need additional fields. Implement the `CustomClaims` interface to define your own Claims struct.
+The built-in [`Claims`](../api-reference/claims#claims) struct covers common scenarios, but business systems usually need additional fields. Implement the `CustomClaims` interface to define a custom Claims structure.
 
 ## CustomClaims Interface
 
@@ -27,30 +27,36 @@ Only two methods to implement:
 
 ## Extra Field vs Custom Type
 
-There are two ways to store business fields: use the built-in [`Claims.Extra`](../api-reference/claims#claims) field, or define a custom Claims type. Each has trade-offs.
+There are two ways to store business fields: the built-in [`Claims.Extra`](../api-reference/claims#claims) field, or a custom Claims type. Each has trade-offs, and the table below also covers their validation differences.
 
 ### Comparison
 
-| Dimension | `Claims.Extra` | Custom Claims Type |
-|-----------|----------------|--------------------|
-| Type safety | No, values are `any`, require type assertion | Yes, compile-time type checking |
-| IDE completion | No, map keys have no hints | Yes, fields auto-complete |
-| Custom validation | No, only built-in deep validation | Yes, freely implemented in `Validate()` |
-| Deep validation | Yes, length/injection/control characters | No, only registered claims sanitization |
-| Nested structures | No, nested maps not supported | Yes, arbitrary structs |
-| Use case | A few optional extra fields | Core business fields, need custom validation |
+| Dimension | Built-in `*Claims` (including `Extra`) | Custom Claims Type |
+|-----------|----------------------------------------|--------------------|
+| Type safety | No: `Extra` values are `any` and need type assertions | Yes: compile-time type checking |
+| IDE completion | No: map keys in `Extra` get no hints | Yes: fields auto-complete |
+| Validation path | Only `Validate()` and standard-claim string sanitization | Same |
+| Creation-time deep validation | Yes: length ≤ 256 bytes, ≤ 100 array items, injection patterns, control characters | No: only `Validate()` and standard-claim sanitization |
+| `Extra` field limits | Yes: ≤ 50 keys, only `string`/`[]string` | Not applicable |
+| Custom validation | No: only the library's built-in rules | Yes: implement freely in `Validate()` |
+| Nested structures | No: `Extra` rejects nested maps | Yes: arbitrary structs |
+| Use case | A few optional additional fields | Core business fields, custom validation needed |
+
+Deep field validation runs only when a token is created. The verification path only calls `Validate()` for required fields and sanitizes standard-claim strings.
 
 ### Limitations of the Extra Field
 
-The built-in `Claims.Extra` is a `map[string]any`; the Processor performs deep validation on it during token creation:
+The built-in `Claims.Extra` is a `map[string]any`, and the Processor deeply validates it **when a token is created**:
 
 | Limit | Constraint |
 |-------|------------|
 | Max key count | 50 |
 | Allowed value types | Only `string` and `[]string` |
 | Nested maps | Rejected (returns `ValidationError`) |
-| String value length | ≤ 256 characters |
+| String value length | ≤ 256 bytes after UTF-8 encoding |
 | Injection pattern detection | Same as other string fields |
+
+An array value read back through `Parse` has type `[]any`, not `[]string`; each element needs its own assertion when read.
 
 ```go
 // ✅ Valid — only string and []string values
@@ -71,8 +77,10 @@ claims = &jwt.Claims{
 ```
 
 ::: tip How to Choose
-- **A few, optional, flat** pieces of information (e.g. `team_id`, `tags`) → use `Extra`, enjoying the library's built-in deep validation with no need to write your own checks.
-- **Core business fields** or when you need **enum/cross-field constraints/type safety** → define a custom Claims type and implement business rules in `Validate()`. Note: custom struct fields are not deep-validated; you must add your own length and injection checks (see [Security Impact and Validation Template](#security-impact-and-validation-template) below).
+- **A few, optional, flat** pieces of information (e.g. `team_id`, `tags`): use `Extra`. The library validates it deeply, so no custom checks are needed.
+- **Core business fields**, or cases needing **enums, cross-field constraints, or type safety**: define a custom Claims type and implement business rules in `Validate()`.
+
+Custom struct fields are not deeply validated; add length and injection checks manually. See [Security Impact and Validation Template](#security-impact-and-validation-template) below.
 :::
 
 ## Defining Custom Claims
@@ -248,22 +256,14 @@ Descriptive errors returned from `Validate()` are wrapped by `ErrInvalidClaims`.
 
 ## Validation Differences
 
-Built-in `*Claims` and custom types follow different validation paths:
+Built-in `*Claims` and custom types follow two different validation paths; the full comparison is in the [Comparison](#comparison) table above. Two points matter.
 
-| Validation | `*Claims` | Custom Types |
-|-----------|-----------|--------------|
-| `Validate()` method | ✅ | ✅ |
-| String length limit (256 chars) | ✅ | ❌ |
-| Array size limit (100 items) | ✅ | ❌ |
-| Injection pattern detection | ✅ | ❌ |
-| Control character filtering | ✅ | ❌ |
-| `Extra` field restrictions | ✅ | N/A |
-| Registered claims sanitization | ✅ | ✅ |
+**At creation**: built-in `*Claims` undergoes deep validation (length, array size, injection patterns, control characters); a custom type only runs `Validate()` and standard-claim string sanitization.
+
+**At verification**: both only call `Validate()` and sanitize standard-claim strings, without repeating deep validation.
 
 :::warning Security Impact
-Business fields in custom Claims are **not** deep-validated. This means: if malicious input passes signature verification and is parsed into a custom struct, dangerous content such as `<script>` tags, SQL fragments, and overlong strings are stored in the token as-is — the built-in `*Claims`'s 46 injection pattern checks, 256-character length limit, and control character filtering do not apply.
-
-Please implement all necessary checks in the `Validate()` method, otherwise your tokens may become a vehicle for XSS/SQL injection.
+Business fields of custom Claims are **not** deeply validated. Malicious input that passes signature verification is parsed into a custom struct unchanged, including `<script>` tags, SQL fragments, and overlong strings. The built-in `*Claims` injection detection, 256-byte length limit, and control character filtering do not apply. Implement the necessary checks in `Validate()`, otherwise a token can become a vehicle for XSS or SQL injection.
 :::
 
 ### Security Impact and Validation Template
@@ -279,9 +279,9 @@ import (
 	"strings"
 )
 
-const maxClaimLength = 256
+const maxClaimLength = 256 // Bytes (UTF-8), matching the library's built-in limit
 
-// dangerousSubstrings lists high-risk substrings overlapping with the library's built-in detection; add or remove as needed for your business.
+// dangerousSubstrings lists high-risk substrings that overlap the library's built-in detection; adjust per business needs.
 var dangerousSubstrings = []string{
 	"<script", "javascript:", "onerror=", "onload=",
 	"drop table", "union select", "../", "/etc/passwd",

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo JWT | 哨兵错误匹配"
-description: "错误处理指南：分类讲解 CyberGo JWT 全部 20 个哨兵错误在配置、令牌验证、限流与生命周期阶段的触发条件，演示 errors.Is 匹配、ValidationError 字段错误与标准化响应实践。"
+description: "错误处理指南：分类梳理 CyberGo JWT 的 20 个哨兵错误在配置、令牌验证、限流与生命周期各阶段的触发条件，演示 errors.Is 与 errors.As 的匹配方式、ValidationError 字段级错误提取，以及 HTTP 状态码映射与 Web 服务示例。"
 sidebar_position: 50
 ---
 
@@ -97,7 +97,7 @@ type ValidationError struct {
 
 ## 错误包装链
 
-CyberGo JWT 的错误分为哨兵错误（可用 `errors.Is` 匹配）和包装错误（需 `errors.As` 提取结构化信息）。理解包装链能帮你精准定位失败原因。
+CyberGo JWT 的错误分为哨兵错误（可用 `errors.Is` 匹配）和包装错误（需 `errors.As` 提取结构化信息）。分清包装链能更准确定位失败原因。
 
 ### ValidationError 与 errors.As
 
@@ -109,7 +109,7 @@ if err != nil {
     var ve *jwt.ValidationError
     if errors.As(err, &ve) {
         fmt.Printf("字段: %s, 原因: %s\n", ve.Field, ve.Message)
-        // 字段：user_id, 原因：suspicious pattern detected
+        // 字段：UserID, 原因：suspicious pattern detected
         return
     }
     // 非字段级错误，走 errors.Is 分支
@@ -158,7 +158,7 @@ if err != nil {
 
 ## HTTP 状态码映射
 
-在 RESTful API 中，将 JWT 错误映射到合适的 HTTP 状态码是最佳实践——客户端可据此区分"凭据问题"（401）、"请求格式问题"（400）和"服务端问题"（500）。
+在 RESTful API 中，把 JWT 错误映射到合适的 HTTP 状态码，客户端即可据此区分「凭据问题」（401）、「请求格式问题」（400）与「服务端问题」（500）。
 
 ### 映射表
 
@@ -178,12 +178,12 @@ if err != nil {
 | `ErrRateLimitExceeded` | 429 Too Many Requests | 降低请求频率，稍后重试 |
 | `ErrProcessorClosed` | 500 Internal Server Error | 服务端需重启 Processor |
 
-::: tip RESTful 最佳实践
-- **401 Unauthorized**：所有令牌有效性问题（过期、吊销、签名错误、签发者/受众不匹配）。客户端应引导用户重新认证或刷新令牌。
-- **400 Bad Request**：创建令牌时 Claims 验证失败——这是调用方的编程错误，而非认证失败。
-- **429 Too Many Requests**：限流触发时返回此码，并附带 `Retry-After` 头告知客户端等待时间。
-- **500 Internal Server Error**：`ErrProcessorClosed` 属于服务端状态异常，不应暴露给客户端。
-:::
+四个状态码的取舍：
+
+- **401**：覆盖全部令牌有效性问题（过期、吊销、签名错误、签发者/受众不匹配），客户端应重新认证或刷新令牌。
+- **400**：仅用于创建令牌时 Claims 验证失败。这是调用方的编程错误，不是认证失败。
+- **429**：限流触发时返回，并附带 `Retry-After` 头告知等待时间。
+- **500**：`ErrProcessorClosed` 属于服务端状态异常，响应中不要暴露内部细节。
 
 ## Web 服务中的错误处理
 
@@ -201,12 +201,11 @@ import (
     "github.com/cybergodev/jwt"
 )
 
-// authError 将 JWT 错误映射为 HTTP 状态码和消息
+// authError 将 JWT 错误映射为 HTTP 状态码和消息（映射依据见上文表格）
 func authError(w http.ResponseWriter, err error) {
     w.Header().Set("Content-Type", "application/json")
 
     switch {
-    // 令牌过期 — 引导客户端刷新
     case errors.Is(err, jwt.ErrTokenExpired):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -214,7 +213,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "令牌已过期，请刷新",
         })
 
-    // 令牌已吊销
     case errors.Is(err, jwt.ErrTokenRevoked):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -222,7 +220,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "令牌已被吊销",
         })
 
-    // 签发者不匹配
     case errors.Is(err, jwt.ErrTokenInvalidIssuer):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -230,7 +227,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "签发者不匹配",
         })
 
-    // 受众不匹配
     case errors.Is(err, jwt.ErrTokenInvalidAudience):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -238,7 +234,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "受众不匹配",
         })
 
-    // 尚未生效 — 时钟不同步
     case errors.Is(err, jwt.ErrTokenNotValidYet):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -246,7 +241,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "令牌尚未生效",
         })
 
-    // 算法不匹配
     case errors.Is(err, jwt.ErrAlgorithmMismatch):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -254,7 +248,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "签名算法不匹配",
         })
 
-    // 令牌无效（签名错误、格式错误、空令牌）
     case errors.Is(err, jwt.ErrInvalidToken),
         errors.Is(err, jwt.ErrEmptyToken),
         errors.Is(err, jwt.ErrExpirationRequired):
@@ -264,7 +257,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "令牌无效",
         })
 
-    // Claims 验证失败 — 尝试提取字段级细节
     case errors.Is(err, jwt.ErrInvalidClaims):
         var ve *jwt.ValidationError
         if errors.As(err, &ve) {
@@ -282,7 +274,6 @@ func authError(w http.ResponseWriter, err error) {
             })
         }
 
-    // 限流
     case errors.Is(err, jwt.ErrRateLimitExceeded):
         w.Header().Set("Retry-After", "60")
         w.WriteHeader(http.StatusTooManyRequests)
@@ -291,7 +282,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "请求过于频繁，请稍后重试",
         })
 
-    // 系统错误 — Processor 已关闭
     case errors.Is(err, jwt.ErrProcessorClosed):
         w.WriteHeader(http.StatusInternalServerError)
         json.NewEncoder(w).Encode(map[string]string{
@@ -299,7 +289,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "服务暂时不可用",
         })
 
-    // 兜底
     default:
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -310,13 +299,11 @@ func authError(w http.ResponseWriter, err error) {
 }
 
 func handleProtected(w http.ResponseWriter, r *http.Request) {
-    tokenString := extractToken(r)
-    claims, err := processor.Parse(tokenString)
+    claims, err := processor.Parse(extractToken(r))
     if err != nil {
         authError(w, err)
         return
     }
-    // 认证通过，处理请求
     _ = claims
 }
 ```

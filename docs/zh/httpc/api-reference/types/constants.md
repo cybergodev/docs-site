@@ -182,9 +182,9 @@ type AuditEvent struct {
     Method        string              `json:"method"`
     URL           string              `json:"url"`           // 脱敏（凭据已移除）
     StatusCode    int                 `json:"statusCode"`
-    Duration      time.Duration       `json:"-"`
+    Duration      time.Duration       `json:"-"` // 由 MarshalJSON 输出为 durationMs
     Attempts      int                 `json:"attempts"`
-    Error         error               `json:"error,omitempty"`
+    Error         error               `json:"-"` // 由 MarshalJSON 输出为字符串 error
     SourceIP      string              `json:"sourceIP,omitempty"`
     UserID        string              `json:"userID,omitempty"`
     RedirectChain []string            `json:"redirectChain,omitempty"`
@@ -204,7 +204,7 @@ type AuditEvent struct {
 | `AuditEvent.URL` | `string` | 请求 URL（已脱敏，凭据移除） |
 | `AuditEvent.StatusCode` | `int` | 最终响应状态码（请求出错时为 0） |
 | `AuditEvent.Duration` | `time.Duration` | 覆盖全部尝试的总耗时（含重试延迟） |
-| `AuditEvent.Attempts` | `int` | 发送的请求数（无重试时为 1） |
+| `AuditEvent.Attempts` | `int` | 发送的请求数（无重试时为 1；响应到达前即失败时为 0） |
 | `AuditEvent.Error` | `error` | 请求错误；JSON 序列化时输出为字符串（配合 `AuditConfig.SanitizeError` 可脱敏） |
 | `AuditEvent.SourceIP` | `string` | 源 IP（应用经 `SourceIPKey` 注入 context） |
 | `AuditEvent.UserID` | `string` | 终端用户 ID（应用经 `UserIDKey` 注入 context） |
@@ -228,10 +228,10 @@ type AuditEvent struct {
 ```go
 type AuditConfig struct {
     OnAudit        func(event AuditEvent) // 审计回调，nil 时中间件为空操作
-    Format         string                 // "text" 或 "json"
+    Format         string                 // 保留字段，无效果：事件以 AuditEvent 交给 OnAudit，渲染由回调决定
     IncludeHeaders bool                   // 包含请求/响应头
     MaskHeaders    []string               // 需脱敏的头名称（如 "Authorization"、"Cookie"）
-    SanitizeError  bool                   // 脱敏错误信息（替换为 "[sanitized]"）
+    SanitizeError  bool                   // 脱敏错误消息中的原始 URL 与敏感查询值（保留 errors.Is/As 分类）
 }
 ```
 
@@ -240,10 +240,10 @@ type AuditConfig struct {
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
 | `AuditConfig.OnAudit` | `nil` | 审计回调，为 nil 时中间件为空操作 |
-| `AuditConfig.Format` | `"text"` | 输出格式提示（`"text"` / `"json"`），由回调方消费；中间件不据此分支 |
+| `AuditConfig.Format` | `""` | 保留字段不初始化（无效果）；输出格式由 `OnAudit` 回调自行决定，如 `json.Marshal(event)` |
 | `AuditConfig.IncludeHeaders` | `false` | 是否在审计日志中包含请求/响应头 |
 | `AuditConfig.MaskHeaders` | 六个标准敏感头 | `Authorization`、`Cookie`、`Set-Cookie`、`X-Api-Key`、`X-Auth-Token`、`Proxy-Authorization`；命中时替换为 `[REDACTED]` |
-| `AuditConfig.SanitizeError` | `true` | 错误信息替换为 `[sanitized]` |
+| `AuditConfig.SanitizeError` | `true` | 脱敏错误消息中内嵌的原始请求 URL（及敏感查询值），并保留 `errors.Is`/`errors.As` 分类 |
 
 ## 上下文键
 
@@ -270,9 +270,8 @@ func main() {
 	ctx := context.WithValue(context.Background(), httpc.SourceIPKey, "192.168.1.100")
 	ctx = context.WithValue(ctx, httpc.UserIDKey, "user-789")
 
-	// 配置审计中间件
+	// 配置审计中间件（输出格式由 OnAudit 回调自行决定）
 	auditCfg := httpc.DefaultAuditConfig()
-	auditCfg.Format = "json"
 	auditCfg.IncludeHeaders = true
 	auditCfg.OnAudit = func(event httpc.AuditEvent) {
 		fmt.Printf("[AUDIT] %s %s -> %d (%v) src=%s user=%s\n",

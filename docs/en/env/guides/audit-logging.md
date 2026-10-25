@@ -16,7 +16,12 @@ Audit logging records variable operations — loads, sets, deletes, validation, 
 ```go
 cfg := env.ProductionConfig()
 cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 
 loader, _ := env.New(cfg)
 ```
@@ -34,19 +39,27 @@ loader, _ := env.New(cfg)
 
 ## Audit Handlers
 
+`loader.Close()` closes the handler, and `JSONAuditHandler` also closes the underlying writer (for example an `os.File`, which implements `io.Closer`). Do not pass `os.Stdout` or a writer shared with other components, or `loader.Close()` will close it too. When writing to a file, open the `os.File` yourself with mode `0600`; the handler closes it — unless `env.New()` fails, in which case the handler never takes ownership and you must close it yourself.
+
 ### JSONAuditHandler
 
 Outputs logs in JSON format:
 
 ```go
 import (
+    "log"
     "os"
     "github.com/cybergodev/env"
 )
 
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+
 cfg := env.ProductionConfig()
 cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ```
 
 **Output example** (excerpt: the `reason` field and per-key `ActionSet` events are omitted):
@@ -240,20 +253,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer auditFile.Close()
 
-	// Configuration
+	// Configuration (clear Filenames and load explicitly below; otherwise
+	// New auto-loads first and validates the required keys itself)
 	cfg := env.ProductionConfig()
+	cfg.Filenames = nil
 	cfg.AuditEnabled = true
 	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-	// Create loader
+	// Create loader (if New fails the handler never takes ownership of the
+	// file, so close it here)
 	loader, err := env.New(cfg)
 	if err != nil {
+		auditFile.Close()
 		log.Fatal(err)
 	}
-	defer loader.Close()
+	defer loader.Close() // closes the handler, which closes auditFile
 
 	// Load configuration
 	err = loader.LoadFiles(".env")
@@ -261,7 +277,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Validate
+	// Validate (required keys were already checked at load time;
+	// this confirms against the current store)
 	err = loader.Validate()
 	if err != nil {
 		log.Fatal(err)

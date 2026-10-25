@@ -421,8 +421,8 @@ func main() {
 }
 ```
 
-:::warning Relative paths and option side effects
-A relative `path` (such as `/get`) is joined with the baseURL automatically; a full URL (with scheme) is used as-is. The domain client also executes request options **twice** (once to capture session state, once for the actual request), so options with side effects such as counters or nonces should not be passed in.
+:::warning Relative paths and session capture
+A relative `path` (such as `/get`) is joined with the baseURL automatically; a full URL (with scheme) is used as-is. The domain client runs request options once, and additionally captures `WithHeader`/`WithCookies` and their siblings into the session statically; a `SetHeader`/`SetCookies` call inside a custom `RequestOptionFunc` is not captured.
 :::
 
 ## Advanced Cookie Usage

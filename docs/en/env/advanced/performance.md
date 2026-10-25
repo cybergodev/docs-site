@@ -44,7 +44,7 @@ wg.Wait()
 
 ### Package-level Function Thread Safety
 
-Package-level functions operate on the global loader and are equally thread-safe:
+Package-level functions operate on the default loader and are equally thread-safe:
 
 ```go
 var wg sync.WaitGroup
@@ -106,7 +106,7 @@ secret := env.GetSecure("API_KEY")
 value := secret.Reveal()
 
 // Return to the pool
-secret.Release()  // zeroes, unlocks, and returns to the pool; Close() zeroes but keeps it out of the pool
+secret.Release()  // zeroes, unlocks, and returns to the pool; Close() zeroes and unlocks but does not pool it
 ```
 
 ### Proper Object Pool Usage
@@ -116,7 +116,7 @@ secret.Release()  // zeroes, unlocks, and returns to the pool; Close() zeroes bu
 ```go
 func processData() {
     secret := env.GetSecure("SECRET")
-    defer secret.Release()  // Zeroes, unlocks, returns to the pool
+    defer secret.Release()  // release as soon as you are done
 
     // Use secret...
 }
@@ -204,11 +204,14 @@ env.SetMemoryLockStrict(true)
 
 secret, err := env.NewSecureValueStrict("sensitive_data")
 if err != nil {
-    // Locking is enabled, but the mlock / VirtualLock call failed
+    // handle the error
+}
+if secret != nil {
+    defer secret.Release()
 }
 ```
 
-With locking enabled but failed, `Masked()` reports `[SECURE:N bytes lock-failed]`. On platforms other than Linux, macOS, and Windows, `IsMemoryLockSupported()` returns false and the lock call degrades to a no-op.
+With locking enabled but failed, `Masked()` reports `[SECURE:N bytes lock-failed]`. On platforms other than Linux, macOS, and Windows, `IsMemoryLockSupported()` returns false, so the lock attempt fails and records the error (`Masked()` shows `lock-failed`), while the `SecureValue` stays fully usable.
 
 ### Secure Zeroing
 
@@ -279,7 +282,7 @@ func (m *ConfigManager) Get(key string) string {
 
 ### Reduce Lock Hold Time
 
-A single `GetString` takes the lock-free fast path, so the lock that can actually block other goroutines is your own. Hold it long enough to read, then process outside it:
+A single `GetString` takes the lock-free fast path, so latency is governed by the caller's own lock. Hold it long enough to read, then process outside it:
 
 ```go
 // Not recommended: the slow work runs while the caller's lock is held
@@ -351,7 +354,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 ### Memory Locking Overhead
 
-Memory locking (Linux `mlock`, Windows `VirtualLock`) adds a one-time syscall cost when a `SecureValue` is created. Read operations (`Reveal`, `String`, `Masked`) are unaffected. Keep each `SecureValue` small and short-lived: call `Close()` or `Release()` immediately after use, which returns the object to the pool and releases the locked memory.
+Memory locking (Linux `mlock`, Windows `VirtualLock`) adds a one-time syscall cost when a `SecureValue` is created. Read operations (`Reveal`, `String`, `Masked`) are unaffected. Keep each `SecureValue` small and short-lived: call `Release()` as soon as you are done, which unlocks the memory, zeroes it, and returns the object to the pool. For the tradeoff between the two release methods, see [SecureValue API - Close vs. Release](../api-reference/secure-value#close-vs-release).
 
 ## Benchmarks
 
@@ -411,12 +414,10 @@ func BenchmarkMixedReadWrite(b *testing.B) {
 
 ### Write-path lock windows
 
-`Set`, `Delete`, `Apply`, and `LoadFiles` all take the loader write lock, so they run one at a time. A single `Set` takes a read-lock fast path only when `OverwriteExisting = true` and `AutoApply` is off; every other write waits for the write lock.
-
-`computeValue()` written as a `Set` argument is evaluated before `Set` is entered, so the computation itself does not hold the loader lock. What matters is how many times you acquire the write lock, which grows when you import many keys one call at a time (and with `AutoApply` on, each call also makes its own `Setenv`):
+`Set`, `Delete`, `Apply`, and `LoadFiles` all take the loader write lock, so they run one at a time. A single `Set` takes a read-lock fast path only when `OverwriteExisting = true` and `AutoApply` is off; every other write waits for the write lock. Import a batch as one file load rather than a loop of `Set` calls:
 
 ```go
-// Not recommended: one write-lock acquisition per key
+// Not recommended: one write-lock acquisition per key (plus one Setenv each with AutoApply)
 for key, value := range values {
     if err := loader.Set(key, value); err != nil {
         return err
@@ -429,7 +430,7 @@ if err := loader.LoadFiles("batch.env"); err != nil {
 }
 ```
 
-If you also wrap writes in your own mutex, that lock is the one to watch — see [Reduce Lock Hold Time](#reduce-lock-hold-time).
+A slow value computation placed in the `Set` argument list is evaluated before `Set` is entered, so it holds no loader lock.
 
 ### Concurrent Access After Close
 
@@ -445,17 +446,11 @@ go func() {
 loader.Close()  // Main goroutine closes
 ```
 
-### Global Loader Reset
+### Default Loader Reset
 
-`ResetDefaultLoader` is safe for concurrent use and returns the `error` from closing the old loader, which you should check. Even so, call it only during tests or startup: between the reset and the next `Load`, global functions behave as uninitialized (returning `ErrNotInitialized`), and resetting at runtime exposes code that relies on the global loader to that window.
-
-```go
-// Concurrency-safe, but best limited to tests or startup; handle the returned error
-if err := env.ResetDefaultLoader(); err != nil {
-    fmt.Printf("failed to reset default loader: %v\n", err)
-}
-env.Load(".env")
-```
+- `ResetDefaultLoader` is safe for concurrent use and returns the `error` from closing the old loader; check it.
+- Between the reset and the next `Load`, the package-level **write and validation** functions (`Set`/`Delete`/`Validate`/`ParseInto`) return `ErrNotInitialized`, while read functions return defaults or zero values; call it only during tests or startup.
+- See [Package Functions](../api-reference/functions#resetdefaultloader) for the exact semantics.
 
 ## Concurrency Internals
 

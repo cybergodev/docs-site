@@ -40,9 +40,9 @@ Memory (RAM)                   Disk (Swap/Page File)
 | Linux | `mlock(2)` / `munlock(2)` | ✅ |
 | macOS | `mlock(2)` / `munlock(2)` | ✅ |
 | Windows | `VirtualLock` / `VirtualUnlock` | ✅ |
-| Other platforms (FreeBSD and other BSDs, Solaris, WASM) | N/A | ❌ (no-op fallback) |
+| Other platforms (FreeBSD and other BSDs, Solaris, WASM) | N/A | ❌ (no locking implementation) |
 
-On any platform other than Linux, macOS, and Windows, locking is a no-op: `IsMemoryLockSupported()` returns `false` and enabling locking has no effect. `SecureValue` still works. With locking enabled, `Masked()` reports `lock-failed`; with locking disabled, no lock status is appended.
+Platforms other than Linux, macOS, and Windows have no locking implementation: `IsMemoryLockSupported()` returns `false`, and the lock attempt returns an "unsupported platform" error, which is recorded. `SecureValue` still works, but with locking enabled `Masked()` reports `lock-failed`. With locking disabled, no lock status is appended.
 
 Runtime detection:
 
@@ -127,7 +127,7 @@ func main() {
 	secret := env.GetSecure("API_KEY")
 	if secret != nil {
 		defer secret.Release()
-		fmt.Println(secret.Masked()) // [SECURE:32 bytes locked] (N is the actual value length)
+		fmt.Println(secret.Masked()) // [SECURE:32 bytes locked] when the platform supports it and the lock succeeded (N is the actual value length)
 	}
 }
 ```
@@ -194,7 +194,7 @@ In strict mode, a locking failure triggers the `onStrictLockFailure` callback, w
 
 ## Masked Output and Lock Status
 
-`Masked()` appends lock status **only when `SetMemoryLockEnabled(true)` was called at creation time**. Empty and closed values have their own fixed outputs:
+`Masked()` reads the global switch at call time. When `IsMemoryLockEnabled()` is `false`, no lock status is appended; when it is `true`, the value's own lock result selects `locked`, `lock-failed`, or `unlocked`. Empty and closed values have their own fixed outputs:
 
 ```go
 env.SetMemoryLockEnabled(true)
@@ -203,10 +203,10 @@ sv := env.GetSecure("API_KEY")
 defer sv.Release()
 
 fmt.Println(sv.Masked())
-// Lock succeeded:    [SECURE:32 bytes locked]      // locking enabled at creation, lock succeeded
+// Lock succeeded:    [SECURE:32 bytes locked]      // locking enabled and the lock succeeded
 // Lock failed:       [SECURE:32 bytes lock-failed] // locking enabled but failed (insufficient privilege / unsupported platform)
-// Never attempted:   [SECURE:32 bytes unlocked]    // value created before locking was enabled
-// Locking disabled:  [SECURE:32 bytes]             // no lock status appended
+// Unlocked:          [SECURE:32 bytes unlocked]    // locking enabled at call time, but this value is not locked and has no error (typically created before enabling)
+// Locking disabled:  [SECURE:32 bytes]             // global switch off when Masked() runs, so no suffix
 // Empty value:       [SECURE:0 bytes]
 // Closed:            [CLOSED]
 // Nil:               [NIL]
@@ -219,7 +219,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/cybergodev/env"
 )
@@ -276,8 +275,6 @@ func main() {
 	// Safe logging (no plaintext leakage)
 	log.Printf("Database password: %s", dbPassword.Masked())
 	// Output: Database password: [SECURE:12 bytes locked] (N is the actual value length)
-
-	_ = os.Stdout
 }
 ```
 
@@ -318,6 +315,8 @@ defer env.ClearBytes(raw)
 
 ### Prefer Release Over Close
 
+`Release()` zeroes the value, unlocks the memory, and returns the object to the pool; `Close()` zeroes and unlocks but does not return it to the pool.
+
 ```go
 sv := env.GetSecure("TOKEN")
 
@@ -334,7 +333,7 @@ defer sv.Release()
 |---------|---------------|----------|
 | `lock-failed` in `Masked()` output | Insufficient permissions or an unsupported platform | Grant `CAP_IPC_LOCK` (Linux) or `SeLockMemoryPrivilege` (Windows); on other platforms locking is unavailable |
 | Repeated strict-mode warnings | A locking failure on every `SecureValue` creation | Check `RLIMIT_MEMLOCK` (`ulimit -l`), or disable strict mode |
-| `IsMemoryLockSupported()` returns false | The platform is not Linux, macOS, or Windows (FreeBSD, other BSDs, Solaris, WASM) | Locking is a no-op there; use other measures such as encrypted storage |
+| `IsMemoryLockSupported()` returns false | The platform is not Linux, macOS, or Windows (FreeBSD, other BSDs, Solaris, WASM) | There is no locking implementation; the attempt fails and the error is recorded. Use other measures such as encrypted storage |
 | Increased memory usage | Locked pages cannot be swapped out | Shorten the time each `SecureValue` is held; call `Release()` |
 
 ## Related Documentation

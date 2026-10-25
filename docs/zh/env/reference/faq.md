@@ -25,7 +25,7 @@ port := env.GetInt("PORT", 8080)
 // 测试 / 多配置 → 实例模式
 loader, _ := env.New(env.TestingConfig())
 defer loader.Close()
-port := loader.GetInt("PORT", 8080)
+loaderPort := loader.GetInt("PORT", 8080)
 ```
 
 ::: tip 选择建议
@@ -34,7 +34,7 @@ port := loader.GetInt("PORT", 8080)
 
 ### 为什么 Load() 只能调用一次？
 
-`Load()` 设置全局默认加载器（单例），重复调用返回 `ErrAlreadyInitialized`，避免运行时意外覆盖已加载的配置。
+`Load()` 设置默认加载器，重复调用返回 `ErrAlreadyInitialized`，避免运行时意外覆盖已加载的配置。
 
 ```go
 // 第一次调用 — 成功
@@ -51,8 +51,10 @@ err := env.Load(".env.production")
 // 方案一：一次加载多个文件（推荐）
 env.Load(".env", ".env.production")
 
-// 方案二：需要重新初始化时先重置
-env.ResetDefaultLoader()  // 主要用于测试
+// 方案二：需要重新初始化时先重置（主要用于测试）
+if err := env.ResetDefaultLoader(); err != nil {
+    log.Printf("warning: failed to reset loader: %v", err)
+}
 env.Load(".env.production")
 ```
 
@@ -91,13 +93,15 @@ JSON/YAML 的嵌套结构会被自动**扁平化**为下划线分隔的键名：
 存储为：DATABASE_HOST=localhost, DATABASE_PORT=5432
 ```
 
-三种访问方式等价：
+扁平键名、点号路径、大写点号路径三种写法等价。下面用不同变量名演示这三种写法（同一作用域重复声明同名变量无法编译）：
 
 ```go
-host := env.GetString("DATABASE_HOST")  // 扁平化键名（推荐）
-host := env.GetString("database.host")  // 点号路径
-host := env.GetString("DATABASE.HOST")  // 大写点号路径
+nameFlat := env.GetString("DATABASE_HOST")  // 扁平化键名（推荐）
+nameDot := env.GetString("database.host")   // 点号路径
+nameUpper := env.GetString("DATABASE.HOST") // 大写点号路径
 ```
+
+完整转换表见[多格式配置 · 键名解析](../guides/multi-format#键名解析)。
 
 ## 类型与泛型
 
@@ -165,6 +169,8 @@ for i := 0; i < 100; i++ {
 wg.Wait()
 ```
 
+同一个 `Loader` 实例（不只是包级函数）也可以这样共享，见[并发与生命周期](../guides/concurrency)。
+
 ### Loader.Close() 后调用 Get 会怎样？
 
 返回零值，不 panic。Loader 关闭后转为只读降级：读方法继续返回零值，写方法返回 `ErrClosed`。
@@ -178,18 +184,15 @@ val := loader.GetString("KEY") // 正常返回
 // Close() 之后
 val = loader.GetString("KEY")  // 返回 ""（零值）
 err := loader.Set("KEY", "v")  // 返回 ErrClosed
+_ = val
+_ = err
 ```
 
 ## SecureValue
 
 ### Release 和 Close 有什么区别？
 
-| 方法 | 清零内存 | 解锁内存 | 归还对象池 |
-|------|:--------:|:--------:|:----------:|
-| `Release()` | ✅ | ✅ | ✅ |
-| `Close()` | ✅ | ✅ | ❌ |
-
-**推荐使用 `Release()`**：它把对象归还对象池，减少 GC 压力。`Close()` 用于不需要池化的场景。
+`Release()` 清零、解锁并把对象归还对象池；`Close()` 只清零、解锁，不归还池。日常用 `Release()`。完整对照见[内存锁定 · 优先使用 Release 而非 Close](../security/memory-locking#优先使用-release-而非-close)。
 
 ### SecureValue 被 GC 回收时会自动清零吗？
 
@@ -201,8 +204,8 @@ sv := env.GetSecure("API_KEY")
 defer sv.Release()
 
 // ⚠️ 依赖 GC — 不推荐但安全
-sv := env.GetSecure("API_KEY")
-// 最终会被 GC 清零，但时机不确定
+svNoRelease := env.GetSecure("API_KEY")
+_ = svNoRelease // 不调用 Release，最终由 GC 的 finalizer 清零
 ```
 
 ### 如何安全地记录日志？
@@ -214,8 +217,9 @@ sv := env.GetSecure("API_KEY")
 defer sv.Release()
 
 // ✅ 安全 — 掩码输出
-log.Printf("API Key: %s", sv.Masked())    // [SECURE:32 bytes locked]
+log.Printf("API Key: %s", sv.Masked())    // [SECURE:32 bytes]
 log.Printf("API Key: %s", sv)              // 同上（String() 返回 Masked()）
+// 未启用内存锁定时不带状态后缀；启用并锁定成功后才是 [SECURE:32 bytes locked]
 
 // ✅ 安全 — 掩码工具
 masked := env.MaskValue("API_KEY", "sk-xxx") // [MASKED]（敏感键 → 固定掩码）
@@ -262,15 +266,26 @@ cfg := env.DevelopmentConfig()
 
 ### RequiredKeys 验证什么时候执行？
 
-仅在显式调用 `Validate()` 时检查，`LoadFiles` 不会自动触发：
+解析/加载结束时会检查一次：`loader.LoadFiles(...)` 缺必需键时直接返回 `validation error on field "required_keys": missing required keys: ...`，`env.New(cfg)` 在 `Filenames` 非空时也同样返回该错误。`Validate()` 再按当前存储检查一次，适合在加载后另行 `Set` 了值的场景：
 
 ```go
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
-loader, _ := env.New(cfg)
-loader.LoadFiles(".env")
+cfg.Filenames = nil // 交给下面显式加载
 
-// 显式验证
+loader, err := env.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+
+// 加载结束时即检查必需键
+if err := loader.LoadFiles(".env"); err != nil {
+    if errors.Is(err, env.ErrMissingRequired) {
+        log.Fatal("缺少必需的环境变量")
+    }
+}
+
+// 显式验证：按当前存储再检查一次
 if err := loader.Validate(); err != nil {
     if errors.Is(err, env.ErrMissingRequired) {
         log.Fatal("缺少必需的环境变量")
@@ -309,8 +324,14 @@ func TestConfig(t *testing.T) {
 ```go
 func TestGlobalMode(t *testing.T) {
     // 清理上一个测试的状态
-    env.ResetDefaultLoader()
-    defer env.ResetDefaultLoader()
+    if err := env.ResetDefaultLoader(); err != nil {
+        t.Logf("reset default loader: %v", err)
+    }
+    defer func() {
+        if err := env.ResetDefaultLoader(); err != nil {
+            t.Logf("reset default loader: %v", err)
+        }
+    }()
 
     env.Load(".env.test")
     // 测试...
@@ -325,7 +346,7 @@ func TestGlobalMode(t *testing.T) {
 
 ### Close 后进程环境里的变量还在吗？
 
-**在。** `Close()` 只清零内存副本，不 unset 此前应用到 `os.Environ` 的变量。这是刻意设计：进程环境没有回滚语义，值写入后无法判断是否已被其他代码读取，也无法收回子进程已继承的副本。需要移除时，在关闭前逐键 `Delete`，且只有本 loader 写入的键会被 unset。`ResetDefaultLoader()` 同样不撤销已应用的变量。
+**在。** `Close()` 清零并解锁内存副本，不 unset 此前应用到 `os.Environ` 的变量。这是刻意设计：进程环境没有回滚语义，值写入后无法判断是否已被其他代码读取，也无法收回子进程已继承的副本。需要移除时，在关闭前逐键 `Delete`，且只有本 loader 写入的键会被 unset。`ResetDefaultLoader()` 同样不撤销已应用的变量。
 
 ### 如何防止配置文件读取进程中的机密？
 

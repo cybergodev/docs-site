@@ -43,17 +43,17 @@ env 的安全设计分三层：应用层的 `SecureValue` 负责内存锁定与�
 
 ```go
 // 不推荐
-password := env.GetString("DB_PASSWORD")
+plainPassword := env.GetString("DB_PASSWORD")
 
 // 推荐
 secret := env.GetSecure("DB_PASSWORD")
-defer secret.Close()
+defer secret.Release()       // 清零并归还对象池
 password := secret.Reveal()  // 仅在需要明文时调用
 ```
 
 **核心功能：**
-- **内存锁定**：防止交换到磁盘，仅 Linux/macOS/Windows 支持；其余平台 `IsMemoryLockSupported()` 返回 false，锁定调用按 no-op 降级
-- **自动清零**：`Close()` 时安全擦除内存
+- **内存锁定**：防止交换到磁盘，仅 Linux/macOS/Windows 支持；其余平台 `IsMemoryLockSupported()` 返回 false，锁定尝试失败并记录错误（`Masked()` 显示 `lock-failed`），`SecureValue` 仍可用
+- **自动清零**：`Release()` / `Close()` 时安全擦除内存
 - **掩码显示**：`Masked()` 用于日志输出
 - **线程安全**：支持并发读取
 
@@ -110,11 +110,11 @@ log.Printf("连接参数: %s", env.SanitizeForLog("user=admin password=s3cret"))
 
 ### 值验证
 
-`ValidateValues` 检查值中的控制字符与空字节，`ProductionConfig` 已默认开启：
+值校验分两层：一是内置验证器**始终执行**的基础校验（值长度上限、控制字符与空字节拒绝、`ValidateUTF8` 开启时的 UTF-8 检查），任何写入路径都绕不过；二是 `ValidateValues` 开关，只对未实现基础校验能力的自定义验证器起作用——关闭时这类验证器会完全跳过值校验。
 
 ```go
 cfg := env.ProductionConfig()
-cfg.ValidateValues = true  // 检测控制字符、空字节等
+cfg.ValidateValues = true // 自定义验证器无基础校验能力时才需要关注
 ```
 
 ## 文件安全基础

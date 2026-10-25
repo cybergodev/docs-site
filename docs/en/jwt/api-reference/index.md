@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
 title: "API Reference - CyberGo JWT | Interface Docs"
-description: "CyberGo JWT API reference index linking to package factory functions, Processor methods, Config, Claims, RegisteredClaims, interfaces, types, and errors."
+description: "CyberGo JWT API reference: entry links to factory functions, Processor methods, Config, Claims, extension interfaces, helper types, and 20 sentinel errors."
 sidebar_position: 1
 ---
 
@@ -19,7 +19,7 @@ CyberGo JWT provides a complete JWT token lifecycle management API.
 | [Claims](./claims) | `Claims`, `RegisteredClaims` claim types | Token Claims |
 | [Interfaces](./interfaces) | `TokenManager`, `CustomClaims`, `BlacklistStore`, etc. | Extension Interfaces |
 | [Types & Constants](./types) | Signing method constants, `NumericDate`, `StringOrSlice`, etc. | Auxiliary Types |
-| [Errors](./errors) | **20** sentinel errors, `ValidationError` | Error Handling |
+| [Errors](./errors) | 20 sentinel errors, `ValidationError` | Error Handling |
 
 ## Quick Lookup
 
@@ -36,4 +36,4 @@ CyberGo JWT provides a complete JWT token lifecycle management API.
 | Custom Claims | [`CustomClaims`](./interfaces#customclaims) interface |
 | Blacklist management | [`BlacklistStore`](./interfaces#blackliststore) interface |
 | Rate limiting | [`RateLimitProvider`](./interfaces#ratelimitprovider) interface |
-| Error handling | [`Sentinel Errors`](./errors#sentinel-errors) |
+| Error handling | [`Sentinel Errors`](./errors#sentinel-errors), [`Common Errors`](./processor#common-errors) |

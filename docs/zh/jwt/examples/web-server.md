@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Web 服务器集成"
 title: "Web 服务器集成 - CyberGo JWT | 认证中间件与 RBAC"
-description: "生产级 JWT Web 服务器集成示例：认证流程、Bearer 中间件、RBAC 角色控制、刷新令牌轮换、登出吊销与优雅关闭，覆盖完整 HTTP 服务生命周期。"
+description: "生产级 JWT Web 服务器集成示例：登录签发令牌对、Bearer 认证中间件、RBAC 角色控制、刷新端点、登出吊销与优雅关闭，并演示密钥与端口的配置注入，覆盖完整 HTTP 服务生命周期。"
 sidebar_position: 15
 check_code: false
 ---
@@ -92,7 +92,7 @@ func newJWTProcessor() (*jwt.Processor, int, error) {
 ```
 
 :::warning 生产安全
-务必通过环境变量 `JWT_SECRET_KEY` 注入密钥，切勿将其写入源码或提交到版本控制。上方代码中的回退密钥仅为演示而设，生产环境绝不依赖它——密钥应始终来自环境变量或密钥管理服务。
+密钥通过环境变量 `JWT_SECRET_KEY` 注入，不要写入源码或提交到版本控制。上方代码中的回退密钥仅是为了让示例脱离环境变量也能运行；生产环境应始终由环境变量或密钥管理服务提供，回退分支只保留告警日志即可。
 :::
 
 ## 2. 登录端点（/login）
@@ -395,6 +395,14 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 注册全部路由，使用 `signal.Notify` 捕获 `SIGINT`/`SIGTERM`，在收到中断信号后调用 `server.Shutdown` 等待活跃请求完成，再关闭 `processor` 释放黑名单等资源：
 
 ```go
+// envDefault 读取环境变量，未设置时返回默认值
+func envDefault(key, fallback string) string {
+    if v := os.Getenv(key); v != "" {
+        return v
+    }
+    return fallback
+}
+
 func main() {
     // 初始化 processor（见第 1 节）
     var err error
@@ -403,8 +411,8 @@ func main() {
         log.Fatalf("初始化 JWT processor 失败: %v", err)
     }
 
-    // 监听地址可通过 JWT_PORT 配置，默认 :8080
-    addr := ":8080"
+    // 监听地址可通过 JWT_PORT 配置，默认 8080
+    addr := ":" + envDefault("JWT_PORT", "8080")
 
     // 注册路由
     mux := http.NewServeMux()

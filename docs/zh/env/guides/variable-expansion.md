@@ -13,7 +13,7 @@ sidebar_position: 3
 
 ```go
 cfg := env.DefaultConfig()
-cfg.ExpandVariables = true  // 默认启用
+cfg.ExpandVariables = true  // 可省略，DefaultConfig 已开启；此处显式写出
 
 loader, _ := env.New(cfg)
 loader.LoadFiles(".env")

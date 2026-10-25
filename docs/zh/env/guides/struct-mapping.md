@@ -28,7 +28,9 @@ type Config struct {
 }
 
 func main() {
-	env.Load(".env")
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
 	cfg := Config{}
 	if err := env.ParseInto(&cfg); err != nil {
@@ -409,7 +411,7 @@ func Load() (*Config, error) {
 
 ### 环境区分
 
-按环境拆分配置时，公共字段放进一个具名内嵌结构体，键前缀取该字段名（这里 Base），内层标签写短名：
+按环境拆分配置时，公共字段放进一个具名内嵌结构体，键前缀取该字段名（这里 Base），内层标签写短名。解析失败时向上返回 `nil` 与包装后的错误，不返回半填充的配置：
 
 ```go
 type BaseConfig struct {
@@ -427,22 +429,24 @@ type ProductionConfig struct {
     Debug bool `env:"DEBUG" envDefault:"false"`
 }
 
-func LoadConfig() interface{} {
-    env.Load(".env")
+func LoadConfig() (interface{}, error) {
+    if err := env.Load(".env"); err != nil {
+        return nil, fmt.Errorf("load env: %w", err)
+    }
 
     switch os.Getenv("GO_ENV") {
     case "production":
         cfg := ProductionConfig{}
         if err := env.ParseInto(&cfg); err != nil {
-            log.Printf("parse production config: %v", err)
+            return nil, fmt.Errorf("parse production config: %w", err)
         }
-        return cfg
+        return cfg, nil
     default:
         cfg := DevelopmentConfig{}
         if err := env.ParseInto(&cfg); err != nil {
-            log.Printf("parse development config: %v", err)
+            return nil, fmt.Errorf("parse development config: %w", err)
         }
-        return cfg
+        return cfg, nil
     }
 }
 ```

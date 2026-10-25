@@ -257,7 +257,7 @@ func main() {
 ```
 
 ::: warning ClearBytes 的局限
-`ClearBytes` 只清零传入的那个切片。同一份敏感数据被复制过多次时（string 与 `[]byte` 之间的转换会产生新副本），这些副本无法一并清零。敏感数据应尽量减少复制，并配合 [SecureValue](../api-reference/secure-value) 的 `Release()` / `Close()` 使用。
+`ClearBytes` 只清零传入的那个切片。同一份敏感数据被复制过多次时（string 与 `[]byte` 之间的转换会产生新副本），这些副本无法一并清零。敏感数据应尽量减少复制，用完后调用 `Release()` 释放（生命周期见[内存锁定](./memory-locking#优先使用-release-而非-close)）；需要可清零的明文时用 `Bytes()` 而非 `Reveal()`。
 :::
 
 ## 实战示例

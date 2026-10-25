@@ -323,17 +323,17 @@ func AuditMiddleware(config *AuditConfig) MiddlewareFunc
 
 `SourceIP` 和 `UserID` 从请求上下文中通过 [`SourceIPKey`](#审计上下文键) 和 [`UserIDKey`](#审计上下文键) 提取。`Attempts`（实际尝试次数）与 `RedirectChain`（重定向链）从响应中自动提取。
 
-中间件本身**不按 `Format` 分支格式化**：事件以 `AuditEvent` 结构体原样传给 `OnAudit`，`Format` 供回调方决定输出样式时读取。
+中间件本身不渲染事件：`AuditEvent` 结构体原样传给 `OnAudit`；`Format` 是保留字段，不产生任何效果，输出格式（文本、JSON 等）完全由回调决定。
 
 #### AuditConfig
 
 审计中间件配置，共 5 个字段：
 
 - `OnAudit`：审计回调；nil 时中间件为空操作。
-- `Format`：输出格式提示（`"text"` / `"json"`），由回调方消费。
+- `Format`：保留字段，无效果——事件以 `AuditEvent` 交给 `OnAudit`，渲染由回调决定。
 - `IncludeHeaders`：是否记录头部。
 - `MaskHeaders`：需脱敏的头名；默认六个标准敏感头，命中即替换为 `[REDACTED]`。
-- `SanitizeError`：是否脱敏错误消息。
+- `SanitizeError`：是否脱敏错误消息中内嵌的原始请求 URL（及敏感查询值）；脱敏后仍保留 `errors.Is`/`errors.As` 分类。
 
 完整类型定义、逐字段说明与默认值见 [AuditConfig](../types/constants#auditconfig)。
 
@@ -343,16 +343,19 @@ func AuditMiddleware(config *AuditConfig) MiddlewareFunc
 func DefaultAuditConfig() *AuditConfig
 ```
 
-返回默认审计配置：`Format` 为 `"text"`、`IncludeHeaders` 为 `false`、`MaskHeaders` 为标准敏感头部列表、`SanitizeError` 为 `true`。设置 `OnAudit` 字段以启用审计回调。
+返回默认审计配置：`Format` 保持 `""`（保留字段不初始化）、`IncludeHeaders` 为 `false`、`MaskHeaders` 为标准敏感头部列表、`SanitizeError` 为 `true`。设置 `OnAudit` 字段以启用审计回调。
 
 ```go
+// 需要 JSON 行时，在回调里自行序列化 AuditEvent
 auditCfg := httpc.DefaultAuditConfig()
 auditCfg.OnAudit = func(event httpc.AuditEvent) {
-    log.Printf("[AUDIT] %s %s -> %d (%v) user=%s ip=%s",
-        event.Method, event.URL, event.StatusCode,
-        event.Duration, event.UserID, event.SourceIP)
+    data, err := json.Marshal(event)
+    if err != nil {
+        log.Printf("[AUDIT] marshal failed: %v", err)
+        return
+    }
+    log.Printf("%s", data)
 }
-auditCfg.Format = "json"
 auditCfg.IncludeHeaders = true
 
 cfg := httpc.DefaultConfig()

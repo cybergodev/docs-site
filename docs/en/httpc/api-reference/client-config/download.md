@@ -234,6 +234,8 @@ prepareResumeState(filePath, opts, options):
 | `416 Range Not Satisfiable` | **Return error**: the requested offset exceeds the file size. The response body is drained, then the error is returned |
 | Other status codes (4xx/5xx) | Return error, with a preview of the first 200 characters of the response body |
 
+Distinct from the resume row above: a **plain download that sent no Range header and receives `206 Partial Content` treats the body as authoritative, saves it, and reports success** (stated explicitly in the `download.go` comment and pinned by a test; deliberate). If the response carries a valid `Content-Range` total, that declaration is honored for the short-body check. A non-conforming server can silently truncate content this way, so set `DownloadConfig.Checksum` to detect it.
+
 :::warning Why error on 200
 When `ResumeDownload=true` but the server returns 200 (instead of 206), the server does not support Range requests. Continuing the download would overwrite the existing partial file from scratch, **silently discarding the data the user intended to resume**. HTTPC therefore returns an error rather than truncating, protecting the local partial file. To force an overwrite, set `Overwrite=true` + `ResumeDownload=false`.
 :::
@@ -281,7 +283,7 @@ Streaming download data path:
 :::warning Downloads are bounded by MaxResponseBodySize
 Streaming to disk only removes the full-body memory buffer; it is **not an exemption from size limits**. The download body is still subject to the client's `Security.MaxResponseBodySize`: 10MB by default with `DefaultConfig`; the other presets use `SecureConfig` 5MB, `PerformanceConfig` 50MB, and `MinimalConfig` 1MB.
 
-A body over the limit fails the download with `ErrResponseBodyTooLarge` rather than being silently truncated at the limit. Raise the value before downloading large files:
+A body over the limit fails the download: the error message carries `streamed response body exceeds size limit of N bytes` (wrapped by `io.Copy` as `failed to write file: ...`), and the local file is never silently truncated. The error is **not** `ErrResponseBodyTooLarge`. Raise the value before downloading large files:
 
 ```go
 cfg := httpc.DefaultConfig()

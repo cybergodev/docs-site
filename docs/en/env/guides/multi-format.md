@@ -70,7 +70,7 @@ loader2.LoadFiles(".env", "config.json", "secrets.yaml")
 ```
 
 :::tip
-The `DevelopmentConfig()` and `TestingConfig()` presets set `OverwriteExisting = true` (later files override earlier ones). The package-level `env.Load()` uses `DefaultConfig` and stays first-wins; switch to `env.LoadWithConfig` with `cfg.OverwriteExisting = true` for last-wins.
+The `DevelopmentConfig()` and `TestingConfig()` presets set `OverwriteExisting = true` (later files override earlier ones). The package-level `env.Load()` uses `DefaultConfig`; for last-wins, switch to `env.LoadWithConfig` and set the option.
 :::
 
 ## JSON Format
@@ -104,15 +104,15 @@ loader.LoadFiles("config.json")
 // Stored as: DATABASE_HOST=localhost, DATABASE_PORT=5432
 
 // Method 1: Flat key (recommended)
-host := loader.GetString("DATABASE_HOST")   // localhost
-port := loader.GetInt("DATABASE_PORT")      // 5432
+hostFlat := loader.GetString("DATABASE_HOST") // localhost
+portFlat := loader.GetInt("DATABASE_PORT")    // 5432
 
 // Method 2: Dot path (auto-converted)
-host := loader.GetString("database.host")   // localhost
-port := loader.GetInt("database.port")      // 5432
+hostDot := loader.GetString("database.host")  // localhost
+portDot := loader.GetInt("database.port")     // 5432
 
 // Method 3: Uppercase dot path
-host := loader.GetString("DATABASE.HOST")   // localhost
+hostUpper := loader.GetString("DATABASE.HOST") // localhost
 ```
 
 **Resolution rules:**
@@ -176,9 +176,9 @@ cfg.JSONNullAsEmpty = true
 // numbers convert to strings (default true)
 cfg.JSONNumberAsString = true
 
-// kept for symmetry with YAML only; no effect on JSON (default true)
+// kept for symmetry with YAML only; no effect on JSON (default false, marked Deprecated)
 // a decoded JSON bool has no source text to preserve, so it always renders "true"/"false"
-cfg.JSONBoolAsString = true
+cfg.JSONBoolAsString = false
 
 // Max nesting depth (default 16)
 cfg.JSONMaxDepth = 20
@@ -197,12 +197,12 @@ cfg.JSONMaxDepth = 20
 
 ```go
 // JSONNumberAsString = true (default)
-port := loader.GetString("PORT")  // "8080" (string)
-port := loader.GetInt("PORT")     // 8080 (integer)
+portStr := loader.GetString("PORT") // "8080" (string)
+portInt := loader.GetInt("PORT")    // 8080 (integer)
 
 // JSON booleans always render the canonical "true"/"false"; JSONBoolAsString is not consulted
-debug := loader.GetString("DEBUG")  // "true" (string)
-debug := loader.GetBool("DEBUG")    // true (boolean)
+debugStr := loader.GetString("DEBUG") // "true" (string)
+debugBool := loader.GetBool("DEBUG")  // true (boolean)
 ```
 
 ## YAML Format
@@ -294,12 +294,12 @@ RATES:
 
 ```go
 // YAMLNumberAsString = true (default)
-port := loader.GetString("PORT")  // "8080" (string)
-port := loader.GetInt("PORT")     // 8080 (integer)
+portStr := loader.GetString("PORT") // "8080" (string)
+portInt := loader.GetInt("PORT")    // 8080 (integer)
 
 // YAMLBoolAsString = true (default)
-debug := loader.GetString("DEBUG")  // "true" (string)
-debug := loader.GetBool("DEBUG")    // true (boolean)
+debugStr := loader.GetString("DEBUG") // "true" (string)
+debugBool := loader.GetBool("DEBUG")  // true (boolean)
 
 // List access
 rates := env.GetSliceFrom[float64](loader, "RATES")  // [0.1, 0.2, 0.3]
@@ -336,7 +336,7 @@ For the full expansion syntax (`$$` escaping, `${VAR:-default}`, expansion scope
 
 ```go
 cfg := env.DefaultConfig()
-cfg.ExpandVariables = true  // Enabled by default
+cfg.ExpandVariables = true  // Optional: DefaultConfig already enables it
 
 loader, _ := env.New(cfg)
 loader.LoadFiles(".env")
@@ -442,7 +442,7 @@ func loadConfig(loader *env.Loader) error {
 ```
 
 :::tip
-By default (`OverwriteExisting = false`) loading is first-wins: the environment and local files loaded later only **add** keys missing from base.json, and duplicate keys keep the base.json value. To let environment or local config override the base, set `cfg.OverwriteExisting = true` (the `DevelopmentConfig()` preset already sets it).
+By default (`OverwriteExisting = false`) loading is first-wins (see [Override Order](#override-order)): the environment and local files loaded later only **add** keys missing from base.json. To let them override the base, set `cfg.OverwriteExisting = true` (the `DevelopmentConfig()` preset already sets it).
 :::
 
 ### Separation by Function
@@ -466,7 +466,7 @@ loader.LoadFiles(
 
 ### Configuration Priority
 
-With the default (`OverwriteExisting = false`), the first file loaded wins for duplicate keys:
+With the default (`OverwriteExisting = false`), the first file loaded wins (see [Override Order](#override-order)):
 
 ```text
 Command-line args > Environment variables > base config > environment config > local config
@@ -490,7 +490,7 @@ See the [Serialization](./serialization) guide for the full function family and 
 
 Beyond the three built-in formats, you can implement the `EnvParser` interface and register a custom format with `RegisterParser`. The built-in `.env`, JSON, and YAML formats cannot be overridden this way; `ForceRegisterParser` is the exception.
 
-`LoadFiles` routes by extension and recognizes only `.env`, `.json`, `.yaml`, and `.yml`, so a custom format number is never selected from a file name. See the [Custom Parser](./custom-parser) guide for complete examples and the two loading paths.
+`LoadFiles` routes by extension and recognizes only `.env`, `.json`, `.yaml`, and `.yml`, so a custom format number is never selected from a file name. Three loading paths work: override `FormatEnv` with `ForceRegisterParser` and name the file `*.env`, register for `FormatAuto`, or call the parser manually and `Set` each entry. See the [Custom Parser](./custom-parser) guide for complete examples.
 
 ## Complete Example
 
@@ -570,7 +570,7 @@ Prefix filtering combines with the `OverwriteExisting` policy: filtered-out keys
 
 ### Unknown-Extension Fallback
 
-`DetectFormat` returns `FormatAuto` for unknown extensions, and the loader then **falls back to the `.env` parser** for line-by-line parsing. Files such as `config.conf` or `config.txt` still load correctly when their content is `KEY=value` shaped.
+`DetectFormat` returns `FormatAuto` for unknown extensions. With no `FormatAuto` entry in the parser table, the loader **falls back to the `.env` parser** for line-by-line parsing; if you registered one with `RegisterParser(env.FormatAuto, ...)`, that parser is used instead. Files such as `config.conf` or `config.txt` therefore still load correctly when their content is `KEY=value` shaped and no custom parser is registered.
 
 ## Related Documentation
 

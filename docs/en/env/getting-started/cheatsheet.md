@@ -51,34 +51,24 @@ count := env.Len()
 // Secure value
 secret := env.GetSecure("PASSWORD")
 if secret != nil {
-    defer secret.Release()  // or secret.Close()
+    defer secret.Release()     // zeroes, unlocks, and returns to the pool
     value := secret.Reveal()   // plaintext value (use only when needed)
     masked := secret.Masked()  // mask (for logging)
 }
 ```
 
+`Release()` vs `Close()` is covered in [Memory Locking · Prefer Release Over Close](../security/memory-locking#prefer-release-over-close): `Close()` zeroes and unlocks but does not return the object to the pool.
+
 ## Key Resolution
 
+Flat keys, dot paths, and uppercase dot paths are equivalent; array elements use paths such as `servers.0.host`. For the complete rules and conversion table, see [Multi-format Config · Key Resolution](../guides/multi-format#key-resolution).
+
 ```go
-// JSON: {"app": {"name": "myapp"}}
-// Stored as: APP_NAME=myapp
-
-// All of these read the same value
-env.GetString("APP_NAME")      // Flat key (recommended)
-env.GetString("app.name")      // Dot path
-env.GetString("APP.NAME")      // Uppercase dot path
-
-// Array index
-env.GetString("servers.0.host")  // SERVERS_0_HOST
+env.GetString("APP_NAME")        // Flat key (recommended)
+env.GetString("app.name")        // Dot path → APP_NAME
+env.GetString("APP.NAME")        // Uppercase dot path
+env.GetString("servers.0.host")  // Array index → SERVERS_0_HOST
 ```
-
-A key ending in a numeric segment (`HOSTS.1`) also falls back to that element of the comma-separated value of the base key when no indexed key exists.
-
-| Input | Converted to |
-|-------|---------------|
-| `"database.host"` | `"DATABASE_HOST"` |
-| `"servers.0.host"` | `"SERVERS_0_HOST"` |
-| `"app.config.name"` | `"APP_CONFIG_NAME"` |
 
 ## Struct Mapping
 
@@ -100,9 +90,9 @@ env.ParseInto(&cfg)
 | Preset | Purpose | Characteristics |
 |--------|---------|-----------------|
 | `DefaultConfig()` | General | Safe defaults, no overwriting |
-| `DevelopmentConfig()` | Development | Relaxed limits, overwrites, YAML syntax, 10MB file limit |
-| `TestingConfig()` | Testing | Overwrites, test isolation, 64KB file limit |
-| `ProductionConfig()` | Production | Strict validation + audit, no overwriting, 64KB file limit |
+| `DevelopmentConfig()` | Development | Relaxed limits, overwrites, YAML syntax, 10 MB file limit |
+| `TestingConfig()` | Testing | Overwrites, test isolation, 64 KB file limit |
+| `ProductionConfig()` | Production | Strict validation + audit, no overwriting, 64 KB file limit |
 
 ```go
 cfg := env.ProductionConfig()
@@ -241,9 +231,9 @@ Single-quoted values are **not** expanded: `KEY='a ${UNDEF}'` loads as the liter
 
 ## Boolean Values
 
-| Truthy | Falsy |
-|--------|-------|
-| `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
+Truthy: `true`/`1`/`yes`/`on`/`enabled`. Falsy: `false`/`0`/`no`/`off`/`disabled`. Matching is case-insensitive.
+
+An empty string parses as `false` (the default is not used), and an unrecognized value is audited and returns the default. See [FAQ · What boolean value formats are supported?](../reference/faq#what-boolean-value-formats-are-supported) for the full table.
 
 ## Time Formats
 
@@ -266,24 +256,17 @@ DURATION=1h30m
 
 ## Testing
 
+- Create an independent loader per test with `env.TestingConfig()`, and clear `Filenames` so the cwd `.env` is not loaded implicitly.
+- When the package-level singleton must be cleaned up, check the error from `env.ResetDefaultLoader()` in TestMain.
+
 ```go
-func TestExample(t *testing.T) {
-    cfg := env.TestingConfig()
-    cfg.Filenames = nil // don't auto-load the cwd .env
-    loader, _ := env.New(cfg)
-    defer loader.Close()
-
-    loader.Set("KEY", "value")
-    // Test...
-}
-
-func TestMain(m *testing.M) {
-    if err := env.ResetDefaultLoader(); err != nil {
-        log.Printf("warning: %v", err)
-    }
-    os.Exit(m.Run())
-}
+cfg := env.TestingConfig()
+cfg.Filenames = nil
+loader, _ := env.New(cfg)
+defer loader.Close()
 ```
+
+The full TestMain template and process-variable cleanup are in [Testing · Cleaning Up Test State](../guides/testing#cleaning-up-test-state); the in-memory filesystem is in [Testing · Mocking Filesystem](../guides/testing#mocking-filesystem).
 
 ## Built-in Forbidden Keys
 

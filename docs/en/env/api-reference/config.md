@@ -72,7 +72,7 @@ type LimitsConfig struct {
 type JSONConfig struct {
     JSONNullAsEmpty    bool // null converts to empty string
     JSONNumberAsString bool // numbers render as canonical decimal strings
-    JSONBoolAsString   bool // no effect; kept for symmetry with YAMLBoolAsString
+    JSONBoolAsString   bool // no effect; kept for symmetry with YAMLBoolAsString (Deprecated)
     JSONMaxDepth       int  // Max nesting depth
 }
 
@@ -133,7 +133,7 @@ Each of the seven embedded sections supplies its own group of qualified field na
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `ValidationConfig.RequiredKeys` | `nil` | Required keys, checked by `Validate` |
+| `ValidationConfig.RequiredKeys` | `nil` | Required keys, checked by `Validate` and at the end of every parse (per file: all required keys must be satisfied in a single file) |
 | `ValidationConfig.AllowedKeys` | `nil` | Key whitelist; empty allows every key |
 | `ValidationConfig.ForbiddenKeys` | `nil` | Extra forbidden keys, merged with the built-in list |
 | `ValidationConfig.KeyPattern` | `nil` | Custom key regexp; `nil` selects fast byte-level validation |
@@ -144,11 +144,11 @@ Each of the seven embedded sections supplies its own group of qualified field na
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `LimitsConfig.MaxFileSize` | 8MB | Max bytes per file (hard cap 100MB) |
+| `LimitsConfig.MaxFileSize` | 8 MB | Max bytes per file (hard cap 100 MB) |
 | `LimitsConfig.MaxVariables` | 1000 | Max variables per file (hard cap 10000) |
-| `LimitsConfig.MaxLineLength` | 8192 | Max line length (hard cap 64KB; applies to every format) |
+| `LimitsConfig.MaxLineLength` | 8192 | Max line length (hard cap 64 KB; applies to every format) |
 | `LimitsConfig.MaxKeyLength` | 128 | Max key length (hard cap 1024) |
-| `LimitsConfig.MaxValueLength` | 8192 | Max value length (hard cap 1MB) |
+| `LimitsConfig.MaxValueLength` | 8192 | Max value length (hard cap 1 MB) |
 | `LimitsConfig.MaxExpansionDepth` | 5 | Max expansion depth (hard cap 20) |
 
 **`JSONConfig` (JSON parsing)**
@@ -157,7 +157,7 @@ Each of the seven embedded sections supplies its own group of qualified field na
 |-------|---------|-------------|
 | `JSONConfig.JSONNullAsEmpty` | `true` | `null` becomes an empty string |
 | `JSONConfig.JSONNumberAsString` | `true` | Numbers render as canonical decimal strings |
-| `JSONConfig.JSONBoolAsString` | `true` | Kept for symmetry with `YAMLBoolAsString`; no effect on JSON output |
+| `JSONConfig.JSONBoolAsString` | `false` | Kept for symmetry with `YAMLBoolAsString`; no effect on JSON output (marked Deprecated) |
 | `JSONConfig.JSONMaxDepth` | 16 | Max nesting depth (valid range 1–100) |
 
 **`YAMLConfig` (YAML parsing)**
@@ -169,7 +169,7 @@ Each of the seven embedded sections supplies its own group of qualified field na
 | `YAMLConfig.YAMLBoolAsString` | `true` | Booleans render as canonical `true`/`false` (when off, the source spelling is kept) |
 | `YAMLConfig.YAMLMaxDepth` | 16 | Max nesting depth (valid range 1–100) |
 
-**`ParsingConfig` (.env parsing behavior)**
+**`ParsingConfig` (general parsing)**
 
 | Field | Default | Description |
 |-------|---------|-------------|
@@ -194,7 +194,7 @@ Each of the seven embedded sections supplies its own group of qualified field na
 
 ## Configuration Fields
 
-### File Handling
+### File Loading
 
 These fields control file loading behavior.
 
@@ -269,7 +269,7 @@ If the variable is explicitly set to an empty string (`VAR=`), that empty string
 
 #### `MaxFileSize` int64
 
-Maximum bytes per file. **Default 8MB**, hard limit 100MB.
+Maximum bytes per file. **Default 8 MB** (8388608 bytes), hard limit 100 MB.
 
 ```go
 cfg.MaxFileSize = 10 * 1024 * 1024 // 10 MB
@@ -277,15 +277,15 @@ cfg.MaxFileSize = 10 * 1024 * 1024 // 10 MB
 
 | Setting | Default | Hard Limit |
 |---------|---------|------------|
-| `MaxFileSize` | 8MB (8388608) | 100MB |
+| `MaxFileSize` | 8 MB (8388608 bytes) | 100 MB |
 
 ---
 
 #### `MaxLineLength` int
 
-Maximum length of a single line. **Default 8192**, hard limit 64KB.
+Maximum length of a single line. **Default 8192**, hard limit 64 KB.
 
-The limit applies to **all formats**, including JSON and YAML, because a minified single-line JSON document counts as one line. You cannot raise the 64KB hard cap: `Validate()` rejects any higher value. Pretty-print the document instead.
+The limit applies to **all formats**, including JSON and YAML, because a minified single-line JSON document counts as one line. You cannot raise the 64 KB hard cap: `Validate()` rejects any higher value. Pretty-print the document instead.
 
 ```go
 cfg.MaxLineLength = 2048
@@ -293,7 +293,7 @@ cfg.MaxLineLength = 2048
 
 | Setting | Default | Hard Limit |
 |---------|---------|------------|
-| `MaxLineLength` | 8192 | 65536 (64KB) |
+| `MaxLineLength` | 8192 | 65536 (64 KB) |
 
 ---
 
@@ -313,7 +313,7 @@ cfg.MaxKeyLength = 128
 
 #### `MaxValueLength` int
 
-Maximum value length. **Default 8192**, hard limit 1MB.
+Maximum value length. **Default 8192**, hard limit 1 MB.
 
 ```go
 cfg.MaxValueLength = 8192
@@ -321,7 +321,7 @@ cfg.MaxValueLength = 8192
 
 | Setting | Default | Hard Limit |
 |---------|---------|------------|
-| `MaxValueLength` | 8192 | 1048576 (1MB) |
+| `MaxValueLength` | 8192 | 1048576 (1 MB) |
 
 ---
 
@@ -358,7 +358,9 @@ cfg.MaxExpansionDepth = 10
 Regexp every key name must match. **Default `nil`**, which uses fast byte-level validation instead.
 
 :::tip Performance
-`nil` selects fast byte-level validation, roughly 10x faster than a regexp. The default rule accepts a key that starts with a letter and contains only letters, digits, and underscores.
+`nil` selects fast byte-level validation (see [Constants & Errors](./constants#defaultkeypattern)). The default rule accepts a key that starts with a letter and contains only letters, digits, and underscores.
+
+`Config.Validate()` runs a custom pattern through probes; the rules are in "KeyPattern security probes" below.
 :::
 
 ```go
@@ -396,7 +398,9 @@ The library already forbids system-critical variables such as `PATH`, `LD_PRELOA
 
 #### `RequiredKeys` []string
 
-List of required key names. Checked when `Validate()` is called.
+List of required key names. Checked by `Validate()` and at the end of every parse, so `LoadFiles` and `New` reject a missing required key immediately. **Default `nil`** (no check). Key names are compared in uppercase.
+
+The check runs at the **end of each file's parse**, so every required key must be satisfiable in a single file; do not split them across multiple files.
 
 ```go
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
@@ -408,8 +412,10 @@ cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
 Validate value safety: control characters, null bytes, and similar. **Default `true`**.
 
+With the built-in validator this switch no longer turns validation off: the baseline checks (maximum value length, control-character rejection, and the UTF-8 check when `ValidateUTF8` is on) run on every write path, matching the `.env` line parser. Setting it to `false` still rejects values containing control characters. The switch remains effective for **custom validators that do not implement the baseline capability** — those skip value validation entirely when it is off.
+
 :::warning Security recommendations
-Keep this enabled. Disable it only when you must store values that legitimately contain control characters.
+Keep it `true`. With a custom validator that lacks the baseline capability, turning it off means giving up value validation.
 :::
 
 ```go
@@ -483,10 +489,10 @@ cfg.JSONNumberAsString = true
 
 #### `JSONBoolAsString` bool
 
-Retained for symmetry with `YAMLBoolAsString`. The field has **no effect on JSON output**: a decoded JSON bool carries no raw source text, so JSON booleans always render as the canonical `true`/`false`. **Default `true`**.
+Retained for symmetry with `YAMLBoolAsString`. The field has **no effect on JSON output**: a decoded JSON bool carries no raw source text, so JSON booleans always render as the canonical `true`/`false`. **Default `false`**; the field is marked Deprecated.
 
 ```go
-cfg.JSONBoolAsString = true
+cfg.JSONBoolAsString = false
 ```
 
 ---
@@ -555,10 +561,14 @@ cfg.AuditEnabled = true
 
 #### `AuditHandler` AuditHandler
 
-Custom audit handler.
+Custom audit handler. Note that `loader.Close()` closes the handler, and `JSONAuditHandler` also closes the underlying writer, so do not pass `os.Stdout` or a writer you still need.
 
 ```go
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ```
 
 :::tip
@@ -656,7 +666,7 @@ Returns the default, security-oriented configuration.
 | `OverwriteExisting` | `false` |
 | `AutoApply` | `false` |
 | `ExpandVariables` | `true` |
-| `MaxFileSize` | 8MB |
+| `MaxFileSize` | 8 MB |
 | `MaxLineLength` | 8192 |
 | `MaxKeyLength` | 128 |
 | `MaxValueLength` | 8192 |
@@ -668,7 +678,7 @@ Returns the default, security-oriented configuration.
 | `AllowYamlSyntax` | `false` |
 | `JSONNullAsEmpty` | `true` |
 | `JSONNumberAsString` | `true` |
-| `JSONBoolAsString` | `true` |
+| `JSONBoolAsString` | `false` (marked Deprecated; no effect on JSON output) |
 | `JSONMaxDepth` | 16 |
 | `YAMLNullAsEmpty` | `true` |
 | `YAMLNumberAsString` | `true` |
@@ -694,7 +704,7 @@ Returns the development configuration, with relaxed limits for fast iteration.
 |-------|---------|-------------|
 | `OverwriteExisting` | `false` | `true` |
 | `AllowYamlSyntax` | `false` | `true` |
-| `MaxFileSize` | 8MB | 10MB |
+| `MaxFileSize` | 8 MB | 10 MB |
 
 :::tip Security guarantees
 `ValidateValues` stays `true` in every preset, matching the default. No preset weakens value validation.
@@ -721,7 +731,7 @@ Returns the testing configuration, sized for isolated test runs.
 | Field | Default | Testing |
 |-------|---------|---------|
 | `OverwriteExisting` | `false` | `true` |
-| `MaxFileSize` | 8MB | 64KB |
+| `MaxFileSize` | 8 MB | 64 KB |
 | `MaxVariables` | 1000 | 50 |
 
 Every other field matches the default, including `AuditEnabled=false` (no audit noise in tests) and `FailOnMissingFile=false`.
@@ -751,14 +761,23 @@ Returns the production configuration: strict validation plus auditing.
 |-------|---------|------------|
 | `FailOnMissingFile` | `false` | `true` |
 | `AuditEnabled` | `false` | `true` |
-| `MaxFileSize` | 8MB | 64KB |
+| `MaxFileSize` | 8 MB | 64 KB |
 | `MaxVariables` | 1000 | 50 |
 
 ```go
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
-loader, _ := env.New(cfg)
+// loader.Close() closes the handler (and JSONAuditHandler closes its writer), so use a file, not os.Stdout
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
+loader, err := env.New(cfg)
+if err != nil {
+    auditFile.Close() // on failure the handler did not take over the file, so close it here
+    log.Fatal(err)
+}
 ```
 
 ---
@@ -771,7 +790,7 @@ loader, _ := env.New(cfg)
 | Error on missing file | ✗ | ✗ | ✗ | ✓ |
 | Audit logging | ✗ | ✗ | ✗ | ✓ |
 | YAML syntax | ✗ | ✓ | ✗ | ✗ |
-| File size limit | 8MB | 10MB | 64KB | 64KB |
+| File size limit | 8 MB | 10 MB | 64 KB | 64 KB |
 | Max variables | 1000 | 1000 | 50 | 50 |
 
 :::tip How to choose
@@ -809,7 +828,7 @@ if err := cfg.Validate(); err != nil {
 - `JSONMaxDepth` and `YAMLMaxDepth` must be between 1 and 100
 - `ExpansionScope` must be one of the two defined constants
 - `DuplicateKeyPolicy` must be one of the four defined constants
-- If `KeyPattern` is non-nil, it must pass four probes (see [KeyPattern security probes](#keypattern-security-probes-sec-06))
+- If `KeyPattern` is non-nil, it must pass three probes (see [KeyPattern security probes](#keypattern-security-probes-sec-06))
 
 ---
 
@@ -831,20 +850,8 @@ Reports whether the Config is an uninitialized zero value. `New()` uses this to 
 - Pointer and interface fields, such as `KeyPattern` and `FileSystem`
 - String and slice fields, such as `Prefix`, `Filenames`, and `RequiredKeys`
 
-A partially set Config is therefore **not** treated as zero. `New()` keeps it as given, then validates it, and returns `ErrInvalidConfig` when a required limit is zero or out of range.
-
 :::warning
-Start from `DefaultConfig()` so every field you do not touch keeps a valid value:
-
-```go
-// Recommended
-cfg := env.DefaultConfig()
-cfg.Filenames = []string{".env.production"}
-
-// Not recommended (unset limit fields stay zero and fail Validate)
-var cfg env.Config
-cfg.Filenames = []string{".env.production"}
-```
+A partially set Config is not treated as zero: the limit fields you leave unset make `Validate()` fail with an `ErrInvalidConfig` wrapper (for example `MaxFileSize must be positive`). See "The IsZero pitfall" below for the fix.
 :::
 
 ---
@@ -870,10 +877,15 @@ defer loader.Close()
 ```go
 cfg := env.ProductionConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "DB_PORT", "API_KEY"}
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 
 loader, err := env.New(cfg)
 if err != nil {
+    auditFile.Close() // on failure the handler did not take over the file, so close it here
     log.Fatal(err)
 }
 defer loader.Close()
@@ -918,7 +930,7 @@ loader, _ := env.New(cfg)
 
 ### Fields the comparison table does not cover
 
-The "Detailed Preset Comparison" table lists only the options whose values **differ** between presets. The table below covers the remaining fields, which are identical across all four:
+The "Detailed Preset Comparison" table lists only the options whose values **differ** between presets. The table below covers the remaining fields (`AllowYamlSyntax` does differ, so it is included for cross-checking):
 
 | Option | Default | Development | Testing | Production |
 |--------|---------|-------------|---------|------------|
@@ -938,13 +950,14 @@ Key point: `DevelopmentConfig` relaxes **convenience** only: overwriting, YAML s
 |------|---------|
 | Key pattern | Built-in byte-level validation (equivalent to `^[A-Za-z][A-Za-z0-9_]*$`) |
 | `ValidateValues` | true |
-| `JSONNullAsEmpty`/`JSONNumberAsString`/`JSONBoolAsString` | true |
+| `JSONNullAsEmpty`/`JSONNumberAsString` | true |
+| `JSONBoolAsString` | false (no effect on JSON output) |
 | `ExpandVariables` | true (scope `ExpansionFileOnly`) |
 | `Prefix` | empty (no filtering) |
 
 ### The IsZero pitfall: always start from DefaultConfig()
 
-The zero-value rules and their consequences are covered in the warning under [IsZero](#iszero) above. The one rule: build on `DefaultConfig()` instead of assigning field by field on a zero-value `Config`.
+The one rule: build on `DefaultConfig()` instead of assigning field by field on a zero-value `Config`.
 
 <!-- check-code: skip -->
 ```go
@@ -955,12 +968,13 @@ cfg.OverwriteExisting = true
 
 ### KeyPattern security probes (SEC-06)
 
-A custom `KeyPattern` goes through four probes in `Config.Validate()`. Failing any probe rejects the configuration:
+A custom `KeyPattern` goes through three probes in `Config.Validate()`. Failing any probe rejects the configuration:
 
-1. It must match a valid key (e.g. `TEST_KEY`)
-2. It must reject the empty string
-3. It must reject keys starting with a digit (e.g. `123_INVALID`)
-4. It must reject keys containing `=`, `:`, a newline, or a control character. Otherwise a key that carries a separator would re-parse as **different lines** after a serialization round trip (round-trip injection).
+1. It must reject the empty string
+2. It must reject keys starting with a digit (e.g. `123_INVALID`)
+3. It must reject keys containing `=`, `:`, a newline, or a control character. Otherwise a key that carries a separator would re-parse as **different lines** after a serialization round trip (round-trip injection).
+
+The probe set deliberately omits magic keys, so a namespace-only pattern such as `^ZZZ_[A-Z0-9]*$` is accepted: a pattern that matches no ordinary key merely fails every key validation, which is not a security risk.
 
 ### ExpansionScope
 

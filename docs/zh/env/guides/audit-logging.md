@@ -16,7 +16,12 @@ sidebar_position: 6
 ```go
 cfg := env.ProductionConfig()
 cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 
 loader, _ := env.New(cfg)
 ```
@@ -34,19 +39,27 @@ loader, _ := env.New(cfg)
 
 ## 审计处理器
 
+处理器由 `loader.Close()` 关闭，其中 `JSONAuditHandler` 还会关闭底层 writer（实现了 `io.Closer` 的 `os.File` 等）。因此不要把 `os.Stdout` 或与其他组件共享的 writer 传给处理器，否则 `loader.Close()` 会连带关闭它。写入文件时自行打开 `os.File`（权限 `0600`），文件由处理器关闭；`env.New()` 失败时处理器未接管文件，需要自行关闭。
+
 ### JSONAuditHandler
 
 输出 JSON 格式日志：
 
 ```go
 import (
+    "log"
     "os"
     "github.com/cybergodev/env"
 )
 
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+
 cfg := env.ProductionConfig()
 cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ```
 
 **输出示例**（节选，省略 `reason` 字段与逐键 `ActionSet` 事件）：
@@ -240,20 +253,21 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer auditFile.Close()
 
-	// 配置
+	// 配置（清空 Filenames，改由下面显式加载；否则 New 会先自动加载并校验必需键）
 	cfg := env.ProductionConfig()
+	cfg.Filenames = nil
 	cfg.AuditEnabled = true
 	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-	// 创建加载器
+	// 创建加载器（New 失败时处理器未接管文件，需自行关闭）
 	loader, err := env.New(cfg)
 	if err != nil {
+		auditFile.Close()
 		log.Fatal(err)
 	}
-	defer loader.Close()
+	defer loader.Close() // 关闭处理器，并由 JSONAuditHandler 关闭 auditFile
 
 	// 加载配置
 	err = loader.LoadFiles(".env")
@@ -261,7 +275,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// 验证
+	// 验证（必需键在加载时已检查过一次，这里按当前存储再确认）
 	err = loader.Validate()
 	if err != nil {
 		log.Fatal(err)

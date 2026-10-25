@@ -65,7 +65,7 @@ The six default limit constants map one-to-one onto `Config` fields of the same 
 
 ```go
 cfg := env.DefaultConfig()
-cfg.MaxFileSize = 200 * 1024 * 1024  // Exceeds 100MB limit
+cfg.MaxFileSize = 200 * 1024 * 1024  // Exceeds the 100 MB limit
 
 if err := cfg.Validate(); err != nil {
     // Returns error: MaxFileSize exceeds hard limit
@@ -320,7 +320,7 @@ A failed `${VAR}` expansion:
 | `ExpansionError.Limit` | `int` | Depth limit |
 | `ExpansionError.Chain` | `string` | Expansion chain (sanitized) |
 | `ExpansionError.Kind` | `ExpansionErrorKind` | Error reason category; the zero value means depth overflow or a cycle |
-| `ExpansionError.Error` | `func (e *ExpansionError) Error() string` | Implements the `error` interface. Key names in the output are masked: only the first 2 characters are kept, followed by `***`. |
+| `ExpansionError.Error` | `func (e *ExpansionError) Error() string` | Implements the `error` interface. Key names in the output are replaced with `[MASKED]` (the same as `MaskKey`), so neither the spelling nor the length of the key leaks. |
 | `ExpansionError.Is` | `func (e *ExpansionError) Is(target error) bool` | Matches `ErrExpansionDepth` only when `Kind != ExpansionRequiredKind` (see "`errors.Is` behavior" below) |
 
 **Error classification (Kind field):**
@@ -475,7 +475,7 @@ The list is the library-internal variable `internal.Patterns`, which is not expo
 
 - Matching is case-insensitive.
 - A key name that contains any pattern is sensitive.
-- Exception (SEC-006): `AUTH`, `PAN`, `PWD`, and `USERNAME` match only at identifier boundaries, so benign keys such as `AUTHOR`, `COMPANY`, or `MONKEY` stay non-sensitive.
+- Exception (SEC-06): `AUTH`, `PAN`, `PWD`, and `USERNAME` match only at identifier boundaries, so benign keys such as `AUTHOR`, `COMPANY`, or `MONKEY` stay non-sensitive.
 
 **Usage example:**
 

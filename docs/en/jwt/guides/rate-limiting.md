@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Rate Limiting"
 title: "Rate Limiting - CyberGo JWT | Token Bucket"
-description: "Configure token-bucket max requests per window for signing endpoints with Subject, UserID, and RateLimitKeyer priority lookup supporting distributed limiting."
+description: "CyberGo JWT rate limiting: token bucket caps per window for signing endpoints, key lookup by Subject, UserID, or RateLimitKeyer, config bounds, and Redis."
 sidebar_position: 40
 ---
 
@@ -19,28 +19,13 @@ Create(claims) → Extract rate limit key → Check RateLimitProvider → Allow/
 
 ### Token Bucket Algorithm Details
 
-The built-in [`RateLimiter`](../api-reference/types#ratelimiter) uses a token bucket algorithm, not a simple fixed-window counter. Each rate limit key corresponds to an independent bucket, which records the remaining `tokens` and the last refill time `lastRefill`.
-
-**Proportional Token Refill**: On each request, the number of tokens to add is calculated proportionally based on the time elapsed since the last refill:
-
-```text
-tokensToAdd = (maxRate × elapsed) / window
-```
-
-Where `elapsed` is the number of nanoseconds since the last refill, and `window` is the rate limit window. After refilling, the token count does not exceed `maxRate` (the cap), ensuring the configured rate is never exceeded.
-
-**Residual Time Retention**: After refilling tokens, `lastRefill` is not reset to the current time. Instead, it advances only by the "consumed" time corresponding to the tokens added:
-
-```text
-consumedNano = (tokensToAdd × window) / maxRate
-lastRefill += consumedNano
-```
-
-This mechanism avoids uneven token refilling — if `lastRefill` were reset to `now` each time, the uncounted residual time would be discarded, causing the actual refill rate to be higher than configured.
+The built-in [`RateLimiter`](../api-reference/types#ratelimiter) uses a token bucket algorithm. Every rate limit key gets its own bucket. Tokens are refilled in proportion to elapsed time, capped at `maxRate`. Refilling advances the clock only by the time corresponding to the tokens added and preserves the remainder, so the effective rate does not drift upward.
 
 :::tip Token Bucket vs Fixed Window
-A fixed-window counter allows a burst of `maxRate` requests at window boundaries (e.g., 100 allowed at second 59, then another 100 at second 1 — 200 requests in an instant). The token bucket refills tokens continuously and proportionally, producing a smoother traffic curve better suited for API rate limiting.
+A fixed-window counter allows a burst of `maxRate` requests at window boundaries (for example 100 allowed at second 59, then another 100 at second 1, so 200 requests in an instant). The token bucket refills tokens continuously and proportionally, producing a smoother traffic curve better suited to API rate limiting.
 :::
+
+The full algorithm semantics and the `Allow` / `AllowN` behavior are documented in [Built-in Types → RateLimiter](../api-reference/types#ratelimiter).
 
 ## Configuration
 
@@ -58,8 +43,16 @@ cfg.RateLimitWindow = time.Minute    // Time window
 | `RateLimitRate` | `100` | Max requests per window |
 | `RateLimitWindow` | `1m` | Time window |
 
+With `EnableRateLimit = true`, `Config.Validate()` rejects the following configurations (returning `ErrInvalidConfig`):
+
+| Check | Condition |
+|-------|-----------|
+| Negative values | `RateLimitRate < 0` or `RateLimitWindow < 0` |
+| Count upper bound | `RateLimitRate > 1000000` |
+| Window upper bound | `RateLimitWindow > 30 days` |
+
 :::tip
-Rate limiting applies to all token issuance methods: `Create()`, `CreateRefresh()`, `Refresh()`, and `RefreshInto()`. It does not affect `Parse()` or `ParseInto()`.
+Rate limiting applies to every token issuance method: `Create()`, `CreateRefresh()`, `Refresh()`, and `RefreshInto()`. It does not affect `Parse()` or `ParseInto()`.
 :::
 
 ## Rate Limit Key

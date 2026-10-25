@@ -78,18 +78,22 @@ func (m *MockFileSystem) Open(name string) (env.File, error) {
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{content: content}, nil
+    // 传入真实 size：加载器用 Stat().Size() 做 MaxFileSize 预检
+    return &MockFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
     return m.Open(name)
 }
 
+// MockFileSystem.Stat 库内不调用，但返回值必须可安全使用，
+// 避免调用方（或未来实现）拿到 nil 后 panic
 func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
-    if _, ok := m.files[name]; !ok {
+    content, ok := m.files[name]
+    if !ok {
         return nil, os.ErrNotExist
     }
-    return nil, nil
+    return &mockFileInfo{name: name, size: int64(len(content))}, nil
 }
 
 func (m *MockFileSystem) MkdirAll(path string, perm os.FileMode) error { return nil }
@@ -106,47 +110,44 @@ func (m *MockFileSystem) Unsetenv(key string) error           { delete(m.env, ke
 func (m *MockFileSystem) LookupEnv(key string) (string, bool) { val, ok := m.env[key]; return val, ok }
 
 // MockFile 是 env.File 的内存实现（Read/Write/Close/Sync/Stat）。
-// 加载器打开文件后会立即调用 Stat() 做大小预检，缺失会导致 panic。
+// 加载器打开文件后会立即调用 MockFile.Stat() 做大小预检，返回错误会让加载失败。
 type MockFile struct {
-    content string
-    offset  int64 // 读偏移，支持分块读取
+    name   string
+    size   int64
+    reader *strings.Reader // 读偏移由 strings.Reader 自带，支持分块读取
 }
 
-func (f *MockFile) Read(p []byte) (int, error) {
-    if f.offset >= int64(len(f.content)) {
-        return 0, io.EOF
-    }
-    n := copy(p, f.content[f.offset:])
-    f.offset += int64(n)
-    return n, nil
-}
+func (f *MockFile) Read(p []byte) (int, error)  { return f.reader.Read(p) }
 
 // 只读模拟：加载路径不会写入
-func (f *MockFile) Write(p []byte) (int, error) { return len(p), nil }
+func (f *MockFile) Write(p []byte) (int, error) { return 0, errors.ErrUnsupported }
 
 func (f *MockFile) Close() error { return nil }
 func (f *MockFile) Sync() error  { return nil }
 
-// Size 必须等于 len(content)，否则 loadFileLocked 的
-// MaxFileSize 预检会误判文件大小
+// Stat 必须返回真实大小（Open 传入的 size == len(content)），
+// 否则 loadFileLocked 的 MaxFileSize 预检会误判文件大小
 func (f *MockFile) Stat() (os.FileInfo, error) {
-    return mockFileInfo{size: int64(len(f.content))}, nil
+    return &mockFileInfo{name: f.name, size: f.size}, nil
 }
 
 // mockFileInfo 极简实现 os.FileInfo，仅 Size 参与实际逻辑
 type mockFileInfo struct {
+    name string
     size int64
 }
 
-func (i mockFileInfo) Name() string       { return "mock" }
-func (i mockFileInfo) Size() int64        { return i.size }
-func (i mockFileInfo) Mode() os.FileMode  { return 0444 }
-func (i mockFileInfo) ModTime() time.Time { return time.Time{} }
-func (i mockFileInfo) IsDir() bool        { return false }
-func (i mockFileInfo) Sys() any           { return nil }
+func (i *mockFileInfo) Name() string       { return i.name }
+func (i *mockFileInfo) Size() int64        { return i.size }
+func (i *mockFileInfo) Mode() os.FileMode  { return 0444 }
+func (i *mockFileInfo) ModTime() time.Time { return time.Time{} }
+func (i *mockFileInfo) IsDir() bool        { return false }
+func (i *mockFileInfo) Sys() any           { return nil }
 ```
 
-`Open` 返回的 mock 文件值必须完整实现 `env.File` 接口的五个方法：Read、Write、Close、Sync、Stat（其中 `File` 接口本身声明的只有 `Sync` 与 `Stat`，另外三个来自内嵌的 `io.Reader`、`io.Writer`、`io.Closer`）。`Stat` 不可省略：加载器在读取文件前先调用 `file.Stat()` 做大小预检，`Size()` 超过 `MaxFileSize` 时返回 `ErrFileTooLarge`。因此 `mockFileInfo` 的 `Size()` 必须返回 `len(content)`。
+`Open` 返回的 mock 文件值必须完整实现 `env.File` 接口的五个方法：Read、Write、Close、Sync、Stat（其中 `File` 接口本身声明的只有 `Sync` 与 `Stat`，另外三个来自内嵌的 `io.Reader`、`io.Writer`、`io.Closer`）。`Stat` 不可省略：加载器在读取文件前先调用 `file.Stat()` 做大小预检，`Size()` 超过 `MaxFileSize` 时返回 `ErrFileTooLarge`。因此 `MockFile` 的 `size` 必须由 `Open` 传入真实长度，`mockFileInfo.Size()` 才能返回该值。
+
+api-reference 的[接口页](../api-reference/interfaces)与[工厂页](../api-reference/factory)用的是同一套 mock，可对照阅读。
 
 ### 在测试中使用
 
@@ -199,7 +200,7 @@ func TestExample(t *testing.T) {
 }
 ```
 
-`ResetDefaultLoader` 返回 `error`：它清空并关闭全局默认加载器，返回值是旧加载器 `Close()` 的错误（关闭期清理失败时非 nil）；全局加载器从未初始化时返回 nil。忽略该错误只影响旧加载器的清理结果，全局状态仍会被清空，之后可以重新 `env.Load()`。它不会撤销该 loader 已经写入进程环境的变量。
+`ResetDefaultLoader` 返回 `error`：它清空并关闭默认加载器，返回值是旧加载器 `Close()` 的错误（关闭期清理失败时非 nil）；默认加载器从未初始化时返回 nil。忽略该错误只影响旧加载器的清理结果，全局状态仍会被清空，之后可以重新 `env.Load()`。它不会撤销该 loader 已经写入进程环境的变量。
 
 ### 清理环境变量
 

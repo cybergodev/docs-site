@@ -533,7 +533,7 @@ fmt.Println(len(result.RawBody())) // 字节已在内存中，没有未关闭的
 
 大文件不要用普通请求读进内存，改用 `Download`（流式写盘、进度回调、断点续传）。
 
-`WithStreamBody` 只在 `Download` 路径生效：经普通请求方法使用时，响应仍会完整读入 `Result` 并关闭流。详见 [文件传输指南](../guides/file-transfer)。
+`WithStreamBody` 只在 `Download` 路径生效：与普通请求方法（`Get`/`Post`/`Request` 等）同用时，请求直接以 `ErrStreamBodyRequiresDownload` 失败，不会返回空响应体。详见 [文件传输指南](../guides/file-transfer)。
 
 ## 设置了代理为什么不生效？
 

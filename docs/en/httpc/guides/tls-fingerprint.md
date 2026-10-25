@@ -25,7 +25,7 @@ cfg.Security.TLSFingerprint = "chrome-latest" // or "chrome-windows", "firefox-l
 client, err := httpc.New(cfg)
 ```
 
-Leave `TLSFingerprint` empty (the default) to keep the standard Go stack with no extra dependencies and no spoofing.
+Leave `TLSFingerprint` empty (the default) to keep the standard Go stack with no spoofing.
 
 Package-level — route a single call to a fingerprinted client, no Client required:
 
@@ -92,7 +92,7 @@ Adjacent connections from the same client therefore do **not** send byte-identic
 
 ## Known Limitations
 
-- Fingerprinted connections are not counted in pool metrics and skip `Connection.EnableDoH` (the backend resolves DNS itself).
+- Fingerprinted connections are not counted in pool metrics. With `Connection.EnableDoH` enabled, the fingerprint path's request preflight and the direct dial share **one DoH resolver** (`PoolManager.DoHLookup()`); when it is disabled, the backend resolves DNS itself.
 - The fingerprint path's transport parameters are **fixed and not tunable**: idle-connection timeout 20s, read-idle timeout 10s, HTTP/2 PING timeout 10s, and pool sizes `MaxIdleConns` 512, `MaxIdleConnsPerHost` 128, `MaxConnsPerHost` 128. `Connection.MaxIdleConns` and `Connection.MaxConnsPerHost` apply to the standard transport only. Request-level timeouts are unaffected and remain governed by the engine's deadline budget; the transport itself sets no timeout.
 - Android presets (`*-android`) emit the desktop fingerprint bytes (placeholders pending real device captures). iOS presets use real WebKit data, but the regular-header order is still a desktop approximation.
 

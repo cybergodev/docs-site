@@ -642,7 +642,7 @@ func main() {
 	}
 
 	// 写入文件
-	err = os.WriteFile(".env", []byte(content), 0644)
+	err = os.WriteFile(".env", []byte(content), 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -661,7 +661,9 @@ import (
 )
 
 func main() {
-	env.Load(".env")
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
 	// 获取所有环境变量
 	all := env.All()
@@ -674,8 +676,10 @@ func main() {
 
 	fmt.Println(content)
 
-	// 或写入文件
-	os.WriteFile("env-export.json", []byte(content), 0644)
+	// 或写入文件；导出的是配置快照，可能含密钥，权限用 0600
+	if err := os.WriteFile("env-export.json", []byte(content), 0600); err != nil {
+		panic(err)
+	}
 }
 ```
 
@@ -706,8 +710,10 @@ func main() {
 		panic(err)
 	}
 
-	// 保存为 .env 文件
-	os.WriteFile(".env", []byte(envContent), 0644)
+	// 保存为 .env 文件（含密钥，权限用 0600）
+	if err := os.WriteFile(".env", []byte(envContent), 0600); err != nil {
+		panic(err)
+	}
 
 	fmt.Println("Config migrated from JSON to .env")
 }
@@ -764,7 +770,7 @@ func main() {
 | 首个有效行形如 `KEY:`（冒号后只有空白） | YAML |
 | 以上都不匹配 | `.env` |
 
-判定依据是**同一行中哪个分隔符先出现**，而不是 `: ` 一律优先：`GREETING=hello: world` 的 `=` 在第 8 个字符、`": "` 在其后，判为 `.env`；`connection: host=db port=5432` 的 `": "` 在前，判为 YAML。
+判定依据是**同一行中哪个分隔符先出现**，而不是 `: ` 一律优先：`GREETING=hello: world` 的 `=` 在索引 8（第 9 个字符）、`": "` 在其后，判为 `.env`；`connection: host=db port=5432` 的 `": "` 在前，判为 YAML。
 
 ### IsMarshalError 辅助判断
 

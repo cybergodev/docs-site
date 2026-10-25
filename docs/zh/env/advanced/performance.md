@@ -44,7 +44,7 @@ wg.Wait()
 
 ### 包级函数线程安全
 
-包级函数使用全局加载器，同样是线程安全的：
+包级函数使用默认加载器，同样是线程安全的：
 
 ```go
 var wg sync.WaitGroup
@@ -106,7 +106,7 @@ secret := env.GetSecure("API_KEY")
 value := secret.Reveal()
 
 // 归还对象池
-secret.Release()  // 清零、解锁并放回池；Close() 只清零，不放回池
+secret.Release()  // 清零、解锁并放回池；Close() 清零并解锁，不放回池
 ```
 
 ### 正确使用对象池
@@ -116,7 +116,7 @@ secret.Release()  // 清零、解锁并放回池；Close() 只清零，不放回
 ```go
 func processData() {
     secret := env.GetSecure("SECRET")
-    defer secret.Close()  // 确保释放
+    defer secret.Release()  // 用完即释放
 
     // 使用 secret...
 }
@@ -141,7 +141,7 @@ func later() {
 // 正确：每次需要时获取
 func getSecret() string {
     secret := env.GetSecure("KEY")
-    defer secret.Close()
+    defer secret.Release()
     return secret.Reveal()
 }
 ```
@@ -201,11 +201,14 @@ env.SetMemoryLockStrict(true)
 
 secret, err := env.NewSecureValueStrict("sensitive_data")
 if err != nil {
-    // 已启用内存锁定，但 mlock/VirtualLock 调用失败
+    // 处理错误
+}
+if secret != nil {
+    defer secret.Release()
 }
 ```
 
-启用锁定但失败时，`Masked()` 显示 `[SECURE:N bytes lock-failed]`。非 Linux/macOS/Windows 平台上 `IsMemoryLockSupported()` 返回 false，锁定调用按 no-op 降级。
+启用锁定但失败时，`Masked()` 显示 `[SECURE:N bytes lock-failed]`。非 Linux/macOS/Windows 平台上 `IsMemoryLockSupported()` 返回 false，锁定尝试失败并记录错误（`Masked()` 显示 `lock-failed`），`SecureValue` 仍可正常使用。
 
 ### 安全清零
 
@@ -280,7 +283,7 @@ func (m *ConfigManager) Get(key string) string {
 
 ### 减少锁持有时间
 
-`GetString` 走无锁快路径，单次开销很小。真正会拖住调用方的是**调用方自己**的锁：若在自有互斥锁内先取值、再做耗时处理，整个处理期间别的 goroutine 都拿不到这把锁。取值放锁内、处理放到锁外：
+`GetString` 走无锁快路径，单次开销很小。真正决定延迟的是调用方自身的锁：若在自有互斥锁内先取值、再做耗时处理，整个处理期间别的 goroutine 都拿不到这把锁。取值放锁内、处理放到锁外：
 
 ```go
 // 不推荐：耗时处理占着调用方的锁
@@ -352,7 +355,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 ### 内存锁定开销
 
-内存锁定（Linux 的 `mlock` / Windows 的 `VirtualLock`）只在创建 `SecureValue` 时产生一次额外的 syscall 开销，读取操作（`Reveal` / `String` / `Masked`）没有差异。建议让 `SecureValue` 小而短命：用完立即 `Close()` / `Release()` 归还对象池，避免长期持有大块锁定内存。
+内存锁定（Linux 的 `mlock` / Windows 的 `VirtualLock`）只在创建 `SecureValue` 时产生一次额外的 syscall 开销，读取操作（`Reveal` / `String` / `Masked`）没有差异。建议让 `SecureValue` 小而短命：用完立即释放，避免长期持有大块锁定内存。`Close()` 与 `Release()` 的取舍见 [SecureValue API - Close 与 Release 的区别](../api-reference/secure-value#close-与-release-的区别)。
 
 ## 基准测试
 
@@ -426,7 +429,7 @@ if err := loader.LoadFiles("batch.env"); err != nil {
 }
 ```
 
-`computeValue()` 这类慢计算写在 `Set` 的参数位置时，会在进入 `Set` 之前求值完毕，不占用 loader 的锁；真正需要留意的是**调用方自己的锁**，见上一节。
+耗时的值计算写在 `Set` 的参数位置时，会在进入 `Set` 之前求值完毕，不占用 loader 的锁。
 
 ### Close 后的并发访问
 
@@ -444,17 +447,11 @@ go func() {
 loader.Close()  // 主 goroutine 关闭
 ```
 
-### 全局加载器重置
+### 默认加载器重置
 
-`ResetDefaultLoader` 并发安全，返回关闭旧 loader 的 `error`，应检查处理。仍建议仅在测试或启动阶段调用：重置后到下一次 `Load` 之前，包级函数处于未初始化状态（返回 `ErrNotInitialized`），运行中重置会让依赖全局加载器的代码撞上这一窗口。
-
-```go
-// 并发安全，但建议仅在测试或启动阶段调用；返回的 error 应处理
-if err := env.ResetDefaultLoader(); err != nil {
-    fmt.Printf("重置默认加载器失败: %v\n", err)
-}
-env.Load(".env")
-```
+- `ResetDefaultLoader` 并发安全，返回关闭旧 loader 的 `error`，应检查处理
+- 重置后到下一次 `Load` 之前，包级**写类与校验类**函数（`Set`/`Delete`/`Validate`/`ParseInto`）返回 `ErrNotInitialized`，读函数返回默认值或零值；只在测试或启动阶段调用
+- 需要精确语义时见[包函数](../api-reference/functions#resetdefaultloader)
 
 ## 内部并发实现深读
 

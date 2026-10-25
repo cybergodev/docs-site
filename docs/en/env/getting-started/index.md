@@ -132,28 +132,26 @@ A key lookup tries these forms in order:
 // JSON: {"app": {"name": "myapp"}}
 // Stored as: APP_NAME=myapp
 
-// All of the following access this value
-name := env.GetString("APP_NAME")      // Flat key (recommended)
-name = env.GetString("app.name")       // Dot path (auto-converted)
-name = env.GetString("APP.NAME")       // Uppercase dot path
+// All of the following access this value (distinct names for illustration only)
+nameFlat := env.GetString("APP_NAME")  // Flat key (recommended)
+nameDot := env.GetString("app.name")   // Dot path (auto-converted)
+nameUpper := env.GetString("APP.NAME") // Uppercase dot path
+
+fmt.Println(nameFlat, nameDot, nameUpper) // all the same
 ```
 
 **Resolution rules:**
 1. **Exact match**: looks up the key as given (`KEY`)
 2. **Uppercase conversion**: a lowercase key falls back to its uppercase form (`key` → `KEY`)
 3. **Path resolution**: dot paths convert to underscores (`app.name` → `APP_NAME`)
-4. **Numeric index**: a key ending in an index (`HOSTS.0`) returns that element of the comma-separated value
+4. **Numeric index**: a key ending in an index (`hosts.0`) returns that element of the comma-separated value
 :::
 
 ### Boolean Support
 
-`GetBool` accepts the following values, case-insensitively:
+`GetBool` is case-insensitive: `true`/`1`/`yes`/`on`/`enabled` are truthy, and `false`/`0`/`no`/`off`/`disabled` are falsy.
 
-| Truthy | Falsy |
-|--------|-------|
-| `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
-
-An empty string parses as `false`; it does not fall back to the default you passed. Any other value is recorded in the audit log (when auditing is enabled) and returns the default.
+An empty string parses as `false` rather than falling back to the default, and an unrecognized value is audited and returns the default. `GetInt`, `GetFloat64`, and `GetDuration` differ: their empty values fail to parse and fall back to the default. See [FAQ · What boolean value formats are supported?](../reference/faq#what-boolean-value-formats-are-supported) for the full table.
 
 ### Slice Types
 
@@ -221,8 +219,10 @@ if secret != nil {
     // Get the raw value (only call when plaintext is needed, e.g. for crypto, API calls)
     value := secret.Reveal()
 
-    // Use mask for logging (prevent leakage)
-    log.Printf("API Key: %s", secret.Masked())  // Output: [SECURE:32 bytes]
+    // Use mask for logging (prevent leakage); the number is the value length.
+    // A 32-byte API_KEY prints [SECURE:32 bytes] (a lock status is appended when
+    // memory locking is enabled).
+    log.Printf("API Key: %s", secret.Masked())
 }
 ```
 
@@ -250,7 +250,9 @@ type Config struct {
 }
 
 func main() {
-	env.Load(".env")
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
 	var cfg Config
 	if err := env.ParseInto(&cfg); err != nil {
@@ -296,7 +298,7 @@ cfg := env.ProductionConfig()
 | Error on missing file | ✗ | ✗ | ✗ | ✓ |
 | Audit logging | ✗ | ✗ | ✗ | ✓ |
 | YAML syntax | ✗ | ✓ | ✗ | ✗ |
-| File size limit | 8MB | 10MB | 64KB | 64KB |
+| File size limit | 8 MB | 10 MB | 64 KB | 64 KB |
 | Max variables | 1000 | 1000 | 50 | 50 |
 | Forbidden key check | ✓ | ✓ | ✓ | ✓ |
 | Value validation | ✓ | ✓ | ✓ | ✓ |
@@ -346,8 +348,10 @@ import (
 )
 
 func main() {
-	// Create configuration
+	// Create configuration (clear Filenames so New does not auto-load
+	// and validate the required keys itself)
 	cfg := env.ProductionConfig()
+	cfg.Filenames = nil
 	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
 	// Create a loader
@@ -362,7 +366,8 @@ func main() {
 		panic(err)
 	}
 
-	// Validate required keys
+	// Validate required keys (already checked when loading finished;
+	// this confirms against the current store)
 	if err := loader.Validate(); err != nil {
 		panic(err)
 	}

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "类型与常量"
 title: "类型与常量 - CyberGo JWT | 序列化与时钟类型"
-description: "类型与常量参考：NumericDate 与 StringOrSlice 序列化类型、SigningMethod 算法类型、ValidationError 字段级错误、RateLimiter、SystemClock 与 FixedClock 时钟及 12 种算法常量。"
+description: "类型与常量参考：NumericDate 与 StringOrSlice 的序列化规则、SigningMethod 签名算法类型、ValidationError 字段级错误、RateLimiter 令牌桶的补充与驱逐、SystemClock 与 FixedClock 时钟实现，以及 12 种签名算法常量与 2 个令牌类型常量。各类型均附字段表与方法签名。"
 sidebar_position: 60
 ---
 
@@ -79,8 +79,8 @@ type ValidationError struct {
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `Field` | `string` | 未通过验证的字段或声明名（如 `user_id`、`extra.color`） |
-| `Message` | `string` | 失败原因（如超出 256 字符上限、检测到可疑模式） |
+| `Field` | `string` | 未通过验证的字段名。内置 `Claims` 用 Go 字段名（`UserID`、`Username`、`Role`、`SessionID`、`ClientID`），数组字段用小写名（`permissions`、`scopes`、`audience`），`Extra` 用 `extra.<键名>`，注册声明用 `Issuer`、`Subject`、`ID`、`TokenType` |
+| `Message` | `string` | 失败原因（如超出 256 字节上限、检测到可疑模式） |
 | `Err` | `error` | 可选的被包装底层错误；`Unwrap` 返回它，供 `errors.Is` / `errors.As` 解链，无底层原因时为 nil |
 
 ### 方法
@@ -100,9 +100,13 @@ type RateLimiter struct { ... }
 
 令牌桶限流器，实现 [`RateLimitProvider`](./interfaces#ratelimitprovider) 接口。
 
-采用令牌桶算法：令牌按经过时间**按比例补充**（而非固定窗口重置），补充后保留残余时间以保证速率均匀；每次请求消耗令牌，令牌不足时拒绝。
+采用令牌桶算法，令牌按经过时间**按比例补充**，而非固定窗口重置。补充后保留残余时间，以保证速率均匀。每次请求消耗令牌，令牌不足时拒绝。
 
-内部最多跟踪 10000 个限流 key（`maxBuckets`）。达到上限时先驱逐过期桶（超过 2 倍窗口未活动），仍满则批量驱逐最旧的约 10%，分摊 O(n) 扫描成本。
+内部最多跟踪 10000 个限流 key（`maxBuckets`）。达到上限时先驱逐过期桶（超过 2 倍窗口未活动）。仍满则批量驱逐最旧的约 10%，分摊 O(n) 扫描成本。
+
+::: info 接收者为 nil 时的行为
+`*RateLimiter` 的 `Allow` / `AllowN` 对 nil 接收者失败关闭，返回 `false`；`Reset` 与 `Close` 对 nil 为空操作。限流器关闭后 `Allow` 恒返回 `false`。
+:::
 
 <Badge type="info" text="struct" />
 

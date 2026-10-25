@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Testing & Clock Injection"
 title: "Testing & Clock - CyberGo JWT | Fixed-Clock"
-description: "Inject FixedClock via ClockProvider to control time in unit tests, validating token expiration, refresh, custom Claims, and revocation for repeatable runs."
+description: "Inject FixedClock via ClockProvider to control time in tests: token expiry, clock skew, refresh, custom Claims, validation, revocation, concurrency."
 sidebar_position: 60
 ---
 
 # Testing & Clock Injection
 
-Inject custom clocks via the `ClockProvider` interface to precisely control time in tests.
+Inject a custom clock through the `ClockProvider` interface to control time precisely in tests.
 
 ## ClockProvider Interface
 
@@ -37,6 +37,8 @@ cfg.Clock = jwt.FixedClock{T: fixedTime}
 ```
 
 ## Testing Token Expiration
+
+The cases below use `require` / `assert` from [`testify`](https://github.com/stretchr/testify) for brevity. The stdlib `if err != nil { t.Fatal(err) }` form works just as well.
 
 ```go
 func TestTokenExpiry(t *testing.T) {
@@ -75,7 +77,7 @@ func TestTokenExpiry(t *testing.T) {
 
 ## Testing Clock Skew
 
-[`ClockSkew`](./configuration#clock-skew) provides a tolerance window for expiration (`exp`) and not-before (`nbf`) validation. By setting the skew, you can verify whether a token is still accepted for a short period after its strict expiration time:
+[`ClockSkew`](./configuration#clock-skew) provides a tolerance window for expiration (`exp`) and not-before (`nbf`) validation. Setting the skew makes it possible to verify whether a token is still accepted for a short period after its strict expiration time:
 
 ```go
 func TestClockSkew(t *testing.T) {
@@ -195,7 +197,7 @@ func TestInputValidation(t *testing.T) {
 
     var ve *jwt.ValidationError
 
-    // Overlong string triggers the length limit (cap 256 characters)
+    // Overlong string triggers the length limit (cap 256 bytes)
     _, err = processor.Create(&jwt.Claims{
         UserID: strings.Repeat("a", 300),
     })
@@ -222,7 +224,7 @@ func TestInputValidation(t *testing.T) {
 ```
 
 ::: warning ValidationError Wrapping Level
-In the `Create` path, `ValidationError` is wrapped by `ErrInvalidClaims`. Using `errors.As(err, &ve)` pierces the wrapping to extract the `ValidationError`, letting you read `Field` and `Message` for assertions. For the complete validation rules, see [Configuration → Input Validation and Security Hardening](./configuration#input-validation-and-security-hardening).
+In the `Create` path, `ValidationError` is wrapped by `ErrInvalidClaims`. `errors.As(err, &ve)` pierces the wrapping to extract the `ValidationError`, so tests can assert on `Field` and `Message`. For the complete validation rules, see [Configuration → Input Validation and Security Hardening](./configuration#input-validation-and-security-hardening).
 :::
 
 ## Testing Error Handling
@@ -252,7 +254,7 @@ func TestRevokeToken(t *testing.T) {
 
 ## Testing Rate Limiting
 
-With rate limiting enabled, a `Create` that exceeds the quota returns [`ErrRateLimitExceeded`](../api-reference/errors#sentinel-errors). Combined with `FixedClock`, you can precisely control the token bucket so it does not refill, making tests fully predictable:
+With rate limiting enabled, a `Create` that exceeds the quota returns [`ErrRateLimitExceeded`](../api-reference/errors#sentinel-errors). Combined with `FixedClock`, the token bucket can be held at a fixed state so tests are fully predictable:
 
 ```go
 func TestRateLimit(t *testing.T) {

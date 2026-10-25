@@ -25,7 +25,7 @@ cfg.Security.TLSFingerprint = "chrome-latest" // 或 "chrome-windows"、"firefox
 client, err := httpc.New(cfg)
 ```
 
-`TLSFingerprint` 留空（默认）则走标准 Go 栈，不引入额外依赖、无伪装。
+`TLSFingerprint` 留空（默认）则走标准 Go 栈，无伪装。
 
 包级——把单次调用路由到指纹客户端，无需自建 Client：
 
@@ -94,7 +94,7 @@ Chrome 档案在每次握手时构建全新的 ClientHello 规格，并施加两
 
 ## 已知限制
 
-- 指纹连接不计入连接池指标，且跳过 `Connection.EnableDoH`（后端自行解析 DNS）。
+- 指纹连接不计入连接池指标。启用 `Connection.EnableDoH` 时，指纹路径的请求预检与直连拨号使用**同一个 DoH 解析器**（`PoolManager.DoHLookup()`）；未启用时由后端自行解析 DNS。
 - 指纹路径的传输层参数**固定不可调**：空闲连接超时 20s、读空闲超时 10s、HTTP/2 PING 超时 10s。连接池为 `MaxIdleConns` 512、`MaxIdleConnsPerHost` 128、`MaxConnsPerHost` 128。`Connection.MaxIdleConns` 与 `Connection.MaxConnsPerHost` 只作用于标准传输。请求级超时不受影响，仍由引擎的 deadline 预算管辖，传输层自身不设超时。
 - Android 预设（`*-android`）发出桌面指纹字节（等待真实设备抓包）。iOS 预设使用真实 WebKit 数据，但头顺序仍为桌面近似。
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "测试与时钟注入"
 title: "测试与时钟注入 - CyberGo JWT | 固定时钟可重复测试"
-description: "测试与时钟注入指南：通过 ClockProvider 注入 FixedClock 固定时钟，在单元测试中精确控制时间流逝，验证令牌过期、刷新、自定义 Claims 解析与吊销逻辑，确保可重复独立执行。"
+description: "测试与时钟注入指南：通过 ClockProvider 注入 FixedClock 固定时钟，在单元测试中精确控制时间流逝，验证令牌过期、时钟偏移、刷新、自定义 Claims 解析、输入校验、吊销与并发安全，确保测试可重复且相互独立。"
 sidebar_position: 60
 ---
 
@@ -37,6 +37,8 @@ cfg.Clock = jwt.FixedClock{T: fixedTime}
 ```
 
 ## 测试令牌过期
+
+以下用例使用 [`testify`](https://github.com/stretchr/testify) 的 `require` / `assert` 简化断言；换成标准库的 `if err != nil { t.Fatal(err) }` 同样成立。
 
 ```go
 func TestTokenExpiry(t *testing.T) {
@@ -195,7 +197,7 @@ func TestInputValidation(t *testing.T) {
 
     var ve *jwt.ValidationError
 
-    // 超长字符串触发长度限制（上限 256 字符）
+    // 超长字符串触发长度限制（上限 256 字节）
     _, err = processor.Create(&jwt.Claims{
         UserID: strings.Repeat("a", 300),
     })

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "接口定义"
 title: "接口定义 - CyberGo JWT | 核心扩展接口"
-description: "接口定义参考：TokenManager 令牌操作核心接口、CustomClaims 自定义声明、BlacklistStore 黑名单后端、RateLimitProvider 限流器、ClockProvider 时钟注入与可选 RateLimitKeyer 限流键。"
+description: "接口定义参考：TokenManager 令牌操作核心接口、CustomClaims 自定义声明与验证契约、BlacklistStore 黑名单后端、RateLimitProvider 限流器、ClockProvider 时钟注入，以及可选的 RateLimitKeyer 限流键接口，并给出各接口的内置实现类型，便于替换默认实现。"
 sidebar_position: 50
 ---
 
@@ -28,7 +28,11 @@ type TokenManager interface {
 JWT 令牌操作核心接口。所有实现必须并发安全。默认实现为 [`*Processor`](./processor)。
 
 ::: info 兼容性说明
-接口有意保留 `Validate` / `ValidateInto`——尽管二者已在 `*Processor` 上弃用（推荐改用 [`Parse`](./processor#parse) / [`ParseInto`](./processor#parseinto)）：在此处增删或替换方法会破坏第三方 `TokenManager` 实现。
+接口有意保留 `Validate` / `ValidateInto`，尽管二者已在 `*Processor` 上弃用（应改用 [`Parse`](./processor#parse) / [`ParseInto`](./processor#parseinto)）。在此处增删或替换方法会破坏第三方 `TokenManager` 实现。
+:::
+
+::: warning `TokenManager` 不含 `Parse` / `ParseInto`
+`Parse` 与 `ParseInto` 只定义在 `*Processor` 上，不在 `TokenManager` 接口内。通过 `TokenManager` 变量调用时只能用已弃用的 `Validate` / `ValidateInto`；需要新方法时，在消费方定义只含所需方法的小接口（`*Processor` 自动满足）。
 :::
 
 方法按职责分为三组：
@@ -43,10 +47,10 @@ JWT 令牌操作核心接口。所有实现必须并发安全。默认实现为 
 | 方法 | 签名 | 说明 |
 |------|------|------|
 | `Create` | `Create(claims CustomClaims) (string, error)` | 创建访问令牌 |
-| `Validate` | `Validate(tokenString string) (Claims, bool, error)` | 验证令牌（已在 `*Processor` 上弃用，推荐 `Parse`） |
+| `Validate` | `Validate(tokenString string) (Claims, bool, error)` | 验证令牌（已在 `*Processor` 上弃用，改用 `Parse`） |
 | `CreateRefresh` | `CreateRefresh(claims CustomClaims) (string, error)` | 创建刷新令牌 |
 | `Refresh` | `Refresh(refreshTokenString string) (string, error)` | 刷新令牌 |
-| `ValidateInto` | `ValidateInto(tokenString string, claims CustomClaims) (CustomClaims, bool, error)` | 验证到自定义 Claims（已在 `*Processor` 上弃用，推荐 `ParseInto`） |
+| `ValidateInto` | `ValidateInto(tokenString string, claims CustomClaims) (CustomClaims, bool, error)` | 验证到自定义 Claims（已在 `*Processor` 上弃用，改用 `ParseInto`） |
 | `RefreshInto` | `RefreshInto(refreshTokenString string, claims CustomClaims) (string, error)` | 刷新到自定义 Claims |
 | `Revoke` | `Revoke(tokenString string) error` | 吊销令牌 |
 | `IsRevoked` | `IsRevoked(tokenString string) (bool, error)` | 检查是否已吊销 |
@@ -77,12 +81,14 @@ type CustomClaims interface {
 
 ### 验证契约
 
-Processor 对 `*Claims` 和其他类型执行不同的验证路径：
+Processor 对 `*Claims` 和其他类型执行不同的创建路径校验：
 
-| 类型 | 验证行为 |
-|------|----------|
-| `*Claims` | 深度验证：所有字段（长度限制、注入模式、控制字符） |
+| 类型 | 创建时的验证行为 |
+|------|------------------|
+| `*Claims` | 深度验证：所有字段（长度上限、注入模式、控制字符） |
 | 其他类型 | 调用 `Validate()` + 注册声明字符串清洗（Issuer、Subject、ID、TokenType、Audience） |
+
+深度字段校验只在令牌创建时执行。验证路径只调用 `Validate()`（必填字段）并清洗标准声明字符串。
 
 :::warning 注意
 对于非 `*Claims` 类型，自定义结构体字段**不会**被深度验证。实现者须在 `Validate()` 方法中自行校验所有业务字段。

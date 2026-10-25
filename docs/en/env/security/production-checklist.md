@@ -9,10 +9,6 @@ sidebar_position: 4
 
 Run through this list before deploying an application that uses env.
 
-:::tip Security concepts
-For the security architecture and built-in defaults, see [Security Overview](./).
-:::
-
 ## Pre-deployment Checks
 
 ### File Security
@@ -65,14 +61,14 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ```
 
-:::warning "Enabled" is not "persisted"
+:::warning Audit enabled is not audit persisted
 `ProductionConfig()` sets `AuditEnabled = true`. With no `AuditHandler` configured, audit events go to the stderr `[AUDIT]` log instead of a file. After launch, confirm that the audit log file is actually growing.
 :::
 
 ### Sensitive Data Handling
 
 - [ ] Sensitive values read with `GetSecure`
-- [ ] `Release()` called promptly (it zeroes the value and returns it to the pool; `Close()` does not return to the pool)
+- [ ] `Release()` called promptly (it zeroes, unlocks, and returns the value to the pool; see [Memory Locking](./memory-locking#prefer-release-over-close))
 - [ ] Logs do not contain raw sensitive values
 
 ```go
@@ -84,16 +80,16 @@ log.Printf("Password length: %d", secret.Length())
 ### Access Control
 
 - [ ] `AllowedKeys` whitelist set (recommended)
-- [ ] `ValidateValues` enabled
-- [ ] Size limits appropriate for your configuration
+- [ ] Value validation in place — the built-in validator always enforces length and control-character checks; if you swapped in a custom validator, confirm it performs equivalent checks, otherwise keep `ValidateValues = true`
+- [ ] Size limits fit your configuration — `ProductionConfig()` sets `MaxFileSize` to 64 KB and `MaxVariables` to 50; raise them if your config is larger
 - [ ] Configuration file paths are all **relative** — `Filenames` rejects absolute paths, UNC paths, URL-encoded `%`, and `..` traversal
 - [ ] `ExpansionScope: ExpansionFileOnly` set for untrusted configuration sources, so `.env` expansion cannot capture process secrets (SEC-03)
-- [ ] Audit handler is not connected to `os.Stdout` — `loader.Close()` closes the handler and, with it, the underlying writer
+- [ ] Audit handler is not connected to `os.Stdout` or a shared writer — `loader.Close()` closes the handler; `JSONAuditHandler` also closes the underlying writer, while `LogAuditHandler` does not
 
 ```go
 cfg.AllowedKeys = []string{"APP_NAME", "DB_HOST", "API_KEY"}
 cfg.ValidateValues = true
-cfg.MaxVariables = 50 // ProductionConfig defaults to 50; raise only if you have more keys
+cfg.MaxVariables = 50 // raise only if you have more keys
 ```
 
 ## At Deployment Checks
@@ -150,5 +146,7 @@ echo "=== All checks passed ==="
 ## Related Documentation
 
 - [Security Overview](./) - security architecture and built-in defaults
+- [Data Masking](./data-masking) - sensitive values in logs and error output
+- [Memory Locking](./memory-locking) - mlock memory protection and the `Release()` lifecycle
 - [SecureValue API](../api-reference/secure-value) - secure value handling
 - [Constants & Errors](../api-reference/constants) - forbidden keys list

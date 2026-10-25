@@ -33,7 +33,7 @@ if secret != nil {
 ```
 
 :::warning
-The first `Close()` or `Release()` does the work. Later calls are safe no-ops, so you do not need to guard against a double release.
+The code that obtains a `SecureValue` is responsible for releasing it. See "Close vs. Release" below for the difference between the two methods.
 :::
 
 ## Method Overview
@@ -49,8 +49,8 @@ All `SecureValue` methods (qualified names like `SecureValue.Reveal`); see the s
 | `SecureValue.Masked` | Masked representation, including a lock-state suffix |
 | `SecureValue.MarshalJSON` | JSON serialization emits the mask (implements `json.Marshaler`) |
 | `SecureValue.MarshalText` | Text encoding emits the mask (implements `encoding.TextMarshaler`) |
-| `SecureValue.Close` | Zeroes the data; does not return the object to the pool |
-| `SecureValue.Release` | Zeroes the data and returns the object to the pool |
+| `SecureValue.Close` | Zeroes and unlocks the data; does not return the object to the pool |
+| `SecureValue.Release` | Zeroes and unlocks the data, then returns the object to the pool |
 | `SecureValue.IsClosed` | Whether the value has been closed |
 | `SecureValue.IsMemoryLocked` | Whether the memory is currently locked |
 | `SecureValue.MemoryLockError` | Error from the most recent failed lock attempt |
@@ -119,13 +119,13 @@ if secret != nil {
 func (l *Loader) GetSecure(key string) *SecureValue
 ```
 
-Returns a secure value from the loader.
+Returns a secure value from the loader. Key names resolve the same way as `Loader.Lookup` (exact match, uppercase fallback, dotted path), but **not** the comma-separated index fallback, since that only produces virtual values rather than real stored keys.
 
 **Parameters:**
 - `key` - key name
 
 **Returns:**
-- `*SecureValue` - a **defensive copy** of the stored value. You own it and must release it. Returns nil if the key does not exist or the loader is closed.
+- `*SecureValue` - a **defensive copy** of the stored value. You own it and must release it. Returns nil if the key does not exist, if the loader is closed, or if the stored value has already been closed.
 
 ```go
 secret := loader.GetSecure("API_KEY")
@@ -255,17 +255,22 @@ Returns a masked value for log output. Unlike `String()`, it also reports the me
 **Output formats:**
 - Nil receiver: `[NIL]`
 - Closed: `[CLOSED]`
-- Empty value: `[SECURE:0 bytes]`
-- Non-empty: `[SECURE:N bytes]`, plus a lock suffix when memory locking is enabled: ` locked`, ` lock-failed`, or ` unlocked`
+- Empty value: `[SECURE:0 bytes]`, with no suffix even when locking is enabled
+- Non-empty: `[SECURE:N bytes]`, plus a lock suffix only when the global memory-locking switch is true at call time: ` locked`, ` lock-failed`, or ` unlocked`
+
+The suffix reflects the global switch **at the moment `Masked()` is called** together with the value's own lock result; when `IsMemoryLockEnabled()` is false, no suffix is added at all. See "Masked output format" below for the full rules behind each suffix.
+
+:::tip
+The lock suffix is decided by the global switch **at the time `Masked()` is called**: when the switch is false, no suffix is added; when it is true, the suffix reflects the value's own lock result: `locked` / `lock-failed` / `unlocked` (values created before locking was enabled report `unlocked`). See [Memory Locking](../security/memory-locking) for the full state rules and troubleshooting.
+:::
 
 ```go
 secret := env.GetSecure("API_KEY")
 if secret != nil {
     log.Printf("API Key: %s", secret.Masked())
     // Output: API Key: [SECURE:32 bytes]
-    // With memory locking enabled (SetMemoryLockEnabled(true)) and the lock held,
-    // the mask instead reads [SECURE:32 bytes locked].
-    // A failed attempt shows [SECURE:32 bytes lock-failed].
+    // When memory locking is enabled at call time (SetMemoryLockEnabled(true)),
+    // the mask adds " locked" / " lock-failed" / " unlocked" for this value.
 }
 ```
 
@@ -330,13 +335,13 @@ data, _ := xml.Marshal(cfg)
 func (sv *SecureValue) Close() error
 ```
 
-Zeroes the internal buffer and closes the object.
+Unlocks the memory (if it was locked), zeroes the internal buffer, and closes the object.
 
 **Returns:**
 - `error` - always nil
 
 **Behavior:**
-- Zeroes the internal data
+- Unlocks the memory (if it was locked), then zeroes the internal data
 - Marks the object as closed
 - Does **not** return it to the object pool
 
@@ -359,7 +364,7 @@ func (sv *SecureValue) Release()
 Zeroes the internal buffer and returns the object to the pool.
 
 **Behavior:**
-- Zeroes the internal data
+- Unlocks the memory (if it was locked), then zeroes the internal data
 - Marks the object as closed and returns it to the pool for reuse
 - Leaves the GC finalizer in place. The finalizer is set once for the object's lifetime; if the runtime later finalizes a pooled object, it sees the closed state and does nothing.
 
@@ -372,8 +377,8 @@ if secret != nil {
 ```
 
 :::tip Close vs Release
-- `Close()` - zeroes only; does not return the object to the pool
-- `Release()` - zeroes and returns the object to the pool; preferred in high-frequency paths
+- `Close()` - unlocks and zeroes; does not return the object to the pool
+- `Release()` - unlocks, zeroes, and returns the object to the pool; preferred in high-frequency paths
 :::
 
 ---
@@ -488,7 +493,7 @@ if env.IsMemoryLockEnabled() {
 func SetMemoryLockStrict(strict bool)
 ```
 
-Sets strict mode. When enabled, a failed memory lock writes a security warning to the standard logger (stderr), whichever constructor produced the value.
+Sets strict mode. When enabled, every failed memory lock writes a warning to stderr (the default `log.Printf` target), whichever constructor produced the value.
 
 For `NewSecureValue` and the other non-strict constructors, this warning is the only failure signal, because they cannot return an error. It does not affect the error returned by `NewSecureValueStrict` (see the Creation section).
 
@@ -539,15 +544,15 @@ Reports whether the current platform supports memory locking.
 | Linux | ✅ |
 | macOS | ✅ |
 | Windows | ✅ |
-| FreeBSD and other BSDs, Solaris | ❌ (no-op fallback) |
+| FreeBSD and other BSDs, Solaris | ❌ |
 | wasm | ❌ |
 
 :::tip Platform fallback
-Memory locking is implemented on Linux, macOS, and Windows only. Every other platform (FreeBSD and other BSDs, Solaris, wasm) takes a no-op fallback:
+Memory locking is implemented on Linux, macOS, and Windows only. Every other platform (FreeBSD and other BSDs, Solaris, wasm) has no locking implementation:
 
 - `IsMemoryLockSupported()` returns false.
 - `SecureValue` still works normally.
-- With memory locking enabled, the lock attempt fails and `Masked()` adds the `lock-failed` suffix. With locking disabled there is no suffix at all.
+- With memory locking enabled, the lock attempt fails and records the error, so `Masked()` adds the `lock-failed` suffix. With locking disabled there is no suffix at all.
 :::
 
 :::warning
@@ -608,7 +613,7 @@ if env.IsSensitiveKey("DB_PASSWORD") {
 }
 ```
 
-**Sensitive patterns:** `password`, `secret`, `token`, `api_key`, `credential`, `private_key`, and others. A bare `key` is not on the list, so `IsSensitiveKey("KEY")` returns false. Matching is case-insensitive and substring-based, with one exception: `AUTH`, `PAN`, `PWD`, and `USERNAME` match only at identifier boundaries, so keys such as `AUTHOR` or `COMPANY` stay non-sensitive (SEC-006).
+**Sensitive patterns:** `password`, `secret`, `token`, `api_key`, `credential`, `private_key`, and others. A bare `key` is not on the list, so `IsSensitiveKey("KEY")` returns false. Matching is case-insensitive and substring-based, with one exception: `AUTH`, `PAN`, `PWD`, and `USERNAME` match only at identifier boundaries, so keys such as `AUTHOR` or `COMPANY` stay non-sensitive (SEC-06).
 
 See [Constants & Errors](./constants#sensitivekeypatterns) for the full list.
 
@@ -849,8 +854,8 @@ The only way to reach the plaintext is `Reveal()`, or the copy returned by `Byte
 
 ### Close vs. Release
 
-| Method | Zeros data | Returns to pool | Use |
-|--------|:----------:|:---------------:|-----|
+| Method | Unlocks + zeros data | Returns to pool | Use |
+|--------|:--------------------:|:---------------:|-----|
 | `Close()` | ✅ | ❌ | One-shot usage |
 | `Release()` | ✅ | ✅ | High-frequency create/destroy cycles (reuse avoids allocations) |
 
@@ -861,13 +866,15 @@ Both are safe to call repeatedly, with no side effects. An object that is never 
 The masked representation carries the lock status, so you can check protection from the logs:
 
 ```text
-[SECURE:24 bytes]             // memory locking not enabled
+[SECURE:24 bytes]             // memory locking not enabled at call time (no suffix)
 [SECURE:24 bytes locked]      // locked
 [SECURE:24 bytes lock-failed] // lock failed (pair with MemoryLockError)
-[SECURE:24 bytes unlocked]    // locking enabled, not currently locked
+[SECURE:24 bytes unlocked]    // locking enabled at call time, but this value is unlocked with no recorded error
 [CLOSED]                      // closed
 [NIL]                         // nil receiver
 ```
+
+`unlocked` means "locking is enabled globally, but this value is not locked" — typically because the value was created before locking was enabled, so no attempt was made. The suffix depends on the global switch at call time: when the switch is false at that moment, no lock suffix is added at all; do not read that as `unlocked`. See [Memory Locking](../security/memory-locking) for the complete state rules and troubleshooting.
 
 ### Lock-status queries
 

@@ -166,11 +166,8 @@ func newCustomParser(cfg env.Config, factory *env.ComponentFactory) *CustomParse
     }
 }
 
-// 定义自定义格式常量（建议使用 100+ 以避免冲突）
-const FormatCustom env.FileFormat = 100
-
-// 注册解析器
-env.RegisterParser(FormatCustom, func(cfg env.Config, factory *env.ComponentFactory) (env.EnvParser, error) {
+// 注册解析器：LoadFiles 只按扩展名路由，未知扩展名统一落到 FormatAuto
+env.RegisterParser(env.FormatAuto, func(cfg env.Config, factory *env.ComponentFactory) (env.EnvParser, error) {
     return newCustomParser(cfg, factory), nil
 })
 ```
@@ -217,13 +214,22 @@ func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
 创建 JSON 格式的审计处理器，输出结构化日志。
 
 **参数：**
-- `w` - 输出目标（如 `os.Stdout`、文件）
+- `w` - 输出目标，如打开的文件。必须传非 nil writer：传 nil 时 `Log` 会因空指针 panic（经审计层调用时该 panic 被恢复成错误，事件随之丢失）
 
 ```go
+f, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+
 cfg := env.ProductionConfig()
 cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+cfg.AuditHandler = env.NewJSONAuditHandler(f)
 ```
+
+::: warning Close 会关闭 writer
+`JSONAuditHandler.Close()` 在 writer 实现 `io.Closer` 时调用其 `Close()`。不要传 `os.Stdout`，也不要传其他地方还要继续使用的 writer，否则 `loader.Close()` 会把它们一起关掉。需要写标准输出时，改用 `NewLogAuditHandler`（它不关闭底层 writer）。
+:::
 
 **输出示例：**
 ```json
@@ -252,10 +258,13 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 
 **输出示例：**
 ```text
-[AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=parse success=true reason="parsed: .env"
+[AUDIT] 2024/01/15 10:30:00 action=set key=[MASKED] success=true reason="loaded"
+[AUDIT] 2024/01/15 10:30:00 action=file_access success=true reason="file loaded: .env" duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="loaded files" duration=1.23ms
 ```
 
-事件以键值对输出：`action`、`success`、`reason`（带引号），以及可选的 `key`、`file`（带引号）与 `duration`。`key` 在事件无键名时省略。`duration` 仅在大于 0 时输出：小于 1ms 以 μs 显示，否则以 ms 显示（两位小数）。`[AUDIT]` 前缀与时间戳来自传入的 `log.Logger`。
+事件以键值对输出：`action`、`success`、`reason`（带引号），以及可选的 `key`、`file`（带引号）与 `duration`。`key` 在事件无键名时省略——`ActionLoad` 与成功的 `ActionParse` 事件不带键名；带键名的是 `ActionSet`，以及解析报错时的 `ActionParse`（如重复键、键超长）。敏感键由 `MaskValue` 掩码为 `[MASKED]`。`duration` 仅在大于 0 时输出：小于 1ms 以 μs 显示，否则以 ms 显示（两位小数）。`[AUDIT]` 前缀与时间戳来自传入的 `log.Logger`。
 
 ---
 
@@ -271,7 +280,9 @@ func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 - `ch` - 审计事件通道
 
 ::: warning 通道所有权
-`ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道。调用者必须自行关闭通道，以通知接收方结束。通道缓冲区满时，`Log()` 会阻塞，建议使用带缓冲的通道。
+`ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道。调用者必须自行关闭通道，以通知接收方结束。关闭时机要在使用该处理器的 loader 关闭之后、且没有 `Log` 调用在途——提前 `close(ch)` 会让后续 `Log` 触发 send-on-closed-channel panic。通道缓冲区满时，`Log()` 会阻塞，建议使用带缓冲的通道。
+
+`ch` 为 nil 时不会永久阻塞：`Log()` 对每条事件返回错误（事件被丢弃）。该错误不会回报给 `LoadFiles` / `Set` 等调用方，只有启用 `AuditFailClosed` 后才会作为审计失败暴露，因此传 nil 通道基本等于静默丢弃全部审计事件。
 :::
 
 ```go
@@ -396,7 +407,7 @@ func (fs OSFileSystem) LookupEnv(key string) (string, bool)
 - `OSFileSystem.Open`、`OSFileSystem.OpenFile`、`OSFileSystem.Stat`、`OSFileSystem.MkdirAll`、`OSFileSystem.Remove`、`OSFileSystem.Rename` 直通 os 包同名函数
 - `OSFileSystem.Getenv`、`OSFileSystem.Setenv`、`OSFileSystem.Unsetenv`、`OSFileSystem.LookupEnv` 直通进程环境变量操作
 
-零值即可使用，并发安全。
+库本身只调用 `Open`、`LookupEnv`、`Setenv`、`Unsetenv`；文件大小检查经 `Open` 返回句柄的 `File.Stat` 进行。零值即可使用，并发安全。
 
 ---
 
@@ -412,7 +423,7 @@ var DefaultFileSystem FileSystem = OSFileSystem{}
 
 ### 使用自定义文件系统
 
-在测试中模拟文件系统：
+在测试中模拟文件系统。注意 `File.Stat` 不可省略：加载器在读取前用它做 `MaxFileSize` 预检，`Size()` 必须返回真实内容长度。
 
 ```go
 type MockFileSystem struct {
@@ -420,12 +431,40 @@ type MockFileSystem struct {
     env   map[string]string
 }
 
+// MockFile 是 Open 返回的句柄；Stat 必须返回真实大小
+type MockFile struct {
+    name   string
+    size   int64
+    reader *strings.Reader
+}
+
+func (f *MockFile) Read(p []byte) (int, error)  { return f.reader.Read(p) }
+func (f *MockFile) Write(p []byte) (int, error) { return 0, errors.ErrUnsupported }
+func (f *MockFile) Close() error                { return nil }
+func (f *MockFile) Sync() error                 { return nil }
+func (f *MockFile) Stat() (os.FileInfo, error) {
+    return &mockFileInfo{name: f.name, size: f.size}, nil
+}
+
+// mockFileInfo 实现 os.FileInfo
+type mockFileInfo struct {
+    name string
+    size int64
+}
+
+func (i *mockFileInfo) Name() string       { return i.name }
+func (i *mockFileInfo) Size() int64        { return i.size }
+func (i *mockFileInfo) Mode() os.FileMode  { return 0644 }
+func (i *mockFileInfo) ModTime() time.Time { return time.Time{} }
+func (i *mockFileInfo) IsDir() bool        { return false }
+func (i *mockFileInfo) Sys() interface{}   { return nil }
+
 func (m *MockFileSystem) Open(name string) (env.File, error) {
     content, ok := m.files[name]
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{content: content}, nil
+    return &MockFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) Getenv(key string) string {
@@ -452,10 +491,11 @@ func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.
 }
 
 func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
-    if _, ok := m.files[name]; !ok {
-        return nil, os.ErrNotExist
+    f, err := m.Open(name)
+    if err != nil {
+        return nil, err
     }
-    return nil, nil
+    return f.Stat()  // 必须返回真实大小，加载器用它做 MaxFileSize 预检
 }
 
 func (m *MockFileSystem) MkdirAll(path string, perm os.FileMode) error {
@@ -508,12 +548,14 @@ func DetectFormat(filename string) FileFormat
 | `.yaml`, `.yml` | `FormatYAML` |
 | 其他 | `FormatAuto` |
 
+检测基于 `filepath.Ext` 并转小写，所以 `.ENV` 也返回 `FormatEnv`。`.env.local`、`unknown.txt` 返回 `FormatAuto`：加载时若为 `FormatAuto` 注册过解析器就用它，否则回退到内置 dotenv 解析器。
+
 ```go
 format := env.DetectFormat("config.json")   // FormatJSON
 format := env.DetectFormat("settings.yaml") // FormatYAML
 format := env.DetectFormat("app.yml")       // FormatYAML
 format := env.DetectFormat(".env")          // FormatEnv
-format := env.DetectFormat(".env.local")    // FormatAuto（加载时按 .env 解析）
+format := env.DetectFormat(".env.local")    // FormatAuto
 format := env.DetectFormat("unknown.txt")   // FormatAuto
 ```
 
@@ -521,7 +563,7 @@ format := env.DetectFormat("unknown.txt")   // FormatAuto
 
 ```go
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
-// 自动检测每个文件的格式并使用对应解析器
+// 每个文件按扩展名检测格式并选用对应解析器；未知扩展名落到 FormatAuto
 ```
 
 ---
@@ -540,13 +582,15 @@ const (
 **自定义格式：**
 
 ```go
-// 定义自定义格式常量（建议使用 100+ 的值避免冲突）
+// 定义自定义格式常量（用于标识自有注册表条目）
 const (
     FormatTOML  env.FileFormat = 100
     FormatINI   env.FileFormat = 101
     FormatXML   env.FileFormat = 102
 )
 ```
+
+自定义格式号只用于标识你自己的注册表条目。`LoadFiles` 不按格式号路由，而是按扩展名查 `DetectFormat`；要让 `.toml`、`.ini` 等文件真正走自定义解析器，应注册到 `FormatAuto`（见下文「解析器注册」）。
 
 ---
 
@@ -592,8 +636,19 @@ func RegisterParser(format FileFormat, factory ParserFactory) error
 
 **注意事项：**
 - 必须在调用 `env.New()` 之前注册：注册表是进程级全局，Loader 在创建时对注册表做快照
-- 建议使用 100+ 的格式值，避免与内置格式冲突
+- 要让 `LoadFiles` 命中自定义解析器，注册到 `env.FormatAuto`；100+ 的自定义格式号不会被扩展名路由命中，见下方说明
 - 工厂函数应返回线程安全的解析器
+
+::: warning 自定义格式号不会被 LoadFiles 按扩展名命中
+`LoadFiles` 只按扩展名路由：它用 `DetectFormat(filename)` 的结果去查解析器表，而 `DetectFormat` 只认识 `.env`、`.json`、`.yaml`、`.yml`，其余扩展名一律返回 `FormatAuto`。因此 `const FormatTOML env.FileFormat = 100` 注册的解析器**不会**被 `config.toml` 命中——文件落到 `FormatAuto` 条目，未注册时回退到内置 dotenv 解析器，`[a]` 这类行会被当成键值硬解析。
+
+加载自定义格式文件有两条路径：
+
+- (a) 用 `RegisterParser(env.FormatAuto, ...)` 承接所有未知扩展名，文件名可保持 `.toml`、`.conf` 原样（推荐，下面的示例即此写法）
+- (b) 用 `ForceRegisterParser(env.FormatEnv, ...)` 覆盖内置 dotenv 解析器，并给文件 `.env` 扩展名
+
+路由细节见[自定义解析器](../guides/custom-parser)。
+:::
 
 ```go
 package main
@@ -604,10 +659,7 @@ import (
 	"github.com/cybergodev/env"
 )
 
-// 1. 定义自定义格式常量
-const FormatTOML env.FileFormat = 100
-
-// 2. 实现解析器接口
+// 1. 实现解析器接口
 type TOMLParser struct {
 	cfg       env.Config
 	validator env.Validator
@@ -621,9 +673,9 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
 	return result, nil
 }
 
-// 3. 注册解析器（在 init() 中注册，确保在使用前完成）
+// 2. 注册到 FormatAuto，承接所有未知扩展名（含 .toml）
 func init() {
-	err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+	err := env.RegisterParser(env.FormatAuto, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
 		return &TOMLParser{
 			cfg:       cfg,
 			validator: f.Validator(),
@@ -635,14 +687,16 @@ func init() {
 	}
 }
 
-// 4. 使用自定义格式
+// 3. 使用自定义格式
 func main() {
 	// 注册已在 init() 中完成（先于 main 执行）
 	loader, _ := env.New(env.DefaultConfig())
 	defer loader.Close()
 
-	// 现在可以加载 .toml 文件
-	loader.LoadFiles("config.toml")
+	// config.toml 检测为 FormatAuto，命中上面注册的解析器
+	if err := loader.LoadFiles("config.toml"); err != nil {
+		panic(err)
+	}
 }
 ```
 
@@ -824,11 +878,8 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
 }
 
 func main() {
-	// 定义自定义格式
-	const FormatINI env.FileFormat = 101
-
-	// 注册解析器
-	err := env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+	// 注册到 FormatAuto：.ini 扩展名检测为 FormatAuto，由该条目承接
+	err := env.RegisterParser(env.FormatAuto, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
 		return &INIParser{
 			cfg:       cfg,
 			validator: f.Validator(),
@@ -845,7 +896,9 @@ func main() {
 	defer loader.Close()
 
 	// 现在可以加载 .ini 文件
-	// loader.LoadFiles("config.ini")
+	if err := loader.LoadFiles("config.ini"); err != nil {
+		panic(err)
+	}
 
 	fmt.Println("INI parser registered")
 }
@@ -884,7 +937,7 @@ func (m *MemoryFileSystem) Open(name string) (env.File, error) {
 	if !ok {
 		return nil, os.ErrNotExist
 	}
-	return &MemoryFile{reader: strings.NewReader(content)}, nil
+	return &MemoryFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MemoryFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
@@ -935,14 +988,20 @@ func (m *MemoryFileSystem) LookupEnv(key string) (string, bool) {
 
 // MemoryFile 实现 env.File
 type MemoryFile struct {
+	name   string
+	size   int64
 	reader *strings.Reader
 }
 
 func (f *MemoryFile) Read(p []byte) (n int, err error)  { return f.reader.Read(p) }
 func (f *MemoryFile) Write(p []byte) (n int, err error) { return 0, errors.ErrUnsupported }
 func (f *MemoryFile) Close() error                      { return nil }
-func (f *MemoryFile) Stat() (os.FileInfo, error)        { return nil, errors.ErrUnsupported }
 func (f *MemoryFile) Sync() error                       { return nil }
+
+// Stat 必须返回真实大小：加载器在读取前用它做 MaxFileSize 预检
+func (f *MemoryFile) Stat() (os.FileInfo, error) {
+	return &MemoryFileInfo{name: f.name, size: f.size}, nil
+}
 
 // MemoryFileInfo 实现 os.FileInfo
 type MemoryFileInfo struct {
@@ -967,10 +1026,15 @@ func main() {
 	cfg := env.TestingConfig()
 	cfg.FileSystem = fs
 
-	loader, _ := env.New(cfg)
+	loader, err := env.New(cfg)
+	if err != nil {
+		panic(err)
+	}
 	defer loader.Close()
 
-	loader.LoadFiles(".env")
+	if err := loader.LoadFiles(".env"); err != nil {
+		panic(err)
+	}
 
 	fmt.Println(loader.GetString("APP_NAME")) // myapp
 	fmt.Println(loader.GetInt("PORT"))        // 8080

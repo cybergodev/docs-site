@@ -36,6 +36,7 @@ Same-named methods and package functions (e.g. `GetString`) get one row each und
 | `LoadWithConfig` | Init with Config | [functions](./functions#loadwithconfig) |
 | `Overload` | last-file-wins initializer | [functions](./functions#overload) |
 | `ResetDefaultLoader` | Reset default loader | [functions](./functions#resetdefaultloader) |
+| `ClearInternCache` | Release key-interning cache | [functions](./functions#clearinterncache) |
 | `GetString` | Read string | [functions](./functions#getstring) |
 | `GetInt` | Read int64 | [functions](./functions#getint) |
 | `GetBool` | Read bool | [functions](./functions#getbool) |
@@ -212,7 +213,7 @@ Same-named methods and package functions (e.g. `GetString`) get one row each und
 | `DefaultKeyPattern` | Default key pattern | [constants](./constants#defaultkeypattern) |
 | `defaultForbiddenKeysSlice` (unexported) | Builtin forbidden keys | [constants](./constants#defaultforbiddenkeys) |
 | `internal.Patterns` (unexported) | Sensitive key patterns | [constants](./constants#sensitivekeypatterns) |
-| Hard limits (unexported) | 100MB, 64KB, etc. | [constants](./constants#hard-limits) |
+| Hard limits (unexported) | 100 MB, 64 KB, etc. | [constants](./constants#hard-limits) |
 
 ### Interfaces
 

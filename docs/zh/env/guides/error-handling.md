@@ -331,68 +331,11 @@ if err != nil && env.IsMarshalError(err) {
 
 ### 用 errors.Is 匹配哨兵错误
 
-`errors.Is` 只判断类别，适合作 `switch` 的分流条件：
-
-```go
-err := loader.LoadFiles(".env")
-
-switch {
-case errors.Is(err, env.ErrFileNotFound):
-    // 文件不存在
-    log.Println("配置文件不存在，使用默认值")
-
-case errors.Is(err, env.ErrFileTooLarge):
-    // 文件过大
-    log.Fatal("配置文件过大")
-
-case errors.Is(err, env.ErrSecurityViolation):
-    // 禁止键（实际返回 *SecurityError）
-    log.Fatal("检测到禁止键")
-
-case err != nil:
-    // 其他错误
-    log.Fatalf("加载失败: %v", err)
-}
-
-// 键格式非法（实际返回 *ValidationError，Field=="key"）
-var valErr *env.ValidationError
-if errors.As(err, &valErr) && valErr.Field == "key" {
-    log.Fatalf("检测到无效键: %s", valErr.Message)
-}
-```
+`errors.Is` 只判断类别，适合在 `switch` 里分流 `ErrFileNotFound`、`ErrFileTooLarge`、`ErrSecurityViolation` 等哨兵。完整分支写法见[组合处理](#组合处理)。
 
 ### 查看结构化错误字段
 
-`errors.As` 逐类尝试，命中后即可读取该类型的字段：
-
-```go
-err := loader.LoadFiles(".env")
-if err == nil {
-    return
-}
-
-// 尝试提取解析错误
-var parseErr *env.ParseError
-if errors.As(err, &parseErr) {
-    log.Fatalf("解析错误在 %s 第 %d 行: %v",
-        parseErr.File, parseErr.Line, parseErr.Err)
-}
-
-// 尝试提取文件错误
-var fileErr *env.FileError
-if errors.As(err, &fileErr) {
-    log.Fatalf("文件 %s 错误: %v", fileErr.Path, fileErr.Err)
-}
-
-// 尝试提取安全错误
-var secErr *env.SecurityError
-if errors.As(err, &secErr) {
-    log.Fatalf("安全错误: %s - %s", secErr.Action, secErr.Reason)
-}
-
-// 其他错误
-log.Fatalf("未知错误: %v", err)
-```
+`errors.As` 逐类尝试，命中后即可读取该类型的字段（`*ParseError` 取文件与行号、`*FileError` 取路径与大小、`*SecurityError` 取动作与原因）。与哨兵分支合并的完整写法见[组合处理](#组合处理)，各类字段清单见[错误类型完整对照](#错误类型完整对照)。
 
 ### 组合处理
 
@@ -415,6 +358,9 @@ func handleLoadError(err error) {
         errors.As(err, &fileErr)
         log.Fatalf("文件 %s 过大 (%d > %d)",
             fileErr.Path, fileErr.Size, fileErr.Limit)
+
+    case errors.Is(err, env.ErrSecurityViolation):
+        log.Fatal("检测到禁止键")
     }
 
     // 然后检查结构化错误
@@ -427,6 +373,12 @@ func handleLoadError(err error) {
     var secErr *env.SecurityError
     if errors.As(err, &secErr) {
         log.Fatalf("安全错误: %s", secErr.Reason)
+    }
+
+    // 键格式非法（实际返回 *ValidationError，Field=="key"）
+    var valErr *env.ValidationError
+    if errors.As(err, &valErr) && valErr.Field == "key" {
+        log.Fatalf("检测到无效键: %s", valErr.Message)
     }
 
     // 未知错误
@@ -469,7 +421,7 @@ func loadConfig() *Config {
 ```
 
 ::: tip 关于 ProductionConfig 的审计行为
-`ProductionConfig` 默认启用审计（`AuditEnabled=true`）。未配置 `AuditHandler` 时，审计日志以 `[AUDIT]` 前缀写入 stderr；需要落盘时显式设置 `cfg.AuditHandler`（例如 `env.NewJSONAuditHandler(file)`）。
+`ProductionConfig` 默认启用审计（`AuditEnabled=true`）。未配置 `AuditHandler` 时，事件以 `[AUDIT]` 前缀写入 stderr；需要落盘时显式设置 `cfg.AuditHandler`。配置方式见[审计日志](./audit-logging)，落盘检查见[生产检查清单](../security/production-checklist)。
 :::
 
 ### 重试模式
@@ -509,6 +461,8 @@ func loadWithRetry(filenames []string, maxRetries int) error {
 
 ## 完整示例
 
+下面把前面的片段组装成一个可运行程序；`handleLoadError` 只保留程序所需的两个分支，完整分流见[组合处理](#组合处理)。
+
 ```go
 package main
 
@@ -543,6 +497,8 @@ func main() {
 	log.Println("配置加载成功")
 }
 
+// 完整分流（哨兵 + 结构化错误）见「组合处理」一节；
+// 此处只保留程序运行所需的最小分支。
 func handleLoadError(err error) {
 	switch {
 	case errors.Is(err, env.ErrFileNotFound):
@@ -552,21 +508,6 @@ func handleLoadError(err error) {
 		var fileErr *env.FileError
 		errors.As(err, &fileErr)
 		log.Fatalf("文件过大: %s (%d bytes)", fileErr.Path, fileErr.Size)
-
-	case errors.Is(err, env.ErrSecurityViolation):
-		log.Fatal("检测到禁止键")
-	}
-
-	// 结构化错误
-	var parseErr *env.ParseError
-	if errors.As(err, &parseErr) {
-		log.Fatalf("解析错误 %s:%d - %v",
-			parseErr.File, parseErr.Line, parseErr.Err)
-	}
-
-	var secErr *env.SecurityError
-	if errors.As(err, &secErr) {
-		log.Fatalf("安全错误: %s - %s", secErr.Action, secErr.Reason)
 	}
 
 	log.Fatalf("加载失败: %v", err)
@@ -618,8 +559,8 @@ func handleValidationError(err error) {
 |------|------|
 | `ErrClosed` | Loader 已关闭（或为 nil）后继续操作 |
 | `ErrInvalidConfig` | 配置无效，`New()` 返回时会包裹具体的校验错误 |
-| `ErrNotInitialized` | 全局模式下未先调用 `Load()` 即使用写入类函数 |
-| `ErrAlreadyInitialized` | 默认 Loader 已初始化，重复调用 `Load()` |
+| `ErrNotInitialized` | 包级函数在默认加载器未初始化时调用（`Set`/`Delete`/`Validate`/`ParseInto`） |
+| `ErrAlreadyInitialized` | 默认加载器已初始化，重复调用 `Load()` |
 | `ErrDuplicateKey` | 同一文档内出现重复键（`DuplicateKeyPolicy = DuplicateKeyError`），或 YAML/JSON 的两个不同路径扁平化后撞到同一个键名 |
 
 ### 判断辅助函数

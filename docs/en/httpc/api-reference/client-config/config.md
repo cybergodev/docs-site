@@ -261,8 +261,8 @@ type SecurityConfig struct {
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `MaxResponseBodySize` | 10MB | Limits the raw response-body byte count (as transferred, i.e. still compressed) |
-| `MaxDecompressedBodySize` | 100MB | Limits the **decompressed** response-body byte count (guards against decompression bombs); falls back to `MaxResponseBodySize` when unset (≤0) |
+| `MaxResponseBodySize` | 10MB | Caps **identity (uncompressed)** response bodies; a compressed response is capped on its inflated size by `MaxDecompressedBodySize` (falling back to this field when that one is 0) |
+| `MaxDecompressedBodySize` | 100MB | Caps the **inflated** size of a compressed response (decompression-bomb guard); falls back to `MaxResponseBodySize` when unset (≤0). The compressed input has a separate fixed 100MB cap that is not configurable |
 | `MaxRequestBodySize` | 0 (no limit) | Upload request-body cap; unlike the response side there is **no automatic fallback** — it must be set explicitly to take effect |
 
 ### Certificate Pinning (CertificatePinner)
@@ -393,6 +393,8 @@ type RetryConfig struct {
 | `RetryConfig.CustomPolicy` | nil | implement [`RetryPolicy`](../types/interfaces#retrypolicy) |
 
 Retry-delay formula: `min(Delay * BackoffFactor^attempt + jitter, MaxRetryDelay)`
+
+A `Retry-After` response header takes precedence over both the backoff sequence and `MaxRetryDelay` (capped at 60s); see the Retry-After-aware delay path in `internal/engine/retry.go`. The formula's clamp applies only to the exponential fallback path.
 
 `CustomPolicy` implements the [`RetryPolicy`](../types/interfaces#retrypolicy) interface and replaces the built-in retry decisions wholesale; the default is `nil` (built-in policy).
 
@@ -580,12 +582,13 @@ If `Retry.MaxRetries` is already set to a larger value, that value is kept (auto
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-`SetSecurityWarnOutput` sets the destination for security warnings. When the process is not running in a test environment (executable name contains `.test`, or `GO_TEST` / `GOTEST=1` is set), a `[SECURITY WARNING]`-level alert is printed to this writer in either of these cases:
+`SetSecurityWarnOutput` sets the destination for security warnings. When the process is not running in a test environment (executable name contains `.test`, or `GO_TEST` / `GOTEST=1` is set), an alert is printed to this writer in any of these cases:
 
-- `TestingConfig()` is used.
-- `SecurityConfig.InsecureSkipVerify` (`Config.Security`) or `SecurityConfig.TLSConfig.InsecureSkipVerify` is `true`.
+- `[SECURITY WARNING]`: `TestingConfig()` is used.
+- `[SECURITY WARNING]`: `SecurityConfig.InsecureSkipVerify` (`Config.Security`) or `SecurityConfig.TLSConfig.InsecureSkipVerify` is `true`.
+- `[CONFIG WARNING]`: a hand-built `Config` struct literal hits the exact all-off signature — `ValidateURL`, `ValidateHeaders`, `StrictContentLength`, `FollowRedirects`, and `EnableHTTP2` all false and `Security.MaxResponseBodySize == 0`. Those fields are documented as `Default: true`, but they are true only in `DefaultConfig()` and the presets, and a struct literal zeroes them; the warning recommends starting from `DefaultConfig()` and changing fields (see `newFromConfig` in `client.go`).
 
-Each warning type is counted independently and printed at most once per process. The default destination is `os.Stderr`; pass `io.Discard` to fully suppress warnings, for tests or known-safe internal scenarios. A `nil` writer is normalized to `io.Discard`.
+All three warnings share the same writer and each is printed at most once per process. The default destination is `os.Stderr`; pass `io.Discard` to fully suppress warnings, for tests or known-safe internal scenarios. A `nil` writer is normalized to `io.Discard`.
 
 ```go
 // Suppress security warnings in tests
@@ -594,7 +597,7 @@ cfg := httpc.TestingConfig()
 ```
 
 :::tip Scope of effect
-This setting is process-level global state and affects all subsequently created clients. The `TestingConfig` and `InsecureSkipVerify` warnings share the same output writer.
+This setting is process-level global state and affects all subsequently created clients. The `TestingConfig`, `InsecureSkipVerify`, and hand-built `Config` warnings share the same output writer.
 :::
 
 ## Validation

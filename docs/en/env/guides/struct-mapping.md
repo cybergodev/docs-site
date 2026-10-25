@@ -28,7 +28,9 @@ type Config struct {
 }
 
 func main() {
-	env.Load(".env")
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
 	cfg := Config{}
 	if err := env.ParseInto(&cfg); err != nil {
@@ -405,7 +407,7 @@ func Load() (*Config, error) {
 
 ### Environment Differentiation
 
-To split configuration by environment, put the shared fields in a named nested struct; the key prefix comes from that field name (Base here), and inner tags stay short:
+To split configuration by environment, put the shared fields in a named nested struct; the key prefix comes from that field name (Base here), and inner tags stay short. A parse failure returns `nil` plus the wrapped error rather than a half-filled config:
 
 ```go
 type BaseConfig struct {
@@ -423,22 +425,24 @@ type ProductionConfig struct {
     Debug bool `env:"DEBUG" envDefault:"false"`
 }
 
-func LoadConfig() interface{} {
-    env.Load(".env")
+func LoadConfig() (interface{}, error) {
+    if err := env.Load(".env"); err != nil {
+        return nil, fmt.Errorf("load env: %w", err)
+    }
 
     switch os.Getenv("GO_ENV") {
     case "production":
         cfg := ProductionConfig{}
         if err := env.ParseInto(&cfg); err != nil {
-            log.Printf("parse production config: %v", err)
+            return nil, fmt.Errorf("parse production config: %w", err)
         }
-        return cfg
+        return cfg, nil
     default:
         cfg := DevelopmentConfig{}
         if err := env.ParseInto(&cfg); err != nil {
-            log.Printf("parse development config: %v", err)
+            return nil, fmt.Errorf("parse development config: %w", err)
         }
-        return cfg
+        return cfg, nil
     }
 }
 ```

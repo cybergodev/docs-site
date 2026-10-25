@@ -301,28 +301,24 @@ dc.GetHeaders()          // -> map[string]string copy
 `SessionManager` is protected internally by a `sync.RWMutex`; `SetHeader`/`SetCookie`/`GetCookie` and similar methods can be called concurrently. `prepareOptions` uses a read-then-write non-atomic sequence: the session state is designed for eventual consistency, so concurrent requests interleave during `prepareOptions`, but each request captures a consistent snapshot at its `prepareOptions` moment.
 :::
 
-## Double-Option-Execution Caveat
+## Option Execution and Session Capture
 
-`prepareSessionOptions` applies the caller-supplied `RequestOption` **twice** before the request is sent: once in `captureFromOptions` to capture session state, and once in `client.Request` for the actual request.
+Request options run **exactly once** on a `DomainClient`: the capture phase does not execute option closures, and execution happens in the `client.Request` stage.
+
+Session capture is performed inside `SessionManager` through **static type assertions**: it pulls headers and cookies from known concrete option types without ever calling `apply`. Only the built-in named option types are recognized — `WithHeader`, `WithHeaderMap`, `WithCookies`, `WithCookieMap`, and `WithCookieString`. The headers and cookies they carry persist into the session and apply to later requests.
 
 ```text
 prepareSessionOptions(options):
   ① managedOptions = prepareOptions()        <- read session state
   ② allOptions = managedOptions + options    <- merge
-  ③ captureFromOptions(options)              <- applied once to a temp request (capture session)
-  ④ return allOptions -> client.Request()    <- applied a second time to the actual request
+  ③ captureFromOptions(options)              <- static type assertions, never runs closures
+  ④ return allOptions -> client.Request()    <- the only execution point
 ```
 
-::: warning Avoid side-effect options
-The following options execute twice in `DomainClient`, leading to unexpected behavior:
+::: warning Headers and cookies in custom options are not captured
+`SetHeader`/`SetCookies` calls inside a custom option such as `RequestOptionFunc` are **not** captured — static assertions cannot see them. For persistent session state use `dc.SetHeader`/`dc.SetCookie` (or the matching `SessionManager` methods).
 
-| Problematic option | Reason |
-|------------|------|
-| Counter increments | Incremented twice per request |
-| Nonce random generation | Different values generated in the capture phase and the request phase |
-| `WithOnRequest` / `WithOnResponse` | Callbacks are explicitly cleared and do not fire twice (safe) |
-
-If you need side-effect options, use the underlying `Client` to send the request directly, or manage state outside the option.
+Because options run once, `WithOnRequest`/`WithOnResponse` callbacks fire only once as well.
 :::
 
 ## Download Method
@@ -341,7 +337,7 @@ cfg.Overwrite = true
 result, err := dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
-Download response cookies are automatically captured into the session (via `UpdateFromCookies`). As with `Request`, request options are applied twice.
+Download response cookies are automatically captured into the session (via `UpdateFromCookies`). Options likewise run only once; response cookies are stored back into the session only when the final URL (after redirects) still targets the base origin.
 
 ## Relationship to the Client Interface
 

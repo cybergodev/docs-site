@@ -163,11 +163,8 @@ func newCustomParser(cfg env.Config, factory *env.ComponentFactory) *CustomParse
     }
 }
 
-// Define custom format constant (recommend using 100+ to avoid conflicts)
-const FormatCustom env.FileFormat = 100
-
-// Register parser
-env.RegisterParser(FormatCustom, func(cfg env.Config, factory *env.ComponentFactory) (env.EnvParser, error) {
+// Register: LoadFiles routes by extension only, so unknown extensions all land on FormatAuto
+env.RegisterParser(env.FormatAuto, func(cfg env.Config, factory *env.ComponentFactory) (env.EnvParser, error) {
     return newCustomParser(cfg, factory), nil
 })
 ```
@@ -213,13 +210,22 @@ func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
 Creates an audit handler that writes one JSON object per event.
 
 **Parameters:**
-- `w` - output target (e.g. `os.Stdout`, a file)
+- `w` - output target such as an opened file. Must be a non-nil writer: passing nil makes `Log` panic with a nil pointer dereference (reached through the auditor, that panic is recovered as an error and the event is lost)
 
 ```go
+f, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+
 cfg := env.ProductionConfig()
 cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+cfg.AuditHandler = env.NewJSONAuditHandler(f)
 ```
+
+:::warning Close closes the writer
+`JSONAuditHandler.Close()` calls `Close()` on the writer when it implements `io.Closer`. Do not pass `os.Stdout`, or any writer you still need elsewhere, or `loader.Close()` closes it too. If you need output on the standard streams, use `NewLogAuditHandler` instead: it does not close the underlying writer.
+:::
 
 **Output example:**
 ```json
@@ -248,10 +254,13 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 
 **Output example:**
 ```text
-[AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=parse success=true reason="parsed: .env"
+[AUDIT] 2024/01/15 10:30:00 action=set key=[MASKED] success=true reason="loaded"
+[AUDIT] 2024/01/15 10:30:00 action=file_access success=true reason="file loaded: .env" duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="loaded files" duration=1.23ms
 ```
 
-Events are emitted as key-value pairs: `action`, `key`, `success`, and the quoted `reason`, plus optional `file` and `duration`. The `key` pair is omitted when the event has no key, and durations below 1ms are shown in μs, longer ones in ms.
+Events are emitted as key-value pairs: `action`, `success`, and the quoted `reason`, plus optional `file` and `duration`. The `key` pair is omitted when the event has no key: `ActionLoad` and successful `ActionParse` events carry no key name, while `ActionSet` does — as does a failing `ActionParse` (a duplicate key or an over-long key) — with sensitive keys masked to `[MASKED]` by `MaskValue`. Durations below 1ms are shown in μs, longer ones in ms.
 
 The `[AUDIT]` prefix and the timestamp come from the `log.Logger` you pass in.
 
@@ -269,7 +278,9 @@ Creates an audit handler that hands events to a channel you own, for asynchronou
 - `ch` - channel that receives the events
 
 :::warning Channel ownership
-`ChannelAuditHandler` does **not own** the channel, and `Close()` does **not** close it. The caller must close the channel to signal the receiver to stop. `Log()` blocks when the channel buffer is full, so pass a buffered channel.
+`ChannelAuditHandler` does **not own** the channel, and `Close()` does **not** close it. The caller must close the channel to signal the receiver to stop, and only after the loader using this handler is closed with no `Log` call in flight. Closing early makes the next `Log` panic with send on a closed channel. `Log()` blocks when the channel buffer is full, so pass a buffered channel.
+
+A nil channel never blocks forever: `Log()` returns an error for every event and the event is dropped. That error is not reported to `LoadFiles`, `Set`, or other callers; it surfaces only when `AuditFailClosed` is enabled, so passing nil effectively discards all audit events silently.
 :::
 
 ```go
@@ -409,7 +420,7 @@ Global default filesystem instance. It is the package-level variable holding `OS
 
 ### Using a Custom Filesystem
 
-A mock lets you test without touching disk. This one keeps file contents and environment variables in maps:
+A mock lets you test without touching disk. This one keeps file contents and environment variables in maps. `File.Stat` is not optional here: the loader uses it for the `MaxFileSize` pre-check before reading, so `Size()` must report the real content length.
 
 ```go
 type MockFileSystem struct {
@@ -417,12 +428,42 @@ type MockFileSystem struct {
     env   map[string]string
 }
 
+// MockFile is the handle Open returns; Stat must report the real size
+type MockFile struct {
+    name   string
+    size   int64
+    reader *strings.Reader
+}
+
+func (f *MockFile) Read(p []byte) (int, error)  { return f.reader.Read(p) }
+func (f *MockFile) Write(p []byte) (int, error) { return 0, errors.ErrUnsupported }
+func (f *MockFile) Close() error                { return nil }
+func (f *MockFile) Sync() error                 { return nil }
+
+// Stat must report the real size: the loader uses it for the MaxFileSize pre-check
+func (f *MockFile) Stat() (os.FileInfo, error) {
+    return &mockFileInfo{name: f.name, size: f.size}, nil
+}
+
+// mockFileInfo implements os.FileInfo
+type mockFileInfo struct {
+    name string
+    size int64
+}
+
+func (i *mockFileInfo) Name() string       { return i.name }
+func (i *mockFileInfo) Size() int64        { return i.size }
+func (i *mockFileInfo) Mode() os.FileMode  { return 0644 }
+func (i *mockFileInfo) ModTime() time.Time { return time.Time{} }
+func (i *mockFileInfo) IsDir() bool        { return false }
+func (i *mockFileInfo) Sys() interface{}   { return nil }
+
 func (m *MockFileSystem) Open(name string) (env.File, error) {
     content, ok := m.files[name]
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{content: content}, nil
+    return &MockFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) Getenv(key string) string {
@@ -449,10 +490,11 @@ func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.
 }
 
 func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
-    if _, ok := m.files[name]; !ok {
-        return nil, os.ErrNotExist
+    f, err := m.Open(name)
+    if err != nil {
+        return nil, err
     }
-    return nil, nil
+    return f.Stat()  // must report the real size: the loader uses it for the MaxFileSize pre-check
 }
 
 func (m *MockFileSystem) MkdirAll(path string, perm os.FileMode) error {
@@ -505,14 +547,14 @@ Detects the format from the file extension.
 | `.yaml`, `.yml` | `FormatYAML` |
 | Other | `FormatAuto` |
 
-The check uses `filepath.Ext`, lowercased, so `.ENV` also yields `FormatEnv`. `.env.local` and `unknown.txt` return `FormatAuto`, which falls back to the `.env` parser at load time.
+The check uses `filepath.Ext`, lowercased, so `.ENV` also yields `FormatEnv`. `.env.local` and `unknown.txt` return `FormatAuto`: at load time that entry is used if you registered a parser for it, otherwise the `.env` parser handles the file.
 
 ```go
 format := env.DetectFormat("config.json")   // FormatJSON
 format := env.DetectFormat("settings.yaml") // FormatYAML
 format := env.DetectFormat("app.yml")       // FormatYAML
 format := env.DetectFormat(".env")          // FormatEnv
-format := env.DetectFormat(".env.local")    // FormatAuto (actually processed as .env)
+format := env.DetectFormat(".env.local")    // FormatAuto
 format := env.DetectFormat("unknown.txt")   // FormatAuto
 ```
 
@@ -520,7 +562,8 @@ format := env.DetectFormat("unknown.txt")   // FormatAuto
 
 ```go
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
-// Each file's format is detected and its matching parser is used
+// Each file's format is detected by extension and its matching parser is used;
+// unknown extensions resolve to FormatAuto
 ```
 
 ---
@@ -539,13 +582,15 @@ const (
 **Custom formats:**
 
 ```go
-// Define custom format constants (recommend using values of 100+ to avoid conflicts)
+// Define custom format constants (they label your own registry entries)
 const (
     FormatTOML  env.FileFormat = 100
     FormatINI   env.FileFormat = 101
     FormatXML   env.FileFormat = 102
 )
 ```
+
+A custom format number only labels your own registry entry. `LoadFiles` does not route by format number; it looks up `DetectFormat` by extension. To have `.toml`, `.ini`, and similar files actually reach a custom parser, register it under `FormatAuto` (see "Parser Registration" below).
 
 ---
 
@@ -591,8 +636,19 @@ Registers a parser for a custom format.
 
 **Notes:**
 - The registry is process-global and is snapshotted when a `Loader` is constructed, so register before calling `env.New()`.
-- Use format values of 100 or above to avoid conflicts with built-in formats.
+- Register under `env.FormatAuto` for `LoadFiles` to reach a custom parser; a 100+ custom format number is never reached by extension routing (see below).
 - The factory function must return a thread-safe parser.
+
+:::warning Custom format numbers are not reached by extension
+`LoadFiles` routes by extension only: it looks up `DetectFormat(filename)` in the parser map, and `DetectFormat` recognizes only `.env`, `.json`, `.yaml`, and `.yml`. Everything else returns `FormatAuto`. A parser registered under `const FormatTOML env.FileFormat = 100` is therefore **never** reached by `config.toml`; the file resolves to the `FormatAuto` entry, falls back to the built-in dotenv parser, and lines such as `[a]` are parsed as junk key-value pairs.
+
+There are two working routes for a custom format:
+
+- (a) Register with `RegisterParser(env.FormatAuto, ...)` so every unknown extension is handled, and keep names such as `config.toml` (recommended; the example below does this).
+- (b) Register with `ForceRegisterParser(env.FormatEnv, ...)` to replace the built-in dotenv parser, and give the file a `.env` extension.
+
+See [Custom Parser](../guides/custom-parser) for the full routing rules.
+:::
 
 ```go
 package main
@@ -603,10 +659,7 @@ import (
 	"github.com/cybergodev/env"
 )
 
-// 1. Define custom format constant
-const FormatTOML env.FileFormat = 100
-
-// 2. Implement the parser interface
+// 1. Implement the parser interface
 type TOMLParser struct {
 	cfg       env.Config
 	validator env.Validator
@@ -620,9 +673,9 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
 	return result, nil
 }
 
-// 3. Register the parser (register in init() to ensure it's done before use)
+// 2. Register under FormatAuto so every unknown extension (including .toml) is handled
 func init() {
-	err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+	err := env.RegisterParser(env.FormatAuto, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
 		return &TOMLParser{
 			cfg:       cfg,
 			validator: f.Validator(),
@@ -634,14 +687,16 @@ func init() {
 	}
 }
 
-// 4. Use the custom format
+// 3. Use the custom format
 func main() {
 	// Registration is done in init() (executes before main)
 	loader, _ := env.New(env.DefaultConfig())
 	defer loader.Close()
 
-	// Now you can load .toml files
-	loader.LoadFiles("config.toml")
+	// config.toml is detected as FormatAuto and reaches the parser registered above
+	if err := loader.LoadFiles("config.toml"); err != nil {
+		panic(err)
+	}
 }
 ```
 
@@ -827,11 +882,8 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
 }
 
 func main() {
-	// Define custom format
-	const FormatINI env.FileFormat = 101
-
-	// Register parser
-	err := env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+	// Register under FormatAuto: a .ini extension is detected as FormatAuto and reaches this entry
+	err := env.RegisterParser(env.FormatAuto, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
 		return &INIParser{
 			cfg:       cfg,
 			validator: f.Validator(),
@@ -848,7 +900,9 @@ func main() {
 	defer loader.Close()
 
 	// Now you can load .ini files
-	// loader.LoadFiles("config.ini")
+	if err := loader.LoadFiles("config.ini"); err != nil {
+		panic(err)
+	}
 
 	fmt.Println("INI parser registered")
 }
@@ -887,7 +941,7 @@ func (m *MemoryFileSystem) Open(name string) (env.File, error) {
 	if !ok {
 		return nil, os.ErrNotExist
 	}
-	return &MemoryFile{reader: strings.NewReader(content)}, nil
+	return &MemoryFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MemoryFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
@@ -938,14 +992,20 @@ func (m *MemoryFileSystem) LookupEnv(key string) (string, bool) {
 
 // MemoryFile implements env.File
 type MemoryFile struct {
+	name   string
+	size   int64
 	reader *strings.Reader
 }
 
 func (f *MemoryFile) Read(p []byte) (n int, err error)  { return f.reader.Read(p) }
 func (f *MemoryFile) Write(p []byte) (n int, err error) { return 0, errors.ErrUnsupported }
 func (f *MemoryFile) Close() error                      { return nil }
-func (f *MemoryFile) Stat() (os.FileInfo, error)        { return nil, errors.ErrUnsupported }
 func (f *MemoryFile) Sync() error                       { return nil }
+
+// Stat must report the real size: the loader uses it for the MaxFileSize pre-check
+func (f *MemoryFile) Stat() (os.FileInfo, error) {
+	return &MemoryFileInfo{name: f.name, size: f.size}, nil
+}
 
 // MemoryFileInfo implements os.FileInfo
 type MemoryFileInfo struct {
@@ -970,10 +1030,15 @@ func main() {
 	cfg := env.TestingConfig()
 	cfg.FileSystem = fs
 
-	loader, _ := env.New(cfg)
+	loader, err := env.New(cfg)
+	if err != nil {
+		panic(err)
+	}
 	defer loader.Close()
 
-	loader.LoadFiles(".env")
+	if err := loader.LoadFiles(".env"); err != nil {
+		panic(err)
+	}
 
 	fmt.Println(loader.GetString("APP_NAME")) // myapp
 	fmt.Println(loader.GetInt("PORT"))        // 8080

@@ -68,7 +68,7 @@ func New(cfg ...Config) (*Loader, error)
 - 创建内部组件（验证器、审计器、展开器）与各格式解析器
 - `cfg.Filenames` 非空时自动加载文件；加载失败会清理内部组件并返回错误
 - `cfg.AutoApply` 为 true 时自动应用到进程环境
-- 不设置包级默认加载器（那是 `Load`/`LoadWithConfig` 的职责）
+- 不设置默认加载器（那是 `Load`/`LoadWithConfig` 的职责）
 
 ```go
 // 使用默认配置
@@ -108,10 +108,13 @@ func (l *Loader) LoadFiles(filenames ...string) error
 **行为：**
 - 按顺序加载。默认 `OverwriteExisting=false`，此时**先加载的文件优先**，后加载文件中的同名键被跳过
 - `OverwriteExisting=true` 时后加载覆盖先加载（`DevelopmentConfig`/`TestingConfig` 预设已开启）
+- 某个文件出错会立即返回错误，但此前文件已加载的键继续保留（**部分成功**）。重试时注意 `OverwriteExisting` 的影响：它为 `false` 时，已保留的键会挡住重试文件中的同名键
+- 上述「部分成功」适用于在已建好的加载器上调用 `LoadFiles`；`New()` 构造期间自动加载失败会清理内部组件并返回错误
 - 自动检测文件格式（.env、JSON、YAML）；无法识别的扩展名按 `.env` 解析
 - 文件不存在时的行为由 `FailOnMissingFile` 决定：`false` 静默跳过，`true` 返回 `ErrFileNotFound`
 - `Prefix` 非空时只保留匹配前缀的键（ASCII 大小写不敏感）
 - `AutoApply` 为 true 时，加载后自动应用
+- `RequiredKeys` 的检查发生在**每个文件的解析结束时**，因此必需键必须能在单个文件中全部满足，不要跨多个文件拆分
 
 ```go
 // 加载默认 .env 文件
@@ -342,7 +345,7 @@ func (l *Loader) GetSecure(key string) *SecureValue
 - `key` - 键名
 
 **返回：**
-- `*SecureValue` - 安全值的**防御性副本**，独立于父 Loader，调用者负责释放（`Release()` 清零并归还对象池，`Close()` 只清零）；键不存在、加载器已关闭或存储中的值已关闭时返回 nil
+- `*SecureValue` - 安全值的**防御性副本**，独立于父 Loader，调用者负责释放（`Release()` 清零、解锁并归还对象池；`Close()` 只清零并解锁，不归池）；键不存在、加载器已关闭或存储中的值已关闭时返回 nil
 
 ```go
 secret := loader.GetSecure("API_SECRET")
@@ -433,7 +436,7 @@ func (l *Loader) Set(key, value string) error
 
 **行为：**
 - 验证键名有效性
-- `ValidateValues` 为 true 时验证值安全性
+- 验证值安全性：内置验证器的基础校验（长度上限、控制字符、`ValidateUTF8` 开启时的 UTF-8）始终执行；`ValidateValues` 只在自定义验证器不具备基础校验能力时起开关作用
 - `OverwriteExisting` 为 false 且键已存在时静默跳过（返回 nil）
 - `AutoApply` 为 true 时同时写入进程环境；`Setenv` 失败会直接返回错误，该值不写入内存
 - `AutoApply` 为 true 且进程中已有同名变量、`OverwriteExisting` 为 false 时，只更新内存，进程环境保持原值
@@ -451,7 +454,7 @@ if err != nil {
 **错误类型：**
 - `*ValidationError` - 键名格式无效（Field 为 `key`）
 - `*SecurityError` - 键被禁止，可用 `errors.Is(err, env.ErrSecurityViolation)` 或 `env.ErrForbiddenKey` 匹配
-- `ErrInvalidValue` - 值无效（`ValidateValues` 为 true 时，值含空字节、控制字符等）
+- `ErrInvalidValue` - 值内容无效：含空字节或控制字符（内置验证器下始终检查）；值超过 `MaxValueLength` 时返回的是 `*ValidationError`（`Rule` 为 `max_length`），它**不**匹配 `ErrInvalidValue`
 - `ErrClosed` - 加载器已关闭
 - `ErrAuditFailed` - fail-closed 审计下事件丢失
 
@@ -476,11 +479,13 @@ func (l *Loader) Delete(key string) error
 **行为：**
 - 从内存存储中删除并安全清零该值
 - 仅当这个键是由**本 loader** 写入进程环境时，才同时从进程环境 unset；非本 loader 设置的变量不受影响
+- 顺序是先删内存、再 unset 进程环境。`Unsetenv` 失败时返回错误，但此时**内存已删除、`appliedKeys` 仍保留该键**：该变量在进程环境里依旧是活值（可能是一个敏感值），重试 `Delete` 或手动 `os.Unsetenv` 才能清掉
 
 ```go
 err := loader.Delete("TEMP_KEY")
 if err != nil {
-    panic(err)
+    // unset 失败：内存副本已删除，但进程环境中可能仍有该变量
+    log.Printf("delete failed: %v", err)
 }
 ```
 
@@ -538,7 +543,7 @@ for key, value := range all {
 func (l *Loader) Len() int
 ```
 
-获取变量数量。
+获取变量数量。基于原子计数，O(1) 复杂度，不遍历分片；并发写入进行中时读数可能略微滞后，需要精确值时由调用方自行同步。
 
 **返回：**
 - `int` - 变量数量，加载器已关闭返回 0
@@ -561,12 +566,14 @@ func (l *Loader) Apply() error
 将内存中的变量写入进程环境（`os.Environ`）。
 
 **返回：**
-- `error` - 应用错误；首个写入失败的键会中止整个操作
+- `error` - 应用错误；首个 `Setenv` 失败的键会中止本轮回合；已写入的键不会撤销，`IsApplied()` 保持 `false`——请把失败理解为「部分应用」而非「什么都没应用」
 
 **行为：**
-- 遍历所有已加载的变量，逐个写入进程环境
+- 遍历所有已加载的变量，逐个调用 `Setenv` 写入进程环境
+- **首个失败即中止且不回滚**：失败之前已写入的键仍留在进程环境，`appliedKeys` 也只记录到失败之前
 - `OverwriteExisting=false` 时跳过进程中已存在的键（含显式设为空的变量），并在审计日志记 `skipped (existing)`
 - 写入成功的键记入 `appliedKeys`，供 `Delete` 判断归属
+- 全部写入成功后才把 `IsApplied()` 置为 `true`
 - 应用后可通过 `os.Getenv()` 读取
 
 **错误类型：**
@@ -575,14 +582,20 @@ func (l *Loader) Apply() error
 - 启用 fail-closed 审计时，审计事件丢失会返回 `ErrAuditFailed`
 
 ```go
-err := loader.Apply()
-if err != nil {
-    panic(err)
+if err := loader.Apply(); err != nil {
+    log.Printf("apply failed: %v", err) // 失败只代表「部分应用」，不要 panic
+    return
 }
 
 // 之后 os.Getenv() 也能访问
 host := os.Getenv("HOST")
 ```
+
+**失败处理：**
+
+`Apply` 失败时不要用 `panic` 收场——它意味着「部分应用」而非「什么都没应用」：报错的那个键之前，已经成功 `Setenv` 的变量仍留在进程环境里，而 `IsApplied()` 保持 `false`（本轮回合没有走完）。
+
+后续处理有两条路：逐键 `Delete` 撤掉已知写入的键，或修正环境后重新 `Apply`（已存在的键在 `OverwriteExisting=false` 时会被跳过，不会重复写入）。
 
 ---
 
@@ -592,7 +605,7 @@ host := os.Getenv("HOST")
 func (l *Loader) IsApplied() bool
 ```
 
-检查变量是否已应用到系统环境。`Apply`、`AutoApply` 开启时的加载，以及 `AutoApply` 开启时的 `Set` 都会把它置为 `true`。
+检查变量是否已应用到系统环境。`Apply`、`AutoApply` 开启时的加载，以及 `AutoApply` 开启时的 `Set` 都会把它置为 `true`；`Apply` 中途失败则保持 `false`（即使已有部分键写入进程环境）。
 
 **返回：**
 - `bool` - 是否已应用；加载器已关闭时返回 false
@@ -675,9 +688,19 @@ func (l *Loader) Validate() error
 ```go
 cfg := env.DefaultConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+cfg.Filenames = nil // 先不自动加载，避免 New 在构造期就因缺键失败
 
-loader, _ := env.New(cfg)
-loader.LoadFiles(".env")
+loader, err := env.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+defer loader.Close()
+
+if err := loader.LoadFiles(".env"); err != nil {
+    log.Fatal(err) // 每个文件解析结束时都会检查必需键
+}
+
+// 注意：必需键在**每个文件**解析结束时检查，示例故意只加载一个文件
 
 if err := loader.Validate(); err != nil {
     var missingErr *env.ValidationError
@@ -701,7 +724,7 @@ func (l *Loader) ParseInto(v any) error
 - `v` - 结构体指针
 
 **返回：**
-- `error` - 映射错误；加载器已关闭时返回 `ErrClosed`
+- `error` - 映射错误；加载器已关闭时返回 `ErrClosed`；`v` 为 nil 或非结构体指针时返回 `*ValidationError`（`Field` 为 `value`）；标签解析或类型转换失败时返回 `*MarshalError`（可用 `errors.As` 或 `env.IsMarshalError` 判断）
 
 **支持的标签：**
 - `env:"KEY"` - 指定环境变量名
@@ -804,11 +827,19 @@ func main() {
 	// 创建生产环境配置
 	cfg := env.ProductionConfig()
 	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
-	cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+
+	// 审计处理器会被 loader.Close() 关闭（JSONAuditHandler 还会关闭 writer），
+	// 因此写文件而不是 os.Stdout
+	auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 
 	// 创建加载器
 	loader, err := env.New(cfg)
 	if err != nil {
+		auditFile.Close() // New 失败时处理器未接管文件，需要自行关闭
 		log.Fatal(err)
 	}
 	defer loader.Close()
@@ -855,9 +886,14 @@ func main() {
 
 ## 生命周期与进程环境语义
 
+本节是 API 权威页的要点清单；并发场景与完整示例见[并发指南](../guides/concurrency)。
+
 ### Close 不会回滚 os.Environ
 
-`Close()` 只清零**内存中的**变量副本，**不会**取消此前写入进程环境的变量。写入进程环境的途径有三种：`Apply`、`AutoApply`，以及 `AutoApply` 开启时的 `Set`。需要在关闭前从进程环境移除时，先逐键调用 `Delete`：
+- `Close()` 清零并**解锁**内存中的变量副本，**不会**取消此前写入进程环境的变量
+- 写入进程环境的途径有三种：`Apply`、`AutoApply`，以及 `AutoApply` 开启时的 `Set`
+- 解锁发生在清零之前：`SecureValue.Close` 与 `Release` 都先解锁再按全容量写零，不会留下仍被锁定的内存页
+- 需要在关闭前从进程环境移除时，先逐键调用 `Delete`
 
 <!-- check-code: skip -->
 ```go
@@ -867,27 +903,28 @@ loader.Close()
 
 ### Delete 的逐键归属跟踪
 
-Loader 记录**自己**写入进程环境的键（`appliedKeys`）。`Delete` 只 unset 这些键，**绝不触碰**非本 loader 设置的进程变量（`HOME`、`TERM` 等），多 Loader 场景下互不干扰。
+- Loader 记录**自己**写入进程环境的键（`appliedKeys`）
+- `Delete` 只 unset 这些键，**绝不触碰**非本 loader 设置的进程变量（`HOME`、`TERM` 等）
+- 多 Loader 场景下因此互不干扰
 
 ### Apply 区分「未设置」与「显式空值」
 
-`Apply` 用 `LookupEnv` 判断进程环境是否已有该键。显式设置为空字符串的变量被视为「已存在」，在 `OverwriteExisting=false` 时同样跳过，不会被误判为未设置而覆盖。
+- `Apply` 用 `LookupEnv` 判断进程环境是否已有该键
+- 显式设置为空字符串的变量被视为「已存在」，在 `OverwriteExisting=false` 时同样跳过，不会被误判为未设置而覆盖
 
 ### 状态与元数据方法
 
-| 方法 | 说明 |
-|------|------|
-| `Config()` | 返回配置值拷贝供只读；`KeyPattern`、`FileSystem`、`AuditHandler` 等指针/接口字段仍共享底层对象，修改会影响运行中的 loader |
-| `IsClosed()` | loader 是否已关闭（nil receiver 返回 true） |
-| `IsApplied()` | 变量是否已应用到 os.Environ |
-| `LoadTime()` | 最近一次加载完成的时间（未加载过返回零值） |
+- `Config()`：返回配置值拷贝供只读；`KeyPattern`、`FileSystem`、`AuditHandler` 等指针/接口字段仍共享底层对象，修改会影响运行中的 loader
+- `IsClosed()`：loader 是否已关闭（nil receiver 返回 true）
+- `IsApplied()`：变量是否已完整应用到 `os.Environ`（`Apply` 中途失败时保持 `false`）
+- `LoadTime()`：最近一次加载完成的时间（未加载过返回零值）
 
 ### 读取路径的键名解析细节
 
 - **精确匹配优先**：先按原键查找，未命中时尝试大写形式回退
 - **点号路径**：`database.host` 展开为 `DATABASE_HOST`（JSON/YAML 扁平化键）；索引路径 `service.cors.origins.0` 未命中时回退到逗号分隔值
 - **不做 trim**：`Lookup` 返回存储原值，`.env` 值在解析期已 trim，JSON/YAML 值保留首尾空白
-- **无锁快路径**：单键读取（`Lookup`/`GetSecure`）通过原子闭态标志绕过 loader 级读锁，高并发下读锁计数不再成为瓶颈；与 `Close` 竞争时，结果是「读到值」或「读到清空后的状态」中的一种，不会读到中间态
+- **无锁快路径**：单键读取（`Lookup`/`GetSecure`）通过原子闭态标志绕过 loader 级读锁；与 `Close` 竞争时只会读到「值」或「清空后的状态」，不会读到中间态
 
 ### Set 的静默跳过语义
 

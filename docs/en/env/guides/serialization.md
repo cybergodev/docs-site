@@ -642,7 +642,7 @@ func main() {
 	}
 
 	// Write to file
-	err = os.WriteFile(".env", []byte(content), 0644)
+	err = os.WriteFile(".env", []byte(content), 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -661,7 +661,9 @@ import (
 )
 
 func main() {
-	env.Load(".env")
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
 	// Get all environment variables
 	all := env.All()
@@ -674,8 +676,10 @@ func main() {
 
 	fmt.Println(content)
 
-	// Or write to file
-	os.WriteFile("env-export.json", []byte(content), 0644)
+	// Or write to file; this is a config snapshot that may contain secrets, so use 0600
+	if err := os.WriteFile("env-export.json", []byte(content), 0600); err != nil {
+		panic(err)
+	}
 }
 ```
 
@@ -706,8 +710,10 @@ func main() {
 		panic(err)
 	}
 
-	// Save as .env file
-	os.WriteFile(".env", []byte(envContent), 0644)
+	// Save as .env file (contains secrets, so use 0600)
+	if err := os.WriteFile(".env", []byte(envContent), 0600); err != nil {
+		panic(err)
+	}
 
 	fmt.Println("Config migrated from JSON to .env")
 }
@@ -764,7 +770,7 @@ When `UnmarshalMap` or `UnmarshalStruct` receives `FormatAuto`, the format is de
 | First effective line is a bare `KEY:` (only whitespace after the colon) | YAML |
 | Nothing above matches | `.env` |
 
-Only the first effective line decides; blank lines and lines starting with `#` are skipped. The governing rule is **which separator appears first in that line**, not a blanket preference for `": "`: `GREETING=hello: world` has its `=` at index 8 and the `": "` after it, so it is `.env`; `connection: host=db port=5432` has the `": "` first, so it is YAML.
+Only the first effective line decides; blank lines and lines starting with `#` are skipped. The governing rule is **which separator appears first in that line**, not a blanket preference for `": "`: `GREETING=hello: world` has its `=` at index 8 (the 9th character) and the `": "` after it, so it is `.env`; `connection: host=db port=5432` has the `": "` first, so it is YAML.
 
 ### IsMarshalError helper
 

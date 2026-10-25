@@ -25,7 +25,7 @@ HTTPC defines 12 error types covering failure scenarios from the network layer t
 | `ErrorTypeResponseRead` | `RESPONSE_READ_ERROR` | Response body read error | EOF from connection drop, read timeout | Depends on cause |
 | `ErrorTypeRetryExhausted` | `RETRY_EXHAUSTED` | Retries exhausted | Still failing after reaching `MaxRetries` | No |
 | `ErrorTypeValidation` | `VALIDATION_ERROR` | Request validation failure | Illegal URL format, control characters in headers | No |
-| `ErrorTypeHTTP` | `HTTP_ERROR` | HTTP status code error | 4xx/5xx response | By status code |
+| `ErrorTypeHTTP` | `HTTP_ERROR` | HTTP status code error | Assigned by the classifier when the error message contains `HTTP 4xx`/`HTTP 5xx` (a normal 4xx/5xx response is not an error) | By status code |
 | `ErrorTypeUnknown` | `UNKNOWN_ERROR` | Unclassified error | Other unmatched exceptions | No |
 
 :::tip Full rules for retryability
@@ -84,8 +84,9 @@ When the error chain already contains a `ClientError` (e.g. an engine error retu
 | `URL` | `string` | The request URL (sanitized, see below) |
 | `Method` | `string` | HTTP method (GET/POST/...) |
 | `Attempts` | `int` | Number of attempts made (including the first); > 1 when retries are exhausted |
-| `StatusCode` | `int` | HTTP status code (only set for `ErrorTypeHTTP`) |
+| `StatusCode` | `int` | HTTP status code; populated only for `ErrorTypeHTTP`, 0 for other classifications |
 | `Host` | `string` | Target hostname (for circuit breakers, etc.) |
+| `ProxyURL` | `string` | Redacted URL of the proxy used for the final attempt; empty for direct connections, pre-dispatch errors, and system-proxy mode |
 
 ### Error() Output Format
 
@@ -239,16 +240,19 @@ HTTPC defines the following sentinel error variables, matchable with `errors.Is`
 | `ErrInvalidHeader` | Header validation failed (control characters or illegal format) | Fix the header value and retry |
 | `ErrInvalidTimeout` | Timeout value is negative, zero, or exceeds the 30-minute cap | Use a valid value; call `WithNoTimeout()` to remove the timeout |
 | `ErrInvalidRetry` | Invalid retry config (MaxRetries outside 0–10, BackoffFactor outside 1.0–10.0) | Fix retry parameters |
+| `ErrInvalidMaxRedirects` | Invalid redirect limit: per-request `WithMaxRedirects` is negative or above 50, or config-level `Security.MaxRedirects` is negative or above 50 | Move it into the 0–50 range |
 | `ErrInvalidConnection` | Invalid connection config (pool size out of range, malformed proxy URL) | Fix connection parameters |
-| `ErrInvalidSecurity` | Invalid security config (response body size limit out of range) | Fix security parameters |
-| `ErrInvalidMiddleware` | Invalid middleware config (redirect count over 50, UserAgent too long or contains control characters) | Fix middleware parameters |
+| `ErrInvalidSecurity` | Invalid security config: a response/decompressed/request body size limit out of range, an invalid TLS version or min > max, a malformed CIDR in `SSRFExemptCIDRs`, an invalid `SensitiveHeaders` entry, or an unknown `TLSFingerprint` preset / one combined with `TLSConfig` | Fix security parameters |
+| `ErrInvalidMiddleware` | `Defaults.UserAgent` exceeds 512 characters or contains control characters (the name is historical and does **not** cover middleware configuration; an invalid redirect limit reports `ErrInvalidMaxRedirects`) | Fix `Defaults.UserAgent` |
 | `ErrEmptyFilePath` | Download requested without a file path | Set `DownloadConfig.FilePath` |
 | `ErrFileExists` | Target file exists and `Overwrite=false`, `ResumeDownload=false` | Enable overwrite or resume, or change the path |
 | `ErrResponseBodyEmpty` | Calling `Unmarshal()` and similar on an empty response body | Check `RawBody` before parsing |
-| `ErrResponseBodyTooLarge` | Response body exceeds `MaxResponseBodySize` | Raise the limit or switch to a paginated API |
+| `ErrResponseBodyTooLarge` | The body parsed by `Result.Unmarshal` exceeds the 50MB JSON limit | Stream the data or parse it yourself |
+
+The engine-side `MaxResponseBodySize` limit on reading a response body does not wrap this sentinel: an oversize request ends with an `ErrorTypeResponseRead` `ClientError` whose message reads `failed to read response body: response body exceeds limit of N bytes`, so match it by message.
 
 :::tip Config errors vs runtime errors
-The `ErrInvalid*` family (`ErrInvalidHeader`/`ErrInvalidTimeout`/`ErrInvalidRetry`/`ErrInvalidConnection`/`ErrInvalidSecurity`/`ErrInvalidMiddleware`) are configuration-validation errors returned at `New()` time; they do not appear on the request hot path.
+The `ErrInvalid*` family (`ErrInvalidHeader`/`ErrInvalidTimeout`/`ErrInvalidRetry`/`ErrInvalidConnection`/`ErrInvalidSecurity`/`ErrInvalidMiddleware`) is configuration-level: usually returned by `New()` validation. They can also surface on the request path, but only from an **invalid option**, never from server behavior — `WithHeader`/`WithHeaderMap` return `ErrInvalidHeader`, `WithTimeout` returns `ErrInvalidTimeout`, `WithMaxRedirects` returns `ErrInvalidMaxRedirects`, and `WithBasicAuth`/`WithBearerToken` return `ErrInvalidCredentials`. These fail while options are applied, before any request is sent.
 
 Runtime errors are handled through `ClientError` classification.
 :::
@@ -277,7 +281,7 @@ func main() {
 	case errors.Is(err, httpc.ErrClientClosed):
 		fmt.Println("client is closed; recreate it")
 	case errors.Is(err, httpc.ErrResponseBodyTooLarge):
-		fmt.Println("response body too large; consider raising MaxResponseBodySize")
+		fmt.Println("Unmarshal body exceeds the 50MB limit; stream it instead")
 	case errors.Is(err, httpc.ErrResponseBodyEmpty):
 		fmt.Println("response body empty; check RawBody before calling parsing methods")
 	case errors.Is(err, httpc.ErrInvalidHeader):
@@ -330,7 +334,11 @@ Sanitization removes `user:pass@host` credentials and also handles sensitive que
 
 ## Panic Recovery Safety Net
 
-`Request()` and `Download()` include a panic safety net: an unexpected panic from the engine, transport, TLS library, or middleware is caught and converted into a `ClientError`, so the caller's process does not crash:
+`Request()` and `Download()` include a panic safety net: an unexpected panic from the engine, transport, TLS library, or middleware is caught and converted into a **plain `error`** (`panic recovered: <reason>` plus the full stack trace), so the caller's process does not crash.
+
+:::warning A recovered panic is not a `ClientError`
+The fallback recover sits at the outermost layer of `clientImpl.Request`/`Download`, and the converted error is **never re-classified** — `errors.As(err, &clientErr)` will not match it, and it has no `Code()`/`IsRetryable()`. `RecoveryMiddleware` behaves the same way (it also calls `panicToError`). When classification matters, inspect the error yourself or match the underlying cause with `errors.Is`.
+:::
 
 <!-- check-code: skip -->
 ```go
@@ -339,7 +347,7 @@ func (c *clientImpl) Request(ctx context.Context, method, url string, ...) (*Res
     defer func() {
         if r := recover(); r != nil {
             result = nil
-            err = panicToError(r) // Converted to ClientError
+            err = panicToError(r) // Plain error, not re-classified
         }
     }()
     // ... normal request logic

@@ -16,7 +16,7 @@ sidebar_position: 3
 ```text
 内存 (RAM)                      磁盘 (Swap/Page File)
 ┌──────────────┐                ┌──────────────┐
-│ API_KEY=xxx  │ ── 交换 ──→    │ API_KEY=xxx  │ ← 残留！
+│ API_KEY=xxx  │ ── 交换 ──→    │ API_KEY=xxx  │ ← 残留
 │              │                │ (即使清零后    │
 │              │ ←─ 读回 ──     │  仍存在于此)  │
 └──────────────┘                └──────────────┘
@@ -41,7 +41,7 @@ sidebar_position: 3
 | Windows | `VirtualLock` / `VirtualUnlock` | ✅ |
 | 其他平台（FreeBSD/其他 BSD、Solaris、WASM 等） | 无 | ❌ |
 
-Linux、macOS 与 Windows 之外的平台没有锁定实现：`IsMemoryLockSupported()` 返回 `false`，锁定尝试直接返回「平台不支持」错误。SecureValue 仍可使用，但启用锁定后 `Masked()` 显示 `lock-failed`。未启用锁定时不附加任何锁定状态。
+Linux、macOS 与 Windows 之外的平台没有锁定实现：`IsMemoryLockSupported()` 返回 `false`，锁定尝试返回「平台不支持」错误并被记录。`SecureValue` 仍可使用，启用锁定时 `Masked()` 显示 `lock-failed`。未启用锁定时不附加任何锁定状态。
 
 运行时用 `IsMemoryLockSupported()` 检测当前平台：
 
@@ -126,7 +126,7 @@ func main() {
 	secret := env.GetSecure("API_KEY")
 	if secret != nil {
 		defer secret.Release()
-		fmt.Println(secret.Masked()) // [SECURE:32 bytes locked]（N 取决于实际值长度）
+		fmt.Println(secret.Masked()) // [SECURE:32 bytes locked]（平台支持且锁定成功时；N 为实际值长度）
 	}
 }
 ```
@@ -204,8 +204,8 @@ defer sv.Release()
 fmt.Println(sv.Masked())
 // 锁定成功：    [SECURE:32 bytes locked]      // 已启用锁定且锁定成功
 // 锁定失败：    [SECURE:32 bytes lock-failed] // 已启用锁定但失败（权限不足/平台不支持）
-// 从未尝试锁定：[SECURE:32 bytes unlocked]    // 创建时未启用锁定
-// 未启用锁定：  [SECURE:32 bytes]             // 调用 Masked 时全局开关为 false
+// 未锁定：      [SECURE:32 bytes unlocked]    // 调用时已启用锁定，但该值未锁定且无错误（典型：创建于启用之前）
+// 未启用锁定：  [SECURE:32 bytes]             // 调用 Masked 时全局开关为 false，不加后缀
 // 空值：        [SECURE:0 bytes]
 // 已关闭：      [CLOSED]
 ```
@@ -217,7 +217,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/cybergodev/env"
 )
@@ -274,8 +273,6 @@ func main() {
 	// 安全日志（不泄露明文）
 	log.Printf("数据库密码: %s", dbPassword.Masked())
 	// 输出：数据库密码：[SECURE:12 bytes locked]（N 取决于实际值长度）
-
-	_ = os.Stdout
 }
 ```
 
@@ -334,7 +331,7 @@ defer sv.Release()
 |------|----------|----------|
 | `lock-failed` 出现在 Masked 输出中 | 权限不足或平台不支持 | Linux 配置 `CAP_IPC_LOCK` 或提高 `ulimit -l`；Windows 授予 `SeLockMemoryPrivilege`；其他平台无法锁定 |
 | 严格模式日志刷屏 | 大量 SecureValue 创建时锁定失败 | 检查系统 `RLIMIT_MEMLOCK` 限制，或使用非严格模式 |
-| `IsMemoryLockSupported()` 返回 false | 运行平台不是 Linux/macOS/Windows（如 FreeBSD/其他 BSD、Solaris、WASM） | 这些平台没有锁定实现，锁定调用直接报「平台不支持」；改用其他措施（如加密存储） |
+| `IsMemoryLockSupported()` 返回 false | 运行平台不是 Linux/macOS/Windows（如 FreeBSD/其他 BSD、Solaris、WASM） | 这些平台没有锁定实现，锁定尝试失败并记录错误；改用其他措施（如加密存储） |
 | 内存使用量增加 | 锁定页无法换出 | 减少 SecureValue 持有时间，及时 Release |
 
 ## 相关文档

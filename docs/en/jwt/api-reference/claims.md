@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Claims"
 title: "Claims - CyberGo JWT | Claim Structs"
-description: "The built-in CyberGo JWT Claims struct holds UserID, Username, Role, permissions, and scope plus RFC 7519 RegisteredClaims with validation constraints."
+description: "The built-in CyberGo JWT Claims struct carries UserID, Username, Role, permissions, scopes, and Extra plus RFC 7519 RegisteredClaims, with validation limits."
 sidebar_position: 40
 ---
 
@@ -45,16 +45,18 @@ Built-in Claims structure containing common business fields and standard JWT fie
 
 The `Validate()` method checks that at least one of `UserID` or `Username` is non-empty.
 
-The Processor performs additional deep validation during token creation and validation (via the internal `validateClaims` function):
+Deep field validation runs only when a token is created. The validation path calls `Validate()` (required fields) and sanitizes the standard claim strings. The deep rules are:
 
 | Rule | Limit |
 |------|-------|
-| String field length | Max 256 characters |
+| String field length | At most 256 bytes after UTF-8 encoding; about 85 Chinese characters, or 256 ASCII characters |
 | Array field size | Max 100 items |
 | `Extra` field count | Max 50 keys |
 | `Extra` value types | Only `string` and `[]string` allowed; nested maps and other types are rejected |
 | Control characters | Characters other than tab, newline, and carriage return are rejected |
 | Injection pattern detection | Rejected when containing HTML/SQL/path traversal patterns |
+
+Array values in `Extra` read back from `Parse` as `[]any`, not the `[]string` that was written. Read them with a `[]any` assertion, then convert each item to `string`.
 
 ### Methods
 
@@ -62,8 +64,16 @@ The Processor performs additional deep validation during token creation and vali
 |--------|-----------|-------------|
 | `GetRegisteredClaims` | `func (c *Claims) GetRegisteredClaims() *RegisteredClaims` | Returns the embedded standard fields |
 | `Validate` | `func (c *Claims) Validate() error` | Checks that at least one of UserID or Username is non-empty |
+| `MarshalJSON` | `func (c *Claims) MarshalJSON() ([]byte, error)` | Implements `json.Marshaler`; field order and `omitempty` behavior match `encoding/json` |
+| `UnmarshalJSON` | `func (c *Claims) UnmarshalJSON(data []byte) error` | Implements `json.Unmarshaler`; runs a fast scan first and falls back to `encoding/json` when needed |
+| `AppendJSON` | `func (c *Claims) AppendJSON(dst []byte) ([]byte, error)` | Advanced API; appends the encoding to `dst` and returns the extended slice |
+| `UnmarshalFastJSON` | `func (c *Claims) UnmarshalFastJSON(data []byte) error` | Advanced API; runs the fast scan over a decoded JWT payload |
 
-Beyond the two business methods above, `Claims` also implements the serialization-pipeline interfaces such as `json.Marshaler` / `json.Unmarshaler`: `MarshalJSON`, `UnmarshalJSON`, `AppendJSON` (appends the encoding into a reusable buffer for the signing pipeline), and `UnmarshalFastJSON` (an internal fast-decode hook). They are invoked automatically by the library's signing and parsing pipelines; regular business code rarely needs to call them directly. See the source (`claims_json.go`) for details.
+`MarshalJSON` / `UnmarshalJSON` are called automatically by `encoding/json` and by the library's signing and parsing pipelines; regular business code rarely needs to call them.
+
+::: info Advanced Use Only
+`AppendJSON` and `UnmarshalFastJSON` are Advanced APIs intended for allocation-sensitive paths. `AppendJSON` produces the same bytes as `json.Marshal(*Claims)` and only appends — it never rewrites existing bytes in `dst`. When `UnmarshalFastJSON` returns a non-nil error, the caller must re-decode with `encoding/json`; the receiver's contents are undefined at that point. Regular code should use `MarshalJSON` / `UnmarshalJSON` instead.
+:::
 
 ---
 

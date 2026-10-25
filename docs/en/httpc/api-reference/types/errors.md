@@ -31,6 +31,7 @@ type ClientError struct {
     Attempts   int        // Number of attempts made
     StatusCode int        // HTTP status code (if applicable)
     Host       string     // Hostname (for circuit breakers)
+    ProxyURL   string     // Redacted URL of the proxy used for the final attempt (empty for direct connections, pre-dispatch errors, and system proxy)
 }
 ```
 
@@ -44,8 +45,9 @@ type ClientError struct {
 | `ClientError.Attempts` | `int` | Number of attempts (including the first request) | `1` (first failure), `4` (after 3 retries) |
 | `ClientError.StatusCode` | `int` | HTTP status code (0 for non-HTTP errors) | `0` (network error), `503` (server error) |
 | `ClientError.Host` | `string` | Request hostname (for circuit breakers) | `"example.com"` |
+| `ClientError.ProxyURL` | `string` | Redacted URL of the proxy used for the final attempt (password masked, safe to log); empty for direct connections, for errors raised before dispatch (validation or callback failures), and under `EnableSystemProxy`; with proxy rotation it reports the last attempt's proxy | `"http://proxy:8080"` |
 
-`Host` lets circuit breakers track failures per hostname, `Message` can be logged directly, and `Cause` preserves the underlying error for `errors.As` inspection.
+`Host` lets circuit breakers track failures per hostname, `Message` can be logged directly, and `Cause` preserves the underlying error for `errors.As` inspection. `ProxyURL` is the value the transport records when it selects a proxy, the same source that populates `Result.Meta.ProxyURL` on success, so a dial failure still reports which proxy was about to be used.
 
 ### Methods
 
@@ -55,9 +57,8 @@ type ClientError struct {
 | `Code` | `func (e *ClientError) Code() string` | Returns a short error code, e.g. `"NETWORK_ERROR"`, `"TIMEOUT"` |
 | `IsRetryable` | `func (e *ClientError) IsRetryable() bool` | Returns whether this error is retryable |
 | `Unwrap` | `func (e *ClientError) Unwrap() error` | Returns `ClientError.Cause`, supporting `errors.Is`/`errors.As` traversal of the error chain |
-| `WithType` | `func (e *ClientError) WithType(t ErrorType) *ClientError` | Returns a **copy** with the error type set, leaving the original unchanged |
 
-All five methods are defined on the `*ClientError` pointer receiver. `ClientError.Error` implements the `error` interface; `ClientError.Code` and `ClientError.IsRetryable` serve log classification and retry decisions; `ClientError.Unwrap` exposes the underlying cause; `ClientError.WithType` returns a copy with the type rewritten.
+All four methods are defined on the `*ClientError` pointer receiver. `ClientError.Error` implements the `error` interface; `ClientError.Code` and `ClientError.IsRetryable` serve log classification and retry decisions; `ClientError.Unwrap` exposes the underlying cause.
 
 ### Error() Formatting
 
@@ -159,7 +160,7 @@ Error classification enum (type `int`).
 | `ErrorTypeCertificate` | 8 | Certificate verification error | x509 certificate expired/untrusted | No |
 | `ErrorTypeDNS` | 9 | DNS resolution error | Domain does not exist, DNS timeout | Conditional |
 | `ErrorTypeValidation` | 10 | Request validation error | Malformed URL, redirect limit exceeded, CRLF injection | No |
-| `ErrorTypeHTTP` | 11 | HTTP-layer error | 4xx/5xx response (produced only in retry scenarios) | Conditional |
+| `ErrorTypeHTTP` | 11 | HTTP-layer error | Assigned only by the classifier's **error-message pattern match** (message contains `HTTP 4xx`/`HTTP 5xx`). A normal 4xx/5xx response is not an error; an error returned by custom middleware never reaches the classifier, so it cannot carry this type | Conditional |
 
 > ¹ Timeouts triggered by a context deadline (`WithTimeout`, `TimeoutConfig.Request`) are **not** retried; only transport-level timeouts (e.g. `net.OpError` timeout) are retried.
 > ² See [IsRetryable decision logic](#isretryable-decision-logic) above.
@@ -242,7 +243,7 @@ In callbacks of middleware such as `MetricsMiddleware` and `LoggingMiddleware`, 
 | `ErrEmptyFilePath` | `"file path cannot be empty"` | DownloadConfig.FilePath is empty |
 | `ErrFileExists` | `"file already exists"` | File exists and Overwrite=false and ResumeDownload=false |
 | `ErrResponseBodyEmpty` | `"response body is empty"` | Calling Unmarshal or similar parsing methods on an empty body |
-| `ErrResponseBodyTooLarge` | `"response body too large"` | Response body exceeds MaxResponseBodySize |
+| `ErrResponseBodyTooLarge` | `"response body too large"` | The body parsed by `Result.Unmarshal` exceeds the 50 MB JSON cap. The engine-side size cap (`Security.MaxResponseBodySize`) reports `response body exceeds limit of N bytes` instead, which is **not** this sentinel |
 | `ErrInvalidMaxRedirects` | `"invalid max redirects"` | [`WithMaxRedirects`](../core/options#withmaxredirects) passed a negative value or one exceeding 50, or `Security.MaxRedirects` outside 0-50 |
 | `ErrInvalidCredentials` | `"invalid credentials"` | [`WithBasicAuth`](../core/options#withbasicauth)/[`WithBearerToken`](../core/options#withbearertoken) credentials empty, oversized, or containing invalid characters |
 | `ErrStreamBodyRequiresDownload` | `"WithStreamBody requires Download; standard request methods buffer the response body"` | [`WithStreamBody`](../core/options#withstreambody)(true) combined with the standard request methods (Get/Post/.../Request); streaming works only on the `Download` path |
@@ -269,20 +270,21 @@ In callbacks of middleware such as `MetricsMiddleware` and `LoggingMiddleware`, 
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-Redirects the output target of security warnings (default `os.Stderr`); defined in `warnings.go`. Passing `io.Discard` suppresses all warnings. A test environment is detected from the executable name (`.test` suffix) and the `GO_TEST`/`GOTEST` environment variables.
+Sets the output target of security warnings (default `os.Stderr`); defined in `warnings.go`. Passing `io.Discard` suppresses all warnings. A test environment is detected from the executable name (`.test` suffix) and the `GO_TEST`/`GOTEST` environment variables.
 
-Two categories of dangerous configuration trigger warnings in **non-test environments**, each printed at most once per process (`sync.Once`):
+Three configurations trigger warnings in **non-test environments**, each printed at most once per process (`sync.Once`):
 
 | Trigger condition | Warning summary |
 |---------|---------|
 | A client created with `TestingConfig()` is used outside a test environment | Points out that TLS certificate verification, SSRF protection, and URL/Header validation are all disabled, and recommends `SecureConfig()` or `DefaultConfig()` instead |
 | `Security.InsecureSkipVerify=true` in a non-test environment | Points out that TLS certificate verification is disabled, that it should only be used in tests, and that production should use `SecureConfig()` |
+| A hand-built `Config` hits the all-off signature (`ValidateURL`/`ValidateHeaders`/`StrictContentLength`/`FollowRedirects`/`EnableHTTP2` all false and `Security.MaxResponseBodySize == 0`) | Prints `[CONFIG WARNING]`: those `Default: true` fields are true only in `DefaultConfig()`/presets, and a struct literal zeroes them; start from `DefaultConfig()` instead |
 
 ```go
 // Suppress security warnings (only use after confirming the configuration is safe)
 httpc.SetSecurityWarnOutput(io.Discard)
 
-// Redirect to a custom log output
+// Change the output to a custom log
 httpc.SetSecurityWarnOutput(log.Writer())
 ```
 

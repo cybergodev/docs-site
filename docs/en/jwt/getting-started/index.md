@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Quick Start"
 title: "Getting Started - CyberGo JWT | Quick Start Guide"
-description: "Install CyberGo JWT and create a Processor to issue, validate, refresh, and revoke access and refresh tokens, with a guide to advanced features."
+description: "Install CyberGo JWT and create a Processor, then issue, validate, refresh, and revoke access and refresh tokens, with error handling and feature navigation."
 sidebar_position: 1
 ---
 
@@ -38,7 +38,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer processor.Close() // Securely clear keys
+	defer processor.Close() // Release resources and clear key material
 }
 ```
 
@@ -96,7 +96,7 @@ fmt.Println("New Access Token:", newAccessToken)
 // This step uses fmt; make sure "fmt" is imported
 
 // Add token to blacklist
-err := processor.Revoke(accessToken)
+err = processor.Revoke(accessToken)
 if err != nil {
     panic(err)
 }
@@ -111,7 +111,7 @@ fmt.Println("Revoked:", revoked) // true
 
 ## More Features
 
-The steps above cover the core token lifecycle. CyberGo JWT also provides the following features — click into each guide for detailed usage:
+The steps above cover the core token lifecycle. CyberGo JWT also provides the following features; follow each link for detailed usage:
 
 | Feature | Description | Guide |
 |---------|-------------|-------|
@@ -122,7 +122,7 @@ The steps above cover the core token lifecycle. CyberGo JWT also provides the fo
 | Rate Limiting | Token bucket algorithm to prevent abuse of issuance endpoints | [Rate Limiting](../guides/rate-limiting) |
 | Configuration | Issuer/audience validation, clock skew, mandatory expiration, input validation | [Configuration](../guides/configuration) |
 | Error Handling | 20 sentinel error categories and `errors.Is` matching | [Error Handling](../guides/error-handling) |
-| Testing & Clock Injection | `FixedClock` for deterministic, sleep-free time control in tests | [Testing & Clock Injection](../guides/testing) |
+| Testing & Clock Injection | `FixedClock` for precise control over time in tests | [Testing & Clock Injection](../guides/testing) |
 
 ## Next Steps
 

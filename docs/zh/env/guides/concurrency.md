@@ -31,7 +31,7 @@ fmt.Println(errors.Is(err, env.ErrAlreadyInitialized)) // 输出：true
 
 ### 未初始化时的行为
 
-在调用 `Load()`/`LoadWithConfig()` 之前使用包级函数，行为按「读静默、写报错」分化：
+在调用 `Load()`/`LoadWithConfig()` 之前使用包级函数，行为按「读静默、写与校验报错」分化：
 
 | 操作 | 未初始化时的行为 |
 |------|------------------|
@@ -54,7 +54,7 @@ if err := env.ResetDefaultLoader(); err != nil {
 }
 ```
 
-重置后可以再次调用 `Load()` 重新初始化。该函数面向**测试隔离与程序启动阶段**；正常运行的应用初始化一次后不应反复重置。重置与重新初始化之间，包级函数会短暂处于未初始化状态（读操作返回默认值，写操作返回 `ErrNotInitialized`）。
+重置后可以再次调用 `Load()` 重新初始化。该函数面向**测试隔离与程序启动阶段**；正常运行的应用初始化一次后不应反复重置。重置与重新初始化之间，包级函数会短暂处于未初始化状态（读操作返回默认值，`Set`/`Delete`/`Validate`/`ParseInto` 返回 `ErrNotInitialized`）。
 
 ::: warning 注意
 `ResetDefaultLoader()` 关闭旧 loader，但**不会撤销**该 loader 已经应用到进程环境的变量（见下文 `Close` 的语义）。测试若需要干净的进程环境，还要自行 `os.Unsetenv` 或使用实例模式。
@@ -76,8 +76,10 @@ defer loader.Close()
 if err := loader.LoadFiles("app.env"); err != nil {
     log.Fatal(err)
 }
+// Apply 失败 = 部分应用：失败前已写入的键不回滚，IsApplied() 保持 false。
+// 这里只记录并继续；生产代码应逐键 Delete 或修正环境后重新 Apply。
 if err := loader.Apply(); err != nil {
-    log.Fatal(err)
+    log.Printf("apply failed (partially applied): %v", err)
 }
 // ... 使用 loader ...
 ```
@@ -90,11 +92,13 @@ if err := loader.Apply(); err != nil {
 
 启用 `AutoApply` 后无需手动调用 `Apply()`：加载文件、`Set` 单个键时都会立即同步到进程环境。
 
+`Apply()` 失败意味着**部分应用**：失败之前已写入的键不回滚，`IsApplied()` 保持 `false`。因此失败时记录错误并继续（或逐键 `Delete()`、修正环境后重新 `Apply`），不要 `panic`；完整语义见 [Loader API · Apply](../api-reference/loader#apply)。
+
 ### 关闭：Close()
 
-`Close()` 安全清零内存中存储的全部值（敏感值按字节清零），并在 loader 拥有自己的组件工厂时一并关闭它。`Close` 是幂等的：对已关闭或 `nil` 的 loader 再次调用不报错。
+`Close()` 安全清零并解锁内存中存储的全部值（敏感值按字节清零，解锁发生在清零之前），并在 loader 拥有自己的组件工厂时一并关闭它。`Close` 是幂等的：对已关闭或 `nil` 的 loader 再次调用不报错。
 
-关键语义：**`Close()` 只清内存，不撤销进程环境**。此前通过 `Apply`、`AutoApply` 或带 `AutoApply` 的 `Set` 写入进程环境的变量原样保留；需要在关闭前从进程环境移除，就逐键调用 `Delete()`。
+关键语义：**`Close()` 清零并解锁内存副本，不撤销进程环境**。此前通过 `Apply`、`AutoApply` 或带 `AutoApply` 的 `Set` 写入进程环境的变量原样保留；需要在关闭前从进程环境移除，就逐键调用 `Delete()`。
 
 关闭后的行为一览：
 
@@ -119,6 +123,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/cybergodev/env"
@@ -145,14 +150,15 @@ func main() {
 		panic(err)
 	}
 
-	// 写入进程环境
+	// 写入进程环境。Apply 失败 = 部分应用：已写入的键不回滚，
+	// IsApplied() 保持 false，因此记录错误后继续，不 panic。
 	if err := loader.Apply(); err != nil {
-		panic(err)
+		log.Printf("apply failed (partially applied): %v", err)
 	}
 	mode, ok := os.LookupEnv("MY_APP_MODE")
 	fmt.Println("after Apply, in process:", mode, ok)
 
-	// Close：清零内存，但进程环境中的变量保留
+	// Close：清零并解锁内存，但进程环境中的变量保留
 	if err := loader.Close(); err != nil {
 		panic(err)
 	}
@@ -330,7 +336,7 @@ func main() {
 	}
 	defer os.Remove(file)
 
-	// 1) 尚未初始化：读操作静默返回默认值，写操作报 ErrNotInitialized
+	// 1) 尚未初始化：读操作静默返回默认值，Set/Delete/Validate/ParseInto 报 ErrNotInitialized
 	fmt.Println("before Load, port =", env.GetInt("GL_PORT", 8080))
 	if err := env.Set("GL_PORT", "9090"); err != nil {
 		fmt.Println("before Load, Set is ErrNotInitialized:",
@@ -370,22 +376,13 @@ func main() {
 
 ## 测试间重置单例
 
-全局单例跨测试用例存活：上一个用例 `Load()` 过的 loader 会泄漏到下一个用例，表现为 `ErrAlreadyInitialized` 或读到旧值。标准做法是在 TestMain 里统一重置：
+全局单例跨测试用例存活：上一个用例 `Load()` 过的 loader 会泄漏到下一个用例，表现为 `ErrAlreadyInitialized` 或读到旧值。要点：
 
-```go
-func TestMain(m *testing.M) {
-	// 进入前清理：隔离其他用例或包初始化遗留的单例
-	_ = env.ResetDefaultLoader()
+- 在 TestMain 里统一重置一次，并检查 `ResetDefaultLoader()` 的返回错误。
+- 使用全局模式的用例内部再自行 `Load()`。
+- `Load` 强制 `AutoApply = true` 且 `Close` 不撤销进程环境，测试中还要用 `t.Cleanup` 清理写入的进程变量。
 
-	code := m.Run()
-
-	// 退出前清理：关闭本次测试初始化的 loader
-	_ = env.ResetDefaultLoader()
-	os.Exit(code)
-}
-```
-
-需要全局模式的用例内部再自行 `Load()`。`Load` 强制 `AutoApply = true` 且 `Close` 不撤销进程环境，因此测试中还要用 `t.Cleanup` 清理写入的进程变量。更彻底的隔离方案（独立实例、内存文件系统、表驱动等）见[测试场景](./testing)。
+完整的 TestMain 模板与进程变量清理见[测试场景 · 清理测试状态](./testing#清理测试状态)，内存文件系统见[测试场景 · 模拟文件系统](./testing#模拟文件系统)。
 
 ## 常见陷阱
 

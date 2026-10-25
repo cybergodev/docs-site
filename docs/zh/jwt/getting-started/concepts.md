@@ -1,19 +1,19 @@
 ---
 title: "核心概念 - CyberGo JWT | 架构与令牌模型"
-description: "CyberGo JWT 核心概念：Processor 中心类型与令牌生命周期、双层令牌模型、Claims 声明结构与 CustomClaims 接口、Config 配置概览及 TokenManager、BlacklistStore 等扩展接口。"
+description: "CyberGo JWT 核心概念：Processor 中心类型与并发安全的签发、验证、刷新、吊销方法，访问令牌与刷新令牌的双层模型，Claims 声明结构与 CustomClaims 接口，以及注册声明的自动填充与校验范围。"
 sidebar_label: "核心概念"
 sidebar_position: 2
 ---
 
 # 核心概念
 
-本页解释 CyberGo JWT 的核心抽象与设计模型，帮助你建立整体认知。如需直接动手，请跳转 [快速开始](./index)。
+本页解释 CyberGo JWT 的核心抽象与设计模型，用于建立整体认知。如需直接动手，请跳转 [快速开始](./index)。
 
 ## Processor——核心类型
 
 [Processor](../api-reference/processor) 是库的中心类型，通过 [`jwt.New(cfg)`](../api-reference/functions#new) 创建。它封装了令牌签发、验证、刷新和吊销的全部逻辑，所有方法**并发安全**，可在多个 goroutine 间共享同一实例。
 
-使用完毕后调用 [`Close()`](../api-reference/processor#close) 安全清除密钥并释放资源：
+使用完毕后调用 [`Close()`](../api-reference/processor#close) 释放资源并清除密钥：
 
 <!-- check-code: skip -->
 ```go
@@ -58,28 +58,30 @@ CyberGo JWT 采用访问令牌 + 刷新令牌的双层设计：
 | **签发方法** | `Create` | `CreateRefresh` |
 | **刷新方法** | — | `Refresh` |
 
-**为什么用两层？** 访问令牌有效期短，即使泄露风险窗口也小；刷新令牌有效期长但只用于换取新访问令牌，不直接用于 API 认证。这种设计在安全性与用户体验之间取得平衡——用户不必频繁登录，访问令牌过期后可静默刷新。
+**为什么用两层？** 访问令牌有效期短，泄露后的风险窗口也小。刷新令牌有效期长，但只用于换取新访问令牌，不直接用于 API 认证。这种设计在安全性与用户体验之间取得平衡：不必频繁登录，访问令牌过期后可静默刷新。
 
 ::: tip 轮换语义
-`Refresh` **默认不自动吊销**刷新令牌。原始刷新令牌在过期或显式 `Revoke` 之前仍然有效。如需一次性使用（refresh token rotation），推荐启用 `Config.RotateRefreshTokens`（v1.2.3 起，刷新时自动吊销旧令牌），也可在 `Refresh` 成功后手动 `Revoke` 旧刷新令牌。详见 [令牌刷新与轮换](../guides/token-refresh)。
+`Refresh` 默认不自动吊销刷新令牌，原令牌在过期或显式 `Revoke` 前仍然有效。一次性使用语义与轮换细节见 [令牌刷新与轮换](../guides/token-refresh#轮换策略)。
 :::
 
 ## Claims 结构
 
 Claims 携带令牌中的用户身份数据。CyberGo JWT 提供两层结构：
 
-**RegisteredClaims**（RFC 7519 标准声明，自动填充与校验）：
+**RegisteredClaims**（RFC 7519 标准声明：创建时自动填充；验证时校验 `exp`、`nbf`、`iss`、`aud`）：
 
 | 字段 | claim | 说明 |
 |------|-------|------|
-| Issuer | `iss` | 签发方标识 |
+| Issuer | `iss` | 签发方标识，验证时比对配置 |
 | Subject | `sub` | 主体标识（也用作限流键） |
-| Audience | `aud` | 目标受众 |
-| ExpiresAt | `exp` | 过期时间 |
-| NotBefore | `nbf` | 生效时间 |
-| IssuedAt | `iat` | 签发时间 |
+| Audience | `aud` | 目标受众，验证时比对配置 |
+| ExpiresAt | `exp` | 过期时间，验证时校验 |
+| NotBefore | `nbf` | 生效时间，验证时校验 |
+| IssuedAt | `iat` | 签发时间，仅写入，不参与校验 |
 | ID | `jti` | 唯一标识（黑名单键） |
 | TokenType | `token_type` | `access` 或 `refresh` |
+
+> 库只补零值：调用方显式赋值的 `iss`/`exp`/`iat`/`jti` 会原样使用，覆盖配置与 TTL。
 
 **Claims**（内置业务声明，嵌入 RegisteredClaims）：
 
@@ -98,7 +100,7 @@ type Claims struct {
 }
 ```
 
-所有字段都经过输入验证：字符串长度上限 256、数组上限 100、注入模式检测（XSS/SQLi 签名）。
+内置 `Claims` 的字段在**创建令牌时**经过深度校验，包括字符串长度（≤ 256 字节，UTF-8 编码，中文约 85 字）、数组规模（≤ 100 项）与 XSS/SQLi 注入模式检测。验证路径只执行 `Validate()` 必填校验与标准声明字符串清洗。
 
 ## CustomClaims 接口
 
@@ -125,7 +127,7 @@ func (c *AppClaims) Validate() error {
 }
 ```
 
-自定义类型通过 `ParseInto` 验证、`RefreshInto` 刷新——Processor 会解析令牌并填充你的结构体。详见 [自定义 Claims](../guides/custom-claims)。
+自定义类型通过 `ParseInto` 验证、`RefreshInto` 刷新——Processor 会解析令牌并填充目标结构体。详见 [自定义 Claims](../guides/custom-claims)。
 
 ## Config 配置概览
 

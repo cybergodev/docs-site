@@ -68,7 +68,7 @@ Creates a new loader instance.
 - Creates the internal components (validator, auditor, expander)
 - Loads files if `cfg.Filenames` is non-empty
 - Applies to the process environment if `cfg.AutoApply` is true
-- Does **not** set the package-level default loader; use `Load` or `LoadWithConfig` for that
+- Does **not** set the default loader; use `Load` or `LoadWithConfig` for that
 
 ```go
 // Use default configuration
@@ -107,9 +107,12 @@ Loads one or more configuration files.
 **Behavior:**
 - Reads files in the order given. With the default `OverwriteExisting=false`, the **first file wins**: a same-name key in a later file is skipped.
 - With `OverwriteExisting=true`, later files overwrite earlier ones. Both the Development and Testing presets set it to `true`.
+- A failure in one file returns an error immediately, but keys already loaded from earlier files are kept (**partial success**). On retry, mind `OverwriteExisting`: with `false`, the kept keys block same-name keys from the retried files.
+- That partial-success rule applies to `LoadFiles` on an already-constructed loader; an auto-load failure inside `New()` cleans up the internal components and returns the error instead.
 - Detects each file's format (.env, JSON, YAML)
 - Handles a missing file according to `FailOnMissingFile`
 - Applies to the process environment after loading when `AutoApply` is true
+- `RequiredKeys` are checked at the **end of each file's parse**, so every required key must be satisfiable in a single file; do not split them across multiple files
 
 Paths must be **relative**. Absolute paths, Windows drive letters, UNC paths, and any `..` component are rejected with a `*SecurityError`. If your configuration is mounted at an absolute location (Docker, Kubernetes), change to that directory first or pass a path relative to the working directory.
 
@@ -336,13 +339,13 @@ value := loader.GetDuration("NON_EXISTENT")  // 0
 func (l *Loader) GetSecure(key string) *SecureValue
 ```
 
-Returns a defensive copy of a sensitive value.
+Returns a defensive copy of a sensitive value. Key resolution matches `Lookup` (exact match, uppercase fallback, dotted path), but **not** the comma-separated index fallback.
 
 **Parameters:**
 - `key` - key name
 
 **Returns:**
-- `*SecureValue` - a **defensive copy** of the stored value, independent of the parent Loader. You own it and must release it (`Release()` zeroes and returns it to the pool; `Close()` zeroes only). Returns nil if the key does not exist, the loader is closed, or the stored value is already closed.
+- `*SecureValue` - a **defensive copy** of the stored value, independent of the parent Loader. You own it and must release it (`Release()` zeroes, unlocks, and returns it to the pool; `Close()` zeroes and unlocks without pooling). Returns nil if the key does not exist, the loader is closed, or the stored value is already closed.
 
 ```go
 secret := loader.GetSecure("API_SECRET")
@@ -433,7 +436,7 @@ Sets an environment variable.
 
 **Behavior:**
 - Validates the key name
-- Validates value safety when `ValidateValues` is true
+- Validates value safety: the built-in baseline (length ceiling, control characters, and the UTF-8 check when `ValidateUTF8` is on) always runs; `ValidateValues` acts as a switch only for custom validators without the baseline capability
 - Skips the call and returns nil when `OverwriteExisting` is false and the key already exists
 - Also writes to the process environment when `AutoApply` is true. When `Setenv` fails, `Set` returns the error and stores nothing in memory. With `OverwriteExisting` false and a process variable of that name already present, only the in-memory value updates; the process environment keeps its original value.
 
@@ -449,7 +452,7 @@ if err != nil {
 **Error types:**
 - `*ValidationError` - invalid key name format (`Field == "key"`)
 - `*SecurityError` - the key is forbidden (matchable with `errors.Is(err, env.ErrSecurityViolation)`)
-- `ErrInvalidValue` - the value is unsafe: null bytes, control characters, or other invalid content. This case arises only when `ValidateValues` is true.
+- `ErrInvalidValue` - invalid value content: null bytes or control characters (always checked with the built-in validator). A value over `MaxValueLength` yields a `*ValidationError` with `Rule == "max_length"`, which does **not** match `ErrInvalidValue`
 - `ErrClosed` - the loader has been closed
 - `ErrAuditFailed` - fail-closed auditing is on and an audit event was lost
 
@@ -474,11 +477,13 @@ Removes a variable from the loader.
 **Behavior:**
 - Removes and securely zeroes the value in memory
 - Unsets it from the process environment only if **this** loader wrote that key there; variables this loader did not set are untouched
+- The order is in-memory delete first, then the process-environment unset. If `Unsetenv` fails, `Delete` returns the error, but the memory entry is already gone while `appliedKeys` keeps the key: the variable is still live in the process environment (possibly a secret). Retry `Delete` or call `os.Unsetenv` yourself to clear it.
 
 ```go
 err := loader.Delete("TEMP_KEY")
 if err != nil {
-    panic(err)
+    // The unset failed: the in-memory copy is gone but the process variable may still be live
+    log.Printf("delete failed: %v", err)
 }
 ```
 
@@ -561,26 +566,34 @@ func (l *Loader) Apply() error
 Writes the loaded variables into the process environment (`os.Environ`).
 
 **Returns:**
-- `error` - apply error
+- `error` - apply error. The first key whose `Setenv` fails aborts that pass; keys already written are not rolled back and `IsApplied()` stays `false` — read a failure as "partially applied", not as "nothing was applied".
 
 **Behavior:**
-- Iterates over the loaded variables and writes each to the process environment
-- Overwrites an existing process variable only when `OverwriteExisting` is true
+- Iterates over the loaded variables and calls `Setenv` for each one
+- **Stops at the first failure with no rollback**: keys written before the failure stay in the process environment, and `appliedKeys` only records up to that point
+- With `OverwriteExisting=false`, keys already present in the process environment (including variables explicitly set to empty) are skipped and audited as `skipped (existing)`
+- Keys written successfully are recorded in `appliedKeys`, which is how `Delete` decides ownership
+- Only after every key is written does `IsApplied()` become `true`
 - Afterwards, `os.Getenv()` returns the values
 
 **Error types:**
 - `ErrClosed` - loader has been closed
 - Wrapped `os` error - setting an environment variable failed. Key names are masked, so sensitive names do not appear in the message.
+- `ErrAuditFailed` - fail-closed auditing is on and an audit event was lost
 
 ```go
-err := loader.Apply()
-if err != nil {
-    panic(err)
+if err := loader.Apply(); err != nil {
+    log.Printf("apply failed: %v", err) // a failure is "partially applied", not a reason to panic
+    return
 }
 
 // Afterwards os.Getenv() returns the values
 host := os.Getenv("HOST")
 ```
+
+**Handling a failure:**
+
+Do not answer an `Apply` failure with `panic`: it means "partially applied", not "nothing was applied". Every variable successfully `Setenv`-ed before the failing key stays in the process environment, while `IsApplied()` stays `false` because the pass did not complete. From there you have two options: `Delete` the keys you know were written, or fix the environment and call `Apply` again (with `OverwriteExisting=false`, already-present keys are skipped rather than rewritten).
 
 ---
 
@@ -590,7 +603,7 @@ host := os.Getenv("HOST")
 func (l *Loader) IsApplied() bool
 ```
 
-Reports whether the loader has written its variables to the process environment, whether through `Apply`, `AutoApply`, or `Set` with `AutoApply` on.
+Reports whether the loader has written its variables to the process environment, whether through `Apply`, a load with `AutoApply` on, or `Set` with `AutoApply` on. A failed `Apply` leaves it `false` even though some keys reached the process environment.
 
 **Returns:**
 - `bool` - whether the variables were applied; false if the loader is closed
@@ -611,7 +624,7 @@ if loader.IsApplied() {
 func (l *Loader) LoadTime() time.Time
 ```
 
-Returns the time of the most recent file load.
+Returns the time of the most recent file load. `Set` and `Delete` do not update it.
 
 **Returns:**
 - `time.Time` - the load time; the zero value if nothing has been loaded yet, or if the loader is closed
@@ -663,20 +676,35 @@ func (l *Loader) Validate() error
 Reports whether every key listed in `ValidationConfig.RequiredKeys` exists.
 
 **Returns:**
-- `error` - validation error
+- `error` - validation error; `ErrClosed` when the loader is closed. A missing key yields a `*ValidationError` whose `Rule` is `required` (matchable with `errors.Is(err, ErrMissingRequired)`), whose `Field` is `required_keys`, and whose `Message` lists the missing key names
+
+**Behavior:**
+- Checks only that the keys listed in `ValidationConfig.RequiredKeys` exist
+- `AllowedKeys` and `ForbiddenKeys` take effect at parse time and in `Set`; this method does not check them
 
 ```go
 cfg := env.DefaultConfig()
 cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
+cfg.Filenames = nil // do not auto-load in New, so construction does not fail on missing keys
 
-loader, _ := env.New(cfg)
-loader.LoadFiles(".env")
+loader, err := env.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+defer loader.Close()
+
+if err := loader.LoadFiles(".env"); err != nil {
+    log.Fatal(err) // required keys are checked at the end of every file's parse
+}
+
+// Note: required keys are checked at the end of **each file** parse,
+// so this example deliberately loads a single file
 
 if err := loader.Validate(); err != nil {
     // Missing required keys
     var missingErr *env.ValidationError
     if errors.As(err, &missingErr) {
-        fmt.Printf("Missing: %s\n", missingErr.Field)
+        fmt.Printf("Missing: %s\n", missingErr.Message)
     }
 }
 ```
@@ -695,7 +723,7 @@ Maps the loader's variables onto a struct. The loader takes a snapshot of its va
 - `v` - non-nil pointer to a struct
 
 **Returns:**
-- `error` - mapping error, including `ErrClosed` when the loader is closed
+- `error` - mapping error, including `ErrClosed` when the loader is closed; a `*ValidationError` (`Field` is `value`) when `v` is nil or not a struct pointer; a `*MarshalError` when tag parsing or type conversion fails (match it with `errors.As` or `env.IsMarshalError`)
 
 **Supported tags:**
 - `env:"KEY"` - the environment variable name to read
@@ -733,12 +761,14 @@ func (l *Loader) Close() error
 Releases resources and clears storage.
 
 **Returns:**
-- `error` - close error
+- `error` - the auditor error while closing an owned factory; nil when already closed or on a nil receiver
 
 **Behavior:**
-- Zeroes all stored sensitive data
-- Closes the loader's ComponentFactory, if it owns one
-- Safe to call repeatedly; every call returns nil
+- Securely zeroes all stored sensitive data (the full capacity, not just the current length)
+- Closes custom parsers that implement `io.Closer`
+- Closes the ComponentFactory when the loader owns one
+- Idempotent; repeated calls return nil
+- Does **not** roll back variables already written to the process environment; see "Lifecycle and Process-Environment Semantics" below
 
 ```go
 loader, _ := env.New(cfg)
@@ -764,7 +794,7 @@ After closing, every operation returns either an error or a zero value:
 func (l *Loader) IsClosed() bool
 ```
 
-Reports whether the loader has been closed.
+Reports whether the loader has been closed. A nil receiver counts as closed and returns `true`.
 
 **Returns:**
 - `bool` - whether closed
@@ -796,11 +826,19 @@ func main() {
 	// Create production configuration
 	cfg := env.ProductionConfig()
 	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
-	cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+
+	// loader.Close() closes the handler (and JSONAuditHandler closes its writer),
+	// so write to a file rather than os.Stdout
+	auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 
 	// Create loader
 	loader, err := env.New(cfg)
 	if err != nil {
+		auditFile.Close() // on failure the handler did not take over the file, so close it here
 		log.Fatal(err)
 	}
 	defer loader.Close()
@@ -847,11 +885,13 @@ func main() {
 
 ## Lifecycle and Process-Environment Semantics
 
+This section is the concise, authoritative summary for the API reference; see the [concurrency guide](../guides/concurrency) for concurrent scenarios and a full walkthrough.
+
 ### Close does not roll back os.Environ
 
-`Close()` zeroes only the **in-memory** copies of the variables. It does **not** unset variables already written to the process environment by `Apply`, `AutoApply`, or `Set` (when `AutoApply` is on).
-
-To remove them before closing, call `Delete` for each key:
+- `Close()` zeroes and unlocks the **in-memory** copies of the variables. It does **not** unset variables already written to the process environment by `Apply`, `AutoApply`, or `Set` (when `AutoApply` is on).
+- The unlock happens before the zeroing: `SecureValue.Close` and `Release` both unlock first, then zero the full capacity, so no locked memory page is left behind.
+- To remove the variables before closing, call `Delete` for each key:
 
 <!-- check-code: skip -->
 ```go
@@ -861,29 +901,28 @@ loader.Close()
 
 ### Per-key ownership tracking in Delete
 
-The loader records which keys **it** wrote to the process environment (`appliedKeys`). `Delete` unsets only those keys and **never touches** process variables it did not set (`HOME`, `TERM`, ...).
-
-Because of this ownership tracking, multiple loaders in one process do not interfere with each other.
+- The loader records which keys **it** wrote to the process environment (`appliedKeys`).
+- `Delete` unsets only those keys and **never touches** process variables it did not set (`HOME`, `TERM`, ...).
+- That per-key tracking is why multiple loaders in one process do not interfere with each other.
 
 ### Apply distinguishes "unset" from "explicitly empty"
 
-`Apply` uses `LookupEnv` to detect existing values. A variable explicitly set to an empty string counts as present, so with `OverwriteExisting=false` it is skipped like any other existing variable rather than overwritten.
+- `Apply` uses `LookupEnv` to detect existing values.
+- A variable explicitly set to an empty string counts as present, so with `OverwriteExisting=false` it is skipped like any other existing variable rather than overwritten.
 
 ### State and metadata methods
 
-| Method | Description |
-|--------|-------------|
-| `Config()` | Returns a copy of the configuration for read-only use. Value fields are copied, but `KeyPattern`, `FileSystem`, and `AuditHandler` share their underlying objects, as do the `[]string` slices (`AllowedKeys`, `RequiredKeys`, `Filenames`). Mutating any of them affects the running loader |
-| `IsClosed()` | Whether the loader is closed (a nil receiver returns true) |
-| `IsApplied()` | Whether `Apply` has written the variables to `os.Environ` |
-| `LoadTime()` | Time of the most recent load (zero value if never loaded) |
+- `Config()`: returns a copy of the configuration for read-only use. Value fields are copied, but `KeyPattern`, `FileSystem`, and `AuditHandler` share their underlying objects, as do the `[]string` slices (`AllowedKeys`, `RequiredKeys`, `Filenames`). Mutating any of them affects the running loader.
+- `IsClosed()`: whether the loader is closed (a nil receiver returns true).
+- `IsApplied()`: whether the variables were fully applied to `os.Environ` (stays `false` when `Apply` failed midway).
+- `LoadTime()`: time of the most recent load (zero value if never loaded).
 
 ### Key-resolution details on the read path
 
 - **Exact match first**: lookup tries the key as written, then falls back to the uppercase form.
 - **Dot paths**: `database.host` expands to `DATABASE_HOST` (the flattened JSON/YAML key). An indexed path such as `service.cors.origins.0` falls back to the comma-separated value when the indexed key is missing.
 - **No trimming here**: `Lookup` returns the stored value as-is. `.env` values were trimmed at parse time; JSON and YAML values keep any surrounding whitespace.
-- **Lock-free fast path**: single-key reads (`Lookup` and `GetSecure`) skip the loader-level read lock and check an atomic closed flag instead, which avoids reader-count contention under high concurrency. A race with `Close` degrades gracefully: you read either the value or the cleared state.
+- **Lock-free fast path**: single-key reads (`Lookup` and `GetSecure`) skip the loader-level read lock and check an atomic closed flag instead. A race with `Close` degrades gracefully: you read either the value or the cleared state.
 
 ### Silent-skip semantics of Set
 
@@ -891,12 +930,11 @@ With `OverwriteExisting=false`, calling `Set` on an existing key is **silently s
 
 ### Defense-in-depth for file loading (TOCTOU)
 
-A theoretical replacement window exists between the `Stat()` size check and the actual read. Two layers mitigate it:
+A theoretical replacement window exists between the `Stat()` size check and the actual read. Three layers mitigate it:
 
-- The size check rejects an oversized file before any read.
-- The parsers wrap the file stream in a hardened read path that enforces the same cap while reading.
-
-A file that grows after the check is therefore cut off at the hard cap (100 MB), which prevents memory exhaustion.
+1. The parsers wrap the file stream in a hardened read path that enforces the cap while reading.
+2. A file that grows after the check is cut off at the hard cap (100 MB), which prevents memory exhaustion.
+3. The parsed content is then re-checked for size, format, and security instead of relying on the original `Stat()` result.
 
 ## Related Documentation
 

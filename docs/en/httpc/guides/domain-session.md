@@ -166,9 +166,19 @@ Automatic cookie maintenance covers three paths:
 - **Validation**: before writing, the same validity checks as `WithCookies` apply. When a cookie security policy is configured (see "Cookie Security Validation" below), non-compliant cookies are **silently skipped** without affecting the others
 - **Copy semantics**: `GetCookie`/`GetCookies` return copies of the cookies, so modifying the returned values does not change the session's internal state
 
-### Automatic Persistence of Request Options
+### How Request Options Persist
 
-Cookies and headers passed via **request options** are also captured into the session and keep applying to subsequent requests:
+Cookies and headers passed via **request options** are captured into the session and keep applying to subsequent requests. The capture is **static**: the session recognizes only the option types below and reads the headers and cookies they carry; it never executes an option closure.
+
+| Option | Captured |
+|--------|----------|
+| `WithHeader` | A single header |
+| `WithHeaderMap` | A set of headers |
+| `WithCookies` | A list of cookies |
+| `WithCookieMap` | Cookies as name-value pairs |
+| `WithCookieString` | Cookies parsed from a raw `Cookie` header string |
+
+A custom `RequestOptionFunc` whose closure calls `SetHeader`/`SetCookies` is not one of these types and is not captured; use `dc.SetHeader`/`dc.SetCookie` when the value must persist. The same holds for `WithBasicAuth`/`WithBearerToken`: they set an Authorization header, but credentials are deliberately kept out of the session, so they must be passed on every request.
 
 ```go
 // First request: the cookie and header passed via options...
@@ -189,8 +199,10 @@ fmt.Println(dc.GetHeaders()["X-Client"])   // Output: mobile
 _, err = dc.Get("/profile")
 ```
 
+Request options execute **once** for the request itself; the capture pass never re-runs an option closure.
+
 :::warning Do not pass one-off headers via options
-Headers and cookies in options are persisted to the session and apply to **all subsequent requests**. Remove one-shot headers whose value differs every time (e.g. an incrementing trace ID or a random nonce) with `DeleteHeader`/`DeleteCookie` after use, or send that request with the underlying `Client` instead.
+Headers and cookies carried by the options above are persisted to the session and apply to **all subsequent requests**. Remove one-shot headers whose value differs every time (e.g. an incrementing trace ID or a random nonce) with `DeleteHeader`/`DeleteCookie` after use, or send that request with the underlying `Client` instead.
 :::
 
 ## Request Methods
@@ -211,10 +223,6 @@ result, _ := dc.Request(ctx, "GET", "/users")
 // Absolute URL (skips base URL joining)
 result, _ := dc.Get("https://other-api.com/data")
 ```
-
-:::warning Request options are applied twice
-The domain client applies request options **twice** internally: once to capture session state, once for the actual request. Avoid options with side effects (e.g. counters, nonce generation); use the underlying `Client` for such options.
-:::
 
 The `Download` method has the same signature as `Client.Download`, and the path is likewise resolved relative to the base URL. On completion, response cookies are captured into the session:
 

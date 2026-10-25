@@ -210,7 +210,7 @@ auditCfg.OnAudit = func(event httpc.AuditEvent) {
 httpc.AuditMiddleware(auditCfg)
 ```
 
-`AuditEvent` 携带时间戳、方法、脱敏 URL、状态码、耗时、尝试次数、重定向链等字段。`SanitizeError = true` 时错误统一替换为 `[sanitized]`，避免错误细节泄露敏感信息。JSON 序列化时耗时以 `durationMs` 字段（毫秒数）输出：`Duration` 本身带 `json:"-"` 标签，不直接序列化。
+`AuditEvent` 携带时间戳、方法、脱敏 URL、状态码、耗时、尝试次数、重定向链等字段。`SanitizeError = true`（默认）时，脱敏的对象是错误消息中**内嵌的原始请求 URL**（含敏感查询值），错误身份保持不变——`errors.Is`/`errors.As` 仍可对原始错误分类，不再整体替换为 `[sanitized]`。JSON 序列化时耗时以 `durationMs` 字段（毫秒数）输出：`Duration` 本身带 `json:"-"` 标签，不直接序列化。
 
 审计事件可从上下文提取 SourceIP 和 UserID：
 

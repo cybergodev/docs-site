@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration - CyberGo JWT | Config & Security Hardening"
-description: "CyberGo JWT configuration: issuer/audience validation, clock skew tolerance, mandatory expiration, TTL, and input validation with injection detection."
+description: "CyberGo JWT configuration: issuer and audience checks, clock skew, expiration enforcement, TTL design, rate limit bounds, and field validation rules."
 sidebar_position: 15
 check_code: false
 ---
@@ -12,7 +12,7 @@ check_code: false
 
 ## Configuration Overview
 
-[`DefaultConfig()`](../api-reference/functions#defaultconfig) provides sensible defaults — you only need to set the secret key to get started:
+[`DefaultConfig()`](../api-reference/functions#defaultconfig) provides sensible defaults; setting the secret key is enough to get started:
 
 | Field | Default | Description |
 |-------|---------|-------------|
@@ -40,14 +40,14 @@ check_code: false
 | `RateLimitWindow == 0` | 1 minute | Only when `EnableRateLimit == true` |
 | `Blacklist.MaxSize == 0` | 100000 | Only for built-in storage (`Store == nil`) |
 | `Blacklist.CleanupInterval == 0` | 5 minutes | Only for built-in storage |
-| `Blacklist.EnableAutoCleanup` | Forced `true` | Only for built-in storage |
+| `Blacklist.EnableAutoCleanup` | Forced `true` | Built-in storage is always on; the field itself only affects a custom `Store` |
 
 ::: tip When Rate Limit Defaults Apply
 The defaults for `RateLimitRate` and `RateLimitWindow` **are filled only when `EnableRateLimit` is `true`**. If `EnableRateLimit` is `false` (the default), rate limiting is not enabled and these two fields are ignored. See [Rate Limiting](./rate-limiting).
 :::
 
 ::: warning Custom BlacklistStore Skips Auto-fill
-When `Blacklist.Store` is not `nil` (using a custom storage backend), `MaxSize`, `CleanupInterval`, and `EnableAutoCleanup` are all ignored — storage management is the backend's responsibility. The built-in storage's `EnableAutoCleanup` is forced to `true` to prevent unbounded memory growth.
+When `Blacklist.Store` is not `nil` (custom storage backend), `MaxSize` and `CleanupInterval` are ignored and storage management becomes the backend's responsibility. `EnableAutoCleanup` only applies to a custom `Store`; built-in storage is always on and is forced to `true` during normalization to prevent unbounded memory growth.
 :::
 
 ## Issuer and Audience Validation
@@ -64,6 +64,10 @@ cfg.Issuer = "my-app-v1" // Token will carry iss: "my-app-v1"
 
 During validation, if the token's `iss` does not match the configured value, `ErrTokenInvalidIssuer` is returned.
 
+::: warning The Library Fills Zero Values Only
+The library fills zero values only: an `iss`/`exp`/`iat`/`jti` value set explicitly by the caller is used as-is, overriding the configuration and TTL. In the example above, if `claims.RegisteredClaims.Issuer` is already `"other-app"`, the issue step does not write `cfg.Issuer`. Validation then fails on the issuer mismatch with `ErrTokenInvalidIssuer`, so the token fails its own verification. When standardizing the issuer, leave the `Issuer` field unset.
+:::
+
 ### ExpectedAudience
 
 When `ExpectedAudience` is set, validation checks that the token's `aud` claim contains this value:
@@ -73,7 +77,6 @@ package main
 
 import (
     "fmt"
-    "time"
 
     "github.com/cybergodev/jwt"
 )
@@ -120,12 +123,12 @@ func main() {
 ```
 
 ::: tip Multi-Service Scenarios
-In microservice architectures, set different `ExpectedAudience` values for different services so that tokens issued by one service cannot be accepted by another, achieving inter-service token isolation.
+In a microservice architecture, give each service a different `ExpectedAudience` so a token issued by one service cannot be accepted by another, achieving inter-service token isolation.
 :::
 
 ## Clock Skew
 
-`ClockSkew` provides a tolerance window for `exp` (expiration) and `nbf` (not-before) validation, accommodating clock drift between the issuer and validator. The skew applies symmetrically to both time claims:
+`ClockSkew` provides a tolerance window for `exp` (expiration) and `nbf` (not-before) validation, absorbing clock drift between the issuer and the validator. The skew applies symmetrically to both time claims:
 
 - **`exp` direction**: a token is considered expired only after `exp + ClockSkew` — relaxing expiration validation
 - **`nbf` direction**: a token is considered valid from `nbf - ClockSkew` — relaxing not-before validation
@@ -171,12 +174,12 @@ cfg.RequireExpiration = true // Reject tokens without exp
 ```
 
 ::: tip Security Hardening
-Tokens issued by this library always carry `exp` (derived from TTL), so `RequireExpiration` primarily affects tokens from other issuers or legacy tokens missing `exp`. Enabling it in production is recommended.
+Tokens issued by this library always carry `exp`, derived from the TTL when the value is zero. `RequireExpiration` therefore mainly affects tokens from other issuers or legacy tokens that lack `exp`. Enabling it in production is recommended. The switch only checks whether `exp` exists; it does not judge whether the value is reasonable.
 :::
 
 ## Token TTL Design
 
-Access and refresh token TTLs should balance security and user experience based on your use case:
+Access and refresh token TTLs should balance security and user experience for the deployment scenario:
 
 | Scenario | AccessTokenTTL | RefreshTokenTTL | Notes |
 |----------|----------------|-----------------|-------|
@@ -187,6 +190,10 @@ Access and refresh token TTLs should balance security and user experience based 
 
 ::: warning Constraint
 `Config.Validate()` requires `AccessTokenTTL < RefreshTokenTTL`, and both must be positive.
+:::
+
+::: warning TTL Applies Only to an Unset exp
+The library fills zero values only: an `iss`/`exp`/`iat`/`jti` value set explicitly by the caller is used as-is, overriding the configuration and TTL. If `ExpiresAt` is set in the Claims (for example to one year from now), that value becomes the token lifetime, `AccessTokenTTL` no longer applies, and the TTL design above is bypassed. Business code should not assign `ExpiresAt` directly.
 :::
 
 ## Configuration Validation Matrix
@@ -224,25 +231,34 @@ When `VerificationKey` is set, the public key is used for token verification ins
 | RefreshTokenTTL | `<= 0` | `ErrInvalidConfig` |
 | TTL relationship | `AccessTokenTTL >= RefreshTokenTTL` | `ErrInvalidConfig` |
 | ClockSkew | `< 0` | `ErrInvalidConfig` |
+| Rate limit parameter sign | `EnableRateLimit == true` and `RateLimitRate < 0` or `RateLimitWindow < 0` | `ErrInvalidConfig` |
+| RateLimitRate upper bound | `EnableRateLimit == true` and `RateLimitRate > 1000000` | `ErrInvalidConfig` |
+| RateLimitWindow upper bound | `EnableRateLimit == true` and `RateLimitWindow > 30 days` | `ErrInvalidConfig` |
 | Blacklist MaxSize | `<= 0` (built-in storage only) | `ErrInvalidConfig` |
 | Blacklist CleanupInterval | `<= 0` (built-in storage only) | `ErrInvalidConfig` |
 
 ::: tip Validation Order
-`Validate()` first checks the signing key (returning `ErrInvalidSecretKey` or `ErrInvalidSigningMethod`), then checks TTL, ClockSkew, and Blacklist configuration (returning `ErrInvalidConfig`). If the key is invalid, subsequent checks are not performed — fix the first error and re-test.
+`Validate()` checks the signing key first (returning `ErrInvalidSecretKey` or `ErrInvalidSigningMethod`), then TTL, ClockSkew, rate limit parameters, and Blacklist configuration (returning `ErrInvalidConfig`). If the key is invalid, later checks are skipped; fix the first error and test again.
+:::
+
+::: tip What the Rate Limit Bounds Mean
+When `EnableRateLimit == true`, rate limit parameters must be non-negative, the per-window count must not exceed 1000000, and the window must not exceed 30 days; otherwise `New()` returns `ErrInvalidConfig`. These limits surface configuration mistakes early. `AllowN` performs separate overflow protection internally. See [Rate Limiting](./rate-limiting).
 :::
 
 ## Input Validation and Security Hardening
 
-CyberGo JWT applies multi-layer input validation to [`Claims`](../api-reference/claims) fields, preventing injection attacks and abnormal data.
+CyberGo JWT applies multi-layer input validation to [`Claims`](../api-reference/claims) fields, preventing injection attacks and abnormal data. Deep field validation runs only when a token is created. The verification path runs only `Validate()` for required fields and sanitizes standard-claim strings.
 
 ### Field Constraints
 
 | Validation | Limit | Triggered Error |
 |------------|-------|-----------------|
-| String field length | ≤ 256 characters | `ValidationError` |
+| String field length | ≤ 256 bytes after UTF-8 encoding (about 85 Chinese characters) | `ValidationError` |
 | Array size (permissions, scopes, audience) | ≤ 100 items | `ValidationError` |
 | Extra field count | ≤ 50 fields | `ValidationError` |
 | Extra value types | `string`, `[]string` | `ValidationError` (nested maps rejected) |
+
+Length is measured in bytes: Go's `len(string)` returns the byte count, and one Chinese character takes 3 bytes in UTF-8. 85 Chinese characters (255 bytes) pass; 86 characters (258 bytes) are rejected.
 
 Validated string fields include `UserID`, `Username`, `Role`, `SessionID`, `ClientID`, and the `RegisteredClaims` fields `Issuer`, `Subject`, `ID`, `TokenType`.
 
@@ -265,15 +281,15 @@ if err != nil {
     var ve *jwt.ValidationError
     if errors.As(err, &ve) {
         fmt.Printf("Field: %s, Reason: %s\n", ve.Field, ve.Message)
-        // Field: user_id, Reason: suspicious pattern detected
+        // Field: UserID, Reason: suspicious pattern detected
     }
 }
 ```
 
-`ValidationError` implements `Unwrap()`, enabling `errors.Is` and `errors.As` to traverse the underlying error. In the `Create` and `Parse` paths, validation errors are wrapped with `ErrInvalidClaims`.
+`ValidationError` implements `Unwrap()`, so `errors.Is` and `errors.As` can traverse the underlying error. On the `Create` path, a `ValidationError` from deep validation is wrapped by `ErrInvalidClaims`; on the verification path, a failed `Validate()` is wrapped the same way.
 
 ::: tip Custom Claims Validation
-Types implementing the `CustomClaims` interface are not deeply validated for custom fields — implementers must handle this in the `Validate()` method. Standard JWT fields (`iss`, `sub`, `jti`, etc.) are always validated for length and injection. See [Custom Claims](./custom-claims).
+Custom fields of types implementing the `CustomClaims` interface are not deeply validated; implementers must handle them in `Validate()`. Deep field validation runs only when a token is created, and the verification path only calls `Validate()` for required fields and sanitizes standard-claim strings. A token that passed validation at creation is therefore not checked again for length or injection rules at parse time. See [Custom Claims](./custom-claims).
 :::
 
 ## Next Steps

@@ -70,7 +70,7 @@ loader2.LoadFiles(".env", "config.json", "secrets.yaml")
 ```
 
 ::: tip 提示
-`DevelopmentConfig()` 与 `TestingConfig()` 预设已内置 `OverwriteExisting = true`（后加载覆盖先加载）。包级 `env.Load()` 使用 `DefaultConfig`，保持 first-wins；需要 last-wins 时改用 `env.LoadWithConfig`，并设置 `cfg.OverwriteExisting = true`。
+`DevelopmentConfig()` 与 `TestingConfig()` 预设已内置 `OverwriteExisting = true`（后加载覆盖先加载）。包级 `env.Load()` 使用 `DefaultConfig`，需要 last-wins 时改用 `env.LoadWithConfig` 并设置该选项。
 :::
 
 ## JSON 格式
@@ -104,15 +104,15 @@ loader.LoadFiles("config.json")
 // 存储为：DATABASE_HOST=localhost, DATABASE_PORT=5432
 
 // 方式一：扁平化键名（推荐）
-host := loader.GetString("DATABASE_HOST")   // localhost
-port := loader.GetInt("DATABASE_PORT")      // 5432
+hostFlat := loader.GetString("DATABASE_HOST")  // localhost
+portFlat := loader.GetInt("DATABASE_PORT")     // 5432
 
 // 方式二：点号路径（自动转换）
-host := loader.GetString("database.host")   // localhost
-port := loader.GetInt("database.port")      // 5432
+hostDot := loader.GetString("database.host")   // localhost
+portDot := loader.GetInt("database.port")      // 5432
 
 // 方式三：大写点号路径
-host := loader.GetString("DATABASE.HOST")   // localhost
+hostUpper := loader.GetString("DATABASE.HOST") // localhost
 ```
 
 **解析规则：**
@@ -177,9 +177,9 @@ cfg.JSONNullAsEmpty = true
 // 关闭后按 Go 默认浮点格式渲染，如 1e21 → "1e+21"）
 cfg.JSONNumberAsString = true
 
-// 仅为与 YAML 对称保留，对 JSON 输出无影响：
+// 仅为与 YAML 对称保留，对 JSON 输出无影响（默认 false，已标记 Deprecated）：
 // 解码后的 JSON 布尔没有原始文本可保留，总是渲染为 "true"/"false"
-cfg.JSONBoolAsString = true
+cfg.JSONBoolAsString = false
 
 // 最大嵌套深度（默认 16，取值 1–100）
 cfg.JSONMaxDepth = 20
@@ -198,12 +198,12 @@ cfg.JSONMaxDepth = 20
 
 ```go
 // JSONNumberAsString = true（默认）
-port := loader.GetString("PORT")  // "8080"（字符串）
-port := loader.GetInt("PORT")     // 8080（整数）
+portStr := loader.GetString("PORT") // "8080"（字符串）
+portInt := loader.GetInt("PORT")    // 8080（整数）
 
 // JSON 布尔总是渲染为规范的 "true"/"false"，JSONBoolAsString 不参与判定
-debug := loader.GetString("DEBUG")  // "true"（字符串）
-debug := loader.GetBool("DEBUG")    // true（布尔）
+debugStr := loader.GetString("DEBUG") // "true"（字符串）
+debugBool := loader.GetBool("DEBUG")  // true（布尔）
 ```
 
 ## YAML 格式
@@ -295,12 +295,12 @@ RATES:
 
 ```go
 // YAMLNumberAsString = true（默认）
-port := loader.GetString("PORT")  // "8080"（字符串）
-port := loader.GetInt("PORT")     // 8080（整数）
+portStr := loader.GetString("PORT") // "8080"（字符串）
+portInt := loader.GetInt("PORT")    // 8080（整数）
 
 // YAMLBoolAsString = true（默认）
-debug := loader.GetString("DEBUG")  // "true"（字符串）
-debug := loader.GetBool("DEBUG")    // true（布尔）
+debugStr := loader.GetString("DEBUG") // "true"（字符串）
+debugBool := loader.GetBool("DEBUG")  // true（布尔）
 
 // 列表访问
 rates := env.GetSliceFrom[float64](loader, "RATES")  // [0.1, 0.2, 0.3]
@@ -337,7 +337,7 @@ LOG_LEVEL=info
 
 ```go
 cfg := env.DefaultConfig()
-cfg.ExpandVariables = true  // 默认启用
+cfg.ExpandVariables = true  // 可省略，DefaultConfig 已开启
 
 loader, _ := env.New(cfg)
 loader.LoadFiles(".env")
@@ -445,7 +445,7 @@ func loadConfig(loader *env.Loader) error {
 ```
 
 ::: tip 注意
-默认（`OverwriteExisting = false`）为 first-wins：后加载的环境配置与本地配置只**补充** base.json 中没有的键，同名键仍以 base.json 为准。若需要环境/本地配置覆盖基础配置，须设置 `cfg.OverwriteExisting = true`（如改用 `DevelopmentConfig()` 预设，该选项默认开启）。
+默认（`OverwriteExisting = false`）为 first-wins（见[覆盖顺序](#覆盖顺序)）：后加载的环境配置与本地配置只**补充** base.json 中没有的键。若需要它们覆盖基础配置，须设置 `cfg.OverwriteExisting = true`（`DevelopmentConfig()` 预设默认开启）。
 :::
 
 ### 按功能分离
@@ -469,7 +469,7 @@ loader.LoadFiles(
 
 ### 配置优先级
 
-默认（`OverwriteExisting = false`）时先加载的文件胜出，同名键以最先出现的值为准：
+默认（`OverwriteExisting = false`）时先加载的文件胜出（见[覆盖顺序](#覆盖顺序)），同名键以最先出现的值为准：
 
 ```text
 命令行参数 > 环境变量 > base 配置 > 环境配置 > local 配置
@@ -493,7 +493,7 @@ loader.LoadFiles(
 
 内置三种格式之外，可实现 `EnvParser` 接口并用 `RegisterParser` 注册自定义格式。内置的 `.env` / JSON / YAML 不能被 `RegisterParser` 覆盖，替换内置解析器要用 `ForceRegisterParser`。
 
-`LoadFiles` 按扩展名路由，只识别 `.env` / `.json` / `.yaml` / `.yml`，自定义格式号不会被自动命中。三条可用加载路径与完整示例见[自定义解析器](./custom-parser)指南。
+`LoadFiles` 按扩展名路由，只识别 `.env` / `.json` / `.yaml` / `.yml`，自定义格式号不会被自动命中。三条可用加载路径：用 `ForceRegisterParser` 覆盖 `FormatEnv` 并把文件命名为 `*.env`；注册到 `FormatAuto`；或手动调用解析器后逐条 `Set`。完整示例见[自定义解析器](./custom-parser)指南。
 
 ## 完整示例
 

@@ -328,68 +328,11 @@ if err != nil && env.IsMarshalError(err) {
 
 ### errors.Is Pattern
 
-Match sentinel errors:
-
-```go
-err := loader.LoadFiles(".env")
-
-switch {
-case errors.Is(err, env.ErrFileNotFound):
-    // file not found
-    log.Println("Configuration file not found, using defaults")
-
-case errors.Is(err, env.ErrFileTooLarge):
-    // file too large
-    log.Fatal("Configuration file too large")
-
-case errors.Is(err, env.ErrSecurityViolation):
-    // forbidden key (actually returns *SecurityError)
-    log.Fatal("Forbidden key detected")
-
-case err != nil:
-    // other errors
-    log.Fatalf("Load failed: %v", err)
-}
-
-// Invalid key format (actually returns *ValidationError, Field=="key")
-var valErr *env.ValidationError
-if errors.As(err, &valErr) && valErr.Field == "key" {
-    log.Fatalf("Invalid key detected: %s", valErr.Message)
-}
-```
+`errors.Is` classifies errors without exposing details, so it works as the dispatch condition in a `switch` over `ErrFileNotFound`, `ErrFileTooLarge`, `ErrSecurityViolation`, and other sentinels. The full branch set is in [Combined Handling](#combined-handling).
 
 ### errors.As Pattern
 
-Extract detailed error information:
-
-```go
-err := loader.LoadFiles(".env")
-if err == nil {
-    return
-}
-
-// Try to extract parse error
-var parseErr *env.ParseError
-if errors.As(err, &parseErr) {
-    log.Fatalf("Parse error at %s line %d: %v",
-        parseErr.File, parseErr.Line, parseErr.Err)
-}
-
-// Try to extract file error
-var fileErr *env.FileError
-if errors.As(err, &fileErr) {
-    log.Fatalf("File %s error: %v", fileErr.Path, fileErr.Err)
-}
-
-// Try to extract security error
-var secErr *env.SecurityError
-if errors.As(err, &secErr) {
-    log.Fatalf("Security error: %s - %s", secErr.Action, secErr.Reason)
-}
-
-// Other errors
-log.Fatalf("Unknown error: %v", err)
-```
+`errors.As` tries each type in turn; once one matches, read its fields (`*ParseError` gives file and line, `*FileError` gives path and size, `*SecurityError` gives action and reason). The combined form with sentinel branches is in [Combined Handling](#combined-handling); the full field list per type is in [Complete Error Type Reference](#complete-error-type-reference).
 
 ### Combined Handling
 
@@ -410,6 +353,9 @@ func handleLoadError(err error) {
         errors.As(err, &fileErr)
         log.Fatalf("File %s too large (%d > %d)",
             fileErr.Path, fileErr.Size, fileErr.Limit)
+
+    case errors.Is(err, env.ErrSecurityViolation):
+        log.Fatal("Forbidden key detected")
     }
 
     // Then check structured errors
@@ -422,6 +368,12 @@ func handleLoadError(err error) {
     var secErr *env.SecurityError
     if errors.As(err, &secErr) {
         log.Fatalf("Security error: %s", secErr.Reason)
+    }
+
+    // Invalid key format (actually returns *ValidationError, Field=="key")
+    var valErr *env.ValidationError
+    if errors.As(err, &valErr) && valErr.Field == "key" {
+        log.Fatalf("Invalid key detected: %s", valErr.Message)
     }
 
     // Unknown error
@@ -462,7 +414,7 @@ func loadConfig() *Config {
 ```
 
 :::tip ProductionConfig audit behavior
-`ProductionConfig` sets `AuditEnabled=true`. With no `AuditHandler` configured, audit logs go to stderr with an `[AUDIT]` prefix. To persist them, set `cfg.AuditHandler` explicitly (for example `env.NewJSONAuditHandler(file)`).
+`ProductionConfig` sets `AuditEnabled=true`. With no `AuditHandler` configured, events go to stderr with an `[AUDIT]` prefix. To persist them, set `cfg.AuditHandler` explicitly — see [Audit Logging](./audit-logging) for the setup and [Production Checklist](../security/production-checklist) for verifying the file actually grows.
 :::
 
 ### Retry Pattern
@@ -500,6 +452,8 @@ Trigger condition: by default (`FailOnMissingFile=false`), `LoadFiles` **silentl
 
 ## Complete Example
 
+The program below assembles the earlier snippets; `handleLoadError` keeps only the branches this program needs to compile, and the full dispatch is in [Combined Handling](#combined-handling).
+
 ```go
 package main
 
@@ -534,6 +488,8 @@ func main() {
 	log.Println("Configuration loaded successfully")
 }
 
+// The full dispatch is in "Combined Handling"; only the branches
+// this program needs are kept here.
 func handleLoadError(err error) {
 	switch {
 	case errors.Is(err, env.ErrFileNotFound):
@@ -543,21 +499,6 @@ func handleLoadError(err error) {
 		var fileErr *env.FileError
 		errors.As(err, &fileErr)
 		log.Fatalf("File too large: %s (%d bytes)", fileErr.Path, fileErr.Size)
-
-	case errors.Is(err, env.ErrSecurityViolation):
-		log.Fatal("Forbidden key detected")
-	}
-
-	// Structured errors
-	var parseErr *env.ParseError
-	if errors.As(err, &parseErr) {
-		log.Fatalf("Parse error %s:%d - %v",
-			parseErr.File, parseErr.Line, parseErr.Err)
-	}
-
-	var secErr *env.SecurityError
-	if errors.As(err, &secErr) {
-		log.Fatalf("Security error: %s - %s", secErr.Action, secErr.Reason)
 	}
 
 	log.Fatalf("Load failed: %v", err)
@@ -609,9 +550,9 @@ Beyond the common items listed in the [sentinel errors](#sentinel-errors) sectio
 |----------|---------|
 | `ErrClosed` | Operating on a closed (or nil) Loader |
 | `ErrInvalidConfig` | Invalid configuration; `New()` wraps the specific validation error |
-| `ErrNotInitialized` | Using write functions in global mode before calling `Load()` |
+| `ErrNotInitialized` | A package-level function was called before the default loader was initialized (`Set`/`Delete`/`Validate`/`ParseInto`) |
 | `ErrAlreadyInitialized` | Calling `Load()` again after the default loader is initialized |
-| `ErrDuplicateKey` | Reserved: with `OverwriteExisting=false`, duplicate keys are silently skipped and no code path returns this sentinel yet |
+| `ErrDuplicateKey` | A duplicate key inside one document (`DuplicateKeyPolicy = DuplicateKeyError`), or two different YAML/JSON paths that flatten to the same key name |
 
 ### Helper Predicates
 

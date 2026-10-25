@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # Examples
 
-The source repository ships 13 runnable examples under `examples/`, numbered 01 to 13. Each is a self-contained `main` program, covering global-mode basics, security features, and extensibility. All of them are included in `go build ./...`.
+The source repository ships 13 runnable examples under `examples/`, numbered 01 to 13. Each is a self-contained `main` program, and all of them are included in `go build ./...`.
 
 ## Running the Examples
 

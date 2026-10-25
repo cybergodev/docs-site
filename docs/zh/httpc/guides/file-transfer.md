@@ -160,7 +160,7 @@ result, err := httpc.Post(url,
 :::warning 下载受 MaxResponseBodySize 约束
 流式写盘**不等于没有大小上限**：下载响应体仍受客户端 `Security.MaxResponseBodySize` 约束。`DefaultConfig` 默认 10MB，其他预设为 `SecureConfig` 5MB、`PerformanceConfig` 50MB、`MinimalConfig` 1MB。
 
-超出上限时下载以 `ErrResponseBodyTooLarge` 错误失败，**不会**在限额处静默截断文件。下载大文件前需先调大该值：
+超出上限时下载失败，错误信息含 `streamed response body exceeds size limit of N bytes`（外层包装为 `failed to write file: …`），**不会**在限额处静默截断为成功：非续传删除临时文件、既有目标文件不变，续传则保留已追加的字节供下次续试。该错误**不是** `ErrResponseBodyTooLarge`。下载大文件前需先调大该值：
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -182,6 +182,10 @@ if err != nil {
 fmt.Printf("下载完成: %s\n", httpc.FormatBytes(result.BytesWritten))
 fmt.Printf("耗时: %v\n", result.Duration)
 ```
+
+:::warning 未请求 Range 却收到 206
+未请求 `Range` 的下载收到 `206 Partial Content` 时，HTTPC 按内容保存并视为下载成功（源码 `download.go` 注释明确该行为）。唯一例外是响应以 `Content-Range: bytes 0-…/<total>` 声明了总长度——实收字节与该总长度不符时按截断报错，非续传删除临时文件、目标文件不变。畸形、缺失、起点非 0 或总长为 `*` 的 `Content-Range` 仍按原样保存，不规范的服务器可借此只返回部分内容而不报错；需要完整性保证时设置 `DownloadConfig.Checksum` 校验。
+:::
 
 ### 带进度回调
 
@@ -440,7 +444,7 @@ if err != nil {
 ```
 
 :::warning 域名客户端的两个注意事项
-- **请求选项会被执行两次**：一次用于捕获会话状态，一次用于实际请求。避免传入带副作用的选项（计数器、随机 nonce 生成器等）；确有需要时改用底层 `Client` 直接下载。
+- **会话捕获是静态的**：请求选项只执行一次，只有 `WithHeader`/`WithHeaderMap`/`WithCookies`/`WithCookieMap`/`WithCookieString` 携带的头与 Cookie 写入会话；自定义 `RequestOptionFunc` 里的 `SetHeader`/`SetCookies` 不被捕获，需要持久化时用 `dc.SetHeader`/`dc.SetCookie`。
 - **Download 与包装响应对象的自定义中间件不兼容**：下载路径需要直接访问原始响应流，若自定义中间件把 `ResponseMutator` 替换为包装类型，`Download` 会返回明确错误。内置中间件（Recovery/Logging/Metrics 等）均为透传，不受影响。
 :::
 

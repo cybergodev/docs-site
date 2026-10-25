@@ -252,13 +252,13 @@ result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-重定向安全警告输出（如 `TestingConfig`、`InsecureSkipVerify` 警告）。默认输出到 `os.Stderr`，每类警告每进程至多打印一次。传入 `io.Discard` 可静默所有警告。
+改变安全警告的输出目标（`TestingConfig`、`InsecureSkipVerify` 与手写 `Config` 全关签名三类）。默认输出到 `os.Stderr`，每类警告每进程至多打印一次。传入 `io.Discard` 可静默所有警告。
 
 ```go
 // 静默所有安全警告
 httpc.SetSecurityWarnOutput(io.Discard)
 
-// 重定向到自定义日志
+// 输出改写为自定义日志
 httpc.SetSecurityWarnOutput(log.Writer())
 ```
 

@@ -234,6 +234,8 @@ prepareResumeState(filePath, opts, options):
 | `416 Range Not Satisfiable` | **返回错误**：请求的偏移量超出文件大小。排空响应体后报错 |
 | 其他状态码（4xx/5xx） | 返回错误，附响应体前 200 字符预览 |
 
+与上表的续传行不同：**未请求 Range 的普通下载若收到 `206 Partial Content`，按其内容保存并按成功返回**（源码 `download.go` 注释明确该行为，并由测试固定；有意为之）。响应若自带有效的 `Content-Range` 总量声明，则按该声明做短体检查。不规范的服务器可能借此静默截断内容，需要设置 `DownloadConfig.Checksum` 才能检测。
+
 :::warning 为什么 200 时报错
 当 `ResumeDownload=true` 而服务器返回 200（而非 206）时，说明服务器不支持 Range 请求。此时继续下载会从头覆盖已有部分文件，**静默丢失调用方意图续传的数据**。
 
@@ -283,7 +285,7 @@ if result.Resumed {
 :::warning 下载受 MaxResponseBodySize 约束
 流式写盘只是免去全量内存缓冲，**并非没有大小上限**：下载响应体仍受客户端 `Security.MaxResponseBodySize` 约束。`DefaultConfig` 默认 10MB；其他预设为 `SecureConfig` 5MB、`PerformanceConfig` 50MB、`MinimalConfig` 1MB。
 
-超出上限时，下载以 `ErrResponseBodyTooLarge` 错误失败，而非在限额处静默截断。下载大文件前需调大该值：
+超出上限时下载失败，错误信息含 `streamed response body exceeds size limit of N bytes`（由 `io.Copy` 包装为 `failed to write file: …`），本地文件不会被静默截断——**不是** `ErrResponseBodyTooLarge`。下载大文件前需调大该值：
 
 ```go
 cfg := httpc.DefaultConfig()

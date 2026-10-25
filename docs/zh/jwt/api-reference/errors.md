@@ -1,7 +1,7 @@
 ---
 sidebar_label: "错误"
 title: "错误参考 - CyberGo JWT | 哨兵错误清单"
-description: "错误参考：CyberGo JWT 定义 20 个哨兵错误，覆盖配置校验、令牌验证、签名算法、过期、签发者与受众、黑名单、速率限制与生命周期场景，全部支持 errors.Is 匹配。"
+description: "错误参考：CyberGo JWT 定义 20 个哨兵错误，覆盖配置校验、令牌验证、签名算法、过期、签发者与受众、黑名单、速率限制与生命周期场景。本页给出错误一览表、按场景分类、errors.Is 判断顺序与 ValidationError 的提取方式。"
 sidebar_position: 70
 ---
 
@@ -9,7 +9,7 @@ sidebar_position: 70
 
 ## 哨兵错误
 
-所有错误均使用 `errors.Is()` 进行判断：
+哨兵错误通过 `errors.Is()` 判断：
 
 ```go
 var (
@@ -54,7 +54,7 @@ var (
 | `ErrTokenRevoked` | 令牌已吊销 | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
 | `ErrTokenMissingID` | 令牌缺少 ID | `Revoke()`、`IsRevoked()`；启用 `RotateRefreshTokens` 时的 `Refresh()` / `RefreshInto()` |
 | `ErrTokenTypeMismatch` | 令牌类型不匹配（用访问令牌刷新，或用刷新令牌访问） | `Refresh()`、`RefreshInto()`；启用 `RejectRefreshAsAccess` 时的 `Parse()` / `ParseInto()` |
-| `ErrRefreshRotationFailed` | 刷新令牌轮换失败（包装底层黑名单存储错误） | `Refresh()`、`RefreshInto()`（启用 `RotateRefreshTokens` 时） |
+| `ErrRefreshRotationFailed` | 刷新令牌轮换失败（包装底层黑名单存储错误；内置存储满不会触发） | `Refresh()`、`RefreshInto()`（启用 `RotateRefreshTokens` 时） |
 | `ErrTokenExpired` | 令牌过期 | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
 | `ErrTokenNotValidYet` | 令牌尚未生效 | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
 | `ErrTokenInvalidIssuer` | 签发者不匹配 | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()`、`Revoke()`、`IsRevoked()` |
@@ -62,9 +62,15 @@ var (
 | `ErrExpirationRequired` | 启用 `RequireExpiration` 但令牌缺少 `exp` | `Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
 | `ErrInvalidClaims` | Claims 验证失败 | `Create()`、`CreateRefresh()`、`Parse()`、`Refresh()`、`ParseInto()`、`RefreshInto()` |
 | `ErrRateLimitExceeded` | 超出限流 | `Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()` |
-| `ErrBlacklistNotConfigured` | 黑名单未配置 | `Revoke()`；启用 `RotateRefreshTokens` 时的 `Refresh()` / `RefreshInto()` |
+| `ErrBlacklistNotConfigured` | 黑名单未配置；经 `New()` 构建的处理器总是自带黑名单，实践中不可达 | `Revoke()`；启用 `RotateRefreshTokens` 时的 `Refresh()` / `RefreshInto()` |
 | `ErrProcessorClosed` | Processor 已关闭 | 所有方法 |
 | `ErrStoreClosed` | 存储已关闭 | `Revoke()` 等 |
+
+::: info 判断顺序
+`ErrAlgorithmMismatch` 同时满足 `errors.Is(err, ErrInvalidToken)`。分支判断时先匹配 `ErrAlgorithmMismatch`，再匹配 `ErrInvalidToken`，否则算法不匹配会被归入泛化的无效令牌分支。
+:::
+
+内置内存存储写满时不报错，而是驱逐条目（fail-open），被驱逐的吊销记录会静默失效。`ErrRefreshRotationFailed` 只在底层存储真实返回错误时出现，例如自定义存储后端不可用或已关闭。
 
 ### 按场景分类
 
@@ -98,8 +104,8 @@ var (
 | 错误 | 触发方法 | 典型原因 |
 |------|----------|----------|
 | `ErrRateLimitExceeded` | `Create()`、`CreateRefresh()`、`Refresh()`、`RefreshInto()` | 超出窗口内请求上限 |
-| `ErrBlacklistNotConfigured` | `Revoke()`；启用 `RotateRefreshTokens` 时的 `Refresh()` / `RefreshInto()` | 未配置黑名单存储 |
-| `ErrRefreshRotationFailed` | `Refresh()`、`RefreshInto()`（启用 `RotateRefreshTokens` 时） | 吊销旧刷新令牌失败（包装底层黑名单存储错误），无新令牌签发 |
+| `ErrBlacklistNotConfigured` | `Revoke()`；启用 `RotateRefreshTokens` 时的 `Refresh()` / `RefreshInto()` | 未配置黑名单存储。`New()` 总会构造内置存储，实践中不可达 |
+| `ErrRefreshRotationFailed` | `Refresh()`、`RefreshInto()`（启用 `RotateRefreshTokens` 时） | 吊销旧刷新令牌时底层存储返回错误，无新令牌签发 |
 | `ErrTokenMissingID` | `Revoke()`、`IsRevoked()` | 令牌缺少 `jti` 字段 |
 
 #### 生命周期
@@ -123,6 +129,8 @@ if err != nil {
         // 令牌过期 - 引导用户刷新
     case errors.Is(err, jwt.ErrTokenRevoked):
         // 令牌已吊销 - 拒绝访问
+    case errors.Is(err, jwt.ErrAlgorithmMismatch):
+        // 算法不匹配 - 优先于 ErrInvalidToken 判断
     case errors.Is(err, jwt.ErrInvalidToken):
         // 签名无效 - 拒绝访问
     case errors.Is(err, jwt.ErrProcessorClosed):
