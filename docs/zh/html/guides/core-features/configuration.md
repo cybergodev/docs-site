@@ -42,7 +42,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println(r1.Title)
-	// 输出: 标题
+	// 输出：标题
 
 	// 只需要纯文本（如搜索引擎索引）
 	p2, err := html.New(html.TextOnlyConfig())
@@ -62,7 +62,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println(r3.Text)
-	// 输出: # 标题
+	// 输出：# 标题
 	//       正文内容
 }
 ```

@@ -151,7 +151,7 @@ func main() {
 	}
 
 	fmt.Println("正文：", result.Text)
-	// 输出：正文： 安全的内容
+	// 输出：正文：安全的内容
 }
 ```
 
@@ -435,10 +435,10 @@ func main() {
 		}
 	}
 	// 输出：
-	// 允许: article.html
-	// 允许: p.html
-	// 拒绝: outside.html
-	// 拒绝: secret.html
+	// 允许：article.html
+	// 允许：p.html
+	// 拒绝：outside.html
+	// 拒绝：secret.html
 }
 ```
 
@@ -476,7 +476,7 @@ func main() {
 		log.Fatal("预期应出现编码错误")
 	}
 	fmt.Println("首次失败：", strings.HasPrefix(err.Error(), "encoding detection failed"))
-	// 输出：首次失败： true
+	// 输出：首次失败：true
 
 	// 按来源改用 gbk 解码 → 成功
 	result, err := extractWithEncoding(data, "gbk")
@@ -484,7 +484,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("标题：", result.Title)
-	// 输出：标题： 你好
+	// 输出：标题：你好
 }
 ```
 

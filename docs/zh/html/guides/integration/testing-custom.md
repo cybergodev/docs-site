@@ -251,7 +251,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.Title) // 输出: 正文标题
+	fmt.Println(result.Title) // 输出：正文标题
 }
 ```
 

@@ -69,9 +69,10 @@ jobs:
       # inside inline code / link text that release binaries (2.13.3 AND
       # 2.16.3) deliberately skip, and it ignored .autocorrectrc textRules
       # exemptions. Pinning the official release keeps the CI verdict
-      # byte-identical to a local run of the same version. To upgrade: bump
-      # the version + sha256 here and re-verify locally with the matching
-      # release binary (kept at D:/MyProject/tools/autorrect-cli/).
+      # byte-identical to a local run of the same version. To upgrade, bump
+      # ALL of these together: the version + sha256 here, PINNED_AUTOCORRECT_VERSION
+      # in scripts/_lib/autocorrect.ts, and the local binary (re-run
+      # `npm run setup:autocorrect`; default dir D:/MyProject/tools/autocorrect-cli/).
       - name: Install autocorrect (pinned v2.16.3)
         run: |
           curl -sfL -o /tmp/autocorrect.tar.gz \
@@ -80,9 +81,11 @@ jobs:
           sudo tar -xzf /tmp/autocorrect.tar.gz -C /usr/local/bin
           autocorrect --version
 
-      # Lint the whole tree — non-zero exit on any CJK typography violation,
-      # same engine and version as the local gate (`autocorrect --lint .`,
-      # or the weaker devDep-WASM `npm run lint:autocorrect`).
+      # Lint the whole tree — non-zero exit on any CJK typography violation.
+      # The local gate (`npm run lint:autocorrect`, scripts/lint-autocorrect.ts)
+      # is CLI-first: with the pinned binary installed it runs this exact
+      # command, so local == CI; without a CLI it degrades to the weaker
+      # devDep WASM (skips codeblock & inline code & spellcheck).
       - name: Autocorrect lint
         run: autocorrect ./ --lint
 

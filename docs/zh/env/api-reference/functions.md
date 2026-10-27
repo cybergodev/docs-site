@@ -1091,13 +1091,13 @@ func main() {
 	if err := loader.Set("PORTS_1", "abc"); err != nil {
 		panic(err)
 	}
-	fmt.Println(env.GetSliceFrom[int64](loader, "PORTS")) // 输出: [80]
+	fmt.Println(env.GetSliceFrom[int64](loader, "PORTS")) // 输出：[80]
 
 	// 场景二：逗号分隔，abc 非法导致整表失败，返回默认值
 	if err := loader.Set("LIMITS", "80,abc"); err != nil {
 		panic(err)
 	}
-	fmt.Println(env.GetSliceFrom[int64](loader, "LIMITS", []int64{443})) // 输出: [443]
+	fmt.Println(env.GetSliceFrom[int64](loader, "LIMITS", []int64{443})) // 输出：[443]
 }
 ```
 

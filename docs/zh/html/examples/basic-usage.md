@@ -218,7 +218,7 @@ func main() {
 
 	groups := html.GroupLinksByType(links) // 按类型分组
 	fmt.Println("link 组：", len(groups["link"]))
-	// 输出：link 组： 1
+	// 输出：link 组：1
 }
 ```
 

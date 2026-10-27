@@ -214,7 +214,7 @@ func main() {
 	if dropped > 0 {
 		log.Printf("审计丢弃告警：丢弃 %d 条，请增大缓冲或加快消费", dropped)
 	}
-	fmt.Printf("已消费 %d 条（critical %d），丢弃 %d 条\n", consumed.Load(), critical.Load(), dropped) // 输出: 已消费 6 条（critical 0），丢弃 0 条
+	fmt.Printf("已消费 %d 条（critical %d），丢弃 %d 条\n", consumed.Load(), critical.Load(), dropped) // 输出：已消费 6 条（critical 0），丢弃 0 条
 }
 ```
 

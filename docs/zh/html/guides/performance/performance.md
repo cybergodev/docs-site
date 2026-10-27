@@ -125,7 +125,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("文本：", result.Text)
-	// 输出：文本： 每个页面都不同
+	// 输出：文本：每个页面都不同
 }
 ```
 
@@ -210,7 +210,7 @@ func main() {
 	default:
 		fmt.Println("成功，文本长度：", len(result.Text))
 	}
-	// 输出：成功，文本长度： 0
+	// 输出：成功，文本长度：0
 }
 ```
 
