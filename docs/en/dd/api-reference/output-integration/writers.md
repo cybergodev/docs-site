@@ -40,7 +40,7 @@ fw, _ = dd.NewFileWriter("logs/app.log", cfg)
 
 ### FileWriterConfig
 
-File writer configuration.
+`FileWriterConfig` is the file writer configuration.
 
 ```go
 type FileWriterConfig struct {
@@ -163,7 +163,7 @@ bw, _ = dd.NewBufferedWriter(os.Stdout, cfg)
 
 ### BufferedWriterConfig
 
-Buffered writer configuration.
+`BufferedWriterConfig` is the buffered writer configuration.
 
 ```go
 type BufferedWriterConfig struct {

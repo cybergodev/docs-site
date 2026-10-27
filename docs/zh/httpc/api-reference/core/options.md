@@ -1,13 +1,13 @@
 ---
 sidebar_label: "请求选项"
 title: "请求选项 - CyberGo HTTPC | WithXxx 选项"
-description: "HTTPC 请求选项 API 参考：完整覆盖 29 个 WithXxx 函数——WithHeader 请求头、WithBearerToken 认证、WithJSON/WithForm/WithFile 请求体、Cookie 校验与回调，并注明各选项覆盖的 Config 默认值与校验规则。"
+description: "HTTPC 请求选项 API 参考：全部 32 个 WithXxx 函数的签名、默认值与校验规则，覆盖请求头、认证、请求体、查询参数、Cookie、请求控制、包级路由与回调八个分组，并列出各选项覆盖的 Config 默认值与 nil 选项处理。"
 sidebar_position: 20
 ---
 
 # 请求选项
 
-请求选项是函数式配置项，通过 `RequestOption` 类型传递给请求方法，实现细粒度的请求控制。
+请求选项是函数式配置项，通过 `RequestOption` 类型传递给请求方法，用于控制单次请求的行为。
 
 ```go
 result, err := client.Post(url,
@@ -29,6 +29,7 @@ result, err := client.Post(url,
 | [查询参数](#查询参数) | `WithQuery`、`WithQueryMap` |
 | [Cookie](#cookie) | `WithCookies`、`WithCookieMap`、`WithCookieString`、`WithSecureCookie` |
 | [请求控制](#请求控制) | `WithContext`、`WithTimeout`、`WithNoTimeout`、`WithMaxRetries`、`WithRetryNonIdempotent`、`WithFollowRedirects`、`WithMaxRedirects`、`WithAllowPrivateIPs`、`WithStreamBody` |
+| [包级路由](#包级路由) | `WithProxy`、`WithSystemProxy`、`WithTLSFingerprint` |
 | [回调](#回调) | `WithOnRequest`、`WithOnResponse` |
 
 部分选项可覆盖客户端配置（`Config`）中的同名默认值：
@@ -41,12 +42,12 @@ result, err := client.Post(url,
 | `WithNoTimeout` | `Timeouts.Request`（解除该默认上限） |
 | `WithMaxRetries` | `Retry.MaxRetries`（3） |
 | `WithRetryNonIdempotent` | `Retry.RetryNonIdempotent`（false） |
-| `WithFollowRedirects` | `Defaults.FollowRedirects`（true） |
-| `WithMaxRedirects` | `Defaults.MaxRedirects`（10） |
+| `WithFollowRedirects` | `Security.FollowRedirects`（true） |
+| `WithMaxRedirects` | `Security.MaxRedirects`（10） |
 | `WithAllowPrivateIPs` | `Security.AllowPrivateIPs`（false） |
 
 :::tip
-`nil` 选项被静默跳过，不会报错——便于条件拼装选项切片。任一选项返回错误都会中止请求（统一包装为 `failed to apply request option`）。
+`nil` 选项被静默跳过，不会报错，便于按条件拼装选项切片。任一选项返回错误都会中止请求（统一包装为 `failed to apply request option`）。
 :::
 
 ## 请求头
@@ -58,6 +59,8 @@ func WithHeader(key, value string) RequestOption
 ```
 
 设置单个请求头。键和值经过安全验证（CRLF 注入防护）：键 ≤256 字符、值 ≤8192 字符，控制字符被拒绝（返回 `ErrInvalidHeader` 包装错误）。同名默认头（`Config.Defaults.Headers`）会被覆盖。
+
+在 `DomainClient` 上该头会被捕获进会话，并对后续请求持续生效；需要一次性头时用自定义 `RequestOptionFunc`（不会被捕获）。
 
 ```go
 result, err := client.Get(url,
@@ -88,7 +91,7 @@ result, err := client.Get(url,
 func WithUserAgent(userAgent string) RequestOption
 ```
 
-设置 User-Agent 头。是 `WithHeader("User-Agent", ...)` 的便捷包装，覆盖 `Config.Defaults.UserAgent` 默认值（`"httpc/1.0"`）。
+设置 User-Agent 头。是 `WithHeader("User-Agent", ...)` 的便捷包装，覆盖 `Config.Defaults.UserAgent` 默认值（`"httpc/1.0"`）。因为它底层就是 `WithHeader`，在 `DomainClient` 上同样会被捕获进会话，并固定后续所有请求的 UA。
 
 ## 认证
 
@@ -99,6 +102,8 @@ func WithBasicAuth(username, password string) RequestOption
 ```
 
 设置 HTTP Basic 认证，生成 `Authorization: Basic <base64>` 头。用户名与密码均不能为空、≤255 字符且不含控制字符；用户名还不得包含冒号 `:`。
+
+在 `DomainClient` 上该选项**不会**被捕获进会话（凭据不持久化）；需要跨请求复用认证时改传 `WithHeader("Authorization", ...)`。
 
 ```go
 result, err := client.Get(url,
@@ -153,7 +158,9 @@ func WithXML(data any) RequestOption
 func WithForm(data map[string]string) RequestOption
 ```
 
-设置 URL 编码表单请求体，自动添加 `Content-Type: application/x-www-form-urlencoded`。每个字段的键（≤256 字符）与值（≤8192 字符）都经过控制字符与长度校验；编码时键按字母序输出，同一输入产生确定性的请求体（利于测试与请求签名）。
+设置 URL 编码表单请求体，自动添加 `Content-Type: application/x-www-form-urlencoded`。
+
+每个字段的键（≤256 字符）与值（≤8192 字符）都经过控制字符与长度校验。编码时键按字母序输出，同一输入产生确定性的请求体，便于测试与请求签名。
 
 仅接受 `map[string]string`；需要提交 `url.Values` 时改用 `WithBody(data, BodyForm)`（两者的校验与编码路径完全一致）。
 
@@ -191,10 +198,14 @@ result, err := client.Post(url,
 func WithFile(fieldName, filename string, content []byte) RequestOption
 ```
 
-便捷的单文件 multipart 上传。`fieldName` 与 `filename` 不能为空、≤256 字符，且不得包含路径分隔符（`/`、`\`）、`..`、引号、尖括号等危险字符；实际使用的文件名取 `filepath.Base(filename)`（剥离路径部分，防路径遍历），结果为 `"."`/`".."`/空时报错。
+便捷的单文件 multipart 上传。`fieldName` 与 `filename` 不能为空、≤256 字符，且必须是**单段名**：含 `/`、`\` 或 `..` 即报错（源码 `validation.ValidateFieldName`），此外引号、尖括号、`&` 等危险字符也被拒绝。
 
-:::warning 与其他请求体选项互斥
-`WithFile` 会替换整个请求体：多次调用 `WithFile`、或再搭配 `WithFormData`/`WithJSON` 等请求体选项时，后应用的选项覆盖前者。需要多文件或「文件 + 字段」混合上传时，请构建单个 `*FormData` 并使用 `WithFormData`。
+没有路径裁剪这一步——`filename` 原样写入 multipart 头；`"."` 同样报错。
+
+:::warning 多次 WithFile 合并，与其他请求体选项混用则替换
+多次 `WithFile` 会**合并**进同一个 multipart 请求体（源码行为，并由测试固定），可以一次上传多个文件；同一 `fieldName` 再次出现时后者覆盖前者。
+
+与 `WithJSON`/`WithBinary` 等其他请求体选项混用时，后应用者替换整个请求体；先 `WithFormData` 后 `WithFile` 时，文件会并入该 FormData。需要「文件 + 字段」混合上传时，构建单个 `*FormData` 并使用 `WithFormData`。
 :::
 
 ```go
@@ -209,7 +220,9 @@ result, err := client.Post(url,
 func WithBinary(data []byte, contentType ...string) RequestOption
 ```
 
-设置二进制请求体。`data` 为 nil 时报错（非 nil 的空切片允许通过，但会发送空请求体）。默认 Content-Type 为 `application/octet-stream`，可通过第二个参数自定义（传空字符串回退默认值）。与 `WithBody(data, BodyBinary)` 的区别：后者还接受 `string` 输入，且会拒绝空数据。
+设置二进制请求体。`data` 为 nil **或零长度**均报错（`binary data cannot be empty`）。默认 Content-Type 为 `application/octet-stream`，可通过第二个参数自定义（传空字符串回退默认值）。
+
+与 `WithBody(data, BodyBinary)` 的区别：`WithBody(data, BodyBinary)` 同样拒绝空数据，另额外接受 `string` 输入。
 
 ```go
 result, err := client.Post(url,
@@ -223,7 +236,7 @@ result, err := client.Post(url,
 func WithBody(data any, kind ...BodyKind) RequestOption
 ```
 
-通用请求体设置，支持自动检测和显式指定类型。
+通用请求体设置，支持自动检测和显式指定类型。`kind` 省略时使用 `BodyAuto`。
 
 **自动检测规则**（默认 `BodyAuto`）：
 
@@ -269,8 +282,10 @@ result, _ := client.Post(url, httpc.WithBody(data, httpc.BodyXML))
 
 类型不匹配（如 `BodyMultipart` 传入非 `*FormData`）或 `data` 为 nil 时报错。
 
-:::warning io.Reader 不参与大小校验
-`io.Reader` 请求体绕过请求体大小校验。读取不可信来源时，请用 `io.LimitReader` 包裹以防资源耗尽：
+:::warning io.Reader 与请求体大小上限
+`io.Reader` 无法预知长度，因此默认 `Security.MaxRequestBodySize = 0` 时不施加限制。
+
+显式设置 `MaxRequestBodySize` 后，引擎在发送时用计数读取器包裹 `io.Reader`，读取超过上限即中止传输并返回 `request body exceeds limit of N bytes`。读取不可信来源时仍建议用 `io.LimitReader` 在调用方先行封顶：
 
 ```go
 limited := io.LimitReader(untrustedReader, 10<<20) // 上限 10 MB
@@ -285,7 +300,9 @@ limited := io.LimitReader(untrustedReader, 10<<20) // 上限 10 MB
 func WithQuery(key string, value any) RequestOption
 ```
 
-设置单个查询参数。key 不能为空、≤256 字符，且不含控制字符与保留字符（`&`、`=`、`#`、`?`）；格式化后的值 ≤8192 字符。**value 为 nil 时该参数被整体跳过**（不会渲染成字面量 `<nil>`）。支持 `string`/`bool`/整数/浮点等常用类型，其余类型走通用格式化路径（如实现了 `fmt.Stringer`）。
+设置单个查询参数。key 不能为空、≤256 字符，且不含控制字符与保留字符（`&`、`=`、`#`、`?`）；格式化后的值 ≤8192 字符。
+
+`value` 为 nil 时该参数被整体跳过，不会渲染成字面量 `<nil>`。支持 `string`、`bool`、整数、浮点等常用类型；其余类型走通用格式化路径（如实现了 `fmt.Stringer`）。
 
 ```go
 result, err := client.Get(url,
@@ -300,7 +317,7 @@ result, err := client.Get(url,
 func WithQueryMap(params map[string]any) RequestOption
 ```
 
-批量设置查询参数。校验规则与 `WithQuery` 一致；nil 值条目被跳过；nil map 不产生任何参数。
+批量设置查询参数。校验规则与 `WithQuery` 一致。nil 值条目被跳过；nil map 不产生任何参数。
 
 ```go
 result, err := client.Get(url,
@@ -320,7 +337,7 @@ result, err := client.Get(url,
 func WithCookies(cookies []http.Cookie) RequestOption
 ```
 
-添加一个或多个 Cookie，每个 Cookie 都经过安全验证：名称 ≤256 字符、值 ≤4096 字符，控制字符与 Cookie 非法字符被拒绝；设置 Domain（≤255）或 Path（≤1024）时也会校验。整批在单次遍历中预分配容量并完成验证。
+添加一个或多个 Cookie，每个 Cookie 都经过安全验证：名称 ≤256 字符、值 ≤4096 字符，控制字符与 Cookie 非法字符被拒绝。设置 Domain（≤255）或 Path（≤1024）时同样校验。整批在一次遍历中预分配容量并完成验证。
 
 ```go
 // 单个 Cookie：传单元素切片
@@ -345,7 +362,7 @@ result, err = client.Get("https://api.example.com",
 func WithCookieMap(cookies map[string]string) RequestOption
 ```
 
-批量添加简单 Cookie。适合仅需 name-value 的场景。
+批量添加简单 Cookie，适用于仅含 name-value 对的场景。
 
 ```go
 result, err := client.Get(url,
@@ -376,10 +393,10 @@ result, err := client.Get(url,
 func WithSecureCookie(securityConfig *CookieSecurityConfig) RequestOption
 ```
 
-强制验证请求 Cookie 的安全属性（Secure、HttpOnly、SameSite）。
+在应用时校验当时已存在的请求 Cookie 的安全属性（Secure、HttpOnly、SameSite）。
 
 :::warning 选项顺序
-此选项**仅校验应用时已存在的 Cookie**。必须将 `WithSecureCookie` 放在所有 `WithCookies`/`WithCookieMap`/`WithCookieString` **之后**，否则后添加的 Cookie 不会被校验。如需不受顺序限制的会话级 Cookie 安全校验，请使用 `SessionManager.SetCookieSecurity`。
+`WithSecureCookie` **只校验应用时已存在的 Cookie**。必须将它放在所有 `WithCookies`/`WithCookieMap`/`WithCookieString` **之后**，否则后添加的 Cookie 不会被校验。需要不受顺序限制的会话级 Cookie 安全校验时，使用 `SessionManager.SetCookieSecurity`。
 :::
 
 ```go
@@ -399,7 +416,7 @@ result, err := client.Get(url,
 func WithContext(ctx context.Context) RequestOption
 ```
 
-设置请求上下文，支持超时和取消。上下文不能为 nil；上下文的截止时间会覆盖该请求的客户端默认超时（`Timeouts.Request`）。
+设置请求上下文，支持超时和取消。上下文不能为 nil。上下文截止时间只**收窄**客户端默认超时（`Timeouts.Request`），二者取较短者；没有截止时间的上下文不会解除该默认值（需要 `WithNoTimeout`）；显式 `WithTimeout` 覆盖客户端默认预算，但更近的上下文截止仍然优先。
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -414,7 +431,7 @@ result, err := client.Get(url, httpc.WithContext(ctx))
 func WithTimeout(timeout time.Duration) RequestOption
 ```
 
-设置单次请求超时，覆盖 `Config.Timeouts.Request`（默认 180s，覆盖含重试在内的整段请求时长）。范围：0 到 30 分钟，越界返回 `ErrInvalidTimeout`。
+设置单次请求超时，覆盖 `Config.Timeouts.Request`（默认 180s，覆盖含重试在内的整段请求时长）。取值范围为大于 0 且不超过 30 分钟：传入 `0`、负值或超过 30 分钟均返回 `ErrInvalidTimeout`。需要无超时时改用 [`WithNoTimeout`](#withnotimeout)。
 
 ```go
 result, err := client.Get(url, httpc.WithTimeout(5*time.Second))
@@ -426,7 +443,12 @@ result, err := client.Get(url, httpc.WithTimeout(5*time.Second))
 func WithNoTimeout() RequestOption
 ```
 
-为单次请求解除客户端级默认整体超时（`Config.Timeouts.Request`，默认 180s），让慢调用可以运行到服务端处理完毕为止。仅解除客户端默认，两项限制始终生效：同一请求上显式设置的 [`WithTimeout`](#withtimeout) 优先级更高，调用方上下文（`WithContext` 或 ctx 参数）预设的截止时间也始终被尊重。拨号/TLS/响应头等分段超时不受影响。
+为单次请求解除客户端级默认整体超时（`Config.Timeouts.Request`，默认 180s），使慢调用可以运行到服务端处理完毕。该选项只解除客户端默认值，以下两项限制仍然生效：
+
+- 同一请求上显式设置的 [`WithTimeout`](#withtimeout) 优先级更高。
+- 调用方上下文（`WithContext` 或 ctx 参数）预设的截止时间始终被尊重。
+
+拨号、TLS、响应头等分段超时不受影响。
 
 ```go
 // 解除默认 180s 上限，用于大文件上传、慢报表等长调用
@@ -442,7 +464,7 @@ result, err := client.Post(uploadURL,
 func WithMaxRetries(maxRetries int) RequestOption
 ```
 
-设置单次请求最大重试次数，覆盖 `Config.Retry.MaxRetries`（默认 3）。范围：0-10，越界返回 `ErrInvalidRetry`。
+设置单次请求最大重试次数，覆盖 `Config.Retry.MaxRetries`（默认 3）。范围：0-10，越界返回 `ErrInvalidRetry`。`0` 表示本次请求**禁用**重试（与 `WithMaxRedirects(0)` 的 no-op 语义不同）。
 
 ```go
 result, err := client.Get(url, httpc.WithMaxRetries(3))
@@ -454,10 +476,15 @@ result, err := client.Get(url, httpc.WithMaxRetries(3))
 func WithRetryNonIdempotent(allow bool) RequestOption
 ```
 
-为单次请求覆盖非幂等方法（POST、PATCH 及自定义方法）是否允许重试，**双向**覆盖客户端级 `Config.Retry.RetryNonIdempotent`（默认 false）：`true` 可在默认禁用重试的客户端上重试 POST；`false` 可在默认允许的客户端上将本次请求固定为单次执行。幂等方法（GET/HEAD 等）不受影响，[`WithMaxRetries`](#withmaxretries) 的次数上限照常适用。
+为单次请求覆盖非幂等方法（POST、PATCH 及自定义方法）的重试许可，对客户端级 `Config.Retry.RetryNonIdempotent`（默认 false）做**双向**覆盖：
+
+- 传 `true`：在默认禁止重试的客户端上允许重试 POST。
+- 传 `false`：在默认允许重试的客户端上将本次请求固定为单次执行。
+
+幂等方法（GET/HEAD 等）不受影响，[`WithMaxRetries`](#withmaxretries) 的次数上限照常适用。
 
 :::warning 副作用风险
-对非幂等请求启用重试，意味着超时或可重试 5xx 时请求体可能被发送不止一次（如重复下单、重复支付）。仅对可容忍重放的端点启用，或以幂等键（Idempotency-Key）保护。
+对非幂等请求启用重试后，超时或可重试 5xx 可能导致请求体被发送多次（如重复下单、重复支付）。仅对可容忍重放的端点启用，或用幂等键（Idempotency-Key）保护。
 :::
 
 ```go
@@ -475,7 +502,7 @@ result, err := client.Post(orderURL,
 func WithFollowRedirects(follow bool) RequestOption
 ```
 
-控制是否跟随重定向，覆盖 `Config.Defaults.FollowRedirects`（默认 true）。
+控制是否跟随重定向，覆盖 `Config.Security.FollowRedirects`（默认 true）。
 
 ```go
 // 禁止跟随重定向
@@ -488,11 +515,13 @@ result, err := client.Get(url, httpc.WithFollowRedirects(false))
 func WithMaxRedirects(maxRedirects int) RequestOption
 ```
 
-设置单次请求最大重定向次数，覆盖 `Config.Defaults.MaxRedirects`（默认 10）。范围：0-50，负数或超过 50 报错。
+设置单次请求最大重定向次数，覆盖 `Config.Security.MaxRedirects`（默认 10）。范围：0-50，负数或超过 50 返回 `ErrInvalidMaxRedirects`。
 
 :::warning 0 值语义
-`0` **不会**禁用重定向。引擎将 `0` 视为「未显式设置」的哨兵值，回退到默认上限（10），因此 `WithMaxRedirects(0)` 等价于省略该选项。要完全禁用重定向跟随，请改用 `WithFollowRedirects(false)`。
+`0` **不会**禁用重定向。引擎将 `0` 视为「未显式设置」的哨兵值并回退到默认上限（10），因此 `WithMaxRedirects(0)` 等价于省略该选项。要完全禁用重定向跟随，改用 `WithFollowRedirects(false)`。
 :::
+
+计数口径与 `net/http` 一致：上限含初始请求本身，`WithMaxRedirects(n)` 最多跟随 `n-1` 次重定向（默认 10 即最多跟随 9 次）。
 
 ### WithAllowPrivateIPs
 
@@ -500,12 +529,15 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 func WithAllowPrivateIPs(allow bool) RequestOption
 ```
 
-为单次请求覆盖客户端的 SSRF 策略（对应 `Config.Security.AllowPrivateIPs`，默认 false）。当 `allow` 为 `true` 时，该请求可访问 localhost 和私有/保留 IP 段（127.0.0.0/8、10.0.0.0/8、192.168.0.0/16、169.254.0.0/16 等），并可跟随到此类地址的重定向；为 `false` 时，即使客户端配置了 `Security.AllowPrivateIPs=true`，本次请求仍强制启用 SSRF 防护。
+为单次请求覆盖客户端的 SSRF 策略（对应 `Config.Security.AllowPrivateIPs`，默认 false）。
+
+- 传 `true`：该请求可访问 localhost 和私有/保留 IP 段（127.0.0.0/8、10.0.0.0/8、192.168.0.0/16、169.254.0.0/16 等），并可跟随到此类地址的重定向。
+- 传 `false`：即使客户端配置了 `Security.AllowPrivateIPs=true`，本次请求仍强制启用 SSRF 防护。
 
 :::warning 安全提示
-这是 SSRF 防护的**单次请求逃生舱**，适用于默认安全的客户端（`AllowPrivateIPs=false`）偶尔需要访问内部服务、回环地址或本地开发服务器的场景。
+该选项是 SSRF 防护的**单次请求豁免**，适用于默认安全的客户端（`AllowPrivateIPs=false`）偶尔需要访问内部服务、回环地址或本地开发服务器的场景。
 
-仅在请求 URL 可信且**非**来自不受信任的用户输入时启用。若需整客户端访问内部服务，应直接在 `Config` 上设置 `Security.AllowPrivateIPs=true`。
+仅在请求 URL 可信且**非**来自不受信任的外部输入时启用。需要整个客户端访问内部服务时，直接在 `Config` 上设置 `Security.AllowPrivateIPs=true`。
 :::
 
 ```go
@@ -524,10 +556,66 @@ func WithStreamBody(stream bool) RequestOption
 启用流式模式，响应体不缓存到内存。
 
 :::warning 重要限制
-流式模式**仅通过 [`Download`](./functions#download) 生效**。与标准请求方法（`Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`）配合使用时，响应体会被完整读入并转换为 `Result`，随后底层流被关闭——返回的 `Result` 响应体为空，调用方无法消费该流。
+流式模式**仅在 [`Download`](./functions#download) 路径生效**。与标准请求方法（`Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`）配合使用 `WithStreamBody(true)` 时，请求以 `ErrStreamBodyRequiresDownload` 失败。
 
-要真正流式下载大文件而不缓存到内存，请使用 `Download`。
+这些方法会把响应体缓冲进 `Result`，无法把流交给调用方。
+
+需要流式下载大文件且不缓存到内存时，使用 `Download`。
 :::
+
+## 包级路由
+
+`WithProxy`、`WithSystemProxy`、`WithTLSFingerprint` 是三个**包级函数专属**的路由选项，把单个包级调用路由到专用客户端。
+
+专用客户端使用独立连接池，并继承默认客户端的安全默认值（SSRF 防护、TLS 1.2+、超时、重试）。共享默认客户端与其它在途调用不受影响。每个不同的 `(proxy, 系统代理, fingerprint)` 组合缓存为各自的客户端，可用 `CloseRoutedClients` 一并关闭（详见[包级函数与客户端方法](./functions#closeroutedclients)）。
+
+:::warning 仅包级函数
+这三个选项只对包级函数（`Get`/`Post`/`Request`/`Download` 等）有效。在显式 `Client` 实例上使用会返回错误；实例场景改用 `Config.Connection.ProxyURL` / `Config.Connection.EnableSystemProxy` / `Config.Security.TLSFingerprint`。
+:::
+
+### WithProxy
+
+```go
+func WithProxy(proxyURL string) RequestOption
+```
+
+把本次调用路由到显式代理（支持 `http`/`https`/`socks5`/`socks5h`），优先级高于默认客户端自身的代理配置。代理 URL 可携带凭据，httpc 不会记录这些凭据。
+
+```go
+result, err := httpc.Get("https://example.com",
+    httpc.WithProxy("http://127.0.0.1:7890"),
+)
+```
+
+### WithSystemProxy
+
+```go
+func WithSystemProxy() RequestOption
+```
+
+把本次调用路由到启用系统代理检测的客户端（`Connection.EnableSystemProxy`）。该客户端读取环境变量（`HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`）与平台设置（Windows 注册表、macOS 系统配置）。
+
+`localhost`/回环地址与 NO_PROXY 豁免主机按 `net/http` 语义绕过代理；未配置系统代理时直连。与 `WithProxy` 同时出现时，`WithProxy` 优先。
+
+```go
+result, err := httpc.Get("https://example.com", httpc.WithSystemProxy())
+```
+
+### WithTLSFingerprint
+
+```go
+func WithTLSFingerprint(preset string) RequestOption
+```
+
+把本次调用路由到浏览器 TLS 指纹客户端（等价于 `Config.Security.TLSFingerprint`）。值须为已知预设（大小写不敏感，自动去空白）：`chrome` / `firefox` 及其 OS/版本别名。
+
+未知预设使请求以 `ErrInvalidSecurity` 失败。完整预设清单与行为说明见 [TLS 指纹指南](../../guides/tls-fingerprint)。
+
+```go
+result, err := httpc.Get("https://example.com",
+    httpc.WithTLSFingerprint("chrome-windows"),
+)
+```
 
 ## 回调
 
@@ -537,7 +625,7 @@ func WithStreamBody(stream bool) RequestOption
 func WithOnRequest(callback func(req RequestMutator) error) RequestOption
 ```
 
-注册请求发送前的回调。可链式注册多个，按添加顺序执行。回调返回错误会中止请求；`callback` 为 nil 时报错。
+注册请求发送前的回调。可链式注册多个，按添加顺序执行。回调返回错误会中止请求；`callback` 为 nil 时返回错误。
 
 ```go
 result, err := client.Get(url,
@@ -554,7 +642,7 @@ result, err := client.Get(url,
 func WithOnResponse(callback func(resp ResponseMutator) error) RequestOption
 ```
 
-注册响应接收后的回调。可链式注册多个，按添加顺序执行；任一回调返回错误会使请求以该错误失败；`callback` 为 nil 时报错。
+注册响应接收后的回调。可链式注册多个，按添加顺序执行。任一回调返回错误会使请求以该错误失败；`callback` 为 nil 时返回错误。
 
 ```go
 result, err := client.Get(url,
@@ -564,6 +652,27 @@ result, err := client.Get(url,
     }),
 )
 ```
+
+## 自定义选项
+
+### RequestOptionFunc
+
+```go
+type RequestOptionFunc func(RequestMutator) error
+```
+
+把函数字面量适配为 `RequestOption` 接口的公开适配器类型，与 net/http 的 Handler/HandlerFunc 拆分方式一致。`RequestOption` 的 `apply` 方法未导出，包外无法直接实现该接口，因此自定义逐请求选项统一经 `RequestOptionFunc` 表达，无需命名内部请求类型。
+
+```go
+result, err := client.Get(url,
+    httpc.RequestOptionFunc(func(req httpc.RequestMutator) error {
+        req.SetHeader("X-Custom", "value")
+        return nil
+    }),
+)
+```
+
+nil 的 `RequestOptionFunc` 是 no-op，应用时直接跳过、不报错。
 
 ## 另见
 

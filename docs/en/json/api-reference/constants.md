@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Constants and Errors"
 title: "Constants and Errors - CyberGo JSON | Error Vars & Defaults"
-description: "CyberGo JSON error sentinels and defaults: ErrPathNotFound, ErrTypeMismatch, JsonsError, DefaultConfig, DefaultMaxJSONSize, MergeMode mapped to Config."
+description: "CyberGo JSON error sentinels: ErrPathNotFound, ErrTypeMismatch and their trigger scenarios, the JsonsError type, plus DefaultConfig constants."
 sidebar_position: 80
 ---
 
@@ -38,19 +38,19 @@ var (
 
 ### Trigger Scenarios at a Glance
 
-Typical trigger scenarios for each sentinel error, to help you write recovery logic per error branch:
+Typical trigger scenarios for each sentinel error; use the table when writing recovery logic per error branch:
 
 | Error | Typical trigger | Suggested handling |
 |-------|-----------------|--------------------|
 | `ErrInvalidJSON` | Input is not valid JSON (trailing characters, unclosed brackets, etc.) | Reject the input; check the source |
-| `ErrPathNotFound` | The path of a `Get` does not exist in the data | Common in practice; fall back to a default |
-| `ErrTypeMismatch` | Path exists but the type is wrong (e.g. `[0]` on a string path) | Check your data-structure assumptions |
-| `ErrInvalidPath` | Path syntax error (`CompilePath` / path parsing failure) | Fix the path expression |
+| `ErrPathNotFound` | The path of a `Get` does not exist; a missing object key and an out-of-range array index both return this sentinel. Typed getters (`GetString`, `GetInt`, and so on) return no error and fall back to the zero value or default | Use a typed getter or `SafeGet` for defaults; do not fall back through the `err` branch of `Get` |
+| `ErrTypeMismatch` | `SafeGet(...).AsString()` on a non-string value; `GetCompiled` hitting a type mismatch mid-navigation; `EncodeFields` given a non-object; `ForeachFileChunked` on a root that is not an array. The other `As*` methods (`AsInt`/`AsFloat64`/`AsBool`) return a plain error, not this sentinel; `[0]` on a string path via `Get` and `Set` over a scalar also do not match it. `GetTyped[T]` builds a `JsonsError` wrapping this sentinel internally when the fallback conversion fails, but the function only returns the value, so callers never see the error | Check your data-structure assumptions; use `errors.Is` only for the observable cases listed |
+| `ErrInvalidPath` | Path syntax validation fails, or validation is on (`SkipValidation` false) and the path string exceeds 5000 bytes. A `CompilePath` parse failure returns a plain error (message such as `path too deep`), not this sentinel | Fix the path expression |
 | `ErrProcessorClosed` | Methods called after `Close()` (or while closing) | Check the lifecycle; pre-check with `IsClosed` |
-| `ErrSizeLimit` | Input exceeds `MaxJSONSize` / `MaxSecurityValidationSize` | Raise the limit or reject oversized input |
+| `ErrSizeLimit` | Input exceeds `MaxJSONSize`; `ProcessBatch` operation count exceeds `MaxBatchSize`; object key count exceeds `MaxObjectKeys` or array element count exceeds `MaxArrayElements` | Raise the limit or reject oversized input |
 | `ErrDepthLimit` | Nesting exceeds `MaxNestingDepthSecurity` | Reject deeply nested input (possibly an attack) |
 | `ErrConcurrencyLimit` | Controlled-operation concurrency exceeds `MaxConcurrency` | Reduce concurrency or raise the limit |
-| `ErrSecurityViolation` | Dangerous pattern hit, or `MaxObjectKeys`/`MaxArrayElements` exceeded | Write an audit log and reject |
+| `ErrSecurityViolation` | Dangerous pattern hit (e.g. `__proto__`, `<script`) | Write an audit log and reject |
 | `ErrDuplicateKey` | Duplicate keys present in an input object while `Config.DetectDuplicateKeys` is enabled | Reject the input (when off by default, the last duplicate key wins, consistent with `encoding/json`) |
 | `ErrUnsupportedPath` | Reserved, no operation currently returns it (deprecated; unsupported segments surface as `ErrInvalidPath` or `ErrTypeMismatch`) | No handling needed in error branches |
 | `ErrOperationTimeout` | Reserved, no operation currently returns it (deprecated) | No handling needed in error branches |
@@ -62,21 +62,23 @@ No operation currently returns `ErrOperationTimeout`, `ErrResourceExhausted`, or
 
 ### Error Checking
 
-Use `errors.Is` to check error types:
+The error branch of `Get` commonly covers a missing path and malformed JSON; a type mismatch is not among the sentinels `Get` returns, so branch on type with a conversion method of `SafeGet` (see the `ErrTypeMismatch` row above):
 
 ```go
-val, err := json.Get(data, "user.name")
+_, err := json.Get(data, "user.name")
 if err != nil {
     if errors.Is(err, json.ErrPathNotFound) {
-        // Path does not exist
+        // Path does not exist (including an out-of-range array index)
         fmt.Println("Path not found")
-    } else if errors.Is(err, json.ErrTypeMismatch) {
-        // Type mismatch
-        fmt.Println("Type mismatch")
     } else if errors.Is(err, json.ErrInvalidJSON) {
         // Malformed JSON
         fmt.Println("Invalid JSON")
     }
+}
+
+// AsString wraps ErrTypeMismatch for non-string values
+if _, err := json.SafeGet(data, "user.age").AsString(); errors.Is(err, json.ErrTypeMismatch) {
+    fmt.Println("Type mismatch")
 }
 ```
 
@@ -172,13 +174,13 @@ const (
 |----------|---------|--------------|-------------|
 | `DefaultMaxJSONSize` | 100MB | `MaxJSONSize` | Size cap for a single JSON input |
 | `DefaultMaxNestingDepth` | 200 | `MaxNestingDepthSecurity` | JSON nesting depth cap |
-| `DefaultMaxPathDepth` | 50 | `MaxPathDepth` | Cap on path segment count (the depth of `a.b.c.d...`) |
+| `DefaultMaxPathDepth` | 50 | `MaxPathDepth` | Default of a reserved field; does not change behavior today (only feeds the config cache key and the `Validate` clamp 10–200) |
 | `DefaultMaxDepth` | 100 | `MaxDepth` | Default nesting depth for encode/decode (Marshal/Unmarshal) |
 | `DefaultMaxConcurrency` | 50 | `MaxConcurrency` | Cap on concurrent operations |
-| `DefaultMaxSecuritySize` | 10MB | `MaxSecurityValidationSize` | Documents above this size fall back to sampled security checks |
+| `DefaultMaxSecuritySize` | 10MB | `MaxSecurityValidationSize` | Default of a reserved field; does not change behavior today (only feeds the config cache key and the `Validate` clamp 1MB–100MB) |
 | `DefaultMaxObjectKeys` | 100000 | `MaxObjectKeys` | Object key count cap |
 | `DefaultMaxArrayElements` | 100000 | `MaxArrayElements` | Array element count cap |
-| `DefaultMaxBatchSize` | 2000 | `MaxBatchSize` | Cap on operations per `ProcessBatch` call; exceeding it returns `ErrSizeLimit` |
+| `DefaultMaxBatchSize` | 2000 | `MaxBatchSize` | Cap on operations per `ProcessBatch` / `SetMultiple` call; exceeding it returns `ErrSizeLimit` |
 | `DefaultParallelThreshold` | 10 | `ParallelThreshold` | Parallel processing threshold: below this operation count, processing is sequential |
 | `DefaultCacheTTL` | 5 minutes | `CacheTTL` | Cache entry lifetime |
 
@@ -222,10 +224,10 @@ defer processor.Close()
 
 **Security configuration characteristics**:
 
-- Full security scanning
-- Strict mode
-- Conservative limit values
-- Cache enabled
+- `FullSecurityScan` set to `true`, so every input gets a single full scan
+- Conservative limits: `MaxJSONSize` 10MB, `MaxNestingDepthSecurity` 30, `MaxObjectKeys`/`MaxArrayElements` 5000
+- Cache enabled with `MaxCacheSize` 256 and `CacheTTL` 3 minutes
+- `StrictMode` and `EnableValidation` are also set to `true`, but both are deprecated and not read, so they have no effect
 
 ### PrettyConfig
 
@@ -307,15 +309,19 @@ type DangerousPattern struct {
 
 ### Check types with errors.Is
 
+Branch on the sentinels a `Get` failure can carry; the full list is in [Trigger Scenarios at a Glance](#trigger-scenarios-at-a-glance):
+
 ```go
-result, err := json.Get(data, path)
+_, err := json.Get(data, path)
 if errors.Is(err, json.ErrPathNotFound) {
     return defaultValue
 }
-if errors.Is(err, json.ErrTypeMismatch) {
+if errors.Is(err, json.ErrInvalidPath) {
     return defaultValue
 }
 ```
+
+For a type mismatch, go through a conversion method of `SafeGet`: only `AsString` wraps `ErrTypeMismatch`, the other `As*` methods return a plain error. See [Error Checking](#error-checking) for the complete example.
 
 ### Get details with errors.As
 

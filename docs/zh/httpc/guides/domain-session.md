@@ -1,7 +1,7 @@
 ---
 sidebar_label: "域名客户端与会话"
 title: "域名客户端与会话 - CyberGo HTTPC | 会话与域名管理"
-description: "HTTPC 域名客户端与会话管理指南：NewDomain 创建域名作用域客户端、URL 拼接规则与路径穿越防护、SetHeader 会话头、Cookie 自动捕获与选项自动持久化、CookieSecurity 验证与 REST 客户端封装实战。"
+description: "HTTPC 域名客户端与会话管理指南：NewDomain 创建域名作用域客户端、URL 拼接规则与路径穿越防护、SetHeader 维护会话头、Cookie 自动捕获与选项持久化、CookieSecurity 验证，以及跨源请求的会话隔离与 REST 客户端封装实践。"
 sidebar_position: 40
 ---
 
@@ -26,24 +26,20 @@ if err != nil {
 }
 defer dc.Close()
 
-// Cookie 自动启用
+// 响应 Set-Cookie 自动进入会话（无需 EnableCookies）
 dc.SetHeader("Authorization", "Bearer "+token)
 
 // 使用相对路径发送请求
 result, err := dc.Get("/users")
 ```
 
-:::tip
-`NewDomain` 会自动启用 Cookie 管理（`EnableCookies = true`），无需手动配置。
-:::
-
-创建时有三件事自动发生：
+创建时有三件事发生：
 
 1. **baseURL 校验**：必须包含 scheme 和 host（如 `https://api.example.com`），否则返回错误
-2. **强制启用 Cookie**：忽略传入配置中的 `Connection.EnableCookies`，域名客户端始终带 Cookie 管理
-3. **创建会话**：内部创建一个 `SessionManager`（默认 `DefaultSessionConfig`），头与 Cookie 都存在这里
+2. **创建会话存储**：内部创建一个 `SessionManager`（默认 `DefaultSessionConfig`），会话头与 Cookie 都存在这里
+3. **会话注入与回写**：请求前注入会话头与 Cookie，响应后回写 `Set-Cookie`。该存储不受 `Connection.EnableCookies` 影响
 
-`NewDomain` 也接受完整 Config，用于自定义超时、重试等（此时 `dc.Get` 等方法与普通客户端行为一致）：
+`NewDomain` 也接受完整 Config，用于自定义超时、重试等。此时 `dc.Get` 等方法与普通客户端行为一致：
 
 ```go
 package main
@@ -82,18 +78,18 @@ func main() {
 
 ## URL 拼接规则
 
-`Get`/`Post` 等方法的第一个参数是相对 base URL 的路径，拼接规则：
+`Get`/`Post` 等方法的第一个参数是相对 base URL 的路径，拼接规则如下：
 
 | 传入 path | 结果 | 规则 |
 |-----------|------|------|
 | `/users` | `{base}/users` | 相对路径拼接到 base 路径 |
 | `/users/` | `{base}/users/` | 尾部斜杠保留 |
 | `https://other.com/data` | 原样使用 | 以 `http://`/`https://` 开头的完整 URL 跳过拼接 |
-| `/users?page=2` | `{base}/users?page=2` | 查询串保留；base 自带查询参数时二者合并 |
+| `/users?page=2` | `{base}/users?page=2` | 查询串保留，base 自带查询参数时二者合并 |
 | `""` | `{base}` | 空路径返回 base 本身 |
 
 :::warning 路径穿越防护
-若 base URL 带路径前缀（如 `https://example.com/api/v1`），拼接结果必须落在该前缀之内；`..` 等试图逃逸的路径会返回 `path escapes base URL scope` 错误，不会发出请求。
+若 base URL 带路径前缀（如 `https://example.com/api/v1`），拼接结果必须落在该前缀之内。`..` 等试图逃逸的路径会返回 `path escapes base URL scope` 错误，不会发出请求。
 :::
 
 ## 会话头管理
@@ -118,9 +114,9 @@ dc.ClearHeaders()
 headers := dc.GetHeaders()
 ```
 
-所有键值会做与 `WithHeader` 相同的 CRLF 注入校验，非法键值返回错误。`GetHeaders()` 返回的是**副本**，修改它不影响会话。
+所有键值会做与 `WithHeader` 相同的 CRLF 注入校验，非法键值返回错误。`GetHeaders()` 返回**副本**，修改它不影响会话。
 
-单次请求可用选项覆盖会话头（选项排在会话头之后应用）：
+单次请求可用选项覆盖会话头，选项在会话头之后应用：
 
 ```go
 dc.SetHeader("X-API-Version", "v1")
@@ -129,7 +125,7 @@ dc.SetHeader("X-API-Version", "v1")
 result, _ := dc.Get("/data", httpc.WithHeader("X-API-Version", "v2"))
 ```
 
-注意：如下一节所述，`v2` 会写回会话，后续请求也将发送 `v2`。
+注意：如下一节所述，`v2` 会写回会话，后续请求也发送 `v2`。
 
 ## Cookie 管理
 
@@ -157,18 +153,31 @@ dc.ClearCookies()
 ```
 
 :::tip
-每次请求后，服务器返回的 Cookie 会自动更新到会话中，无需手动处理。
+每次请求后，服务器返回的 Cookie 自动更新到会话中，无需手动处理。
 :::
 
-Cookie 的自动维护覆盖三条路径：
+Cookie 的自动维护覆盖以下路径：
 
-- **响应回填**：每次请求结束后，响应中的 `Set-Cookie` 自动写入会话（下载用的 `Download` 方法同样会捕获响应 Cookie）
-- **校验**：写入前做与 `WithCookies` 相同的合法性校验；配置了 Cookie 安全策略（见下方「Cookie 安全验证」）时，不合规的 Cookie 会被**静默跳过**，不影响其余 Cookie
-- **副本语义**：`GetCookie`/`GetCookies` 返回 Cookie 的副本，修改返回值不会污染会话内部状态
+- **响应回填**：每次请求结束后，响应中的 `Set-Cookie` 写入会话。`Download` 方法同样会捕获响应 Cookie
+- **删除语义**：携带 `Max-Age=0`/负值或已过期 Expires 的 Cookie（如登出响应）移除同名存储项，而不是按名存储该 Cookie 本身
+- **过期剔除**：已过期的 Cookie 在读取（`GetCookie`/`GetCookies`）与回放时被剔除；正的 `Max-Age` 被折算为对应的过期时刻
+- **回放范围**：Cookie 仅在其存储的 Path 与 `Secure` 属性匹配请求 URL 时随请求发送（RFC 6265 path-match；`Secure` Cookie 不经明文 http 回放）
+- **校验与副本**：写入前做与 `WithCookies` 相同的合法性校验，配置了 Cookie 安全策略（见下方「Cookie 安全验证」）时不合规的 Cookie 被**静默跳过**，不影响其余 Cookie；`GetCookie`/`GetCookies` 返回副本，修改返回值不会影响会话内部状态
 
-### 请求选项自动持久化
+### 请求选项如何持久化
 
-通过**请求选项**传入的 Cookie 和请求头也会被捕获进会话，对后续请求持续生效：
+通过**请求选项**传入的 Cookie 和请求头会被捕获进会话，对后续请求持续生效。捕获是**静态的**：会话只识别以下选项类型并读取其中携带的头与 Cookie，不执行选项闭包——
+
+| 选项 | 捕获内容 |
+|------|----------|
+| `WithHeader` | 单个请求头 |
+| `WithHeaderMap` | 一组请求头 |
+| `WithUserAgent` | User-Agent 头（内部是 `WithHeader` 透传，同样被捕获——一次探测请求会把 UA 固定为会话值） |
+| `WithCookies` | Cookie 列表 |
+| `WithCookieMap` | 名称—值对形式的 Cookie |
+| `WithCookieString` | 原始 `Cookie` 头字符串解析出的 Cookie |
+
+自定义 `RequestOptionFunc` 里的 `SetHeader`/`SetCookies` 不属于上述类型，不会被捕获；需要持久化时用 `dc.SetHeader`/`dc.SetCookie`。`WithBasicAuth`/`WithBearerToken` 同理——它们生成的是 Authorization 头，但凭据被刻意排除在会话之外，需要在每次请求上重复传入。
 
 ```go
 // 第一次请求：选项传入的 Cookie 与请求头……
@@ -188,8 +197,10 @@ fmt.Println(dc.GetHeaders()["X-Client"])   // 输出：mobile
 _, err = dc.Get("/profile")
 ```
 
-:::warning 临时头请勿用选项传
-选项中的头/Cookie 会持久化到会话，对**所有后续请求**生效。每次取值都不同的一次性头（如递增的 trace ID、随机 nonce）用完后记得 `DeleteHeader`/`DeleteCookie` 移除，或改用底层 `Client` 发送该请求。
+请求选项只对本次请求**执行一次**，捕获过程不重复执行任何选项闭包。
+
+:::warning 一次性头请勿用选项传
+上表中的选项携带的头与 Cookie 会持久化到会话，对**所有后续请求**生效。每次取值不同的一次性头（如递增的 trace ID、随机 nonce）用完后需 `DeleteHeader`/`DeleteCookie` 移除，或改用底层 `Client` 发送该请求。
 :::
 
 ## 请求方式
@@ -211,11 +222,11 @@ result, _ := dc.Request(ctx, "GET", "/users")
 result, _ := dc.Get("https://other-api.com/data")
 ```
 
-:::warning 请求选项会应用两次
-域名客户端在内部对请求选项**应用两次**（一次捕获会话状态、一次实际请求）。避免使用带副作用的选项（如计数器、nonce 生成）；如需此类选项请改用底层 `Client`。
+:::warning 会话状态只在基础源生效
+绝对 URL 指向**非基础源**（host:port 与 base 不同）时，会话头与 Cookie 既不发送也不捕获，基础域凭据不会泄露给第三方源。跟随重定向时同样如此：最终落点不在基础源的响应，其 `Set-Cookie` 不入会话。
 :::
 
-`Download` 方法与 `Client.Download` 签名一致，路径同样相对于 base URL 解析，完成后会把响应 Cookie 捕获进会话：
+`Download` 方法与 `Client.Download` 签名一致，路径同样相对于 base URL 解析。下载完成后，响应 Cookie 被捕获进会话：
 
 ```go
 dlCfg := httpc.DefaultDownloadConfig()
@@ -243,7 +254,7 @@ if err := session.SetHeader("X-Trace-ID", traceID); err != nil {
 }
 ```
 
-`DomainClient` 通过内嵌 `SessionManager` 暴露全部会话方法，因此 `dc.SetHeader(...)` 与 `dc.Session().SetHeader(...)` 完全等价。
+`DomainClient` 通过内嵌 `SessionManager` 暴露全部会话方法，`dc.SetHeader(...)` 与 `dc.Session().SetHeader(...)` 完全等价。
 
 ### 独立使用 SessionManager
 
@@ -272,16 +283,16 @@ session.UpdateFromResult(result)     // 从 Result 捕获响应 Cookie
 session.UpdateFromCookies(cookies)   // 从 []*http.Cookie 批量更新
 ```
 
-配合普通 `Client` 使用时，需自行读取 `GetHeaders()`/`GetCookies()` 并转成 `WithHeaderMap`/`WithCookies` 选项附加到请求（`DomainClient` 内部正是这样把会话状态注入每个请求的）。
+配合普通 `Client` 使用时，调用方需自行读取 `GetHeaders()`/`GetCookies()`，转成 `WithHeaderMap`/`WithCookies` 选项附加到请求。`DomainClient` 内部正是这样把会话状态注入每个请求。
 
 ## 并发语义
 
 - **SessionManager 并发安全**：所有读写方法由 `sync.RWMutex` 保护，多 goroutine 同时调用 `SetHeader`/`GetCookies` 无需额外加锁
-- **会话快照最终一致**：每个请求「读取会话快照 → 发出请求 → 回写响应 Cookie」的序列不是原子的——并发请求可能读到稍旧的快照（例如另一个请求刚收到的登录 Cookie 尚未对你可见），这是设计上的取舍；单个请求拿到的快照始终一致
+- **会话快照最终一致**：每个请求按「读取会话快照 → 发出请求 → 回写响应 Cookie」执行，这三步不是原子的。并发请求读到较旧的快照，例如另一个请求刚收到的登录 Cookie 尚未对当前请求可见。这是设计上的取舍：单个请求拿到的快照始终一致
 - **DomainClient 可并发使用**：方法本身无额外锁，可被多个 goroutine 共享
 
 :::tip
-登录、刷新 Token 等会显著改变会话状态的操作，建议避免与业务请求并发执行，或在其完成后再发起依赖新状态的请求。
+登录、刷新 Token 等会改变会话状态的操作，应避免与业务请求并发执行；或在其完成后再发起依赖新状态的请求。
 :::
 
 ## Cookie 安全验证
@@ -313,7 +324,9 @@ if err := dc.SetCookie(&http.Cookie{
 | `SetCookie` / `SetCookies`（显式写入） | 返回错误，Cookie 不入会话 |
 | 响应回填 / 选项捕获（自动写入） | **静默跳过**该 Cookie，其余照常处理 |
 
-策略在 `SetCookieSecurity` 之后对所有后续写入生效。独立创建 `SessionManager` 时可通过 `SessionConfig.CookieSecurity` 预配置（`NewDomain` 内部使用默认会话配置，需创建后调用 `SetCookieSecurity`）。宽松起点用 `DefaultCookieSecurityConfig()`（默认不强制任何属性），再按需收紧字段。
+策略在 `SetCookieSecurity` 之后对所有后续写入生效。独立创建 `SessionManager` 时，可通过 `SessionConfig.CookieSecurity` 预配置。`NewDomain` 内部使用默认会话配置，需创建后调用 `SetCookieSecurity`。
+
+宽松起点用 `DefaultCookieSecurityConfig()`（默认不强制任何属性），再按需收紧字段。
 
 ## 生命周期与复用
 
@@ -331,9 +344,9 @@ dc.DeleteHeader("Authorization")
 // ……重新执行登录流程，SetCookie/SetHeader 恢复状态……
 ```
 
-- `Close()` 关闭底层 Client（连接池、传输层），**不会**清除会话头/Cookie（它们存在 SessionManager 里）；关闭后继续请求返回 `ErrClientClosed`
-- 不要每个请求新建 `DomainClient`——会失去连接复用与会话累积，还可能耗尽连接
-- 整客户端换安全策略等需求直接建新实例，旧实例 `Close` 后丢弃
+- `Close()` 关闭底层 Client（连接池、传输层），**不会**清除会话头与 Cookie（它们存在 SessionManager 里）。关闭后继续请求返回 `ErrClientClosed`
+- 不要为每个请求新建 `DomainClient`：这会失去连接复用与会话累积，连接数随并发请求数增长
+- 需要整体更换安全策略等配置时，直接建新实例，旧实例 `Close` 后丢弃
 
 ## 完整示例：REST API 客户端
 

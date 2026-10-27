@@ -1,13 +1,13 @@
 ---
 sidebar_label: "File I/O"
 title: "File Operation Functions - CyberGo JSON | LoadFromFile Usage"
-description: "CyberGo JSON is a Go library for file I/O, offering LoadFromFile, SaveToFile, LoadFromReader and SaveToWriter for atomic, validated JSON persistence."
+description: "File I/O: LoadFromFile/SaveToFile check paths and write atomically, LoadFromReader/SaveToWriter cover Reader and Writer, plus struct round-trips."
 sidebar_position: 90
 ---
 
 # File Operation Functions
 
-The file operation functions of the json package support file reading/writing, streaming I/O, and typed serialization. Every file path passes security validation before reading or writing (see [File Path Validation](#security-file-path-validation)).
+The file functions of the json package cover file reading/writing, streaming I/O, and typed serialization. Every file path passes security validation before reading or writing; see [Security: File Path Validation](#security-file-path-validation).
 
 ## File Reading and Writing
 
@@ -15,7 +15,7 @@ The file operation functions of the json package support file reading/writing, s
 
 Signature: `func LoadFromFile(filePath string, cfg ...Config) (string, error)`
 
-Loads JSON data from a file and returns the **raw string** (no re-encoding; byte order and whitespace from the file are preserved). File size is bounded by `Config.MaxJSONSize`.
+Loads JSON data from a file and returns the **raw string** (no re-encoding; byte order and whitespace from the file are preserved). File size is bounded by `Config.MaxJSONSize` (default 100MB).
 
 **Parameters**
 
@@ -36,7 +36,7 @@ fmt.Println(data) // Raw JSON string
 
 Signature: `func SaveToFile(filePath string, data any, cfg ...Config) error`
 
-Saves data as a JSON file. Missing parent directories are created automatically; writes are **atomic** (write a temp file, then rename — a crash never truncates an existing file). String / `[]byte` inputs are pre-parsed to avoid double escaping.
+Saves data as a JSON file. Missing parent directories are created automatically; writes are **atomic** (write a temp file, then rename — a crash never truncates an existing file). String / `[]byte` inputs are parsed first to avoid double escaping.
 
 **Parameters**
 
@@ -101,7 +101,7 @@ func main() {
 
 Signature: `func LoadFromReader(reader io.Reader, cfg ...Config) (string, error)`
 
-Loads JSON data from an `io.Reader` and returns the raw string. Bytes read are bounded by `Config.MaxJSONSize` (guarding against memory exhaustion) — a good fit for streaming sources such as network connections, HTTP response bodies, and pipes.
+Loads JSON data from an `io.Reader` and returns the raw string. Bytes read are bounded by `Config.MaxJSONSize` (default 100MB) to prevent memory exhaustion; suited to network connections, HTTP response bodies, pipes, and other streaming sources.
 
 **Parameters**
 
@@ -144,7 +144,7 @@ func main() {
 }
 ```
 
-Reading from an `os.File` works the same way — `os.File` implements `io.Reader`:
+Reading from an `os.File` works the same way: `os.File` implements `io.Reader`.
 
 ```go
 file, err := os.Open("data.json")
@@ -160,7 +160,7 @@ data, err := json.LoadFromReader(file)
 
 Signature: `func SaveToWriter(writer io.Writer, data any, cfg ...Config) error`
 
-Encodes data as JSON and writes it to an `io.Writer`. Like `SaveToFile`, it pre-parses string / `[]byte` inputs to prevent double escaping, but it performs **no file path validation** (the destination is caller-controlled).
+Encodes data as JSON and writes it to an `io.Writer`. Like `SaveToFile` it parses string / `[]byte` inputs first to prevent double escaping, but performs **no file path validation** (the destination is caller-controlled).
 
 **Parameters**
 
@@ -202,15 +202,15 @@ func main() {
 }
 ```
 
-Writing to an `os.File` works the same way — just pass the file handle.
+Writing to an `os.File` works the same way: pass the file handle.
 
-## Serialization Convenience Methods
+## Serialization of Structs
 
 ### MarshalToFile
 
 Signature: `func MarshalToFile(filePath string, data any, cfg ...Config) error`
 
-Serializes data as JSON and writes it to a file. **In the current version it shares the same "encode + atomic write" pipeline as `SaveToFile`**: it likewise creates parent directories automatically, writes atomically (temp file + rename), and pre-parses string / `[]byte` inputs to avoid double escaping; the passed `cfg` takes effect **in full** (indentation, escaping, number handling — historical versions read only the `Pretty` flag and silently dropped the other encoding options). The two are behaviorally equivalent; pick by semantics: `MarshalToFile` for writing Go values, `SaveToFile` to emphasize "saving a JSON document".
+Serializes data as JSON and writes it to a file. It shares the same encode-and-atomic-write pipeline as `SaveToFile`: parent directories are created automatically, writes are atomic (temp file + rename), string / `[]byte` inputs are parsed first to avoid double escaping, and the passed `cfg` takes effect in full (indentation, escaping, number handling). The two are behaviorally equivalent; choose by semantics: `MarshalToFile` for writing Go values, `SaveToFile` to emphasize saving a JSON document.
 
 **Parameters**
 
@@ -229,7 +229,7 @@ err = json.MarshalToFile("data.json", myStruct, json.PrettyConfig())
 
 Signature: `func UnmarshalFromFile(filePath string, v any, cfg ...Config) error`
 
-Reads JSON from a file and deserializes it into a target variable. A convenience combo of "read file + `Unmarshal`"; reading is bounded by `MaxJSONSize`.
+Reads JSON from a file and deserializes it into a target variable. Equivalent to "read file + `Unmarshal`"; reading is bounded by `MaxJSONSize` (default 100MB).
 
 **Parameters**
 
@@ -289,7 +289,7 @@ func main() {
 
 ## Security: File Path Validation
 
-All file functions (`LoadFromFile` / `SaveToFile` / `MarshalToFile` / `UnmarshalFromFile`) run multi-layer security validation on paths before operating, controlled by `Config.ValidateFilePath` (default `true`). The validation covers the following attack vectors:
+All file functions (`LoadFromFile` / `SaveToFile` / `MarshalToFile` / `UnmarshalFromFile`) run multi-layer security validation on paths before operating, controlled by `Config.ValidateFilePath` (default `true`). They cover these attack vectors:
 
 | Protection | Description |
 |------------|-------------|
@@ -310,12 +310,12 @@ data, err := json.LoadFromFile("config/app.json")
 ```
 
 ::: warning Note
-File path validation always applies to file operations (`LoadFromReader` / `SaveToWriter` involve no paths, hence no validation). When handling user-supplied filenames, these checks are one layer of defense in depth — you should still enforce an allowlist at the application layer.
+File path validation always applies to file operations; `LoadFromReader` / `SaveToWriter` involve no paths and are therefore not validated. When handling user-supplied filenames these checks are one layer of defense in depth — still enforce an allowlist at the application layer.
 :::
 
 ## File Iteration Functions
 
-The json package provides the `ForeachFile` family, which iterates a JSON array / object directly from a file — no manual read + parse needed:
+The json package provides the `ForeachFile` family, which iterates a JSON array or object directly from a file with no manual read-then-parse step:
 
 | Function | Purpose |
 |----------|---------|
@@ -331,7 +331,7 @@ err := json.ForeachFile("users.json", func(key any, item *json.IterableValue) er
 })
 ```
 
-These functions are a convenience combo of `LoadFromFile` + `Foreach`, well suited to large collections. For streaming and memory-optimization details see [Streaming](../../streaming/large-files).
+These functions equal `LoadFromFile` plus a per-item callback. Note that they load the whole file into memory first (bounded by `MaxJSONSize`) and then iterate; for constant-memory processing of large files see [Streaming](../../streaming/large-files).
 
 ## Choosing a Method
 

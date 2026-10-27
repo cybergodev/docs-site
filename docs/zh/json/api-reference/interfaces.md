@@ -1,23 +1,25 @@
 ---
 sidebar_label: "接口定义"
 title: "接口定义 - CyberGo JSON | 扩展接口与 Hook 钩子"
-description: "CyberGo JSON 接口定义汇总扩展契约：Hook/HookContext 钩子拦截与 LoggingHook 等预定义钩子、PathParser 自定义路径解析、DangerousPattern/PatternLevel 安全级别、CustomEncoder/Validator 预留接口及 Marshaler 标准库兼容接口，帮助开发者定制并扩展 JSON 处理与编码行为。"
+description: "CyberGo JSON 接口定义：Hook 钩子、PathParser 路径解析器、DangerousPattern 安全级别与已废弃的 CustomEncoder。"
 sidebar_position: 70
 ---
 
 # 接口定义
 
-json 包提供多个扩展接口，允许自定义 JSON 处理行为。
+本页列出库导出的扩展接口、钩子接口与相关基础类型。每个接口标注了是否已挂接：`Hook`、`PathParser` 与标准库兼容接口直接生效，`CustomEncoder`、`TypeEncoder`、`Validator` 已废弃且不被调用。
 
 ## 编码器接口
 
-::: warning 未连接的扩展字段
-`CustomEncoder` 和 `TypeEncoder` 接口当前版本**已声明但尚未在编码流水线中挂接**。通过 `Config.CustomEncoder` / `Config.CustomTypeEncoders` 设置后不会产生效果，是为未来版本预留的。当前可用的编码自定义方式是实现 `json.Marshaler` 或 `encoding.TextMarshaler` 接口（见[自定义编码器](../extensions/custom-encoder)）。
+::: warning 已废弃的扩展接口
+`CustomEncoder` 和 `TypeEncoder` 接口**已废弃**（源码标注 Deprecated）。用 `Config.CustomEncoder` / `Config.CustomTypeEncoders` 设置的实现**从未被编码流水线调用**，内置编码器不可替换；两个接口在 v1 生命周期内保留。要自定义编码，实现 `json.Marshaler` 或 `encoding.TextMarshaler`（见[自定义编码器](../extensions/custom-encoder)）。
 :::
 
 ### CustomEncoder
 
-自定义 JSON 编码器接口。
+<Badge type="danger" text="已废弃" />
+
+自定义 JSON 编码器接口。实现本接口并赋给 `Config.CustomEncoder` **不会生效**（见上方警告）。
 
 ```go
 type CustomEncoder interface {
@@ -26,40 +28,24 @@ type CustomEncoder interface {
 }
 ```
 
-**使用示例**
+**替代写法**：在自定义类型上实现 `MarshalJSON`，编码时完全接管该类型的 JSON 形态：
 
 ```go
-import stdjson "encoding/json"
+type UpperString string
 
-type UpperCaseEncoder struct{}
-
-func (e *UpperCaseEncoder) Encode(value any) (string, error) {
-    // 自定义编码逻辑
-    switch v := value.(type) {
-    case string:
-        return fmt.Sprintf(`"%s"`, strings.ToUpper(v)), nil
-    default:
-        // 使用标准编码（避免无限递归）
-        data, err := stdjson.Marshal(v)
-        if err != nil {
-            return "", err
-        }
-        return string(data), nil
-    }
+func (s UpperString) MarshalJSON() ([]byte, error) {
+    return []byte(fmt.Sprintf(`"%s"`, strings.ToUpper(string(s)))), nil
 }
 
-// 配置使用
-cfg := json.DefaultConfig()
-cfg.CustomEncoder = &UpperCaseEncoder{}
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
+out, err := json.Marshal(map[string]any{"key": UpperString("value")})
+// out: {"key":"VALUE"} — 无需任何 Config 设置
 ```
 
 ### TypeEncoder
 
-特定类型的编码器接口。
+<Badge type="danger" text="已废弃" />
+
+特定类型的编码器接口。注册到 `Config.CustomTypeEncoders` **不会被编码流水线查询**（见上方警告）。
 
 ```go
 type TypeEncoder interface {
@@ -68,37 +54,17 @@ type TypeEncoder interface {
 }
 ```
 
-**使用示例**
-
-```go
-type TimeEncoder struct{}
-
-func (e *TimeEncoder) Encode(v reflect.Value) (string, error) {
-    if v.Type() == reflect.TypeOf(time.Time{}) {
-        t := v.Interface().(time.Time)
-        return fmt.Sprintf(`"%s"`, t.Format(time.RFC3339)), nil
-    }
-    return "", fmt.Errorf("不支持的类型: %v", v.Type())
-}
-
-// 注册类型编码器
-cfg := json.DefaultConfig()
-cfg.CustomTypeEncoders = map[reflect.Type]json.TypeEncoder{
-    reflect.TypeOf(time.Time{}): &TimeEncoder{},
-}
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
-```
+**替代写法**：按类型定制编码同样走 `MarshalJSON`/`MarshalText`——例如给自定义时间类型实现 `MarshalJSON` 以覆盖默认的 RFC3339Nano 输出（完整示例见[自定义编码器](../extensions/custom-encoder)）。
 
 ## 验证器接口
 
-::: warning 未连接的扩展字段
-`Validator` 接口当前版本**已声明但尚未在操作流水线中挂接**。通过 `Config.CustomValidators` 或 `Config.AddValidator()` 设置后不会产生效果，是为未来版本预留的。当前可用的验证方式是 `ValidateSchema`（见[Schema 校验](./schema)）。
+::: warning 已废弃的扩展接口
+`Validator` 接口**已废弃**（源码标注 Deprecated）：用 `Config.CustomValidators` 或 `Config.AddValidator()` 注册的验证器**从不被任何公开操作执行**，接口在 v1 生命周期内保留。操作前的自定义检查请用 `Config.AddHook` + Before 钩子（如 [`ValidationHook`](../extensions/hooks)），结构校验用 `ValidateSchema`（见[Schema 校验](./schema)）。
 :::
 
 ### Validator
+
+<Badge type="danger" text="已废弃" />
 
 JSON 验证器接口。
 
@@ -110,35 +76,23 @@ type Validator interface {
 }
 ```
 
-**使用示例**
+**替代写法**：用 `ValidationHook` 在操作前执行自定义检查，返回错误即中止操作：
 
 ```go
-type SizeValidator struct {
-    MaxSize int64
-}
-
-func (v *SizeValidator) Validate(jsonStr string) error {
-    // 检查输入数据的大小
-    if int64(len(jsonStr)) > v.MaxSize {
-        return fmt.Errorf("JSON 超过最大大小：%d", v.MaxSize)
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+    if len(jsonStr) > 1024*1024 { // 1MB
+        return fmt.Errorf("JSON 超过最大大小")
     }
     return nil
-}
-
-// 设置验证器
-cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&SizeValidator{MaxSize: 1024 * 1024}} // 1MB
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
+}))
 ```
 
 ## 钩子接口
 
 ### Hook
 
-操作拦截接口，支持前置/后置处理。
+操作拦截接口，分前置与后置两个钩子点。
 
 ```go
 type Hook interface {
@@ -152,15 +106,17 @@ type Hook interface {
 }
 ```
 
-**执行顺序**：多个钩子按注册顺序执行 `Before`（任一返回错误即中止，不再执行后续钩子与操作本身）；`After` 则按**注册的逆序**执行（类似中间件洋葱模型）。钩子内部 panic 会被捕获：`Before` 的 panic 转为错误中止操作，`After` 的 panic 记录日志后跳过该钩子，均不会击穿处理器。
+**执行顺序**：多个钩子按注册顺序执行 `Before`，任一返回错误即中止，后续钩子与操作本身都不再执行。`After` 按**注册的逆序**执行，类似中间件洋葱模型。
+
+钩子内部 panic 会被捕获：`Before` 的 panic 转为错误中止操作，`After` 的 panic 记录日志后跳过该钩子。两者都不会击穿处理器。
 
 ### HookContext
 
-钩子上下文，提供操作信息。
+钩子上下文，携带本次操作的类型、路径、值、活动配置与开始时间。
 
 ```go
 type HookContext struct {
-    Operation string        // 操作类型："get", "set", "delete", "marshal", "unmarshal"
+    Operation string        // 操作类型（源码注释列为："get", "set", "delete", "marshal", "unmarshal"）
     JSONStr   string        // 输入 JSON 字符串（marshal 时可能为空）。安全警告：可能包含敏感数据
     Path      string        // 目标路径（marshal/unmarshal 时可能为空）
     Value     any           // set 操作的值
@@ -171,9 +127,9 @@ type HookContext struct {
 
 | 字段        | 类型       | 说明                                                            |
 | ----------- | ---------- | --------------------------------------------------------------- |
-| `Operation` | `string`   | 操作类型：`"get"`、`"set"`、`"delete"`、`"marshal"`、`"unmarshal"` |
+| `Operation` | `string`   | 操作类型：`"get"`、`"set"`、`"delete"`、`"get_multiple"`、`"set_multiple"`（源码注释另列出 `"marshal"`、`"unmarshal"`） |
 | `JSONStr`   | `string`   | 输入 JSON 字符串（marshal 时可能为空）；**可能包含敏感数据**    |
-| `Path`      | `string`   | 目标路径（marshal/unmarshal 时可能为空）                        |
+| `Path`      | `string`   | 目标路径（marshal/unmarshal 时可能为空）；批量操作时为形如 `(3 paths)` 的占位文本 |
 | `Value`     | `any`      | set 操作要写入的值                                              |
 | `Config`    | `*Config`  | 当前操作使用的活动配置（池化对象，仅在本操作期间有效，钩子不得保留到调用之外） |
 | `StartTime` | `time.Time` | 操作开始时间（在 `After` 调用前设置）                           |
@@ -218,7 +174,7 @@ cfg.Hooks = []json.Hook{&LoggingHook{logger: slog.Default()}}
 
 ### HookFunc
 
-结构体适配器，允许使用函数作为钩子。两个函数字段均可选：未设置的一方按「直通」处理（`Before` 返回 nil，`After` 原样返回结果与错误）。
+结构体适配器，用函数实现钩子。两个函数字段均可选，未设置的一方按「直通」处理：`Before` 返回 `nil`，`After` 原样返回结果与错误。
 
 ```go
 type HookFunc struct {
@@ -258,7 +214,7 @@ p.AddHook(&json.HookFunc{
 
 签名：`func LoggingHook(logger interface{ Info(msg string, args ...any) }) Hook`
 
-创建日志记录钩子。
+创建日志记录钩子：`Before` 记一条开始日志，`After` 记一条完成日志，带 `duration` 与错误文本。路径与错误文本先经内部脱敏再写入，调用方无需另行处理。
 
 ```go
 p.AddHook(json.LoggingHook(slog.Default()))
@@ -268,7 +224,7 @@ p.AddHook(json.LoggingHook(slog.Default()))
 
 签名：`func TimingHook(recorder interface{ Record(op string, duration time.Duration) }) Hook`
 
-创建计时记录钩子。
+创建计时记录钩子：`After` 阶段把 `Operation` 与实际耗时交给 `recorder.Record`。
 
 ```go
 type MetricsRecorder struct{}
@@ -284,7 +240,7 @@ p.AddHook(json.TimingHook(&MetricsRecorder{}))
 
 签名：`func ValidationHook(validator func(jsonStr, path string) error) Hook`
 
-创建输入验证钩子。
+创建输入验证钩子：`Before` 阶段用 `ctx.JSONStr` 与 `ctx.Path` 调用 `validator`，返回错误即中止操作。
 
 ```go
 p.AddHook(json.ValidationHook(func(jsonStr, path string) error {
@@ -299,7 +255,7 @@ p.AddHook(json.ValidationHook(func(jsonStr, path string) error {
 
 签名：`func ErrorHook(handler func(ctx HookContext, err error) error) Hook`
 
-创建错误拦截钩子。
+创建错误拦截钩子：`After` 阶段仅在 `err != nil` 时调用 `handler`，并把它的返回值作为最终错误。
 
 ```go
 p.AddHook(json.ErrorHook(func(ctx json.HookContext, err error) error {
@@ -329,7 +285,7 @@ const (
 )
 ```
 
-**String 方法**：`func (pl PatternLevel) String() string` 返回 `"critical"` / `"warning"` / `"info"`（未知值返回 `"unknown"`），便于日志输出。
+**String 方法**：`func (pl PatternLevel) String() string` 返回 `"critical"` / `"warning"` / `"info"`（未知值返回 `"unknown"`），可直接写入日志字段。
 
 ### DangerousPattern
 
@@ -378,7 +334,7 @@ cfg.AddDangerousPattern(json.DangerousPattern{
 
 ### PathParser
 
-路径解析器接口。
+路径解析器接口。实现后由 `Config.CustomPathParser` 接管全部路径解析。
 
 ```go
 type PathParser interface {
@@ -388,6 +344,8 @@ type PathParser interface {
 ```
 
 **使用示例**
+
+返回的 `[]PathSegment` 由库定义：`Type` 标明段类型，`Key` / `Index` / `End` / `Step` 承载取值，`Flags` 是位打包字段。自定义解析器按下标顺序填充这些字段即可。
 
 ```go
 type CustomPathParser struct{}
@@ -399,7 +357,7 @@ func (p *CustomPathParser) ParsePath(path string) ([]json.PathSegment, error) {
 ```
 
 ::: tip 已挂接的扩展点
-`CustomPathParser` 当前版本**已在路径解析流水线中挂接**：通过 `Config.CustomPathParser` 设置后，所有路径类操作（Get/Set/Delete/迭代）都会调用 `ParsePath` **完全替代**内置解析器；解析结果不进入全局路径段缓存，携带自定义解析器的配置也不会进入处理器配置缓存。解析器 panic 会被捕获并转换为错误，不会击穿进程。与仍属预留的 `CustomEncoder`、`CustomValidators` 不同，本接口可直接使用。
+`CustomPathParser` 已接入路径解析流水线：用 `Config.CustomPathParser` 设置后，所有路径类操作（Get/Set/Delete/迭代）都会调用 `ParsePath`，**完全替代**内置解析器。解析结果不进入全局路径段缓存；携带自定义解析器的配置也不进入处理器配置缓存。解析器 panic 会被捕获并转为错误。与已废弃、不生效的 `CustomEncoder`、`CustomValidators` 不同，本接口可直接使用。
 :::
 
 ## 基础类型
@@ -413,7 +371,7 @@ type Number string
 ```
 
 ::: tip 兼容性说明
-库的 `Number` 类型 100% 兼容 `encoding/json.Number`，可直接替换使用。
+`Number` 的方法集与 `encoding/json.Number` 一致（`String`/`Float64`/`Int64`），并额外实现了 `MarshalJSON` 与 `UnmarshalJSON`：编码时按字面量原样输出、不加引号，解码 `42` 到 `*Number` 无需 `UseNumber`。把 `encoding/json` 的 `Number` 换成这里的 `Number` 后，解码代码无需改动；非法字面量会被拒绝，不会原样写出。
 :::
 
 **方法**：
@@ -449,7 +407,7 @@ if num, ok := obj["large_number"].(json.Number); ok {
 
 ## 标准库兼容接口
 
-`json` 包导出以下与 `encoding/json` 兼容的标准接口，用于自定义类型的编码和解码行为：编码侧为 `Marshaler` 与 `TextMarshaler`（实战见[自定义编码器](../extensions/custom-encoder)），解码侧为 `Unmarshaler` 与 `TextUnmarshaler`。
+`json` 包导出与 `encoding/json` 兼容的四个标准接口，用于自定义类型的编解码。编码侧是 `Marshaler` 与 `TextMarshaler`（实战见[自定义编码器](../extensions/custom-encoder)），解码侧是 `Unmarshaler` 与 `TextUnmarshaler`。
 
 ### Marshaler
 
@@ -469,7 +427,7 @@ type Unmarshaler interface {
 }
 ```
 
-实现 `UnmarshalJSON` 的类型在解码时接管自身的解析：解码器把对应的 JSON 值原样传入，由类型自行填充目标，方法返回的错误原样向上传播。通常实现于**指针接收者**（解码需要修改接收者自身）。
+实现 `UnmarshalJSON` 的类型在解码时接管自身的解析。解码器把对应的 JSON 值原样传入，由类型自行填充目标；方法返回的错误原样向上传播。因解码要修改接收者，通常实现于**指针接收者**。
 
 ### TextMarshaler
 
@@ -479,7 +437,7 @@ type TextMarshaler interface {
 }
 ```
 
-实现 `MarshalText` 的类型被编码为以文本内容为值的 JSON 字符串（自动补引号与转义）。
+实现 `MarshalText` 的类型被编码为 JSON 字符串，字符串的值即文本内容；引号与转义由编码器补充。
 
 ### TextUnmarshaler
 
@@ -520,7 +478,7 @@ func (p *Person) UnmarshalJSON(data []byte) error {
 
 ### Result[T]
 
-类型安全的操作结果，提供泛型支持的结果处理。
+带类型参数的操作结果，把值、是否存在与错误合成一个返回值。库内没有直接返回它的函数，由你手动构造。
 
 ```go
 type Result[T any] struct {
@@ -540,6 +498,8 @@ type Result[T any] struct {
 
 **使用示例**：
 
+下面的调用展示泛型取值，返回的是 `T` 而不是 `Result[T]`；`Result[T]` 的构造场景见[泛型操作](./generics#result-t-类型)。
+
 ```go
 // 使用泛型获取值
 name := json.GetTyped[string](data, "user.name")
@@ -553,7 +513,7 @@ name = json.GetTyped[string](data, "user.name", "unknown")
 
 ### AccessResult
 
-动态类型访问结果，由 Processor.SafeGet 返回。
+动态类型访问结果，由 `SafeGet()` 返回。
 
 ```go
 type AccessResult struct {
@@ -577,11 +537,11 @@ func (r AccessResult) AsBool() (bool, error)              // 严格转换
 
 | 方法 | 转换行为 | 说明 |
 |------|----------|------|
-| `AsString()` | 严格 | 仅接受 string 类型，非字符串返回错误 |
-| `AsStringConverted()` | 格式化 | 使用 fmt.Sprintf 将任意值转为字符串表示 |
-| `AsInt()` | 严格 | 不转换 bool 到 int，仅接受整数和可解析的数字 |
-| `AsFloat64()` | 严格 | 不转换 bool 到 float，仅接受浮点数和可解析的数字 |
-| `AsBool()` | 严格 | 仅接受 bool 和可解析的字符串（`strconv.ParseBool` 规则：`1/t/true/True/TRUE`、`0/f/false/False/FALSE`） |
+| `AsString()` | 严格 | 仅接受 `string`，非字符串返回包装 `ErrTypeMismatch` 的错误 |
+| `AsStringConverted()` | 格式化 | 用 `fmt.Sprintf("%v")` 输出任意值的字符串表示 |
+| `AsInt()` | 严格 | 拒绝 `bool`；接受整数、整值浮点数与可解析的十进制字符串 |
+| `AsFloat64()` | 严格 | 拒绝 `bool`；接受数值类型与可解析的字符串 |
+| `AsBool()` | 严格 | 仅接受 `bool` 与 `strconv.ParseBool` 可解析的字符串 |
 
 ```go
 result := p.SafeGet(data, "user.age")
@@ -597,7 +557,7 @@ str, err := result.AsStringConverted() // 如 30 -> "30"
 
 ### Schema
 
-JSON Schema 定义为结构体，支持类型安全的 Schema 定义。
+把 JSON Schema 定义为 Go 结构体，字段与 JSON Schema 关键字同名。约束是否生效见 [Schema 校验](./schema#schema-的创建方式)。
 
 ```go
 type Schema struct {
@@ -642,7 +602,7 @@ schema := &json.Schema{
 
 ### SchemaConfig
 
-Schema 验证配置。用于通过 `NewSchema` 创建 Schema 实例。
+Schema 验证配置，作为 `NewSchema` 的入参。
 
 ```go
 type SchemaConfig struct {
@@ -698,6 +658,6 @@ func (ve *ValidationError) Error() string
 
 ## 相关
 
-- [Hook 钩子系统](../extensions/hooks) - 钩子详细使用指南
-- [Schema 校验](./schema) - Schema 验证详细指南
-- [CustomEncoder](../extensions/custom-encoder) - 自定义编码器指南
+- [Hook 钩子系统](../extensions/hooks)：钩子的用法与执行顺序
+- [Schema 校验](./schema)：Schema 验证完整规则
+- [自定义编码器](../extensions/custom-encoder)：用 `MarshalJSON`/`MarshalText` 定制编码

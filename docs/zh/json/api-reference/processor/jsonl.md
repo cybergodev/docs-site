@@ -1,16 +1,16 @@
 ---
 sidebar_label: "JSONL"
 title: "Processor JSONL 方法 - CyberGo JSON | StreamJSONL 流式读写"
-description: "CyberGo JSON 的 Processor 提供 StreamJSONL 流式逐行读取及并行、文件直读变体，配合 MapJSONL/ReduceJSONL 等函数式变换，回调 panic 被捕获为错误返回、Break 可干净提前终止，适合日志分析与大规模 JSONL 数据的流式处理场景。"
+description: "Processor 的 JSONL 方法：StreamJSONL 逐行读取与并行、分块、文件变体，MapJSONL/ReduceJSONL 变换与转换。"
 sidebar_position: 80
 ---
 
 # Processor JSONL 方法
 
-Processor 提供完整的 JSONL（JSON Lines）流式处理能力，支持逐行处理、并行处理、批量处理和函数式操作。
+JSONL（JSON Lines）处理分为四组：流式读取、函数式变换、JSONL 编解码转换，以及遗留的 `NDJSONProcessor`。所有引擎共用同一组 `JSONL*` 配置字段与安全限制。
 
 ::: tip 完整教程
-需要 JSONL/NDJSON 的概念说明和流式处理实战？参阅 [JSONL 处理器](../../streaming/jsonl) 完整教程。
+JSONL/NDJSON 的概念说明与流式处理实战见 [JSONL 处理器](../../streaming/jsonl)。
 :::
 
 ## 流式读取方法
@@ -19,7 +19,7 @@ Processor 提供完整的 JSONL（JSON Lines）流式处理能力，支持逐行
 
 签名：`func (p *Processor) StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-流式处理 JSONL 数据，逐行读取并调用回调函数。回调返回 `nil` 继续处理下一行，返回 `item.Break()` 干净地提前终止（整体返回 `nil`），返回其他错误立即停止并返回该错误。回调内的 panic 会被捕获并转为错误返回，不会击穿进程。
+流式处理 JSONL 数据，逐行读取并调用回调函数。回调返回 `nil` 继续处理下一行，返回 `item.Break()` 干净地提前终止（整体返回 `nil`），返回其他错误立即停止并返回该错误。回调内的 panic 会被捕获并转为错误返回。
 
 **参数**
 
@@ -49,7 +49,7 @@ err := processor.StreamJSONL(file, func(lineNum int, item *json.IterableValue) e
 
 签名：`func (p *Processor) StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-并行处理 JSONL 数据，使用多个工作协程加速处理。
+并行处理 JSONL 数据，用多个工作协程分摊处理。适用于回调内的 CPU 密集计算（转换、聚合）；I/O 密集的场景用单线程 `StreamJSONL` 更省开销。
 
 **参数**
 
@@ -75,17 +75,15 @@ err := processor.StreamJSONLParallel(file, 8, func(lineNum int, item *json.Itera
 fmt.Printf("处理了 %d 行\n", count)
 ```
 
-::: tip 性能建议
-- 适合 CPU 密集型操作（数据转换、计算）
-- I/O 密集型操作建议使用单线程 `StreamJSONL`
-- workers 数量建议设置为 CPU 核心数
+::: tip 工作协程数量
+`workers` 参数显式指定且大于 0 时以它为准，`≤0` 回退 4。取值建议接近 CPU 核心数。
 :::
 
 ### StreamJSONLParallelWithContext
 
 签名：`func (p *Processor) StreamJSONLParallelWithContext(ctx context.Context, reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-带上下文的并行处理 JSONL 数据，支持取消和超时控制。
+带上下文的并行处理，用于取消与超时控制。读取循环每读一行、每个工作协程每取一个任务都会检查 `ctx.Done()`；取消后停止投递新行，并返回 `ctx.Err()`（若此前已有回调错误或读取错误，则优先返回那个错误）。
 
 **参数**
 
@@ -117,14 +115,14 @@ if err != nil {
 
 签名：`func (p *Processor) StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
 
-分块处理 JSONL 数据，每次处理一批元素。
+分块处理 JSONL 数据，每攒满 `chunkSize` 个元素调用一次回调。`chunkSize` 决定每批数量，`≤0` 时按 1000 处理。
 
 **参数**
 
 | 名称 | 类型 | 说明 |
 |------|------|------|
 | `reader` | `io.Reader` | JSONL 数据源 |
-| `chunkSize` | `int` | 每批元素数量 |
+| `chunkSize` | `int` | 每批元素数量，`≤0` 时按 1000 处理 |
 | `fn` | `func(chunk []*IterableValue) error` | 批量处理函数 |
 
 ```go
@@ -153,7 +151,7 @@ err := processor.StreamJSONLChunked(file, 100, func(chunk []*json.IterableValue)
 
 签名：`func (p *Processor) StreamJSONLFile(filename string, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-直接从文件流式处理 JSONL 数据。
+从文件路径直接打开并流式处理 JSONL 数据，等价于打开文件后调用 `StreamJSONL`；文件路径先做安全校验。
 
 ```go
 processor, _ := json.New()
@@ -175,7 +173,7 @@ err := processor.StreamJSONLFile("logs.jsonl", func(lineNum int, item *json.Iter
 
 签名：`func (p *Processor) ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-迭代 JSONL 数据的别名方法，行为与 `StreamJSONL` 相同。
+`StreamJSONL` 的别名，行为相同。
 
 ```go
 err := processor.ForeachJSONL(file, func(lineNum int, item *json.IterableValue) error {
@@ -190,7 +188,7 @@ err := processor.ForeachJSONL(file, func(lineNum int, item *json.IterableValue) 
 
 签名：`func (p *Processor) MapJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) (any, error), cfg ...Config) ([]any, error)`
 
-将 JSONL 数据映射为新格式，返回转换后的切片。
+将 JSONL 数据映射为新格式，返回转换后的切片。回调返回的 `(value, nil)` 追加进结果；返回非 nil 错误时立即中止，整体返回该错误。
 
 ```go
 processor, _ := json.New()
@@ -212,7 +210,7 @@ names, err := processor.MapJSONL(file, func(lineNum int, item *json.IterableValu
 
 签名：`func (p *Processor) ReduceJSONL(reader io.Reader, initial any, fn func(acc any, item *IterableValue) any, cfg ...Config) (any, error)`
 
-将 JSONL 数据归约为单个值。
+从 `initial` 出发逐行折叠，把 JSONL 数据归约为单个值。
 
 ```go
 processor, _ := json.New()
@@ -235,7 +233,7 @@ fmt.Printf("总销售额：%.2f\n", total.(float64))
 
 签名：`func (p *Processor) FilterJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) ([]*IterableValue, error)`
 
-过滤 JSONL 数据，返回满足条件的元素。
+过滤 JSONL 数据，返回判定函数返回 `true` 的元素。结果切片保存全部命中项，内存占用随命中数增长。
 
 ```go
 processor, _ := json.New()
@@ -257,7 +255,7 @@ fmt.Printf("发现 %d 条错误日志\n", len(errors))
 
 签名：`func (p *Processor) CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
 
-收集所有 JSONL 数据到切片。
+收集所有 JSONL 记录到切片。全部记录会驻留内存，大文件请改用 `StreamJSONL`。
 
 ```go
 processor, _ := json.New()
@@ -283,7 +281,7 @@ fmt.Printf("收集了 %d 条记录\n", len(items))
 
 签名：`func (p *Processor) FirstJSONL(reader io.Reader, predicate func(item *IterableValue) bool, cfg ...Config) (*IterableValue, bool, error)`
 
-查找第一个满足条件的元素。
+查找第一个满足判定函数的元素。找到后立即停止读取剩余行；未找到时返回 `(nil, false, nil)`。
 
 **返回值**
 
@@ -316,7 +314,7 @@ if found {
 
 ## JSONL 转换方法
 
-Processor 还提供与[包级 JSONL 转换函数](../functions/jsonl#jsonl-处理函数)对应的三个方法——`ParseJSONL`、`ToJSONL`、`ToJSONLString`，签名与包级版本一致（含尾随 `cfg ...Config`），适合复用已配置的处理器：
+另有三个方法与[包级 JSONL 转换函数](../functions/jsonl#jsonl-处理函数)对应：`ParseJSONL`、`ToJSONL`、`ToJSONLString`。签名与包级版本相同（含尾随 `cfg ...Config`），用于复用已配置的处理器：
 
 ### ParseJSONL
 
@@ -343,10 +341,12 @@ Processor 还提供与[包级 JSONL 转换函数](../functions/jsonl#jsonl-处�
 <Badge type="danger" text="已废弃" />
 
 ::: warning 已废弃（永久弃用别名）
-`NDJSONProcessor` / `NewNDJSONProcessor` 是**永久弃用的别名**：新代码请用 `json.New(cfg)` 创建 `Processor`，配合 [`StreamJSONL`](#streamjsonl) 家族（[`StreamJSONL`](#streamjsonl)、[`StreamJSONLFile`](#streamjsonlfile) 及并行/分块变体）——两者由同一引擎驱动、受同一组安全限制约束，且提供 `IterableValue` 类型化取值。`NDJSONProcessor` 在 v1 生命周期内保留、不会移除。
+`NDJSONProcessor` / `NewNDJSONProcessor` 是**永久弃用的别名**。新代码用 `json.New(cfg)` 创建 `Processor`，配合 [`StreamJSONL`](#streamjsonl) 家族（[`StreamJSONL`](#streamjsonl)、[`StreamJSONLFile`](#streamjsonlfile) 及并行、分块变体）：两者由同一引擎驱动，受同一组安全限制约束，且 `StreamJSONL` 侧提供 `IterableValue` 类型化取值。`NDJSONProcessor` 在 v1 生命周期内保留、不会移除。
 :::
 
-`NDJSONProcessor` 是独立于 `Processor` 的 NDJSON（换行分隔 JSON）逐行处理器：回调直接收到 `map[string]any`（而非 `IterableValue`），无需创建 `Processor` 实例，且**始终**跳过空行。作为**遗留 API** 保留（新代码请用 `StreamJSONL` 系列）；需要类型化取值、并行处理或 Map/Reduce/Filter 函数式组合时，同样用本页上方的 `StreamJSONL` 系列。以下 API 参考对既有代码仍有查阅价值。
+`NDJSONProcessor` 是独立于 `Processor` 的 NDJSON（换行分隔 JSON）逐行处理器：回调直接收到 `map[string]any`，而非 `IterableValue`，且无需创建 `Processor` 实例；行跳过规则、单行上限、内存上限与嵌套深度检查与 `StreamJSONL` 家族相同。
+
+它作为遗留 API 保留，仅供既有代码查阅。新代码一律用 `StreamJSONL` 系列：需要类型化取值、并行处理或 Map/Reduce/Filter 组合时，用上方的对应方法。
 
 ### NewNDJSONProcessor
 
@@ -354,13 +354,13 @@ Processor 还提供与[包级 JSONL 转换函数](../functions/jsonl#jsonl-处�
 
 签名：`func NewNDJSONProcessor(cfg ...Config) *NDJSONProcessor`
 
-`NewNDJSONProcessor` 接受可选 cfg，遵循统一 Config 模式。已弃用（见上方小节警告）：新代码请用 `json.New(cfg)` + `StreamJSONL` 家族。
+`NewNDJSONProcessor` 接受可选 cfg，不传时使用 `DefaultConfig()`。已弃用（见上方警告），新代码用 `json.New(cfg)` 加 `StreamJSONL` 家族。
 
 **参数**
 
 | 名称 | 类型 | 说明 |
 |------|------|------|
-| `cfg` | `...Config` | 可选配置，不传时使用 `DefaultConfig()`；读取缓冲区取 `JSONLBufferSize`（≤0 回退 64KB） |
+| `cfg` | `...Config` | 可选配置。构造时调用 `Validate` 钳制各字段（错误被丢弃），因此 `JSONLBufferSize` 非正值会被抬到 4KB，读取缓冲区取该值 |
 
 其余 JSONL 字段（`JSONLMaxLineSize`、`JSONLMaxMemory`、`JSONLSkipComments`、`JSONLContinueOnErr`、`MaxNestingDepthSecurity`）在处理时生效，含义见[配置选项](#配置选项)。
 
@@ -381,7 +381,7 @@ Processor 还提供与[包级 JSONL 转换函数](../functions/jsonl#jsonl-处�
 
 签名：`func (np *NDJSONProcessor) ProcessReader(reader io.Reader, fn func(lineNum int, obj map[string]any) error) error`
 
-`ProcessReader` 从 `io.Reader` 逐行处理 NDJSON：每行解析为 `map[string]any` 后调用回调，回调 panic 会被捕获并转为错误返回。安全限制与 `StreamJSONL` 系列一致——单行大小受 `JSONLMaxLineSize` 约束（≤0 回退 1MB）、总处理量受 `JSONLMaxMemory` 约束（回退 `MaxMemory`）、每行解析前按 `MaxNestingDepthSecurity` 检查嵌套深度；`JSONLContinueOnErr=true` 时跳过解析失败的行继续处理。
+`ProcessReader` 从 `io.Reader` 逐行处理 NDJSON：每行解析为 `map[string]any` 后调用回调，回调 panic 会被捕获并转为错误返回。安全限制与 `StreamJSONL` 系列相同：单行大小受 `JSONLMaxLineSize` 约束（默认 1MB，`Validate` 会把非正值钳制到下限 1KB），累计字节受 `JSONLMaxMemory` 约束，每行解析前按 `MaxNestingDepthSecurity` 检查嵌套深度。`JSONLContinueOnErr=true` 时跳过解析失败的行继续处理。
 
 **参数**
 
@@ -400,7 +400,7 @@ err := np.ProcessReader(strings.NewReader(`{"id":1}`), func(lineNum int, obj map
 })
 ```
 
-**完整示例**（空行始终被跳过，行号保持原始物理行号）：
+**完整示例**（仅空白字符的行始终跳过，行号保持原始物理行号）：
 
 ```go
 package main
@@ -442,28 +442,30 @@ func main() {
 
 ## 配置选项
 
-JSONL 处理行为可通过 `Config` 的以下字段配置：
+JSONL 处理行为由 `Config` 的以下字段控制：
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `JSONLBufferSize` | `int` | 65536 (64KB) | 读取缓冲区大小 |
-| `JSONLMaxLineSize` | `int` | 1048576 (1MB) | 单行最大字节数 |
-| `JSONLSkipEmpty` | `bool` | `true` | 跳过空行 |
-| `JSONLSkipComments` | `bool` | `false` | 跳过 `#` 或 `//` 注释 |
-| `JSONLContinueOnErr` | `bool` | `false` | 解析错误时继续（`true` 时所有 JSONL 引擎——含本页 `StreamJSONL` 系列、`NDJSONProcessor` 与 `StreamLinesInto`——跳过坏行继续；`false` 时立即中止并返回带行号的错误） |
-| `JSONLWorkers` | `int` | 4 | 并行处理工作协程数 |
-| `JSONLChunkSize` | `int` | 1000 | 分块处理每批大小 |
-| `JSONLMaxMemory` | `int64` | 104857600 (100MB) | 最大内存使用 |
+| `JSONLBufferSize` | `int` | 65536（64KB） | 读取缓冲区初始容量；`Validate` 把非正值钳制到 4KB 下限，上限 1MB |
+| `JSONLMaxLineSize` | `int` | 1048576（1MB） | 单行最大字节数；`Validate` 钳制到 1KB–100MB，超出返回 `bufio.ErrTooLong` |
+| `JSONLSkipEmpty` | `bool` | `true` | 跳过空行。当前所有引擎对仅空白字符的行**始终**跳过，因此设成 `false` 不改变行为 |
+| `JSONLSkipComments` | `bool` | `false` | 跳过以 `#` 或 `//` 开头的行 |
+| `JSONLContinueOnErr` | `bool` | `false` | 解析错误时继续。`true` 时所有 JSONL 引擎（`StreamJSONL` 系列、`NDJSONProcessor`、`StreamLinesInto`）跳过坏行；`false` 时立即中止并返回带行号的错误 |
+| `JSONLMaxMemory` | `int64` | 104857600（100MB） | 累计处理字节上限，超出返回 `ErrSizeLimit`；`Validate` 钳制到 10MB–1GB |
+| `JSONLWorkers` | `int` | 4 | 当前没有代码读取该字段来改变行为；实际并发数由 `StreamJSONLParallel` 的 `workers` 参数决定（`≤0` 回退 4） |
+| `JSONLChunkSize` | `int` | 1000 | 当前没有代码读取该字段来改变行为；实际分块大小由 `StreamJSONLChunked` 的 `chunkSize` 参数决定（`≤0` 回退 1000） |
 
-::: tip per-call cfg 覆盖处理器固化配置
-本页方法末尾的可选 `cfg ...Config` **仅对本次调用生效**：提供的 cfg 会整体替换处理器的 JSONL 相关设置（缓冲区/单行上限、内存上限、嵌套深度、`JSONLSkipComments`、`JSONLContinueOnErr` 等）；省略时使用 `New(cfg)` 时固化的配置。另注意：`StreamJSONLParallel` 的显式 `workers` 参数、`StreamJSONLChunked` 的显式 `chunkSize` 参数**优先于** `JSONLWorkers` / `JSONLChunkSize` 字段。此外每行在解析前还按 `MaxNestingDepthSecurity` 做嵌套深度检查，防止深层嵌套载荷撑爆栈。
+::: tip per-call cfg 只作用于本次调用
+方法末尾的可选 `cfg ...Config` 替换处理器固化的 JSONL 设置（缓冲区、单行上限、内存上限、`JSONLSkipComments`、`JSONLContinueOnErr` 等），省略时用 `New(cfg)` 固化的配置。
 :::
+
+每行在解析前还按 `MaxNestingDepthSecurity` 检查嵌套深度。
 
 ```go
 cfg := json.DefaultConfig()
 cfg.JSONLSkipComments = true     // 跳过注释行
 cfg.JSONLContinueOnErr = true    // 解析错误时继续
-cfg.JSONLWorkers = 8             // 8 个并行 worker
+cfg.JSONLMaxLineSize = 4 << 20   // 单行上限放宽到 4MB
 
 processor, _ := json.New(cfg)
 defer processor.Close()
@@ -526,10 +528,7 @@ import (
 )
 
 func main() {
-	cfg := json.DefaultConfig()
-	cfg.JSONLWorkers = 16 // 16 个并行 worker
-
-	processor, _ := json.New(cfg)
+	processor, _ := json.New()
 	defer processor.Close()
 
 	file, _ := os.Open("large_data.jsonl")
@@ -537,6 +536,7 @@ func main() {
 
 	var processed int64
 
+	// 第二个参数 16 即并行 worker 数
 	err := processor.StreamJSONLParallel(file, 16, func(lineNum int, item *json.IterableValue) error {
 		// CPU 密集型处理（替换为你的业务逻辑）
 		_ = item

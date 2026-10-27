@@ -7,7 +7,7 @@ sidebar_position: 8
 
 # ComponentFactory API
 
-`ComponentFactory` creates and manages components shared between Loader and Parser, providing clear lifecycle management.
+`ComponentFactory` creates and owns the components a Loader and its parsers share — the validator, the auditor, and the variable expander — so all of them see one consistent set of rules.
 
 ## Type Definition
 
@@ -22,11 +22,21 @@ type ComponentFactory struct {
 - Manage component lifecycle
 - Support custom parser access to internal components
 
-**Thread safety:** All methods of ComponentFactory are thread-safe.
+**Thread safety:** every method is safe to call from multiple goroutines.
 
 ---
 
 ## Methods
+
+`ComponentFactory` provides five methods (qualified names like `ComponentFactory.Validator`):
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `ComponentFactory.Validator` | `Validator` | Shared key/value validator |
+| `ComponentFactory.Auditor` | `FullAuditLogger` | Shared audit logger |
+| `ComponentFactory.Expander` | `VariableExpander` | Shared variable expander |
+| `ComponentFactory.Close` | `error` | Release resources (idempotent; repeated calls return nil) |
+| `ComponentFactory.IsClosed` | `bool` | Whether the factory has been closed |
 
 ### Validator
 
@@ -34,7 +44,7 @@ type ComponentFactory struct {
 func (f *ComponentFactory) Validator() Validator
 ```
 
-Returns the validator component, used for key name and value validation.
+Returns the shared validator, which checks key names and values. A nil receiver returns nil.
 
 ```go
 // Use in a custom parser
@@ -57,7 +67,7 @@ if err := validator.ValidateValue("some value"); err != nil {
 func (f *ComponentFactory) Auditor() FullAuditLogger
 ```
 
-Returns the audit logging component, providing full audit logging capabilities.
+Returns the shared audit logger. A nil receiver returns nil.
 
 ```go
 auditor := factory.Auditor()
@@ -75,7 +85,7 @@ _ = auditor.LogWithDuration(env.ActionParse, "", "parsed", true, time.Since(star
 func (f *ComponentFactory) Expander() VariableExpander
 ```
 
-Returns the variable expander component, used for `${VAR}` syntax variable expansion.
+Returns the shared variable expander, which resolves `${VAR}` references.
 
 ```go
 expander := factory.Expander()
@@ -90,15 +100,18 @@ expanded, err := expander.Expand("${BASE_URL}/api")
 func (f *ComponentFactory) Close() error
 ```
 
-Releases resources held by the factory. After closing, the factory and components created through it should not be used anymore.
+Releases the resources the factory holds. Once closed, neither the factory nor the components created through it are usable.
+
+**Returns:**
+- `error` - the auditor's `Close()` error; nil when already closed or on a nil receiver
 
 **Behavior:**
-- Safe to close, multiple calls return nil
-- Releases auditor resources
-- Uses atomic operations to ensure thread safety
+- Safe to call repeatedly; every call returns nil
+- Closes the auditor when it implements `io.Closer`
+- Uses atomic operations for thread safety
 
 ```go
-// Usually managed automatically by the Loader
+// Managed by the Loader; you rarely call this directly
 loader, _ := env.New(cfg)
 defer loader.Close()  // Automatically closes ComponentFactory
 ```
@@ -111,7 +124,7 @@ defer loader.Close()  // Automatically closes ComponentFactory
 func (f *ComponentFactory) IsClosed() bool
 ```
 
-Checks whether the factory has been closed.
+Reports whether the factory has been closed. A nil receiver counts as closed.
 
 ```go
 if factory.IsClosed() {
@@ -125,7 +138,7 @@ if factory.IsClosed() {
 
 ### Automatic Creation (Recommended)
 
-ComponentFactory is automatically created and managed when a Loader is created:
+`New()` creates the ComponentFactory and ties its lifetime to the loader.
 
 ```go
 cfg := env.DefaultConfig()
@@ -136,7 +149,7 @@ defer loader.Close()  // Automatically closes the factory
 
 ### Using in a Custom Parser
 
-When registering a custom parser, use ComponentFactory to get the validator and auditor:
+A custom parser receives the ComponentFactory as a factory argument. Use it to obtain the validator and auditor:
 
 ```go
 type CustomParser struct {
@@ -153,11 +166,8 @@ func newCustomParser(cfg env.Config, factory *env.ComponentFactory) *CustomParse
     }
 }
 
-// Define custom format constant (recommend using 100+ to avoid conflicts)
-const FormatCustom env.FileFormat = 100
-
-// Register parser
-env.RegisterParser(FormatCustom, func(cfg env.Config, factory *env.ComponentFactory) (env.EnvParser, error) {
+// Register: LoadFiles routes by extension only, so unknown extensions all land on FormatAuto
+env.RegisterParser(env.FormatAuto, func(cfg env.Config, factory *env.ComponentFactory) (env.EnvParser, error) {
     return newCustomParser(cfg, factory), nil
 })
 ```
@@ -185,9 +195,9 @@ Validator  Auditor  Expander
 ```
 
 :::warning
-- Each Loader typically has its own ComponentFactory
-- After calling Close(), all components created through that factory should not be used anymore
-- The factory is thread-safe and can be accessed concurrently
+- Every `New(cfg)` call builds a fresh ComponentFactory owned by that loader and closed by its `Close()`. The objects behind `ComponentConfig.CustomValidator` / `CustomAuditor` / `CustomExpander` are shared across loaders and must be safe for concurrent use.
+- After `Close()`, do not use any component created through that factory.
+- The factory is thread-safe, so concurrent access is allowed.
 :::
 
 ---
@@ -200,16 +210,25 @@ Validator  Auditor  Expander
 func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
 ```
 
-Creates a JSON-format audit handler that outputs structured logs.
+Creates an audit handler that writes one JSON object per event.
 
 **Parameters:**
-- `w` - output target (e.g., `os.Stdout`, a file)
+- `w` - output target such as an opened file. Must be a non-nil writer: passing nil makes `Log` panic with a nil pointer dereference (reached through the auditor, that panic is recovered as an error and the event is lost)
 
 ```go
+f, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+
 cfg := env.ProductionConfig()
 cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+cfg.AuditHandler = env.NewJSONAuditHandler(f)
 ```
+
+:::warning Close closes the writer
+`JSONAuditHandler.Close()` calls `Close()` on the writer when it implements `io.Closer`. Do not pass `os.Stdout`, or any writer you still need elsewhere, or `loader.Close()` closes it too. If you need output on the standard streams, use `NewLogAuditHandler` instead: it does not close the underlying writer.
+:::
 
 **Output example:**
 ```json
@@ -224,10 +243,10 @@ cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
 func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
 ```
 
-Creates a standard log format audit handler.
+Creates an audit handler that writes through a `log.Logger`.
 
 **Parameters:**
-- `logger` - standard log.Logger instance
+- `logger` - the `log.Logger` to write through. When nil, the default logger is used (stderr, `[AUDIT] ` prefix, with timestamp)
 
 ```go
 import "log"
@@ -238,10 +257,15 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 
 **Output example:**
 ```text
-[AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=parse success=true reason="parsed: .env"
+[AUDIT] 2024/01/15 10:30:00 action=set key=[MASKED] success=true reason="loaded"
+[AUDIT] 2024/01/15 10:30:00 action=file_access success=true reason="file loaded: .env" duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="loaded files" duration=1.23ms
 ```
 
-Events are emitted as key-value pairs — `action`, `key` (omitted when the event has no key), `success`, `reason` (quoted), plus optional `file` and `duration` (below 1ms shown in μs, otherwise in ms); the `[AUDIT]` prefix and timestamp come from the `log.Logger` you pass in.
+Events are emitted as key-value pairs: `action`, `success`, and the quoted `reason`, plus optional `file` and `duration`. The `key` pair is omitted when the event has no key: `ActionLoad` and successful `ActionParse` events carry no key name, while `ActionSet` does — as does a failing `ActionParse` (a duplicate key or an over-long key) — with sensitive keys masked to `[MASKED]` by `MaskValue`. `duration` is printed only when positive: below 1ms in μs, otherwise in ms with two decimals.
+
+The `[AUDIT]` prefix and the timestamp come from the `log.Logger` you pass in.
 
 ---
 
@@ -251,13 +275,15 @@ Events are emitted as key-value pairs — `action`, `key` (omitted when the even
 func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 ```
 
-Creates a channel audit handler for asynchronous processing of audit events.
+Creates an audit handler that hands events to a channel you own, for asynchronous processing.
 
 **Parameters:**
-- `ch` - audit event channel
+- `ch` - channel that receives the events
 
 :::warning Channel ownership
-`ChannelAuditHandler` does **not own** the channel, and `Close()` will **not** close the underlying channel. The caller must close the channel themselves to signal the receiver to stop. Additionally, when the channel buffer is full, `Log()` will block — a buffered channel is recommended.
+`ChannelAuditHandler` does **not own** the channel, and `Close()` does **not** close it. The caller must close the channel to signal the receiver to stop, and only after the loader using this handler is closed with no `Log` call in flight. Closing early makes the next `Log` panic with send on a closed channel. `Log()` blocks when the channel buffer is full, so pass a buffered channel.
+
+A nil channel never blocks forever: `Log()` returns an error for every event and the event is dropped. That error is not reported to `LoadFiles`, `Set`, or other callers; it surfaces as an audit failure only when `AuditFailClosed` is enabled. With `AuditFailClosed` disabled, passing a nil channel is therefore equivalent to silently discarding every audit event.
 :::
 
 ```go
@@ -280,7 +306,7 @@ go func() {
 func NewNopAuditHandler() *NopAuditHandler
 ```
 
-Creates a no-op audit handler for disabling audit logging.
+Creates a handler that discards every event. Use it to keep `AuditEnabled` semantics while silencing output.
 
 ```go
 cfg.AuditEnabled = true
@@ -295,7 +321,7 @@ cfg.AuditHandler = env.NewNopAuditHandler() // Logs nothing
 func NewCloseableChannelHandler(bufferSize int) *CloseableChannelHandler
 ```
 
-Creates a closeable audit handler that owns its own buffered channel. Unlike `ChannelAuditHandler` which accepts an external channel, `CloseableChannelHandler` creates and owns its own buffered channel. Calling `Close()` closes the handler and the channel. Use `Channel()` to receive events.
+Creates a closeable audit handler that owns its buffered channel. Unlike `ChannelAuditHandler`, which takes an external channel, `CloseableChannelHandler` creates the channel itself, and `Close()` shuts down the handler and closes that channel. Receive events with `Channel()`.
 
 **Parameters:**
 - `bufferSize` - buffered channel size (negative values are treated as 0)
@@ -313,19 +339,23 @@ go func() {
 
 #### CloseableChannelHandler Methods
 
-In addition to implementing the `AuditHandler` interface (`Log` / `Close`), `CloseableChannelHandler` provides the following specific methods:
+`CloseableChannelHandler` implements the `AuditHandler` interface (`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`) and adds three methods:
 
 ```go
 func (h *CloseableChannelHandler) Channel() <-chan AuditEvent
+func (h *CloseableChannelHandler) DroppedEvents() int64
 func (h *CloseableChannelHandler) IsClosed() bool
 ```
 
 **Method description:**
 
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `Channel` | `func (h *CloseableChannelHandler) Channel() <-chan AuditEvent` | Returns the internal read-only channel for consuming audit events. The channel is closed when `Close()` is called, and the `range` loop exits accordingly |
-| `IsClosed` | `func (h *CloseableChannelHandler) IsClosed() bool` | Checks whether the handler has been closed (thread-safe, can be called concurrently) |
+| Method | Purpose |
+|--------|---------|
+| `CloseableChannelHandler.Log` | Sends an event. On a full buffered channel the send is **non-blocking**: the event is dropped and an error returned. An unbuffered channel (capacity 0) blocks until a receiver is ready or the handler closes. |
+| `CloseableChannelHandler.Close` | Shuts the handler down and closes its owned channel, so `range` consumer loops exit. Safe to call repeatedly. |
+| `CloseableChannelHandler.Channel` | Returns the internal read-only channel for consuming audit events |
+| `CloseableChannelHandler.IsClosed` | Whether the handler has been closed (thread-safe; safe to call concurrently) |
+| `CloseableChannelHandler.DroppedEvents` | Cumulative count of dropped events: full-buffer drops plus sends attempted after `Close`. The counter never resets. |
 
 ```go
 handler := env.NewCloseableChannelHandler(64)
@@ -373,6 +403,12 @@ func (fs OSFileSystem) Unsetenv(key string) error
 func (fs OSFileSystem) LookupEnv(key string) (string, bool)
 ```
 
+**Mapping to the standard library:** `OSFileSystem.Open`, `OSFileSystem.OpenFile`, `OSFileSystem.Stat`, `OSFileSystem.MkdirAll`, `OSFileSystem.Remove`, and `OSFileSystem.Rename` each forward to the same-named `os` package call.
+
+`OSFileSystem.Getenv`, `OSFileSystem.Setenv`, `OSFileSystem.Unsetenv`, and `OSFileSystem.LookupEnv` forward to the matching process-environment calls.
+
+The library itself calls only `Open`, `LookupEnv`, `Setenv`, and `Unsetenv`. Size and stat checks go through `File.Stat` on the handle returned by `Open`. The zero value is valid and safe for concurrent use.
+
 ---
 
 ### DefaultFileSystem
@@ -381,13 +417,13 @@ func (fs OSFileSystem) LookupEnv(key string) (string, bool)
 var DefaultFileSystem FileSystem = OSFileSystem{}
 ```
 
-Global default filesystem instance. `DefaultFileSystem` is a package-level exported variable holding `OSFileSystem{}`; it is what the `FileSystem` field that `Config` provides by embedding `ComponentConfig` uses when not explicitly set.
+Global default filesystem instance. It is the package-level variable holding `OSFileSystem{}`. `Config.FileSystem` uses it when you do not set a filesystem explicitly.
 
 ---
 
 ### Using a Custom Filesystem
 
-Mock a filesystem in tests:
+A mock lets you test without touching disk. This one keeps file contents and environment variables in maps. `File.Stat` is not optional here: the loader uses it for the `MaxFileSize` pre-check before reading, so `Size()` must report the real content length.
 
 ```go
 type MockFileSystem struct {
@@ -395,12 +431,42 @@ type MockFileSystem struct {
     env   map[string]string
 }
 
+// MockFile is the handle Open returns; Stat must report the real size
+type MockFile struct {
+    name   string
+    size   int64
+    reader *strings.Reader
+}
+
+func (f *MockFile) Read(p []byte) (int, error)  { return f.reader.Read(p) }
+func (f *MockFile) Write(p []byte) (int, error) { return 0, errors.ErrUnsupported }
+func (f *MockFile) Close() error                { return nil }
+func (f *MockFile) Sync() error                 { return nil }
+
+// Stat must report the real size: the loader uses it for the MaxFileSize pre-check
+func (f *MockFile) Stat() (os.FileInfo, error) {
+    return &mockFileInfo{name: f.name, size: f.size}, nil
+}
+
+// mockFileInfo implements os.FileInfo
+type mockFileInfo struct {
+    name string
+    size int64
+}
+
+func (i *mockFileInfo) Name() string       { return i.name }
+func (i *mockFileInfo) Size() int64        { return i.size }
+func (i *mockFileInfo) Mode() os.FileMode  { return 0644 }
+func (i *mockFileInfo) ModTime() time.Time { return time.Time{} }
+func (i *mockFileInfo) IsDir() bool        { return false }
+func (i *mockFileInfo) Sys() interface{}   { return nil }
+
 func (m *MockFileSystem) Open(name string) (env.File, error) {
     content, ok := m.files[name]
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{content: content}, nil
+    return &MockFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) Getenv(key string) string {
@@ -427,10 +493,11 @@ func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.
 }
 
 func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
-    if _, ok := m.files[name]; !ok {
-        return nil, os.ErrNotExist
+    f, err := m.Open(name)
+    if err != nil {
+        return nil, err
     }
-    return nil, nil
+    return f.Stat()  // must report the real size: the loader uses it for the MaxFileSize pre-check
 }
 
 func (m *MockFileSystem) MkdirAll(path string, perm os.FileMode) error {
@@ -466,7 +533,7 @@ cfg.FileSystem = &MockFileSystem{
 func DetectFormat(filename string) FileFormat
 ```
 
-Detects format based on file extension.
+Detects the format from the file extension.
 
 **Parameters:**
 - `filename` - file name or path
@@ -483,12 +550,14 @@ Detects format based on file extension.
 | `.yaml`, `.yml` | `FormatYAML` |
 | Other | `FormatAuto` |
 
+The check uses `filepath.Ext`, lowercased, so `.ENV` also yields `FormatEnv`. `.env.local` and `unknown.txt` return `FormatAuto`: at load time that entry is used if you registered a parser for it, otherwise the `.env` parser handles the file.
+
 ```go
 format := env.DetectFormat("config.json")   // FormatJSON
 format := env.DetectFormat("settings.yaml") // FormatYAML
 format := env.DetectFormat("app.yml")       // FormatYAML
 format := env.DetectFormat(".env")          // FormatEnv
-format := env.DetectFormat(".env.local")    // FormatAuto (actually processed as .env)
+format := env.DetectFormat(".env.local")    // FormatAuto
 format := env.DetectFormat("unknown.txt")   // FormatAuto
 ```
 
@@ -496,7 +565,8 @@ format := env.DetectFormat("unknown.txt")   // FormatAuto
 
 ```go
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
-// Auto-detects each file's format and uses the corresponding parser
+// Each file's format is detected by extension and its matching parser is used;
+// unknown extensions resolve to FormatAuto
 ```
 
 ---
@@ -515,13 +585,15 @@ const (
 **Custom formats:**
 
 ```go
-// Define custom format constants (recommend using values of 100+ to avoid conflicts)
+// Define custom format constants (they label your own registry entries)
 const (
     FormatTOML  env.FileFormat = 100
     FormatINI   env.FileFormat = 101
     FormatXML   env.FileFormat = 102
 )
 ```
+
+A custom format number only labels your own registry entry. `LoadFiles` does not route by format number; it looks up `DetectFormat` by extension. To have `.toml`, `.ini`, and similar files actually reach a custom parser, register it under `FormatAuto` (see "Parser Registration" below).
 
 ---
 
@@ -531,7 +603,7 @@ const (
 func (f FileFormat) String() string
 ```
 
-Returns the string representation of a format.
+Returns the format's name as a string: `"auto"`, `"dotenv"`, `"json"`, or `"yaml"`. Any value outside those four returns `"unknown"`.
 
 ```go
 fmt.Println(env.FormatJSON.String())  // "json"
@@ -551,24 +623,35 @@ fmt.Println(env.FileFormat(999).String())  // "unknown"
 func RegisterParser(format FileFormat, factory ParserFactory) error
 ```
 
-Registers a custom format parser.
+Registers a parser for a custom format.
 
 **Parameters:**
-- `format` - file format constant
-- `factory` - parser factory function
+- `format` - the format's constant
+- `factory` - the factory that creates parsers for it
 
 **Returns:**
-- `error` - returns error on registration failure
+- `error` - registration error
 
 **Error cases:**
-- Built-in formats (FormatEnv, FormatJSON, FormatYAML) cannot be overridden
-- Format already registered
+- `format` is one of the built-in formats (`FormatEnv`, `FormatJSON`, `FormatYAML`). Use `ForceRegisterParser` if you must override one.
+- `format` is already registered
 - `factory` is nil
 
 **Notes:**
-- Must be registered before calling `env.New()`
-- Recommend using format values of 100+ to avoid conflicts with built-in formats
-- The factory function should return a thread-safe parser
+- The registry is process-global and is snapshotted when a `Loader` is constructed, so register before calling `env.New()`.
+- Register under `env.FormatAuto` for `LoadFiles` to reach a custom parser; a 100+ custom format number is never reached by extension routing (see below).
+- The factory function must return a thread-safe parser.
+
+:::warning Custom format numbers are not reached by extension
+`LoadFiles` routes by extension only: it looks up `DetectFormat(filename)` in the parser map, and `DetectFormat` recognizes only `.env`, `.json`, `.yaml`, and `.yml`. Everything else returns `FormatAuto`. A parser registered under `const FormatTOML env.FileFormat = 100` is therefore **never** reached by `config.toml`; the file resolves to the `FormatAuto` entry, falls back to the built-in dotenv parser, and lines such as `[a]` are parsed as junk key-value pairs.
+
+There are two working routes for a custom format:
+
+- (a) Register with `RegisterParser(env.FormatAuto, ...)` so every unknown extension is handled, and keep names such as `config.toml` (recommended; the example below does this).
+- (b) Register with `ForceRegisterParser(env.FormatEnv, ...)` to replace the built-in dotenv parser, and give the file a `.env` extension.
+
+See [Custom Parser](../guides/custom-parser) for the full routing rules.
+:::
 
 ```go
 package main
@@ -579,10 +662,7 @@ import (
 	"github.com/cybergodev/env"
 )
 
-// 1. Define custom format constant
-const FormatTOML env.FileFormat = 100
-
-// 2. Implement the parser interface
+// 1. Implement the parser interface
 type TOMLParser struct {
 	cfg       env.Config
 	validator env.Validator
@@ -596,9 +676,9 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
 	return result, nil
 }
 
-// 3. Register the parser (register in init() to ensure it's done before use)
+// 2. Register under FormatAuto so every unknown extension (including .toml) is handled
 func init() {
-	err := env.RegisterParser(FormatTOML, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+	err := env.RegisterParser(env.FormatAuto, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
 		return &TOMLParser{
 			cfg:       cfg,
 			validator: f.Validator(),
@@ -610,14 +690,16 @@ func init() {
 	}
 }
 
-// 4. Use the custom format
+// 3. Use the custom format
 func main() {
 	// Registration is done in init() (executes before main)
 	loader, _ := env.New(env.DefaultConfig())
 	defer loader.Close()
 
-	// Now you can load .toml files
-	loader.LoadFiles("config.toml")
+	// config.toml is detected as FormatAuto and reaches the parser registered above
+	if err := loader.LoadFiles("config.toml"); err != nil {
+		panic(err)
+	}
 }
 ```
 
@@ -629,21 +711,21 @@ func main() {
 func ForceRegisterParser(format FileFormat, factory ParserFactory) error
 ```
 
-Force-registers a parser, allowing overriding of built-in parsers.
+Force-registers a parser, overriding any existing registration, including the built-in parsers.
 
 **Parameters:**
-- `format` - file format constant
-- `factory` - parser factory function
+- `format` - the format's constant
+- `factory` - the factory that creates parsers for it
 
 **Returns:**
-- `error` - returns error on registration failure (when `factory` is nil)
+- `error` - an error only when `factory` is nil
 
 :::danger
-Use with caution. Overriding built-in parsers may introduce security vulnerabilities if the replacement parser does not implement the same security checks (key validation, value validation, size limits, etc.).
+Overriding a built-in parser drops its security checks unless your replacement implements the same ones: key validation, value validation, size limits, and so on.
 
-Suitable for the following advanced scenarios:
-- Adding custom security checks to built-in parsers
-- Implementing format extensions (e.g., HEREDOC, multi-line values)
+Reasonable uses:
+- Adding custom security checks to a built-in parser
+- Implementing format extensions (e.g. HEREDOC, multi-line values)
 - Testing with mock parsers
 :::
 
@@ -665,14 +747,14 @@ err := env.ForceRegisterParser(env.FormatEnv, func(cfg env.Config, f *env.Compon
 type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error)
 ```
 
-Parser factory function signature.
+Function signature for a parser factory.
 
 **Parameters:**
-- `cfg` - configuration object containing limits and security settings
-- `factory` - component factory, can get validator and auditor
+- `cfg` - configuration, carrying the limits and security settings
+- `factory` - component factory, from which the parser obtains its validator and auditor
 
 **Returns:**
-- `EnvParser` - parser instance
+- `EnvParser` - the parser instance
 - `error` - creation error
 
 ---
@@ -699,32 +781,36 @@ Interface that parsers must implement.
 
 ## Built-in Parsers
 
-The library has three built-in format parsers:
+The library ships three format parsers.
 
 ### DotEnv Parser
 
-`.env` format parser, supporting:
+Parses the `.env` format:
+
 - `KEY=value` syntax
-- `export KEY=value` syntax
-- Single quotes `'value'` and double quotes `"value"`
-- Variable expansion `${VAR}` and `${VAR:-default}`
+- `export KEY=value` syntax (when `AllowExportPrefix` is true, the default)
+- Single-quoted `'value'` and double-quoted `"value"`
+- Variable expansion `${VAR}` and `${VAR:-default}` (when `ExpandVariables` is true, the default)
 - Comments `#`
+- `KEY: value` lines, only when `AllowYamlSyntax` is true
 
 ### JSON Parser
 
-JSON format parser, supporting:
+Parses JSON:
+
 - Key-value object pairs
-- Nested structures (flattened)
-- Number, string, boolean conversion
-- Arrays (flattened to `KEY_0`, `KEY_1`...)
+- Nested structures, flattened
+- Number, string, and boolean conversion
+- Arrays, flattened to `KEY_0`, `KEY_1`, ...
 
 ### YAML Parser
 
-YAML format parser, supporting:
+Parses YAML:
+
 - Key-value pairs
-- Nested structures (flattened)
+- Nested structures, flattened
 - Multiple scalar types
-- Lists (flattened to indexed keys)
+- Lists, flattened to indexed keys
 
 ---
 
@@ -799,11 +885,8 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
 }
 
 func main() {
-	// Define custom format
-	const FormatINI env.FileFormat = 101
-
-	// Register parser
-	err := env.RegisterParser(FormatINI, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
+	// Register under FormatAuto: a .ini extension is detected as FormatAuto and reaches this entry
+	err := env.RegisterParser(env.FormatAuto, func(cfg env.Config, f *env.ComponentFactory) (env.EnvParser, error) {
 		return &INIParser{
 			cfg:       cfg,
 			validator: f.Validator(),
@@ -820,7 +903,9 @@ func main() {
 	defer loader.Close()
 
 	// Now you can load .ini files
-	// loader.LoadFiles("config.ini")
+	if err := loader.LoadFiles("config.ini"); err != nil {
+		panic(err)
+	}
 
 	fmt.Println("INI parser registered")
 }
@@ -859,7 +944,7 @@ func (m *MemoryFileSystem) Open(name string) (env.File, error) {
 	if !ok {
 		return nil, os.ErrNotExist
 	}
-	return &MemoryFile{reader: strings.NewReader(content)}, nil
+	return &MemoryFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MemoryFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
@@ -910,14 +995,20 @@ func (m *MemoryFileSystem) LookupEnv(key string) (string, bool) {
 
 // MemoryFile implements env.File
 type MemoryFile struct {
+	name   string
+	size   int64
 	reader *strings.Reader
 }
 
 func (f *MemoryFile) Read(p []byte) (n int, err error)  { return f.reader.Read(p) }
 func (f *MemoryFile) Write(p []byte) (n int, err error) { return 0, errors.ErrUnsupported }
 func (f *MemoryFile) Close() error                      { return nil }
-func (f *MemoryFile) Stat() (os.FileInfo, error)        { return nil, errors.ErrUnsupported }
 func (f *MemoryFile) Sync() error                       { return nil }
+
+// Stat must report the real size: the loader uses it for the MaxFileSize pre-check
+func (f *MemoryFile) Stat() (os.FileInfo, error) {
+	return &MemoryFileInfo{name: f.name, size: f.size}, nil
+}
 
 // MemoryFileInfo implements os.FileInfo
 type MemoryFileInfo struct {
@@ -942,10 +1033,15 @@ func main() {
 	cfg := env.TestingConfig()
 	cfg.FileSystem = fs
 
-	loader, _ := env.New(cfg)
+	loader, err := env.New(cfg)
+	if err != nil {
+		panic(err)
+	}
 	defer loader.Close()
 
-	loader.LoadFiles(".env")
+	if err := loader.LoadFiles(".env"); err != nil {
+		panic(err)
+	}
 
 	fmt.Println(loader.GetString("APP_NAME")) // myapp
 	fmt.Println(loader.GetInt("PORT"))        // 8080

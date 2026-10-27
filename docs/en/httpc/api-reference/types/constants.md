@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Constants & Types"
 title: "Constants and Types - CyberGo HTTPC | Helper Types"
-description: "HTTPC constants and types: BodyKind with auto-detection, ProxyStrategy, FormData/FileData uploads, AuditEvent, AuditConfig, and SourceIPKey context keys."
+description: "HTTPC constants and types: six BodyKind values, auto-detection, ProxyStrategy, FormData/FileData, AuditEvent and AuditConfig, context keys, ChecksumSHA256."
 sidebar_position: 20
 ---
 
 # Constants and Types
 
-This page gathers all of HTTPC's public constants and helper types, including request-body type enums, proxy strategies, form/file-upload types, checksum algorithms, audit events, formatting helper functions, the progress callback, and the cookie security configuration.
+This page gathers HTTPC's public constants and helper types: request-body type enums, proxy strategies, form and file upload types, checksum algorithms, audit events, formatting helpers, the progress callback, and the cookie security configuration.
 
 ## BodyKind
 
@@ -19,12 +19,12 @@ Request body type, used with `WithBody` to specify the body format.
 
 | Constant | Value | Meaning | Input requirement | Content-Type |
 |------|-----|------|----------|-------------------|
-| `BodyAuto` | 0 | Auto-detect | Any (inferred by type) | See detection-rules table below |
-| `BodyJSON` | 1 | Force JSON encoding | Any serializable type | application/json |
-| `BodyXML` | 2 | Force XML encoding | Any serializable type | application/xml |
-| `BodyForm` | 3 | Form encoding | `map[string]string` or compatible type | application/x-www-form-urlencoded |
-| `BodyBinary` | 4 | Binary stream | `[]byte` or `string` | application/octet-stream |
-| `BodyMultipart` | 5 | Multipart form | `*FormData` | multipart/form-data |
+| `BodyAuto` | 0 | Auto-detect the format | Any (inferred by type) | See the detection-rules table below |
+| `BodyJSON` | 1 | Force JSON | Any serializable type | application/json |
+| `BodyXML` | 2 | Force XML | Any serializable type | application/xml |
+| `BodyForm` | 3 | Force form encoding | `map[string]string` or a compatible type | application/x-www-form-urlencoded |
+| `BodyBinary` | 4 | Force binary encoding | `[]byte` or `string` | application/octet-stream |
+| `BodyMultipart` | 5 | Force multipart encoding | `*FormData` | multipart/form-data |
 
 ### BodyAuto Detection Rules
 
@@ -33,14 +33,14 @@ Request body type, used with `WithBody` to specify the body format.
 | Input Go type | Inferred format | Content-Type |
 |-------------|----------|-------------|
 | `string` | Plain text | text/plain; charset=utf-8 |
-| `[]byte` | Binary stream | application/octet-stream |
+| `[]byte` | Binary | application/octet-stream |
 | `map[string]string` | Form | application/x-www-form-urlencoded |
-| `*FormData` | Multipart form | multipart/form-data |
+| `*FormData` | Multipart | multipart/form-data |
 | `io.Reader` | Passed through as-is | Not set (caller specifies) |
-| Other types | JSON serialization | application/json |
+| Other types | JSON | application/json |
 
 :::tip BodyAuto vs explicit specification
-In most scenarios `BodyAuto` is sufficient. When automatic inference does not match your expectation (e.g. you need to send a struct as XML rather than JSON), explicitly pass `BodyJSON`/`BodyXML`/`BodyForm` to force the encoding format.
+`BodyAuto` covers most cases. When the inferred format is not what you need (e.g. a struct must be sent as XML rather than JSON), pass `BodyJSON`/`BodyXML`/`BodyForm` explicitly to force the encoding.
 :::
 
 ```go
@@ -60,12 +60,12 @@ result, _ := client.Post(url, httpc.WithBody(data, httpc.BodyXML))
 type ProxyStrategy = proxypool.Strategy
 ```
 
-Proxy pool selection strategy, used by `ConnectionConfig.ProxyPoolStrategy`. It is a type alias of the internal `proxypool.Strategy` to avoid importing the internal package.
+Proxy pool selection strategy, used by `ConnectionConfig.ProxyPoolStrategy`. It is a type alias of the internal `proxypool.Strategy`, so callers do not import the internal package.
 
 | Constant | Description | Retry behavior |
 |------|------|----------|
-| `ProxyStrategyRoundRobin` | Round-robin (default). Selects proxies in sequential order, advancing to the next each time | Retries naturally land on different IPs with no extra configuration |
-| `ProxyStrategyRandom` | Random. Uniformly picks from healthy proxies | Retries select randomly; statistically tends to switch IPs |
+| `ProxyStrategyRoundRobin` | Round-robin (default): selects proxies in sequence, advancing each time | Retries land on different IPs with no extra configuration |
+| `ProxyStrategyRandom` | Random: uniformly picks from healthy proxies | Retries select randomly, which tends to switch IPs |
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -78,7 +78,7 @@ client, _ := httpc.New(cfg)
 ```
 
 :::tip Status-code-triggered rotation
-Combined with `ProxyRotateOnStatus` (e.g. `[]int{403}`), you can trigger a retry + proxy rotation on specific status codes, useful for bypassing CF/WAF-style IP-level blocking. See [Configuration Reference](../client-config/config).
+With `ProxyRotateOnStatus` (e.g. `[]int{403}`), a specific status code triggers a retry with proxy rotation, which helps around IP-level blocking. See [Configuration Reference](../client-config/config).
 :::
 
 ## FormData / FileData
@@ -182,9 +182,9 @@ type AuditEvent struct {
     Method        string              `json:"method"`
     URL           string              `json:"url"`           // Sanitized (credentials removed)
     StatusCode    int                 `json:"statusCode"`
-    Duration      time.Duration       `json:"-"`
+    Duration      time.Duration       `json:"-"` // emitted as durationMs by MarshalJSON
     Attempts      int                 `json:"attempts"`
-    Error         error               `json:"error,omitempty"`
+    Error         error               `json:"-"` // emitted as a string "error" by MarshalJSON
     SourceIP      string              `json:"sourceIP,omitempty"`
     UserID        string              `json:"userID,omitempty"`
     RedirectChain []string            `json:"redirectChain,omitempty"`
@@ -193,7 +193,9 @@ type AuditEvent struct {
 }
 ```
 
-Security audit event, generated by `AuditMiddleware` after each request/response cycle. Designed for high-compliance scenarios such as finance, healthcare, and government, capturing the full request/response context: the timeline is reconstructed from `Timestamp` (request start time) plus `Duration`; once `AuditConfig.IncludeHeaders` is enabled, the sanitized request/response headers are filled into `ReqHeaders` and `RespHeaders` respectively.
+Security audit event, generated by `AuditMiddleware` after each request/response cycle. `AuditEvent` captures the full request/response context for high-compliance scenarios such as finance, healthcare, and government.
+
+The timeline is reconstructed from `Timestamp` (request start time) plus `Duration`. With `AuditConfig.IncludeHeaders` enabled, the sanitized request and response headers are filled into `ReqHeaders` and `RespHeaders`.
 
 | Field | Type | Description |
 |------|------|------|
@@ -202,7 +204,7 @@ Security audit event, generated by `AuditMiddleware` after each request/response
 | `AuditEvent.URL` | `string` | Request URL (sanitized, credentials removed) |
 | `AuditEvent.StatusCode` | `int` | Final response status code (0 when the request errored) |
 | `AuditEvent.Duration` | `time.Duration` | Total duration covering all attempts (including retry delays) |
-| `AuditEvent.Attempts` | `int` | Number of requests sent (1 when no retry occurred) |
+| `AuditEvent.Attempts` | `int` | Number of requests sent (1 when no retry occurred; 0 when the request failed before a response arrived) |
 | `AuditEvent.Error` | `error` | Request error; serialized as a string in JSON (sanitizable via `AuditConfig.SanitizeError`) |
 | `AuditEvent.SourceIP` | `string` | Source IP (injected into context by the application via `SourceIPKey`) |
 | `AuditEvent.UserID` | `string` | User ID (injected into context by the application via `UserIDKey`) |
@@ -212,24 +214,24 @@ Security audit event, generated by `AuditMiddleware` after each request/response
 
 ### MarshalJSON Custom Serialization
 
-`AuditEvent.MarshalJSON` (signature `func (e AuditEvent) MarshalJSON() ([]byte, error)`) implements custom JSON serialization, providing two JSON-friendly derived fields:
+`AuditEvent.MarshalJSON` (signature `func (e AuditEvent) MarshalJSON() ([]byte, error)`) implements custom JSON serialization with two JSON-friendly derived fields:
 
 | JSON field | Source | Description |
 |-----------|------|------|
 | `durationMs` | `Duration.Milliseconds()` | Integer milliseconds, easy for log-aggregation tools to parse |
-| `error` | `Error.Error()` | Error string (replacing the default serialization of the error interface) |
+| `error` | `Error.Error()` | Error string, replacing the default serialization of the error interface |
 
-This way the only duration field in the JSON output is the readable `durationMs` (integer milliseconds) — the `Duration` field itself carries the `json:"-"` tag and is never serialized in nanosecond form; the `error` field outputs as a string rather than an empty object.
+The JSON output therefore carries a single, readable duration field, `durationMs`: the `Duration` field itself has the `json:"-"` tag and is never serialized in nanosecond form, and `error` is output as a string rather than an empty object.
 
 ### AuditConfig
 
 ```go
 type AuditConfig struct {
     OnAudit        func(event AuditEvent) // Audit callback; nil means middleware is a no-op
-    Format         string                 // "text" or "json"
+    Format         string                 // Reserved, no effect: events reach OnAudit as AuditEvent, rendering is the callback's choice
     IncludeHeaders bool                   // Include request/response headers
     MaskHeaders    []string               // Header names to mask (e.g. "Authorization", "Cookie")
-    SanitizeError  bool                   // Sanitize error messages (replace with "[sanitized]")
+    SanitizeError  bool                   // Redact raw URLs and sensitive query values in error messages (keeps errors.Is/As classification)
 }
 ```
 
@@ -238,10 +240,10 @@ type AuditConfig struct {
 | Field | Default | Description |
 |-------|---------|-------------|
 | `AuditConfig.OnAudit` | `nil` | Audit callback; when nil, the middleware is a no-op |
-| `AuditConfig.Format` | `"text"` | Output-format hint (`"text"` / `"json"`), consumed by the callback; the middleware does not branch on it |
+| `AuditConfig.Format` | `""` | Reserved field, left uninitialized (no effect); the callback owns the output format, e.g. `json.Marshal(event)` |
 | `AuditConfig.IncludeHeaders` | `false` | Whether to include request/response headers in the audit log |
 | `AuditConfig.MaskHeaders` | Six standard sensitive headers | `Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `X-Auth-Token`, `Proxy-Authorization`; matches are replaced with `[REDACTED]` |
-| `AuditConfig.SanitizeError` | `true` | Error messages replaced with `[sanitized]` |
+| `AuditConfig.SanitizeError` | `true` | Redacts raw request URLs (and sensitive query values) embedded in error messages while preserving `errors.Is`/`errors.As` classification |
 
 ## Context Keys
 
@@ -268,9 +270,8 @@ func main() {
 	ctx := context.WithValue(context.Background(), httpc.SourceIPKey, "192.168.1.100")
 	ctx = context.WithValue(ctx, httpc.UserIDKey, "user-789")
 
-	// Configure the audit middleware
+	// Configure the audit middleware (the callback owns the output format)
 	auditCfg := httpc.DefaultAuditConfig()
-	auditCfg.Format = "json"
 	auditCfg.IncludeHeaders = true
 	auditCfg.OnAudit = func(event httpc.AuditEvent) {
 		fmt.Printf("[AUDIT] %s %s -> %d (%v) src=%s user=%s\n",
@@ -351,18 +352,18 @@ type CookieSecurityConfig struct {
 
 | Field | Type | Description |
 |------|------|------|
-| `CookieSecurityConfig.RequireSecure` | `bool` | Require the Secure attribute; transport over HTTPS only. Recommended true in production |
-| `CookieSecurityConfig.RequireHttpOnly` | `bool` | Require the HttpOnly attribute; forbid JS access, XSS defense. Recommended true for session cookies |
-| `CookieSecurityConfig.RequireSameSite` | `string` | Required SameSite value. `"Strict"` (first-party only), `"Lax"` (first-party + top-level navigation), `"None"` (all contexts, requires Secure), `""` (no requirement) |
-| `CookieSecurityConfig.AllowSameSiteNone` | `bool` | Whether SameSite=None is allowed. When false and RequireSameSite is empty, cookies with SameSite=None are rejected |
-| `CookieSecurityConfig.RequireSecureForSameSiteNone` | `bool` | Force Secure when SameSite=None (per RFC 6265bis). Defaults to true |
+| `CookieSecurityConfig.RequireSecure` | `bool` | Require the Secure attribute so the cookie travels only over HTTPS. Recommended true in production |
+| `CookieSecurityConfig.RequireHttpOnly` | `bool` | Require the HttpOnly attribute to block JS access and XSS theft. Recommended true for session cookies |
+| `CookieSecurityConfig.RequireSameSite` | `string` | Required SameSite value: `"Strict"` (first-party only), `"Lax"` (first-party plus top-level navigation), `"None"` (all contexts, requires Secure), `""` (no requirement) |
+| `CookieSecurityConfig.AllowSameSiteNone` | `bool` | Whether SameSite=None is allowed. When false and `RequireSameSite` is empty, cookies with SameSite=None are rejected |
+| `CookieSecurityConfig.RequireSecureForSameSiteNone` | `bool` | Force Secure when SameSite=None (per RFC 6265bis); defaults to true |
 
 Available factory functions:
 
 | Factory function | Policy | Applicable scenario |
 |----------|------|----------|
 | `DefaultCookieSecurityConfig()` | Lenient: allows non-HTTPS, allows JS access, allows SameSite=None | Development, compatibility-first |
-| `StrictCookieSecurityConfig()` | Strict: requires Secure + HttpOnly + SameSite=Strict | Production, high-security scenarios (finance/healthcare/government) |
+| `StrictCookieSecurityConfig()` | Strict: requires Secure + HttpOnly + SameSite=Strict | Production, high-security scenarios |
 
 ```go
 // Strict policy: requires Secure + HttpOnly + SameSite=Strict
@@ -383,7 +384,7 @@ result, err := client.Get(url, httpc.WithSecureCookie(strict))
 ```
 
 :::warning WithSecureCookie is order-sensitive
-`WithSecureCookie` validates only cookies that **exist at apply time**. It must be placed after all `WithCookies`/`WithCookieMap`/`WithCookieString` calls. For order-independent session-level validation, use `SessionManager.SetCookieSecurity`.
+`WithSecureCookie` validates only cookies that **exist when it is applied**, so it must follow all `WithCookies`/`WithCookieMap`/`WithCookieString` calls. For order-independent session-level validation, use `SessionManager.SetCookieSecurity`.
 :::
 
 ## Error Classification Constants (ErrorType)
@@ -392,7 +393,7 @@ The root package also exports 12 `ErrorType` error classification constants: `Er
 
 For the full reference covering these constants together with the `ClientError` struct, the `Code()`/`IsRetryable()` methods, and sentinel error variables such as `ErrClientClosed`, see [Error Types](./errors).
 
-With this, the site covers all exported constants of the root package: 6 BodyKind values (this page), 2 proxy strategies (this page), 1 checksum algorithm (this page), 2 context keys (this page), and 12 error classifications ([Error Types](./errors)).
+With this, the page set covers every exported constant of the root package: 6 BodyKind values, 2 proxy strategies, 1 checksum algorithm, and 2 context keys on this page, plus 12 error classifications in [Error Types](./errors).
 
 ## See Also
 

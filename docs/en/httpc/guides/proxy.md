@@ -1,17 +1,19 @@
 ---
 sidebar_label: "Proxy & Proxy Pool"
 title: "Proxy & Proxy Pool - CyberGo HTTPC | Proxy Config & Rotation"
-description: "HTTPC proxy guide: HTTP/HTTPS/SOCKS5 single proxy, system proxy with NO_PROXY, pool strategies, circuit breaking, cooldown recovery, per-request rotation."
+description: "HTTPC proxy setup: single proxy (HTTP/HTTPS/SOCKS5), system proxy and NO_PROXY, pool strategies, status-code rotation, pool HTTP/2, and per-request rotation."
 sidebar_position: 100
 ---
 
 # Proxy & Proxy Pool
 
-Whether you are traversing a corporate network, rotating egress IPs for a scraping job, or evading IP blocks on a target site, proxies are a frequent need for an HTTP client. HTTPC ships four proxy modes — single proxy, system-proxy detection, proxy-pool rotation, and status-code-triggered rotation — covering the full spectrum from "fixed egress" to "a different IP per request", and they cooperate with SSRF protection, TLS validation, and the retry engine. All proxy configuration lives in `ConnectionConfig`.
+A proxy is a mechanism that forwards HTTP client requests through another server. HTTPC provides four proxy modes: single proxy, system-proxy detection, proxy-pool rotation, and status-code-triggered rotation. Together they cover fixed egress and per-request IP switching.
+
+All four modes cooperate with SSRF protection, TLS validation, and the retry engine. All proxy configuration lives in `ConnectionConfig`.
 
 ## Proxy Mode Overview
 
-The four modes take effect automatically by priority; when several are configured, only the highest priority applies:
+The four modes take effect by priority; when several are configured, only the highest priority applies:
 
 | Priority | Setting | Behavior | Typical scenario |
 |----------|---------|----------|------------------|
@@ -30,7 +32,7 @@ If both `ProxyURL` and `ProxyPool` are set, `ProxyURL` wins. To use the proxy po
 
 | Protocol | Form | Notes |
 |----------|------|-------|
-| HTTP | `http://proxy:8080` | Most common; HTTPS requests are forwarded through a CONNECT tunnel |
+| HTTP | `http://proxy:8080` | HTTPS requests are forwarded through a CONNECT tunnel |
 | HTTPS | `https://proxy:8443` | TLS to the proxy server itself |
 | SOCKS5 | `socks5://proxy:1080` | Resolves the target domain locally, then connects via the proxy |
 | SOCKS5h | `socks5h://proxy:1080` | Domain resolution is delegated to the proxy, avoiding local DNS pollution |
@@ -74,12 +76,12 @@ cfg.Connection.ProxyURL = "http://user:password@proxy.example.com:8080"
 ```
 
 :::tip Credentials are masked automatically
-`Config.String()` replaces the username and password in proxy URLs with `***:***`; URLs in error messages and logs are sanitized the same way (credentials and sensitive query parameters are masked). Credentials never leak into logs, but the configuration itself still needs safekeeping.
+`Config.String()` replaces the username and password in proxy URLs with `***:***`. URLs in error messages and logs are sanitized the same way (credentials and sensitive query parameters are masked). Credentials do not appear in logs, but the configuration file still needs separate safekeeping.
 :::
 
 ## System Proxy Detection and NO_PROXY
 
-Once enabled, the operating system's proxy settings are detected automatically — no need to set `ProxyURL` by hand:
+Once enabled, the operating system's proxy settings are detected automatically, with no need to set `ProxyURL`:
 
 <!-- check-code: skip -->
 ```go
@@ -96,17 +98,19 @@ cfg.Connection.EnableSystemProxy = true
 | Linux | Environment variables `HTTP_PROXY` / `HTTPS_PROXY` |
 
 :::tip Meta.ProxyURL does not cover the system proxy
-The system-proxy selection is not recorded in `Result.Meta.ProxyURL` (the field only has a value under an explicit `Connection.ProxyURL` or `ProxyPool`; it stays empty for direct connections and system proxies). To confirm the egress proxy on a per-request basis, use an explicit configuration instead.
+The system-proxy selection is not recorded in `Result.Meta.ProxyURL`. The field has a value only under an explicit `Connection.ProxyURL` or `ProxyPool`; it stays empty for direct connections and system proxies.
+
+To confirm the egress proxy per request, use an explicit configuration.
 :::
 
 ### Detection Order and Details
 
-1. **Environment variables first** (all platforms): `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` are read first (both cases recognized); if any is set, it is used directly without consulting system settings.
-2. **Platform detection as fallback**: without environment variables, platform settings are read. On Linux desktops (GNOME/KDE) the proxy is usually already exported to environment variables by the session, so the engine does not read gsettings/dconf directly.
-3. **Request routing**: HTTPS requests prefer `HTTPS_PROXY` and fall back to `HTTP_PROXY` when unset; HTTP requests use only `HTTP_PROXY`, also falling back to `HTTPS_PROXY` when unset — the same resolution order as net/http.
-4. **CGI environments connect directly**: a proxy from environment variables does not take effect in CGI environments (`REQUEST_METHOD` set), matching net/http behavior.
+1. **Environment variables first** (all platforms): `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` are read first (both upper and lower case recognized). If either `HTTP_PROXY` or `HTTPS_PROXY` has a value, it is used directly and system settings are not consulted.
+2. **Platform detection as fallback**: without environment variables, platform settings are read. On Linux desktops (GNOME/KDE) the session already exports the proxy to environment variables, so the engine does not read gsettings/dconf directly.
+3. **Per-scheme routing, no cross-fallback**: HTTPS requests use only `HTTPS_PROXY`, and HTTP requests use only `HTTP_PROXY`; neither direction falls back to the other variable — matching net/http's `httpproxy`. A variable that is set but cannot be parsed returns a parse error for the scheme it governs instead of silently connecting directly.
+4. **CGI environments connect directly**: when `REQUEST_METHOD` is set, a proxy from environment variables does not take effect, matching net/http behavior.
 5. **Bare addresses are auto-completed**: values without a protocol prefix such as `HTTP_PROXY=proxy:8080` are treated as `http://`.
-6. **Caching**: the detection result is cached for the client's lifetime and does not hot-reload when environment variables change; create a new client to pick up changes.
+6. **Caching**: the detection result is cached for the client's lifetime and does not hot-reload when environment variables change. Create a new client to pick up changes.
 
 ### NO_PROXY Bypass Rules
 
@@ -136,12 +140,12 @@ $env:NO_PROXY = "localhost,127.0.0.1,.internal.corp.com"
 ```
 
 :::warning Limitation of dynamic localhost proxies
-In system-proxy mode, the SSRF exemption list is probed only once, at client construction. If the system proxy switches to a new internal/loopback address at runtime (e.g. `127.0.0.1`), that address may be blocked by SSRF protection. For dynamic setups, set `Connection.ProxyURL` explicitly (proxy addresses are always exempt from SSRF validation) or configure `SSRFExemptCIDRs`.
+In system-proxy mode, the SSRF exemption list is probed only once, at client construction. If the system proxy switches to a new internal or loopback address at runtime (e.g. `127.0.0.1`), that address is blocked by SSRF protection. For dynamic setups, set `Connection.ProxyURL` explicitly (proxy addresses are always exempt from SSRF validation) or configure `SSRFExemptCIDRs`.
 :::
 
 ## Proxy Pool
 
-When requests need to be spread across multiple proxy IPs (scraping, load dispersion, IP rotation), the proxy pool provides automatic rotation, passive circuit breaking, and status-based switching — with no external components.
+To spread requests across multiple proxy IPs (scraping, load dispersion, IP rotation), the proxy pool provides automatic rotation, passive circuit breaking, and status-code switching, with no external components.
 
 ### Basic Usage
 
@@ -199,15 +203,15 @@ Pool entries support the `http`, `https`, `socks5`, and `socks5h` protocols and 
 | Random | `ProxyStrategyRandom` | Picks uniformly at random from healthy proxies |
 
 :::tip Round-robin + retries = automatic IP switching
-The round-robin strategy advances the cursor on every selection, so a retry that triggers another selection naturally lands on the next proxy — no extra configuration needed.
+The round-robin strategy advances the cursor on every selection. A retry that triggers another selection therefore picks the next proxy, with no extra configuration.
 :::
 
 ### Passive Circuit Breaking
 
-The proxy pool has built-in passive health checking. Only **connection-level failures** (dial/TLS) trigger circuit breaking; HTTP status codes do not:
+The proxy pool has built-in passive health checking. Circuit breaking is triggered only by a **proxy TCP dial failure**. HTTP status codes never trigger it, and failures after the dial returns (a TLS handshake failure to an `https://` proxy, a rejected CONNECT, a SOCKS5 handshake failure) do not count toward the breaker either:
 
 ```text
-Proxy connection failure
+Proxy TCP dial failure
     ↓
 Failure count +1
     ↓
@@ -215,7 +219,7 @@ Consecutive failures ≥ ProxyFailureThreshold → circuit open (removed from ro
     ↓
 Wait ProxyCooldown → half-open probe (restored to rotation)
     ↓
-Success → reset count, close circuit
+Dial succeeds → reset count, close circuit
 First failure → re-open circuit
 ```
 
@@ -225,11 +229,13 @@ cfg.Connection.ProxyFailureThreshold = 5        // more tolerant of transient fl
 cfg.Connection.ProxyCooldown = 60 * time.Second // longer cooldown
 ```
 
-When every proxy is circuit-broken, the proxy with the shortest cooldown (closest to recovery) is returned as a fallback instead of failing outright.
+Proxy-protocol failures after the dial are covered by the retry layer's forced proxy switch (see [Proxy and Retry Interaction](#proxy-and-retry-interaction)) and do not enter the breaker count.
+
+When every proxy is circuit-broken, the engine returns the proxy with the shortest cooldown (closest to recovery) as a fallback instead of failing outright.
 
 ### Status-Code Rotation
 
-For Cloudflare/WAF-style IP blocking — when the response carries specific status codes, the proxy is switched automatically and the request retried:
+For Cloudflare/WAF-style IP blocking: when the response carries a configured status code, the engine switches proxy and retries:
 
 ```go
 package main
@@ -248,7 +254,7 @@ func main() {
 		"http://proxy3:8080",
 	}
 	cfg.Connection.ProxyRotateOnStatus = []int{403} // switch proxy and retry on 403
-	cfg.Retry.MaxRetries = 3                        // retries must be enabled
+	cfg.Retry.MaxRetries = 3                        // with 3 proxies the budget auto-floors at 2; setting 3 explicitly gives fuller coverage
 
 	client, err := httpc.New(cfg)
 	if err != nil {
@@ -267,16 +273,16 @@ func main() {
 ```
 
 :::warning Status-code rotation ≠ circuit breaking
-Rotation triggered by `ProxyRotateOnStatus` does **not** circuit-break the proxy — IP blocks are often target-specific (a proxy blocked on site A may work fine on site B). Circuit breaking is triggered only by connection-level failures. `Retry.MaxRetries > 0` is required for it to take effect.
+Rotation triggered by `ProxyRotateOnStatus` does **not** circuit-break the proxy: an IP block applies per target site, so a proxy blocked on site A can still work on site B. Circuit breaking is triggered only by dial failures; status-code rotation needs a retry budget — `MaxRetries > 0`, or a pool with more than one proxy (in which case the budget is auto-raised to `len(ProxyPool) - 1` even when `MaxRetries = 0`).
 
 When `ProxyRotateOnStatus` is set and the pool holds multiple proxies, the retry budget is automatically raised to `len(ProxyPool) - 1` (capped at the `MaxRetries` limit of 10), ensuring every proxy gets a chance.
 :::
 
 ### Per-Request Rotation
 
-`ProxyRotatePerRequest` solves the problem of **connection reuse** pinning the proxy tunnel: an HTTP connection pool reuses established TCP connections, including their proxy tunnels. That means consecutive requests to the same host reuse the previous request's proxy, even when `ProxyPoolStrategy` has already rotated the selector cursor.
+`ProxyRotatePerRequest` addresses the problem of **connection reuse** preventing a proxy tunnel switch. An HTTP connection pool reuses established TCP connections, including their proxy tunnels. Consecutive requests to the same host therefore reuse the previous request's proxy, even when `ProxyPoolStrategy` has advanced the selector cursor.
 
-When enabled, all idle connections are closed at the start of each request, forcing the Transport to re-evaluate the proxy pool — the cost is no connection reuse (each request establishes a new connection + proxy tunnel), but per-request rotation is guaranteed:
+When enabled, all idle connections are closed at the start of each request, forcing the Transport to re-evaluate the proxy pool. The cost is no connection reuse (each request opens a new connection and proxy tunnel); the benefit is per-request rotation:
 
 ```go
 package main
@@ -314,27 +320,83 @@ func main() {
 ```
 
 :::tip When to use it
-Suited for scraping the same host — every request comes from a different source IP, lowering the risk of being IP-blocked by the target site. For requests to different hosts, connection reuse does not pin the same proxy, so enabling it is usually unnecessary.
+Suited to scraping the same host: every request uses a different source IP, lowering the risk of an IP block by the target site. For requests to different hosts, connection reuse does not bind the same proxy, so enabling it is unnecessary.
 :::
 
-Like `ProxyRotateOnStatus`, `ProxyRotatePerRequest` automatically raises the retry budget to `len(ProxyPool) - 1` when the pool holds multiple proxies (capped at 10), ensuring every proxy is tried at least once.
+Like `ProxyRotateOnStatus`, `ProxyRotatePerRequest` raises the retry budget to `len(ProxyPool) - 1` when the pool holds more than one proxy (capped at 10), ensuring every proxy is tried at least once.
 
 ### Deterministic Rotation
 
-Status-code rotation retries differ from ordinary retries: the engine reserves a **base proxy index** per request, and the Nth retry deterministically uses the proxy at "base + N", which yields three guarantees:
+Status-code rotation retries differ from ordinary retries: the engine reserves a **base proxy index** per request, and retry N always uses the proxy at "base + N". This yields three guarantees:
 
-- **Every retry switches proxy**: within one request, retry N and retry N-1 always land on different proxies;
-- **Redirect chains stay on track**: multiple hops within one attempt share the same index, so following redirects never desynchronizes the proxy selection by consuming extra picks;
-- **Rotation continues across requests**: the base index increments across requests, preserving the overall round-robin/random distribution.
+- **Every retry switches proxy**: within one request, retry N and retry N-1 always use different proxies;
+- **Redirect chains stay on track**: multiple hops within one attempt share the same index, so following redirects does not consume extra proxy picks and desynchronize selection;
+- **Rotation continues across requests**: the base index increments across requests, preserving the overall round-robin or random distribution.
 
-In addition, connection failures of the proxy itself (dial/TLS failures) are **always retryable** while rotation is active — even when the regular classification says non-retryable (e.g. a permanent address error), the next attempt switches proxies and tries again, and passive circuit breaking naturally weeds out bad proxies. For the retry-side details, see [Retry and Fault Tolerance](./retry-fault-tolerance).
+In addition, connection failures of the proxy itself (dial or TLS failures) are **always retryable** while rotation is active. This holds even when the regular classification marks the error non-retryable (for example a permanent address error): the next attempt switches proxy and tries again, and passive circuit breaking removes bad proxies over time.
+
+For the retry-side details, see [Retry and Fault Tolerance](./retry-fault-tolerance).
+
+### Proxy Pools and HTTP/2 (`EnableProxyPoolHTTP2`)
+
+While a multi-proxy pool is active (`ProxyPool` with more than one entry and no `ProxyURL`), HTTP/2 is **automatically disabled** and the pool is forced onto HTTP/1.1. The reason is net/http's connection-reuse model: the h2 connection pool is keyed by target host only.
+
+With several proxies sharing one pool, every request is pinned to the proxy whose tunnel connected first, and rotation and load dispersion are bypassed without any visible error. On HTTP/1 every new connection re-consults the pool, so rotation stays reliable.
+
+`Connection.EnableProxyPoolHTTP2 = true` restores HTTP/2 for the pool: each proxy gets its **own transport** (its own h2 connection pool) behind a per-request dispatcher. Rotation, `ProxyRotateOnStatus`, circuit breaking, and `Meta.ProxyURL` reporting behave the same as in the default forced HTTP/1 mode.
+
+The only difference is that concurrent requests routed to the **same proxy** multiplex over one HTTP/2 tunnel instead of each opening an HTTP/1 connection.
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/cybergodev/httpc"
+)
+
+func main() {
+	cfg := httpc.DefaultConfig()
+	cfg.Connection.ProxyPool = []string{
+		"http://proxy1:8080",
+		"http://proxy2:8080",
+		"http://proxy3:8080",
+	}
+	// EnableHTTP2 is already true (DefaultConfig) — the prerequisite for this flag
+	cfg.Connection.EnableProxyPoolHTTP2 = true
+
+	client, err := httpc.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
+
+	result, err := client.Get("https://api.example.com/data")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Output: status: 200, proxy: http://proxy1:8080, protocol: HTTP/2.0
+	log.Printf("status: %d, proxy: %s, protocol: %s",
+		result.StatusCode(), result.Meta.ProxyURL, result.Proto())
+}
+```
+
+:::warning Two trade-offs
+- **Request correlation**: requests routed to the same proxy share that proxy's connections, **including concurrent ones** (an in-flight tunnel is joined by the next same-proxy request), which correlates them at the network level. Leave this off when requests must not be correlatable. `ProxyRotatePerRequest` does **not** prevent the sharing: rotation indexes repeat every pool-size requests, and its idle-connection drain only reaches connections that are no longer in flight.
+- **Connection-limit multiplication**: `MaxConnsPerHost` and the derived per-host idle limit apply per proxy transport; the process-wide ceiling becomes limit × pool size (total dials are still capped by the engine-level global limit).
+:::
+
+Validation and exception: the field requires `Connection.EnableHTTP2 = true` (the default), otherwise `New()` returns `ErrInvalidConnection`.
+
+The `Security.TLSFingerprint` path ignores the field: the fingerprint stack ships its own per-proxy backends and supports HTTP/2 natively. For the field-level reference see the [Configuration API](../api-reference/client-config/config#proxy-pool-and-http-2-enableproxypoolhttp2).
 
 ## Finding Out Which Proxy a Request Used
 
-Proxy-pool setups often need to audit "which egress this request actually used". Two tools work together:
+Proxy-pool setups need to audit which egress a single request used. Two tools work together:
 
-- **`Result.Meta.ProxyURL`**: reports the proxy used by the attempt that produced the final response; an empty string for direct connections, and system proxies (`EnableSystemProxy`) are likewise not recorded (still empty). Under rotation each retry may use a different proxy — this field reflects the **final** attempt.
-- **The `WithOnResponse` callback**: fires on every attempt (including proxy-switching retries), letting you observe per-attempt status codes and attempt counts.
+- **`Result.Meta.ProxyURL`**: reports the proxy used by the attempt that produced the final response. It is an empty string for direct connections, and system proxies (`EnableSystemProxy`) are likewise not recorded. Under rotation, successive retries use different proxies, and this field reflects the **final** attempt.
+- **The `WithOnResponse` callback**: fires on every attempt (including proxy-switching retries), so per-attempt status codes and attempt counts are observable.
 
 ```go
 package main
@@ -376,12 +438,12 @@ func main() {
 ```
 
 :::tip Callbacks run per attempt, middleware runs per request
-`WithOnResponse` fires inside the engine, on every attempt (including retries); the middleware chain wraps the whole retry cycle and runs once per logical request. Use callbacks for per-attempt observation and [middleware](./middleware-chain) for whole-request auditing.
+`WithOnResponse` fires inside the engine on every attempt (including retries). The middleware chain wraps the whole retry cycle and runs once per logical request. Use callbacks for per-attempt observation and [middleware](./middleware-chain) for whole-request auditing.
 :::
 
 ## Proxy and Retry Interaction
 
-Proxy rotation and the retry engine are deeply integrated; two rules are worth memorizing.
+Proxy rotation and the retry engine interact through two rules.
 
 **1. The retry budget is raised automatically.** When `ProxyRotateOnStatus` or `ProxyRotatePerRequest` is set and the pool holds more than one proxy:
 
@@ -391,19 +453,21 @@ effective MaxRetries = max(configured MaxRetries, len(ProxyPool) - 1) (capped at
 
 For example, 5 proxies with `MaxRetries = 3`: the budget is raised to 4 (= 5 - 1); the first request uses proxy1, and after a 403 it switches through proxy2…proxy5, trying each proxy exactly once.
 
-**2. Proxy connection failures are force-retried.** While rotation is active, connection failures of the proxy itself (dial failure, TLS failure) bypass the regular retryability classification and go straight into the next retry on the next proxy — permanently dead proxies (wrong port, unreachable host) do not need to be pruned by hand; forced retries plus consecutive-failure circuit breaking eliminate them naturally.
+**2. Proxy dial failures are force-retried.** While rotation is active, a dial failure on the proxy itself (an error wrapped in `ErrProxyConnectionFailed`) bypasses the regular retryability classification and goes straight into the next retry on the next proxy. Permanently dead proxies (wrong port, unreachable host) do not need to be pruned by hand: forced retries plus consecutive-failure circuit breaking remove them over time.
 
 For retry conditions, the backoff math, and the total timeout budget shared across retries, see [Retry and Fault Tolerance](./retry-fault-tolerance).
 
 ## Security Notes for Proxy Scenarios
 
-The proxy features handle the following security details automatically — no manual configuration needed:
+The proxy features handle the following security details automatically, with no manual configuration:
 
-- **SSRF exemption**: proxy host addresses (`ProxyURL` and every `ProxyPool` entry) are added to the SSRF exemption list automatically and are never blocked by private-IP checks — local proxies (e.g. `127.0.0.1:7890`) work out of the box.
-- **Deduplication**: pool entries with the same `host:port` are merged automatically, avoiding rotation skew and double counting.
-- **URL validation**: every proxy URL goes through security validation (protocol whitelist http/https/socks5/socks5h, non-empty host, injection protection); an invalid value makes `New()` return an error instead of being silently ignored.
+- **SSRF exemption**: proxy host addresses (`ProxyURL` and every `ProxyPool` entry) are added to the SSRF exemption list automatically and are never blocked by private-IP checks, so local proxies (e.g. `127.0.0.1:7890`) work as well.
+- **Deduplication**: pool entries with the same `host:port` **and the same credentials** are merged automatically, avoiding rotation skew and double counting; the same `host:port` with different credentials counts as a distinct egress entry, and all variants of one gateway share a single circuit-breaker state.
+- **URL validation**: every proxy URL goes through security validation (protocol whitelist http/https/socks5/socks5h, non-empty host, injection protection). An invalid value makes `New()` return an error instead of being silently ignored.
 
-Relationship with TLS: an HTTPS request through an HTTP proxy's CONNECT tunnel is still **end-to-end TLS** — certificate validation, minimum TLS version, and certificate pinning all apply to the target site as usual, and the proxy only ever forwards ciphertext. If local DNS pollution is a concern, prefer `socks5h` (domain resolution delegated to the proxy); with DoH enabled, business domains resolve over the encrypted channel, but the proxy address itself does not go through DoH (proxies are configured explicitly by the developer and dialed directly). For the full SSRF picture, see [SSRF Protection](../security/ssrf).
+Relationship with TLS: an HTTPS request through an HTTP proxy's CONNECT tunnel is still **end-to-end TLS**. Certificate validation, minimum TLS version, and certificate pinning all apply to the target site, and the proxy only forwards ciphertext.
+
+When local DNS pollution is a concern, prefer `socks5h` (domain resolution delegated to the proxy). With DoH enabled, business domains resolve over the encrypted channel, but the proxy address itself does not go through DoH (proxies are configured explicitly by the caller and dialed directly). For the full SSRF picture, see [SSRF Protection](../security/ssrf).
 
 ## Common Issues
 
@@ -412,12 +476,13 @@ Relationship with TLS: an HTTPS request through an HTTP proxy's CONNECT tunnel i
 | Proxy not taking effect | Both `ProxyURL` and `ProxyPool` set; `ProxyURL` wins | Clear `ProxyURL` and use only `ProxyPool` |
 | Egress IP unchanged for consecutive requests to the same host | Connection reuse pinned the previous proxy tunnel | Enable `ProxyRotatePerRequest` |
 | Proxies circuit-breaking frequently | `ProxyFailureThreshold` too low | Increase the threshold or `ProxyCooldown` |
-| Status-code rotation not working | `Retry.MaxRetries = 0`, or the pool has only 1 proxy | Set `MaxRetries > 0`; keep at least 2 proxies in the pool |
-| What happens when all proxies are broken | The whole pool failed consecutively | The engine falls back to the proxy closest to recovery instead of failing outright; check proxy availability and thresholds |
+| Status-code rotation not working | The pool has only 1 proxy and `Retry.MaxRetries = 0` (with more than 1 proxy the budget is auto-raised) | Keep at least 2 proxies in the pool, or set `MaxRetries > 0` explicitly |
+| What happens when all proxies are broken | The whole pool failed consecutively | The engine returns the proxy closest to recovery instead of failing outright; check proxy availability and thresholds |
 | System proxy not detected | Environment variables missing and platform settings off | Verify `HTTP_PROXY`/`HTTPS_PROXY` or the system proxy switch |
 | Localhost proxy blocked by SSRF | The system proxy's exemption list is probed only at construction | Set `Connection.ProxyURL` explicitly (always exempt) or configure `SSRFExemptCIDRs` |
-| Was the proxy circuit-broken after a 403 switch? | Mistakenly assuming status codes trigger circuit breaking | No — status-code rotation never breaks a proxy; only connection-level failures do |
-| `Meta.ProxyURL` always empty | Only the system proxy is in effect — `EnableSystemProxy` is not recorded in this field | Use an explicit `ProxyURL` or `ProxyPool` when you need to observe the egress |
+| Was the proxy circuit-broken after a 403 switch? | Status-code rotation and circuit breaking are separate mechanisms | No: status-code rotation never breaks a proxy; only connection-level failures do |
+| Why is the pool running HTTP/1.1? | A multi-proxy pool forces HTTP/1 by default, preventing the shared h2 pool from pinning every request to the first proxy | Set `Connection.EnableProxyPoolHTTP2 = true` when multiplexing is needed (requires `EnableHTTP2`) — see [Proxy Pools and HTTP/2](#proxy-pools-and-http-2-enableproxypoolhttp2) |
+| `Meta.ProxyURL` always empty | Only the system proxy is in effect, and `EnableSystemProxy` does not write this field | Use an explicit `ProxyURL` or `ProxyPool` when the egress must be observed |
 
 For the complete field reference, see [Configuration API — Proxy Pool](../api-reference/client-config/config#proxy-pool).
 
@@ -426,7 +491,7 @@ For the complete field reference, see [Configuration API — Proxy Pool](../api-
 | Scenario | Recommended configuration |
 |----------|---------------------------|
 | Fixed corporate egress | `ProxyURL` (http/https/socks5 as needed) |
-| Follow user system settings | `EnableSystemProxy` + `NO_PROXY` allowing internal ranges |
+| Follow system settings | `EnableSystemProxy` + `NO_PROXY` allowing internal ranges |
 | Multi-proxy load dispersion | `ProxyPool` + the default round-robin strategy |
 | Scraping the same host | `ProxyPool` + `ProxyRotatePerRequest` |
 | CF/WAF IP blocking | `ProxyPool` + `ProxyRotateOnStatus: []int{403}` |
@@ -435,7 +500,7 @@ For the complete field reference, see [Configuration API — Proxy Pool](../api-
 | Managing proxy credentials | Keep them in the URL userinfo (auto-masked in logs); store the configuration file separately |
 
 :::warning The performance cost of rotation
-Both `ProxyRotatePerRequest` and the retry path of status-code rotation close idle connections, trading connection reuse for egress rotation. For performance-sensitive scenarios that do not need rotation, keep the defaults (reuse connections); see [Connection Pool & DNS](./connection-pool) for idle-connection management.
+Both `ProxyRotatePerRequest` and the retry path of status-code rotation close idle connections, trading connection reuse for egress rotation. For performance-sensitive scenarios without rotation, keep the defaults (reuse connections); see [Connection Pool & DNS](./connection-pool) for idle-connection management.
 :::
 
 ## Next Steps

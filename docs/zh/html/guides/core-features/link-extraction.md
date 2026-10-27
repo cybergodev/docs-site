@@ -1,13 +1,19 @@
 ---
 sidebar_label: "链接提取实战"
 title: "链接提取实战 - CyberGo html | 资源收集指南"
-description: "CyberGo html 链接提取实战指南：用 ExtractAllLinks 提取脚本、样式、图片、视频等八类资源链接，GroupLinksByType 按类型分组，Include 字段控制过滤范围，相对 URL 解析为绝对地址并支持 BaseURL 自动检测，适用于爬虫与资源收集场景。"
-sidebar_position: 4
+description: "CyberGo html 链接提取实战：用 ExtractAllLinks 枚举页面引用的八类资源链接（不经过 HTML 清洗），GroupLinksByType 按类型分组，Include 字段过滤，说明内外链判定规则、相对 URL 解析与 BaseURL 自动检测。"
+sidebar_position: 40
 ---
 
 # 链接提取实战
 
-独立于内容提取，库提供了专门的链接提取 API，适合爬虫和资源收集场景。
+`ExtractAllLinks` 枚举页面引用的全部资源链接，不经过 HTML 清洗。本页覆盖链接类型、分组、过滤与 URL 解析规则。
+
+## 与内容提取的区别
+
+`Extract` 返回清洗后正文里的 `<a>` 链接（`Result.Links`），每个链接带可见文本、`nofollow` 标记与位置。`ExtractAllLinks` 返回未清洗页面引用的全部资源，包括 `Extract` 会清洗掉的 `<script>`、`<iframe>`，以及样式表、图标等。需要「正文里的链接」用前者，需要「页面引用了什么」用后者。
+
+未清洗指不做标签与属性移除，URL 本身仍要过格式校验：`javascript:`、`vbscript:`、`file:` 等危险协议，以及超长的 data URL 会被丢弃，不进入结果。
 
 ## 基本用法
 
@@ -31,6 +37,8 @@ for _, link := range links {
 [link] Go 官网 - https://go.dev
 ```
 
+结果按 `URL` 升序排列，同一 URL 只出现一次。仅锚点（`#top`）或仅查询串（`?page=2`）的 href 是页内导航，不会产生结果。
+
 ## 链接类型
 
 `LinkResource` 的 `Type` 字段标识资源类型：
@@ -39,16 +47,22 @@ for _, link := range links {
 |------|----------|------|
 | `link` | `<a>` | 页面链接 |
 | `image` | `<img>` | 图片资源 |
-| `video` | `<video>`，以及 `<iframe>`/`<embed>`/`<object>`（仅当 src 为视频 URL 时收录） | 视频资源 |
-| `audio` | `<audio>` | 音频资源 |
+| `video` | `<video>`、`<source type="video/*">`，以及 `src` 为视频 URL 的 `<iframe>`/`<embed>`/`<object>` | 视频资源 |
+| `audio` | `<audio>`、`<source type="audio/*">` | 音频资源 |
 | `css` | `<link rel="stylesheet">` | 样式表 |
-| `media` | `<source>` | 通用媒体资源（无法确定视频/音频时） |
+| `media` | `<source>` | 通用媒体资源：`type` 既非 `video/*` 也非 `audio/*`，且 URL 扩展名无法判定视频或音频时 |
 | `js` | `<script>` | 脚本文件 |
 | `icon` | `<link rel="icon">` | 网站图标 |
 
+:::tip `<source>` 的归类规则
+`<source>` 先看 `type` 属性：`video/*` 归 `video`，`audio/*` 归 `audio`（大小写不敏感）。没有可用的 `type` 时按 URL 扩展名判定；两者都无法判定时归为 `media`。
+
+实测 `<source src="/x.unknownext">` 与 `<source type="application/vnd.apple.mpegurl">` 都输出 `media`。
+:::
+
 ## 按类型分组
 
-`GroupLinksByType` 将链接按 `Type` 字段分组：
+`GroupLinksByType` 按 `Type` 字段分组：
 
 ```go
 links, _ := html.ExtractAllLinks(data)
@@ -78,13 +92,13 @@ for typ, items := range groups {
   https://example.com/app.js
 ```
 
-:::tip 分组顺序
-`GroupLinksByType` 返回 `map`，**组间迭代顺序不确定**；每组内部保持 `ExtractAllLinks` 的 URL 升序。
+:::tip 组间顺序不固定
+`GroupLinksByType` 返回 `map`，组间迭代顺序不确定；每组内部的顺序沿用 `ExtractAllLinks` 的 URL 升序。需要稳定输出时先对键排序。
 :::
 
 ## 配置过滤规则
 
-通过 `Config` 字段控制提取哪些类型的链接：
+用 `Config` 字段控制提取哪些类型：
 
 ```go
 cfg := html.DefaultConfig()
@@ -107,19 +121,23 @@ links, _ := html.ExtractAllLinks(data, cfg)
 | 配置字段 | 默认值 | 控制范围 |
 |----------|--------|----------|
 | `IncludeImages` | `true` | `<img>` 标签 |
-| `IncludeVideos` | `true` | `<video>`、`<iframe>`、`<embed>`、`<object>` |
-| `IncludeAudios` | `true` | `<audio>` 标签 |
+| `IncludeVideos` | `true` | `<video>`、判定为视频的 `<source>`、`<iframe>`、`<embed>`、`<object>` |
+| `IncludeAudios` | `true` | `<audio>` 与判定为音频的 `<source>` |
 | `IncludeCSS` | `true` | `<link rel="stylesheet">` |
 | `IncludeJS` | `true` | `<script>` 标签 |
-| `IncludeContentLinks` | `true` | `<a>` 站内链接 |
-| `IncludeExternalLinks` | `true` | `<a>` 站外链接 |
+| `IncludeContentLinks` | `true` | 相对 href 的 `<a>` 链接 |
+| `IncludeExternalLinks` | `true` | 绝对或协议相对的 `<a>` 链接 |
 | `IncludeIcons` | `true` | `<link rel="icon">` |
+
+:::warning 内外链判定只看原始 href
+`IncludeContentLinks` 与 `IncludeExternalLinks` 的划分依据是**原始 href 的形态**：以 `http://`、`https://` 或 `//` 开头即为外部，其余为内部。它**不比较域名**——指向同站点的绝对链接同样算外部。`LinkInfo.IsExternal` 使用同一规则。
+:::
 
 ## URL 解析
 
 ### 相对 URL 解析
 
-启用 `ResolveRelativeURLs` 后，相对路径会自动转换为绝对路径：
+启用 `ResolveRelativeURLs`（默认）后，相对路径按 `BaseURL` 转为绝对地址：
 
 ```go
 cfg := html.DefaultConfig()
@@ -131,16 +149,20 @@ links, _ := html.ExtractAllLinks(data, cfg)
 // ./style.css → https://example.com/docs/style.css
 ```
 
+协议相对引用（`//host/path`）原样保留，不继承 `BaseURL` 的协议。
+
 ### 自动检测 Base URL
 
-如果设置了 `ResolveRelativeURLs = true` 但未设置 `BaseURL`，库会自动从 HTML 中检测：
+`ResolveRelativeURLs` 为 `true` 而 `BaseURL` 为空时，库按以下顺序推断基准：
 
-1. `<base href="...">` 标签
-2. `<meta property="og:url">` 或 `canonical`
+1. `<base href="...">`
+2. `<meta property="og:url">` 或 `<meta property="canonical">`
 3. `<link rel="canonical">`
-4. 页面中第一个绝对 URL 的域名
+4. 页面中第一个绝对 `href`/`src` 的 `scheme://host/`
 
-## 爬虫场景实战
+`<base href>` 规范化后为空（如 `about:blank`、`data:`）时视为不可用，按后续顺序继续推断，而不是放弃整个文档的 URL 解析。
+
+## 爬虫场景
 
 ### 收集页面所有资源
 
@@ -167,6 +189,8 @@ for _, link := range groups["link"] {
 }
 ```
 
+`isSameDomain` 的域名过滤需自行实现（见上文警告）。
+
 ### 仅提取页面导航链接
 
 ```go
@@ -192,10 +216,10 @@ links, err := html.ExtractAllLinksFromFile("page.html")
 // Processor 实例
 p, _ := html.New()
 defer p.Close()
-links, err := p.ExtractAllLinksFromFile("page.html")
+links, err = p.ExtractAllLinksFromFile("page.html")
 ```
 
-## 带上下文版本
+## 带上下文的版本
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -207,5 +231,5 @@ links, err := html.ExtractAllLinksWithContext(ctx, data)
 ## 下一步
 
 - [API 参考：链接提取](../../api-reference/modules/links) - 完整 API 签名
-- [批量处理](../../api-reference/modules/batch) - 批量提取链接
+- [批量处理](../../api-reference/modules/batch) - 批量提取
 - [配置详解](../../api-reference/core/config) - 链接过滤配置

@@ -1,67 +1,84 @@
 ---
 sidebar_label: "Encoding Detection"
 title: "Encoding Detection - CyberGo html | Charset Detection Guide"
-description: "CyberGo html charset detection: five-level priority (manual, UTF-8 fast path, BOM/meta, statistical, Windows-1252), 15+ encodings, Config.Encoding override."
-sidebar_position: 5
+description: "CyberGo html charset detection: Config.Encoding, BOM, meta declaration, valid UTF-8, and windows-1252 fallback order, with 32 encodings and GBK examples."
+sidebar_position: 50
 ---
 
-# Encoding Detection Guide
+# Encoding Detection
 
-HTML documents may use various character encodings (GBK, Shift_JIS, Windows-1252, etc.). The library has built-in automatic encoding detection that identifies the encoding from the HTML bytes and converts to UTF-8. It supports 15+ encodings with no manual handling required.
+An HTML document's character encoding comes from `Config.Encoding`, a BOM, a `<meta>` declaration, or the data itself. This page covers the decision order, the supported encodings, and what undeclared pages actually produce.
 
-## Detection Priority
+## Detection Order
 
-The library determines the input encoding in the following order, trying each in turn; the first match wins:
+Detection has two stages: basic detection proposes a charset, then the candidate is scored — a score of 90 or above is accepted directly; a basic result of `utf-8` scoring 70–89 is also accepted; everything else goes to statistical scoring.
 
-| Priority | Source | Description |
-|--------|------|------|
-| ① Highest | `Config.Encoding` manual override | Used directly when non-empty, skipping all automatic detection |
-| ② | UTF-8 validity fast path | Input that is entirely valid UTF-8 (including pure ASCII) is preferentially treated as UTF-8 — non-ASCII valid UTF-8 takes precedence over meta declarations; pure ASCII does too when no meta declaration is present |
-| ③ | Basic detection: BOM and meta tag declarations | BOM first; `<meta charset>` or `http-equiv="content-type"`, scanning the first 1024 bytes |
-| ④ | Statistical algorithm detection | Samples up to 10KB, decodes and scores multiple candidate encodings, and adopts the best; falls back to the basic-detection result when confidence is too low |
-| ⑤ Fallback | Windows-1252 | Falls back to Windows-1252 when none of the above determines an encoding (the most common fallback for Western content) |
+| Priority | Stage | Source | Notes |
+|----------|-------|--------|-------|
+| ① | Forced | `Config.Encoding` | Used directly; all later detection is skipped |
+| ② | Basic | BOM | UTF-8 (`EF BB BF`), UTF-16 LE (`FF FE`), UTF-16 BE (`FE FF`) |
+| ③ | Basic | Pure ASCII | Uses the `<meta>` declaration when present, otherwise UTF-8 |
+| ④ | Basic | Valid UTF-8 (non-ASCII present) | Treated as UTF-8 and the meta declaration is **ignored** |
+| ⑤ | Basic | Meta declaration | `<meta charset>` or `http-equiv="content-type"`, scanning only the first 1024 bytes |
+| ⑥ | Basic | windows-1252 fallback | When nothing above applies |
+| ⑦ | Statistical | Scores 13 candidate encodings | Runs when the basic result scores below 90 (a `utf-8` basic result scoring 70–89 is accepted directly); samples up to 10KB |
+
+The difference between ③ and ④: pure ASCII carries no encoding information of its own, so the declaration decides first; valid UTF-8 containing non-ASCII bytes is trusted as data — some pages declare a legacy charset while actually serving UTF-8.
 
 ```text
-Config.Encoding non-empty? ── yes ──→ use directly
+Config.Encoding set? ── yes ──→ use it
         │
         no
         │
-Pure ASCII / valid UTF-8? ── yes ──→ treat as UTF-8
+BOM? ── yes ──→ use the BOM charset
         │
         no
         │
-BOM / meta tag declaration? ── yes ──→ use declared value
+Pure ASCII? ── yes ──→ meta declaration if present, else UTF-8
         │
         no
         │
-Statistical algorithm (≤10KB sampling and scoring) ──→ adopt best candidate
+Valid UTF-8? ── yes ──→ UTF-8 (meta declaration ignored)
         │
-        └──→ fall back to Windows-1252
+        no
+        │
+Meta declaration? ── yes ──→ use the declared value
+        │
+        no
+        │
+windows-1252 fallback
 ```
 
-:::tip BOM detection
-The BOM (byte order mark) is checked **first** in basic detection: UTF-8 BOM (`EF BB BF`), UTF-16 LE BOM (`FF FE`), UTF-16 BE BOM (`FE FF`). When a BOM is present, the encoding is determined directly, taking precedence over meta tag declarations.
+The charset from basic detection is then scored as well; candidates that miss the acceptance thresholds go to statistical scoring: up to 10KB is sampled, 13 candidate encodings are decoded and scored, and the highest score wins.
+
+:::tip The BOM outranks the meta declaration
+A BOM is an encoding declaration carried by the data itself, and basic detection checks it first. When a BOM is present the encoding is settled without consulting any meta declaration.
 :::
 
 ## Supported Encodings
 
 | Category | Encodings | Notes |
 |------|------|------|
-| Unicode | UTF-8, UTF-16LE, UTF-16BE | Pure ASCII / valid UTF-8 input is treated as UTF-8 directly |
+| Unicode | UTF-8, UTF-16LE, UTF-16BE | UTF-8 takes a passthrough fast path and never enters the conversion table; pure ASCII / valid UTF-8 input is treated as UTF-8 directly |
 | Western European | Windows-1252, ISO-8859-1, ISO-8859-15 | ISO-8859-15 includes the euro sign |
 | Central European | Windows-1250, ISO-8859-2, ISO-8859-3, ISO-8859-4 | ISO-8859-3 is South European, ISO-8859-4 is Baltic |
-| Cyrillic | Windows-1251, ISO-8859-5 | Russian, etc. |
-| Other ISO-8859 | ISO-8859-6 (Arabic), ISO-8859-7 (Greek), ISO-8859-8 (Hebrew), ISO-8859-9 (Turkish), ISO-8859-10 (Nordic), ISO-8859-13 (Baltic), ISO-8859-14 (Celtic), ISO-8859-16 (Southeast European) | The series omits -11/-12 |
-| Simplified Chinese | GBK | The alias `gb2312` is normalized to `gbk` |
+| Cyrillic | Windows-1251, KOI8-R, ISO-8859-5 | Russian, etc. |
+| Greek | Windows-1253, ISO-8859-7 | — |
+| Turkish | Windows-1254, ISO-8859-9 | — |
+| Hebrew | Windows-1255, ISO-8859-8 | — |
+| Arabic | Windows-1256, ISO-8859-6 | — |
+| Vietnamese | Windows-1258 | — |
+| Other ISO-8859 | ISO-8859-10 (Nordic), ISO-8859-13 (Baltic), ISO-8859-14 (Celtic), ISO-8859-16 (Southeast European) | The series omits -11/-12 |
+| Simplified Chinese | GBK, GB18030 | The alias `gb2312` is normalized to `gbk` |
 | Traditional Chinese | Big5 | — |
 | Japanese | Shift_JIS, EUC-JP, ISO-2022-JP | — |
 | Korean | EUC-KR | — |
 
-The conversion registry supports 26 encodings in total (including UTF-8 itself).
+The conversion registry supports 32 conversion encodings in total; UTF-8 takes a passthrough fast path and never goes through the conversion table.
 
-### Encoding alias normalization
+### Alias normalization
 
-Encoding names and aliases are **case-insensitive** and are normalized to canonical names automatically:
+Encoding names and aliases are **case-insensitive** and normalize to canonical names. Common alias examples (the alias table is not exhaustive):
 
 | Input alias | Normalized result |
 |----------|-----------|
@@ -72,9 +89,9 @@ Encoding names and aliases are **case-insensitive** and are normalized to canoni
 | `8859-1`, `iso88591` | `iso-8859-1` |
 | `cp1252`, `windows1252` | `windows-1252` |
 
-## Automatic Detection Example
+## GBK with a Meta Declaration
 
-A GBK-encoded Chinese HTML document is recognized automatically via its meta tag declaration:
+A GBK-encoded Chinese page that declares its encoding in `<meta charset>` is identified by basic detection:
 
 ```go
 package main
@@ -88,19 +105,19 @@ import (
 )
 
 func main() {
-	// GBK-encoded Chinese HTML (meta tag declares charset=gbk)
+	// GBK-encoded Chinese HTML (the meta tag declares charset=gbk)
 	gbkHTML := `<html><head><meta charset="gbk">` +
 		`<title>中文网页</title></head>` +
 		`<body><article><h1>你好世界</h1>` +
 		`<p>这是一段中文内容。</p></article></body></html>`
 
-	// Encode the UTF-8 string to GBK bytes (simulating a real GBK web page)
+	// Encode the UTF-8 string to GBK bytes (simulating a real GBK page)
 	gbkBytes, err := simplifiedchinese.GBK.NewEncoder().Bytes([]byte(gbkHTML))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Auto-detect encoding and extract (detects GBK from meta charset, converts to UTF-8, then extracts)
+	// Auto-detection: GBK from the meta charset, converted to UTF-8 before extraction
 	result, err := html.Extract(gbkBytes)
 	if err != nil {
 		log.Fatal(err)
@@ -110,14 +127,14 @@ func main() {
 	// Title: 中文网页
 
 	fmt.Println("Text:", result.Text)
-	// Text: 你好世界
+	// Text: # 你好世界
 	//       这是一段中文内容。
 }
 ```
 
-## Manually Specifying the Encoding
+## Specifying the Encoding
 
-When the meta tag is missing, declared incorrectly, or automatic detection is uncertain, force a specific encoding via `Config.Encoding`:
+When the meta tag is missing, the declaration is wrong, or the source encoding is known, set `Config.Encoding`:
 
 ```go
 cfg := html.DefaultConfig()
@@ -126,19 +143,25 @@ cfg.Encoding = "gbk"
 result, err := html.Extract(gbkBytes, cfg)
 ```
 
-| Use case | Description |
-|----------|------|
-| Source encoding is known | Obtain the encoding from the HTTP `Content-Type` header and specify it directly to avoid misdetection |
-| Meta tag missing | Legacy pages without a `<meta charset>` declaration |
-| Automatic detection fails | The statistical algorithm's confidence is too low, producing incorrect results |
+| Use case | Notes |
+|----------|-------|
+| Known source encoding | Take it from the HTTP `Content-Type` header and specify it |
+| Legacy pages with no meta tag | GBK/Shift_JIS pages without `<meta charset>` fall back to windows-1252 and turn into mojibake |
+| Declaration disagrees with the data | `Config.Encoding` wins over the meta declaration |
 
-:::tip Config.Encoding has the highest priority
-Once `Config.Encoding` is set, the library skips automatic detection entirely and decodes directly with the specified encoding. Ideal for deterministic scenarios, avoiding the uncertainty of statistical detection.
+:::tip Config.Encoding skips all detection
+With `Config.Encoding` set, the library reads no BOM, no meta declaration, and runs no statistical scoring — it decodes with the given charset. That is what makes it deterministic; conversely, a wrong value produces mojibake or an error immediately.
 :::
 
-### Shift_JIS Automatic Detection in Practice
+### Undeclared pages decode to mojibake
 
-Japanese web pages often use the Shift_JIS encoding. Even without a meta declaration, the statistical algorithm can recognize it:
+:::warning A missing meta tag returns no error
+For a GBK or Shift_JIS page without `<meta charset>`, basic detection falls back to windows-1252. Measured on such pages, the output is mojibake with `err == nil` — there is no error signal at all. Whether statistical scoring can correct it depends on the content; do not rely on it as a safety net. In production, set `Config.Encoding` explicitly or take the encoding from the HTTP response header.
+:::
+
+### Shift_JIS pages need the meta declaration
+
+A Shift_JIS-encoded Japanese page is recognized by basic detection once it declares `<meta charset="shift_jis">`:
 
 ```go
 package main
@@ -152,8 +175,9 @@ import (
 )
 
 func main() {
-	// Shift_JIS-encoded Japanese HTML (no meta charset declaration)
-	sjisHTML := `<html><head><title>日本語ページ</title></head>` +
+	// Shift_JIS-encoded Japanese HTML (the meta tag declares charset=shift_jis)
+	sjisHTML := `<html><head><meta charset="shift_jis">` +
+		`<title>日本語ページ</title></head>` +
 		`<body><article><h1>こんにちは</h1>` +
 		`<p>東京の天気は晴れです。</p></article></body></html>`
 
@@ -163,7 +187,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// The statistical algorithm recognizes Shift_JIS automatically (samples bytes to analyze Japanese character distribution)
+	// Basic detection reads the meta declaration, converts to UTF-8, then extracts
 	result, err := html.Extract(sjisBytes)
 	if err != nil {
 		log.Fatal(err)
@@ -173,14 +197,23 @@ func main() {
 	// Title: 日本語ページ
 
 	fmt.Println("Text:", result.Text)
-	// Text: こんにちは
+	// Text: # こんにちは
 	//       東京の天気は晴れです。
 }
 ```
 
-### Manually Specifying Windows-1252
+Remove the meta declaration from the same bytes and the title becomes mojibake (shaped like `“ъ–{ЊкѓyЃ[ѓW`) while `err` stays `nil`. If a declaration cannot be added to the source, specify the encoding explicitly:
 
-Western European encodings (containing characters like `é`, `€`) can be specified manually:
+```go
+cfg := html.DefaultConfig()
+cfg.Encoding = "shift_jis"
+
+result, err := html.Extract(sjisBytes, cfg)
+```
+
+### Windows-1252
+
+Western European encodings (characters such as `é` and `€`) can be specified directly:
 
 ```go
 package main
@@ -204,7 +237,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Manually specify the Windows-1252 encoding
+	// Specify the Windows-1252 encoding explicitly
 	cfg := html.DefaultConfig()
 	cfg.Encoding = "windows-1252"
 
@@ -217,39 +250,39 @@ func main() {
 	// Title: Café Menu
 
 	fmt.Println("Text:", result.Text)
-	// Text: Café
+	// Text: # Café
 	//       Price: 100 €. Résumé available.
 }
 ```
 
-## Encoding Detection Failure
+## Encoding Detection Failures
 
-When encoding detection or conversion fails (e.g., corrupted data, an unsupported encoding), a wrapping error is returned:
+`encoding detection failed` appears only when the **specified encoding disagrees with the data**, meaning an encoding was forced incorrectly. There are two cases:
+
+| Case | Error message |
+|------|---------------|
+| `"utf-8"` forced on data that is not valid UTF-8 | `encoding detection failed: declared charset "utf-8" but data is not valid UTF-8` |
+| An unsupported encoding name on data that is not valid UTF-8 | `encoding detection failed: unsupported encoding "..."` |
 
 ```go
-result, err := html.Extract(data)
+// The data is actually GBK, but is forced to decode as UTF-8
+cfg := html.DefaultConfig()
+cfg.Encoding = "utf-8"
+
+_, err := html.Extract(gbkBytes, cfg)
 if err != nil {
-    if strings.Contains(err.Error(), "encoding detection failed") {
-        // Encoding detection failed; fall back to manual specification
-        cfg := html.DefaultConfig()
-        cfg.Encoding = "windows-1252"
-        result, err = html.Extract(data, cfg)
-        if err != nil {
-            log.Fatal(err)
-        }
-    } else {
-        log.Fatal(err)
-    }
+    log.Println(err)
+    // encoding detection failed: declared charset "utf-8" but data is not valid UTF-8
 }
 ```
 
-:::warning Error message format
-The error message for an encoding detection failure always contains the `"encoding detection failed"` prefix, which can be matched with `strings.Contains`. When detection fails, it is recommended to fall back to a manually specified encoding.
+:::warning Match on the message prefix; there is no sentinel
+This error has no sentinel value, so `errors.Is` cannot match it — check for the `"encoding detection failed"` prefix instead. Undeclared data never produces it: the library decodes as windows-1252 and returns mojibake. A "retry on detection failure" fallback therefore cannot catch mojibake pages; determine the encoding from the source.
 :::
 
 ## Audit Logging
 
-With auditing enabled, encoding detection issues are logged as `AuditEventEncodingIssue` (info level):
+With auditing enabled, a failed conversion is recorded as `AuditEventEncodingIssue` (info level):
 
 ```go
 package main
@@ -265,7 +298,8 @@ func main() {
 	cfg := html.DefaultConfig()
 	cfg.Audit = html.DefaultAuditConfig()
 	cfg.Audit.Enabled = true
-	// LogEncodingIssues defaults to true (enabled in DefaultAuditConfig)
+	cfg.Encoding = "utf-8" // Force UTF-8 so GBK bytes fail to convert
+	// LogEncodingIssues defaults to true (enabled by DefaultAuditConfig)
 
 	p, err := html.New(cfg)
 	if err != nil {
@@ -273,27 +307,28 @@ func main() {
 	}
 	defer p.Close()
 
-	// Process HTML (encoding issues are logged to the audit log automatically)
-	p.Extract([]byte(`<html><body><p>content</p></body></html>`))
-
-	// Query the audit log for encoding events
-	for _, entry := range p.GetAuditLog() {
-		if entry.EventType == html.AuditEventEncodingIssue {
-			fmt.Printf("[Encoding issue] %s\n", entry.Message)
-		}
+	// GBK bytes for "你好"; decoding as UTF-8 fails and is logged
+	gbkBytes := []byte{0xC4, 0xE3, 0xBA, 0xC3}
+	if _, err := p.Extract(gbkBytes); err != nil {
+		fmt.Println("extract failed:", err)
+		// extract failed: encoding detection failed: declared charset "utf-8" but data is not valid UTF-8
 	}
 
-	fmt.Println("Encoding event check complete")
-	// Encoding event check complete
+	for _, entry := range p.GetAuditLog() {
+		if entry.EventType == html.AuditEventEncodingIssue {
+			fmt.Printf("[encoding issue] %s\n", entry.Message)
+			// [encoding issue] declared charset "utf-8" but data is not valid UTF-8
+		}
+	}
 }
 ```
 
-:::tip Trigger conditions
-`AuditEventEncodingIssue` is logged only when encoding detection or conversion fails (e.g., an unsupported encoding was used and the data is not valid UTF-8). Normal documents never produce this event. Encoding issues are `info` level (the lowest), indicating the data may not have been decoded perfectly but security is unaffected. To filter them out, use `LevelFilteredSink` with a minimum level of `warning`.
+:::tip When the event is recorded
+`AuditEventEncodingIssue` is recorded only when conversion fails, which means a wrong forced encoding. Normal documents never produce it. The event is `info` level (the lowest): it says the decode may be unreliable, not that security is affected. To filter it out, use `NewLevelFilteredSink` with a minimum level of `warning`.
 :::
 
 ## Next Steps
 
-- [Content Extraction](./content-extraction) - Extraction workflow and article recognition
+- [Content Extraction](./content-extraction) - Extraction pipeline and article detection
 - [Error Handling](../performance/error-handling) - Sentinel errors and structured error handling
 - [API Reference: Config](../../api-reference/core/config) - The Encoding field and all configuration options

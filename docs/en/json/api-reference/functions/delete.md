@@ -1,13 +1,13 @@
 ---
 title: "Delete Functions - CyberGo JSON | Delete Usage & Examples"
-description: "CyberGo JSON is a Go library for path deletion, offering Delete removal and DeleteClean cascade cleanup to help developers drop fields and empty parents."
+description: "Deleting JSON nodes: Delete errors on exact paths but tolerates wildcard and slice paths; DeleteClean also removes empty containers and tree-wide nulls."
 sidebar_label: "Delete Operations"
 sidebar_position: 40
 ---
 
 # Delete Functions
 
-The JSON delete functions of the json package remove the node at a given path and optionally clean up the empty parents the deletion leaves behind. All delete functions are **immutable** — they return a new JSON string with the modification while the original stays unchanged; on error they return the original input.
+The JSON delete functions of the json package remove the node at a path and can clean up the empty parents left behind. Every delete function is **immutable**: it returns a new JSON string while the original stays unchanged; on error it returns the original input.
 
 ## Delete
 
@@ -57,7 +57,7 @@ func main() {
 
 ### Deleting an Array Element
 
-Deletes an element of an array (indices start at 0). The element is **removed**, not blanked — subsequent elements shift forward, indices are renumbered, and no holes remain.
+Deletes an element of an array (indices start at 0). The element is **removed**, not blanked: subsequent elements shift forward, indices are renumbered, and no holes remain. An out-of-range index returns an error wrapping `ErrPathNotFound`.
 
 ```go
 package main
@@ -157,7 +157,7 @@ func main() {
 
 ## Advanced Path Deletion
 
-`Delete` reuses the same recursive path engine as Get/Set, supporting batch semantics such as wildcards, slice ranges, and multi-field extraction. **Batch paths (containing `*`, `{}`, `:`) are fault-tolerant toward missing targets — delete what matches, silently skip what is missing, and return no error**.
+`Delete` reuses the same recursive path engine as Get/Set, supporting wildcards, slice ranges, and multi-field extraction. **Batch paths (containing `*`, `{}`, `:`) tolerate missing targets: matching nodes are deleted, missing ones are skipped silently, and no error is returned**.
 
 ### Wildcard Deletion
 
@@ -185,7 +185,7 @@ func main() {
 }
 ```
 
-No error is raised either when some elements lack the target property (idempotent semantics, consistent with Go's native `delete()` on an absent key):
+No error is raised when some elements lack the target property (idempotent semantics, consistent with Go's native `delete()` on an absent key):
 
 <!-- check-code: skip -->
 ```go
@@ -248,7 +248,7 @@ func main() {
 
 ### JSON Pointer Path Deletion
 
-When a path starts with `/`, `Delete` parses it with **RFC 6901 JSON Pointer** semantics (dot syntax no longer applies): segments are separated by `/`, and `~0`/`~1` escape `~` and `/` respectively. This provides an escape hatch for deleting **keys whose names contain special characters such as dots** (dot syntax cannot express such key names):
+When a path starts with `/`, `Delete` parses it with **RFC 6901 JSON Pointer** semantics (dot syntax no longer applies): segments are separated by `/`, `~0`/`~1` escape `~` and `/`, and negative indices match dot syntax (`-1` is the last element). This provides an escape hatch for deleting **keys whose names contain special characters such as dots**, which dot syntax cannot express:
 
 ```go
 package main
@@ -280,12 +280,12 @@ func main() {
 ```
 
 ::: warning The root node cannot be deleted
-The JSON Pointer `/` refers to the document root; deleting the root is meaningless — an error is returned (`cannot delete root`). Missing segments in a pointer path return `ErrPathNotFound`, just like exact dot paths.
+The JSON Pointer `/` refers to the document root; deleting the root is meaningless, so an error is returned (`cannot delete root`). Missing segments in a pointer path return `ErrPathNotFound`, just like exact dot paths.
 :::
 
 :::tip Exact paths vs batch paths
-- **Exact paths** (property names/indices only, e.g. `user.temp`, `items[1]`): return an `ErrPathNotFound` error when the target does not exist.
-- **Batch paths** (containing `*`, `{}`, `:`, e.g. `items[*]`, `[*].{a,b}`, `items[0:2]`): silently skip missing targets without error. Use exact paths when strict validation matters; use batch paths for "best-effort deletion".
+- **Exact paths** (property names/indices only, e.g. `user.temp`, `items[1]`): return `ErrPathNotFound` when the target does not exist.
+- **Batch paths** (containing `*`, `{}`, `:`, e.g. `items[*]`, `[*].{a,b}`, `items[0:2]`): silently skip missing targets without error. Use exact paths when strict validation matters; use batch paths for best-effort deletion.
 :::
 
 ## Error Handling
@@ -325,7 +325,7 @@ Common sentinel errors for deletion:
 
 | Error | Trigger |
 |-------|---------|
-| `ErrPathNotFound` | An intermediate segment or the target key/index of an exact path does not exist |
+| `ErrPathNotFound` | An intermediate segment or the target key/index of an exact path does not exist (including an out-of-range array index) |
 | `ErrInvalidJSON` | `jsonStr` is not valid JSON |
 | `ErrInvalidPath` | The path expression has illegal syntax (e.g. an unclosed bracket) |
 
@@ -333,7 +333,7 @@ Common sentinel errors for deletion:
 
 Signature: `func DeleteClean(jsonStr, path string, cfg ...Config) (string, error)`
 
-Deletes the specified path and **recursively cleans up** the `null` values and empty objects/empty arrays produced by the deletion. Equivalent to `Delete(jsonStr, path, cfg)` with `CleanupNulls: true` + `CompactArrays: true` forcibly enabled.
+Deletes the specified path and **recursively cleans up** the `null` values and empty objects/empty arrays produced by the deletion. Equivalent to `Delete(jsonStr, path, cfg)` with `CleanupNulls: true` and `CompactArrays: true` forced on.
 
 ### Cascade Cleanup Example
 
@@ -367,7 +367,7 @@ func main() {
 
 ### Cleaning Temporary Fields from API Responses
 
-`DeleteClean` is a good fit for cleaning API responses: while deleting the target field, it also sweeps other `null` values and residual empty containers, so no "hollow" objects leak to the frontend.
+`DeleteClean` suits cleaning API responses: while deleting the target field it also sweeps other `null` values and leftover empty containers, so hollow objects never reach the frontend.
 
 ```go
 package main
@@ -392,12 +392,12 @@ func main() {
 ```
 
 ::: warning DeleteClean sweeps nulls across the entire tree
-`DeleteClean` cleanup is **global**: it recursively runs cleanup across the entire JSON tree, so it removes **all** pre-existing `null` values and empty containers, not just the one produced at the deletion point. Use plain `Delete` when you only want to remove a specific field and keep other `null`s.
+`DeleteClean` cleanup is **global**: it recursively cleans the whole JSON tree, so it removes **all** pre-existing `null` values and empty containers, not just the one produced at the deletion point. Use plain `Delete` when you only want to remove a specific field and keep other `null`s.
 :::
 
 ## DeleteClean and Config
 
-`DeleteClean` is essentially syntactic sugar over `Delete` plus two config options. You can equally pass the same options to plain `Delete` for a fully equivalent effect:
+`DeleteClean` is essentially `Delete` plus two config options. Passing the same options to plain `Delete` gives an equivalent result:
 
 ```go
 package main
@@ -449,20 +449,20 @@ func main() {
 ## Common Pitfalls
 
 ::: warning Array deletion leaves no holes
-When `Delete` removes an array element, the element is **entirely removed** and subsequent elements shift forward automatically — no `null` placeholder or hole remains. If you expect indices to stay unchanged after deletion (leaving gaps), CyberGo's delete semantics do not provide that — use `Set` to write `null` into the position instead.
+When `Delete` removes an array element, the element is **entirely removed** and subsequent elements shift forward; no `null` placeholder or hole remains. If you expect indices to stay unchanged after deletion (leaving gaps), this library does not provide that: use `Set` to write `null` into the position instead.
 :::
 
 ::: warning DeleteClean may remove legitimately empty data
-`DeleteClean` cascade cleanup treats all empty objects `{}` and empty arrays `[]` as things to clean up. If in your business an "empty array" or "empty object" is a meaningful state (e.g. `"tags":[]` means "no tags" rather than "field missing"), `DeleteClean` will remove it along with its key. Use plain `Delete` when you need to keep such fields.
+`DeleteClean` cascade cleanup treats every empty object `{}` and empty array `[]` as something to clean up. If an "empty array" or "empty object" is a meaningful state in your business (e.g. `"tags":[]` means "no tags" rather than "field missing"), `DeleteClean` removes it along with its key. Use plain `Delete` when you need to keep such fields.
 :::
 
 ::: warning Batch deletion is fault-tolerant
-Wildcard/slice/multi-field paths **silently skip** missing targets without returning an error. When you rely on "target must exist" strict validation semantics, use an exact path instead (e.g. `items[1]` rather than `items[*]`).
+Wildcard, slice, and multi-field paths **silently skip** missing targets without returning an error. When you rely on "the target must exist" strict semantics, use an exact path instead (e.g. `items[1]` rather than `items[*]`).
 :::
 
 ## Deleting Multiple Fields in a Batch
 
-To delete several unrelated fields at once, simply loop over plain `Delete` (each iteration building on the previous result):
+To delete several unrelated fields at once, loop over plain `Delete`, each iteration building on the previous result:
 
 ```go
 package main

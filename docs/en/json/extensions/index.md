@@ -1,17 +1,17 @@
 ---
 sidebar_label: "Extensions Overview"
 title: "Extension Interfaces - CyberGo JSON | Hooks & Encoding"
-description: "CyberGo JSON extensions: AddHook intercepts Get/Set/Delete for logging, validation and audit; custom encoding via MarshalJSON, MarshalText and CustomEscapes."
+description: "CyberGo JSON extensions: AddHook intercepts Get/Set/Delete for logging, validation and audit; custom encoding via MarshalJSON, MarshalText, CustomEscapes."
 sidebar_position: 10
 ---
 
 # Extensions Overview
 
-The json library offers two complementary extension points: the **hook system** inserts custom logic into the operation flow, while **custom encoding** decides how types shape their JSON output. They work independently or together — e.g. audit writes with a hook while customizing output format with `MarshalJSON`.
+Extension points come in two kinds: **hooks** insert custom logic into the operation flow, and **custom encoding** decides how a type shapes its JSON output. They work independently or together — for example, audit writes with a hook while customizing output format with `MarshalJSON`.
 
 ## Hook System
 
-Hooks intercept the full `Get`/`Set`/`Delete` flow (package-level wrappers included; `Encode`/`Marshal` paths do not trigger yet), firing before and after each operation — a natural fit for logging, timing, input validation, and audit:
+Hooks intercept the full `Get`/`Set`/`Delete` flow (package-level wrappers included; `Encode`/`Marshal` paths do not trigger them), firing before and after each operation — the place for logging, timing, input validation, and audit:
 
 ```go
 p, err := json.New()
@@ -20,13 +20,13 @@ if err != nil {
 }
 defer p.Close()
 
-// Runtime registration: attach a logging hook in one line
+// Runtime registration: attach a logging hook
 p.AddHook(json.LoggingHook(slog.Default()))
 ```
 
-There are two registration routes: at **assembly time** via `Config.Hooks` (loaded at construction), or at **runtime** via `Processor.AddHook`. Beyond the built-in `LoggingHook`/`TimingHook`/`ValidationHook`/`ErrorHook` factories, implement the `Hook` interface for full control.
+Register hooks at **assembly time** via `Config.Hooks` (loaded at construction), or at **runtime** via `Processor.AddHook`. Beyond the built-in `LoggingHook`/`TimingHook`/`ValidationHook`/`ErrorHook` factories, implement the `Hook` interface for full control.
 
-For trigger points, ordering, panic protection, and more, see the [Hook System](./hooks) page.
+For trigger points, ordering, and panic protection, see the [Hook System](./hooks) page.
 
 ## Custom Encoding
 
@@ -38,8 +38,8 @@ Three channels **actually take effect in the current version** for changing "wha
 | Implement `encoding.TextMarshaler` (`MarshalText`) | Textual representation, encoded as a JSON string |
 | `Config.CustomEscapes` | Globally rewrite the escaping of certain characters |
 
-::: warning Config.CustomEncoder is not wired up
-`Config.CustomEncoder` and `Config.CustomTypeEncoders` are declared but **not yet wired into the encoding pipeline**; setting them does not change output today. Use the three channels above for now.
+::: warning Config.CustomEncoder is deprecated
+`Config.CustomEncoder` and `Config.CustomTypeEncoders` are **deprecated**: declared but never wired into the encoding pipeline, setting them does not change output today (kept within v1). Use the three channels above instead.
 :::
 
 For complete examples and selection guidance, see [Custom Encoder](./custom-encoder).

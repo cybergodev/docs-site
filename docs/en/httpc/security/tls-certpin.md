@@ -7,9 +7,11 @@ sidebar_position: 30
 
 # TLS and Certificate Pinning
 
+TLS configuration sets the protocol versions and cipher suites used during the handshake, and certificate pinning adds an extra check on peer identity on top of it. This page covers version control, suite injection rules, the three pinner constructors, and key rotation.
+
 ## TLS Version Control
 
-HTTPC requires TLS 1.2+ by default, rejecting the proven-insecure TLS 1.0/1.1. TLS 1.3 is recommended for stronger forward secrecy and a simpler handshake:
+HTTPC requires TLS 1.2+ by default and rejects the insecure TLS 1.0/1.1. TLS 1.3 is recommended for stronger forward secrecy and a simpler handshake:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -27,11 +29,11 @@ cfg.Security.MaxTLSVersion = tls.VersionTLS13  // Default
 | TLS 1.3 | Most secure, recommended (forward secrecy mandated) | Supported |
 
 :::tip
-To force TLS 1.3 only (higher security, simpler handshake), set `MinTLSVersion = tls.VersionTLS13`. Note that some legacy clients/proxies may not support TLS 1.3; confirm the target service is compatible before enabling.
+To force TLS 1.3 only (higher security, simpler handshake), set `MinTLSVersion = tls.VersionTLS13`. Some legacy clients and proxies do not support TLS 1.3; confirm the target service is compatible before enabling.
 :::
 
 :::warning
-Once `Security.TLSConfig` is set, `MinTLSVersion` and `MaxTLSVersion` **are ignored** — the settings inside `TLSConfig` take precedence. To control versions inside a custom `TLSConfig`, set `TLSConfig.MinVersion` / `MaxVersion`.
+Once `Security.TLSConfig` is set, `MinTLSVersion` and `MaxTLSVersion` **are ignored** and the settings inside `TLSConfig` take precedence. To control versions inside a custom `TLSConfig`, set its `MinVersion` / `MaxVersion` fields.
 :::
 
 ## Cipher Suites
@@ -49,9 +51,13 @@ The default configuration allows only secure cipher suites (ECDHE family enforci
 
 TLS 1.3 cipher suites are negotiated automatically by the protocol and are not controlled by the `CipherSuites` field.
 
+The suites above apply only when no custom `TLSConfig` is set; HTTPC injects them when building the transport (see `createTLSConfig` in `internal/connection/pool.go`).
+
+The same injection adds curve preferences (X25519 / P-256 / P-384), `RenegotiateNever`, and an LRU session-ticket cache (256 entries, reducing repeated handshake cost). With a custom `TLSConfig`, the custom configuration takes precedence.
+
 ## Custom TLS Configuration
 
-For fine-grained control (custom CA, mTLS, pinning specific cipher suites), set `Security.TLSConfig`:
+For fine-grained control (custom CA, mTLS, pinned cipher suites), set `Security.TLSConfig`:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -143,7 +149,7 @@ mTLS is common in zero-trust networks, service-mesh internal authentication, and
 
 ## Certificate Pinning
 
-Certificate pinning layers an additional check **on top of** standard certificate-chain validation: it requires a known pinned public key/certificate to be present in the server's certificate chain. Even if a trusted CA is compromised or coerced into issuing a forged certificate, an attacker still cannot perform a MITM — because the public key of their certificate does not match the pinned value.
+Certificate pinning layers an additional check **on top of** standard certificate-chain validation: it requires a known pinned public key or certificate to be present in the server's certificate chain. If a trusted CA is compromised or coerced into issuing a forged certificate, the attacker still cannot perform a MITM, because the public key of their certificate does not match the pinned value.
 
 ### How It Works
 
@@ -154,7 +160,7 @@ Standard validation:  trust CA -> trust any certificate signed by that CA
 Certificate pinning:  trust CA + certificate's public key must match the pre-stored hash
 ```
 
-Pinning layers on top of standard validation — no need to set `InsecureSkipVerify`. HTTPC validates **any layer** of the certificate chain, so pinning the intermediate certificate remains valid after the leaf certificate is renewed.
+Pinning layers on top of standard validation, with no need to set `InsecureSkipVerify`. HTTPC validates **any layer** of the certificates in the verified chains (leaf and intermediates), so pinning the intermediate certificate stays valid after the leaf certificate is renewed.
 
 ### SPKI Hash Generation Steps
 
@@ -187,12 +193,12 @@ Three-step breakdown:
 | Hash-encode | `openssl dgst -sha256 -binary \| openssl enc -base64` | SHA-256 then base64-encode |
 
 :::tip
-Pinning the **intermediate certificate**'s SPKI is recommended over the leaf certificate. Intermediate certificates are long-lived (typically 5-10 years); when the leaf certificate is renewed (e.g. Let's Encrypt's 90 days), the intermediate stays the same, so the pinned value does not need frequent updates.
+Pinning the **intermediate certificate**'s SPKI is recommended over the leaf certificate. Intermediate certificates are long-lived (5-10 years); when the leaf certificate is renewed (e.g. Let's Encrypt's 90 days), the intermediate stays the same, so the pinned value does not need frequent updates.
 :::
 
 ### SPKI Hash Pinning (Recommended)
 
-`NewSPKIHashPinner` accepts one or more base64-encoded SHA-256 SPKI hashes. Providing multiple hashes supports key rotation — any match passes:
+`NewSPKIHashPinner` accepts one or more base64-encoded SHA-256 SPKI hashes. Supplying multiple hashes supports key rotation: any match passes.
 
 ```go
 package main
@@ -225,10 +231,10 @@ func main() {
 }
 ```
 
-`NewSPKIHashPinner` returns an error when the hashes are empty or not valid base64, exposing configuration problems at startup. Validation logic: iterate every layer of the server's certificate chain, compute each SPKI's SHA-256, and pass if any matches a pinned hash.
+`NewSPKIHashPinner` returns an error when the hashes are empty or not valid base64, so configuration problems surface at startup. Validation logic: iterate every layer of the server's certificate chain, compute each SPKI's SHA-256, and pass if any matches a pinned hash.
 
 :::tip
-`CertificatePinner` layers pinning validation **on top of** standard TLS chain validation — no need to set `InsecureSkipVerify`. Validation applies to any layer of the certificate chain, so pinning the intermediate remains valid after the leaf certificate is renewed.
+`CertificatePinner` layers pinning validation **on top of** standard TLS chain validation — no need to set `InsecureSkipVerify`. Validation applies to any layer of the certificates in the verified chains, so pinning the intermediate remains valid after the leaf certificate is renewed.
 :::
 
 ### Three Pinner Constructors Compared
@@ -255,7 +261,59 @@ chainPinner := httpc.NewCertificatePinnerChain(spkiPinner, pubPinner)
 cfg.Security.CertificatePinner = chainPinner
 ```
 
-`NewCertificatePinnerChain` with no arguments returns a "deny-all" Pinner (secure default), ensuring a configuration omission is never silently passed off as "allow all".
+:::warning
+`NewCertificatePinnerChain` with no arguments does **not** return an error, but the resulting empty chain fails closed: `VerifyPeerCertificate` returns `certificate pinning failed: no pinners configured`, which **rejects every connection**.
+
+All-nil elements are rejected as well, with `no pinner matched`. The public API documentation describes it as a pinner that "accepts nothing". Pass at least one Pinner at construction.
+:::
+
+### Pinner Verification Details and Failure Behavior
+
+Pinning semantics follow the source (`internal/security/certpin.go`):
+
+| Aspect | Behavior |
+|------|------|
+| Match scope | Standard-verification path: iterates only the certificates in the **verified chains** (`verifiedChains`); passes when the SPKI hash of any layer matches any pinned value — unverified certificates appended by the server do not participate in matching (prevents pin-stuffing: a MITM stuffing the victim's real certificate into its own chain still fails). `InsecureSkipVerify` path: matches the **leaf certificate only**; pinning an intermediate has no effect in that mode |
+| Failure behavior | No match anywhere in the chain -> the handshake is rejected with an error such as `certificate pinning failed: no matching SPKI hash found` |
+| Empty certificate chain | The server provided no certificate -> `no peer certificates provided` |
+| Parse tolerance | Certificates in the chain that cannot be parsed or use an unsupported key type are skipped; matching on the remaining certificates is unaffected |
+| Construction validation | Hashes are `TrimSpace`d first; a non-base64 value reports `invalid base64 hash`; no valid hash reports `at least one valid SPKI hash is required` |
+| Performance | Certificate-fingerprint-to-SPKI-hash cache (1024 entries, FIFO eviction: a hit does not refresh position, and when full the oldest 256 entries are evicted), so repeated connections do not re-parse certificates |
+| Concurrency safety | The Pinner holds an internal read/write lock and can be shared by multiple Clients; when `Config` is deep-copied, the Pinner is shared by reference (not copied) |
+| Debug description | `Pin()` returns values such as `spki-pins:2`, `public-key-pins:2`, `chain:[spki-pins:1,spki-pins:1]`, which can be written to logs |
+
+`NewPublicKeyPinner` computes SHA-256 for each DER PKIX public key internally and delegates to the SPKI hash pinner, so both share the same matching semantics; with no valid public key it reports `no valid public keys provided`.
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/cybergodev/httpc"
+)
+
+func main() {
+	// A non-base64 hash fails at construction time instead of surfacing at the first live handshake
+	_, err := httpc.NewSPKIHashPinner("!!not-base64!!")
+	fmt.Println("invalid hash rejected:", err != nil)
+
+	// A whitespace-only string counts as unset after TrimSpace and is rejected as well
+	_, err = httpc.NewSPKIHashPinner("   ")
+	fmt.Println("empty hash rejected:", err != nil)
+	// Output:
+	// invalid hash rejected: true
+	// empty hash rejected: true
+}
+```
+
+### Interaction with a Custom TLSConfig
+
+When `Security.TLSConfig` is set, HTTPC `Clone()`s the custom configuration and **injects** the `VerifyPeerCertificate` pinning callback on top of it. RootCAs, mTLS certificates, cipher suites, and other settings are all preserved, and pinning validation still applies (see `createTLSConfig` in `internal/connection/pool.go`).
+
+:::warning
+After a custom `TLSConfig` is set, `MinTLSVersion`/`MaxTLSVersion` are ignored, but `Security.InsecureSkipVerify = true` **still takes effect**: HTTPC clones the custom configuration and injects this switch one-way (it only forces skipping; an `InsecureSkipVerify` set inside `TLSConfig` itself is unaffected by the top-level switch).
+:::
 
 ### Custom CertificatePinner
 
@@ -328,12 +386,12 @@ func main() {
 ```
 
 :::warning
-When implementing a custom `CertificatePinner`, always layer pinning validation on top of standard certificate-chain validation (`verifiedChains`). Never use it to replace standard validation — keep `InsecureSkipVerify = false` at all times.
+When implementing a custom `CertificatePinner`, layer pinning validation on top of standard certificate-chain validation (`verifiedChains`). Do not use it to replace standard validation; keep `InsecureSkipVerify = false` at all times.
 :::
 
 ## Multiple Hashes and Key Rotation
 
-Both `NewSPKIHashPinner` and `NewPublicKeyPinner` accept multiple values; any match passes. This is the key to key rotation: pin both the old and new public keys at the same time, so both old and new certificates pass during the rotation window — no downtime needed for the switch.
+Both `NewSPKIHashPinner` and `NewPublicKeyPinner` accept multiple values; any match passes. Key rotation depends on this: pin both the old and new public keys at the same time, so both old and new certificates pass during the rotation window without downtime.
 
 Rotation workflow:
 
@@ -350,21 +408,21 @@ Rotation workflow:
 5. After observing a trouble-free period, remove the old hash from the pinned values
 
 :::danger
-A pinning failure (pinned value not matching) causes the connection to fail completely and cannot recover automatically. Be sure to:
-- **Always keep at least one backup pinned value** in case the primary key is unexpectedly compromised
+A pinning failure (pinned value not matching) makes the connection fail completely and does not recover automatically. Requirements:
+- **Keep at least one backup pinned value** in case the primary key is unexpectedly corrupted
 - Use an "add new first, remove old later" dual-window rotation strategy
-- Set up monitoring so pinning failures trigger a fast rollback of the client configuration
+- Set up monitoring so a pinning failure triggers a fast rollback of the client configuration
 :::
 
 ## Certificate Pinning and Let's Encrypt
 
-Let's Encrypt certificates are valid for only 90 days and renew frequently. Pinning the leaf certificate directly would require updating the pinned value every 90 days — high maintenance cost. Recommended strategies:
+Let's Encrypt certificates are valid for only 90 days and renew frequently. Pinning the leaf certificate directly requires updating the pinned value every 90 days, which carries a high maintenance cost. Recommended strategies:
 
 | Pinned target | Validity | Renewal impact | Recommendation |
 |---------|--------|---------|--------|
 | Leaf certificate | 90 days | Pinned value must be updated on every renewal | Low |
 | Let's Encrypt intermediate | ~5 years | Update only when the intermediate rotates (every few years) | Recommended |
-| Your domain's public key (if self-hosted) | Controlled by you | Update only when you deliberately rotate the key | Case by case |
+| Own domain's public key (if self-hosted) | Controlled by the site operator | Update only on a deliberate key rotation | Case by case |
 
 Let's Encrypt intermediates (such as R3, R10, R11) are valid for years; pinning the intermediate's SPKI balances security with low maintenance. When Let's Encrypt rotates its intermediate, it announces this in advance, leaving plenty of time to update the pinned value.
 
@@ -376,10 +434,6 @@ pinner, err := httpc.NewSPKIHashPinner(
 )
 ```
 
-:::tip
-Let's Encrypt's intermediate-certificate public key usually stays unchanged across rotations (a new certificate is issued but the public key is reused). Pinning the public-key SPKI is more stable than pinning the full intermediate certificate — when the public key is unchanged, the SPKI hash is unchanged.
-:::
-
 ## Security Considerations for Certificate Pinning
 
 | Risk | Consequence | Mitigation |
@@ -390,10 +444,10 @@ Let's Encrypt's intermediate-certificate public key usually stays unchanged acro
 | Pinning only one layer | Single point of failure | Pin multiple layers (leaf + intermediate) |
 
 :::warning
-Certificate pinning is a double-edged sword: it greatly improves defense against MITM/CA compromise, but a pinning failure causes a hard outage. Before adopting it, ensure:
-1. You have a reliable mechanism for updating and distributing pinned values
-2. You monitor the pinning-failure rate and set alerts
-3. You retain an emergency "disable pinning" switch (at the cost of reduced security)
+Certificate pinning has two consequences: it improves defense against MITM and CA compromise, and a pinning failure causes a hard outage. Before adopting it, confirm:
+1. A reliable mechanism exists for updating and distributing pinned values
+2. Pinning-failure rates are monitored and alerted on
+3. An emergency "disable pinning" switch is retained (at the cost of reduced security)
 :::
 
 ### Pinning Strategy Comparison
@@ -403,7 +457,7 @@ Certificate pinning is a double-edged sword: it greatly improves defense against
 | Pin root certificate | Low | Low | Tamper protection only; CA scope too broad |
 | Pin intermediate certificate | Medium | Medium | **Recommended**; balances security and maintenance |
 | Pin leaf certificate | High | High | High security; certificate under your control |
-| Pin multiple levels | High | Medium | Best; multi-layer redundancy |
+| Pin multiple levels | High | Medium | Multi-layer redundancy; recommended |
 
 ## InsecureSkipVerify
 
@@ -418,7 +472,9 @@ cfg := httpc.TestingConfig()
 When HTTPC detects `InsecureSkipVerify = true` in `httpc.New()` and the environment is not a test environment, it prints a warning to `stderr` (once per process). A test environment is identified by an executable ending in `.test`, or the `GO_TEST` / `GOTEST=1` environment variable being set.
 
 :::danger
-`InsecureSkipVerify = true` disables all TLS security measures (certificate pinning is also void); use it only in test environments. Never set it to `true` in production. If you need custom verification logic (e.g. pinning the full certificate), implement the `CertificatePinner` interface instead of skipping verification.
+`InsecureSkipVerify = true` skips certificate-chain and hostname validation and is for test environments only. When certificate pinning is also configured, the SPKI hash check **still runs**: Go passes the peer certificate to the pinning callback even when chain validation is skipped, making pinning the only verification gate — and in that mode only the **leaf certificate** is matched, so combining `InsecureSkipVerify` with a pinned intermediate certificate always fails the handshake. Certificate-chain validity (expiry, revocation, CA issuance) and hostname validation are all absent in that case.
+
+Never set it to `true` in production. For custom verification logic (e.g. pinning the full certificate), implement the `CertificatePinner` interface instead of skipping verification.
 :::
 
 ## HTTP/2
@@ -431,17 +487,17 @@ cfg.Connection.EnableHTTP2 = false // Disable HTTP/2 (HTTP/1.1 only)
 ```
 
 :::tip
-When certificate pinning or a custom `TLSConfig` is enabled, HTTP/2's ALPN negotiation still works normally. To disable HTTP/2 (e.g. for debugging or compatibility with legacy proxies), set `EnableHTTP2 = false`.
+When certificate pinning or a custom `TLSConfig` is enabled, HTTP/2's ALPN negotiation still works normally. To disable HTTP/2 (e.g. for debugging or legacy-proxy compatibility), set `EnableHTTP2 = false`.
 :::
 
 ## Best Practices
 
-1. Use the default TLS configuration (TLS 1.2+) — no manual setup needed
+1. Use the default TLS configuration (TLS 1.2+); no manual setup is needed
 2. When pinning, pin the **intermediate certificate** SPKI and prepare backup pins
 3. Use multiple hashes to support key rotation with an "add new first, remove old later" strategy
-4. Periodically update pinned values in sync with server-certificate renewals
+4. Update pinned values in sync with server-certificate renewals
 5. Use `SecureConfig()` as a security baseline
-6. Never set `InsecureSkipVerify` in production
+6. Do not set `InsecureSkipVerify` in production
 7. For high-security scenarios, pin multiple certificate layers (leaf + intermediate) for redundancy
 
 ## Next Steps

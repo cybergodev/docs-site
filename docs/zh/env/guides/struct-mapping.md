@@ -1,13 +1,13 @@
 ---
 sidebar_label: "结构体映射"
 title: "结构体映射 - CyberGo env | 环境变量到结构体"
-description: "CyberGo env 结构体映射指南，通过 env、envDefault 标签将环境变量自动映射到 Go 结构体字段，涵盖嵌套结构体、指针切片、时间与自定义类型、默认值与必填验证，配合 ParseInto 实现类型安全配置加载。"
+description: "CyberGo env 结构体映射指南，通过 env、envDefault 标签将环境变量映射到 Go 结构体字段，涵盖嵌套结构体、指针字段、切片、时间与自定义类型、默认值与必填验证，配合 ParseInto 实现类型安全配置加载。"
 sidebar_position: 2
 ---
 
 # 结构体映射
 
-使用结构体标签将环境变量自动映射到 Go 结构体，实现类型安全的配置管理。
+结构体映射从已加载的键值填充 Go 结构体：`env` 标签指定键名，`envDefault` 标签提供兜底值，类型转换由库完成。
 
 ## 基本映射
 
@@ -28,7 +28,9 @@ type Config struct {
 }
 
 func main() {
-	env.Load(".env")
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
 	cfg := Config{}
 	if err := env.ParseInto(&cfg); err != nil {
@@ -66,7 +68,7 @@ type Config struct {
 
 ### envDefault 标签
 
-设置默认值：
+设置兜底值。默认值只在变量**未设置**时生效：键存在但值为空串不会触发默认值——字符串字段得到 `""`，非字符串字段保持零值。
 
 ```go
 type Config struct {
@@ -77,7 +79,7 @@ type Config struct {
 }
 ```
 
-默认值也可以内联写在 `env` 标签中——`env:"KEY,envDefault:VALUE"`，与独立的 `envDefault` 标签等价（两者同时存在时，独立标签优先）：
+默认值也可以内联写在 `env` 标签中：`env:"KEY,envDefault:VALUE"`。两种写法等价，同时存在时独立的 `envDefault` 标签优先：
 
 ```go
 type Config struct {
@@ -136,7 +138,7 @@ type Config struct {
 
 ### 切片类型
 
-切片字段以逗号 `,` 分隔，分隔符前后的空格会自动去除。
+切片字段只读取键自身的值并按逗号 `,` 拆分（带引号的分组保留内部空格，其余元素去除首尾空格）。`HOSTS_0`、`HOSTS_1` 这类索引键不参与结构体映射，只有 `GetSlice` / `GetSliceFrom` 会优先读取索引键。
 
 ```go
 type Config struct {
@@ -152,27 +154,32 @@ HOSTS=localhost,example.com,api.example.com
 PORTS=80,443,8080
 ```
 
+字符串切片保留空元素（`a,,b` 得到三个元素，中间是空串）；数字与布尔切片的空元素算转换错误。任一元素转换失败，整个映射返回 `*MarshalError`，不会跳过该元素继续填充。
+
 ## 嵌套结构体
+
+嵌套结构体的外层字段名会成为内层键的前缀，前缀逐层累积。外层字段的键取 `env` 标签值，没有标签就取字段名的大写形式：字段 Database（无标签）下的 Host（无标签）读取 `DATABASE_HOST`。传入 `ParseInto` 的最外层结构体，其类型名本身不参与前缀。
+
+内层字段自己写了 `env` 标签时，标签值仍会被前缀拼接：`env:"DB_HOST"` 放在 Database 字段下查的是 `DATABASE_DB_HOST`。要让内层直接读 `DB_HOST`，就把该字段放在顶层结构体里。
 
 ### 基本嵌套
 
 ```go
 type DatabaseConfig struct {
-    Host string `env:"DB_HOST" envDefault:"localhost"`
-    Port int64  `env:"DB_PORT" envDefault:"5432"`
-    User string `env:"DB_USER"`
-    Password string `env:"DB_PASSWORD"`
+    Host string `envDefault:"localhost"` // DATABASE_HOST
+    Port int64  `envDefault:"5432"`      // DATABASE_PORT
+    User string                          // DATABASE_USER
 }
 
 type RedisConfig struct {
-    Host string `env:"REDIS_HOST" envDefault:"localhost"`
-    Port int64  `env:"REDIS_PORT" envDefault:"6379"`
+    Host string `envDefault:"localhost"` // REDIS_HOST
+    Port int64  `envDefault:"6379"`      // REDIS_PORT
 }
 
 type AppConfig struct {
     Database DatabaseConfig
     Redis    RedisConfig
-    Debug    bool `env:"DEBUG" envDefault:"false"`
+    Debug    bool `env:"DEBUG" envDefault:"false"` // 顶层字段不带前缀
 }
 ```
 
@@ -180,19 +187,24 @@ type AppConfig struct {
 
 ```go
 type Credentials struct {
-    Username string `env:"DB_USER"`
-    Password string `env:"DB_PASSWORD"`
+    Username string // DATABASE_CONNECTION_CREDENTIALS_USERNAME
+    Password string // DATABASE_CONNECTION_CREDENTIALS_PASSWORD
 }
 
 type Connection struct {
-    Host        string      `env:"DB_HOST"`
-    Port        int64       `env:"DB_PORT"`
+    Host        string // DATABASE_CONNECTION_HOST
+    Port        int64  // DATABASE_CONNECTION_PORT
     Credentials Credentials
 }
 
 type Database struct {
     Connection Connection
-    Name       string `env:"DB_NAME"`
+    Name       string // DATABASE_NAME
+}
+
+// 传给 ParseInto 的顶层结构体；它自己的类型名不产生前缀
+type AppConfig struct {
+    Database Database
 }
 ```
 
@@ -228,13 +240,13 @@ func main() {
 }
 ```
 
-指针字段可以区分「未设置」与「零值」：变量未设置（或值为空）时指针保持 `nil`；设置为 `PORT=0` 时 `cfg.Port` 非 `nil` 且 `*cfg.Port == 0`。值类型字段则无法区分这两种情况。
+指针字段可以区分「未设置」与「零值」：变量未设置或值为空串时，指针保持 `nil`；值为 `PORT=0` 时 `cfg.Port` 非 `nil` 且 `*cfg.Port == 0`。值类型字段做不到这一点，两种情况都会留在零值。
 
 ## 自定义类型
 
 ### 实现 encoding.TextUnmarshaler 接口
 
-结构体字段的自定义解码通过实现标准库 `encoding.TextUnmarshaler` 接口完成——这是逐字段填充时**实际会被调用**的接口。
+结构体字段的自定义解码通过实现标准库 `encoding.TextUnmarshaler` 接口完成，这是逐字段填充时实际调用的接口。
 
 ```go
 package main
@@ -247,7 +259,7 @@ import (
 
 type LogLevel string
 
-// 实现 encoding.TextUnmarshaler —— 字段级别会被调用
+// 实现 encoding.TextUnmarshaler，字段级别会被调用
 func (l *LogLevel) UnmarshalText(text []byte) error {
 	switch string(text) {
 	case "debug", "info", "warn", "error":
@@ -296,12 +308,14 @@ func (p *Port) UnmarshalText(text []byte) error {
 ```
 
 ::: tip 关于 env.Marshaler / env.Unmarshaler 接口
-`env.Marshaler`（`MarshalEnv()`）与 `env.Unmarshaler`（`UnmarshalEnv(map[string]string)`）接口**仅在传给 `env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto` 的顶层值上生效**，不会被结构体的逐字段填充逻辑调用。若要对结构体字段做自定义编解码，请实现标准库 `encoding.TextMarshaler` / `encoding.TextUnmarshaler`，它们在字段级别会被识别。
+`env.Marshaler`（`MarshalEnv()`）与 `env.Unmarshaler`（`UnmarshalEnv(map[string]string)`）只在直接传给 `env.Marshal` / `env.MarshalStruct` / `env.UnmarshalInto` 的顶层值上生效，结构体逐字段填充时不会调用它们。字段级自定义编解码请实现标准库 `encoding.TextMarshaler` / `encoding.TextUnmarshaler`（Marshal 侧另识别 `json.Marshaler`）。
 :::
 
 ## 配置验证
 
 ### 结构体验证
+
+`ParseInto` 只做取值与类型转换，不会调用结构体上的 `Validate()` 方法；校验要在映射之后自行调用：
 
 ```go
 package main
@@ -397,38 +411,42 @@ func Load() (*Config, error) {
 
 ### 环境区分
 
+按环境拆分配置时，公共字段放进一个具名内嵌结构体，键前缀取该字段名（这里 Base），内层标签写短名。解析失败时向上返回 `nil` 与包装后的错误，不返回半填充的配置：
+
 ```go
 type BaseConfig struct {
-    AppName string `env:"APP_NAME"`
-    Version string `env:"APP_VERSION"`
+    AppName string `env:"APP_NAME"`   // 实际读取 BASE_APP_NAME
+    Version string `env:"APP_VERSION"` // 实际读取 BASE_APP_VERSION
 }
 
 type DevelopmentConfig struct {
-    BaseConfig
+    Base  BaseConfig
     Debug bool `env:"DEBUG" envDefault:"true"`
 }
 
 type ProductionConfig struct {
-    BaseConfig
+    Base  BaseConfig
     Debug bool `env:"DEBUG" envDefault:"false"`
 }
 
-func LoadConfig() interface{} {
-    env.Load(".env")
+func LoadConfig() (interface{}, error) {
+    if err := env.Load(".env"); err != nil {
+        return nil, fmt.Errorf("load env: %w", err)
+    }
 
     switch os.Getenv("GO_ENV") {
     case "production":
         cfg := ProductionConfig{}
         if err := env.ParseInto(&cfg); err != nil {
-            log.Printf("parse production config: %v", err)
+            return nil, fmt.Errorf("parse production config: %w", err)
         }
-        return cfg
+        return cfg, nil
     default:
         cfg := DevelopmentConfig{}
         if err := env.ParseInto(&cfg); err != nil {
-            log.Printf("parse development config: %v", err)
+            return nil, fmt.Errorf("parse development config: %w", err)
         }
-        return cfg
+        return cfg, nil
     }
 }
 ```
@@ -437,7 +455,7 @@ func LoadConfig() interface{} {
 
 ### 解析错误
 
-`ParseInto` / `UnmarshalInto` 的类型转换失败统一返回 `*MarshalError`（v1.2.3 起错误消息不回显原始值，防止敏感值泄露），可用 `env.IsMarshalError` 判断或用 `errors.As` 提取字段信息：
+`ParseInto` / `UnmarshalInto` 的类型转换失败统一返回 `*MarshalError`。v1.2.3 起错误消息不回显原始值，只保留失败原因（如 `invalid integer value`），避免敏感值进入日志。可用 `env.IsMarshalError` 判断，或用 `errors.As` 取出字段信息：
 
 ```go
 cfg := Config{}
@@ -452,13 +470,13 @@ if err := env.ParseInto(&cfg); err != nil {
 }
 ```
 
-注意：`*ParseError` 仅在**文件解析**场景（`LoadFiles` 解析 env/JSON/YAML 文件内容出错）返回；`ParseInto` 直接从已加载的键值填充结构体，不经过文件解析，不会返回 `*ParseError`。
+`*ParseError` 只在**文件解析**场景返回，即 `LoadFiles` 解析 env/JSON/YAML 文件内容出错时。`ParseInto` 直接从已加载的键值快照填充结构体，不经过文件解析，因此不会返回 `*ParseError`。
 
 ### 类型转换错误
 
 ```go
 type Config struct {
-    Port int64 `env:"PORT"`  // 如果 PORT 不是有效整数
+    Port int64 `env:"PORT"`  // PORT 不是有效整数时映射失败
 }
 
 cfg := Config{}
@@ -468,6 +486,8 @@ if err := env.ParseInto(&cfg); err != nil {
 ```
 
 ## 完整示例
+
+嵌套字段的键由「父字段前缀 + 自身键」拼接而成，所以内层字段写短名：Server 下的 `env:"HOST"` 读 `SERVER_HOST`，写 `env:"SERVER_HOST"` 会变成 `SERVER_SERVER_HOST`。
 
 ```go
 package main
@@ -482,8 +502,8 @@ import (
 )
 
 type ServerConfig struct {
-	Host         string        `env:"SERVER_HOST" envDefault:"0.0.0.0"`
-	Port         int64         `env:"SERVER_PORT" envDefault:"8080"`
+	Host         string        `env:"HOST" envDefault:"0.0.0.0"`
+	Port         int64         `env:"PORT" envDefault:"8080"`
 	ReadTimeout  time.Duration `env:"READ_TIMEOUT" envDefault:"30s"`
 	WriteTimeout time.Duration `env:"WRITE_TIMEOUT" envDefault:"30s"`
 }
@@ -496,11 +516,11 @@ func (c *ServerConfig) Validate() error {
 }
 
 type DatabaseConfig struct {
-	Host     string `env:"DB_HOST" envDefault:"localhost"`
-	Port     int64  `env:"DB_PORT" envDefault:"5432"`
-	User     string `env:"DB_USER" envDefault:"postgres"`
-	Password string `env:"DB_PASSWORD"`
-	Name     string `env:"DB_NAME" envDefault:"myapp"`
+	Host     string `env:"HOST" envDefault:"localhost"`
+	Port     int64  `env:"PORT" envDefault:"5432"`
+	User     string `env:"USER" envDefault:"postgres"`
+	Password string `env:"PASSWORD"`
+	Name     string `env:"NAME" envDefault:"myapp"`
 }
 
 func (c *DatabaseConfig) Validate() error {

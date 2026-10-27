@@ -155,6 +155,8 @@ if errors.Is(err, dd.ErrPathTraversal) {
 
 ### LoggerError
 
+`LoggerError` is DD's standard error type, carrying a machine-readable code, message, cause, and context.
+
 ```go
 type LoggerError struct {
     Code    string
@@ -164,7 +166,13 @@ type LoggerError struct {
 }
 ```
 
-Methods: `Error()`, `Unwrap()`, `Is(target)`, `WithContext(key, value)`, `WithField(key, value)`
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `Error` | `() string` | Formats as `[Code] Message: Cause` (the cause part is omitted when absent) |
+| `Unwrap` | `() error` | Returns `Cause`, for chained `errors.Is`/`errors.As` matching |
+| `Is` | `(target error) bool` | Matches the sentinel error for its `Code` (e.g. `ErrLoggerClosed`), enabling `errors.Is` |
+| `WithContext` | `(key string, value any) *LoggerError` | Returns a copy with the context key/value attached (the original error is untouched) |
+| `WithField` | `(key string, value any) *LoggerError` | Alias of `WithContext` (log-field semantics) |
 
 ```go
 // LoggerError contains error code, message, cause, and context
@@ -176,6 +184,8 @@ if errors.Is(err, dd.ErrLoggerClosed) {
 
 ### WriterError
 
+`WriterError` reports a write failure of a single Writer, marking its index within the [MultiWriter](../output-integration/writers).
+
 ```go
 type WriterError struct {
     Index  int
@@ -184,9 +194,14 @@ type WriterError struct {
 }
 ```
 
-Methods: `Error()`, `Unwrap()`
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `Error` | `() string` | Formats as `writer[i]: <err>` |
+| `Unwrap` | `() error` | Returns `Err`, for chained `errors.Is` matching |
 
 ### MultiWriterError
+
+`MultiWriterError` aggregates the errors of multiple Writers from a single `Write`.
 
 ```go
 type MultiWriterError struct {
@@ -194,7 +209,13 @@ type MultiWriterError struct {
 }
 ```
 
-Methods: `Error()`, `Unwrap()`, `HasErrors()`, `ErrorCount()`, `FirstError()`
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `Error` | `() string` | Returns the single error directly; multiple errors are joined as `multiple writer errors: [...]` |
+| `Unwrap` | `() []error` | Returns all underlying errors, for `errors.As`/`errors.Is` matching |
+| `HasErrors` | `() bool` | Whether any errors were collected |
+| `ErrorCount` | `() int` | Number of errors |
+| `FirstError` | `() error` | The first error (a `*WriterError`), or `nil` if none |
 
 ## Next Steps
 

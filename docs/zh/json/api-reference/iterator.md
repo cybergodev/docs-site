@@ -1,13 +1,13 @@
 ---
 sidebar_label: "迭代器与流式迭代器"
 title: "迭代器与 IterableValue - CyberGo JSON | 流式遍历与并行迭代"
-description: "CyberGo JSON 迭代器类型覆盖顺序、流式、批量与并行四种遍历：Iterator 基础迭代、StreamIterator 流式读取、BatchIterator 分批回调与 ParallelIterator 并行 Map/Filter，IterableValue 提供类型化取值与 Break 控制，帮助开发者高效遍历数组、对象与大文件。"
+description: "CyberGo JSON 迭代器：Iterator 顺序遍历、StreamIterator 流式读取、BatchIterator 分批、ParallelIterator 并行处理。"
 sidebar_position: 100
 ---
 
 # 迭代器类型
 
-json 包提供多种迭代器类型，覆盖顺序遍历、流式处理、批量处理和并行处理场景。迭代**函数**（`Foreach`/`ForeachFile` 等）见 [包级迭代函数](./functions/iterate) 与 [Processor 迭代方法](./processor/iterate)。
+本页的迭代器对象覆盖顺序遍历、流式读取、分批与并行四种方式。迭代**函数**（`Foreach*`/`ForeachFile*` 等）见 [包级迭代函数](./functions/iterate) 与 [Processor 迭代方法](./processor/iterate)。
 
 ## IteratorControl 常量
 
@@ -16,7 +16,7 @@ json 包提供多种迭代器类型，覆盖顺序遍历、流式处理、批量
 | 常量 | 说明 |
 |------|------|
 | `IteratorNormal` | 正常继续迭代（默认值，零值即此） |
-| `IteratorContinue` | 继续迭代。与 `IteratorNormal` 等价（为 API 对称保留的别名）——「跳过当前项」是隐式的，迭代始终会继续 |
+| `IteratorContinue` | 继续迭代。与 `IteratorNormal` 等价的别名，为 API 对称而保留 |
 | `IteratorBreak` | 停止迭代 |
 
 **使用场景**
@@ -24,21 +24,23 @@ json 包提供多种迭代器类型，覆盖顺序遍历、流式处理、批量
 | 场景 | 推荐返回值 | 说明 |
 |------|------------|------|
 | 正常处理元素 | `IteratorNormal` | 继续处理下一个元素 |
-| 过滤无效数据 | `IteratorContinue` | 跳过当前元素，不中断迭代 |
+| 要在代码里显式表达「继续」 | `IteratorContinue` | 行为与 `IteratorNormal` 相同，只是写法更明确 |
 | 找到目标后退出 | `IteratorBreak` | 找到所需数据后立即停止 |
 | 遇到错误中断 | `IteratorBreak` | 遇到严重错误时停止迭代 |
+
+三种常量都不承担「跳过当前元素」的语义：跳过只能在回调里什么都不做，迭代本身仍会前进。
 
 ---
 
 ## Iterator 类型
 
-`Iterator` 是用于遍历 JSON 数组或对象的低级迭代器，由 `NewIterator` 创建。
+`Iterator` 是顺序遍历 JSON 数组或对象的迭代器，由 `NewIterator` 创建。它只接受已解析的 `[]any` 或 `map[string]any`；其他类型时 `HasNext()` 恒返回 `false`。
 
 ### NewIterator
 
 签名：`func NewIterator(data any, cfg ...Config) *Iterator`
 
-创建迭代器实例。可选 `cfg` 参数为保持 API 一致性而保留，当前不影响迭代器行为。
+创建迭代器。可选 `cfg` 参数为保持 API 一致性而保留，源码中未被读取，不改变行为。
 
 ```go
 data := []any{"apple", "banana", "cherry"}
@@ -50,21 +52,21 @@ for it.HasNext() {
 ```
 
 ::: tip 迭代顺序确定
-遍历对象时，键按**排序后**的顺序依次产出（Go 原生 map 遍历顺序随机，这里做了确定性处理）；遍历数组时按索引顺序。`Next()` 对数组返回元素本身，对对象返回当前键对应的**值**（不返回键）。
+遍历对象时，键按**字典序**产出（Go 原生 map 遍历顺序随机，这里在首次访问时排序并缓存）；遍历数组时按索引顺序。`Next()` 对数组返回元素本身，对对象返回当前键对应的**值**（不返回键）。
 :::
 
 ### 方法
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `HasNext` | `func (it *Iterator) HasNext() bool` | 检查是否有更多元素 |
-| `Next` | `func (it *Iterator) Next() (any, bool)` | 获取下一个元素 |
-| `Reset` | `func (it *Iterator) Reset()` | 清除迭代器状态和缓存，准备复用 |
-| `ResetWith` | `func (it *Iterator) ResetWith(data any)` | 清除状态并使用新数据初始化 |
+| `HasNext` | `func (it *Iterator) HasNext() bool` | 检查是否还有下一个元素；数据不是 `[]any`/`map[string]any` 时恒为 `false` |
+| `Next` | `func (it *Iterator) Next() (any, bool)` | 返回下一个元素；耗尽时返回 `(nil, false)` |
+| `Reset` | `func (it *Iterator) Reset()` | 清空数据引用、位置与缓存的键，准备复用 |
+| `ResetWith` | `func (it *Iterator) ResetWith(data any)` | 清空状态并改为遍历新数据 |
 
 ### Reset
 
-清除迭代器状态，释放缓存的键。调用后可使用 `ResetWith` 重新初始化。
+清除迭代器状态，释放缓存的键与数据引用。调用后 `HasNext()` 返回 `false`，需用 `ResetWith` 重新初始化。
 
 ```go
 it := json.NewIterator(data1)
@@ -81,7 +83,7 @@ it.Reset() // 清除缓存
 
 ### ResetWith
 
-清除迭代器状态并使用新数据初始化，实现迭代器复用。并发约束同 `Reset`。
+清空状态并改为遍历新数据，实现迭代器复用；缓存的键列表会重置，新数据的对象键重新排序。并发约束同 `Reset`。
 
 ```go
 it := json.NewIterator(data1)
@@ -98,7 +100,7 @@ for it.HasNext() {
 
 ## IterableValue 类型
 
-IterableValue 封装了迭代过程中的当前元素，提供便捷的值访问方法。`Foreach` 系列函数的回调即接收 `*IterableValue`。
+`IterableValue` 包装迭代中的当前元素，让回调按键或路径取值。`Foreach*` 系列函数的回调参数就是 `*IterableValue`；对象来自对象池，回调返回后由迭代循环回收。
 
 ### 方法
 
@@ -113,13 +115,13 @@ IterableValue 封装了迭代过程中的当前元素，提供便捷的值访问
 
 签名：`func (iv *IterableValue) GetData() any`
 
-返回底层数据。
+返回底层数据。调用 `Release()` 或对象被迭代循环回收后为 `nil`。
 
 #### Get
 
 签名：`func (iv *IterableValue) Get(path string) any`
 
-按路径获取值（支持点号表示法和数组索引）。
+按路径取值，支持点号表示法与数组下标。路径为 `""` 或 `"."` 时返回当前元素本身；路径解析失败或不存在时返回 `nil`。
 
 ```go
 val := iv.Get("user.address.city")
@@ -130,7 +132,7 @@ val = iv.Get("users[0].name")
 
 签名：`func (iv *IterableValue) GetString(key string) string`
 
-获取字符串值。
+取字符串值。缺失或值为 `null` 时返回空字符串；非字符串值会格式化转成字符串（数字 `30` 得到 `"30"`），与 `AccessResult.AsString` 的严格行为不同。
 
 ```go
 name := item.GetString("name")
@@ -140,7 +142,7 @@ name := item.GetString("name")
 
 签名：`func (iv *IterableValue) GetInt(key string) int`
 
-获取整数值。
+取整数值。缺失、`null` 或无法转换时返回 0。转换接受整数、值为整数的浮点数与可解析的十进制字符串，并把 `bool` 映射为 `true→1`、`false→0`（比 `AccessResult.AsInt` 宽松）。
 
 ```go
 age := item.GetInt("age")
@@ -150,7 +152,7 @@ age := item.GetInt("age")
 
 签名：`func (iv *IterableValue) GetFloat64(key string) float64`
 
-获取浮点数值。
+取浮点数值，缺失、`null` 或无法转换时返回 0。
 
 ```go
 price := item.GetFloat64("price")
@@ -160,7 +162,7 @@ price := item.GetFloat64("price")
 
 签名：`func (iv *IterableValue) GetBool(key string) bool`
 
-获取布尔值。
+取布尔值。缺失或 `null` 返回 `false`。转换接受 `bool`；数值按 0→`false`、非 0→`true`；字符串先用 `strconv.ParseBool`，另支持 `yes`/`on` → `true`、`no`/`off`/空串 → `false`。
 
 ```go
 enabled := item.GetBool("enabled")
@@ -170,7 +172,7 @@ enabled := item.GetBool("enabled")
 
 签名：`func (iv *IterableValue) GetArray(key string) []any`
 
-获取数组值。
+获取数组值。值不是 `[]any`（含缺失、`null`）时返回 `nil`，不做类型转换。
 
 ```go
 items := item.GetArray("items")
@@ -180,7 +182,7 @@ items := item.GetArray("items")
 
 签名：`func (iv *IterableValue) GetObject(key string) map[string]any`
 
-获取对象值。
+获取对象值。值不是 `map[string]any`（含缺失、`null`）时返回 `nil`，不做类型转换。
 
 ```go
 profile := item.GetObject("profile")
@@ -190,7 +192,7 @@ profile := item.GetObject("profile")
 
 签名：`func (iv *IterableValue) GetWithDefault(key string, defaultValue any) any`
 
-获取值，若键不存在则返回默认值。
+获取值；键或路径不存在、或值为 `null` 时返回 `defaultValue`。
 
 ```go
 // 获取可选字段，缺失时使用默认值
@@ -202,7 +204,7 @@ mode := item.GetWithDefault("mode", "default")
 
 签名：`func (iv *IterableValue) GetStringWithDefault(key string, defaultValue string) string`
 
-获取字符串值，若键不存在则返回默认值。
+获取字符串值；缺失、为 `null`、或值不是字符串时返回 `defaultValue`（本方法不做类型转换）。
 
 ```go
 name := item.GetStringWithDefault("name", "未知")
@@ -212,7 +214,7 @@ name := item.GetStringWithDefault("name", "未知")
 
 签名：`func (iv *IterableValue) GetIntWithDefault(key string, defaultValue int) int`
 
-获取整数值，若键不存在则返回默认值。
+获取整数值；缺失、为 `null` 或无法转换为整数时返回 `defaultValue`。
 
 ```go
 age := item.GetIntWithDefault("age", 0)
@@ -223,7 +225,7 @@ port := item.GetIntWithDefault("port", 8080)
 
 签名：`func (iv *IterableValue) GetFloat64WithDefault(key string, defaultValue float64) float64`
 
-获取浮点数值，若键不存在则返回默认值。
+获取浮点数值；缺失、为 `null` 或无法转换时返回 `defaultValue`。
 
 ```go
 price := item.GetFloat64WithDefault("price", 0.0)
@@ -234,7 +236,7 @@ rate := item.GetFloat64WithDefault("rate", 1.0)
 
 签名：`func (iv *IterableValue) GetBoolWithDefault(key string, defaultValue bool) bool`
 
-获取布尔值，若键不存在则返回默认值。
+获取布尔值；缺失、为 `null` 或无法转换时返回 `defaultValue`。
 
 ```go
 enabled := item.GetBoolWithDefault("enabled", false)
@@ -245,7 +247,7 @@ debug := item.GetBoolWithDefault("debug", true)
 
 签名：`func (iv *IterableValue) Exists(key string) bool`
 
-检查指定键是否存在。
+检查指定键或路径是否存在。对**简单键**（不含 `.`、`[`、`]`）做直接 map 查找，键存在即返回 `true`，即使值为 `null`；对**含路径语法的 key**，结果取自 `Get`，解析结果为空则返回 `false`，因此值为 `null` 的路径返回 `false`。
 
 ```go
 if item.Exists("email") {
@@ -276,7 +278,7 @@ if item.IsNullData() {
 
 签名：`func (iv *IterableValue) IsNull(key string) bool`
 
-检查指定键的值是否为 null。
+检查指定键的值是否为 `null`。键不存在时**也返回 `true`**：本方法把「缺失」与「显式 null」视为同一种情况，要区分二者请用 `Exists`。
 
 ```go
 if item.IsNull("optional_field") {
@@ -288,7 +290,7 @@ if item.IsNull("optional_field") {
 
 签名：`func (iv *IterableValue) IsEmptyData() bool`
 
-检查整个值是否为空（nil、空字符串、空数组或空对象）。
+检查整个值是否为空：`nil`、空字符串、空数组或空对象返回 `true`；其他类型（含数字、布尔）一律返回 `false`。
 
 ```go
 if item.IsEmptyData() {
@@ -300,7 +302,7 @@ if item.IsEmptyData() {
 
 签名：`func (iv *IterableValue) IsEmpty(key string) bool`
 
-检查指定键的值是否为空。
+检查指定键的值是否为空。键不存在、值为 `null`，或值等于其类型零值时返回 `true`：空字符串、长度为 0 的数组/对象、数值 0、`false`、空 `Number`。其他类型返回 `false`。
 
 ```go
 if item.IsEmpty("tags") {
@@ -312,7 +314,7 @@ if item.IsEmpty("tags") {
 
 签名：`func (iv *IterableValue) Break() error`
 
-返回停止迭代的信号。在迭代回调中调用可提前终止遍历。
+返回一个未导出的哨兵错误，表示「正常终止」。在回调返回 `error` 的迭代函数里返回它即可提前结束遍历；`Foreach*WithError` 系列识别该信号后返回 `nil`，不把它当作错误。
 
 ```go
 // 注意：Break() 仅在回调返回 error 的迭代函数中生效（如 ForeachWithError、
@@ -332,19 +334,20 @@ err := json.ForeachNestedWithError(data, func(key any, item *json.IterableValue)
 
 签名：`func (iv *IterableValue) Release()`
 
-将 IterableValue 归还到对象池，释放内部数据引用。
+立即清空 `IterableValue` 持有的数据引用（`iv.data = nil`），让大批量解析结果能在迭代结束前被回收。它**不**把对象放回对象池——回收始终由迭代循环在回调返回后完成。
 
 ```go
-json.Foreach(data, func(key any, item *json.IterableValue) {
+err := json.ForeachWithError(data, ".", func(key any, item *json.IterableValue) error {
     // 处理数据...
     fmt.Println(item.GetData())
-    // 处理完毕后释放，减轻 GC 压力
+    // 处理完毕后清空引用，减轻 GC 压力
     item.Release()
+    return nil
 })
 ```
 
-::: tip 可省略的 Release
-迭代函数在回调返回后会**自动**把每个 `IterableValue` 归还对象池，回调内显式调用 `Release()` 是冗余但无害的（内部有防重复归还保护）。注意回调返回后其内部数据即被清空，因此**不要**把 `*IterableValue` 存到回调之外继续使用——需要留存请复制 `GetData()` 取出的数据。
+::: tip Release 何时有意义
+`Foreach*` 系列与分块 JSONL API（`StreamJSONLChunked`、`ForeachFileChunked`）在回调返回后回收每条 `IterableValue`，所以回调内显式调用 `Release()` 是冗余但无害的。串行 JSONL API（`StreamJSONL` 等）不回收，回调拿到的值归调用方所有，可以安全保留——此时 `Release()` 同样只是清空数据。两种情形下都**不要**把 `*IterableValue` 存到会回收它的回调之外继续使用；需要留存请复制 `GetData()` 取出的数据。
 :::
 
 ### IterableValue 完整示例
@@ -388,7 +391,7 @@ func main() {
 		panic(err)
 	}
 	// 输出：
-	// [0] name=Alice age=30 email 存在=true email 为 null=true tags 为空=true
+	// [0] name=Alice age=30 email存在=true email为null=true tags为空=true
 }
 ```
 
@@ -396,13 +399,13 @@ func main() {
 
 ## StreamIterator 类型
 
-StreamIterator 提供内存高效的流式迭代，适用于大型 JSON 数组。逐元素处理，无需将整个数组加载到内存。
+`StreamIterator` 从 `io.Reader` 逐元素解码 JSON 数组：内部用 `bufio.Reader` 加 `json.Decoder` 流式读取，任意时刻只持有一个元素，不把整个数组读入内存。
 
 ### NewStreamIterator
 
 签名：`func NewStreamIterator(reader io.Reader, cfg ...Config) *StreamIterator`
 
-创建流式迭代器。缓冲区取 `Config.BufferSize`（不传 cfg 时为 `DefaultConfig` 的 64KB；传入 cfg 且 `BufferSize <= 0` 时回落到 32KB）；`MaxJSONSize` 始终对**整个流的总字节数**生效（不传 cfg 时上限为 `DefaultMaxJSONSize` = 100MB），超出即报错。
+创建流式迭代器。缓冲区大小取自 `Config.BufferSize`：不传 cfg 时用 `DefaultConfig` 的 64KB，传 cfg 且 `BufferSize <= 0` 时回落到 32KB。`MaxJSONSize` 对**整个流的总字节数**生效，不传 cfg 或该字段非正时上限为 `DefaultMaxJSONSize`（100MB），超出即报错。
 
 ```go
 file, _ := os.Open("large-array.json")
@@ -425,23 +428,23 @@ it2 := json.NewStreamIterator(file, cfg)
 ```
 
 ::: tip 顶层输入形态
-`StreamIterator` 面向 JSON **数组**。若顶层是单个标量（如 `"hello"`、`42`），会把它作为唯一元素产出一次；若顶层是对象或其他分隔符开头，`Next()` 返回 false 且 `Err()` 报「expects a JSON array」错误。
+`StreamIterator` 面向 JSON **数组**。若顶层是单个标量（如 `"hello"`、`42`），会把它作为唯一元素产出一次；若顶层是对象或数组以外的分隔符开头，`Next()` 返回 false 且 `Err()` 报「expects a JSON array」错误。空流不算错误：`Next()` 返回 false 且 `Err()` 为 `nil`。
 :::
 
 ### 方法
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `Next` | `func (si *StreamIterator) Next() bool` | 前进到下一个元素 |
+| `Next` | `func (si *StreamIterator) Next() bool` | 前进到下一个元素；返回 false 表示结束或出错 |
 | `Value` | `func (si *StreamIterator) Value() any` | 返回当前元素 |
-| `Index` | `func (si *StreamIterator) Index() int` | 返回当前索引（从 0 开始） |
+| `Index` | `func (si *StreamIterator) Index() int` | 返回当前索引，从 0 开始；尚未产出元素时为 -1 |
 | `Err` | `func (si *StreamIterator) Err() error` | 返回迭代中的错误 |
 
 ---
 
 ## StreamObjectIterator 类型
 
-StreamObjectIterator 提供内存高效的流式迭代，适用于大型 JSON 对象。
+`StreamObjectIterator` 从 `io.Reader` 逐个解码 JSON 对象的键值对：同样是 `bufio.Reader` 加 `json.Decoder`，任意时刻只持有一个键值对。
 
 ### NewStreamObjectIterator
 
@@ -463,7 +466,7 @@ if err := it.Err(); err != nil {
 ```
 
 ::: tip 仅接受顶层对象
-首个 token 不是 `{` 时 `Next()` 返回 false 且 `Err()` 报「expects a JSON object」错误；键非字符串同样以错误结束（不再静默）。读取时按流中**出现顺序**产出键值对（不做排序）。
+首个 token 不是 `{` 时 `Next()` 返回 false 且 `Err()` 报「expects a JSON object」错误；键非字符串同样以错误结束。读取时按流中**出现顺序**产出键值对，不做排序。
 :::
 
 ### 方法
@@ -479,13 +482,13 @@ if err := it.Err(); err != nil {
 
 ## BatchIterator 类型
 
-BatchIterator 用于高效的批量处理大型数组，减少单元素处理开销，由 `NewBatchIterator` 创建。
+`BatchIterator` 把 `[]any` 按固定大小切成批次顺序产出，适用于需要按批提交（批量写库、批量请求）的场景。它只切分切片视图，不复制或重新解析数据。
 
 ### NewBatchIterator
 
 签名：`func NewBatchIterator(data []any, cfg ...Config) *BatchIterator`
 
-创建批量迭代器。通过 `Config.MaxBatchSize` 设置批量大小（不传 cfg 时为 `DefaultConfig` 的 2000；传入 cfg 且 `MaxBatchSize <= 0` 时回落到每批 100 个元素）。
+创建批量迭代器。批量大小取自 `Config.MaxBatchSize`：不传 cfg 时用 `DefaultConfig` 的 2000，传 cfg 且 `MaxBatchSize <= 0` 时回落到每批 100 个元素。
 
 ::: tip 批次切分方式
 `NextBatch` 返回的是底层数组切片的**视图**（`data[current:end]`），不复制数据；末批可能不足 batchSize，修改视图元素会影响原数组。
@@ -513,7 +516,7 @@ for it.HasNext() {
 | `NextBatch` | `func (it *BatchIterator) NextBatch() []any` | 返回下一批元素；无剩余批次时返回 nil |
 | `HasNext` | `func (it *BatchIterator) HasNext() bool` | 检查是否有更多批次 |
 | `Reset` | `func (it *BatchIterator) Reset()` | 重置迭代器到起始位置 |
-| `TotalBatches` | `func (it *BatchIterator) TotalBatches() int` | 返回总批次数（`ceil(len/batchSize)` 向上取整；batchSize 非正时返回 0） |
+| `TotalBatches` | `func (it *BatchIterator) TotalBatches() int` | 返回总批次数，按 `ceil(len/batchSize)` 计算；batchSize 非正时返回 0 |
 | `CurrentIndex` | `func (it *BatchIterator) CurrentIndex() int` | 返回当前已消费到的数组位置 |
 | `Remaining` | `func (it *BatchIterator) Remaining() int` | 返回剩余元素数（消费完为 0） |
 
@@ -521,13 +524,13 @@ for it.HasNext() {
 
 ## ParallelIterator 类型
 
-ParallelIterator 用于并行处理数组，利用多核 CPU 加速处理。
+`ParallelIterator` 用固定数量的工作协程并发处理 `[]any`，适用于 CPU 密集型逐元素计算。回调本身必须自行保证线程安全（例如用 `sync/atomic` 或互斥锁保护共享状态）。
 
 ### NewParallelIterator
 
 签名：`func NewParallelIterator(data []any, cfg ...Config) *ParallelIterator`
 
-创建并行迭代器。通过 `Config.MaxConcurrency` 设置工作协程数（不传 cfg 时为 `DefaultConfig` 的 50；传入 cfg 且 `MaxConcurrency <= 0` 时回落到 4；实际协程数不超过 `len(data)`，空数据时为 1）。
+创建并行迭代器。工作协程数取自 `Config.MaxConcurrency`：不传 cfg 时用 `DefaultConfig` 的 50，传 cfg 且 `MaxConcurrency <= 0` 时回落到 4。实际并发数不超过 `len(data)`，空数据时为 1。
 
 ```go
 data := make([]any, 10000)
@@ -549,7 +552,7 @@ if err != nil {
 
 签名：`func (it *ParallelIterator) ForEach(fn func(int, any) error) error`
 
-并行处理每个元素，返回第一个遇到的错误。
+并行处理每个元素并返回第一个遇到的错误。并发度由 `MaxConcurrency` 通过信号量限制，元素按下标分发。
 
 ```go
 err := it.ForEach(func(idx int, val any) error {
@@ -559,14 +562,14 @@ err := it.ForEach(func(idx int, val any) error {
 ```
 
 ::: tip 错误与终止语义
-任一回调返回错误后，其余工作协程尽快停止派发并返回**第一个**错误；`Close` 之后的调用直接返回 nil（不执行回调）；回调 panic 会被捕获并转换为错误返回，不会击穿进程。
+任一回调返回错误后，派发停止，其余工作协程尽快退出，返回**第一个**错误。`Close` 之后调用直接返回 `nil`，不执行回调。回调 panic 会被捕获并转为 error 返回，不会击穿进程。
 :::
 
 ### ForEachWithContext
 
 签名：`func (it *ParallelIterator) ForEachWithContext(ctx context.Context, fn func(int, any) error) error`
 
-带上下文的并行处理，支持取消操作。上下文取消时返回 `ctx.Err()`。
+带上下文的并行处理。上下文在派发过程中被取消时返回 `ctx.Err()`；`Close` 之后返回 `nil`，不执行回调。
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -586,7 +589,7 @@ err := it.ForEachWithContext(ctx, func(idx int, val any) error {
 
 签名：`func (it *ParallelIterator) ForEachBatch(batchSize int, fn func(int, []any) error) error`
 
-并行批量处理。每个批次由单个协程处理；`batchSize <= 0` 时按 100 处理；回调收到的是**批次序号**（第几批）与该批元素。
+并行批量处理。每个批次由单个协程处理；`batchSize <= 0` 时按 100 处理；回调收到的是**批次序号**（从 0 开始的第几批）与该批元素。
 
 ```go
 err := it.ForEachBatch(100, func(batchIdx int, batch []any) error {
@@ -599,7 +602,7 @@ err := it.ForEachBatch(100, func(batchIdx int, batch []any) error {
 
 签名：`func (it *ParallelIterator) ForEachBatchWithContext(ctx context.Context, batchSize int, fn func(int, []any) error) error`
 
-带上下文的并行批量处理。取消时返回 `ctx.Err()`，Close 后返回 nil。
+带上下文的并行批量处理。取消时返回 `ctx.Err()`；`Close` 之后返回 `nil`，不执行回调。
 
 ### Map
 
@@ -620,7 +623,7 @@ results, err := it.Map(func(idx int, val any) (any, error) {
 
 签名：`func (it *ParallelIterator) Filter(predicate func(int, any) bool) []any`
 
-并行过滤元素，返回满足条件的元素切片。**保持输入顺序**（非完成顺序）；predicate 无错误返回，回调 panic 会被记录日志而非中断。
+并行过滤元素，返回满足条件的元素切片，**保持输入顺序**（非完成顺序）。`predicate` 不返回错误，因此过滤结果不携带错误；回调 panic 由内部捕获并记入日志，不中断调用。
 
 ```go
 even := it.Filter(func(idx int, val any) bool {
@@ -635,7 +638,7 @@ even := it.Filter(func(idx int, val any) bool {
 
 签名：`func (it *ParallelIterator) Close()`
 
-释放 ParallelIterator 资源：通知运行中的协程停止并等待退出。基于 CAS 实现，**可安全重复调用、可多协程并发调用**。
+释放 ParallelIterator 资源：置位关闭标记并关闭 `done` 通道，通知运行中的协程退出。基于 CAS 实现，**可安全重复调用、可多协程并发调用**；`Close` 之后 `ForEach` 系列直接返回 `nil`，不执行回调。
 
 ```go
 it := json.NewParallelIterator(data, cfg)
@@ -789,17 +792,17 @@ func main() {
 
 ## 性能建议
 
-1. **复用 Iterator** - 使用 `Reset`/`ResetWith` 避免重复分配，适合多次遍历场景
-2. **大数据集使用流式迭代器** - `StreamIterator`/`StreamObjectIterator` 逐元素处理，内存友好
-3. **批量处理减少开销** - `BatchIterator` 按批处理，降低单元素开销
-4. **CPU 密集型任务并行处理** - `ParallelIterator` 利用多核加速
-5. **释放 IterableValue** - 在 `Foreach` 回调中处理完毕后调用 `Release()` 减轻 GC 压力
+1. **复用 Iterator**：用 `Reset`/`ResetWith` 免去重复分配，适合多次遍历
+2. **大数据集用流式迭代器**：`StreamIterator`/`StreamObjectIterator` 只持有一个元素，内存占用与数组长度无关
+3. **按批处理降低单次开销**：`BatchIterator` 只切视图，适合批量提交
+4. **CPU 密集型任务用并行迭代器**：`ParallelIterator` 的工作协程数由 `Config.MaxConcurrency` 决定，默认 50，上限受 `len(data)` 约束
+5. **提前释放大对象**：在 `Foreach*` 回调里对不再需要的大负载调用 `Release()`，可在迭代结束前释放引用
 
 ---
 
 ## 相关
 
-- [包级迭代函数](./functions/iterate) - Foreach/ForeachFile 等迭代函数
-- [Processor 迭代方法](./processor/iterate) - 对应的处理器迭代方法
-- [大文件处理](../streaming/large-files) - 大文件处理指南与 API 参考
-- [JSONL 流式处理](../streaming/jsonl) - JSONL/NDJSON 流式处理
+- [包级迭代函数](./functions/iterate)：`Foreach`/`ForeachFile` 等迭代函数
+- [Processor 迭代方法](./processor/iterate)：对应的处理器迭代方法
+- [大文件处理](../streaming/large-files)：大文件处理指南与 API 参考
+- [JSONL 流式处理](../streaming/jsonl)：JSONL/NDJSON 流式处理

@@ -7,16 +7,16 @@ sidebar_position: 3
 
 # 内存锁定
 
-内存锁定（mlock / VirtualLock）防止敏感数据被交换到磁盘，是 SecureValue 安全体系的核心防线之一。
+内存锁定（mlock / VirtualLock）把敏感数据所在的内存页固定在 RAM 中，防止被交换到磁盘。
 
 ## 为什么需要内存锁定
 
-正常情况下，操作系统会将不活跃的内存页交换到磁盘（swap file / page file）。这意味着即使你在代码中调用了 `ClearBytes` 清零内存，磁盘上仍可能留有敏感数据的残留副本。
+操作系统会把不活跃的内存页交换到磁盘（swap file / page file），换出的页在磁盘上留下副本。此时在代码中用 `ClearBytes` 清零，只清掉 RAM 中的内容，磁盘上的副本不会随之消失。
 
 ```text
 内存 (RAM)                      磁盘 (Swap/Page File)
 ┌──────────────┐                ┌──────────────┐
-│ API_KEY=xxx  │ ── 交换 ──→    │ API_KEY=xxx  │ ← 残留！
+│ API_KEY=xxx  │ ── 交换 ──→    │ API_KEY=xxx  │ ← 残留
 │              │                │ (即使清零后    │
 │              │ ←─ 读回 ──     │  仍存在于此)  │
 └──────────────┘                └──────────────┘
@@ -39,11 +39,11 @@ sidebar_position: 3
 | Linux | `mlock(2)` / `munlock(2)` | ✅ |
 | macOS | `mlock(2)` / `munlock(2)` | ✅ |
 | Windows | `VirtualLock` / `VirtualUnlock` | ✅ |
-| 其他平台（FreeBSD/其他 BSD、Solaris、WASM 等） | 不适用 | ❌（no-op 降级） |
+| 其他平台（FreeBSD/其他 BSD、Solaris、WASM 等） | 无 | ❌ |
 
-Linux、macOS 与 Windows 之外的平台为 no-op 降级：`IsMemoryLockSupported()` 返回 `false`，启用锁定也不会生效（锁定尝试直接返回「平台不支持」错误）——SecureValue 仍可正常使用，但启用锁定后 `Masked()` 会显示 `lock-failed`；未启用锁定时不附加任何锁定状态。
+Linux、macOS 与 Windows 之外的平台没有锁定实现：`IsMemoryLockSupported()` 返回 `false`，锁定尝试返回「平台不支持」错误，错误保存在该值上（`MemoryLockError()` 可查询）。`SecureValue` 仍可使用，启用锁定时 `Masked()` 显示 `lock-failed`。未启用锁定时不附加任何锁定状态。
 
-运行时检测：
+运行时用 `IsMemoryLockSupported()` 检测当前平台：
 
 ```go
 if env.IsMemoryLockSupported() {
@@ -59,7 +59,7 @@ if env.IsMemoryLockSupported() {
 
 ### Linux
 
-需要 `CAP_IPC_LOCK` 能力：
+需要 `CAP_IPC_LOCK` 能力或 root 身份，并受 `RLIMIT_MEMLOCK`（`ulimit -l`）上限约束。以下三种方式任选其一：
 
 ```bash
 # 方式一：通过 setcap 赋予二进制文件
@@ -79,11 +79,11 @@ AmbientCapabilities=CAP_IPC_LOCK
 
 ### macOS
 
-通常无需特殊权限，但受 `ulimit -l`（最大锁定内存）限制。
+不需要额外 capability（macOS 没有 `CAP_IPC_LOCK` 这一套），但同样受 `ulimit -l`（最大锁定内存）限制。
 
 ### Windows
 
-`VirtualLock` 对**超过 30 页**的分配才需要 `SeLockMemoryPrivilege`（「锁定内存中的页面」）权限；较小的分配通常无需该特权即可直接锁定：
+分配不超过 30 页（约 120 KB）时不需要该特权；超过 30 页时 `VirtualLock` 失败，需授予 `SeLockMemoryPrivilege`（「锁定内存中的页面」）：
 
 ```text
 组策略 → 计算机配置 → Windows 设置 → 安全设置 →
@@ -91,14 +91,14 @@ AmbientCapabilities=CAP_IPC_LOCK
 ```
 
 ::: warning 无权限时的行为
-默认模式下，内存锁定失败会被**静默忽略**——SecureValue 仍然可用，但数据未被锁定。如需确保锁定成功，请使用严格模式。
+默认模式下，内存锁定失败不会报错：SecureValue 仍然可用，但数据未被锁定。需要感知锁定失败时，启用严格模式。
 :::
 
 ## 基本用法
 
 ### 启用内存锁定
 
-在应用启动时、创建任何 SecureValue 之前调用：
+在应用启动时、创建任何 SecureValue 之前启用：
 
 ```go
 package main
@@ -126,7 +126,7 @@ func main() {
 	secret := env.GetSecure("API_KEY")
 	if secret != nil {
 		defer secret.Release()
-		fmt.Println(secret.Masked()) // [SECURE:32 bytes locked]（N 取决于实际值长度）
+		fmt.Println(secret.Masked()) // [SECURE:32 bytes locked]（平台支持且锁定成功时；N 为实际值长度）
 	}
 }
 ```
@@ -152,7 +152,7 @@ if err := sv.MemoryLockError(); err != nil {
 
 ## 严格模式
 
-默认模式下，锁定失败被静默忽略。严格模式让失败变得可观测：
+默认模式下，锁定失败不会报错。严格模式让失败可观测：锁定失败时向 stderr 输出告警。
 
 ### 启用严格模式
 
@@ -184,16 +184,16 @@ fmt.Println(sv.Masked())
 ```
 
 ::: tip 与 SetMemoryLockStrict 无关
-`NewSecureValueStrict` 的错误返回只取决于 `SetMemoryLockEnabled(true)` 且锁定失败，与严格模式开关无关；`SetMemoryLockStrict` 控制的是锁定失败时是否向 stderr 输出告警（对任何构造路径生效）——对无法返回错误的非严格构造器（如 `NewSecureValue`），这条告警是唯一的失败信号。
+`NewSecureValueStrict` 的错误返回只取决于「已启用锁定且锁定失败」，与严格模式开关无关。`SetMemoryLockStrict` 控制的是锁定失败时是否向 stderr 输出告警，对所有构造路径生效；`NewSecureValue` 不返回错误，这条告警是它唯一的失败信号。
 :::
 
 ::: tip 严格模式行为
-严格模式下，锁定失败会触发 `onStrictLockFailure` 回调（默认输出到 stderr）。SecureValue 本身始终有效可用——严格模式只是让锁定失败变得**可观测**，而非阻止使用。
+严格模式只影响可观测性，不阻止使用。锁定失败时 SecureValue 仍然有效，只是数据未被锁定：`Masked()` 显示 `lock-failed`，`MemoryLockError()` 返回具体原因。
 :::
 
 ## Masked 输出与锁定状态
 
-`Masked()` 会在输出中包含锁定状态——**三种锁定状态仅在 `SetMemoryLockEnabled(true)` 时附加**；空值与已关闭另有专属输出：
+`Masked()` 的锁定状态由调用时的全局开关决定。`IsMemoryLockEnabled()` 为 `false` 时不附加锁定状态；为 `true` 时按该值自身的锁定结果附加 `locked`、`lock-failed` 或 `unlocked`。空值与已关闭另有专属输出：
 
 ```go
 env.SetMemoryLockEnabled(true)
@@ -202,12 +202,13 @@ sv := env.GetSecure("API_KEY")
 defer sv.Release()
 
 fmt.Println(sv.Masked())
-// 锁定成功：    [SECURE:32 bytes locked]      // 创建时已启用锁定且锁定成功
+// 锁定成功：    [SECURE:32 bytes locked]      // 已启用锁定且锁定成功
 // 锁定失败：    [SECURE:32 bytes lock-failed] // 已启用锁定但失败（权限不足/平台不支持）
-// 从未尝试锁定：[SECURE:32 bytes unlocked]    // 值在启用锁定之前创建
-// 未启用锁定：  [SECURE:32 bytes]             // 不附加任何锁定状态
+// 未锁定：      [SECURE:32 bytes unlocked]    // 调用时已启用锁定，但该值未锁定且无错误（典型：创建于启用之前）
+// 未启用锁定：  [SECURE:32 bytes]             // 调用 Masked 时全局开关为 false，不加后缀
 // 空值：        [SECURE:0 bytes]
 // 已关闭：      [CLOSED]
+// nil：         [NIL]
 ```
 
 ## 完整生产示例
@@ -217,7 +218,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/cybergodev/env"
 )
@@ -267,15 +267,13 @@ func main() {
 	}
 
 	// 仅在需要时获取明文：Reveal 返回新的 string 副本，
-	// 不受内存锁定保护、也无法清零——用毕即弃，缩短持有窗口
+	// 不受内存锁定保护、也无法清零，用毕即弃，缩短持有窗口
 	password := dbPassword.Reveal()
 	_ = password // 用于数据库连接等
 
 	// 安全日志（不泄露明文）
-	log.Printf("数据库密码: %s", dbPassword.Masked())
-	// 输出：数据库密码：[SECURE:12 bytes locked]（N 取决于实际值长度）
-
-	_ = os.Stdout
+	log.Printf("数据库密码：%s", dbPassword.Masked())
+	// 输出：数据库密码：[SECURE:12 bytes locked]（12 为示例值的字节长度）
 }
 ```
 
@@ -283,7 +281,7 @@ func main() {
 
 ### 及时释放
 
-锁定内存会增加内存压力（无法被换出），应在使用完毕后立即释放。即使忘记释放，被弃用且未关闭的 SecureValue 也会由 GC 的 finalizer 兜底清零——但这只是最后防线，不应依赖，请始终显式 `Release()`：
+锁定页无法被换出，会持续占用物理内存，用完后立即释放。忘记释放时，被弃用且未关闭的 SecureValue 由 GC 的 finalizer 兜底清零，但这只是最后防线，不应依赖。始终显式调用 `Release()`：
 
 ```go
 // ✅ 推荐：用完即释放
@@ -299,11 +297,11 @@ var globalSecret *env.SecureValue // 不推荐
 
 ### 保持小而短命
 
-锁定大块内存会影响系统性能。每个 SecureValue 应仅存储必要的敏感值（密码、密钥、令牌），而非整个配置块。
+锁定大块内存会拖慢系统。每个 SecureValue 只存必要的敏感值（密码、密钥、令牌），不要拿它装整个配置块。
 
 ### 明文副本不受锁定保护
 
-`Reveal()` 返回的是**新的 string 副本**——不受 mlock 保护，也无法清零（string 不可变）。明文应**用毕即弃**、尽量缩短持有窗口；需要可清零的明文时，改用 `Bytes()` 获取 `[]byte` 副本并在用完后 `ClearBytes` 清零：
+`Reveal()` 返回**新的 string 副本**，它不受 mlock 保护，也无法清零（string 不可变）。明文应**用毕即弃**，尽量缩短持有窗口。需要可清零的明文时，改用 `Bytes()` 取 `[]byte` 副本，用完后 `ClearBytes` 清零：
 
 ```go
 // string 副本：无法清零，用毕即弃、缩短持有窗口
@@ -315,6 +313,8 @@ defer env.ClearBytes(raw)
 ```
 
 ### 优先使用 Release 而非 Close
+
+`Release()` 清零、解锁并把对象归还池；`Close()` 只清零解锁，不归还池。
 
 ```go
 sv := env.GetSecure("TOKEN")
@@ -328,11 +328,11 @@ defer sv.Release()
 
 ## 故障排查
 
-| 问题 | 可能原因 | 解决方案 |
+| 问题 | 原因 | 解决方案 |
 |------|----------|----------|
-| `lock-failed` 在 Masked 输出中 | 权限不足 | 配置 `CAP_IPC_LOCK`（Linux）或 `SeLockMemoryPrivilege`（Windows） |
+| `lock-failed` 出现在 Masked 输出中 | 权限不足或平台不支持 | Linux 配置 `CAP_IPC_LOCK` 或提高 `ulimit -l`；Windows 授予 `SeLockMemoryPrivilege`；其他平台无法锁定 |
 | 严格模式日志刷屏 | 大量 SecureValue 创建时锁定失败 | 检查系统 `RLIMIT_MEMLOCK` 限制，或使用非严格模式 |
-| `IsMemoryLockSupported()` 返回 false | 所有非 Linux/macOS/Windows 平台（含 FreeBSD/其他 BSD、Solaris、WASM） | 这些平台不支持内存锁定（no-op 降级），使用其他安全措施（如加密存储） |
+| `IsMemoryLockSupported()` 返回 false | 运行平台不是 Linux/macOS/Windows（如 FreeBSD/其他 BSD、Solaris、WASM） | 这些平台没有锁定实现，锁定尝试失败（错误保存在该值上）；改用其他措施（如加密存储） |
 | 内存使用量增加 | 锁定页无法换出 | 减少 SecureValue 持有时间，及时 Release |
 
 ## 相关文档

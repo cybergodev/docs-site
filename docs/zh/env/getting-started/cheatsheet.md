@@ -7,7 +7,7 @@ sidebar_position: 2
 
 # 速查表
 
-在对该库有所了解的前提下，快速参考高频使用的代码片段。
+熟悉 env 库基本用法后，用这页查高频代码片段。
 
 ## 加载配置
 
@@ -51,32 +51,24 @@ count := env.Len()
 // 安全值
 secret := env.GetSecure("PASSWORD")
 if secret != nil {
-    defer secret.Release()  // 或 secret.Close()
+    defer secret.Release()     // 清零 + 解锁 + 归还对象池
     value := secret.Reveal()   // 明文值（仅在需要时使用）
     masked := secret.Masked()  // 掩码（用于日志）
 }
 ```
 
+`Release()` 与 `Close()` 的区别见[内存锁定 · 优先使用 Release 而非 Close](../security/memory-locking#优先使用-release-而非-close)：`Close()` 只清零解锁，不归还对象池。
+
 ## 键名解析
 
+扁平键名、点号路径、大写点号路径三种写法等价，数组索引用 `servers.0.host` 这类路径。完整规则与转换表见[多格式配置 · 键名解析](../guides/multi-format#键名解析)。
+
 ```go
-// JSON: {"app": {"name": "myapp"}}
-// 存储为：APP_NAME=myapp
-
-// 以下方式都能访问
-env.GetString("APP_NAME")      // 扁平化键名（推荐）
-env.GetString("app.name")      // 点号路径
-env.GetString("APP.NAME")      // 大写点号路径
-
-// 数组索引
-env.GetString("servers.0.host")  // SERVERS_0_HOST
+env.GetString("APP_NAME")        // 扁平化键名（推荐）
+env.GetString("app.name")        // 点号路径 → APP_NAME
+env.GetString("APP.NAME")        // 大写点号路径
+env.GetString("servers.0.host")  // 数组索引 → SERVERS_0_HOST
 ```
-
-| 输入 | 转换为 |
-|------|--------|
-| `"database.host"` | `"DATABASE_HOST"` |
-| `"servers.0.host"` | `"SERVERS_0_HOST"` |
-| `"app.config.name"` | `"APP_CONFIG_NAME"` |
 
 ## 结构体映射
 
@@ -98,9 +90,9 @@ env.ParseInto(&cfg)
 | 预设 | 用途 | 特点 |
 |------|------|------|
 | `DefaultConfig()` | 通用 | 安全默认值 |
-| `DevelopmentConfig()` | 开发 | 宽松限制、允许覆盖、支持 YAML 语法、10MB 文件上限 |
-| `TestingConfig()` | 测试 | 覆盖已存在变量、测试隔离、64KB 文件上限 |
-| `ProductionConfig()` | 生产 | 严格验证 + 审计、不覆盖已存在变量、64KB 文件上限 |
+| `DevelopmentConfig()` | 开发 | 宽松限制、允许覆盖、支持 YAML 语法、10 MB 文件上限 |
+| `TestingConfig()` | 测试 | 覆盖已存在变量、测试隔离、64 KB 文件上限 |
+| `ProductionConfig()` | 生产 | 严格验证 + 审计、不覆盖已存在变量、64 KB 文件上限 |
 
 ```go
 cfg := env.ProductionConfig()
@@ -179,14 +171,14 @@ log.Printf("Key: %s", env.MaskValue("API_KEY", "secret"))
 
 // 检测
 env.IsSensitiveKey("PASSWORD")  // true
-env.IsMemoryLockSupported()     // Linux/macOS/Windows: true
+env.IsMemoryLockSupported()     // linux/darwin/Windows 为 true，其他平台为 false
 
 // 清理
 env.ClearBytes(sensitiveData)
 clean := env.SanitizeForLog(msg)
 
 // 键名掩码
-masked := env.MaskKey("DB_PASSWORD")  // "DB***"
+masked := env.MaskKey("DB_PASSWORD")  // "[MASKED]"
 ```
 
 ## 多环境
@@ -194,7 +186,9 @@ masked := env.MaskKey("DB_PASSWORD")  // "DB***"
 ```go
 goEnv := os.Getenv("GO_ENV")
 if goEnv == "" { goEnv = "development" }
-env.Load(".env", ".env."+goEnv, ".env.local")  // 单次调用；默认先加载的胜出，如需后覆盖设 OverwriteExisting=true
+// 默认（DefaultConfig）同名键以先加载的文件为准；要后者覆盖前者，
+// 改用 LoadWithConfig 并设 cfg.OverwriteExisting = true
+env.Load(".env", ".env."+goEnv, ".env.local")
 ```
 
 ## 多格式
@@ -207,13 +201,13 @@ loader.LoadFiles("config.env", "config.json", "config.yaml")
 format := env.DetectFormat("config.json")  // FormatJSON
 
 // 序列化
-env.Marshal(data, env.FormatEnv)
+env.Marshal(data, env.FormatEnv)   // 值按需加引号与转义
 env.Marshal(data, env.FormatJSON)
 env.Marshal(data, env.FormatYAML)
 
 // 反序列化
 env.UnmarshalMap(data, env.FormatEnv)
-env.UnmarshalMap(data, env.FormatAuto)  // 自动检测
+env.UnmarshalMap(data, env.FormatAuto)  // 按内容自动检测
 ```
 
 ## .env 语法
@@ -222,24 +216,26 @@ env.UnmarshalMap(data, env.FormatAuto)  // 自动检测
 # 注释
 KEY=value
 KEY="value with spaces"
-KEY='literal \n value'     # 单引号不处理转义，但不阻止变量展开（见下方提示）
+KEY='literal \n value'     # 单引号不处理转义，值也不参与变量展开
 KEY=${OTHER_KEY}           # 变量引用
-KEY=${MISSING:-default}    # 默认值（变量不存在时使用）
-KEY=${MISSING:=default}    # 默认值（变量不存在时使用，同 :-）
-KEY=${MISSING:?error}      # 错误提示（变量不存在或为空时报错）
+KEY=${MISSING:-default}    # 默认值（变量未定义时使用）
+KEY=${MISSING:=default}    # 默认值并写回变量（变量未定义时使用）
+KEY=${MISSING:?error}      # 变量未定义或为空时报错
 export KEY=value           # bash 风格
 KEY=$$                     # 转义美元符号（得到字面量 $）
 ```
 
 ::: tip 变量展开与字面量 $
-单引号**不阻止**变量展开——`KEY='a ${UNDEF}'` 中的 `${UNDEF}` 仍会展开，未定义时得到空串。需要字面量 `$` 时用 `$$` 转义，或设置 `cfg.ExpandVariables = false` 关闭展开。完整规则参见[文件格式](../reference/file-format)。
+单引号**阻止**变量展开：`KEY='a ${UNDEF}'` 的值就是字面文本 `a ${UNDEF}`。需要字面量 `$` 而使用双引号或无引号时，用 `$$` 转义，或设置 `cfg.ExpandVariables = false` 全局关闭展开。完整规则参见[文件格式](../reference/file-format)。
+
+`KEY: value` 形式的行默认被跳过并记审计，只有 `=` 是分隔符；启用 `cfg.AllowYamlSyntax = true` 后 `:` 才可作为分隔符。
 :::
 
 ## 布尔值
 
-| 真值 | 假值 |
-|------|------|
-| `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
+真值为 `true`/`1`/`yes`/`on`/`enabled`，假值为 `false`/`0`/`no`/`off`/`disabled`，均不区分大小写。
+
+值为空串时解析为 `false`（不取默认值），无法识别的值记审计并返回默认值。完整对照见[常见问题 · 支持哪些布尔值格式](../reference/faq#支持哪些布尔值格式)。
 
 ## 时间格式
 
@@ -253,32 +249,26 @@ DURATION=1h30m
 
 | 限制项 | 默认值 | 硬性上限 |
 |--------|--------|----------|
-| 文件大小 | 2 MB | 100 MB |
-| 行长度 | 1 KB | 64 KB |
-| 键长度 | 64 | 1024 |
-| 值长度 | 4 KB | 1 MB |
-| 变量数 | 500 | 10000 |
+| 文件大小 | 8 MB | 100 MB |
+| 行长度 | 8 KB | 64 KB |
+| 键长度 | 128 | 1024 |
+| 值长度 | 8 KB | 1 MB |
+| 变量数 | 1000 | 10000 |
 | 展开深度 | 5 | 20 |
 
 ## 测试
 
+- 每个测试用 `env.TestingConfig()` 新建独立 Loader，并清空 `Filenames` 避免隐式加载 cwd 的 `.env`。
+- 需要清理包级单例时，在 TestMain 里检查 `env.ResetDefaultLoader()` 的返回错误。
+
 ```go
-func TestExample(t *testing.T) {
-    cfg := env.TestingConfig()
-    loader, _ := env.New(cfg)
-    defer loader.Close()
-
-    loader.Set("KEY", "value")
-    // 测试...
-}
-
-func TestMain(m *testing.M) {
-    if err := env.ResetDefaultLoader(); err != nil {
-        log.Printf("warning: %v", err)
-    }
-    os.Exit(m.Run())
-}
+cfg := env.TestingConfig()
+cfg.Filenames = nil
+loader, _ := env.New(cfg)
+defer loader.Close()
 ```
+
+完整的 TestMain 模板与进程变量清理见[测试场景 · 清理测试状态](../guides/testing#清理测试状态)，内存文件系统见[测试场景 · 模拟文件系统](../guides/testing#模拟文件系统)。
 
 ## 内置禁止键
 
@@ -289,8 +279,9 @@ func TestMain(m *testing.M) {
 | 系统路径 | `PATH` |
 | Linux 动态链接 | `LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_DEBUG`, `LD_AUDIT`, `LD_PRELOAD_32`, `LD_PRELOAD_64`, `LD_LIBRARY_PATH_32`, `LD_LIBRARY_PATH_64` |
 | macOS | `DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH` |
-| Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS` |
-| 语言运行时 | `PYTHONPATH`, `NODE_PATH`, `PERL5OPT`, `RUBYLIB` |
+| Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS`, `PS4`, `SHELLOPTS`, `BASHOPTS` |
+| 语言运行时 | `PYTHONPATH`, `PYTHONSTARTUP`, `PYTHONINSPECT`, `PERL5OPT`, `PERL5LIB`, `RUBYLIB`, `RUBYOPT`, `GEM_PATH`, `GEM_HOME`, `NODE_PATH`, `NODE_OPTIONS`, `RUSTFLAGS`, `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS`, `_JAVA_OPTIONS`, `CLASSPATH` |
+| Git | `GIT_CONFIG_COUNT`, `GIT_PROXY_COMMAND` |
 | Windows | `COMSPEC`, `PATHEXT`, `SYSTEMROOT`, `WINDIR` |
 
 ## 接口类型

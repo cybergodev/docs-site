@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Parse & Validate"
 title: "Processor Parse & Validate - CyberGo JSON | Parse & Valid"
-description: "CyberGo JSON Processor parsing: Valid returns failure reasons, ValidBytes fast-checks, Parse/ParseAny with PreserveNumbers, PreParse/GetFromParsed repeats."
+description: "Processor parse and validate methods: Valid/ValidBytes checks, Parse/ParseAny parsing, PreserveNumbers number retention and PreParse/GetFromParsed reuse."
 sidebar_position: 60
 ---
 
 # Parse and Validate Methods
 
-The Processor provides JSON parsing and validity-checking methods. For file read/write and streaming loads see [File I/O](./file-io). Parse/validate behavior mirrors the [package-level parse functions](../functions/parse); the package-level `Valid` returns a single `bool` (standard-library compatible) — use the `Valid` on this page or the package-level `ValidWithConfig` when you need the failure reason.
+Parse methods turn JSON text into Go values or structs; validate methods only decide validity. For file I/O and streaming loads see [File I/O](./file-io). Behavior matches the [package-level parse functions](../functions/parse); the package-level `Valid` returns a single `bool` (standard-library compatible signature), so use the Processor `Valid` or the package-level `ValidWithConfig` when you need the failure reason.
 
 ## Validation Methods
 
@@ -15,7 +15,7 @@ The Processor provides JSON parsing and validity-checking methods. For file read
 
 Signature: `func (p *Processor) Valid(jsonStr string, cfg ...Config) (bool, error)`
 
-Checks whether a JSON string is valid. Returns `(true, nil)` when valid; `(false, error)` when invalid, with the error carrying the specific reason.
+Checks whether a JSON string is valid. Returns `(true, nil)` when valid; `(false, error)` when invalid, with the error carrying the reason (`ErrInvalidJSON`, or `ErrSizeLimit` when `MaxJSONSize` is exceeded).
 
 ```go
 package main
@@ -162,7 +162,7 @@ func main() {
 
 ### PreserveNumbers Mode
 
-By default (`PreserveNumbers=false`) every JSON number parses as `float64`, which loses large-integer precision and alters decimal notation. With `PreserveNumbers=true`, numbers are kept as the library's `Number` type (`%T` prints `json.Number` — the library's package shares the standard library's name; underneath it is the original string, with an API fully identical to the standard `json.Number`), preserving the original text, format, and precision — well suited to monetary amounts, large integers, and scientific notation. The example below shows the Go type difference of numbers under both modes via `%T`:
+By default (`PreserveNumbers=false`) every JSON number parses as `float64`, which loses large-integer precision and changes decimal notation. With `PreserveNumbers=true`, numbers stay as the library's `Number` type (`%T` prints `json.Number`, because the library package shares the standard library's name; underneath is the original string with an API matching `json.Number`), preserving the original text and precision. Typical uses are monetary amounts, large integers and scientific notation. The example below shows the Go type difference under both modes via `%T`:
 
 ```go
 package main
@@ -206,28 +206,32 @@ func main() {
 ```
 
 :::tip When to enable it
-Enable `PreserveNumbers` when handling monetary amounts, integers beyond `float64`'s exact range (about ±2^53, i.e. 9007199254740992), or when numbers must be written back verbatim (avoiding `19.99` turning into `19.990000` or vice versa). For example, `9007199254740993` (2^53+1) rounds to `9007199254740992` in the default mode, while the `json.Number` mode keeps it unchanged. Note that `json.Number` values must be extracted explicitly with `.Int64()` / `.Float64()` / `.String()`.
+Enable `PreserveNumbers` for monetary amounts, integers beyond `float64`'s exact range (about ±2^53, i.e. 9007199254740992), or when numbers must be written back verbatim (avoiding `19.99` turning into `19.990000` or vice versa). For example, `9007199254740993` (2^53+1) rounds to `9007199254740992` in the default mode, while `json.Number` mode keeps it unchanged. `json.Number` values must be read explicitly with `.Int64()`, `.Float64()` or `.String()`.
 :::
 
 ## Pre-Parse Optimization (PreParse)
 
-When querying **the same JSON** at multiple paths, calling [`Get`](./query) each time re-parses the whole document. `PreParse` parses only once; subsequent `GetFromParsed` calls navigate the already-parsed data structure directly, skipping the repeated parsing cost.
+When querying **the same JSON** at multiple paths, each [`Get`](./query) re-parses the whole document. `PreParse` parses once; `GetFromParsed` then navigates the parsed structure directly.
 
 ### PreParse
 
 Signature: `func (p *Processor) PreParse(jsonStr string, cfg ...Config) (*ParsedJSON, error)`
 
-Pre-parses JSON and returns a reusable `*ParsedJSON`. Call `parsed.Release()` when done to release the reference to the processor.
+Pre-parses JSON and returns a reusable `*ParsedJSON`. Call `parsed.Release()` when done to drop the internal reference so the parse tree can be garbage-collected.
 
 ### GetFromParsed
 
 Signature: `func (p *Processor) GetFromParsed(parsed *ParsedJSON, path string, cfg ...Config) (any, error)`
 
-Gets a value by path from pre-parsed data — skips JSON parsing and navigates the path directly.
+Gets a value by path from pre-parsed data: parsing is skipped and the path is navigated directly.
+
+::: warning Do not mutate the tree behind Data()
+The tree returned by `Data()` / `PreParse` is the parse-cache entry itself (zero-copy), and other `GetFromParsed` calls on the same processor may read it concurrently. Mutating it poisons the cache. When you need to change data, copy it first or use `Get` (returns a deep copy) and `SetFromParsed` (deep-copies internally).
+:::
 
 ### Full Comparison Example
 
-The example contrasts "repeated package-level `Get` (re-parsing each time)" with "`PreParse` + `GetFromParsed` (parse once)"; results are identical, but the latter is significantly faster with many queries or large documents:
+The example contrasts "repeated package-level `Get` (re-parsing each time)" with "`PreParse` + `GetFromParsed` (parse once)"; results are identical, and the more queries and the larger the document, the more parsing is saved:
 
 ```go
 package main
@@ -294,7 +298,7 @@ func main() {
 
 Signature: `func (p *Processor) SetFromParsed(parsed *ParsedJSON, path string, value any, cfg ...Config) (*ParsedJSON, error)`
 
-Sets a value on pre-parsed data and returns a **new** `*ParsedJSON` (internally deep-copied; the original data stays unchanged) on which you can keep querying with `GetFromParsed`.
+Sets a value on pre-parsed data and returns a **new** `*ParsedJSON` (deep-copied internally; the original stays unchanged), on which you can keep querying with `GetFromParsed`.
 
 ```go
 package main
@@ -340,12 +344,12 @@ func main() {
 
 ### The ParsedJSON Type
 
-`ParsedJSON` wraps the parsed data and cache information; its fields are unexported and only two methods are exposed:
+`ParsedJSON` wraps the parsed data; its fields are unexported and only two methods are exposed:
 
 | Method | Description |
 |--------|-------------|
 | `Data() any` | Returns the underlying parsed data (usually `map[string]any` or `[]any`) |
-| `Release()` | Releases the reference to the processor; afterwards `Data()` returns `nil` — use with `defer` |
+| `Release()` | Nulls the internal data reference so the parse tree can be GC'd; afterwards `Data()` returns `nil` — use with `defer` |
 
 ## Method Selection Guide
 
@@ -361,11 +365,11 @@ func main() {
 | Preserve original number precision | Any parse method above + `Config{PreserveNumbers: true}` | — | Numbers become `json.Number` |
 
 :::tip Parse vs ParseAny vs Unmarshal
-- **`Unmarshal(data, &v)`**: fully compatible with the standard `encoding/json`; input is `[]byte` — a direct replacement for the standard library and for network/file byte streams.
-- **`Parse(jsonStr, &v)`**: input is `string`; semantics identical to `Unmarshal`, but natively supports `Config` (security limits, `PreserveNumbers`, etc.) — the first choice for everyday parsing.
-- **`ParseAny(jsonStr)`**: no target type declaration needed, returns `any` directly — good for unknown structures or one-off reads.
+- **`Unmarshal(data, &v)`**: signature matches the standard `encoding/json`; input is `[]byte`, so it drops in for the standard library or network/file byte streams. The default path runs security validation, so a few behaviors differ.
+- **`Parse(jsonStr, &v)`**: input is `string`; same semantics as `Unmarshal`, with native `Config` support (security limits, `PreserveNumbers`, and so on).
+- **`ParseAny(jsonStr)`**: no target type to declare, returns `any` directly — good for unknown structures or one-off reads.
 
-The three share equivalent parsing power underneath; they differ only in input type and whether a target variable must be prepared.
+The three share the same parsing core; they differ only in input type and whether a target variable must be prepared.
 :::
 
 ## See Also

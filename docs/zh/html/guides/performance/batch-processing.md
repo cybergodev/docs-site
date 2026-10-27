@@ -1,56 +1,43 @@
 ---
 sidebar_label: "批量处理实战"
-title: "批量处理实战 - CyberGo html | 并发提取指南"
-description: "CyberGo html 批量处理实战指南：详解 ExtractBatch 等四个批量 API 与包级、实例两种调用方式的缓存差异，覆盖 BatchResult 结果结构、WorkerPoolSize 并发控制、单批 10000 项上限、context 上下文取消、部分失败处理及按数据量分级的性能调优建议。"
-sidebar_position: 2
+title: "批量处理实战 - CyberGo html | 并发提取与失败隔离"
+description: "CyberGo html 批量处理实战：四个批量 API 的调用方式与返回结构、包级函数与 Processor 实例的缓存差异、WorkerPoolSize 信号量并发控制、单批 10000 项上限、context 取消语义与单项失败隔离的写法。"
+sidebar_position: 20
 ---
 
 # 批量处理实战
 
-处理大量 HTML 文档时，批量 API 自动并发执行，比循环逐个调用快数倍。本指南涵盖四个批量 API、结果结构与并发调优。
+批量 API 用 `WorkerPoolSize` 个并发槽位并行处理多个文档，单批上限 10000 项。本页覆盖四个批量函数、并发控制、取消语义与失败隔离；字段定义与完整签名见 [API 参考：批量处理](../../api-reference/modules/batch)。
 
-## 批量 API 总览
+## 四个批量 API
 
-库提供四个批量函数，分别对应字节输入/文件输入 × 无上下文/带上下文：
+按输入类型与是否带 context 组合：
 
-| API | 输入 | 上下文 | 说明 |
-|-----|------|--------|------|
-| `ExtractBatch` | `[][]byte` | 无 | 批量提取字节切片 |
-| `ExtractBatchFiles` | `[]string` | 无 | 批量提取文件路径 |
-| `ExtractBatchWithContext` | `[][]byte` | 有 | 支持超时/取消 |
-| `ExtractBatchFilesWithContext` | `[]string` | 有 | 支持超时/取消 |
+| API | 输入 | 上下文 |
+|-----|------|--------|
+| `ExtractBatch` | `[][]byte` | 无 |
+| `ExtractBatchFiles` | `[]string` | 无 |
+| `ExtractBatchWithContext` | `[][]byte` | 有 |
+| `ExtractBatchFilesWithContext` | `[]string` | 有 |
 
-所有函数均可在 `Processor` 实例或包级别调用：
+四个函数都有包级与 `Processor` 实例两种形式，返回 `*BatchResult`：
 
 ```go
-// 包级别（使用内部池化 Processor）
+// 包级（内部池化 Processor，缓存禁用）
 br := html.ExtractBatch(pages)
 
 // Processor 实例（复用缓存）
-p, _ := html.New()
+p, err := html.New()
+if err != nil {
+	log.Fatal(err)
+}
 defer p.Close()
-br := p.ExtractBatch(pages)
+br = p.ExtractBatch(pages)
 ```
 
-## BatchResult 结构
-
-批量操作返回 `*BatchResult`，包含逐项结果和汇总计数：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `Results` | `[]*Result` | 每项的提取结果；失败或取消的项为 `nil` |
-| `Errors` | `[]error` | 每项的错误；成功项为 `nil`；索引与输入一一对应 |
-| `Success` | `int` | 成功提取的数量 |
-| `Failed` | `int` | 失败提取的数量 |
-| `Cancelled` | `int` | 因上下文取消而跳过的数量 |
-
-:::tip 索引对应关系
-`Results[i]`、`Errors[i]` 与第 `i` 个输入项一一对应。成功时 `Results[i]` 非 nil 且 `Errors[i]` 为 nil；失败时反之。
-:::
+`Results[i]`、`Errors[i]` 与第 `i` 个输入一一对应：成功时 `Results[i]` 非 nil 且 `Errors[i]` 为 nil，失败或取消时 `Results[i]` 为 nil。三个计数恒有 `Success + Failed + Cancelled == 输入项数`。
 
 ## 基础示例
-
-批量提取 3 个 HTML 字节切片：
 
 ```go
 package main
@@ -68,117 +55,117 @@ func main() {
 		[]byte(`<html><body><article><h1>第三页</h1><p>性能优化技巧。</p></article></body></html>`),
 	}
 
-	// 批量并发提取（使用包级函数）
 	br := html.ExtractBatch(pages)
 
 	fmt.Printf("成功：%d，失败：%d，取消：%d\n", br.Success, br.Failed, br.Cancelled)
-	// 成功：3，失败：0，取消：0
+	// 输出：成功：3，失败：0，取消：0
 
-	// 遍历结果（索引与输入对应）
 	for i, result := range br.Results {
 		if result != nil {
-			fmt.Printf("  [%d] 标题：%s\n", i+1, result.Title)
-		} else if br.Errors[i] != nil {
-			fmt.Printf("  [%d] 错误：%v\n", i+1, br.Errors[i])
+			fmt.Printf("[%d] 标题：%s\n", i, result.Title)
 		}
 	}
-	// [1] 标题：第一页
-	// [2] 标题：第二页
-	// [3] 标题：第三页
+	// 输出：
+	// [0] 标题：第一页
+	// [1] 标题：第二页
+	// [2] 标题：第三页
 }
 ```
 
-## 从文件批量提取
-
-```go
-files := []string{"page1.html", "page2.html", "page3.html"}
-
-br := html.ExtractBatchFiles(files)
-
-fmt.Printf("成功：%d，失败：%d\n", br.Success, br.Failed)
-
-for i, err := range br.Errors {
-    if err != nil {
-        fmt.Printf("文件 %s 失败：%v\n", files[i], err)
-    }
-}
-```
-
-## 包级函数 vs Processor 实例
-
-两种调用方式的缓存行为不同：
+## 包级函数与 Processor 实例
 
 | 调用方式 | 缓存 | 适用场景 |
 |----------|------|----------|
-| `html.ExtractBatch(pages)` | 禁用（池化 Processor 每次清空缓存） | 一次性批量任务 |
-| `p.ExtractBatch(pages)` | 启用（复用 Processor 缓存） | 高频批量、重复内容 |
+| `html.ExtractBatch(pages)` | 禁用：池化 Processor 的 `MaxCacheEntries = 0`，归还时还会清空 | 一次性批量任务 |
+| `p.ExtractBatch(pages)` | 启用：复用 Processor 缓存 | 高频批量、批内或跨批有重复内容 |
 
-:::warning 包级函数不缓存
-包级函数使用内部 `sync.Pool` 管理的 Processor，其配置已禁用缓存（`MaxCacheEntries = 0`），且每次归还时清空缓存。如果批量中有重复内容，应使用 Processor 实例以利用缓存加速。详见 [Processor 复用与缓存](./processor-cache)。
+:::warning 包级函数不做缓存
+
+无参调用走 `sync.Pool` 里的 Processor，其缓存配置恒为 0，每次归还还会 `ClearCache()`；传入 `Config` 时改用一次性 Processor，缓存同样被关闭。批内有重复内容时，只有自己 `html.New()` 的常驻实例才会命中缓存。机制见 [Processor 复用与缓存](./processor-cache)。
+
 :::
 
 ```go
-// 推荐：高频批量场景复用 Processor
-p, _ := html.New()
+p, err := html.New()
+if err != nil {
+	log.Fatal(err)
+}
 defer p.Close()
 
 for batch := range batchQueue {
-    br := p.ExtractBatch(batch) // 缓存生效，重复内容直接命中
-    processResult(br)
+	br := p.ExtractBatch(batch) // 同一 Processor 的缓存跨批生效
+	processResult(br)
 }
 ```
 
 ## 并发控制
 
-`WorkerPoolSize` 控制批量处理的并发工作数（默认 4，最大 256）：
+`WorkerPoolSize` 是并发上限。批量方法为它建一个带缓冲通道作为信号量，每个任务先取到槽位再启动 goroutine，因此同时运行的任务数不超过 `WorkerPoolSize`，与输入项数无关。
 
 ```go
 cfg := html.DefaultConfig()
 
-// 按 CPU 核心数设置并发（封顶 256）
 n := runtime.NumCPU()
 if n > 256 {
-    n = 256
+	n = 256
 }
 cfg.WorkerPoolSize = n
 
-p, _ := html.New(cfg)
+p, err := html.New(cfg)
+if err != nil {
+	log.Fatal(err)
+}
 defer p.Close()
 
 br := p.ExtractBatch(pages)
 ```
 
-| 配置 | 默认值 | 上限 | 说明 |
-|------|--------|------|------|
-| `WorkerPoolSize` | 4 | 256 | 并发 worker 数量，必须为正整数 |
+| 配置 | 默认值 | 取值范围 |
+|------|--------|----------|
+| `WorkerPoolSize` | 4 | 1–256（超出在 `Validate()` 阶段被拒绝） |
 
-:::tip WorkerPoolSize 调优
-CPU 密集型任务设为 CPU 核心数；I/O 密集型（如文件读取）可适当增大。超出 256 会被配置校验拒绝。
+:::tip 按负载类型取值
+
+纯 CPU 解析取 `runtime.NumCPU()`；`ExtractBatchFiles` 这类以文件读取为主的任务可适当调大（如 8–16）。超过 256 会在配置校验阶段报错，不会静默截断。
+
 :::
 
-## 批量上限
+## 单批上限 10000 项
 
-单个批量最多支持 10000 项。超出时**所有项**返回错误（而非部分处理）：
+单批超过 10000 项（固定常量上限，无配置项可调）时，整批不处理任何项，而是给每个 `Errors[i]` 填入同一个错误，`Failed` 等于输入项数：
 
 ```go
-huge := make([][]byte, 10001) // 超出上限
+huge := make([][]byte, 10001)
 
 br := html.ExtractBatch(huge)
 
 fmt.Printf("失败：%d\n", br.Failed)
-// 失败：10001
+// 输出：失败：10001
 
-fmt.Printf("第一项错误：%v\n", br.Errors[0])
-// 第一项错误：html: batch size 10001 exceeds maximum 10000
+fmt.Println(br.Errors[0])
+// 输出：html: batch size exceeds maximum: 10001 exceeds maximum 10000
+
+fmt.Println(errors.Is(br.Errors[0], html.ErrBatchTooLarge))
+// 输出：true
 ```
 
-:::warning 超限行为
-`maxBatchSize = 10000` 是硬上限。超限时不会处理任何项，而是对全部输入返回统一错误。如需处理更多，请分批调用。
+:::warning 超限是整批失败，不是 panic
+
+10000 项是固定常量上限，没有配置项可调。超限时调用正常返回，`Failed` 等于输入项数。要处理更多，按 ≤10000 分批调用；判断错误用 `errors.Is(err, html.ErrBatchTooLarge)`，不要比对字符串。
+
 :::
 
 ## 上下文取消
 
-`ExtractBatchWithContext` 在上下文取消时优雅终止：
+`ExtractBatchWithContext` / `ExtractBatchFilesWithContext` 在三个位置检查 `ctx`：派发任务前、取得信号量后、goroutine 内实际提取前。取消后的行为：
+
+| 项的状态 | 处理方式 |
+|----------|----------|
+| 已完成 | 结果保留在 `Results` 中 |
+| 正在运行 | 正常跑完并记录结果 |
+| 未开始 | 跳过，`Cancelled` 加一，`Errors[i] = ctx.Err()` |
+
+调用时 `ctx` 已取消是边界情形：全部项都未开始，因此 `Cancelled` 等于输入项数、`Results` 全为 nil、每个 `Errors[i]` 都是 `context canceled`。
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -186,76 +173,113 @@ defer cancel()
 
 br := p.ExtractBatchWithContext(ctx, pages)
 
-fmt.Printf("成功：%d，失败：%d，取消：%d\n",
-    br.Success, br.Failed, br.Cancelled)
+fmt.Printf("成功：%d，失败：%d，取消：%d\n", br.Success, br.Failed, br.Cancelled)
 ```
 
-| 项的状态 | 处理方式 |
-|----------|----------|
-| 已完成 | 结果保留在 `Results` 中 |
-| 正在进行 | 完成后正常记录 |
-| 未开始 | 跳过，计入 `Cancelled`，`Errors[i]` 设为 `ctx.Err()` |
+:::tip 取消后已完成的结果仍然可用
 
-:::tip 部分结果可用
-上下文取消后，已完成项的结果仍然保留在 `br.Results` 中（非 nil）。可安全使用已完成的结果，无需因取消丢弃全部输出。
+取消只影响尚未开始的任务，已完成的 `Results[i]` 保持非 nil，可以继续使用，不必因取消丢弃整批输出。
+
 :::
 
-## 部分失败处理
+## 部分失败隔离
 
-批量是**部分成功**的——一项失败不影响其他项：
+单项失败不打断整批。下面的例子用文件输入演示：第二个路径不存在，只影响该项，`Errors[1]` 命中 `ErrFileNotFound`，其余两项照常返回结果。
 
 ```go
-pages := [][]byte{
-    validHTML,   // 正常
-    []byte(""),  // 空输入，触发错误
-    validHTML2,  // 正常
-}
+package main
 
-br := p.ExtractBatch(pages)
+import (
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 
-// 第 2 项失败，第 1、3 项仍成功
-fmt.Printf("成功：%d，失败：%d\n", br.Success, br.Failed)
-// 成功：2，失败：1
+	"github.com/cybergodev/html"
+)
 
-// 逐项处理，跳过失败项
-for i, result := range br.Results {
-    if result == nil {
-        fmt.Printf("[%d] 失败：%v\n", i, br.Errors[i])
-        continue
-    }
-    fmt.Printf("[%d] 标题：%s\n", i, result.Title)
+func main() {
+	dir, err := os.MkdirTemp("", "html-batch")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	content := map[string]string{
+		"a.html": `<html><body><article><h1>第一页</h1><p>正文。</p></article></body></html>`,
+		"b.html": `<html><body><article><h1>第二页</h1><p>正文。</p></article></body></html>`,
+	}
+	for name, body := range content {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	files := []string{
+		filepath.Join(dir, "a.html"),
+		filepath.Join(dir, "missing.html"), // 不存在
+		filepath.Join(dir, "b.html"),
+	}
+
+	p, err := html.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer p.Close()
+
+	br := p.ExtractBatchFiles(files)
+
+	fmt.Printf("成功：%d，失败：%d，取消：%d\n", br.Success, br.Failed, br.Cancelled)
+	// 输出：成功：2，失败：1，取消：0
+
+	for i, result := range br.Results {
+		if result == nil {
+			fmt.Printf("[%d] 失败：%v（ErrFileNotFound=%v）\n",
+				i, br.Errors[i], errors.Is(br.Errors[i], html.ErrFileNotFound))
+			continue
+		}
+		fmt.Printf("[%d] 标题：%s\n", i, result.Title)
+	}
+	// 输出：
+	// [0] 标题：第一页
+	// [1] 失败：html: ReadFile "missing.html": file not found（ErrFileNotFound=true）
+	// [2] 标题：第二页
 }
 ```
 
-## 性能建议
+:::warning 空输入不算失败
 
-| 文档数量 | 推荐策略 | 说明 |
+`[]byte("")` 或纯空白输入不报错：提取返回一个空 `Result`，在批量中该项计入 `Success`。输入切片为空时返回空 `BatchResult`，`Results` / `Errors` 都是空切片。整批级失败（超过 10000 项、Processor 已关闭、包级函数传入无效 `Config`）会把同一个错误填进每一项。
+
+:::
+
+## 分批处理
+
+| 文档数量 | 推荐方式 | 说明 |
 |----------|----------|------|
-| 1–10 | 逐个 `Extract` | 批量调度开销可能超过并发收益 |
-| 10–1000 | `ExtractBatch` + 包级函数 | 自动并发，无需管理 Processor |
-| 1000+ | `p.ExtractBatch` + Processor 实例 | 复用缓存，分批处理避免内存峰值 |
-| 10000+ | 分批（每批 ≤10000）+ Processor 实例 | 超出单批上限，分片处理 |
+| 1–10 | 逐个 `Extract` | 批量调度开销大于并发收益 |
+| 10–10000 | `ExtractBatch` | 包级函数即可，无需管理 Processor |
+| 10000+ | 按 ≤10000 分批 + Processor 实例 | 超出单批上限；分片也避免一次性持有全部结果 |
 
 ```go
-// 大规模分批处理示例
-p, _ := html.New()
+p, err := html.New()
+if err != nil {
+	log.Fatal(err)
+}
 defer p.Close()
 
 const batchSize = 5000
 for i := 0; i < len(allPages); i += batchSize {
-    end := i + batchSize
-    if end > len(allPages) {
-        end = len(allPages)
-    }
+	end := min(i+batchSize, len(allPages))
 
-    br := p.ExtractBatch(allPages[i:end])
-    // 处理本批结果...
+	br := p.ExtractBatch(allPages[i:end])
+	// 处理本批结果...
 }
 ```
 
 ## 下一步
 
 - [Processor 复用与缓存](./processor-cache) - 包函数与实例的缓存区别
-- [性能优化](./performance) - 吞吐量提升与超时设置
-- [错误处理](./error-handling) - 哨兵错误与批量错误处理
-- [API 参考：批量处理](../../api-reference/modules/batch) - 完整 API 签名
+- [错误处理](./error-handling) - 哨兵错误、超时语义与批量错误
+- [API 参考：批量处理](../../api-reference/modules/batch) - 完整签名与 `BatchResult` 字段

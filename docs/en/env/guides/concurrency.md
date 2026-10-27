@@ -1,19 +1,25 @@
 ---
 sidebar_label: "Concurrency & Lifecycle"
 title: "Concurrency & Lifecycle - CyberGo env | Goroutine safety"
-description: "CyberGo env concurrency and lifecycle: Load singleton init, ResetDefaultLoader, Apply/Close/Delete process-env rules, sharded lock-free reads for goroutines."
+description: "CyberGo env concurrency and lifecycle: Load singleton init, ResetDefaultLoader, Apply/Close/Delete process-env rules, and 32-shard lock-free reads."
 sidebar_position: 9
 ---
 
 # Concurrency & Lifecycle
 
-Every public API in the env library is safe for concurrent use — a single `Loader` can be freely shared across goroutines. "Concurrency-safe", however, does not mean "lifecycle can be ignored": how the global singleton is initialized and reset, what `Apply`/`Close`/`Delete` each do to the process environment (`os.Environ`), and who wins when goroutines write the same key concurrently — these semantics determine how your program behaves under long-running workloads and in test isolation. This guide covers them one by one.
+Every public API in env is safe for concurrent use: one `Loader` can be shared across goroutines without external locking. Concurrency safety does not cover lifecycle, though. Three things still decide how your program behaves under long-running workloads and in test isolation:
+
+- how the global singleton is initialized and reset
+- what `Apply`, `Close`, and `Delete` each do to the process environment
+- which write survives when goroutines write the same key
+
+Each is covered below.
 
 ## Global Mode Lifecycle
 
 ### One-Shot Initialization
 
-`Load()` and `LoadWithConfig()` initialize the package-level default loader (the singleton). This is an **explicitly initialized** singleton: there is no lazy auto-creation. `setDefaultLoader` checks under a mutex and allows exactly one assignment — a second call returns `ErrAlreadyInitialized` (the newly created loader is closed and cleaned up immediately):
+`Load()` and `LoadWithConfig()` initialize the package-level default loader (the singleton). Initialization is **explicit**: there is no lazy auto-creation. `setDefaultLoader` checks under a mutex and allows exactly one assignment. A second call returns `ErrAlreadyInitialized`, and the newly created loader is closed immediately:
 
 ```go
 if err := env.Load(".env"); err != nil {
@@ -25,28 +31,28 @@ err := env.Load(".env.local")
 fmt.Println(errors.Is(err, env.ErrAlreadyInitialized)) // Output: true
 ```
 
-Concurrent `Load()` calls from multiple goroutines are also safe: the mutex guarantees exactly one caller succeeds; the rest receive `ErrAlreadyInitialized`.
+Concurrent `Load()` calls from multiple goroutines are also safe: the mutex guarantees exactly one caller succeeds and the rest receive `ErrAlreadyInitialized`.
 
-Note that `Load()` **forces** `AutoApply = true` — every loaded variable is immediately applied to the process environment (`LoadWithConfig` forces the same behavior even if your config says `false`). This is a prerequisite for the package-level getters to work. When you need manual control over the apply timing, use Instance Mode with `New()` instead, whose default `AutoApply` is `false`.
+`Load()` **forces** `AutoApply = true`, so every loaded variable is written to the process environment immediately. `LoadWithConfig` forces the same behavior even when your config sets `AutoApply = false`. The package-level getters depend on this. When you need control over when values are applied, use instance mode with `New()`, whose default `AutoApply` is `false`.
 
 ### Behavior Before Initialization
 
-Using package-level functions before calling `Load()`/`LoadWithConfig()` splits into "reads are silent, writes error out":
+Using package-level functions before `Load()` or `LoadWithConfig()` splits into "reads return defaults, writes and validation return errors":
 
 | Operation | Behavior when not initialized |
 |-----------|-------------------------------|
 | `GetString` / `GetInt` / `GetBool` and other Get* | Returns the provided default (or zero value), **no error** |
 | `Lookup` | Returns `("", false)` |
-| `Keys` / `All` / `Len` / `GetSecure` | Returns `nil` / `0` / `nil` |
+| `Keys` / `All` / `Len` / `GetSecure` | Returns `nil` / `nil` / `0` / `nil`, in that order |
 | `Set` / `Delete` / `Validate` / `ParseInto` | Returns `ErrNotInitialized` |
 
 ::: warning
-Before initialization, getters silently return defaults — a mistyped key or a missing `Load()` call produces no error signal at all. The usual symptom is "the app runs happily on default configuration". If that happens, check whether your startup path actually ran `Load()`, and whether another test called `ResetDefaultLoader()` beforehand.
+Before initialization, getters return defaults without any error signal — a mistyped key or a missing `Load()` call looks identical to a working setup. The usual symptom is an app that runs happily on default configuration. If that happens, check that your startup path actually ran `Load()`, and that no earlier test called `ResetDefaultLoader()`.
 :::
 
 ### ResetDefaultLoader: Resetting the Singleton
 
-`ResetDefaultLoader()` atomically swaps out the current singleton and closes the old loader, returning any error from that close (`nil` when no loader was set or the close succeeded). It is itself safe for concurrent use: the old loader's `Close` runs outside the lock, avoiding slow cleanup while holding it.
+`ResetDefaultLoader()` atomically swaps out the current singleton and closes the old loader. It returns the close error, or `nil` when no loader was set or the close succeeded. It is safe for concurrent use: the old loader's `Close` runs outside the lock, so slow cleanup does not block other callers.
 
 ```go
 if err := env.ResetDefaultLoader(); err != nil {
@@ -54,17 +60,17 @@ if err := env.ResetDefaultLoader(); err != nil {
 }
 ```
 
-After a reset you can call `Load()` again to re-initialize. This function is intended for **test isolation and program startup**: a normally running application should initialize once and not repeatedly reset — between the reset and the next `Load()`, package-level functions briefly behave as uninitialized (reads return defaults, writes return `ErrNotInitialized`).
+After a reset you can call `Load()` again. Use this function for **test isolation and program startup**; a normally running application should initialize once and never reset. Between the reset and the next `Load()`, package-level functions behave as uninitialized: reads return defaults and `Set`/`Delete`/`Validate`/`ParseInto` return `ErrNotInitialized`.
 
 ::: warning
-`ResetDefaultLoader()` closes the old loader but does **not** undo the variables it already applied to the process environment (see the `Close` semantics below). Tests that need a clean process environment should also `os.Unsetenv` manually, or switch to Instance Mode.
+`ResetDefaultLoader()` closes the old loader but does **not** undo the variables it already applied to the process environment (see `Close()` below). Tests that need a clean process environment should also call `os.Unsetenv`, or switch to instance mode.
 :::
 
 ## Loader Instance Lifecycle
 
 ### Creation: New()
 
-`New()` creates a fully independent loader instance: it does not set the global singleton, applies nothing to the process environment (unless `cfg.AutoApply = true`), and can be called repeatedly with no cross-talk. If `Filenames` is configured, those files are loaded at creation time. The typical lifecycle is **create → load → apply → use → close**:
+`New()` creates a fully independent loader instance. It does not set the global singleton, applies nothing to the process environment unless `cfg.AutoApply = true`, and you can call it repeatedly without cross-talk between instances. If `Filenames` is set, those files are loaded at creation time. The typical lifecycle is **create → load → apply → use → close**:
 
 ```go
 loader, err := env.New(cfg)
@@ -76,25 +82,30 @@ defer loader.Close()
 if err := loader.LoadFiles("app.env"); err != nil {
     log.Fatal(err)
 }
+// A failed Apply means "partially applied": keys written before the failure
+// are not rolled back and IsApplied() stays false. Log it and carry on here;
+// production code should Delete the written keys or fix the environment and retry.
 if err := loader.Apply(); err != nil {
-    log.Fatal(err)
+    log.Printf("apply failed (partially applied): %v", err)
 }
 // ... use loader ...
 ```
 
 ### Applying to the Process Environment: Apply()
 
-`Apply()` writes the in-memory variables to the process environment. For keys that **already exist** in the process environment (checked via `LookupEnv`, which correctly distinguishes "not set" from "explicitly empty string"), the default behavior (`OverwriteExisting = false`) is to skip them; only `OverwriteExisting = true` overwrites.
+`Apply()` writes the in-memory variables to the process environment. For a key that **already exists** there (checked via `LookupEnv`, which distinguishes "not set" from "explicitly empty"), the default behavior (`OverwriteExisting = false`) is to skip it. With `OverwriteExisting = true`, the existing value is overwritten.
 
-Every key this loader actually writes to the process environment is recorded in an internal `appliedKeys` set — this is what allows `Delete()` to undo precisely.
+Every key this loader writes to the process environment is recorded in an internal `appliedKeys` set. That record is what lets `Delete()` undo precisely.
 
-With `AutoApply` enabled there is no need to call `Apply()` manually: loading files and `Set`-ting individual keys both sync to the process environment immediately.
+With `AutoApply` enabled you don't call `Apply()` manually: loading files and individual `Set` calls sync to the process environment immediately.
+
+A failed `Apply()` means **partially applied**: keys written before the failure are not rolled back and `IsApplied()` stays `false`. Log the error and continue (or `Delete()` the keys you know were written and retry after fixing the environment) instead of panicking; see [Loader API · Apply](../api-reference/loader#apply) for the full semantics.
 
 ### Closing: Close()
 
-`Close()` securely zeroes all values stored in memory (sensitive values are wiped byte by byte) and closes the component factory if the loader owns it. `Close` is idempotent: calling it again on a closed or `nil` loader is not an error.
+`Close()` zeroes and unlocks every value stored in memory (sensitive values are wiped byte by byte, and unlocking happens before zeroing), then closes any custom parsers that implement `io.Closer`, followed by the component factory if the loader owns it. It is idempotent: a second call on a closed or `nil` loader returns no error.
 
-The key semantic: **`Close()` clears memory only — it does not undo the process environment**. Variables previously written there via `Apply`, `AutoApply`, or `Set` with `AutoApply` stay in place. To remove them before shutting down, call `Delete()` per key.
+`Close()` zeroes and **unlocks** the in-memory copies. It does **not** undo the process environment: variables previously written there via `Apply`, `AutoApply`, or `Set` with `AutoApply` stay in place. To remove them before shutdown, call `Delete()` per key.
 
 Behavior after closing:
 
@@ -102,15 +113,15 @@ Behavior after closing:
 |-----------|----------------------|
 | `Lookup` / `GetSecure` | `("", false)` / `nil`, no error |
 | `GetString` / `GetInt` and other Get* | Returns the default (or zero value) |
-| `Keys` / `All` / `Len` / `ParseInto` | Returns `nil` / `0` / `ErrClosed` |
+| `Keys` / `All` / `Len` / `ParseInto` | Returns `nil` / `nil` / `0` / `ErrClosed`, in that order |
 | `Set` / `Delete` / `Apply` / `LoadFiles` / `Validate` | Returns `ErrClosed` |
 | `Close` / `IsClosed` | Idempotent `nil` / `true` |
 
 ### Per-Key Undo: Delete()
 
-`Delete(key)` does two things: it removes the key from the loader's memory, and — **only if this loader itself wrote that key** to the process environment (a hit in the `appliedKeys` tracking) — it also calls `Unsetenv`.
+`Delete(key)` does two things: it removes the key from the loader's memory, and — **only if this loader itself wrote that key** to the process environment (a hit in `appliedKeys`) — it calls `Unsetenv`.
 
-The per-key tracking is deliberate: unsetting everything whenever "anything was applied" would destroy foreign process variables such as `HOME` and `TERM` that the loader never owned. Deleting a key this loader never applied leaves the process environment untouched.
+The per-key tracking is deliberate. Unsetting everything whenever "anything was applied" would destroy foreign process variables such as `HOME` and `TERM` that the loader never owned. Deleting a key this loader never applied leaves the process environment untouched.
 
 ### Full Lifecycle Example
 
@@ -119,6 +130,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/cybergodev/env"
@@ -145,14 +157,16 @@ func main() {
 		panic(err)
 	}
 
-	// Apply to the process environment
+	// Apply to the process environment. A failure means "partially applied":
+	// keys already written are not rolled back and IsApplied() stays false,
+	// so log it and continue rather than panicking.
 	if err := loader.Apply(); err != nil {
-		panic(err)
+		log.Printf("apply failed (partially applied): %v", err)
 	}
 	mode, ok := os.LookupEnv("MY_APP_MODE")
 	fmt.Println("after Apply, in process:", mode, ok)
 
-	// Close: zeroes memory, but process-environment variables remain
+	// Close: zeroes and unlocks memory, but process-environment variables remain
 	if err := loader.Close(); err != nil {
 		panic(err)
 	}
@@ -167,7 +181,7 @@ func main() {
 }
 ```
 
-The per-key protection of `Delete()` can be verified like this:
+The per-key protection of `Delete()` verifies like this:
 
 ```go
 package main
@@ -224,31 +238,32 @@ func main() {
 
 ## Concurrency Safety Model
 
-The env library is designed for concurrency from the storage layer up to the global singleton. Every public API can be called from multiple goroutines without external synchronization, verified continuously under the `-race` detector. The layered mechanisms:
+env is concurrency-safe from the storage layer up to the global singleton. Every public API can be called from multiple goroutines without external synchronization, and the test suite runs continuously under the `-race` detector. The layers:
 
 | Layer | Mechanism |
 |-------|-----------|
-| Variable storage (secureMap) | 8 shards, each with its own RWMutex to reduce lock contention; an atomic counter backs O(1) `Len()` |
-| Single-key reads (`Lookup` / `GetSecure`; all Get* build on `Lookup`) | Lock-free fast path: an atomic closed check (`closedFast`) plus the shard's internal lock — no loader-level mutex |
-| Multi-key snapshots (`All` / `Keys` / `ParseInto`) | Read lock held for a cross-shard consistent snapshot |
+| Variable storage (secureMap) | 32 shards, each with its own `RWMutex`, to reduce lock contention; an atomic counter backs O(1) `Len()` |
+| Single-key reads (`Lookup` / `GetSecure`; every Get* builds on `Lookup`) | Lock-free fast path: an atomic closed check (`closedFast`) plus the shard's internal lock, no loader-level mutex |
+| `All` / `Keys` | Per-shard read locks, sized from the atomic counter; the result is an **approximate** snapshot, not guaranteed consistent across shards |
+| `ParseInto` | Takes the loader read lock only long enough to snapshot all values into a map, then releases it before filling your struct (so `UnmarshalText` callbacks can call back into the loader) |
 | Writes (`Set` / `Delete` / `Apply`) | Loader-level write lock; `Set` with `OverwriteExisting = true` and no `AutoApply` takes a read-lock fast path |
-| Global singleton | Atomic pointer reads (lock-free read path); `Load` and `ResetDefaultLoader` set/swap under a lock |
+| Global singleton | Atomic pointer reads (lock-free read path); `Load` and `ResetDefaultLoader` set or swap under a lock |
 | `SecureValue` | Mutex-protected data access plus an atomic closed bit; concurrent `Release` is safe |
 
 ### Racing Against Close
 
-Reads racing with `Close()` degrade gracefully instead of crashing: a single-key read observes either the pre-close value or the post-close state (default / `("", false)` / `nil`) — never a panic or a torn value. Multi-key snapshots either capture a consistent pre-close snapshot or return zero values / `ErrClosed` after the close.
+Reads racing with `Close()` degrade instead of crashing. A single-key read observes either the pre-close value or the post-close state (default / `("", false)` / `nil`), never a panic or a torn value. `All` and `Keys` either capture an approximate pre-close snapshot or return `nil` after the close; `ParseInto` returns `ErrClosed`.
 
 ### Concurrent Writes and OverwriteExisting
 
-How `Set` treats an existing key is decided by `OverwriteExisting`:
+How `Set` treats an existing key depends on `OverwriteExisting`:
 
 | Configuration | `Set` on an existing key |
 |---------------|--------------------------|
-| `false` (`DefaultConfig` / `ProductionConfig`) | Silently skipped — first write wins, no error |
+| `false` (`DefaultConfig` / `ProductionConfig`) | Skipped with no error: the first write wins |
 | `true` (`DevelopmentConfig` / `TestingConfig`) | Overwrites |
 
-So when **multiple goroutines repeatedly write the same key** and you expect "last write wins", you must use a config with `OverwriteExisting = true` (e.g. `DevelopmentConfig`); otherwise only the first write takes effect and every subsequent one is silently skipped.
+When **multiple goroutines repeatedly write the same key** and you expect last-write-wins, use a config with `OverwriteExisting = true` (for example `DevelopmentConfig`). Otherwise only the first write takes effect, and every later write is skipped without an error.
 
 ### Concurrent Reads and Writes on One Loader
 
@@ -310,7 +325,7 @@ func main() {
 
 ## Global Mode Full Example
 
-The following example walks the full singleton lifecycle: uninitialized behavior → one-shot initialization → rejecting a second initialization → re-initializing after a reset.
+This example walks the full singleton lifecycle: uninitialized behavior, one-shot initialization, a rejected second initialization, and re-initialization after a reset.
 
 ```go
 package main
@@ -332,7 +347,7 @@ func main() {
 	defer os.Remove(file)
 
 	// 1) Not yet initialized: reads silently return defaults,
-	//    writes return ErrNotInitialized
+	//    Set/Delete/Validate/ParseInto return ErrNotInitialized
 	fmt.Println("before Load, port =", env.GetInt("GL_PORT", 8080))
 	if err := env.Set("GL_PORT", "9090"); err != nil {
 		fmt.Println("before Load, Set is ErrNotInitialized:",
@@ -373,36 +388,27 @@ func main() {
 
 ## Resetting the Singleton Between Tests
 
-The global singleton outlives individual tests — a loader from a previous `Load()` leaks into the next case (showing up as `ErrAlreadyInitialized` or stale values). The standard pattern is a TestMain that resets around the whole run:
+The global singleton outlives individual tests, so a loader from a previous `Load()` leaks into the next case as `ErrAlreadyInitialized` or stale values. The essentials:
 
-```go
-func TestMain(m *testing.M) {
-	// Cleanup on entry: isolate any leftover singleton
-	_ = env.ResetDefaultLoader()
+- Reset once in TestMain, and check the error returned by `ResetDefaultLoader()`.
+- Cases that use global mode then call `Load()` themselves.
+- `Load` forces `AutoApply = true` and `Close` does not undo the process environment, so tests should also clean applied process variables in `t.Cleanup`.
 
-	code := m.Run()
-
-	// Cleanup on exit: close the loader these tests initialized
-	_ = env.ResetDefaultLoader()
-	os.Exit(code)
-}
-```
-
-Cases that need Global Mode then call `Load()` themselves. Because `Load` forces `AutoApply = true` and `Close` does not undo the process environment, tests should also clean applied process variables via `t.Cleanup`. For deeper isolation (independent instances, in-memory filesystems, table-driven tests, and more), see [Testing](./testing).
+The full TestMain template and process-variable cleanup are in [Testing · Cleaning Up Test State](./testing#cleaning-up-test-state); the in-memory filesystem is in [Testing · Mocking Filesystem](./testing#mocking-filesystem).
 
 ## Common Pitfalls
 
 | Pitfall | Consequence | Do instead |
 |---------|-------------|------------|
-| Calling `Load()` from multiple code paths | Every call after the first returns `ErrAlreadyInitialized` | Initialize once in `main`/TestMain; use `ResetDefaultLoader()` in tests |
-| Expecting Get* errors to surface config problems before initialization | Getters silently return defaults, hiding the issue | Call `Validate()` after startup, or confirm explicitly via `Lookup`/`Set` (write paths return `ErrNotInitialized`) |
-| Expecting the process environment to be restored after `Close()` | Applied variables remain in the process environment | `Delete()` each key before closing, or evaluate the impact before enabling `OverwriteExisting` |
-| Concurrent/repeated writes to the same key without `OverwriteExisting` | Later writes are silently skipped; stale values are read | Use `DevelopmentConfig`/`TestingConfig` or set `cfg.OverwriteExisting = true` explicitly |
-| Repeatedly `New()`-ing loaders for the same config | Duplicate resources and a muddled process environment | Share one loader (it is concurrency-safe), or use Global Mode |
+| Calling `Load()` from multiple code paths | Every call after the first returns `ErrAlreadyInitialized` | Initialize once in `main`/`TestMain`; use `ResetDefaultLoader()` in tests |
+| Expecting Get* to report config problems before initialization | Getters return defaults, hiding the issue | Call `Validate()` after startup, or probe with `Set` (write paths return `ErrNotInitialized`; an uninitialized `Lookup` returns `("", false)` just like a missing key) |
+| Expecting the process environment to be restored after `Close()` | Applied variables remain in the process environment | `Delete()` each key before closing (`Close` only clears the in-memory copies) |
+| Concurrent or repeated writes to the same key without `OverwriteExisting` | Later writes are skipped without an error; stale values are read | Use `DevelopmentConfig`/`TestingConfig`, or set `cfg.OverwriteExisting = true` explicitly |
+| Creating a new loader with `New()` for the same config repeatedly | Duplicate resources and a muddled process environment | Share one loader (it is concurrency-safe), or use global mode |
 | Forgetting to `Close()` an instance loader | Sensitive values in memory are only zeroed at GC | `defer loader.Close()` |
 
 ## Next Steps
 
-- [Testing](./testing) — `TestingConfig`, in-memory filesystems, and fuller test-isolation patterns
-- [Performance](../advanced/performance) — benchmark data and tuning details for the sharded storage and lock-free read path
-- [Loader API Reference](../api-reference/loader) — full signatures and error semantics of `Apply`/`Close`/`Delete` and friends
+- [Testing](./testing) - `TestingConfig`, in-memory filesystems, and further test-isolation patterns
+- [Performance](../advanced/performance) - benchmark data and tuning for sharded storage and the lock-free read path
+- [Loader API Reference](../api-reference/loader) - full signatures and error semantics of `Apply`, `Close`, and `Delete`

@@ -68,7 +68,7 @@ filter, _ := dd.NewCustomSensitiveDataFilter(
 
 ## SecurityConfig
 
-安全配置结构体，控制过滤行为和安全级别。
+`SecurityConfig` 是安全配置结构体，控制过滤行为和安全级别。
 
 ```go
 type SecurityConfig struct {
@@ -129,7 +129,7 @@ type RateLimitConfig struct {
 
 ### FilterStats
 
-过滤统计数据结构，用于监控和可观测性。
+`FilterStats` 是过滤统计数据结构，用于监控和可观测性，由 `GetFilterStats` 返回。
 
 ```go
 type FilterStats struct {
@@ -149,7 +149,7 @@ type FilterStats struct {
 
 ### SecurityLevel
 
-安全级别枚举，用于通过 `SecurityConfigForLevel` 快速获取预设配置。
+`SecurityLevel` 是安全级别枚举，用于通过 `SecurityConfigForLevel` 快速获取预设配置。
 
 ```go
 type SecurityLevel int

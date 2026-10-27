@@ -1,7 +1,7 @@
 ---
 sidebar_label: "签名算法"
 title: "签名算法 - CyberGo JWT | 算法对比与选型"
-description: "签名算法指南：对比 HMAC、RSA、RSA-PSS 与 ECDSA 四类 12 种算法的密钥类型、生成方式、签名验证性能、签名长度与架构耦合度，给出选型决策与密钥管理安全实践。"
+description: "签名算法指南：对比 HMAC、RSA、RSA-PSS 与 ECDSA 四类共 12 种算法的密钥类型、生成方式、签名性能、签名长度与架构耦合度，给出选型决策、曲线匹配要求，以及环境变量、PEM 加载与密钥轮换的管理清单。"
 sidebar_position: 10
 ---
 
@@ -212,10 +212,10 @@ publicKey := &privateKey.PublicKey
 | **认证服务** | 私钥（`SigningKey`） | 登录成功后签发访问令牌 |
 | **API 服务** | 公钥（`VerificationKey`） | 验证令牌签名，不参与签发 |
 
-认证服务持有私钥负责签发，API 服务通过公钥验证令牌。即使 API 服务的配置中也写入了 `SigningKey`（当前 API 要求该字段非空），只要设置了 `VerificationKey`，验证时就使用该公钥。
+认证服务持有私钥负责签发，API 服务持有公钥负责验证。当前 API 要求 `SigningKey` 字段非空，因此 API 服务仍需填入一个 `*rsa.PrivateKey`。**占位私钥即可**：只要设置了 `VerificationKey`，验证时就只使用该公钥，占位私钥的内容与真实签发密钥无关。
 
 :::tip VerificationKey 优先
-设置了 `VerificationKey` 后，验证流程使用该公钥，而非从 `SigningKey` 提取的公钥。这使得 API 服务可以显式控制验证密钥，适用于验证密钥与签名密钥分离分发的场景。
+设置了 `VerificationKey` 后，验证流程使用该公钥，而非从 `SigningKey` 提取的公钥。因此只验不签的服务可以放置一个无关的 2048 位占位私钥，签名能力仍然完全隔离在认证服务一侧。
 :::
 
 认证服务（签发令牌）：
@@ -232,12 +232,12 @@ API 服务（仅验证）：
 ```go
 apiCfg := jwt.DefaultConfig()
 apiCfg.SigningMethod = jwt.SigningMethodRS256
-apiCfg.SigningKey = rsaPrivateKey            // 当前 API 要求 SigningKey 非空
+apiCfg.SigningKey = placeholderPrivateKey    // 任意 2048 位私钥占位，不参与验证
 apiCfg.VerificationKey = rsaPublicKey        // *rsa.PublicKey，验证时实际使用
 ```
 
-:::warning 注意
-仅验证的 `Processor` 不应调用 `Create` / `CreateRefresh`（签名需要私钥）。完整跨服务示例见[高级示例](../examples/advanced#密钥分离模式)。
+:::warning 仅验证实例不要签发
+仅验证的 `Processor` 不应调用 `Create` / `CreateRefresh`：那会用占位私钥签名，产出无法验证的令牌。完整跨服务示例见[高级示例](../examples/advanced#密钥分离模式)。
 :::
 
 ## 如何选择
@@ -348,25 +348,22 @@ func main() {
 :::tip 轮换建议
 - 定期轮换签名密钥（建议每 3–6 个月）
 - 新旧密钥并行期间，验证端同时接受两把公钥
-- 使用 `kid`（Key ID）头部标识当前密钥版本，便于灰度切换
+- 本库的 JWT 头部固定为 `{"typ":"JWT","alg":"<算法>"}`，**不支持 `kid`（Key ID）**，无法在令牌里标记密钥版本。并行期需为每把密钥各建一个 `Processor`，先按 `kid` 之类的字段或外部路由判断版本，再交给对应的实例验证；不支持在单个实例内自动选钥
 - 轮换完成后撤销旧密钥，检查黑名单是否需同步更新
 :::
 
 ## 安全注意事项
 
-:::danger 禁止事项
-- 不要在代码中硬编码密钥
-- 不要使用弱密钥（纯数字、重复字符等）
-- 不要使用 `none` 算法（本库自动拒绝）
-- HMAC 密钥不要短于 32 字节
-:::
+密钥管理的检查清单：
 
-:::tip 最佳实践
-- 使用环境变量或密钥管理服务存储密钥
-- 定期轮换签名密钥
-- 生产环境建议使用 RSA 或 ECDSA
-- RSA 密钥建议 2048 位以上
-:::
+| 项 | 要求 |
+|----|------|
+| 密钥来源 | 环境变量或密钥管理服务，不写入源码、不提交版本控制 |
+| HMAC 密钥 | 密码学安全随机生成，≥ 32 字节；禁止纯数字、重复字符、字典词 |
+| 非对称密钥 | RSA ≥ 2048 位；ECDSA 曲线与算法严格匹配（ES256→P-256、ES384→P-384、ES512→P-521） |
+| 算法 | 不使用 `none`（本库自动拒绝）；跨服务验证优先 RSA-PSS 或 ECDSA |
+| 轮换 | 定期轮换；并行期验证端同时接受新旧公钥。本库头部固定，不支持 `kid`，见[密钥轮换](#密钥轮换) |
+| 收尾 | 轮换完成后撤销旧密钥，检查黑名单是否需同步更新 |
 
 ## 下一步
 

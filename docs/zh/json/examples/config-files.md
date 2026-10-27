@@ -1,13 +1,13 @@
 ---
 sidebar_label: "配置文件处理"
 title: "配置文件处理 - CyberGo JSON | 读取、修改与保存"
-description: "CyberGo JSON 配置文件实战：LoadFromFile 加载、GetString/GetInt 读取嵌套值、Set/SetCreate 修改、SaveToFile 搭配 PrettyConfig 格式化原子保存、MergeJSON 合并默认与用户配置，覆盖配置加载、修改、保存与重载验证的完整生命周期。"
+description: "CyberGo JSON 配置文件读写：LoadFromFile 加载、GetString 取值、Set/SetCreate 修改、SaveToFile 保存与 MergeJSON 合并。"
 sidebar_position: 20
 ---
 
 # 配置文件处理
 
-本文演示如何用 CyberGo JSON 处理典型的配置文件场景：加载、读取嵌套值、修改、保存，以及合并默认配置与用户配置。
+配置文件的生命周期是加载、读值、修改、保存、重载验证。下面给出完整流程与合并默认配置的两类做法。
 
 ## 配置文件的完整生命周期
 
@@ -82,7 +82,7 @@ func main() {
 
 ## 合并默认配置与用户配置
 
-实际应用中常需将用户配置覆盖到内置默认值上，再补全缺失的嵌套路径。`MergeJSON` 执行**深度合并**（用户值优先），`SetCreate` 会自动创建尚不存在的中间路径。
+实际应用常需把用户配置覆盖到内置默认值上，再补全缺失的嵌套路径。`MergeJSON` 执行**深度合并**（用户值优先），`SetCreate` 会自动创建尚不存在的中间路径。
 
 ```go
 package main
@@ -140,7 +140,7 @@ func main() {
 ```
 
 :::tip 提示
-`MergeJSON` 是深度递归合并：对象键逐层合并，数组和标量值直接替换。需要合并多个配置源时可用 `MergeMany([]string{...})` 一次性合并。
+`MergeJSON` 是深度递归合并：对象键逐层合并，数组和标量值直接替换。需要合并多个配置源时用 `MergeMany([]string{...})` 一次完成。
 :::
 
 ## 合并模式选型：MergeUnion / MergeIntersection / MergeDifference
@@ -206,7 +206,7 @@ func main() {
 ```
 
 :::tip 提示
-`MergeMany` 同样读取 `cfg.MergeMode`（从左到右逐个合并）。并集模式的完整效果见上一节；两种非默认模式都是「以第一个参数为基准」视角：交集回答「改了什么」，差集回答「还有什么没改」。
+`MergeMany` 同样读取 `cfg.MergeMode`（从左到右逐个合并）。并集模式的完整效果见上一节。两种非默认模式都以第一个参数为基准：交集回答「改了什么」，差集回答「还有什么没改」。
 :::
 
 ## 下一步

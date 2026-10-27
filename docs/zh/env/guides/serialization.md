@@ -7,7 +7,7 @@ sidebar_position: 4
 
 # 序列化
 
-使用 Marshal 和 Unmarshal 功能序列化/反序列化环境变量，支持 `.env`、JSON、YAML 格式转换。
+`env.Marshal` 把 map 或结构体导出为 `.env`、JSON、YAML 文本，`env.UnmarshalMap` / `env.UnmarshalStruct` 反向解析文本。
 
 ## 基本序列化
 
@@ -106,11 +106,11 @@ func main() {
 
 ## 输出形态
 
-Marshal 的输出不是「扁平键原样输出」：两种结构化格式都会对键值做加工，了解这些行为才能正确解读导出结果。
+Marshal 的输出不是「扁平键原样输出」：两种结构化格式都会改写键值，读懂这两条规则才能正确解读导出结果。
 
 ### JSON：下划线键重建嵌套对象
 
-Marshal 到 JSON 时，含下划线的键按 `_` 拆分重建为嵌套对象（`DATABASE_HOST` → `{"DATABASE": {"HOST": ...}}`）；叶子值经类型推断还原——`"8080"` 回到 number、`"true"` 回到 bool、`"null"` 回到 null，浮点同样还原。
+Marshal 到 JSON 时，含下划线的键按 `_` 拆分重建为嵌套对象（`DATABASE_HOST` → `{"DATABASE": {"HOST": ...}}`）；叶子值经类型推断还原，`"8080"` 回到 number、`"true"` 回到 bool。这条推断只接受能原样回写的规范写法：`"007"`、`"1.50"`、`"1e3"` 保持字符串，`"null"` 也保持字符串（JSON null 读回时会变成空串，转成 null 反而改变值）。
 
 ```go
 package main
@@ -145,7 +145,7 @@ func main() {
 }
 ```
 
-这与加载方向对称：加载 JSON 时嵌套对象被扁平化为 `DATABASE_HOST`，Marshal 回 JSON 时再重建嵌套，往返后结构一致。
+这与加载方向对称：加载 JSON 时嵌套对象被扁平化为 `DATABASE_HOST`，Marshal 回 JSON 时再按 `_` 拆回嵌套结构，往返后结构一致。
 
 ### YAML：标量加引号保往返
 
@@ -466,7 +466,7 @@ ENABLED=true
 ## 自定义序列化
 
 ::: tip 两种自定义接口的生效范围
-- **字段级**：结构体字段的自定义编解码，实现标准库 `encoding.TextMarshaler` / `encoding.TextUnmarshaler`（`MarshalText()` / `UnmarshalText([]byte)`）。当结构体被 `env.Marshal`/`env.UnmarshalInto` 处理时，逐字段逻辑会识别这两个接口。
+- **字段级**：结构体字段的自定义编解码，实现标准库 `encoding.TextMarshaler` / `encoding.TextUnmarshaler`（`MarshalText()` / `UnmarshalText([]byte)`）。当结构体被 `env.Marshal`/`env.UnmarshalInto` 处理时，逐字段逻辑会识别这两个接口（Marshal 侧另识别 `json.Marshaler`）。
 - **顶层**：`env.Marshaler`（`MarshalEnv()`）与 `env.Unmarshaler`（`UnmarshalEnv(map[string]string)`）接口**仅在直接传给 `env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto` 的顶层值上生效**；若传入的是含该类型字段的外层结构体，则不会被调用。
 :::
 
@@ -484,7 +484,7 @@ import (
 
 type LogLevel string
 
-// 实现 encoding.TextMarshaler —— 作为结构体字段序列化时会被调用
+// 实现 encoding.TextMarshaler，作为结构体字段序列化时会被调用
 func (l LogLevel) MarshalText() ([]byte, error) {
 	return []byte(strings.ToUpper(string(l))), nil
 }
@@ -521,7 +521,7 @@ import (
 
 type LogLevel string
 
-// 实现 encoding.TextUnmarshaler —— 作为结构体字段反序列化时会被调用
+// 实现 encoding.TextUnmarshaler，作为结构体字段反序列化时会被调用
 func (l *LogLevel) UnmarshalText(text []byte) error {
 	switch string(text) {
 	case "debug", "info", "warn", "error":
@@ -600,7 +600,7 @@ import (
 )
 
 func main() {
-	// 自动检测格式
+	// DetectFormat 只看扩展名：.json / .yaml / .yml / .env，其余返回 FormatAuto
 	format := env.DetectFormat("config.json")
 	fmt.Println(format.String()) // json
 
@@ -610,7 +610,7 @@ func main() {
 	format = env.DetectFormat(".env")
 	fmt.Println(format.String()) // dotenv
 
-	// 使用 FormatAuto 自动检测
+	// UnmarshalMap 传 FormatAuto 时按内容检测，见下文规则表
 	data := `{"KEY": "value"}`
 	result, _ := env.UnmarshalMap(data, env.FormatAuto)
 	fmt.Println(result)
@@ -642,7 +642,7 @@ func main() {
 	}
 
 	// 写入文件
-	err = os.WriteFile(".env", []byte(content), 0644)
+	err = os.WriteFile(".env", []byte(content), 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -661,7 +661,9 @@ import (
 )
 
 func main() {
-	env.Load(".env")
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
 	// 获取所有环境变量
 	all := env.All()
@@ -674,8 +676,10 @@ func main() {
 
 	fmt.Println(content)
 
-	// 或写入文件
-	os.WriteFile("env-export.json", []byte(content), 0644)
+	// 或写入文件；导出的是配置快照，可能含密钥，权限用 0600
+	if err := os.WriteFile("env-export.json", []byte(content), 0600); err != nil {
+		panic(err)
+	}
 }
 ```
 
@@ -706,18 +710,20 @@ func main() {
 		panic(err)
 	}
 
-	// 保存为 .env 文件
-	os.WriteFile(".env", []byte(envContent), 0644)
+	// 保存为 .env 文件（含密钥，权限用 0600）
+	if err := os.WriteFile(".env", []byte(envContent), 0600); err != nil {
+		panic(err)
+	}
 
 	fmt.Println("Config migrated from JSON to .env")
 }
 ```
 
-## 往返陷阱与格式自动检测
+## 往返行为与格式自动检测
 
-### `$` 不转义：Marshal 输出再读回可能变形
+### `.env` 输出转义 `$`
 
-`Marshal` **不会**转义值中的 `$`。若值包含 `$VAR` 或 `${VAR}` 字面量，在默认开启 `ExpandVariables` 的情况下重新解析 Marshal 输出时，这些序列会被当作变量引用展开：
+`Marshal` 到 `.env`（`FormatEnv`）时，含 `$` 的值会整体加双引号，并把每个 `$` 写成 `\$`。读回时解析器得到的是一个字面 `$`，不会把它当作变量引用展开，因此 Marshal → 加载的往返是安全的（v1.3.0 起，SEC-009）：
 
 ```go
 package main
@@ -736,33 +742,35 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(out)
-	// 输出：PRICE=100$USD
-	// 注意：若将 out 重新写回 .env 并以默认配置加载，$USD 会被尝试展开
+	// 输出：PRICE="100\$USD"
 }
 ```
 
-规避方式：读取侧设置 `cfg.ExpandVariables = false`，或对含 `$` 的值避免使用 `Marshal` 往返。
+同样加引号的还有含空格、`#`、单引号、换行或制表符的值，以及字面量 `null`/`~`；空值写成 `""`。引号内 `"`、`\` 与控制字符转义为 `\"`、`\\`、`\n` 等；唯一特殊字符是反斜杠的值（如 `path\to\file`）不加引号、原样输出。不经 Marshal、手工拼接 `.env` 文本时没有这层保护：在默认 `ExpandVariables = true` 下，写进文件的 `$VAR` 会在加载时被展开。
 
 ### MarshalStruct 的字段取舍
 
-结构体序列化时，**编组为空字符串的字段会被省略**（空字符串、nil 指针、空切片）；标量零值（`0`、`false`）**保留**——因为它们不会编组为空字符串。读取侧用 `envDefault` 标签补默认值即可对齐。
+结构体序列化时，**编组为空字符串的字段会被省略**（空字符串、nil 指针、空切片）；标量零值（`0`、`false`）**保留**，因为它们编组出来不是空字符串。读取侧用 `envDefault` 标签补默认值即可对齐。
 
 ### 键排序保证
 
-`Marshal` 的输出键**始终按字典序排序**，与输入 map/结构体的字段顺序无关——这保证同一份配置的输出是稳定的，便于 diff 与缓存。
+`Marshal` 的输出键**始终按字典序排序**，与输入 map 的顺序或结构体字段顺序无关。同一份配置的输出因此稳定，便于 diff 与缓存。
 
 ### FormatAuto 内容检测规则
 
-`UnmarshalMap`/`UnmarshalStruct` 传入 `FormatAuto` 时按**内容**（而非扩展名）检测格式：
+`UnmarshalMap`/`UnmarshalStruct` 传入 `FormatAuto` 时按**内容**（而非扩展名）检测格式，只检查首个有效行（空白行与 `#` 开头的行跳过）：
 
-| 特征 | 判定 |
+| 特征（按判定顺序） | 判定 |
 |------|------|
-| 空白输入 | `.env` |
+| 全部为空白 | `.env` |
 | 首字符为 `{` 或 `[` | JSON |
-| 首个有效行以 `- ` 开头，或包含 `: `（冒号 + 空格） | YAML |
-| 包含 `=` | `.env` |
+| 首个有效行以 `- ` 开头 | YAML |
+| 首个有效行含 `": "`，且它在 `=` 之前（或该行没有 `=`） | YAML |
+| 首个有效行含有 `=` | `.env` |
+| 首个有效行形如 `KEY:`（冒号后只有空白） | YAML |
+| 以上都不匹配 | `.env` |
 
-注意 `: ` 优先于 `=` 判定：形如 `connection: host=db port=5432` 的行会被判为 YAML（而非 `.env`）。
+判定依据是**同一行中哪个分隔符先出现**，而不是 `: ` 一律优先：`GREETING=hello: world` 的 `=` 在索引 8（第 9 个字符）、`": "` 在其后，判为 `.env`；`connection: host=db port=5432` 的 `": "` 在前，判为 YAML。
 
 ### IsMarshalError 辅助判断
 

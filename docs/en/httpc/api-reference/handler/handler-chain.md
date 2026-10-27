@@ -7,27 +7,29 @@ sidebar_position: 10
 
 # Handler & Middleware Chain
 
+The Handler pipeline is HTTPC's request-processing engine: the method API assembles a `MiddlewareFunc` chain and runs it, and the end of the chain hands the request to the engine. This page covers the pipeline types, execution order, and the Mutator contract.
+
 ## Pipeline Exported Symbols Overview
 
 All exported symbols related to the Handler pipeline and where they live in this reference:
 
 | Exported symbol | Category | Description | Detailed reference |
 |----------|------|------|----------|
-| `Handler` | Function type alias | Core request-handling signature | [Handler](#handler) in this page |
-| `MiddlewareFunc` | Function type alias | Middleware signature | [MiddlewareFunc](#middlewarefunc) in this page |
-| `Chain` | Combinator function | Combines multiple middlewares into a single one | [Chain](#chain) in this page |
-| `RecoveryMiddleware` / `LoggingMiddleware` / `RequestIDMiddleware` / `TimeoutMiddleware` / `HeaderMiddleware` / `MetricsMiddleware` / `AuditMiddleware` | Middleware factories (7) | Ready-to-use built-in middleware | [Built-in Middleware](../client-config/middleware) |
+| `Handler` | Function type alias | Core request-handling signature | [Handler](#handler) below |
+| `MiddlewareFunc` | Function type alias | Middleware signature | [MiddlewareFunc](#middlewarefunc) below |
+| `Chain` | Combinator function | Combines multiple middlewares into a single one | [Chain](#chain) below |
+| `RecoveryMiddleware` / `LoggingMiddleware` / `RequestIDMiddleware` / `TimeoutMiddleware` / `HeaderMiddleware` / `MetricsMiddleware` / `AuditMiddleware` | Middleware factories (7) | Built-in middleware factories | [Built-in Middleware](../client-config/middleware) |
 | `LoggingConfig`/`DefaultLoggingConfig`, `RequestIDConfig`/`DefaultRequestIDConfig`, `TimeoutMiddlewareConfig`/`DefaultTimeoutMiddlewareConfig`, `HeaderConfig`/`DefaultHeaderConfig`, `MetricsConfig`/`DefaultMetricsConfig` | Config structs and default constructors (5 pairs) | Per-middleware configuration and defaults | [Built-in Middleware](../client-config/middleware) |
 | `AuditEvent` (incl. the `MarshalJSON` method), `AuditConfig`/`DefaultAuditConfig` | Audit types and configuration | Security audit events and configuration | [Constants and Types](../types/constants) |
 | `SourceIPKey` / `UserIDKey` | Context key constants | Source-IP and user-ID keys for audit events | [Constants and Types](../types/constants) |
 
 ## Two-Layer Architecture
 
-HTTPC request handling is a collaboration between two layers: the Layer 1 method API is a **thin wrapper**, and the real request-processing engine is the Layer 2 Handler pipeline. Every request resolves to "assemble and execute a Handler chain".
+HTTPC request handling is a collaboration between two layers: the Layer 1 method API is a **lightweight wrapper**, and the request-processing engine is the Layer 2 Handler pipeline. Every request resolves to "assemble and execute a Handler chain".
 
 ```text
 HTTPC two-layer architecture
-├── Layer 1  Method API (thin wrapper)
+├── Layer 1  Method API (lightweight wrapper)
 │     Package functions httpc.Get/Post/... + Client methods + request options
 │     → internally unified through client.Request → executeRequest
 │
@@ -36,7 +38,7 @@ HTTPC two-layer architecture
       MiddlewareFunc(Handler) onion chain → assembled → executed
 ```
 
-When a client is configured with middleware, `executeRequest` applies the request options to a `RequestMutator` and hands it to `clientImpl.middlewareChain` for execution; without middleware it dispatches directly to the engine. This chain is the Handler that `buildMiddlewareChain` assembles once at `New()` time and caches on the `clientImpl.middlewareChain` field.
+When a client is configured with middleware, `executeRequest` applies the request options to a `RequestMutator` and hands it to `clientImpl.middlewareChain` for execution; without middleware the request goes directly to the engine. This chain is assembled once by `buildMiddlewareChain` at `New()` time and cached on the `clientImpl.middlewareChain` field.
 
 ## Execution Flow In Detail
 
@@ -65,8 +67,8 @@ httpc.Get(url, opts...)              ← Layer 1 package function
 Key details:
 
 - **Object-pool reuse**: when middleware is present, `executeRequest` acquires a `*engine.Request` from the engine's shared object pool (via `acquireMiddlewareRequest()`), applies the request options, and passes it to the middleware chain as a `RequestMutator`. After the entire chain finishes **synchronously**, a `defer` returns the request object to the pool.
-- **Direct connection with no middleware**: when no middleware is configured, pooling and chain assembly are skipped and the request options are passed straight to the engine — a zero-overhead fast path.
-- **Built-in panic safety net**: `clientImpl.Request` ships with a `recover` that converts any unexpected panic along the execution path into an error, rather than crashing the caller. Combined with `RecoveryMiddleware`, this provides double protection.
+- **Direct connection with no middleware**: when no middleware is configured, pooling and chain assembly are skipped and the request options go straight to the engine (a fast path with no extra overhead).
+- **Built-in panic safety net**: `clientImpl.Request` ships with a `recover` that converts any unexpected panic along the execution path into an error instead of crashing the caller. Combined with `RecoveryMiddleware`, this provides double protection.
 
 ## Middleware Chain Assembly Process
 
@@ -93,7 +95,14 @@ The correspondence between slice order and execution order: a middleware **earli
 type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, error)
 ```
 
-The core function signature for request processing. It receives a context and a request mutator, and returns a response mutator or an error. The terminal Handler at the end of the chain (`finalHandler`) is responsible for forwarding the middleware-rewritten request fields to the underlying engine to actually issue the network request.
+The core function signature for request processing, and a type alias of the internal `types.Handler` (defined in `types.go`). It receives a context and a request mutator, and returns a response mutator or an error. The terminal Handler at the end of the chain (`finalHandler`) forwards the middleware-rewritten request fields to the underlying engine, which issues the network request.
+
+| Parameter/return | Type | Description |
+|-------------|------|------|
+| `ctx` | `context.Context` | Chain context; `finalHandler` prefers `req.Context()` and falls back to it when nil |
+| `req` | `RequestMutator` | Request mutator through which middleware reads and writes request fields (method contract in [Request & Response Mutators](./mutators)) |
+| Returns `resp` | `ResponseMutator` | Response mutator; `nil` means the request produced no response (error or short-circuit) |
+| Returns `err` | `error` | Non-nil means the request failed; propagates outward through the chain to the caller |
 
 ## MiddlewareFunc
 
@@ -101,7 +110,7 @@ The core function signature for request processing. It receives a context and a 
 type MiddlewareFunc func(Handler) Handler
 ```
 
-The middleware function signature: it receives the "next Handler" and returns a wrapped Handler. A middleware can insert logic before and after calling `next` (rewriting the request, logging the response, recovering from panics, etc.), forming an onion model: the first middleware is the outermost layer — it enters first and exits last.
+The middleware function signature, and a type alias of the internal `types.MiddlewareFunc` (defined in `types.go`). It receives the "next Handler" and returns a wrapped Handler. A middleware can insert logic before and after calling `next` (rewriting the request, logging the response, recovering from panics, etc.), forming an onion model: the first middleware is the outermost layer and both enters first and exits last.
 
 ## Onion Model Execution Order
 
@@ -132,7 +141,9 @@ Middlewares are configured in the `MiddlewareConfig.Middlewares` slice; a middle
 func Chain(middlewares ...MiddlewareFunc) MiddlewareFunc
 ```
 
-Combines multiple middlewares into a single middleware. The returned combinator takes the final Handler and nests the middlewares outside-in in the order provided: the first middleware in the slice wraps the outermost layer (executed first), the last sits right against the final Handler. HTTPC uses it internally to assemble `MiddlewareConfig.Middlewares` into a chain.
+Combines multiple middlewares into a single middleware. The returned combinator takes the final Handler and nests the middlewares outside-in in the order provided: the first middleware in the slice wraps the outermost layer (executed first), the last sits right against the final Handler. `nil` entries are skipped silently (treated as no-ops), so a nil never breaks chain assembly. HTTPC uses this combinator internally to assemble `MiddlewareConfig.Middlewares` into a chain.
+
+`Chain` is the only exported chain-assembly API in HTTPC; there is no mutable chain builder such as `Append`/`Use`. The whole chain is assembled once by `buildMiddlewareChain` at `New()` time and cached on the `clientImpl.middlewareChain` field; middlewares cannot be added or removed afterwards. For runtime-dynamic behavior, implement conditional logic inside a middleware rather than modifying the chain structure.
 
 ```go
 // The two forms are equivalent: Chain composes then injects once,
@@ -145,12 +156,12 @@ chain := mwA(mwB(mwC(finalHandler)))
 ```
 
 :::tip Uses of Chain
-`Chain` is mainly used internally by HTTPC in `buildMiddlewareChain`, but you can also use it inside a custom middleware to pack multiple sub-middlewares into one, enabling middleware reuse and composition.
+`Chain` is used mainly by HTTPC internally in `buildMiddlewareChain`. A custom middleware can also use it to pack several sub-middlewares into one, enabling middleware reuse and composition.
 :::
 
 ## finalHandler Terminal Handler
 
-`finalHandler` is the **terminal Handler** of the middleware chain — after all middlewares have run, it forwards the request fields modified by middleware to the underlying engine to actually issue the network request. It is the bridge between Layer 2 and the engine in the two-layer architecture.
+`finalHandler` is the **terminal Handler** of the middleware chain: after all middlewares have run, it forwards the request fields they modified to the underlying engine, which issues the network request. It is the bridge between Layer 2 and the engine in the two-layer architecture.
 
 finalHandler works in three steps:
 
@@ -175,12 +186,14 @@ finalHandler(ctx, req):
 ```
 
 :::warning Boundary of the type assertion
-The callbacks (`OnRequest`/`OnResponse`) and the per-request SSRF override (`AllowPrivateIPs`) live on the concrete type `*engine.Request`, not on the `RequestMutator` interface. `finalHandler` reads these hooks via type assertion. If a custom middleware **replaces** `req` with a non-`*engine.Request` type, the assertion fails and these hooks are **silently skipped**. All built-in middlewares mutate the request in place (never replace), so the assertion always succeeds.
+The callbacks (`OnRequest`/`OnResponse`), the per-request SSRF override (`AllowPrivateIPs`), and the NoTimeout and `RetryNonIdempotent` overrides live on the concrete type `*engine.Request`, not on the `RequestMutator` interface; after a successful assertion, `finalHandler` forwards these fields to the engine along with every interface field.
+
+If a custom middleware **replaces** `req` with a non-`*engine.Request` type, the assertion fails and an interface-accessor fallback path runs instead: those four per-request overrides plus the sanitized-URL cache are **silently skipped**, and only the interface fields (headers, queryParams, body, timeout, maxRetries, cookies, followRedirects, maxRedirects, streamBody) are still forwarded. All built-in middlewares mutate the request in place (never replace), so the assertion always succeeds.
 :::
 
 ## Built-in Middleware
 
-HTTPC ships with 7 ready-to-use middleware factories, injected into the client via `MiddlewareConfig.Middlewares`. Each factory accepts a `*XxxConfig` pointer; passing `nil` uses the default configuration.
+HTTPC ships 7 middleware factories, injected into the client via `MiddlewareConfig.Middlewares`. Each factory accepts a `*XxxConfig` pointer; passing `nil` uses the default configuration.
 
 | Middleware | Factory signature | Purpose |
 |--------|----------|------|
@@ -238,7 +251,7 @@ func myMiddleware(/* outer: capture config parameters */) httpc.MiddlewareFunc {
 
 - **Returning an error in the pre phase**: the request is never sent; `(nil, err)` propagates outward through the chain and ultimately to the caller.
 - **Returning an error in the post phase**: the error likewise propagates outward. If a middleware both holds the response returned by `next` and returns an error, the `executeRequest` safety net releases that response on its behalf (preventing pool leaks), but this behavior should not be relied upon.
-- **Context passing**: `finalHandler` prefers `req.Context()` (falling back to the chain's `ctx` when nil). Middleware deriving timeout/cancellation contexts must write them back via `req.SetContext` — `TimeoutMiddleware` does exactly this, calling `SetContext` before invoking `next`.
+- **Context passing**: `finalHandler` prefers `req.Context()` (falling back to the chain's `ctx` when nil). Middleware that derives timeout/cancellation contexts must write them back via `req.SetContext`; `TimeoutMiddleware` calls `SetContext` before invoking `next`.
 
 ## Custom Middleware Examples
 
@@ -378,7 +391,7 @@ When writing custom middleware, observe the following contracts; violating them 
 | **Must call `next()`** | Not calling `next` means the request never goes out (except for short-circuiting middleware like a cache hit). The response returned by `next` is the final result of the downstream chain and the engine. |
 | **Response must be returned or released** | The `resp` returned by `next` must be returned as-is (or passed back via a later `next`); otherwise the response leaks from the engine object pool. Returning `(nil, error)` while still holding an unreleased response causes a pool leak. |
 | **Panics are caught by RecoveryMiddleware** | A panic inside a middleware is caught by `RecoveryMiddleware` (if configured) or by the default safety net in `clientImpl.Request` and converted to an error; it never propagates to the caller. |
-| **Synchronous execution** | The middleware chain runs **synchronously** — when `next` returns, the entire inner chain is done. Asynchronous middleware is not supported; introducing it would cause data races with the object-pool reuse pattern. |
+| **Synchronous execution** | The middleware chain runs **synchronously**: when `next` returns, the entire inner chain is done. Asynchronous middleware is not supported; introducing it would cause data races with the object-pool reuse pattern. |
 | **Do not replace the request object** | Custom middleware should **mutate `req` in place** (via `SetHeader`/`SetBody`, etc.), never replace `req` with a new object. Replacement breaks the type assertion in `finalHandler`, silently skipping callbacks and the SSRF override. |
 
 :::warning Object-pool leak risk
@@ -387,6 +400,6 @@ When writing custom middleware, observe the following contracts; violating them 
 
 ## See Also
 
-- [Built-in Middleware](../client-config/middleware) — 7 ready-to-use middleware factories such as Recovery/Logging/Timeout
+- [Built-in Middleware](../client-config/middleware) — 7 middleware factories such as Recovery/Logging/Timeout
 - [Request & Response Mutators](./mutators) — full method contracts for `RequestMutator`/`ResponseMutator`
 - [Interfaces](../types/interfaces) — type alias definitions for `Handler`/`MiddlewareFunc`

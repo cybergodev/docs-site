@@ -1,19 +1,19 @@
 ---
 sidebar_label: "批量操作"
 title: "Processor 批量操作 - CyberGo JSON | ProcessBatch 方法与配置"
-description: "CyberGo JSON 的 Processor 提供 ProcessBatch 批量操作，一次调用完成 get/set/delete/validate 四类任务，结果按 ID 关联且顺序一致，可借 Config 定制美化输出与批量上限，适合网关聚合、数据管道等高吞吐批处理场景。"
+description: "Processor 批量操作：ProcessBatch 一次调用执行 get/set/delete/validate，结果按 ID 关联，以及 WarmupCache 预热。"
 sidebar_position: 70
 ---
 
 # 批量操作方法
 
-Processor 提供批量操作能力，一次调用处理多个 JSON 操作（get/set/delete/validate）。相比包级 [`ProcessBatch`](../functions/batch)，Processor 形式适合复用实例、或借助 `Config` 定制每次批次的行为（美化输出、数字保留、安全限制等）。
+`ProcessBatch` 在一次调用中处理多个 JSON 操作（get/set/delete/validate）。相比包级 [`ProcessBatch`](../functions/batch)，Processor 形式的差异是复用同一实例的配置、缓存与钩子，并可用 `cfg` 覆盖单次批次的行为。
 
 ## ProcessBatch
 
 签名：`func (p *Processor) ProcessBatch(operations []BatchOperation, cfg ...Config) ([]BatchResult, error)`
 
-批量处理多个 JSON 操作。返回结果顺序与输入操作顺序一致，通过 `ID` 字段关联。
+批量处理多个 JSON 操作。返回结果顺序与输入操作顺序一致，用 `ID` 字段关联。
 
 ```go
 package main
@@ -50,17 +50,17 @@ func main() {
 
 ### 支持的操作类型
 
-四类操作（`get`/`set`/`delete`/`validate`）各自的 `Result` 内容与典型错误对照，以及「操作互不链式」的语义说明，与包级函数完全一致——完整表格见[批量操作函数·支持的操作类型](../functions/batch#支持的操作类型)。Processor 侧的差异只在配置生效方式（`cfg` 按调用覆盖处理器自身配置，见下节）。
+四类操作（`get`/`set`/`delete`/`validate`）的 `Result` 内容、典型错误以及「操作互不链式」的语义与包级函数相同，完整表格见[批量操作函数·支持的操作类型](../functions/batch#支持的操作类型)。Processor 侧的差异只在配置生效方式：`cfg` 按调用覆盖处理器自身配置（见下节）。
 
 ### 批量大小限制
 
-操作数量受 `Config.MaxBatchSize` 约束（默认 `2000`）。该上限按「每次调用」生效——传入的 `cfg`（若有）覆盖 Processor 自身的配置。超出时整个批次直接失败，返回 `(nil, ErrSizeLimit)`。
+操作数量受 `Config.MaxBatchSize` 约束（默认 `2000`），按「每次调用」生效：传入的 `cfg`（若有）覆盖处理器自身的配置。超出时整个批次失败，返回 `(nil, ErrSizeLimit)`。
 
 ## 各操作类型示例
 
 ### get — 批量读取
 
-`get` 操作的 `Result` 是路径处的原始值（数字默认为 `float64`）。
+`get` 操作的 `Result` 是路径处的原始值（数字默认为 `float64`；开启 `PreserveNumbers` 时为 `json.Number`）。
 
 ```go
 package main
@@ -133,7 +133,7 @@ func main() {
 ```
 
 ::: tip 配置如何作用于批次
-传入的 `Config` 会逐操作透传，但**并非所有字段都影响输出**：`set`/`delete` 的返回值始终是紧凑字符串（不受 `Pretty` 影响，如需美化请对结果另用 [`Prettify`](./output#prettify)）；真正按 `cfg` 生效的是 `MaxBatchSize`（批次上限）、`CreatePaths`（是否允许 `set` 新建路径）以及 `PreserveNumbers`（影响 `get` 返回的数字类型：默认 `float64`，开启后为 `json.Number`）。
+传入的 `Config` 逐操作透传，但**并非所有字段都影响输出**：`set`/`delete` 的返回值始终是紧凑字符串，不受 `Pretty` 影响（需要美化时对结果另用 [`Prettify`](./output#prettify)）。按 `cfg` 生效的字段是 `MaxBatchSize`（批次上限）、`CreatePaths`（是否允许 `set` 新建路径）以及 `PreserveNumbers`（`get` 返回的数字类型：默认 `float64`，开启后为 `json.Number`）。
 :::
 
 ### delete — 批量删除
@@ -265,7 +265,7 @@ func main() {
 
 ### 单操作失败不中断批次
 
-`ProcessBatch` **总是处理全部操作**：某个操作失败只会写入该条结果的 `Error` 字段，不会中断后续操作，也无需任何配置开启。因此批量结果可能「部分成功、部分失败」，务必逐条检查 `r.Error`：
+`ProcessBatch` **总是处理全部操作**：某个操作失败只写入该条结果的 `Error` 字段，不中断后续操作，也无需配置开启。批量结果因此需逐条判定成功或失败，逐条检查 `r.Error`：
 
 ```go
 results, err := p.ProcessBatch(operations)
@@ -286,9 +286,9 @@ for _, r := range results {
 `Config.ContinueOnError` 字段控制的是 [`SetMultiple`](./modify#setmultiple) 的中途容错（某条路径写入失败时是否继续写其余路径），**并不**作用于 `ProcessBatch`。`ProcessBatch` 的逐操作隔离是内置行为，无需也无法通过该开关关闭。
 :::
 
-## 实战场景：批量数据迁移
+## 场景示例：批量数据迁移
 
-将一批记录统一加上迁移标记，一次 `ProcessBatch` 调用完成全部转换。Processor 形式尤其适合在长驻服务中复用同一实例处理大量批次：
+将一批记录统一加上迁移标记，一次 `ProcessBatch` 调用完成全部转换。长驻服务可复用同一实例处理多批数据：
 
 ```go
 package main
@@ -346,7 +346,7 @@ func main() {
 
 签名：`func (p *Processor) WarmupCache(jsonStr string, paths []string, cfg ...Config) (*WarmupResult, error)`
 
-对同一份 JSON 的热点路径预先求值并填入缓存，使后续首次 [`Get`](./query) 直接命中缓存。要求 Processor 开启缓存（默认开启），否则返回 `JsonsError`（`Op` 为 `warmup_cache`，错误消息为 "cache is disabled, cannot warmup cache"）。
+对同一份 JSON 的热点路径预先求值并填入缓存，使后续首次 [`Get`](./query) 直接命中缓存。要求处理器开启缓存（默认开启），否则返回 `JsonsError`（`Op` 为 `warmup_cache`，消息为 "cache is disabled, cannot warmup cache"）。
 
 ```go
 package main
@@ -385,7 +385,7 @@ func main() {
 | `SuccessRate` | `float64` | 成功率（百分比） |
 | `FailedPaths` | `[]string` | 失败的路径列表（无失败时为 nil） |
 
-当全部路径都失败时，`WarmupCache` 在返回 `WarmupResult` 的同时附带最后一个错误。
+当全部路径都失败时，`WarmupCache` 返回 `WarmupResult` 并附带错误。传入空 `paths` 时返回 `TotalPaths=0`、`SuccessRate=100` 且无错误。
 
 ## 类型定义
 

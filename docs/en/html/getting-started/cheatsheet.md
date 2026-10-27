@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo html | API at a Glance"
-description: "CyberGo html API cheat sheet: Extract, ExtractText, ExtractToMarkdown, Processor methods, four Config presets, encoding detection, AuditConfig, errors.Is."
-sidebar_position: 2
+description: "CyberGo html API cheat sheet: Extract and ReadPage functions, Processor methods and lifecycle, Config presets and options, encoding, media, audit, errors."
+sidebar_position: 20
 ---
 
 # Cheat Sheet
+
+Common APIs at a glance; full signatures and parameter descriptions are in the [API Reference](../api-reference/).
 
 ## Package Functions
 
@@ -20,7 +22,7 @@ result, err := html.ExtractFromFile("page.html")
 
 // Extract text only
 text, err := html.ExtractText(data)
-text, err := html.ExtractTextFromFile("page.html")
+text, err = html.ExtractTextFromFile("page.html")
 ```
 
 ### Output Formats
@@ -37,6 +39,21 @@ links, err := html.ExtractAllLinks(data)
 groups := html.GroupLinksByType(links)
 ```
 
+### Reader Mode
+
+```go
+// Whole page as Markdown (with inline links)
+md, err := html.ReadPageToMarkdown(pageBytes)
+
+// Whole page as Markdown without links (link text stays as plain words)
+plain, err := html.ReadPageToMarkdownText(pageBytes)
+
+// Sectioned result: filter ReadResult.Sections by Kind, then reassemble
+read, err := html.ReadPage(pageBytes)
+md = read.Render()        // with links
+plain = read.RenderText() // without links
+```
+
 ### Batch Processing
 
 ```go
@@ -47,7 +64,7 @@ batch := html.ExtractBatchFiles(paths)
 
 ### Context Variants
 
-All functions have `*WithContext` variants:
+Extraction functions have `*WithContext` variants (`GroupLinksByType` is an in-memory grouping helper and has none):
 
 ```go
 result, err := html.ExtractWithContext(ctx, data)
@@ -80,6 +97,10 @@ links, err := p.ExtractAllLinks(data)
 // Batch
 batch := p.ExtractBatch(pages)
 
+// Reader mode
+md, err = p.ReadPageToMarkdown(pageBytes)
+read, err := p.ReadPage(pageBytes)
+
 // Statistics
 stats := p.GetStatistics()
 p.ClearCache()
@@ -94,9 +115,9 @@ p.ClearAuditLog()
 
 ```go
 html.DefaultConfig()       // Default configuration
-html.TextOnlyConfig()      // Text only
-html.MarkdownConfig()      // Markdown output
-html.HighSecurityConfig()  // High security
+html.TextOnlyConfig()      // Keeps no images, links, videos, or audio
+html.MarkdownConfig()      // Renders inline images and links as Markdown
+html.HighSecurityConfig()  // Tightened limits with full audit
 ```
 
 ## Common Configuration Options
@@ -105,21 +126,22 @@ html.HighSecurityConfig()  // High security
 cfg := html.DefaultConfig()
 
 // Resource limits
-cfg.MaxInputSize = 10 * 1024 * 1024  // Max input 10MB
-cfg.ProcessingTimeout = time.Minute   // Processing timeout
-cfg.MaxDepth = 200                    // Max DOM depth
+cfg.MaxInputSize = 10 * 1024 * 1024  // Max input bytes; default and ceiling are both 50MB
+cfg.ProcessingTimeout = time.Minute  // Per-document processing timeout; default 30s, 0 means no limit
+cfg.MaxDepth = 200                   // Max DOM nesting depth; default 500
 
 // Content control
-cfg.ExtractArticle = true             // Intelligent article recognition
-cfg.PreserveImages = true             // Preserve images
-cfg.PreserveLinks = true              // Preserve links
-cfg.PreserveVideos = false            // Don't preserve videos
-cfg.PreserveAudios = false            // Don't preserve audio
+cfg.ExtractArticle = true            // Article detection; default true
+cfg.ExtractMetadata = true           // Structured metadata (author, publish time, description, ...); default true
+cfg.PreserveImages = true            // Preserve images; default true
+cfg.PreserveLinks = true             // Preserve links; default true
+cfg.PreserveVideos = false           // Preserve videos; default true, shown here turned off
+cfg.PreserveAudios = false           // Preserve audio; default true, shown here turned off
 
 // Output formats
-cfg.InlineImageFormat = "markdown"    // none/markdown/html/placeholder
-cfg.InlineLinkFormat = "markdown"     // none/markdown/html
-cfg.TableFormat = "markdown"          // markdown/html
+cfg.InlineImageFormat = "markdown"   // none/markdown/html/placeholder; default none; exported constants like html.FormatMarkdown are available
+cfg.InlineLinkFormat = "markdown"    // none/markdown/html; default none
+cfg.TableFormat = "markdown"         // markdown/html; default markdown
 
 // Link filtering
 cfg.IncludeImages = true
@@ -128,8 +150,8 @@ cfg.ResolveRelativeURLs = true
 cfg.BaseURL = "https://example.com"
 
 // Cache
-cfg.MaxCacheEntries = 1000
-cfg.CacheTTL = 30 * time.Minute
+cfg.MaxCacheEntries = 1000           // default 2000; 0 disables the cache
+cfg.CacheTTL = 30 * time.Minute      // default 1 hour
 ```
 
 ## Error Handling
@@ -143,7 +165,7 @@ if err != nil {
     case errors.Is(err, html.ErrInvalidHTML):
         // Invalid HTML
     case errors.Is(err, html.ErrProcessingTimeout):
-        // Processing timeout
+        // Library ProcessingTimeout expired
     case errors.Is(err, html.ErrFileNotFound):
         // File not found
     case errors.Is(err, html.ErrInvalidConfig):
@@ -160,18 +182,20 @@ if err != nil {
 }
 ```
 
+An expired caller context returns `context.DeadlineExceeded` and a manual `cancel()` returns `context.Canceled`; neither is normalized to `ErrProcessingTimeout`.
+
 ## Encoding Detection
 
 ```go
-// Auto-detect encoding (default, supports 15+ encodings)
-result, err := html.Extract(gbkData)
+// Auto-detect encoding (default, supports 30+ encodings)
+result, err := html.Extract(pageData)
 
 // Manually specify encoding
 cfg := html.DefaultConfig()
 cfg.Encoding = "shift_jis"
 ```
 
-Supports UTF-8, GBK, Shift_JIS, EUC-JP, Windows-1252, and 15+ encodings.
+Supported encodings include UTF-8, GBK, Shift_JIS, EUC-JP, Windows-1252, and 30+ others. Legacy pages without a `<meta charset>` declaration fall back to windows-1252, so set the encoding explicitly when the source is known.
 
 ## Media Extraction
 
@@ -188,9 +212,8 @@ for _, a := range result.Audios {
     fmt.Println(a.URL, a.Type)
 }
 
-// Disable media extraction
-cfg := html.TextOnlyConfig()
-// Or control individually
+// Turn off media only (images and links are still kept)
+cfg := html.DefaultConfig()
 cfg.PreserveVideos = false
 cfg.PreserveAudios = false
 ```
@@ -202,14 +225,14 @@ cfg := html.DefaultConfig()
 cfg.Audit = html.DefaultAuditConfig()
 cfg.Audit.Enabled = true
 
-// Use custom Sink
+// Use a custom Sink
 sink := html.NewWriterAuditSink(os.Stdout)
 cfg.Audit.Sink = sink
 
 p, _ := html.New(cfg)
 defer p.Close()
 
-// Get audit log after processing
+// Get the audit log after processing
 entries := p.GetAuditLog()
 ```
 
@@ -231,7 +254,7 @@ sink.DroppedCount()  // int64, number of dropped events
 sink.Close()         // idempotent channel close
 ```
 
-### Processor Lifecycle
+## Processor Lifecycle
 
 ```go
 p, _ := html.New(html.DefaultConfig())
@@ -246,6 +269,7 @@ p.ResetStatistics()           // reset stat counters (preserves cache)
 
 ## Next Steps
 
-- [Content Extraction](../guides/core-features/content-extraction) - Extraction workflow and article recognition
+- [Content Extraction](../guides/core-features/content-extraction) - Extraction pipeline and article detection
+- [Reader Mode](../guides/core-features/reader-mode) - Sectioned whole-page output and Render
 - [Processor & Cache](../guides/performance/processor-cache) - Lifecycle and cache tuning
 - [API Reference](../api-reference/) - Complete API documentation

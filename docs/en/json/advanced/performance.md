@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Performance Optimization"
 title: "Performance Optimization - CyberGo JSON | Zero-Allocation"
-description: "CyberGo JSON offers data-driven tuning with CompilePath, PreParse, ParallelThreshold, and GetStats benchmarks to find hot paths and cut allocations."
+description: "CyberGo JSON performance: CompilePath pre-compiled paths, PreParse, object pools, ParallelThreshold parallelism, benchmarks, and GetStats hit ratios."
 sidebar_position: 20
 ---
 
 # Performance Optimization
 
-Strategies and techniques for optimizing JSON processing performance.
+JSON performance comes down to four levers: processor reuse, path pre-compilation, pre-parsing, and parallelism. The sections below give the signal for each mechanism, how to write the benchmarks, and the configuration file.
 
 ## Processor Reuse
 
@@ -43,7 +43,7 @@ Know what the library already optimizes, and avoid reinventing the wheel:
 | Compiled-path cache | Globally cached parse results for common paths | Use [`CompilePath`](../api-reference/processor/query#compilepath) for hot paths |
 
 :::tip CacheSharedResults: the zero-copy switch for read-heavy workloads
-With `Config.CacheSharedResults = true`, cache hits in `Get` return the shared value directly, **skipping the defensive deep copy** — allocation and CPU overhead of repeatedly reading large subtrees drop significantly. The contract: **callers must not mutate** the returned `map[string]any`/`[]any` (primitives are always safe). Off by default (copy-on-read); enable explicitly to match your workload.
+With `Config.CacheSharedResults = true`, cache hits in `Get` return the shared value directly, **skipping the defensive deep copy** — repeated reads of a large subtree avoid one copy allocation per call. The contract: **callers must not mutate** the returned `map[string]any`/`[]any` (primitives are always safe). Off by default (copy-on-read); enable explicitly to match your workload.
 :::
 
 ## Optimization Decision Path
@@ -164,7 +164,7 @@ wg.Wait()
 ```
 
 :::tip Parallel thresholds
-`Config.ParallelThreshold` (default 10) sets the lower bound for the library's internal parallel paths; JSONL parallel worker count is controlled by `Config.JSONLWorkers` (default 4) or the parameter of `StreamJSONLParallel(reader, workers, ...)`. See [Concurrency](./concurrency).
+`Config.ParallelThreshold` (default 10) sets the lower bound for the library's internal parallel paths; the JSONL parallel worker count comes from the `workers` argument of `StreamJSONLParallel(reader, workers, ...)` — `Config.JSONLWorkers` is not read. See [Concurrency](./concurrency).
 :::
 
 ## Configuration Tuning
@@ -312,7 +312,7 @@ func TestMemoryUsage(t *testing.T) {
 
 ## Running Your Own Benchmarks
 
-Performance conclusions depend on data shape and hardware, so this page does not quote specific numbers — measure on your own workload instead. The library's `benchmark_test.go` covers hot-path comparisons against `encoding/json` (the fast encoder, path-based `Get`, array slicing, field extraction) plus scenarios such as `StreamIterator` streaming, `PreParse` pre-parsing, and concurrent `Get`/`Set`/`Marshal`:
+Performance conclusions depend on data shape and hardware, so no specific numbers are quoted here — measure on your own workload instead. The library's `benchmark_test.go` covers hot-path comparisons against `encoding/json` (the fast encoder, path-based `Get`, array slicing, field extraction) plus scenarios such as `StreamIterator` streaming, `PreParse` pre-parsing, and concurrent `Get`/`Set`/`Marshal`:
 
 ```bash
 # Run the full benchmark suite with allocation stats from the library source root

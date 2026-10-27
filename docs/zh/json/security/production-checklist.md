@@ -1,40 +1,46 @@
 ---
 sidebar_label: "生产检查清单"
 title: "生产检查清单 - CyberGo JSON | 上线前安全核查"
-description: "CyberGo JSON 生产部署安全清单：SecurityConfig 配置、MaxNestingDepthSecurity/MaxJSONSize 资源限制、输入验证、错误处理、监控告警与性能安全平衡，附默认值与建议生产值对照表，确保生产环境可靠运行。"
+description: "CyberGo JSON 生产检查清单：SecurityConfig 预设、体积/深度/键数限制、ValidationHook 校验、敏感字段过滤与审计日志。"
 sidebar_position: 30
 ---
 
 # 生产检查清单
 
-部署到生产环境前，请确认以下安全项目。
+部署前逐项确认以下安全配置。
 
 ## 配置检查
 
 ### 资源限制
 
 - [ ] 设置 `MaxNestingDepthSecurity` 防止深度嵌套攻击
-- [ ] 设置 `MaxJSONSize` 限制单个值大小
-- [ ] 设置 `MaxMemory` 限制总内存使用
+- [ ] 设置 `MaxJSONSize` 限制单个输入大小
+- [ ] 设置 `MaxObjectKeys` 与 `MaxArrayElements` 限制超宽结构
+- [ ] JSONL 流式入口按需设置 `MaxMemory`
 
 ```go
 cfg := json.DefaultConfig()
 cfg.MaxNestingDepthSecurity = 50
 cfg.MaxJSONSize = 10 * 1024 * 1024
-cfg.MaxMemory = 100 * 1024 * 1024
+cfg.MaxObjectKeys = 5000
+cfg.MaxArrayElements = 5000
 ```
 
-默认值与建议生产值对照（默认值即库内常量，可直接引用避免魔法数字）：
+默认值与 `SecurityConfig()` 预设对照（默认值即库内常量，可直接引用避免魔法数字）：
 
-| 限制项 | Config 字段 | 库内常量 | 默认值 | 建议生产值（`SecurityConfig()` 预设） |
-|--------|-------------|----------|--------|----------------------------------------|
+| 限制项 | Config 字段 | 库内常量 | 默认值 | `SecurityConfig()` 预设 |
+|--------|-------------|----------|--------|--------------------------|
 | JSON 大小上限 | `MaxJSONSize` | `DefaultMaxJSONSize` | 100MB | 10MB |
 | 嵌套深度上限 | `MaxNestingDepthSecurity` | `DefaultMaxNestingDepth` | 200 | 30 |
-| 路径深度上限 | `MaxPathDepth` | `DefaultMaxPathDepth` | 50 | 30 |
+| 路径深度上限 | `MaxPathDepth` | `DefaultMaxPathDepth` | 50 | 30（预留字段，不改变行为） |
 | 对象键数上限 | `MaxObjectKeys` | `DefaultMaxObjectKeys` | 100000 | 5000 |
 | 数组元素数上限 | `MaxArrayElements` | `DefaultMaxArrayElements` | 100000 | 5000 |
-| 安全验证阈值 | `MaxSecurityValidationSize` | `DefaultMaxSecuritySize` | 10MB | 10MB |
+| 安全验证阈值 | `MaxSecurityValidationSize` | `DefaultMaxSecuritySize` | 10MB | 10MB（预留字段，不改变行为） |
 | 并发上限 | `MaxConcurrency` | `DefaultMaxConcurrency` | 50 | 50 |
+
+`MaxPathDepth` 与 `MaxSecurityValidationSize` 只参与配置缓存键与 `Config.Validate` 的钳制，没有代码路径读取它们产生行为。
+
+真实约束是固定值：路径长度 5000 字节（超出返回 `ErrInvalidPath`），路径段数 100（超出返回解析错误 `path too deep`）。安全扫描在输入低于 4KB 时全量进行，达到 4KB 后改用 32KB 滚动窗口覆盖全部字节。详见[安全概述·字段总览](./#安全相关-config-字段总览)。
 
 ```go
 // 引用常量而非硬编码
@@ -42,7 +48,7 @@ cfg := json.DefaultConfig()
 cfg.MaxJSONSize = int64(json.DefaultMaxJSONSize) / 10 // 在默认 100MB 基础上收紧
 ```
 
-`json.SecurityConfig()` 已按上表「建议生产值」预设全部字段，并额外开启 `FullSecurityScan` 与 `StrictMode`——面向不可信输入时优先从它出发再微调。
+`json.SecurityConfig()` 已按上表预设全部字段，并开启 `FullSecurityScan`（同时把已废弃、不被读取的 `StrictMode`/`EnableValidation` 置为 `true`，二者无实际影响）。面向不可信输入时从它出发再微调。
 
 ## 输入验证
 
@@ -52,16 +58,12 @@ cfg.MaxJSONSize = int64(json.DefaultMaxJSONSize) / 10 // 在默认 100MB 基础�
 - [ ] 验证字段类型正确
 
 ```go
-// 自定义验证器示例
-type RequiredFieldValidator struct{}
-
-func (v *RequiredFieldValidator) Validate(jsonStr string) error {
-    // 检查必填字段是否存在
-    return nil
-}
-
+// 自定义必填字段检查：注册 ValidationHook（Validator 接口已废弃、从不执行）
 cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+    // 检查必填字段是否存在（结构化检查也可用 ValidateSchema）
+    return nil
+}))
 ```
 
 ### 格式验证
@@ -71,10 +73,9 @@ cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
 - [ ] 验证自定义格式
 
 ```go
-// 自定义格式验证器
-type EmailValidator struct{}
-
-func (v *EmailValidator) Validate(jsonStr string) error {
+// 自定义格式检查：注册 ValidationHook（Validator 接口已废弃、从不执行）
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
     var data map[string]any
     if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
         return nil
@@ -85,10 +86,7 @@ func (v *EmailValidator) Validate(jsonStr string) error {
         return errors.New("invalid email format")
     }
     return nil
-}
-
-cfg := json.DefaultConfig()
-cfg.CustomValidators = append(cfg.CustomValidators, &EmailValidator{})
+}))
 ```
 
 ### 范围验证
@@ -250,7 +248,7 @@ cfg := json.DefaultConfig()
 cfg.AddHook(&MetricsHook{})
 ```
 
-计时场景直接用工厂钩子更省事：`cfg.AddHook(json.TimingHook(myRecorder))`（`myRecorder` 实现 `Record(op string, duration time.Duration)`）。
+计时场景可直接用工厂钩子：`cfg.AddHook(json.TimingHook(myRecorder))`（`myRecorder` 实现 `Record(op string, duration time.Duration)`）。
 
 ### 审计日志
 
@@ -367,8 +365,10 @@ func ProductionConfig() json.Config {
     // 资源限制（SecurityConfig 已预设安全默认值）
     cfg.MaxMemory = 100 * 1024 * 1024
 
-    // 自定义验证器
-    cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
+    // 自定义输入检查（ValidationHook；Validator 接口已废弃、从不执行）
+    cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+        return nil // 自定义必填/格式检查
+    }))
 
     // 审计 Hook
     cfg.Hooks = []json.Hook{&AuditHook{logger: prodLogger}}

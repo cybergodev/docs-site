@@ -1,19 +1,19 @@
 ---
 sidebar_label: "安全概述"
 title: "安全概述 - CyberGo JSON | 输入校验与深度限制"
-description: "CyberGo JSON 安全最佳实践：输入验证、MaxNestingDepthSecurity/MaxMemory 资源限制防御深嵌套与超大输入、路径遍历与 JSON 注入防御、敏感数据过滤，可用 SecurityConfig 预设一键收紧不可信输入全部限制。"
+description: "CyberGo JSON 安全指南：默认校验输入体积、深度与危险模式，SecurityConfig 收紧上限，并覆盖路径遍历与注入防护。"
 sidebar_position: 10
 ---
 
 # 安全概述
 
-处理 JSON 数据时的安全考虑和最佳实践。
+JSON 的输入风险主要有四类：资源耗尽、路径遍历、注入载荷与敏感数据泄露。库对前三类默认拦截，第四类提供缓存侧与错误输出侧的防线。
 
 ## 常见安全风险
 
 ### 1. 资源耗尽攻击
 
-恶意构造的 JSON 可能导致内存耗尽或 CPU 过载：超深嵌套（栈溢出）、超大单值（内存）、扁平超宽对象/数组（数百万键）。
+恶意构造的 JSON 有三种耗尽资源的形态：超深嵌套（栈溢出）、超大单值（内存占用）、扁平超宽对象或数组（数百万键）。
 
 **最小复现**（库默认即拦截深度嵌套与超大输入）：
 
@@ -47,18 +47,21 @@ func main() {
 
 ```go
 cfg := json.DefaultConfig()
-cfg.MaxNestingDepthSecurity = 50                       // 限制嵌套深度
-cfg.MaxJSONSize = 10 * 1024 * 1024             // 限制 JSON 大小 (10MB)
-cfg.MaxObjectKeys = 5000                        // 限制单对象键数（默认 100000）
-cfg.MaxArrayElements = 5000                     // 限制单数组元素数（默认 100000）
-cfg.MaxSecurityValidationSize = 100 * 1024 * 1024 // 增大安全验证限制到 100MB（默认 10MB）
+cfg.MaxNestingDepthSecurity = 50              // 限制嵌套深度（默认 200，校验范围 10–200）
+cfg.MaxJSONSize = 10 * 1024 * 1024            // 限制 JSON 大小（默认 100MB）
+cfg.MaxObjectKeys = 5000                      // 限制单对象键数（默认 100000）
+cfg.MaxArrayElements = 5000                   // 限制单数组元素数（默认 100000）
 ```
 
-或直接使用预设 [`json.SecurityConfig()`](./production-checklist#检查清单模板)——已按不可信输入收紧全部限制。
+`MaxPathDepth` 与 `MaxSecurityValidationSize` 是预留字段，当前不改变行为（见下方字段总览）。
+
+真实生效的路径约束是固定的：路径长度上限 5000 字节（超出返回 `ErrInvalidPath`），路径段数由内部上限 100 限制（超出返回解析错误 `path too deep`）。
+
+或直接用预设 [`json.SecurityConfig()`](./production-checklist#检查清单模板)：它已按不可信输入收紧体积、深度、键数与元素数上限，并开启全量扫描。
 
 ### 2. 路径遍历攻击
 
-恶意路径可能访问非预期数据。两类路径都有内置防护：**文件路径**（`LoadFromFile`/`SaveToFile` 等）在读取/写入时**无条件**做路径遍历、符号链接、平台限制与系统目录检查；**JSON 路径**（`Get`/`Set` 等）拒绝 `..`、URL 编码绕过、零宽字符等注入模式。
+恶意路径用于访问预期之外的数据。两类路径都有内置防护：**文件路径**（`LoadFromFile`/`SaveToFile` 等）在读取/写入时**无条件**做路径遍历、符号链接、平台限制与系统目录检查；**JSON 路径**（`Get`/`Set` 等）拒绝 `..`、URL 编码绕过、零宽字符等注入模式。
 
 **最小复现**（两类路径均被默认拦截）：
 
@@ -108,7 +111,7 @@ func safePath(path string) bool {
 
 ### 3. JSON 注入
 
-恶意数据可能破坏 JSON 结构，或把 `<script>`、`__proto__` 等载荷带入下游系统。库默认对所有输入做危险模式扫描（大小写不敏感 + 词边界上下文检查），命中即拒绝。
+恶意数据有两类破坏面：破坏 JSON 结构，或把 `<script>`、`__proto__` 等载荷带入下游系统。库默认对所有输入做危险模式扫描（大小写不敏感 + 词边界上下文检查），命中即拒绝。
 
 **最小复现**（默认拦截，无需配置）：
 
@@ -156,7 +159,7 @@ bytes, _ := json.Marshal(data)
 
 ### 4. 敏感数据泄露
 
-日志或错误信息可能暴露敏感数据。库内置两层防线：**结果含敏感模式（`password`、`token`、`api_key`、`ssn`、`aws_secret` 等）时不写入操作缓存**，避免敏感数据在缓存中长期驻留；`HookContext.JSONStr` 的文档注释也明确警告不要记录原始输入。
+日志或错误信息是敏感数据的常见泄露出口。库内置两层防线：**结果含敏感模式（`password`、`token`、`api_key`、`ssn`、`aws_secret` 等）时不写入操作缓存**，避免敏感数据在缓存中长期驻留；`HookContext.JSONStr` 的文档注释也明确警告不要记录原始输入。
 
 **防护措施**（用 Hook 在返回前删除敏感字段）：
 
@@ -193,20 +196,24 @@ cfg.AddHook(&FilterFieldsHook{fields: map[string]bool{
 
 ### 安全相关 Config 字段总览
 
-这些限制不设独立的汇总类型，直接以 `Config` 字段提供。各字段在两种常用配置下的取值：
+这些限制不设独立的汇总类型，直接以 `Config` 字段提供。下表列出两种常用配置下的取值与各自的触发错误：
 
 | Config 字段 | `DefaultConfig()` 默认 | `SecurityConfig()` 预设 | 触发的错误 |
 |------------|------------------------|--------------------------|------------|
 | `MaxJSONSize` | 100MB（`DefaultMaxJSONSize`） | 10MB | `ErrSizeLimit` |
 | `MaxNestingDepthSecurity` | 200（`DefaultMaxNestingDepth`） | 30 | `ErrDepthLimit` |
-| `MaxPathDepth` | 50（`DefaultMaxPathDepth`） | 30 | `ErrInvalidPath` |
+| `MaxPathDepth` | 50（`DefaultMaxPathDepth`） | 30 | 无——预留字段，当前不改变行为 |
 | `MaxBatchSize` | 2000（`DefaultMaxBatchSize`） | 2000 | `ErrSizeLimit` |
 | `MaxObjectKeys` | 100000（`DefaultMaxObjectKeys`） | 5000 | `ErrSizeLimit` |
 | `MaxArrayElements` | 100000（`DefaultMaxArrayElements`） | 5000 | `ErrSizeLimit` |
-| `MaxSecurityValidationSize` | 10MB（`DefaultMaxSecuritySize`） | 10MB | ——（阈值型） |
+| `MaxSecurityValidationSize` | 10MB（`DefaultMaxSecuritySize`） | 10MB | 无——预留字段，当前不改变扫描策略 |
 | `FullSecurityScan` | `false`（分层优化扫描） | `true`（全量扫描） | —— |
 
-`Config.Validate` 会把越界值钳制回合法区间（如 `MaxNestingDepthSecurity` 钳至 10–200、`MaxObjectKeys` 钳至 100–100000），可用 `ValidateWithWarnings` 查看调整明细。
+`MaxPathDepth` 与 `MaxSecurityValidationSize` 只参与配置缓存键与 `Config.Validate` 的钳制，没有任何代码路径读取它们产生行为。
+
+真实生效的是固定上限：路径长度 5000 字节（超出返回 `ErrInvalidPath`），路径段数 100（超出返回解析错误 `path too deep`）。安全扫描在输入低于 4KB 时全量进行；达到 4KB 后改用 32KB 滚动窗口覆盖全部字节，并由 4KB 采样密度决定是否回退全量扫描。
+
+`Config.Validate` 会把越界值钳制回合法区间：`MaxNestingDepthSecurity` 钳至 10–200，`MaxObjectKeys` 钳至 100–100000。`ValidateWithWarnings` 可查看调整明细。
 
 ### 危险模式管理
 
@@ -225,7 +232,7 @@ cfg.AddHook(&FilterFieldsHook{fields: map[string]bool{
 | `PatternLevelInfo` | `PatternLevel` | `2` | 信息级别，语义上仅记录 |
 
 ::: warning 级别的实际拦截行为
-当前实现的模式扫描对**任何命中**（通过词边界上下文检查）都会拒绝操作，`Level` 字段暂不改变拦截行为，仅作语义标注（供审计与日志区分严重度）。详见[安全模式·PatternLevel 行为矩阵](./security-mode#patternlevel-行为矩阵)。
+当前实现的模式扫描对**任何命中**（经词边界上下文检查）都会拒绝操作，`Level` 字段不改变拦截行为，仅作语义标注（供审计与日志区分严重度）。详见[安全模式·PatternLevel 行为矩阵](./security-mode#patternlevel-行为矩阵)。
 :::
 
 ::: tip
@@ -234,7 +241,7 @@ cfg.AddHook(&FilterFieldsHook{fields: map[string]bool{
 
 #### 禁用默认模式
 
-通过 `Config.DisableDefaultPatterns` 可以禁用内置的默认模式：
+用 `Config.DisableDefaultPatterns` 可以禁用内置的默认模式：
 
 ```go
 cfg := json.DefaultConfig()
@@ -268,16 +275,18 @@ func DevelopmentConfig() json.Config {
 
 ## 输入验证
 
-### 自定义验证器
+### 自定义验证钩子
 
-实现 `Validator` 接口（`Validate(jsonStr string) error`）进行输入验证：
+::: warning `Validator` 接口已废弃
+旧版用 `Validator` 接口（`Config.CustomValidators` / `Config.AddValidator`）注册自定义验证器的做法**已废弃**——注册的验证器从不被执行。操作前的输入检查改用 `AddHook` + `ValidationHook`（Before 钩子，返回错误即中止操作）；结构校验用 `ValidateSchema`。
+:::
+
+用 `ValidationHook` 在操作前验证输入内容（回调返回错误即中止该操作）：
 
 ```go
-// 实现自定义验证器
-type EmailValidator struct{}
-
-func (v *EmailValidator) Validate(jsonStr string) error {
-    // 验证 JSON 字符串内容
+// 注册验证钩子：检查 email 字段格式
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
     var data map[string]any
     if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
         return err
@@ -290,11 +299,7 @@ func (v *EmailValidator) Validate(jsonStr string) error {
         return errors.New("invalid email format")
     }
     return nil
-}
-
-// 使用自定义验证器
-cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&EmailValidator{}}
+}))
 ```
 
 ### Schema 验证

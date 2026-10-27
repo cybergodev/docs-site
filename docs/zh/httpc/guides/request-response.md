@@ -7,6 +7,8 @@ sidebar_position: 20
 
 # 请求与响应
 
+请求与响应是 HTTPC 的两端：请求侧由 `With*` 选项配置方法、请求头、请求体与控制参数，响应侧由 `Result` 对象承载状态码、内容与执行元数据。
+
 ## 发送请求
 
 ### 包级函数
@@ -25,7 +27,7 @@ fmt.Println(result.Body())
 
 支持的 HTTP 方法：`Get`、`Post`、`Put`、`Patch`、`Delete`、`Head`、`Options`。
 
-包级函数共享一个惰性初始化的默认客户端，可用 `SetDefaultClient` 接管、`CloseDefaultClient` 释放（详见[实战教程](./tutorial)）。
+包级函数共享一个惰性初始化的默认客户端，可用 `SetDefaultClient` 替换、`CloseDefaultClient` 释放；创建与重建规则见[实战教程](./tutorial)。
 
 ### 客户端实例
 
@@ -68,7 +70,9 @@ result, err := client.Get(url,
 )
 ```
 
-所有头键值都会做 CRLF 注入校验，含控制字符或超长的键值返回 `ErrInvalidHeader`。请求头的最终生效顺序：请求体 Content-Type → 客户端默认头（`Defaults.Headers`）→ 选项/中间件设置的头（后者覆盖前者同名项）。
+所有头键值都会做 CRLF 注入校验；含控制字符或超长的键值返回 `ErrInvalidHeader`。
+
+同名头的优先级：选项与中间件设置的头最高（直接写入并覆盖）；客户端默认头（`Defaults.Headers`）次之，仅在对应头为空时填充；请求体自动检测出的 `Content-Type` 最低，仅在未显式设置时生效。
 
 ### 请求体
 
@@ -96,7 +100,7 @@ result, err := client.Post(url, httpc.WithBinary(data, "image/png"))
 result, err := client.Post(url, httpc.WithBody(data))
 // string → text/plain; charset=utf-8, []byte → application/octet-stream,
 // map[string]string → application/x-www-form-urlencoded,
-// *FormData → multipart/form-data, io.Reader → passed through,
+// *FormData → multipart/form-data, io.Reader → 原样透传（不设 Content-Type）,
 // 其他 → application/json
 // 可选显式指定：httpc.WithBody(data, httpc.BodyJSON)
 ```
@@ -159,8 +163,8 @@ result, err := client.Post(url,
 )
 ```
 
-:::warning io.Reader 绕过体积校验
-`io.Reader` 类型的请求体**不经过请求体大小校验**。读取不可信来源时务必用 `io.LimitReader` 包一层，防止内存被撑爆。
+:::warning io.Reader 请求体与体积上限
+默认 `Security.MaxRequestBodySize = 0` 时 `io.Reader` 不受大小限制；显式设置上限后，引擎在发送时强制该上限并中止超限传输。读取不可信来源时仍建议用 `io.LimitReader` 在源头限流。完整语义见[流式请求](#流式请求)。
 :::
 
 ### 查询参数
@@ -181,9 +185,10 @@ result, err := client.Get(url,
 ```
 
 要点：
+
 - 值支持 `string`、`bool`、`int`/`int64`、`uint` 系列、`float32`/`float64` 及实现 `fmt.Stringer` 的类型
-- 值为 `nil` 时该参数**不会**出现在 URL 中（而不是渲染成字面量 `<nil>`）
-- 键为空、过长或含非法字符会返回错误；URL 中已有的查询串与选项参数会合并
+- 值为 `nil` 时该参数不出现在 URL 中，而非渲染成字面量 `<nil>`
+- 键为空、过长或含非法字符时返回错误；URL 中已有的查询串与选项参数会合并
 
 ### 认证
 
@@ -262,7 +267,7 @@ result, err := client.Get(url,
 )
 ```
 
-回调返回错误会中止请求（`OnResponse` 返回错误则整个请求失败）。多个回调按添加顺序链式执行。
+任一回调返回错误即中止请求：OnRequest 的错误在发送前返回，`OnResponse` 的错误使整个请求失败。多个回调按添加顺序链式执行，前一个出错则后续不再执行。
 
 :::tip 回调按「尝试」执行，中间件按「请求」执行
 `WithOnRequest`/`WithOnResponse` 在引擎内部触发，**每次尝试（含重试）都会执行**；中间件链则包裹整个重试周期，一个逻辑请求只执行一次。需要每次尝试的粒度用回调，需要整请求的粒度用[中间件](./middleware-chain)。
@@ -320,7 +325,7 @@ fmt.Println(result.Meta.RedirectCount)  // 重定向次数
 | 请求 Cookie | `GetRequestCookie(name)` / `HasRequestCookie(name)` / `RequestCookies()` | 实际随请求发出的 Cookie（含重定向后的最终值） |
 | 元数据 | `Meta.Duration` / `Attempts` / `RedirectChain` / `RedirectCount` / `ProxyURL` | 耗时、尝试次数（含首次）、重定向链、本次使用的代理 |
 | 文件 | `SaveToFile(path)` | 响应体写入文件（含路径穿越 / symlink 安全校验） |
-| 调试 | `String()` | 脱敏摘要，敏感头打码、正文截断 200 字符 |
+| 调试 | `String()` | 脱敏摘要：敏感头打码为 `***`，正文只报告字节数、不输出内容 |
 
 所有访问器都是 nil 安全的：`Result` 或内层指针为 nil 时，`StatusCode()` 返回 0、`Body()` 返回空串、判断方法返回 false，不会 panic。
 
@@ -358,12 +363,12 @@ if err := result.SaveToFile("user.json"); err != nil {
 
 ### 调试输出
 
-`String()` 生成单行摘要，适合打进日志：敏感头（`Authorization`、`Cookie`、`Set-Cookie`、`X-Api-Key` 等）显示为 `***`，响应正文截断到 200 字符：
+`String()` 生成单行摘要，适合打进日志：敏感头（`Authorization`、`Cookie`、`Set-Cookie`、`X-Api-Key` 等）显示为 `***`；响应正文**不输出内容**，只报告字节数（响应体常含令牌与会话数据，不进日志）：
 
 ```go
 fmt.Println(result.String())
 // 输出示例：Result{Status: 200 200 OK, ContentLength: 5102, Duration: 150ms,
-// Attempts: 1, Headers: 14 [Content-Length, Content-Type, ...], Body: {"id":...}
+// Attempts: 1, Headers: 14 [Content-Length, Content-Type, ...], Body: [5102 bytes omitted]}
 ```
 
 ## 上下文控制
@@ -383,18 +388,20 @@ go func() {
 result, err := httpc.Request(ctx, "GET", url)
 ```
 
-`WithTimeout` 与 context 超时的关系：`WithTimeout` 是**全部重试的总预算**，引擎会把它套在整个重试循环外层；context 取消则在传输层立即生效。
+`WithTimeout` 与 context 超时的关系：`WithTimeout` 是全部重试尝试的总预算，引擎将其套在整个重试循环外层；context 取消则在传输层立即生效。重试预算的完整语义见[重试与容错](./retry-fault-tolerance)。
 
 ## 流式请求
 
-与[流式响应](#流式响应)对称，上传侧同样可以流式：`WithBody` 直接接受任意 `io.Reader`，数据边生成边发送，无需先把整个请求体读入内存。本节深入其语义与陷阱；大文件上传的完整场景（分块、校验和）见[文件上传与下载](./file-transfer#流式上传-大文件)。
+与[流式响应](#流式响应)对称，上传侧同样支持流式。`WithBody` 直接接受任意 `io.Reader`，数据边生成边发送，无需先把整个请求体读入内存。大文件上传的完整场景（分块、校验和）见[文件上传与下载](./file-transfer#流式上传-大文件)。
 
 ### io.Reader 请求体
 
-`WithBody(reader)` 走自动检测的 `io.Reader` 分支：Reader 原样透传给传输层，**不设置 Content-Type**（需要时自行 `WithHeader`）。引擎不预读、不包装，读取节奏完全由 HTTP 传输驱动。
+`WithBody(reader)` 走自动检测的 `io.Reader` 分支：Reader 原样透传给传输层，不设置 `Content-Type`（需要时自行 `WithHeader`）。引擎不预读数据，读取节奏由 HTTP 传输驱动。设置了 `Security.MaxRequestBodySize` 时，引擎在发送时用计数读取器包裹 Reader 并强制该上限。
 
-::: warning 注意 Reader 请求体不做大小校验
-`io.Reader` 读取即消费，无法预知数据长度，因此 HTTPC 对其**不做任何大小验证**——`Security.MaxRequestBodySize` 只作用于内存型请求体（`string`、`[]byte`、`url.Values`、`*FormData`），对 `io.Reader` 一律放行。读取不可信来源时务必用 `io.LimitReader` 包一层，这是唯一的护栏。原理详见 [FAQ：io.Reader 请求体为什么不验证大小](../faq/#io-reader-请求体为什么不验证大小)。
+::: warning Reader 请求体与体积上限
+`io.Reader` 读取即消费，无法预知数据长度。默认 `Security.MaxRequestBodySize = 0` 时不限制；显式设置上限后，引擎在发送时强制该上限，读取超限即中止传输并返回 `request body exceeds limit of N bytes`。
+
+读取不可信来源时仍建议用 `io.LimitReader` 在源头限流。原理详见 [FAQ：io.Reader 请求体为什么不验证大小](../faq/#io-reader-请求体为什么不验证大小)。
 :::
 
 ### 重试与流式的权衡
@@ -403,21 +410,21 @@ result, err := httpc.Request(ctx, "GET", url)
 
 | 重试配置 | 请求体行为 |
 |----------|------------|
-| 开启（默认 `Retry.MaxRetries = 3`） | **首次尝试之前**把 Reader 完整读入内存转为 `[]byte`，每次重试重建 Reader 重放；上限 100MB，超出返回错误（`retry not supported for streaming bodies exceeding 104857600 bytes`） |
-| `WithMaxRetries(0)` | Reader 直通传输层，**零缓冲真流式**；代价是该请求不会重试 |
+| 开启（默认 `Retry.MaxRetries = 3`） | 首次尝试之前把 Reader 完整读入内存转为 `[]byte`，每次重试重建 Reader 重放；上限 100MB，超出返回错误（`retry not supported for streaming bodies exceeding 104857600 bytes`） |
+| `WithMaxRetries(0)` | Reader 直通传输层，零缓冲真流式；代价是该请求不会重试 |
 
 两个连带差异：
 
 - **Content-Length**：缓冲路径转为 `[]byte` 后长度可知，请求携带 Content-Length；直传路径长度未知，HTTP/1.1 下自动使用 chunked 传输编码。
-- **内存占用**：默认重试配置下，即使首次尝试就成功，请求体也已完整进了内存——此时的「流式」只是省掉手动拼接 `[]byte`，并非零拷贝。要真正的边生成边发送，必须 `WithMaxRetries(0)`。
+- **内存占用**：默认重试配置下，即使首次尝试就成功，请求体也已完整进入内存。此处的「流式」只省掉了手动拼接 `[]byte`，并非零拷贝。要边生成边发送，须设置 `WithMaxRetries(0)`。
 
 ### WithStreamBody 与请求体无关
 
-`WithStreamBody(true)` 的名字容易误以为是请求体流式开关，实际它是**响应侧**机制：跳过响应体的内存缓冲，由文件下载 API 内部使用。它不影响请求体的处理方式，也不改变上面的重试缓冲行为——请求体是否流式只取决于「是否传 `io.Reader`」与「是否开启重试」。详见下文[流式响应](#流式响应)。
+`WithStreamBody(true)` 实际是响应侧机制，并非请求体流式开关：它跳过响应体的内存缓冲，由文件下载 API 内部使用。该选项不影响请求体的处理方式，也不改变上述重试缓冲行为；请求体是否流式只取决于是否传入 `io.Reader` 以及是否开启重试。详见下文[流式响应](#流式响应)。
 
 ### io.Pipe 零拷贝上传
 
-`io.Pipe` 把「生成数据」与「发送数据」接到同一条管道上：生产者 goroutine 边生成边写入，HTTP 传输层并发消费，全链路没有中间缓冲。典型场景——压缩流直接上传，不落盘 `.gz` 中间文件：
+`io.Pipe` 把「生成数据」与「发送数据」接到同一条管道上：生产者 goroutine 边生成边写入，HTTP 传输层并发消费，全链路没有中间缓冲。典型场景是压缩流直接上传，不落盘 `.gz` 中间文件：
 
 ```go
 package main
@@ -473,13 +480,13 @@ func main() {
 
 要点：
 
-- 生产者的任何错误都要经 `pw.CloseWithError` 传给消费者，否则对端只会看到 EOF，坏数据会被当成完整上传
-- `io.Pipe` 无法重放，天然适合搭配 `WithMaxRetries(0)`；若必须重试，就得换缓冲方案（如先落盘再上传）
-- 服务端按 `Content-Type: application/gzip` 逐块收到压缩数据，接收方流式解压即可，两端都不需要完整缓冲
+- 生产者的错误须经 `pw.CloseWithError` 传给消费者；否则对端只看到 EOF，残缺数据会被当作完整上传
+- `io.Pipe` 无法重放，适用于 `WithMaxRetries(0)`；需要重试时应改用缓冲方案（如先落盘再上传）
+- 服务端按 `Content-Type: application/gzip` 逐块收到压缩数据，接收方流式解压即可，两端都无需完整缓冲
 
 ## 流式响应
 
-`WithStreamBody(true)` 是内部机制，用于文件下载时避免将完整响应体缓存到内存。启用后响应体不会被读取到 `Result` 中（`Body()` 和 `RawBody()` 返回空值）。
+`WithStreamBody(true)` 是文件下载内部使用的响应侧机制，用于避免将完整响应体缓存到内存。在 `Get`/`Post`/`Request` 等标准请求方法上使用该选项时，请求返回 `ErrStreamBodyRequiresDownload`。
 
 :::warning
 `WithStreamBody(true)` 由文件下载 API 内部使用。如需流式获取响应内容，请使用[文件下载 API](./file-transfer)。
@@ -495,32 +502,34 @@ result, err := client.Download(context.Background(), url, cfg)
 
 ## 响应解压
 
-HTTPC 自动处理 gzip、deflate 内容编码的解压。传输层关闭了 Go 标准库的透明解压、由引擎手动处理：请求会自动携带 `Accept-Encoding: gzip, deflate`（可用 `WithHeader("Accept-Encoding", ...)` 覆盖）。
+HTTPC 自动处理 `gzip`、`deflate` 内容编码的解压。传输层关闭了 Go 标准库的透明解压，改由引擎手动处理。
+
+请求自动携带 `Accept-Encoding: gzip, deflate`，可用 `WithHeader("Accept-Encoding", ...)` 覆盖。
 
 支持的编码：
 
 | Content-Encoding | 处理方式 |
 |------------------|----------|
 | `gzip` / `deflate` | 自动解压（使用对象池复用解压器） |
-| `br`（brotli）/ `compress`（LZW） | 不支持，返回错误 |
-| `identity` / 未知编码 | 原样透传 |
+| `br`（brotli）/ `zstd` / `compress`（LZW）/ 其他未知编码 | 不支持，返回错误；`br` 与 `zstd` 仅在 `Security.TLSFingerprint` 路径可用 |
+| `identity` | 原样透传 |
 
 可通过安全配置限制解压后大小，防止解压炸弹攻击：
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // 响应体上限：流式下载时强制；非流式作为解压后上限的回退
-cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // 解压后最大 100MB
+cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // 非压缩响应体上限（含流式下载）
+cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // 压缩响应解压后最大 100MB
 ```
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `MaxResponseBodySize` | 10MB | 流式下载响应体上限；非流式时作为解压后上限的回退 |
-| `MaxDecompressedBodySize` | 100MB | 解压后响应体大小上限（未设置时回退 `MaxResponseBodySize`） |
+| `MaxResponseBodySize` | 10MB | 非压缩（identity）响应体与流式下载的上限；它与解压上限均为 0 时回退 100MB 引擎默认 |
+| `MaxDecompressedBodySize` | 100MB | 压缩响应解压后的大小上限；为 0 时回退 `MaxResponseBodySize`，仍为 0 时回退 100MB |
 
 压缩响应体的字节数另有 100MB 硬性上限（`maxCompressedSize`，不可配置），用于防御解压炸弹，与 `MaxResponseBodySize` 相互独立。
 
-超过限制时返回包含 `"exceeds limit"` 信息的错误，可通过 `ClientError` 类型检查处理。`ErrResponseBodyTooLarge` 在 `Result.Unmarshal()` 解析超过 50MB JSON 大小限制的响应体时返回（独立于 `MaxResponseBodySize`）。
+超过限制时返回含 `"exceeds limit"` 信息的错误，可通过 `ClientError` 处理。`Result.Unmarshal()` 解析超过 50MB JSON 大小限制的响应体时返回 `ErrResponseBodyTooLarge`，该限制独立于 `MaxResponseBodySize`。
 
 ## 格式化工具
 

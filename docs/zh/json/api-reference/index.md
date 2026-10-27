@@ -1,16 +1,16 @@
 ---
 sidebar_label: "概述"
 title: "API 参考 - CyberGo JSON | 完整函数与类型清单"
-description: "CyberGo JSON 是功能完备的 Go JSON 处理库，API 参考覆盖包级函数与 Processor 方法两种风格，汇总 GetString/GetTyped 查询、Set/Delete 修改、Marshal/Unmarshal 编解码、Foreach 迭代与 ValidateSchema 校验等模块索引，帮助开发者快速定位函数、接口与类型用法。"
+description: "CyberGo JSON API 参考：GetString/GetTyped 查询、Set/Delete 修改、Marshal 编解码与 ValidateSchema 校验的模块索引。"
 sidebar_position: 10
 ---
 
 # API 参考
 
-本节提供 `github.com/cybergodev/json` 库的完整 API 参考。
+本页按模块索引与功能分类两套视图组织 `github.com/cybergodev/json` 的 API 入口。
 
 ::: tip 两种 API 风格
-本库提供 **包级函数**（如 `json.GetString(data, "path")`，无需创建实例）和 **Processor 方法**（如 `p.GetString(data, "path")`，支持配置复用、预解析缓存与钩子系统）两套 API。不确定该用哪个？参阅 [Processor 入门](../getting-started/processor-guide) 的选择决策树。
+**包级函数**（如 `json.GetString(data, "path")`）无需创建实例；**Processor 方法**（如 `p.GetString(data, "path")`）可复用配置、预解析缓存与钩子系统。两套 API 的选型见 [Processor 入门](../getting-started/processor-guide) 的选择决策树。
 :::
 
 ## 模块索引
@@ -28,7 +28,7 @@ sidebar_position: 10
 |------|------|
 | [Config](./config) | 配置选项详解（DefaultConfig / SecurityConfig / PrettyConfig） |
 | [类型定义](./types) | 核心类型（Config / Schema / Stats / AccessResult，含 Encoder / Decoder、CompiledPath / PathSegment） |
-| [接口定义](./interfaces) | 扩展接口（CustomEncoder / Validator / Hook / PathParser） |
+| [接口定义](./interfaces) | 扩展接口（Hook / PathParser 已生效，CustomEncoder / Validator 已废弃） |
 | [迭代器与 IterableValue](./iterator) | Iterator / BatchIterator / ParallelIterator / StreamIterator 类型 |
 | [泛型操作](./generics) | 泛型 API（GetTyped[T] / StreamLinesInto[T] / Result[T]） |
 | [常量与错误](./constants) | 常量和错误类型（含 `Default*` 常量与 Config 字段对照表） |
@@ -49,7 +49,7 @@ sidebar_position: 10
 | [安全验证](../security/security-mode) | 安全模式 API（SecurityConfig / DangerousPattern / RegisterDangerousPattern） |
 | [Schema 校验](./schema) | Schema 验证（ValidateSchema / DefaultSchema / NewSchema） |
 | [Hook 钩子系统](../extensions/hooks) | 操作拦截钩子（LoggingHook / TimingHook / ValidationHook / ErrorHook） |
-| [自定义编码器](../extensions/custom-encoder) | 自定义编码器（CustomEncoder / TypeEncoder） |
+| [自定义编码器](../extensions/custom-encoder) | 用 `MarshalJSON` / `MarshalText` 自定义编码（`CustomEncoder` / `TypeEncoder` 已废弃） |
 
 ## 快速查找
 
@@ -77,8 +77,8 @@ sidebar_position: 10
 
 | 函数 | 说明 |
 |------|------|
-| [`Marshal`](./functions/output#marshal), [`Unmarshal`](./functions/output#unmarshal) | 标准编解码（兼容 `encoding/json`，可附加 `cfg`） |
-| [`MarshalIndent`](./functions/output#marshalindent) | 格式化编码（兼容 `encoding/json.MarshalIndent`，可附加 `cfg`） |
+| [`Marshal`](./functions/output#marshal), [`Unmarshal`](./functions/output#unmarshal) | 签名与 `encoding/json` 一致，可附加 `cfg`；默认输入会做安全校验，行为有少量差异 |
+| [`MarshalIndent`](./functions/output#marshalindent) | 缩进编码，签名与 `encoding/json.MarshalIndent` 一致，可附加 `cfg` |
 | [`Encode`](./functions/output#encode), [`EncodePretty`](./functions/output#encodepretty) | 编码为字符串（带配置 / 格式化输出） |
 | [`EncodeWithConfig`](./functions/output#encodewithconfig)（已废弃） | 与 `Encode` 功能等价，v1 生命周期内保留——新代码请改用 `Encode` 或 `Marshal` |
 | `NewEncoder`, `NewDecoder` | 流式编解码 |
@@ -90,10 +90,10 @@ sidebar_position: 10
 | 函数 | 说明 |
 |------|------|
 | [`Prettify`](./functions/output#prettify) | 格式化 JSON |
-| [`Compact`](./functions/output#compact) | 压缩 JSON（buffer 形式，兼容 `encoding/json.Compact`） |
+| [`Compact`](./functions/output#compact) | 压缩 JSON（buffer 形式，签名同 `encoding/json.Compact`） |
 | [`CompactString`](./functions/output#compactstring) | 压缩 JSON（字符串输入/输出形式，镜像 `Processor.Compact`） |
-| [`Indent`](./functions/output#indent) | 缩进格式化并写入 buffer（兼容 `encoding/json.Indent`） |
-| [`HTMLEscape`](./functions/output#htmlescape) | HTML 字符转义并写入 buffer（兼容 `encoding/json.HTMLEscape`） |
+| [`Indent`](./functions/output#indent) | 缩进格式化并写入 buffer（签名同 `encoding/json.Indent`） |
+| [`HTMLEscape`](./functions/output#htmlescape) | HTML 字符转义并写入 buffer（签名同 `encoding/json.HTMLEscape`） |
 
 #### 文件操作
 
@@ -108,7 +108,7 @@ sidebar_position: 10
 
 | 函数 | 说明 |
 |------|------|
-| [`Foreach`](./functions/iterate#foreach), [`ForeachWithError`](./functions/iterate#foreachwitherror), `ForeachNested`, `ForeachNestedWithError` | 遍历数组/对象（含深度遍历） |
+| [`Foreach`](./functions/iterate#foreach)（已废弃）, [`ForeachWithError`](./functions/iterate#foreachwitherror), `ForeachNested`（已废弃）, `ForeachNestedWithError` | 遍历数组/对象（含深度遍历；void 变体已废弃，推荐 `*WithError`） |
 | [`ForeachWithPath`](./functions/iterate#foreachwithpath), `ForeachWithPathAndIterator`, `ForeachWithPathAndControl` | 指定路径遍历（携带当前路径/可控制中断） |
 | [`ForeachReturn`](./functions/iterate#foreachreturn) | 遍历并返回修改后的 JSON |
 | [`ForeachFile`](./functions/iterate#foreachfile), `ForeachFileWithPath`, `ForeachFileChunked`, `ForeachFileNested` | 文件逐条迭代（整载内存后逐条/分批回调） |
@@ -140,7 +140,7 @@ sidebar_position: 10
 
 | 函数 | 说明 |
 |------|------|
-| [`Valid`](./functions/parse#valid) | JSON 验证（兼容 `encoding/json.Valid`） |
+| [`Valid`](./functions/parse#valid) | JSON 验证，签名与 `encoding/json.Valid` 一致 |
 | [`ValidWithConfig`](./functions/parse#validwithconfig) | 带配置的 JSON 验证 |
 | [`ValidateSchema`](./functions/parse#validateschema) | Schema 验证（配合 `Schema` 类型使用） |
 | [`CompareJSON`](./helpers#comparejson) | 比较 JSON 是否等价 |
@@ -148,23 +148,21 @@ sidebar_position: 10
 
 ## 命名约定
 
-库遵循以下命名约定：
-
 | 模式 | 说明 | 示例 |
 |------|------|------|
-| `Get{Type}` | 获取指定类型（支持 defaultValue） | `GetString`, `GetInt` |
-| `GetTyped[T]` | 泛型获取，返回 T | `GetTyped[User]` |
-| `New{Type}` | 创建实例 | `New` (返回 *Processor), `NewEncoder` |
+| `Get{Type}` | 取指定类型，可传入 `defaultValue` | `GetString`、`GetInt` |
+| `GetTyped[T]` | 泛型取值，返回 `T` | `GetTyped[User]` |
+| `New{Type}` | 创建实例 | `New`（返回 `*Processor`）、`NewEncoder` |
 | `Default{Type}` | 默认配置 | `DefaultConfig` |
-| `{Type}Config` | 配置预设 | `SecurityConfig`, `PrettyConfig` |
+| `{Type}Config` | 配置预设 | `SecurityConfig`、`PrettyConfig` |
 | `Foreach*` | 迭代变体（WithError / WithPath / Nested / File） | `ForeachNestedWithError` |
 | `Stream*` | 流式处理变体（Into / Parallel / File / Chunked） | `StreamJSONLParallel` |
-| `{Verb}Hook` | 钩子工厂 | `LoggingHook`, `ValidationHook` |
+| `{Verb}Hook` | 钩子工厂 | `LoggingHook`、`ValidationHook` |
 
 ## 相关
 
-- [快速开始](../getting-started/) -- 安装和基本用法
-- [Processor 入门](../getting-started/processor-guide) -- 何时使用处理器
-- [路径表达式语法](../getting-started/path-syntax) -- 路径查询语法
-- [使用示例](../examples/) -- 实战代码示例
-- [大文件处理](../streaming/large-files) -- 流式处理指南
+- [快速开始](../getting-started/)：安装和基本用法
+- [Processor 入门](../getting-started/processor-guide)：何时使用处理器
+- [路径表达式语法](../getting-started/path-syntax)：路径查询语法
+- [使用示例](../examples/)：可运行代码示例
+- [大文件处理](../streaming/large-files)：流式处理指南

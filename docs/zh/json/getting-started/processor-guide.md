@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Processor 入门"
 title: "Processor 入门 - CyberGo JSON | 何时使用 Processor"
-description: "CyberGo JSON Processor 入门指南：对比包函数与 Processor 的选型差异，讲解 PreParse 预解析、CompilePath 路径预编译、多 goroutine 共享、生命周期管理与监控统计，帮助开发者在高频 JSON 查询场景获得更高性能。"
+description: "CyberGo JSON Processor 入门：包级函数与 Processor 的选型、PreParse 预解析、CompilePath 预编译与 goroutine 共享。"
 sidebar_position: 40
 ---
 
 # Processor 入门
 
-本指南帮助你理解**何时**以及**如何**使用 Processor，相比包级函数能带来什么优势。
+`Processor` 是持有配置、缓存与钩子的 JSON 操作入口；包级函数则是共享一个默认全局处理器的封装层。本页说明两者的差别、Processor 的六种使用场景与生命周期管理。
 
 ## 包函数 vs Processor
 
@@ -34,10 +34,10 @@ CyberGo JSON 提供两种 API 风格：
 
 ### 场景 1：自定义配置
 
-包级函数使用默认配置。如果需要安全模式、自定义编码器或钩子，使用 Processor：
+包级函数在不传 cfg 时使用默认配置。需要安全模式、自定义编码器或钩子时，用 Processor 承载配置：
 
 ```go
-// 包函数 — 始终使用默认配置
+// 包函数 — 尾参传 cfg（不传则走默认配置）
 val := json.GetString(data, "name")
 
 // Processor — 可自定义配置
@@ -169,7 +169,7 @@ result, err := p.Set(data, "user.name", "Alice")
 
 ### 场景 5：多 goroutine 共享 Processor
 
-`Processor` 是并发安全的——正确姿势是**创建一次、全组共享、最后 Close 一次**，而不是每个请求各建一个（后者徒增创建开销，还会放大资源管理成本）：
+`Processor` 是并发安全的：创建一次、全组共享、最后 `Close` 一次。不要每个请求各建一个——创建有开销，资源管理成本也会被放大：
 
 ```go
 package main
@@ -219,7 +219,7 @@ func main() {
 
 ### 场景 6：全局统一配置
 
-包级函数背后是一个**全局处理器**。当希望整个应用——包括那些无法改造传参的旧代码——统一走同一份配置时，用 `SetGlobalProcessor` 一次替换，所有 `json.Get`/`json.Marshal` 等包级调用立即生效。完整示例与注意事项见下文[全局处理器](#全局处理器)小节。
+包级函数背后是一个**全局处理器**。希望整个应用——包括无法改造签名的旧代码——统一走同一份配置时，用 `SetGlobalProcessor` 替换一次，所有 `json.Get`/`json.Marshal` 等包级调用立即生效。完整示例与注意事项见[全局处理器](#全局处理器)。
 
 ## 生命周期管理
 
@@ -237,9 +237,9 @@ result, err := p.GetString(data, "name")
 ```
 
 ::: warning 忘记 Close 的后果
-- 缓存内存不会释放
+- 缓存内存不释放
 - 后台 goroutine 泄漏
-- 高并发场景下可能导致资源耗尽
+- 高并发场景下资源持续累积
 :::
 
 ### 检查状态
@@ -250,11 +250,11 @@ if p.IsClosed() {
 }
 ```
 
-`IsClosed` 在两种状态下都返回 `true`：已彻底关闭，或正在关闭（排空等待期）/关闭超时。这两种状态下新的操作都会被拒绝并返回错误，因此把它当作「还能不能用」的唯一判断即可。
+`IsClosed` 在两种状态下都返回 `true`：已彻底关闭，或正在关闭（排空等待期）/关闭超时。这两种状态下新操作都会被拒绝并返回错误，因此可把它当作「还能不能用」的唯一判断。
 
 ## 监控与诊断
 
-Processor 内置运行统计与健康检查，适合接入服务监控：
+Processor 内置运行统计与健康检查，可直接接入服务监控：
 
 ```go
 package main
@@ -327,7 +327,7 @@ defer json.ShutdownGlobalProcessor()
 ::: tip 适用场景
 - 全局统一安全策略
 - 自定义编码器全局生效
-- 需要替换默认配置而无需到处传 Config
+- 替换默认配置，而不必在每个调用点传 Config
 :::
 
 ## 选择决策树

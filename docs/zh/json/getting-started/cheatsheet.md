@@ -1,13 +1,13 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo JSON | 常用函数与代码示例"
-description: "CyberGo JSON API 速查表：包级函数全覆盖——路径查询、Set/Delete 修改、批量操作、序列化与格式化、文件读写、验证、迭代流式 JSONL、缓存安全扩展，附读文件改字段写回等高频组合模式与 Processor 用法，一页快速查阅。"
+description: "CyberGo JSON 常用 API 速查：路径查询、Set/Delete 修改、批量操作、序列化、文件读写、验证与流式 JSONL。"
 sidebar_position: 50
 ---
 
 # 速查表
 
-快速查找常用 API 和代码片段。
+按任务查找函数签名与最小示例：查询、修改、编解码、文件、验证、迭代各异一节，末尾是常见组合模式。
 
 ## 路径查询
 
@@ -27,7 +27,7 @@ sidebar_position: 50
 
 ### 带默认值
 
-`GetString`、`GetInt`、`GetFloat`、`GetBool` 等函数支持传入可选的默认值参数：
+`GetString`、`GetInt`、`GetFloat`、`GetBool`、`GetArray`、`GetObject` 的末位可变参是默认值；路径不存在、值为 null 或类型转换失败时返回该默认值：
 
 | 操作 | 函数 | 示例 |
 |------|------|------|
@@ -50,14 +50,27 @@ sidebar_position: 50
 ```go
 // 设置值
 result, err := json.Set(`{"user":{}}`, "user.name", "Alice")
+if err != nil {
+    panic(err)
+}
 // {"user":{"name":"Alice"}}
 
-// 逐个设置多个字段
+// 逐个设置多个字段（每次返回新 JSON，需检查 err）
+data := `{"user":{"temporary":true}}`
 result, err = json.Set(data, "user.name", "Bob")
+if err != nil {
+    panic(err)
+}
 result, err = json.Set(result, "user.age", 25)
+if err != nil {
+    panic(err)
+}
 
 // 删除
 result, err = json.Delete(data, "user.temporary")
+if err != nil {
+    panic(err)
+}
 ```
 
 ### 批量操作（一次调用多种操作）
@@ -80,7 +93,7 @@ for _, r := range results {
 ```
 
 ::: tip
-`BatchOperation.Type` 支持 `get` / `set` / `delete` / `validate` 四种，每条操作通过 `JSONStr` 携带数据；`BatchResult` 按 `ID` 对应返回 `Result` 与 `Error`。详见[批量操作](../api-reference/functions/batch)。
+`BatchOperation.Type` 支持 `get` / `set` / `delete` / `validate` 四种，每条操作用 `JSONStr` 携带数据；`BatchResult` 按 `ID` 对应返回 `Result` 与 `Error`。详见[批量操作](../api-reference/functions/batch)。
 :::
 
 ## 序列化与编码
@@ -103,7 +116,7 @@ for _, r := range results {
 | 提取字段编码 | `EncodeFields` | `json.EncodeFields(user, []string{"name"})` |
 | 值列表编码为数组 | `EncodeStream` | `json.EncodeStream([]any{1, 2})` |
 
-`json.EncodeWithConfig` 已废弃（与 `Encode` 等价，v1 生命周期内保留），新代码请改用 `Encode` 或 `Marshal`。格式化函数的详细选型见[格式化输出](./print)。
+`json.EncodeWithConfig` 已废弃（与 `Encode` 等价，v1 生命周期内保留），新代码改用 `Encode` 或 `Marshal`。格式化函数选型见[格式化输出](./print)。
 
 ```go
 // 编码
@@ -150,7 +163,7 @@ if err := json.UnmarshalFromFile("config.json", &cfg); err != nil {
 ```
 
 ::: tip
-文件路径经过安全校验（拒绝目录穿越与符号链接攻击），不可信路径也会被拦截。详见[文件操作](../api-reference/functions/file-io)。
+文件路径经过安全校验：拒绝目录穿越，解析符号链接后按物理路径检查受限目录，超出 `MaxJSONSize` 的文件返回 `ErrSizeLimit`。详见[文件操作](../api-reference/functions/file-io)。
 :::
 
 ## 验证
@@ -182,11 +195,12 @@ schema := &json.Schema{
         "age":  {Type: "number"},
     },
 }
-p, err := json.New()
+// 包级版本无需处理器
+validationErrors, err := json.ValidateSchema(data, schema)
 if err != nil {
     panic(err)
 }
-errors, _ := p.ValidateSchema(data, schema)
+fmt.Println(validationErrors) // 无违规时为空；err 仅表示解析或参数错误
 ```
 
 ## 工具函数
@@ -257,20 +271,20 @@ processor, err = json.New(cfg)
 
 | 操作 | 函数 | 特点 |
 |------|------|------|
-| 遍历数组/对象 | `Foreach` | 最简单，无错误返回 |
-| 遍历并可中断 | `ForeachWithError` | 回调返回 `error` / `item.Break()` |
-| 指定路径遍历 | `ForeachWithPath` | 等价 `Foreach(data, path, ...)` 的显式路径版 |
-| 深度遍历嵌套 | `ForeachNested` | 递归所有层级 |
-| 深度遍历并可中断 | `ForeachNestedWithError` | `ForeachNested` 的错误返回版 |
-| 遍历并改写 | `ForeachReturn` | 返回修改后的新 JSON |
+| 遍历数组/对象 | `ForeachWithError` | 推荐：回调返回 `error` / `item.Break()`（`Foreach` 已废弃：静默丢弃错误） |
+| 指定路径遍历 | `ForeachWithPath` | 显式路径版（返回 `error`） |
 | 携带当前路径 | `ForeachWithPathAndIterator` | 回调含 `currentPath`，可控制中断 |
 | 原始值遍历控制 | `ForeachWithPathAndControl` | 回调收到原始值，用 `IteratorControl` 控制流程 |
+| 遍历并改写 | `ForeachReturn` | 返回修改后的新 JSON |
+| 深度遍历嵌套 | `ForeachNestedWithError` | 推荐：递归所有层级并返回 `error`（`ForeachNested` 已废弃：静默丢弃错误） |
+| 遍历根（void） | `Foreach` | 已废弃：解析失败或处理器已关闭时静默跳过回调 |
+| 深度遍历（void） | `ForeachNested` | 已废弃：同上 |
 | 遍历大文件 | `ForeachFile` | 整载内存后逐条遍历（恒定内存用 StreamIterator） |
 | 按路径遍历文件 | `ForeachFileWithPath` | 遍历文件内指定路径的集合（文件仍整载内存） |
 | 分块遍历文件 | `ForeachFileChunked` | 按 `chunkSize` 批量回调（文件仍整载内存） |
 | 递归遍历文件 | `ForeachFileNested` | 递归文件内所有嵌套结构（文件仍整载内存） |
 
-以上共 12 个迭代函数：前 8 个作用于内存中的 JSON 字符串，后 4 个（`ForeachFile*`）作用于文件（先整载再迭代，受 `MaxJSONSize` 上限约束）。
+以上共 12 个迭代函数，含已废弃的 `Foreach`/`ForeachNested` 两个 void 变体，不含 JSONL 专用的 `ForeachJSONL`。前 8 个作用于内存中的 JSON 字符串；后 4 个（`ForeachFile*`）作用于文件，先整载再迭代，受 `MaxJSONSize` 上限约束。
 
 ```go
 data := `{"users":[{"name":"Alice"},{"name":"Bob"}]}`
@@ -311,11 +325,8 @@ _ = it.ForEach(func(i int, v any) error { return nil })
 f, _ := os.Open("huge.json")
 defer f.Close()
 
-// 大数组流式逐元素处理
-it, err := json.NewStreamIterator(f)
-if err != nil {
-    panic(err)
-}
+// 大数组流式逐元素处理（NewStreamIterator 不返回 error，迭代后用 Err 检查）
+it := json.NewStreamIterator(f)
 for it.Next() {
     val := it.Value() // 逐元素处理，内存占用恒定
     _ = val
@@ -326,9 +337,12 @@ if err := it.Err(); err != nil {
 }
 
 // 大对象流式逐键处理
-oit, err := json.NewStreamObjectIterator(f)
+oit := json.NewStreamObjectIterator(f)
 for oit.Next() {
     fmt.Println(oit.Key(), oit.Value())
+}
+if err := oit.Err(); err != nil {
+    panic(err)
 }
 ```
 
@@ -375,10 +389,10 @@ err = json.StreamJSONLParallel(file, 4, func(lineNum int, item *json.IterableVal
     return nil
 })
 
-// NDJSONProcessor：带行号、按对象回调（已弃用，新代码用 StreamJSONL 家族）
-np := json.NewNDJSONProcessor()
-err = np.ProcessFile("events.ndjson", func(lineNum int, obj map[string]any) error {
-    fmt.Println(lineNum, obj)
+// 流式逐行处理文件（带行号，item.GetData() 取该行解析值）
+err = json.StreamJSONLFile("events.ndjson", func(lineNum int, item *json.IterableValue) error {
+    row, _ := item.GetData().(map[string]any)
+    _ = row // 逐行处理
     return nil
 })
 ```
@@ -432,11 +446,11 @@ name := json.GetString(data, "user.profile.name", "unknown")
 val, err := json.Get(data, "user.profile.name")
 if err != nil {
     if errors.Is(err, json.ErrPathNotFound) {
-        // 键不存在
+        // 键不存在或数组下标越界
     } else if errors.Is(err, json.ErrInvalidJSON) {
         // JSON 格式错误
     }
-    // 其余错误（类型冲突、超限）为携带上下文的 JsonsError，直接记录即可
+    // 其余错误（超限、超深度、钩子拒绝等）为携带上下文的 JsonsError，直接记录即可
 }
 ```
 
@@ -518,7 +532,7 @@ fmt.Println(names, vals["data.users[0].id"]) // [Alice Bob] 1
 
 ### 逐元素改写（ForeachReturn）
 
-回调里通过 `item.GetData()` 拿到工作副本的引用，改 map/slice 的内容会反映到返回的新 JSON（`ForeachReturn` 迭代的是根容器）：
+回调里用 `item.GetData()` 拿到工作副本的引用，改 map/slice 的内容会反映到返回的新 JSON（`ForeachReturn` 迭代的是根容器）：
 
 ```go
 data := `[{"name":"Alice","active":false},{"name":"Bob","active":false}]`
@@ -537,7 +551,7 @@ if err != nil {
 ```
 
 ::: tip 标量不能就地替换
-`GetData()` 引用替换适合改 map 字段、数组元素；整元素是标量时无法通过 IterableValue 就地替换，改用 `Set(data, "items[*]", v)` 或逐条 `Set`。
+`GetData()` 引用适合改 map 字段与数组元素；整个元素是标量时无法用 `IterableValue` 就地替换，改用 `Set(data, "items[*]", v)` 或逐条 `Set`。
 :::
 
 ### 配置合并
@@ -556,7 +570,7 @@ merged, _ := json.MergeJSON(defaults, userConfig)
 ```go
 val, err := json.Get(data, path)
 if err != nil {
-    // 常见哨兵：键不存在 / JSON 格式错误 / 超大小限 / 超嵌套深度
+    // 常见哨兵：路径未命中（键不存在或下标越界）/ JSON 格式错误 / 超大小限 / 超嵌套深度
     //（类型冲突返回描述性 JsonsError，不匹配 ErrTypeMismatch 哨兵）
     switch {
     case errors.Is(err, json.ErrPathNotFound):

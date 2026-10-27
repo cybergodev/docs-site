@@ -155,7 +155,7 @@ if err != nil {
 
 ## LogIntegrity
 
-Log integrity verification result.
+`LogIntegrity` is the log integrity verification result, returned by the `Verify` method.
 
 ```go
 type LogIntegrity struct {
@@ -168,7 +168,7 @@ type LogIntegrity struct {
 
 ## IntegrityStats
 
-Signing statistics.
+`IntegrityStats` is the signing statistics, returned by the `Stats` method.
 
 ```go
 type IntegrityStats struct {

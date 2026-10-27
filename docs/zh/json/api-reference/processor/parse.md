@@ -1,13 +1,13 @@
 ---
 sidebar_label: "解析验证"
 title: "Processor 解析与验证 - CyberGo JSON | Parse 与 Valid"
-description: "CyberGo JSON 的 Processor 提供 Valid/ValidBytes 验证与 Parse/ParseAny 解析，错误携带具体失败原因；PreParse 预解析配合 GetFromParsed 加速重复查询，支持 PreserveNumbers 高精度数字，适合严格校验外部输入并反复查询同一文档的读取场景。"
+description: "Processor 的解析验证：Valid/ValidBytes 校验、Parse/ParseAny 解析，PreParse 与 GetFromParsed 复用解析结果。"
 sidebar_position: 60
 ---
 
 # 解析与验证方法
 
-Processor 提供 JSON 解析与有效性验证方法。文件读写与流式加载见[文件操作](./file-io)。解析/验证行为与[包级解析函数](../functions/parse)镜像一致；包级 `Valid` 返回单个 `bool`（标准库兼容），需要失败原因时用本页的 `Valid` 或包级 `ValidWithConfig`。
+解析方法把 JSON 文本转成 Go 值或结构体，验证方法只判定合法性。文件读写与流式加载见[文件操作](./file-io)。行为与[包级解析函数](../functions/parse)一致；包级 `Valid` 返回单个 `bool`（与标准库签名兼容），需要失败原因时用 Processor 的 `Valid` 或包级 `ValidWithConfig`。
 
 ## 验证方法
 
@@ -15,7 +15,7 @@ Processor 提供 JSON 解析与有效性验证方法。文件读写与流式加�
 
 签名：`func (p *Processor) Valid(jsonStr string, cfg ...Config) (bool, error)`
 
-验证 JSON 字符串是否有效。合法时返回 `(true, nil)`；非法时返回 `(false, error)`，错误携带具体原因。
+验证 JSON 字符串是否有效。合法时返回 `(true, nil)`；非法时返回 `(false, error)`，错误携带具体原因（`ErrInvalidJSON`；超出 `MaxJSONSize` 时为 `ErrSizeLimit`）。
 
 ```go
 package main
@@ -51,7 +51,7 @@ func main() {
 
 签名：`func (p *Processor) ValidBytes(data []byte) bool`
 
-验证字节切片是否为有效 JSON，仅返回布尔值（与 `encoding/json.Valid` 签名兼容，适合不需要错误详情的快速判定）。
+验证字节切片是否为有效 JSON，仅返回布尔值（与 `encoding/json.Valid` 签名兼容，用于不需要错误详情的判定）。
 
 ```go
 package main
@@ -83,7 +83,7 @@ func main() {
 
 签名：`func (p *Processor) Parse(jsonStr string, target any, cfg ...Config) error`
 
-解析 JSON 字符串到目标变量，`target` 必须是非空指针。支持解析到 `map[string]any`、结构体或 `any`，并可通过 `Config` 切换数字保留模式。
+解析 JSON 字符串到目标变量，`target` 必须是非空指针。可解析到 `map[string]any`、结构体或 `any`；`Config.PreserveNumbers` 切换数字保留模式。
 
 ```go
 package main
@@ -162,7 +162,7 @@ func main() {
 
 ### PreserveNumbers 模式
 
-默认（`PreserveNumbers=false`）所有 JSON 数字都解析为 `float64`，这会丢失大整数精度并改变小数书写形式。开启 `PreserveNumbers=true` 后，数字保留为库内 `Number` 类型（`%T` 打印为 `json.Number`——库包名与标准库同名；底层即原始字符串，API 与标准库 `json.Number` 完全一致），完整保留原文格式与精度，适合金额、大整数、科学计数法等场景。下例用 `%T` 直观展示两种模式下数字的 Go 类型差异：
+默认（`PreserveNumbers=false`）所有 JSON 数字解析为 `float64`，这会丢失大整数精度并改变小数书写形式。开启 `PreserveNumbers=true` 后，数字保留为库内 `Number` 类型（`%T` 打印为 `json.Number`，因库包名与标准库同名；底层是原始字符串，API 与标准库 `json.Number` 一致），完整保留原文格式与精度。适用场景包括金额、大整数与科学计数法。下例用 `%T` 展示两种模式下数字的 Go 类型差异：
 
 ```go
 package main
@@ -206,18 +206,18 @@ func main() {
 ```
 
 ::: tip 何时开启
-处理金融金额、超过 `float64` 精确表示范围（约 ±2^53，即 9007199254740992）的整数、或需要原样回写数字（避免 `19.99` 与 `19.990000` 互相转化）时，建议开启 `PreserveNumbers`。例如 `9007199254740993`（2^53+1）在默认模式下会被舍入成 `9007199254740992`，而 `json.Number` 模式下保持原值不变。注意 `json.Number` 需用 `.Int64()` / `.Float64()` / `.String()` 显式取值。
+处理金融金额、超过 `float64` 精确表示范围（约 ±2^53，即 9007199254740992）的整数，或需要原样回写数字（避免 `19.99` 与 `19.990000` 互相转化）时，开启 `PreserveNumbers`。例如 `9007199254740993`（2^53+1）在默认模式下舍入成 `9007199254740992`，`json.Number` 模式下保持原值。`json.Number` 需用 `.Int64()` / `.Float64()` / `.String()` 显式取值。
 :::
 
 ## 预解析优化（PreParse）
 
-当需要对**同一份 JSON** 进行多次路径查询时，逐次调用 [`Get`](./query) 会重复解析整篇文档。`PreParse` 只解析一次，随后 `GetFromParsed` 直接在已解析的数据结构上导航，省去重复解析开销。
+当需要对**同一份 JSON** 做多次路径查询时，逐次调用 [`Get`](./query) 会重复解析整篇文档。`PreParse` 只解析一次，随后 `GetFromParsed` 直接在已解析的数据结构上导航。
 
 ### PreParse
 
 签名：`func (p *Processor) PreParse(jsonStr string, cfg ...Config) (*ParsedJSON, error)`
 
-预解析 JSON 并返回可复用的 `*ParsedJSON`。用完应调用 `parsed.Release()` 释放对处理器的引用。
+预解析 JSON 并返回可复用的 `*ParsedJSON`。用完调用 `parsed.Release()` 置空内部引用，让解析树可被 GC。
 
 ### GetFromParsed
 
@@ -225,9 +225,13 @@ func main() {
 
 从预解析数据中按路径取值，跳过 JSON 解析、直接做路径导航。
 
+::: warning 不要修改 Data() 返回的树
+`Data()` 与 `PreParse` 返回的树就是解析缓存中的那份数据（零拷贝），同一处理器上的其他 `GetFromParsed` 调用可能并发读取它，修改会污染缓存。需要改动时先自行拷贝，或改用 `Get`（返回深拷贝）与 `SetFromParsed`（内部深拷贝）。
+:::
+
 ### 完整对比示例
 
-下例对比「多次包级 `Get`（每次重新解析）」与「`PreParse` + `GetFromParsed`（只解析一次）」两种方式，二者结果一致，但后者在查询次数多/文档大时显著更快：
+下例对比「多次包级 `Get`（每次重新解析）」与「`PreParse` + `GetFromParsed`（只解析一次）」，两者结果一致；查询次数越多、文档越大，省下的解析开销越多：
 
 ```go
 package main
@@ -293,7 +297,7 @@ func main() {
 
 签名：`func (p *Processor) SetFromParsed(parsed *ParsedJSON, path string, value any, cfg ...Config) (*ParsedJSON, error)`
 
-在预解析数据上设置值，返回一个**新的** `*ParsedJSON`（内部深拷贝，原数据保持不变），可在新结果上继续 `GetFromParsed` 查询。
+在预解析数据上设置值，返回一个**新的** `*ParsedJSON`（内部深拷贝，原数据不变），可在新结果上继续 `GetFromParsed` 查询。
 
 ```go
 package main
@@ -339,12 +343,12 @@ func main() {
 
 ### ParsedJSON 类型
 
-`ParsedJSON` 封装已解析的数据与缓存信息，字段不导出，仅暴露两个方法：
+`ParsedJSON` 封装已解析的数据，字段不导出，只暴露两个方法：
 
 | 方法 | 说明 |
 |------|------|
-| `Data() any` | 返回底层已解析数据（通常为 `map[string]any` 或 `[]any`） |
-| `Release()` | 释放对处理器的引用；调用后 `Data()` 返回 `nil`，应配合 `defer` 使用 |
+| `Data() any` | 返回底层已解析数据（`map[string]any` 或 `[]any`） |
+| `Release()` | 置空内部数据引用，使解析树可被 GC（调用后 `Data()` 返回 `nil`，应配合 `defer` 使用） |
 
 ## 方法选择指南
 
@@ -360,11 +364,11 @@ func main() {
 | 保留数字原始精度 | 上述任一解析方法 + `Config{PreserveNumbers: true}` | — | 数字为 `json.Number` |
 
 ::: tip Parse vs ParseAny vs Unmarshal
-- **`Unmarshal(data, &v)`**：与标准库 `encoding/json` 完全兼容，输入是 `[]byte`，适合直接替换标准库或处理网络/文件字节流。
-- **`Parse(jsonStr, &v)`**：输入是 `string`，语义与 `Unmarshal` 一致，但原生支持 `Config`（安全限制、`PreserveNumbers` 等），是日常解析的首选。
+- **`Unmarshal(data, &v)`**：签名与标准库 `encoding/json` 一致，输入是 `[]byte`，可直接替换标准库或处理网络/文件字节流；默认路径会做安全校验，与标准库存在少量行为差异。
+- **`Parse(jsonStr, &v)`**：输入是 `string`，语义与 `Unmarshal` 一致，原生支持 `Config`（安全限制、`PreserveNumbers` 等）。
 - **`ParseAny(jsonStr)`**：无需预声明目标类型，直接返回 `any`，适合结构未知或一次性取值的场景。
 
-三者底层解析能力等价，差别仅在输入类型与是否需要预先准备目标变量。
+三者底层解析能力相同，差别只在输入类型与是否需要预先准备目标变量。
 :::
 
 ## 相关

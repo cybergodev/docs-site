@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Path Expression Syntax"
 title: "Path Expression Syntax - CyberGo JSON | JSONPath Query Guide"
-description: "CyberGo JSON path expressions: property access, array and negative indices, slice steps, wildcards, multi-field and flat extraction, append, and JSON Pointer."
+description: "CyberGo JSON path expressions: property access, array and negative indices, slices with steps, wildcards, field extraction, and JSON Pointer."
 sidebar_position: 20
 ---
 
 # Path Expression Syntax
 
-The json library supports a rich path expression syntax for locating and manipulating any node in JSON data.
+A path expression is a string that locates a node in a JSON document; queries (`Get*`) and modifications (`Set`/`Delete`) share one syntax. This page lists every segment type, the out-of-range semantics, and the common pitfalls.
 
 ## Basic Syntax
 
@@ -88,34 +88,39 @@ val = json.GetInt(data, "matrix[-1][-1]")  // 9
 
 #### Boundary Behavior
 
-Out-of-range indices neither panic nor error — type-safe getters return zero values, and `Get` returns a nil result:
+Neither positive nor negative out-of-range indices panic. `Get` returns an error wrapping `ErrPathNotFound`; typed getters return no error and fall back to the zero value or the default:
 
 ```go
 data := `{"items": ["a", "b", "c"]}`
 
-// Positive index out of range -> zero value / nil, no error either way
+// Positive index out of range -> Get reports ErrPathNotFound; typed getters fall back
 json.GetString(data, "items[10]")   // ""   (empty string)
 json.GetInt(data, "items[10]")      // 0
-json.Get(data, "items[10]")         // nil, nil (note: err is also nil)
 
-// Negative index out of range -> zero values likewise
+if _, err := json.Get(data, "items[10]"); err != nil {
+    // err message: array index 10 out of bounds (length 3)
+    // errors.Is(err, json.ErrPathNotFound) == true
+}
+
+// Negative index out of range -> same
 json.GetString(data, "items[-10]")  // ""   (empty string)
 json.GetInt(data, "items[-10]")     // 0
 ```
 
-| Function | Out-of-range return |
-|----------|---------------------|
-| `Get` | `(nil, nil)` — no error |
-| `GetString` | `""` |
-| `GetInt` | `0` |
-| `GetFloat` | `0.0` |
-| `GetBool` | `false` |
-| `GetArray` | `nil` |
+| Function | Out-of-range behavior |
+|----------|-----------------------|
+| `Get` | `(nil, ErrPathNotFound)` — message carries the index and the array length |
+| `GetString` | `""` (or the passed default) |
+| `GetInt` | `0` (or the passed default) |
+| `GetFloat` | `0.0` (or the passed default) |
+| `GetBool` | `false` (or the passed default) |
+| `GetArray` | `nil` (or the passed default) |
+| `SafeGet` | `Exists: false`, `Value: nil` |
 
 ::: tip Index boundaries
-- Positive indices must fall in `[0, len)`; negative indices likewise after conversion (`len + index`)
-- Out-of-range access returns zero values / nil — no panic, no error
-- Only a **missing object key** returns `ErrPathNotFound` (e.g. `json.Get(data, "nosuchkey")`); to decide whether an array element exists, inspect the return value, not just err
+- Positive indices must fall in `[0, len)`; negative indices are converted with `len + index` first, then checked against the same interval
+- Out of range returns `ErrPathNotFound`, the same sentinel as a missing object key — only the message differs
+- When you want "missing means default", use a typed function or `SafeGet` rather than an err branch on `Get`
 :::
 
 ---
@@ -228,7 +233,7 @@ json.GetArray(data, "items[3:1]")     // []
 ```
 
 ::: warning Slice vs index boundary handling
-- **Index out of range** (e.g. `items[10]`) returns the type's zero value, no error
+- **Index out of range** (e.g. `items[10]`) returns `ErrPathNotFound`; typed getters fall back to the zero value
 - **Slice out of range** (e.g. `items[10:20]`) is clamped, returning an empty array, no error
 :::
 
@@ -252,7 +257,7 @@ extracted, err := json.Get(data, "user{id,name}")
 if err != nil {
     panic(err)
 }
-// Result: {"id": 1001, "name": "Alice"}
+// Result: {"id":1001,"name":"Alice"}
 ```
 
 ### Flat Extraction `{flat:field}`
@@ -337,20 +342,20 @@ updated, err := json.Set(data, "items[+]", 4)
 if err != nil {
     panic(err)
 }
-// Result: {"items": [1, 2, 3, 4]}
+// Result: {"items":[1,2,3,4]}
 
 updated, err = json.Set(updated, "items[+]", 5)
 if err != nil {
     panic(err)
 }
-// Result: {"items": [1, 2, 3, 4, 5]}
+// Result: {"items":[1,2,3,4,5]}
 
 // Appending a slice expands into multiple elements instead of nesting
 updated, err = json.Set(updated, "items[+]", []any{6, 7})
 if err != nil {
     panic(err)
 }
-// Result: {"items": [1, 2, 3, 4, 5, 6, 7]}
+// Result: {"items":[1,2,3,4,5,6,7]}
 ```
 
 ::: warning The path before [+] must be an existing array
@@ -368,7 +373,7 @@ updated, err := json.Set(data, "items[*]", 0)
 if err != nil {
     panic(err)
 }
-// Result: {"items": [0, 0, 0]}
+// Result: {"items":[0,0,0]}
 ```
 
 #### Query Scenario: Collecting a Field
@@ -412,7 +417,7 @@ b, _ := json.GetArray(symbols, "*.symbol")   // [AAPL GOOG], equivalent to the a
 
 ## Path Validation
 
-### Validating Paths via a Processor
+### Validating Paths with a Processor
 
 Use `Processor.CompilePath` to check that a path's format is correct:
 
@@ -421,16 +426,21 @@ p, err := json.New()
 if err != nil {
     panic(err)
 }
+defer p.Close()
 
-// Compile the path (format is validated automatically)
+// Compile the path (parses and validates the syntax); an error means bad syntax
 cp, err := p.CompilePath("user.profile.name")
 if err != nil {
     fmt.Println("Invalid path:", err)
+} else {
+    defer cp.Release() // Return to the object pool
 }
 
-cp, err = p.CompilePath("items[0:10:2]")
+cp2, err := p.CompilePath("items[0:10:2]")
 if err != nil {
     fmt.Println("Invalid path:", err)
+} else {
+    defer cp2.Release()
 }
 ```
 
@@ -440,7 +450,7 @@ if err != nil {
 
 ### Root Path
 
-The empty string `""` or `"."` denotes the root:
+For queries, the empty string `""` or `"."` denotes the root; `Set` additionally accepts `"/"`, while `Delete` rejects the root:
 
 ```go
 data := `{"name": "test"}`
@@ -451,7 +461,16 @@ if err != nil {
     panic(err)
 }
 root, err = json.Get(data, ".") // Same as above
+
+// Modification: "", ".", and "/" all replace the entire document
+replaced, err := json.Set(data, "/", map[string]any{"version": 2})
+fmt.Println(replaced) // {"version":2}
+
+// Deleting the root: returns "cannot delete root"
+_, err = json.Delete(data, "/")
 ```
+
+Note that `SafeGet` treats an empty path as "path not supplied" and returns `Exists: false`; use `"."` to fetch the whole document through `SafeGet`.
 
 ### JSON Pointer (RFC 6901)
 
@@ -465,40 +484,61 @@ item := json.GetString(data, "/items/0")   // "a"
 ```
 
 - Escape `/` or `~` inside key names with `~1` and `~0` (`a~1b` denotes the key `a/b`)
-- Array subscripts must be **non-negative** integers: Pointer mode has no negative indices, so `/items/-1` finds nothing; `/items/-` points at the not-yet-existing position past the end and likewise finds nothing
-- `Set` cannot grow an array through a JSON Pointer (out-of-range is a hard error); use a dot path for out-of-range writes
-- A lone `/` denotes the root, equivalent to `""` and `.`
+- Negative indices follow the dot-syntax semantics: `/a/-1` is the last element and `/a/-2` the second to last
+- For `Get`, the root is `""` or `"."`; a lone `/` addresses the **empty key name** and returns `ErrPathNotFound` when the object has no such key
+- For `Set`, `"/"` is the root and replaces the whole document; `Delete` rejects `"/"` with `cannot delete root`
+- `Set` cannot grow an array through a JSON Pointer (out of range is a hard error); use a dot path for out-of-range writes
+- `/a/-` applied to an array yields an equal-length array of nulls, not the last element; use `/a/-1` to fetch the last element
 
 ### Path Escaping
 
-Escape special characters in key names with a backslash. Six characters are escapable:
+Whether a backslash escape works in a key name depends on the character: dots and closing brackets can be escaped; paired brackets and braces cannot.
 
-| Escape | Key-name character matched |
-|--------|----------------------------|
-| `\\.` | Literal dot `.` |
-| `\\\\` | Literal backslash `\` |
-| `\\[` / `\\]` | Literal brackets `[` `]` |
-| `\\{` / `\\}` | Literal braces `{` `}` |
+| Key contains | Usable form | Example |
+|--------------|-------------|---------|
+| A dot `.` | Backslash escape, or JSON Pointer | `user\.name`, `/user.name` |
+| A right bracket `]` or right brace `}` | Write it as-is, or with a backslash | `a]b`, `a\]b` |
+| A backslash `\` | Write it as-is (no escaping applies) | `config\local` |
+| A paired brace `{…}` | JSON Pointer only | `/a{b}` |
+| A paired bracket with numeric content `[…]` | JSON Pointer only | `/a[0]` |
+| A paired bracket with non-numeric content | No path syntax can address it; use a wildcard or iteration | see below |
 
 ```go
 data := `{
     "user.name": "Alice",
-    "a[b]": "bracket",
-    "config\\local": "backslash"
+    "config\\local": "backslash",
+    "a{b}": "brace",
+    "a[0]": "zero"
 }`
 
-// Key name containing a dot
-name := json.GetString(data, "user\\.name")    // "Alice"
+name := json.GetString(data, "user\\.name")  // "Alice" — dot: backslash works
+name = json.GetString(data, "/user.name")    // "Alice" — or use a Pointer
 
-// Key name containing brackets
-bracket := json.GetString(data, "a\\[b\\]")    // "bracket"
+bs := json.GetString(data, "config\\local")  // "backslash" — backslash written as-is
 
-// Key name containing a backslash
-bs := json.GetString(data, "config\\\\local")  // "backslash"
+brace := json.GetString(data, "/a{b}")       // "brace" — braces require a Pointer
+zero := json.GetString(data, "/a[0]")        // "zero" — brackets require a Pointer
 ```
 
 ::: warning Go strings and path escaping are two layers
-In the example above, Go source shows **double backslashes** (`"user\\.name"`) — the Go string literal consumes one layer, and the path parser receives `user\.name` and consumes the second. If the path comes from a runtime variable (not a literal), only one layer of escaping is needed: the literal `"user\\.name"` equals the runtime `user\.name`.
+A `"user\\.name"` literal in Go source loses one layer to the Go string literal, so the path parser receives `user\.name` and consumes the second. If the path comes from a runtime variable (not a literal), only one layer is needed: the literal `"user\\.name"` equals the runtime `user\.name`.
+:::
+
+::: danger Keys with non-numeric paired brackets cannot be reached by path
+For a key such as `a[b]`, dot syntax, backslash escaping, and JSON Pointer all parse it as an array index and fail with `invalid array index`. Iterate the object and match the key instead:
+
+```go
+data := `{"a[b]": 1}`
+
+var value any
+_ = json.ForeachWithPath(data, ".", func(key any, item *json.IterableValue) {
+    if fmt.Sprint(key) == "a[b]" {
+        value = item.GetData()
+    }
+})
+```
+
+If you control the schema, avoid paired brackets inside key names.
 :::
 
 ---
@@ -522,7 +562,7 @@ Internally the library parses paths into segments of different types (implementa
 
 ## What Are the Syntax Pitfalls?
 
-The behaviors below all come from the actual implementation; knowing them up front saves debugging time.
+The behaviors below all come from the actual implementation; each counter-intuitive case is listed with its observed result.
 
 ### Extraction Misses Are Silent
 
@@ -581,8 +621,8 @@ json.GetArray(data, "users{name}")
 
 | Operation | Out-of-range behavior |
 |-----------|-----------------------|
-| Index query `items[10]` | Returns zero value / `(nil, nil)`, no error |
-| Slice query `items[10:20]` | Clamped into the valid range, returns the empty array `[]` |
+| Index query `items[10]` | `Get` returns `ErrPathNotFound` (message carries index and length); typed getters fall back to zero values |
+| Slice query `items[10:20]` | Clamped into the valid range, returns the empty array `[]`, no error |
 | Modification `Set(data, "items[5]", v)` (len=3) | Under the default configuration the array is padded with `null` up to index 5 |
 
 ### JSON Pointer and Dot Syntax Cannot Be Mixed

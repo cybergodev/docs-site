@@ -1,13 +1,15 @@
 ---
 sidebar_label: "错误类型"
 title: "错误类型 - CyberGo HTTPC | ClientError 详解"
-description: "HTTPC 错误类型 API 参考：ClientError 结构体八字段及 Code、IsRetryable、Unwrap 等方法、ErrorTypeNetwork 等十二种错误分类枚举、ErrNilConfig 等哨兵错误变量与 errors.Is/As 匹配示例。"
+description: "HTTPC 错误类型 API 参考：ClientError 结构体字段与 Code、IsRetryable、Unwrap 等方法、ErrorTypeNetwork 等十二种错误分类枚举、ErrNilConfig 等十七个哨兵错误变量，以及 errors.Is/errors.As 的匹配与分类示例。"
 sidebar_position: 30
 ---
 
 # 错误类型
 
-HTTPC 采用两层错误模型：底层是标准 `error` 接口，上层是分类的 `ClientError` 结构体。所有请求失败（网络层）都会被 `classifyError` 映射为携带上下文的 `ClientError`，提供错误类型、可重试判断和结构化字段。HTTP 层错误（4xx/5xx）不返回 error，而是通过 `Result.StatusCode()` 检查。
+HTTPC 采用两层错误模型：底层是标准 `error` 接口，上层是分类的 `ClientError` 结构体。网络层的请求失败由 `classifyError` 映射为携带上下文的 `ClientError`，提供错误类型、可重试判断和结构化字段。
+
+HTTP 层错误（4xx/5xx）不返回 error，通过 `Result.StatusCode()` 检查。
 
 ## ClientError
 
@@ -15,7 +17,7 @@ HTTPC 采用两层错误模型：底层是标准 `error` 接口，上层是分�
 type ClientError = engine.ClientError
 ```
 
-分类的 HTTP 客户端错误，通过 `errors.As` 提取。是内部 `engine.ClientError` 的类型别名。
+分类的 HTTP 客户端错误，通过 `errors.As` 提取。它是内部 `engine.ClientError` 的类型别名。
 
 ### 结构体字段
 
@@ -29,6 +31,7 @@ type ClientError struct {
     Attempts   int        // 已尝试次数
     StatusCode int        // HTTP 状态码（如适用）
     Host       string     // 主机名（用于断路器）
+    ProxyURL   string     // 最后一次尝试所用代理的脱敏 URL（直连、发送前错误与系统代理时为空）
 }
 ```
 
@@ -42,8 +45,9 @@ type ClientError struct {
 | `ClientError.Attempts` | `int` | 已尝试次数（含首次请求） | `1`（首次失败）、`4`（重试 3 次后） |
 | `ClientError.StatusCode` | `int` | HTTP 状态码（非 HTTP 错误时为 0） | `0`（网络错误）、`503`（服务端错误） |
 | `ClientError.Host` | `string` | 请求主机名（用于断路器） | `"example.com"` |
+| `ClientError.ProxyURL` | `string` | 最后一次尝试所用代理的脱敏 URL（密码已掩码，可直接写日志）；直连、发送前错误（校验或回调失败）与 `EnableSystemProxy` 时为空；代理轮换时报告最后一次尝试的代理 | `"http://proxy:8080"` |
 
-其中 `Host` 供断路器按主机维度统计失败，`Message` 适合直接进日志，`Cause` 保留底层错误供 `errors.As` 深挖。
+`Host` 供断路器按主机维度统计失败，`Message` 可直接写入日志，`Cause` 保留底层错误供 `errors.As` 深挖。`ProxyURL` 记录的是传输层在选择代理时登记的值，与成功路径的 `Result.Meta.ProxyURL` 同源，因此即使是拨号失败也能知道当时用的是哪个代理。
 
 ### 方法
 
@@ -51,11 +55,10 @@ type ClientError struct {
 |------|------|------|
 | `Error` | `func (e *ClientError) Error() string` | 格式化为 `"METHOD url: message: cause (attempt N)"` |
 | `Code` | `func (e *ClientError) Code() string` | 返回短错误码，如 `"NETWORK_ERROR"`、`"TIMEOUT"` |
-| `IsRetryable` | `func (e *ClientError) IsRetryable() bool` | 判断该错误是否值得重试 |
+| `IsRetryable` | `func (e *ClientError) IsRetryable() bool` | 返回该错误是否可重试 |
 | `Unwrap` | `func (e *ClientError) Unwrap() error` | 返回 `ClientError.Cause`，支持 `errors.Is`/`errors.As` 遍历错误链 |
-| `WithType` | `func (e *ClientError) WithType(t ErrorType) *ClientError` | 返回设置错误类型的**副本**（不修改原始） |
 
-五个方法均以 `*ClientError` 指针接收者定义：`ClientError.Error` 实现 `error` 接口；`ClientError.Code` 与 `ClientError.IsRetryable` 供日志分类与重试决策使用；`ClientError.Unwrap` 暴露底层原因；`ClientError.WithType` 返回改写类型后的副本，不修改原始错误。
+四个方法均以 `*ClientError` 指针接收者定义。`ClientError.Error` 实现 `error` 接口；`ClientError.Code` 与 `ClientError.IsRetryable` 供日志分类与重试决策使用；`ClientError.Unwrap` 暴露底层原因。
 
 ### Error() 格式化
 
@@ -66,11 +69,11 @@ type ClientError struct {
 - 有 Cause：追加 `": " + Cause.Error()`
 - 有 Attempts（>0）：追加 `" (attempt N)"`
 
-URL 在输出前自动经过内部 `validation.SanitizeURL` 脱敏（移除凭证）。引擎分类路径产生的错误已预脱敏（`urlSanitized=true`），跳过冗余的 url.Parse 调用以避免分配。
+URL 在输出前经内部 `validation.SanitizeURL` 脱敏（移除凭据）。引擎分类路径产生的错误已预脱敏（`urlSanitized=true`），因此跳过冗余的 url.Parse 调用以避免分配。
 
 ### Code() 错误码
 
-`Code()` 返回标识错误类型的短字符串，便于日志分类和监控告警：
+`Code()` 返回标识错误类型的短字符串，用于日志分类与监控告警：
 
 | ErrorType | Code() 返回值 |
 |-----------|---------------|
@@ -97,10 +100,10 @@ if errors.As(err, &clientErr) {
 
 ## IsRetryable 判断逻辑
 
-`IsRetryable()` 是 HTTPC 重试机制的核心决策方法。判断流程：
+`IsRetryable()` 判断单个错误是否可重试：先检查上下文错误，再按 `ErrorType` 分发。下表为完整判定规则，重试策略的整体说明见[重试与容错](../../guides/retry-fault-tolerance)。
 
-1. **优先检查上下文错误**：若 Cause 是 `context.Canceled` 或 `context.DeadlineExceeded`，直接返回 false（永不重试）
-2. **按 ErrorType 分发**：
+1. **优先检查上下文错误**：Cause 是 `context.Canceled` 或 `context.DeadlineExceeded` 时直接返回 false，永不重试。
+2. **按 ErrorType 分发**：见下表。
 
 | ErrorType | 是否可重试 | 判断逻辑 |
 |-----------|:----------:|----------|
@@ -110,10 +113,10 @@ if errors.As(err, &clientErr) {
 | `ErrorTypeResponseRead` | 视情况 | 仅读操作（`Op == "read"` 或 `"readfrom"`）可重试；写操作不重试 |
 | `ErrorTypeDNS` | 视情况 | Cause 是 `*net.DNSError` 时，其 IsTemporary 或 IsTimeout 为 true 才重试 |
 | `ErrorTypeHTTP` | 视情况 | StatusCode 命中 `retryableStatusCodes`（408/429/500/502/503/504）可重试 |
-| `ErrorTypeContextCanceled` | 否 | 用户主动取消 |
-| `ErrorTypeValidation` | 否 | 请求本身不合法，重试无意义 |
-| `ErrorTypeTLS` | 否 | TLS 协议错误，通常不会自愈 |
-| `ErrorTypeCertificate` | 否 | 证书验证失败，重试无意义 |
+| `ErrorTypeContextCanceled` | 否 | 调用方主动取消 |
+| `ErrorTypeValidation` | 否 | 请求本身不合法，重试无效 |
+| `ErrorTypeTLS` | 否 | TLS 协议错误，重试无效 |
+| `ErrorTypeCertificate` | 否 | 证书验证失败，重试无效 |
 | `ErrorTypeRetryExhausted` | 否 | 已耗尽重试次数 |
 | `ErrorTypeUnknown` | 否 | 未知错误，保守不重试 |
 
@@ -130,10 +133,10 @@ var retryableStatusCodes = map[int]bool{
 }
 ```
 
-这是 HTTP 状态码触发重试的唯一真相源，同时被重试逻辑和 `IsRetryable()` 使用。
+这是内置策略下 HTTP 状态码触发重试的真相源，重试引擎与 `IsRetryable()` 共用此表。配置了 `Connection.ProxyRotateOnStatus` 时，引擎在该表之外额外把这些状态码视为可重试——此类请求可能被重试，即使其 `ClientError.IsRetryable()` 返回 false。
 
 :::tip 超时类型的细微区别
-`ErrorTypeTimeout` 可重试，但**由上下文截止触发的超时不可重试**——因为 `context.DeadlineExceeded` 会在第 1 步被拦截（返回 false）。仅传输层超时（如 `net.OpError.Timeout()`）才会到达第 2 步被判定为可重试。这确保用户设置的 `WithTimeout` 不会被重试突破。
+`ErrorTypeTimeout` 可重试，但**由上下文截止触发的超时不可重试**：`context.DeadlineExceeded` 在第 1 步即被拦截并返回 false。只有传输层超时（如 `net.OpError.Timeout()`）才会进入第 2 步被判为可重试，因此 `WithTimeout` 设置的期限不会被重试突破。
 :::
 
 ## ErrorType
@@ -157,7 +160,7 @@ type ErrorType = engine.ErrorType
 | `ErrorTypeCertificate` | 8 | 证书验证错误 | x509 证书过期/不受信任 | 否 |
 | `ErrorTypeDNS` | 9 | DNS 解析错误 | 域名不存在、DNS 超时 | 视情况 |
 | `ErrorTypeValidation` | 10 | 请求验证错误 | URL 格式错误、重定向超限、CRLF 注入 | 否 |
-| `ErrorTypeHTTP` | 11 | HTTP 层错误 | 4xx/5xx 响应（仅重试场景产生） | 视情况 |
+| `ErrorTypeHTTP` | 11 | HTTP 层错误 | 仅由分类器的**错误消息模式匹配**归入（消息含 `HTTP 4xx`/`HTTP 5xx`）。常规请求的 4xx/5xx 不作为 error 返回；自定义中间件返回的 error **不经过**分类器，因此不会得到该类型 | 视情况 |
 
 > ¹ 由上下文截止（`WithTimeout`、`TimeoutConfig.Request`）触发的超时**不会**重试；仅传输层超时（如 `net.OpError` 超时）才会重试。
 > ² 详见上方 [IsRetryable 判断逻辑](#isretryable-判断逻辑)。
@@ -193,22 +196,22 @@ if err != nil {
 
 ## URL 脱敏机制
 
-`ClientError.Error()` 在格式化时自动调用 `validation.SanitizeURL` 移除 URL 中的凭证信息（`user:pass@host` → `***:***@host`），防止敏感信息泄漏到日志和错误消息中。
+`ClientError.Error()` 在格式化时调用 `validation.SanitizeURL` 移除 URL 中的凭据（`user:pass@host` → `***:***@host`），避免敏感信息进入日志与错误消息。
 
 ```go
 // 原始 URL: https://admin:secret@api.example.com/data
 // Error() 输出：GET https://***:***@api.example.com/data: ...
 ```
 
-引擎分类路径（`classifyErrorWithSanitizedURL`）在首次分类时即完成脱敏并设置 `urlSanitized=true`，后续 `Error()` 调用跳过冗余的 url.Parse，避免每次日志输出都产生分配。
+引擎分类路径（`classifyErrorWithSanitizedURL`）在首次分类时完成脱敏并设置 `urlSanitized=true`，后续 `Error()` 调用跳过冗余的 url.Parse，避免每次日志输出都产生分配。
 
 :::tip 回调中的错误脱敏
-`MetricsMiddleware` 和 `LoggingMiddleware` 等中间件的回调中，HTTPC 会额外检查非 ClientError 类型的错误消息，将其中的原始 URL 替换为脱敏版本，确保回调不会泄漏凭证。
+在 `MetricsMiddleware`、`LoggingMiddleware` 等中间件的回调中，HTTPC 会额外检查非 `ClientError` 类型的错误消息，把其中的原始 URL 替换为脱敏版本，避免回调泄漏凭据。
 :::
 
 ## 错误分类流程
 
-`classifyError` 是将底层 `error` 映射为 `*ClientError` 的核心函数，按以下顺序逐层判断：
+`classifyError` 把底层 `error` 映射为 `*ClientError`，按以下顺序逐层判断：
 
 1. **context 错误**：`context.Canceled` → `ErrorTypeContextCanceled`；`context.DeadlineExceeded` → `ErrorTypeTimeout`
 2. **连接池耗尽**：`connection.ErrPoolExhausted` → `ErrorTypeNetwork`
@@ -226,11 +229,11 @@ if err != nil {
 | 变量 | 错误消息 | 触发条件 |
 |------|----------|----------|
 | `ErrNilConfig` | `"config cannot be nil"` | 传入 nil Config 给 `New`/`ValidateConfig` |
-| `ErrInvalidTimeout` | `"invalid timeout"` | 超时值为负或超过 30 分钟上限 |
+| `ErrInvalidTimeout` | `"invalid timeout"` | 超时值为 0、负数或超过 30 分钟上限（`WithTimeout`）；无超时请用 `WithNoTimeout` |
 | `ErrInvalidRetry` | `"invalid retry configuration"` | MaxRetries 不在 0–10、BackoffFactor 不在 1.0–10.0 |
 | `ErrInvalidConnection` | `"invalid connection configuration"` | MaxIdleConns/MaxConnsPerHost 超范围、ProxyURL 格式错误 |
-| `ErrInvalidSecurity` | `"invalid security configuration"` | MaxResponseBodySize 超出 0–1GB 范围 |
-| `ErrInvalidMiddleware` | `"invalid middleware configuration"` | MaxRedirects 不在 0–50、UserAgent 过长或含控制字符 |
+| `ErrInvalidSecurity` | `"invalid security configuration"` | 响应体/解压后/请求体大小上限越界、TLS 版本非法或 min>max、`SSRFExemptCIDRs` 含非法 CIDR、`SensitiveHeaders` 键非法、`TLSFingerprint` 未知预设或与 `TLSConfig` 同设 |
+| `ErrInvalidMiddleware` | `"invalid middleware configuration"` | `Defaults.UserAgent` 超过 512 字符或含控制字符 |
 | `ErrInvalidHeader` | `"invalid header"` | 请求头键值含控制字符或超过大小限制 |
 
 ### 请求与响应错误
@@ -240,17 +243,17 @@ if err != nil {
 | `ErrEmptyFilePath` | `"file path cannot be empty"` | DownloadConfig.FilePath 为空 |
 | `ErrFileExists` | `"file already exists"` | 文件已存在且 Overwrite=false 且 ResumeDownload=false |
 | `ErrResponseBodyEmpty` | `"response body is empty"` | 对空响应体调用 Unmarshal 等解析方法 |
-| `ErrResponseBodyTooLarge` | `"response body too large"` | 响应体超过 MaxResponseBodySize |
-| `ErrInvalidMaxRedirects` | `"invalid max redirects"` | [`WithMaxRedirects`](../core/options#withmaxredirects) 传入负数或超过 50 |
+| `ErrResponseBodyTooLarge` | `"response body too large"` | `Result.Unmarshal` 解析的响应体超过 50MB JSON 上限。引擎侧体积上限（`Security.MaxResponseBodySize`）另报 `response body exceeds limit of N bytes`，**不是**该哨兵 |
+| `ErrInvalidMaxRedirects` | `"invalid max redirects"` | [`WithMaxRedirects`](../core/options#withmaxredirects) 传入负数或超过 50，或 `Security.MaxRedirects` 不在 0–50 |
 | `ErrInvalidCredentials` | `"invalid credentials"` | [`WithBasicAuth`](../core/options#withbasicauth)/[`WithBearerToken`](../core/options#withbearertoken) 凭据为空、超长或含非法字符 |
-| `ErrStreamBodyRequiresDownload` | `"WithStreamBody requires Download; standard request methods buffer the response body"` | [`WithStreamBody`](../core/options#withstreambody)(true) 与标准请求方法（Get/Post/…/Request）搭配——流式仅在 `Download` 路径生效，其他路径拒绝请求而非静默返回空响应体 |
+| `ErrStreamBodyRequiresDownload` | `"WithStreamBody requires Download; standard request methods buffer the response body"` | [`WithStreamBody`](../core/options#withstreambody)(true) 与标准请求方法（Get/Post/…/Request）搭配；流式仅在 `Download` 路径生效 |
 
 ### 下载与代理错误
 
 | 变量 | 错误消息 | 触发条件 |
 |------|----------|----------|
-| `ErrDownloadInProgress` | `"download already in progress for this file path"` | 同一进程内已有针对同一文件路径的下载正在进行——两个并发下载写同一目标会互相破坏，第二个调用方立即失败而非阻塞；首个下载结束后可重试。互斥锁仅在进程内生效，跨进程协调由调用方负责 |
-| `ErrProxyConnectionFailed` | `"proxy connection failed"` | 配置的代理无法拨号（连接失败、地址非法、被拒绝等）。与底层原因一同包装进错误链，可用 `errors.Is(err, httpc.ErrProxyConnectionFailed)` 检测；重试引擎也用它判断是否换下一个代理重试 |
+| `ErrDownloadInProgress` | `"download already in progress for this file path"` | 同一进程内已有下载在写同一文件路径；第二个调用立即失败而非阻塞，首个下载结束后可重试。互斥锁仅在进程内生效，跨进程协调由调用方负责 |
+| `ErrProxyConnectionFailed` | `"proxy connection failed"` | 配置的代理无法拨号（连接失败、地址非法、被拒绝等）；与底层原因一同包装进错误链，可用 `errors.Is` 检测，重试引擎据此换下一个代理 |
 
 ### 客户端错误
 
@@ -267,25 +270,26 @@ if err != nil {
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-重定向安全警告的输出目标（默认 `os.Stderr`），定义于 `warnings.go`。传入 `io.Discard` 可完全抑制警告。测试环境的判定依据可执行文件名（`.test` 后缀）与 `GO_TEST`/`GOTEST` 环境变量。
+安全警告的输出目标（默认 `os.Stderr`），定义于 `warnings.go`。传入 `io.Discard` 可抑制全部警告。测试环境的判定依据是可执行文件名（`.test` 后缀）与 `GO_TEST`/`GOTEST` 环境变量。
 
-两类危险配置会在**非测试环境**触发警告，每类每进程至多打印一次（`sync.Once`）：
+三类配置会在**非测试环境**触发警告，每类每进程至多打印一次（`sync.Once`）：
 
 | 触发条件 | 警告要点 |
 |---------|---------|
-| `TestingConfig()` 创建的客户端用于非测试环境 | 提示 TLS 证书验证、SSRF 防护、URL/Header 验证均被禁用，应改用 `SecureConfig()` 或 `DefaultConfig()` |
+| 在非测试环境调用 `TestingConfig()` | 提示 TLS 证书验证、SSRF 防护、URL/Header 验证均被禁用，应改用 `SecureConfig()` 或 `DefaultConfig()`（警告在预设函数内即触发，与是否创建客户端无关） |
 | `Security.InsecureSkipVerify=true` 且非测试环境 | 提示 TLS 证书验证被禁用，仅应在测试中使用，生产应用 `SecureConfig()` |
+| 手写 `Config` 命中全关签名（`ValidateURL`/`ValidateHeaders`/`StrictContentLength`/`FollowRedirects`/`EnableHTTP2` 全为 false 且 `Security.MaxResponseBodySize == 0`） | 打印 `[CONFIG WARNING]`：这些 `Default: true` 字段只在 `DefaultConfig()`/预设中为 true，结构体字面量会清零它们；应从 `DefaultConfig()` 起步 |
 
 ```go
 // 抑制安全警告（仅在已确认配置安全时使用）
 httpc.SetSecurityWarnOutput(io.Discard)
 
-// 重定向到自定义日志输出
+// 输出改写为自定义日志
 httpc.SetSecurityWarnOutput(log.Writer())
 ```
 
 :::warning 勿滥用抑制
-`SetSecurityWarnOutput(io.Discard)` 会静默吞掉安全警告。仅在已充分审计配置（如确认 `TestingConfig` 只用于测试二进制）时使用，切勿在生产部署中用它掩盖警告。安全实践的完整清单见[安全指南](../../security/)。
+`SetSecurityWarnOutput(io.Discard)` 会静默吞掉安全警告。仅在已充分审计配置（如确认 `TestingConfig` 只用于测试二进制）时使用，不要在生产部署中用它掩盖警告。安全实践的完整清单见[安全指南](../../security/)。
 :::
 
 ## 实用匹配模式
@@ -342,9 +346,9 @@ if errors.As(err, &clientErr) {
 ```
 
 :::tip 三种匹配方式的选择
-- `errors.As`：需要访问 ClientError 的结构化字段（Type/Code/URL/Attempts 等）
-- `errors.Is`：匹配哨兵错误（ErrClientClosed 等配置/文件错误）
-- `errors.Unwrap`：需要到达最底层的 net/error 以获取系统级诊断信息
+- `errors.As`：需要访问 `ClientError` 的结构化字段（Type/Code/URL/Attempts 等）。
+- `errors.Is`：匹配哨兵错误（`ErrClientClosed` 等配置与文件错误）。
+- `errors.Unwrap`：需要到达最底层的 net/error 以获取系统级诊断信息。
 :::
 
 ## 另见

@@ -7,7 +7,9 @@ sidebar_position: 20
 
 # SSRF Protection
 
-SSRF (Server-Side Request Forgery) is an attack in which the attacker tricks the server into making requests against the internal network. The impact includes stealing cloud-instance metadata credentials (IAM role tokens), scanning internal ports and services, reaching unauthenticated internal admin interfaces, and bypassing firewalls to access protected resources. HTTPC enables SSRF protection by default, blocking connections to private/reserved IP ranges.
+SSRF (Server-Side Request Forgery) is an attack in which the attacker induces the server to send requests into the internal network. The impact includes theft of cloud-instance metadata credentials (IAM role tokens), internal port and service scans, access to unauthenticated internal admin interfaces, and firewall bypass to reach protected resources.
+
+HTTPC enables SSRF protection by default and blocks connections to private and reserved IP ranges, with `198.18.0.0/15` as the one exception (see "Known Boundaries" below).
 
 ## Default Behavior
 
@@ -16,11 +18,11 @@ cfg := httpc.DefaultConfig()
 // AllowPrivateIPs = false (default) -> blocks all private/reserved IPs
 ```
 
-`AllowPrivateIPs` defaults to `false`, so dialer-level SSRF validation is fully on. This differs from validating only the URL's hostname — HTTPC validates the resolved IP at the moment the TCP connection is actually established, which defends against DNS rebinding (see below).
+`AllowPrivateIPs` defaults to `false`, so dialer-level SSRF validation is fully on. Unlike validating only the URL hostname, HTTPC validates the resolved IP when the TCP connection is established, which defends against DNS rebinding (see below).
 
 ## Where Validation Runs: Three Lines of Defense
 
-SSRF checks are distributed across three layers; if any layer is bypassed, the next one backs it up:
+SSRF checks are distributed across three layers. When one layer is bypassed, the next one takes over:
 
 | Line of defense | When it runs | Behavior | Implementation |
 |------|----------|------|----------|
@@ -28,7 +30,7 @@ SSRF checks are distributed across three layers; if any layer is bypassed, the n
 | 2. Redirect layer | Every 30x hop | Repeats the validation on the redirect target's hostname (domain whitelist first, then SSRF validation) | `internal/engine/transport.go` |
 | 3. Connection layer (dialer) | Before the TCP connection is established | **Resolve DNS → validate each IP → filter private addresses → dial the validated IP directly**, defending against DNS rebinding | `internal/connection/pool.go` |
 
-Typical pre-flight rejections based on hostname shape (the request never even attempts a connection):
+The pre-flight layer rejects these targets by hostname shape (no connection is attempted):
 
 | Target host | Rejection reason |
 |----------|----------|
@@ -63,15 +65,15 @@ func main() {
 }
 ```
 
-The connection layer is the final line of defense: even with `ValidateURL = false` turning the pre-flight layer off, the dialer still resolves the domain and validates the real IPs — when every resolved address is private, it returns an error like `domain resolves only to blocked addresses`. The DNS resolution timeout is `min(10s, Timeouts.Dial)`.
+The connection layer is the final line of defense. Even with `ValidateURL = false` turning the pre-flight layer off, the dialer still resolves the domain and validates the real IPs; when every resolved address is private, it returns an error such as `domain resolves only to blocked addresses`. The DNS resolution timeout is `min(10s, Timeouts.Dial)`.
 
 :::tip
-The pre-flight layer has a URL-level cache (1024 entries; when full, the oldest 25% are evicted), so repeated requests to the same URL do not re-run parsing and validation. Per-request overrides via `WithAllowPrivateIPs` bypass the cache automatically (validation results for the same URL are no longer stable and cannot be reused).
+The pre-flight layer has a URL-level cache (1024 entries; when full, the oldest 25% are evicted), so repeated requests to the same URL do not re-run parsing and validation. Per-request overrides via `WithAllowPrivateIPs` bypass the cache, because validation results for the same URL are no longer stable and cannot be reused.
 :::
 
 ## Blocked IP Ranges
 
-HTTPC blocks every IP address unsuitable for public-internet communication, covering IPv4, IPv6, and their bypass variants.
+HTTPC blocks IP addresses unsuitable for public-internet communication, covering IPv4, IPv6, and their bypass variants. `198.18.0.0/15` is the exception and is allowed by default (see "Known Boundaries").
 
 ### IPv4 Blocked Ranges
 
@@ -91,7 +93,7 @@ HTTPC blocks every IP address unsuitable for public-internet communication, cove
 | TEST-NET-3 | `203.0.113.0/24` | Documentation use (RFC 5737) |
 | 6to4 relay | `192.88.99.0/24` | Deprecated anycast |
 
-In addition, IPv6 loopback (`::1`), unique local (`fc00::/7`), link-local (`fe80::/10`), and similar ranges are blocked as well — HTTPC's IP validation covers loopback, private, link-local unicast/multicast, multicast, unspecified, and every other reserved category.
+In addition, IPv6 loopback (`::1`), unique local (`fc00::/7`), link-local (`fe80::/10`), and similar ranges are blocked as well. IP validation covers loopback, private, link-local unicast and multicast, multicast, unspecified, and other reserved categories.
 
 ### IPv6 Blocked Ranges
 
@@ -105,7 +107,7 @@ In addition, IPv6 loopback (`::1`), unique local (`fc00::/7`), link-local (`fe80
 
 ### Bypass Defenses
 
-HTTPC additionally blocks these common SSRF bypass techniques:
+HTTPC additionally blocks these SSRF bypass techniques:
 
 | Technique | Example | Defense |
 |------|------|------|
@@ -116,12 +118,12 @@ HTTPC additionally blocks these common SSRF bypass techniques:
 | NAT64 embedded | `64:ff9b::7f00:1` | Recursively validates the embedded IPv4 |
 
 :::tip
-These bypass defenses matter especially under cgo builds: `getaddrinfo` may accept legacy IP literals and map them to private IPs. HTTPC intercepts these forms before DNS resolution.
+These bypass defenses matter especially under cgo builds: `getaddrinfo` accepts legacy IP literals and maps them to private IPs. HTTPC intercepts these forms before DNS resolution.
 :::
 
 ## Cloud Metadata Endpoint Protection
 
-The instance metadata service (IMDS) of each cloud platform is a high-value SSRF target — once reached, temporary credentials can be stolen. HTTPC blocks these addresses by default:
+The instance metadata service (IMDS) of each cloud platform is a high-value SSRF target: reaching it exposes temporary credentials. HTTPC blocks these addresses by default:
 
 | Platform | Metadata address | Blocking mechanism |
 |------|-----------|----------|
@@ -131,16 +133,18 @@ The instance metadata service (IMDS) of each cloud platform is a high-value SSRF
 | Alibaba Cloud | `100.100.100.200` | CGNAT `100.64.0.0/10` blocked |
 
 :::warning
-Although AWS IMDSv2 requires a token, an SSRF exploit can still fetch the token first and then access the data. HTTPC's IP-level block sits lower in the stack than IMDSv2 and intercepts the connection outright. Use both: HTTPC blocking + IMDSv2 enabled for defense in depth.
+AWS IMDSv2 requires a token first, but an attacker can still complete an SSRF access in two steps. HTTPC's IP-level block sits below IMDSv2 and intercepts the connection. Use both: HTTPC blocking plus IMDSv2 for defense in depth.
 :::
 
 :::warning
-Alibaba Cloud metadata (`100.100.100.200`) is inside the CGNAT range (`100.64.0.0/10`), which HTTPC **blocks by default**. If you genuinely need to reach `100.64.0.0/10` for VPNs like Tailscale/WireGuard or internal routing, you must exempt it explicitly via `SSRFExemptCIDRs: []string{"100.64.0.0/10"}` — once exempted, Alibaba Cloud metadata in that range also becomes reachable, so evaluate the risk accordingly.
+Alibaba Cloud metadata (`100.100.100.200`) is inside the CGNAT range (`100.64.0.0/10`), which HTTPC **blocks by default**.
+
+Reaching `100.64.0.0/10` for VPNs such as Tailscale/WireGuard or for internal routing requires an explicit exemption via `SSRFExemptCIDRs: []string{"100.64.0.0/10"}`. Once exempted, Alibaba Cloud metadata in that range becomes reachable too, so evaluate the risk.
 :::
 
 ## DNS Rebinding Defense
 
-DNS rebinding is a classic technique for bypassing SSRF checks. The attacker controls the domain's DNS server so that the first resolution returns a public IP (passing validation) while the resolution at actual connection time returns `127.0.0.1` (bypassing validation).
+DNS rebinding is a common technique for bypassing SSRF checks. The attacker controls the domain's DNS server, so the first resolution returns a public IP (passing validation) while the resolution at connection time returns `127.0.0.1`.
 
 HTTPC defends against this with a "resolve - validate - dial-directly" pattern:
 
@@ -159,14 +163,16 @@ HTTPC defends against this with a "resolve - validate - dial-directly" pattern:
 ```
 
 :::tip
-Under "Split-Horizon DNS" (where the same domain resolves to both public and private IPs), HTTPC automatically filters out the private IPs and connects using only public IPs, rather than rejecting the entire domain.
+Under "Split-Horizon DNS" (the same domain resolving to both public and private IPs), HTTPC filters out the private IPs and connects using only public IPs, rather than rejecting the entire domain.
 :::
 
-When DoH is enabled (`Connection.EnableDoH = true`), the same line of defense applies: DoH resolution results first pass the same IP filtering — if everything is blocked, it reports `SSRF protection: domain resolves only to blocked addresses` — and only then are the allowed IPs dialed one by one. The DNS resolution timeout is derived from the request context and capped at 10s (`min(10s, Timeouts.Dial)`); canceling the request aborts the resolution immediately.
+When DoH is enabled (`Connection.EnableDoH = true`), the same line of defense applies. DoH resolution results pass the same IP filtering first: if every address is blocked, the call returns `SSRF protection: domain resolves only to blocked addresses` without dialing; otherwise the allowed IPs are dialed one by one.
+
+The DNS resolution timeout is derived from the request context and capped at 10s (`min(10s, Timeouts.Dial)`); canceling the request aborts the resolution immediately.
 
 ## SSRFExemptCIDRs Precise Exemption
 
-In microservice environments you often need to reach services inside a VPC, Kubernetes Service, or VPN. `SSRFExemptCIDRs` lets you precisely exempt specific CIDR ranges while keeping all other private IPs blocked — this is the recommended way to access internal services.
+Microservice environments often need to reach services inside a VPC, Kubernetes Service, or VPN. `SSRFExemptCIDRs` exempts specific CIDR ranges precisely while all other private IPs stay blocked; this is the recommended way to access internal services.
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -187,15 +193,15 @@ client, _ := httpc.New(cfg)
 | Kubernetes | `172.20.0.0/16`, etc. | Pod/Service CIDR |
 | WireGuard | `10.13.0.0/16`, etc. | Custom VPN range |
 
-An invalid CIDR makes `httpc.New()` return an error (e.g. `SSRFExemptCIDRs: invalid CIDR "10.0.0/8"`), so the configuration fails at startup rather than silently passing at runtime.
+An invalid CIDR makes `httpc.New()` return an error (e.g. `SSRFExemptCIDRs: invalid CIDR "10.0.0/8"`), so the configuration fails at startup instead of silently passing at runtime.
 
 :::warning
-Keep exempted CIDRs as precise as possible. Avoid overly broad ranges (e.g. `0.0.0.0/0`), which amount to disabling SSRF protection entirely. Even `10.0.0.0/8` deserves a check on whether it can be narrowed to the subnets actually in use.
+Keep exempted CIDRs as precise as possible. An overly broad range such as `0.0.0.0/0` disables SSRF protection entirely. Even `10.0.0.0/8` deserves a check on whether it can be narrowed to the subnets actually in use.
 :::
 
 ## AllowPrivateIPs vs SSRFExemptCIDRs Comparison
 
-Both can permit internal services, but their security semantics are very different:
+Both can permit internal services, with different security semantics:
 
 | Dimension | `AllowPrivateIPs = true` | `SSRFExemptCIDRs` |
 |------|--------------------------|--------------------|
@@ -207,12 +213,12 @@ Both can permit internal services, but their security semantics are very differe
 | Recommendation | Testing / all-internal clients only | Recommended for production |
 
 :::danger
-`AllowPrivateIPs = true` completely bypasses dialer-level SSRF validation (not merely "allowing private IPs") — including the localhost check, the link-local check, and every reserved-address check. Never use it in production when handling any untrusted URL. To reach internal services, prefer `SSRFExemptCIDRs`.
+`AllowPrivateIPs = true` completely bypasses dialer-level SSRF validation, including the localhost check, the link-local check, and every reserved-address check; it does more than "allow private IPs". Never use it in production when handling untrusted URLs. To reach internal services, prefer `SSRFExemptCIDRs`.
 :::
 
 ## Per-Request Private-IP Exemption
 
-If the client as a whole uses secure defaults (`AllowPrivateIPs = false`) and only individual requests need internal access (e.g. a `localhost` health-check endpoint), use the `WithAllowPrivateIPs` request option to allow it per request, without globally relaxing security:
+When the client as a whole uses secure defaults (`AllowPrivateIPs = false`) and only individual requests need internal access (e.g. a `localhost` health-check endpoint), the `WithAllowPrivateIPs` request option allows it per request without globally relaxing security:
 
 ```go
 package main
@@ -237,15 +243,14 @@ func main() {
 ```
 
 :::warning
-Enable `WithAllowPrivateIPs(true)` only for **trusted URLs that do not come from user input**. The point of SSRF protection is to stop attackers from tricking your process into reaching internal-network endpoints; disabling it per request reintroduces that risk for that call. If an entire client needs internal access, set `Security.AllowPrivateIPs = true` on `Config`.
+Enable `WithAllowPrivateIPs(true)` only for **trusted URLs that do not come from caller input**. SSRF protection keeps attackers from inducing the process to reach internal endpoints; disabling it per request reintroduces that risk for that call. If an entire client needs internal access, set `Security.AllowPrivateIPs = true` on `Config`.
 :::
 
-The reverse usage works too: if the client is configured with `AllowPrivateIPs = true` (e.g. an all-internal client) but a single request needs SSRF checking forced on, use `WithAllowPrivateIPs(false)`.
+The reverse usage works too: with `AllowPrivateIPs = true` on the client (e.g. an all-internal client), a single request that needs SSRF checking forced on can use `WithAllowPrivateIPs(false)`.
 
 ## SSRF Checks During Redirects
 
-Redirects are a major SSRF vector: a public service may 302 to `http://169.254.169.254/` (cloud metadata) or an internal address. HTTPC performs SSRF IP validation on redirect targets as well.
-
+Redirects are a major SSRF vector: a public service can be configured to 302 to `http://169.254.169.254/` (cloud metadata) or an internal address. HTTPC performs SSRF IP validation on redirect targets as well.
 | Client configuration | Behavior when redirecting to a private IP |
 |-----------|----------------------|
 | `AllowPrivateIPs = false` (default) | Blocked — redirect-target IP validation fails |
@@ -258,23 +263,22 @@ Redirects are a major SSRF vector: a public service may 302 to `http://169.254.1
 // HTTPC validates the redirect target's IP, blocking access to the cloud-metadata service
 ```
 
-Every redirect hop is checked in the following order (any failed step rejects that hop; see `checkRedirect` in `internal/engine/transport.go`):
+Each redirect hop passes the following checks in order; any failed step rejects the hop (implemented in `checkRedirect` in `internal/engine/transport.go`):
 
-1. **Domain whitelist** (if `RedirectWhitelist` is configured)
-2. **Scheme check**: only http/https allowed (`file://`, `gopher://`, etc. rejected)
+1. **Domain whitelist** (when `RedirectWhitelist` is configured)
+2. **Scheme check**: only http/https allowed; `file://`, `gopher://`, etc. are rejected
 3. **SSRF host validation**: the target hostname is validated against private/loopback/reserved rules
-4. **Cross-origin sensitive-header stripping**: when the target host differs from the original host, `Authorization`, `Cookie`, and `Proxy-Authorization` are removed — even if the redirect is allowed, credentials are never carried to a third-party domain
-5. **Redirect-loop detection**: A→B→A cycles error out (consecutive identical URLs A→A excepted)
+4. **Cross-origin sensitive-header stripping**: when the target origin (scheme/host/port) differs from the original origin, `Authorization`, `Proxy-Authorization`, `Cookie`, `X-Api-Key`, and `X-Auth-Token` are removed. Even when the redirect is allowed, credentials are never carried to a third-party domain
+5. **Redirect-loop detection**: A→B→A cycles error out; consecutive identical URLs (A→A) are excepted
 6. **Hop-count cap**: 10 by default, configuration hard cap 50
 
-The redirect layer performs only the fast hostname check (no DNS resolution, avoiding a new TOCTOU window from re-resolving in parallel with the dialer layer); the target domain's real IPs are validated again by the dialer layer at connection time — the two layers combined mean redirects cannot bypass the DNS-rebinding defense.
+The redirect layer performs only the fast hostname check and does not resolve DNS, avoiding a new TOCTOU window from resolving in parallel with the dialer layer. The target domain's real IPs are validated again by the dialer layer at connection time, so redirects cannot bypass the DNS-rebinding defense.
 
-The per-request override of `WithAllowPrivateIPs` also applies to redirect validation: the override value is propagated via context to the redirect validator and the dialer (`internal/connection/ssrf_context.go`), so that request's redirect targets are judged by the overridden policy too.
+The per-request override of `WithAllowPrivateIPs` also applies to redirect validation: the override value is propagated via context to the redirect validator and the dialer (`internal/connection/ssrf_context.go`), so that request's redirect targets follow the overridden policy.
 
 ### Redirect Domain Whitelist
 
 `RedirectWhitelist` adds domain-level control on top of IP validation, preventing open-redirect vulnerabilities:
-
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Security.RedirectWhitelist = []string{
@@ -285,13 +289,13 @@ cfg.Security.RedirectWhitelist = []string{
 // Redirects to non-whitelisted domains are blocked
 ```
 
-The wildcard `*.example.com` matches strict subdomains such as `api.example.com` and `static.cdn.example.com` but **does not match** the bare domain `example.com` (list it separately). When the whitelist is `nil`, everything is allowed (the default).
+The wildcard `*.example.com` matches strict subdomains such as `api.example.com` and `static.cdn.example.com`, and **does not match** the bare domain `example.com` (list it separately). A `nil` whitelist allows everything; that is the default.
 
 ## Configuration Examples
 
-### Secure Configuration (Handling User URLs)
+### Secure Configuration (Handling Untrusted URLs)
 
-When handling user-provided URLs, use `SecureConfig()` for the strictest SSRF protection:
+When handling untrusted URLs, use `SecureConfig()` for the strictest SSRF protection:
 
 ```go
 cfg := httpc.SecureConfig()
@@ -316,7 +320,7 @@ client, _ := httpc.New(cfg)
 
 ### Hybrid Configuration (Public + Internal)
 
-The same client needs to reach both public APIs and internal services, and the internal service subnet is known:
+One client reaches both public APIs and internal services, with the internal subnet known:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -333,7 +337,6 @@ client, _ := httpc.New(cfg)
 ## Completely Disabling SSRF Protection
 
 Test environments only. Two ways:
-
 ```go
 // Method 1: TestingConfig (also disables TLS verification and several other security features)
 client, _ := httpc.New(httpc.TestingConfig())
@@ -347,43 +350,53 @@ client, _ := httpc.New(cfg)
 `TestingConfig()` prints a security warning to `stderr` in non-test environments (see [Security Overview](./)).
 
 :::danger
-Never set `AllowPrivateIPs = true` in production. This amounts to abandoning SSRF protection entirely — an attacker can use it to reach cloud metadata, internal services, and admin interfaces.
+Never set `AllowPrivateIPs = true` in production. It abandons SSRF protection entirely, letting an attacker reach cloud metadata, internal services, and admin interfaces.
 :::
 
 ## Known Boundaries and Bypass Surfaces
 
-Per the source code, SSRF protection has the following known boundaries — know them before configuring:
+SSRF protection has the following known boundaries; review them before configuring (descriptions follow the source code):
 
 ### localhost Cannot Be Exempted via CIDR
 
-The pre-flight `isLocalhost` hostname check runs **before** CIDR exemption matching (`ValidateSSRFHost` in `internal/validation/netutil.go`: localhost first, then IP exemptions). So adding `127.0.0.0/8` to `SSRFExemptCIDRs` does not allow `localhost` or `127.x.x.x` — the request is still rejected at the pre-flight layer. If you truly need loopback access, use `WithAllowPrivateIPs(true)` (request level) or `AllowPrivateIPs = true` (client level).
+The pre-flight `isLocalhost` hostname check runs **before** CIDR exemption matching (`ValidateSSRFHost` in `internal/validation/netutil.go`: localhost first, then IP exemptions). Adding `127.0.0.0/8` to `SSRFExemptCIDRs` therefore does not allow `localhost` or `127.x.x.x`; the request is still rejected at the pre-flight layer.
+
+For loopback access, use `WithAllowPrivateIPs(true)` (request level) or `AllowPrivateIPs = true` (client level).
 
 ### Explicitly Configured Proxies Skip SSRF Validation
 
-Proxy host addresses in `ProxyURL` and `ProxyPool` are treated as **developer-configured infrastructure**: at dial time they skip SSRF validation and DoH resolution (`internal/connection/pool.go`). This is deliberate — a developer who can configure a proxy could connect to any address directly anyway, so intercepting the proxy host adds no real security. But system proxies have one limitation: `EnableSystemProxy` probes the proxy address only once, when the client is built (for the SSRF exemption); if a localhost proxy is resolved from environment variables only later (e.g. `127.0.0.1:7890`), that proxy may be blocked by SSRF protection. For dynamic local proxies, set `ProxyURL` explicitly.
+Proxy host addresses in `ProxyURL` and `ProxyPool` are treated as **developer-configured infrastructure**: at dial time they skip SSRF validation and DoH resolution (`internal/connection/pool.go`). This is deliberate, because a developer who can configure a proxy could connect to any address directly, so intercepting the proxy host adds no real security.
+
+System proxies have one limitation: `EnableSystemProxy` probes the proxy address only once, when the client is built (for the SSRF exemption). If a localhost proxy is resolved from environment variables only later (e.g. `127.0.0.1:7890`), that proxy is blocked by SSRF protection. Set `ProxyURL` explicitly for dynamic local proxies.
 
 ### Arbitrary localhost.* Subdomains Are Treated as Regular Domains
 
-Subdomains like `localhost.example.com` are **not** treated as localhost — they may be legitimate public domains. But if their DNS resolves to a loopback IP, the connection layer still intercepts them; they just no longer get the pre-flight layer's resolution-free fast check.
+Subdomains like `localhost.example.com` are **not** treated as localhost, since they can be legitimate public domains. If their DNS resolves to a loopback IP, the connection layer still intercepts them; they only lose the pre-flight layer's resolution-free fast check.
 
 ### With ValidateURL Off, the Redirect and Connection Layers Backstop
 
-With URL validation off (not recommended; outside `TestingConfig` there is almost never a legitimate reason), the pre-flight layer no longer runs; the redirect and connection layers remain effective. In that state, a `localhost` literal in the URL is only intercepted at the dialer layer once DNS resolves it to a loopback IP, the error message differs (`domain resolves only to blocked addresses`), and the legacy IP-literal fast check is gone too.
+With URL validation off (not recommended; outside `TestingConfig` there is rarely a legitimate reason), the pre-flight layer no longer runs while the redirect and connection layers remain effective. In that state, a `localhost` literal in the URL is intercepted at the dialer layer only after DNS resolves it to a loopback IP, and the legacy IP-literal fast check no longer applies.
+
+The resulting error message is `domain resolves only to blocked addresses`.
 
 ### Legacy IP Literals Are Intercepted Before DNS Resolution
 
-Notations like `2130706433`, `0x7f000001`, and `0177.0.0.1` are rejected by `net.ParseIP`, yet may be accepted by the `getaddrinfo` resolver in cgo builds and mapped to private IPs. HTTPC recognizes and intercepts these forms at the pre-flight layer with `looksLikeLegacyIPLiteral` (detection rules: `0x` prefix, dot-free all-digits, and leading-zero octal or hexadecimal segments in multi-dot forms), independent of platform resolver behavior.
+Notations like `2130706433`, `0x7f000001`, and `0177.0.0.1` are rejected by `net.ParseIP`, yet the `getaddrinfo` resolver in cgo builds accepts them and maps them to private IPs. HTTPC recognizes and intercepts these forms at the pre-flight layer with `looksLikeLegacyIPLiteral`, independent of platform resolver behavior. Detection rules: `0x` prefix, dot-free all-digits, and leading-zero octal or hexadecimal segments in multi-dot forms.
 
 ### 198.18.0.0/15 Is Deliberately Allowed
 
-The RFC 2544 benchmarking range `198.18.0.0/15` is reserved address space, yet it is **deliberately allowed** rather than blocked: Clash/Surge-style proxy tools allocate their fake-IP pool in this range, and blocking it would break normal requests in such proxy environments (see the comment on `isPrivateOrReservedIP` in `internal/validation/netutil.go` and the corresponding cases in `netutil_test`). If your environment does not use fake-IP proxies and needs this range restricted, you must validate destination IPs yourself at the caller or in a custom middleware layer.
+The RFC 2544 benchmarking range `198.18.0.0/15` is reserved address space, yet it is **deliberately allowed**: Clash/Surge-style proxy tools allocate their fake-IP pool in this range, and blocking it would reject legitimate requests in such proxy environments.
+
+The source rationale is in the comment on `isPrivateOrReservedIP` in `internal/validation/netutil.go` and the corresponding cases in `netutil_test`.
+
+For environments without fake-IP proxies that need this range restricted, validate destination IPs in the caller or in a custom middleware layer.
 
 ## Best Practices
 
 1. Use `SecureConfig()` as the security baseline for handling untrusted URLs
 2. Use `SSRFExemptCIDRs` to exempt only the CIDR ranges you actually need; avoid `AllowPrivateIPs`
 3. Configure `RedirectWhitelist` to limit redirect destination domains
-4. Disable redirects (`FollowRedirects = false`) when handling user URLs
+4. Disable redirects (`FollowRedirects = false`) when handling untrusted URLs
 5. Audit the `SSRFExemptCIDRs` configuration regularly and remove subnets no longer in use
 6. Use `AuditMiddleware` to record all requests, enabling after-the-fact tracing of SSRF attempts
 

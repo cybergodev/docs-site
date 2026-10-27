@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # 多格式配置
 
-env 库支持 `.env`、JSON、YAML 三种配置格式，可自动检测格式并加载。
+env 库可加载 `.env`、JSON、YAML 三种配置格式，按扩展名自动选择解析器，也可在同一次加载中混用。
 
 ## 格式检测
 
@@ -18,7 +18,7 @@ env 库支持 `.env`、JSON、YAML 三种配置格式，可自动检测格式并
 | `.env` | .env 格式 | `FormatEnv` |
 | `.json` | JSON | `FormatJSON` |
 | `.yaml`, `.yml` | YAML | `FormatYAML` |
-| 其他 | 自动 | `FormatAuto` |
+| 其他 | 未判定 | `FormatAuto`（没有对应解析器时，加载回退到 `.env` 解析器） |
 
 ### DetectFormat 函数
 
@@ -45,13 +45,13 @@ loader.LoadFiles("secrets.yaml")
 ### 混合格式
 
 ```go
-// 自动检测每个文件的格式
+// 每个文件按各自扩展名选择解析器
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 ```
 
 ### 覆盖顺序
 
-默认配置（`OverwriteExisting = false`）下**先加载的文件胜出**：后加载文件中的同名键会被跳过，值以最先设置的文件为准。仅当 `OverwriteExisting = true` 时，后加载的文件才覆盖先加载的。
+默认配置（`OverwriteExisting = false`）下**先加载的文件胜出**：后加载文件中的同名键会被跳过，值以最先设置的文件为准。`OverwriteExisting = true` 时反过来，后加载的文件覆盖先加载的。
 
 ```go
 // 默认 first-wins：同名键以 .env 中的值为准
@@ -70,7 +70,7 @@ loader2.LoadFiles(".env", "config.json", "secrets.yaml")
 ```
 
 ::: tip 提示
-`DevelopmentConfig()` 与 `TestingConfig()` 预设默认开启 `OverwriteExisting = true`（后加载覆盖先加载）；包级 `env.Load()` 使用 `DefaultConfig` 保持 first-wins，需要 last-wins 时改用 `env.LoadWithConfig` 并设置 `cfg.OverwriteExisting = true`。
+`DevelopmentConfig()` 与 `TestingConfig()` 预设已内置 `OverwriteExisting = true`（后加载覆盖先加载）。包级 `env.Load()` 使用 `DefaultConfig`，需要 last-wins 时改用 `env.Overload()`（同时会用文件值覆盖进程环境中的同名变量），或 `env.LoadWithConfig` 并设置该选项。
 :::
 
 ## JSON 格式
@@ -90,12 +90,12 @@ loader2.LoadFiles(".env", "config.json", "secrets.yaml")
 ```
 
 ::: tip 注意
-嵌套对象会被扁平化为 `DATABASE_HOST`、`DATABASE_PORT`。
+嵌套对象会被扁平化为 `DATABASE_HOST`、`DATABASE_PORT` 这样的下划线键。
 :::
 
 ### 键名解析
 
-JSON/YAML 的嵌套结构会被扁平化存储。库支持多种键名访问方式：
+JSON/YAML 的嵌套结构在加载时扁平化存储。同一个值有三种访问写法：
 
 ```go
 loader.LoadFiles("config.json")
@@ -104,15 +104,15 @@ loader.LoadFiles("config.json")
 // 存储为：DATABASE_HOST=localhost, DATABASE_PORT=5432
 
 // 方式一：扁平化键名（推荐）
-host := loader.GetString("DATABASE_HOST")   // localhost
-port := loader.GetInt("DATABASE_PORT")      // 5432
+hostFlat := loader.GetString("DATABASE_HOST")  // localhost
+portFlat := loader.GetInt("DATABASE_PORT")     // 5432
 
 // 方式二：点号路径（自动转换）
-host := loader.GetString("database.host")   // localhost
-port := loader.GetInt("database.port")      // 5432
+hostDot := loader.GetString("database.host")   // localhost
+portDot := loader.GetInt("database.port")      // 5432
 
 // 方式三：大写点号路径
-host := loader.GetString("DATABASE.HOST")   // localhost
+hostUpper := loader.GetString("DATABASE.HOST") // localhost
 ```
 
 **解析规则：**
@@ -125,8 +125,8 @@ host := loader.GetString("DATABASE.HOST")   // localhost
 | `"servers.0.host"` | `"SERVERS_0_HOST"`（数组索引） |
 
 ::: tip 推荐用法
-- **代码中使用扁平化键名**：`GetString("DATABASE_HOST")` - 明确、高效
-- **配置文件中可读路径**：JSON/YAML 使用自然嵌套结构
+- **代码中使用扁平化键名**：`GetString("DATABASE_HOST")` 无需转换，直接命中存储键
+- **配置文件中用自然嵌套**：JSON/YAML 保持 `database.host` 这样的可读结构
 :::
 
 **扁平化规则：**
@@ -163,7 +163,7 @@ hosts := env.GetSliceFrom[string](loader, "HOSTS")
 // hosts = ["server1.example.com", "server2.example.com"]
 ```
 
-对象数组（`SERVERS_N_HOST` 形态）没有整列聚合函数，只能像上面那样按下标逐个读取；不要用「取到空字符串即终止」的循环——空值与缺失键都会返回 `""`，无法区分。字符串数组则统一用 `GetSliceFrom`（索引键优先、逗号分隔回退）。
+对象数组（`SERVERS_N_HOST` 形态）没有整列聚合函数，只能按上面的写法按下标逐个读取。不要写「取到空字符串就停止」的循环：值本身为空与键不存在都返回 `""`，循环无法区分两者。字符串数组统一用 `GetSliceFrom`（索引键优先，逗号分隔回退）。
 
 ### JSON 解析配置
 
@@ -173,13 +173,15 @@ cfg := env.DefaultConfig()
 // null 值转为空字符串（默认 true）
 cfg.JSONNullAsEmpty = true
 
-// 数字转为字符串（默认 true）
+// 数字转为规范十进制字符串（默认 true，如 "8080"、"0.5"；
+// 关闭后按 Go 默认浮点格式渲染，如 1e21 → "1e+21"）
 cfg.JSONNumberAsString = true
 
-// 布尔值转为字符串（默认 true）
-cfg.JSONBoolAsString = true
+// 仅为与 YAML 对称保留，对 JSON 输出无影响（默认 false，已标记 Deprecated）：
+// 解码后的 JSON 布尔没有原始文本可保留，总是渲染为 "true"/"false"
+cfg.JSONBoolAsString = false
 
-// 最大嵌套深度（默认 10）
+// 最大嵌套深度（默认 16，取值 1–100）
 cfg.JSONMaxDepth = 20
 ```
 
@@ -196,12 +198,12 @@ cfg.JSONMaxDepth = 20
 
 ```go
 // JSONNumberAsString = true（默认）
-port := loader.GetString("PORT")  // "8080"（字符串）
-port := loader.GetInt("PORT")     // 8080（整数）
+portStr := loader.GetString("PORT") // "8080"（字符串）
+portInt := loader.GetInt("PORT")    // 8080（整数）
 
-// JSONBoolAsString = true（默认）
-debug := loader.GetString("DEBUG")  // "true"（字符串）
-debug := loader.GetBool("DEBUG")    // true（布尔）
+// JSON 布尔总是渲染为规范的 "true"/"false"，JSONBoolAsString 不参与判定
+debugStr := loader.GetString("DEBUG") // "true"（字符串）
+debugBool := loader.GetBool("DEBUG")  // true（布尔）
 ```
 
 ## YAML 格式
@@ -269,13 +271,13 @@ cfg := env.DefaultConfig()
 // null/~ 值转为空字符串（默认 true）
 cfg.YAMLNullAsEmpty = true
 
-// 数字转为字符串（默认 true）
+// 数字标量归一化为规范形式（默认 true，如 "007" → "7"；关闭后原样保留书写形式）
 cfg.YAMLNumberAsString = true
 
-// 布尔值转为字符串（默认 true）
+// 布尔值渲染为规范的 "true"/"false"（默认 true）；关闭时保留 YAML 中的书写形式（如 False）
 cfg.YAMLBoolAsString = true
 
-// 最大嵌套深度（默认 10）
+// 最大嵌套深度（默认 16，取值 1–100）
 cfg.YAMLMaxDepth = 15
 ```
 
@@ -293,12 +295,12 @@ RATES:
 
 ```go
 // YAMLNumberAsString = true（默认）
-port := loader.GetString("PORT")  // "8080"（字符串）
-port := loader.GetInt("PORT")     // 8080（整数）
+portStr := loader.GetString("PORT") // "8080"（字符串）
+portInt := loader.GetInt("PORT")    // 8080（整数）
 
 // YAMLBoolAsString = true（默认）
-debug := loader.GetString("DEBUG")  // "true"（字符串）
-debug := loader.GetBool("DEBUG")    // true（布尔）
+debugStr := loader.GetString("DEBUG") // "true"（字符串）
+debugBool := loader.GetBool("DEBUG")  // true（布尔）
 
 // 列表访问
 rates := env.GetSliceFrom[float64](loader, "RATES")  // [0.1, 0.2, 0.3]
@@ -317,9 +319,9 @@ DEBUG=true
 # 引号
 MESSAGE="Hello World"
 
-# 字面 $ 用 $$ 转义（注意：单引号不阻止变量展开，
-# LITERAL='literal ${noexpand}' 中的 ${noexpand} 仍会被展开）
+# 字面 $ 用 $$ 转义；单引号的值不参与变量展开
 PRICE=100$$
+LITERAL='literal ${noexpand}'
 
 # 变量展开
 BASE_URL=https://api.example.com
@@ -331,11 +333,11 @@ LOG_LEVEL=info
 
 ### 变量展开
 
-完整的展开语法（`$$` 转义、`${VAR:-default}`、展开作用域等）见[变量展开](./variable-expansion)指南，本节为速览：
+变量展开只作用于 `.env` 文件的值，JSON 与 YAML 文档中的 `$` 保持字面量。`$$` 转义、`${VAR:-default}`、展开作用域等规则见[变量展开](./variable-expansion)指南，这里先看最小示例：
 
 ```go
 cfg := env.DefaultConfig()
-cfg.ExpandVariables = true  // 默认启用
+cfg.ExpandVariables = true  // 可省略，DefaultConfig 已开启
 
 loader, _ := env.New(cfg)
 loader.LoadFiles(".env")
@@ -353,7 +355,7 @@ apiURL := loader.GetString("API_URL")
 | 语法 | 说明 |
 |------|------|
 | `${VAR}` | 引用变量 |
-| `${VAR:-default}` | 变量不存在时使用默认值 |
+| `${VAR:-default}` | 变量未定义时使用默认值 |
 
 ```bash
 # 展开示例
@@ -378,18 +380,22 @@ export DATABASE_PORT=5432
 
 ### YAML 风格语法
 
-`KEY: value` 的冒号分隔写法**始终可用**（行解析器无条件接受 `=` 与 `:` 作为分隔符，无需开关）。`AllowYamlSyntax` 控制的是值的 YAML 标量语义：
+默认（`DefaultConfig()` 的 `AllowYamlSyntax = false`）下，**只有 `=` 是键值分隔符**。`KEY: value` 这类行没有 `=`，会被当作无分隔行跳过；开启审计时，每次跳过记一条解析审计事件。
+
+把 `AllowYamlSyntax` 设为 `true` 后，`:` 才作为分隔符，且值按 YAML 标量语义解析（`null`、`~` → 空字符串，数字与布尔保留原样文本）：
 
 ```go
 cfg := env.DefaultConfig()
-cfg.AllowYamlSyntax = true  // 值按 YAML 标量语义解析（null/~ → 空字符串）
+cfg.AllowYamlSyntax = true  // 开启后 ':' 才可作为分隔符，值按 YAML 标量语义解析
 ```
 
 ```bash
-# 冒号分隔键值对（始终支持）
+# 仅在 AllowYamlSyntax = true 时生效
 KEY: value
 ANOTHER_KEY: "quoted value"
 ```
+
+`DevelopmentConfig()` 预设已开启 `AllowYamlSyntax`；`DefaultConfig()`、`TestingConfig()`、`ProductionConfig()` 均为关闭状态。
 
 ## 混合配置模式
 
@@ -439,7 +445,7 @@ func loadConfig(loader *env.Loader) error {
 ```
 
 ::: tip 注意
-默认（`OverwriteExisting = false`）为 first-wins：后加载的环境配置与本地配置只**补充** base.json 中没有的键，同名键仍以 base.json 为准。若需要环境/本地配置覆盖基础配置，须设置 `cfg.OverwriteExisting = true`（如改用 `DevelopmentConfig()` 预设，该选项默认开启）。
+默认（`OverwriteExisting = false`）为 first-wins（见[覆盖顺序](#覆盖顺序)）：后加载的环境配置与本地配置只**补充** base.json 中没有的键。若需要它们覆盖基础配置，须设置 `cfg.OverwriteExisting = true`（`DevelopmentConfig()` 预设默认开启）。
 :::
 
 ### 按功能分离
@@ -463,7 +469,7 @@ loader.LoadFiles(
 
 ### 配置优先级
 
-默认（`OverwriteExisting = false`）时先加载的文件胜出，同名键以最先出现的值为准：
+默认（`OverwriteExisting = false`）时先加载的文件胜出（见[覆盖顺序](#覆盖顺序)），同名键以最先出现的值为准：
 
 ```text
 命令行参数 > 环境变量 > base 配置 > 环境配置 > local 配置
@@ -477,17 +483,17 @@ loader.LoadFiles(
 
 ## 序列化
 
-`env.Marshal` 将 map 或结构体导出为 `.env` / JSON / YAML，`env.UnmarshalMap` / `env.UnmarshalStruct` 反向解析；传入 `env.FormatAuto` 可按内容自动检测格式。
+`env.Marshal` 把 map 或结构体导出为 `.env` / JSON / YAML 文本，`env.UnmarshalMap` / `env.UnmarshalStruct` 反向解析。反序列化传入 `env.FormatAuto` 时按内容自动检测格式；`Marshal` 不做内容检测，传 `FormatAuto` 与缺省参数一样按 `.env` 输出。
 
-注意两种结构化输出的加工行为：Marshal 到 JSON 会把下划线键（如 `DATABASE_HOST`）重建为嵌套对象，并把 `"8080"`、`"true"` 等字符串推断回 number / bool；Marshal 到 YAML 对可被强制转换类型的标量自动加引号（如 `PORT: "8080"`），保证读回往返一致。
+两种结构化输出会改写键值。Marshal 到 JSON 时，下划线键（如 `DATABASE_HOST`）被拆回嵌套对象，`"8080"`、`"true"` 等字符串被推断回 number / bool；不能原样回写的写法（`"007"`、`"1e3"`、`"null"`）保持字符串。Marshal 到 YAML 时键保持扁平，但读回会被强制转换类型的标量自动加引号（如 `PORT: "8080"`），保证往返后仍是字符串。
 
 函数族详解与输出形态示例见[序列化](./serialization)指南。
 
 ## 自定义格式
 
-内置三格式之外，可实现 `EnvParser` 接口并用 `RegisterParser` 注册自定义格式（内置的 `.env` / JSON / YAML 不可覆盖，`ForceRegisterParser` 除外）。
+内置三种格式之外，可实现 `EnvParser` 接口并用 `RegisterParser` 注册自定义格式。内置的 `.env` / JSON / YAML 不能被 `RegisterParser` 覆盖，替换内置解析器要用 `ForceRegisterParser`。
 
-注意 `LoadFiles` 按扩展名路由，只识别 `.env` / `.json` / `.yaml` / `.yml`——自定义格式号不会被自动路由到。完整示例与两条加载路径见[自定义解析器](./custom-parser)指南。
+`LoadFiles` 按扩展名路由，只识别 `.env` / `.json` / `.yaml` / `.yml`，自定义格式号不会被自动命中。三条可用加载路径：用 `ForceRegisterParser` 覆盖 `FormatEnv` 并把文件命名为 `*.env`；注册到 `FormatAuto`；或手动调用解析器后逐条 `Set`。完整示例见[自定义解析器](./custom-parser)指南。
 
 ## 完整示例
 
@@ -547,13 +553,13 @@ func main() {
 | 数组元素使用 `键_索引` | `{"hosts": ["a", "b"]}` → `HOSTS_0`、`HOSTS_1` |
 | `null` 转为空字符串 | `{"name": null}` → `NAME=""` |
 | 数字与布尔转为字符串 | `{"port": 5432}` → `PORT="5432"` |
-| 嵌套深度上限默认 10 | 由 `JSONMaxDepth`/`YAMLMaxDepth` 控制（1–100） |
+| 嵌套深度上限默认 16 | 由 `JSONMaxDepth`/`YAMLMaxDepth` 控制（1–100） |
 
-文件加载时的转换行为受 `Config` 的 `JSONConfig`/`YAMLConfig` 控制（如 `JSONNullAsEmpty`、`JSONNumberAsString`）；而 `UnmarshalMap`/`UnmarshalStruct` 的字符串解析路径使用内置默认规则，不读取这些配置。
+文件加载时的转换行为受 `Config` 的 `JSONConfig` / `YAMLConfig` 控制（如 `JSONNullAsEmpty`、`JSONNumberAsString`）。`UnmarshalMap` / `UnmarshalStruct` 的字符串解析路径走内置默认规则，不读取这些配置；需要自定义时改用 `UnmarshalMapWithConfig` / `UnmarshalStructWithConfig`。
 
 ### 前缀过滤（Prefix）
 
-`ComponentConfig.Prefix` 限定只加载以指定前缀开头的变量（大小写不敏感），常用于共享配置文件中只取本应用的部分：
+`ComponentConfig.Prefix` 限定文件加载时只保留键名以指定前缀开头的变量（大小写不敏感，`Set`/`Delete` 不受影响），用于从共享配置文件中只取本应用的部分：
 
 <!-- check-code: skip -->
 ```go
@@ -562,11 +568,11 @@ cfg.Prefix = "MYAPP_" // 只加载 MYAPP_ 开头的键
 loader, _ := env.New(cfg)
 ```
 
-前缀过滤与 `OverwriteExisting` 策略叠加生效：被过滤掉的键不会覆盖也不会进入存储。
+前缀过滤先于 `OverwriteExisting` 策略判定：被过滤掉的键既不覆盖已有值，也不进入存储。
 
 ### 未知扩展名的回退行为
 
-`DetectFormat` 对未知扩展名返回 `FormatAuto`，此时加载器**回退到 `.env` 解析器**按行解析。因此 `config.conf`、`config.txt` 等文件若内容是 `KEY=value` 形式，仍可正常加载。
+`DetectFormat` 对未知扩展名返回 `FormatAuto`。解析器表里没有 `FormatAuto` 条目时，加载器回退到 `.env` 解析器按行解析；若用 `RegisterParser(env.FormatAuto, ...)` 注册过，则改走该解析器。因此 `config.conf`、`config.txt` 等内容为 `KEY=value` 的文件，未注册自定义解析器时可以正常加载。
 
 ## 相关文档
 

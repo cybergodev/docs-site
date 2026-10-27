@@ -1,15 +1,17 @@
 ---
 sidebar_label: "格式化输出"
 title: "格式化输出 - CyberGo JSON | 打印与美化 JSON 指南"
-description: "CyberGo JSON 格式化输出指南：Prettify、EncodePretty、MarshalIndent、Compact 与 HTMLEscape 选型对比及可运行示例，覆盖自定义缩进、已有文本压缩与流式输出等场景，并说明已移除 Print 系列的迁移替代方案。"
+description: "CyberGo JSON 格式化输出：Prettify、EncodePretty、MarshalIndent、Compact 与 HTMLEscape 的选型对比与示例。"
 sidebar_position: 30
 ---
 
 # 格式化输出
 
 ::: tip 迁移提示
-早期版本提供的 Print / PrintPretty 系列直接打印函数（Print、PrintE、PrintPretty、PrintPrettyE）已从库中移除，不再提供；迁移细节与替代方案见本页末尾的[历史沿革](#历史沿革-已移除的-print-系列)一节。
+早期版本的 Print / PrintPretty 系列直接打印函数（Print、PrintE、PrintPretty、PrintPrettyE）已从库中移除，不再提供。迁移细节与替代方案见[历史沿革](#历史沿革-已移除的-print-系列)。
 :::
+
+`Marshal`/`Encode` 等编码函数返回紧凑 JSON；需要缩进、重排或压缩已有文本时，按输入类型选下表的函数。
 
 ## 格式化工具对照
 
@@ -30,8 +32,8 @@ sidebar_position: 30
 
 ::: tip 三步选型
 1. 输入是 **Go 值**：要 `[]byte` 用 `Marshal`，要 `string` 用 `Encode`；需要缩进时分别换 `MarshalIndent`、`EncodePretty`
-2. 输入已是 **JSON 文本**：美化用 `Prettify`，压缩用 `CompactString`；需要与标准库签名完全一致时用 buffer 版 `Compact`/`Indent`
-3. 输出到**流**（文件/网络）：`NewEncoder` + `SetIndent` 逐条写出，避免整块拼大字符串
+2. 输入已是 **JSON 文本**：美化用 `Prettify`，压缩用 `CompactString`；需要与标准库签名一致时用 buffer 版 `Compact`/`Indent`
+3. 输出到**流**（文件/网络）：`NewEncoder` + `SetIndent` 逐条写出，避免拼一个大字符串
 :::
 
 ## 自定义缩进
@@ -50,7 +52,7 @@ import (
 func main() {
 	data := map[string]any{"name": "Alice", "age": 30}
 
-	// 方式一：标准库签名 MarshalIndent（prefix 通常留空）
+	// 方式一：标准库签名 MarshalIndent（prefix 留空）
 	b, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
 		panic(err)
@@ -80,7 +82,7 @@ func main() {
 
 ## 处理已有 JSON 文本
 
-手里已经是 JSON 文本（如日志、接口返回）时，用格式化函数原地转换，无需再走一遍结构体：
+输入已是 JSON 文本（日志、接口返回）时，用格式化函数就地转换，不必先解码成结构体：
 
 ```go
 package main
@@ -126,7 +128,7 @@ func main() {
 
 ## HTML 安全转义
 
-`HTMLEscape` 与标准库签名一致：把 JSON 文本中的 `<`、`>`、`&`、U+2028、U+2029 转义为 `\u00XX` 形式，防止 JSON 内嵌 HTML 时被浏览器误解析。它做的是**字符级转义**，不重新编码、不改空白：
+`HTMLEscape` 与标准库签名一致：把 JSON 文本中的 `<`、`>`、`&`、U+2028、U+2029 转义为 `\u00XX` 形式，避免 JSON 内嵌 HTML 时被浏览器误解析。它只做**字符级转义**，不重新编码、不改空白：
 
 ```go
 package main
@@ -151,7 +153,7 @@ func main() {
 ```
 
 ::: tip 什么时候需要手动转义？
-`Marshal`/`Encode` 默认已开启 HTML 转义（`Config.EscapeHTML: true`），编码产物本身是安全的。`HTMLEscape` 主要用于处理**外部拿到的 JSON 文本**——比如要把第三方返回的 JSON 原样内嵌到 HTML 页面时，先过一遍再输出。
+`Marshal`/`Encode` 默认已开启 HTML 转义（`Config.EscapeHTML: true`），编码产物本身是安全的。`HTMLEscape` 用于处理**外部拿到的 JSON 文本**——比如把第三方返回的 JSON 原样内嵌到 HTML 页面时，先过一遍再输出。
 :::
 
 ## 流式输出到 Writer
@@ -233,7 +235,7 @@ func main() {
 
 ## 历史沿革：已移除的 Print 系列
 
-早期版本的 Print、PrintPretty、PrintE、PrintPrettyE 四个直接打印函数已在库中移除，不再提供。如需格式化 JSON，请使用 [`Prettify`](../api-reference/index#格式化) 或标准库兼容的 `MarshalIndent`。各场景的替代方案如下。
+早期版本的 Print、PrintPretty、PrintE、PrintPrettyE 四个直接打印函数已在库中移除，不再提供。格式化 JSON 改用 [`Prettify`](../api-reference/index#格式化) 或标准库兼容的 `MarshalIndent`。各场景的替代方案如下。
 
 ### 打印紧凑 JSON
 
@@ -258,7 +260,7 @@ fmt.Println(string(b))
 ```
 
 ::: warning EncodeWithConfig 已废弃
-`json.EncodeWithConfig` 已标记为废弃（与 `Encode` 功能等价），在 v1 生命周期内保留、不会移除。新代码请使用 `Encode` 或 `Marshal`。
+`json.EncodeWithConfig` 已标记为废弃（与 `Encode` 功能等价），在 v1 生命周期内保留、不会移除。新代码用 `Encode` 或 `Marshal`。
 :::
 
 ### 打印格式化 JSON

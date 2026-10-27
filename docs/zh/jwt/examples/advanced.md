@@ -1,7 +1,7 @@
 ---
 sidebar_label: "高级示例"
 title: "高级示例 - CyberGo JWT | 非对称签名与自定义存储"
-description: "高级示例集：RSA、RSA-PSS 与 ECDSA 非对称签名、密钥分离跨服务验证、PEM 密钥加载、CustomClaims 自定义声明、Redis 黑名单后端、FixedClock 时钟注入及未验证令牌解析。"
+description: "高级示例集：RSA、RSA-PSS 与 ECDSA 非对称签名的完整示例，密钥分离下的跨服务验证与占位私钥用法，PEM 私钥与公钥的加载，CustomClaims 自定义声明与 ParseInto/RefreshInto，Redis 黑名单后端、FixedClock 时钟注入及未验证令牌解析。"
 sidebar_position: 20
 ---
 
@@ -196,9 +196,16 @@ func main() {
 	fmt.Println("认证服务签发令牌（私钥）")
 
 	// --- API 服务：通过公钥验证令牌 ---
+	// 当前 API 要求 SigningKey 非空，这里放一个占位私钥；
+	// 只要设置了 VerificationKey，验证就只使用该公钥，占位私钥不参与任何运算。
+	placeholderKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	apiCfg := jwt.DefaultConfig()
 	apiCfg.SigningMethod = jwt.SigningMethodRS256
-	apiCfg.SigningKey = privateKey     // 当前 API 要求 SigningKey 非空
+	apiCfg.SigningKey = placeholderKey // 占位私钥，不参与验证
 	apiCfg.VerificationKey = publicKey // 验证时实际使用此公钥
 	apiCfg.Issuer = "auth-service"     // 必须与签发方一致
 
@@ -212,13 +219,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("API 服务验证通过（公钥）") // 已通过公钥验证
-	fmt.Println("UserID:", parsed.UserID)
+	fmt.Println("API 服务验证通过（公钥）")
+	fmt.Println("UserID:", parsed.UserID) // 输出：user_dist
 }
 ```
 
-:::warning SigningKey 必填
-当前 API 要求 `SigningKey` 非空（校验阶段强制检查），因此 API 服务的配置中仍需写入私钥。但验证流程在设置了 `VerificationKey` 后只使用公钥。仅验证的 Processor 不应调用 `Create` / `CreateRefresh`。
+:::warning 仅验证实例不要签发
+当前 API 要求 `SigningKey` 非空且必须是合法的 `*rsa.PrivateKey`，因此 API 服务仍需填入私钥。占位私钥即可：验证只使用 `VerificationKey`，与签发密钥无关。但仅验证的 Processor 不应调用 `Create` / `CreateRefresh`，那会用占位私钥签出无法验证的令牌。
 :::
 
 ## 从 PEM 文件加载密钥

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Utility Functions"
 title: "Utility Functions - CyberGo JSON | Helper Usage & Examples"
-description: "CyberGo JSON utility helpers: CompareJSON, MergeJSON, ClearCache/GetStats, WarmupCache, SafeError, RedactedPath, AccessResult and RegisterDangerousPattern."
+description: "CyberGo JSON helper functions: CompareJSON and MergeJSON, WarmupCache and GetStats, SafeError and RedactedPath, plus the dangerous-pattern registry."
 sidebar_position: 90
 ---
 
 # Utility Functions
 
-The json package provides a rich set of utility functions for JSON comparison, cache management, and general tooling.
+The package-level helpers cover JSON comparison and merging, cache and statistics, global processor management, security-mode registration, and error redaction.
 
 ## JSON Comparison Functions
 
@@ -17,7 +17,7 @@ Signature: `func CompareJSON(json1, json2 string, cfg ...Config) (bool, error)`
 
 Compares two JSON strings for equality. Handles numeric-precision differences and key-order differences.
 
-Without cfg, behavior matches history (no security validation; both sides are marshaled with `encoding/json`). With cfg, security validation (size/depth/dangerous-pattern limits) is applied to both inputs and the configured encoding is used for a symmetric comparison.
+Without cfg it keeps the historical behavior: no security validation, and both sides are marshaled with `encoding/json`. With cfg, both inputs pass security validation (size/depth/dangerous-pattern limits) and the comparison is symmetric under the configured encoding.
 
 ```go
 // Different key order, same content
@@ -48,12 +48,13 @@ equal, err = json.CompareJSON(a, b, json.SecurityConfig())
 
 Signature: `func MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
 
-Merges two JSON objects; the merge mode is configurable via Config. See [Modification Functions](./functions/modify#mergejson).
+Merges two JSON objects. The recursive deep-merge strategy comes from `Config.MergeMode` (default `MergeUnion`); see [Modification Functions](./functions/modify#mergejson).
 
 **Semantic details**:
 
 - **Both inputs must be JSON objects** (a non-object top level reports `first/second JSON is not an object`)
-- Nested objects are deep-merged recursively per `Config.MergeMode`; primitive values and arrays take the `json2` value directly
+- Nested objects are deep-merged recursively per `Config.MergeMode`; primitive values take the `json2` value
+- Arrays merge per mode too: `MergeUnion` concatenates both, order-preserving and deduplicated; `MergeIntersection` keeps shared elements; `MergeDifference` keeps only elements unique to `json1`
 - Numbers are decoded with precision preservation, normalized to `float64`, then encoded (`1` and `1.0` are equivalent)
 - **No security validation** — it is a pure structural utility: decode, merge, re-encode (unlike `CompareJSON` with cfg)
 
@@ -87,7 +88,7 @@ json.ClearCache()
 
 Signature: `func GetStats() Stats`
 
-Gets the statistics of the global processor.
+Returns the global processor's statistics. Cache fields (`CacheSize`, `HitCount`, `HitRatio`, etc.) come from the cache instance. `OperationCount` and `ErrorCount` are atomic counters that **do not depend on `EnableMetrics`**: with the switch off they still increment per operation.
 
 ```go
 stats := json.GetStats()
@@ -101,7 +102,15 @@ fmt.Printf("Cache size: %d\n", stats.CacheSize)
 
 Signature: `func GetHealthStatus() HealthStatus`
 
-Gets the health status of the global processor.
+Returns the global processor's health status. `Healthy` is the logical AND of the individual checks, with these defaults:
+
+| Check | Verdict |
+|-------|---------|
+| `metrics` | Unhealthy when the metrics collector was never initialized (which is the case with `EnableMetrics=false`) |
+| `memory` | Unhealthy when heap allocation exceeds 1GB |
+| `error_rate` | Unhealthy when the collector is unavailable; otherwise unhealthy when the failed-operation share exceeds 10%, and healthy when no operation has run yet |
+
+With `EnableMetrics=false` the processor creates no metrics collector, so `metrics` reports `Metrics collector not initialized` and `error_rate` reports `Cannot check error rates: metrics not available`; the overall `Healthy` is therefore `false`. Once `EnableMetrics` is on both checks evaluate normally, and the overall verdict depends on them together with `memory`.
 
 ```go
 status := json.GetHealthStatus()
@@ -132,7 +141,7 @@ p.ClearCache()
 
 Signature: `func (p *Processor) GetStats() Stats`
 
-Gets the processor's statistics.
+Gets the processor's statistics; field semantics match the package-level `GetStats` (`OperationCount`/`ErrorCount` likewise do not depend on `EnableMetrics`).
 
 ```go
 p, err := json.New()
@@ -150,7 +159,7 @@ fmt.Printf("Cache size: %d\n", stats.CacheSize)
 
 Signature: `func (p *Processor) GetHealthStatus() HealthStatus`
 
-Gets the processor's health status.
+Gets the processor's health status; the verdict rules match the package-level `GetHealthStatus`.
 
 ```go
 p, err := json.New()
@@ -169,7 +178,7 @@ if status.Healthy {
 
 Signature: `func WarmupCache(jsonStr string, paths []string, cfg ...Config) (*WarmupResult, error)`
 
-Warms up the cache to improve the performance of subsequent operations.
+Reads the given paths into the global processor's cache ahead of time so later lookups of the same paths hit it. The returned `WarmupResult` records success and failure counts.
 
 ```go
 data := `{"user": {"name": "Alice", "email": "alice@example.com"}, "items": [{"id": 1}]}`
@@ -208,8 +217,8 @@ Package-level functions use a global processor internally. It can be customized 
 
 **Behavior details**:
 
-- `SetGlobalProcessor(nil)` is a no-op; after a successful replacement the **old processor is closed synchronously** (Close waits up to about 5 seconds internally); in-flight operations are unaffected
-- `ShutdownGlobalProcessor` is thread-safe: it closes the default processor, the fallback processor, and **all processors in the config cache**, and clears global caches such as the path-type cache. The next package-level call then **creates a fresh default processor automatically** — well suited to cleanup at the end of a long-lived service
+- `SetGlobalProcessor(nil)` is a no-op. After a successful replacement the **old processor is closed synchronously**: Close first marks it closed (new operations immediately return `ErrProcessorClosed`), then waits up to 5 seconds for in-flight operations to finish
+- `ShutdownGlobalProcessor` is thread-safe: it closes the default processor, the fallback processor, and **all processors in the config cache**, and clears the path-type cache and the struct-encoder cache. The next package-level call then **creates a fresh default processor automatically** — well suited to cleanup at the end of a long-lived service
 
 :::tip Detailed usage
 For complete examples and lifecycle management of the global processor, see [Processor Overview](./processor/#global-processor-management) and the [Processor Guide](../getting-started/processor-guide#global-processor).
@@ -220,20 +229,20 @@ For complete examples and lifecycle management of the global processor, see [Pro
 ## Output Functions
 
 ::: warning API change notice
-Print, PrintPretty, PrintE, and PrintPrettyE have been removed from the library and are no longer provided. Use [Encode](./functions/output#encode), [EncodePretty](./functions/output#encodepretty), or [Prettify](./functions/output#prettify) together with `fmt.Println` instead (`EncodeWithConfig` is deprecated, equivalent to `Encode`). See [Formatted Output](../getting-started/print).
+Print, PrintPretty, PrintE, and PrintPrettyE have been removed from the library. Use [Encode](./functions/output#encode), [EncodePretty](./functions/output#encodepretty), or [Prettify](./functions/output#prettify) together with `fmt.Println` instead (`EncodeWithConfig` is deprecated, equivalent to `Encode`). See [Formatted Output](../getting-started/print).
 :::
 
 ---
 
 ## Buffer Compatibility Functions
 
-`Compact`, `Indent`, and `HTMLEscape` are fully compatible with the `encoding/json` standard library while supporting extra configuration through the `cfg` parameter. For complete examples and Processor equivalents see [Encoding Output Functions](./functions/output#compact).
+`Compact`, `Indent`, and `HTMLEscape` have the same signatures as their `encoding/json` counterparts and additionally accept a `cfg` parameter. For complete examples and Processor equivalents see [Encoding Output Functions](./functions/output#compact).
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `Compact` | `func Compact(dst *bytes.Buffer, src []byte, cfg ...Config) error` | Removes insignificant whitespace and **writes to dst** (compatible with `encoding/json.Compact`, mirrors `Processor.CompactBuffer`) |
+| `Compact` | `func Compact(dst *bytes.Buffer, src []byte, cfg ...Config) error` | Removes insignificant whitespace and **writes to dst** (same signature as `encoding/json.Compact`, mirrors `Processor.CompactBuffer`) |
 | `CompactString` | `func CompactString(jsonStr string, cfg ...Config) (string, error)` | String in, string out (mirrors `Processor.Compact`) — a **different function** from `Compact` |
-| `Indent` | `func Indent(dst *bytes.Buffer, src []byte, prefix, indent string, cfg ...Config) error` | Indent-formats and writes to dst (compatible with `encoding/json.Indent`) |
+| `Indent` | `func Indent(dst *bytes.Buffer, src []byte, prefix, indent string, cfg ...Config) error` | Indent-formats and writes to dst (same signature as `encoding/json.Indent`) |
 | `HTMLEscape` | `func HTMLEscape(dst *bytes.Buffer, src []byte, cfg ...Config)` | Escapes `<` `>` `&` plus U+2028/U+2029 into dst; no return value |
 
 ---
@@ -242,7 +251,7 @@ Print, PrintPretty, PrintE, and PrintPrettyE have been removed from the library 
 
 ### Config.AddDangerousPattern
 
-Register custom dangerous patterns via the Config `AddDangerousPattern` method or the `AdditionalDangerousPatterns` field.
+Register custom dangerous patterns with the `Config.AddDangerousPattern` method or the `AdditionalDangerousPatterns` field.
 
 ```go
 cfg := json.DefaultConfig()
@@ -292,7 +301,9 @@ defer p.Close()
 
 ## Security Mode Registration (Global Functions)
 
-Besides the Config-level `AdditionalDangerousPatterns`, the library also maintains a **global registry** suited to process-wide uniform security policies: register once at process startup and it applies to **every Processor** in the process — validation reads the global registry in real time, so already-created Processors need no rebuilding. It is independent of each Processor's configuration (it stays in effect even when `DisableDefaultPatterns` is set), and both registration and removal are thread-safe.
+Besides the Config-level `AdditionalDangerousPatterns`, the library also maintains a **global registry** for process-wide security policy. Register once at process startup and it applies to **every Processor** in the process: validation reads the global registry in real time, so already-created Processors need no rebuilding.
+
+The registry is independent of each Processor's configuration and stays in effect even when `DisableDefaultPatterns` is set. Registration and removal are both thread-safe.
 
 The `DangerousPattern` struct and `PatternLevel` levels are defined in the [Security Mode Functions](#security-mode-functions) section above.
 
@@ -384,7 +395,7 @@ func main() {
 func ListDangerousPatterns() []DangerousPattern
 ```
 
-Returns all patterns in the global registry, i.e. the **custom patterns** registered via `RegisterDangerousPattern` — built-in patterns are maintained by the library itself: they are neither listed nor removable. Returns an empty (non-nil) slice when the registry is empty.
+Returns all patterns in the global registry, i.e. the **custom patterns** registered with `RegisterDangerousPattern` — built-in patterns are maintained by the library itself: they are neither listed nor removable. Returns an empty (non-nil) slice when the registry is empty.
 
 **Returns**
 
@@ -428,12 +439,12 @@ For the complete Security Mode design (built-in dangerous pattern list, `Securit
 
 Signature: `func SafeError(err error) string`
 
-Returns a client-safe error message without internal details. Suitable for API responses.
+Returns the error text with the wrapper's `Op`/`Path` context stripped: a `JsonsError` returns its inner sentinel text when one is set, otherwise its message field; any other error is returned unchanged. The underlying message may still embed a path (validation errors include the offending path), so redact explicitly when that matters.
 
 ```go
 val, err := json.Get(data, "user.name")
 if err != nil {
-    // Returns a safe error message (no paths, internal state, or other sensitive info)
+    // Strip the wrapper context before returning it to the caller
     fmt.Println(json.SafeError(err))
 }
 ```
@@ -444,7 +455,7 @@ if err != nil {
 
 Signature: `func RedactedPath(path string) string`
 
-Returns a redacted path for safe logging. Hides the sensitive parts of a path.
+Returns the redacted path text: any non-empty path becomes `***`; an empty path returns an empty string. The whole path is masked, so no fragment survives.
 
 ```go
 path := "users[0].ssn"
@@ -455,13 +466,13 @@ fmt.Println(json.RedactedPath(path)) // Output: *** (non-empty paths uniformly r
 
 ## AccessResult Type Conversion Methods
 
-`AccessResult` is the return type of `Processor.SafeGet()` and the package-level `SafeGet()`, providing type-safe conversion methods.
+`AccessResult` is the return type of `Processor.SafeGet()` and the package-level `SafeGet()`; the methods below narrow an `any` value to a concrete type and return an error on failure.
 
 ### AccessResult.AsString
 
 Signature: `func (r AccessResult) AsString() (string, error)`
 
-Safely converts to a string. Succeeds only when the value itself is a string.
+Safely converts to a string. Succeeds only when the value itself is a `string`; other types return an error wrapping `ErrTypeMismatch`, and a missing path returns `ErrPathNotFound`.
 
 ```go
 result := json.SafeGet(data, "user.name")
@@ -478,7 +489,7 @@ fmt.Println(name)
 
 Signature: `func (r AccessResult) AsStringConverted() (string, error)`
 
-Converts any value into a string (formatted with fmt.Sprintf).
+Formats any value into a string (`fmt.Sprintf("%v")`). A missing path returns `ErrPathNotFound`; a string value is returned as-is.
 
 ```go
 result := json.SafeGet(data, "user.age")
@@ -492,7 +503,7 @@ ageStr, err := result.AsStringConverted()
 
 Signature: `func (r AccessResult) AsInt() (int, error)`
 
-Safely converts to an integer. bool-to-int conversion is not supported.
+Safely converts to an integer. Accepts all integer types, floats with integral values, and parseable decimal strings; `bool` returns an error (`cannot convert bool to int`).
 
 ```go
 result := json.SafeGet(data, "user.age")
@@ -505,7 +516,7 @@ age, err := result.AsInt()
 
 Signature: `func (r AccessResult) AsFloat64() (float64, error)`
 
-Safely converts to float64. bool-to-float64 conversion is not supported.
+Safely converts to float64. Accepts all numeric types and parseable strings; `bool` returns an error (`cannot convert bool to float64`).
 
 ```go
 result := json.SafeGet(data, "item.price")
@@ -518,7 +529,7 @@ price, err := result.AsFloat64()
 
 Signature: `func (r AccessResult) AsBool() (bool, error)`
 
-Safely converts to a boolean. Only bool and string types are supported.
+Safely converts to a boolean. Accepts only `bool` and strings that `strconv.ParseBool` parses.
 
 ```go
 result := json.SafeGet(data, "feature.enabled")
@@ -529,7 +540,7 @@ enabled, err := result.AsBool()
 
 ## See Also
 
-- [Query & Get](./functions/query) - Get, GetString and other query operations
-- [Modification Functions](./functions/modify) - Set, Delete and other modification operations
-- [Type Definitions](./types) - AccessResult and other types
-- [Config](./config) - Configuration options in detail
+- [Query & Get](./functions/query): `Get`, `GetString` and other query operations
+- [Modification Functions](./functions/modify): `Set`, `Delete` and other modification operations
+- [Type Definitions](./types): `AccessResult` and other types
+- [Config](./config): `Config` fields in detail

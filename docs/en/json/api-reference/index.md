@@ -1,16 +1,16 @@
 ---
 sidebar_label: "Overview"
 title: "API Reference - CyberGo JSON | Complete Functions & Types"
-description: "CyberGo JSON is a Go library with a complete API reference: GetString, Marshal, Unmarshal, GetTyped, ValidateSchema and Processor methods for quick lookup."
+description: "CyberGo JSON API reference: module index for GetString/GetTyped queries, Set/Delete modifications, Marshal encoding and ValidateSchema validation."
 sidebar_position: 10
 ---
 
 # API Reference
 
-This section provides the complete API reference for the `github.com/cybergodev/json` library.
+The modules below index the API surface of `github.com/cybergodev/json` in two views: by module and by feature.
 
 :::tip Two API styles
-The library offers two API surfaces: **package-level functions** (e.g. `json.GetString(data, "path")`, no instance required) and **Processor methods** (e.g. `p.GetString(data, "path")`, with configuration reuse, pre-parse caching, and the hook system). Not sure which to use? See the decision tree in the [Processor Guide](../getting-started/processor-guide).
+**Package-level functions** (e.g. `json.GetString(data, "path")`) need no instance; **Processor methods** (e.g. `p.GetString(data, "path")`) reuse configuration, the pre-parse cache, and the hook system. For choosing between them, see the decision tree in the [Processor Guide](../getting-started/processor-guide).
 :::
 
 ## Module Index
@@ -28,7 +28,7 @@ The library offers two API surfaces: **package-level functions** (e.g. `json.Get
 |--------|-------------|
 | [Config](./config) | Configuration options in detail (DefaultConfig / SecurityConfig / PrettyConfig) |
 | [Type Definitions](./types) | Core types (Config / Schema / Stats / AccessResult, plus Encoder / Decoder, CompiledPath / PathSegment) |
-| [Interface Definitions](./interfaces) | Extension interfaces (CustomEncoder / Validator / Hook / PathParser) |
+| [Interface Definitions](./interfaces) | Extension interfaces (Hook / PathParser take effect; CustomEncoder / Validator are deprecated) |
 | [Iterators and IterableValue](./iterator) | Iterator / BatchIterator / ParallelIterator / StreamIterator types |
 | [Generic Operations](./generics) | Generic APIs (GetTyped[T] / StreamLinesInto[T] / Result[T]) |
 | [Constants and Errors](./constants) | Constants and error types (including `Default*` constants and a Config field mapping table) |
@@ -49,7 +49,7 @@ The library offers two API surfaces: **package-level functions** (e.g. `json.Get
 | [Security Validation](../security/security-mode) | Security-mode API (SecurityConfig / DangerousPattern / RegisterDangerousPattern) |
 | [Schema Validation](./schema) | Schema validation (ValidateSchema / DefaultSchema / NewSchema) |
 | [Hook System](../extensions/hooks) | Operation interception hooks (LoggingHook / TimingHook / ValidationHook / ErrorHook) |
-| [Custom Encoders](../extensions/custom-encoder) | Custom encoders (CustomEncoder / TypeEncoder) |
+| [Custom Encoders](../extensions/custom-encoder) | Custom encoding via `MarshalJSON` / `MarshalText` (the `CustomEncoder` / `TypeEncoder` interfaces are deprecated) |
 
 ## Quick Lookup
 
@@ -77,8 +77,8 @@ The library offers two API surfaces: **package-level functions** (e.g. `json.Get
 
 | Function | Description |
 |----------|-------------|
-| [`Marshal`](./functions/output#marshal), [`Unmarshal`](./functions/output#unmarshal) | Standard encode/decode (`encoding/json` compatible, optional `cfg`) |
-| [`MarshalIndent`](./functions/output#marshalindent) | Indented encoding (`encoding/json.MarshalIndent` compatible, optional `cfg`) |
+| [`Marshal`](./functions/output#marshal), [`Unmarshal`](./functions/output#unmarshal) | Same signatures as `encoding/json`, optional `cfg`; default input is security-validated, with minor behavior differences |
+| [`MarshalIndent`](./functions/output#marshalindent) | Indented encoding, same signature as `encoding/json.MarshalIndent`, optional `cfg` |
 | [`Encode`](./functions/output#encode), [`EncodePretty`](./functions/output#encodepretty) | Encode to string (with config / pretty output) |
 | [`EncodeWithConfig`](./functions/output#encodewithconfig) (deprecated) | Functionally equivalent to `Encode`, retained within v1 — use `Encode` or `Marshal` in new code |
 | `NewEncoder`, `NewDecoder` | Streaming encode/decode |
@@ -90,10 +90,10 @@ The library offers two API surfaces: **package-level functions** (e.g. `json.Get
 | Function | Description |
 |----------|-------------|
 | [`Prettify`](./functions/output#prettify) | Pretty-print JSON |
-| [`Compact`](./functions/output#compact) | Compact JSON (buffer form, `encoding/json.Compact` compatible) |
+| [`Compact`](./functions/output#compact) | Compact JSON (buffer form, same signature as `encoding/json.Compact`) |
 | [`CompactString`](./functions/output#compactstring) | Compact JSON (string in/out form, mirrors `Processor.Compact`) |
-| [`Indent`](./functions/output#indent) | Indent and write to a buffer (`encoding/json.Indent` compatible) |
-| [`HTMLEscape`](./functions/output#htmlescape) | Escape HTML characters into a buffer (`encoding/json.HTMLEscape` compatible) |
+| [`Indent`](./functions/output#indent) | Indent and write to a buffer (same signature as `encoding/json.Indent`) |
+| [`HTMLEscape`](./functions/output#htmlescape) | Escape HTML characters into a buffer (same signature as `encoding/json.HTMLEscape`) |
 
 #### File Operations
 
@@ -108,7 +108,7 @@ The library offers two API surfaces: **package-level functions** (e.g. `json.Get
 
 | Function | Description |
 |----------|-------------|
-| [`Foreach`](./functions/iterate#foreach), [`ForeachWithError`](./functions/iterate#foreachwitherror), `ForeachNested`, `ForeachNestedWithError` | Iterate arrays/objects (incl. deep traversal) |
+| [`Foreach`](./functions/iterate#foreach) (deprecated), [`ForeachWithError`](./functions/iterate#foreachwitherror), `ForeachNested` (deprecated), `ForeachNestedWithError` | Iterate arrays/objects (incl. deep traversal; the void variants are deprecated — prefer `*WithError`) |
 | [`ForeachWithPath`](./functions/iterate#foreachwithpath), `ForeachWithPathAndIterator`, `ForeachWithPathAndControl` | Iterate at a given path (carrying the current path / with break control) |
 | [`ForeachReturn`](./functions/iterate#foreachreturn) | Iterate and return the modified JSON |
 | [`ForeachFile`](./functions/iterate#foreachfile), `ForeachFileWithPath`, `ForeachFileChunked`, `ForeachFileNested` | Item-by-item file iteration (fully loaded, then item-by-item/batched callbacks) |
@@ -140,7 +140,7 @@ The library offers two API surfaces: **package-level functions** (e.g. `json.Get
 
 | Function | Description |
 |----------|-------------|
-| [`Valid`](./functions/parse#valid) | JSON validation (`encoding/json.Valid` compatible) |
+| [`Valid`](./functions/parse#valid) | JSON validation, same signature as `encoding/json.Valid` |
 | [`ValidWithConfig`](./functions/parse#validwithconfig) | JSON validation with config |
 | [`ValidateSchema`](./functions/parse#validateschema) | Schema validation (used with the `Schema` type) |
 | [`CompareJSON`](./helpers#comparejson) | Compare JSON for equivalence |
@@ -148,13 +148,11 @@ The library offers two API surfaces: **package-level functions** (e.g. `json.Get
 
 ## Naming Conventions
 
-The library follows these naming conventions:
-
 | Pattern | Description | Example |
 |---------|-------------|---------|
-| `Get{Type}` | Get as the given type (defaultValue supported) | `GetString`, `GetInt` |
-| `GetTyped[T]` | Generic get, returns T | `GetTyped[User]` |
-| `New{Type}` | Create an instance | `New` (returns *Processor), `NewEncoder` |
+| `Get{Type}` | Get as the given type, with optional `defaultValue` | `GetString`, `GetInt` |
+| `GetTyped[T]` | Generic get, returns `T` | `GetTyped[User]` |
+| `New{Type}` | Create an instance | `New` (returns `*Processor`), `NewEncoder` |
 | `Default{Type}` | Default configuration | `DefaultConfig` |
 | `{Type}Config` | Configuration preset | `SecurityConfig`, `PrettyConfig` |
 | `Foreach*` | Iteration variants (WithError / WithPath / Nested / File) | `ForeachNestedWithError` |
@@ -163,8 +161,8 @@ The library follows these naming conventions:
 
 ## See Also
 
-- [Quick Start](../getting-started/) -- installation and basic usage
-- [Processor Guide](../getting-started/processor-guide) -- when to use a processor
-- [Path Expression Syntax](../getting-started/path-syntax) -- path query syntax
-- [Examples](../examples/) -- real-world code examples
-- [Large File Handling](../streaming/large-files) -- streaming guide
+- [Quick Start](../getting-started/): installation and basic usage
+- [Processor Guide](../getting-started/processor-guide): when to use a processor
+- [Path Expression Syntax](../getting-started/path-syntax): path query syntax
+- [Examples](../examples/): runnable code samples
+- [Large File Handling](../streaming/large-files): streaming guide

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Multi-format Config"
 title: "Multi-format Config - CyberGo env | .env/JSON/YAML"
-description: "CyberGo env multi-format guide: auto-detect .env/JSON/YAML with mixed loading, key flattening of nested data, load order, Marshal/UnmarshalMap, RegisterParser."
+description: "CyberGo env multi-format guide: extension-based .env/JSON/YAML detection, mixed loading, nested-key flattening, load order and RegisterParser."
 sidebar_position: 1
 ---
 
 # Multi-format Config
 
-The env library supports three configuration formats: `.env`, JSON, and YAML, with automatic format detection and loading.
+env loads three configuration formats: `.env`, JSON, and YAML. The parser is selected from the file extension, formats can be mixed in a single load, and all of them share one flat key-value store.
 
 ## Format Detection
 
@@ -45,23 +45,23 @@ loader.LoadFiles("secrets.yaml")
 ### Mixed Formats
 
 ```go
-// Auto-detect each file's format
+// The parser for each file is selected from its extension
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 ```
 
 ### Override Order
 
-With the default configuration (`OverwriteExisting = false`), **the first file loaded wins**: duplicate keys in later files are skipped, and each key keeps the value from the file that set it first. Only when `OverwriteExisting = true` do later files overwrite earlier ones.
+With the default configuration (`OverwriteExisting = false`), **the first file loaded wins**: duplicate keys in later files are skipped, and each key keeps the value from the file that set it first. With `OverwriteExisting = true`, later files overwrite earlier ones.
 
 ```go
-// Default: first-wins - duplicate keys keep the .env value
+// Default: first-wins, so duplicate keys keep the .env value
 loader.LoadFiles(
     ".env",           // Base configuration (wins for duplicate keys)
-    "config.json",    // Only adds keys missing from .env
-    "secrets.yaml",   // Only adds keys missing from the first two files
+    "config.json",    // Adds only keys missing from .env
+    "secrets.yaml",   // Adds only keys missing from the first two files
 )
 
-// Contrast: for last-wins (later files override), enable OverwriteExisting
+// For last-wins (later files override), set OverwriteExisting
 cfg := env.DefaultConfig()
 cfg.OverwriteExisting = true
 loader2, _ := env.New(cfg)
@@ -70,7 +70,7 @@ loader2.LoadFiles(".env", "config.json", "secrets.yaml")
 ```
 
 :::tip
-The `DevelopmentConfig()` and `TestingConfig()` presets enable `OverwriteExisting = true` by default (later files override earlier ones). The package-level `env.Load()` uses `DefaultConfig` and keeps first-wins; switch to `env.LoadWithConfig` with `cfg.OverwriteExisting = true` for last-wins.
+The `DevelopmentConfig()` and `TestingConfig()` presets set `OverwriteExisting = true` (later files override earlier ones). The package-level `env.Load()` uses `DefaultConfig`; for last-wins, switch to `env.Overload()` (which also overwrites same-named process-environment variables with file values), or use `env.LoadWithConfig` and set the option.
 :::
 
 ## JSON Format
@@ -95,7 +95,7 @@ Nested objects are flattened to `DATABASE_HOST`, `DATABASE_PORT`.
 
 ### Key Resolution
 
-Nested JSON/YAML structures are flattened for storage. The library supports multiple key access methods:
+JSON and YAML nested structures are flattened on load. You can then read a value by any of three key forms:
 
 ```go
 loader.LoadFiles("config.json")
@@ -104,15 +104,15 @@ loader.LoadFiles("config.json")
 // Stored as: DATABASE_HOST=localhost, DATABASE_PORT=5432
 
 // Method 1: Flat key (recommended)
-host := loader.GetString("DATABASE_HOST")   // localhost
-port := loader.GetInt("DATABASE_PORT")      // 5432
+hostFlat := loader.GetString("DATABASE_HOST") // localhost
+portFlat := loader.GetInt("DATABASE_PORT")    // 5432
 
 // Method 2: Dot path (auto-converted)
-host := loader.GetString("database.host")   // localhost
-port := loader.GetInt("database.port")      // 5432
+hostDot := loader.GetString("database.host")  // localhost
+portDot := loader.GetInt("database.port")     // 5432
 
 // Method 3: Uppercase dot path
-host := loader.GetString("DATABASE.HOST")   // localhost
+hostUpper := loader.GetString("DATABASE.HOST") // localhost
 ```
 
 **Resolution rules:**
@@ -163,7 +163,7 @@ hosts := env.GetSliceFrom[string](loader, "HOSTS")
 // hosts = ["server1.example.com", "server2.example.com"]
 ```
 
-There is no whole-column aggregation function for arrays of objects (the `SERVERS_N_HOST` shape) — read them one by one by index as shown above; do not use a "stop at empty string" loop, since both empty values and missing keys return `""` and cannot be distinguished. For arrays of strings, use `GetSliceFrom` (indexed keys first, comma-separated fallback).
+There is no aggregation function for arrays of objects (the `SERVERS_N_HOST` shape). Read them one by one by index as shown above. Do not use a "stop at empty string" loop: an empty value and a missing key both return `""`, so the two cannot be distinguished. For arrays of strings, use `GetSliceFrom` (indexed keys first, comma-separated fallback).
 
 ### JSON Parsing Configuration
 
@@ -173,13 +173,15 @@ cfg := env.DefaultConfig()
 // null values convert to empty strings (default true)
 cfg.JSONNullAsEmpty = true
 
-// numbers convert to strings (default true)
+// numbers render as canonical decimal strings (default true, e.g. "8080", "0.5";
+// when off, Go's default float formatting applies, e.g. 1e21 → "1e+21")
 cfg.JSONNumberAsString = true
 
-// booleans convert to strings (default true)
-cfg.JSONBoolAsString = true
+// kept for symmetry with YAML only; no effect on JSON (default false, marked Deprecated)
+// a decoded JSON bool has no source text to preserve, so it always renders "true"/"false"
+cfg.JSONBoolAsString = false
 
-// Max nesting depth (default 10)
+// Max nesting depth (default 16; allowed range 1–100)
 cfg.JSONMaxDepth = 20
 ```
 
@@ -196,12 +198,12 @@ cfg.JSONMaxDepth = 20
 
 ```go
 // JSONNumberAsString = true (default)
-port := loader.GetString("PORT")  // "8080" (string)
-port := loader.GetInt("PORT")     // 8080 (integer)
+portStr := loader.GetString("PORT") // "8080" (string)
+portInt := loader.GetInt("PORT")    // 8080 (integer)
 
-// JSONBoolAsString = true (default)
-debug := loader.GetString("DEBUG")  // "true" (string)
-debug := loader.GetBool("DEBUG")    // true (boolean)
+// JSON booleans always render the canonical "true"/"false"; JSONBoolAsString is not consulted
+debugStr := loader.GetString("DEBUG") // "true" (string)
+debugBool := loader.GetBool("DEBUG")  // true (boolean)
 ```
 
 ## YAML Format
@@ -269,13 +271,13 @@ cfg := env.DefaultConfig()
 // null/~ values convert to empty strings (default true)
 cfg.YAMLNullAsEmpty = true
 
-// numbers convert to strings (default true)
+// number scalars are canonicalized (default true, e.g. "007" → "7"); when off, kept as written
 cfg.YAMLNumberAsString = true
 
-// booleans convert to strings (default true)
+// booleans render as canonical "true"/"false" (default true); when off, the YAML spelling (e.g. False) is kept
 cfg.YAMLBoolAsString = true
 
-// Max nesting depth (default 10)
+// Max nesting depth (default 16; allowed range 1–100)
 cfg.YAMLMaxDepth = 15
 ```
 
@@ -293,12 +295,12 @@ RATES:
 
 ```go
 // YAMLNumberAsString = true (default)
-port := loader.GetString("PORT")  // "8080" (string)
-port := loader.GetInt("PORT")     // 8080 (integer)
+portStr := loader.GetString("PORT") // "8080" (string)
+portInt := loader.GetInt("PORT")    // 8080 (integer)
 
 // YAMLBoolAsString = true (default)
-debug := loader.GetString("DEBUG")  // "true" (string)
-debug := loader.GetBool("DEBUG")    // true (boolean)
+debugStr := loader.GetString("DEBUG") // "true" (string)
+debugBool := loader.GetBool("DEBUG")  // true (boolean)
 
 // List access
 rates := env.GetSliceFrom[float64](loader, "RATES")  // [0.1, 0.2, 0.3]
@@ -317,9 +319,9 @@ DEBUG=true
 # Quotes
 MESSAGE="Hello World"
 
-# Literal $ uses $$ escaping (note: single quotes do NOT prevent
-# expansion — ${noexpand} inside 'literal ${noexpand}' still expands)
+# Literal $ uses $$ escaping; values in single quotes are not expanded
 PRICE=100$$
+LITERAL='literal ${noexpand}'
 
 # Variable expansion
 BASE_URL=https://api.example.com
@@ -335,7 +337,7 @@ For the full expansion syntax (`$$` escaping, `${VAR:-default}`, expansion scope
 
 ```go
 cfg := env.DefaultConfig()
-cfg.ExpandVariables = true  // Enabled by default
+cfg.ExpandVariables = true  // Optional: DefaultConfig already enables it
 
 loader, _ := env.New(cfg)
 loader.LoadFiles(".env")
@@ -378,15 +380,17 @@ export DATABASE_PORT=5432
 
 ### YAML-style Syntax
 
-The `KEY: value` colon-separated form is **always available** (the line parser unconditionally accepts both `=` and `:` as separators, no switch needed). `AllowYamlSyntax` controls YAML scalar semantics for values:
+With the default `AllowYamlSyntax = false`, only `=` separates a key from its value. A `KEY: value` line therefore has no separator, and the parser skips it (an audit event is recorded when auditing is on).
+
+Set `AllowYamlSyntax = true` to treat `:` as a separator too. Values then follow YAML scalar semantics: `null` and `~` become empty strings, while numbers and booleans keep their written text.
 
 ```go
 cfg := env.DefaultConfig()
-cfg.AllowYamlSyntax = true  // Values parsed with YAML scalar semantics (null/~ → empty string)
+cfg.AllowYamlSyntax = true  // ':' now separates; values use YAML scalar semantics
 ```
 
 ```bash
-# Colon-separated key-value pairs (always supported)
+# Colon-separated key-value pairs (requires AllowYamlSyntax = true)
 KEY: value
 ANOTHER_KEY: "quoted value"
 ```
@@ -439,7 +443,7 @@ func loadConfig(loader *env.Loader) error {
 ```
 
 :::tip
-By default (`OverwriteExisting = false`) loading is first-wins: the environment and local files loaded later only **add** keys missing from base.json; duplicate keys keep the base.json value. To let environment/local config override the base, set `cfg.OverwriteExisting = true` (e.g. use the `DevelopmentConfig()` preset, which enables it by default).
+By default (`OverwriteExisting = false`) loading is first-wins (see [Override Order](#override-order)): the environment and local files loaded later only **add** keys missing from base.json. To let them override the base, set `cfg.OverwriteExisting = true` (the `DevelopmentConfig()` preset already sets it).
 :::
 
 ### Separation by Function
@@ -463,13 +467,13 @@ loader.LoadFiles(
 
 ### Configuration Priority
 
-With the default (`OverwriteExisting = false`), the first file loaded wins for duplicate keys:
+With the default (`OverwriteExisting = false`), the first file loaded wins (see [Override Order](#override-order)):
 
 ```text
 Command-line args > Environment variables > base config > environment config > local config
 ```
 
-With `OverwriteExisting = true` enabled (e.g. the `DevelopmentConfig()` preset), later-loaded files win and the priority direction among files flips:
+With `OverwriteExisting = true` (the `DevelopmentConfig()` preset sets it), later-loaded files win and the priority direction among files flips:
 
 ```text
 Command-line args > Environment variables > local config > environment config > base config
@@ -477,17 +481,17 @@ Command-line args > Environment variables > local config > environment config > 
 
 ## Serialization
 
-`env.Marshal` exports a map or struct to `.env` / JSON / YAML, while `env.UnmarshalMap` / `env.UnmarshalStruct` parse in the reverse direction; pass `env.FormatAuto` to auto-detect the format from content.
+`env.Marshal` exports a map or struct to `.env`, JSON, or YAML; `env.UnmarshalMap` and `env.UnmarshalStruct` parse in the reverse direction. The deserialize side detects the format from content when given `env.FormatAuto`; `Marshal` performs no content detection — `FormatAuto` behaves like an omitted argument and outputs `.env`.
 
-Note the processing applied to structured output: Marshal to JSON rebuilds underscore keys (such as `DATABASE_HOST`) into nested objects and infers strings like `"8080"` and `"true"` back to number / bool; Marshal to YAML automatically quotes scalars that would be type-coerced on the way back in (such as `PORT: "8080"`) so round-trips stay consistent.
+Structured output is not a verbatim dump. Marshal to JSON rebuilds underscore keys (such as `DATABASE_HOST`) into nested objects and infers `"8080"` and `"true"` back to number and bool. Marshal to YAML double-quotes scalars that would be type-coerced on the way back in (such as `PORT: "8080"`), so round trips keep the value a string.
 
 See the [Serialization](./serialization) guide for the full function family and output-shape examples.
 
 ## Custom Format
 
-Beyond the three built-in formats, implement the `EnvParser` interface and register custom formats with `RegisterParser` (the built-in `.env` / JSON / YAML cannot be overridden — `ForceRegisterParser` excepted).
+Beyond the three built-in formats, you can implement the `EnvParser` interface and register a custom format with `RegisterParser`. The built-in `.env`, JSON, and YAML formats cannot be overridden this way; `ForceRegisterParser` is the exception.
 
-Note that `LoadFiles` routes by extension and only recognizes `.env` / `.json` / `.yaml` / `.yml` — custom format numbers are never routed automatically. See the [Custom Parser](./custom-parser) guide for complete examples and the two loading paths.
+`LoadFiles` routes by extension and recognizes only `.env`, `.json`, `.yaml`, and `.yml`, so a custom format number is never selected from a file name. Three loading paths work: override `FormatEnv` with `ForceRegisterParser` and name the file `*.env`, register for `FormatAuto`, or call the parser manually and `Set` each entry. See the [Custom Parser](./custom-parser) guide for complete examples.
 
 ## Complete Example
 
@@ -548,13 +552,13 @@ Nested structures are flattened into environment variable keys on load, with the
 | Array elements use `key_index` | `{"hosts": ["a", "b"]}` → `HOSTS_0`, `HOSTS_1` |
 | `null` becomes an empty string | `{"name": null}` → `NAME=""` |
 | Numbers and booleans become strings | `{"port": 5432}` → `PORT="5432"` |
-| Nesting depth cap defaults to 10 | Controlled by `JSONMaxDepth`/`YAMLMaxDepth` (1–100) |
+| Nesting depth cap defaults to 16 | Controlled by `JSONMaxDepth`/`YAMLMaxDepth` (allowed range 1–100) |
 
-During file loading, conversion behavior is controlled by `Config`'s `JSONConfig`/`YAMLConfig` (e.g. `JSONNullAsEmpty`, `JSONNumberAsString`); the string-parsing paths of `UnmarshalMap`/`UnmarshalStruct` use built-in default rules and do not read these settings.
+During file loading, conversion behavior is controlled by `Config`'s `JSONConfig` and `YAMLConfig` (for example `JSONNullAsEmpty` and `JSONNumberAsString`). `UnmarshalMap` and `UnmarshalStruct` use built-in default rules for string parsing and ignore these settings; to customize them, use `UnmarshalMapWithConfig` / `UnmarshalStructWithConfig`.
 
 ### Prefix Filtering (Prefix)
 
-`ComponentConfig.Prefix` restricts loading to variables starting with the given prefix (case-insensitive) — commonly used to take only your application's slice from a shared configuration file:
+`ComponentConfig.Prefix` restricts file loads to variables whose key starts with the given prefix, case-insensitively; `Set` and `Delete` are unaffected. A common use is taking only your application's slice from a shared configuration file:
 
 <!-- check-code: skip -->
 ```go
@@ -563,15 +567,15 @@ cfg.Prefix = "MYAPP_" // Only load keys starting with MYAPP_
 loader, _ := env.New(cfg)
 ```
 
-Prefix filtering combines with the `OverwriteExisting` policy: filtered-out keys neither overwrite nor enter storage.
+Prefix filtering runs before the `OverwriteExisting` policy is applied: filtered-out keys neither overwrite existing values nor enter storage.
 
 ### Unknown-Extension Fallback
 
-`DetectFormat` returns `FormatAuto` for unknown extensions, in which case the loader **falls back to the `.env` parser** for line-by-line parsing. Therefore files like `config.conf` or `config.txt` still load correctly as long as their content is `KEY=value` shaped.
+`DetectFormat` returns `FormatAuto` for unknown extensions. With no `FormatAuto` entry in the parser table, the loader **falls back to the `.env` parser** for line-by-line parsing; if you registered one with `RegisterParser(env.FormatAuto, ...)`, that parser is used instead. Files such as `config.conf` or `config.txt` therefore still load correctly when their content is `KEY=value` shaped and no custom parser is registered.
 
 ## Related Documentation
 
-- [Serialization](./serialization) - Serialization/deserialization in depth
-- [ComponentFactory API](../api-reference/factory) - Format detection and parser registration
-- [Custom Parser](./custom-parser) - Adding custom formats
+- [Serialization](./serialization) - serialization and deserialization in detail
+- [ComponentFactory API](../api-reference/factory) - format detection and parser registration
+- [Custom Parser](./custom-parser) - adding custom formats
 - [Config API](../api-reference/config) - JSON/YAML parsing configuration

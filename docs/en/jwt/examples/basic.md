@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Basic Examples"
 title: "Basic Examples - CyberGo JWT | HMAC & Revoke"
-description: "Sign and validate HMAC access tokens, rotate tokens via refresh, revoke through the built-in blacklist, and configure token-bucket rate limiting protection."
+description: "Generate and verify HMAC access tokens, exchange refresh tokens, revoke through the built-in blacklist, and configure token bucket rate limiting."
 sidebar_position: 10
 ---
 
@@ -9,7 +9,7 @@ sidebar_position: 10
 
 ## HMAC Signing
 
-The most common approach using symmetric key for signing and verification.
+The most common approach: one symmetric key signs and verifies.
 
 ```go
 package main
@@ -195,7 +195,7 @@ func main() {
 
 ## Audience Isolation
 
-When `ExpectedAudience` is set, only tokens whose `aud` claim contains that value pass validation. This achieves inter-service token isolation in a microservice architecture — tokens issued by one service cannot be accepted by another.
+When `ExpectedAudience` is set, only tokens whose `aud` claim contains that value pass validation. In a microservice architecture this isolates services: a token issued by one service cannot be accepted by another.
 
 ```go
 package main
@@ -257,12 +257,12 @@ func main() {
 ```
 
 ::: tip Microservice Scenarios
-In a microservice architecture, set different `ExpectedAudience` values for different services (e.g. `billing-api`, `user-api`) so each service only accepts tokens intended for itself, preventing tokens from being abused across services.
+In a microservice architecture, give each service a different `ExpectedAudience` (for example `billing-api` and `user-api`) so each service accepts only tokens addressed to it, preventing cross-service token abuse.
 :::
 
 ## Extra Extension Fields
 
-The built-in `Claims.Extra` is a `map[string]any` for storing a small amount of optional additional information. The Processor performs deep validation on Extra during token creation (length, injection detection), so it is more convenient than custom Claims fields.
+The built-in `Claims.Extra` is a `map[string]any` for a small amount of optional additional information. The Processor deeply validates Extra **when a token is created** (length, injection detection), so it requires less work than custom Claims fields.
 
 ```go
 package main
@@ -282,7 +282,7 @@ func main() {
 	}
 	defer processor.Close()
 
-	// Store additional business fields in Extra (only string and []string values supported)
+	// Store additional business fields in Extra (only string and []string values allowed)
 	claims := &jwt.Claims{
 		UserID:   "user123",
 		Username: "alice",
@@ -312,14 +312,21 @@ func main() {
 	if level, ok := parsed.Extra["level"].(string); ok {
 		fmt.Println("Level:", level) // Output: senior
 	}
-	if tags, ok := parsed.Extra["tags"].([]string); ok {
+	// After a JSON round trip, array values read back as []any, so each item needs its own assertion
+	if raw, ok := parsed.Extra["tags"].([]any); ok {
+		tags := make([]string, 0, len(raw))
+		for _, v := range raw {
+			if s, ok := v.(string); ok {
+				tags = append(tags, s)
+			}
+		}
 		fmt.Println("Tags:", tags) // Output: [onboarding mentor]
 	}
 }
 ```
 
 ::: warning Extra Limitations
-`Extra` allows at most 50 keys; values must be of type `string` or `[]string`; nested maps are not supported. If you need more complex structures or custom validation, use a [custom Claims type](../guides/custom-claims#extra-field-vs-custom-type) instead.
+`Extra` allows at most 50 keys, accepts only `string` and `[]string` values (strings ≤ 256 bytes), and rejects nested maps. After `Parse`, an array value reads back as `[]any`, not `[]string`, so each item must be asserted separately. For more complex structures or custom validation, use a [custom Claims type](../guides/custom-claims#extra-field-vs-custom-type) instead.
 :::
 
 ## More Examples

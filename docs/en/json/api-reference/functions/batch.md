@@ -1,19 +1,19 @@
 ---
 sidebar_label: "Batch Operations"
 title: "Batch Operations - CyberGo JSON | ProcessBatch Usage"
-description: "CyberGo JSON is a Go library for batch processing, offering ProcessBatch get/set/delete/validate bounded by MaxBatchSize, plus WarmupCache for hot paths."
+description: "Batch operations: ProcessBatch runs get/set/delete/validate without aborting on one failure, capped by MaxBatchSize (2000); WarmupCache warms hot paths."
 sidebar_position: 70
 ---
 
 # Batch Operation Functions
 
-Batch operation functions of the json package process multiple JSON operations (get/set/delete/validate) in one call — a good fit for bulk data-processing scenarios.
+Batch functions of the json package: many JSON operations (get/set/delete/validate) in one call, plus cache warm-up.
 
 ## ProcessBatch
 
 Signature: `func ProcessBatch(operations []BatchOperation, cfg ...Config) ([]BatchResult, error)`
 
-Processes multiple JSON operations in a batch (a package-level function — no Processor required). Result order corresponds one-to-one with the input operation order, linked by the `ID` field.
+Processes multiple JSON operations in a batch (a package-level function — no Processor required). Result order maps one-to-one to the input operations, linked by the `ID` field.
 
 ```go
 package main
@@ -58,7 +58,7 @@ func main() {
 | `delete` | Delete the node at a path | **The complete JSON string after deletion** | `ErrPathNotFound`, `ErrInvalidPath` |
 | `validate` | Check whether the JSON is valid | `map[string]any{"valid": bool}` | On invalid JSON, `Result.valid=false` and `Error` is non-empty |
 
-When `Type` is not one of the four above (e.g. a typo), that operation's `Error` becomes `unknown operation type: <type>` — the batch is **not aborted**, and the remaining operations run as usual.
+When `Type` is not one of the four above (e.g. a typo), that operation's `Error` becomes `unknown operation type: <type>`, and the batch is **not aborted**: the remaining operations run as usual.
 
 ::: warning Operations do not chain
 Every `BatchOperation` acts **independently** on its own `JSONStr` input; operations are **never** chained. For example, a `set` followed by a `delete` on the same document yields two independent results, not a combined "modify then delete" state. To apply multiple transformations to a single document, feed each step's output into the next in your own code, or use a single-document multi-path method such as [`SetMultiple`](./modify#setmultiple).
@@ -66,7 +66,7 @@ Every `BatchOperation` acts **independently** on its own `JSONStr` input; operat
 
 ### Batch Size Limit
 
-The operation count is bounded by `Config.MaxBatchSize` (default `2000`; config validation clamps it to 10–10000). When exceeded, the whole batch fails immediately with `(nil, ErrSizeLimit)`. The cap applies per the **cfg passed to this call** (the default configuration if none):
+The operation count is bounded by `Config.MaxBatchSize` (default `2000`; `Validate` clamps it to 10–10000). Exceeding it fails the whole batch immediately with `(nil, JsonsError)` whose `Err` is `ErrSizeLimit`. The cap comes from the **cfg passed to this call**; without cfg, the processor's own configuration applies:
 
 ```go
 // Custom cap (for very large batches)
@@ -118,7 +118,7 @@ func main() {
 
 ### set — batch modification
 
-The `Result` of a `set` operation is **the complete modified JSON string** (note: not the written value itself). The default configuration sets `CreatePaths=true`, so writing to a new path creates the intermediate nodes automatically.
+The `Result` of a `set` operation is **the complete modified JSON string**, not the written value itself. The default configuration has `CreatePaths=true`, so writing to a new path creates the intermediate nodes automatically.
 
 ```go
 package main
@@ -235,7 +235,7 @@ func main() {
 
 ### A single failure does not abort the batch
 
-`ProcessBatch` **always processes every operation**: a failing operation only sets the `Error` field of its own result; subsequent operations still run, and no configuration is needed to enable this. Batch results can therefore be "partly successful, partly failed" — always check `r.Error` entry by entry:
+`ProcessBatch` **always executes every operation**: a failure only sets the `Error` field of that result, never interrupting later operations, and no configuration is needed for this. Batch results can therefore be "partly successful, partly failed" — always check `r.Error` entry by entry:
 
 ```go
 results, err := json.ProcessBatch(operations)
@@ -256,12 +256,12 @@ for _, r := range results {
 ```
 
 :::tip Difference from ContinueOnError
-The `Config.ContinueOnError` field governs mid-flight tolerance of [`SetMultiple`](./modify#setmultiple) (whether to keep writing the remaining paths after one path fails); it does **not** apply to `ProcessBatch`. Per-operation isolation in `ProcessBatch` is built-in — it can be neither enabled nor disabled via that toggle.
+The `Config.ContinueOnError` field governs mid-flight tolerance of [`SetMultiple`](./modify#setmultiple) (whether to keep writing remaining paths after one fails); it does **not** apply to `ProcessBatch`. Per-operation isolation in `ProcessBatch` is built-in and cannot be disabled via that toggle.
 :::
 
 ## Real-World Scenario: Batch Data Migration
 
-Stamp a batch of records with a migration marker: one `ProcessBatch` call performs all transformations and collects each record's output:
+Stamp a batch of records with a migration marker: one `ProcessBatch` call performs all transformations and collects each record's output.
 
 ```go
 package main
@@ -315,7 +315,7 @@ func main() {
 
 Signature: `func WarmupCache(jsonStr string, paths []string, cfg ...Config) (*WarmupResult, error)`
 
-Pre-evaluates hot paths of the same JSON and fills the cache, so the first subsequent `Get` hits the cache directly. Requires the cache to be enabled (it is by default); otherwise returns a `JsonsError` (`Op` is `warmup_cache`, message "cache is disabled, cannot warmup cache").
+Pre-evaluates hot paths of the same JSON and fills the cache so that the first subsequent `Get` hits it. Requires the cache to be enabled (it is by default); otherwise returns a `JsonsError` (`Op` is `warmup_cache`, message `cache is disabled, cannot warmup cache`).
 
 ```go
 package main
@@ -357,7 +357,7 @@ The `WarmupResult` struct:
 | `SuccessRate` | `float64` | Success rate (percentage) |
 | `FailedPaths` | `[]string` | List of failed paths (nil when nothing failed) |
 
-When every path fails, `WarmupCache` returns the `WarmupResult` together with the last error.
+When every path fails, `WarmupCache` returns the `WarmupResult` together with the last error (`err` is non-nil and `Successful` is 0).
 
 ## Type Definitions
 
@@ -399,10 +399,10 @@ type BatchResult struct {
 |-------|------|-------------|
 | `ID` | `string` | Matches the operation's `ID`; the result slice maps to the input operations by index order |
 | `Result` | `any` | Operation result; meaning varies by `Type` (see the table above) |
-| `Error` | `error` | This operation's error; `nil` means success — **always check it entry by entry** |
+| `Error` | `error` | This operation's error; `nil` means success — always check it entry by entry |
 
 :::tip Processor batch methods
-A Processor instance offers the equivalent `p.ProcessBatch(operations)` method, with the same signature as the package-level function — a good fit when reusing a Processor or customizing via `Config` (e.g. `Pretty` output, `PreserveNumbers`). See [Processor Batch Operations](../processor/batch).
+A Processor instance offers the equivalent `p.ProcessBatch(operations)` method with the same signature as the package-level function, useful when reusing a Processor or customizing via `Config` (e.g. `Pretty` output, `PreserveNumbers`). See [Processor Batch Operations](../processor/batch).
 :::
 
 ## See Also

@@ -18,7 +18,7 @@ type MiddlewareFunc func(Handler) Handler
 type Handler func(ctx context.Context, req RequestMutator) (ResponseMutator, error)
 ```
 
-中间件在 `MiddlewareConfig.Middlewares` 中配置，按顺序执行。每个中间件工厂接受一个 `*XxxConfig` 配置指针，传 `nil` 时使用默认配置：
+中间件在 `MiddlewareConfig.Middlewares` 中配置，按切片顺序执行。每个中间件工厂接受一个 `*XxxConfig` 配置指针；传 `nil` 时使用默认配置：
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -57,7 +57,7 @@ combined := httpc.Chain(
 func RecoveryMiddleware() MiddlewareFunc
 ```
 
-panic 恢复中间件。捕获处理链中的 panic，转换为包含堆栈信息的 error 返回。与客户端内置的 panic 安全网（`Request` / 下载路径）共用同一套转换逻辑，保证公共 API 不会把 panic 抛给调用方。
+panic 恢复中间件。捕获处理链中的 panic，转换为包含堆栈信息的 error 返回。该中间件与客户端内置的 panic 安全网（`Request` / 下载路径）共用同一套转换逻辑，公共 API 因此不会把 panic 抛给调用方。
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -75,7 +75,10 @@ func LoggingMiddleware(config *LoggingConfig) MiddlewareFunc
 
 请求日志中间件。记录方法、URL、状态码和耗时。URL 自动脱敏（移除凭据信息）。传 `nil` 时使用 [`DefaultLoggingConfig()`](#defaultloggingconfig)（日志禁用）。
 
-输出格式：成功时 `METHOD URL -> STATUS (DURATION)`；出错时 `METHOD URL -> error: ERR (DURATION)`。
+输出格式：
+
+- 成功：`METHOD URL -> STATUS (DURATION)`
+- 出错：`METHOD URL -> error: ERR (DURATION)`
 
 #### LoggingConfig
 
@@ -116,7 +119,7 @@ client, _ := httpc.New(cfg)
 func RequestIDMiddleware(config *RequestIDConfig) MiddlewareFunc
 ```
 
-为每个请求添加唯一 ID。传 `nil` 时使用 [`DefaultRequestIDConfig()`](#defaultrequestidconfig)（`"X-Request-ID"` 头 + `crypto/rand` 生成器）。若请求已存在同名头则保留原值不覆盖。
+为每个请求添加唯一 ID。传 `nil` 时使用 [`DefaultRequestIDConfig()`](#defaultrequestidconfig)（`"X-Request-ID"` 头 + `crypto/rand` 生成器）。请求已存在同名头时保留原值，不覆盖。
 
 :::tip
 默认生成器使用 `crypto/rand` 读取 16 字节并做十六进制编码（32 字符），ID 不可预测，适合安全敏感场景。
@@ -172,10 +175,16 @@ middleware := httpc.RequestIDMiddleware(&httpc.RequestIDConfig{
 func TimeoutMiddleware(config *TimeoutMiddlewareConfig) MiddlewareFunc
 ```
 
-中间件级别的超时控制。传 `nil` 时使用 [`DefaultTimeoutMiddlewareConfig()`](#defaulttimeoutmiddlewareconfig)（超时禁用，中间件为透传）。若设置为正值，在客户端内置超时之前生效，超时后取消上下文并返回错误。超时上下文从**请求自身**的 `Context()` 派生（`WithContext` 预设的取消/截止会被尊重而非覆盖），派生出的 deadline 会写回请求对象传给引擎。
+中间件级别的超时控制。传 `nil` 时使用 [`DefaultTimeoutMiddlewareConfig()`](#defaulttimeoutmiddlewareconfig)（超时禁用，中间件为透传）。
+
+设为正值时，该超时在客户端内置超时之前生效；超时后取消上下文并返回错误。
+
+超时上下文从**请求自身**的 `Context()` 派生（`WithContext` 预设的取消/截止会被尊重而非覆盖），派生出的 deadline 写回请求对象并传给引擎。
 
 :::warning 不要用于 Download 或流式请求
-`TimeoutMiddleware` 的 `defer cancel()` 在处理器返回（收到响应头）后立即触发，对 `Download` 或 `WithStreamBody` 请求会在读取响应体之前提前取消上下文，产生「context canceled」错误。流式/下载场景请改用 [`WithTimeout`](../core/options#withtimeout)。
+`TimeoutMiddleware` 的 `defer cancel()` 在处理器返回（收到响应头）后立即触发，早于响应体读取完成。中间件因此在请求进入时直接拒绝流式请求：`Download` 或 `WithStreamBody` 请求返回 `TimeoutMiddleware is incompatible with streaming responses`。
+
+流式/下载场景请改用 [`WithTimeout`](../core/options#withtimeout)。
 :::
 
 #### TimeoutMiddlewareConfig
@@ -218,7 +227,11 @@ client, _ := httpc.New(cfg)
 func HeaderMiddleware(config *HeaderConfig) MiddlewareFunc
 ```
 
-为每个请求添加静态请求头。传 `nil` 时使用 [`DefaultHeaderConfig()`](#defaultheaderconfig)（无头，中间件为透传）。在创建时即验证头部安全性（CRLF 注入防护）；与请求中已有的同名头冲突时会覆盖。配置 map 在创建时被**深拷贝**，之后调用方修改原 map 不影响中间件；若某个头部未通过校验，创建不会 panic，而是得到一个对每个请求都返回该校验错误的中间件。
+为每个请求添加静态请求头。传 `nil` 时使用 [`DefaultHeaderConfig()`](#defaultheaderconfig)（无头，中间件为透传）。
+
+头部安全性在创建时即验证（CRLF 注入防护），与请求中已有的同名头冲突时覆盖。配置 map 在创建时被**深拷贝**，之后调用方修改原 map 不影响中间件。
+
+若某个头部未通过校验，创建不会 panic，而是返回一个对每个请求都返回该校验错误的中间件。
 
 #### HeaderConfig
 
@@ -262,7 +275,9 @@ client, _ := httpc.New(cfg)
 func MetricsMiddleware(config *MetricsConfig) MiddlewareFunc
 ```
 
-指标收集中间件。每次请求完成后调用回调，传递方法、URL、状态码、耗时和错误信息。传 `nil` 时使用 [`DefaultMetricsConfig()`](#defaultmetricsconfig)（指标禁用）。回调收到的是**脱敏后**的 URL；错误消息中若嵌有原始 URL（含凭据），同样会被替换为脱敏版本，防止指标管道泄漏凭据。
+指标收集中间件。每次请求完成后调用回调，传递方法、URL、状态码、耗时和错误信息。传 `nil` 时使用 [`DefaultMetricsConfig()`](#defaultmetricsconfig)（指标禁用）。
+
+回调收到的是**脱敏后**的 URL。错误消息中若嵌有原始 URL（含凭据），同样被替换为脱敏版本，防止指标管道泄漏凭据。
 
 #### MetricsConfig
 
@@ -306,11 +321,21 @@ func AuditMiddleware(config *AuditConfig) MiddlewareFunc
 
 安全审计中间件，适用于金融、医疗、政务等合规场景。记录请求/响应元信息（方法、URL、状态码、耗时、重试等），URL 自动脱敏。回调通过 `config.OnAudit` 提供；为 nil 时中间件为空操作。传 `nil` 时使用 [`DefaultAuditConfig()`](#defaultauditconfig)。
 
-`SourceIP` 和 `UserID` 从请求上下文中通过 [`SourceIPKey`](#审计上下文键) 和 [`UserIDKey`](#审计上下文键) 提取。`Attempts`（实际尝试次数）与 `RedirectChain`（重定向链）从响应中自动提取。注意：中间件本身**不按 `Format` 分支格式化**——事件以 `AuditEvent` 结构体原样传给 `OnAudit`，`Format` 供回调方决定输出样式时读取。
+`SourceIP` 和 `UserID` 从请求上下文中通过 [`SourceIPKey`](#审计上下文键) 和 [`UserIDKey`](#审计上下文键) 提取。`Attempts`（实际尝试次数）与 `RedirectChain`（重定向链）从响应中自动提取。
+
+中间件本身不渲染事件：`AuditEvent` 结构体原样传给 `OnAudit`；`Format` 是保留字段，不产生任何效果，输出格式（文本、JSON 等）完全由回调决定。
 
 #### AuditConfig
 
-审计中间件的配置结构体，共 5 个字段：`OnAudit` 审计回调（nil 时中间件为空操作）、`Format` 输出格式提示（`"text"` / `"json"`，由回调方消费）、`IncludeHeaders` 头部记录开关、`MaskHeaders` 需脱敏的头部列表（默认六个标准敏感头，命中即替换为 `[REDACTED]`）、`SanitizeError` 错误脱敏开关。完整类型定义、逐字段说明与默认值见 [AuditConfig](../types/constants#auditconfig)。
+审计中间件配置，共 5 个字段：
+
+- `OnAudit`：审计回调；nil 时中间件为空操作。
+- `Format`：保留字段，无效果——事件以 `AuditEvent` 交给 `OnAudit`，渲染由回调决定。
+- `IncludeHeaders`：是否记录头部。
+- `MaskHeaders`：需脱敏的头名；默认六个标准敏感头，命中即替换为 `[REDACTED]`。
+- `SanitizeError`：是否脱敏错误消息中内嵌的原始请求 URL（及敏感查询值）；脱敏后仍保留 `errors.Is`/`errors.As` 分类。
+
+完整类型定义、逐字段说明与默认值见 [AuditConfig](../types/constants#auditconfig)。
 
 #### DefaultAuditConfig
 
@@ -318,16 +343,19 @@ func AuditMiddleware(config *AuditConfig) MiddlewareFunc
 func DefaultAuditConfig() *AuditConfig
 ```
 
-返回默认审计配置：`Format` 为 `"text"`、`IncludeHeaders` 为 `false`、`MaskHeaders` 为标准敏感头部列表、`SanitizeError` 为 `true`。设置 `OnAudit` 字段以启用审计回调。
+返回默认审计配置：`Format` 保持 `""`（保留字段不初始化）、`IncludeHeaders` 为 `false`、`MaskHeaders` 为标准敏感头部列表、`SanitizeError` 为 `true`。设置 `OnAudit` 字段以启用审计回调。
 
 ```go
+// 需要 JSON 行时，在回调里自行序列化 AuditEvent
 auditCfg := httpc.DefaultAuditConfig()
 auditCfg.OnAudit = func(event httpc.AuditEvent) {
-    log.Printf("[AUDIT] %s %s -> %d (%v) user=%s ip=%s",
-        event.Method, event.URL, event.StatusCode,
-        event.Duration, event.UserID, event.SourceIP)
+    data, err := json.Marshal(event)
+    if err != nil {
+        log.Printf("[AUDIT] marshal failed: %v", err)
+        return
+    }
+    log.Printf("%s", data)
 }
-auditCfg.Format = "json"
 auditCfg.IncludeHeaders = true
 
 cfg := httpc.DefaultConfig()

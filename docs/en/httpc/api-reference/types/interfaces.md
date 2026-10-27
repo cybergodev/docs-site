@@ -1,26 +1,28 @@
 ---
 sidebar_label: "Interfaces"
 title: "Interface Definitions - CyberGo HTTPC | Core Interfaces"
-description: "HTTPC core interfaces: full-capability Client, minimal Doer, DomainClienter domain client, RetryPolicy strategy, and RequestMutator/ResponseMutator."
+description: "HTTPC core interfaces: Client, Doer, DomainClienter, RetryPolicy, RequestMutator/ResponseMutator, and CertificatePinner, with their extension points."
 sidebar_position: 10
 ---
 
 # Interface Definitions
+
+The interface definitions describe HTTPC's extension points and implementation contracts: `Client`, `Doer`, `DomainClienter`, and `RetryPolicy` govern how callers integrate, while `RequestMutator`/`ResponseMutator` govern how middleware reads and writes requests and responses.
 
 ## Interface Overview
 
 | Interface / type | Category | Implemented by | Extension-point purpose |
 |-----------|------|--------|-----------|
 | `Client` | Main client interface | `clientImpl` (returned by `New`/`NewDefault`) | Parameter type constraint for consumers |
-| `Doer` | Minimal execution interface | `clientImpl`; also user-implementable | Mock testing, decorator wrapping |
-| `DomainClienter` | Domain client interface | `DomainClient` (returned by `NewDomain`/`NewDomainDefault`) | Domain-scoped session management |
+| `Doer` | Minimal execution interface | `clientImpl`; also implementable by callers | Mock testing, decorator wrapping |
+| `DomainClienter` | Domain client interface | `DomainClient` (returned by `NewDomain`/`NewDomainDefault`) | Domain-level session management |
 | `RequestMutator` | Request mutator interface | `*engine.Request` (internal) | Middleware read/write access to requests |
 | `ResponseMutator` | Response mutator interface | `*engine.Response` (internal) | Middleware read/write access to responses |
 | `Handler` | Request handler function type | `finalHandler`, middleware-wrapped products | Core signature for custom middleware |
-| `MiddlewareFunc` | Middleware function type | 7 built-in middleware factories, user-defined ones | Intercepting/rewriting requests and responses |
-| `RetryPolicy` | Retry policy interface | User implementations (httpc module only, see warning below) | Custom retry decisions |
-| `CertificatePinner` | Certificate pinning interface | `NewSPKIHashPinner` and other constructors, user-defined | Custom pinning strategies |
-| `RequestOption` | Request option function type | `WithXxx` factory functions | Per-request configuration |
+| `MiddlewareFunc` | Middleware function type | 7 built-in middleware factories, caller-defined ones | Intercepting or rewriting requests and responses |
+| `RetryPolicy` | Retry policy interface | Caller implementations (any external package, see note below) | Custom retry decisions |
+| `CertificatePinner` | Certificate pinning interface | `NewSPKIHashPinner` and other constructors, caller-defined | Custom pinning strategies |
+| `RequestOption` | Request option interface | `WithXxx` factory functions, `RequestOptionFunc` | Per-request configuration |
 
 ## Client
 
@@ -55,7 +57,7 @@ type Doer interface {
 }
 ```
 
-Minimal interface containing only the core method `Doer.Request` (the `Request` shown above). Suitable for custom implementations — any type satisfying this single method can be injected wherever a `Doer` is accepted.
+Minimal interface containing only `Doer.Request`. Any type that satisfies this single method can be injected wherever a `Doer` is accepted.
 
 ```go
 type MyDoer struct{}
@@ -96,7 +98,7 @@ type DomainClienter interface {
 }
 ```
 
-Domain-scoped client with automatic cookie and header management. See [Domain Client](../client-config/domain-client) and [Session Management](../client-config/session) for details.
+Domain client interface with automatic cookie and header management. See [Domain Client](../client-config/domain-client) and [Session Management](../client-config/session) for details.
 
 ## RetryPolicy
 
@@ -110,30 +112,29 @@ type RetryPolicy interface {
 
 Custom retry strategy interface.
 
-| Method | Description |
-|--------|-------------|
-| `ShouldRetry(resp, err, attempt)` | Determines whether to retry; `attempt` starts from 0 |
-| `GetDelay(attempt)` | Returns the wait time before the next retry |
-| `MaxRetries()` | Returns the maximum retry count |
+| Method | Signature | Description |
+|--------|------|------|
+| `ShouldRetry` | `ShouldRetry(resp ResponseReader, err error, attempt int) bool` | Returns whether to retry; a non-nil `err` means the request failed (in which case `resp` may be nil), and `attempt` starts from 0 |
+| `GetDelay` | `GetDelay(attempt int) time.Duration` | Returns the wait time before the next retry |
+| `MaxRetries` | `MaxRetries() int` | Returns the maximum retry count |
 
-The three methods correspond to the interface definitions `RetryPolicy.ShouldRetry`, `RetryPolicy.GetDelay`, and `RetryPolicy.MaxRetries`.
+The fully qualified method names are `RetryPolicy.ShouldRetry`, `RetryPolicy.GetDelay`, and `RetryPolicy.MaxRetries`.
 
-:::warning Internal Type Limitation
-The `resp` parameter type ResponseReader in ShouldRetry is an internal interface (located in the `internal/types` package) that external code cannot reference directly. Therefore, `RetryPolicy` can only be implemented within the same module. Most scenarios can be satisfied through `RetryConfig` configuration and the `WithMaxRetries` option. If you need a custom policy, implement the `RetryPolicy` interface within your project's internal package.
+:::tip Type Publicly Exported
+The `resp` parameter type `ResponseReader` in `ShouldRetry` is exported by the `httpc` package as a public type alias (`httpc.ResponseReader`, declared in `types.go`), so external packages can reference it directly. A custom `RetryPolicy` can therefore live in any business package. Most cases are covered by `RetryConfig` and the `WithMaxRetries` option.
 :::
 
-The following example demonstrates the `RetryPolicy` implementation pattern. Note that ResponseReader is an internal type -- this code can only compile within the `httpc` module:
+The following example implements `RetryPolicy` and compiles as-is in any package that imports `httpc`:
 
 ```go
-// Note: ResponseReader is an internal type (internal/types package).
-// This code cannot compile outside the httpc module.
-// Most users should configure retries via RetryConfig and WithMaxRetries.
+// ResponseReader is publicly exported by the httpc package (httpc.ResponseReader).
+// This example compiles in any package that imports github.com/cybergodev/httpc.
 
 type MyRetryPolicy struct {
     maxRetries int
 }
 
-func (p *MyRetryPolicy) ShouldRetry(resp ResponseReader, err error, attempt int) bool {
+func (p *MyRetryPolicy) ShouldRetry(resp httpc.ResponseReader, err error, attempt int) bool {
     if attempt >= p.maxRetries {
         return false
     }
@@ -189,7 +190,7 @@ type RequestMutator interface {
 }
 ```
 
-Used in middleware to provide read-write access to requests. Composed from internal interfaces RequestReader and RequestWriter. For the full method contract and a read/write example, see [Request & Response Mutators](../handler/mutators).
+Used in middleware to provide read-write access to requests. It is composed from the split interfaces `RequestReader` and `RequestWriter`, both exported by the `httpc` package as public type aliases (`httpc.RequestReader` / `httpc.RequestWriter`). For the full method contract and a read/write example, see [Request & Response Mutators](../handler/mutators).
 
 ### ResponseMutator
 
@@ -232,7 +233,115 @@ type ResponseMutator interface {
 }
 ```
 
-Used in middleware to provide read-write access to responses. Composed from internal interfaces ResponseReader and ResponseWriter. For the full method contract, see [Request & Response Mutators](../handler/mutators).
+Used in middleware to provide read-write access to responses. It is composed from the split interfaces `ResponseReader` and `ResponseWriter`, both exported by the `httpc` package as public type aliases (`httpc.ResponseReader` / `httpc.ResponseWriter`). For the full method contract, see [Request & Response Mutators](../handler/mutators).
+
+### Reader/Writer Split Interfaces: RequestReader / RequestWriter / ResponseReader / ResponseWriter
+
+`RequestMutator = RequestReader + RequestWriter` and `ResponseMutator = ResponseReader + ResponseWriter`. The four method sets are defined in `internal/types/interfaces.go`, and the `httpc` package exports all four as public type aliases in `types.go`, so external packages can reference them directly (e.g. `httpc.ResponseReader`).
+
+These four interfaces are the low-level read/write surfaces for middleware and retry policies:
+
+- Declare a `*Reader` to inspect without modifying.
+- Declare a `*Writer` to modify without inspecting.
+- Everyday code uses the aggregate `RequestMutator` / `ResponseMutator`.
+
+The `resp` parameter of `RetryPolicy.ShouldRetry` takes the read-only `ResponseReader`. For grouped method contracts and read/write examples, see [Request & Response Mutators](../handler/mutators).
+
+#### RequestReader
+
+Read-only access to request data:
+
+| Method | Signature | Description |
+|------|------|------|
+| `Method` | `Method() string` | HTTP method |
+| `URL` | `URL() string` | Request URL |
+| `Headers` | `Headers() map[string]string` | All request headers (key → single value) |
+| `QueryParams` | `QueryParams() map[string]any` | Query parameters |
+| `Body` | `Body() any` | Request body |
+| `Timeout` | `Timeout() time.Duration` | Request timeout |
+| `MaxRetries` | `MaxRetries() int` | Maximum retry count |
+| `Context` | `Context() context.Context` | Request context |
+| `Cookies` | `Cookies() []http.Cookie` | Request cookies |
+| `FollowRedirects` | `FollowRedirects() *bool` | Whether to follow redirects (nil means use the default) |
+| `MaxRedirects` | `MaxRedirects() *int` | Maximum redirect count (nil means use the default) |
+| `StreamBody` | `StreamBody() bool` | Whether to stream the request body |
+
+The fully qualified method names of the 12 methods are `RequestReader.Method`, `RequestReader.URL`, `RequestReader.Headers`, `RequestReader.QueryParams`, `RequestReader.Body`, `RequestReader.Timeout`, `RequestReader.MaxRetries`, `RequestReader.Context`, `RequestReader.Cookies`, `RequestReader.FollowRedirects`, `RequestReader.MaxRedirects`, `RequestReader.StreamBody`.
+
+#### RequestWriter
+
+Write-only access to request data, mirroring the read methods of `RequestReader`:
+
+| Method | Signature | Description |
+|------|------|------|
+| `SetMethod` | `SetMethod(string)` | Set the HTTP method |
+| `SetURL` | `SetURL(string)` | Set the URL |
+| `SetHeaders` | `SetHeaders(map[string]string)` | Set all request headers (full replacement) |
+| `SetHeader` | `SetHeader(key, value string)` | Set a single request header (add/modify; key canonicalized) |
+| `SetQueryParams` | `SetQueryParams(map[string]any)` | Set query parameters |
+| `SetBody` | `SetBody(any)` | Set the request body |
+| `SetTimeout` | `SetTimeout(time.Duration)` | Set the timeout |
+| `SetMaxRetries` | `SetMaxRetries(int)` | Set the maximum retry count |
+| `SetContext` | `SetContext(context.Context)` | Set the context |
+| `SetCookies` | `SetCookies([]http.Cookie)` | Set cookies |
+| `SetFollowRedirects` | `SetFollowRedirects(*bool)` | Set whether to follow redirects |
+| `SetMaxRedirects` | `SetMaxRedirects(*int)` | Set the maximum redirect count |
+| `SetStreamBody` | `SetStreamBody(bool)` | Set whether to stream the body |
+
+The 13 methods mirror the read methods of `RequestReader` one-to-one. The fully qualified method names are `RequestWriter.SetMethod`, `RequestWriter.SetURL`, `RequestWriter.SetHeaders`, `RequestWriter.SetHeader`, `RequestWriter.SetQueryParams`, `RequestWriter.SetBody`, `RequestWriter.SetTimeout`, `RequestWriter.SetMaxRetries`, `RequestWriter.SetContext`, `RequestWriter.SetCookies`, `RequestWriter.SetFollowRedirects`, `RequestWriter.SetMaxRedirects`, `RequestWriter.SetStreamBody`.
+
+#### ResponseReader
+
+Read-only access to response data; also the parameter type of `RetryPolicy.ShouldRetry`:
+
+| Method | Signature | Description |
+|------|------|------|
+| `StatusCode` | `StatusCode() int` | Status code |
+| `Status` | `Status() string` | Status text (e.g. `"200 OK"`) |
+| `Proto` | `Proto() string` | Protocol version (e.g. `"HTTP/1.1"`) |
+| `Headers` | `Headers() http.Header` | Response headers |
+| `Body` | `Body() string` | Response body (string) |
+| `RawBody` | `RawBody() []byte` | Response body (bytes) |
+| `ContentLength` | `ContentLength() int64` | Content length |
+| `Duration` | `Duration() time.Duration` | Request duration |
+| `Attempts` | `Attempts() int` | Attempt count (including retries) |
+| `Cookies` | `Cookies() []*http.Cookie` | Response cookies |
+| `RedirectChain` | `RedirectChain() []string` | Redirect chain (URL of each hop) |
+| `RedirectCount` | `RedirectCount() int` | Redirect count |
+| `RequestHeaders` | `RequestHeaders() http.Header` | Request headers actually sent |
+| `RequestURL` | `RequestURL() string` | Actual request URL (including the final URL after redirects) |
+| `RequestMethod` | `RequestMethod() string` | Request method |
+
+The fully qualified method names of the 15 methods are `ResponseReader.StatusCode`, `ResponseReader.Status`, `ResponseReader.Proto`, `ResponseReader.Headers`, `ResponseReader.Body`, `ResponseReader.RawBody`, `ResponseReader.ContentLength`, `ResponseReader.Duration`, `ResponseReader.Attempts`, `ResponseReader.Cookies`, `ResponseReader.RedirectChain`, `ResponseReader.RedirectCount`, `ResponseReader.RequestHeaders`, `ResponseReader.RequestURL`, `ResponseReader.RequestMethod`.
+
+#### ResponseWriter
+
+Write-only access to response data:
+
+| Method | Signature | Description |
+|------|------|------|
+| `SetStatusCode` | `SetStatusCode(int)` | Set the status code |
+| `SetStatus` | `SetStatus(string)` | Set the status text |
+| `SetProto` | `SetProto(string)` | Set the protocol version |
+| `SetHeaders` | `SetHeaders(http.Header)` | Set response headers (full replacement) |
+| `SetBody` | `SetBody(string)` | Set the response body |
+| `SetRawBody` | `SetRawBody([]byte)` | Set the response body (bytes) |
+| `SetContentLength` | `SetContentLength(int64)` | Set the content length |
+| `SetDuration` | `SetDuration(time.Duration)` | Set the duration |
+| `SetAttempts` | `SetAttempts(int)` | Set the attempt count |
+| `SetCookies` | `SetCookies([]*http.Cookie)` | Set cookies |
+| `SetRedirectChain` | `SetRedirectChain([]string)` | Set the redirect chain |
+| `SetRedirectCount` | `SetRedirectCount(int)` | Set the redirect count |
+| `SetRequestHeaders` | `SetRequestHeaders(http.Header)` | Set the request headers |
+| `SetRequestURL` | `SetRequestURL(string)` | Set the request URL |
+| `SetRequestMethod` | `SetRequestMethod(string)` | Set the request method |
+| `SetHeader` | `SetHeader(key string, values ...string)` | Set a single response header (add/modify) |
+
+The fully qualified method names of the 16 methods are `ResponseWriter.SetStatusCode`, `ResponseWriter.SetStatus`, `ResponseWriter.SetProto`, `ResponseWriter.SetHeaders`, `ResponseWriter.SetBody`, `ResponseWriter.SetRawBody`, `ResponseWriter.SetContentLength`, `ResponseWriter.SetDuration`, `ResponseWriter.SetAttempts`, `ResponseWriter.SetCookies`, `ResponseWriter.SetRedirectChain`, `ResponseWriter.SetRedirectCount`, `ResponseWriter.SetRequestHeaders`, `ResponseWriter.SetRequestURL`, `ResponseWriter.SetRequestMethod`, `ResponseWriter.SetHeader`.
+
+:::tip ResponseWriter.SetHeader does not canonicalize keys
+`ResponseWriter.SetHeader` stores the key **exactly as given, with no canonicalization**, unlike the request-side `RequestWriter.SetHeader`. Writing `content-type` alongside a server-sent canonical `Content-Type` yields two distinct entries. To replace an existing response header, pass the `http.CanonicalMIMEHeaderKey` spelling.
+:::
 
 ### Handler
 
@@ -248,19 +357,21 @@ Request handler function signature.
 type MiddlewareFunc func(Handler) Handler
 ```
 
-Middleware function signature that receives the next Handler and returns a wrapped Handler. `Handler`/`MiddlewareFunc` are aliases of the same-named types in the internal `types` package (`types.go`); see [Handler Pipeline](../handler/handler-chain) for chain assembly and customization rules.
+Middleware function signature that receives the next Handler and returns a wrapped Handler. `Handler` and `MiddlewareFunc` are aliases of the same-named types in the internal `types` package (`types.go`). See [Handler Pipeline](../handler/handler-chain) for chain assembly and customization rules.
 
 ### RequestOption
 
 ```go
-type RequestOption = engine.RequestOption
+type RequestOption interface {
+    apply(RequestMutator) error
+}
 ```
 
-Request option function type — a type alias of the internal `engine.RequestOption` (whose underlying type is `func(*engine.Request) error`), declared in `types.go`. Users do not construct this function directly; they use `WithXxx` factories such as `WithHeader`, `WithJSON`, and `WithOnRequest`. See [Request Options](../core/options) for the per-option reference.
+A public interface whose `apply` method is unexported, so it cannot be implemented outside the package; express custom per-request options with `RequestOptionFunc` (an adapter for `func(RequestMutator) error` literals, where nil is a no-op). Options themselves come from `WithXxx` factories such as `WithHeader`, `WithJSON`, and `WithOnRequest`. See [Request Options](../core/options) for the per-option reference.
 
 ## Certificate Pinning
 
-Certificate Pinning validates at the TLS handshake stage whether the server certificate matches a pre-pinned public key/certificate. Even if a trusted CA is compromised, the handshake is rejected, defending against man-in-the-middle attacks.
+Certificate Pinning validates during the TLS handshake whether the server certificate matches a pre-pinned public key or certificate. Even if a trusted CA is compromised, the handshake is rejected, which defends against man-in-the-middle attacks.
 
 ### CertificatePinner
 
@@ -307,7 +418,7 @@ client, err := httpc.New(cfg)
 ```
 
 :::tip
-Pinner implementations are concurrency-safe and can be shared across multiple clients created from the same `Config` (passed by reference on deep copy, not duplicated). Advanced users can also implement this interface directly to support custom pinning strategies (e.g. pinning the full certificate rather than the public key).
+Pinner implementations are concurrency-safe and can be shared across multiple clients created from the same `Config` (passed by reference on deep copy, not duplicated). To apply a custom pinning strategy (e.g. pinning the full certificate rather than the public key), implement this interface directly.
 :::
 
 ### NewSPKIHashPinner
@@ -316,9 +427,9 @@ Pinner implementations are concurrency-safe and can be shared across multiple cl
 func NewSPKIHashPinner(hashes ...string) (CertificatePinner, error)
 ```
 
-Creates a certificate pinner from one or more base64-encoded SHA-256 hashes (over the DER-encoded SubjectPublicKeyInfo/SPKI). This is the most common pinning format (used by HPKP) and the recommended approach.
+Creates a certificate pinner from one or more base64-encoded SHA-256 hashes (over the DER-encoded SubjectPublicKeyInfo/SPKI). This is the most common pinning format (used by HPKP).
 
-Passing multiple hashes supports key rotation -- as long as the peer's public key matches **any one** of the pinned hashes, the handshake succeeds.
+Multiple hashes support key rotation: the handshake succeeds when the peer's public key matches **any one** of the pinned hashes.
 
 Generate a hash from a certificate with the following command:
 
@@ -335,7 +446,7 @@ Returns an error when no valid hash is provided, or when a hash is not valid bas
 func NewPublicKeyPinner(publicKeys ...[]byte) (CertificatePinner, error)
 ```
 
-Creates a certificate pinner from one or more DER-encoded PKIX public keys (as returned by `x509.MarshalPKIXPublicKey`). It computes a SHA-256 hash of each public key internally; when you already hold the raw public key bytes, this is more convenient than `NewSPKIHashPinner`.
+Creates a certificate pinner from one or more DER-encoded PKIX public keys (as returned by `x509.MarshalPKIXPublicKey`). It computes a SHA-256 hash of each public key internally. When the raw public key bytes are already available, this is more direct than `NewSPKIHashPinner`.
 
 Returns an error when no valid public key is provided.
 
@@ -345,10 +456,12 @@ Returns an error when no valid public key is provided.
 func NewCertificatePinnerChain(pinners ...CertificatePinner) CertificatePinner
 ```
 
-Combines multiple pinners into one. The certificate is accepted as long as **any one** of the wrapped pinners accepts it. Use this to support multiple pinning strategies simultaneously, or to combine rotation keys built with different constructors.
+Combines multiple pinners into one. The certificate passes when **any one** of the wrapped pinners accepts it. Use this to support several pinning strategies at once, or to combine rotation keys built with different constructors.
 
-:::warning Zero-argument behavior: accepts all certificates
-With no arguments it returns an empty chain that **does not verify any certificate** (its verification logic returns `nil` directly) -- that is, **it accepts all certificates, equivalent to disabling certificate pinning** (the source `internal/security/certpin.go` comment reads "No pinners means no pinning"). This is the opposite of the intuitive "no pinner means reject" expectation, and is fail-open. Always pass at least one valid pinner; do not rely on the zero-argument behavior.
+:::warning Zero-argument behavior: rejects all connections
+With no arguments it returns an empty-chain pinner whose `VerifyPeerCertificate` returns an error, so **it rejects every connection** (fail-closed). It neither accepts nor panics.
+
+The error is `certificate pinning failed: no pinners configured` (source `internal/security/certpin.go`). Always pass at least one valid pinner; do not rely on the zero-argument behavior.
 :::
 
 :::tip Further reading

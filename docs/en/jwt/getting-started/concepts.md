@@ -7,13 +7,13 @@ sidebar_position: 2
 
 # Core Concepts
 
-This page explains the core abstractions and design model behind CyberGo JWT, helping you build a mental model before diving into code. To start coding right away, jump to [Quick Start](./index).
+This page explains the core abstractions and design model behind CyberGo JWT, establishing the overall picture before diving into code. To start coding right away, jump to [Quick Start](./index).
 
 ## Processor — The Central Type
 
 [Processor](../api-reference/processor) is the central type of the library, created via [`jwt.New(cfg)`](../api-reference/functions#new). It encapsulates the full logic for token creation, validation, refresh, and revocation. All methods are **goroutine-safe** — a single instance can be shared across goroutines.
 
-Call [`Close()`](../api-reference/processor#close) when done to securely wipe the secret key and release pooled resources:
+Call [`Close()`](../api-reference/processor#close) when done to release resources and clear key material:
 
 <!-- check-code: skip -->
 ```go
@@ -58,28 +58,30 @@ CyberGo JWT uses an access token + refresh token design:
 | **Issue method** | `Create` | `CreateRefresh` |
 | **Refresh method** | — | `Refresh` |
 
-**Why two layers?** Access tokens are short-lived, so the risk window is small even if leaked. Refresh tokens are long-lived but only used to obtain new access tokens, never for direct API authentication. This design balances security with user experience — users don't need to log in frequently, and access tokens can be refreshed silently after expiry.
+**Why two layers?** Access tokens are short-lived, so the risk window after a leak stays small. Refresh tokens are long-lived but only exchange for new access tokens; they never authenticate API calls directly. The design balances security and user experience: no frequent logins, and an expired access token can be refreshed silently.
 
 ::: tip Rotation semantics
-`Refresh` does **not** automatically revoke the refresh token by default. The original refresh token remains valid until it expires or is explicitly `Revoke`d. For one-time-use semantics (refresh token rotation), enable `Config.RotateRefreshTokens` (since v1.2.3; automatically revokes the old token on refresh), or call `Revoke` on the old refresh token after a successful `Refresh`. See [Token Refresh & Rotation](../guides/token-refresh).
+`Refresh` does not revoke the refresh token automatically by default. The original token stays valid until it expires or is explicitly `Revoke`d. One-time-use semantics and rotation details are covered in [Token Refresh & Rotation](../guides/token-refresh#rotation-strategies).
 :::
 
 ## Claims Structure
 
 Claims carry the user identity data inside a token. CyberGo JWT provides a two-layer structure:
 
-**RegisteredClaims** (RFC 7519 standard claims, auto-filled and validated):
+**RegisteredClaims** (RFC 7519 standard claims; auto-filled at creation time. Verification checks `exp`, `nbf`, `iss`, and `aud`):
 
 | Field | claim | Description |
 |-------|-------|-------------|
-| Issuer | `iss` | Issuer identifier |
+| Issuer | `iss` | Issuer identifier; compared with the configuration at verification |
 | Subject | `sub` | Subject identifier (also used as rate-limit key) |
-| Audience | `aud` | Intended audience |
-| ExpiresAt | `exp` | Expiration time |
-| NotBefore | `nbf` | Not-before time |
-| IssuedAt | `iat` | Issuance time |
+| Audience | `aud` | Intended audience; compared with the configuration at verification |
+| ExpiresAt | `exp` | Expiration time, validated at verification |
+| NotBefore | `nbf` | Not-before time, validated at verification |
+| IssuedAt | `iat` | Issuance time, written only, not validated |
 | ID | `jti` | Unique ID (blacklist key) |
 | TokenType | `token_type` | `access` or `refresh` |
+
+> The library fills zero values only. An `iss`/`exp`/`iat`/`jti` value set explicitly by the caller is used as-is, overriding the configuration and TTL.
 
 **Claims** (built-in business claims, embeds RegisteredClaims):
 
@@ -98,11 +100,11 @@ type Claims struct {
 }
 ```
 
-All fields undergo input validation: string length cap of 256, array cap of 100, injection pattern detection (XSS/SQLi signatures).
+Fields of the built-in `Claims` undergo deep validation **when a token is created**, covering string length (≤ 256 bytes of UTF-8, roughly 85 Chinese characters), array size (≤ 100 items), and XSS/SQLi injection pattern detection. The verification path runs only `Validate()` for required fields plus standard-claim string sanitization.
 
 ## CustomClaims Interface
 
-When the built-in Claims don't meet your needs, implement the [`CustomClaims`](../api-reference/interfaces#customclaims) interface to define your own claim structure:
+When the built-in Claims do not meet business needs, implement the [`CustomClaims`](../api-reference/interfaces#customclaims) interface to define a custom claim structure:
 
 <!-- check-code: skip -->
 ```go
@@ -125,11 +127,11 @@ func (c *AppClaims) Validate() error {
 }
 ```
 
-Custom types are validated with `ParseInto` and refreshed with `RefreshInto` — the Processor parses the token and populates your struct. See [Custom Claims](../guides/custom-claims).
+Custom types are validated with `ParseInto` and refreshed with `RefreshInto`: the Processor parses the token and populates the target struct. See [Custom Claims](../guides/custom-claims).
 
 ## Config Overview
 
-[`Config`](../api-reference/config) is the unified configuration entry point for Processor. Start with `DefaultConfig()` for sensible defaults, then set your signing key:
+[`Config`](../api-reference/config) is the unified configuration entry point for Processor. Start with `DefaultConfig()` for sensible defaults, then set the secret key:
 
 | Group | Fields | Description |
 |-------|--------|-------------|
@@ -147,7 +149,7 @@ CyberGo JWT is extensible through interfaces:
 
 | Interface | Purpose |
 |-----------|---------|
-| [`TokenManager`](../api-reference/interfaces#tokenmanager) | Core interface implemented by Processor. Define your own narrower subset (e.g. only `Create` + `Parse`) for dependency injection and decoupling |
+| [`TokenManager`](../api-reference/interfaces#tokenmanager) | Core interface implemented by Processor. A narrower subset (for example only `Create` + `Parse`) can be defined for dependency injection and decoupling |
 | [`BlacklistStore`](../api-reference/interfaces#blackliststore) | Custom blacklist backend (e.g. Redis). Implement `Add` / `Contains` / `Close` to connect external storage |
 | [`RateLimitProvider`](../api-reference/interfaces#ratelimitprovider) | Custom rate limiter. Implement `Allow` / `Reset` / `Close` to replace the built-in token bucket |
 | [`ClockProvider`](../api-reference/interfaces#clockprovider) | Clock injection. `FixedClock` returns a fixed time for deterministic control over expiry and refresh logic in tests |

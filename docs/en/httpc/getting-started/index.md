@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo HTTPC | 5-Minute Setup"
-description: "HTTPC quick start: go get install, GET/POST requests, five config presets, JSON parsing, Bearer Token auth, and ClientError classification in 5 minutes."
+description: "HTTPC quick start: go get install, GET/POST requests and responses, five config presets, JSON parsing, Bearer Token auth, and ClientError classification."
 sidebar_position: 10
 ---
 
 # Quick Start
+
+HTTPC is a Go HTTP client library built on the standard-library `net/http` transport. It provides TLS policy, SSRF protection, retries, and a `Result` response wrapper. This page covers installation, the first request, client creation, response handling, and error classification.
 
 ## Installation
 
@@ -24,7 +26,7 @@ Import it in your code:
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC requires Go 1.26 or later; apart from `golang.org/x/sys` it has no other third-party dependencies, and you can send your first request without any configuration.
+HTTPC requires Go 1.27 or later and has 7 direct dependencies, all compiled in unconditionally (there are no build tags for trimming features). `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp serve the `Security.TLSFingerprint` path and simply do not run when fingerprinting is off, so requests go out over the standard stack, and no configuration is required to send a request.
 
 ## Basic Requests
 
@@ -55,10 +57,10 @@ Supported HTTP methods: `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Option
 
 ### What Just Happened
 
-- Package-level functions use a **lazily-initialized shared default client** internally — created on the first call, reused afterwards, and safe for concurrent use;
+- Package-level functions use a **lazily-initialized default client**: created on the first call, reused afterwards, and safe for concurrent use;
 - The returned `*Result` aggregates the status code, response headers, response body, and request metadata (duration, attempts, redirect chain);
-- `err != nil` indicates a **network-layer error** only (connection failure, timeout, TLS error, etc.); 4xx/5xx status codes must be checked yourself via methods like `result.IsSuccess()`;
-- The default configuration ships TLS 1.2+, SSRF protection, a 10MB response-body cap, and up to 3 smart retries — no extra setup required.
+- `err != nil` indicates a **network-layer error** only (connection failure, timeout, TLS error, etc.). 4xx/5xx status codes must be checked via methods like `result.IsSuccess()`;
+- The default configuration enables TLS 1.2+, SSRF protection, a 10MB response-body cap, and up to 3 retries (idempotent requests only; POST/PATCH execute exactly once by default). No extra setup is required.
 
 ## Creating a Client
 
@@ -74,7 +76,7 @@ defer client.Close()
 result, err := client.Get("https://httpbin.org/get")
 ```
 
-A client holds resources such as the connection pool, so remember to call `Close()` when done. Long-running services usually create one client for the lifetime of the process and share it globally — `Client` is safe for concurrent use, so there is no need to create one per request or per goroutine.
+A client holds resources such as the connection pool, so call `Close()` when done. A long-running service creates one client for the process lifetime and reuses it: `Client` is safe for concurrent use, so no client per request or per goroutine is needed.
 
 ### Configuration Presets
 
@@ -82,7 +84,7 @@ A client holds resources such as the connection pool, so remember to call `Close
 |--------|----------|-----------------|
 | `DefaultConfig()` | General scenarios | Secure defaults, SSRF protection enabled |
 | `SecureConfig()` | Security-sensitive scenarios | Disables auto-redirects, strict timeouts |
-| `PerformanceConfig()` | High-throughput scenarios | Large connection pool, long timeouts, cookies enabled |
+| `PerformanceConfig()` | High-throughput scenarios | Large connection pool, overall timeout tightened for fast failure (60s), cookies enabled |
 | `TestingConfig()` | Test environments | Disables security checks and HTTP/2, cookies enabled |
 | `MinimalConfig()` | Lightweight requests | No retries, no redirects |
 
@@ -93,13 +95,13 @@ cfg.Timeouts.Request = 60 * time.Second
 client, err := httpc.New(cfg)
 ```
 
-You can also set defaults that apply to every request (User-Agent, default headers, redirect policy):
+Defaults that apply to every request (User-Agent, default headers, redirect policy) can also be set:
 
 ```go
 cfg := httpc.DefaultConfig()
 cfg.Defaults.UserAgent = "myapp/2.0"
 cfg.Defaults.Headers["Authorization"] = "Bearer " + token
-cfg.Defaults.FollowRedirects = false
+cfg.Security.FollowRedirects = false
 
 client, err := httpc.New(cfg)
 ```
@@ -219,7 +221,7 @@ case result.IsServerError():
 
 ## Your First Complete Program
 
-Here is a complete example you can run directly with `go run`: it queries repository information from the GitHub API and covers creating a client, setting headers, timeout control, status checking, and JSON parsing:
+A complete example that runs directly with `go run`: it queries repository information from the GitHub API and covers client creation, header setup, timeout control, status checking, and JSON parsing.
 
 ```go
 package main
@@ -240,7 +242,7 @@ type Repo struct {
 }
 
 func main() {
-	// 1. Create a client (default config: TLS 1.2+, SSRF protection, up to 3 retries)
+	// 1. Create a client (default config: TLS 1.2+, SSRF protection, up to 3 retries for idempotent requests)
 	client, err := httpc.NewDefault()
 	if err != nil {
 		log.Fatal(err)
@@ -333,7 +335,7 @@ func main() {
 
 ### Accessing Local or Intranet Services
 
-The default configuration blocks connections to private/reserved addresses such as `127.0.0.1`, `10.x`, and `192.168.x` (SSRF protection). There are three ways to open access for local development:
+The default configuration blocks connections to private IP addresses such as `127.0.0.1`, `10.x`, and `192.168.x` (SSRF protection). Local development can allow these connections in three ways:
 
 ```go
 // Option 1: per-request exemption (recommended; smallest blast radius)

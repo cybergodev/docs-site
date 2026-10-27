@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Security Overview"
-title: "Security Overview - CyberGo JSON | Validation & Depth Limits"
-description: "CyberGo JSON security: MaxNestingDepthSecurity/MaxMemory limits, path traversal and JSON injection defense, sensitive-data filtering, SecurityConfig presets."
+title: "Security Overview - CyberGo JSON | Validation & Limits"
+description: "CyberGo JSON security: default checks on input size, nesting, and dangerous patterns, the SecurityConfig preset, and traversal and injection defense."
 sidebar_position: 10
 ---
 
 # Security Overview
 
-Security considerations and best practices when handling JSON data.
+JSON input carries four risk classes: resource exhaustion, path traversal, injection payloads, and sensitive-data leakage. The library blocks the first three by default and provides defenses on the cache side and the error-output side for the fourth.
 
 ## Common Security Risks
 
@@ -47,18 +47,19 @@ func main() {
 
 ```go
 cfg := json.DefaultConfig()
-cfg.MaxNestingDepthSecurity = 50                       // Limit nesting depth
-cfg.MaxJSONSize = 10 * 1024 * 1024             // Limit JSON size (10MB)
-cfg.MaxObjectKeys = 5000                        // Limit keys per object (default 100000)
-cfg.MaxArrayElements = 5000                     // Limit elements per array (default 100000)
-cfg.MaxSecurityValidationSize = 100 * 1024 * 1024 // Raise the security validation cap to 100MB (default 10MB)
+cfg.MaxNestingDepthSecurity = 50       // Limit nesting depth (default 200, validated range 10-200)
+cfg.MaxJSONSize = 10 * 1024 * 1024     // Limit JSON size (default 100MB)
+cfg.MaxObjectKeys = 5000               // Limit keys per object (default 100000)
+cfg.MaxArrayElements = 5000            // Limit elements per array (default 100000)
 ```
 
-Or simply use the [`json.SecurityConfig()`](./production-checklist#checklist-template) preset — every limit already tightened for untrusted input.
+`MaxPathDepth` and `MaxSecurityValidationSize` are reserved fields that do not change behavior today (see the field overview below). The effective path limits are fixed: paths longer than 5000 bytes return `ErrInvalidPath`, and more than 100 segments returns the parse error `path too deep`.
+
+Use the [`json.SecurityConfig()`](./production-checklist#checklist-template) preset instead of setting fields by hand — it tightens the size, depth, key-count, and element-count caps for untrusted input and enables the full scan.
 
 ### 2. Path Traversal Attacks
 
-Malicious paths may reach unintended data. Both path kinds have built-in protection: **file paths** (`LoadFromFile`/`SaveToFile`, etc.) are **unconditionally** checked for traversal, symlinks, platform restrictions, and system directories at read/write time; **JSON paths** (`Get`/`Set`, etc.) reject `..`, URL-encoded bypasses, zero-width characters, and other injection patterns.
+A malicious path reaches data outside the intended scope. Both path kinds have built-in protection: **file paths** (`LoadFromFile`/`SaveToFile`, etc.) are **unconditionally** checked for traversal, symlinks, platform restrictions, and system directories at read/write time; **JSON paths** (`Get`/`Set`, etc.) reject `..`, URL-encoded bypasses, zero-width characters, and other injection patterns.
 
 **Minimal reproduction** (both path kinds blocked by default):
 
@@ -157,7 +158,7 @@ bytes, _ := json.Marshal(data)
 
 ### 4. Sensitive Data Leaks
 
-Logs or error messages can expose sensitive data. The library has two layers of defense: results containing sensitive patterns (`password`, `token`, `api_key`, `ssn`, `aws_secret`, etc.) are **not written to the operation cache**, preventing sensitive data from lingering in the cache; and the doc comment on `HookContext.JSONStr` explicitly warns against logging raw input.
+Logs and error messages are the usual exit point for sensitive data. The library has two layers of defense: results containing sensitive patterns (`password`, `token`, `api_key`, `ssn`, `aws_secret`, etc.) are **not written to the operation cache**, preventing sensitive data from lingering in the cache; and the doc comment on `HookContext.JSONStr` explicitly warns against logging raw input.
 
 **Protective measures** (delete sensitive fields via a Hook before returning):
 
@@ -194,20 +195,24 @@ For runnable, production-ready code see [Production Checklist - Sensitive Data H
 
 ### Security-Related Config Fields Overview
 
-These limits have no separate aggregate type — they are provided directly as `Config` fields. Field values under the two common configurations:
+These limits have no separate aggregate type — they are provided directly as `Config` fields. The table lists values under the two common configurations and the error each one raises:
 
 | Config field | `DefaultConfig()` default | `SecurityConfig()` preset | Error triggered |
 |--------------|---------------------------|---------------------------|-----------------|
 | `MaxJSONSize` | 100MB (`DefaultMaxJSONSize`) | 10MB | `ErrSizeLimit` |
 | `MaxNestingDepthSecurity` | 200 (`DefaultMaxNestingDepth`) | 30 | `ErrDepthLimit` |
-| `MaxPathDepth` | 50 (`DefaultMaxPathDepth`) | 30 | `ErrInvalidPath` |
+| `MaxPathDepth` | 50 (`DefaultMaxPathDepth`) | 30 | none — reserved field, no behavior today |
 | `MaxBatchSize` | 2000 (`DefaultMaxBatchSize`) | 2000 | `ErrSizeLimit` |
 | `MaxObjectKeys` | 100000 (`DefaultMaxObjectKeys`) | 5000 | `ErrSizeLimit` |
 | `MaxArrayElements` | 100000 (`DefaultMaxArrayElements`) | 5000 | `ErrSizeLimit` |
-| `MaxSecurityValidationSize` | 10MB (`DefaultMaxSecuritySize`) | 10MB | — (threshold type) |
+| `MaxSecurityValidationSize` | 10MB (`DefaultMaxSecuritySize`) | 10MB | none — reserved field, does not change scanning |
 | `FullSecurityScan` | `false` (tiered optimized scanning) | `true` (full scan) | — |
 
-`Config.Validate` clamps out-of-range values back into the legal ranges (e.g. `MaxNestingDepthSecurity` clamped to 10–200, `MaxObjectKeys` to 100–100000); use `ValidateWithWarnings` to see the adjustments.
+`MaxPathDepth` and `MaxSecurityValidationSize` only participate in config cache keying and in `Config.Validate` clamping; no code path reads them to produce behavior.
+
+The effective limits are fixed: a path longer than 5000 bytes returns `ErrInvalidPath`, and more than 100 segments returns the parse error `path too deep`. Security scanning runs in full for inputs under 4KB; at 4KB and above it switches to a 32KB rolling window covering every byte, and falls back to a full scan when the 4KB density sample finds too many suspicious characters.
+
+`Config.Validate` clamps out-of-range values back into the legal ranges: `MaxNestingDepthSecurity` to 10–200 and `MaxObjectKeys` to 100–100000. `ValidateWithWarnings` reports the adjustments.
 
 ### Dangerous Pattern Management
 
@@ -226,11 +231,11 @@ The struct fields, function signatures, and the "Global registration vs Config a
 | `PatternLevelInfo` | `PatternLevel` | `2` | Info level; semantically logs only |
 
 ::: warning Actual blocking behavior of levels
-The current pattern-scanning implementation rejects the operation on **any hit** (that passes the word-boundary context check); the `Level` field does not yet change blocking behavior and serves as semantic labeling only (to distinguish severity in audits and logs). See [Security Mode - PatternLevel behavior matrix](./security-mode#patternlevel-behavior-matrix).
+The current pattern-scanning implementation rejects the operation on **any hit** (one that passes the word-boundary context check); the `Level` field does not change blocking behavior and serves as semantic labeling only (to distinguish severity in audits and logs). See [Security Mode - PatternLevel behavior matrix](./security-mode#patternlevel-behavior-matrix).
 :::
 
 ::: tip
-`PatternLevel`'s `String()` method returns the corresponding string form (`"critical"`, `"warning"`, `"info"`), convenient for logging.
+`PatternLevel`'s `String()` method returns the corresponding string form (`"critical"`, `"warning"`, `"info"`), suitable for log output.
 :::
 
 #### Disabling Default Patterns
@@ -269,16 +274,18 @@ func DevelopmentConfig() json.Config {
 
 ## Input Validation
 
-### Custom Validators
+### Custom Validation Hooks
 
-Implement the `Validator` interface (`Validate(jsonStr string) error`) for input validation:
+::: warning The `Validator` interface is deprecated
+The old approach of registering custom validators via the `Validator` interface (`Config.CustomValidators` / `Config.AddValidator`) is **deprecated** — registered validators are never executed. For pre-operation input checks use `AddHook` with `ValidationHook` instead (a Before hook; returning an error aborts the operation); for structural validation use `ValidateSchema`.
+:::
+
+Use `ValidationHook` to validate input content before an operation (returning an error from the callback aborts that operation):
 
 ```go
-// Implement a custom validator
-type EmailValidator struct{}
-
-func (v *EmailValidator) Validate(jsonStr string) error {
-    // Validate the JSON string content
+// Register a validation hook: check the email field format
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
     var data map[string]any
     if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
         return err
@@ -291,11 +298,7 @@ func (v *EmailValidator) Validate(jsonStr string) error {
         return errors.New("invalid email format")
     }
     return nil
-}
-
-// Use the custom validator
-cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&EmailValidator{}}
+}))
 ```
 
 ### Schema Validation

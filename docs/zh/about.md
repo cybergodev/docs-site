@@ -18,7 +18,7 @@ CyberGo 文档站点是 [CyberGoDev](https://github.com/cybergodev) 组织的统
 | **JSON** | 高性能、线程安全的 JSON 处理库 | [cybergodev/json](https://github.com/cybergodev/json) |
 | **JWT** | 生产级 JWT 库，仅需 3 个函数即可完成所有操作 | [cybergodev/jwt](https://github.com/cybergodev/jwt) |
 | **HTTPC** | 现代高性能 HTTP 客户端，支持 TLS 1.2+ 和 SSRF 防护 | [cybergodev/httpc](https://github.com/cybergodev/httpc) |
-| **HTML** | 生产级 HTML 内容提取工具，支持智能文章识别 | [cybergodev/html](https://github.com/cybergodev/html) |
+| **HTML** | 生产级 HTML 内容提取工具：智能文章识别、结构化元数据与整页阅读模式 | [cybergodev/html](https://github.com/cybergodev/html) |
 | **DD** | 高性能日志库，每秒处理超过 300 万次操作 | [cybergodev/dd](https://github.com/cybergodev/dd) |
 | **ENV** | 生产就绪的环境变量管理库，零依赖设计 | [cybergodev/env](https://github.com/cybergodev/env) |
 

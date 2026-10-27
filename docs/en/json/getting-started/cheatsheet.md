@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo JSON | Common Functions & Examples"
-description: "CyberGo JSON cheat sheet: all package functions — path queries, Set/Delete, batch operations, serialization, file I/O, validation, iteration, JSONL streaming."
+description: "CyberGo JSON cheat sheet: path queries, Set/Delete, batch operations, serialization, file I/O, validation, iteration, and JSONL streaming."
 sidebar_position: 50
 ---
 
 # Cheat Sheet
 
-Quickly find common APIs and code snippets.
+Find a function signature and a minimal example by task: queries, modifications, encoding, files, validation, and iteration each get a section, with common patterns at the end.
 
 ## Path Queries
 
@@ -27,7 +27,7 @@ Quickly find common APIs and code snippets.
 
 ### With Default Values
 
-`GetString`, `GetInt`, `GetFloat`, `GetBool`, and friends accept an optional default-value parameter:
+`GetString`, `GetInt`, `GetFloat`, `GetBool`, `GetArray`, and `GetObject` take the default value as their trailing variadic parameter; it is returned when the path is missing, the value is null, or type conversion fails:
 
 | Operation | Function | Example |
 |-----------|----------|---------|
@@ -50,14 +50,27 @@ Quickly find common APIs and code snippets.
 ```go
 // Set a value
 result, err := json.Set(`{"user":{}}`, "user.name", "Alice")
+if err != nil {
+    panic(err)
+}
 // {"user":{"name":"Alice"}}
 
-// Set multiple fields one at a time
+// Set multiple fields one at a time (each call returns new JSON; check err)
+data := `{"user":{"temporary":true}}`
 result, err = json.Set(data, "user.name", "Bob")
+if err != nil {
+    panic(err)
+}
 result, err = json.Set(result, "user.age", 25)
+if err != nil {
+    panic(err)
+}
 
 // Delete
 result, err = json.Delete(data, "user.temporary")
+if err != nil {
+    panic(err)
+}
 ```
 
 ### Batch Operations (multiple operation kinds in one call)
@@ -103,7 +116,7 @@ for _, r := range results {
 | Encode selected fields | `EncodeFields` | `json.EncodeFields(user, []string{"name"})` |
 | Encode a value list into an array | `EncodeStream` | `json.EncodeStream([]any{1, 2})` |
 
-`json.EncodeWithConfig` is deprecated (equivalent to `Encode`; retained within v1) — use `Encode` or `Marshal` in new code. For detailed formatting-function choices see [Formatted Output](./print).
+`json.EncodeWithConfig` is deprecated (equivalent to `Encode`; retained within v1) — use `Encode` or `Marshal` in new code. For formatting-function choices see [Formatted Output](./print).
 
 ```go
 // Encode
@@ -150,7 +163,7 @@ if err := json.UnmarshalFromFile("config.json", &cfg); err != nil {
 ```
 
 ::: tip
-File paths go through security validation (rejecting directory traversal and symlink attacks); untrusted paths are intercepted too. See [File I/O](../api-reference/functions/file-io).
+File paths go through security validation: directory traversal is rejected, symlinks are resolved and the physical path is checked against restricted directories, and files above `MaxJSONSize` return `ErrSizeLimit`. See [File I/O](../api-reference/functions/file-io).
 :::
 
 ## Validation
@@ -182,11 +195,12 @@ schema := &json.Schema{
         "age":  {Type: "number"},
     },
 }
-p, err := json.New()
+// The package-level form needs no processor
+validationErrors, err := json.ValidateSchema(data, schema)
 if err != nil {
     panic(err)
 }
-errors, _ := p.ValidateSchema(data, schema)
+fmt.Println(validationErrors) // empty when there are no violations; err covers parse or setup failures
 ```
 
 ## Utility Functions
@@ -257,20 +271,20 @@ processor, err = json.New(cfg)
 
 | Operation | Function | Characteristics |
 |-----------|----------|-----------------|
-| Traverse array/object | `Foreach` | Simplest; no error return |
-| Traverse with interruption | `ForeachWithError` | Callback returns `error` / `item.Break()` |
-| Traverse at a given path | `ForeachWithPath` | The explicit-path version of `Foreach(data, path, ...)` |
-| Deep nested traversal | `ForeachNested` | Recurses all levels |
-| Deep traversal with interruption | `ForeachNestedWithError` | The error-returning version of `ForeachNested` |
-| Traverse and rewrite | `ForeachReturn` | Returns modified new JSON |
+| Traverse array/object | `ForeachWithError` | Recommended: callback returns `error` / `item.Break()` (`Foreach` is deprecated: silently drops errors) |
+| Traverse at a given path | `ForeachWithPath` | The explicit-path version (returns `error`) |
 | Carries the current path | `ForeachWithPathAndIterator` | Callback gets `currentPath`; can break |
 | Raw-value traversal control | `ForeachWithPathAndControl` | Callback receives raw values; `IteratorControl` steers the flow |
+| Traverse and rewrite | `ForeachReturn` | Returns modified new JSON |
+| Deep nested traversal | `ForeachNestedWithError` | Recommended: recurses all levels and returns `error` (`ForeachNested` is deprecated: silently drops errors) |
+| Traverse the root (void) | `Foreach` | Deprecated: silently skips the callback on a parse failure or a closed processor |
+| Deep traversal (void) | `ForeachNested` | Deprecated: same as above |
 | Traverse large files | `ForeachFile` | Loads the whole file first; use StreamIterator for constant memory |
 | Traverse a path inside a file | `ForeachFileWithPath` | Iterates the collection at a given path in the file (whole file loaded) |
 | Chunked file traversal | `ForeachFileChunked` | Batched callbacks of `chunkSize` (file still fully loaded) |
 | Recursive file traversal | `ForeachFileNested` | Recurses all nested structures in the file (whole file loaded) |
 
-Twelve iteration functions in total: the first eight operate on JSON strings in memory, the last four (`ForeachFile*`) operate on files (loaded fully before iterating, bounded by the `MaxJSONSize` cap).
+Twelve iteration functions in total (including the deprecated void variants `Foreach`/`ForeachNested`, excluding the JSONL-specific `ForeachJSONL`): the first eight operate on JSON strings in memory, the last four (`ForeachFile*`) operate on files (loaded fully before iterating, bounded by the `MaxJSONSize` cap).
 
 ```go
 data := `{"users":[{"name":"Alice"},{"name":"Bob"}]}`
@@ -312,11 +326,8 @@ _ = it.ForEach(func(i int, v any) error { return nil })
 f, _ := os.Open("huge.json")
 defer f.Close()
 
-// Stream a large array element by element
-it, err := json.NewStreamIterator(f)
-if err != nil {
-    panic(err)
-}
+// Stream a large array element by element (NewStreamIterator returns no error; check Err after iterating)
+it := json.NewStreamIterator(f)
 for it.Next() {
     val := it.Value() // per-element processing, constant memory
     _ = val
@@ -327,9 +338,12 @@ if err := it.Err(); err != nil {
 }
 
 // Stream a large object key by key
-oit, err := json.NewStreamObjectIterator(f)
+oit := json.NewStreamObjectIterator(f)
 for oit.Next() {
     fmt.Println(oit.Key(), oit.Value())
+}
+if err := oit.Err(); err != nil {
+    panic(err)
 }
 ```
 
@@ -376,10 +390,10 @@ err = json.StreamJSONLParallel(file, 4, func(lineNum int, item *json.IterableVal
     return nil
 })
 
-// NDJSONProcessor: line numbers, per-object callbacks (deprecated; use the StreamJSONL family in new code)
-np := json.NewNDJSONProcessor()
-err = np.ProcessFile("events.ndjson", func(lineNum int, obj map[string]any) error {
-    fmt.Println(lineNum, obj)
+// Stream a file line by line (with line numbers; item.GetData() returns the parsed value)
+err = json.StreamJSONLFile("events.ndjson", func(lineNum int, item *json.IterableValue) error {
+    row, _ := item.GetData().(map[string]any)
+    _ = row // process each line
     return nil
 })
 ```
@@ -433,11 +447,11 @@ name := json.GetString(data, "user.profile.name", "unknown")
 val, err := json.Get(data, "user.profile.name")
 if err != nil {
     if errors.Is(err, json.ErrPathNotFound) {
-        // Key does not exist
+        // Key missing or array index out of range
     } else if errors.Is(err, json.ErrInvalidJSON) {
         // Malformed JSON
     }
-    // Other errors (type conflicts, limit overruns) are contextual
+    // Other errors (limits, nesting depth, hook rejection) are contextual
     // JsonsError values — just log them
 }
 ```
@@ -558,7 +572,7 @@ merged, _ := json.MergeJSON(defaults, userConfig)
 ```go
 val, err := json.Get(data, path)
 if err != nil {
-    // Common sentinels: key missing / malformed JSON / size limit / depth limit
+    // Common sentinels: path miss (missing key or index out of range) / malformed JSON / size limit / depth limit
     // (type conflicts return a descriptive JsonsError, not the ErrTypeMismatch sentinel)
     switch {
     case errors.Is(err, json.ErrPathNotFound):

@@ -1,20 +1,22 @@
 ---
 sidebar_label: "Iteration Methods"
 title: "Processor Iteration Methods - CyberGo JSON | Foreach Family"
-description: "CyberGo JSON Processor iteration: Foreach, ForeachWithPath, ForeachWithError, IterableValue access and IteratorControl flow for array and object traversal."
+description: "Processor iteration: eight Foreach variants including ForeachWithPath and ForeachWithError, IteratorControl flow, and the ForeachFile family with Break."
 sidebar_position: 100
 ---
 
 # Iteration Methods
 
-The Processor provides multiple methods for iterating JSON arrays and objects.
+Iteration methods walk a JSON array or object and invoke a callback per element; the callback reads values through `IterableValue` and controls flow with `Break()` or `IteratorControl`.
 
 :::tip Mirror of the package-level iteration functions
-The 8 `Foreach*` methods on this page share their source with the [package-level iteration functions](../functions/iterate) one by one — callback signatures and iteration semantics are identical; see the package-level page for complete examples. The Processor-side differences:
+The eight `Foreach*` methods below share their source with the [package-level iteration functions](../functions/iterate); callback signatures and iteration semantics match. Three Processor-side differences:
 
-- **cfg semantics**: the optional trailing `cfg` controls that call's security validation (size, depth, dangerous patterns) etc.; when omitted, the processor's own configuration applies.
-- **Cache protection**: the iteration root is first `Get`-ed and then **deep-copied** into a working copy — even if the callback mutates the container returned by `item.GetData()`, neither the processor's parse cache nor the original input is polluted.
-- **Lifecycle**: after the processor is closed, all iteration methods return `ErrProcessorClosed`.
+- **cfg semantics**: the optional trailing `cfg` controls that call's security validation (size, depth, dangerous patterns); when omitted, the processor configuration applies.
+- **Cache protection**: the iteration root is `Get`-ed and then **deep-copied** into a working copy, so a callback mutating the container returned by `item.GetData()` pollutes neither the parse cache nor the input.
+- **Lifecycle**: once the processor is closed, the iteration methods that return `error` give `ErrProcessorClosed`; the deprecated `Foreach` / `ForeachNested` return nothing and can only skip the callback silently.
+
+Two more semantics match the package-level functions: a root that is neither an array nor an object runs no callback and returns no error (`ForeachWithError` likewise returns `nil`), and objects iterate in lexicographic key order while arrays follow index order.
 :::
 
 ## Foreach
@@ -26,7 +28,7 @@ Signature: `func (p *Processor) Foreach(jsonStr string, fn func(key any, item *I
 Iterates a JSON array or object.
 
 ::: warning Deprecated
-`Foreach` **silently drops errors**: when the document is invalid or the processor is closed, the callback is **skipped entirely** with no error returned — the caller cannot find out. Use [`ForeachWithError`](#foreachwitherror) instead — it returns the error, and its callback returns `nil` to continue iteration. `Foreach` will not be removed within v1.
+`Foreach` **silently drops errors**: when the document is invalid, the path fails to resolve, or the processor is closed, the callback is skipped entirely and no error is returned. Use [`ForeachWithError`](#foreachwitherror) instead — it returns the error, and its callback returns `nil` to continue. `Foreach` is kept for the lifetime of v1 and will not be removed.
 :::
 
 ```go
@@ -43,17 +45,13 @@ p.Foreach(data, func(key any, item *json.IterableValue) {
 
 Signature: `func (p *Processor) ForeachWithPath(jsonStr, path string, fn func(key any, item *IterableValue), cfg ...Config) error`
 
-Iterates at a given path and returns an error.
+Iterates at a given path and returns an error. The callback returns nothing: parse or path-resolution failures are returned rather than silently skipped as in the deprecated `Foreach`. Use it for nested arrays or for the object at a specific path.
 
 ```go
 err := p.ForeachWithPath(data, "items", func(key any, item *json.IterableValue) {
     fmt.Printf("[%v] %v\n", key, item.GetData())
 })
 ```
-
-Good for:
-- Iterating nested arrays
-- Iterating the object at a given path
 
 ## ForeachNested
 
@@ -64,7 +62,7 @@ Signature: `func (p *Processor) ForeachNested(jsonStr string, fn func(key any, i
 Recursively iterates all nested levels.
 
 ::: warning Deprecated
-`ForeachNested` **silently drops errors** just like `Foreach`: on a failed parse or a closed processor the callback is skipped entirely, with no error returned. Use [`ForeachNestedWithError`](#foreachnestedwitherror) instead — it returns the error, and its callback returns `nil` to continue iteration. `ForeachNested` will not be removed within v1.
+`ForeachNested` **silently drops errors** just like `Foreach`: on a failed parse, a failed path resolution or a closed processor the callback is skipped entirely, with no error returned. Use [`ForeachNestedWithError`](#foreachnestedwitherror) instead — it returns the error, and its callback returns `nil` to continue. `ForeachNested` is kept for the lifetime of v1 and will not be removed.
 :::
 
 ```go
@@ -103,7 +101,7 @@ Key: tags, Value: []any{...}
 
 Signature: `func (p *Processor) ForeachReturn(jsonStr string, fn func(key any, item *IterableValue), cfg ...Config) (string, error)`
 
-Iterates JSON data and returns the re-serialized JSON string. The callback **may modify** the iterated containers: `item.GetData()` returns a reference to the working copy (deep copy), and additions/deletions/changes to maps / slices are reflected in the final serialized result; scalars cannot be replaced in place. Modifications do not affect the original input or the processor cache.
+Iterates JSON data and returns the re-serialized JSON string. The callback **may modify** the iterated containers: `item.GetData()` returns a reference to the working copy (a deep copy), so additions, deletions and changes to maps or slices appear in the final serialized result; scalars cannot be replaced in place. Modifications never affect the input or the processor cache. The re-encoded output is also bounded by `MaxJSONSize`, returning `ErrSizeLimit` when exceeded.
 
 ```go
 package main
@@ -135,13 +133,13 @@ func main() {
 }
 ```
 
-Good for scenarios where you keep chaining operations after iteration.
+Useful when you keep processing the result after iteration.
 
 ## ForeachWithError
 
 Signature: `func (p *Processor) ForeachWithError(jsonStr, path string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
-Iterates at a given path, with an error-returning callback.
+Iterates at a given path with an error-returning callback: return `nil` to continue, any other error to interrupt and propagate verbatim.
 
 ```go
 err := p.ForeachWithError(data, "items", func(key any, item *json.IterableValue) error {
@@ -156,7 +154,7 @@ err := p.ForeachWithError(data, "items", func(key any, item *json.IterableValue)
 
 Signature: `func (p *Processor) ForeachNestedWithError(jsonStr string, fn func(key any, item *IterableValue) error, cfg ...Config) error`
 
-Recursively iterates all nested levels, with an error-returning callback.
+Recursively iterates all nesting levels with an error-returning callback.
 
 ```go
 err := p.ForeachNestedWithError(data, func(key any, item *json.IterableValue) error {
@@ -169,7 +167,7 @@ err := p.ForeachNestedWithError(data, func(key any, item *json.IterableValue) er
 
 Signature: `func (p *Processor) ForeachWithPathAndIterator(jsonStr, path string, fn func(key any, item *IterableValue, currentPath string) IteratorControl, cfg ...Config) error`
 
-Iterates at a given path and provides the current path. Uses `IteratorControl` to steer iteration.
+Iterates at a given path and passes each element's path relative to the iterated collection. `currentPath` looks like `[0]` for an array element or `.name` for an object member, without the `path` prefix. Return `json.IteratorBreak` to stop, `json.IteratorNormal` to continue.
 
 ```go
 err := p.ForeachWithPathAndIterator(data, "items", func(key any, item *json.IterableValue, currentPath string) json.IteratorControl {
@@ -185,7 +183,7 @@ err := p.ForeachWithPathAndIterator(data, "items", func(key any, item *json.Iter
 
 Signature: `func (p *Processor) ForeachWithPathAndControl(jsonStr, path string, fn func(key any, value any) IteratorControl, cfg ...Config) error`
 
-Iterates raw values at a given path, using `IteratorControl` to steer the flow.
+Iterates raw values at a given path (the callback gets `any`, not `IterableValue`), steering with `IteratorControl`. A panic in the callback is caught and returned as an error.
 
 ```go
 err := p.ForeachWithPathAndControl(data, "items", func(key any, value any) json.IteratorControl {
@@ -196,7 +194,7 @@ err := p.ForeachWithPathAndControl(data, "items", func(key any, value any) json.
 
 ## IterableValue
 
-The `IterableValue` in iteration callbacks provides type-safe value access: `Get` / `GetString` / `GetInt` / `GetFloat64` / `GetBool` / `GetArray` / `GetObject` plus default-value variants (`GetWithDefault`, `GetStringWithDefault`, `GetIntWithDefault`, etc.), state checks (`Exists` / `IsNull` / `IsNullData` / `IsEmpty` / `IsEmptyData`), nested iteration via `ForeachNested`, and the `Break()` stop signal. For the full method list and per-method notes see the [IterableValue type](../iterator) — identical to this page's callback usage.
+The `IterableValue` in iteration callbacks provides type-safe access: `Get`, `GetString`, `GetInt`, `GetFloat64`, `GetBool`, `GetArray`, `GetObject`, plus default-value variants (`GetWithDefault`, `GetStringWithDefault`, `GetIntWithDefault`, and so on), state checks (`Exists`, `IsNull`, `IsNullData`, `IsEmpty`, `IsEmptyData`), nested iteration via `ForeachNested`, and the `Break()` stop signal. For the full method list see [IterableValue type](../iterator).
 
 ## Method Comparison
 
@@ -215,7 +213,7 @@ The `IterableValue` in iteration callbacks provides type-safe value access: `Get
 
 ## File Iteration Methods
 
-The Processor provides methods that iterate directly from a file — a convenience combo of `LoadFromFile` + the `Foreach` family: path security validation, the `MaxJSONSize` read limit, and per-call `cfg` forwarding all behave the same as file loading; the file is likewise **fully loaded into memory** before iterating (bounded by the `MaxJSONSize` cap, 100MB by default); for constant-memory scenarios see [Large File Handling](../../streaming/large-files#streaming-and-parallel-iterators).
+File iteration methods are equivalent to `LoadFromFile` plus the matching `Foreach` method: path security validation, the `MaxJSONSize` read limit and per-call `cfg` forwarding behave as in file loading. The file is **fully loaded into memory** before iterating (bounded by `MaxJSONSize`, 100MB by default); for constant-memory scenarios see [Large File Handling](../../streaming/large-files#streaming-and-parallel-iterators).
 
 | Method | Signature essentials | Semantics |
 |--------|----------------------|-----------|

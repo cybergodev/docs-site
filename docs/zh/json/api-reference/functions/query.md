@@ -1,13 +1,13 @@
 ---
 sidebar_label: "查询获取"
 title: "查询与获取函数 - CyberGo JSON | Get/GetInt 用法与示例"
-description: "CyberGo JSON 是 JSONPath 路径查询的 Go 库，提供 Get/GetInt 类型安全获取、GetTyped[T] 泛型、SafeGet 安全访问与 GetMultiple 批量读取，路径缺失时自动回退默认值，GetWithContext 支持超时取消，帮助开发者稳健提取深层嵌套字段。"
+description: "路径查询与取值：Get/GetWithContext 返回哨兵错误，GetString 等类型化函数回退默认值，SafeGet 保留 Exists，GetMultiple 单次解析批量读取。"
 sidebar_position: 20
 ---
 
 # 查询与获取函数
 
-json 包提供的查询和获取函数，支持路径表达式、类型安全获取和批量操作。
+路径查询、类型安全获取、安全获取与批量获取函数。`Get` 失败时返回错误，类型化函数（`GetString` 等）不返回错误、直接落默认值；两条路径的错误语义不同，选型见下文。
 
 ## 路径查询函数
 
@@ -15,7 +15,7 @@ json 包提供的查询和获取函数，支持路径表达式、类型安全获
 
 签名：`func Get(jsonStr, path string, cfg ...Config) (any, error)`
 
-按路径获取任意类型的值。
+按路径获取任意类型的值。路径不存在、数组下标越界时返回的错误可用 `errors.Is(err, ErrPathNotFound)` 匹配；输入不是合法 JSON 时匹配 `ErrInvalidJSON`。错误值可能是裸哨兵，也可能是包裹它的 `JsonsError`，因此一律用 `errors.Is` 判定。需要缺省值兜底时改用类型化函数或 `SafeGet`，不要用 `Get` 的 err 分支兜底。
 
 **参数**
 
@@ -48,14 +48,15 @@ func main() {
 
 签名：`func GetWithContext(ctx context.Context, jsonStr, path string, cfg ...Config) (any, error)`
 
-带上下文的路径获取。支持超时和取消操作。`Get` 的上下文感知版本。
+带上下文的路径获取，是 `Get` 的上下文感知版本，支持超时与取消。
 
 ::: info 取消语义：边界级检查
-Context 仅在**操作开始前**与**结束后**各检查一次，不在解析/导航过程中检查：
+Context 只在**操作开始前**与**结束后**各检查一次，不在解析或导航过程中检查：
 
-- 开始前已取消/超时：直接返回 `ctx.Err()`（`context.Canceled` / `context.DeadlineExceeded`），不执行任何解析
-- 操作完成后才检测到超时：同样返回 `ctx.Err()`，即使值已成功取出也会被丢弃
-- 因此本函数适合作为**调用边界的守卫**——避免在已超时的请求上继续做无用功；但解析本身无法被中途掐断，对超大 JSON 文档，超时并不能限制单次解析的耗时上界
+- 开始前已取消或超时：直接返回 `ctx.Err()`（`context.Canceled` / `context.DeadlineExceeded`），不执行任何解析
+- 操作完成后才检测到超时：同样返回 `ctx.Err()`；即使值已成功取出也会被丢弃
+- 因此本函数只适合作为**调用边界的守卫**，可避免在已超时的请求上继续做无用功
+- 解析本身无法被中途掐断：对超大 JSON 文档，超时不能限制单次解析的耗时上界
 :::
 
 ```go
@@ -82,7 +83,7 @@ func main() {
 
 ## 类型安全获取函数
 
-类型安全获取函数通过 `defaultValue` 可变参数提供零值回退。当路径不存在、值为 null 或类型转换失败时返回 `defaultValue`（未提供则返回对应类型的零值）。
+类型安全获取函数用 `defaultValue` 可变参数提供回退值：路径不存在、值为 null 或类型转换失败时返回 `defaultValue`；未提供时返回该类型的零值。这类函数的可变参数已被 `defaultValue` 占用，因此**不接受 `Config`**，固定使用默认处理器。
 
 ### GetString
 
@@ -341,9 +342,9 @@ func main() {
 
 签名：`func GetTyped[T any](jsonStr, path string, defaultValue ...T) T`
 
-泛型获取函数，支持自定义类型。当路径不存在、值为 null 或类型转换失败时返回 `defaultValue`（未提供则返回 `T` 的零值）。
+泛型获取函数，支持自定义类型。路径不存在、值为 null 或类型转换失败时返回 `defaultValue`；未提供时返回 `T` 的零值。
 
-**命名约定说明**：`GetTyped[T]` 等同于 `GetAs[T]` 语义，表示将 JSON 值获取并转换为指定类型 `T`。
+**命名约定**：`GetTyped[T]` 表示「取 JSON 值并转换为类型 `T`」；本库不提供 GetAs 形式的泛型别名，泛型获取一律走 `GetTyped[T]`。
 
 ```go
 package main
@@ -384,7 +385,7 @@ func main() {
 
 签名：`func SafeGet(jsonStr, path string, cfg ...Config) AccessResult`
 
-执行类型安全的获取操作，返回 `AccessResult`，提供类型转换方法（`AsString`, `AsInt`, `AsFloat64`, `AsBool`）。
+执行类型安全的获取操作，返回 `AccessResult`。路径不存在、解析失败或处理器不可用时，`Exists` 为 `false`，不返回错误。结果提供 `AsString`、`AsInt`、`AsFloat64`、`AsBool` 等转换方法。
 
 ```go
 package main
@@ -413,7 +414,7 @@ func main() {
 
 签名：`func (p *Processor) SafeGet(jsonStr, path string, cfg ...Config) AccessResult`
 
-通过 Processor 实例执行类型安全的获取操作。
+用 Processor 实例执行类型安全的获取操作，行为与包级 `SafeGet` 相同。
 
 ```go
 p, err := json.New()
@@ -432,9 +433,9 @@ if result.Exists {
 ```
 
 ::: tip 选型：GetTyped 系列还是 SafeGet
-- **Config 支持**：`GetString`/`GetInt`/`GetTyped[T]` 等类型化函数**无法接收 Config**——可变参数已被 `defaultValue` 占用（Go 每个函数仅允许一个可变参数），它们固定使用默认处理器。需要按调用定制安全限制、校验或缓存时，改用 `SafeGet(jsonStr, path, cfg)`，或 `json.New(cfg)` 创建专用 Processor 后调用其 `GetString` 等方法。
-- **转换宽松度**：类型化函数走宽松转换（字符串 `"42"` 可转 `int`、布尔 `true` 转 `1`）；`SafeGet` 的 `AsInt`/`AsFloat64` 拒绝布尔输入，`AsString` 要求原值就是 string（需要显式字符串化时用 `AsStringConverted`）。
-- **错误语义**：类型化函数**静默回退**到默认值/零值；`SafeGet` 保留「是否存在」（`Exists`/`Ok()`）与「转换失败」（`AsInt`/`AsString` 等转换方法返回 error）两类信息，便于区分处理。
+- **Config 支持**：`GetString`/`GetInt`/`GetTyped[T]` 等类型化函数**无法接收 Config**，因为可变参数已被 `defaultValue` 占用。Go 每个函数只允许一个可变参数，所以它们固定使用默认处理器。需要按调用定制安全限制、校验或缓存时，改用 `SafeGet(jsonStr, path, cfg)`；或用 `json.New(cfg)` 创建专用 Processor，再调用其 `GetString` 等方法。
+- **转换宽松度**：类型化函数走宽松转换（字符串 `"42"` 转 `int`、布尔 `true` 转 `1`）。`SafeGet` 的 `AsInt`/`AsFloat64` 拒绝布尔输入，`AsString` 要求原值就是 string；需要显式字符串化时用 `AsStringConverted`。
+- **错误语义**：类型化函数**静默回退**到默认值或零值。`SafeGet` 保留「是否存在」（`Exists`/`Ok()`）与「转换是否失败」（`AsInt`/`AsString` 等返回 error）两类信息，可分别处理。
 :::
 
 ## Processor 扩展方法
@@ -449,9 +450,9 @@ if result.Exists {
 
 **返回值语义**
 
-- 整份 JSON 只解析**一次**，再对每个路径求值（比多次调用 `Get` 高效）
+- 整份 JSON 只解析**一次**，再对每个路径求值；多次调用 `Get` 会为每个路径重复解析
 - 返回的 map 以**路径字符串本身**为键（如 `"user.name"`），与输入 `paths` 一一对应
-- **部分失败**：某条路径取值失败时，该键在 map 中为 `nil`，同时函数返回**第一个**遇到的错误（`map` 与 `err` 同时非 nil）——已成功路径的结果仍可使用
+- **部分失败**：某条路径取值失败时，该键在 map 中为 `nil`，同时函数返回**第一个**遇到的错误（`map` 与 `err` 同时非 nil），已成功路径的结果仍可用
 - 任一路径**语法非法**则整体失败（返回 `nil, err`）；`paths` 为空切片时返回空 map 与 `nil`
 
 ```go
@@ -511,7 +512,7 @@ fmt.Println(values["user.name"]) // 输出：CyberGo
 
 ## 错误处理
 
-`Get`/`GetWithContext` 的失败用哨兵错误区分，`errors.Is` 判别；类型化函数（`GetString` 等）不返回错误，静默落到零值/默认值：
+`Get`/`GetWithContext` 的失败返回哨兵错误，用 `errors.Is` 判别。类型化函数（`GetString` 等）不返回错误，直接落零值或默认值。对象键不存在与数组下标越界都归入 `ErrPathNotFound`：
 
 ```go
 package main
@@ -524,19 +525,28 @@ import (
 )
 
 func main() {
-	data := `{"user": {"name": "Alice"}}`
+	data := `{"user": {"name": "Alice"}, "items": ["a", "b", "c"]}`
 
+	// 键不存在与数组下标越界都返回 ErrPathNotFound
 	if _, err := json.Get(data, "user.age"); errors.Is(err, json.ErrPathNotFound) {
-		fmt.Println("路径不存在，走默认值逻辑")
+		fmt.Println("路径不存在")
 	}
-	if _, err := json.Get(`{"name": "x"}`, "name[0]"); errors.Is(err, json.ErrTypeMismatch) {
-		fmt.Println("类型不匹配：字符串不支持下标")
+	if _, err := json.Get(data, "items[10]"); errors.Is(err, json.ErrPathNotFound) {
+		fmt.Println("下标越界")
 	}
+
+	// 非字符串值调用 AsString 会包 ErrTypeMismatch
+	if _, err := json.SafeGet(`{"age": 30}`, "age").AsString(); errors.Is(err, json.ErrTypeMismatch) {
+		fmt.Println("类型不匹配：数字不能转 string")
+	}
+
 	if _, err := json.Get(`{"name": }`, "name"); errors.Is(err, json.ErrInvalidJSON) {
 		fmt.Println("输入不是合法 JSON")
 	}
 }
 ```
+
+对字符串值用下标（如 `name[0]`）返回的是**普通** `JsonsError`，`errors.Is(err, ErrTypeMismatch)` 为 `false`，即 `Get` 的类型错误不包哨兵。需要「缺失即默认值」时用类型化函数或 `SafeGet`，不要用 `Get` 的 err 分支兜底。
 
 ::: tip 性能入口
 同一路径反复查询时用 [`CompilePath`/`GetCompiled`](../processor/query#compilepath)；同一 JSON 多路径查询用 [`PreParse`/`GetFromParsed`](../processor/query#preparse)，均见 Processor 查询参考。

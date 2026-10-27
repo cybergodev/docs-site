@@ -1,21 +1,21 @@
 ---
 sidebar_label: "概览"
 title: "API 参考 - CyberGo HTTPC | API 总索引"
-description: "HTTPC API 参考总索引：核心函数、请求选项、Result、Config 配置、中间件、类型与错误等九组完整 API 地图，覆盖 29 个 WithXxx 选项、5 个配置预设、7 个内置中间件与 17 个错误变量，附快速上手示例。"
+description: "HTTPC API 参考总索引：包级函数与客户端方法、32 个 WithXxx 请求选项、Result 响应类型、Config 配置与五个预设、七个内置中间件、SessionManager 会话管理、文件下载与错误类型的完整模块导航与符号地图。"
 sidebar_position: 10
 ---
 
 # API 参考
 
-HTTPC 提供 29 个请求选项函数、5 个配置预设、7 个内置中间件和完整的下载支持。
+HTTPC 提供 32 个请求选项函数、5 个配置预设、7 个内置中间件和完整的下载支持。
 
 ## 核心架构
 
-HTTPC 采用双层设计：Layer 1 的方法 API 是薄封装，真正处理请求的引擎是 Layer 2 的 Handler 管线。
+HTTPC 采用双层设计：Layer 1 的方法 API 是轻量封装，实际处理请求的是 Layer 2 的 Handler 管线。
 
 ```text
 HTTPC 双层架构
-├── Layer 1  方法 API（薄封装）
+├── Layer 1  方法 API（轻量封装）
 │     包级函数 httpc.Get/Post/... + Client 方法 + 请求选项 → Result
 │
 └── Layer 2  Handler 管线（请求处理引擎）
@@ -41,7 +41,7 @@ HTTPC 双层架构
 
 | 模块 | 说明 |
 |------|------|
-| [请求选项](./core/options) | 29 个 WithXxx 请求选项函数（请求头、请求体、认证、Cookie、回调等） |
+| [请求选项](./core/options) | 32 个 WithXxx 请求选项函数（请求头、请求体、认证、Cookie、回调、包级路由等） |
 | [内置中间件](./client-config/middleware) | Chain 组合、7 个内置中间件工厂和审计事件类型 |
 | [错误类型](./types/errors) | ClientError、12 种 ErrorType 枚举和 17 个错误变量 |
 
@@ -56,7 +56,7 @@ HTTPC 双层架构
 
 ## API 地图
 
-按符号类型分组的完整索引，与 `github.com/cybergodev/httpc` 包的导出面一一对应，点击跳转到对应详情页。
+按符号类型分组的索引，覆盖 `github.com/cybergodev/httpc` 包的主要导出面：逐项列出类型、函数与关键常量，成组的枚举常量（`ErrorType*`、`BodyKind`）与 `Default*Config()` 构造函数以组名汇总，逐项说明见链接的详情页。
 
 ### 客户端与包级函数
 
@@ -64,13 +64,14 @@ HTTPC 双层架构
 |------|------|
 | [`New`](./core/functions#new) / [`NewDefault`](./core/functions#newdefault) | 创建客户端（自定义 / 默认配置） |
 | [`Get`](./core/functions#get) / `Post` / `Put` / `Patch` / `Delete` / `Head` / `Options` / [`Request`](./core/functions#request) | 包级 HTTP 方法（共享内部默认客户端） |
-| [`Download`](./core/functions#download) | 统一文件下载入口（包级函数 / Client / DomainClient 三处同名同签名） |
+| [`Download`](./core/functions#download) | 统一文件下载入口（包级函数 / Client / DomainClient 同名同签名） |
 | [`SetDefaultClient`](./core/functions#setdefaultclient) / [`CloseDefaultClient`](./core/functions#closedefaultclient) | 默认客户端替换与关闭 |
-| [`NewDomain`](./core/functions#newdomain) / [`NewDomainDefault`](./core/functions#newdomaindefault) | 域名作用域客户端 |
+| [`CloseRoutedClients`](./core/functions#closeroutedclients) | 关闭全部包级路由客户端（由 `WithProxy`/`WithSystemProxy`/`WithTLSFingerprint` 创建并缓存） |
+| [`NewDomain`](./core/functions#newdomain) / [`NewDomainDefault`](./core/functions#newdomaindefault) | 创建域名客户端 |
 | [`SetSecurityWarnOutput`](./core/functions#setsecuritywarnoutput) | 安全警告输出重定向 |
 | [`FormatBytes`](./core/functions#formatbytes) / [`FormatSpeed`](./core/functions#formatspeed) | 字节数 / 速率格式化 |
 
-### 请求选项（29 个）
+### 请求选项（32 个）
 
 | 分组 | 选项 |
 |------|------|
@@ -80,9 +81,10 @@ HTTPC 双层架构
 | 查询参数（2） | `WithQuery`、`WithQueryMap` |
 | Cookie（4） | `WithCookies`、`WithCookieMap`、`WithCookieString`、`WithSecureCookie` |
 | 请求控制（9） | `WithContext`、`WithTimeout`、`WithNoTimeout`、`WithMaxRetries`、`WithRetryNonIdempotent`、`WithFollowRedirects`、`WithMaxRedirects`、`WithAllowPrivateIPs`、`WithStreamBody` |
+| 包级路由（3） | `WithProxy`、`WithSystemProxy`、`WithTLSFingerprint` |
 | 回调（2） | `WithOnRequest`、`WithOnResponse` |
 
-全部选项的签名、校验规则与覆盖的 Config 默认值见[请求选项](./core/options)。
+全部选项的签名、校验规则，以及各选项覆盖的 Config 默认值，见[请求选项](./core/options)。
 
 ### Result 家族
 
@@ -101,7 +103,7 @@ HTTPC 双层架构
 
 | 分类 | 符号 |
 |------|------|
-| 主类型 | `Config`（`Timeouts` / `Connection` / `Security` / `Retry` / `Middleware` / `Defaults` 六组） |
+| 主类型 | `Config`（含 `Timeouts` / `Connection` / `Security` / `Retry` / `Middleware` / `Defaults` 六组） |
 | 子配置类型 | `TimeoutConfig`、`ConnectionConfig`、`SecurityConfig`、`RetryConfig`、`MiddlewareConfig`、`RequestDefaults` |
 | 预设（5 个） | `DefaultConfig`、`SecureConfig`、`PerformanceConfig`、`TestingConfig`、`MinimalConfig` |
 | 校验与输出 | `ValidateConfig`、`Config.String` |
@@ -117,8 +119,8 @@ HTTPC 双层架构
 |------|------|
 | 管线类型 | `Handler`、`MiddlewareFunc`、`Chain` |
 | 中间件工厂（7 个） | `LoggingMiddleware`、`RecoveryMiddleware`、`RequestIDMiddleware`、`TimeoutMiddleware`、`HeaderMiddleware`、`MetricsMiddleware`、`AuditMiddleware` |
-| 中间件配置 | `LoggingConfig`、`RequestIDConfig`、`TimeoutMiddlewareConfig`、`HeaderConfig`、`MetricsConfig`、`AuditConfig`（各配 `Default*Config()` 构造函数） |
-| 变更器 | `RequestMutator`、`ResponseMutator`（中间件读写请求/响应的契约） |
+| 中间件配置 | `LoggingConfig`、`RequestIDConfig`、`TimeoutMiddlewareConfig`、`HeaderConfig`、`MetricsConfig`、`AuditConfig`，以及各自的 `DefaultLoggingConfig`、`DefaultRequestIDConfig`、`DefaultTimeoutMiddlewareConfig`、`DefaultHeaderConfig`、`DefaultMetricsConfig`、`DefaultAuditConfig` |
+| 变更器 | `RequestMutator`、`ResponseMutator`（中间件读写接口），以及只读/只写分体别名 `RequestReader`、`RequestWriter`、`ResponseReader`、`ResponseWriter` |
 
 详见 [处理器](./handler/handler-chain)、[内置中间件](./client-config/middleware)、[变更器](./handler/mutators)。
 
@@ -127,9 +129,10 @@ HTTPC 双层架构
 | 分类 | 符号 |
 |------|------|
 | 核心接口 | `Client`、`Doer`、`DomainClienter`、`RetryPolicy` |
-| 类型别名 | `RequestOption`、`ClientError`、`ErrorType`、`CertificatePinner`、`ProxyStrategy` |
+| 选项类型 | `RequestOption`（接口）、`RequestOptionFunc`（函数适配器） |
+| 类型别名 | `ClientError`、`ErrorType`、`CertificatePinner`、`ProxyStrategy` |
 | 证书固定 | `NewSPKIHashPinner`、`NewPublicKeyPinner`、`NewCertificatePinnerChain` |
-| 会话与域名 | `SessionManager`、`DomainClient`（建议以 `DomainClienter` 接口使用） |
+| 会话与域名 | `SessionManager`、`DomainClient`（建议通过 `DomainClienter` 接口使用） |
 | 数据类型 | `FormData`、`FileData`、`AuditEvent` |
 
 详见 [接口](./types/interfaces)、[域名客户端](./client-config/domain-client)、[会话管理](./client-config/session)、[常量与类型](./types/constants)。
@@ -138,10 +141,10 @@ HTTPC 双层架构
 
 | 分类 | 符号 |
 |------|------|
-| 错误类型 | `ClientError`、`ErrorType`（12 种错误类别枚举） |
+| 错误类型 | `ClientError`、`ErrorType`（12 种错误类别枚举：`ErrorTypeUnknown`、`ErrorTypeNetwork`、`ErrorTypeTimeout`、`ErrorTypeContextCanceled`、`ErrorTypeResponseRead`、`ErrorTypeTransport`、`ErrorTypeRetryExhausted`、`ErrorTypeTLS`、`ErrorTypeCertificate`、`ErrorTypeDNS`、`ErrorTypeValidation`、`ErrorTypeHTTP`） |
 | 哨兵错误（17 个） | `ErrClientClosed`、`ErrNilConfig`、`ErrInvalidHeader`、`ErrInvalidTimeout`、`ErrInvalidRetry`、`ErrInvalidMaxRedirects`、`ErrInvalidCredentials`、`ErrInvalidConnection`、`ErrInvalidSecurity`、`ErrInvalidMiddleware`、`ErrEmptyFilePath`、`ErrFileExists`、`ErrResponseBodyEmpty`、`ErrResponseBodyTooLarge`、`ErrStreamBodyRequiresDownload`、`ErrDownloadInProgress`、`ErrProxyConnectionFailed` |
 | BodyKind（6 常量） | `BodyAuto`、`BodyJSON`、`BodyXML`、`BodyForm`、`BodyBinary`、`BodyMultipart` |
-| 其他常量 | `ProxyStrategyRoundRobin` / `ProxyStrategyRandom`、`ChecksumSHA256`、审计上下文键 |
+| 其他常量 | `ProxyStrategyRoundRobin` / `ProxyStrategyRandom`、`ChecksumSHA256`、审计上下文键 `SourceIPKey` / `UserIDKey` |
 
 详见 [错误类型](./types/errors)、[常量与类型](./types/constants)。
 
@@ -177,12 +180,12 @@ result.RawBody()              // 响应体（字节）
 result.Unmarshal(&data)       // JSON 解析
 result.IsSuccess()            // 是否 2xx
 result.Meta.Duration          // 请求耗时
-result.Meta.Attempts          // 重试次数
+result.Meta.Attempts          // 总尝试次数（含首次）
 ```
 
 ## 版本兼容性
 
-- **Go 版本**：要求 Go 1.26 及以上（`go.mod` 声明 `go 1.26.0`）。
+- **Go 版本**：要求 Go 1.27 及以上（`go.mod` 声明 `go 1.27`）。
 - **导入路径**：`github.com/cybergodev/httpc`（包名 `httpc`，无需别名）。
-- **直接依赖**：仅 `golang.org/x/sys`（用于各平台系统代理检测，覆盖 Linux/macOS/Windows），无其他第三方依赖。
+- **直接依赖**：7 个直接模块，均无条件参与编译（不存在按功能裁剪的构建标签；平台差异经 `GOOS` 选择文件，如 `internal/engine/errors_unix.go`）。`golang.org/x/net` 与 `golang.org/x/sys` 服务标准路径；brotli / compress / uTLS / tls-client / fhttp 服务于传输层指纹路径——导入本包即会把它们编译进依赖图，未启用 `Security.TLSFingerprint` 时只是不参与运行。
 - **API 状态**：当前全部导出符号均无 `Deprecated` 标记，处于活跃维护状态。

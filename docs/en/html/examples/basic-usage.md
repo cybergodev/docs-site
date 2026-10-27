@@ -1,17 +1,18 @@
 ---
 sidebar_label: "Basic Usage"
-title: "Basic Usage - CyberGo html | Typical Scenario Examples"
-description: "CyberGo html basic usage in six scenarios: text and file extraction, Markdown/JSON output, link grouping, media info, and batch concurrency with timeouts."
-sidebar_position: 1
+title: "Basic Usage - CyberGo html | Scenario Examples"
+description: "CyberGo html basic usage: text and plain-text extraction, reader mode Markdown, file input, Markdown/JSON output, links, media, and batch concurrency."
+sidebar_position: 10
 ---
 
 # Basic Usage
 
-This page is a **copy-by-scenario** quick-reference index: each scenario shows only a minimal runnable skeleton you can copy and use right away; for principles and advanced configuration, follow the "Go deeper" link at the end of each section to the corresponding guide.
+This page gives a minimal runnable example per scenario; principles and advanced configuration live in each section's "Go deeper" link.
 
-| Scenario | Core Calls | In-Depth Guide |
-|----------|-----------|----------------|
+| Scenario | Core calls | Guide |
+|----------|------------|-------|
 | Text & plain text | `html.Extract` / `html.ExtractText` | [Content Extraction](../guides/core-features/content-extraction) |
+| Reader mode | `html.ReadPageToMarkdown` | [Reader Mode](../guides/core-features/reader-mode) |
 | Extract from file | `html.ExtractFromFile` | [Content Extraction](../guides/core-features/content-extraction) |
 | Markdown / JSON output | `html.ExtractToMarkdown` / `html.ExtractToJSON` | [Output Formats](../guides/core-features/output-formats) |
 | Link extraction | `html.ExtractAllLinks` + `html.GroupLinksByType` | [Link Extraction](../guides/core-features/link-extraction) |
@@ -20,7 +21,7 @@ This page is a **copy-by-scenario** quick-reference index: each scenario shows o
 
 ## Text & Plain Text
 
-`Extract` returns the complete `Result` in one call; when you only need plain text, use its close sibling `ExtractText`, which returns a `string` directly:
+`Extract` returns the full `Result` in one call; when you only need plain text, `ExtractText` returns a `string` directly:
 
 ```go
 package main
@@ -35,27 +36,34 @@ import (
 func main() {
 	data := []byte(`<html><head><title>Go Tutorial</title></head><body><article><h1>Getting Started with Go</h1><p>Go is a statically typed compiled language.</p><a href="https://go.dev">Go Official Site</a></article></body></html>`)
 
-	result, err := html.Extract(data) // pass in bytes, get the full Result back
+	result, err := html.Extract(data) // pass bytes, get the full Result
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(result.Title) // Output: Go Tutorial
 	fmt.Println(result.Text)
-	// Output: Getting Started with Go\n\nGo is a statically typed compiled language.\n\nGo Official Site
+	// Output:
+	// # Getting Started with Go
+	//
+	// Go is a statically typed compiled language.
+	//
+	// Go Official Site
+	fmt.Println(result.Confidence, result.ExtractionMethod)
+	// Output: 0.6 article (the body came from the scorer-selected <article>, but the text is short)
 
-	text, err := html.ExtractText(data) // plain text only: returns a string directly
+	text, err := html.ExtractText(data) // plain text only: returns a string
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(len(text) > 0) // Output: true (non-empty)
+	fmt.Println(len(text) > 0) // Output: true
 }
 ```
 
 Go deeper: [Content Extraction](../guides/core-features/content-extraction)
 
-## Extract from File
+## Reader Mode
 
-Use `ExtractFromFile` for files on disk — it ships with path traversal protection and file size limits:
+When you need the whole page (navigation and footer sections included) instead of a single article, `ReadPageToMarkdown` returns a Markdown document in one call:
 
 ```go
 package main
@@ -68,11 +76,72 @@ import (
 )
 
 func main() {
-	result, err := html.ExtractFromFile("article.html")
+	page := []byte(`<html><head><title>Example Page</title></head><body>
+  <header><nav><a href="/">Home</a></nav></header>
+  <main><article><h1>Body Heading</h1><p>Body paragraph.</p></article></main>
+  <footer><p>© 2026 Example</p></footer>
+</body></html>`)
+
+	md, err := html.ReadPageToMarkdown(page) // with links
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.Title) // Output: the <title> content of article.html
+	fmt.Println(md)
+	// Output:
+	// # Example Page
+	//
+	// # Header
+	//
+	// [Home](/)
+	//
+	// # Main Content
+	//
+	// # Body Heading
+	//
+	// Body paragraph.
+	//
+	// # Footer
+	//
+	// © 2026 Example
+
+	plain, err := html.ReadPageToMarkdownText(page) // without links
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(len(plain) > 0) // Output: true
+}
+```
+
+Go deeper: [Reader Mode](../guides/core-features/reader-mode)
+
+## Extract from File
+
+Use `ExtractFromFile` for files on disk; it includes path traversal protection and a file size limit:
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/cybergodev/html"
+)
+
+func main() {
+	// Write a sample file first (in real use this is usually an existing path)
+	const path = "article.html"
+	htmlDoc := `<html><head><title>Local File Sample</title></head><body><article><p>Body.</p></article></body></html>`
+	if err := os.WriteFile(path, []byte(htmlDoc), 0o644); err != nil {
+		log.Fatal(err)
+	}
+
+	result, err := html.ExtractFromFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.Title) // Output: Local File Sample
 }
 ```
 
@@ -80,7 +149,7 @@ Go deeper: [Content Extraction](../guides/core-features/content-extraction)
 
 ## Markdown / JSON Output
 
-Convert to Markdown when migrating content, and to JSON when transferring data between programs:
+Use Markdown for content migration and JSON for program-to-program transfer:
 
 ```go
 package main
@@ -94,19 +163,28 @@ import (
 
 func main() {
 	data := []byte(`<article><h1>Getting Started with Go</h1><p>Go is a compiled language.</p><img src="gopher.png" alt="Gopher" /><a href="https://go.dev">Go Official Site</a></article>`)
-	// To Markdown: images and links become ![]() and []() syntax automatically
+
+	// To Markdown: images and links become ![]() and []() syntax
 	md, err := html.ExtractToMarkdown(data)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(md)
-	// Output: Getting Started with Go\n\nGo is a compiled language.\n\n![Gopher](gopher.png)\n[Go Official Site](https://go.dev)
-	jsonBytes, err := html.ExtractToJSON(data) // To JSON: keeps all metadata fields
+	// Output:
+	// # Getting Started with Go
+	//
+	// Go is a compiled language.
+	//
+	// ![Gopher](gopher.png)
+	// [Go Official Site](https://go.dev)
+
+	// To JSON: keeps every metadata field
+	jsonBytes, err := html.ExtractToJSON(data)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("JSON bytes:", len(jsonBytes))
-	// JSON size depends on the content (includes text/title/images/links and more)
+	// Output: JSON bytes: <count> (with fields such as text, title, word_count, images, and links)
 }
 ```
 
@@ -114,7 +192,7 @@ Go deeper: [Output Formats](../guides/core-features/output-formats)
 
 ## Link Extraction
 
-A link extraction API independent of body extraction, which can also group links by type:
+`ExtractAllLinks` works independently of body extraction and reports every resource the page references, by type:
 
 ```go
 package main
@@ -137,6 +215,7 @@ func main() {
 		fmt.Printf("[%s] %s - %s\n", link.Type, link.Title, link.URL)
 	}
 	// Output: [link] Go Official Site - https://go.dev
+
 	groups := html.GroupLinksByType(links) // group by type
 	fmt.Println("link group:", len(groups["link"]))
 	// Output: link group: 1
@@ -147,7 +226,7 @@ Go deeper: [Link Extraction](../guides/core-features/link-extraction)
 
 ## Media Information
 
-Video and audio information is returned alongside `Extract` — no separate call needed:
+Video and audio information comes back with `Extract`, so no separate call is needed:
 
 ```go
 package main
@@ -164,6 +243,7 @@ func main() {
 <video poster="cover.jpg"><source src="https://example.com/video.mp4" type="video/mp4"></video>
 <audio><source src="https://example.com/audio.mp3" type="audio/mpeg"></audio>
 </article></body></html>`)
+
 	result, err := html.Extract(data)
 	if err != nil {
 		log.Fatal(err)
@@ -184,7 +264,7 @@ Go deeper: [Media Extraction](../guides/core-features/media-extraction)
 
 ## Batch, Timeout & Processor Reuse
 
-The typical server-side pattern: create a globally reusable `Processor`, extract batches concurrently, and use a context to cap the time of each batch:
+A common server-side shape: create one shared `Processor`, extract in batches, and bound each batch with a context.
 
 ```go
 package main
@@ -202,16 +282,17 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	p, err := html.New(html.DefaultConfig()) // concurrency-safe, globally reusable
+	p, err := html.New(html.DefaultConfig()) // concurrency-safe, safe to share
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer p.Close()
+
 	pages := [][]byte{
 		[]byte(`<html><body><article><h1>Page One</h1></article></body></html>`),
 		[]byte(`<html><body><article><h1>Page Two</h1></article></body></html>`),
 	}
-	batch := p.ExtractBatchWithContext(ctx, pages) // items unfinished when the context expires count as Cancelled
+	batch := p.ExtractBatchWithContext(ctx, pages) // items not started when the context expires count as Cancelled
 	fmt.Printf("Success: %d, Failed: %d\n", batch.Success, batch.Failed)
 	// Output: Success: 2, Failed: 0
 }

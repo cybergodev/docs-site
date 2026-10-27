@@ -1,56 +1,54 @@
 ---
 sidebar_label: "Package Functions"
-title: "Package Functions - CyberGo html | Usage & Examples"
-description: "CyberGo html package-level functions: Extract, ExtractText, ExtractToMarkdown, ExtractToJSON, ExtractBatch; sync.Pool reuse, cache disabled, one-off calls."
-sidebar_position: 1
+title: "Package Functions - CyberGo html | Signatures & Examples"
+description: "CyberGo html package functions: signatures, errors, and sync.Pool reuse for Extract, ExtractText, ExtractToMarkdown, ExtractBatch, and ReadPage."
+sidebar_position: 10
 ---
 
 # Package Functions
 
-Package-level functions are suited for one-off call scenarios; they reuse `Processor` instances internally via `sync.Pool` and require no manual lifecycle management. Note: pooled Processors have cache and audit retention disabled; for caching/statistics/audit, use [html.New](./processor) to create a dedicated Processor.
+Package functions are the one-off entry points of `github.com/cybergodev/html`: they reuse `Processor` instances internally via `sync.Pool`, so you never manage a lifecycle. Pooled instances have the cache disabled and reset their statistics and audit log on return; for caching, statistics, or audit, create a dedicated `Processor` with [html.New](./processor).
 
 ## Internal Mechanism
 
-:::info
-Package functions maintain a `sync.Pool` underneath that reuses `Processor` instances between calls to avoid repeated allocation. Key implementation details:
+:::info Two conclusions
+- **A pooled instance has no cache.** Package functions reuse `Processor` instances through a `sync.Pool`. A pooled instance starts from `DefaultConfig()` with caching turned off (`MaxCacheEntries`, `CacheTTL`, and `CacheCleanup` zeroed), and it resets statistics and audit state on return. Package-function calls therefore never reuse results across calls.
+- **Passing a custom `Config` switches to a one-shot instance.** A pooled instance has a fixed config, which cannot be reused safely with a different one. Each call with a custom `Config` therefore creates a new `Processor` and `Close`s it before returning; its cache fields are zeroed as well.
 
-- **Pooled config disables the cache**: the pooled config (`poolCfg`) is based on `DefaultConfig()` but explicitly zeroes three cache-related fields — `MaxCacheEntries=0`, `CacheTTL=0`, `CacheCleanup=0`. As a result, **package functions cannot leverage the cache**; every call is a full processing pass. This is by design, because the pooled Processor clears its cache on every return; enabling the cache would only pay hashing and map-write overhead that could never hit.
-- **State reset on return**: before returning the Processor at the end of each call, `ResetStatistics`, `audit.Wait()`, `ClearAuditLog`, and `ClearCache` are executed in turn, preventing cross-call leakage of statistics, audit, and cache state.
-- **Closed Processors are not returned**: if a Processor is closed during use (a misuse), the return logic discards it instead of putting it back in the pool (`sync.Pool` tolerates a missing `Put`; the next `Get` rebuilds via `pool.New`).
-- **Panic fallback**: `pool.New` only panics when a library invariant is broken (`poolCfg` is derived from `DefaultConfig()` and is valid by construction); this panic is caught by `getPooledProcessorSafe`, wrapped into `ErrInternalPanic`, and returned — it never escapes to the public API.
+When you need caching, accumulated statistics, or an audit log, create a long-lived `Processor` with [html.New](./processor).
 :::
 
 ## Config Parameter Resolution
 
-The `cfg ...Config` of all package functions is an optional variadic parameter, parsed by the internal `resolveConfig`:
+Apart from the `GroupLinksByType` helper, the `cfg ...Config` parameter of every package function is optional and variadic, parsed by the internal `resolveConfig`:
 
 | Argument | Behavior | Pooled? |
 |----------|----------|:-------:|
 | None | Uses `DefaultConfig()` | Yes (`pooled=true`) |
-| One | Uses that `Config` | **No** (`pooled=false`) |
+| One | Uses that `Config` on a one-shot Processor | **No** (`pooled=false`) |
 | Two or more | Returns `ErrMultipleConfigs` | — |
 
-:::warning
-When a custom `Config` is passed, the call does **not** go through `sync.Pool` — the pool only stores Processors based on `DefaultConfig()` and cannot safely reuse instances with different configs. In this case each call `New`s a temporary Processor and `Close`s it when done. If you need to reuse a custom config across high-frequency calls, create a [Processor](./processor) directly.
+:::warning Switch to a Processor when you need caching or accumulated statistics
+Neither the pooled path nor the one-shot instance has a cache, and neither retains statistics or audit entries across calls. When you need to reuse a custom config across loops, HTTP handlers, or batch jobs and want the cache to pay off, create a [Processor](./processor) directly.
 :::
 
 ## Constructors
 
 ### New
 
-Creates a dedicated `Processor` instance — the sole entry point for caching, statistics, and audit capabilities.
+Creates a dedicated `Processor` instance. The cache, accumulated statistics, and audit log live on the instance and stay queryable.
 
 ```go
 func New(cfg ...Config) (*Processor, error)
 ```
 
-`cfg ...Config` follows the same resolution rules as the table above (omitted uses `DefaultConfig()`; two or more return `ErrMultipleConfigs`), followed by `Config.Validate()`. Unlike the pooled/temporary instances of package functions, the instance returned by `New` **holds a long-lived cache and cumulative statistics**. For the full method list and lifecycle see [Processor](./processor).
+`cfg ...Config` follows the resolution rules above (omitted uses `DefaultConfig()`; two or more return `ErrMultipleConfigs`), then `Config.Validate()` runs. Unlike the pooled and one-shot instances behind package functions, the instance from `New` holds a long-lived cache and cumulative statistics. See [Processor](./processor) for the method list and lifecycle.
 
 ## Content Extraction
 
 ### Extract
 
-Extract content from HTML bytes, returning the full `Result`.
+Extract content from HTML bytes and return the full `Result`.
 
 ```go
 func Extract(htmlBytes []byte, cfg ...Config) (*Result, error)
@@ -61,19 +59,19 @@ func Extract(htmlBytes []byte, cfg ...Config) (*Result, error)
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `htmlBytes` | `[]byte` | HTML content |
-| `cfg` | `...Config` | optional config, at most one |
+| `cfg` | `...Config` | Optional config, at most one |
 
 **Example**:
 
 ```go
 result, err := html.Extract(data)
 if err != nil {
-    log.Fatal(err)
+	log.Fatal(err)
 }
 fmt.Println(result.Title, result.Text)
 ```
 
-Full runnable example (demonstrates field access and error handling):
+Full example with field access and error handling:
 
 ```go
 package main
@@ -89,7 +87,7 @@ func main() {
 	data := []byte(`<html><head><title>Example Page</title></head>
 <body><h1>Welcome</h1><p>Body content <a href="https://example.com">link</a>.</p></body></html>`)
 
-	// No Config passed — goes through the pooled path
+	// No Config passed: uses the pooled path
 	result, err := html.Extract(data)
 	if err != nil {
 		log.Fatalf("extraction failed: %v", err)
@@ -105,7 +103,7 @@ func main() {
 }
 ```
 
-**Error returns**: `Extract` returns the same errors as [Processor.Extract](./processor#error-returns) and may additionally return:
+**Error returns**: `Extract` returns the same errors as [Processor.Extract](./processor#error-returns), plus two that are specific to package functions:
 
 | Error | Condition |
 |-------|-----------|
@@ -120,13 +118,13 @@ Extract content from an HTML file.
 func ExtractFromFile(filePath string, cfg ...Config) (*Result, error)
 ```
 
-**Error returns**: in addition to `Extract`'s errors, file access may return a `*FileError` wrapping `ErrFileNotFound`, `ErrInvalidFilePath`, or a path-traversal denial (see [Security](../modules/security) for `AllowedBaseDir`).
+**Error returns**: in addition to `Extract`'s errors, file access may return a `*FileError`: `FileErr` wraps `ErrFileNotFound` (file does not exist) or `ErrInvalidFilePath` (empty path; a path-traversal denial for paths containing `..` components also wraps the latter, so `errors.Is` matches). When `AllowedBaseDir` is configured and the path escapes it, `FileErr` is `path outside allowed directory`, which matches no sentinel error (see [Security](../modules/security)). A file larger than `MaxInputSize` is rejected before it is read, returning an `*InputError` wrapping `ErrInputTooLarge`.
 
 ## Text Extraction
 
 ### ExtractText
 
-Extract only the plain text content.
+Extract plain text only.
 
 ```go
 func ExtractText(htmlBytes []byte, cfg ...Config) (string, error)
@@ -134,15 +132,22 @@ func ExtractText(htmlBytes []byte, cfg ...Config) (string, error)
 
 ### ExtractTextFromFile
 
-`ExtractTextFromFile` is the file-based variant of `ExtractText`, extracting plain text from an HTML file on disk; file-access errors are likewise wrapped into a `*FileError` (`ErrFileNotFound`, `ErrInvalidFilePath`, or a path-traversal denial).
+`ExtractTextFromFile` is the file variant of `ExtractText`: it reads an HTML file from disk and returns its plain text. File-access errors are the same as [`ExtractFromFile`](#extractfromfile).
 
 ```go
 func ExtractTextFromFile(filePath string, cfg ...Config) (string, error)
 ```
 
+```go
+text, err := html.ExtractTextFromFile("page.html")
+if err != nil {
+	log.Fatal(err)
+}
+```
+
 ## Context Variants
 
-All functions have variants that take a `context.Context` for cancellation and timeout control:
+Every extraction, output, link, and batch function has a `context.Context` variant for cancellation and timeout control; `New` and `GroupLinksByType` have none.
 
 | Function | Signature |
 |----------|-----------|
@@ -171,7 +176,7 @@ result, err := html.ExtractWithContext(ctx, data)
 | `ExtractToJSONWithContext` | `(ctx context.Context, htmlBytes []byte, cfg ...Config) ([]byte, error)` | With context |
 | `ExtractToJSONFromFileWithContext` | `(ctx context.Context, filePath string, cfg ...Config) ([]byte, error)` | File + context |
 
-For detailed usage and examples see [Output Formats](../modules/output).
+For usage and examples see [Output Formats](../modules/output).
 
 ## Link Extraction
 
@@ -188,9 +193,9 @@ Companion grouping helper:
 func GroupLinksByType(links []LinkResource) map[string][]LinkResource
 ```
 
-Groups link resources into a `map[string][]LinkResource` keyed by the `LinkResource.Type` field (`link`/`image`/`css`, etc.).
+Groups link resources into a `map[type][]LinkResource` keyed by `LinkResource.Type` (`link`/`image`/`css`, etc.).
 
-For detailed usage and examples see [Link Extraction](../modules/links).
+For usage and examples see [Link Extraction](../modules/links).
 
 ## Batch Processing
 
@@ -201,21 +206,42 @@ For detailed usage and examples see [Link Extraction](../modules/links).
 | `ExtractBatchFiles` | `(filePaths []string, cfg ...Config) *BatchResult` | Batch file extraction |
 | `ExtractBatchFilesWithContext` | `(ctx context.Context, filePaths []string, cfg ...Config) *BatchResult` | Files + context |
 
-For detailed usage and examples see [Batch Processing](../modules/batch).
+For usage and examples see [Batch Processing](../modules/batch).
+
+## Reader Mode
+
+Reader mode returns a whole-page sectioned view (`*ReadResult`) instead of picking a single article: links are always preserved, and navigation and footer blocks are labeled by kind. There are 12 package functions; signatures, the `ReadResult`/`PageSection`/`SectionKind` structures, and the key semantics are in [Reader Mode](./reader).
+
+| Function | Description |
+|----------|-------------|
+| `ReadPage` | Whole-page sections |
+| `ReadPageWithContext` | With context |
+| `ReadPageFromFile` | Read from a file |
+| `ReadPageFromFileWithContext` | File + context |
+| `ReadPageToMarkdown` | Whole-page Markdown (with links) |
+| `ReadPageToMarkdownWithContext` | With context |
+| `ReadPageToMarkdownText` | Whole-page Markdown (no links) |
+| `ReadPageToMarkdownTextWithContext` | With context |
+| `ReadPageFromFileToMarkdown` | File → Markdown (with links) |
+| `ReadPageFromFileToMarkdownWithContext` | File + context |
+| `ReadPageFromFileToMarkdownText` | File → Markdown (no links) |
+| `ReadPageFromFileToMarkdownTextWithContext` | File + context |
+
+`ReadPage*` **does not participate in the extraction cache**; `ReadPage*ToMarkdown*` uses a temporary Processor internally and never pollutes the main cache. See [Reader Mode](./reader).
 
 ## Package Functions vs Processor
 
-Both ultimately call `Processor` underneath, but they differ markedly in resource reuse and state retention:
+Both call into `Processor` underneath; they differ in resource reuse and retained state:
 
 | Dimension | Package functions | [Processor](./processor) |
 |-----------|-------------------|---------------------------|
-| Cache | **None** (pooled config `MaxCacheEntries=0`) | Yes (returns a deep copy on hit) |
-| Statistics | Reset each call (`ResetStatistics` on return) | Accumulated; `GetStatistics` anytime |
-| Audit log | Cleared each call (`ClearAuditLog` on return) | Accumulated; queryable via `GetAuditLog` |
-| Custom `Config` | Creates + destroys a temporary Processor each call | Reuses the same instance |
-| Lifecycle | Auto-managed (pool / temporary instance) | Requires manual `defer Close()` |
-| Suited for | One-off calls, scripts, low-frequency requests | High-frequency calls, long-running services, cache-needing |
+| Cache | **None** (pooled config `MaxCacheEntries=0`) | Yes (deep copy returned on hit) |
+| Statistics | Not retained across calls (`ResetStatistics` on pooled return; the custom-`Config` path discards the instance) | Accumulated; `GetStatistics` anytime |
+| Audit log | Not retained across calls (`ClearAuditLog` on pooled return; the custom-`Config` path discards the instance) | Accumulated; queryable via `GetAuditLog` |
+| Custom `Config` | One-shot Processor created and destroyed per call (cache fields zeroed) | Same instance reused |
+| Lifecycle | Automatic (pool or one-shot instance) | Manual `defer Close()` |
+| Suited for | One-off calls, scripts, low-frequency requests | High-frequency calls, long-running services, caching |
 
-:::tip
-For a single extraction or an occasional call, package functions are the easiest. If you need to extract repeatedly inside loops, HTTP handlers, or batch jobs, create a long-lived `Processor` and reuse it; the cache can then substantially reduce overhead.
+:::tip When to switch to a Processor
+A single or occasional call is fine with package functions. When you extract repeatedly inside loops, HTTP handlers, or batch jobs, create one long-lived `Processor` and reuse it; only then does the cache pay off.
 :::

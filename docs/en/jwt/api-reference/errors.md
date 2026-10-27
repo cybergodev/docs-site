@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Errors"
 title: "Errors - CyberGo JWT | Sentinel Errors"
-description: "CyberGo JWT defines 20 sentinel errors for config validation, token verification, signing, expiration, issuer, audience, blacklist, and lifecycle via errors.Is."
+description: "CyberGo JWT defines 20 sentinel errors covering config validation, token verification, expiration, issuer, audience, blacklist, rate limiting, and lifecycle."
 sidebar_position: 70
 ---
 
@@ -9,7 +9,7 @@ sidebar_position: 70
 
 ## Sentinel Errors
 
-All errors are checked using `errors.Is()`:
+Sentinel errors are checked with `errors.Is()`:
 
 ```go
 var (
@@ -54,7 +54,7 @@ var (
 | `ErrTokenRevoked` | Token has been revoked | `Parse()`, `Refresh()`, `ParseInto()`, `RefreshInto()` |
 | `ErrTokenMissingID` | Token is missing ID | `Revoke()`, `IsRevoked()`; `Refresh()` / `RefreshInto()` when `RotateRefreshTokens` is enabled |
 | `ErrTokenTypeMismatch` | Token type mismatch (refreshing with an access token, or using a refresh token as an access token) | `Refresh()`, `RefreshInto()`; `Parse()` / `ParseInto()` when `RejectRefreshAsAccess` is enabled |
-| `ErrRefreshRotationFailed` | Refresh token rotation failed (wraps the underlying blacklist store error) | `Refresh()`, `RefreshInto()` (when `RotateRefreshTokens` is enabled) |
+| `ErrRefreshRotationFailed` | Refresh token rotation failed (wraps the underlying blacklist store error; a full built-in store never triggers it) | `Refresh()`, `RefreshInto()` (when `RotateRefreshTokens` is enabled) |
 | `ErrTokenExpired` | Token has expired | `Parse()`, `Refresh()`, `ParseInto()`, `RefreshInto()` |
 | `ErrTokenNotValidYet` | Token is not yet valid | `Parse()`, `Refresh()`, `ParseInto()`, `RefreshInto()` |
 | `ErrTokenInvalidIssuer` | Issuer mismatch | `Parse()`, `Refresh()`, `ParseInto()`, `RefreshInto()`, `Revoke()`, `IsRevoked()` |
@@ -62,9 +62,15 @@ var (
 | `ErrExpirationRequired` | `RequireExpiration` is enabled but the token lacks `exp` | `Parse()`, `Refresh()`, `ParseInto()`, `RefreshInto()` |
 | `ErrInvalidClaims` | Claims validation failed | `Create()`, `CreateRefresh()`, `Parse()`, `Refresh()`, `ParseInto()`, `RefreshInto()` |
 | `ErrRateLimitExceeded` | Rate limit exceeded | `Create()`, `CreateRefresh()`, `Refresh()`, `RefreshInto()` |
-| `ErrBlacklistNotConfigured` | Blacklist not configured | `Revoke()`; `Refresh()` / `RefreshInto()` when `RotateRefreshTokens` is enabled |
+| `ErrBlacklistNotConfigured` | Blacklist not configured; unreachable in practice, since `New()` always builds one | `Revoke()`; `Refresh()` / `RefreshInto()` when `RotateRefreshTokens` is enabled |
 | `ErrProcessorClosed` | Processor is closed | All methods |
 | `ErrStoreClosed` | Store is closed | `Revoke()`, etc. |
+
+::: info Check Order
+`ErrAlgorithmMismatch` also satisfies `errors.Is(err, ErrInvalidToken)`. Match `ErrAlgorithmMismatch` before `ErrInvalidToken` in a branch chain; otherwise an algorithm mismatch falls into the generic invalid-token branch.
+:::
+
+When the built-in in-memory store fills up, it does not report an error — it evicts entries (fail-open), so evicted revocation records silently stop taking effect. `ErrRefreshRotationFailed` appears only when the underlying store truly returns an error, such as an unavailable or closed custom store backend.
 
 ### By Scenario
 
@@ -98,7 +104,7 @@ var (
 | Error | Trigger Method | Typical Cause |
 |-------|----------------|---------------|
 | `ErrRateLimitExceeded` | `Create()`, `CreateRefresh()`, `Refresh()`, `RefreshInto()` | Exceeded window request limit |
-| `ErrBlacklistNotConfigured` | `Revoke()`; `Refresh()` / `RefreshInto()` when `RotateRefreshTokens` is enabled | Blacklist store not configured |
+| `ErrBlacklistNotConfigured` | `Revoke()`; `Refresh()` / `RefreshInto()` when `RotateRefreshTokens` is enabled | Blacklist store not configured. `New()` always builds the built-in store, so this is unreachable in practice |
 | `ErrRefreshRotationFailed` | `Refresh()`, `RefreshInto()` (when `RotateRefreshTokens` is enabled) | Revoking the old refresh token failed (wraps the underlying blacklist store error); no new token was issued |
 | `ErrTokenMissingID` | `Revoke()`, `IsRevoked()` | Token is missing `jti` field |
 
@@ -120,9 +126,11 @@ claims, err := processor.Parse(tokenString)
 if err != nil {
     switch {
     case errors.Is(err, jwt.ErrTokenExpired):
-        // Token expired - prompt user to refresh
+        // Token expired - prompt the client to refresh
     case errors.Is(err, jwt.ErrTokenRevoked):
         // Token revoked - deny access
+    case errors.Is(err, jwt.ErrAlgorithmMismatch):
+        // Algorithm mismatch - must be checked before ErrInvalidToken
     case errors.Is(err, jwt.ErrInvalidToken):
         // Invalid signature - deny access
     case errors.Is(err, jwt.ErrProcessorClosed):

@@ -140,7 +140,7 @@ if err := cfg.Validate(); err != nil {
 
 ### OutputType
 
-输出目标类型枚举。
+`OutputType` 是输出目标类型枚举，`OutputTarget.Type` 字段取以下常量值。
 
 ```go
 type OutputType int
@@ -267,7 +267,7 @@ logger, _ := dd.New(dd.Config{
 
 ## SamplingConfig
 
-采样配置，用于高吞吐场景下减少日志量。
+`SamplingConfig` 是采样配置，用于高吞吐场景下减少日志量。
 
 ```go
 type SamplingConfig struct {

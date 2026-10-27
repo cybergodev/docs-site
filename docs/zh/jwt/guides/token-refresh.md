@@ -1,7 +1,7 @@
 ---
 sidebar_label: "令牌刷新与轮换"
 title: "令牌刷新与轮换 - CyberGo JWT | 访问与刷新令牌策略"
-description: "令牌刷新与轮换指南：讲解访问令牌与刷新令牌的双层 TTL 设计、CreateRefresh 签发与 Refresh 轮换流程、自定义 Claims 的 RefreshInto 用法，以及重用（默认不自动吊销）与一次性轮换（内建 RotateRefreshTokens 开关）两种策略。"
+description: "令牌刷新与轮换指南：讲解访问令牌与刷新令牌的双层 TTL 设计、CreateRefresh 签发与 Refresh 刷新流程、自定义 Claims 的 RefreshInto 用法，以及重用模式与一次性轮换（RotateRefreshTokens）两种策略的适用场景与取舍。"
 sidebar_position: 25
 check_code: false
 ---
@@ -110,6 +110,7 @@ fmt.Println("New Access Token:", newAccessToken)
 type MyClaims struct {
     UserID string `json:"user_id"`
     Role   string `json:"role"`
+    Tenant string `json:"tenant"` // 业务字段，内置 Claims 中没有对应项
     jwt.RegisteredClaims
 }
 
@@ -132,6 +133,25 @@ refreshToken, err := processor.CreateRefresh(&MyClaims{UserID: "123", Role: "adm
 // 刷新到自定义结构
 result := &MyClaims{}
 newToken, err := processor.RefreshInto(refreshToken, result)
+```
+
+自定义类型一律用 `RefreshInto`，不要用 `Refresh`。两条约束必须注意：
+
+- **`Refresh` 会丢失自定义字段**：`Refresh` 把令牌按内置 `Claims` 解析并重建，上面示例中 MyClaims 的 tenant 字段不会出现在新令牌中。只有 `RefreshInto` 能按原类型重建。
+- **刷新令牌按内置 `Claims` 校验时必须有 `UserID` 或 `Username`**：仅有 `Subject` 的自定义刷新令牌，`Refresh` 会返回 `invalid claims: user_id or username is required`；`RefreshInto` 走自定义 `Validate()`，不受此限制。
+
+```go
+// ❌ Refresh：自定义字段丢失，且要求 UserID/Username
+if _, err := processor.Refresh(refreshToken); err != nil {
+    panic(err)
+}
+
+// ✅ RefreshInto：保留自定义字段，按 MyClaims.Validate() 校验
+newToken, err := processor.RefreshInto(refreshToken, &MyClaims{})
+if err != nil {
+    panic(err)
+}
+fmt.Println("New Token:", newToken)
 ```
 
 ## 轮换策略
@@ -178,8 +198,8 @@ if err != nil {
 ```
 
 ::: warning fail-closed 语义与并发窗口
-- **吊销先于签发**：旧令牌的 jti 会在新令牌铸造**之前**被拉黑。若随后签发失败（如触发限流），旧令牌已失效，用户须重新认证——这是刻意的 fail-closed 设计，保证已接受的刷新令牌无法事后重放。
-- **错误**：吊销旧令牌失败时返回 `ErrRefreshRotationFailed`（包装底层黑名单存储错误），且不会有新令牌签发；缺少 `jti` 的刷新令牌无法吊销，直接返回 `ErrTokenMissingID`；未配置黑名单的处理器则返回 `ErrBlacklistNotConfigured`（`Revoke()` 同样如此）。经 `jwt.New()` 构建的处理器总是自带黑名单——`DefaultConfig()` 默认启用，零值字段也会在 `New()` 中补全默认——常规使用不会遇到该错误。
+- **吊销先于签发**：旧令牌的 jti 会在新令牌铸造**之前**被拉黑。若随后签发失败（如触发限流），旧令牌已失效，用户须重新认证。这是刻意的 fail-closed 设计，保证已接受的刷新令牌无法事后重放。
+- **错误**：吊销旧令牌失败时返回 `ErrRefreshRotationFailed`（包装底层黑名单存储错误），且不会有新令牌签发。缺少 `jti` 的刷新令牌无法吊销，直接返回 `ErrTokenMissingID`。未配置黑名单的处理器返回 `ErrBlacklistNotConfigured`；经 `jwt.New()` 构建的处理器总是自带黑名单，常规使用不会遇到。
 - **并发**：轮换收窄但不消除重放窗口——两个并发的 `Refresh` 可能都在吊销生效前通过验证。如需严格的单次使用保证，请自定义 `BlacklistStore` 实现原子 check-and-add。
 :::
 
@@ -231,8 +251,8 @@ _, err := processor.Refresh(accessToken)
 
 ## 安全注意事项
 
-- **Refresh 默认不自动吊销**：原刷新令牌在 `Refresh` 后仍然有效。如需一次性使用语义，启用 `Config.RotateRefreshTokens`（推荐，见[一次性轮换](#一次性轮换)）或手动调用 `Revoke`。
-- **Claims 不深度校验**：`Refresh` 验证标准 JWT 字段（签名、过期、签发者、受众、黑名单）和基本结构（UserID 或 Username 非空），但不重新检查字段长度限制和注入模式，信任创建时已校验。
+- **Refresh 默认不自动吊销**：原刷新令牌在 `Refresh` 后仍然有效。一次性使用语义见[一次性轮换](#一次性轮换)。
+- **Claims 不深度校验**：`Refresh` 验证签名、过期、签发者、受众与黑名单，并要求 `UserID` 或 `Username` 非空。字段长度与注入模式不在刷新时复查，信任创建时已校验。
 - **签名一致性**：新访问令牌使用与刷新令牌相同的签名算法和密钥，不支持跨算法刷新。
 
 ## 下一步

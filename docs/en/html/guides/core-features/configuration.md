@@ -1,30 +1,29 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration Guide - CyberGo html | Config Field Selection"
-description: "CyberGo html configuration: DefaultConfig, HighSecurityConfig, TextOnlyConfig, MarkdownConfig presets by scenario, six field categories, Validate checks."
-sidebar_position: 6
+description: "CyberGo html configuration: DefaultConfig, HighSecurityConfig, TextOnlyConfig, and MarkdownConfig compared, all 31 fields by group, common setups, Validate."
+sidebar_position: 60
 ---
 
 # Configuration Guide
 
-The `Config` struct has 30+ fields, but daily use only requires understanding a few key groups. This guide helps you quickly choose the right configuration for your scenario. For complete field descriptions, see the [API Reference — Config](../../api-reference/core/config).
+`Config` is the library's single configuration struct, with 31 fields. Most scenarios need one preset plus a few overrides; the full field reference is in [API Reference — Config](../../api-reference/core/config).
 
-## Four Preset Configurations
+## Four Presets
 
-The library provides four presets that cover most scenarios:
-
-| Preset | Use Case | Key Difference |
+| Preset | Use case | Key difference |
 |--------|----------|----------------|
-| `DefaultConfig()` | General extraction | Full features enabled, safe defaults |
+| `DefaultConfig()` | General extraction | All features on, safe defaults |
 | `HighSecurityConfig()` | Untrusted input | Tighter limits, audit enabled, lower depth cap |
-| `TextOnlyConfig()` | Plain text only | Disables all media retention, max performance |
-| `MarkdownConfig()` | Markdown output | Inline images/links converted to Markdown format |
+| `TextOnlyConfig()` | Plain text only | All media preservation off |
+| `MarkdownConfig()` | Inline Markdown output | Images and links rendered as Markdown |
 
 ```go
 package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/cybergodev/html"
 )
@@ -33,83 +32,105 @@ func main() {
 	data := []byte(`<html><body><h1>Title</h1><p>Body content</p></body></html>`)
 
 	// Most scenarios: use the default config directly
-	p1, _ := html.New()
+	p1, err := html.New()
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p1.Close()
-	r1, _ := p1.Extract(data)
+	r1, err := p1.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(r1.Title)
+	// Output: Title
 
-	// Only need plain text (e.g., search engine indexing)
-	p2, _ := html.New(html.TextOnlyConfig())
+	// Plain text only (e.g. search engine indexing)
+	p2, err := html.New(html.TextOnlyConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p2.Close()
 
-	// Output Markdown (e.g., CMS migration)
-	p3, _ := html.New(html.MarkdownConfig())
+	// Images and links appear in Text as Markdown inline syntax (e.g. CMS migration)
+	p3, err := html.New(html.MarkdownConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p3.Close()
-	md, _ := p3.ExtractToMarkdown(data)
-	fmt.Println(md)
+	r3, err := p3.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(r3.Text)
+	// Output: # Title
+	//         Body content
 }
 ```
 
-:::tip Start from a preset
-When unsure, start with `DefaultConfig()` and adjust individual fields as needed. Presets can be combined — take one preset, then override fields:
+:::warning A zero-value Config is unusable
+`Config{}` fails `Validate()` (`MaxInputSize` and others must be positive), so never start from the zero value. Take a preset, then override fields.
 :::
 
 <!-- check-code: skip -->
 ```go
 cfg := html.HighSecurityConfig()
-cfg.PreserveImages = false // Additionally disable images on top of high security
+cfg.PreserveImages = false // additionally disable images on top of high security
 processor, _ := html.New(cfg)
 ```
 
-## Tour of Six Field Categories
+`TextOnlyConfig()` only sets `PreserveImages`/`PreserveLinks`/`PreserveVideos`/`PreserveAudios` to `false`; it does not touch the `Include*` filters used by `ExtractAllLinks`.
+
+`MarkdownConfig()` only sets `InlineImageFormat` and `InlineLinkFormat`; `ExtractToMarkdown` always uses Markdown formatting, so it does not need that preset.
+
+## Six Field Groups
 
 ### Resource Management
 
-Controls memory usage and performance. Typically no adjustment is needed in daily development.
+These affect memory and throughput. Defaults suit most workloads; adjust for your load.
 
 | Field | Default | Description |
 |-------|---------|-------------|
 | `MaxInputSize` | 50 MB | Maximum input size; prevents memory exhaustion |
-| `MaxCacheEntries` | 2000 | Cache entry limit; set 0 to disable cache |
+| `MaxCacheEntries` | 2000 | Cache entry limit; 0 disables the cache |
 | `CacheTTL` | 1 hour | Cache time-to-live |
-| `CacheCleanup` | 5 minutes | Background cleanup interval for expired cache |
-| `WorkerPoolSize` | 4 | Batch processing concurrency (1–256) |
-| `ProcessingTimeout` | 30 seconds | Per-document timeout; set 0 for no limit |
+| `CacheCleanup` | 5 minutes | Background interval for clearing expired entries |
+| `WorkerPoolSize` | 4 | Batch concurrency (1–256) |
+| `ProcessingTimeout` | 30 seconds | Per-document timeout; 0 means no limit |
 
-:::warning Cache applies only to Processor instances
-Package-level functions (e.g., `html.Extract`) use a pooled Processor and clear the cache after each call. For caching, create a standalone Processor with `html.New()`. See [Processor Reuse & Cache](../performance/processor-cache).
+:::warning Caching applies only to Processor instances
+Package-level functions (e.g. `html.Extract`) use a pooled or temporary Processor per call, so the cache never survives across calls. For caching, create a standalone Processor with `html.New()`. See [Processor Reuse & Cache](../performance/processor-cache).
 :::
 
 ### Security
 
-Security configuration is critical for production environments. For a complete overview of security features, see [Security Overview](../security/).
+This group matters in production. See [Security Overview](../security/) for the full picture.
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `EnableSanitization` | `true` | HTML sanitization (removes dangerous tags/attributes) |
-| `MaxDepth` | 500 | DOM nesting depth limit; prevents stack overflow |
-| `AllowedBaseDir` | `""` | Sandbox directory for file operations; empty = no restriction |
+| `EnableSanitization` | `true` | HTML sanitization (removes dangerous tags and attributes) |
+| `MaxDepth` | 500 | DOM nesting limit; prevents stack overflow |
+| `AllowedBaseDir` | `""` | Sandbox directory for file operations; empty means no restriction |
 | `Audit` | Disabled | Security audit log configuration |
 
-:::warning AllowedBaseDir
-When processing user-provided file paths, always set `AllowedBaseDir`. It resolves real paths via OS file handles (preventing symlink and Windows junction bypasses).
+:::warning AllowedBaseDir and user-supplied paths
+Set `AllowedBaseDir` whenever a file path comes from user input. It resolves the real path through an OS file handle, which defeats symlink and Windows junction escapes.
 :::
 
 ### Content Extraction
 
-Controls what content is extracted from the HTML.
+Controls what is extracted from the HTML.
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `ExtractArticle` | `true` | Smart article detection (auto-locates main content) |
-| `PreserveImages` | `true` | Preserve image information |
-| `PreserveLinks` | `true` | Preserve link information |
+| `ExtractArticle` | `true` | Article detection (locates the main content) |
+| `ExtractMetadata` | `true` | Structured metadata: parses author, publication time, description, site name, and canonical URL, and lets a metadata title take priority |
+| `PreserveImages` | `true` | Keep image information |
+| `PreserveLinks` | `true` | Keep link information |
 | `PreserveVideos` | `true` | Extract videos |
-| `PreserveAudios` | `true` | Extract audios |
+| `PreserveAudios` | `true` | Extract audio |
 
-Disabling unneeded media types can improve performance:
+Turning off unneeded media types cuts processing work:
 
-<!-- check-code: skip -->
 ```go
 cfg := html.DefaultConfig()
 cfg.PreserveVideos = false
@@ -117,9 +138,13 @@ cfg.PreserveAudios = false
 // Extract only text, images, and links
 ```
 
-### Output Format
+:::tip What disabling ExtractMetadata changes
+It also changes where the title comes from: `Result.Title` no longer takes the JSON-LD headline or `og:title` and falls back to the DOM order `<title>` → the h1 inside the article → the first document h1 → the first h2. `Author`, `PublishedTime`, `Description`, `SiteName`, and `CanonicalURL` stay empty.
+:::
 
-Controls how images and links are rendered in text output. See [Output Formats](./output-formats).
+### Output Formats
+
+Controls how images and links appear in the text output. See [Output Formats](./output-formats).
 
 | Field | Default | Options |
 |-------|---------|---------|
@@ -128,42 +153,50 @@ Controls how images and links are rendered in text output. See [Output Formats](
 | `TableFormat` | `"markdown"` | `"markdown"`, `"html"` |
 | `Encoding` | `""` (auto) | `"utf-8"`, `"gbk"`, `"shift_jis"`, `"windows-1252"`, etc. |
 
-When `Encoding` is empty, encoding is auto-detected. Specifying it manually skips the detection step and improves performance, but only use this when the encoding is known. See [Encoding Detection](./encoding-detection).
+The three format fields accept exported constants directly, which avoids typos: `html.FormatNone` (`"none"`), `html.FormatMarkdown` (`"markdown"`), `html.FormatHTML` (`"html"`), and `html.FormatPlaceholder` (`"placeholder"`, accepted only by `InlineImageFormat`). The constants are equivalent to the string literals and follow the same validation rules (case-insensitive); the constant list is in [API Reference: Constants & Errors](../../api-reference/types/constants#format-constants).
+
+```go
+cfg := html.DefaultConfig()
+cfg.InlineImageFormat = html.FormatMarkdown
+cfg.InlineLinkFormat = html.FormatHTML
+```
+
+An empty `Encoding` goes through auto-detection. Setting it skips the detection step, but only do so when the encoding is known — a wrong value yields mojibake or an `encoding detection failed` error. See [Encoding Detection](./encoding-detection).
 
 ### Link Extraction
 
-The following fields take effect only in `ExtractAllLinks`, controlling which types of resource links are extracted. See [Link Extraction](./link-extraction).
+These fields apply to `ExtractAllLinks` and Reader Mode (the `ReadPage` family). See [Link Extraction](./link-extraction).
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `ResolveRelativeURLs` | `true` | Resolves relative URLs to absolute URLs |
-| `BaseURL` | `""` | Resolution base; auto-detected from HTML when empty |
+| `ResolveRelativeURLs` | `true` | Resolve relative URLs to absolute URLs |
+| `BaseURL` | `""` | Resolution base; auto-detected from the HTML when empty |
 | `IncludeImages` | `true` | Include `<img>` links |
-| `IncludeVideos` | `true` | Include `<video>`/`<iframe>` links |
+| `IncludeVideos` | `true` | Include `<video>` and `<iframe>`/`<embed>`/`<object>` embed links |
 | `IncludeAudios` | `true` | Include `<audio>` links |
 | `IncludeCSS` | `true` | Include `<link rel="stylesheet">` |
 | `IncludeJS` | `true` | Include `<script src>` |
-| `IncludeContentLinks` | `true` | Include internal `<a href>` links |
-| `IncludeExternalLinks` | `true` | Include external links |
+| `IncludeContentLinks` | `true` | Include `<a>` links with a relative href |
+| `IncludeExternalLinks` | `true` | Include `<a>` links with an absolute or protocol-relative href |
 | `IncludeIcons` | `true` | Include favicon/icon |
 
-:::tip Link Extraction vs Content Extraction
-The `Include*` fields affect only `ExtractAllLinks`. Link retention in content extraction (`Extract`) is controlled by `PreserveLinks`.
+:::tip Link extraction and content extraction are independent
+The `Include*` fields affect only `ExtractAllLinks`. Link retention in `Extract` is controlled by `PreserveLinks`.
 :::
 
 ### Extensions
 
 | Field | Description |
 |-------|-------------|
-| `Scorer` | Custom content scorer; when nil, the built-in default scorer (internal implementation) is used |
+| `Scorer` | Custom content scorer; when nil, the built-in scorer (internal) is used |
 
-A custom Scorer can optimize article detection for specific websites. See [Testing & Custom Extensions](../integration/testing-custom).
+A custom Scorer can tune article detection for a specific site. See [Testing & Custom Extensions](../integration/testing-custom).
 
-## Common Configuration Combinations
+## Common Combinations
 
 ### Web Crawler
 
-For high-frequency batch crawling, increase concurrency and shorten the timeout:
+Raise concurrency and shorten the timeout for batch crawling:
 
 ```go
 package main
@@ -177,9 +210,9 @@ import (
 
 func main() {
 	cfg := html.DefaultConfig()
-	cfg.WorkerPoolSize = 8                   // Increase batch concurrency
-	cfg.ProcessingTimeout = 10 * time.Second // Shorten timeout
-	cfg.PreserveVideos = false               // Crawler doesn't need videos
+	cfg.WorkerPoolSize = 8                   // Raise batch concurrency
+	cfg.ProcessingTimeout = 10 * time.Second // Shorten the timeout
+	cfg.PreserveVideos = false               // Crawlers don't need video
 	cfg.PreserveAudios = false
 
 	processor, err := html.New(cfg)
@@ -197,7 +230,7 @@ func main() {
 
 ### API Backend Service
 
-For processing user-submitted HTML, use the high-security config and restrict the file directory:
+For user-submitted HTML, use the high-security config and restrict the file directory:
 
 ```go
 package main
@@ -210,7 +243,7 @@ import (
 
 func main() {
 	cfg := html.HighSecurityConfig()
-	cfg.AllowedBaseDir = "/var/www/uploads" // Restrict file directory
+	cfg.AllowedBaseDir = "/var/www/uploads" // Restrict the file directory
 
 	processor, err := html.New(cfg)
 	if err != nil {
@@ -218,7 +251,7 @@ func main() {
 	}
 	defer processor.Close()
 
-	// Process user-uploaded HTML files
+	// Process a user-uploaded HTML file
 	result, err := processor.ExtractFromFile("/var/www/uploads/user.html")
 	if err != nil {
 		log.Fatal(err)
@@ -229,7 +262,7 @@ func main() {
 
 ### Content Migration Tool
 
-To convert legacy site HTML to Markdown, preserving links and resolving relative URLs:
+Convert legacy site HTML to Markdown:
 
 ```go
 package main
@@ -242,11 +275,7 @@ import (
 )
 
 func main() {
-	cfg := html.MarkdownConfig()
-	cfg.ResolveRelativeURLs = true
-	cfg.BaseURL = "https://old-site.example.com"
-
-	processor, err := html.New(cfg)
+	processor, err := html.New() // DefaultConfig
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -261,9 +290,11 @@ func main() {
 }
 ```
 
+`ExtractToMarkdown` always uses Markdown formatting, independent of `InlineImageFormat`/`InlineLinkFormat`, so `MarkdownConfig()` is not needed here. `BaseURL` and `ResolveRelativeURLs` apply to `ExtractAllLinks` and Reader Mode, and do not rewrite links in an `Extract` result.
+
 ## Validate
 
-All configurations are automatically validated when passed to `html.New()`. You can also call `Validate()` manually to check in advance:
+Configs passed to `html.New()` are validated automatically. You can also call `Validate()` first:
 
 <!-- check-code: skip -->
 ```go
@@ -274,4 +305,10 @@ if err := cfg.Validate(); err != nil {
 }
 ```
 
-Validation rules include field range checks and format string validation. An invalid configuration returns `*ConfigError`, which you can check with `errors.Is(err, html.ErrInvalidConfig)`. For complete field constraints, see [API Reference — Config](../../api-reference/core/config).
+Validation covers field ranges and format strings. An invalid config returns `*ConfigError`, which you can test with `errors.Is(err, html.ErrInvalidConfig)`. Full constraints are in [API Reference — Config](../../api-reference/core/config).
+
+## Next Steps
+
+- [Processor Reuse & Caching](../performance/processor-cache) - Performance optimization for high-frequency calls
+- [Security Overview](../security/) - Security features and production practice
+- [API Reference: Config](../../api-reference/core/config) - Complete field reference and constraints

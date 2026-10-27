@@ -1,13 +1,13 @@
 ---
 sidebar_label: "自定义编码器"
 title: "CustomEncoder - CyberGo JSON | 自定义类型编码"
-description: "CyberGo JSON 自定义编码器指南：实现 json.Marshaler 或 TextMarshaler 接口为 Go 类型定制 JSON 形态，配合 Config.CustomEscapes 字符转义与 time.Time 内置格式，与标准库通用、可跨库复用、移植性最佳，并附完整可运行示例。"
+description: "CyberGo JSON 自定义编码：实现 MarshalJSON 或 MarshalText 定制类型的 JSON 形态，配合 CustomEscapes 转义。"
 sidebar_position: 30
 ---
 
 # 自定义编码器
 
-json 库与标准库 `encoding/json` 保持编码兼容，因此自定义类型的 JSON 形态主要通过实现标准库接口来完成。本页介绍**当前版本实际生效**的编码扩展点：
+自定义类型的 JSON 形态通过实现标准库接口完成，因此编码兼容 `encoding/json`。当前版本实际生效的编码扩展点有四个：
 
 - [`json.Marshaler`](#json-marshaler-接口) —— 类型自定义其 JSON 编码
 - [`encoding.TextMarshaler`](#encoding-textmarshaler-接口) —— 类型自定义其文本编码（输出为 JSON 字符串）
@@ -15,7 +15,7 @@ json 库与标准库 `encoding/json` 保持编码兼容，因此自定义类型�
 - [`Config.CustomEscapes`](#自定义字符转义-customescapes) —— 自定义字符转义映射
 
 ::: tip 接口优先
-对「某个类型如何编码」的需求，优先实现 `MarshalJSON` 或 `MarshalText`；这类实现可被本库、标准库 `encoding/json` 以及任何兼容库共用，可移植性最强。
+对「某个类型如何编码」的需求，优先实现 `MarshalJSON` 或 `MarshalText`；这类实现可被本库、标准库 `encoding/json` 以及其他兼容库共用。
 :::
 
 ## json.Marshaler 接口
@@ -123,12 +123,12 @@ func main() {
 ```
 
 ::: tip 两种接口的优先级
-同一类型若同时实现两个接口，`MarshalJSON` 优先于 `MarshalText`。若需要把类型编码为 JSON 字符串，实现 `MarshalText` 通常更简洁（无需自行处理引号与转义）。
+同一类型若同时实现两个接口，`MarshalJSON` 优先于 `MarshalText`。要把类型编码为 JSON 字符串时，实现 `MarshalText` 更简洁（无需自行处理引号与转义）。
 :::
 
 ## time.Time 的内置处理
 
-`time.Time` 无需任何配置即可正确编码：它自身实现了 `MarshalJSON`（值接收者，输出 RFC3339Nano，保留亚秒精度），库通过上文的 [`json.Marshaler`](#json-marshaler-接口) 机制直接采用，行为与标准库 `encoding/json` 一致。
+`time.Time` 无需配置即可正确编码：它自身实现了 `MarshalJSON`（值接收者，输出 RFC3339Nano，保留亚秒精度），库经上文的 [`json.Marshaler`](#json-marshaler-接口) 机制直接采用，行为与标准库 `encoding/json` 一致。
 
 ```go
 package main
@@ -161,7 +161,7 @@ func main() {
 
 ## 自定义字符转义 CustomEscapes
 
-`Config.CustomEscapes` 是一个 `map[rune]string`，用于**全局覆盖**某些字符的转义方式。编码字符串时，库会先查这个映射：命中则把对应的字符串原样写入输出（你需自行保证其 JSON 合法性），未命中才走默认转义。
+`Config.CustomEscapes` 是一个 `map[rune]string`，用于**全局覆盖**某些字符的转义方式。编码字符串时，库先查这个映射：命中则把对应的字符串原样写入输出（其 JSON 合法性由你保证），未命中才走默认转义。
 
 下面把版权符号 `©` 改写为 ASCII 文本（命中即原样写入，其余字符走默认处理）：
 
@@ -191,7 +191,7 @@ func main() {
 ```
 
 ::: warning 自定义转义串必须 JSON 合法
-`CustomEscapes` 的值会被**原样写入**输出，不再二次处理，因此要当心 Go 源码自身的字符串转义：若希望输出中带字面的反斜杠转义序列，Go 源码里需写双反斜杠 `\\`（写单反斜杠会被 Go 当作转义处理，得到的是该字符本身而非转义序列）。
+`CustomEscapes` 的值会被**原样写入**输出，不再二次处理，所以要留意 Go 源码自身的字符串转义。输出中需要字面的反斜杠转义序列时，Go 源码里要写双反斜杠 `\\`；写单反斜杠会被 Go 当作转义处理，得到的是该字符本身而非转义序列。
 :::
 
 ::: tip 何时触发自定义转义路径
@@ -221,13 +221,15 @@ func main() {
 | `FloatPrecision` | `int` | 浮点精度（`-1` 为默认） |
 | `IncludeNulls` | `bool` | 是否包含空值字段 |
 
-## 未连接的扩展字段（预留）
+## 已废弃的扩展字段
 
-::: warning 未连接的扩展字段
-`Config.CustomEncoder`（`CustomEncoder` 接口）与 `Config.CustomTypeEncoders`（`TypeEncoder` 接口）在当前版本中**已声明并参与配置克隆与缓存键计算，但尚未在编码流水线中挂接**。设置这两个字段**不会改变编码输出**。它们是为未来版本预留的扩展点；在此之前，请使用上文 `MarshalJSON`/`MarshalText`/`CustomEscapes` 等已生效的机制。
+::: warning 已废弃的扩展字段
+`Config.CustomEncoder`（`CustomEncoder` 接口）与 `Config.CustomTypeEncoders`（`TypeEncoder` 接口）**已废弃**（源码标注 Deprecated）：二者已声明并参与配置克隆与缓存键计算，但**从未被编码流水线调用**，设置后不会改变编码输出；内置编码器不可替换。
+
+两者在 v1 生命周期内保留。编码定制使用上文 `MarshalJSON`/`MarshalText`/`CustomEscapes` 等已生效的机制。
 
 ```go
-// 当前版本：以下两个字段已声明但未挂接，设置后无效果（预留接口）
+// 已废弃：以下两个字段已声明但不挂接，设置后无效果
 type CustomEncoder interface {
     Encode(value any) (string, error)
 }

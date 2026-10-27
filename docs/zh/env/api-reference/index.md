@@ -7,24 +7,24 @@ sidebar_position: 1
 
 # API 参考
 
-env 库的完整 API 参考文档。
+env 库公开 API 的完整参考，按功能模块给出入口，并在文末提供跨页面的符号索引。
 
 ## 核心 API
 
-- [包函数](./functions) - 包级便捷函数完整列表
-- [Loader API](./loader) - 加载器类型与方法
-- [Config API](./config) - 配置选项与预设
-- [SecureValue API](./secure-value) - 安全值处理
+- [包函数](./functions)：包级便捷函数完整列表
+- [Loader API](./loader)：加载器类型与方法
+- [Config API](./config)：配置选项与预设
+- [SecureValue API](./secure-value)：安全值处理
 
 ## 类型与接口
 
-- [接口定义](./interfaces) - 所有接口类型定义
-- [常量与错误](./constants) - 常量、哨兵错误和错误类型
-- [组件工厂](./factory) - ComponentFactory 与扩展点
+- [接口定义](./interfaces)：所有接口类型定义
+- [常量与错误](./constants)：常量、哨兵错误和错误类型
+- [组件工厂](./factory)：ComponentFactory 与扩展点
 
 ## 符号索引
 
-按功能分组汇总各 API 页面的主要符号，从符号直达对应文档。同名的方法与包级函数（如 `GetString`）分别在「包级便捷函数」与「Loader 方法」两组各占一行；标注（未导出）的符号为库内部名称，无法通过 `env` 包直接引用。
+按功能分组汇总各 API 页面的主要符号。同名的方法与包级函数（如 `GetString`）分别在「包级便捷函数」与「Loader 方法」两组各占一行；标注（未导出）的符号是库内部名称，无法通过 `env` 包直接引用。
 
 ### 包级便捷函数
 
@@ -32,7 +32,9 @@ env 库的完整 API 参考文档。
 |------|------|------|
 | `Load` | 初始化默认加载器 | [包函数](./functions#load) |
 | `LoadWithConfig` | 按配置初始化 | [包函数](./functions#loadwithconfig) |
+| `Overload` | 后加载覆盖初始化 | [包函数](./functions#overload) |
 | `ResetDefaultLoader` | 重置默认加载器 | [包函数](./functions#resetdefaultloader) |
+| `ClearInternCache` | 释放键驻留缓存 | [包函数](./functions#clearinterncache) |
 | `GetString` | 读字符串值 | [包函数](./functions#getstring) |
 | `GetInt` | 读 int64 | [包函数](./functions#getint) |
 | `GetBool` | 读布尔值 | [包函数](./functions#getbool) |
@@ -53,6 +55,8 @@ env 库的完整 API 参考文档。
 | `Marshal` | 序列化为字符串 | [包函数](./functions#marshal) |
 | `UnmarshalMap` | 解析为 map | [包函数](./functions#unmarshalmap) |
 | `UnmarshalStruct` | 解析到结构体 | [包函数](./functions#unmarshalstruct) |
+| `UnmarshalMapWithConfig` | 带配置解析为 map | [包函数](./functions#unmarshalmapwithconfig) |
+| `UnmarshalStructWithConfig` | 带配置解析到结构体 | [包函数](./functions#unmarshalstructwithconfig) |
 | `UnmarshalInto` | map 填入结构体 | [包函数](./functions#unmarshalinto) |
 | `MarshalStruct` | 结构体转 map | [包函数](./functions#marshalstruct) |
 | `IsMarshalError` | 判断序列化错误 | [包函数](./functions#ismarshalerror) |
@@ -96,6 +100,9 @@ env 库的完整 API 参考文档。
 | `IsZero` | 是否零值配置 | [Config](./config#iszero) |
 | `ExpansionScope` | 展开作用域枚举 | [Config](./config#expansionscope) |
 | `ExpansionFileThenProcess`、`ExpansionFileOnly` | 作用域常量 | [Config](./config#expansionscope) |
+| `DuplicateKeyPolicy` | 单文档重复键枚举 | [Config](./config#duplicatekeypolicy-单文档内重复键) |
+| `DuplicateKeyInherit`、`DuplicateKeyFirstWins`、`DuplicateKeyLastWins`、`DuplicateKeyError` | 重复键策略常量 | [Config](./config#duplicatekeypolicy-单文档内重复键) |
+| `AuditFailClosed` | fail-closed 审计开关 | [Config](./config#auditfailclosed-bool) |
 
 ### 预设、工厂与格式
 
@@ -127,7 +134,7 @@ env 库的完整 API 参考文档。
 |------|------|------|
 | `SecureValue` | 安全值类型 | [SecureValue](./secure-value) |
 | `NewSecureValue` | 创建安全值 | [SecureValue](./secure-value#newsecurevalue) |
-| `NewSecureValueStrict` | 锁定失败报错 | [SecureValue](./secure-value#newsecurevaluestrict) |
+| `NewSecureValueStrict` | 创建并在锁定失败时返回错误 | [SecureValue](./secure-value#newsecurevaluestrict) |
 | `String` | 掩码字符串化 | [SecureValue](./secure-value#string) |
 | `Reveal` | 读取明文 | [SecureValue](./secure-value#reveal) |
 | `Bytes` | 字节副本 | [SecureValue](./secure-value#bytes) |
@@ -140,7 +147,7 @@ env 库的完整 API 参考文档。
 | `IsClosed` | 是否已关闭 | [SecureValue](./secure-value#isclosed) |
 | `IsMemoryLocked` | 内存是否锁定 | [SecureValue](./secure-value#ismemorylocked) |
 | `MemoryLockError` | 锁定失败错误 | [SecureValue](./secure-value#memorylockerror) |
-| `SetMemoryLockEnabled` | 全局启用内存锁 | [SecureValue](./secure-value#setmemorylockenabled) |
+| `SetMemoryLockEnabled` | 全局启用内存锁定 | [SecureValue](./secure-value#setmemorylockenabled) |
 | `IsMemoryLockEnabled` | 查询全局开关 | [SecureValue](./secure-value#ismemorylockenabled) |
 | `SetMemoryLockStrict` | 严格模式告警 | [SecureValue](./secure-value#setmemorylockstrict) |
 | `IsMemoryLockStrict` | 查询严格模式 | [SecureValue](./secure-value#ismemorylockstrict) |
@@ -155,7 +162,7 @@ env 库的完整 API 参考文档。
 | `MaskValue` | 按键掩码值 | [SecureValue](./secure-value#maskvalue) |
 | `MaskKey` | 掩码键名 | [SecureValue](./secure-value#maskkey) |
 | `SanitizeForLog` | 日志脱敏 | [SecureValue](./secure-value#sanitizeforlog) |
-| `MaskSensitiveInString` | 截断长字符串 | [SecureValue](./secure-value#masksensitiveinstring) |
+| `MaskSensitiveInString` | 截断并掩码长字符串 | [SecureValue](./secure-value#masksensitiveinstring) |
 
 ### 审计
 
@@ -184,13 +191,14 @@ env 库的完整 API 参考文档。
 | `ErrExpansionDepth` | 展开哨兵 | [常量与错误](./constants#展开错误) |
 | `ErrMaxVariables` | 限制哨兵 | [常量与错误](./constants#限制错误) |
 | `ErrClosed`、`ErrInvalidConfig`、`ErrAlreadyInitialized`、`ErrNotInitialized`、`ErrMissingRequired` | 状态哨兵 | [常量与错误](./constants#状态错误) |
+| `ErrAuditFailed` | 审计失败哨兵 | [常量与错误](./constants#状态错误) |
 | `ErrValidateRequiredUnsupported` | 适配器哨兵 | [常量与错误](./constants#适配器错误) |
 | `ParseError` | 解析错误类型 | [常量与错误](./constants#parseerror) |
 | `ValidationError` | 验证错误类型 | [常量与错误](./constants#validationerror) |
 | `SecurityError` | 安全错误类型 | [常量与错误](./constants#securityerror) |
 | `FileError` | 文件错误类型 | [常量与错误](./constants#fileerror) |
 | `ExpansionError` | 展开错误类型 | [常量与错误](./constants#expansionerror) |
-| `ExpansionErrorKind`、`ExpansionDepthKind`、`ExpansionRequiredKind` | 错误分类常量 | [常量与错误](./constants#expansionerror) |
+| `ExpansionErrorKind`、`ExpansionDepthKind`、`ExpansionRequiredKind` | 错误分类类型与常量 | [常量与错误](./constants#expansionerror) |
 | `JSONError` | JSON 解析错误 | [常量与错误](./constants#jsonerror) |
 | `YAMLError` | YAML 解析错误 | [常量与错误](./constants#yamlerror) |
 | `MarshalError` | 序列化错误类型 | [常量与错误](./constants#marshalerror) |
@@ -201,9 +209,9 @@ env 库的完整 API 参考文档。
 |------|------|------|
 | `DefaultMaxFileSize`、`DefaultMaxLineLength`、`DefaultMaxKeyLength`、`DefaultMaxValueLength`、`DefaultMaxVariables`、`DefaultMaxExpansionDepth` | 默认限制常量 | [常量与错误](./constants#默认限制) |
 | `DefaultKeyPattern` | 默认键名模式 | [常量与错误](./constants#defaultkeypattern) |
-| `defaultForbiddenKeys`（未导出） | 内置禁止键 | [常量与错误](./constants#defaultforbiddenkeys) |
+| `defaultForbiddenKeysSlice`（未导出） | 内置禁止键 | [常量与错误](./constants#defaultforbiddenkeys) |
 | `internal.Patterns`（未导出） | 敏感键模式 | [常量与错误](./constants#sensitivekeypatterns) |
-| 硬性上限（未导出） | 100MB、64KB 等 | [常量与错误](./constants#硬性上限) |
+| 硬性上限（未导出） | 100 MB、64 KB 等 | [常量与错误](./constants#硬性上限) |
 
 ### 接口
 

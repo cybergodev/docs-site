@@ -7,24 +7,26 @@ sidebar_position: 1
 
 # API Reference
 
-Complete API reference documentation for the env library.
+API reference for the `env` package: package functions, the `Loader` and `Config` types, `SecureValue`, interfaces, and error types.
 
 ## Core API
 
-- [Package Functions](./functions) - Complete list of package-level convenience functions
+- [Package Functions](./functions) - Package-level convenience functions
 - [Loader API](./loader) - Loader type and methods
 - [Config API](./config) - Configuration options and presets
 - [SecureValue API](./secure-value) - Secure value handling
 
 ## Types and Interfaces
 
-- [Interfaces](./interfaces) - All interface type definitions
+- [Interfaces](./interfaces) - Interface type definitions
 - [Constants & Errors](./constants) - Constants, sentinel errors, and error types
 - [Component Factory](./factory) - ComponentFactory and extension points
 
 ## Symbol Index
 
-The major symbols from every API reference page, grouped by function, each linking straight to its documentation. Same-named methods and package functions (e.g. `GetString`) get one row each under "Package-Level Functions" and "Loader Methods"; symbols marked (unexported) are internal library names that cannot be referenced through the `env` package.
+Every major symbol from the API reference pages, grouped by function. Each row links to its own documentation.
+
+Same-named methods and package functions (e.g. `GetString`) get one row each under "Package-Level Functions" and "Loader Methods". Symbols marked (unexported) are internal library names; you cannot reference them through the `env` package.
 
 ### Package-Level Functions
 
@@ -32,7 +34,9 @@ The major symbols from every API reference page, grouped by function, each linki
 |--------|-------------|------|
 | `Load` | Init default loader | [functions](./functions#load) |
 | `LoadWithConfig` | Init with Config | [functions](./functions#loadwithconfig) |
+| `Overload` | last-file-wins initializer | [functions](./functions#overload) |
 | `ResetDefaultLoader` | Reset default loader | [functions](./functions#resetdefaultloader) |
+| `ClearInternCache` | Release key-interning cache | [functions](./functions#clearinterncache) |
 | `GetString` | Read string | [functions](./functions#getstring) |
 | `GetInt` | Read int64 | [functions](./functions#getint) |
 | `GetBool` | Read bool | [functions](./functions#getbool) |
@@ -53,6 +57,8 @@ The major symbols from every API reference page, grouped by function, each linki
 | `Marshal` | Serialize to string | [functions](./functions#marshal) |
 | `UnmarshalMap` | Parse to map | [functions](./functions#unmarshalmap) |
 | `UnmarshalStruct` | Parse into struct | [functions](./functions#unmarshalstruct) |
+| `UnmarshalMapWithConfig` | Parse to map with config | [functions](./functions#unmarshalmapwithconfig) |
+| `UnmarshalStructWithConfig` | Parse into struct with config | [functions](./functions#unmarshalstructwithconfig) |
 | `UnmarshalInto` | Fill struct from map | [functions](./functions#unmarshalinto) |
 | `MarshalStruct` | Struct to map | [functions](./functions#marshalstruct) |
 | `IsMarshalError` | Marshal error check | [functions](./functions#ismarshalerror) |
@@ -96,6 +102,9 @@ The major symbols from every API reference page, grouped by function, each linki
 | `IsZero` | Zero-value check | [config](./config#iszero) |
 | `ExpansionScope` | Expansion scope enum | [config](./config#expansionscope) |
 | `ExpansionFileThenProcess`, `ExpansionFileOnly` | Scope constants | [config](./config#expansionscope) |
+| `DuplicateKeyPolicy` | In-document duplicate-key enum | [config](./config#duplicatekeypolicy-in-document-duplicate-keys) |
+| `DuplicateKeyInherit`, `DuplicateKeyFirstWins`, `DuplicateKeyLastWins`, `DuplicateKeyError` | Duplicate-key policy constants | [config](./config#duplicatekeypolicy-in-document-duplicate-keys) |
+| `AuditFailClosed` | Fail-closed audit switch | [config](./config#auditfailclosed-bool) |
 
 ### Presets, Factory, and Formats
 
@@ -184,13 +193,14 @@ The major symbols from every API reference page, grouped by function, each linki
 | `ErrExpansionDepth` | Expansion sentinel | [constants](./constants#expansion-errors) |
 | `ErrMaxVariables` | Limit sentinel | [constants](./constants#limit-errors) |
 | `ErrClosed`, `ErrInvalidConfig`, `ErrAlreadyInitialized`, `ErrNotInitialized`, `ErrMissingRequired` | State sentinels | [constants](./constants#state-errors) |
+| `ErrAuditFailed` | audit-failure sentinel | [constants](./constants#state-errors) |
 | `ErrValidateRequiredUnsupported` | Adapter sentinel | [constants](./constants#adapter-errors) |
 | `ParseError` | Parse error type | [constants](./constants#parseerror) |
 | `ValidationError` | Validation error type | [constants](./constants#validationerror) |
 | `SecurityError` | Security error type | [constants](./constants#securityerror) |
 | `FileError` | File error type | [constants](./constants#fileerror) |
 | `ExpansionError` | Expansion error type | [constants](./constants#expansionerror) |
-| `ExpansionErrorKind`, `ExpansionDepthKind`, `ExpansionRequiredKind` | Error kind constants | [constants](./constants#expansionerror) |
+| `ExpansionErrorKind`, `ExpansionDepthKind`, `ExpansionRequiredKind` | Error kind types and constants | [constants](./constants#expansionerror) |
 | `JSONError` | JSON parse error | [constants](./constants#jsonerror) |
 | `YAMLError` | YAML parse error | [constants](./constants#yamlerror) |
 | `MarshalError` | Marshal error type | [constants](./constants#marshalerror) |
@@ -201,9 +211,9 @@ The major symbols from every API reference page, grouped by function, each linki
 |--------|-------------|------|
 | `DefaultMaxFileSize`, `DefaultMaxLineLength`, `DefaultMaxKeyLength`, `DefaultMaxValueLength`, `DefaultMaxVariables`, `DefaultMaxExpansionDepth` | Default limit constants | [constants](./constants#default-limits) |
 | `DefaultKeyPattern` | Default key pattern | [constants](./constants#defaultkeypattern) |
-| `defaultForbiddenKeys` (unexported) | Builtin forbidden keys | [constants](./constants#defaultforbiddenkeys) |
+| `defaultForbiddenKeysSlice` (unexported) | Builtin forbidden keys | [constants](./constants#defaultforbiddenkeys) |
 | `internal.Patterns` (unexported) | Sensitive key patterns | [constants](./constants#sensitivekeypatterns) |
-| Hard limits (unexported) | 100MB, 64KB, etc. | [constants](./constants#hard-limits) |
+| Hard limits (unexported) | 100 MB, 64 KB, etc. | [constants](./constants#hard-limits) |
 
 ### Interfaces
 

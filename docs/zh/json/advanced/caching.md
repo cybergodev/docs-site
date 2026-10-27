@@ -1,16 +1,18 @@
 ---
 sidebar_label: "缓存与预解析"
 title: "缓存与预解析 - CyberGo JSON | 预解析与缓存策略"
-description: "CyberGo JSON 提供自动缓存与预解析策略，支持 EnableCache 内置缓存、GetStats 监控命中率、WarmupCache 启动预热与 PreParse 一次解析多次查询，帮助开发者消除重复解析开销、按负载调优缓存参数，显著提升高频查询响应速度。"
+description: "CyberGo JSON 缓存与预解析：EnableCache 解析/结果缓存、GetStats 命中率、WarmupCache 预热与 PreParse 一次解析多次查询。"
 sidebar_position: 30
 ---
 
 # 缓存与预解析策略
 
-CyberGo JSON 内置一套**自动缓存子系统**：解析结果与路径查询结果会被自动缓存，无需手写 `sync.Map`。本页聚焦内置缓存的配置、监控、预热与 PreParse 预解析模式，并给出选型决策。
+CyberGo JSON 内置一套**自动缓存子系统**：解析结果与路径查询结果会被自动缓存，无需手写 `sync.Map`。
+
+接下来的内容覆盖内置缓存的配置、监控、预热与 PreParse 预解析模式，并给出选型决策。
 
 :::tip 与性能优化页的分工
-[性能优化](./performance) 的「缓存策略」一节展示的是**用户自建** `sync.Map` 缓存；本页文档化的是**库内置**缓存（`EnableCache`/`WarmupCache`/`PreParse`），二者互补。
+[性能优化](./performance) 的「缓存策略」一节展示的是**用户自建** `sync.Map` 缓存；这里文档化的是**库内置**缓存（`EnableCache`/`WarmupCache`/`PreParse`），二者互补。
 :::
 
 ## 内置缓存如何工作
@@ -23,7 +25,7 @@ CyberGo JSON 内置一套**自动缓存子系统**：解析结果与路径查询
 同一份 JSON 的第二次查询会跳过解析，直接走路径导航；相同的 `(JSON, path)` 组合则直接返回缓存结果。
 
 :::warning 写操作自动失效
-`Set`/`Delete` 等变更操作会**自动失效**关联的缓存条目（按 JSON 哈希前缀批量清除），无需手动干预。只有当外部数据源变化、或内存压力较大时才需要手动 `ClearCache`。
+`Set`/`Delete` 等变更操作会**自动失效**关联的缓存条目（按被修改文档的 FNV-1a 哈希清除该文档的全部条目），无需手动干预。只有当外部数据源变化、或内存压力较大时才需要手动 `ClearCache`。
 :::
 
 ## 监控缓存命中率
@@ -182,7 +184,7 @@ func main() {
 |-----|------|------|
 | `PreParse` | `func (p *Processor) PreParse(jsonStr string, cfg ...Config) (*ParsedJSON, error)` | 解析并返回可复用的 `*ParsedJSON` |
 | `GetFromParsed` | `func (p *Processor) GetFromParsed(parsed *ParsedJSON, path string, cfg ...Config) (any, error)` | 从预解析结果查询，跳过解析步骤 |
-| `(*ParsedJSON).Release` | `func (p *ParsedJSON) Release()` | 释放引用，用完即调（通常 `defer`） |
+| `(*ParsedJSON).Release` | `func (p *ParsedJSON) Release()` | 释放引用，用完即调（用 `defer`） |
 
 :::tip PreParse vs 自动缓存
 `PreParse` 显式持有解析结果句柄，适合「一处解析、多处消费」的局部流程；自动缓存则是**全局按 JSON 内容**去重，适合同一 JSON 在不同调用点被反复查询。两者可共存：`PreParse` 内部也会写入解析缓存。
@@ -241,7 +243,7 @@ cfg.CacheSharedResults = true
 
 ### CacheSharedResults 零拷贝契约
 
-`CacheSharedResults = true` 时，缓存命中的 `Get`/`GetFromParsed` 会**直接返回缓存值**，跳过防御性深拷贝，显著降低大对象的反复读取开销。
+`CacheSharedResults = true` 时，缓存命中的 `Get`/`GetFromParsed` 会**直接返回缓存值**，跳过防御性深拷贝——反复读取同一大型子树时省去每次的拷贝分配。
 
 :::danger 只读契约
 启用后**调用方不得修改**返回的 `map[string]any` / `[]any`，否则会破坏共享缓存、污染后续读取。原始值（`bool`/`float64`/`string`/`json.Number`/`nil`）不可变，始终安全。仅在调用方将结果视为只读时启用（如反复读取同一大型子树的分析型负载）。
@@ -252,7 +254,7 @@ cfg.CacheSharedResults = true
 | 操作 | API | 触发时机 |
 |------|-----|----------|
 | 手动清空 | `processor.ClearCache()` | 数据源变化、内存压力大、需要强制刷新 |
-| 写后自动失效 | `Set`/`Delete` 内部调用 | 变更后无需手动清理，缓存按 JSON 哈希前缀自动清除 |
+| 写后自动失效 | `Set`/`Delete` 内部调用 | 变更后无需手动清理，按文档哈希清除该文档的缓存条目 |
 
 `ClearCache` 适合处理「同一 Processor 长期运行、数据源轮换」的场景。一次性脚本无需手动清理——`Close()` 会回收所有资源。
 

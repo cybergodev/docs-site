@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Domain Client & Sessions"
 title: "Domain Client and Sessions - CyberGo HTTPC | Cookie Mgmt"
-description: "HTTPC domain client guide: NewDomain clients, URL joining with path-traversal protection, SetHeader headers, cookie auto-capture, CookieSecurity validation."
+description: "HTTPC domain client and sessions: NewDomain clients, URL joining, session headers, cookie capture, option persistence, and cross-origin session isolation."
 sidebar_position: 40
 ---
 
 # Domain Client and Sessions
 
-The domain client (DomainClient) is a session-management client for a single domain, automatically maintaining cookies and headers.
+The domain client (DomainClient) is a session-management client scoped to one domain. It maintains cookies and request headers across requests.
 
 Three components, each with its own job:
 
@@ -26,24 +26,20 @@ if err != nil {
 }
 defer dc.Close()
 
-// Cookies are enabled automatically
+// Set-Cookie responses enter the session automatically (EnableCookies not required)
 dc.SetHeader("Authorization", "Bearer "+token)
 
 // Send requests with relative paths
 result, err := dc.Get("/users")
 ```
 
-:::tip
-`NewDomain` automatically enables cookie management (`EnableCookies = true`) — no manual configuration needed.
-:::
+Three things happen at creation:
 
-Three things happen automatically at creation:
+1. **baseURL validation**: the URL must include a scheme and host (e.g. `https://api.example.com`), otherwise an error is returned
+2. **Session creation**: a `SessionManager` is created internally (with `DefaultSessionConfig` by default); session headers and cookies both live there
+3. **Session injection and write-back**: headers and cookies are injected before each request, and `Set-Cookie` is written back after the response. This store is unaffected by `Connection.EnableCookies`
 
-1. **baseURL validation**: it must include a scheme and host (e.g. `https://api.example.com`), otherwise an error is returned
-2. **Cookies force-enabled**: the incoming configuration's `Connection.EnableCookies` is ignored — the domain client always ships with cookie management
-3. **Session creation**: a `SessionManager` is created internally (with `DefaultSessionConfig` by default); headers and cookies both live there
-
-`NewDomain` also accepts a full Config for custom timeouts, retries, and so on (in that case `dc.Get` and the other methods behave exactly like a plain client's):
+`NewDomain` also accepts a full Config for custom timeouts, retries, and so on. In that case `dc.Get` and the other methods behave exactly like a plain client's:
 
 ```go
 package main
@@ -82,18 +78,18 @@ func main() {
 
 ## URL Joining Rules
 
-The first argument of `Get`/`Post` and the other methods is a path relative to the base URL; joining rules:
+The first argument of `Get`/`Post` and the other methods is a path relative to the base URL. Joining rules:
 
 | Input path | Result | Rule |
 |-----------|--------|------|
 | `/users` | `{base}/users` | Relative paths are joined onto the base path |
 | `/users/` | `{base}/users/` | The trailing slash is preserved |
 | `https://other.com/data` | Used as-is | Full URLs starting with `http://`/`https://` skip joining |
-| `/users?page=2` | `{base}/users?page=2` | The query string is preserved; if the base carries its own query parameters the two are merged |
+| `/users?page=2` | `{base}/users?page=2` | The query string is preserved; when the base carries its own query parameters, the two are merged |
 | `""` | `{base}` | An empty path returns the base itself |
 
 :::warning Path traversal protection
-If the base URL carries a path prefix (e.g. `https://example.com/api/v1`), the joined result must stay inside that prefix; paths trying to escape it with `..` return a `path escapes base URL scope` error and no request is sent.
+If the base URL carries a path prefix (e.g. `https://example.com/api/v1`), the joined result must stay inside that prefix. Paths that try to escape it with `..` return a `path escapes base URL scope` error and no request is sent.
 :::
 
 ## Session Header Management
@@ -118,9 +114,9 @@ dc.ClearHeaders()
 headers := dc.GetHeaders()
 ```
 
-All keys and values go through the same CRLF-injection validation as `WithHeader`; invalid keys or values return an error. `GetHeaders()` returns a **copy** — modifying it does not affect the session.
+All keys and values go through the same CRLF-injection validation as `WithHeader`; invalid keys or values return an error. `GetHeaders()` returns a **copy**, so modifying it does not affect the session.
 
-A single request can override a session header with an option (options are applied after the session headers):
+A single request can override a session header with an option; options are applied after the session headers:
 
 ```go
 dc.SetHeader("X-API-Version", "v1")
@@ -129,7 +125,7 @@ dc.SetHeader("X-API-Version", "v1")
 result, _ := dc.Get("/data", httpc.WithHeader("X-API-Version", "v2"))
 ```
 
-Note: as described in the next section, `v2` is written back to the session, so subsequent requests will also send `v2`.
+Note: as described in the next section, `v2` is written back to the session, so subsequent requests also send `v2`.
 
 ## Cookie Management
 
@@ -157,18 +153,31 @@ dc.ClearCookies()
 ```
 
 :::tip
-After every request, cookies returned by the server are automatically updated into the session — no manual handling needed.
+After every request, cookies returned by the server are written into the session; no manual handling is needed.
 :::
 
-Automatic cookie maintenance covers three paths:
+Automatic cookie maintenance covers the following paths:
 
-- **Response write-back**: after each request finishes, `Set-Cookie` from the response is written into the session automatically (the `Download` method used for downloads captures response cookies as well)
-- **Validation**: before writing, the same validity checks as `WithCookies` apply; when a cookie security policy is configured (see "Cookie Security Validation" below), non-compliant cookies are **silently skipped** without affecting the others
-- **Copy semantics**: `GetCookie`/`GetCookies` return copies of the cookies — modifying the returned values does not pollute the session's internal state
+- **Response write-back**: after each request finishes, `Set-Cookie` from the response is written into the session. The `Download` method also captures response cookies
+- **Deletion semantics**: a cookie carrying `Max-Age=0`/a negative value, or an already-expired Expires (a logout response, for example), removes the stored entry with the same name instead of storing that cookie itself
+- **Expiry pruning**: expired cookies are dropped when read (`GetCookie`/`GetCookies`) and when replayed; a positive `Max-Age` is converted into the corresponding expiry moment
+- **Replay scope**: a cookie is sent only when its stored Path and `Secure` attributes match the request URL (RFC 6265 path-match; `Secure` cookies are never replayed over plaintext http)
+- **Validation and copies**: before writing, the same validity checks as `WithCookies` apply. When a cookie security policy is configured (see "Cookie Security Validation" below), non-compliant cookies are **silently skipped** without affecting the others. `GetCookie`/`GetCookies` return copies, so modifying the returned values does not change the session's internal state
 
-### Automatic Persistence of Request Options
+### How Request Options Persist
 
-Cookies and headers passed via **request options** are also captured into the session and keep applying to subsequent requests:
+Cookies and headers passed via **request options** are captured into the session and keep applying to subsequent requests. The capture is **static**: the session recognizes only the option types below and reads the headers and cookies they carry; it never executes an option closure.
+
+| Option | Captured |
+|--------|----------|
+| `WithHeader` | A single header |
+| `WithHeaderMap` | A set of headers |
+| `WithUserAgent` | The User-Agent header (a `WithHeader` pass-through internally, so it is captured the same way — one probe request pins the UA as a session value) |
+| `WithCookies` | A list of cookies |
+| `WithCookieMap` | Cookies as name-value pairs |
+| `WithCookieString` | Cookies parsed from a raw `Cookie` header string |
+
+A custom `RequestOptionFunc` whose closure calls `SetHeader`/`SetCookies` is not one of these types and is not captured; use `dc.SetHeader`/`dc.SetCookie` when the value must persist. The same holds for `WithBasicAuth`/`WithBearerToken`: they set an Authorization header, but credentials are deliberately kept out of the session, so they must be passed on every request.
 
 ```go
 // First request: the cookie and header passed via options...
@@ -189,8 +198,10 @@ fmt.Println(dc.GetHeaders()["X-Client"])   // Output: mobile
 _, err = dc.Get("/profile")
 ```
 
+Request options execute **once** for the request itself; the capture pass never re-runs an option closure.
+
 :::warning Do not pass one-off headers via options
-Headers/cookies in options are persisted to the session and apply to **all subsequent requests**. For one-shot headers whose value differs every time (e.g. an incrementing trace ID or a random nonce), remember to remove them with `DeleteHeader`/`DeleteCookie` after use, or send that request with the underlying `Client` instead.
+Headers and cookies carried by the options above are persisted to the session and apply to **all subsequent requests**. Remove one-shot headers whose value differs every time (e.g. an incrementing trace ID or a random nonce) with `DeleteHeader`/`DeleteCookie` after use, or send that request with the underlying `Client` instead.
 :::
 
 ## Request Methods
@@ -212,11 +223,11 @@ result, _ := dc.Request(ctx, "GET", "/users")
 result, _ := dc.Get("https://other-api.com/data")
 ```
 
-:::warning Request options are applied twice
-The domain client internally applies request options **twice** (once to capture session state, once for the actual request). Avoid options with side effects (e.g. counters, nonce generation); if you need such options, use the underlying `Client`.
+:::warning Session state applies only to the base origin
+When an absolute URL points to a **non-base origin** (its host:port differs from the base), session headers and cookies are neither sent nor captured, so base-domain credentials never leak to a third-party origin. The same applies while following redirects: when the final landing point is outside the base origin, the response's `Set-Cookie` does not enter the session.
 :::
 
-The `Download` method has the same signature as `Client.Download`; the path is likewise resolved relative to the base URL, and on completion the response cookies are captured into the session:
+The `Download` method has the same signature as `Client.Download`, and the path is likewise resolved relative to the base URL. On completion, response cookies are captured into the session:
 
 ```go
 dlCfg := httpc.DefaultDownloadConfig()
@@ -244,7 +255,7 @@ if err := session.SetHeader("X-Trace-ID", traceID); err != nil {
 }
 ```
 
-`DomainClient` embeds a `SessionManager` and thereby exposes all session methods, so `dc.SetHeader(...)` and `dc.Session().SetHeader(...)` are fully equivalent.
+`DomainClient` embeds a `SessionManager` and exposes all session methods through it, so `dc.SetHeader(...)` and `dc.Session().SetHeader(...)` are fully equivalent.
 
 ### Using SessionManager Standalone
 
@@ -273,21 +284,21 @@ session.UpdateFromResult(result)     // capture response cookies from the Result
 session.UpdateFromCookies(cookies)   // bulk update from []*http.Cookie
 ```
 
-Combined with a plain `Client`, you read `GetHeaders()`/`GetCookies()` yourself and turn them into `WithHeaderMap`/`WithCookies` options attached to requests (this is exactly how `DomainClient` injects session state into every request internally).
+Combined with a plain `Client`, the caller reads `GetHeaders()`/`GetCookies()` and turns them into `WithHeaderMap`/`WithCookies` options attached to requests. This is exactly how `DomainClient` injects session state into every request.
 
 ## Concurrency Semantics
 
 - **SessionManager is concurrency-safe**: all read/write methods are protected by a `sync.RWMutex`; multiple goroutines can call `SetHeader`/`GetCookies` concurrently without extra locking
-- **Session snapshots are eventually consistent**: the per-request sequence "read a session snapshot → send the request → write response cookies back" is not atomic — concurrent requests may read a slightly stale snapshot (e.g. a login cookie another request just received may not be visible to you yet); this is a deliberate trade-off, and the snapshot an individual request sees is always self-consistent
-- **DomainClient is safe for concurrent use**: the methods themselves carry no extra locks and can be shared by multiple goroutines
+- **Session snapshots are eventually consistent**: each request runs "read a session snapshot → send the request → write response cookies back", and these three steps are not atomic. A concurrent request reads a slightly older snapshot; for example, a login cookie another request just received is not yet visible to the current request. This is a deliberate trade-off: the snapshot an individual request sees is always self-consistent
+- **DomainClient is safe for concurrent use**: the methods carry no extra locks and can be shared by multiple goroutines
 
 :::tip
-Operations that significantly change session state — logging in, refreshing a token — should avoid running concurrently with business requests, or be completed before issuing requests that depend on the new state.
+Operations that change session state (logging in, refreshing a token) should not run concurrently with business requests. Complete them before issuing requests that depend on the new state.
 :::
 
 ## Cookie Security Validation
 
-You can configure a cookie security policy to accept only cookies that meet the security bar:
+A cookie security policy accepts only cookies that meet the security requirements:
 
 ```go
 dc, _ := httpc.NewDomainDefault("https://api.example.com")
@@ -314,7 +325,9 @@ Behavioral differences between the two validation entry points:
 | `SetCookie` / `SetCookies` (explicit writes) | Returns an error; the cookie does not enter the session |
 | Response write-back / option capture (automatic writes) | The cookie is **silently skipped**; everything else is processed as usual |
 
-The policy applies to all subsequent writes after `SetCookieSecurity`. When creating a `SessionManager` standalone you can preconfigure it via `SessionConfig.CookieSecurity` (`NewDomain` uses the default session config internally, so call `SetCookieSecurity` after creation). For a lenient starting point use `DefaultCookieSecurityConfig()` (which enforces nothing by default) and tighten the fields as needed.
+The policy applies to all subsequent writes after `SetCookieSecurity`. When creating a `SessionManager` standalone, preconfigure it via `SessionConfig.CookieSecurity`. `NewDomain` uses the default session config internally, so call `SetCookieSecurity` after creation.
+
+For a lenient starting point use `DefaultCookieSecurityConfig()` (which enforces nothing by default) and tighten fields as needed.
 
 ## Lifecycle and Reuse
 
@@ -333,9 +346,9 @@ dc.DeleteHeader("Authorization")
 // ...run the login flow again, restoring state with SetCookie/SetHeader...
 ```
 
-- `Close()` closes the underlying Client (connection pool, transport) and does **not** clear session headers/cookies (they live in the SessionManager); requests after the close return `ErrClientClosed`
-- Do not create a new `DomainClient` per request — you lose connection reuse and session accumulation, and you may exhaust connections
-- For whole-client changes such as switching the security policy, just build a new instance and discard the old one after `Close`
+- `Close()` closes the underlying Client (connection pool, transport) and does **not** clear session headers or cookies, which live in the SessionManager. Requests after the close return `ErrClientClosed`
+- Do not create a new `DomainClient` per request: this loses connection reuse and session accumulation, and the connection count grows with the number of concurrent requests
+- To change client-wide settings such as the security policy, build a new instance and discard the old one after `Close`
 
 ## Complete Example: REST API Client
 

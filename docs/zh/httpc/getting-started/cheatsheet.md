@@ -1,11 +1,13 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo HTTPC | 常用代码速查"
-description: "HTTPC 速查表：客户端创建与五种配置预设、Get/Post 等七种请求方法、29 个 WithXxx 请求选项、Result 响应处理、中间件链组合、ClientError 错误分类、文件下载与域名客户端操作的完整可复用代码片段。"
+description: "HTTPC 速查表：客户端创建与五种配置预设、七种请求方法、32 个 WithXxx 请求选项、Result 处理和中间件组合的常用代码片段。"
 sidebar_position: 30
 ---
 
 # 速查表
+
+速查表按主题汇总 HTTPC 常用代码片段，每个小节链接到对应的详解页面。
 
 ## 创建客户端
 
@@ -34,8 +36,8 @@ client, _ = httpc.New(httpc.MinimalConfig())     // 轻量：无重试、无重�
 cfg := httpc.DefaultConfig()
 cfg.Defaults.UserAgent = "myapp/2.0"
 cfg.Defaults.Headers["Authorization"] = "Bearer " + token
-cfg.Defaults.FollowRedirects = false
-cfg.Defaults.MaxRedirects = 5
+cfg.Security.FollowRedirects = false
+cfg.Security.MaxRedirects = 5
 client, _ = httpc.New(cfg)
 
 // 管理包级默认客户端
@@ -91,7 +93,14 @@ httpc.WithBody(data)                    // 自动检测类型
 httpc.WithBody(data, httpc.BodyJSON)    // 显式指定：BodyJSON/BodyXML/BodyForm/BodyBinary/BodyMultipart
 ```
 
-`WithBody` 自动检测规则（`BodyAuto`，默认）：`string` → text/plain；`[]byte` → octet-stream；`map[string]string` → form；`*FormData` → multipart；`io.Reader` → 原样透传（不设 Content-Type）；其他类型 → JSON。
+`WithBody` 默认按 `BodyAuto` 自动检测类型：
+
+- `string` → text/plain
+- `[]byte` → octet-stream
+- `map[string]string` → form
+- `*FormData` → multipart
+- `io.Reader` → 原样透传（不设 Content-Type）
+- 其他类型 → JSON
 
 ### 查询参数
 
@@ -128,9 +137,19 @@ httpc.WithMaxRetries(3)          // 0 禁用重试；上限 10
 httpc.WithRetryNonIdempotent(true) // 允许重试 POST/PATCH 等非幂等请求（请求级双向覆盖客户端策略；警惕重复提交副作用，如重复支付）
 httpc.WithFollowRedirects(false) // 禁止跟随重定向
 httpc.WithMaxRedirects(5)        // 注意：0 等同未设置（回退默认 10），禁用跟随请用上一行
-httpc.WithStreamBody(true)       // 仅对 Download 生效（普通请求的响应体仍会完整读入 Result）
+httpc.WithStreamBody(true)       // 仅对 Download 生效（普通请求用它会以 ErrStreamBodyRequiresDownload 失败）
 httpc.WithAllowPrivateIPs(true)  // 按请求豁免 SSRF（访问内网/localhost）
 ```
+
+### 包级路由（仅包级函数）
+
+```go
+httpc.WithProxy("http://127.0.0.1:7890")  // 本次调用走该代理
+httpc.WithSystemProxy()                   // 本次调用读取系统/环境变量代理
+httpc.WithTLSFingerprint("chrome-windows") // 本次调用使用浏览器 TLS 指纹
+```
+
+在显式 `Client` 实例上使用这三个选项会返回错误，实例场景改用 `Config.Connection.ProxyURL` / `EnableSystemProxy` / `Security.TLSFingerprint`（见[请求选项](../api-reference/core/options)）。
 
 ### 回调
 
@@ -210,10 +229,10 @@ cfg.Connection.EnableCookies = true
 // 代理池（轮换 + 被动熔断）
 cfg.Connection.ProxyPool = []string{"http://p1:8080", "http://p2:8080"}
 cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin // 或 ProxyStrategyRandom
-cfg.Connection.ProxyFailureThreshold = 3   // 连续失败 N 次临时摘除（默认 3）
+cfg.Connection.ProxyFailureThreshold = 3   // 连续 TCP 拨号失败 N 次临时摘除（默认 3）
 cfg.Connection.ProxyCooldown = 30 * time.Second // 摘除后的半开探活冷却（默认 30s）
 cfg.Connection.ProxyRotatePerRequest = true     // 每个请求换 IP（牺牲连接复用）
-cfg.Connection.ProxyRotateOnStatus = []int{403} // 命中状态码换代理重试（需 MaxRetries > 0）
+cfg.Connection.ProxyRotateOnStatus = []int{403} // 命中状态码换代理重试（需 MaxRetries > 0；代理池大于 1 且未设 ProxyURL 时，预算自动提升至 len(ProxyPool)-1，封顶 10）
 
 // DNS-over-HTTPS
 cfg.Connection.EnableDoH = true
@@ -286,7 +305,7 @@ func traceMiddleware(next httpc.Handler) httpc.Handler {
 ```
 
 :::warning 注意
-`TimeoutMiddleware` 不要用于 `Download` 或 `WithStreamBody(true)` 请求（收到响应头即取消上下文，响应体读取会报 "context canceled"），此类场景改用 `WithTimeout`。
+`TimeoutMiddleware` 不适用于 `Download` 或 `WithStreamBody(true)` 请求：中间件在请求进入时即拒绝流式请求，返回 `TimeoutMiddleware is incompatible with streaming responses`。此类场景改用 `WithTimeout`。
 :::
 
 ## 错误处理
@@ -418,8 +437,8 @@ sm.SetHeader("X-App", "demo")
 sm.UpdateFromResult(result) // 从响应提取 Set-Cookie
 ```
 
-:::warning 选项执行两次
-`DomainClient` 的请求选项内部会应用两次（会话捕获 + 真实请求），避免放带副作用的选项（计数器、一次性 nonce）。
+:::warning 选项只执行一次，会话捕获是静态的
+`DomainClient` 的请求选项只执行一次。会话捕获由 `SessionManager` 静态完成：只识别 `WithHeader`/`WithHeaderMap`/`WithCookies`/`WithCookieMap`/`WithCookieString`，其头与 Cookie 会持久化进会话；自定义 `RequestOptionFunc` 里的 `SetHeader`/`SetCookies` 不会被捕获，需改用 `dc.SetHeader`/`dc.SetCookie`。
 :::
 
 ## 场景速配

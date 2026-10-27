@@ -1,40 +1,46 @@
 ---
 sidebar_label: "Production Checklist"
 title: "Production Checklist - CyberGo JSON | Pre-Launch Security"
-description: "CyberGo JSON production security checklist: SecurityConfig, MaxNestingDepthSecurity/MaxJSONSize resource limits, input validation, error handling, monitoring."
+description: "CyberGo JSON production checklist: the SecurityConfig preset, size/depth/key caps, ValidationHook checks, sensitive-field filtering, and audit logging."
 sidebar_position: 30
 ---
 
 # Production Checklist
 
-Before deploying to production, confirm the following security items.
+Confirm each item below before deploying.
 
 ## Configuration Checks
 
 ### Resource Limits
 
 - [ ] Set `MaxNestingDepthSecurity` against deep-nesting attacks
-- [ ] Set `MaxJSONSize` to bound single-value size
-- [ ] Set `MaxMemory` to bound total memory usage
+- [ ] Set `MaxJSONSize` to bound a single input
+- [ ] Set `MaxObjectKeys` and `MaxArrayElements` to bound ultra-wide structures
+- [ ] Set `MaxMemory` for JSONL streaming entry points where needed
 
 ```go
 cfg := json.DefaultConfig()
 cfg.MaxNestingDepthSecurity = 50
 cfg.MaxJSONSize = 10 * 1024 * 1024
-cfg.MaxMemory = 100 * 1024 * 1024
+cfg.MaxObjectKeys = 5000
+cfg.MaxArrayElements = 5000
 ```
 
-Defaults versus recommended production values (the defaults are library constants you can reference directly, avoiding magic numbers):
+Defaults versus the `SecurityConfig()` preset (the defaults are library constants you can reference directly, avoiding magic numbers):
 
-| Limit | Config field | Library constant | Default | Recommended production (`SecurityConfig()` preset) |
-|-------|--------------|------------------|---------|-----------------------------------------------------|
+| Limit | Config field | Library constant | Default | `SecurityConfig()` preset |
+|-------|--------------|------------------|---------|----------------------------|
 | JSON size cap | `MaxJSONSize` | `DefaultMaxJSONSize` | 100MB | 10MB |
 | Nesting depth cap | `MaxNestingDepthSecurity` | `DefaultMaxNestingDepth` | 200 | 30 |
-| Path depth cap | `MaxPathDepth` | `DefaultMaxPathDepth` | 50 | 30 |
+| Path depth cap | `MaxPathDepth` | `DefaultMaxPathDepth` | 50 | 30 (reserved field, no behavior) |
 | Object key count cap | `MaxObjectKeys` | `DefaultMaxObjectKeys` | 100000 | 5000 |
 | Array element count cap | `MaxArrayElements` | `DefaultMaxArrayElements` | 100000 | 5000 |
-| Security validation threshold | `MaxSecurityValidationSize` | `DefaultMaxSecuritySize` | 10MB | 10MB |
+| Security validation threshold | `MaxSecurityValidationSize` | `DefaultMaxSecuritySize` | 10MB | 10MB (reserved field, no behavior) |
 | Concurrency cap | `MaxConcurrency` | `DefaultMaxConcurrency` | 50 | 50 |
+
+`MaxPathDepth` and `MaxSecurityValidationSize` only participate in config cache keying and in `Config.Validate` clamping; no code path reads them to produce behavior.
+
+The real constraints are fixed: a path longer than 5000 bytes returns `ErrInvalidPath`, and more than 100 segments returns the parse error `path too deep`. Security scanning runs in full below 4KB and switches to a 32KB rolling window covering every byte at 4KB and above. See [Security Overview - field overview](./#security-related-config-fields-overview).
 
 ```go
 // Reference the constants instead of hardcoding
@@ -42,7 +48,7 @@ cfg := json.DefaultConfig()
 cfg.MaxJSONSize = int64(json.DefaultMaxJSONSize) / 10 // Tighten from the default 100MB
 ```
 
-`json.SecurityConfig()` presets every field to the "recommended production values" above, and additionally enables `FullSecurityScan` and `StrictMode` — for untrusted input, start from it and fine-tune.
+`json.SecurityConfig()` presets every field in the table and enables `FullSecurityScan` (it also sets the deprecated, unread `StrictMode`/`EnableValidation` to `true`; neither has any effect). For untrusted input, start from it and fine-tune.
 
 ## Input Validation
 
@@ -52,16 +58,13 @@ cfg.MaxJSONSize = int64(json.DefaultMaxJSONSize) / 10 // Tighten from the defaul
 - [ ] Verify field types are correct
 
 ```go
-// Example custom validator
-type RequiredFieldValidator struct{}
-
-func (v *RequiredFieldValidator) Validate(jsonStr string) error {
-    // Check that required fields exist
-    return nil
-}
-
+// Custom required-field checks: register a ValidationHook
+// (the Validator interface is deprecated and never executed)
 cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+    // Check that required fields exist (ValidateSchema also works for structural checks)
+    return nil
+}))
 ```
 
 ### Format Validation
@@ -71,10 +74,10 @@ cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
 - [ ] Validate custom formats
 
 ```go
-// Custom format validator
-type EmailValidator struct{}
-
-func (v *EmailValidator) Validate(jsonStr string) error {
+// Custom format check: register a ValidationHook
+// (the Validator interface is deprecated and never executed)
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
     var data map[string]any
     if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
         return nil
@@ -85,10 +88,7 @@ func (v *EmailValidator) Validate(jsonStr string) error {
         return errors.New("invalid email format")
     }
     return nil
-}
-
-cfg := json.DefaultConfig()
-cfg.CustomValidators = append(cfg.CustomValidators, &EmailValidator{})
+}))
 ```
 
 ### Range Validation
@@ -369,8 +369,10 @@ func ProductionConfig() json.Config {
     // Resource limits (SecurityConfig already presets safe defaults)
     cfg.MaxMemory = 100 * 1024 * 1024
 
-    // Custom validators
-    cfg.CustomValidators = []json.Validator{&RequiredFieldValidator{}}
+    // Custom input checks (ValidationHook; the Validator interface is deprecated and never executed)
+    cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+        return nil // custom required-field/format checks
+    }))
 
     // Audit hooks
     cfg.Hooks = []json.Hook{&AuditHook{logger: prodLogger}}

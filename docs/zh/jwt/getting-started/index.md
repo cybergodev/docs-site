@@ -1,7 +1,7 @@
 ---
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo JWT | 5 分钟入门指南"
-description: "CyberGo JWT 快速开始指南：安装库并创建 Processor，完成访问令牌与刷新令牌的签发、验证、刷新和吊销，涵盖核心用法与进阶功能导航。"
+description: "CyberGo JWT 快速开始指南：安装库并创建 Processor，依次完成访问令牌与刷新令牌的签发、验证、刷新和吊销，涵盖核心用法、常见错误处理与进阶功能导航，示例可按顺序直接运行。"
 sidebar_position: 1
 ---
 
@@ -38,7 +38,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer processor.Close() // 安全清除密钥
+	defer processor.Close() // 释放资源并清除密钥
 }
 ```
 
@@ -96,7 +96,7 @@ fmt.Println("New Access Token:", newAccessToken)
 // 本步用到 fmt，需确保已 import "fmt"
 
 // 将令牌加入黑名单
-err := processor.Revoke(accessToken)
+err = processor.Revoke(accessToken)
 if err != nil {
     panic(err)
 }

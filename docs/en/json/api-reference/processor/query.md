@@ -1,16 +1,16 @@
 ---
 sidebar_label: "Query & Get"
 title: "Processor Path Queries - CyberGo JSON | Get/GetString Usage"
-description: "CyberGo JSON Processor path queries: Get/GetString/GetInt, GetMultiple, SafeGet, GetTyped[T], CompilePath and JSONPath — ideal for extracting nested values."
+description: "Processor path queries: Get/GetString/GetInt typed reads, SafeGet, GetMultiple batch reads, plus CompilePath pre-compilation and PreParse parsed-tree reuse."
 sidebar_position: 20
 ---
 
 # Path Query Methods
 
-The Processor provides a variety of type-safe path query methods.
+Path syntax, return types and error semantics match the [package-level query functions](../functions/query); the difference is where configuration comes from. Without `cfg` the processor's baked configuration applies; with `cfg` that call's configuration applies.
 
 :::tip Mirror of the package-level functions
-The methods on this page and the [package-level query functions](../functions/query) are two entry points to the same behavior: path syntax, return types, and error semantics are identical. This page focuses on the Processor-side configuration semantics and reuse patterns; for full function-level examples see the package-level page.
+`Get`, `GetString`, `SafeGet` and `GetMultiple` share their source with the package-level query functions one by one; see the package-level page for function-level examples.
 :::
 
 ## Basic Queries
@@ -19,7 +19,7 @@ The methods on this page and the [package-level query functions](../functions/qu
 
 Signature: `func (p *Processor) Get(jsonStr, path string, cfg ...Config) (result any, err error)`
 
-Gets a value of any type from the specified path.
+Gets a value of any type from the specified path. A missing object key and an out-of-range array index both return an error wrapping `ErrPathNotFound`, testable with `errors.Is(err, json.ErrPathNotFound)`. When you need "missing means default", use the typed getters or `SafeGet` instead of the `Get` error branch.
 
 ```go
 val, err := p.Get(data, "items[0]")
@@ -132,17 +132,23 @@ debug := p.GetBool(data, "debug", false)
 ```
 
 :::tip Typed getters take no cfg
-The variadic parameter of `GetString`/`GetInt` and other typed getters is the **default value**, not a `Config` (Go allows only one variadic parameter per function — one of the three official-design exceptions). For typed reads controlled by `Config`, build the processor with `New(cfg)` and call its `GetString`/`GetInt` typed methods, or use `SafeGet` + `AsInt()` conversion methods instead.
+The variadic parameter of `GetString`/`GetInt` and the other typed getters is the **default value**, not a `Config` (Go allows only one variadic parameter per function). For typed reads under a specific `Config`, build the processor with `New(cfg)` and call its typed methods, or use `SafeGet` plus the `AsInt()`-style conversion methods.
 :::
 
 ### GetWithContext
 
 Signature: `func (p *Processor) GetWithContext(ctx context.Context, jsonStr, path string, cfg ...Config) (any, error)`
 
-Context-aware get by path. Supports timeout and cancellation — the context-aware version of `Get`.
+Context-aware get by path — the context-aware version of `Get`.
 
-::: info Note
-The Context is checked before and after the operation, not during parsing/navigation. For very large JSON documents, cancellation may not be honored mid-operation.
+::: info Cancellation only happens before and after the operation
+`GetWithContext` checks `ctx.Done()` once before calling `Get` and once after it returns. Parsing and path navigation never check the context.
+
+- Already cancelled or timed out on entry: it returns `ctx.Err()` immediately and runs no query.
+- Timed out during the operation: `Get` still runs to completion, its result is discarded, and `ctx.Err()` is returned.
+- When `Get` itself fails, that error is returned without a further context check.
+
+A context timeout therefore **cannot** cut short a single parse or a single query.
 :::
 
 ```go
@@ -168,7 +174,7 @@ fmt.Println(val)
 
 Signature: `func (p *Processor) SafeGet(jsonStr, path string, cfg ...Config) AccessResult`
 
-Safely gets a value, returning the AccessResult struct. Suited to scenarios needing type conversion.
+Safely gets a value, returning the `AccessResult` struct. Use it when you need to test existence first and convert afterwards; a missing path and an out-of-range array index both return `Exists=false`.
 
 ```go
 result := p.SafeGet(data, "user.age")
@@ -185,6 +191,10 @@ name, err := result.AsString()
 price, err := result.AsFloat64()
 enabled, err := result.AsBool()
 ```
+
+:::tip Only AsString wraps ErrTypeMismatch
+When conversion fails, `AccessResult.AsString()` returns an error matching `errors.Is(err, ErrTypeMismatch)`. `AsInt()`, `AsFloat64()` and `AsBool()` return plain errors on failure, so `errors.Is` does not match that sentinel. Check `Ok()` first, then handle each method's error.
+:::
 
 **AccessResult methods**:
 
@@ -271,7 +281,7 @@ user = json.GetTyped[User](data, "user", User{Name: "unknown"})
 
 Signature: `func (p *Processor) GetMultiple(jsonStr string, paths []string, cfg ...Config) (map[string]any, error)`
 
-Gets the values at multiple paths in one call, returning a path-to-value mapping.
+Gets the values at multiple paths in one call, returning a path-to-value map. A failing path yields a `nil` entry and the first error is returned, while the remaining paths are still evaluated.
 
 ```go
 results, err := p.GetMultiple(data, []string{"user.name", "user.age", "user.email"})
@@ -288,7 +298,7 @@ fmt.Println(results["user.age"])  // 30
 
 Signature: `func (p *Processor) CompilePath(path string) (*CompiledPath, error)`
 
-Pre-compiles a path expression for fast repeated operations later.
+Pre-compiles a path expression for repeated `GetCompiled` calls. Repeated paths hit a global compile cache; call `cp.Release()` when done to return it to the pool, after which the `cp` must not be used.
 
 ```go
 cp, err := p.CompilePath("users[0].name")
@@ -306,11 +316,11 @@ value, err = p.GetCompiled(data2, cp)
 
 Signature: `func (p *Processor) GetCompiled(jsonStr string, cp *CompiledPath) (any, error)`
 
-Gets a value using a pre-compiled path. Suited to repeatedly querying the same path across many JSON documents.
+Gets a value using a pre-compiled path. Suits repeatedly querying the same path across many JSON documents.
 
 ::: warning Two differences from Get
 - **No per-call `cfg`**: input validation (size, depth, dangerous patterns) always follows the processor's own configuration.
-- **No result-cache lookup**: what is saved is the path-parsing cost — the JSON itself is still parsed every time; to reuse parsing as well, combine with [`PreParse`](#preparse).
+- **No result-cache lookup**: what is saved is path parsing; the JSON passed in is still parsed every time. To reuse parsing as well, use [`PreParse`](#preparse) + `GetFromParsed`.
 :::
 
 **Full example: repeated queries on one path across a batch of documents**
@@ -361,7 +371,7 @@ func main() {
 
 Signature: `func (p *Processor) PreParse(jsonStr string, cfg ...Config) (*ParsedJSON, error)`
 
-Pre-parses a JSON document and returns a reusable `*ParsedJSON`. Multiple queries on the same JSON parse only once; later queries just navigate.
+Pre-parses a JSON document and returns a reusable `*ParsedJSON`. Repeated queries on the same JSON parse only once; later queries navigate the tree. `Data()` returns that cached tree, so do not mutate it; use `SetFromParsed` for changes.
 
 ```go
 parsed, err := p.PreParse(largeJSON)
@@ -382,7 +392,7 @@ Signature: `func (p *Processor) GetFromParsed(parsed *ParsedJSON, path string, c
 
 Gets a value by path from the pre-parsed result, skipping the JSON-parsing step.
 
-Container results (`map[string]any` / `[]any`) are defensively deep-copied before returning by default, while primitives return directly; when the processor enables `Config.CacheSharedResults` (callers promise not to mutate returned values), the copy is skipped. `GetFromParsed` itself **does not write the result cache** — what pre-parsing reuses is the parse tree itself, not query results.
+Container results (`map[string]any` / `[]any`) are defensively deep-copied before returning by default, while primitives return directly; when the processor enables `Config.CacheSharedResults` (callers promise not to mutate returned values), the copy is skipped. `GetFromParsed` itself **does not write the result cache**: pre-parsing reuses the parse tree, not query results.
 
 **ParsedJSON methods**
 
@@ -392,7 +402,7 @@ Container results (`map[string]any` / `[]any`) are defensively deep-copied befor
 | `Release()` | Nulls the internal data reference so the parse tree can be GC'd (afterwards `Data()` returns `nil`; use with `defer`) |
 
 :::tip Division of labor with CompilePath
-`PreParse` saves "repeated parsing of the same JSON"; `CompilePath` saves "repeated parsing of the same path"; `SetFromParsed` (see [Parse & Validate](./parse#setfromparsed)) supports chained modification on pre-parsed results. For how to choose, see the [Processor Guide](../../getting-started/processor-guide).
+`PreParse` saves repeated parsing of the same JSON; `CompilePath` saves repeated parsing of the same path. `SetFromParsed` (see [Parse & Validate](./parse#setfromparsed)) continues modifying pre-parsed results. For how to choose, see the [Processor Guide](../../getting-started/processor-guide).
 :::
 
 ## See Also

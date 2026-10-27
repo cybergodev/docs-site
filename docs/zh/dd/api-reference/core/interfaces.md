@@ -54,7 +54,7 @@ type CoreLogger interface {
 
 ## LevelLogger
 
-扩展 `CoreLogger`，增加级别管理能力。
+`LevelLogger` 扩展 `CoreLogger`，增加级别管理能力。
 
 ```go
 type LevelLogger interface {
@@ -73,7 +73,7 @@ type LevelLogger interface {
 
 ## ConfigurableLogger
 
-扩展 `CoreLogger`，增加配置、生命周期、Writer、上下文提取器、钩子和采样管理。
+`ConfigurableLogger` 扩展 `CoreLogger`，增加配置、生命周期、Writer、上下文提取器、钩子和采样管理。
 
 ```go
 type ConfigurableLogger interface {
@@ -116,7 +116,7 @@ type ConfigurableLogger interface {
 
 ## LogProvider
 
-完整的日志接口，独立定义了全部方法（扁平接口，不嵌入其他接口）。`Logger` 类型实现了此接口。
+`LogProvider` 是完整的日志接口，独立定义了全部方法（扁平接口，不嵌入其他接口）。`Logger` 类型实现了此接口。
 
 ```go
 type LogProvider interface {
@@ -224,7 +224,7 @@ type LogProvider interface {
 
 ## Flusher
 
-Writer 刷新接口。实现了此接口的 Writer 会在 `Logger.Flush()` 时被调用，并在 `Logger.Close()` 关闭前先刷新缓冲数据（即使该 Writer 未实现 io.Closer 也不会丢失缓冲）。
+`Flusher` 是 Writer 刷新接口。实现了该接口的 Writer 会在 `Logger.Flush()` 时被调用，并在 `Logger.Close()` 关闭前先刷新缓冲数据（即使该 Writer 未实现 io.Closer 也不会丢失缓冲）。
 
 ```go
 type Flusher interface {

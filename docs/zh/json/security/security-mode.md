@@ -1,17 +1,17 @@
 ---
 sidebar_label: "安全模式"
 title: "安全模式 - CyberGo JSON | 危险模式检测与防护"
-description: "CyberGo JSON 安全模式指南：安全配置、AddDangerousPattern 注册自定义危险模式、PatternLevel 三级严重度与内置危险模式，配合输入验证防御 JSON 注入、原型污染与 XSS 等威胁，命中即拒绝且匹配大小写不敏感。"
+description: "CyberGo JSON 安全模式：AddDangerousPattern 注册自定义危险模式、PatternLevel 级别语义与内置危险模式清单。"
 sidebar_position: 20
 ---
 
 # 安全模式
 
-安全模式提供危险模式检测功能，防止 JSON 注入攻击、原型污染和其他安全威胁。
+安全模式是危险模式检测的配置面：内置一张模式表，另有两条自定义注册途径。命中即拒绝，匹配大小写不敏感。
 
 ## DangerousPattern 结构体
 
-DangerousPattern 表示一个安全风险模式。它是一个结构体类型。
+DangerousPattern 表示一条安全风险模式：
 
 ```go
 type DangerousPattern struct {
@@ -70,11 +70,13 @@ func (pl PatternLevel) String() string
 | 级别 | 语义意图（接口文档） | 当前实现的实际行为 |
 |------|----------------------|--------------------|
 | `PatternLevelCritical` | 始终阻止操作 | 命中即拒绝（`ErrSecurityViolation`） |
-| `PatternLevelWarning` | 严格模式下阻止，宽松模式记录警告 | **同样命中即拒绝**——`StrictMode` 字段当前不参与模式拦截决策 |
+| `PatternLevelWarning` | 严格模式下阻止，宽松模式记录警告 | **同样命中即拒绝**——`StrictMode` 字段已废弃、不被任何解析器读取，不参与模式拦截决策 |
 | `PatternLevelInfo` | 仅记录，从不阻止 | **同样命中即拒绝** |
 
 ::: warning 请按「会拦截」规划 Warning/Info 模式
-当前版本的模式扫描（内置模式、`Config.AdditionalDangerousPatterns`、全局注册模式三者走同一扫描路径）对任何通过词边界上下文检查的命中都会拒绝操作，`Level` 不改变拦截结果，仅作为语义标注供审计/日志区分严重度。因此**不要**注册一个「只想记录、不想拦截」的 `PatternLevelInfo` 级模式并放行含该模式的输入——它今天会拦截。所有匹配均为大小写不敏感。
+内置模式、`Config.AdditionalDangerousPatterns` 与全局注册模式走同一扫描路径。该路径对任何经词边界上下文检查的命中都会拒绝操作，`Level` 不改变拦截结果，仅作为语义标注供审计与日志区分严重度。
+
+因此**不要**注册一个「只想记录、不想拦截」的 `PatternLevelInfo` 级模式并放行含该模式的输入——它今天会拦截。所有匹配均为大小写不敏感。
 :::
 
 ---
@@ -185,7 +187,7 @@ type Config struct {
 
 ### 全局注册（进程级）
 
-除了通过 `Config` 配置实例级模式外，还可以通过包级函数管理全局模式注册表。全局注册表中的模式在所有 Processor 实例中生效。
+除了用 `Config` 配置实例级模式，还可以用包级函数管理全局模式注册表。全局注册表中的模式在所有 Processor 实例中生效。
 
 #### RegisterDangerousPattern
 
@@ -303,13 +305,13 @@ import (
 )
 
 func main() {
-	// 方式一：通过配置字段
+	// 方式一：直接设置配置字段
 	cfg := json.DefaultConfig()
 	cfg.AdditionalDangerousPatterns = []json.DangerousPattern{
 		{Pattern: "company_secret", Name: "公司敏感信息", Level: json.PatternLevelCritical},
 	}
 
-	// 方式二：通过配置方法
+	// 方式二：调用配置方法
 	cfg.AddDangerousPattern(json.DangerousPattern{
 		Pattern: "internal_api",
 		Name:    "内部 API 引用",
@@ -333,7 +335,9 @@ func main() {
 ```
 
 ::: tip 匹配是「整词」的
-模式命中后会做词边界上下文检查：模式两侧紧邻字母、数字或下划线时视为普通标识符的一部分而不拦截。例如模式 `company_secret` 在 `"company_secret"` 中触发，在 `"company_secret_info"` 中不触发（后跟 `_` 属词内字符）；以 `(`、`[`、`:`、`.` 等分隔符结尾的模式（如 `eval(`）则不受后缀影响。这也是库内置模式（如 `eval(`、`__proto__`）的匹配方式。
+模式命中后会做词边界上下文检查：模式两侧紧邻字母、数字或下划线时视为普通标识符的一部分，不拦截。例如 `company_secret` 在 `"company_secret"` 中触发，在 `"company_secret_info"` 中不触发（后跟 `_` 属词内字符）。
+
+以 `(`、`[`、`:`、`.` 等分隔符结尾的模式（如 `eval(`）不受后缀影响。库内置模式（`eval(`、`__proto__`）也按这套规则匹配。
 :::
 
 ### 禁用默认模式
@@ -384,7 +388,7 @@ for _, p := range cfg.AdditionalDangerousPatterns {
 
 | 字段 | 默认 | 作用 |
 |------|------|------|
-| `FullSecurityScan` | `false` | `true` 时对所有输入不分大小做全量扫描；`false` 时小输入（< 4KB）全量、大输入走分层优化扫描（见下节，同样保证 100% 覆盖）。全量模式对 >100KB 输入约有 10–30% 额外开销 |
+| `FullSecurityScan` | `false` | `true` 时对所有输入不分大小做全量扫描；`false` 时小输入（< 4KB）全量、大输入走分层优化扫描（见下节，滚动窗口同样覆盖全部字节）。全量模式对 >100KB 输入约有 10–30% 额外开销 |
 | `DisableDefaultPatterns` | `false` | `true` 时跳过内置的非关键模式（HTML 标签、事件处理器等），仅保留 3 个关键模式 + 自定义模式 |
 | `AdditionalDangerousPatterns` | `nil` | 在内置模式之外叠加自定义模式（见上文） |
 
@@ -395,7 +399,7 @@ cfg := json.SecurityConfig() // 已开启 FullSecurityScan 并收紧各项限制
 // cfg.FullSecurityScan = true
 ```
 
-开启建议：处理**不可信输入**（公网 API、用户提交、外部 webhook）、涉及敏感数据（认证、金融、个人信息）或有合规全量审计要求时启用 `FullSecurityScan`；可信内部服务的大报文可保持默认的分层扫描以兼顾吞吐。
+开启建议：处理**不可信输入**（公网 API、用户提交、外部 webhook）、涉及敏感数据（认证、金融、个人信息）或有合规全量审计要求时启用 `FullSecurityScan`。可信内部服务的大报文可保持默认的分层扫描，以保住吞吐。
 
 ---
 
@@ -407,7 +411,7 @@ cfg := json.SecurityConfig() // 已开启 FullSecurityScan 并收紧各项限制
 
 ### 较大 JSON（≥ 4KB）
 
-采用多层级优化扫描，**保证 100% 覆盖**（无采样盲区）：
+采用多层级优化扫描，滚动窗口覆盖全部字节（无采样盲区）：
 
 - 关键模式（`__proto__`、`constructor[`、`prototype.`）始终完全扫描
 - 先做指示字符检查：若无任何危险字符则快速跳过

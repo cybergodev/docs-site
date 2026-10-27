@@ -142,7 +142,7 @@ func TestLastEntry(t *testing.T) {
 
 ## LogEntry
 
-Captured log entry structure.
+`LogEntry` is the captured log entry structure, returned by `Entries`/`LastEntry` and related methods.
 
 ```go
 type LogEntry struct {

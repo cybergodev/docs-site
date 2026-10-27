@@ -1,19 +1,19 @@
 ---
 sidebar_label: "测试场景"
 title: "测试场景 - CyberGo env | 单元测试最佳实践"
-description: "CyberGo env 测试最佳实践指南，含 TestingConfig 与 OverwriteExisting 测试隔离、FileSystem 模拟内存文件系统、独立加载器、表驱动与基准测试、ResetDefaultLoader 状态清理，保障测试稳定可复现。"
+description: "CyberGo env 测试最佳实践指南：TestingConfig 与 OverwriteExisting 的隔离语义、自定义 FileSystem 模拟内存文件、每个用例独立加载器、表驱动与基准测试写法、ResetDefaultLoader 与进程变量清理，保证测试结果稳定可复现。"
 sidebar_position: 7
 ---
 
 # 测试场景
 
-本指南介绍如何在测试中使用 env 库，包括隔离测试环境、模拟文件系统和清理状态。
+env 的测试要处理三件事：隔离测试配置、用内存文件系统替代真实文件、清理全局单例与进程环境。
 
 ## 测试配置
 
 ### 使用 TestingConfig
 
-TestingConfig 会覆盖已存在的环境变量，适合测试隔离：
+`TestingConfig()` 继承 `DefaultConfig()`，但把 `OverwriteExisting` 置为 `true`、`FailOnMissingFile` 置为 `false`，并把 `MaxFileSize` 收紧到 64 KB、`MaxVariables` 收紧到 50。覆盖写入使同一测试进程内的重复 `Set` 生效：
 
 ```go
 func TestWithTestingConfig(t *testing.T) {
@@ -32,15 +32,17 @@ func TestWithTestingConfig(t *testing.T) {
 ```
 
 ::: tip 注意
-TestingConfig 设置 `OverwriteExisting: true`，确保测试隔离。如果需要保留已存在变量，可手动设置 `cfg.OverwriteExisting = false`。
+`TestingConfig()` 设置 `OverwriteExisting: true` 以保证测试内的重复写入生效。需要保留已存在的进程变量时，手动设置 `cfg.OverwriteExisting = false`。
 :::
 
 ::: warning 隐式加载与 testify 依赖
-- `TestingConfig` 继承 `DefaultConfig` 的 `Filenames: [".env"]`，而 `New(cfg)` 在 Filenames 非空时会**自动加载**这些文件——不清空时会隐式读入 cwd 下的真实 `.env`，污染测试。不希望加载任何文件时，先执行 `cfg.Filenames = nil`。
-- 本页示例中的 `require` / `assert` 来自第三方库 `github.com/stretchr/testify`。
+- `TestingConfig` 继承 `DefaultConfig` 的 `Filenames: [".env"]`，而 `New(cfg)` 在 Filenames 非空时**自动加载**这些文件。不清空就会隐式读入 cwd 下的真实 `.env`，污染测试。不希望加载任何文件时，先执行 `cfg.Filenames = nil`。
+- 示例中的 `require` / `assert` 来自第三方库 `github.com/stretchr/testify`。
 :::
 
 ### 每个测试独立加载器
+
+每个用例各自 `New()` 一个 loader，互不共享内存与 `appliedKeys` 追踪：
 
 ```go
 func TestDatabase(t *testing.T) {
@@ -76,18 +78,22 @@ func (m *MockFileSystem) Open(name string) (env.File, error) {
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{content: content}, nil
+    // 传入真实 size：加载器用 Stat().Size() 做 MaxFileSize 预检
+    return &MockFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
     return m.Open(name)
 }
 
+// MockFileSystem.Stat 库内不调用，但返回值必须可安全使用，
+// 避免调用方（或未来实现）拿到 nil 后 panic
 func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
-    if _, ok := m.files[name]; !ok {
+    content, ok := m.files[name]
+    if !ok {
         return nil, os.ErrNotExist
     }
-    return nil, nil
+    return &mockFileInfo{name: name, size: int64(len(content))}, nil
 }
 
 func (m *MockFileSystem) MkdirAll(path string, perm os.FileMode) error { return nil }
@@ -104,47 +110,44 @@ func (m *MockFileSystem) Unsetenv(key string) error           { delete(m.env, ke
 func (m *MockFileSystem) LookupEnv(key string) (string, bool) { val, ok := m.env[key]; return val, ok }
 
 // MockFile 是 env.File 的内存实现（Read/Write/Close/Sync/Stat）。
-// 加载器打开文件后会立即调用 Stat() 做大小预检，缺失会导致 panic。
+// 加载器打开文件后会立即调用 MockFile.Stat() 做大小预检，返回错误会让加载失败。
 type MockFile struct {
-    content string
-    offset  int64 // 读偏移，支持分块读取
+    name   string
+    size   int64
+    reader *strings.Reader // 读偏移由 strings.Reader 自带，支持分块读取
 }
 
-func (f *MockFile) Read(p []byte) (int, error) {
-    if f.offset >= int64(len(f.content)) {
-        return 0, io.EOF
-    }
-    n := copy(p, f.content[f.offset:])
-    f.offset += int64(n)
-    return n, nil
-}
+func (f *MockFile) Read(p []byte) (int, error)  { return f.reader.Read(p) }
 
 // 只读模拟：加载路径不会写入
-func (f *MockFile) Write(p []byte) (int, error) { return len(p), nil }
+func (f *MockFile) Write(p []byte) (int, error) { return 0, errors.ErrUnsupported }
 
 func (f *MockFile) Close() error { return nil }
 func (f *MockFile) Sync() error  { return nil }
 
-// Size 必须等于 len(content)，否则 loadFileLocked 的
-// MaxFileSize 预检会误判文件大小
+// Stat 必须返回真实大小（Open 传入的 size == len(content)），
+// 否则 loadFileLocked 的 MaxFileSize 预检会误判文件大小
 func (f *MockFile) Stat() (os.FileInfo, error) {
-    return mockFileInfo{size: int64(len(f.content))}, nil
+    return &mockFileInfo{name: f.name, size: f.size}, nil
 }
 
 // mockFileInfo 极简实现 os.FileInfo，仅 Size 参与实际逻辑
 type mockFileInfo struct {
+    name string
     size int64
 }
 
-func (i mockFileInfo) Name() string       { return "mock" }
-func (i mockFileInfo) Size() int64        { return i.size }
-func (i mockFileInfo) Mode() os.FileMode  { return 0444 }
-func (i mockFileInfo) ModTime() time.Time { return time.Time{} }
-func (i mockFileInfo) IsDir() bool        { return false }
-func (i mockFileInfo) Sys() any           { return nil }
+func (i *mockFileInfo) Name() string       { return i.name }
+func (i *mockFileInfo) Size() int64        { return i.size }
+func (i *mockFileInfo) Mode() os.FileMode  { return 0444 }
+func (i *mockFileInfo) ModTime() time.Time { return time.Time{} }
+func (i *mockFileInfo) IsDir() bool        { return false }
+func (i *mockFileInfo) Sys() any           { return nil }
 ```
 
-`Open` 返回的 MockFile 必须完整实现 `env.File` 接口的五个方法：Read、Write、`Close`、`Sync`、`Stat`。其中 `Stat` 不可省略：加载器在读取文件前会先调用 `file.Stat()` 做大小预检（`Size()` 超过 `MaxFileSize` 时返回 `ErrFileTooLarge`），因此 `mockFileInfo` 的 `Size()` 必须返回 `len(content)`。
+`Open` 返回的 mock 文件值必须完整实现 `env.File` 接口的五个方法：Read、Write、Close、Sync、Stat（其中 `File` 接口本身声明的只有 `Sync` 与 `Stat`，另外三个来自内嵌的 `io.Reader`、`io.Writer`、`io.Closer`）。`Stat` 不可省略：加载器在读取文件前先调用 `file.Stat()` 做大小预检，`Size()` 超过 `MaxFileSize` 时返回 `ErrFileTooLarge`。因此 `MockFile` 的 `size` 必须由 `Open` 传入真实长度，`mockFileInfo.Size()` 才能返回该值。
+
+api-reference 的[接口页](../api-reference/interfaces)与[工厂页](../api-reference/factory)用的是同一套 mock，可对照阅读。
 
 ### 在测试中使用
 
@@ -197,9 +200,11 @@ func TestExample(t *testing.T) {
 }
 ```
 
-`ResetDefaultLoader` 返回 `error`：它清空并关闭全局默认加载器，返回值是旧加载器 `Close()` 的错误（关闭期清理失败时非 nil）；尚未初始化全局加载器时返回 nil。忽略该错误只影响旧加载器的清理结果，全局状态仍会被清空，后续可重新 `env.Load()`。
+`ResetDefaultLoader` 返回 `error`：它清空并关闭默认加载器，返回值是旧加载器 `Close()` 的错误（关闭期清理失败时非 nil）；默认加载器从未初始化时返回 nil。忽略该错误只影响旧加载器的清理结果，全局状态仍会被清空，之后可以重新 `env.Load()`。它不会撤销该 loader 已经写入进程环境的变量。
 
 ### 清理环境变量
+
+`ResetDefaultLoader` 不碰 `os.Environ`，因此直接写进程变量的测试还要自己恢复：
 
 ```go
 func TestWithCleanup(t *testing.T) {
@@ -370,6 +375,8 @@ func TestStructMapping(t *testing.T) {
 ```
 
 ## 并发测试
+
+配合 `go test -race` 运行，可让竞态检测器覆盖并发读写路径：
 
 ```go
 func TestConcurrentAccess(t *testing.T) {

@@ -7,18 +7,19 @@ sidebar_position: 20
 
 # 高级示例
 
+本页给出 HTTPC 进阶场景的可运行示例：自定义重试策略、超时与重试组合、请求/响应回调、完整中间件链、REST 客户端封装与并发控制。
+
 ## 自定义重试策略
 
 仅对 502/503/504 重试，使用固定延迟：
 
-:::warning 内部类型
-RetryPolicy.ShouldRetry 的 `resp` 参数类型 ResponseReader 为内部接口（定义在 `internal/types` 包中），外部包无法直接引用。自定义 `RetryPolicy` 必须在与 `httpc` 同一模块内的包中实现。大多数场景可通过 `RetryConfig` 配置满足需求。以下示例展示实现模式，实际代码需在 `httpc` 模块内部编译。
+:::tip 类型已公开导出
+RetryPolicy.ShouldRetry 的 `resp` 参数类型 `ResponseReader` 已由 `httpc` 包通过公开类型别名导出（`httpc.ResponseReader`），外部包可直接引用。自定义 `RetryPolicy` 可在任何业务包中实现，以下示例可直接编译使用。无需自定义 `RetryPolicy` 时，改用 `RetryConfig` 字段配置。
 :::
 
 ```go
-// 注意：ResponseReader 是内部类型（internal/types 包）。
-// 此代码仅能在 github.com/cybergodev/httpc 模块内部编译。
-// 大多数用户应通过 RetryConfig 和 WithMaxRetries 配置重试。
+// ResponseReader 已由 httpc 包公开导出（httpc.ResponseReader）。
+// 本示例可在任何导入 github.com/cybergodev/httpc 的业务包中直接编译。
 
 type selectiveRetry struct {
     maxAttempts int
@@ -26,7 +27,7 @@ type selectiveRetry struct {
 }
 
 // 判断是否应该重试
-func (p *selectiveRetry) ShouldRetry(resp ResponseReader, err error, attempt int) bool {
+func (p *selectiveRetry) ShouldRetry(resp httpc.ResponseReader, err error, attempt int) bool {
     if attempt >= p.maxAttempts {
         return false
     }
@@ -49,7 +50,7 @@ cfg := httpc.DefaultConfig()
 cfg.Retry.CustomPolicy = &selectiveRetry{maxAttempts: 5, baseDelay: time.Second}
 ```
 
-外部项目的替代方案 — 使用 `RetryConfig` 配置：
+无需自定义策略时的替代方案 — 使用 `RetryConfig` 配置：
 
 ```go
 package main
@@ -86,7 +87,7 @@ func main() {
 
 ## 超时与重试组合
 
-三层时间控制各司其职：context 管整组尝试的总预算，`WithTimeout` 管单次尝试，`WithMaxRetries` 管尝试次数：
+三层时间控制的分工：context 截止时间与 `WithTimeout` 都是覆盖全部重试与退避等待的总预算（同时设置时取更早到达的截止时间），`WithMaxRetries` 单独限定尝试次数。
 
 ```go
 package main
@@ -113,8 +114,8 @@ func main() {
 
 	result, err := client.Post("https://httpbin.org/post",
 		httpc.WithJSON(map[string]string{"data": "important"}),
-		httpc.WithContext(ctx),            // 总预算
-		httpc.WithTimeout(10*time.Second), // 单次尝试上限
+		httpc.WithContext(ctx),            // ctx 截止 30s（同为总预算）
+		httpc.WithTimeout(10*time.Second), // 覆盖客户端默认，总预算收紧为 10s
 		httpc.WithMaxRetries(3),           // 最多重试 3 次
 	)
 	if err != nil {
@@ -127,7 +128,7 @@ func main() {
 }
 ```
 
-需要禁用重试（如非幂等的创建操作）时，`WithMaxRetries(0)` 显式声明：
+需要禁用重试（如非幂等的创建操作）时，以 `WithMaxRetries(0)` 显式声明：
 
 ```go
 result, err := client.Post("https://httpbin.org/post",
@@ -162,9 +163,8 @@ func main() {
 		}},
 	)
 
-	// 审计日志（JSON 格式）
+	// 审计日志（回调内 json.Marshal 输出 JSON 行；Format 字段无效果）
 	auditCfg := httpc.DefaultAuditConfig()
-	auditCfg.Format = "json"
 	auditCfg.IncludeHeaders = true
 	auditCfg.MaskHeaders = []string{"Authorization", "Cookie"}
 	auditCfg.SanitizeError = true
@@ -203,7 +203,7 @@ func main() {
 
 ## 请求/响应回调
 
-不需要完整中间件时，`WithOnRequest` / `WithOnResponse` 两个请求级回调即可覆盖轻量的观测与调试需求——发送前拿到可修改的请求、完成后拿到可读取的响应：
+不需要完整中间件时，`WithOnRequest` / `WithOnResponse` 两个请求级回调可覆盖轻量的观测与调试需求：发送前回调收到可修改的请求，完成后回调收到可读取的响应。
 
 ```go
 package main
@@ -246,7 +246,7 @@ func main() {
 }
 ```
 
-与中间件的分工：回调是**单请求**的便捷钩子（日志、调试、简单指标）；要跨全部请求、可组合、可短路请求的管道化处理，请用[中间件链](../guides/middleware-chain)。
+与中间件的分工：回调是**单请求**的钩子（日志、调试、简单指标）；跨全部请求、可组合、可短路请求的管道化处理由[中间件链](../guides/middleware-chain)承担。
 
 ## REST API 客户端封装
 
@@ -352,7 +352,7 @@ func main() {
 
 ## 域名客户端（自定义配置）
 
-`NewDomainDefault(baseURL)` 之外，`NewDomain(baseURL, cfg)` 接受完整 `Config`——预设、超时、重试、代理全部可定制。域名客户端自动管理会话头与 Cookie，单次请求还能临时覆盖会话头：
+`NewDomainDefault(baseURL)` 之外，`NewDomain(baseURL, cfg)` 接受完整 `Config`，预设、超时、重试、代理均可定制。域名客户端自动管理会话头与 Cookie；单次请求也可临时覆盖会话头：
 
 ```go
 package main
@@ -414,14 +414,15 @@ func main() {
 	fmt.Println("第二次请求：", resp2.StatusCode()) // 输出：第二次请求：200
 
 	// Session() 拿到底层 SessionManager（下一节演示其独立用法）
+	// UpdateFromResult 手动回填演示：dc.Get 已自动捕获响应 Cookie，此处重复写入无副作用
 	session := dc.Session()
-	session.UpdateFromResult(resp2) // 把本次响应的 Cookie 合并进会话
+	session.UpdateFromResult(resp2)
 	fmt.Println("会话 Cookie 数量：", len(session.GetCookies()))
 }
 ```
 
-:::warning 相对路径与选项副作用
-`path` 参数写相对路径（如 `/get`）即可自动拼接 baseURL；完整 URL（带 scheme）则直接使用。另外域名客户端会把请求选项**执行两次**（一次捕获会话状态、一次实际请求），避免传入含计数器、nonce 等副作用的选项。
+:::warning 相对路径与会话捕获
+`path` 参数为相对路径（如 `/get`）时自动拼接 baseURL；完整 URL（带 scheme）直接使用。域名客户端的请求选项只执行一次，`WithHeader`/`WithCookies` 等会额外被静态捕获进会话；自定义 `RequestOptionFunc` 里的 `SetHeader`/`SetCookies` 不会被捕获。
 :::
 
 ## Cookie 高级用法
@@ -487,7 +488,7 @@ fmt.Println(resp.StatusCode()) // 输出：200
 
 ## SessionManager 独立会话
 
-会话（持久头 + Cookie）不绑定域名客户端，可以独立创建、独立注入任意请求。适合「同一服务多套身份」或「手工编排请求选项」的场景：
+会话（持久头 + Cookie）不绑定域名客户端，可独立创建并注入任意请求。适用于「同一服务多套身份」或「手动编排请求选项」的场景：
 
 ```go
 package main
@@ -608,7 +609,7 @@ func main() {
 
 ## 并发请求：worker pool 与信号量
 
-批量请求大量 URL 时，worker pool 把并发度钉在 worker 数上；信号量模式则允许任务动态伸缩但限制同时在途的上限。两者共享同一个 `Client`（HTTPC 的 Client 并发安全，连接池跨 goroutine 复用）：
+批量请求 URL 时，worker pool 将并发度固定在 worker 数上；信号量模式允许任务动态伸缩，但限制同时在途的请求数。两者共用同一个 `Client`（HTTPC 的 Client 并发安全，连接池跨 goroutine 复用）：
 
 ```go
 package main
@@ -715,12 +716,12 @@ func main() {
 ```
 
 :::tip 并发度与连接池的配合
-worker 数/信号量上限不要长期显著超过 `Connection.MaxConnsPerHost`（HTTP/1.1 场景），否则请求在传输层排队、总吞吐不再提升；HTTP/2（默认开启）下同一主机共享连接多路复用，受影响更小。详见[性能优化](../guides/performance)。
+在 HTTP/1.1 场景下，worker 数/信号量上限长期高于 `Connection.MaxConnsPerHost` 时，请求会在传输层排队，总吞吐不再提升。HTTP/2（默认开启）下同一主机共享连接多路复用，受此限制影响更小。详见[性能优化](../guides/performance)。
 :::
 
 ## 结构化错误处理
 
-`ClientError` 携带分类（`Code()`/`Type`）、重试性（`IsRetryable()`）、请求上下文（URL/Method/Attempts/StatusCode），用 `errors.As` 提取后可以按类别走不同处理分支：
+`ClientError` 携带分类（`Code()`/`Type`）、重试性（`IsRetryable()`）与请求上下文（URL/Method/Attempts/StatusCode）。用 `errors.As` 提取后，可按分类走向不同处理分支：
 
 ```go
 package main
@@ -771,7 +772,7 @@ func main() {
 			fmt.Println("→ 分支：超时，可放宽预算后重试")
 		case "NETWORK_ERROR", "DNS_ERROR":
 			fmt.Println("→ 分支：网络/DNS 故障，检查连通性")
-		case "TLS_ERROR", "CERTIFICATE":
+		case "TLS_ERROR", "CERTIFICATE_ERROR":
 			fmt.Println("→ 分支：证书问题，校验 CA 与系统时间")
 		case "RETRY_EXHAUSTED":
 			fmt.Println("→ 分支：重试耗尽，进入降级逻辑")
@@ -780,11 +781,11 @@ func main() {
 }
 ```
 
-HTTP 状态码错误（4xx/5xx 响应被归类为 `HTTP_ERROR`）同样携带 `clientErr.StatusCode`；`Cause` 字段保留底层错误供 `errors.Unwrap` 继续下钻。错误分类全表见[错误处理](../guides/error-handling)与[错误类型](../api-reference/types/errors)。
+错误消息含 `HTTP 4xx`/`HTTP 5xx` 而归入 `HTTP_ERROR` 的错误同样携带 `clientErr.StatusCode`（常规 4xx/5xx 响应不作为 error 返回，用 `result.IsSuccess()` 等方法检查）；`Cause` 字段保留底层错误供 `errors.Unwrap` 继续下钻。错误分类全表见[错误处理](../guides/error-handling)与[错误类型](../api-reference/types/errors)。
 
 ## 响应落盘：SaveToFile 与 Download
 
-小响应体已在内存时 `SaveToFile` 一行落盘；大文件用 `Download` 流式写盘并支持进度/续传/校验：
+响应体已在内存时用 `SaveToFile` 直接落盘；大文件用 `Download` 流式写盘，支持进度、续传与校验：
 
 ```go
 package main
@@ -831,7 +832,7 @@ func main() {
 
 ## 默认客户端管理
 
-包级函数（`httpc.Get` 等）背后是一个懒初始化的共享默认客户端，可用 `SetDefaultClient` 换成自定义配置的实例（旧实例自动关闭），让全局调用统一走新配置：
+包级函数（`httpc.Get` 等）背后是一个懒初始化的默认客户端。用 `SetDefaultClient` 换成自定义配置的实例（旧实例自动关闭），此后包级调用统一走新配置：
 
 ```go
 package main
@@ -873,7 +874,9 @@ func main() {
 }
 ```
 
-适用场景：应用启动时统一定制全局行为、按环境（开发/生产）切换配置。注意 `SetDefaultClient` 只接受 `httpc.New` 创建的客户端，且不能传入已关闭的实例；替换会关闭旧默认客户端并中断其仍在途的请求（并发调用方可能观察到连接错误），应只在启动期或静默期调用，勿在活跃流量下替换。
+适用场景：应用启动时统一定制全局行为、按环境（开发/生产）切换配置。
+
+`SetDefaultClient` 只接受 `httpc.New` 创建的客户端，且不能传入已关闭的实例。替换会关闭旧默认客户端并中断其仍在途的请求（并发调用方会观察到连接错误），因此只在启动期或静默期调用，不在活跃流量下替换。默认客户端的惰性创建与关闭后重建见[核心概念](../getting-started/concepts)。
 
 ## 自定义中间件：请求签名
 

@@ -18,7 +18,7 @@ This site helps developers quickly get started and gain a deep understanding of 
 | **JSON** | High-performance, thread-safe JSON processing library | [cybergodev/json](https://github.com/cybergodev/json) |
 | **JWT** | Production-grade JWT library with just 3 functions | [cybergodev/jwt](https://github.com/cybergodev/jwt) |
 | **HTTPC** | Modern high-performance HTTP client with TLS 1.2+ and SSRF protection | [cybergodev/httpc](https://github.com/cybergodev/httpc) |
-| **HTML** | Production-grade HTML content extraction with intelligent article recognition | [cybergodev/html](https://github.com/cybergodev/html) |
+| **HTML** | Production-grade HTML content extraction: article detection, structured metadata, and a whole-page reader mode | [cybergodev/html](https://github.com/cybergodev/html) |
 | **DD** | High-performance logging library processing 3M+ ops/sec | [cybergodev/dd](https://github.com/cybergodev/dd) |
 | **ENV** | Production-ready environment variable management with zero dependencies | [cybergodev/env](https://github.com/cybergodev/env) |
 

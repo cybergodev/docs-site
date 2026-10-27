@@ -7,7 +7,7 @@ sidebar_position: 20
 
 # Request & Response Mutators
 
-Middleware does not touch the underlying request/response objects directly; it reads and writes through **mutator** interfaces. Middleware always receives the full read-write mutator (`RequestMutator` / `ResponseMutator`); the read/write grouping below is for readability only and does not represent separate exported interfaces.
+Middleware does not touch the underlying request/response objects directly; it reads and writes through **mutator** interfaces. Middleware always receives the full read-write mutator (`RequestMutator` / `ResponseMutator`); the read/write grouping below is for readability only.
 
 ```text
 RequestMutator  =  Read methods  +  Write methods
@@ -17,7 +17,7 @@ ResponseMutator =  Read methods  +  Write methods
   via RequestMutator                   via ResponseMutator
 ```
 
-The `Handler` signature `func(ctx, RequestMutator) (ResponseMutator, error)` exposes exactly these two mutators as the middleware's entry and exit points.
+The `Handler` signature `func(ctx, RequestMutator) (ResponseMutator, error)` makes these two mutators the middleware's entry and exit points.
 
 ## Request Mutator
 
@@ -62,7 +62,9 @@ The following methods modify request data. Call them when middleware only needs 
 
 ### RequestMutator
 
-`RequestMutator` is the read-write request mutator interface that httpc exposes, covering every method in the Read methods and Write methods tables above. Its internal read/write sub-interfaces live in the `internal/types` package and are not exported separately; externally they are referenced uniformly as `RequestMutator`. Middleware inspects and rewrites request properties through it before the request is sent.
+`RequestMutator` is the read-write request mutator interface that httpc exposes, covering every method in the Read methods and Write methods tables above. Middleware inspects and rewrites request properties through `RequestMutator` before the request is sent.
+
+The interface is composed from the two split interfaces `RequestReader` and `RequestWriter`, both exported by the `httpc` package as public type aliases (`httpc.RequestReader` / `httpc.RequestWriter`; full method tables in [Reader/Writer Split Interfaces](../types/interfaces)).
 
 ## Typical RequestMutator Operations in Middleware
 
@@ -133,7 +135,9 @@ The following methods modify response data.
 
 ### ResponseMutator
 
-`ResponseMutator` is the read-write response mutator interface that httpc exposes, covering every method in the Read methods and Write methods tables above. Its internal read/write sub-interfaces live in the `internal/types` package and are not exported separately; externally they are referenced uniformly as `ResponseMutator`. Middleware reads or rewrites the response through it after the request completes — commonly used for response caching, content transformation (e.g. JSON pretty-printing), encoding/decoding, and response filtering.
+`ResponseMutator` is the read-write response mutator interface that httpc exposes, covering every method in the Read methods and Write methods tables above. Middleware reads or rewrites the response through `ResponseMutator` after the request completes, for uses such as response caching, content transformation (e.g. JSON pretty-printing), encoding/decoding, and response filtering.
+
+The interface is composed from the two split interfaces `ResponseReader` and `ResponseWriter`, both exported by the `httpc` package as public type aliases (`httpc.ResponseReader` / `httpc.ResponseWriter`; full method tables in [Reader/Writer Split Interfaces](../types/interfaces)).
 
 ## Typical ResponseMutator Operations in Middleware
 
@@ -147,10 +151,12 @@ The following methods modify response data.
 
 ## Type Assertion: Accessing Engine-Specific Methods
 
-The `RequestMutator` received by middleware is at runtime actually of type `*engine.Request` (the engine's concrete request struct). `finalHandler` reads three engine-specific hooks **not on the interface** from it via type assertion. Custom middleware that needs these hooks must do the same.
+The `RequestMutator` received by middleware is at runtime actually the engine's concrete request type, `*engine.Request`. `finalHandler` reads the engine-specific fields that are **not on the public interface** from it via type assertion and forwards them to the engine along with the interface fields.
 
 :::warning Interface boundary
-The `OnRequest`/`OnResponse` callbacks and `AllowPrivateIPs` are not on the `RequestMutator` interface — their signatures reference types from the internal `engine` package (`*engine.Request`/`*engine.Response`), and exposing them on the public interface would cause an import cycle. Therefore they can only be accessed via `*engine.Request` type assertion.
+The `OnRequest`/`OnResponse` callbacks, `AllowPrivateIPs`, NoTimeout, and `RetryNonIdempotent` are not on the `RequestMutator` interface: their signatures reference types from the internal `engine` package (`*engine.Request`/`*engine.Response`), and exposing them on the public interface would cause an import cycle.
+
+The type assertion is a **library-internal mechanism**: `internal/engine` cannot be imported from outside the module, so an external package cannot name `*engine.Request` — and therefore cannot perform the assertion either. Callers reach these capabilities through the public request options: [`WithOnRequest`](../core/options#withonrequest)/[`WithOnResponse`](../core/options#withonresponse)/[`WithAllowPrivateIPs`](../core/options#withallowprivateips)/[`WithNoTimeout`](../core/options#withnotimeout)/[`WithRetryNonIdempotent`](../core/options#withretrynonidempotent).
 :::
 
 These engine-specific methods include:
@@ -163,11 +169,11 @@ These engine-specific methods include:
 | `SetOnRequest(func)` / `SetOnResponse(func)` | Set callbacks |
 | `SetAllowPrivateIPs(*bool)` | Set the SSRF override |
 
-The vast majority of middleware **does not** need type assertion — the `RequestMutator`/`ResponseMutator` interfaces already cover all common read/write operations. You only need to assert to the concrete type when you need callbacks or SSRF overrides.
+Ordinary middleware read/write work never needs these hooks: the `RequestMutator`/`ResponseMutator` interfaces already cover the common read/write operations, and per-request callbacks plus the SSRF/timeout/retry overrides are set through request options.
 
 ## Request-Option Callbacks: WithOnRequest / WithOnResponse
 
-Besides middleware, there is a pair of request options directly tied to the mutators: `WithOnRequest` fires a callback before the request is sent, with the `RequestMutator` as its parameter; `WithOnResponse` fires after the response is received, with the `ResponseMutator` as its parameter. You can get hold of the mutators for inspection or lightweight rewriting without writing any middleware.
+Besides middleware, there is a pair of request options directly tied to the mutators: `WithOnRequest` fires a callback before the request is sent, with the `RequestMutator` as its parameter; `WithOnResponse` fires after the response is received, with the `ResponseMutator` as its parameter. Both make the mutators available for inspection or lightweight rewriting without writing any middleware.
 
 <!-- check-code: skip -->
 ```go
@@ -180,10 +186,10 @@ func WithOnResponse(callback func(resp ResponseMutator) error) RequestOption
 | `WithOnRequest` | Before the request is sent | `RequestMutator` | Any callback returning an error aborts the request |
 | `WithOnResponse` | After the response is received | `ResponseMutator` | Any callback returning an error fails the request with that error |
 
-Multiple callbacks can be registered in a chain and execute in order of addition; passing a nil callback returns an error when the option is applied (`"onRequest callback cannot be nil"` / `"onResponse callback cannot be nil"`).
+Multiple callbacks can be registered in a chain and execute in order of addition. Passing a nil callback returns an error when the option is applied (`"onRequest callback cannot be nil"` / `"onResponse callback cannot be nil"`).
 
 :::tip Callbacks vs middleware
-Callbacks have no `next`: they cannot short-circuit the request, nor wrap it at the response stage — they only suit "inspect + lightweight rewrite". When you need to control execution order, short-circuit, or wrap the response, write a middleware instead (see [Handler & Middleware Chain](./handler-chain)).
+Callbacks have no `next`, so they cannot short-circuit the request or wrap it at the response stage; they suit "inspect + lightweight rewrite" only. When execution order must be controlled, or the request short-circuited or the response wrapped, write a middleware instead (see [Handler & Middleware Chain](./handler-chain)).
 :::
 
 ```go
@@ -233,7 +239,7 @@ For the item-by-item reference of all request options, see [Request Options](../
 
 ## SanitizedURL Cache
 
-Multiple middlewares may all need to log the sanitized URL (a URL with credentials removed). To avoid recomputing it, HTTPC caches the sanitized result on the request object so it is shared across middlewares for the same request.
+When multiple middlewares all need to log the sanitized URL (a URL with credentials removed), recomputing it would add overhead. HTTPC therefore caches the sanitized result on the request object so it is shared across middlewares for the same request.
 
 ```text
 getOrComputeSanitizedURL(req):
@@ -243,10 +249,10 @@ getOrComputeSanitizedURL(req):
   ③ Not cached? → compute SanitizeURL(req.URL()), cache it, return it
 ```
 
-The built-in `LoggingMiddleware`, `MetricsMiddleware`, and `AuditMiddleware` all use `getOrComputeSanitizedURL` to share the sanitized result, so URL sanitization is **computed only once** across the entire chain. Custom middleware that logs URLs should use this mechanism too, rather than calling `req.URL()` directly (which may contain credentials).
+The built-in `LoggingMiddleware`, `MetricsMiddleware`, and `AuditMiddleware` all use `getOrComputeSanitizedURL` to share the sanitized result, so URL sanitization is **computed only once** across the entire chain. Custom middleware that logs URLs should use this mechanism too, rather than calling `req.URL()` directly (whose result contains credentials).
 
 :::tip URL sanitization
-When logging URLs in a logging/metrics middleware, never use `req.URL()` directly — if the URL contains `user:pass@host` credentials, they will leak into the logs. The built-in middlewares automatically strip the credentials via `getOrComputeSanitizedURL`.
+When logging URLs in a logging/metrics middleware, never use `req.URL()` directly. If the URL contains `user:pass@host` credentials, they leak into the logs. The built-in middlewares strip the credentials via `getOrComputeSanitizedURL`.
 :::
 
 ## Example: Reading and Writing via Mutators
@@ -309,7 +315,7 @@ func main() {
 
 ## Practical Example: Request/Response Logging Middleware
 
-A complete logging middleware that demonstrates the read/write capabilities of both `RequestMutator` and `ResponseMutator` — reading the request method/URL and the response status code/duration/retry info via mutators and formatting the output uniformly.
+A complete logging middleware that demonstrates the read/write capabilities of both `RequestMutator` and `ResponseMutator`: it reads the request method/URL and the response status code/duration/retry info via mutators and formats the output uniformly.
 
 ```go
 package main
@@ -384,6 +390,6 @@ func main() {
 ## See Also
 
 - [Handler & Middleware Chain](./handler-chain) — overview of the two-layer architecture and the onion model
-- [Built-in Middleware](../client-config/middleware) — HeaderMiddleware and others are ready-made examples that work via mutators
+- [Built-in Middleware](../client-config/middleware) — HeaderMiddleware and others are working examples that operate through mutators
 - [Request Options](../core/options) — WithOnRequest/WithOnResponse and all the other WithXxx options
 - [Interfaces](../types/interfaces) — type alias definitions for the mutators

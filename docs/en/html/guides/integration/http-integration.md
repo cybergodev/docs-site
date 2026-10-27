@@ -1,17 +1,15 @@
 ---
 sidebar_label: "HTTP Integration"
 title: "HTTP Integration - CyberGo html | Web Service Guide"
-description: "CyberGo html with net/http: single-page scraping, concurrent batch fetching, Processor-singleton web services, exponential backoff, and timeout control."
-sidebar_position: 1
+description: "CyberGo html with net/http: single-page fetch and extract, reader mode for LLM input, Processor singletons, concurrent fetching, and charset handling."
+sidebar_position: 10
 ---
 
 # HTTP Integration
 
-The HTML library does not include an HTTP client — it integrates seamlessly with the standard library `net/http`. This guide demonstrates common integration patterns.
+CyberGo html ships no HTTP client; fetching is done by the caller with `net/http`, and the response body is handed to `Extract` or `ReadPage*`. The patterns below cover the common integrations.
 
 ## Basic Fetch & Extract
-
-The simplest pattern: fetch a page, extract content.
 
 ```go
 package main
@@ -51,17 +49,36 @@ func main() {
 }
 ```
 
-:::tip Optimization
-Limit input size to prevent memory issues:
+:::tip Limit the read size before buffering
+`io.LimitReader` caps the body at 50MB (`DefaultMaxInputSize`), so an oversized page is never read into memory only to be rejected by the library:
 
 ```go
 body, err := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024)) // 50MB
 ```
+
+When the limit is hit, `io.LimitReader` **truncates silently** without an error, and the truncated HTML may be an incomplete document that still extracts successfully. To tell "exactly 50MB" from "more than 50MB", set the limit to `50*1024*1024+1` and check the length you read; on the server side, `http.MaxBytesReader` returns an error instead.
 :::
 
-## Configuring HTTP Client
+## Feeding an LLM with Reader Mode
 
-For production, configure reasonable timeouts and connection pool parameters:
+When a whole fetched page goes to an LLM, there is no need to call `Extract` and assemble Markdown yourself: `ReadPageToMarkdown` takes the HTTP response body directly and emits whole-page Markdown with inline links, keeping section headings (`Header`/`Main Content`/`Footer`, etc.) as structural signals.
+
+```go
+body, err := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024)) // resp from http.Get
+if err != nil {
+	log.Fatal(err)
+}
+md, err := html.ReadPageToMarkdown(body) // whole-page Markdown, including [text](URL)
+if err != nil {
+	log.Fatal(err)
+}
+```
+
+Switch to `ReadPageToMarkdownText` when you want the whole-page output without links (the section layout stays the same and link labels are kept as plain words). Section rules, the `ReadResult` structure, and the preserve switches are in [Reader Mode](../core-features/reader-mode). `ReadPage*` does not use the cache, so cache the result in the caller when the same URL is fetched repeatedly.
+
+## Configuring the HTTP Client
+
+In production, configure timeouts and the connection pool explicitly. The `http.Get` above uses the **default client, which has no timeout** — a stuck server blocks the caller indefinitely, so it is fit only for demos and one-off scripts:
 
 ```go
 client := &http.Client{
@@ -76,14 +93,14 @@ client := &http.Client{
 
 | Parameter | Recommended | Description |
 |-----------|-------------|-------------|
-| `Timeout` | 10-30s | Covers connect+TLS+read/write |
-| `MaxIdleConns` | 10-50 | Global max idle connections |
-| `MaxIdleConnsPerHost` | 5-10 | Per-host max idle connections |
-| `IdleConnTimeout` | 90s | Idle connection keep-alive time |
+| `Timeout` | 10-30s | Covers connect, TLS handshake, and read/write end to end |
+| `MaxIdleConns` | 10-50 | Global maximum idle connections |
+| `MaxIdleConnsPerHost` | 5-10 | Maximum idle connections per host |
+| `IdleConnTimeout` | 90s | How long an idle connection is kept |
 
 ## Processor Singleton + HTTP Service
 
-In web services, reuse a single Processor instance for all requests:
+In a web service, reuse a single Processor instance for every request:
 
 ```go
 package main
@@ -131,7 +148,9 @@ func extractHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+	}
 }
 
 func main() {
@@ -142,13 +161,13 @@ func main() {
 }
 ```
 
-:::warning Input Validation
-Always limit request body size in web services to prevent malicious large file attacks. Use `io.LimitReader` or `http.MaxBytesReader`.
+:::warning Input size limits
+A web service must limit the request body size, or a malicious large upload will exhaust memory. `io.LimitReader` truncates silently while `http.MaxBytesReader` returns an error; pick whichever fits. The handler above caps the body at 10MB, below the default `MaxInputSize` (50MB), so the stricter of the two applies.
 :::
 
 ## Concurrent URL Fetching
 
-Leverage Processor's concurrency safety for efficient multi-page processing:
+`Processor` is safe for concurrent use: share one instance to process several pages at once (the HTTP client is the same — reuse one timeout-configured client throughout):
 
 ```go
 type URLResult struct {
@@ -157,7 +176,7 @@ type URLResult struct {
     Error  error
 }
 
-func processURLs(processor *html.Processor, urls []string) []URLResult {
+func processURLs(client *http.Client, processor *html.Processor, urls []string) []URLResult {
     results := make([]URLResult, len(urls))
     var wg sync.WaitGroup
 
@@ -166,7 +185,7 @@ func processURLs(processor *html.Processor, urls []string) []URLResult {
         go func(idx int, u string) {
             defer wg.Done()
 
-            resp, err := http.Get(u)
+            resp, err := client.Get(u)
             if err != nil {
                 results[idx] = URLResult{URL: u, Error: err}
                 return
@@ -178,7 +197,11 @@ func processURLs(processor *html.Processor, urls []string) []URLResult {
                 return
             }
 
-            body, _ := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024))
+            body, err := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024))
+            if err != nil {
+                results[idx] = URLResult{URL: u, Error: err}
+                return
+            }
             result, err := processor.Extract(body)
             results[idx] = URLResult{URL: u, Result: result, Error: err}
         }(i, url)
@@ -192,7 +215,12 @@ func processURLs(processor *html.Processor, urls []string) []URLResult {
 Usage example:
 
 ```go
-p, _ := html.New(html.DefaultConfig())
+client := &http.Client{Timeout: 15 * time.Second}
+
+p, err := html.New(html.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer p.Close()
 
 urls := []string{
@@ -201,7 +229,7 @@ urls := []string{
     "https://example.com/page3",
 }
 
-for _, r := range processURLs(p, urls) {
+for _, r := range processURLs(client, p, urls) {
     if r.Error != nil {
         log.Printf("%s: error - %v", r.URL, r.Error)
         continue
@@ -251,85 +279,95 @@ func fetchWithRetry(client *http.Client, url string, maxRetries int) ([]byte, er
 ```
 
 :::tip Retry Strategy
-- Don't retry 4xx errors (client issues)
+- Do not retry 4xx (except 408 and 429): retrying will not change the result
 - Retry 5xx and network errors
-- Use exponential backoff: 1s, 2s, 4s
-- Set max retry count (usually 3)
+- Double the backoff each attempt (1s, 2s, 4s) and cap it
+- Set a retry limit; 3 attempts is typical
 :::
 
 ## Batch + Context Cancellation
 
-Use context-aware batch processing for large URL sets, supporting timeout cancellation:
+Give the whole batch one deadline; items not yet started when it fires count as `Cancelled`:
 
 ```go
 func batchProcessURLs(processor *html.Processor, urls []string) {
-    // Set total timeout
-    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-    defer cancel()
+	client := &http.Client{Timeout: 15 * time.Second}
 
-    // Fetch all pages
-    pages := make([][]byte, len(urls))
-    for i, u := range urls {
-        select {
-        case <-ctx.Done():
-            fmt.Println("Fetch timeout, cancelled")
-            return
-        default:
-            body, err := fetchWithRetry(http.DefaultClient, u, 2)
-            if err != nil {
-                log.Printf("Skipping %s: %v", u, err)
-                continue
-            }
-            pages[i] = body
-        }
-    }
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 
-    // Batch extract
-    batch := processor.ExtractBatchWithContext(ctx, pages)
-    fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n",
-        batch.Success, batch.Failed, batch.Cancelled)
+	// Collect only successfully fetched pages: nil or empty input is extracted as an
+	// empty document, so mixing failures into the batch reports them as successes.
+	pages := make([][]byte, 0, len(urls))
+	for _, u := range urls {
+		if ctx.Err() != nil {
+			log.Println("Fetch deadline reached, stopping")
+			break
+		}
+		body, err := fetchWithRetry(client, u, 2)
+		if err != nil {
+			log.Printf("Skipping %s: %v", u, err)
+			continue
+		}
+		pages = append(pages, body)
+	}
+
+	batch := processor.ExtractBatchWithContext(ctx, pages)
+	fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n",
+		batch.Success, batch.Failed, batch.Cancelled)
 }
 ```
+
+A fetch failure and an extraction failure are different things: the caller records the former (the `log.Printf` above), and only the latter lands in `BatchResult.Failed`.
 
 ## Encoding Handling
 
-HTTP responses may use non-UTF-8 encoding. The HTML library auto-detects and handles this:
+The library determines encoding from the HTML bytes alone (BOM, `<meta charset>`, UTF-8 validity, statistical sampling) and **does not read the HTTP `Content-Type` header**. When a response declares `charset=gbk` but the markup carries no `<meta charset>`, the library decodes the bytes as windows-1252: the text comes back mojibake with no error.
+
+The reliable shape is to read the charset from the response header and pass it explicitly to `Config.Encoding`:
 
 ```go
-// Even GBK-encoded responses are correctly extracted
-resp, _ := http.Get("https://example.cn/page")
-body, _ := io.ReadAll(resp.Body)
-result, _ := html.Extract(body) // Auto-detect encoding
-```
+resp, err := http.Get("https://example.cn/page")
+if err != nil {
+    log.Fatal(err)
+}
+defer resp.Body.Close()
 
-You can also extract encoding from the `Content-Type` header:
-
-```go
-charset := "utf-8" // Parse from Content-Type
-if ct := resp.Header.Get("Content-Type"); ct != "" {
-    if idx := strings.Index(ct, "charset="); idx != -1 {
-        charset = ct[idx+8:]
-    }
+body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
+if err != nil {
+    log.Fatal(err)
 }
 
 cfg := html.DefaultConfig()
-cfg.Encoding = charset
-result, _ := html.Extract(body, cfg)
+if ct := resp.Header.Get("Content-Type"); ct != "" {
+    if _, params, err := mime.ParseMediaType(ct); err == nil {
+        cfg.Encoding = params["charset"] // Empty leaves auto-detection in charge
+    }
+}
+
+result, err := html.Extract(body, cfg)
+if err != nil {
+    log.Fatal(err)
+}
 ```
+
+If the header carries no charset and the site is known to use GBK or another non-UTF-8 encoding, hard-code that encoding in `cfg.Encoding`. See [Encoding Detection](../core-features/encoding-detection).
 
 ## Best Practices
 
 | Scenario | Recommendation |
 |----------|---------------|
 | Single page extraction | `http.Get()` + `html.Extract()` |
+| Whole page to an LLM | `html.ReadPageToMarkdown()` / `ReadPageToMarkdownText()` |
 | Web service | Processor singleton + `ExtractWithContext()` |
 | Batch crawling | `processURLs()` + Processor reuse |
-| Untrusted sources | `HighSecurityConfig()` + `io.LimitReader()` |
-| Uncertain encoding | Rely on auto-detection, or specify from Content-Type |
+| Untrusted sources | `HighSecurityConfig()` + limit by `MaxInputSize` (10MB in that preset) |
+| Uncertain encoding | Pass the charset from `Content-Type` explicitly; leave empty to rely on auto-detection |
 
 ## Next Steps
 
-- [Processor & Cache](../performance/processor-cache) - Processor lifecycle management
+- [Reader Mode](../core-features/reader-mode) - Whole-page sections, `Render`, and the preserve switches
+- [Processor Cache & Reuse](../performance/processor-cache) - Processor lifecycle management
 - [Audit Pipeline](../security/audit-pipeline) - Production security monitoring
 - [API Reference: Batch Processing](../../api-reference/modules/batch) - Complete batch API
 - [Performance](../performance/performance) - Performance tuning tips

@@ -1,20 +1,22 @@
 ---
 sidebar_label: "Large Files Guide"
-title: "Large File Handling - CyberGo JSON | Stream & Memory Control"
-description: "CyberGo JSON offers large-file handling with ForeachFile, StreamIterator and StreamJSONL streaming, ChunkSize batching and MaxMemory caps for logs and ETL."
+title: "Large File Handling - CyberGo JSON | Streaming & Memory"
+description: "CyberGo JSON large files: ForeachFile iteration, StreamIterator streaming decode, and JSONL line processing, bounded by MaxJSONSize and BufferSize caps."
 sidebar_position: 10
 ---
 
 # Large File Handling
 
-For large JSON files (logs, configurations, data exports), loading everything into memory can cause OOM. The json library provides several efficient approaches.
+When a JSON file is too large to load into memory, there are three reading strategies: the `ForeachFile` family loads the whole file then iterates, `StreamIterator`/`StreamObjectIterator` decode as they read, and the JSONL family processes line by line. Each ties memory to file size differently; the sections below give the constraints and the selection criteria.
 
 ::: tip
 For the type-level API reference of the streaming and parallel iterators (StreamIterator, StreamObjectIterator, BatchIterator, ParallelIterator) see [Iterators](../api-reference/iterator); for parallel-processing practices see [Concurrency & Parallelism](../advanced/concurrency).
 :::
 
 ::: warning
-`ForeachFile` and `ForeachFileChunked` load the entire file into memory before iterating. The "chunked" behavior only affects how the in-memory data is iterated, not how the file is read. For truly memory-bounded processing of very large files, use the `StreamJSONL` family with the JSONL format, or use `StreamIterator`.
+`ForeachFile` and `ForeachFileChunked` load the entire file into memory before iterating. The "chunked" behavior only affects how the in-memory data is iterated, not how the file is read.
+
+When memory must stay decoupled from file size, use the `StreamJSONL` family with the JSONL format, or use `StreamIterator`.
 :::
 
 ## Available Options
@@ -23,7 +25,7 @@ For the type-level API reference of the streaming and parallel iterators (Stream
 |--------|------|------------------|
 | **Processor.ForeachFile** | Structured iteration over a file | Loads the whole file, iterates item by item |
 | **Processor.ForeachFileChunked** | Batched, chunked iteration | Loads the whole file, iterates in chunks |
-| **StreamJSONL family** | Line-by-line JSONL file processing | Bounded memory, true streaming |
+| **StreamJSONL family** | Line-by-line JSONL file processing | Memory independent of file size |
 | **StreamIterator** | Element-by-element streaming decode of large arrays | Independent of array length |
 
 ### The Four ForeachFile Variants
@@ -43,23 +45,21 @@ All four support returning `item.Break()` from the callback for early stopping; 
 
 ### Configuration Options
 
-Large-file handling configuration is integrated into `Config`:
+The fields that matter for large-file work live across `Config`:
 
 ```go
 type Config struct {
     // ... other configuration ...
 
-    // Large-file handling configuration
-    ChunkSize       int64 // Chunk size (default 1MB)
-    MaxMemory       int64 // Maximum memory usage (default 100MB)
-    BufferSize      int   // Read buffer size (default 64KB)
-    SamplingEnabled bool  // Whether sampling is enabled (default true)
-    SampleSize      int   // Sample count (default 1000)
+    // Large-file / streaming fields
+    MaxJSONSize int64 // Total byte cap for a single read (default 100MB)
+    MaxMemory   int64 // Total byte cap for JSONL streaming (default 100MB)
+    BufferSize  int   // Read buffer size (default 64KB)
 }
 ```
 
-::: tip Don't confuse the two "chunk sizes"
-`Config.ChunkSize` (`int64`, in bytes) is the chunk size for large-file reads, while the `chunkSize` parameter (`int`) of [`ForeachFileChunked`](#batch-processing) is the **number of elements per batch** — the two do not affect each other; the batching granularity of `ForeachFileChunked` is decided solely by its own parameter (treated as 100 when ≤0).
+::: warning Don't confuse the deprecated fields
+`Config.ChunkSize`, `SamplingEnabled`, and `SampleSize` are all **deprecated** and are not read by any code path (whether security scanning samples is decided by `FullSecurityScan`), so setting them changes nothing. In historical wording, `ChunkSize` meant a "byte chunk size"; the `chunkSize` parameter (`int`) of [`ForeachFileChunked`](#batch-processing) is the **number of elements per batch**. The two do not affect each other: the batching granularity of `ForeachFileChunked` is decided solely by its own parameter (treated as 100 when ≤0).
 :::
 
 ### Basic Usage
@@ -85,7 +85,7 @@ func main() {
 	err = processor.ForeachFile("large-data.json", func(key any, item *json.IterableValue) error {
 		count++
 
-		// Convenient field access with IterableValue
+		// Field access through IterableValue
 		id := item.GetInt("id")
 		name := item.GetString("name")
 		email := item.GetString("email")
@@ -158,11 +158,11 @@ err := processor.ForeachFile("config-map.json", func(key any, item *json.Iterabl
 ### Custom Configuration
 
 ```go
-// Custom large-file configuration
+// Custom large-file read configuration
 cfg := json.DefaultConfig()
-cfg.ChunkSize = 10 * 1024 * 1024   // 10MB chunks
-cfg.MaxMemory = 500 * 1024 * 1024  // 500MB memory cap
-cfg.BufferSize = 128 * 1024        // 128KB buffer
+cfg.MaxJSONSize = 100 * 1024 * 1024 // Read cap shared by ForeachFile* and the streaming iterators (default 100MB)
+cfg.MaxMemory = 500 * 1024 * 1024   // Total byte cap for JSONL streaming
+cfg.BufferSize = 128 * 1024         // 128KB read buffer
 
 processor, err := json.New(cfg)
 if err != nil {
@@ -171,9 +171,9 @@ if err != nil {
 defer processor.Close()
 ```
 
-## IterableValue Convenience Methods
+## IterableValue Field Accessors
 
-The `ForeachFile*` family provides the `IterableValue` interface with convenient data access:
+The callback argument of the `ForeachFile*` family is an `IterableValue` interface, which exposes field-level accessors:
 
 | Method | Description | Example |
 |--------|-------------|---------|
@@ -210,7 +210,7 @@ Configure streaming parameters via `Config`. The fields directly relevant to str
 |-------|---------------------------|----------|
 | `MaxJSONSize` | 100MB (`DefaultMaxJSONSize`) | Total byte cap for file/Reader reads. `LoadFromFile`/`UnmarshalFromFile`/`LoadFromReader` enforce it **during the read** with `io.LimitReader` (reading cap+1 bytes to detect truncation, avoiding TOCTOU races); the `ForeachFile*` family inherits it via `LoadFromFile`; a `cfg.MaxJSONSize > 0` passed to streaming iterator constructors caps the whole stream |
 | `BufferSize` | 64KB | Read buffer for `StreamIterator`/`StreamObjectIterator`; falls back to 32KB when `cfg` is passed with `BufferSize <= 0` |
-| `ChunkSize` | 1MB | Large-file chunk size (validation range 64KB–100MB) |
+| `ChunkSize` | 1MB | Deprecated: not read by any code path (streaming reads use `BufferSize`; validation still clamps it to 64KB–100MB); only takes part in the config cache key |
 | `MaxMemory` | 100MB | Total memory cap (validation range 10MB–1GB); the JSONL streaming memory fallback chain is `JSONLMaxMemory` -> `MaxMemory` |
 | `MaxNestingDepthSecurity` | 200 (`DefaultMaxNestingDepth`) | Per-line nesting depth cap for JSONL, checked line by line before parsing |
 | `ValidateFilePath` | `true` | Declared but currently **not a switch**: file-path security validation (traversal, symlinks, platform restrictions) runs unconditionally at read/write time |
@@ -220,10 +220,10 @@ Configure streaming parameters via `Config`. The fields directly relevant to str
 ```go
 cfg := json.DefaultConfig()
 
-// Large-file configuration
-cfg.ChunkSize = 10 * 1024 * 1024   // 10MB chunks
-cfg.MaxMemory = 500 * 1024 * 1024  // 500MB memory cap
-cfg.BufferSize = 128 * 1024        // 128KB buffer
+// Streaming parameters
+cfg.MaxJSONSize = 100 * 1024 * 1024 // Read cap (default 100MB)
+cfg.MaxMemory = 500 * 1024 * 1024   // Total byte cap for JSONL streaming
+cfg.BufferSize = 128 * 1024         // 128KB read buffer
 
 processor, err := json.New(cfg)
 if err != nil {
@@ -250,7 +250,7 @@ _, err := json.StreamLinesInto[User](file, func(lineNum int, user User) error {
 
 ### Parallel Processing
 
-For parallelizable tasks, use multiple goroutines:
+When per-item work should be spread across goroutines, build a worker pool:
 
 ```go
 package main
@@ -295,11 +295,11 @@ func main() {
 }
 ```
 
-If the data is already in memory (`[]any`), you can use the library's built-in [ParallelIterator](../api-reference/iterator#the-paralleliterator-type) directly, skipping the hand-written worker pool.
+If the data is already in memory (`[]any`), use the library's built-in [ParallelIterator](../api-reference/iterator#the-paralleliterator-type) directly instead of a hand-written worker pool.
 
 ## Streaming and Parallel Iterators
 
-`ForeachFile*` loads the whole file first; when a file is too big for a full in-memory load, switch to this section's iterators: `StreamIterator`/`StreamObjectIterator` decode directly from an `io.Reader` while reading, with memory independent of data size. For the complete type-level API see [Iterators](../api-reference/iterator).
+`ForeachFile*` loads the whole file first; when a file is too big for that, switch to this section's iterators: `StreamIterator`/`StreamObjectIterator` decode directly from an `io.Reader` while reading, so only the current element is in memory at any moment. For the complete type-level API see [Iterators](../api-reference/iterator).
 
 ### StreamIterator: element-by-element streaming decode of large arrays
 
@@ -466,15 +466,15 @@ func main() {
 
 In `ForEach`/`ForEachWithContext`, any callback error stops dispatching new tasks and returns that error; callback panics are recovered into errors instead of taking down the process; `Close` signals all workers to finish and is safe to call concurrently. For cancellation/timeout scenarios use the `ForEachWithContext`/`ForEachBatchWithContext` variants.
 
-## Performance Optimization Advice
+## Performance Advice
 
-### Memory Control
+### Memory Caps
+
+`Config.MaxMemory` applies to the JSONL streaming entry points (as a total byte cap, validated to the 10MB–1GB range). `ForeachFile*` and `StreamIterator` do not use it: the former is bounded only by `MaxJSONSize`, and the latter caps the whole stream at `MaxJSONSize`.
 
 ```go
-// Configure per available memory
 cfg := json.DefaultConfig()
-cfg.MaxMemory = 500 * 1024 * 1024 // 500MB
-cfg.ChunkSize = 10 * 1024 * 1024  // 10MB
+cfg.MaxMemory = 500 * 1024 * 1024 // Total byte cap for JSONL streaming (500MB)
 
 processor, err := json.New(cfg)
 if err != nil {
@@ -483,13 +483,13 @@ if err != nil {
 defer processor.Close()
 ```
 
-### Best Practices
+### Practical Notes
 
-1. **Estimate file size**: check the file size before processing and choose the right strategy
-2. **Set memory limits**: use `MaxMemory` to prevent OOM
-3. **Batch commits**: accumulate a fixed count before bulk database writes
-4. **Error handling**: enable `JSONLContinueOnErr` or record failed entries
-5. **Progress monitoring**: log processing progress periodically
+1. **Check file size first**: pick a strategy from the [Selection Guide](#selection-guide) below.
+2. **Set the right cap**: `ForeachFile*` obeys `MaxJSONSize`; JSONL streaming also looks at `MaxMemory`.
+3. **Batch commits**: accumulate a fixed count before bulk database writes.
+4. **Fault tolerance**: set `JSONLContinueOnErr` to skip bad lines, or record failed entries yourself.
+5. **Progress**: log progress every fixed number of items.
 
 ## Selection Guide
 
@@ -498,10 +498,10 @@ defer processor.Close()
 | < 10MB | Load directly | `json.ParseAny` + `Get` |
 | 10-100MB | Processor.ForeachFile | Full in-memory load, then item-by-item iteration |
 | 100MB-1GB | StreamIterator / StreamObjectIterator (or convert to JSONL lines) | Constant memory, decoding while reading |
-| > 1GB | JSONL format + StreamJSONL family | True streaming with bounded memory |
+| > 1GB | JSONL format + StreamJSONL family | Line-by-line processing, memory independent of file size |
 
 ::: warning Do not use ForeachFile* for files over 100MB
-The `ForeachFile*` family (including `ForeachFileChunked`) reads the **entire file into memory** before iterating (see the warning at the top of this page), and is bounded by the `MaxJSONSize` read cap: the default is 100MB (`DefaultMaxJSONSize`), and `Config.Validate` clamps any larger value back down to 100MB — so files over 100MB fail outright with `ErrSizeLimit`; raising the config cannot make `ForeachFile*` handle them. For such inputs use `StreamIterator` / `StreamObjectIterator` (constant memory; when `cfg.MaxJSONSize > 0` is passed, the whole stream is capped at that value, which may exceed 100MB — raise it explicitly when constructing the iterator) or convert the data to JSONL and use the `StreamJSONL` family.
+The `ForeachFile*` family (including `ForeachFileChunked`) reads the **entire file into memory** before iterating (see the warning at the top), and is bounded by the `MaxJSONSize` read cap: the default is 100MB (`DefaultMaxJSONSize`), and `Config.Validate` clamps any larger value back down to 100MB. Files over 100MB fail outright with `ErrSizeLimit`, and raising the config does not let `ForeachFile*` handle them. For such inputs use `StreamIterator` / `StreamObjectIterator` (constant memory; when `cfg.MaxJSONSize > 0` is passed, the whole stream is capped at that value, which may exceed 100MB) or convert the data to JSONL and use the `StreamJSONL` family.
 :::
 
 ## API Reference

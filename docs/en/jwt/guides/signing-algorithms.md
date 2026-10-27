@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Signing Algorithms"
 title: "Signing Algorithms - CyberGo JWT | Selection"
-description: "Compare HMAC, RSA, RSA-PSS, and ECDSA across 12 algorithms by key type, signing performance, signature length, and coupling, with selection guidance."
+description: "Compare HMAC, RSA, RSA-PSS, and ECDSA across 12 algorithms by key type, performance, and signature length, with selection and key rotation guidance."
 sidebar_position: 10
 ---
 
@@ -34,10 +34,10 @@ An HMAC key must pass two checks performed by `validateSigningKey`:
   - Common weak passwords and their variants (e.g. `"password"`, `"qwerty"`)
 
 :::warning Weak Keys Are Rejected
-Do not use easily guessable keys such as "repeated characters", "sequential sequences", or "dictionary words". Even if the length reaches 32 bytes, a low-entropy key is still rejected during `jwt.New` initialization with `ErrInvalidSecretKey`.
+Avoid guessable keys such as repeated characters, sequential runs, or dictionary words. Even at 32 bytes, a low-entropy key is rejected during `jwt.New` initialization with `ErrInvalidSecretKey`.
 :::
 
-In production, generate keys from a cryptographically secure random source:
+Generate keys from a cryptographically secure random source in production:
 
 ```go
 package main
@@ -94,7 +94,7 @@ cfg.SigningMethod = jwt.SigningMethodHS256 // default, can be omitted
 
 ## RSA (Asymmetric Key)
 
-RSA uses a private key for signing and a public key for verification. Suitable when the verifying party doesn't need the private key.
+RSA signs with a private key and verifies with a public key. It suits scenarios where the verifying side does not hold the private key.
 
 ### Usage
 
@@ -134,7 +134,7 @@ RS256/RS384/RS512 and PS256/PS384/PS512 use the same key types (`*rsa.PrivateKey
 
 ## RSA-PSS (Asymmetric Key, Recommended over RSA)
 
-RSA-PSS is an improved RSA signing scheme using Probabilistic Signature Scheme (PSS) padding, offering better security than PKCS#1 v1.5. Uses the same keys as RSA.
+RSA-PSS is an improved RSA signing scheme that uses Probabilistic Signature Scheme (PSS) padding and offers better security than PKCS#1 v1.5. It uses the same keys as RSA.
 
 ### Usage
 
@@ -205,17 +205,17 @@ The curve corresponding to `ES512` is **P-521** (note: 521, not 512). This is a 
 
 ## Key Separation Mode
 
-In a microservice architecture, you typically separate the **signing capability** (issuing tokens) from the **verification capability** (validating tokens), following the principle of least privilege:
+In a microservice architecture, the **signing capability** (issuing tokens) is usually separated from the **verification capability** (validating tokens), following the principle of least privilege:
 
 | Service Role | Held Key | Responsibility |
 |--------------|----------|----------------|
 | **Auth service** | Private key (`SigningKey`) | Issues access tokens after successful login |
-| **API service** | Public key (`VerificationKey`) | Validates token signatures, does not participate in issuance |
+| **API service** | Public key (`VerificationKey`) | Validates token signatures, does not issue tokens |
 
-The auth service holds the private key for signing, and API services verify tokens via the public key. Even if the API service's config also includes `SigningKey` (the current API requires this field to be non-empty), as long as `VerificationKey` is set, that public key is used for verification.
+The auth service holds the private key and issues tokens; API services hold the public key and verify them. The current API requires the `SigningKey` field to be non-empty, so an API service still needs to supply a `*rsa.PrivateKey`. **A placeholder private key is sufficient**: once `VerificationKey` is set, verification uses only that public key, so the placeholder has no relation to the real signing key.
 
 :::tip VerificationKey Takes Precedence
-Once `VerificationKey` is set, the verification flow uses that public key rather than the one extracted from `SigningKey`. This lets an API service explicitly control the verification key, suitable for scenarios where the verification key and signing key are distributed separately.
+Once `VerificationKey` is set, the verification flow uses that public key rather than the one extracted from `SigningKey`. A verify-only service can therefore hold an unrelated 2048-bit placeholder private key, keeping signing capability fully isolated inside the auth service.
 :::
 
 Auth service (issuing tokens):
@@ -232,12 +232,12 @@ API service (verification only):
 ```go
 apiCfg := jwt.DefaultConfig()
 apiCfg.SigningMethod = jwt.SigningMethodRS256
-apiCfg.SigningKey = rsaPrivateKey            // Current API requires SigningKey to be non-empty
+apiCfg.SigningKey = placeholderPrivateKey    // Any 2048-bit private key as a placeholder; not used for verification
 apiCfg.VerificationKey = rsaPublicKey        // *rsa.PublicKey, actually used for verification
 ```
 
-:::warning
-A verification-only `Processor` must not call `Create` / `CreateRefresh` (signing requires the private key). For a complete cross-service example, see [Advanced Examples](../examples/advanced#key-separation-mode).
+:::warning Do Not Issue Tokens from a Verification-Only Instance
+A verification-only `Processor` should not call `Create` / `CreateRefresh`: that would sign with the placeholder key and produce tokens nobody can verify. For a complete cross-service example, see [Advanced Examples](../examples/advanced#key-separation-mode).
 :::
 
 ## How to Choose
@@ -346,27 +346,24 @@ A public key PEM file is parsed with `x509.ParsePKIXPublicKey`, which returns `a
 ### Key Rotation
 
 :::tip Rotation Recommendations
-- Rotate signing keys regularly (recommended every 3–6 months)
-- During the overlap period of old and new keys, the verifying side should accept both public keys
-- Use a `kid` (Key ID) header to identify the current key version, easing gradual rollout
+- Rotate signing keys regularly (every 3–6 months recommended)
+- During the overlap period, the verifying side accepts both public keys
+- The JWT header of this library is fixed to `{"typ":"JWT","alg":"<algorithm>"}` and **does not support `kid` (Key ID)**, so a token cannot record which key version signed it. During the overlap period, create one `Processor` per key. Decide the version from an external route or a claim, then hand verification to the matching instance. A single instance cannot select a key automatically
 - After rotation completes, revoke the old key and check whether the blacklist needs updating
 :::
 
 ## Security Notes
 
-:::danger Prohibited
-- Never hardcode keys in source code
-- Never use weak keys (pure digits, repeated characters, etc.)
-- Never use the `none` algorithm (automatically rejected by this library)
-- HMAC keys must not be shorter than 32 bytes
-:::
+Key management checklist:
 
-:::tip Best Practices
-- Use environment variables or key management services
-- Rotate signing keys regularly
-- Use RSA or ECDSA in production
-- RSA keys should be 2048 bits or larger
-:::
+| Item | Requirement |
+|------|-------------|
+| Key source | Environment variables or a secrets manager; never in source code or version control |
+| HMAC keys | Cryptographically secure random, ≥ 32 bytes; no pure digits, repeated characters, or dictionary words |
+| Asymmetric keys | RSA ≥ 2048 bits; ECDSA curve strictly matched to the algorithm (ES256 → P-256, ES384 → P-384, ES512 → P-521) |
+| Algorithm | Never `none` (the library rejects it automatically); prefer RSA-PSS or ECDSA for cross-service verification |
+| Rotation | Rotate regularly; during the overlap period the verifying side accepts both public keys. The header is fixed and has no `kid`, see [Key Rotation](#key-rotation) |
+| Wrap-up | Revoke the old key after rotation and check whether the blacklist needs updating |
 
 ## Next Steps
 

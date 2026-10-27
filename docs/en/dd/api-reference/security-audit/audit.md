@@ -13,7 +13,7 @@ DD provides asynchronous audit logging that records security-related events, wit
 
 ## AuditLogger
 
-Asynchronous security audit-event recorder.
+`AuditLogger` is an asynchronous security audit-event recorder.
 
 ### Creation
 
@@ -105,7 +105,7 @@ Returns the default audit config; audit logging is enabled by default.
 
 ## AuditEvent
 
-Audit event struct.
+`AuditEvent` is the audit event struct; the `Log` method takes a value of this type.
 
 ```go
 type AuditEvent struct {
@@ -121,7 +121,7 @@ type AuditEvent struct {
 
 ## AuditStats
 
-Audit statistics struct.
+`AuditStats` is the audit statistics struct, returned by the `Stats` method.
 
 ```go
 type AuditStats struct {
@@ -135,7 +135,7 @@ type AuditStats struct {
 
 ## AuditVerificationResult
 
-Audit verification result.
+`AuditVerificationResult` is the audit verification result, returned by `VerifyAuditEvent`.
 
 ```go
 type AuditVerificationResult struct {

@@ -1,19 +1,19 @@
 ---
 sidebar_label: "批量操作"
 title: "批量操作函数 - CyberGo JSON | ProcessBatch 用法与示例"
-description: "CyberGo JSON 是支持批量处理的 Go 库，提供 ProcessBatch 一次执行 get/set/delete/validate 多类操作，结果按 ID 关联且顺序一致，批量上限由 MaxBatchSize 控制，另有 WarmupCache 缓存预热，帮助开发者单次调用完成批量读写与校验。"
+description: "批量操作：ProcessBatch 执行 get/set/delete/validate，单条失败不中断批次，上限 MaxBatchSize（默认 2000），WarmupCache 预热。"
 sidebar_position: 70
 ---
 
 # 批量操作函数
 
-json 包提供的批量操作函数，支持一次性处理多个 JSON 操作（get/set/delete/validate），适合批量数据处理场景。
+json 包的批量操作函数，一次处理多个 JSON 操作（get/set/delete/validate），另含缓存预热。
 
 ## ProcessBatch
 
 签名：`func ProcessBatch(operations []BatchOperation, cfg ...Config) ([]BatchResult, error)`
 
-批量处理多个 JSON 操作（包级函数，无需创建 Processor）。返回结果顺序与输入操作顺序一一对应，通过 `ID` 字段关联。
+批量处理多个 JSON 操作（包级函数，无需创建 Processor）。结果顺序与输入操作一一对应，用 `ID` 字段关联。
 
 ```go
 package main
@@ -58,7 +58,7 @@ func main() {
 | `delete` | 删除路径上的节点 | **删除后的完整 JSON 字符串** | `ErrPathNotFound`、`ErrInvalidPath` |
 | `validate` | 验证 JSON 是否合法 | `map[string]any{"valid": bool}` | 无效 JSON 时 `Result.valid=false` 且 `Error` 非空 |
 
-`Type` 不是上述四者之一时（如拼写错误），该条操作的 `Error` 为 `unknown operation type: <type>`——**不中断批次**，其余操作照常执行。
+`Type` 不是上述四者之一时（如拼写错误），该条操作的 `Error` 为 `unknown operation type: <type>`，批次**不中断**，其余操作照常执行。
 
 ::: warning 操作互不链式
 每个 `BatchOperation` 都**独立**作用于各自的 `JSONStr` 输入，操作之间**不会**链式叠加。例如对同一文档先 `set` 再 `delete`，得到的是两个独立结果，而不是「先改再删」的叠加态。若需对单个文档做多步变换，请在代码中将上一步的输出喂给下一步，或改用 [`SetMultiple`](./modify#setmultiple) 等单文档多路径方法。
@@ -66,7 +66,7 @@ func main() {
 
 ### 批量大小限制
 
-操作数量受 `Config.MaxBatchSize` 约束（默认 `2000`，配置校验将其钳制在 10–10000）。超出时整个批次直接失败，返回 `(nil, ErrSizeLimit)`。上限按**本次调用传入的 cfg** 生效（未传则用默认配置）：
+操作数量受 `Config.MaxBatchSize` 约束（默认 `2000`，`Validate` 将其钳制在 10–10000）。超出时整个批次直接失败，返回 `(nil, JsonsError)` 且 `Err` 为 `ErrSizeLimit`。上限取**本次调用传入的 cfg**；未传 cfg 时用处理器自身的配置：
 
 ```go
 // 自定义上限（适用于超大批量场景）
@@ -118,7 +118,7 @@ func main() {
 
 ### set — 批量修改
 
-`set` 操作的 `Result` 是**修改后的完整 JSON 字符串**（注意不是写入的值本身）。默认配置 `CreatePaths=true`，因此设置新路径会自动创建中间节点。
+`set` 操作的 `Result` 是**修改后的完整 JSON 字符串**，不是写入的值本身。默认配置 `CreatePaths=true`，因此设置新路径会自动创建中间节点。
 
 ```go
 package main
@@ -196,7 +196,7 @@ func main() {
 
 ### validate — 批量验证
 
-`validate` 操作的 `Result` 始终是 `map[string]any{"valid": bool}`；当 JSON 非法时 `valid` 为 `false` 且 `Error` 携带解析错误。
+`validate` 操作的 `Result` 始终是 `map[string]any{"valid": bool}`；JSON 非法时 `valid` 为 `false`，`Error` 携带解析错误。
 
 ```go
 package main
@@ -235,7 +235,7 @@ func main() {
 
 ### 单操作失败不中断批次
 
-`ProcessBatch` **总是处理全部操作**：某个操作失败只会写入该条结果的 `Error` 字段，不会中断后续操作，也无需任何配置开启。因此批量结果可能「部分成功、部分失败」，务必逐条检查 `r.Error`：
+`ProcessBatch` **总是执行全部操作**：某个操作失败只写入该条结果的 `Error` 字段，不中断后续操作，也无需任何配置开启。因此批量结果可能「部分成功、部分失败」，必须逐条检查 `r.Error`：
 
 ```go
 results, err := json.ProcessBatch(operations)
@@ -255,7 +255,7 @@ for _, r := range results {
 ```
 
 ::: tip 与 ContinueOnError 的区别
-`Config.ContinueOnError` 字段控制的是 [`SetMultiple`](./modify#setmultiple) 的中途容错（某条路径写入失败时是否继续写其余路径），**并不**作用于 `ProcessBatch`。`ProcessBatch` 的逐操作隔离是内置行为，无需也无法通过该开关关闭。
+`Config.ContinueOnError` 字段控制的是 [`SetMultiple`](./modify#setmultiple) 的中途容错（某条路径写入失败时是否继续写其余路径），**不**作用于 `ProcessBatch`。`ProcessBatch` 的逐操作隔离是内置行为，无法通过该开关关闭。
 :::
 
 ## 实战场景：批量数据迁移
@@ -314,7 +314,7 @@ func main() {
 
 签名：`func WarmupCache(jsonStr string, paths []string, cfg ...Config) (*WarmupResult, error)`
 
-对同一份 JSON 的热点路径预先求值并填入缓存，使后续首次 `Get` 直接命中缓存。要求处理器开启缓存（默认开启），否则返回 `JsonsError`（`Op` 为 `warmup_cache`，错误消息为 "cache is disabled, cannot warmup cache"）。
+对同一份 JSON 的热点路径预先求值并填入缓存，使后续首次 `Get` 命中缓存。要求处理器开启缓存（默认开启）；未开启时返回 `JsonsError`（`Op` 为 `warmup_cache`，消息为 `cache is disabled, cannot warmup cache`）。
 
 ```go
 package main
@@ -356,7 +356,7 @@ func main() {
 | `SuccessRate` | `float64` | 成功率（百分比） |
 | `FailedPaths` | `[]string` | 失败的路径列表（无失败时为 nil） |
 
-当全部路径都失败时，`WarmupCache` 在返回 `WarmupResult` 的同时附带最后一个错误。
+当全部路径都失败时，`WarmupCache` 返回 `WarmupResult` 的同时附带最后一个错误（`err` 非 nil，`Successful` 为 0）。
 
 ## 类型定义
 
@@ -398,7 +398,7 @@ type BatchResult struct {
 |------|------|------|
 | `ID` | `string` | 对应操作的 `ID`；结果切片与输入操作按下标顺序一一对应 |
 | `Result` | `any` | 操作结果，含义随 `Type` 变化（见上方表格） |
-| `Error` | `error` | 该条操作的错误，`nil` 表示成功；**务必逐条检查** |
+| `Error` | `error` | 该条操作的错误，`nil` 表示成功；必须逐条检查 |
 
 ::: tip Processor 批量方法
 Processor 实例提供等价的批量方法 `p.ProcessBatch(operations)`，签名与包级函数一致，适合复用 Processor、或需要按 `Config` 定制（如 `Pretty` 输出、`PreserveNumbers`）的场景。详见 [Processor 批量操作](../processor/batch)。

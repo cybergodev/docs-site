@@ -1,27 +1,27 @@
 ---
 sidebar_label: "JSONL"
 title: "JSONL Functions - CyberGo JSON | ParseJSONL & ToJSONL Usage"
-description: "CyberGo JSON is a Go library for JSONL processing, offering ParseJSONL, ToJSONL, StreamLinesInto[T] streaming and NewJSONLWriter to handle NDJSON data."
+description: "JSONL handling: ParseJSONL/ToJSONL convert whole blocks, StreamLinesInto[T] and the StreamJSONL family read line by line, NewJSONLWriter writes lines."
 sidebar_position: 80
 ---
 
 # JSONL Functions
 
-The json package provides JSONL (JSON Lines) functions for parsing, streaming, converting, and writing newline-delimited JSON data.
+The json package's JSONL (JSON Lines) functions cover parsing, streaming reads, format conversion, and line-by-line writing.
 
 :::tip Full tutorial
-Want the JSONL/NDJSON concepts, streaming patterns, and real-world usage? See the complete tutorial in [JSONL Streaming](../../streaming/jsonl).
+For JSONL/NDJSON concepts, streaming patterns, and hands-on usage, see [JSONL Streaming](../../streaming/jsonl).
 :::
 
 ## JSONL Processing Functions
 
-JSONL (JSON Lines) is a newline-delimited JSON format with one independent JSON object per line.
+JSONL (JSON Lines) is a newline-delimited JSON format with one independent JSON value per line.
 
 ### ParseJSONL
 
 Signature: `func ParseJSONL(data []byte, cfg ...Config) ([]any, error)`
 
-Parses JSONL (newline-delimited JSON) data.
+Parses JSONL (newline-delimited JSON) data and returns one parsed value per line. Any bad line fails the call with `nil` and an error — no partial results; with `JSONLContinueOnErr=true` bad lines are skipped and processing continues.
 
 **Parameters**
 
@@ -56,7 +56,7 @@ func main() {
 
 Signature: `func StreamLinesInto[T any](reader io.Reader, fn func(lineNum int, data T) error, cfg ...Config) ([]T, error)`
 
-Streams JSONL data from an io.Reader and processes each line through a callback. This is the recommended generic way to process JSONL.
+Streams JSONL from an `io.Reader`, decoding each line into `T` and passing it to the callback; a non-nil callback error stops processing and becomes the function's return value. This is the primary entry point for generic JSONL processing.
 
 **Parameters**
 
@@ -174,7 +174,7 @@ func main() {
 
 ## JSONL Streaming Functions (Package-Level)
 
-Convenience package-level JSONL streaming functions of the json package. Their signatures match the corresponding Processor methods (likewise accepting an optional trailing `cfg ...Config` argument); internally they use a global Processor cached per `cfg`, so no manual instance is needed — a good fit for one-shot processing. When processing repeatedly or sharing one configuration, prefer creating a standalone Processor with [`json.New(cfg)`](../processor/#new).
+Package-level JSONL streaming functions of the json package. Their signatures match the corresponding Processor methods (likewise accepting an optional trailing `cfg ...Config`). Internally they use a global Processor cached per `cfg`, so no manual instance is needed — a fit for one-shot processing. When processing repeatedly or sharing one configuration, create a standalone Processor with [`json.New(cfg)`](../processor/#new).
 
 For full usage and examples see the [JSONL Streaming Guide](../../streaming/jsonl#package-level-functions) and [Processor JSONL Methods](../processor/jsonl).
 
@@ -184,30 +184,30 @@ For full usage and examples see the [JSONL Streaming Guide](../../streaming/json
 |----------|-------------|
 | Line-by-line processing (order-sensitive) | `StreamJSONL` / `ForeachJSONL` |
 | CPU-heavy line processing (order-insensitive) | `StreamJSONLParallel` |
-| Mid-flight cancel / timeout | `StreamJSONLParallelWithContext` |
+| Mid-flight cancellation or timeout | `StreamJSONLParallelWithContext` |
 | Chunked consumption (e.g. batch DB writes) | `StreamJSONLChunked` |
 | Decoding into a concrete struct `T` | `StreamLinesInto[T]` |
-| Transform / aggregate / filter / find first | `MapJSONL` / `ReduceJSONL` / `FilterJSONL` / `FirstJSONL` |
+| Transform, aggregate, filter, find first | `MapJSONL` / `ReduceJSONL` / `FilterJSONL` / `FirstJSONL` |
 | Collect everything | `CollectJSONL` (loads all into memory — careful with large files) |
 
 **Behavior highlights**
 
 - **Bad-line handling**: by default (`JSONLContinueOnErr=false`) an unparseable line **aborts immediately** with an error of the form `line N: ...`; with `JSONLContinueOnErr=true`, every JSONL engine (the `StreamJSONL` family, `StreamLinesInto`, `NDJSONProcessor`) skips bad lines and continues.
-- **Depth guard**: before parsing each line, a nesting-depth check runs (`MaxNestingDepthSecurity`, default 200) to prevent stack overflow from deeply nested lines.
-- **Parallel semantics**: `StreamJSONLParallel` treats `workers <= 0` as 4; callbacks run concurrently on multiple goroutines, so you must ensure concurrency safety yourself. A callback returning `item.Break()` is a **normal** early exit (returns `nil`); returning any other error cancels the remaining tasks and becomes the function's return value.
+- **Depth guard**: before parsing each line a nesting-depth check runs (`MaxNestingDepthSecurity`, default 200) to prevent stack overflow from deeply nested lines.
+- **Parallel semantics**: `StreamJSONLParallel` treats `workers <= 0` as 4; callbacks run concurrently across goroutines, so concurrency safety is the caller's responsibility. A callback returning `item.Break()` is a **normal** early exit (the function returns `nil`); any other error cancels the remaining tasks and becomes the return value.
 - **Memory guard**: `JSONLMaxMemory` (falling back to `MaxMemory` when unset) bounds the total processed bytes; exceeding it aborts processing.
 
 ### StreamJSONL
 
 Signature: `func StreamJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-Streams JSONL line by line, invoking the callback after parsing each line into an `IterableValue`.
+Streams JSONL line by line, parsing each line into an `IterableValue` before invoking the callback; returning `nil` continues, `item.Break()` ends early and normally, and any other error aborts.
 
 ### StreamJSONLParallel
 
 Signature: `func StreamJSONLParallel(reader io.Reader, workers int, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-Processes JSONL with `workers` parallel goroutines (CPU-bound scenarios).
+Processes JSONL across `workers` goroutines, suited to CPU-bound work; `workers <= 0` is treated as 4.
 
 ### StreamJSONLParallelWithContext
 
@@ -225,7 +225,7 @@ Processes in batches of `chunkSize`, with each batch passed to the callback as `
 
 Signature: `func ForeachJSONL(reader io.Reader, fn func(lineNum int, item *IterableValue) error, cfg ...Config) error`
 
-Iterates JSONL (an alias behaving identically to `StreamJSONL`).
+Iterates JSONL (an alias of `StreamJSONL`, same behavior).
 
 ### MapJSONL
 
@@ -255,7 +255,7 @@ Streams an entire JSONL file directly.
 
 Signature: `func CollectJSONL(reader io.Reader, cfg ...Config) ([]*IterableValue, error)`
 
-Reads all JSONL lines and collects them into a slice (note: everything is loaded into memory; prefer `StreamJSONL` for large files).
+Reads all JSONL lines into a slice (everything is loaded into memory; use `StreamJSONL` for large files).
 
 ### FirstJSONL
 
@@ -266,7 +266,7 @@ Returns the first element satisfying the predicate; the second return value repo
 ## JSONL Configuration
 
 ::: warning
-The standalone JSONLConfig struct and the `DefaultJSONLConfig()` function have been removed. JSONL configuration is now integrated into the `JSONL*` fields of `Config`.
+The standalone JSONLConfig struct and the DefaultJSONLConfig function have been removed. JSONL configuration now lives in the `JSONL*` fields of `Config`.
 :::
 
 ### Configuring JSONL via Config
@@ -295,7 +295,7 @@ See [Config](../config#the-config-struct)
 
 Signature: `func NewJSONLWriter(writer io.Writer, cfg ...Config) *JSONLWriter`
 
-Creates a JSONL writer.
+Creates a JSONL writer; each subsequent `Write` emits one line.
 
 ```go
 package main
@@ -439,10 +439,11 @@ type JSONLStats struct {
 
 **Behavior details**
 
-- `Write`: encodes the value as a single-line JSON and appends `\n`; whether `<`/`>`/`&` are escaped is decided by `Config.EscapeHTML` (default `true`)
+- `Write`: encodes the value as a single-line JSON and appends `\n`; whether `<`/`>`/`&` are escaped is decided by `Config.EscapeHTML` (default `true`). `NewJSONLWriter` reads only that field — `Pretty`/`Indent`/`FloatPrecision` do not affect output; for fully config-driven encoding, build the line with `Encode` and pass it to `WriteRaw`
 - `WriteRaw`: writes an **already-encoded** raw line to avoid double-encoding overhead; a trailing `\n` is appended automatically if absent
-- **Sticky errors**: after any write or encoding fails, the error is cached on the writer and subsequent `Write`/`WriteRaw` calls skip the underlying writer and return that error directly — avoiding appends on top of a half-written state
-- `Err()` reads the cached error (`nil` when none); `Stats()` returns `JSONLStats` with the fields in the table above
+- **Sticky errors**: after any write or encoding failure the error is cached on the writer, and later `Write`/`WriteRaw` calls skip the underlying writer and return that error directly — no further appends on top of a half-written state
+- `Err()` reads the cached error (`nil` when none); `Stats()` returns `JSONLStats`, with the fields in the table above
+- **Concurrency**: `JSONLWriter` is not safe for concurrent use (its error and counters are unguarded). Use one writer per goroutine, or serialize `Write` calls
 
 ### Usage Example
 

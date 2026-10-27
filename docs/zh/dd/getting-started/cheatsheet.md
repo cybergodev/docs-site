@@ -95,7 +95,7 @@ dd.GetRequestID(ctx)   // "req-456"
 
 ```go
 dd.DefaultSecurityConfig()   // 基础过滤（推荐）
-dd.DefaultSecureConfig()     // 完整过滤（已弃用：改用 SecurityConfigForLevel(dd.SecurityLevelStandard)）
+dd.SecurityConfigForLevel(dd.SecurityLevelStandard) // 完整过滤
 dd.HealthcareConfig()        // HIPAA 合规
 dd.FinancialConfig()         // PCI-DSS 合规
 dd.GovernmentConfig()        // 政府标准

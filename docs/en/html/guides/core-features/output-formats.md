@@ -1,28 +1,28 @@
 ---
 sidebar_label: "Output Formats"
 title: "Output Formats - CyberGo html | Format Comparison Guide"
-description: "CyberGo html output formats: plain text, Markdown, JSON for search indexing, blogging, API transport, data storage, plus InlineImageFormat and InlineLinkFormat."
-sidebar_position: 3
+description: "CyberGo html output formats: plain text, Markdown, and JSON compared by structure and use case, plus inline format fields and JSON omission rules."
+sidebar_position: 30
 ---
 
 # Output Formats
 
-This guide helps you choose the right format among plain text, Markdown, and JSON outputs.
+The library produces plain text, Markdown, or JSON. This page compares the three structures and their use cases, and documents the inline-format fields.
 
 ## Format Comparison
 
 | Feature | Plain Text | Markdown | JSON |
 |---------|-----------|----------|------|
-| Readability | High | High | Low (machine-friendly) |
-| Structure Preservation | None | Headings/lists/links/images | Full metadata |
-| Image Handling | Removed | `![alt](url)` | ImageInfo list |
-| Link Handling | Text only | `[text](url)` | LinkInfo list |
-| Table Support | None | Markdown tables | Raw data |
-| Use Cases | Search indexing/text analysis | Blogs/docs/readers | API transport/data storage |
+| Readability | High | High | Low (machine-oriented) |
+| Structure preserved | Heading ATX markers and paragraph breaks | Headings/lists/links/images | Full metadata |
+| Image handling | Not emitted | `![alt](url)` | `ImageInfo` list |
+| Link handling | Visible text only | `[text](url)` | `LinkInfo` list |
+| Table support | Rendered per `TableFormat` | Markdown tables | Same in `text`, plus structured metadata |
+| Use cases | Search indexing/text analysis | Blogs/docs/readers | API transport/data storage |
 
 ## Plain Text
 
-The lightest output format, keeping only text content and removing all HTML tags and formatting.
+Keeps the text only and drops every HTML tag and formatting cue:
 
 ```go
 text, err := html.ExtractText(data)
@@ -37,24 +37,26 @@ fmt.Println(text)
 - Building search indexes
 - Text analysis and NLP processing
 - Generating summaries and previews
-- Word count and reading time statistics
+- Word count and reading-time statistics
 
 ### Characteristics
 
-- Image alt text is removed; link visible text is retained (only the URL and Markdown syntax are stripped)
-- Line breaks preserved between headings and paragraphs
-- List content displayed as plain text
+- Images are not emitted; links contribute only their visible text, without the URL
+- Headings are written with Markdown ATX markers (`# ` through `###### `), and line breaks are preserved between paragraphs
+- List content appears as plain text
 - Tables are rendered per `TableFormat` (Markdown tables by default)
+
+`ExtractText` calls `Extract` internally and returns `.Text`; the processing steps are identical.
 
 ## Markdown
 
-Preserves document structure while maintaining readability. Ideal for content migration and reading scenarios.
+Keeps headings, lists, tables, and inline resources while staying readable:
 
 ```go
-// Option 1: Package-level function
+// Option 1: package-level function
 md, err := html.ExtractToMarkdown(data)
 
-// Option 2: Use Processor
+// Option 2: Processor instance
 p, _ := html.New()
 defer p.Close()
 md2, err := p.ExtractToMarkdown(data)
@@ -76,7 +78,7 @@ Input HTML:
 Output Markdown:
 
 ```markdown
-Getting Started with Go
+# Getting Started with Go
 
 Go is a compiled language.
 
@@ -86,7 +88,7 @@ Go is a compiled language.
 
 ### Format Options
 
-Markdown format is controlled by two config fields:
+In the text output of `Extract`, images and links are controlled by two fields:
 
 ```go
 cfg := html.DefaultConfig()
@@ -94,19 +96,17 @@ cfg.InlineImageFormat = "markdown"  // "none" | "markdown" | "html" | "placehold
 cfg.InlineLinkFormat = "markdown"   // "none" | "markdown" | "html"
 ```
 
-| Format Value | Image Output (InlineImageFormat) | Link Output (InlineLinkFormat) |
+| Format value | Image output (`InlineImageFormat`) | Link output (`InlineLinkFormat`) |
 |-------------|------------------|------------------|
-| `none` | Removed | Text only |
+| `none` | Not emitted | Visible text only |
 | `markdown` | `![alt](url)` | `[text](url)` |
 | `html` | `<img src="..." alt="...">` | `<a href="...">text</a>` |
-| `placeholder` | `[IMAGE:N]` | - (not supported) |
+| `placeholder` | `[IMAGE:N]` | Not supported |
 
-:::tip Use MarkdownConfig()
-The `MarkdownConfig()` preset already sets image and link formats to `markdown`. Just use it directly without manual configuration.
-:::
+`placeholder` applies only to `InlineImageFormat` and leaves `[IMAGE:N]` tokens in the text so a later pass can substitute them by index; `InlineLinkFormat` accepts only `none`, `markdown`, and `html`.
 
-:::info Placeholder Format
-`placeholder` only applies to `InlineImageFormat`, inserting `[IMAGE:N]` placeholders in text. `InlineLinkFormat` does not support this value — only `none`, `markdown`, `html`.
+:::tip MarkdownConfig vs ExtractToMarkdown
+`MarkdownConfig()` sets `InlineImageFormat` and `InlineLinkFormat` to `markdown`, which affects the `Text` returned by `Extract`. `ExtractToMarkdown` always uses Markdown formatting regardless of configuration, so it does not need that preset.
 :::
 
 ### Use Cases
@@ -114,11 +114,11 @@ The `MarkdownConfig()` preset already sets image and link formats to `markdown`.
 - Content migration to Markdown blogs/static sites
 - Email body generation
 - Document format conversion
-- RSS / Newsletter content generation
+- RSS / newsletter content generation
 
 ## JSON
 
-Structured output preserving complete metadata. Ideal for inter-program transmission and persistent storage.
+Structured output that keeps the full metadata:
 
 ```go
 jsonBytes, err := html.ExtractToJSON(data)
@@ -130,24 +130,49 @@ fmt.Println(string(jsonBytes))
 
 ### Output Structure
 
+A page with an h1, one paragraph, and one link measures as follows:
+
 ```json
 {
-  "text": "Getting Started with Go\n\nGo is a compiled language.\n\nGo Official Site",
+  "text": "# Getting Started with Go\n\nGo is a compiled language.\n\nGo Official Site",
   "title": "Getting Started with Go",
-  "images": [
-    {"url": "gopher.png", "alt": "Gopher", "title": "", "width": "", "height": "", "is_decorative": false, "position": 1}
-  ],
   "links": [
     {"url": "https://go.dev", "text": "Go Official Site", "title": "", "is_external": true, "is_nofollow": false, "position": 1}
   ],
   "processing_time_ms": 2,
   "word_count": 12,
-  "reading_time_ms": 3600
+  "reading_time_ms": 3600,
+  "confidence": 0.6,
+  "extraction_method": "article"
 }
 ```
 
-:::tip Time Fields
-In JSON output, `ProcessingTime` and `ReadingTime` are automatically converted to milliseconds (`processing_time_ms`, `reading_time_ms`) for frontend and API consumption.
+The six fields `text`, `title`, `processing_time_ms`, `word_count`, `reading_time_ms`, and `confidence` are always present (`confidence` has no `omitempty`, so even `0` is serialized as usual). The rest appear as needed:
+
+| Field | Type | When it appears |
+|-------|------|-----------------|
+| `images`/`links`/`videos`/`audios` | Arrays | `omitempty`: omitted when the matching `Preserve*` is `false` or there is no such content |
+| `author` | String | `omitempty`: omitted when there is no author |
+| `description` | String | `omitempty`: omitted when there is no summary |
+| `site_name` | String | `omitempty`: omitted when there is no site name |
+| `canonical_url` | String | `omitempty`: omitted when there is no canonical URL |
+| `published_time` | RFC 3339 time | omitted when zero — a pointer is used internally, so `0001-01-01T00:00:00Z` never appears |
+| `extraction_method` | String | `omitempty`: omitted when empty; it normally always has a value (`article`/`listing`/`body`) |
+
+When the page declares structured metadata (and `ExtractMetadata` is `true`), the output gains these fields:
+
+```json
+{
+  "author": "Example Reporter",
+  "published_time": "2026-04-21T09:30:00Z",
+  "description": "The company posted strong quarterly results on Tuesday.",
+  "site_name": "Example News",
+  "canonical_url": "https://news.example.com/q3-results.html"
+}
+```
+
+:::tip Duration fields are emitted as milliseconds
+`Result.ProcessingTime` and `Result.ReadingTime` carry `json:"-"` tags, so standard serialization skips them; the custom `MarshalJSON` writes them as the millisecond numbers `processing_time_ms` and `reading_time_ms`. The JSON form targets external consumers and does not implement `UnmarshalJSON`, so it cannot be deserialized back into a `Result`.
 :::
 
 ### Use Cases
@@ -157,9 +182,9 @@ In JSON output, `ProcessingTime` and `ReadingTime` are automatically converted t
 - Microservice communication
 - Frontend application integration
 
-## Extracting All Formats from Files
+## Extracting Each Format from Files
 
-Each format supports file reading:
+Each format has a file variant:
 
 ```go
 // Plain text
@@ -174,7 +199,7 @@ jsonBytes, err := html.ExtractToJSONFromFile("page.html")
 
 ## Context Variants
 
-All format functions have `*WithContext` variants supporting timeout and cancellation:
+All three formats have `*WithContext` variants supporting timeout and cancellation:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -186,19 +211,19 @@ md, err := html.ExtractToMarkdownWithContext(ctx, data)
 ## Decision Guide
 
 ```text
-Need machine consumption?── yes ──→ JSON
+Need machine consumption? ── yes ──→ JSON
         │
         no
         │
-Need format preservation?── yes ──→ Markdown
+Need structure preserved? ── yes ──→ Markdown
         │
         no
         │
-        └──→ Plain Text
+        └──→ Plain text
 ```
 
 ## Next Steps
 
 - [API Reference: Output Formats](../../api-reference/modules/output) - Complete API signatures
-- [Link Extraction](./link-extraction) - Extract page resource links
+- [Link Extraction](./link-extraction) - Enumerate every resource link the page references
 - [Configuration](../../api-reference/core/config) - All configuration options

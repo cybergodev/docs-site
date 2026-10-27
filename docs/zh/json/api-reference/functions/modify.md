@@ -1,13 +1,13 @@
 ---
 sidebar_label: "修改操作"
 title: "修改函数 - CyberGo JSON | Set 与 MergeJSON 用法"
-description: "CyberGo JSON 是支持路径修改的 Go 库，提供 Set/SetMultiple 批量设置、MergeJSON/MergeMany 深度合并与 SetCreate 自动创建路径，支持联合、交集、差集三种合并模式与数组追加、通配符替换，帮助开发者以不可变方式更新 JSON 字段。"
+description: "修改 JSON：Set/SetMultiple 按路径写入并自动创建节点，SetCreate 强制 CreatePaths，MergeJSON 按 MergeMode 深度合并。"
 sidebar_position: 30
 ---
 
 # 修改函数
 
-json 包提供的 JSON 修改函数，支持路径设置、批量更新和合并操作。
+json 包的 JSON 修改函数：路径设置、批量更新与合并。所有函数都返回新字符串，输入保持不变。
 
 ## 设置函数
 
@@ -35,7 +35,8 @@ json 包提供的 JSON 修改函数，支持路径设置、批量更新和合并
 | `ErrInvalidJSON` | `jsonStr` 不是合法 JSON |
 | `ErrInvalidPath` | 路径表达式语法非法 |
 | `ErrPathNotFound` | 路径不存在且 `CreatePaths = false` |
-| `ErrTypeMismatch` | 目标位置存在类型冲突，无法写入 |
+
+目标位置类型冲突时（例如 `a` 是数字，却写 `a.b`），返回的是普通 `JsonsError`，`errors.Is(err, ErrTypeMismatch)` 为 `false`。这类失败只能按错误消息或 `JsonsError.Op` 判断，不要依赖哨兵。
 
 **示例**
 
@@ -111,16 +112,14 @@ if err != nil {
 fmt.Println(result)
 ```
 
-**性能优势**
-
-对于多个修改操作，`SetMultiple` 比多次调用 `Set` 更高效：
+**性能**：多个修改操作时，`SetMultiple` 只解析一次文档，再把每个路径依次写入同一棵树；逐次调用 `Set` 则是每步都解析一次。更新按路径字典序排序后应用，因此 `a` 与 `a.b` 这类重叠路径的结果是确定的（先写 `a`，再写 `a.b`）：
 
 ```go
-// 推荐：一次调用
+// 一次调用
 updates := map[string]any{"a": 1, "b": 2, "c": 3}
 result, err := json.SetMultiple(data, updates)
 
-// 不推荐：多次调用
+// 逐次调用：每一步都会重新解析文档
 result, err = json.Set(data, "a", 1)
 result, err = json.Set(result, "b", 2)
 result, err = json.Set(result, "c", 3)
@@ -130,7 +129,7 @@ result, err = json.Set(result, "c", 3)
 
 签名：`func SetCreate(jsonStr, path string, value any, cfg ...Config) (string, error)`
 
-设置值并自动创建不存在的中间路径。等价于 `Set` **强制开启** `CreatePaths`：即使额外传入 `cfg`，其余字段照常合并，但 `CreatePaths` 一律强制为 `true`（显式自文档化「此处允许创建路径」）。默认 `Config.CreatePaths` 本身即为 `true`，因此无 cfg 时 `SetCreate` 与 `Set` 行为相同。
+设置值并自动创建不存在的中间路径。等价于 `Set` **强制开启** `CreatePaths`：即使传入 `cfg`，其余字段照常合并，但 `CreatePaths` 一律为 `true`。默认 `Config.CreatePaths` 本身就是 `true`，所以无 cfg 时 `SetCreate` 与 `Set` 行为相同；它的价值在于向读者表明「这里允许创建路径」，且不受处理器上 `CreatePaths=false` 的影响。
 
 ```go
 // 中间路径不存在时自动创建
@@ -178,7 +177,7 @@ r6, _ := json.SetCreate(`{}`, "users[0].profile.bio", "Developer")
 ```
 
 ::: warning 切片段的限制
-`items[1:3]` 这类**切片段**用于查询（返回子数组）没有问题，但作为 `Set`/`Delete` 的**最后一段**时当前版本返回错误（"distributed set ops on slices not yet supported"）——即不支持"把范围内每个元素都改写"的分布式修改。需要这种效果时，改用 `ForeachReturn` 或通配符路径。
+`items[1:3]` 这类**切片段**用于查询（返回子数组）没有问题，但作为 `Set`/`Delete` 的**最后一段**时当前版本返回错误（`distributed set ops on slices not yet supported`），即不支持「把范围内每个元素都改写」。需要这种效果时，改用 `ForeachReturn` 或通配符路径。
 :::
 
 ## 合并函数
@@ -187,7 +186,7 @@ r6, _ := json.SetCreate(`{}`, "users[0].profile.bio", "Developer")
 
 签名：`func MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
 
-使用深度合并策略合并两个 JSON 对象。对于嵌套对象，根据 `Config.MergeMode` 指定模式递归合并键。对于原始值和数组，patch 的值优先。
+使用深度合并策略合并两个 JSON 对象。嵌套对象按 `Config.MergeMode` 指定的模式递归合并键；原始值冲突时 patch 侧优先，数组则按模式合并元素（见下表），不按下标覆盖。
 
 **参数**
 
@@ -195,9 +194,9 @@ r6, _ := json.SetCreate(`{}`, "users[0].profile.bio", "Developer")
 |------|------|------|------|
 | `json1` | `string` | 是 | 基础 JSON 字符串 |
 | `json2` | `string` | 是 | 覆盖 JSON 字符串 |
-| `cfg` | `...Config` | 否 | 可选配置（通过 `MergeMode` 设置合并模式） |
+| `cfg` | `...Config` | 否 | 可选配置（用 `MergeMode` 设置合并模式） |
 
-**合并模式**（通过 `Config.MergeMode` 设置，默认为 `MergeUnion`）：
+**合并模式**（由 `Config.MergeMode` 设置，默认 `MergeUnion`）：
 
 | 模式 | 对象行为 | 数组行为 |
 |------|----------|----------|
@@ -262,14 +261,14 @@ func main() {
 ```
 
 ::: warning 顶层入参必须是 JSON 对象
-`MergeJSON` 要求两个顶层入参都是 JSON 对象（`{...}`）；任一侧是数组或标量时返回错误（`first JSON is not an object` / `second JSON is not an object`）。上表的「数组行为」作用于**对象字段里的数组**——两边同名字段都是数组时按元素去重/取交集/取差集（差集模式下结果即使为空数组也保留该键）。当两边同名字段类型不一致（如一边数组、一边标量）时：union/intersection 取 override 的值，difference 直接丢弃该键。
+`MergeJSON` 要求两个顶层入参都是 JSON 对象（`{...}`）；任一侧是数组或标量时返回错误（`first JSON is not an object` / `second JSON is not an object`）。上表的「数组行为」作用于**对象字段里的数组**：两边同名字段都是数组时按元素去重、取交集或取差集（差集模式下结果即使为空数组也保留该键）。两边同名字段类型不一致时（如一边数组、一边标量）：union/intersection 取 override 的值，difference 直接丢弃该键。
 :::
 
 ### MergeMany
 
 签名：`func MergeMany(jsons []string, cfg ...Config) (string, error)`
 
-合并多个 JSON 对象。至少需要 2 个 JSON 字符串。支持通过 `Config.MergeMode` 设置合并模式。
+合并多个 JSON 对象，至少需要 2 个输入。合并模式同样由 `Config.MergeMode` 设置。
 
 **参数**
 
@@ -288,11 +287,11 @@ result, err := json.MergeMany([]string{config1, config2, config3})
 // 结果：{"api":"v1","timeout":60,"retries":5,"debug":true}
 ```
 
-**合并顺序与错误**：从左到右折叠——`MergeMany([a, b, c])` 等价于 `MergeJSON(MergeJSON(a, b), c)`，右侧（下标更大）的值在冲突时胜出。少于 2 个输入直接报错；任一步合并失败时返回包装了失败下标的错误（`merge failed at index i: ...`），整体不产出部分结果。
+**合并顺序与错误**：从左到右折叠，`MergeMany([a, b, c])` 等价于 `MergeJSON(MergeJSON(a, b), c)`，右侧（下标更大）的值在冲突时胜出。少于 2 个输入直接报错；任一步合并失败时返回带失败下标的错误（`merge failed at index i: ...`），不产出部分结果。
 
 ## Processor 方法
 
-Processor 提供了对应的修改与合并方法，签名与包级函数一致：
+Processor 提供对应的修改与合并方法，签名与包级函数一致：
 
 ```go
 p, err := json.New()
@@ -326,7 +325,7 @@ final := parsed3.Data() // any（map[string]any / []any）
 ```
 
 ::: tip
-`SetFromParsed` 返回**新的** `*ParsedJSON`（中间结果互不影响），适合"同一份大 JSON 连续多处修改"的场景。与 `GetFromParsed` 配对，见 [Processor 解析方法](../processor/parse#setfromparsed)。
+`SetFromParsed` 返回**新的** `*ParsedJSON`（中间结果互不影响），适合「同一份大 JSON 连续多处修改」的场景。与 `GetFromParsed` 配对，见 [Processor 解析方法](../processor/parse#setfromparsed)。
 :::
 
 `MergeJSON`、`MergeMany` 也有对应的 Processor 方法，签名与包级函数一致，便于复用已配置的 Processor：
@@ -336,8 +335,8 @@ result, err := p.MergeJSON(base, override)
 
 merged, err := p.MergeMany([]string{config1, config2, config3})
 
-// CompareJSON 也有 Processor 方法（注意：Processor.CompareJSON 始终执行
-// 安全验证，与包级函数的无 cfg 路径不同）
+// CompareJSON 也有 Processor 方法；Processor.CompareJSON 始终执行
+// 安全验证，与包级函数的无 cfg 路径不同
 equal, err := p.CompareJSON(a, b)
 ```
 

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "性能优化"
 title: "性能优化 - CyberGo env | 高并发读写调优"
-description: "CyberGo env 性能优化指南，详解 RWMutex 读写锁与分片锁的并发安全机制、sync.Pool 对象池复用减少分配、mlock 内存锁定开销权衡与大文件流式解析，附基准测试与 MaxFileSize/MaxVariables 调优建议。"
+description: "CyberGo env 性能优化指南：从 32 分片锁与无锁单键读的并发模型、sync.Pool 复用 SecureValue 降低对象分配，到 mlock 内存锁定的开销权衡、临界区耗时的规避与审计开销的取舍，附并发读写基准测试。"
 sidebar_position: 1
 ---
 
 # 性能优化
 
-env 库针对高性能场景进行了优化。本文档介绍并发安全、对象池、内存管理等性能相关特性。
+env 的性能模型建立在三件事上：32 分片存储把锁竞争分散到 32 个独立锁上，单键读走不加 loader 级互斥锁的快路径，`SecureValue` 经 `sync.Pool` 复用。以下各节给出机制、实测收益与调优开关。
 
 ## 并发安全
 
@@ -44,7 +44,7 @@ wg.Wait()
 
 ### 包级函数线程安全
 
-包级函数使用全局加载器，同样是线程安全的：
+包级函数使用默认加载器，同样是线程安全的：
 
 ```go
 var wg sync.WaitGroup
@@ -62,23 +62,23 @@ wg.Wait()
 
 ### 内部实现
 
-库使用分片存储（Sharded Storage）减少锁竞争：
+库使用分片存储（Sharded Storage）减少锁竞争。全部变量分布在 32 个分片中：
 
 ```text
-┌─────────────────────────────────────────┐
-│          Loader（8 个分片）               │
-├─────────────────────────────────────────┤
-│  ┌─────────┐ ┌─────────┐    ┌────────┐ │
-│  │ Shard 0 │ │ Shard 1 │... │ Shard 7│ │
-│  │  Lock   │ │  Lock   │    │  Lock  │ │
-│  │  Data   │ │  Data   │    │  Data  │ │
-│  └─────────┘ └─────────┘    └────────┘ │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│              Loader (32 shards)              │
+├──────────────────────────────────────────────┤
+│  ┌─────────┐ ┌─────────┐        ┌──────────┐ │
+│  │ Shard 0 │ │ Shard 1 │  ...   │ Shard 31 │ │
+│  │  Lock   │ │  Lock   │        │   Lock   │ │
+│  │  Data   │ │  Data   │        │   Data   │ │
+│  └─────────┘ └─────────┘        └──────────┘ │
+└──────────────────────────────────────────────┘
 ```
 
-- 键根据哈希值分配到不同分片
+- 键经 `internal.HashKey` 定位分片（短键用乘法哈希，长键用 FNV-1a 采样）
 - 每个分片有独立锁
-- 减少锁竞争，提高并发性能
+- 不同分片的读写完全并行，锁竞争被分散到 32 个锁上
 
 ## 对象池
 
@@ -99,14 +99,14 @@ wg.Wait()
 `SecureValue` 对象使用池化管理：
 
 ```go
-// 获取 SecureValue（可能从池中复用）
+// 获取 SecureValue（池中有空闲对象时复用，否则新建）
 secret := env.GetSecure("API_KEY")
 
 // 使用（Reveal 返回明文，String/Masked 返回掩码）
 value := secret.Reveal()
 
-// 释放回池
-secret.Close()  // 或 secret.Release()
+// 归还对象池
+secret.Release()  // 清零、解锁并放回池；Close() 清零并解锁，不放回池
 ```
 
 ### 正确使用对象池
@@ -116,7 +116,7 @@ secret.Close()  // 或 secret.Release()
 ```go
 func processData() {
     secret := env.GetSecure("SECRET")
-    defer secret.Close()  // 确保释放
+    defer secret.Release()  // 用完即释放
 
     // 使用 secret...
 }
@@ -125,23 +125,23 @@ func processData() {
 **不要持有引用：**
 
 ```go
-// 错误：持有已释放对象的引用
+// 错误：持有已归还对象池的引用
 var globalSecret *env.SecureValue
 
 func init() {
     globalSecret = env.GetSecure("KEY")
-    globalSecret.Close()  // 释放后对象被复用
+    globalSecret.Release()  // 清零并归还 sync.Pool
 }
 
 func later() {
-    // 危险：globalSecret 可能已被其他代码使用
-    globalSecret.String()
+    // 危险：该对象可能已被其他 goroutine 从池中取走并写入别的值
+    // globalSecret 现在读到的是别人的数据
 }
 
 // 正确：每次需要时获取
 func getSecret() string {
     secret := env.GetSecure("KEY")
-    defer secret.Close()
+    defer secret.Release()
     return secret.Reveal()
 }
 ```
@@ -169,7 +169,7 @@ if secret.IsClosed() {
 
 ### 内存锁定
 
-启用内存锁定防止敏感数据交换到磁盘：
+内存锁定阻止敏感页被换出到磁盘，需在启动时显式开启：
 
 ```go
 // 检查平台支持
@@ -193,16 +193,22 @@ if env.IsMemoryLockSupported() {
 
 ### 严格模式
 
-严格模式下，内存锁定失败会导致错误：
+`SetMemoryLockStrict(true)` 只改变失败是否可观测：锁定失败时默认静默（值仍可用），开启 strict 后失败会向 stderr 打出告警。`NewSecureValueStrict` 返回错误的条件是「已启用内存锁定且锁定失败」，与 strict 开关无关。
 
 ```go
+env.SetMemoryLockEnabled(true)
 env.SetMemoryLockStrict(true)
 
 secret, err := env.NewSecureValueStrict("sensitive_data")
 if err != nil {
-    // 内存锁定失败
+    // 处理错误
+}
+if secret != nil {
+    defer secret.Release()
 }
 ```
+
+启用锁定但失败时，`Masked()` 显示 `[SECURE:N bytes lock-failed]`。非 Linux/macOS/Windows 平台上 `IsMemoryLockSupported()` 返回 false，锁定尝试失败、错误保存在该值上（`Masked()` 显示 `lock-failed`），`SecureValue` 仍可正常使用。
 
 ### 安全清零
 
@@ -228,16 +234,20 @@ env.ClearBytes(sensitiveBytes)
 
 ### 初始化后只读
 
-最高效的模式：启动时加载配置，运行时只读：
+读多写少时开销最低：启动阶段加载配置并映射到结构体，运行阶段只读该结构体，完全不触碰 loader。
 
 ```go
 var config *Config
 
 func init() {
-    env.Load(".env")
+    if err := env.Load(".env"); err != nil {
+        panic(err)
+    }
 
     config = &Config{}
-    env.ParseInto(config)
+    if err := env.ParseInto(config); err != nil {
+        panic(err)
+    }
 }
 
 // 任意 goroutine 安全读取
@@ -248,7 +258,7 @@ func getValue() string {
 
 ### 动态配置刷新
 
-需要动态更新配置时的模式：
+需要热更新配置时，用一个自带的 RWMutex 保护「加载」与「读取」的先后关系：
 
 ```go
 type ConfigManager struct {
@@ -273,18 +283,24 @@ func (m *ConfigManager) Get(key string) string {
 
 ### 减少锁持有时间
 
+`GetString` 走无锁快路径，单次开销很小。真正决定延迟的是调用方自身的锁：若在自有互斥锁内先取值、再做耗时处理，整个处理期间别的 goroutine 都拿不到这把锁。取值放锁内、处理放到锁外：
+
 ```go
-// 不推荐：在锁内执行耗时操作
-func (l *Loader) ProcessValue(key string) {
-    value := l.GetString(key)
-    // 耗时操作...
-    processValue(value)
+// 不推荐：耗时处理占着调用方的锁
+func (s *Service) ProcessValue(key string) {
+    s.mu.Lock()
+    value := s.loader.GetString(key)
+    processValue(value)  // 耗时操作期间锁一直被持有
+    s.mu.Unlock()
 }
 
-// 推荐：快速读取，锁外处理
-func ProcessValue(key string) {
-    value := loader.GetString(key)  // 快速获取
-    go processValue(value)          // 异步处理
+// 推荐：锁内只取值，锁外处理
+func (s *Service) ProcessValue(key string) {
+    s.mu.Lock()
+    value := s.loader.GetString(key)
+    s.mu.Unlock()
+
+    processValue(value)
 }
 ```
 
@@ -304,10 +320,12 @@ func LoadAllConfig(loader *env.Loader) *Config {
 
 ### 避免频繁调用
 
+单键读不加 loader 级锁，但每次调用仍要做键名解析。高频路径上把配置值缓存到局部变量或结构体：
+
 ```go
-// 不推荐：每次请求都读取
+// 不推荐：每次请求都重新查找键
 func Handler(w http.ResponseWriter, r *http.Request) {
-    apiKey := env.GetString("API_KEY")  // 每次请求都加锁
+    apiKey := env.GetString("API_KEY")  // 每次请求都走一遍键解析
     // ...
 }
 
@@ -337,7 +355,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 ### 内存锁定开销
 
-内存锁定（Linux 的 `mlock` / Windows 的 `VirtualLock`）仅在创建 `SecureValue` 时产生一次额外的 syscall 开销，读取操作（`Reveal` / `String` / `Masked`）无差异。建议保持 `SecureValue` 小而短命——用完立即 `Close()` / `Release()` 归还到对象池，避免长期持有大块锁定内存。
+内存锁定（Linux 的 `mlock` / Windows 的 `VirtualLock`）只在创建 `SecureValue` 时产生一次额外的 syscall 开销，读取操作（`Reveal` / `String` / `Masked`）没有差异。建议让 `SecureValue` 小而短命：用完立即释放，避免长期持有大块锁定内存。`Close()` 与 `Release()` 的取舍见 [SecureValue API - Close 与 Release 的区别](../api-reference/secure-value#close-与-release-的区别)。
 
 ## 基准测试
 
@@ -395,23 +413,29 @@ func BenchmarkMixedReadWrite(b *testing.B) {
 
 ## 注意事项
 
-### 避免在锁内阻塞
+### 写路径的持锁窗口
+
+`Set`、`Delete`、`Apply`、`LoadFiles` 都要拿 loader 的写锁，彼此串行；只有 `OverwriteExisting = true` 且未启用 `AutoApply` 时，`Set` 才走读锁快路径。因此批量导入应一次加载整份文件，而不是循环 `Set`：
 
 ```go
-// 危险：可能导致死锁
-func (l *Loader) BadMethod() {
-    // 锁内调用可能阻塞的操作
-    l.Set("KEY", computeValue())  // computeValue 可能很慢
+// 不推荐：每个键单独拿一次写锁；AutoApply 下还要各做一次 Setenv
+for key, value := range values {
+    if err := loader.Set(key, value); err != nil {
+        return err
+    }
 }
 
-// 安全：先计算，再设置
-func GoodMethod() {
-    value := computeValue()  // 锁外计算
-    loader.Set("KEY", value)  // 快速设置
+// 推荐：写入文件后一次加载，整批只拿一次写锁
+if err := loader.LoadFiles("batch.env"); err != nil {
+    return err
 }
 ```
 
+耗时的值计算写在 `Set` 的参数位置时，会在进入 `Set` 之前求值完毕，不占用 loader 的锁。
+
 ### Close 后的并发访问
+
+`GetString` 不返回 `error`，因此在 `Close()` 之后调用只会得到空字符串，不会报错：
 
 ```go
 loader, _ := env.New(cfg)
@@ -425,48 +449,42 @@ go func() {
 loader.Close()  // 主 goroutine 关闭
 ```
 
-### 全局加载器重置
+### 默认加载器重置
 
-`ResetDefaultLoader` 本身是并发安全的（源码注释明示），返回关闭旧 loader 的 `error`，应检查处理。但仍建议仅在测试或启动阶段调用：重置后到下一次 `Load` 之前，全局函数会短暂回到未初始化状态（返回 `ErrNotInitialized`），运行中重置会让依赖全局加载器的代码撞上这一窗口。
-
-```go
-// 并发安全，但建议仅在测试或启动阶段调用；返回的 error 应处理
-if err := env.ResetDefaultLoader(); err != nil {
-    fmt.Printf("重置默认加载器失败: %v\n", err)
-}
-env.Load(".env")
-```
+- `ResetDefaultLoader` 并发安全，返回关闭旧 loader 的 `error`，应检查处理
+- 重置后到下一次 `Load` 之前，包级**写类与校验类**函数（`Set`/`Delete`/`Validate`/`ParseInto`）返回 `ErrNotInitialized`，读函数返回默认值或零值；只在测试或启动阶段调用
+- 需要精确语义时见[包函数](../api-reference/functions#resetdefaultloader)
 
 ## 内部并发实现深读
 
-本节从源码层面说明库的并发优化手段，帮助评估与调优。文中引用的量化数字（如 23.6% 原子操作热点、终结器约占创建成本 60%）来自 v1.2.2/v1.2.3 的基准测试与性能剖析（见 CHANGES.md）。
+以下是从源码层面整理的并发优化手段，可用于评估与调优。文中的量化数字（23.6% 原子操作热点、终结器约占创建成本 60%）来自 v1.2.2/v1.2.3 的基准测试与性能剖析：23.6% 记录于 CHANGES.md，60% 记录于 `secure.go` 的对象池注释。
 
 ### 分片存储（secureMap）
 
-所有变量以 `SecureValue` 形式存储在 8 个分片中，键经 FNV-1a 哈希定位分片，每个分片持有独立 `sync.RWMutex`——不同分片的读写完全并行，将锁竞争分散化。
+所有变量以 `SecureValue` 形式存储在 32 个分片中（v1.3.0 起由 8 个提升为 32 个），键经 `internal.HashKey` 定位分片（短键用乘法哈希，长键用 FNV-1a 采样），每个分片持有独立 `sync.RWMutex`。不同分片的读写完全并行。
 
 ### 批量写入的分桶
 
-`secureMap.SetAll`/`secureMap.SetAllIfAbsent`（文件加载路径）将整批键值按分桶一次平坦分配，随后**每个分片只加锁一次**完成整批写入；已存在的键原地更新（复用 `SecureValue` 对象），避免对象池往返与额外分配。
+`secureMap.SetAll`/`secureMap.SetAllIfAbsent`（文件加载路径）将整批键值按分桶一次平坦分配，随后**每个分片只加锁一次**完成整批写入。已存在的键原地更新（复用 `SecureValue` 对象），省去对象池往返与额外分配。
 
 ### 读路径的锁优化
 
-- **单键读取无锁化**：`Lookup`/`GetSecure` 以原子闭态标志绕过 loader 级读锁——高并发下 RWMutex 自身的读者计数就是瓶颈
+- **单键读取无锁化**：`Lookup`/`GetSecure` 以原子闭态标志绕过 loader 级读锁。高并发下 RWMutex 自身的读者计数就是瓶颈
 - **`secureMap.Has` 零分配**：仅原子读取 closed 标志，不复制值字符串
 - **`Get` 免二次加锁**：分片读锁已保证 `SecureValue` 数据稳定，省去对象级读锁（该锁曾是剖析中 23.6% 的原子操作热点）
-- **`Set` 快路径**：`OverwriteExisting=true` 且未开 `AutoApply` 时仅需读锁，并发 `Set` 不在 loader 互斥锁上串行
+- **`Set` 快路径**：`OverwriteExisting=true` 且未开 `AutoApply` 时只需读锁，并发 `Set` 不在 loader 互斥锁上串行
 
 ### 对象池与终结器
 
-`SecureValue` 经 `sync.Pool` 复用；GC 终结器在对象**首次创建**时设置一次（约占地创建成本 60%），池化循环不再重复支付。覆盖已有键时原地重置，进一步减少分配。
+`SecureValue` 经 `sync.Pool` 复用。GC 终结器在对象**首次创建**时设置一次（约占创建成本 60%），池化循环不再重复支付这笔成本。覆盖已有键时原地重置，进一步减少分配。
 
 ### 近似快照语义
 
-`Len` 用原子计数器 O(1) 返回；`Keys`/`ToMap` 以原子计数估算容量后遍历分片。并发写入下结果可能是**略过期的近似值**（遍历期间的其他修改不保证可见）——需要精确快照时由调用方外部同步。
+`Len` 用原子计数器 O(1) 返回。`Keys`/`All` 以原子计数估算容量，再逐分片加读锁遍历。因此并发写入下返回的是**近似值**，遍历期间其他修改不保证可见。需要精确快照时，由调用方在外部加同步。
 
-### 审计的性能开关意识
+### 审计开销
 
-审计启用后，加载路径会增加 `time.Now` 与事件构造开销（未启用时这些成本完全规避）。高频场景建议仅在 Production 预设下开启审计，或使用 `ChannelAuditHandler` 异步消费。
+审计启用后，加载路径多出 `time.Now` 与事件构造的开销；未启用时这些成本完全规避。高频写入的场景建议只在 `ProductionConfig` 下开启审计，或改用 `ChannelAuditHandler` 异步消费。
 
 ## 相关文档
 

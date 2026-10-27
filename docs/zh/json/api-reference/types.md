@@ -1,17 +1,17 @@
 ---
 sidebar_label: "类型定义"
 title: "类型定义 - CyberGo JSON | 核心类型一览"
-description: "CyberGo JSON 类型定义一览：Result[T] 泛型结果、AccessResult 动态访问、CompiledPath 预编译路径、BatchOperation/BatchResult 批量操作、Schema/ValidationError 校验类型、Stats/HealthStatus 运行状态与 IterableValue 迭代元素，以及 SyntaxError 等编码错误类型与 Encoder/Decoder 流式编解码器，帮助开发者查阅完整类型系统。"
+description: "CyberGo JSON 类型参考：Result[T]、AccessResult、CompiledPath、Schema 与 Encoder/Decoder 的结构与方法。"
 sidebar_position: 60
 ---
 
 # 类型定义
 
-json 包提供多种类型安全的类型，用于处理 JSON 操作结果。
+json 包导出下列类型，覆盖取值结果、预编译路径、Schema 校验、批量操作、统计与流式编解码。
 
 ## Result[T] - 统一结果类型
 
-`Result[T]` 是泛型操作结果类型，提供类型安全的错误处理和值访问。
+`Result[T]` 是泛型结果包装类型，由调用方构造，提供类型安全的错误处理与取值。
 
 ### 结构定义
 
@@ -66,15 +66,15 @@ func main() {
 ```
 
 ::: tip 命名约定
-- **GetTyped[T]** - 获取指定类型的值，返回 `T`，支持 `defaultValue` 参数
-- **Result[T]** - 内部结果类型，用于需要精细错误处理的场景
+- `GetTyped[T]` 取指定类型的值，直接返回 `T`，可带 `defaultValue` 参数
+- `Result[T]` 是通用结果包装类型，由调用方自行构造，用于需要区分「无值」与「出错」的场景
 :::
 
 ---
 
 ## CompiledPath - 预编译路径
 
-`CompiledPath` 是预编译的 JSON 路径类型别名，用于在频繁访问同一路径时避免重复解析路径字符串，提升性能。
+`CompiledPath` 是预编译 JSON 路径的类型别名，用于在频繁访问同一路径时省去重复解析路径字符串。
 
 ### 类型定义
 
@@ -84,7 +84,7 @@ type CompiledPath = internal.CompiledPath
 
 ### 使用场景
 
-当需要对同一个路径进行大量重复操作时（如循环中批量查询），可以预先编译路径，避免每次调用时重复解析路径字符串。
+当对同一路径做大量重复操作时（如循环中批量查询），预先编译路径可省去每次调用的路径字符串解析。
 
 ### 编译函数
 
@@ -92,7 +92,7 @@ type CompiledPath = internal.CompiledPath
 
 签名：`func (p *Processor) CompilePath(path string) (*CompiledPath, error)`
 
-通过 Processor 预编译 JSON 路径，返回可在后续操作中复用的 `*CompiledPath` 实例。
+用 Processor 预编译 JSON 路径，返回可在后续操作中复用的 `*CompiledPath` 实例。
 
 ```go
 processor, err := json.New()
@@ -110,7 +110,7 @@ val, err := processor.GetCompiled(jsonStr, compiled)
 ```
 
 ::: tip 性能提示
-对于高频重复路径访问，预编译路径可显著减少路径解析开销。适用于批量操作、循环查询等场景。
+高频重复访问同一路径时，预编译可省去每次调用的路径解析。适用于批量操作与循环查询。
 :::
 
 ### 方法
@@ -169,7 +169,7 @@ func main() {
 
 ## PathSegment - 路径段
 
-`PathSegment` 表示解析后的单个路径段，是 [`PathParser`](./interfaces#pathparser) 接口 `ParsePath` 方法的返回元素，也可通过 `CompiledPath` 的 `Segments` 方法获得。
+`PathSegment` 表示解析后的单个路径段：它既是 [`PathParser`](./interfaces#pathparser) 接口 `ParsePath` 方法的返回元素，也可由 `CompiledPath.Segments` 取得。
 
 ### 类型定义
 
@@ -278,6 +278,8 @@ type AccessResult struct {
 | `Exists` | `bool` | 路径是否存在 |
 | `Type` | `string` | 运行时类型信息（用于调试） |
 
+值为 JSON `null` 时 `Exists` 为 `true`、`Type` 为 `"null"`、`Value` 为 `nil`——「存在但为空」与「不存在」靠 `Exists` 区分。
+
 ### 创建方法
 
 #### Processor.SafeGet
@@ -320,6 +322,8 @@ fmt.Println("类型：", result.Type)
 | `AsFloat64()` | `(float64, error)` | 转换为 float64（bool 不转换） |
 | `AsBool()` | `(bool, error)` | 转换为布尔值 |
 | `Ok()` | `bool` | 检查路径是否存在 |
+
+`AsString()` 转换失败时返回包装 `ErrTypeMismatch` 的错误（`errors.Is` 命中）；`AsInt()`、`AsFloat64()`、`AsBool()` 失败时返回普通 error，不包哨兵。路径不存在时各转换方法都返回 `ErrPathNotFound`。
 
 ::: warning 注意
 `AsInt64()`, `AsArray()`, `AsObject()` 方法已移除。请使用 `GetTyped[T]` 获取这些类型。
@@ -430,8 +434,8 @@ schema := &json.Schema{
 ```
 
 ::: warning 两条硬性限制
-- `Type` 支持 `object`/`array`/`string`/`number`/`integer`/`boolean`/`null` 七种取值；`integer` 按 JSON Schema 语义接受数学上为整数的值（`1`、`1.0` 均通过，`1.5` 报 `expected type integer` 错误），详见 [Schema 校验](./schema#schema-约束字段总览)。
-- `MinLength`/`MaxLength`/`Minimum`/`Maximum`/`MinItems`/`MaxItems`/`ExclusiveMinimum`/`ExclusiveMaximum` 通过结构体字面量赋值**不会生效**，必须经 `NewSchema`（弃用别名 `NewSchemaWithConfig`）的指针字段启用。详见 [Schema 校验](./schema#schema-的创建方式)。
+- `Type` 支持 `object`/`array`/`string`/`number`/`integer`/`boolean`/`null` 七种取值。`integer` 按 JSON Schema 语义接受数学上为整数的值：`1`、`1.0` 通过，`1.5` 报 `expected type integer`。详见 [Schema 校验](./schema#schema-约束字段总览)。
+- `MinLength`/`MaxLength`/`Minimum`/`Maximum`/`MinItems`/`MaxItems`/`ExclusiveMinimum`/`ExclusiveMaximum` 用结构体字面量赋值**不会生效**，必须经 `NewSchema`（弃用别名 `NewSchemaWithConfig`）的指针字段启用。详见 [Schema 校验](./schema#schema-的创建方式)。
 :::
 
 #### 使用 NewSchema
@@ -694,7 +698,7 @@ type WarmupResult struct {
 
 ### 结构定义
 
-`ParsedJSON` 的内部字段不导出，通过方法访问。
+`ParsedJSON` 的内部字段不导出，只能经方法访问。
 
 ```go
 type ParsedJSON struct {
@@ -734,17 +738,17 @@ age, _ := processor.GetFromParsed(parsed, "user.age")
 |------|------|
 | 高频查询 | 同一 JSON 多次查询时避免重复解析 |
 | 批量路径获取 | 使用 `GetMultiple` 批量获取多个路径 |
-| 性能优化 | 预解析后查询性能提升显著 |
+| 性能优化 | 省去每次查询的解析步骤，只解析一次 |
 
 ::: tip 性能提示
-对于需要多次查询同一 JSON 字符串的场景，使用 `PreParse` 预解析可显著提升性能，避免重复解析开销。
+需要多次查询同一 JSON 字符串时，用 `PreParse` 预解析可省去重复解析。
 :::
 
 ---
 
 ## Stats
 
-处理器统计信息，通过包级 `GetStats()` 或 `Processor.GetStats()` 获取。
+处理器统计信息，取自包级 `GetStats()` 或 `Processor.GetStats()`。
 
 ### 结构定义
 
@@ -791,13 +795,13 @@ type Stats struct {
 | Config 字段 | 类型 | 默认值 | 说明 |
 |------------|------|--------|------|
 | `MaxJSONSize` | `int64` | 100MB（`DefaultMaxJSONSize`） | 输入 JSON 大小上限，超出返回 `ErrSizeLimit` |
-| `MaxPathDepth` | `int` | 50（`DefaultMaxPathDepth`） | 路径段数上限，超出返回 `ErrInvalidPath` |
+| `MaxPathDepth` | `int` | 50（`DefaultMaxPathDepth`） | 预留字段，当前不改变行为（仅参与配置缓存键与 `Validate` 钳制）。段数上限固定为内部 100 段，超出时错误消息为 `path too deep`；路径字符串上限 5000 字节，校验开启时超出返回 `ErrInvalidPath` |
 | `MaxBatchSize` | `int` | 2000（`DefaultMaxBatchSize`） | 批处理操作的单批数量上限，超出返回 `ErrSizeLimit` |
 | `MaxNestingDepthSecurity` | `int` | 200（`DefaultMaxNestingDepth`） | 输入嵌套深度上限（安全扫描用），超出返回 `ErrDepthLimit`；勿与编码/解码嵌套深度 `Config.MaxDepth`（默认 100）混淆 |
-| `MaxSecurityValidationSize` | `int64` | 10MB（`DefaultMaxSecuritySize`） | 安全校验的大小阈值（阈值型） |
+| `MaxSecurityValidationSize` | `int64` | 10MB（`DefaultMaxSecuritySize`） | 预留字段，当前不改变行为（仅参与配置缓存键与 `Validate` 钳制）；安全扫描不按其值切换策略 |
 | `MaxObjectKeys` | `int` | 100000（`DefaultMaxObjectKeys`） | 对象最大键数，超出返回 `ErrSizeLimit` |
 | `MaxArrayElements` | `int` | 100000（`DefaultMaxArrayElements`） | 数组最大元素数，超出返回 `ErrSizeLimit` |
-| `FullSecurityScan` | `bool` | `false`（分层扫描） | 是否对所有输入做全量安全扫描（设为 `true` 时全量） |
+| `FullSecurityScan` | `bool` | `false`（按输入大小选择扫描方式） | `false`：小于 4KB 全量扫描，4KB 及以上用 32KB 滚动窗口覆盖全部字节，并对首/中/尾各 4KB 做可疑字符密度检测；`true`：所有输入单次全量扫描 |
 
 `Config.Validate` 会把越界值钳制回合法区间（如 `MaxNestingDepthSecurity` 钳至 10–200、`MaxObjectKeys` 钳至 100–100000），可用 `ValidateWithWarnings` 查看调整明细；各字段完整语义见 [Config](./config#config-结构体)。
 
@@ -805,7 +809,7 @@ type Stats struct {
 
 ## HealthStatus
 
-健康状态信息，通过包级 `GetHealthStatus()` 或 `Processor.GetHealthStatus()` 获取。
+健康状态信息，取自包级 `GetHealthStatus()` 或 `Processor.GetHealthStatus()`。
 
 ### 结构定义
 
@@ -1083,7 +1087,7 @@ if marshalErr, ok := err.(*json.MarshalerError); ok {
 
 ## Encoder - JSON 编码器
 
-`Encoder` 将 JSON 值写入输出流。100% 兼容 `encoding/json.Encoder`。
+`Encoder` 将 JSON 值写入输出流。方法签名与 `encoding/json.Encoder` 一致，另接受可选 `Config` 参数。
 
 ### 创建
 
@@ -1139,7 +1143,7 @@ func main() {
 
 ## Decoder - JSON 解码器
 
-`Decoder` 从输入流读取并解码 JSON 值。100% 兼容 `encoding/json.Decoder`。
+`Decoder` 从输入流读取并解码 JSON 值。方法签名与 `encoding/json.Decoder` 一致，另接受可选 `Config` 参数。
 
 ### 创建
 
@@ -1265,7 +1269,7 @@ for {
 type Token any
 ```
 
-通过 `Decoder.Token()` 获取。
+由 `Decoder.Token()` 返回。
 
 ---
 

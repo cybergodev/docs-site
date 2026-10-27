@@ -1,14 +1,14 @@
 ---
 sidebar_label: "Token Refresh & Rotation"
 title: "Token Refresh & Rotation - CyberGo JWT | Rotation Strategy"
-description: "CyberGo JWT token refresh and rotation: two-tier TTL design, CreateRefresh/Refresh flow, RefreshInto claims, and reuse vs. one-time rotation via RotateRefreshTokens."
+description: "CyberGo JWT token refresh and rotation: two-tier TTL design, the Refresh flow, RefreshInto for custom claims, and reuse versus one-time rotation."
 sidebar_position: 25
 check_code: false
 ---
 
 # Token Refresh & Rotation
 
-CyberGo JWT uses a two-tier token design: short-lived **access tokens** for API authentication, and long-lived **refresh tokens** for obtaining new access tokens after they expire. This design balances security with user experience.
+CyberGo JWT uses a two-tier token design: short-lived **access tokens** authenticate API calls, and long-lived **refresh tokens** exchange for new access tokens once the old one expires. The design balances security and user experience.
 
 ## Two-Tier Token Model
 
@@ -104,12 +104,13 @@ fmt.Println("New Access Token:", newAccessToken)
 
 ## Custom Claims Refresh
 
-When using custom Claims types, use [`RefreshInto`](../api-reference/processor#refreshinto) to populate the parsed result into a custom struct:
+With a custom Claims type, use [`RefreshInto`](../api-reference/processor#refreshinto) to populate the parsed result into the custom struct:
 
 ```go
 type MyClaims struct {
     UserID string `json:"user_id"`
     Role   string `json:"role"`
+    Tenant string `json:"tenant"` // Business field with no counterpart in the built-in Claims
     jwt.RegisteredClaims
 }
 
@@ -126,12 +127,31 @@ func (c *MyClaims) Validate() error {
 ```
 
 ```go
-// Issue a refresh token with custom Claims
+// Issue a refresh token with a custom Claims type
 refreshToken, err := processor.CreateRefresh(&MyClaims{UserID: "123", Role: "admin"})
 
-// Refresh into custom struct
+// Refresh into the custom struct
 result := &MyClaims{}
 newToken, err := processor.RefreshInto(refreshToken, result)
+```
+
+Custom types must always use `RefreshInto`, never `Refresh`. Two constraints apply:
+
+- **`Refresh` loses custom fields**: `Refresh` parses the token as the built-in `Claims` and rebuilds it, so the `Tenant` field from the example above does not appear in the new token. Only `RefreshInto` rebuilds the original type.
+- **A refresh token validated as the built-in `Claims` needs `UserID` or `Username`**: a custom refresh token that only carries `Subject` makes `Refresh` return `invalid claims: user_id or username is required`. `RefreshInto` runs the custom `Validate()` and is not subject to this rule.
+
+```go
+// ❌ Refresh: custom fields are lost, and UserID/Username is required
+if _, err := processor.Refresh(refreshToken); err != nil {
+    panic(err)
+}
+
+// ✅ RefreshInto: custom fields are preserved, validated by MyClaims.Validate()
+newToken, err := processor.RefreshInto(refreshToken, &MyClaims{})
+if err != nil {
+    panic(err)
+}
+fmt.Println("New Token:", newToken)
 ```
 
 ## Rotation Strategies
@@ -154,11 +174,11 @@ if err != nil {
 }
 ```
 
-**Use cases**: Mobile apps, single-device login. Users don't need to re-authenticate frequently; the refresh token can be reused within its TTL.
+**Use cases**: mobile apps and single-device logins. Users rarely need to re-authenticate, and the refresh token can be reused within its TTL.
 
 ### One-Time Rotation
 
-For higher-security scenarios, make each refresh token usable only once. Since v1.2.3, the recommended way is the built-in rotation switch `Config.RotateRefreshTokens` <Badge type="tip" text="v1.2.3+" />:
+For higher-security scenarios, make each refresh token usable only once. Since v1.2.3 the recommended approach is the built-in rotation switch `Config.RotateRefreshTokens` <Badge type="tip" text="v1.2.3+" />:
 
 ```go
 cfg := jwt.DefaultConfig()
@@ -179,12 +199,12 @@ if err != nil {
 ```
 
 ::: warning Fail-Closed Semantics and Concurrency
-- **Revocation precedes minting**: the old token's jti is blacklisted **before** the new token is minted. If minting subsequently fails (e.g. the rate limit trips), the old token is already revoked and the subject must re-authenticate — a deliberate fail-closed design guaranteeing an accepted refresh token cannot be replayed after the fact.
-- **Errors**: if revoking the old token fails, `ErrRefreshRotationFailed` is returned (wrapping the underlying blacklist store error) and no new token is issued; a refresh token without a jti cannot be revoked and is rejected with `ErrTokenMissingID`; a processor without a configured blacklist returns `ErrBlacklistNotConfigured` (as does `Revoke()`). Processors built via `jwt.New()` always carry a blacklist — `DefaultConfig()` enables one by default and zero-valued fields are normalized in `New()` — so this error does not arise in normal use.
-- **Concurrency**: rotation narrows but does not eliminate the replay window — two concurrent `Refresh` calls can both pass validation before either revocation lands. A strict single-use guarantee requires an atomic check-and-add in a custom `BlacklistStore`.
+- **Revocation precedes minting**: the old token's jti is blacklisted **before** the new token is minted. If minting then fails (for example the rate limit trips), the old token is already invalid and the subject must re-authenticate. This is a deliberate fail-closed design ensuring an accepted refresh token cannot be replayed afterwards.
+- **Errors**: if revoking the old token fails, `ErrRefreshRotationFailed` is returned (wrapping the underlying blacklist store error) and no new token is issued. A refresh token without a `jti` cannot be revoked and returns `ErrTokenMissingID`. A processor without a configured blacklist returns `ErrBlacklistNotConfigured`; processors built through `jwt.New()` always carry a blacklist, so normal use never hits this.
+- **Concurrency**: rotation narrows but does not eliminate the replay window: two concurrent `Refresh` calls can both pass validation before either revocation takes effect. A strict single-use guarantee requires a custom `BlacklistStore` implementing atomic check-and-add.
 :::
 
-When you cannot change the configuration, manual `Refresh` + `Revoke` is an equivalent alternative:
+When the configuration cannot be changed, manual `Refresh` + `Revoke` is an equivalent alternative:
 
 ```go
 // Refresh and immediately revoke the old token
@@ -199,7 +219,7 @@ if err := processor.Revoke(refreshToken); err != nil {
 }
 ```
 
-Note the manual approach leaves a window — the old token remains usable between a successful `Refresh` and the `Revoke` taking effect — and you must handle the case where the first step succeeds but the second fails.
+Note that the manual approach leaves a window: the old token remains usable between a successful `Refresh` and the `Revoke` taking effect. A failure of the second step after the first succeeds also needs explicit handling.
 
 **Use cases**: Web applications, high-security systems. The old token becomes invalid immediately after each refresh, reducing the risk of token leakage.
 
@@ -232,9 +252,9 @@ Tokens without a `token_type` claim (issued by older versions) are accepted for 
 
 ## Security Notes
 
-- **Refresh does not auto-revoke by default**: The original refresh token remains valid after `Refresh`. For one-time-use semantics, enable `Config.RotateRefreshTokens` (recommended, see [One-Time Rotation](#one-time-rotation)) or call `Revoke` manually.
-- **Claims are not deeply validated**: `Refresh` validates standard JWT fields (signature, expiration, issuer, audience, blacklist) and basic structure (UserID or Username must be present), but does not re-check field length limits or injection patterns, trusting they were validated at creation.
-- **Signature consistency**: New access tokens use the same signing algorithm and key as the refresh token. Cross-algorithm refresh is not supported.
+- **Refresh does not auto-revoke by default**: the original refresh token stays valid after `Refresh`. For one-time-use semantics, see [One-Time Rotation](#one-time-rotation).
+- **Claims are not deeply validated**: `Refresh` validates the standard JWT fields (signature, expiration, issuer, audience, blacklist) and the basic structure (`UserID` or `Username` must be present), but does not re-check field length limits or injection patterns. It trusts that creation-time validation already ran.
+- **Signature consistency**: new access tokens use the same signing algorithm and key as the refresh token. Cross-algorithm refresh is not supported.
 
 ## Next Steps
 

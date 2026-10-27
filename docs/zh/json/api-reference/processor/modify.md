@@ -1,17 +1,17 @@
 ---
 sidebar_label: "修改操作"
 title: "Processor 数据修改 - CyberGo JSON | Set/SetMultiple 方法用法"
-description: "CyberGo JSON 的 Processor 提供 Set/SetMultiple 数据修改与 SetCreate 自动创建路径，所有方法不可变地返回新 JSON 字符串并支持链式调用，配合 SetFromParsed 预解析与 MergeJSON 合并，适合连续多步修改同一份数据的写入场景。"
+description: "Processor 修改：Set/SetMultiple/SetCreate 写入、[+] 追加数组元素，MergeJSON/MergeMany 合并与 CompareJSON 比较。"
 sidebar_position: 30
 ---
 
 # 数据修改方法
 
-Processor 提供数据修改方法，所有方法**返回修改后的新 JSON 字符串**（不可变语义，原字符串不变），支持链式调用。删除相关方法见[删除操作](./delete)。方法行为与[包级修改函数](../functions/modify)一致，本页聚焦 Processor 侧的配置语义（`CreatePaths` 优先级、`ContinueOnError`）与链式模式。
+修改方法返回**修改后的新 JSON 字符串**（原字符串不变），上一个结果可直接作为下一个调用的输入。删除方法见[删除操作](./delete)。行为与[包级修改函数](../functions/modify)一致；差异在配置来源：省略 `cfg` 时按处理器固化的配置执行，传入 `cfg` 时按该次调用执行。两处 Processor 特有语义是 `CreatePaths` 的优先级与 `ContinueOnError` 的作用范围。
 
 ## 不可变语义
 
-所有修改方法均返回**新的 JSON 字符串**，原始输入字符串永远不会被修改（Go 字符串本就不可变）。操作失败时返回原始字符串与错误，便于安全降级：
+所有修改方法返回**新的 JSON 字符串**，输入字符串不被修改（Go 字符串本身不可变）。失败时返回原始字符串与错误，`SetMultiple` 在 `ContinueOnError=true` 且部分失败时例外（见下文）：
 
 ```go
 original := `{"user":{"name":"Alice"}}`
@@ -64,7 +64,7 @@ func main() {
 result, err := p.Set(data, "user.name", "NewName")
 ```
 
-支持设置多种类型的值：
+可设置的值类型：
 
 ```go
 // 字符串
@@ -118,7 +118,7 @@ func main() {
 
 签名：`func (p *Processor) SetMultiple(jsonStr string, updates map[string]any, cfg ...Config) (string, error)`
 
-批量设置多个路径的值，返回修改后的 JSON 字符串。相比多次调用 `Set`，`SetMultiple` 只解析一次 JSON、在一次遍历中应用所有更新，效率更高。是否创建路径取决于 `Config.CreatePaths`。
+批量设置多个路径的值，返回修改后的 JSON 字符串。相比多次调用 `Set`，`SetMultiple` 只解析一次 JSON、在一次遍历中应用全部更新。是否创建路径取决于 `Config.CreatePaths`。
 
 ```go
 result, err := p.SetMultiple(data, map[string]any{
@@ -161,7 +161,7 @@ func main() {
 ```
 
 ::: tip ContinueOnError 与确定性顺序
-- 默认（`ContinueOnError=false`）遇到第一个失败路径即返回原字符串与错误；开启后跳过失败路径继续写入其余路径，仅当全部失败时才返回错误。该字段只作用于 `SetMultiple`，与 [`ProcessBatch`](./batch) 内置的逐操作隔离无关。
+- 默认（`ContinueOnError=false`）遇到第一个失败路径即返回原字符串与该错误。开启后跳过失败路径、继续写入其余路径，全部失败时返回原字符串与一个汇总错误；部分失败时返回**已应用成功修改的结果**，同时返回 `errors.Join` 汇总的各路径错误。该字段只作用于 `SetMultiple`，与 [`ProcessBatch`](./batch) 内置的逐操作隔离无关。
 - 更新按**路径字典序**依次应用，重叠路径（如 `a` 与 `a.b`）结果确定：`a` 先落地，`a.b` 总写入新创建的容器，不受 map 迭代随机序影响。
 :::
 
@@ -169,7 +169,7 @@ func main() {
 
 签名：`func (p *Processor) SetCreate(jsonStr, path string, value any, cfg ...Config) (string, error)`
 
-设置值并**自动创建不存在的中间路径**。是 `Set` + `CreatePaths=true` 的便捷封装，无论处理器自身配置如何都会创建路径。详见[CreatePaths 与 SetCreate](#createpaths-与-setcreate)。
+设置值并**自动创建不存在的中间路径**。等价于 `Set` 加 `CreatePaths=true`：无论处理器自身配置如何都会创建路径。详见[CreatePaths 与 SetCreate](#createpaths-与-setcreate)。
 
 **创建中间对象**
 
@@ -221,7 +221,7 @@ func main() {
 
 签名：`func (p *Processor) SetMultipleCreate(jsonStr string, updates map[string]any, cfg ...Config) (string, error)`
 
-批量设置多个值并自动创建中间路径。是 `SetMultiple` + `CreatePaths=true` 的便捷封装。
+批量设置多个值并自动创建中间路径。等价于 `SetMultiple` 加 `CreatePaths=true`。
 
 ```go
 result, err := p.SetMultipleCreate(data, map[string]any{
@@ -307,7 +307,7 @@ func main() {
 
 ## CreatePaths 与 SetCreate
 
-路径自动创建行为有两个控制入口，理解区别有助于在「按处理器配置」与「按调用强制」之间做选择：
+路径自动创建有两个控制入口，区别在于作用范围：
 
 | 方式 | 行为 | 适用场景 |
 |------|------|----------|
@@ -352,15 +352,15 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 
 ## Processor 合并方法
 
-Processor 提供与包级 [MergeJSON](../functions/modify#mergejson)、[MergeMany](../functions/modify#mergemany)、[CompareJSON](../helpers#comparejson) 对应的实例方法。
+Processor 另提供与包级 [MergeJSON](../functions/modify#mergejson)、[MergeMany](../functions/modify#mergemany)、[CompareJSON](../helpers#comparejson) 对应的实例方法。
 
 ### Processor.MergeJSON
 
 签名：`func (p *Processor) MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
 
-从 cfg 解析选项，按 `Config.MergeMode` 深度合并两个对象，再用本处理器重新编码结果。**省略 cfg 时使用处理器自身配置**——`New(cfg)` 时固化的 `MergeMode` 与编码选项直接生效，无需再次传入；传入 cfg 时则按 cfg 的 `MergeMode` 执行。
+从 cfg 解析选项，按 `Config.MergeMode` 深度合并两个对象，再用本处理器重新编码结果。**省略 cfg 时使用处理器自身配置**：`New(cfg)` 时固化的 `MergeMode` 与编码选项直接生效；传入 cfg 时按 cfg 的 `MergeMode` 执行。
 
-与包级函数一样，`Processor.MergeJSON` 不执行安全验证——它是仅做解码、深合并、再编码的结构性工具。需要安全验证时请使用 `CompareJSON`（始终执行安全验证；传入 cfg 时按 cfg，否则按处理器自身配置）。
+与包级函数一样，`Processor.MergeJSON` 不执行安全验证，只做解码、深合并、再编码。需要安全验证时用 `CompareJSON`（始终执行安全验证；传入 cfg 时按 cfg，否则按处理器自身配置）。
 
 ```go
 p, err := json.New()
@@ -382,7 +382,7 @@ result, err = p.MergeJSON(base, override, cfg)
 
 签名：`func (p *Processor) MergeMany(jsons []string, cfg ...Config) (string, error)`
 
-通过 `MergeJSON` 从左到右折叠切片，合并策略由 `Config.MergeMode` 决定（默认 `MergeUnion`）。少于 2 个 JSON 字符串时返回错误；任一合并步骤失败时返回携带失败索引的错误。
+用 `MergeJSON` 从左到右折叠切片，合并策略由 `Config.MergeMode` 决定（默认 `MergeUnion`）。少于 2 个 JSON 字符串时返回错误；任一步合并失败时返回携带失败索引的错误。
 
 ```go
 result, err := p.MergeMany([]string{config1, config2, config3})

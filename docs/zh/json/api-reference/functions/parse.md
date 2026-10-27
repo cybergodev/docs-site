@@ -1,13 +1,13 @@
 ---
 sidebar_label: "解析验证"
 title: "解析与验证函数 - CyberGo JSON | Valid 与 Parse 用法"
-description: "CyberGo JSON 是解析与验证 JSON 的 Go 库，提供 Parse/ParseAny 解析到结构体、Valid/ValidWithConfig 校验与 ValidateSchema 的 JSON Schema 验证，解析前均执行大小、深度与危险模式的安全校验，帮助开发者安全地解析不可信输入。"
+description: "解析与验证：Parse/ParseAny 解析到结构体或 any，Valid 检查有效性，ValidateSchema 按 Schema 返回全部校验错误。"
 sidebar_position: 60
 ---
 
 # 解析与验证函数
 
-json 包提供的解析和验证函数，支持将 JSON 解析到目标对象、通过 Processor 实例解析，以及 JSON 有效性验证和 JSON Schema 验证。
+json 包的解析与验证函数：把 JSON 解析到目标对象、用 Processor 实例解析，以及 JSON 有效性与 JSON Schema 验证。
 
 ## 解析函数
 
@@ -15,7 +15,7 @@ json 包提供的解析和验证函数，支持将 JSON 解析到目标对象、
 
 签名：`func Parse(jsonStr string, target any, cfg ...Config) error`
 
-将 JSON 字符串解析到 `target` 指针所指向的对象中。`target` 必须是一个**非 nil 指针**（传 `nil` 或非指针会返回参数错误）。与 `Get` 一致，`Parse` 在解析前对输入执行安全校验（大小、嵌套深度、危险模式，受 `cfg` 与处理器配置约束）。
+将 JSON 字符串解析到 `target` 指针指向的对象。`target` 必须是**非 nil 指针**；传 `nil` 或非指针返回参数错误。与 `Get` 一致，`Parse` 在解析前对输入执行安全校验（大小、嵌套深度、危险模式），范围受 `cfg` 与处理器配置约束。
 
 **参数**
 
@@ -95,7 +95,7 @@ func main() {
 
 签名：`func ParseAny(jsonStr string, cfg ...Config) (any, error)`
 
-将 JSON 字符串解析并返回根值为 `any` 类型，无需预先声明目标变量。
+将 JSON 字符串解析为根值 `any`，无需预先声明目标变量。
 
 ```go
 package main
@@ -123,7 +123,7 @@ func main() {
 
 签名：`func (p *Processor) Parse(jsonStr string, target any, cfg ...Config) error`
 
-通过 Processor 实例解析 JSON 到目标指针。
+用 Processor 实例把 JSON 解析到目标指针。
 
 ```go
 p, err := json.New()
@@ -143,7 +143,7 @@ if err != nil {
 
 签名：`func (p *Processor) ParseAny(jsonStr string, cfg ...Config) (any, error)`
 
-通过 Processor 实例解析 JSON 并返回 `any` 类型，行为与包级 `ParseAny` 相同。
+用 Processor 实例解析 JSON 并返回 `any`，行为与包级 `ParseAny` 相同。
 
 ```go
 p, err := json.New()
@@ -163,9 +163,9 @@ data, err := p.ParseAny(`{"name": "test"}`)
 
 签名：`func Valid(data []byte, cfg ...Config) bool`
 
-验证 JSON 字节切片是否有效。100% 兼容 `encoding/json.Valid`：无 cfg 调用 `json.Valid(data)` 与标准库完全一致，返回普通 `bool`。
+校验 JSON 字节切片是否有效，返回普通 `bool`。签名与 `encoding/json.Valid` 一致，现有代码换 import 即可编译；但无 cfg 调用**不只做语法检查**：它经由默认处理器的安全校验，因此语法合法但超过 `MaxJSONSize`（默认 100MB）、含非法 UTF-8 或字符串值含危险模式（如 `__proto__`、`<script`）的输入也会返回 `false`。
 
-通过可选的尾随 `Config` 可应用安全限制（大小、嵌套深度、完整安全扫描等）。传入 cfg 时，`Valid` 委托给 `Processor.Valid` 并将任何错误折叠为 `false`。
+可选的结尾 `Config` 参数应用安全限制（大小、嵌套深度、完整安全扫描等）。传入 cfg 时，`Valid` 委托给 `Processor.Valid` 并把任何错误折叠为 `false`。需要标准库那种纯语法判断时，改用 `encoding/json.Valid`；或传 `SkipValidation: true` 的 cfg 给 `ValidWithConfig`（此时只保留大小与嵌套深度等基础检查）。
 
 ```go
 package main
@@ -177,12 +177,12 @@ import (
 
 func main() {
 	data := []byte(`{"name": "test"}`)
-	// 兼容 encoding/json（无 cfg）
+	// 与 encoding/json 签名一致（无 cfg）
 	if json.Valid(data) {
 		fmt.Println("有效 JSON")
 	}
 
-	// 带配置（非破坏性可选参数）
+	// 带配置（可选尾参）
 	if json.Valid(data, json.SecurityConfig()) {
 		fmt.Println("通过安全验证")
 	}
@@ -200,7 +200,7 @@ func main() {
 
 签名：`func ValidWithConfig(jsonStr string, cfg ...Config) (bool, error)`
 
-使用配置验证 JSON 字符串是否有效，并返回可能的错误信息。
+使用配置验证 JSON 字符串是否有效，并返回失败原因。
 
 ```go
 package main
@@ -226,7 +226,7 @@ func main() {
 
 签名：`func ValidateSchema(jsonStr string, schema *Schema, cfg ...Config) ([]ValidationError, error)`
 
-使用 JSON Schema 验证 JSON 数据。返回所有验证错误的列表。
+用 JSON Schema 验证 JSON 数据，返回全部验证错误。第二个返回值非 nil 表示校验过程本身失败（如输入不是合法 JSON、schema 为 nil），此时错误列表无意义。
 
 ```go
 package main

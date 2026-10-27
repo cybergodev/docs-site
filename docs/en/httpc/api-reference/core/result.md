@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Result"
 title: "Result - CyberGo HTTPC | Result Response Type"
-description: "HTTPC Result API reference: all 17 nil-safe methods (StatusCode, Body, Unmarshal, SaveToFile), plus RequestInfo/ResponseInfo/RequestMeta sub-types explained."
+description: "HTTPC Result reference: 17 nil-safe methods, status checks, cookie access, JSON parsing, file saving, and the RequestInfo/ResponseInfo/RequestMeta sub-types."
 sidebar_position: 30
 ---
 
 # Result
 
-Result wraps the HTTP response and request metadata, providing convenient access methods. It is obtained via `Client.Request()` or package-level functions.
+Result wraps the HTTP response and request metadata and provides nil-safe access methods. It is returned by `Client.Request()` or the package-level functions.
 
 ```go
 type Result struct {
@@ -23,33 +23,31 @@ type Result struct {
 |-------|------|-------------|
 | `Result.Request` | `*RequestInfo` | Details of the request as finally sent (after redirects); nil-safe methods check it automatically |
 | `Result.Response` | `*ResponseInfo` | Final response data; nil when the request errored |
-| `Result.Meta` | `*RequestMeta` | Request-execution metadata (duration, attempts, proxy, redirect chain); may be nil |
+| `Result.Meta` | `*RequestMeta` | Request-execution metadata (duration, attempts, proxy, redirect chain); nil only in zero-value Results constructed by callers |
 
 ### Method Overview
 
-All methods are defined on the `*Result` pointer receiver and are nil-receiver-safe (returning zero values instead of panicking):
+All methods are defined on the `*Result` pointer receiver and are nil-receiver-safe: they return zero values instead of panicking.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `Result.StatusCode` | `func (r *Result) StatusCode() int` | Returns the HTTP status code; nil-safe (returns 0) |
-| `Result.Body` | `func (r *Result) Body() string` | Returns the response body as a string; nil-safe (returns an empty string) |
-| `Result.RawBody` | `func (r *Result) RawBody() []byte` | Returns the raw response-body bytes; nil-safe (returns nil) |
+| `Result.StatusCode` | `func (r *Result) StatusCode() int` | Returns the HTTP status code; nil-safe, returns 0 |
+| `Result.Body` | `func (r *Result) Body() string` | Returns the response body as a string; nil-safe, returns an empty string |
+| `Result.RawBody` | `func (r *Result) RawBody() []byte` | Returns the raw response-body bytes; nil-safe, returns nil |
 | `Result.Proto` | `func (r *Result) Proto() string` | Returns the HTTP protocol version (e.g. `"HTTP/1.1"`) |
-| `Result.IsSuccess` | `func (r *Result) IsSuccess() bool` | Returns true for 2xx status codes |
-| `Result.IsRedirect` | `func (r *Result) IsRedirect() bool` | Returns true for 3xx status codes |
-| `Result.IsClientError` | `func (r *Result) IsClientError() bool` | Returns true for 4xx status codes |
-| `Result.IsServerError` | `func (r *Result) IsServerError() bool` | Returns true for 5xx status codes |
-| `Result.Unmarshal` | `func (r *Result) Unmarshal(v any) error` | Parses the JSON response body into the target variable |
-| `Result.SaveToFile` | `func (r *Result) SaveToFile(filePath string) error` | Saves the response body to a file |
+| `Result.IsSuccess` | `func (r *Result) IsSuccess() bool` | Returns true when the status code is 2xx |
+| `Result.IsRedirect` | `func (r *Result) IsRedirect() bool` | Returns true when the status code is 3xx |
+| `Result.IsClientError` | `func (r *Result) IsClientError() bool` | Returns true when the status code is 4xx |
+| `Result.IsServerError` | `func (r *Result) IsServerError() bool` | Returns true when the status code is 5xx |
+| `Result.Unmarshal` | `func (r *Result) Unmarshal(v any) error` | Parses the JSON response body into `v` |
+| `Result.SaveToFile` | `func (r *Result) SaveToFile(filePath string) error` | Writes the response body to a file |
 | `Result.String` | `func (r *Result) String() string` | Returns a human-readable string representation (sensitive headers masked) |
 | `Result.ResponseCookies` | `func (r *Result) ResponseCookies() []*http.Cookie` | Returns all cookies from the response |
-| `Result.GetCookie` | `func (r *Result) GetCookie(name string) *http.Cookie` | Gets a response cookie by name; returns nil if not found |
-| `Result.HasCookie` | `func (r *Result) HasCookie(name string) bool` | Checks whether a response cookie with the given name exists |
+| `Result.GetCookie` | `func (r *Result) GetCookie(name string) *http.Cookie` | Returns the named response cookie, or nil if absent |
+| `Result.HasCookie` | `func (r *Result) HasCookie(name string) bool` | Returns whether the response contains the named cookie |
 | `Result.RequestCookies` | `func (r *Result) RequestCookies() []*http.Cookie` | Returns all cookies sent with the request |
-| `Result.GetRequestCookie` | `func (r *Result) GetRequestCookie(name string) *http.Cookie` | Gets a request cookie by name; returns nil if not found |
-| `Result.HasRequestCookie` | `func (r *Result) HasRequestCookie(name string) bool` | Checks whether a request cookie with the given name exists |
-
-The methods are detailed by functional group below.
+| `Result.GetRequestCookie` | `func (r *Result) GetRequestCookie(name string) *http.Cookie` | Returns the named request cookie, or nil if absent |
+| `Result.HasRequestCookie` | `func (r *Result) HasRequestCookie(name string) bool` | Returns whether the request contains the named cookie |
 
 ```go
 result, err := httpc.Get("https://api.example.com/users/1")
@@ -62,11 +60,11 @@ fmt.Println(result.Body())       // {"id":1,"name":"test"}
 ```
 
 :::tip
-Result is created fresh for each request and reclaimed automatically by GC — no manual release needed.
+Result is created fresh for each request and reclaimed by GC; no manual release is needed.
 :::
 
 :::tip Access style
-Prefer the nil-safe accessor methods (`StatusCode`, `Body`, `GetCookie`, etc.). The `Request`/`Response`/`Meta` fields are exported mainly so tests and mocks can construct a Result directly; before reading them off a client-returned Result, nil-check the nested pointers (`Response` may be nil when the request failed).
+Prefer the nil-safe accessor methods (`StatusCode`, `Body`, `GetCookie`, etc.). The `Request`/`Response`/`Meta` fields are exported mainly so tests and mocks can construct a Result directly. Before reading them off a client-returned Result, nil-check the nested pointers: `Response` is nil when the request failed.
 :::
 
 ## Basic Methods
@@ -77,7 +75,7 @@ Prefer the nil-safe accessor methods (`StatusCode`, `Body`, `GetCookie`, etc.). 
 func (r *Result) StatusCode() int
 ```
 
-Returns the HTTP status code. Nil-safe, returns 0.
+Returns the HTTP status code. Nil-safe: returns 0.
 
 ### Body
 
@@ -85,7 +83,7 @@ Returns the HTTP status code. Nil-safe, returns 0.
 func (r *Result) Body() string
 ```
 
-Returns the response body as a string. Nil-safe, returns an empty string.
+Returns the response body as a string. Nil-safe: returns an empty string.
 
 ### RawBody
 
@@ -93,7 +91,7 @@ Returns the response body as a string. Nil-safe, returns an empty string.
 func (r *Result) RawBody() []byte
 ```
 
-Returns the response body as raw bytes. Nil-safe, returns nil.
+Returns the response body as raw bytes. Nil-safe: returns nil.
 
 ### Proto
 
@@ -111,7 +109,7 @@ Returns the HTTP protocol version, e.g. `"HTTP/1.1"`, `"HTTP/2.0"`.
 func (r *Result) IsSuccess() bool
 ```
 
-Returns true for 2xx status codes.
+Returns true when the status code is 2xx.
 
 ### IsRedirect
 
@@ -119,7 +117,7 @@ Returns true for 2xx status codes.
 func (r *Result) IsRedirect() bool
 ```
 
-Returns true for 3xx status codes.
+Returns true when the status code is 3xx.
 
 ### IsClientError
 
@@ -127,7 +125,7 @@ Returns true for 3xx status codes.
 func (r *Result) IsClientError() bool
 ```
 
-Returns true for 4xx status codes.
+Returns true when the status code is 4xx.
 
 ### IsServerError
 
@@ -135,7 +133,7 @@ Returns true for 4xx status codes.
 func (r *Result) IsServerError() bool
 ```
 
-Returns true for 5xx status codes.
+Returns true when the status code is 5xx.
 
 ```go
 result, _ := client.Get(url)
@@ -165,7 +163,7 @@ Returns all cookies from the response.
 func (r *Result) GetCookie(name string) *http.Cookie
 ```
 
-Gets a response cookie by name; returns nil if not found.
+Returns the named response cookie, or nil if absent.
 
 ```go
 cookie := result.GetCookie("session")
@@ -180,7 +178,7 @@ if cookie != nil {
 func (r *Result) HasCookie(name string) bool
 ```
 
-Checks whether a cookie with the specified name exists in the response.
+Returns whether the response contains the named cookie.
 
 ### RequestCookies
 
@@ -196,7 +194,7 @@ Returns all cookies sent with the request.
 func (r *Result) GetRequestCookie(name string) *http.Cookie
 ```
 
-Gets a request cookie by name.
+Returns the named request cookie, or nil if absent.
 
 ### HasRequestCookie
 
@@ -204,7 +202,7 @@ Gets a request cookie by name.
 func (r *Result) HasRequestCookie(name string) bool
 ```
 
-Checks whether a cookie with the specified name exists in the request.
+Returns whether the request contains the named cookie.
 
 ## JSON Parsing
 
@@ -214,12 +212,12 @@ Checks whether a cookie with the specified name exists in the request.
 func (r *Result) Unmarshal(v any) error
 ```
 
-Parses the JSON response body into the target variable. Follows `json.Unmarshal` conventions.
+Parses the JSON response body into `v`, following `json.Unmarshal` conventions.
 
 | Error | Trigger Condition |
 |-------|-------------------|
-| `ErrResponseBodyEmpty` | Response body is empty |
-| `ErrResponseBodyTooLarge` | Response body exceeds the 50MB JSON-parsing size limit |
+| `ErrResponseBodyEmpty` | The response body is empty (including when Result or Response is nil) |
+| `ErrResponseBodyTooLarge` | The response body exceeds the 50MB JSON-parsing limit (the error reports the actual byte count) |
 
 ```go
 var user User
@@ -237,11 +235,13 @@ fmt.Println(user.Name)
 func (r *Result) SaveToFile(filePath string) error
 ```
 
-Saves the response body to a file. The file path is security-validated (path-traversal protection, symlink checking, system-path protection).
+Writes the response body to a file, unconditionally overwriting an existing target (unlike `Download`, which returns `ErrFileExists` by default). The file path is security-validated (path-traversal protection, symlink checks, system-path protection). Content is first written to a `<path>.httpc-tmp` temporary file and atomically renamed into place once validation passes; the file is written with `0644` permissions.
 
 | Error | Trigger Condition |
 |-------|-------------------|
-| `ErrResponseBodyEmpty` | Response body is empty |
+| `ErrResponseBodyEmpty` | The response body is nil or empty (including when Result or Response is nil) |
+| `ErrDownloadInProgress` | A `Download` or another `SaveToFile` in the same process is already writing the same target path |
+| Wrapped error | Path validation failed or the write failed |
 
 ```go
 result, _ := client.Get("https://example.com/data.csv")
@@ -259,9 +259,9 @@ if err := result.SaveToFile("/tmp/data.csv"); err != nil {
 func (r *Result) String() string
 ```
 
-`String` returns a human-readable string representation (implements `fmt.Stringer`). Sensitive headers are automatically masked; the response body content is **never included** — only its size in bytes is reported (`Body: [N bytes omitted]`), preventing credentials and session data from leaking into logs. A nil Result, or one without a response, yields `Result{}`.
+`String` returns a human-readable string representation (it implements `fmt.Stringer`). Sensitive headers are masked automatically. The response body content is **never included**: only its size in bytes is reported (`Body: [N bytes omitted]`), which keeps credentials and session data out of logs. A nil Result, or one without a response, yields `Result{}`.
 
-The masked headers are `Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `X-Auth-Token`, and `Proxy-Authorization`, shown in the header list as `Name: ***`.
+Masked headers: `Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `X-Auth-Token`, and `Proxy-Authorization`, shown in the header list as `Name: ***`.
 
 ```go
 result, _ := client.Get(url)
@@ -337,7 +337,7 @@ Request-execution metadata. Accessed via `result.Meta`.
 |-------|-------------|
 | `RequestMeta.Duration` | Total time from request start to response completion |
 | `RequestMeta.Attempts` | Total attempts including retries |
-| `RequestMeta.ProxyURL` | Proxy URL actually used by the final attempt (`Connection.ProxyURL` or the selected proxy-pool entry); empty for direct connections, and system proxies (`EnableSystemProxy`) are likewise not recorded (still empty) — configure `Connection.ProxyURL` or `ProxyPool` explicitly when you need to observe the egress per request. With proxy rotation each retry may use a different proxy; this field reports the one that produced the returned response |
+| `RequestMeta.ProxyURL` | Proxy URL used by the attempt that produced the current response (`Connection.ProxyURL` or the selected proxy-pool entry). Empty for direct connections and for system proxies (`EnableSystemProxy`); configure `Connection.ProxyURL` or `ProxyPool` explicitly when you need to observe egress per request |
 | `RequestMeta.RedirectChain` | Chain of redirect URLs followed |
 | `RequestMeta.RedirectCount` | Number of redirects followed |
 

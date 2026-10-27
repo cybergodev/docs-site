@@ -19,7 +19,7 @@ type HookEvent int
 func (e HookEvent) String() string
 ```
 
-钩子事件类型，`String()` 返回事件名（未知值返回 `"Unknown"`）。
+`HookEvent` 是钩子事件类型，`String()` 返回事件名（未知值返回 `"Unknown"`）。
 
 | 常量 | String() | 触发时机 |
 |------|----------|----------|
@@ -144,7 +144,7 @@ type HookContext struct {
 
 ## HooksConfig
 
-结构化钩子配置，推荐用于批量注册钩子。
+`HooksConfig` 是结构化钩子配置，推荐用于批量注册钩子。
 
 ```go
 type HooksConfig struct {

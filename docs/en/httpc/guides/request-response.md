@@ -7,6 +7,8 @@ sidebar_position: 20
 
 # Request and Response
 
+Requests and responses are the two ends of HTTPC: the request side is configured through `With*` options (method, headers, body, and control parameters), while the response side is a `Result` object carrying the status code, content, and execution metadata.
+
 ## Sending Requests
 
 ### Package-Level Functions
@@ -25,7 +27,7 @@ fmt.Println(result.Body())
 
 Supported HTTP methods: `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Options`.
 
-Package-level functions share a lazily initialized default client, which you can take over with `SetDefaultClient` and release with `CloseDefaultClient` (see the [Tutorial](./tutorial)).
+Package-level functions share a lazily initialized default client, which can be replaced with `SetDefaultClient` and released with `CloseDefaultClient`; see the [Tutorial](./tutorial) for the creation and rebuild rules.
 
 ### Client Instance
 
@@ -68,7 +70,9 @@ result, err := client.Get(url,
 )
 ```
 
-All header keys and values go through CRLF-injection validation; keys or values that contain control characters or exceed the length limit return `ErrInvalidHeader`. The order in which request headers take effect: request-body Content-Type → client default headers (`Defaults.Headers`) → headers set by options/middleware (later entries override earlier ones with the same name).
+All header keys and values go through CRLF-injection validation; keys or values containing control characters or exceeding the length limit return `ErrInvalidHeader`.
+
+For same-name headers the priority is: headers set by options and middleware rank highest (written directly, overriding any existing value); client default headers (`Defaults.Headers`) come next, filling in only when the header is empty; the `Content-Type` auto-detected from the request body ranks lowest and applies only when none was set explicitly.
 
 ### Request Body
 
@@ -96,7 +100,7 @@ result, err := client.Post(url, httpc.WithBinary(data, "image/png"))
 result, err := client.Post(url, httpc.WithBody(data))
 // string -> text/plain; charset=utf-8, []byte -> application/octet-stream,
 // map[string]string -> application/x-www-form-urlencoded,
-// *FormData -> multipart/form-data, io.Reader -> passed through,
+// *FormData -> multipart/form-data, io.Reader -> passed through (no Content-Type set),
 // other -> application/json
 // Optional explicit specification: httpc.WithBody(data, httpc.BodyJSON)
 ```
@@ -161,8 +165,8 @@ result, err := client.Post(url,
 )
 ```
 
-:::warning io.Reader bypasses size validation
-Request bodies of type `io.Reader` **do not go through request-body size validation**. When reading from an untrusted source, always wrap it in `io.LimitReader` to prevent memory exhaustion.
+:::warning io.Reader request bodies and the size limit
+With the default `Security.MaxRequestBodySize = 0`, an `io.Reader` request body has no size limit; once a limit is set, the engine enforces it at send time and aborts an over-limit transfer. Wrapping untrusted sources in `io.LimitReader` is still recommended. See [Streaming Requests](#streaming-requests) for the full semantics.
 :::
 
 ### Query Parameters
@@ -246,7 +250,7 @@ result, err := client.Get(url, httpc.WithContext(ctx))
 ```
 
 :::tip WithMaxRedirects(0) does not disable
-`WithMaxRedirects(0)` does **not** disable redirects -- the engine treats `0` as "unset" and falls back to the default of 10. To disable redirect following entirely, use `WithFollowRedirects(false)`. For full redirect control, chain tracking, and domain whitelisting, see [Redirects](./redirects).
+`WithMaxRedirects(0)` does **not** disable redirects — the engine treats `0` as "unset" and falls back to the default of 10. To disable redirect following entirely, use `WithFollowRedirects(false)`. For full redirect control, chain tracking, and domain whitelisting, see [Redirects](./redirects).
 :::
 
 ### Callbacks
@@ -264,7 +268,7 @@ result, err := client.Get(url,
 )
 ```
 
-A callback returning an error aborts the request (an error from `OnResponse` fails the whole request). Multiple callbacks run chained in the order they were added.
+Any callback returning an error aborts the request: an OnRequest error returns before the request is sent, and an `OnResponse` error fails the whole request. Multiple callbacks run chained in the order they were added; once one fails, the rest do not run.
 
 :::tip Callbacks run per attempt, middleware per request
 `WithOnRequest`/`WithOnResponse` fire inside the engine and run on **every attempt (including retries)**; the middleware chain wraps the entire retry cycle and runs once per logical request. Use callbacks when you need per-attempt granularity, and [middleware](./middleware-chain) when you need per-request granularity.
@@ -322,7 +326,7 @@ A `Result` is made up of three parts: `Request` (the request actually sent), `Re
 | Request cookies | `GetRequestCookie(name)` / `HasRequestCookie(name)` / `RequestCookies()` | Cookies actually sent with the request (final values after redirects) |
 | Metadata | `Meta.Duration` / `Attempts` / `RedirectChain` / `RedirectCount` / `ProxyURL` | Duration, attempts (including the first), redirect chain, the proxy used for this request |
 | Files | `SaveToFile(path)` | Writes the response body to a file (with path-traversal / symlink safety checks) |
-| Debugging | `String()` | Redacted summary: sensitive headers masked, body truncated to 200 characters |
+| Debugging | `String()` | Redacted summary: sensitive headers masked as `***`; the body only reports a byte count and is never printed |
 
 All accessors are nil-safe: when `Result` or an inner pointer is nil, `StatusCode()` returns 0, `Body()` returns an empty string, and the check methods return false — no panic.
 
@@ -362,12 +366,12 @@ if err := result.SaveToFile("user.json"); err != nil {
 
 ### Debug Output
 
-`String()` produces a one-line summary suitable for logging: sensitive headers (`Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, etc.) show up as `***`, and the response body is truncated to 200 characters:
+`String()` produces a one-line summary suitable for logging: sensitive headers (`Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, etc.) show up as `***`, and the response body is **never printed** — only its byte count is reported (response bodies often carry tokens and session data, which do not belong in logs):
 
 ```go
 fmt.Println(result.String())
 // Example output: Result{Status: 200 200 OK, ContentLength: 5102, Duration: 150ms,
-// Attempts: 1, Headers: 14 [Content-Length, Content-Type, ...], Body: {"id":...}
+// Attempts: 1, Headers: 14 [Content-Length, Content-Type, ...], Body: [5102 bytes omitted]
 ```
 
 ## Context Control
@@ -387,18 +391,20 @@ go func() {
 result, err := httpc.Request(ctx, "GET", url)
 ```
 
-How `WithTimeout` relates to a context timeout: `WithTimeout` is the **total budget across all retries** — the engine wraps it around the entire retry loop; context cancellation takes effect immediately at the transport layer.
+How `WithTimeout` relates to a context timeout: `WithTimeout` is the total budget across all retry attempts, and the engine wraps it around the entire retry loop; context cancellation takes effect immediately at the transport layer. See [Retry and Fault Tolerance](./retry-fault-tolerance) for the full budget semantics.
 
 ## Streaming Requests
 
-Mirroring [streaming responses](#streaming-responses), the upload side can stream too: `WithBody` accepts any `io.Reader` directly, sending data as it is generated instead of reading the entire request body into memory first. This section digs into the semantics and the pitfalls; for the complete large-file upload story (chunking, checksums), see [File Upload and Download](./file-transfer#streaming-upload-large-files).
+Mirroring [streaming responses](#streaming-responses), the upload side streams too. `WithBody` accepts any `io.Reader` directly and sends data as it is generated, without reading the entire request body into memory first. For the complete large-file upload story (chunking, checksums), see [File Upload and Download](./file-transfer#streaming-upload-large-files).
 
 ### io.Reader Request Bodies
 
-`WithBody(reader)` takes the auto-detection `io.Reader` branch: the Reader is passed through to the transport as-is and **no Content-Type is set** (add one yourself with `WithHeader` when needed). The engine neither pre-reads nor wraps it — the pace of reading is driven entirely by the HTTP transport.
+`WithBody(reader)` takes the auto-detection `io.Reader` branch: the Reader is passed through to the transport as-is and no `Content-Type` is set (add one with `WithHeader` when needed). The engine does not pre-read the data; the pace of reading is driven by the HTTP transport. When `Security.MaxRequestBodySize` is set, the engine wraps the reader in a counting reader at send time and enforces the limit.
 
-:::warning Reader bodies are not size-validated
-An `io.Reader` is consumed by reading and has no way to know its data length in advance, so HTTPC performs **no size validation** on it — `Security.MaxRequestBodySize` only applies to in-memory request bodies (`string`, `[]byte`, `url.Values`, `*FormData`) and always lets an `io.Reader` through. When reading from an untrusted source, always wrap it in `io.LimitReader` — that is the only guardrail. For the rationale, see the FAQ: [Why isn't an io.Reader request body size-validated?](../faq/#why-isn-t-an-io-reader-request-body-size-validated)
+:::warning Reader bodies and the size limit
+An `io.Reader` is consumed by reading and its length is not known in advance. With the default `Security.MaxRequestBodySize = 0` there is no limit; when a limit is set explicitly, the engine enforces it at send time and aborts the transfer with `request body exceeds limit of N bytes` once the limit is crossed.
+
+For untrusted sources, wrapping with `io.LimitReader` at the source is still recommended. For the rationale, see the FAQ: [Why isn't an io.Reader request body size-validated?](../faq/#why-isn-t-an-io-reader-request-body-size-validated)
 :::
 
 ### Retry vs. Streaming Trade-offs
@@ -407,17 +413,17 @@ Retries need to replay the request body, but an `io.Reader` is drained after a s
 
 | Retry configuration | Request-body behavior |
 |---------------------|------------------------|
-| Enabled (default `Retry.MaxRetries = 3`) | **Before the first attempt**, the Reader is fully read into memory and converted to `[]byte`; every retry rebuilds a Reader to replay it. Cap of 100MB — beyond that an error is returned (`retry not supported for streaming bodies exceeding 104857600 bytes`) |
-| `WithMaxRetries(0)` | The Reader goes straight to the transport — **zero-buffer true streaming**; the trade-off is that the request will not be retried |
+| Enabled (default `Retry.MaxRetries = 3`) | Before the first attempt, the Reader is fully read into memory and converted to `[]byte`; every retry rebuilds a Reader to replay it. Cap of 100MB; beyond that an error is returned (`retry not supported for streaming bodies exceeding 104857600 bytes`) |
+| `WithMaxRetries(0)` | The Reader goes straight to the transport: zero-buffer true streaming. The trade-off is that the request is not retried |
 
 Two knock-on differences:
 
 - **Content-Length**: on the buffered path the length becomes known once converted to `[]byte`, so the request carries Content-Length; on the pass-through path the length is unknown and HTTP/1.1 automatically uses chunked transfer encoding.
-- **Memory footprint**: with the default retry configuration, the request body is fully in memory even if the first attempt succeeds — the "streaming" here only saves you from assembling a `[]byte` by hand; it is not zero-copy. For true generate-and-send streaming you must use `WithMaxRetries(0)`.
+- **Memory footprint**: with the default retry configuration the request body is fully in memory even when the first attempt succeeds. "Streaming" here only saves assembling a `[]byte` by hand; it is not zero-copy. For generate-and-send streaming, set `WithMaxRetries(0)`.
 
 ### WithStreamBody Is Response-Side
 
-The name of `WithStreamBody(true)` suggests a request-body streaming switch, but it is actually a **response-side** mechanism: it skips buffering the response body in memory and is used internally by the file download API. It does not affect how the request body is processed, nor does it change the retry buffering described above — whether the request body streams depends only on whether you pass an `io.Reader` and whether retries are enabled. See [Streaming Responses](#streaming-responses) below.
+`WithStreamBody(true)` is a response-side mechanism, not a request-body streaming switch: it skips in-memory buffering of the response body and is used internally by the file download API. It does not affect how the request body is processed, nor does it change the retry buffering described above; whether the request body streams depends only on whether an `io.Reader` is passed and whether retries are enabled. See [Streaming Responses](#streaming-responses) below.
 
 ### Zero-Copy Uploads with io.Pipe
 
@@ -477,13 +483,13 @@ func main() {
 
 Key points:
 
-- Any producer error must reach the consumer via `pw.CloseWithError`; otherwise the peer only sees EOF and corrupted data would be treated as a complete upload
-- An `io.Pipe` cannot be replayed, which makes it a natural fit for `WithMaxRetries(0)`; if you must retry, switch to a buffered approach (e.g. stage to disk first, then upload)
-- The server receives the compressed data chunk by chunk per `Content-Type: application/gzip` — the receiver can decompress on the fly, and neither side needs to buffer the whole payload
+- Any producer error must reach the consumer via `pw.CloseWithError`; otherwise the peer only sees EOF and partial data is treated as a complete upload
+- An `io.Pipe` cannot be replayed, which suits `WithMaxRetries(0)`; when retries are required, use a buffered approach (e.g. stage to disk first, then upload)
+- The server receives the compressed data chunk by chunk per `Content-Type: application/gzip`; the receiver can decompress on the fly, and neither side needs to buffer the whole payload
 
 ## Streaming Responses
 
-`WithStreamBody(true)` is an internal mechanism used during file downloads to avoid caching the entire response body in memory. When enabled, the response body is not read into `Result` (`Body()` and `RawBody()` return empty values).
+`WithStreamBody(true)` is a response-side mechanism used internally by file downloads to avoid caching the entire response body in memory. Applying it to standard request methods such as `Get`/`Post`/`Request` makes the request fail with `ErrStreamBodyRequiresDownload`.
 
 :::warning
 `WithStreamBody(true)` is used internally by the file download API. For streaming response content, use the [file download API](./file-transfer).
@@ -499,32 +505,34 @@ result, err := client.Download(context.Background(), url, cfg)
 
 ## Response Decompression
 
-HTTPC automatically decompresses gzip and deflate content encodings. The transport disables the Go standard library's transparent decompression and the engine handles it manually: requests automatically carry `Accept-Encoding: gzip, deflate` (overridable with `WithHeader("Accept-Encoding", ...)`).
+HTTPC automatically decompresses `gzip` and `deflate` content encodings. The transport disables the Go standard library's transparent decompression, and the engine handles it manually.
+
+Requests carry `Accept-Encoding: gzip, deflate` by default; override it with `WithHeader("Accept-Encoding", ...)`.
 
 Supported encodings:
 
 | Content-Encoding | Handling |
 |------------------|----------|
 | `gzip` / `deflate` | Decompressed automatically (decompressors are reused from a pool) |
-| `br` (brotli) / `compress` (LZW) | Not supported — an error is returned |
-| `identity` / unknown encodings | Passed through as-is |
+| `br` (brotli) / `zstd` / `compress` (LZW) / any other unknown encoding | Not supported — an error is returned; `br` and `zstd` work only on the `Security.TLSFingerprint` path |
+| `identity` | Passed through as-is |
 
-You can cap the decompressed size through the security configuration to defend against decompression bombs:
+The security configuration caps the decompressed size to defend against decompression bombs:
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // Response body cap: enforced on streaming downloads; fallback for the decompressed cap on non-streaming reads
-cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // Max 100MB after decompression
+cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // Cap for uncompressed response bodies (streaming downloads included)
+cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // Max 100MB after decompression for compressed responses
 ```
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `MaxResponseBodySize` | 10MB | Response body cap for streaming downloads; in non-streaming reads it acts as the fallback for the decompressed cap |
-| `MaxDecompressedBodySize` | 100MB | Decompressed response body size cap (falls back to `MaxResponseBodySize` when unset) |
+| `MaxResponseBodySize` | 10MB | Cap for uncompressed (identity) response bodies and streaming downloads; when both it and the decompressed cap are 0, the engine falls back to a 100MB default |
+| `MaxDecompressedBodySize` | 100MB | Size cap for decompressed compressed responses; when 0 it falls back to `MaxResponseBodySize`, and to 100MB if that is also 0 |
 
 The compressed body has a separate 100MB hard cap (`maxCompressedSize`, not configurable) that defends against decompression bombs, independent of `MaxResponseBodySize`.
 
-When a limit is exceeded, an error containing `"exceeds limit"` is returned, which you can handle via the `ClientError` type. `ErrResponseBodyTooLarge` is returned when `Result.Unmarshal()` parses a response body exceeding the 50MB JSON size limit (independent of `MaxResponseBodySize`).
+When a limit is exceeded, the error message contains `"exceeds limit"` and can be handled through `ClientError`. `Result.Unmarshal()` returns `ErrResponseBodyTooLarge` when it parses a response body exceeding the 50MB JSON size limit; that limit is independent of `MaxResponseBodySize`.
 
 ## Formatting Helpers
 

@@ -1,13 +1,19 @@
 ---
 sidebar_label: "Link Extraction"
 title: "Link Extraction - CyberGo html | Resource Collection Guide"
-description: "CyberGo html link extraction guide: ExtractAllLinks for eight resource link types, GroupLinksByType grouping, Include field filtering, BaseURL auto-detection."
-sidebar_position: 4
+description: "CyberGo html link extraction: ExtractAllLinks enumerates eight resource types, GroupLinksByType groups them, Include filters narrow the set."
+sidebar_position: 40
 ---
 
 # Link Extraction
 
-Independent from content extraction, the library provides a dedicated link extraction API for crawlers and resource collection scenarios.
+`ExtractAllLinks` enumerates every resource link a page references, without HTML sanitization. This page covers link types, grouping, filters, and URL resolution.
+
+## How It Differs from Content Extraction
+
+`Extract` returns the `<a>` links inside the cleaned body text (`Result.Links`), each with visible text, a `nofollow` flag, and a position. `ExtractAllLinks` returns every resource the unsanitized page references, including `<script>` and `<iframe>` elements that `Extract` would strip, plus stylesheets and icons. Use the first for "links in the article", the second for "what the page loads".
+
+Skipping sanitization means no tag or attribute removal; URLs are still validated. Dangerous schemes (`javascript:`, `vbscript:`, `file:`) and oversized data URLs are dropped and never reach the result.
 
 ## Basic Usage
 
@@ -31,20 +37,26 @@ Example output:
 [link] Go Official Site - https://go.dev
 ```
 
+Results are sorted by `URL` in ascending order, and each URL appears once. A fragment-only (`#top`) or query-only (`?page=2`) href is page-internal navigation and produces no result.
+
 ## Link Types
 
-The `Type` field of `LinkResource` identifies the resource type:
+The `Type` field of `LinkResource` identifies the resource:
 
-| Type | Source Element | Description |
+| Type | Source element | Notes |
 |------|---------------|-------------|
 | `link` | `<a>` | Page links |
 | `image` | `<img>` | Image resources |
-| `video` | `<video>`, and `<iframe>`/`<embed>`/`<object>` (only when src is a video URL) | Video resources |
-| `audio` | `<audio>` | Audio resources |
+| `video` | `<video>`, `<source type="video/*">`, and `<iframe>`/`<embed>`/`<object>` whose `src` is a video URL | Video resources |
+| `audio` | `<audio>`, `<source type="audio/*">` | Audio resources |
 | `css` | `<link rel="stylesheet">` | Stylesheets |
-| `media` | `<source>` | Generic media resources (when video/audio is indeterminate) |
+| `media` | `<source>` | Generic media: the `type` is neither `video/*` nor `audio/*`, and the URL extension does not decide video or audio |
 | `js` | `<script>` | Script files |
 | `icon` | `<link rel="icon">` | Site icons |
+
+:::tip How `<source>` is classified
+A `<source>` first consults its `type` attribute: `video/*` becomes `video`, `audio/*` becomes `audio` (case-insensitive). Without a usable `type` the URL extension decides; when neither decides, it becomes `media`. Measured: `<source src="/x.unknownext">` and `<source type="application/vnd.apple.mpegurl">` both produce `media`.
+:::
 
 ## Group by Type
 
@@ -78,18 +90,18 @@ Example output:
   https://example.com/app.js
 ```
 
-:::tip Group order
-`GroupLinksByType` returns a `map`; **iteration order between groups is non-deterministic**; within each group, URLs stay in ascending order.
+:::tip Group order is not fixed
+`GroupLinksByType` returns a `map`, so iteration order between groups is non-deterministic. Within each group, the URL ascending order from `ExtractAllLinks` is preserved. Sort the keys if you need stable output.
 :::
 
-## Configuring Filter Rules
+## Configuring Filters
 
-Control which link types to extract via `Config` fields:
+Use `Config` fields to control which types are collected:
 
 ```go
 cfg := html.DefaultConfig()
 
-// Only extract images and CSS
+// Collect only images and CSS
 cfg.IncludeImages = true
 cfg.IncludeVideos = false
 cfg.IncludeAudios = false
@@ -104,22 +116,26 @@ links, _ := html.ExtractAllLinks(data, cfg)
 
 ### Filter Options
 
-| Config Field | Default | Controls |
+| Config field | Default | Controls |
 |-------------|---------|----------|
 | `IncludeImages` | `true` | `<img>` tags |
-| `IncludeVideos` | `true` | `<video>`, `<iframe>`, `<embed>`, `<object>` |
-| `IncludeAudios` | `true` | `<audio>` tags |
+| `IncludeVideos` | `true` | `<video>`, `<source>` classified as video, `<iframe>`, `<embed>`, `<object>` |
+| `IncludeAudios` | `true` | `<audio>` and `<source>` classified as audio |
 | `IncludeCSS` | `true` | `<link rel="stylesheet">` |
 | `IncludeJS` | `true` | `<script>` tags |
-| `IncludeContentLinks` | `true` | `<a>` internal links |
-| `IncludeExternalLinks` | `true` | `<a>` external links |
+| `IncludeContentLinks` | `true` | `<a>` links with a relative href |
+| `IncludeExternalLinks` | `true` | `<a>` links with an absolute or protocol-relative href |
 | `IncludeIcons` | `true` | `<link rel="icon">` |
+
+:::warning Internal vs external looks only at the raw href
+`IncludeContentLinks` and `IncludeExternalLinks` split on the shape of the **raw href**: a prefix of `http://`, `https://`, or `//` makes it external, anything else internal. The host is **not** compared — an absolute link to the same site is still external. `LinkInfo.IsExternal` follows the same rule.
+:::
 
 ## URL Resolution
 
-### Relative URL Resolution
+### Relative URLs
 
-With `ResolveRelativeURLs` enabled, relative paths are automatically converted to absolute URLs:
+With `ResolveRelativeURLs` enabled (the default), relative paths resolve against `BaseURL`:
 
 ```go
 cfg := html.DefaultConfig()
@@ -131,16 +147,20 @@ links, _ := html.ExtractAllLinks(data, cfg)
 // ./style.css → https://example.com/docs/style.css
 ```
 
-### Auto-Detect Base URL
+Protocol-relative references (`//host/path`) pass through unchanged and do not inherit the scheme of `BaseURL`.
 
-If `ResolveRelativeURLs = true` is set without `BaseURL`, the library auto-detects from HTML:
+### Base URL Auto-Detection
 
-1. `<base href="...">` tag
-2. `<meta property="og:url">` or `canonical`
+When `ResolveRelativeURLs` is `true` and `BaseURL` is empty, the library infers a base in this order:
+
+1. `<base href="...">`
+2. `<meta property="og:url">` or `<meta property="canonical">`
 3. `<link rel="canonical">`
-4. Domain from the first absolute URL in the page
+4. The `scheme://host/` of the first absolute `href`/`src` on the page
 
-## Crawler Use Cases
+A `<base href>` that normalizes to empty (such as `about:blank` or `data:`) counts as unusable, and inference continues with the next step rather than abandoning URL resolution for the whole document.
+
+## Crawler Scenarios
 
 ### Collect All Page Resources
 
@@ -151,15 +171,15 @@ cfg.BaseURL = "https://target-site.com"
 
 links, _ := html.ExtractAllLinks(pageData, cfg)
 
-// Process by groups
+// Process by group
 groups := html.GroupLinksByType(links)
 
-// Download all images
+// Download every image
 for _, img := range groups["image"] {
     downloadFile(img.URL)
 }
 
-// Collect sub-page links for further crawling
+// Queue sub-page links for further crawling
 for _, link := range groups["link"] {
     if isSameDomain(link.URL) {
         addToQueue(link.URL)
@@ -167,7 +187,9 @@ for _, link := range groups["link"] {
 }
 ```
 
-### Extract Only Navigation Links
+The `isSameDomain` domain filter is yours to implement (see the warning above).
+
+### Collect Only Navigation Links
 
 ```go
 cfg := html.DefaultConfig()
@@ -183,16 +205,16 @@ cfg.IncludeIcons = false
 links, _ := html.ExtractAllLinks(data, cfg)
 ```
 
-## Extract from Files
+## Extracting from Files
 
 ```go
-// Package function
+// Package-level function
 links, err := html.ExtractAllLinksFromFile("page.html")
 
 // Processor instance
 p, _ := html.New()
 defer p.Close()
-links, err := p.ExtractAllLinksFromFile("page.html")
+links, err = p.ExtractAllLinksFromFile("page.html")
 ```
 
 ## Context Variants
@@ -207,5 +229,5 @@ links, err := html.ExtractAllLinksWithContext(ctx, data)
 ## Next Steps
 
 - [API Reference: Link Extraction](../../api-reference/modules/links) - Complete API signatures
-- [Batch Processing](../../api-reference/modules/batch) - Batch link extraction
+- [Batch Processing](../../api-reference/modules/batch) - Batch extraction
 - [Configuration](../../api-reference/core/config) - Link filter configuration

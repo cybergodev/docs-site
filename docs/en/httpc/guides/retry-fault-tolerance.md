@@ -7,11 +7,11 @@ sidebar_position: 70
 
 # Retry and Fault Tolerance
 
-Network requests are inherently unreliable — connections can drop, servers can be temporarily overloaded, and DNS resolution can time out. HTTPC ships with a smart retry engine that automatically handles transient failures so you can focus on business logic.
+Retry is HTTPC's automatic recovery mechanism for transient failures: when a request fails with a network error, a timeout, or a retryable status code, the engine resends it under the configured backoff policy until it succeeds or the budget runs out.
 
 ## Default Retry
 
-HTTPC's default retry configuration is carefully tuned and works out of the box:
+The retry parameters of `DefaultConfig()` are:
 
 ```go
 package main
@@ -63,11 +63,25 @@ By default, the following errors trigger a retry:
 | 502 Bad Gateway | Yes | `retryableStatusCodes` |
 | 503 Service Unavailable | Yes | `retryableStatusCodes` |
 | 504 Gateway Timeout | Yes | `retryableStatusCodes` |
-| Other 4xx client errors (400/401/403/404…) | No | The client request was wrong; retrying is pointless |
+| Other 4xx client errors (400/401/403/404…) | No | The request was invalid; retrying does not help |
 | `context.Canceled` | No | Fast path, returned directly |
 | `context.DeadlineExceeded` | No | Fast path, returned directly |
-| TLS/certificate errors | No | Not transient; retrying is pointless |
-| Configuration validation errors | No | Local bug; code must be fixed |
+| TLS/certificate errors | No | Not transient; retrying does not help |
+| Configuration validation errors | No | Local bug; the code must be fixed |
+
+### Configuration Validation
+
+`ValidateConfig`, called internally by `New`, validates the retry parameters and returns `ErrInvalidRetry` when a value is out of range:
+
+| Field | Valid range | Default |
+|------|----------|------|
+| `MaxRetries` | 0–10 | 3 |
+| `Delay` | 0–30min | 1s |
+| `BackoffFactor` | 1.0–10.0 | 2.0 |
+| `MaxRetryDelay` | 0–30min | 30s |
+| `EnableJitter` | Boolean | true |
+
+`WithMaxRetries(n)` applies the same 0–10 check at the request level and returns an error when the value is out of range. The zero values carry distinct semantics: `Delay = 0` is a legal value, and the engine starts the initial delay from the default 1s; `MaxRetryDelay = 0` selects the default 30s cap, so the cap cannot be turned off through this field; a `BackoffFactor` out of range (0, negative, or NaN) is rejected by `ValidateConfig` with `ErrInvalidRetry`.
 
 ## Backoff Math In Detail
 
@@ -102,16 +116,16 @@ Jitter formula: `result = baseDelay ± 10%`, i.e. `result ∈ [baseDelay × 0.9,
 | 6th retry (attempt 5) | 30s (after truncation) | 27s – 33s |
 
 :::tip Why iterative multiplication instead of math.Pow
-HTTPC uses a loop (`for i := 0; i < attempt; i++ { delay *= factor }`) rather than `math.Pow`. `math.Pow` calls transcendental functions (exp + log), far more expensive than a few float multiplies. The loop also checks `math.IsInf` to guard against overflow, falling back to `MaxRetryDelay` on overflow. On the retry hot path, this micro-optimization is worthwhile.
+HTTPC uses a loop (`for i := 0; i < attempt; i++ { delay *= factor }`) rather than `math.Pow`. `math.Pow` calls transcendental functions (exp and log), which cost more than a few float multiplies. The loop also checks `math.IsInf` to guard against overflow, falling back to `MaxRetryDelay` on overflow. This code sits on the hot path of every retry.
 :::
 
 :::warning Jitter is applied after the cap
-Jitter is applied **after** `MaxRetryDelay` truncation. Therefore the actual range for `attempt 5` is 27s–33s and may exceed the 30s cap. This is a design choice — the purpose of jitter is to spread out retry timing, and slightly exceeding the cap is harmless, while guaranteeing no major deviation.
+Jitter is applied **after** `MaxRetryDelay` truncation, so the actual wait range for `attempt 5` is 27s–33s, up to about 10% above the 30s cap. Jitter exists to spread out retry timing, and the overshoot is bounded by the jitter percentage.
 :::
 
 ## Retry-After Header Auto-Parsing
 
-When a server returns 429 (Too Many Requests) or 503 (Service Unavailable), it usually attaches a `Retry-After` response header telling the client when to retry. HTTPC parses this header automatically, supporting both formats.
+When a server returns 429 (Too Many Requests) or 503 (Service Unavailable), the response can carry a `Retry-After` header stating when a retry may occur. HTTPC parses this header automatically, supporting both formats.
 
 ### delta-seconds Format
 
@@ -144,12 +158,12 @@ Retry-After: Fri, 31 Jul 2026 15:00:00 GMT (2 hours away) ->  truncated to 60s
 ```
 
 :::warning Why truncate
-A malicious or misconfigured server may return an extremely large `Retry-After` value (e.g. `Retry-After: 999999`), causing the client to hang for a long time. The 60-second cap is a safety defense: even if the server asks for a 1-hour wait, HTTPC retries after at most 60 seconds. If your service has a sensible rate-limit policy (e.g. 60 per minute), the normal `Retry-After` value is well under 60s and is unaffected.
+A malicious or misconfigured server may return an extremely large `Retry-After` value (e.g. `Retry-After: 999999`), which would leave the client waiting for a long time. The 60-second cap covers that case: if the server asks for a one-hour wait, HTTPC retries after at most 60 seconds. This cap takes precedence over `MaxRetryDelay`. The delay parsed from `Retry-After` is used as-is with **no jitter applied** — jitter affects the exponential-backoff path only.
 :::
 
 ### Priority
 
-The `Retry-After` header takes **higher** priority than the exponential backoff delay. When the server returns a valid `Retry-After` value, that value is used directly (after truncation), skipping the backoff computation.
+The `Retry-After` header takes priority over the exponential backoff delay. When the server returns a valid `Retry-After` value, HTTPC uses that value directly (after truncation) and skips the backoff computation.
 
 ```go
 package main
@@ -186,15 +200,15 @@ func main() {
 }
 ```
 
-:::tip Retry-After applies to all retryable status codes
-`Retry-After` is not limited to 429/503 — it applies to responses with any retryable status code (408/429/500/502/503/504). As long as the response carries a `Retry-After` header, it is parsed and used.
+:::tip Retry-After applies to every retry-triggering status code
+`Retry-After` is not limited to 429/503: it takes effect for any status code that triggers the retry decision — the built-in 408/429/500/502/503/504 plus extension codes injected by `ProxyRotateOnStatus` (e.g. 403). Whenever the response carries a parseable `Retry-After` header, that value is used first.
 :::
 
 ## Backoff Strategies
 
 ### Exponential Backoff (Default)
 
-The most common strategy — delays grow by a factor, fast but not too aggressive:
+Delays multiply by `BackoffFactor` on each retry, growing quickly at first and then flattening:
 
 <!-- check-code: skip -->
 ```go
@@ -204,7 +218,7 @@ cfg.Retry.BackoffFactor = 2.0
 
 ### Gentle Exponential Backoff
 
-`PerformanceConfig()` uses a 1.5x factor for gentler growth, suited to high-throughput scenarios:
+`PerformanceConfig()` uses a `BackoffFactor` of 1.5, which grows more slowly than the default:
 
 <!-- check-code: skip -->
 ```go
@@ -215,7 +229,7 @@ cfg.Retry.Delay = 500 * time.Millisecond
 
 ### Fixed Delay
 
-The same interval between every retry, suited to scenarios with an explicit retry interval requirement:
+With `BackoffFactor = 1.0` every retry waits the same interval, for scenarios that require a fixed retry interval:
 
 <!-- check-code: skip -->
 ```go
@@ -225,7 +239,7 @@ cfg.Retry.BackoffFactor = 1.0
 
 ### Random Jitter
 
-Enable jitter to add a ±10% random offset to the base delay, preventing the "thundering herd" — many clients failing at once and then retrying simultaneously, causing a secondary overload:
+Jitter adds a ±10% random offset to the base delay, spreading out retry timing after a simultaneous failure so that many clients do not retry at the same moment and cause a secondary overload:
 
 <!-- check-code: skip -->
 ```go
@@ -238,13 +252,13 @@ cfg.Retry.EnableJitter = true
 // Client E: retries after 1.08s
 ```
 
-:::tip Always enable jitter
-Except in test scenarios (which need deterministic delays), production should always enable `EnableJitter = true`. This is a distributed-systems best practice that significantly reduces the risk of retry storms.
+:::tip Enable jitter in production
+Outside tests that need deterministic delays, set `EnableJitter = true` in production to reduce the risk of many clients retrying at the same time.
 :::
 
 ## Custom RetryPolicy
 
-Implementing the `RetryPolicy` interface gives you full control over retry behavior. The interface defines three methods:
+Implementing the `RetryPolicy` interface gives full control over retry behavior. The interface defines three methods:
 
 <!-- check-code: skip -->
 ```go
@@ -260,24 +274,25 @@ type RetryPolicy interface {
 }
 ```
 
-:::warning Internal-type limitation
-The `resp` parameter type of `RetryPolicy.ShouldRetry`, `ResponseReader`, is an internal interface (defined in the `internal/types` package) that external packages cannot reference directly. Therefore a custom `RetryPolicy` can only be implemented inside the `github.com/cybergodev/httpc` module. In most scenarios, the `RetryConfig` fields and `ProxyRotateOnStatus` configuration are sufficient — no custom policy needed.
+:::tip Type publicly exported
+The `resp` parameter type of `RetryPolicy.ShouldRetry`, `ResponseReader`, is exported by the `httpc` package as a public type alias (`httpc.ResponseReader`), so external packages can reference it directly. A custom `RetryPolicy` can be implemented in any business package.
+
+Needs covered by the `RetryConfig` fields and `ProxyRotateOnStatus` do not require a custom policy.
 :::
 
-The example below shows a custom policy that retries only GET requests (compilable only inside the module):
+The example below shows a custom policy that retries only GET requests, usable as-is in any business package that imports `httpc`:
 
 <!-- check-code: skip -->
 ```go
-// Note: ResponseReader is an internal type (internal/types package).
-// This code can only compile within the github.com/cybergodev/httpc module.
-// Most users should configure retries via RetryConfig and WithMaxRetries.
+// ResponseReader is publicly exported by the httpc package (httpc.ResponseReader).
+// This example compiles in any package that imports github.com/cybergodev/httpc.
 
 // GETOnlyRetryPolicy retries only GET requests, and only on network errors and 502/503/504
 type GETOnlyRetryPolicy struct {
     maxAttempts int
 }
 
-func (p *GETOnlyRetryPolicy) ShouldRetry(resp ResponseReader, err error, attempt int) bool {
+func (p *GETOnlyRetryPolicy) ShouldRetry(resp httpc.ResponseReader, err error, attempt int) bool {
     if attempt >= p.maxAttempts {
         return false
     }
@@ -307,7 +322,7 @@ func (p *GETOnlyRetryPolicy) MaxRetries() int {
 
 ## Per-Request Control
 
-In addition to client-level configuration, you can override the retry count for a single request via `WithMaxRetries`:
+Beyond client-level configuration, `WithMaxRetries` overrides the retry count for a single request:
 
 ```go
 package main
@@ -348,9 +363,90 @@ func main() {
 }
 ```
 
+When the per-request `WithMaxRetries` is unset, the engine uses the client configuration (or `MaxRetries()` of a `CustomPolicy`). Internally, `-1` is the "unset" sentinel, distinguishing an unconfigured value from an explicit 0 (disabled).
+
+## Request Bodies and Retries
+
+Retries require the request body to be **replayable**. The engine handles body types differently:
+
+| Request body type | Retry behavior |
+|------------|----------|
+| `[]byte` / `string` / struct / `map` / `*FormData` | The reader is rebuilt on every attempt; replayable |
+| `io.Reader` | Read fully into memory **before** the retry path is entered for the first time, then replayed byte by byte |
+| `io.Reader` over 100MB | Fails immediately: `retry not supported for streaming bodies exceeding ...` |
+
+:::warning Large streaming bodies and retries are mutually exclusive
+An `io.Reader` request body is buffered into memory on the retry path, capped at 100MB (guarding against OOM). A stream above that cap must be split into separate uploads, or retries must be disabled for the request with `WithMaxRetries(0)`:
+
+<!-- check-code: skip -->
+```go
+// Large file upload: disable retries to avoid the 100MB memory buffer
+_, err := client.Post("https://api.example.com/upload",
+    httpc.WithBody(largeReader),
+    httpc.WithMaxRetries(0),
+)
+```
+:::
+
+Each attempt rebuilds the full request: headers, query parameters, and cookies are deep-copied and isolated between attempts. The `WithOnRequest` callback fires before every attempt and can refresh a token that is about to expire:
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/cybergodev/httpc"
+)
+
+func main() {
+	client, err := httpc.NewDefault()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
+
+	// Runs before every retry attempt
+	_, err = client.Get("https://api.example.com/data",
+		httpc.WithOnRequest(func(req httpc.RequestMutator) error {
+			log.Printf("starting attempt: %s %s", req.Method(), req.URL())
+			return nil
+		}),
+	)
+	if err != nil {
+		log.Printf("request failed: %v", err)
+	}
+}
+```
+
+## Retry Execution Flow
+
+The engine runs one full "request + retry" cycle as follows:
+
+```text
+1. Resolve the retry budget: per-request WithMaxRetries unset (sentinel -1) -> fall back to CustomPolicy or the client config
+2. Create the total-budget context: take the earlier of WithTimeout / Timeouts.Request and the existing context deadline
+   -- covers all attempts and backoff waits, not one timeout per attempt
+3. io.Reader request body -> buffer in memory (<=100MB, larger fails immediately)
+4. Loop attempt = 0 .. MaxRetries:
+   a. Rebuild the request on each attempt (headers/query/cookies deep-copied, OnRequest triggered)
+   b. Network error -> classify as ClientError -> IsRetryable && ShouldRetry?
+      - not retryable / attempts exhausted -> return the error (original type kept, Attempts = attempts made)
+      - context canceled/timed out -> return immediately, no retry
+   c. Response received -> ShouldRetry(resp) and attempts remain?
+      - yes -> compute the delay (use Retry-After when present, truncated to 60s; otherwise exponential backoff)
+            -> discard the intermediate response -> wait -> next attempt
+      - no (including attempts exhausted) -> return the response (status code as-is, no error)
+5. Context expires during the backoff wait -> terminate immediately, return a timeout error
+```
+
+:::tip Observe the retry process with HTTPC_DEBUG
+Set the `HTTPC_DEBUG` environment variable to any non-empty value and the engine prints the status code, retryability decision, and backoff delay of each attempt to stderr. Debugging retry counts or retryability decisions needs no additional logging middleware.
+:::
+
 ## Proxy Pool and Retry Interaction
 
-When `ProxyRotateOnStatus` or `ProxyRotatePerRequest` is configured, HTTPC automatically raises `MaxRetries` to ensure every proxy in the pool is tried at least once. This is implemented by `calculateMaxRetries`:
+HTTPC raises `MaxRetries` automatically so that every proxy in the pool is tried at least once when three conditions hold together: `ProxyRotateOnStatus` or `ProxyRotatePerRequest` is configured, the `ProxyPool` holds more than one entry, and `ProxyURL` is unset (`ProxyURL` takes precedence over the pool — when set, the pool has no effect). The computation is performed by `calculateMaxRetries`:
 
 ```text
 effective MaxRetries = max(configured MaxRetries, len(ProxyPool) - 1)
@@ -374,7 +470,7 @@ configured MaxRetries = 3
 ```
 
 :::tip Why len(ProxyPool) - 1
-The first request uses the first proxy and does not count as a retry. To try all N proxies, you need N - 1 retries. `calculateMaxRetries` raises `MaxRetries` to `len(ProxyPool) - 1` (if the original config is smaller), ensuring the intent (rotate through all proxies) is honored. If the user-configured `MaxRetries` is already large enough, it stays unchanged.
+The first request uses the first proxy and does not count as a retry, so trying all N proxies needs N - 1 retries. `calculateMaxRetries` raises `MaxRetries` to `len(ProxyPool) - 1` when the configured value is smaller and leaves it unchanged when it is larger (provided `ProxyURL` is empty and the pool holds more than one entry). See [Proxy and Proxy Pools](./proxy) for the rotation and budget interaction.
 :::
 
 ```go
@@ -415,9 +511,15 @@ func main() {
 }
 ```
 
+### Proxy Connection Failures Force a Retry
+
+With proxy rotation enabled (`ProxyRotateOnStatus` / `ProxyRotatePerRequest`), a dial failure on the proxy itself (an error wrapped in `ErrProxyConnectionFailed`) does not go through the regular retryable classification. Instead it forces the next retry and switches to the next proxy. Proxies that are permanently dead, such as a wrong port or an unreachable host, are removed by the combination of forced retries and consecutive-failure circuit breaking. See [Proxy and Proxy Pools](./proxy).
+
 ## Retry Budget Considerations
 
-Retries extend a request's total duration. HTTPC's timeout is a **total budget shared across all retry attempts**: before the first attempt the engine creates a timeout context covering the entire retry loop, and both the network requests and the backoff waits are charged against that same budget — there is no "each of the 3 retries gets a fresh full timeout" amplification.
+Retries extend a request's total duration. HTTPC's timeout is a total budget shared across all retry attempts.
+
+Before the first attempt the engine creates a timeout context covering the entire retry loop, and both network requests and backoff waits are charged against that same budget, so no attempt receives a fresh full timeout.
 
 ### Total Worst-Case Time Formula
 
@@ -425,7 +527,9 @@ Retries extend a request's total duration. HTTPC's timeout is a **total budget s
 total worst-case time ≈ min(Timeouts.Request, WithTimeout / context deadline)
 ```
 
-With the default config (`MaxRetries=3`, `Request=180s`, `Delay=1s`, `Backoff=2.0`, `EnableJitter=true`): no matter how many retries occur or how long the backoff waits are, the whole "initial request + 3 retries + all backoff" takes at most about 180s. Once the budget is exhausted, the remaining attempts fail immediately with `ErrorTypeTimeout`, and requests waiting in backoff are woken up and terminated instead of sleeping on.
+With the default config (`MaxRetries=3`, `Request=180s`, `Delay=1s`, `Backoff=2.0`, `EnableJitter=true`): regardless of retry count and backoff duration, the whole "initial request + 3 retries + all backoff" takes at most about 180s.
+
+Once the budget is exhausted, remaining attempts fail immediately with `ErrorTypeTimeout`, and requests waiting in backoff are woken up and terminated.
 
 ### Ways to Shorten Total Duration
 
@@ -438,7 +542,9 @@ With the default config (`MaxRetries=3`, `Request=180s`, `Delay=1s`, `Backoff=2.
 | Override with `context.WithTimeout` | Precisely control this request's total budget |
 
 :::warning Total budget vs retry count
-The total budget is hard — once it is exhausted, the request terminates immediately even if retries are not used up, so the actual retry count may be less than `MaxRetries`. The default 180s comfortably fits 3 retries plus roughly 7.7s of backoff; but if you shrink the timeout a lot (say 5s) while keeping the default retries, little budget may remain after the first backoff (about 1s). When you need to "ensure N retries", reserve a budget of N+1 request durations plus the sum of backoff delays:
+The total budget is hard: once it is exhausted the request terminates immediately even if retries remain, so the actual retry count is below `MaxRetries`. The default 180s comfortably fits 3 retries plus roughly 7.7s of backoff (1s + 2s + 4s, including the jitter ceiling); with a 5s timeout and the default retry settings, the budget left after the first backoff (about 1s) is no longer enough to complete all attempts.
+
+To ensure N retries, reserve N+1 request durations plus the sum of backoff delays:
 
 <!-- check-code: skip -->
 ```go
@@ -450,7 +556,7 @@ ctx, cancel := context.WithTimeout(context.Background(),
 
 ## Context Cancellation and Retries
 
-HTTPC's retry engine has a fast path for context cancellation. When the cause of failure is `context.Canceled` or `context.DeadlineExceeded`, `isRetryableError` returns false immediately, skipping the full error-classification logic:
+HTTPC's retry engine takes a fast path for context cancellation: when the failure cause is `context.Canceled` or `context.DeadlineExceeded`, `isRetryableError` returns false immediately, skipping the full error-classification logic:
 
 <!-- check-code: skip -->
 ```go
@@ -467,9 +573,9 @@ func (r *retryEngine) isRetryableError(err error) bool {
 
 This means:
 
-- **Manual cancellation** (`cancel()`): stops immediately, no retry
-- **Context timeout**: stops immediately, no retry
-- **In-flight request canceled**: cancellation does not trigger extra retries
+- Manual cancellation (`cancel()`): stops immediately, no retry
+- Context timeout: stops immediately, no retry
+- An in-flight request that is canceled does not trigger extra retries
 
 ```go
 package main
@@ -522,7 +628,7 @@ func main() {
 
 ## Error Handling and Retries
 
-After retries are exhausted, the error is returned via `ClientError` with `Type` set to `ErrorTypeRetryExhausted` (or the original error type of the last attempt); the `Attempts` field records the total number of attempts:
+After a network-layer error exhausts its retries, the error is returned as a `ClientError`. `Type` keeps the original classification of the last failure (e.g. `ErrorTypeNetwork`, `ErrorTypeTimeout`), and `Attempts` records the total number of attempts:
 
 ```go
 package main
@@ -555,20 +661,29 @@ func main() {
 }
 ```
 
+:::tip The two kinds of "retry exhausted" behave differently
+- Network errors exhausted: returned as a `ClientError` (see the example above) with `Attempts > 1`; `Type` keeps the original classification of the last failure.
+- Retryable status codes exhausted (408/429/5xx): no error — the last response is returned as-is, i.e. `err == nil` with `StatusCode() == 503`; the caller handles it through the normal response path.
+
+`ErrorTypeRetryExhausted` is set only on a defensive fallback path (the normal flow never reclassifies an exhausted error as this type). To detect "failed after retries", use the `Attempts` field. See [Error Handling](./error-handling).
+:::
+
 ## Best Practices
 
 | Scenario | Recommended config |
 |------|----------|
 | API calls | `MaxRetries=3, Delay=1s, Backoff=2.0` (default) |
 | Microservice communication | `MaxRetries=2, Delay=500ms, Backoff=2.0` (fast failure) |
-| File downloads | `MaxRetries=5, Delay=2s, Backoff=2.0` (tolerate network fluctuation) |
-| Idempotent operations (GET/PUT/DELETE) | Safe to retry freely |
+| File downloads | `Download` follows the idempotent GET path through the regular retry loop (3 retries by default); for a single attempt, pass `WithMaxRetries(0)` in its options, combined with `ResumeDownload` for resumable transfers |
+| Idempotent operations (GET/PUT/DELETE) | Retryable |
 | Non-idempotent operations (POST) | Executed once by default (no retries); opt in explicitly with [`WithRetryNonIdempotent`](../api-reference/core/options#withretrynonidempotent) |
 | Rate-limited APIs | Rely on automatic `Retry-After` parsing (built in) |
 | Proxy-pool scenarios | Combine with `ProxyRotateOnStatus`; retry count auto-raised |
 
 :::warning Retrying non-idempotent POST requests
-By default, non-idempotent methods (POST, PATCH, and custom methods) **execute exactly once and are never retried** — the engine zeroes their retry budget, because a timeout or a retryable 5xx may arrive after the server has already committed the operation, and replaying the body would cause side effects (duplicate orders, duplicate payments). To re-enable retries for a single request, pass [`WithRetryNonIdempotent(true)`](../api-reference/core/options#withretrynonidempotent) (the client-level switch is `Retry.RetryNonIdempotent`, which the request-level option overrides in both directions). Enable it only for endpoints that tolerate replay, or guard them with an idempotency key. Note that a custom `RetryPolicy` is likewise consulted only for idempotent methods — it cannot re-enable POST retries on its own.
+By default, non-idempotent methods (POST, PATCH, and custom methods) execute exactly once and are never retried: the engine zeroes their retry budget. A timeout or a retryable 5xx may arrive after the server has already committed the operation, so replaying the body would cause side effects such as duplicate orders or duplicate payments.
+
+To enable retries for a single request, pass [`WithRetryNonIdempotent(true)`](../api-reference/core/options#withretrynonidempotent); the client-level switch is `Retry.RetryNonIdempotent`, and the request-level option overrides it. Use it only for endpoints that tolerate replay, or guard them with an idempotency key. A custom `RetryPolicy` is likewise consulted only for idempotent methods and cannot enable POST retries on its own.
 :::
 
 ## Next Steps

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Interfaces"
 title: "Interfaces - CyberGo JWT | Interfaces"
-description: "Interfaces: TokenManager core operations, CustomClaims, BlacklistStore backend, RateLimitProvider limiter, ClockProvider, and optional RateLimitKeyer key."
+description: "Interfaces: TokenManager operations, CustomClaims validation contract, BlacklistStore backend, RateLimitProvider limiter, ClockProvider, and RateLimitKeyer."
 sidebar_position: 50
 ---
 
@@ -28,7 +28,11 @@ type TokenManager interface {
 Core JWT token operations interface. All implementations must be concurrency-safe. The default implementation is [`*Processor`](./processor).
 
 ::: info Compatibility Note
-The interface deliberately still carries `Validate` / `ValidateInto` — although both are deprecated on `*Processor` in favor of [`Parse`](./processor#parse) / [`ParseInto`](./processor#parseinto) — because adding or swapping methods here would break third-party `TokenManager` implementations.
+The interface deliberately still carries `Validate` / `ValidateInto`, although both are deprecated on `*Processor` in favor of [`Parse`](./processor#parse) / [`ParseInto`](./processor#parseinto). Adding, removing, or swapping methods here would break third-party `TokenManager` implementations.
+:::
+
+::: warning `TokenManager` has no `Parse` / `ParseInto`
+`Parse` and `ParseInto` are defined only on `*Processor`, not in the `TokenManager` interface. Through a `TokenManager` variable only the deprecated `Validate` / `ValidateInto` are available. When the newer methods are needed, define a small consumer-side interface containing just those methods; `*Processor` satisfies it automatically.
 :::
 
 Methods are grouped by responsibility:
@@ -77,12 +81,14 @@ Custom Claims interface. Used with [`Create`](./processor#create), [`ParseInto`]
 
 ### Validation Contract
 
-The Processor applies different validation paths for `*Claims` versus other types:
+The Processor applies different creation-path validation for `*Claims` versus other types:
 
-| Type | Validation Behavior |
-|------|---------------------|
-| `*Claims` | Deep validation: all fields (length limits, injection patterns, control characters) |
+| Type | Validation at creation |
+|------|------------------------|
+| `*Claims` | Deep validation of every field (length limits, injection patterns, control characters) |
 | Other types | Calls `Validate()` + registered claims string sanitization (Issuer, Subject, ID, TokenType, Audience) |
+
+Deep field validation runs only when a token is created. The validation path calls `Validate()` (required fields) and sanitizes the standard claim strings.
 
 :::warning
 For non-`*Claims` types, custom struct fields are **not** deep-validated. Implementers must validate all business fields in the `Validate()` method.

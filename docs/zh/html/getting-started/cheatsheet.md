@@ -1,11 +1,13 @@
 ---
 sidebar_label: "速查表"
 title: "速查表 - CyberGo html | API 一页速查"
-description: "CyberGo html 常用 API 一页速查表：汇总 Extract、ExtractText、ExtractToMarkdown 等包级函数、Processor 方法与生命周期管理、四种 Config 预设、常用配置项、编码检测、媒体提取、AuditConfig 审计配置与内置 Sink 及 errors.Is 错误判断写法，覆盖核心函数签名与典型用法。"
-sidebar_position: 2
+description: "CyberGo html API 速查：Extract、ExtractText、ExtractToMarkdown 等包级函数与阅读模式 ReadPage 系列，Processor 方法与生命周期，四种 Config 预设与常用配置项，编码检测、媒体提取、审计 Sink 与错误判断。"
+sidebar_position: 20
 ---
 
 # 速查表
+
+常用 API 一览；完整签名与参数说明见 [API 参考](../api-reference/)。
 
 ## 包函数
 
@@ -20,7 +22,7 @@ result, err := html.ExtractFromFile("page.html")
 
 // 仅提取文本
 text, err := html.ExtractText(data)
-text, err := html.ExtractTextFromFile("page.html")
+text, err = html.ExtractTextFromFile("page.html")
 ```
 
 ### 输出格式
@@ -37,6 +39,21 @@ links, err := html.ExtractAllLinks(data)
 groups := html.GroupLinksByType(links)
 ```
 
+### 阅读模式
+
+```go
+// 整页输出为 Markdown（带内联链接）
+md, err := html.ReadPageToMarkdown(pageBytes)
+
+// 整页输出为不带链接的 Markdown（链接文字保留为纯文本）
+plain, err := html.ReadPageToMarkdownText(pageBytes)
+
+// 分区结果：ReadResult.Sections 按 Kind 过滤后重新拼装
+read, err := html.ReadPage(pageBytes)
+md = read.Render()        // 带链接
+plain = read.RenderText() // 不带链接
+```
+
 ### 批量处理
 
 ```go
@@ -47,7 +64,7 @@ batch := html.ExtractBatchFiles(paths)
 
 ### 带上下文版本
 
-所有函数都有 `*WithContext` 变体：
+提取类函数都有 `*WithContext` 变体（`GroupLinksByType` 是纯内存分组工具，没有该变体）：
 
 ```go
 result, err := html.ExtractWithContext(ctx, data)
@@ -80,6 +97,10 @@ links, err := p.ExtractAllLinks(data)
 // 批量
 batch := p.ExtractBatch(pages)
 
+// 阅读模式
+md, err = p.ReadPageToMarkdown(pageBytes)
+read, err := p.ReadPage(pageBytes)
+
 // 统计
 stats := p.GetStatistics()
 p.ClearCache()
@@ -94,9 +115,9 @@ p.ClearAuditLog()
 
 ```go
 html.DefaultConfig()       // 默认配置
-html.TextOnlyConfig()      // 仅文本
-html.MarkdownConfig()      // Markdown 输出
-html.HighSecurityConfig()  // 高安全
+html.TextOnlyConfig()      // 图片、链接、视频、音频均不保留
+html.MarkdownConfig()      // 内联图片与链接输出为 Markdown
+html.HighSecurityConfig()  // 收紧限制并启用完整审计
 ```
 
 ## 常用配置项
@@ -105,21 +126,22 @@ html.HighSecurityConfig()  // 高安全
 cfg := html.DefaultConfig()
 
 // 资源限制
-cfg.MaxInputSize = 10 * 1024 * 1024  // 最大输入 10MB
-cfg.ProcessingTimeout = time.Minute   // 处理超时
-cfg.MaxDepth = 200                    // 最大 DOM 深度
+cfg.MaxInputSize = 10 * 1024 * 1024  // 最大输入字节数；默认与上限均为 50MB
+cfg.ProcessingTimeout = time.Minute  // 单文档处理超时；默认 30s，0 表示不限时
+cfg.MaxDepth = 200                   // DOM 嵌套深度上限；默认 500
 
 // 内容控制
-cfg.ExtractArticle = true             // 智能文章识别
-cfg.PreserveImages = true             // 保留图片
-cfg.PreserveLinks = true              // 保留链接
-cfg.PreserveVideos = false            // 不保留视频
-cfg.PreserveAudios = false            // 不保留音频
+cfg.ExtractArticle = true            // 文章识别；默认 true
+cfg.ExtractMetadata = true           // 结构化元数据（作者、发布时间、摘要等）；默认 true
+cfg.PreserveImages = true            // 保留图片；默认 true
+cfg.PreserveLinks = true             // 保留链接；默认 true
+cfg.PreserveVideos = false           // 保留视频；默认 true，此处为关闭示例
+cfg.PreserveAudios = false           // 保留音频；默认 true，此处为关闭示例
 
 // 输出格式
-cfg.InlineImageFormat = "markdown"    // none/markdown/html/placeholder
-cfg.InlineLinkFormat = "markdown"     // none/markdown/html
-cfg.TableFormat = "markdown"          // markdown/html
+cfg.InlineImageFormat = "markdown"   // none/markdown/html/placeholder；默认 none；可用 html.FormatMarkdown 等导出常量
+cfg.InlineLinkFormat = "markdown"    // none/markdown/html；默认 none
+cfg.TableFormat = "markdown"         // markdown/html；默认 markdown
 
 // 链接过滤
 cfg.IncludeImages = true
@@ -128,8 +150,8 @@ cfg.ResolveRelativeURLs = true
 cfg.BaseURL = "https://example.com"
 
 // 缓存
-cfg.MaxCacheEntries = 1000
-cfg.CacheTTL = 30 * time.Minute
+cfg.MaxCacheEntries = 1000           // 默认 2000；0 禁用缓存
+cfg.CacheTTL = 30 * time.Minute      // 默认 1 小时
 ```
 
 ## 错误处理
@@ -143,7 +165,7 @@ if err != nil {
     case errors.Is(err, html.ErrInvalidHTML):
         // 无效 HTML
     case errors.Is(err, html.ErrProcessingTimeout):
-        // 处理超时
+        // 库内 ProcessingTimeout 到期
     case errors.Is(err, html.ErrFileNotFound):
         // 文件未找到
     case errors.Is(err, html.ErrInvalidConfig):
@@ -160,18 +182,20 @@ if err != nil {
 }
 ```
 
+用户 ctx 到期返回 `context.DeadlineExceeded`，手动 `cancel()` 返回 `context.Canceled`，两者都不归一化为 `ErrProcessingTimeout`。
+
 ## 编码检测
 
 ```go
-// 自动检测编码（默认行为，支持 15+ 编码）
-result, err := html.Extract(gbkData)
+// 自动检测（默认行为，支持 30+ 编码）
+result, err := html.Extract(pageData)
 
 // 手动指定编码
 cfg := html.DefaultConfig()
 cfg.Encoding = "shift_jis"
 ```
 
-支持 UTF-8、GBK、Shift_JIS、EUC-JP、Windows-1252 等 15+ 编码。
+支持 UTF-8、GBK、Shift_JIS、EUC-JP、Windows-1252 等 30+ 编码。没有 `<meta charset>` 声明的旧页面会按 windows-1252 兜底解码，因此已知来源编码时应显式指定。
 
 ## 媒体提取
 
@@ -188,9 +212,8 @@ for _, a := range result.Audios {
     fmt.Println(a.URL, a.Type)
 }
 
-// 禁用媒体提取
-cfg := html.TextOnlyConfig()
-// 或单独控制
+// 只关闭媒体（图片与链接照常保留）
+cfg := html.DefaultConfig()
 cfg.PreserveVideos = false
 cfg.PreserveAudios = false
 ```
@@ -231,7 +254,7 @@ sink.DroppedCount()  // int64，被丢弃的事件数
 sink.Close()         // 幂等关闭 channel
 ```
 
-### Processor 生命周期
+## Processor 生命周期
 
 ```go
 p, _ := html.New(html.DefaultConfig())
@@ -246,6 +269,7 @@ p.ResetStatistics()           // 重置统计计数器（保留缓存）
 
 ## 下一步
 
-- [内容提取实战](../guides/core-features/content-extraction) - 提取流程与文章识别
+- [内容提取](../guides/core-features/content-extraction) - 提取流程与文章识别
+- [阅读模式](../guides/core-features/reader-mode) - 整页分区输出与 Render
 - [Processor 复用与缓存](../guides/performance/processor-cache) - 生命周期与缓存调优
 - [API 参考](../api-reference/) - 完整 API 文档

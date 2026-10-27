@@ -7,6 +7,8 @@ sidebar_position: 10
 
 # 基础用法
 
+本页给出 HTTPC 基础用法的可运行示例：各 HTTP 方法、请求体类型、查询参数、认证、响应状态判定与配置预设。
+
 ## GET 请求
 
 ### 基本 GET
@@ -53,7 +55,7 @@ result, err := httpc.Get("https://api.example.com/me",
 )
 ```
 
-除 Bearer 令牌外，还有三类常用认证/请求头方式：
+Bearer 之外，认证与请求头还有三种常用写法。
 
 ```go
 // Basic 认证
@@ -163,7 +165,7 @@ fmt.Println(result.StatusCode()) // 200
 
 ### 纯文本与二进制
 
-字符串请求体会自动以 `text/plain` 发送；二进制数据建议显式给出 MIME 类型：
+字符串请求体以 `text/plain` 发送；二进制数据需显式给出 MIME 类型：
 
 ```go
 // 纯文本：Content-Type 自动为 text/plain
@@ -180,10 +182,10 @@ result, err = httpc.Post("https://httpbin.org/post",
 
 ### 强制指定请求体类型（BodyKind）
 
-`WithBody` 默认按输入类型推断编码，第二个参数可以强制指定：
+`WithBody` 按输入类型推断编码；第二个参数强制指定编码类型：
 
 ```go
-// map 会被强制按 JSON 编码（而不是走通用格式化分支）
+// map[string]string 自动检测为表单编码，此处强制按 JSON 编码
 result, err := httpc.Post("https://httpbin.org/post",
     httpc.WithBody(map[string]string{"key": "value"}, httpc.BodyJSON),
 )
@@ -191,7 +193,7 @@ result, err := httpc.Post("https://httpbin.org/post",
 
 ## 其他 HTTP 方法
 
-PUT、DELETE、HEAD、PATCH、OPTIONS 与通用 `Request` 全部可用。下面是一个覆盖全方法的完整示例：
+PUT、DELETE、HEAD、PATCH、OPTIONS 与通用 `Request` 均可调用。以下示例按方法逐一演示：
 
 ```go
 package main
@@ -269,7 +271,7 @@ func main() {
 
 ### 通用 Request 方法
 
-HTTP 方法在运行时才确定时（来自配置、请求构建器或代理转发），用 `Request(ctx, method, url, options...)`：
+HTTP 方法在运行时才确定时（来自配置、请求构建器或代理转发），调用 `Request(ctx, method, url, options...)`：
 
 ```go
 ctx := context.Background()
@@ -292,7 +294,7 @@ for _, m := range []struct{ method, url string }{
 
 ## 响应处理
 
-每个请求返回的 `*Result` 是「请求/响应/元数据」三元组，三个嵌套结构一次分配、共用一块内存：
+每个请求返回的 `*Result` 是请求/响应/元数据三元组。三个嵌套结构一次分配、共用一块内存：
 
 | 分组 | 主要字段 | 说明 |
 |------|----------|------|
@@ -324,16 +326,16 @@ case result.IsServerError(): // 5xx
 ```
 
 :::tip err 与状态码是两层错误
-网络层失败（DNS、超时、TLS）表现为 `err != nil`；HTTP 4xx/5xx **不算** `err`——响应正常返回，用 `IsSuccess()` 等方法自行判定。两层分开处理是最常见的正确姿势。
+网络层失败（DNS、超时、TLS）表现为 `err != nil`。HTTP 4xx/5xx **不算** `err`：响应正常返回，由调用方用 `IsSuccess()` 等方法判定。
 :::
 
 ### Body / RawBody / String 的选择
 
 | 方法 | 返回 | 适用 |
 |------|------|------|
-| `result.Body()` | `string`（预存） | 直接读文本；零额外开销 |
-| `result.RawBody()` | `[]byte`（原始） | 交给需要字节切片的 API（哈希、二次解码） |
-| `result.String()` | 格式化摘要 | 调试打印（含状态、头、体摘要）；开销最大，别放热路径 |
+| `result.Body()` | `string`（预存） | 直接读文本；无额外开销 |
+| `result.RawBody()` | `[]byte`（原始） | 传给需要字节切片的 API（哈希、二次解码） |
+| `result.String()` | 格式化摘要 | 调试打印（含状态、头、体摘要）；开销最大，不放热路径 |
 
 ```go
 result, _ := client.Get("https://httpbin.org/get")

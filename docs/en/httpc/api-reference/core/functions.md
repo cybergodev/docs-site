@@ -1,26 +1,34 @@
 ---
 sidebar_label: "Functions & Methods"
 title: "Functions & Methods - CyberGo HTTPC | HTTP Method API"
-description: "HTTPC package functions and client methods: Get/Post and five more HTTP methods, New constructor, Download, FormatBytes/FormatSpeed helpers, and NewDomain."
+description: "HTTPC package functions and client methods: Get/Post and other HTTP methods, New, Download, NewDomain, and formatting helpers."
 sidebar_position: 10
 ---
 
 # Package Functions & Client Methods
 
+Package-level functions and client methods are HTTPC's request entry points: the former use a shared default client, the latter an explicit instance. This page lists every signature, return value, and boundary behavior.
+
 ## Package-Level HTTP Methods
 
-Send requests directly without creating a client. Uses a lazily-initialized default client internally.
+`Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options` send requests without creating a client and use a lazily-initialized default client internally. `Request` takes a caller-supplied context.
 
 | Function | HTTP method | Context |
 |------|-----------|--------|
 | `Get` / `Post` / `Put` / `Patch` / `Delete` / `Head` / `Options` | The corresponding verb | `context.Background()` |
 | `Request` | Any (specified via argument) | Caller-supplied |
 
-The default client is managed internally by the package, with these properties:
+The package manages the default client:
 
 - **Lazy initialization**: created on the first package-level call (with `DefaultConfig()`); no startup cost.
-- **Self-healing**: after the default client is closed (`CloseDefaultClient` or a direct `Close`), the next package-level call rebuilds it automatically.
+- **Automatic rebuild**: after the default client is closed (`CloseDefaultClient` or a direct `Close`), the next package-level call recreates it.
 - **Concurrency-safe**: initialization and replacement are guarded by a double-checked lock; safe to call from multiple goroutines.
+
+:::tip Production guidance
+Package-level functions suit scripts and one-off requests. Long-running services should create an explicit client with `NewDefault()`/`New()` and control its configuration and lifecycle.
+:::
+
+> The lazy creation and post-close rebuild of the default client are described in [Core Concepts](../../getting-started/concepts).
 
 ### Get
 
@@ -76,9 +84,15 @@ defer cancel()
 result, err := httpc.Request(ctx, "GET", "https://api.example.com/data")
 ```
 
+:::tip panic safety net
+`Request` (package-level function and client method) recovers panics: an unexpected panic on the execution path is converted into a returned error instead of terminating the caller's goroutine, and underlying resources are released during stack unwinding.
+:::
+
 ## Client Methods
 
-The Client interface provides the same HTTP methods as the package-level functions, plus a `Request` method that takes a context.
+The Client interface provides the same HTTP methods as the package-level functions, plus a context-taking `Request` method.
+
+The Client interface (see [Interface Definitions](../types/interfaces)) = the minimal `Doer` interface (a single `Request` method) + seven HTTP verb convenience methods + `Download` + `Close`. Code that accepts a `Doer` also accepts a custom implementation, as long as that implementation satisfies `Doer`.
 
 ### New
 
@@ -86,7 +100,9 @@ The Client interface provides the same HTTP methods as the package-level functio
 func New(cfg Config) (Client, error)
 ```
 
-Creates a new HTTP client. Pass a `Config` value (recommended: obtain one via `DefaultConfig()` or a preset function, then modify as needed). Returns an error for invalid configuration (e.g. invalid `SecurityConfig.SSRFExemptCIDRs`).
+Creates a new HTTP client. Pass a `Config` value; obtain it from `DefaultConfig()` or a preset function, then modify as needed. Returns an error for invalid configuration (e.g. invalid `SecurityConfig.SSRFExemptCIDRs`).
+
+The configuration is deep-copied at creation: modifying the original `Config` afterwards does not affect the created client. Two fields are shared by reference: `Retry.CustomPolicy` and `Security.CertificatePinner`. Do not share a stateful custom policy across clients concurrently.
 
 ```go
 // Using default config (or call NewDefault() for the same effect)
@@ -107,7 +123,7 @@ client, err := httpc.New(cfg)
 func NewDefault() (Client, error)
 ```
 
-Convenience constructor, equivalent to `New(DefaultConfig())`. The recommended entry point for zero-configuration scenarios.
+Convenience constructor, equivalent to `New(DefaultConfig())`, for scenarios that need no custom configuration.
 
 ```go
 client, err := httpc.NewDefault()
@@ -127,11 +143,16 @@ result, err := client.Options(url, options...)
 result, err := client.Request(ctx, "GET", url, options...)
 ```
 
-The complete method set of the `Client` interface: seven verb convenience methods `Client.Get`, `Client.Post`, `Client.Put`, `Client.Patch`, `Client.Delete`, `Client.Head`, and `Client.Options` (all with the signature `(url string, options ...RequestOption) (*Result, error)`), plus `Doer.Request` obtained through the embedded `Doer` interface, `Client.Download`, and the lifecycle method `Client.Close`.
+The complete method set of the `Client` interface:
+
+- Seven verb convenience methods: `Client.Get`, `Client.Post`, `Client.Put`, `Client.Patch`, `Client.Delete`, `Client.Head`, and `Client.Options`, all with the signature `(url string, options ...RequestOption) (*Result, error)`.
+- `Doer.Request`, obtained through the embedded `Doer` interface.
+- `Client.Download`.
+- The lifecycle method `Client.Close`.
 
 ### Close
 
-A Client interface method that releases the resources held by the client (connection pool, Transport). It must not be used after being called.
+A Client interface method that releases the resources held by the client (connection pool, Transport). Requests after `Close` return `ErrClientClosed`; repeated calls are safe.
 
 ```go
 // Client interface method
@@ -151,10 +172,12 @@ defer client.Close()
 func SetDefaultClient(client Client) error
 ```
 
-Sets a custom client as the default client used by package-level functions. The previous default client is automatically closed.
+Sets a custom client as the default client used by package-level functions. The previous default client is closed automatically. The function is concurrency-safe.
 
-:::warning
-Only accepts clients created via `httpc.New()` or `httpc.NewDefault()`. A closed client cannot be set.
+:::warning Limitations
+`SetDefaultClient` accepts only clients created via `httpc.New()` or `httpc.NewDefault()`. It returns an error for nil, foreign, or already-closed clients.
+
+The swap happens before the close: even when the new client is installed, a failure to close the previous default returns `default client replaced, but closing the previous default failed: ...`. That error reports a failed cleanup of the old instance, not a failed replacement.
 :::
 
 ```go
@@ -171,7 +194,18 @@ result, _ := httpc.Get(url)
 func CloseDefaultClient() error
 ```
 
-Closes and resets the default client. A new client will be created on the next package-level function call.
+Closes and resets the default client. The next package-level function call creates a new client. The function is concurrency-safe. If the default client was already closed directly, the next package-level call recreates it as well (see [Core Concepts](../../getting-started/concepts)).
+
+### CloseRoutedClients
+
+```go
+func CloseRoutedClients() error
+```
+
+Closes and releases every package-level routed client (the dedicated clients cached by `WithProxy`, `WithSystemProxy`, and `WithTLSFingerprint`) and clears the cache. Idempotent and safe for concurrent use. Two differences from `CloseDefaultClient`:
+
+- It does not close the default client; `CloseDefaultClient` still owns that client.
+- It iterates every cached entry and closes each one: a single failure does not stop the rest, and all failures are joined (`errors.Join`) into the returned error.
 
 ## Download Functions
 
@@ -183,9 +217,9 @@ Package-level download functions use the default client. The Client interface an
 func Download(ctx context.Context, url string, cfg *DownloadConfig, options ...RequestOption) (*DownloadResult, error)
 ```
 
-`Download` is the **single canonical download entry point** spanning the package-level function, the `Client` interface, and `DomainClient` — a single signature that replaces the previous `{config}` x `{context}` variant matrix.
+`Download` is the download entry shared by the package-level function, the `Client` interface, and `DomainClient`; all three use the same signature.
 
-`cfg` must not be nil, and `cfg.FilePath` must be set (otherwise `ErrEmptyFilePath` is returned). Pass `context.Background()` when no cancellation or timeout control is needed; request options are used to set headers, authentication, query parameters, and more.
+`cfg` must not be nil, and `cfg.FilePath` must be set (otherwise `ErrEmptyFilePath` is returned). Pass `context.Background()` when no cancellation or timeout control is needed. Request options set headers, authentication, query parameters, and more.
 
 ```go
 cfg := httpc.DefaultDownloadConfig()
@@ -206,8 +240,8 @@ result, err = client.Download(ctx, url, cfg)
 result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
-:::tip
-The old download functions (DownloadFile, DownloadWithOptions, DownloadFileWithContext, and DownloadWithOptionsWithContext) were removed in v1.5.2. Migrate to the unified `Download(ctx, url, cfg, options...)` and configure path, overwrite, resume, and checksum via `DownloadConfig`.
+:::tip Migration note
+The old download functions (DownloadFile, DownloadWithOptions, DownloadFileWithContext, and DownloadWithOptionsWithContext) were removed in v1.5.2. Use `Download(ctx, url, cfg, options...)` instead, and configure path, overwrite, resume, and checksum through `DownloadConfig`.
 :::
 
 ## Helper Functions
@@ -218,18 +252,18 @@ The old download functions (DownloadFile, DownloadWithOptions, DownloadFileWithC
 func SetSecurityWarnOutput(w io.Writer)
 ```
 
-Redirects security-warning output (e.g. `TestingConfig`, `InsecureSkipVerify` warnings). Pass `io.Discard` to silence all warnings.
+Redirects security-warning output (three categories: `TestingConfig`, `InsecureSkipVerify`, and a hand-built all-off `Config`). Output goes to `os.Stderr` by default, and each warning type is printed at most once per process. Pass `io.Discard` to silence all warnings.
 
 ```go
 // Silence all security warnings
 httpc.SetSecurityWarnOutput(io.Discard)
 
-// Redirect to a custom log
+// Change the output to a custom log
 httpc.SetSecurityWarnOutput(log.Writer())
 ```
 
 :::warning
-This function is primarily for testing. Production environments should use `SecureConfig()` or `DefaultConfig()` rather than suppressing warnings.
+`SetSecurityWarnOutput` is primarily for testing. Production environments should use `SecureConfig()` or `DefaultConfig()` rather than suppressing warnings.
 :::
 
 ## Formatting Tools
@@ -240,7 +274,7 @@ This function is primarily for testing. Production environments should use `Secu
 func FormatBytes(bytes int64) string
 ```
 
-Formats a byte count as a human-readable string (e.g. `"1.50 KB"`, `"500 B"`). Commonly used for displaying download results and in log output.
+Formats a byte count as a human-readable string (e.g. `"1.50 KB"`, `"500 B"`). Commonly used for displaying download results and in log output. Values below 1024 print without decimals (`0` renders as `0 B`); 1024 and above keep two decimals.
 
 ```go
 result, _ := httpc.Download(context.Background(), url, cfg)
@@ -296,7 +330,9 @@ Both use binary units (1024-step), with the unit sequence `B -> KB -> MB -> GB -
 func NewDomain(baseURL string, cfg Config) (DomainClienter, error)
 ```
 
-Creates a domain-scoped client that automatically manages cookies and headers. Pass a `Config` value (cookies are auto-enabled).
+Creates a domain client that manages cookies and headers automatically. Pass a `Config` value. `baseURL` must include a scheme and host (e.g. `https://api.example.com`), otherwise an error is returned. Validation rules match `New`.
+
+A DomainClient created by `NewDomain` contains a `SessionManager`: it injects session headers and cookies before the request and writes back `Set-Cookie` after the response. That session store is independent of `Connection.EnableCookies`.
 
 ```go
 dc, err := httpc.NewDomain("https://api.example.com", httpc.DefaultConfig())
@@ -323,5 +359,5 @@ defer dc.Close()
 
 - [Result](./result) - Response result types and methods
 - [Request Options](./options) - Request configuration options
-- [Domain Client](../client-config/domain-client) - Domain-scoped client
+- [Domain Client](../client-config/domain-client) - Domain client and URL concatenation rules
 - [File Download](../client-config/download) - Download functions and types

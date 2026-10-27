@@ -6,24 +6,24 @@ description: "CyberGo env 是高安全 Go 环境变量管理库，支持 .env、
 
 # env
 
-高安全性的 Go 环境变量管理库，支持 `.env`、JSON、YAML 多格式，提供线程安全、审计日志和安全存储功能。
+env 是 CyberGo 的 Go 环境变量管理库，加载 `.env`、JSON、YAML 三种配置文件，把值转换成 Go 类型，保护敏感值内存，并记录审计事件。
 
 ## 核心特性
 
-- **多格式支持** - `.env`、JSON、YAML 自动检测
-- **类型安全** - 自动类型转换与验证
-- **线程安全** - 分片锁实现的线程安全并发访问
-- **安全存储** - 敏感值内存锁定、自动清零
-- **审计日志** - 完整操作追踪
-- **变量展开** - `${VAR}` 语法支持
-- **结构体映射** - 标签驱动的配置绑定
+- **多格式加载**：`.env`、JSON、YAML 按扩展名自动检测
+- **类型安全**：取值时自动转换并校验
+- **并发安全**：单个 `Loader` 可跨 goroutine 共享
+- **安全存储**：敏感值内存锁定与清零
+- **审计日志**：记录加载、写入与删除操作
+- **变量展开**：支持 `${VAR}` 与 `${VAR:-default}`
+- **结构体映射**：标签驱动的配置绑定
 
 ## 按场景导航
 
-不知道从哪开始？按你的需求选择：
+按需求选择入口：
 
-| 我想要... | 去哪里看 |
-|-----------|---------|
+| 需求 | 入口 |
+|------|------|
 | 5 分钟快速上手 | [快速开始](./getting-started/) |
 | 安全存储密码、密钥 | [安全概述](./security/) → [SecureValue](./api-reference/secure-value) |
 | 防止敏感数据交换到磁盘 | [内存锁定](./security/memory-locking) |
@@ -34,31 +34,20 @@ description: "CyberGo env 是高安全 Go 环境变量管理库，支持 .env、
 | 序列化/导出配置 | [序列化](./guides/serialization) |
 | 记录安全审计日志 | [审计日志](./guides/audit-logging) |
 | 处理和匹配错误 | [错误处理](./guides/error-handling) |
+| 并发访问与生命周期管理 | [并发与生命周期](./guides/concurrency) |
 | 编写单元测试 | [测试场景](./guides/testing) |
 | 扩展自定义文件格式 | [自定义解析器](./guides/custom-parser) |
+| 查看性能数据与调优 | [性能优化](./advanced/performance) |
+| 运行官方示例 | [示例](./examples/) |
 | 上线前安全检查 | [生产检查清单](./security/production-checklist) |
 | 查看常用代码片段 | [速查表](./getting-started/cheatsheet) |
 | 查找常见问题解答 | [FAQ](./reference/faq) |
 
-## 主要功能概览
+## 从这里开始
 
-| 功能 | 说明 |
-|------|------|
-| [类型转换](./getting-started/) | GetString, GetInt, GetBool, GetDuration, GetSlice |
-| [结构体映射](./guides/struct-mapping) | 标签驱动的配置绑定 |
-| [安全存储](./api-reference/secure-value) | 敏感值内存保护 |
-| [多格式加载](./guides/multi-format) | .env, JSON, YAML |
-
-## 快速导航
-
-### 入门
-- [快速开始](./getting-started/) - 5 分钟上手教程
-- [速查表](./getting-started/cheatsheet) - 常用代码片段
-
-### API 参考
-- [包函数](./api-reference/functions) - 完整 API 文档
-- [Loader](./api-reference/loader) - 加载器方法
-- [SecureValue](./api-reference/secure-value) - 安全值处理
-
-### 安全
-- [安全概述](./security/) - 安全架构与最佳实践
+- [快速开始](./getting-started/)：安装、加载 `.env` 文件、读取类型化值
+- [速查表](./getting-started/cheatsheet)：一页纸代码片段
+- [包函数](./api-reference/functions)：包级函数完整参考
+- [Loader](./api-reference/loader)：实例方法与生命周期
+- [SecureValue](./api-reference/secure-value)：安全值处理
+- [安全概述](./security/)：安全架构与默认值

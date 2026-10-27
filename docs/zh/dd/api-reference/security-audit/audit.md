@@ -13,7 +13,7 @@ DD 提供异步审计日志功能，记录安全相关事件，支持完整性�
 
 ## AuditLogger
 
-异步安全审计事件记录器。
+`AuditLogger` 是异步安全审计事件记录器。
 
 ### 创建
 
@@ -105,7 +105,7 @@ func DefaultAuditConfig() AuditConfig
 
 ## AuditEvent
 
-审计事件结构体。
+`AuditEvent` 是审计事件结构体，`Log` 方法接收该类型的值。
 
 ```go
 type AuditEvent struct {
@@ -121,7 +121,7 @@ type AuditEvent struct {
 
 ## AuditStats
 
-审计统计数据结构。
+`AuditStats` 是审计统计数据结构，由 `Stats` 方法返回。
 
 ```go
 type AuditStats struct {
@@ -135,7 +135,7 @@ type AuditStats struct {
 
 ## AuditVerificationResult
 
-审计验证结果。
+`AuditVerificationResult` 是审计验证结果，由 `VerifyAuditEvent` 返回。
 
 ```go
 type AuditVerificationResult struct {

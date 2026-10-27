@@ -1,7 +1,7 @@
 ---
 sidebar_label: "基础示例"
 title: "基础示例 - CyberGo JWT | HMAC 签发与吊销"
-description: "基础示例集：用 HMAC 对称密钥签发并验证访问令牌、配合刷新令牌轮换获取新令牌、通过内置黑名单吊销令牌阻止已注销会话、配置令牌桶速率限制防暴力滥用，所有示例完整可独立编译运行。"
+description: "基础示例集：用 HMAC 对称密钥签发并验证访问令牌、用刷新令牌换取新访问令牌、通过内置黑名单吊销令牌阻止已注销会话、配置令牌桶速率限制防暴力滥用，所有示例完整可独立编译运行。"
 sidebar_position: 10
 ---
 
@@ -262,7 +262,7 @@ func main() {
 
 ## Extra 扩展字段
 
-内置 `Claims.Extra` 是 `map[string]any`，用于存储少量可选附加信息。Processor 会在创建令牌时对 Extra 执行深度验证（长度、注入检测），因此比自定义 Claims 字段更省心。
+内置 `Claims.Extra` 是 `map[string]any`，用于存储少量可选附加信息。Processor 会在**创建令牌时**对 Extra 执行深度验证（长度、注入检测），因此比自定义 Claims 字段更省心。
 
 ```go
 package main
@@ -312,14 +312,21 @@ func main() {
 	if level, ok := parsed.Extra["level"].(string); ok {
 		fmt.Println("Level:", level) // 输出：senior
 	}
-	if tags, ok := parsed.Extra["tags"].([]string); ok {
+	// 数组经 JSON 往返后回读为 []any，需要逐项断言为 string
+	if raw, ok := parsed.Extra["tags"].([]any); ok {
+		tags := make([]string, 0, len(raw))
+		for _, v := range raw {
+			if s, ok := v.(string); ok {
+				tags = append(tags, s)
+			}
+		}
 		fmt.Println("Tags:", tags) // 输出：[onboarding mentor]
 	}
 }
 ```
 
 ::: warning Extra 的限制
-`Extra` 最多 50 个键，值仅允许 `string` 和 `[]string` 类型，不支持嵌套 map。如果需要更复杂的结构或自定义验证，请改用[自定义 Claims 类型](../guides/custom-claims#extra-字段-vs-自定义类型)。
+`Extra` 最多 50 个键，值仅允许 `string` 和 `[]string` 类型（字符串 ≤ 256 字节），不支持嵌套 map。经 `Parse` 回读后数组值是 `[]any` 而非 `[]string`，读取时需逐项断言。如果需要更复杂的结构或自定义验证，请改用[自定义 Claims 类型](../guides/custom-claims#extra-字段-vs-自定义类型)。
 :::
 
 ## 更多示例

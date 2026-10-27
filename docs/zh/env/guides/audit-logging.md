@@ -1,13 +1,13 @@
 ---
 sidebar_label: "审计日志"
 title: "审计日志 - CyberGo env | 安全审计配置"
-description: "CyberGo env 审计日志配置指南，涵盖 JSONAuditHandler、LogAuditHandler 与 ChannelAuditHandler 三种处理器，及自定义 AuditHandler 记录变量加载、读取、修改与删除操作，用于安全审计、合规检查与问题排查。"
+description: "CyberGo env 审计日志配置指南：JSONAuditHandler、LogAuditHandler、ChannelAuditHandler 三种内置处理器与自定义处理器的实现方式，记录变量加载、修改与删除操作，附掩码规则、fail-closed 语义与日志权限配置。"
 sidebar_position: 6
 ---
 
 # 审计日志
 
-审计日志功能记录所有环境变量操作，用于安全审计、合规检查和问题排查。
+审计日志记录配置的加载、修改与删除，以及解析、校验、安全拦截与文件访问事件，用于安全审计、合规检查和问题排查。正常读取不产生事件，细节见[安全注意事项](#安全注意事项)。
 
 ## 启用审计
 
@@ -16,7 +16,12 @@ sidebar_position: 6
 ```go
 cfg := env.ProductionConfig()
 cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 
 loader, _ := env.New(cfg)
 ```
@@ -34,30 +39,38 @@ loader, _ := env.New(cfg)
 
 ## 审计处理器
 
+处理器由 `loader.Close()` 关闭，其中 `JSONAuditHandler` 还会关闭底层 writer（实现了 `io.Closer` 的 `os.File` 等）。因此不要把 `os.Stdout` 或与其他组件共享的 writer 传给处理器，否则 `loader.Close()` 会连带关闭它。写入文件时自行打开 `os.File`（权限 `0600`），文件由处理器关闭；`env.New()` 在配置校验阶段失败时处理器尚未接管文件，需自行关闭——校验通过之后的失败（解析器创建、自动加载）会连带关闭处理器与文件，之后再调用 `auditFile.Close()` 只返回可忽略的「已关闭」错误。
+
 ### JSONAuditHandler
 
 输出 JSON 格式日志：
 
 ```go
 import (
+    "log"
     "os"
     "github.com/cybergodev/env"
 )
 
+auditFile, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+
 cfg := env.ProductionConfig()
 cfg.AuditEnabled = true
-cfg.AuditHandler = env.NewJSONAuditHandler(os.Stdout)
+cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 ```
 
 **输出示例**（节选，省略 `reason` 字段与逐键 `ActionSet` 事件）：
 
 ```json
-{"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
-{"timestamp":"2024-01-15T10:30:01Z","action":"set","key":"[MASKED:7 chars]","success":true,"masked":true}
+{"timestamp":"2024-01-15T10:30:00Z","action":"load","success":true,"duration_ns":1234567}
+{"timestamp":"2024-01-15T10:30:01Z","action":"set","key":"[MASKED]","success":true,"masked":true}
 {"timestamp":"2024-01-15T10:30:02Z","action":"set","key":"CUSTOM_VAR","success":true}
 ```
 
-敏感键（如 `API_KEY`）在审计日志的 `key` 字段中被自动掩码为 `[MASKED:N chars]`（N 为键长），非敏感键（如 `CUSTOM_VAR`）原样显示。
+敏感键（如 `API_KEY`）的 `key` 字段自动掩码为 `[MASKED]`，非敏感键（如 `CUSTOM_VAR`）原样显示。
 
 ---
 
@@ -79,8 +92,8 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 **输出示例：**
 
 ```text
-[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="" file=.env duration=1.23ms
-[AUDIT] 2024/01/15 10:30:01 action=set key=[MASKED:7 chars] success=true reason=""
+[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="" duration=1.23ms
+[AUDIT] 2024/01/15 10:30:01 action=set key=[MASKED] success=true reason=""
 [AUDIT] 2024/01/15 10:30:02 action=set key=CUSTOM_VAR success=true reason=""
 ```
 
@@ -102,7 +115,7 @@ go func() {
 }()
 ```
 
-**使用场景：**
+**适用场景：**
 - 发送到远程日志服务
 - 写入数据库
 - 实时监控告警
@@ -120,7 +133,7 @@ cfg.AuditEnabled = true
 cfg.AuditHandler = env.NewNopAuditHandler()
 ```
 
-**使用场景：**
+**适用场景：**
 - 临时禁用审计
 - 测试环境
 
@@ -146,7 +159,7 @@ type AuditEvent struct {
 
 ### AuditAction 操作类型
 
-操作类型常量共 10 个，完整清单（含字符串值与各动作语义）统一列于页末[审计动作](#审计动作)一节。
+操作类型常量共 10 个，完整清单（含字符串值与各动作语义）见页末[审计动作](#审计动作)。
 
 ---
 
@@ -240,20 +253,21 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer auditFile.Close()
 
-	// 配置
+	// 配置（清空 Filenames，改由下面显式加载；否则 New 会先自动加载并校验必需键）
 	cfg := env.ProductionConfig()
+	cfg.Filenames = nil
 	cfg.AuditEnabled = true
 	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-	// 创建加载器
+	// 创建加载器（校验失败时文件未被接管需自行关闭；更晚的失败已连带关闭，此处兜底）
 	loader, err := env.New(cfg)
 	if err != nil {
+		auditFile.Close()
 		log.Fatal(err)
 	}
-	defer loader.Close()
+	defer loader.Close() // 关闭处理器，并由 JSONAuditHandler 关闭 auditFile
 
 	// 加载配置
 	err = loader.LoadFiles(".env")
@@ -261,7 +275,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// 验证
+	// 验证（必需键在加载时已检查过一次，这里按当前存储再确认）
 	err = loader.Validate()
 	if err != nil {
 		log.Fatal(err)
@@ -331,7 +345,7 @@ func processAuditEvents(ch chan env.AuditEvent) {
 }
 ```
 
-上例的关键收尾逻辑：`ChannelAuditHandler` **不拥有通道**——`Close()` 是空操作，通道必须由调用方 `close(auditChan)` 才能让 `for range` 消费 goroutine 收到 EOF；缓冲满时发送会阻塞。若希望处理器自管通道生命周期（`Close()` 即关闭通道、消费方经 `Channel()` 接收），见下文「更多内置处理器」中的 CloseableChannelHandler。
+`ChannelAuditHandler` **不拥有通道**：`Close()` 是空操作，必须由调用方 `close(auditChan)`，`for range` 消费的 goroutine 才能收到 EOF；缓冲满时发送会阻塞，阻塞的发送还会连带卡住 `loader.Close()`，因此消费 goroutine 要持续排水直到关闭。关闭顺序必须是先 `loader.Close()` 再 `close(auditChan)`：发送仍在途时就关闭通道会触发 send on closed channel panic。需要处理器自管通道生命周期（`Close()` 即关闭通道，消费方经 `Channel()` 接收）时，改用下文「更多内置处理器」中的 `CloseableChannelHandler`。
 
 ---
 
@@ -339,20 +353,22 @@ func processAuditEvents(ch chan env.AuditEvent) {
 
 ### 审计记录与掩码
 
-审计日志对敏感键的 `key` 字段自动掩码（默认显示为 `[MASKED:N chars]`，N 为键名字符数；非敏感键原样显示）。**仅写操作记录审计事件**：`Set` / `Delete` / `LoadFiles` 等会触发 `ActionSet` / `ActionDelete` / `ActionLoad` 等事件，并在事件中记录掩码后的键名。
+审计日志对敏感键的 `key` 字段自动掩码（默认显示 `[MASKED]`，非敏感键原样显示）。**写路径记录审计事件**：`Set` / `Delete` / `LoadFiles` 分别触发 `ActionSet` / `ActionDelete` / `ActionLoad`，事件中记录掩码后的键名。
 
-读操作不产审计：`Get` / `GetString` / `GetInt` / `GetSecure` 等**正常读取不记录审计日志**。`ActionGet` 事件仅在 `GetInt` / `GetBool` / `GetFloat64` 等类型转换**解析失败**的错误路径触发（`success=false`），例如：
+读路径不产审计：`Get` / `GetString` / `GetInt` / `GetSecure` 等正常读取不记录日志。`ActionGet` 只在类型转换**解析失败**的错误路径触发（`success=false`），例如：
 
 ```go
 // 写操作：会记录审计事件（敏感键掩码后记录）
 _ = loader.Set("API_KEY", "sk-1234567890")
-// 审计记录：{"action":"set","key":"[MASKED:7 chars]","success":true,"masked":true}
+// 审计记录：{"action":"set","key":"[MASKED]","success":true,"masked":true}
 
 // 读操作：正常读取不产审计
 secret := loader.GetSecure("API_KEY") // 不产生审计日志
 _ = loader.GetInt("PORT")             // 解析成功，不产生审计日志
 _ = loader.GetInt("API_KEY")          // 解析失败时产生 ActionGet 事件（success=false）
 ```
+
+默认 `AuditFailClosed = false`（fail-open）：审计管线出问题不影响业务操作的结果。设为 `true` 后，处理器报错、panic 或通道满导致事件丢失，都会让产生该事件的操作（`LoadFiles` / `Apply` / `Set` / `Delete`）返回匹配 `ErrAuditFailed` 的错误。并发操作场景下，锁存的错误由最先检查的操作带回（尽力通知，不保证恰好一次）。
 
 ### 审计日志权限
 
@@ -385,11 +401,11 @@ chown app:app /var/log/app/env-audit.log
 
 ## 更多内置处理器
 
-除 JSON/Log/Channel 三种常用处理器外，库还提供两个开箱即用的实现。
+除 JSON / Log / Channel 三类处理器外，库另提供两个实现：`CloseableChannelHandler`（自管理通道）与 `NopAuditHandler`（丢弃事件）。
 
 ### CloseableChannelHandler（自管理通道）
 
-与 `ChannelAuditHandler` 接收外部 channel 不同，`CloseableChannelHandler` 自建并持有带缓冲的 channel，提供完整的生命周期管理——`Close()` 会关闭处理器并关闭通道，消费方通过 `Channel()` 接收事件：
+与 `ChannelAuditHandler` 接收外部 channel 不同，`CloseableChannelHandler` 自建并持有带缓冲的 channel，提供完整的生命周期管理：`Close()` 关闭处理器并关闭通道，消费方通过 `Channel()` 接收事件。缓冲满时它不阻塞：事件被丢弃并返回错误，累计丢弃数可用 `DroppedEvents()` 查询（计数不复位）：
 
 ```go
 package main
@@ -431,7 +447,7 @@ func main() {
 
 ## 审计动作
 
-审计事件按动作分类（类型为 `AuditAction`）。自定义处理器可通过 `AuditAction` 常量过滤关注的事件类型：
+审计事件按动作分类（类型为 `AuditAction`）。自定义处理器可按这些常量过滤关注的事件类型：
 
 | 常量 | 值 | 含义 |
 |------|---|------|
@@ -446,7 +462,7 @@ func main() {
 | `ActionError` | `error` | 错误条件 |
 | `ActionFileAccess` | `file_access` | 文件系统访问 |
 
-`AuditEvent` 为结构化事件（含时间戳、动作、键、原因、成败与耗时等字段）。敏感键在进入事件前已被 `MaskKey` 掩码为 `[MASKED:N chars]`（N 为键长），非敏感键原样保留。
+`AuditEvent` 为结构化事件，含时间戳、动作、键、原因、成败与耗时等字段。敏感键在进入事件前已被替换为 `[MASKED]`，非敏感键原样保留。
 
 ## 相关文档
 

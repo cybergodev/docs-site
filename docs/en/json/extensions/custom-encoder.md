@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Custom Encoder"
 title: "Custom Encoder - CyberGo JSON | Custom Type Encoding"
-description: "CyberGo JSON custom encoders: json.Marshaler and TextMarshaler, Config.CustomEscapes escaping, time.Time built-in format, portable across encoding/json."
+description: "CyberGo JSON custom encoding: implement MarshalJSON or MarshalText to shape a Go type's JSON output, plus CustomEscapes and the RFC3339Nano time format."
 sidebar_position: 30
 ---
 
 # Custom Encoder
 
-The json library stays encoding-compatible with the standard `encoding/json`, so a custom type's JSON shape is primarily customized by implementing the standard-library interfaces. This page covers the extension points that **actually take effect in the current version**:
+A custom type's JSON shape is customized by implementing the standard-library interfaces, which keeps encoding compatible with `encoding/json`. Four encoding extension points take effect in the current version:
 
 - [`json.Marshaler`](#the-json-marshaler-interface) — a type customizes its own JSON encoding
 - [`encoding.TextMarshaler`](#the-encoding-textmarshaler-interface) — a type customizes its text encoding (output as a JSON string)
@@ -15,7 +15,7 @@ The json library stays encoding-compatible with the standard `encoding/json`, so
 - [`Config.CustomEscapes`](#custom-character-escaping-customescapes) — custom character escape mapping
 
 :::tip Interfaces first
-For "how should this type encode", prefer implementing `MarshalJSON` or `MarshalText`; such implementations work with this library, the standard `encoding/json`, and any compatible library — maximum portability.
+For "how should this type encode", prefer implementing `MarshalJSON` or `MarshalText`; such implementations work with this library, the standard `encoding/json`, and other compatible libraries.
 :::
 
 ## The json.Marshaler Interface
@@ -123,7 +123,7 @@ func main() {
 ```
 
 :::tip Precedence of the two interfaces
-If a type implements both, `MarshalJSON` wins over `MarshalText`. When the type should encode as a JSON string, implementing `MarshalText` is usually simpler (no manual quoting or escaping).
+If a type implements both, `MarshalJSON` wins over `MarshalText`. To encode a type as a JSON string, implementing `MarshalText` is simpler (no manual quoting or escaping).
 :::
 
 ## Built-in time.Time Support
@@ -221,14 +221,14 @@ Setting `CustomEscapes` (non-nil) activates the custom encoding path. That path 
 | `FloatPrecision` | `int` | Float precision (`-1` for default) |
 | `IncludeNulls` | `bool` | Whether to include null-valued fields |
 
-## Extension Fields Not Yet Wired (Reserved)
+## Deprecated Extension Fields
 
-::: warning Extension fields not yet wired
-`Config.CustomEncoder` (the `CustomEncoder` interface) and `Config.CustomTypeEncoders` (the `TypeEncoder` interface) are **declared and take part in config cloning and cache-key computation, but are not yet wired into the encoding pipeline** in the current version. Setting these fields **does not change encoding output**. They are reserved for future releases; until then, use the effective mechanisms above (`MarshalJSON`/`MarshalText`/`CustomEscapes`).
+::: warning Deprecated extension fields
+`Config.CustomEncoder` (the `CustomEncoder` interface) and `Config.CustomTypeEncoders` (the `TypeEncoder` interface) are **deprecated** (marked Deprecated in the source): they are declared and take part in config cloning and cache-key computation, but are **never invoked by the encoding pipeline** — setting them does not change encoding output, and the built-in encoder cannot be replaced. Both are kept within v1. To customize encoding, use the effective mechanisms above (`MarshalJSON`/`MarshalText`/`CustomEscapes`).
 
 ```go
-// Current version: the two fields below are declared but not wired; setting
-// them has no effect (reserved interfaces)
+// Deprecated: the two fields below are declared but not wired; setting
+// them has no effect
 type CustomEncoder interface {
     Encode(value any) (string, error)
 }

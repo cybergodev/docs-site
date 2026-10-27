@@ -1,23 +1,25 @@
 ---
 sidebar_label: "Interfaces"
 title: "Interface Definitions - CyberGo JSON | Extension & Hook APIs"
-description: "CyberGo JSON extension interfaces: Hook/HookContext, LoggingHook, PathParser, DangerousPattern with PatternLevel, CustomEncoder, Validator and Marshaler."
+description: "CyberGo JSON interfaces: Hook/HookContext, PathParser for path parsing, DangerousPattern severity levels, and the deprecated CustomEncoder."
 sidebar_position: 70
 ---
 
 # Interface Definitions
 
-The json package provides multiple extension interfaces for customizing JSON processing behavior.
+The interfaces on this page cover extension points, hooks, and related base types. Each one states whether it is wired in: `Hook`, `PathParser`, and the standard-library-compatible interfaces take effect directly, while `CustomEncoder`, `TypeEncoder`, and `Validator` are deprecated and never invoked.
 
 ## Encoder Interfaces
 
-::: warning Extension fields not yet wired
-The `CustomEncoder` and `TypeEncoder` interfaces are **declared but not yet wired into the encoding pipeline** in the current version. Setting them via `Config.CustomEncoder` / `Config.CustomTypeEncoders` has no effect — they are reserved for future releases. The currently available way to customize encoding is to implement the `json.Marshaler` or `encoding.TextMarshaler` interfaces (see [Custom Encoders](../extensions/custom-encoder)).
+::: warning Deprecated extension interfaces
+The `CustomEncoder` and `TypeEncoder` interfaces are **deprecated** (marked Deprecated in the source): implementations set via `Config.CustomEncoder` / `Config.CustomTypeEncoders` are **never invoked by the encoding pipeline**, and the built-in encoder cannot be replaced. Both interfaces are kept within v1. To customize encoding, implement the `json.Marshaler` or `encoding.TextMarshaler` interfaces (see [Custom Encoders](../extensions/custom-encoder)).
 :::
 
 ### CustomEncoder
 
-The custom JSON encoder interface.
+<Badge type="danger" text="Deprecated" />
+
+The custom JSON encoder interface. Implementing it and assigning to `Config.CustomEncoder` **has no effect** (see the warning above).
 
 ```go
 type CustomEncoder interface {
@@ -26,40 +28,24 @@ type CustomEncoder interface {
 }
 ```
 
-**Usage example**
+**Replacement**: implement `MarshalJSON` on your custom type — encoding then fully takes over that type's JSON representation:
 
 ```go
-import stdjson "encoding/json"
+type UpperString string
 
-type UpperCaseEncoder struct{}
-
-func (e *UpperCaseEncoder) Encode(value any) (string, error) {
-    // Custom encoding logic
-    switch v := value.(type) {
-    case string:
-        return fmt.Sprintf(`"%s"`, strings.ToUpper(v)), nil
-    default:
-        // Use standard encoding (avoids infinite recursion)
-        data, err := stdjson.Marshal(v)
-        if err != nil {
-            return "", err
-        }
-        return string(data), nil
-    }
+func (s UpperString) MarshalJSON() ([]byte, error) {
+    return []byte(fmt.Sprintf(`"%s"`, strings.ToUpper(string(s)))), nil
 }
 
-// Configure and use
-cfg := json.DefaultConfig()
-cfg.CustomEncoder = &UpperCaseEncoder{}
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
+out, err := json.Marshal(map[string]any{"key": UpperString("value")})
+// out: {"key":"VALUE"} — no Config setup needed
 ```
 
 ### TypeEncoder
 
-The per-type encoder interface.
+<Badge type="danger" text="Deprecated" />
+
+The per-type encoder interface. Registrations in `Config.CustomTypeEncoders` are **never consulted by the encoding pipeline** (see the warning above).
 
 ```go
 type TypeEncoder interface {
@@ -68,37 +54,17 @@ type TypeEncoder interface {
 }
 ```
 
-**Usage example**
-
-```go
-type TimeEncoder struct{}
-
-func (e *TimeEncoder) Encode(v reflect.Value) (string, error) {
-    if v.Type() == reflect.TypeOf(time.Time{}) {
-        t := v.Interface().(time.Time)
-        return fmt.Sprintf(`"%s"`, t.Format(time.RFC3339)), nil
-    }
-    return "", fmt.Errorf("unsupported type: %v", v.Type())
-}
-
-// Register the type encoder
-cfg := json.DefaultConfig()
-cfg.CustomTypeEncoders = map[reflect.Type]json.TypeEncoder{
-    reflect.TypeOf(time.Time{}): &TimeEncoder{},
-}
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
-```
+**Replacement**: per-type encoding customization likewise goes through `MarshalJSON`/`MarshalText` — e.g. implement `MarshalJSON` on a custom time type to override the default RFC3339Nano output (full example in [Custom Encoders](../extensions/custom-encoder)).
 
 ## Validator Interfaces
 
-::: warning Extension fields not yet wired
-The `Validator` interface is **declared but not yet wired into the operation pipeline** in the current version. Setting it via `Config.CustomValidators` or `Config.AddValidator()` has no effect — it is reserved for future releases. The currently available validation mechanism is `ValidateSchema` (see [Schema Validation](./schema)).
+::: warning Deprecated extension interface
+The `Validator` interface is **deprecated** (marked Deprecated in the source): validators registered via `Config.CustomValidators` or `Config.AddValidator()` are **never executed by any public operation**. The interface is kept within v1. For custom pre-operation checks use `Config.AddHook` with a Before hook (e.g. [`ValidationHook`](../extensions/hooks)); for structural validation use `ValidateSchema` (see [Schema Validation](./schema)).
 :::
 
 ### Validator
+
+<Badge type="danger" text="Deprecated" />
 
 The JSON validator interface.
 
@@ -110,35 +76,23 @@ type Validator interface {
 }
 ```
 
-**Usage example**
+**Replacement**: use `ValidationHook` to run custom checks before an operation; returning an error aborts it:
 
 ```go
-type SizeValidator struct {
-    MaxSize int64
-}
-
-func (v *SizeValidator) Validate(jsonStr string) error {
-    // Check the size of the input data
-    if int64(len(jsonStr)) > v.MaxSize {
-        return fmt.Errorf("JSON exceeds maximum size: %d", v.MaxSize)
+cfg := json.DefaultConfig()
+cfg.AddHook(json.ValidationHook(func(jsonStr, path string) error {
+    if len(jsonStr) > 1024*1024 { // 1MB
+        return fmt.Errorf("JSON exceeds maximum size")
     }
     return nil
-}
-
-// Set the validator
-cfg := json.DefaultConfig()
-cfg.CustomValidators = []json.Validator{&SizeValidator{MaxSize: 1024 * 1024}} // 1MB
-processor, err := json.New(cfg)
-if err != nil {
-    panic(err)
-}
+}))
 ```
 
 ## Hook Interfaces
 
 ### Hook
 
-The operation interception interface, supporting before/after processing.
+The operation interception interface, with a before and an after hook point.
 
 ```go
 type Hook interface {
@@ -156,11 +110,11 @@ type Hook interface {
 
 ### HookContext
 
-The hook context, providing operation information.
+The hook context, carrying the operation type, path, value, active configuration, and start time.
 
 ```go
 type HookContext struct {
-    Operation string        // Operation type: "get", "set", "delete", "marshal", "unmarshal"
+    Operation string        // Operation type (source comment lists: "get", "set", "delete", "marshal", "unmarshal")
     JSONStr   string        // Input JSON string (may be empty for marshal). Security warning: may contain sensitive data
     Path      string        // Target path (may be empty for marshal/unmarshal)
     Value     any           // Value for set operations
@@ -171,9 +125,9 @@ type HookContext struct {
 
 | Field       | Type        | Description                                                                                  |
 | ----------- | ----------- | -------------------------------------------------------------------------------------------- |
-| `Operation` | `string`    | Operation type: `"get"`, `"set"`, `"delete"`, `"marshal"`, `"unmarshal"`                       |
+| `Operation` | `string`    | Operation type: `"get"`, `"set"`, `"delete"`, `"get_multiple"`, `"set_multiple"` (the source comment also lists `"marshal"` and `"unmarshal"`) |
 | `JSONStr`   | `string`    | Input JSON string (may be empty for marshal); **may contain sensitive data**                  |
-| `Path`      | `string`    | Target path (may be empty for marshal/unmarshal)                                              |
+| `Path`      | `string`    | Target path (may be empty for marshal/unmarshal); for batch operations a placeholder such as `(3 paths)` |
 | `Value`     | `any`       | Value to write for set operations                                                             |
 | `Config`    | `*Config`   | Active configuration used by the current operation (a pooled object, valid only for this operation; hooks must not retain it beyond the call) |
 | `StartTime` | `time.Time` | Operation start time (set before `After` is called)                                           |
@@ -218,7 +172,7 @@ cfg.Hooks = []json.Hook{&LoggingHook{logger: slog.Default()}}
 
 ### HookFunc
 
-A struct adapter that lets functions act as hooks. Both function fields are optional: an unset side behaves as "pass-through" (`Before` returns nil; `After` returns the result and error unchanged).
+A struct adapter that turns functions into hooks. Both function fields are optional; an unset side passes through (`Before` returns `nil`, `After` returns the result and error unchanged).
 
 ```go
 type HookFunc struct {
@@ -258,7 +212,7 @@ p.AddHook(&json.HookFunc{
 
 Signature: `func LoggingHook(logger interface{ Info(msg string, args ...any) }) Hook`
 
-Creates a logging hook.
+Creates a logging hook: `Before` writes a start entry and `After` writes a completion entry carrying `duration` and the error text. Paths and error text are redacted internally before logging, so the caller needs no extra handling.
 
 ```go
 p.AddHook(json.LoggingHook(slog.Default()))
@@ -268,7 +222,7 @@ p.AddHook(json.LoggingHook(slog.Default()))
 
 Signature: `func TimingHook(recorder interface{ Record(op string, duration time.Duration) }) Hook`
 
-Creates a timing-recording hook.
+Creates a timing hook: in `After` it passes the `Operation` and the measured duration to `recorder.Record`.
 
 ```go
 type MetricsRecorder struct{}
@@ -284,7 +238,7 @@ p.AddHook(json.TimingHook(&MetricsRecorder{}))
 
 Signature: `func ValidationHook(validator func(jsonStr, path string) error) Hook`
 
-Creates an input-validation hook.
+Creates an input-validation hook: in `Before` it calls `validator` with `ctx.JSONStr` and `ctx.Path`; returning an error aborts the operation.
 
 ```go
 p.AddHook(json.ValidationHook(func(jsonStr, path string) error {
@@ -299,7 +253,7 @@ p.AddHook(json.ValidationHook(func(jsonStr, path string) error {
 
 Signature: `func ErrorHook(handler func(ctx HookContext, err error) error) Hook`
 
-Creates an error-interception hook.
+Creates an error-interception hook: in `After` it calls `handler` only when `err != nil` and uses its return value as the final error.
 
 ```go
 p.AddHook(json.ErrorHook(func(ctx json.HookContext, err error) error {
@@ -329,7 +283,7 @@ const (
 )
 ```
 
-**String method**: `func (pl PatternLevel) String() string` returns `"critical"` / `"warning"` / `"info"` (`"unknown"` for unrecognized values), convenient for logging.
+**String method**: `func (pl PatternLevel) String() string` returns `"critical"` / `"warning"` / `"info"` (`"unknown"` for unrecognized values), so levels can go straight into log fields.
 
 ### DangerousPattern
 
@@ -378,7 +332,7 @@ cfg.AddDangerousPattern(json.DangerousPattern{
 
 ### PathParser
 
-The path parser interface.
+The path parser interface. Once implemented it takes over all path parsing through `Config.CustomPathParser`.
 
 ```go
 type PathParser interface {
@@ -388,6 +342,8 @@ type PathParser interface {
 ```
 
 **Usage example**
+
+The returned `[]PathSegment` is defined by the library: `Type` names the segment kind, `Key`/`Index`/`End`/`Step` carry the values, and `Flags` is a bit-packed field. A custom parser fills these in index order.
 
 ```go
 type CustomPathParser struct{}
@@ -399,7 +355,7 @@ func (p *CustomPathParser) ParsePath(path string) ([]json.PathSegment, error) {
 ```
 
 ::: tip A wired extension point
-`CustomPathParser` **is wired into the path-parsing pipeline** in the current version: once set via `Config.CustomPathParser`, all path-based operations (Get/Set/Delete/iteration) call `ParsePath` as a **complete replacement** for the built-in parser; parsed results bypass the global path-segment cache, and configurations carrying a custom parser also bypass the processor configuration cache. Panics inside the parser are caught and converted to errors, never crashing the process. Unlike the still-reserved `CustomEncoder` and `CustomValidators`, this interface is ready to use.
+`CustomPathParser` is wired into the path-parsing pipeline: once set via `Config.CustomPathParser`, all path-based operations (Get/Set/Delete/iteration) call `ParsePath`, **completely replacing** the built-in parser. Parsed results bypass the global path-segment cache, and configurations carrying a custom parser bypass the processor configuration cache. Panics inside the parser are caught and converted to errors. Unlike the deprecated, ineffective `CustomEncoder` and `CustomValidators`, this interface is ready to use.
 :::
 
 ## Basic Types
@@ -413,7 +369,7 @@ type Number string
 ```
 
 :::tip Compatibility note
-The library's `Number` type is 100% compatible with `encoding/json.Number` and can be used as a direct replacement.
+`Number` has the same method set as `encoding/json.Number` (`String`/`Float64`/`Int64`) and additionally implements `MarshalJSON` and `UnmarshalJSON`: encoding writes the literal unquoted, and decoding `42` into a `*Number` needs no `UseNumber`. Swapping `encoding/json`'s `Number` for this one leaves decoding code unchanged; invalid literals are rejected rather than written out verbatim.
 :::
 
 **Methods**:
@@ -469,7 +425,7 @@ type Unmarshaler interface {
 }
 ```
 
-A type implementing `UnmarshalJSON` takes over its own parsing when decoded: the decoder hands it the corresponding JSON value verbatim, the type fills in its target itself, and any error returned by the method propagates upward unchanged. Usually implemented on a **pointer receiver** (decoding needs to mutate the receiver itself).
+A type implementing `UnmarshalJSON` takes over its own parsing when decoded. The decoder hands it the corresponding JSON value verbatim, the type fills in its target itself, and any error the method returns propagates upward unchanged. Implement it on a **pointer receiver**, since decoding must mutate the receiver.
 
 ### TextMarshaler
 
@@ -479,7 +435,7 @@ type TextMarshaler interface {
 }
 ```
 
-A type implementing `MarshalText` is encoded as a JSON string whose value is the text content (quoting and escaping applied automatically).
+A type implementing `MarshalText` is encoded as a JSON string whose value is the text content; the encoder supplies the quotes and escaping.
 
 ### TextUnmarshaler
 
@@ -520,7 +476,7 @@ For `Encoder`, `Decoder`, `Token`, `Delim`, `Number`, and other codec types, see
 
 ### Result[T]
 
-A type-safe operation result providing generic result handling.
+An operation result carrying a type parameter, combining the value, whether it exists, and the error into one return value. No library function returns it directly; you construct it manually.
 
 ```go
 type Result[T any] struct {
@@ -540,6 +496,8 @@ type Result[T any] struct {
 
 **Usage example**:
 
+The calls below show generic gets, which return `T` rather than `Result[T]`; for how `Result[T]` is constructed see [Generic Operations](./generics#the-result-t-type).
+
 ```go
 // Get a value generically
 name := json.GetTyped[string](data, "user.name")
@@ -553,7 +511,7 @@ name = json.GetTyped[string](data, "user.name", "unknown")
 
 ### AccessResult
 
-A dynamically typed access result, returned by Processor.SafeGet.
+A dynamically typed access result, returned by `SafeGet()`.
 
 ```go
 type AccessResult struct {
@@ -577,11 +535,11 @@ func (r AccessResult) AsBool() (bool, error)              // Strict conversion
 
 | Method | Conversion | Description |
 |--------|------------|-------------|
-| `AsString()` | Strict | Accepts only the string type; non-strings return an error |
-| `AsStringConverted()` | Formatting | Turns any value into its string representation via fmt.Sprintf |
-| `AsInt()` | Strict | Does not convert bool to int; accepts only integers and parseable numbers |
-| `AsFloat64()` | Strict | Does not convert bool to float; accepts only floats and parseable numbers |
-| `AsBool()` | Strict | Accepts only bool and parseable strings (`strconv.ParseBool` rules: `1/t/true/True/TRUE`, `0/f/false/False/FALSE`) |
+| `AsString()` | Strict | Accepts only `string`; other types return an error wrapping `ErrTypeMismatch` |
+| `AsStringConverted()` | Formatting | Renders any value's string form with `fmt.Sprintf("%v")` |
+| `AsInt()` | Strict | Rejects `bool`; accepts integers, integral floats, and parseable decimal strings |
+| `AsFloat64()` | Strict | Rejects `bool`; accepts numeric types and parseable strings |
+| `AsBool()` | Strict | Accepts only `bool` and strings that `strconv.ParseBool` parses |
 
 ```go
 result := p.SafeGet(data, "user.age")
@@ -597,7 +555,7 @@ str, err := result.AsStringConverted() // e.g. 30 -> "30"
 
 ### Schema
 
-The JSON Schema defined as a struct, supporting type-safe schema definitions.
+The JSON Schema expressed as a Go struct whose fields mirror the JSON Schema keywords. For whether a constraint takes effect, see [Schema Validation](./schema#creating-a-schema).
 
 ```go
 type Schema struct {
@@ -642,7 +600,7 @@ schema := &json.Schema{
 
 ### SchemaConfig
 
-The schema validation configuration. Used to create Schema instances via `NewSchema`.
+The schema validation configuration, passed to `NewSchema`.
 
 ```go
 type SchemaConfig struct {
@@ -698,6 +656,6 @@ func (ve *ValidationError) Error() string
 
 ## See Also
 
-- [Hook System](../extensions/hooks) - Detailed hook usage guide
-- [Schema Validation](./schema) - Detailed schema validation guide
-- [CustomEncoder](../extensions/custom-encoder) - Custom encoder guide
+- [Hook System](../extensions/hooks): hook usage and execution order
+- [Schema Validation](./schema): the full schema validation rules
+- [Custom Encoders](../extensions/custom-encoder): customizing encoding with `MarshalJSON`/`MarshalText`

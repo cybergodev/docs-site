@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Package Functions"
 title: "Functions - CyberGo JWT | Factories"
-description: "Package functions: New creates and validates a Processor, DefaultConfig and DefaultBlacklistConfig return defaults, and NewRateLimiter builds a limiter."
+description: "Package functions: New creates a Processor, DefaultConfig and DefaultBlacklistConfig return defaults, and NewRateLimiter builds a token bucket limiter."
 sidebar_position: 10
 ---
 
@@ -105,7 +105,7 @@ cfg.SecretKey = "hmac-key-that-has-at-least-32-bytes!"
 func DefaultBlacklistConfig() BlacklistConfig
 ```
 
-Returns a blacklist configuration with sensible defaults. `DefaultBlacklistConfig` is the recommended starting point for customizing blacklist behavior: take the defaults, override the fields you need, and assign the result to [`Config.Blacklist`](./config#blacklistconfig).
+Returns a blacklist configuration with sensible defaults. The common way to customize blacklist parameters is to take the defaults, override the fields that need changing, and assign the result to [`Config.Blacklist`](./config#blacklistconfig).
 
 ### Returns
 
@@ -135,7 +135,7 @@ import (
 
 func main() {
 	blacklist := jwt.DefaultBlacklistConfig()
-	blacklist.CleanupInterval = time.Minute // Override the field you need; keep the rest
+	blacklist.CleanupInterval = time.Minute // Override the field that needs changing; keep the rest
 
 	fmt.Println(blacklist.CleanupInterval)   // Output: 1m0s
 	fmt.Println(blacklist.MaxSize)           // Output: 100000
@@ -210,3 +210,46 @@ Creates a token bucket rate limiter.
 | Return | Type | Description |
 |--------|------|-------------|
 | `limiter` | `*RateLimiter` | Rate limiter instance |
+
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/cybergodev/jwt"
+)
+
+func main() {
+	limiter := jwt.NewRateLimiter(5, time.Minute)
+	defer limiter.Close()
+
+	for i := 1; i <= 6; i++ {
+		fmt.Printf("request %d: %v\n", i, limiter.Allow("tenant-a"))
+	}
+
+	// Output:
+	// request 1: true
+	// request 2: true
+	// request 3: true
+	// request 4: true
+	// request 5: true
+	// request 6: false
+}
+```
+
+### Usage Notes
+
+Most scenarios only need [`Config.EnableRateLimit`](./config#config); `New()` then builds a built-in limiter from `RateLimitRate` and `RateLimitWindow`. Call `NewRateLimiter` directly in only two cases:
+
+- A limiter is needed independently of a Processor;
+- A limiter must be injected through [`Config.RateLimiter`](./config#config) to replace the default implementation.
+
+::: warning Ownership
+`Processor.Close` closes the limiter injected via `Config.RateLimiter`. Do not share one instance across processors that may outlive each other — after one closes it, the others' `Allow` always returns `false`.
+:::
+
+`AllowN(key, n)` is an extension method on `*RateLimiter` that checks n requests at once. It returns `false` when `n` is negative or exceeds the maximum requests allowed per window, and `true` when `n` is 0.

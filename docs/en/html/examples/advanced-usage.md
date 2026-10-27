@@ -1,15 +1,17 @@
 ---
 sidebar_label: "Advanced Usage"
 title: "Advanced Usage - CyberGo html | Advanced Scenarios"
-description: "CyberGo html advanced examples: custom Scorer, multi-Sink audit pipeline, batch concurrency, Processor pooling, cache hit-rate, and web-service singletons."
-sidebar_position: 2
+description: "CyberGo html advanced examples: custom Scorer, multi-sink audit, batch files, Processor reuse, AllowedBaseDir sandbox, per-source encoding, graceful shutdown."
+sidebar_position: 20
 ---
 
 # Advanced Usage
 
+Advanced patterns for production use: custom scoring and single-pass selection, audit pipelines, batch files, server-side reuse, and safe file handling.
+
 ## Custom Scorer
 
-Customize content recognition logic for specific website structures. See [Testing & Custom Extensions](../guides/integration/testing-custom) for the full implementation. Here's the core usage:
+Tailor article detection to a specific site structure. The full implementation lives in [Testing & Custom Extensions](../guides/integration/testing-custom); the core usage follows.
 
 ```go
 package main
@@ -22,7 +24,7 @@ import (
 	"github.com/cybergodev/html"
 )
 
-// Implement custom Scorer (full example in guides/integration/testing-custom)
+// myScorer scores nodes by their class attribute
 type myScorer struct{}
 
 func (s myScorer) Score(node html.ContentNode) int {
@@ -39,7 +41,13 @@ func (s myScorer) Score(node html.ContentNode) int {
 	return 0
 }
 
+// ShouldRemove is consulted only when the library uses its built-in default
+// scorer; with a custom Scorer configured, node removal still follows the
+// built-in rules, so the logic below has no effect
 func (s myScorer) ShouldRemove(node html.ContentNode) bool {
+	if node == nil {
+		return false
+	}
 	switch node.Data() {
 	case "nav", "footer", "header":
 		return true
@@ -72,15 +80,23 @@ func main() {
 	}
 
 	fmt.Println("Text:", result.Text)
-	// Text: Understanding Go Concurrency
+	// Output: Text: # Understanding Go Concurrency
 	//
 	// Goroutines are Go's lightweight threads.
 }
 ```
 
+The navigation and sidebar are removed by the library's default cleaning and scorer candidate filtering, not by the `ShouldRemove` above.
+
+## Single-Pass Selection: ArticleFinder
+
+The default flow calls `Score` once per non-inline element. A custom scorer that re-walks a subtree inside `Score` degrades the whole extraction to O(N²). Let the `Scorer` implement `ArticleFinder` as well and the library instead calls `FindArticleNode` once, skipping the per-element enumeration; a `nil` return falls back to the whole `<body>`.
+
+Interface constraints, the full implementation, and how to test it are covered in [Testing & Custom Extensions](../guides/integration/testing-custom).
+
 ## Multi-Sink Audit Pipeline
 
-Build a tiered audit pipeline: critical events go to a separate file, all events also output to logs.
+Build a tiered audit pipeline: critical events go to a dedicated file while every event also reaches the log.
 
 ```go
 package main
@@ -94,13 +110,18 @@ import (
 )
 
 func main() {
-	// Create output destinations
-	allFile, _ := os.Create("audit-all.jsonl")
-	criticalFile, _ := os.Create("audit-critical.jsonl")
+	allFile, err := os.Create("audit-all.jsonl")
+	if err != nil {
+		log.Fatal(err)
+	}
+	criticalFile, err := os.Create("audit-critical.jsonl")
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer allFile.Close()
 	defer criticalFile.Close()
 
-	// Build multi-tier pipeline
+	// Pipeline: all events to allFile, critical ones to a second file, everything to stderr
 	allSink := html.NewWriterAuditSink(allFile)
 	criticalSink := html.NewFilteredSink(
 		html.NewWriterAuditSink(criticalFile),
@@ -109,12 +130,9 @@ func main() {
 		},
 	)
 	loggerSink := html.NewLoggerAuditSink()
-
 	pipeline := html.NewMultiSink(allSink, criticalSink, loggerSink)
 
-	// Configuration
-	cfg := html.HighSecurityConfig()
-	cfg.Audit = html.HighSecurityAuditConfig()
+	cfg := html.HighSecurityConfig() // already enables HighSecurityAuditConfig
 	cfg.Audit.Sink = pipeline
 
 	p, err := html.New(cfg)
@@ -123,7 +141,6 @@ func main() {
 	}
 	defer p.Close()
 
-	// Process content
 	data := []byte(`<html><body>
         <script>alert('xss')</script>
         <article><p>Safe content</p></article>
@@ -135,20 +152,23 @@ func main() {
 	}
 
 	fmt.Println("Text:", result.Text)
-	// Audit logs automatically recorded to files and stderr
+	// Output: Text: Safe content
 }
 ```
 
+Tiered routing (critical events into an alert channel), channel consumption, and a comparison of all built-in Sinks are in [Audit Pipeline](../guides/security/audit-pipeline).
+
 ## Batch File Processing
 
-Process HTML files in a directory, collecting results and errors:
+Process every HTML file under a directory, collecting results and errors separately:
 
 ```go
 package main
 
 import (
 	"fmt"
-	"os"
+	"io/fs"
+	"log"
 	"path/filepath"
 
 	"github.com/cybergodev/html"
@@ -157,36 +177,41 @@ import (
 func main() {
 	// Collect file paths
 	var files []string
-	filepath.Walk("./pages", func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir("./pages", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
+			return nil // skip entries that cannot be read
+		}
+		if d.IsDir() {
 			return nil
 		}
-		if filepath.Ext(path) == ".html" || filepath.Ext(path) == ".htm" {
+		switch filepath.Ext(path) {
+		case ".html", ".htm":
 			files = append(files, path)
 		}
 		return nil
 	})
-
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("Found %d files\n", len(files))
 
-	// Batch process
-	p, _ := html.New(html.TextOnlyConfig())
+	p, err := html.New(html.TextOnlyConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p.Close()
 
-	// single batch limit 10000; exceeding it fails the whole batch — caller must chunk
+	// One batch holds up to 10000 items; above that the whole batch fails, so chunk it yourself
 	batch := p.ExtractBatchFiles(files)
-
 	fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n",
 		batch.Success, batch.Failed, batch.Cancelled)
 
-	// Process results
 	for i, result := range batch.Results {
 		if result != nil {
 			fmt.Printf("[%d] %s (words: %d)\n", i, result.Title, result.WordCount)
 		}
 	}
 
-	// Check errors
 	for i, err := range batch.Errors {
 		if err != nil {
 			fmt.Printf("[%d] Error: %v\n", i, err)
@@ -197,75 +222,11 @@ func main() {
 
 ## Processor Reuse with Timeout
 
-Processor singleton pattern for web service scenarios:
-
-```go
-package main
-
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"time"
-
-	"github.com/cybergodev/html"
-)
-
-var processor *html.Processor
-
-func init() {
-	cfg := html.DefaultConfig()
-	cfg.MaxCacheEntries = 5000
-	cfg.CacheTTL = 30 * time.Minute
-	cfg.ProcessingTimeout = 10 * time.Second
-
-	var err error
-	processor, err = html.New(cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func extractHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
-
-	data := []byte(r.FormValue("html"))
-	if len(data) == 0 {
-		http.Error(w, "html field required", http.StatusBadRequest)
-		return
-	}
-
-	result, err := processor.ExtractWithContext(ctx, data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
-}
-
-func statsHandler(w http.ResponseWriter, r *http.Request) {
-	stats := processor.GetStatistics()
-	fmt.Fprintf(w, "Processed: %d\nCache hits: %d\nErrors: %d\n",
-		stats.TotalProcessed, stats.CacheHits, stats.ErrorCount)
-}
-
-func main() {
-	defer processor.Close()
-
-	http.HandleFunc("/extract", extractHandler)
-	http.HandleFunc("/stats", statsHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-```
+A Processor singleton for a web service: created once at startup, shared by every request, with each request deriving its timeout from the request context. The complete version (including the request-body size limit) is in the "Processor Singleton + HTTP Service" section of [HTTP Integration](../guides/integration/http-integration). The "Context Cancellation & Graceful Shutdown" section below keeps the differentiated scenario — signal-driven graceful shutdown.
 
 ## Extract and Generate Markdown Files
 
-Extract content from HTML pages and save as Markdown:
+Convert a batch of HTML files into Markdown files:
 
 ```go
 package main
@@ -280,28 +241,27 @@ import (
 )
 
 func main() {
-	p, err := html.New(html.MarkdownConfig())
+	p, err := html.New(html.DefaultConfig())
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer p.Close()
 
-	urls := []string{
+	paths := []string{
 		"downloaded/page1.html",
 		"downloaded/page2.html",
 		"downloaded/page3.html",
 	}
 
-	for _, path := range urls {
+	for _, path := range paths {
 		md, err := p.ExtractToMarkdownFromFile(path)
 		if err != nil {
 			log.Printf("Failed to process %s: %v", path, err)
 			continue
 		}
 
-		// Generate output filename
 		outPath := strings.Replace(path, ".html", ".md", 1)
-		if err := os.WriteFile(outPath, []byte(md), 0644); err != nil {
+		if err := os.WriteFile(outPath, []byte(md), 0o644); err != nil {
 			log.Printf("Failed to write %s: %v", outPath, err)
 			continue
 		}
@@ -312,15 +272,16 @@ func main() {
 
 ## Context Cancellation & Graceful Shutdown
 
-Use context to control extraction timeouts in an HTTP service, supporting request-level cancellation:
+Control extraction timeouts with a context in an HTTP service, with request-level cancellation and signal-driven graceful shutdown:
 
 ```go
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -345,22 +306,20 @@ func init() {
 }
 
 func extractHandler(w http.ResponseWriter, r *http.Request) {
-	// Request-level timeout (5s), stacked with ProcessingTimeout (10s); whichever fires first wins
+	// Request timeout of 5s: when it fires before ProcessingTimeout (10s), the
+	// result is context.DeadlineExceeded
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	body := make([]byte, 0)
-	buf := make([]byte, 4096)
-	for {
-		n, err := r.Body.Read(buf)
-		body = append(body, buf[:n]...)
-		if err != nil {
-			break
-		}
-		if len(body) > 10*1024*1024 {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 10*1024*1024))
+	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
 			http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
 			return
 		}
+		http.Error(w, "failed to read request body", http.StatusBadRequest)
+		return
 	}
 
 	result, err := processor.ExtractWithContext(ctx, body)
@@ -368,6 +327,8 @@ func extractHandler(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, html.ErrProcessingTimeout):
 			http.Error(w, "processing timeout", http.StatusGatewayTimeout)
+		case errors.Is(err, context.DeadlineExceeded):
+			http.Error(w, "request timeout", http.StatusGatewayTimeout)
 		case errors.Is(err, html.ErrInputTooLarge):
 			http.Error(w, "input too large", http.StatusRequestEntityTooLarge)
 		default:
@@ -377,16 +338,17 @@ func extractHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"title":"%s","word_count":%d}`, result.Title, result.WordCount)
+	json.NewEncoder(w).Encode(map[string]any{
+		"title":      result.Title,
+		"word_count": result.WordCount,
+	})
 }
 
 func main() {
-	defer processor.Close()
-
 	server := &http.Server{Addr: ":8080"}
 	http.HandleFunc("/extract", extractHandler)
 
-	// Graceful shutdown: close the Processor and HTTP server on signal
+	// On a signal, close the Processor first, then the HTTP server
 	go func() {
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -403,7 +365,7 @@ func main() {
 
 ## Secure File Processing
 
-Use the `AllowedBaseDir` sandbox to process user-supplied file paths:
+Use the `AllowedBaseDir` sandbox for user-supplied file paths:
 
 ```go
 package main
@@ -412,15 +374,39 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/cybergodev/html"
 )
 
 func main() {
+	// Build the sandbox: one HTML file inside the allowed directory, plus one outside
+	tmp, err := os.MkdirTemp("", "html-sandbox-*")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+
+	base := filepath.Join(tmp, "allowed")
+	if err := os.MkdirAll(filepath.Join(base, "sub"), 0o750); err != nil {
+		log.Fatal(err)
+	}
+	files := map[string]string{
+		filepath.Join(base, "article.html"):  "<html><head><title>Sandboxed Article</title></head><body><article><p>Body.</p></article></body></html>",
+		filepath.Join(base, "sub", "p.html"): "<html><body><article><p>File in a subdirectory.</p></article></body></html>",
+		filepath.Join(tmp, "outside.html"):   "<html><body><article><p>File outside the directory.</p></article></body></html>",
+	}
+	for path, content := range files {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	cfg := html.HighSecurityConfig()
-	// Restrict file reading to this directory and its subdirectories
-	// Resolves real paths via OS file handle, preventing symlink/junction bypass
-	cfg.AllowedBaseDir = "/var/www/uploads"
+	// Restrict file reads to this directory and its subdirectories
+	// The real path is resolved from the opened file handle, blocking symlink/junction escapes
+	cfg.AllowedBaseDir = base
 
 	p, err := html.New(cfg)
 	if err != nil {
@@ -430,32 +416,39 @@ func main() {
 
 	// Simulated user-supplied file paths
 	userFiles := []string{
-		"/var/www/uploads/article1.html", // ✅ Allowed
-		"/var/www/uploads/sub/page.html", // ✅ Allowed (subdirectory)
-		"../../../etc/passwd",            // ❌ Path traversal
-		"/etc/shadow",                    // ❌ Outside directory
+		filepath.Join(base, "article.html"),  // inside the sandbox
+		filepath.Join(base, "sub", "p.html"), // subdirectory, also allowed
+		filepath.Join(tmp, "outside.html"),   // outside the directory
+		filepath.Join("..", "secret.html"),   // relative path containing ..
 	}
 
 	for _, file := range userFiles {
 		_, err := p.ExtractFromFile(file)
-		if err != nil {
-			var fileErr *html.FileError
-			if errors.As(err, &fileErr) {
-				// SafePath returns only the file name, not the full path
-				fmt.Printf("❌ Rejected %s: %s\n", fileErr.SafePath(), fileErr.FileErr)
-			} else {
-				fmt.Printf("❌ Error: %v\n", err)
-			}
+		if err == nil {
+			fmt.Printf("Allowed: %s\n", filepath.Base(file))
 			continue
 		}
-		fmt.Printf("✅ Processed successfully: %s\n", file)
+		var fileErr *html.FileError
+		if errors.As(err, &fileErr) {
+			// SafePath returns only the filename, never the full path
+			fmt.Printf("Rejected: %s\n", fileErr.SafePath())
+		} else {
+			fmt.Printf("Rejected: %v\n", err)
+		}
 	}
+	// Output:
+	// Allowed: article.html
+	// Allowed: p.html
+	// Rejected: outside.html
+	// Rejected: secret.html
 }
 ```
 
-## Encoding Detection Fallback
+Outside-directory and path-traversal rejections take different forms: the `*FileError` for reading outside the directory carries `FileErr` set to `path outside allowed directory` and wraps no sentinel error, while a rejection for a relative path containing `..` explicitly wraps `ErrInvalidFilePath` (detectable with `errors.Is`). Both cases log a `path_traversal` audit event. The sandbox's four independent checks and the cross-platform real-path resolution are in [Security Overview](../guides/security/).
 
-Fall back to a manually specified encoding when auto-detection fails:
+## Specifying the Encoding by Source
+
+GBK or Shift_JIS bytes with no `<meta charset>` do not raise an error; they are decoded as windows-1252 and come out garbled. So the encoding has to come from the source: an HTTP `Content-Type` header, a site convention, or a detection result. The example below shows how to catch the error from a wrong forced encoding and retry with the right one:
 
 ```go
 package main
@@ -468,35 +461,41 @@ import (
 	"github.com/cybergodev/html"
 )
 
-// extractWithFallback tries auto-detection first, then retries with a specified encoding on failure
-func extractWithFallback(data []byte, fallback string) (*html.Result, error) {
-	result, err := html.Extract(data)
-	if err == nil {
-		return result, nil
-	}
-	if strings.Contains(err.Error(), "encoding detection failed") {
-		cfg := html.DefaultConfig()
-		cfg.Encoding = fallback
-		return html.Extract(data, cfg)
-	}
-	return nil, err
+// extractWithEncoding extracts with a forced encoding, so different encodings
+// can be compared
+func extractWithEncoding(data []byte, encoding string) (*html.Result, error) {
+	cfg := html.DefaultConfig()
+	cfg.Encoding = encoding
+	return html.Extract(data, cfg)
 }
 
 func main() {
-	// Simulate GBK-encoded HTML of unknown origin (no meta charset)
-	data := []byte{0xbb, 0xb9, 0xca, 0xc7, 0xd3, 0xd0, 0xd2, 0xbb, 0xb8, 0xf6}
+	// GBK-encoded HTML with no <meta charset>
+	data := []byte("<html><body><h1>" + string([]byte{0xc4, 0xe3, 0xba, 0xc3}) + "</h1></body></html>")
 
-	result, err := extractWithFallback(data, "gbk")
+	// Wrongly decoding as utf-8 fails
+	_, err := extractWithEncoding(data, "utf-8")
+	if err == nil {
+		log.Fatal("expected an encoding error")
+	}
+	fmt.Println("First attempt failed:", strings.HasPrefix(err.Error(), "encoding detection failed"))
+	// Output: First attempt failed: true
+
+	// Retry with gbk, the encoding of the source
+	result, err := extractWithEncoding(data, "gbk")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Printf("Title: %s\nText length: %d\n", result.Title, len(result.Text))
+	fmt.Println("Title:", result.Title)
+	// Output: Title: 你好
 }
 ```
+
+Encoding errors have no sentinel, so `errors.Is` cannot detect them; check whether `err.Error()` starts with `encoding detection failed`.
 
 ## Next Steps
 
 - [FAQ](../faq/) - Common questions and troubleshooting
 - [Production Checklist](../guides/security/production-checklist) - Pre-deployment security checks
-- [API Reference: Interfaces](../api-reference/types/interfaces) - Extension interfaces such as Scorer and AuditSink
+- [Reader Mode](../guides/core-features/reader-mode) - Whole-page sectioned output and Render
+- [API Reference: Interfaces](../api-reference/types/interfaces) - Extension interfaces such as Scorer, ArticleFinder, and AuditSink

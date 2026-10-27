@@ -1,11 +1,13 @@
 ---
 sidebar_label: "Cheat Sheet"
 title: "Cheat Sheet - CyberGo HTTPC | Common Code Reference"
-description: "HTTPC cheat sheet: client creation and presets, request methods, 29 WithXxx options, Result handling, middleware, ClientError, downloads, domain clients."
+description: "HTTPC cheat sheet: client creation and presets, request methods, WithXxx options, Result handling, and middleware examples."
 sidebar_position: 30
 ---
 
 # Cheat Sheet
+
+The cheat sheet groups common HTTPC code snippets by topic; each section links to the corresponding detailed page.
 
 ## Creating a Client
 
@@ -34,8 +36,8 @@ client, _ = httpc.New(httpc.MinimalConfig())     // Lightweight: no retries, no 
 cfg := httpc.DefaultConfig()
 cfg.Defaults.UserAgent = "myapp/2.0"
 cfg.Defaults.Headers["Authorization"] = "Bearer " + token
-cfg.Defaults.FollowRedirects = false
-cfg.Defaults.MaxRedirects = 5
+cfg.Security.FollowRedirects = false
+cfg.Security.MaxRedirects = 5
 client, _ := httpc.New(cfg)
 
 // Manage the package-level default client
@@ -91,7 +93,14 @@ httpc.WithBody(data)                    // Auto-detect type
 httpc.WithBody(data, httpc.BodyJSON)    // Explicit: BodyJSON/BodyXML/BodyForm/BodyBinary/BodyMultipart
 ```
 
-`WithBody` auto-detection rules (`BodyAuto`, the default): `string` -> text/plain; `[]byte` -> octet-stream; `map[string]string` -> form; `*FormData` -> multipart; `io.Reader` -> passed through as-is (no Content-Type set); other types -> JSON.
+`WithBody` auto-detects the type by default (`BodyAuto`):
+
+- `string` -> text/plain
+- `[]byte` -> octet-stream
+- `map[string]string` -> form
+- `*FormData` -> multipart
+- `io.Reader` -> passed through as-is (no Content-Type set)
+- other types -> JSON
 
 ### Query Parameters
 
@@ -128,9 +137,19 @@ httpc.WithMaxRetries(3)          // 0 disables retries; max 10
 httpc.WithRetryNonIdempotent(true) // Allow retrying non-idempotent POST/PATCH (per-request override, both directions; beware replay side effects such as duplicate payments)
 httpc.WithFollowRedirects(false) // Disable redirect following
 httpc.WithMaxRedirects(5)        // Note: 0 counts as unset (falls back to the default 10); use the line above to disable following
-httpc.WithStreamBody(true)       // Only affects Download (normal requests still read the body fully into Result)
+httpc.WithStreamBody(true)       // Only affects Download (a normal request fails with ErrStreamBodyRequiresDownload)
 httpc.WithAllowPrivateIPs(true)  // Per-request SSRF exemption (intranet/localhost access)
 ```
+
+### Package-Level Routing (package-level functions only)
+
+```go
+httpc.WithProxy("http://127.0.0.1:7890")   // Route this call through the proxy
+httpc.WithSystemProxy()                    // Use system/env proxy settings for this call
+httpc.WithTLSFingerprint("chrome-windows") // Use a browser TLS fingerprint for this call
+```
+
+On an explicit `Client` instance these three options return an error; set `Config.Connection.ProxyURL` / `EnableSystemProxy` / `Security.TLSFingerprint` instead (see [Request Options](../api-reference/core/options)).
 
 ### Callbacks
 
@@ -210,10 +229,10 @@ cfg.Connection.EnableCookies = true
 // Proxy pool (rotation + passive circuit breaking)
 cfg.Connection.ProxyPool = []string{"http://p1:8080", "http://p2:8080"}
 cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin // or ProxyStrategyRandom
-cfg.Connection.ProxyFailureThreshold = 3   // N consecutive failures temporarily removes a proxy (default 3)
+cfg.Connection.ProxyFailureThreshold = 3   // N consecutive TCP dial failures temporarily removes a proxy (default 3)
 cfg.Connection.ProxyCooldown = 30 * time.Second // Half-open probe cooldown after removal (default 30s)
 cfg.Connection.ProxyRotatePerRequest = true     // New IP per request (sacrifices connection reuse)
-cfg.Connection.ProxyRotateOnStatus = []int{403} // Rotate proxy and retry on these status codes (requires MaxRetries > 0)
+cfg.Connection.ProxyRotateOnStatus = []int{403} // Rotate proxy and retry on these status codes (requires MaxRetries > 0; when the pool holds more than 1 proxy and ProxyURL is unset, the retry budget auto-rises to len(ProxyPool)-1, capped at 10)
 
 // DNS-over-HTTPS
 cfg.Connection.EnableDoH = true
@@ -285,8 +304,8 @@ func traceMiddleware(next httpc.Handler) httpc.Handler {
 // Compose: httpc.Chain(mw1, mw2)(finalHandler)
 ```
 
-:::warning Do not use for Download or streaming requests
-`TimeoutMiddleware` must not be used for `Download` or `WithStreamBody(true)` requests (it cancels the context as soon as the response headers arrive, making the body read fail with "context canceled"); use `WithTimeout` for such cases instead.
+:::warning
+`TimeoutMiddleware` is not suitable for `Download` or `WithStreamBody(true)` requests: the middleware rejects streaming requests on entry, returning `TimeoutMiddleware is incompatible with streaming responses`. Use `WithTimeout` for such cases instead.
 :::
 
 ## Error Handling
@@ -418,8 +437,8 @@ sm.SetHeader("X-App", "demo")
 sm.UpdateFromResult(result) // Extracts Set-Cookie from the response
 ```
 
-:::warning Request options are applied twice
-Request options passed to a `DomainClient` are applied twice internally (session capture + the real request); avoid options with side effects (counters, one-time nonces).
+:::warning Options run once; session capture is static
+Request options passed to a `DomainClient` run once. Session capture is static: `SessionManager` recognizes only `WithHeader`/`WithHeaderMap`/`WithCookies`/`WithCookieMap`/`WithCookieString`, and the headers and cookies they carry persist into the session. A `SetHeader`/`SetCookies` call inside a custom `RequestOptionFunc` is not captured — use `dc.SetHeader`/`dc.SetCookie` instead.
 :::
 
 ## Scenario Recipes

@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # Quick Start
 
-Get started with the env library in 5 minutes, from installation to practical usage.
+Install env, load a `.env` file, read typed values, and map them into a struct.
 
 ## Installation
 
@@ -69,18 +69,18 @@ func main() {
 ```
 
 :::tip Two usage modes
-env provides two usage modes:
+env has two usage modes:
 
 | Mode | Usage | Use Case |
 |------|-------|----------|
 | **Global mode** | `env.Load()` + `env.GetString()` | Simple applications, scripts, quick prototyping |
 | **Instance mode** | `env.New()` + `loader.GetString()` | Multiple instances, test isolation, fine-grained lifecycle control |
 
-The global mode uses package-level functions backed by a default Loader singleton. After calling `env.Load()`, all `env.GetXxx()` calls use that instance. The instance mode creates an independent Loader via `env.New()`, suitable for scenarios requiring isolation or managing multiple configurations simultaneously.
+Global mode uses package-level functions backed by a default Loader singleton. After `env.Load()` succeeds, every `env.GetXxx()` call reads from that instance. Instance mode creates an independent Loader via `env.New()`, which you use when you need isolation or several configurations at once.
 
-The examples in this documentation use the global mode by default. See the [Multi-environment Configuration](#multi-environment-configuration) section for the full instance mode usage.
+The examples on this page use global mode. [Multi-environment Configuration](#multi-environment-configuration) shows the instance-mode equivalent.
 
-Note that forgetting to call `Load()` does not raise an error: before initialization, `Get*`/`Lookup` silently return default or zero values, while `Set`/`Delete`/`Validate`/`ParseInto` return `ErrNotInitialized`. See [Package Functions](../api-reference/functions) for details.
+Calling package-level functions before `Load()` reports no error, but behavior differs: `Get*` returns the default or zero value, `Lookup` returns `("", false)`, `Keys`/`All` return nil and `Len` returns 0, while `Set`/`Delete`/`Validate`/`ParseInto` return `ErrNotInitialized`. See [Package Functions](../api-reference/functions) for details.
 :::
 
 ## Reading Values - All Types
@@ -126,31 +126,32 @@ timeout := env.GetDuration("TIMEOUT")
 ```
 
 :::tip Key-name resolution
-The library supports multiple key access methods:
+A key lookup tries these forms in order:
 
 ```go
 // JSON: {"app": {"name": "myapp"}}
 // Stored as: APP_NAME=myapp
 
-// All of the following can access this value
-name := env.GetString("APP_NAME")      // Flat key (recommended)
-name = env.GetString("app.name")       // Dot path (auto-converted)
-name = env.GetString("APP.NAME")       // Uppercase dot path
+// All of the following access this value (distinct names for illustration only)
+nameFlat := env.GetString("APP_NAME")  // Flat key (recommended)
+nameDot := env.GetString("app.name")   // Dot path (auto-converted)
+nameUpper := env.GetString("APP.NAME") // Uppercase dot path
+
+fmt.Println(nameFlat, nameDot, nameUpper) // all the same
 ```
 
 **Resolution rules:**
-1. **Exact match**: Looks up the exact key `KEY` first
-2. **Uppercase conversion**: Lowercase keys try the uppercase version `key` → `KEY`
-3. **Path resolution**: Dot paths are converted to underscores `app.name` → `APP_NAME`
+1. **Exact match**: looks up the key as given (`KEY`), including literal keys that contain dots (a YAML top-level key `apnews.com` is stored in uppercase as APNEWS.COM)
+2. **Uppercase conversion**: a lowercase key falls back to its uppercase form (`key` → `KEY`)
+3. **Path resolution**: dot paths convert to underscores (`app.name` → `APP_NAME`)
+4. **Numeric index**: a key ending in an index (`hosts.0`) returns that element of the comma-separated value
 :::
 
 ### Boolean Support
 
-`GetBool` supports the following values (case-insensitive):
+`GetBool` is case-insensitive: `true`/`1`/`yes`/`on`/`enabled` are truthy, and `false`/`0`/`no`/`off`/`disabled` are falsy.
 
-| Truthy | Falsy |
-|--------|-------|
-| `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
+An empty string parses as `false` rather than falling back to the default, and an unrecognized value is audited and returns the default. `GetInt`, `GetFloat64`, and `GetDuration` differ: their empty values fail to parse and fall back to the default. See [FAQ · What boolean value formats are supported?](../reference/faq#what-boolean-value-formats-are-supported) for the full table.
 
 ### Slice Types
 
@@ -173,8 +174,10 @@ timeouts := env.GetSlice[time.Duration]("TIMEOUTS")
 ```
 
 **Parse order:**
-1. First looks up indexed keys `KEY_0`, `KEY_1`, `KEY_2`...
-2. If no indexed keys, parses the `KEY` value by comma separation
+1. Look for indexed keys `KEY_0`, `KEY_1`, `KEY_2`...
+2. If none exist, split the `KEY` value on commas
+
+Indexed elements are parsed one by one; an element that fails conversion is recorded in the audit log and skipped. If nothing survives the skips, the key is treated as having no indexed keys and the comma-separated value is tried next; if that also fails to parse, the whole list is discarded and the caller's default is returned — no further candidate keys are tried.
 
 ```go
 // Method 1: Indexed keys (recommended)
@@ -216,8 +219,10 @@ if secret != nil {
     // Get the raw value (only call when plaintext is needed, e.g. for crypto, API calls)
     value := secret.Reveal()
 
-    // Use mask for logging (prevent leakage)
-    log.Printf("API Key: %s", secret.Masked())  // Output: [SECURE:32 bytes]
+    // Use mask for logging (prevent leakage); the number is the value length.
+    // A 32-byte API_KEY prints [SECURE:32 bytes] (a lock status is appended when
+    // memory locking is enabled).
+    log.Printf("API Key: %s", secret.Masked())
 }
 ```
 
@@ -245,7 +250,9 @@ type Config struct {
 }
 
 func main() {
-	env.Load(".env")
+	if err := env.Load(".env"); err != nil {
+		panic(err)
+	}
 
 	var cfg Config
 	if err := env.ParseInto(&cfg); err != nil {
@@ -258,18 +265,18 @@ func main() {
 ```
 
 :::details
-[Struct Mapping](../guides/struct-mapping) guide.
+See the [Struct Mapping](../guides/struct-mapping) guide for tags, nested structs, and validation.
 :::
 
 ## Configuration Presets
 
-The library provides four preset configurations for different scenarios:
+env ships four presets, one per common scenario:
 
 | Preset | Purpose | Characteristics |
 |--------|---------|-----------------|
-| `DefaultConfig()` | General use | Safe defaults, suitable for most cases |
-| `DevelopmentConfig()` | Development | Relaxed limits, allows overwriting |
-| `TestingConfig()` | Testing | Compact limits, allows overwriting, suited for unit tests |
+| `DefaultConfig()` | General use | Safe defaults for most cases |
+| `DevelopmentConfig()` | Development | Relaxed limits, overwrites existing keys |
+| `TestingConfig()` | Testing | Small limits, overwrites existing keys, suited for unit tests |
 | `ProductionConfig()` | Production | Strict validation + audit logging |
 
 ```go
@@ -291,15 +298,15 @@ cfg := env.ProductionConfig()
 | Error on missing file | ✗ | ✗ | ✗ | ✓ |
 | Audit logging | ✗ | ✗ | ✗ | ✓ |
 | YAML syntax | ✗ | ✓ | ✗ | ✗ |
-| File size limit | 2MB | 10MB | 64KB | 64KB |
-| Max variables | 500 | 500 | 50 | 50 |
+| File size limit | 8 MB | 10 MB | 64 KB | 64 KB |
+| Max variables | 1000 | 1000 | 50 | 50 |
 | Forbidden key check | ✓ | ✓ | ✓ | ✓ |
 | Value validation | ✓ | ✓ | ✓ | ✓ |
 
 :::tip How to choose
-- **Development**: Use `DevelopmentConfig()` with relaxed limits for fast iteration
-- **Testing**: Use `TestingConfig()` with overwrite support for test isolation
-- **Production**: Use `ProductionConfig()` with audit and strict validation
+- **Development**: `DevelopmentConfig()` for relaxed limits during fast iteration
+- **Testing**: `TestingConfig()` for overwrite support and test isolation
+- **Production**: `ProductionConfig()` for audit logging and strict validation
 :::
 
 ## Multi-environment Configuration
@@ -325,12 +332,12 @@ if err := env.LoadWithConfig(cfg); err != nil { log.Fatal(err) }
 ```
 
 ::: tip Overwrite semantics
-Files loaded later do **not** override earlier ones by default: `DefaultConfig()` and `ProductionConfig()` both use first-file-wins, skipping keys that already exist to prevent accidentally overwriting loaded configuration at runtime. Set `OverwriteExisting = true` (built into the `DevelopmentConfig()`/`TestingConfig()` presets) for last-file-wins behavior.
+Later files do **not** override earlier ones by default: `DefaultConfig()` and `ProductionConfig()` both use first-file-wins and skip keys that already exist. This prevents a later file from silently replacing configuration loaded at runtime. Set `OverwriteExisting = true` (already set in the `DevelopmentConfig()`/`TestingConfig()` presets) for last-file-wins behavior.
 :::
 
 ### Using a Loader Instance
 
-When you need more control, use a Loader instance:
+When you need lifecycle control, create a Loader instance:
 
 ```go
 package main
@@ -341,8 +348,10 @@ import (
 )
 
 func main() {
-	// Create configuration
+	// Create configuration (clear Filenames so New does not auto-load
+	// and validate the required keys itself)
 	cfg := env.ProductionConfig()
+	cfg.Filenames = nil
 	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
 	// Create a loader
@@ -357,7 +366,8 @@ func main() {
 		panic(err)
 	}
 
-	// Validate required keys
+	// Validate required keys (each file was already checked at parse time;
+	// this re-checks the merged store)
 	if err := loader.Validate(); err != nil {
 		panic(err)
 	}
@@ -372,7 +382,7 @@ func main() {
 
 ### Multi-file Loading
 
-Files are loaded in order. By default (`DefaultConfig()`) the **first file loaded wins**: keys that already exist are skipped in later files. Set `OverwriteExisting = true` (built into the `DevelopmentConfig()`/`TestingConfig()` presets) if later files should override earlier ones:
+Files load in the order you list them. With `DefaultConfig()` the **first file loaded wins**: keys that already exist are skipped in later files. Set `OverwriteExisting = true` (already set in the `DevelopmentConfig()`/`TestingConfig()` presets) when later files should override earlier ones:
 
 ::: code-group
 
@@ -388,7 +398,7 @@ loader.LoadFiles(".env", ".env.local")
 
 ### Multi-format Support
 
-File format is auto-detected:
+`LoadFiles` picks the parser from the file extension:
 
 ```go
 loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
@@ -453,16 +463,16 @@ if errors.As(err, &secErr) {
 ## Next Steps
 
 ### Learn More
-- [Struct Mapping](../guides/struct-mapping) - Detailed configuration binding
-- [Serialization](../guides/serialization) - Config serialization and deserialization
-- [Multi-format Config](../guides/multi-format) - JSON/YAML in depth
-- [Testing](../guides/testing) - Usage in tests
+- [Struct Mapping](../guides/struct-mapping) - configuration binding in detail
+- [Serialization](../guides/serialization) - config serialization and deserialization
+- [Multi-format Config](../guides/multi-format) - JSON/YAML in detail
+- [Testing](../guides/testing) - using env in tests
 
 ### API Reference
-- [Package Functions](../api-reference/functions) - Complete list of package-level functions
+- [Package Functions](../api-reference/functions) - every package-level function
 - [Loader API](../api-reference/loader) - Loader methods
-- [Config API](../api-reference/config) - Configuration options
+- [Config API](../api-reference/config) - configuration options
 
 ### Security
-- [Security Overview](../security/) - Security architecture and best practices
-- [SecureValue API](../api-reference/secure-value) - Secure value handling
+- [Security Overview](../security/) - security architecture and defaults
+- [SecureValue API](../api-reference/secure-value) - secure value handling

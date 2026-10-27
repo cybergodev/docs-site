@@ -7,7 +7,9 @@ sidebar_position: 6
 
 # Interfaces
 
-The env library uses a fine-grained interface design, supporting dependency injection and flexible composition.
+`env` defines small, single-purpose interfaces. Accept the narrowest one your function needs to stay decoupled from the full `Loader`.
+
+A `*Loader` satisfies `EnvLoader` and its five component interfaces — `EnvFileLoader`, `EnvGetter`, `EnvSetter`, `EnvApplicator`, and `EnvCloser` — so a single loader value can be passed to all of them.
 
 ## Core Interfaces
 
@@ -37,7 +39,7 @@ type EnvFileLoader interface {
 }
 ```
 
-**Use case:** Scenarios that only need file loading capability.
+**Use case:** when a function only needs to load files. The interface has a single method, `EnvFileLoader.LoadFiles`.
 
 ```go
 func loadConfig(loader env.EnvFileLoader) error {
@@ -60,7 +62,14 @@ type EnvGetter interface {
 }
 ```
 
-**Use case:** Read-only configuration access (minimal interface).
+**Use case:** read-only configuration access, through the minimal read interface. Its four methods:
+
+| Method | Description |
+|--------|-------------|
+| `EnvGetter.GetString` | Read a string by key, with an optional default |
+| `EnvGetter.Lookup` | Look up a key, returning the value and whether it exists |
+| `EnvGetter.Keys` | Return every key |
+| `EnvGetter.All` | Return every key-value pair |
 
 ```go
 func readConfig(getter env.EnvGetter) {
@@ -71,10 +80,9 @@ func readConfig(getter env.EnvGetter) {
 ```
 
 :::warning
-`GetInt`, `GetBool`, `GetUint64`, `GetFloat64`, `GetDuration`, `GetSecure`, `Len` are **not** part of the `EnvGetter` interface.
-These methods are implemented on the `*Loader` type but are not in the minimal interface.
+`GetInt`, `GetBool`, `GetUint64`, `GetFloat64`, `GetDuration`, `GetSecure`, and `Len` are **not** part of `EnvGetter`. `*Loader` implements them, but the minimal interface does not expose them.
 
-For full read capabilities, use the `*Loader` type directly:
+For the full read surface, take a `*Loader` directly:
 
 ```go
 func readFullConfig(loader *env.Loader) {
@@ -98,7 +106,12 @@ type EnvSetter interface {
 }
 ```
 
-**Use case:** Scenarios that only need set/delete capability.
+**Use case:** when a function only needs to set and delete. Both methods return an error and carry operation semantics:
+
+- `EnvSetter.Set` validates the key and value, then writes them.
+- `EnvSetter.Delete` removes a key and reports failures.
+
+Both differ from the plain storage operations on `EnvStorage` (no validation, no error return).
 
 ```go
 func updateConfig(setter env.EnvSetter) error {
@@ -113,7 +126,7 @@ func updateConfig(setter env.EnvSetter) error {
 
 ### EnvApplicator
 
-Apply to system environment interface:
+Interface for writing to the process environment:
 
 ```go
 type EnvApplicator interface {
@@ -121,7 +134,7 @@ type EnvApplicator interface {
 }
 ```
 
-**Use case:** Applying loaded variables to `os.Environ`.
+**Use case:** writing loaded variables to the process environment. The single method is `EnvApplicator.Apply`.
 
 ```go
 func applyToSystem(applicator env.EnvApplicator) error {
@@ -141,7 +154,7 @@ type EnvCloser interface {
 }
 ```
 
-**Use case:** Releasing loader resources.
+**Use case:** releasing loader resources. The single method is `EnvCloser.Close`.
 
 ---
 
@@ -160,7 +173,7 @@ type Validator interface {
 ```
 
 :::tip
-`Validator` provides the `ValidateRequired` method by embedding `RequiredValidator`. A custom validator that only implements `KeyValidator` will return `ErrValidateRequiredUnsupported` when `ValidateRequired` is called.
+`Validator` provides `ValidateRequired` by embedding `RequiredValidator`. A custom validator that implements only `KeyValidator` returns `ErrValidateRequiredUnsupported` when `ValidateRequired` is called.
 :::
 
 ---
@@ -175,7 +188,7 @@ type RequiredValidator interface {
 }
 ```
 
-Validates that all required keys exist.
+Validates that all required keys exist. The single method is `RequiredValidator.ValidateRequired`.
 
 ---
 
@@ -189,7 +202,7 @@ type KeyValidator interface {
 }
 ```
 
-Validates whether a key name conforms to rules (length, format, forbidden keys, etc.).
+Returns an error when a key name breaks the rules: length, format, forbidden keys, and so on. The single method is `KeyValidator.ValidateKey`.
 
 ---
 
@@ -203,7 +216,7 @@ type ValueValidator interface {
 }
 ```
 
-Validates whether a value is safe (no null bytes, control characters, etc.).
+Returns an error when a value is unsafe: null bytes, control characters, and so on. The single method is `ValueValidator.ValidateValue`.
 
 ---
 
@@ -219,7 +232,7 @@ type AuditLogger interface {
 }
 ```
 
-**Use case:** Minimal interface for implementing custom audit loggers. For full audit capability, use `FullAuditLogger`.
+**Use case:** the smallest thing you can pass where a custom audit logger is accepted. It has a single method, `AuditLogger.LogError`. For full audit capability, use `FullAuditLogger`.
 
 ---
 
@@ -237,23 +250,23 @@ type FullAuditLogger interface {
 }
 ```
 
-**Use case:** Full audit logging capability. `ComponentFactory.Auditor()` returns this interface.
+**Use case:** full audit logging. `ComponentFactory.Auditor()` returns this interface.
 
 **Method descriptions:**
 
 | Method | Purpose |
 |--------|---------|
-| LogError | Log error events (inherited from AuditLogger) |
-| `Log` | Log general audit events |
-| `LogWithFile` | Log events including file information |
-| `LogWithDuration` | Log events including duration |
-| `Close` | Close the audit log |
+| `AuditLogger.LogError` | Inherited through the embedded `AuditLogger`; logs error events |
+| `FullAuditLogger.Log` | Log a general audit event |
+| `FullAuditLogger.LogWithFile` | Log an event together with the file it concerns |
+| `FullAuditLogger.LogWithDuration` | Log an event together with its duration |
+| `FullAuditLogger.Close` | Close the audit log |
 
 ---
 
 ### AuditHandler
 
-Audit handler interface (for Config.AuditHandler configuration):
+The interface behind `Config.AuditHandler`:
 
 ```go
 type AuditHandler interface {
@@ -262,14 +275,16 @@ type AuditHandler interface {
 }
 ```
 
-**Use case:** Implement this interface to customize how audit events are processed. Unlike the `AuditLogger` interface, `AuditHandler` requires both `Log` and `Close` methods, used for receiving processed audit events and releasing resources.
+**Use case:** implement this interface to control how audit events are processed. Unlike `AuditLogger`, it takes two methods: `AuditHandler.Log` receives events, and `AuditHandler.Close` releases resources.
+
+`AuditHandler.Log` is called from several goroutines at once, so implementations must be safe for concurrent use.
 
 **Built-in implementations:**
-- `JSONAuditHandler` - outputs JSON format logs
-- `LogAuditHandler` - outputs using the standard log package
-- `ChannelAuditHandler` - sends to a channel
-- `CloseableChannelHandler` - closeable handler with its own buffered channel
-- `NopAuditHandler` - no-op handler
+- `JSONAuditHandler` - writes JSON-format logs (`JSONAuditHandler.Log` / `JSONAuditHandler.Close`)
+- `LogAuditHandler` - writes through the standard `log` package (`LogAuditHandler.Log` / `LogAuditHandler.Close`)
+- `ChannelAuditHandler` - sends to a channel (`ChannelAuditHandler.Log` / `ChannelAuditHandler.Close`; `Close` does not close the external channel)
+- `CloseableChannelHandler` - closeable handler with its own buffered channel (`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`; `CloseableChannelHandler.Channel` returns the receiving end of the channel, which is closed along with `Close`, and `CloseableChannelHandler.DroppedEvents` returns the cumulative number of dropped events)
+- `NopAuditHandler` - discards events (`NopAuditHandler.Log` / `NopAuditHandler.Close`)
 
 ---
 
@@ -285,7 +300,7 @@ type VariableExpander interface {
 }
 ```
 
-**Use case:** Custom variable expansion logic, supporting `${VAR}`, `${VAR:-default}` and other syntaxes.
+**Use case:** custom variable expansion. The single method is `VariableExpander.Expand`. The expansion syntax is decided by the implementation: the built-in expander supports `$VAR` and `${VAR}` plus bracket operators such as `${VAR:-default}` and `${VAR:?err}` (see [Config API](./config)).
 
 ```go
 expanded, err := expander.Expand("${BASE_URL}/api")
@@ -313,7 +328,7 @@ type EnvParser interface {
 - `map[string]string` - parsed key-value pairs
 - `error` - parse error
 
-**Use case:** Custom file format parser.
+**Use case:** implementing a custom file format parser. The single method is `EnvParser.Parse`.
 
 ---
 
@@ -321,7 +336,7 @@ type EnvParser interface {
 
 ### EnvStorage
 
-Environment variable storage interface:
+The storage contract for loaded variables:
 
 ```go
 type EnvStorage interface {
@@ -335,19 +350,19 @@ type EnvStorage interface {
 }
 ```
 
-**Use case:** Custom storage backend.
+**Use case:** substituting your own storage backend. The library's internal sharded storage satisfies this interface as a compile-time contract. No library API accepts an `EnvStorage` today, so implement it only if you need your own storage type.
 
 **Method descriptions:**
 
 | Method | Purpose |
 |--------|---------|
-| `Get` | Get value, returns value and whether it exists |
-| `Set` | Set key-value pair |
-| `Delete` | Delete key |
-| `Keys` | Return all key names |
-| `Len` | Return key-value pair count |
-| `ToMap` | Return a copy of all key-value pairs |
-| `Clear` | Clear all data |
+| `EnvStorage.Get` | Return a value and whether it exists |
+| `EnvStorage.Set` | Store a key-value pair, replacing any previous value |
+| `EnvStorage.Delete` | Remove a key |
+| `EnvStorage.Keys` | Return all key names |
+| `EnvStorage.Len` | Return the number of key-value pairs |
+| `EnvStorage.ToMap` | Return a copy of all key-value pairs |
+| `EnvStorage.Clear` | Remove all data |
 
 ---
 
@@ -363,7 +378,7 @@ type Marshaler interface {
 }
 ```
 
-**Use case:** Serialization of custom types.
+**Use case:** custom serialization. The single method is `Marshaler.MarshalEnv`.
 
 ```go
 type LogLevel string
@@ -389,7 +404,7 @@ type Unmarshaler interface {
 }
 ```
 
-**Use case:** Deserialization of custom types.
+**Use case:** custom deserialization. The single method is `Unmarshaler.UnmarshalEnv`.
 
 ```go
 type Config struct {
@@ -432,7 +447,31 @@ type FileSystem interface {
 }
 ```
 
-**Use case:** Mocking a filesystem during testing.
+**Use case:** mocking a filesystem in tests.
+
+**Methods (qualified names) and library usage:**
+
+| Method | Used by library | Description |
+|--------|:---------------:|-------------|
+| `FileSystem.Open` | ✓ | Open a file for reading (the file-loading entry point) |
+| `FileSystem.LookupEnv` | ✓ | Distinguish "not set" from "explicitly empty" |
+| `FileSystem.Setenv` | ✓ | Write a process environment variable |
+| `FileSystem.Unsetenv` | ✓ | Remove a process environment variable |
+| `FileSystem.OpenFile` | — | Open a file with flags and permissions |
+| `FileSystem.Stat` | — | Query file info by path |
+| `FileSystem.MkdirAll` | — | Create directories recursively |
+| `FileSystem.Remove` | — | Remove a file |
+| `FileSystem.Rename` | — | Rename a file |
+| `FileSystem.Getenv` | — | Read a process environment variable (library reads go through `FileSystem.LookupEnv`) |
+
+The library calls only `Open`, `LookupEnv`, `Setenv`, and `Unsetenv`. Size and stat checks go through `File.Stat` on the handle that `Open` returned. The remaining methods exist for your own code that wraps `FileSystem`.
+
+`FileSystem.Stat` and `File.Stat` are different methods and are easy to confuse:
+
+- `FileSystem.Stat` queries file info by path. The library does **not** call it.
+- `File.Stat` reports on the handle returned by `Open`. The library **always** calls it: before reading, the loader compares `Size()` against `MaxFileSize`.
+
+A minimal in-memory mock therefore needs `Open`, `LookupEnv`, `Setenv`, and `Unsetenv`, but the `File` returned by `Open` must implement `Stat` and report the real size. Returning `(nil, nil)` crashes the size pre-check with a nil pointer dereference; returning an error such as `errors.ErrUnsupported` makes the file fail to load.
 
 ```go
 type MockFileSystem struct {
@@ -442,21 +481,40 @@ type MockFileSystem struct {
 
 // MockFile implements env.File interface (for testing)
 type MockFile struct {
+    name   string
+    size   int64
     reader *strings.Reader
 }
 
-func (f *MockFile) Read(p []byte) (n int, err error)   { return f.reader.Read(p) }
-func (f *MockFile) Write(p []byte) (n int, err error)  { return 0, errors.ErrUnsupported }
-func (f *MockFile) Close() error                       { return nil }
-func (f *MockFile) Stat() (os.FileInfo, error)         { return nil, errors.ErrUnsupported }
-func (f *MockFile) Sync() error                        { return nil }
+func (f *MockFile) Read(p []byte) (n int, err error)  { return f.reader.Read(p) }
+func (f *MockFile) Write(p []byte) (n int, err error) { return 0, errors.ErrUnsupported }
+func (f *MockFile) Close() error                      { return nil }
+func (f *MockFile) Sync() error                       { return nil }
+
+// Stat must report the real size: the loader uses it for the MaxFileSize pre-check
+func (f *MockFile) Stat() (os.FileInfo, error) {
+    return &mockFileInfo{name: f.name, size: f.size}, nil
+}
+
+// mockFileInfo implements os.FileInfo
+type mockFileInfo struct {
+    name string
+    size int64
+}
+
+func (i *mockFileInfo) Name() string       { return i.name }
+func (i *mockFileInfo) Size() int64        { return i.size }
+func (i *mockFileInfo) Mode() os.FileMode  { return 0644 }
+func (i *mockFileInfo) ModTime() time.Time { return time.Time{} }
+func (i *mockFileInfo) IsDir() bool        { return false }
+func (i *mockFileInfo) Sys() interface{}   { return nil }
 
 func (m *MockFileSystem) Open(name string) (env.File, error) {
     content, ok := m.files[name]
     if !ok {
         return nil, os.ErrNotExist
     }
-    return &MockFile{reader: strings.NewReader(content)}, nil
+    return &MockFile{name: name, size: int64(len(content)), reader: strings.NewReader(content)}, nil
 }
 
 func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.File, error) {
@@ -464,10 +522,11 @@ func (m *MockFileSystem) OpenFile(name string, flag int, perm os.FileMode) (env.
 }
 
 func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
-    if _, ok := m.files[name]; !ok {
+    content, ok := m.files[name]
+    if !ok {
         return nil, os.ErrNotExist
     }
-    return nil, nil
+    return &mockFileInfo{name: name, size: int64(len(content))}, nil
 }
 
 func (m *MockFileSystem) MkdirAll(path string, perm os.FileMode) error { return nil }
@@ -495,7 +554,7 @@ cfg.FileSystem = &MockFileSystem{
 
 ### File
 
-File interface:
+The handle `FileSystem.Open` returns:
 
 ```go
 type File interface {
@@ -513,21 +572,25 @@ type File interface {
 |--------|---------|
 | Read | Read data |
 | Write | Write data |
-| Close | Close file |
-| Stat | Get file info |
-| Sync | Sync to disk |
+| Close | Close the file |
+| `File.Stat` | Get file info (the library uses it for size checks) |
+| `File.Sync` | Flush to disk |
+
+Read, Write, and Close come from the embedded `io` interfaces. `File.Stat` and `File.Sync` are the file-specific operations.
+
+`File.Stat` is not optional: before reading, the loader uses it for the `MaxFileSize` pre-check, and `Size()` must report the real content length.
 
 ---
 
 ### DefaultFileSystem
 
-Default filesystem implementation:
+The default filesystem implementation:
 
 ```go
 var DefaultFileSystem FileSystem = OSFileSystem{}
 ```
 
-Uses the real OS filesystem and environment variables:
+It uses the real OS filesystem and process environment:
 
 ```go
 cfg := env.DefaultConfig()
@@ -540,36 +603,45 @@ cfg.FileSystem = env.DefaultFileSystem  // default value
 
 ### JSONAuditHandler
 
-Outputs JSON format audit logs:
+Writes JSON-format audit logs:
 
 ```go
 func NewJSONAuditHandler(w io.Writer) *JSONAuditHandler
 ```
 
 **Parameters:**
-- `w` - output target (e.g., `os.Stdout`, a file)
+- `w` - output target such as an opened file. Must be a non-nil writer: passing nil makes `Log` panic with a nil pointer dereference (reached through the auditor, that panic is recovered as an error and the event is lost)
 
 ```go
-handler := env.NewJSONAuditHandler(os.Stdout)
+f, err := os.OpenFile("audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+if err != nil {
+    log.Fatal(err)
+}
+handler := env.NewJSONAuditHandler(f)
+// loader.Close() closes the handler, which in turn closes f
 ```
+
+::: warning The writer gets closed
+`JSONAuditHandler.Close()` calls `Close()` on the writer when it implements `io.Closer`. Do not pass `os.Stdout` or any other writer you still need afterwards, or `loader.Close()` closes it too. `NewLogAuditHandler` does not close the underlying writer.
+:::
 
 **Output example:**
 ```json
-{"timestamp":"2024-01-15T10:30:00Z","action":"load","key":"API_KEY","success":true}
+{"timestamp":"2024-01-15T10:30:00Z","action":"set","key":"[MASKED]","success":true,"masked":true}
 ```
 
 ---
 
 ### LogAuditHandler
 
-Outputs using the standard log package:
+Writes through the standard `log` package:
 
 ```go
 func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
 ```
 
 **Parameters:**
-- `logger` - standard log.Logger instance
+- `logger` - the `log.Logger` to write through. When nil, the default logger is used (stderr, `[AUDIT] ` prefix, with timestamp)
 
 ```go
 import "log"
@@ -580,26 +652,31 @@ handler := env.NewLogAuditHandler(logger)
 
 **Output example:**
 ```text
-[AUDIT] 2024/01/15 10:30:00 action=load key=API_KEY success=true reason="loaded" file=.env
+[AUDIT] 2024/01/15 10:30:00 action=parse success=true reason="parsed: .env"
+[AUDIT] 2024/01/15 10:30:00 action=set key=[MASKED] success=true reason="loaded"
+[AUDIT] 2024/01/15 10:30:00 action=file_access success=true reason="file loaded: .env" duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="loaded files" duration=1.23ms
 ```
 
-Events are emitted as key-value pairs (`action`, `key`, `success`, `reason`, plus optional `file` / `duration`); the prefix and timestamp depend on the `log.Logger` passed in. See [NewLogAuditHandler](./factory#newlogaudithandler) for the full format.
+Events are emitted as key-value pairs: `action`, `success`, `reason` (quoted), plus optional `key`, `file` (quoted), and `duration`. `ActionLoad` and successful `ActionParse` events carry no key name; `ActionSet` does, as does a failing `ActionParse` (a duplicate key or an over-long key). Sensitive keys are masked to `[MASKED]` by `MaskValue`. The prefix and timestamp depend on the `log.Logger` you pass in. See [NewLogAuditHandler](./factory#newlogaudithandler) for the full format.
 
 ---
 
 ### ChannelAuditHandler
 
-Sends to a channel:
+Sends events to a caller-owned channel:
 
 ```go
 func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 ```
 
 **Parameters:**
-- `ch` - audit event channel
+- `ch` - channel that receives the events
 
 :::warning Channel ownership
-`ChannelAuditHandler` does **not own** the channel, and `Close()` will **not** close the underlying channel. The caller must close the channel themselves to signal the receiver to stop. Additionally, when the channel buffer is full, `Log()` will block — a buffered channel is recommended. For automatic channel lifecycle management, use [NewCloseableChannelHandler](./factory#newcloseablechannelhandler).
+`ChannelAuditHandler` does **not own** the channel, and `Close()` does **not** close it. The caller must close the channel to signal the receiver to stop, and only after the loader using this handler is closed with no `Log` call in flight. Closing early makes the next `Log` panic with send on a closed channel.
+
+A nil channel does not block forever: `Log()` returns an error for every event and the event is dropped (the error only reaches callers when `AuditFailClosed` is enabled). With a full buffer, `Log()` blocks, so pass a buffered channel. For automatic channel lifecycle management, use [NewCloseableChannelHandler](./factory#newcloseablechannelhandler).
 :::
 
 ```go
@@ -618,7 +695,7 @@ go func() {
 
 ### NopAuditHandler
 
-No-op handler (discards all events):
+Discards every event:
 
 ```go
 func NewNopAuditHandler() *NopAuditHandler
@@ -653,37 +730,50 @@ const (
 )
 ```
 
-The ten action constants map to: `ActionLoad` file loading, `ActionParse` parsing, `ActionGet` variable reads, `ActionSet` variable writes, `ActionDelete` variable deletion, `ActionValidate` key/value validation, `ActionExpand` variable expansion, `ActionSecurity` security events, `ActionError` error events, and `ActionFileAccess` path-access checks.
+The ten action constants map to these operations:
+
+| Constant | Operation |
+|----------|-----------|
+| `ActionLoad` | File loading |
+| `ActionParse` | Parsing |
+| `ActionGet` | Variable reads |
+| `ActionSet` | Variable writes |
+| `ActionDelete` | Variable deletion |
+| `ActionValidate` | Validation operations |
+| `ActionExpand` | Variable expansion |
+| `ActionSecurity` | Security events |
+| `ActionError` | Error events |
+| `ActionFileAccess` | File access |
 
 ---
 
 ### AuditEvent
 
-Audit event structure:
+The struct passed to every `AuditHandler`:
 
 ```go
 type AuditEvent = internal.Event
 ```
 
-**Fields:**
+**Fields (qualified names):**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Timestamp | `time.Time` | Timestamp |
-| Action | `AuditAction` | Action type |
-| Key | `string` | Key name (masked) |
-| File | `string` | File name |
-| Reason | `string` | Reason/description |
-| Success | `bool` | Whether successful |
-| Masked | `bool` | Whether masked |
-| Details | `string` | Details |
-| Duration | `int64` | Duration (nanoseconds) |
+| `AuditEvent.Timestamp` | `time.Time` | Event timestamp |
+| `AuditEvent.Action` | `AuditAction` | Action type |
+| `AuditEvent.Key` | `string` | Key name (sensitive keys masked) |
+| `AuditEvent.File` | `string` | Related file name |
+| `AuditEvent.Reason` | `string` | Reason or description |
+| `AuditEvent.Success` | `bool` | Whether the operation succeeded |
+| `AuditEvent.Masked` | `bool` | Whether the key was masked |
+| `AuditEvent.Details` | `string` | Reserved free-form context; the built-in auditor leaves it empty |
+| `AuditEvent.Duration` | `int64` | Duration in nanoseconds |
 
 ---
 
 ## ComponentFactory
 
-Component factory, managing shared components:
+Component factory that owns the components shared by a Loader and its parsers:
 
 ```go
 type ComponentFactory struct {
@@ -701,7 +791,7 @@ func (f *ComponentFactory) Close() error
 func (f *ComponentFactory) IsClosed() bool
 ```
 
-**Use case:** Internal use, automatically managed when creating a Loader. See [ComponentFactory API](./factory).
+**Use case:** loader internals and custom parsers. `New()` creates the factory and wires its lifecycle to `Loader.Close()`. See [ComponentFactory API](./factory).
 
 ---
 
@@ -751,6 +841,8 @@ func main() {
 
 ### Using Fine-grained Interfaces
 
+Each function below accepts only the capability it needs, so any `*Loader` passes without exposing the rest of the API:
+
 ```go
 package main
 
@@ -759,7 +851,7 @@ import (
 	"github.com/cybergodev/env"
 )
 
-// Only needs read capability
+// Needs only the read capability
 func printConfig(getter env.EnvGetter) {
 	for _, key := range getter.Keys() {
 		value, _ := getter.Lookup(key)
@@ -767,12 +859,12 @@ func printConfig(getter env.EnvGetter) {
 	}
 }
 
-// Only needs write capability
+// Needs only the write capability
 func setDefaults(setter env.EnvSetter) error {
 	return setter.Set("DEFAULT_KEY", "default_value")
 }
 
-// Only needs load capability
+// Needs only the load capability
 func loadConfig(loader env.EnvFileLoader) error {
 	return loader.LoadFiles(".env")
 }
@@ -793,4 +885,4 @@ func main() {
 
 - [Loader API](./loader) - Loader instance methods
 - [ComponentFactory API](./factory) - Component factory
-- [Custom Parser](../guides/custom-parser) - Custom parser guide
+- [Custom Parser](../guides/custom-parser) - Guide to custom parsers

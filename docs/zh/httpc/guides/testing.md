@@ -1,15 +1,17 @@
 ---
 sidebar_label: "测试指南"
 title: "测试指南 - CyberGo HTTPC | httptest 与断言"
-description: "HTTPC 测试指南：TestingConfig 测试专用配置、net/http/httptest 模拟服务器集成、Doer 接口 Mock 注入、模拟错误响应/延迟/重定向场景、确定性重试与文件下载测试、表格驱动测试与 Cookie 会话断言最佳实践。"
+description: "HTTPC 测试指南：TestingConfig 测试专用配置、net/http/httptest 模拟服务器集成、Doer 接口 Mock 注入、模拟错误响应与延迟、确定性重试与文件下载测试、表格驱动测试，以及 Cookie 会话断言与测试隔离要点。"
 sidebar_position: 120
 ---
 
 # 测试指南
 
+HTTPC 的测试分两层。集成测试用 `httptest` 模拟服务器走完整请求管道，以 `TestingConfig()` 为配置起点；单元测试用 `Doer` 接口替身直接构造 `Result`，无需创建客户端。
+
 ## TestingConfig
 
-`TestingConfig()` 专为测试环境设计，禁用安全检查、缩短连接/握手超时（Request 仍为默认 180s）：
+`TestingConfig()` 面向测试环境：禁用安全检查，缩短连接与握手超时（`Request` 仍为默认 180s）。
 
 ```go
 func TestAPI(t *testing.T) {
@@ -25,18 +27,23 @@ func TestAPI(t *testing.T) {
 ```
 
 :::danger
-`TestingConfig` 禁用了 TLS 验证、SSRF 防护等安全特性，**仅用于测试环境**。在非测试环境使用时会打印安全警告。
+`TestingConfig` 禁用了 TLS 验证、SSRF 防护等安全特性，仅用于测试环境。在非测试环境使用时会向 stderr 打印一次安全警告。
 :::
 
-`TestingConfig` 的关键取值（在 `DefaultConfig` 基础上覆盖）：`InsecureSkipVerify=true`、`AllowPrivateIPs=true`、`ValidateURL=false`、`ValidateHeaders=false`（允许 127.0.0.1/内网 httptest 服务器）；`EnableHTTP2=false`（协议行为更简单、易断言）；`MaxRetries=1`、`EnableJitter=false`（重试节奏确定）；连接/握手超时缩到 5s，`Request` 仍为默认 180s。
+`TestingConfig` 的关键取值（在 `DefaultConfig` 基础上覆盖）：
+
+- `InsecureSkipVerify=true`、`AllowPrivateIPs=true`、`ValidateURL=false`、`ValidateHeaders=false`：允许 127.0.0.1/内网 httptest 服务器；
+- `EnableHTTP2=false`：协议行为更简单、易断言；
+- `MaxRetries=1`、`EnableJitter=false`：重试节奏确定；
+- 连接与握手超时缩到 5s，`Request` 仍为默认 180s。
 
 :::tip 关于安全警告
-告警通过检测 `.test` 可执行文件与 `GO_TEST` 环境变量识别测试环境——`go test` 运行的测试**不会**触发。若在本地开发脚本等非测试进程里临时使用，可用 `httpc.SetSecurityWarnOutput(io.Discard)` 静默输出（`io` 即标准库 `io` 包）。
+告警通过检测 `.test` 可执行文件名与 `GO_TEST`/`GOTEST` 环境变量识别测试进程，`go test` 运行的测试不触发。在本地开发脚本等非测试进程中临时使用时，可用 `httpc.SetSecurityWarnOutput(io.Discard)` 静默输出，`io` 即标准库 `io` 包。
 :::
 
 ## httptest.Server 集成
 
-使用标准库 `net/http/httptest` 创建模拟服务器，实现无需真实后端的集成测试：
+用标准库 `net/http/httptest` 创建模拟服务器，可在无真实后端的情况下做集成测试：
 
 <!-- check-code: skip -->
 ```go
@@ -104,14 +111,14 @@ func TestGetUser(t *testing.T) {
 
 ## Mock 与 Transport 注入
 
-自定义 Transport 注入（替换底层 `http.RoundTripper`）目前是 HTTPC 的**内部机制**——引擎的传输层接口与 mock 仅供库自身测试使用，根包 `httpc` 未导出注入入口。使用者有两条推荐路径：
+自定义 Transport 注入（替换底层 `http.RoundTripper`）是 HTTPC 的内部机制。引擎的传输层接口与 mock 仅供库自身测试使用，根包 `httpc` 未导出注入入口。可用的两条路径如下：
 
 | 方式 | 适用层次 | 特点 |
 |------|----------|------|
-| `httptest.Server` | 集成测试 | 走**完整**请求管道（安全校验、重试、中间件、连接池），最接近真实行为 |
-| 实现 `httpc.Doer` 最小接口 | 单元测试 | 不起服务器、不发网络请求，直接返回构造的 `*Result`，纳秒级、完全确定 |
+| `httptest.Server` | 集成测试 | 走完整请求管道（安全校验、重试、中间件、连接池），最接近真实行为 |
+| 实现 `httpc.Doer` 最小接口 | 单元测试 | 不起服务器、不发网络请求，直接返回构造的 `*Result`，无网络开销且完全确定 |
 
-`Doer` 是只有 `Request` 一个方法的接口；`Result` 的 `Request`/`Response`/`Meta` 三个字段本身就是为调用方在测试中直接构造而导出的：
+`Doer` 是只含 `Request` 一个方法的接口。`Result` 的 `Request`/`Response`/`Meta` 三个字段为调用方在测试中直接构造而导出：
 
 ```go
 package main
@@ -174,8 +181,8 @@ func main() {
 }
 ```
 
-:::tip 构造 Result 时记得同时给 Body 与 RawBody
-`Body()` 返回预存字符串、`RawBody()` 返回字节切片，`Unmarshal` 走的是原始字节——mock 中两者都填上，各访问器才能如预期工作。
+:::tip 构造 Result 时同时填充 Body 与 RawBody
+`Body()` 返回预存字符串，`RawBody()` 返回字节切片，`Unmarshal` 使用原始字节。mock 中两个字段都需填充，各访问器才能返回一致结果。
 :::
 
 ## 模拟不同场景
@@ -258,7 +265,7 @@ defer server.Close()
 
 ### 模拟 TLS 服务器
 
-`httptest.NewTLSServer` 使用自签名证书。`TestingConfig` 已设置 `InsecureSkipVerify=true`，因此可以直接请求，无需额外 TLS 配置：
+`httptest.NewTLSServer` 使用自签名证书。`TestingConfig` 已设置 `InsecureSkipVerify=true`，可直接请求，无需额外 TLS 配置：
 
 ```go
 server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -275,7 +282,7 @@ result, err := client.Get(server.URL) // 直接请求自签名 TLS 服务器
 
 ### 确定性重试测试
 
-让服务器**前 N 次返回可重试状态码（408/429/500/502/503/504）、之后成功**，即可在不依赖定时器与真实网络抖动的前提下验证重试行为，并以 `result.Meta.Attempts` 断言实际尝试次数：
+让服务器前 N 次返回可重试状态码（408/429/500/502/503/504）、之后成功，即可在不依赖定时器与网络抖动的前提下验证重试行为。`result.Meta.Attempts` 给出实际尝试次数：
 
 ```go
 func TestRetry(t *testing.T) {
@@ -308,12 +315,12 @@ func TestRetry(t *testing.T) {
 ```
 
 :::tip 测试中显式固定重试参数
-`TestingConfig` 默认 `MaxRetries=1` 且无抖动；测试里用 `WithMaxRetries(N)` 显式给出期望值，断言才稳定。
+`TestingConfig` 默认 `MaxRetries=1` 且无抖动。测试中应以 `WithMaxRetries(N)` 显式给出期望值，断言才稳定。
 :::
 
 ## 测试文件下载
 
-`Download` 同样可以用 httptest 覆盖：服务器端写入已知内容，`DownloadConfig.FilePath` 指向 `t.TempDir()`（测试结束自动清理），再断言字节数与校验和：
+`Download` 同样可用 httptest 覆盖：服务器端写入已知内容，`DownloadConfig.FilePath` 指向 `t.TempDir()`（测试结束自动清理），再断言字节数与校验和：
 
 ```go
 func TestDownload(t *testing.T) {
@@ -353,7 +360,7 @@ func TestDownload(t *testing.T) {
 
 ## Cookie 与会话断言
 
-Cookie 行为可以从两端断言：**服务器端**读取请求里实际收到的 Cookie（验证客户端确实发送了）；**客户端**用 `result.GetCookie`/`HasCookie` 验证响应 Cookie，或在 `DomainClient` 上验证会话自动捕获：
+Cookie 行为可从两端断言。服务器端读取请求中实际收到的 Cookie，确认客户端确实发送；客户端用 `result.GetCookie`/`HasCookie` 验证响应 Cookie，或在 `DomainClient` 上验证会话自动捕获：
 
 ```go
 func TestCookieSession(t *testing.T) {
@@ -438,12 +445,12 @@ func TestHTTPMethods(t *testing.T) {
 |------|------|
 | 使用 `httptest.Server` | 模拟真实 HTTP 行为，无需网络依赖，覆盖完整请求管道 |
 | 使用 `TestingConfig()` | 禁用安全检查，避免本地连接被 SSRF 防护阻止 |
-| 业务层依赖 `Doer` 接口 | 最小接口依赖让单元测试可以用 fake 替身，无需服务器 |
+| 业务层依赖 `Doer` 接口 | 最小接口依赖使单元测试可用替身，无需服务器 |
 | 确定性重试 | 服务器前 N 次返回 503 再成功，用 `Meta.Attempts` 断言 |
-| 下载测试用 `t.TempDir()` | 测试结束自动清理文件，且路径天然通过安全校验 |
+| 下载测试用 `t.TempDir()` | 测试结束自动清理文件，路径亦通过安全校验 |
 | 使用 `defer` | 确保资源释放，即使测试失败 |
-| 表格驱动 | 覆盖多种输入，代码简洁 |
-| 显式固定重试/超时参数 | `WithMaxRetries(N)` 等显式声明，断言才稳定 |
+| 表格驱动 | 用同一套逻辑覆盖多组输入 |
+| 显式固定重试与超时参数 | 显式声明 `WithMaxRetries(N)` 等，断言才稳定 |
 
 ## 下一步
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo JWT | Sentinels"
-description: "Categorize all 20 CyberGo JWT sentinel errors across config, token validation, rate limiting, and lifecycle with errors.Is matching and response practices."
+description: "Categorize all 20 CyberGo JWT sentinel errors across config, validation, rate limiting, and lifecycle, with errors.Is and HTTP status codes."
 sidebar_position: 50
 ---
 
@@ -97,7 +97,7 @@ type ValidationError struct {
 
 ## Error Wrapping Chain
 
-CyberGo JWT errors fall into sentinel errors (matchable with `errors.Is`) and wrapped errors (requiring `errors.As` to extract structured info). Understanding the wrapping chain helps you pinpoint the failure cause.
+CyberGo JWT errors fall into sentinel errors (matchable with `errors.Is`) and wrapped errors (structured details require `errors.As`). Understanding the wrapping chain makes failures easier to pinpoint.
 
 ### ValidationError and errors.As
 
@@ -109,7 +109,7 @@ if err != nil {
     var ve *jwt.ValidationError
     if errors.As(err, &ve) {
         fmt.Printf("Field: %s, Reason: %s\n", ve.Field, ve.Message)
-        // Field: user_id, Reason: suspicious pattern detected
+        // Field: UserID, Reason: suspicious pattern detected
         return
     }
     // Non-field-level error, go through the errors.Is branches
@@ -158,7 +158,7 @@ The only two sentinel errors from `ParseUnverified` are `ErrProcessorClosed` (Pr
 
 ## HTTP Status Code Mapping
 
-In a RESTful API, mapping JWT errors to appropriate HTTP status codes is best practice — clients can then distinguish "credential problems" (401), "request format problems" (400), and "server problems" (500).
+In a RESTful API, mapping JWT errors to suitable HTTP status codes lets clients distinguish credential problems (401), request format problems (400), and server problems (500).
 
 ### Mapping Table
 
@@ -178,12 +178,12 @@ In a RESTful API, mapping JWT errors to appropriate HTTP status codes is best pr
 | `ErrRateLimitExceeded` | 429 Too Many Requests | Reduce request rate, retry later |
 | `ErrProcessorClosed` | 500 Internal Server Error | Server needs to restart Processor |
 
-::: tip RESTful Best Practices
-- **401 Unauthorized**: all token validity issues (expired, revoked, bad signature, issuer/audience mismatch). The client should guide the user to re-authenticate or refresh the token.
-- **400 Bad Request**: Claims validation failure when creating a token — this is a programming error by the caller, not an authentication failure.
-- **429 Too Many Requests**: returned when rate limiting triggers, along with a `Retry-After` header telling the client how long to wait.
-- **500 Internal Server Error**: `ErrProcessorClosed` is a server-side state anomaly and should not be exposed to the client.
-:::
+The trade-offs behind the four status codes:
+
+- **401**: covers every token validity problem (expired, revoked, bad signature, issuer or audience mismatch). The client should re-authenticate or refresh the token.
+- **400**: used only when Claims validation fails while creating a token. This is a caller programming error, not an authentication failure.
+- **429**: returned when rate limiting trips, together with a `Retry-After` header stating the wait time.
+- **500**: `ErrProcessorClosed` is a server-side state anomaly; the response must not expose internal details.
 
 ## Error Handling in Web Services
 
@@ -201,12 +201,12 @@ import (
     "github.com/cybergodev/jwt"
 )
 
-// authError maps a JWT error to an HTTP status code and message.
+// authError maps a JWT error to an HTTP status code and message
+// (the mapping follows the table above).
 func authError(w http.ResponseWriter, err error) {
     w.Header().Set("Content-Type", "application/json")
 
     switch {
-    // Token expired — guide the client to refresh
     case errors.Is(err, jwt.ErrTokenExpired):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -214,7 +214,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "Token has expired, please refresh",
         })
 
-    // Token revoked
     case errors.Is(err, jwt.ErrTokenRevoked):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -222,7 +221,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "Token has been revoked",
         })
 
-    // Issuer mismatch
     case errors.Is(err, jwt.ErrTokenInvalidIssuer):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -230,7 +228,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "Issuer mismatch",
         })
 
-    // Audience mismatch
     case errors.Is(err, jwt.ErrTokenInvalidAudience):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -238,7 +235,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "Audience mismatch",
         })
 
-    // Not yet valid — clock out of sync
     case errors.Is(err, jwt.ErrTokenNotValidYet):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -246,7 +242,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "Token is not yet valid",
         })
 
-    // Algorithm mismatch
     case errors.Is(err, jwt.ErrAlgorithmMismatch):
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -254,7 +249,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "Signing algorithm mismatch",
         })
 
-    // Invalid token (signature error, format error, empty token)
     case errors.Is(err, jwt.ErrInvalidToken),
         errors.Is(err, jwt.ErrEmptyToken),
         errors.Is(err, jwt.ErrExpirationRequired):
@@ -264,7 +258,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "Invalid token",
         })
 
-    // Claims validation failed — try to extract field-level details
     case errors.Is(err, jwt.ErrInvalidClaims):
         var ve *jwt.ValidationError
         if errors.As(err, &ve) {
@@ -282,7 +275,6 @@ func authError(w http.ResponseWriter, err error) {
             })
         }
 
-    // Rate limited
     case errors.Is(err, jwt.ErrRateLimitExceeded):
         w.Header().Set("Retry-After", "60")
         w.WriteHeader(http.StatusTooManyRequests)
@@ -291,7 +283,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "Too many requests, please retry later",
         })
 
-    // System error — Processor is closed
     case errors.Is(err, jwt.ErrProcessorClosed):
         w.WriteHeader(http.StatusInternalServerError)
         json.NewEncoder(w).Encode(map[string]string{
@@ -299,7 +290,6 @@ func authError(w http.ResponseWriter, err error) {
             "message": "Service temporarily unavailable",
         })
 
-    // Fallback
     default:
         w.WriteHeader(http.StatusUnauthorized)
         json.NewEncoder(w).Encode(map[string]string{
@@ -310,19 +300,17 @@ func authError(w http.ResponseWriter, err error) {
 }
 
 func handleProtected(w http.ResponseWriter, r *http.Request) {
-    tokenString := extractToken(r)
-    claims, err := processor.Parse(tokenString)
+    claims, err := processor.Parse(extractToken(r))
     if err != nil {
         authError(w, err)
         return
     }
-    // Authenticated, process the request
     _ = claims
 }
 ```
 
 ::: tip Reusing authError
-`authError` is an error-mapping function unrelated to any specific route and can be reused by all handlers that require authentication. It can also be called when handling `ErrTokenTypeMismatch` in the [refresh endpoint](../examples/web-server#_5-refresh-endpoint-refresh).
+`authError` is an error-mapping function independent of any route and can be reused by every handler that requires authentication. It can also be called when handling `ErrTokenTypeMismatch` in the [refresh endpoint](../examples/web-server#_5-refresh-endpoint-refresh).
 :::
 
 ## Next Steps

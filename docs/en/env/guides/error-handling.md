@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo env | Sentinel Errors and Recovery"
-description: "CyberGo env error handling guide: errors.Is for 16 sentinel errors, errors.As context from ParseError and SecurityError, Unwrap tracing, recovery strategies."
+description: "CyberGo env error handling guide: errors.Is for sentinel errors, errors.As context from ParseError and SecurityError, Unwrap tracing, recovery strategies."
 sidebar_position: 5
 ---
 
 # Error Handling
 
-The env library provides a structured error handling mechanism, supporting both `errors.Is` and `errors.As` patterns.
+env returns sentinel errors for common failures and structured error types for context. Match sentinels with `errors.Is`; extract details with `errors.As`.
 
 ## Sentinel Errors
 
@@ -52,7 +52,7 @@ var (
 )
 ```
 
-**Forbidden key check (actually returns `*SecurityError`, matches `ErrSecurityViolation`):**
+**Forbidden key check (actually returns `*SecurityError`, matching both `ErrSecurityViolation` and the more specific `ErrForbiddenKey`):**
 
 ```go
 err := loader.Set("PATH", "/malicious")
@@ -119,7 +119,7 @@ var ErrValidateRequiredUnsupported = errors.New(
 )
 ```
 
-When a custom validator only implements the `KeyValidator` interface but not the full `Validator` interface, calling `ValidateRequired` returns this error.
+When a custom validator implements only the `KeyValidator` interface and not the full `Validator` interface, calling `ValidateRequired` returns this error.
 
 **How to check:**
 
@@ -131,14 +131,14 @@ if errors.Is(err, env.ErrValidateRequiredUnsupported) {
 ```
 
 :::tip Solution
-Implement the `Validator` interface (which includes ValidateKey, ValidateValue, and ValidateRequired methods) instead of just `KeyValidator`.
+Implement the `Validator` interface (ValidateKey, ValidateValue, and ValidateRequired) instead of only `KeyValidator`.
 :::
 
 ## Structured Error Types
 
 ### ParseError
 
-Parse error with location information:
+A parse error that carries its location:
 
 ```go
 type ParseError struct {
@@ -164,7 +164,7 @@ if errors.As(err, &parseErr) {
 
 ### FileError
 
-File operation error:
+A file operation error:
 
 ```go
 type FileError struct {
@@ -190,7 +190,7 @@ if errors.As(err, &fileErr) {
 
 ### SecurityError
 
-Security error:
+A security policy violation:
 
 ```go
 type SecurityError struct {
@@ -213,7 +213,7 @@ if errors.As(err, &secErr) {
 
 ### ValidationError
 
-Validation error:
+A config, key, or value validation failure:
 
 ```go
 type ValidationError struct {
@@ -235,7 +235,7 @@ if errors.As(err, &valErr) {
 
 ### ExpansionError
 
-Variable expansion error:
+A variable expansion failure:
 
 ```go
 type ExpansionError struct {
@@ -258,7 +258,7 @@ if errors.As(err, &expErr) {
 
 ### JSONError
 
-JSON parse error:
+A JSON parse error:
 
 ```go
 type JSONError struct {
@@ -279,7 +279,7 @@ if errors.As(err, &jsonErr) {
 
 ### YAMLError
 
-YAML parse error:
+A YAML parse error:
 
 ```go
 type YAMLError struct {
@@ -303,7 +303,7 @@ if errors.As(err, &yamlErr) {
 
 ### MarshalError
 
-Serialization/deserialization error:
+A serialization or deserialization error:
 
 ```go
 type MarshalError struct {
@@ -328,68 +328,11 @@ if err != nil && env.IsMarshalError(err) {
 
 ### errors.Is Pattern
 
-Check sentinel errors:
-
-```go
-err := loader.LoadFiles(".env")
-
-switch {
-case errors.Is(err, env.ErrFileNotFound):
-    // file not found
-    log.Println("Configuration file not found, using defaults")
-
-case errors.Is(err, env.ErrFileTooLarge):
-    // file too large
-    log.Fatal("Configuration file too large")
-
-case errors.Is(err, env.ErrSecurityViolation):
-    // forbidden key (actually returns *SecurityError)
-    log.Fatal("Forbidden key detected")
-
-case err != nil:
-    // other errors
-    log.Fatalf("Load failed: %v", err)
-}
-
-// Invalid key format (actually returns *ValidationError, Field=="key")
-var valErr *env.ValidationError
-if errors.As(err, &valErr) && valErr.Field == "key" {
-    log.Fatalf("Invalid key detected: %s", valErr.Message)
-}
-```
+`errors.Is` classifies errors without exposing details, so it works as the dispatch condition in a `switch` over `ErrFileNotFound`, `ErrFileTooLarge`, `ErrSecurityViolation`, and other sentinels. The full branch set is in [Combined Handling](#combined-handling).
 
 ### errors.As Pattern
 
-Extract detailed error information:
-
-```go
-err := loader.LoadFiles(".env")
-if err == nil {
-    return
-}
-
-// Try to extract parse error
-var parseErr *env.ParseError
-if errors.As(err, &parseErr) {
-    log.Fatalf("Parse error at %s line %d: %v",
-        parseErr.File, parseErr.Line, parseErr.Err)
-}
-
-// Try to extract file error
-var fileErr *env.FileError
-if errors.As(err, &fileErr) {
-    log.Fatalf("File %s error: %v", fileErr.Path, fileErr.Err)
-}
-
-// Try to extract security error
-var secErr *env.SecurityError
-if errors.As(err, &secErr) {
-    log.Fatalf("Security error: %s - %s", secErr.Action, secErr.Reason)
-}
-
-// Other errors
-log.Fatalf("Unknown error: %v", err)
-```
+`errors.As` tries each type in turn; once one matches, read its fields (`*ParseError` gives file and line, `*FileError` gives path and size, `*SecurityError` gives action and reason). The combined form with sentinel branches is in [Combined Handling](#combined-handling); the full field list per type is in [Complete Error Type Reference](#complete-error-type-reference).
 
 ### Combined Handling
 
@@ -410,6 +353,9 @@ func handleLoadError(err error) {
         errors.As(err, &fileErr)
         log.Fatalf("File %s too large (%d > %d)",
             fileErr.Path, fileErr.Size, fileErr.Limit)
+
+    case errors.Is(err, env.ErrSecurityViolation):
+        log.Fatal("Forbidden key detected")
     }
 
     // Then check structured errors
@@ -424,6 +370,12 @@ func handleLoadError(err error) {
         log.Fatalf("Security error: %s", secErr.Reason)
     }
 
+    // Invalid key format (actually returns *ValidationError, Field=="key")
+    var valErr *env.ValidationError
+    if errors.As(err, &valErr) && valErr.Field == "key" {
+        log.Fatalf("Invalid key detected: %s", valErr.Message)
+    }
+
     // Unknown error
     log.Fatalf("Error: %v", err)
 }
@@ -432,6 +384,8 @@ func handleLoadError(err error) {
 ## Recovery Patterns
 
 ### Graceful Degradation
+
+When the configuration file is missing, fall back to built-in defaults and treat every other error as fatal. The example below disables `Filenames` auto-loading, loads explicitly via `LoadFiles`, and handles `ErrFileNotFound` on its own:
 
 ```go
 func loadConfig() *Config {
@@ -462,7 +416,7 @@ func loadConfig() *Config {
 ```
 
 :::tip ProductionConfig audit behavior
-`ProductionConfig` enables auditing by default (`AuditEnabled=true`); when no `AuditHandler` is configured, audit logs are written to stderr with an `[AUDIT]` prefix. To persist them to a file, set `cfg.AuditHandler` explicitly (e.g., `env.NewJSONAuditHandler(file)`).
+`ProductionConfig` sets `AuditEnabled=true`. With no `AuditHandler` configured, events go to stderr with an `[AUDIT]` prefix. To persist them, set `cfg.AuditHandler` explicitly — see [Audit Logging](./audit-logging) for the setup and [Production Checklist](../security/production-checklist) for verifying the file actually grows.
 :::
 
 ### Retry Pattern
@@ -496,9 +450,11 @@ func loadWithRetry(filenames []string, maxRetries int) error {
 }
 ```
 
-Trigger condition: by default (`FailOnMissingFile=false`), `LoadFiles` **silently skips** missing files — the `ErrFileNotFound` branch above is only reachable when `FailOnMissingFile=true` (the `ProductionConfig` preset enables it by default).
+Trigger condition: by default (`FailOnMissingFile=false`), `LoadFiles` **silently skips** missing files, so the `ErrFileNotFound` branch above is reachable only with `FailOnMissingFile=true` (the `ProductionConfig` preset sets it). The backoff in the example is linear (retry `i` waits `i+1` seconds) and only `ErrFileNotFound` is retried; oversized files, parse failures, and other errors return immediately.
 
 ## Complete Example
+
+The program below assembles the earlier snippets; `handleLoadError` keeps only the branches this program needs to compile, and the full dispatch is in [Combined Handling](#combined-handling).
 
 ```go
 package main
@@ -534,6 +490,8 @@ func main() {
 	log.Println("Configuration loaded successfully")
 }
 
+// The full dispatch is in "Combined Handling"; only the branches
+// this program needs are kept here.
 func handleLoadError(err error) {
 	switch {
 	case errors.Is(err, env.ErrFileNotFound):
@@ -543,21 +501,6 @@ func handleLoadError(err error) {
 		var fileErr *env.FileError
 		errors.As(err, &fileErr)
 		log.Fatalf("File too large: %s (%d bytes)", fileErr.Path, fileErr.Size)
-
-	case errors.Is(err, env.ErrSecurityViolation):
-		log.Fatal("Forbidden key detected")
-	}
-
-	// Structured errors
-	var parseErr *env.ParseError
-	if errors.As(err, &parseErr) {
-		log.Fatalf("Parse error %s:%d - %v",
-			parseErr.File, parseErr.Line, parseErr.Err)
-	}
-
-	var secErr *env.SecurityError
-	if errors.As(err, &secErr) {
-		log.Fatalf("Security error: %s - %s", secErr.Action, secErr.Reason)
 	}
 
 	log.Fatalf("Load failed: %v", err)
@@ -579,7 +522,7 @@ func handleValidationError(err error) {
 
 ## Complete Error Type Reference
 
-All structured error types can be unwrapped with `errors.As` for context:
+Every structured error type supports `errors.As` for context extraction:
 
 | Type | Scenario | Key information |
 |------|----------|-----------------|
@@ -609,9 +552,10 @@ Beyond the common items listed in the [sentinel errors](#sentinel-errors) sectio
 |----------|---------|
 | `ErrClosed` | Operating on a closed (or nil) Loader |
 | `ErrInvalidConfig` | Invalid configuration; `New()` wraps the specific validation error |
-| `ErrNotInitialized` | Using write functions in global mode before calling `Load()` |
+| `ErrNotInitialized` | A package-level function was called before the default loader was initialized (`Set`/`Delete`/`Validate`/`ParseInto`) |
 | `ErrAlreadyInitialized` | Calling `Load()` again after the default loader is initialized |
-| `ErrDuplicateKey` | Reserved: duplicate keys are currently silently skipped when `OverwriteExisting=false`; no code path returns it yet |
+| `ErrDuplicateKey` | A duplicate key inside one document (`DuplicateKeyPolicy = DuplicateKeyError`), or two different YAML/JSON paths that flatten to the same key name |
+| `ErrAuditFailed` | An audit event was lost while fail-closed auditing (`AuditFailClosed`) was enabled — the handler errored, panicked, or the channel was full; the operation that lost its audit trail returns this error instead of succeeding silently |
 
 ### Helper Predicates
 
@@ -619,6 +563,6 @@ Beyond the common items listed in the [sentinel errors](#sentinel-errors) sectio
 
 ## Related Documentation
 
-- [Constants & Errors](../api-reference/constants) - Complete error list
-- [Config API](../api-reference/config) - Configuration limit settings
-- [Security Overview](../security/) - Security error handling
+- [Constants & Errors](../api-reference/constants) - complete error list
+- [Config API](../api-reference/config) - configuration limit settings
+- [Security Overview](../security/) - security error handling

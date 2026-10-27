@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Web Server Integration"
 title: "Web Server Integration - CyberGo JWT | Auth & RBAC"
-description: "Production JWT web server integration: Bearer auth middleware, RBAC role control, refresh token rotation, logout revocation, and graceful shutdown."
+description: "JWT web server integration: login token pairs, Bearer middleware, RBAC, refresh and logout endpoints, env-driven keys and ports, and graceful shutdown."
 sidebar_position: 15
 check_code: false
 ---
@@ -396,6 +396,14 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 Register all routes, use `signal.Notify` to catch `SIGINT`/`SIGTERM`, then call `server.Shutdown` to wait for in-flight requests to complete before closing the `processor` to release blacklist and other resources:
 
 ```go
+// envDefault reads an environment variable and returns a fallback when unset.
+func envDefault(key, fallback string) string {
+    if v := os.Getenv(key); v != "" {
+        return v
+    }
+    return fallback
+}
+
 func main() {
     // Initialize processor (see Section 1)
     var err error
@@ -404,8 +412,8 @@ func main() {
         log.Fatalf("Failed to initialize JWT processor: %v", err)
     }
 
-    // Listen address configurable via JWT_PORT, defaults to :8080
-    addr := ":8080"
+    // Listen address configurable via JWT_PORT, defaults to 8080
+    addr := ":" + envDefault("JWT_PORT", "8080")
 
     // Register routes
     mux := http.NewServeMux()

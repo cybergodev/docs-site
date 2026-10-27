@@ -1,13 +1,13 @@
 ---
 sidebar_label: "文件操作"
 title: "文件操作函数 - CyberGo JSON | LoadFromFile 与 SaveToFile"
-description: "CyberGo JSON 是提供文件读写的 Go 库，LoadFromFile 原样加载、SaveToFile 原子写入并自动建目录，配合 LoadFromReader/SaveToWriter 流式 I/O 与结构体便捷序列化，读写前均执行路径安全校验，帮助开发者安全读写 JSON 文件。"
+description: "文件与流式 I/O：LoadFromFile/SaveToFile 做路径安全校验与原子写入，LoadFromReader/SaveToWriter 面向 Reader 与 Writer。"
 sidebar_position: 90
 ---
 
 # 文件操作函数
 
-json 包提供的文件操作函数，支持文件读写、流式 I/O 和类型化序列化。所有文件路径在读写前均经过安全校验（见[文件路径校验](#安全-文件路径校验)）。
+json 包的文件操作函数，覆盖文件读写、流式 I/O 与类型化序列化。所有文件路径在读写前都经过安全校验，见[安全：文件路径校验](#安全-文件路径校验)。
 
 ## 文件读写
 
@@ -15,7 +15,7 @@ json 包提供的文件操作函数，支持文件读写、流式 I/O 和类型�
 
 签名：`func LoadFromFile(filePath string, cfg ...Config) (string, error)`
 
-从文件加载 JSON 数据，返回**原始字符串**（不做重新编码，保留文件中的字节顺序与空白）。文件大小受 `Config.MaxJSONSize` 限制。
+从文件加载 JSON 数据，返回**原始字符串**（不重新编码，保留文件中的字节顺序与空白）。文件大小受 `Config.MaxJSONSize` 限制（默认 100MB）。
 
 **参数**
 
@@ -36,7 +36,7 @@ fmt.Println(data) // 原始 JSON 字符串
 
 签名：`func SaveToFile(filePath string, data any, cfg ...Config) error`
 
-将数据保存为 JSON 文件。自动创建不存在的父目录；采用**原子写入**（先写临时文件再 rename，崩溃不会截断已有文件）。字符串 / `[]byte` 输入会被预解析以避免二次转义。
+将数据保存为 JSON 文件。自动创建不存在的父目录；采用**原子写入**（先写临时文件再 rename，崩溃不会截断已有文件）。字符串 / `[]byte` 输入会先解析，避免二次转义。
 
 **参数**
 
@@ -101,7 +101,7 @@ func main() {
 
 签名：`func LoadFromReader(reader io.Reader, cfg ...Config) (string, error)`
 
-从 `io.Reader` 加载 JSON 数据并返回原始字符串。读取字节数受 `Config.MaxJSONSize` 限制（防止内存耗尽），适用于网络连接、HTTP 响应体、管道等流式数据源。
+从 `io.Reader` 加载 JSON 数据并返回原始字符串。读取字节数受 `Config.MaxJSONSize` 限制（默认 100MB），防止内存耗尽；适用于网络连接、HTTP 响应体、管道等流式数据源。
 
 **参数**
 
@@ -144,7 +144,7 @@ func main() {
 }
 ```
 
-从 `os.File` 读取时用法相同——`os.File` 实现了 `io.Reader`：
+从 `os.File` 读取时用法相同：`os.File` 实现了 `io.Reader`。
 
 ```go
 file, err := os.Open("data.json")
@@ -160,7 +160,7 @@ data, err := json.LoadFromReader(file)
 
 签名：`func SaveToWriter(writer io.Writer, data any, cfg ...Config) error`
 
-将数据编码为 JSON 并写入 `io.Writer`。与 `SaveToFile` 一样会对字符串 / `[]byte` 输入做预解析防二次转义，但**不做文件路径校验**（目标由调用方控制）。
+将数据编码为 JSON 并写入 `io.Writer`。与 `SaveToFile` 一样会对字符串 / `[]byte` 输入先解析防二次转义，但**不做文件路径校验**（目标由调用方控制）。
 
 **参数**
 
@@ -202,15 +202,15 @@ func main() {
 }
 ```
 
-写入 `os.File` 时同理——传入文件句柄即可。
+写入 `os.File` 时同理，传入文件句柄即可。
 
-## 序列化便捷方法
+## 结构体序列化
 
 ### MarshalToFile
 
 签名：`func MarshalToFile(filePath string, data any, cfg ...Config) error`
 
-将数据序列化为 JSON 并写入文件。**当前版本与 `SaveToFile` 共用同一条「编码 + 原子写入」流水线**：同样自动创建父目录、原子写入（临时文件 + rename），同样对字符串 / `[]byte` 输入做预解析以避免二次转义；传入的 `cfg` **全量生效**（缩进、转义、数字处理等——历史版本只读取 `Pretty` 标志，其余编码选项会被静默丢弃）。两者行为等价，按语义选用即可：写入 Go 值用 `MarshalToFile`，强调「保存 JSON 文档」用 `SaveToFile`。
+将数据序列化为 JSON 并写入文件。它与 `SaveToFile` 共用同一条「编码 + 原子写入」流水线：自动创建父目录，先写临时文件再 rename。字符串 / `[]byte` 输入会先解析，避免二次转义。传入的 `cfg` 全部生效（缩进、转义、数字处理等）。两者行为等价，按语义选用：写入 Go 值用 `MarshalToFile`，强调「保存 JSON 文档」用 `SaveToFile`。
 
 **参数**
 
@@ -229,7 +229,7 @@ err = json.MarshalToFile("data.json", myStruct, json.PrettyConfig())
 
 签名：`func UnmarshalFromFile(filePath string, v any, cfg ...Config) error`
 
-从文件读取 JSON 并反序列化到目标变量。是「读文件 + `Unmarshal`」的便捷组合，读取过程受 `MaxJSONSize` 限制。
+从文件读取 JSON 并反序列化到目标变量。等价于「读文件 + `Unmarshal`」，读取过程受 `MaxJSONSize` 限制（默认 100MB）。
 
 **参数**
 
@@ -289,7 +289,7 @@ func main() {
 
 ## 安全：文件路径校验
 
-所有文件读写函数（`LoadFromFile` / `SaveToFile` / `MarshalToFile` / `UnmarshalFromFile`）在操作前对路径执行多层安全校验，由 `Config.ValidateFilePath`（默认 `true`）控制。校验覆盖以下攻击向量：
+所有文件读写函数（`LoadFromFile` / `SaveToFile` / `MarshalToFile` / `UnmarshalFromFile`）在操作前对路径执行多层安全校验，由 `Config.ValidateFilePath`（默认 `true`）控制。覆盖以下攻击向量：
 
 | 防护项 | 说明 |
 |--------|------|
@@ -310,12 +310,12 @@ data, err := json.LoadFromFile("config/app.json")
 ```
 
 ::: warning 注意
-文件路径校验始终对文件类操作生效（`LoadFromReader` / `SaveToWriter` 不涉及路径，故不校验）。在处理用户提供的文件名时，这些校验是纵深防御的一环，但仍应在应用层做白名单约束。
+文件路径校验始终对文件类操作生效；`LoadFromReader` / `SaveToWriter` 不涉及路径，因此不校验。处理用户提供的文件名时，这些校验只是一层纵深防御，仍应在应用层做白名单约束。
 :::
 
 ## 文件迭代函数
 
-json 包提供 `ForeachFile` 系列函数，直接从文件迭代 JSON 数组 / 对象，无需手动读取 + 解析：
+json 包提供 `ForeachFile` 系列函数，直接从文件迭代 JSON 数组 / 对象，无需手动读取再解析：
 
 | 函数 | 用途 |
 |------|------|
@@ -331,7 +331,7 @@ err := json.ForeachFile("users.json", func(key any, item *json.IterableValue) er
 })
 ```
 
-这些函数是 `LoadFromFile` + `Foreach` 的便捷组合，适合处理大集合。流式处理与内存优化细节见[流式处理](../../streaming/large-files)。
+这些函数等价于 `LoadFromFile` 加逐条迭代回调。注意它们先把整个文件载入内存（受 `MaxJSONSize` 限制），再逐条回调；恒定内存的大文件处理见[流式处理](../../streaming/large-files)。
 
 ## 方法选择
 

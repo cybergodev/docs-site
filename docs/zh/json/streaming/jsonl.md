@@ -1,13 +1,13 @@
 ---
 sidebar_label: "JSONL 流式处理"
 title: "JSONL 流式处理 - CyberGo JSON | NDJSON 流式读写"
-description: "CyberGo JSON 提供覆盖读写全链路的 JSONL 流式处理能力，支持 StreamJSONL 逐行流式读取、StreamJSONLParallel 并行转换、MapJSONL 等函数式加工与 JSONLWriter 流式写入，帮助开发者以可控内存高效处理大规模 NDJSON 数据，无需一次性载入内存。"
+description: "CyberGo JSON 的 JSONL 处理：StreamJSONL 逐行读取、StreamJSONLParallel 并行、MapJSONL 加工与 JSONLWriter 写入。"
 sidebar_position: 20
 ---
 
 # JSONL 流式处理
 
-JSONL（JSON Lines）或 NDJSON（Newline Delimited JSON）是每行一个 JSON 对象的格式。本库通过 `Processor` 方法和包级函数提供完整的 JSONL 处理能力。
+JSONL（JSON Lines）或 NDJSON（Newline Delimited JSON）是每行一个 JSON 对象的格式。库通过 `Processor` 方法与包级函数提供读取、并行、分块、函数式加工与写入能力。
 
 ## 格式规范
 
@@ -110,7 +110,7 @@ err = p.StreamJSONLParallel(file, 8, func(lineNum int, item *json.IterableValue)
 ```
 
 ::: tip 性能提示
-对于 CPU 密集型操作（如数据转换、计算），使用并行处理可显著提升性能。对于 I/O 密集型操作，建议使用单线程处理。
+并行是否划算取决于单行处理的开销：行内做转换、计算等 CPU 工作时，多 worker 能摊薄单行成本；行内主要是 I/O 等待时，单线程即可，多 worker 只增加调度与同步开销。
 :::
 
 回调返回 `item.Break()` 时为干净停止：扫描与各 worker 提前收尾，方法返回 `nil`；返回其他错误则该方法以该错误结束。回调 panic 会被恢复为错误，不会拖垮进程。
@@ -150,7 +150,7 @@ err = p.StreamJSONLParallelWithContext(ctx, file, 8, func(lineNum int, item *jso
 
 签名：`func (p *Processor) StreamJSONLChunked(reader io.Reader, chunkSize int, fn func(chunk []*IterableValue) error, cfg ...Config) error`
 
-分批处理 JSONL 数据，每次处理指定数量的元素。
+分批处理 JSONL 数据，每次处理指定数量的元素。`chunkSize <= 0` 时按 1000 处理（`Config.JSONLChunkSize` 的默认值也是 1000，但此处按固定值回退，不读取该字段）。
 
 ```go
 p, err := json.New()
@@ -452,7 +452,7 @@ type JSONLStats struct {
 `NDJSONProcessor` / `NewNDJSONProcessor` 是**永久弃用的别名**：新代码请用 `json.New(cfg)` 创建 `Processor`，配合 [`StreamJSONL`](#streamjsonl) 家族（[`StreamJSONL`](#streamjsonl)、[`StreamJSONLFile`](#streamjsonlfile) 及并行/分块变体）——两者由同一引擎驱动、受同一组安全限制约束，且提供 `IterableValue` 类型化取值。`NDJSONProcessor` 在 v1 生命周期内保留、不会移除。API 级详情见 [NDJSONProcessor 弃用说明](../api-reference/processor/jsonl#ndjsonprocessor-独立处理器)。
 :::
 
-`NDJSONProcessor` 是独立于 `Processor` 的 NDJSON（换行分隔 JSON）逐行处理器：回调直接收到 `map[string]any`（而非 `IterableValue`），无需创建 `Processor` 实例，且**始终**跳过空行。它是**遗留 API**——新代码请一律使用本页上方的 `StreamJSONL` 系列（类型化取值、并行 worker、分块与 Map/Reduce/Filter 函数式组合均在其上提供）。以下参考对既有代码仍有查阅价值。
+`NDJSONProcessor` 是独立于 `Processor` 的 NDJSON（换行分隔 JSON）逐行处理器：回调直接收到 `map[string]any`（而非 `IterableValue`），无需创建 `Processor` 实例，且**始终**跳过空行。它是**遗留 API**——新代码使用上方的 `StreamJSONL` 系列（类型化取值、并行 worker、分块与 Map/Reduce/Filter 组合均在其上提供）。以下参考对既有代码仍有查阅价值。
 
 两个入口都内置防护：
 
@@ -510,10 +510,10 @@ err := np.ProcessReader(file, func(lineNum int, obj map[string]any) error {
 
 ## 包级函数
 
-所有 JSONL 处理函数均提供包级便捷版本，签名与对应 [Processor 方法](../api-reference/processor/jsonl) 一致，内部使用默认全局 Processor，无需手动创建实例。
+所有 JSONL 处理函数均有包级版本，签名与对应 [Processor 方法](../api-reference/processor/jsonl) 一致，内部使用全局 Processor，无需手动创建实例。
 
 ::: tip 提示
-包级函数适用于一次性处理。若需在循环中多次调用或共享配置，建议创建专用 `Processor`（[`json.New()`](../api-reference/processor/)）以复用缓存。
+包级函数适用于一次性处理。若在循环中多次调用或需要共享配置，创建专用 `Processor`（[`json.New()`](../api-reference/processor/)）以复用缓存。
 :::
 
 ### StreamJSONL

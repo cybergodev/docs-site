@@ -1,20 +1,20 @@
 ---
 sidebar_label: "Overview"
 title: "Processor - CyberGo JSON | Chaining & Lifecycle"
-description: "CyberGo JSON Processor: parse once, operate many times — GetString/Set/Delete, Foreach, Encode, caching, Close lifecycle — ideal for reusable data sources."
+description: "Processor holds one instance's configuration, cache and hooks for repeated JSON operations: Get/Set/Delete, Foreach iteration, Encode, and Close lifecycle."
 sidebar_position: 10
 ---
 
 # Processor
 
-The Processor delivers high performance, customizability, and more flexible reuse — well suited to repeated operations on the same data source.
+`Processor` is a handler instance that owns a configuration, a result cache and hooks. Each method still takes a JSON string, but security validation, encoding options and cache lookups are decided by the same instance.
 
 ## Characteristics
 
-- **High performance**: internal caching makes repeated operations more efficient
-- **Configurable**: supports a wide range of configuration options
-- **Chaining**: methods return the modified JSON, enabling consecutive operations
-- **Resource management**: explicit lifecycle control
+- **Cache**: a result-cache hit skips both parsing and path evaluation
+- **Configurable**: `New(cfg)` fixes security validation, encoding and cache parameters
+- **Immutable returns**: modification methods return a new string, so they chain
+- **Explicit lifecycle**: `Close` releases the cache, validator and hook references
 
 ## Creating a Processor
 
@@ -22,7 +22,7 @@ The Processor delivers high performance, customizability, and more flexible reus
 
 Signature: `func New(cfg ...Config) (*Processor, error)`
 
-Creates a Processor instance. Configure it with the optional Config parameter.
+Creates a Processor instance. Without `cfg` it uses `DefaultConfig()`; a supplied config is validated and clamped by `Validate` first.
 
 ```go
 // With the default configuration
@@ -34,7 +34,7 @@ defer processor.Close()
 
 // With a custom configuration
 cfg := json.DefaultConfig()
-cfg.StrictMode = true
+cfg.FullSecurityScan = true
 processor, err = json.New(cfg)
 
 // With the security configuration
@@ -43,7 +43,7 @@ processor, err = json.New(json.SecurityConfig())
 
 ## Chaining
 
-Processor methods return the modified JSON string, enabling consecutive operations:
+Modification and deletion methods return a new JSON string, so each result can feed the next call:
 
 ```go
 processor, _ := json.New()
@@ -79,7 +79,7 @@ Package-level functions use an internal global processor. It can be managed thro
 
 Signature: `func SetGlobalProcessor(processor *Processor)`
 
-Sets a custom global processor. All package-level functions (Get, Set, Marshal, etc.) will use it.
+Sets a custom global processor. All package-level functions (`Get`, `Set`, `Marshal`, and so on) use that instance instead.
 
 **Parameters**
 
@@ -122,7 +122,7 @@ func main() {
 
 Signature: `func ShutdownGlobalProcessor()`
 
-Shuts down and removes the global processor. Subsequent package-level operations create a new default processor.
+Shuts down and removes the global processor and clears its cache. Subsequent package-level operations create a new default processor.
 
 ```go
 package main
@@ -146,8 +146,8 @@ func main() {
 ```
 
 :::tip Use cases
-- Long-running services cleaning up resources at shutdown
-- When you need to reset the processor configuration
+- Long-running services releasing resources at shutdown
+- Resetting the processor configuration
 - Isolating test cases in test environments
 :::
 

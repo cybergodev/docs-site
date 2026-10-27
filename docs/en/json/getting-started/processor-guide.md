@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Processor Guide"
 title: "Processor Guide - CyberGo JSON | When to Use a Processor"
-description: "CyberGo JSON Processor guide: package functions vs Processor, PreParse and CompilePath, goroutine sharing, lifecycle, monitoring for high-frequency queries."
+description: "CyberGo JSON Processor guide: package functions vs Processor, PreParse and CompilePath, goroutine sharing, and lifecycle management."
 sidebar_position: 40
 ---
 
 # Processor Guide
 
-This guide helps you understand **when** and **how** to use a Processor, and what it offers over package-level functions.
+A `Processor` is the entry point that holds configuration, caches, and hooks; package-level functions are a thin layer over one shared default processor. This page covers the differences, six scenarios for using a Processor, and lifecycle management.
 
 ## Package Functions vs Processor
 
@@ -34,10 +34,10 @@ CyberGo JSON offers two API styles:
 
 ### Scenario 1: Custom Configuration
 
-Package-level functions use the default configuration. For security mode, custom encoders, or hooks, use a Processor:
+Package-level functions use the default configuration when no cfg is passed. For security mode, custom encoders, or hooks, carry the configuration in a Processor:
 
 ```go
-// Package function — always the default configuration
+// Package function — pass cfg as the trailing argument (default config otherwise)
 val := json.GetString(data, "name")
 
 // Processor — configurable
@@ -170,7 +170,7 @@ See the [Hook System](../extensions/hooks).
 
 ### Scenario 5: Sharing a Processor Across Goroutines
 
-`Processor` is concurrency-safe — the correct pattern is **create once, share with the whole group, Close once at the end**, rather than one per request (which only adds creation overhead and amplifies resource-management cost):
+`Processor` is concurrency-safe: create once, share across the group, and `Close` once at the end. Do not create one per request — creation has a cost and resource management grows with it:
 
 ```go
 package main
@@ -220,7 +220,7 @@ The default `MaxConcurrency = 50`: when in-flight operations exceed it, new oper
 
 ### Scenario 6: Unified Global Configuration
 
-Behind the package-level functions is a **global processor**. When you want the entire application — including old code whose call signatures cannot be changed — to run one shared configuration, `SetGlobalProcessor` swaps it once and every package-level call (`json.Get`/`json.Marshal`, etc.) takes effect immediately. For the full example and caveats see the [Global Processor](#global-processor) section below.
+Behind the package-level functions is a **global processor**. When the whole application — including old code whose call signatures cannot be changed — should run one shared configuration, `SetGlobalProcessor` swaps it once and every package-level call (`json.Get`/`json.Marshal`, etc.) takes effect immediately. Full example and caveats in [Global Processor](#global-processor).
 
 ## Lifecycle Management
 
@@ -238,9 +238,9 @@ result, err := p.GetString(data, "name")
 ```
 
 ::: warning Consequences of forgetting Close
-- Cache memory is never released
+- Cache memory is not released
 - Background goroutines leak
-- Under high concurrency this can exhaust resources
+- Under high concurrency, resources keep accumulating
 :::
 
 ### Checking State
@@ -251,11 +251,11 @@ if p.IsClosed() {
 }
 ```
 
-`IsClosed` returns `true` in both states: fully closed, or closing (draining)/close-timeout. New operations are rejected with an error in either state, so treat it as the single "can I still use it" check.
+`IsClosed` returns `true` in both states: fully closed, or closing (draining)/close-timeout. New operations are rejected with an error in either state, so it can serve as the single "can I still use it" check.
 
 ## Monitoring and Diagnostics
 
-The Processor has built-in runtime statistics and health checks, ready to plug into service monitoring:
+The Processor has built-in runtime statistics and health checks that plug directly into service monitoring:
 
 ```go
 package main
@@ -329,7 +329,7 @@ Behavior details:
 ::: tip Use cases
 - A unified global security policy
 - Custom encoders applied globally
-- Replacing the default configuration without threading Config through every call
+- Replacing the default configuration without passing Config at every call site
 :::
 
 ## Decision Tree

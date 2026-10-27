@@ -7,16 +7,16 @@ sidebar_position: 2
 
 # Cheat Sheet
 
-Quick reference for commonly used code snippets, assuming you already understand the library.
+Reference snippets for the most common tasks: loading files, reading typed values, mapping structs, masking secrets, and serializing configuration.
 
 ## Loading Configuration
 
 ```go
-// Load via package-level functions
+// Package-level functions
 env.Load(".env")                                        // Load .env file
 env.Load(".env", ".env.local", "config.json")          // Multiple files
 
-// Load via loader instance
+// Loader instance
 loader, _ := env.New()
 loader.LoadFiles("config.json")                         // JSON
 loader.LoadFiles("config.yaml")                         // YAML
@@ -32,7 +32,7 @@ env.GetInt("PORT", 8080)              // Returns int64
 env.GetBool("DEBUG", false)
 env.GetDuration("TIMEOUT", 30*time.Second)
 
-// Slices (supports KEY_0,KEY_1 index format or comma-separated)
+// Slices (KEY_0, KEY_1 index keys, or comma-separated)
 env.GetSlice[string]("HOSTS", []string{"localhost"})
 env.GetSlice[int64]("PORTS", []int64{80})
 env.GetSlice[int]("PORTS", []int{80})          // also supports int
@@ -51,32 +51,24 @@ count := env.Len()
 // Secure value
 secret := env.GetSecure("PASSWORD")
 if secret != nil {
-    defer secret.Release()  // or secret.Close()
+    defer secret.Release()     // zeroes, unlocks, and returns to the pool
     value := secret.Reveal()   // plaintext value (use only when needed)
     masked := secret.Masked()  // mask (for logging)
 }
 ```
 
+`Release()` vs `Close()` is covered in [Memory Locking · Prefer Release Over Close](../security/memory-locking#prefer-release-over-close): `Close()` zeroes and unlocks but does not return the object to the pool.
+
 ## Key Resolution
 
+Flat keys, dot paths, and uppercase dot paths are equivalent; array elements use paths such as `servers.0.host`. For the complete rules and conversion table, see [Multi-format Config · Key Resolution](../guides/multi-format#key-resolution).
+
 ```go
-// JSON: {"app": {"name": "myapp"}}
-// Stored as: APP_NAME=myapp
-
-// All of these work
-env.GetString("APP_NAME")      // Flat key (recommended)
-env.GetString("app.name")      // Dot path
-env.GetString("APP.NAME")      // Uppercase dot path
-
-// Array index
-env.GetString("servers.0.host")  // SERVERS_0_HOST
+env.GetString("APP_NAME")        // Flat key (recommended)
+env.GetString("app.name")        // Dot path → APP_NAME
+env.GetString("APP.NAME")        // Uppercase dot path
+env.GetString("servers.0.host")  // Array index → SERVERS_0_HOST
 ```
-
-| Input | Converted to |
-|-------|---------------|
-| `"database.host"` | `"DATABASE_HOST"` |
-| `"servers.0.host"` | `"SERVERS_0_HOST"` |
-| `"app.config.name"` | `"APP_CONFIG_NAME"` |
 
 ## Struct Mapping
 
@@ -97,10 +89,10 @@ env.ParseInto(&cfg)
 
 | Preset | Purpose | Characteristics |
 |--------|---------|-----------------|
-| `DefaultConfig()` | General | Safe defaults |
-| `DevelopmentConfig()` | Development | Relaxed limits, allows overwriting, YAML syntax support, 10MB file limit |
-| `TestingConfig()` | Testing | Overwrites existing variables, test isolation, 64KB file limit |
-| `ProductionConfig()` | Production | Strict validation + audit, no overwriting, 64KB file limit |
+| `DefaultConfig()` | General | Safe defaults, no overwriting |
+| `DevelopmentConfig()` | Development | Relaxed limits, overwrites, YAML syntax, 10 MB file limit |
+| `TestingConfig()` | Testing | Overwrites, test isolation, 64 KB file limit |
+| `ProductionConfig()` | Production | Strict validation + audit, no overwriting, 64 KB file limit |
 
 ```go
 cfg := env.ProductionConfig()
@@ -113,7 +105,7 @@ cfg.AllowedKeys = []string{"APP_NAME", "PORT"}
 ```go
 loader, err := env.New(cfg)
 if err != nil {
-    log.Fatal(err)  // Abort on creation failure (e.g. invalid config)
+    log.Fatal(err)  // Abort on creation failure (for example an invalid config)
 }
 defer loader.Close()
 
@@ -124,12 +116,12 @@ loader.Delete("KEY")
 loader.Keys()
 loader.All()
 loader.Validate()
-loader.Apply()  // Apply to os.Environ
-loader.Len()    // Variable count
-loader.LoadTime() // Last load time
-loader.IsApplied() // Whether applied to system environment
+loader.Apply()     // Write to the process environment
+loader.Len()       // Variable count (O(1))
+loader.LoadTime()  // Last load time
+loader.IsApplied() // Whether written to the process environment
 loader.IsClosed()  // Whether closed
-loader.Config()    // Get configuration
+loader.Config()    // Current configuration
 ```
 
 ## Error Handling
@@ -186,7 +178,7 @@ env.ClearBytes(sensitiveData)
 clean := env.SanitizeForLog(msg)
 
 // Key name masking
-masked := env.MaskKey("DB_PASSWORD")  // "DB***"
+masked := env.MaskKey("DB_PASSWORD")  // "[MASKED]"
 ```
 
 ## Multi-environment
@@ -194,7 +186,7 @@ masked := env.MaskKey("DB_PASSWORD")  // "DB***"
 ```go
 goEnv := os.Getenv("GO_ENV")
 if goEnv == "" { goEnv = "development" }
-env.Load(".env", ".env."+goEnv, ".env.local")  // Single call; first file wins by default, set OverwriteExisting=true for last-file-wins
+env.Load(".env", ".env."+goEnv, ".env.local")  // First file wins by default; set OverwriteExisting=true for last-file-wins
 ```
 
 ## Multi-format
@@ -207,7 +199,7 @@ loader.LoadFiles("config.env", "config.json", "config.yaml")
 format := env.DetectFormat("config.json")  // FormatJSON
 
 // Serialize
-env.Marshal(data, env.FormatEnv)
+env.Marshal(data, env.FormatEnv)   // values are quoted and escaped as needed
 env.Marshal(data, env.FormatJSON)
 env.Marshal(data, env.FormatYAML)
 
@@ -222,24 +214,26 @@ env.UnmarshalMap(data, env.FormatAuto)  // Auto-detect
 # Comment
 KEY=value
 KEY="value with spaces"
-KEY='literal \n value'     # Single quotes skip escape processing but do NOT prevent expansion (see tip below)
+KEY='literal \n value'     # Single quotes skip escapes and are not expanded (see tip below)
 KEY=${OTHER_KEY}           # Variable reference
-KEY=${MISSING:-default}    # Default value (used when variable doesn't exist)
-KEY=${MISSING:=default}    # Default value (used when variable doesn't exist, same as :-)
-KEY=${MISSING:?error}      # Error message (errors when variable doesn't exist or is empty)
+KEY=${MISSING:-default}    # Default value (used when the variable doesn't exist)
+KEY=${MISSING:=default}    # Default value, also assigned back to MISSING (when undefined)
+KEY=${MISSING:?error}      # Error when the variable doesn't exist or is empty
 export KEY=value           # bash style
 KEY=$$                     # Escaped dollar sign (yields a literal $)
 ```
 
 ::: tip Variable expansion and literal $
-Single quotes do **not** prevent variable expansion — `${UNDEF}` inside `KEY='a ${UNDEF}'` is still expanded, yielding an empty string when undefined. Use `$$` to escape a literal `$`, or set `cfg.ExpandVariables = false` to disable expansion. See [File Format](../reference/file-format) for the complete rules.
+Single-quoted values are **not** expanded: `KEY='a ${UNDEF}'` loads as the literal text `a ${UNDEF}`. For a literal `$` in a double-quoted or unquoted value, escape it as `$$`, or set `cfg.ExpandVariables = false` to disable expansion. See [File Format](../reference/file-format) for the complete rules.
+
+`KEY: value` lines are skipped unless `cfg.AllowYamlSyntax = true`; only `=` separates by default.
 :::
 
 ## Boolean Values
 
-| Truthy | Falsy |
-|--------|-------|
-| `true`, `1`, `yes`, `on`, `enabled` | `false`, `0`, `no`, `off`, `disabled` |
+Truthy: `true`/`1`/`yes`/`on`/`enabled`. Falsy: `false`/`0`/`no`/`off`/`disabled`. Matching is case-insensitive.
+
+An empty string parses as `false` (the default is not used), and an unrecognized value is audited and returns the default. See [FAQ · What boolean value formats are supported?](../reference/faq#what-boolean-value-formats-are-supported) for the full table.
 
 ## Time Formats
 
@@ -253,44 +247,39 @@ DURATION=1h30m
 
 | Limit | Default | Hard Max |
 |-------|---------|----------|
-| File size | 2 MB | 100 MB |
-| Line length | 1 KB | 64 KB |
-| Key length | 64 | 1024 |
-| Value length | 4 KB | 1 MB |
-| Variable count | 500 | 10000 |
+| File size | 8 MB | 100 MB |
+| Line length | 8 KB | 64 KB |
+| Key length | 128 | 1024 |
+| Value length | 8 KB | 1 MB |
+| Variable count | 1000 | 10000 |
 | Expansion depth | 5 | 20 |
 
 ## Testing
 
+- Create an independent loader per test with `env.TestingConfig()`, and clear `Filenames` so the cwd `.env` is not loaded implicitly.
+- When the package-level singleton must be cleaned up, check the error from `env.ResetDefaultLoader()` in TestMain.
+
 ```go
-func TestExample(t *testing.T) {
-    cfg := env.TestingConfig()
-    loader, _ := env.New(cfg)
-    defer loader.Close()
-
-    loader.Set("KEY", "value")
-    // Test...
-}
-
-func TestMain(m *testing.M) {
-    if err := env.ResetDefaultLoader(); err != nil {
-        log.Printf("warning: %v", err)
-    }
-    os.Exit(m.Run())
-}
+cfg := env.TestingConfig()
+cfg.Filenames = nil
+loader, _ := env.New(cfg)
+defer loader.Close()
 ```
+
+The full TestMain template and process-variable cleanup are in [Testing · Cleaning Up Test State](../guides/testing#cleaning-up-test-state); the in-memory filesystem is in [Testing · Mocking Filesystem](../guides/testing#mocking-filesystem).
 
 ## Built-in Forbidden Keys
 
-The following keys are forbidden by default:
+These keys are forbidden by default:
 
 | Category | Keys |
 |----------|------|
 | System path | `PATH` |
 | Linux dynamic linker | `LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_DEBUG`, `LD_AUDIT`, `LD_PRELOAD_32`, `LD_PRELOAD_64`, `LD_LIBRARY_PATH_32`, `LD_LIBRARY_PATH_64` |
 | macOS | `DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH` |
-| Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS` |
-| Language runtimes | `PYTHONPATH`, `NODE_PATH`, `PERL5OPT`, `RUBYLIB` |
+| Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS`, `PS4`, `SHELLOPTS`, `BASHOPTS` |
+| Language runtimes | `PYTHONPATH`, `PYTHONSTARTUP`, `PYTHONINSPECT`, `PERL5OPT`, `PERL5LIB`, `RUBYLIB`, `RUBYOPT`, `GEM_PATH`, `GEM_HOME`, `NODE_PATH`, `NODE_OPTIONS`, `RUSTFLAGS`, `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS`, `_JAVA_OPTIONS`, `CLASSPATH` |
+| Git | `GIT_CONFIG_COUNT`, `GIT_PROXY_COMMAND` |
 | Windows | `COMSPEC`, `PATHEXT`, `SYSTEMROOT`, `WINDIR` |
 
 ## Interface Types
@@ -304,13 +293,13 @@ The following keys are forbidden by default:
 // env.EnvCloser        // Close
 
 // Composite interface
-// env.EnvLoader        // Combines all of the above
+// env.EnvLoader        // combines all of the above
 ```
 
 ## Related Documentation
 
-- [Quick Start](./) - Full tutorial
-- [Package Functions](../api-reference/functions) - Detailed API
+- [Quick Start](./) - full tutorial
+- [Package Functions](../api-reference/functions) - detailed API
 - [Loader API](../api-reference/loader) - Loader methods
-- [Config API](../api-reference/config) - Configuration options
-- [Error Handling](../guides/error-handling) - Error handling patterns
+- [Config API](../api-reference/config) - configuration options
+- [Error Handling](../guides/error-handling) - error handling patterns

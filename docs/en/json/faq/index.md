@@ -1,7 +1,7 @@
 ---
 sidebar_label: "FAQ"
 title: "FAQ - CyberGo JSON | Common Questions Quick Reference"
-description: "CyberGo JSON FAQ: package functions vs Processor, missing-path semantics, float64 numbers, Set purity, stdlib migration differences, and cache tuning."
+description: "CyberGo JSON FAQ: package functions vs Processor, missing-path and out-of-range returns, float64 numbers, Set purity, stdlib migration, caching."
 sidebar_position: 1
 ---
 
@@ -22,15 +22,15 @@ For the full comparison and decision tree, see [Processor Getting Started](../ge
 
 ## What exactly is returned when a path is not found?
 
-**Answer:** It depends on the call, and "key does not exist" behaves differently from "array index out of range":
+**Answer:** It depends on the call. Both a missing object key and an out-of-range array index return `ErrPathNotFound` from `Get`; typed functions and `SafeGet` fall back to a zero value or default instead:
 
 | Call | Object key missing | Array index out of range |
 |------|--------------|--------------|
-| `json.Get` | `(nil, ErrPathNotFound)` | `(nil, nil)` — **no error** |
+| `json.Get` | `(nil, ErrPathNotFound)` | `(nil, ErrPathNotFound)` |
 | `json.GetString` and other typed functions | Zero value or the passed default | Zero value or the passed default |
-| `json.SafeGet` | `Exists: false` | `Exists: true` with a nil value |
+| `json.SafeGet` | `Exists: false` | `Exists: false` |
 
-When an array index is out of range, `Get` does not error (the result is nil), so deciding "does this element exist" requires checking the return value, not just err. Full rules in [Syntax Pitfalls](../getting-started/path-syntax#what-are-the-syntax-pitfalls).
+`items[10]` on a three-element array yields an error message containing `array index 10 out of bounds (length 3)`, and `errors.Is(err, json.ErrPathNotFound)` returns `true`. When you want "missing means default", use a typed function or `SafeGet` rather than an err branch on `Get`. Full rules in [Syntax Pitfalls](../getting-started/path-syntax#what-are-the-syntax-pitfalls).
 
 ## Why is the number I retrieved a float64?
 
@@ -74,7 +74,7 @@ When modifying multiple fields, use `SetMultiple` to do it in one call instead o
 
 ## What happens when Set uses an out-of-range index?
 
-**Answer:** Unlike the query side's "zero value, no error" — under the default configuration (`CreatePaths: true`), `Set` pads the array with `null` up to the target index:
+**Answer:** The query side returns `ErrPathNotFound`; the modification side differs — under the default configuration (`CreatePaths: true`), `Set` pads the array with `null` up to the target index:
 
 ```go
 updated, _ := json.Set(`{"items":[1,2,3]}`, "items[5]", "x")
@@ -89,17 +89,18 @@ To append at the end, use `items[+]` (the preceding path must be an existing arr
 
 ## How do I access keys containing dots or brackets?
 
-**Answer:** Two ways: escape with a backslash in dot syntax, or switch to JSON Pointer (starting with `/`, where dots and brackets are simply part of the key name, no escaping needed):
+**Answer:** A dot can be backslash-escaped or handled through JSON Pointer; paired braces and brackets only work through Pointer (in a path starting with `/`, brackets and dots are part of the key name):
 
 ```go
-data := `{"a.b": 1, "c[0]": 2}`
+data := `{"a.b": 1, "c[0]": 2, "e{f}": 3}`
 
 json.GetInt(data, "a\\.b") // 1 — the Go literal consumes one level; the path parser receives a\.b
-json.GetInt(data, "/a.b")  // 1 — under Pointer mode the dot is part of the key name, simpler
-json.GetInt(data, "/c[0]") // 2
+json.GetInt(data, "/a.b")  // 1 — under Pointer mode the dot is part of the key name
+json.GetInt(data, "/c[0]") // 2 — paired brackets require a Pointer
+json.GetInt(data, "/e{f}") // 3 — same for paired braces
 ```
 
-Note that Pointer and dot syntax cannot be mixed; Pointer mode does not support negative indices, and `Set` via Pointer cannot write out of range. See [Path Escaping](../getting-started/path-syntax#path-escaping) and [JSON Pointer](../getting-started/path-syntax#json-pointer-rfc-6901).
+A key whose brackets hold a **non-numeric** value, such as `a[b]`, cannot be addressed by any path syntax; iterate the object and match the key. Note that Pointer and dot syntax cannot be mixed; Pointer negative indices follow the dot-syntax semantics (`-1` is the last element); and `Set` via Pointer cannot grow an array. See [Path Escaping](../getting-started/path-syntax#path-escaping) and [JSON Pointer](../getting-started/path-syntax#json-pointer-rfc-6901).
 
 ## How much code do I need to change to migrate from the standard library?
 
@@ -131,7 +132,7 @@ Note that the three critical patterns `__proto__`, `constructor[`, and `prototyp
 
 ## When does the cache need manual clearing?
 
-**Answer:** Almost never. `Set`/`Delete` and other write operations **automatically invalidate** the related cache entries (cleared in batches by JSON-hash prefix). Manual `ClearCache` is only needed when the external data source changes (the same JSON content is replaced in place), or under memory pressure. Monitor the hit ratio with `GetStats()` — below 0.5, inspect the workload or adjust `CacheTTL`/`MaxCacheSize`. See [Caching and Pre-parsing](../advanced/caching).
+**Answer:** Almost never. `Set`/`Delete` and other write operations **automatically invalidate** the related cache entries (the document hash clears every entry for that document). Manual `ClearCache` is only needed when the external data source changes (the same JSON content is replaced in place), or under memory pressure. Monitor the hit ratio with `GetStats()` — below 0.5, inspect the workload or adjust `CacheTTL`/`MaxCacheSize`. See [Caching and Pre-parsing](../advanced/caching).
 
 ## What is the difference between PreParse and CompilePath?
 

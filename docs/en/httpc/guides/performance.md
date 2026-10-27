@@ -7,11 +7,11 @@ sidebar_position: 110
 
 # Performance Optimization
 
-HTTPC is designed for high performance from the ground up: connection-pool reuse, HTTP/2 multiplexing, object pooling, and single-allocation result objects. In most scenarios, using a preset configuration directly delivers excellent performance; when further tuning is needed, understanding the underlying mechanics lets you target the right lever.
+HTTPC performance comes from four mechanisms: connection-pool reuse, HTTP/2 multiplexing, object pooling, and single-allocation result objects. Preset configurations set parameters for these mechanisms. When further tuning is needed, understand the mechanisms below first, then locate the specific parameter to adjust.
 
 ## Preset Comparison
 
-HTTPC provides 5 preset configurations, each systematically tuned for a different scenario. The tables below list the exact values of key fields by category for side-by-side selection.
+HTTPC provides 5 preset configurations, each matching one kind of use case. The tables below list the exact values of key fields by category for side-by-side selection.
 
 ### Timeout Configuration
 
@@ -72,7 +72,7 @@ HTTPC provides 5 preset configurations, each systematically tuned for a differen
 | Scenario | Recommended preset | Adjustment suggestion |
 |------|----------|----------|
 | General web services | Default | — |
-| Handling user-provided URLs | Secure | — |
+| Handling untrusted URLs | Secure | — |
 | Internal microservices, high concurrency | Performance | Increase `MaxIdleConns` with the backend count |
 | One-off scripts | Minimal | — |
 | File download service | Performance | Increase `MaxResponseBodySize` |
@@ -93,7 +93,9 @@ client, _ := httpc.New(cfg)
 
 ## Concurrency Model: One Client Serves All Goroutines
 
-HTTPC's `Client` and `DomainClient` are both **concurrency-safe** — any method may be called by multiple goroutines simultaneously, and the library ships dedicated concurrency integration tests (`internal/concurrency`) that exercise the public API under high concurrency. The correct concurrency pattern is therefore simple:
+HTTPC's `Client` and `DomainClient` are both **concurrency-safe**: any method may be called by multiple goroutines simultaneously. The repository's concurrency-safety tests (the root package's `concurrency_test.go` plus concurrency cases in the internal packages, run with `-race`) cover the public API under high concurrency.
+
+The concurrency model therefore has one form: multiple goroutines share the same `Client`.
 
 ```text
 Create 1 Client at the global/service level
@@ -108,12 +110,13 @@ How concurrency relates to the connection pool:
 | Scenario | Behavior |
 |------|------|
 | Concurrency ≤ `MaxConnsPerHost` (HTTP/1.1) | Each request owns one connection; no queuing |
-| Concurrency > `MaxConnsPerHost` (HTTP/1.1) | Excess requests **queue** at the transport layer waiting for a free connection (no error, but latency rises) |
-| HTTP/2 enabled (default) | Requests to the same host share a single multiplexed connection; `MaxConnsPerHost` is rarely the bottleneck |
+| Concurrency > `MaxConnsPerHost` (HTTP/1.1) | Excess requests **queue** at the transport layer waiting for a free connection (no error; latency rises) |
+| HTTP/2 enabled (default) | Requests to the same host share a single multiplexed connection; connection count does not grow with request count |
 
-:::tip Two ways to tune the concurrency cap
+:::tip Two ways to adjust the concurrency cap
 - **Control the client side**: raise `Connection.MaxConnsPerHost` to ≥ peak concurrency (for HTTP/1.1 workloads);
-- **Control the caller side**: use a buffered channel as a semaphore to limit concurrency (the complete example below), proactively protecting the downstream service.
+- **Control the caller side**: use a buffered channel as a semaphore to limit concurrency (the complete example below), protecting the downstream service.
+
 The two are often combined: the semaphore throttles to what the downstream can bear, and the pool is sized to the semaphore limit.
 :::
 
@@ -182,15 +185,15 @@ func main() {
 }
 ```
 
-When fetching large batches of independent URLs, another common pattern is the **worker pool**: a fixed number of worker goroutines consume from a jobs channel, naturally capping concurrency at the worker count with no semaphore needed. For a complete implementation, see the [Advanced Examples](../examples/advanced-usage).
+When fetching independent URLs in batches, another common pattern is the **worker pool**: a fixed number of worker goroutines consume from a jobs channel, capping concurrency at the worker count with no semaphore needed. For a complete implementation, see the [Advanced Examples](../examples/advanced-usage).
 
 ## Connection Pool Tuning Internals
 
-The connection pool is the core of HTTP client performance. HTTPC's pool is built on the Go standard library's `http.Transport`, but adds auto-computation logic and secure defaults on top.
+The connection pool determines how well an HTTP client reuses connections. HTTPC's pool is built on the Go standard library's `http.Transport`, with auto-computation logic and secure defaults added on top.
 
 ### Idle Connection Auto-Computation
 
-`MaxIdleConnsPerHost` (the per-host idle connection cap) does not need to be set manually — HTTPC derives it from `MaxConnsPerHost`:
+`MaxIdleConnsPerHost` (the per-host idle connection cap) needs no manual setting; HTTPC derives it from `MaxConnsPerHost`:
 
 ```text
 idle conns = MaxConnsPerHost / 2, clamped to [2, 10]
@@ -209,12 +212,14 @@ Specific rules (`calculateIdleConnsPerHost`):
 | 100 | 10 | Above the cap, uses 10 |
 
 :::tip Why MaxConnsPerHost / 2
-Idle connections are a "cache of connections" — established but temporarily unused. Setting them to half the max connections strikes a balance between "reuse existing connections" (cache hit) and "create new connections" (a fresh handshake on cache miss), preventing idle connections from tying up too many server-side resources.
+Idle connections are established but temporarily unused connections, effectively a connection cache. Setting the cap to half the maximum balances "reuse an existing connection" (cache hit) against "create a new connection" (a fresh handshake on cache miss). A higher value means idle connections occupy more server-side resources.
 :::
 
 ### TCP Keep-Alive
 
-HTTPC's connection pool uses a fixed 30-second TCP keep-alive interval (`defaultKeepAlive = 30 * time.Second`). Once a connection is established, the OS periodically sends keep-alive probes to detect dead connections. The `IdleConn` timeout controls how long idle connections live in the pool (90s for Default); the two work together.
+HTTPC's connection pool uses a fixed 30-second TCP keep-alive interval (`defaultKeepAlive = 30 * time.Second`). After a connection is established, the OS sends keep-alive probes at this interval to detect dead connections.
+
+The `IdleConn` timeout controls how long idle connections live in the pool (90s for Default); the two apply independently.
 
 ```go
 package main
@@ -254,7 +259,7 @@ func main() {
 
 ## HTTP/2 Performance Advantages
 
-HTTP/2 is enabled by default (`EnableHTTP2 = true`), providing three major performance gains:
+HTTP/2 is enabled by default (`EnableHTTP2 = true`) and provides three performance properties:
 
 | Feature | HTTP/1.1 | HTTP/2 |
 |------|----------|--------|
@@ -263,7 +268,13 @@ HTTP/2 is enabled by default (`EnableHTTP2 = true`), providing three major perfo
 | Connection reuse | Keep-alive, serial | Parallel streams |
 
 :::tip HTTP/2 and the connection pool
-HTTP/2 multiplexing lets a single TCP connection carry multiple simultaneous requests, drastically reducing connection-setup overhead. Under high concurrency to the same host, HTTP/2 throughput far exceeds HTTP/1.1. It only falls back to HTTP/1.1 when using `TestingConfig()` (which explicitly disables HTTP/2) or when the connection does not support ALPN negotiation.
+HTTP/2 multiplexing lets a single TCP connection carry multiple simultaneous requests, reducing connection-setup overhead. Under high concurrency to the same host, HTTP/2 throughput is higher than HTTP/1.1.
+
+It falls back to HTTP/1.1 in the following cases:
+
+- HTTP/2 is disabled manually with `Connection.EnableHTTP2 = false` (the `TestingConfig()` preset does exactly this);
+- the connection cannot negotiate HTTP/2 over ALPN;
+- a rotating multi-proxy pool is active (forced automatically; set `EnableProxyPoolHTTP2` to restore HTTP/2 — see [Proxy & Proxy Pool](./proxy#proxy-pools-and-http-2-enableproxypoolhttp2)).
 :::
 
 ```go
@@ -306,58 +317,61 @@ func main() {
 
 ## Memory Optimization Mechanisms
 
-HTTPC applies multiple layers of memory optimization; the core idea is to reduce heap allocations and reuse objects.
+HTTPC applies multiple layers of memory optimization with two goals: fewer heap allocations and object reuse.
 
 ### resultBundle Single Allocation
 
-Every request returns a `*Result` carrying three nested structs: `RequestInfo` (request info), `ResponseInfo` (response info), and `RequestMeta` (metadata such as duration). The traditional approach allocates separately for the Result and each nested struct — four heap allocations. HTTPC packs them into a single `resultBundle`, so one heap allocation covers everything:
+Every request returns a `*Result` carrying three nested structs: `RequestInfo` (request info), `ResponseInfo` (response info), and `RequestMeta` (metadata such as duration). Allocating the Result and each nested struct separately takes four heap allocations.
+
+HTTPC packs them into a single `resultBundle`, so one heap allocation covers everything:
 
 ```text
 Traditional: 4 separate allocations (Result + RequestInfo + ResponseInfo + RequestMeta)
 HTTPC: 1 allocation (resultBundle); Result's three pointers reference the same memory block
 ```
 
-The caller receives a `*Result` whose `Request`, `Response`, and `Meta` fields (pointers) reference the corresponding structs inside the bundle — fully transparent. Because the caller may hold `*Result` long-term, an object pool is not appropriate here (pooling would cause data races); it is reclaimed by GC instead.
+The caller receives a `*Result` whose `Request`, `Response`, and `Meta` fields (pointers) reference the corresponding structs inside the bundle; this is transparent to the caller.
+
+Because the caller controls how long it holds the `*Result`, an object pool is not appropriate here (pooling would cause data races); it is reclaimed by GC instead.
 
 ### Engine Object Pool
 
-HTTPC's engine layer makes extensive use of `sync.Pool` to reuse short-lived objects, reducing GC pressure:
+HTTPC's engine layer uses `sync.Pool` to reuse short-lived objects and lower GC pressure:
 
 | Pooled object | Purpose | Notes |
 |----------|------|------|
 | `engine.Response` | Response object | Returned to the pool after a request, reused by the next one |
 | `engine.Request` | Request object | Same as above |
-| `strings.Builder` | String building | URL building, error formatting, Config serialization |
+| `bytes.Buffer` | String and encoding buffer | Query-string/URL building, error formatting, Config serialization, JSON/multipart encoding (pre-allocated by initial capacity; `strings.Builder`'s `Reset` discards the backing array, which makes it unsuitable for pooling) |
 | `http.Header` | HTTP header map | Request/response header processing |
-| `bytes.Buffer` | JSON/multipart encoding | Pre-allocated by initial capacity |
-| `time.Timer` | Retry timer | Avoids frequent timer creation |
-| gzip/flate reader | Decompression | Reuses decompressors |
+| gzip/flate reader | Decompression | Reuses decompressors (including the shared 4KB bufio wrapper) |
 
 :::tip Division of labor: object pool vs resultBundle
-Engine-internal objects (Response/Request/Builder) have short lifetimes and complete their borrow-return cycle within a single request, so they are good fits for pooling. The `*Result` returned to the caller has an unpredictable lifetime, so it uses single allocation + GC reclamation. The two complement each other, each playing to its strength.
+Pooling fits short-lived objects whose borrow-return cycle completes inside one request; the caller decides how long a `*Result` is held, so it uses single allocation plus GC reclamation (rationale in the previous section).
 :::
 
 ### Low-Allocation Hot Paths
 
-Beyond object pooling, the request hot path carries a set of targeted de-allocation optimizations:
+Beyond object pooling, the request hot path carries the following allocation-avoidance optimizations:
 
 | Optimization | Mechanism |
 |--------|------|
 | Batch header deep-copy | `CloneHeader` counts all values first and allocates one shared backing array in a single shot — turning "one allocation per header (N total)" into 1 |
-| Zero-allocation query escaping | Strings that need no escaping are **returned as-is** (zero allocation); when escaping is needed, bytes are written through a pooled buffer |
+| Zero-allocation query escaping | Strings that need no escaping are **written to the builder as-is** (zero intermediate strings); when escaping is needed, bytes are written out one by one in the same buffer |
 | Direct numeric query writes | `int`/`float64`/`bool` and other numeric values are written straight into the builder via `strconv.Append*`, with no intermediate strings |
 | Request-header ownership transfer | For ordinary requests and the download path, the header map on the engine Response is **ownership-transferred** to `Result` rather than cloned |
-| Inline redirect-chain array | The first 8 redirects are recorded in an inline fixed-size array inside a pooled object; an overflow slice is allocated only beyond 8 — the vast majority of requests never allocate for the redirect chain |
-| Retry-sleep timer reuse | The `time.Timer` used for retry backoff is pooled and reused, avoiding repeated Timer creation under high-frequency retries |
-| Pool capacity guards | Objects above a threshold are **not returned** to the pool (e.g. header maps > 64 entries, query-builder capacity > 4096), preventing large objects from lingering in pools and inflating memory |
+| Inline redirect-chain array | The first 8 redirects are recorded in an inline fixed-size array inside a pooled object; an overflow slice is allocated only beyond 8, so chains of up to 8 hops allocate nothing extra |
+| Pool capacity guards | Objects above a threshold are **not returned** to the pool (e.g. header maps > 64 entries, query-builder capacity > 4096), preventing large objects from lingering in pools and occupying more memory |
 
-### Internal Metrics and Health
+### Internal Metrics
 
-The engine internally collects per-request metrics with **pure atomic operations** (lock-free): total requests, success/failure counts, and a smoothed latency maintained with the moving-average formula `new average = (old average x 9 + this latency) / 10`; an error rate below 10% counts as healthy. These metrics drive the engine's own health assessment and are **not exposed as public API** — for application-level request metrics, use `MetricsMiddleware` (see the [middleware reference](../api-reference/client-config/middleware)), which reports by method/URL/status code/duration and plugs directly into monitoring systems such as Prometheus.
+The connection pool maintains a handful of metrics internally through atomic counters: current active connections, cumulative connections established, rejected dials, and the admission hit rate (read internally as a snapshot). These metrics serve the engine's own observability and are **not exposed as public API**.
 
-### You Don't Need to Worry About Any of This
+For application-level request metrics, use `MetricsMiddleware` (see the [middleware reference](../api-reference/client-config/middleware)), which reports by method/URL/status code/duration and plugs directly into monitoring systems such as Prometheus.
 
-The optimizations above are fully transparent to the caller. You just use the API normally; connection reuse, object pooling, and single allocation all happen automatically:
+### Transparency to the Caller
+
+The optimizations above are transparent to the caller. The caller uses the API as usual; connection reuse, object pooling, and single allocation all happen internally:
 
 ```go
 package main
@@ -394,7 +408,9 @@ func main() {
 
 ### Timeout Budgets
 
-The four transport-layer timeouts (`Dial`, `TLSHandshake`, `ResponseHeader`, and the implicit body transfer) are all governed by `Timeouts.Request` as the **total budget**. When adjusting presets, keep the hierarchical relationship "sum of parts ≤ total budget" to avoid invalid configurations such as a dial timeout longer than the overall timeout:
+The four transport-layer timeouts (`Dial`, `TLSHandshake`, `ResponseHeader`, and the implicit body transfer) are all governed by `Timeouts.Request` as the **total budget**.
+
+When adjusting presets, keep the hierarchical relationship "sum of parts ≤ total budget" to avoid invalid configurations such as a dial timeout longer than the overall timeout:
 
 ```text
 Timeouts.Request (total budget, default 180s)
@@ -412,12 +428,12 @@ Timeouts.Request (total budget, default 180s)
 | Large file downloads | 0 (control via context) | 15s | Let `Download`'s ctx govern total time; `WithTimeout` governs a single request |
 
 :::warning Interaction between ResponseHeader and WithTimeout
-The `Default`/`Performance` presets set `ResponseHeader` to 0 (not enforced at the transport layer), giving `WithTimeout()` full control over slow responses; the `Secure` preset sets it to 10s as a defense against slowloris-class attacks. If you manually narrow `ResponseHeader`, be aware that it may cut off a slow response before `WithTimeout` does.
+The `Default`/`Performance` presets set `ResponseHeader` to 0 (not enforced at the transport layer), leaving `WithTimeout()` in control of slow responses; the `Secure` preset sets it to 10s as a defense against slowloris-class attacks. If `ResponseHeader` is narrowed manually, note that when `ResponseHeader` is shorter than `WithTimeout`, it cuts off a slow response first.
 :::
 
 ### AI API Long Polling
 
-AI inference APIs can take many minutes to respond, so the timeout limits need to be relaxed:
+AI inference APIs can take several minutes to respond, so the timeout limits need to be relaxed:
 
 <!-- check-code: skip -->
 ```go
@@ -428,13 +444,13 @@ result, err := httpc.Post("https://api.ai.example.com/v1/completions",
 )
 ```
 
-:::warning Why Default's ResponseHeader is 0
-`TimeoutConfig.ResponseHeader = 0` means the transport layer does not enforce a response-header timeout; the context-level timeout (`TimeoutConfig.Request` or `WithTimeout`) controls everything uniformly. This ensures `WithTimeout()` has full control over long-running responses. For transport-layer defense against slowloris attacks, use `SecureConfig()` (which sets it to 10s).
+:::warning Why the Default preset sets ResponseHeader to 0
+`TimeoutConfig.ResponseHeader = 0` means the transport layer does not enforce a response-header timeout; the context-level timeout governs instead. For the rationale and alternatives, see [Configuration API](../api-reference/client-config/config#timeoutconfig). For transport-layer defense against slowloris attacks, use `SecureConfig()` (which sets it to 10s).
 :::
 
 ### Microservice High QPS
 
-High-frequency calls between internal microservices need a large connection pool:
+High-frequency calls between internal microservices need a larger connection pool:
 
 ```go
 package main
@@ -480,7 +496,7 @@ func main() {
 
 ### Large File Download (Streaming)
 
-For large files, use `Download()`: it enables streaming mode automatically, the response body flows from the network straight to disk, memory use is independent of file size, and resumable downloads and checksums are supported:
+For large files, use `Download()`: it enables streaming mode internally, the response body flows from the network straight to disk, memory use is independent of file size, and resumable downloads and checksums are supported:
 
 ```go
 package main
@@ -519,12 +535,12 @@ func main() {
 ```
 
 :::warning Do not use WithStreamBody on ordinary request methods
-`WithStreamBody(true)` only works for paths like `Download` that consume the engine response directly. Setting it on ordinary methods such as `Get`/`Post`/`Request` still reads the whole response body into `Result` and closes the underlying stream — the returned `Result` has an empty body and the caller never sees the stream. The correct entry point for consuming large response bodies is `Download` (see [File Upload and Download](./file-transfer)).
+`WithStreamBody(true)` only works for paths like `Download` that consume the engine response directly. On ordinary methods such as `Get`/`Post`/`Request` it returns `ErrStreamBodyRequiresDownload`. The entry point for consuming large response bodies is `Download` (see [File Upload and Download](./file-transfer)).
 :::
 
 ### Crawler and Proxy Pool
 
-Crawler scenarios rotate IPs via a proxy pool. HTTPC automatically raises the retry count so that every proxy is tried at least once (see [Retry and Fault Tolerance](./retry-fault-tolerance#proxy-pool-and-retry-interaction)):
+Crawler scenarios rotate IPs through a proxy pool. HTTPC raises the retry count automatically so that every proxy is tried at least once (see [Retry and Fault Tolerance](./retry-fault-tolerance#proxy-pool-and-retry-interaction)):
 
 <!-- check-code: skip -->
 ```go
@@ -545,18 +561,20 @@ cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
 
 | Anti-pattern | Cause | Correct approach |
 |--------|------|----------|
-| Creating a Client per request | Connections can't be reused; TCP/TLS handshake every time | Reuse a single Client instance globally |
-| Overly large `MaxResponseBodySize` | Needlessly raises the memory ceiling | Set it to the actual response size |
+| Creating a Client per request | Connections can't be reused; TCP/TLS handshake every time | Reuse a single Client instance within the process |
+| Overly large `MaxResponseBodySize` | Memory ceiling raised beyond what the workload needs | Set it to the actual response size |
 | Using `result.String()` on hot paths | Extra string-building overhead | Use `result.Body()` or `result.RawBody()` |
 | Connection pool too small | High concurrency exhausts connections; requests queue | Tune `MaxConnsPerHost` to concurrency |
-| `WithStreamBody` on ordinary requests | The returned Result has an empty body and the stream is unreachable | Route large response bodies through `Download` |
+| `WithStreamBody` on ordinary requests | Ordinary methods do not support streamed response bodies and return `ErrStreamBodyRequiresDownload` | Route large response bodies through `Download` |
 | Disabling HTTP/2 | Degrades to serial HTTP/1.1 requests | Keep it on by default |
 | Ignoring `Close()` | Connection leak | `defer client.Close()` |
-| Globally shared but not reused | Repeatedly creating/destroying the Client | Create once, hold long-term |
-| Brute-forcing rate limits with goroutine count | Overwhelms the downstream, triggers 429/circuit breaking | Control in-flight requests with a semaphore or worker pool |
+| Shared globally but not reused | Repeatedly creating/destroying the Client | Create once, hold long-term |
+| Starting goroutines without a concurrency limit | Unbounded concurrency overloads the downstream and triggers 429/circuit breaking | Control in-flight requests with a semaphore or worker pool |
 
 :::warning The Client must be reused
-The foundation of HTTP performance is connection reuse. Creating a Client per request means going through the TCP three-way handshake + TLS handshake every time — latency jumps from sub-millisecond to tens of milliseconds. In microservice scenarios, inject the Client as a singleton into the service struct so it lives as long as the service.
+The foundation of HTTP performance is connection reuse. Creating a Client per request means going through the TCP three-way handshake + TLS handshake every time — latency rises from the sub-millisecond range to the tens-of-milliseconds range.
+
+In microservice scenarios, inject the Client as a singleton into the service struct so it lives as long as the service.
 :::
 
 ```go

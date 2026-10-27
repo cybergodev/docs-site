@@ -1,13 +1,13 @@
 ---
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo JSON | 错误类型与判断实践"
-description: "CyberGo JSON 提供体系化的 JSON 错误处理能力，支持用 errors.Is 匹配 ErrPathNotFound、ErrTypeMismatch 等哨兵错误、读取 JsonsError 的 Op/Path 定位失败点，帮助开发者快速判断错误类别、安全记录日志并实现默认值兜底与重试降级。"
+description: "CyberGo JSON 错误处理：errors.Is 匹配 ErrPathNotFound 等哨兵，errors.As 从 JsonsError 取 Op/Path 定位失败点。"
 sidebar_position: 10
 ---
 
 # 错误处理
 
-正确处理 JSON 操作中的错误。
+JSON 操作的错误分为哨兵错误（可用 `errors.Is` 判定）与带上下文的 `JsonsError`（可用 `errors.As` 取 `Op`/`Path`）。本页给出分类表、判定方式与兜底、重试、脱敏等处理模式。
 
 ## 错误类型
 
@@ -25,6 +25,7 @@ var (
     ErrProcessorClosed    = errors.New("processor is closed")
     ErrConcurrencyLimit   = errors.New("concurrency limit exceeded")
     ErrUnsupportedPath    = errors.New("unsupported path operation")
+    ErrDuplicateKey       = errors.New("duplicate object key")
     ErrOperationTimeout   = errors.New("operation timeout")           // Deprecated
     ErrResourceExhausted  = errors.New("system resources exhausted")  // Deprecated
 )
@@ -32,39 +33,48 @@ var (
 
 ### 哨兵错误分类表
 
-12 个导出哨兵错误按**处理方式**分为四类：
+13 个导出哨兵错误按**处理方式**分为四类：
 
 | 错误 | 含义 / 典型触发 | 分类 | 处理建议 |
 |------|-----------------|------|----------|
 | `ErrInvalidJSON` | 输入不是合法 JSON（语法错误、非法 UTF-8） | 用户输入 | 返回友好提示，要求修正数据 |
 | `ErrPathNotFound` | 路径不存在（嵌套键缺失、数组下标越界） | 用户输入 | 回退默认值或按业务语义处理 |
-| `ErrTypeMismatch` | 路径上的值与期望类型不符 | 用户输入 | 提示字段类型错误 |
-| `ErrInvalidPath` | 路径语法非法（如 `a..b`） | 用户输入 | 提示路径格式错误 |
-| `ErrUnsupportedPath` | 路径操作不支持 | 用户输入 | 检查路径与操作的组合 |
+| `ErrTypeMismatch` | 值类型与期望不符（`AsString` 转换失败、`GetCompiled` 路径中途类型不符、`EncodeFields` 传入非对象、`ForeachFileChunked` 根不是数组） | 用户输入 | 提示字段类型错误；`GetTyped[T]` 内部也构造该哨兵，但它只返回值，调用方拿不到错误 |
+| `ErrInvalidPath` | 索引段内容非法（`a[b]`、`a[]`、`a[-]`、`a[0:2:x]`），或路径长度超过 5000 字节 | 用户输入 | 提示路径格式错误 |
+| `ErrUnsupportedPath` | ——（保留兼容，已废弃） | 已废弃 | 当前无操作返回它，勿据此分支 |
+| `ErrDuplicateKey` | `Config.DetectDuplicateKeys` 开启时输入对象含重复键 | 用户输入 | 拒绝输入；默认关闭时后者胜出，与 `encoding/json` 一致 |
 | `ErrSizeLimit` | 输入超过 `Config.MaxJSONSize` | 安全限制 | 拒绝并按限流策略处理 |
 | `ErrDepthLimit` | 嵌套深度超过 `MaxNestingDepthSecurity` | 安全限制 | 拒绝（深嵌套常见于恶意输入） |
 | `ErrSecurityViolation` | 检出危险模式（原型污染等） | 安全限制 | 记录并拒绝，不回显详情 |
 | `ErrConcurrencyLimit` | 在途操作数达到 `MaxConcurrency`（软上限，立即拒绝不阻塞） | 系统暂时性 | **可重试**——稍候重试或提高上限 |
 | `ErrProcessorClosed` | 处理器已 Close 后继续调用 | 系统状态 | 重建 `Processor` 或检查生命周期 |
-| `ErrOperationTimeout` | ——（保留兼容） | 已废弃 | 当前无操作返回它，勿据此分支 |
-| `ErrResourceExhausted` | ——（保留兼容） | 已废弃 | 当前无操作返回它，勿据此分支 |
+| `ErrOperationTimeout` | ——（保留兼容，已废弃） | 已废弃 | 当前无操作返回它，勿据此分支 |
+| `ErrResourceExhausted` | ——（保留兼容，已废弃） | 已废弃 | 当前无操作返回它，勿据此分支 |
 
 ### 错误检查
 
+`Get` 失败时只有 `ErrPathNotFound`、`ErrInvalidJSON` 等输入类错误需要分支；类型问题不出现在 `Get` 上——`Get` 返回 `any`，由调用方决定如何解释。要拿到带类型语义的错误，用 `SafeGet` 的 `AsString`（包了 `ErrTypeMismatch`）或 `GetCompiled`：
+
 ```go
-val, err := json.Get(data, "user.name")
+// 路径缺失：Get 返回 (nil, ErrPathNotFound)
+_, err := json.Get(data, "user.name")
 if err != nil {
     if errors.Is(err, json.ErrPathNotFound) {
-        // 路径不存在
         return defaultName
     }
+    return "", err
+}
+
+// 类型不符：SafeGet + AsString 会包 ErrTypeMismatch
+if _, err := json.SafeGet(data, "user.name").AsString(); err != nil {
     if errors.Is(err, json.ErrTypeMismatch) {
-        // 类型不匹配
         return "", fmt.Errorf("字段类型错误：%w", err)
     }
     return "", err
 }
 ```
+
+注意区分两种失败：路径不存在时所有 `As*` 方法都返回 `ErrPathNotFound`；路径存在但类型不符时，只有 `AsString` 包了 `ErrTypeMismatch`，`AsInt`/`AsFloat64`/`AsBool` 返回普通 error（`errors.Is(err, ErrTypeMismatch)` 不成立）。
 
 ## JsonsError
 
@@ -90,15 +100,15 @@ func (e *JsonsError) Is(target error) bool
 ```go
 val, err := json.Get(data, "user.name")
 if err != nil {
-    // 使用 errors.Is 检查错误类型
+    // errors.Is：判定哨兵类别
     if errors.Is(err, json.ErrPathNotFound) {
         // 路径不存在
     }
-    if errors.Is(err, json.ErrTypeMismatch) {
-        // 类型不匹配
+    if errors.Is(err, json.ErrInvalidJSON) {
+        // 输入不是合法 JSON
     }
 
-    // 使用 errors.As 获取详细上下文
+    // errors.As：取出带上下文的 JsonsError
     var jsonErr *json.JsonsError
     if errors.As(err, &jsonErr) {
         fmt.Printf("操作: %s\n", jsonErr.Op)
@@ -288,7 +298,7 @@ if err != nil {
 
 ### RedactedPath 日志脱敏
 
-路径本身可能携带敏感键名（`user.password`、`token` 等）。写日志前用 `RedactedPath` 掩码——非空路径一律替换为 `***`，不泄露任何片段：
+路径本身携带敏感键名时（如 `user.password`、`token`），写日志前用 `RedactedPath` 掩码——非空路径一律替换为 `***`，不泄露任何片段：
 
 ```go
 // 签名：func RedactedPath(path string) string
@@ -330,7 +340,7 @@ func getConfig(data string) Config {
     cfg := json.DefaultConfig()
 
     // 使用类型安全获取函数，内置默认值
-    cfg.StrictMode = json.GetBool(data, "config.strict", true)
+    cfg.EnableMetrics = json.GetBool(data, "config.metrics", true)
 
     return cfg
 }
@@ -350,20 +360,16 @@ if err != nil {
         // JSON 格式错误
         return fmt.Errorf("数据格式错误：%w", err)
     case errors.Is(err, json.ErrPathNotFound):
-        // 路径不存在
+        // 路径不存在（含数组下标越界）
         return fmt.Errorf("字段不存在：%w", err)
-    case errors.Is(err, json.ErrTypeMismatch):
-        // 类型不匹配
-        return fmt.Errorf("类型错误：%w", err)
     case errors.Is(err, json.ErrInvalidPath):
         // 路径语法错误
         return fmt.Errorf("路径语法错误：%w", err)
-    case errors.Is(err, json.ErrUnsupportedPath):
-        // 不支持的路径操作
-        return fmt.Errorf("不支持的操作：%w", err)
     }
 }
 ```
+
+`Get` 还可能返回 `ErrInvalidJSON`、`ErrPathNotFound`、`ErrInvalidPath`、`ErrSizeLimit`、`ErrDepthLimit`、`ErrSecurityViolation`、`ErrConcurrencyLimit`、`ErrProcessorClosed`。`ErrTypeMismatch` 不在 `Get` 的错误分支内出现——若需要按类型判定，改用 `SafeGet(...).AsString()` 或 `GetCompiled`，两者的失败会包该哨兵（见[错误检查](#错误检查)）。`ErrUnsupportedPath` 当前无操作返回，无需为其写分支。
 
 ### 安全相关错误
 
@@ -426,19 +432,16 @@ func processJSON(data string) error {
         switch {
         case errors.Is(err, json.ErrInvalidJSON),
             errors.Is(err, json.ErrPathNotFound),
-            errors.Is(err, json.ErrTypeMismatch),
             errors.Is(err, json.ErrInvalidPath):
             // 用户输入错误，返回友好提示
             return fmt.Errorf("数据格式错误：%w", err)
-        case errors.Is(err, json.ErrSecurityViolation):
-            // 安全错误，记录并拒绝
+        case errors.Is(err, json.ErrSecurityViolation), errors.Is(err, json.ErrSizeLimit):
+            // 安全限制，记录并拒绝
             log.Warn("安全违规", "error", err)
             return errors.New("输入不合法")
         case errors.Is(err, json.ErrConcurrencyLimit):
             // 并发上限，可稍后重试
             return fmt.Errorf("系统繁忙，请稍后重试：%w", err)
-        case errors.Is(err, json.ErrOperationTimeout): // Deprecated（当前不会被返回，保留兼容）
-            return fmt.Errorf("暂时性错误，请重试：%w", err)
         default:
             // 系统错误
             log.Error("系统错误", "error", err)

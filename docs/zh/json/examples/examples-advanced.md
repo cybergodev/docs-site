@@ -1,19 +1,19 @@
 ---
 sidebar_label: "高级示例"
 title: "高级功能示例 - CyberGo JSON | 批量编码与缓存预热"
-description: "CyberGo JSON 高级功能示例：EncodeBatch 批量编码与 EncodeFields 敏感字段过滤、PreParse 预解析、CompilePath 路径预编译、WarmupCache 缓存预热与 ProcessBatch 批量操作，完整可运行示例帮助开发者显著提升高频查询与批量编码性能。"
+description: "CyberGo JSON 高级示例：EncodeBatch 批量编码、EncodeFields 字段过滤、PreParse 预解析、CompilePath 与 WarmupCache 用法。"
 sidebar_position: 50
 ---
 
 # 高级功能示例
 
-本文提供批量编码、预解析、钩子、高级配置等高级功能的完整示例。
+以下示例覆盖批量编码、字段筛选、预解析、路径预编译、安全获取、缓存预热与批量操作，均为可独立运行的 `main` 包。
 
 ## 批量编码
 
 ### EncodeBatch
 
-将多个键值对快速编码为 JSON 对象：
+`EncodeBatch` 把一组键值对编码为一个 JSON 对象（键按字典序输出）：
 
 ```go
 package main
@@ -54,7 +54,7 @@ func main() {
 
 ### EncodeFields
 
-只编码结构体的指定字段，适合 API 响应过滤敏感信息：
+`EncodeFields` 只编码结构体的指定字段，用于在 API 响应中剔除敏感信息：
 
 ```go
 package main
@@ -94,7 +94,9 @@ func main() {
 
 ## 预解析优化
 ### PreParse
-预解析 JSON，避免重复解析，提升多次查询性能：
+
+`PreParse` 把 JSON 解析一次，多次查询复用同一解析树：
+
 ```go
 package main
 
@@ -202,7 +204,9 @@ func main() {
 
 ## 安全获取
 ### SafeGet
-返回结构化结果，支持链式调用和类型转换：
+
+`SafeGet` 返回 `AccessResult`，不会 panic，转换方法按需调用：
+
 ```go
 package main
 
@@ -261,7 +265,9 @@ func main() {
 
 ## 缓存预热
 ### WarmupCache
-预热常用路径缓存，提升后续查询性能：
+
+`WarmupCache` 在业务查询前把高频路径填入缓存，免去首批请求的冷启动：
+
 ```go
 package main
 
@@ -321,7 +327,9 @@ func main() {
 
 ## 批量操作
 ### ProcessBatch
-批量执行多个操作，提升效率：
+
+`ProcessBatch` 按顺序执行全部操作，单条失败只写入该条结果的 `Error`：
+
 ```go
 package main
 
@@ -359,21 +367,21 @@ func main() {
 }
 ```
 
-## 键值内存优化
+## 批量编码的内存行为
 
-库内部使用字符串内存池（string interning）自动优化重复键值的内存占用。无需手动管理。
+`Marshal` 把 map、切片与基础值交给 FastEncoder（不走反射），输出缓冲从编码器池取用并在用完后归还。没有需要手动管理的开关或池。
 
 ```go
 package main
 
 import (
 	"fmt"
+
 	"github.com/cybergodev/json"
 )
 
 func main() {
-	// 库在内部自动对重复键值使用内存池
-	// 处理大量数据时，重复的字符串键值会自动复用内存
+	// 一万条同构记录，键名重复
 	records := make([]map[string]any, 10000)
 	for i := range records {
 		records[i] = map[string]any{
@@ -383,15 +391,21 @@ func main() {
 		}
 	}
 
-	// 批量编码时库内部自动优化内存
-	result, _ := json.Marshal(map[string]any{
-		"status": "active",
-		"type":   "user",
-	})
+	// 编码单条记录；map 键名不会在库内驻留或跨文档复用
+	result, err := json.Marshal(records[0])
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println("Sample:", string(result))
+	// 输出：Sample: {"role":"member","status":"active","type":"user"}
+	// 对象键按字典序输出（与 encoding/json 一致）
 }
 ```
+
+::: warning 字符串驻留未启用
+源码 `internal/string_intern.go` 的 StringIntern 与 KeyIntern 未接入任何解析或编码路径（文件头注释标注 D-002/R8 M5），库不会跨文档复用重复键名。降低重复键的内存占用靠复用同一份 JSON 并开启缓存，而非驻留。
+:::
 
 ## 下一步
 - [路径表达式语法](../getting-started/path-syntax) — 完整路径语法参考

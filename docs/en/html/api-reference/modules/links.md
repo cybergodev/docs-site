@@ -1,21 +1,21 @@
 ---
 sidebar_label: "Link Extraction"
 title: "Link Extraction - CyberGo html | Resource Link API"
-description: "CyberGo html link extraction API: ExtractAllLinks family and GroupLinksByType for script, style, and image links, type grouping, filtering, URL dedup, sorting."
-sidebar_position: 2
+description: "CyberGo html link extraction API: ExtractAllLinks, GroupLinksByType, link type sources, internal/external rules, and BaseURL detection."
+sidebar_position: 20
 ---
 
 # Link Extraction
 
-A standalone link extraction API that extracts all link resources from HTML and groups them by type.
+`ExtractAllLinks` enumerates every resource link an HTML document references, tagging each with a type that `GroupLinksByType` can group. It is independent of `Extract`'s body extraction and is not subject to HTML sanitization.
 
-:::tip
-`ExtractAllLinks` does **not** apply HTML sanitization (`EnableSanitization` has no effect here), so resource links inside tags such as `<script src>`, `<iframe>`, `<link>`, and `<embed>` are extracted in full. This lets those resource links be enumerated — in the `Extract` path they are normally removed during sanitization.
-:::
+## Difference from Extract
 
-:::info
-`ExtractAllLinks` returns results **sorted by URL ascending** and deduplicated by URL. Calling it repeatedly on the same input therefore yields identical output, which eases result comparison, cache reuse, and reproducible downstream processing. When the same URL appears in multiple tags, only one record is kept.
-:::
+`ExtractAllLinks` does **not** apply HTML sanitization (`EnableSanitization` has no effect here). Resource links inside `<script src>`, `<iframe>`, `<link>`, and `<embed>` are extracted in full; the same tags are normally removed during sanitization on the `Extract` path.
+
+## Sorting and Deduplication
+
+Results are **sorted by URL ascending** and deduplicated by URL. Repeated calls on the same input return identical output, which makes comparison and cache reuse straightforward. When one URL appears in several tags, only one record is kept.
 
 ## Package Functions
 
@@ -39,18 +39,21 @@ func (p *Processor) ExtractAllLinksFromFileWithContext(ctx context.Context, file
 
 ### GroupLinksByType
 
-Group links by their type. Links with an empty `Type` are grouped under the `unknown` key.
+Groups links by type. Links with an empty `Type` land in the `unknown` group.
 
 ```go
 func GroupLinksByType(links []LinkResource) map[string][]LinkResource
 ```
 
 ```go
-links, _ := html.ExtractAllLinks(data)
+links, err := html.ExtractAllLinks(data)
+if err != nil {
+	log.Fatal(err)
+}
 groups := html.GroupLinksByType(links)
 
 for typ, items := range groups {
-    fmt.Printf("Type %s: %d items\n", typ, len(items))
+	fmt.Printf("Type %s: %d items\n", typ, len(items))
 }
 ```
 
@@ -58,15 +61,19 @@ for typ, items := range groups {
 
 ```go
 type LinkResource struct {
-    URL   string // Link URL
-    Title string // Link title
-    Type  string // Link type (link, image, video, audio, media, css, js, icon)
+	URL   string // Link URL
+	Title string // Link title
+	Type  string // Link type (link, image, video, audio, media, css, js, icon)
 }
 ```
 
+Only resolvable references are reported: an href that is a bare anchor (`#top`) or a bare query string (`?page=2`) is in-page navigation and produces no `LinkResource`; an href that fails URL validation is likewise skipped. The rule matches `LinkInfo` on the `Extract` path.
+
+`Title` is the human-readable label, with a fixed fallback order per type: for `<a>`, the `title` attribute, then the link text, with `"Link"` as the last resort; for images, `title`, `alt`, then the last URL segment, with `"Image"` as the last resort; media, script, and stylesheet links without a `title` attribute use the last URL segment (falling back to `"Video"` / `"Audio"` / `"Media"` / `"Script"` / the capitalized type name).
+
 ## Link Type Reference
 
-Each `Type` corresponds to a specific HTML tag source:
+Each `Type` value maps to specific HTML tag sources:
 
 | Type value | Source HTML tags | Control switch |
 |------------|------------------|----------------|
@@ -79,13 +86,17 @@ Each `Type` corresponds to a specific HTML tag source:
 | `js` | `<script src>` | `IncludeJS` |
 | `icon` | `<link rel="icon">`, `<link rel="apple-touch-icon">`, etc. | `IncludeIcons` |
 
-:::info
-The `src`/`data` of `<iframe>`, `<embed>`, and `<object>` is only extracted when judged to be a **video URL** (matching embed patterns for YouTube, Vimeo, Dailymotion, etc.), in which case the type is recorded as `video`. Non-video URLs are not collected.
+:::info When embed links are collected
+The `src`/`data` of `<iframe>`, `<embed>`, and `<object>` is extracted only when it is judged a **video URL** (matching embed patterns for YouTube, Vimeo, Dailymotion, and similar). The type is then recorded as `video`. Non-video URLs are not collected.
+:::
+
+:::info `<link>` type-attribute fallback
+When `rel` matches no known token, a `type` attribute containing `css` routes the element to `css` (gated by `IncludeCSS`), and one containing `javascript` routes it to `js` (gated by `IncludeJS`); if neither matches, the `<link>` is not collected. Both the `rel` token and the `type` value match case-insensitively.
 :::
 
 ## Configuration
 
-Link extraction behavior is controlled via `Config` link filtering fields:
+Link extraction behavior is controlled by the `Config` link filtering fields:
 
 ```go
 cfg := html.DefaultConfig()
@@ -99,26 +110,29 @@ cfg.BaseURL = "https://example.com"
 
 ### Relative URL Resolution
 
-When `ResolveRelativeURLs=true` (default), relative URLs of all types are uniformly resolved to absolute URLs based on `BaseURL`:
+With `ResolveRelativeURLs=true` (the default), relative URLs of every type are resolved against `BaseURL`:
 
-- The resolution logic is handled centrally inside the library (not exported), treating content links, images, media, source, script, embed, and link tags **identically**
-- Setting `BaseURL` explicitly **skips auto-detection** and directly uses the value provided by the caller
-- When `BaseURL` is empty and `ResolveRelativeURLs=true`, BaseURL is auto-derived from the document (see the tip below)
+- Resolution is handled centrally inside the library (not exported) and treats content links, images, media, source, script, embed, and link tags **identically**
+- Protocol-relative URLs (`//host/path`) are kept as-is — not resolved, and not upgraded to the `BaseURL` scheme
+- Setting `BaseURL` explicitly skips auto-detection and uses the caller's value
+- When `BaseURL` is empty, it is derived from the document (see "BaseURL Auto-Detection")
 
 ### Internal vs External Links
 
-Content links (`<a href>`) control internal and external links via two separate switches:
+Two switches govern internal and external content links (`<a href>`). The decision depends only on the **shape of the raw href**, never on the domain:
 
-| Switch | Scope | Determination |
-|--------|-------|---------------|
-| `IncludeContentLinks` | Internal links | The URL itself is a relative path (when `BaseURL` is set, it resolves to the same domain) |
-| `IncludeExternalLinks` | External links | The URL itself is an absolute external address (`http(s)://` or protocol-relative `//`) — always treated as external regardless of whether it shares the `BaseURL` domain |
+| Switch | Scope | Rule |
+|--------|-------|------|
+| `IncludeContentLinks` | Internal links | The raw href is a relative path (such as `/about` or `page.html`) |
+| `IncludeExternalLinks` | External links | The raw href starts with `http://`, `https://` (case-insensitive), or protocol-relative `//` |
 
-Both default to `true` (extracting all content links). Other resource types (images, CSS, JS, etc.) are not subject to the internal/external distinction and are controlled only by their respective `Include*` switches.
+If you set `BaseURL` to `https://example.com`, the same-domain absolute link `<a href="https://example.com/about">` is still governed by `IncludeExternalLinks`; write `<a href="/about">` to make it internal.
+
+Both default to `true`, so all content links are extracted. Images, CSS, JS, and other resource types are not split into internal/external; only their own `Include*` switches apply.
 
 ### preload / prefetch Handling
 
-`<link rel="preload" as="...">` and `rel="prefetch"` are routed to different types based on the `as` attribute:
+`<link rel="preload" as="...">` and `rel="prefetch"` are routed by the `as` attribute:
 
 | `as` value | Routed to type | Control switch |
 |------------|----------------|----------------|
@@ -128,18 +142,16 @@ Both default to `true` (extracting all content links). Other resource types (ima
 | `video` | `video` | `IncludeVideos` |
 | `audio` | `audio` | `IncludeAudios` |
 
-`dns-prefetch` and `preconnect` go through the same routing but typically carry no `as` attribute, so they are not collected.
+`dns-prefetch` and `preconnect` follow the same routing but usually carry no `as` attribute, so they are not collected.
 
-:::tip
-When `ResolveRelativeURLs=true` and `BaseURL` is **empty**, the library automatically derives BaseURL from the HTML document itself, trying each of the following **in priority order** and returning the first match:
+### BaseURL Auto-Detection
+
+When `ResolveRelativeURLs=true` and `BaseURL` is **empty**, the library derives a BaseURL from the document itself, trying each source in order and returning the first hit:
 
 1. the `<base href>` tag;
 2. the `content` of `<meta property="og:url">` or `<meta property="canonical">`;
 3. `<link rel="canonical" href>`;
-4. the first absolute URL found in the document (extracting the base from its `href`/`src`).
-
-Setting `BaseURL` explicitly **skips auto-detection** and uses the value provided by the caller.
-:::
+4. the first absolute URL in the document (taking the base from its `href`/`src`).
 
 ## Example
 
@@ -179,5 +191,15 @@ func main() {
 			fmt.Printf("  - %s [%s]\n", l.URL, l.Title)
 		}
 	}
+	// Output: 6 links total (one each of link, image, video, css, js, icon);
+	//         group order is unspecified (map iteration); every URL resolves
+	//         to https://example.com/... — the link group holds
+	//         https://example.com/about, and the video Title is the last path
+	//         segment, intro.mp4
 }
 ```
+
+## Related Documentation
+
+- [Link Extraction](../../guides/core-features/link-extraction) — Scenario-based link extraction usage
+- [Config](../core/config) — Link filtering fields such as `Include*` and `BaseURL`

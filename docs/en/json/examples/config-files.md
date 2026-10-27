@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Configuration Files"
 title: "Configuration Files - CyberGo JSON | Read, Modify & Save"
-description: "CyberGo JSON config files: LoadFromFile, GetString/GetInt nested reads, Set/SetCreate writes, SaveToFile with PrettyConfig, MergeJSON config merging."
+description: "CyberGo JSON for config files: LoadFromFile, GetString/GetInt nested reads, Set/SetCreate edits, SaveToFile with PrettyConfig, and MergeJSON merging."
 sidebar_position: 20
 ---
 
 # Configuration File Handling
 
-This page shows how to handle typical config-file scenarios with CyberGo JSON: loading, reading nested values, modifying, saving, and merging defaults with user configuration.
+A config file lives through load, read, modify, save, and a reload check. The examples below cover that flow and the two ways to merge defaults with user settings.
 
 ## The Full Config-File Lifecycle
 
@@ -82,7 +82,7 @@ func main() {
 
 ## Merging Default and User Configuration
 
-Applications often need to overlay user configuration onto built-in defaults, then fill in missing nested paths. `MergeJSON` performs a **deep merge** (user values win), and `SetCreate` automatically creates missing intermediate paths.
+Applications often overlay user configuration onto built-in defaults, then fill in missing nested paths. `MergeJSON` performs a **deep merge** (user values win), and `SetCreate` creates missing intermediate paths.
 
 ```go
 package main
@@ -209,7 +209,7 @@ func main() {
 ```
 
 :::tip
-`MergeMany` also reads `cfg.MergeMode` (merging left to right one by one). The full effect of union mode is in the previous section; both non-default modes take the "first argument as the base" perspective: intersection answers "what changed", difference answers "what is still unchanged".
+`MergeMany` also reads `cfg.MergeMode` (merging left to right one by one). The full effect of union mode is in the previous section. Both non-default modes take the first argument as the base: intersection answers "what changed", difference answers "what is still unchanged".
 :::
 
 ## Next Steps

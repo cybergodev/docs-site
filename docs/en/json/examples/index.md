@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Basic Examples"
 title: "Usage Examples - CyberGo JSON | Real-World Scenario Code"
-description: "CyberGo JSON examples: path queries, Marshal/Unmarshal, generics, Processor reuse, iteration, JSONL streaming, Hooks, Schema validation, error handling."
+description: "CyberGo JSON examples: path queries and edits, struct Marshal/Unmarshal, generic GetTyped, Processor reuse, iteration, JSONL, hooks, and Schema checks."
 sidebar_position: 10
 ---
 
 # Usage Examples
 
-This document provides real-world code examples for the `github.com/cybergodev/json` library.
+The examples below cover path queries and edits, struct encoding and decoding, Processors, iteration and parallelism, JSONL, hooks, Schema validation, and error handling. Each is a standalone `main` package.
 
 ## Basic Operations
 
@@ -947,25 +947,34 @@ import (
 )
 
 func main() {
-	data := `{"name": "test"}`
+	data := `{"name": 42}`
 	_, err := json.Get(data, "nonexistent.path")
 
 	if err != nil {
-		// Check the error type
+		// Get errors come only from input problems: missing path, invalid JSON
 		if errors.Is(err, json.ErrPathNotFound) {
-			fmt.Println("Path not found")
+			fmt.Println("path not found")
 		} else if errors.Is(err, json.ErrInvalidJSON) {
-			fmt.Println("Invalid JSON")
-		} else if errors.Is(err, json.ErrTypeMismatch) {
-			fmt.Println("Type mismatch")
+			fmt.Println("invalid JSON")
 		}
 
-		// Get detailed error information
+		// Detailed context
 		var jsonErr *json.JsonsError
 		if errors.As(err, &jsonErr) {
-			fmt.Printf("Op: %s, Path: %s\n", jsonErr.Op, jsonErr.Path)
+			fmt.Printf("op=%s path=%s\n", jsonErr.Op, jsonErr.Path)
 		}
 	}
+
+	// A type mismatch surfaces through SafeGet's conversion methods (AsString wraps ErrTypeMismatch)
+	if _, err := json.SafeGet(data, "name").AsString(); err != nil {
+		if errors.Is(err, json.ErrTypeMismatch) {
+			fmt.Println("type mismatch")
+		}
+	}
+	// Output:
+	// path not found
+	// op=get path=nonexistent.path
+	// type mismatch
 }
 ```
 
@@ -994,7 +1003,7 @@ func main() {
 	defer p.Close()
 
 	// Simulate untrusted input
-	// Note: real attacks may try much larger payloads (e.g. 100MB+).
+	// Real-world attacks can reach 100MB+; here 2MB and 50 levels demonstrate the limits.
 	// Both malicious inputs below are structurally valid JSON and genuinely
 	// trigger the size and depth limits respectively.
 	untrustedInputs := []string{
@@ -1154,4 +1163,4 @@ func main() {
 
 ## More Examples
 
-- [Advanced Examples](./examples-advanced) — batch encoding, pre-parsing, the hook system, and more
+- [Advanced Examples](./examples-advanced) — batch encoding, field selection, pre-parsing, and compiled paths

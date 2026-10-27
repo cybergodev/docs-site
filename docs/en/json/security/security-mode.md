@@ -1,17 +1,17 @@
 ---
 sidebar_label: "Security Mode"
 title: "Security Mode - CyberGo JSON | Pattern Detection & Defense"
-description: "CyberGo JSON security mode: AddDangerousPattern registration, PatternLevel severity, input validation against JSON injection, prototype pollution, and XSS."
+description: "CyberGo JSON security mode: DangerousPattern and AddDangerousPattern registration, PatternLevel severity, the built-in pattern table, and scan strategy."
 sidebar_position: 20
 ---
 
 # Security Mode
 
-Security mode provides dangerous-pattern detection to prevent JSON injection attacks, prototype pollution, and other security threats.
+Security mode is the configuration surface for dangerous-pattern detection: a built-in pattern table plus two routes for registering custom patterns. A hit is rejected, and matching is case-insensitive.
 
 ## The DangerousPattern Struct
 
-DangerousPattern represents a security risk pattern. It is a struct type.
+DangerousPattern describes one security risk pattern:
 
 ```go
 type DangerousPattern struct {
@@ -70,7 +70,7 @@ Returns the string form of a PatternLevel (`"critical"`, `"warning"`, `"info"`; 
 | Level | Semantic intent (interface docs) | Actual behavior of the current implementation |
 |-------|----------------------------------|-----------------------------------------------|
 | `PatternLevelCritical` | Always blocks the operation | Rejects on any hit (`ErrSecurityViolation`) |
-| `PatternLevelWarning` | Blocks in strict mode, logs in lenient mode | **Also rejects on any hit** — the `StrictMode` field currently plays no part in pattern-blocking decisions |
+| `PatternLevelWarning` | Blocks in strict mode, logs in lenient mode | **Also rejects on any hit** — the `StrictMode` field is deprecated and not read by any parser, so it plays no part in pattern-blocking decisions |
 | `PatternLevelInfo` | Logs only, never blocks | **Also rejects on any hit** |
 
 ::: warning Plan for Warning/Info patterns as "will block"
@@ -304,13 +304,13 @@ import (
 )
 
 func main() {
-	// Option 1: via the configuration field
+	// Option 1: set the configuration field directly
 	cfg := json.DefaultConfig()
 	cfg.AdditionalDangerousPatterns = []json.DangerousPattern{
 		{Pattern: "company_secret", Name: "company sensitive data", Level: json.PatternLevelCritical},
 	}
 
-	// Option 2: via the configuration method
+	// Option 2: call the configuration method
 	cfg.AddDangerousPattern(json.DangerousPattern{
 		Pattern: "internal_api",
 		Name:    "internal API reference",
@@ -386,7 +386,7 @@ Three Config fields control "how to scan":
 
 | Field | Default | Effect |
 |-------|---------|--------|
-| `FullSecurityScan` | `false` | When `true`, fully scans every input regardless of size; when `false`, small inputs (< 4KB) get full scans while large inputs take the tiered optimized scan (next section; still 100% coverage). Full mode adds roughly 10–30% overhead on >100KB inputs |
+| `FullSecurityScan` | `false` | When `true`, fully scans every input regardless of size; when `false`, small inputs (< 4KB) get full scans while large inputs take the tiered optimized scan (next section; the rolling window still covers every byte). Full mode adds roughly 10–30% overhead on >100KB inputs |
 | `DisableDefaultPatterns` | `false` | When `true`, skips the built-in non-critical patterns (HTML tags, event handlers, etc.), keeping the 3 critical patterns + custom patterns |
 | `AdditionalDangerousPatterns` | `nil` | Layers custom patterns on top of the built-ins (see above) |
 
@@ -409,7 +409,7 @@ Always fully security-scanned, checking every dangerous pattern one by one.
 
 ### Larger JSON (>= 4KB)
 
-A multi-tier optimized scan with **guaranteed 100% coverage** (no sampling blind spots):
+A multi-tier optimized scan whose rolling window covers every byte (no sampling blind spots):
 
 - The critical patterns (`__proto__`, `constructor[`, `prototype.`) are always fully scanned
 - An indicator-character check runs first: if no dangerous characters are present, scanning is skipped quickly

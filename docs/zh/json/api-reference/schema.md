@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Schema 校验"
 title: "Schema 校验 - CyberGo JSON | JSON Schema 验证指南"
-description: "CyberGo JSON 内置 JSON Schema 校验：ValidateSchema 对照 Schema 返回全部 ValidationError，支持 Required/Properties 必填结构、Pattern/Format 字符串与语义格式、Minimum/Maximum 数值区间及 Enum/Const 枚举约束，经 NewSchema 规范创建启用区间限制，帮助开发者校验对象、字符串、数值与数组数据结构。"
+description: "CyberGo JSON 的 JSON Schema 校验：ValidateSchema 返回 ValidationError 列表，覆盖必填结构、格式与数值区间约束。"
 sidebar_position: 50
 ---
 
 # Schema 验证
 
-json 库提供基于 JSON Schema 的数据验证能力：定义一个 `Schema` 描述数据应满足的结构与约束，再用 `ValidateSchema` 校验一段 JSON。这是当前版本**功能完备**的验证系统。
+Schema 验证由两步组成：先定义一个 `Schema` 描述数据应满足的结构与约束，再用 `ValidateSchema` 校验一段 JSON。约束违反以 `[]ValidationError` 返回，不在 `error` 中。
 
 ## ValidateSchema 函数
 
@@ -30,7 +30,7 @@ func (p *Processor) ValidateSchema(jsonStr string, schema *Schema, cfg ...Config
 | `(nil, error)` | 解析或前置失败（如 JSON 非法、`schema` 为 nil、超限） |
 
 ::: tip 关键区分
-约束违反通过**返回切片**表达（`error` 仍为 `nil`）；只有解析失败、`schema` 为 nil、超出大小限制等情况才会返回非 `nil` 的 `error`。因此检查「是否通过验证」应看 `len(errs) == 0`，而非 `err != nil`。
+约束违反放在**返回切片**里（`error` 仍为 `nil`）；只有解析失败、`schema` 为 nil、超出大小限制等情况才返回非 `nil` 的 `error`。判断「是否通过验证」看 `len(errs) == 0`，不看 `err != nil`。
 :::
 
 ## 基础示例：对象结构与必填字段
@@ -97,7 +97,7 @@ func main() {
 `Type` 支持的取值：`object`、`array`、`string`、`number`、`integer`、`boolean`、`null`。
 
 ::: tip "number" 与 "integer" 的选取
-JSON 解析后所有数字（含整数）都是 `float64`；`"number"` 接受一切数字。`"integer"` 按 JSON Schema 语义接受**数学上为整数**的值——`1`、`1.0`、`1e2` 均通过，`1.5` 报 `expected type integer, got float64` 错误。`Minimum`/`Maximum`/`MultipleOf` 等数值约束对 `number` 与 `integer` 均生效。
+JSON 解析后所有数字（含整数）都是 `float64`，所以 `"number"` 接受一切数字。`"integer"` 按 JSON Schema 语义接受**数学上为整数**的值：`1`、`1.0`、`1e2` 均通过，`1.5` 报 `expected type integer, got float64` 错误。`Minimum`/`Maximum`/`MultipleOf` 等数值约束对 `number` 与 `integer` 均生效。
 :::
 
 ## 对象约束：Required / Properties / AdditionalProperties
@@ -144,7 +144,7 @@ func main() {
 
 ## 字符串约束：MinLength / MaxLength / Pattern / Format
 
-`MinLength`、`MaxLength`、`Minimum`、`Maximum`、`MinItems`、`MaxItems` 等约束**只在通过 `NewSchema` 创建时才生效**（原因见[创建方式](#schema-的创建方式)）。下面用 `SchemaConfig` 的指针字段设置长度，并用 `Pattern` 限定为小写字母：
+`MinLength`、`MaxLength`、`Minimum`、`Maximum`、`MinItems`、`MaxItems` 等约束**只在用 `NewSchema` 创建时才生效**（原因见[创建方式](#schema-的创建方式)）。下例用 `SchemaConfig` 的指针字段设置长度，并用 `Pattern` 限定为小写字母：
 
 ```go
 package main
@@ -234,7 +234,7 @@ func main() {
 }
 ```
 
-`ExclusiveMinimum` / `ExclusiveMaximum` 需配合 `Minimum` / `Maximum` 一并通过 `SchemaConfig`（同为指针字段）设置，用于把边界值本身排除在外。`MultipleOf` 采用浮点容差比较（epsilon 1e-9），`0.1 + 0.2` 这类 IEEE 754 精度场景不会误报。
+`ExclusiveMinimum` / `ExclusiveMaximum` 需与 `Minimum` / `Maximum` 成对设置，且同样走 `SchemaConfig` 的指针字段，用于把边界值本身排除在外。`MultipleOf` 采用浮点容差比较（epsilon 1e-9），`0.1 + 0.2` 这类 IEEE 754 精度场景不会误报。
 
 ## 数组约束：Items / MinItems / MaxItems / UniqueItems
 
@@ -288,7 +288,7 @@ func main() {
 
 ## 枚举与常量：Enum / Const
 
-`Enum` 限定取值必须命中其一；`Const` 限定必须等于某个固定值。两者均通过直接比较生效，无需经 `NewSchema` 创建：
+`Enum` 限定取值必须命中其一；`Const` 限定必须等于某个固定值。两者都按直接比较生效，无需经 `NewSchema` 创建：
 
 ```go
 package main
@@ -374,14 +374,16 @@ schema := json.DefaultSchema()
 ```
 
 ::: warning 长度/区间约束必须用 NewSchema
-`MinLength`、`MaxLength`、`Minimum`、`Maximum`、`MinItems`、`MaxItems`、`ExclusiveMinimum`、`ExclusiveMaximum` 这一组约束依赖 `Schema` 内部不可外部设置的跟踪标志。直接在 `&json.Schema{...}` 字面量中给这些字段赋值**不会生效**；必须通过 `NewSchema`（或其弃用别名 `NewSchemaWithConfig`）并传入对应的**指针字段**（如 `cfg.MinLength = &v`）才会被启用。`Type`、`Required`、`Properties`、`Items`、`Pattern`、`Format`、`Enum`、`Const`、`UniqueItems`、`MultipleOf` 则不受此限制，字面量与 `NewSchema` 均生效。
+`MinLength`、`MaxLength`、`Minimum`、`Maximum`、`MinItems`、`MaxItems`、`ExclusiveMinimum`、`ExclusiveMaximum` 依赖 `Schema` 内部不可外部设置的跟踪标志。直接在 `&json.Schema{...}` 字面量里给这些字段赋值**不会生效**。启用它们只有一条路：用 `NewSchema`（或其弃用别名 `NewSchemaWithConfig`），把约束写成对应的**指针字段**（如 `cfg.MinLength = &v`）。
+
+`Type`、`Required`、`Properties`、`Items`、`Pattern`、`Format`、`Enum`、`Const`、`UniqueItems`、`MultipleOf` 不受这条限制，字面量与 `NewSchema` 都生效。
 :::
 
 ### NewSchema
 
 签名：`func NewSchema(cfg SchemaConfig) *Schema`
 
-`NewSchema` 是创建已配置 Schema 的**规范构造函数**（与库内其他 `New*(cfg)` 构造器命名一致）：经 `SchemaConfig` 的指针字段启用长度/区间类约束，自动初始化 `Properties` / `Required`，并处理 `AdditionalProperties` 的默认值。
+`NewSchema` 是创建已配置 Schema 的**规范构造函数**，命名与库内其他 `New*(cfg)` 构造器一致。它做三件事：按 `SchemaConfig` 的指针字段启用长度/区间类约束、自动初始化 `Properties` / `Required`、处理 `AdditionalProperties` 的默认值。
 
 ```go
 cfg := json.DefaultSchemaConfig()
@@ -397,10 +399,10 @@ schema := json.NewSchema(cfg)
 
 签名：`func NewSchemaWithConfig(cfg SchemaConfig) *Schema`
 
-使用指定配置创建 Schema。
+与 `NewSchema` 同签名的弃用别名。
 
 ::: warning 已废弃
-`NewSchemaWithConfig` 与 [`NewSchema`](#newschema) 完全等价（直接委托同一实现）——「WithConfig」后缀早于统一的 Config 约定，库内其他构造器均不带该后缀。新代码请使用 `NewSchema(cfg)`。`NewSchemaWithConfig` 在 v1 生命周期内保留、不会移除。
+`NewSchemaWithConfig` 与 [`NewSchema`](#newschema) 完全等价，直接委托同一实现。「WithConfig」后缀早于统一的 Config 约定，库内其他构造器都不带该后缀。新代码用 `NewSchema(cfg)`；`NewSchemaWithConfig` 在 v1 生命周期内保留、不会移除。
 :::
 
 ```go
@@ -424,7 +426,7 @@ schema := json.NewSchemaWithConfig(cfg)
 
 ### SchemaConfig 字段
 
-`SchemaConfig` 的字段集与 `Schema` 一一对应；其中数值/布尔类约束为**指针类型**——`nil` 表示未设置该约束，只有传入非 `nil` 指针，`NewSchema` 才会启用对应约束（这正是长度/区间类约束必须走 `NewSchema` 的原因，见[上方警告](#schema-的创建方式)）。
+`SchemaConfig` 的字段集与 `Schema` 一一对应，其中数值/布尔类约束是**指针类型**：`nil` 表示未设置该约束，只有传入非 `nil` 指针，`NewSchema` 才会启用它。这正是长度/区间类约束必须走 `NewSchema` 的原因，见[上方警告](#schema-的创建方式)。
 
 | 字段                    | 类型                  | 说明                                                       |
 | ----------------------- | --------------------- | ---------------------------------------------------------- |
@@ -452,33 +454,33 @@ schema := json.NewSchemaWithConfig(cfg)
 | `Default`               | `any`                 | 默认值（元信息）                                           |
 | `Examples`              | `[]any`               | 示例值（元信息）                                           |
 
-推荐始终通过 `NewSchema`（`func NewSchema(cfg SchemaConfig) *Schema`）创建已配置的 Schema——它是指针约束唯一可靠的启用途径，且会自动初始化 `Properties` / `Required` 并处理 `AdditionalProperties` 的默认值。
+创建已配置的 Schema 时一律用 `NewSchema`（`func NewSchema(cfg SchemaConfig) *Schema`）：它是启用指针约束的唯一途径，还会自动初始化 `Properties` / `Required` 并处理 `AdditionalProperties` 的默认值。
 
 ## Config 中的验证相关字段
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `EnableValidation` | `bool` | 启用输入验证（影响操作前的安全/结构校验） |
-| `ValidateInput` | `bool` | 校验输入 JSON |
+| `EnableValidation` | `bool` | 已废弃：不被任何操作读取（校验默认始终执行，除非 `SkipValidation`），仅参与配置缓存键 |
+| `ValidateInput` | `bool` | 已废弃：不被任何操作读取，设置后不改变行为 |
 | `SkipValidation` | `bool` | 跳过非必要校验（仅用于可信输入） |
 
-::: warning 未连接的扩展字段
-`Config.CustomValidators`（`[]Validator`）与 `Validator` 接口在当前版本中**已声明并参与配置克隆与缓存键计算，但尚未在操作流水线中挂接**。通过 `Config.CustomValidators`（或 `Config.AddValidator`）注册验证器**不会影响任何操作的执行**——操作不会被自定义验证器拒绝。`Validator` 接口当前为预留接口：
+::: warning 已废弃的扩展字段
+`Config.CustomValidators`（`[]Validator`）与 `Validator` 接口**已废弃**（源码标注 Deprecated）：字段已声明并参与配置克隆与缓存键计算，但验证器**从不被任何公开操作执行**。用 `Config.CustomValidators`（或 `Config.AddValidator`）注册验证器不会改变任何操作的行为，操作也不会因自定义验证器被拒绝。两者在 v1 生命周期内保留：
 
 ```go
-// 当前版本：已声明但未挂接，注册后对操作无影响（预留接口）
+// 已废弃：已声明但从不执行，注册后对操作无影响
 type Validator interface {
     Validate(jsonStr string) error
 }
 ```
 
-如需在操作前后做自定义校验，请使用已生效的 [Hooks 钩子](../extensions/hooks)（例如 `ValidationHook`）。
+如需在操作前后做自定义校验，改用已生效的 [Hooks 钩子](../extensions/hooks)（例如 `ValidationHook`）。
 :::
 
 ## 相关
 
-- [接口定义](./interfaces) - `Validator` 接口（预留）与 `Schema` 相关类型
-- [类型定义](./types) - 核心类型（Config / Schema / Stats / AccessResult）
-- [解析验证](./functions/parse) - Parse / Valid / ValidateSchema 函数
-- [配置选项](./config) - 验证相关配置字段
-- [Hooks 钩子](../extensions/hooks) - 已生效的操作前后拦截机制（含 `ValidationHook`）
+- [接口定义](./interfaces)：`Validator` 接口（已废弃）与 `Schema` 相关类型
+- [类型定义](./types)：核心类型（`Config` / `Schema` / `Stats` / `AccessResult`）
+- [解析验证](./functions/parse)：`Parse` / `Valid` / `ValidateSchema` 函数
+- [配置选项](./config)：验证相关配置字段
+- [Hooks 钩子](../extensions/hooks)：已生效的操作前后拦截机制（含 `ValidationHook`）

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "常见问题"
 title: "常见问题 - CyberGo JSON | 高频疑问速查"
-description: "CyberGo JSON 常见问题解答：包函数与 Processor 选型、路径未命中与数组越界的返回语义、数字变 float64、Set 纯函数风格、标准库迁移行为差异、超大输入处理与缓存并发高频问题速查。"
+description: "CyberGo JSON 常见问题：包函数与 Processor 选型、路径未命中与越界语义、数字变 float64、Set 纯函数风格、标准库迁移差异。"
 sidebar_position: 1
 ---
 
@@ -22,15 +22,15 @@ sidebar_position: 1
 
 ## 路径找不到时到底返回什么？
 
-**答：** 取决于调用方式，且「键不存在」与「数组下标越界」行为不同：
+**答：** 取决于调用方式。对象键不存在与数组下标越界对 `Get` 都返回 `ErrPathNotFound`，类型化函数与 `SafeGet` 则落零值/默认值：
 
 | 调用 | 对象键不存在 | 数组下标越界 |
 |------|--------------|--------------|
-| `json.Get` | `(nil, ErrPathNotFound)` | `(nil, nil)`，**不报错** |
+| `json.Get` | `(nil, ErrPathNotFound)` | `(nil, ErrPathNotFound)` |
 | `json.GetString` 等类型化函数 | 零值或传入的默认值 | 零值或传入的默认值 |
-| `json.SafeGet` | `Exists: false` | `Exists: true` 但值为 nil |
+| `json.SafeGet` | `Exists: false` | `Exists: false` |
 
-数组下标越界时 `Get` 不报错（结果为 nil），因此判断「元素是否存在」不能只看 err，还要看返回值。完整规则见[语法陷阱](../getting-started/path-syntax#有哪些语法陷阱)。
+`items[10]` 在长度为 3 的数组上返回的错误消息含 `array index 10 out of bounds (length 3)`，其 `errors.Is(err, json.ErrPathNotFound)` 为 `true`。需要「缺失即默认值」时用类型化函数或 `SafeGet`，不要用 `Get` 的 err 分支兜底。完整规则见[语法陷阱](../getting-started/path-syntax#有哪些语法陷阱)。
 
 ## 取出来的数字为什么是 float64？
 
@@ -47,7 +47,7 @@ i := json.GetInt(data, "version")   // 需要 int 时用类型化函数
 
 ## 调用 Set 之后，原 JSON 为什么没变？
 
-**答：** `Set`/`Delete` 是纯函数风格：返回修改后的**新字符串**，原串不动。丢弃返回值是最常见的新手 bug：
+**答：** `Set`/`Delete` 是纯函数风格：返回修改后的**新字符串**，原串不动。最常见的错误是丢弃返回值：
 
 ```go
 package main
@@ -74,7 +74,7 @@ func main() {
 
 ## 用越界下标 Set 会发生什么？
 
-**答：** 与查询侧的「零值、不报错」不同——默认配置（`CreatePaths: true`）下，`Set` 会把数组用 `null` 填充扩展到目标下标：
+**答：** 查询侧越界返回 `ErrPathNotFound`，修改侧不同——默认配置（`CreatePaths: true`）下，`Set` 会把数组用 `null` 填充扩展到目标下标：
 
 ```go
 updated, _ := json.Set(`{"items":[1,2,3]}`, "items[5]", "x")
@@ -89,21 +89,22 @@ updated, _ := json.Set(`{"items":[1,2,3]}`, "items[5]", "x")
 
 ## 键名包含点号或方括号怎么访问？
 
-**答：** 两种方式：点号语法加反斜杠转义，或改用 JSON Pointer（以 `/` 开头，点号方括号都是键名的一部分，无需转义）：
+**答：** 点号可用反斜杠转义，也可改用 JSON Pointer；成对的花括号与方括号只能用 Pointer（`/` 开头的路径里，括号与点号都是键名的一部分）：
 
 ```go
-data := `{"a.b": 1, "c[0]": 2}`
+data := `{"a.b": 1, "c[0]": 2, "e{f}": 3}`
 
 json.GetInt(data, "a\\.b") // 1 — Go 字面量消费一层，路径解析器收到 a\.b
-json.GetInt(data, "/a.b")  // 1 — Pointer 模式下点号是键名的一部分，更省事
-json.GetInt(data, "/c[0]") // 2
+json.GetInt(data, "/a.b")  // 1 — Pointer 模式下点号是键名的一部分
+json.GetInt(data, "/c[0]") // 2 — 成对方括号只能走 Pointer
+json.GetInt(data, "/e{f}") // 3 — 成对花括号同理
 ```
 
-注意 Pointer 与点号语法不能混用；Pointer 模式不支持负索引，`Set` 经 Pointer 也不能越界写入。详见[路径转义](../getting-started/path-syntax#路径转义)与 [JSON Pointer](../getting-started/path-syntax#json-pointer-rfc-6901)。
+`a[b]` 这类**括号内非数字**的键名任何路径语法都无法命中，只能遍历对象按键名取值。注意 Pointer 与点号语法不能混用；Pointer 的负索引语义与点号语法一致（`-1` 为末元素）；`Set` 经 Pointer 也不能扩容数组。详见[路径转义](../getting-started/path-syntax#路径转义)与 [JSON Pointer](../getting-started/path-syntax#json-pointer-rfc-6901)。
 
 ## 从标准库迁移要改多少代码？
 
-**答：** 通常只需替换 import 路径：`"encoding/json"` → `"github.com/cybergodev/json"`，现有代码即可编译运行。`Marshal`/`Unmarshal`/`Compact` 等函数、`Encoder`/`Decoder` 方法与错误类型（`SyntaxError`、`UnmarshalTypeError` 等）一一兼容；额外的 `cfg ...Config` 参数都是可选的。需要留意的是默认输入安全校验带来的少量边界差异（见下一问）。迁移步骤与兼容清单见[从标准库迁移](../getting-started/migration)。
+**答：** 只需替换 import 路径：`"encoding/json"` → `"github.com/cybergodev/json"`，现有代码即可编译运行。`Marshal`/`Unmarshal`/`Compact` 等函数、`Encoder`/`Decoder` 方法与错误类型（`SyntaxError`、`UnmarshalTypeError` 等）一一兼容；额外的 `cfg ...Config` 参数都是可选的。需要留意的是默认输入安全校验带来的少量边界差异（见下一问）。迁移步骤与兼容清单见[从标准库迁移](../getting-started/migration)。
 
 ## Unmarshal 为什么拒绝了含 onload、eval( 的数据？
 
@@ -123,7 +124,7 @@ err := json.Unmarshal(data, &v, cfg)
 
 ## 为什么到处都要 defer p.Close()？
 
-**答：** `Processor` 内部持有缓存与后台清理 goroutine，`Close` 负责排空在途操作并释放这些资源；高频创建却不关闭会持续累积（缓存内存不释放、goroutine 泄漏）。包级函数使用全局处理器托管生命周期，无需也不应手动 `Close`。正确姿势是**创建一次、全组共享、最后 Close 一次**，详见[生命周期管理](../getting-started/processor-guide#生命周期管理)。
+**答：** `Processor` 内部持有缓存与后台清理 goroutine，`Close` 负责排空在途操作并释放这些资源；高频创建却不关闭会持续累积（缓存内存不释放、goroutine 泄漏）。包级函数使用全局处理器托管生命周期，无需也不应手动 `Close`。做法是**创建一次、全组共享、最后 Close 一次**，详见[生命周期管理](../getting-started/processor-guide#生命周期管理)。
 
 ## Processor 可以跨 goroutine 共享吗？
 
@@ -131,7 +132,7 @@ err := json.Unmarshal(data, &v, cfg)
 
 ## 缓存什么时候需要手动清理？
 
-**答：** 几乎不用。`Set`/`Delete` 等写操作会**自动失效**关联缓存条目（按 JSON 哈希前缀批量清除）。只有两种情况需要手动 `ClearCache`：外部数据源变化（同一 JSON 内容被原地替换），或内存压力大。监控命中率用 `GetStats()`——低于 0.5 时检查工作负载或调整 `CacheTTL`/`MaxCacheSize`。详见[缓存与预解析](../advanced/caching)。
+**答：** 几乎不用。`Set`/`Delete` 等写操作会**自动失效**关联缓存条目（按文档哈希清除该文档的全部条目）。只有两种情况需要手动 `ClearCache`：外部数据源变化（同一 JSON 内容被原地替换），或内存压力大。监控命中率用 `GetStats()`——低于 0.5 时检查工作负载或调整 `CacheTTL`/`MaxCacheSize`。详见[缓存与预解析](../advanced/caching)。
 
 ## PreParse 和 CompilePath 有什么区别？
 
@@ -140,7 +141,7 @@ err := json.Unmarshal(data, &v, cfg)
 ## 更多资源
 
 - [快速开始](../getting-started/) — 5 分钟上手核心功能
-- [常见第一小时问题](../getting-started/#常见第一小时问题) — 新手高频疑问集中解答
+- [常见第一小时问题](../getting-started/#常见第一小时问题) — 高频疑问集中解答
 - [路径表达式语法](../getting-started/path-syntax) — 完整路径语法与陷阱
 - [错误处理](../advanced/error-handling) — 哨兵错误分类与定位
 - [性能优化](../advanced/performance) — 基准测试与优化决策路径

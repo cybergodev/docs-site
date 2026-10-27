@@ -43,19 +43,25 @@ const OUT_DIR = join('docs', 'public', 'search-index')
 /**
  * Cap for the searchable `text` field, in UTF-16 code units (≈ characters).
  *
- * Size/recall tradeoff: `text` is 71–90% of every index file's raw bytes, yet
- * it is the ONLY query field with no boost at runtime (title 3 / headings 2 /
- * description 1.5 — see useProjectSearch.ts, and all three stay untruncated
- * here). Keeping the head of each page covers where query-worthy content
- * lives, while section terms past the cap remain searchable through the
- * intact `headings` field (MiniSearch AND-matches a term in ANY field), so
- * recall loss is limited to body-only words unique to a long page's tail.
- * Measured at 1000: zh/_site -41% raw / en/_site -66%, and ~1/3 of zh docs
- * (median body ≈1343 chars) keep their text verbatim. Indexes are lazily
- * fetched off the critical path, so this is purely a first-search latency /
- * transfer-size win. Tune up if tail-of-page misses get reported.
+ * Size/recall tradeoff: `text` is the bulk of every index file's raw bytes,
+ * yet it is the ONLY query field with no boost at runtime (title 3 /
+ * headings 2 / description 1.5 — see useProjectSearch.ts, and all three stay
+ * untruncated here). Keeping the head of each page covers where query-worthy
+ * content lives, while section terms past the cap remain searchable through
+ * the intact `headings` field (MiniSearch AND-matches a term in ANY field),
+ * so recall loss is limited to body-only words unique to a long page's tail.
+ * Raised 1000 → 5000 after a tail-of-page miss report (an identifier first
+ * mentioned ~4k chars into a stripped page was unsearchable): measured
+ * back-to-back over the corpus, 3000 → 5000 adds +27% (zh) / +45% (en) text
+ * bytes and cuts the truncated-doc fraction from 85%→20% (zh) and 97%→50%
+ * (en) vs the old 1000 cap. Residual gap: a handful of very long en guide
+ * pages (proxy / performance, 15–18k stripped chars) still lose their far
+ * tail; if misses from those get reported, consider head+tail sampling
+ * instead of a bigger uniform cap. Indexes are lazily fetched off the
+ * critical path (and gzip well — repetitive prose/identifiers), so this
+ * trades first-search transfer size for tail-of-page recall.
  */
-const MAX_TEXT_CHARS = 1000
+const MAX_TEXT_CHARS = 5000
 
 interface SearchDoc {
   /** Unique within a scope (= the url). */
@@ -96,21 +102,25 @@ function projectOf(url: string): ProjectName | '' {
 /**
  * Strip markdown noise from a body so the searchable `text` field is compact
  * and matches what a user would actually type:
- *   - fenced + inline code blocks (often noisy import paths)
+ *   - fenced code blocks, wholesale (sample code is noisy boilerplate)
+ *   - inline code: ONLY the backticks are dropped, the content is kept —
+ *     identifiers (`WithTLSFingerprint`, field names in table cells) live
+ *     almost exclusively in inline code, and the shared tokenizer keeps Latin
+ *     runs whole, so deleting them made every identifier-shaped query miss
  *   - images (alt text and URL)
  *   - link URLs (keep the label)
  *   - heading leading #'s
  *   - list markers, blockquote markers
  *   - container fences (:::)
- *   - emphasis markers (* _ `)
+ *   - emphasis markers (* _ ~)
  *   - table row pipes
  * HTML comments (frontmatter check / skip markers) are also dropped.
  */
 function stripMarkdown(md: string): string {
   return md
     .replace(/<!--[\s\S]*?-->/g, ' ') // HTML comments
-    .replace(/```[\s\S]*?```/g, ' ') // fenced code blocks
-    .replace(/`[^`\n]*`/g, ' ') // inline code
+    .replace(/```[\s\S]*?```/g, ' ') // fenced code blocks (whole span)
+    .replace(/`([^`\n]*)`/g, '$1') // inline code: keep content, drop backticks
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ') // images
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // links: keep label, drop URL
     .replace(/^#{1,6}\s+/gm, '') // heading #'s

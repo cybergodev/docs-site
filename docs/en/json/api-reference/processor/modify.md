@@ -1,17 +1,17 @@
 ---
 sidebar_label: "Modification Operations"
 title: "Processor Data Modification - CyberGo JSON | Set/SetMultiple"
-description: "CyberGo JSON Processor modification: Set/SetMultiple, SetCreate path creation, immutable chained results, plus MergeJSON — ideal for multi-step edits."
+description: "Processor modification methods: Set/SetMultiple writes, SetCreate automatic path creation, [+] array append, and MergeJSON/MergeMany/CompareJSON merges."
 sidebar_position: 30
 ---
 
 # Data Modification Methods
 
-The Processor provides data modification methods; all of them **return a new JSON string with the modification** (immutable semantics — the original string is untouched) and support chaining. For deletion methods see [Delete Operations](./delete). Behavior matches the [package-level modification functions](../functions/modify); this page focuses on the Processor-side configuration semantics (`CreatePaths` precedence, `ContinueOnError`) and chaining patterns.
+Modification methods return a **new JSON string containing the change** (the original string is untouched), and each result feeds the next call. For deletion see [Delete Operations](./delete). Behavior matches the [package-level modification functions](../functions/modify); the difference is where configuration comes from. Without `cfg` the processor's baked configuration applies; with `cfg` that call's configuration applies. Two Processor-specific semantics are the `CreatePaths` precedence and the scope of `ContinueOnError`.
 
 ## Immutable Semantics
 
-All modification methods return a **new JSON string**; the original input string is never modified (Go strings are immutable anyway). On failure, the original string and the error are returned, enabling safe degradation:
+All modification methods return a **new JSON string**; the input string is never modified (Go strings are immutable anyway). On failure the original string and the error are returned — except for `SetMultiple` with `ContinueOnError=true` and a partial failure (see below):
 
 ```go
 original := `{"user":{"name":"Alice"}}`
@@ -64,7 +64,7 @@ Sets the value at the specified path and returns the modified JSON string. Wheth
 result, err := p.Set(data, "user.name", "NewName")
 ```
 
-Values of many types can be set:
+Value types that can be set:
 
 ```go
 // String
@@ -118,7 +118,7 @@ func main() {
 
 Signature: `func (p *Processor) SetMultiple(jsonStr string, updates map[string]any, cfg ...Config) (string, error)`
 
-Batch-sets the values at multiple paths and returns the modified JSON string. Compared with repeated `Set` calls, `SetMultiple` parses the JSON only once and applies all updates in a single traversal — more efficient. Whether paths are created depends on `Config.CreatePaths`.
+Batch-sets the values at multiple paths and returns the modified JSON string. Compared with repeated `Set` calls, `SetMultiple` parses the JSON only once and applies all updates in a single traversal. Whether paths are created depends on `Config.CreatePaths`.
 
 ```go
 result, err := p.SetMultiple(data, map[string]any{
@@ -161,7 +161,7 @@ func main() {
 ```
 
 :::tip ContinueOnError and deterministic ordering
-- By default (`ContinueOnError=false`) the first failing path returns the original string and the error; when enabled, failing paths are skipped and the remaining paths still written, with an error returned only when everything fails. This field applies only to `SetMultiple` and is unrelated to the built-in per-operation isolation of [`ProcessBatch`](./batch).
+- By default (`ContinueOnError=false`) the first failing path returns the original string and that error. When enabled, failing paths are skipped and the rest still written: if everything fails you get the original string plus a joined summary error; on a partial failure you get the **document with the successful updates applied**, together with the per-path errors joined by `errors.Join`. This field applies only to `SetMultiple` and is unrelated to the built-in per-operation isolation of [`ProcessBatch`](./batch).
 - Updates are applied in **lexicographic path order**, so overlapping paths (e.g. `a` and `a.b`) have deterministic results: `a` lands first, and `a.b` always writes into the newly created container — unaffected by random map iteration order.
 :::
 
@@ -169,7 +169,7 @@ func main() {
 
 Signature: `func (p *Processor) SetCreate(jsonStr, path string, value any, cfg ...Config) (string, error)`
 
-Sets a value and **automatically creates missing intermediate paths**. A convenience wrapper over `Set` + `CreatePaths=true` that creates paths regardless of the processor's own configuration. See [CreatePaths and SetCreate](#createpaths-and-setcreate).
+Sets a value and **automatically creates missing intermediate paths**. Equivalent to `Set` with `CreatePaths=true`: paths are created regardless of the processor's own configuration. See [CreatePaths and SetCreate](#createpaths-and-setcreate).
 
 **Creating intermediate objects**
 
@@ -221,7 +221,7 @@ func main() {
 
 Signature: `func (p *Processor) SetMultipleCreate(jsonStr string, updates map[string]any, cfg ...Config) (string, error)`
 
-Batch-sets multiple values and creates intermediate paths automatically. A convenience wrapper over `SetMultiple` + `CreatePaths=true`.
+Batch-sets multiple values and creates intermediate paths automatically. Equivalent to `SetMultiple` with `CreatePaths=true`.
 
 ```go
 result, err := p.SetMultipleCreate(data, map[string]any{
@@ -307,7 +307,7 @@ func main() {
 
 ## CreatePaths and SetCreate
 
-Path auto-creation has two control entry points; understanding the difference helps when choosing between "per-processor configuration" and "force per call":
+Path auto-creation has two control entry points that differ in scope:
 
 | Approach | Behavior | Good for |
 |----------|----------|----------|
@@ -352,15 +352,15 @@ finalResult, _ := processor.Delete(result2, "user.temporary")
 
 ## Processor Merge Methods
 
-The Processor provides instance methods corresponding to the package-level [MergeJSON](../functions/modify#mergejson), [MergeMany](../functions/modify#mergemany), and [CompareJSON](../helpers#comparejson).
+The Processor also provides instance methods corresponding to the package-level [MergeJSON](../functions/modify#mergejson), [MergeMany](../functions/modify#mergemany) and [CompareJSON](../helpers#comparejson).
 
 ### Processor.MergeJSON
 
 Signature: `func (p *Processor) MergeJSON(json1, json2 string, cfg ...Config) (string, error)`
 
-Deep-merges the two objects per `Config.MergeMode`, then re-encodes the result with this processor. **When cfg is omitted, the processor's own configuration is used** — the `MergeMode` and encoding options baked in at `New(cfg)` apply directly, with no need to pass them again; when cfg is passed, the merge follows cfg's `MergeMode`.
+Deep-merges the two objects per `Config.MergeMode`, then re-encodes the result with this processor. **When cfg is omitted, the processor's own configuration is used**: the `MergeMode` and encoding options baked in at `New(cfg)` apply directly. When cfg is passed, the merge follows cfg's `MergeMode`.
 
-Like the package-level function, `Processor.MergeJSON` runs no security validation — it is a structural utility that only decodes, deep-merges, and re-encodes. When security validation is needed, use `CompareJSON` (which always validates; per cfg when passed, otherwise per the processor's own configuration).
+Like the package-level function, `Processor.MergeJSON` runs no security validation: it only decodes, deep-merges and re-encodes. When security validation is needed, use `CompareJSON` (which always validates; per cfg when passed, otherwise per the processor's own configuration).
 
 ```go
 p, err := json.New()
@@ -382,7 +382,7 @@ result, err = p.MergeJSON(base, override, cfg)
 
 Signature: `func (p *Processor) MergeMany(jsons []string, cfg ...Config) (string, error)`
 
-Folds the slice left to right via `MergeJSON`; the strategy is decided by `Config.MergeMode` (default `MergeUnion`). Fewer than 2 JSON strings returns an error; any failing merge step returns an error carrying the failing index.
+Folds the slice left to right via `MergeJSON`; the strategy comes from `Config.MergeMode` (default `MergeUnion`). Fewer than 2 JSON strings returns an error; a failing merge step returns an error carrying that step's index.
 
 ```go
 result, err := p.MergeMany([]string{config1, config2, config3})

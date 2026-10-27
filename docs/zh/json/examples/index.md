@@ -1,13 +1,13 @@
 ---
 sidebar_label: "基础示例"
 title: "使用示例 - CyberGo JSON | 典型场景代码合集"
-description: "CyberGo JSON 实战示例：路径查询与修改、结构体 Marshal/Unmarshal、泛型 API、Processor 复用与缓存预热、迭代遍历与并行处理、JSONL 流式处理、Hook 钩子、Schema 验证与错误处理，含可运行 Go 代码。"
+description: "CyberGo JSON 示例：路径查询与修改、结构体 Marshal/Unmarshal、泛型 GetTyped、Processor 复用、迭代并行与 JSONL 处理。"
 sidebar_position: 10
 ---
 
 # 使用示例
 
-本文档提供 `github.com/cybergodev/json` 库的实战代码示例。
+以下示例覆盖路径查询与修改、结构体编解码、Processor、迭代与并行、JSONL、钩子、Schema 验证与错误处理，每段都是可独立运行的 `main` 包。
 
 ## 基础操作
 
@@ -946,25 +946,34 @@ import (
 )
 
 func main() {
-	data := `{"name": "test"}`
+	data := `{"name": 42}`
 	_, err := json.Get(data, "nonexistent.path")
 
 	if err != nil {
-		// 检查错误类型
+		// Get 的错误只来自输入类问题：路径缺失、JSON 非法
 		if errors.Is(err, json.ErrPathNotFound) {
-			fmt.Println("Path not found")
+			fmt.Println("path not found")
 		} else if errors.Is(err, json.ErrInvalidJSON) {
-			fmt.Println("Invalid JSON")
-		} else if errors.Is(err, json.ErrTypeMismatch) {
-			fmt.Println("Type mismatch")
+			fmt.Println("invalid JSON")
 		}
 
-		// 获取详细错误信息
+		// 取详细上下文
 		var jsonErr *json.JsonsError
 		if errors.As(err, &jsonErr) {
-			fmt.Printf("Op: %s, Path: %s\n", jsonErr.Op, jsonErr.Path)
+			fmt.Printf("op=%s path=%s\n", jsonErr.Op, jsonErr.Path)
 		}
 	}
+
+	// 类型不符需要走 SafeGet 的转换方法（AsString 包了 ErrTypeMismatch）
+	if _, err := json.SafeGet(data, "name").AsString(); err != nil {
+		if errors.Is(err, json.ErrTypeMismatch) {
+			fmt.Println("type mismatch")
+		}
+	}
+	// 输出：
+	// path not found
+	// op=get path=nonexistent.path
+	// type mismatch
 }
 ```
 
@@ -993,7 +1002,7 @@ func main() {
 	defer p.Close()
 
 	// 模拟不可信输入
-	// 注意：实际攻击可能尝试更大的 payload（如 100MB+）
+	// 真实攻击的载荷可达 100MB 以上；这里用 2MB 与 50 层嵌套演示拦截
 	// 两条恶意输入都是合法 JSON 结构，分别真实触发体积与深度限制
 	untrustedInputs := []string{
 		`{"data": "normal"}`,
@@ -1151,4 +1160,4 @@ func main() {
 
 ## 更多示例
 
-- [高级功能示例](./examples-advanced) — 批量编码、预解析、钩子系统等高级功能
+- [高级功能示例](./examples-advanced) — 批量编码、字段筛选、预解析与路径预编译

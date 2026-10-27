@@ -6,7 +6,7 @@ description: "Production-grade Go JWT library with 12 HMAC, RSA, RSA-PSS, and EC
 
 # JWT - Production-Grade JWT Authentication Library
 
-CyberGo JWT is a high-performance JWT authentication library for Go, providing a complete solution for token generation, validation, refresh, and revocation.
+CyberGo JWT is a high-performance JWT authentication library for Go. It covers token generation, validation, refresh, and revocation in one library.
 
 ## Features
 
@@ -18,7 +18,7 @@ CyberGo JWT is a high-performance JWT authentication library for Go, providing a
 - **Input Validation** — Field length limits, injection pattern detection, control character filtering
 - **Clock Injection** — `ClockProvider` interface for testing scenarios
 - **Concurrency Safe** — All exported methods can be called concurrently
-- **Zero Sensitive Data Leakage** — `Close()` securely clears keys
+- **Prompt Key Clearance** — `Close()` zeroes HMAC key bytes and drains the hasher pool
 
 ## Installation
 
@@ -73,20 +73,20 @@ func main() {
 ## Architecture Overview
 
 ```text
-┌────────────────────────────────────────────────┐
-│                  Processor                      │
-│  (implements TokenManager interface)            │
-├────────────────────────────────────────────────┤
-│  Create / Parse / Refresh / Revoke             │
-│  CreateRefresh / ParseInto / RefreshInto       │
-│  ParseUnverified / IsRevoked / IsClosed / Close│
-├──────────────────┬─────────────────────────────┤
-│  BlacklistManager│     RateLimiter              │
-│  (optional)      │     (optional)               │
-├──────────────────┴─────────────────────────────┤
-│                Config                           │
-│  SigningMethod / TTL / Blacklist / Limit       │
-└────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│                    Processor                     │
+│       (implements TokenManager interface)        │
+├──────────────────────────────────────────────────┤
+│ Create / Parse / Refresh / Revoke                │
+│ CreateRefresh / ParseInto / RefreshInto          │
+│ ParseUnverified / IsRevoked / IsClosed / Close   │
+├──────────────────┬───────────────────────────────┤
+│ Blacklist        │ RateLimiter                   │
+│ (always on)      │ (optional)                    │
+├──────────────────┴───────────────────────────────┤
+│ Config                                           │
+│ SigningMethod / TTL / Blacklist / RateLimit      │
+└──────────────────────────────────────────────────┘
 ```
 
 ## Next Steps
