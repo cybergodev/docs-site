@@ -49,8 +49,20 @@
   --cg-brand: var(--cg-brand-500);
   --cg-brand-hover: var(--cg-brand-600);
   --cg-brand-pressed: var(--cg-brand-700);
+
+  /* Brand AS TEXT (links, emphasized words, badges). #76b900 on white is only
+     2.41:1 — far below AA — so text-colored usages must NOT ride --vp-c-brand-1.
+     Dark keeps the bright #8ed000 (9.13:1 on the dark bg). */
+  --cg-brand-text: var(--cg-brand-700); /* #4a7500 = 5.47:1 on white */
+
   --cg-brand-soft: rgba(118, 185, 0, 0.14);
-  --cg-brand-contrast: #ffffff; /* text on a brand-filled surface */
+
+  /* Solid brand surface that CARRIES TEXT (primary buttons). Light: dark green
+     fill + white text = 5.47:1 (a #76b900 fill would be 2.41:1). Paired with
+     --cg-brand-contrast below; hover goes one ramp slot further (800 = 7.75:1). */
+  --cg-brand-solid-bg: var(--cg-brand-700);
+  --cg-brand-solid-bg-hover: var(--cg-brand-800);
+  --cg-brand-contrast: #ffffff; /* text on a --cg-brand-solid-bg surface */
 
   /* Lines */
   --cg-divider: rgba(118, 185, 0, 0.15);
@@ -87,7 +99,15 @@
   --cg-brand: var(--cg-brand-400);
   --cg-brand-hover: var(--cg-brand-500);
   --cg-brand-pressed: var(--cg-brand-600);
+
+  /* Text keeps the bright brand (9.13:1 on the dark surface); the solid
+     button fill ALSO brightens, so its text flips to near-black ink:
+     #8ed000 + #1b1b1f = 9.13:1 (white on #8ed000 would be only 1.88:1). */
+  --cg-brand-text: var(--cg-brand-400);
   --cg-brand-soft: rgba(142, 208, 0, 0.14);
+  --cg-brand-solid-bg: var(--cg-brand-400);
+  --cg-brand-solid-bg-hover: var(--cg-brand-500);
+  --cg-brand-contrast: #1b1b1f;
 
   --cg-divider: rgba(142, 208, 0, 0.12);
 }

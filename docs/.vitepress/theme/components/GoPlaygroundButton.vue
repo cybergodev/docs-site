@@ -92,7 +92,7 @@
     border-radius: var(--cg-radius-md, 8px);
     border: 1px solid var(--vp-c-divider);
     background: var(--vp-c-bg-soft);
-    color: var(--cg-brand, var(--vp-c-brand-1));
+    color: var(--cg-brand-text, var(--vp-c-brand-1));
     font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;

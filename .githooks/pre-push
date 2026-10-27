@@ -1,0 +1,7 @@
+#!/bin/sh
+# CyberGo docs — pre-push gate: CJK typography lint.
+# scripts/lint-autocorrect.ts runs the pinned autocorrect CLI when available
+# (identical to CI's lint job), so a red here means a red CI run after the
+# push — fix before pushing. Activated by `npm run prepare` / `npm install`
+# (core.hooksPath=.githooks, set by scripts/prepare.ts).
+npm run lint:autocorrect

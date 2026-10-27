@@ -108,8 +108,68 @@
   border: 1px solid rgba(142, 208, 0, 0.25);
 }
 
+/* Inline code inside tables stays whole whenever possible: with
+   break-word a chip's min-content width equals its longest token, so
+   identifiers like *InputError never split mid-word; the column is
+   guaranteed room for the whole token before any wrapping happens.
+   display: inline-block makes max-width apply (and participate in the
+   column's min-content) to cap the pathological case: a 40+ char
+   identifier (Processor.ReadPageFromFileToMarkdownTextWithContext)
+   would otherwise demand a ~370px column and re-squeeze neighbouring
+   text columns. Capped at 280px, only monsters wrap, at most once. */
+.vp-doc table :not(pre) > code {
+  display: inline-block;
+  overflow-wrap: break-word;
+  max-width: 280px;
+}
+
+/* VitePress colors body links with --vp-c-brand-1 (#76b900 = 2.41:1 on white,
+   hover --vp-c-brand-2 = 4.10:1 — both below the 4.5:1 AA text minimum in
+   light mode). Reroute BOTH states to the text-safe brand token (light
+   #4a7500 = 5.47:1; dark unchanged at #8ed000 = 9.13:1). Button/border fills
+   keep using --vp-c-brand-* — only text-colored usages move. */
 .vp-doc a {
   text-decoration: none;
+  color: var(--cg-brand-text);
+}
+
+.vp-doc a:hover {
+  color: var(--cg-brand-text);
+  /* Non-color hover feedback: the base color already IS the text-safe token,
+     so a color-only change is invisible to users who cannot distinguish it
+     (and a second brand shade would have to clear 4.5:1 in BOTH modes).
+     Underlining works regardless of color perception and carries no contrast
+     requirement of its own. */
+  text-decoration: underline;
+}
+
+/* ============================================
+   Table Layout
+   ============================================ */
+
+/* Column width floor: Chrome's auto table layout distributes the content
+   width proportionally to each column's max-content width, so once cell
+   content can wrap (see overflow-wrap above) short-label and code columns
+   get squeezed far below readability. 7em ≈ 7 CJK chars at the td font
+   size (14px); tables whose floored width exceeds the 688px content
+   column scroll horizontally via VitePress's default overflow-x: auto
+   instead of cramming. */
+.vp-doc table th,
+.vp-doc table td {
+  min-width: 7em;
+  padding: 8px 10px !important;
+}
+
+/* Keep header labels on one line — they are the anchor when columns wrap
+   or the table scrolls. */
+.vp-doc table th {
+  white-space: nowrap;
+}
+
+/* Balance wrapped cell text to avoid single-character last lines.
+   Progressive enhancement — no effect where unsupported. */
+.vp-doc table td {
+  text-wrap: balance;
 }
 
 /* ============================================
@@ -158,4 +218,23 @@
    search surface), so the wrapper is always empty. */
 .VPNavBarSearch {
   display: none !important;
+}
+
+@media (min-width: 1280px) {
+  .VPDoc .aside {
+    max-width: 180px !important;
+    padding-left: 20px !important;
+  }
+  .VPDoc .aside-container {
+    width: 180px !important;
+  }
+  .VPDoc .aside-curtain {
+    width: 180px !important;
+  }
+  .VPDoc.has-aside .content-container {
+    max-width: 100% !important;
+  }
+  .VPDoc .container > .content {
+    padding: 0 0 128px !important;
+  }
 }

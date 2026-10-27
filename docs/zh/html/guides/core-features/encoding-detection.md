@@ -311,7 +311,7 @@ func main() {
 	gbkBytes := []byte{0xC4, 0xE3, 0xBA, 0xC3}
 	if _, err := p.Extract(gbkBytes); err != nil {
 		fmt.Println("提取失败：", err)
-		// 提取失败： encoding detection failed: declared charset "utf-8" but data is not valid UTF-8
+		// 提取失败：encoding detection failed: declared charset "utf-8" but data is not valid UTF-8
 	}
 
 	for _, entry := range p.GetAuditLog() {

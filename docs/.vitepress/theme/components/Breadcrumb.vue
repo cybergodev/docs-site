@@ -72,7 +72,7 @@
   }
 
   .breadcrumb-link:hover {
-    color: var(--vp-c-brand-1);
+    color: var(--cg-brand-text);
   }
 
   .breadcrumb-current {

@@ -4,10 +4,13 @@
 # 零成本收益：无需手动在 `中文 code` 之间加空格。
 #
 # 本地: npm run lint:autocorrect (检查) / npm run fix:autocorrect (修正)
-#   —— scripts/lint-autocorrect.ts 基于 npm 的 WASM 引擎(2.16.x)：它跳过 codeblock
-#   与 inline code，且不做 spellcheck，弱于 CLI。CI 由 ci.yml 的 lint job 用钉扎的
-#   v2.16.3 release 二进制把关（已弃用浮动的 autocorrect-action docker 镜像）；
-#   本地严格对齐：D:/MyProject/tools/autorrect-cli/autocorrect.exe（同版本 2.16.3）。
+#   —— scripts/lint-autocorrect.ts 现在 CLI 优先（与 CI 同引擎）：按 AUTOCORRECT_CLI →
+#   约定路径 D:/MyProject/tools/autocorrect-cli/autocorrect.exe（npm run
+#   setup:autocorrect 安装）→ PATH 顺序解析，命中即以仓库根为 cwd 跑
+#   autocorrect ./ --lint|--fix，与 CI lint job 完全一致（含 codeblock、inline code
+#   与 spellcheck）；无 CLI 时回退 npm 的 WASM 引擎（跳过 codeblock 与 inline code、
+#   不做 spellcheck，弱于 CLI）。CI 由 ci.yml 的 lint job 用钉扎的 v2.16.3 release
+#   二进制把关；版本钉扎常量在 scripts/_lib/autocorrect.ts（升级时三处同步）。
 rules:
   spellcheck: 1
 spellcheck:

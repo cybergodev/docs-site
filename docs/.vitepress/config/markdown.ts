@@ -17,7 +17,9 @@
 // Applied to `markdown.slugify` (TOC), `markdown.anchor.slugify` (the actual
 // heading id="..." via markdown-it-anchor) and `markdown.headers.slugify`
 // (the right-side outline) so all three stay consistent.
-const slugifyHeading = (s: string): string =>
+// Exported for reuse by config/seo.ts (FAQ answer extraction matches headings
+// by slug) so both producers and consumers of heading ids share one slugifier.
+export const slugifyHeading = (s: string): string =>
   s
     .normalize('NFC')
     .replace(/[^\p{L}\p{N}]+/gu, '-')

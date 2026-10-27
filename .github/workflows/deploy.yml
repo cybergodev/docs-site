@@ -38,7 +38,14 @@ jobs:
       - name: Build with VitePress
         run: npm run build
         env:
-          NODE_OPTIONS: --max-old-space-size=7168
+          # Same 8192 MB ceiling as the CLI flag in package.json's build
+          # script. That CLI flag governs the `node ... vitepress build`
+          # process itself (a CLI arg wins over NODE_OPTIONS for that one
+          # process); this env covers the OTHER node processes `npm run build`
+          # spawns — the tsx pre/post-build scripts (search-index,
+          # fix-clean-urls, redirects, llms, md-mirror). Aligned so no child
+          # process runs with a lower heap limit than the main build.
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6

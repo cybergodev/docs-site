@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vitepress dev docs --port 15310",
     "build": "tsx scripts/generate-search-index.ts && node --max-old-space-size=8192 ./node_modules/vitepress/bin/vitepress.js build docs && tsx scripts/fix-clean-urls.ts && tsx scripts/generate-project-redirects.ts && tsx scripts/generate-moved-redirects.ts && tsx scripts/generate-llms.ts && tsx scripts/generate-md-mirror.ts",
-    "precheck": "npm run format:check && npm run typecheck && npm run check:projects && npm run build && npm run audit",
+    "precheck": "npm run lint:autocorrect && npm run format:check && npm run typecheck && npm run check:projects && npm run build && npm run audit",
     "precheck:go": "npm run audit:api && npm run check:code -- --all",
     "preview": "vitepress preview docs",
     "search-index": "tsx scripts/generate-search-index.ts",
@@ -18,7 +18,9 @@
     "audit": "tsx scripts/audit-locales.ts",
     "audit:api": "tsx scripts/audit-api.ts",
     "lint:autocorrect": "tsx scripts/lint-autocorrect.ts",
-    "fix:autocorrect": "tsx scripts/lint-autocorrect.ts --fix"
+    "fix:autocorrect": "tsx scripts/lint-autocorrect.ts --fix",
+    "setup:autocorrect": "tsx scripts/setup-autocorrect.ts",
+    "prepare": "tsx scripts/prepare.ts"
   },
   "keywords": [
     "go",

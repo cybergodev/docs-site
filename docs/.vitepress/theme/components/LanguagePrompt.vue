@@ -129,13 +129,15 @@
     transition: all 0.2s ease;
   }
 
+  /* Solid brand fill + paired text token (same pairing as NotFound .btn-primary):
+     light #4a7500/#fff = 5.47:1, dark #8ed000/#1b1b1f = 9.13:1. */
   .btn-switch {
-    background: var(--vp-c-brand-1);
+    background: var(--cg-brand-solid-bg);
     color: var(--cg-brand-contrast);
   }
 
   .btn-switch:hover {
-    background: var(--vp-c-brand-2);
+    background: var(--cg-brand-solid-bg-hover);
   }
 
   .btn-dismiss {
@@ -160,6 +162,19 @@
   .lang-prompt-leave-to {
     opacity: 0;
     transform: translateY(12px);
+  }
+
+  /* Reduced motion: keep the (non-moving) opacity fade, drop the slide. */
+  @media (prefers-reduced-motion: reduce) {
+    .lang-prompt-enter-active,
+    .lang-prompt-leave-active {
+      transition: opacity 0.2s ease;
+    }
+
+    .lang-prompt-enter-from,
+    .lang-prompt-leave-to {
+      transform: none;
+    }
   }
 
   @media (max-width: 480px) {

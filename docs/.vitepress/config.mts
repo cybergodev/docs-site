@@ -4,7 +4,7 @@ import { markdownConfig } from './config/markdown'
 import { bareProjectDevRedirect } from './config/redirects'
 import { transformHead, sitemap, head } from './config/seo'
 import { locales } from './config/locales'
-import { buildNav, UI_LABELS } from './config/labels'
+import { buildNav, UI_LABELS, COPYRIGHT_YEAR } from './config/labels'
 
 export default defineConfig({
   title: 'CyberGo',
@@ -73,7 +73,7 @@ export default defineConfig({
     // Default footer (overridden by locale configs)
     footer: {
       message: 'Released under the MIT License',
-      copyright: 'Copyright © 2026 CyberGoDev'
+      copyright: `Copyright © ${COPYRIGHT_YEAR} CyberGoDev`
     }
   }
 })

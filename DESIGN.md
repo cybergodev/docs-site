@@ -43,14 +43,28 @@
 
 | Token | 浅色 | 深色 | 含义 |
 |-------|------|------|------|
-| `--cg-brand` | `brand-500` `#76b900` | `brand-400` `#8ed000` | 主视觉色（链接、主按钮、强调） |
+| `--cg-brand` | `brand-500` `#76b900` | `brand-400` `#8ed000` | 主视觉色（交互态底色、边框、装饰渐变） |
 | `--cg-brand-hover` | `brand-600` | `brand-500` | 悬停态 |
 | `--cg-brand-pressed` | `brand-700` | `brand-600` | 按下态 |
+| `--cg-brand-text` | `brand-700` `#4a7500` | `brand-400` `#8ed000` | 视觉色作为**文本**色（正文链接、强调文字、徽章文字）。浅色 500 直接作文本仅 2.41:1，不达标——文本一律用此 token，勿用 `--vp-c-brand-1` |
+| `--cg-brand-solid-bg` | `brand-700` `#4a7500` | `brand-400` `#8ed000` | 承载文字的实心视觉色面（主按钮底色） |
+| `--cg-brand-solid-bg-hover` | `brand-800` `#3a5c00` | `brand-500` `#76b900` | 实心面 hover 态 |
+| `--cg-brand-contrast` | `#ffffff` | `#1b1b1f` | `--cg-brand-solid-bg` 面上的文字色（成对使用，勿单独引用） |
 | `--cg-brand-soft` | `rgba(118,185,0,.14)` | `rgba(142,208,0,.14)` | 视觉色弱背景（选中态、软高亮） |
-| `--cg-brand-contrast` | `#ffffff` | `#ffffff` | 填充面上的文字色 |
 | `--cg-divider` | `rgba(118,185,0,.15)` | `rgba(142,208,0,.12)` | 视觉色分隔线 |
 
 > 浅色 `default→hover→pressed` 沿 ramp **向下**（500→600→700，变深）；深色沿 ramp **向上**（400→500→600，变亮）——保证深色背景上的对比度。
+
+#### 对比度基线（WCAG 1.4.x，改动品牌色必查）
+
+| 用法 | 浅色 | 深色 |
+|------|------|------|
+| `--cg-brand-text` 作文本（白底 / 深底） | **5.47:1**（AA 正文） | **9.13:1** |
+| `--cg-brand-solid-bg` + `--cg-brand-contrast`（实心按钮） | **5.47:1** | **9.13:1** |
+| `--cg-brand-solid-bg-hover` + `--cg-brand-contrast`（实心按钮 hover） | **7.75:1** | **7.12:1** |
+| 渐变裁切大字（Hero 名字 / 404 数字，≥24px → 3:1 门槛） | 起点 `--cg-brand-text`，其余档 ≥4.10:1 | 全档 ≥4.19:1 |
+
+> 渐变裁切文字两处（`home.css` Hero 名字、`NotFound.vue` 404 数字）起点一律用 `--cg-brand-text`，并各带 `@supports not (background-clip: text)` 回退为实色——旧引擎下 `text-fill-color: transparent` 会把整块文字变透明（审计 D6）。
 
 ### 第 3 层：VitePress 桥接（VP BRIDGE）— 让内置组件继承
 
@@ -75,15 +89,15 @@
 
 ### 间距（4px 基准）
 
-| `--cg-sp-1` | `--cg-sp-2` | `--cg-sp-3` | `--cg-sp-4` | `--cg-sp-5` | `--cg-sp-6` |
-|------------|------------|------------|------------|------------|------------|
-| 4px | 8px | 12px | 16px | 24px | 32px |
+| `--cg-sp-1` | `--cg-sp-2` | `--cg-sp-3` | `--cg-sp-4` | `--cg-sp-5` | `--cg-sp-6` | `--cg-sp-7` | `--cg-sp-8` |
+|------------|------------|------------|------------|------------|------------|------------|------------|
+| 4px | 8px | 12px | 16px | 24px | 32px | 40px | 48px |
 
 ### 圆角
 
-| `--cg-radius-sm` | `--cg-radius-md` | `--cg-radius-lg` | `--cg-radius-pill` |
-|------------------|------------------|------------------|--------------------|
-| 4px | 8px | 16px | 9999px |
+| `--cg-radius-sm` | `--cg-radius-md` | `--cg-radius-lg` | `--cg-radius-xl` | `--cg-radius-2xl` | `--cg-radius-pill` |
+|------------------|------------------|------------------|------------------|------------------|--------------------|
+| 4px | 8px | 12px | 16px | 20px | 9999px |
 
 > `custom-block`（tip/warning/danger 容器）已统一用 `--cg-radius-md`。
 
@@ -109,10 +123,10 @@
 
 | 组件 | 约定 |
 |------|------|
-| 自定义页脚（`.site-footer`） | 背景用 `--vp-c-bg-soft`，分隔线 `--vp-c-divider`，链接悬停转 `--vp-c-brand-1`；最大宽度 1200px，4 列网格（2fr 1fr 1fr 1fr），≤960px 降 2 列、≤640px 降 1 列 |
+| 自定义页脚（`.site-footer`） | 背景用 `--vp-c-bg-soft`，分隔线 `--vp-c-divider`，链接悬停转 `--cg-brand-text`；最大宽度 1200px，4 列网格（2fr 1fr 1fr 1fr），≤960px 降 2 列、≤640px 降 1 列 |
 | 容器（tip/warning/danger/info） | VitePress 内置，圆角已 bridge 到 `--cg-radius-md`；颜色自动跟随 `--vp-c-brand-*` |
 | 导航栏 | 毛玻璃效果（见 `nav.css`）；视觉色用于标题/GitHub 链接的交互态 |
-| 代码块 | VitePress 默认 Shiki 主题；代码块标题/分组见 `overrides.css` 的 `vp-code-group` / `vp-code-title` 覆盖 |
+| 代码块 | VitePress 默认 Shiki 主题；代码分组（code group）标签的字重覆盖见 `home.css` 的 `.vp-code-group .tabs label`（唯一的代码块相关自定义规则，无 `vp-code-title` 覆盖） |
 
 ---
 
@@ -135,7 +149,9 @@
 - [ ] 颜色只引用 `--cg-*` / `--vp-c-*`，无硬编码 hex（`tokens.css` 除外）
 - [ ] 间距用 `--cg-sp-*`，圆角用 `--cg-radius-*`，层级用 `--cg-z-*`
 - [ ] 浅色 + 深色都验证过对比度
+- [ ] **文本用品牌色一律 `--cg-brand-text`**；承载文字的实心面用 `--cg-brand-solid-bg(-hover)` 配 `--cg-brand-contrast`（见 §2 对比度基线）
 - [ ] 新语义 token 在 `:root` 与 `.dark` 成对定义
+- [ ] 新增无限动画或 hover 位移时，在 `motion.css`（或组件 scoped 样式）提供 `prefers-reduced-motion: reduce` 降级（停动画、去位移；颜色过渡可保留）
 - [ ] 改了 `tokens.css` 就同步改本文件
 - [ ] 优先复用 VitePress 内置变量，覆盖走 vp-bridge 而非逐组件硬改
 
@@ -147,5 +163,5 @@
 |------|------|
 | `docs/.vitepress/theme/style/tokens.css` | 颜色/间距/圆角/层级 token 定义（代码层真相源） |
 | `docs/.vitepress/theme/style/index.css` | 样式聚合入口，按 cascade 顺序 import |
-| `docs/.vitepress/theme/style/{home,nav,overrides,components,utilities}.css` | 分层样式 |
+| `docs/.vitepress/theme/style/{home,nav,overrides,components,search,utilities,motion}.css` | 分层样式（`search.css` 为 ProjectSearch 弹层/抽屉，`motion.css` 为 reduced-motion 降级） |
 | `DESIGN.md`（本文件） | 设计规范与使用规则（文档层真相源） |

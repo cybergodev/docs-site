@@ -160,7 +160,7 @@ func main() {
 	// 视频 1: https://www.youtube.com/embed/dQw4w9WgXcQ
 	//   Type: embed
 	// 视频 2: https://example.com/trailer.mp4
-	//   Type: video/mp4, 海报: poster.jpg, 尺寸: 640x360
+	//   Type: video/mp4, 海报：poster.jpg, 尺寸：640x360
 
 	fmt.Printf("\n音频数量：%d\n", len(result.Audios))
 	// 音频数量：1

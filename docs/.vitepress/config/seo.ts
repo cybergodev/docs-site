@@ -1,5 +1,6 @@
 import type { TransformContext, HeadConfig } from 'vitepress'
 import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
 import {
   HOST,
   LANGS,
@@ -17,6 +18,8 @@ import {
   type Lang
 } from '../shared'
 import { UI_LABELS } from './labels'
+import { slugifyHeading } from './markdown'
+import { extractBody } from '../utils/frontmatter'
 import { categoryLabel } from '../locales/sidebars/builder'
 
 // Minimal shape of a sitemap entry — only the fields we read/mutate in
@@ -79,6 +82,95 @@ function directoryLabel(dirRel: string): string {
 /** Question-shaped heading? (FAQPage candidates — never fabricated.) */
 function isQuestionTitle(title: string): boolean {
   return /[?？]$/.test(title) || /吗$/.test(title) || /^(how|why|what)\b/i.test(title)
+}
+
+// ---------------------------------------------------------------------------
+// FAQ answer text extraction (for FAQPage JSON-LD `Answer.text`)
+// ---------------------------------------------------------------------------
+
+// The FAQPage schema wants each Question to carry its answer text — a url-only
+// Answer is flagged incomplete by rich-result validators. The answer is the
+// first paragraph under the question heading in the page's markdown source
+// (the FAQ authoring convention even opens it with a bold "答：" / "Answer:").
+// The markdown is read once per FAQ page (cached; transformHead runs per page
+// and each FAQ page asks for several of its own headings). Heading matching
+// reuses the build's own slugifier (config/markdown.ts) so heading↔slug
+// comparison is exact, and the frontmatter is stripped with the shared
+// utils/frontmatter helper (no YAML dependency).
+
+/** Answer text truncation: long enough for a rich result preview, short
+ *  enough to keep the JSON-LD payload lean. */
+const FAQ_ANSWER_MAX_CHARS = 500
+
+const faqLinesCache = new Map<string, string[]>()
+function faqSourceLines(relativePath: string): string[] {
+  let lines = faqLinesCache.get(relativePath)
+  if (lines === undefined) {
+    lines = []
+    try {
+      lines = extractBody(readFileSync(join('docs', relativePath), 'utf8')).split(/\r?\n/)
+    } catch {
+      // Unreadable source (should not happen mid-build): every Answer on this
+      // page degrades to url-only rather than failing the build.
+    }
+    faqLinesCache.set(relativePath, lines)
+  }
+  return lines
+}
+
+/** Strip inline markdown (images/links/code spans/emphasis/html tags) so the
+ *  JSON-LD text is plain prose. */
+function stripInlineMarkdown(s: string): string {
+  return (
+    s
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1') // image → alt text
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // link → link text
+      .replace(/`([^`]*)`/g, '$1') // code span → inner text
+      // NB: the `_`/`__` arms here also strip underscores in raw prose
+      // (snake_case identifiers outside code spans). Deliberately left broad —
+      // adding word boundaries (`\b_\b`) would silently stop stripping
+      // mid-word emphasis and change Answer.text output; do not "fix" without
+      // re-checking every FAQ page's extracted text.
+      .replace(/(\*\*|__|\*|_|~~)/g, '') // emphasis markers
+      .replace(/<[^>]+>/g, '') // raw html tags
+      .trim()
+  )
+}
+
+/**
+ * First paragraph under the heading whose slug matches, as plain text (or
+ * undefined when no prose paragraph is found — caller then omits `text`).
+ * Skips code fences and table rows; any heading ends the section.
+ */
+function faqAnswerText(relativePath: string, slug: string): string | undefined {
+  let inSection = false
+  let inFence = false
+  const paragraph: string[] = []
+  for (const line of faqSourceLines(relativePath)) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence // fence marker toggles; fenced content is skipped
+      continue
+    }
+    if (inFence) continue
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line)
+    if (heading) {
+      if (inSection) break // next heading ends the section
+      inSection = slugifyHeading(heading[2].trim()) === slug
+      continue
+    }
+    if (!inSection) continue
+    if (!line.trim()) {
+      if (paragraph.length) break // blank line completes the paragraph
+      continue
+    }
+    if (/^\s*\|/.test(line)) continue // table rows are not answer prose
+    paragraph.push(line.trim())
+  }
+  const text = stripInlineMarkdown(paragraph.join(' '))
+  if (!text) return undefined
+  return text.length > FAQ_ANSWER_MAX_CHARS
+    ? text.slice(0, FAQ_ANSWER_MAX_CHARS - 1).trimEnd() + '…'
+    : text
 }
 
 /**
@@ -214,6 +306,10 @@ export function transformHead(ctx: TransformContext) {
   const ogTitle = fmTitle || `CyberGo - ${labelDesc}`
   const ogDesc = fmDesc || labelDesc
 
+  // og:type mirrors the TechArticle condition below (a titled content page,
+  // not a landing page) so the OG card type and the JSON-LD @type agree.
+  const isArticle = !isHome && !!fmTitle
+  head.push(['meta', { property: 'og:type', content: isArticle ? 'article' : 'website' }])
   head.push(['meta', { property: 'og:title', content: ogTitle }])
   head.push(['meta', { property: 'og:description', content: ogDesc }])
   head.push(['meta', { property: 'og:url', content: canonical }])
@@ -226,7 +322,7 @@ export function transformHead(ctx: TransformContext) {
   // headings. JSON.stringify keeps the payload a single text node — no raw
   // newlines, no </script> escaping concerns.
   const graph = [...SITE_GRAPH]
-  if (!isHome && fmTitle) {
+  if (isArticle) {
     const article: Record<string, unknown> = {
       '@type': 'TechArticle',
       headline: fmTitle,
@@ -242,18 +338,36 @@ export function transformHead(ctx: TransformContext) {
     const breadcrumb = buildBreadcrumbList(relativePath, currentLang, canonical, fmTitle)
     if (breadcrumb) graph.push(breadcrumb)
 
-    if (path.includes('/faq/')) {
+    // FAQ routes are leaf pages (`docs/{lang}/env/reference/faq.md` → path
+    // `/zh/env/reference/faq`, no trailing slash), which the old
+    // `includes('/faq/')` never matched — the entire FAQPage branch was dead
+    // code. endsWith covers the leaf route (and a dir-form `/…/faq`), the
+    // includes arm keeps any nested `/faq/` section page working.
+    if (path.endsWith('/faq') || path.includes('/faq/')) {
       const questions = pageData.headers.filter(
         (h) => (h.level === 2 || h.level === 3) && isQuestionTitle(h.title)
       )
       if (questions.length) {
         graph.push({
           '@type': 'FAQPage',
-          mainEntity: questions.map((h) => ({
-            '@type': 'Question',
-            name: h.title,
-            acceptedAnswer: { '@type': 'Answer', url: `${canonical}#${h.slug}` }
-          }))
+          mainEntity: questions.map((h) => {
+            // First paragraph under the question heading as answer prose;
+            // url-only if the source yields no paragraph (never fabricated).
+            const text = faqAnswerText(relativePath, h.slug)
+            if (!text) {
+              // Slug mismatch or no prose paragraph under the heading: say so
+              // at build time instead of silently degrading to url-only.
+              console.warn(
+                `seo: FAQ answer text not found under heading "${h.title}" (${relativePath}) — emitting url-only Answer`
+              )
+            }
+            const acceptedAnswer: Record<string, unknown> = {
+              '@type': 'Answer',
+              url: `${canonical}#${h.slug}`
+            }
+            if (text) acceptedAnswer.text = text
+            return { '@type': 'Question', name: h.title, acceptedAnswer }
+          })
         })
       }
     }
@@ -263,16 +377,30 @@ export function transformHead(ctx: TransformContext) {
   return head
 }
 
+/**
+ * Normalize a sitemap item's URL to a root-relative path (leading "/" added,
+ * duplicate leading slashes gone). VitePress 1.6 hands items in as
+ * site-relative paths WITHOUT a leading slash (e.g. "en/json/advanced/caching"
+ * or "404.html"), and the exact form varies across versions. One helper feeds
+ * BOTH the 404 filter and the per-item transform below, so the two never
+ * disagree about which shape they are comparing — a future VitePress emitting
+ * "/404" or "404.html" is filtered either way.
+ */
+function normalizeSitemapUrl(url: string | undefined): string {
+  return '/' + String(url ?? '').replace(/^\/+/, '')
+}
+
 // Sitemap configuration for SEO
 export const sitemap = {
   hostname: HOST,
   transformItems(items: SitemapItem[]): SitemapItem[] {
     return items
-      .filter((item) => !item.url.startsWith('404'))
+      .filter((item) => !normalizeSitemapUrl(item.url).startsWith('/404'))
       .map((item) => {
+        const path = normalizeSitemapUrl(item.url)
         // Any homepage (root `/` or `/{lang}/`): point hreflang `zh` and
         // `x-default` at the canonical root `/`.
-        const trimmed = item.url.replace(/^\/+|\/+$/g, '')
+        const trimmed = path.replace(/^\/+|\/+$/g, '')
         const isHome = trimmed === '' || BARE_LANG_RE.test(trimmed)
         if (isHome) {
           item.links = [
@@ -284,11 +412,18 @@ export const sitemap = {
           // VitePress auto-generates locale hreflang (e.g. en-US); shorten to en
           item.links = item.links.map((link) => ({
             ...link,
-            url: link.url?.replace(HOST, '').startsWith('/') ? `${HOST}${link.url}` : link.url,
+            // Input forms vary across VitePress versions: site-relative
+            // ("en/about", "/en/about") or already HOST-absolute. Keep
+            // absolute URLs as-is and qualify relative ones explicitly,
+            // instead of relying on the sitemap stream's hostname fallback.
+            url:
+              link.url == null || link.url.startsWith(HOST)
+                ? link.url
+                : `${HOST}/${link.url.replace(/^\/+/, '')}`,
             lang: LOCALE_TO_SHORT[link.lang] || link.lang
           }))
           // x-default points to the Chinese version (site default is Chinese)
-          const urlMatch = LANG_PATH_RE.exec(item.url)
+          const urlMatch = LANG_PATH_RE.exec(path)
           if (urlMatch) {
             const subPath = urlMatch[2] || ''
             if (!item.links.some((l) => l.lang === 'x-default')) {
@@ -311,13 +446,22 @@ export const head: HeadConfig[] = [
   ['link', { rel: 'mask-icon', href: '/logo.svg', color: '#76B900' }],
   ['meta', { name: 'theme-color', content: '#76B900' }],
 
-  // Open Graph (static - per-page og:title/description/url/locale generated in transformHead)
-  ['meta', { property: 'og:type', content: 'website' }],
+  // Open Graph (static - per-page og:type/title/description/url/locale
+  // generated in transformHead; og:type is per-page: article on content pages)
   ['meta', { property: 'og:site_name', content: 'CyberGo' }],
   ['meta', { property: 'og:image', content: `${HOST}/og-image.png` }],
   ['meta', { property: 'og:image:type', content: 'image/png' }],
   ['meta', { property: 'og:image:width', content: '1200' }],
   ['meta', { property: 'og:image:height', content: '630' }],
+  // One static alt for the single site-wide og-image (the CyberGo brand card);
+  // kept in English — the asset itself is language-neutral branding.
+  [
+    'meta',
+    {
+      property: 'og:image:alt',
+      content: 'CyberGo — high-performance Go open-source library documentation'
+    }
+  ],
 
   // Twitter Card (static - per-page title/description generated in transformHead)
   ['meta', { name: 'twitter:card', content: 'summary_large_image' }],

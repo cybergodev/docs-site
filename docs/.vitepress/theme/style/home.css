@@ -108,7 +108,7 @@
 
 .project-card:hover .tag {
   border-color: var(--vp-c-brand-soft);
-  color: var(--vp-c-brand-2);
+  color: var(--cg-brand-text);
 }
 
 .project-card .actions {
@@ -130,7 +130,7 @@
 }
 
 .project-card .actions .github-link:hover {
-  color: var(--vp-c-brand-1);
+  color: var(--cg-brand-text);
   text-decoration: none;
 }
 
@@ -142,10 +142,16 @@
    Hero Section Enhancements
    ============================================ */
 
+/* Gradient-clipped site name (32px+ = WCAG large text → 3:1 floor). The old
+   start stop --vp-c-brand-1 is #76b900 = 2.41:1 on white, so the sweep STARTS
+   at the text-safe token instead: light #4a7500 → #5a8b00 → #4a7500 (min
+   4.10:1, above even the 4.5:1 body-text bar). Dark is pixel-identical to
+   before (#8ed000 → #76b900 → #5a8b00, min 4.19:1) — dark --cg-brand-text
+   equals the old dark brand-1 slot. */
 .VPHero .name {
   background: linear-gradient(
     135deg,
-    var(--vp-c-brand-1),
+    var(--cg-brand-text),
     var(--vp-c-brand-2),
     var(--vp-c-brand-3)
   );
@@ -154,6 +160,20 @@
   background-clip: text;
   background-size: 200% 200%;
   animation: gradient-shift 3s ease infinite;
+}
+
+/* Engines without background-clip: text would leave -webkit-text-fill-color:
+   transparent and render the whole heading INVISIBLE (audit D6) — degrade to
+   solid text-safe brand instead of the gradient. Conservative by design:
+   engines supporting only the -webkit- prefixed form also take this branch
+   (they lose the gradient, never the text). */
+@supports not (background-clip: text) {
+  .VPHero .name {
+    background: none;
+    color: var(--cg-brand-text);
+    -webkit-text-fill-color: var(--cg-brand-text);
+    animation: none;
+  }
 }
 
 @keyframes gradient-shift {

@@ -1,37 +1,139 @@
 /**
- * lint-autocorrect.ts — local autocorrect gate (CJK typography) backed by the
- * official WASM build of autocorrect (@huacnlee/autocorrect).
+ * lint-autocorrect.ts — local autocorrect gate (CJK typography).
  *
- * Why a wrapper script: the npm package is a wasm-pack library, NOT a CLI —
- * node_modules/.bin gets no `autocorrect` binary. CI runs the docker action
- * (huacnlee/autocorrect-action) with the same Rust engine and the same
- * config files, so wiring `npm run lint:autocorrect` to this script keeps
- * local and CI gates on one engine without a system-level install.
+ * Engine selection — CLI first, WASM fallback (lint and --fix share it):
+ *   1. $AUTOCORRECT_CLI   explicit binary path (invalid value: warn, resolve on)
+ *   2. conventional path  D:/MyProject/tools/autocorrect-cli/autocorrect(.exe),
+ *                         where `npm run setup:autocorrect` installs the pin
+ *   3. `autocorrect` on PATH
+ *   4. WASM fallback      devDep @huacnlee/autocorrect — weaker than the CLI:
+ *                         it skips codeblock & inline-code content and does no
+ *                         spellcheck. That gap let files CI flags pass locally
+ *                         once (2026-10-27: Go comments inside ```go blocks),
+ *                         so the CLI is the real gate; the WASM path is only a
+ *                         degraded fallback and says so on every run.
  *
- * Fidelity notes (matching the CLI's behavior):
- *   - config: .autocorrectrc is fed to loadConfig(); its returned fileTypes
- *     table doubles as the extension whitelist — unknown extensions are
- *     skipped, exactly like the CLI's walk.
- *   - ignore: the wasm build cannot read .autocorrectignore from disk (wasm
- *     has no fs — its Ignorer always answers false), so gitignore semantics
- *     are replicated here with the `ignore` package.
- *   - exit code: non-zero iff any severity-1 (Error) finding exists, mirroring
- *     `autocorrect --lint`.
+ * Why CLI parity matters: CI's lint job (.github/workflows/ci.yml) runs the
+ * pinned release binary `autocorrect ./ --lint` from the repo root. With a CLI
+ * resolved, this script runs the exact same command (same cwd, same scope,
+ * config/ignore files read by the binary itself), so a green local run equals
+ * a green CI run. The CLI's version is checked against PINNED_AUTOCORRECT_VERSION
+ * (scripts/_lib/autocorrect.ts): a mismatch warns loudly — verdicts may diverge —
+ * but still uses the CLI (stronger than the WASM fallback either way).
  *
  * Usage:
- *   npm run lint:autocorrect            # check only, exit 1 on any error
+ *   npm run lint:autocorrect            # check only, non-zero exit on findings
  *   npm run fix:autocorrect             # rewrite files in place (--fix)
  */
+import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { readFile, writeFile, readdir } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ignore from 'ignore'
 import { loadConfig, lintFor, formatFor } from '@huacnlee/autocorrect'
+import {
+  PINNED_AUTOCORRECT_VERSION,
+  conventionalCliPath,
+  probeCliVersion
+} from './_lib/autocorrect'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
 
 const fix = process.argv.includes('--fix')
+
+// ---------------------------------------------------------------------------
+// CLI engine resolution
+// ---------------------------------------------------------------------------
+
+interface CliEngine {
+  /** What to spawn. */
+  cmd: string
+  /** What to print as the engine's provenance. */
+  desc: string
+  /** Version reported by `--version` (null = ran but unparseable). */
+  version: string | null
+}
+
+function probeCli(cmd: string, desc: string): CliEngine | null {
+  const version = probeCliVersion(cmd)
+  if (version === undefined) return null
+  return { cmd, desc, version }
+}
+
+function resolveCli(): CliEngine | null {
+  // 1. Explicit override — a bad value warns and resolution continues.
+  const envCli = process.env.AUTOCORRECT_CLI
+  if (envCli) {
+    const probed = probeCli(envCli, envCli)
+    if (probed) return probed
+    console.warn(
+      `autocorrect: AUTOCORRECT_CLI=${envCli} is not a runnable autocorrect binary — ignoring it and resolving further`
+    )
+  }
+
+  // 2. Conventional install path (where setup:autocorrect puts the pin).
+  const conventional = conventionalCliPath()
+  if (existsSync(conventional)) {
+    const probed = probeCli(conventional, conventional)
+    if (probed) return probed
+    console.warn(`autocorrect: ${conventional} exists but fails to run (--version) — ignoring it`)
+  }
+
+  // 3. PATH (probe the .exe form too on Windows: spawn does no PATHEXT lookup).
+  const pathNames =
+    process.platform === 'win32' ? ['autocorrect.exe', 'autocorrect'] : ['autocorrect']
+  for (const name of pathNames) {
+    const probed = probeCli(name, `${name} (on PATH)`)
+    if (probed) return probed
+  }
+  return null
+}
+
+function warnVersionMismatch(engine: CliEngine): void {
+  const found = engine.version ?? 'unknown'
+  console.warn(
+    `autocorrect: WARNING — CLI version ${found} does not match the pinned ${PINNED_AUTOCORRECT_VERSION}.`
+  )
+  console.warn(
+    '  CI (.github/workflows/ci.yml lint job) runs the pinned binary, so verdicts may diverge.'
+  )
+  console.warn('  Fix by either:')
+  console.warn('    npm run setup:autocorrect')
+  console.warn('      -> reinstall the pinned binary at the conventional path')
+  console.warn('    bump the pin: scripts/_lib/autocorrect.ts + the version and sha256')
+  console.warn('      in .github/workflows/ci.yml (three places must move together)')
+  console.warn('  Continuing with this CLI anyway — still stronger than the WASM fallback.')
+}
+
+const cli = resolveCli()
+if (cli) {
+  if (cli.version !== PINNED_AUTOCORRECT_VERSION) warnVersionMismatch(cli)
+  console.log(`autocorrect: using CLI ${cli.version ?? 'unknown'} (${cli.desc})`)
+  // Byte-identical to CI's lint job: repo-root cwd + `./` scope; the binary
+  // picks up .autocorrectrc / .autocorrectignore itself.
+  const r = spawnSync(cli.cmd, ['./', fix ? '--fix' : '--lint'], {
+    cwd: ROOT,
+    stdio: 'inherit',
+    windowsHide: true
+  })
+  if (r.error) {
+    console.error(`autocorrect: failed to run CLI (${cli.desc}): ${r.error.message}`)
+    process.exit(1)
+  }
+  // Propagate the CLI's exit code (lint: non-zero on any finding; fix: 0).
+  process.exit(r.status ?? 1)
+}
+
+console.log(
+  'autocorrect: CLI not found — falling back to WASM (weaker: skips codeblock & inline code & spellcheck)'
+)
+
+// ---------------------------------------------------------------------------
+// WASM fallback — devDep-engine scan (degraded mode; see header). Behavior is
+// kept from the original WASM-only gate.
+// ---------------------------------------------------------------------------
 
 // Load config first — lintFor/formatFor consult the engine's global config
 // state, so every later call honors .autocorrectrc (spellcheck words etc.).
