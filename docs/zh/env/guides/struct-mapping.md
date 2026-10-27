@@ -68,7 +68,7 @@ type Config struct {
 
 ### envDefault 标签
 
-设置默认值：
+设置兜底值。默认值只在变量**未设置**时生效：键存在但值为空串不会触发默认值——字符串字段得到 `""`，非字符串字段保持零值。
 
 ```go
 type Config struct {
@@ -308,7 +308,7 @@ func (p *Port) UnmarshalText(text []byte) error {
 ```
 
 ::: tip 关于 env.Marshaler / env.Unmarshaler 接口
-`env.Marshaler`（`MarshalEnv()`）与 `env.Unmarshaler`（`UnmarshalEnv(map[string]string)`）只在直接传给 `env.Marshal` / `env.MarshalStruct` / `env.UnmarshalInto` 的顶层值上生效，结构体逐字段填充时不会调用它们。字段级自定义编解码请实现标准库 `encoding.TextMarshaler` / `encoding.TextUnmarshaler`。
+`env.Marshaler`（`MarshalEnv()`）与 `env.Unmarshaler`（`UnmarshalEnv(map[string]string)`）只在直接传给 `env.Marshal` / `env.MarshalStruct` / `env.UnmarshalInto` 的顶层值上生效，结构体逐字段填充时不会调用它们。字段级自定义编解码请实现标准库 `encoding.TextMarshaler` / `encoding.TextUnmarshaler`（Marshal 侧另识别 `json.Marshaler`）。
 :::
 
 ## 配置验证

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "包函数"
 title: "包函数 - CyberGo html | 签名、参数与示例"
-description: "CyberGo html 包级函数参考：Extract、ExtractText、ExtractToMarkdown 与 ExtractBatch 等函数的签名、参数、示例与错误返回；说明 sync.Pool 池化复用机制，以及传入自定义 Config 时改为一次性实例的行为差异。"
+description: "CyberGo html 包级函数参考：Extract、ExtractText、ExtractToMarkdown、ExtractBatch 与 ReadPage 阅读模式系列的签名与错误返回；说明 sync.Pool 池化复用、传入自定义 Config 时改为一次性实例的行为差异。"
 sidebar_position: 10
 ---
 
@@ -11,18 +11,16 @@ sidebar_position: 10
 
 ## 内部机制
 
-:::info 包函数底层的池化设计
-包函数维护一个 `sync.Pool`，在调用之间复用 `Processor` 实例，避免重复分配。实现上有四点：
+:::info 两条结论
+- **池化实例没有缓存。** 包函数内部通过 `sync.Pool` 复用 `Processor`，池中实例以 `DefaultConfig()` 为基础但关闭缓存（`MaxCacheEntries`、`CacheTTL`、`CacheCleanup` 置零），归还时重置统计与审计状态。因此包函数调用不会跨调用复用结果。
+- **传入自定义 `Config` 时改用一次性实例。** 池中实例的配置固定，无法安全复用不同配置，因此每次调用都会新建一个 `Processor` 并在返回前 `Close`，其缓存字段同样置零。
 
-- **池化配置禁用缓存**：池用配置（`poolCfg`）以 `DefaultConfig()` 为基础，但显式置零 `MaxCacheEntries`、`CacheTTL`、`CacheCleanup`。池化实例每次归还都会调用 `ClearCache()`，缓存本就为空；若开启缓存，只会付出哈希与 map 写入开销（`Get` 始终 miss），并额外启动一个清扫空缓存的 goroutine。
-- **归还时重置状态**：归还前依次执行 `ResetStatistics`、`audit.Wait()`、`ClearAuditLog`、`ClearCache`，避免统计、审计与缓存状态跨调用泄漏。
-- **已关闭的实例不归还**：使用过程中被关闭的 `Processor`（属于误用）会被丢弃，不放回池中；`sync.Pool` 允许缺少 `Put`，下次 `Get` 时由 `pool.New` 重建。
-- **panic 兜底**：`pool.New` 仅在库不变量被破坏时 panic（`poolCfg` 由 `DefaultConfig()` 派生，构造即合法）。该 panic 由 `getPooledProcessorSafe` 捕获并包装为 `ErrInternalPanic` 返回，不会逃逸到公开 API。
+需要缓存、累积统计或审计日志时，用 [html.New](./processor) 创建长生命周期的 `Processor`。
 :::
 
 ## 配置参数解析
 
-所有包函数的 `cfg ...Config` 是可选变长参数，由内部 `resolveConfig` 解析：
+除工具函数 `GroupLinksByType` 外，包函数的 `cfg ...Config` 是可选变长参数，由内部 `resolveConfig` 解析：
 
 | 传入参数 | 行为 | 是否走池化 |
 |----------|------|:----------:|
@@ -30,8 +28,8 @@ sidebar_position: 10
 | 传 1 个 | 使用该 `Config`，创建一次性 Processor | **否**（`pooled=false`） |
 | 传 ≥2 个 | 返回 `ErrMultipleConfigs` | — |
 
-:::warning 传入自定义 Config 时不走池化
-池中只存放基于 `DefaultConfig()` 的实例，无法安全复用配置不同的实例。传入自定义 `Config` 时，每次调用都会 `New` 一个一次性 Processor，用完即 `Close`；同时 `MaxCacheEntries`、`CacheTTL`、`CacheCleanup` 被强制置零，因此该实例同样没有缓存。需要在高频调用中复用自定义配置时，直接创建 [Processor](./processor)。
+:::warning 需要缓存或累计统计时改用 Processor
+包函数无论走池化还是一次性实例，都没有缓存、也不保留跨调用的统计与审计。需要在循环、HTTP handler 或批处理中复用自定义配置并让缓存产生收益时，直接创建 [Processor](./processor)。
 :::
 
 ## 构造函数
@@ -120,7 +118,7 @@ func main() {
 func ExtractFromFile(filePath string, cfg ...Config) (*Result, error)
 ```
 
-**错误返回**：除 `Extract` 的错误外，文件访问还可能返回 `*FileError`，包裹 `ErrFileNotFound`、`ErrInvalidFilePath` 或路径遍历拒绝（见 [安全防护](../modules/security) 的 `AllowedBaseDir`）。
+**错误返回**：除 `Extract` 的错误外，文件访问可能返回 `*FileError`：`FileErr` 包裹 `ErrFileNotFound`（文件不存在）或 `ErrInvalidFilePath`（空路径；含 `..` 上跳组件的路径遍历拒绝同样包裹后者，`errors.Is` 可命中）。配置 `AllowedBaseDir` 后路径越界时 `FileErr` 为 `path outside allowed directory`，不匹配任何哨兵错误（见[安全防护](../modules/security)）。文件超过 `MaxInputSize` 时在读取前即被拒绝，返回包裹 `ErrInputTooLarge` 的 `*InputError`。
 
 ## 文本提取
 
@@ -134,10 +132,17 @@ func ExtractText(htmlBytes []byte, cfg ...Config) (string, error)
 
 ### ExtractTextFromFile
 
-`ExtractText` 的文件版本，从磁盘上的 HTML 文件提取纯文本；文件访问错误同样包裹为 `*FileError`（`ErrFileNotFound`、`ErrInvalidFilePath` 或路径遍历拒绝）。
+`ExtractTextFromFile` 是 `ExtractText` 的文件版本，从磁盘上的 HTML 文件提取纯文本；文件访问错误与 [`ExtractFromFile`](#extractfromfile) 相同。
 
 ```go
 func ExtractTextFromFile(filePath string, cfg ...Config) (string, error)
+```
+
+```go
+text, err := html.ExtractTextFromFile("page.html")
+if err != nil {
+	log.Fatal(err)
+}
 ```
 
 ## 上下文版本
@@ -203,6 +208,27 @@ func GroupLinksByType(links []LinkResource) map[string][]LinkResource
 
 用法与示例见 [批量处理](../modules/batch)。
 
+## 阅读模式
+
+阅读模式返回整页分区视图（`*ReadResult`），而不是只选出一篇文章：链接始终保留，导航与页脚按类别标注。共 12 个包函数，签名、`ReadResult`/`PageSection`/`SectionKind` 结构与关键语义见 [阅读模式](./reader)。
+
+| 函数 | 说明 |
+|------|------|
+| `ReadPage` | 整页分区 |
+| `ReadPageWithContext` | 带上下文 |
+| `ReadPageFromFile` | 从文件读取 |
+| `ReadPageFromFileWithContext` | 文件 + 上下文 |
+| `ReadPageToMarkdown` | 整页 Markdown（带链接） |
+| `ReadPageToMarkdownWithContext` | 带上下文 |
+| `ReadPageToMarkdownText` | 整页 Markdown（无链接） |
+| `ReadPageToMarkdownTextWithContext` | 带上下文 |
+| `ReadPageFromFileToMarkdown` | 文件 → Markdown（带链接） |
+| `ReadPageFromFileToMarkdownWithContext` | 文件 + 上下文 |
+| `ReadPageFromFileToMarkdownText` | 文件 → Markdown（无链接） |
+| `ReadPageFromFileToMarkdownTextWithContext` | 文件 + 上下文 |
+
+`ReadPage*` **不参与提取缓存**；`ReadPage*ToMarkdown*` 内部使用临时 Processor，不污染主缓存。详见 [阅读模式](./reader)。
+
 ## 包函数 vs Processor
 
 两者底层都调用 `Processor`，差异在资源复用与状态保留：
@@ -210,8 +236,8 @@ func GroupLinksByType(links []LinkResource) map[string][]LinkResource
 | 维度 | 包函数 | [Processor](./processor) |
 |------|--------|--------------------------|
 | 缓存 | **无**（池化配置 `MaxCacheEntries=0`） | 有（命中返回深拷贝） |
-| 统计 | 每次重置（归还时 `ResetStatistics`） | 累积，可随时 `GetStatistics` |
-| 审计日志 | 每次清空（归还时 `ClearAuditLog`） | 累积，可 `GetAuditLog` 查询 |
+| 统计 | 不跨调用保留（池化归还时 `ResetStatistics`；自定义 `Config` 路径实例即弃） | 累积，可随时 `GetStatistics` |
+| 审计日志 | 不跨调用保留（池化归还时 `ClearAuditLog`；自定义 `Config` 路径实例即弃） | 累积，可 `GetAuditLog` 查询 |
 | 自定义 `Config` | 每次创建并销毁一次性 Processor（缓存字段置零） | 复用同一实例 |
 | 生命周期 | 自动管理（池或一次性实例） | 需手动 `defer Close()` |
 | 适用场景 | 一次性调用、脚本、低频请求 | 高频调用、长驻服务、需缓存 |

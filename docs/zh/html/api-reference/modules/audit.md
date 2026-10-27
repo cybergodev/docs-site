@@ -47,11 +47,25 @@ type AuditConfig struct {
 | `AuditConfig.MaxRawValueLength` | `int` | 原始值最大记录长度，超出截断；`0` 使用默认值 `DefaultMaxRawValueLength`（200） |
 | `AuditConfig.MaxEntries` | `int` | `GetAuditLog` 内存保留条目上限（`0` 使用默认 10000） |
 
+### Validate
+
+`AuditConfig.Validate` 校验审计配置（值接收者，可直接 `cfg.Audit.Validate()` 调用）；`Config.Validate` 内部委托该 `Validate` 完成审计字段的校验。
+
+```go
+func (c AuditConfig) Validate() error
+```
+
+约束与 [`Config.Validate`](../core/config#验证约束) 的审计行一致：`MaxRawValueLength` ≥ 0、`MaxEntries` 在 0–100000 之间。违反时返回包裹 `ErrInvalidConfig` 的 `*ConfigError`，字段名以 Audit. 为前缀（如 Audit.MaxEntries）。
+
+```go
+err := cfg.Audit.Validate()
+```
+
 ## 预设审计配置
 
 ### DefaultAuditConfig
 
-`DefaultAuditConfig` 返回默认审计配置（默认禁用，所有日志标志为 `true`）。
+`DefaultAuditConfig` 返回默认审计配置：`Enabled=false`（审计默认关闭），8 个日志开关全为 `true`。
 
 ```go
 func DefaultAuditConfig() AuditConfig
@@ -106,28 +120,13 @@ type AuditEventType string  // 审计事件类型
 type AuditLevel string      // 审计严重级别
 ```
 
-`AuditEventType` 标识审计事件的类别（取值见下表常量），`AuditLevel` 标识事件的严重级别，二者均为 `string` 类型别名。
+`AuditEventType` 标识审计事件的类别，`AuditLevel` 标识事件的严重级别，二者均为 `string` 类型别名；常量取值见下节。
 
-## 审计事件类型
+## 事件类型与级别
 
-| 常量 | 值 | 说明 |
-|------|------|------|
-| `AuditEventBlockedTag` | `"blocked_tag"` | 被阻止的标签 |
-| `AuditEventBlockedAttr` | `"blocked_attr"` | 被阻止的属性 |
-| `AuditEventBlockedURL` | `"blocked_url"` | 被阻止的 URL |
-| `AuditEventInputViolation` | `"input_violation"` | 输入违规 |
-| `AuditEventDepthViolation` | `"depth_violation"` | 深度违规 |
-| `AuditEventTimeout` | `"timeout"` | 处理超时 |
-| `AuditEventEncodingIssue` | `"encoding_issue"` | 编码问题 |
-| `AuditEventPathTraversal` | `"path_traversal"` | 路径遍历尝试 |
+`AuditEventType` 共 8 种事件：`AuditEventBlockedTag`、`AuditEventBlockedAttr`、`AuditEventBlockedURL`、`AuditEventInputViolation`、`AuditEventDepthViolation`、`AuditEventTimeout`、`AuditEventEncodingIssue`、`AuditEventPathTraversal`。`AuditLevel` 共 3 级：`AuditLevelInfo`、`AuditLevelWarning`、`AuditLevelCritical`。
 
-## 审计级别
-
-| 常量 | 值 | 说明 |
-|------|------|------|
-| `AuditLevelInfo` | `"info"` | 信息级别 |
-| `AuditLevelWarning` | `"warning"` | 警告级别 |
-| `AuditLevelCritical` | `"critical"` | 严重级别 |
+常量值与逐项说明以 [常量与错误](../types/constants#审计常量) 为权威（单一数据源，本页不重复维护该表）。
 
 ## AuditEntry
 
@@ -172,7 +171,7 @@ type AuditEntry struct {
 | `AuditEntry.Metadata` | `map[string]any` | 事件相关的附加键值对 |
 
 :::tip 字段填充约定
-`Timestamp`、`EventType`、`Level`、`Message` 对每条记录恒有值；`Tag`、`Attribute`、`URL` 仅在对应事件（阻止标签/属性/URL）时填充；`InputSize`/`MaxSize` 与 `Depth`/`MaxDepth` 分别随输入违规与深度违规事件填充；`RawValue` 仅在 `IncludeRawValues=true` 时保留；`Metadata` 承载事件特定的附加键值对。
+`Timestamp`、`EventType`、`Level`、`Message` 对每条记录恒有值。`Tag`、`Attribute`、`URL` 仅在对应事件（阻止标签/属性/URL）时填充；被阻止的 URL 同时填入 `URL` 与 `RawValue` 字段。`InputSize`/`MaxSize` 与 `Depth`/`MaxDepth` 分别随输入违规与深度违规事件填充。`RawValue` 仅在 `IncludeRawValues=true` 时保留，记录前统一做 HTML 转义并按 `MaxRawValueLength` 截断。`encoding_issue` 事件把声明的编码名写入 `Metadata["encoding"]`，其余事件的 `Metadata` 承载事件特定的附加键值对。超长的攻击者可控字段在记录时截断：`URL` 超过 256 字节截断并追加 `...[truncated]`，`Tag`/`Attribute`/`Path`/`Message` 超过 256 字节按 rune 安全切割并追加 `...`。
 :::
 
 ## AuditSink 接口
@@ -184,13 +183,13 @@ type AuditSink interface {
 }
 ```
 
-实现方提供两个方法：`Write` 写入单条 `AuditEntry`（约定**非阻塞且并发安全**），`Close` 释放资源。内置 Sink 共 7 个构造函数，覆盖 6 种 Sink 类型。
+实现方提供两个方法：`AuditSink.Write` 写入单条 `AuditEntry`（约定**非阻塞且并发安全**），`AuditSink.Close` 释放资源。内置 Sink 共 7 个构造函数，覆盖 6 种 Sink 类型。
 
 ## Sink 类型
 
 ### LoggerAuditSink
 
-`LoggerAuditSink` 通过标准库 `log.Logger` 输出，带 `[AUDIT]` 前缀。`NewLoggerAuditSink` 默认写入标准错误（`os.Stderr`）；要重定向到文件或网络连接，用 `NewLoggerAuditSinkWithWriter(w)` 指定任意 `io.Writer`（`w` 为 `nil` 时回退到标准错误）。
+`LoggerAuditSink` 通过标准库 `log.Logger` 输出，带 `[AUDIT]` 前缀。`NewLoggerAuditSink` 默认写入标准错误（`os.Stderr`）；要重定向到文件或网络连接，用 `NewLoggerAuditSinkWithWriter` 指定任意 `io.Writer`（传入 `nil` 时回退到标准错误，不会构造出调用即 panic 的 sink）。
 
 ```go
 func NewLoggerAuditSink() *LoggerAuditSink
@@ -204,7 +203,7 @@ func NewLoggerAuditSinkWithWriter(w io.Writer) *LoggerAuditSink
 
 ### ChannelAuditSink
 
-`ChannelAuditSink` 把条目发送到缓冲 channel，适合异步处理或对接外部日志系统。用 `NewChannelAuditSink(bufferSize)` 创建，消费者从 `Channel()` 返回的只读 channel 接收。`Write` **非阻塞**：缓冲区满时丢弃该条目并递增丢弃计数（不阻塞、不报错），丢弃数量可用 `DroppedCount()` 查询，可据此告警或扩容。
+`ChannelAuditSink` 把条目发送到缓冲 channel，适合异步处理或对接外部日志系统。用 `NewChannelAuditSink` 创建（参数为缓冲区大小），消费者从 `Channel` 返回的只读 channel 接收。`Write` **非阻塞**：缓冲区满时丢弃该条目并递增丢弃计数（不阻塞、不报错），丢弃数量可用 `DroppedCount` 查询，可据此告警或扩容。
 
 ```go
 func NewChannelAuditSink(bufferSize int) *ChannelAuditSink
@@ -216,7 +215,7 @@ func NewChannelAuditSink(bufferSize int) *ChannelAuditSink
 |------|------|------|
 | `ChannelAuditSink.Channel` | `func (s *ChannelAuditSink) Channel() <-chan AuditEntry` | 返回只读接收 channel |
 | `ChannelAuditSink.DroppedCount` | `func (s *ChannelAuditSink) DroppedCount() int64` | 返回因缓冲满而被丢弃的条目数 |
-| `ChannelAuditSink.Write` | `func (s *ChannelAuditSink) Write(entry AuditEntry)` | 非阻塞写入；缓冲满时丢弃并计数 |
+| `ChannelAuditSink.Write` | `func (s *ChannelAuditSink) Write(entry AuditEntry)` | 非阻塞写入；缓冲满时丢弃并计数；`Close` 之后再写入为 no-op |
 | `ChannelAuditSink.Close` | `func (s *ChannelAuditSink) Close() error` | 关闭 channel（幂等：仅首次真正关闭） |
 
 ```go
@@ -230,7 +229,7 @@ go func() {
 
 ### WriterAuditSink
 
-`WriterAuditSink` 以 JSON Lines 格式写入 `io.Writer`，用 `NewWriterAuditSink(w)` 创建。
+`WriterAuditSink` 以 JSON Lines 格式写入 `io.Writer`，用 `NewWriterAuditSink` 创建（参数为目标 writer）。
 
 ```go
 func NewWriterAuditSink(w io.Writer) *WriterAuditSink
@@ -243,7 +242,7 @@ func NewWriterAuditSink(w io.Writer) *WriterAuditSink
 
 ### MultiSink
 
-`MultiSink` 把条目扇出到多个 Sink，用 `NewMultiSink(sinks...)` 创建。`Close` 用 `errors.Join` **聚合所有子 Sink 的关闭错误**，而不是只保留最后一个——丢弃早期 Sink 的交付失败会掩盖真实问题。
+`MultiSink` 把条目扇出到多个 Sink，用 `NewMultiSink` 创建（可变参数为要扇出的子 Sink 列表）。写入时逐个调用子 Sink，**单个子 Sink 的 panic 被隔离**，不影响其余子 Sink 与主提取流程（审计子系统是 best-effort）。`Close` 用 `errors.Join` **聚合所有子 Sink 的关闭错误**，而不是只保留最后一个——丢弃早期 Sink 的交付失败会掩盖真实问题。
 
 ```go
 func NewMultiSink(sinks ...AuditSink) *MultiSink
@@ -251,12 +250,12 @@ func NewMultiSink(sinks ...AuditSink) *MultiSink
 
 | 方法 | 说明 |
 |------|------|
-| `MultiSink.Write` | 将条目写入全部子 Sink（跳过 `nil`） |
+| `MultiSink.Write` | 将条目写入全部子 Sink（跳过 `nil`；子 Sink panic 被 recover） |
 | `MultiSink.Close` | 关闭全部子 Sink，用 `errors.Join` 聚合错误 |
 
 ### FilteredSink
 
-`FilteredSink` 用谓词函数过滤条目，用 `NewFilteredSink(sink, filter)` 创建。
+`FilteredSink` 用谓词函数过滤条目，用 `NewFilteredSink` 创建（参数为底层 Sink 与 `func(AuditEntry) bool` 谓词）。
 
 ```go
 func NewFilteredSink(sink AuditSink, filter func(AuditEntry) bool) *FilteredSink
@@ -274,6 +273,8 @@ func NewFilteredSink(sink AuditSink, filter func(AuditEntry) bool) *FilteredSink
 ```go
 func NewLevelFilteredSink(sink AuditSink, minLevel AuditLevel) *LevelFilteredSink
 ```
+
+传入的 `minLevel` 会先转为小写再比较。无法识别的级别字符串（如手写的 `"warn"`）会**禁用过滤**——所有条目都转发到底层 Sink（fail-open），因此应传入 `AuditLevelInfo` / `AuditLevelWarning` / `AuditLevelCritical` 常量。
 
 | 方法 | 说明 |
 |------|------|

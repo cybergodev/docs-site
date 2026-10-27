@@ -104,7 +104,7 @@ type EnvSetter interface {
 }
 ```
 
-**用途：** 仅需要设置/删除能力的场景。两个方法都带验证语义：`EnvSetter.Set` 校验键值后写入并返回错误；`EnvSetter.Delete` 删除键。两者不同于 `EnvStorage.Set` 的纯存储操作。
+**用途：** 仅需要设置/删除能力的场景。两个方法都返回错误，且带操作语义：`EnvSetter.Set` 校验键与值后写入；`EnvSetter.Delete` 删除键并报告错误。两者不同于 `EnvStorage` 对应方法的纯存储操作（无验证、不返回错误）。
 
 ```go
 func updateConfig(setter env.EnvSetter) error {
@@ -127,7 +127,7 @@ type EnvApplicator interface {
 }
 ```
 
-**用途：** 将加载的变量应用到 `os.Environ`，唯一方法为 `EnvApplicator.Apply`。
+**用途：** 将已加载的变量写入进程环境变量，唯一方法为 `EnvApplicator.Apply`。
 
 ```go
 func applyToSystem(applicator env.EnvApplicator) error {
@@ -276,7 +276,7 @@ type AuditHandler interface {
 - `JSONAuditHandler` - 输出 JSON 格式日志（`JSONAuditHandler.Log` / `JSONAuditHandler.Close`）
 - `LogAuditHandler` - 使用标准 log 包输出（`LogAuditHandler.Log` / `LogAuditHandler.Close`）
 - `ChannelAuditHandler` - 发送到通道（`ChannelAuditHandler.Log` / `ChannelAuditHandler.Close`；Close 不关闭外部通道）
-- `CloseableChannelHandler` - 拥有自有缓冲通道的可关闭处理器（`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`）
+- `CloseableChannelHandler` - 拥有自有缓冲通道的可关闭处理器（`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`；`CloseableChannelHandler.Channel` 返回接收端通道，Close 时随之关闭，`CloseableChannelHandler.DroppedEvents` 返回累计丢弃的事件数）
 - `NopAuditHandler` - 空操作处理器（`NopAuditHandler.Log` / `NopAuditHandler.Close`）
 
 ---
@@ -293,7 +293,7 @@ type VariableExpander interface {
 }
 ```
 
-**用途：** 自定义变量展开逻辑，唯一方法为 `VariableExpander.Expand`，支持 `${VAR}`、`${VAR:-default}` 等语法。
+**用途：** 自定义变量展开逻辑，唯一方法为 `VariableExpander.Expand`。展开语法由实现决定：内置展开器支持 `$VAR`、`${VAR}` 及 `${VAR:-default}`、`${VAR:?err}` 等括号操作符。
 
 ```go
 expanded, err := expander.Expand("${BASE_URL}/api")
@@ -734,11 +734,11 @@ const (
 | `ActionGet` | 变量读取 |
 | `ActionSet` | 变量设置 |
 | `ActionDelete` | 变量删除 |
-| `ActionValidate` | 键值验证 |
+| `ActionValidate` | 验证操作 |
 | `ActionExpand` | 变量展开 |
 | `ActionSecurity` | 安全事件 |
 | `ActionError` | 错误事件 |
-| `ActionFileAccess` | 路径访问检查 |
+| `ActionFileAccess` | 文件访问 |
 
 ---
 

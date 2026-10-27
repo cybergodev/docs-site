@@ -1,7 +1,7 @@
 ---
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo html | 5 分钟入门指南"
-description: "CyberGo html 快速入门：安装、从字节与文件提取内容、四种 Config 预设的选择、15+ 编码检测的边界、纯文本与 Markdown/JSON 输出，以及 WithContext 超时控制与 Processor 并发安全调用实践。"
+description: "CyberGo html 快速入门：安装、从字节与文件提取内容、四种 Config 预设的选择、30+ 编码检测的边界、阅读模式与 Markdown/JSON 输出，以及 WithContext 超时控制与 Processor 并发安全调用实践。"
 sidebar_position: 10
 ---
 
@@ -61,7 +61,7 @@ func main() {
 
 ```text
 标题：Go 语言教程
-正文：Go 入门指南
+正文：# Go 入门指南
 
 Go 是一门静态类型的编译语言。
 
@@ -71,7 +71,7 @@ Go 官网
 字数：22
 ```
 
-`WordCount` 按空白分词，CJK 字符每个另计 1 词。
+`WordCount` 按空白分词，CJK 字符每个另计 1 词。`ReadingTime` 按脚本分别折算：空格分词的语言按 200 词/分钟，CJK 字符按 350 字/分钟。标题标签以 Markdown ATX 标记（`# ` 至 `###### `）写入 `Text`；ATX 标记本身不计入字数，标题文本仍按词计入。
 
 ## 从文件提取
 
@@ -119,7 +119,7 @@ md, err := html.ExtractToMarkdown(data)
 jsonBytes, err := html.ExtractToJSON(data)
 ```
 
-`ExtractText` 内部先调用 `Extract` 再取 `.Text`，性能路径与 `Extract` 相同。
+`ExtractText` 内部先调用 `Extract` 再取 `.Text`，处理路径与 `Extract` 相同。
 
 ## 上下文支持
 
@@ -160,7 +160,7 @@ for _, url := range urls {
 wg.Wait()
 ```
 
-包级函数同样并发安全：内部从 Processor 池取用实例，归还时清空缓存，因此池化实例没有缓存收益。需要缓存请用 `html.New(cfg)` 创建常驻 Processor。
+包级函数同样并发安全：内部从 Processor 池取用实例，池化实例禁用缓存，归还时重置统计并清空审计日志，因此没有缓存收益。需要缓存请用 `html.New(cfg)` 创建常驻 Processor。
 
 ### 编码检测
 
@@ -175,11 +175,14 @@ cfg := html.DefaultConfig()
 cfg.Encoding = "gbk"
 ```
 
-支持 UTF-8、GBK、Shift_JIS、EUC-JP、Windows-1252 等 15+ 编码。没有 `<meta charset>` 的 GBK 或 Shift_JIS 页面会被当作 windows-1252 解码成乱码，且不返回错误——生产环境应显式设置 `Config.Encoding`。详见[编码检测](../guides/core-features/encoding-detection)。
+支持 UTF-8、GBK、Shift_JIS、EUC-JP、Windows-1252 等 30+ 编码。没有 `<meta charset>` 的 GBK 或 Shift_JIS 页面会被当作 windows-1252 解码成乱码，且不返回错误。
+
+生产环境应显式设置 `Config.Encoding`，详见[编码检测](../guides/core-features/encoding-detection)。
 
 ## 下一步
 
 - [内容提取](../guides/core-features/content-extraction) - 提取流程与文章识别
+- [阅读模式](../guides/core-features/reader-mode) - 整页分区输出，适合喂给 LLM
 - [输出格式](../guides/core-features/output-formats) - 选择适合场景的输出格式
 - [Processor 复用与缓存](../guides/performance/processor-cache) - 高频调用的性能优化
 - [速查表](./cheatsheet) - 常用 API 速查

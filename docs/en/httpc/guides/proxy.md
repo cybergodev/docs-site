@@ -105,9 +105,9 @@ To confirm the egress proxy per request, use an explicit configuration.
 
 ### Detection Order and Details
 
-1. **Environment variables first** (all platforms): `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` are read first (both cases recognized). If any is set, it is used directly and system settings are not consulted.
+1. **Environment variables first** (all platforms): `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` are read first (both upper and lower case recognized). If either `HTTP_PROXY` or `HTTPS_PROXY` has a value, it is used directly and system settings are not consulted.
 2. **Platform detection as fallback**: without environment variables, platform settings are read. On Linux desktops (GNOME/KDE) the session already exports the proxy to environment variables, so the engine does not read gsettings/dconf directly.
-3. **Request routing**: HTTPS requests prefer `HTTPS_PROXY` and fall back to `HTTP_PROXY` when it is unset. HTTP requests use only `HTTP_PROXY` and fall back to `HTTPS_PROXY` when it is unset. The order matches net/http.
+3. **Per-scheme routing, no cross-fallback**: HTTPS requests use only `HTTPS_PROXY`, and HTTP requests use only `HTTP_PROXY`; neither direction falls back to the other variable — matching net/http's `httpproxy`. A variable that is set but cannot be parsed returns a parse error for the scheme it governs instead of silently connecting directly.
 4. **CGI environments connect directly**: when `REQUEST_METHOD` is set, a proxy from environment variables does not take effect, matching net/http behavior.
 5. **Bare addresses are auto-completed**: values without a protocol prefix such as `HTTP_PROXY=proxy:8080` are treated as `http://`.
 6. **Caching**: the detection result is cached for the client's lifetime and does not hot-reload when environment variables change. Create a new client to pick up changes.
@@ -208,10 +208,10 @@ The round-robin strategy advances the cursor on every selection. A retry that tr
 
 ### Passive Circuit Breaking
 
-The proxy pool has built-in passive health checking. Circuit breaking is triggered only by **connection-level failures** (dial/TLS); HTTP status codes do not trigger it:
+The proxy pool has built-in passive health checking. Circuit breaking is triggered only by a **proxy TCP dial failure**. HTTP status codes never trigger it, and failures after the dial returns (a TLS handshake failure to an `https://` proxy, a rejected CONNECT, a SOCKS5 handshake failure) do not count toward the breaker either:
 
 ```text
-Proxy connection failure
+Proxy TCP dial failure
     ↓
 Failure count +1
     ↓
@@ -219,7 +219,7 @@ Consecutive failures ≥ ProxyFailureThreshold → circuit open (removed from ro
     ↓
 Wait ProxyCooldown → half-open probe (restored to rotation)
     ↓
-Success → reset count, close circuit
+Dial succeeds → reset count, close circuit
 First failure → re-open circuit
 ```
 
@@ -228,6 +228,8 @@ First failure → re-open circuit
 cfg.Connection.ProxyFailureThreshold = 5        // more tolerant of transient flaps
 cfg.Connection.ProxyCooldown = 60 * time.Second // longer cooldown
 ```
+
+Proxy-protocol failures after the dial are covered by the retry layer's forced proxy switch (see [Proxy and Retry Interaction](#proxy-and-retry-interaction)) and do not enter the breaker count.
 
 When every proxy is circuit-broken, the engine returns the proxy with the shortest cooldown (closest to recovery) as a fallback instead of failing outright.
 
@@ -252,7 +254,7 @@ func main() {
 		"http://proxy3:8080",
 	}
 	cfg.Connection.ProxyRotateOnStatus = []int{403} // switch proxy and retry on 403
-	cfg.Retry.MaxRetries = 3                        // retries must be enabled
+	cfg.Retry.MaxRetries = 3                        // with 3 proxies the budget auto-floors at 2; setting 3 explicitly gives fuller coverage
 
 	client, err := httpc.New(cfg)
 	if err != nil {
@@ -271,7 +273,7 @@ func main() {
 ```
 
 :::warning Status-code rotation ≠ circuit breaking
-Rotation triggered by `ProxyRotateOnStatus` does **not** circuit-break the proxy: an IP block applies per target site, so a proxy blocked on site A can still work on site B. Circuit breaking is triggered only by connection-level failures, and requires `Retry.MaxRetries > 0` to take effect.
+Rotation triggered by `ProxyRotateOnStatus` does **not** circuit-break the proxy: an IP block applies per target site, so a proxy blocked on site A can still work on site B. Circuit breaking is triggered only by dial failures; status-code rotation needs a retry budget — `MaxRetries > 0`, or a pool with more than one proxy (in which case the budget is auto-raised to `len(ProxyPool) - 1` even when `MaxRetries = 0`).
 
 When `ProxyRotateOnStatus` is set and the pool holds multiple proxies, the retry budget is automatically raised to `len(ProxyPool) - 1` (capped at the `MaxRetries` limit of 10), ensuring every proxy gets a chance.
 :::
@@ -451,7 +453,7 @@ effective MaxRetries = max(configured MaxRetries, len(ProxyPool) - 1) (capped at
 
 For example, 5 proxies with `MaxRetries = 3`: the budget is raised to 4 (= 5 - 1); the first request uses proxy1, and after a 403 it switches through proxy2…proxy5, trying each proxy exactly once.
 
-**2. Proxy connection failures are force-retried.** While rotation is active, connection failures of the proxy itself (dial failure, TLS failure) bypass the regular retryability classification and go straight into the next retry on the next proxy. Permanently dead proxies (wrong port, unreachable host) do not need to be pruned by hand: forced retries plus consecutive-failure circuit breaking remove them over time.
+**2. Proxy dial failures are force-retried.** While rotation is active, a dial failure on the proxy itself (an error wrapped in `ErrProxyConnectionFailed`) bypasses the regular retryability classification and goes straight into the next retry on the next proxy. Permanently dead proxies (wrong port, unreachable host) do not need to be pruned by hand: forced retries plus consecutive-failure circuit breaking remove them over time.
 
 For retry conditions, the backoff math, and the total timeout budget shared across retries, see [Retry and Fault Tolerance](./retry-fault-tolerance).
 
@@ -460,7 +462,7 @@ For retry conditions, the backoff math, and the total timeout budget shared acro
 The proxy features handle the following security details automatically, with no manual configuration:
 
 - **SSRF exemption**: proxy host addresses (`ProxyURL` and every `ProxyPool` entry) are added to the SSRF exemption list automatically and are never blocked by private-IP checks, so local proxies (e.g. `127.0.0.1:7890`) work as well.
-- **Deduplication**: pool entries with the same `host:port` are merged automatically, avoiding rotation skew and double counting.
+- **Deduplication**: pool entries with the same `host:port` **and the same credentials** are merged automatically, avoiding rotation skew and double counting; the same `host:port` with different credentials counts as a distinct egress entry, and all variants of one gateway share a single circuit-breaker state.
 - **URL validation**: every proxy URL goes through security validation (protocol whitelist http/https/socks5/socks5h, non-empty host, injection protection). An invalid value makes `New()` return an error instead of being silently ignored.
 
 Relationship with TLS: an HTTPS request through an HTTP proxy's CONNECT tunnel is still **end-to-end TLS**. Certificate validation, minimum TLS version, and certificate pinning all apply to the target site, and the proxy only forwards ciphertext.
@@ -474,7 +476,7 @@ When local DNS pollution is a concern, prefer `socks5h` (domain resolution deleg
 | Proxy not taking effect | Both `ProxyURL` and `ProxyPool` set; `ProxyURL` wins | Clear `ProxyURL` and use only `ProxyPool` |
 | Egress IP unchanged for consecutive requests to the same host | Connection reuse pinned the previous proxy tunnel | Enable `ProxyRotatePerRequest` |
 | Proxies circuit-breaking frequently | `ProxyFailureThreshold` too low | Increase the threshold or `ProxyCooldown` |
-| Status-code rotation not working | `Retry.MaxRetries = 0`, or the pool has only 1 proxy | Set `MaxRetries > 0`; keep at least 2 proxies in the pool |
+| Status-code rotation not working | The pool has only 1 proxy and `Retry.MaxRetries = 0` (with more than 1 proxy the budget is auto-raised) | Keep at least 2 proxies in the pool, or set `MaxRetries > 0` explicitly |
 | What happens when all proxies are broken | The whole pool failed consecutively | The engine returns the proxy closest to recovery instead of failing outright; check proxy availability and thresholds |
 | System proxy not detected | Environment variables missing and platform settings off | Verify `HTTP_PROXY`/`HTTPS_PROXY` or the system proxy switch |
 | Localhost proxy blocked by SSRF | The system proxy's exemption list is probed only at construction | Set `Connection.ProxyURL` explicitly (always exempt) or configure `SSRFExemptCIDRs` |

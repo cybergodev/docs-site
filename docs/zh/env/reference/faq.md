@@ -260,7 +260,7 @@ cfg := env.DefaultConfig()
 cfg.OverwriteExisting = false
 
 // 开发环境：允许覆盖
-cfg := env.DevelopmentConfig()
+cfg = env.DevelopmentConfig()
 // OverwriteExisting = true
 ```
 

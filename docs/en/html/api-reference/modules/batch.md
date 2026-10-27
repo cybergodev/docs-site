@@ -47,6 +47,7 @@ Batch extraction uses a **semaphore** (a buffered `chan struct{}`) to bound conc
 - The semaphore capacity equals `WorkerPoolSize`: each goroutine acquires a slot (`sem <- struct{}{}`) before starting and releases it (`<-sem`) when done, so at most `WorkerPoolSize` extractions run at any moment
 - With tens of thousands of input items, still only `WorkerPoolSize` tasks run concurrently, so goroutine count does not grow with input size
 - **Each item runs independently**: it does its own encoding detection and reports its own error, so one failure does not affect the others
+- **A panic in one item is isolated**: when an item's extraction panics internally, that item counts as `Failed` with `Errors[i]` holding an error wrapping `ErrInternalPanic`, and the other items run as usual
 - **A Processor can be shared across goroutines**: concurrent `Extract` calls are thread-safe, and the batch methods reuse one Processor instance
 
 :::tip Choosing WorkerPoolSize

@@ -23,7 +23,7 @@ This checklist is the set of security-configuration items to verify before deplo
 `InsecureSkipVerify = true` invalidates every TLS security measure. HTTPC prints a warning to `stderr` in non-test environments; confirm no such warning appears in the logs before launch.
 :::
 
-Version-semantics notes: `MinTLSVersion`/`MaxTLSVersion` fall back to 1.2/1.3 when `0`; `Min > Max` cannot pass `New()` validation. Once `TLSConfig` is set, the version fields are ignored and `Security.InsecureSkipVerify` no longer takes effect (it must be controlled inside `TLSConfig`). When reviewing a custom `TLSConfig`, check its own fields.
+Version-semantics notes: `MinTLSVersion`/`MaxTLSVersion` fall back to 1.2/1.3 when `0`; `Min > Max` cannot pass `New()` validation. Once `TLSConfig` is set, the version fields are ignored, yet `Security.InsecureSkipVerify = true` still takes effect on that path (injected one-way into the cloned config). When reviewing a custom `TLSConfig`, check its own fields.
 
 ## SSRF Protection
 
@@ -156,7 +156,7 @@ When `ProxyRotateOnStatus` is configured (rotating proxies and retrying by statu
 
 Two further boundaries:
 
-- `io.Reader` request bodies are fully buffered to support retry replay, and bodies over 100MB error out (`retry not supported for streaming bodies`).
+- `io.Reader` request bodies are fully buffered to support retry replay, and bodies over 100MB error out (`retry not supported for streaming bodies exceeding 104857600 bytes`).
 - `context.Canceled`/`context.DeadlineExceeded` are never retried, so proactive cancellation never triggers duplicate requests.
 
 ## Cookie Security
@@ -181,7 +181,7 @@ sm, err := httpc.NewSessionManager(cfg)
 | `Checksum` verification | Not set | Set SHA-256 for critical files | `grep Checksum` |
 | `Overwrite` / `ResumeDownload` | `false` | As needed | Code review |
 
-HTTPC's `Download` includes five layers of path defense (UNC blocking, control-character filtering, system-path protection, path-traversal detection, symlink defense). Even so, avoid passing caller input directly as `FilePath`.
+HTTPC's `Download` includes six layers of path defense (UNC blocking, control-character filtering, Windows device names/ADS/short names, system-path protection, path-traversal detection, symlink defense). Even so, avoid passing caller input directly as `FilePath`.
 
 ## Resource Management
 
@@ -191,7 +191,7 @@ HTTPC's `Download` includes five layers of path defense (UNC blocking, control-c
 | Closing the default client | — | `CloseDefaultClient()` when a long-running service exits | Code review |
 | `WithContext` for cancellation | — | Yes | Code review |
 | Response body release | Automatic | Regular requests need no manual close (and have no way to close) | Confirm the stream is not held |
-| Download residue cleanup | Automatic | Partial files from interruptions or failed verification are deleted automatically | Confirm disk writes do not bypass `Download` |
+| Download residue cleanup | Automatic | Partial files from disk write errors and non-resumed verification failures are deleted automatically (resumed downloads keep the verified prefix) | Confirm disk writes do not bypass `Download` |
 
 ```go
 package main
@@ -237,7 +237,7 @@ When package-level functions (`httpc.Get`, etc.) are used, the default client is
 ### Response Body and Temporary Files
 
 - **Regular requests**: `Result` holds bytes that have already been read and copied. HTTPC performs the read, the drain (up to `min(10MB, MaxResponseBodySize)`, for connection reuse), and the close internally; there is no Body to close manually, and no entry point for doing so
-- **Large files**: use `Download` rather than a regular request. It streams to disk and supports progress callbacks and resume; partial files from interrupted transfers, failed verification, or disk write errors are deleted automatically
+- **Large files**: use `Download` rather than a regular request. It streams to disk and supports progress callbacks and resume; partial files from disk write errors and non-resumed verification failures are deleted automatically, while a resumed download that fails verification keeps the verified prefix and rolls back to the pre-resume offset
 - **`client.Close()`**: closes idle connections, the DoH resolver, and the connection pool; it is idempotent and safe to call repeatedly; a closed client returns `ErrClientClosed` for further requests
 
 ## Monitoring and Auditing
@@ -253,7 +253,8 @@ auditCfg.OnAudit = func(event httpc.AuditEvent) {
 	data, _ := json.Marshal(event)
 	log.Println(string(data))
 }
-auditCfg.Format = "json"
+// The Format field is reserved and has no effect; the output format is
+// decided by the callback (json.Marshal above yields JSON lines).
 auditCfg.IncludeHeaders = true
 auditCfg.MaskHeaders = []string{"Authorization", "Cookie", "Set-Cookie", "X-API-Key"}
 auditMiddleware := httpc.AuditMiddleware(auditCfg)

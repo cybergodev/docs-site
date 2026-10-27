@@ -41,7 +41,7 @@ sidebar_position: 3
 | Windows | `VirtualLock` / `VirtualUnlock` | ✅ |
 | 其他平台（FreeBSD/其他 BSD、Solaris、WASM 等） | 无 | ❌ |
 
-Linux、macOS 与 Windows 之外的平台没有锁定实现：`IsMemoryLockSupported()` 返回 `false`，锁定尝试返回「平台不支持」错误并被记录。`SecureValue` 仍可使用，启用锁定时 `Masked()` 显示 `lock-failed`。未启用锁定时不附加任何锁定状态。
+Linux、macOS 与 Windows 之外的平台没有锁定实现：`IsMemoryLockSupported()` 返回 `false`，锁定尝试返回「平台不支持」错误，错误保存在该值上（`MemoryLockError()` 可查询）。`SecureValue` 仍可使用，启用锁定时 `Masked()` 显示 `lock-failed`。未启用锁定时不附加任何锁定状态。
 
 运行时用 `IsMemoryLockSupported()` 检测当前平台：
 
@@ -208,6 +208,7 @@ fmt.Println(sv.Masked())
 // 未启用锁定：  [SECURE:32 bytes]             // 调用 Masked 时全局开关为 false，不加后缀
 // 空值：        [SECURE:0 bytes]
 // 已关闭：      [CLOSED]
+// nil：         [NIL]
 ```
 
 ## 完整生产示例
@@ -271,8 +272,8 @@ func main() {
 	_ = password // 用于数据库连接等
 
 	// 安全日志（不泄露明文）
-	log.Printf("数据库密码: %s", dbPassword.Masked())
-	// 输出：数据库密码：[SECURE:12 bytes locked]（N 取决于实际值长度）
+	log.Printf("数据库密码：%s", dbPassword.Masked())
+	// 输出：数据库密码：[SECURE:12 bytes locked]（12 为示例值的字节长度）
 }
 ```
 
@@ -331,7 +332,7 @@ defer sv.Release()
 |------|----------|----------|
 | `lock-failed` 出现在 Masked 输出中 | 权限不足或平台不支持 | Linux 配置 `CAP_IPC_LOCK` 或提高 `ulimit -l`；Windows 授予 `SeLockMemoryPrivilege`；其他平台无法锁定 |
 | 严格模式日志刷屏 | 大量 SecureValue 创建时锁定失败 | 检查系统 `RLIMIT_MEMLOCK` 限制，或使用非严格模式 |
-| `IsMemoryLockSupported()` 返回 false | 运行平台不是 Linux/macOS/Windows（如 FreeBSD/其他 BSD、Solaris、WASM） | 这些平台没有锁定实现，锁定尝试失败并记录错误；改用其他措施（如加密存储） |
+| `IsMemoryLockSupported()` 返回 false | 运行平台不是 Linux/macOS/Windows（如 FreeBSD/其他 BSD、Solaris、WASM） | 这些平台没有锁定实现，锁定尝试失败（错误保存在该值上）；改用其他措施（如加密存储） |
 | 内存使用量增加 | 锁定页无法换出 | 减少 SecureValue 持有时间，及时 Release |
 
 ## 相关文档

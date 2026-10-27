@@ -1,7 +1,7 @@
 ---
 sidebar_label: "File Download"
 title: "File Download - CyberGo HTTPC | Download & Verification"
-description: "HTTPC file download API: Download, DownloadConfig, progress callbacks, DownloadResult, SHA-256 checksum verification, and multi-layer path security."
+description: "HTTPC file download API: Download, DownloadConfig, progress callbacks, DownloadResult, SHA-256 checksum verification, and six-layer path safety with UNC blocking."
 sidebar_position: 40
 ---
 
@@ -73,6 +73,8 @@ Returns the default download config: `Overwrite` and `ResumeDownload` both false
 ```go
 type DownloadProgressCallback func(downloaded, total int64, speed float64)
 ```
+
+The download progress callback type; assign it to the `ProgressCallback` field of `DownloadConfig`. When `nil` (the default), no progress is reported during the download.
 
 | Parameter | Type | Description |
 |------|------|------|
@@ -306,7 +308,7 @@ Download needs direct access to `*engine.Response`'s `RawBodyReader()`. If middl
 |------|------|----------|
 | 1 | Length check | Empty paths / over 4096 characters |
 | 2 | UNC path blocking | `\\server\share` or `//server/share` network paths |
-| 3 | Control-character filtering | ASCII < 0x20, 0x7F (DEL), 0x00 (NUL) |
+| 3 | Control-character filtering | ASCII < 0x20, 0x7F (DEL), 0x00 (NUL); on Windows, additionally DOS device names, NTFS alternate data streams, and 8.3 short-name directory aliases |
 | 4 | System-path protection | Writes to OS-protected directories (see table below) |
 | 5 | Path-traversal detection | `../` escaping the working directory |
 | 6 | Symlink defense | The file itself + recursive parent-directory symlink checks |
@@ -324,6 +326,8 @@ Reason: UNC paths can access network resources and may be exploited for SSRF or 
 ### Layer 3: Control-Character Filtering
 
 Every byte in the path is checked: ASCII control characters (0x00-0x1F), DEL (0x7F), and NUL bytes are rejected. This check prevents terminal-escape-sequence injection and CRLF path-confusion attacks.
+
+Windows adds three platform-specific guards (no-ops elsewhere): the final segment is rejected when it is a DOS device name (`CON`, `COM1`, etc., ignoring extension, case, and trailing dots/spaces), preventing a response body from being written to a device; a colon beyond the drive-letter separator (e.g. `file.txt:stream`) is rejected, preventing writes to NTFS alternate data streams; and directory segments containing 8.3 short-name aliases (`PROGRA~1`) are rejected, preventing alias-based bypasses of the system-path and symlink checks.
 
 ### Layer 4: System-Path Protection
 

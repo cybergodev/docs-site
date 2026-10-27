@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Output Formats"
 title: "Output Formats - CyberGo html | Format Comparison Guide"
-description: "CyberGo html output formats: plain text, Markdown, and JSON compared by structure, media handling, and use case, plus inline format fields and decision tips."
+description: "CyberGo html output formats: plain text, Markdown, and JSON compared by structure and use case, plus inline format fields and JSON omission rules."
 sidebar_position: 30
 ---
 
@@ -14,7 +14,7 @@ The library produces plain text, Markdown, or JSON. This page compares the three
 | Feature | Plain Text | Markdown | JSON |
 |---------|-----------|----------|------|
 | Readability | High | High | Low (machine-oriented) |
-| Structure preserved | None | Headings/lists/links/images | Full metadata |
+| Structure preserved | Heading ATX markers and paragraph breaks | Headings/lists/links/images | Full metadata |
 | Image handling | Not emitted | `![alt](url)` | `ImageInfo` list |
 | Link handling | Visible text only | `[text](url)` | `LinkInfo` list |
 | Table support | Rendered per `TableFormat` | Markdown tables | Same in `text`, plus structured metadata |
@@ -42,7 +42,7 @@ fmt.Println(text)
 ### Characteristics
 
 - Images are not emitted; links contribute only their visible text, without the URL
-- Line breaks are preserved between headings and paragraphs
+- Headings are written with Markdown ATX markers (`# ` through `###### `), and line breaks are preserved between paragraphs
 - List content appears as plain text
 - Tables are rendered per `TableFormat` (Markdown tables by default)
 
@@ -78,7 +78,7 @@ Input HTML:
 Output Markdown:
 
 ```markdown
-Getting Started with Go
+# Getting Started with Go
 
 Go is a compiled language.
 
@@ -130,24 +130,49 @@ fmt.Println(string(jsonBytes))
 
 ### Output Structure
 
+A page with an h1, one paragraph, and one link measures as follows:
+
 ```json
 {
-  "text": "Getting Started with Go\n\nGo is a compiled language.\n\nGo Official Site",
+  "text": "# Getting Started with Go\n\nGo is a compiled language.\n\nGo Official Site",
   "title": "Getting Started with Go",
-  "images": [
-    {"url": "gopher.png", "alt": "Gopher", "title": "", "width": "", "height": "", "is_decorative": false, "position": 1}
-  ],
   "links": [
     {"url": "https://go.dev", "text": "Go Official Site", "title": "", "is_external": true, "is_nofollow": false, "position": 1}
   ],
   "processing_time_ms": 2,
   "word_count": 12,
-  "reading_time_ms": 3600
+  "reading_time_ms": 3600,
+  "confidence": 0.6,
+  "extraction_method": "article"
 }
 ```
 
-:::tip Durations are emitted as milliseconds
-`ProcessingTime` and `ReadingTime` carry `json:"-"` tags, so standard serialization skips them; the custom `MarshalJSON` writes them as `processing_time_ms` and `reading_time_ms`. The JSON form targets external consumers and does not implement `UnmarshalJSON`, so it cannot be deserialized back into a `Result`.
+The six fields `text`, `title`, `processing_time_ms`, `word_count`, `reading_time_ms`, and `confidence` are always present (`confidence` has no `omitempty`, so even `0` is serialized as usual). The rest appear as needed:
+
+| Field | Type | When it appears |
+|-------|------|-----------------|
+| `images`/`links`/`videos`/`audios` | Arrays | `omitempty`: omitted when the matching `Preserve*` is `false` or there is no such content |
+| `author` | String | `omitempty`: omitted when there is no author |
+| `description` | String | `omitempty`: omitted when there is no summary |
+| `site_name` | String | `omitempty`: omitted when there is no site name |
+| `canonical_url` | String | `omitempty`: omitted when there is no canonical URL |
+| `published_time` | RFC 3339 time | omitted when zero — a pointer is used internally, so `0001-01-01T00:00:00Z` never appears |
+| `extraction_method` | String | `omitempty`: omitted when empty; it normally always has a value (`article`/`listing`/`body`) |
+
+When the page declares structured metadata (and `ExtractMetadata` is `true`), the output gains these fields:
+
+```json
+{
+  "author": "Example Reporter",
+  "published_time": "2026-04-21T09:30:00Z",
+  "description": "The company posted strong quarterly results on Tuesday.",
+  "site_name": "Example News",
+  "canonical_url": "https://news.example.com/q3-results.html"
+}
+```
+
+:::tip Duration fields are emitted as milliseconds
+`Result.ProcessingTime` and `Result.ReadingTime` carry `json:"-"` tags, so standard serialization skips them; the custom `MarshalJSON` writes them as the millisecond numbers `processing_time_ms` and `reading_time_ms`. The JSON form targets external consumers and does not implement `UnmarshalJSON`, so it cannot be deserialized back into a `Result`.
 :::
 
 ### Use Cases

@@ -115,18 +115,18 @@ cfg.Connection.EnableDoH = true
 cfg.Connection.DoHCacheTTL = 5 * time.Minute // passing 0 also falls back to 5 minutes
 ```
 
-Default DoH providers (in priority order):
+Default DoH providers (in the order they are tried):
 
-| Provider | Address | Description |
-|----------|---------|-------------|
-| Cloudflare | `1.1.1.1/dns-query` | Fastest, privacy-first |
-| Google | `dns.google/resolve` | Global coverage |
-| AliDNS | `dns.alidns.com/resolve` | Optimized for the China region |
+| Provider | Address |
+|----------|---------|
+| Cloudflare | `1.1.1.1/dns-query` |
+| Google | `dns.google/resolve` |
+| AliDNS | `dns.alidns.com/resolve` |
 
 ### How It Works
 
 - **Parallel A + AAAA queries**: every resolution queries IPv4 and IPv6 records simultaneously and merges the results.
-- **Dual-format parsing**: picks JSON (Google/AliDNS style) or RFC 1035 wire format (Cloudflare style) from the response `Content-Type`. When it is missing or unrecognized, JSON is tried first, then wire, staying compatible with misconfigured servers.
+- **Dual-format parsing**: chooses JSON (`application/dns-json` / `application/json`) or RFC 1035 wire format (`application/dns-message` / `application/dns-wire`) purely from the response `Content-Type`, regardless of provider identity. When the Content-Type is missing or unrecognized, JSON is tried first, then wire, staying compatible with misconfigured servers.
 - **Concurrent merging**: concurrent cache misses for the same host collapse into a single network round trip (singleflight), preventing cache stampedes from overloading providers.
 - **Dedicated internal client**: DoH requests go through a dedicated HTTP client (5s timeout, HTTP/2 enabled) that does not consume the business connection pool or the request timeout budget.
 

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Processor & Cache"
 title: "Processor Cache & Reuse - CyberGo html | Reuse Guide"
-description: "CyberGo html Processor reuse and cache: package functions vs instances, sync.Pool, cache key inputs, hit-rate monitoring, and instance maintenance."
+description: "CyberGo html Processor cache and reuse: package vs instance calls, sync.Pool, the cache key, LRU eviction and TTL expiry, hit-rate monitoring, and upkeep."
 sidebar_position: 10
 ---
 
 # Processor Cache & Reuse
 
-CyberGo html is a Go library for HTML content extraction and sanitization. It offers two calling modes: package functions and a long-lived `Processor` instance. They differ in lifecycle and caching. The sections below cover how to choose, how the cache key is built, how to monitor the hit rate, and how to maintain a long-running instance.
+The library offers two calling modes: package functions and a long-lived `Processor` instance. They differ in lifecycle and caching. The sections below cover how to choose, how the cache key is built, how to monitor the hit rate, and how to maintain a long-running instance.
 
 ## Two Calling Modes
 
@@ -86,12 +86,21 @@ cfg.CacheCleanup = 5 * time.Minute // Background sweep interval
 
 `New` starts the background sweep goroutine only when both `CacheTTL` and `CacheCleanup` are greater than 0.
 
+### Eviction and Expiration
+
+The cache manages entries as LRU plus TTL:
+
+- **Capacity eviction**: when a new entry is inserted with `MaxCacheEntries` already reached, the library first probes a small sample of the cache (up to 32 entries) for an expired entry to delete; if none is found, it evicts the least recently used entry.
+- **TTL expiration**: with `CacheTTL > 0`, an entry counts as expired once the TTL has passed since it was written. Expired entries are removed at three points: lazy deletion during hit checks, periodic sweeps by the background goroutine, and the sample probe during capacity eviction. With `CacheTTL = 0`, entries never expire with time and are evicted by LRU only.
+- **Hit promotion**: both hits and updates move an entry to the most recently used position, so entries hit consistently are not evicted for capacity.
+- **Disabled semantics**: with `MaxCacheEntries = 0` the cache is fully off — `Extract` skips key generation and neither reads nor writes the cache.
+
 ### Cache Key Generation
 
 The cache key is a `[16]byte` value used directly as a `map` key; generating it allocates nothing on the heap. Inputs come in two groups:
 
 - **The complete raw input bytes**: `hash/maphash` hashes every byte. On amd64 it uses AES-NI, with a per-process random seed. Because the whole input is hashed, a change anywhere in the document changes the key.
-- **Configuration**: five booleans (`ExtractArticle`, `PreserveImages`, `PreserveLinks`, `PreserveVideos`, `PreserveAudios`) packed into one byte, followed by three format strings (`InlineImageFormat`, `InlineLinkFormat`, `TableFormat`) and `Encoding`.
+- **Configuration**: six booleans (`ExtractArticle`, `PreserveImages`, `PreserveLinks`, `PreserveVideos`, `PreserveAudios`, `ExtractMetadata`) packed into one byte. Three format strings (`InlineImageFormat`, `InlineLinkFormat`, `TableFormat`) and `Encoding` are mixed in after that.
 
 maphash returns 64 bits; splitmix64 diffuses it into a second 64-bit half, and the two form the 128-bit key. The key is 128 bits wide but its effective collision strength is about 64 bits: splitmix64 separates the output space, it does not add entropy.
 
@@ -99,8 +108,8 @@ Consequences:
 
 - The same raw bytes plus the same configuration hit the cache directly on repeated calls, skipping encoding detection, parsing, and extraction;
 - The same document stored in a different encoding (different bytes), or processed with a different `Encoding`, produces a different key and cannot hit;
-- Different `ExtractArticle` or `Preserve*` switches, or different format strings, also prevent a hit;
-- An all-zero key (`[16]byte{}`) is treated by the cache as "no key", so that input misses on every call. The probability is 2^-128.
+- Different `ExtractArticle`, `ExtractMetadata`, or `Preserve*` switches, or different format strings, also prevent a hit;
+- An all-zero key (`[16]byte{}`) is treated by the cache as "no key", so that input misses on every call. The probability is about 2^-64.
 
 ## Monitoring Hit Rate
 
@@ -152,15 +161,24 @@ func init() {
 }
 
 func handleExtract(w http.ResponseWriter, r *http.Request) {
-    data, _ := io.ReadAll(r.Body)
-    result, err := processor.Extract(data)
+    // Cap the read and let extraction follow the request's cancellation and deadline
+    data, err := io.ReadAll(io.LimitReader(r.Body, 50*1024*1024))
     if err != nil {
-        http.Error(w, err.Error(), 500)
+        http.Error(w, "read body failed", http.StatusBadRequest)
         return
     }
-    json.NewEncoder(w).Encode(result)
+    result, err := processor.ExtractWithContext(r.Context(), data)
+    if err != nil {
+        // Map by error kind instead of returning 500 for everything
+        http.Error(w, err.Error(), errorToHTTPStatus(err))
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(result)
 }
 ```
+
+The full mapping is in [Error Handling](./error-handling#web-service-error-mapping).
 
 ### Crawler Batch Processing
 
@@ -183,6 +201,7 @@ Long-running Processors need periodic cleanup:
 // Periodic cache cleanup (prevents unbounded growth)
 go func() {
     ticker := time.NewTicker(10 * time.Minute)
+    defer ticker.Stop()
     for range ticker.C {
         p.ClearCache()
     }
@@ -191,6 +210,7 @@ go func() {
 // Periodic statistics reset (keeps the cache)
 go func() {
     ticker := time.NewTicker(time.Hour)
+    defer ticker.Stop()
     for range ticker.C {
         stats := p.GetStatistics()
         log.Printf("Processed %d, errors %d",
@@ -209,7 +229,9 @@ go func() {
 | Processor (cache enabled) | Full extraction | Key hashing + lookup + `cloneResult` deep copy; skips encoding detection, parsing, and extraction |
 
 :::tip Where the cache applies
-Caching works only on a `Processor` instance. Package functions reuse a Processor through `sync.Pool`, but the pooled configuration sets `MaxCacheEntries`, `CacheTTL`, and `CacheCleanup` to 0 and clears the cache on every return, so there is no cache payoff. Package-level calls that pass a custom Config behave the same way: the library builds a one-shot Processor with the cache fields forced to zero.
+Caching works only on a `Processor` instance. Package functions reuse a Processor through `sync.Pool`, but the pooled configuration sets `MaxCacheEntries`, `CacheTTL`, and `CacheCleanup` to 0, so there is no cache payoff. Package-level calls that pass a custom Config behave the same way: the library builds a one-shot Processor and forces the cache fields to zero.
+
+The reader mode `ReadPage*` family likewise takes no part in caching: even with the cache enabled on the instance, every call reprocesses the input.
 :::
 
 ## Common Mistakes
@@ -225,6 +247,6 @@ Caching works only on a `Processor` instance. Package functions reuse a Processo
 ## Next Steps
 
 - [Performance](./performance) - Internal optimizations, timeout and concurrency tuning
-- [Batch Processing in Practice](./batch-processing) - Concurrent batch extraction
+- [Batch Processing](./batch-processing) - Concurrent batch extraction
 - [API Reference: Processor](../../api-reference/core/processor) - Complete method list
 - [API Reference: Config](../../api-reference/core/config) - Cache configuration details

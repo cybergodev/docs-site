@@ -160,7 +160,7 @@ Standard validation:  trust CA -> trust any certificate signed by that CA
 Certificate pinning:  trust CA + certificate's public key must match the pre-stored hash
 ```
 
-Pinning layers on top of standard validation, with no need to set `InsecureSkipVerify`. HTTPC validates **any layer** of the certificate chain, so pinning the intermediate certificate stays valid after the leaf certificate is renewed.
+Pinning layers on top of standard validation, with no need to set `InsecureSkipVerify`. HTTPC validates **any layer** of the certificates in the verified chains (leaf and intermediates), so pinning the intermediate certificate stays valid after the leaf certificate is renewed.
 
 ### SPKI Hash Generation Steps
 
@@ -234,7 +234,7 @@ func main() {
 `NewSPKIHashPinner` returns an error when the hashes are empty or not valid base64, so configuration problems surface at startup. Validation logic: iterate every layer of the server's certificate chain, compute each SPKI's SHA-256, and pass if any matches a pinned hash.
 
 :::tip
-`CertificatePinner` layers pinning validation **on top of** standard TLS chain validation — no need to set `InsecureSkipVerify`. Validation applies to any layer of the certificate chain, so pinning the intermediate remains valid after the leaf certificate is renewed.
+`CertificatePinner` layers pinning validation **on top of** standard TLS chain validation — no need to set `InsecureSkipVerify`. Validation applies to any layer of the certificates in the verified chains, so pinning the intermediate remains valid after the leaf certificate is renewed.
 :::
 
 ### Three Pinner Constructors Compared
@@ -261,9 +261,11 @@ chainPinner := httpc.NewCertificatePinnerChain(spkiPinner, pubPinner)
 cfg.Security.CertificatePinner = chainPinner
 ```
 
+:::warning
 `NewCertificatePinnerChain` with no arguments does **not** return an error, but the resulting empty chain fails closed: `VerifyPeerCertificate` returns `certificate pinning failed: no pinners configured`, which **rejects every connection**.
 
 All-nil elements are rejected as well, with `no pinner matched`. The public API documentation describes it as a pinner that "accepts nothing". Pass at least one Pinner at construction.
+:::
 
 ### Pinner Verification Details and Failure Behavior
 
@@ -271,12 +273,12 @@ Pinning semantics follow the source (`internal/security/certpin.go`):
 
 | Aspect | Behavior |
 |------|------|
-| Match scope | Iterates **every layer** of the server's certificate chain (`rawCerts`); passes when the SPKI hash of any layer matches any pinned value |
+| Match scope | Standard-verification path: iterates only the certificates in the **verified chains** (`verifiedChains`); passes when the SPKI hash of any layer matches any pinned value — unverified certificates appended by the server do not participate in matching (prevents pin-stuffing: a MITM stuffing the victim's real certificate into its own chain still fails). `InsecureSkipVerify` path: matches the **leaf certificate only**; pinning an intermediate has no effect in that mode |
 | Failure behavior | No match anywhere in the chain -> the handshake is rejected with an error such as `certificate pinning failed: no matching SPKI hash found` |
 | Empty certificate chain | The server provided no certificate -> `no peer certificates provided` |
 | Parse tolerance | Certificates in the chain that cannot be parsed or use an unsupported key type are skipped; matching on the remaining certificates is unaffected |
 | Construction validation | Hashes are `TrimSpace`d first; a non-base64 value reports `invalid base64 hash`; no valid hash reports `at least one valid SPKI hash is required` |
-| Performance | LRU cache of certificate fingerprint -> SPKI hash (1024 entries), so repeated connections do not re-parse certificates |
+| Performance | Certificate-fingerprint-to-SPKI-hash cache (1024 entries, FIFO eviction: a hit does not refresh position, and when full the oldest 256 entries are evicted), so repeated connections do not re-parse certificates |
 | Concurrency safety | The Pinner holds an internal read/write lock and can be shared by multiple Clients; when `Config` is deep-copied, the Pinner is shared by reference (not copied) |
 | Debug description | `Pin()` returns values such as `spki-pins:2`, `public-key-pins:2`, `chain:[spki-pins:1,spki-pins:1]`, which can be written to logs |
 
@@ -310,7 +312,7 @@ func main() {
 When `Security.TLSConfig` is set, HTTPC `Clone()`s the custom configuration and **injects** the `VerifyPeerCertificate` pinning callback on top of it. RootCAs, mTLS certificates, cipher suites, and other settings are all preserved, and pinning validation still applies (see `createTLSConfig` in `internal/connection/pool.go`).
 
 :::warning
-`Security.InsecureSkipVerify` applies only to the HTTPC **default** TLS configuration path. When a custom `TLSConfig` is set, that switch is ignored; skipping verification requires (not recommended) setting the `InsecureSkipVerify` field inside `TLSConfig`.
+After a custom `TLSConfig` is set, `MinTLSVersion`/`MaxTLSVersion` are ignored, but `Security.InsecureSkipVerify = true` **still takes effect**: HTTPC clones the custom configuration and injects this switch one-way (it only forces skipping; an `InsecureSkipVerify` set inside `TLSConfig` itself is unaffected by the top-level switch).
 :::
 
 ### Custom CertificatePinner
@@ -432,10 +434,6 @@ pinner, err := httpc.NewSPKIHashPinner(
 )
 ```
 
-:::tip
-Let's Encrypt's intermediate-certificate public key stays unchanged across rotations (a new certificate is issued but the public key is reused). Pinning the public-key SPKI is more stable than pinning the full intermediate certificate: when the public key is unchanged, the SPKI hash is unchanged.
-:::
-
 ## Security Considerations for Certificate Pinning
 
 | Risk | Consequence | Mitigation |
@@ -474,7 +472,7 @@ cfg := httpc.TestingConfig()
 When HTTPC detects `InsecureSkipVerify = true` in `httpc.New()` and the environment is not a test environment, it prints a warning to `stderr` (once per process). A test environment is identified by an executable ending in `.test`, or the `GO_TEST` / `GOTEST=1` environment variable being set.
 
 :::danger
-`InsecureSkipVerify = true` skips certificate-chain and hostname validation and is for test environments only. When certificate pinning is also configured, the SPKI hash check **still runs**: Go passes the peer certificate to the pinning callback even when chain validation is skipped, making pinning the only verification gate. Certificate-chain validity (expiry, revocation, CA issuance) and hostname validation are all absent in that case.
+`InsecureSkipVerify = true` skips certificate-chain and hostname validation and is for test environments only. When certificate pinning is also configured, the SPKI hash check **still runs**: Go passes the peer certificate to the pinning callback even when chain validation is skipped, making pinning the only verification gate — and in that mode only the **leaf certificate** is matched, so combining `InsecureSkipVerify` with a pinned intermediate certificate always fails the handshake. Certificate-chain validity (expiry, revocation, CA issuance) and hostname validation are all absent in that case.
 
 Never set it to `true` in production. For custom verification logic (e.g. pinning the full certificate), implement the `CertificatePinner` interface instead of skipping verification.
 :::

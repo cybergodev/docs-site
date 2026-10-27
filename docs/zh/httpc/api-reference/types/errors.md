@@ -133,7 +133,7 @@ var retryableStatusCodes = map[int]bool{
 }
 ```
 
-这是 HTTP 状态码触发重试的唯一真相源，重试逻辑与 `IsRetryable()` 共用此表。
+这是内置策略下 HTTP 状态码触发重试的真相源，重试引擎与 `IsRetryable()` 共用此表。配置了 `Connection.ProxyRotateOnStatus` 时，引擎在该表之外额外把这些状态码视为可重试——此类请求可能被重试，即使其 `ClientError.IsRetryable()` 返回 false。
 
 :::tip 超时类型的细微区别
 `ErrorTypeTimeout` 可重试，但**由上下文截止触发的超时不可重试**：`context.DeadlineExceeded` 在第 1 步即被拦截并返回 false。只有传输层超时（如 `net.OpError.Timeout()`）才会进入第 2 步被判为可重试，因此 `WithTimeout` 设置的期限不会被重试突破。
@@ -276,7 +276,7 @@ func SetSecurityWarnOutput(w io.Writer)
 
 | 触发条件 | 警告要点 |
 |---------|---------|
-| `TestingConfig()` 创建的客户端用于非测试环境 | 提示 TLS 证书验证、SSRF 防护、URL/Header 验证均被禁用，应改用 `SecureConfig()` 或 `DefaultConfig()` |
+| 在非测试环境调用 `TestingConfig()` | 提示 TLS 证书验证、SSRF 防护、URL/Header 验证均被禁用，应改用 `SecureConfig()` 或 `DefaultConfig()`（警告在预设函数内即触发，与是否创建客户端无关） |
 | `Security.InsecureSkipVerify=true` 且非测试环境 | 提示 TLS 证书验证被禁用，仅应在测试中使用，生产应用 `SecureConfig()` |
 | 手写 `Config` 命中全关签名（`ValidateURL`/`ValidateHeaders`/`StrictContentLength`/`FollowRedirects`/`EnableHTTP2` 全为 false 且 `Security.MaxResponseBodySize == 0`） | 打印 `[CONFIG WARNING]`：这些 `Default: true` 字段只在 `DefaultConfig()`/预设中为 true，结构体字面量会清零它们；应从 `DefaultConfig()` 起步 |
 

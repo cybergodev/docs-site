@@ -39,12 +39,12 @@ func IsSensitiveKey(key string) bool
 
 | 类别 | 模式 |
 |------|------|
-| 认证类 | `PASSWORD`、`SECRET`、`TOKEN`、`AUTH`、`CREDENTIAL`、`PASSPHRASE`、`SESSION`、`COOKIE` |
-| 密钥类 | `API_KEY`、`APIKEY`、`ACCESS_KEY`、`SECRET_KEY`、`PRIVATE_KEY`、`PUBLIC_KEY` |
-| 加密类 | `PRIVATE`、`ENCRYPTION_KEY`、`ENCRYPT_KEY`、`DECRYPT_KEY`、`SIGNING_KEY`、`SIGN_KEY`、`VERIFY_KEY` |
-| 金融 / PII | `SSN`、`SOCIAL_SECURITY`、`CREDIT_CARD`、`CARD_NUMBER`、`CVV`、`CVC`、`CCV`、`PAN` |
+| 认证类 | `PASSWORD`、`PASSWD`、`SECRET`、`TOKEN`、`AUTH`、`CREDENTIAL`、`PASSPHRASE`、`SESSION`、`COOKIE` |
+| 密钥类 | `API_KEY`、`APIKEY`、`ACCESS_KEY`、`SECRET_KEY`、`PRIVATE_KEY`、`PUBLIC_KEY`、`KEYSTORE` |
+| 加密类 | `PRIVATE`、`ENCRYPTION_KEY`、`ENCRYPT_KEY`、`DECRYPT_KEY`、`SIGNING_KEY`、`SIGN_KEY`、`VERIFY_KEY`、`CERT`、`SALT`、`NONCE` |
+| 金融 / PII | `SSN`、`SOCIAL_SECURITY`、`CREDIT_CARD`、`CARD_NUMBER`、`CVV`、`CVC`、`CCV`、`PAN`、`PWD`、`USERNAME` |
 | 加密货币 | `MNEMONIC`、`SEED`、`RECOVERY`、`WALLET`、`PRIVATE_ADDRESS` |
-| 基础设施 | `CONNECTION_STRING`、`CONN_STRING`、`DATABASE_URL`、`DB_PASSWORD` |
+| 基础设施 | `CONNECTION_STRING`、`CONN_STRING`、`DATABASE_URL`、`DB_PASSWORD`、`DSN` |
 | 云服务 | `AWS_SECRET`、`AZURE_KEY`、`GCP_KEY`、`SERVICE_ACCOUNT` |
 
 ::: tip 子串匹配与标识符边界
@@ -69,6 +69,13 @@ func main() {
 	// 大小写不敏感
 	fmt.Println(env.IsSensitiveKey("api_key")) // true
 	fmt.Println(env.IsSensitiveKey("ApiKey"))  // true
+
+	// 短模式要求前后相邻字节都不是字母或数字（下划线算边界）
+	fmt.Println(env.IsSensitiveKey("AUTH_TOKEN"))    // true
+	fmt.Println(env.IsSensitiveKey("DB_AUTH"))       // true
+	fmt.Println(env.IsSensitiveKey("PWD_HASH"))      // true
+	fmt.Println(env.IsSensitiveKey("AUTHORIZATION")) // false
+	fmt.Println(env.IsSensitiveKey("AUTHOR"))        // false
 
 	// 非敏感键
 	fmt.Println(env.IsSensitiveKey("PORT"))    // false
@@ -108,7 +115,7 @@ func main() {
 	fmt.Println(env.MaskValue("PORT", "8080"))
 	// 输出：8080
 
-	// 非敏感长值（>20 字符）→ 截断到 17 字符后补 "..."
+	// 非敏感长值（>20 字节）→ 截断到 17 字节后补 "..."
 	fmt.Println(env.MaskValue("DESCRIPTION", "this-is-a-very-long-description-value"))
 	// 输出：this-is-a-very-lo...
 }
@@ -175,7 +182,7 @@ import (
 )
 
 func main() {
-	// 第一级：超过 50 字符先截断到 47 字符，再补 "..."
+	// 第一级：超过 50 字节先截断到 47 字节，再补 "..."
 	long := "012345678901234567890123456789012345678901234567890123456789"
 	fmt.Println(env.MaskSensitiveInString(long))
 	// 输出：01234567890123456789012345678901234567890123456...

@@ -29,7 +29,7 @@ func Load(filenames ...string) error
 Loads environment variable files and applies them to the process environment.
 
 **Parameters:**
-- `filenames` - file paths to load. When omitted, `Load` loads the files named by `DefaultConfig().Filenames`, which is `.env`.
+- `filenames` - file paths to load. When omitted, `Load` loads the files named by `DefaultConfig().Filenames`, which is `.env`. Paths must be relative
 
 **Returns:**
 - `error` - load error
@@ -957,7 +957,7 @@ func IsMarshalError(err error) bool
 Reports whether an error is a serialization or deserialization error.
 
 **Parameters:**
-- `err` - error to check
+- `err` - error to check; nil returns false
 
 **Returns:**
 - `bool` - whether it is a `MarshalError`
@@ -1069,7 +1069,7 @@ port := env.GetInt("PORT", 8080)    // PORT= falls back to 8080
 | Indexed keys (`KEY_0`...) | The element is **skipped** after an audit record; the remaining elements are kept. If every element fails, it counts as a miss and the fallback continues |
 | Comma-separated fallback | The **whole list is discarded**; the default (or nil) is returned |
 
-The difference is directly observable: in an indexed key only the bad element is dropped, while a comma-separated value with one bad element fails as a whole.
+The difference between the two semantics: a bad element in an indexed key only affects itself, while a single bad element in a comma-separated value discards the whole list.
 
 ```go
 package main
@@ -1107,7 +1107,7 @@ func main() {
 }
 ```
 
-The two cases use different key names because indexed keys take precedence over the comma-separated value: once `KEY_0`, `KEY_1` exist, the fallback is never reached.
+The two cases use different key names because indexed keys take precedence over the comma-separated value: as long as the indexed keys yield any element, the comma fallback never runs; the comma-separated value is read only when the indexed keys are all missing or all fail to parse.
 
 The element type must be one of: `string`, `int`, `int64`, `uint`, `uint64`, `bool`, `float64`, `time.Duration`. Slice length is capped at 10000; going over the cap is audited.
 

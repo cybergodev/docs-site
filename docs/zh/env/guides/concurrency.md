@@ -7,7 +7,7 @@ sidebar_position: 9
 
 # 并发与生命周期
 
-env 的公开 API 全部并发安全，同一个 `Loader` 可由多个 goroutine 共享。生命周期语义不在此列，以下三件事决定了程序在长时间运行和测试隔离下的行为：全局单例如何初始化与重置；`Apply`/`Close`/`Delete` 对进程环境（`os.Environ`）各自做什么；并发写同名键时谁获胜。
+env 的公开 API 全部并发安全，同一个 `Loader` 可由多个 goroutine 共享；并发安全不涵盖生命周期语义。以下三件事决定程序在长时间运行与测试隔离下的行为：全局单例如何初始化与重置；`Apply`/`Close`/`Delete` 对进程环境（`os.Environ`）各自做什么；并发写同名键时谁获胜。
 
 ## 全局模式的生命周期
 
@@ -96,7 +96,7 @@ if err := loader.Apply(); err != nil {
 
 ### 关闭：Close()
 
-`Close()` 安全清零并解锁内存中存储的全部值（敏感值按字节清零，解锁发生在清零之前），并在 loader 拥有自己的组件工厂时一并关闭它。`Close` 是幂等的：对已关闭或 `nil` 的 loader 再次调用不报错。
+`Close()` 安全清零并解锁内存中存储的全部值（敏感值按字节清零，解锁发生在清零之前），并逐一关闭实现了 `io.Closer` 的自定义解析器，以及 loader 自己拥有的组件工厂。`Close` 是幂等的：对已关闭或 `nil` 的 loader 再次调用不报错。
 
 关键语义：**`Close()` 清零并解锁内存副本，不撤销进程环境**。此前通过 `Apply`、`AutoApply` 或带 `AutoApply` 的 `Set` 写入进程环境的变量原样保留；需要在关闭前从进程环境移除，就逐键调用 `Delete()`。
 
@@ -389,8 +389,8 @@ func main() {
 | 陷阱 | 后果 | 正确做法 |
 |------|------|----------|
 | 在不同代码路径重复调用 `Load()` | 第二次起返回 `ErrAlreadyInitialized` | 只在 `main`/TestMain 初始化一次；测试用 `ResetDefaultLoader()` |
-| 未初始化时依赖 Get* 报错发现配置问题 | 读函数静默返回默认值，问题被掩盖 | 启动后调用 `Validate()`，或用 `Lookup`/`Set`（写路径会返回 `ErrNotInitialized`）显式确认 |
-| `Close()` 后期望进程环境恢复原状 | 已应用变量仍留在进程环境 | 关闭前逐键 `Delete()`，或启用 `OverwriteExisting` 前评估影响 |
+| 未初始化时依赖 Get* 报错发现配置问题 | 读函数静默返回默认值，问题被掩盖 | 启动后调用 `Validate()`，或用 `Set` 探测（写路径返回 `ErrNotInitialized`；`Lookup` 未初始化时与缺键同样返回 `("", false)`） |
+| `Close()` 后期望进程环境恢复原状 | 已应用变量仍留在进程环境 | 关闭前逐键 `Delete()`（`Close` 只清内存副本，不碰进程环境） |
 | 并发/反复写同键但未开 `OverwriteExisting` | 后续写入被静默跳过，读到旧值 | 使用 `DevelopmentConfig`/`TestingConfig` 或显式 `cfg.OverwriteExisting = true` |
 | 为同一份配置反复 `New()` 多个 loader | 重复资源、进程环境来源混乱 | 共享一个 loader（并发安全），或用全局模式 |
 | 忘记 `Close()` 实例 loader | 内存中的敏感值延迟到 GC 才清零 | `defer loader.Close()` |

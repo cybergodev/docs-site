@@ -145,7 +145,7 @@ type MiddlewareFunc func(Handler) Handler
 func Chain(middlewares ...MiddlewareFunc) MiddlewareFunc
 ```
 
-将多个中间件组合为单个中间件。返回的组合器接收最终 Handler，按传入顺序从外到内嵌套：切片第一个中间件包在最外层（最先执行），最后一个紧贴最终 Handler。HTTPC 内部用该组合器把 `MiddlewareConfig.Middlewares` 组装成链。
+将多个中间件组合为单个中间件。返回的组合器接收最终 Handler，按传入顺序从外到内嵌套：切片第一个中间件包在最外层（最先执行），最后一个紧贴最终 Handler。`nil` 条目被静默跳过（按 no-op 处理），不会使链组装崩溃。HTTPC 内部用该组合器把 `MiddlewareConfig.Middlewares` 组装成链。
 
 `Chain` 是 HTTPC 唯一导出的链式组装 API，没有 `Append`/`Use` 之类的可变链构建器。整条链在 `New()` 时经 `buildMiddlewareChain` 一次性组装，缓存在 `clientImpl.middlewareChain` 字段上，之后不可再增删中间件。运行期需要动态行为时，应在中间件内部用条件逻辑实现，而非修改链结构。
 
@@ -188,9 +188,9 @@ finalHandler(ctx, req):
 ```
 
 :::warning 类型断言的边界
-回调（OnRequest/OnResponse）和每请求 SSRF 覆盖（`AllowPrivateIPs`）存在于具体类型 `*engine.Request` 上，而非 `RequestMutator` 接口上；`finalHandler` 经类型断言读取这些钩子。
+回调（OnRequest/OnResponse）、每请求 SSRF 覆盖（`AllowPrivateIPs`）、NoTimeout 与 `RetryNonIdempotent` 覆盖存在于具体类型 `*engine.Request` 上，而非 `RequestMutator` 接口上；`finalHandler` 经类型断言后将这些字段连同全部接口字段一并转发给引擎。
 
-若自定义中间件将 `req` **替换**为非 `*engine.Request` 类型，类型断言失败，这些钩子被**静默跳过**。所有内置中间件都就地修改请求（不替换），因此断言总是成功。
+若自定义中间件将 `req` **替换**为非 `*engine.Request` 类型，类型断言失败，走接口访问器回退路径：上述四类逐请求覆盖与脱敏 URL 缓存被**静默跳过**，仅接口上的字段（headers、queryParams、body、timeout、maxRetries、cookies、followRedirects、maxRedirects、streamBody）仍被转发。所有内置中间件都就地修改请求（不替换），因此断言总是成功。
 :::
 
 ## 内置中间件

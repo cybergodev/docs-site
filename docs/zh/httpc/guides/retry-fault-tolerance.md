@@ -81,7 +81,7 @@ func main() {
 | `MaxRetryDelay` | 0–30min | 30s |
 | `EnableJitter` | 布尔 | true |
 
-`WithMaxRetries(n)` 在请求侧应用同样的 0–10 校验，越界直接报错。`Delay` / `BackoffFactor` 传 0 或负值时，引擎回退默认值（1s / 2.0），不报错；需要特定取值时应显式设置合法值。
+`WithMaxRetries(n)` 在请求侧应用同样的 0–10 校验，越界直接报错。零值语义各不相同：`Delay = 0`（合法值）时引擎按默认 1s 起算初始延迟；`MaxRetryDelay = 0` 选择 30s 默认上限，无法通过该字段关闭上限；`BackoffFactor` 越界（0、负值或 NaN）会被 `ValidateConfig` 以 `ErrInvalidRetry` 拒绝。
 
 ## 退避数学详解
 
@@ -158,7 +158,7 @@ Retry-After: Fri, 31 Jul 2026 15:00:00 GMT（距今 2 小时）→ 截断为 60s
 ```
 
 :::warning 为什么要截断
-恶意或配置错误的服务器可返回极大的 `Retry-After` 值（如 `Retry-After: 999999`），使客户端长时间挂起。60 秒上限即针对此情形：服务器要求等 1 小时时，HTTPC 最多等 60 秒即重试。该上限优先于 `MaxRetryDelay`，且抖动在截断之后施加。
+恶意或配置错误的服务器可返回极大的 `Retry-After` 值（如 `Retry-After: 999999`），使客户端长时间挂起。60 秒上限即针对此情形：服务器要求等 1 小时时，HTTPC 最多等 60 秒即重试。该上限优先于 `MaxRetryDelay`；`Retry-After` 解析出的延迟直接使用，**不施加抖动**——抖动仅作用于指数退避路径。
 :::
 
 ### 优先级
@@ -201,7 +201,7 @@ func main() {
 ```
 
 :::tip Retry-After 对所有可重试状态码生效
-`Retry-After` 不限于 429/503，对 408/429/500/502/503/504 的响应都生效。响应头含 `Retry-After` 时即被解析并使用。
+`Retry-After` 不限于 429/503：对触发重试判定的任何状态码都生效——内置的 408/429/500/502/503/504，以及 `ProxyRotateOnStatus` 注入的扩展码（如 403）。响应头含可解析的 `Retry-After` 时即优先使用该值。
 :::
 
 ## 退避策略
@@ -441,12 +441,12 @@ func main() {
 ```
 
 :::tip 用 HTTPC_DEBUG 观察重试过程
-设置环境变量 `HTTPC_DEBUG=1` 后，引擎将每次尝试的状态码、可重试判定与退避延迟打印到 stderr。排查重试次数或可重试判定时，无需额外添加日志中间件。
+将环境变量 `HTTPC_DEBUG` 设为任意非空值后，引擎将每次尝试的状态码、可重试判定与退避延迟打印到 stderr。排查重试次数或可重试判定时，无需额外添加日志中间件。
 :::
 
 ## 代理池与重试交互
 
-配置了 `ProxyRotateOnStatus` 或 `ProxyRotatePerRequest` 时，HTTPC 会提高 `MaxRetries`，使代理池中的每个代理至少被尝试一次。计算由 `calculateMaxRetries` 完成：
+同时满足三个条件时，HTTPC 自动提高 `MaxRetries`，使代理池中的每个代理至少被尝试一次：配置了 `ProxyRotateOnStatus` 或 `ProxyRotatePerRequest`、`ProxyPool` 多于 1 条、`ProxyURL` 未设置（`ProxyURL` 优先于代理池，设置时池不生效）。计算由 `calculateMaxRetries` 完成：
 
 ```text
 effective MaxRetries = max(配置的 MaxRetries, len(ProxyPool) - 1)
@@ -470,7 +470,7 @@ ProxyRotateOnStatus = [403]   // 或 ProxyRotatePerRequest = true
 ```
 
 :::tip 为什么是 len(ProxyPool) - 1
-首次请求使用第 1 个代理，不计入重试；尝试全部 N 个代理需要 N - 1 次重试。`calculateMaxRetries` 在配置值更小时将其提高到 `len(ProxyPool) - 1`，配置值更大时保持不变。代理轮换与重试预算的联动详见[代理与代理池](./proxy)。
+首次请求使用第 1 个代理，不计入重试；尝试全部 N 个代理需要 N - 1 次重试。`calculateMaxRetries` 在配置值更小时将其提高到 `len(ProxyPool) - 1`，配置值更大时保持不变（前提：`ProxyURL` 为空、池多于 1 条）。代理轮换与重试预算的联动详见[代理与代理池](./proxy)。
 :::
 
 ```go
@@ -513,7 +513,7 @@ func main() {
 
 ### 代理连接失败强制重试
 
-启用代理轮换（`ProxyRotateOnStatus` / `ProxyRotatePerRequest`）后，代理自身的连接失败（拨号失败、TLS 失败）不走常规的可重试分类，而是强制进入下一次重试并切换到下一个代理。端口错误、主机不可达等永久失效的代理由强制重试与连续失败熔断共同剔除。详见[代理与代理池](./proxy)。
+启用代理轮换（`ProxyRotateOnStatus` / `ProxyRotatePerRequest`）后，代理自身的拨号失败（`ErrProxyConnectionFailed` 包装的错误）不走常规的可重试分类，而是强制进入下一次重试并切换到下一个代理。端口错误、主机不可达等永久失效的代理由强制重试与连续失败熔断共同剔除。详见[代理与代理池](./proxy)。
 
 ## 重试预算考量
 
@@ -540,7 +540,7 @@ func main() {
 | 用 `context.WithTimeout` 覆盖 | 精确控制该请求的总预算 |
 
 :::warning 总预算对重试次数的影响
-总预算是硬性的：预算耗尽时，即使重试次数未用完也会立即终止，实际重试次数少于 `MaxRetries`。默认 180s 足以容纳 3 次重试及约 7.7s 退避；若超时设为 5s 且保留默认重试，第一次退避（约 1s）后预算即所剩有限。
+总预算是硬性的：预算耗尽时，即使重试次数未用完也会立即终止，实际重试次数少于 `MaxRetries`。默认 180s 足以容纳 3 次重试及约 7.7s 退避（1s + 2s + 4s 含抖动上限）；若超时设为 5s 且保留默认重试，第一次退避（约 1s）后剩余预算已不足以完成全部尝试。
 
 需要确保重试 N 次时，按 N+1 次请求耗时加退避总和预留预算：
 
@@ -660,10 +660,10 @@ func main() {
 ```
 
 :::tip 两种「重试耗尽」的表现不同
-- 网络错误耗尽：以 `ClientError` 返回（见上方示例），`Attempts > 1`。
+- 网络错误耗尽：以 `ClientError` 返回（见上方示例），`Attempts > 1`，`Type` 保留最后一次失败的原始分类。
 - 可重试状态码耗尽（408/429/5xx）：不报错，最后一次响应原样返回，即 `err == nil`、`StatusCode() == 503`；调用方按普通响应分支处理。
 
-`ErrorTypeRetryExhausted` 的判定方式见[错误处理](./error-handling)；判断「重试后仍失败」使用 `Attempts` 字段。
+`ErrorTypeRetryExhausted` 仅出现在防御性兜底路径（正常执行流程不会把耗尽错误改判为该类型），判断「重试后仍失败」使用 `Attempts` 字段，详见[错误处理](./error-handling)。
 :::
 
 ## 最佳实践
@@ -672,7 +672,7 @@ func main() {
 |------|----------|
 | API 调用 | `MaxRetries=3, Delay=1s, Backoff=2.0`（默认） |
 | 微服务通信 | `MaxRetries=2, Delay=500ms, Backoff=2.0`（快速失败） |
-| 文件下载 | 由调用方控制重试：`Download` 单次执行，不参与重试循环，`MaxRetries` 对它无效 |
+| 文件下载 | `Download` 以 GET 幂等路径走常规重试循环（默认重试 3 次）；需单次执行时在其 options 传 `WithMaxRetries(0)`，配合 `ResumeDownload` 断点续传 |
 | 幂等操作（GET/PUT/DELETE） | 可重试 |
 | 非幂等操作（POST） | 默认单次执行不重试；确需重试用 [`WithRetryNonIdempotent`](../api-reference/core/options#withretrynonidempotent) 显式开启 |
 | 限流 API | 依赖 `Retry-After` 自动解析（已内置） |

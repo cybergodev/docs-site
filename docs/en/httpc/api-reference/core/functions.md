@@ -174,7 +174,7 @@ func SetDefaultClient(client Client) error
 
 Sets a custom client as the default client used by package-level functions. The previous default client is closed automatically. The function is concurrency-safe.
 
-:::warning
+:::warning Limitations
 `SetDefaultClient` accepts only clients created via `httpc.New()` or `httpc.NewDefault()`. It returns an error for nil, foreign, or already-closed clients.
 
 The swap happens before the close: even when the new client is installed, a failure to close the previous default returns `default client replaced, but closing the previous default failed: ...`. That error reports a failed cleanup of the old instance, not a failed replacement.
@@ -240,7 +240,7 @@ result, err = client.Download(ctx, url, cfg)
 result, err = dc.Download(ctx, "/files/report.pdf", cfg)
 ```
 
-:::tip
+:::tip Migration note
 The old download functions (DownloadFile, DownloadWithOptions, DownloadFileWithContext, and DownloadWithOptionsWithContext) were removed in v1.5.2. Use `Download(ctx, url, cfg, options...)` instead, and configure path, overwrite, resume, and checksum through `DownloadConfig`.
 :::
 
@@ -274,7 +274,7 @@ httpc.SetSecurityWarnOutput(log.Writer())
 func FormatBytes(bytes int64) string
 ```
 
-Formats a byte count as a human-readable string (e.g. `"1.50 KB"`, `"500 B"`). Commonly used for displaying download results and in log output.
+Formats a byte count as a human-readable string (e.g. `"1.50 KB"`, `"500 B"`). Commonly used for displaying download results and in log output. Values below 1024 print without decimals (`0` renders as `0 B`); 1024 and above keep two decimals.
 
 ```go
 result, _ := httpc.Download(context.Background(), url, cfg)

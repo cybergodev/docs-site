@@ -52,7 +52,7 @@ var (
 )
 ```
 
-**禁止键检查（实际返回 `*SecurityError`，匹配 `ErrSecurityViolation`）：**
+**禁止键检查（实际返回 `*SecurityError`，同时匹配 `ErrSecurityViolation` 与更特异的 `ErrForbiddenKey`）：**
 
 ```go
 err := loader.Set("PATH", "/malicious")
@@ -562,6 +562,7 @@ func handleValidationError(err error) {
 | `ErrNotInitialized` | 包级函数在默认加载器未初始化时调用（`Set`/`Delete`/`Validate`/`ParseInto`） |
 | `ErrAlreadyInitialized` | 默认加载器已初始化，重复调用 `Load()` |
 | `ErrDuplicateKey` | 同一文档内出现重复键（`DuplicateKeyPolicy = DuplicateKeyError`），或 YAML/JSON 的两个不同路径扁平化后撞到同一个键名 |
+| `ErrAuditFailed` | 启用 `AuditFailClosed` 后审计事件丢失（handler 出错、panic 或通道满），丢失审计轨迹的操作返回此错误而非静默成功 |
 
 ### 判断辅助函数
 

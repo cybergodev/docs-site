@@ -110,7 +110,7 @@ Marshal output is not a verbatim dump of flat keys. Both structured formats tran
 
 ### JSON: underscore keys rebuild nested objects
 
-When marshaling to JSON, keys containing underscores are split on `_` and rebuilt as nested objects (`DATABASE_HOST` → `{"DATABASE": {"HOST": ...}}`). Leaf values are restored by type inference: `"8080"` becomes a number, `"true"` a bool, `"null"` null, and floats likewise.
+When marshaling to JSON, keys containing underscores are split on `_` and rebuilt as nested objects (`DATABASE_HOST` → `{"DATABASE": {"HOST": ...}}`). Leaf values are restored by type inference, which accepts only spellings that round-trip verbatim: `"8080"` becomes a number and `"true"` a bool, while `"007"`, `"1.50"`, and `"1e3"` stay strings. `"null"` also stays a string — JSON null would reload as an empty string, so typing it would silently change the value.
 
 ```go
 package main
@@ -466,7 +466,7 @@ ENABLED=true
 ## Custom Serialization
 
 :::tip Scope of the two custom interfaces
-- **Field level**: to customize encoding or decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler` (`MarshalText()` / `UnmarshalText([]byte)`). The field-by-field logic in `env.Marshal` and `env.UnmarshalInto` recognizes both interfaces.
+- **Field level**: to customize encoding or decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler` (`MarshalText()` / `UnmarshalText([]byte)`). The field-by-field logic in `env.Marshal` and `env.UnmarshalInto` recognizes both interfaces (the marshal side also recognizes `json.Marshaler`).
 - **Top level**: the `env.Marshaler` (`MarshalEnv()`) and `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) interfaces take effect **only on the top-level value passed directly to `env.Marshal`, `env.MarshalStruct`, or `env.UnmarshalInto`**. When the same type appears as a field of an outer struct, they are not called.
 :::
 
@@ -746,7 +746,7 @@ func main() {
 }
 ```
 
-A value is quoted when it contains a space, `#`, `'`, a newline, a carriage return, a tab, a double quote, or `$`, and when it is the literal `null` or `~`. An empty value is written as `""`. Inside a quoted value, `"` becomes `\"`, `\` becomes `\\`, and control characters become `\n`, `\r`, and `\t`. A value with no special character — including one whose only unusual character is a backslash, such as `path\to\file` — is emitted unquoted and unchanged.
+A value is quoted when it contains a space, `#`, `'`, a newline, a carriage return, a tab, a double quote, or `$`, and when it is the literal `null` or `~`. An empty value is written as `""`. Inside a quoted value, `"` becomes `\"`, `\` becomes `\\`, and control characters become `\n`, `\r`, and `\t`. A value with no special character — including one whose only unusual character is a backslash, such as `path\to\file` — is emitted unquoted and unchanged. Concatenating `.env` text by hand bypasses this protection: without Marshal, a `$VAR` written into the file is expanded on load under the default `ExpandVariables = true`.
 
 ### MarshalStruct field handling
 

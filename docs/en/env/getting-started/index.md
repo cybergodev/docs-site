@@ -80,7 +80,7 @@ Global mode uses package-level functions backed by a default Loader singleton. A
 
 The examples on this page use global mode. [Multi-environment Configuration](#multi-environment-configuration) shows the instance-mode equivalent.
 
-Calling `Get*`/`Lookup` before `Load()` raises no error: they return the default or zero value. `Set`/`Delete`/`Validate`/`ParseInto` return `ErrNotInitialized` instead. See [Package Functions](../api-reference/functions) for details.
+Calling package-level functions before `Load()` reports no error, but behavior differs: `Get*` returns the default or zero value, `Lookup` returns `("", false)`, `Keys`/`All` return nil and `Len` returns 0, while `Set`/`Delete`/`Validate`/`ParseInto` return `ErrNotInitialized`. See [Package Functions](../api-reference/functions) for details.
 :::
 
 ## Reading Values - All Types
@@ -141,7 +141,7 @@ fmt.Println(nameFlat, nameDot, nameUpper) // all the same
 ```
 
 **Resolution rules:**
-1. **Exact match**: looks up the key as given (`KEY`)
+1. **Exact match**: looks up the key as given (`KEY`), including literal keys that contain dots (a YAML top-level key `apnews.com` is stored in uppercase as APNEWS.COM)
 2. **Uppercase conversion**: a lowercase key falls back to its uppercase form (`key` → `KEY`)
 3. **Path resolution**: dot paths convert to underscores (`app.name` → `APP_NAME`)
 4. **Numeric index**: a key ending in an index (`hosts.0`) returns that element of the comma-separated value
@@ -177,7 +177,7 @@ timeouts := env.GetSlice[time.Duration]("TIMEOUTS")
 1. Look for indexed keys `KEY_0`, `KEY_1`, `KEY_2`...
 2. If none exist, split the `KEY` value on commas
 
-An indexed element that fails conversion is recorded in the audit log and skipped. If the comma-separated fallback fails, the whole list is discarded and the default is returned.
+Indexed elements are parsed one by one; an element that fails conversion is recorded in the audit log and skipped. If nothing survives the skips, the key is treated as having no indexed keys and the comma-separated value is tried next; if that also fails to parse, the whole list is discarded and the caller's default is returned — no further candidate keys are tried.
 
 ```go
 // Method 1: Indexed keys (recommended)
@@ -366,8 +366,8 @@ func main() {
 		panic(err)
 	}
 
-	// Validate required keys (already checked when loading finished;
-	// this confirms against the current store)
+	// Validate required keys (each file was already checked at parse time;
+	// this re-checks the merged store)
 	if err := loader.Validate(); err != nil {
 		panic(err)
 	}

@@ -52,7 +52,7 @@ password := secret.Reveal()   // Only call when plaintext is needed
 ```
 
 **Core features:**
-- **Memory locking** - prevents swapping to disk on Linux, macOS, and Windows; on other platforms `IsMemoryLockSupported()` returns false, the locking attempt fails and records the error (`Masked()` reports `lock-failed`), and the `SecureValue` remains usable
+- **Memory locking** - prevents swapping to disk on Linux, macOS, and Windows; on other platforms `IsMemoryLockSupported()` returns false, the locking attempt fails and the error is stored on the value (`Masked()` reports `lock-failed`), and the `SecureValue` remains usable
 - **Auto-zeroing** - erases memory on `Release()` and `Close()`
 - **Masked display** - `Masked()` for log output
 - **Thread safety** - concurrent reads and releases are safe
@@ -143,9 +143,9 @@ chmod 400 .env
 
 | Preset | Purpose | Characteristics |
 |--------|---------|-----------------|
-| `DevelopmentConfig()` | Development | Relaxed limits, YAML syntax support |
-| `TestingConfig()` | Testing | Overwrites existing variables, test isolation |
-| `ProductionConfig()` | Production | Strict validation + audit logging, no overwriting |
+| `DevelopmentConfig()` | Development | `OverwriteExisting=true`, YAML syntax allowed, file-size limit raised to 10 MB |
+| `TestingConfig()` | Testing | `OverwriteExisting=true`, `FailOnMissingFile=false`, 64 KB file limit and 50 variables |
+| `ProductionConfig()` | Production | `FailOnMissingFile=true`, `OverwriteExisting=false`, value validation and audit logging enabled |
 
 ```go
 // Recommended production configuration

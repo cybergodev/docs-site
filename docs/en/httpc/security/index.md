@@ -49,9 +49,9 @@ HTTPC's security capabilities span multiple layers of the request lifecycle. Whe
 | TLS layer | During the handshake | Version range (1.2-1.3 by default), ECDHE+AEAD cipher-suite whitelist, curve preferences, renegotiation forbidden, certificate pinning | `internal/connection/pool.go` |
 | Response layer | While reading the response | Dual response-body/decompression caps, strict Content-Length checking, streaming read limits | `internal/engine/response.go` |
 | Output sanitization layer | When logs/errors/audit events are emitted | URL credential masking, sensitive query parameters `[REDACTED]`, sensitive header masking | `internal/validation/sanitize.go` |
-| Download layer | When writing files | Five layers of path defense (UNC/control characters/system directories/traversal/symlinks) and SHA-256 integrity verification | `download.go` |
+| Download layer | When writing files | Six layers of path defense (UNC/control characters/Windows-specific risks/system directories/traversal/symlinks) and SHA-256 integrity verification | `file_security.go`, `download.go` |
 
-Take SSRF as the example. The pre-flight layer rejects `localhost` and private-IP literals by hostname, with no DNS resolution and no network cost. The redirect layer repeats the validation for every hop target. The connection layer resolves DNS and validates the real IP before dialing, so DNS rebinding by an attacker is difficult to slip through. See [SSRF Protection](./ssrf) for details.
+Take SSRF as the example. The pre-flight layer rejects `localhost` and private-IP literals by hostname, with no DNS resolution and no network cost. The redirect layer repeats the validation for every hop target. The connection layer resolves DNS and validates the real IP before dialing, making DNS-rebinding attacks hard to slip through. See [SSRF Protection](./ssrf) for details.
 
 ## Default Behavior: On by Default vs Manual Opt-In
 
@@ -67,14 +67,14 @@ Each default below follows the source code (`DefaultConfig()` in `types.go`).
 | TLS version range | TLS 1.2 – 1.3 | Rejects TLS 1.0/1.1; fields set to 0 fall back to 1.2/1.3 |
 | TLS cipher suites | ECDHE+AEAD whitelist | 6 suites enforcing forward secrecy; `RenegotiateNever` forbids renegotiation |
 | Redirect SSRF validation | Runs on every hop | Redirect targets pass the same SSRF validation |
-| Cross-origin header stripping on redirects | Automatic | Removes Authorization/Cookie/Proxy-Authorization when hopping to a different host |
+| Cross-origin header stripping on redirects | Automatic | When hopping to a different origin (any of scheme/host/port differs), removes Authorization, Proxy-Authorization, Cookie, X-Api-Key, X-Auth-Token |
 | Redirect-loop detection | Automatic | Detects A→B→A cycles (consecutive identical URLs excepted) |
 | Redirect cap | 10 | Configuration hard cap 50; there is no "unlimited" mode |
 | Response body cap | 10MB | Exceeding it returns an error |
 | Decompression-bomb defense | 100MB | Caps the actual decompressed size |
-| Strict Content-Length checking | `StrictContentLength = true` | Errors when the response byte count differs from Content-Length (HEAD excepted) |
+| Strict Content-Length checking | `StrictContentLength = true` | Errors when the response byte count differs from Content-Length (HEAD and compressed responses excepted) |
 | Log/error redaction | Automatic | URL credentials replaced with `***:***`; parameters like token/password replaced with `[REDACTED]` |
-| Download path defense | Automatic | Five-layer check + automatic deletion of downloaded files on verification failure |
+| Download path defense | Automatic | Six-layer check + automatic deletion of the downloaded file on verification failure for non-resumed downloads (resumed downloads keep the verified prefix) |
 | HTTP/2 | `EnableHTTP2 = true` | Negotiated via ALPN under TLS |
 
 ### Off by Default (Explicit Opt-In)
@@ -259,16 +259,18 @@ cfg := httpc.DefaultConfig()
 cfg.Security.MaxDecompressedBodySize = 50 * 1024 * 1024 // 50MB decompressed cap
 ```
 
-### Priority Relationship
+### Effective Rules
 
-| Configuration | Effective limit |
+The two caps apply separately by response type; the smaller value is not taken:
+
+| Response type | Effective limit |
 |----------|----------|
-| Only `MaxResponseBodySize` set | It applies (stricter) |
-| Only `MaxDecompressedBodySize` set | Limits the decompressed size |
-| Both set | The smaller (stricter) one wins |
+| Uncompressed responses | `MaxResponseBodySize`; falls back to 100MB when 0 |
+| Compressed responses (decompressed bytes) | `MaxDecompressedBodySize`; when 0, falls back to `MaxResponseBodySize`, and to 100MB if that is also 0 |
+| Compressed responses (pre-decompression transfer bytes) | Built-in engine cap of 100MB, not modifiable via `Config` |
 
-:::tip
-`MaxResponseBodySize` limits pre-decompression transfer bytes; `MaxDecompressedBodySize` limits post-decompression actual bytes. Together they provide dual-layer protection.
+:::warning
+`MaxResponseBodySize` does not constrain the decompressed result of a compressed response. Under the defaults (10MB / 100MB), a gzip response that decompresses to 50MB passes, while an uncompressed response of the same size is rejected. To tighten compressed responses, lower `MaxDecompressedBodySize` explicitly.
 :::
 
 ## Request Body Size Limit
@@ -307,7 +309,7 @@ Beyond the whitelist, each redirect hop passes the following checks in order; an
 
 1. **Scheme check**: only http/https allowed; other schemes such as `file://` are rejected
 2. **SSRF target validation**: the redirect host is validated against SSRF rules — targets like `http://169.254.169.254/` are rejected outright
-3. **Cross-origin sensitive-header stripping**: when the target host differs from the original host, `Authorization`, `Cookie`, and `Proxy-Authorization` are removed. Even when the redirect is allowed, credentials are never carried to a third-party domain
+3. **Cross-origin sensitive-header stripping**: when the target origin (scheme/host/port) differs from the original origin, `Authorization`, `Proxy-Authorization`, `Cookie`, `X-Api-Key`, and `X-Auth-Token` are removed. Even when the redirect is allowed, credentials are never carried to a third-party domain
 4. **Redirect-loop detection**: detects A→B→A cycles and errors out. Consecutive identical URLs (A→A) do not count as a loop, because the server may return different responses each time
 5. **Hop-count cap**: 10 by default, with a configuration hard cap of 50 (`MaxRedirects`); no "unlimited" mode exists
 
@@ -352,15 +354,16 @@ httpc.SetSecurityWarnOutput(io.Discard)
 
 ## File Download Security
 
-The file path for `Download` passes through five layers of defense in `prepareFilePath`, blocking path traversal and file-overwrite attacks:
+The file path for `Download` passes through six layers of defense in `prepareFilePath`, blocking path traversal and file-overwrite attacks:
 
 1. **UNC path blocking**: rejects network paths such as `\\server\share`
 2. **Control-character filtering**: rejects paths containing control characters (`< 0x20`, `0x7F`, `0x00`)
-3. **System-path protection**: refuses to write to system directories such as `/etc`, `/bin`, `C:\Windows` (including parent-directory symlink resolution)
-4. **Path-traversal detection**: after `filepath.Clean`, blocks `../` escaping the working directory
-5. **Symlink defense**: rejects paths whose target is a symlink and recursively checks parent directories to prevent TOCTOU attacks
+3. **Windows-specific risks**: rejects DOS reserved device names (`CON`, `COM1`, etc.), NTFS alternate data streams (`file.txt:ads`), and 8.3 short-name directory aliases (`PROGRA~1`)
+4. **System-path protection**: refuses to write to system directories such as `/etc`, `/bin`, `C:\Windows` (including parent-directory symlink resolution)
+5. **Path-traversal detection**: after `filepath.Clean`, blocks `../` escaping the working directory
+6. **Symlink defense**: rejects paths whose target is a symlink and recursively checks parent directories to prevent TOCTOU attacks
 
-After the download completes, file integrity can be verified via the `Checksum` field (SHA-256); on verification failure the downloaded file is deleted automatically.
+After the download completes, file integrity can be verified via the `Checksum` field (SHA-256). On verification failure, a non-resumed download deletes the downloaded file; a resumed download keeps the verified prefix and rolls the file back to the pre-resume offset for the next attempt.
 
 ## Audit Middleware
 
@@ -373,7 +376,6 @@ auditMiddleware := httpc.AuditMiddleware(&httpc.AuditConfig{
         log.Printf("[AUDIT] %s %s -> %d (%v)",
             event.Method, event.URL, event.StatusCode, event.Duration)
     },
-    Format:         "json",   // text or json
     IncludeHeaders: true,     // Record request/response headers (sensitive ones masked)
     MaskHeaders:    []string{"Authorization", "Cookie", "Set-Cookie"},
     SanitizeError:  true,     // Scrub sensitive information from errors
@@ -383,7 +385,7 @@ cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{auditMiddleware}
 ```
 
-`SourceIP` and `UserID` are injected via context keys: `httpc.SourceIPKey`, `httpc.UserIDKey`. For audit fields, configuration options, and production practices, see the [Production Checklist](./production-checklist).
+`SourceIP` and `UserID` are injected via context keys: `httpc.SourceIPKey`, `httpc.UserIDKey`. The output format is decided by the `OnAudit` callback (`json.Marshal(event)` yields JSON lines); `Format` is a reserved field with no effect. For audit fields, configuration options, and production practices, see the [Production Checklist](./production-checklist).
 
 ## Next Steps
 

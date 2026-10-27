@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Custom Parser"
 title: "Custom Parser - CyberGo env | Extending File Formats"
-description: "CyberGo env custom parser guide: implement EnvParser, register via RegisterParser, Validator/Auditor from ComponentFactory, TOML/INI examples."
+description: "CyberGo env custom parser guide: implement EnvParser, register via RegisterParser, Validator/Auditor from ComponentFactory, with TOML, INI, and XML examples."
 sidebar_position: 8
 ---
 
@@ -23,11 +23,11 @@ type EnvParser interface {
 
 **Parameters:**
 - `r` - file content reader
-- `filename` - file name, used in error messages
+- `filename` - file name, used only in error messages and audit descriptions
 
 **Returns:**
-- `map[string]string` - parsed key-value pairs
-- `error` - parse error
+- `map[string]string` - parsed key-value pairs; keys must pass `KeyValidator.ValidateKey`
+- `error` - parse error; a non-nil error fails the whole load
 
 ---
 
@@ -56,7 +56,9 @@ type CustomParser struct {
 func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, error) {
 	result := make(map[string]string)
 
-	// 1. Read content (mind the size limit)
+	// 1. Read content. LimitReader hard-truncates the length to MaxFileSize
+	//    (the excess is silently dropped; for an explicit error see the +1
+	//    read pattern in the TOML example below)
 	content, err := io.ReadAll(io.LimitReader(r, p.cfg.MaxFileSize))
 	if err != nil {
 		return nil, err
@@ -142,7 +144,7 @@ func (p *TOMLParser) Parse(r io.Reader, filename string) (map[string]string, err
 		// Parse key = value
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) != 2 {
-			continue // or return error
+			continue // lines without '=' (e.g. TOML array-table syntax) are skipped
 		}
 
 		key := strings.TrimSpace(parts[0])
@@ -259,7 +261,7 @@ func (p *INIParser) Parse(r io.Reader, filename string) (map[string]string, erro
 type ParserFactory func(cfg Config, factory *ComponentFactory) (EnvParser, error)
 ```
 
-The factory function receives `Config` and `ComponentFactory` and returns a parser instance.
+The factory function receives `Config` and `ComponentFactory` and returns a parser instance. `New()` invokes every registered factory with the current Config and the factory it built itself; a factory error fails `New()` directly, and a panic inside a factory is captured and converted into a creation error.
 
 **Parameters:**
 - `cfg` - configuration object with all limits and security settings
@@ -283,14 +285,16 @@ Registers a custom format parser.
 **Error cases:**
 - The built-in formats (`FormatEnv`, `FormatJSON`, `FormatYAML`) cannot be overridden
 - The format is already registered
+- `factory` is nil
 
 **Notes:**
-- Register before calling `env.New()`
+- A Loader snapshots the parser registry at `New()` time, so register before calling `env.New()`; already-created Loaders are unaffected by later registrations
 - Registering from an `init()` function is the common pattern
+- `ForceRegisterParser` is exempt from the already-registered check; it is the way to replace a built-in parser or re-register a format
 
 ### Using ComponentFactory
 
-Obtain the validator and auditor from the `ComponentFactory`:
+`*ComponentFactory` provides `Validator()` and `Auditor()`. Fetch both inside your factory function and store them as fields — do not construct your own:
 
 ```go
 type SecureParser struct {
@@ -444,11 +448,13 @@ func (p *CustomParser) Parse(r io.Reader, filename string) (map[string]string, e
 
 ### 3. Provide Meaningful Errors
 
+Error messages end up in logs and in caller hands, so never echo the raw line: run lines that may contain secrets through `env.MaskSensitiveInString` first, then put the result in `Content`.
+
 ```go
 type CustomParseError struct {
     File    string
     Line    int
-    Content string
+    Content string // sanitized line content, no plaintext secrets
     Err     error
 }
 

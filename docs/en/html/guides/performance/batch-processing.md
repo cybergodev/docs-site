@@ -1,11 +1,11 @@
 ---
 sidebar_label: "Batch Processing"
 title: "Batch Processing - CyberGo html | Concurrency & Isolation"
-description: "CyberGo html batch processing: four batch APIs, package vs Processor caching, WorkerPoolSize concurrency, the 10000-item cap, cancellation, failure isolation."
+description: "CyberGo html batch processing: four batch APIs, package vs Processor caching, WorkerPoolSize concurrency, 10000-item cap, cancellation, and failure isolation."
 sidebar_position: 20
 ---
 
-# Batch Processing in Practice
+# Batch Processing
 
 The batch APIs process multiple documents in parallel using `WorkerPoolSize` concurrency slots, with a 10000-item cap per batch. This page covers the four batch functions, concurrency control, cancellation semantics, and failure isolation; field definitions and full signatures are in [API Reference: Batch](../../api-reference/modules/batch).
 
@@ -35,7 +35,7 @@ defer p.Close()
 br = p.ExtractBatch(pages)
 ```
 
-`Results[i]` and `Errors[i]` correspond to the `i`-th input: on success `Results[i]` is non-nil and `Errors[i]` is nil; on failure or cancellation `Results[i]` is nil. Always `Success + Failed + Cancelled == len(input)`.
+`Results[i]` and `Errors[i]` correspond one-to-one with the `i`-th input: on success `Results[i]` is non-nil and `Errors[i]` is nil; on failure or cancellation `Results[i]` is nil. Always `Success + Failed + Cancelled == len(input)`.
 
 ## Basic Example
 
@@ -77,7 +77,7 @@ func main() {
 | Call form | Cache | Use case |
 |-----------|-------|----------|
 | `html.ExtractBatch(pages)` | Disabled: the pooled Processor has `MaxCacheEntries = 0`, and the cache is cleared on return | One-off batch jobs |
-| `p.ExtractBatch(pages)` | Enabled: reuses the Processor cache | High-frequency batches with repeated content |
+| `p.ExtractBatch(pages)` | Enabled: reuses the Processor cache | High-frequency batches with repeated content within or across batches |
 
 :::warning Package functions never cache
 
@@ -132,7 +132,7 @@ Use `runtime.NumCPU()` for pure CPU parsing; file-heavy jobs such as `ExtractBat
 
 ## The 10000-Item Batch Cap
 
-Above `maxBatchSize` (10000) the batch processes nothing; instead every `Errors[i]` receives the same error and `Failed` equals the input count:
+A batch of more than 10000 items (a fixed constant cap with no config knob) processes nothing; instead every `Errors[i]` receives the same error and `Failed` equals the input count:
 
 ```go
 huge := make([][]byte, 10001)
@@ -151,7 +151,7 @@ fmt.Println(errors.Is(br.Errors[0], html.ErrBatchTooLarge))
 
 :::warning Over the cap fails the whole batch, not the process
 
-`maxBatchSize = 10000` is a hard limit with no config knob. The call returns normally with `Failed` equal to the input count. To process more, call in chunks of ≤10000; test the error with `errors.Is(err, html.ErrBatchTooLarge)` rather than comparing strings.
+The 10000-item limit is a fixed constant with no config knob. Over the cap the call still returns normally, with `Failed` equal to the input count. To process more, call in chunks of ≤10000; test the error with `errors.Is(err, html.ErrBatchTooLarge)` rather than comparing strings.
 
 :::
 
@@ -164,6 +164,8 @@ fmt.Println(errors.Is(br.Errors[0], html.ErrBatchTooLarge))
 | Completed | Result kept in `Results` |
 | Running | Runs to completion and records its result |
 | Not started | Skipped, `Cancelled` incremented, `Errors[i] = ctx.Err()` |
+
+Passing an already-cancelled `ctx` is an edge case: no item has started, so `Cancelled` equals the input count, `Results` are all nil, and every `Errors[i]` is `context canceled`.
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -248,7 +250,7 @@ func main() {
 
 :::warning Empty input is not a failure
 
-`[]byte("")` and whitespace-only input do not error: extraction returns an empty `Result`, and the item counts as `Success` in a batch. An empty input slice returns an empty `BatchResult` with empty (non-nil) `Results` / `Errors`. Whole-batch failures (more than 10000 items, a closed Processor, an invalid `Config` passed to a package-level function) put the same error in every item.
+`[]byte("")` and whitespace-only input do not error: extraction returns an empty `Result`, and the item counts as `Success` in a batch. An empty input slice returns an empty `BatchResult` with empty `Results` / `Errors`. Whole-batch failures (more than 10000 items, a closed Processor, an invalid `Config` passed to a package-level function) put the same error in every item.
 
 :::
 

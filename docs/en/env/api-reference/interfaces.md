@@ -106,10 +106,12 @@ type EnvSetter interface {
 }
 ```
 
-**Use case:** when a function only needs to set and delete. Both methods validate, unlike plain storage:
+**Use case:** when a function only needs to set and delete. Both methods return an error and carry operation semantics:
 
-- `EnvSetter.Set` checks the key and value, writes them, and returns an error.
-- `EnvSetter.Delete` removes a key. Unlike `EnvStorage.Set`, both methods validate.
+- `EnvSetter.Set` validates the key and value, then writes them.
+- `EnvSetter.Delete` removes a key and reports failures.
+
+Both differ from the plain storage operations on `EnvStorage` (no validation, no error return).
 
 ```go
 func updateConfig(setter env.EnvSetter) error {
@@ -132,7 +134,7 @@ type EnvApplicator interface {
 }
 ```
 
-**Use case:** writing loaded variables to `os.Environ`. The single method is `EnvApplicator.Apply`.
+**Use case:** writing loaded variables to the process environment. The single method is `EnvApplicator.Apply`.
 
 ```go
 func applyToSystem(applicator env.EnvApplicator) error {
@@ -281,7 +283,7 @@ type AuditHandler interface {
 - `JSONAuditHandler` - writes JSON-format logs (`JSONAuditHandler.Log` / `JSONAuditHandler.Close`)
 - `LogAuditHandler` - writes through the standard `log` package (`LogAuditHandler.Log` / `LogAuditHandler.Close`)
 - `ChannelAuditHandler` - sends to a channel (`ChannelAuditHandler.Log` / `ChannelAuditHandler.Close`; `Close` does not close the external channel)
-- `CloseableChannelHandler` - closeable handler with its own buffered channel (`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`)
+- `CloseableChannelHandler` - closeable handler with its own buffered channel (`CloseableChannelHandler.Log` / `CloseableChannelHandler.Close`; `CloseableChannelHandler.Channel` returns the receiving end of the channel, which is closed along with `Close`, and `CloseableChannelHandler.DroppedEvents` returns the cumulative number of dropped events)
 - `NopAuditHandler` - discards events (`NopAuditHandler.Log` / `NopAuditHandler.Close`)
 
 ---
@@ -298,7 +300,7 @@ type VariableExpander interface {
 }
 ```
 
-**Use case:** custom variable expansion. The single method is `VariableExpander.Expand`, which supports `${VAR}`, `${VAR:-default}`, and the other syntaxes listed in [Config API](./config).
+**Use case:** custom variable expansion. The single method is `VariableExpander.Expand`. The expansion syntax is decided by the implementation: the built-in expander supports `$VAR` and `${VAR}` plus bracket operators such as `${VAR:-default}` and `${VAR:?err}` (see [Config API](./config)).
 
 ```go
 expanded, err := expander.Expand("${BASE_URL}/api")
@@ -639,7 +641,7 @@ func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
 ```
 
 **Parameters:**
-- `logger` - the `log.Logger` to write through
+- `logger` - the `log.Logger` to write through. When nil, the default logger is used (stderr, `[AUDIT] ` prefix, with timestamp)
 
 ```go
 import "log"
@@ -737,11 +739,11 @@ The ten action constants map to these operations:
 | `ActionGet` | Variable reads |
 | `ActionSet` | Variable writes |
 | `ActionDelete` | Variable deletion |
-| `ActionValidate` | Key and value validation |
+| `ActionValidate` | Validation operations |
 | `ActionExpand` | Variable expansion |
 | `ActionSecurity` | Security events |
 | `ActionError` | Error events |
-| `ActionFileAccess` | Path access checks |
+| `ActionFileAccess` | File access |
 
 ---
 

@@ -282,7 +282,7 @@ func NewChannelAuditHandler(ch chan<- AuditEvent) *ChannelAuditHandler
 ::: warning 通道所有权
 `ChannelAuditHandler` **不拥有**通道，`Close()` **不会**关闭底层通道。调用者必须自行关闭通道，以通知接收方结束。关闭时机要在使用该处理器的 loader 关闭之后、且没有 `Log` 调用在途——提前 `close(ch)` 会让后续 `Log` 触发 send-on-closed-channel panic。通道缓冲区满时，`Log()` 会阻塞，建议使用带缓冲的通道。
 
-`ch` 为 nil 时不会永久阻塞：`Log()` 对每条事件返回错误（事件被丢弃）。该错误不会回报给 `LoadFiles` / `Set` 等调用方，只有启用 `AuditFailClosed` 后才会作为审计失败暴露，因此传 nil 通道基本等于静默丢弃全部审计事件。
+`ch` 为 nil 时不会永久阻塞：`Log()` 对每条事件返回错误（事件被丢弃）。该错误不会回报给 `LoadFiles` / `Set` 等调用方，只有启用 `AuditFailClosed` 后才会作为审计失败暴露，因此未启用 `AuditFailClosed` 时传 nil 通道等同于静默丢弃全部审计事件。
 :::
 
 ```go
@@ -784,10 +784,11 @@ type EnvParser interface {
 
 `.env` 格式解析器，支持：
 - `KEY=value` 语法
-- `export KEY=value` 语法
+- `export KEY=value` 语法（需 `AllowExportPrefix=true`，默认开启）
 - 单引号 `'value'` 和双引号 `"value"`
-- 变量展开 `${VAR}` 和 `${VAR:-default}`
+- 变量展开 `${VAR}` 与 `${VAR:-default}`（需 `ExpandVariables=true`，默认开启）
 - 注释 `#`
+- `KEY: value` 冒号分隔（需 `AllowYamlSyntax=true`，默认关闭）
 
 ### JSON Parser
 

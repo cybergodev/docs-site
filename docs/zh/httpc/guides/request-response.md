@@ -72,7 +72,7 @@ result, err := client.Get(url,
 
 所有头键值都会做 CRLF 注入校验；含控制字符或超长的键值返回 `ErrInvalidHeader`。
 
-请求头的生效顺序为：请求体 `Content-Type` → 客户端默认头（`Defaults.Headers`）→ 选项与中间件设置的头。后一层覆盖前一层中的同名项。
+同名头的优先级：选项与中间件设置的头最高（直接写入并覆盖）；客户端默认头（`Defaults.Headers`）次之，仅在对应头为空时填充；请求体自动检测出的 `Content-Type` 最低，仅在未显式设置时生效。
 
 ### 请求体
 
@@ -100,7 +100,7 @@ result, err := client.Post(url, httpc.WithBinary(data, "image/png"))
 result, err := client.Post(url, httpc.WithBody(data))
 // string → text/plain; charset=utf-8, []byte → application/octet-stream,
 // map[string]string → application/x-www-form-urlencoded,
-// *FormData → multipart/form-data, io.Reader → passed through,
+// *FormData → multipart/form-data, io.Reader → 原样透传（不设 Content-Type）,
 // 其他 → application/json
 // 可选显式指定：httpc.WithBody(data, httpc.BodyJSON)
 ```
@@ -267,7 +267,7 @@ result, err := client.Get(url,
 )
 ```
 
-回调返回错误会中止请求（`OnResponse` 返回错误则整个请求失败）。多个回调按添加顺序链式执行。
+任一回调返回错误即中止请求：OnRequest 的错误在发送前返回，`OnResponse` 的错误使整个请求失败。多个回调按添加顺序链式执行，前一个出错则后续不再执行。
 
 :::tip 回调按「尝试」执行，中间件按「请求」执行
 `WithOnRequest`/`WithOnResponse` 在引擎内部触发，**每次尝试（含重试）都会执行**；中间件链则包裹整个重试周期，一个逻辑请求只执行一次。需要每次尝试的粒度用回调，需要整请求的粒度用[中间件](./middleware-chain)。
@@ -325,7 +325,7 @@ fmt.Println(result.Meta.RedirectCount)  // 重定向次数
 | 请求 Cookie | `GetRequestCookie(name)` / `HasRequestCookie(name)` / `RequestCookies()` | 实际随请求发出的 Cookie（含重定向后的最终值） |
 | 元数据 | `Meta.Duration` / `Attempts` / `RedirectChain` / `RedirectCount` / `ProxyURL` | 耗时、尝试次数（含首次）、重定向链、本次使用的代理 |
 | 文件 | `SaveToFile(path)` | 响应体写入文件（含路径穿越 / symlink 安全校验） |
-| 调试 | `String()` | 脱敏摘要，敏感头打码、正文截断 200 字符 |
+| 调试 | `String()` | 脱敏摘要：敏感头打码为 `***`，正文只报告字节数、不输出内容 |
 
 所有访问器都是 nil 安全的：`Result` 或内层指针为 nil 时，`StatusCode()` 返回 0、`Body()` 返回空串、判断方法返回 false，不会 panic。
 
@@ -363,12 +363,12 @@ if err := result.SaveToFile("user.json"); err != nil {
 
 ### 调试输出
 
-`String()` 生成单行摘要，适合打进日志：敏感头（`Authorization`、`Cookie`、`Set-Cookie`、`X-Api-Key` 等）显示为 `***`，响应正文截断到 200 字符：
+`String()` 生成单行摘要，适合打进日志：敏感头（`Authorization`、`Cookie`、`Set-Cookie`、`X-Api-Key` 等）显示为 `***`；响应正文**不输出内容**，只报告字节数（响应体常含令牌与会话数据，不进日志）：
 
 ```go
 fmt.Println(result.String())
 // 输出示例：Result{Status: 200 200 OK, ContentLength: 5102, Duration: 150ms,
-// Attempts: 1, Headers: 14 [Content-Length, Content-Type, ...], Body: {"id":...}
+// Attempts: 1, Headers: 14 [Content-Length, Content-Type, ...], Body: [5102 bytes omitted]}
 ```
 
 ## 上下文控制
@@ -518,14 +518,14 @@ HTTPC 自动处理 `gzip`、`deflate` 内容编码的解压。传输层关闭了
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // 响应体上限：流式下载时强制；非流式作为解压后上限的回退
-cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // 解压后最大 100MB
+cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // 非压缩响应体上限（含流式下载）
+cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // 压缩响应解压后最大 100MB
 ```
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `MaxResponseBodySize` | 10MB | 流式下载响应体上限；非流式时作为解压后上限的回退 |
-| `MaxDecompressedBodySize` | 100MB | 解压后响应体大小上限（未设置时回退 `MaxResponseBodySize`） |
+| `MaxResponseBodySize` | 10MB | 非压缩（identity）响应体与流式下载的上限；它与解压上限均为 0 时回退 100MB 引擎默认 |
+| `MaxDecompressedBodySize` | 100MB | 压缩响应解压后的大小上限；为 0 时回退 `MaxResponseBodySize`，仍为 0 时回退 100MB |
 
 压缩响应体的字节数另有 100MB 硬性上限（`maxCompressedSize`，不可配置），用于防御解压炸弹，与 `MaxResponseBodySize` 相互独立。
 

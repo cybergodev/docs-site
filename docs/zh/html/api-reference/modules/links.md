@@ -67,6 +67,10 @@ type LinkResource struct {
 }
 ```
 
+只报告可解析的引用：仅锚点（`#top`）或仅查询串（`?page=2`）的 href 属于页内导航，不产生 `LinkResource`；通不过 URL 校验的 href 同样被跳过。此规则与 `Extract` 路径的 `LinkInfo` 一致。
+
+`Title` 是人类可读标签，各类型有固定回退顺序：`<a>` 依次取 `title` 属性、链接文本，兜底 `"Link"`；图片依次取 `title`、`alt`、URL 末段，兜底 `"Image"`；媒体、脚本与样式链接无 `title` 属性时取 URL 末段（兜底 `"Video"` / `"Audio"` / `"Media"` / `"Script"` / 类型名首字母大写形式）。
+
 ## 链接类型详解
 
 每种 `Type` 对应特定的 HTML 标签来源：
@@ -86,6 +90,10 @@ type LinkResource struct {
 `<iframe>`、`<embed>`、`<object>` 的 `src`/`data` 只有在判定为**视频 URL**（含 YouTube、Vimeo、Dailymotion 等嵌入模式）时才被提取，类型记为 `video`。非视频 URL 不会被收录。
 :::
 
+:::info `<link>` 标签的 type 属性回退
+`rel` 未命中任何已知令牌时，若 `type` 属性值包含 `css` 归入 `css`（受 `IncludeCSS` 控制）、包含 `javascript` 归入 `js`（受 `IncludeJS` 控制）；两者都不满足则该 `<link>` 不被收录。`rel` 令牌与 `type` 值的匹配均不区分大小写。
+:::
+
 ## 配置
 
 链接提取行为可通过 `Config` 的链接过滤字段控制：
@@ -102,9 +110,10 @@ cfg.BaseURL = "https://example.com"
 
 ### 相对 URL 解析
 
-当 `ResolveRelativeURLs=true`（默认）时，所有类型的相对 URL 都会基于 `BaseURL` 解析为绝对 URL：
+当 `ResolveRelativeURLs=true`（默认）时，相对 URL 会基于 `BaseURL` 解析为绝对 URL：
 
 - 解析逻辑由库内部统一处理（不导出），对内容链接、图片、媒体、source、script、embed、link 标签**一视同仁**
+- 协议相对 URL（`//host/path`）原样保留，不解析、也不继承 `BaseURL` 的协议
 - 显式设置 `BaseURL` 会跳过自动检测，直接使用你提供的值
 - `BaseURL` 为空时从文档自动推导（见「BaseURL 自动检测」）
 

@@ -228,7 +228,8 @@ func main() {
 | 证书校验失败 | `var ce x509.UnknownAuthorityError` + `errors.As` | `httpc.ErrorTypeCertificate` |
 | TLS 协议错误 | 字符串匹配 `"tls:"` | `httpc.ErrorTypeTLS` |
 | 连接拒绝/重置 | `var oe *net.OpError` + `errors.As` | `httpc.ErrorTypeNetwork` |
-| 上下文取消/截止 | `errors.Is(err, context.Canceled)` | `httpc.ErrorTypeContextCanceled`（恒不重试） |
+| 上下文取消 | `errors.Is(err, context.Canceled)` | `httpc.ErrorTypeContextCanceled`（恒不重试） |
+| 上下文截止 | `errors.Is(err, context.DeadlineExceeded)` | `httpc.ErrorTypeTimeout`（恒不重试） |
 
 错误分类、可重试性与哨兵错误的完整说明见[错误处理](./error-handling)与[错误类型](../api-reference/types/errors)。
 
@@ -409,7 +410,7 @@ func main() {
 
 `net/http` 从不重试。HTTPC 默认对超时/传输错误与 408/429/500/502/503/504 自动重试，最多 3 次，且**只作用于幂等请求**（GET/HEAD/PUT/DELETE/OPTIONS/TRACE）。POST、PATCH 及自定义方法默认**单次执行、不重试**。
 
-需要处理的风险只有一处：用 `WithRetryNonIdempotent(true)` 显式开启非幂等重试后，下单、扣款类接口会出现重复提交风险，必须处理：
+唯一需要警惕的风险是显式开启非幂等重试：使用 `WithRetryNonIdempotent(true)` 后，下单、扣款类接口可能重复提交，需按下例处理：
 
 <!-- check-code: skip -->
 ```go

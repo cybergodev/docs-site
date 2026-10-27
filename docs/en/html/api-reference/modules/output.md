@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Output Formats"
 title: "Output Formats - CyberGo html | Markdown & JSON Output"
-description: "CyberGo html output API: ExtractToMarkdown and ExtractToJSON functions and methods, context variants, cache isolation, and JSON field mapping."
+description: "CyberGo html output API: ExtractToMarkdown and ExtractToJSON signatures, context variants, Markdown cache isolation, and JSON field omission rules."
 sidebar_position: 10
 ---
 
@@ -15,11 +15,11 @@ sidebar_position: 10
 
 ### Cache and Instance Behavior
 
-Called as a Processor method, `ExtractToMarkdown` neither hits nor writes the main Processor's cache. It builds a **transient Processor** from the current configuration:
+Called as a Processor method, `ExtractToMarkdown` neither hits nor writes the main Processor's cache. It builds a **one-shot Processor** from the current configuration:
 
 - It makes a **value copy** of the config (the config is immutable after `New()`, so no lock is needed) and then overrides the two format fields; the format settings are never written back to the shared config
-- **Cache is disabled** (`MaxCacheEntries = 0`), so format-specific results never pollute the main cache
-- It **reuses the main Processor's Scorer, audit collector, and statistics counters**, so audit events and statistics from the conversion appear in `GetAuditLog` and `GetStatistics`
+- **Cache is disabled** (`MaxCacheEntries = 0`): it neither reads nor writes the main cache, so format-specific results never pollute it
+- It **reuses the main Processor's Scorer, audit collector, and statistics counters**: audit events and statistics from the conversion count toward the main Processor and are visible through `GetAuditLog` and `GetStatistics`
 - The mechanism is thread-safe
 
 To let extraction results enter the main cache, use `Extract` and set `InlineImageFormat`/`InlineLinkFormat` yourself.
@@ -90,13 +90,13 @@ func main() {
 Inline images and links are produced by **placeholder replacement** in two steps:
 
 1. **Text extraction**: each `<img>` inserts a `[IMAGE:N]` placeholder into the text stream, and each `<a>` inserts a paired `[LINK:N]...[/LINK]` (`N` is a positional index matching the `Position` in the `Images`/`Links` slices)
-2. **Formatting**: per `InlineImageFormat`/`InlineLinkFormat`, placeholders are replaced with the target format (markdown/html) or removed (none)
+2. **Formatting**: per `InlineImageFormat`/`InlineLinkFormat`, placeholders are replaced with the target format (markdown/html) or removed outright (none). Links are replaced before images: a leftover `[IMAGE:N]` placeholder inside link text is rendered during the image phase, producing a link-wrapped image of the form `[text ![alt](img)](url)`
 
-When emitting the `markdown` format, the formatting step escapes `[`, `]`, and `\` in image alt text and link text to `\[`, `\]`, and `\\`, so they cannot break Markdown link/image syntax. Escaping happens only on the markdown branch and is **never reverted** — keeping the escapes is the point.
+When emitting the `markdown` format, the formatting step escapes `[`, `]`, `\`, and `|` in image alt text and link text to `\[`, `\]`, `\\`, and `\|`, so they cannot break Markdown link/image syntax (a bare `|` would also split a Markdown table cell). In link/image target URLs, `(`, `)`, spaces, and `|` are percent-encoded to `%28`, `%29`, `%20`, and `%7C`, keeping the target a valid, copyable URL. Escaping and encoding happen only on the markdown branch and are **never reverted** — keeping them is the point of the injection guard.
 
 ## JSON Output
 
-`ExtractToJSON` runs the regular `Extract` first and then serializes with `json.Marshal`. The Processor method hits and writes the main cache; the package function uses a pooled or transient Processor, so nothing is cached across calls.
+`ExtractToJSON` runs the regular `Extract` first and then serializes with `json.Marshal`. The Processor method hits and writes the main cache; the package function uses a pooled or one-shot Processor, so nothing is cached across calls.
 
 ### Package Functions
 
@@ -148,16 +148,61 @@ func main() {
 
 JSON serialization is a custom implementation in `Result.MarshalJSON()`, mirroring the internal `jsonResult` struct:
 
-| JSON field | Type | Source |
-|------------|------|--------|
-| `text` | string | `Result.Text` (extracted body) |
-| `title` | string | `Result.Title` (document title) |
-| `images` | array | `Result.Images` (`omitempty`, omitted when empty) |
-| `links` | array | `Result.Links` (`omitempty`) |
-| `videos` | array | `Result.Videos` (`omitempty`) |
-| `audios` | array | `Result.Audios` (`omitempty`) |
-| `processing_time_ms` | int | `Result.ProcessingTime` in **milliseconds** |
-| `word_count` | int | `Result.WordCount` |
-| `reading_time_ms` | int | `Result.ReadingTime` in **milliseconds** |
+| JSON field | Type | Source | Omission rule |
+|------------|------|--------|---------------|
+| `text` | string | `Result.Text` (extracted body) | Always emitted |
+| `title` | string | `Result.Title` (document title) | Always emitted |
+| `images` | array | `Result.Images` | `omitempty`, omitted when empty |
+| `links` | array | `Result.Links` | `omitempty`, omitted when empty |
+| `videos` | array | `Result.Videos` | `omitempty`, omitted when empty |
+| `audios` | array | `Result.Audios` | `omitempty`, omitted when empty |
+| `processing_time_ms` | int | `Result.ProcessingTime` | Always emitted (milliseconds) |
+| `word_count` | int | `Result.WordCount` | Always emitted |
+| `reading_time_ms` | int | `Result.ReadingTime` | Always emitted (milliseconds) |
+| `author` | string | `Result.Author` | `omitempty`, omitted when empty |
+| `published_time` | string | `Result.PublishedTime` (RFC 3339) | Omitted when zero (a pointer is used internally, so `0001-01-01T00:00:00Z` never appears) |
+| `description` | string | `Result.Description` | `omitempty`, omitted when empty |
+| `site_name` | string | `Result.SiteName` | `omitempty`, omitted when empty |
+| `canonical_url` | string | `Result.CanonicalURL` | `omitempty`, omitted when empty |
+| `confidence` | number | `Result.Confidence` | Always emitted (**no** `omitempty`, so `0` is serialized too) |
+| `extraction_method` | string | `Result.ExtractionMethod` | `omitempty`, omitted when empty |
 
 `ProcessingTime` and `ReadingTime` carry a `json:"-"` tag on the `Result` struct, so standard serialization skips them; the custom `MarshalJSON` is what writes them as millisecond values. The JSON form targets external consumers and **does not implement `UnmarshalJSON`**, so it cannot be deserialized back into a `Result`.
+
+### Sample Output
+
+Below is the output for a sample page with an h1, two body paragraphs, one image, and one link (`processing_time_ms` varies by machine; `reading_time_ms`, `confidence`, and `extraction_method` are measured values):
+
+```json
+{
+  "text": "# Go Tutorial\n\nGo is a compiled language.\n\nGo website",
+  "title": "Go Tutorial",
+  "images": [
+    {"url": "gopher.png", "alt": "Gopher", "title": "", "width": "", "height": "", "is_decorative": false, "position": 1}
+  ],
+  "links": [
+    {"url": "https://go.dev", "text": "Go website", "title": "", "is_external": true, "is_nofollow": false, "position": 1}
+  ],
+  "processing_time_ms": 2,
+  "word_count": 17,
+  "reading_time_ms": 3428,
+  "confidence": 0.6,
+  "extraction_method": "article"
+}
+```
+
+`reading_time_ms` is 3428: whitespace-tokenized words convert at 200 words per minute and CJK characters at 350 characters per minute, then the two parts are added. `confidence=0.6` means an article node was selected but its text is short; `extraction_method=article` means the body came from the node the scorer selected. Grading rules are in [Type Definitions](../types/type-defs#quality-signals).
+
+When the page declares structured metadata, the output carries these extra fields (values are examples):
+
+```json
+{
+  "author": "Example Reporter",
+  "published_time": "2026-04-21T09:30:00Z",
+  "description": "The company reported strong quarterly results on Tuesday.",
+  "site_name": "Example News",
+  "canonical_url": "https://news.example.com/q3-results.html"
+}
+```
+
+They appear only when `ExtractMetadata=true` (the default) and the page actually declares the corresponding metadata; source priority is in [Type Definitions](../types/type-defs#metadata-field-resolution).

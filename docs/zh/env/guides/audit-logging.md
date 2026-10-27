@@ -39,7 +39,7 @@ loader, _ := env.New(cfg)
 
 ## 审计处理器
 
-处理器由 `loader.Close()` 关闭，其中 `JSONAuditHandler` 还会关闭底层 writer（实现了 `io.Closer` 的 `os.File` 等）。因此不要把 `os.Stdout` 或与其他组件共享的 writer 传给处理器，否则 `loader.Close()` 会连带关闭它。写入文件时自行打开 `os.File`（权限 `0600`），文件由处理器关闭；`env.New()` 失败时处理器未接管文件，需要自行关闭。
+处理器由 `loader.Close()` 关闭，其中 `JSONAuditHandler` 还会关闭底层 writer（实现了 `io.Closer` 的 `os.File` 等）。因此不要把 `os.Stdout` 或与其他组件共享的 writer 传给处理器，否则 `loader.Close()` 会连带关闭它。写入文件时自行打开 `os.File`（权限 `0600`），文件由处理器关闭；`env.New()` 在配置校验阶段失败时处理器尚未接管文件，需自行关闭——校验通过之后的失败（解析器创建、自动加载）会连带关闭处理器与文件，之后再调用 `auditFile.Close()` 只返回可忽略的「已关闭」错误。
 
 ### JSONAuditHandler
 
@@ -65,7 +65,7 @@ cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 **输出示例**（节选，省略 `reason` 字段与逐键 `ActionSet` 事件）：
 
 ```json
-{"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
+{"timestamp":"2024-01-15T10:30:00Z","action":"load","success":true,"duration_ns":1234567}
 {"timestamp":"2024-01-15T10:30:01Z","action":"set","key":"[MASKED]","success":true,"masked":true}
 {"timestamp":"2024-01-15T10:30:02Z","action":"set","key":"CUSTOM_VAR","success":true}
 ```
@@ -92,7 +92,7 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 **输出示例：**
 
 ```text
-[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="" file=.env duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="" duration=1.23ms
 [AUDIT] 2024/01/15 10:30:01 action=set key=[MASKED] success=true reason=""
 [AUDIT] 2024/01/15 10:30:02 action=set key=CUSTOM_VAR success=true reason=""
 ```
@@ -261,7 +261,7 @@ func main() {
 	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-	// 创建加载器（New 失败时处理器未接管文件，需自行关闭）
+	// 创建加载器（校验失败时文件未被接管需自行关闭；更晚的失败已连带关闭，此处兜底）
 	loader, err := env.New(cfg)
 	if err != nil {
 		auditFile.Close()
@@ -345,7 +345,7 @@ func processAuditEvents(ch chan env.AuditEvent) {
 }
 ```
 
-`ChannelAuditHandler` **不拥有通道**：`Close()` 是空操作，必须由调用方 `close(auditChan)`，`for range` 消费的 goroutine 才能收到 EOF；缓冲满时发送会阻塞。需要处理器自管通道生命周期（`Close()` 即关闭通道，消费方经 `Channel()` 接收）时，改用下文「更多内置处理器」中的 `CloseableChannelHandler`。
+`ChannelAuditHandler` **不拥有通道**：`Close()` 是空操作，必须由调用方 `close(auditChan)`，`for range` 消费的 goroutine 才能收到 EOF；缓冲满时发送会阻塞，阻塞的发送还会连带卡住 `loader.Close()`，因此消费 goroutine 要持续排水直到关闭。关闭顺序必须是先 `loader.Close()` 再 `close(auditChan)`：发送仍在途时就关闭通道会触发 send on closed channel panic。需要处理器自管通道生命周期（`Close()` 即关闭通道，消费方经 `Channel()` 接收）时，改用下文「更多内置处理器」中的 `CloseableChannelHandler`。
 
 ---
 
@@ -368,7 +368,7 @@ _ = loader.GetInt("PORT")             // 解析成功，不产生审计日志
 _ = loader.GetInt("API_KEY")          // 解析失败时产生 ActionGet 事件（success=false）
 ```
 
-默认 `AuditFailClosed = false`（fail-open）：审计管线出问题不影响业务操作的结果。设为 `true` 后，处理器报错、panic 或通道满导致事件丢失，都会让产生该事件的操作（`LoadFiles` / `Apply` / `Set` / `Delete`）返回匹配 `ErrAuditFailed` 的错误。
+默认 `AuditFailClosed = false`（fail-open）：审计管线出问题不影响业务操作的结果。设为 `true` 后，处理器报错、panic 或通道满导致事件丢失，都会让产生该事件的操作（`LoadFiles` / `Apply` / `Set` / `Delete`）返回匹配 `ErrAuditFailed` 的错误。并发操作场景下，锁存的错误由最先检查的操作带回（尽力通知，不保证恰好一次）。
 
 ### 审计日志权限
 
@@ -405,7 +405,7 @@ chown app:app /var/log/app/env-audit.log
 
 ### CloseableChannelHandler（自管理通道）
 
-与 `ChannelAuditHandler` 接收外部 channel 不同，`CloseableChannelHandler` 自建并持有带缓冲的 channel，提供完整的生命周期管理：`Close()` 关闭处理器并关闭通道，消费方通过 `Channel()` 接收事件：
+与 `ChannelAuditHandler` 接收外部 channel 不同，`CloseableChannelHandler` 自建并持有带缓冲的 channel，提供完整的生命周期管理：`Close()` 关闭处理器并关闭通道，消费方通过 `Channel()` 接收事件。缓冲满时它不阻塞：事件被丢弃并返回错误，累计丢弃数可用 `DroppedEvents()` 查询（计数不复位）：
 
 ```go
 package main

@@ -1,13 +1,13 @@
 ---
 sidebar_label: "测试与自定义扩展"
 title: "测试与自定义扩展 - CyberGo html | Scorer 与 mock 测试"
-description: "CyberGo html 测试与扩展：自定义 Scorer 评分算法、ContentNode 节点遍历、Extractor 接口 mock 与测试配置（禁用缓存/清洗）的写法与注意事项。"
+description: "CyberGo html 测试与扩展：自定义 Scorer 与 ArticleFinder 单遍选取、ShouldRemove 的生效范围、ContentNode 节点遍历、Extractor 接口 mock 与业务解耦，以及禁用缓存与清洗的测试配置写法与注意事项。"
 sidebar_position: 20
 ---
 
 # 测试与自定义扩展
 
-自定义 `Scorer` 的实现要点，以及用 `Extractor` 接口解耦业务代码、编写单元测试的写法。
+本页覆盖自定义 `Scorer` 与 `ArticleFinder` 的实现要点，以及用 `Extractor` 接口解耦业务代码、编写单元测试的写法。
 
 ## 自定义 Scorer
 
@@ -23,7 +23,9 @@ type Scorer interface {
 ```
 
 - `Score`：为节点评分，分数越高越可能被选为正文容器
-- `ShouldRemove`：接口预留方法。自定义 Scorer 必须实现它才能满足接口，但当前版本库**不会调用它**，返回值不生效（可固定返回 `false`）。要排除特定节点，请在 `Score` 中返回低分或负分
+- `ShouldRemove`：库使用内置默认评分器时才调用它（候选过滤与节点移除启发式都依赖它）。配置自定义 Scorer 后，正文选取由 `Score` 与可选的 `ArticleFinder` 驱动；清洗阶段的节点移除仍按内置规则执行。因此自定义 `ShouldRemove` 只需满足接口签名，返回值不产生作用
+- 需要排除节点时，在 `Score` 中返回低分或负分，或实现 `ArticleFinder` 直接选取正文
+- 自定义 Scorer **必须并发安全**：Processor 被多个 goroutine 共享并发提取时，`Score` 会同时从多个 goroutine 被调用。无状态的实现天然满足；持有可变状态（计数器、缓存 map）时必须自行加锁或改用原子操作——内置默认评分器即为只读实现，可并发共享
 
 ### 默认行为
 
@@ -84,14 +86,14 @@ func (s blogScorer) Score(node html.ContentNode) int {
 	return score
 }
 
-// ShouldRemove 当前版本不会被库调用，下面的逻辑不会生效；
-// 实现它只是为了满足接口（节点排除请用 Score 返回低分/负分）
+// ShouldRemove 满足 Scorer 接口。配置自定义 Scorer 后，清洗阶段的节点移除
+// 仍按内置评分器规则执行，因此这里的返回值不影响哪些节点被剥离；
+// 要排除节点，请在 Score 中返回低分/负分。
 func (s blogScorer) ShouldRemove(node html.ContentNode) bool {
 	if node == nil {
 		return false
 	}
 
-	// 以下判断不会被执行
 	switch node.Data() {
 	case "nav", "footer", "header":
 		return true
@@ -171,6 +173,161 @@ func (s myScorer) Score(root html.ContentNode) int {
 `Score` 对文档中每个非行内元素各调用一次，复杂度按元素数放大。在 `Score` 里重新遍历整棵子树会让提取退化为 O(N²)；优先只读取当前节点自身的标签、属性与直接子节点。完整复杂度约定见 [接口定义](../../api-reference/types/interfaces#scorer)。
 :::
 
+## ArticleFinder 单遍选取
+
+`ArticleFinder` 是 `Scorer` 的可选扩展接口：
+
+```go
+type ArticleFinder interface {
+    FindArticleNode(root ContentNode) ContentNode
+}
+```
+
+未实现它时，库枚举文档中每个非行内元素并逐个调用 `Score`（复杂度约定见上方警告）。实现 `FindArticleNode` 后，库不再逐元素调用 `Score`，而是一次遍历直接给出正文节点：
+
+- 返回值必须来自 `root` 的遍历方法（`FirstChild`/`NextSibling`/`Parent`），这样库才能映射回内部节点；自行构造的 `ContentNode` 实现无法映射，按「未找到正文」处理
+- 返回 `nil` 表示没有合格节点，库回落到 `<body>` 提取（不会退回逐元素评分）
+- 选取结果若不是语义容器（`article`/`main`，或 `role="main"`/`role="article"`），仍会经过「拆分文章的兄弟块合并」启发式，可能被上提到父节点
+- 该钩子只接管正文节点选取，清洗阶段的节点移除规则不变
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/cybergodev/html"
+)
+
+// roleMainScorer 实现 html.Scorer 与 html.ArticleFinder。
+// 实现 ArticleFinder 后，库不再逐元素调用 Score，而是一次遍历直接取 role="main" 的节点。
+type roleMainScorer struct{}
+
+// Score 满足 html.Scorer；实现 FindArticleNode 后不再被调用
+func (roleMainScorer) Score(html.ContentNode) int { return 0 }
+
+// ShouldRemove 满足 html.Scorer；返回值对选取不起作用
+func (roleMainScorer) ShouldRemove(html.ContentNode) bool { return false }
+
+// FindArticleNode 单遍查找首个 role="main" 元素；返回 nil 时回落 <body>
+func (roleMainScorer) FindArticleNode(root html.ContentNode) html.ContentNode {
+	var found html.ContentNode
+	var walk func(html.ContentNode)
+	walk = func(n html.ContentNode) {
+		if n == nil || found != nil {
+			return
+		}
+		if n.Type() == "element" && n.AttrValue("role") == "main" {
+			found = n
+			return
+		}
+		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+			walk(c)
+		}
+	}
+	walk(root)
+	return found // nil 时回落 <body>
+}
+
+func main() {
+	cfg := html.DefaultConfig()
+	cfg.Scorer = roleMainScorer{}
+	cfg.MaxCacheEntries = 0
+
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer p.Close()
+
+	data := []byte(`<html><body>
+        <nav>站点导航</nav>
+        <div role="main"><h1>正文标题</h1><p>这是正文内容。</p></div>
+        <aside>侧栏</aside>
+    </body></html>`)
+
+	result, err := p.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.Title) // 输出: 正文标题
+}
+```
+
+## 用 Extractor 接口解耦业务代码
+
+`Extractor` 接口聚合了 `Processor` 的全部提取方法（25 个）。业务代码依赖该接口而非具体的 `*html.Processor`，单元测试就能注入替身，不必真实解析 HTML：
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/cybergodev/html"
+)
+
+// headlineOf 依赖 html.Extractor 接口：生产环境传 *html.Processor，测试传桩实现
+func headlineOf(ext html.Extractor, page []byte) (string, error) {
+	result, err := ext.Extract(page)
+	if err != nil {
+		return "", err
+	}
+	return result.Title, nil
+}
+
+// stubExtractor 嵌入 html.Extractor：只需实现用到的 Extract，
+// 其余 24 个方法继承自内嵌的接口值，被意外调用时 panic 并当场暴露测试问题
+type stubExtractor struct {
+	html.Extractor
+	title string
+}
+
+func (s *stubExtractor) Extract([]byte) (*html.Result, error) {
+	return &html.Result{Title: s.title}, nil
+}
+
+func main() {
+	// 生产路径：Processor 实现了完整的 Extractor
+	p, err := html.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer p.Close()
+
+	title, err := headlineOf(p, []byte(`<html><head><title>真标题</title></head><body><p>正文</p></body></html>`))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(title) // 输出：真标题
+
+	// 测试路径：注入桩实现，不经过真实解析
+	title, err = headlineOf(&stubExtractor{title: "桩标题"}, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(title) // 输出：桩标题
+}
+```
+
+测试中的用法（断言用 testify，import 省略）：
+
+```go
+func TestHeadlineOf(t *testing.T) {
+	title, err := headlineOf(&stubExtractor{title: "测试标题"}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "测试标题", title)
+}
+```
+
+嵌入接口的写法只需实现业务代码真正调用的方法；需要逐方法显式实现时，完整方法清单见 [接口定义](../../api-reference/types/interfaces#extractor)。
+
+## 阅读模式与测试
+
+阅读模式方法（`ReadPage`、`ReadPageToMarkdown`、`ReadPageFromFile` 等）**不在** `Extractor` 接口内，它们是 `Processor` 的独立方法。mock `Extractor` 时无需实现它们。要测试阅读模式，直接使用 `Processor` 或包级函数。接口清单见 [接口定义](../../api-reference/types/interfaces)。
+
 ## 测试配置
 
 ### 禁用缓存
@@ -243,7 +400,7 @@ func TestBlogScorer(t *testing.T) {
 	result, err := p.Extract(data)
 	require.NoError(t, err)
 	assert.Contains(t, result.Text, "博客正文内容")
-	// 导航与侧栏由清洗和候选过滤排除，与 ShouldRemove 无关
+	// 导航与侧栏由清洗阶段的内置移除规则排除，与自定义 ShouldRemove 无关
 	assert.NotContains(t, result.Text, "侧边栏")
 	assert.NotContains(t, result.Text, "首页")
 }

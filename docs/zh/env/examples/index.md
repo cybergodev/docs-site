@@ -19,7 +19,7 @@ cd env
 go run ./examples/01_quickstart/
 ```
 
-示例以 `examples/data/` 下的相对路径读取共享配置文件，因此必须在项目根目录执行 `go run`，在子目录运行会因路径无法解析而失败。
+示例 01–06、08、10–12 以 `examples/data/` 下的相对路径读取共享配置文件，须在项目根目录执行 `go run`，在其他目录运行会读不到数据文件——多数示例输出退化为默认值，示例 02、11 会直接报错。07、09、13 内联示例数据，可在任意目录运行。
 
 ### 共享数据文件
 
@@ -38,7 +38,7 @@ go run ./examples/01_quickstart/
 | 03 | `03_type_access/` | 全部类型化读取方法：string、int、bool、duration、float、uint、slice 与 `Lookup`，含点号路径访问 | [快速开始](../getting-started/) |
 | 04 | `04_struct_mapping/` | `env` 标签结构体映射：嵌套结构体、`envDefault` 默认值与序列化 | [结构体映射](../guides/struct-mapping) |
 | 05 | `05_secure_values/` | `SecureValue` 生命周期：`Close` 与 `Release` 的区别、内存清零与 mlock 内存锁定 | [内存锁定](../security/memory-locking)、[SecureValue](../api-reference/secure-value) |
-| 06 | `06_audit_logging/` | JSON、Channel、Log 三种审计处理器，自动记录读取、写入与删除事件 | [审计日志](../guides/audit-logging) |
+| 06 | `06_audit_logging/` | JSON、Channel、Log 三种审计处理器，自动记录加载、写入与删除事件 | [审计日志](../guides/audit-logging) |
 | 07 | `07_marshal_unmarshal/` | 格式转换：map 与字符串互转、结构体与 map 互转、多格式输出与往返转换 | [序列化](../guides/serialization) |
 | 08 | `08_utilities/` | 工具函数：内省（`Len`/`Keys`/`All`）、键删除、脱敏与格式检测 | [多格式配置](../guides/multi-format) |
 | 09 | `09_error_handling/` | 哨兵错误（`errors.Is`）与类型化错误（`errors.As`），覆盖文件缺失与加载器已关闭场景 | [错误处理](../guides/error-handling) |

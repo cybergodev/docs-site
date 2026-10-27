@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Constants & Types"
 title: "Constants and Types - CyberGo HTTPC | Helper Types"
-description: "HTTPC constants and types: BodyKind and auto-detection, ProxyStrategy, FormData/FileData upload types, AuditEvent, and context keys."
+description: "HTTPC constants and types: six BodyKind values, auto-detection, ProxyStrategy, FormData/FileData, AuditEvent and AuditConfig, context keys, ChecksumSHA256."
 sidebar_position: 20
 ---
 

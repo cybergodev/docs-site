@@ -57,16 +57,17 @@ func New(cfg ...Config) (*Loader, error)
 Creates a new loader instance.
 
 **Parameters:**
-- `cfg` - optional configuration. Omit it, or pass a zero-value `Config`, and `DefaultConfig()` is used. You may pass at most one `Config`; passing several returns `ErrInvalidConfig`.
+- `cfg` - optional configuration. Omit it, or pass a zero-value `Config`, and `DefaultConfig()` is used. You may pass at most one `Config`; passing several returns `ErrInvalidConfig`, and the extra configs are not applied.
 
 **Returns:**
 - `*Loader` - loader instance
-- `error` - configuration validation error
+- `error` - a wrapped `ErrInvalidConfig` when configuration validation fails; a file-load failure during creation also returns an error, with the internal components already cleaned up
 
 **Behavior:**
 - Validates the configuration
-- Creates the internal components (validator, auditor, expander)
-- Loads files if `cfg.Filenames` is non-empty
+- Creates the internal components (validator, auditor, expander) and the per-format parsers
+- Uses `DefaultConfig()` when no Config is passed or the Config is fully zero; its `Filenames` is `[".env"]`, so `New()` tries to load `.env` by default. Clear `Filenames` explicitly when you need an empty loader
+- Loads files if `cfg.Filenames` is non-empty; a failed load cleans up the internal components and returns the error
 - Applies to the process environment if `cfg.AutoApply` is true
 - Does **not** set the default loader; use `Load` or `LoadWithConfig` for that
 
@@ -154,7 +155,7 @@ Detection looks only at the extension, never at the content: `.env.local` has th
 
 ### Key Resolution
 
-Every getter method resolves keys the same way:
+Every getter method resolves keys the same way (the sole exception is `GetSecure`, which skips the index fallback):
 
 | Input Key | Resolved Result |
 |----------|-----------------|
@@ -395,7 +396,7 @@ Reports whether a key exists and returns its value. Supports dot-path resolution
 
 **Returns:**
 - `string` - the value as stored, with no trimming applied here. `.env` values were trimmed at parse time; JSON and YAML values keep any surrounding whitespace.
-- `bool` - whether the key exists
+- `bool` - whether the key exists; `("", false)` when the loader is closed
 
 ```go
 value, exists := loader.Lookup("API_KEY")
@@ -566,7 +567,7 @@ func (l *Loader) Apply() error
 Writes the loaded variables into the process environment (`os.Environ`).
 
 **Returns:**
-- `error` - apply error. The first key whose `Setenv` fails aborts that pass; keys already written are not rolled back and `IsApplied()` stays `false` — read a failure as "partially applied", not as "nothing was applied".
+- `error` - apply error. The first key whose `Setenv` fails aborts that pass; keys already written are not rolled back and `IsApplied()` stays `false` (see "Handling a failure" below)
 
 **Behavior:**
 - Iterates over the loaded variables and calls `Setenv` for each one
@@ -933,7 +934,7 @@ With `OverwriteExisting=false`, calling `Set` on an existing key is **silently s
 A theoretical replacement window exists between the `Stat()` size check and the actual read. Three layers mitigate it:
 
 1. The parsers wrap the file stream in a hardened read path that enforces the cap while reading.
-2. A file that grows after the check is cut off at the hard cap (100 MB), which prevents memory exhaustion.
+2. Even if the file grows after the check, reading stops at `MaxFileSize` (bounded by the 100 MB hard cap) and returns `ErrFileTooLarge`, which prevents memory exhaustion.
 3. The parsed content is then re-checked for size, format, and security instead of relying on the original `Stat()` result.
 
 ## Related Documentation

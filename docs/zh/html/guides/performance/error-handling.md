@@ -1,13 +1,13 @@
 ---
 sidebar_label: "错误处理"
 title: "错误处理 - CyberGo html | 超时、编码与文件错误"
-description: "CyberGo html 错误处理：五类错误分类与哨兵错误清单，errors.Is 与 errors.As 的用法，ProcessingTimeout 与用户 context 超时的错误差异，编码检测失败的触发条件，FileError 路径脱敏与 HTTP 状态码映射。"
+description: "CyberGo html 错误处理：五类错误与哨兵清单、errors.Is 与 errors.As 的用法、路径遍历与 AllowedBaseDir 越界的哨兵差异、ProcessingTimeout 与调用方 context 的超时差异，附 FileError 路径脱敏与 HTTP 映射。"
 sidebar_position: 40
 ---
 
 # 错误处理
 
-html 库的失败都通过 `error` 返回，库内 panic 会被恢复为 `ErrInternalPanic`。本页覆盖错误分类与判断方式，以及超时、编码、文件路径三类高频错误的处理规则。
+html 库的错误处理以 `error` 返回值为中心：所有失败都通过 `error` 返回，库内 panic 会被恢复为 `ErrInternalPanic`。本页覆盖错误分类与判断方式，以及超时、编码、文件路径三类高频错误的处理规则。
 
 ## 错误分类
 
@@ -18,6 +18,8 @@ html 库的失败都通过 `error` 返回，库内 panic 会被恢复为 `ErrInt
 | 文件错误 | `ErrFileNotFound`, `ErrInvalidFilePath` | 文件读取与路径校验 |
 | 处理错误 | `ErrProcessingTimeout`, `ErrMaxDepthExceeded` | 超时预算，或由输入结构触发的深度超限 |
 | 系统错误 | `ErrProcessorClosed`, `ErrInternalPanic`, `ErrTooManyConcurrentOps` | 生命周期、内部故障、并发上限 |
+
+12 个哨兵错误的完整清单、错误消息原文与三个结构化类型的字段定义见 [API 参考：常量与错误](../../api-reference/types/constants#哨兵错误)；本页只展开判断方法与处理策略。
 
 ## 判断错误：errors.Is 与 errors.As
 
@@ -31,7 +33,7 @@ html 库的失败都通过 `error` 返回，库内 panic 会被恢复为 `ErrInt
 
 判断顺序：先系统错误（`ErrProcessorClosed`、`ErrInternalPanic`、`ErrTooManyConcurrentOps`），再用 `errors.As` 取文件错误，最后是输入与配置错误。
 
-路径遍历错误不匹配任何哨兵，判断方式见[错误包装链](#错误包装链)。
+路径遍历错误**匹配** `ErrInvalidFilePath`（见[错误包装链](#错误包装链)）；唯一不匹配任何哨兵的是 `AllowedBaseDir` 越界，判断方式同样见该节。
 
 ## 错误包装链
 
@@ -41,11 +43,13 @@ html 库的失败都通过 `error` 返回，库内 panic 会被恢复为 `ErrInt
 |------|-------------------|------|
 | `*InputError` | `Unwrap() []error`：`InputErr` 非 nil → `[InputErr, ErrInputTooLarge]`，否则 → `[ErrInputTooLarge]` | `errors.Is(err, ErrInputTooLarge)` 对任意 `*InputError` 成立 |
 | `*ConfigError` | 始终 `ErrInvalidConfig` | 固定映射 |
-| `*FileError` | ① `FileErr` 包装 `ErrFileNotFound` → `ErrFileNotFound`；② 否则 `FileErr != nil` → `FileErr`；③ 否则 → `ErrInvalidFilePath` | 三级回退 |
+| `*FileError` | ① `errors.Is(FileErr, ErrFileNotFound)` 成立 → `ErrFileNotFound`；② 否则 `FileErr != nil` → `FileErr`；③ 否则 → `ErrInvalidFilePath` | 三级回退 |
 
-:::warning 路径遍历错误不匹配哨兵
+:::warning 两类文件路径拒绝的哨兵归属不同
 
-路径遍历产生的 `FileErr` 是 `path traversal detected: <cleanPath>`，它既不是 `ErrFileNotFound` 也不是 `ErrInvalidFilePath`，因此 `errors.Is` 对两个哨兵都返回 `false`。检测路径遍历要用 `errors.As` 取出 `*FileError`，再检查 `FileErr` 的消息。
+**路径遍历**（路径含 `..` 组件）：`FileErr` 形如 `path traversal detected: <cleanPath>: html: invalid file path`，末尾包装了 `ErrInvalidFilePath`。因此 `errors.Is(err, html.ErrInvalidFilePath)` 返回 `true`。要区分遍历与其他路径错误，仍须 `errors.As` 取出 `*FileError`，再检查 `FileErr` 消息中的 `path traversal`。
+
+**`AllowedBaseDir` 越界**（真实路径落在允许目录之外）：`FileErr` 是 `path outside allowed directory`，未包装任何哨兵，`errors.Is` 对 `ErrFileNotFound` 与 `ErrInvalidFilePath` 都返回 `false`。这种情况只能按 `FileErr` 的消息判断。
 
 :::
 
@@ -98,13 +102,13 @@ func main() {
 	// InputError: op=Extract size=200 max=100
 	// Is(ErrInputTooLarge)=true Is(ErrFileNotFound)=false Is(ErrInvalidFilePath)=false
 
-	// 路径遍历：*FileError 不命中任何哨兵
+	// 路径遍历：*FileError 的 FileErr 包装 ErrInvalidFilePath
 	_, err = p.ExtractFromFile("../../../etc/passwd")
 	diagnose(err)
 	// 输出：
 	// FileError: op=ReadFile safePath=passwd
 	// 安全事件：路径遍历
-	// Is(ErrInputTooLarge)=false Is(ErrFileNotFound)=false Is(ErrInvalidFilePath)=false
+	// Is(ErrInputTooLarge)=false Is(ErrFileNotFound)=false Is(ErrInvalidFilePath)=true
 }
 ```
 
@@ -119,7 +123,9 @@ func main() {
 | 用户主动 `cancel()` | `context.Canceled` |
 | `ProcessingTimeout = 0`（不限时）且用户 ctx 到期 | `context.DeadlineExceeded`（库不派生超时） |
 
-`ProcessingTimeout > 0` 时，库用 `context.WithTimeout(parentCtx, ProcessingTimeout)` 派生 deadline，实际生效的是两者中较早者。只有当派生 deadline 触发、且 `ctx.Err() == nil` 时，错误才归一化为 `ErrProcessingTimeout`；用户 deadline 与 `cancel()` 原样返回，所以用户超时时 `errors.Is(err, html.ErrProcessingTimeout)` 为 `false`。
+`ProcessingTimeout > 0` 时，库用 `context.WithTimeout(parentCtx, ProcessingTimeout)` 派生 deadline，实际生效的是两者中较早者。只有当派生 deadline 触发、且 `ctx.Err() == nil` 时，错误才归一化为 `ErrProcessingTimeout`。
+
+用户 deadline 与 `cancel()` 原样返回，所以用户超时时 `errors.Is(err, html.ErrProcessingTimeout)` 为 `false`。
 
 超时不会强制终止处理：库立即返回，提取 goroutine 在下一个协作检查点退出。用户 `cancel()` 的返回是 `context.Canceled`，同样不归一化。
 
@@ -179,9 +185,10 @@ func main() {
 | `ErrInputTooLarge` | 入口处按 `MaxInputSize` 拒绝；上限不能调高 |
 | `encoding detection failed` | 该来源的编码标错：改用真实编码 |
 | `ErrFileNotFound` | 返回 404 或跳过该项（批量中只影响该项） |
-| `ErrInvalidFilePath` / 路径遍历 | 拒绝并记审计 |
+| `ErrInvalidFilePath` / 路径遍历 | 拒绝并记审计（遍历命中 `ErrInvalidFilePath`） |
+| `path outside allowed directory` | `AllowedBaseDir` 越界，无哨兵：按 `FileErr` 消息拒绝并记审计 |
 | `ErrMaxDepthExceeded` | 由输入结构触发：拒绝，或先裁剪结构 |
-| `ErrTooManyConcurrentOps` | 全局超时 goroutine 已达 1000：降低并发或稍后重试 |
+| `ErrTooManyConcurrentOps` | 进程级超时 goroutine 已达 1000：降低并发或稍后重试 |
 | `ErrProcessorClosed` / `ErrInvalidConfig` / `ErrMultipleConfigs` | 编程错误：修代码，不重试 |
 | `ErrInternalPanic` | 上报 issue，附输入样本 |
 
@@ -192,7 +199,7 @@ func main() {
 - 强制 `Config.Encoding = "utf-8"`（或页面声明 utf-8）但数据不是合法 UTF-8 → `encoding detection failed: declared charset "utf-8" but data is not valid UTF-8`
 - 强制了不支持的编码名且数据不是合法 UTF-8 → `encoding detection failed: unsupported encoding "..."`
 
-无 `<meta charset>` 的 GBK、Shift_JIS 页面不会报错：库按 windows-1252 兜底解码，得到乱码且 `err == nil`。所以「检测失败再换编码重试」不会触发。按来源显式指定编码：HTTP `Content-Type` 头、站点白名单，或对已知来源写死 `Config.Encoding`。
+无 `<meta charset>` 的 GBK、Shift_JIS 页面不会报错：库按 windows-1252 兜底解码，得到乱码且 `err == nil`（完整行为见[编码检测实战](../core-features/encoding-detection#无声明编码的页面会得到乱码)）。所以「检测失败再换编码重试」不会触发。按来源显式指定编码：HTTP `Content-Type` 头、站点白名单，或对已知来源写死 `Config.Encoding`。
 
 ```go
 package main
@@ -300,14 +307,16 @@ func main() {
 | `ErrInputTooLarge` | 413 Payload Too Large | 客户端应缩减输入 |
 | `ErrInvalidHTML` | 422 Unprocessable Entity | 无法解析的 HTML |
 | `ErrFileNotFound` | 404 Not Found | 文件不存在 |
-| `ErrInvalidFilePath` | 400 Bad Request | 路径格式无效 |
+| `ErrInvalidFilePath` | 400 Bad Request | 路径格式无效，**含路径遍历拒绝** |
 | `ErrMaxDepthExceeded` | 400 Bad Request | 输入结构过深 |
 | `ErrProcessingTimeout` | 504 Gateway Timeout | 处理超时，可稍后重试 |
 | `ErrProcessorClosed` | 500 Internal Server Error | 编程错误（生命周期） |
 | `ErrInvalidConfig` | 500 Internal Server Error | 编程错误（配置应在启动时校验） |
 | `ErrInternalPanic` | 500 Internal Server Error | 内部 bug，应上报 |
 | `ErrMultipleConfigs` | 500 Internal Server Error | 编程错误（传了多个 Config） |
-| `ErrTooManyConcurrentOps` | 503 Service Unavailable | 全局并发已满，可稍后重试 |
+| `ErrTooManyConcurrentOps` | 503 Service Unavailable | 进程级并发已满，可稍后重试 |
+
+`AllowedBaseDir` 越界（`path outside allowed directory`）没有哨兵，映射表无法命中它，需要在 `errors.As` 取到 `*FileError` 后按消息判为 400。
 
 ```go
 package main
@@ -357,6 +366,7 @@ func main() {
 	}{
 		{"输入过大", func() error { _, e := p.Extract(make([]byte, 100)); return e }()},
 		{"文件不存在", func() error { _, e := p.ExtractFromFile("missing.html"); return e }()},
+		{"路径遍历", func() error { _, e := p.ExtractFromFile("../../../etc/passwd"); return e }()},
 		{"并发已满", html.ErrTooManyConcurrentOps},
 	}
 
@@ -366,6 +376,7 @@ func main() {
 	// 输出：
 	// 输入过大 → HTTP 413
 	// 文件不存在 → HTTP 404
+	// 路径遍历 → HTTP 400
 	// 并发已满 → HTTP 503
 }
 ```

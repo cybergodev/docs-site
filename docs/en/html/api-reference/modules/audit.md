@@ -47,11 +47,25 @@ type AuditConfig struct {
 | `AuditConfig.MaxRawValueLength` | `int` | Maximum recorded length of raw values, truncated beyond it; `0` uses `DefaultMaxRawValueLength` (200) |
 | `AuditConfig.MaxEntries` | `int` | Cap on entries retained in memory by `GetAuditLog` (`0` uses the default 10000) |
 
+### Validate
+
+`AuditConfig.Validate` checks the audit configuration for validity (value receiver, callable as `cfg.Audit.Validate()`); `Config.Validate` delegates to `Validate` internally for the audit fields.
+
+```go
+func (c AuditConfig) Validate() error
+```
+
+The constraints match the audit rows of [`Config.Validate`](../core/config#validation-constraints): `MaxRawValueLength` ≥ 0 and `MaxEntries` between 0 and 100000. Violations return a `*ConfigError` wrapping `ErrInvalidConfig`, with the field name carrying the Audit. prefix (for example Audit.MaxEntries).
+
+```go
+err := cfg.Audit.Validate()
+```
+
 ## Preset Audit Configs
 
 ### DefaultAuditConfig
 
-Returns the default audit configuration: disabled, with every log flag `true`.
+Returns the default audit configuration: `Enabled=false` (audit is off by default), with all 8 log switches `true`.
 
 ```go
 func DefaultAuditConfig() AuditConfig
@@ -106,28 +120,13 @@ type AuditEventType string  // Audit event type
 type AuditLevel string      // Audit severity level
 ```
 
-`AuditEventType` identifies the category of an audit event (values in the table below) and `AuditLevel` its severity; both are `string` type aliases.
+`AuditEventType` identifies the category of an audit event and `AuditLevel` its severity; both are `string` type aliases. Their constant values are listed in the next section.
 
-## Audit Event Types
+## Event Types and Levels
 
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `AuditEventBlockedTag` | `"blocked_tag"` | Blocked tag |
-| `AuditEventBlockedAttr` | `"blocked_attr"` | Blocked attribute |
-| `AuditEventBlockedURL` | `"blocked_url"` | Blocked URL |
-| `AuditEventInputViolation` | `"input_violation"` | Input violation |
-| `AuditEventDepthViolation` | `"depth_violation"` | Depth violation |
-| `AuditEventTimeout` | `"timeout"` | Processing timeout |
-| `AuditEventEncodingIssue` | `"encoding_issue"` | Encoding issue |
-| `AuditEventPathTraversal` | `"path_traversal"` | Path traversal attempt |
+`AuditEventType` has 8 event kinds: `AuditEventBlockedTag`, `AuditEventBlockedAttr`, `AuditEventBlockedURL`, `AuditEventInputViolation`, `AuditEventDepthViolation`, `AuditEventTimeout`, `AuditEventEncodingIssue`, `AuditEventPathTraversal`. `AuditLevel` has 3 levels: `AuditLevelInfo`, `AuditLevelWarning`, `AuditLevelCritical`.
 
-## Audit Levels
-
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `AuditLevelInfo` | `"info"` | Information |
-| `AuditLevelWarning` | `"warning"` | Warning |
-| `AuditLevelCritical` | `"critical"` | Critical |
+Constant values and per-item descriptions are authoritative in [Constants & Errors](../types/constants#audit-constants) (single source of truth; this page does not duplicate that table).
 
 ## AuditEntry
 
@@ -167,12 +166,12 @@ type AuditEntry struct {
 | `AuditEntry.MaxSize` | `int` | Configured size limit for input-violation events |
 | `AuditEntry.Depth` | `int` | Actual nesting depth for depth-violation events |
 | `AuditEntry.MaxDepth` | `int` | Configured depth limit for depth-violation events |
-| `AuditEntry.Path` | `string` | File path for path-traversal events (reduced to the filename) |
+| `AuditEntry.Path` | `string` | File path for path traversal events (reduced to the filename) |
 | `AuditEntry.RawValue` | `string` | Raw attribute/URL value (populated only when `IncludeRawValues=true`) |
 | `AuditEntry.Metadata` | `map[string]any` | Additional event-specific key-value pairs |
 
 :::tip Which fields get populated
-`Timestamp`, `EventType`, `Level`, and `Message` are set on every entry. `Tag`, `Attribute`, and `URL` are filled only for the matching events (blocked tag/attribute/URL); `InputSize`/`MaxSize` and `Depth`/`MaxDepth` accompany input-violation and depth-violation events; `RawValue` is kept only when `IncludeRawValues=true`; `Metadata` carries event-specific extras.
+`Timestamp`, `EventType`, `Level`, and `Message` are set on every entry. `Tag`, `Attribute`, and `URL` are filled only for the matching events (blocked tag/attribute/URL); a blocked URL fills both the `URL` and `RawValue` fields. `InputSize`/`MaxSize` and `Depth`/`MaxDepth` accompany input-violation and depth-violation events respectively. `RawValue` is kept only when `IncludeRawValues=true`; before recording it is HTML-escaped and truncated to `MaxRawValueLength`. An `encoding_issue` event writes the declared encoding name into `Metadata["encoding"]`; for other events `Metadata` carries event-specific extras. Overly long attacker-controlled fields are truncated on record: `URL` beyond 256 bytes is cut and suffixed with `...[truncated]`, and `Tag`/`Attribute`/`Path`/`Message` beyond 256 bytes are cut rune-safely and suffixed with `...`.
 :::
 
 ## AuditSink Interface
@@ -184,13 +183,13 @@ type AuditSink interface {
 }
 ```
 
-An implementation supplies two methods: `Write` takes one `AuditEntry` (by convention **non-blocking and concurrency-safe**) and `Close` releases resources. The built-in sinks come from 7 constructors covering 6 sink types.
+An implementation supplies two methods: `AuditSink.Write` takes one `AuditEntry` (by convention **non-blocking and concurrency-safe**) and `AuditSink.Close` releases resources. The built-in sinks come from 7 constructors covering 6 sink types.
 
 ## Sink Types
 
 ### LoggerAuditSink
 
-`LoggerAuditSink` writes through a standard library `log.Logger` with an `[AUDIT]` prefix. `NewLoggerAuditSink` targets standard error (`os.Stderr`); to redirect to a file or a network connection, pass any `io.Writer` to `NewLoggerAuditSinkWithWriter(w)` (a `nil` writer falls back to standard error).
+`LoggerAuditSink` writes through a standard library `log.Logger` with an `[AUDIT]` prefix. `NewLoggerAuditSink` writes to standard error (`os.Stderr`); to redirect to a file or a network connection, pass any `io.Writer` to `NewLoggerAuditSinkWithWriter` (a `nil` writer falls back to standard error, so the constructor never returns a sink that panics on use).
 
 ```go
 func NewLoggerAuditSink() *LoggerAuditSink
@@ -204,7 +203,7 @@ func NewLoggerAuditSinkWithWriter(w io.Writer) *LoggerAuditSink
 
 ### ChannelAuditSink
 
-`ChannelAuditSink` sends entries to a buffered channel, for asynchronous handling or integration with external logging systems. Create it with `NewChannelAuditSink(bufferSize)`; consumers receive from the read-only channel returned by `Channel()`. `Write` is **non-blocking**: when the buffer is full the entry is dropped and the drop counter increments (no blocking, no error). Query `DroppedCount()` to alert or scale.
+`ChannelAuditSink` sends entries to a buffered channel, for asynchronous handling or integration with external logging systems. Create it with `NewChannelAuditSink` (the parameter is the buffer size); consumers receive from the read-only channel returned by `Channel`. `Write` is **non-blocking**: when the buffer is full the entry is dropped and the drop counter increments (no blocking, no error). Query `DroppedCount` to alert or scale.
 
 ```go
 func NewChannelAuditSink(bufferSize int) *ChannelAuditSink
@@ -216,7 +215,7 @@ A negative `bufferSize` becomes `0` (unbuffered channel); a value above `100000`
 |--------|-----------|-------------|
 | `ChannelAuditSink.Channel` | `func (s *ChannelAuditSink) Channel() <-chan AuditEntry` | Returns the read-only receive channel |
 | `ChannelAuditSink.DroppedCount` | `func (s *ChannelAuditSink) DroppedCount() int64` | Number of entries dropped because the buffer was full |
-| `ChannelAuditSink.Write` | `func (s *ChannelAuditSink) Write(entry AuditEntry)` | Non-blocking write; drops and counts when full |
+| `ChannelAuditSink.Write` | `func (s *ChannelAuditSink) Write(entry AuditEntry)` | Non-blocking write; drops and counts when full; a write after `Close` is a no-op |
 | `ChannelAuditSink.Close` | `func (s *ChannelAuditSink) Close() error` | Closes the channel (idempotent: only the first call closes it) |
 
 ```go
@@ -230,7 +229,7 @@ go func() {
 
 ### WriterAuditSink
 
-`WriterAuditSink` writes JSON Lines to an `io.Writer`; create it with `NewWriterAuditSink(w)`.
+`WriterAuditSink` writes JSON Lines to an `io.Writer`; create it with `NewWriterAuditSink` (the parameter is the target writer).
 
 ```go
 func NewWriterAuditSink(w io.Writer) *WriterAuditSink
@@ -243,7 +242,7 @@ func NewWriterAuditSink(w io.Writer) *WriterAuditSink
 
 ### MultiSink
 
-`MultiSink` fans entries out to several sinks; create it with `NewMultiSink(sinks...)`. `Close` uses `errors.Join` to **aggregate the close errors of every child sink** rather than keeping only the last one — discarding an earlier sink's delivery failure would hide a real problem.
+`MultiSink` fans entries out to several sinks; create it with `NewMultiSink` (the variadic parameter is the list of child sinks to fan out to). On write it calls each child sink in turn, and **a panic in one child is isolated** so it cannot affect the other children or the main extraction flow (the audit subsystem is best-effort). `Close` uses `errors.Join` to **aggregate the close errors of every child sink** rather than keeping only the last one — discarding an earlier sink's delivery failure would hide a real problem.
 
 ```go
 func NewMultiSink(sinks ...AuditSink) *MultiSink
@@ -251,12 +250,12 @@ func NewMultiSink(sinks ...AuditSink) *MultiSink
 
 | Method | Description |
 |--------|-------------|
-| `MultiSink.Write` | Writes the entry to every child sink (skipping `nil`) |
+| `MultiSink.Write` | Writes the entry to every child sink (skipping `nil`; a child panic is recovered) |
 | `MultiSink.Close` | Closes every child sink, aggregating errors with `errors.Join` |
 
 ### FilteredSink
 
-`FilteredSink` filters entries with a predicate; create it with `NewFilteredSink(sink, filter)`.
+`FilteredSink` filters entries with a predicate; create it with `NewFilteredSink` (the parameters are the underlying sink and a `func(AuditEntry) bool` predicate).
 
 ```go
 func NewFilteredSink(sink AuditSink, filter func(AuditEntry) bool) *FilteredSink
@@ -274,6 +273,8 @@ func NewFilteredSink(sink AuditSink, filter func(AuditEntry) bool) *FilteredSink
 ```go
 func NewLevelFilteredSink(sink AuditSink, minLevel AuditLevel) *LevelFilteredSink
 ```
+
+The `minLevel` you pass is lowercased before comparison. An unrecognized level string (say a hand-typed `"warn"`) **disables filtering** — every entry is forwarded to the underlying sink (fail-open) — so pass the `AuditLevelInfo` / `AuditLevelWarning` / `AuditLevelCritical` constants.
 
 | Method | Description |
 |--------|-------------|

@@ -268,7 +268,7 @@ Each redirect hop passes the following checks in order; any failed step rejects 
 1. **Domain whitelist** (when `RedirectWhitelist` is configured)
 2. **Scheme check**: only http/https allowed; `file://`, `gopher://`, etc. are rejected
 3. **SSRF host validation**: the target hostname is validated against private/loopback/reserved rules
-4. **Cross-origin sensitive-header stripping**: when the target host differs from the original host, `Authorization`, `Cookie`, and `Proxy-Authorization` are removed. Even when the redirect is allowed, credentials are never carried to a third-party domain
+4. **Cross-origin sensitive-header stripping**: when the target origin (scheme/host/port) differs from the original origin, `Authorization`, `Proxy-Authorization`, `Cookie`, `X-Api-Key`, and `X-Auth-Token` are removed. Even when the redirect is allowed, credentials are never carried to a third-party domain
 5. **Redirect-loop detection**: A→B→A cycles error out; consecutive identical URLs (A→A) are excepted
 6. **Hop-count cap**: 10 by default, configuration hard cap 50
 
@@ -396,7 +396,7 @@ For environments without fake-IP proxies that need this range restricted, valida
 1. Use `SecureConfig()` as the security baseline for handling untrusted URLs
 2. Use `SSRFExemptCIDRs` to exempt only the CIDR ranges you actually need; avoid `AllowPrivateIPs`
 3. Configure `RedirectWhitelist` to limit redirect destination domains
-4. Disable redirects (`FollowRedirects = false`) when handling caller URLs
+4. Disable redirects (`FollowRedirects = false`) when handling untrusted URLs
 5. Audit the `SSRFExemptCIDRs` configuration regularly and remove subnets no longer in use
 6. Use `AuditMiddleware` to record all requests, enabling after-the-fact tracing of SSRF attempts
 

@@ -9,9 +9,9 @@ sidebar_position: 30
 
 上线前逐项核对。优先级含义：
 
-- 🔴 **必须（P0）**：不做到会有安全漏洞或资源泄漏
-- 🟡 **推荐（P1）**：影响可靠性与可观测性
-- 🟢 **可选（P2）**：有余力再做
+- **必须（P0）**：不做到会有安全漏洞或资源泄漏
+- **推荐（P1）**：影响可靠性与可观测性
+- **可选（P2）**：有余力再做
 
 :::tip 从预设出发，按业务放宽
 `HighSecurityConfig()` 已把各项限制收紧到安全档位并启用完整审计。面向不可信输入时直接用它，再按需放宽单个字段。
@@ -19,24 +19,24 @@ sidebar_position: 30
 
 ## 基础配置
 
-- [ ] 🔴 使用 `HighSecurityConfig()` 或自定义安全配置作为起点
-- [ ] 🔴 设置合理的 `MaxInputSize`（硬上限 50MB）
-- [ ] 🔴 设置 `ProcessingTimeout` 防止长时间阻塞（建议 10–30s）
-- [ ] 🟡 配置 `MaxDepth` 限制 DOM 深度（默认 500，高安全建议 100）
-- [ ] 🟡 保持 `EnableSanitization = true`（默认已开）
-- [ ] 🟢 根据并发量调整 `WorkerPoolSize`（默认 4，上限 256）
+- [ ] 使用 `HighSecurityConfig()` 或自定义安全配置作为起点
+- [ ] 设置合理的 `MaxInputSize`（硬上限 50MB）
+- [ ] 设置 `ProcessingTimeout` 防止长时间阻塞（建议 10–30s）
+- [ ] 配置 `MaxDepth` 限制 DOM 深度（默认 500，高安全建议 100）
+- [ ] 保持 `EnableSanitization = true`（默认已开）
+- [ ] 根据并发量调整 `WorkerPoolSize`（默认 4，上限 256）
 
 **为什么**
 
-- `MaxInputSize` 是第一道内存防线，且受 `maxConfigInputSize`（50MB）硬约束，误配也放不大。批量处理的峰值内存大致按 `MaxInputSize × WorkerPoolSize` 估算，公网 API 建议收到 10MB。
+- `MaxInputSize` 是第一道内存防线，且受 `maxConfigInputSize`（50MB）硬约束，误配也无法放大上限。批量处理的峰值内存大致按 `MaxInputSize × WorkerPoolSize` 估算，公网 API 建议收到 10MB。
 - `WorkerPoolSize` 决定批量提取的并发度，一般取 CPU 核心数。接近 256 上限会带来明显的 goroutine 与内存压力。
 - `MaxDepth` 只有低于解析器阈值才有效：`golang.org/x/net/html` 在约 512 个未闭合元素时先返回 `ErrInvalidHTML`，库的 `MaxDepth` 校验发生在解析成功之后。
 
 ## Processor 生命周期
 
-- [ ] 🔴 用 `defer p.Close()` 释放 Processor
-- [ ] 🔴 `Close()` 之后不再调用任何提取方法（会返回 `ErrProcessorClosed`）
-- [ ] 🟡 跨请求复用同一个 Processor，而不是每次请求新建
+- [ ] 用 `defer p.Close()` 释放 Processor
+- [ ] `Close()` 之后不再调用任何提取方法（会返回 `ErrProcessorClosed`）
+- [ ] 跨请求复用同一个 Processor，而不是每次请求新建
 
 ```go
 p, err := html.New(html.HighSecurityConfig())
@@ -50,15 +50,15 @@ defer p.Close()
 
 - `Processor` 并发安全，内部缓存与统计计数器都做了同步保护，可做成应用级单例（如 handler 持有一个全局 `*html.Processor`）。
 - 每次 `html.New()` 都要分配缓存与审计结构，`CacheTTL` 与 `CacheCleanup` 均大于 0 时还会启动后台清扫 goroutine；逐请求新建既浪费资源又增加 GC 压力。
-- 包级函数（`html.Extract` 等）内部用 `sync.Pool` 复用临时 Processor，但池化实例每次归还都会清空缓存，跨调用不会命中——需要缓存就显式持有实例。
+- 包级函数（`html.Extract` 等）内部用 `sync.Pool` 复用临时 Processor，但池化实例构造时就禁用了缓存，跨调用不会命中——需要缓存就显式持有实例。
 
 ## 审计与监控
 
-- [ ] 🔴 启用审计（`Audit.Enabled = true`）
-- [ ] 🟡 用 `WriterAuditSink` 把审计日志持久化到文件
-- [ ] 🟡 监控 `GetStatistics()` 的 `ErrorCount` 与 `CacheHits`
-- [ ] 🟡 对 critical 事件（输入违规、路径穿越）配置实时告警
-- [ ] 🟢 用 `ChannelAuditSink` 把审计流接入外部 SIEM
+- [ ] 启用审计（`Audit.Enabled = true`）
+- [ ] 用 `WriterAuditSink` 把审计日志持久化到文件
+- [ ] 监控 `GetStatistics()` 的 `ErrorCount` 与 `CacheHits`
+- [ ] 对 critical 事件（输入违规、路径遍历）配置实时告警
+- [ ] 用 `ChannelAuditSink` 把审计流接入外部 SIEM
 
 ```go
 auditFile, err := os.OpenFile("audit.jsonl", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -101,12 +101,14 @@ if n := alertSink.DroppedCount(); n > 0 {
 
 ## 上下文与超时
 
-- [ ] 🔴 提取操作使用 `ExtractWithContext`，而不是裸 `Extract`
-- [ ] 🔴 设置合理的 context 超时
-- [ ] 🟡 批量操作使用可取消的 context，出错时能中止剩余任务
+- [ ] 提取操作使用 `ExtractWithContext`，而不是裸 `Extract`
+- [ ] 设置合理的 context 超时
+- [ ] 批量操作使用可取消的 context，出错时能中止剩余任务
+
+在 HTTP handler 内，基于请求上下文派生超时：
 
 ```go
-ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 defer cancel()
 result, err := p.ExtractWithContext(ctx, data)
 ```
@@ -119,11 +121,11 @@ result, err := p.ExtractWithContext(ctx, data)
 
 ## 错误处理
 
-- [ ] 🔴 用 `errors.Is` 区分业务错误与安全错误
-- [ ] 🔴 对 `*FileError` 用 `SafePath()` 输出，而非原始错误字符串
-- [ ] 🟡 记录所有 `ErrInputTooLarge` 与深度类错误（可能是攻击探测）
-- [ ] 🟡 监控 `ErrInternalPanic` 频率（出现即应排查并上报 issue）
-- [ ] 🟢 对 `ErrProcessorClosed` 做优雅降级而非崩溃
+- [ ] 用 `errors.Is` 区分业务错误与安全错误
+- [ ] 对 `*FileError` 用 `SafePath()` 输出，而非原始错误字符串
+- [ ] 记录所有 `ErrInputTooLarge` 与深度类错误（可能是攻击探测）
+- [ ] 监控 `ErrInternalPanic` 频率（出现即应排查并上报 issue）
+- [ ] 对 `ErrProcessorClosed` 做优雅降级而非崩溃
 
 ```go
 _, err := p.Extract(data)
@@ -149,28 +151,28 @@ case errors.Is(err, html.ErrFileNotFound),
 **为什么**
 
 - `FileError.Error()` 已内置脱敏（只显示文件名），但 `FileError.Path` 字段保留原始路径，日志一律走 `SafePath()`。
-- 深度问题有两个来源：`ErrMaxDepthExceeded` 来自库的校验，`ErrInvalidHTML` 来自解析器自身的约 512 层上限。只统计前者会漏掉更深的一批输入。
+- 深度问题有两个来源：`ErrMaxDepthExceeded` 来自库的校验，`ErrInvalidHTML` 来自解析器自身的约 512 层上限。只统计前者会漏掉超深输入——它们以 `ErrInvalidHTML` 的形式出现。
 - `ErrInternalPanic` 表示恶意输入触发了库未预期的 panic。一旦出现，保留触发输入并上报；不要长期依赖恢复机制。
 
 ## 资源管理
 
-- [ ] 🔴 批量操作单批不超过 10000 条
-- [ ] 🟡 合理配置 `WorkerPoolSize`（建议等于 CPU 核心数）
-- [ ] 🟡 监控内存使用与缓存命中率
-- [ ] 🟢 长期运行的实例定期调用 `ClearCache()`
+- [ ] 批量操作单批不超过 10000 条（库的硬上限，超出整批被拒）
+- [ ] 合理配置 `WorkerPoolSize`（建议等于 CPU 核心数）
+- [ ] 监控内存使用与缓存命中率
+- [ ] 长期运行的实例定期调用 `ClearCache()`
 
 **为什么**
 
-- 单批过大既占内存又放大失败代价。大批任务切成每批 1000–5000 条，每批独立超时 context，一批失败不影响后续批次。
+- 超过 10000 条的批次会被库直接整体拒绝：`BatchResult` 中每一项都带同一个包装 `ErrBatchTooLarge` 的错误，一条也不会处理。大批任务切成每批 1000–5000 条，每批独立超时 context，一批失败不影响后续批次。
 - `MaxCacheEntries`（默认 2000，上限 100000）决定缓存占用；长跑服务内存吃紧时调小条目数或缩短 `CacheTTL`。
 - 缓存命中只省 CPU 不省内存：命中率高才有收益，否则缓存条目只占内存并带来哈希开销。
 
 ## 文件处理
 
-- [ ] 🔴 验证文件路径来源（不要让用户直接控制完整路径）
-- [ ] 🔴 设置 `AllowedBaseDir` 限制可读目录
-- [ ] 🟡 处理前用 `os.Stat` 预检查文件大小（库内已做，外层再加一道）
-- [ ] 🟢 对上传文件做类型/扩展名白名单校验
+- [ ] 验证文件路径来源（不要让用户直接控制完整路径）
+- [ ] 设置 `AllowedBaseDir` 限制可读目录
+- [ ] 处理前用 `os.Stat` 预检查文件大小（库内已做，外层再加一道）
+- [ ] 对上传文件做类型/扩展名白名单校验
 
 **为什么**
 
@@ -239,7 +241,7 @@ func main() {
 | 错误率 | `Statistics.ErrorCount / TotalProcessed` | > 5% | 输入质量差、配置过严、上游异常 |
 | 缓存命中率 | `Statistics.CacheHits / TotalProcessed` | < 30% | 输入去重不足、缓存 TTL 过短 |
 | 平均处理时间 | `Statistics.AverageProcessTime` | 超业务基线 | 恶意输入、超时配置不当 |
-| critical 审计事件 | `GetAuditLog()` 过滤 `AuditLevelCritical` | 任意一条 | 输入违规、路径穿越攻击 |
+| critical 审计事件 | `GetAuditLog()` 过滤 `AuditLevelCritical` | 任意一条 | 输入违规、路径遍历攻击 |
 | ChannelAuditSink 丢弃数 | `sink.DroppedCount()` | > 0 | 缓冲不足、消费方过慢 |
 
 ```go

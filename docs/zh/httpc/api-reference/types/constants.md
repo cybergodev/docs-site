@@ -1,7 +1,7 @@
 ---
 sidebar_label: "常量与类型"
 title: "常量与类型 - CyberGo HTTPC | 常量与辅助类型"
-description: "HTTPC 常量与辅助类型 API 参考：BodyKind 六种请求体枚举与自动检测规则、ProxyStrategy 代理策略、FormData/FileData 上传类型、AuditEvent 审计事件与 AuditConfig 审计配置、SourceIPKey 等上下文键，以及 ChecksumSHA256 校验和常量。"
+description: "HTTPC 常量与类型 API 参考：BodyKind 六种请求体枚举与自动检测规则、ProxyStrategy 代理策略、FormData/FileData 上传类型、AuditEvent 审计事件与 AuditConfig 审计配置、SourceIPKey 等上下文键与 ChecksumSHA256 校验和常量。"
 sidebar_position: 20
 ---
 

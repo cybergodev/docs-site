@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration Guide - CyberGo html | Config Field Selection"
-description: "CyberGo html configuration: DefaultConfig, HighSecurityConfig, TextOnlyConfig, and MarkdownConfig compared, the six field groups, and Validate checks."
+description: "CyberGo html configuration: DefaultConfig, HighSecurityConfig, TextOnlyConfig, and MarkdownConfig compared, all 31 fields by group, common setups, Validate."
 sidebar_position: 60
 ---
 
 # Configuration Guide
 
-`Config` is the library's single configuration struct, with 30 fields. Most scenarios need one preset plus a few overrides; the full field reference is in [API Reference — Config](../../api-reference/core/config).
+`Config` is the library's single configuration struct, with 31 fields. Most scenarios need one preset plus a few overrides; the full field reference is in [API Reference — Config](../../api-reference/core/config).
 
 ## Four Presets
 
@@ -23,6 +23,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/cybergodev/html"
 )
@@ -31,20 +32,38 @@ func main() {
 	data := []byte(`<html><body><h1>Title</h1><p>Body content</p></body></html>`)
 
 	// Most scenarios: use the default config directly
-	p1, _ := html.New()
+	p1, err := html.New()
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p1.Close()
-	r1, _ := p1.Extract(data)
+	r1, err := p1.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(r1.Title)
+	// Output: Title
 
 	// Plain text only (e.g. search engine indexing)
-	p2, _ := html.New(html.TextOnlyConfig())
+	p2, err := html.New(html.TextOnlyConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p2.Close()
 
 	// Images and links appear in Text as Markdown inline syntax (e.g. CMS migration)
-	p3, _ := html.New(html.MarkdownConfig())
+	p3, err := html.New(html.MarkdownConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p3.Close()
-	r3, _ := p3.Extract(data)
+	r3, err := p3.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(r3.Text)
+	// Output: # Title
+	//         Body content
 }
 ```
 
@@ -59,7 +78,9 @@ cfg.PreserveImages = false // additionally disable images on top of high securit
 processor, _ := html.New(cfg)
 ```
 
-`TextOnlyConfig()` only sets `PreserveImages`/`PreserveLinks`/`PreserveVideos`/`PreserveAudios` to `false`; it does not touch the `Include*` filters used by `ExtractAllLinks`. `MarkdownConfig()` only sets `InlineImageFormat` and `InlineLinkFormat`; `ExtractToMarkdown` always uses Markdown formatting, so it does not need that preset.
+`TextOnlyConfig()` only sets `PreserveImages`/`PreserveLinks`/`PreserveVideos`/`PreserveAudios` to `false`; it does not touch the `Include*` filters used by `ExtractAllLinks`.
+
+`MarkdownConfig()` only sets `InlineImageFormat` and `InlineLinkFormat`; `ExtractToMarkdown` always uses Markdown formatting, so it does not need that preset.
 
 ## Six Field Groups
 
@@ -102,6 +123,7 @@ Controls what is extracted from the HTML.
 | Field | Default | Description |
 |-------|---------|-------------|
 | `ExtractArticle` | `true` | Article detection (locates the main content) |
+| `ExtractMetadata` | `true` | Structured metadata: parses author, publication time, description, site name, and canonical URL, and lets a metadata title take priority |
 | `PreserveImages` | `true` | Keep image information |
 | `PreserveLinks` | `true` | Keep link information |
 | `PreserveVideos` | `true` | Extract videos |
@@ -116,6 +138,10 @@ cfg.PreserveAudios = false
 // Extract only text, images, and links
 ```
 
+:::tip What disabling ExtractMetadata changes
+It also changes where the title comes from: `Result.Title` no longer takes the JSON-LD headline or `og:title` and falls back to the DOM order `<title>` → the h1 inside the article → the first document h1 → the first h2. `Author`, `PublishedTime`, `Description`, `SiteName`, and `CanonicalURL` stay empty.
+:::
+
 ### Output Formats
 
 Controls how images and links appear in the text output. See [Output Formats](./output-formats).
@@ -127,11 +153,19 @@ Controls how images and links appear in the text output. See [Output Formats](./
 | `TableFormat` | `"markdown"` | `"markdown"`, `"html"` |
 | `Encoding` | `""` (auto) | `"utf-8"`, `"gbk"`, `"shift_jis"`, `"windows-1252"`, etc. |
 
+The three format fields accept exported constants directly, which avoids typos: `html.FormatNone` (`"none"`), `html.FormatMarkdown` (`"markdown"`), `html.FormatHTML` (`"html"`), and `html.FormatPlaceholder` (`"placeholder"`, accepted only by `InlineImageFormat`). The constants are equivalent to the string literals and follow the same validation rules (case-insensitive); the constant list is in [API Reference: Constants & Errors](../../api-reference/types/constants#format-constants).
+
+```go
+cfg := html.DefaultConfig()
+cfg.InlineImageFormat = html.FormatMarkdown
+cfg.InlineLinkFormat = html.FormatHTML
+```
+
 An empty `Encoding` goes through auto-detection. Setting it skips the detection step, but only do so when the encoding is known — a wrong value yields mojibake or an `encoding detection failed` error. See [Encoding Detection](./encoding-detection).
 
 ### Link Extraction
 
-These fields apply only to `ExtractAllLinks`. See [Link Extraction](./link-extraction).
+These fields apply to `ExtractAllLinks` and Reader Mode (the `ReadPage` family). See [Link Extraction](./link-extraction).
 
 | Field | Default | Description |
 |-------|---------|-------------|
@@ -256,7 +290,7 @@ func main() {
 }
 ```
 
-`ExtractToMarkdown` always uses Markdown formatting, independent of `InlineImageFormat`/`InlineLinkFormat`, so `MarkdownConfig()` is not needed here. `BaseURL` and `ResolveRelativeURLs` apply only to `ExtractAllLinks` and do not rewrite links in an `Extract` result.
+`ExtractToMarkdown` always uses Markdown formatting, independent of `InlineImageFormat`/`InlineLinkFormat`, so `MarkdownConfig()` is not needed here. `BaseURL` and `ResolveRelativeURLs` apply to `ExtractAllLinks` and Reader Mode, and do not rewrite links in an `Extract` result.
 
 ## Validate
 

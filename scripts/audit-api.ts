@@ -393,12 +393,18 @@ const PROJECT_KNOWN_NOT_SYMBOLS: Record<string, Set<string>> = {
   ]),
   jwt: new Set(['ParsePKCS8PrivateKey', 'ParsePKIXPublicKey', 'WaitGroup']),
   html: new Set([
+    // Render/RenderText emit these section headings as literal strings
+    // (read.go's sectionKindLabels map), not exported symbols.
+    'Aside',
     'CacheHit',
+    'DefaultScorer',
+    'Footer',
     'Get',
     'GetFinalPathNameByHandleW',
+    'Header',
+    'Navigation',
     'NoCache',
     'Put',
-    'DefaultScorer',
     'Record',
     'WithContext'
   ]),

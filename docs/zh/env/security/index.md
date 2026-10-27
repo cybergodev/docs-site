@@ -52,7 +52,7 @@ password := secret.Reveal()  // 仅在需要明文时调用
 ```
 
 **核心功能：**
-- **内存锁定**：防止交换到磁盘，仅 Linux/macOS/Windows 支持；其余平台 `IsMemoryLockSupported()` 返回 false，锁定尝试失败并记录错误（`Masked()` 显示 `lock-failed`），`SecureValue` 仍可用
+- **内存锁定**：防止交换到磁盘，仅 Linux/macOS/Windows 支持；其余平台 `IsMemoryLockSupported()` 返回 false，锁定尝试失败、错误保存在该值上（`Masked()` 显示 `lock-failed`），`SecureValue` 仍可用
 - **自动清零**：`Release()` / `Close()` 时安全擦除内存
 - **掩码显示**：`Masked()` 用于日志输出
 - **线程安全**：支持并发读取
@@ -71,10 +71,10 @@ password := secret.Reveal()  // 仅在需要明文时调用
 
 ```go
 // 日志中安全输出配置，避免泄露明文
-log.Printf("加载配置: %s", env.MaskValue("DB_PASSWORD", password))
+log.Printf("加载配置：%s", env.MaskValue("DB_PASSWORD", password))
 // 输出：加载配置：[MASKED]
 
-log.Printf("连接参数: %s", env.SanitizeForLog("user=admin password=s3cret"))
+log.Printf("连接参数：%s", env.SanitizeForLog("user=admin password=s3cret"))
 // 输出：连接参数：user=admin password=[MASKED]
 ```
 

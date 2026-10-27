@@ -7,7 +7,7 @@ sidebar_position: 6
 
 # Audit Logging
 
-Audit logging records variable operations — loads, sets, deletes, validation, and security events — as structured events. Use it for security auditing, compliance, and troubleshooting.
+Audit logging records variable operations — loads, sets, deletes, parsing, validation, security, and file access — as structured events. Use it for security auditing, compliance, and troubleshooting. Normal reads produce no events; see [Security Considerations](#security-considerations).
 
 ## Enabling Audit
 
@@ -39,7 +39,7 @@ loader, _ := env.New(cfg)
 
 ## Audit Handlers
 
-`loader.Close()` closes the handler, and `JSONAuditHandler` also closes the underlying writer (for example an `os.File`, which implements `io.Closer`). Do not pass `os.Stdout` or a writer shared with other components, or `loader.Close()` will close it too. When writing to a file, open the `os.File` yourself with mode `0600`; the handler closes it — unless `env.New()` fails, in which case the handler never takes ownership and you must close it yourself.
+`loader.Close()` closes the handler, and `JSONAuditHandler` also closes the underlying writer (for example an `os.File`, which implements `io.Closer`). Do not pass `os.Stdout` or a writer shared with other components, or `loader.Close()` will close it too. When writing to a file, open the `os.File` yourself with mode `0600`; the handler closes it. If `env.New()` fails during config validation the handler has not taken ownership yet, so close the file yourself; later failures (parser creation, auto-loading) close the handler and the file on the way out, and a second `auditFile.Close()` only returns an ignorable already-closed error.
 
 ### JSONAuditHandler
 
@@ -65,7 +65,7 @@ cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 **Output example** (excerpt: the `reason` field and per-key `ActionSet` events are omitted):
 
 ```json
-{"timestamp":"2024-01-15T10:30:00Z","action":"load","file":".env","success":true,"duration_ns":1234567}
+{"timestamp":"2024-01-15T10:30:00Z","action":"load","success":true,"duration_ns":1234567}
 {"timestamp":"2024-01-15T10:30:01Z","action":"set","key":"[MASKED]","success":true,"masked":true}
 {"timestamp":"2024-01-15T10:30:02Z","action":"set","key":"CUSTOM_VAR","success":true}
 ```
@@ -92,7 +92,7 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 **Output example:**
 
 ```text
-[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="" file=.env duration=1.23ms
+[AUDIT] 2024/01/15 10:30:00 action=load success=true reason="" duration=1.23ms
 [AUDIT] 2024/01/15 10:30:01 action=set key=[MASKED] success=true reason=""
 [AUDIT] 2024/01/15 10:30:02 action=set key=CUSTOM_VAR success=true reason=""
 ```
@@ -262,8 +262,8 @@ func main() {
 	cfg.AuditHandler = env.NewJSONAuditHandler(auditFile)
 	cfg.RequiredKeys = []string{"DB_HOST", "API_KEY"}
 
-	// Create loader (if New fails the handler never takes ownership of the
-	// file, so close it here)
+	// Create loader (a validation-stage failure leaves the file untaken,
+	// so close it here; later failures already closed it)
 	loader, err := env.New(cfg)
 	if err != nil {
 		auditFile.Close()
@@ -348,7 +348,7 @@ func processAuditEvents(ch chan env.AuditEvent) {
 }
 ```
 
-The shutdown sequence matters: `ChannelAuditHandler` does **not** own the channel. Its `Close()` is a no-op, so the caller must call `close(auditChan)` for the `for range` consumer to see EOF. Sends block when the buffer is full. If you prefer a handler that manages the channel lifecycle itself (`Close()` closes the channel; consumers read from `Channel()`), see `CloseableChannelHandler` under [More Built-in Handlers](#more-built-in-handlers).
+The shutdown sequence matters: `ChannelAuditHandler` does **not** own the channel. Its `Close()` is a no-op, so the caller must call `close(auditChan)` for the `for range` consumer to see EOF. Sends block when the buffer is full, and a blocked send also freezes `loader.Close()`, so keep the consumer draining until shutdown; close `auditChan` only after `loader.Close()` returns — closing it while a send is still in flight panics (send on closed channel). If you prefer a handler that manages the channel lifecycle itself (`Close()` closes the channel; consumers read from `Channel()`), see `CloseableChannelHandler` under [More Built-in Handlers](#more-built-in-handlers).
 
 ---
 
@@ -370,6 +370,8 @@ secret := loader.GetSecure("API_KEY") // No audit log produced
 _ = loader.GetInt("PORT")             // Parse succeeds, no audit log produced
 _ = loader.GetInt("API_KEY")          // Produces ActionGet event when parsing fails (success=false)
 ```
+
+By default `AuditFailClosed = false` (fail-open): a broken audit pipeline does not affect the outcome of business operations. With `AuditFailClosed = true`, a lost event — handler error, panic, or full channel — makes the operation that produced it (`LoadFiles` / `Apply` / `Set` / `Delete`) return an error matching `ErrAuditFailed`. When concurrent operations race, the latched error is delivered to whichever operation checks first (best-effort, not exactly once).
 
 ### Audit Log Permissions
 
@@ -406,7 +408,7 @@ Beyond the three common handlers (JSON, Log, Channel), env ships two more ready-
 
 ### CloseableChannelHandler (self-managed channel)
 
-`ChannelAuditHandler` accepts an external channel; `CloseableChannelHandler` creates and owns a buffered channel instead. `Close()` shuts the handler down and closes the channel, and consumers receive events via `Channel()`:
+`ChannelAuditHandler` accepts an external channel; `CloseableChannelHandler` creates and owns a buffered channel instead. `Close()` shuts the handler down and closes the channel, and consumers receive events via `Channel()`. Unlike `ChannelAuditHandler`, a full buffer does not block here — the event is dropped with an error, and the running drop count is available through `DroppedEvents()` (the counter never resets):
 
 ```go
 package main

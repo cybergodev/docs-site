@@ -1,7 +1,7 @@
 ---
 sidebar_label: "输出格式实战"
 title: "输出格式实战 - CyberGo html | 格式对比指南"
-description: "CyberGo html 输出格式实战：对比纯文本、Markdown、JSON 在结构保留、图片与链接处理上的差异与适用场景，说明 InlineImageFormat、InlineLinkFormat 的取值，以及 MarkdownConfig 与 ExtractToMarkdown 的区别。"
+description: "CyberGo html 输出格式实战：对比纯文本、Markdown、JSON 在结构保留、图片与链接处理上的差异与适用场景，说明 InlineImageFormat、InlineLinkFormat 的取值，以及 JSON 字段的出现与省略规则。"
 sidebar_position: 30
 ---
 
@@ -14,7 +14,7 @@ sidebar_position: 30
 | 特性 | 纯文本 | Markdown | JSON |
 |------|--------|----------|------|
 | 可读性 | 高 | 高 | 低（面向程序） |
-| 保留结构 | 无 | 标题/列表/链接/图片 | 完整元数据 |
+| 保留结构 | 标题 ATX 标记与段落换行 | 标题/列表/链接/图片 | 完整元数据 |
 | 图片处理 | 不输出 | `![alt](url)` | `ImageInfo` 列表 |
 | 链接处理 | 仅可见文本 | `[text](url)` | `LinkInfo` 列表 |
 | 表格支持 | 按 `TableFormat` 渲染 | Markdown 表格 | `text` 字段同上，另有结构化元数据 |
@@ -42,7 +42,7 @@ fmt.Println(text)
 ### 特点
 
 - 图片不输出；链接只输出可见文本，不含 URL
-- 标题、段落之间保留换行
+- 标题以 Markdown ATX 标记（`# ` 至 `###### `）写出，段落之间保留换行
 - 列表内容以纯文本形式呈现
 - 表格按 `TableFormat` 渲染（默认 Markdown 表格）
 
@@ -78,7 +78,7 @@ md2, err := p.ExtractToMarkdown(data)
 输出 Markdown：
 
 ```markdown
-Go 入门指南
+# Go 入门指南
 
 Go 是一门编译语言。
 
@@ -130,19 +130,44 @@ fmt.Println(string(jsonBytes))
 
 ### 输出结构
 
+一篇含 h1、正文与一个链接的页面，实测输出如下：
+
 ```json
 {
-  "text": "Go 入门指南\n\nGo 是一门编译语言。\n\nGo 官网",
+  "text": "# Go 入门指南\n\nGo 是一门编译语言。\n\nGo 官网",
   "title": "Go 入门指南",
-  "images": [
-    {"url": "gopher.png", "alt": "Gopher", "title": "", "width": "", "height": "", "is_decorative": false, "position": 1}
-  ],
   "links": [
     {"url": "https://go.dev", "text": "Go 官网", "title": "", "is_external": true, "is_nofollow": false, "position": 1}
   ],
   "processing_time_ms": 2,
   "word_count": 17,
-  "reading_time_ms": 5100
+  "reading_time_ms": 3428,
+  "confidence": 0.6,
+  "extraction_method": "article"
+}
+```
+
+`text`、`title`、`processing_time_ms`、`word_count`、`reading_time_ms`、`confidence` 六个字段恒存在（`confidence` 无 `omitempty`，`0` 也照常序列化）。其余字段按需出现：
+
+| 字段 | 类型 | 出现条件 |
+|------|------|----------|
+| `images`/`links`/`videos`/`audios` | 数组 | `omitempty`：对应 `Preserve*` 为 `false` 或没有此类内容时省略 |
+| `author` | 字符串 | `omitempty`：无作者时省略 |
+| `description` | 字符串 | `omitempty`：无摘要时省略 |
+| `site_name` | 字符串 | `omitempty`：无站点名时省略 |
+| `canonical_url` | 字符串 | `omitempty`：无规范链接时省略 |
+| `published_time` | RFC 3339 时间 | 零值时省略（内部用指针，不会输出 `0001-01-01T00:00:00Z`） |
+| `extraction_method` | 字符串 | `omitempty`：`article`/`listing`/`body`；为空时省略，正常总有值 |
+
+页面声明了结构化元数据（且 `ExtractMetadata` 为 `true`）时，输出会多出这些字段：
+
+```json
+{
+  "author": "示例记者",
+  "published_time": "2026-04-21T09:30:00Z",
+  "description": "公司周二公布强劲季度业绩。",
+  "site_name": "示例新闻",
+  "canonical_url": "https://news.example.com/q3-results.html"
 }
 ```
 

@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Domain Client & Sessions"
 title: "Domain Client and Sessions - CyberGo HTTPC | Cookie Mgmt"
-description: "HTTPC domain client and sessions: NewDomain clients, URL joining with traversal protection, session headers, cookie capture and option persistence, CookieSecurity."
+description: "HTTPC domain client and sessions: NewDomain clients, URL joining, session headers, cookie capture, option persistence, and cross-origin session isolation."
 sidebar_position: 40
 ---
 
@@ -26,16 +26,12 @@ if err != nil {
 }
 defer dc.Close()
 
-// Cookies are enabled automatically
+// Set-Cookie responses enter the session automatically (EnableCookies not required)
 dc.SetHeader("Authorization", "Bearer "+token)
 
 // Send requests with relative paths
 result, err := dc.Get("/users")
 ```
-
-:::tip
-A DomainClient created by `NewDomain` contains a `SessionManager`: session headers and cookies are injected before each request, and `Set-Cookie` is written back after the response. This session store is independent of `Connection.EnableCookies`.
-:::
 
 Three things happen at creation:
 
@@ -160,11 +156,13 @@ dc.ClearCookies()
 After every request, cookies returned by the server are written into the session; no manual handling is needed.
 :::
 
-Automatic cookie maintenance covers three paths:
+Automatic cookie maintenance covers the following paths:
 
 - **Response write-back**: after each request finishes, `Set-Cookie` from the response is written into the session. The `Download` method also captures response cookies
-- **Validation**: before writing, the same validity checks as `WithCookies` apply. When a cookie security policy is configured (see "Cookie Security Validation" below), non-compliant cookies are **silently skipped** without affecting the others
-- **Copy semantics**: `GetCookie`/`GetCookies` return copies of the cookies, so modifying the returned values does not change the session's internal state
+- **Deletion semantics**: a cookie carrying `Max-Age=0`/a negative value, or an already-expired Expires (a logout response, for example), removes the stored entry with the same name instead of storing that cookie itself
+- **Expiry pruning**: expired cookies are dropped when read (`GetCookie`/`GetCookies`) and when replayed; a positive `Max-Age` is converted into the corresponding expiry moment
+- **Replay scope**: a cookie is sent only when its stored Path and `Secure` attributes match the request URL (RFC 6265 path-match; `Secure` cookies are never replayed over plaintext http)
+- **Validation and copies**: before writing, the same validity checks as `WithCookies` apply. When a cookie security policy is configured (see "Cookie Security Validation" below), non-compliant cookies are **silently skipped** without affecting the others. `GetCookie`/`GetCookies` return copies, so modifying the returned values does not change the session's internal state
 
 ### How Request Options Persist
 
@@ -174,6 +172,7 @@ Cookies and headers passed via **request options** are captured into the session
 |--------|----------|
 | `WithHeader` | A single header |
 | `WithHeaderMap` | A set of headers |
+| `WithUserAgent` | The User-Agent header (a `WithHeader` pass-through internally, so it is captured the same way — one probe request pins the UA as a session value) |
 | `WithCookies` | A list of cookies |
 | `WithCookieMap` | Cookies as name-value pairs |
 | `WithCookieString` | Cookies parsed from a raw `Cookie` header string |
@@ -223,6 +222,10 @@ result, _ := dc.Request(ctx, "GET", "/users")
 // Absolute URL (skips base URL joining)
 result, _ := dc.Get("https://other-api.com/data")
 ```
+
+:::warning Session state applies only to the base origin
+When an absolute URL points to a **non-base origin** (its host:port differs from the base), session headers and cookies are neither sent nor captured, so base-domain credentials never leak to a third-party origin. The same applies while following redirects: when the final landing point is outside the base origin, the response's `Set-Cookie` does not enter the session.
+:::
 
 The `Download` method has the same signature as `Client.Download`, and the path is likewise resolved relative to the base URL. On completion, response cookies are captured into the session:
 

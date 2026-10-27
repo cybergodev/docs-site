@@ -198,7 +198,7 @@ env 库公开 API 的完整参考，按功能模块给出入口，并在文末�
 | `SecurityError` | 安全错误类型 | [常量与错误](./constants#securityerror) |
 | `FileError` | 文件错误类型 | [常量与错误](./constants#fileerror) |
 | `ExpansionError` | 展开错误类型 | [常量与错误](./constants#expansionerror) |
-| `ExpansionErrorKind`、`ExpansionDepthKind`、`ExpansionRequiredKind` | 错误分类常量 | [常量与错误](./constants#expansionerror) |
+| `ExpansionErrorKind`、`ExpansionDepthKind`、`ExpansionRequiredKind` | 错误分类类型与常量 | [常量与错误](./constants#expansionerror) |
 | `JSONError` | JSON 解析错误 | [常量与错误](./constants#jsonerror) |
 | `YAMLError` | YAML 解析错误 | [常量与错误](./constants#yamlerror) |
 | `MarshalError` | 序列化错误类型 | [常量与错误](./constants#marshalerror) |

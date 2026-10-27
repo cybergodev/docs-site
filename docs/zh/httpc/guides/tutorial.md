@@ -341,7 +341,7 @@ result.Unmarshal(&repo)
 fmt.Printf("%s: ⭐ %d\n", repo.FullName, repo.Stars)
 ```
 
-要点：中间件在 `MiddlewareConfig.Middlewares` 中配置，切片顺序即由外到内的执行顺序。`LoggingMiddleware` 记录请求日志，`RecoveryMiddleware` 捕获 panic，`RequestIDMiddleware` 为每个请求生成唯一 ID。中间件模型见[中间件链](./middleware-chain)。
+要点：中间件在 `cfg.Middleware.Middlewares` 中配置，切片顺序即由外到内的执行顺序。`LoggingMiddleware` 记录请求日志，`RecoveryMiddleware` 捕获 panic，`RequestIDMiddleware` 为每个请求生成唯一 ID。中间件模型见[中间件链](./middleware-chain)。
 
 ## 错误处理与重试
 

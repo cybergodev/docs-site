@@ -11,7 +11,7 @@ sidebar_position: 10
 
 ## 包级函数 vs Client 实例怎么选？
 
-**答：** 包级函数（`httpc.Get`/`httpc.Post` 等）共用一个默认客户端（`defaultClient`），首次调用时创建，关闭后再次调用时重建。不需要自定义配置的一次性请求、脚本与 CLI 工具直接使用包级函数。默认客户端的生命周期见[核心概念](../getting-started/concepts)。
+**答：** 包级函数（`httpc.Get`/`httpc.Post` 等）共用一个内部管理的默认客户端，首次调用时创建，关闭后再次调用时重建。不需要自定义配置的一次性请求、脚本与 CLI 工具直接使用包级函数。默认客户端的生命周期见[核心概念](../getting-started/concepts)。
 
 ```go
 // 包级函数：简单快捷，共享默认客户端的连接池
@@ -58,7 +58,7 @@ if err := httpc.SetDefaultClient(customClient); err != nil {
 |------|------|------|--------|------|----------|----------|----------|
 | `SecureConfig()` | 严格（15s） | 1 次 | 禁止 | 启用 | 5MB | 启用 | 处理不可信 URL、金融/医疗 |
 | `DefaultConfig()` | 适中（180s） | 3 次 | 允许 | 启用 | 10MB | 启用 | 通用场景 |
-| `PerformanceConfig()` | 较长（60s） | 3 次 | 允许 | 启用 | 50MB | 启用 | 内部微服务、高并发 API |
+| `PerformanceConfig()` | 快速失败（60s；拨号/TLS 15s） | 3 次 | 允许 | 启用 | 50MB | 启用 | 内部微服务、高并发 API |
 | `MinimalConfig()` | 适中 | 0 次 | 禁止 | 启用 | 1MB | 启用 | 一次性脚本、简单调用 |
 | `TestingConfig()` | 短（5s Dial） | 1 次 | 允许 | **禁用** | 默认 | **跳过** | 单元测试、本地开发 |
 
@@ -87,7 +87,7 @@ if err := httpc.SetDefaultClient(customClient); err != nil {
 |------|------|----------|------|
 | 单代理 | `ProxyURL` | 固定代理服务器 | 最高优先级，直接指定 |
 | 代理池 | `ProxyPool` | 多代理轮换、高可用 | 支持轮换策略与被动熔断 |
-| 系统代理 | `EnableSystemProxy` | 读取环境变量 | 最低优先级，跟随系统配置 |
+| 系统代理 | `EnableSystemProxy` | 跟随操作系统代理设置 | 最低优先级；环境变量优先于平台设置 |
 
 同时设置多个字段时，只有优先级最高的一个生效。
 
@@ -97,7 +97,7 @@ cfg := httpc.DefaultConfig()
 cfg.Connection.ProxyURL = "socks5://user:pass@proxy:1080"
 client, _ := httpc.New(cfg)
 
-// 方式二：系统代理（读取 HTTP_PROXY/HTTPS_PROXY 环境变量）
+// 方式二：系统代理（环境变量优先，其次平台设置）
 cfg.Connection.EnableSystemProxy = true
 
 // 方式三：代理池（多代理轮换 + 被动熔断）
@@ -119,7 +119,7 @@ cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
 
 **3. 状态码触发轮换**（响应时）：设置 `ProxyRotateOnStatus`（如 `[]int{403}`），响应返回这些状态码且 `Retry.MaxRetries > 0` 时触发重试，重试时策略轮换确保换 IP。适用于绕过 CF/WAF 等 IP 维度封锁。
 
-代理池内置**被动熔断与自动恢复**：连续连接失败（dial/TLS）达到 `ProxyFailureThreshold`（默认 3）后，该代理被临时移出轮换池；经过 `ProxyCooldown`（默认 30s）后以半开探测方式恢复。
+代理池内置**被动熔断与自动恢复**：连续 **TCP 拨号失败**达到 `ProxyFailureThreshold`（默认 3）后，该代理被临时移出轮换池；经过 `ProxyCooldown`（默认 30s）后以半开探测方式恢复。拨号返回后的失败（对 `https://` 代理的 TLS 握手、CONNECT 被拒、SOCKS5 握手）不计入熔断计数。
 
 HTTP 状态码**不**触发熔断：封锁针对具体目标站点，在某站被封的代理对其他站点仍可用。
 
@@ -131,7 +131,7 @@ cfg.Connection.ProxyPool = []string{
     "http://proxy3:8080",
 }
 cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
-cfg.Connection.ProxyFailureThreshold = 3   // 连续 3 次连接失败后熔断
+cfg.Connection.ProxyFailureThreshold = 3   // 连续 3 次 TCP 拨号失败后熔断
 cfg.Connection.ProxyCooldown = 30 * time.Second // 30s 后半开探测恢复
 cfg.Connection.ProxyRotateOnStatus = []int{403} // 收到 403 时换 IP 重试
 cfg.Retry.MaxRetries = 3 // ProxyRotateOnStatus 需配合重试
@@ -161,7 +161,7 @@ DoH 适用于对 DNS 解析安全性有要求的场景，如防止 ISP DNS 劫�
 
 **答：** Cookie 管理有两个层次：
 
-**1. 自动管理（DomainClient）**：`NewDomain` 创建的 DomainClient 内置一个 SessionManager。请求前由 `prepareOptions` 注入会话 Cookie，响应后由 `UpdateFromResult` 捕获 `Set-Cookie` 写回会话。
+**1. 自动管理（DomainClient）**：`NewDomain` 创建的 DomainClient 内置一个 SessionManager。请求前自动注入会话头与 Cookie，响应后捕获 `Set-Cookie` 写回会话。
 
 会话存储独立于 `Connection.EnableCookies`。适合登录会话维持等场景。
 
@@ -194,7 +194,7 @@ result, _ := dc.Request(ctx, "GET", "/profile")
 
 **Retry-After 头解析**：429/503 等可重试响应带 `Retry-After` 头时，HTTPC 按服务端指示的延迟等待，不再自行计算退避，避免加剧服务端压力。该等待**封顶 60s**，服务端无法用超大 Retry-After 值长时间占住客户端。
 
-**自定义重试**：实现 `RetryPolicy` 接口（`ShouldRetry` + `GetDelay` 两个方法）替换内置逻辑，赋值到 `cfg.Retry.CustomPolicy`。详见 [重试与容错指南](../guides/retry-fault-tolerance)。
+**自定义重试**：实现 `RetryPolicy` 接口（`ShouldRetry` / `GetDelay` / `MaxRetries` 三个方法）替换内置逻辑，赋值到 `cfg.Retry.CustomPolicy`。详见 [重试与容错指南](../guides/retry-fault-tolerance)。
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -521,7 +521,7 @@ client.Post(url,
 
 ## 响应 Body 需要手动关闭吗？
 
-**答：** 不需要，也没有关闭入口。普通请求（`Get`/`Post`/`Request` 等）返回的 `Result` 持有**已读取并复制的字节**：HTTPC 在内部完成读取、排空（最多 10MB，便于连接复用）与关闭，底层连接由连接池管理。
+**答：** 不需要，也没有关闭入口。普通请求（`Get`/`Post`/`Request` 等）返回的 `Result` 持有**已读取并复制的字节**：HTTPC 在内部完成读取、排空（上限为 `min(10MB, MaxResponseBodySize)`，便于连接复用）与关闭，底层连接由连接池管理。
 
 ```go
 result, err := client.Get(url)
@@ -551,7 +551,7 @@ cfg.Connection.ProxyRotatePerRequest = true // 每请求关闭空闲连接，强
 
 **3. 系统代理的探测时机。** `EnableSystemProxy` 在客户端**构建时**探测一次代理地址（用于 SSRF 豁免）。环境变量此后才指向 localhost 代理（如 `127.0.0.1:7890`）时，该代理会被 SSRF 防护拦截。动态本地代理改用显式 `ProxyURL`（支持 http/https/socks5/socks5h）。
 
-**4. 代理池熔断。** 连续连接失败达 `ProxyFailureThreshold`（默认 3）的代理被移出轮换，`ProxyCooldown`（默认 30s）后半开探测恢复；全部熔断时退化为选择最早恢复的代理，不会直接失败。代理持续不可用时，检查熔断阈值与冷却时间。
+**4. 代理池熔断。** 连续 TCP 拨号失败达 `ProxyFailureThreshold`（默认 3）的代理被移出轮换，`ProxyCooldown`（默认 30s）后半开探测恢复；全部熔断时退化为选择最早恢复的代理，不会直接失败。代理持续不可用时，检查熔断阈值与冷却时间。
 
 详见 [代理与代理池](../guides/proxy)。
 

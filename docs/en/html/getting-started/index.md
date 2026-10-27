@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Quick Start"
 title: "Quick Start - CyberGo html | Get Started in 5 Minutes"
-description: "CyberGo html quick start: install, extract from bytes or files, choose a Config preset, know encoding detection limits, and output text, Markdown or JSON."
+description: "CyberGo html quick start: install, extract from bytes or files, Config presets, encodings, text/Markdown/JSON output, context timeouts, Processor concurrency."
 sidebar_position: 10
 ---
 
@@ -61,7 +61,7 @@ Output:
 
 ```text
 Title: Go Tutorial
-Text: Getting Started with Go
+Text: # Getting Started with Go
 
 Go is a statically typed compiled language.
 
@@ -71,7 +71,7 @@ Links: 1
 Words: 14
 ```
 
-`WordCount` splits on whitespace and counts each CJK character as one additional word.
+`WordCount` splits on whitespace and counts each CJK character as one more word. `ReadingTime` is folded per script: space-separated languages at 200 words per minute, CJK characters at 350 characters per minute. Heading tags are written into `Text` with Markdown ATX markers (`# ` through `###### `); the ATX markers themselves are not counted as words, but the heading text still counts.
 
 ## Extract from File
 
@@ -119,7 +119,7 @@ md, err := html.ExtractToMarkdown(data)
 jsonBytes, err := html.ExtractToJSON(data)
 ```
 
-`ExtractText` calls `Extract` internally and returns `.Text`, so its performance path is the same as `Extract`.
+`ExtractText` calls `Extract` internally and returns `.Text`, so it goes through the same processing path as `Extract`.
 
 ## Context Support
 
@@ -132,7 +132,7 @@ defer cancel()
 result, err := html.ExtractWithContext(ctx, data)
 ```
 
-When the library's own `ProcessingTimeout` expires you get `ErrProcessingTimeout`; when the caller's context expires the original `context.DeadlineExceeded` is returned unchanged. See [the FAQ](../faq/#what-s-the-difference-between-processingtimeout-and-user-context-timeout) for the full table.
+When the library's own `ProcessingTimeout` expires you get `ErrProcessingTimeout`; when the caller's context expires the original `context.DeadlineExceeded` is returned unchanged. See [the FAQ](../faq/#what-s-the-difference-between-processingtimeout-and-user-context-timeout) for the full comparison.
 
 ## Usage Notes
 
@@ -160,7 +160,7 @@ for _, url := range urls {
 wg.Wait()
 ```
 
-Package-level functions are also concurrency-safe: they take a Processor from an internal pool and clear its cache on return, so a pooled instance gains nothing from caching. Use `html.New(cfg)` for a long-lived Processor when you need cache hits.
+Package-level functions are also concurrency-safe: they take a Processor from an internal pool; pooled instances have the cache disabled, and statistics are reset and the audit log cleared on return, so there is no caching benefit. Use `html.New(cfg)` for a long-lived Processor when you need cache hits.
 
 ### Encoding Detection
 
@@ -175,11 +175,12 @@ cfg := html.DefaultConfig()
 cfg.Encoding = "gbk"
 ```
 
-Supported encodings include UTF-8, GBK, Shift_JIS, EUC-JP, Windows-1252, and 15+ others. A GBK or Shift_JIS page without `<meta charset>` is decoded as windows-1252, producing mojibake with no error — set `Config.Encoding` explicitly in production. See [Encoding Detection](../guides/core-features/encoding-detection).
+Supported encodings include UTF-8, GBK, Shift_JIS, EUC-JP, Windows-1252, and 30+ others. A GBK or Shift_JIS page without `<meta charset>` is decoded as windows-1252, producing mojibake with no error. Set `Config.Encoding` explicitly in production. See [Encoding Detection](../guides/core-features/encoding-detection).
 
 ## Next Steps
 
 - [Content Extraction](../guides/core-features/content-extraction) - Extraction pipeline and article detection
+- [Reader Mode](../guides/core-features/reader-mode) - Whole-page sectioned output, suited to LLM input
 - [Output Formats](../guides/core-features/output-formats) - Choose the right output format for your case
 - [Processor Cache & Reuse](../guides/performance/processor-cache) - Performance tuning for high-frequency calls
 - [Cheat Sheet](./cheatsheet) - Common API quick reference

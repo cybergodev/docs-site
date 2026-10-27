@@ -67,6 +67,10 @@ type LinkResource struct {
 }
 ```
 
+Only resolvable references are reported: an href that is a bare anchor (`#top`) or a bare query string (`?page=2`) is in-page navigation and produces no `LinkResource`; an href that fails URL validation is likewise skipped. The rule matches `LinkInfo` on the `Extract` path.
+
+`Title` is the human-readable label, with a fixed fallback order per type: for `<a>`, the `title` attribute, then the link text, with `"Link"` as the last resort; for images, `title`, `alt`, then the last URL segment, with `"Image"` as the last resort; media, script, and stylesheet links without a `title` attribute use the last URL segment (falling back to `"Video"` / `"Audio"` / `"Media"` / `"Script"` / the capitalized type name).
+
 ## Link Type Reference
 
 Each `Type` value maps to specific HTML tag sources:
@@ -84,6 +88,10 @@ Each `Type` value maps to specific HTML tag sources:
 
 :::info When embed links are collected
 The `src`/`data` of `<iframe>`, `<embed>`, and `<object>` is extracted only when it is judged a **video URL** (matching embed patterns for YouTube, Vimeo, Dailymotion, and similar). The type is then recorded as `video`. Non-video URLs are not collected.
+:::
+
+:::info `<link>` type-attribute fallback
+When `rel` matches no known token, a `type` attribute containing `css` routes the element to `css` (gated by `IncludeCSS`), and one containing `javascript` routes it to `js` (gated by `IncludeJS`); if neither matches, the `<link>` is not collected. Both the `rel` token and the `type` value match case-insensitively.
 :::
 
 ## Configuration
@@ -105,6 +113,7 @@ cfg.BaseURL = "https://example.com"
 With `ResolveRelativeURLs=true` (the default), relative URLs of every type are resolved against `BaseURL`:
 
 - Resolution is handled centrally inside the library (not exported) and treats content links, images, media, source, script, embed, and link tags **identically**
+- Protocol-relative URLs (`//host/path`) are kept as-is — not resolved, and not upgraded to the `BaseURL` scheme
 - Setting `BaseURL` explicitly skips auto-detection and uses the caller's value
 - When `BaseURL` is empty, it is derived from the document (see "BaseURL Auto-Detection")
 

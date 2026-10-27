@@ -190,11 +190,10 @@ When `OnAudit` is nil, the middleware passes requests through directly.
 
 ### Configuring Audit Options
 
-`DefaultAuditConfig()` returns the default configuration; modify its fields to control the output format, header logging, and masking:
+`DefaultAuditConfig()` returns the default configuration; modify its fields to control header logging and error masking. Audit events are handed to `OnAudit` as structured `AuditEvent` values, and the output format is decided entirely by the callback (`json.Marshal(event)` yields JSON lines). `Format` is a reserved field with no effect:
 
 ```go
 auditCfg := httpc.DefaultAuditConfig()
-auditCfg.Format = "json"
 auditCfg.IncludeHeaders = true
 auditCfg.MaskHeaders = []string{"Authorization", "Cookie"}
 auditCfg.SanitizeError = true

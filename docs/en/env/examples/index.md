@@ -19,7 +19,7 @@ cd env
 go run ./examples/01_quickstart/
 ```
 
-The examples read shared configuration files from `examples/data/` through relative paths, so they must be run from the project root.
+Examples 01-06, 08, and 10-12 read shared configuration files from `examples/data/` through relative paths, so run them from the project root; from another directory the data files are not found — most examples fall back to default values, while examples 02 and 11 fail outright. Examples 07, 09, and 13 inline their data and run from any directory.
 
 ### Shared Data Files
 
@@ -38,7 +38,7 @@ The examples read shared configuration files from `examples/data/` through relat
 | 03 | `03_type_access/` | Every typed getter: string, int, bool, duration, float, uint, and slice, plus `Lookup`, including dot-notation paths | [Quick Start](../getting-started/) |
 | 04 | `04_struct_mapping/` | Struct mapping with `env` tags: nested structs, `envDefault` defaults, and marshaling | [Struct Mapping](../guides/struct-mapping) |
 | 05 | `05_secure_values/` | `SecureValue` lifecycle: `Close` vs `Release`, memory zeroing, and mlock memory locking | [Memory Locking](../security/memory-locking), [SecureValue](../api-reference/secure-value) |
-| 06 | `06_audit_logging/` | JSON, Channel, and Log audit handlers, and the events each operation records | [Audit Logging](../guides/audit-logging) |
+| 06 | `06_audit_logging/` | JSON, Channel, and Log audit handlers, automatically recording load, set, and delete events | [Audit Logging](../guides/audit-logging) |
 | 07 | `07_marshal_unmarshal/` | Format conversion: map ↔ string, struct ↔ map, multi-format output, and round trips | [Serialization](../guides/serialization) |
 | 08 | `08_utilities/` | Utility functions: introspection (`Len`/`Keys`/`All`), key deletion, masking, and format detection | [Multi-format Config](../guides/multi-format) |
 | 09 | `09_error_handling/` | Sentinel errors (`errors.Is`) and typed errors (`errors.As`), including missing-file and closed-loader cases | [Error Handling](../guides/error-handling) |

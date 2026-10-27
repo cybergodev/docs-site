@@ -1,17 +1,17 @@
 ---
 sidebar_label: "Advanced Usage"
 title: "Advanced Usage - CyberGo html | Advanced Scenarios"
-description: "CyberGo html advanced examples: custom Scorer, multi-sink audit pipeline, batch file processing, Processor reuse, graceful HTTP shutdown, and encodings."
+description: "CyberGo html advanced examples: custom Scorer, multi-sink audit, batch files, Processor reuse, AllowedBaseDir sandbox, per-source encoding, graceful shutdown."
 sidebar_position: 20
 ---
 
 # Advanced Usage
 
-Advanced patterns for production use: custom scoring, audit pipelines, batch file processing, server-side reuse, and safe file handling.
+Advanced patterns for production use: custom scoring and single-pass selection, audit pipelines, batch files, server-side reuse, and safe file handling.
 
 ## Custom Scorer
 
-Tailor content recognition to a specific site structure. The full implementation lives in [Testing & Custom Extensions](../guides/integration/testing-custom); the core usage follows.
+Tailor article detection to a specific site structure. The full implementation lives in [Testing & Custom Extensions](../guides/integration/testing-custom); the core usage follows.
 
 ```go
 package main
@@ -41,8 +41,9 @@ func (s myScorer) Score(node html.ContentNode) int {
 	return 0
 }
 
-// ShouldRemove is a reserved interface method: the current version never calls
-// it, so the logic below has no effect
+// ShouldRemove is consulted only when the library uses its built-in default
+// scorer; with a custom Scorer configured, node removal still follows the
+// built-in rules, so the logic below has no effect
 func (s myScorer) ShouldRemove(node html.ContentNode) bool {
 	if node == nil {
 		return false
@@ -79,13 +80,19 @@ func main() {
 	}
 
 	fmt.Println("Text:", result.Text)
-	// Output: Text: Understanding Go Concurrency
+	// Output: Text: # Understanding Go Concurrency
 	//
 	// Goroutines are Go's lightweight threads.
 }
 ```
 
 The navigation and sidebar are removed by the library's default cleaning and scorer candidate filtering, not by the `ShouldRemove` above.
+
+## Single-Pass Selection: ArticleFinder
+
+The default flow calls `Score` once per non-inline element. A custom scorer that re-walks a subtree inside `Score` degrades the whole extraction to O(N²). Let the `Scorer` implement `ArticleFinder` as well and the library instead calls `FindArticleNode` once, skipping the per-element enumeration; a `nil` return falls back to the whole `<body>`.
+
+Interface constraints, the full implementation, and how to test it are covered in [Testing & Custom Extensions](../guides/integration/testing-custom).
 
 ## Multi-Sink Audit Pipeline
 
@@ -149,6 +156,8 @@ func main() {
 }
 ```
 
+Tiered routing (critical events into an alert channel), channel consumption, and a comparison of all built-in Sinks are in [Audit Pipeline](../guides/security/audit-pipeline).
+
 ## Batch File Processing
 
 Process every HTML file under a directory, collecting results and errors separately:
@@ -192,7 +201,7 @@ func main() {
 	}
 	defer p.Close()
 
-	// One call handles up to 10000 items; above that the whole batch fails, so chunk it yourself
+	// One batch holds up to 10000 items; above that the whole batch fails, so chunk it yourself
 	batch := p.ExtractBatchFiles(files)
 	fmt.Printf("Success: %d, Failed: %d, Cancelled: %d\n",
 		batch.Success, batch.Failed, batch.Cancelled)
@@ -213,71 +222,7 @@ func main() {
 
 ## Processor Reuse with Timeout
 
-A Processor singleton for a web service: created once at startup, shared by every request.
-
-```go
-package main
-
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"time"
-
-	"github.com/cybergodev/html"
-)
-
-var processor *html.Processor
-
-func init() {
-	cfg := html.DefaultConfig()
-	cfg.MaxCacheEntries = 5000
-	cfg.CacheTTL = 30 * time.Minute
-	cfg.ProcessingTimeout = 10 * time.Second
-
-	var err error
-	processor, err = html.New(cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func extractHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
-
-	data := []byte(r.FormValue("html"))
-	if len(data) == 0 {
-		http.Error(w, "html field required", http.StatusBadRequest)
-		return
-	}
-
-	result, err := processor.ExtractWithContext(ctx, data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
-}
-
-func statsHandler(w http.ResponseWriter, r *http.Request) {
-	stats := processor.GetStatistics()
-	fmt.Fprintf(w, "Processed: %d\nCache hits: %d\nErrors: %d\n",
-		stats.TotalProcessed, stats.CacheHits, stats.ErrorCount)
-}
-
-func main() {
-	defer processor.Close()
-
-	http.HandleFunc("/extract", extractHandler)
-	http.HandleFunc("/stats", statsHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-```
+A Processor singleton for a web service: created once at startup, shared by every request, with each request deriving its timeout from the request context. The complete version (including the request-body size limit) is in the "Processor Singleton + HTTP Service" section of [HTTP Integration](../guides/integration/http-integration). The "Context Cancellation & Graceful Shutdown" section below keeps the differentiated scenario — signal-driven graceful shutdown.
 
 ## Extract and Generate Markdown Files
 
@@ -361,8 +306,8 @@ func init() {
 }
 
 func extractHandler(w http.ResponseWriter, r *http.Request) {
-	// Request timeout of 5s: when it fires before ProcessingTimeout (10s) the
-	// error is context.DeadlineExceeded
+	// Request timeout of 5s: when it fires before ProcessingTimeout (10s), the
+	// result is context.DeadlineExceeded
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
@@ -429,15 +374,39 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/cybergodev/html"
 )
 
 func main() {
+	// Build the sandbox: one HTML file inside the allowed directory, plus one outside
+	tmp, err := os.MkdirTemp("", "html-sandbox-*")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+
+	base := filepath.Join(tmp, "allowed")
+	if err := os.MkdirAll(filepath.Join(base, "sub"), 0o750); err != nil {
+		log.Fatal(err)
+	}
+	files := map[string]string{
+		filepath.Join(base, "article.html"):  "<html><head><title>Sandboxed Article</title></head><body><article><p>Body.</p></article></body></html>",
+		filepath.Join(base, "sub", "p.html"): "<html><body><article><p>File in a subdirectory.</p></article></body></html>",
+		filepath.Join(tmp, "outside.html"):   "<html><body><article><p>File outside the directory.</p></article></body></html>",
+	}
+	for path, content := range files {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	cfg := html.HighSecurityConfig()
 	// Restrict file reads to this directory and its subdirectories
 	// The real path is resolved from the opened file handle, blocking symlink/junction escapes
-	cfg.AllowedBaseDir = "/var/www/uploads"
+	cfg.AllowedBaseDir = base
 
 	p, err := html.New(cfg)
 	if err != nil {
@@ -445,34 +414,41 @@ func main() {
 	}
 	defer p.Close()
 
-	// Simulated user-supplied paths
+	// Simulated user-supplied file paths
 	userFiles := []string{
-		"/var/www/uploads/article1.html", // ✅ Allowed
-		"/var/www/uploads/sub/page.html", // ✅ Allowed (subdirectory)
-		"../../../etc/passwd",            // ❌ Path traversal
-		"/etc/shadow",                    // ❌ Outside the directory
+		filepath.Join(base, "article.html"),  // inside the sandbox
+		filepath.Join(base, "sub", "p.html"), // subdirectory, also allowed
+		filepath.Join(tmp, "outside.html"),   // outside the directory
+		filepath.Join("..", "secret.html"),   // relative path containing ..
 	}
 
 	for _, file := range userFiles {
 		_, err := p.ExtractFromFile(file)
-		if err != nil {
-			var fileErr *html.FileError
-			if errors.As(err, &fileErr) {
-				// SafePath returns only the filename, never the full path
-				fmt.Printf("❌ Rejected %s: %s\n", fileErr.SafePath(), fileErr.FileErr)
-			} else {
-				fmt.Printf("❌ Error: %v\n", err)
-			}
+		if err == nil {
+			fmt.Printf("Allowed: %s\n", filepath.Base(file))
 			continue
 		}
-		fmt.Printf("✅ Processed successfully: %s\n", file)
+		var fileErr *html.FileError
+		if errors.As(err, &fileErr) {
+			// SafePath returns only the filename, never the full path
+			fmt.Printf("Rejected: %s\n", fileErr.SafePath())
+		} else {
+			fmt.Printf("Rejected: %v\n", err)
+		}
 	}
+	// Output:
+	// Allowed: article.html
+	// Allowed: p.html
+	// Rejected: outside.html
+	// Rejected: secret.html
 }
 ```
 
+Outside-directory and path-traversal rejections take different forms: the `*FileError` for reading outside the directory carries `FileErr` set to `path outside allowed directory` and wraps no sentinel error, while a rejection for a relative path containing `..` explicitly wraps `ErrInvalidFilePath` (detectable with `errors.Is`). Both cases log a `path_traversal` audit event. The sandbox's four independent checks and the cross-platform real-path resolution are in [Security Overview](../guides/security/).
+
 ## Specifying the Encoding by Source
 
-GBK or Shift_JIS bytes with no `<meta charset>` do not raise an error; they are decoded as windows-1252 and come out garbled. So the encoding must come from the source: an HTTP `Content-Type` header, a site convention, or a detection result. The example below shows how to catch the error from a wrong forced encoding and retry with the right one:
+GBK or Shift_JIS bytes with no `<meta charset>` do not raise an error; they are decoded as windows-1252 and come out garbled. So the encoding has to come from the source: an HTTP `Content-Type` header, a site convention, or a detection result. The example below shows how to catch the error from a wrong forced encoding and retry with the right one:
 
 ```go
 package main
@@ -521,4 +497,5 @@ Encoding errors have no sentinel, so `errors.Is` cannot detect them; check wheth
 
 - [FAQ](../faq/) - Common questions and troubleshooting
 - [Production Checklist](../guides/security/production-checklist) - Pre-deployment security checks
-- [API Reference: Interfaces](../api-reference/types/interfaces) - Extension interfaces such as Scorer and AuditSink
+- [Reader Mode](../guides/core-features/reader-mode) - Whole-page sectioned output and Render
+- [API Reference: Interfaces](../api-reference/types/interfaces) - Extension interfaces such as Scorer, ArticleFinder, and AuditSink

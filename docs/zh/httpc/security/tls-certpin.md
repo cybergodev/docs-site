@@ -162,7 +162,7 @@ mTLS 常用于零信任网络、服务网格内部认证、金融 API。服务�
 证书固定：信任 CA + 证书公钥必须匹配预存哈希
 ```
 
-固定叠加在标准验证之上，无需设置 `InsecureSkipVerify`。HTTPC 校验证书链中**任意一层**证书，固定中间证书时，叶子证书续期后固定值仍然有效。
+固定叠加在标准验证之上，无需设置 `InsecureSkipVerify`。HTTPC 校验已验证链中的**任意一层**证书（叶子与中间证书），固定中间证书时，叶子证书续期后固定值仍然有效。
 
 ### SPKI 哈希生成步骤
 
@@ -236,7 +236,7 @@ func main() {
 `NewSPKIHashPinner` 在哈希为空或非合法 base64 时返回错误，配置问题在启动期即暴露。校验逻辑：遍历服务端证书链每层证书，计算其 SPKI 的 SHA-256，与任一固定哈希匹配即通过。
 
 :::tip
-`CertificatePinner` 在标准 TLS 链验证**之上**叠加固定校验，无需设置 `InsecureSkipVerify`。校验对证书链中任意一层证书生效，固定中间证书可在叶子证书续期后继续生效。
+`CertificatePinner` 在标准 TLS 链验证**之上**叠加固定校验，无需设置 `InsecureSkipVerify`。校验对已验证链中任意一层证书生效，固定中间证书可在叶子证书续期后继续生效。
 :::
 
 ### 三种 Pinner 构造器对比
@@ -275,12 +275,12 @@ cfg.Security.CertificatePinner = chainPinner
 
 | 方面 | 行为 |
 |------|------|
-| 匹配范围 | 遍历服务端证书链**每一层**证书（`rawCerts`），任一层 SPKI 哈希命中任一固定值即通过 |
+| 匹配范围 | 标准验证路径：仅遍历**已验证链**（`verifiedChains`）中的证书，任一层 SPKI 哈希命中任一固定值即通过——服务端自行附加的未验证证书不参与匹配（防 pin-stuffing：MITM 把受害者真实证书塞进自己的链也无法通过）。`InsecureSkipVerify` 路径：仅匹配**叶子证书**，固定中间证书在该模式下不生效 |
 | 失败行为 | 全链无匹配 → 握手被拒，错误形如 `certificate pinning failed: no matching SPKI hash found` |
 | 空证书链 | 服务端未提供证书 → `no peer certificates provided` |
 | 解析容错 | 链中无法解析或密钥类型不支持的证书被跳过，不影响其余证书的匹配 |
 | 构造校验 | 哈希先 `TrimSpace`；非 base64 报 `invalid base64 hash`；无有效哈希报 `at least one valid SPKI hash is required` |
-| 性能 | 证书指纹 → SPKI 哈希的 LRU 缓存（1024 条），重复连接不重复解析证书 |
+| 性能 | 证书指纹 → SPKI 哈希缓存（1024 条，FIFO 淘汰：命中不续位，超限淘汰最旧 256 条），重复连接不重复解析证书 |
 | 并发安全 | Pinner 内部有读写锁，可被多个 Client 共享；`Config` 深拷贝时 Pinner 按引用共享（不复制） |
 | 调试描述 | `Pin()` 返回如 `spki-pins:2`、`public-key-pins:2`、`chain:[spki-pins:1,spki-pins:1]`，可写入日志 |
 
@@ -314,7 +314,7 @@ func main() {
 设置 `Security.TLSConfig` 后，HTTPC 会 `Clone()` 自定义配置并**叠加注入** `VerifyPeerCertificate` 固定回调。RootCAs、mTLS 证书、密码套件等设置全部保留，固定校验照常生效（见 `internal/connection/pool.go` 的 `createTLSConfig`）。
 
 :::warning
-`Security.InsecureSkipVerify` 只作用于 HTTPC **默认** TLS 配置路径。设置自定义 `TLSConfig` 时该开关被忽略；跳过验证需（不建议）在 `TLSConfig` 内部设置 `InsecureSkipVerify` 字段。
+设置自定义 `TLSConfig` 后，`MinTLSVersion`/`MaxTLSVersion` 被忽略，但 `Security.InsecureSkipVerify = true` 仍然生效：HTTPC 会克隆自定义配置并把该开关单向注入（仅强制跳过；`TLSConfig` 自身设置的 `InsecureSkipVerify` 不受顶层开关影响）。
 :::
 
 ### 自定义 CertificatePinner
@@ -436,10 +436,6 @@ pinner, err := httpc.NewSPKIHashPinner(
 )
 ```
 
-:::tip
-Let's Encrypt 的中间证书公钥在轮换时保持不变（仅签发新证书，公钥复用）。固定公钥 SPKI 比固定完整中间证书更稳定：公钥不变时 SPKI 哈希不变。
-:::
-
 ## 证书固定的安全考量
 
 | 风险 | 后果 | 缓解措施 |
@@ -478,7 +474,7 @@ cfg := httpc.TestingConfig()
 HTTPC 在 `httpc.New()` 中检测到 `InsecureSkipVerify = true` 且非测试环境时，向 `stderr` 打印警告（每进程一次）。测试环境判定：可执行文件以 `.test` 结尾，或设置了 `GO_TEST` / `GOTEST=1`。
 
 :::danger
-`InsecureSkipVerify = true` 会跳过证书链与主机名校验，仅在测试环境使用。若同时配置了证书固定，SPKI 哈希校验**仍会执行**：Go 在跳过链校验时仍把对端证书传给固定回调，固定成为唯一验证关卡。此时证书链有效性（过期、吊销、CA 签发）与主机名校验全部缺失。
+`InsecureSkipVerify = true` 会跳过证书链与主机名校验，仅在测试环境使用。若同时配置了证书固定，SPKI 哈希校验**仍会执行**：Go 在跳过链校验时仍把对端证书传给固定回调，固定成为唯一验证关卡——且此时**仅匹配叶子证书**，固定中间证书的组合会始终握手失败。此时证书链有效性（过期、吊销、CA 签发）与主机名校验全部缺失。
 
 生产环境不得设为 `true`。需要自定义验证逻辑（如固定完整证书）时，实现 `CertificatePinner` 接口，而非跳过验证。
 :::

@@ -217,7 +217,7 @@ KEY="value with spaces"
 KEY='literal \n value'     # Single quotes skip escapes and are not expanded (see tip below)
 KEY=${OTHER_KEY}           # Variable reference
 KEY=${MISSING:-default}    # Default value (used when the variable doesn't exist)
-KEY=${MISSING:=default}    # Default value, also assigned back to MISSING
+KEY=${MISSING:=default}    # Default value, also assigned back to MISSING (when undefined)
 KEY=${MISSING:?error}      # Error when the variable doesn't exist or is empty
 export KEY=value           # bash style
 KEY=$$                     # Escaped dollar sign (yields a literal $)
@@ -277,8 +277,9 @@ These keys are forbidden by default:
 | System path | `PATH` |
 | Linux dynamic linker | `LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_DEBUG`, `LD_AUDIT`, `LD_PRELOAD_32`, `LD_PRELOAD_64`, `LD_LIBRARY_PATH_32`, `LD_LIBRARY_PATH_64` |
 | macOS | `DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH` |
-| Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS` |
-| Language runtimes | `PYTHONPATH`, `NODE_PATH`, `PERL5OPT`, `RUBYLIB` |
+| Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS`, `PS4`, `SHELLOPTS`, `BASHOPTS` |
+| Language runtimes | `PYTHONPATH`, `PYTHONSTARTUP`, `PYTHONINSPECT`, `PERL5OPT`, `PERL5LIB`, `RUBYLIB`, `RUBYOPT`, `GEM_PATH`, `GEM_HOME`, `NODE_PATH`, `NODE_OPTIONS`, `RUSTFLAGS`, `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS`, `_JAVA_OPTIONS`, `CLASSPATH` |
+| Git | `GIT_CONFIG_COUNT`, `GIT_PROXY_COMMAND` |
 | Windows | `COMSPEC`, `PATHEXT`, `SYSTEMROOT`, `WINDIR` |
 
 ## Interface Types

@@ -37,7 +37,7 @@ Example output:
 [link] Go Official Site - https://go.dev
 ```
 
-Results are sorted by `URL`, and each URL appears once. A fragment-only (`#top`) or query-only (`?page=2`) href is page-internal navigation and produces no result.
+Results are sorted by `URL` in ascending order, and each URL appears once. A fragment-only (`#top`) or query-only (`?page=2`) href is page-internal navigation and produces no result.
 
 ## Link Types
 
@@ -47,12 +47,16 @@ The `Type` field of `LinkResource` identifies the resource:
 |------|---------------|-------------|
 | `link` | `<a>` | Page links |
 | `image` | `<img>` | Image resources |
-| `video` | `<video>`, plus `<iframe>`/`<embed>`/`<object>` whose src is a video URL | Video resources |
-| `audio` | `<audio>` | Audio resources |
+| `video` | `<video>`, `<source type="video/*">`, and `<iframe>`/`<embed>`/`<object>` whose `src` is a video URL | Video resources |
+| `audio` | `<audio>`, `<source type="audio/*">` | Audio resources |
 | `css` | `<link rel="stylesheet">` | Stylesheets |
-| `media` | `<source>` | Generic media (when video/audio cannot be decided) |
+| `media` | `<source>` | Generic media: the `type` is neither `video/*` nor `audio/*`, and the URL extension does not decide video or audio |
 | `js` | `<script>` | Script files |
 | `icon` | `<link rel="icon">` | Site icons |
+
+:::tip How `<source>` is classified
+A `<source>` first consults its `type` attribute: `video/*` becomes `video`, `audio/*` becomes `audio` (case-insensitive). Without a usable `type` the URL extension decides; when neither decides, it becomes `media`. Measured: `<source src="/x.unknownext">` and `<source type="application/vnd.apple.mpegurl">` both produce `media`.
+:::
 
 ## Group by Type
 
@@ -115,8 +119,8 @@ links, _ := html.ExtractAllLinks(data, cfg)
 | Config field | Default | Controls |
 |-------------|---------|----------|
 | `IncludeImages` | `true` | `<img>` tags |
-| `IncludeVideos` | `true` | `<video>`, `<iframe>`, `<embed>`, `<object>` |
-| `IncludeAudios` | `true` | `<audio>` tags |
+| `IncludeVideos` | `true` | `<video>`, `<source>` classified as video, `<iframe>`, `<embed>`, `<object>` |
+| `IncludeAudios` | `true` | `<audio>` and `<source>` classified as audio |
 | `IncludeCSS` | `true` | `<link rel="stylesheet">` |
 | `IncludeJS` | `true` | `<script>` tags |
 | `IncludeContentLinks` | `true` | `<a>` links with a relative href |
@@ -154,6 +158,8 @@ When `ResolveRelativeURLs` is `true` and `BaseURL` is empty, the library infers 
 3. `<link rel="canonical">`
 4. The `scheme://host/` of the first absolute `href`/`src` on the page
 
+A `<base href>` that normalizes to empty (such as `about:blank` or `data:`) counts as unusable, and inference continues with the next step rather than abandoning URL resolution for the whole document.
+
 ## Crawler Scenarios
 
 ### Collect All Page Resources
@@ -181,7 +187,7 @@ for _, link := range groups["link"] {
 }
 ```
 
-`isSameDomain` is yours to implement: the library does not compare hosts, so same-site absolute links also count as external.
+The `isSameDomain` domain filter is yours to implement (see the warning above).
 
 ### Collect Only Navigation Links
 

@@ -79,7 +79,7 @@ API_URL=${BASE_URL}/v1
 # 简单语法
 URL=$BASE_URL/path
 
-# 默认值（引用的是同文件里先前定义的键，不能引用自身）
+# 默认值（可引用同文件中的任意键，与定义先后无关；引用自身会因循环报错）
 HOST=example.com
 PRIMARY_HOST=${HOST:-localhost}
 TIMEOUT=${TIMEOUT_SECONDS:-30s}
@@ -134,6 +134,23 @@ PRIVATE_KEY="-----BEGIN KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..
 ```
 
 需要真正的跨行字符串时，改用 [JSON 或 YAML 格式](#格式检测)，或通过自定义解析器扩展多行支持。
+
+### 重复键
+
+同一文件内的重复键按 `DuplicateKeyPolicy` 处理，默认值 `DuplicateKeyInherit`（零值）沿用各格式的历史行为：
+
+| 格式 | 默认（Inherit）行为 |
+|------|---------------------|
+| `.env` | 跟随 `OverwriteExisting`：`false`（默认）时先出现的键胜出，`true` 时后出现的胜出 |
+| YAML | 后出现的键胜出（与 `OverwriteExisting` 无关） |
+| JSON | 后出现的键胜出（与 `OverwriteExisting` 无关） |
+
+也可显式指定策略：`DuplicateKeyFirstWins` 保留先出现的键（JSON 文档含重复键时改为报错）、`DuplicateKeyLastWins` 一律让后出现的键胜出、`DuplicateKeyError` 遇重复键直接报 `ErrDuplicateKey`。该策略只作用于**单个文件内**的重复键；多个文件之间的覆盖顺序由 `OverwriteExisting` 决定（见[快速开始 · 多文件加载](../getting-started/#多文件加载)）。
+
+```go
+cfg := env.DefaultConfig()
+cfg.DuplicateKeyPolicy = env.DuplicateKeyError // 同一文件内出现重复键时直接报错
+```
 
 ## JSON 格式
 
@@ -267,17 +284,26 @@ ALLOWED_HOSTS_2=api.example.com
 
 ### 多行字符串
 
-::: warning 注意
-YAML 块标量（字面量块 `|` 与折叠块 `>`）**当前不支持**。解析器把 `|`/`>` 当作普通标量字符存储，后续缩进行会破坏键值解析。
-:::
+YAML 支持块标量：字面量块 `|` 逐行保留内容与换行，折叠块 `>` 把相邻行之间的换行折叠为空格（空行折叠为换行）。块内容是头部之后缩进深于键所在层的所有行，多行值（证书、密钥等）按原文存储，不做 null/布尔/数字之类的类型转换：
 
-需要保留换行的值，改用双引号加 `\n` 转义：
+```yaml
+private_key: |
+  -----BEGIN PRIVATE KEY-----
+  MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+  -----END PRIVATE KEY-----
+
+description: >
+  折叠块的相邻行
+  在结果中用空格连接
+```
+
+头部可带 chomping 指示符控制尾部换行：`-`（strip）去掉全部尾部换行，`+`（keep）全部保留，默认（clip）只保留一个；还可带显式缩进指示数字（如 `|2` 表示块内容相对父级缩进 2 格）。头部同一行还有其他内容（如 `| text`）时不是块标量，`|`/`>` 按普通标量字符处理。
+
+单行表达换行时，双引号加 `\n` 转义同样可用：
 
 ```yaml
 description: "Line1\nLine2\nLine3"
 ```
-
-或通过自定义解析器扩展块标量支持。
 
 ### 类型转换选项
 

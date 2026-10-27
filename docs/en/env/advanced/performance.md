@@ -211,7 +211,7 @@ if secret != nil {
 }
 ```
 
-With locking enabled but failed, `Masked()` reports `[SECURE:N bytes lock-failed]`. On platforms other than Linux, macOS, and Windows, `IsMemoryLockSupported()` returns false, so the lock attempt fails and records the error (`Masked()` shows `lock-failed`), while the `SecureValue` stays fully usable.
+With locking enabled but failed, `Masked()` reports `[SECURE:N bytes lock-failed]`. On platforms other than Linux, macOS, and Windows, `IsMemoryLockSupported()` returns false, so the lock attempt fails and the error is stored on the value (`Masked()` shows `lock-failed`), while the `SecureValue` stays fully usable.
 
 ### Secure Zeroing
 
@@ -243,10 +243,14 @@ The most efficient pattern is to load configuration at startup and only read it 
 var config *Config
 
 func init() {
-    env.Load(".env")
+    if err := env.Load(".env"); err != nil {
+        panic(err)
+    }
 
     config = &Config{}
-    env.ParseInto(config)
+    if err := env.ParseInto(config); err != nil {
+        panic(err)
+    }
 }
 
 // Safe to read from any goroutine
@@ -454,7 +458,7 @@ loader.Close()  // Main goroutine closes
 
 ## Concurrency Internals
 
-The concurrency optimizations below are described at the source level. The quantitative figures (the 23.6% atomic-operations hotspot, the finalizer at about 60% of creation cost) come from the v1.2.2/v1.2.3 benchmarks and profiles recorded in CHANGES.md.
+The concurrency optimizations below are described at the source level and can be used for evaluation and tuning. The quantitative figures (the 23.6% atomic-operations hotspot, the finalizer at about 60% of creation cost) come from the v1.2.2/v1.2.3 benchmarks and profiles: the 23.6% figure is recorded in CHANGES.md, and the 60% figure comes from the object-pool comment in `secure.go`.
 
 ### Sharded storage (secureMap)
 
@@ -481,7 +485,7 @@ All variables are stored as `SecureValue` in **32 shards** (raised from 8 in v1.
 
 ### Performance awareness for auditing
 
-With auditing enabled, the load path adds `time.Now` and event-construction overhead; with auditing disabled that cost is entirely avoided. In high-throughput scenarios, enable auditing only under the production preset, or consume events asynchronously with `ChannelAuditHandler`.
+With auditing enabled, the load path adds `time.Now` and event-construction overhead; with auditing disabled that cost is entirely avoided. In high-throughput scenarios, enable auditing only under `ProductionConfig`, or consume events asynchronously with `ChannelAuditHandler`.
 
 ## Related Documentation
 

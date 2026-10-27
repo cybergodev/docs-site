@@ -9,9 +9,9 @@ sidebar_position: 30
 
 Go through these items before launch. Priority meanings:
 
-- 🔴 **Must (P0)**: skipping it leads to a security hole or a resource leak
-- 🟡 **Recommended (P1)**: affects reliability and observability
-- 🟢 **Optional (P2)**: do it when you have room
+- **Must (P0)**: skipping it leads to a security hole or a resource leak
+- **Recommended (P1)**: affects reliability and observability
+- **Optional (P2)**: do it when you have room
 
 :::tip Start from the preset, relax per service
 `HighSecurityConfig()` already tightens every limit to a safe level and turns on full auditing. For untrusted input, start there and relax individual fields as needed.
@@ -19,12 +19,12 @@ Go through these items before launch. Priority meanings:
 
 ## Basic Configuration
 
-- [ ] 🔴 Use `HighSecurityConfig()` or a custom security configuration as the starting point
-- [ ] 🔴 Set a reasonable `MaxInputSize` (hard cap 50MB)
-- [ ] 🔴 Set `ProcessingTimeout` to prevent long-running blocks (10–30s recommended)
-- [ ] 🟡 Configure `MaxDepth` to limit DOM depth (default 500; 100 for high security)
-- [ ] 🟡 Keep `EnableSanitization = true` (on by default)
-- [ ] 🟢 Tune `WorkerPoolSize` to your concurrency (default 4, max 256)
+- [ ] Use `HighSecurityConfig()` or a custom security configuration as the starting point
+- [ ] Set a reasonable `MaxInputSize` (hard cap 50MB)
+- [ ] Set `ProcessingTimeout` to prevent long-running blocks (10–30s recommended)
+- [ ] Configure `MaxDepth` to limit DOM depth (default 500; 100 for high security)
+- [ ] Keep `EnableSanitization = true` (on by default)
+- [ ] Tune `WorkerPoolSize` to your concurrency (default 4, max 256)
 
 **Why**
 
@@ -34,9 +34,9 @@ Go through these items before launch. Priority meanings:
 
 ## Processor Lifecycle
 
-- [ ] 🔴 Release the Processor with `defer p.Close()`
-- [ ] 🔴 Call no extraction method after `Close()` (it returns `ErrProcessorClosed`)
-- [ ] 🟡 Reuse one Processor across requests instead of creating one per request
+- [ ] Release the Processor with `defer p.Close()`
+- [ ] Call no extraction method after `Close()` (it returns `ErrProcessorClosed`)
+- [ ] Reuse one Processor across requests instead of creating one per request
 
 ```go
 p, err := html.New(html.HighSecurityConfig())
@@ -50,15 +50,15 @@ defer p.Close()
 
 - `Processor` is concurrency-safe: its cache and statistics counters are synchronized, so an application-level singleton (a handler holding one global `*html.Processor`) is fine.
 - Every `html.New()` allocates cache and audit structures, and when both `CacheTTL` and `CacheCleanup` are greater than zero it also starts a background sweep goroutine; creating one per request wastes resources and adds GC pressure.
-- Package-level functions (`html.Extract`, etc.) reuse pooled Processors through `sync.Pool`, but a pooled instance clears its cache on return, so cross-call cache hits never happen — hold an explicit instance when you need caching.
+- Package-level functions (`html.Extract`, etc.) reuse pooled Processors through `sync.Pool`, but pooled instances are constructed with caching disabled, so cross-call cache hits never happen — hold an explicit instance when you need caching.
 
 ## Audit & Monitoring
 
-- [ ] 🔴 Enable auditing (`Audit.Enabled = true`)
-- [ ] 🟡 Persist audit logs to a file with `WriterAuditSink`
-- [ ] 🟡 Monitor `ErrorCount` and `CacheHits` from `GetStatistics()`
-- [ ] 🟡 Alert in real time on critical events (input violations, path traversal)
-- [ ] 🟢 Feed the audit stream into an external SIEM with `ChannelAuditSink`
+- [ ] Enable auditing (`Audit.Enabled = true`)
+- [ ] Persist audit logs to a file with `WriterAuditSink`
+- [ ] Monitor `ErrorCount` and `CacheHits` from `GetStatistics()`
+- [ ] Alert in real time on critical events (input violations, path traversal)
+- [ ] Feed the audit stream into an external SIEM with `ChannelAuditSink`
 
 ```go
 auditFile, err := os.OpenFile("audit.jsonl", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -101,12 +101,15 @@ More pipeline patterns are in [Audit Pipeline](./audit-pipeline).
 
 ## Context & Timeout
 
-- [ ] 🔴 Use `ExtractWithContext` rather than bare `Extract` for extraction
-- [ ] 🔴 Set a reasonable context timeout
-- [ ] 🟡 Give batch operations a cancellable context so remaining work stops on error
+- [ ] Use `ExtractWithContext` rather than bare `Extract` for extraction
+- [ ] Set a reasonable context timeout
+- [ ] Give batch operations a cancellable context so remaining work stops on error
+
+Inside an HTTP handler, derive the timeout from the request context:
 
 ```go
-ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+// Inside a handler: r is *http.Request
+ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 defer cancel()
 result, err := p.ExtractWithContext(ctx, data)
 ```
@@ -119,11 +122,11 @@ result, err := p.ExtractWithContext(ctx, data)
 
 ## Error Handling
 
-- [ ] 🔴 Use `errors.Is` to separate business errors from security errors
-- [ ] 🔴 Log `*FileError` through `SafePath()`, not the raw error string
-- [ ] 🟡 Log every `ErrInputTooLarge` and depth-related error (possible attack probing)
-- [ ] 🟡 Watch the `ErrInternalPanic` rate (any occurrence warrants investigation and an issue)
-- [ ] 🟢 Degrade gracefully on `ErrProcessorClosed` instead of crashing
+- [ ] Use `errors.Is` to separate business errors from security errors
+- [ ] Log `*FileError` through `SafePath()`, not the raw error string
+- [ ] Log every `ErrInputTooLarge` and depth-related error (possible attack probing)
+- [ ] Watch the `ErrInternalPanic` rate (any occurrence warrants investigation and an issue)
+- [ ] Degrade gracefully on `ErrProcessorClosed` instead of crashing
 
 ```go
 _, err := p.Extract(data)
@@ -149,28 +152,28 @@ case errors.Is(err, html.ErrFileNotFound),
 **Why**
 
 - `FileError.Error()` is already redacted (file name only), but the `FileError.Path` field keeps the original path, so always log through `SafePath()`.
-- Depth problems have two sources: `ErrMaxDepthExceeded` from the library's check and `ErrInvalidHTML` from the parser's own ~512-level ceiling. Counting only the former misses the deeper batch.
+- Depth problems have two sources: `ErrMaxDepthExceeded` from the library's check and `ErrInvalidHTML` from the parser's own ~512-level ceiling. Counting only the former misses excessively deep inputs — they surface as `ErrInvalidHTML`.
 - `ErrInternalPanic` means malicious input triggered an unexpected panic inside the library. Preserve the triggering input and report it; do not rely on recovery long term.
 
 ## Resource Management
 
-- [ ] 🔴 Keep each batch at or below 10000 items
-- [ ] 🟡 Configure `WorkerPoolSize` sensibly (the CPU core count is recommended)
-- [ ] 🟡 Monitor memory usage and cache hit rate
-- [ ] 🟢 Call `ClearCache()` periodically on long-running instances
+- [ ] Keep each batch at or below 10000 items (the library's hard cap; a larger batch is rejected whole)
+- [ ] Configure `WorkerPoolSize` sensibly (the CPU core count is recommended)
+- [ ] Monitor memory usage and cache hit rate
+- [ ] Call `ClearCache()` periodically on long-running instances
 
 **Why**
 
-- An oversized batch both hogs memory and amplifies the cost of failure. Slice large jobs into 1000–5000-item batches, each with its own timeout context, so one failed batch does not affect the rest.
+- Batches over 10000 items are rejected whole by the library: every item in the `BatchResult` carries the same error wrapping `ErrBatchTooLarge`, and nothing is processed. Slice large jobs into 1000–5000-item batches, each with its own timeout context, so one failed batch does not affect the rest.
 - `MaxCacheEntries` (default 2000, max 100000) sets cache occupancy; on a memory-tight long-running service, lower the entry count or shorten `CacheTTL`.
 - Cache hits save CPU but not memory: they pay off only at a high hit rate; otherwise the entries occupy memory and add hashing cost with no return.
 
 ## File Processing
 
-- [ ] 🔴 Validate where file paths come from (never let users control the full path)
-- [ ] 🔴 Set `AllowedBaseDir` to restrict the readable directory
-- [ ] 🟡 Pre-check file size with `os.Stat` (the library does this too; an outer layer adds defense in depth)
-- [ ] 🟢 Apply a type/extension whitelist to uploaded files
+- [ ] Validate where file paths come from (never let users control the full path)
+- [ ] Set `AllowedBaseDir` to restrict the readable directory
+- [ ] Pre-check file size with `os.Stat` (the library does this too; an outer layer adds defense in depth)
+- [ ] Apply a type/extension whitelist to uploaded files
 
 **Why**
 
@@ -239,7 +242,7 @@ Watch these after deployment:
 | Error rate | `Statistics.ErrorCount / TotalProcessed` | > 5% | Poor input quality, overly strict config, upstream anomalies |
 | Cache hit rate | `Statistics.CacheHits / TotalProcessed` | < 30% | Insufficient input dedup, cache TTL too short |
 | Average processing time | `Statistics.AverageProcessTime` | Above business baseline | Malicious input, improper timeout config |
-| Critical audit events | Filter `GetAuditLog()` for `AuditLevelCritical` | Any one | Input violation, path-traversal attack |
+| Critical audit events | Filter `GetAuditLog()` for `AuditLevelCritical` | Any one | Input violation, path traversal attack |
 | ChannelAuditSink drops | `sink.DroppedCount()` | > 0 | Insufficient buffer, consumer too slow |
 
 ```go

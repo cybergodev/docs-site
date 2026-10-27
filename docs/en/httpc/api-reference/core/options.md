@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Request Options"
 title: "Request Options - CyberGo HTTPC | WithXxx Options"
-description: "HTTPC request options reference: all 32 WithXxx functions for headers, auth, bodies, cookies, request control, callbacks, and routing, with Config overrides."
+description: "HTTPC request options: signatures, defaults, and validation of all 32 WithXxx functions in eight groups, plus the Config defaults each one overrides."
 sidebar_position: 20
 ---
 
@@ -205,7 +205,7 @@ Uploads a single file as multipart. `fieldName` and `filename` cannot be empty, 
 There is no path-stripping step — `filename` is written into the multipart header as given, and `"."` is also rejected.
 
 :::warning Repeated WithFile calls merge; mixing with other body options replaces
-Repeated `WithFile` calls are **merged** into one multipart body (source behavior, pinned by a test), so several files can be uploaded in a single request.
+Repeated `WithFile` calls are **merged** into one multipart body (source behavior, pinned by a test), so several files can be uploaded in a single request; when the same `fieldName` appears again, the later entry overwrites the earlier one.
 
 Mixing with other body options such as `WithJSON`/`WithBinary` makes the later option replace the entire body; calling `WithFile` after `WithFormData` merges the files into that FormData. For file-plus-field uploads, build a single `*FormData` and use `WithFormData`.
 :::
@@ -224,7 +224,7 @@ func WithBinary(data []byte, contentType ...string) RequestOption
 
 Sets a binary request body. A nil **or zero-length** `data` returns an error (`binary data cannot be empty`). The default Content-Type is `application/octet-stream` and can be overridden by the second argument (an empty string falls back to the default).
 
-Unlike `WithBinary`, `WithBody(data, BodyBinary)` also rejects empty data but additionally accepts `string` input.
+Versus `WithBody(data, BodyBinary)`: the latter also rejects empty data but additionally accepts `string` input.
 
 ```go
 result, err := client.Post(url,
@@ -485,7 +485,7 @@ Overrides, for this single request, whether non-idempotent methods (POST, PATCH,
 
 Idempotent methods (GET/HEAD, etc.) are unaffected, and the [`WithMaxRetries`](#withmaxretries) cap still applies.
 
-:::warning
+:::warning Side-effect risk
 Enabling retries for a non-idempotent request means a timeout or retryable 5xx may send the request body more than once (duplicate orders, duplicate payments). Enable it only for endpoints that tolerate replay, or protect them with an idempotency key.
 :::
 
@@ -519,9 +519,11 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 
 Sets the per-request maximum redirect count, overriding `Config.Security.MaxRedirects` (default 10). Range: 0-50; negative values or values above 50 return `ErrInvalidMaxRedirects`.
 
-:::warning
+:::warning Zero-value semantics
 `0` does **not** disable redirects. The engine treats `0` as an "unset" sentinel and falls back to the default cap (10), so `WithMaxRedirects(0)` is equivalent to omitting the option. To fully disable redirect following, use `WithFollowRedirects(false)` instead.
 :::
+
+Counting follows `net/http` semantics: the cap includes the initial request itself, so `WithMaxRedirects(n)` follows at most `n-1` redirects (the default 10 follows at most 9).
 
 ### WithAllowPrivateIPs
 
@@ -534,7 +536,7 @@ Overrides the SSRF policy of the client for a single request (corresponds to `Co
 - `true`: the request may access localhost and private/reserved IP ranges (127.0.0.0/8, 10.0.0.0/8, 192.168.0.0/16, 169.254.0.0/16, etc.) and follow redirects to such addresses.
 - `false`: SSRF protection is enforced for this request even when the client sets `Security.AllowPrivateIPs=true`.
 
-:::warning
+:::warning Security note
 This option is a **single-request exemption** from SSRF protection. It suits a default-secure client (`AllowPrivateIPs=false`) that occasionally needs to reach internal services, loopback addresses, or a local dev server.
 
 Enable it only when the request URL is trusted and **not** derived from untrusted external input. To allow internal access for an entire client, set `Security.AllowPrivateIPs=true` on `Config`.
@@ -555,7 +557,7 @@ func WithStreamBody(stream bool) RequestOption
 
 Enables streaming mode so the response body is not buffered in memory.
 
-:::warning
+:::warning Important limitation
 Streaming mode **takes effect only on the [`Download`](./functions#download) path**. When `WithStreamBody(true)` is used with the standard request methods (`Get`/`Post`/`Put`/`Patch`/`Delete`/`Head`/`Options`/`Request`), the request fails with `ErrStreamBodyRequiresDownload`. Those methods buffer the body into a `Result` and cannot hand the stream to the caller.
 
 To stream-download large files without buffering them in memory, use `Download`.
@@ -565,7 +567,7 @@ To stream-download large files without buffering them in memory, use `Download`.
 
 `WithProxy`, `WithSystemProxy`, and `WithTLSFingerprint` are three **package-level-only** routing options. Each routes a single package-level call to a dedicated client.
 
-The dedicated client has its own connection pool and inherits the default client's secure defaults (SSRF protection, TLS 1.2+, timeouts, retries). The shared default client and any other in-flight calls are unaffected. Each distinct `(proxy, fingerprint)` combination is cached as its own client; close them all with `CloseRoutedClients` (see [Package Functions & Client Methods](./functions#closeroutedclients)).
+The dedicated client has its own connection pool and inherits the default client's secure defaults (SSRF protection, TLS 1.2+, timeouts, retries). The shared default client and any other in-flight calls are unaffected. Each distinct `(proxy, system proxy, fingerprint)` combination is cached as its own client; close them all with `CloseRoutedClients` (see [Package Functions & Client Methods](./functions#closeroutedclients)).
 
 :::warning Package-level only
 These options apply only to package-level functions (`Get`/`Post`/`Request`/`Download`, etc.). On an explicit `Client` instance they return an error; use `Config.Connection.ProxyURL` / `Config.Connection.EnableSystemProxy` / `Config.Security.TLSFingerprint` there instead.

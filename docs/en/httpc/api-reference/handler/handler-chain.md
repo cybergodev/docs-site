@@ -141,7 +141,7 @@ Middlewares are configured in the `MiddlewareConfig.Middlewares` slice; a middle
 func Chain(middlewares ...MiddlewareFunc) MiddlewareFunc
 ```
 
-Combines multiple middlewares into a single middleware. The returned combinator takes the final Handler and nests the middlewares outside-in in the order provided: the first middleware in the slice wraps the outermost layer (executed first), the last sits right against the final Handler. HTTPC uses this combinator internally to assemble `MiddlewareConfig.Middlewares` into a chain.
+Combines multiple middlewares into a single middleware. The returned combinator takes the final Handler and nests the middlewares outside-in in the order provided: the first middleware in the slice wraps the outermost layer (executed first), the last sits right against the final Handler. `nil` entries are skipped silently (treated as no-ops), so a nil never breaks chain assembly. HTTPC uses this combinator internally to assemble `MiddlewareConfig.Middlewares` into a chain.
 
 `Chain` is the only exported chain-assembly API in HTTPC; there is no mutable chain builder such as `Append`/`Use`. The whole chain is assembled once by `buildMiddlewareChain` at `New()` time and cached on the `clientImpl.middlewareChain` field; middlewares cannot be added or removed afterwards. For runtime-dynamic behavior, implement conditional logic inside a middleware rather than modifying the chain structure.
 
@@ -186,7 +186,9 @@ finalHandler(ctx, req):
 ```
 
 :::warning Boundary of the type assertion
-The callbacks (`OnRequest`/`OnResponse`) and the per-request SSRF override (`AllowPrivateIPs`) live on the concrete type `*engine.Request`, not on the `RequestMutator` interface. `finalHandler` reads these hooks via type assertion. If a custom middleware **replaces** `req` with a non-`*engine.Request` type, the assertion fails and these hooks are **silently skipped**. All built-in middlewares mutate the request in place (never replace), so the assertion always succeeds.
+The callbacks (`OnRequest`/`OnResponse`), the per-request SSRF override (`AllowPrivateIPs`), and the NoTimeout and `RetryNonIdempotent` overrides live on the concrete type `*engine.Request`, not on the `RequestMutator` interface; after a successful assertion, `finalHandler` forwards these fields to the engine along with every interface field.
+
+If a custom middleware **replaces** `req` with a non-`*engine.Request` type, the assertion fails and an interface-accessor fallback path runs instead: those four per-request overrides plus the sanitized-URL cache are **silently skipped**, and only the interface fields (headers, queryParams, body, timeout, maxRetries, cookies, followRedirects, maxRedirects, streamBody) are still forwarded. All built-in middlewares mutate the request in place (never replace), so the assertion always succeeds.
 :::
 
 ## Built-in Middleware

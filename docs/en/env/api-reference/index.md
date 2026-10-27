@@ -200,7 +200,7 @@ Same-named methods and package functions (e.g. `GetString`) get one row each und
 | `SecurityError` | Security error type | [constants](./constants#securityerror) |
 | `FileError` | File error type | [constants](./constants#fileerror) |
 | `ExpansionError` | Expansion error type | [constants](./constants#expansionerror) |
-| `ExpansionErrorKind`, `ExpansionDepthKind`, `ExpansionRequiredKind` | Error kind constants | [constants](./constants#expansionerror) |
+| `ExpansionErrorKind`, `ExpansionDepthKind`, `ExpansionRequiredKind` | Error kind types and constants | [constants](./constants#expansionerror) |
 | `JSONError` | JSON parse error | [constants](./constants#jsonerror) |
 | `YAMLError` | YAML parse error | [constants](./constants#yamlerror) |
 | `MarshalError` | Marshal error type | [constants](./constants#marshalerror) |

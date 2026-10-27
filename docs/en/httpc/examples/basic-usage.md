@@ -55,7 +55,7 @@ result, err := httpc.Get("https://api.example.com/me",
 )
 ```
 
-Beyond a Bearer token, HTTPC provides three authentication and header patterns.
+Beyond Bearer, authentication and request headers have three more common patterns.
 
 ```go
 // Basic authentication
@@ -185,7 +185,7 @@ result, err = httpc.Post("https://httpbin.org/post",
 `WithBody` infers the encoding from the input type; the second argument forces a specific kind:
 
 ```go
-// The map is forced through JSON encoding (instead of the generic formatting branch)
+// map[string]string auto-detects as form encoding; force JSON encoding here
 result, err := httpc.Post("https://httpbin.org/post",
     httpc.WithBody(map[string]string{"key": "value"}, httpc.BodyJSON),
 )

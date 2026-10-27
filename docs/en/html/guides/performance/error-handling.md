@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo html | Timeout, Encoding, Files"
-description: "CyberGo html error handling: five categories, sentinels, errors.Is/errors.As, ProcessingTimeout vs user deadlines, encoding failures, FileError sanitization."
+description: "CyberGo html error handling: five categories, sentinels, errors.Is/As, traversal vs sandbox escapes, ProcessingTimeout vs deadlines, and HTTP mapping."
 sidebar_position: 40
 ---
 
@@ -19,6 +19,8 @@ Every html library failure is returned as an `error`; panics inside the library 
 | Processing errors | `ErrProcessingTimeout`, `ErrMaxDepthExceeded` | Timeout budget, or depth exceeded due to input structure |
 | System errors | `ErrProcessorClosed`, `ErrInternalPanic`, `ErrTooManyConcurrentOps` | Lifecycle, internal faults, concurrency cap |
 
+The complete list of the 12 sentinel errors, their exact messages, and the field definitions of the three structured types are in [API Reference: Constants & Errors](../../api-reference/types/constants#sentinel-errors); this page covers only matching methods and handling strategies.
+
 ## Matching Errors: errors.Is and errors.As
 
 `errors.Is` matches sentinel errors along the `Unwrap` chain; `errors.As` extracts a structured error so you can read its fields.
@@ -31,7 +33,7 @@ Every html library failure is returned as an `error`; panics inside the library 
 
 Check order: system errors first (`ErrProcessorClosed`, `ErrInternalPanic`, `ErrTooManyConcurrentOps`), then file errors via `errors.As`, then input and config errors.
 
-Path traversal errors match no sentinel; see [Error Wrapping Chain](#error-wrapping-chain) for detection.
+Path traversal errors **do match** `ErrInvalidFilePath` (see [Error Wrapping Chain](#error-wrapping-chain)). The only refusal that matches no sentinel is an `AllowedBaseDir` escape, also described in that section.
 
 ## Error Wrapping Chain
 
@@ -43,9 +45,11 @@ All three structured error types implement `Unwrap`, which decides whether `erro
 | `*ConfigError` | Always `ErrInvalidConfig` | Fixed mapping |
 | `*FileError` | ① `FileErr` wraps `ErrFileNotFound` → `ErrFileNotFound`; ② otherwise `FileErr != nil` → `FileErr`; ③ otherwise → `ErrInvalidFilePath` | Three-level fallback |
 
-:::warning Path traversal matches no sentinel
+:::warning The two file-path refusals have different sentinel status
 
-A path traversal produces `FileErr` = `path traversal detected: <cleanPath>`. It is neither `ErrFileNotFound` nor `ErrInvalidFilePath`, so `errors.Is` returns `false` for both. Detect traversal with `errors.As` on `*FileError`, then inspect the `FileErr` message.
+**Path traversal** (the path contains a `..` component): `FileErr` looks like `path traversal detected: <cleanPath>: html: invalid file path`, wrapping `ErrInvalidFilePath` at the end. So `errors.Is(err, html.ErrInvalidFilePath)` returns `true`. To tell traversal from other path errors, still use `errors.As` to obtain `*FileError` and check for `path traversal` in the `FileErr` message.
+
+**`AllowedBaseDir` escape** (the real path falls outside the allowed directory): `FileErr` is `path outside allowed directory`, which wraps no sentinel, so `errors.Is` returns `false` for both `ErrFileNotFound` and `ErrInvalidFilePath`. Only the `FileErr` message identifies this case.
 
 :::
 
@@ -61,7 +65,7 @@ import (
 	"github.com/cybergodev/html"
 )
 
-// diagnose prints the sentinels the error matches and its structured fields.
+// diagnose prints the sentinel errors an error matches and its structured fields.
 func diagnose(err error) {
 	var inputErr *html.InputError
 	if errors.As(err, &inputErr) {
@@ -98,13 +102,13 @@ func main() {
 	// InputError: op=Extract size=200 max=100
 	// Is(ErrInputTooLarge)=true Is(ErrFileNotFound)=false Is(ErrInvalidFilePath)=false
 
-	// Path traversal: *FileError matches no sentinel
+	// Path traversal: *FileError's FileErr wraps ErrInvalidFilePath
 	_, err = p.ExtractFromFile("../../../etc/passwd")
 	diagnose(err)
 	// Output:
 	// FileError: op=ReadFile safePath=passwd
 	// Security event: path traversal
-	// Is(ErrInputTooLarge)=false Is(ErrFileNotFound)=false Is(ErrInvalidFilePath)=false
+	// Is(ErrInputTooLarge)=false Is(ErrFileNotFound)=false Is(ErrInvalidFilePath)=true
 }
 ```
 
@@ -115,13 +119,13 @@ Which error `ExtractWithContext` returns depends on which deadline fires first:
 | Scenario | Returned error |
 |----------|----------------|
 | Library `ProcessingTimeout` fires while the user ctx is still live | `ErrProcessingTimeout` |
-| User ctx deadline fires first (or simultaneously with the library timeout) | `context.DeadlineExceeded`, passed through unchanged |
+| User ctx deadline fires first (or at the same time as the library timeout) | `context.DeadlineExceeded`, passed through unchanged |
 | Caller calls `cancel()` | `context.Canceled` |
 | `ProcessingTimeout = 0` (no limit) and the user ctx expires | `context.DeadlineExceeded` (no derived timeout) |
 
 When `ProcessingTimeout > 0`, the library derives a deadline via `context.WithTimeout(parentCtx, ProcessingTimeout)`, so the earlier of the two applies. The error is normalized to `ErrProcessingTimeout` only when the derived deadline fires and `ctx.Err() == nil`. User deadlines and `cancel()` pass through unchanged, so `errors.Is(err, html.ErrProcessingTimeout)` is `false` on a user timeout.
 
-A timeout does not kill processing: the library returns immediately and the extraction goroutine exits at its next cooperative checkpoint. A caller `cancel()` yields `context.Canceled`, also not normalized.
+A timeout does not forcibly terminate processing: the library returns immediately and the extraction goroutine exits at its next cooperative checkpoint. A user `cancel()` yields `context.Canceled`, also not normalized.
 
 The example configures a 30s library budget but passes an already-expired deadline, so the output is deterministic:
 
@@ -179,9 +183,10 @@ The over-limit message is `html: batch size exceeds maximum: N exceeds maximum 1
 | `ErrInputTooLarge` | Reject at the entry point by `MaxInputSize`; the cap cannot be raised |
 | `encoding detection failed` | The encoding is mislabelled for this source: use the real one |
 | `ErrFileNotFound` | Return 404 or skip the item (in a batch, only that item fails) |
-| `ErrInvalidFilePath` / path traversal | Reject and record an audit entry |
+| `ErrInvalidFilePath` / path traversal | Reject and record an audit entry (traversal matches `ErrInvalidFilePath`) |
+| `path outside allowed directory` | An `AllowedBaseDir` escape with no sentinel: reject on the `FileErr` message and record an audit entry |
 | `ErrMaxDepthExceeded` | Triggered by input structure: reject, or trim the structure first |
-| `ErrTooManyConcurrentOps` | 1000 global timeout goroutines already active: reduce concurrency or retry later |
+| `ErrTooManyConcurrentOps` | 1000 process-wide timeout goroutines already active: reduce concurrency or retry later |
 | `ErrProcessorClosed` / `ErrInvalidConfig` / `ErrMultipleConfigs` | Programming errors: fix the code, do not retry |
 | `ErrInternalPanic` | File an issue with an input sample |
 
@@ -192,7 +197,7 @@ The over-limit message is `html: batch size exceeds maximum: N exceeds maximum 1
 - `Config.Encoding = "utf-8"` is forced (or the page declares utf-8) but the data is not valid UTF-8 → `encoding detection failed: declared charset "utf-8" but data is not valid UTF-8`
 - An unsupported encoding name is forced and the data is not valid UTF-8 → `encoding detection failed: unsupported encoding "..."`
 
-A GBK or Shift_JIS page without `<meta charset>` does not error: the library falls back to windows-1252, returns mojibake, and `err == nil`. So "retry with another encoding after detection fails" never triggers. Set the encoding per source instead: the HTTP `Content-Type` header, a site allowlist, or a fixed `Config.Encoding` for known sources.
+A GBK or Shift_JIS page without `<meta charset>` does not error: the library falls back to windows-1252, returns mojibake, and `err == nil` (full behavior in [Encoding Detection](../core-features/encoding-detection#undeclared-pages-decode-to-mojibake)). So "retry with another encoding after detection fails" never triggers. Set the encoding per source instead: the HTTP `Content-Type` header, a site allowlist, or a fixed `Config.Encoding` for known sources.
 
 ```go
 package main
@@ -300,14 +305,16 @@ Map library errors to HTTP status codes so clients can tell retryable from termi
 | `ErrInputTooLarge` | 413 Payload Too Large | Client should send less data |
 | `ErrInvalidHTML` | 422 Unprocessable Entity | HTML could not be parsed |
 | `ErrFileNotFound` | 404 Not Found | File does not exist |
-| `ErrInvalidFilePath` | 400 Bad Request | Invalid path format |
+| `ErrInvalidFilePath` | 400 Bad Request | Invalid path format, **including path traversal refusals** |
 | `ErrMaxDepthExceeded` | 400 Bad Request | Input structure too deep |
 | `ErrProcessingTimeout` | 504 Gateway Timeout | Processing timed out; retry later |
 | `ErrProcessorClosed` | 500 Internal Server Error | Programming error (lifecycle) |
 | `ErrInvalidConfig` | 500 Internal Server Error | Programming error (validate config at startup) |
 | `ErrInternalPanic` | 500 Internal Server Error | Internal bug; report it |
 | `ErrMultipleConfigs` | 500 Internal Server Error | Programming error (more than one Config) |
-| `ErrTooManyConcurrentOps` | 503 Service Unavailable | Global concurrency full; retry later |
+| `ErrTooManyConcurrentOps` | 503 Service Unavailable | Process-wide concurrency full; retry later |
+
+An `AllowedBaseDir` escape (`path outside allowed directory`) has no sentinel, so the mapping table cannot catch it; after `errors.As` yields a `*FileError`, classify it as 400 by its message.
 
 ```go
 package main
@@ -357,6 +364,7 @@ func main() {
 	}{
 		{"input too large", func() error { _, e := p.Extract(make([]byte, 100)); return e }()},
 		{"file not found", func() error { _, e := p.ExtractFromFile("missing.html"); return e }()},
+		{"path traversal", func() error { _, e := p.ExtractFromFile("../../../etc/passwd"); return e }()},
 		{"concurrency full", html.ErrTooManyConcurrentOps},
 	}
 
@@ -366,6 +374,7 @@ func main() {
 	// Output:
 	// input too large → HTTP 413
 	// file not found → HTTP 404
+	// path traversal → HTTP 400
 	// concurrency full → HTTP 503
 }
 ```

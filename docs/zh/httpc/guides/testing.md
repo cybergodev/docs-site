@@ -7,7 +7,7 @@ sidebar_position: 120
 
 # 测试指南
 
-HTTPC 的测试分两层。集成测试用 `httptest` 模拟服务器走完整请求管道，单元测试用 `Doer` 接口替身直接构造 `Result`。两者都以 `TestingConfig()` 为配置起点。
+HTTPC 的测试分两层。集成测试用 `httptest` 模拟服务器走完整请求管道，以 `TestingConfig()` 为配置起点；单元测试用 `Doer` 接口替身直接构造 `Result`，无需创建客户端。
 
 ## TestingConfig
 

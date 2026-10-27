@@ -1,7 +1,7 @@
 ---
 sidebar_label: "基础用法"
 title: "基础用法 - CyberGo html | 典型场景代码示例"
-description: "CyberGo html 基础用法示例：正文与纯文本提取、文件读取、Markdown 与 JSON 输出、链接分组、媒体信息、批量并发与超时控制六类常见场景，每类给出可独立编译的最小示例与预期输出注释，原理与进阶配置见各节末尾的「深入」链接，便于按需深读。"
+description: "CyberGo html 基础用法示例：正文与纯文本提取、阅读模式的整页 Markdown 输出、文件读取、Markdown 与 JSON 输出、链接分组、媒体信息、批量并发与超时控制七类常见场景，每类给出可独立编译的最小示例与预期输出注释，原理见各节「深入」链接。"
 sidebar_position: 10
 ---
 
@@ -12,6 +12,7 @@ sidebar_position: 10
 | 场景 | 核心调用 | 详解页 |
 |------|----------|--------|
 | 正文与纯文本 | `html.Extract` / `html.ExtractText` | [内容提取实战](../guides/core-features/content-extraction) |
+| 阅读模式 | `html.ReadPageToMarkdown` | [阅读模式](../guides/core-features/reader-mode) |
 | 从文件提取 | `html.ExtractFromFile` | [内容提取实战](../guides/core-features/content-extraction) |
 | Markdown / JSON 输出 | `html.ExtractToMarkdown` / `html.ExtractToJSON` | [输出格式实战](../guides/core-features/output-formats) |
 | 链接提取 | `html.ExtractAllLinks` + `html.GroupLinksByType` | [链接提取](../guides/core-features/link-extraction) |
@@ -41,7 +42,14 @@ func main() {
 	}
 	fmt.Println(result.Title) // 输出：Go 语言教程
 	fmt.Println(result.Text)
-	// 输出：Go 入门指南\n\nGo 是一门静态类型的编译语言。\n\nGo 官网
+	// 输出：
+	// # Go 入门指南
+	//
+	// Go 是一门静态类型的编译语言。
+	//
+	// Go 官网
+	fmt.Println(result.Confidence, result.ExtractionMethod)
+	// 输出：0.6 article（正文由评分器选出的 <article> 产出，但文本较短）
 
 	text, err := html.ExtractText(data) // 只要纯文本：直接返回 string
 	if err != nil {
@@ -53,9 +61,9 @@ func main() {
 
 深入：[内容提取实战](../guides/core-features/content-extraction)
 
-## 从文件提取
+## 阅读模式
 
-磁盘文件用 `ExtractFromFile` 读取，它内置路径穿越防护与文件大小限制：
+需要整页内容（含导航与页脚分区）而非单篇文章时，用 `ReadPageToMarkdown` 一次拿到 Markdown 文档：
 
 ```go
 package main
@@ -68,11 +76,72 @@ import (
 )
 
 func main() {
-	result, err := html.ExtractFromFile("article.html")
+	page := []byte(`<html><head><title>示例页</title></head><body>
+  <header><nav><a href="/">首页</a></nav></header>
+  <main><article><h1>正文标题</h1><p>正文段落。</p></article></main>
+  <footer><p>© 2026 示例</p></footer>
+</body></html>`)
+
+	md, err := html.ReadPageToMarkdown(page) // 带链接
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.Title) // 输出：article.html 中 <title> 的内容
+	fmt.Println(md)
+	// 输出：
+	// # 示例页
+	//
+	// # Header
+	//
+	// [首页](/)
+	//
+	// # Main Content
+	//
+	// # 正文标题
+	//
+	// 正文段落。
+	//
+	// # Footer
+	//
+	// © 2026 示例
+
+	plain, err := html.ReadPageToMarkdownText(page) // 不带链接
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(len(plain) > 0) // 输出：true
+}
+```
+
+深入：[阅读模式](../guides/core-features/reader-mode)
+
+## 从文件提取
+
+磁盘文件用 `ExtractFromFile` 读取，它内置路径遍历防护与文件大小限制：
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/cybergodev/html"
+)
+
+func main() {
+	// 先落一份示例文件（实际使用时通常是已有路径）
+	const path = "article.html"
+	htmlDoc := `<html><head><title>本地文件示例</title></head><body><article><p>正文。</p></article></body></html>`
+	if err := os.WriteFile(path, []byte(htmlDoc), 0o644); err != nil {
+		log.Fatal(err)
+	}
+
+	result, err := html.ExtractFromFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.Title) // 输出：本地文件示例
 }
 ```
 
@@ -101,7 +170,13 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println(md)
-	// 输出：Go 入门指南\n\nGo 是一门编译语言。\n\n![Gopher](gopher.png)\n[Go 官网](https://go.dev)
+	// 输出：
+	// # Go 入门指南
+	//
+	// Go 是一门编译语言。
+	//
+	// ![Gopher](gopher.png)
+	// [Go 官网](https://go.dev)
 
 	// 转 JSON：保留全部元数据字段
 	jsonBytes, err := html.ExtractToJSON(data)
@@ -109,7 +184,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("JSON 字节数：", len(jsonBytes))
-	// 输出：一个数值，大小随内容而定（JSON 含 text/title/images/links 等字段）
+	// 输出：JSON 字节数： <字节数>（含 text、title、word_count、images、links 等字段）
 }
 ```
 

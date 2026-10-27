@@ -1,19 +1,19 @@
 ---
 sidebar_label: "Config"
-title: "Config - CyberGo html | Config Field Reference"
-description: "CyberGo html Config reference: 30 fields grouped by resource, security, extraction, output, and links, plus four presets, zero-value rules, and Validate."
+title: "Config - CyberGo html | Fields, Presets & Validate"
+description: "CyberGo html Config reference: all 31 fields grouped by resource, security, extraction, output, links, plus four presets, zero-value rules, and Validate."
 sidebar_position: 30
 ---
 
-# Configuration
+# Config
 
 ## Config Struct
 
-`Config` is the unified configuration struct for the HTML library, covering resource management, security, content extraction, output formats, and link filtering. It has 30 fields:
+`Config` is the unified configuration struct for the HTML library, covering resource management, security, content extraction, output formats, and link filtering. It has 31 fields:
 
 | Field | Type | Group | Default |
 |-------|------|-------|---------|
-| `Config.MaxInputSize` | `int` | Resource management | `52428800` (50MB) |
+| `Config.MaxInputSize` | `int` | Resource management | `52428800` (50 MB) |
 | `Config.MaxCacheEntries` | `int` | Resource management | `2000` |
 | `Config.CacheTTL` | `time.Duration` | Resource management | `1h` |
 | `Config.CacheCleanup` | `time.Duration` | Resource management | `5m` |
@@ -24,6 +24,7 @@ sidebar_position: 30
 | `Config.AllowedBaseDir` | `string` | Security | `""` |
 | `Config.Audit` | `AuditConfig` | Security | `DefaultAuditConfig()` |
 | `Config.ExtractArticle` | `bool` | Content extraction | `true` |
+| `Config.ExtractMetadata` | `bool` | Content extraction | `true` |
 | `Config.PreserveImages` | `bool` | Content extraction | `true` |
 | `Config.PreserveLinks` | `bool` | Content extraction | `true` |
 | `Config.PreserveVideos` | `bool` | Content extraction | `true` |
@@ -48,7 +49,7 @@ sidebar_position: 30
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `MaxInputSize` | `int` | `52428800` (50MB) | Maximum input in bytes; range `1`–`52428800` |
+| `MaxInputSize` | `int` | `52428800` (50 MB) | Maximum input in bytes; positive and ≤ `52428800` (50 MB) |
 | `MaxCacheEntries` | `int` | `2000` | Cache entry limit; `0` disables the cache (upper bound `100000`) |
 | `CacheTTL` | `time.Duration` | `1h` | Cache expiration time; cannot be negative |
 | `CacheCleanup` | `time.Duration` | `5m` | Interval for sweeping expired entries; `0` disables background cleanup |
@@ -65,7 +66,7 @@ Therefore **the zero value `Config{}` does not pass `Validate()` and must not be
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `EnableSanitization` | `bool` | `true` | Enable content sanitization; disable only for trusted input |
+| `EnableSanitization` | `bool` | `true` | Enable content cleaning; disable only for trusted input |
 | `MaxDepth` | `int` | `500` | Maximum DOM depth, range `1`–`500` |
 | `AllowedBaseDir` | `string` | `""` | Restrict file operations to this directory; empty means no restriction |
 | `Audit` | `AuditConfig` | `DefaultAuditConfig()` | Audit configuration |
@@ -76,11 +77,18 @@ Set `AllowedBaseDir` whenever file paths come from untrusted input.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `ExtractArticle` | `bool` | `true` | Enable article recognition |
+| `ExtractArticle` | `bool` | `true` | Enable article detection |
+| `ExtractMetadata` | `bool` | `true` | Collect JSON-LD, OpenGraph, `<meta>`, and canonical data, filling the metadata fields of `Result`/`ReadResult`, and prefer metadata titles for the title (JSON-LD `headline` > `og:title`, before `<title>`) |
 | `PreserveImages` | `bool` | `true` | Preserve image information |
 | `PreserveLinks` | `bool` | `true` | Preserve link information |
 | `PreserveVideos` | `bool` | `true` | Preserve video information |
 | `PreserveAudios` | `bool` | `true` | Preserve audio information |
+
+With `ExtractMetadata=true`, five fields are filled: `Author`, `PublishedTime`, `Description`, `SiteName`, and `CanonicalURL`. Their source priority is in [Type Definitions](../types/type-defs#result). When it is off, those five fields stay empty and `Title` falls back to `<title>` → body h1 → first h1 in the document → first h2.
+
+This field also participates in the cache key: `ExtractMetadata` is one of the 6 boolean switches in the cache key (the other five are `ExtractArticle`, `PreserveImages`, `PreserveLinks`, `PreserveVideos`, and `PreserveAudios`), so changing it yields a different cache entry.
+
+`PreserveVideos`/`PreserveAudios` have one more input-size boundary: URLs that appear only in the raw HTML text (JSON inside scripts, comments, and similar spots) rather than in media elements are scanned additionally only when the document is at most 1 MB; larger documents get media elements extracted from the parsed DOM only.
 
 ### Output Formats
 
@@ -89,7 +97,9 @@ Set `AllowedBaseDir` whenever file paths come from untrusted input.
 | `InlineImageFormat` | `string` | `none` | `none`, `markdown`, `html`, `placeholder` | Inline image format |
 | `InlineLinkFormat` | `string` | `none` | `none`, `markdown`, `html` | Inline link format |
 | `TableFormat` | `string` | `markdown` | `markdown`, `html` | Table format |
-| `Encoding` | `string` | `""` | - | Forced encoding; auto-detect when empty |
+| `Encoding` | `string` | `""` | - | Encoding to use (e.g. `utf-8`, `windows-1252`, `gbk`); auto-detect when empty |
+
+In reader mode (`ReadPage*`), `InlineLinkFormat="none"` is treated as `markdown` — links are part of the reading-view contract, and `none` only takes effect for the `Extract` family (see [Reader Mode](./reader)).
 
 ### Link Extraction
 
@@ -116,7 +126,7 @@ Set `AllowedBaseDir` whenever file paths come from untrusted input.
 
 ### DefaultConfig
 
-Returns a balanced configuration — the starting point for most applications.
+`DefaultConfig` returns a balanced configuration: the starting point for most applications, and the foundation the other presets and custom configurations are built on.
 
 ```go
 func DefaultConfig() Config
@@ -128,7 +138,7 @@ cfg := html.DefaultConfig()
 
 ### TextOnlyConfig
 
-Sets `PreserveImages`, `PreserveLinks`, `PreserveVideos`, and `PreserveAudios` to `false`, so no media or link information is retained. The `Include*` filters of `ExtractAllLinks` are unaffected by this preset.
+`TextOnlyConfig` builds on the default configuration, setting `PreserveImages`, `PreserveLinks`, `PreserveVideos`, and `PreserveAudios` all to `false`, so no media or link information is retained. The `Include*` filters of `ExtractAllLinks` are unaffected by this preset.
 
 ```go
 func TextOnlyConfig() Config
@@ -140,7 +150,7 @@ cfg := html.TextOnlyConfig()
 
 ### MarkdownConfig
 
-Sets `InlineImageFormat` and `InlineLinkFormat` to `markdown`, for rendering inline images and links in the body as Markdown. `ExtractToMarkdown` always emits Markdown and does not need this preset.
+`MarkdownConfig` builds on the default configuration and sets `InlineImageFormat` and `InlineLinkFormat` to `markdown`, for rendering inline images and links in the body as Markdown. `ExtractToMarkdown` always emits Markdown and does not need this preset.
 
 ```go
 func MarkdownConfig() Config
@@ -152,7 +162,7 @@ cfg := html.MarkdownConfig()
 
 ### HighSecurityConfig
 
-Tighter limits, shorter timeouts, full audit.
+`HighSecurityConfig` tightens limits, shortens timeouts, and enables full audit.
 
 ```go
 func HighSecurityConfig() Config
@@ -166,7 +176,7 @@ Differences from `DefaultConfig()`:
 
 | Field | Default | High Security |
 |-------|---------|---------------|
-| `MaxInputSize` | `52428800` (50MB) | `10485760` (10MB) |
+| `MaxInputSize` | `52428800` (50 MB) | `10485760` (10 MB) |
 | `MaxCacheEntries` | `2000` | `500` |
 | `CacheTTL` | `1h` | `30m` |
 | `CacheCleanup` | `5m` | `1m` |
@@ -195,7 +205,7 @@ err := cfg.Validate() // Returns ConfigError
 
 | Field | Constraint | Invalid example |
 |-------|------------|-----------------|
-| `MaxInputSize` | Positive and ≤ `52428800` (50MB) | `0`, `-1`, `100000000` |
+| `MaxInputSize` | Positive and ≤ `52428800` (50 MB) | `0`, `-1`, `100000000` |
 | `MaxCacheEntries` | ≥ `0` and ≤ `100000` | `-1`, `200000` |
 | `CacheTTL` | ≥ `0` | `-1 * time.Second` |
 | `CacheCleanup` | ≥ `0` | `-1 * time.Minute` |
@@ -215,4 +225,5 @@ Format strings are case-insensitive, and an empty value means the default (`Inli
 - [Configuration Guide](../../guides/core-features/configuration) — Preset selection and common recipes
 - [Package Functions](./functions) — Package-level convenience functions
 - [Processor](./processor) — Where configs are consumed, plus concurrency semantics
+- [Reader Mode](./reader) — How `InlineLinkFormat` and `ExtractMetadata` behave in `ReadPage`
 - [Constants & Errors](../types/constants) — Sentinel errors and error types

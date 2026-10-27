@@ -93,7 +93,7 @@ SessionManager 通过以下方法维护跨请求的请求头。所有方法均�
 func (s *SessionManager) SetHeader(key, value string) error
 ```
 
-添加或更新单个会话头。所有后续请求自动携带。调用前通过 `validation.ValidateHeaderKeyValue` 校验键值合法性（拦截控制字符、CRLF 注入等），无效时返回包装后的错误。nil 接收者返回 `"session manager is nil"`。
+添加或更新单个会话头。键以 `http.CanonicalHeaderKey` 规范化形式存储（大小写不敏感，`"cache-control"` 与 `"Cache-Control"` 指向同一条目），所有后续请求自动携带。调用前通过 `validation.ValidateHeaderKeyValue` 校验键值合法性（拦截控制字符、CRLF 注入等），无效时返回包装后的错误。nil 接收者返回 `"session manager is nil"`。
 
 ```go
 err := sm.SetHeader("Authorization", "Bearer "+token)
@@ -108,7 +108,7 @@ if err != nil {
 func (s *SessionManager) SetHeaders(headers map[string]string) error
 ```
 
-批量添加或更新会话头。先在锁外逐项校验（任一无效即整批拒绝），再在锁内通过 `maps.Copy` 合并。原子语义：要么全部成功，要么全部不变。
+批量添加或更新会话头。先在锁外按排序键逐项校验（任一无效即整批拒绝），再在锁内以 `http.CanonicalHeaderKey` 规范化形式逐键写入（同一批内多大小写拼写的键按排序后者覆盖前者，结果确定）。原子语义：要么全部成功，要么全部不变。
 
 ```go
 err := sm.SetHeaders(map[string]string{
@@ -168,7 +168,7 @@ Cookie 字符串的底层解析遵循 RFC 6265：仅空格与水平制表符被�
 func (s *SessionManager) SetCookie(cookie *http.Cookie) error
 ```
 
-添加或更新单个会话 Cookie。校验分三步：① nil cookie 检查；② 基础格式校验；③ 若配置了 CookieSecurity，执行 `validateCookieSecurity`（在写锁内执行以保证线程安全）。任一校验失败返回包装错误，且不修改存储。
+添加或更新单个会话 Cookie。携带 RFC 6265 删除语义的 Cookie（`MaxAge < 0`，或 Expires 已过期）不存储，而是删除同名条目——与响应捕获路径一致，避免登出后的会话 Cookie 被继续重放。其余情形校验分三步：① nil cookie 检查；② 基础格式校验；③ 若配置了 CookieSecurity，执行 `validateCookieSecurity`（在写锁内执行以保证线程安全）。任一校验失败返回包装错误，且不修改存储。
 
 ```go
 err := sm.SetCookie(&http.Cookie{
@@ -195,6 +195,8 @@ func (s *SessionManager) SetCookies(cookies []*http.Cookie) error
 2. 锁内逐项执行安全校验；任一失败立即返回错误，已校验的也不会写入。
 3. 全部通过后才统一存储。
 
+删除语义的 Cookie（登出场景，通常不带 Secure/HttpOnly 属性）跳过两轮校验，只执行条目删除——严格安全配置下登出批量操作不会因校验失败而把过期会话 Cookie 留在存储中。
+
 批量操作因此具备原子性，不会出现「部分写入」的中间状态。
 
 ### DeleteCookie
@@ -219,7 +221,7 @@ func (s *SessionManager) ClearCookies()
 func (s *SessionManager) GetCookies() []*http.Cookie
 ```
 
-返回所有 Cookie 的**深拷贝**副本。实现采用连续 backing array 优化：预分配一个长度为 N 的 `[]http.Cookie` 连续数组，所有 Cookie 结构体在其中连续排列，返回的 `[]*http.Cookie` 指向该数组。
+返回所有 Cookie 的**深拷贝**副本，已过期的条目（Expires 已过）不在返回结果中——该视图与请求实际会发送的 Cookie 一致。实现采用连续 backing array 优化：预分配一个长度为 N 的 `[]http.Cookie` 连续数组，所有 Cookie 结构体在其中连续排列，返回的 `[]*http.Cookie` 指向该数组。
 
 N 次独立堆分配因此降为 2 次（backing array + 指针切片）。空会话返回 nil。
 
@@ -289,9 +291,9 @@ type CookieSecurityConfig struct {
 func (s *SessionManager) UpdateFromResult(result *Result)
 ```
 
-`SessionManager.UpdateFromResult` 从请求结果（`*Result`）的 Response.Cookies 中提取 Cookie 并存入会话。若配置了 CookieSecurity，不安全的 Cookie 会被**静默跳过**（不返回错误，直接忽略），仅存储通过校验的 Cookie。
+`UpdateFromResult` 从请求结果（`*Result`）的 Response.Cookies 中提取 Cookie 并存入会话（完整方法名 `SessionManager.UpdateFromResult`）。若配置了 CookieSecurity，不安全的 Cookie 会被**静默跳过**（不返回错误，直接忽略），仅存储通过校验的 Cookie。
 
-result 为 nil、Response 为 nil 或 Cookies 为空时直接返回。DomainClient 的 `Request` 方法在每次请求后自动调用此方法。
+result 为 nil、Response 为 nil 或 Cookies 为空时直接返回。DomainClient 的 `Request` 方法在每次**命中 base origin** 的请求后自动调用此方法：请求 URL 指向其他主机（host:port 不同）时不注入也不捕获会话状态，防止 base 域凭据泄漏到第三方源。
 
 ### UpdateFromCookies
 
@@ -322,12 +324,13 @@ DomainClient 的 Request/Download 中，RequestOptions 只执行一次（真实�
 ### prepareOptions
 
 ```go
-func (s *SessionManager) prepareOptions() []RequestOption
+func (s *SessionManager) prepareOptions(fullURL string) []RequestOption
 ```
 
 DomainClient 每次请求前调用此方法，将当前会话状态注入为 RequestOptions：
 
-- **Cookie 批量注入**：将所有会话 Cookie 打包到一个闭包 option 中（`r.SetCookies(append(existing, cookies...))`），避免 N 次闭包分配。
+- **Cookie 批量注入**：将所有会话 Cookie 打包到一个闭包 option 中（`r.SetCookies(append(existing, cookies...))`），避免 N 次闭包分配。Cookie 按名称排序注入，保证 Cookie 头顺序确定。
+- **Cookie 回放作用域**：`fullURL` 决定回放范围——已过期的 Cookie 跳过；仅回放 Path 与请求路径匹配（RFC 6265 §5.1.4 path-match）且 Secure 属性与请求 scheme 相符（带 Secure 的 Cookie 不经明文 HTTP 回放）的 Cookie。
 - **Header map 注入**：通过 `WithHeaderMap` 一次性注入深拷贝的 header map。
 
 会话为空（无 Cookie 且无 Header）时返回 nil，无额外开销。

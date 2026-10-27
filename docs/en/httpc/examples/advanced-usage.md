@@ -87,7 +87,7 @@ func main() {
 
 ## Combining Timeouts and Retries
 
-The three layers of time control cover different scopes: the context manages the total budget for the whole group of attempts, `WithTimeout` caps a single attempt, and `WithMaxRetries` limits the number of attempts.
+The three layers of time control divide the work as follows: the context deadline and `WithTimeout` are both a total budget covering all retries and backoff waits (when both are set, the earlier deadline wins), while `WithMaxRetries` separately limits the number of attempts.
 
 ```go
 package main
@@ -114,8 +114,8 @@ func main() {
 
 	result, err := client.Post("https://httpbin.org/post",
 		httpc.WithJSON(map[string]string{"data": "important"}),
-		httpc.WithContext(ctx),            // Total budget
-		httpc.WithTimeout(10*time.Second), // Per-attempt cap
+		httpc.WithContext(ctx),            // ctx deadline 30s (also a total budget)
+		httpc.WithTimeout(10*time.Second), // overrides client default, tightens total budget to 10s
 		httpc.WithMaxRetries(3),           // At most 3 retries
 	)
 	if err != nil {
@@ -163,9 +163,9 @@ func main() {
 		}},
 	)
 
-	// Audit logging (JSON format)
+	// Audit logging (the callback emits JSON lines via json.Marshal;
+	// the Format field has no effect)
 	auditCfg := httpc.DefaultAuditConfig()
-	auditCfg.Format = "json"
 	auditCfg.IncludeHeaders = true
 	auditCfg.MaskHeaders = []string{"Authorization", "Cookie"}
 	auditCfg.SanitizeError = true
@@ -415,8 +415,10 @@ func main() {
 	fmt.Println("Second request:", resp2.StatusCode()) // Output: Second request: 200
 
 	// Session() returns the underlying SessionManager (used standalone in the next section)
+	// UpdateFromResult demonstrates a manual backfill: dc.Get has already captured
+	// the response cookies automatically, so the repeated write has no side effects.
 	session := dc.Session()
-	session.UpdateFromResult(resp2) // Merge this response's cookies into the session
+	session.UpdateFromResult(resp2)
 	fmt.Println("Session cookies:", len(session.GetCookies()))
 }
 ```
@@ -772,7 +774,7 @@ func main() {
 			fmt.Println("-> Branch: timeout, retry with a larger budget")
 		case "NETWORK_ERROR", "DNS_ERROR":
 			fmt.Println("-> Branch: network/DNS failure, check connectivity")
-		case "TLS_ERROR", "CERTIFICATE":
+		case "TLS_ERROR", "CERTIFICATE_ERROR":
 			fmt.Println("-> Branch: certificate issue, verify the CA and system clock")
 		case "RETRY_EXHAUSTED":
 			fmt.Println("-> Branch: retries exhausted, switch to fallback logic")
@@ -781,7 +783,7 @@ func main() {
 }
 ```
 
-HTTP status-code errors (4xx/5xx responses classified as `HTTP_ERROR`) also carry `clientErr.StatusCode`; the `Cause` field keeps the underlying error so `errors.Unwrap` can drill further down. For the complete error classification table, see [Error Handling](../guides/error-handling) and [Error Types](../api-reference/types/errors).
+Errors classified as `HTTP_ERROR` because their message contains `HTTP 4xx`/`HTTP 5xx` also carry `clientErr.StatusCode` (regular 4xx/5xx responses are not returned as errors — check them with methods such as `result.IsSuccess()`); the `Cause` field keeps the underlying error so `errors.Unwrap` can drill further down. For the complete error classification table, see [Error Handling](../guides/error-handling) and [Error Types](../api-reference/types/errors).
 
 ## Saving Responses to Disk: SaveToFile and Download
 

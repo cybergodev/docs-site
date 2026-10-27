@@ -49,7 +49,9 @@ const (
 ### 硬性上限
 
 ::: warning 注意
-以下为库内部硬性上限（未导出），`Config.Validate()` 用它做内部检查。这些常量无法直接引用，调用 `cfg.Validate()` 时会自动检查配置是否超过限制。
+以下为 `Config.Validate()` 检查的库内部硬性上限（未导出）。这些常量无法直接引用，调用 `cfg.Validate()` 时会自动检查配置是否超过限制。
+
+解析器另有 YAML 令牌数与 JSON 节点数两项硬性上限（HardMaxYAMLTokens / HardMaxJSONNodes，均为 200000，同样未导出），在解析期拦截内存放大输入，不在 `Config.Validate()` 的检查范围内。
 :::
 
 | 常量 | 值 | 说明 |
@@ -75,7 +77,7 @@ if err := cfg.Validate(); err != nil {
 ## 哨兵错误
 
 ::: tip 匹配方式
-下列哨兵均可通过 `errors.Is` 匹配。`*ValidationError` 与 `*SecurityError` 实现了 `Is()`，按 `Rule`/`Action` 映射到 `ErrInvalidKey`、`ErrMissingRequired`、`ErrMaxVariables`、`ErrInvalidValue`、`ErrForbiddenKey`、`ErrSecurityViolation` 等哨兵。
+下列哨兵均可通过 `errors.Is` 匹配。`*ValidationError`、`*SecurityError` 与 `*ExpansionError` 实现了 `Is()`，按 `Rule`/`Action`/`Kind` 映射到 `ErrInvalidKey`、`ErrMissingRequired`、`ErrMaxVariables`、`ErrInvalidValue`、`ErrForbiddenKey`、`ErrSecurityViolation`、`ErrExpansionDepth` 等哨兵。
 
 具体映射见下文各类型的 `Is` 行。需要文件、行号、字段等详情时，再用 `errors.As` 提取结构化错误，两种方式互补。
 :::
@@ -177,12 +179,12 @@ if errors.Is(err, env.ErrClosed) {
 
 // 检查默认加载器是否已初始化
 if errors.Is(err, env.ErrAlreadyInitialized) {
-    // 默认加载器已存在，无法重复调用 Load()
+    // 默认加载器已存在：Load/Overload/LoadWithConfig 共用同一个默认加载器，只能初始化一次
 }
 
 // 检查默认加载器是否未初始化
 if errors.Is(err, env.ErrNotInitialized) {
-    // 需要先调用 env.Load() 或 env.LoadWithConfig()
+    // 需要先调用 env.Load()、env.Overload() 或 env.LoadWithConfig() 完成初始化
 }
 
 // 检查键格式是否非法（*ValidationError 的 Is() 会把它映射到哨兵）

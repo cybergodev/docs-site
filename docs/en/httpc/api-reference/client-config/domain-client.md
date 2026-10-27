@@ -17,7 +17,7 @@ DomainClient architecture
 ├── domain         hostname (without port)
 └── SessionManager session state
       ├── headers  map[string]string  session-level request headers
-      └── cookies  map[string]*Cookie session-level cookies
+      └── cookies  map[string]*http.Cookie session-level cookies
 ```
 
 ## DomainClienter Interface
@@ -65,7 +65,7 @@ type DomainClienter interface {
 | `Download` | `(ctx, path string, cfg *DownloadConfig, opts ...RequestOption) (*DownloadResult, error)` | File download |
 | `Close` | `() error` | Close the client and release resources |
 
-The concrete type `*DomainClient` implements every method in the table above, one for one with the interface signatures. `Download` and `Close` are detailed in their own sections below.
+The concrete type `*DomainClient` implements every method in the table above, one for one with the interface signatures. The fully qualified method names are `DomainClient.Get`, `DomainClient.Post`, `DomainClient.Put`, `DomainClient.Patch`, `DomainClient.Delete`, `DomainClient.Head`, `DomainClient.Options`, `DomainClient.Request`, `DomainClient.Download`, and `DomainClient.Close`. `Download` and `Close` are detailed in their own sections below.
 
 #### URL Access Methods
 
@@ -102,7 +102,7 @@ On the interface these are defined as `DomainClienter.SetHeader`, `DomainCliente
 | `GetCookies` | `() []*http.Cookie` | Get a copy of all cookies |
 | `GetCookie` | `(name string) *http.Cookie` | Get a copy of a cookie by name |
 
-The corresponding methods are declared on `DomainClienter` (`SetCookie`, `SetCookies`, `DeleteCookie`, `ClearCookies`, `GetCookies`, `GetCookie`), likewise delegating to the `SessionManager`.
+On the interface these are defined as `DomainClienter.SetCookie`, `DomainClienter.SetCookies`, `DomainClienter.DeleteCookie`, `DomainClienter.ClearCookies`, `DomainClienter.GetCookies`, and `DomainClienter.GetCookie`; the implementations likewise delegate to the `SessionManager`.
 
 ## NewDomain
 
@@ -255,7 +255,7 @@ Result: no -> returns error "path escapes base URL scope"
 ```
 
 :::warning Absolute-URL recognition
-Only paths prefixed with `http://` or `https://` are recognized as absolute URLs. Other protocols (e.g. `ftp://`) are not recognized as absolute, are joined as relative paths, and the request therefore fails. No scope check is performed when the base path is empty or `/`.
+Only paths prefixed with `http://` or `https://` are recognized as absolute URLs (the prefix comparison is case-insensitive, so `HTTP://host` is treated as an absolute URL too). Other protocols (e.g. `ftp://`) are not recognized as absolute, are joined as relative paths, and the request therefore fails. No scope check is performed when the base path is empty or `/`.
 :::
 
 ## Automatic Session Management
@@ -265,9 +265,10 @@ The domain client's session management has three phases:
 ```text
 Session management across the request lifecycle:
 
-  ① prepareOptions() (before send)
+  ① prepareOptions(fullURL) (before send)
      Read session headers and cookies from the SessionManager
      -> convert to RequestOption and inject into the request
+        (cookies replayed per RFC 6265 scoping)
 
   ② captureFromOptions() (before send)
      Extract cookies and headers from the user-supplied RequestOptions
@@ -294,8 +295,17 @@ dc.SetCookie(&http.Cookie{Name: "session", Value: "xyz"})
 
 // Inspect session state
 dc.GetCookie("session")  // -> *http.Cookie copy
+dc.GetCookies()          // -> []*http.Cookie copy (expired entries not returned)
 dc.GetHeaders()          // -> map[string]string copy
+
+// Log out: delete a single cookie, or clear all session state
+dc.DeleteCookie("session")
+dc.ClearCookies()
 ```
+
+:::warning Cross-origin requests carry no session credentials
+Session headers and cookies are scoped to the base origin (host:port, compared case-insensitively). When a call passes an absolute URL pointing at a different host, session headers and cookies are **neither injected nor captured** — base-domain credentials never leak to third-party origins. Redirects work the same way: a response's `Set-Cookie` is stored back into the session only when the final response still lands on the base origin.
+:::
 
 :::tip Thread safety
 `SessionManager` is protected internally by a `sync.RWMutex`; `SetHeader`/`SetCookie`/`GetCookie` and similar methods can be called concurrently. `prepareOptions` uses a read-then-write non-atomic sequence: the session state is designed for eventual consistency, so concurrent requests interleave during `prepareOptions`, but each request captures a consistent snapshot at its `prepareOptions` moment.
@@ -308,8 +318,8 @@ Request options run **exactly once** on a `DomainClient`: the capture phase does
 Session capture is performed inside `SessionManager` through **static type assertions**: it pulls headers and cookies from known concrete option types without ever calling `apply`. Only the built-in named option types are recognized — `WithHeader`, `WithHeaderMap`, `WithCookies`, `WithCookieMap`, and `WithCookieString`. The headers and cookies they carry persist into the session and apply to later requests.
 
 ```text
-prepareSessionOptions(options):
-  ① managedOptions = prepareOptions()        <- read session state
+prepareSessionOptions(fullURL, options):
+  ① managedOptions = prepareOptions(fullURL) <- read session state (cookies replayed per fullURL scope)
   ② allOptions = managedOptions + options    <- merge
   ③ captureFromOptions(options)              <- static type assertions, never runs closures
   ④ return allOptions -> client.Request()    <- the only execution point

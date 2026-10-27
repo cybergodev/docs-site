@@ -92,8 +92,8 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
     icon: '📄',
     github: 'https://github.com/cybergodev/html',
     desc: {
-      zh: 'Go 语言 HTML 内容提取与清洗库。识别页面正文，提取标题、图片、链接、视频与音频，支持 15+ 编码检测与多种输出格式。',
-      en: 'Go library for extracting and cleaning HTML content. Identifies the page body and extracts titles, images, links, videos, and audio, with 15+ encoding detection and multiple output formats.'
+      zh: 'Go 语言 HTML 内容提取与清洗库。识别页面正文，提取标题、图片、链接、视频与音频，支持 30+ 编码检测、整页阅读模式与多种输出格式。',
+      en: 'Go library for extracting and cleaning HTML content. Identifies the page body and extracts titles, images, links, videos, and audio, with 30+ encoding detection, a full-page reader mode, and multiple output formats.'
     },
     features: {
       zh: [
@@ -104,6 +104,8 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
         '多格式输出',
         '批量处理',
         '链接提取',
+        '阅读模式',
+        '提取置信度',
         '审计系统'
       ],
       en: [
@@ -114,6 +116,8 @@ export const PROJECT_META: Record<ProjectName, ProjectMeta> = {
         'Multi-format output',
         'Batch processing',
         'Link extraction',
+        'Reader mode',
+        'Extraction confidence',
         'Audit system'
       ]
     }

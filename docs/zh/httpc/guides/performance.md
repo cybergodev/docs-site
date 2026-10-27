@@ -93,7 +93,7 @@ client, _ := httpc.New(cfg)
 
 ## 并发模型：一个 Client 服务所有 goroutine
 
-HTTPC 的 `Client` 与 `DomainClient` 都是**并发安全**的：任意方法可被多个 goroutine 同时调用。库内设有专门的并发安全集成测试（`internal/concurrency`），在高并发场景下覆盖公共 API。
+HTTPC 的 `Client` 与 `DomainClient` 都是**并发安全**的：任意方法可被多个 goroutine 同时调用。仓库的并发安全测试（根包 `concurrency_test.go` 与各内部包的并发用例，配合 `-race` 运行）在高并发场景下覆盖公共 API。
 
 因此并发模式只有一条：多个 goroutine 共享同一个 `Client`。
 
@@ -270,10 +270,10 @@ HTTP/2 默认开启（`EnableHTTP2 = true`），带来三项性能特性：
 :::tip HTTP/2 与连接池的关系
 HTTP/2 的多路复用让单个 TCP 连接同时承载多个请求，减少连接建立开销。对同一主机高并发时，HTTP/2 的吞吐量高于 HTTP/1.1。
 
-仅在三处回退到 HTTP/1.1：
+回退到 HTTP/1.1 的情形：
 
-- 使用 `TestingConfig()`（显式关闭 HTTP/2）；
-- 连接不支持 ALPN 协商；
+- 手动设置 `Connection.EnableHTTP2 = false`（`TestingConfig()` 预设即如此）；
+- 连接不支持 ALPN 协商出 HTTP/2；
 - 多代理轮换池激活时被自动强制（设 `EnableProxyPoolHTTP2` 可恢复，见[代理与代理池](./proxy#代理池与-http-2-enableproxypoolhttp2)）。
 :::
 
@@ -342,11 +342,9 @@ HTTPC 引擎层使用 `sync.Pool` 复用短生命周期对象，以降低 GC 压
 |----------|------|------|
 | `engine.Response` | 响应对象 | 请求完成后归还池，下次请求复用 |
 | `engine.Request` | 请求对象 | 同上 |
-| `strings.Builder` | 字符串构建 | URL 构建、错误格式化、Config 序列化 |
+| `bytes.Buffer` | 字符串与编码缓冲 | 查询串/URL 构建、错误格式化、Config 序列化、JSON/multipart 编码（按初始容量预分配；`strings.Builder` 的 Reset 会丢弃底层数组，不适合池化） |
 | `http.Header` | HTTP 头 map | 请求/响应头处理 |
-| `bytes.Buffer` | JSON/multipart 编码 | 按初始容量预分配 |
-| `time.Timer` | 重试定时器 | 避免频繁创建定时器 |
-| gzip/flate reader | 解压 | 复用解压器 |
+| gzip/flate reader | 解压 | 复用解压器（含共享的 4KB bufio 包装） |
 
 :::tip 对象池与 resultBundle 的分工
 池化适用于请求内部完成 borrow-return 的短生命周期对象；`*Result` 的持有期由调用方决定，因此采用单次分配 + GC 回收（原因见上一节）。
@@ -359,18 +357,15 @@ HTTPC 引擎层使用 `sync.Pool` 复用短生命周期对象，以降低 GC 压
 | 优化点 | 机制 |
 |--------|------|
 | 头部深拷贝批量分配 | `CloneHeader` 先统计全部值数量，一次分配共享底层数组——把「每个头部一次分配（N 次）」降为 1 次 |
-| 查询参数转义零分配 | 无需转义的字符串**原样返回**（零分配）；需要转义时用池化缓冲区逐字节写出 |
+| 查询参数转义零分配 | 无需转义的字符串**原样写入**构建器（零中间字符串）；需要转义时在同一缓冲区逐字节写出 |
 | 数值查询参数直写 | `int`/`float64`/`bool` 等数值经 `strconv.Append*` 直接写入构建器，不产生中间字符串 |
 | 请求头所有权转移 | 普通请求与下载路径把引擎 Response 上的 header map **所有权转移**给 `Result`，而非克隆一份 |
 | 重定向链内联数组 | 前 8 次重定向记录在池化对象的内联定长数组中，超过 8 次才分配溢出切片，因此重定向链不超过 8 跳时不产生额外分配 |
-| 重试休眠定时器复用 | 重试退避用的 `time.Timer` 池化复用，高频重试场景避免反复建 Timer |
 | 池容量防护 | 超过阈值的对象**不归还**池（如 header map > 64 条、query builder 容量 > 4096），避免大对象长期滞留池中，占用更多内存 |
 
-### 内部指标与健康度
+### 内部指标
 
-引擎内部以**纯原子操作**（无锁）收集每请求指标，包括三项：总请求数、成功/失败数、平滑延迟。平滑延迟按滑动平均公式 `新平均 = (旧平均×9 + 本次延迟) / 10` 维护；错误率低于 10% 视为健康。
-
-这些指标用于引擎自身的健康判断，**不作为公开 API 暴露**。
+连接池内部以原子计数器维护少量指标：当前活跃连接数、累计建立连接数、被拒绝的拨号数与准入命中率（引擎内部以快照形式读取）。这些指标供引擎自身观测，**不作为公开 API 暴露**。
 
 应用层的请求指标使用 `MetricsMiddleware`（见[中间件](../api-reference/client-config/middleware)），它按方法/URL/状态码/耗时回调，可直接对接 Prometheus 等监控系统。
 

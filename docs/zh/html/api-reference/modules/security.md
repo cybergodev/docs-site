@@ -1,7 +1,7 @@
 ---
 sidebar_label: "安全防护"
 title: "安全防护 - CyberGo html | 多层安全 API 参考"
-description: "CyberGo html 安全防护 API 参考：内容消毒规则、MaxInputSize 与 MaxDepth 输入限制、路径遍历检测、AllowedBaseDir 文件沙箱与 FileError 路径脱敏、HighSecurityConfig 高安全预设、结构化错误类型与 panic 恢复机制。"
+description: "CyberGo html 安全防护 API 参考：内容清洗规则、MaxInputSize 与 MaxDepth 输入限制、路径遍历检测、AllowedBaseDir 文件沙箱与 FileError 路径脱敏、HighSecurityConfig 高安全预设、结构化错误类型与 panic 恢复机制。"
 sidebar_position: 50
 ---
 
@@ -13,7 +13,7 @@ html 库内置多层安全防护，相关配置都在 [Config](../core/config) �
 
 | 字段 | 类型 | 默认值 | 安全作用 |
 |------|------|--------|----------|
-| `EnableSanitization` | `bool` | `true` | 内容消毒：移除危险标签、事件属性和危险协议 |
+| `EnableSanitization` | `bool` | `true` | 内容清洗：移除危险标签、事件属性和危险协议 |
 | `MaxInputSize` | `int` | `52428800`（50MB） | 输入大小上限，防止内存耗尽 |
 | `MaxDepth` | `int` | `500` | DOM 嵌套深度上限，防止递归炸弹 |
 | `ProcessingTimeout` | `time.Duration` | `30s` | 单文档处理超时 |
@@ -24,16 +24,17 @@ html 库内置多层安全防护，相关配置都在 [Config](../core/config) �
 `EnableSanitization` 默认开启，只有**完全可信的输入**才可关闭。关闭后 HTML 原样解析，危险标签与事件属性都会进入输出。
 :::
 
-## 内容消毒
+## 内容清洗
 
 开启时（默认）执行以下清洗：
 
 | 防护层 | 行为 |
 |--------|------|
-| 危险标签 | 移除 `<script>`、`<style>`、`<iframe>`、`<object>`、`<embed>` 等 |
-| 事件属性 | 移除所有 `on*` 属性（`onclick`、`onerror` 等） |
-| 危险协议 | 阻止 `javascript:`、`vbscript:`、`file:`，包括协议相对 `//` 形式 |
-| Data URL | 仅允许 `data:image/*`（`image/svg+xml` 除外）、`data:font/*`、`data:application/pdf` |
+| 危险标签 | 整体移除 `<script>`、`<style>`、`<noscript>`、`<iframe>`、`<embed>`、`<object>`、`<input>`、`<button>`、`<svg>`、`<math>` 十种标签；`<form>` 容器本身保留（服务端框架常把整页包在表单里）。ReadPage 阅读模式对 `<button>` 改为保留其文本标签后移除元素 |
+| 事件属性 | 移除所有 `on*` 属性（`onclick`、`onerror` 等），以及 `formaction`、`autofocus` |
+| 危险协议 | 阻止 `javascript:`、`vbscript:`、`file:`，包括协议相对 `//` 形式（`//data:` 同样被阻止） |
+| style 属性 | 值含 `expression(`、`javascript:`、`vbscript:`，或声明 `behavior` / `-moz-binding` 时，整个 `style` 属性被移除（空值 `style=""` 视为安全保留）；细节见[安全概述](../../guides/security/#css-危险模式) |
+| Data URL | 只放行显式 MIME 白名单：图片（不含 `image/svg+xml`）、字体、`application/pdf`；完整清单见[安全概述](../../guides/security/#data-url-白名单) |
 
 被阻止的内容经审计系统记录（需开启审计）。
 
@@ -65,7 +66,7 @@ _, err = p.ExtractFromFile("/etc/passwd")
 - **Unix**：解析符号链接（symlink），防止通过链接逃逸
 - **Windows**：解析 junction 与符号链接
 
-留空（默认）表示不限制，适用于可信输入。目标文件存在但位于目录外时，返回的 `*FileError` 的 `FileErr` 为 `path outside allowed directory`；与路径遍历一样，它不匹配任何哨兵错误。
+留空（默认）表示不限制，适用于可信输入。目标文件存在但位于目录外时，返回的 `*FileError` 的 `FileErr` 为 `path outside allowed directory`；这是唯一**不匹配任何哨兵错误**的文件错误类型，需要检查 `FileErr` 的消息内容。
 
 ### 路径遍历检测
 
@@ -76,7 +77,7 @@ _, err := html.ExtractFromFile("../../../etc/passwd")
 // err.Error() ≈ html: ReadFile "passwd": path traversal detected
 ```
 
-此时 `FileErr` 是 `path traversal detected: <清洗后的路径>` 这类原始错误（Windows 上形如 `path traversal detected: ..\..\..\etc\passwd`），**不匹配任何哨兵错误**——`errors.Is(err, html.ErrInvalidFilePath)` 为 `false`。需要区分路径遍历时，检查 `FileError.FileErr` 的消息内容。
+此时 `FileErr` 形如 `path traversal detected: <清洗后的路径>: html: invalid file path`（Windows 上路径形如 `..\..\..\etc\passwd`），**包装 `ErrInvalidFilePath`**，因此 `errors.Is(err, html.ErrInvalidFilePath)` 为 `true`，可按哨兵直接判定。
 
 ### FileError 的路径脱敏
 
@@ -118,7 +119,7 @@ if err != nil {
 
 ### HighSecurityConfig
 
-面向高安全环境的预设，收紧各项限制并开启完整审计：
+`HighSecurityConfig` 是面向高安全环境的预设，收紧各项限制并开启完整审计：
 
 ```go
 func HighSecurityConfig() Config
@@ -129,10 +130,12 @@ func HighSecurityConfig() Config
 | 字段 | 默认值 | 高安全值 |
 |------|--------|----------|
 | `MaxInputSize` | `52428800`（50MB） | `10485760`（10MB） |
-| `MaxDepth` | `500` | `100` |
-| `ProcessingTimeout` | `30s` | `10s` |
-| `WorkerPoolSize` | `4` | `2` |
 | `MaxCacheEntries` | `2000` | `500` |
+| `CacheTTL` | `1h` | `30m` |
+| `CacheCleanup` | `5m` | `1m` |
+| `WorkerPoolSize` | `4` | `2` |
+| `ProcessingTimeout` | `30s` | `10s` |
+| `MaxDepth` | `500` | `100` |
 | `Audit` | `DefaultAuditConfig()` | `HighSecurityAuditConfig()` |
 
 该预设已设置 `Audit`，无需再次赋值。
@@ -153,7 +156,7 @@ defer p.Close()
 | `ErrInputTooLarge` | 输入超过 `MaxInputSize` |
 | `ErrMaxDepthExceeded` | DOM 深度超过 `MaxDepth`（未先被解析器拒绝时） |
 | `ErrProcessingTimeout` | 库内 `ProcessingTimeout` 到期 |
-| `ErrInvalidFilePath` | 文件路径为空等基础校验失败 |
+| `ErrInvalidFilePath` | 文件路径为空等基础校验失败；路径遍历拒绝同样包装它（`errors.Is` 可命中） |
 | `ErrInternalPanic` | 内部 panic 被恢复 |
 
 :::info 用户 context 的 deadline 不归一化

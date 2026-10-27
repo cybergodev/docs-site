@@ -345,7 +345,7 @@ See the [Testing](../guides/testing) guide.
 
 ### Are process-environment variables still there after Close?
 
-**Yes.** `Close()` zeroes and unlocks the in-memory copies; it does not unset variables previously applied to the process environment. Removing them is deliberate caller work: the environment may already have been inherited by child processes, so automatic rollback is not attempted. Call `Delete` per key before closing; only keys this loader wrote get unset.
+**Yes.** `Close()` zeroes and unlocks the in-memory copies; it does not unset variables previously applied to the process environment. Removing them is deliberate caller work: the environment may already have been inherited by child processes, so automatic rollback is not attempted. Call `Delete` per key before closing; only keys this loader wrote get unset. `ResetDefaultLoader()` also leaves applied variables in place.
 
 ### How do I stop a configuration file from reading process secrets?
 

@@ -1,39 +1,40 @@
 ---
 sidebar_label: "Security"
 title: "Security - CyberGo html | Multi-layer Security API"
-description: "CyberGo html security API: sanitization, MaxInputSize, MaxDepth, path traversal detection, AllowedBaseDir sandbox, HighSecurityConfig, and panic recovery."
+description: "CyberGo html security API: content cleaning, MaxInputSize and MaxDepth limits, path traversal, AllowedBaseDir sandbox, HighSecurityConfig, panic recovery."
 sidebar_position: 50
 ---
 
 # Security
 
-The html library ships several independent security layers, all configured through the security fields of [Config](../core/config). This page lists the related API; see [Security Overview](../../guides/security/) for how the layers work.
+The html library ships multiple layers of security, all configured through the security fields of [Config](../core/config). This page collects the API behind those fields; for how the layers work see [Security Overview](../../guides/security/).
 
 ## Security Configuration Fields
 
 | Field | Type | Default | Purpose |
 |-------|------|---------|---------|
-| `EnableSanitization` | `bool` | `true` | Sanitization: removes dangerous tags, event attributes, and dangerous schemes |
-| `MaxInputSize` | `int` | `52428800` (50MB) | Input size cap, prevents memory exhaustion |
+| `EnableSanitization` | `bool` | `true` | Content cleaning: removes dangerous tags, event attributes, and dangerous schemes |
+| `MaxInputSize` | `int` | `52428800` (50 MB) | Input size cap, prevents memory exhaustion |
 | `MaxDepth` | `int` | `500` | DOM nesting cap, prevents recursion bombs |
 | `ProcessingTimeout` | `time.Duration` | `30s` | Per-document processing timeout |
 | `AllowedBaseDir` | `string` | `""` | Directory sandbox for file operations, prevents path traversal |
 | `Audit` | `AuditConfig` | `DefaultAuditConfig()` | Audit configuration (see [Audit System](./audit)) |
 
-:::warning Before you disable EnableSanitization
+:::warning The precondition for disabling EnableSanitization
 `EnableSanitization` is on by default. Disable it only for **fully trusted input**: the HTML is then parsed as-is, and dangerous tags and event attributes reach the output.
 :::
 
-## Content Sanitization
+## Content Cleaning
 
 When enabled (the default) the following cleaning runs:
 
 | Layer | Behavior |
 |-------|----------|
-| Dangerous tags | Removes `<script>`, `<style>`, `<iframe>`, `<object>`, `<embed>`, and similar |
-| Event attributes | Removes every `on*` attribute (`onclick`, `onerror`, etc.) |
-| Dangerous schemes | Blocks `javascript:`, `vbscript:`, and `file:`, including the protocol-relative `//` form |
-| Data URLs | Allows only `data:image/*` (except `image/svg+xml`), `data:font/*`, and `data:application/pdf` |
+| Dangerous tags | Removes ten tags outright: `<script>`, `<style>`, `<noscript>`, `<iframe>`, `<embed>`, `<object>`, `<input>`, `<button>`, `<svg>`, `<math>`; the `<form>` container itself is kept (server-side frameworks often wrap the whole page in a form). Reader mode (`ReadPage`) instead keeps the button's text label and removes only the `<button>` element |
+| Event attributes | Removes every `on*` attribute (`onclick`, `onerror`, etc.), plus `formaction` and `autofocus` |
+| Dangerous schemes | Blocks `javascript:`, `vbscript:`, and `file:`, including the protocol-relative `//` form (`//data:` is blocked too) |
+| style attribute | When the value contains `expression(`, `javascript:`, or `vbscript:`, or declares `behavior` / `-moz-binding`, the entire `style` attribute is removed (an empty `style=""` is kept as safe); details in [Security Overview](../../guides/security/#dangerous-css-patterns) |
+| Data URLs | Only explicit MIME types in the whitelist: images (excluding `image/svg+xml`), fonts, and `application/pdf`; the full list is in [Security Overview](../../guides/security/#data-url-whitelist) |
 
 Blocked content is recorded through the audit system (audit must be enabled).
 
@@ -65,22 +66,22 @@ Once set, only paths inside `AllowedBaseDir` can be read. Platform behavior:
 - **Unix**: symbolic links are resolved, so a link cannot escape the sandbox
 - **Windows**: junctions and symbolic links are resolved
 
-Leaving it empty (the default) applies no restriction, which suits trusted input. When the target file exists but sits outside the directory, the returned `*FileError` has `FileErr` set to `path outside allowed directory`; like traversal, it matches no sentinel.
+Leaving it empty (the default) applies no restriction, which suits trusted input. When the target file exists but sits outside the directory, the returned `*FileError` has `FileErr` set to `path outside allowed directory`; this is the only file-error type that **matches no sentinel**, so inspect the message in `FileErr`.
 
 ### Path Traversal Detection
 
-A path that still contains a `..` component after cleaning counts as traversal and returns an error wrapped in `*FileError`:
+A path that still contains a `..` component after cleaning counts as path traversal and returns an error wrapped in a `*FileError`:
 
 ```go
 _, err := html.ExtractFromFile("../../../etc/passwd")
 // err.Error() ≈ html: ReadFile "passwd": path traversal detected
 ```
 
-Here `FileErr` is the raw error, e.g. `path traversal detected: ..\..\..\etc\passwd`, and it **matches no sentinel** — `errors.Is(err, html.ErrInvalidFilePath)` is `false`. To tell traversal apart, inspect the message in `FileError.FileErr`.
+In that case `FileErr` has the form `path traversal detected: <cleanPath>: html: invalid file path` (on Windows the path looks like `..\..\..\etc\passwd`), and it **wraps `ErrInvalidFilePath`**, so `errors.Is(err, html.ErrInvalidFilePath)` is `true` and you can decide by sentinel directly.
 
-### FileError Path Sanitization
+### FileError Path Redaction
 
-File errors sanitize paths automatically, so filesystem layout does not leak:
+File errors are redacted automatically, so the filesystem layout does not leak:
 
 ```go
 type FileError struct {
@@ -89,9 +90,9 @@ type FileError struct {
 	FileErr error
 }
 
-func (e *FileError) Error() string                // Filename plus a sanitized reason only
+func (e *FileError) Error() string                // Filename plus a redacted reason only
 func (e *FileError) SafePath() string             // Filename only
-func (e *FileError) MarshalJSON() ([]byte, error) // Sanitizes on JSON serialization
+func (e *FileError) MarshalJSON() ([]byte, error) // Redacts automatically on JSON serialization
 ```
 
 ```go
@@ -104,7 +105,7 @@ if err != nil {
 }
 ```
 
-When the file is missing (`Path = "/var/www/secret/secret.html"`), the three methods return:
+When the file is missing in the example above (`Path = "/var/www/secret/secret.html"`), the three methods return:
 
 | Call | Result |
 |------|--------|
@@ -118,7 +119,7 @@ The full path stays in `Path` for internal debugging.
 
 ### HighSecurityConfig
 
-A preset for high-security environments: tighter limits plus full audit.
+`HighSecurityConfig` is a preset for high-security environments, tightening every limit and enabling full audit:
 
 ```go
 func HighSecurityConfig() Config
@@ -128,11 +129,13 @@ Overrides relative to `DefaultConfig()`:
 
 | Field | Default | High security |
 |-------|---------|---------------|
-| `MaxInputSize` | `52428800` (50MB) | `10485760` (10MB) |
-| `MaxDepth` | `500` | `100` |
-| `ProcessingTimeout` | `30s` | `10s` |
-| `WorkerPoolSize` | `4` | `2` |
+| `MaxInputSize` | `52428800` (50 MB) | `10485760` (10 MB) |
 | `MaxCacheEntries` | `2000` | `500` |
+| `CacheTTL` | `1h` | `30m` |
+| `CacheCleanup` | `5m` | `1m` |
+| `WorkerPoolSize` | `4` | `2` |
+| `ProcessingTimeout` | `30s` | `10s` |
+| `MaxDepth` | `500` | `100` |
 | `Audit` | `DefaultAuditConfig()` | `HighSecurityAuditConfig()` |
 
 The preset already sets `Audit`; do not assign it again.
@@ -153,7 +156,7 @@ defer p.Close()
 | `ErrInputTooLarge` | Input exceeds `MaxInputSize` |
 | `ErrMaxDepthExceeded` | DOM depth exceeds `MaxDepth` (when the parser has not rejected it first) |
 | `ErrProcessingTimeout` | The library's own `ProcessingTimeout` fires |
-| `ErrInvalidFilePath` | Basic path validation fails, such as an empty path |
+| `ErrInvalidFilePath` | Basic path validation fails, such as an empty path; path traversal denials wrap it too (so `errors.Is` matches) |
 | `ErrInternalPanic` | An internal panic was recovered |
 
 :::info User context deadlines are not normalized
@@ -173,7 +176,7 @@ The sentinel errors above travel wrapped in three structured types that carry di
 Use `errors.Is(err, html.ErrXxx)` for the sentinel category and `errors.As(err, &typedErr)` for the structured context (`InputError.Size`/`MaxSize`, `ConfigError.Field`).
 
 :::info Full error type definitions
-For the three error types and `errors.Is`/`errors.As` usage, see [Constants & Errors](../types/constants).
+For the definitions of the three error types and `errors.Is`/`errors.As` usage, see [Constants & Errors](../types/constants).
 :::
 
 ## Panic Recovery

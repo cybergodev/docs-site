@@ -74,6 +74,8 @@ func DefaultDownloadConfig() *DownloadConfig
 type DownloadProgressCallback func(downloaded, total int64, speed float64)
 ```
 
+下载进度回调函数的类型，赋值给 `DownloadConfig` 的 `ProgressCallback` 字段使用；为 `nil`（默认）时下载过程不上报进度。
+
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `downloaded` | `int64` | 已下载字节数（含续传偏移量） |
@@ -307,7 +309,7 @@ cfg.Security.MaxResponseBodySize = 200 << 20 // 200MB，按需调整
 |------|------|----------|
 | 1 | 长度检查 | 空路径 / 超过 4096 字符 |
 | 2 | UNC 路径阻止 | `\\server\share` 或 `//server/share` 网络路径 |
-| 3 | 控制字符过滤 | ASCII < 0x20、0x7F（DEL）、0x00（NUL） |
+| 3 | 控制字符过滤 | ASCII < 0x20、0x7F（DEL）、0x00（NUL）；Windows 上另拦截 DOS 设备名、NTFS 备用数据流与 8.3 短名目录别名 |
 | 4 | 系统路径保护 | 写入 OS 受保护目录（见下表） |
 | 5 | 路径穿越检测 | `../` 逃逸工作目录 |
 | 6 | symlink 防护 | 文件本身 + 父目录递归检查符号链接 |
@@ -325,6 +327,8 @@ cfg.Security.MaxResponseBodySize = 200 << 20 // 200MB，按需调整
 ### 第 3 层：控制字符过滤
 
 路径中的每个字节都被检查：ASCII 控制字符（0x00-0x1F）、DEL（0x7F）和 NUL 字节被拒绝。该检查阻止终端转义序列注入与 CRLF 路径混淆攻击。
+
+Windows 平台另有三重专有防护（其他平台为 no-op）：末段为 DOS 设备名（`CON`、`COM1` 等，忽略扩展名、大小写与尾随点/空格）时拒绝，防止响应体写入设备；冒号超出盘符分隔符（如 `file.txt:stream`）时拒绝，防止写入 NTFS 备用数据流；目录段含 8.3 短名别名（`PROGRA~1`）时拒绝，防止以别名绕过系统路径与符号链接检查。
 
 ### 第 4 层：系统路径保护
 

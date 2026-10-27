@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Result"
 title: "Result - CyberGo HTTPC | Result 响应类型"
-description: "HTTPC Result 响应类型 API 参考：StatusCode、Body、RawBody 等 17 个 nil 安全方法、IsSuccess 等状态判断、Cookie 读写、Unmarshal 解析与 SaveToFile 保存，以及 RequestInfo、ResponseInfo、RequestMeta 三个子类型的字段说明。"
+description: "HTTPC Result 响应类型 API 参考：17 个 nil 安全方法（StatusCode、Body、Unmarshal、SaveToFile 等）、IsSuccess 状态判断、Cookie 读写，以及 RequestInfo、ResponseInfo、RequestMeta 三个子类型的字段说明。"
 sidebar_position: 30
 ---
 
@@ -235,11 +235,12 @@ fmt.Println(user.Name)
 func (r *Result) SaveToFile(filePath string) error
 ```
 
-将响应体写入文件。文件路径经过安全验证（路径遍历防护、符号链接检查、系统路径保护），文件以 `0644` 权限写入。
+将响应体写入文件，无条件覆盖已存在的目标文件（与 `Download` 不同：后者默认返回 `ErrFileExists`）。文件路径经过安全验证（路径遍历防护、符号链接检查、系统路径保护），内容先写入 `<路径>.httpc-tmp` 临时文件、校验通过后原子改名落盘，文件以 `0644` 权限写入。
 
 | 错误 | 触发条件 |
 |------|----------|
-| `ErrResponseBodyEmpty` | 响应体为 nil（含 Result 或 Response 为 nil 的情形） |
+| `ErrResponseBodyEmpty` | 响应体为 nil 或空（含 Result 或 Response 为 nil 的情形） |
+| `ErrDownloadInProgress` | 同一进程内已有 `Download` 或另一次 `SaveToFile` 正在写同一目标路径 |
 | 包装错误 | 路径校验失败或写入失败 |
 
 ```go

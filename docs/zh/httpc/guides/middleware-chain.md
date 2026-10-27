@@ -190,11 +190,10 @@ httpc.AuditMiddleware(auditCfg)
 
 ### 配置审计选项
 
-`DefaultAuditConfig()` 返回默认配置，修改字段可控制输出格式、头部记录与脱敏：
+`DefaultAuditConfig()` 返回默认配置，可控制头部记录与错误脱敏。审计事件以结构化 `AuditEvent` 值交给 `OnAudit`，输出格式由回调决定（`json.Marshal(event)` 即 JSON 行）；`Format` 是保留字段，不产生任何效果：
 
 ```go
 auditCfg := httpc.DefaultAuditConfig()
-auditCfg.Format = "json"
 auditCfg.IncludeHeaders = true
 auditCfg.MaskHeaders = []string{"Authorization", "Cookie"}
 auditCfg.SanitizeError = true

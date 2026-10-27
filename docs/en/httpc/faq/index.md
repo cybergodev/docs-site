@@ -11,7 +11,7 @@ This page groups HTTPC's common questions by topic, each with a direct answer an
 
 ## How do I choose between package-level functions and a Client instance?
 
-**Answer:** Package-level functions (`httpc.Get`/`httpc.Post`, etc.) share a single default client (`defaultClient`) that is created on first call and recreated on the next call after being closed. Use them for one-off requests, scripts, and CLI tools that need no custom configuration. For the default client's lifecycle, see [Core Concepts](../getting-started/concepts).
+**Answer:** Package-level functions (`httpc.Get`/`httpc.Post`, etc.) share a single internally managed default client that is created on first call and recreated on the next call after being closed. Use them for one-off requests, scripts, and CLI tools that need no custom configuration. For the default client's lifecycle, see [Core Concepts](../getting-started/concepts).
 
 ```go
 // Package-level function: simple and fast, shares the default client's connection pool
@@ -58,7 +58,7 @@ For long-running services, prefer an explicit Client to avoid the implicit coupl
 |------|------|------|--------|------|----------|----------|----------|
 | `SecureConfig()` | Strict (15s) | 1 | Disabled | Enabled | 5MB | Enabled | Handling untrusted URLs, finance/healthcare |
 | `DefaultConfig()` | Moderate (180s) | 3 | Allowed | Enabled | 10MB | Enabled | General purpose |
-| `PerformanceConfig()` | Longer (60s) | 3 | Allowed | Enabled | 50MB | Enabled | Internal microservices, high-concurrency APIs |
+| `PerformanceConfig()` | Fast-fail (60s; dial/TLS 15s) | 3 | Allowed | Enabled | 50MB | Enabled | Internal microservices, high-concurrency APIs |
 | `MinimalConfig()` | Moderate | 0 | Disabled | Enabled | 1MB | Enabled | One-off scripts, simple calls |
 | `TestingConfig()` | Short (5s Dial) | 1 | Allowed | **Disabled** | Default | **Skipped** | Unit tests, local development |
 
@@ -87,7 +87,7 @@ Test environment → TestingConfig()
 |------|------|----------|------|
 | Single proxy | `ProxyURL` | Fixed proxy server | Highest priority, specified directly |
 | Proxy pool | `ProxyPool` | Multi-proxy rotation, high availability | Supports rotation strategies and passive circuit-breaking |
-| System proxy | `EnableSystemProxy` | Read environment variables | Lowest priority, follows system configuration |
+| System proxy | `EnableSystemProxy` | Follows the OS proxy settings | Lowest priority; environment variables take precedence over platform settings |
 
 When several fields are set, only the highest-priority one takes effect.
 
@@ -97,7 +97,7 @@ cfg := httpc.DefaultConfig()
 cfg.Connection.ProxyURL = "socks5://user:pass@proxy:1080"
 client, _ := httpc.New(cfg)
 
-// Method 2: system proxy (reads HTTP_PROXY/HTTPS_PROXY environment variables)
+// Method 2: system proxy (environment variables first, then platform settings)
 cfg.Connection.EnableSystemProxy = true
 
 // Method 3: proxy pool (multi-proxy rotation + passive circuit-breaking)
@@ -121,7 +121,7 @@ The trade-off is no connection reuse (each request establishes a new connection)
 
 **3. Status-code-triggered rotation** (on response): set `ProxyRotateOnStatus` (e.g. `[]int{403}`); when the response returns one of these status codes and `Retry.MaxRetries > 0`, a retry is triggered, and strategy rotation switches the IP. Useful for bypassing CF/WAF-style IP-level blocking.
 
-The proxy pool also provides **passive circuit-breaking and automatic recovery**: after consecutive connection failures (dial/TLS) reach `ProxyFailureThreshold` (default 3), the proxy is temporarily removed from the rotation pool and restored via half-open probing after `ProxyCooldown` (default 30s).
+The proxy pool also provides **passive circuit-breaking and automatic recovery**: after consecutive **TCP dial failures** reach `ProxyFailureThreshold` (default 3), the proxy is temporarily removed from the rotation pool and restored via half-open probing after `ProxyCooldown` (default 30s). Failures that occur after the dial returns (TLS handshake to an `https://` proxy, a rejected CONNECT, the SOCKS5 handshake) do not count toward circuit breaking.
 
 HTTP status codes do **not** trigger circuit-breaking: blocking is specific to a target site, so a proxy blocked on one site remains usable for others.
 
@@ -133,7 +133,7 @@ cfg.Connection.ProxyPool = []string{
     "http://proxy3:8080",
 }
 cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin
-cfg.Connection.ProxyFailureThreshold = 3   // Circuit-break after 3 consecutive connection failures
+cfg.Connection.ProxyFailureThreshold = 3   // Circuit-break after 3 consecutive TCP dial failures
 cfg.Connection.ProxyCooldown = 30 * time.Second // Half-open probe recovery after 30s
 cfg.Connection.ProxyRotateOnStatus = []int{403} // Switch IP and retry on 403
 cfg.Retry.MaxRetries = 3 // ProxyRotateOnStatus must be paired with retries
@@ -163,7 +163,7 @@ See [Connection Pool & DNS](../guides/connection-pool#dns-over-https).
 
 **Answer:** Cookie management has two layers:
 
-**1. Automatic management (DomainClient)**: the DomainClient created by `NewDomain` embeds a SessionManager. `prepareOptions` injects session cookies before a request, and `UpdateFromResult` captures `Set-Cookie` from the response back into the session. This session store is independent of `Connection.EnableCookies`. Suited to scenarios such as maintaining a login session.
+**1. Automatic management (DomainClient)**: the DomainClient created by `NewDomain` embeds a SessionManager. Session headers and cookies are injected automatically before each request, and `Set-Cookie` is captured from the response and written back into the session. This session store is independent of `Connection.EnableCookies`. Suited to scenarios such as maintaining a login session.
 
 **2. Manual management (SessionManager)**: for finer control, operate the `*SessionManager` returned by `dc.Session()` directly: set/delete/query cookies, switch security policies at runtime, or bulk-extract from responses.
 
@@ -194,7 +194,7 @@ See [Session Management](../api-reference/client-config/session).
 
 **Retry-After header parsing**: when a retryable response such as 429/503 carries a `Retry-After` header, HTTPC waits the delay the server indicates instead of computing its own backoff, so it does not add pressure on the server. The wait is **capped at 60s**, so a server cannot hold the client for long with an oversized Retry-After value.
 
-**Custom retry**: implement the `RetryPolicy` interface (the `ShouldRetry` + `GetDelay` methods) to replace the built-in logic, then assign it to `cfg.Retry.CustomPolicy`. See the [Retry and Fault Tolerance guide](../guides/retry-fault-tolerance).
+**Custom retry**: implement the `RetryPolicy` interface (the three methods `ShouldRetry` / `GetDelay` / `MaxRetries`) to replace the built-in logic, then assign it to `cfg.Retry.CustomPolicy`. See the [Retry and Fault Tolerance guide](../guides/retry-fault-tolerance).
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -519,7 +519,7 @@ Two additional notes: `io.Reader` request bodies are fully buffered to support r
 
 ## Do I need to close the response body manually?
 
-**Answer:** No, and there is no close entry point. The `Result` returned by regular requests (`Get`/`Post`/`Request`, etc.) holds **already-read and copied bytes**: HTTPC performs the read, the drain (up to 10MB, to facilitate connection reuse), and the close internally, and the connection pool manages the underlying connection.
+**Answer:** No, and there is no close entry point. The `Result` returned by regular requests (`Get`/`Post`/`Request`, etc.) holds **already-read and copied bytes**: HTTPC performs the read, the drain (capped at `min(10MB, MaxResponseBodySize)`, to facilitate connection reuse), and the close internally, and the connection pool manages the underlying connection.
 
 ```go
 result, err := client.Get(url)
@@ -549,7 +549,7 @@ cfg.Connection.ProxyRotatePerRequest = true // Close idle connections per reques
 
 **3. When the system proxy is probed.** `EnableSystemProxy` probes the proxy address once, at client **construction time** (for the SSRF exemption). If the environment variables only point to a localhost proxy later (e.g. `127.0.0.1:7890`), SSRF protection blocks that proxy. For dynamic local proxies, use an explicit `ProxyURL` instead (http/https/socks5/socks5h supported).
 
-**4. Proxy-pool circuit breaking.** A proxy whose consecutive connection failures reach `ProxyFailureThreshold` (default 3) is removed from rotation and restored by half-open probing after `ProxyCooldown` (default 30s). When all proxies are broken, the pool degrades to picking the earliest one to recover rather than failing outright.
+**4. Proxy-pool circuit breaking.** A proxy whose consecutive TCP dial failures reach `ProxyFailureThreshold` (default 3) is removed from rotation and restored by half-open probing after `ProxyCooldown` (default 30s). When all proxies are broken, the pool degrades to picking the earliest one to recover rather than failing outright.
 
 If proxies stay unavailable, check the circuit-breaking threshold and cooldown.
 

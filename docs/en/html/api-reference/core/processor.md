@@ -1,13 +1,13 @@
 ---
 sidebar_label: "Processor"
-title: "Processor - CyberGo html | Methods & Lifecycle"
-description: "CyberGo html Processor reference: New steps, 30 exported methods, error returns, context timeout rules, cache copies, and Close."
+title: "Processor - CyberGo html | Methods, Concurrency & Lifecycle"
+description: "CyberGo html Processor reference: New initialization, 42 exported methods (12 reader-mode), error returns and context timeout rules, statistics, and Close."
 sidebar_position: 20
 ---
 
 # Processor
 
-`Processor` is the core processing engine of the HTML library. It reuses internal resources (cache, encoding detector) and suits high-frequency calls; for one-off calls use the [package functions](./functions).
+`Processor` is the core processing engine of the HTML library. An instance holds the extraction cache, statistics counters, and audit log for its lifetime, which suits high-frequency calls; for one-off calls the [package functions](./functions) are enough.
 
 ## Creation
 
@@ -46,12 +46,12 @@ A `Processor` can be shared across goroutines without extra locking, for four re
 - **Immutable config**: `config` never changes after `New()`, so format methods such as `ExtractToMarkdown` can copy it into a temporary Processor without a lock, and format overrides never write back to the shared config.
 - **Statistics counters**: `TotalProcessed`/`CacheHits`/`CacheMisses`/`ErrorCount`/`totalProcessTime` all use `atomic` operations.
 - **Cache**: the internal cache carries its own lock. Cache behavior is observed and controlled through the public API: `Config.MaxCacheEntries = 0` disables it, `ClearCache()` empties it, and `Statistics.CacheHits`/`CacheMisses` report hits.
-- **Scorer**: the built-in default scorer is read-only. **A custom `Scorer` must ensure its own concurrency safety**: one Processor calls its `Score` from multiple goroutines during concurrent `Extract`. `ShouldRemove` is a reserved interface method and is not called by the current library version.
+- **Scorer**: the built-in default scorer is read-only. **A custom `Scorer` must ensure its own concurrency safety**: one Processor calls its `Score` from multiple goroutines during concurrent `Extract`. `ShouldRemove` is consulted only while the built-in default scorer is in use; with a custom `Scorer` configured, node removal still follows the built-in rules.
 :::
 
 ## Method Overview
 
-`Processor` has 30 exported methods, grouped by function (signatures and behavior follow):
+`Processor` has 42 exported methods, grouped by function (signatures and behavior follow):
 
 | Group | Method | Description |
 |-------|--------|-------------|
@@ -71,7 +71,7 @@ A `Processor` can be shared across goroutines without extra locking, for four re
 | Output formats | `Processor.ExtractToJSONWithContext` | Same, with context cancellation |
 | Output formats | `Processor.ExtractToJSONFromFile` | Output JSON from a file |
 | Output formats | `Processor.ExtractToJSONFromFileWithContext` | Same, with context cancellation |
-| Link extraction | `Processor.ExtractAllLinks` | Extract all link resources (no sanitization applied) |
+| Link extraction | `Processor.ExtractAllLinks` | Extract all link resources (no content cleaning applied) |
 | Link extraction | `Processor.ExtractAllLinksWithContext` | Same, with context cancellation |
 | Link extraction | `Processor.ExtractAllLinksFromFile` | Extract links from a file |
 | Link extraction | `Processor.ExtractAllLinksFromFileWithContext` | Same, with context cancellation |
@@ -79,12 +79,26 @@ A `Processor` can be shared across goroutines without extra locking, for four re
 | Batch processing | `Processor.ExtractBatchWithContext` | Same, with context cancellation |
 | Batch processing | `Processor.ExtractBatchFiles` | Concurrent batch extraction (file-path input) |
 | Batch processing | `Processor.ExtractBatchFilesWithContext` | Same, with context cancellation |
+| Reader mode | `Processor.ReadPage` | Whole-page sectioned view (`*ReadResult`, bypasses the cache) |
+| Reader mode | `Processor.ReadPageWithContext` | Same, with context cancellation |
+| Reader mode | `Processor.ReadPageFromFile` | Read whole-page sections from a file |
+| Reader mode | `Processor.ReadPageFromFileWithContext` | Same, with context cancellation |
+| Reader mode | `Processor.ReadPageToMarkdown` | Whole-page Markdown (with links, temporary Processor) |
+| Reader mode | `Processor.ReadPageToMarkdownWithContext` | Same, with context cancellation |
+| Reader mode | `Processor.ReadPageToMarkdownText` | Whole-page Markdown (no links) |
+| Reader mode | `Processor.ReadPageToMarkdownTextWithContext` | Same, with context cancellation |
+| Reader mode | `Processor.ReadPageFromFileToMarkdown` | File → Markdown (with links) |
+| Reader mode | `Processor.ReadPageFromFileToMarkdownWithContext` | Same, with context cancellation |
+| Reader mode | `Processor.ReadPageFromFileToMarkdownText` | File → Markdown (no links) |
+| Reader mode | `Processor.ReadPageFromFileToMarkdownTextWithContext` | Same, with context cancellation |
 | Statistics & cache | `Processor.GetStatistics` | Return `Statistics` processing statistics |
 | Statistics & cache | `Processor.ClearCache` | Clear the cache, keeping accumulated statistics |
 | Statistics & cache | `Processor.ResetStatistics` | Reset all statistics counters |
 | Audit | `Processor.GetAuditLog` | Return audit log entries held in memory |
 | Audit | `Processor.ClearAuditLog` | Clear the audit log |
-| Lifecycle | `Processor.Close` | Release resources (idempotent). After close, extracting methods that return a value report `ErrProcessorClosed` |
+| Lifecycle | `Processor.Close` | Release resources (idempotent). After close, the extraction, formatting, link, reader, and batch methods return `ErrProcessorClosed` |
+
+Signatures, `ReadResult` / `PageSection` / `SectionKind`, and section semantics for the 12 reader-mode methods are in [Reader Mode](./reader).
 
 ## Content Extraction
 
@@ -101,7 +115,7 @@ The `Extract` method family returns explicit sentinel errors at each stage; chec
 | `ErrMaxDepthExceeded` | Element nesting exceeds `MaxDepth` | Iterative check; prevents stack overflow |
 | `ErrProcessingTimeout` | The library's processing timeout elapsed | `ProcessingTimeout=0` means unlimited |
 | `ErrInternalPanic` | An unexpected internal panic was recovered | Safety net; should not occur in normal use |
-| `ErrTooManyConcurrentOps` | The timeout watchdog hit its global limit (1000) | A "too busy" state; no timeout occurred |
+| `ErrTooManyConcurrentOps` | The timeout watchdog hit its process-wide limit (1000; the watchdog exists only when `ProcessingTimeout>0`) | A "too busy" state; no timeout occurred |
 
 The `context`-aware variants return errors by these rules:
 
@@ -200,13 +214,15 @@ func (p *Processor) ExtractBatchFiles(filePaths []string) *BatchResult
 func (p *Processor) ExtractBatchFilesWithContext(ctx context.Context, filePaths []string) *BatchResult
 ```
 
+Input guards run before dispatch: an empty batch returns an empty `BatchResult` directly (0 successes, 0 failures); above 10000 items, every input item gets an error wrapping `ErrBatchTooLarge` in `BatchResult.Errors`; a closed Processor returns `ErrProcessorClosed` for each item. See [Batch Processing](../modules/batch) for the concurrency model and the result structure.
+
 ## Statistics and Cache
 
 ### Cache Behavior in Detail
 
 With `MaxCacheEntries > 0`, `Extract` enables the cache:
 
-- **Hit path**: `CacheHits` and `TotalProcessed` each increment by 1, and `cloneResult` is returned — a deep copy that `copy`s slices such as `Images`/`Links`/`Videos`/`Audios`. Caller mutations do not affect the cached entry, which also avoids data races on concurrent hits.
+- **Hit path**: `CacheHits` and `TotalProcessed` each increment by 1, and `cloneResult` is returned — a deep copy that `copy`s slices such as `Images`/`Links`/`Videos`/`Audios`. Caller mutations do not affect the cached entry, which also avoids data races on concurrent hits. The near-zero time of a hit still counts toward the total time, so `AverageProcessTime` is a true average that includes hits.
 - **Miss path**: the result is written to the cache, then a `cloneResult` is returned. The cache entry and the return value never alias.
 - **Cache disabled**: with `MaxCacheEntries = 0`, cache-key generation and cache reads/writes are skipped entirely, at no cache cost.
 
@@ -225,7 +241,7 @@ func (p *Processor) GetStatistics() Statistics
 | `TotalProcessed` | Extractions that completed without error, **including cache hits** |
 | `CacheHits` | Times served directly from the cache |
 | `CacheMisses` | Misses that required full processing |
-| `ErrorCount` | Extractions that returned an error |
+| `ErrorCount` | Extractions that returned an error: oversized input, encoding-conversion failures, and errors during processing (library timeouts and cancellations land here); calls whose `ctx` was already canceled before processing started, calls rejected by a closed Processor, and file-read errors are not counted |
 | `AverageProcessTime` | Average wall-clock time per extraction (0 when `TotalProcessed` is 0) |
 
 ```go
@@ -254,7 +270,7 @@ func (p *Processor) ResetStatistics()
 
 ### GetAuditLog
 
-Retrieve the audit log entries held in memory.
+Retrieve the audit log entries held in memory. When auditing is disabled or no entries exist yet, an empty (non-`nil`) slice is returned — check for entries with `len(entries) > 0`, not a nil test.
 
 ```go
 func (p *Processor) GetAuditLog() []AuditEntry
@@ -272,16 +288,19 @@ func (p *Processor) ClearAuditLog()
 
 ### Close
 
-Release the resources held by the Processor. Call it when you are done.
+Release the resources held by the Processor. Call it when you are done. When an audit Sink is configured, the Sink's `Close` error is returned (`MultiSink` aggregates the errors of all its child Sinks); otherwise `nil` is returned. The one-shot close path inside package functions ignores this error.
 
 ```go
 func (p *Processor) Close() error
 ```
 
 ```go
-p, _ := html.New(cfg)
+p, err := html.New(cfg)
+if err != nil {
+	log.Fatal(err)
+}
 defer p.Close()
-// ... use p to extract
+// ... use p for extraction
 ```
 
 :::tip Lifecycle essentials

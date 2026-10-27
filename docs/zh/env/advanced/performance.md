@@ -208,7 +208,7 @@ if secret != nil {
 }
 ```
 
-启用锁定但失败时，`Masked()` 显示 `[SECURE:N bytes lock-failed]`。非 Linux/macOS/Windows 平台上 `IsMemoryLockSupported()` 返回 false，锁定尝试失败并记录错误（`Masked()` 显示 `lock-failed`），`SecureValue` 仍可正常使用。
+启用锁定但失败时，`Masked()` 显示 `[SECURE:N bytes lock-failed]`。非 Linux/macOS/Windows 平台上 `IsMemoryLockSupported()` 返回 false，锁定尝试失败、错误保存在该值上（`Masked()` 显示 `lock-failed`），`SecureValue` 仍可正常使用。
 
 ### 安全清零
 
@@ -420,7 +420,9 @@ func BenchmarkMixedReadWrite(b *testing.B) {
 ```go
 // 不推荐：每个键单独拿一次写锁；AutoApply 下还要各做一次 Setenv
 for key, value := range values {
-    loader.Set(key, value)
+    if err := loader.Set(key, value); err != nil {
+        return err
+    }
 }
 
 // 推荐：写入文件后一次加载，整批只拿一次写锁
@@ -455,11 +457,11 @@ loader.Close()  // 主 goroutine 关闭
 
 ## 内部并发实现深读
 
-以下是从源码层面整理的并发优化手段，可用于评估与调优。文中的量化数字（23.6% 原子操作热点、终结器约占创建成本 60%）来自 v1.2.2/v1.2.3 的基准测试与性能剖析（见 CHANGES.md）。
+以下是从源码层面整理的并发优化手段，可用于评估与调优。文中的量化数字（23.6% 原子操作热点、终结器约占创建成本 60%）来自 v1.2.2/v1.2.3 的基准测试与性能剖析：23.6% 记录于 CHANGES.md，60% 记录于 `secure.go` 的对象池注释。
 
 ### 分片存储（secureMap）
 
-所有变量以 `SecureValue` 形式存储在 32 个分片中，键经 `internal.HashKey` 定位分片（短键用乘法哈希，长键用 FNV-1a 采样），每个分片持有独立 `sync.RWMutex`。不同分片的读写完全并行。
+所有变量以 `SecureValue` 形式存储在 32 个分片中（v1.3.0 起由 8 个提升为 32 个），键经 `internal.HashKey` 定位分片（短键用乘法哈希，长键用 FNV-1a 采样），每个分片持有独立 `sync.RWMutex`。不同分片的读写完全并行。
 
 ### 批量写入的分桶
 

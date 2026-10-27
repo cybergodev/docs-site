@@ -1,22 +1,22 @@
 ---
 sidebar_label: "Performance"
 title: "Performance - CyberGo html | Throughput Guide"
-description: "CyberGo html performance: sync.Pool Processor reuse, cache key hashing and hit conditions, WorkerPoolSize tuning, timeout semantics, and anti-patterns."
+description: "CyberGo html performance: sync.Pool Processor reuse, cache key hashing and flags, WorkerPoolSize tuning, timeout semantics, anti-patterns, and benchmarks."
 sidebar_position: 30
 ---
 
 # Performance
 
-CyberGo html is a Go library for HTML content extraction and sanitization. Its extraction cost depends on three things: the optimizations built into the library, the trade-offs made in configuration, and the size of the input. The sections below cover all three, plus anti-patterns and benchmarking.
+Extraction cost depends on three things: the optimizations built into the library, the trade-offs made in configuration, and the size of the input. The sections below cover all three, plus anti-patterns and benchmarking.
 
 Dedicated pages:
 
-- [Processor Cache & Reuse](./processor-cache) — package functions vs instances, `sync.Pool`, cache key and hit-rate monitoring
-- [Batch Processing in Practice](./batch-processing) — the batch APIs, `BatchResult`, concurrency control, and partial failures
+- [Processor Cache & Reuse](./processor-cache) — package functions vs instances, `sync.Pool`, the cache key, and hit-rate monitoring
+- [Batch Processing](./batch-processing) — the batch APIs, `BatchResult`, concurrency control, and partial failures
 
 ## Internal Optimization Mechanisms
 
-Zero-allocation and reuse optimizations on hot paths determine the cost profile of each usage pattern. Use the library the way these optimizations expect, or they stop paying off.
+Allocation reuse and object pooling on hot paths determine the performance characteristics of the different usage patterns. These optimizations take effect only when you call the library in the patterns described below.
 
 ### sync.Pool Processor Reuse
 
@@ -32,7 +32,7 @@ html.Extract(data)
 Pooled processors follow two design rules:
 
 - **Caching disabled**: `MaxCacheEntries`, `CacheTTL`, and `CacheCleanup` are all 0 for pooled instances, and every return calls `ClearCache()`. Enabling caching would only add hashing and map-write overhead (`Get` always misses) plus a goroutine sweeping an always-empty cache.
-- **A custom Config bypasses the pool**: `html.Extract(data, cfg)` creates a **one-shot Processor** (closed as soon as it returns) instead of reusing a pooled instance, because pooled instances are fixed to the default configuration. The one-shot Processor's cache fields are zeroed as well.
+- **A custom Config bypasses the pool**: `html.Extract(data, cfg)` with a custom configuration creates a one-shot Processor (closed as soon as it returns) and forces its cache fields to zero — a one-shot instance's cache would never be read again.
 
 :::tip Create your own instance when you need caching
 When a loop processes the same content repeatedly (crawler deduplication, services downstream of a cache layer), create a long-lived `Processor` with `html.New()` to get cache hits. See [Processor Cache & Reuse](./processor-cache).
@@ -40,12 +40,12 @@ When a loop processes the same content repeatedly (crawler deduplication, servic
 
 ### Cache Key Generation
 
-The cache key is a `[16]byte` (128-bit) value used directly as a `map` key; generating it allocates nothing on the heap. Two groups of inputs feed the key:
+The cache key is a `[16]byte` value used directly as a `map` key; generating it allocates nothing on the heap. Two groups of inputs feed the key:
 
-- **The complete raw input bytes**: `hash/maphash` hashes every byte (AES-NI accelerated on amd64, with a per-process random seed). Because the whole input is hashed, a change anywhere in the document changes the key; the same document stored in a different encoding has different bytes and therefore a different key.
-- **Configuration**: five booleans (`ExtractArticle`, `PreserveImages`, `PreserveLinks`, `PreserveVideos`, `PreserveAudios`) packed into one byte, followed by three format strings (`InlineImageFormat`, `InlineLinkFormat`, `TableFormat`) and `Encoding`. The same bytes decoded under a different `Encoding` produce a different result, so the setting must be part of the key.
+- **The complete raw input bytes**: `hash/maphash` hashes every byte. Because the whole input is hashed, a change anywhere in the document changes the key; the same document stored in a different encoding has different bytes and therefore a different key.
+- **Configuration**: six booleans (`ExtractArticle`, `PreserveImages`, `PreserveLinks`, `PreserveVideos`, `PreserveAudios`, `ExtractMetadata`) packed into one byte. Three format strings (`InlineImageFormat`, `InlineLinkFormat`, `TableFormat`) and `Encoding` are mixed in after that — the same bytes decoded under a different `Encoding` produce a different result, so the setting must be part of the key.
 
-maphash returns 64 bits; splitmix64 diffuses it into a second 64-bit half, and the two form the 128-bit key. The key is 128 bits wide but its effective collision strength is about 64 bits: splitmix64 separates the output space, it does not add entropy. That is sufficient for a content cache. An all-zero key (`[16]byte{}`) is treated by the cache as "no key", so that input misses on every call. For the full description see [Processor Cache & Reuse](./processor-cache#cache-key-generation).
+This yields a corollary that matters for tuning: **different input bytes or any differing hashed configuration option produce a different key**. For the key derivation details (maphash + splitmix64 combined into 128 bits, an effective collision strength of about 64 bits, and the all-zero key treated as "no key"), see [Processor Cache & Reuse](./processor-cache#cache-key-generation).
 
 ### Pre-allocation and Object Pooling
 
@@ -59,22 +59,22 @@ The most frequently allocated objects during extraction are pooled:
 | `[]byte` temporary buffers | `sync.Pool` | Reuse of small high-frequency buffers for encoding conversion and text assembly |
 
 :::warning Oversized buffers are dropped by the pool
-One oversized document would otherwise leave the pool holding a huge buffer for every later small request. Buffers above the retention ceiling are therefore dropped on return: 64 KiB for `[]byte` and text builders, 512 elements for result scratch slices, and 8192 entries for node slices. Very large documents do not benefit from pooling; that is expected.
+One oversized document would otherwise leave the pool holding a huge buffer for every later small request. Buffers above the retention ceiling are therefore dropped on return: 64 KiB for `[]byte` and text builders, 512 elements for result scratch slices, and 8192 entries for node slices. The single extraction that processes an oversized document gets no pooling benefit; that is expected.
 :::
 
 ### Pre-computed Format Strings
 
 `New()` lowercases and trims `InlineImageFormat`/`InlineLinkFormat` (empty becomes `"none"`) and stores the result on the `Processor`. The extraction hot path compares the pre-computed values instead of calling `strings.ToLower` on every extraction.
 
-The difference is invisible on a single extraction; over tens of thousands of documents it accumulates.
+The difference is hard to observe on a single extraction; the saved repeated normalization accumulates as you process more documents.
 
 ### Lazy Allocation for Media Extraction
 
-Video/audio extraction uses three layers. A page with no media references pays one byte scan in the media stage, and content over 1 MB skips even that scan:
+Video/audio extraction is gated in three layers. A page with no media references pays one byte scan in the media stage, and content over 1,000,000 bytes (about 1 MB) skips even that scan:
 
-1. **Pre-scan gate**: a byte-by-byte table lookup decides whether the content contains any media reference. When none is present, all media URL scanning and iframe/embed/object attribute extraction is skipped.
-2. **Size gate**: content over 1 MB skips the raw-HTML media scan. For those documents, media URLs come only from the DOM walk.
-3. **Lazy initialization**: a result slice and dedup map are allocated only when the first match of that media kind appears. A kind with no matches allocates nothing.
+1. **Pre-scan gate**: a byte-by-byte table lookup decides whether the content contains any media reference. When none is present, the raw-HTML media scan and the iframe/embed/object attribute extraction are skipped; only the DOM walk remains.
+2. **Size gate**: content over 1,000,000 bytes skips the raw-HTML media scan. For those documents, media URLs come only from the DOM walk.
+3. **Lazy initialization**: a result slice and a dedup map for a media kind (video or audio) are created only when the first match of that kind appears; the two kinds are independent.
 
 :::tip Optimal config for plain-text workloads
 When you only need body text and no image/video/audio data, [`TextOnlyConfig()`](../../api-reference/core/config#configuration-presets) turns off all media preservation: with `PreserveVideos`/`PreserveAudios` false, the media stage does not run at all.
@@ -139,7 +139,7 @@ func main() {
 `ExtractToJSON` goes through `p.Extract` and then marshals, so it does read and write the main cache. The transient Processor's audit events and statistics still count toward the parent Processor.
 
 :::warning Use Extract when you need Markdown repeatedly
-To get Markdown for the same content repeatedly, call `Extract` with `InlineImageFormat`/`InlineLinkFormat` set to `"markdown"` instead of calling `ExtractToMarkdown` multiple times: the result enters the main cache and repeated inputs hit.
+To get Markdown for the same content repeatedly, call `Extract` with `InlineImageFormat`/`InlineLinkFormat` set to `"markdown"`: the result enters the main cache and repeated inputs hit. There is no need to call `ExtractToMarkdown` many times.
 :::
 
 ## Timeout and Goroutine Management
@@ -150,7 +150,9 @@ To get Markdown for the same content repeatedly, call `Extract` with `InlineImag
 
 When `ProcessingTimeout > 0`, the library derives a deadline context from the incoming context, and processing polls `ctx.Done()` at fixed checkpoints:
 
-- Entry to extraction, before encoding detection
+- Extraction entry
+- Before encoding detection (after the cache check)
+- Before content processing begins
 - Before DOM parsing
 - Before depth validation
 - Before content extraction
@@ -161,20 +163,11 @@ When the deadline passes, processing stops at the next checkpoint and returns an
 
 Each extraction with a timeout occupies a watchdog goroutine until it finishes or times out. The library caps concurrency at 1000 (`maxTimeoutGoroutines`) with the process-wide counter `activeTimeoutGoroutines`. The counter is shared across all Processors; once the limit is reached, new extractions immediately return an error wrapping `ErrTooManyConcurrentOps` rather than queuing.
 
-Batch extraction concurrency is bounded by `WorkerPoolSize` (default 4, max 256), well below 1000. You reach the 1000 limit only by issuing many concurrent timed `ExtractWithContext` calls at the application level.
+Batch extraction concurrency is bounded by `WorkerPoolSize` (default 4, max 256), well below 1000. You reach the 1000 limit only by issuing many concurrent timed `ExtractWithContext` calls at the application level (for example, running batches on several Processors at once).
 
 ### Distinguishing the Three Timeout Sources
 
-The source is identified by the error type alone:
-
-| Situation | Returned error |
-|-----------|----------------|
-| The library's `ProcessingTimeout` expires (user ctx still live) | `ErrProcessingTimeout` |
-| The user ctx deadline fires at or before the library deadline | `context.DeadlineExceeded` (returned unchanged, not normalized) |
-| The user calls `cancel()` | `context.Canceled` |
-| `ProcessingTimeout = 0` (no limit) and the user ctx expires | `context.DeadlineExceeded` (the library starts no watchdog goroutine) |
-
-The library normalizes to `ErrProcessingTimeout` only when the derived deadline fired and `ctx.Err() == nil`; a user deadline or cancellation passes through unchanged. When checking with `errors.Is`, test for both error types.
+Timeout errors are distinguished by their source: the library normalizes to `ErrProcessingTimeout` only when the derived deadline fired and `ctx.Err() == nil`; when the user ctx expires on its own or is cancelled, `context.DeadlineExceeded` / `context.Canceled` are returned unchanged. When checking with `errors.Is`, test for both error types. The full four-scenario comparison table is in [Error Handling](./error-handling#timeouts-and-cancellation).
 
 On `ErrProcessingTimeout`, the library returns the error to the caller at once and the extraction goroutine exits at its next cooperative checkpoint. When the user ctx expires, the inner checkpoints observe the same ctx and stop too — both cases exit at a checkpoint rather than being killed.
 
@@ -223,7 +216,7 @@ func main() {
 
 ## Batch Performance Tuning
 
-For batch API usage see [Batch Processing in Practice](./batch-processing). The points below affect throughput.
+For batch API usage see [Batch Processing](./batch-processing). The points below affect throughput.
 
 ### What WorkerPoolSize Does
 
@@ -337,7 +330,7 @@ Common anti-patterns and what to do instead:
 | A large cache for content that never repeats | Low hit rate; entries only consume memory and hashing | Set `MaxCacheEntries = 0` |
 | Expecting `ExtractToMarkdown` to hit the main cache | Format conversion uses a cache-disabled transient Processor | Set `InlineImageFormat="markdown"` and use `Extract` |
 | No timeout for very large HTML | Malformed input can hold the CPU for a long time | Set `ProcessingTimeout` or use `ExtractWithContext` |
-| Expecting linear speedup when items far exceed `WorkerPoolSize` | The semaphore bounds actual concurrency; a fixed slot count caps throughput | Size `WorkerPoolSize` to the CPU count and submit in batches |
+| Expecting linear speedup when items far exceed `WorkerPoolSize` | The semaphore bounds actual concurrency at the slot count; adding items only lengthens the queue | Size `WorkerPoolSize` to the CPU count and submit in batches |
 
 ## Benchmarking
 
@@ -444,20 +437,20 @@ func BenchmarkConfigs(b *testing.B) {
 
 :::tip Reading benchmark results
 - `ns/op`: time per extraction, lower is better;
-- `B/op` and `allocs/op`: heap bytes and allocation count per extraction, the metrics that show whether pooling works and whether the cache hits; a cache hit drops `allocs/op` noticeably;
-- Compare the hit case (after warm-up, `GetStatistics().CacheHits` > 0) against `NoCache`: if they are close, your content does not repeat, caching has no payoff, and you should disable it.
+- `B/op` and `allocs/op`: heap bytes and allocation count per extraction, the metrics that show whether pooling works; the hit path skips parsing and extraction, so both are usually well below a full extraction (they still include the copy allocations of `cloneResult`);
+- Compare the hit case against `NoCache`: if they are close, the parsing saved by hits did not exceed the clone cost, caching has no payoff, and you should disable it.
 :::
 
 Run the benchmarks:
 
 ```bash
-go test -bench=. -benchmem ./...            # Run all benchmarks with allocation reports
+go test -bench=. -benchmem ./...             # Run all benchmarks with allocation reports
 go test -bench=Extract -benchmem -count=5 ./... # Only the extraction benchmarks, 5 runs to see variance
 ```
 
 ## Next Steps
 
 - [Processor Cache & Reuse](./processor-cache) — `sync.Pool` mechanics and hit-rate monitoring
-- [Batch Processing in Practice](./batch-processing) — full batch API usage and concurrency control
+- [Batch Processing](./batch-processing) — full batch API usage and concurrency control
 - [Config Reference](../../api-reference/core/config) — all `Config` fields and their constraints
 - [Security Production Checklist](../security/production-checklist) — production readiness beyond performance

@@ -7,7 +7,7 @@ sidebar_position: 10
 
 # 安全概述
 
-CyberGo html 是一个 Go 语言的 HTML 内容提取与清洗库，处理的是来自互联网的不可信输入，因此安全是设计的第一约束。库内置多层独立防护，遵循**纵深防御**：每层独立生效，单层失效不会导致防护整体失效。
+库面向来自互联网的不可信输入设计，内置多层独立防护，遵循**纵深防御**：每层独立生效，单层失效不会导致防护整体失效。
 
 本页说明各层防护的作用与失效边界；需要配置审计管道或核对上线清单，见文末[下一步](#下一步)。
 
@@ -61,7 +61,9 @@ cfg.MaxDepth = 200 // 更严格
 ```
 
 :::warning 深度超限有两个来源
-解析器 `golang.org/x/net/html` 自身在约 512 个未闭合元素时先失败，返回 `ErrInvalidHTML`（实测 520 层 → `html: invalid HTML: open stack of elements exceeds 512 nodes`）。解析成功后才轮到库按 `MaxDepth` 判定并返回 `ErrMaxDepthExceeded`。默认值 500 与解析器阈值只差十余层，因此判定深度问题时两个哨兵错误都要检查。
+解析器 `golang.org/x/net/html` 自身在约 512 个未闭合元素时先失败，返回 `ErrInvalidHTML`（实测 520 层 → `html: invalid HTML: open stack of elements exceeds 512 nodes`）。解析成功后才轮到库按 `MaxDepth` 判定并返回 `ErrMaxDepthExceeded`。
+
+默认值 500 与解析器阈值只差十余层，因此排查深度问题时两个哨兵错误都要检查。
 :::
 
 ### 处理超时
@@ -72,14 +74,7 @@ cfg.MaxDepth = 200 // 更严格
 cfg.ProcessingTimeout = 10 * time.Second
 ```
 
-超时由独立 goroutine + context deadline 实现，并受进程级计数器 `activeTimeoutGoroutines` 约束（上限 1000），防止高并发下 goroutine 无界堆积。与 `ExtractWithContext` 的调用方 context 同时存在时，两者取较早到期者，但**错误类型按触发源区分**，不做归一化：
-
-| 触发源 | 返回错误 |
-|--------|----------|
-| 库内 `ProcessingTimeout` 到期（调用方 ctx 仍有效） | `ErrProcessingTimeout` |
-| 调用方 ctx deadline 先到期 | `context.DeadlineExceeded`（原样透传） |
-| 调用方 `cancel()` | `context.Canceled` |
-| `ProcessingTimeout = 0`（不限时）且 ctx 到期 | `context.DeadlineExceeded`（库不启动超时 goroutine） |
+超时由独立 goroutine + context deadline 实现，并受进程级计数器 `activeTimeoutGoroutines` 约束（上限 1000），防止高并发下 goroutine 无界堆积。与 `ExtractWithContext` 的调用方 context 同时存在时，两者取较早到期者，但**错误类型按触发源区分**——库内到期返回 `ErrProcessingTimeout`，调用方 ctx 到期或取消时 `context.DeadlineExceeded` / `context.Canceled` 原样透传，不归一化。四种场景的完整对照表见[错误处理](../performance/error-handling#超时与取消)。
 
 ## 内容清洗机制
 
@@ -113,17 +108,16 @@ cfg.ProcessingTimeout = 10 * time.Second
 | 表单 action 覆盖 | 精确匹配 | `formaction`（可劫持表单提交目标） |
 | 自动聚焦 | 精确匹配 | `autofocus`（可用于诱导点击） |
 
-事件处理器按前缀匹配（属性名以 `on` 开头），因此覆盖所有现行与未来的 `on*` 变体，不依赖固定黑名单。
+事件处理器按前缀匹配（属性名以 `on` 开头），不依赖固定黑名单，任何 `on*` 属性名都会命中。
 
 ### CSS 危险模式
 
-`style` 属性的值会检查下列危险子串，命中即**整段剥离**（当前策略是一旦命中就整体丢弃，不做属性级保留）：
+`style` 属性的值会检查下列危险模式，命中即**整段剥离**（一旦命中就整体丢弃，不做属性级保留）。匹配分两类：`expression(`、`javascript:`、`vbscript:` 按子串匹配；`behavior` 与 `-moz-binding` 按**声明**匹配——属性名后允许空白再接冒号，`behavior :url(...)` 与 `behavior:url(...)` 同样命中：
 
-- `expression(` — 旧版 IE 动态表达式
-- `behavior:` — IE 行为绑定
-- `-moz-binding:` — 旧版 Firefox XBL 绑定
-- `javascript:` — 协议注入
-- `vbscript:` — 协议注入
+- `expression(` — 旧版 IE 动态表达式（子串匹配）
+- `javascript:` / `vbscript:` — 协议注入（子串匹配）
+- `behavior` — IE 行为绑定（声明匹配）
+- `-moz-binding` — 旧版 Firefox XBL 绑定（声明匹配）
 
 ### 受检的 URI 属性
 
@@ -131,8 +125,10 @@ cfg.ProcessingTimeout = 10 * time.Second
 
 ```text
 href  src  cite  action  data  poster  background
-longdesc  usemap  profile  xlink:href
+longdesc  usemap  profile  xlink:href  srcset  ping
 ```
+
+`srcset` 与 `ping` 是多值 URL 属性（图片候选列表、beacon 地址），管道把整个值当作一个 URL 校验——藏在其中的 `javascript:` 前缀同样会被拦下。
 
 :::tip 已被整体屏蔽的属性不重复校验
 `formaction` 在「被移除的属性」中已整体屏蔽，不再进入 URI 校验管道。
@@ -163,7 +159,7 @@ URI 属性的值经 `isSafeURIWithAudit` 的固定管道校验。管道存在的
 5. **大小写归一**：scheme 不区分大小写，`JavaScript:` 与 `javascript:` 等价。
 6. **长度上限**：非 data URL 超过 2000 字符即拒绝，data URL 另有 100KB 上限。
 7. **危险协议检测**：`javascript:`、`vbscript:`、`file:`，并对全角拉丁字符（U+FF01–U+FF5E）再做一次 ASCII 折叠。
-8. **协议相对形式**：`//javascript:` 先去掉 `//` 与前导空白，再套用同一套协议判定。
+8. **协议相对形式**：`//javascript:` 这类写法先去掉 `//` 与前导空白再做协议判定；该路径的黑名单额外包含 `data:`——不存在安全的协议相对 data URL。
 9. **data URL 白名单**：只放行图片、字体、PDF 的显式 MIME。
 
 顺序是这套设计的关键：所有剥离与归一都发生在协议检测之前，检测对象必须是浏览器最终会看到的形式。纯可打印 ASCII 的 URI 走快速路径，直接做协议前缀比较；含空白、控制符或非 ASCII 字节的 URI 才进入完整管道——伪装手法只可能出现在后者。
@@ -191,7 +187,7 @@ data URL 可能含大段 base64，完整写入日志既占空间又可能泄露�
 
 ### 绕过清洗器的路径
 
-`ExtractAllLinks` 与原始 HTML 中的 video/audio 扫描读取**未清洗**的文本，因此同样用 `containsDangerousScheme` 守卫：它复用与清洗器相同的归一管道（NFC、trim、C0 剥离、tab/LF/CR 剥离、全角折叠），两条路径执行同一套协议策略。`javascript:alert(1).mp4` 这类伪装成媒体 URL 的载荷因此被拦下。
+`ExtractAllLinks` 与原始 HTML 中的 video/audio 扫描读取**未清洗**的文本，因此同样用 `containsDangerousScheme` 守卫。该守卫复用与清洗器相同的归一管道（NFC、trim、C0 剥离、tab/LF/CR 剥离、全角折叠），两条路径执行同一套协议策略。`javascript:alert(1).mp4` 这类伪装成媒体 URL 的载荷因此被拦下。
 
 ## AllowedBaseDir 沙箱机制
 
@@ -206,7 +202,7 @@ data URL 可能含大段 base64，完整写入日志既占空间又可能泄露�
 3. `pathWithin(realBase, realTarget)` 判定真实路径是否落在允许目录内
 4. 从**同一个已验证句柄** `io.ReadAll` 读取内容
 
-校验与读取共用同一句柄，关闭了 TOCTOU（check-time-to-use-time）窗口：校验之后、读取之前把路径替换成符号链接已不可能影响结果，读的是当初校验的那个 inode。
+校验与读取共用同一句柄，关闭了 TOCTOU（time-of-check to time-of-use）窗口：校验之后、读取之前把路径替换成符号链接已不可能影响结果，读的是当初校验的那个 inode。
 
 ### 跨平台真实路径解析
 
@@ -254,7 +250,7 @@ _, err = p.ExtractFromFile("/var/app/uploads/page.html")
 _, err = p.ExtractFromFile("/var/app/uploads/escape.txt") // 若它是 junction → /etc
 ```
 
-越界访问会记录 `AuditEventPathTraversal` 审计事件，并返回包装了「path outside allowed directory」的 `*FileError`；错误中**不包含**解析出的真实路径（避免泄露文件系统布局）。
+越界访问会记录 `AuditEventPathTraversal` 审计事件，并返回包装了「path outside allowed directory」的 `*FileError`；错误中**不包含**解析出的真实路径（避免泄露文件系统布局）。这条错误不匹配任何哨兵，只能按 `FileErr` 的消息判断；路径遍历拒绝则包装 `ErrInvalidFilePath`，可直接用 `errors.Is` 命中。
 
 ## Panic 恢复与隔离
 
@@ -284,7 +280,7 @@ func recoverPanic[T any](fn func() (T, error)) (result T, err error) {
 
 ### SEC-003：审计子系统是 best-effort
 
-审计子系统**绝不能**把 panic 传播给公开 API 调用方。调用方传入的 `AuditSink`（手写的，或套了过滤/多路扇出器的）其 `Write()` 可能在任意路径 panic。`Record` 用 `defer recover()` 吞掉这类 panic（恢复值被丢弃——审计路径自身没有安全的上报通道）；`Close` 有 error 返回值，会把恢复值包进 `ErrInternalPanic` 返回。
+审计子系统**绝不能**把 panic 传播给公开 API 调用方。调用方传入的 `AuditSink`（手写的，或套了过滤/多路扇出器的）其 `Write()` 可能在任意路径 panic。`Record` 用 `defer recover()` 吞掉这类 panic，恢复值被丢弃——审计路径自身没有安全的上报通道。`Close` 有 error 返回值，会把恢复值包进 `ErrInternalPanic` 返回。
 
 自定义 `Sink` 即使 panic，也不会经由 `Close()` 或提取调用传播到调用方。
 
@@ -300,7 +296,9 @@ func recoverPanic[T any](fn func() (T, error)) (result T, err error) {
 
 ## 审计系统
 
-安全事件通过审计系统记录：8 种事件类型（阻止标签、阻止属性、阻止 URL、输入违规、深度违规、超时、编码问题、路径穿越）、3 个级别（`info` / `warning` / `critical`）、7 个内置 Sink 构造函数。事件与级别的对应关系、Sink 的组合方式见[审计系统实战](./audit-pipeline)，完整签名见[审计系统参考](../../api-reference/modules/audit)。
+安全事件通过审计系统记录，共 8 种事件类型（阻止标签、阻止属性、阻止 URL、输入违规、深度违规、超时、编码问题、路径遍历）与 3 个级别（`info` / `warning` / `critical`），内置 Sink 有 7 个构造函数。
+
+事件与级别的对应关系、Sink 的组合方式见[审计系统实战](./audit-pipeline)，完整签名见[审计系统参考](../../api-reference/modules/audit)。
 
 ## 安全配置决策表
 

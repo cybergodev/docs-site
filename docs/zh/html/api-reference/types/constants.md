@@ -1,25 +1,27 @@
 ---
 sidebar_label: "常量与错误"
 title: "常量与错误 - CyberGo html | 默认值与错误类型"
-description: "CyberGo html 常量与错误参考：默认配置常量、8 种审计事件与 3 级审计级别、12 个哨兵错误，以及 InputError、ConfigError、FileError 三个结构化错误的字段、方法与 errors.Is/errors.As 判断用法。"
+description: "CyberGo html 常量与错误参考：默认配置常量、格式常量、8 种审计事件与 3 级审计级别、12 个哨兵错误，以及 InputError、ConfigError、FileError 三个结构化错误的字段、方法与 errors.Is/errors.As 判断用法。"
 sidebar_position: 30
 ---
 
 # 常量与错误
 
+本页汇总 CyberGo html 的导出常量（默认配置、格式取值、审计事件与级别）、12 个哨兵错误与三个结构化错误类型，并给出 `errors.Is`/`errors.As` 的判断模式。
+
 ## 默认配置常量
 
 | 常量 | 类型 | 值 | 说明 |
 |------|------|----|------|
-| `DefaultMaxInputSize` | `int` | `52428800` | 最大输入大小（50MB） |
+| `DefaultMaxInputSize` | `int` | `52428800` | 最大 HTML 输入大小（50MB） |
 | `DefaultMaxCacheEntries` | `int` | `2000` | 缓存条目上限 |
-| `DefaultWorkerPoolSize` | `int` | `4` | 工作池大小 |
-| `DefaultCacheTTL` | `time.Duration` | `1h` | 缓存过期时间 |
-| `DefaultCacheCleanup` | `time.Duration` | `5m` | 缓存清理间隔 |
+| `DefaultWorkerPoolSize` | `int` | `4` | 批量提取的并发工作协程数 |
+| `DefaultCacheTTL` | `time.Duration` | `1h` | 缓存条目生存期 |
+| `DefaultCacheCleanup` | `time.Duration` | `5m` | 过期缓存条目的后台清扫间隔 |
 | `DefaultMaxAuditEntries` | `int` | `10000` | 内存审计条目上限（`AuditConfig.MaxEntries` 为 0 时使用） |
 | `DefaultMaxRawValueLength` | `int` | `200` | 审计 `RawValue` 字符串长度上限 |
-| `DefaultMaxDepth` | `int` | `500` | 最大 DOM 深度 |
-| `DefaultProcessingTimeout` | `time.Duration` | `30s` | 处理超时时间 |
+| `DefaultMaxDepth` | `int` | `500` | 最大 HTML 嵌套深度（防栈溢出） |
+| `DefaultProcessingTimeout` | `time.Duration` | `30s` | 单文档处理超时时间 |
 
 ## 审计常量
 
@@ -46,6 +48,19 @@ sidebar_position: 30
 
 审计系统用法与 Sink 类型见 [审计系统](../modules/audit)。
 
+## 格式常量
+
+`InlineImageFormat`、`InlineLinkFormat` 与 `TableFormat` 三个字段的取值常量，可替代魔法字符串直接赋值（如 `cfg.InlineImageFormat = html.FormatMarkdown`）：
+
+| 常量 | 值 | 适用字段 | 说明 |
+|------|----|----------|------|
+| `FormatNone` | `"none"` | `InlineImageFormat` / `InlineLinkFormat` | 不内联进 `Text`；`TableFormat` 不可用 |
+| `FormatMarkdown` | `"markdown"` | `InlineImageFormat` / `InlineLinkFormat` / `TableFormat` | 按 Markdown 语法内联；`MarkdownConfig()` 预设内部即用此常量赋值 |
+| `FormatHTML` | `"html"` | `InlineImageFormat` / `InlineLinkFormat` / `TableFormat` | 保留内联 HTML 标签 |
+| `FormatPlaceholder` | `"placeholder"` | 仅 `InlineImageFormat` | 输出 `[IMAGE:N]` 位置占位符 |
+
+`InlineImageFormat` / `InlineLinkFormat` 默认 `FormatNone`，`TableFormat` 默认 `FormatMarkdown`；校验大小写不敏感、忽略首尾空格，空串按字段默认值处理，各字段完整可选值见[配置](../core/config#输出格式)。阅读模式（`ReadPage*`）始终保留链接，`InlineLinkFormat` 的 `FormatNone` 在阅读模式按 `FormatMarkdown` 处理，见[阅读模式](../core/reader#关键语义)。
+
 ## 哨兵错误
 
 | 错误 | 消息 | 说明 |
@@ -58,10 +73,10 @@ sidebar_position: 30
 | `ErrProcessingTimeout` | `html: processing timeout exceeded` | 库内处理超时 |
 | `ErrFileNotFound` | `html: file not found` | 文件未找到 |
 | `ErrInvalidFilePath` | `html: invalid file path` | 无效文件路径 |
-| `ErrInternalPanic` | `html: internal panic recovered` | 内部 panic 已恢复 |
+| `ErrInternalPanic` | `html: internal panic recovered` | 内部 panic 已恢复（属库内部缺陷，应报告给维护者） |
 | `ErrMultipleConfigs` | `html: at most one Config may be provided` | 传入多个 Config |
 | `ErrBatchTooLarge` | `html: batch size exceeds maximum` | 批量项数超过单批上限（10000） |
-| `ErrTooManyConcurrentOps` | `html: too many concurrent operations` | 并发超时 watchdog 达全局上限（1000），未发生超时 |
+| `ErrTooManyConcurrentOps` | `html: too many concurrent operations` | 并发超时 watchdog 达进程级上限（1000），未发生超时 |
 
 用户 context 的 deadline 到期时返回 `context.DeadlineExceeded`，不会被归一化为 `ErrProcessingTimeout`。
 
@@ -136,7 +151,7 @@ type FileError struct {
 
 func (e *FileError) Error() string                // 安全输出（截断路径）
 func (e *FileError) SafePath() string             // 仅返回文件名
-func (e *FileError) Unwrap() error                // → ErrFileNotFound | 原始错误 | ErrInvalidFilePath
+func (e *FileError) Unwrap() error                // → ErrFileNotFound | 原始错误（含包装 ErrInvalidFilePath 的路径遍历拒绝）| ErrInvalidFilePath
 func (e *FileError) MarshalJSON() ([]byte, error) // 序列化时经 SafePath() 截断 Path
 ```
 
@@ -150,11 +165,15 @@ func (e *FileError) MarshalJSON() ([]byte, error) // 序列化时经 SafePath() 
 |------|------|
 | `FileError.Error` | 安全输出（路径截断为文件名，底层错误消息同步脱敏） |
 | `FileError.SafePath` | 仅返回文件名（无分隔符时原样返回） |
-| `FileError.Unwrap` | → `ErrFileNotFound` \| 原始错误 \| `ErrInvalidFilePath` |
+| `FileError.Unwrap` | → `ErrFileNotFound` \| 原始错误 \| `ErrInvalidFilePath`（路径遍历拒绝包装 `ErrInvalidFilePath`，可用 `errors.Is` 命中） |
 | `FileError.MarshalJSON` | 序列化为 `{op, path, message}`，`path` 经 `SafePath()` 截断 |
 
 :::tip 输出路径时的安全默认值
 `FileError.Error()` 与 `SafePath()` 都只返回文件名，可直接写进 HTTP 响应或日志。需要完整路径时读取 `Path` 字段，仅限内部调试。
+:::
+
+:::info 哪一类文件错误不匹配哨兵
+路径遍历（清洗后仍含 `..` 分量）返回的 `*FileError` 包装 `ErrInvalidFilePath`，`errors.Is(err, ErrInvalidFilePath)` 为 `true`。唯一的例外是 `AllowedBaseDir` 沙箱越界：`FileErr` 为 `path outside allowed directory`，**不匹配任何哨兵错误**，需要检查 `FileError.FileErr` 的消息内容。
 :::
 
 ## 内部限制常量
@@ -176,7 +195,7 @@ func (e *FileError) MarshalJSON() ([]byte, error) // 序列化时经 SafePath() 
 | 常量 | 值 | 说明 |
 |------|----|------|
 | `maxBatchSize` | `10000` | 单次批量最大项数，超限整批返回错误 |
-| `maxTimeoutGoroutines` | `1000` | 全局并发超时 goroutine 上限，超限新请求返回 `ErrTooManyConcurrentOps` |
+| `maxTimeoutGoroutines` | `1000` | 进程级并发超时 goroutine 上限，超限新请求返回 `ErrTooManyConcurrentOps` |
 | `maxHTMLForRegex` | `1000000` (1MB) | 原始 HTML 媒体扫描的大小上限；超过则整段扫描跳过（防 ReDoS） |
 | `maxRegexMatches` | `1000` | 单次扫描的最大媒体 URL 匹配数，防止媒体密集页面过量分配 |
 
@@ -184,7 +203,7 @@ func (e *FileError) MarshalJSON() ([]byte, error) // 序列化时经 SafePath() 
 
 - HTML 超过 1MB 时，原始 HTML 扫描（`<iframe>`/`<embed>`/`<object>` 的标签属性与裸媒体 URL）不再执行；DOM 遍历对 `<video>`/`<audio>` 的提取不受影响。
 - 批量项数超过 10000 时整批失败（返回 `ErrBatchTooLarge`，非 panic），不会只处理前 10000 项。
-- 同时进行的带超时调用超过 1000 个时，新调用立即返回 `ErrTooManyConcurrentOps`，需要等待在途操作结束再重试。
+- 进程内同时进行的带超时调用超过 1000 个时，新调用立即返回 `ErrTooManyConcurrentOps`，需要等待在途操作结束再重试。
 
 ## 错误处理模式
 
@@ -210,8 +229,10 @@ if err != nil {
 		// 无效 HTML
 	case errors.Is(err, html.ErrFileNotFound):
 		// 文件不存在
+	case errors.Is(err, html.ErrInvalidFilePath):
+		// 无效路径；路径遍历拒绝也命中此哨兵
 	case errors.As(err, &fileErr):
-		// 其他文件错误（含路径遍历，它不匹配任何哨兵）
+		// 其他文件错误（如 AllowedBaseDir 越界，它不匹配任何哨兵）
 		fmt.Println("文件：", fileErr.SafePath())
 	}
 }

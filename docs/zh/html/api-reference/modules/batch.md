@@ -47,6 +47,7 @@ type BatchResult struct {
 - 信号量容量等于 `WorkerPoolSize`：每个 goroutine 启动前先获取槽位（`sem <- struct{}{}`），结束后释放（`<-sem`），因此同时在运行的提取任务数不超过 `WorkerPoolSize`
 - 输入上万项时，同一时刻也仅有 `WorkerPoolSize` 个任务在执行，goroutine 数量不会随输入增长
 - **每项独立运行**：各自做编码检测、各自返回错误，单项失败不影响其他项
+- **单项 panic 被隔离**：某项提取内部 panic 时，该项计入 `Failed`，`Errors[i]` 为包裹 `ErrInternalPanic` 的错误，其余项照常执行
 - **Processor 可安全并发共享**：多个 goroutine 同时调用 `Extract` 是线程安全的，批量方法复用同一个 Processor 实例
 
 :::tip WorkerPoolSize 的取值

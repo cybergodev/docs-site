@@ -23,7 +23,7 @@ sidebar_position: 40
 `InsecureSkipVerify = true` 会使所有 TLS 安全措施失效。HTTPC 在非测试环境向 `stderr` 打印警告，上线前须确认日志中无此警告。
 :::
 
-版本语义补充：`MinTLSVersion`/`MaxTLSVersion` 为 `0` 时回退 1.2/1.3；`Min > Max` 无法通过 `New()` 校验。设置 `TLSConfig` 后版本字段被忽略，`Security.InsecureSkipVerify` 也不再生效（须在 `TLSConfig` 内控制）。审查自定义 `TLSConfig` 时按其自身字段核查。
+版本语义补充：`MinTLSVersion`/`MaxTLSVersion` 为 `0` 时回退 1.2/1.3；`Min > Max` 无法通过 `New()` 校验。设置 `TLSConfig` 后版本字段被忽略；`Security.InsecureSkipVerify = true` 在该路径下仍然生效（单向注入克隆后的配置）。审查自定义 `TLSConfig` 时按其自身字段核查。
 
 ## SSRF 防护
 
@@ -156,7 +156,7 @@ cfg.Retry.EnableJitter = true              // 默认已开，显式写出便于�
 配置 `ProxyRotateOnStatus`（按状态码换代理重试）时，`MaxRetries` 被提升到 `len(ProxyPool)-1`（封顶 10），保证每个代理至少被尝试一次。
 :::
 
-另有两项边界：`io.Reader` 请求体为支持重试重放会被完整缓冲，超过 100MB 直接报错（`retry not supported for streaming bodies`）；`context.Canceled`/`context.DeadlineExceeded` 永不重试，主动取消不会触发重复请求。
+另有两项边界：`io.Reader` 请求体为支持重试重放会被完整缓冲，超过 100MB 直接报错（`retry not supported for streaming bodies exceeding 104857600 bytes`）；`context.Canceled`/`context.DeadlineExceeded` 永不重试，主动取消不会触发重复请求。
 
 ## Cookie 安全
 
@@ -180,7 +180,7 @@ sm, err := httpc.NewSessionManager(cfg)
 | `Checksum` 校验 | 未设置 | 关键文件设置 SHA-256 | `grep Checksum` |
 | `Overwrite` / `ResumeDownload` | `false` | 按需 | 代码审查 |
 
-HTTPC 的 `Download` 内置五层路径防护（UNC 阻止、控制字符过滤、系统路径保护、路径穿越检测、符号链接防护），仍应避免将调用方输入直接作为 `FilePath`。
+HTTPC 的 `Download` 内置六层路径防护（UNC 阻止、控制字符过滤、Windows 设备名/ADS/短名、系统路径保护、路径穿越检测、符号链接防护），仍应避免将调用方输入直接作为 `FilePath`。
 
 ## 资源管理
 
@@ -190,7 +190,7 @@ HTTPC 的 `Download` 内置五层路径防护（UNC 阻止、控制字符过滤�
 | 默认客户端关闭 | — | 长服务退出时 `CloseDefaultClient()` | 代码审查 |
 | `WithContext` 传取消 | — | 是 | 代码审查 |
 | 响应 Body 释放 | 自动 | 普通请求无需手动关闭（也无法关闭） | 确认未自行持有流 |
-| Download 残留清理 | 自动 | 中断或校验失败时自动删除残缺文件 | 确认未绕过 `Download` 自行写盘 |
+| Download 残留清理 | 自动 | 写盘错误与非续传校验失败自动删除残缺文件（续传保留已验证前缀） | 确认未绕过 `Download` 自行写盘 |
 
 ```go
 package main
@@ -236,7 +236,7 @@ func main() {
 ### 响应 Body 与临时文件
 
 - **普通请求**：`Result` 持有的是已读取并复制的字节。HTTPC 在内部完成读取、排空（最多 `min(10MB, MaxResponseBodySize)`，便于连接复用）与关闭，没有需要（也没有入口）手动关闭的 Body
-- **大文件**：用 `Download` 而非普通请求，它流式写盘并支持进度回调与断点续传；传输中断、校验失败、磁盘写错产生的残缺文件会被自动删除
+- **大文件**：用 `Download` 而非普通请求，它流式写盘并支持进度回调与断点续传；磁盘写错与非续传校验失败产生的残缺文件会被自动删除，续传下载校验失败时保留已验证前缀并回退到续传前偏移
 - **`client.Close()`**：关闭空闲连接、DoH 解析器与连接池，幂等可重复调用；关闭后的客户端再发请求返回 `ErrClientClosed`
 
 ## 监控与审计
@@ -252,7 +252,7 @@ auditCfg.OnAudit = func(event httpc.AuditEvent) {
     data, _ := json.Marshal(event)
     log.Println(string(data))
 }
-auditCfg.Format = "json"
+auditCfg.Format = "json" // Format 是保留字段、无效果；输出格式由 OnAudit 回调决定（如上 json.Marshal）
 auditCfg.IncludeHeaders = true
 auditCfg.MaskHeaders = []string{"Authorization", "Cookie", "Set-Cookie", "X-API-Key"}
 auditMiddleware := httpc.AuditMiddleware(auditCfg)

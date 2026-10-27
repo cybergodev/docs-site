@@ -342,7 +342,7 @@ result.Unmarshal(&repo)
 fmt.Printf("%s: ⭐ %d\n", repo.FullName, repo.Stars)
 ```
 
-Key points: middleware is configured in `MiddlewareConfig.Middlewares`, and the slice order is the outer-to-inner execution order. `LoggingMiddleware` records request logs, `RecoveryMiddleware` catches panics, and `RequestIDMiddleware` generates a unique ID per request. See [Middleware Chain](./middleware-chain) for the model.
+Key points: middleware is configured in `cfg.Middleware.Middlewares`, and the slice order is the outer-to-inner execution order. `LoggingMiddleware` records request logs, `RecoveryMiddleware` catches panics, and `RequestIDMiddleware` generates a unique ID per request. See [Middleware Chain](./middleware-chain) for the model.
 
 ## Error Handling and Retry
 

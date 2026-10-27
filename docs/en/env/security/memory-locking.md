@@ -42,7 +42,7 @@ Memory (RAM)                   Disk (Swap/Page File)
 | Windows | `VirtualLock` / `VirtualUnlock` | ✅ |
 | Other platforms (FreeBSD and other BSDs, Solaris, WASM) | N/A | ❌ (no locking implementation) |
 
-Platforms other than Linux, macOS, and Windows have no locking implementation: `IsMemoryLockSupported()` returns `false`, and the lock attempt returns an "unsupported platform" error, which is recorded. `SecureValue` still works, but with locking enabled `Masked()` reports `lock-failed`. With locking disabled, no lock status is appended.
+Platforms other than Linux, macOS, and Windows have no locking implementation: `IsMemoryLockSupported()` returns `false`, and the lock attempt returns an "unsupported platform" error, which is stored on the value (`MemoryLockError()` exposes it). `SecureValue` still works, but with locking enabled `Masked()` reports `lock-failed`. With locking disabled, no lock status is appended.
 
 Runtime detection:
 
@@ -333,7 +333,7 @@ defer sv.Release()
 |---------|---------------|----------|
 | `lock-failed` in `Masked()` output | Insufficient permissions or an unsupported platform | Grant `CAP_IPC_LOCK` (Linux) or `SeLockMemoryPrivilege` (Windows); on other platforms locking is unavailable |
 | Repeated strict-mode warnings | A locking failure on every `SecureValue` creation | Check `RLIMIT_MEMLOCK` (`ulimit -l`), or disable strict mode |
-| `IsMemoryLockSupported()` returns false | The platform is not Linux, macOS, or Windows (FreeBSD, other BSDs, Solaris, WASM) | There is no locking implementation; the attempt fails and the error is recorded. Use other measures such as encrypted storage |
+| `IsMemoryLockSupported()` returns false | The platform is not Linux, macOS, or Windows (FreeBSD, other BSDs, Solaris, WASM) | There is no locking implementation; the attempt fails and the error is stored on the value. Use other measures such as encrypted storage |
 | Increased memory usage | Locked pages cannot be swapped out | Shorten the time each `SecureValue` is held; call `Release()` |
 
 ## Related Documentation

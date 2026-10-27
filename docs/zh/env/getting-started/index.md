@@ -1,7 +1,7 @@
 ---
 sidebar_label: "快速开始"
 title: "快速开始 - CyberGo env | 5 分钟入门指南"
-description: "5 分钟上手 CyberGo env 环境变量管理库，涵盖 go get 安装、.env 加载、类型安全读取、GetSecure 安全值、结构体映射、变量展开与 errors.Is 错误处理，并讲解四种配置预设与多环境多文件加载。"
+description: "5 分钟上手 CyberGo env 环境变量管理库，涵盖 go get 安装、.env 加载、类型安全读取、GetSecure 安全值、结构体映射与 errors.Is 错误处理，并讲解四种配置预设与多环境多文件多格式加载。"
 sidebar_position: 1
 ---
 
@@ -127,7 +127,7 @@ timeout := env.GetDuration("TIMEOUT")
 ```
 
 ::: tip 键名解析
-同一批键可以换用不同写法访问：
+同一个键可以用多种写法访问：
 
 ```go
 // JSON: {"app": {"name": "myapp"}}
@@ -142,7 +142,7 @@ fmt.Println(nameFlat, nameDot, nameUpper) // 三者相同
 ```
 
 **解析规则：**
-1. **精确匹配**：优先查找精确键名 `KEY`，包括本身带点的字面键名（如 YAML 顶层键 apnews.com 存储为 APNEWS.COM）
+1. **精确匹配**：优先查找精确键名 `KEY`，包括本身带点的字面键名（如 YAML 顶层键 `apnews.com` 存储为大写形式 APNEWS.COM）
 2. **大写回退**：精确匹配失败时，把键名转为大写再查，`key` → `KEY`
 3. **路径解析**：点号路径转换为下划线，`app.name` → `APP_NAME`
 4. **数字索引**：以索引结尾的键（`hosts.0`）取逗号分隔值中对应位置的元素
@@ -364,7 +364,7 @@ func main() {
 		panic(err)
 	}
 
-	// 验证必需键（加载结束时已检查过一次，这里按当前存储再确认）
+	// 验证必需键（解析时已按单个文件检查过，这里按合并后的存储再确认）
 	if err := loader.Validate(); err != nil {
 		panic(err)
 	}

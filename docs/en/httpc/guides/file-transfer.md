@@ -1,13 +1,13 @@
 ---
 sidebar_label: "File Upload & Download"
 title: "File Upload and Download - CyberGo HTTPC | Upload/Download"
-description: "HTTPC file transfer: WithFile and WithFormData uploads, streaming Download with progress callbacks, resume, SHA-256 checksums, and path security checks."
+description: "HTTPC file transfer: WithFile and WithFormData uploads, streaming Download with resume and SHA-256 checksums, atomic overwrite semantics, and path security."
 sidebar_position: 50
 ---
 
 # File Upload and Download
 
-File transfer means sending file content in a request body, or streaming a response body to local disk.
+File transfer covers uploading file content in a request body and streaming response bodies to local disk.
 
 ## File Upload
 
@@ -39,6 +39,8 @@ func main() {
 	log.Printf("Upload complete: %d", result.StatusCode()) // Sample output: Upload complete: 200 (actual status code depends on the server)
 }
 ```
+
+`WithFile` accepts **bare file names only**, for both the field name and the filename: any name containing a path separator or `..` is rejected outright rather than resolved. Multiple `WithFile` options merge into a single multipart body, and a later option with the same field name overwrites the earlier one.
 
 ### Multipart Form
 
@@ -155,7 +157,7 @@ result, err := httpc.Post(url,
 
 `Download(ctx, url, cfg, options...)` is the download entry point shared by the package-level function, `Client`, and `DomainClient`.
 
-Downloads **always stream**: `WithStreamBody(true)` is attached automatically, and the response body flows from the network straight to disk (`io.Copy`) without buffering the whole file in memory. When a checksum is enabled, the hash is computed during writing, with no second pass over the file.
+Downloads **always stream**: `WithStreamBody(true)` is attached automatically, and the response body flows from the network straight to disk (`io.Copy`) without buffering the whole file in memory. When a checksum is enabled, the hash is computed during writing, with no second pass over the file (one exception: on a resumed download the existing prefix is read back once so it counts toward the full-file hash).
 
 :::warning Downloads are bounded by MaxResponseBodySize
 Streaming to disk **does not mean unbounded size**: the download body is still subject to the client's `Security.MaxResponseBodySize`. `DefaultConfig` uses 10MB; the other presets are `SecureConfig` 5MB, `PerformanceConfig` 50MB, and `MinimalConfig` 1MB.
@@ -267,17 +269,18 @@ The resume decision logic:
 | Any other non-2xx status | Returns an `unexpected status code` error whose message includes a preview of the first 200 bytes of the response body |
 
 :::warning When Overwrite and ResumeDownload are both true
-`ResumeDownload` wins: the existing file is **extended by appending** rather than replaced. On a mid-write failure in resume mode, the bytes already on disk are kept for the next resume attempt. In non-resume mode a failure deletes the half-written file so no corrupt artifact is left behind.
+`ResumeDownload` wins: the existing file is **extended by appending** rather than replaced. On a mid-write failure in resume mode, the bytes already on disk are kept for the next resume attempt; in non-resume mode the failure deletes the half-written temp file and leaves the existing destination untouched. A `.httpc-tmp` temp file left behind by a crashed process is cleaned up (overwritten) by the next download to the same target.
 :::
 
 ### Checksum Verification (SHA-256)
 
 Once `Checksum` is set, HTTPC computes SHA-256 over the data as it streams to disk and compares it against the expected value when the download finishes:
 
-- the comparison is **case-insensitive** (the expected value is normalized to lowercase internally);
-- **on mismatch the downloaded file is deleted and an error returned**, so no tainted artifact is left behind;
+- the comparison is **case-insensitive and ignores leading/trailing whitespace** in the expected value (normalized to lowercase and trimmed internally);
+- **on mismatch an error is returned**: a fresh download deletes its temp file, leaving the existing destination untouched; a resumed download truncates the file back to the offset where this resume attempt started, keeping the already-verified prefix for the next retry;
+- on a resumed download, the expected value must be the hash of the **complete file** — the existing prefix is read back into the hash, so the final verification covers the entire file;
 - on success, `result.ActualChecksum` carries the computed hash for logging;
-- algorithm validity is checked **before the target file is opened**, so a misconfiguration (such as an unknown `ChecksumAlgorithm`) never truncates an existing file on disk.
+- algorithm validity is checked once before the request is sent and again before the target file is opened (SHA-256 only). A misconfiguration (such as an unknown `ChecksumAlgorithm`) never sends a network request and never truncates an existing file on disk.
 
 ```go
 package main
@@ -323,7 +326,7 @@ func main() {
 
 	result, err := client.Download(context.Background(), server.URL, dlCfg)
 	if err != nil {
-		log.Fatal(err) // verification failed: the file has been deleted; the error includes expected and actual values
+		log.Fatal(err) // verification failed: the temp file has been deleted; the error includes the expected and actual values
 	}
 	fmt.Printf("Checksum verified: %s\n", result.ActualChecksum) // Output: Checksum verified: 2f2b7c... (SHA-256 of payload)
 }
@@ -355,13 +358,14 @@ A summary of how downloads treat the target file. Pair with the `ErrFileExists` 
 |----------|----------|
 | Target file exists, both `Overwrite`/`ResumeDownload` false | Returns `ErrFileExists`; the file is not modified |
 | Target path is a directory | Returns an error |
-| `Overwrite = true` (non-resume) | Overwrites via `O_TRUNC` |
-| `ResumeDownload = true` and the server supports Range | Appends via `O_APPEND` |
-| Write/flush (sync/close) failure | Non-resume: the partial file is deleted; resume: existing bytes are kept |
-| Checksum mismatch | The downloaded file is deleted |
-| Requested algorithm unsupported (SHA-256 only) | Error returned **before** the file is opened; existing files are not truncated |
+| `Overwrite = true` (non-resume) | Writes to a temp file `<target>.httpc-tmp` in the same directory, then atomically replaces the target via `os.Rename` once verification passes |
+| `ResumeDownload = true` and the server supports Range | Appends to the target file itself via `O_APPEND` |
+| Write/flush (sync/close) failure | Non-resume: the temp file is deleted and the target stays unchanged; resume: existing bytes are kept |
+| Checksum mismatch | Non-resume: temp file deleted, target unchanged; resume: truncated back to the resume start offset, prefix kept |
+| Requested algorithm unsupported (SHA-256 only) | Error returned **before the request is sent**; existing files are never touched |
 | Target directory missing | Created recursively (mode 0755); file mode 0644 |
 | Empty path | Returns `ErrEmptyFilePath` |
+| Concurrent downloads to the same target path | Serialized in-process: the later download returns `ErrDownloadInProgress` immediately instead of blocking |
 
 On error status codes (anything other than 200/206), the error message includes a preview of the first 200 bytes of the response body for troubleshooting. Up to 1MiB of the body is also drained so the connection can return to the pool for reuse.
 
@@ -415,6 +419,7 @@ File downloads include several built-in security layers, all applied **before th
 | Length limit | Paths are capped at 4096 characters; longer paths are rejected outright |
 | System path protection | Writing to system directories is forbidden: on Windows this covers `C:\Windows\`, `C:\Program Files\`, and `%SystemRoot%`-style environment-variable expansions; on Linux/macOS it covers `/etc/`, `/usr/`, `/bin/`, `/System/`, `/Library/`, and more |
 | Symlink detection | Rejected if the target itself is a symlink, or if any parent directory resolves into a system directory (TOCTOU protection, checked recursively up to 32 levels) |
+| Windows-specific checks | Rejects DOS device names (`CON`, `COM1`, etc., including extension and trailing-space variants), NTFS alternate data streams (`file.txt:ads`), and 8.3 short-name aliases in directory components (`PROGRA~1`) that could otherwise bypass the system-path and symlink checks |
 | File size limit | Subject to the `MaxResponseBodySize` limit |
 
 :::tip Directories are validated too

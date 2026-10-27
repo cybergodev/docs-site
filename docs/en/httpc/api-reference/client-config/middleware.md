@@ -7,7 +7,7 @@ sidebar_position: 50
 
 # Middleware
 
-:::tip
+:::tip Architecture overview
 This page is the **built-in middleware reference**. For the overall Handler-pipeline architecture, the onion model, and writing custom middleware, see [Handler Pipeline / Handler & Middleware Chain](../handler/handler-chain).
 :::
 
@@ -122,7 +122,7 @@ func RequestIDMiddleware(config *RequestIDConfig) MiddlewareFunc
 Adds a unique ID to each request. Pass `nil` to use [`DefaultRequestIDConfig()`](#defaultrequestidconfig) (`"X-Request-ID"` header + `crypto/rand` generator). If the request already has a header with the same name, the original value is preserved (not overwritten).
 
 :::tip
-The default generator uses `crypto/rand`, producing unpredictable IDs suitable for security-sensitive scenarios.
+The default generator reads 16 bytes from `crypto/rand` and hex-encodes them (32 characters). The IDs are unpredictable, which suits security-sensitive scenarios.
 :::
 
 #### RequestIDConfig
@@ -179,7 +179,7 @@ Middleware-level timeout control. Pass `nil` to use [`DefaultTimeoutMiddlewareCo
 
 The timeout context is derived from the **request's own** `Context()` (a cancel/deadline preset via `WithContext` is respected rather than overridden); the derived deadline is written back to the request object passed to the engine.
 
-:::warning
+:::warning Do not use for Download or streaming requests
 `TimeoutMiddleware`'s `defer cancel()` fires immediately after the handler returns (once the response headers are received), before the response body has been read. The middleware therefore rejects streaming requests on entry: a `Download` or `WithStreamBody` request returns `TimeoutMiddleware is incompatible with streaming responses`.
 
 For streaming/download scenarios, use [`WithTimeout`](../core/options#withtimeout) instead.
@@ -409,10 +409,10 @@ ctx = context.WithValue(ctx, httpc.UserIDKey, "user-123")
 result, err := client.Request(ctx, "GET", url)
 ```
 
-| Constant | Type | Description |
-|----------|------|-------------|
-| `SourceIPKey` | `auditContextKey` | Source-IP context key |
-| `UserIDKey` | `auditContextKey` | User-ID context key |
+| Constant | Type | Underlying value | Description |
+|----------|------|--------|-------------|
+| `SourceIPKey` | `auditContextKey` | `"source_ip"` | Source-IP context key |
+| `UserIDKey` | `auditContextKey` | `"user_id"` | User-ID context key |
 
 ## See Also
 

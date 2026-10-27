@@ -55,7 +55,7 @@ result, err := httpc.Get("https://api.example.com/me",
 )
 ```
 
-Bearer 令牌之外，HTTPC 提供三种认证与请求头写法。
+Bearer 之外，认证与请求头还有三种常用写法。
 
 ```go
 // Basic 认证
@@ -185,7 +185,7 @@ result, err = httpc.Post("https://httpbin.org/post",
 `WithBody` 按输入类型推断编码；第二个参数强制指定编码类型：
 
 ```go
-// map 会被强制按 JSON 编码（而不是走通用格式化分支）
+// map[string]string 自动检测为表单编码，此处强制按 JSON 编码
 result, err := httpc.Post("https://httpbin.org/post",
     httpc.WithBody(map[string]string{"key": "value"}, httpc.BodyJSON),
 )

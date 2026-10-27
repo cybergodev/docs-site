@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Error Handling"
 title: "Error Handling - CyberGo env | Sentinel Errors and Recovery"
-description: "CyberGo env error handling guide: errors.Is for 16 sentinel errors, errors.As context from ParseError and SecurityError, Unwrap tracing, recovery strategies."
+description: "CyberGo env error handling guide: errors.Is for sentinel errors, errors.As context from ParseError and SecurityError, Unwrap tracing, recovery strategies."
 sidebar_position: 5
 ---
 
@@ -52,7 +52,7 @@ var (
 )
 ```
 
-**Forbidden key check (actually returns `*SecurityError`, matches `ErrSecurityViolation`):**
+**Forbidden key check (actually returns `*SecurityError`, matching both `ErrSecurityViolation` and the more specific `ErrForbiddenKey`):**
 
 ```go
 err := loader.Set("PATH", "/malicious")
@@ -385,6 +385,8 @@ func handleLoadError(err error) {
 
 ### Graceful Degradation
 
+When the configuration file is missing, fall back to built-in defaults and treat every other error as fatal. The example below disables `Filenames` auto-loading, loads explicitly via `LoadFiles`, and handles `ErrFileNotFound` on its own:
+
 ```go
 func loadConfig() *Config {
     cfg := env.ProductionConfig()
@@ -448,7 +450,7 @@ func loadWithRetry(filenames []string, maxRetries int) error {
 }
 ```
 
-Trigger condition: by default (`FailOnMissingFile=false`), `LoadFiles` **silently skips** missing files, so the `ErrFileNotFound` branch above is reachable only with `FailOnMissingFile=true` (the `ProductionConfig` preset sets it).
+Trigger condition: by default (`FailOnMissingFile=false`), `LoadFiles` **silently skips** missing files, so the `ErrFileNotFound` branch above is reachable only with `FailOnMissingFile=true` (the `ProductionConfig` preset sets it). The backoff in the example is linear (retry `i` waits `i+1` seconds) and only `ErrFileNotFound` is retried; oversized files, parse failures, and other errors return immediately.
 
 ## Complete Example
 
@@ -553,6 +555,7 @@ Beyond the common items listed in the [sentinel errors](#sentinel-errors) sectio
 | `ErrNotInitialized` | A package-level function was called before the default loader was initialized (`Set`/`Delete`/`Validate`/`ParseInto`) |
 | `ErrAlreadyInitialized` | Calling `Load()` again after the default loader is initialized |
 | `ErrDuplicateKey` | A duplicate key inside one document (`DuplicateKeyPolicy = DuplicateKeyError`), or two different YAML/JSON paths that flatten to the same key name |
+| `ErrAuditFailed` | An audit event was lost while fail-closed auditing (`AuditFailClosed`) was enabled — the handler errored, panicked, or the channel was full; the operation that lost its audit trail returns this error instead of succeeding silently |
 
 ### Helper Predicates
 

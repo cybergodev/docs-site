@@ -112,11 +112,13 @@ type RetryPolicy interface {
 
 Custom retry strategy interface.
 
-| Method | Description |
-|--------|-------------|
-| `ShouldRetry(resp, err, attempt)` | Returns whether to retry; `attempt` starts from 0 |
-| `GetDelay(attempt)` | Returns the wait time before the next retry |
-| `MaxRetries()` | Returns the maximum retry count |
+| Method | Signature | Description |
+|--------|------|------|
+| `ShouldRetry` | `ShouldRetry(resp ResponseReader, err error, attempt int) bool` | Returns whether to retry; a non-nil `err` means the request failed (in which case `resp` may be nil), and `attempt` starts from 0 |
+| `GetDelay` | `GetDelay(attempt int) time.Duration` | Returns the wait time before the next retry |
+| `MaxRetries` | `MaxRetries() int` | Returns the maximum retry count |
+
+The fully qualified method names are `RetryPolicy.ShouldRetry`, `RetryPolicy.GetDelay`, and `RetryPolicy.MaxRetries`.
 
 :::tip Type Publicly Exported
 The `resp` parameter type `ResponseReader` in `ShouldRetry` is exported by the `httpc` package as a public type alias (`httpc.ResponseReader`, declared in `types.go`), so external packages can reference it directly. A custom `RetryPolicy` can therefore live in any business package. Most cases are covered by `RetryConfig` and the `WithMaxRetries` option.
@@ -264,6 +266,8 @@ Read-only access to request data:
 | `MaxRedirects` | `MaxRedirects() *int` | Maximum redirect count (nil means use the default) |
 | `StreamBody` | `StreamBody() bool` | Whether to stream the request body |
 
+The fully qualified method names of the 12 methods are `RequestReader.Method`, `RequestReader.URL`, `RequestReader.Headers`, `RequestReader.QueryParams`, `RequestReader.Body`, `RequestReader.Timeout`, `RequestReader.MaxRetries`, `RequestReader.Context`, `RequestReader.Cookies`, `RequestReader.FollowRedirects`, `RequestReader.MaxRedirects`, `RequestReader.StreamBody`.
+
 #### RequestWriter
 
 Write-only access to request data, mirroring the read methods of `RequestReader`:
@@ -283,6 +287,8 @@ Write-only access to request data, mirroring the read methods of `RequestReader`
 | `SetFollowRedirects` | `SetFollowRedirects(*bool)` | Set whether to follow redirects |
 | `SetMaxRedirects` | `SetMaxRedirects(*int)` | Set the maximum redirect count |
 | `SetStreamBody` | `SetStreamBody(bool)` | Set whether to stream the body |
+
+The 13 methods mirror the read methods of `RequestReader` one-to-one. The fully qualified method names are `RequestWriter.SetMethod`, `RequestWriter.SetURL`, `RequestWriter.SetHeaders`, `RequestWriter.SetHeader`, `RequestWriter.SetQueryParams`, `RequestWriter.SetBody`, `RequestWriter.SetTimeout`, `RequestWriter.SetMaxRetries`, `RequestWriter.SetContext`, `RequestWriter.SetCookies`, `RequestWriter.SetFollowRedirects`, `RequestWriter.SetMaxRedirects`, `RequestWriter.SetStreamBody`.
 
 #### ResponseReader
 
@@ -306,6 +312,8 @@ Read-only access to response data; also the parameter type of `RetryPolicy.Shoul
 | `RequestURL` | `RequestURL() string` | Actual request URL (including the final URL after redirects) |
 | `RequestMethod` | `RequestMethod() string` | Request method |
 
+The fully qualified method names of the 15 methods are `ResponseReader.StatusCode`, `ResponseReader.Status`, `ResponseReader.Proto`, `ResponseReader.Headers`, `ResponseReader.Body`, `ResponseReader.RawBody`, `ResponseReader.ContentLength`, `ResponseReader.Duration`, `ResponseReader.Attempts`, `ResponseReader.Cookies`, `ResponseReader.RedirectChain`, `ResponseReader.RedirectCount`, `ResponseReader.RequestHeaders`, `ResponseReader.RequestURL`, `ResponseReader.RequestMethod`.
+
 #### ResponseWriter
 
 Write-only access to response data:
@@ -328,6 +336,8 @@ Write-only access to response data:
 | `SetRequestURL` | `SetRequestURL(string)` | Set the request URL |
 | `SetRequestMethod` | `SetRequestMethod(string)` | Set the request method |
 | `SetHeader` | `SetHeader(key string, values ...string)` | Set a single response header (add/modify) |
+
+The fully qualified method names of the 16 methods are `ResponseWriter.SetStatusCode`, `ResponseWriter.SetStatus`, `ResponseWriter.SetProto`, `ResponseWriter.SetHeaders`, `ResponseWriter.SetBody`, `ResponseWriter.SetRawBody`, `ResponseWriter.SetContentLength`, `ResponseWriter.SetDuration`, `ResponseWriter.SetAttempts`, `ResponseWriter.SetCookies`, `ResponseWriter.SetRedirectChain`, `ResponseWriter.SetRedirectCount`, `ResponseWriter.SetRequestHeaders`, `ResponseWriter.SetRequestURL`, `ResponseWriter.SetRequestMethod`, `ResponseWriter.SetHeader`.
 
 :::tip ResponseWriter.SetHeader does not canonicalize keys
 `ResponseWriter.SetHeader` stores the key **exactly as given, with no canonicalization**, unlike the request-side `RequestWriter.SetHeader`. Writing `content-type` alongside a server-sent canonical `Content-Type` yields two distinct entries. To replace an existing response header, pass the `http.CanonicalMIMEHeaderKey` spelling.

@@ -17,7 +17,7 @@ sidebar_position: 5
 
 All methods of `SecureValue` are thread-safe and can be called concurrently from multiple goroutines:
 
-- **Read methods** (`String()`, `Bytes()`, `Length()`, `Masked()`) take read locks, so concurrent reads are safe
+- **Read methods** (`String()`, `Reveal()`, `Bytes()`, `Length()`, `Masked()`) take read locks, so concurrent reads are safe
 - **Close methods** (`Close()`, `Release()`) take write locks, so zeroing is safe
 - **Status checks**: `IsClosed()` reads the atomic closed bit; `IsMemoryLocked()` and `MemoryLockError()` take the read lock
 
@@ -74,7 +74,7 @@ Creates a secure value wrapper.
 **Behavior:**
 - Takes an object from a pool to reduce allocations
 - Sets a GC finalizer that zeroes the data
-- If memory locking is enabled, tries to lock the memory. A failure is silent here; use `NewSecureValueStrict` or strict mode to observe it.
+- If memory locking is enabled, tries to lock the memory. A failure is silent here; the error is readable from `MemoryLockError()` (and surfaced by `NewSecureValueStrict` or strict mode).
 
 ```go
 secret := env.NewSecureValue("my-secret-password")
@@ -247,7 +247,7 @@ if secret != nil {
 func (sv *SecureValue) Masked() string
 ```
 
-Returns a masked value for log output. Unlike `String()`, it also reports the memory-lock state.
+Returns a masked value for log output. The output is exactly what `String()` produces — `String()` simply calls `Masked()`.
 
 **Returns:**
 - `string` - masked representation
@@ -258,11 +258,7 @@ Returns a masked value for log output. Unlike `String()`, it also reports the me
 - Empty value: `[SECURE:0 bytes]`, with no suffix even when locking is enabled
 - Non-empty: `[SECURE:N bytes]`, plus a lock suffix only when the global memory-locking switch is true at call time: ` locked`, ` lock-failed`, or ` unlocked`
 
-The suffix reflects the global switch **at the moment `Masked()` is called** together with the value's own lock result; when `IsMemoryLockEnabled()` is false, no suffix is added at all. See "Masked output format" below for the full rules behind each suffix.
-
-:::tip
-The lock suffix is decided by the global switch **at the time `Masked()` is called**: when the switch is false, no suffix is added; when it is true, the suffix reflects the value's own lock result: `locked` / `lock-failed` / `unlocked` (values created before locking was enabled report `unlocked`). See [Memory Locking](../security/memory-locking) for the full state rules and troubleshooting.
-:::
+The suffix reflects the global switch **at the moment `Masked()` is called** together with the value's own lock result; when `IsMemoryLockEnabled()` is false, no suffix is added at all. See "Masked output format" below for the full rules behind each suffix, and [Memory Locking](../security/memory-locking) for state troubleshooting.
 
 ```go
 secret := env.GetSecure("API_KEY")
@@ -548,7 +544,7 @@ Reports whether the current platform supports memory locking.
 | wasm | ❌ |
 
 :::tip Platform fallback
-Memory locking is implemented on Linux, macOS, and Windows only. Every other platform (FreeBSD and other BSDs, Solaris, wasm) has no locking implementation:
+On platforms without a locking implementation (the ❌ rows in the table above):
 
 - `IsMemoryLockSupported()` returns false.
 - `SecureValue` still works normally.
@@ -680,7 +676,7 @@ masked := env.MaskKey("DB_PASSWORD")
 func SanitizeForLog(s string) string
 ```
 
-Masks sensitive values inside a string. It recognizes both `key=value` and YAML-style `key: value` pairs, keeps the key and the separator, and replaces the value with `[MASKED]`. Control characters are stripped; `\n` and `\t` are kept.
+Masks sensitive values inside a string. It recognizes both `key=value` and YAML-style `key: value` pairs, keeps the key and the separator, and replaces the value with `[MASKED]`; an HTTP Authorization `Bearer <token>` is masked as well. Control characters are stripped; `\n` and `\t` are kept.
 
 **Parameters:**
 - `s` - original string
@@ -714,7 +710,7 @@ Both steps are needed. Truncation alone can leave a `password=...` pair in place
 - `string` - the masked string
 
 ```go
-// Long strings are truncated (keeps first 47 characters and appends "...")
+// Long strings are truncated (keeps first 47 bytes and appends "...")
 long := "This is a very long string that exceeds 50 characters"
 clean := env.MaskSensitiveInString(long)
 // Returns: "This is a very long string that exceeds 50 char..."
@@ -806,19 +802,16 @@ var secureValuePool = sync.Pool{
 
 ### GC Finalizer
 
-The finalizer is installed once, when the object is first created. It zeroes the data if the object becomes unreachable without being closed:
-
-```go
-runtime.SetFinalizer(sv, (*SecureValue).finalize)
-```
+The finalizer is installed once, when the object is first created, and kept for its lifetime (see Object Pool above). It zeroes the data once the object becomes unreachable; firing on an already-closed object is a no-op.
 
 ### Secure Zeroing
 
-The zeroing loop goes through `unsafe.Pointer` so the compiler cannot optimize it away. It must run with the `sv.mu` lock held:
+The slice is zeroed over its **full capacity** (including any `[len, cap)` residue), writing through `unsafe.Pointer` so the compiler cannot optimize it away. It must run with the `sv.mu` lock held:
 
 ```go
 func (sv *SecureValue) clearDataLocked() {
-    if len(sv.data) == 0 {
+    full := sv.data[:cap(sv.data)]
+    if len(full) == 0 {
         return
     }
     // Unlock memory (if locked)
@@ -826,11 +819,11 @@ func (sv *SecureValue) clearDataLocked() {
         internal.UnlockMemory(sv.data)
         sv.locked = false
     }
-    dataPtr := unsafe.Pointer(&sv.data[0])
-    for i := range sv.data {
-        *(*byte)(unsafe.Pointer(uintptr(dataPtr) + uintptr(i))) = 0
+    dataPtr := unsafe.Pointer(&full[0])
+    for i := range full {
+        *(*byte)(unsafe.Add(dataPtr, i)) = 0
     }
-    runtime.KeepAlive(sv.data)
+    runtime.KeepAlive(full)
     sv.data = nil
     sv.lockErr = nil
 }

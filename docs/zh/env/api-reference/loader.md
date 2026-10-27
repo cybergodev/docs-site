@@ -66,6 +66,7 @@ func New(cfg ...Config) (*Loader, error)
 **行为：**
 - 验证配置有效性
 - 创建内部组件（验证器、审计器、展开器）与各格式解析器
+- 不提供 Config 或传入全零 Config 时使用 `DefaultConfig()`，其 `Filenames` 为 `[".env"]`——`New()` 默认会尝试加载 `.env`，需要空加载器时须显式清空 `Filenames`
 - `cfg.Filenames` 非空时自动加载文件；加载失败会清理内部组件并返回错误
 - `cfg.AutoApply` 为 true 时自动应用到进程环境
 - 不设置默认加载器（那是 `Load`/`LoadWithConfig` 的职责）
@@ -154,7 +155,7 @@ err := loader.LoadFiles("config.env", "settings.json", "secrets.yaml")
 
 ### 键名解析
 
-所有获取方法都支持同一套键名解析规则：
+各获取方法共用同一套键名解析规则（唯一例外：`GetSecure` 不做索引回退）：
 
 | 输入键名 | 解析结果 |
 |----------|----------|
@@ -566,7 +567,7 @@ func (l *Loader) Apply() error
 将内存中的变量写入进程环境（`os.Environ`）。
 
 **返回：**
-- `error` - 应用错误；首个 `Setenv` 失败的键会中止本轮回合；已写入的键不会撤销，`IsApplied()` 保持 `false`——请把失败理解为「部分应用」而非「什么都没应用」
+- `error` - 应用错误；首个 `Setenv` 失败的键会中止本轮回合；已写入的键不会撤销，`IsApplied()` 保持 `false`（详见下方「失败处理」）
 
 **行为：**
 - 遍历所有已加载的变量，逐个调用 `Setenv` 写入进程环境
@@ -935,7 +936,7 @@ loader.Close()
 `Stat()` 大小检查与实际读取之间存在理论上的替换窗口，库用三层机制兜底：
 
 1. 解析器内部用强制大小上限的加固读取路径包装文件流
-2. 即使文件在检查后增长，也会在硬性上限（100 MB）处截断，防止内存耗尽
+2. 即使文件在检查后增长，读取也会在 `MaxFileSize`（至多 100 MB 的硬性上限）处停止并返回 `ErrFileTooLarge`，防止内存耗尽
 3. 解析出的内容再统一做大小、格式与安全检查，不依赖最初 `Stat()` 的结果
 
 ## 相关文档

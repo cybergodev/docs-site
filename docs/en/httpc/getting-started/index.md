@@ -26,7 +26,7 @@ Import it in your code:
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC requires Go 1.27 or later and has 7 direct dependencies, all compiled into the package (the source has no build tags). `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp serve the `Security.TLSFingerprint` path and simply do not run when fingerprinting is off. Without the fingerprint feature the standard stack is used, and no configuration is required to send a request.
+HTTPC requires Go 1.27 or later and has 7 direct dependencies, all compiled in unconditionally (there are no build tags for trimming features). `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp serve the `Security.TLSFingerprint` path and simply do not run when fingerprinting is off, so requests go out over the standard stack, and no configuration is required to send a request.
 
 ## Basic Requests
 
@@ -84,7 +84,7 @@ A client holds resources such as the connection pool, so call `Close()` when don
 |--------|----------|-----------------|
 | `DefaultConfig()` | General scenarios | Secure defaults, SSRF protection enabled |
 | `SecureConfig()` | Security-sensitive scenarios | Disables auto-redirects, strict timeouts |
-| `PerformanceConfig()` | High-throughput scenarios | Large connection pool, long timeouts, cookies enabled |
+| `PerformanceConfig()` | High-throughput scenarios | Large connection pool, overall timeout tightened for fast failure (60s), cookies enabled |
 | `TestingConfig()` | Test environments | Disables security checks and HTTP/2, cookies enabled |
 | `MinimalConfig()` | Lightweight requests | No retries, no redirects |
 

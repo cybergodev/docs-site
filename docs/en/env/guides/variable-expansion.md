@@ -39,12 +39,12 @@ URL=$HOST:8080
 
 | Syntax | Description |
 |--------|-------------|
-| `${VAR:-default}` | Use default if VAR doesn't exist |
-| `${VAR:=default}` | Use default if VAR doesn't exist, and assign it back to the variable |
+| `${VAR:-default}` | Use default if VAR is unset; keep the original value (even an empty one) when defined; never writes back |
+| `${VAR:=default}` | Use default and write it back to the variable when VAR is unset; no write-back when defined |
 | `${VAR:?error}` | Return an error if VAR doesn't exist or is empty |
 
 :::warning Self-reference restriction
-The variable referenced by `:-`, `:=`, or `:?` must be **different** from the key being assigned. A self-reference like `KEY=${KEY:-default}` counts as a circular reference and fails loading with `ErrExpansionDepth`. To give a key a default, assign a literal directly (`KEY=default`) or reference another variable.
+The variable referenced by `:-`, `:=`, or `:?` must be **different** from the key being assigned. A self-reference like `KEY=${KEY:-default}` counts as a circular reference and fails loading with an error matching `ErrExpansionDepth`. To give a key a default, assign a literal directly (`KEY=default`) or reference another variable.
 :::
 
 ---
@@ -80,7 +80,7 @@ DB_URL=${DB_HOST}:${DB_PORT:-5432}
 
 ### `${VAR:=default}` - Use Default Value and Assign Back
 
-Unlike `${VAR:-default}`, `:=` **assigns** the expanded default back to the variable. Later references in the same file see the written value, and it appears in the map after loading. A variable that already exists — from the file or from the process environment — is not reassigned.
+Unlike `${VAR:-default}`, `:=` **assigns** the expanded default back to the variable when the reference cannot resolve it. The written value is visible to keys processed later in the same file (in sorted order) and appears in the map after loading. A variable that already exists is not reassigned.
 
 ```bash
 # ASSIGNED is written back as "created" when undefined, and B expands to "created"
@@ -89,22 +89,24 @@ B=${ASSIGNED:=created}
 ```
 
 :::info Relation to `:-`
-`${VAR:-default}` only returns the default value without writing it back. `${VAR:=default}` returns the default and **assigns it back** to the variable store when the variable doesn't exist; the write-back is visible to later references in the same file and to `Get`/`Apply`, and processing follows key-name sort order. If the variable already exists, `:=` returns the original value and does not reassign.
+`:-` only returns the default value and never writes back. `:=` writes back only when the reference cannot resolve the variable; a defined variable (even an empty string) degrades to `:-` behavior. The assigned default is itself expanded first.
 :::
 
 ---
 
 ### `${VAR:?error}` - Error on Missing
 
-Returns an error if the variable doesn't exist or is empty:
+Fails the load with an error if the variable doesn't exist or is empty:
 
 ```bash
 # If DATABASE_URL is undefined, loading fails with an error
 DB_URL=${DATABASE_URL:?Database URL is required}
 
-# If API_TOKEN is undefined, error
+# If API_TOKEN is undefined or empty, loading fails with an error
 AUTH_TOKEN=${API_TOKEN:?API_TOKEN must be set}
 ```
+
+The error is a `*ExpansionError` (`Kind == ExpansionRequiredKind`), and `errors.Is(err, env.ErrExpansionDepth)` returns false for it. The message text after the colon never enters the error. In the `Error()` output the key name is always rendered as `[MASKED]` (SEC-005, regardless of whether the key is sensitive); the original key name is preserved in the `Key` field, for in-program checks after `errors.As`.
 
 **Use cases:**
 - Required configuration item validation
@@ -188,18 +190,20 @@ Circular references are detected and fail loading:
 A=${B}
 B=${A}
 
-# Loading returns an ErrExpansionDepth error
+# Loading returns an error matching ErrExpansionDepth
 ```
+
+Self-references such as `KEY=${KEY}` and `KEY=${KEY:-default}` are treated as cycles too.
 
 ---
 
 ## Expansion Depth Limit
 
-The default maximum expansion depth is 5, and the hard limit is 20:
+The default maximum expansion depth is 5, and the hard limit is 20. Setting `MaxExpansionDepth` above 20 makes `Config.Validate()` return a `ValidationError` (`Field == "MaxExpansionDepth"`), and `New()` fails with it:
 
 ```go
 cfg := env.DefaultConfig()
-cfg.MaxExpansionDepth = 10  // Custom depth
+cfg.MaxExpansionDepth = 10  // Custom depth, range 1–20
 ```
 
 | Constant | Value | Description |
@@ -207,7 +211,7 @@ cfg.MaxExpansionDepth = 10  // Custom depth
 | `DefaultMaxExpansionDepth` | 5 | Default value (public API) |
 
 :::info
-The hard limit is 20 (an internal limit). A configured `MaxExpansionDepth` cannot exceed it.
+The hard limit of 20 is an internal limit (`internal.HardMaxExpansionDepth`). A configured `MaxExpansionDepth` above it is not silently clamped — configuration validation fails instead.
 :::
 
 ---

@@ -466,7 +466,7 @@ ENABLED=true
 ## 自定义序列化
 
 ::: tip 两种自定义接口的生效范围
-- **字段级**：结构体字段的自定义编解码，实现标准库 `encoding.TextMarshaler` / `encoding.TextUnmarshaler`（`MarshalText()` / `UnmarshalText([]byte)`）。当结构体被 `env.Marshal`/`env.UnmarshalInto` 处理时，逐字段逻辑会识别这两个接口。
+- **字段级**：结构体字段的自定义编解码，实现标准库 `encoding.TextMarshaler` / `encoding.TextUnmarshaler`（`MarshalText()` / `UnmarshalText([]byte)`）。当结构体被 `env.Marshal`/`env.UnmarshalInto` 处理时，逐字段逻辑会识别这两个接口（Marshal 侧另识别 `json.Marshaler`）。
 - **顶层**：`env.Marshaler`（`MarshalEnv()`）与 `env.Unmarshaler`（`UnmarshalEnv(map[string]string)`）接口**仅在直接传给 `env.Marshal`/`env.MarshalStruct`/`env.UnmarshalInto` 的顶层值上生效**；若传入的是含该类型字段的外层结构体，则不会被调用。
 :::
 
@@ -746,7 +746,7 @@ func main() {
 }
 ```
 
-含空格、`#`、单引号的值同样走这条加引号路径。不经 Marshal、手工拼接 `.env` 文本时没有这层保护：在默认 `ExpandVariables = true` 下，写进文件的 `$VAR` 会在加载时被展开。
+同样加引号的还有含空格、`#`、单引号、换行或制表符的值，以及字面量 `null`/`~`；空值写成 `""`。引号内 `"`、`\` 与控制字符转义为 `\"`、`\\`、`\n` 等；唯一特殊字符是反斜杠的值（如 `path\to\file`）不加引号、原样输出。不经 Marshal、手工拼接 `.env` 文本时没有这层保护：在默认 `ExpandVariables = true` 下，写进文件的 `$VAR` 会在加载时被展开。
 
 ### MarshalStruct 的字段取舍
 

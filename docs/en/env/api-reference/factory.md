@@ -44,7 +44,7 @@ type ComponentFactory struct {
 func (f *ComponentFactory) Validator() Validator
 ```
 
-Returns the shared validator, which checks key names and values.
+Returns the shared validator, which checks key names and values. A nil receiver returns nil.
 
 ```go
 // Use in a custom parser
@@ -67,7 +67,7 @@ if err := validator.ValidateValue("some value"); err != nil {
 func (f *ComponentFactory) Auditor() FullAuditLogger
 ```
 
-Returns the shared audit logger.
+Returns the shared audit logger. A nil receiver returns nil.
 
 ```go
 auditor := factory.Auditor()
@@ -102,9 +102,12 @@ func (f *ComponentFactory) Close() error
 
 Releases the resources the factory holds. Once closed, neither the factory nor the components created through it are usable.
 
+**Returns:**
+- `error` - the auditor's `Close()` error; nil when already closed or on a nil receiver
+
 **Behavior:**
 - Safe to call repeatedly; every call returns nil
-- Releases auditor resources
+- Closes the auditor when it implements `io.Closer`
 - Uses atomic operations for thread safety
 
 ```go
@@ -121,7 +124,7 @@ defer loader.Close()  // Automatically closes ComponentFactory
 func (f *ComponentFactory) IsClosed() bool
 ```
 
-Reports whether the factory has been closed.
+Reports whether the factory has been closed. A nil receiver counts as closed.
 
 ```go
 if factory.IsClosed() {
@@ -243,7 +246,7 @@ func NewLogAuditHandler(logger *log.Logger) *LogAuditHandler
 Creates an audit handler that writes through a `log.Logger`.
 
 **Parameters:**
-- `logger` - the `log.Logger` to write through
+- `logger` - the `log.Logger` to write through. When nil, the default logger is used (stderr, `[AUDIT] ` prefix, with timestamp)
 
 ```go
 import "log"
@@ -260,7 +263,7 @@ cfg.AuditHandler = env.NewLogAuditHandler(logger)
 [AUDIT] 2024/01/15 10:30:00 action=load success=true reason="loaded files" duration=1.23ms
 ```
 
-Events are emitted as key-value pairs: `action`, `success`, and the quoted `reason`, plus optional `file` and `duration`. The `key` pair is omitted when the event has no key: `ActionLoad` and successful `ActionParse` events carry no key name, while `ActionSet` does — as does a failing `ActionParse` (a duplicate key or an over-long key) — with sensitive keys masked to `[MASKED]` by `MaskValue`. Durations below 1ms are shown in μs, longer ones in ms.
+Events are emitted as key-value pairs: `action`, `success`, and the quoted `reason`, plus optional `file` and `duration`. The `key` pair is omitted when the event has no key: `ActionLoad` and successful `ActionParse` events carry no key name, while `ActionSet` does — as does a failing `ActionParse` (a duplicate key or an over-long key) — with sensitive keys masked to `[MASKED]` by `MaskValue`. `duration` is printed only when positive: below 1ms in μs, otherwise in ms with two decimals.
 
 The `[AUDIT]` prefix and the timestamp come from the `log.Logger` you pass in.
 
@@ -280,7 +283,7 @@ Creates an audit handler that hands events to a channel you own, for asynchronou
 :::warning Channel ownership
 `ChannelAuditHandler` does **not own** the channel, and `Close()` does **not** close it. The caller must close the channel to signal the receiver to stop, and only after the loader using this handler is closed with no `Log` call in flight. Closing early makes the next `Log` panic with send on a closed channel. `Log()` blocks when the channel buffer is full, so pass a buffered channel.
 
-A nil channel never blocks forever: `Log()` returns an error for every event and the event is dropped. That error is not reported to `LoadFiles`, `Set`, or other callers; it surfaces only when `AuditFailClosed` is enabled, so passing nil effectively discards all audit events silently.
+A nil channel never blocks forever: `Log()` returns an error for every event and the event is dropped. That error is not reported to `LoadFiles`, `Set`, or other callers; it surfaces as an audit failure only when `AuditFailClosed` is enabled. With `AuditFailClosed` disabled, passing a nil channel is therefore equivalent to silently discarding every audit event.
 :::
 
 ```go

@@ -89,7 +89,7 @@ B=${ASSIGNED:=created}
 ```
 
 ::: info 与 `:-` 的关系
-`${VAR:-default}` 只返回默认值，不写回变量。`${VAR:=default}` 在变量未定义时既返回默认值，又把默认值写回变量存储；变量已定义时（无论来自文件内还是进程环境）不写回，退化为返回原值。写回的默认值本身也会先展开。
+`:-` 只返回默认值，从不写回。`:=` 的写回只发生在引用解析不到该变量时；变量已定义（含空串）则退化为 `:-` 的行为。写回的默认值本身也会先展开。
 :::
 
 ---
@@ -106,7 +106,7 @@ DB_URL=${DATABASE_URL:?Database URL is required}
 AUTH_TOKEN=${API_TOKEN:?API_TOKEN must be set}
 ```
 
-错误类型为 `*ExpansionError`（`Kind == ExpansionRequiredKind`），`errors.Is(err, env.ErrExpansionDepth)` 对它返回 false。冒号后的提示文本不会进入错误消息，错误中只出现变量名（敏感键名按掩码输出）。
+错误类型为 `*ExpansionError`（`Kind == ExpansionRequiredKind`），`errors.Is(err, env.ErrExpansionDepth)` 对它返回 false。冒号后的提示文本不会进入错误消息；`Error()` 输出中的键名一律掩码为 `[MASKED]`（SEC-005，不区分是否敏感键），原始键名保留在 `Key` 字段，供 `errors.As` 之后的程序内判断。
 
 **使用场景：**
 - 必需配置项校验

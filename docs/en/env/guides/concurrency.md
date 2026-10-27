@@ -103,7 +103,7 @@ A failed `Apply()` means **partially applied**: keys written before the failure 
 
 ### Closing: Close()
 
-`Close()` zeroes and unlocks every value stored in memory (sensitive values are wiped byte by byte, and unlocking happens before zeroing), and closes the component factory if the loader owns it. It is idempotent: a second call on a closed or `nil` loader returns no error.
+`Close()` zeroes and unlocks every value stored in memory (sensitive values are wiped byte by byte, and unlocking happens before zeroing), then closes any custom parsers that implement `io.Closer`, followed by the component factory if the loader owns it. It is idempotent: a second call on a closed or `nil` loader returns no error.
 
 `Close()` zeroes and **unlocks** the in-memory copies. It does **not** undo the process environment: variables previously written there via `Apply`, `AutoApply`, or `Set` with `AutoApply` stay in place. To remove them before shutdown, call `Delete()` per key.
 
@@ -401,8 +401,8 @@ The full TestMain template and process-variable cleanup are in [Testing · Clean
 | Pitfall | Consequence | Do instead |
 |---------|-------------|------------|
 | Calling `Load()` from multiple code paths | Every call after the first returns `ErrAlreadyInitialized` | Initialize once in `main`/`TestMain`; use `ResetDefaultLoader()` in tests |
-| Expecting Get* to report config problems before initialization | Getters return defaults, hiding the issue | Call `Validate()` after startup, or confirm with `Lookup`/`Set` (write paths return `ErrNotInitialized`) |
-| Expecting the process environment to be restored after `Close()` | Applied variables remain in the process environment | `Delete()` each key before closing, or evaluate the impact before enabling `OverwriteExisting` |
+| Expecting Get* to report config problems before initialization | Getters return defaults, hiding the issue | Call `Validate()` after startup, or probe with `Set` (write paths return `ErrNotInitialized`; an uninitialized `Lookup` returns `("", false)` just like a missing key) |
+| Expecting the process environment to be restored after `Close()` | Applied variables remain in the process environment | `Delete()` each key before closing (`Close` only clears the in-memory copies) |
 | Concurrent or repeated writes to the same key without `OverwriteExisting` | Later writes are skipped without an error; stale values are read | Use `DevelopmentConfig`/`TestingConfig`, or set `cfg.OverwriteExisting = true` explicitly |
 | Creating a new loader with `New()` for the same config repeatedly | Duplicate resources and a muddled process environment | Share one loader (it is concurrency-safe), or use global mode |
 | Forgetting to `Close()` an instance loader | Sensitive values in memory are only zeroed at GC | `defer loader.Close()` |

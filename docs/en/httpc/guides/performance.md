@@ -93,7 +93,7 @@ client, _ := httpc.New(cfg)
 
 ## Concurrency Model: One Client Serves All Goroutines
 
-HTTPC's `Client` and `DomainClient` are both **concurrency-safe**: any method may be called by multiple goroutines simultaneously. The library ships dedicated concurrency integration tests (`internal/concurrency`) that exercise the public API under high concurrency.
+HTTPC's `Client` and `DomainClient` are both **concurrency-safe**: any method may be called by multiple goroutines simultaneously. The repository's concurrency-safety tests (the root package's `concurrency_test.go` plus concurrency cases in the internal packages, run with `-race`) cover the public API under high concurrency.
 
 The concurrency model therefore has one form: multiple goroutines share the same `Client`.
 
@@ -270,10 +270,10 @@ HTTP/2 is enabled by default (`EnableHTTP2 = true`) and provides three performan
 :::tip HTTP/2 and the connection pool
 HTTP/2 multiplexing lets a single TCP connection carry multiple simultaneous requests, reducing connection-setup overhead. Under high concurrency to the same host, HTTP/2 throughput is higher than HTTP/1.1.
 
-It falls back to HTTP/1.1 in three cases only:
+It falls back to HTTP/1.1 in the following cases:
 
-- `TestingConfig()` is used (which explicitly disables HTTP/2);
-- the connection does not support ALPN negotiation;
+- HTTP/2 is disabled manually with `Connection.EnableHTTP2 = false` (the `TestingConfig()` preset does exactly this);
+- the connection cannot negotiate HTTP/2 over ALPN;
 - a rotating multi-proxy pool is active (forced automatically; set `EnableProxyPoolHTTP2` to restore HTTP/2 — see [Proxy & Proxy Pool](./proxy#proxy-pools-and-http-2-enableproxypoolhttp2)).
 :::
 
@@ -342,11 +342,9 @@ HTTPC's engine layer uses `sync.Pool` to reuse short-lived objects and lower GC 
 |----------|------|------|
 | `engine.Response` | Response object | Returned to the pool after a request, reused by the next one |
 | `engine.Request` | Request object | Same as above |
-| `strings.Builder` | String building | URL building, error formatting, Config serialization |
+| `bytes.Buffer` | String and encoding buffer | Query-string/URL building, error formatting, Config serialization, JSON/multipart encoding (pre-allocated by initial capacity; `strings.Builder`'s `Reset` discards the backing array, which makes it unsuitable for pooling) |
 | `http.Header` | HTTP header map | Request/response header processing |
-| `bytes.Buffer` | JSON/multipart encoding | Pre-allocated by initial capacity |
-| `time.Timer` | Retry timer | Avoids frequent timer creation |
-| gzip/flate reader | Decompression | Reuses decompressors |
+| gzip/flate reader | Decompression | Reuses decompressors (including the shared 4KB bufio wrapper) |
 
 :::tip Division of labor: object pool vs resultBundle
 Pooling fits short-lived objects whose borrow-return cycle completes inside one request; the caller decides how long a `*Result` is held, so it uses single allocation plus GC reclamation (rationale in the previous section).
@@ -354,23 +352,20 @@ Pooling fits short-lived objects whose borrow-return cycle completes inside one 
 
 ### Low-Allocation Hot Paths
 
-Beyond object pooling, the request hot path carries the following de-allocation optimizations:
+Beyond object pooling, the request hot path carries the following allocation-avoidance optimizations:
 
 | Optimization | Mechanism |
 |--------|------|
 | Batch header deep-copy | `CloneHeader` counts all values first and allocates one shared backing array in a single shot — turning "one allocation per header (N total)" into 1 |
-| Zero-allocation query escaping | Strings that need no escaping are **returned as-is** (zero allocation); when escaping is needed, bytes are written through a pooled buffer |
+| Zero-allocation query escaping | Strings that need no escaping are **written to the builder as-is** (zero intermediate strings); when escaping is needed, bytes are written out one by one in the same buffer |
 | Direct numeric query writes | `int`/`float64`/`bool` and other numeric values are written straight into the builder via `strconv.Append*`, with no intermediate strings |
 | Request-header ownership transfer | For ordinary requests and the download path, the header map on the engine Response is **ownership-transferred** to `Result` rather than cloned |
 | Inline redirect-chain array | The first 8 redirects are recorded in an inline fixed-size array inside a pooled object; an overflow slice is allocated only beyond 8, so chains of up to 8 hops allocate nothing extra |
-| Retry-sleep timer reuse | The `time.Timer` used for retry backoff is pooled and reused, avoiding repeated Timer creation under high-frequency retries |
 | Pool capacity guards | Objects above a threshold are **not returned** to the pool (e.g. header maps > 64 entries, query-builder capacity > 4096), preventing large objects from lingering in pools and occupying more memory |
 
-### Internal Metrics and Health
+### Internal Metrics
 
-The engine collects per-request metrics with **pure atomic operations** (lock-free): total requests, success/failure counts, and a smoothed latency. The smoothed latency follows the moving-average formula `new average = (old average x 9 + this latency) / 10`; an error rate below 10% counts as healthy.
-
-These metrics drive the engine's own health assessment and are **not exposed as public API**.
+The connection pool maintains a handful of metrics internally through atomic counters: current active connections, cumulative connections established, rejected dials, and the admission hit rate (read internally as a snapshot). These metrics serve the engine's own observability and are **not exposed as public API**.
 
 For application-level request metrics, use `MetricsMiddleware` (see the [middleware reference](../api-reference/client-config/middleware)), which reports by method/URL/status code/duration and plugs directly into monitoring systems such as Prometheus.
 

@@ -49,7 +49,7 @@ HTTPC 的安全能力分布在请求生命周期的多个层级。某一层被�
 | TLS 层 | 握手时 | 版本区间（默认 1.2-1.3）、ECDHE+AEAD 密码套件白名单、椭圆曲线偏好、禁止重协商、证书固定 | `internal/connection/pool.go` |
 | 响应层 | 读取响应时 | 响应体/解压双上限、Content-Length 严格校验、流式读取限制 | `internal/engine/response.go` |
 | 输出清洗层 | 记录日志/错误/审计时 | URL 凭据掩码、敏感查询参数 `[REDACTED]`、敏感请求头掩码 | `internal/validation/sanitize.go` |
-| 下载层 | 写文件时 | 五层路径防护（UNC/控制字符/系统目录/穿越/符号链接）与 SHA-256 完整性校验 | `download.go` |
+| 下载层 | 写文件时 | 六层路径防护（UNC/控制字符/Windows 专用风险/系统目录/穿越/符号链接）与 SHA-256 完整性校验 | `file_security.go`、`download.go` |
 
 以 SSRF 为例，三层防线协同工作。预检层按主机名拦截 `localhost` 与私网 IP 字面量，不解析 DNS，无网络开销。重定向层对每一跳目标重复校验。连接层在拨号前解析 DNS 并校验真实 IP，攻击者使用 DNS 重绑定也难以绕过。详见 [SSRF 防护](./ssrf)。
 
@@ -67,14 +67,14 @@ HTTPC 的安全能力分布在请求生命周期的多个层级。某一层被�
 | TLS 版本区间 | TLS 1.2 – 1.3 | 拒绝 TLS 1.0/1.1；字段为 0 时自动回退 1.2/1.3 |
 | TLS 密码套件 | ECDHE+AEAD 白名单 | 6 个强制前向保密的套件；`RenegotiateNever` 禁止重协商 |
 | 重定向 SSRF 校验 | 每跳执行 | 重定向目标同样过 SSRF 验证 |
-| 跨域重定向剥头 | 自动 | 跳转到不同主机时移除 Authorization/Cookie/Proxy-Authorization |
+| 跨域重定向剥头 | 自动 | 跳转到不同源（scheme/主机/端口任一不同）时移除 Authorization、Proxy-Authorization、Cookie、X-Api-Key、X-Auth-Token |
 | 循环重定向检测 | 自动 | 检测 A→B→A 式环路（连续同 URL 除外） |
 | 重定向上限 | 10 次 | 配置上限 50，无「不限次数」模式 |
 | 响应体上限 | 10MB | 超限返回错误 |
 | 解压炸弹防护 | 100MB | 限制解压后实际大小 |
-| Content-Length 严格校验 | `StrictContentLength = true` | 响应字节数与 Content-Length 不一致时报错（HEAD 除外） |
+| Content-Length 严格校验 | `StrictContentLength = true` | 响应字节数与 Content-Length 不一致时报错（HEAD 与压缩响应除外） |
 | 日志/错误脱敏 | 自动 | URL 凭据替换为 `***:***`，token/password 等参数替换为 `[REDACTED]` |
-| 下载路径防护 | 自动 | 五层检查 + 校验失败自动删除已下载文件 |
+| 下载路径防护 | 自动 | 六层检查 + 非续传下载校验失败自动删除文件（续传下载保留已验证前缀） |
 | HTTP/2 | `EnableHTTP2 = true` | TLS 下经 ALPN 协商 |
 
 ### 默认关闭（需显式开启）
@@ -260,16 +260,18 @@ cfg := httpc.DefaultConfig()
 cfg.Security.MaxDecompressedBodySize = 50 * 1024 * 1024 // 50MB 解压上限
 ```
 
-### 优先级关系
+### 生效规则
 
-| 配置情况 | 生效限制 |
+两个上限按响应类型分别生效，不取较小值：
+
+| 响应类型 | 生效限制 |
 |----------|----------|
-| 仅设 `MaxResponseBodySize` | 以它为准（更严格） |
-| 仅设 `MaxDecompressedBodySize` | 限制解压后大小 |
-| 两者都设 | 取较小者（更严格者）生效 |
+| 未压缩响应 | `MaxResponseBodySize`；为 0 时回退 100MB |
+| 压缩响应（解压后字节） | `MaxDecompressedBodySize`；为 0 时回退 `MaxResponseBodySize`，仍为 0 时回退 100MB |
+| 压缩响应（解压前传输字节） | 引擎内置 100MB 上限，不可通过 `Config` 修改 |
 
-:::tip
-`MaxResponseBodySize` 限制解压前的传输字节，`MaxDecompressedBodySize` 限制解压后的实际字节，两者协同提供双层防护。
+:::warning
+`MaxResponseBodySize` 不约束压缩响应的解压结果。默认配置（10MB / 100MB）下，解压后 50MB 的 gzip 响应可以通过，同大小的未压缩响应则被拒绝。需要收紧压缩响应时，显式调低 `MaxDecompressedBodySize`。
 :::
 
 ## 请求体大小限制
@@ -308,7 +310,7 @@ cfg.Security.RedirectWhitelist = []string{
 
 1. **协议检查**：仅允许 http/https，拒绝 `file://` 等其他 scheme
 2. **SSRF 目标校验**：重定向地址的主机名按 SSRF 规则校验，`http://169.254.169.254/` 这类目标被直接拒绝
-3. **跨域剥除敏感头**：目标主机与起始主机不同时，移除 `Authorization`、`Cookie`、`Proxy-Authorization`。重定向即使被允许，凭据也不会被带到第三方域
+3. **跨域剥除敏感头**：目标源（scheme/主机/端口）与起始源不同时，移除 `Authorization`、`Proxy-Authorization`、`Cookie`、`X-Api-Key`、`X-Auth-Token`。重定向即使被允许，凭据也不会被带到第三方域
 4. **循环重定向检测**：检测 A→B→A 式环路并报错。连续相同 URL 的 A→A 不计为循环，因为服务端可能每次返回不同响应
 5. **次数上限**：默认 10 次，配置硬上限 50（`MaxRedirects`），不存在「不限次数」模式
 
@@ -353,15 +355,16 @@ httpc.SetSecurityWarnOutput(io.Discard)
 
 ## 文件下载安全
 
-`Download` 的文件路径经 `prepareFilePath` 五层防护，阻止路径穿越与文件覆盖攻击：
+`Download` 的文件路径经 `prepareFilePath` 六层防护，阻止路径穿越与文件覆盖攻击：
 
 1. **UNC 路径阻止**：拒绝 `\\server\share` 等网络路径
 2. **控制字符过滤**：拒绝含控制字符（`< 0x20`、`0x7F`、`0x00`）的路径
-3. **系统路径保护**：拒绝写入 `/etc`、`/bin`、`C:\Windows` 等系统目录（含父目录符号链接解析）
-4. **路径穿越检测**：`filepath.Clean` 后阻止 `../` 逃逸工作目录
-5. **符号链接防护**：拒绝目标为符号链接的路径，递归检查父目录防 TOCTOU 攻击
+3. **Windows 专用风险**：拒绝 DOS 保留设备名（`CON`、`COM1` 等）、NTFS 备用数据流（`file.txt:ads`）与 8.3 短名目录别名（`PROGRA~1`）
+4. **系统路径保护**：拒绝写入 `/etc`、`/bin`、`C:\Windows` 等系统目录（含父目录符号链接解析）
+5. **路径穿越检测**：`filepath.Clean` 后阻止 `../` 逃逸工作目录
+6. **符号链接防护**：拒绝目标为符号链接的路径，递归检查父目录防 TOCTOU 攻击
 
-下载完成后可通过 `Checksum` 字段校验文件完整性（SHA-256），校验失败时自动删除已下载文件。
+下载完成后可通过 `Checksum` 字段校验文件完整性（SHA-256）。校验失败时：非续传下载删除已下载文件；续传下载保留已验证前缀，文件回退到续传前偏移供下次续传。
 
 ## 审计中间件
 
@@ -374,7 +377,6 @@ auditMiddleware := httpc.AuditMiddleware(&httpc.AuditConfig{
         log.Printf("[AUDIT] %s %s -> %d (%v)",
             event.Method, event.URL, event.StatusCode, event.Duration)
     },
-    Format:         "json",   // text 或 json
     IncludeHeaders: true,     // 记录请求/响应头（敏感头掩码）
     MaskHeaders:    []string{"Authorization", "Cookie", "Set-Cookie"},
     SanitizeError:  true,     // 清理错误中的敏感信息
@@ -384,7 +386,7 @@ cfg := httpc.DefaultConfig()
 cfg.Middleware.Middlewares = []httpc.MiddlewareFunc{auditMiddleware}
 ```
 
-`SourceIP` 与 `UserID` 通过 context 键注入：`httpc.SourceIPKey`、`httpc.UserIDKey`。审计字段、配置项与生产实践见 [生产检查清单](./production-checklist)。
+`SourceIP` 与 `UserID` 通过 context 键注入：`httpc.SourceIPKey`、`httpc.UserIDKey`。输出格式由 `OnAudit` 回调决定（`json.Marshal(event)` 即 JSON 行），`Format` 为保留字段、无效果。审计字段、配置项与生产实践见 [生产检查清单](./production-checklist)。
 
 ## 下一步
 

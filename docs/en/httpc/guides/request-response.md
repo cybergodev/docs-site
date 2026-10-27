@@ -7,7 +7,7 @@ sidebar_position: 20
 
 # Request and Response
 
-HTTPC has two ends: the request side is configured with `With*` options (method, headers, body, and control parameters). The response side is a `Result` object holding the status code, content, and execution metadata.
+Requests and responses are the two ends of HTTPC: the request side is configured through `With*` options (method, headers, body, and control parameters), while the response side is a `Result` object carrying the status code, content, and execution metadata.
 
 ## Sending Requests
 
@@ -72,7 +72,7 @@ result, err := client.Get(url,
 
 All header keys and values go through CRLF-injection validation; keys or values containing control characters or exceeding the length limit return `ErrInvalidHeader`.
 
-Request headers take effect in this order: request-body `Content-Type` → client default headers (`Defaults.Headers`) → headers set by options and middleware. Each later layer overrides same-name entries from the earlier ones.
+For same-name headers the priority is: headers set by options and middleware rank highest (written directly, overriding any existing value); client default headers (`Defaults.Headers`) come next, filling in only when the header is empty; the `Content-Type` auto-detected from the request body ranks lowest and applies only when none was set explicitly.
 
 ### Request Body
 
@@ -100,7 +100,7 @@ result, err := client.Post(url, httpc.WithBinary(data, "image/png"))
 result, err := client.Post(url, httpc.WithBody(data))
 // string -> text/plain; charset=utf-8, []byte -> application/octet-stream,
 // map[string]string -> application/x-www-form-urlencoded,
-// *FormData -> multipart/form-data, io.Reader -> passed through,
+// *FormData -> multipart/form-data, io.Reader -> passed through (no Content-Type set),
 // other -> application/json
 // Optional explicit specification: httpc.WithBody(data, httpc.BodyJSON)
 ```
@@ -250,7 +250,7 @@ result, err := client.Get(url, httpc.WithContext(ctx))
 ```
 
 :::tip WithMaxRedirects(0) does not disable
-`WithMaxRedirects(0)` does **not** disable redirects -- the engine treats `0` as "unset" and falls back to the default of 10. To disable redirect following entirely, use `WithFollowRedirects(false)`. For full redirect control, chain tracking, and domain whitelisting, see [Redirects](./redirects).
+`WithMaxRedirects(0)` does **not** disable redirects — the engine treats `0` as "unset" and falls back to the default of 10. To disable redirect following entirely, use `WithFollowRedirects(false)`. For full redirect control, chain tracking, and domain whitelisting, see [Redirects](./redirects).
 :::
 
 ### Callbacks
@@ -268,7 +268,7 @@ result, err := client.Get(url,
 )
 ```
 
-A callback returning an error aborts the request (an error from `OnResponse` fails the whole request). Multiple callbacks run chained in the order they were added.
+Any callback returning an error aborts the request: an OnRequest error returns before the request is sent, and an `OnResponse` error fails the whole request. Multiple callbacks run chained in the order they were added; once one fails, the rest do not run.
 
 :::tip Callbacks run per attempt, middleware per request
 `WithOnRequest`/`WithOnResponse` fire inside the engine and run on **every attempt (including retries)**; the middleware chain wraps the entire retry cycle and runs once per logical request. Use callbacks when you need per-attempt granularity, and [middleware](./middleware-chain) when you need per-request granularity.
@@ -326,7 +326,7 @@ A `Result` is made up of three parts: `Request` (the request actually sent), `Re
 | Request cookies | `GetRequestCookie(name)` / `HasRequestCookie(name)` / `RequestCookies()` | Cookies actually sent with the request (final values after redirects) |
 | Metadata | `Meta.Duration` / `Attempts` / `RedirectChain` / `RedirectCount` / `ProxyURL` | Duration, attempts (including the first), redirect chain, the proxy used for this request |
 | Files | `SaveToFile(path)` | Writes the response body to a file (with path-traversal / symlink safety checks) |
-| Debugging | `String()` | Redacted summary: sensitive headers masked, body truncated to 200 characters |
+| Debugging | `String()` | Redacted summary: sensitive headers masked as `***`; the body only reports a byte count and is never printed |
 
 All accessors are nil-safe: when `Result` or an inner pointer is nil, `StatusCode()` returns 0, `Body()` returns an empty string, and the check methods return false — no panic.
 
@@ -366,12 +366,12 @@ if err := result.SaveToFile("user.json"); err != nil {
 
 ### Debug Output
 
-`String()` produces a one-line summary suitable for logging: sensitive headers (`Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, etc.) show up as `***`, and the response body is truncated to 200 characters:
+`String()` produces a one-line summary suitable for logging: sensitive headers (`Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, etc.) show up as `***`, and the response body is **never printed** — only its byte count is reported (response bodies often carry tokens and session data, which do not belong in logs):
 
 ```go
 fmt.Println(result.String())
 // Example output: Result{Status: 200 200 OK, ContentLength: 5102, Duration: 150ms,
-// Attempts: 1, Headers: 14 [Content-Length, Content-Type, ...], Body: {"id":...}
+// Attempts: 1, Headers: 14 [Content-Length, Content-Type, ...], Body: [5102 bytes omitted]
 ```
 
 ## Context Control
@@ -399,7 +399,7 @@ Mirroring [streaming responses](#streaming-responses), the upload side streams t
 
 ### io.Reader Request Bodies
 
-`WithBody(reader)` takes the auto-detection `io.Reader` branch: the Reader is passed through to the transport as-is and no `Content-Type` is set (add one with `WithHeader` when needed). The engine does not pre-read the data; the pace of reading is driven by the HTTP transport. When `Security.MaxRequestBodySize` is set, the engine wraps the reader in a counting reader only at send time, for limiting.
+`WithBody(reader)` takes the auto-detection `io.Reader` branch: the Reader is passed through to the transport as-is and no `Content-Type` is set (add one with `WithHeader` when needed). The engine does not pre-read the data; the pace of reading is driven by the HTTP transport. When `Security.MaxRequestBodySize` is set, the engine wraps the reader in a counting reader at send time and enforces the limit.
 
 :::warning Reader bodies and the size limit
 An `io.Reader` is consumed by reading and its length is not known in advance. With the default `Security.MaxRequestBodySize = 0` there is no limit; when a limit is set explicitly, the engine enforces it at send time and aborts the transfer with `request body exceeds limit of N bytes` once the limit is crossed.
@@ -521,14 +521,14 @@ The security configuration caps the decompressed size to defend against decompre
 
 ```go
 cfg := httpc.DefaultConfig()
-cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // Response body cap: enforced on streaming downloads; fallback for the decompressed cap on non-streaming reads
-cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // Max 100MB after decompression
+cfg.Security.MaxResponseBodySize = 10 * 1024 * 1024      // Cap for uncompressed response bodies (streaming downloads included)
+cfg.Security.MaxDecompressedBodySize = 100 * 1024 * 1024  // Max 100MB after decompression for compressed responses
 ```
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `MaxResponseBodySize` | 10MB | Response body cap for streaming downloads; in non-streaming reads it acts as the fallback for the decompressed cap |
-| `MaxDecompressedBodySize` | 100MB | Decompressed response body size cap (falls back to `MaxResponseBodySize` when unset) |
+| `MaxResponseBodySize` | 10MB | Cap for uncompressed (identity) response bodies and streaming downloads; when both it and the decompressed cap are 0, the engine falls back to a 100MB default |
+| `MaxDecompressedBodySize` | 100MB | Size cap for decompressed compressed responses; when 0 it falls back to `MaxResponseBodySize`, and to 100MB if that is also 0 |
 
 The compressed body has a separate 100MB hard cap (`maxCompressedSize`, not configurable) that defends against decompression bombs, independent of `MaxResponseBodySize`.
 

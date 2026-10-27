@@ -1,7 +1,7 @@
 ---
 sidebar_label: "请求选项"
 title: "请求选项 - CyberGo HTTPC | WithXxx 选项"
-description: "HTTPC 请求选项参考：全部 32 个 WithXxx 函数，覆盖请求头、认证、请求体、Cookie、请求控制、回调与包级路由，并列出各选项覆盖的 Config 默认值。"
+description: "HTTPC 请求选项 API 参考：全部 32 个 WithXxx 函数的签名、默认值与校验规则，覆盖请求头、认证、请求体、查询参数、Cookie、请求控制、包级路由与回调八个分组，并列出各选项覆盖的 Config 默认值与 nil 选项处理。"
 sidebar_position: 20
 ---
 
@@ -203,7 +203,7 @@ func WithFile(fieldName, filename string, content []byte) RequestOption
 没有路径裁剪这一步——`filename` 原样写入 multipart 头；`"."` 同样报错。
 
 :::warning 多次 WithFile 合并，与其他请求体选项混用则替换
-多次 `WithFile` 会**合并**进同一个 multipart 请求体（源码行为，并由测试固定），可以一次上传多个文件。
+多次 `WithFile` 会**合并**进同一个 multipart 请求体（源码行为，并由测试固定），可以一次上传多个文件；同一 `fieldName` 再次出现时后者覆盖前者。
 
 与 `WithJSON`/`WithBinary` 等其他请求体选项混用时，后应用者替换整个请求体；先 `WithFormData` 后 `WithFile` 时，文件会并入该 FormData。需要「文件 + 字段」混合上传时，构建单个 `*FormData` 并使用 `WithFormData`。
 :::
@@ -521,6 +521,8 @@ func WithMaxRedirects(maxRedirects int) RequestOption
 `0` **不会**禁用重定向。引擎将 `0` 视为「未显式设置」的哨兵值并回退到默认上限（10），因此 `WithMaxRedirects(0)` 等价于省略该选项。要完全禁用重定向跟随，改用 `WithFollowRedirects(false)`。
 :::
 
+计数口径与 `net/http` 一致：上限含初始请求本身，`WithMaxRedirects(n)` 最多跟随 `n-1` 次重定向（默认 10 即最多跟随 9 次）。
+
 ### WithAllowPrivateIPs
 
 ```go
@@ -565,7 +567,7 @@ func WithStreamBody(stream bool) RequestOption
 
 `WithProxy`、`WithSystemProxy`、`WithTLSFingerprint` 是三个**包级函数专属**的路由选项，把单个包级调用路由到专用客户端。
 
-专用客户端使用独立连接池，并继承默认客户端的安全默认值（SSRF 防护、TLS 1.2+、超时、重试）。共享默认客户端与其它在途调用不受影响。每个不同的 `(proxy, fingerprint)` 组合缓存为各自的客户端，可用 `CloseRoutedClients` 一并关闭（详见[包级函数与客户端方法](./functions#closeroutedclients)）。
+专用客户端使用独立连接池，并继承默认客户端的安全默认值（SSRF 防护、TLS 1.2+、超时、重试）。共享默认客户端与其它在途调用不受影响。每个不同的 `(proxy, 系统代理, fingerprint)` 组合缓存为各自的客户端，可用 `CloseRoutedClients` 一并关闭（详见[包级函数与客户端方法](./functions#closeroutedclients)）。
 
 :::warning 仅包级函数
 这三个选项只对包级函数（`Get`/`Post`/`Request`/`Download` 等）有效。在显式 `Client` 实例上使用会返回错误；实例场景改用 `Config.Connection.ProxyURL` / `Config.Connection.EnableSystemProxy` / `Config.Security.TLSFingerprint`。

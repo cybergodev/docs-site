@@ -23,7 +23,7 @@ panic("connect failed: password=hunter2")           ← Error leak
 fmt.Println(env.GetString("API_KEY"))               ← Debug leak
 ```
 
-Once one of these outputs reaches a log aggregation system (ELK, Datadog, and similar) or is read by a teammate, an operator, or an attacker, the secret is effectively stolen. The masking functions obscure sensitive content at logging time, which stops the leak at its source.
+Once one of these outputs reaches a log aggregation system (ELK, Datadog, and similar) or is read by a teammate, an operator, or an attacker, the secret is effectively stolen. The masking functions obscure sensitive content at logging time, which stops the leak at its source. They operate on strings only and do not change how the values are actually used.
 
 ## Function Details
 
@@ -42,7 +42,7 @@ Case-insensitively checks whether `key` contains a sensitive pattern. Most patte
 | Authentication | `PASSWORD`, `PASSWD`, `SECRET`, `TOKEN`, `AUTH`, `CREDENTIAL`, `PASSPHRASE`, `SESSION`, `COOKIE` |
 | Keys | `API_KEY`, `APIKEY`, `ACCESS_KEY`, `SECRET_KEY`, `PRIVATE_KEY`, `PUBLIC_KEY`, `KEYSTORE` |
 | Encryption | `PRIVATE`, `ENCRYPTION_KEY`, `ENCRYPT_KEY`, `DECRYPT_KEY`, `SIGNING_KEY`, `SIGN_KEY`, `VERIFY_KEY`, `CERT`, `SALT`, `NONCE` |
-| Financial / PII | `SSN`, `SOCIAL_SECURITY`, `CREDIT_CARD`, `CARD_NUMBER`, `CVV`, `CVC`, `CCV`, `PAN`, `USERNAME` |
+| Financial / PII | `SSN`, `SOCIAL_SECURITY`, `CREDIT_CARD`, `CARD_NUMBER`, `CVV`, `CVC`, `CCV`, `PAN`, `PWD`, `USERNAME` |
 | Cryptocurrency | `MNEMONIC`, `SEED`, `RECOVERY`, `WALLET`, `PRIVATE_ADDRESS` |
 | Infrastructure | `CONNECTION_STRING`, `CONN_STRING`, `DATABASE_URL`, `DB_PASSWORD`, `DSN` |
 | Cloud Services | `AWS_SECRET`, `AZURE_KEY`, `GCP_KEY`, `SERVICE_ACCOUNT` |
@@ -115,11 +115,11 @@ func main() {
 	fmt.Println(env.MaskValue("DB_PASSWORD", "p@ssw0rd123"))
 	// Output: [MASKED]
 
-	// Non-sensitive short value → returned as-is
+	// Non-sensitive short value → passes through SanitizeForLog, unchanged when clean
 	fmt.Println(env.MaskValue("PORT", "8080"))
 	// Output: 8080
 
-	// Non-sensitive long value (>20 chars) → truncated at 17 characters
+	// Non-sensitive long value (>20 bytes) → truncated at 17 bytes
 	fmt.Println(env.MaskValue("DESCRIPTION", "this-is-a-very-long-description-value"))
 	// Output: this-is-a-very-lo...
 }
@@ -135,7 +135,7 @@ A sensitive value always returns the fixed string `[MASKED]`, which reveals noth
 func MaskKey(key string) string
 ```
 
-Masks the key name itself, for cases where you need to show that a key exists without revealing which one. `MaskKey` is a wrapper around the internal masking routine that error reporting uses. Key masking inside audit events goes through `MaskValue`, which also returns the fixed `[MASKED]`:
+Masks the key name itself, for cases where you need to show that a key exists without revealing which one. `MaskKey` is a wrapper around the internal masking routine that error reporting uses, and it returns `[MASKED]` for any key name. Key masking inside audit events goes through `MaskValue` instead — sensitive keys become `[MASKED]`, non-sensitive keys stay readable:
 
 | Condition | Return Value |
 |-----------|-------------|
@@ -169,7 +169,7 @@ func main() {
 func MaskSensitiveInString(s string) string
 ```
 
-Truncate first, then mask. A string longer than 50 characters is truncated to 47 characters plus `...`, which keeps logs small and limits indirect leakage. The result then passes through [`SanitizeForLog`](#sanitizeforlog), so sensitive key-value pairs inside it are still masked (SEC-04; truncation alone would leave `password=...` intact):
+Truncate first, then mask. A string longer than 50 bytes is truncated to 47 bytes plus `...`, which keeps logs small and limits indirect leakage. The result then passes through [`SanitizeForLog`](#sanitizeforlog), so sensitive key-value pairs inside it are still masked (SEC-04; truncation alone would leave `password=...` intact):
 
 | Condition | Return Value |
 |-----------|-------------|
@@ -186,7 +186,7 @@ import (
 )
 
 func main() {
-	// Stage one: strings over 50 characters are truncated first
+	// Stage one: strings over 50 bytes are truncated first
 	long := "012345678901234567890123456789012345678901234567890123456789"
 	fmt.Println(env.MaskSensitiveInString(long))
 	// Output: 01234567890123456789012345678901234567890123456...
@@ -210,7 +210,7 @@ func SanitizeForLog(s string) string
 
 Scans the string for `key=value` and YAML `key: value` pairs. For each sensitive pair it **keeps the key name and separator and replaces only the value** with `[MASKED]`. Control characters are stripped, except `\n` and `\t`. Use it for connection strings, error messages, and other inline key-value text.
 
-**Detected assignment patterns:** `password=`, `secret=`, `token=`, `auth=`, `credential=`, `passphrase=`, `session=`, `cookie=`, `api_key=`, `apikey=`, `access_key=`, `secret_key=`, `private_key=`, `public_key=`, `encrypt_key=`, `decrypt_key=`, `signing_key=`, `ssn=`, `credit_card=`, `card_number=`, `cvv=`, `cvc=`, `mnemonic=`, `seed=`, `recovery=`, `wallet=`, `connection_string=`, `database_url=`, `db_password=`. The same names are recognized in YAML form (`password: ...`).
+**Detected assignment patterns:** `password=`, `secret=`, `token=`, `auth=`, `credential=`, `passphrase=`, `session=`, `cookie=`, `api_key=`, `apikey=`, `access_key=`, `secret_key=`, `private_key=`, `public_key=`, `encrypt_key=`, `decrypt_key=`, `signing_key=`, `ssn=`, `credit_card=`, `card_number=`, `cvv=`, `cvc=`, `mnemonic=`, `seed=`, `recovery=`, `wallet=`, `connection_string=`, `database_url=`, `db_password=`. The same names are recognized in YAML form (`password: ...`), plus the extra forms `authorization=`, `pwd=`, and the HTTP `Bearer ` scheme.
 
 ```go
 package main

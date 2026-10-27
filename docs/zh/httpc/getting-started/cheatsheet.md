@@ -229,10 +229,10 @@ cfg.Connection.EnableCookies = true
 // 代理池（轮换 + 被动熔断）
 cfg.Connection.ProxyPool = []string{"http://p1:8080", "http://p2:8080"}
 cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin // 或 ProxyStrategyRandom
-cfg.Connection.ProxyFailureThreshold = 3   // 连续失败 N 次临时摘除（默认 3）
+cfg.Connection.ProxyFailureThreshold = 3   // 连续 TCP 拨号失败 N 次临时摘除（默认 3）
 cfg.Connection.ProxyCooldown = 30 * time.Second // 摘除后的半开探活冷却（默认 30s）
 cfg.Connection.ProxyRotatePerRequest = true     // 每个请求换 IP（牺牲连接复用）
-cfg.Connection.ProxyRotateOnStatus = []int{403} // 命中状态码换代理重试（需 MaxRetries > 0）
+cfg.Connection.ProxyRotateOnStatus = []int{403} // 命中状态码换代理重试（需 MaxRetries > 0；代理池大于 1 且未设 ProxyURL 时，预算自动提升至 len(ProxyPool)-1，封顶 10）
 
 // DNS-over-HTTPS
 cfg.Connection.EnableDoH = true

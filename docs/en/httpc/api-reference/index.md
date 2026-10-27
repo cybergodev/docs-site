@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Overview"
 title: "API Reference - CyberGo HTTPC | Full API Index"
-description: "HTTPC API index: request options, Result, Config, middleware, and error types, including 32 WithXxx options and 5 configuration presets."
+description: "HTTPC API index: package functions, 32 WithXxx options, Result, Config with five presets, seven middleware, SessionManager, downloads, and error types."
 sidebar_position: 10
 ---
 
@@ -187,5 +187,5 @@ result.Meta.Attempts          // Total attempts (including the first)
 
 - **Go version**: requires Go 1.27 or later (`go.mod` declares `go 1.27`).
 - **Import path**: `github.com/cybergodev/httpc` (package name `httpc`, no alias needed).
-- **Direct dependencies**: 7 direct modules, all compiled with the package (the source has no build tags). `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp serve the transport-fingerprint path — importing the package puts them in the build graph, and they simply stay idle at runtime unless `Security.TLSFingerprint` is enabled.
+- **Direct dependencies**: 7 direct modules, all compiled unconditionally (there are no feature-culling build tags; platform differences are handled by GOOS-based file selection, e.g. `internal/engine/errors_unix.go`). `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp serve the transport-fingerprint path — importing the package puts them in the build graph, and they stay idle at runtime unless `Security.TLSFingerprint` is enabled.
 - **API status**: no exported symbol currently carries a `Deprecated` marker; the library is under active maintenance.

@@ -13,7 +13,7 @@ sidebar_position: 7
 
 ### Using TestingConfig
 
-`TestingConfig` overwrites existing environment variables, which makes tests independent of each other:
+`TestingConfig` builds on `DefaultConfig` but sets `OverwriteExisting` to `true`, `FailOnMissingFile` to `false`, and tightens `MaxFileSize` to 64 KB and `MaxVariables` to 50. Overwriting is what lets repeated `Set` calls take effect inside one test process:
 
 ```go
 func TestWithTestingConfig(t *testing.T) {
@@ -43,6 +43,8 @@ func TestWithTestingConfig(t *testing.T) {
 :::
 
 ### Per-test Independent Loader
+
+Give each test its own `New()` loader, so memory and `appliedKeys` tracking are never shared across cases:
 
 ```go
 func TestDatabase(t *testing.T) {
@@ -202,9 +204,11 @@ func TestExample(t *testing.T) {
 }
 ```
 
-`ResetDefaultLoader` returns an `error`. It clears and closes the default loader, and the return value is the old loader's `Close()` error (non-nil when cleanup during close fails). It returns nil when no default loader has been initialized. Ignoring the error only means the old loader's cleanup failed: the global state is still cleared, so `env.Load()` can be called again afterwards.
+`ResetDefaultLoader` returns an `error`. It clears and closes the default loader, and the return value is the old loader's `Close()` error (non-nil when cleanup during close fails). It returns nil when no default loader has been initialized. Ignoring the error only means the old loader's cleanup failed: the global state is still cleared, so `env.Load()` can be called again afterwards. It does not undo variables the old loader already wrote to the process environment.
 
 ### Cleaning Up Environment Variables
+
+`ResetDefaultLoader` does not touch `os.Environ`; tests that write process variables directly must restore them themselves:
 
 ```go
 func TestWithCleanup(t *testing.T) {
@@ -375,6 +379,8 @@ func TestStructMapping(t *testing.T) {
 ```
 
 ## Concurrency Testing
+
+Run with `go test -race` so the race detector covers the concurrent read/write paths:
 
 ```go
 func TestConcurrentAccess(t *testing.T) {

@@ -70,7 +70,7 @@ loader2.LoadFiles(".env", "config.json", "secrets.yaml")
 ```
 
 ::: tip 提示
-`DevelopmentConfig()` 与 `TestingConfig()` 预设已内置 `OverwriteExisting = true`（后加载覆盖先加载）。包级 `env.Load()` 使用 `DefaultConfig`，需要 last-wins 时改用 `env.LoadWithConfig` 并设置该选项。
+`DevelopmentConfig()` 与 `TestingConfig()` 预设已内置 `OverwriteExisting = true`（后加载覆盖先加载）。包级 `env.Load()` 使用 `DefaultConfig`，需要 last-wins 时改用 `env.Overload()`（同时会用文件值覆盖进程环境中的同名变量），或 `env.LoadWithConfig` 并设置该选项。
 :::
 
 ## JSON 格式
@@ -483,7 +483,7 @@ loader.LoadFiles(
 
 ## 序列化
 
-`env.Marshal` 把 map 或结构体导出为 `.env` / JSON / YAML 文本，`env.UnmarshalMap` / `env.UnmarshalStruct` 反向解析；传入 `env.FormatAuto` 时按内容自动检测格式。
+`env.Marshal` 把 map 或结构体导出为 `.env` / JSON / YAML 文本，`env.UnmarshalMap` / `env.UnmarshalStruct` 反向解析。反序列化传入 `env.FormatAuto` 时按内容自动检测格式；`Marshal` 不做内容检测，传 `FormatAuto` 与缺省参数一样按 `.env` 输出。
 
 两种结构化输出会改写键值。Marshal 到 JSON 时，下划线键（如 `DATABASE_HOST`）被拆回嵌套对象，`"8080"`、`"true"` 等字符串被推断回 number / bool；不能原样回写的写法（`"007"`、`"1e3"`、`"null"`）保持字符串。Marshal 到 YAML 时键保持扁平，但读回会被强制转换类型的标量自动加引号（如 `PORT: "8080"`），保证往返后仍是字符串。
 
@@ -555,7 +555,7 @@ func main() {
 | 数字与布尔转为字符串 | `{"port": 5432}` → `PORT="5432"` |
 | 嵌套深度上限默认 16 | 由 `JSONMaxDepth`/`YAMLMaxDepth` 控制（1–100） |
 
-文件加载时的转换行为受 `Config` 的 `JSONConfig` / `YAMLConfig` 控制（如 `JSONNullAsEmpty`、`JSONNumberAsString`）。`UnmarshalMap` / `UnmarshalStruct` 的字符串解析路径走内置默认规则，不读取这些配置。
+文件加载时的转换行为受 `Config` 的 `JSONConfig` / `YAMLConfig` 控制（如 `JSONNullAsEmpty`、`JSONNumberAsString`）。`UnmarshalMap` / `UnmarshalStruct` 的字符串解析路径走内置默认规则，不读取这些配置；需要自定义时改用 `UnmarshalMapWithConfig` / `UnmarshalStructWithConfig`。
 
 ### 前缀过滤（Prefix）
 

@@ -229,10 +229,10 @@ cfg.Connection.EnableCookies = true
 // Proxy pool (rotation + passive circuit breaking)
 cfg.Connection.ProxyPool = []string{"http://p1:8080", "http://p2:8080"}
 cfg.Connection.ProxyPoolStrategy = httpc.ProxyStrategyRoundRobin // or ProxyStrategyRandom
-cfg.Connection.ProxyFailureThreshold = 3   // N consecutive failures temporarily removes a proxy (default 3)
+cfg.Connection.ProxyFailureThreshold = 3   // N consecutive TCP dial failures temporarily removes a proxy (default 3)
 cfg.Connection.ProxyCooldown = 30 * time.Second // Half-open probe cooldown after removal (default 30s)
 cfg.Connection.ProxyRotatePerRequest = true     // New IP per request (sacrifices connection reuse)
-cfg.Connection.ProxyRotateOnStatus = []int{403} // Rotate proxy and retry on these status codes (requires MaxRetries > 0)
+cfg.Connection.ProxyRotateOnStatus = []int{403} // Rotate proxy and retry on these status codes (requires MaxRetries > 0; when the pool holds more than 1 proxy and ProxyURL is unset, the retry budget auto-rises to len(ProxyPool)-1, capped at 10)
 
 // DNS-over-HTTPS
 cfg.Connection.EnableDoH = true
@@ -304,7 +304,7 @@ func traceMiddleware(next httpc.Handler) httpc.Handler {
 // Compose: httpc.Chain(mw1, mw2)(finalHandler)
 ```
 
-:::warning Do not use for Download or streaming requests
+:::warning
 `TimeoutMiddleware` is not suitable for `Download` or `WithStreamBody(true)` requests: the middleware rejects streaming requests on entry, returning `TimeoutMiddleware is incompatible with streaming responses`. Use `WithTimeout` for such cases instead.
 :::
 

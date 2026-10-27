@@ -81,7 +81,7 @@ By default, the following errors trigger a retry:
 | `MaxRetryDelay` | 0–30min | 30s |
 | `EnableJitter` | Boolean | true |
 
-`WithMaxRetries(n)` applies the same 0–10 check at the request level and returns an error when the value is out of range. Passing 0 or a negative value for `Delay` / `BackoffFactor` makes the engine fall back to the defaults (1s / 2.0) without an error; set an explicit valid value when a specific delay is required.
+`WithMaxRetries(n)` applies the same 0–10 check at the request level and returns an error when the value is out of range. The zero values carry distinct semantics: `Delay = 0` is a legal value, and the engine starts the initial delay from the default 1s; `MaxRetryDelay = 0` selects the default 30s cap, so the cap cannot be turned off through this field; a `BackoffFactor` out of range (0, negative, or NaN) is rejected by `ValidateConfig` with `ErrInvalidRetry`.
 
 ## Backoff Math In Detail
 
@@ -116,7 +116,7 @@ Jitter formula: `result = baseDelay ± 10%`, i.e. `result ∈ [baseDelay × 0.9,
 | 6th retry (attempt 5) | 30s (after truncation) | 27s – 33s |
 
 :::tip Why iterative multiplication instead of math.Pow
-HTTPC uses a loop (`for i := 0; i < attempt; i++ { delay *= factor }`) rather than `math.Pow`. `math.Pow` calls transcendental functions (exp and log), which cost more than a few float multiplies. The loop also checks `math.IsInf` to guard against overflow, falling back to `MaxRetryDelay` on overflow. This path sits on every retry.
+HTTPC uses a loop (`for i := 0; i < attempt; i++ { delay *= factor }`) rather than `math.Pow`. `math.Pow` calls transcendental functions (exp and log), which cost more than a few float multiplies. The loop also checks `math.IsInf` to guard against overflow, falling back to `MaxRetryDelay` on overflow. This code sits on the hot path of every retry.
 :::
 
 :::warning Jitter is applied after the cap
@@ -158,7 +158,7 @@ Retry-After: Fri, 31 Jul 2026 15:00:00 GMT (2 hours away) ->  truncated to 60s
 ```
 
 :::warning Why truncate
-A malicious or misconfigured server may return an extremely large `Retry-After` value (e.g. `Retry-After: 999999`), which would leave the client waiting for a long time. The 60-second cap covers that case: if the server asks for a one-hour wait, HTTPC retries after at most 60 seconds. This cap takes precedence over `MaxRetryDelay`, and jitter is applied after truncation.
+A malicious or misconfigured server may return an extremely large `Retry-After` value (e.g. `Retry-After: 999999`), which would leave the client waiting for a long time. The 60-second cap covers that case: if the server asks for a one-hour wait, HTTPC retries after at most 60 seconds. This cap takes precedence over `MaxRetryDelay`. The delay parsed from `Retry-After` is used as-is with **no jitter applied** — jitter affects the exponential-backoff path only.
 :::
 
 ### Priority
@@ -200,8 +200,8 @@ func main() {
 }
 ```
 
-:::tip Retry-After applies to all retryable status codes
-`Retry-After` is not limited to 429/503; it applies to 408/429/500/502/503/504 responses. When the response carries a `Retry-After` header, the value is parsed and used.
+:::tip Retry-After applies to every retry-triggering status code
+`Retry-After` is not limited to 429/503: it takes effect for any status code that triggers the retry decision — the built-in 408/429/500/502/503/504 plus extension codes injected by `ProxyRotateOnStatus` (e.g. 403). Whenever the response carries a parseable `Retry-After` header, that value is used first.
 :::
 
 ## Backoff Strategies
@@ -441,12 +441,12 @@ The engine runs one full "request + retry" cycle as follows:
 ```
 
 :::tip Observe the retry process with HTTPC_DEBUG
-With the `HTTPC_DEBUG=1` environment variable set, the engine prints the status code, retryability decision, and backoff delay of each attempt to stderr. Debugging retry counts or retryability decisions needs no additional logging middleware.
+Set the `HTTPC_DEBUG` environment variable to any non-empty value and the engine prints the status code, retryability decision, and backoff delay of each attempt to stderr. Debugging retry counts or retryability decisions needs no additional logging middleware.
 :::
 
 ## Proxy Pool and Retry Interaction
 
-When `ProxyRotateOnStatus` or `ProxyRotatePerRequest` is configured, HTTPC raises `MaxRetries` so that every proxy in the pool is tried at least once. The adjustment is performed by `calculateMaxRetries`:
+HTTPC raises `MaxRetries` automatically so that every proxy in the pool is tried at least once when three conditions hold together: `ProxyRotateOnStatus` or `ProxyRotatePerRequest` is configured, the `ProxyPool` holds more than one entry, and `ProxyURL` is unset (`ProxyURL` takes precedence over the pool — when set, the pool has no effect). The computation is performed by `calculateMaxRetries`:
 
 ```text
 effective MaxRetries = max(configured MaxRetries, len(ProxyPool) - 1)
@@ -470,7 +470,7 @@ configured MaxRetries = 3
 ```
 
 :::tip Why len(ProxyPool) - 1
-The first request uses the first proxy and does not count as a retry, so trying all N proxies needs N - 1 retries. `calculateMaxRetries` raises `MaxRetries` to `len(ProxyPool) - 1` when the configured value is smaller and leaves it unchanged when it is larger. See [Proxy and Proxy Pools](./proxy) for the rotation and budget interaction.
+The first request uses the first proxy and does not count as a retry, so trying all N proxies needs N - 1 retries. `calculateMaxRetries` raises `MaxRetries` to `len(ProxyPool) - 1` when the configured value is smaller and leaves it unchanged when it is larger (provided `ProxyURL` is empty and the pool holds more than one entry). See [Proxy and Proxy Pools](./proxy) for the rotation and budget interaction.
 :::
 
 ```go
@@ -513,7 +513,7 @@ func main() {
 
 ### Proxy Connection Failures Force a Retry
 
-With proxy rotation enabled (`ProxyRotateOnStatus` / `ProxyRotatePerRequest`), a connection failure to the proxy itself (dial failure, TLS failure) does not go through the regular retryable classification. Instead it forces the next retry and switches to the next proxy. Proxies that are permanently dead, such as a wrong port or an unreachable host, are removed by the combination of forced retries and consecutive-failure circuit breaking. See [Proxy and Proxy Pools](./proxy).
+With proxy rotation enabled (`ProxyRotateOnStatus` / `ProxyRotatePerRequest`), a dial failure on the proxy itself (an error wrapped in `ErrProxyConnectionFailed`) does not go through the regular retryable classification. Instead it forces the next retry and switches to the next proxy. Proxies that are permanently dead, such as a wrong port or an unreachable host, are removed by the combination of forced retries and consecutive-failure circuit breaking. See [Proxy and Proxy Pools](./proxy).
 
 ## Retry Budget Considerations
 
@@ -542,7 +542,7 @@ Once the budget is exhausted, remaining attempts fail immediately with `ErrorTyp
 | Override with `context.WithTimeout` | Precisely control this request's total budget |
 
 :::warning Total budget vs retry count
-The total budget is hard: once it is exhausted the request terminates immediately even if retries remain, so the actual retry count is below `MaxRetries`. The default 180s accommodates 3 retries plus roughly 7.7s of backoff; with a 5s timeout and default retries, little budget remains after the first backoff (about 1s).
+The total budget is hard: once it is exhausted the request terminates immediately even if retries remain, so the actual retry count is below `MaxRetries`. The default 180s comfortably fits 3 retries plus roughly 7.7s of backoff (1s + 2s + 4s, including the jitter ceiling); with a 5s timeout and the default retry settings, the budget left after the first backoff (about 1s) is no longer enough to complete all attempts.
 
 To ensure N retries, reserve N+1 request durations plus the sum of backoff delays:
 
@@ -628,7 +628,7 @@ func main() {
 
 ## Error Handling and Retries
 
-After retries are exhausted, the error is returned as a `ClientError`. `Type` keeps the original classification of the last failure (e.g. `ErrorTypeNetwork`, `ErrorTypeTimeout`), and `Attempts` records the total number of attempts:
+After a network-layer error exhausts its retries, the error is returned as a `ClientError`. `Type` keeps the original classification of the last failure (e.g. `ErrorTypeNetwork`, `ErrorTypeTimeout`), and `Attempts` records the total number of attempts:
 
 ```go
 package main
@@ -661,13 +661,20 @@ func main() {
 }
 ```
 
+:::tip The two kinds of "retry exhausted" behave differently
+- Network errors exhausted: returned as a `ClientError` (see the example above) with `Attempts > 1`; `Type` keeps the original classification of the last failure.
+- Retryable status codes exhausted (408/429/5xx): no error — the last response is returned as-is, i.e. `err == nil` with `StatusCode() == 503`; the caller handles it through the normal response path.
+
+`ErrorTypeRetryExhausted` is set only on a defensive fallback path (the normal flow never reclassifies an exhausted error as this type). To detect "failed after retries", use the `Attempts` field. See [Error Handling](./error-handling).
+:::
+
 ## Best Practices
 
 | Scenario | Recommended config |
 |------|----------|
 | API calls | `MaxRetries=3, Delay=1s, Backoff=2.0` (default) |
 | Microservice communication | `MaxRetries=2, Delay=500ms, Backoff=2.0` (fast failure) |
-| File downloads | Caller-controlled retries: `Download` runs once and does not enter the retry loop, so `MaxRetries` has no effect on it |
+| File downloads | `Download` follows the idempotent GET path through the regular retry loop (3 retries by default); for a single attempt, pass `WithMaxRetries(0)` in its options, combined with `ResumeDownload` for resumable transfers |
 | Idempotent operations (GET/PUT/DELETE) | Retryable |
 | Non-idempotent operations (POST) | Executed once by default (no retries); opt in explicitly with [`WithRetryNonIdempotent`](../api-reference/core/options#withretrynonidempotent) |
 | Rate-limited APIs | Rely on automatic `Retry-After` parsing (built in) |

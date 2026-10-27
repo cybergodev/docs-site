@@ -1,7 +1,7 @@
 ---
 sidebar_label: "概览"
 title: "API 参考 - CyberGo HTTPC | API 总索引"
-description: "HTTPC API 参考索引：包级函数、请求选项、Result、Config、中间件与错误类型，覆盖 32 个 WithXxx 选项与 5 个配置预设。"
+description: "HTTPC API 参考总索引：包级函数与客户端方法、32 个 WithXxx 请求选项、Result 响应类型、Config 配置与五个预设、七个内置中间件、SessionManager 会话管理、文件下载与错误类型的完整模块导航与符号地图。"
 sidebar_position: 10
 ---
 
@@ -187,5 +187,5 @@ result.Meta.Attempts          // 总尝试次数（含首次）
 
 - **Go 版本**：要求 Go 1.27 及以上（`go.mod` 声明 `go 1.27`）。
 - **导入路径**：`github.com/cybergodev/httpc`（包名 `httpc`，无需别名）。
-- **直接依赖**：7 个直接模块，源码无构建标签，随包一起编译。`golang.org/x/net` 与 `golang.org/x/sys` 服务标准路径；brotli / compress / uTLS / tls-client / fhttp 服务于传输层指纹路径——导入本包即会把它们编译进依赖图，未启用 `Security.TLSFingerprint` 时只是不参与运行。
+- **直接依赖**：7 个直接模块，均无条件参与编译（不存在按功能裁剪的构建标签；平台差异经 `GOOS` 选择文件，如 `internal/engine/errors_unix.go`）。`golang.org/x/net` 与 `golang.org/x/sys` 服务标准路径；brotli / compress / uTLS / tls-client / fhttp 服务于传输层指纹路径——导入本包即会把它们编译进依赖图，未启用 `Security.TLSFingerprint` 时只是不参与运行。
 - **API 状态**：当前全部导出符号均无 `Deprecated` 标记，处于活跃维护状态。

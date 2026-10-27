@@ -1,17 +1,21 @@
 ---
 sidebar_label: "Interfaces"
 title: "Interfaces - CyberGo html | Core Interface Reference"
-description: "CyberGo html core interfaces: Extractor, StatsProvider, ContentNode, Scorer, and AuditSink, with mock testing, concurrency rules, and adapter design."
+description: "CyberGo html core interfaces: Extractor, StatsProvider, ContentNode, Scorer, optional ArticleFinder, and AuditSink, with mock testing and adapter design."
 sidebar_position: 10
 ---
 
 # Interfaces
 
-The HTML library defines 5 core interfaces: `Extractor`, `StatsProvider`, `ContentNode`, `Scorer`, and `AuditSink`.
+The HTML library defines 6 interfaces: `Extractor`, `StatsProvider`, `ContentNode`, `Scorer`, `ArticleFinder`, and `AuditSink`. `ArticleFinder` is an **optional** extension interface — the library works without it, and you implement it only when you need to take over article-node selection.
 
 ## Extractor
 
-The primary interface for HTML content extraction. `Processor` implements it. The interface has 25 methods.
+The primary interface for content extraction. `Processor` implements it. The interface has 25 methods.
+
+:::info Reader-mode methods are not part of this interface
+The 12 `ReadPage*` methods on `Processor` (see [Reader Mode](../core/reader)) **do not belong** to `Extractor`. `Extractor` covers only `Extract*`, `ExtractText*`, `ExtractToMarkdown*`, `ExtractToJSON*`, `ExtractBatch*`, `ExtractAllLinks*`, and `Close`. To inject reader-mode capability through an interface, hold `*Processor` directly or define a narrow interface containing the `ReadPage*` methods you need.
+:::
 
 ```go
 type Extractor interface {
@@ -78,7 +82,7 @@ type Extractor interface {
 | `Extractor.ExtractBatchWithContext` | Same, with context cancellation |
 | `Extractor.ExtractBatchFiles` | Concurrent batch extraction (file-path input) |
 | `Extractor.ExtractBatchFilesWithContext` | Same, with context cancellation |
-| `Extractor.ExtractAllLinks` | Enumerate all link resources (no sanitization applied) |
+| `Extractor.ExtractAllLinks` | Enumerate all link resources (no content cleaning applied) |
 | `Extractor.ExtractAllLinksWithContext` | Same, with context cancellation |
 | `Extractor.ExtractAllLinksFromFile` | Enumerate link resources from a file |
 | `Extractor.ExtractAllLinksFromFileWithContext` | Same, with context cancellation |
@@ -151,7 +155,7 @@ func (m *mockExtractor) ExtractTextFromFileWithContext(context.Context, string) 
 // ... remaining methods return zero values
 ```
 
-To keep the example short, this `mockExtractor` implements only some methods. A real implementation must supply all 25 methods of `Extractor` or it will not compile; the omitted methods can return zero values.
+To keep the example short, this `mockExtractor` implements only some methods. A real implementation must supply all 25 methods of `Extractor` or it will not compile; the omitted methods can return zero values; alternatively, embed the interface value in the struct and implement only the methods you use — see [Testing & Custom Extensions](../../guides/integration/testing-custom#decoupling-business-code-with-the-extractor-interface).
 
 ```go
 // Business code depends on the interface, not the concrete type
@@ -214,12 +218,12 @@ type ContentNode interface {
 
 ## Scorer
 
-Content scoring interface for customizing article recognition.
+Content scoring interface, for customizing article detection strategy.
 
 ```go
 type Scorer interface {
 	Score(node ContentNode) int         // Compute node relevance score
-	ShouldRemove(node ContentNode) bool // Reserved: not called by the library in the current version
+	ShouldRemove(node ContentNode) bool // Node removal decision (consulted only while the built-in default scorer is in use)
 }
 ```
 
@@ -228,9 +232,9 @@ type Scorer interface {
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `Scorer.Score` | `Score(node ContentNode) int` | Compute the content-relevance score of a node |
-| `Scorer.ShouldRemove` | `ShouldRemove(node ContentNode) bool` | Reserved method; not called by the library in the current version |
+| `Scorer.ShouldRemove` | `ShouldRemove(node ContentNode) bool` | Node removal decision; consulted only while the built-in default scorer is in use |
 
-`ShouldRemove` is required to satisfy the interface, but the library only calls `Score`, so its return value has no effect; returning `false` always is fine. To exclude nodes, return a low or negative score from `Score`.
+`ShouldRemove` must be implemented to satisfy the interface, but its scope is limited: it is **consulted only while the built-in default scorer is in use**. With a custom `Scorer` configured, node removal still follows the built-in rules, and a custom `ShouldRemove` does not decide which nodes are stripped. To influence article selection, return a low or negative score from `Score`, or implement `ArticleFinder` to take over selection.
 
 :::warning Custom Scorers must be concurrency-safe
 When one `Processor` is shared across concurrent `Extract` calls, `Score` is invoked **from multiple goroutines at once**, so every `Scorer` implementation must ensure its own concurrency safety.
@@ -249,7 +253,8 @@ func (s *MyScorer) Score(node html.ContentNode) int {
 }
 
 func (s *MyScorer) ShouldRemove(node html.ContentNode) bool {
-	// Reserved method: not called by the library in the current version, so the logic below never runs
+	// Consulted only while the built-in default scorer is in use;
+	// with a custom Scorer configured, node removal still follows the built-in rules
 	return false
 }
 
@@ -279,6 +284,92 @@ The two-layer design gives three benefits:
 `FirstChild()`, `NextSibling()`, and `Parent()` return `nil` when there is no corresponding node. A custom Scorer traversing a subtree must check for nil, or it will panic.
 :::
 
+## ArticleFinder
+
+An **optional** extension interface: a `Scorer` that also implements it can take over article-node selection with its own search.
+
+```go
+type ArticleFinder interface {
+	FindArticleNode(root ContentNode) ContentNode
+}
+```
+
+### Method Overview
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `ArticleFinder.FindArticleNode` | `FindArticleNode(root ContentNode) ContentNode` | Return the article root from the document root; returning `nil` falls back to `<body>` |
+
+Without `ArticleFinder`, the library enumerates every non-inline element in the document and calls `Score` on each — safe, but it costs "element count × one `Score` call", which degrades to O(N²) for scorers that walk subtrees. With `ArticleFinder` implemented, the library switches to a **single-pass search** and uses your return value directly. The built-in `DefaultScorer` skips that enumeration: it has a dedicated single-pass metrics fast path and never goes through the public `Scorer` interface.
+
+Implementation notes:
+
+- **Returning `nil`** means no node qualifies; the caller falls back to `<body>`, matching the built-in scorer's semantics.
+- **The returned node must come from `root`'s traversal methods** (`FirstChild`, `NextSibling`, `Parent`). The adapter values passed in by the library can be copied, compared, and cached and then returned as-is; a node constructed by another implementation is ignored, which behaves exactly like returning `nil` — fall back to `<body>`, not back to per-element enumeration.
+- Once `ArticleFinder` is implemented, `Score` is no longer called: the library uses your search to locate the article root in one pass; even if `FindArticleNode` returns `nil`, it does not fall back to per-element enumeration but drops straight to `<body>`.
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/cybergodev/html"
+)
+
+// FinderScorer takes over article-node selection with a single-pass search.
+type FinderScorer struct{}
+
+func (s *FinderScorer) Score(node html.ContentNode) int { return 0 }
+
+func (s *FinderScorer) ShouldRemove(node html.ContentNode) bool { return false }
+
+// FindArticleNode walks depth-first once and returns the first <article> element.
+func (s *FinderScorer) FindArticleNode(root html.ContentNode) html.ContentNode {
+	var search func(n html.ContentNode) html.ContentNode
+	search = func(n html.ContentNode) html.ContentNode {
+		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+			if c.Type() == "element" && c.Data() == "article" {
+				return c
+			}
+			if found := search(c); found != nil {
+				return found
+			}
+		}
+		return nil
+	}
+	return search(root)
+}
+
+func main() {
+	data := []byte(`<html><head><title>Example Page</title></head><body>
+<nav><a href="/">Home</a></nav>
+<article><h1>Heading</h1><p>Body paragraph.</p></article>
+</body></html>`)
+
+	cfg := html.DefaultConfig()
+	cfg.Scorer = &FinderScorer{}
+
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer p.Close()
+
+	result, err := p.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Output: Example Page (the title comes from <title>; the body comes from the <article> FinderScorer selected)
+	fmt.Println(result.Title)
+	// Output: 3 ("Heading" is 1 word, "Body paragraph." is 2)
+	fmt.Println(result.WordCount)
+}
+```
+
+When the implementation above returns `nil` (a page with no `<article>`), the library falls back to `<body>`, matching the built-in scorer's semantics. If the returned node is a semantic container such as `<article>`/`<main>` or one carrying `role="main"`/`role="article"`, its boundary is used as-is; otherwise the library also tries to widen that node to its parent, to cover body text split across sibling blocks.
+
 ## AuditSink
 
 Audit log output interface.
@@ -290,4 +381,4 @@ type AuditSink interface {
 }
 ```
 
-For built-in Sink implementations see [Audit System](../modules/audit).
+`Write` implementations should be non-blocking and concurrency-safe (all built-in Sinks satisfy this); `Close` releases the resources held by the Sink. For built-in Sink implementations see [Audit System](../modules/audit).

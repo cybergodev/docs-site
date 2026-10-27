@@ -231,7 +231,8 @@ Common error-classification scenarios side by side (`clientErr` is the `*httpc.C
 | Certificate validation failure | `var ce x509.UnknownAuthorityError` + `errors.As` | `httpc.ErrorTypeCertificate` |
 | TLS protocol error | String matching `"tls:"` | `httpc.ErrorTypeTLS` |
 | Connection refused/reset | `var oe *net.OpError` + `errors.As` | `httpc.ErrorTypeNetwork` |
-| Context canceled/deadline | `errors.Is(err, context.Canceled)` | `httpc.ErrorTypeContextCanceled` (never retried) |
+| Context canceled | `errors.Is(err, context.Canceled)` | `httpc.ErrorTypeContextCanceled` (never retried) |
+| Context deadline exceeded | `errors.Is(err, context.DeadlineExceeded)` | `httpc.ErrorTypeTimeout` (never retried) |
 
 For the complete picture of error classification, retryability, and sentinel errors, see [Error Handling](./error-handling) and [Error Types](../api-reference/types/errors).
 
@@ -415,7 +416,7 @@ What `Result` holds is the already-read and copied bytes. HTTPC performs the rea
 
 `net/http` never retries. HTTPC by default retries timeouts/transport errors and 408/429/500/502/503/504, up to 3 times, and **only for idempotent requests** (GET/HEAD/PUT/DELETE/OPTIONS/TRACE). POST, PATCH, and custom methods **execute exactly once and are never retried**.
 
-One risk needs handling: after opting into non-idempotent retries with `WithRetryNonIdempotent(true)`, order-placement and payment-style endpoints can receive duplicate submissions and must be handled:
+The only risk to watch for is explicitly enabling non-idempotent retries: once `WithRetryNonIdempotent(true)` is used, order-placement and payment-style endpoints can receive duplicate submissions and must be handled as in the example below:
 
 <!-- check-code: skip -->
 ```go
@@ -426,7 +427,7 @@ result, err := client.Post("https://api.example.com/orders",
 )
 
 // Safe (option 1): keep the default — non-idempotent endpoints execute once (recommended, no handling needed)
-result, err := client.Post("https://api.example.com/orders", httpc.WithJSON(order))
+result, err = client.Post("https://api.example.com/orders", httpc.WithJSON(order))
 
 // Safe (option 2): if you do need retries, deduplicate via a server-side idempotency key (recommended)
 result, err = client.Post("https://api.example.com/orders",

@@ -13,7 +13,7 @@ sidebar_position: 40
 
 `Extract` 返回清洗后正文里的 `<a>` 链接（`Result.Links`），每个链接带可见文本、`nofollow` 标记与位置。`ExtractAllLinks` 返回未清洗页面引用的全部资源，包括 `Extract` 会清洗掉的 `<script>`、`<iframe>`，以及样式表、图标等。需要「正文里的链接」用前者，需要「页面引用了什么」用后者。
 
-不经过清洗指不做标签/属性移除，URL 本身仍要过格式校验：`javascript:`、`vbscript:`、`file:` 等危险协议，以及超长的 data URL 会被丢弃，不进入结果。
+未清洗指不做标签与属性移除，URL 本身仍要过格式校验：`javascript:`、`vbscript:`、`file:` 等危险协议，以及超长的 data URL 会被丢弃，不进入结果。
 
 ## 基本用法
 
@@ -47,12 +47,18 @@ for _, link := range links {
 |------|----------|------|
 | `link` | `<a>` | 页面链接 |
 | `image` | `<img>` | 图片资源 |
-| `video` | `<video>`，以及 `src` 为视频 URL 的 `<iframe>`/`<embed>`/`<object>` | 视频资源 |
-| `audio` | `<audio>` | 音频资源 |
+| `video` | `<video>`、`<source type="video/*">`，以及 `src` 为视频 URL 的 `<iframe>`/`<embed>`/`<object>` | 视频资源 |
+| `audio` | `<audio>`、`<source type="audio/*">` | 音频资源 |
 | `css` | `<link rel="stylesheet">` | 样式表 |
-| `media` | `<source>` | 通用媒体资源（无法判定视频/音频时） |
+| `media` | `<source>` | 通用媒体资源：`type` 既非 `video/*` 也非 `audio/*`，且 URL 扩展名无法判定视频或音频时 |
 | `js` | `<script>` | 脚本文件 |
 | `icon` | `<link rel="icon">` | 网站图标 |
+
+:::tip `<source>` 的归类规则
+`<source>` 先看 `type` 属性：`video/*` 归 `video`，`audio/*` 归 `audio`（大小写不敏感）。没有可用的 `type` 时按 URL 扩展名判定；两者都无法判定时归为 `media`。
+
+实测 `<source src="/x.unknownext">` 与 `<source type="application/vnd.apple.mpegurl">` 都输出 `media`。
+:::
 
 ## 按类型分组
 
@@ -115,8 +121,8 @@ links, _ := html.ExtractAllLinks(data, cfg)
 | 配置字段 | 默认值 | 控制范围 |
 |----------|--------|----------|
 | `IncludeImages` | `true` | `<img>` 标签 |
-| `IncludeVideos` | `true` | `<video>`、`<iframe>`、`<embed>`、`<object>` |
-| `IncludeAudios` | `true` | `<audio>` 标签 |
+| `IncludeVideos` | `true` | `<video>`、判定为视频的 `<source>`、`<iframe>`、`<embed>`、`<object>` |
+| `IncludeAudios` | `true` | `<audio>` 与判定为音频的 `<source>` |
 | `IncludeCSS` | `true` | `<link rel="stylesheet">` |
 | `IncludeJS` | `true` | `<script>` 标签 |
 | `IncludeContentLinks` | `true` | 相对 href 的 `<a>` 链接 |
@@ -154,6 +160,8 @@ links, _ := html.ExtractAllLinks(data, cfg)
 3. `<link rel="canonical">`
 4. 页面中第一个绝对 `href`/`src` 的 `scheme://host/`
 
+`<base href>` 规范化后为空（如 `about:blank`、`data:`）时视为不可用，按后续顺序继续推断，而不是放弃整个文档的 URL 解析。
+
 ## 爬虫场景
 
 ### 收集页面所有资源
@@ -181,7 +189,7 @@ for _, link := range groups["link"] {
 }
 ```
 
-`isSameDomain` 需要自行实现：库不比较域名，同域绝对链接也会归入外部。
+`isSameDomain` 的域名过滤需自行实现（见上文警告）。
 
 ### 仅提取页面导航链接
 

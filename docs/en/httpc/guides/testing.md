@@ -7,7 +7,7 @@ sidebar_position: 120
 
 # Testing Guide
 
-HTTPC testing has two layers. Integration tests drive the full request pipeline through an `httptest` mock server; unit tests construct `Result` values directly through a `Doer` double. Both start from the `TestingConfig()` preset.
+HTTPC testing has two layers. Integration tests drive the full request pipeline through an `httptest` mock server, starting from the `TestingConfig()` preset; unit tests construct `Result` values directly through a `Doer` double, with no client creation required.
 
 ## TestingConfig
 

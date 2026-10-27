@@ -235,11 +235,12 @@ fmt.Println(user.Name)
 func (r *Result) SaveToFile(filePath string) error
 ```
 
-Writes the response body to a file. The file path is security-validated (path-traversal protection, symlink checks, system-path protection), and the file is written with `0644` permissions.
+Writes the response body to a file, unconditionally overwriting an existing target (unlike `Download`, which returns `ErrFileExists` by default). The file path is security-validated (path-traversal protection, symlink checks, system-path protection). Content is first written to a `<path>.httpc-tmp` temporary file and atomically renamed into place once validation passes; the file is written with `0644` permissions.
 
 | Error | Trigger Condition |
 |-------|-------------------|
-| `ErrResponseBodyEmpty` | The response body is nil (including when Result or Response is nil) |
+| `ErrResponseBodyEmpty` | The response body is nil or empty (including when Result or Response is nil) |
+| `ErrDownloadInProgress` | A `Download` or another `SaveToFile` in the same process is already writing the same target path |
 | Wrapped error | Path validation failed or the write failed |
 
 ```go

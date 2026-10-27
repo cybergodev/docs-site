@@ -1,24 +1,26 @@
 ---
 sidebar_label: "Constants & Errors"
 title: "Constants & Errors - CyberGo html | Defaults & Error Types"
-description: "CyberGo html constants and errors: default constants, 8 audit events, 3 audit levels, 12 sentinel errors, and InputError/ConfigError/FileError types."
+description: "CyberGo html constants and errors: default constants, format constants, 8 audit events, 3 audit levels, 12 sentinel errors, and the InputError, ConfigError, FileError types."
 sidebar_position: 30
 ---
 
 # Constants & Errors
 
+This page collects the exported constants of CyberGo html (default configuration, format values, audit events and levels), the 12 sentinel errors, and the three structured error types, together with the `errors.Is`/`errors.As` decision patterns.
+
 ## Default Configuration Constants
 
 | Constant | Type | Value | Description |
 |----------|------|-------|-------------|
-| `DefaultMaxInputSize` | `int` | `52428800` | Maximum input size (50MB) |
+| `DefaultMaxInputSize` | `int` | `52428800` | Maximum input size (50 MB) |
 | `DefaultMaxCacheEntries` | `int` | `2000` | Cache entry limit |
-| `DefaultWorkerPoolSize` | `int` | `4` | Worker pool size |
-| `DefaultCacheTTL` | `time.Duration` | `1h` | Cache expiration time |
-| `DefaultCacheCleanup` | `time.Duration` | `5m` | Cache cleanup interval |
+| `DefaultWorkerPoolSize` | `int` | `4` | Concurrent worker goroutines for batch extraction |
+| `DefaultCacheTTL` | `time.Duration` | `1h` | Cache entry lifetime |
+| `DefaultCacheCleanup` | `time.Duration` | `5m` | Background sweep interval for expired cache entries |
 | `DefaultMaxAuditEntries` | `int` | `10000` | In-memory audit entry limit (used when `AuditConfig.MaxEntries` is 0) |
 | `DefaultMaxRawValueLength` | `int` | `200` | Maximum length of the audit `RawValue` string |
-| `DefaultMaxDepth` | `int` | `500` | Maximum DOM depth |
+| `DefaultMaxDepth` | `int` | `500` | Maximum HTML nesting depth (stack-overflow guard) |
 | `DefaultProcessingTimeout` | `time.Duration` | `30s` | Processing timeout |
 
 ## Audit Constants
@@ -46,6 +48,19 @@ sidebar_position: 30
 
 For audit usage and Sink types see [Audit System](../modules/audit).
 
+## Format Constants
+
+Value constants for the `InlineImageFormat`, `InlineLinkFormat`, and `TableFormat` fields; assign them instead of magic strings (e.g. `cfg.InlineImageFormat = html.FormatMarkdown`):
+
+| Constant | Value | Applicable fields | Description |
+|----------|-------|-------------------|-------------|
+| `FormatNone` | `"none"` | `InlineImageFormat` / `InlineLinkFormat` | Not inlined into `Text`; not valid for `TableFormat` |
+| `FormatMarkdown` | `"markdown"` | `InlineImageFormat` / `InlineLinkFormat` / `TableFormat` | Inlines with Markdown syntax; the `MarkdownConfig()` preset assigns this constant internally |
+| `FormatHTML` | `"html"` | `InlineImageFormat` / `InlineLinkFormat` / `TableFormat` | Keeps inline HTML tags |
+| `FormatPlaceholder` | `"placeholder"` | `InlineImageFormat` only | Emits an `[IMAGE:N]` positional placeholder |
+
+`InlineImageFormat` / `InlineLinkFormat` default to `FormatNone` and `TableFormat` defaults to `FormatMarkdown`; validation is case-insensitive, ignores leading and trailing whitespace, and treats an empty string as the field default — the full option lists per field are in [Config](../core/config#output-formats). Reader mode (`ReadPage*`) always preserves links and treats `InlineLinkFormat`'s `FormatNone` as `FormatMarkdown`; see [Reader Mode](../core/reader#key-semantics).
+
 ## Sentinel Errors
 
 | Error | Message | Description |
@@ -58,10 +73,10 @@ For audit usage and Sink types see [Audit System](../modules/audit).
 | `ErrProcessingTimeout` | `html: processing timeout exceeded` | The library's processing timeout elapsed |
 | `ErrFileNotFound` | `html: file not found` | File not found |
 | `ErrInvalidFilePath` | `html: invalid file path` | Invalid file path |
-| `ErrInternalPanic` | `html: internal panic recovered` | Internal panic recovered |
+| `ErrInternalPanic` | `html: internal panic recovered` | Internal panic recovered (a library defect; report it to the maintainers) |
 | `ErrMultipleConfigs` | `html: at most one Config may be provided` | More than one Config passed |
 | `ErrBatchTooLarge` | `html: batch size exceeds maximum` | Batch item count exceeds the per-batch limit (10000) |
-| `ErrTooManyConcurrentOps` | `html: too many concurrent operations` | Timeout watchdog reached its global limit (1000); no timeout occurred |
+| `ErrTooManyConcurrentOps` | `html: too many concurrent operations` | Timeout watchdog reached its process-wide limit (1000); no timeout occurred |
 
 When the user's context deadline expires, the call returns `context.DeadlineExceeded`, which is not normalized to `ErrProcessingTimeout`.
 
@@ -136,7 +151,7 @@ type FileError struct {
 
 func (e *FileError) Error() string                // Safe output (truncated path)
 func (e *FileError) SafePath() string             // Filename only
-func (e *FileError) Unwrap() error                // → ErrFileNotFound | original error | ErrInvalidFilePath
+func (e *FileError) Unwrap() error                // → ErrFileNotFound | original error (including path traversal denials wrapping ErrInvalidFilePath) | ErrInvalidFilePath
 func (e *FileError) MarshalJSON() ([]byte, error) // Truncates Path via SafePath() when serialized
 ```
 
@@ -148,13 +163,17 @@ func (e *FileError) MarshalJSON() ([]byte, error) // Truncates Path via SafePath
 
 | Method | Description |
 |--------|-------------|
-| `FileError.Error` | Safe output (path truncated to the filename; the underlying message is sanitized too) |
+| `FileError.Error` | Safe output (path truncated to the filename; the underlying message is redacted too) |
 | `FileError.SafePath` | Returns the filename only (returned as-is when there is no separator) |
-| `FileError.Unwrap` | → `ErrFileNotFound` \| the original error \| `ErrInvalidFilePath` |
+| `FileError.Unwrap` | → `ErrFileNotFound` \| the original error \| `ErrInvalidFilePath` (path traversal denials wrap `ErrInvalidFilePath`, so `errors.Is` matches) |
 | `FileError.MarshalJSON` | Serializes as `{op, path, message}` with `path` truncated via `SafePath()` |
 
 :::tip A safe default when emitting paths
 `FileError.Error()` and `SafePath()` both return only the filename, so they are safe to put in HTTP responses or logs. Read the `Path` field for the full path, and only for internal debugging.
+:::
+
+:::info Which file error matches no sentinel
+Path traversal (a `..` component that survives cleaning) returns a `*FileError` wrapping `ErrInvalidFilePath`, so `errors.Is(err, ErrInvalidFilePath)` is `true`. The single exception is an `AllowedBaseDir` sandbox escape: `FileErr` is `path outside allowed directory`, which **matches no sentinel error**, so inspect the message in `FileError.FileErr`.
 :::
 
 ## Internal Limit Constants
@@ -165,10 +184,10 @@ The constants below define runtime hard limits. They are **unexported** (lowerca
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `maxConfigInputSize` | `52428800` (50MB) | Upper bound for `MaxInputSize`; larger values are rejected by `Validate()` |
+| `maxConfigInputSize` | `52428800` (50 MB) | Upper bound for `MaxInputSize`; larger values are rejected by `Validate()` |
 | `maxConfigWorkerSize` | `256` | Upper bound for `WorkerPoolSize` |
 | `maxConfigDepth` | `500` | Upper bound for `MaxDepth` |
-| `maxConfigCacheEntries` | `100000` | Upper bound for `MaxCacheEntries` (about 100MB at 1KB per entry) |
+| `maxConfigCacheEntries` | `100000` | Upper bound for `MaxCacheEntries` (about 100 MB at 1 KB per entry) |
 | `maxConfigAuditEntries` | `100000` | Upper bound for `Audit.MaxEntries`; the in-memory limit of `GetAuditLog` |
 
 ### Processing Limits
@@ -176,15 +195,15 @@ The constants below define runtime hard limits. They are **unexported** (lowerca
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `maxBatchSize` | `10000` | Maximum items per batch; exceeding it fails the whole batch |
-| `maxTimeoutGoroutines` | `1000` | Global limit on concurrent timeout goroutines; new requests beyond it return `ErrTooManyConcurrentOps` |
-| `maxHTMLForRegex` | `1000000` (1MB) | Size limit for the raw-HTML media scan; above it the whole scan is skipped (ReDoS prevention) |
+| `maxTimeoutGoroutines` | `1000` | Process-wide limit on concurrent timeout goroutines; new requests beyond it return `ErrTooManyConcurrentOps` |
+| `maxHTMLForRegex` | `1000000` (1 MB) | Size limit for the raw-HTML media scan; above it the whole scan is skipped (ReDoS prevention) |
 | `maxRegexMatches` | `1000` | Maximum media-URL matches per scan; prevents excessive allocation on media-dense pages |
 
 How these limits play out:
 
-- For HTML over 1MB, the raw-HTML scan (`<iframe>`/`<embed>`/`<object>` tag attributes and bare media URLs) does not run; the DOM walk still extracts `<video>`/`<audio>`.
+- For HTML over 1 MB, the raw-HTML scan (`<iframe>`/`<embed>`/`<object>` tag attributes and bare media URLs) does not run; the DOM walk still extracts `<video>`/`<audio>`.
 - A batch over 10000 items fails as a whole (returning `ErrBatchTooLarge`, not a panic); it does not process the first 10000 only.
-- With more than 1000 concurrent timed calls, new calls return `ErrTooManyConcurrentOps` immediately; retry after in-flight operations drain.
+- When more than 1000 timed calls are running concurrently within the process, new calls return `ErrTooManyConcurrentOps` immediately; retry after in-flight operations drain.
 
 ## Error Handling Patterns
 
@@ -210,8 +229,10 @@ if err != nil {
 		// Invalid HTML
 	case errors.Is(err, html.ErrFileNotFound):
 		// File not found
+	case errors.Is(err, html.ErrInvalidFilePath):
+		// Invalid path; path traversal denials match this sentinel too
 	case errors.As(err, &fileErr):
-		// Other file errors, including path traversal (which matches no sentinel)
+		// Other file errors (e.g. an AllowedBaseDir escape, which matches no sentinel)
 		fmt.Println("File:", fileErr.SafePath())
 	}
 }

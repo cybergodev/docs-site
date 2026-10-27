@@ -133,7 +133,7 @@ var retryableStatusCodes = map[int]bool{
 }
 ```
 
-This is the single source of truth for HTTP-status-code-triggered retries, shared by the retry logic and `IsRetryable()`.
+This is the source of truth for HTTP-status-code-triggered retries under the built-in policy; the retry engine and `IsRetryable()` share this table. When `Connection.ProxyRotateOnStatus` is configured, the engine additionally treats those status codes as retryable beyond this table — such a request may be retried even though its `ClientError.IsRetryable()` returns false.
 
 :::tip Subtle distinction among timeout types
 `ErrorTypeTimeout` is retryable, but **timeouts triggered by a context deadline are not**: `context.DeadlineExceeded` is intercepted at step 1 and returns false. Only transport-layer timeouts (e.g. `net.OpError.Timeout()`) reach step 2 and count as retryable, so a `WithTimeout` deadline is never exceeded by retries.
@@ -276,7 +276,7 @@ Three configurations trigger warnings in **non-test environments**, each printed
 
 | Trigger condition | Warning summary |
 |---------|---------|
-| A client created with `TestingConfig()` is used outside a test environment | Points out that TLS certificate verification, SSRF protection, and URL/Header validation are all disabled, and recommends `SecureConfig()` or `DefaultConfig()` instead |
+| `TestingConfig()` is called outside a test environment | Points out that TLS certificate verification, SSRF protection, and URL/Header validation are all disabled, and recommends `SecureConfig()` or `DefaultConfig()` instead (the warning fires inside the preset function, regardless of whether a client is created) |
 | `Security.InsecureSkipVerify=true` in a non-test environment | Points out that TLS certificate verification is disabled, that it should only be used in tests, and that production should use `SecureConfig()` |
 | A hand-built `Config` hits the all-off signature (`ValidateURL`/`ValidateHeaders`/`StrictContentLength`/`FollowRedirects`/`EnableHTTP2` all false and `Security.MaxResponseBodySize == 0`) | Prints `[CONFIG WARNING]`: those `Default: true` fields are true only in `DefaultConfig()`/presets, and a struct literal zeroes them; start from `DefaultConfig()` instead |
 

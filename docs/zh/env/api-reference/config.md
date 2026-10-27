@@ -261,7 +261,7 @@ cfg.ExpandVariables = true
 | `${VAR}` | 引用变量 |
 | `${VAR:-default}` | 变量不存在时使用默认值；变量存在但为空时用其原值 |
 | `${VAR:=default}` | 同 `${VAR:-default}`，另把默认值写回该变量 |
-| `${VAR:?error}` | 变量不存在或为空时报错，错误消息不含提示文本 |
+| `${VAR:?error}` | 变量不存在或为空时报错，错误消息不回显 `:?` 后的提示文本 |
 
 ::: tip 空字符串的处理
 `${VAR:-default}` 与 `${VAR:=default}` 只在变量**未设置**时使用默认值。若变量被显式设为空字符串（`VAR=`），展开结果就是空字符串。
@@ -450,7 +450,7 @@ cfg.AllowExportPrefix = false  // 禁止 export 前缀
 
 #### `AllowYamlSyntax` bool
 
-允许 .env 文件使用 `KEY: value` 冒号分隔，并让值一侧按 YAML 标量语义解析：`null`/`~` 视为空字符串，YAML 布尔与数字字面量按其规则识别。**默认 `false`**。
+允许 .env 文件使用 `KEY: value` 冒号分隔，并让值一侧按 YAML 标量语义解析：`null`/`~` 视为空字符串，其余标量（布尔、数字等）原样保留。**默认 `false`**。
 
 ```go
 cfg.AllowYamlSyntax = true
@@ -486,7 +486,7 @@ cfg.JSONNumberAsString = true
 
 #### `JSONBoolAsString` bool
 
-仅为与 `YAMLBoolAsString` 对称而保留，**对 JSON 输出没有实际效果**：JSON 布尔解码后不再保留原始文本，始终渲染规范的 `true`/`false`。不要用它控制 JSON 布尔行为。**默认 `false`**，该字段已标记 Deprecated。
+仅为与 `YAMLBoolAsString` 对称而保留，**对 JSON 输出没有实际效果**：JSON 布尔解码后不再保留原始文本，始终渲染规范的 `true`/`false`。不要用它控制 JSON 布尔行为；需要控制 YAML 布尔的字符串化时改用 `YAMLBoolAsString`。**默认 `false`**，该字段已标记 Deprecated。
 
 ```go
 cfg.JSONBoolAsString = false
@@ -842,6 +842,7 @@ func (c *Config) IsZero() bool
 **检测范围（v1.3.0 起覆盖全部字段）：**
 - 数值限制（MaxFileSize、MaxVariables 等）
 - 布尔字段（ValidateValues、AutoApply 等）
+- 枚举与字符串字段（ExpansionScope、DuplicateKeyPolicy、Prefix）
 - 指针/接口字段（KeyPattern、FileSystem 等）
 - 切片字段（Filenames、RequiredKeys 等）
 
@@ -946,7 +947,7 @@ loader, _ := env.New(cfg)
 | 键名模式 | 内置字节级校验（等价 `^[A-Za-z][A-Za-z0-9_]*$`） |
 | `ValidateValues` | true |
 | `JSONNullAsEmpty`/`JSONNumberAsString` | true |
-| `JSONBoolAsString` | false（对 JSON 输出无效果） |
+| `JSONBoolAsString` | false（已标记 Deprecated，对 JSON 输出无效果） |
 | `ExpandVariables` | true（作用域 `ExpansionFileOnly`） |
 | `Prefix` | 空（不过滤） |
 

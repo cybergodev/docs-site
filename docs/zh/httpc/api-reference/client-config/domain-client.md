@@ -65,7 +65,7 @@ type DomainClienter interface {
 | `Download` | `(ctx, path string, cfg *DownloadConfig, opts ...RequestOption) (*DownloadResult, error)` | 文件下载 |
 | `Close` | `() error` | 关闭客户端释放资源 |
 
-具体类型 `*DomainClient` 实现了上表全部方法，方法名与接口签名一一对应。`Download` 与 `Close` 详见下文专节。
+具体类型 `*DomainClient` 实现了上表全部方法，方法名与接口签名一一对应，完整方法名为 `DomainClient.Get`、`DomainClient.Post`、`DomainClient.Put`、`DomainClient.Patch`、`DomainClient.Delete`、`DomainClient.Head`、`DomainClient.Options`、`DomainClient.Request`、`DomainClient.Download`、`DomainClient.Close`。`Download` 与 `Close` 详见下文专节。
 
 #### URL 访问方法
 
@@ -104,7 +104,7 @@ type DomainClienter interface {
 | `GetCookies` | `() []*http.Cookie` | 获取全部 Cookie 副本 |
 | `GetCookie` | `(name string) *http.Cookie` | 按名称获取 Cookie 副本 |
 
-对应接口方法定义在 `DomainClienter` 上（`SetCookie`、`SetCookies`、`DeleteCookie`、`ClearCookies`、`GetCookies`、`GetCookie`），实现同样委托给 `SessionManager`。
+对应接口方法定义在 `DomainClienter` 上，完整方法名为 `DomainClienter.SetCookie`、`DomainClienter.SetCookies`、`DomainClienter.DeleteCookie`、`DomainClienter.ClearCookies`、`DomainClienter.GetCookies`、`DomainClienter.GetCookie`；实现同样委托给 `SessionManager`。
 
 ## NewDomain
 
@@ -257,7 +257,7 @@ path    = ../admin/delete       ← path.Join 清理后为 /admin/delete
 ```
 
 :::warning 绝对 URL 识别
-只有 `http://` 和 `https://` 开头的路径会被识别为绝对 URL。其他协议（如 `ftp://`）不会被识别为绝对路径，而会按相对路径拼接，请求因此失败。base 路径为空或 `/` 时不做作用域检查。
+只有 `http://` 和 `https://` 开头的路径会被识别为绝对 URL（前缀比较大小写不敏感，`HTTP://host` 同样按绝对 URL 处理）。其他协议（如 `ftp://`）不会被识别为绝对路径，而会按相对路径拼接，请求因此失败。base 路径为空或 `/` 时不做作用域检查。
 :::
 
 ## 会话自动管理
@@ -267,9 +267,9 @@ path    = ../admin/delete       ← path.Join 清理后为 /admin/delete
 ```text
 请求生命周期中的会话管理：
 
-  ① prepareOptions()（发送前）
+  ① prepareOptions(fullURL)（发送前）
      从 SessionManager 读取会话头和 Cookie
-     → 转为 RequestOption 注入到请求中
+     → 转为 RequestOption 注入到请求中（Cookie 按 RFC 6265 作用域回放）
 
   ② captureFromOptions()（发送前）
      从用户传入的 RequestOption 中提取 Cookie 和头
@@ -296,8 +296,17 @@ dc.SetCookie(&http.Cookie{Name: "session", Value: "xyz"})
 
 // 查询会话状态
 dc.GetCookie("session")  // → *http.Cookie 副本
+dc.GetCookies()          // → []*http.Cookie 副本（已过期的条目不返回）
 dc.GetHeaders()          // → map[string]string 副本
+
+// 登出：删除单个 Cookie，或清空全部会话状态
+dc.DeleteCookie("session")
+dc.ClearCookies()
 ```
+
+:::warning 跨源请求不携带会话凭据
+会话头与 Cookie 的作用域是 base origin（host:port，比较大小写不敏感）。当某次调用传入指向其他主机的绝对 URL 时，会话头与 Cookie **既不注入也不捕获**——base 域的凭据不会泄漏给第三方源。重定向同理：仅当最终响应仍落在 base origin 时，其 `Set-Cookie` 才回填会话。
+:::
 
 :::tip 线程安全
 `SessionManager` 内部使用 `sync.RWMutex` 保护，`SetHeader`/`SetCookie`/`GetCookie` 等方法可安全并发调用。`prepareOptions` 采用读后写的非原子序列：会话状态设计为最终一致，并发请求会在 `prepareOptions` 时交错，但每个请求在 `prepareOptions` 时刻捕获到一致快照。
@@ -310,9 +319,9 @@ dc.GetHeaders()          // → map[string]string 副本
 会话捕获由 `SessionManager` 内部完成，方式是**静态类型断言**：它按具体选项类型提取头与 Cookie，从不调用 `apply`。因此只有内置的命名选项类型会被识别——`WithHeader`、`WithHeaderMap`、`WithCookies`、`WithCookieMap`、`WithCookieString`；这些头与 Cookie 会持久化进会话，对后续请求持续生效。
 
 ```text
-prepareSessionOptions(options):
-  ① managedOptions = prepareOptions()        ← 读取会话状态
-  ② allOptions = managedOptions + options    ← 合并
+prepareSessionOptions(fullURL, options):
+  ① managedOptions = prepareOptions(fullURL)  ← 读取会话状态（Cookie 按 fullURL 作用域回放）
+  ② allOptions = managedOptions + options     ← 合并
   ③ captureFromOptions(options)              ← 静态断言取头/Cookie，不执行闭包
   ④ return allOptions → client.Request()     ← 唯一的执行点
 ```

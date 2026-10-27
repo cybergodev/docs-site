@@ -1,17 +1,17 @@
 ---
 sidebar_label: "高级用法"
 title: "高级示例 - CyberGo html | 进阶场景示例"
-description: "CyberGo html 进阶示例集：自定义 Scorer、多 Sink 审计管道、批量文件并发处理、Processor 池化复用与统计、HTTP 服务优雅关闭、AllowedBaseDir 文件沙箱与按来源指定编码，每个示例均为可编译的完整程序。"
+description: "CyberGo html 进阶示例集：自定义 Scorer 与 ArticleFinder 单遍选取、多 Sink 审计管道、批量文件并发处理、Processor 单例复用与统计、HTTP 优雅关闭、AllowedBaseDir 沙箱与按来源指定编码，均为可编译的完整程序。"
 sidebar_position: 20
 ---
 
 # 高级示例
 
-生产场景的进阶用法：自定义评分、审计管道、批量文件、服务端复用与安全文件处理。
+生产场景的进阶用法：自定义评分与单遍选取、审计管道、批量文件、服务端复用与安全文件处理。
 
 ## 自定义 Scorer
 
-针对特定网站结构定制内容识别逻辑。完整实现见 [测试与自定义扩展](../guides/integration/testing-custom)，以下为核心用法：
+针对特定网站结构定制文章识别逻辑。完整实现见 [测试与自定义扩展](../guides/integration/testing-custom)，以下为核心用法：
 
 ```go
 package main
@@ -41,7 +41,8 @@ func (s myScorer) Score(node html.ContentNode) int {
 	return 0
 }
 
-// ShouldRemove 是接口的预留方法：当前版本不会被库调用，此处的逻辑不会生效
+// ShouldRemove 只在库使用内置默认评分器时被查阅；
+// 配置了自定义 Scorer 后，节点移除仍按内置规则执行，此处的逻辑不会生效
 func (s myScorer) ShouldRemove(node html.ContentNode) bool {
 	if node == nil {
 		return false
@@ -78,13 +79,19 @@ func main() {
 	}
 
 	fmt.Println("正文：", result.Text)
-	// 输出：正文： 深入理解 Go 并发
+	// 输出：正文： # 深入理解 Go 并发
 	//
 	// goroutine 是 Go 的轻量级线程。
 }
 ```
 
 导航与侧栏的移除来自库的默认清洗与评分器候选过滤，不是上面 `ShouldRemove` 的效果。
+
+## 单遍选取：ArticleFinder
+
+默认流程对每个非行内元素调用一次 `Score`。自定义评分器若在 `Score` 内重新遍历子树，整体开销会退化为 O(N²)。让 `Scorer` 额外实现 `ArticleFinder`，库改为调用一次 `FindArticleNode` 跳过逐元素枚举；返回 `nil` 时回退整个 `<body>`。
+
+接口约束、完整实现与测试写法见[测试与自定义扩展](../guides/integration/testing-custom)。
 
 ## 多 Sink 审计管道
 
@@ -147,6 +154,8 @@ func main() {
 	// 输出：正文： 安全的内容
 }
 ```
+
+分级路由（critical 事件进告警通道）、Channel 消费与全部内置 Sink 的对比见[审计系统实战](../guides/security/audit-pipeline)。
 
 ## 批量文件处理
 
@@ -212,71 +221,7 @@ func main() {
 
 ## 带超时的 Processor 复用
 
-Web 服务中的 Processor 单例：进程启动时创建一次，所有请求共享。
-
-```go
-package main
-
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"time"
-
-	"github.com/cybergodev/html"
-)
-
-var processor *html.Processor
-
-func init() {
-	cfg := html.DefaultConfig()
-	cfg.MaxCacheEntries = 5000
-	cfg.CacheTTL = 30 * time.Minute
-	cfg.ProcessingTimeout = 10 * time.Second
-
-	var err error
-	processor, err = html.New(cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func extractHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
-
-	data := []byte(r.FormValue("html"))
-	if len(data) == 0 {
-		http.Error(w, "html field required", http.StatusBadRequest)
-		return
-	}
-
-	result, err := processor.ExtractWithContext(ctx, data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
-}
-
-func statsHandler(w http.ResponseWriter, r *http.Request) {
-	stats := processor.GetStatistics()
-	fmt.Fprintf(w, "已处理：%d\n缓存命中：%d\n错误：%d\n",
-		stats.TotalProcessed, stats.CacheHits, stats.ErrorCount)
-}
-
-func main() {
-	defer processor.Close()
-
-	http.HandleFunc("/extract", extractHandler)
-	http.HandleFunc("/stats", statsHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-```
+Web 服务中的 Processor 单例：进程启动时创建一次，所有请求共享，每个请求再从请求 context 派生超时。完整写法（含请求体大小限制）见 [HTTP 集成](../guides/integration/http-integration)的「Processor 单例 + HTTP 服务」一节；本页后文的「上下文取消与优雅关闭」保留差异化场景——信号触发的优雅关闭。
 
 ## 提取并生成 Markdown 文件
 
@@ -427,15 +372,39 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/cybergodev/html"
 )
 
 func main() {
+	// 构造沙箱：allowed 目录内外各放一个 HTML 文件
+	tmp, err := os.MkdirTemp("", "html-sandbox-*")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+
+	base := filepath.Join(tmp, "allowed")
+	if err := os.MkdirAll(filepath.Join(base, "sub"), 0o750); err != nil {
+		log.Fatal(err)
+	}
+	files := map[string]string{
+		filepath.Join(base, "article.html"):  "<html><head><title>沙箱内文章</title></head><body><article><p>正文。</p></article></body></html>",
+		filepath.Join(base, "sub", "p.html"): "<html><body><article><p>子目录文件。</p></article></body></html>",
+		filepath.Join(tmp, "outside.html"):   "<html><body><article><p>目录外文件。</p></article></body></html>",
+	}
+	for path, content := range files {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	cfg := html.HighSecurityConfig()
 	// 限制文件读取到此目录及其子目录
-	// 通过已打开的文件句柄解析真实路径，防 symlink/junction 绕过
-	cfg.AllowedBaseDir = "/var/www/uploads"
+	// 沙箱从已打开的文件句柄解析真实路径，防 symlink/junction 绕过
+	cfg.AllowedBaseDir = base
 
 	p, err := html.New(cfg)
 	if err != nil {
@@ -445,28 +414,35 @@ func main() {
 
 	// 模拟用户提供的文件路径
 	userFiles := []string{
-		"/var/www/uploads/article1.html", // ✅ 允许
-		"/var/www/uploads/sub/page.html", // ✅ 允许（子目录）
-		"../../../etc/passwd",            // ❌ 路径遍历
-		"/etc/shadow",                    // ❌ 目录外
+		filepath.Join(base, "article.html"),  // 沙箱内
+		filepath.Join(base, "sub", "p.html"), // 子目录，同样允许
+		filepath.Join(tmp, "outside.html"),   // 目录外
+		filepath.Join("..", "secret.html"),   // 相对路径含 ..
 	}
 
 	for _, file := range userFiles {
 		_, err := p.ExtractFromFile(file)
-		if err != nil {
-			var fileErr *html.FileError
-			if errors.As(err, &fileErr) {
-				// SafePath 只返回文件名，不泄露完整路径
-				fmt.Printf("❌ 拒绝 %s: %s\n", fileErr.SafePath(), fileErr.FileErr)
-			} else {
-				fmt.Printf("❌ 错误: %v\n", err)
-			}
+		if err == nil {
+			fmt.Printf("允许: %s\n", filepath.Base(file))
 			continue
 		}
-		fmt.Printf("✅ 处理成功: %s\n", file)
+		var fileErr *html.FileError
+		if errors.As(err, &fileErr) {
+			// SafePath 只返回文件名，不泄露完整路径
+			fmt.Printf("拒绝: %s\n", fileErr.SafePath())
+		} else {
+			fmt.Printf("拒绝: %v\n", err)
+		}
 	}
+	// 输出：
+	// 允许: article.html
+	// 允许: p.html
+	// 拒绝: outside.html
+	// 拒绝: secret.html
 }
 ```
+
+目录外与路径遍历的拒绝形态不同：目录外读取的 `*FileError` 其 `FileErr` 为 `path outside allowed directory`，不包装哨兵错误；相对路径含 `..` 的拒绝则显式包装 `ErrInvalidFilePath`（`errors.Is` 可判定）。两种情况都记录 `path_traversal` 审计事件。沙箱的四道独立检查与跨平台真实路径解析见[安全概述](../guides/security/)。
 
 ## 按来源指定编码
 
@@ -518,4 +494,5 @@ func main() {
 
 - [常见问题](../faq/) - 高频疑问与排查思路
 - [生产检查清单](../guides/security/production-checklist) - 部署前安全核对
-- [API 参考：接口定义](../api-reference/types/interfaces) - Scorer、AuditSink 等扩展接口
+- [阅读模式](../guides/core-features/reader-mode) - 整页分区输出与 Render
+- [API 参考：接口定义](../api-reference/types/interfaces) - Scorer、ArticleFinder、AuditSink 等扩展接口

@@ -201,7 +201,7 @@ loader.LoadFiles("config.env", "config.json", "config.yaml")
 format := env.DetectFormat("config.json")  // FormatJSON
 
 // 序列化
-env.Marshal(data, env.FormatEnv)
+env.Marshal(data, env.FormatEnv)   // 值按需加引号与转义
 env.Marshal(data, env.FormatJSON)
 env.Marshal(data, env.FormatYAML)
 
@@ -227,6 +227,8 @@ KEY=$$                     # 转义美元符号（得到字面量 $）
 
 ::: tip 变量展开与字面量 $
 单引号**阻止**变量展开：`KEY='a ${UNDEF}'` 的值就是字面文本 `a ${UNDEF}`。需要字面量 `$` 而使用双引号或无引号时，用 `$$` 转义，或设置 `cfg.ExpandVariables = false` 全局关闭展开。完整规则参见[文件格式](../reference/file-format)。
+
+`KEY: value` 形式的行默认被跳过并记审计，只有 `=` 是分隔符；启用 `cfg.AllowYamlSyntax = true` 后 `:` 才可作为分隔符。
 :::
 
 ## 布尔值
@@ -277,8 +279,9 @@ defer loader.Close()
 | 系统路径 | `PATH` |
 | Linux 动态链接 | `LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_DEBUG`, `LD_AUDIT`, `LD_PRELOAD_32`, `LD_PRELOAD_64`, `LD_LIBRARY_PATH_32`, `LD_LIBRARY_PATH_64` |
 | macOS | `DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH` |
-| Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS` |
-| 语言运行时 | `PYTHONPATH`, `NODE_PATH`, `PERL5OPT`, `RUBYLIB` |
+| Shell | `SHELL`, `ENV`, `BASH_ENV`, `IFS`, `PS4`, `SHELLOPTS`, `BASHOPTS` |
+| 语言运行时 | `PYTHONPATH`, `PYTHONSTARTUP`, `PYTHONINSPECT`, `PERL5OPT`, `PERL5LIB`, `RUBYLIB`, `RUBYOPT`, `GEM_PATH`, `GEM_HOME`, `NODE_PATH`, `NODE_OPTIONS`, `RUSTFLAGS`, `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS`, `_JAVA_OPTIONS`, `CLASSPATH` |
+| Git | `GIT_CONFIG_COUNT`, `GIT_PROXY_COMMAND` |
 | Windows | `COMSPEC`, `PATHEXT`, `SYSTEMROOT`, `WINDIR` |
 
 ## 接口类型

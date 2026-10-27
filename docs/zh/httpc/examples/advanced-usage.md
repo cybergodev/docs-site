@@ -87,7 +87,7 @@ func main() {
 
 ## 超时与重试组合
 
-三层时间控制的作用范围不同：context 管整组尝试的总预算，`WithTimeout` 管单次尝试，`WithMaxRetries` 管尝试次数。
+三层时间控制的分工：context 截止时间与 `WithTimeout` 都是覆盖全部重试与退避等待的总预算（同时设置时取更早到达的截止时间），`WithMaxRetries` 单独限定尝试次数。
 
 ```go
 package main
@@ -114,8 +114,8 @@ func main() {
 
 	result, err := client.Post("https://httpbin.org/post",
 		httpc.WithJSON(map[string]string{"data": "important"}),
-		httpc.WithContext(ctx),            // 总预算
-		httpc.WithTimeout(10*time.Second), // 单次尝试上限
+		httpc.WithContext(ctx),            // ctx 截止 30s（同为总预算）
+		httpc.WithTimeout(10*time.Second), // 覆盖客户端默认，总预算收紧为 10s
 		httpc.WithMaxRetries(3),           // 最多重试 3 次
 	)
 	if err != nil {
@@ -163,9 +163,8 @@ func main() {
 		}},
 	)
 
-	// 审计日志（JSON 格式）
+	// 审计日志（回调内 json.Marshal 输出 JSON 行；Format 字段无效果）
 	auditCfg := httpc.DefaultAuditConfig()
-	auditCfg.Format = "json"
 	auditCfg.IncludeHeaders = true
 	auditCfg.MaskHeaders = []string{"Authorization", "Cookie"}
 	auditCfg.SanitizeError = true
@@ -415,8 +414,9 @@ func main() {
 	fmt.Println("第二次请求：", resp2.StatusCode()) // 输出：第二次请求：200
 
 	// Session() 拿到底层 SessionManager（下一节演示其独立用法）
+	// UpdateFromResult 手动回填演示：dc.Get 已自动捕获响应 Cookie，此处重复写入无副作用
 	session := dc.Session()
-	session.UpdateFromResult(resp2) // 把本次响应的 Cookie 合并进会话
+	session.UpdateFromResult(resp2)
 	fmt.Println("会话 Cookie 数量：", len(session.GetCookies()))
 }
 ```
@@ -772,7 +772,7 @@ func main() {
 			fmt.Println("→ 分支：超时，可放宽预算后重试")
 		case "NETWORK_ERROR", "DNS_ERROR":
 			fmt.Println("→ 分支：网络/DNS 故障，检查连通性")
-		case "TLS_ERROR", "CERTIFICATE":
+		case "TLS_ERROR", "CERTIFICATE_ERROR":
 			fmt.Println("→ 分支：证书问题，校验 CA 与系统时间")
 		case "RETRY_EXHAUSTED":
 			fmt.Println("→ 分支：重试耗尽，进入降级逻辑")
@@ -781,7 +781,7 @@ func main() {
 }
 ```
 
-HTTP 状态码错误（4xx/5xx 响应被归类为 `HTTP_ERROR`）同样携带 `clientErr.StatusCode`；`Cause` 字段保留底层错误供 `errors.Unwrap` 继续下钻。错误分类全表见[错误处理](../guides/error-handling)与[错误类型](../api-reference/types/errors)。
+错误消息含 `HTTP 4xx`/`HTTP 5xx` 而归入 `HTTP_ERROR` 的错误同样携带 `clientErr.StatusCode`（常规 4xx/5xx 响应不作为 error 返回，用 `result.IsSuccess()` 等方法检查）；`Cause` 字段保留底层错误供 `errors.Unwrap` 继续下钻。错误分类全表见[错误处理](../guides/error-handling)与[错误类型](../api-reference/types/errors)。
 
 ## 响应落盘：SaveToFile 与 Download
 

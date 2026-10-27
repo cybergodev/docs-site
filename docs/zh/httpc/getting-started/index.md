@@ -26,7 +26,7 @@ go get github.com/cybergodev/httpc
 import "github.com/cybergodev/httpc"
 ```
 
-HTTPC 要求 Go 1.27 及以上版本，共 7 个直接依赖，均随包编译（源码无构建标签）。`golang.org/x/net` 与 `golang.org/x/sys` 用于标准路径；brotli / compress / uTLS / tls-client / fhttp 服务于 `Security.TLSFingerprint` 路径，未启用指纹时只是不参与运行。不启用指纹特性时按标准栈运行，无需配置即可发起请求。
+HTTPC 要求 Go 1.27 及以上版本，共 7 个直接依赖，均无条件参与编译（不存在按功能裁剪的构建标签）。`golang.org/x/net` 与 `golang.org/x/sys` 用于标准路径；brotli / compress / uTLS / tls-client / fhttp 服务于 `Security.TLSFingerprint` 路径，未启用指纹时只是不参与运行，请求按标准栈发出，无需配置即可发起请求。
 
 ## 基本请求
 
@@ -84,7 +84,7 @@ result, err := client.Get("https://httpbin.org/get")
 |------|------|------|
 | `DefaultConfig()` | 通用场景 | 安全默认值，SSRF 防护开启 |
 | `SecureConfig()` | 安全敏感场景 | 禁用自动重定向，严格超时 |
-| `PerformanceConfig()` | 高吞吐场景 | 大连接池，长超时，启用 Cookie |
+| `PerformanceConfig()` | 高吞吐场景 | 大连接池，整体超时收紧为快速失败（60s），启用 Cookie |
 | `TestingConfig()` | 测试环境 | 禁用安全检查与 HTTP/2，启用 Cookie |
 | `MinimalConfig()` | 轻量请求 | 无重试，无重定向 |
 

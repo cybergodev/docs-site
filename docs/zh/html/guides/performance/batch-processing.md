@@ -35,7 +35,7 @@ defer p.Close()
 br = p.ExtractBatch(pages)
 ```
 
-`Results[i]`、`Errors[i]` 与第 `i` 个输入一一对应：成功时 `Results[i]` 非 nil 且 `Errors[i]` 为 nil，失败或取消时 `Results[i]` 为 nil。三者恒有 `Success + Failed + Cancelled == 输入项数`。
+`Results[i]`、`Errors[i]` 与第 `i` 个输入一一对应：成功时 `Results[i]` 非 nil 且 `Errors[i]` 为 nil，失败或取消时 `Results[i]` 为 nil。三个计数恒有 `Success + Failed + Cancelled == 输入项数`。
 
 ## 基础示例
 
@@ -132,7 +132,7 @@ br := p.ExtractBatch(pages)
 
 ## 单批上限 10000 项
 
-超过 `maxBatchSize`（10000）时，整批不处理任何项，而是给每个 `Errors[i]` 填入同一个错误，`Failed` 等于输入项数：
+单批超过 10000 项（固定常量上限，无配置项可调）时，整批不处理任何项，而是给每个 `Errors[i]` 填入同一个错误，`Failed` 等于输入项数：
 
 ```go
 huge := make([][]byte, 10001)
@@ -151,7 +151,7 @@ fmt.Println(errors.Is(br.Errors[0], html.ErrBatchTooLarge))
 
 :::warning 超限是整批失败，不是 panic
 
-`maxBatchSize = 10000` 是硬上限，没有配置项可调。超限时调用正常返回，`Failed` 等于输入项数。要处理更多，按 ≤10000 分批调用；判断错误用 `errors.Is(err, html.ErrBatchTooLarge)`，不要比对字符串。
+10000 项是固定常量上限，没有配置项可调。超限时调用正常返回，`Failed` 等于输入项数。要处理更多，按 ≤10000 分批调用；判断错误用 `errors.Is(err, html.ErrBatchTooLarge)`，不要比对字符串。
 
 :::
 
@@ -164,6 +164,8 @@ fmt.Println(errors.Is(br.Errors[0], html.ErrBatchTooLarge))
 | 已完成 | 结果保留在 `Results` 中 |
 | 正在运行 | 正常跑完并记录结果 |
 | 未开始 | 跳过，`Cancelled` 加一，`Errors[i] = ctx.Err()` |
+
+调用时 `ctx` 已取消是边界情形：全部项都未开始，因此 `Cancelled` 等于输入项数、`Results` 全为 nil、每个 `Errors[i]` 都是 `context canceled`。
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

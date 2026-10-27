@@ -26,16 +26,12 @@ if err != nil {
 }
 defer dc.Close()
 
-// Cookie 自动启用
+// 响应 Set-Cookie 自动进入会话（无需 EnableCookies）
 dc.SetHeader("Authorization", "Bearer "+token)
 
 // 使用相对路径发送请求
 result, err := dc.Get("/users")
 ```
-
-:::tip
-`NewDomain` 创建的 DomainClient 内置一个 `SessionManager`：请求前注入会话头与 Cookie，响应后回写 `Set-Cookie`。该会话存储独立于 `Connection.EnableCookies`。
-:::
 
 创建时有三件事发生：
 
@@ -160,11 +156,13 @@ dc.ClearCookies()
 每次请求后，服务器返回的 Cookie 自动更新到会话中，无需手动处理。
 :::
 
-Cookie 的自动维护覆盖三条路径：
+Cookie 的自动维护覆盖以下路径：
 
 - **响应回填**：每次请求结束后，响应中的 `Set-Cookie` 写入会话。`Download` 方法同样会捕获响应 Cookie
-- **校验**：写入前做与 `WithCookies` 相同的合法性校验。配置了 Cookie 安全策略（见下方「Cookie 安全验证」）时，不合规的 Cookie 被**静默跳过**，不影响其余 Cookie
-- **副本语义**：`GetCookie`/`GetCookies` 返回 Cookie 的副本，修改返回值不会影响会话内部状态
+- **删除语义**：携带 `Max-Age=0`/负值或已过期 Expires 的 Cookie（如登出响应）移除同名存储项，而不是按名存储该 Cookie 本身
+- **过期剔除**：已过期的 Cookie 在读取（`GetCookie`/`GetCookies`）与回放时被剔除；正的 `Max-Age` 被折算为对应的过期时刻
+- **回放范围**：Cookie 仅在其存储的 Path 与 `Secure` 属性匹配请求 URL 时随请求发送（RFC 6265 path-match；`Secure` Cookie 不经明文 http 回放）
+- **校验与副本**：写入前做与 `WithCookies` 相同的合法性校验，配置了 Cookie 安全策略（见下方「Cookie 安全验证」）时不合规的 Cookie 被**静默跳过**，不影响其余 Cookie；`GetCookie`/`GetCookies` 返回副本，修改返回值不会影响会话内部状态
 
 ### 请求选项如何持久化
 
@@ -174,6 +172,7 @@ Cookie 的自动维护覆盖三条路径：
 |------|----------|
 | `WithHeader` | 单个请求头 |
 | `WithHeaderMap` | 一组请求头 |
+| `WithUserAgent` | User-Agent 头（内部是 `WithHeader` 透传，同样被捕获——一次探测请求会把 UA 固定为会话值） |
 | `WithCookies` | Cookie 列表 |
 | `WithCookieMap` | 名称—值对形式的 Cookie |
 | `WithCookieString` | 原始 `Cookie` 头字符串解析出的 Cookie |
@@ -222,6 +221,10 @@ result, _ := dc.Request(ctx, "GET", "/users")
 // 绝对 URL（跳过 base URL 拼接）
 result, _ := dc.Get("https://other-api.com/data")
 ```
+
+:::warning 会话状态只在基础源生效
+绝对 URL 指向**非基础源**（host:port 与 base 不同）时，会话头与 Cookie 既不发送也不捕获，基础域凭据不会泄露给第三方源。跟随重定向时同样如此：最终落点不在基础源的响应，其 `Set-Cookie` 不入会话。
+:::
 
 `Download` 方法与 `Client.Download` 签名一致，路径同样相对于 base URL 解析。下载完成后，响应 Cookie 被捕获进会话：
 

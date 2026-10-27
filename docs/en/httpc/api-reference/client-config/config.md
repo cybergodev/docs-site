@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Configuration"
 title: "Configuration - CyberGo HTTPC | Config & Presets"
-description: "HTTPC Config API reference: Timeouts, Connection, Security, Retry, Middleware, EnableProxyPoolHTTP2, SensitiveHeaders, ValidateConfig, proxy-rotation retry rules."
+description: "HTTPC Config API reference: Timeouts, Connection, Security, Retry, five presets, EnableProxyPoolHTTP2, ValidateConfig, and proxy-rotation retry rules."
 sidebar_position: 10
 ---
 
@@ -110,7 +110,7 @@ type ConnectionConfig struct {
     EnableSystemProxy      bool          // Auto-detect system proxy, default false
     ProxyPool              []string      // List of proxy servers for rotation
     ProxyPoolStrategy      ProxyStrategy // Proxy selection strategy, default RoundRobin
-    ProxyFailureThreshold  int           // Consecutive-failure threshold, 0 defaults to 3
+    ProxyFailureThreshold  int           // Consecutive TCP dial-failure threshold, 0 defaults to 3
     ProxyCooldown          time.Duration // Circuit-break cooldown, 0 defaults to 30s
     ProxyRotatePerRequest  bool          // Force a different proxy for each independent request, default false
     ProxyRotateOnStatus    []int         // HTTP status codes that trigger proxy rotation
@@ -134,7 +134,7 @@ type ConnectionConfig struct {
 | `ConnectionConfig.EnableSystemProxy` | `bool` | `false` | Auto-detect system proxy settings |
 | `ConnectionConfig.ProxyPool` | `[]string` | `nil` | Proxy-pool list for rotation |
 | `ConnectionConfig.ProxyPoolStrategy` | `ProxyStrategy` | `ProxyStrategyRoundRobin` | Proxy selection strategy |
-| `ConnectionConfig.ProxyFailureThreshold` | `int` | 3 (0 is treated as 3) | Consecutive-failure threshold before the proxy is circuit-broken |
+| `ConnectionConfig.ProxyFailureThreshold` | `int` | 3 (0 is treated as 3) | Consecutive TCP dial-failure threshold before the proxy is circuit-broken |
 | `ConnectionConfig.ProxyCooldown` | `time.Duration` | 30s (0 is treated as 30s) | How long a circuit-broken proxy stays out of rotation |
 | `ConnectionConfig.ProxyRotatePerRequest` | `bool` | `false` | Force a different proxy for each independent request (requires `ProxyPool`) |
 | `ConnectionConfig.ProxyRotateOnStatus` | `[]int` | `nil` | HTTP status codes that trigger a proxy-switch retry (requires `Retry.MaxRetries > 0`) |
@@ -150,10 +150,12 @@ type ConnectionConfig struct {
 
 ### Proxy Pool
 
-`ProxyPool` specifies a set of proxy servers; requests are distributed among them according to `ProxyPoolStrategy`. Connection failures (dial/TLS) trigger passive circuit breaking:
+`ProxyPool` specifies a set of proxy servers; requests are distributed among them according to `ProxyPoolStrategy`. **TCP dial failures** (the first-hop dial to the proxy address) trigger passive circuit breaking:
 
-- After `ProxyFailureThreshold` accumulated failures, the proxy is temporarily removed from rotation.
+- After `ProxyFailureThreshold` **consecutive dial failures**, the proxy is temporarily removed from rotation.
 - After `ProxyCooldown`, the proxy recovers (half-open probing).
+
+Circuit breaking counts dial results only: a successful dial reports success even if the proxy then rejects every CONNECT. Post-dial failures — TLS handshake errors to an `https://` proxy, rejected CONNECTs (407/502), SOCKS5 handshake failures — do not count toward the breaker. For rotation driven by HTTP status codes, use `ProxyRotateOnStatus` (below).
 
 Priority: lower than `ProxyURL`, higher than `EnableSystemProxy`. If both `ProxyURL` and `ProxyPool` are set, `ProxyURL` takes effect (single-proxy mode).
 
@@ -331,7 +333,14 @@ client, err := httpc.New(cfg)
 `Security.TLSConfig` is mutually exclusive with this field (validation rejects the combination). When the field is set, `MinTLSVersion`/`MaxTLSVersion` are silently ignored: the preset's ClientHello dictates the version range. See the [TLS Fingerprinting guide](../../guides/tls-fingerprint).
 :::
 
-Setting `TLSFingerprintDisableSessionTickets` to `true` makes every connection on the fingerprint path perform a full handshake. The default is `false`: Chrome profiles cache TLS session tickets per connection pool and resume repeat connections with a PSK, matching how a real browser revisits a host. See [Session Resumption](../../guides/tls-fingerprint#session-resumption) for the mechanism.
+Setting `SecurityConfig.TLSFingerprintDisableSessionTickets` to `true` makes every connection on the fingerprint path perform a full handshake. The default is `false`: Chrome profiles cache TLS session tickets per connection pool and resume repeat connections with a PSK, matching how a real browser revisits a host. `TLSFingerprintDisableSessionTickets` suits fingerprint-rotation pipelines (which require every connection to be fully independent) or troubleshooting a target site with the session-resumption variable eliminated. Presets whose ClientHello carries no `pre_shared_key` extension (the Firefox and iOS WebKit families) already perform a full handshake on every connection, so the field has no effect on them. See [Session Resumption](../../guides/tls-fingerprint#session-resumption) for the mechanism.
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.TLSFingerprint = "chrome-latest"
+cfg.Security.TLSFingerprintDisableSessionTickets = true // full handshake on every connection
+client, err := httpc.New(cfg)
+```
 
 ### Redirect Whitelist
 
@@ -349,7 +358,7 @@ See [Redirects](../../guides/redirects) for the complete picture of redirect beh
 
 ### Sensitive Header Stripping (SensitiveHeaders)
 
-`SensitiveHeaders` extends the set of header names treated as **credentials** when a redirect carries the request to a different origin:
+`SecurityConfig.SensitiveHeaders` extends the set of header names treated as **credentials** when a redirect carries the request to a different origin:
 
 - **The built-in set is always stripped**: `Authorization`, `Proxy-Authorization`, `Cookie`, `X-Api-Key`, and `X-Auth-Token` are stripped on cross-origin hops regardless of whether they are listed (net/http itself covers only the first three).
 - **Custom credential headers must be listed explicitly**: a header such as `X-Secret-Key` that is not listed is forwarded verbatim to whatever the `Location` header points at, which is an open-redirect credential leak (CWE-525).
@@ -565,7 +574,7 @@ When `New()` converts the public Config into the engine configuration, some zero
 | TLS version fallback | `MinTLSVersion` / `MaxTLSVersion` fall back to TLS 1.2 / TLS 1.3 respectively when 0 |
 | MaxRetryDelay fallback | `Retry.MaxRetryDelay` is treated as 30s when 0 |
 | TCP KeepAlive | Fixed at 30s, applied automatically with the connection-pool configuration; no need to set it |
-| Proxy-rotation auto-raised retries | When `ProxyRotateOnStatus` or `ProxyRotatePerRequest` is set and the proxy pool has more than 1 entry, the effective MaxRetries is raised automatically to `len(ProxyPool)-1` (capped at 10, never lowered) |
+| Proxy-rotation auto-raised retries | When `ProxyRotateOnStatus` or `ProxyRotatePerRequest` is set, the pool has more than 1 entry, and no `ProxyURL` is set (the pool actually takes effect), the effective MaxRetries is raised automatically to `len(ProxyPool)-1` (capped at 10, never lowered) |
 | ProxyRotateOnStatus | Passed to the engine as "extra retryable status codes"; a hit consumes one retry budget to switch proxy |
 
 :::tip Why retries are auto-raised
@@ -584,7 +593,7 @@ func SetSecurityWarnOutput(w io.Writer)
 
 `SetSecurityWarnOutput` sets the destination for security warnings. When the process is not running in a test environment (executable name contains `.test`, or `GO_TEST` / `GOTEST=1` is set), an alert is printed to this writer in any of these cases:
 
-- `[SECURITY WARNING]`: `TestingConfig()` is used.
+- `[SECURITY WARNING]`: `TestingConfig()` is called (the warning fires inside the preset function itself, regardless of whether a client is later created).
 - `[SECURITY WARNING]`: `SecurityConfig.InsecureSkipVerify` (`Config.Security`) or `SecurityConfig.TLSConfig.InsecureSkipVerify` is `true`.
 - `[CONFIG WARNING]`: a hand-built `Config` struct literal hits the exact all-off signature — `ValidateURL`, `ValidateHeaders`, `StrictContentLength`, `FollowRedirects`, and `EnableHTTP2` all false and `Security.MaxResponseBodySize == 0`. Those fields are documented as `Default: true`, but they are true only in `DefaultConfig()` and the presets, and a struct literal zeroes them; the warning recommends starting from `DefaultConfig()` and changing fields (see `newFromConfig` in `client.go`).
 
@@ -610,7 +619,7 @@ func ValidateConfig(cfg *Config) error
 
 Validates a configuration. `New()` calls it internally; it can also be called explicitly.
 
-The equivalent method form `Config.Validate` (signature `func (c *Config) Validate() error`, delegating directly to `ValidateConfig`) suits code that already holds a Config instance and is the recommended form for new code:
+The equivalent method form `Validate` (fully qualified name `Config.Validate`, signature `func (c *Config) Validate() error`, delegating directly to `ValidateConfig`) suits code that already holds a Config instance and is the recommended form for new code. Calling `Validate` on a nil `*Config` is safe and returns `ErrNilConfig`:
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -645,7 +654,7 @@ Validation rules at a glance (passing `nil` returns `ErrNilConfig`):
 | `Security.MaxResponseBodySize` | 0 – 1GB |
 | `Security.MaxDecompressedBodySize` | 0 – 100MB |
 | `Security.MaxRequestBodySize` | 0 – 1GB |
-| `Security.MinTLSVersion` / `MaxTLSVersion` | When both non-zero, Min ≤ Max |
+| `Security.MinTLSVersion` / `MaxTLSVersion` | See the TLS version validation rules below the table |
 | `Security.SSRFExemptCIDRs` | Each entry must be a valid CIDR |
 | `Security.SensitiveHeaders` | Each entry must pass header-name validation (same key rules as `WithHeader`) |
 | `Retry.MaxRetries` | 0 – 10 |
@@ -655,6 +664,8 @@ Validation rules at a glance (passing `nil` returns `ErrNilConfig`):
 | `Security.MaxRedirects` | 0 – 50 |
 | `Defaults.UserAgent` | ≤ 512 characters, no control characters |
 | `Defaults.Headers` | Every key/value pair passes header-validity validation |
+
+**TLS version validation rules**: non-zero values must be `tls.VersionTLS*` constants (TLS 1.0–1.3); when both are non-zero, Min ≤ Max is required. Beyond comparing the raw values, `ValidateConfig` also derives the **effective version pair** by applying the zero-value fallback (Min→TLS 1.2 / Max→TLS 1.3) and compares once more — a Config that sets only a single boundary (e.g. only `MaxTLSVersion = TLS 1.1`) is likewise rejected at construction time with `ErrInvalidSecurity`, instead of failing later at handshake time with an obscure error.
 
 ### Config.String
 

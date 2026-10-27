@@ -112,11 +112,13 @@ type RetryPolicy interface {
 
 自定义重试策略接口。
 
-| 方法 | 说明 |
-|------|------|
-| `ShouldRetry(resp, err, attempt)` | 返回是否重试，`attempt` 从 0 开始 |
-| `GetDelay(attempt)` | 返回下次重试前的等待时间 |
-| `MaxRetries()` | 返回最大重试次数 |
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `ShouldRetry` | `ShouldRetry(resp ResponseReader, err error, attempt int) bool` | 返回是否重试；`err` 非 nil 表示请求失败（此时 `resp` 可能为 nil），`attempt` 从 0 开始计数 |
+| `GetDelay` | `GetDelay(attempt int) time.Duration` | 返回下次重试前的等待时间 |
+| `MaxRetries` | `MaxRetries() int` | 返回最大重试次数 |
+
+三个方法的完整方法名为 `RetryPolicy.ShouldRetry`、`RetryPolicy.GetDelay`、`RetryPolicy.MaxRetries`。
 
 :::tip 类型已公开导出
 `ShouldRetry` 的 `resp` 参数类型 `ResponseReader` 已由 `httpc` 包通过公开类型别名导出（`httpc.ResponseReader`，定义见 `types.go`），外部包可直接引用。因此自定义 `RetryPolicy` 可在任何业务包中实现。多数场景用 `RetryConfig` 配置与 `WithMaxRetries` 选项即可满足重试需求。
@@ -266,6 +268,8 @@ type ResponseMutator interface {
 | `MaxRedirects` | `MaxRedirects() *int` | 最大重定向次数（nil 表示用默认值） |
 | `StreamBody` | `StreamBody() bool` | 是否流式传输请求体 |
 
+12 个方法的完整方法名为 `RequestReader.Method`、`RequestReader.URL`、`RequestReader.Headers`、`RequestReader.QueryParams`、`RequestReader.Body`、`RequestReader.Timeout`、`RequestReader.MaxRetries`、`RequestReader.Context`、`RequestReader.Cookies`、`RequestReader.FollowRedirects`、`RequestReader.MaxRedirects`、`RequestReader.StreamBody`。
+
 #### RequestWriter
 
 只写访问请求数据，与 `RequestReader` 的读方法一一对应：
@@ -285,6 +289,8 @@ type ResponseMutator interface {
 | `SetFollowRedirects` | `SetFollowRedirects(*bool)` | 设置是否跟随重定向 |
 | `SetMaxRedirects` | `SetMaxRedirects(*int)` | 设置最大重定向次数 |
 | `SetStreamBody` | `SetStreamBody(bool)` | 设置是否流式传输 |
+
+13 个方法与 `RequestReader` 的读方法一一对应，完整方法名为 `RequestWriter.SetMethod`、`RequestWriter.SetURL`、`RequestWriter.SetHeaders`、`RequestWriter.SetHeader`、`RequestWriter.SetQueryParams`、`RequestWriter.SetBody`、`RequestWriter.SetTimeout`、`RequestWriter.SetMaxRetries`、`RequestWriter.SetContext`、`RequestWriter.SetCookies`、`RequestWriter.SetFollowRedirects`、`RequestWriter.SetMaxRedirects`、`RequestWriter.SetStreamBody`。
 
 #### ResponseReader
 
@@ -308,6 +314,8 @@ type ResponseMutator interface {
 | `RequestURL` | `RequestURL() string` | 实际请求 URL（含重定向后的最终 URL） |
 | `RequestMethod` | `RequestMethod() string` | 请求方法 |
 
+15 个方法的完整方法名为 `ResponseReader.StatusCode`、`ResponseReader.Status`、`ResponseReader.Proto`、`ResponseReader.Headers`、`ResponseReader.Body`、`ResponseReader.RawBody`、`ResponseReader.ContentLength`、`ResponseReader.Duration`、`ResponseReader.Attempts`、`ResponseReader.Cookies`、`ResponseReader.RedirectChain`、`ResponseReader.RedirectCount`、`ResponseReader.RequestHeaders`、`ResponseReader.RequestURL`、`ResponseReader.RequestMethod`。
+
 #### ResponseWriter
 
 只写访问响应数据：
@@ -330,6 +338,8 @@ type ResponseMutator interface {
 | `SetRequestURL` | `SetRequestURL(string)` | 设置请求 URL |
 | `SetRequestMethod` | `SetRequestMethod(string)` | 设置请求方法 |
 | `SetHeader` | `SetHeader(key string, values ...string)` | 设置单个响应头（增/改） |
+
+16 个方法的完整方法名为 `ResponseWriter.SetStatusCode`、`ResponseWriter.SetStatus`、`ResponseWriter.SetProto`、`ResponseWriter.SetHeaders`、`ResponseWriter.SetBody`、`ResponseWriter.SetRawBody`、`ResponseWriter.SetContentLength`、`ResponseWriter.SetDuration`、`ResponseWriter.SetAttempts`、`ResponseWriter.SetCookies`、`ResponseWriter.SetRedirectChain`、`ResponseWriter.SetRedirectCount`、`ResponseWriter.SetRequestHeaders`、`ResponseWriter.SetRequestURL`、`ResponseWriter.SetRequestMethod`、`ResponseWriter.SetHeader`。
 
 :::tip ResponseWriter 的 SetHeader 不规范化键名
 `ResponseWriter.SetHeader` 的键名**按原样存储，不做规范化**，与请求侧的 `RequestWriter.SetHeader` 不同。写入 `content-type` 时，它与服务端发来的规范 `Content-Type` 会成为两个独立条目。替换已有响应头时，请按 `http.CanonicalMIMEHeaderKey` 的拼写传入。

@@ -56,7 +56,7 @@ go get github.com/cybergodev/httpc
 import "github.com/cybergodev/httpc"
 ```
 
-7 direct dependencies, all compiled into the package (the source has no build tags): `golang.org/x/net` and `golang.org/x/sys` for the standard path, with brotli / compress / uTLS / tls-client / fhttp serving the `Security.TLSFingerprint` path — they simply do not run when fingerprinting is off. Without the fingerprint feature the standard stack is used, and no initialization or configuration is required after import.
+The 7 direct dependencies all compile in unconditionally (there are no build tags for trimming features). `golang.org/x/net` and `golang.org/x/sys` serve the standard path; brotli / compress / uTLS / tls-client / fhttp serve the `Security.TLSFingerprint` path and simply do not run when fingerprinting is off, so requests go out over the standard stack. No initialization or configuration is required after import.
 
 ## 30-Second Experience
 

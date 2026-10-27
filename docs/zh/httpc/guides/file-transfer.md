@@ -40,6 +40,8 @@ func main() {
 }
 ```
 
+`WithFile` 的字段名与文件名只接受**裸文件名**：含路径分隔符或 `..` 的名字直接拒绝（不解析）。多个 `WithFile` 选项合并进同一个 multipart 体，同名字段后者覆盖前者。
+
 ### Multipart 表单
 
 上传文件的同时附带表单字段：
@@ -155,7 +157,7 @@ result, err := httpc.Post(url,
 
 `Download(ctx, url, cfg, options...)` 是包级函数、`Client` 和 `DomainClient` 共用的下载入口。
 
-下载**始终以流式进行**：内部自动附加 `WithStreamBody(true)`，响应体从网络直接写入磁盘（`io.Copy`），全程不把整个文件缓冲进内存。启用校验和时，哈希计算在写入过程中同步完成，不产生第二遍读盘。
+下载**始终以流式进行**：内部自动附加 `WithStreamBody(true)`，响应体从网络直接写入磁盘（`io.Copy`），全程不把整个文件缓冲进内存。启用校验和时，哈希计算在写入过程中同步完成，不产生第二遍读盘（续传场景例外：既有前缀需先补读一次以计入完整文件的哈希）。
 
 :::warning 下载受 MaxResponseBodySize 约束
 流式写盘**不等于没有大小上限**：下载响应体仍受客户端 `Security.MaxResponseBodySize` 约束。`DefaultConfig` 默认 10MB，其他预设为 `SecureConfig` 5MB、`PerformanceConfig` 50MB、`MinimalConfig` 1MB。
@@ -267,17 +269,18 @@ if result.Resumed {
 | 其他非 2xx 状态码 | 返回 `unexpected status code` 错误，错误信息附带响应体前 200 字节预览 |
 
 :::warning Overwrite 与 ResumeDownload 同时为 true 时
-`ResumeDownload` 优先：已有文件被**追加扩展**而非替换重写。续传模式下若中途写盘失败，已有字节会被保留，供下一次续传；非续传模式下失败则删除写了一半的文件，避免留下损坏产物。
+`ResumeDownload` 优先：已有文件被**追加扩展**而非替换重写。续传模式下若中途写盘失败，已有字节会被保留，供下一次续传；非续传模式下失败则删除写了一半的临时文件，既有目标不受影响。进程崩溃残留的 `.httpc-tmp` 临时文件会在下次下载同一目标时被覆盖清理。
 :::
 
 ### 校验和验证（SHA-256）
 
 设置 `Checksum` 后，HTTPC 在写盘的同时对流过的数据计算 SHA-256，下载完成时与期望值比对：
 
-- 比对**不区分大小写**（期望值内部统一转小写）；
-- **不匹配时删除已下载文件并返回错误**，不留下被污染的产物；
+- 比对**不区分大小写、忽略期望值首尾空白**（期望值内部统一转小写并 TrimSpace）；
+- **不匹配时返回错误**：非续传删除临时文件，既有目标不受影响；续传把文件截断回本次续传起点，保留已下载前缀供下次重试；
+- 续传时期望值应是**完整文件**的哈希——既有前缀会被补读进哈希，最终校验覆盖整个文件；
 - 成功时 `result.ActualChecksum` 携带实际计算出的哈希，可供记录；
-- 算法合法性在**打开目标文件之前**校验。配置错误（如未知的 `ChecksumAlgorithm`）不会截断磁盘上的既有文件。
+- 算法合法性在**发出请求与打开目标文件之前**各校验一次（仅支持 SHA-256），配置错误（如未知的 `ChecksumAlgorithm`）不会发起网络请求，也不会截断磁盘上的既有文件。
 
 ```go
 package main
@@ -322,7 +325,7 @@ func main() {
 
 	result, err := client.Download(context.Background(), server.URL, dlCfg)
 	if err != nil {
-		log.Fatal(err) // 校验失败：文件已被删除，错误信息含期望值与实际值
+		log.Fatal(err) // 校验失败：临时文件被删除，错误信息含期望值与实际值
 	}
 	fmt.Printf("校验通过：%s\n", result.ActualChecksum) // 输出：校验通过：2f2b7c...（payload 的 SHA-256）
 }
@@ -354,13 +357,14 @@ if err != nil {
 |------|------|
 | 目标文件已存在，`Overwrite`/`ResumeDownload` 均为 false | 返回 `ErrFileExists`，不修改文件 |
 | 目标路径是目录 | 返回错误 |
-| `Overwrite = true`（非续传） | `O_TRUNC` 覆盖写 |
-| `ResumeDownload = true` 且服务器支持 Range | `O_APPEND` 追加写 |
-| 写入/落盘（sync/close）失败 | 非续传：删除半成品文件；续传：保留已有字节 |
-| 校验和不匹配 | 删除已下载文件 |
-| 期望的算法不受支持（仅 SHA-256） | 打开文件**之前**即返回错误，不截断既有文件 |
+| `Overwrite = true`（非续传） | 写入同目录临时文件 `<目标>.httpc-tmp`，校验通过后原子改名替换目标 |
+| `ResumeDownload = true` 且服务器支持 Range | `O_APPEND` 追加写目标文件本身 |
+| 写入/落盘（sync/close）失败 | 非续传：删除临时文件，目标不变；续传：保留已有字节 |
+| 校验和不匹配 | 非续传：删除临时文件，目标不变；续传：截断回本次续传起点，保留前缀 |
+| 期望的算法不受支持（仅 SHA-256） | 发出请求**之前**即返回错误，不触碰既有文件 |
 | 目标目录不存在 | 自动递归创建（权限 0755），文件权限 0644 |
 | 路径为空 | 返回 `ErrEmptyFilePath` |
+| 同一目标路径的并发下载 | 进程内串行化：后到的下载立即返回 `ErrDownloadInProgress`，不阻塞等待 |
 
 错误状态码（非 200/206）时，错误信息附带响应体前 200 字节的预览便于排查。同时最多排空 1MiB 响应体，以便连接回归连接池复用。
 
@@ -414,6 +418,7 @@ if err := result.SaveToFile("/tmp/small.json"); err != nil {
 | 长度限制 | 路径最长 4096 字符，超长直接拒绝 |
 | 系统路径保护 | 禁止写入系统目录：Windows 覆盖 `C:\Windows\`、`C:\Program Files\` 及 `%SystemRoot%` 等环境变量展开位置；Linux/macOS 覆盖 `/etc/`、`/usr/`、`/bin/`、`/System/`、`/Library/` 等 |
 | 符号链接检测 | 目标本身是符号链接、或任一父目录解析进系统目录（TOCTOU 防护，递归检查至多 32 层）均拒绝 |
+| Windows 专项 | 拒绝 DOS 设备名（`CON`、`COM1` 等，含带扩展名与尾部空格的变体）、NTFS 备用数据流（`file.txt:ads`）与目录组件的 8.3 短名别名（`PROGRA~1`，防绕过系统路径与符号链接检查） |
 | 文件大小限制 | 受 `MaxResponseBodySize` 限制 |
 
 :::tip 目录也会被校验

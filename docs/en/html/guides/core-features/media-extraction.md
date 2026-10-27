@@ -7,14 +7,14 @@ sidebar_position: 20
 
 # Media Extraction
 
-`Extract` collects videos and audio alongside text, storing them in `Result.Videos` and `Result.Audios`. This page covers where each comes from, how deduplication works, and what the fields mean.
+`Extract` collects videos and audio alongside text, storing them in `Result.Videos` and `Result.Audios`. This page covers where each comes from, how deduplication works, what the fields mean, and how `Type` is determined.
 
 ## Extraction Order
 
-Media extraction runs after DOM parsing and before content formatting:
+Video and audio extraction runs after DOM parsing and sanitization, after text formatting and statistics, as the final step of assembling the `Result`; the two media kinds share a single DOM traversal:
 
 ```text
-DOM parsing → video extraction (three sources) → audio extraction (two sources) → formatting → Result
+DOM parsing → sanitization → text formatting and statistics → media extraction (three video sources / two audio sources, one DOM pass) → Result
 ```
 
 Each URL is deduplicated per media kind, so the same address is collected once.
@@ -23,11 +23,11 @@ Each URL is deduplicated per media kind, so the same address is collected once.
 
 | Order | Source | Scanned | Notes |
 |------|------|----------|------|
-| ① | Raw HTML scan | `src` of `iframe`/`embed`, `data` of `embed`/`object` | Runs **before** sanitization — those tags are removed by cleaning, so the raw markup is the only place they can be read |
+| ① | Raw HTML scan | `src` of `iframe`/`embed`, `data` of `embed`/`object` | Scans the pre-sanitization raw HTML text: sanitization has already removed these embed tags from the DOM, so only the raw text still holds their addresses |
 | ② | DOM traversal | `video`/`iframe`/`embed`/`object` elements | Reads element attributes and `<source>` children |
 | ③ | Regex fallback | Bare video URLs in the HTML text | Covers references that never become media elements, such as addresses inside comments or JSON payloads |
 
-The raw HTML scan and the regex fallback run only when the input is at most 1,000,000 bytes, and the regex matches at most 1000 entries per media kind; larger documents use the DOM traversal alone.
+The raw HTML scan and the regex fallback run only when the input is at most 1,000,000 bytes, and the regex matches at most 1000 entries per media kind; larger documents use the DOM traversal alone. Both paths also require a media marker in the raw HTML (a known media extension or an embed-platform pattern), so a plain document page does not trigger the scan.
 
 ### Video extensions matched by the regex fallback
 
@@ -79,21 +79,23 @@ OGG is a container that can carry video (Theora) or audio (Vorbis/Opus), and the
 
 `Type` follows this priority:
 
-1. The markup declares a `type` (`<source type>` or `<embed type>`) → use the declared value. A server may serve a different container than the extension suggests, so the declaration wins.
-2. Otherwise the URL decides: a recognizable extension → the matching MIME type (`a.mp4` → `video/mp4`); an embed-platform pattern in the URL → `embed`. A `<video src="...">` that names its source directly takes this path too.
-3. An `iframe` read through the DOM walk is `embed`, since the frame itself is not a media container. This only applies when the iframe is still in the DOM: with sanitization on (the default) it has already been removed, so only `EnableSanitization = false` input reaches this rule.
+1. The markup declares a `type` → use the declared value: `<embed>`/`<object>` take their own `type`; `<video>`/`<audio>` take a child `<source type>` only when they have no `src` of their own and draw their source from the child. A server may serve a container that disagrees with the extension, so the declaration wins.
+2. Otherwise the URL decides: a recognizable extension → the matching MIME type (`a.mp4` → `video/mp4`, `a.mp3` → `audio/mpeg`); a video URL matching an embed-platform pattern → `embed`. A `<video src="...">` or `<audio src="...">` that names its source directly takes this path too.
+3. An `iframe` read through the DOM walk is recorded as `embed`, because a frame is not itself a media container. The premise is that its `src` is a video URL or a known embed-platform address, otherwise the iframe produces no record. This path requires the iframe to remain in the DOM; default sanitization removes iframes, so only input with `EnableSanitization = false` takes this path.
 4. If none applies, the field is empty (e.g. `<video src="/stream/abc">`).
 
 :::warning Documents over 1 MB lose media held in iframes
-The raw HTML scan and the bare-URL scan stop above 1,000,000 bytes, while sanitization removes `iframe`/`embed`/`object` from the DOM. Together, under the default configuration, video inside an iframe in a document over 1 MB is **not collected** (measured: both a YouTube iframe and `<iframe src="clip.mp4">` produce empty results). `<video>`/`<audio>` elements go through the DOM walk and are unaffected.
+The raw HTML scan and the bare-URL scan are bounded by the 1,000,000-byte limit and stop above it. Default sanitization, in turn, removes `iframe`/`embed`/`object` from the DOM, so the DOM walk cannot reach those elements; only with `EnableSanitization = false` does an iframe stay in the DOM long enough to be traversed.
 
-To capture embedded media in large documents, split the input or disable sanitization for trusted content.
+The combined effect: under the default configuration, video written inside an iframe in a document over 1 MB is **not collected** (measured: in a 1.44 MB document the YouTube iframe disappeared while `<video>` remained in the result). `<video>`/`<audio>` elements go through the DOM walk and are unaffected.
+
+To handle embedded media in large documents, split the input or disable sanitization for trusted content.
 :::
 
 | Type value | Meaning | When it occurs |
 |---------|------|----------|
 | `embed` | An embedded page, not a media file | An `iframe`, or an `<embed>`/`<object>`/bare URL matching an embed-platform pattern (YouTube, Vimeo, Youku, Bilibili, and so on) |
-| MIME type (e.g. `video/mp4`) | A video file container | A declared `<source type>`/`<embed type>` value, or derived from the extension |
+| MIME type (e.g. `video/mp4`) | A video file container | A declared `<source type>`/`<embed type>`/`<object type>` value, or derived from the extension |
 | Empty string | No type identified | The URL has no recognizable extension and the markup declares no `type` |
 
 Embedding platforms recognized as `embed`:
@@ -170,7 +172,7 @@ func main() {
 }
 ```
 
-Video records are deduplicated by URL; the raw HTML scan runs before the DOM walk, so the first path to see an address decides its shape. The scan records only `URL` and `Type`, which is why the first video above has no size or poster.
+Video records are deduplicated by URL; the raw HTML scan runs before the DOM walk, and for the same address the record of the path that hits first wins — the scan fills in only `URL` and `Type`, which is why the first video above carries no size or poster.
 
 ## Configuration Control
 

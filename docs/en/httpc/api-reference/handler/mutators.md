@@ -151,10 +151,12 @@ The interface is composed from the two split interfaces `ResponseReader` and `Re
 
 ## Type Assertion: Accessing Engine-Specific Methods
 
-The `RequestMutator` received by middleware is at runtime actually of type `*engine.Request` (the engine's concrete request struct). `finalHandler` reads three engine-specific hooks **not on the interface** from it via type assertion. Custom middleware that needs these hooks must do the same.
+The `RequestMutator` received by middleware is at runtime actually the engine's concrete request type, `*engine.Request`. `finalHandler` reads the engine-specific fields that are **not on the public interface** from it via type assertion and forwards them to the engine along with the interface fields.
 
 :::warning Interface boundary
-The `OnRequest`/`OnResponse` callbacks and `AllowPrivateIPs` are not on the `RequestMutator` interface: their signatures reference types from the internal `engine` package (`*engine.Request`/`*engine.Response`), and exposing them on the public interface would cause an import cycle. They can therefore only be accessed via `*engine.Request` type assertion.
+The `OnRequest`/`OnResponse` callbacks, `AllowPrivateIPs`, NoTimeout, and `RetryNonIdempotent` are not on the `RequestMutator` interface: their signatures reference types from the internal `engine` package (`*engine.Request`/`*engine.Response`), and exposing them on the public interface would cause an import cycle.
+
+The type assertion is a **library-internal mechanism**: `internal/engine` cannot be imported from outside the module, so an external package cannot name `*engine.Request` — and therefore cannot perform the assertion either. Callers reach these capabilities through the public request options: [`WithOnRequest`](../core/options#withonrequest)/[`WithOnResponse`](../core/options#withonresponse)/[`WithAllowPrivateIPs`](../core/options#withallowprivateips)/[`WithNoTimeout`](../core/options#withnotimeout)/[`WithRetryNonIdempotent`](../core/options#withretrynonidempotent).
 :::
 
 These engine-specific methods include:
@@ -167,7 +169,7 @@ These engine-specific methods include:
 | `SetOnRequest(func)` / `SetOnResponse(func)` | Set callbacks |
 | `SetAllowPrivateIPs(*bool)` | Set the SSRF override |
 
-Except when callbacks or SSRF overrides are needed, middleware does not need type assertion: the `RequestMutator`/`ResponseMutator` interfaces already cover common read/write operations.
+Ordinary middleware read/write work never needs these hooks: the `RequestMutator`/`ResponseMutator` interfaces already cover the common read/write operations, and per-request callbacks plus the SSRF/timeout/retry overrides are set through request options.
 
 ## Request-Option Callbacks: WithOnRequest / WithOnResponse
 

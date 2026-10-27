@@ -113,18 +113,18 @@ cfg.Connection.EnableDoH = true
 cfg.Connection.DoHCacheTTL = 5 * time.Minute // 传 0 也回退 5 分钟
 ```
 
-默认 DoH 提供商（按优先级排列）：
+默认 DoH 提供商（按尝试顺序排列）：
 
-| 提供商 | 地址 | 说明 |
-|--------|------|------|
-| Cloudflare | `1.1.1.1/dns-query` | 最快，隐私优先 |
-| Google | `dns.google/resolve` | 全球覆盖 |
-| AliDNS | `dns.alidns.com/resolve` | 中国区域优化 |
+| 提供商 | 地址 |
+|--------|------|
+| Cloudflare | `1.1.1.1/dns-query` |
+| Google | `dns.google/resolve` |
+| AliDNS | `dns.alidns.com/resolve` |
 
 ### 工作机制
 
 - **A + AAAA 并发查询**：每次解析同时查询 IPv4 与 IPv6 记录并合并结果。
-- **双格式解析**：按响应 `Content-Type` 选择 JSON（Google/AliDNS 风格）或 RFC 1035 wire 格式（Cloudflare 风格）。`Content-Type` 缺失或无法识别时先试 JSON 再试 wire，兼容配置异常的服务器。
+- **双格式解析**：按响应 `Content-Type` 选择 JSON（`application/dns-json` / `application/json`）或 RFC 1035 wire 格式（`application/dns-message` / `application/dns-wire`）解析，与提供商身份无关。`Content-Type` 缺失或无法识别时先试 JSON 再试 wire，兼容配置异常的服务器。
 - **并发合并**：同一主机的并发缓存未命中会合并为一次网络往返（singleflight），避免缓存击穿导致提供商过载。
 - **独立内部客户端**：DoH 请求走独立的 HTTP 客户端（5s 超时、启用 HTTP/2），不占用业务连接池与请求超时预算。
 

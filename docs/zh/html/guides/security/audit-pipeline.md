@@ -1,13 +1,13 @@
 ---
 sidebar_label: "审计系统实战"
 title: "审计系统实战 - CyberGo html | 管道构建指南"
-description: "CyberGo html 审计系统实战：8 种事件类型与 info/warning/critical 三级过滤，7 个内置 Sink 构造函数（Logger、Writer、Channel、Multi、Filtered）与分级路由管道的搭建与接入实践。"
+description: "CyberGo html 审计系统实战：8 种事件类型与 info/warning/critical 三级过滤，7 个内置 Sink 构造函数（Logger、Writer、Channel、Multi、Filtered、LevelFiltered）与分级路由管道的搭建与接入实践。"
 sidebar_position: 20
 ---
 
 # 审计系统实战
 
-审计系统把安全事件（被拦截的标签、属性与 URL，以及输入违规、深度违规、超时、编码问题、路径穿越）写入可插拔的 Sink。本页从最小配置讲到分级路由管道；事件常量与 Sink 的完整签名见[审计系统参考](../../api-reference/modules/audit)。
+审计系统把安全事件（被拦截的标签、属性与 URL，以及输入违规、深度违规、超时、编码问题、路径遍历）写入可插拔的 Sink。本页从最小配置讲到分级路由管道；事件常量取值见[常量与错误](../../api-reference/types/constants#审计常量)，Sink 完整签名见[审计系统参考](../../api-reference/modules/audit)。
 
 ## 最小配置
 
@@ -18,7 +18,7 @@ cfg := html.DefaultConfig()
 cfg.Audit.Enabled = true // 默认配置里 Enabled 为 false
 ```
 
-启用后 `Sink` 为 `nil`，事件走默认的 `LoggerAuditSink`，输出到标准错误，格式为 `[AUDIT] JSON`。
+启用后 `Sink` 为 `nil`，事件走默认的 `LoggerAuditSink`，输出到标准错误，格式为 `[AUDIT] <时间戳> JSON`（log 标准库 LstdFlags 的日期时间前缀）。审计配置也可以用 `cfg.Audit.Validate()` 单独校验——`Config.Validate` 内部就是委托它完成的。
 
 ## 事件类型与级别
 
@@ -37,9 +37,9 @@ info < warning < critical
 | 深度违规 | `depth_violation` | warning | DOM 嵌套超过 `MaxDepth` |
 | 处理超时 | `timeout` | warning | 库内 `ProcessingTimeout` 到期 |
 | 编码问题 | `encoding_issue` | info | 编码检测或转换失败 |
-| 路径穿越 | `path_traversal` | critical | 路径含 `..` 组件，或 `AllowedBaseDir` 模式下经 OS 句柄解析后越界 |
+| 路径遍历 | `path_traversal` | critical | 路径含 `..` 组件，或 `AllowedBaseDir` 模式下经 OS 句柄解析后越界 |
 
-`info` 无需告警；`warning` 关注趋势；`critical` 对应攻击特征（输入违规、路径穿越），应直接触发告警。
+`info` 无需告警；`warning` 关注趋势；`critical` 对应攻击特征（输入违规、路径遍历），应直接触发告警。
 
 ## 内置 Sink
 
@@ -51,7 +51,7 @@ info < warning < critical
 | `NewLoggerAuditSinkWithWriter(w)` | 任意 `io.Writer` | `w` 为 `nil` 时回退标准错误 |
 | `NewWriterAuditSink(w)` | 任意 `io.Writer` | JSON Lines，适合文件持久化 |
 | `NewChannelAuditSink(size)` | 带缓冲 channel | 缓冲满时丢弃并计数，不阻塞 |
-| `NewMultiSink(sinks...)` | 多个 Sink | `Close` 用 `errors.Join` 聚合子 Sink 错误 |
+| `NewMultiSink(sinks...)` | 多个 Sink | `Close` 用 `errors.Join` 聚合子 Sink 错误；每个子 Sink 的写入独立隔离 panic |
 | `NewFilteredSink(sink, filter)` | 谓词过滤 | `filter` 返回 `true` 才写入下游；`filter` 为 `nil` 时全部放行 |
 | `NewLevelFilteredSink(sink, minLevel)` | 级别过滤 | 条目级别达到 `minLevel` 才写入下游 |
 
@@ -122,7 +122,7 @@ cfg.Audit.Sink = html.NewMultiSink(
 )
 ```
 
-`MultiSink` 按顺序写入各子 Sink；两路互不阻塞的前提是每个子 Sink 的 `Write` 自身非阻塞，内置 Sink 都满足这一点。
+`MultiSink` 在提取调用的栈上按顺序同步写入各子 Sink：某个子 Sink 的 `Write` 慢，会推迟排在它后面的子 Sink，并拖慢提取本身。`ChannelAuditSink` 的 `Write` 永不阻塞；文件、网络这类慢目标要避免拖慢提取时，经 `ChannelAuditSink` 异步转接。每个子 Sink 的写入单独隔离 panic：某个子 Sink 抛 panic 时，其余子 Sink 仍会收到该条事件。
 
 ### 场景三：高安全模式
 
@@ -149,6 +149,76 @@ defer p.Close()
 ```
 
 高安全审计配置的取值：`Enabled = true`、8 类事件全部记录、`IncludeRawValues = true`、`MaxRawValueLength = 500`。原始值便于取证，但日志里会落入攻击载荷原文——只在确认下游对日志做了转义或隔离时开启。
+
+## ChannelAuditSink 异步消费与丢弃告警
+
+`ChannelAuditSink` 面向异步消费：`Write` 在提取路径上把事件非阻塞地送入带缓冲 channel，缓冲满即丢弃并计数，绝不阻塞提取；消费方在独立 goroutine 中读取。完整签名见[审计系统参考：ChannelAuditSink](../../api-reference/modules/audit#channelauditsink)。两个时间点决定消费侧怎么写：
+
+- `Extract` 返回时事件已全部入队（或已计入丢弃），`DroppedCount()` 此刻就是准确值，不必等消费侧处理完；
+- `Processor.Close()` 会关闭 channel，消费侧的 `range` 循环随之退出，是天然的收尾信号。
+
+生产环境应周期采样 `DroppedCount()`：持续大于 0 说明消费速度跟不上事件产生速度（常见于下游 SIEM、告警接口变慢或不可用），此时丢掉的是新增事件，提取吞吐不受影响。处置顺序是先加快消费（批量写、异步 IO），再考虑增大缓冲——`NewChannelAuditSink` 的负数入参被钳到 0、超过 100000 被钳到 100000，缓冲只争取排空时间，解决不了消费过慢。
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"sync/atomic"
+
+	"github.com/cybergodev/html"
+)
+
+func main() {
+	// 缓冲 100 条；入参负数被钳到 0，超过 100000 被钳到 100000
+	sink := html.NewChannelAuditSink(100)
+
+	// 独立 goroutine 异步消费，模拟转发到 SIEM / 告警系统
+	var consumed, critical atomic.Int64
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for entry := range sink.Channel() {
+			consumed.Add(1)
+			if entry.Level == html.AuditLevelCritical {
+				critical.Add(1) // critical 单独计数，用于即时告警
+			}
+		}
+	}()
+
+	cfg := html.DefaultConfig()
+	cfg.Audit.Enabled = true
+	cfg.Audit.Sink = sink
+
+	p, err := html.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 每个文档各触发一条 blocked_attr（onclick）与 blocked_tag（script）
+	dangerous := []byte(`<html><body><p onclick="alert(1)">hi</p><script>x()</script></body></html>`)
+	for i := 0; i < 3; i++ {
+		if _, err := p.Extract(dangerous); err != nil {
+			log.Fatalf("提取失败: %v", err)
+		}
+	}
+
+	// Close 关闭 channel，消费 goroutine 的 range 随之退出
+	if err := p.Close(); err != nil {
+		log.Fatal(err)
+	}
+	<-done
+
+	dropped := sink.DroppedCount()
+	if dropped > 0 {
+		log.Printf("审计丢弃告警：丢弃 %d 条，请增大缓冲或加快消费", dropped)
+	}
+	fmt.Printf("已消费 %d 条（critical %d），丢弃 %d 条\n", consumed.Load(), critical.Load(), dropped) // 输出: 已消费 6 条（critical 0），丢弃 0 条
+}
+```
+
+缓冲 100 相对 6 条事件绰绰有余，正常路径 `DroppedCount()` 恒为 0；告警分支只在消费停滞、缓冲被填满后才会触发。
 
 ## 查询审计日志
 

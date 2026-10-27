@@ -200,7 +200,7 @@ These fields control file loading behavior.
 
 #### `Filenames` []string
 
-List of file paths to load. **Default `[".env"]`**.
+List of file paths to load. **Default `[".env"]`**. Paths must be relative (see [Loader.LoadFiles](./loader#loadfiles)). Clear the field (set it to `nil` or `[]string{}`) to keep `New()` from auto-loading any file.
 
 ```go
 cfg.Filenames = []string{".env", ".env.local"}
@@ -230,14 +230,14 @@ cfg.OverwriteExisting = true  // Allow overwriting
 
 #### `AutoApply` bool
 
-Applies the loaded variables to the process environment (`os.Environ`) after loading. **Default `false`**.
+Applies the loaded variables to the process environment (`os.Environ`) after loading. **Default `false`**. `Set` follows the same switch: when it is `true`, `Set` also writes to the process environment.
 
 ```go
 cfg.AutoApply = true  // Auto-apply after loading
 ```
 
 :::tip
-`Load()` sets `AutoApply = true` automatically. When you create the loader with `New()`, set it yourself.
+The package-level `Load()`, `Overload()`, and `LoadWithConfig()` all force `AutoApply` to `true`. A Loader created with `New()` keeps the value you pass in, which defaults to `false`.
 :::
 
 ### Variable Expansion
@@ -257,7 +257,7 @@ Supported expansion syntax:
 | `${VAR}` | Reference a variable |
 | `${VAR:-default}` | Use the default if the variable is not set; keep the original value if it exists, even when empty |
 | `${VAR:=default}` | Use the default if the variable is not set, and assign that default back to the variable |
-| `${VAR:?error}` | Error if variable doesn't exist or is empty |
+| `${VAR:?error}` | Error if the variable doesn't exist or is empty; the error message does not echo the hint text after `:?` |
 
 :::tip Empty-string handling
 `${VAR:-default}` and `${VAR:=default}` use the default value only when the variable is **not set**.
@@ -467,7 +467,7 @@ With the flag off, `DB_HOST: localhost` is dropped. With it on, the same line yi
 
 #### `JSONNullAsEmpty` bool
 
-Convert JSON `null` values to empty strings. **Default `true`**.
+Convert JSON `null` values to empty strings. **Default `true`**. When disabled, `null` is kept as the literal text `null`.
 
 ```go
 cfg.JSONNullAsEmpty = true
@@ -489,7 +489,7 @@ cfg.JSONNumberAsString = true
 
 #### `JSONBoolAsString` bool
 
-Retained for symmetry with `YAMLBoolAsString`. The field has **no effect on JSON output**: a decoded JSON bool carries no raw source text, so JSON booleans always render as the canonical `true`/`false`. **Default `false`**; the field is marked Deprecated.
+Retained for symmetry with `YAMLBoolAsString`. The field has **no effect on JSON output**: a decoded JSON bool carries no raw source text, so JSON booleans always render as the canonical `true`/`false`. Do not use it to control JSON boolean behavior; when you need to control how YAML booleans are stringified, use `YAMLBoolAsString` instead. **Default `false`**; the field is marked Deprecated.
 
 ```go
 cfg.JSONBoolAsString = false
@@ -499,7 +499,7 @@ cfg.JSONBoolAsString = false
 
 #### `JSONMaxDepth` int
 
-Maximum JSON nesting depth. **Default 16**.
+Maximum JSON nesting depth. **Default 16**. The valid range is 1–100; `Validate()` rejects anything outside it.
 
 ```go
 cfg.JSONMaxDepth = 20
@@ -509,7 +509,7 @@ cfg.JSONMaxDepth = 20
 
 #### `YAMLNullAsEmpty` bool
 
-Convert YAML `null`/`~` values to empty strings. **Default `true`**.
+Convert YAML `null`/`~` values to empty strings. **Default `true`**. When disabled, both literals are kept as `null`.
 
 ```go
 cfg.YAMLNullAsEmpty = true
@@ -541,7 +541,7 @@ cfg.YAMLBoolAsString = true
 
 #### `YAMLMaxDepth` int
 
-Maximum YAML nesting depth. **Default 16**.
+Maximum YAML nesting depth. **Default 16**. The valid range is 1–100; `Validate()` rejects anything outside it.
 
 ```go
 cfg.YAMLMaxDepth = 15
@@ -590,6 +590,8 @@ The flag then has two settings:
 
 The built-in auditor latches the first failure. A custom `CustomAuditor` joins in by implementing `TakeFailure() error`.
 
+Under concurrency, the latched failure is delivered to whichever operation checks first, so attribution is best-effort and may not land on the exact call that lost the event.
+
 ```go
 cfg := env.ProductionConfig()
 cfg.AuditFailClosed = true // a lost audit event fails the operation that emitted it with ErrAuditFailed
@@ -609,7 +611,7 @@ cfg.Prefix = "MYAPP_"  // Only load variables starting with MYAPP_
 
 #### `FileSystem` FileSystem
 
-Filesystem implementation the loader reads through. Use it to inject an in-memory filesystem in tests.
+Filesystem implementation the loader reads through. Use it to inject an in-memory filesystem in tests. **Default `nil`**, which selects `DefaultFileSystem` (`OSFileSystem{}`).
 
 ```go
 cfg.FileSystem = &MockFileSystem{}
@@ -619,7 +621,9 @@ cfg.FileSystem = &MockFileSystem{}
 
 #### `CustomValidator` Validator
 
-Custom key/value validator. Replaces the built-in validator.
+Custom key/value validator. Replaces the built-in validator. **Default `nil`**.
+
+With a custom validator in place, the security checks the built-in one performs (key length, forbidden keys, value control characters, and so on) no longer apply automatically — your implementation must provide them. A validator that implements only `KeyValidator` returns `ErrValidateRequiredUnsupported` from `ValidateRequired`.
 
 ```go
 cfg.CustomValidator = &MyValidator{}
@@ -639,7 +643,7 @@ cfg.CustomExpander = &MyExpander{}
 
 #### `CustomAuditor` AuditLogger
 
-Custom audit logger. Replaces the built-in auditor.
+Custom audit logger. Replaces the built-in auditor. **Default `nil`**. To participate in fail-closed auditing (`AuditFailClosed=true`), additionally implement `TakeFailure() error`.
 
 ```go
 cfg.CustomAuditor = &MyAuditLogger{}
@@ -830,6 +834,8 @@ if err := cfg.Validate(); err != nil {
 - `DuplicateKeyPolicy` must be one of the four defined constants
 - If `KeyPattern` is non-nil, it must pass three probes (see [KeyPattern security probes](#keypattern-security-probes-sec-06))
 
+Any failed check returns a `*ValidationError`; `New()` wraps it again with `ErrInvalidConfig`.
+
 ---
 
 ### IsZero
@@ -846,9 +852,9 @@ Reports whether the Config is an uninitialized zero value. `New()` uses this to 
 **Detection scope (since v1.3.0, every field):**
 - Numeric limits, such as `MaxFileSize` and `MaxVariables`
 - Boolean fields, such as `ValidateValues` and `AutoApply`
-- Enum fields: `ExpansionScope`, `DuplicateKeyPolicy`
+- Enum and string fields: `ExpansionScope`, `DuplicateKeyPolicy`, `Prefix`
 - Pointer and interface fields, such as `KeyPattern` and `FileSystem`
-- String and slice fields, such as `Prefix`, `Filenames`, and `RequiredKeys`
+- Slice fields, such as `Filenames` and `RequiredKeys`
 
 :::warning
 A partially set Config is not treated as zero: the limit fields you leave unset make `Validate()` fail with an `ErrInvalidConfig` wrapper (for example `MaxFileSize must be positive`). See "The IsZero pitfall" below for the fix.
@@ -951,7 +957,7 @@ Key point: `DevelopmentConfig` relaxes **convenience** only: overwriting, YAML s
 | Key pattern | Built-in byte-level validation (equivalent to `^[A-Za-z][A-Za-z0-9_]*$`) |
 | `ValidateValues` | true |
 | `JSONNullAsEmpty`/`JSONNumberAsString` | true |
-| `JSONBoolAsString` | false (no effect on JSON output) |
+| `JSONBoolAsString` | false (marked Deprecated; no effect on JSON output) |
 | `ExpandVariables` | true (scope `ExpansionFileOnly`) |
 | `Prefix` | empty (no filtering) |
 

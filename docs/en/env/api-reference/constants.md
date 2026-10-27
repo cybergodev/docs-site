@@ -50,6 +50,8 @@ The six default limit constants map one-to-one onto `Config` fields of the same 
 
 :::warning
 `Config.Validate()` checks these limits for you. The constants themselves are not exported, so you cannot reference them directly, but `cfg.Validate()` rejects any configuration that exceeds one of them.
+
+The parsers impose two more hard limits — a YAML token count and a JSON node count (HardMaxYAMLTokens / HardMaxJSONNodes, both 200000 and likewise unexported). They intercept memory-amplifying input at parse time and are outside the scope of `Config.Validate()`.
 :::
 
 | Constant | Value | Description |
@@ -75,7 +77,7 @@ if err := cfg.Validate(); err != nil {
 ## Sentinel Errors
 
 :::tip How matching works
-Match every sentinel below with `errors.Is`. `*ValidationError` and `*SecurityError` implement an internal `Is()` that maps Rule/Action to sentinels: `ErrInvalidKey`, `ErrMissingRequired`, `ErrMaxVariables`, `ErrInvalidValue`, `ErrForbiddenKey`, and `ErrSecurityViolation`.
+Match every sentinel below with `errors.Is`. `*ValidationError`, `*SecurityError`, and `*ExpansionError` implement an internal `Is()` that maps Rule/Action/Kind to sentinels: `ErrInvalidKey`, `ErrMissingRequired`, `ErrMaxVariables`, `ErrInvalidValue`, `ErrForbiddenKey`, `ErrSecurityViolation`, and `ErrExpansionDepth`.
 
 When you need file, line, or field details, use `errors.As` to extract the structured error. The two approaches complement each other rather than replace each other. See each error type section below.
 :::
@@ -98,6 +100,13 @@ if errors.Is(err, env.ErrFileTooLarge) {
     // file too large
 }
 ```
+
+`ErrFileTooLarge` comes back in two shapes, both matched by `errors.Is`:
+
+- The raw sentinel: returned by the hardened read layer during `.env` parsing when the cap is crossed mid-read
+- Wrapped in `*FileError`: when the `Stat` pre-check sees an oversized file, or a structured format (JSON/YAML) crosses the limit during parsing. `Op` is `size_check`, and both `Size` and `Limit` are populated
+
+`ErrFileNotFound` is returned wrapped in `*FileError` (`Op` is `open`).
 
 ### Parse Errors
 
@@ -158,6 +167,8 @@ var ErrAuditFailed = errors.New("audit logging failed") // audit event lost whil
 
 `ErrAuditFailed` is returned only when fail-closed auditing is on (`Config.AuditFailClosed = true`). A handler error, a handler panic, or a dropped channel event makes the emitting operation return this error. See [Config API](./config#auditfailclosed-bool).
 
+Under concurrency, the latched failure is taken by whichever operation checks first, so attribution is best-effort and not guaranteed to land on the exact call that lost the event.
+
 **How to check:**
 
 ```go
@@ -168,12 +179,13 @@ if errors.Is(err, env.ErrClosed) {
 
 // Check if the default loader has been initialized
 if errors.Is(err, env.ErrAlreadyInitialized) {
-    // Default loader already exists, cannot call Load() again
+    // Default loader already exists: Load/Overload/LoadWithConfig share one
+    // default loader, which can be initialized only once
 }
 
 // Check if the default loader has not been initialized
 if errors.Is(err, env.ErrNotInitialized) {
-    // Need to call env.Load() or env.LoadWithConfig() first
+    // Call env.Load(), env.Overload(), or env.LoadWithConfig() first
 }
 
 // Check for invalid key format (*ValidationError matches the sentinel via Is() wiring)
@@ -292,7 +304,7 @@ A failed file operation:
 | Member | Type/Signature | Description |
 |--------|----------------|-------------|
 | `FileError.Path` | `string` | File path |
-| `FileError.Op` | `string` | The operation that failed (`open`, `stat`, `size_check`, `parse`) |
+| `FileError.Op` | `string` | The operation that failed: `open` (open failed), `stat` (file info lookup failed), `size_check` (size limit exceeded), `parse` (no parser registered for the format) |
 | `FileError.Err` | `error` | Original error |
 | `FileError.Size` | `int64` | File size, during size checks |
 | `FileError.Limit` | `int64` | The limit exceeded, during size checks |
@@ -463,19 +475,19 @@ The list is the library-internal variable `internal.Patterns`, which is not expo
 
 | Category | Example Patterns |
 |----------|------------------|
-| Authentication & Authorization | `PASSWORD`, `SECRET`, `TOKEN`, `AUTH`, `CREDENTIAL`, `PASSPHRASE`, `SESSION`, `COOKIE` |
-| API & Keys | `API_KEY`, `APIKEY`, `ACCESS_KEY`, `SECRET_KEY`, `PRIVATE_KEY`, `PUBLIC_KEY` |
-| Encryption & Security | `PRIVATE`, `ENCRYPTION_KEY`, `ENCRYPT_KEY`, `DECRYPT_KEY`, `SIGNING_KEY`, `SIGN_KEY`, `VERIFY_KEY` |
+| Authentication & Authorization | `PASSWORD`, `PASSWD`, `SECRET`, `TOKEN`, `AUTH`, `CREDENTIAL`, `PASSPHRASE`, `SESSION`, `COOKIE`, `PWD`, `USERNAME` |
+| API & Keys | `API_KEY`, `APIKEY`, `ACCESS_KEY`, `SECRET_KEY`, `PRIVATE_KEY`, `PUBLIC_KEY`, `KEYSTORE` |
+| Encryption & Security | `PRIVATE`, `ENCRYPTION_KEY`, `ENCRYPT_KEY`, `DECRYPT_KEY`, `SIGNING_KEY`, `SIGN_KEY`, `VERIFY_KEY`, `CERT`, `SALT`, `NONCE` |
 | Financial & PII | `SSN`, `SOCIAL_SECURITY`, `CREDIT_CARD`, `CARD_NUMBER`, `CVV`, `CVC`, `CCV`, `PAN` |
 | Cryptocurrency | `MNEMONIC`, `SEED`, `RECOVERY`, `WALLET`, `PRIVATE_ADDRESS` |
-| Database | `CONNECTION_STRING`, `CONN_STRING`, `DATABASE_URL`, `DB_PASSWORD` |
+| Database | `CONNECTION_STRING`, `CONN_STRING`, `DATABASE_URL`, `DB_PASSWORD`, `DSN` |
 | Cloud Services | `AWS_SECRET`, `AZURE_KEY`, `GCP_KEY`, `SERVICE_ACCOUNT` |
 
 **Matching rules:**
 
 - Matching is case-insensitive.
 - A key name that contains any pattern is sensitive.
-- Exception (SEC-06): `AUTH`, `PAN`, `PWD`, and `USERNAME` match only at identifier boundaries, so benign keys such as `AUTHOR`, `COMPANY`, or `MONKEY` stay non-sensitive.
+- Exception (SEC-06): `AUTH`, `PAN`, `PWD`, and `USERNAME` match only at identifier boundaries. Boundaries are letters and digits only, so an underscore counts as a boundary: `DB_AUTH`, `AUTH_TOKEN`, and `MYSQL_PWD` match, while `AUTHOR`, `AUTHORITY`, and `COMPANY` do not.
 
 **Usage example:**
 
@@ -500,6 +512,8 @@ var DefaultKeyPattern *regexp.Regexp = nil
 
 :::tip Performance
 `nil` selects fast byte-level validation, roughly 10x faster than a regexp. The built-in rule accepts keys that start with a letter and contain only letters, digits, and underscores.
+
+It is a process-global variable that `New()` reads without locking. Assign it during program initialization, before concurrent use of the package.
 :::
 
 **Custom pattern:**

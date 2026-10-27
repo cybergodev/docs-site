@@ -43,7 +43,7 @@ result, err := httpc.Get("https://example.com",
 
 ## Preset Names
 
-Presets are browser profiles with optional OS suffixes (case-insensitive):
+Preset names combine a browser version with an optional OS suffix (case-insensitive):
 
 | Browser | Base / latest / pinned version | OS suffix | Notes |
 |---------|--------------------------------|-----------|-------|

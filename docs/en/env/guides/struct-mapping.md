@@ -138,7 +138,7 @@ Supported formats:
 
 ### Slice Types
 
-Slice fields are split on commas (`,`) and spaces around the separator are trimmed.
+Slice fields read only the key's own value and split it on commas (`,`); quoted groups keep inner spaces, and unquoted elements are trimmed. Indexed keys such as `HOSTS_0` and `HOSTS_1` do not participate in struct mapping — only `GetSlice`/`GetSliceFrom` prefer indexed keys.
 
 ```go
 type Config struct {
@@ -153,6 +153,8 @@ type Config struct {
 HOSTS=localhost,example.com,api.example.com
 PORTS=80,443,8080
 ```
+
+String slices keep empty elements (`a,,b` yields three elements with an empty one in the middle); an empty element in a numeric or boolean slice is a conversion error. When any element fails to convert, the whole mapping returns a `*MarshalError` — the failing element is not skipped.
 
 ## Nested Structs
 
@@ -306,12 +308,14 @@ func (p *Port) UnmarshalText(text []byte) error {
 ```
 
 :::tip About env.Marshaler / env.Unmarshaler
-The `env.Marshaler` (`MarshalEnv()`) and `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) interfaces take effect **only on the top-level value passed to `env.Marshal`, `env.MarshalStruct`, or `env.UnmarshalInto`**. The field-by-field population logic never calls them. For custom encoding or decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler`, which are recognized at the field level.
+The `env.Marshaler` (`MarshalEnv()`) and `env.Unmarshaler` (`UnmarshalEnv(map[string]string)`) interfaces take effect **only on the top-level value passed to `env.Marshal`, `env.MarshalStruct`, or `env.UnmarshalInto`**. The field-by-field population logic never calls them. For custom encoding or decoding of struct fields, implement the standard library `encoding.TextMarshaler` / `encoding.TextUnmarshaler`, which are recognized at the field level (the marshal side also recognizes `json.Marshaler`).
 :::
 
 ## Configuration Validation
 
 ### Struct Validation
+
+`ParseInto` only reads values and converts types; it never calls a `Validate()` method on the struct. Run validation yourself after the mapping:
 
 ```go
 package main

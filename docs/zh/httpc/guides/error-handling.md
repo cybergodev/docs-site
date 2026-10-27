@@ -23,7 +23,7 @@ HTTPC 定义了 12 种错误类型，覆盖网络层到应用层的失败场景�
 | `ErrorTypeCertificate` | `CERTIFICATE_ERROR` | 证书验证失败 | 证书过期、签名无效、CA 不受信 | 否 |
 | `ErrorTypeTransport` | `TRANSPORT_ERROR` | HTTP 传输层错误 | 协议错误、传输异常中断 | 是 |
 | `ErrorTypeResponseRead` | `RESPONSE_READ_ERROR` | 响应体读取错误 | 连接中断导致 EOF、读取超时 | 视原因而定 |
-| `ErrorTypeRetryExhausted` | `RETRY_EXHAUSTED` | 重试耗尽 | 达到 `MaxRetries` 上限后仍失败 | 否 |
+| `ErrorTypeRetryExhausted` | `RETRY_EXHAUSTED` | 重试耗尽 | 仅防御性兜底路径设置；正常耗尽保留原始分类，用 `Attempts` 判断 | 否 |
 | `ErrorTypeValidation` | `VALIDATION_ERROR` | 请求验证失败 | URL 格式非法、HTTP 头含控制字符 | 否 |
 | `ErrorTypeHTTP` | `HTTP_ERROR` | HTTP 状态码错误 | 错误消息含 `HTTP 4xx`/`HTTP 5xx` 时由分类器归入（常规 4xx/5xx 不作为 error 返回） | 按状态码判断 |
 | `ErrorTypeUnknown` | `UNKNOWN_ERROR` | 未分类错误 | 其他未匹配的异常 | 否 |
@@ -32,7 +32,7 @@ HTTPC 定义了 12 种错误类型，覆盖网络层到应用层的失败场景�
 `IsRetryable()` 的判定比上表更细粒度：
 
 - `ErrorTypeDNS` 仅在 `net.DNSError` 标记为临时或超时时可重试。
-- `ErrorTypeNetwork` 检查 `syscall.Errno`（`ECONNREFUSED`/`ECONNRESET`/`EPIPE`/`ETIMEDOUT`/`ENETUNREACH`/`EHOSTUNREACH`）与错误消息模式。
+- `ErrorTypeNetwork` 检查 `syscall.Errno`（`ECONNREFUSED`/`ECONNRESET`/`EPIPE`/`ETIMEDOUT`/`ENETUNREACH`/`EHOSTUNREACH`/`ECONNABORTED`）与错误消息模式。
 - `ErrorTypeResponseRead` 仅在 `read`/`readfrom` 操作的网络错误时可重试。
 
 规则见下方「可重试判定的实现细节」。
@@ -192,7 +192,7 @@ func main() {
 ```
 
 :::warning IsRetryable 与自动重试的区别
-`IsRetryable()` 判断该错误是否值得重试，HTTPC 内部的重试引擎也使用同一判定。配置了 `RetryConfig.MaxRetries` 时，网络/超时类错误到达调用方即表示重试已耗尽。上层逻辑（断路器、任务队列）可用 `IsRetryable()` 决定是否再次发起请求。
+`IsRetryable()` 判断该错误是否值得重试，HTTPC 内部的重试引擎默认使用同一判定。一个例外：`ProxyRotateOnStatus` 注入的扩展状态码只进入引擎的重试判定，`IsRetryable()` 对这些码仍返回 false。配置了 `RetryConfig.MaxRetries` 时，网络/超时类错误到达调用方即表示重试已耗尽。上层逻辑（断路器、任务队列）可用 `IsRetryable()` 决定是否再次发起请求。
 :::
 
 ## 可重试判定的实现细节
@@ -206,8 +206,8 @@ func main() {
 | 检查层 | 可重试条件 |
 |--------|------------|
 | `net.OpError.Timeout()` | 超时 → 重试 |
-| `syscall.Errno`（POSIX） | `ECONNREFUSED` / `ECONNRESET` / `EPIPE` / `ETIMEDOUT` / `ENETUNREACH` / `EHOSTUNREACH` |
-| Windows WSA 错误码 | 10054（连接被重置）/ 10060（连接超时）/ 10061（连接被拒绝）/ 10051（网络不可达）/ 10065（主机不可达） |
+| `syscall.Errno`（POSIX） | `ECONNREFUSED` / `ECONNRESET` / `EPIPE` / `ETIMEDOUT` / `ENETUNREACH` / `EHOSTUNREACH` / `ECONNABORTED` |
+| Windows WSA 错误码 | 10053（连接中止）/ 10054（连接被重置）/ 10060（连接超时）/ 10061（连接被拒绝）/ 10051（网络不可达）/ 10065（主机不可达） |
 | 错误消息模式 | `connection reset` / `eof` / `connection closed` / `broken pipe` / `network error` / `transport failed` |
 | 其他 `net.Error` | 默认重试（服务端主动断开、EOF 等瞬时故障） |
 
@@ -227,7 +227,7 @@ HTTPC 内置 WSA 码映射表，使 Windows 与 Unix 的重试判定保持一致
 
 ### HTTP 状态码
 
-`ErrorTypeHTTP` 直接查可重试状态码表：408/429/500/502/503/504（含 `ProxyRotateOnStatus` 注入的扩展码）。`StatusCode` 缺失（= 0）时退化为按错误消息中的 `HTTP 4xx` / `HTTP 5xx` 前缀判断。
+`ErrorTypeHTTP` 直接查内置可重试状态码表：408/429/500/502/503/504。`ProxyRotateOnStatus` 扩展码只进入引擎的重试判定，不在该表内（见上方 warning）。`StatusCode` 缺失（= 0）时退化为按错误消息中的 `HTTP 4xx` / `HTTP 5xx` 前缀判断。
 
 ## 哨兵错误完整参考
 
@@ -238,7 +238,7 @@ HTTPC 定义以下哨兵错误变量，可通过 `errors.Is` 精确匹配：
 | `ErrClientClosed` | 在 `client.Close()` 之后继续使用该客户端 | 初始化新 Client 或修复生命周期管理 |
 | `ErrNilConfig` | 传给 `New()` 的 Config 指针为 nil | 使用 `DefaultConfig()` 获取默认值 |
 | `ErrInvalidHeader` | HTTP 头校验失败（含控制字符或格式非法） | 修正 Header 值后重试 |
-| `ErrInvalidTimeout` | 超时值非法：负值、0 或超过 30 分钟上限 | 调整到合法区间；解除超时用 `WithNoTimeout()` |
+| `ErrInvalidTimeout` | 超时值非法：负值或超过 30 分钟上限（`WithTimeout` 另行拒绝 0） | 调整到合法区间；解除超时用 `WithNoTimeout()` |
 | `ErrInvalidRetry` | 重试配置非法（MaxRetries 不在 0-10，BackoffFactor 不在 1.0-10.0） | 修正重试参数 |
 | `ErrInvalidMaxRedirects` | 重定向次数非法：请求级 `WithMaxRedirects` 为负或超过 50，或配置级 `Security.MaxRedirects` 为负或超过 50 | 调整到 0–50 区间 |
 | `ErrInvalidConnection` | 连接配置非法（连接池大小超出范围、代理 URL 格式错误） | 修正连接参数 |
@@ -426,10 +426,11 @@ func main() {
 		var clientErr *httpc.ClientError
 		if errors.As(err, &clientErr) {
 			if clientErr.Type == httpc.ErrorTypeContextCanceled {
-				// context 超时或手动取消，不会被自动重试
-				fmt.Println("请求被取消（超时或手动取消），不会重试")
+				// 手动取消（cancel()），不会被自动重试
+				fmt.Println("请求被手动取消，不会重试")
 			} else if clientErr.Type == httpc.ErrorTypeTimeout {
-				fmt.Println("请求超时，已自动重试仍失败")
+				// context 截止（DeadlineExceeded）也归入此分类，同样不触发自动重试
+				fmt.Println("请求超时（含 context 截止），不会重试")
 			}
 		}
 		return

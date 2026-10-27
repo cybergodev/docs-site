@@ -1,7 +1,7 @@
 ---
 sidebar_label: "配置"
 title: "配置 - CyberGo HTTPC | Config 与预设"
-description: "HTTPC 配置系统 API 参考：Timeouts、Connection、Security、Retry、Middleware 全字段说明，DefaultConfig 预设、EnableProxyPoolHTTP2、SensitiveHeaders 关键字段、ValidateConfig 校验与代理轮换重试派生规则。"
+description: "HTTPC 配置 API 参考：Timeouts、Connection、Security、Retry 各子配置全字段说明，DefaultConfig 等五个预设、EnableProxyPoolHTTP2 与 SensitiveHeaders 关键字段、ValidateConfig 校验及代理池重试派生规则。"
 sidebar_position: 10
 ---
 
@@ -110,7 +110,7 @@ type ConnectionConfig struct {
     EnableSystemProxy      bool          // 自动检测系统代理，默认 false
     ProxyPool              []string      // 代理服务器列表，用于轮换
     ProxyPoolStrategy      ProxyStrategy // 代理选择策略，默认 RoundRobin
-    ProxyFailureThreshold  int           // 连续失败次数阈值，0 默认为 3
+    ProxyFailureThreshold  int           // 连续 TCP 拨号失败次数阈值，0 默认为 3
     ProxyCooldown            time.Duration // 断路冷却时间，0 默认为 30s
     ProxyRotatePerRequest    bool          // 每次独立请求强制换代理，默认 false
     ProxyRotateOnStatus      []int         // 触发代理轮换的 HTTP 状态码
@@ -134,7 +134,7 @@ type ConnectionConfig struct {
 | `ConnectionConfig.EnableSystemProxy` | `bool` | `false` | 自动检测系统代理设置 |
 | `ConnectionConfig.ProxyPool` | `[]string` | `nil` | 代理池列表，用于轮换 |
 | `ConnectionConfig.ProxyPoolStrategy` | `ProxyStrategy` | `ProxyStrategyRoundRobin` | 代理选择策略 |
-| `ConnectionConfig.ProxyFailureThreshold` | `int` | 3（0 视为 3） | 连续失败次数阈值，达到后熔断该代理 |
+| `ConnectionConfig.ProxyFailureThreshold` | `int` | 3（0 视为 3） | 连续 TCP 拨号失败次数阈值，达到后熔断该代理 |
 | `ConnectionConfig.ProxyCooldown` | `time.Duration` | 30s（0 视为 30s） | 熔断代理的冷却时长 |
 | `ConnectionConfig.ProxyRotatePerRequest` | `bool` | `false` | 每次独立请求强制换代理（需设置 `ProxyPool`） |
 | `ConnectionConfig.ProxyRotateOnStatus` | `[]int` | `nil` | 触发换代理重试的 HTTP 状态码（需 `Retry.MaxRetries > 0`） |
@@ -150,16 +150,18 @@ type ConnectionConfig struct {
 
 ### 代理池
 
-`ProxyPool` 指定一组代理服务器，请求按 `ProxyPoolStrategy` 在代理间分发。连接失败（dial/TLS）触发被动熔断，规则如下：
+`ProxyPool` 指定一组代理服务器，请求按 `ProxyPoolStrategy` 在代理间分发。**TCP 拨号失败**（到代理地址的首跳拨号）触发被动熔断，规则如下：
 
-- 累计 `ProxyFailureThreshold` 次失败后，该代理临时移出轮换。
+- 累计 `ProxyFailureThreshold` 次连续拨号失败后，该代理临时移出轮换。
 - `ProxyCooldown` 后该代理恢复（半开探测）。
+
+熔断只统计拨号结果：拨号成功即上报成功，即使代理随后拒绝所有 CONNECT。拨号之后的失败——到 `https://` 代理的 TLS 握手错误、CONNECT 被拒（407/502）、SOCKS5 握手失败——不计入熔断。按 HTTP 状态码维度的轮换用 `ProxyRotateOnStatus`（见下）。
 
 优先级：低于 `ProxyURL`，高于 `EnableSystemProxy`。若同时设置 `ProxyURL` 和 `ProxyPool`，`ProxyURL` 生效（单代理模式）。
 
 `ProxyRotateOnStatus` 指定触发换代理重试的 HTTP 状态码（如 `[]int{403}` 用于 CF/WAF 基于 IP 的封锁）。该字段需 `Retry.MaxRetries > 0` 才生效。
 
-与连接失败不同，状态码轮换**不会**熔断代理。原因是封锁属目标特定：同一代理在某站点被封，在另一站点仍可正常使用。
+与拨号失败不同，状态码轮换**不会**熔断代理。原因是封锁属目标特定：同一代理在某站点被封，在另一站点仍可正常使用。
 
 `ProxyRotatePerRequest` 确保每个独立请求（如每次 `Get`/`Post` 调用）使用不同的代理。不启用时，HTTP 连接复用会让对同一主机的连续请求沿用前一次请求的代理隧道，绕过代理池选择。启用后，每次请求开始时关闭空闲连接，强制 Transport 重新评估代理池。
 
@@ -335,7 +337,14 @@ client, err := httpc.New(cfg)
 `Security.TLSConfig` 与该字段互斥（同时设置时校验拒绝）。设置该字段后，`MinTLSVersion`/`MaxTLSVersion` **被静默忽略**，版本范围由预设的 ClientHello 决定。详见 [TLS 指纹指南](../../guides/tls-fingerprint)。
 :::
 
-`TLSFingerprintDisableSessionTickets` 置 `true` 时，指纹路径每次连接都完整握手；默认 `false`，此时 Chrome 预设按连接池缓存 TLS 会话票据，以 PSK 恢复重复连接（与真实浏览器重访同一主机的行为一致）。会话恢复机制详见 [TLS 指纹指南](../../guides/tls-fingerprint#会话恢复)。
+`SecurityConfig.TLSFingerprintDisableSessionTickets` 置 `true` 时，指纹路径每次连接都完整握手；默认 `false`，此时 Chrome 预设按连接池缓存 TLS 会话票据，以 PSK 恢复重复连接（与真实浏览器重访同一主机的行为一致）。`TLSFingerprintDisableSessionTickets` 适用于指纹轮换管线（要求每条连接完全独立）或排查目标站点问题时排除会话恢复变量。ClientHello 不含 `pre_shared_key` 扩展的预设（Firefox、iOS WebKit 系列）本就总是完整握手，该字段对它们无效果。会话恢复机制详见 [TLS 指纹指南](../../guides/tls-fingerprint#会话恢复)。
+
+```go
+cfg := httpc.DefaultConfig()
+cfg.Security.TLSFingerprint = "chrome-latest"
+cfg.Security.TLSFingerprintDisableSessionTickets = true // 每次连接都完整握手
+client, err := httpc.New(cfg)
+```
 
 ### 重定向白名单
 
@@ -353,7 +362,7 @@ cfg.Security.RedirectWhitelist = []string{
 
 ### 敏感头剥离（SensitiveHeaders）
 
-`SensitiveHeaders` 扩展跨域重定向跳转时**按凭据处理**的头名集合，规则如下：
+`SecurityConfig.SensitiveHeaders` 扩展跨域重定向跳转时**按凭据处理**的头名集合，规则如下：
 
 - **内置集始终剥离**：`Authorization`、`Proxy-Authorization`、`Cookie`、`X-Api-Key`、`X-Auth-Token` 在跨源跳转时始终剥离（net/http 自身只覆盖前三个），无论是否列出。
 - **自定义凭据头需显式列出**：如 `X-Secret-Key` 不在此列出时，会被原样转发给 `Location` 指向的任意目标，构成开放重定向凭据泄漏（CWE-525）。
@@ -567,7 +576,8 @@ func MinimalConfig() Config
 | TLS 版本回退 | `MinTLSVersion` / `MaxTLSVersion` 为 0 时分别回退 TLS 1.2 / TLS 1.3 |
 | MaxRetryDelay 回退 | `Retry.MaxRetryDelay` 为 0 时按 30s 处理 |
 | TCP KeepAlive | 固定 30s，随连接池配置自动应用，无需设置 |
-| 代理轮换自动提升重试 | 设置 `ProxyRotateOnStatus` 或 `ProxyRotatePerRequest` 且代理池多于 1 个时，有效 MaxRetries 自动提升到 `len(ProxyPool)-1`（上限 10，不会被调低） |
+| 响应体大小回退 | 未压缩响应按 `MaxResponseBodySize` 限制；压缩响应按 `MaxDecompressedBodySize`（≤0 时回退 `MaxResponseBodySize`，仍 ≤0 时回退引擎默认 100MB） |
+| 代理轮换自动提升重试 | 设置 `ProxyRotateOnStatus` 或 `ProxyRotatePerRequest`、代理池多于 1 个且未设 `ProxyURL`（池实际生效）时，有效 MaxRetries 自动提升到 `len(ProxyPool)-1`（上限 10，不会被调低） |
 | ProxyRotateOnStatus | 作为「额外可重试状态码」传入引擎，命中即消耗一次重试预算换代理 |
 
 :::tip 为什么需要自动提升重试
@@ -586,7 +596,7 @@ func SetSecurityWarnOutput(w io.Writer)
 
 `SetSecurityWarnOutput` 设置安全警告的输出目标。进程不在测试环境（可执行文件名含 `.test`，或设置了 `GO_TEST`、`GOTEST=1`）时，以下情况会向该 writer 打印告警：
 
-- 打印 `[SECURITY WARNING]`：使用 `TestingConfig()`。
+- 打印 `[SECURITY WARNING]`：在非测试环境调用 `TestingConfig()`（警告在该预设函数内部触发，与是否创建客户端无关）。
 - 打印 `[SECURITY WARNING]`：`SecurityConfig.InsecureSkipVerify`（`Config.Security`）或 `SecurityConfig.TLSConfig.InsecureSkipVerify` 为 `true`。
 - 打印 `[CONFIG WARNING]`：手写 `Config` 结构体字面量恰好命中全关签名——`ValidateURL`、`ValidateHeaders`、`StrictContentLength`、`FollowRedirects`、`EnableHTTP2` 全为 false，且 `Security.MaxResponseBodySize == 0`。这些字段文档标注 `Default: true`，但只在 `DefaultConfig()`/预设中为 true，结构体字面量会把它们清零；提示应从 `DefaultConfig()` 起步再改字段（源码 `client.go` 的 `newFromConfig`）。
 
@@ -612,7 +622,7 @@ func ValidateConfig(cfg *Config) error
 
 校验配置有效性。`New()` 内部自动调用，也可显式调用。
 
-等价的方法形式 `Config.Validate`（签名 `func (c *Config) Validate() error`，内部直接委托 `ValidateConfig`）适用于已持有 Config 实例的场景，新代码推荐使用该方法：
+等价的方法形式 `Validate`（完整方法名 `Config.Validate`，签名 `func (c *Config) Validate() error`，内部直接委托 `ValidateConfig`）适用于已持有 Config 实例的场景，新代码推荐使用该方法。对 nil `*Config` 调用 `Validate` 是安全的，返回 `ErrNilConfig`：
 
 ```go
 cfg := httpc.DefaultConfig()
@@ -647,7 +657,7 @@ if err := httpc.ValidateConfig(&cfg); err != nil {
 | `Security.MaxResponseBodySize` | 0 – 1GB |
 | `Security.MaxDecompressedBodySize` | 0 – 100MB |
 | `Security.MaxRequestBodySize` | 0 – 1GB |
-| `Security.MinTLSVersion` / `MaxTLSVersion` | 两者均非 0 时 Min ≤ Max |
+| `Security.MinTLSVersion` / `MaxTLSVersion` | 详见表后 TLS 版本校验规则 |
 | `Security.SSRFExemptCIDRs` | 每项必须是合法 CIDR |
 | `Security.SensitiveHeaders` | 每项须通过头名合法性校验（同 `WithHeader` 键规则） |
 | `Retry.MaxRetries` | 0 – 10 |
@@ -657,6 +667,8 @@ if err := httpc.ValidateConfig(&cfg); err != nil {
 | `Security.MaxRedirects` | 0 – 50 |
 | `Defaults.UserAgent` | ≤ 512 字符且不含控制字符 |
 | `Defaults.Headers` | 每组键值均通过头部合法性校验 |
+
+**TLS 版本校验规则**：非 0 值必须是 `tls.VersionTLS*` 常量（TLS 1.0–1.3）；两者均非 0 时要求 Min ≤ Max。除原始值比较外，`ValidateConfig` 还按「0 回退默认（Min→TLS 1.2 / Max→TLS 1.3）」换算出**有效版本对**再比较一次——只设置单个边界的 Config（如仅 `MaxTLSVersion = TLS 1.1`）同样会在构造期报 `ErrInvalidSecurity`，而非等到握手期才以晦涩错误失败。
 
 ### Config.String
 

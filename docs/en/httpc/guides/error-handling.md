@@ -23,7 +23,7 @@ HTTPC defines 12 error types covering failure scenarios from the network layer t
 | `ErrorTypeCertificate` | `CERTIFICATE_ERROR` | Certificate verification failure | Expired certificate, invalid signature, untrusted CA | No |
 | `ErrorTypeTransport` | `TRANSPORT_ERROR` | HTTP transport-layer error | Protocol error, transport interrupted | Yes |
 | `ErrorTypeResponseRead` | `RESPONSE_READ_ERROR` | Response body read error | EOF from connection drop, read timeout | Depends on cause |
-| `ErrorTypeRetryExhausted` | `RETRY_EXHAUSTED` | Retries exhausted | Still failing after reaching `MaxRetries` | No |
+| `ErrorTypeRetryExhausted` | `RETRY_EXHAUSTED` | Retries exhausted | Set only on a defensive fallback path; normal exhaustion keeps the original classification — use `Attempts` instead | No |
 | `ErrorTypeValidation` | `VALIDATION_ERROR` | Request validation failure | Illegal URL format, control characters in headers | No |
 | `ErrorTypeHTTP` | `HTTP_ERROR` | HTTP status code error | Assigned by the classifier when the error message contains `HTTP 4xx`/`HTTP 5xx` (a normal 4xx/5xx response is not an error) | By status code |
 | `ErrorTypeUnknown` | `UNKNOWN_ERROR` | Unclassified error | Other unmatched exceptions | No |
@@ -32,7 +32,7 @@ HTTPC defines 12 error types covering failure scenarios from the network layer t
 `IsRetryable()` is more fine-grained than the table suggests:
 
 - `ErrorTypeDNS` is retryable only when `net.DNSError` is flagged temporary or timeout.
-- `ErrorTypeNetwork` checks `syscall.Errno` (`ECONNREFUSED`/`ECONNRESET`/`EPIPE`/`ETIMEDOUT`/`ENETUNREACH`/`EHOSTUNREACH`) and error-message patterns.
+- `ErrorTypeNetwork` checks `syscall.Errno` (`ECONNREFUSED`/`ECONNRESET`/`EPIPE`/`ETIMEDOUT`/`ENETUNREACH`/`EHOSTUNREACH`/`ECONNABORTED`) and error-message patterns.
 - `ErrorTypeResponseRead` retries only network errors from `read`/`readfrom` operations.
 
 See "Implementation Details of Retryability" below.
@@ -192,7 +192,7 @@ func main() {
 ```
 
 :::warning IsRetryable vs automatic retry
-`IsRetryable()` reports whether the error is worth retrying, and HTTPC's retry engine uses the same check. With `Retry.MaxRetries` configured, a network or timeout error reaching the caller means retries are already exhausted. Upper layers (circuit breakers, task queues) can use `IsRetryable()` to decide whether to send another request.
+`IsRetryable()` reports whether the error is worth retrying, and HTTPC's retry engine uses the same check by default. One exception: extension status codes injected by `ProxyRotateOnStatus` enter only the engine's retry decision — `IsRetryable()` still returns false for them. With `RetryConfig.MaxRetries` configured, a network or timeout error reaching the caller means retries are already exhausted. Upper layers (circuit breakers, task queues) can use `IsRetryable()` to decide whether to send another request.
 :::
 
 ## Implementation Details of Retryability
@@ -206,8 +206,8 @@ Below the type classification, `IsRetryable()` applies a second, cause-level lay
 | Check layer | Retryable condition |
 |-------------|----------------------|
 | `net.OpError.Timeout()` | Timeout → retry |
-| `syscall.Errno` (POSIX) | `ECONNREFUSED` / `ECONNRESET` / `EPIPE` / `ETIMEDOUT` / `ENETUNREACH` / `EHOSTUNREACH` |
-| Windows WSA error codes | 10054 (connection reset) / 10060 (connection timed out) / 10061 (connection refused) / 10051 (network unreachable) / 10065 (host unreachable) |
+| `syscall.Errno` (POSIX) | `ECONNREFUSED` / `ECONNRESET` / `EPIPE` / `ETIMEDOUT` / `ENETUNREACH` / `EHOSTUNREACH` / `ECONNABORTED` |
+| Windows WSA error codes | 10053 (connection aborted) / 10054 (connection reset) / 10060 (connection timed out) / 10061 (connection refused) / 10051 (network unreachable) / 10065 (host unreachable) |
 | Error-message patterns | `connection reset` / `eof` / `connection closed` / `broken pipe` / `network error` / `transport failed` |
 | Other `net.Error` | Retry by default (server-initiated disconnects, EOF, and other transient faults) |
 
@@ -227,7 +227,7 @@ HTTPC includes a WSA code mapping table so that retry decisions on Windows match
 
 ### HTTP Status Codes
 
-`ErrorTypeHTTP` consults the retryable-status table directly: 408/429/500/502/503/504 (including extension codes injected by `ProxyRotateOnStatus`). When `StatusCode` is missing (= 0), it falls back to the `HTTP 4xx` / `HTTP 5xx` prefixes in the error message.
+`ErrorTypeHTTP` consults the built-in retryable-status table directly: 408/429/500/502/503/504. Extension codes from `ProxyRotateOnStatus` enter only the engine's retry decision, not this table (see the warning above). When `StatusCode` is missing (= 0), it falls back to the `HTTP 4xx` / `HTTP 5xx` prefixes in the error message.
 
 ## Sentinel Errors Complete Reference
 
@@ -238,7 +238,7 @@ HTTPC defines the following sentinel error variables, matchable with `errors.Is`
 | `ErrClientClosed` | Using a client after `client.Close()` | Initialize a new Client or fix lifecycle management |
 | `ErrNilConfig` | The Config pointer passed to `New()` is nil | Use `DefaultConfig()` for defaults |
 | `ErrInvalidHeader` | Header validation failed (control characters or illegal format) | Fix the header value and retry |
-| `ErrInvalidTimeout` | Timeout value is negative, zero, or exceeds the 30-minute cap | Use a valid value; call `WithNoTimeout()` to remove the timeout |
+| `ErrInvalidTimeout` | Invalid timeout value: negative or above the 30-minute cap (`WithTimeout` additionally rejects 0; 0 is legal at the config level) | Move it into the valid range; call `WithNoTimeout()` to remove the timeout |
 | `ErrInvalidRetry` | Invalid retry config (MaxRetries outside 0–10, BackoffFactor outside 1.0–10.0) | Fix retry parameters |
 | `ErrInvalidMaxRedirects` | Invalid redirect limit: per-request `WithMaxRedirects` is negative or above 50, or config-level `Security.MaxRedirects` is negative or above 50 | Move it into the 0–50 range |
 | `ErrInvalidConnection` | Invalid connection config (pool size out of range, malformed proxy URL) | Fix connection parameters |
@@ -426,10 +426,12 @@ func main() {
 		var clientErr *httpc.ClientError
 		if errors.As(err, &clientErr) {
 			if clientErr.Type == httpc.ErrorTypeContextCanceled {
-				// Context timed out or was manually canceled — not auto-retried
-				fmt.Println("request canceled (timeout or manual cancel); will not retry")
+				// Manual cancellation (cancel()) is never auto-retried
+				fmt.Println("request manually canceled; will not retry")
 			} else if clientErr.Type == httpc.ErrorTypeTimeout {
-				fmt.Println("request timed out; auto-retries still failed")
+				// A context deadline (DeadlineExceeded) falls into this
+				// classification and likewise never triggers an auto-retry
+				fmt.Println("request timed out (context deadline included); will not retry")
 			}
 		}
 		return

@@ -267,7 +267,7 @@ func main() {
 1. **域名白名单**（配置 `RedirectWhitelist` 时）
 2. **协议检查**：仅允许 http/https，拒绝 `file://`、`gopher://` 等
 3. **SSRF 主机校验**：目标主机名按私网/回环/保留规则校验
-4. **跨域剥除敏感头**：目标主机不同于起始主机时，移除 `Authorization`、`Cookie`、`Proxy-Authorization`。重定向即使被允许，凭据也不会被带到第三方域
+4. **跨域剥除敏感头**：目标源（scheme/主机/端口）不同于起始源时，移除 `Authorization`、`Proxy-Authorization`、`Cookie`、`X-Api-Key`、`X-Auth-Token`。重定向即使被允许，凭据也不会被带到第三方域
 5. **循环重定向检测**：A→B→A 式环路报错，连续同 URL 的 A→A 除外
 6. **次数上限**：默认 10 次，配置硬上限 50
 

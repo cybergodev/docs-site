@@ -105,9 +105,9 @@ cfg.Connection.EnableSystemProxy = true
 
 ### 检测顺序与细节
 
-1. **环境变量优先**（全平台）：先读 `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY`（大小写均识别）。任一有值即直接使用，不再查系统设置。
+1. **环境变量优先**（全平台）：先读 `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY`（大小写均识别）。`HTTP_PROXY` 或 `HTTPS_PROXY` 任一有值即直接使用，不再查系统设置。
 2. **平台检测兜底**：无环境变量时读取平台设置。Linux 桌面（GNOME/KDE）的代理已由会话导出为环境变量，引擎不直接读 gsettings/dconf。
-3. **请求分流**：HTTPS 请求优先用 `HTTPS_PROXY`，未设置时回退 `HTTP_PROXY`。HTTP 请求只用 `HTTP_PROXY`，未设置时回退 `HTTPS_PROXY`。顺序与 net/http 一致。
+3. **按 scheme 分流、不交叉回退**：HTTPS 请求只用 `HTTPS_PROXY`，HTTP 请求只用 `HTTP_PROXY`，两个方向都不回退到另一个变量——与 net/http 的 `httpproxy` 一致。设置了但无法解析的变量对其管辖的 scheme 返回解析错误，而非静默直连。
 4. **CGI 环境直连**：`REQUEST_METHOD` 已设置时，来自环境变量的代理不生效，与 net/http 行为一致。
 5. **裸地址自动补全**：`HTTP_PROXY=proxy:8080` 这类无协议头的值按 `http://` 处理。
 6. **缓存**：检测结果在客户端生命周期内缓存，不随环境变量变化热更新。需要感知变化时新建客户端。
@@ -210,10 +210,10 @@ func main() {
 
 ### 被动熔断
 
-代理池内置被动健康检查。熔断只由**连接层失败**（dial/TLS）触发，HTTP 状态码不触发：
+代理池内置被动健康检查。熔断只由**代理 TCP 拨号失败**触发；HTTP 状态码不触发，拨号返回之后的失败（对 `https://` 代理的 TLS 握手失败、CONNECT 被拒、SOCKS5 握手失败）也不计入熔断计数：
 
 ```text
-代理连接失败
+代理 TCP 拨号失败
     ↓
 失败计数 +1
     ↓
@@ -221,9 +221,11 @@ func main() {
     ↓
 等待 ProxyCooldown → 半开探测（恢复轮换）
     ↓
-成功 → 重置计数，关闭熔断
+拨号成功 → 重置计数，关闭熔断
 首次失败 → 重新熔断
 ```
+
+拨号之后的代理协议失败由重试层的强制换代理兜底（见[代理与重试的交互](#代理与重试的交互)），不进入熔断计数。
 
 <!-- check-code: skip -->
 ```go
@@ -254,7 +256,7 @@ func main() {
 		"http://proxy3:8080",
 	}
 	cfg.Connection.ProxyRotateOnStatus = []int{403} // 收到 403 时换代理重试
-	cfg.Retry.MaxRetries = 3                        // 必须启用重试
+	cfg.Retry.MaxRetries = 3                        // 3 个代理时预算自动保底为 2，显式设 3 覆盖更充分
 
 	client, err := httpc.New(cfg)
 	if err != nil {
@@ -273,7 +275,7 @@ func main() {
 ```
 
 :::warning 状态码轮换 ≠ 熔断
-`ProxyRotateOnStatus` 触发的轮换**不会**熔断代理：IP 封锁按目标站点生效，一个代理在 A 站被封，在 B 站仍可用。熔断仅由连接层失败触发，且需 `Retry.MaxRetries > 0` 才生效。
+`ProxyRotateOnStatus` 触发的轮换**不会**熔断代理：IP 封锁按目标站点生效，一个代理在 A 站被封，在 B 站仍可用。熔断仅由拨号失败触发；状态码轮换则需要重试预算——`MaxRetries > 0`，或代理池多于 1 个（此时即使 `MaxRetries = 0` 也自动提升至 `len(ProxyPool) - 1`）。
 
 当 `ProxyRotateOnStatus` 设置且代理池有多个代理时，重试预算自动提升至 `len(ProxyPool) - 1`（受 `MaxRetries` 上限 10 约束），确保每个代理都有机会被尝试。
 :::
@@ -453,7 +455,7 @@ func main() {
 
 例如 5 个代理、配置 `MaxRetries = 3`：预算提升为 4（= 5 - 1），首次请求用 proxy1，收到 403 后依次换 proxy2…proxy5，每个代理各尝试一次。
 
-**2. 代理连接失败强制重试。** 轮换激活时，代理本身的连接失败（拨号失败、TLS 失败）绕过常规可重试分类，直接进入下一次重试并换到下一个代理。永久失效的代理（端口错误、主机不可达）无需预先剔除：强制重试与连续失败熔断会逐步排除这些代理。
+**2. 代理连接失败强制重试。** 轮换激活时，代理本身的拨号失败（`ErrProxyConnectionFailed` 包装的错误）绕过常规可重试分类，直接进入下一次重试并换到下一个代理。永久失效的代理（端口错误、主机不可达）无需预先剔除：强制重试与连续失败熔断会逐步排除这些代理。
 
 重试条件、退避数学与跨重试共享的总超时预算详见[重试与容错](./retry-fault-tolerance)。
 
@@ -462,7 +464,7 @@ func main() {
 代理相关功能自动处理以下安全细节，无需手动配置：
 
 - **SSRF 豁免**：代理主机地址（`ProxyURL` 与 `ProxyPool` 全部条目）自动加入 SSRF 豁免列表，不受私有 IP 检查阻断，本地代理（如 `127.0.0.1:7890`）同样可用。
-- **去重**：代理池中相同 `host:port` 的条目自动合并，避免轮换偏斜和重复计数。
+- **去重**：代理池中相同 `host:port` 且凭据相同的条目自动合并，避免轮换偏斜和重复计数；同 `host:port` 不同凭据视为不同出口条目，共享同一熔断状态。
 - **URL 验证**：所有代理 URL 经安全校验（协议白名单 http/https/socks5/socks5h、host 非空、注入防护）。非法值在 `New()` 即返回错误，不会静默忽略。
 
 与 TLS 的关系：HTTPS 请求经 HTTP 代理的 CONNECT 隧道仍是**端到端 TLS**。证书校验、最低 TLS 版本、证书固定均针对目标站点生效，代理只能转发密文。本地 DNS 污染场景优先用 `socks5h`（域名解析交给代理端）。
@@ -476,7 +478,7 @@ func main() {
 | 代理不生效 | `ProxyURL` 与 `ProxyPool` 同时设置，`ProxyURL` 优先 | 清空 `ProxyURL`，仅用 `ProxyPool` |
 | 对同一主机连续请求出口 IP 不变 | 连接复用绑定了上一次的代理隧道 | 启用 `ProxyRotatePerRequest` |
 | 代理频繁熔断 | `ProxyFailureThreshold` 太低 | 增大阈值或 `ProxyCooldown` |
-| 状态码轮换没生效 | `Retry.MaxRetries = 0`，或代理池只有 1 个代理 | 设 `MaxRetries > 0`；池内至少 2 个代理 |
+| 状态码轮换没生效 | 代理池只有 1 个代理且 `Retry.MaxRetries = 0`（池多于 1 个时预算会自动提升） | 池内至少 2 个代理，或显式设 `MaxRetries > 0` |
 | 全部代理熔断会怎样 | 全池连续失败 | 引擎返回最接近恢复的代理，不直接失败；检查代理可用性与阈值 |
 | 系统代理没被检测到 | 环境变量缺失且平台设置未开启 | 确认 `HTTP_PROXY`/`HTTPS_PROXY` 或系统代理开关 |
 | localhost 代理被 SSRF 拦截 | 系统代理的豁免名单只在构建时探测一次 | 显式设置 `Connection.ProxyURL`（始终豁免）或配置 `SSRFExemptCIDRs` |

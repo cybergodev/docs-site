@@ -1,13 +1,13 @@
 ---
 title: "重定向 - CyberGo HTTPC | 跟随控制与安全白名单"
-description: "HTTPC 重定向指南：自动跟随与 10 次上限、WithFollowRedirects/WithMaxRedirects 请求级控制、RedirectChain 链路追踪、301-308 方法语义、凭据剥离、SensitiveHeaders 自定义凭据头与 RedirectWhitelist 白名单防开放重定向。"
+description: "HTTPC 重定向指南：自动跟随与次数上限、WithFollowRedirects/WithMaxRedirects 请求级控制、RedirectChain 链路追踪、301-308 方法语义、凭据剥离、SensitiveHeaders 自定义凭据头与 RedirectWhitelist 白名单防开放重定向。"
 sidebar_label: "重定向"
 sidebar_position: 30
 ---
 
 # 重定向
 
-HTTPC 默认自动跟随 HTTP 重定向，最多 10 次，并记录完整的重定向链。跟随策略由 `Security.FollowRedirects` 与 `MaxRedirects` 控制，可作用于客户端级、请求级与预设级。
+HTTPC 默认自动跟随 HTTP 重定向，`MaxRedirects` 上限默认 10（计数含初始请求，即实际最多跟随 9 跳，与 net/http 一致），并记录完整的重定向链。跟随策略由 `Security.FollowRedirects` 与 `MaxRedirects` 控制，可作用于客户端级、请求级与预设级。
 
 跨域跳转时敏感请求头被剥离。环形链路、白名单外的目标与 SSRF 校验失败的目标都会被拒绝。
 
@@ -73,7 +73,7 @@ func main() {
 :::
 
 :::tip 超出上限即报错
-重定向次数超过 `MaxRedirects` 时请求以错误结束（错误信息形如 `stopped after 3 redirects`），不会无限循环。`MaxRedirects` 合法范围为 0–50，越界时配置校验报错。
+重定向次数超过 `MaxRedirects` 时请求以错误结束（错误信息形如 `stopped after 3 redirects`），不会无限循环。计数含初始请求：`MaxRedirects = N` 时最多跟随 N-1 跳，默认 10 即最多 9 跳。`MaxRedirects` 合法范围为 0–50，越界时配置校验报错。
 :::
 
 ## 控制跟随
@@ -111,7 +111,7 @@ if result.IsRedirect() {
     fmt.Println(result.Response.Headers.Get("Location")) // 重定向目标地址
 }
 
-// 仅这一次请求限制跟随 3 次
+// 仅这一次请求把上限设为 3（含初始请求，最多跟随 2 跳）
 result, err = httpc.Get(url, httpc.WithMaxRedirects(3))
 ```
 
@@ -168,10 +168,10 @@ func main() {
 
 ## 跨域凭据自动剥离
 
-跟随重定向时，引擎在每一跳检查目标主机名。目标主机名与**初始请求**的主机名不一致（跨域跳转）时，自动删除敏感请求头，避免凭据泄露给重定向目标：
+跟随重定向时，引擎在每一跳比较目标**源**（协议 + 主机 + 端口，协议默认端口归一化）。目标源与**初始请求**的源不一致（跨域跳转）时，自动删除敏感请求头，避免凭据泄露给重定向目标：
 
-| 请求头 | 目标主机 = 初始请求主机 | 目标主机 ≠ 初始请求主机 |
-|--------|------------------------|------------------------|
+| 请求头 | 目标源 = 初始请求源 | 目标源 ≠ 初始请求源 |
+|--------|--------------------|--------------------|
 | `Authorization` | 保留 | 删除 |
 | `Proxy-Authorization` | 保留 | 删除 |
 | `Cookie` | 保留 | 删除 |
@@ -183,7 +183,7 @@ func main() {
 
 判定细节：
 
-- 比较基准是**初始请求**的主机名（第一跳的 `via[0]`），不是上一跳。`api.example.com → www.example.com` 属于跨域（精确主机名比较，子域不同也算）；`A → B → A` 回到初始主机则不剥离。
+- 比较基准是**初始请求**的源（第一跳的 `via[0]`），不是上一跳。源比较覆盖协议、主机与端口三要素（协议默认端口归一化）：子域不同（`api.example.com → www.example.com`）、端口不同（`example.com:443 → example.com:8080`）与协议改变（含 https → http 降级）都算跨域；`A → B → A` 回到初始源则不剥离。
 - 剥离独立于 cookie jar：即使未启用 `EnableCookies`，手工设置的 `Cookie` 请求头在跨域跳转时同样被删除。
 
 配合 `WithBasicAuth` / `WithBearerToken` 使用时无需额外处理：令牌只发往原始主机，不会随跳转带给第三方域。
@@ -226,7 +226,7 @@ A → A → A     连续同 URL：不算环形（服务器可能每次返回不�
 
 | 底层错误信息 | Message 字段 | 触发条件 |
 |--------------|--------------|----------|
-| `stopped after N redirects` | `redirect limit exceeded` | 跳转次数达到 `MaxRedirects`（或默认 10） |
+| `stopped after N redirects` | `redirect limit exceeded` | 跳转次数达到 `MaxRedirects` 上限（计数含初始请求） |
 | `circular redirect detected: <URL>` | `circular redirect detected` | 目标 URL 已出现在跳转链中 |
 | `redirect blocked by whitelist: ...` | `redirect blocked by policy` | 目标域名不在 `RedirectWhitelist` 内 |
 | `redirect blocked: ...` | `redirect blocked by policy` | 目标主机被 SSRF 防护拦截 |
@@ -244,7 +244,7 @@ import (
 
 func main() {
 	cfg := httpc.DefaultConfig()
-	cfg.Security.MaxRedirects = 2 // 只允许跟随 2 次
+	cfg.Security.MaxRedirects = 2 // 上限计 2 次请求（含初始请求，最多跟随 1 跳）
 
 	client, err := httpc.New(cfg)
 	if err != nil {
@@ -292,9 +292,7 @@ client, err := httpc.New(cfg)
 
 ## 手动处理重定向
 
-逐跳检查、按条件跟随或自定义日志时，禁止自动跟随并自行循环处理。两点约束：`Location` 未携带 scheme 与 host 时是相对地址，需按当前 URL 解析为绝对地址。
-
-手动循环不经过白名单检查，但每一跳建连时连接层的 SSRF IP 校验照常生效。
+逐跳检查、按条件跟随或自定义日志时，禁止自动跟随并自行循环处理。两点约束：其一，`Location` 未携带 scheme 与 host 时是相对地址，需按当前 URL 解析为绝对地址；其二，手动循环不经过白名单检查，但每一跳建连时连接层的 SSRF IP 校验照常生效。
 
 ```go
 package main

@@ -1,17 +1,15 @@
 ---
 sidebar_label: "HTTP 集成"
 title: "HTTP 集成 - CyberGo html | Web 服务实战"
-description: "CyberGo html 与标准库 net/http 集成：单页抓取与提取、并发抓取多个 URL、Processor 单例复用、指数退避重试、批量与上下文取消，以及从 Content-Type 头读取 charset 显式指定编码的写法。"
+description: "CyberGo html 与 net/http 集成：单页抓取提取、阅读模式 ReadPageToMarkdown 直接生成 Markdown 喂给 LLM、Processor 单例复用、并发抓取、指数退避重试、批量与上下文取消，以及按 Content-Type 指定编码。"
 sidebar_position: 10
 ---
 
 # HTTP 集成
 
-html 库不提供 HTTP 客户端；把 `net/http` 抓回的响应体交给 `Extract` 即可。以下是常见的集成写法。
+CyberGo html 不提供 HTTP 客户端；抓取由调用方用 `net/http` 完成，把响应体交给 `Extract` 或 `ReadPage*` 即可。本页覆盖常见集成写法。
 
 ## 基本抓取与提取
-
-最简单的模式：获取页面，提取内容。
 
 ```go
 package main
@@ -51,17 +49,36 @@ func main() {
 }
 ```
 
-:::tip 读取前先限流
-`io.LimitReader` 把响应体截断在 50MB（`DefaultMaxInputSize`），避免先把超大页面读进内存再被库拒绝：
+:::tip 读取前限制读取量
+`io.LimitReader` 把读取量限制在 50MB（即 `DefaultMaxInputSize`），避免先把超大页面读进内存、再被库拒绝：
 
 ```go
 body, err := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024)) // 50MB
 ```
+
+`io.LimitReader` 超限时**静默截断**且不报错，截断后的 HTML 可能是不完整的文档，提取仍会成功。需要区分「刚好 50MB」与「超过 50MB」时，把上限设为 `50*1024*1024+1` 并检查读到的长度；服务端处理请求体时可直接用会返回错误的 `http.MaxBytesReader`。
 :::
+
+## 用阅读模式喂 LLM
+
+抓到的整页需要交给 LLM 时，不必先 `Extract` 再自行拼接 Markdown：`ReadPageToMarkdown` 直接接收 HTTP 响应体，输出带内联链接的整页 Markdown，分区标题（`Header`/`Main Content`/`Footer` 等）保留结构信号。
+
+```go
+body, err := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024)) // resp 来自 http.Get
+if err != nil {
+	log.Fatal(err)
+}
+md, err := html.ReadPageToMarkdown(body) // 整页 Markdown，含 [文字](URL)
+if err != nil {
+	log.Fatal(err)
+}
+```
+
+需要不带链接的整页输出时换成 `ReadPageToMarkdownText`（整页分区不变，链接文字保留为普通词）。两者的分区规则、`ReadResult` 结构与保留开关见 [阅读模式](../core-features/reader-mode)。`ReadPage*` 不走缓存，同一 URL 重复抓取时可在调用方自行缓存结果。
 
 ## 配置 HTTP 客户端
 
-生产环境应配置合理的超时和连接池参数：
+生产环境应显式配置超时与连接池。上面的 `http.Get` 用的是**无超时的默认客户端**——卡住的服务端会无限期卡住调用方，只适合演示与一次性脚本：
 
 ```go
 client := &http.Client{
@@ -76,7 +93,7 @@ client := &http.Client{
 
 | 参数 | 建议值 | 说明 |
 |------|--------|------|
-| `Timeout` | 10-30s | 包含连接+TLS+ 读写全流程 |
+| `Timeout` | 10-30s | 覆盖建连、TLS 握手与读写的全流程 |
 | `MaxIdleConns` | 10-50 | 全局最大空闲连接 |
 | `MaxIdleConnsPerHost` | 5-10 | 单主机最大空闲连接 |
 | `IdleConnTimeout` | 90s | 空闲连接保持时间 |
@@ -131,7 +148,9 @@ func extractHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Printf("编码响应失败: %v", err)
+	}
 }
 
 func main() {
@@ -143,12 +162,12 @@ func main() {
 ```
 
 :::warning 输入大小限制
-Web 服务必须限制请求体大小，否则恶意大文件会耗尽内存。使用 `io.LimitReader` 或 `http.MaxBytesReader`。
+Web 服务必须限制请求体大小，否则恶意大文件会耗尽内存。`io.LimitReader` 会静默截断，`http.MaxBytesReader` 超限时返回错误，可按需选用。上面的处理器把请求体限制在 10MB，小于默认 `MaxInputSize`（50MB），实际生效的是更严的那一个。
 :::
 
 ## 并发抓取多个 URL
 
-`Processor` 并发安全，可以同时处理多个页面：
+`Processor` 并发安全，共享一个实例即可同时处理多个页面（HTTP 客户端同理，全程复用带超时的同一个）：
 
 ```go
 type URLResult struct {
@@ -157,7 +176,7 @@ type URLResult struct {
     Error  error
 }
 
-func processURLs(processor *html.Processor, urls []string) []URLResult {
+func processURLs(client *http.Client, processor *html.Processor, urls []string) []URLResult {
     results := make([]URLResult, len(urls))
     var wg sync.WaitGroup
 
@@ -166,7 +185,7 @@ func processURLs(processor *html.Processor, urls []string) []URLResult {
         go func(idx int, u string) {
             defer wg.Done()
 
-            resp, err := http.Get(u)
+            resp, err := client.Get(u)
             if err != nil {
                 results[idx] = URLResult{URL: u, Error: err}
                 return
@@ -178,7 +197,11 @@ func processURLs(processor *html.Processor, urls []string) []URLResult {
                 return
             }
 
-            body, _ := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024))
+            body, err := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024))
+            if err != nil {
+                results[idx] = URLResult{URL: u, Error: err}
+                return
+            }
             result, err := processor.Extract(body)
             results[idx] = URLResult{URL: u, Result: result, Error: err}
         }(i, url)
@@ -192,7 +215,12 @@ func processURLs(processor *html.Processor, urls []string) []URLResult {
 使用示例：
 
 ```go
-p, _ := html.New(html.DefaultConfig())
+client := &http.Client{Timeout: 15 * time.Second}
+
+p, err := html.New(html.DefaultConfig())
+if err != nil {
+    log.Fatal(err)
+}
 defer p.Close()
 
 urls := []string{
@@ -201,7 +229,7 @@ urls := []string{
     "https://example.com/page3",
 }
 
-for _, r := range processURLs(p, urls) {
+for _, r := range processURLs(client, p, urls) {
     if r.Error != nil {
         log.Printf("%s: 错误 - %v", r.URL, r.Error)
         continue
@@ -263,6 +291,8 @@ func fetchWithRetry(client *http.Client, url string, maxRetries int) ([]byte, er
 
 ```go
 func batchProcessURLs(processor *html.Processor, urls []string) {
+	client := &http.Client{Timeout: 15 * time.Second}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
@@ -274,7 +304,7 @@ func batchProcessURLs(processor *html.Processor, urls []string) {
 			log.Println("抓取超时，停止取数")
 			break
 		}
-		body, err := fetchWithRetry(http.DefaultClient, u, 2)
+		body, err := fetchWithRetry(client, u, 2)
 		if err != nil {
 			log.Printf("跳过 %s: %v", u, err)
 			continue
@@ -328,13 +358,15 @@ if err != nil {
 | 场景 | 建议 |
 |------|------|
 | 单页提取 | `http.Get()` + `html.Extract()` |
+| 整页喂 LLM | `html.ReadPageToMarkdown()` / `ReadPageToMarkdownText()` |
 | Web 服务 | Processor 单例 + `ExtractWithContext()` |
 | 批量抓取 | `processURLs()` + Processor 复用 |
-| 不可信来源 | `HighSecurityConfig()` + `io.LimitReader()` |
+| 不可信来源 | `HighSecurityConfig()` + 按 `MaxInputSize` 限制输入大小（该预设为 10MB） |
 | 编码不确定 | 从 `Content-Type` 取 charset 显式指定；留空时依赖自动检测 |
 
 ## 下一步
 
+- [阅读模式](../core-features/reader-mode) - 整页分区、`Render` 与保留开关
 - [Processor 复用与缓存](../performance/processor-cache) - Processor 生命周期管理
 - [审计系统实战](../security/audit-pipeline) - 生产环境安全监控
 - [API 参考：批量处理](../../api-reference/modules/batch) - 完整批量 API

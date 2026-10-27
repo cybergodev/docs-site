@@ -13,7 +13,7 @@ sidebar_position: 5
 
 `SecureValue` 的所有方法都是线程安全的，可在多个 goroutine 中并发使用：
 
-- **读取方法**（`String()`、`Bytes()`、`Length()`、`Masked()`）持读锁，支持并发读取
+- **读取方法**（`String()`、`Reveal()`、`Bytes()`、`Length()`、`Masked()`）持读锁，支持并发读取
 - **关闭方法**（`Close()`、`Release()`）持写锁，确保安全清零
 - **状态检查**：`IsClosed()` 读原子关闭位；`IsMemoryLocked()`、`MemoryLockError()` 持读锁
 
@@ -250,11 +250,7 @@ func (sv *SecureValue) Masked() string
 - 空值：`[SECURE:0 bytes]`（即便启用了内存锁定也不带后缀）
 - 正常：`[SECURE:N bytes]`；调用时全局内存锁定开关为 true 才追加状态后缀，取值为 `locked`、`lock-failed` 或 `unlocked`
 
-后缀由**调用 `Masked()` 那一刻**的全局开关与该值自身的锁定结果共同决定；`IsMemoryLockEnabled()` 为 false 时一律不加后缀。各后缀的完整判定见下文「Masked 输出格式」。
-
-::: tip
-锁定状态后缀由**调用 `Masked()` 时**的全局开关决定：开关为 false 时不加任何后缀；为 true 时按该值自身的锁定结果给出 `locked`／`lock-failed`／`unlocked`（创建于启用之前的值为 `unlocked`）。状态判断与排查见[内存锁定](../security/memory-locking)。
-:::
+后缀由**调用 `Masked()` 那一刻**的全局开关与该值自身的锁定结果共同决定；`IsMemoryLockEnabled()` 为 false 时一律不加后缀。各后缀的完整判定见下文「Masked 输出格式」，状态排查见[内存锁定](../security/memory-locking)。
 
 ```go
 secret := env.GetSecure("API_KEY")
@@ -539,7 +535,7 @@ func IsMemoryLockSupported() bool
 | wasm | ❌ |
 
 ::: tip 平台降级
-内存锁定只在 Linux、macOS、Windows 上实现，其余平台（FreeBSD 及其他 BSD、Solaris、wasm 等）没有锁定实现：
+在没有锁定实现的平台上（上表 ❌ 各行）：
 
 - `IsMemoryLockSupported()` 返回 false
 - `SecureValue` 仍可正常创建与使用
@@ -628,7 +624,7 @@ func MaskValue(key, value string) string
 **规则：**
 - 敏感键：返回 `[MASKED]`
 - 非敏感键且值长度 ≤ 20：返回 `SanitizeForLog(value)`
-- 非敏感键且值长度 > 20：先取前 17 个字符拼上 `...`，再对其调用 `SanitizeForLog`
+- 非敏感键且值长度 > 20：先取前 17 个字节拼上 `...`，再对其调用 `SanitizeForLog`
 
 ```go
 // 敏感键 - 返回固定 [MASKED]
@@ -669,7 +665,7 @@ masked := env.MaskKey("DB_PASSWORD")
 func SanitizeForLog(s string) string
 ```
 
-清理字符串中的敏感键值对信息。自动识别 `key=value` 与 YAML 的 `key: value` 两种形态，按键名敏感性掩码值。键名和分隔符原样保留，只替换值。同时移除控制字符，但保留 `\n` 与 `\t`。
+清理字符串中的敏感键值对信息。自动识别 `key=value` 与 YAML 的 `key: value` 两种形态，按键名敏感性掩码值；HTTP Authorization 的 `Bearer <token>` 令牌同样被掩码。键名和分隔符原样保留，只替换值。同时移除控制字符，但保留 `\n` 与 `\t`。
 
 **参数：**
 - `s` - 原始字符串
@@ -694,7 +690,7 @@ func MaskSensitiveInString(s string) string
 
 掩码字符串中的潜在敏感内容，处理分两步：
 
-1. 超过 50 字符的字符串截断为前 47 个字符加 `...`
+1. 超过 50 字节的字符串截断为前 47 个字节加 `...`
 2. 对结果掩码 `key=value` 形态的敏感值
 
 只截断会让 `password=...` 这类键值对原样漏出，所以两步都不能省。
@@ -706,7 +702,7 @@ func MaskSensitiveInString(s string) string
 - `string` - 掩码后的字符串
 
 ```go
-// 长字符串会被截断（保留前 47 个字符并追加 "..."）
+// 长字符串会被截断（保留前 47 个字节并追加 "..."）
 long := "This is a very long string that exceeds 50 characters"
 clean := env.MaskSensitiveInString(long)
 // 返回："This is a very long string that exceeds 50 char..."
@@ -798,19 +794,16 @@ var secureValuePool = sync.Pool{
 
 ### GC 终结器
 
-终结器只在对象首次创建时设置一次，之后终身保持。对象不可达时由它负责清零：
-
-```go
-runtime.SetFinalizer(sv, (*SecureValue).finalize)
-```
+终结器在对象首次创建时设置一次、终身保持（见上文对象池）。对象不可达时由它负责清零；已关闭的对象上触发时为空操作。
 
 ### 安全清零
 
-使用 `unsafe.Pointer` 防止编译器优化（必须在持有 `sv.mu` 锁时调用）：
+对切片**整个容量**清零（含 `[len, cap)` 残留），经 `unsafe.Pointer` 写入防止编译器优化；必须在持有 `sv.mu` 锁时调用：
 
 ```go
 func (sv *SecureValue) clearDataLocked() {
-    if len(sv.data) == 0 {
+    full := sv.data[:cap(sv.data)]
+    if len(full) == 0 {
         return
     }
     // 解锁内存（如果已锁定）
@@ -818,11 +811,11 @@ func (sv *SecureValue) clearDataLocked() {
         internal.UnlockMemory(sv.data)
         sv.locked = false
     }
-    dataPtr := unsafe.Pointer(&sv.data[0])
-    for i := range sv.data {
-        *(*byte)(unsafe.Pointer(uintptr(dataPtr) + uintptr(i))) = 0
+    dataPtr := unsafe.Pointer(&full[0])
+    for i := range full {
+        *(*byte)(unsafe.Add(dataPtr, i)) = 0
     }
-    runtime.KeepAlive(sv.data)
+    runtime.KeepAlive(full)
     sv.data = nil
     sv.lockErr = nil
 }

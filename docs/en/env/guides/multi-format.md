@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # Multi-format Config
 
-env loads three configuration formats: `.env`, JSON, and YAML. The parser is selected from the file extension, and every format flattens into the same flat key-value store.
+env loads three configuration formats: `.env`, JSON, and YAML. The parser is selected from the file extension, formats can be mixed in a single load, and all of them share one flat key-value store.
 
 ## Format Detection
 
@@ -70,7 +70,7 @@ loader2.LoadFiles(".env", "config.json", "secrets.yaml")
 ```
 
 :::tip
-The `DevelopmentConfig()` and `TestingConfig()` presets set `OverwriteExisting = true` (later files override earlier ones). The package-level `env.Load()` uses `DefaultConfig`; for last-wins, switch to `env.LoadWithConfig` and set the option.
+The `DevelopmentConfig()` and `TestingConfig()` presets set `OverwriteExisting = true` (later files override earlier ones). The package-level `env.Load()` uses `DefaultConfig`; for last-wins, switch to `env.Overload()` (which also overwrites same-named process-environment variables with file values), or use `env.LoadWithConfig` and set the option.
 :::
 
 ## JSON Format
@@ -173,14 +173,15 @@ cfg := env.DefaultConfig()
 // null values convert to empty strings (default true)
 cfg.JSONNullAsEmpty = true
 
-// numbers convert to strings (default true)
+// numbers render as canonical decimal strings (default true, e.g. "8080", "0.5";
+// when off, Go's default float formatting applies, e.g. 1e21 → "1e+21")
 cfg.JSONNumberAsString = true
 
 // kept for symmetry with YAML only; no effect on JSON (default false, marked Deprecated)
 // a decoded JSON bool has no source text to preserve, so it always renders "true"/"false"
 cfg.JSONBoolAsString = false
 
-// Max nesting depth (default 16)
+// Max nesting depth (default 16; allowed range 1–100)
 cfg.JSONMaxDepth = 20
 ```
 
@@ -270,13 +271,13 @@ cfg := env.DefaultConfig()
 // null/~ values convert to empty strings (default true)
 cfg.YAMLNullAsEmpty = true
 
-// numbers convert to strings (default true)
+// number scalars are canonicalized (default true, e.g. "007" → "7"); when off, kept as written
 cfg.YAMLNumberAsString = true
 
 // booleans render as canonical "true"/"false" (default true); when off, the YAML spelling (e.g. False) is kept
 cfg.YAMLBoolAsString = true
 
-// Max nesting depth (default 16; lowered here)
+// Max nesting depth (default 16; allowed range 1–100)
 cfg.YAMLMaxDepth = 15
 ```
 
@@ -381,7 +382,7 @@ export DATABASE_PORT=5432
 
 With the default `AllowYamlSyntax = false`, only `=` separates a key from its value. A `KEY: value` line therefore has no separator, and the parser skips it (an audit event is recorded when auditing is on).
 
-Set `AllowYamlSyntax = true` to treat `:` as a separator too. Values then follow YAML scalar semantics: `null` and `~` become empty strings, and YAML boolean and number literals are recognized per YAML rules.
+Set `AllowYamlSyntax = true` to treat `:` as a separator too. Values then follow YAML scalar semantics: `null` and `~` become empty strings, while numbers and booleans keep their written text.
 
 ```go
 cfg := env.DefaultConfig()
@@ -480,7 +481,7 @@ Command-line args > Environment variables > local config > environment config > 
 
 ## Serialization
 
-`env.Marshal` exports a map or struct to `.env`, JSON, or YAML; `env.UnmarshalMap` and `env.UnmarshalStruct` parse in the reverse direction. Pass `env.FormatAuto` to detect the format from content.
+`env.Marshal` exports a map or struct to `.env`, JSON, or YAML; `env.UnmarshalMap` and `env.UnmarshalStruct` parse in the reverse direction. The deserialize side detects the format from content when given `env.FormatAuto`; `Marshal` performs no content detection — `FormatAuto` behaves like an omitted argument and outputs `.env`.
 
 Structured output is not a verbatim dump. Marshal to JSON rebuilds underscore keys (such as `DATABASE_HOST`) into nested objects and infers `"8080"` and `"true"` back to number and bool. Marshal to YAML double-quotes scalars that would be type-coerced on the way back in (such as `PORT: "8080"`), so round trips keep the value a string.
 
@@ -553,7 +554,7 @@ Nested structures are flattened into environment variable keys on load, with the
 | Numbers and booleans become strings | `{"port": 5432}` → `PORT="5432"` |
 | Nesting depth cap defaults to 16 | Controlled by `JSONMaxDepth`/`YAMLMaxDepth` (allowed range 1–100) |
 
-During file loading, conversion behavior is controlled by `Config`'s `JSONConfig` and `YAMLConfig` (for example `JSONNullAsEmpty` and `JSONNumberAsString`). `UnmarshalMap` and `UnmarshalStruct` use built-in default rules for string parsing and ignore these settings.
+During file loading, conversion behavior is controlled by `Config`'s `JSONConfig` and `YAMLConfig` (for example `JSONNullAsEmpty` and `JSONNumberAsString`). `UnmarshalMap` and `UnmarshalStruct` use built-in default rules for string parsing and ignore these settings; to customize them, use `UnmarshalMapWithConfig` / `UnmarshalStructWithConfig`.
 
 ### Prefix Filtering (Prefix)
 
@@ -566,7 +567,7 @@ cfg.Prefix = "MYAPP_" // Only load keys starting with MYAPP_
 loader, _ := env.New(cfg)
 ```
 
-Prefix filtering combines with the `OverwriteExisting` policy: filtered-out keys neither overwrite nor enter storage.
+Prefix filtering runs before the `OverwriteExisting` policy is applied: filtered-out keys neither overwrite existing values nor enter storage.
 
 ### Unknown-Extension Fallback
 

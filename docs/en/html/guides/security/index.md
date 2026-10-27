@@ -7,7 +7,7 @@ sidebar_position: 10
 
 # Security Overview
 
-CyberGo html is a Go library for HTML content extraction and sanitization that processes untrusted input from the internet, so security is the first design constraint. The library ships multiple independent layers of protection following **defense in depth**: each layer stands on its own, and one layer failing does not disable the protection as a whole.
+The library is designed for untrusted input from the internet and ships multiple independent layers of protection following **defense in depth**: each layer stands on its own, and one layer failing does not disable the protection as a whole.
 
 This page explains what each layer does and where its failure boundary lies; to configure an audit pipeline or review the launch checklist, see [Next Steps](#next-steps) at the end.
 
@@ -72,14 +72,7 @@ A configurable per-document timeout bounds documents whose cost grows with input
 cfg.ProcessingTimeout = 10 * time.Second
 ```
 
-The timeout runs on a dedicated goroutine plus a context deadline and is capped by the process-wide counter `activeTimeoutGoroutines` (limit 1000), which prevents unbounded goroutine buildup under high concurrency. When an `ExtractWithContext` call also carries a caller context, the earlier deadline wins, but the **error type depends on which source fired** — there is no normalization:
-
-| Source | Returned error |
-|--------|----------------|
-| The library's `ProcessingTimeout` fires (caller ctx still live) | `ErrProcessingTimeout` |
-| The caller's ctx deadline fires first | `context.DeadlineExceeded` (passed through unchanged) |
-| The caller calls `cancel()` | `context.Canceled` |
-| `ProcessingTimeout = 0` (no limit) and ctx expires | `context.DeadlineExceeded` (no timeout goroutine is started) |
+The timeout runs on a dedicated goroutine plus a context deadline and is capped by the process-wide counter `activeTimeoutGoroutines` (limit 1000), which prevents unbounded goroutine buildup under high concurrency. When an `ExtractWithContext` call also carries a caller context, the earlier deadline wins, but the **error type depends on which source fired**: a library timeout returns `ErrProcessingTimeout`, while a caller ctx that expires or is cancelled passes `context.DeadlineExceeded` / `context.Canceled` through unchanged, with no normalization. The full four-scenario comparison table is in [Error Handling](../performance/error-handling#timeouts-and-cancellation).
 
 ## Content Sanitization
 
@@ -113,17 +106,16 @@ Server-side frameworks (ASP.NET WebForms, JSF, JSP) wrap the entire `<body>` in 
 | Form action override | Exact match | `formaction` (can hijack the form submission target) |
 | Autofocus | Exact match | `autofocus` (can be used to induce clicks) |
 
-Event handlers are matched by prefix (attribute names starting with `on`), which covers every current and future `on*` variant instead of relying on a fixed blocklist.
+Event handlers are matched by prefix (attribute names starting with `on`); there is no fixed blocklist — any `on*` attribute name is caught.
 
 ### Dangerous CSS Patterns
 
-When a `style` attribute value contains any of the following substrings, the **entire style is stripped** (the current strategy discards the whole value once any pattern matches; safe properties are not kept):
+A `style` attribute value is checked against the following dangerous patterns; a match strips the **entire style** (the whole value is discarded once anything matches — no property-level retention). Matching falls into two classes: `expression(`, `javascript:`, and `vbscript:` match by substring, while `behavior` and `-moz-binding` match by **declaration** — whitespace is allowed between the property name and the colon, so `behavior :url(...)` and `behavior:url(...)` both hit:
 
-- `expression(` — legacy IE dynamic expressions
-- `behavior:` — IE behavior binding
-- `-moz-binding:` — legacy Firefox XBL binding
-- `javascript:` — protocol injection
-- `vbscript:` — protocol injection
+- `expression(` — legacy IE dynamic expressions (substring match)
+- `javascript:` / `vbscript:` — protocol injection (substring match)
+- `behavior` — IE behavior binding (declaration match)
+- `-moz-binding` — legacy Firefox XBL binding (declaration match)
 
 ### Inspected URI Attributes
 
@@ -131,8 +123,10 @@ The values of these attributes enter the [URL Security Protection](#url-security
 
 ```text
 href  src  cite  action  data  poster  background
-longdesc  usemap  profile  xlink:href
+longdesc  usemap  profile  xlink:href  srcset  ping
 ```
+
+`srcset` and `ping` are multi-value URL attributes (image candidate lists and beacon addresses); the pipeline validates the whole value as one URL — a `javascript:` prefix hidden inside is caught the same way.
 
 :::tip Attributes already blocked are not validated again
 `formaction` is already blocked outright under "Removed Attributes", so it never enters the URI validation pipeline.
@@ -163,7 +157,7 @@ Raw URI
 5. **Case normalization**: schemes are case-insensitive, so `JavaScript:` equals `javascript:`.
 6. **Length limit**: non-data URLs longer than 2000 characters are rejected; data URLs have a separate 100KB ceiling.
 7. **Dangerous scheme detection**: `javascript:`, `vbscript:`, `file:`, plus a second ASCII fold for fullwidth Latin characters (U+FF01–U+FF5E).
-8. **Protocol-relative forms**: `//javascript:` drops the `//` and leading whitespace, then runs the same scheme policy.
+8. **Protocol-relative forms**: `//javascript:` drops the `//` and leading whitespace, then runs the scheme check; the blacklist on this path additionally includes `data:` — there is no safe protocol-relative data URL.
 9. **data URL whitelist**: only explicit image, font, and PDF MIME types pass.
 
 The order is what makes this work: every strip and normalization happens before scheme detection, so detection sees what the browser will eventually see. Plain printable-ASCII URIs take a fast path of direct scheme prefix checks; only URIs containing whitespace, control characters, or non-ASCII bytes run the full pipeline — the only place disguise techniques can appear.
@@ -206,7 +200,7 @@ When `ExtractFromFile` receives a file path from an untrusted source, `AllowedBa
 3. Checks containment with `pathWithin(realBase, realTarget)`
 4. Reads the content with `io.ReadAll` from the **same verified handle**
 
-Validation and reading share one handle, which closes the TOCTOU (check-time-to-use-time) window: swapping the path for a symlink after validation cannot affect the result, because the read uses the inode that was validated.
+Validation and reading share one handle, which closes the TOCTOU (time-of-check to time-of-use) window: swapping the path for a symlink after validation cannot affect the result, because the read uses the inode that was validated.
 
 ### Cross-Platform Real Path Resolution
 
@@ -254,7 +248,7 @@ _, err = p.ExtractFromFile("/var/app/uploads/page.html")
 _, err = p.ExtractFromFile("/var/app/uploads/escape.txt") // if it is a junction → /etc
 ```
 
-An out-of-bounds access records an `AuditEventPathTraversal` audit event and returns a `*FileError` wrapping "path outside allowed directory"; the error **does not include** the resolved real path, so the filesystem layout is not leaked.
+An out-of-bounds access records an `AuditEventPathTraversal` audit event and returns a `*FileError` wrapping "path outside allowed directory"; the error **does not include** the resolved real path, so the filesystem layout is not leaked. That error matches no sentinel and can only be judged from the `FileErr` message. A path traversal refusal, by contrast, wraps `ErrInvalidFilePath` and can be matched directly with `errors.Is`.
 
 ## Panic Recovery and Isolation
 
@@ -292,7 +286,7 @@ A custom `Sink` that panics therefore never reaches the caller through `Close()`
 
 Each `withTimeout` call starts a worker goroutine that waits for the deadline. To keep goroutines from piling up without bound, the process-wide counter `activeTimeoutGoroutines` limits how many can be waiting at once to `maxTimeoutGoroutines` (1000); past the limit, new requests return `ErrTooManyConcurrentOps` immediately.
 
-The cap bounds concurrency, not a fixed amount of memory — Go grows goroutine stacks on demand from a few KB.
+The cap bounds concurrency, not a fixed amount of memory — Go grows goroutine stacks on demand, starting at about 2 KB.
 
 ### Audit Raw Value Log Injection Protection
 

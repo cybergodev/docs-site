@@ -7,7 +7,7 @@ sidebar_position: 30
 
 # Redirects
 
-HTTPC follows HTTP redirects automatically by default, up to 10 times, and records the complete redirect chain. The following policy is set by `Security.FollowRedirects` and `MaxRedirects` at client, request, or preset level.
+HTTPC follows HTTP redirects automatically by default, with a `MaxRedirects` cap of 10 — the count includes the initial request, so at most 9 hops are actually followed, matching net/http — and records the complete redirect chain. The following policy is set by `Security.FollowRedirects` and `MaxRedirects` at client, request, or preset level.
 
 Sensitive headers are stripped on cross-origin jumps. Circular chains, targets outside the whitelist, and targets that fail SSRF validation are rejected.
 
@@ -73,7 +73,7 @@ Even with a `Location` header present, the engine follows only 301/302/303/307/3
 :::
 
 :::tip Exceeding the limit fails the request
-When the redirect count exceeds `MaxRedirects`, the request ends with an error (message like `stopped after 3 redirects`) rather than looping indefinitely. The valid range for `MaxRedirects` is 0-50; out-of-range values fail config validation.
+When the redirect count exceeds `MaxRedirects`, the request ends with an error (message like `stopped after 3 redirects`) rather than looping indefinitely. The count includes the initial request: with `MaxRedirects = N`, at most N-1 hops are followed — the default of 10 means at most 9 hops. The valid range for `MaxRedirects` is 0-50; out-of-range values fail config validation.
 :::
 
 ## Controlling Following
@@ -111,7 +111,8 @@ if result.IsRedirect() {
     fmt.Println(result.Response.Headers.Get("Location")) // the redirect target
 }
 
-// Limit following to 3 hops for just this request
+// Cap at 3 for just this request (the count includes the initial request,
+// so at most 2 hops are followed)
 result, err = httpc.Get(url, httpc.WithMaxRedirects(3))
 ```
 
@@ -168,10 +169,10 @@ func main() {
 
 ## Cross-Origin Credential Stripping
 
-While following redirects, the engine checks the target hostname at every hop. When the target hostname differs from the **initial request's** hostname (a cross-origin jump), sensitive request headers are removed automatically so credentials do not leak to the redirect target:
+While following redirects, the engine compares the target's **origin** (scheme + host + port, with scheme default ports normalized) at every hop. When the target origin differs from the **initial request's** origin (a cross-origin jump), sensitive request headers are removed automatically so credentials do not leak to the redirect target:
 
-| Header | Target host = initial request host | Target host ≠ initial request host |
-|--------|-----------------------------------|------------------------------------|
+| Header | Target origin = initial request origin | Target origin ≠ initial request origin |
+|--------|----------------------------------------|----------------------------------------|
 | `Authorization` | Kept | Removed |
 | `Proxy-Authorization` | Kept | Removed |
 | `Cookie` | Kept | Removed |
@@ -183,7 +184,7 @@ The built-in stripping set contains **five** headers. net/http itself covers onl
 
 Matching details:
 
-- The comparison baseline is the **initial request's** hostname (the first hop's `via[0]`), not the previous hop. `api.example.com → www.example.com` counts as cross-origin (exact-hostname comparison — a different subdomain counts); `A → B → A` returning to the initial host is not stripped.
+- The comparison baseline is the **initial request's** origin (the first hop's `via[0]`), not the previous hop. The origin comparison covers scheme, host, and port (with scheme default ports normalized): a different subdomain (`api.example.com → www.example.com`), a different port (`example.com:443 → example.com:8080`), and a scheme change (including an https → http downgrade) all count as cross-origin; `A → B → A` returning to the initial origin is not stripped.
 - Stripping is independent of the cookie jar: even with `EnableCookies` off, a manually set `Cookie` request header is still removed on cross-origin jumps.
 
 No extra handling is needed alongside `WithBasicAuth` / `WithBearerToken`: the token goes only to the original host and is not forwarded to third-party domains by the jumps.
@@ -226,7 +227,7 @@ When following is refused (limit exceeded, circular, whitelist, SSRF block), the
 
 | Underlying error message | Message field | Trigger |
 |--------------------------|---------------|---------|
-| `stopped after N redirects` | `redirect limit exceeded` | The hop count reached `MaxRedirects` (or the default of 10) |
+| `stopped after N redirects` | `redirect limit exceeded` | The request count reached the `MaxRedirects` cap (the count includes the initial request) |
 | `circular redirect detected: <URL>` | `circular redirect detected` | The target URL already appears in the jump chain |
 | `redirect blocked by whitelist: ...` | `redirect blocked by policy` | The target domain is not in `RedirectWhitelist` |
 | `redirect blocked: ...` | `redirect blocked by policy` | The target host was blocked by SSRF protection |
@@ -244,7 +245,7 @@ import (
 
 func main() {
 	cfg := httpc.DefaultConfig()
-	cfg.Security.MaxRedirects = 2 // only allow 2 follows
+	cfg.Security.MaxRedirects = 2 // cap counts 2 requests (including the initial one, so at most 1 follow)
 
 	client, err := httpc.New(cfg)
 	if err != nil {
@@ -292,9 +293,10 @@ Once set, requests redirected to domains outside the whitelist are rejected; red
 
 ## Handling Redirects Manually
 
-When per-hop inspection, conditional following, or custom logging is required, disable automatic following and loop manually. Two constraints apply: a `Location` without scheme and host is a **relative address** that must be resolved against the current URL into an absolute one.
+When per-hop inspection, conditional following, or custom logging is required, disable automatic following and loop manually. Two constraints apply:
 
-A manual loop does not go through whitelist checks, but connection-layer SSRF IP validation still applies when each hop establishes its connection.
+1. A `Location` without scheme and host is a **relative address**; resolve it against the current URL into an absolute one before requesting it.
+2. A manual loop does not go through the whitelist checks, but the connection-layer SSRF IP validation still applies when each hop establishes its connection.
 
 ```go
 package main

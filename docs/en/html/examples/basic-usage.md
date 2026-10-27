@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Basic Usage"
 title: "Basic Usage - CyberGo html | Scenario Examples"
-description: "CyberGo html basic usage: text and file extraction, Markdown and JSON output, link grouping, media info, and batch concurrency with timeouts."
+description: "CyberGo html basic usage: text and plain-text extraction, reader mode Markdown, file input, Markdown/JSON output, links, media, and batch concurrency."
 sidebar_position: 10
 ---
 
@@ -12,6 +12,7 @@ This page gives a minimal runnable example per scenario; principles and advanced
 | Scenario | Core calls | Guide |
 |----------|------------|-------|
 | Text & plain text | `html.Extract` / `html.ExtractText` | [Content Extraction](../guides/core-features/content-extraction) |
+| Reader mode | `html.ReadPageToMarkdown` | [Reader Mode](../guides/core-features/reader-mode) |
 | Extract from file | `html.ExtractFromFile` | [Content Extraction](../guides/core-features/content-extraction) |
 | Markdown / JSON output | `html.ExtractToMarkdown` / `html.ExtractToJSON` | [Output Formats](../guides/core-features/output-formats) |
 | Link extraction | `html.ExtractAllLinks` + `html.GroupLinksByType` | [Link Extraction](../guides/core-features/link-extraction) |
@@ -41,7 +42,14 @@ func main() {
 	}
 	fmt.Println(result.Title) // Output: Go Tutorial
 	fmt.Println(result.Text)
-	// Output: Getting Started with Go\n\nGo is a statically typed compiled language.\n\nGo Official Site
+	// Output:
+	// # Getting Started with Go
+	//
+	// Go is a statically typed compiled language.
+	//
+	// Go Official Site
+	fmt.Println(result.Confidence, result.ExtractionMethod)
+	// Output: 0.6 article (the body came from the scorer-selected <article>, but the text is short)
 
 	text, err := html.ExtractText(data) // plain text only: returns a string
 	if err != nil {
@@ -53,9 +61,9 @@ func main() {
 
 Go deeper: [Content Extraction](../guides/core-features/content-extraction)
 
-## Extract from File
+## Reader Mode
 
-Use `ExtractFromFile` for files on disk; it includes path traversal protection and a file size limit:
+When you need the whole page (navigation and footer sections included) instead of a single article, `ReadPageToMarkdown` returns a Markdown document in one call:
 
 ```go
 package main
@@ -68,11 +76,72 @@ import (
 )
 
 func main() {
-	result, err := html.ExtractFromFile("article.html")
+	page := []byte(`<html><head><title>Example Page</title></head><body>
+  <header><nav><a href="/">Home</a></nav></header>
+  <main><article><h1>Body Heading</h1><p>Body paragraph.</p></article></main>
+  <footer><p>© 2026 Example</p></footer>
+</body></html>`)
+
+	md, err := html.ReadPageToMarkdown(page) // with links
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.Title) // Output: the <title> of article.html
+	fmt.Println(md)
+	// Output:
+	// # Example Page
+	//
+	// # Header
+	//
+	// [Home](/)
+	//
+	// # Main Content
+	//
+	// # Body Heading
+	//
+	// Body paragraph.
+	//
+	// # Footer
+	//
+	// © 2026 Example
+
+	plain, err := html.ReadPageToMarkdownText(page) // without links
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(len(plain) > 0) // Output: true
+}
+```
+
+Go deeper: [Reader Mode](../guides/core-features/reader-mode)
+
+## Extract from File
+
+Use `ExtractFromFile` for files on disk; it includes path traversal protection and a file size limit:
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/cybergodev/html"
+)
+
+func main() {
+	// Write a sample file first (in real use this is usually an existing path)
+	const path = "article.html"
+	htmlDoc := `<html><head><title>Local File Sample</title></head><body><article><p>Body.</p></article></body></html>`
+	if err := os.WriteFile(path, []byte(htmlDoc), 0o644); err != nil {
+		log.Fatal(err)
+	}
+
+	result, err := html.ExtractFromFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.Title) // Output: Local File Sample
 }
 ```
 
@@ -101,7 +170,13 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println(md)
-	// Output: Getting Started with Go\n\nGo is a compiled language.\n\n![Gopher](gopher.png)\n[Go Official Site](https://go.dev)
+	// Output:
+	// # Getting Started with Go
+	//
+	// Go is a compiled language.
+	//
+	// ![Gopher](gopher.png)
+	// [Go Official Site](https://go.dev)
 
 	// To JSON: keeps every metadata field
 	jsonBytes, err := html.ExtractToJSON(data)
@@ -109,7 +184,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("JSON bytes:", len(jsonBytes))
-	// Output: a number whose size depends on the content (JSON holds text/title/images/links)
+	// Output: JSON bytes: <count> (with fields such as text, title, word_count, images, and links)
 }
 ```
 

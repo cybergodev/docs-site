@@ -167,7 +167,7 @@ Built-in middleware at a glance:
 | `AuditMiddleware` | Compliance audit events (text/json formats, sensitive headers redacted) | Default text config |
 | `HeaderMiddleware` | Attaches static headers to every request (CRLF validated at creation) | No headers (passthrough) |
 
-:::warning Do not use for Download or streaming requests
+:::warning
 `TimeoutMiddleware` is not suitable for `Download` or `WithStreamBody(true)` requests: the middleware rejects streaming requests on entry, returning `TimeoutMiddleware is incompatible with streaming responses`. Use `WithTimeout` for such cases instead.
 :::
 

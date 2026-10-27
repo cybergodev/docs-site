@@ -150,10 +150,12 @@ req.SetHeader("X-Trace-ID", generateTraceID())
 
 ## 类型断言：访问引擎特有方法
 
-中间件收到的 `RequestMutator` 在运行时实际是 `*engine.Request` 类型（引擎的具体请求结构）。`finalHandler` 通过类型断言从它读取三个**不在接口上**的引擎特有钩子。自定义中间件如需访问这些钩子，同样需要类型断言。
+中间件收到的 `RequestMutator` 在运行时实际是引擎的具体请求类型 `*engine.Request`。`finalHandler` 通过类型断言读取其上**不在公开接口上**的引擎特有字段，并连同接口字段一并转发给引擎。
 
 :::warning 接口边界
-OnRequest/OnResponse 回调和 `AllowPrivateIPs` 不在 `RequestMutator` 接口上：它们的签名引用内部包 `engine` 的类型（`*engine.Request`/`*engine.Response`），暴露到公开接口会造成循环导入。因此只能经 `*engine.Request` 类型断言访问。
+OnRequest/OnResponse 回调、`AllowPrivateIPs`、NoTimeout 与 `RetryNonIdempotent` 不在 `RequestMutator` 接口上：它们的签名引用内部包 `engine` 的类型（`*engine.Request`/`*engine.Response`），暴露到公开接口会造成循环导入。
+
+类型断言是**库内部机制**：`internal/engine` 对模块外不可导入，外部包无法命名 `*engine.Request`，因此也无法做该断言。调用方经公开请求选项使用这些能力——[`WithOnRequest`](../core/options#withonrequest)/[`WithOnResponse`](../core/options#withonresponse)/[`WithAllowPrivateIPs`](../core/options#withallowprivateips)/[`WithNoTimeout`](../core/options#withnotimeout)/[`WithRetryNonIdempotent`](../core/options#withretrynonidempotent)。
 :::
 
 这些引擎特有方法包括：
@@ -166,7 +168,7 @@ OnRequest/OnResponse 回调和 `AllowPrivateIPs` 不在 `RequestMutator` 接口�
 | `SetOnRequest(func)` / `SetOnResponse(func)` | 设置回调 |
 | `SetAllowPrivateIPs(*bool)` | 设置 SSRF 覆盖 |
 
-除需要回调或 SSRF 覆盖的场景外，中间件无需类型断言：`RequestMutator`/`ResponseMutator` 接口已涵盖常用读写操作。
+编写中间件的常规读写无需关心这些钩子：`RequestMutator`/`ResponseMutator` 接口已涵盖常用读写操作，逐请求回调与 SSRF/超时/重试覆盖经请求选项设置。
 
 ## 请求选项回调：WithOnRequest / WithOnResponse
 

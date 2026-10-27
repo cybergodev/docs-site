@@ -1,13 +1,13 @@
 ---
 sidebar_label: "配置实战"
 title: "配置实战 - CyberGo html | Config 字段选择指南"
-description: "CyberGo html 配置实战：DefaultConfig、HighSecurityConfig、TextOnlyConfig、MarkdownConfig 四种预设的差异，资源管理、安全、内容提取、输出格式、链接提取与扩展六大类字段导览，以及爬虫、API 后端与内容迁移的组合与 Validate 校验。"
+description: "CyberGo html 配置实战：DefaultConfig、HighSecurityConfig、TextOnlyConfig、MarkdownConfig 四种预设的差异，资源管理、安全、内容提取、输出格式、链接提取与扩展六大类共 31 个字段的导览，以及爬虫与 API 后端的常见组合。"
 sidebar_position: 60
 ---
 
 # 配置实战
 
-`Config` 是 html 库的统一配置结构体，共 30 个字段。多数场景只需选一个预设，再按需覆写字段；完整字段说明见 [API 参考 — 配置](../../api-reference/core/config)。
+`Config` 是 html 库的统一配置结构体，共 31 个字段。多数场景只需选一个预设，再按需覆写字段；完整字段说明见 [API 参考 — 配置](../../api-reference/core/config)。
 
 ## 四种预设配置
 
@@ -23,6 +23,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/cybergodev/html"
 )
@@ -31,20 +32,38 @@ func main() {
 	data := []byte(`<html><body><h1>标题</h1><p>正文内容</p></body></html>`)
 
 	// 大多数场景：直接用默认配置
-	p1, _ := html.New()
+	p1, err := html.New()
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p1.Close()
-	r1, _ := p1.Extract(data)
+	r1, err := p1.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(r1.Title)
+	// 输出: 标题
 
 	// 只需要纯文本（如搜索引擎索引）
-	p2, _ := html.New(html.TextOnlyConfig())
+	p2, err := html.New(html.TextOnlyConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p2.Close()
 
 	// 图片与链接以 Markdown 内联格式出现在 Text 中（如 CMS 迁移）
-	p3, _ := html.New(html.MarkdownConfig())
+	p3, err := html.New(html.MarkdownConfig())
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer p3.Close()
-	r3, _ := p3.Extract(data)
+	r3, err := p3.Extract(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(r3.Text)
+	// 输出: # 标题
+	//       正文内容
 }
 ```
 
@@ -59,7 +78,9 @@ cfg.PreserveImages = false // 在高安全基础上额外关闭图片
 processor, _ := html.New(cfg)
 ```
 
-`TextOnlyConfig()` 只把 `PreserveImages`/`PreserveLinks`/`PreserveVideos`/`PreserveAudios` 设为 `false`，不影响 `ExtractAllLinks` 的 `Include*` 过滤。`MarkdownConfig()` 只设 `InlineImageFormat` 与 `InlineLinkFormat`；`ExtractToMarkdown` 固定使用 markdown 格式，无需该预设。
+`TextOnlyConfig()` 只把 `PreserveImages`/`PreserveLinks`/`PreserveVideos`/`PreserveAudios` 设为 `false`，不影响 `ExtractAllLinks` 的 `Include*` 过滤。
+
+`MarkdownConfig()` 只设 `InlineImageFormat` 与 `InlineLinkFormat`；`ExtractToMarkdown` 固定使用 markdown 格式，无需该预设。
 
 ## 六大类字段导览
 
@@ -102,6 +123,7 @@ processor, _ := html.New(cfg)
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
 | `ExtractArticle` | `true` | 智能文章识别（自动定位主体内容） |
+| `ExtractMetadata` | `true` | 结构化元数据：解析作者、发布时间、摘要、站点名与规范链接，并让元数据标题优先 |
 | `PreserveImages` | `true` | 保留图片信息 |
 | `PreserveLinks` | `true` | 保留链接信息 |
 | `PreserveVideos` | `true` | 提取视频 |
@@ -116,6 +138,10 @@ cfg.PreserveAudios = false
 // 只提取文本、图片和链接
 ```
 
+:::tip 关闭 ExtractMetadata 的影响
+它同时改变标题来源：`Result.Title` 不再取 JSON-LD headline 或 `og:title`，回退到 `<title>` → 正文 h1 → 文档首个 h1 → 首个 h2 的 DOM 顺序。`Author`、`PublishedTime`、`Description`、`SiteName`、`CanonicalURL` 五个字段保持空值。
+:::
+
 ### 输出格式
 
 控制文本输出中图片与链接的呈现方式。详见 [输出格式实战](./output-formats)。
@@ -127,11 +153,19 @@ cfg.PreserveAudios = false
 | `TableFormat` | `"markdown"` | `"markdown"`, `"html"` |
 | `Encoding` | `""`（自动） | `"utf-8"`, `"gbk"`, `"shift_jis"`, `"windows-1252"` 等 |
 
+三个格式字段的取值可直接使用导出常量，避免拼写错误：`html.FormatNone`（`"none"`）、`html.FormatMarkdown`（`"markdown"`）、`html.FormatHTML`（`"html"`）、`html.FormatPlaceholder`（`"placeholder"`，仅 `InlineImageFormat` 接受）。常量值与字符串字面量等效，校验规则相同（大小写不敏感）；常量清单见 [API 参考：常量与错误](../../api-reference/types/constants#格式常量)。
+
+```go
+cfg := html.DefaultConfig()
+cfg.InlineImageFormat = html.FormatMarkdown
+cfg.InlineLinkFormat = html.FormatHTML
+```
+
 `Encoding` 留空时走自动检测。已知编码时手动指定可跳过检测步骤，但仅在确知编码时使用——指定错误会得到乱码或 `encoding detection failed` 错误。详见 [编码检测实战](./encoding-detection)。
 
 ### 链接提取
 
-以下字段仅在 `ExtractAllLinks` 中生效。详见 [链接提取实战](./link-extraction)。
+以下字段在 `ExtractAllLinks` 与阅读模式（`ReadPage` 系列）中生效。详见 [链接提取实战](./link-extraction)。
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
@@ -256,7 +290,7 @@ func main() {
 }
 ```
 
-`ExtractToMarkdown` 固定使用 markdown 格式，与 `InlineImageFormat`/`InlineLinkFormat` 无关，因此这里不需要 `MarkdownConfig()`。`BaseURL` 与 `ResolveRelativeURLs` 只作用于 `ExtractAllLinks`，不会改写 `Extract` 结果中的链接。
+`ExtractToMarkdown` 固定使用 markdown 格式，与 `InlineImageFormat`/`InlineLinkFormat` 无关，因此这里不需要 `MarkdownConfig()`。`BaseURL` 与 `ResolveRelativeURLs` 作用于 `ExtractAllLinks` 与阅读模式，不会改写 `Extract` 结果中的链接。
 
 ## Validate
 

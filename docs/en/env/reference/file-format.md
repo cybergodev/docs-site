@@ -1,13 +1,13 @@
 ---
 sidebar_label: "File Format"
 title: "File Format - CyberGo env | .env/JSON/YAML Syntax"
-description: "File format reference for CyberGo env: .env, JSON and YAML syntax, quoting, export prefixes, ${VAR} expansion, AllowYamlSyntax and key flattening."
+description: "File format reference for CyberGo env: .env, JSON and YAML syntax, quoting, ${VAR} expansion, block scalars, key flattening and DetectFormat auto-detection."
 sidebar_position: 1
 ---
 
 # File Format
 
-env reads three configuration file formats: `.env`, JSON, and YAML. The file extension selects the parser, and every format flattens into the same flat key-value store.
+env reads three configuration file formats: `.env`, JSON, and YAML. The file extension selects the parser, and every format ends up as the same flat `KEY=value` pairs — the formats differ in syntax and in how they handle nested structures.
 
 ## .env Format
 
@@ -80,7 +80,8 @@ API_URL=${BASE_URL}/v1
 # Simple syntax
 URL=$BASE_URL/path
 
-# Default values (reference earlier keys; a key cannot reference itself)
+# Default values (can reference any key in the same file, regardless of definition
+# order; a self-reference fails as a cycle)
 HOST=example.com
 PRIMARY_HOST=${HOST:-localhost}
 TIMEOUT=${TIMEOUT_SECONDS:-30s}
@@ -101,7 +102,7 @@ export ANOTHER="quoted value"
 
 ### YAML Style
 
-With the default `AllowYamlSyntax = false`, only `=` separates a key from its value. A `KEY: value` line has no separator, so the parser skips it; when auditing is on, that skip is recorded as an audit event.
+With the default `AllowYamlSyntax = false`, only `=` separates a key from its value. A `KEY: value` line has no separator, so the parser skips it; when auditing is on, each skipped line is recorded as an audit event with its content masked first.
 
 Set `AllowYamlSyntax = true` to treat `:` as a separator as well. Values then follow YAML scalar semantics: `null` and `~` become empty strings, and YAML boolean and number literals are recognized per YAML rules.
 
@@ -137,6 +138,23 @@ PRIVATE_KEY="-----BEGIN KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..
 ```
 
 For real multi-line strings, use [JSON or YAML format](#format-detection), or add multi-line support with a custom parser.
+
+### Duplicate Keys
+
+Duplicate keys inside a single file are resolved by `DuplicateKeyPolicy`. The default value `DuplicateKeyInherit` (the zero value) keeps each format's historical behavior:
+
+| Format | Default (Inherit) behavior |
+|--------|---------------------------|
+| `.env` | Follows `OverwriteExisting`: with `false` (the default) the first occurrence wins, with `true` the last occurrence wins |
+| YAML | The last occurrence wins (independent of `OverwriteExisting`) |
+| JSON | The last occurrence wins (independent of `OverwriteExisting`) |
+
+An explicit policy can also be set: `DuplicateKeyFirstWins` keeps the first occurrence (for JSON, a document containing duplicate keys is rejected instead), `DuplicateKeyLastWins` makes the last occurrence win in every format, and `DuplicateKeyError` fails with `ErrDuplicateKey` on any duplicate key. The policy only governs duplicate keys **within a single file**; how multiple files override one another is decided by `OverwriteExisting` (see [Multi-file Loading](../getting-started/#multi-file-loading) in the Quick Start guide).
+
+```go
+cfg := env.DefaultConfig()
+cfg.DuplicateKeyPolicy = env.DuplicateKeyError // error on duplicate keys within a single file
+```
 
 ## JSON Format
 
@@ -271,17 +289,26 @@ ALLOWED_HOSTS_2=api.example.com
 
 ### Multi-line Strings
 
-:::warning
-YAML block scalars (literal block `|` and folded block `>`) are **not supported**. The parser treats `|` and `>` as ordinary scalar characters, and the following indented lines break key-value parsing.
-:::
+YAML supports block scalars: a literal block `|` preserves the content and line breaks of each line, while a folded block `>` folds the line break between adjacent lines into a space (an empty line folds into a line break). The block content is every line after the header indented deeper than the key's own level, and multi-line values (certificates, keys, and the like) are stored verbatim, with no null/boolean/number type conversion:
 
-For values that must preserve line breaks, use a double-quoted value with `\n` escapes:
+```yaml
+private_key: |
+  -----BEGIN PRIVATE KEY-----
+  MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+  -----END PRIVATE KEY-----
+
+description: >
+  Adjacent lines of a folded block
+  are joined with spaces in the result
+```
+
+The header can carry a chomping indicator that controls trailing line breaks: `-` (strip) removes all of them, `+` (keep) keeps all of them, and the default (clip) keeps exactly one. It can also carry an explicit indentation indicator digit (for example `|2`, meaning the block content is indented two spaces relative to its parent). When anything else follows on the header line (for example `| text`), it is not a block scalar: `|` and `>` are then treated as ordinary scalar characters.
+
+To express line breaks on a single line, a double-quoted value with `\n` escapes works just as well:
 
 ```yaml
 description: "Line1\nLine2\nLine3"
 ```
-
-Or add block-scalar support with a custom parser.
 
 ### Type Conversion Options
 
