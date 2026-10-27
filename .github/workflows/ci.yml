@@ -51,7 +51,10 @@ jobs:
       - name: Build with VitePress
         run: npm run build
         env:
-          NODE_OPTIONS: --max-old-space-size=7168
+          # Same 8GB heap as package.json's build script and deploy.yml —
+          # keep the three aligned so CI, local and deploy builds behave
+          # identically near the memory ceiling.
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Audit locale parity
         run: npm run audit

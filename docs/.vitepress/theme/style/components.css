@@ -73,7 +73,7 @@
 }
 
 .site-footer .social-link:hover {
-  color: var(--vp-c-brand-1);
+  color: var(--cg-brand-text);
   background: var(--vp-c-brand-soft);
 }
 
@@ -109,7 +109,7 @@
 }
 
 .site-footer .col-links a:hover {
-  color: var(--vp-c-brand-1);
+  color: var(--cg-brand-text);
 }
 
 .site-footer .col-links .external-icon {

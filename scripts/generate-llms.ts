@@ -31,6 +31,7 @@ import {
   NON_PRIMARY_LANGS,
   PRIMARY_LANG,
   PROJECTS,
+  PROJECT_META,
   type Lang
 } from '../docs/.vitepress/shared'
 import { collectMd } from './_lib/walk'
@@ -74,10 +75,37 @@ function sectionTitle(base: string, lang: Lang): string {
   return lang === PRIMARY_LANG ? base : `${base} (${LANGUAGES[lang].label})`
 }
 
-/** Full-text dump of one language tree: title + canonical URL + body per doc. */
-function buildFull(docs: Doc[]): string {
-  const full: string[] = []
-  for (const d of [...docs].sort((a, b) => a.urlPath.localeCompare(b.urlPath))) {
+/**
+ * Full-text dump of one language tree: title + canonical URL + body per doc.
+ *
+ * The language home is special-cased: its markdown body is a `<ProjectGrid>`
+ * component placeholder plus a `<style>` block — pure noise for a text
+ * consumer — so its entry is replaced by a plain-text project list rendered
+ * from the same single source the component reads (PROJECT_META). The
+ * llms.txt index is unaffected (it uses title/description only, which stay
+ * clean).
+ */
+function buildFull(docs: Doc[], lang: Lang): string {
+  const home = docs.find((d) => d.urlPath === `/${lang}/`)
+  const rest = docs.filter((d) => d !== home)
+  rest.sort((a, b) => a.urlPath.localeCompare(b.urlPath))
+
+  const full: string[] = [
+    `# ${home?.title ?? 'CyberGo'}`,
+    '',
+    // Match the site's canonical policy (seo.ts): the primary language's
+    // home is served at BOTH `/` and `/{lang}/`, with `/` canonical — so the
+    // primary dump must not advertise the non-canonical `/{lang}/` mirror.
+    `Canonical URL: ${lang === PRIMARY_LANG ? `${HOST}/` : `${HOST}/${lang}/`}`,
+    ''
+  ]
+  if (home?.description) full.push(home.description, '')
+  for (const p of PROJECTS) {
+    full.push(`- ${p.toUpperCase()}: ${PROJECT_META[p].desc[lang]} (${HOST}/${lang}/${p}/)`)
+  }
+  full.push('', '---', '')
+
+  for (const d of rest) {
     full.push(`# ${d.title}`, '', `Canonical URL: ${HOST}${d.urlPath}`, '', d.body, '', '---', '')
   }
   return full.join('\n')
@@ -127,13 +155,13 @@ async function main(): Promise<void> {
   await writeFile(join(DIST_DIR, 'llms.txt'), index.join('\n'), 'utf8')
   await writeFile(
     join(DIST_DIR, 'llms-full.txt'),
-    buildFull(docsByLang.get(PRIMARY_LANG) ?? []),
+    buildFull(docsByLang.get(PRIMARY_LANG) ?? [], PRIMARY_LANG),
     'utf8'
   )
   for (const lang of NON_PRIMARY_LANGS) {
     await writeFile(
       join(DIST_DIR, `llms-full-${lang}.txt`),
-      buildFull(docsByLang.get(lang) ?? []),
+      buildFull(docsByLang.get(lang) ?? [], lang),
       'utf8'
     )
   }

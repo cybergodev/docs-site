@@ -91,7 +91,22 @@ export function useProjectSearch() {
     if (cached) return cached
 
     const inflight = loading.get(ck)
-    if (inflight) return inflight
+    if (inflight) {
+      // Joining an in-flight load must drive THIS caller's isLoading/error
+      // too: on a shared-promise failure the creator's catch sets ITS OWN
+      // refs, and this instance would keep error=null / isLoading=false —
+      // which the UI then misreports as "no results".
+      isLoading.value = true
+      error.value = null
+      try {
+        return await inflight
+      } catch (e) {
+        error.value = e instanceof Error ? e : new Error(String(e))
+        throw e
+      } finally {
+        isLoading.value = false
+      }
+    }
 
     isLoading.value = true
     error.value = null
@@ -154,5 +169,20 @@ export function useProjectSearch() {
     }))
   }
 
-  return { scope, scopeKey, isLoading, error, search }
+  /**
+   * Warm the CURRENT (lang, scope) index ahead of the first query — call from
+   * user-intent moments (search box open / input focus). Fire-and-forget:
+   * callers must not await it, and warm-up failures are swallowed here — a
+   * real `search()` later retries the load from scratch and surfaces any
+   * error through the normal reporting path.
+   */
+  async function preload(): Promise<void> {
+    try {
+      await getInstance()
+    } catch {
+      // Swallowed by design — see JSDoc above.
+    }
+  }
+
+  return { scope, scopeKey, isLoading, error, search, preload }
 }

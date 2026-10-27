@@ -9,7 +9,7 @@
   },
   {
     "from": "dd/api-reference/constants",
-    "to": "dd/api-reference/dev-tools/constants"
+    "to": "dd/api-reference/core/constants"
   },
   {
     "from": "dd/api-reference/context",
@@ -277,7 +277,7 @@
   },
   {
     "from": "dd/advanced/error-handling",
-    "to": "dd/guides/error-handling"
+    "to": "dd/guides/operations/error-handling"
   },
   {
     "from": "dd/api-reference/security-audit/hooks",

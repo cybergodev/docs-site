@@ -135,6 +135,16 @@
   line-height: 1.5;
 }
 
+/* Keyboard focus indicator (both variants). The inputs suppress the default
+   outline above; :focus-visible restores a solid ring in the TEXT-safe brand
+   token — the 14%-alpha --cg-brand-soft would fail the 3:1 non-text minimum
+   for focus indicators (light: 5.47:1 on white, dark: 9.13:1 on dark bg). */
+.ProjectSearchModal .modal-input:focus-visible,
+.ProjectSearchScreen .screen-input:focus-visible {
+  outline: 2px solid var(--cg-brand-text);
+  outline-offset: 2px;
+}
+
 .ProjectSearchModal .scope-badge {
   display: inline-flex;
   align-items: center;
@@ -142,7 +152,7 @@
   padding: var(--cg-sp-1) var(--cg-sp-2);
   border-radius: var(--cg-radius-pill);
   background: var(--cg-brand-soft);
-  color: var(--vp-c-brand-1);
+  color: var(--cg-brand-text);
   font-size: 12px;
   line-height: 1;
   white-space: nowrap;
@@ -223,7 +233,7 @@
 
 .ProjectSearchModal .result.active .result-title,
 .ProjectSearchScreen .result.active .result-title {
-  color: var(--vp-c-brand-1);
+  color: var(--cg-brand-text);
 }
 
 .ProjectSearchModal .result-crumb,
@@ -304,7 +314,7 @@
 }
 
 .ProjectSearchScreen .screen-meta .scope {
-  color: var(--vp-c-brand-1);
+  color: var(--cg-brand-text);
   font-weight: 600;
 }
 

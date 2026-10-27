@@ -1,0 +1,35 @@
+/**
+ * Motion preferences (WCAG 2.2.2 / 2.3.3).
+ *
+ * Users who opt out of animation (vestibular disorders, motion sickness)
+ * get a still page:
+ *   - the two INFINITE decorative animations (hero gradient sweep in
+ *     home.css, navbar brand shimmer in nav.css) are stopped outright;
+ *   - hover LIFT (translateY) is removed — pure decoration with a motion
+ *     cost. Color / border / shadow transitions are kept: they do not imply
+ *     movement, and removing them would degrade state feedback.
+ *
+ * Component-scoped movement (NotFound button lift, LanguagePrompt slide-in)
+ * is neutralized in those components' own scoped styles — scoped selectors
+ * cannot be reached from this global file.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Infinite decorative animations → static. */
+  .VPHero .name {
+    animation: none;
+  }
+
+  .VPNavBar::before {
+    animation: none;
+  }
+
+  /* Hover lift → no movement (color/border/shadow transitions remain). */
+  .project-card:hover {
+    transform: none;
+  }
+
+  .VPHero .actions .action-button:hover {
+    transform: none;
+  }
+}

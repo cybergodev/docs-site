@@ -65,7 +65,7 @@
     white-space: nowrap;
   }
   .cli-tok-bin {
-    color: var(--cg-brand, var(--vp-c-brand-1));
+    color: var(--cg-brand-text, var(--vp-c-brand-1));
     font-weight: 600;
   }
   .cli-tok-flag {
@@ -77,7 +77,7 @@
   .cli-docs-link {
     flex-shrink: 0;
     font-size: 0.8rem;
-    color: var(--cg-brand, var(--vp-c-brand-1));
+    color: var(--cg-brand-text, var(--vp-c-brand-1));
     text-decoration: none;
     white-space: nowrap;
   }

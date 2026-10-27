@@ -3,6 +3,24 @@ import { PROJECTS, type Lang } from '../shared'
 import { EDIT_LINK_BASE, DOC_ISSUE_URL } from '../shared'
 
 /**
+ * Copyright year, stamped once at module load — the single source for every
+ * footer copyright line (SiteFooter via UI_LABELS, and the VitePress
+ * themeConfig footers via buildFooter / config.mts).
+ *
+ * Deliberately a build-time value, not an onMounted-corrected ref: this module
+ * is imported by BOTH the Node build (SSG output) and the browser bundle, so
+ * the rendered year is build year on the server and visitor year on the
+ * client. An onMounted flip cannot remove that first-render difference (the
+ * mismatch, if any, happens before mount); the only mismatch-free dynamic
+ * option would be omitting the year from SSR output entirely, which no-JS
+ * visitors would then never see. The site redeploys on every push to main, so
+ * build year tracks the calendar and the only drift is a stale deploy crossing
+ * New Year, where the client value (the newer year) wins after hydration
+ * anyway.
+ */
+export const COPYRIGHT_YEAR = new Date().getFullYear()
+
+/**
  * Per-language UI strings, in ONE place — keyed by language so a missing
  * translation is a type error, not a silent gap.
  *
@@ -59,6 +77,8 @@ export interface UiLabels {
   notFoundDesc: string
   notFoundGoHome: string
   notFoundGoBack: string
+  /** Section heading above the 404 project grid. */
+  notFoundBrowse: string
   // LanguagePrompt
   /** Prompt text template; `{label}` is replaced with the suggested language name. */
   langPromptTextTemplate: string
@@ -79,6 +99,8 @@ export interface UiLabels {
   // ProjectSearch — local minisearch with per-project + per-language scope
   /** Result list empty state. */
   searchNoResults: string
+  /** Index-load failure state (distinct from "no results"). */
+  searchError: string
   /** Scope badge on a project page; `{project}` is replaced with the upper-case project key. */
   searchScopeProject: string
   /** Scope badge on a non-project page (home / about). */
@@ -118,12 +140,13 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     footerAboutSite: '关于本站',
     footerEditDocs: '编辑文档',
     footerLicenseWord: '许可证',
-    footerCopyright: '版权所有 © 2026 CyberGo (cybergo.dev)',
+    footerCopyright: `版权所有 © ${COPYRIGHT_YEAR} CyberGo (cybergo.dev)`,
     footerOpensInNewWindow: '（在新窗口打开）',
     notFoundTitle: '页面未找到',
     notFoundDesc: '抱歉，您访问的页面不存在或已被移除。',
     notFoundGoHome: '返回首页',
     notFoundGoBack: '返回上页',
+    notFoundBrowse: '浏览项目文档',
     langPromptTextTemplate: '检测到您的浏览器语言为「{label}」，是否切换？',
     langPromptSwitch: '切换语言',
     langPromptDismiss: '暂不',
@@ -133,6 +156,7 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     breadcrumbHome: '首页',
     breadcrumbAriaLabel: '面包屑导航',
     searchNoResults: '未找到相关文档',
+    searchError: '搜索索引加载失败，重新输入关键词将自动重试',
     searchScopeProject: '仅在 {project}',
     searchScopeSite: '全站',
     searchScopeLabel: '范围',
@@ -164,12 +188,13 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     footerAboutSite: 'About This Site',
     footerEditDocs: 'Edit Docs',
     footerLicenseWord: 'License',
-    footerCopyright: 'Copyright © 2026 CyberGo (cybergo.dev)',
+    footerCopyright: `Copyright © ${COPYRIGHT_YEAR} CyberGo (cybergo.dev)`,
     footerOpensInNewWindow: '(opens in new window)',
     notFoundTitle: 'Page Not Found',
     notFoundDesc: 'Sorry, the page you are looking for does not exist or has been removed.',
     notFoundGoHome: 'Go Home',
     notFoundGoBack: 'Go Back',
+    notFoundBrowse: 'Browse Documentation',
     langPromptTextTemplate: 'Your browser language appears to be {label}. Switch?',
     langPromptSwitch: 'Switch',
     langPromptDismiss: 'Not now',
@@ -179,6 +204,7 @@ export const UI_LABELS: Record<Lang, UiLabels> = {
     breadcrumbHome: 'Home',
     breadcrumbAriaLabel: 'Breadcrumb',
     searchNoResults: 'No results found',
+    searchError: 'Failed to load search index — type again to retry',
     searchScopeProject: 'In {project}',
     searchScopeSite: 'All projects',
     searchScopeLabel: 'Scope',
@@ -238,8 +264,10 @@ function buildEditLink(lang: Lang) {
 function buildFooter(lang: Lang): DefaultTheme.Config['footer'] {
   const l = UI_LABELS[lang]
   return {
-    message: `${l.footerLicense} · <a href="${DOC_ISSUE_URL}" target="_blank">${l.footerReportIssue}</a>`,
-    copyright: 'Copyright © 2026 CyberGoDev'
+    // rel on the target="_blank" anchor: noopener (window.opener hardening,
+    // same as SiteFooter's links) + noreferrer (referrerpolicy hygiene).
+    message: `${l.footerLicense} · <a href="${DOC_ISSUE_URL}" target="_blank" rel="noopener noreferrer">${l.footerReportIssue}</a>`,
+    copyright: `Copyright © ${COPYRIGHT_YEAR} CyberGoDev`
   }
 }
 
